@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.13 (gritter) 2/20/02";
+static char sccsid[] = "@(#)quit.c	1.14 (gritter) 5/22/02";
 #endif
 #endif /* not lint */
 
@@ -468,7 +468,6 @@ newmail:
 void
 edstop()
 {
-	extern char *tmpdir;
 	int gotcha, c;
 	struct message *mp;
 	FILE *obuf, *ibuf, *readstat = (FILE*)NULL;

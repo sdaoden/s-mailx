@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.14 (gritter) 2/19/02
+.\"     Sccsid: @(#)nail.1	1.21 (gritter) 5/24/02
 .\"
-.TH NAIL 1 "2/19/02" "nail 9.30" "User Commands"
+.TH NAIL 1 "5/24/02" "nail 9.31" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -56,7 +56,7 @@ nail \- send and receive MIME conformant mail
 .PP
 .B nail
 [
-.B \-eiInNv
+.B \-eHiInNv
 ]
 .B \-f
 [ name ]
@@ -99,6 +99,9 @@ for processing;
 when you quit, \fInail\fR writes
 undeleted messages back
 to this file.
+.TP
+.B \-H
+Print header summaries for all messages and exit.
 .TP
 .B \-i
 Ignore tty interrupt signals.
@@ -191,11 +194,49 @@ can be given a list of message numbers
 as arguments to apply to a number of messages at once.
 Thus '\fIdelete 1 2\fR' deletes messages 1 and 2,
 while '\fIdelete 1-5\fR' deletes messages 1 through 5.
-The special name '*' addresses all messages,
-and '$' addresses the last message;
-thus the command top which prints
-the first few lines of a message could be used
-in '\fItop *\fR' to print the first few lines of all messages.
+The following special message names exist:
+.TP
+.B :n
+All new messages.
+.TP
+.B :o
+All old messages.
+.TP
+.B :u
+All unread messages.
+.TP
+.B :d
+All deleted messages.
+.TP
+.B :r
+All read messages.
+.TP
+.BI / string
+All messages that contain
+.I string
+in the subject field (case ignored).
+.TP
+.I address
+All messages from
+.BR address .
+.TP
+.B .
+The current message.
+.TP
+.B -
+The previous message.
+.TP
+.B +
+The next message.
+.TP
+.B ^
+The first message.
+.TP
+.B $
+The last message.
+.TP
+.B *
+All messages.
 .SS "Replying to or originating mail"
 You can use the reply command
 to set up a response to a message,
@@ -371,6 +412,9 @@ See also print, ignore and retain.
 Does not reply to other recipients
 of the original message.
 .TP
+.B Respond
+Same as Reply.
+.TP
 .B Type
 (T) Identical to the Print command.
 .TP
@@ -394,6 +438,9 @@ If the alternates command is given
 with no argument,
 the current set of alternate names is displayed.
 .TP
+.B cd
+Same as chdir.
+.TP
 .B chdir
 (c) Changes the user's working directory to that specified,
 if given.
@@ -411,11 +458,19 @@ and marks them all as deleted.
 Deleted messages will not be saved in mbox,
 nor will they be available for most other commands.
 .TP
+.B discard
+Same as ignore.
+.TP
 .BR dp \ or \ dt
 Deletes the current message
 and prints the next message.
 If there is no next message,
 \fInail\fR says '\fIat EOF\fR'.
+.TP
+.B echo
+Echoes its arguments,
+resolving special names
+as documented for the folder command.
 .TP
 .B edit
 (e) Takes a list of messages
@@ -522,6 +577,9 @@ including ignored fields.
 If ignore is executed with no arguments,
 it lists the current set of ignored fields.
 .TP
+.B list
+Prints the names of all available commands.
+.TP
 .B mail
 (m) Takes as argument login names
 and distribution group names
@@ -605,6 +663,9 @@ Quotation marks may be placed around any part of the
 assignment statement to quote blanks
 or tabs, i.e. '\fIset indentprefix="\->"\fR'.
 .TP
+.B savediscard
+Same as saveignore.
+.TP
 .B saveignore
 Saveignore is to save what ignore is to print and type.
 Header fields thus marked are filtered out
@@ -638,6 +699,12 @@ Takes a message list and prints the top few lines of each.
 The number of lines printed is controlled
 by the variable toplines
 and defaults to five.
+.TP
+.B touch
+Takes a message list
+and marks the messages for saving in the
+.I mbox
+file.
 .TP
 .B type
 (t) A synonym for print.
@@ -708,6 +775,9 @@ by the option escape.
 Execute the indicated shell command,
 then return to the message.
 .TP
+.B ~.
+Same effect as typing the end-of-file character.
+.TP
 .BI ~< filename
 Identical to ~r.
 .TP
@@ -715,10 +785,17 @@ Identical to ~r.
 Command is executed using the shell.
 Its standard output is inserted into the message.
 .TP
-.BI ~a "filename ..."
-Add the given filenames to the attachment list.
-If one of the files is not readable,
-the attachment list remains empty.
+\fB~@\fR [\fIfilename\fR ... ]
+With no arguments, edit the attachment list.
+First, the user can edit all existing attachment data.
+If an attachment's file name is left empty,
+that attachment is deleted from the list.
+When the end of the attachment list is reached,
+.B nail
+will ask for further attachments,
+until an empty file name is given.
+If \fIfilename\fP arguments are specified,
+all of them are appended to the end of the attachment list.
 .TP
 .BI ~b "name ..."
 Add the given names to the list of carbon copy recipients
@@ -807,6 +884,10 @@ to the end of your message.
 .TP
 .BI ~w filename
 Write the message onto the named file.
+.TP
+.B ~x
+Same as ~q,
+except that the message is not saved to the dead.letter file.
 .TP
 .BI ~| command
 Pipe the message through the command as a filter.

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	1.16 (gritter) 2/20/02";
+static char sccsid[] = "@(#)sendout.c	1.18 (gritter) 6/11/02";
 #endif
 #endif /* not lint */
 
@@ -228,26 +228,28 @@ FILE *fo;
  * Write an attachment to the file buffer, converting to MIME.
  */
 static int
-attach_file(path, fo)
-char *path;
+attach_file(ap, fo)
+struct attachment *ap;
 FILE *fo;
 {
 	FILE *fi;
 	char *charset = NULL, *contenttype, *basename;
-	int convert = CONV_TOB64, typefound = 0, err = 0;
+	int convert = CONV_TOB64, err = 0;
 	size_t sz;
 	char buf[INFIX_BUF];
 
-	if ((fi = Fopen(path, "r")) == NULL) {
-		perror(path);
+	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
+		perror(ap->a_name);
 		return -1;
 	}
-	if ((basename = strrchr(path, '/')) == NULL)
-		basename = path;
+	if ((basename = strrchr(ap->a_name, '/')) == NULL)
+		basename = ap->a_name;
 	else
 		basename++;
-	if ((contenttype = mime_filecontent(basename)) != NULL)
-		typefound = 1;
+	if (ap->a_content_type)
+		contenttype = ap->a_content_type;
+	else 
+		contenttype = mime_filecontent(basename);
 	switch (mime_isclean(fi)) {
 	case MIME_7BITTEXT:
 		convert = CONV_7BIT;
@@ -263,8 +265,8 @@ FILE *fo;
 		break;
 	case MIME_BINARY:
 		convert = CONV_TOB64;
-		if (contenttype == NULL
-				|| strncasecmp(contenttype, "text/", 5) == 0)
+		if (ap->a_content_type == NULL && (contenttype == NULL
+				|| strncasecmp(contenttype, "text/", 5) == 0))
 			contenttype = "application/octet-stream";
 		charset = NULL;
 		break;
@@ -281,14 +283,22 @@ FILE *fo;
 		fputc('\n', fo);
 	else
 		fprintf(fo, ";\n charset=%s\n", charset);
+	if (ap->a_content_disposition == NULL)
+		ap->a_content_disposition = "attachment";
 	fprintf(fo, "Content-Transfer-Encoding: %s\n"
-		"Content-Disposition: attachment;\n"
+		"Content-Disposition: %s;\n"
 		" filename=\"",
-		getencoding(convert));
+		getencoding(convert),
+		ap->a_content_disposition);
 	mime_write(basename, sizeof *basename, strlen(basename), fo,
 			CONV_TOHDR, TD_NONE, NULL, (size_t)0);
-	fwrite("\"\n\n", sizeof (char), 3, fo);
-	if (typefound) free(contenttype);
+	fwrite("\"\n", sizeof (char), 2, fo);
+	if (ap->a_content_id)
+		fprintf(fo, "Content-ID: %s\n", ap->a_content_id);
+	if (ap->a_content_description)
+		fprintf(fo, "Content-Description: %s\n",
+				ap->a_content_description);
+	fputc('\n', fo);
 	for (;;) {
 		if (convert == CONV_TOQP) {
 			if (fgets(buf, INFIX_BUF, fi) == NULL)
@@ -318,7 +328,7 @@ FILE *fi, *fo;
 {
 	char buf[INFIX_BUF], c = '\n';
 	size_t sz;
-	struct name *att;
+	struct attachment *att;
 
 	fputs("This is a multi-part message in MIME format.\n", fo);
 	if (fsize(fi) != 0) {
@@ -349,8 +359,8 @@ FILE *fi, *fo;
 			fputc('\n', fo);
 		put_signature(fo, convert);
 	}
-	for (att = hp->h_attach; att != NIL; att = att->n_flink)
-		if (attach_file(att->n_name, fo) != 0)
+	for (att = hp->h_attach; att != NULL; att = att->a_flink)
+		if (attach_file(att, fo) != 0)
 			return -1;
 	/* the final boundary with two attached dashes */
 	fprintf(fo, "\n--%s--\n", send_boundary);
@@ -410,7 +420,7 @@ infix(hp, fi, convert)
 #endif	/* !HAVE_ICONV */
 	if (puthead(hp, nfo,
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
-		   |GMSGID|GATTACH|GIDENT|GREF|GDATE,
+		   |GMSGID|GIDENT|GREF|GDATE,
 		   convert)) {
 		(void) Fclose(nfo);
 		(void) Fclose(nfi);
@@ -422,7 +432,7 @@ infix(hp, fi, convert)
 #endif
 		return NULL;
 	}
-	if (hp->h_attach != NIL) {
+	if (hp->h_attach != NULL) {
 		if (make_multipart(hp, convert, fi, nfo) != 0) {
 			(void) Fclose(nfo);
 			(void) Fclose(nfi);
@@ -569,7 +579,8 @@ savemail(name, fi)
  */
 int
 mail(to, cc, bcc, smopts, subject, attach, quotefile)
-	struct name *to, *cc, *bcc, *smopts, *attach;
+	struct name *to, *cc, *bcc, *smopts;
+	struct attachment *attach;
 	char *subject, *quotefile;
 {
 	struct header head;
@@ -611,7 +622,7 @@ sendmail(v)
 	head.h_cc = NIL;
 	head.h_bcc = NIL;
 	head.h_ref = NIL;
-	head.h_attach = NIL;
+	head.h_attach = NULL;
 	head.h_smopts = NIL;
 	mail1(&head, 0, NULL, NULL);
 	return(0);
@@ -719,9 +730,7 @@ mail1(hp, printheaders, quote, quotefile)
 			if (value("askbcc") != NULL)
 				grabh(hp, GBCC);
 			if (value("askattach") != NULL)
-				do
-					grabh(hp, GATTACH);
-				while (mime_check_attach(hp->h_attach) != 0);
+				hp->h_attach = edit_attachments(hp->h_attach);
 		} else {
 			printf("EOT\n");
 			(void) fflush(stdout);
@@ -983,7 +992,7 @@ puthead(hp, fo, w, convert)
 		fprintf(fo, "User-Agent: %s\n", version), gotcha++;
 	if (w & GMIME) {
 		fputs("MIME-Version: 1.0\n", fo), gotcha++;
-		if (hp->h_attach != NIL && w & GATTACH) {
+		if (hp->h_attach != NULL) {
 			makeboundary();
 			fprintf(fo, "Content-Type: multipart/mixed;\n"
 				" boundary=\"%s\"\n", send_boundary);
@@ -1105,7 +1114,7 @@ struct name *to;
 				if (mime_name_invalid(cp, 1))
 					return 1;
 				fwrite("Resent-Reply-To: ", sizeof (char),
-						10, fo);
+						17, fo);
 				mime_write(cp, sizeof *cp, strlen(cp), fo,
 						CONV_TOHDR_A, TD_ICONV,
 						NULL, (size_t)0);
@@ -1163,8 +1172,8 @@ struct name *to;
 	Ftfree(&tempMail);
 	ibuf = setinput(mp);
 	head.h_to = to;
-	head.h_cc = head.h_bcc = head.h_ref = head.h_attach = head.h_smopts
-		= NULL;
+	head.h_cc = head.h_bcc = head.h_ref = head.h_smopts = NULL;
+	head.h_attach = NULL;
 	fixhead(&head, to);
 	if (infix_fw(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;

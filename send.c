@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	1.17 (gritter) 2/20/02";
+static char sccsid[] = "@(#)send.c	1.18 (gritter) 5/25/02";
 #endif
 #endif /* not lint */
 
@@ -461,7 +461,7 @@ send_multi_nobound:
 						== 0) {
 					new_content = mime_getcontent(l,
 							&scontent);
-					cs = mime_getparam("charset=", l);
+					cs = mime_getparam("charset", l);
 					if (new_content == MIME_MULTI) {
 						b = bound_alloc(
 							get_top_boundary(b0));
@@ -503,7 +503,7 @@ send_multi_nobound:
 			 		b->b_str = mime_getboundary(l);
 				} else if (new_content == MIME_TEXT
 							&& cs == NULL) {
-						cs = mime_getparam("charset=",
+						cs = mime_getparam("charset",
 								l);
 						if (cs == NULL)
 							cs = us_ascii;
@@ -727,7 +727,7 @@ send_message(mp, obuf, doign, prefix, convert)
 			 if (mime_content == MIME_MULTI && b0.b_str == NULL) {
 				 b0.b_str = mime_getboundary(line);
 			 } else if (mime_content == MIME_TEXT && cs == NULL) {
-				cs = mime_getparam("charset=", line);
+				cs = mime_getparam("charset", line);
 				if (cs == NULL)
 					cs = us_ascii;
 			 }
@@ -766,7 +766,7 @@ send_message(mp, obuf, doign, prefix, convert)
 							== 0) {
 					mime_content = mime_getcontent(line,
 							&scontent);
-					cs = mime_getparam("charset=", line);
+					cs = mime_getparam("charset", line);
 					if (mime_content == MIME_MULTI)
 				 		b0.b_str
 						      = mime_getboundary(line);

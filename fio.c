@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	1.7 (gritter) 2/20/02";
+static char sccsid[] = "@(#)fio.c	1.8 (gritter) 5/22/02";
 #endif
 #endif /* not lint */
 
@@ -62,7 +62,6 @@ void
 setptr(ibuf)
 	FILE *ibuf;
 {
-	extern char *tmpdir;
 	int c, count;
 	char *cp, *cp2;
 	struct message this;

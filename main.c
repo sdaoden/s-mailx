@@ -41,7 +41,7 @@ __attribute__ ((unused))
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.13 (gritter) 1/13/02";
+static char sccsid[] = "@(#)main.c	1.16 (gritter) 5/24/02";
 #endif
 #endif /* not lint */
 
@@ -77,8 +77,9 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	int i, existonly = 0;
-	struct name *to, *attach, *cc, *bcc, *smopts;
+	int i, existonly = 0, headersonly = 0;
+	struct name *to, *cc, *bcc, *smopts;
+	struct attachment *attach;
 	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL;
 	char nosrc = 0;
 	signal_handler_t prevint;
@@ -132,19 +133,22 @@ main(argc, argv)
 	to = NIL;
 	cc = NIL;
 	bcc = NIL;
-	attach = NIL;
+	attach = NULL;
 	smopts = NIL;
 	subject = NULL;
 #ifndef	__GLIBC__
-	while ((i = getopt(argc, argv, "INVT:a:b:c:definqr:s:u:v")) != EOF) {
+	while ((i = getopt(argc, argv, "HINVT:a:b:c:definqr:s:u:v")) != EOF) {
 #else
-	while ((i = getopt(argc, argv, "+INVT:a:b:c:definqr:s:u:v")) != EOF) {
+	while ((i = getopt(argc, argv, "+HINVT:a:b:c:definqr:s:u:v")) != EOF) {
 #endif
 		switch (i) {
 		case 'V':
 			puts(version);
 			exit(0);
 			/*NOTREACHED*/
+		case 'H':
+			headersonly = 1;
+			break;
 		case 'T':
 			/*
 			 * Next argument is temp file to write which
@@ -242,7 +246,10 @@ main(argc, argv)
 			/*
 			 * Get attachment filenames
 			 */
-			attach = cat(attach, nalloc(optarg, GATTACH));
+			if ((attach = add_attachment(attach, optarg)) == NULL) {
+				perror(optarg);
+				exit(1);
+			}
 			break;
 		case 'c':
 			/*
@@ -259,7 +266,7 @@ main(argc, argv)
 		case '?':
 			fprintf(stderr,
 			"Usage: %s [-iInv] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] to-addr ... [- sendmail-options ...]\n"
-			"       %s [-eiInNv] -f [name]\n"
+			"       %s [-eHiInNv] -f [name]\n"
 			"       %s [-eiInNv] [-u user]\n",
 				progname, progname, progname);
 			exit(1);
@@ -323,6 +330,11 @@ main(argc, argv)
 		exit(1);		/* error already reported */
 	if (existonly)
 		exit(i);
+	if (headersonly) {
+		for (i = 1; i <= msgcount; i++)
+			printhead(i);
+		exit(0);
+	}
 	if (i > 0 && value("emptystart") == NULL)
 		exit(1);
 	if (sigsetjmp(hdrjmp, 1) == 0) {

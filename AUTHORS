@@ -11,26 +11,4 @@ much of it.
 The maintainer and primary developer of nail is Gunnar Ritter <g-r@bigfoot.de>.
 Nail development started in February 2000 and added especially the MIME code.
 
-The following people contributed to nail, listed in the order of
-the time of their first contribution:
-
-Alexey A. Shelkovich
-Anders Andersson
-Bob Tennent
-Gabor Z. Papp
-Marcel Oliver
-Jacob Moorman
-Edward V. Popkov
-Steve Harris
-James Sheeringer
-Gelu G. Lupas
-Thomas Fieseler
-Allan Peda
-Russell Kroll
-Arthur Korn
-Christian Weisgerber
-Hubertus Krogmann
-Bruno Haible
-Rolf Jakob
-Winfried Szukalski
-Jay Nospam
+See the ChangeLog for people who have contributed to nail.

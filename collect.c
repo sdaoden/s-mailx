@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.13 (gritter) 2/20/02";
+static char sccsid[] = "@(#)collect.c	1.15 (gritter) 5/24/02";
 #endif
 #endif /* not lint */
 
@@ -82,7 +82,7 @@ static const char tildehelp[] =
 "-----------------------------------------------------------\n\
 The following ~ escapes are defined:\n\
 ~~              Quote a single tilde\n\
-~a files        Attach files to message\n\
+~@ [file ...]   Edit attachment list\n\
 ~b users        Add users to \"blind\" cc list\n\
 ~c users        Add users to cc list\n\
 ~d              Read in dead.letter\n\
@@ -139,6 +139,161 @@ endpipe:
 	safe_signal(SIGPIPE, SIG_DFL);
 }
 
+/*
+ * Ask the user to edit file names and other data for the given
+ * attachment. NULL is returned if no file name is given.
+ */
+static struct attachment *
+read_attachment_data(ap, number)
+	struct attachment *ap;
+	unsigned number;
+{
+	char prefix[80];
+
+	if (ap == NULL) {
+		ap = (struct attachment *)salloc(sizeof *ap);
+		ap->a_name = NULL;
+		ap->a_content_type = NULL;
+		ap->a_content_disposition = NULL;
+		ap->a_content_id = NULL;
+		ap->a_content_description = NULL;
+	}
+	snprintf(prefix, sizeof prefix, "#%u\tfilename: ", number);
+	for (;;) {
+		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL)
+			break;
+		if (access(ap->a_name, R_OK) == 0)
+			break;
+		perror(ap->a_name);
+	}
+	/*
+	 * The "attachment-ask-content-*" variables are left undocumented
+	 * since they are for RFC connoisseurs only.
+	 */
+	if (ap->a_name && value("attachment-ask-content-type")) {
+		if (ap->a_content_type == NULL)
+			ap->a_content_type = mime_filecontent(ap->a_name);
+		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
+		ap->a_content_type = readtty(prefix, ap->a_content_type);
+	}
+	if (ap->a_name && value("attachment-ask-content-disposition")) {
+		snprintf(prefix, sizeof prefix,
+				"#%u\tContent-Disposition: ", number);
+		ap->a_content_disposition = readtty(prefix,
+				ap->a_content_disposition);
+	}
+	if (ap->a_name && value("attachment-ask-content-id")) {
+		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
+		ap->a_content_id = readtty(prefix, ap->a_content_id);
+	}
+	if (ap->a_name && value("attachment-ask-content-description")) {
+		snprintf(prefix, sizeof prefix,
+				"#%u\tContent-Description: ", number);
+		ap->a_content_description = readtty(prefix,
+				ap->a_content_description);
+	}
+	return ap->a_name ? ap : NULL;
+}
+
+/*
+ * Interactively edit the attachment list.
+ */
+struct attachment *
+edit_attachments(attach)
+	struct attachment *attach;
+{
+	struct attachment *ap, *nap;
+	unsigned attno = 1;
+
+	for (ap = attach; ap; ap = ap->a_flink) {
+		if ((nap = read_attachment_data(ap, attno)) == NULL) {
+			if (ap->a_blink)
+				ap->a_blink->a_flink = ap->a_flink;
+			if (ap->a_flink)
+				ap->a_flink->a_blink = ap->a_blink;
+		} else
+			attno++;
+	}
+	while ((nap = read_attachment_data(NULL, attno)) != NULL) {
+		for (ap = attach; ap && ap->a_flink; ap = ap->a_flink);
+		if (ap)
+			ap->a_flink = nap;
+		nap->a_blink = ap;
+		nap->a_flink = NULL;
+		if (attach == NULL)
+			attach = nap;
+		attno++;
+	}
+	return attach;
+}
+
+/*
+ * Put the given file to the end of the attachment list.
+ */
+struct attachment *
+add_attachment(attach, file)
+	struct attachment *attach;
+	const char *file;
+{
+	struct attachment *ap, *nap;
+
+	if (access(file, R_OK) != 0)
+		return NULL;
+	nap = (struct attachment *)salloc(sizeof *nap);
+	nap->a_flink = NULL;
+	nap->a_name = salloc(strlen(file) + 1);
+	nap->a_content_type = NULL;
+	nap->a_content_disposition = NULL;
+	nap->a_content_id = NULL;
+	nap->a_content_description = NULL;
+	strcpy(nap->a_name, file);
+	if (attach != NULL) {
+		for (ap = attach; ap->a_flink != NULL; ap = ap->a_flink);
+		ap->a_flink = nap;
+		nap->a_blink = ap;
+	} else {
+		nap->a_blink = NULL;
+		attach = nap;
+	}
+	return attach;
+}
+
+/*
+ * Append the whitespace-separated file names to the end of
+ * the attachment list.
+ */
+struct attachment *
+append_attachments(attach, names)
+	struct attachment *attach;
+	char *names;
+{
+	char *cp;
+	int c;
+	struct attachment *ap;
+
+	cp = names;
+	while (*cp != '\0' && (*cp == ' ' || *cp == '\t'))
+		cp++;
+	while (*cp != '\0') {
+		names = cp;
+		while (*cp != '\0' && *cp != ' ' && *cp != '\t')
+			cp++;
+		c = *cp;
+		*cp++ = '\0';
+		if (*names != '\0') {
+			if ((ap = add_attachment(attach, names)) == NULL)
+				perror(names);
+			else
+				attach = ap;
+		}
+		if (c == '\0')
+			break;
+		while (*cp != '\0' && (*cp == ' ' || *cp == '\t'))
+			cp++;
+	}
+	return attach;
+}
+
 FILE *
 collect(hp, printheaders, mp, quotefile)
 	struct header *hp;
@@ -148,7 +303,7 @@ collect(hp, printheaders, mp, quotefile)
 {
 	FILE *fbuf;
 	struct ignoretab *quoteig;
-	struct name *np;
+	struct attachment *ap;
 	int lc, cc, escape, eofcount;
 	int c, t;
 	char linebuf[LINESIZE], *cp, *quote;
@@ -368,6 +523,14 @@ cont:
 			 * Simulate end of file on input.
 			 */
 			goto out;
+		case 'x':
+			/*
+			 * Same as 'q', but no dead.letter saving.
+			 */
+			hadintr++;
+			collint(0);
+			exit(1);
+			/*NOTREACHED*/
 		case 'q':
 			/*
 			 * Force a quit of sending mail.
@@ -402,14 +565,15 @@ cont:
 				cp++;
 			hp->h_subject = savestr(cp);
 			break;
-		case 'a':
+		case '@':
 			/*
-			 * Add to the attachment list.
+			 * Edit the attachment list.
 			 */
-			hp->h_attach = cat(hp->h_attach,
-					extract(&linebuf[2], GATTACH));
-			if (mime_check_attach(hp->h_attach) != 0)
-				hp->h_attach = NIL;
+			if (linebuf[2] != '\0')
+				hp->h_attach = append_attachments(hp->h_attach,
+						&linebuf[2]);
+			else
+				hp->h_attach = edit_attachments(hp->h_attach);
 			break;
 		case 'c':
 			/*
@@ -534,11 +698,11 @@ cont:
 					fputs(lbuf, stdout);
 				}
 			}
-			if (hp->h_attach != NIL) {
+			if (hp->h_attach != NULL) {
 				fputs("Attachments:", stdout);
-				for (np = hp->h_attach; np != NULL;
-						np = np->n_flink)
-					fprintf(stdout, " %s", np->n_name);
+				for (ap = hp->h_attach; ap != NULL;
+						ap = ap->a_flink)
+					fprintf(stdout, " %s", ap->a_name);
 				fputs("\n", stdout);
 			}
 			goto cont;
@@ -818,7 +982,7 @@ collint(s)
 #endif
 	}
 	rewind(collf);
-	if (value("nosave") == NULL)
+	if (value("nosave") == NULL && s != 0)
 		savedeadletter(collf);
 	siglongjmp(collabort, 1);
 }

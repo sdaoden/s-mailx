@@ -38,7 +38,7 @@ __attribute__ ((unused))
 #endif
 = "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.29 (gritter) 2/19/02";
+static char sccsid[]  = "@(#)mime.c	1.34 (gritter) 6/2/02";
 #endif
 #endif /* not lint */
 
@@ -63,24 +63,6 @@ static const char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static char *mimetypes_world = "/etc/mime.types";
 static char *mimetypes_user = "~/.mime.types";
 char *us_ascii = "us-ascii";
-
-/*
- * Check for the readability of the given files.
- */
-int
-mime_check_attach(atts)
-struct name *atts;
-{
-	struct name *a;
-
-	for (a = atts; a != NIL; a = a->n_flink) {
-		if (access(a->n_name, R_OK) != 0) {
-			perror(a->n_name);
-			return -1;
-		}
-	}
-	return 0;
-}
 
 /*
  * Check if c must be quoted inside a message's body.
@@ -315,34 +297,6 @@ size_t s;
 
 	if ((p = malloc(s)) == NULL) {
 		out_of_memory();
-	}
-	return p;
-}
-
-/*
- * Case-independent strstr().
- */
-char *
-scasestr(haystack, needle)
-char *haystack, *needle;
-{
-	char *p, initial[3];
-	size_t sz;
-
-	if ((sz = strlen(needle)) == 0)
-		return NULL;
-	initial[0] = *needle;
-	if (islower(*needle)) {
-		initial[1] = toupper(*needle);
-	} else if (isupper(*needle)) {
-		initial[1] = tolower(*needle);
-	} else {
-		initial[1] = '\0';
-	}
-	initial[2] = '\0';
-	for (p = haystack; (p = strpbrk(p, initial)) != NULL; p++) {
-		if (strncasecmp(p, needle, sz) == 0)
-			break;
 	}
 	return p;
 }
@@ -647,26 +601,62 @@ char *
 mime_getparam(param, h)
 char *param, *h;
 {
-	char *p, *q, *r;
+	char *p = h, *q, *r;
+	int c;
 	size_t sz;
 
-	if ((p = scasestr(h, param)) == NULL)
-		return NULL;
-	p += strlen(param);
+	sz = strlen(param);
+	if (!blankchar(*p)) {
+		c = '\0';
+		while (*p && (*p != ';' || c == '\\')) {
+			c = c == '\\' ? '\0' : *p;
+			*p++;
+		}
+		if (*p++ == '\0')
+			return NULL;
+	}
+	for (;;) {
+		while (blankchar(*p))
+			p++;
+		if (strncasecmp(p, param, sz) == 0) {
+			p += sz;
+			while (blankchar(*p))
+				p++;
+			if (*p++ == '=')
+				break;
+		}
+		c = '\0';
+		while (*p && (*p != ';' || c == '\\')) {
+			if (*p == '"' && c != '\\') {
+				p++;
+				while (*p && (*p != '"' || c == '\\')) {
+					c = c == '\\' ? '\0' : *p;
+					p++;
+				}
+				p++;
+			} else {
+				c = c == '\\' ? '\0' : *p;
+				p++;
+			}
+		}
+		if (*p++ == '\0')
+			return NULL;
+	}
 	while (blankchar(*p))
 		p++;
-	if (*p == '\"') {
+	q = p;
+	c = '\0';
+	if (*p == '"') {
 		p++;
-		if ((q = strchr(p, '\"')) == NULL)
+		if ((q = strchr(p, '"')) == NULL)
 			return NULL;
-		sz = q - p;
 	} else {
 		q = p;
-		while (blankchar(*q) == 0 && *q != ';')
+		while (*q && !blankchar(*q) && *q != ';')
 			q++;
-		sz = q - p;
 	}
-	r = (char*)salloc(sz + 1);
+	sz = q - p;
+	r = (char*)salloc(q - p + 1);
 	memcpy(r, p, sz);
 	*(r + sz) = '\0';
 	return r;
@@ -682,7 +672,7 @@ char *h;
 	char *p, *q;
 	size_t sz;
 
-	if ((p = mime_getparam("boundary=", h)) == NULL)
+	if ((p = mime_getparam("boundary", h)) == NULL)
 		return NULL;
 	sz = strlen(p);
 	q = (char*)smalloc(sz + 3);
@@ -696,7 +686,7 @@ char *
 mime_getfilename(h)
 char *h;
 {
-	return mime_getparam("filename=", h);
+	return mime_getparam("filename", h);
 }
 
 /*
@@ -737,7 +727,7 @@ char *x, *l;
 			l++;
 	}
 	if (match != 0) {
-		n = (char *)smalloc(strlen(type) + 1);
+		n = (char *)salloc(strlen(type) + 1);
 		strcpy(n, type);
 		return n;
 	}
@@ -1007,7 +997,7 @@ void
 mime_fromhdr(in, out, flags)
 struct str *in, *out;
 {
-	char *p, *q, *upper, *cs, *cbeg, *tcs;
+	char *p, *q, *op, *upper, *cs, *cbeg, *tcs;
 	struct str cin, cout;
 	int convert;
 	size_t maxstor;
@@ -1021,11 +1011,15 @@ struct str *in, *out;
 	out->l = 0;
 	upper = in->s + in->l;
 	for (p = in->s, q = out->s; p < upper; p++) {
+		op = p;
 		if (*p == '=' && *(p + 1) == '?') {
 			p += 2;
 			cbeg = p;
-			while (*p++ != '?');	/* strip charset */
-			cs = (char *)salloc(p - cbeg);
+			while (p < upper && *p != '?')
+				p++;	/* strip charset */
+			if (p >= upper)
+				goto notmime;
+			cs = (char *)salloc(++p - cbeg);
 			memcpy(cs, cbeg, p - cbeg - 1);
 			cs[p - cbeg - 1] = '\0';
 #ifdef	HAVE_ICONV
@@ -1044,10 +1038,10 @@ struct str *in, *out;
 				convert = CONV_FROMQP;
 				break;
 			default:	/* invalid, ignore */
-				continue;
+				goto notmime;
 			}
 			if (*++p != '?')
-				continue;
+				goto notmime;
 			cin.s = ++p;
 			cin.l = 1;
 			for (;;) {
@@ -1092,6 +1086,8 @@ struct str *in, *out;
 #endif
 			free(cout.s);
 		} else {
+notmime:
+			p = op;
 			*q++ = *p;
 			out->l++;
 		}

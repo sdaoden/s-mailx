@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	1.10 (gritter) 2/19/02
+ *	Sccsid @(#)def.h	1.11 (gritter) 5/22/02
  */
 
 /*
@@ -225,7 +225,7 @@ struct headline {
 #define	GUA	128		/* User-Agent field */
 #define	GMIME	256		/* MIME 1.0 fields */
 #define	GMSGID	512		/* a Message-ID */
-#define	GATTACH	1024		/* attachment included */
+/*		1024		unused */
 #define	GIDENT	2048		/* From:, Reply-To: and Organization header */
 #define	GREF	4096		/* References: header */
 #define	GDATE	8192		/* Date: header */
@@ -240,9 +240,9 @@ struct header {
 	char *h_subject;		/* Subject string */
 	struct name *h_cc;		/* Carbon copies string */
 	struct name *h_bcc;		/* Blind carbon copies */
-	struct name *h_attach;		/* MIME attachments */
 	struct name *h_ref;		/* References */
 	struct name *h_smopts;		/* Sendmail options */
+	struct attachment *h_attach;	/* MIME attachments */
 };
 
 /*
@@ -256,6 +256,20 @@ struct name {
 	struct	name *n_blink;		/* Backward list link */
 	short	n_type;			/* From which list it came */
 	char	*n_name;		/* This fella's name */
+};
+
+/*
+ * Structure of a MIME attachment.
+ */
+
+struct attachment {
+	struct attachment *a_flink;	/* Forward link in list. */
+	struct attachment *a_blink;	/* Backward list link */
+	char	*a_name;		/* file name */
+	char	*a_content_type;	/* content type */
+	char	*a_content_disposition;	/* content disposition */
+	char	*a_content_id;		/* content id */
+	char	*a_content_description;	/* content description */
 };
 
 /*

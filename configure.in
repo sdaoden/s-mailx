@@ -1,7 +1,7 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	1.12 (gritter) 2/19/02
+# Sccsid: @(#)configure.in	1.13 (gritter) 2/20/02
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
@@ -175,9 +175,6 @@ AC_TRY_COMPILE([#include <unistd.h>], [optarg = (char *)0;],
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
-AC_CHECK_FUNCS(mktime strtol tempnam getopt, ,
-	echo "A required function was not found" >&2
-	exit 1)
 AC_CHECK_FUNCS(gethostname mkstemp select strcasecmp snprintf uname)
 AC_CHECK_FUNCS(nl_langinfo)
 AC_FUNC_SELECT_ARGTYPES

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	1.8 (gritter) 2/19/02";
+static char sccsid[] = "@(#)tty.c	1.10 (gritter) 5/22/02";
 #endif
 #endif /* not lint */
 
@@ -303,17 +303,6 @@ grabh(hp, gflags)
 	}
 	c_erase = ttybuf.c_cc[VERASE];
 	c_kill = ttybuf.c_cc[VKILL];
-#ifndef TIOCSTI
-	ttybuf.c_cc[VERASE] = 0;
-	ttybuf.c_cc[VKILL] = 0;
-	if ((saveint = safe_signal(SIGINT, SIG_IGN)) == SIG_DFL)
-		safe_signal(SIGINT, SIG_DFL);
-	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
-		safe_signal(SIGQUIT, SIG_DFL);
-#else
-#ifdef IOSAFE
-	got_interrupt = 0;
-#endif
 #if defined (_PC_VDISABLE)
 	if ((vdis = fpathconf(0, _PC_VDISABLE)) < 0)
 		vdis = '\377';
@@ -322,6 +311,17 @@ grabh(hp, gflags)
 #else
 	vdis = '\377';
 #endif
+#ifndef TIOCSTI
+	ttybuf.c_cc[VERASE] = 0;
+	ttybuf.c_cc[VKILL] = 0;
+	if ((saveint = safe_signal(SIGINT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGINT, SIG_DFL);
+	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGQUIT, SIG_DFL);
+#else	/* TIOCSTI */
+#ifdef IOSAFE
+	got_interrupt = 0;
+#endif
 	if (sigsetjmp(intjmp, 1)) {
 		/* avoid garbled output with C-c */
 		printf("\n");
@@ -329,7 +329,7 @@ grabh(hp, gflags)
 		goto out;
 	}
 	saveint = safe_signal(SIGINT, ttyint);
-#endif
+#endif	/* TIOCSTI */
 	if (gflags & GTO) {
 #ifndef TIOCSTI
 		if (!ttyset && hp->h_to != NIL)
@@ -360,15 +360,6 @@ grabh(hp, gflags)
 #endif
 		hp->h_bcc = checkaddrs(extract(rtty_internal("Bcc: ",
 						detract(hp->h_bcc, 0)), GBCC));
-	}
-	if (gflags & GATTACH) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_attach != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_attach =
-			extract(rtty_internal("Attachments: ",
-					detract(hp->h_attach, 0)), GATTACH);
 	}
 out:
 	safe_signal(SIGTSTP, savetstp);

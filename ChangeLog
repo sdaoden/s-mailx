@@ -1,52 +1,80 @@
+[9.31] released 6/18/02
+* New editing mechanism for attachment list: ~@ tilde escape.
+* The ~a tilde escape is obsoleted by ~@ and has been removed.
+* Header fields starting with =? are only interpreted as RFC 2047 fields
+  if they are entirely valid (Bugreport by Russell Kroll).
+* Sender addresses in message lists (as in 'delete from@host') match only
+  the exact from address.
+* Added ~x tilde escape (abort message composition without saving dead.letter).
+* Fixed recognition of RFC 2045 parameter attributes (Bugreport by Russell
+  Kroll).
+* The "for" command now inserts an intact "Resent-Reply-To:" header field.
+
 [9.30] released 2/20/02
 * Avoid to prepend quote prefix twice when replying to multipart messages.
 * Fixed a problem with empty Content-type fields in multipart messages.
-* Allow name lists for -b and -c command line options.
+* Allow name lists for -b and -c command line options (Bugreport by Winfried
+  Szukalski).
 * Added a --with-rcfile option to configure for nail.rc.
-* Added the "showlast" option.
+* Added the "showlast" option (Contributed by Jay Nospam).
 * Properly respect TMPDIR; create a new name for each temporary file.
 
 [9.29] released 12/10/01
 * Fixed a SIGPIPE problem concerning the PAGER.
-* Avoid to display parts of next message when encountering masked From lines.
-* Implemented pipe-content/subcontent MIME display mechanism.
+* Avoid to display parts of next message when encountering masked From lines
+  (Bugreport by Russell Kroll).
+* Implemented pipe-content/subcontent MIME display mechanism (based on a
+  suggestion by Bob Tennent).
 * Respect continued MIME quoted-printable lines in non-text content.
 
 [9.28] released 10/23/01
-* Fixed a crash occuring at unterminated RFC 2047 header parts.
-* Fixed a crash that occured when replying to a message with empty subject.
-* Send attachments in base64 encoding if a line exceeds 950 characters.
+* Fixed a crash occuring at unterminated RFC 2047 header parts (Bugreport by
+  Bruno Haible).
+* Fixed a crash that occured when replying to a message with empty subject
+  (Bugreport by Russell Kroll).
+* Send attachments in base64 encoding if a line exceeds 950 characters
+  (Bugreport by Rolf Jakob).
 
 [9.27] released 5/13/01
 * Check addresses when they are entered and drop invalid ones.
 * Supress glibc's getopt(3) argument reordering.
-* Fix handling of last entry on a mime.types file line (bug introduced in 9.24).
+* Fix handling of last entry on a mime.types file line (bug introduced in 9.24)
+  (Bugreport by Allan Peda).
 * Improved handling of proprietary character set names on SVr4 iconv.
 
 [9.26] released 2/17/01
 * Avoid to prepend or append multiple newline characters to the record folder.
-* Handle unquoted multipart boundaries again.
-* Help texts are compiled into the binary. Old files can be deleted.
+* Handle unquoted multipart boundaries again (Bugreport by Bob Tennent).
+* Help texts are compiled into the binary. Old files can be deleted (based on
+  a comment by Christian Weisgerber).
 * nail.rc gets installed in /etc and is not overwritten if it exists.
-* Check for iswprint() before using wide character code.
-* Use a non-zero exit status if a message could not get formatted in send mode.
+* Check for iswprint() before using wide character code (Bugreport by
+  Hubertus Krogmann).
+* Use a non-zero exit status if a message could not get formatted in send mode
+  (Bugreport by Allan Peda).
 
 [9.25] released 1/25/01
-* Fixed the problems some people had when viewing multipart messages.
+* Fixed the problems some people had when viewing multipart messages (Bugreport
+  by Thomas Fieseler and Russell Kroll).
 * Added the -r startup option to specify a From address.
-* Make fallback paths for csh, more, ex and vi configureable.
-* Remove fcntl lock of mailbox while waiting for dot lock.
+* Make fallback paths for csh, more, ex and vi configureable (Suggested by
+  Arthur Korn).
+* Remove fcntl lock of mailbox while waiting for dot lock (Problem reported by
+  Arthur Korn).
 
 [9.24] released 1/18/01
 * Use nl_langinfo to get the terminal's character set.
 * Add an In-Reply-To header field in replies.
-* Correct user's mime type file to ~/.mime.types as documented.
-* Build even if no sendmail installation is detected.
+* Correct user's mime type file to ~/.mime.types as documented (Bugreport by
+  Allan Peda).
+* Build even if no sendmail installation is detected (Bugreport by Gabor Z.
+  Papp).
 * Adjust string length if an invalid multibyte character was replaced by '?'.
 * Properly display lines that contain an invalid multibyte character sequence.
-* Handle tabulators in MIME headers correctly.
-* Drop invalid entries for the References field instead of refusing to send.
-* Do not refuse valid domain literals in addresses.
+* Handle tabulators in MIME headers correctly (Bugreport by Russell Kroll).
+* Drop invalid entries for the References field instead of refusing to send
+  (Bugreport by Bob Tennent).
+* Do not refuse valid domain literals in addresses (Bugreport by Bob Tennent).
 
 [9.23] released 11/15/00
 * Added the ~<! and ~i tilde escapes.
@@ -56,18 +84,21 @@
 
 [9.22] released 2000-09-29
 * Use iconv() and setlocale() only if appropriate header files are found
+  (Problem reported by Gabor Z. Papp)
 * Clean UTF-8 decoding of continued quoted-printable lines
 * Quote base64-encoded texts correctly
 * Never perform RFC 1522 encodings of "Re: " in subject fields
 * Quoted-printable encoder will not generate empty continued lines anymore
 * Do not generate dupes when new mail arrives while old mail is deleted
+  (Bugreport by Bob Tennent)
 * Multipart sections without MIME declaration are correctly handled as text
 
 [9.21] released 2000-08-21
 * Always add a dot to a line that starts with one in SMTP mode.
-* Fixed a core dump that occured on glibc 2.0 if the subject line was empty.
+* Fixed a core dump that occured on glibc 2.0 if the subject line was empty
+  (Bugreport by Gelu G. Lupas)
 * Removed some (up to now, harmless) namespace conflicts on Solaris.
-* Fixed a problem with isprint() on Solaris.
+* Fixed a problem with isprint() on Solaris (Bugreport by Thomas Fieseler).
 * Support a few iconv naming conventions on Solaris.
 * Corrected charset declaration of 7bit messages.
 
@@ -77,7 +108,7 @@
 * Use LC_CTYPE locale setting to determine printable characters.
 * Use iconv(3) to convert between character sets.
 * Introduced the 'ttycharset' variable.
-* Changed child process handling.
+* Changed child process handling (Problem reported by Thomas Fieseler).
 * Can handle addresses with embedded comments.
 * Use base64 encoding for header fields containing many 8bit characters.
 * Fixed a bug that could cause too long lines in quoted-printable.
@@ -86,17 +117,21 @@
 [9.14] released 2000-06-26
 * Generate `User-Agent:' header fields instead of `X-Mailer:'
 * Addresses in SMTP commands are surrounded with angle brackets
-* Do not send an empty envelope From if using SMTP without given `from'
+* Do not send an empty envelope From if using SMTP without given `from' (Problem
+  reported by Gabor Z. Papp)
 * Add a From: line even without a given `from' variable if using SMTP
-* Removed wrong structure reference in tty.c
-* Interpret all commands beginning with `#' as comments
+* Removed wrong structure reference in tty.c (Bugreport by Steve Harris)
+* Interpret all commands beginning with `#' as comments (Suggested by
+  Gabor Z. Papp and Steve Harris)
 * Insert an empty line after `xyz wrote:' in replies
-* Fixed a possible buffer overflow in address allocation routines
+* Fixed a possible buffer overflow in address allocation routines (Bugreport
+  by James Sneeringer)
 * The `z' command now accepts a number that specifies a window
 
 [9.13] released 2000-05-30
 * Changed _PATH_ to PATH_ in defines
-* Fixed RFC 1522 encoding of header fields (important!)
+* Fixed RFC 1522 encoding of header fields (important!) (Bugreport by Bob
+  Tennent)
 * Check syntax of addresses before sending
 
 [9.12] released 2000-05-29
@@ -109,44 +144,50 @@
 * Avoid doubling line breaks when printing long addresses in header
 
 [9.11] released 2000-05-15
-* Do a fflush() before executing a ~| command
-* Make a backup copy of an already installed nail.rc file
+* Do a fflush() before executing a ~| command (Bugreport by Edward V. Popkov)
+* Make a backup copy of an already installed nail.rc file (problem reported
+  by Gabor Z. Papp)
 * The `write' command has a more consistent user interface
-* Added the `forward' command
+* Added the `forward' command (Suggested by Bob Tennent)
 * Added the `emptystart' option
 
 [9.10] released 2000-05-02
 * Added the `-q' option
 * Convert a subject given on the command line from RFC 1522 format
-* The variable `srbuf' is now of type sigjmp_buf
-* Introduced GNU autoconf support
+* The variable `srbuf' is now of type sigjmp_buf (Bugreport by Edward
+  V. Popkov)
+* Introduced GNU autoconf support (Contributed by Jacob Moorman)
 * Corrected RFC1522-encoding of headers to respect word boundaries
 * Use gethostbyname() to include the FQDN in message ids
 * Use base36 to get shorter message ids and multipart boundaries
 * Use data from /dev/urandom in message ids and boundaries if available
-* Added the `pipe' command
-* readline() should no longer fail if libsafe is used
+* Added the `pipe' command (Suggested by Bob Tennent)
+* readline() should no longer fail if libsafe is used (Bugreport by Bob
+  Tennent)
 * Added the `-V' option
 * Limit the `References' header field to 21 entries
 
 [9.04] released 2000-04-17
-* Some fixes for machines where chars are unsigned by default
+* Some fixes for machines where chars are unsigned by default (Bugreport by
+  Marcel Oliver)
 * Merged the Mail.1 and nail.1 manual pages and added some missing
   features from `The Mail Reference Manual'
 * Print attachment names correctly in ~p escape
 * Use sprintf() if snprintf() is not available
 
 [9.03] released 2000-04-11
-* Some fixes to compile on FreeBSD 4.0
-* Check for write permission before dot-locking mail files
-* Do not accept an attachment list with unreadable files
+* Some fixes to compile on FreeBSD 4.0 (Thanks to Anders Andersson)
+* Check for write permission before dot-locking mail files (Bugreport by Bob
+  Tennent)
+* Do not accept an attachment list with unreadable files (Bugreport by Bob
+  Tennent)
 * Do not send a message if a file could not get attached or if the input could
-  not get read; save dead.letter instead
+  not get read; save dead.letter instead (Bugreport by Bob Tennent)
 * Do not include Linux domainnames in the message id anymore
-* Merged the Red Hat nopanic and nullchar patches
+* Merged the Red Hat nopanic and nullchar patches (Thanks to Bob Tennent)
 * Include a signature file if option `signature' is set
 * Generate our own `Date:' header field for better local message archiving
-* Made the `quote' option configurable
+* Made the `quote' option configurable (Suggested by Bob Tennent)
 * Fixed segfault if a message to reply to had no message id
 * Removed all `register' declarations of variables
 * The code is intended to be POSIX.1 compatible now, except for the
@@ -158,7 +199,7 @@
 
 [9.02] relased 2000-04-05
 * Include the domainname in the message id only if there is one
-* Added the `stealthmua' option
+* Added the `stealthmua' option (based on a suggestion by Gabor Z. Papp)
 * Fixed decoding of base64 when lines are not multiples of 4 characters
 * Fixed erroneous recognition of message boundaries
 * Whitespace at the end of a line is now encoded in quoted-printable
@@ -178,7 +219,8 @@
 * Can now compile on SVR4 systems using -lucb
 * Changed generation of multipart boundaries
 * Sending MIME messages to files now works
-* Fixed core dump if variable `encoding' was unset
+* Fixed core dump if variable `encoding' was unset (Bugreport by Alexander
+  Shelkovich)
 
 [9.0] released 2000-03-20
 * Initial release

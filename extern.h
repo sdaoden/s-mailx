@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.13 (gritter) 2/20/02
+ *	Sccsid @(#)extern.h	1.14 (gritter) 5/22/02
  */
 
 struct name;
@@ -170,7 +170,7 @@ struct var *
 	 lookup __P((char []));
 int	 mail __P((struct name *,
 	    struct name *, struct name *, struct name *,
-	   	 char *, struct name *, char *));
+	   	 char *, struct attachment *, char *));
 void	 mail1 __P((struct header *, int, struct message *, char *));
 void	 makemessage __P((FILE *));
 void	 mark __P((int));
@@ -286,7 +286,6 @@ void	mime_fromhdr __P((struct str*, struct str*, int));
 size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int, char *,
 			size_t));
 int	is_undisplayable __P((unsigned char));
-int	mime_check_attach __P((struct name *));
 signal_handler_t safe_signal __P((int, signal_handler_t));
 int	start_mta __P((struct name *, struct name *, FILE *));
 char	*foldergets __P((char *, int, FILE *));
@@ -308,3 +307,6 @@ size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 size_t	prefixwrite __P((void *, size_t, size_t, FILE *, char *, size_t));
 FILE	*Ftemp __P((char **, char *, char *, int));
 void	Ftfree __P((char **));
+struct attachment	*edit_attachments __P((struct attachment *));
+struct attachment	*add_attachment __P((struct attachment *, const char *));
+

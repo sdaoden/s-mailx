@@ -42,9 +42,6 @@
 /* Define if you have the gethostname function.  */
 #undef HAVE_GETHOSTNAME
 
-/* Define if you have the getopt function.  */
-#undef HAVE_GETOPT
-
 /* Define if you have the iconv function.  */
 #undef HAVE_ICONV
 
@@ -56,9 +53,6 @@
 
 /* Define if you have the mkstemp function.  */
 #undef HAVE_MKSTEMP
-
-/* Define if you have the mktime function.  */
-#undef HAVE_MKTIME
 
 /* Define if you have the nl_langinfo function.  */
 #undef HAVE_NL_LANGINFO
@@ -74,12 +68,6 @@
 
 /* Define if you have the strcasecmp function.  */
 #undef HAVE_STRCASECMP
-
-/* Define if you have the strtol function.  */
-#undef HAVE_STRTOL
-
-/* Define if you have the tempnam function.  */
-#undef HAVE_TEMPNAM
 
 /* Define if you have the uname function.  */
 #undef HAVE_UNAME

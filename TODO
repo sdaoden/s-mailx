@@ -1,0 +1,32 @@
+The following features must be added to make nail a mailx implementation as
+defined by the Single Unix Specification, v2:
+
+* -F option
+* LC_TIME environment
+* LC_MESSAGES environment
+* Return a non-zero exit status if SIGINT was received twice and ignore not set
+* Import from environ after processing options: DEAD,EDITOR,MBOX,LISTER,
+  PAGER,SHELL,VISUAL
+* Otherwise, environ does not affect internal mail variables? On Solaris,
+  they do not, but our functionality seems useful.
+
+* allnet variable
+* bang variable
+* add debug variable to man page
+* flipr variable
+* onehop variable
+* outfolder variable
+* prompt variable
+* prompt defaults to "?"
+* sendwait variable
+* showto variable
+* sign variable
+* Sign variable
+
+* Copy command
+* followup command
+* Followup command
+* Save command
+
+* ~a command
+* ~A command

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)list.c	1.6 (gritter) 5/23/02";
 #endif
 #endif /* not lint */
 
@@ -656,21 +656,7 @@ matchsender(str, mesg)
 	char *str;
 	int mesg;
 {
-	char *cp, *cp2, *backup;
-
-	if (!*str)	/* null string matches nothing instead of everything */
-		return 0;
-	backup = cp2 = nameof(&message[mesg - 1], 0);
-	cp = str;
-	while (*cp2) {
-		if (*cp == 0)
-			return(1);
-		if (aux_raise(*cp++) != aux_raise(*cp2++)) {
-			cp2 = ++backup;
-			cp = str;
-		}
-	}
-	return(*cp == 0);
+	return !strcmp(str, nameof(&message[mesg - 1], 0));
 }
 
 /*

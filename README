@@ -54,11 +54,10 @@ Although it is not bad, just obsolete, similar considerations apply to
 the MMDF format used on OpenServer systems; unless you switch to
 procmail, nail will not be able to read your mailbox there.
 
-New nail versions will be announced on <http://appwatch.com> and on
-<http://freshmeat.net>. Nail's home page is currently at
-<http://omnibus.ruf.uni-freiburg.de/~gritter/>. If the version you have
-is older than a few months, please look for a new one before reporting
-bugs.
+New nail versions will be announced on <http://freshmeat.net>. Nail's
+home page is currently at <http://omnibus.ruf.uni-freiburg.de/~gritter/>.
+If the version you have is older than a few months, please look for a
+new one before reporting bugs.
 
 If you detect a bug and cannot fix it yourselves, please send me the
 unaltered mail message that caused the problem along with a
@@ -74,4 +73,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					11/12/01
+<g-r@bigfoot.de>					6/2/02

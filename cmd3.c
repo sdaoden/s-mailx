@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	1.8 (gritter) 9/19/01";
+static char sccsid[] = "@(#)cmd3.c	1.9 (gritter) 5/22/02";
 #endif
 #endif /* not lint */
 
@@ -326,7 +326,7 @@ _respond(msgvec)
 		head.h_cc = NIL;
 	head.h_bcc = NIL;
 	make_ref(mp, &head);
-	head.h_attach = NIL;
+	head.h_attach = NULL;
 	head.h_smopts = NIL;
 	mail1(&head, 1, mp, NULL);
 	return(0);
@@ -702,7 +702,7 @@ _Respond(msgvec)
 	head.h_cc = NIL;
 	head.h_bcc = NIL;
 	make_ref(mp, &head);
-	head.h_attach = NIL;
+	head.h_attach = NULL;
 	head.h_smopts = NIL;
 	mail1(&head, 1, mp, NULL);
 	return 0;
