@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: main.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 /*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
@@ -46,7 +46,7 @@ static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: main.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: main.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -63,8 +63,9 @@ static char rcsid[]  = "@(#)$Id: main.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 
 #define _MAIL_GLOBS_
 #include "rcv.h"
-#include <fcntl.h>
+#ifdef	HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
 #include "extern.h"
 
 /*
@@ -85,6 +86,7 @@ main(argc, argv)
 	struct name *to, *attach, *cc, *bcc, *smopts;
 	char *subject;
 	char *ef;
+	char *qf = NULL;
 	char nosrc = 0;
 	signal_handler_t prevint;
 
@@ -130,8 +132,11 @@ main(argc, argv)
 	attach = NIL;
 	smopts = NIL;
 	subject = NOSTR;
-	while ((i = getopt(argc, argv, "INT:a:b:c:dfins:u:v")) != EOF) {
+	while ((i = getopt(argc, argv, "INVT:a:b:c:dfinqs:u:v")) != EOF) {
 		switch (i) {
+		case 'V':
+			puts(version);
+			exit(0);
 		case 'T':
 			/*
 			 * Next argument is temp file to write which
@@ -181,6 +186,16 @@ main(argc, argv)
 				ef = argv[optind++];
 			else
 				ef = "&";
+			break;
+		case 'q':
+			/*
+			 * User is specifying file to quote in front of
+			 * the mail to be collected.
+			 */
+			if ((argv[optind]) && (argv[optind][0] != '-'))
+				qf = argv[optind++];
+			else
+				qf = NULL;
 			break;
 		case 'n':
 			/*
@@ -250,6 +265,10 @@ main(argc, argv)
 		fprintf(stderr, "Cannot give -f and people to send to.\n");
 		exit(1);
 	}
+	if (qf != NOSTR && to == NIL) {
+		fprintf(stderr, "Cannot give -q without people to send to.\n");
+		exit(1);
+	}
 	tinit();
 	setscreensize();
 	input = stdin;
@@ -263,7 +282,7 @@ main(argc, argv)
 	 */
 	load(expand("~/.mailrc"));
 	if (!rcvmode) {
-		mail(to, cc, bcc, smopts, subject, attach);
+		mail(to, cc, bcc, smopts, subject, attach, qf);
 		/*
 		 * why wait?
 		 */
@@ -335,21 +354,21 @@ setscreensize()
 	else
 		ospeed = cfgetospeed(&tbuf);
 	if (ospeed < B1200)
-		screenheight = 9;
+		scrnheight = 9;
 	else if (ospeed == B1200)
-		screenheight = 14;
+		scrnheight = 14;
 #ifdef	TIOCGWINSZ
 	else if (ws.ws_row != 0)
-		screenheight = ws.ws_row;
+		scrnheight = ws.ws_row;
 #endif
 	else
-		screenheight = 24;
+		scrnheight = 24;
 #ifdef	TIOCGWINSZ
 	if ((realscreenheight = ws.ws_row) == 0)
 		realscreenheight = 24;
 #endif
 #ifdef	TIOCGWINSZ
-	if ((screenwidth = ws.ws_col) == 0)
+	if ((scrnwidth = ws.ws_col) == 0)
 #endif
-		screenwidth = 80;
+		scrnwidth = 80;
 }

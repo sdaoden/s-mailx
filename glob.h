@@ -1,4 +1,4 @@
-/*	$Id: glob.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: glob.h,v 1.4 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
 /*	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	from: @(#)glob.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp
- *	$Id: glob.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
+ *	$Id: glob.h,v 1.4 2000/05/01 22:27:04 gunnar Exp $
  */
 
 /*
@@ -51,7 +51,7 @@
 #  define _E	extern
 #endif
 
-_E int	msgCount;			/* Count of messages read in */
+_E int	msgcount;			/* Count of messages read in */
 _E int	rcvmode;			/* True if receiving mail */
 _E int	sawcom;				/* Set after first command */
 _E char	*Tflag;				/* -T temp file for netnews */
@@ -72,7 +72,6 @@ _E char	*homedir;			/* Path name of home directory */
 _E char *progname;			/* our name */
 _E char	*myname;			/* My login name */
 _E char *version;			/* version string */
-_E char *defcharset;			/* default charset */
 _E off_t mailsize;			/* Size of system mailbox */
 _E int	lexnumber;			/* Number of TNUMBER from scan() */
 _E char	lexstring[STRINGLEN];		/* String from TSTRING, scan() */
@@ -88,11 +87,11 @@ _E struct ignoretab ignore[2];		/* ignored and retained fields
 					   0 is ignore, 1 is retain */
 _E struct ignoretab saveignore[2];	/* ignored and retained fields
 					   on save to folder */
-_E struct ignoretab ignoreall[2];	/* special, ignore all headers */
+_E struct ignoretab allignore[2];	/* special, ignore all headers */
 _E char	**altnames;			/* List of alternate names for user */
 _E int	debug;				/* Debug flag set */
-_E int	screenwidth;			/* Screen width, or best guess */
-_E int	screenheight;			/* Screen height, or best guess,
+_E int	scrnwidth;			/* Screen width, or best guess */
+_E int	scrnheight;			/* Screen height, or best guess,
 					   for "header" command */
 _E int	realscreenheight;		/* the real screen height */
 _E gid_t	effectivegid;		/* Saved from when we started up */
@@ -100,7 +99,7 @@ _E gid_t	realgid;		/* Saved from when we started up */
 
 #include <setjmp.h>
 
-_E jmp_buf	srbuf;
+_E sigjmp_buf	srbuf;
 
 
 /*

@@ -1,4 +1,4 @@
-/*	$Id: fio.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: fio.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 /*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
@@ -41,15 +41,19 @@ static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
 #else
-static char rcsid[]  = "$Id: fio.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "$Id: fio.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include <sys/file.h>
+#ifdef	HAVE_SYS_WAIT_H
 #include <sys/wait.h>
+#endif
+#ifdef	HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 
-#include <unistd.h>
 #include <errno.h>
 #include "extern.h"
 
@@ -84,7 +88,7 @@ setptr(ibuf)
 	unlink(cp);
 	free(cp);
 
-	msgCount = 0;
+	msgcount = 0;
 	maybe = 1;
 	inhead = 0;
 	offset = 0;
@@ -113,7 +117,7 @@ setptr(ibuf)
 		if (linebuf[count - 1] == '\n')
 			linebuf[count - 1] = '\0';
 		if (maybe && linebuf[0] == 'F' && ishead(linebuf)) {
-			msgCount++;
+			msgcount++;
 			if (append(&this, mestmp)) {
 				perror("temporary file");
 				exit(1);
@@ -183,31 +187,38 @@ readline(ibuf, linebuf, linesize)
 	char *linebuf;
 	int linesize;
 {
-	int n;
+	size_t n;
 #ifdef IOSAFE
 	int oldfl;
 	char *res;
+	extern int got_interrupt;
+	fd_set rds;
 #endif
 
 	clearerr(ibuf);
 #ifdef IOSAFE
-	/* we want to be able to get interrupts while waiting user-input
-	   we cannot to safely inside a stdio call, so we first ensure there  
-	   is now data in the stdio buffer by doing the stdio call with the
-	   descriptor in non-blocking state and then do a select. 
-	   Hope it is safe (the libc should not break on a EAGAIN) 
-	   lprylli@graville.fdn.fr*/ 
+	/*
+	 * We want to be able to get interrupts while waiting user-input
+	 * we cannot to safely inside a stdio call, so we first ensure there  
+	 * is now data in the stdio buffer by doing the stdio call with the
+	 * descriptor in non-blocking state and then do a select. 
+	 * Hope it is safe (the libc should not break on a EAGAIN) 
+	 * lprylli@graville.fdn.fr
+	 */
 
-	n = 0; /* number of caracters already read */
+	/*
+	 * number of characters already read
+	 */
+	n = 0;
 	while (n < linesize - 1) {
 		errno = 0;
-		oldfl = fcntl(fileno(ibuf),F_GETFL);
-		fcntl(fileno(ibuf),F_SETFL,oldfl | O_NONBLOCK);
-		res = fgets(linebuf + n, linesize-n, ibuf);
-		fcntl(fileno(ibuf),F_SETFL,oldfl);
+		oldfl = fcntl(fileno(ibuf), F_GETFL);
+		fcntl(fileno(ibuf), F_SETFL, oldfl | O_NONBLOCK);
+		res = fgets(linebuf + n, linesize - n, ibuf);
+		fcntl(fileno(ibuf), F_SETFL, oldfl);
 		if (res != NULL) {
-			n = strlen(linebuf);
-			if (n > 0 && linebuf[n-1] == '\n')
+			n += strlen(linebuf + n);
+			if (n > 0 && linebuf[n - 1] == '\n')
 				break;
 		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 			clearerr(ibuf);
@@ -217,16 +228,17 @@ readline(ibuf, linebuf, linesize)
 				break;
 			else
 				return -1;
-		}{
-			extern int got_interrupt;
-			fd_set rds;
-			FD_ZERO(&rds);
-			FD_SET(fileno(ibuf),&rds);
-			select(fileno(ibuf)+1,&rds,NULL,NULL,NULL);
-			/* if an interrupt occur drops the current line and returns */
-			if (got_interrupt)
-			return -1;
 		}
+		FD_ZERO(&rds);
+		FD_SET(fileno(ibuf), &rds);
+		select((SELECT_TYPE_ARG1)(fileno(ibuf) + 1),
+				SELECT_TYPE_ARG234(&rds),
+				SELECT_TYPE_ARG234(NULL),
+				SELECT_TYPE_ARG234(NULL),
+				SELECT_TYPE_ARG5(NULL));
+		/* if an interrupt occur drops the current line and returns */
+		if (got_interrupt)
+			return -1;
 	}
 #else
 	if (fgets(linebuf, linesize, ibuf) == NOSTR)
@@ -263,20 +275,20 @@ void
 makemessage(f)
 	FILE *f;
 {
-	int size = (msgCount + 1) * sizeof (struct message);
+	int size = (msgcount + 1) * sizeof (struct message);
 
 	if (message != 0)
 		free((char *) message);
 	if ((message = (struct message *) malloc((unsigned) size)) == 0)
-		panic("Insufficient memory for %d messages", msgCount);
+		panic("Insufficient memory for %d messages", msgcount);
 	dot = message;
 	size -= sizeof (struct message);
 	fflush(f);
 	(void) lseek(fileno(f), (off_t)sizeof *message, 0);
 	if (read(fileno(f), (char *) message, size) != size)
 		panic("Message temporary file corrupted");
-	message[msgCount].m_size = 0;
-	message[msgCount].m_lines = 0;
+	message[msgcount].m_size = 0;
+	message[msgcount].m_lines = 0;
 	Fclose(f);
 }
 
@@ -401,7 +413,7 @@ expand(name)
 		/* fall through */
 	}
 	if (name[0] == '+' && getfold(cmdbuf, PATHSIZE) >= 0) {
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 		snprintf(xname, PATHSIZE, "%s/%s", cmdbuf, name + 1);
 #else
 		sprintf(xname, "%s/%s", cmdbuf, name + 1);
@@ -410,7 +422,7 @@ expand(name)
 	}
 	/* catch the most common shell meta character */
 	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 		snprintf(xname, PATHSIZE, "%s%s", homedir, name + 1);
 #else
 		sprintf(xname, "%s%s", homedir, name + 1);
@@ -423,7 +435,7 @@ expand(name)
 		perror("pipe");
 		return name;
 	}
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 	snprintf(cmdbuf, PATHSIZE, "echo %s", name);
 #else
 	sprintf(cmdbuf, "echo %s", name);
@@ -483,7 +495,7 @@ getfold(name, size)
 		strncpy(name, folder, size);
 		name[size-1]='\0';
 	} else {
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 		snprintf(name, size, "%s/%s", homedir, folder);
 #else
 		sprintf(name, "%s/%s", homedir, folder);
@@ -505,7 +517,7 @@ getdeadletter()
 	else if (*cp != '/') {
 		char buf[PATHSIZE];
 
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 		(void) snprintf(buf, PATHSIZE, "~/%s", cp);
 #else
 		(void) sprintf(buf, "~/%s", cp);

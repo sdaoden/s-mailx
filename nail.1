@@ -1,4 +1,4 @@
-.\" $Id: nail.1,v 1.10 2000/04/17 01:45:26 gunnar Exp $
+.\" $Id: nail.1,v 1.12 2000/05/01 22:27:04 gunnar Exp $
 .\"     $OpenBSD: mail.1,v 1.5 1994/06/29 05:09:32 deraadt Exp $
 .\" Copyright (c) 1980, 1990, 1993
 .\"     The Regents of the University of California.  All rights reserved.
@@ -37,7 +37,7 @@
 .\"
 .\"     from: @(#)mail.1        8.2 (Berkeley) 12/30/93
 .\"
-.TH NAIL 1 "April 17, 2000" "nail 9.04" "User Commands"
+.TH NAIL 1 "May 2, 2000" "nail 9.10" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -94,6 +94,10 @@ Inhibits reading /usr/etc/nail.rc upon startup.
 Inhibits the initial display of message headers when reading mail
 or editing a mail folder.
 .TP
+.B -q
+Start the message with the contents of the specified file.
+May be given in send mode only.
+.TP
 .B -s
 Specify subject on command line (only the first argument after the
 -s flag is used as a subject; be careful to quote subjects
@@ -109,6 +113,9 @@ Is equivalent to:
 Verbose mode.
 The details of
 delivery are displayed on the user's terminal.
+.TP
+.B -V
+Print nail's version and exit.
 .SH USAGE
 .TP
 .B "Sending mail."
@@ -290,11 +297,18 @@ Prints a brief summary of commands.
 Executes the shell (see sh(1) and csh(1))
 command which follows.
 .TP
+.B |
+A synonym for the \fIpipe\fR command.
+.TP
 .B #
 The command and its arguments
 are completely ignored.
 Useful to embed comments
 in the startup files.
+.TP
+.B Pipe
+(Pi) Like pipe but also
+pipes ignored header fields.
 .TP
 .B Print
 (P) Like print but also
@@ -471,6 +485,15 @@ With an argument list, types the next matching message.
 .TP
 .B preserve
 (pre) A synonym for hold.
+.TP
+.B pipe
+(pi) Takes a message list and a shell command
+and pipes the messages through the command.
+Without an argument,
+the current message is piped
+through the command given by the \fIcmd\fR variable.
+If the \fI page\fR variable is set,
+every message is followed by a formfeed character.
 .TP
 .B print
 (p) Takes a message list and types out each message
@@ -725,7 +748,9 @@ in order to send it.
 Options are controlled via set and unset commands.
 An option is also set
 if it is passed to \fInail\fR
-as part of the environment.
+as part of the environment,
+but a value given in a startup file
+overrides this.
 Options may be either binary,
 in which case it is only significant
 to see whether they are set or not;
@@ -825,8 +850,9 @@ with two RUBOUT (interrupt characters)
 to the file `\fIdead.letter\fR' in your home directory.
 Setting the binary option nosave prevents this.
 .TP
-.B Replyall
-Reverses the sense of reply and Reply commands.
+.B page
+If set, each message the \fIpipe\fR command prints out
+is followed by a formfeed character.
 .TP
 .B quiet
 Suppresses the printing of the version when first invoked.
@@ -889,6 +915,9 @@ or when crt variable is set.
 The default paginator more(1) is used
 if this option is not defined.
 .TP
+.B Replyall
+Reverses the sense of reply and Reply commands.
+.TP
 .B SHELL
 Pathname of the shell to use
 in the ! command and the ~! escape.
@@ -909,6 +938,9 @@ So, the charset variable should correspondend to this value.
 If the message contains no special characters at all,
 its character set is declared as \fIUS-ASCII\fR,
 without regard to the value of this variable.
+.TP
+.B cmd
+The default value for the \fIpipe\fR command.
 .TP
 .B crt
 The valued option crt is used as a threshold
@@ -948,6 +980,10 @@ this address is handled as if it were in the alternates list.
 If this variable is set,
 a \fI`Sender:'\fR field containing the user's name
 is also generated.
+If the machine's hostname is not valid in the Internet
+(for example at a dialup machine),
+you have to set this variable
+to get correct Message-ID header fields.
 .TP
 .B indentprefix
 String used by the `\fI~m\fR' and `\fI~M\fR' tilde escapes

@@ -1,4 +1,4 @@
-/*	$Id: list.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: list.c,v 1.5 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp 	*/
 /*	NetBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)list.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: list.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: list.c,v 1.5 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -69,14 +69,14 @@ getmsglist(buf, vector, flags)
 	int *ip;
 	struct message *mp;
 
-	if (msgCount == 0) {
+	if (msgcount == 0) {
 		*vector = 0;
 		return 0;
 	}
 	if (markall(buf, flags) < 0)
 		return(-1);
 	ip = vector;
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MMARK)
 			*ip++ = mp - &message[0] + 1;
 	*ip = 0;
@@ -133,7 +133,7 @@ markall(buf, f)
 
 	valdot = dot - &message[0] + 1;
 	colmod = 0;
-	for (i = 1; i <= msgCount; i++)
+	for (i = 1; i <= msgcount; i++)
 		unmark(i);
 	bufp = buf;
 	mc = 0;
@@ -181,7 +181,7 @@ number:
 			i = valdot;
 			do {
 				i++;
-				if (i > msgCount) {
+				if (i > msgcount) {
 					printf("Referencing beyond EOF\n");
 					return(-1);
 				}
@@ -247,7 +247,7 @@ number:
 	*np = NOSTR;
 	mc = 0;
 	if (star) {
-		for (i = 0; i < msgCount; i++)
+		for (i = 0; i < msgcount; i++)
 			if ((message[i].m_flag & MDELETED) == f) {
 				mark(i+1);
 				mc++;
@@ -266,7 +266,7 @@ number:
 	 */
 
 	if ((np > namelist || colmod != 0) && mc == 0)
-		for (i = 1; i <= msgCount; i++)
+		for (i = 1; i <= msgcount; i++)
 			if ((message[i-1].m_flag & MDELETED) == f)
 				mark(i);
 
@@ -276,7 +276,7 @@ number:
 	 */
 
 	if (np > namelist) {
-		for (i = 1; i <= msgCount; i++) {
+		for (i = 1; i <= msgcount; i++) {
 			for (mc = 0, np = &namelist[0]; *np != NOSTR; np++)
 				if (**np == '/') {
 					if (matchsubj(*np, i)) {
@@ -299,7 +299,7 @@ number:
 		 */
 
 		mc = 0;
-		for (i = 1; i <= msgCount; i++)
+		for (i = 1; i <= msgcount; i++)
 			if (message[i-1].m_flag & MMARK) {
 				mc++;
 				break;
@@ -320,7 +320,7 @@ number:
 	 */
 
 	if (colmod != 0) {
-		for (i = 1; i <= msgCount; i++) {
+		for (i = 1; i <= msgcount; i++) {
 			struct coltab *colp;
 
 			mp = &message[i - 1];
@@ -331,10 +331,10 @@ number:
 						unmark(i);
 			
 		}
-		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+		for (mp = &message[0]; mp < &message[msgcount]; mp++)
 			if (mp->m_flag & MMARK)
 				break;
-		if (mp >= &message[msgCount]) {
+		if (mp >= &message[msgcount]) {
 			struct coltab *colp;
 
 			printf("No messages satisfy");
@@ -377,7 +377,7 @@ check(mesg, f)
 {
 	struct message *mp;
 
-	if (mesg < 1 || mesg > msgCount) {
+	if (mesg < 1 || mesg > msgcount) {
 		printf("%d: Invalid message number\n", mesg);
 		return(-1);
 	}
@@ -642,11 +642,11 @@ first(f, m)
 {
 	struct message *mp;
 
-	if (msgCount == 0)
+	if (msgcount == 0)
 		return 0;
 	f &= MDELETED;
 	m &= MDELETED;
-	for (mp = dot; mp < &message[msgCount]; mp++)
+	for (mp = dot; mp < &message[msgcount]; mp++)
 		if ((mp->m_flag & m) == f)
 			return mp - message + 1;
 	for (mp = dot-1; mp >= &message[0]; mp--)
@@ -673,7 +673,7 @@ matchsender(str, mesg)
 	while (*cp2) {
 		if (*cp == 0)
 			return(1);
-		if (raise(*cp++) != raise(*cp2++)) {
+		if (aux_raise(*cp++) != aux_raise(*cp2++)) {
 			cp2 = ++backup;
 			cp = str;
 		}
@@ -726,7 +726,7 @@ matchsubj(str, mesg)
 	while (*cp2) {
 		if (*cp == 0)
 			return(1);
-		if (raise(*cp++) != raise(*cp2++)) {
+		if (aux_raise(*cp++) != aux_raise(*cp2++)) {
 			cp2 = ++backup;
 			cp = str;
 		}
@@ -744,7 +744,7 @@ mark(mesg)
 	int i;
 
 	i = mesg;
-	if (i < 1 || i > msgCount)
+	if (i < 1 || i > msgcount)
 		panic("Bad message number to mark");
 	message[i-1].m_flag |= MMARK;
 }
@@ -759,7 +759,7 @@ unmark(mesg)
 	int i;
 
 	i = mesg;
-	if (i < 1 || i > msgCount)
+	if (i < 1 || i > msgcount)
 		panic("Bad message number to unmark");
 	message[i-1].m_flag &= ~MMARK;
 }
@@ -780,7 +780,7 @@ metamess(meta, f)
 		/*
 		 * First 'good' message left.
 		 */
-		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+		for (mp = &message[0]; mp < &message[msgcount]; mp++)
 			if ((mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
 		printf("No applicable messages\n");
@@ -790,7 +790,7 @@ metamess(meta, f)
 		/*
 		 * Last 'good message left.
 		 */
-		for (mp = &message[msgCount-1]; mp >= &message[0]; mp--)
+		for (mp = &message[msgcount-1]; mp >= &message[0]; mp--)
 			if ((mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
 		printf("No applicable messages\n");

@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.5 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.5 2000/04/11 16:37:15 gunnar Exp $
+ *	$Id: extern.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $
  */
 
 struct name;
@@ -55,8 +55,8 @@ struct name *usermap __P((struct name *));
 FILE	*safe_fopen __P((char *, char *));
 FILE	*Fdopen __P((int, char *));
 FILE	*Fopen __P((char *, char *));
-FILE	*Popen __P((char *, char *));
-FILE	*collect __P((struct header *, int, struct message*));
+FILE	*Popen __P((char *, char *, char *));
+FILE	*collect __P((struct header *, int, struct message*, char *));
 char	*copy __P((char *, char *));
 char	*copyin __P((char *, char **));
 char	*detract __P((struct name *, int));
@@ -87,6 +87,8 @@ int	 More __P((void *));
 int	 Pclose __P((FILE *));
 int	 Respond __P((void *));
 int	 Type __P((void *));
+int	 Pipecmd __P((void *));
+int	 pipecmd __P((void *));
 int	 _Respond __P((int []));
 int	 _respond __P((int *));
 void	 alter __P((char *));
@@ -173,8 +175,8 @@ struct var *
 	 lookup __P((char []));
 int	 mail __P((struct name *,
 	    struct name *, struct name *, struct name *,
-	   	 char *, struct name *));
-void	 mail1 __P((struct header *, int, struct message *));
+	   	 char *, struct name *, char *));
+void	 mail1 __P((struct header *, int, struct message *, char *));
 void	 makemessage __P((FILE *));
 void	 mark __P((int));
 int	 markall __P((char [], int));
@@ -210,7 +212,7 @@ int	 putline __P((FILE *, char *));
 int	 pversion __P((void *));
 void	 quit __P((void));
 int	 quitcmd __P((void *));
-int	 raise __P((int));
+int	 aux_raise __P((int));
 int	 readline __P((FILE *, char *, int));
 void	 register_file __P((FILE *, int, int));
 void	 regret __P((int));
@@ -230,7 +232,8 @@ void	 scaninit __P((void));
 int	 schdir __P((void *));
 int	 screensize __P((void));
 int	 scroll __P((void *));
-int	 send __P((struct message *, FILE *, struct ignoretab *, char *, int));
+int	 send_message __P((struct message *, FILE *,
+			struct ignoretab *, char *, int));
 int	 sendmail __P((void *));
 int	 set __P((void *));
 int	 setfile __P((char *));
@@ -253,7 +256,6 @@ void	 touch __P((struct message *));
 void	 ttyint __P((int));
 void	 ttystop __P((int));
 int	 type __P((void *));
-int	 type1 __P((int *, int, int));
 int	 undeletecmd __P((void *));
 void	 unmark __P((int));
 char	**unpack __P((struct name *));
@@ -267,16 +269,17 @@ int	 wait_child __P((int));
 int	 wait_command __P((int));
 int	 writeback __P((FILE *));
 void	*smalloc __P((size_t));
+char	*itohex __P((unsigned, char *));
 size_t	mime_write_tob64 __P((struct str*, FILE*));
 void	mime_fromb64 __P((struct str*, struct str*, int, int));
 void	mime_fromb64_b __P((struct str*, struct str*, int, int, FILE*));
-char	*itohex __P((unsigned int, char*));
 int	mime_getenc __P((char*));
 int	mime_getcontent __P((char*));
 char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
 char	*mime_getfilename __P((char*));
+char	*mime_getcharset __P((int));
 int	mime_isclean __P((FILE*));
 int	mime_save __P((void *));
 void	mime_fromhdr __P((struct str*, struct str*, int));

@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.2 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.9 2000/05/02 02:17:37 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,13 +40,18 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.2 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.9 2000/05/02 02:17:37 gunnar Exp $";
 #endif
 #endif /* not lint */
 
-#include <sys/utsname.h>
 #include "rcv.h"
 #include "extern.h"
+#ifdef	HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
+#ifdef	HAVE_SOCKETS
+#include <netdb.h>
+#endif
 
 /*
  * Mail -- a mail program
@@ -54,53 +59,95 @@ static char rcsid[]  = "@(#)$Id: sendout.c,v 1.2 2000/04/16 23:05:28 gunnar Exp 
  * Mail to others.
  */
 
+const char randfile[] = "/dev/urandom";
+
+const static char b36table[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/*
+ * Convert i to a base36 character string and store it in b.
+ * The caller has to ensure that the size of b is sufficient.
+ */
+static char *
+itob36(i, b)
+unsigned i;
+char *b;
+{
+	char *p, *q, c;
+	
+	p = b;
+	while (i != 0) {
+		*p++ = b36table[i % 36];
+		i /= 36;
+	}
+	*p-- = '\0';
+	q = b;
+	while (p >= q) {
+		c = *q;
+		*q++ = *p;
+		*p-- = c;
+	}
+	return b;
+}
+
 static char *send_boundary;
 
+#define	BOUNDARRAY	8
+
+/*
+ * Generate a boundary for MIME multipart messages.
+ */
 static char *
 makeboundary()
-/* Generate a boundary for MIME multipart-messages */
 {
-	static unsigned msgcount;
+	int i, bd;
+	static unsigned msgc;
 	static pid_t pid;
 	static char bound[73];
 	time_t t;
-	int r1, r2, r3, r4;
-	char b1[sizeof(int) * 2 + 1],
-		b2[sizeof(int) * 2 + 1],
-		b3[sizeof(int) * 2 + 1],
-		b4[sizeof(int) * 2 + 1];
+	unsigned long r[BOUNDARRAY];
+	char b[BOUNDARRAY][sizeof(r[0]) * 2 + 1];
 
 	if (pid == 0) {
 		pid = getpid();
-		msgcount = pid;
+		msgc = (unsigned)pid;
 	}
-	msgcount *= 2053 * time(&t);
-	srand(msgcount);
-	r1 = rand(), r2 = rand(), r3 = rand(), r4 = rand();
-	sprintf(bound, "%.8s-=-%.8s-CUT-HERE-%.8s-=-%.8s",
-			itohex(r1, b1), itohex(r2, b2),
-			itohex(r3, b3), itohex(r4, b4));
+	msgc *= 2053 * (unsigned)time(&t);
+	bd = open(randfile, O_RDONLY);
+	if (bd != -1) {
+		for (i = 0; i < BOUNDARRAY; i++) {
+			if (read(bd, &r[i], sizeof(r[0])) != sizeof(r[0])) {
+				r[0] = 0L;
+				break;
+			}
+		}
+		close(bd);
+	} else {
+		r[0] = 0L;
+	}
+	if (r[0] == 0L) {
+		srand((unsigned)msgc);
+		for (i = 0; i < BOUNDARRAY; i++) {
+			r[i] = 1L;
+			while (r[i] < 60466176L)
+				r[i] *= (unsigned long)rand();
+		}
+	}
+	sprintf(bound, "%.5s%.5s-=-%.5s%.5s-CUT-HERE-%.5s%.5s-=-%.5s%.5s",
+			itob36((unsigned)r[0], b[0]),
+			itob36((unsigned)r[1], b[1]),
+			itob36((unsigned)r[2], b[2]),
+			itob36((unsigned)r[3], b[3]),
+			itob36((unsigned)r[4], b[4]),
+			itob36((unsigned)r[5], b[5]),
+			itob36((unsigned)r[6], b[6]),
+			itob36((unsigned)r[7], b[7]));
 	send_boundary = bound;
 	return send_boundary;
 }
 
-static char *
-getcharset(convert)
-{
-	char *charset;
-
-	if (convert != CONV_7BIT) {
-		charset = value("charset");
-		if (charset == NULL) {
-			charset = defcharset;
-			assign("charset", charset);
-		}
-	} else {
-		charset = "US-ASCII";
-	}
-	return charset;
-}
-
+/*
+ * Get an encoding flag based on the given string.
+ */
 static char *
 getencoding(convert)
 {
@@ -121,6 +168,9 @@ getencoding(convert)
 	abort();
 }
 
+/*
+ * Get the conversion that matches the encoding specified in the environment.
+ */
 static int
 gettextconversion()
 {
@@ -169,9 +219,14 @@ fixhead(hp, tolist)
 }
 
 
-#define	INFIX_BUF	972	/* Do not change
-				 * you get incorrect base64 encodings else!
-				 */
+/*
+ * Do not change, you get incorrect base64 encodings else!
+ */
+#define	INFIX_BUF	972
+
+/*
+ * Put the signature file at fo.
+ */
 static int
 put_signature(fo, convert)
 FILE *fo;
@@ -206,6 +261,9 @@ FILE *fo;
 	return 0;
 }
 
+/*
+ * Write an attachment to the file buffer, converting to MIME.
+ */
 static int
 attach_file(path, fo)
 char *path;
@@ -231,19 +289,19 @@ FILE *fo;
 		typefound = 1;
 	}
 	switch (mime_isclean(fi)) {
-	case 0:
+	case MIME_7BITTEXT:
 		convert = CONV_7BIT;
 		if (contenttype == NULL)
 			contenttype = "text/plain";
-		charset = getcharset(convert);
+		charset = mime_getcharset(convert);
 		break;
-	case 1:
+	case MIME_INTERTEXT:
 		convert = gettextconversion();
 		if (contenttype == NULL)
 			contenttype = "text/plain";
-		charset = getcharset(convert);
+		charset = mime_getcharset(convert);
 		break;
-	case 2:
+	case MIME_BINARY:
 		convert = CONV_TOB64;
 		if (contenttype == NULL)
 			contenttype = "application/octet-stream";
@@ -282,11 +340,13 @@ FILE *fo;
 	return err;
 }
 
+/*
+ * Generate the body of a MIME multipart message.
+ */
 static int
 make_multipart(hp, convert, fi, fo)
 struct header *hp;
 FILE *fi, *fo;
-/* Generate the body of a MIME multipart message */
 {
 	char buf[INFIX_BUF], c = '\n';
 	size_t sz;
@@ -296,7 +356,7 @@ FILE *fi, *fo;
 		"This is a multi-part message in MIME format.\n"
 		"--%s\n"
 		"Content-Type: text/plain; charset=%s\n",
-		send_boundary, getcharset(convert));
+		send_boundary, mime_getcharset(convert));
 	fprintf(fo, "Content-Transfer-Encoding: %s\n\n", getencoding(convert));
 	while ((sz = fread(buf, sizeof(char), INFIX_BUF, fi)) != 0) {
 		c = buf[sz - 1];
@@ -341,7 +401,7 @@ infix(hp, fi, convert)
 		(void) Fclose(nfo);
 		return(NULL);
 	}
-	if (mime_isclean(fi) == 0) {
+	if (mime_isclean(fi) == MIME_7BITTEXT) {
 		convert = CONV_7BIT;
 	}
 	(void) rm(tempMail);
@@ -435,20 +495,31 @@ savemail(name, fi)
  * which does all the dirty work.
  */
 int
-mail(to, cc, bcc, smopts, subject, attach)
+mail(to, cc, bcc, smopts, subject, attach, quotefile)
 	struct name *to, *cc, *bcc, *smopts, *attach;
-	char *subject;
+	char *subject, *quotefile;
 {
 	struct header head;
+	struct str in, out;
 
+	/* The given subject may be in RFC1522 format. */
+	if (subject != NULL) {
+		in.s = subject;
+		in.l = strlen(subject);
+		mime_fromhdr(&in, &out, 1); /* todisplay = 1, it's safer */
+		head.h_subject = out.s;
+	} else {
+		head.h_subject = NULL;
+	}
 	head.h_to = to;
-	head.h_subject = subject;
 	head.h_cc = cc;
 	head.h_bcc = bcc;
 	head.h_ref = NIL;
 	head.h_attach = attach;
 	head.h_smopts = smopts;
-	mail1(&head, 0, NULL);
+	mail1(&head, 0, NULL, quotefile);
+	if (subject != NULL)
+		free(out.s);
 	return(0);
 }
 
@@ -470,7 +541,7 @@ sendmail(v)
 	head.h_ref = NIL;
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	mail1(&head, 0, NULL);
+	mail1(&head, 0, NULL, NULL);
 	return(0);
 }
 
@@ -479,10 +550,11 @@ sendmail(v)
  * in the passed header.  (Internal interface).
  */
 void
-mail1(hp, printheaders, quote)
+mail1(hp, printheaders, quote, quotefile)
 	struct header *hp;
 	int printheaders;
 	struct message *quote;
+	char *quotefile;
 {
 	char *cp;
 	int pid;
@@ -496,7 +568,7 @@ mail1(hp, printheaders, quote)
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders, quote)) == (FILE*)NULL)
+	if ((mtf = collect(hp, printheaders, quote, quotefile)) == (FILE*)NULL)
 		return;
 	if (value("interactive") != NOSTR) {
 		if (value("askcc") != NOSTR || value("askbcc") != NOSTR
@@ -600,6 +672,7 @@ mail1(hp, printheaders, quote)
 out:
 	(void) Fclose(mtf);
 }
+
 /*
  * Create a Message-Id: header field.
  * Use either the host name or the host part of the from address.
@@ -608,26 +681,65 @@ static void
 message_id(fo)
 FILE *fo;
 {
-	static unsigned msgcount;
-	struct utsname ut;
-	char datestr[sizeof(time_t) * 2 + 1];
-	char pidstr[sizeof(pid_t) * 2 + 1];
-	char countstr[sizeof(unsigned) * 2 + 1];
+	static unsigned long msgc;
+	char *hostname;
 	time_t t;
 	char *fromaddr;
+	int rd;
+	long randbuf;
+	char datestr[sizeof(time_t) * 2 + 1];
+	char pidstr[sizeof(pid_t) * 2+ 1];
+	char countstr[sizeof(msgc) * 2 + 1];
+	char randstr[sizeof(randbuf) * 2+ 1];
+#if defined (HAVE_UNAME)
+	struct utsname ut;
+#elif defined (HAVE_GETHOSTNAME)
+	char host__name[MAXHOSTNAMELEN];
+#endif
+#ifdef	HAVE_SOCKETS
+	struct hostent *hent;
+#endif
 
+
+	msgc++;
 	time(&t);
-	itohex((unsigned int)t, datestr);
-	itohex((unsigned int)getpid(), pidstr);
-	itohex(++msgcount, countstr);
-	fprintf(fo, "Message-ID: <%s.%s%s%s",
-			datestr, progname, pidstr, countstr);
+	rd = open(randfile, O_RDONLY);
+	if (rd != -1) {
+		if (read(rd, &randbuf, sizeof(randbuf)) != sizeof(randbuf)) {
+			srand((unsigned)(msgc * t));
+			randbuf = (long)rand();
+		}
+		close(rd);
+	} else {
+		srand((unsigned)(msgc * t));
+		randbuf = (long)rand();
+	}
+	itohex((unsigned)t, datestr);
+	itob36((unsigned)getpid(), pidstr);
+	itob36((unsigned)msgc, countstr);
+	itob36((unsigned)randbuf, randstr);
+	fprintf(fo, "Message-ID: <%s.%s%.5s%s%.5s",
+			datestr, progname, pidstr, countstr, randstr);
 	if ((fromaddr = skin(value("from")))
 			&& (fromaddr = strchr(fromaddr, '@'))) {
 		fprintf(fo, "%s>\n", fromaddr);
 	} else {
+#if defined (HAVE_UNAME)
 		uname(&ut);
-		fprintf(fo, "@%s>\n", ut.nodename);
+		hostname = ut.nodename;
+#elif defined (HAVE_GETHOSTNAME)
+		gethostname(host__name, MAXHOSTNAMELEN);
+		hostname = host__name;
+#else
+		hostname = "unknown";
+#endif
+#ifdef	HAVE_SOCKETS
+		hent = gethostbyname(hostname);
+		if (hent != NULL) {
+			hostname = hent->h_name;
+		}
+#endif
+		fprintf(fo, "@%s>\n", hostname);
 	}
 }
 
@@ -754,7 +866,8 @@ puthead(hp, fo, w, convert)
 			fprintf(fo,
 				"Content-Type: text/plain; charset=%s\n"
 				"Content-Transfer-Encoding: %s\n",
-				getcharset(convert), getencoding(convert));
+				mime_getcharset(convert),
+				getencoding(convert));
 		}
 	}
 	if (gotcha && w & GNL)

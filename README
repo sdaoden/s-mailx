@@ -11,33 +11,30 @@ If you want to read from a POP or IMAP mailbox, you also have to set up
 a program like e.g. fetchmail since nail does not contain any network
 client code.
 
-To compile nail, first look
-- at the top of the Makefile
-- at pathnames.h
-and set the definitions according to your system's settings. The defaults
-are set to match Linux 2.2 systems using glibc 2.1.
+To compile nail, look at the file `INSTALL' that contains the
+generic instructions for autoconf builds.
 
-Then type `make' and optionally `make install'. As a last step, edit
-the personal and system-wide run time configuration files to match
-your needs. You _really_ should do this or at least install the
-template in the `misc' directory of the build tree because most of
+After compilation, edit the personal and system-wide run time configuration
+files to match your needs. You _really_ should do this or at least install
+the template in the `misc' directory of the build tree because most of
 the defaults still have the compatibility values of fifteen years ago.
 For batch usage, it may be more convenient to pass the configuration as
 environment variables only, as e.g. `from=user@host nail -n' does.
 
 Nail has been built successfully on the following operating systems:
 
-Linux 		2.2 with glibc 2.1, 2.0 with libc5
+Linux 		2.2 with glibc 2.1; 2.0 with libc5
 FreeBSD		4.0-STABLE
-Solaris		2.6
-UnixWare	2.1.2
+Solaris		7; 2.6
+UnixWare	7.0.1; 2.1.2
+OpenServer	5.0.5
 
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.
 If there are no changes, even better, but I would like to hear from
 you anyway to extend this list then.
 
-It should generally be possible to build nail on most POSIX.1 compatible
+It should generally be possible to build nail on most Unix-style
 systems without much effort.
 
 Note that the mbox format based on the `Content-Length:' header field that
@@ -46,6 +43,10 @@ format generally is a design flaw, you should fix your system by either
 using procmail for local mail delivery, which is a good idea anyway,
 or at least add the -E flag to the Mlocal line in /etc/sendmail.cf if
 using /usr/lib/mail.local.
+
+Although it is not bad, just obsolete, similar considerations apply to
+the MMDF format used on OpenServer systems; unless you switch to procmail,
+nail will not be able to read your mailbox there.
 
 If you are using gcc to compile nail and get warnings, it is usually
 something serious or at least interesting, so they are worth mailing
@@ -62,8 +63,8 @@ If nail dumps core and you work on a Linux i386 system, please send me also
 - the version of the kernel and of the libc
 - the nail binary that dumped core
 - a strace(1) or ltrace(1) output.
-Do not send me the core file unless you enabled the debugging using the
--g flag while you compiled nail.
+Do not send me the core file unless you enabled the debugging
+while you compiled nail.
 
 If you work on another kind of machine, you can send me a description
 and a trace output, of cause, but I cannot handle your binaries then.

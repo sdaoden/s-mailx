@@ -1,4 +1,4 @@
-/*	$Id: send.c,v 1.6 2000/04/10 09:17:17 gunnar Exp $	*/
+/*	$Id: send.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,7 +40,7 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: send.c,v 1.6 2000/04/10 09:17:17 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: send.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -61,6 +61,9 @@ struct boundary {
 	unsigned b_count;		/* The number of the boundary */
 };
 
+/*
+ * Print the part number indicated by b0.
+ */
 static void
 print_partnumber(obuf, b, b0)
 FILE *obuf;
@@ -77,6 +80,9 @@ struct boundary *b, *b0;
 	}
 }
 
+/*
+ * Get a filename based on f.
+ */
 static char *
 newfilename(f, b, b0)
 char *f;
@@ -111,9 +117,11 @@ struct boundary *b, *b0;
 	return f;
 }
 
+/*
+ * This is fgets for mbox lines.
+ */
 static char *
 foldergets(s, size, stream)
-/* This is fgets for mbox lines */
 char *s;
 FILE *stream;
 {
@@ -158,6 +166,9 @@ statusput(mp, obuf, prefix)
 			prefix == NOSTR ? "" : prefix, statout);
 }
 
+/*
+ * Get the innermost multipart boundary.
+ */
 static struct boundary *
 get_top_boundary(b)
 struct boundary *b;
@@ -167,6 +178,9 @@ struct boundary *b;
 	return b;
 }
 
+/*
+ * Allocate a multipart boundary.
+ */
 static struct boundary *
 bound_alloc(bprev)
 struct boundary *bprev;
@@ -182,6 +196,9 @@ struct boundary *bprev;
 	return b;
 }
 
+/*
+ * Free a multipart boundary.
+ */
 static void
 bound_free(b)
 struct boundary *b;
@@ -199,6 +216,9 @@ struct boundary *b;
 	}
 }
 
+/*
+ * Send the body of a MIME multipart message.
+ */
 static int
 send_multipart(mp, ibuf, obuf, doign, prefix, prefixlen, count, 
 		convert, action, b0)
@@ -208,7 +228,6 @@ struct ignoretab *doign;
 char *prefix;
 long count;
 struct boundary *b0;
-/* Send a MIME multipart message. */
 {
 	int mime_enc, mime_content = MIME_TEXT, new_content = MIME_TEXT;
 	FILE *oldobuf = (FILE*)-1;
@@ -381,7 +400,7 @@ send_multi_nobound:
 			 		}
 			}
 			if (doign && (isign(line, doign)
-				|| doign == ignoreall))
+				|| doign == allignore))
 				break;
 			if (prefix != NOSTR) {
 				(void)fwrite(prefix, sizeof *prefix,
@@ -447,7 +466,7 @@ send_multi_end:
  * prefix is a string to prepend to each output line.
  */
 int
-send(mp, obuf, doign, prefix, convert)
+send_message(mp, obuf, doign, prefix, convert)
 	struct message *mp;
 	FILE *obuf;
 	struct ignoretab *doign;
@@ -503,7 +522,7 @@ send(mp, obuf, doign, prefix, convert)
 			 * there to worry about
 			 */
 			firstline = 0;
-			ignoring = doign == ignoreall;
+			ignoring = doign == allignore;
 		} else if (line[0] == '\n') {
 			/*
 			 * If line is blank, we've reached end of
@@ -516,7 +535,7 @@ send(mp, obuf, doign, prefix, convert)
 				dostat = 0;
 			}
 			ishead = 0;
-			ignoring = doign == ignoreall;
+			ignoring = doign == allignore;
 		} else if (infld && (line[0] == ' ' || line[0] == '\t')) {
 			/*
 			 * If this line is a continuation (via space or tab)
@@ -545,7 +564,7 @@ send(mp, obuf, doign, prefix, convert)
 					statusput(mp, obuf, prefix);
 					dostat = 0;
 				}
-				if (doign != ignoreall)
+				if (doign != allignore)
 					/* add blank line */
 					(void) putc('\n', obuf);
 				ishead = 0;
@@ -673,7 +692,7 @@ send(mp, obuf, doign, prefix, convert)
 			}
 		}
 	}
-	if (doign == ignoreall)
+	if (doign == allignore)
 		count--;		/* skip final blank line */
 	while (count > 0) {
 		if (f_gets(line, LINESIZE, ibuf) == NOSTR) {
@@ -701,7 +720,7 @@ send(mp, obuf, doign, prefix, convert)
 	}
 send_end:
 #if 0
-	if (doign == ignoreall && c > 0 && line[c - 1] != '\n')
+	if (doign == allignore && c > 0 && line[c - 1] != '\n')
 		/* no final blank line */
 		if ((c = getc(ibuf)) != EOF && putc(c, obuf) == EOF)
 			return -1;

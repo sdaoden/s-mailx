@@ -1,4 +1,4 @@
-/*	$Id: names.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: names.c,v 1.5 2000/04/21 19:56:24 gunnar Exp $	*/
 /*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
 /*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)names.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: names.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: names.c,v 1.5 2000/04/21 19:56:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -52,7 +52,6 @@ static char rcsid[]  = "@(#)$Id: names.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $"
  */
 
 #include "rcv.h"
-#include <fcntl.h>
 #include "extern.h"
 
 /*

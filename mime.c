@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.8 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.11 2000/05/02 02:17:37 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -36,7 +36,7 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.8 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.11 2000/05/02 02:17:37 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -45,15 +45,19 @@ static char rcsid[]  = "@(#)$Id: mime.c,v 1.8 2000/04/16 23:05:28 gunnar Exp $";
 /*
  * Mail -- a mail program
  *
- * MIME support functions
+ * MIME support functions.
  */
 
+/*
+ * You won't guess what these are for.
+ */
 const static char hextable[16] = "0123456789ABCDEF";
-char *defcharset = "iso-8859-1";
 static char *mimetypes_world = "/etc/mime.types";
 static char *mimetypes_user = "~/mime.types";
 
-/* Check for the readability of the given files */
+/*
+ * Check for the readability of the given files.
+ */
 int
 mime_check_attach(atts)
 struct name *atts;
@@ -69,6 +73,9 @@ struct name *atts;
 	return 0;
 }
 
+/*
+ * Check if c must be quoted inside a message's body.
+ */
 static int
 mustquote_body(c)
 unsigned char c;
@@ -78,6 +85,9 @@ unsigned char c;
 	return 0;
 }
 
+/*
+ * Check if c must be quoted inside a message's header.
+ */
 static int
 mustquote_hdr(c)
 unsigned char c;
@@ -88,6 +98,9 @@ unsigned char c;
 	return 0;
 }
 
+/*
+ * Check whether c may be displayed on an iso-8859-x terminal.
+ */
 int
 is_undisplayable(c)
 unsigned char c;
@@ -117,9 +130,11 @@ size_t s;
 	return p;
 }
 
+/*
+ * glibc 2.1 has such a function, but others ...
+ */
 static char *
 mime_strcasestr(haystack, needle)
-/* glibc 2.1 has such a function, but others ... */
 char *haystack, *needle;
 {
 	char *p, initial[3];
@@ -144,7 +159,7 @@ char *haystack, *needle;
 	return p;
 }
 
-#ifdef	NEED_STRCASECMP
+#ifndef	HAVE_STRCASECMP
 /* One of the things I really HATE on some SysVs is that they still
  * do not have these functions in their standard libc.
  * These implementations are quick-drawn and inefficient. Claim
@@ -199,10 +214,38 @@ size_t sz;
 }
 #endif	/* silly SysV functions */
 
+/*
+ * Get the character set dependant on the conversion.
+ */
+char *
+mime_getcharset(convert)
+{
+	char *charset;
+
+	if (convert == CONV_7BIT) {
+		/*
+		 * This variable shall remain undocumented because
+		 * only experts should change it.
+		 */
+		charset = value("charset7");
+		if (charset == NULL) {
+			charset = "US-ASCII";
+		}
+	} else {
+		charset = value("charset");
+		if (charset == NULL) {
+			charset = "iso-8859-1";
+		}
+	}
+	return charset;
+}
+
+/*
+ * Get the mime encoding from a Content-Transfer-Encoding header line.
+ */
 int
 mime_getenc(h)
 char *h;
-/* Get the mime encoding from a Content-Transfer-Encoding header line */
 {
 	char *p;
 
@@ -225,6 +268,9 @@ char *h;
 	return MIME_NONE;
 }
 
+/*
+ * Get the mime content from a Content-Type header line.
+ */
 int
 mime_getcontent(h)
 char *h;
@@ -248,6 +294,9 @@ char *h;
 	return MIME_UNKNOWN;
 }
 
+/*
+ * Get a mime style parameter from a header line.
+ */
 char *
 mime_getparam(param, h)
 char *param, *h;
@@ -277,6 +326,9 @@ char *param, *h;
 	return r;
 }
 
+/*
+ * Get the boundary out of a Content-Type: multipart/xyz header field.
+ */
 char *
 mime_getboundary(h)
 char *h;
@@ -303,12 +355,13 @@ char *h;
 	return mime_getparam("filename=", h);
 }
 
+/*
+ * Get a line like "text/html html" and look if x matches the extension
+ * The line must be terminated by a newline character
+ */
 static char *
 mime_tline(x, l)
 char *x, *l;
-/* Get a line like "text/html html" and look if x matches the extension
- * The line must be terminated by a newline character
- */
 {
 	char *type, *n;
 	int match = 0;
@@ -333,13 +386,16 @@ char *x, *l;
 		while (isspace(*l) != 0 && *l != '\0') l++;
 	}
 	if (match != 0) {
-		n = (char*)malloc(strlen(type) + 1);
+		n = (char*)smalloc(strlen(type) + 1);
 		strcpy(n, type);
 		return n;
 	}
 	return NULL;
 }
 
+/*
+ * Check the given MIME type file for extension ext.
+ */
 static char *
 mime_type(ext, filename)
 char *ext, *filename;
@@ -360,10 +416,12 @@ char *ext, *filename;
 	return type;
 }
 
+/*
+ * Return the Content-Type matching the extension of name.
+ */
 char *
 mime_filecontent(name)
 char *name;
-/* Return the Content-Type matching the extension of name */
 {
 	char *ext, *content;
 
@@ -379,20 +437,17 @@ char *name;
 	return NULL;
 }
 
+/*
+ * Check file contents.
+ */
 int
 mime_isclean(f)
 FILE *f;
-/* Check file contents. Return:
- * 0 file is 7bit
- * 1 file is international text
- * 2 file is binary
- */
 {
-	int isclean;
+	int isclean = MIME_7BITTEXT;
 	long initial_pos;
 	int c;
 
-	isclean = 0;
 	initial_pos = ftell(f);
 	for (;;) {
 		c = getc(f);
@@ -400,12 +455,12 @@ FILE *f;
 			break;
 		}
 		if (c & 0200) {
-			isclean = 1;
+			isclean = MIME_INTERTEXT;
 			continue;
 		}
 		if ((c < 0x20 && (c != ' ' && c != '\n' && c != '\t'))
 			|| c == 0177) {
-			isclean = 2;
+			isclean = MIME_BINARY;
 			break;
 		}
 	}
@@ -414,12 +469,16 @@ FILE *f;
 	return isclean;
 }
 
+/*
+ * Convert i to a hexadecimal character string and store it in b.
+ * The caller has to ensure that the size of b is sufficient.
+ */
 char *
 itohex(i, b)
 unsigned i;
 char *b;
 {
-	char *p, c;
+	char *p, *q, c;
 	
 	p = b;
 	while (i != 0) {
@@ -427,14 +486,18 @@ char *b;
 		i /= 16;
 	}
 	*p-- = '\0';
-	while (p >= b) {
-		c = *b;
-		*b++ = *p;
+	q = b;
+	while (p >= q) {
+		c = *q;
+		*q++ = *p;
 		*p-- = c;
 	}
 	return b;
 }
 
+/*
+ * Convert c to a hexadecimal character string and store it in hex.
+ */
 static char *
 ctohex(c, hex)
 unsigned char c;
@@ -452,6 +515,10 @@ char *hex;
 	return hex;
 }
 
+/*
+ * Write to a file converting to quoted-printable.
+ * The mustquote function determines whether a character must be quoted.
+ */
 static size_t
 mime_write_toqp(in, fo, mustquote)
 struct str *in;
@@ -487,6 +554,39 @@ int (*mustquote)(unsigned char);
 	return sz;
 }
 
+/*
+ * Write to a stringstruct converting to quoted-printable.
+ * The mustquote function determines whether a character must be quoted.
+ */
+static void
+mime_str_toqp(in, out, mustquote)
+struct str *in, *out;
+int (*mustquote)(unsigned char);
+{
+	char *p, *q, *upper, *h;
+
+	out->s = (char*)smalloc(in->l * 3 + 1);
+	q = out->s;
+	out->l = in->l;
+	upper = in->s + in->l;
+	for (p = in->s; p < upper; p++) {
+		if (mustquote(*p) 
+				|| (*(p + 1) == '\n' &&
+					(*p == ' ' || *p == '\t'))) {
+			out->l += 2;
+			*q++ = '=';
+			h = ctohex(*p, q);
+			q += 2;
+		} else {
+			*q++ = *p;
+		}
+	}
+	*q = '\0';
+}
+
+/*
+ * Write to a stringstruct converting from quoted-printable.
+ */
 static void
 mime_fromqp(in, out, todisplay, ishdr)
 struct str *in, *out;
@@ -526,10 +626,12 @@ struct str *in, *out;
 	return;
 }
 
+/*
+ * Convert header fields from RFC 1522 format
+ */
 void
 mime_fromhdr(in, out, todisplay)
 struct str *in, *out;
-/* convert from RFC1522 format */
 {
 	char *p, *q, *upper;
 	struct str cin, cout;
@@ -586,38 +688,79 @@ struct str *in, *out;
 	return;
 }
 
+/*
+ * Convert header fields to RFC 1522 format and write to the file fo.
+ */
 static size_t
 mime_write_tohdr(in, fo)
 struct str *in;
 FILE *fo;
 {
-	char *p, *upper, *charset;
-	struct str cin;
-	size_t sz;
+	char *upper, *wbeg, *wend, *charset;
+	struct str cin, cout;
+	size_t sz, col = 0, wr, charsetlen;
+	int mustquote,
+		maxcol = 65 /* there is the header field's name, too */;
 
 	sz = in->l;
 	upper = in->s + in->l;
-	for (p = in->s; p < upper; p++) {
-		if (mustquote_hdr(*p) && *p != ' ') {
-			charset = value("charset");
-			if (charset == NULL) {
-				charset = defcharset;
-				assign("charset", defcharset);
-			}
-			fprintf(fo, "=?%s?Q?", charset);
-			cin.s = p;
-			cin.l = upper - p;
-			sz += mime_write_toqp(&cin, fo, mustquote_hdr) - cin.l;
-			fwrite("?=", sizeof(char), 2, fo);
-			sz += strlen(charset) + 7;
+	charset = mime_getcharset(CONV_TOQP);
+	charsetlen = strlen(charset);
+	for (wbeg = in->s; wbeg < upper; wbeg = wend) {
+		while (wbeg < upper && isspace(*wbeg)) {
+			fputc(*wbeg++, fo);
+			sz++, col++;
+		}
+		if (wbeg == upper)
 			break;
+		mustquote = 0;
+		for (wend = wbeg; wend < upper && !isspace(*wend); wend++) {
+			if (mustquote_hdr(*wend))
+				mustquote = 1;
+		}
+		if (mustquote) {
+			for (;;) {
+				cin.s = wbeg;
+				cin.l = wend - wbeg;
+				mime_str_toqp(&cin, &cout, mustquote_hdr);
+				if ((wr = cout.l + charsetlen + 7)
+						< maxcol - col) {
+					fprintf(fo, "=?%s?Q?", charset);
+					fwrite(cout.s, sizeof(char),
+							cout.l, fo);
+					fwrite("?=", sizeof(char), 2, fo);
+					sz += wr, col += wr;
+					free(cout.s);
+					break;
+				} else {
+					if (col > 0) {
+						fprintf(fo, "\n ");
+						sz += 2;
+						col = 0;
+						maxcol = 76;
+					} else {
+						wend -= 4;
+					}
+					free(cout.s);
+				}
+			}
 		} else {
-			fputc(*p, fo);
+			if (wend - wbeg > maxcol - col) {
+				fwrite("\n ", sizeof(char), 2, fo);
+				sz += 2;
+				col = 0;
+				maxcol = 76;
+			}
+			wr = fwrite(wbeg, sizeof(*wbeg), wend - wbeg, fo);
+			sz += wr, col += wr;
 		}
 	}
 	return sz;
 }
 
+/*
+ * fwrite while checking for displayability.
+ */
 static size_t
 fwrite_tty(ptr, size, nmemb, f)
 void *ptr;
@@ -637,12 +780,14 @@ FILE *f;
 	return sz;
 }
 
+/*
+ * fwrite performing the given MIME conversion.
+ */
 size_t
 mime_write(ptr, size, nmemb, f, convert, todisplay)
 void *ptr;
 size_t size, nmemb;
 FILE *f;
-/* fwrite with MIME conversions */
 {
 	struct str in, out;
 	size_t sz;

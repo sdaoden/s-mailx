@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -85,10 +85,11 @@ static	int		colljmp_p;	/* whether to long jump */
 static	sigjmp_buf	collabort;	/* To end collection with error */
 
 FILE *
-collect(hp, printheaders, mp)
+collect(hp, printheaders, mp, quotefile)
 	struct header *hp;
 	int printheaders;
 	struct message *mp;
+	char *quotefile;
 {
 	FILE *fbuf;
 	struct ignoretab *quoteig;
@@ -158,7 +159,7 @@ collect(hp, printheaders, mp)
 	 * Quote an original message
 	 */
 	if (mp != NULL && (quote = value("quote")) != NULL) {
-		quoteig = ignoreall;
+		quoteig = allignore;
 		if (strcmp(quote, "noheading") == 0) {
 			/* do nothing here */
 		} else if (strcmp(quote, "headers") == 0) {
@@ -179,8 +180,8 @@ collect(hp, printheaders, mp)
 		cp = value("indentprefix");
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
-		send(mp, collf, quoteig, cp, CONV_QUOTE);
-		send(mp, stdout, quoteig, cp, CONV_QUOTE);
+		send_message(mp, collf, quoteig, cp, CONV_QUOTE);
+		send_message(mp, stdout, quoteig, cp, CONV_QUOTE);
 	}
 
 	if ((cp = value("escape")) != NOSTR)
@@ -196,6 +197,27 @@ collect(hp, printheaders, mp)
 	if (!sigsetjmp(colljmp, 1)) {
 		if (getsub)
 			grabh(hp, GSUBJECT);
+		if (quotefile != NULL) {
+			fbuf = Fopen(quotefile, "r");
+			if (fbuf == NULL) {
+				perror(quotefile);
+				goto err;
+			}
+			cp = value("interactive");
+			lc = 0;
+			cc = 0;
+			while (readline(fbuf, linebuf, LINESIZE) >= 0) {
+				lc++;
+				if ((t = putline(collf, linebuf)) < 0) {
+					Fclose(fbuf);
+					goto err;
+				}
+				if (cp != NULL)
+					putline(stdout, linebuf);
+				cc += t;
+			}
+			Fclose(fbuf);
+		}
 	} else {
 		/*
 		 * Come here for printing the after-signal message.
@@ -613,7 +635,7 @@ forward(ms, fp, f)
 	struct ignoretab *ig;
 	char *tabst;
 
-	msgvec = (int *) salloc((msgCount+1) * sizeof *msgvec);
+	msgvec = (int *) salloc((msgcount+1) * sizeof *msgvec);
 	if (msgvec == (int *) NOSTR)
 		return(0);
 	if (getmsglist(ms, msgvec, 0) < 0)
@@ -637,7 +659,7 @@ forward(ms, fp, f)
 
 		touch(mp);
 		printf(" %d", *msgvec);
-		if (send(mp, fp, ig, tabst, CONV_QUOTE) < 0) {
+		if (send_message(mp, fp, ig, tabst, CONV_QUOTE) < 0) {
 			perror(tempMail);
 			return(-1);
 		}
@@ -650,7 +672,7 @@ forward(ms, fp, f)
  * Print (continue) when continued after ^Z.
  */
 /*ARGSUSED*/
-void
+RETSIGTYPE
 collstop(s)
 	int s;
 {
@@ -680,7 +702,7 @@ collstop(s)
  * Then jump out of the collection loop.
  */
 /*ARGSUSED*/
-void
+RETSIGTYPE
 collint(s)
 	int s;
 {
@@ -712,7 +734,7 @@ collint(s)
 }
 
 /*ARGSUSED*/
-void
+RETSIGTYPE
 collhup(s)
 	int s;
 {

@@ -1,3 +1,17 @@
+[9.10] released 2000-05-02
+* Added the `-q' option
+* Convert a subject given on the command line from RFC 1522 format
+* The variable `srbuf' is now of type sigjmp_buf
+* Introduced GNU autoconf support
+* Corrected RFC1522-encoding of headers to respect word boundaries
+* Use gethostbyname() to include the FQDN in message ids
+* Use base36 to get shorter message ids and multipart boundaries
+* Use data from /dev/urandom in message ids and boundaries if available
+* Added the `pipe' command
+* readline() should no longer fail if libsafe is used
+* Added the `-V' option
+* Limit the `References' header field to 21 entries
+
 [9.04] released 2000-04-17
 * Some fixes for machines where chars are unsigned by default
 * Merged the Mail.1 and nail.1 manual pages and added some missing

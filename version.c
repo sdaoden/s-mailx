@@ -1,4 +1,4 @@
-/*	$Id: version.c,v 1.7 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: version.c,v 1.9 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
 /*	NetBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
 
@@ -41,9 +41,13 @@ static char sccsid[]  = "@(#)version.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: version.c,v 1.7 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: version.c,v 1.9 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
+
+#include "config.h"
+
+#include "config.h"
 
 /*
  * Just keep track of the date/sid of this version of Mail.
@@ -52,5 +56,5 @@ static char rcsid[]  = "@(#)$Id: version.c,v 1.7 2000/04/16 23:05:28 gunnar Exp 
 #if 0
 char	*version = "8.1 6/6/93";
 #else
-const char *version = "nail 9.04 2000-04-17";
+const char *version = "nail " VERSION " " REL_DATE;
 #endif

@@ -1,4 +1,4 @@
-/*	$Id: quit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: quit.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 /*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 
@@ -41,15 +41,16 @@ static char sccsid[]  = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: quit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: quit.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
-#include <sys/file.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include "extern.h"
+#ifdef	HAVE_SYS_FILE_H
+#include <sys/file.h>
+#endif
 
 /*
  * Rcv -- receive mail rationally.
@@ -171,7 +172,7 @@ nolock:
 	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
 	if (value("keepsave") != NOSTR)
 		nohold &= ~MSAVED;
-	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
+	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
 			mp->m_flag |= MSTATUS;
@@ -188,7 +189,7 @@ nolock:
 		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
 			Tflag = NOSTR;
 	}
-	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
+	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MBOX)
 			c++;
 		if (mp->m_flag & MPRESERVE)
@@ -204,7 +205,7 @@ nolock:
 	}
 	if (Tflag != NOSTR)
 		Fclose(readstat);
-	if (p == msgCount && !modify && !anystat) {
+	if (p == msgcount && !modify && !anystat) {
 		printf("Held %d message%s in %s\n",
 			p, p == 1 ? "" : "s", mailname);
 		Fclose(fbuf);
@@ -278,9 +279,10 @@ nolock:
 		}
 		fchmod(fileno(obuf), 0600);
 	}
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MBOX)
-			if (send(mp, obuf, saveignore, NOSTR, CONV_NONE) < 0) {
+			if (send_message(mp, obuf, saveignore,
+						NOSTR, CONV_NONE) < 0) {
 				perror(mbox);
 				if (ibuf)
 					Fclose(ibuf);
@@ -391,10 +393,10 @@ writeback(res)
 		while ((c = getc(res)) != EOF)
 			(void) putc(c, obuf);
 #endif
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
-			if (send(mp, obuf, (struct ignoretab *)0,
+			if (send_message(mp, obuf, (struct ignoretab *)0,
 						NOSTR, CONV_NONE) < 0) {
 				perror(mailname);
 				Fclose(obuf);
@@ -445,7 +447,7 @@ edstop()
 		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
 			Tflag = NOSTR;
 	}
-	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
+	for (mp = &message[0], gotcha = 0; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
 			mp->m_flag |= MSTATUS;
@@ -502,11 +504,11 @@ edstop()
 	}
 	trunc(obuf);
 	c = 0;
-	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
+	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
 		if ((mp->m_flag & MDELETED) != 0)
 			continue;
 		c++;
-		if (send(mp, obuf, (struct ignoretab *) NULL,
+		if (send_message(mp, obuf, (struct ignoretab *) NULL,
 					NOSTR, CONV_NONE) < 0) {
 			perror(mailname);
 			relsesigs();

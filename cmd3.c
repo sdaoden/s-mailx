@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.6 2000/05/02 00:54:33 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.6 2000/05/02 00:54:33 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -206,6 +206,8 @@ struct header *head;
 {
 	char *oldref, *oldmsgid, *newref;
 	size_t reflen;
+	unsigned i;
+	struct name *n;
 
 	oldref = hfield("references", mp);
 	oldmsgid = hfield("message-id", mp);
@@ -227,8 +229,21 @@ struct header *head;
 		}
 	} else if (oldmsgid)
 		strcpy(newref, oldmsgid);
-	head->h_ref = extract(newref, GREF);
+	n = extract(newref, GREF);
 	free(newref);
+	/*
+	 * Limit the references to 21 entries.
+	 */
+	while (n->n_flink != NULL)
+		n = n->n_flink;
+	for (i = 1; i < 21; i++) {
+		if (n->n_blink != NULL)
+			n = n->n_blink;
+		else
+			break;
+	}
+	n->n_blink = NULL;
+	head->h_ref = n;
 }
 
 int
@@ -308,7 +323,7 @@ _respond(msgvec)
 	make_ref(mp, &head);
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	mail1(&head, 1, mp);
+	mail1(&head, 1, mp, NULL);
 	return(0);
 }
 
@@ -689,7 +704,7 @@ _Respond(msgvec)
 	make_ref(mp, &head);
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	mail1(&head, 1, mp);
+	mail1(&head, 1, mp, NULL);
 	return 0;
 }
 

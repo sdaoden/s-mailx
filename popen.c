@@ -1,4 +1,4 @@
-/*	$Id: popen.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: popen.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp 	*/
 /*	NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp 	*/
 
@@ -41,13 +41,14 @@ static char sccsid[]  = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp";
 #else
-static char rcsid[]  = "@(#)$Id: popen.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: popen.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
+#ifdef	HAVE_SYS_WAIT_H
 #include <sys/wait.h>
-#include <fcntl.h>
+#endif
 #include <errno.h>
 #include "extern.h"
 
@@ -74,7 +75,9 @@ static struct child *findchild __P((int));
 static void delchild __P((struct child *));
 static int file_pid __P((FILE *));
 
-/* Provide BSD-like signal() on all systems */
+/*
+ * Provide BSD-like signal() on all systems.
+ */
 signal_handler_t
 safe_signal(signum, handler)
 signal_handler_t handler;
@@ -158,9 +161,8 @@ Fclose(fp)
 }
 
 FILE *
-Popen(cmd, mode)
-	char *cmd;
-	char *mode;
+Popen(cmd, mode, shell)
+char *cmd, *mode, *shell;
 {
 	int p[2];
 	int myside, hisside, fd0, fd1;
@@ -182,7 +184,12 @@ Popen(cmd, mode)
 		fd1 = -1;
 	}
 	sigemptyset(&nset);
-	if ((pid = start_command(cmd, &nset, fd0, fd1, NOSTR, NOSTR, NOSTR)) < 0) {
+	if (shell == NULL) {
+		pid = start_command(cmd, &nset, fd0, fd1, NOSTR, NOSTR, NOSTR);
+	} else {
+		pid = start_command(shell, &nset, fd0, fd1, "-c", cmd, NOSTR);
+	}
+	if (pid < 0) {
 		close(p[READ]);
 		close(p[WRITE]);
 		return (FILE *)NULL;
@@ -388,7 +395,7 @@ delchild(cp)
 	free((char *) cp);
 }
 
-void
+RETSIGTYPE
 sigchild(signo)
 	int signo;
 {

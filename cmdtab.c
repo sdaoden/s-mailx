@@ -1,4 +1,4 @@
-/*	$Id: cmdtab.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: cmdtab.c,v 1.4 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp 	*/
 /*	NetBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmdtab.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: cmdtab.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmdtab.c,v 1.4 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -107,6 +107,9 @@ const struct cmd cmdtab[] = {
 	{ "list",	pcmdlist,	M|NOLIST,	0,	0 },
 	{ "xit",	rexit,		M|NOLIST,	0,	0 },
 	{ "exit",	rexit,		M|NOLIST,	0,	0 },
+	{ "pipe",	pipecmd,	STRLIST,	0,	MMNDEL },
+	{ "|",		pipecmd,	STRLIST,	0,	MMNDEL },
+	{ "Pipe",	Pipecmd,	STRLIST,	0,	MMNDEL },
 	{ "size",	messize,	MSGLIST,	0,	MMNDEL },
 	{ "hold",	preserve,	W|MSGLIST,	0,	MMNDEL },
 	{ "if",		ifcmd,		F|M|RAWLIST,	1,	1 },

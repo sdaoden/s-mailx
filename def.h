@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.5 2000/04/11 16:42:23 gunnar Exp $	*/
+/*	$Id: def.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.5 2000/04/11 16:42:23 gunnar Exp $
+ *	$Id: def.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $
  */
 
 /*
@@ -44,24 +44,50 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#include <sys/param.h>
+#include "config.h"
+#ifdef	HAVE_SYS_STAT_H
 #include <sys/stat.h>
-#include <sys/time.h>
+#endif
 
-#include <signal.h>
+#ifdef	TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#ifdef	HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+
 #include <termios.h>
+#ifdef	HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#ifdef	HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+#ifdef	STDC_HEADERS
 #include <stdlib.h>
+#include <string.h>
+#endif
 #include <stdio.h>
 #include <ctype.h>
-#include <string.h>
-#include "pathnames.h"
 
 #define	APPEND				/* New mail goes to end of mailbox */
 
 #define	ESCAPE		'~'		/* Default escape for sending */
 #define	NMLSIZE		1024		/* max names in a message list */
+#ifndef	MAXPATHLEN
+#ifdef	_POSIX_MAX_PATH
+#define	MAXPATHLEN	_POSIX_MAX_PATH
+#else
+#define	MAXPATHLEN	1024
+#endif
+#endif
+#ifndef	PATHSIZE
 #define	PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
+#endif
 #define	HSHSIZE		59		/* Hash size for aliases and vars */
 #define	LINESIZE	BUFSIZ		/* max readable line width */
 #define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
@@ -79,11 +105,7 @@
 #endif
 #endif
 
-/* It's a mess with sig_t, sighandler_t &c. so we just define our own.
- * Change this if it does not fit your system,
- * this one is POSIX.1 compatible.
- */
-typedef void (*signal_handler_t) __P((int));
+typedef RETSIGTYPE (*signal_handler_t) __P((int));
 
 enum {
 	MIME_NONE,			/* message is not in MIME format */
@@ -116,6 +138,12 @@ enum {
 	MIME_TEXT,			/* text/ content */
 	MIME_MULTI,			/* multipart/ content */
 	MIME_DISCARD			/* content is discarded */
+};
+
+enum {
+	MIME_7BITTEXT,			/* us ascii text */
+	MIME_INTERTEXT,			/* international text */
+	MIME_BINARY			/* binary content */
 };
 
 struct str {

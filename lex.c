@@ -1,4 +1,4 @@
-/*	$Id: lex.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: lex.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 /*	NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 
@@ -41,13 +41,12 @@ static char sccsid[]  = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: lex.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: lex.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include <errno.h>
-#include <fcntl.h>
 #include "extern.h"
 
 /*
@@ -153,11 +152,11 @@ setfile(name)
 	(void) fcntl(fileno(itf), F_SETFD, 1);
 	rm(tempMesg);
 	setptr(ibuf);
-	setmsize(msgCount);
+	setmsize(msgcount);
 	Fclose(ibuf);
 	relsesigs();
 	sawcom = 0;
-	if (!edit && msgCount == 0) {
+	if (!edit && msgcount == 0) {
 nomail:
 		fprintf(stderr, "No mail for %s\n", who);
 		return -1;
@@ -508,7 +507,7 @@ isprefix(as1, as2)
 int	inithdr;			/* am printing startup headers */
 
 /*ARGSUSED*/
-void
+RETSIGTYPE
 intr(s)
 	int s;
 {
@@ -534,7 +533,7 @@ intr(s)
 /*
  * When we wake up after ^Z, reprint the prompt.
  */
-void
+RETSIGTYPE
 stop(s)
 	int s;
 {
@@ -558,7 +557,7 @@ stop(s)
  * Branch here on hangup signal and simulate "exit".
  */
 /*ARGSUSED*/
-void
+RETSIGTYPE
 hangup(s)
 	int s;
 {
@@ -580,7 +579,7 @@ announce()
 	vec[0] = mdot;
 	vec[1] = 0;
 	dot = &message[mdot - 1];
-	if (msgCount > 0 && value("noheader") == NOSTR) {
+	if (msgcount > 0 && value("noheader") == NOSTR) {
 		inithdr++;
 		headers(vec);
 		inithdr = 0;
@@ -598,19 +597,19 @@ newfileinfo()
 	int u, n, mdot, d, s;
 	char fname[BUFSIZ], zname[BUFSIZ], *ename;
 
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MNEW)
 			break;
-	if (mp >= &message[msgCount])
-		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	if (mp >= &message[msgcount])
+		for (mp = &message[0]; mp < &message[msgcount]; mp++)
 			if ((mp->m_flag & MREAD) == 0)
 				break;
-	if (mp < &message[msgCount])
+	if (mp < &message[msgcount])
 		mdot = mp - &message[0] + 1;
 	else
 		mdot = 1;
 	s = d = 0;
-	for (mp = &message[0], n = 0, u = 0; mp < &message[msgCount]; mp++) {
+	for (mp = &message[0], n = 0, u = 0; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MNEW)
 			n++;
 		if ((mp->m_flag & MREAD) == 0)
@@ -624,7 +623,7 @@ newfileinfo()
 	if (getfold(fname, BUFSIZ-1) >= 0) {
 		strcat(fname, "/");
 		if (strncmp(fname, mailname, strlen(fname)) == 0) {
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 			snprintf(zname, BUFSIZ, "+%s",
 					mailname + strlen(fname));
 #else
@@ -634,10 +633,10 @@ newfileinfo()
 		}
 	}
 	printf("\"%s\": ", ename);
-	if (msgCount == 1)
+	if (msgcount == 1)
 		printf("1 message");
 	else
-		printf("%d messages", msgCount);
+		printf("%d messages", msgcount);
 	if (n > 0)
 		printf(" %d new", n);
 	if (u-n > 0)

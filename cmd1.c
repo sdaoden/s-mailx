@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.5 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.5 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -77,15 +77,15 @@ headers(v)
 	if (screen < 0)
 		screen = 0;
 	mp = &message[screen * size];
-	if (mp >= &message[msgCount])
-		mp = &message[msgCount - size];
+	if (mp >= &message[msgcount])
+		mp = &message[msgcount - size];
 	if (mp < &message[0])
 		mp = &message[0];
 	flag = 0;
 	mesg = mp - &message[0];
 	if (dot != &message[n-1])
 		dot = mp;
-	for (; mp < &message[msgCount]; mp++) {
+	for (; mp < &message[msgcount]; mp++) {
 		mesg++;
 		if (mp->m_flag & MDELETED)
 			continue;
@@ -118,7 +118,7 @@ scroll(v)
 	case 0:
 	case '+':
 		s++;
-		if (s * size > msgCount) {
+		if (s * size > msgcount) {
 			printf("On last screenful of messages\n");
 			return(0);
 		}
@@ -151,7 +151,7 @@ screensize()
 
 	if ((cp = value("screen")) != NOSTR && (s = atoi(cp)) > 0)
 		return s;
-	return screenheight - 4;
+	return scrnheight - 4;
 }
 
 /*
@@ -218,7 +218,7 @@ printhead(mesg)
 		dispc = 'M';
 	parse(headline, &hl, pbuf);
 	sprintf(wcount, "%3d/%-5u", mp->m_lines, (unsigned int)mp->m_size);
-	subjlen = screenwidth - 50 - strlen(wcount);
+	subjlen = scrnwidth - 50 - strlen(wcount);
 	if (subjlen > out.l)
 		subjlen = out.l;
 	name = value("show-rcpt") != NOSTR ?
@@ -271,61 +271,14 @@ pcmdlist(v)
 }
 
 /*
- * Paginate messages, honor ignored fields.
- */
-int
-more(v)
-	void *v;
-{
-	int *msgvec = v;
-	return (type1(msgvec, 1, 1));
-}
-
-/*
- * Paginate messages, even printing ignored fields.
- */
-int
-More(v)
-	void *v;
-{
-	int *msgvec = v;
-
-	return (type1(msgvec, 0, 1));
-}
-
-/*
- * Type out messages, honor ignored fields.
- */
-int
-type(v)
-	void *v;
-{
-	int *msgvec = v;
-
-	return(type1(msgvec, 1, 0));
-}
-
-/*
- * Type out messages, even printing ignored fields.
- */
-int
-Type(v)
-	void *v;
-{
-	int *msgvec = v;
-
-	return(type1(msgvec, 0, 0));
-}
-
-/*
  * Type out the messages requested.
  */
 sigjmp_buf	pipestop;
 
-int
-type1(msgvec, doign, page)
-	int *msgvec;
-	int doign, page;
+static int
+type1(msgvec, doign, page, pipe, cmd)
+int *msgvec;
+char *cmd;
 {
 	int *ip;
 	struct message *mp;
@@ -335,24 +288,43 @@ type1(msgvec, doign, page)
 #if __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &cp;
+	(void) &cmd;
 	(void) &obuf;
 #endif
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
-	if (value("interactive") != NOSTR &&
+	if (pipe) {
+		if (cmd == NULL) {
+			cmd = value("cmd");
+			if (cmd == NULL || *cmd == '\0') {
+				fputs("variable cmd not set\n", stderr);
+				return 1;
+			}
+		}
+		cp = value("SHELL");
+		if (cp == NOSTR)
+			cp = _PATH_CSHELL;
+		obuf = Popen(cmd, "w", cp);
+		if (obuf == (FILE*)NULL) {
+			perror(cmd);
+			obuf = stdout;
+		} else {
+			safe_signal(SIGPIPE, brokpipe);
+		}
+	} else if (value("interactive") != NOSTR &&
 	    (page || (cp = value("crt")) != NOSTR)) {
 		nlines = 0;
 		if (!page) {
-			for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++)
+			for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++)
 				nlines += message[*ip - 1].m_lines;
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			cp = value("PAGER");
 			if (cp == NOSTR || *cp == '\0')
 				cp = _PATH_MORE;
-			obuf = Popen(cp, "w");
+			obuf = Popen(cp, "w", NULL);
 			if (obuf == (FILE*)NULL) {
 				perror(cp);
 				obuf = stdout;
@@ -360,13 +332,17 @@ type1(msgvec, doign, page)
 				safe_signal(SIGPIPE, brokpipe);
 		}
 	}
-	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
+	for (ip = msgvec; *ip && ip - msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		dot = mp;
 		if (value("quiet") == NOSTR)
 			fprintf(obuf, "Message %d:\n", *ip);
-		(void) send(mp, obuf, doign ? ignore : 0, NOSTR, CONV_TODISP);
+		(void) send_message(mp, obuf, doign ? ignore : 0,
+				    NOSTR, CONV_TODISP);
+		if (pipe && value("page")) {
+			fputc('\f', obuf);
+		}
 	}
 close_pipe:
 	if (obuf != stdout) {
@@ -381,10 +357,165 @@ close_pipe:
 }
 
 /*
+ * Get the shell command out of the pipe command's arguments.
+ */
+char *
+getcmd(linebuf, flag)
+char *linebuf;
+int *flag;
+{
+	char *cp, *p;
+	char quoted;
+
+	*flag = 1;
+	cp = strlen(linebuf) + linebuf - 1;
+
+	/*
+	 * Strip away trailing blanks.
+	 */
+	while (cp > linebuf && isspace(*cp))
+		cp--;
+	*++cp = 0;
+	if (cp == linebuf) {
+		*flag = 0;
+		return NOSTR;
+	}
+
+	/*
+	 * Now search for the beginning of the command name.
+	 */
+	quoted = *(cp - 1);
+	if (quoted == '\'' || quoted == '\"') {
+		cp--;
+		*cp-- = '\0';
+		while (cp > linebuf) {
+			if (*cp != quoted) {
+				cp--;
+			} else if (*(cp - 1) != '\\') {
+				break;
+			} else {
+				p = --cp;
+				do {
+					*p = *(p + 1);
+				} while (*p++);
+				cp--;
+			}
+		}
+		if (*cp == quoted)
+			*cp++ = 0;
+		else
+			*flag = 0;
+	} else {
+		while (cp > linebuf && !isspace(*cp))
+			cp--;
+		if (isspace(*cp))
+			*cp++ = 0;
+		else
+			*flag = 0;
+	}
+	if (*cp == '\0') {
+		return(NOSTR);
+	}
+	return(cp);
+}
+
+/*
+ * Pipe the messages requested.
+ */
+int
+pipe1(str, doign)
+char *str;
+{
+	char *cmd;
+	int f, *msgvec;
+
+	msgvec = (int*) salloc((msgcount + 2) * sizeof *msgvec);
+	cmd = getcmd(str, &f);
+	if (!f) {
+		*msgvec = first(0, MMNORM);
+		if (*msgvec == 0) {
+			puts("No messages to pipe.");
+			return 1;
+		}
+		msgvec[1] = 0;
+	} else if (getmsglist(str, msgvec, 0) < 0)
+		return 1;
+	return type1(msgvec, doign, 0, 1, cmd);
+}
+
+/*
+ * Paginate messages, honor ignored fields.
+ */
+int
+more(v)
+	void *v;
+{
+	int *msgvec = v;
+	return (type1(msgvec, 1, 1, 0, NULL));
+}
+
+/*
+ * Paginate messages, even printing ignored fields.
+ */
+int
+More(v)
+	void *v;
+{
+	int *msgvec = v;
+
+	return (type1(msgvec, 0, 1, 0, NULL));
+}
+
+/*
+ * Type out messages, honor ignored fields.
+ */
+int
+type(v)
+	void *v;
+{
+	int *msgvec = v;
+
+	return(type1(msgvec, 1, 0, 0, NULL));
+}
+
+/*
+ * Type out messages, even printing ignored fields.
+ */
+int
+Type(v)
+	void *v;
+{
+	int *msgvec = v;
+
+	return(type1(msgvec, 0, 0, 0, NULL));
+}
+
+/*
+ * Pipe messages, honor ignored fields.
+ */
+int
+pipecmd(v)
+void *v;
+{
+	char *str = v;
+	return(pipe1(str, 1));
+}
+/*
+ * Pipe messages, not respecting ignored fields.
+ */
+int
+Pipecmd(v)
+void *v;
+{
+	char *str = v;
+	return(pipe1(str, 0));
+}
+
+/*
  * Respond to a broken pipe signal --
  * probably caused by quitting more.
  */
-void
+RETSIGTYPE
 brokpipe(signo)
 	int signo;
 {
@@ -415,7 +546,7 @@ top(v)
 			topl = 5;
 	}
 	lineb = 1;
-	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
+	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		dot = mp;

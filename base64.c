@@ -1,4 +1,4 @@
-/*	$Id: base64.c,v 1.7 2000/04/12 13:59:56 gunnar Exp $	*/
+/*	$Id: base64.c,v 1.9 2000/05/01 22:27:04 gunnar Exp $	*/
 
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -19,7 +19,7 @@
  */
 
 #ifndef lint
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.7 2000/04/12 13:59:56 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: base64.c,v 1.9 2000/05/01 22:27:04 gunnar Exp $";
 #endif /* not lint */
 
 /*
@@ -46,7 +46,10 @@ const static char b64index[] = {
 
 #define char64(c)  ((c) < 0 ? -1 : b64index[(int)(c)])
 
-static char *
+/*
+ * Convert three characters to base64.
+ */
+static signed char *
 ctob64(p, pad)
 unsigned char *p;
 {
@@ -66,12 +69,17 @@ unsigned char *p;
 	return b64;
 }
 
+/*
+ * Write to a file converting to base64. The input must be aligned
+ * e.g. at 972 character bounds.
+ */
 size_t
 mime_write_tob64(in, fo)
 struct str *in;
 FILE *fo;
 {
-	signed char *p, *h, *upper, q[3];
+	char *p, *upper, q[3];
+	signed char *h;
 	int i, l, pads;
 	size_t sz;
 
@@ -97,11 +105,15 @@ FILE *fo;
 	return sz;
 }
 
+/*
+ * Decode from base64.
+ */
 void
 mime_fromb64(in, out, todisplay, is_text)
 struct str *in, *out;
 {
-	signed char *p, *q, *upper, c, d, e, f, g;
+	char *p, *q, *upper;
+	signed char c, d, e, f, g;
 	int done = 0, newline = 0;
 
 	out->s = smalloc(in->l * 3 / 4 + 2);
@@ -184,13 +196,13 @@ struct str *in, *out;
 	return;
 }
 
+/*
+ * Buffer the base64 input so mime_fromb64 gets always multiples of
+ * 4 characters.
+ * As we have only one buffer, this function is not reentrant.
+ */
 void
 mime_fromb64_b(in, out, todisplay, is_text, f)
-/* Buffer the base64 input so mime_fromb64 gets always multiples of
- * 4 characters.
- * As we have only one buffer, this function is not reentrant, but
- * who cares ...
- */
 struct str *in, *out;
 FILE *f;
 {

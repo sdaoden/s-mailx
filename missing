@@ -1,0 +1,16 @@
+#!/bin/sh
+echo "Arguments to $0 are: $*" >&2
+echo "You have modified a part of this archive and need special tools
+to build now. You can either get the tools (which are free software)
+or reverse your modifications and use \`touch' to satisfy \`make'.
+
+Missing program                      File to touch
+--------------------------------------------------
+aclocal                              aclocal.m4
+autoconf                             configure
+autoheader                           config.h.in
+automake                             Makefile.in
+
+The GNU version of this script will do this automatically for you, but
+it is not included here for licensing reasons." >&2
+exit 1

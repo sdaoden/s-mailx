@@ -1,4 +1,4 @@
-/*	$Id: cmd2.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: cmd2.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 /*	NetBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 
@@ -41,12 +41,14 @@ static char sccsid[]  = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
+#ifdef	HAVE_SYS_WAIT_H
 #include <sys/wait.h>
+#endif
 #include "extern.h"
 
 /*
@@ -119,10 +121,10 @@ next(v)
 	 * wraparound.
 	 */
 
-	for (mp = dot+1; mp < &message[msgCount]; mp++)
+	for (mp = dot+1; mp < &message[msgcount]; mp++)
 		if ((mp->m_flag & (MDELETED|MSAVED)) == 0)
 			break;
-	if (mp >= &message[msgCount]) {
+	if (mp >= &message[msgcount]) {
 		printf("At EOF\n");
 		return(0);
 	}
@@ -181,7 +183,7 @@ save1(str, mark, cmd, ignore, convert)
 	int newfile, nullfile = 0;
 	struct stat st;
 
-	msgvec = (int *) salloc((msgCount + 2) * sizeof *msgvec);
+	msgvec = (int *) salloc((msgcount + 2) * sizeof *msgvec);
 	if ((file = snarf(str, &f)) == NOSTR)
 		return(1);
 	if (!f) {
@@ -217,10 +219,10 @@ save1(str, mark, cmd, ignore, convert)
 		 */
 		fputc('\n', obuf);
 	}
-	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
+	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
-		if (send(mp, obuf, ignore, NOSTR, convert) < 0) {
+		if (send_message(mp, obuf, ignore, NOSTR, convert) < 0) {
 			perror(file);
 			Fclose(obuf);
 			return(1);
@@ -265,7 +267,7 @@ swrite(v)
 {
 	char *str = v;
 
-	return save1(str, 0, "write", ignoreall, CONV_TOFILE);
+	return save1(str, 0, "write", allignore, CONV_TOFILE);
 }
 
 /*
@@ -401,7 +403,7 @@ undeletecmd(v)
 	struct message *mp;
 	int *ip;
 
-	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
+	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		dot = mp;

@@ -1,4 +1,4 @@
-/*	$Id: edit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: edit.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 /*	NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 
@@ -41,12 +41,11 @@ static char sccsid[]  = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: edit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: edit.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
-#include <fcntl.h>
 #include "extern.h"
 
 /*
@@ -98,7 +97,7 @@ edit1(msgvec, type)
 	/*
 	 * Deal with each message to be edited . . .
 	 */
-	for (i = 0; msgvec[i] && i < msgCount; i++) {
+	for (i = 0; msgvec[i] && i < msgcount; i++) {
 		signal_handler_t sigint;
 
 		if (i > 0) {

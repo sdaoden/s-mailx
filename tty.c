@@ -1,4 +1,4 @@
-/*	$Id: tty.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: tty.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
 /*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 /*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: tty.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: tty.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -54,8 +54,12 @@ static char rcsid[]  = "@(#)$Id: tty.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
-#include <fcntl.h>
+#ifdef	HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
+#ifdef	HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 
 static	cc_t		c_erase;	/* Current erase char */
 static	cc_t		c_kill;		/* Current kill char */
@@ -306,7 +310,7 @@ redo:
 /*
  * Receipt continuation.
  */
-void
+RETSIGTYPE
 ttystop(s)
 	int s;
 {
@@ -328,7 +332,7 @@ ttystop(s)
 }
 
 /*ARGSUSED*/
-void
+RETSIGTYPE
 ttyint(s)
 	int s;
 {
@@ -345,6 +349,7 @@ ttyint(s)
    interruptable stdio call */ 
 static int safegetc(FILE *ibuf)
 {
+	fd_set rds;
 	int oldfl;
 	int res;
 	while (1) {
@@ -356,11 +361,14 @@ static int safegetc(FILE *ibuf)
 		if (res != EOF)
 			return res;
 		else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			fd_set rds;
 			clearerr(ibuf);
 			FD_ZERO(&rds);
 			FD_SET(fileno(ibuf),&rds);
-			select(fileno(ibuf)+1,&rds,NULL,NULL,NULL);
+			select((SELECT_TYPE_ARG1)(fileno(ibuf) + 1),
+					SELECT_TYPE_ARG234(&rds),
+					SELECT_TYPE_ARG234(NULL),
+					SELECT_TYPE_ARG234(NULL),
+					SELECT_TYPE_ARG5(NULL));
 			/* if an interrupt occur drops the current
 			   line and returns */
 			if (got_interrupt)

@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.7 2000/04/21 20:03:29 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -35,25 +35,18 @@
 #if 0
 static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.7 2000/04/21 20:03:29 gunnar Exp $";
 #endif
 #endif
-
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/utsname.h>
-
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <signal.h>
 
 #include "rcv.h"
+#include <sys/types.h>
+#ifdef	HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
+
+#include <errno.h>
+
 #include "extern.h"
 
 #ifndef O_SYNC
@@ -111,6 +104,7 @@ create_exclusive(fname)
 	const char *fname;
 {
 	char path[MAXPATHLEN];
+	char *hostname;
 	char apid[40]; /* sufficient for storign 128 bits pids */
 	const char *ptr;
 	time_t t;
@@ -118,10 +112,22 @@ create_exclusive(fname)
 	size_t ntries, cookie;
 	int fd, serrno, cc;
 	struct stat st;
+#if defined (HAVE_UNAME)
 	struct utsname ut;
+#elif defined (HAVE_GETHOSTNAME)
+	char host__name[MAXHOSTNAMELEN];
+#endif
 
 	time(&t);
+#if defined (HAVE_UNAME)
 	uname(&ut);
+	hostname = ut.nodename;
+#elif defined (HAVE_GETHOSTNAME)
+	gethostname(host__name, MAXHOSTNAMELEN);
+	hostname = host__name;
+#else
+	hostname = "unknown";
+#endif
 	pid = getpid();
 
 	cookie = (int)pid ^ (int)t;
@@ -134,12 +140,12 @@ create_exclusive(fname)
 	else
 		ptr++;
 
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%.*s.%s.%x", 
-	    ptr - fname, fname, ut.nodename, cookie);
+	    ptr - fname, fname, hostname, cookie);
 #else
 	(void) sprintf(path, "%.*s.%s.%x", 
-	    ptr - fname, fname, ut.nodename, cookie);
+	    ptr - fname, fname, hostname, cookie);
 #endif
 
 	/*
@@ -222,7 +228,7 @@ dot_lock(fname, pollinterval, fp, msg)
 	sigaddset(&nset, SIGTSTP);
 	sigaddset(&nset, SIGCHLD);
 
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
 #else
 	(void) sprintf(path, "%s.lock", fname);
@@ -264,7 +270,7 @@ dot_unlock(fname)
 	if (maildir_access(fname) != 0)
 		return;
 
-#ifndef	NO_SNPRINTF
+#ifdef	HAVE_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
 #else
 	(void) sprintf(path, "%s.lock", fname);
