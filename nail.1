@@ -33,12 +33,13 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.59 (gritter) 11/15/03
+.\"     Sccsid: @(#)nail.1	2.69 (gritter) 3/19/04
 .\"
-.TH NAIL 1 "11/15/03" "nail 10.6" "User Commands"
+.TH NAIL 1 "3/19/04" "nail 10.7" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
+.PD 0
 .HP
 .ad l
 \fBnail\fR [\fB\-BFintv~\fR]
@@ -52,6 +53,7 @@ nail \- send and receive MIME conformant mail
 .ad l
 \fBnail\fR [\fB\-BeinNv~\fR] [\fB\-u\fI\ user\fR]
 .br
+.PD
 .ad b
 .SH DESCRIPTION
 \fINail\fR is an intelligent mail processing system, which has
@@ -59,7 +61,7 @@ a command syntax reminiscent of
 .IR ed (1)
 with lines replaced by messages.
 It is based on Berkeley Mail 8.1,
-is intended to provide the functionality of the POSIX.2
+is intended to provide the functionality of the POSIX
 .B mailx
 command,
 and offers extensions
@@ -192,7 +194,7 @@ which can be abbreviated `p').
 You can move among the messages
 much as you move between lines in
 .IR ed (1),
-with the commands '+' and '\-' moving backwards and forwards,
+with the commands `+' and `\-' moving backwards and forwards,
 and simple numbers.
 .SS "Disposing of mail"
 After examining a message
@@ -211,15 +213,15 @@ usually disappear never to be seen again.
 Commands such as print and delete
 can be given a list of message numbers
 as arguments to apply to a number of messages at once.
-Thus '\fIdelete 1 2\fR' deletes messages 1 and 2,
-while '\fIdelete 1-5\fR' deletes messages 1 through 5.
+Thus `\fIdelete 1 2\fR' deletes messages 1 and 2,
+while `\fIdelete 1-5\fR' deletes messages 1 through 5.
 The following special message names exist:
 .TP
 .B :n
 All new messages.
 .TP
 .B :o
-All old messages.
+All old messages (any not in state read or new).
 .TP
 .B :u
 All unread messages.
@@ -253,13 +255,23 @@ or the last entry of the `References:' field
 of the current message.
 .TP
 .B -
-The previous message.
+The next previous undeleted message,
+or the next previous deleted message for the
+.I undelete
+command.
 .TP
 .B +
-The next message.
+The next undeleted message,
+or the next deleted message for the
+.I undelete
+command.
 .TP
 .B ^
-The first message.
+The first undeleted message,
+or the first deleted message
+for the
+.I undelete
+command.
 .TP
 .B $
 The last message.
@@ -274,8 +286,8 @@ Text you then type in,
 up to an end-of-file,
 defines the contents of the message.
 While you are composing a message,
-\fInail\fR treats lines beginning with the character '~' specially.
-For instance, typing '~m' (alone on a line)
+\fInail\fR treats lines beginning with the character `~' specially.
+For instance, typing `~m' (alone on a line)
 will place a copy of the current message into the response
 right shifting it by a tabstop
 (see indentprefix variable, below).
@@ -300,7 +312,7 @@ to the post office.
 It is also possible to create
 a personal distribution lists so that,
 for instance, you can send mail
-to '\fIcohorts\fR' and have it go
+to `\fIcohorts\fR' and have it go
 to a group of people.
 Such lists can be defined by placing a line like
 .nf
@@ -325,6 +337,33 @@ System wide aliases are not expanded when the mail is sent,
 but any reply returned to the machine
 will have the system wide alias expanded
 as all mail goes through sendmail.
+.SS "Recipient address specifications"
+When an address is used to name a recipient
+(in any of To, Cc, or Bcc),
+names of local mail folders
+and pipes to external commands
+can also be specified;
+the message text is then written to them.
+The rules are: Any name which starts with a
+.RB ` | '
+character specifies a pipe,
+the command string following the `|'
+is executed and the message is sent to its standard input;
+any other name which contains a
+.RB ` @ '
+character is treated as a mail address;
+any other name which starts with a
+.RB ` + '
+character specifies a folder name;
+any other name which contains a
+.RB ` / '
+character
+but no
+.RB ` ! '
+or
+.RB ` % '
+character before also specifies a folder name;
+what remains is treated as a mail address.
 .SS "Network mail (Internet / ARPA, UUCP, Berknet)"
 See
 .IR mailaddr (7)
@@ -332,7 +371,7 @@ for a description of network addresses.
 \fINail\fR has a number of options
 which can be set in the .mailrc file
 to alter its behavior;
-thus '\fIset askcc\fR' enables the askcc feature.
+thus `\fIset askcc\fR' enables the askcc feature.
 (These options are summarized below).
 .SS "MIME types"
 For any outgoing attachment,
@@ -403,9 +442,48 @@ the command's requirements is used.
 If there are no messages forward of the current message,
 the search proceeds backwards,
 and if there are no good messages at all,
-\fInail\fR types '\fIapplicable messages\fR' and aborts the command.
+\fInail\fR types `\fIapplicable messages\fR' and aborts the command.
 If the command begins with a \fI#\fR sign,
 the line is ignored.
+.PP
+The arguments to commands can be quoted, using the following methods:
+.IP \(bu
+An argument can be enclosed between paired double-quotes
+"\|" or single-quotes '\|'; any white space, shell
+word expansion, or backslash characters within the quotes
+are treated literally as part of the argument.
+A double-quote will be treated literally within
+single-quotes and vice versa. These special properties of
+the quote marks occur only when they are paired at the
+beginning and end of the argument.
+.IP \(bu
+A backslash outside of the enclosing quotes is discarded
+and the following character is treated literally as part of
+the argument.
+.IP \(bu
+An unquoted backslash at the end of a command line is
+discarded and the next line continues the command.
+.PP
+Filenames, where expected, are subjected to the following
+transformations, in sequence:
+.IP \(bu
+If the filename begins with an unquoted plus sign, and
+the
+.I folder
+variable is defined,
+the plus sign will be replaced by the value of the
+.I folder
+variable followed by a slash. If the
+.I folder
+variable is
+unset or is set to null, the filename will be unchanged.
+.IP \(bu
+Shell word expansions are applied to the filename.
+If more than a single pathname results
+from this expansion and the command is expecting one
+file, an error results.
+.PP
+The following commands are provided:
 .TP
 .B \-
 Print out the preceding message.
@@ -480,12 +558,27 @@ Same as ignore.
 Deletes the current message
 and prints the next message.
 If there is no next message,
-\fInail\fR says '\fIat EOF\fR'.
+\fInail\fR says `\fIat EOF\fR'.
 .TP
 .B echo
 Echoes its arguments,
 resolving special names
 as documented for the folder command.
+The escape sequences
+`\fB\ea\fR',
+`\fB\eb\fR',
+`\fB\ec\fR',
+`\fB\ef\fR',
+`\fB\en\fR',
+`\fB\er\fR',
+`\fB\et\fR',
+`\fB\ev\fR',
+`\fB\e\e\fR', and
+`\fB\e0\fInum\fR'
+are interpreted
+as with the
+.IR echo (1)
+command.
 .TP
 .B edit
 (e) Takes a list of messages
@@ -602,9 +695,9 @@ piped through the pager if the output does not fit on the screen.
 .B headers
 (h) Lists the current range of headers,
 which is an 18-message group.
-If a '+' argument is given,
+If a `+' argument is given,
 then the next 18-message group is printed,
-and if a '\-' argument is given,
+and if a `\-' argument is given,
 the previous 18-message group is printed.
 .TP
 .B help
@@ -616,6 +709,11 @@ and marks each message therein to be saved
 in the user's system mailbox
 instead of in mbox.
 Does not override the delete command.
+.I nail
+deviates from the POSIX standard with this command,
+as a `next' command issued after `hold'
+will display the following message,
+not the current one.
 .TP
 .B if
 Commands in \fInail\fR's startup files
@@ -740,7 +838,7 @@ preserving all messages marked with hold or preserve
 or never referenced in his system mailbox,
 and removing all other messages from his system mailbox.
 If new mail has arrived during the session,
-the message '\fIYou have new mail\fR' is given.
+the message `\fIYou have new mail\fR' is given.
 If given while editing a mailbox file with the \-f flag,
 then the edit file is rewritten.
 A return to the Shell is effected,
@@ -832,7 +930,7 @@ Arguments are of the form option=value
 or option.
 Quotation marks may be placed around any part of the
 assignment statement to quote blanks
-or tabs, i.e. '\fIset indentprefix="\->"\fR'.
+or tabs, i.e. `\fIset indentprefix="\->"\fR'.
 If an argument begins with
 .BR no ,
 as in `\fBset no\fIsave\fR',
@@ -947,8 +1045,10 @@ on each message.
 the body without all headers is written.
 The output is converted
 to its native format, if necessary.
-If a message is in MIME multipart format,
-its first part is written to the specified file,
+If the output file exists,
+the text is appended.\(emIf a message is in MIME multipart format,
+its first part is written to the specified file
+as for conventional messages,
 and the user is asked for a filename
 to save each other part.
 In non-interactive mode, only the parts of the multipart message
@@ -956,7 +1056,8 @@ that have a filename given in the part header are written,
 the other are discarded.
 The original message is never marked for deletion
 in the originating mail folder.
-The contents of the destination file are overwritten
+For attachments,
+the contents of the destination file are overwritten
 if the file previously existed.
 .TP
 .B xit
@@ -968,12 +1069,12 @@ as described under the headers command.
 The z command scrolls to the next window of messages.
 If an argument is given,
 it specifies the window to use.
-A number prefixed by '+' or '\-' indicates
+A number prefixed by `+' or `\-' indicates
 that the window is calculated in relation
 to the current position.
 A number without a prefix specifies an
 absolute window number,
-and a '$' lets \fInail\fR scroll
+and a `$' lets \fInail\fR scroll
 to the last window of messages.
 .SS "Tilde escapes"
 Here is a summary of the tilde escapes,
@@ -981,7 +1082,7 @@ which are used when composing
 messages to perform special functions.
 Tilde escapes are only recognized
 at the beginning of lines.
-The name '\fItilde escape\fR' is somewhat of a misnomer
+The name `\fItilde escape\fR' is somewhat of a misnomer
 since the actual escape character can be set
 by the option escape.
 .TP
@@ -1010,18 +1111,25 @@ will ask for further attachments,
 until an empty file name is given.
 If \fIfilename\fP arguments are specified,
 all of them are appended to the end of the attachment list.
+Filenames which contain white space
+can only be specified
+with the first method (no \fIfilename\fP arguments).
 .TP
 .B ~A
 Inserts the string contained in the
 .B Sign
 variable
 (same as `~i Sign').
+The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
+are understood.
 .TP
 .B ~a
 Inserts the string contained in the
 .B sign
 variable
 (same as `~i sign').
+The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
+are understood.
 .TP
 .BI ~b "name .\ .\ ."
 Add the given names to the list of carbon copy recipients
@@ -1032,7 +1140,7 @@ but do not make the names visible in the Cc: line
 Add the given names to the list of carbon copy recipients.
 .TP
 .B ~d
-Read the file '\fIdead.letter\fR' from your home directory
+Read the file `\fIdead.letter\fR' from your home directory
 into the message.
 .TP
 .B ~e
@@ -1060,11 +1168,13 @@ and allowing the user to append text
 to the end or modify the field
 by using the current terminal erase and kill characters.
 .TP
-.BI ~i string
-Insert the value of the variable specified by string
+.BI ~i variable
+Insert the value of the specified variable
 into the message adding a newline character at the end.
 If the variable is unset or empty,
 the message remains unaltered.
+The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
+are understood.
 .TP
 .BI ~m messages
 Read the named messages into the message being sent,
@@ -1112,6 +1222,8 @@ to the end of your message.
 .TP
 .BI ~w filename
 Write the message onto the named file.
+If the file exists,
+the message is appended to it.
 .TP
 .B ~x
 Same as ~q,
@@ -1144,9 +1256,10 @@ Options are controlled via set and unset commands,
 see their entries for a syntax description.
 An option is also set
 if it is passed to \fInail\fR
-as part of the environment,
-but a value given in a startup file
-overrides this.
+as part of the environment
+(this is not restricted to specific variables as in the POSIX standard).
+A value given in a startup file overrides
+a value imported from the environment.
 Options may be either binary,
 in which case it is only significant
 to see whether they are set or not;
@@ -1279,7 +1392,7 @@ when using a common folder directory.
 .TP
 .B emptystart
 If the mailbox is empty,
-\fInail\fR normally prints \fI'No mail for user'\fR
+\fInail\fR normally prints \fI`No mail for user'\fR
 and exits immediately.
 If this option is set,
 \fInail\fR starts even with an empty mailbox.
@@ -1367,20 +1480,22 @@ Reverses the sense of reply and Reply commands.
 When you abort a message
 with two RUBOUT (interrupt characters)
 \fInail\fR copies the partial letter
-to the file '\fIdead.letter\fR' in your home directory.
+to the file `\fIdead.letter\fR' in your home directory.
 This option is set by default.
 .TP
 .B searchheaders
 If this option is set, then
-a message-list specifier in the form '\fI/x:y\fR'
+a message-list specifier in the form `\fI/x:y\fR'
 will expand to all messages containing
-the substring '\fIy\fR' in the header field '\fIx\fR'.
+the substring `\fIy\fR' in the header field `\fIx\fR'.
 The string search is case insensitive.
 .TP
 .B sendwait
 When sending a message,
 wait until the mail transfer agent exits
 before accepting further commands.
+If the mail transfer agent returns a non-zero exit status,
+the exit status of nail will also be non-zero.
 .TP
 .B showlast
 Setting this option causes \fInail\fR to start at the
@@ -1457,7 +1572,7 @@ is used to compute the threshold (see
 .B DEAD
 The name of the file to use
 for saving aborted messages.
-This defaults to '\fIdead.letter\fR'
+This defaults to `\fIdead.letter\fR'
 in the user's home directory.
 .TP
 .B EDITOR
@@ -1486,7 +1601,7 @@ gives the character to use in the place of ~ to denote escapes.
 .B folder
 The name of the directory to use
 for storing folders of messages.
-If this name begins with a '/',
+If this name begins with a `/',
 \fInail\fR considers it to be an absolute pathname;
 otherwise, the folder directory is found
 relative to your home directory.
@@ -1503,10 +1618,20 @@ and its value differs from \fIlocalhost\fR.
 If the machine's hostname is not valid at the Internet
 (for example at a dialup machine),
 you have to set this variable
+or
+.I hostname
 to get correct Message-ID header fields.
 .TP
+.B hostname
+Use this string as hostname
+when expanding local addresses
+instead of the value obtained from
+.IR uname (2)
+and
+.IR getaddrinfo (3).
+.TP
 .B indentprefix
-String used by the '\fI~m\fR' and '\fI~M\fR' tilde escapes
+String used by the `\fI~m\fR' and `\fI~M\fR' tilde escapes
 and by the \fIquote\fR option
 for indenting messages,
 in place of the normal tab character (^I).
@@ -1529,14 +1654,18 @@ command for more information).
 .TP
 .B MAILX_HEAD
 A string to put at the beginning of each new message.
+The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
+are understood.
 .TP
 .B MAILX_TAIL
 A string to put at the end of each new message.
+The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
+are understood.
 .TP
 .B MBOX
 The name of the mbox file.
 It can be the name of a folder.
-The default is '\fImbox\fR'
+The default is `\fImbox\fR'
 in the user's home directory.
 .TP
 .B NAIL_EXTRA_RC
@@ -1918,12 +2047,20 @@ utility
 or another command-line web browser
 that can write plain text to standard output.
 .nf
-
+.sp
     \fBset pipe-text/html="\fIw3m -dump -T text/html\fB"\fR
-
+.sp
 .fi
 will then cause HTML text to be converted into a more friendly form,
 the command string depends on the browser you are using.
+.SS "Viewing PDF attachments"
+Most PDF viewers do not accept input directly from a pipe.
+It is thus necessary to store the attachment in a temporary file, as with
+.nf
+.sp
+    \fBset pipe-application-pdf="cat >/tmp/nail$$.pdf; acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
+.sp
+.fi
 .SH "SEE ALSO"
 fmt(1),
 newaliases(1),
@@ -1997,3 +2134,15 @@ This man page is derived from
 from The Mail Reference Manual
 originally written by Kurt Shoens.
 A revision for \fInail\fR was done by Gunnar Ritter.
+.PP
+Portions of this text are reprinted and reproduced in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology
+\(em Operating System Interface (POSIX), The Open Group Base
+Specifications Issue 6, Copyright \(co 2001-2003 by the Institute of
+Electrical and Electronics Engineers, Inc and The Open Group. In the
+event of any discrepancy between this version and the original IEEE and
+The Open Group Standard, the original IEEE and The Open Group Standard
+is the referee document. The original Standard can be obtained online at
+\%http://www.opengroup.org/unix/online.html\ .
+Redistribution of this material is permitted so long as this notice remains
+intact.

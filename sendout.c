@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.20 (gritter) 8/26/03";
+static char sccsid[] = "@(#)sendout.c	2.23 (gritter) 3/19/04";
 #endif
 #endif /* not lint */
 
@@ -175,14 +175,14 @@ fixhead(hp, tolist, addauto)
 			hp->h_bcc =
 				cat(hp->h_bcc, nalloc(np->n_name, np->n_type));
 	if (addauto && (cp = value("autocc")) != NULL && *cp) {
-		np = usermap(checkaddrs(extract(cp, GCC)));
-		hp->h_cc = cat(hp->h_cc, nalloc(np->n_name, np->n_type));
-		tolist = cat(tolist, nalloc(np->n_name, np->n_type));
+		np = checkaddrs(extract(cp, GCC));
+		hp->h_cc = cat(hp->h_cc, np);
+		tolist = cat(tolist, np);
 	}
 	if (addauto && (cp = value("autobcc")) != NULL && *cp) {
-		np = usermap(checkaddrs(extract(cp, GBCC)));
-		hp->h_bcc = cat(hp->h_bcc, nalloc(np->n_name, np->n_type));
-		tolist = cat(tolist, nalloc(np->n_name, np->n_type));
+		np = checkaddrs(extract(cp, GBCC));
+		hp->h_bcc = cat(hp->h_bcc, np);
+		tolist = cat(tolist, np);
 	}
 	return tolist;
 }
@@ -334,7 +334,8 @@ const char *charset;
 		fprintf(fo, "Content-Type: %s", contenttype);
 		if (charset)
 			fprintf(fo, "; charset=%s", charset);
-		fprintf(fo, "\nContent-Transfer-Encoding: %s\n\n",
+		fprintf(fo, "\nContent-Transfer-Encoding: %s\n"
+				"Content-Disposition: inline\n\n",
 				getencoding(convert));
 		buf = smalloc(bufsize = INFIX_BUF);
 		if (convert == CONV_TOQP) {
@@ -756,9 +757,10 @@ FILE* input;
 				". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if (value("verbose") != NULL || value("sendwait"))
-		(void) wait_child(pid);
-	else
+	if (value("verbose") != NULL || value("sendwait")) {
+		if (wait_child(pid) < 0)
+			senderr++;
+	} else
 		free_child(pid);
 	return 0;
 }

@@ -37,6 +37,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+==========================================================================
 
 /*
  * Portions Copyright (c) 1991 Bell Communications Research, Inc. (Bellcore)
@@ -52,8 +53,30 @@
  * OF THIS MATERIAL FOR ANY PURPOSE.  IT IS PROVIDED "AS IS", 
  * WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
  */
+==========================================================================
 
 /* The files install-sh and mkinstalldirs have their own
  * licenses. They are needed only for building `nail' and are included
  * here for your convenience. 
  */
+==========================================================================
+
+The Institute of Electrical and Electronics Engineers and The Open Group,
+have given us permission to reprint portions of their documentation.
+
+In the following statement, the phrase ``this text'' refers to portions
+of the system documentation.
+
+Portions of this text are reprinted and reproduced in electronic form in
+the 'nail' mail user agent, from IEEE Std 1003.1, 2003 Edition, Standard for
+Information Technology -- Portable Operating System Interface (POSIX),
+The Open Group Base Specifications Issue 6, Copyright (C) 2001-2003 by the
+Institute of Electrical and Electronics Engineers, Inc and The Open Group.
+In the event of any discrepancy between these versions and the original
+IEEE and The Open Group Standard, the original IEEE and The Open Group
+Standard is the referee document.
+
+The original Standard can be obtained online at
+http://www.opengroup.org/unix/online.html .
+
+This notice shall appear on any product containing this material.

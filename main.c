@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.15 (gritter) 2/27/03";
+static char sccsid[] = "@(#)main.c	2.16 (gritter) 3/19/04";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -386,7 +386,7 @@ usage:
 		/*
 		 * why wait?
 		 */
-		exit(senderr);
+		exit(senderr ? 1 : 0);
 	}
 	/*
 	 * Ok, we are reading mail.

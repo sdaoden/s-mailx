@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.20 (gritter) 1/13/03
+ *	Sccsid @(#)def.h	2.22 (gritter) 12/9/03
  */
 
 /*
@@ -245,6 +245,7 @@ enum argtype {
 	RAWLIST	= 2,		/* Shell string list */
 	NOLIST	= 3,		/* Just plain 0 */
 	NDMLIST	= 4,		/* Message list, no defaults */
+	ECHOLIST= 5,		/* Like raw list, but keep quote chars */
 	P	= 040,		/* Autoprint dot after command */
 	I	= 0100,		/* Interactive command bit */
 	M	= 0200,		/* Legal from send mode bit */
@@ -449,33 +450,35 @@ struct shortcut {
  * Locale-independent character classes.
  */
 enum {
-	C_CNTRL	= 0001,
-	C_BLANK	= 0002,
+	C_CNTRL	= 0000,
+	C_BLANK	= 0001,
+	C_WHITE = 0002,
 	C_SPACE	= 0004,
 	C_PUNCT	= 0010,
-	C_DIGIT	= 0020,
-	C_UPPER	= 0040,
-	C_LOWER	= 0100,
-	C_WHITE = 0200
+	C_OCTAL	= 0020,
+	C_DIGIT	= 0040,
+	C_UPPER	= 0100,
+	C_LOWER	= 0200
 };
 
 extern const unsigned char	class_char[];
 
 #define	asciichar(c) ((unsigned)(c) <= 0177)
-#define	alnumchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_UPPER|C_LOWER)))
+#define	alnumchar(c) (asciichar(c)&&(class_char[c]&\
+			(C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)))
 #define	alphachar(c) (asciichar(c)&&(class_char[c]&(C_UPPER|C_LOWER)))
 #define	blankchar(c) (asciichar(c)&&(class_char[c]&(C_BLANK)))
-#define	cntrlchar(c) (asciichar(c)&&(class_char[c]&(C_CNTRL)))
-#define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT)))
+#define	cntrlchar(c) (asciichar(c)&&(class_char[c]==C_CNTRL)
+#define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_OCTAL)))
 #define	lowerchar(c) (asciichar(c)&&(class_char[c]&(C_LOWER)))
 #define	punctchar(c) (asciichar(c)&&(class_char[c]&(C_PUNCT)))
 #define	spacechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_SPACE|C_WHITE)))
 #define	upperchar(c) (asciichar(c)&&(class_char[c]&(C_UPPER)))
 #define	whitechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_WHITE)))
+#define	octalchar(c) (asciichar(c)&&(class_char[c]&(C_OCTAL)))
 
 #define	upperconv(c) (lowerchar(c) ? (c)-'a'+'A' : (c))
 #define	lowerconv(c) (upperchar(c) ? (c)-'A'+'a' : (c))
-
 /*	RFC 822, 3.2.	*/
 #define	fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
 

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.26 (gritter) 3/22/03
+ *	Sccsid @(#)extern.h	2.27 (gritter) 12/9/03
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -115,7 +115,7 @@ int	 from __P((void *));
 off_t	 fsize __P((FILE *));
 int	 getfold __P((char *, int));
 int	 getmsglist __P((char *, int *, int));
-int	 getrawlist __P((char [], size_t, char **, int));
+int	 getrawlist __P((char [], size_t, char **, int, int));
 int	 getuserid __P((char []));
 int	 grabh __P((struct header *, enum gfield, int));
 int	 group __P((void *));

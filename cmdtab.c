@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmdtab.c	2.5 (gritter) 10/27/02";
+static char sccsid[] = "@(#)cmdtab.c	2.6 (gritter) 12/9/03";
 #endif
 #endif /* not lint */
 
@@ -117,7 +117,7 @@ const struct cmd cmdtab[] = {
 	{ "Forward",	Forwardcmd,	A|R|STRLIST,	0,	MMNDEL },
 	{ "forward",	forwardcmd,	A|R|STRLIST,	0,	MMNDEL },
 	{ "edit",	editor,		A|I|MSGLIST,	0,	MMNORM },
-	{ "echo",	echo,		M|RAWLIST,	0,	1000 },
+	{ "echo",	echo,		M|ECHOLIST,	0,	1000 },
 	{ "quit",	quitcmd,	NOLIST,		0,	0 },
 	{ "list",	pcmdlist,	M|NOLIST,	0,	0 },
 	{ "xit",	rexit,		M|NOLIST,	0,	0 },

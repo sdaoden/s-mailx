@@ -1,3 +1,42 @@
+[10.7] released 3/19/04
+* The IEEE and The Open Group have granted permission to use parts of
+  the POSIX standard text for the documentation of 'nail'. See the
+  file 'COPYING' for general terms. The manual page has been updated
+  accordingly.
+* If the variable 'sendwait' is set and the mail transfer agent returns
+  a non-zero exit status, the exit status of nail will also be non-zero
+  (Christian Reiber).
+* For the first (textual) part of a multipart message, create a
+  'Content-Disposition: inline' header field to make it clear to other
+  MUAs that this part should be displayed directly (suggested by
+  Alexandros Gougousoudis).
+* Base64 encoded messages were not decoded correctly on machines where
+  the 'char' type is unsigned by default (Fix by Benjamin C. W. Sittler,
+  reported by Hilko Bengen).
+* Any address that contains a '@' character is treated as an internet
+  mail address (even if it contains a '/' character before).
+* Fixed the 'autocc' and 'autobcc' variables to really accept address
+  lists instead of single names.
+* If a message is sent to both addressed recipients and local folders,
+  don't pass the file names with the SMTP client.
+* The ~w command appends the message text to an existing file instead
+  of refusing to write, as POSIX.2 states (Bugreport by Bob Tennent).
+* Escape sequences in quoted arguments to the alias, unset, chdir, cd,
+  source, set, group, ungroup, unalias, file, folder, if, else, endif,
+  alternates, ignore, discard, retain, saveignore, savediscard, saveretain,
+  unignore, unretain, unsaveignore, unsaveretain, shortcut, and unshortcut
+  commands are no longer handled specially. This is for compatibility with
+  System V mailx and POSIX standards.
+* The echo command accepts the same escape sequences as specified for
+  echo(1) in recent Open Group standards.
+* Only the \t and \n sequences are handled for the ~a, ~A and ~i tilde
+  commands and the insertion of the MAILX_HEAD and MAILX_TAIL strings
+  (Thanks to Bob Tennent).
+* Solaris: When the MAILX_TAIL variable was set and a ~p command was
+  issued before the message was sent, parts of the text were sent twice.
+* Introduced a 'hostname' variable to override the value obtained from
+  uname(2) and getaddrinfo(3) (William Bader).
+
 [10.6] released 11/15/03
 * A nested MIME multipart message with a sub-part piped through an external
   program (such as HTML with w3m) caused nail to abort after SIGPIPE if the

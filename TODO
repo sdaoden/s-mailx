@@ -14,6 +14,8 @@ The POP3 client supports USER/PASS authentication only. If you need
 other authentication methods and have the ability to test them, please
 write and contribute code.
 
+The APOP authentication should be especially easy to implement.
+
 If you want to edit arbitrary header fields with the 'editheaders'
 option, you are invited to supply code for it. Be warned that this
 is a nontrivial task due to MIME. Contact the maintainer before you
@@ -52,4 +54,4 @@ window. For the receiving part, it is simply annoying. If you want
 a confirmation, ask the recipient to send one in the body of the
 message.
 
-	Gunnar Ritter					7/9/03
+	Gunnar Ritter					11/21/03

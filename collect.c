@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.14 (gritter) 3/30/03";
+static char sccsid[] = "@(#)collect.c	2.18 (gritter) 12/29/03";
 #endif
 #endif /* not lint */
 
@@ -92,6 +92,7 @@ static void	collstop __P((int));
 static struct attachment	*append_attachments __P((struct attachment *,
 					char *));
 static RETSIGTYPE	onpipe __P((int));
+static int	putesc __P((const char *, FILE *));
 
 /*ARGSUSED*/
 static RETSIGTYPE
@@ -497,9 +498,8 @@ The following ~ escapes are defined:\n\
 
 	if ((cp = value("MAILX_HEAD")) != NULL) {
 		if (is_a_tty[0])
-			puts(cp);
-		fputs(cp, collf);
-		sputc('\n', collf);
+			putesc(cp, stdout);
+		putesc(cp, collf);
 	}
 
 	/*
@@ -800,8 +800,9 @@ cont:
 				cp++;
 			if ((cp = value(cp)) == NULL || *cp == '\0')
 				break;
-			fputs(cp, collf);
-			sputc('\n', collf);
+			if (is_a_tty[0])
+				putesc(cp, stdout);
+			putesc(cp, collf);
 			break;
 		case 'a':
 		case 'A':
@@ -809,8 +810,9 @@ cont:
 			 * Insert the contents of a signature variable.
 			 */
 			if ((cp = value(c == 'a' ? "sign" : "Sign")) != NULL) {
-				fputs(cp, collf);
-				sputc('\n', collf);
+				if (is_a_tty[0])
+					putesc(cp, stdout);
+				putesc(cp, collf);
 			}
 			break;
 		case 'w':
@@ -883,9 +885,9 @@ out:
 	if (collf != (FILE *)NULL) {
 		if ((cp = value("MAILX_TAIL")) != NULL) {
 			if (is_a_tty[0])
-				puts(cp);
-			fputs(cp, collf);
-			sputc('\n', collf);
+				putesc(cp, stdout);
+			fflush(collf);
+			putesc(cp, collf);
 		}
 		rewind(collf);
 	}
@@ -920,19 +922,12 @@ exwrite(name, fp, f)
 	int c;
 	long cc;
 	int lc;
-	struct stat junk;
 
 	if (f) {
 		printf("\"%s\" ", name);
 		fflush(stdout);
 	}
-	if (stat(name, &junk) >= 0 && S_ISREG(junk.st_mode)) {
-		if (!f)
-			fprintf(stderr, "%s: ", name);
-		fprintf(stderr, catgets(catd, CATSET, 64, "File exists\n"));
-		return(-1);
-	}
-	if ((of = Fopen(name, "wx")) == (FILE *)NULL) {
+	if ((of = Fopen(name, "a")) == (FILE *)NULL) {
 		perror(NULL);
 		return(-1);
 	}
@@ -1198,4 +1193,32 @@ savedeadletter(fp)
 		(void) sputc(c, dbuf);
 	Fclose(dbuf);
 	rewind(fp);
+}
+
+static int
+putesc(const char *s, FILE *stream)
+{
+	int	n = 0;
+
+	while (s[0]) {
+		if (s[0] == '\\') {
+			if (s[1] == 't') {
+				sputc('\t', stream);
+				n++;
+				s += 2;
+				continue;
+			}
+			if (s[1] == 'n') {
+				sputc('\n', stream);
+				n++;
+				s += 2;
+				continue;
+			}
+		}
+		sputc(s[0]&0377, stream);
+		n++;
+		s++;
+	}
+	sputc('\n', stream);
+	return ++n;
 }

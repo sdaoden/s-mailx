@@ -23,7 +23,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)base64.c	2.2 (gritter) 9/1/02";
+static char sccsid[] = "@(#)base64.c	2.3 (gritter) 2/20/04";
 #endif
 #endif /* not lint */
 
@@ -38,7 +38,7 @@ static char sccsid[] = "@(#)base64.c	2.2 (gritter) 9/1/02";
 
 static const char b64table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const char b64index[] = {
+static const signed char b64index[] = {
 	-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
 	-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
 	-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, -1,-1,-1,63,

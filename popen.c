@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.5 (gritter) 3/30/03";
+static char sccsid[] = "@(#)popen.c	2.6 (gritter) 12/9/03";
 #endif
 #endif /* not lint */
 
@@ -323,7 +323,7 @@ start_command(cmd, mask, infd, outfd, a0, a1, a2)
 	if (pid == 0) {
 		char *argv[100];
 		int i = getrawlist(cmd, strlen(cmd),
-				argv, sizeof argv / sizeof *argv);
+				argv, sizeof argv / sizeof *argv, 0);
 
 		if ((argv[i++] = a0) != NULL &&
 		    (argv[i++] = a1) != NULL &&

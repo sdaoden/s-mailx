@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.18 (gritter) 6/3/03";
+static char sccsid[] = "@(#)cmd3.c	2.19 (gritter) 12/9/03";
 #endif
 #endif /* not lint */
 
@@ -735,6 +735,61 @@ file(v)
 	return 0;
 }
 
+static int
+shellecho(const char *cp)
+{
+	int	cflag = 0, n;
+	char	c;
+
+	while (*cp) {
+		if (*cp == '\\') {
+			switch (*++cp) {
+			case '\0':
+				return cflag;
+			case 'a':
+				sputc('\a', stdout);
+				break;
+			case 'b':
+				sputc('\b', stdout);
+				break;
+			case 'c':
+				cflag = 1;
+				break;
+			case 'f':
+				sputc('\f', stdout);
+				break;
+			case 'n':
+				sputc('\n', stdout);
+				break;
+			case 'r':
+				sputc('\r', stdout);
+				break;
+			case 't':
+				sputc('\t', stdout);
+				break;
+			case 'v':
+				sputc('\v', stdout);
+				break;
+			default:
+				sputc(*cp&0377, stdout);
+				break;
+			case '0':
+				c = 0;
+				n = 3;
+				while (n-- && octalchar(cp[1]&0377)) {
+					c <<= 3;
+					c |= cp[1] - '0';
+					cp++;
+				}
+				sputc(c, stdout);
+			}
+		} else
+			sputc(*cp & 0377, stdout);
+		cp++;
+	}
+	return cflag;
+}
+
 /*
  * Expand file names like echo
  */
@@ -745,16 +800,18 @@ echo(v)
 	char **argv = v;
 	char **ap;
 	char *cp;
+	int cflag = 0;
 
 	for (ap = argv; *ap != NULL; ap++) {
 		cp = *ap;
 		if ((cp = expand(cp)) != NULL) {
 			if (ap != argv)
 				sputc(' ', stdout);
-			printf("%s", cp);
+			cflag |= shellecho(cp);
 		}
 	}
-	sputc('\n', stdout);
+	if (!cflag)
+		sputc('\n', stdout);
 	return 0;
 }
 

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.17 (gritter) 4/7/03";
+static char sccsid[] = "@(#)lex.c	2.18 (gritter) 12/9/03";
 #endif
 #endif /* not lint */
 
@@ -480,11 +480,14 @@ execute(linebuf, contxt, linesize)
 		break;
 
 	case RAWLIST:
+	case ECHOLIST:
 		/*
 		 * A vector of strings, in shell style.
 		 */
 		if ((c = getrawlist(cp, linesize, arglist,
-				sizeof arglist / sizeof *arglist)) < 0)
+				sizeof arglist / sizeof *arglist,
+				(com->c_argtype&~(F|P|I|M|T|W|R|A))==ECHOLIST))
+					< 0)
 			break;
 		if (c < com->c_minargs) {
 			printf(catgets(catd, CATSET, 99,

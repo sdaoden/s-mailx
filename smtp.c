@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.6 (gritter) 1/13/03";
+static char sccsid[] = "@(#)smtp.c	2.8 (gritter) 1/8/04";
 #endif
 #endif /* not lint */
 
@@ -78,6 +78,8 @@ nodename()
 #endif	/* !HAVE_IPv6_FUNCS */
 #endif	/* HAVE_SOCKETS */
 
+	if ((hn = value("hostname")) != NULL && *hn)
+		hostname = sstrdup(hn);
 	if (hostname == NULL) {
 #if defined (HAVE_UNAME)
 		uname(&ut);
@@ -224,9 +226,11 @@ FILE *fi, *fsi, *fso;
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
 	for (n = to; n != NULL; n = n->n_flink) {
-		snprintf(o, sizeof o, "RCPT TO: <%s>\r\n", n->n_name);
-		SMTP_OUT(o);
-		SMTP_ANSWER(2);
+		if ((n->n_type & GDEL) == 0) {
+			snprintf(o, sizeof o, "RCPT TO: <%s>\r\n", n->n_name);
+			SMTP_OUT(o);
+			SMTP_ANSWER(2);
+		}
 	}
 	SMTP_OUT("DATA\r\n");
 	SMTP_ANSWER(3);

@@ -1,12 +1,12 @@
-# Sccsid @(#)nail.spec	1.13 (gritter) 11/15/03
+# Sccsid @(#)nail.spec	1.16 (gritter) 3/19/04
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 10.6
+Version: 10.7
 Release: 1
 License: BSD
 Group: Applications/Internet
-Source: %{name}-%{version}.tar.gz
-URL: <http://omnibus.ruf.uni-freiburg.de/~gritter/>
+Source: %{name}-%{version}.tar.bz2
+URL: <http://nail.berlios.de>
 Vendor: Gunnar Ritter <Gunnar.Ritter@pluto.uni-freiburg.de>
 Packager: Didar Hussain <dhs@rediffmail.com>
 BuildRoot: %{_tmppath}/%{name}-root
@@ -20,14 +20,17 @@ Install nail if you need a command line tool with the ability to
 handle MIME messages.
 
 %prep
+INCLUDES=-I/usr/kerberos/include export INCLUDES
 rm -rf %{buildroot}
 %setup
 %configure --prefix=/usr --with-openssl
 
 %build
+INCLUDES=-I/usr/kerberos/include export INCLUDES
 make
 
 %install
+INCLUDES=-I/usr/kerberos/include export INCLUDES
 make DESTDIR=%{buildroot} install
 gzip -9 %{buildroot}/usr/share/man/man1/nail.1
 

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.13 (gritter) 3/28/03";
+static char sccsid[] = "@(#)list.c	2.15 (gritter) 12/9/03";
 #endif
 #endif /* not lint */
 
@@ -488,11 +488,12 @@ check(mesg, f)
  * for a RAWLIST.
  */
 int
-getrawlist(line, linesize, argv, argc)
+getrawlist(line, linesize, argv, argc, echolist)
 	char line[];
 	size_t linesize;
 	char **argv;
 	int  argc;
+	int echolist;
 {
 	char c, *cp, *cp2, quotec;
 	int argn;
@@ -515,14 +516,17 @@ getrawlist(line, linesize, argv, argc)
 		while ((c = *cp) != '\0') {
 			cp++;
 			if (quotec != '\0') {
-				if (c == quotec)
+				if (c == quotec) {
 					quotec = '\0';
-				else if (c == '\\')
+					if (echolist)
+						*cp2++ = c;
+				} else if (c == '\\')
 					switch (c = *cp++) {
 					case '\0':
 						*cp2++ = '\\';
 						cp--;
 						break;
+					/*
 					case '0': case '1': case '2': case '3':
 					case '4': case '5': case '6': case '7':
 						c -= '0';
@@ -550,14 +554,17 @@ getrawlist(line, linesize, argv, argc)
 					case 'v':
 						*cp2++ = '\v';
 						break;
+					*/
 					default:
+						if (cp[-1]!=quotec || echolist)
+							*cp2++ = '\\';
 						*cp2++ = c;
 					}
-				else if (c == '^') {
+				/*else if (c == '^') {
 					c = *cp++;
 					if (c == '?')
 						*cp2++ = '\177';
-					/* null doesn't show up anyway */
+					/\* null doesn't show up anyway *\/
 					else if ((c >= 'A' && c <= '_') ||
 						 (c >= 'a' && c <= 'z'))
 						*cp2++ = c & 037;
@@ -565,10 +572,13 @@ getrawlist(line, linesize, argv, argc)
 						*cp2++ = '^';
 						cp--;
 					}
-				} else
+				}*/ else
 					*cp2++ = c;
-			} else if (c == '"' || c == '\'')
+			} else if (c == '"' || c == '\'') {
+				if (echolist)
+					*cp2++ = c;
 				quotec = c;
+			}
 			else if (blankchar(c & 0377))
 				break;
 			else

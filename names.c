@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	2.7 (gritter) 11/8/02";
+static char sccsid[] = "@(#)names.c	2.8 (gritter) 1/9/04";
 #endif
 #endif /* not lint */
 
@@ -382,10 +382,12 @@ is_fileaddr(name)
 {
 	char *cp;
 
+	if (strchr(name, '@') != NULL)
+		return 0;
 	if (*name == '+')
 		return 1;
 	for (cp = name; *cp; cp++) {
-		if (*cp == '!' || *cp == '%' || *cp == '@')
+		if (*cp == '!' || *cp == '%')
 			return 0;
 		if (*cp == '/')
 			return 1;
