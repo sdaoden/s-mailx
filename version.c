@@ -1,4 +1,4 @@
-/*	$Id: version.c,v 1.4 2000/04/05 02:49:51 gunnar Exp $
+/*	$Id: version.c,v 1.5 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
 /*	NetBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)version.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: version.c,v 1.4 2000/04/05 02:49:51 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: version.c,v 1.5 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -52,5 +52,5 @@ static char rcsid[]  = "@(#)$Id: version.c,v 1.4 2000/04/05 02:49:51 gunnar Exp 
 #if 0
 char	*version = "8.1 6/6/93";
 #else
-const char *version = "nail 9.02 2000-04-05";
+const char *version = "nail 9.03 2000-04-11";
 #endif

@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: main.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 /*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
@@ -46,7 +46,7 @@ static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: main.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: main.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -73,7 +73,7 @@ static char rcsid[]  = "@(#)$Id: main.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
  * Startup -- interface with user.
  */
 
-jmp_buf	hdrjmp;
+sigjmp_buf	hdrjmp;
 char *progname;
 
 int
@@ -81,12 +81,12 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	register int i;
+	int i;
 	struct name *to, *attach, *cc, *bcc, *smopts;
 	char *subject;
 	char *ef;
 	char nosrc = 0;
-	sighandler_t prevint;
+	signal_handler_t prevint;
 
 	/*
 	 * Absolutely the first thing we do is save our egid
@@ -112,7 +112,7 @@ main(argc, argv)
 	 * Figure out whether we are being run interactively,
 	 * start the SIGCHLD catcher, and so forth.
 	 */
-	(void) signal(SIGCHLD, sigchild);
+	(void) safe_signal(SIGCHLD, sigchild);
 	if (isatty(0))
 		assign("interactive", "");
 	image = -1;
@@ -278,20 +278,20 @@ main(argc, argv)
 		ef = "%";
 	if (setfile(ef) < 0)
 		exit(1);		/* error already reported */
-	if (setjmp(hdrjmp) == 0) {
-		if ((prevint = signal(SIGINT, SIG_IGN)) != SIG_IGN)
-			signal(SIGINT, hdrstop);
+	if (sigsetjmp(hdrjmp, 1) == 0) {
+		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+			safe_signal(SIGINT, hdrstop);
 		if (value("quiet") == NOSTR)
 			printf("Mail version %s.  Type ? for help.\n",
 				version);
 		announce();
 		fflush(stdout);
-		signal(SIGINT, prevint);
+		safe_signal(SIGINT, prevint);
 	}
 	commands();
-	signal(SIGHUP, SIG_IGN);
-	signal(SIGINT, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
+	safe_signal(SIGHUP, SIG_IGN);
+	safe_signal(SIGINT, SIG_IGN);
+	safe_signal(SIGQUIT, SIG_IGN);
 	quit();
 	exit(0);
 }
@@ -306,7 +306,7 @@ hdrstop(signo)
 
 	fflush(stdout);
 	fprintf(stderr, "\nInterrupt\n");
-	longjmp(hdrjmp, 1);
+	siglongjmp(hdrjmp, 1);
 }
 
 /*
@@ -321,11 +321,15 @@ void
 setscreensize()
 {
 	struct termios tbuf;
+#ifdef	TIOCGWINSZ
 	struct winsize ws;
+#endif
 	speed_t ospeed;
 
+#ifdef	TIOCGWINSZ
 	if (ioctl(1, TIOCGWINSZ, (char *) &ws) < 0)
 		ws.ws_col = ws.ws_row = 0;
+#endif
 	if (tcgetattr(1, &tbuf) < 0)
 		ospeed = B9600;
 	else
@@ -334,12 +338,18 @@ setscreensize()
 		screenheight = 9;
 	else if (ospeed == B1200)
 		screenheight = 14;
+#ifdef	TIOCGWINSZ
 	else if (ws.ws_row != 0)
 		screenheight = ws.ws_row;
+#endif
 	else
 		screenheight = 24;
+#ifdef	TIOCGWINSZ
 	if ((realscreenheight = ws.ws_row) == 0)
 		realscreenheight = 24;
+#endif
+#ifdef	TIOCGWINSZ
 	if ((screenwidth = ws.ws_col) == 0)
+#endif
 		screenwidth = 80;
 }

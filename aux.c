@@ -1,4 +1,4 @@
-/*	$Id: aux.c,v 1.2 2000/03/24 23:00:32 gunnar Exp $	*/
+/*	$Id: aux.c,v 1.3 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 /*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 
@@ -41,10 +41,11 @@ static char sccsid[]  = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: aux.c,v 1.2 2000/03/24 23:00:32 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: aux.c,v 1.3 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
+#include <utime.h>
 #include "rcv.h"
 #include "extern.h"
 
@@ -66,7 +67,7 @@ savestr(str)
 	int size = strlen(str) + 1;
 
 	if ((new = salloc(size)) != NOSTR)
-		bcopy(str, new, size);
+		memcpy(new, str, size);
 	return new;
 }
 
@@ -83,10 +84,10 @@ save2str(str, old)
 
 	if ((new = salloc(newsize + oldsize)) != NOSTR) {
 		if (oldsize) {
-			bcopy(old, new, oldsize);
+			memcpy(new, old, oldsize);
 			new[oldsize - 1] = ' ';
 		}
-		bcopy(str, new + oldsize, newsize);
+		memcpy(new + oldsize, str, newsize);
 	}
 	return new;
 }
@@ -130,7 +131,7 @@ panic(fmt, va_alist)
  */
 void
 touch(mp)
-	register struct message *mp;
+	struct message *mp;
 {
 
 	mp->m_flag |= MTOUCH;
@@ -150,7 +151,7 @@ isdir(name)
 
 	if (stat(name, &sbuf) < 0)
 		return(0);
-	return((sbuf.st_mode & S_IFMT) == S_IFDIR);
+	return(S_ISDIR(sbuf.st_mode));
 }
 
 /*
@@ -160,7 +161,7 @@ int
 argcount(argv)
 	char **argv;
 {
-	register char **ap;
+	char **ap;
 
 	for (ap = argv; *ap++ != NOSTR;)
 		;	
@@ -176,10 +177,10 @@ hfield(field, mp)
 	char field[];
 	struct message *mp;
 {
-	register FILE *ibuf;
+	FILE *ibuf;
 	char linebuf[LINESIZE];
-	register int lc;
-	register char *hfield;
+	int lc;
+	char *hfield;
 	char *colon, *oldhfield = NOSTR;
 
 	ibuf = setinput(mp);
@@ -204,14 +205,14 @@ hfield(field, mp)
  */
 int
 gethfield(f, linebuf, rem, colon)
-	register FILE *f;
+	FILE *f;
 	char linebuf[];
-	register int rem;
+	int rem;
 	char **colon;
 {
 	char line2[LINESIZE];
-	register char *cp, *cp2;
-	register int c;
+	char *cp, *cp2;
+	int c;
 
 	for (;;) {
 		if (--rem < 0)
@@ -247,7 +248,7 @@ gethfield(f, linebuf, rem, colon)
 			if (cp + c >= linebuf + LINESIZE - 2)
 				break;
 			*cp++ = ' ';
-			bcopy(cp2, cp, c);
+			memcpy(cp, cp2, c);
 			cp += c;
 		}
 		*cp = 0;
@@ -266,7 +267,7 @@ ishfield(linebuf, colon, field)
 	char linebuf[], field[];
 	char *colon;
 {
-	register char *cp = colon;
+	char *cp = colon;
 
 	*cp = 0;
 	if (strcasecmp(linebuf, field) != 0) {
@@ -284,10 +285,10 @@ ishfield(linebuf, colon, field)
  */
 void
 istrcpy(dest, src, size)
-	register char *dest, *src;
+	char *dest, *src;
 	int size;
 {
-	register char *max;
+	char *max;
 
 	max=dest+size-1;
 	while (dest<=max) {
@@ -382,14 +383,13 @@ alter(name)
 	char *name;
 {
 	struct stat sb;
-	struct timeval tv[2];
+	struct utimbuf utb;
 
 	if (stat(name, &sb))
 		return;
-	tv[0].tv_sec = time((time_t *)0) + 1;
-	tv[1].tv_sec = sb.st_mtime;
-	tv[0].tv_usec = tv[1].tv_usec = 0;
-	(void)utimes(name, tv);
+	utb.actime = time((time_t *)0) + 1;
+	utb.modtime = sb.st_mtime;
+	(void)utime(name, &utb);
 }
 
 /*
@@ -400,7 +400,7 @@ int
 blankline(linebuf)
 	char linebuf[];
 {
-	register char *cp;
+	char *cp;
 
 	for (cp = linebuf; *cp; cp++)
 		if (*cp != ' ' && *cp != '\t')
@@ -415,15 +415,15 @@ blankline(linebuf)
  */
 char *
 nameof(mp, reptype)
-	register struct message *mp;
+	struct message *mp;
 	int reptype;
 {
-	register char *cp, *cp2;
+	char *cp, *cp2;
 
 	cp = skin(name1(mp, reptype));
 	if (reptype != 0 || charcount(cp, '!') < 2)
 		return(cp);
-	cp2 = rindex(cp, '!');
+	cp2 = strrchr(cp, '!');
 	cp2--;
 	while (cp2 > cp && *cp2 != '!')
 		cp2--;
@@ -438,9 +438,9 @@ nameof(mp, reptype)
  */
 char *
 skip_comment(cp)
-	register char *cp;
+	char *cp;
 {
-	register int nesting = 1;
+	int nesting = 1;
 
 	for (; nesting > 0 && *cp; cp++) {
 		switch (*cp) {
@@ -467,16 +467,16 @@ char *
 skin(name)
 	char *name;
 {
-	register int c;
-	register char *cp, *cp2;
+	int c;
+	char *cp, *cp2;
 	char *bufend;
 	int gotlt, lastsp;
 	char nbuf[BUFSIZ];
 
 	if (name == NOSTR)
 		return(NOSTR);
-	if (index(name, '(') == NOSTR && index(name, '<') == NOSTR
-	    && index(name, ' ') == NOSTR)
+	if (strchr(name, '(') == NOSTR && strchr(name, '<') == NOSTR
+	    && strchr(name, ' ') == NOSTR)
 		return(name);
 	gotlt = 0;
 	lastsp = 0;
@@ -573,13 +573,13 @@ skin(name)
  */
 char *
 name1(mp, reptype)
-	register struct message *mp;
+	struct message *mp;
 	int reptype;
 {
 	char namebuf[LINESIZE];
 	char linebuf[LINESIZE];
-	register char *cp, *cp2;
-	register FILE *ibuf;
+	char *cp, *cp2;
+	FILE *ibuf;
 	int first = 1;
 
 	if ((cp = hfield("from", mp)) != NOSTR)
@@ -601,24 +601,24 @@ newname:
 	*cp2 = '\0';
 	if (readline(ibuf, linebuf, LINESIZE) < 0)
 		return(savestr(namebuf));
-	if ((cp = index(linebuf, 'F')) == NOSTR)
+	if ((cp = strchr(linebuf, 'F')) == NOSTR)
 		return(savestr(namebuf));
 	if (strncmp(cp, "From", 4) != 0)
 		return(savestr(namebuf));
-	while ((cp = index(cp, 'r')) != NOSTR) {
+	while ((cp = strchr(cp, 'r')) != NOSTR) {
 		if (strncmp(cp, "remote", 6) == 0) {
-			if ((cp = index(cp, 'f')) == NOSTR)
+			if ((cp = strchr(cp, 'f')) == NOSTR)
 				break;
 			if (strncmp(cp, "from", 4) != 0)
 				break;
-			if ((cp = index(cp, ' ')) == NOSTR)
+			if ((cp = strchr(cp, ' ')) == NOSTR)
 				break;
 			cp++;
 			if (first) {
 				strncpy(namebuf, cp, LINESIZE);
 				first = 0;
 			} else {
-				cp2=rindex(namebuf, '!')+1;
+				cp2=strrchr(namebuf, '!')+1;
 				strncpy(cp2, cp, (namebuf+LINESIZE)-cp2);
 			}
 			namebuf[LINESIZE-2]='\0';
@@ -638,8 +638,8 @@ charcount(str, c)
 	char *str;
 	int c;
 {
-	register char *cp;
-	register int i;
+	char *cp;
+	int i;
 
 	for (i = 0, cp = str; *cp; cp++)
 		if (*cp == c)
@@ -652,11 +652,11 @@ charcount(str, c)
  */
 int
 anyof(s1, s2)
-	register char *s1, *s2;
+	char *s1, *s2;
 {
 
 	while (*s1)
-		if (index(s2, *s1++))
+		if (strchr(s2, *s1++))
 			return 1;
 	return 0;
 }
@@ -666,7 +666,7 @@ anyof(s1, s2)
  */
 int
 raise(c)
-	register int c;
+	int c;
 {
 
 	if (islower(c))
@@ -679,7 +679,7 @@ raise(c)
  */
 char *
 copy(s1, s2)
-	register char *s1, *s2;
+	char *s1, *s2;
 {
 
 	while ((*s2++ = *s1++) != '\0')
@@ -713,10 +713,10 @@ isign(field, ignore)
 
 int
 member(realfield, table)
-	register char *realfield;
+	char *realfield;
 	struct ignoretab *table;
 {
-	register struct ignore *igp;
+	struct ignore *igp;
 
 	for (igp = table->i_head[hash(realfield)]; igp != 0; igp = igp->i_link)
 		if (*igp->i_field == *realfield &&

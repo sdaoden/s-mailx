@@ -1,4 +1,4 @@
-/*	$Id: cmd2.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: cmd2.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 /*	NetBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -66,8 +66,8 @@ next(v)
 	void *v;
 {
 	int *msgvec = v;
-	register struct message *mp;
-	register int *ip, *ip2;
+	struct message *mp;
+	int *ip, *ip2;
 	int list[2], mdot;
 
 	if (*msgvec != 0) {
@@ -173,8 +173,8 @@ save1(str, mark, cmd, ignore, convert)
 	char *cmd;
 	struct ignoretab *ignore;
 {
-	register int *ip;
-	register struct message *mp;
+	int *ip;
+	struct message *mp;
 	char *file, *disp;
 	int f, *msgvec;
 	FILE *obuf;
@@ -282,7 +282,7 @@ snarf(linebuf, flag)
 	char linebuf[];
 	int *flag;
 {
-	register char *cp;
+	char *cp;
 
 	*flag = 1;
 	cp = strlen(linebuf) + linebuf - 1;
@@ -358,8 +358,8 @@ int
 delm(msgvec)
 	int *msgvec;
 {
-	register struct message *mp;
-	register int *ip;
+	struct message *mp;
+	int *ip;
 	int last;
 
 	last = 0;
@@ -398,8 +398,8 @@ undeletecmd(v)
 	void *v;
 {
 	int *msgvec = v;
-	register struct message *mp;
-	register int *ip;
+	struct message *mp;
+	int *ip;
 
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
@@ -420,7 +420,7 @@ core(v)
 	int pid;
 	extern int wait_status;
 
-	switch (pid = vfork()) {
+	switch (pid = fork()) {
 	case -1:
 		perror("fork");
 		return(1);
@@ -448,7 +448,7 @@ clobber(v)
 	void *v;
 {
 	char **argv = v;
-	register int times;
+	int times;
 
 	if (argv[0] == 0)
 		times = 1;
@@ -466,7 +466,7 @@ clob1(n)
 	int n;
 {
 	char buf[512];
-	register char *cp;
+	char *cp;
 
 	if (n <= 0)
 		return;
@@ -526,8 +526,8 @@ ignore1(list, tab, which)
 	char *which;
 {
 	char field[BUFSIZ];
-	register int h;
-	register struct ignore *igp;
+	int h;
+	struct ignore *igp;
 	char **ap;
 
 	if (*list == NOSTR)
@@ -557,7 +557,7 @@ igshow(tab, which)
 	struct ignoretab *tab;
 	char *which;
 {
-	register int h;
+	int h;
 	struct ignore *igp;
 	char **ap, **ring;
 

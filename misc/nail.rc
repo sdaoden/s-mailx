@@ -1,1 +1,3 @@
-set ask append dot hold save crt encoding=quoted-printable charset=iso-8859-1
+set ask append crt dot emptybox hold save
+set charset=iso-8859-1 encoding=quoted-printable
+set indentprefix="> "

@@ -1,4 +1,4 @@
-/*	$Id: base64.c,v 1.4 2000/03/31 22:05:47 gunnar Exp $	*/
+/*	$Id: base64.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $	*/
 
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -19,7 +19,7 @@
  */
 
 #ifndef lint
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.4 2000/03/31 22:05:47 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: base64.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $";
 #endif /* not lint */
 
 /*
@@ -44,24 +44,24 @@ const static char b64index[] = {
 	41,42,43,44, 45,46,47,48, 49,50,51,-1, -1,-1,-1,-1
 };
 
-#define char64(c)  ((c) < 0 ? -1 : b64index[(c)])
+#define char64(c)  ((c) < 0 ? -1 : b64index[(int)(c)])
 
 static char *
-ctob64(c, d, e, pad)
-unsigned char c, d, e;
+ctob64(p, pad)
+unsigned char *p;
 {
 	static char b64[4];
 
-	b64[0] = b64table[c >> 2];
-	b64[1] = b64table[((c & 0x3) << 4) | ((d & 0xF0) >> 4)];
+	b64[0] = b64table[p[0] >> 2];
+	b64[1] = b64table[((p[0] & 0x3) << 4) | ((p[1] & 0xF0) >> 4)];
 	if (pad == 2) {
 		b64[2] = b64[3] = '=';
 	} else if (pad == 1) {
-		b64[2] = b64table[((d & 0xF) << 2) | ((e & 0xC0) >> 6)];
+		b64[2] = b64table[((p[1] & 0xF) << 2) | ((p[2] & 0xC0) >> 6)];
 		b64[3] = '=';
 	} else {
-		b64[2] = b64table[((d & 0xF) << 2) | ((e & 0xC0) >> 6)];
-		b64[3] = b64table[e & 0x3F];
+		b64[2] = b64table[((p[1] & 0xF) << 2) | ((p[2] & 0xC0) >> 6)];
+		b64[3] = b64table[p[2] & 0x3F];
 	}
 	return b64;
 }
@@ -71,20 +71,19 @@ mime_write_tob64(in, fo)
 struct str *in;
 FILE *fo;
 {
-	char *p, *h, *upper;
-	int l;
+	char *p, *h, *upper, q[3];
+	int i, l, pads;
 	size_t sz;
 
 	sz = 0;
 	upper = in->s + in->l;
-	for (p = in->s, l = 0; p < upper; p += 3) {
-		if (p + 1 >= upper) {
-			h = ctob64(*p, 0, 0, 2);
-		} else if (p + 2 >= upper) {
-			h = ctob64(*p, *(p + 1), 0, 1);
-		} else {
-			h = ctob64(*p, *(p + 1), *(p + 2), 0);
+	for (p = in->s, l = 0; p < upper; ) {
+		for (pads = 2, i = 0; i <= 2; i++, pads--) {
+			q[i] = *p++;
+			if (p == upper)
+				break;
 		}
+		h = ctob64(q, pads);
 		fwrite(h, sizeof(char), 4, fo);
 		sz += 4, l += 4;
 		if (l >= 71) {
@@ -99,11 +98,11 @@ FILE *fo;
 }
 
 void
-mime_fromb64(in, out, todisplay)
+mime_fromb64(in, out, todisplay, is_text)
 struct str *in, *out;
 {
 	char *p, *q, *upper, c, d, e, f, g;
-	int done = 0;
+	int done = 0, newline = 0;
 
 	out->s = smalloc(in->l * 3 / 4 + 2);
 	out->l = 0;
@@ -124,8 +123,19 @@ struct str *in, *out;
 		c = char64(c);
 		d = char64(d);
 		g = ((c << 2) | ((d & 0x30) >> 4));
-		if (todisplay && isspecial(g))
+		if (todisplay && is_undisplayable(g))
 			g = '?';
+		if (is_text) {
+			if (g == '\r') {
+				newline = 1;
+			} else if (g == '\n' && newline) {
+				q--;
+				out->l--;
+				newline = 0;
+			} else {
+				newline = 0;
+			}
+		}
 		*q++ = g;
 		out->l++;
 		if (e == '=') {
@@ -133,8 +143,19 @@ struct str *in, *out;
 		} else {
 			e = char64(e);
 			g = (((d & 0xF) << 4) | ((e & 0x3C) >> 2));
-			if (todisplay && isspecial(g))
+			if (todisplay && is_undisplayable(g))
 				g = '?';
+			if (is_text) {
+				if (g == '\r') {
+					newline = 1;
+				} else if (g == '\n' && newline) {
+					q--;
+					out->l--;
+					newline = 0;
+				} else {
+					newline = 0;
+				}
+			}
 			*q++ = g;
 			out->l++;
 			if (f == '=') {
@@ -142,8 +163,19 @@ struct str *in, *out;
 			} else {
 				f = char64(f);
 				g = (((e & 0x03) << 6) | f);
-				if (todisplay && isspecial(g))
+				if (todisplay && is_undisplayable(g))
 					g = '?';
+				if (is_text) {
+					if (g == '\r') {
+						newline = 1;
+					} else if (g == '\n' && newline) {
+						q--;
+						out->l--;
+						newline = 0;
+					} else {
+						newline = 0;
+					}
+				}
 				*q++ = g;
 				out->l++;
 			}
@@ -153,7 +185,7 @@ struct str *in, *out;
 }
 
 void
-mime_fromb64_b(in, out, todisplay, f)
+mime_fromb64_b(in, out, todisplay, is_text, f)
 /* Buffer the base64 input so mime_fromb64 gets always multiples of
  * 4 characters.
  * As we have only one buffer, this function is not reentrant, but
@@ -189,7 +221,7 @@ FILE *f;
 			n++;
 	}
 	nin.l -= n;
-	mime_fromb64(&nin, out, todisplay);
+	mime_fromb64(&nin, out, todisplay, is_text);
 	free(nin.s);
 	f_b = f;
 }

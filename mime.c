@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.4 2000/04/05 02:49:51 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -20,10 +20,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY GUNNAR RITTER AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL GUNNAR RITTER OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -36,7 +36,7 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.4 2000/04/05 02:49:51 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -53,7 +53,23 @@ char *defcharset = "iso-8859-1";
 static char *mimetypes_world = "/etc/mime.types";
 static char *mimetypes_user = "~/mime.types";
 
+/* Check for the readability of the given files */
 int
+mime_check_attach(atts)
+struct name *atts;
+{
+	struct name *a;
+
+	for (a = atts; a != NIL; a = a->n_flink) {
+		if (access(a->n_name, R_OK) != 0) {
+			perror(a->n_name);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int
 mustquote_body(c)
 unsigned char c;
 {
@@ -62,7 +78,7 @@ unsigned char c;
 	return 0;
 }
 
-int
+static int
 mustquote_hdr(c)
 unsigned char c;
 {
@@ -73,7 +89,7 @@ unsigned char c;
 }
 
 int
-isspecial(c)
+is_undisplayable(c)
 unsigned char c;
 {
 	if ((c >= 0177 && c < 0240)
@@ -96,12 +112,12 @@ size_t s;
 
 	p = malloc(s);
 	if (p == NULL) {
-		out_of_memory;
+		out_of_memory();
 	}
 	return p;
 }
 
-char *
+static char *
 mime_strcasestr(haystack, needle)
 /* glibc 2.1 has such a function, but others ... */
 char *haystack, *needle;
@@ -121,12 +137,67 @@ char *haystack, *needle;
 		initial[1] = '\0';
 	}
 	initial[2] = '\0';
-	for (p = haystack; p = strpbrk(p, initial); p++) {
+	for (p = haystack; (p = strpbrk(p, initial)) != NULL; p++) {
 		if (strncasecmp(p, needle, sz) == 0)
 			break;
 	}
 	return p;
 }
+
+#ifdef	NEED_STRCASECMP
+/* One of the things I really HATE on some SysVs is that they still
+ * do not have these functions in their standard libc.
+ * These implementations are quick-drawn and inefficient. Claim
+ * your vendor for a better version, and one outside libucb!
+ */
+int
+strcasecmp(s1, s2)
+const char *s1, *s2;
+{
+	int cmp, c1, c2;
+
+	do {
+		if (isupper(*s1))
+			c1 = tolower(*s1);
+		else
+			c1 = (unsigned char)*s1;
+		if (isupper(*s2))
+			c2 = tolower(*s2);
+		else
+			c2 = (unsigned char)*s2;
+		cmp = c1 - c2;
+		if (cmp != 0)
+			return cmp;
+	} while (*s1++ != '\0' && *s2++ != '\0');
+	return 0;
+}
+
+int
+strncasecmp(s1, s2, sz)
+const char *s1, *s2;
+size_t sz;
+{
+	int cmp, c1, c2;
+	size_t i = 1;
+
+	if (sz <= 0)
+		return 0;
+	do {
+		if (isupper(*s1))
+			c1 = tolower(*s1);
+		else
+			c1 = (unsigned char)*s1;
+		if (isupper(*s2))
+			c2 = tolower(*s2);
+		else
+			c2 = (unsigned char)*s2;
+		cmp = c1 - c2;
+		if (cmp != 0)
+			return cmp;
+	} while (i++ < sz && *s1++ != '\0' && *s2++ != '\0');
+	return 0;
+}
+#endif	/* silly SysV functions */
 
 int
 mime_getenc(h)
@@ -277,7 +348,7 @@ char *ext, *filename;
 	char line[LINESIZE];
 	char *type = NULL;
 
-	f = fopen(filename, "r");
+	f = Fopen(filename, "r");
 	if (f == NULL)
 		return NULL;
 	while (fgets(line, LINESIZE, f)) {
@@ -285,7 +356,7 @@ char *ext, *filename;
 		if (type != NULL)
 			break;
 	}
-	fclose(f);
+	Fclose(f);
 	return type;
 }
 
@@ -301,9 +372,9 @@ char *name;
 		return NULL;
 	else
 		ext++;
-	if (content = mime_type(ext, expand(mimetypes_user)))
+	if ((content = mime_type(ext, expand(mimetypes_user))) != NULL)
 		return content;
-	if (content = mime_type(ext, mimetypes_world))
+	if ((content = mime_type(ext, mimetypes_world)) != NULL)
 		return content;
 	return NULL;
 }
@@ -364,11 +435,11 @@ char *b;
 	return b;
 }
 
-char *
-ctohex(c)
+static char *
+ctohex(c, hex)
 unsigned char c;
+char *hex;
 {
-	static char hex[3];
 	unsigned char d;
 
 	hex[2] = '\0';
@@ -387,7 +458,7 @@ struct str *in;
 FILE *fo;
 int (*mustquote)(unsigned char);
 {
-	char *p, *upper, *h;
+	char *p, *upper, *h, hex[3];
 	int l;
 	size_t sz;
 
@@ -399,7 +470,7 @@ int (*mustquote)(unsigned char);
 					(*p == ' ' || *p == '\t'))) {
 			sz += 2;
 			fputc('=', fo);
-			h = ctohex(*p);
+			h = ctohex(*p, hex);
 			fwrite(h, sizeof(char), 2, fo);
 			l += 3;
 		} else {
@@ -442,7 +513,7 @@ struct str *in, *out;
 			quote[1] = *p;
 			quote[2] = '\0';
 			*q = (char)strtol(quote, NULL, 16);
-			if (todisplay && isspecial(*q))
+			if (todisplay && is_undisplayable(*q))
 				*q = '?';
 			q++;
 			out->l--;
@@ -493,7 +564,8 @@ struct str *in, *out;
 			cin.l--;
 			switch (convert) {
 				case CONV_FROMB64:
-					mime_fromb64(&cin, &cout, todisplay);
+					mime_fromb64(&cin, &cout,
+							todisplay, 1);
 					break;
 				case CONV_FROMQP:
 					mime_fromqp(&cin, &cout,
@@ -546,7 +618,7 @@ FILE *fo;
 	return sz;
 }
 
-size_t
+static size_t
 fwrite_tty(ptr, size, nmemb, f)
 void *ptr;
 size_t size, nmemb;
@@ -557,7 +629,7 @@ FILE *f;
 
 	upper = (char*)ptr + nmemb / size;
 	for (p = ptr, sz = 0; p < upper; p++, sz++) {
-		if (isspecial(*p)) {
+		if (is_undisplayable(*p)) {
 			fputc('?', f);
 		} else
 			fputc(*p, f);
@@ -574,7 +646,7 @@ FILE *f;
 {
 	struct str in, out;
 	size_t sz;
-	char quote[4];
+	int is_text = 0;
 
 	in.s = ptr;
 	in.l = size * nmemb / sizeof(char);
@@ -587,8 +659,11 @@ FILE *f;
 	case CONV_TOQP:
 		sz = mime_write_toqp(&in, f, mustquote_body);
 		break;
+	case CONV_FROMB64_T:
+		is_text = 1;
+		/* FALL THROUGH */
 	case CONV_FROMB64:
-		mime_fromb64_b(&in, &out, todisplay, f);
+		mime_fromb64_b(&in, &out, todisplay, is_text, f);
 		sz = fwrite(out.s, sizeof(char), out.l, f);
 		free(out.s);
 		break;

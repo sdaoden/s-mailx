@@ -1,4 +1,4 @@
-/*	$Id: strings.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: strings.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp 	*/
 /*	NetBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)strings.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: strings.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: strings.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -68,33 +68,33 @@ char *
 salloc(size)
 	int size;
 {
-	register char *t;
-	register int s;
-	register struct strings *sp;
-	int index;
+	char *t;
+	int s;
+	struct strings *sp;
+	int string_index;
 
 	s = size;
 	s += (sizeof (char *) - 1);
 	s &= ~(sizeof (char *) - 1);
-	index = 0;
+	string_index = 0;
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
-		if (sp->s_topFree == NOSTR && (STRINGSIZE << index) >= s)
+		if (sp->s_topFree == NOSTR && (STRINGSIZE << string_index) >= s)
 			break;
 		if (sp->s_nleft >= s)
 			break;
-		index++;
+		string_index++;
 	}
 	if (sp >= &stringdope[NSPACE])
 		panic("String too large");
 	if (sp->s_topFree == NOSTR) {
-		index = sp - &stringdope[0];
-		sp->s_topFree = malloc(STRINGSIZE << index);
+		string_index = sp - &stringdope[0];
+		sp->s_topFree = malloc(STRINGSIZE << string_index);
 		if (sp->s_topFree == NOSTR) {
-			fprintf(stderr, "No room for space %d\n", index);
+			fprintf(stderr, "No room for space %d\n", string_index);
 			panic("Internal error");
 		}
 		sp->s_nextFree = sp->s_topFree;
-		sp->s_nleft = STRINGSIZE << index;
+		sp->s_nleft = STRINGSIZE << string_index;
 	}
 	sp->s_nleft -= s;
 	t = sp->s_nextFree;
@@ -110,18 +110,18 @@ salloc(size)
 void
 sreset()
 {
-	register struct strings *sp;
-	register int index;
+	struct strings *sp;
+	int string_index;
 
 	if (noreset)
 		return;
-	index = 0;
+	string_index = 0;
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
 		if (sp->s_topFree == NOSTR)
 			continue;
 		sp->s_nextFree = sp->s_topFree;
-		sp->s_nleft = STRINGSIZE << index;
-		index++;
+		sp->s_nleft = STRINGSIZE << string_index;
+		string_index++;
 	}
 }
 
@@ -132,7 +132,7 @@ sreset()
 void
 spreserve()
 {
-	register struct strings *sp;
+	struct strings *sp;
 
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++)
 		sp->s_topFree = NOSTR;

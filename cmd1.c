@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -66,8 +66,8 @@ headers(v)
 	void *v;
 {
 	int *msgvec = v;
-	register int n, mesg, flag;
-	register struct message *mp;
+	int n, mesg, flag;
+	struct message *mp;
 	int size;
 
 	size = screensize();
@@ -108,7 +108,7 @@ scroll(v)
 	void *v;
 {
 	char *arg = v;
-	register int s, size;
+	int s, size;
 	int cur[1];
 
 	cur[0] = 0;
@@ -163,7 +163,7 @@ from(v)
 	void *v;
 {
 	int *msgvec = v;
-	register int *ip;
+	int *ip;
 
 	for (ip = msgvec; *ip != 0; ip++)
 		printhead(*ip);
@@ -217,7 +217,7 @@ printhead(mesg)
 	if (mp->m_flag & MBOX)
 		dispc = 'M';
 	parse(headline, &hl, pbuf);
-	sprintf(wcount, "%3d/%-5ld", mp->m_lines, mp->m_size);
+	sprintf(wcount, "%3d/%-5u", mp->m_lines, (unsigned int)mp->m_size);
 	subjlen = screenwidth - 50 - strlen(wcount);
 	if (subjlen > out.l)
 		subjlen = out.l;
@@ -252,8 +252,8 @@ pcmdlist(v)
 	void *v;
 {
 	extern const struct cmd cmdtab[];
-	register const struct cmd *cp;
-	register int cc;
+	const struct cmd *cp;
+	int cc;
 
 	printf("Commands are:\n");
 	for (cc = 0, cp = cmdtab; cp->c_name != NOSTR; cp++) {
@@ -320,13 +320,14 @@ Type(v)
 /*
  * Type out the messages requested.
  */
-jmp_buf	pipestop;
+sigjmp_buf	pipestop;
+
 int
 type1(msgvec, doign, page)
 	int *msgvec;
 	int doign, page;
 {
-	register int *ip;
+	int *ip;
 	struct message *mp;
 	char *cp;
 	int nlines;
@@ -338,7 +339,7 @@ type1(msgvec, doign, page)
 #endif
 
 	obuf = stdout;
-	if (setjmp(pipestop))
+	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
 	if (value("interactive") != NOSTR &&
 	    (page || (cp = value("crt")) != NOSTR)) {
@@ -356,7 +357,7 @@ type1(msgvec, doign, page)
 				perror(cp);
 				obuf = stdout;
 			} else
-				signal(SIGPIPE, brokpipe);
+				safe_signal(SIGPIPE, brokpipe);
 		}
 	}
 	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
@@ -372,9 +373,9 @@ close_pipe:
 		/*
 		 * Ignore SIGPIPE so it can't cause a duplicate close.
 		 */
-		signal(SIGPIPE, SIG_IGN);
+		safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(obuf);
-		signal(SIGPIPE, SIG_DFL);
+		safe_signal(SIGPIPE, SIG_DFL);
 	}
 	return(0);
 }
@@ -387,7 +388,7 @@ void
 brokpipe(signo)
 	int signo;
 {
-	longjmp(pipestop, 1);
+	siglongjmp(pipestop, 1);
 }
 
 /*
@@ -400,8 +401,8 @@ top(v)
 	void *v;
 {
 	int *msgvec = v;
-	register int *ip;
-	register struct message *mp;
+	int *ip;
+	struct message *mp;
 	int c, topl, lines, lineb;
 	char *valtop, linebuf[LINESIZE];
 	FILE *ibuf;
@@ -443,7 +444,7 @@ stouch(v)
 	void *v;
 {
 	int *msgvec = v;
-	register int *ip;
+	int *ip;
 
 	for (ip = msgvec; *ip != 0; ip++) {
 		dot = &message[*ip-1];
@@ -461,7 +462,7 @@ mboxit(v)
 	void *v;
 {
 	int *msgvec = v;
-	register int *ip;
+	int *ip;
 
 	for (ip = msgvec; *ip != 0; ip++) {
 		dot = &message[*ip-1];

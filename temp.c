@@ -1,4 +1,4 @@
-/*	$Id: temp.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: temp.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp 	*/
 /*	NetBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)temp.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: temp.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: temp.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -65,7 +65,7 @@ char	*tmpdir;
 void
 tinit()
 {
-	register char *cp;
+	char *cp;
 
 	if ((tmpdir = getenv("TMPDIR")) == NULL) {
 		tmpdir = _PATH_TMP;

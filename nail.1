@@ -1,5 +1,5 @@
-.\" $Id: nail.1,v 1.4 2000/04/05 02:49:51 gunnar Exp $
-.TH NAIL 1 "March 29, 2000" "Gunnar Ritter" "User Commands"
+.\" $Id: nail.1,v 1.5 2000/04/11 16:37:15 gunnar Exp $
+.TH NAIL 1 "April 10, 2000" "Gunnar Ritter" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -10,9 +10,9 @@ nail [-iInNv] -f [name]
 nail [-iInNv] [-u user]
 .fi
 .SH DESCRIPTION
-Nail is an extension to Mail(1) to make it MIME-conformant. Basically,
-Mail and nail accept the same commands. Therefore, only the differences
-are described here.
+Nail is an extension to Mail(1) to make it MIME-conformant.
+Basically, Mail and nail accept the same commands.
+Therefore, only the differences are described here.
 .SH SUMMARY
 The following options are different to those of Mail(1):
 .TP
@@ -22,22 +22,22 @@ Attach the given files to the message.
 The following commands are different to those of Mail(1):
 .TP
 .BR print \ or \ type
-If the message is a MIME multipart message, all parts with a content type
-of "text" or "message" are shown, the other are hidden except for their
-headers.
+If the message is a MIME multipart message,
+all parts with a content type of "text" or "message" are shown,
+the other are hidden except for their headers.
 .TP 
 .B write
 For conventional messages, the body without all headers is written.
-The output is converted to 8bit, if necessary.
-If the message is a MIME multipart message, the user is
-asked for a filename to save each single part. In this case there is
-nothing written to the given file, and it is deleted immediately if it
-did not exist before.
+The output is converted if necessary.
+If the message is a MIME multipart message,
+the user is asked for a filename to save each single part.
+In this case there is nothing written to the given file,
+and it is deleted immediately if it did not exist before.
 In non-interactive mode, only the parts of the multipart message
-for that a filename is given in the part header are written,
+that have a filename given in the part header are written,
 the other are discarded.
-The original message is never marked to be deleted in the originating
-mail folder.
+The original message is never marked for deletion
+in the originating mail folder.
 .PP
 The following tilde commands are different to those of Mail(1):
 .TP
@@ -47,93 +47,128 @@ Add the given files to the attachment list.
 The following variables are different to those of Mail(1):
 .TP
 .B askattach
-If set, nail asks for files to attach at the end of each message. Responding
-with a newline indicates not to include an attachment.
+If set, nail asks for files to attach at the end of each message.
+Responding with a newline indicates not to include an attachment.
 .TP
 .B charset
 The name of the character set used by nail.
 If unset, \fIiso-8859-1\fR is the default.
-Note that this value is only used in the header of outgoing text messages.
-The actual character set of mail messages depends on the character set of
-the terminal that nail runs on.
-So, the charset variable should be set to this value.
-If the message contains no special characters at all, its character
-set is set to \fIUS-ASCII\fR, without regard to the value of this variable.
+Note that this value is only put in the header of outgoing text messages.
+The actual character set of mail messages depends
+on the terminal's character set.
+So, the charset variable should correspondend to this value.
+If the message contains no special characters at all,
+its character set is declared as \fIUS-ASCII\fR,
+without regard to the value of this variable.
+.TP
+.B emptybox
+If set, an empty mailbox file is not removed.
+This is highly recommended,
+since it improves the interoperability with other MUAs,
+and since it prevents malicious users
+from creating fake mailboxes
+in a world-writeable spool directory.
 .TP
 .B encoding
-The default MIME encoding to use in outgoing text messages and message parts.
-Must be one of \fI8bit\fR, \fIquoted-printable\fR or \fIbase64\fR.
+The default MIME encoding to use
+in outgoing text messages and message parts.
+Valid values are \fI8bit\fR or \fIquoted-printable\fR.
 The default is \fI8bit\fR.
 The recommended value, however, is \fIquoted-printable\fR.
-If there is no need to encode a message, \fI7bit\fR transfer mode is
-used, without regard to the value of this variable. Binary data is
-always encoded in \fIbase64\fR mode.
+If there is no need to encode a message,
+\fI7bit\fR transfer mode is used,
+without regard to the value of this variable.
+Binary data is always encoded in \fIbase64\fR mode.
 .TP
 .B from
 The address to put into the \fI`From:'\fR field of the message header.
-If this variable is specified, a \fI`Sender:'\fR field
-containing the user's name is also generated. If replying to a message,
+If replying to a message,
 this address is handled as if it were in the alternates list.
+If this variable is set,
+a \fI`Sender:'\fR field containing the user's name
+is also generated.
 .TP
 .B ORGANIZATION
 The value to put into the \fI`Organization:'\fR field of the message header.
 .TP
 .B quote
 If set, mail starts a replying message with the original message prefixed
-by the value of the variable \fIindentprefix\fR. This is mostly equivalent
-to the ~m command, except that it is done automatically and none of the
-message headers are printed.
+by the value of the variable \fIindentprefix\fR.
+Normally, a heading consisting of `Realname <mailaddr> wrote:' is printed
+before the quotation.
+If the string \fInoheading\fR is assigned to the \fIquote\fR variable,
+this heading is omitted.
+If the string \fIheaders\fR is assigned,
+the headers selected by the ignore/retain commands
+are printed above the message body,
+thus \fIquote\fR acts like an automatic ~m command then.
+If the string \fIallheaders\fR is assigned,
+all headers are printed above the message body,
+thus \fIquote\fR acts like an automatic ~M command then.
 .TP
 .B replyto
 The address to put into the \fI`Reply-To:'\fR field of the message header.
-If replying to a message, this address is handled as if it were in the
-alternates list.
+If replying to a message, this address is handled
+as if it were in the alternates list.
+.TP
+.B signature
+Must correspondend to the name of a readable file if set.
+The file's content is then appended to each singlepart message
+and to the first part of each multipart message.
+Be warned that there is no possibility
+to edit the signature for an individual message.
 .TP
 .B stealthmua
 Inhibits the generation of the \fI`Message-Id:'\fR and \fI`X-Mailer:'\fR
-header fields that include obvious references to nail. There are two
-pitfalls associated with this: First, the message id of outgoing messages
-is not known anymore. Second, an expert may still use the remaining
-information in the header to track down the originating mail user agent.
+header fields that include obvious references to nail.
+There are two pitfalls associated with this:
+First, the message id of outgoing messages is not known anymore.
+Second, an expert may still use the remaining information in the header
+to track down the originating mail user agent.
 So this option should only be set if there is a good reason to do that.
 .SH MIME TYPES
-For any attachment, nail tries to determine the content type. It does this
-by reading MIME type files whose lines have the following syntax:
+For any attachment, nail tries to determine the content type.
+It does this by reading MIME type files
+whose lines have the following syntax:
 .nf
 
        type/subtype          extension [extension ...]
 
 .fi
-where type/subtype are strings describing the file contents, and extension
-is the part of a filename starting after the last dot.
+where type/subtype are strings describing the file contents,
+and extension is the part of a filename starting after the last dot.
 Any line not immediately beginning with an ASCII alphabetical character is
-ignored by nail. If there is a match with the extension of the file to
-attach, the given type/subtype pair is used. Otherwise, or if the filename
-has no extension, the content types text/plain or application/octet-stream
-are used, the first for text or international text files, the second
-for any file that contains formatting characters other than newlines
-and horizontal tabulators.
+ignored by nail.
+If there is a match with the extension of the file to attach,
+the given type/subtype pair is used.
+Otherwise, or if the filename has no extension,
+the content types text/plain or application/octet-stream are used,
+the first for text or international text files,
+the second for any file that contains formatting characters
+other than newlines and horizontal tabulators.
 .SH MIME CONFORMANCE
-Nail is intended to be a MIME-conformant mail user agent, with the
-following exceptions:
+Nail is intended to be a MIME-conformant mail user agent,
+with the following exceptions:
 .TP
 -
-Nail does not care at all about the character sets of messages. It simply
-displays all messages of the content types "text" or "message", but it
-replaces all formatting characters except newlines, linefeeds, backspaces
-and tabulators with question marks if displaying on a terminal to avoid
-strange results. Thus, every charset only partially equivalent to ASCII
+Nail does not care at all about the character sets of messages.
+It simply displays all messages of the content types "text" or "message",
+but it replaces all formatting characters except newlines, linefeeds,
+backspaces and tabulators with question marks if displaying
+on a terminal to avoid strange results.
+Thus, every charset only partially equivalent to ASCII
 will be displayed in an at least basically readable form.
 .TP
 -
 No special handling of "multipart/alternative" messages is performed.
 All parts with content types of "text" or "message" are shown.
-This is done because the user should see as many information as possible.
+This is done because the user should see as much information as possible.
 .SH BUGS
 .PP
-Due to limitations of nail's internal message handling, an outgoing singlepart
-message must always be a text message; the same applies to the first part
-of a multipart message. Binary files must be sent as attachments.
+Due to limitations of nail's internal message handling,
+an outgoing singlepart message must always be a text message;
+the same applies to the first part of a multipart message.
+Binary files must be sent as attachments.
 .SH FILES
 .nf
     ~/.mailrc                 File giving initial commands.

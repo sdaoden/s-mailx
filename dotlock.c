@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -35,7 +35,7 @@
 #if 0
 static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif
 
@@ -43,6 +43,7 @@ static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.3 2000/03/24 23:01:39 gunnar Exp 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/utsname.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -58,6 +59,23 @@ static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.3 2000/03/24 23:01:39 gunnar Exp 
 #ifndef O_SYNC
 #define O_SYNC	0
 #endif
+
+/* Check if we can write a lock file at all */
+int
+maildir_access(fname)
+char *fname;
+{
+	char path[MAXPATHLEN];
+	char *p;
+
+	strcpy(path, fname);
+	p = strrchr(path, '/');
+	if (p != NULL)
+		*p = '\0';
+	if (p == NULL || *path == '\0')
+		strcpy(path, ".");
+	return access(path, R_OK|W_OK|X_OK);
+}
 
 /*
  * Set the gid if the path is in the normal mail spool
@@ -92,20 +110,21 @@ static int
 create_exclusive(fname)
 	const char *fname;
 {
-	char path[MAXPATHLEN], hostname[MAXHOSTNAMELEN];
+	char path[MAXPATHLEN];
 	char apid[40]; /* sufficient for storign 128 bits pids */
 	const char *ptr;
-	struct timeval tv;
+	time_t t;
 	pid_t pid;
 	size_t ntries, cookie;
 	int fd, serrno, cc;
 	struct stat st;
+	struct utsname ut;
 
-	(void) gettimeofday(&tv, NULL);
-	(void) gethostname(hostname, MAXHOSTNAMELEN);
+	time(&t);
+	uname(&ut);
 	pid = getpid();
 
-	cookie = pid ^ tv.tv_usec;
+	cookie = (int)pid ^ (int)t;
 
 	/*
 	 * We generate a semi-unique filename, from hostname.(pid ^ usec)
@@ -116,7 +135,7 @@ create_exclusive(fname)
 		ptr++;
 
 	(void) snprintf(path, sizeof(path), "%.*s.%s.%x", 
-	    ptr - fname, fname, hostname, cookie);
+	    ptr - fname, fname, ut.nodename, cookie);
 
 	/*
 	 * We try to create the unique filename.
@@ -126,7 +145,7 @@ create_exclusive(fname)
 		fd = open(path, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL|O_SYNC, 0);
 		setgid(realgid);
 		if (fd != -1) {
-			sprintf(apid,"%d",getpid());
+			sprintf(apid,"%d",(int)getpid());
 			write(fd, apid, strlen(apid));
 			(void) close(fd);
 			break;
@@ -185,6 +204,9 @@ dot_lock(fname, pollinterval, fp, msg)
 	sigset_t nset, oset;
 	int i;
 
+	if (maildir_access(fname) != 0)
+		return 0;
+
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGHUP);
 	sigaddset(&nset, SIGINT);
@@ -229,6 +251,9 @@ dot_unlock(fname)
 	const char *fname;
 {
 	char path[MAXPATHLEN];
+
+	if (maildir_access(fname) != 0)
+		return;
 
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
 	perhaps_setgid(path, effectivegid);

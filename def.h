@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: def.h,v 1.5 2000/04/11 16:42:23 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $
+ *	$Id: def.h,v 1.5 2000/04/11 16:42:23 gunnar Exp $
  */
 
 /*
@@ -79,13 +79,11 @@
 #endif
 #endif
 
-#ifndef	MAXHOSTNAMELEN
-#define	MAXHOSTNAMELEN	64
-#endif
-
-#ifdef	SYSVR4
-typedef void (*sighandler_t) __P((int));
-#endif
+/* It's a mess with sig_t, sighandler_t &c. so we just define our own.
+ * Change this if it does not fit your system,
+ * this one is POSIX.1 compatible.
+ */
+typedef void (*signal_handler_t) __P((int));
 
 enum {
 	MIME_NONE,			/* message is not in MIME format */
@@ -105,6 +103,7 @@ enum {
 	CONV_FROMQP,			/* convert from quoted-printable */
 	CONV_TOQP,			/* convert to quoted-printable */
 	CONV_FROMB64,			/* convert from base64 */
+	CONV_FROMB64_T,			/* convert from base64/text */
 	CONV_TOB64,			/* convert to base64 */
 	CONV_FROMHDR,			/* convert from RFC1522 format */
 	CONV_TOHDR			/* convert to RFC1522 format */
@@ -125,11 +124,11 @@ struct str {
 };
 
 struct message {
-	short	m_flag;			/* flags, see below */
-	short	m_block;		/* block number of this message */
-	short	m_offset;		/* offset in block of message */
-	long	m_size;			/* Bytes in the message */
-	short	m_lines;		/* Lines in the message */
+	int	m_flag;			/* flags, see below */
+	int	m_block;		/* block number of this message */
+	size_t	m_offset;		/* offset in block of message */
+	size_t	m_size;			/* Bytes in the message */
+	int	m_lines;		/* Lines in the message */
 };
 
 /*
@@ -223,10 +222,9 @@ struct headline {
 #define	GMIME	256		/* MIME 1.0 fields */
 #define	GMSGID	512		/* a Message-ID */
 #define	GATTACH	1024		/* attachment included */
-#define	GFROM	2048		/* From: header */
-#define	GREPLY	4096		/* Reply-To: header */
-#define	GORG	8192		/* Organization: header */
-#define	GREF	16384		/* References: header */
+#define	GIDENT	2048		/* From:, Reply-To: and Organization header */
+#define	GREF	4096		/* References: header */
+#define	GDATE	8192		/* Date: header */
 
 /*
  * Structure used to pass about the current
@@ -330,8 +328,8 @@ struct ignoretab {
  * Kludges to handle the change from setexit / reset to setjmp / longjmp
  */
 
-#define	setexit()	setjmp(srbuf)
-#define	reset(x)	longjmp(srbuf, x)
+#define	setexit()	sigsetjmp(srbuf, 1)
+#define	reset(x)	siglongjmp(srbuf, x)
 
 /*
  * Truncate a file to the last character written. This is

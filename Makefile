@@ -6,28 +6,47 @@
 # Change the following to match your system's configuration
 #############################################################################
 
-# the destination directory, with subdirectories bin, etc, man, lib
+# The destination directory, with subdirectories bin, etc, man, lib.
 DESTDIR		= /usr/local
 
-# uncomment if on linux
+# Uncomment on any system providing gcc.
 CC		= gcc
 CFLAGS		= -O2 -fno-strength-reduce -fomit-frame-pointer
-CPPFLAGS	= -D_BSD_SOURCE -D_GNU_SOURCE
 
-# uncomment if on System V Release 4
-# do NOT use /usr/ucb/cc !
+# Uncomment on any system without gcc.
+# Do NOT use /usr/ucb/cc !
 #CC		= cc
 #CFLAGS		= -O
-#CPPFLAGS	= -DSYSVR4 -I/usr/ucbinclude
-#LIBS		= -YP,:/usr/ucblib:/usr/ccs/lib:/usr/lib \
-#			-Bstatic -lucb -Bdynamic -lc
 
-# in case you need it
+# If you are in doubt, try without the following first.
+
+# Many, notably commercial systems do not provide the file <paths.h> .
+# You may also want to select this if you edit pathnames.h .
+#CPPFLAGS	+= -DNO_PATHS_H
+
+# On SysV systems without strcasecmp() in the regular libc,
+# you also have to define this.
+# An example is UnixWare 2.1.2.
+#CPPFLAGS	+= -DNEED_STRCASECMP
+
+# POSIX.1 does not know the NSIG value, giving the number of signals
+# provided by the operating system. It is defined on all systems known
+# to me, though. In case your system really does not have it, check
+# e.g. signal(7) for the correct value. On most architectures, this
+# is the identical to the integer register size.
+#CPPFLAGS	+= -DNSIG=32
+
+# If your system does not provide implementations of tempnam() or getopt(),
+# you are on your own. This should happen very rarely.
+
+# In case you need it.
 #LDFLAGS	=
 #LIBS		=
 
-# for debugging
+# For debugging purposes.
 #CFLAGS		= -g
+#CFLAGS		+= -Wall -Wno-unused
+#CPPFLAGS	+= -D_POSIX_SOURCE
 #LIBS		= -lefence
 
 ##############################################################################
@@ -39,7 +58,7 @@ PROG = nail
 SRCS=	version.c aux.c base64.c cmd1.c cmd2.c cmd3.c cmdtab.c \
 	collect.c dotlock.c edit.c fio.c getname.c head.c \
 	v7.local.c lex.c list.c main.c mime.c names.c popen.c \
-	quit.c send.c strings.c temp.c tty.c vars.c
+	quit.c send.c sendout.c strings.c temp.c tty.c vars.c
 
 OBJS=$(SRCS:%.c=%.o)
 
@@ -59,17 +78,17 @@ $(PROG): mailfiles.h $(OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 mailfiles.h: Makefile mailfiles.H
-	sed -e "s+DESTDIR+$(DESTDIR)+" mailfiles.H > mailfiles.h
+	sed -e "s:DESTDIR:$(DESTDIR):" mailfiles.H > mailfiles.h
 
 htmlman:
 	rman -r "" -f HTML $(MFILE) > $(MFILE:%.1=%.html)
 
 clean:
-	rm -f $(PROG) $(OBJS) *~ mailfiles.h dead.letter core
+	rm -f $(PROG) $(OBJS) *~ mailfiles.h core $(MFILE:%.1=%.html)
 
 install: all
 	mkdir -p $(DESTDIR)/bin $(DESTDIR)/man/man1 \
-	$(DESTDIR)/etc $(DESTDIR)/lib
+		$(DESTDIR)/etc $(DESTDIR)/lib
 	install -s -m 0755 -o root -g root $(PROG) $(DESTDIR)/bin
 	cd misc && install -c -m 0644 $(EFILES) $(DESTDIR)/etc
 	cd misc && install -c -m 0644 $(SFILES) $(DESTDIR)/lib
@@ -78,6 +97,9 @@ install: all
 mailinstall: install
 	install -c -m 0644 $(MAILMFILE) $(DESTDIR)/man/man1
 	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/Mail
+	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/mail
+	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/mailx
+	ln -sf $(DESTDIR)/bin/$(PROG) /bin/mail
 
 checkin:
 	ci -mcomplete_checkin `ls RCS | sed s/,v$$//`
@@ -105,8 +127,10 @@ names.o:    names.c    rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 popen.o:    popen.c    rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 quit.o:     quit.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 send.o:     send.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
+sendout.o:  sendout.c  rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 strings.o:  strings.c  rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 temp.o:     temp.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 tty.o:      tty.c      rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 v7.local.o: v7.local.c rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
+version.o:  version.c  mailfiles.h
 vars.o:     vars.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h

@@ -1,4 +1,4 @@
-/*	$Id: pathnames.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: pathnames.h,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp 	*/
 /*	NetBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp 	*/
 
@@ -36,12 +36,13 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp
- *	$Id: pathnames.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $
+ *	$Id: pathnames.h,v 1.4 2000/04/11 16:37:15 gunnar Exp $
  */
 
 #include "mailfiles.h"
 
-#ifndef	SYSVR4
+/* Note that the values inside this file override the later defines */
+#ifndef	NO_PATHS_H
 #include <paths.h>
 #endif
 

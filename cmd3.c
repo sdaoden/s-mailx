@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -64,7 +64,7 @@ shell(v)
 	void *v;
 {
 	char *str = v;
-	sighandler_t sigint = signal(SIGINT, SIG_IGN);
+	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
 	char *shell;
 	char cmd[BUFSIZ];
 
@@ -75,7 +75,7 @@ shell(v)
 	if ((shell = value("SHELL")) == NOSTR)
 		shell = _PATH_CSHELL;
 	(void) run_command(shell, 0, -1, -1, "-c", cmd, NOSTR);
-	(void) signal(SIGINT, sigint);
+	(void) safe_signal(SIGINT, sigint);
 	printf("!\n");
 	return 0;
 }
@@ -88,13 +88,13 @@ int
 dosh(v)
 	void *v;
 {
-	sighandler_t sigint = signal(SIGINT, SIG_IGN);
+	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
 	char *shell;
 
 	if ((shell = value("SHELL")) == NOSTR)
 		shell = _PATH_CSHELL;
 	(void) run_command(shell, 0, -1, -1, NOSTR, NOSTR, NOSTR);
-	(void) signal(SIGINT, sigint);
+	(void) safe_signal(SIGINT, sigint);
 	putchar('\n');
 	return 0;
 }
@@ -112,8 +112,8 @@ bangexp(str, size)
 	int size;
 {
 	char bangbuf[BUFSIZ];
-	register char *cp, *cp2;
-	register int n;
+	char *cp, *cp2;
+	int n;
 	int changed = 0;
 
 	cp = str;
@@ -164,8 +164,8 @@ int
 help(v)
 	void *v;
 {
-	register int c;
-	register FILE *f;
+	int c;
+	FILE *f;
 
 	if ((f = Fopen(_PATH_HELP, "r")) == (FILE *)NULL) {
 		perror(_PATH_HELP);
@@ -209,10 +209,14 @@ struct header *head;
 
 	oldref = hfield("references", mp);
 	oldmsgid = hfield("message-id", mp);
+	if (oldmsgid == NULL || *oldmsgid == '\0') {
+		head->h_ref = NULL;
+		return;
+	}
 	reflen = 1;
 	if (oldref)
 		reflen += strlen(oldref) + 2;
-	if (newref)
+	if (oldmsgid)
 		reflen += strlen(oldmsgid);
 	newref = (char*)smalloc(reflen);
 	if (oldref) {
@@ -276,9 +280,9 @@ _respond(msgvec)
 	if (altnames)
 		for (ap = altnames; *ap; ap++)
 			np = delname(np, *ap);
-	if (cp = skin(value("from")))
+	if ((cp = skin(value("from"))) != NULL)
 		np = delname(np, cp);
-	if (cp = skin(value("replyto")))
+	if ((cp = skin(value("replyto"))) != NULL)
 		np = delname(np, cp);
 	if (np != NIL && replyto == NOSTR)
 		np = cat(np, extract(rcv, GTO));
@@ -304,10 +308,7 @@ _respond(msgvec)
 	make_ref(mp, &head);
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	if (value("quote"))
-		mail1(&head, 1, mp);
-	else
-		mail1(&head, 1, NULL);
+	mail1(&head, 1, mp);
 	return(0);
 }
 
@@ -317,7 +318,7 @@ _respond(msgvec)
  */
 char *
 reedit(subj)
-	register char *subj;
+	char *subj;
 {
 	char *newsubj;
 	struct str in, out;
@@ -346,8 +347,8 @@ preserve(v)
 	void *v;
 {
 	int *msgvec = v;
-	register struct message *mp;
-	register int *ip, mesg;
+	struct message *mp;
+	int *ip, mesg;
 
 	if (edit) {
 		printf("Cannot \"preserve\" in edit mode\n");
@@ -371,7 +372,7 @@ unread(v)
 	void *v;
 {
 	int	*msgvec = v;
-	register int *ip;
+	int *ip;
 
 	for (ip = msgvec; *ip != 0; ip++) {
 		dot = &message[*ip-1];
@@ -389,13 +390,14 @@ messize(v)
 	void *v;
 {
 	int *msgvec = v;
-	register struct message *mp;
-	register int *ip, mesg;
+	struct message *mp;
+	int *ip, mesg;
 
 	for (ip = msgvec; *ip != 0; ip++) {
 		mesg = *ip;
 		mp = &message[mesg-1];
-		printf("%d: %d/%ld\n", mesg, mp->m_lines, mp->m_size);
+		printf("%d: %d/%u\n", mesg, mp->m_lines,
+				(unsigned int)mp->m_size);
 	}
 	return(0);
 }
@@ -423,8 +425,8 @@ set(v)
 	void *v;
 {
 	char **arglist = v;
-	register struct var *vp;
-	register char *cp, *cp2;
+	struct var *vp;
+	char *cp, *cp2;
 	char varbuf[BUFSIZ], **ap, **p;
 	int errs, h, s;
 
@@ -471,7 +473,7 @@ unset(v)
 	void *v;
 {
 	char **arglist = v;
-	register struct var *vp, *vp2;
+	struct var *vp, *vp2;
 	int errs, h;
 	char **ap;
 
@@ -510,9 +512,9 @@ group(v)
 	void *v;
 {
 	char **argv = v;
-	register struct grouphead *gh;
-	register struct group *gp;
-	register int h;
+	struct grouphead *gh;
+	struct group *gp;
+	int h;
 	int s;
 	char **ap, *gname, **p;
 
@@ -567,7 +569,7 @@ void
 sort(list)
 	char **list;
 {
-	register char **ap;
+	char **ap;
 
 	for (ap = list; *ap != NOSTR; ap++)
 		;
@@ -627,8 +629,8 @@ echo(v)
 	void *v;
 {
 	char **argv = v;
-	register char **ap;
-	register char *cp;
+	char **ap;
+	char *cp;
 
 	for (ap = argv; *ap != NOSTR; ap++) {
 		cp = *ap;
@@ -664,8 +666,8 @@ _Respond(msgvec)
 {
 	struct header head;
 	struct message *mp;
-	register int *ap;
-	register char *cp;
+	int *ap;
+	char *cp;
 
 	head.h_to = NIL;
 	for (ap = msgvec; *ap != 0; ap++) {
@@ -687,10 +689,7 @@ _Respond(msgvec)
 	make_ref(mp, &head);
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	if (value("quote"))
-		mail1(&head, 1, mp);
-	else
-		mail1(&head, 1, NULL);
+	mail1(&head, 1, mp);
 	return 0;
 }
 
@@ -703,7 +702,7 @@ ifcmd(v)
 	void *v;
 {
 	char **argv = v;
-	register char *cp;
+	char *cp;
 
 	if (cond != CANY) {
 		printf("Illegal nested \"if\"\n");
@@ -781,8 +780,8 @@ alternates(v)
 	void *v;
 {
 	char **namelist = v;
-	register int c;
-	register char **ap, **ap2, *cp;
+	int c;
+	char **ap, **ap2, *cp;
 
 	c = argcount(namelist) + 1;
 	if (c == 1) {

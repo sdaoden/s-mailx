@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -72,17 +72,17 @@ int got_interrupt;
  * away on dead.letter.
  */
 
-static	sighandler_t	saveint;		/* Previous SIGINT value */
-static	sighandler_t	savehup;		/* Previous SIGHUP value */
-static	sighandler_t	savetstp;		/* Previous SIGTSTP value */
-static	sighandler_t	savettou;		/* Previous SIGTTOU value */
-static	sighandler_t	savettin;		/* Previous SIGTTIN value */
+static	signal_handler_t	saveint;	/* Previous SIGINT value */
+static	signal_handler_t	savehup;	/* Previous SIGHUP value */
+static	signal_handler_t	savetstp;	/* Previous SIGTSTP value */
+static	signal_handler_t	savettou;	/* Previous SIGTTOU value */
+static	signal_handler_t	savettin;	/* Previous SIGTTIN value */
 static	FILE	*collf;			/* File for saving away */
 static	int	hadintr;		/* Have seen one SIGINT so far */
 
-static	jmp_buf	colljmp;		/* To get back to work */
-static	int	colljmp_p;		/* whether to long jump */
-static	jmp_buf	collabort;		/* To end collection with error */
+static	sigjmp_buf	colljmp;	/* To get back to work */
+static	int		colljmp_p;	/* whether to long jump */
+static	sigjmp_buf	collabort;	/* To end collection with error */
 
 FILE *
 collect(hp, printheaders, mp)
@@ -91,9 +91,10 @@ collect(hp, printheaders, mp)
 	struct message *mp;
 {
 	FILE *fbuf;
+	struct ignoretab *quoteig;
 	int lc, cc, escape, eofcount;
-	register int c, t;
-	char linebuf[LINESIZE], *cp;
+	int c, t;
+	char linebuf[LINESIZE], *cp, *quote;
 	extern char *tempMail;
 	char getsub;
 	sigset_t oset, nset;
@@ -113,14 +114,18 @@ collect(hp, printheaders, mp)
 	sigaddset(&nset, SIGINT);
 	sigaddset(&nset, SIGHUP);
 	sigprocmask(SIG_BLOCK, &nset, &oset);
-	if ((saveint = signal(SIGINT, SIG_IGN)) != SIG_IGN)
-		signal(SIGINT, collint);
-	if ((savehup = signal(SIGHUP, SIG_IGN)) != SIG_IGN)
-		signal(SIGHUP, collhup);
-	savetstp = signal(SIGTSTP, collstop);
-	savettou = signal(SIGTTOU, collstop);
-	savettin = signal(SIGTTIN, collstop);
-	if (setjmp(collabort) || setjmp(colljmp)) {
+	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+		safe_signal(SIGINT, collint);
+	if ((savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
+		safe_signal(SIGHUP, collhup);
+	savetstp = safe_signal(SIGTSTP, collstop);
+	savettou = safe_signal(SIGTTOU, collstop);
+	savettin = safe_signal(SIGTTIN, collstop);
+	if (sigsetjmp(collabort, 1)) {
+		rm(tempMail);
+		goto err;
+	}
+	if (sigsetjmp(colljmp, 1)) {
 		rm(tempMail);
 		goto err;
 	}
@@ -151,21 +156,30 @@ collect(hp, printheaders, mp)
 	/*
 	 * Quote an original message
 	 */
-	if (mp != NULL) {
-		cp = hfield("from", mp);
-		if (cp != NULL) {
-			mime_write(cp, sizeof(char), strlen(cp), collf,
-					CONV_FROMHDR, 0);
-			fwrite(" wrote:\n", sizeof(char), 8, collf);
-			mime_write(cp, sizeof(char), strlen(cp), stdout,
-					CONV_FROMHDR, 0);
-			fwrite(" wrote:\n", sizeof(char), 8, stdout);
+	if (mp != NULL && (quote = value("quote")) != NULL) {
+		quoteig = ignoreall;
+		if (strcmp(quote, "noheading") == 0) {
+			/* do nothing here */
+		} else if (strcmp(quote, "headers") == 0) {
+			quoteig = ignore;
+		} else if (strcmp(quote, "allheaders") == 0) {
+			quoteig = (struct ignoretab *) NULL;
+		} else {
+			cp = hfield("from", mp);
+			if (cp != NULL) {
+				mime_write(cp, sizeof(char), strlen(cp),
+						collf, CONV_FROMHDR, 0);
+				mime_write(cp, sizeof(char), strlen(cp),
+						stdout, CONV_FROMHDR, 0);
+				fwrite(" wrote:\n", sizeof(char), 8, collf);
+				fwrite(" wrote:\n", sizeof(char), 8, stdout);
+			}
 		}
 		cp = value("indentprefix");
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
-		send(mp, collf, ignoreall, cp, CONV_QUOTE);
-		send(mp, stdout, ignoreall, cp, CONV_QUOTE);
+		send(mp, collf, quoteig, cp, CONV_QUOTE);
+		send(mp, stdout, quoteig, cp, CONV_QUOTE);
 	}
 
 	if ((cp = value("escape")) != NOSTR)
@@ -178,7 +192,7 @@ collect(hp, printheaders, mp)
 	got_interrupt = 0;
 #endif
 
-	if (!setjmp(colljmp)) {
+	if (!sigsetjmp(colljmp, 1)) {
 		if (getsub)
 			grabh(hp, GSUBJECT);
 	} else {
@@ -203,7 +217,7 @@ cont:
 #ifdef IOSAFE
 		if (got_interrupt) {
 			got_interrupt = 0;
-			longjmp(colljmp,1);
+			siglongjmp(colljmp,1);
 		} 
 #endif
 		colljmp_p = 0;
@@ -301,6 +315,8 @@ cont:
 			 */
 			hp->h_attach = cat(hp->h_attach,
 					extract(&linebuf[2], GATTACH));
+			if (mime_check_attach(hp->h_attach) != 0)
+				hp->h_attach = NIL;
 			break;
 		case 'c':
 			/*
@@ -449,11 +465,11 @@ out:
 #else
 	sigprocmask(SIG_BLOCK, &nset, &oset);
 #endif
-	signal(SIGINT, saveint);
-	signal(SIGHUP, savehup);
-	signal(SIGTSTP, savetstp);
-	signal(SIGTTOU, savettou);
-	signal(SIGTTIN, savettin);
+	safe_signal(SIGINT, saveint);
+	safe_signal(SIGHUP, savehup);
+	safe_signal(SIGTSTP, savetstp);
+	safe_signal(SIGTTOU, savettou);
+	safe_signal(SIGTTIN, savettin);
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 	return collf;
 }
@@ -467,8 +483,8 @@ exwrite(name, fp, f)
 	FILE *fp;
 	int f;
 {
-	register FILE *of;
-	register int c;
+	FILE *of;
+	int c;
 	long cc;
 	int lc;
 	struct stat junk;
@@ -477,7 +493,7 @@ exwrite(name, fp, f)
 		printf("\"%s\" ", name);
 		fflush(stdout);
 	}
-	if (stat(name, &junk) >= 0 && (junk.st_mode & S_IFMT) == S_IFREG) {
+	if (stat(name, &junk) >= 0 && S_ISREG(junk.st_mode)) {
 		if (!f)
 			fprintf(stderr, "%s: ", name);
 		fprintf(stderr, "File exists\n");
@@ -515,7 +531,7 @@ mesedit(fp, c)
 	FILE *fp;
 	int c;
 {
-	sighandler_t sigint = signal(SIGINT, SIG_IGN);
+	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
 	FILE *nf = run_editor(fp, (off_t)-1, c, 0);
 
 	if (nf != (FILE *)NULL) {
@@ -523,7 +539,7 @@ mesedit(fp, c)
 		collf = nf;
 		Fclose(fp);
 	}
-	(void) signal(SIGINT, sigint);
+	(void) safe_signal(SIGINT, sigint);
 }
 
 /*
@@ -538,7 +554,7 @@ mespipe(fp, cmd)
 	char cmd[];
 {
 	FILE *nf;
-	sighandler_t sigint = signal(SIGINT, SIG_IGN);
+	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
 	extern char *tempEdit;
 	char *shell;
 
@@ -570,7 +586,7 @@ mespipe(fp, cmd)
 	collf = nf;
 	(void) Fclose(fp);
 out:
-	(void) signal(SIGINT, sigint);
+	(void) safe_signal(SIGINT, sigint);
 }
 
 /*
@@ -587,7 +603,7 @@ forward(ms, fp, f)
 	FILE *fp;
 	int f;
 {
-	register int *msgvec;
+	int *msgvec;
 	extern char *tempMail;
 	struct ignoretab *ig;
 	char *tabst;
@@ -633,7 +649,7 @@ void
 collstop(s)
 	int s;
 {
-	sighandler_t old_action = signal(s, SIG_DFL);
+	signal_handler_t old_action = safe_signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);
@@ -641,7 +657,7 @@ collstop(s)
 	sigprocmask(SIG_UNBLOCK, &nset, (sigset_t *)NULL);
 	kill(0, s);
 	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
-	signal(s, old_action);
+	safe_signal(s, old_action);
 	if (colljmp_p) {
 		colljmp_p = 0;
 		hadintr = 0;
@@ -649,7 +665,7 @@ collstop(s)
 		got_interrupt = s;
 #else
 		fpurge(stdin);
-		longjmp(colljmp, 1);
+		siglongjmp(colljmp, 1);
 #endif
 	}
 }
@@ -681,13 +697,13 @@ collint(s)
 		got_interrupt = s;
 		return;
 #else
-		longjmp(colljmp, 1);
+		siglongjmp(colljmp, 1);
 #endif
 	}
 	rewind(collf);
 	if (value("nosave") == NOSTR)
 		savedeadletter(collf);
-	longjmp(collabort, 1);
+	siglongjmp(collabort, 1);
 }
 
 /*ARGSUSED*/
@@ -706,10 +722,10 @@ collhup(s)
 
 void
 savedeadletter(fp)
-	register FILE *fp;
+	FILE *fp;
 {
-	register FILE *dbuf;
-	register int c;
+	FILE *dbuf;
+	int c;
 	char *cp;
 
 	if (fsize(fp) == 0)

@@ -1,4 +1,4 @@
-/*	$Id: list.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: list.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp 	*/
 /*	NetBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)list.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: list.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: list.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -66,8 +66,8 @@ getmsglist(buf, vector, flags)
 	char *buf;
 	int *vector, flags;
 {
-	register int *ip;
-	register struct message *mp;
+	int *ip;
+	struct message *mp;
 
 	if (msgCount == 0) {
 		*vector = 0;
@@ -125,9 +125,9 @@ markall(buf, f)
 	char buf[];
 	int f;
 {
-	register char **np;
-	register int i;
-	register struct message *mp;
+	char **np;
+	int i;
+	struct message *mp;
 	char *namelist[NMLSIZE], *bufp;
 	int tok, beg, mc, star, other, valdot, colmod, colresult;
 
@@ -321,7 +321,7 @@ number:
 
 	if (colmod != 0) {
 		for (i = 1; i <= msgCount; i++) {
-			register struct coltab *colp;
+			struct coltab *colp;
 
 			mp = &message[i - 1];
 			for (colp = &coltab[0]; colp->co_char; colp++)
@@ -335,7 +335,7 @@ number:
 			if (mp->m_flag & MMARK)
 				break;
 		if (mp >= &message[msgCount]) {
-			register struct coltab *colp;
+			struct coltab *colp;
 
 			printf("No messages satisfy");
 			for (colp = &coltab[0]; colp->co_char; colp++)
@@ -356,7 +356,7 @@ int
 evalcol(col)
 	int col;
 {
-	register struct coltab *colp;
+	struct coltab *colp;
 
 	if (col == 0)
 		return(lastcolmod);
@@ -375,7 +375,7 @@ int
 check(mesg, f)
 	int mesg, f;
 {
-	register struct message *mp;
+	struct message *mp;
 
 	if (mesg < 1 || mesg > msgCount) {
 		printf("%d: Invalid message number\n", mesg);
@@ -399,7 +399,7 @@ getrawlist(line, argv, argc)
 	char **argv;
 	int  argc;
 {
-	register char c, *cp, *cp2, quotec;
+	char c, *cp, *cp2, quotec;
 	int argn;
 	char linebuf[BUFSIZ];
 
@@ -512,9 +512,9 @@ int
 scan(sp)
 	char **sp;
 {
-	register char *cp, *cp2;
-	register int c;
-	register struct lex *lp;
+	char *cp, *cp2;
+	int c;
+	struct lex *lp;
 	int quotec;
 
 	if (regretp >= 0) {
@@ -640,7 +640,7 @@ int
 first(f, m)
 	int f, m;
 {
-	register struct message *mp;
+	struct message *mp;
 
 	if (msgCount == 0)
 		return 0;
@@ -664,7 +664,7 @@ matchsender(str, mesg)
 	char *str;
 	int mesg;
 {
-	register char *cp, *cp2, *backup;
+	char *cp, *cp2, *backup;
 
 	if (!*str)	/* null string matches nothing instead of everything */
 		return 0;
@@ -695,8 +695,8 @@ matchsubj(str, mesg)
 	char *str;
 	int mesg;
 {
-	register struct message *mp;
-	register char *cp, *cp2, *backup;
+	struct message *mp;
+	char *cp, *cp2, *backup;
 
 	str++;
 	if (strlen(str) == 0) {
@@ -711,7 +711,7 @@ matchsubj(str, mesg)
 	 * Now look, ignoring case, for the word in the string.
 	 */
 
-	if (value("searchheaders") && (cp = index(str, ':'))) {
+	if (value("searchheaders") && (cp = strchr(str, ':'))) {
 		*cp++ = '\0';
 		cp2 = hfield(str, mp);
 		cp[-1] = ':';
@@ -741,7 +741,7 @@ void
 mark(mesg)
 	int mesg;
 {
-	register int i;
+	int i;
 
 	i = mesg;
 	if (i < 1 || i > msgCount)
@@ -756,7 +756,7 @@ void
 unmark(mesg)
 	int mesg;
 {
-	register int i;
+	int i;
 
 	i = mesg;
 	if (i < 1 || i > msgCount)
@@ -771,8 +771,8 @@ int
 metamess(meta, f)
 	int meta, f;
 {
-	register int c, m;
-	register struct message *mp;
+	int c, m;
+	struct message *mp;
 
 	c = meta;
 	switch (c) {

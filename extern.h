@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.4 2000/04/05 02:49:51 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.5 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.4 2000/04/05 02:49:51 gunnar Exp $
+ *	$Id: extern.h,v 1.5 2000/04/11 16:37:15 gunnar Exp $
  */
 
 struct name;
@@ -65,7 +65,6 @@ char	*getdeadletter __P((void));
 char	*getname __P((int));
 struct message;
 char	*hfield __P((char [], struct message *));
-FILE	*infix __P((struct header *, FILE *, int));
 char	*ishfield __P((char [], char[], char *));
 char	*name1 __P((struct message *, int));
 char	*nameof __P((struct message *, int));
@@ -135,7 +134,6 @@ struct grouphead *
 	 findgroup __P((char []));
 void	 findmail __P((char *, char *, int));
 int	 first __P((int, int));
-void	 fixhead __P((struct header *, struct name *));
 void	 fmt __P((char *, struct name *, FILE *, int));
 int	 folders __P((void *));
 int	 forward __P((char [], FILE *, int));
@@ -226,7 +224,6 @@ int	 save __P((void *));
 int	 save1 __P((char [], int, char *, struct ignoretab *, int));
 void	 savedeadletter __P((FILE *));
 int	 saveigfield __P((void *));
-int	 savemail __P((char [], FILE *));
 int	 saveretfield __P((void *));
 int	 scan __P((char **));
 void	 scaninit __P((void));
@@ -247,7 +244,6 @@ int	 source __P((void *));
 void	 spreserve __P((void));
 void	 sreset __P((void));
 int	 start_command __P((char *, sigset_t *, int, int, char *, char *, char *));
-void	 statusput __P((struct message *, FILE *, char *));
 void	 stop __P((int));
 int	 stouch __P((void *));
 int	 swrite __P((void *));
@@ -272,10 +268,9 @@ int	 wait_command __P((int));
 int	 writeback __P((FILE *));
 void	*smalloc __P((size_t));
 size_t	mime_write_tob64 __P((struct str*, FILE*));
-void	mime_fromb64 __P((struct str*, struct str*, int));
-void	mime_fromb64_b __P((struct str*, struct str*, int, FILE*));
+void	mime_fromb64 __P((struct str*, struct str*, int, int));
+void	mime_fromb64_b __P((struct str*, struct str*, int, int, FILE*));
 char	*itohex __P((unsigned int, char*));
-char	*mime_strcasestr __P((char*,char*));
 int	mime_getenc __P((char*));
 int	mime_getcontent __P((char*));
 char	*mime_filecontent __P((char*));
@@ -286,3 +281,6 @@ int	mime_isclean __P((FILE*));
 int	mime_save __P((void *));
 void	mime_fromhdr __P((struct str*, struct str*, int));
 size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int));
+int	is_undisplayable __P((unsigned char));
+int	mime_check_attach __P((struct name *));
+signal_handler_t safe_signal __P((int, signal_handler_t));

@@ -1,4 +1,4 @@
-/*	$Id: v7.local.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: v7.local.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp 	*/
 /*	NetBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)v7.local.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: v7.local.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: v7.local.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -102,6 +102,6 @@ username()
 		return np;
 	if ((np = getname(uid = getuid())) != NOSTR)
 		return np;
-	printf("Cannot associate a name with uid %d\n", uid);
+	printf("Cannot associate a name with uid %d\n", (int)uid);
 	return NOSTR;
 }

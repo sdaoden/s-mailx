@@ -1,4 +1,4 @@
-/*	$Id: lex.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: lex.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 /*	NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: lex.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: lex.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -93,17 +93,14 @@ setfile(name)
 		return (-1);
 	}
 
-	switch (stb.st_mode & S_IFMT) {
-	case S_IFDIR:
+	if (S_ISDIR(stb.st_mode)) {
 		Fclose(ibuf);
 		errno = EISDIR;
 		perror(name);
 		return (-1);
-
-	case S_IFREG:
-		break;
-
-	default:
+	} else if (S_ISREG(stb.st_mode)) {
+		/* do nothing here */;
+	} else {
 		Fclose(ibuf);
 		errno = EINVAL;
 		perror(name);
@@ -179,7 +176,7 @@ void
 commands()
 {
 	int eofloop = 0;
-	register int n;
+	int n;
 	char linebuf[LINESIZE];
 #if __GNUC__
 	/* Avoid longjmp clobbering */
@@ -187,13 +184,13 @@ commands()
 #endif
 
 	if (!sourcing) {
-		if (signal(SIGINT, SIG_IGN) != SIG_IGN)
-			signal(SIGINT, intr);
-		if (signal(SIGHUP, SIG_IGN) != SIG_IGN)
-			signal(SIGHUP, hangup);
-		signal(SIGTSTP, stop);
-		signal(SIGTTOU, stop);
-		signal(SIGTTIN, stop);
+		if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
+			safe_signal(SIGINT, intr);
+		if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
+			safe_signal(SIGHUP, hangup);
+		safe_signal(SIGTSTP, stop);
+		safe_signal(SIGTTOU, stop);
+		safe_signal(SIGTTIN, stop);
 	}
 	setexit();
 	for (;;) {
@@ -263,8 +260,8 @@ execute(linebuf, contxt)
 	char word[LINESIZE];
 	char *arglist[MAXARGC];
 	const struct cmd *com = (struct cmd *)NULL;
-	register char *cp, *cp2;
-	register int c;
+	char *cp, *cp2;
+	int c;
 	int muvec[2];
 	int e = 1;
 
@@ -288,7 +285,7 @@ execute(linebuf, contxt)
 		return(0);
 	}
 	cp2 = word;
-	while (*cp && index(" \t0123456789$^.:/-+*'\"", *cp) == NOSTR)
+	while (*cp && strchr(" \t0123456789$^.:/-+*'\"", *cp) == NOSTR)
 		*cp2++ = *cp++;
 	*cp2 = '\0';
 
@@ -474,7 +471,7 @@ lex(word)
 	char word[];
 {
 	extern const struct cmd cmdtab[];
-	register const struct cmd *cp;
+	const struct cmd *cp;
 
 	for (cp = &cmdtab[0]; cp->c_name != NOSTR; cp++)
 		if (isprefix(word, cp->c_name))
@@ -490,7 +487,7 @@ int
 isprefix(as1, as2)
 	char *as1, *as2;
 {
-	register char *s1, *s2;
+	char *s1, *s2;
 
 	s1 = as1;
 	s2 = as2;
@@ -541,7 +538,7 @@ void
 stop(s)
 	int s;
 {
-	sighandler_t old_action = signal(s, SIG_DFL);
+	signal_handler_t old_action = safe_signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);
@@ -549,7 +546,7 @@ stop(s)
 	sigprocmask(SIG_UNBLOCK, &nset, (sigset_t *)NULL);
 	kill(0, s);
 	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
-	signal(s, old_action);
+	safe_signal(s, old_action);
 	if (reset_on_stop) {
 		reset_on_stop = 0;
 		fpurge(input);
@@ -597,8 +594,8 @@ announce()
 int
 newfileinfo()
 {
-	register struct message *mp;
-	register int u, n, mdot, d, s;
+	struct message *mp;
+	int u, n, mdot, d, s;
 	char fname[BUFSIZ], zname[BUFSIZ], *ename;
 
 	for (mp = &message[0]; mp < &message[msgCount]; mp++)
@@ -672,7 +669,7 @@ void
 load(name)
 	char *name;
 {
-	register FILE *in, *oldin;
+	FILE *in, *oldin;
 
 	if ((in = Fopen(name, "r")) == (FILE *)NULL)
 		return;

@@ -1,4 +1,4 @@
-/*	$Id: tty.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: tty.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 /*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: tty.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: tty.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -57,12 +57,12 @@ static char rcsid[]  = "@(#)$Id: tty.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-static	cc_t	c_erase;		/* Current erase char */
-static	cc_t	c_kill;			/* Current kill char */
-static	jmp_buf	rewrite;		/* Place to go when continued */
-static	jmp_buf	intjmp;			/* Place to go when interrupted */
+static	cc_t		c_erase;	/* Current erase char */
+static	cc_t		c_kill;		/* Current kill char */
+static	sigjmp_buf	rewrite;	/* Place to go when continued */
+static	sigjmp_buf	intjmp;		/* Place to go when interrupted */
 #ifndef TIOCSTI
-static	int	ttyset;			/* We must now do erase/kill */
+static	int		ttyset;		/* We must now do erase/kill */
 #endif
 
 #ifdef IOSAFE 
@@ -80,22 +80,22 @@ grabh(hp, gflags)
 	int gflags;
 {
 	struct termios ttybuf;
-	sighandler_t saveint;
+	signal_handler_t saveint;
 #ifndef TIOCSTI
-	sighandler_t savequit;
+	signal_handler_t savequit;
 #endif
-	sighandler_t savetstp;
-	sighandler_t savettou;
-	sighandler_t savettin;
+	signal_handler_t savetstp;
+	signal_handler_t savettou;
+	signal_handler_t savettin;
 	int errs;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &saveint;
 #endif
 
-	savetstp = signal(SIGTSTP, SIG_DFL);
-	savettou = signal(SIGTTOU, SIG_DFL);
-	savettin = signal(SIGTTIN, SIG_DFL);
+	savetstp = safe_signal(SIGTSTP, SIG_DFL);
+	savettou = safe_signal(SIGTTOU, SIG_DFL);
+	savettin = safe_signal(SIGTTIN, SIG_DFL);
 	errs = 0;
 #ifndef TIOCSTI
 	ttyset = 0;
@@ -109,21 +109,21 @@ grabh(hp, gflags)
 #ifndef TIOCSTI
 	ttybuf.c_cc[VERASE] = 0;
 	ttybuf.c_cc[VKILL] = 0;
-	if ((saveint = signal(SIGINT, SIG_IGN)) == SIG_DFL)
-		signal(SIGINT, SIG_DFL);
-	if ((savequit = signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
-		signal(SIGQUIT, SIG_DFL);
+	if ((saveint = safe_signal(SIGINT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGINT, SIG_DFL);
+	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGQUIT, SIG_DFL);
 #else
 #ifdef IOSAFE
 	got_interrupt = 0;
 #endif
-	if (setjmp(intjmp)) {
+	if (sigsetjmp(intjmp, 1)) {
 		/* avoid garbled output with C-c */
 		printf("\n");
 		fflush(stdout);
 		goto out;
 	}
-	saveint = signal(SIGINT, ttyint);
+	saveint = safe_signal(SIGINT, ttyint);
 #endif
 	if (gflags & GTO) {
 #ifndef TIOCSTI
@@ -166,17 +166,17 @@ grabh(hp, gflags)
 					detract(hp->h_attach, 0)), GATTACH);
 	}
 out:
-	signal(SIGTSTP, savetstp);
-	signal(SIGTTOU, savettou);
-	signal(SIGTTIN, savettin);
+	safe_signal(SIGTSTP, savetstp);
+	safe_signal(SIGTTOU, savettou);
+	safe_signal(SIGTTIN, savettin);
 #ifndef TIOCSTI
 	ttybuf.c_cc[VERASE] = c_erase;
 	ttybuf.c_cc[VKILL] = c_kill;
 	if (ttyset)
 		tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-	signal(SIGQUIT, savequit);
+	safe_signal(SIGQUIT, savequit);
 #endif
-	signal(SIGINT, saveint);
+	safe_signal(SIGINT, saveint);
 	return(errs);
 }
 
@@ -231,14 +231,14 @@ readtty(pr, src)
 	while (cp2 < canonb + BUFSIZ)
 		*cp2++ = 0;
 	cp2 = cp;
-	if (setjmp(rewrite))
+	if (sigsetjmp(rewrite, 1))
 		goto redo;
 #ifdef IOSAFE
 	got_interrupt = 0;
 #endif
-	signal(SIGTSTP, ttystop);
-	signal(SIGTTOU, ttystop);
-	signal(SIGTTIN, ttystop);
+	safe_signal(SIGTSTP, ttystop);
+	safe_signal(SIGTTOU, ttystop);
+	safe_signal(SIGTTIN, ttystop);
 	clearerr(stdin);
 	while (cp2 < canonb + BUFSIZ) {
 #ifdef IOSAFE
@@ -246,9 +246,9 @@ readtty(pr, src)
 		/* this is full of ACE but hopefully, interrupts will only
 		   occur in the above read */
 		if (got_interrupt == SIGINT)
-			longjmp(intjmp,1);
+			siglongjmp(intjmp,1);
 		else if (got_interrupt)
-			longjmp(rewrite,1);
+			siglongjmp(rewrite,1);
 #else
 		c = getc(stdin);
 #endif
@@ -257,9 +257,9 @@ readtty(pr, src)
 		*cp2++ = c;
 	}
 	*cp2 = 0;
-	signal(SIGTSTP, SIG_DFL);
-	signal(SIGTTOU, SIG_DFL);
-	signal(SIGTTIN, SIG_DFL);
+	safe_signal(SIGTSTP, SIG_DFL);
+	safe_signal(SIGTTOU, SIG_DFL);
+	safe_signal(SIGTTIN, SIG_DFL);
 	if (c == EOF && ferror(stdin)) {
 redo:
 		cp = strlen(canonb) > 0 ? canonb : NOSTR;
@@ -310,7 +310,7 @@ void
 ttystop(s)
 	int s;
 {
-	sighandler_t old_action = signal(s, SIG_DFL);
+	signal_handler_t old_action = safe_signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);
@@ -318,13 +318,13 @@ ttystop(s)
 	sigprocmask(SIG_BLOCK, &nset, NULL);
 	kill(0, s);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
-	signal(s, old_action);
+	safe_signal(s, old_action);
 #ifdef IOSAFE
 	got_interrupt = s;
 #else
 	fpurge(stdin);
 #endif
-	longjmp(rewrite, 1);
+	siglongjmp(rewrite, 1);
 }
 
 /*ARGSUSED*/
@@ -336,7 +336,7 @@ ttyint(s)
 	got_interrupt = s;
 #else
 	fpurge(stdin);
-	longjmp(intjmp, 1);
+	siglongjmp(intjmp, 1);
 #endif
 }
 

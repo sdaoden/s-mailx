@@ -1,4 +1,4 @@
-/*	$Id: fio.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: fio.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 /*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
 #else
-static char rcsid[]  = "$Id: fio.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "$Id: fio.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -64,11 +64,11 @@ static char rcsid[]  = "$Id: fio.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
  */
 void
 setptr(ibuf)
-	register FILE *ibuf;
+	FILE *ibuf;
 {
 	extern char *tmpdir;
-	register int c, count;
-	register char *cp, *cp2;
+	int c, count;
+	char *cp, *cp2;
 	struct message this;
 	FILE *mestmp = (FILE *)NULL;
 	off_t offset;
@@ -76,13 +76,13 @@ setptr(ibuf)
 	char linebuf[LINESIZE];
 
 	/* Get temporary file. */
-	(void)snprintf(linebuf,LINESIZE,"%s/mail.XXXXXX", tmpdir);
-	if ((c = mkstemp(linebuf)) == -1 ||
-	    (mestmp = Fdopen(c, "r+")) == (FILE *)NULL) {
-		(void)fprintf(stderr, "cannot open %s\n", linebuf);
+	cp = tempnam(tmpdir, "mail.");
+	if (cp == NULL || (mestmp = Fopen(cp, "w+")) == NULL) {
+		fprintf(stderr, "cannot open %s\n", cp);
 		exit(1);
 	}
-	(void)unlink(linebuf);
+	unlink(cp);
+	free(cp);
 
 	msgCount = 0;
 	maybe = 1;
@@ -102,13 +102,16 @@ setptr(ibuf)
 			makemessage(mestmp);
 			return;
 		}
+		if (linebuf[0] == '\0')
+			linebuf[0] = '.';
 		count = strlen(linebuf);
 		(void) fwrite(linebuf, sizeof *linebuf, count, otf);
 		if (ferror(otf)) {
 			perror("/tmp");
 			exit(1);
 		}
-		linebuf[count - 1] = 0;
+		if (linebuf[count - 1] == '\n')
+			linebuf[count - 1] = '\0';
 		if (maybe && linebuf[0] == 'F' && ishead(linebuf)) {
 			msgCount++;
 			if (append(&this, mestmp)) {
@@ -159,7 +162,7 @@ putline(obuf, linebuf)
 	FILE *obuf;
 	char *linebuf;
 {
-	register int c;
+	int c;
 
 	c = strlen(linebuf);
 	(void) fwrite(linebuf, sizeof *linebuf, c, obuf);
@@ -180,9 +183,9 @@ readline(ibuf, linebuf, linesize)
 	char *linebuf;
 	int linesize;
 {
-	register int n;
+	int n;
 #ifdef IOSAFE
-	register int oldfl;
+	int oldfl;
 	char *res;
 #endif
 
@@ -241,7 +244,7 @@ readline(ibuf, linebuf, linesize)
  */
 FILE *
 setinput(mp)
-	register struct message *mp;
+	struct message *mp;
 {
 
 	fflush(otf);
@@ -260,7 +263,7 @@ void
 makemessage(f)
 	FILE *f;
 {
-	register int size = (msgCount + 1) * sizeof (struct message);
+	int size = (msgCount + 1) * sizeof (struct message);
 
 	if (message != 0)
 		free((char *) message);
@@ -364,12 +367,12 @@ fsize(iob)
  */
 char *
 expand(name)
-	register char *name;
+	char *name;
 {
 	char xname[PATHSIZE];
 	char cmdbuf[PATHSIZE];		/* also used for file names */
-	register int pid, l;
-	register char *cp, *shell;
+	int pid, l;
+	char *cp, *shell;
 	int pivec[2];
 	struct stat sbuf;
 	extern int wait_status;
@@ -445,7 +448,7 @@ expand(name)
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
 		;
 	cp[1] = '\0';
-	if (index(xname, ' ') && stat(xname, &sbuf) < 0) {
+	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
 		fprintf(stderr, "\"%s\": Ambiguous.\n", name);
 		return NOSTR;
 	}
@@ -479,7 +482,7 @@ getfold(name, size)
 char *
 getdeadletter()
 {
-	register char *cp;
+	char *cp;
 
 	if ((cp = value("DEAD")) == NOSTR || (cp = expand(cp)) == NOSTR)
 		cp = expand("~/dead.letter");

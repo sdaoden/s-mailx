@@ -1,4 +1,4 @@
-/*	$Id: edit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: edit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 /*	NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: edit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: edit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -89,17 +89,17 @@ edit1(msgvec, type)
 	int *msgvec;
 	int type;
 {
-	register int c;
+	int c;
 	int i;
 	FILE *fp;
-	register struct message *mp;
+	struct message *mp;
 	off_t size;
 
 	/*
 	 * Deal with each message to be edited . . .
 	 */
 	for (i = 0; msgvec[i] && i < msgCount; i++) {
-		sighandler_t sigint;
+		signal_handler_t sigint;
 
 		if (i > 0) {
 			char buf[100];
@@ -117,7 +117,7 @@ edit1(msgvec, type)
 		}
 		dot = mp = &message[msgvec[i] - 1];
 		touch(mp);
-		sigint = signal(SIGINT, SIG_IGN);
+		sigint = safe_signal(SIGINT, SIG_IGN);
 		fp = run_editor(setinput(mp), mp->m_size, type, readonly);
 		if (fp != (FILE*)NULL) {
 			(void) fseek(otf, 0L, 2);
@@ -138,7 +138,7 @@ edit1(msgvec, type)
 				perror("/tmp");
 			(void) Fclose(fp);
 		}
-		(void) signal(SIGINT, sigint);
+		(void) safe_signal(SIGINT, sigint);
 	}
 	return 0;
 }
@@ -151,12 +151,12 @@ edit1(msgvec, type)
  */
 FILE *
 run_editor(fp, size, type, readonly)
-	register FILE *fp;
+	FILE *fp;
 	off_t size;
 	int type, readonly;
 {
-	register FILE *nf = (FILE*)NULL;
-	register int t;
+	FILE *nf = (FILE*)NULL;
+	int t;
 	time_t modtime;
 	char *edit;
 	struct stat statb;

@@ -1,4 +1,4 @@
-/*	$Id: popen.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: popen.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp 	*/
 /*	NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp";
 #else
-static char rcsid[]  = "@(#)$Id: popen.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: popen.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -73,6 +73,24 @@ static struct child *child;
 static struct child *findchild __P((int));
 static void delchild __P((struct child *));
 static int file_pid __P((FILE *));
+
+/* Provide BSD-like signal() on all systems */
+signal_handler_t
+safe_signal(signum, handler)
+signal_handler_t handler;
+{
+	struct sigaction nact, oact;
+
+	nact.sa_handler = handler;
+	sigemptyset(&nact.sa_mask);
+	nact.sa_flags = 0;
+#ifdef	SA_RESTART
+	nact.sa_flags |= SA_RESTART;
+#endif
+	if (sigaction(signum, &nact, &oact) != 0)
+		return SIG_ERR;
+	return oact.sa_handler;
+}
 
 FILE *
 safe_fopen(file, mode)
@@ -183,6 +201,8 @@ Pclose(ptr)
 	sigset_t nset, oset;
 
 	i = file_pid(ptr);
+	if (i < 0)
+		return 0;
 	unregister_file(ptr);
 	(void) fclose(ptr);
 	sigemptyset(&nset);
@@ -244,8 +264,7 @@ file_pid(fp)
 	for (p = fp_head; p; p = p->link)
 		if (p->fp == fp)
 			return (p->pid);
-	panic("Invalid file pointer");
-	/*NOTREACHED*/
+	return -1;
 }
 
 /*
@@ -280,7 +299,7 @@ start_command(cmd, mask, infd, outfd, a0, a1, a2)
 {
 	int pid;
 
-	if ((pid = vfork()) < 0) {
+	if ((pid = fork()) < 0) {
 		perror("fork");
 		return -1;
 	}
@@ -319,9 +338,9 @@ prepare_child(nset, infd, outfd)
 	if (nset) {
 		for (i = 1; i <= NSIG; i++)
 			if (sigismember(nset, i))
-				(void) signal(i, SIG_IGN);
+				(void) safe_signal(i, SIG_IGN);
 		if (!sigismember(nset, SIGINT))
-			(void) signal(SIGINT, SIG_DFL);
+			(void) safe_signal(SIGINT, SIG_DFL);
 	}
 	sigfillset(&fset);
 	(void) sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
@@ -343,7 +362,7 @@ static struct child *
 findchild(pid)
 	int pid;
 {
-	register struct child **cpp;
+	struct child **cpp;
 
 	for (cpp = &child; *cpp != (struct child *)NULL && (*cpp)->pid != pid;
 	     cpp = &(*cpp)->link)
@@ -359,9 +378,9 @@ findchild(pid)
 
 static void
 delchild(cp)
-	register struct child *cp;
+	struct child *cp;
 {
-	register struct child **cpp;
+	struct child **cpp;
 
 	for (cpp = &child; *cpp != cp; cpp = &(*cpp)->link)
 		;
@@ -375,7 +394,7 @@ sigchild(signo)
 {
 	int pid;
 	int status;
-	register struct child *cp;
+	struct child *cp;
 
 	while ((pid = waitpid(-1, (int*)&status, WNOHANG)) > 0) {
 		cp = findchild(pid);
@@ -398,7 +417,7 @@ wait_child(pid)
 	int pid;
 {
 	sigset_t nset, oset;
-	register struct child *cp = findchild(pid);
+	struct child *cp = findchild(pid);
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, &oset);
@@ -422,7 +441,7 @@ free_child(pid)
 	int pid;
 {
 	sigset_t nset, oset;
-	register struct child *cp = findchild(pid);
+	struct child *cp = findchild(pid);
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, &oset);

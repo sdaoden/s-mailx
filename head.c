@@ -1,4 +1,4 @@
-/*	$Id: head.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: head.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp 	*/
 /*	NetBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)head.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: head.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: head.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -63,7 +63,7 @@ int
 ishead(linebuf)
 	char linebuf[];
 {
-	register char *cp;
+	char *cp;
 	struct headline hl;
 	char parbuf[BUFSIZ];
 
@@ -114,9 +114,9 @@ fail(linebuf, reason)
 void
 parse(line, hl, pbuf)
 	char line[], pbuf[];
-	register struct headline *hl;
+	struct headline *hl;
 {
-	register char *cp;
+	char *cp;
 	char *sp;
 	char word[LINESIZE];
 
@@ -148,10 +148,10 @@ parse(line, hl, pbuf)
  */
 char *
 copyin(src, space)
-	register char *src;
+	char *src;
 	char **space;
 {
-	register char *cp;
+	char *cp;
 	char *top;
 
 	top = cp = *space;
@@ -227,7 +227,7 @@ isdate(date)
  */
 int
 cmatch(cp, tp)
-	register char *cp, *tp;
+	char *cp, *tp;
 {
 
 	while (*cp && *tp)
@@ -279,9 +279,9 @@ cmatch(cp, tp)
  */
 char *
 nextword(wp, wbuf)
-	register char *wp, *wbuf;
+	char *wp, *wbuf;
 {
-	register int c;
+	int c;
 
 	if (wp == NOSTR) {
 		*wbuf = 0;

@@ -17,7 +17,7 @@ To compile nail, first look
 - at the top of the Makefile
 - at pathnames.h
 and set the definitions according to your system's settings. The defaults
-are set to match Linux 2.2.X systems using glibc 2.1.
+are set to match Linux 2.2 systems using glibc 2.1.
 
 Then type `make' and optionally `make install'. As a last step, edit
 the personal and system-wide run time configuration files to match
@@ -27,18 +27,20 @@ the defaults still have the compatibility values of fifteen years ago.
 For batch usage, it may be more convenient to pass the configuration as
 environment variables only, as e.g. `from=user@host nail -n' does.
 
-This version of nail has been built successfully on the following
-operating systems:
+Nail has been built successfully on the following operating systems:
 
-Linux 		2.2.X with glibc 2.1
+Linux 		2.2 with glibc 2.1
+FreeBSD		4.0-STABLE
 Solaris		2.6
 UnixWare	2.1.2
 
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.
+If there are no changes, even better, but I would like to hear from
+you anyway to extend this list then.
 
-It should generally be possible to build nail on any Linux, BSD or SVR4
-system without much effort.
+It should generally be possible to build nail on most POSIX.1 compatible
+systems without much effort.
 
 Note that the mbox format based on the `Content-Length:' header field that
 is used on most SVR4 systems by default is not supported by nail. As this
@@ -61,6 +63,10 @@ Do not send me the core file unless you enabled the debugging using the
 
 If you work on another kind of machine, you can send me a description
 and a trace output, of cause, but I cannot handle your binaries then.
+
+If you have an idea how to improve nail, you are also invited to write
+me. But you should remember that nail's primary goal is to remain
+clean and simple. All ideas are worth at least a discussion, though.
 
 Enjoy!
 

@@ -1,4 +1,4 @@
-/*	$Id: quit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: quit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
 /*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 /*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: quit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: quit.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -83,8 +83,8 @@ quit()
 {
 	int mcount, p, modify, autohold, anystat, holdbit, nohold;
 	FILE *ibuf = (FILE*)NULL, *obuf, *fbuf, *rbuf, *readstat = (FILE*)NULL, *abuf;
-	register struct message *mp;
-	register int c;
+	struct message *mp;
+	int c;
 	extern char *tempQuit, *tempResid;
 	struct stat minfo;
 	char *mbox;
@@ -375,10 +375,10 @@ newmail:
  */
 int
 writeback(res)
-	register FILE *res;
+	FILE *res;
 {
-	register struct message *mp;
-	register int p, c;
+	struct message *mp;
+	int p, c;
 	FILE *obuf;
 
 	p = 0;
@@ -432,8 +432,8 @@ void
 edstop()
 {
 	extern char *tmpdir;
-	register int gotcha, c;
-	register struct message *mp;
+	int gotcha, c;
+	struct message *mp;
 	FILE *obuf, *ibuf, *readstat = (FILE*)NULL;
 	struct stat statb;
 	char *tempname;
@@ -526,7 +526,7 @@ edstop()
 		reset(0);
 	}
 	Fclose(obuf);
-	if (gotcha) {
+	if (gotcha && value("emptybox") == NULL) {
 		rm(mailname);
 		printf("removed\n");
 	} else

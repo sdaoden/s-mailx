@@ -1,3 +1,23 @@
+[9.03] released 2000-04-11
+* Some fixes to compile on FreeBSD 4.0
+* Check for write permission before dot-locking mail files
+* Do not accept an attachment list with unreadable files
+* Do not send a message if a file could not get attached or if the input could
+  not get read; save dead.letter instead
+* Do not include Linux domainnames in the message id anymore
+* Merged the Red Hat nopanic and nullchar patches
+* Include a signature file if option `signature' is set
+* Generate our own `Date:' header field for better local message archiving
+* Made the `quote' option configurable
+* Fixed segfault if a message to reply to had no message id
+* Removed all `register' declarations of variables
+* The code is intended to be POSIX.1 compatible now, except for the
+  tempnam() and getopt() functions the system must provide in addition
+* Removed the base64 encoding option for texts
+* Perform CRLF translation when decoding base64
+* Added the `emptybox' variable
+* Splitted send.c to sendout.c
+
 [9.02] relased 2000-04-05
 * Include the domainname in the message id only if there is one
 * Added the `stealthmua' option
@@ -20,8 +40,7 @@
 * Can now compile on SVR4 systems using -lucb
 * Changed generation of multipart boundaries
 * Sending MIME messages to files now works
-* Fixed core dump if variable `encoding' was unset (thanks to Alexey
-  A. Shelkovich who provided the core)
+* Fixed core dump if variable `encoding' was unset
 
 [9.0] released 2000-03-20
 * Initial release

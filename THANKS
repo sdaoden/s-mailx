@@ -1,0 +1,12 @@
+This document contains the contributors to nail. I very much regret
+that it seems impossible to include the people that contributed
+within the more than twenty years of history of BSD Mail.
+
+Alexey A. Shelkovich sent a core file to fix an illustrous null pointer.
+
+Anders Andersson helped by compiling on FreeBSD.
+
+Bob Tennent sent some Red Hat patches and gave some important hints
+	about the world-writeability of mail spool directories.
+
+GR
