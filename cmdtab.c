@@ -1,4 +1,4 @@
-/*	$Id: cmdtab.c,v 1.6 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: cmdtab.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp 	*/
 /*	NetBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)cmdtab.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp";
-#else
-static char rcsid[]  = "@(#)$Id: cmdtab.c,v 1.6 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmdtab.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -126,7 +124,6 @@ const struct cmd cmdtab[] = {
 	{ "saveretain",	saveretfield,	M|RAWLIST,	0,	1000 },
 /*	{ "Header",	Header,		STRLIST,	0,	1000 },	*/
 	{ "core",	core,		M|NOLIST,	0,	0 },
-	{ "#",		null,		M|NOLIST,	0,	0 },
 	{ "clobber",	clobber,	M|RAWLIST,	0,	1 },
 	{ 0,		0,		0,		0,	0 }
 };

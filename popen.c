@@ -1,4 +1,4 @@
-/*	$Id: popen.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: popen.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp 	*/
 /*	NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp";
-#else
-static char rcsid[]  = "@(#)$Id: popen.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: popen.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 

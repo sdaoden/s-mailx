@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: def.h,v 1.9 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.8 2000/05/29 00:29:22 gunnar Exp $
+ *	$Id: def.h,v 1.9 2000/06/26 04:27:05 gunnar Exp $
  */
 
 /*
@@ -219,7 +219,7 @@ struct headline {
 #define	GNL	16		/* Print blank line after */
 #define	GDEL	32		/* Entity removed from list */
 #define	GCOMMA	64		/* detract puts in commas */
-#define	GXMAIL	128		/* X-Mailer field */
+#define	GUA	128		/* User-Agent field */
 #define	GMIME	256		/* MIME 1.0 fields */
 #define	GMSGID	512		/* a Message-ID */
 #define	GATTACH	1024		/* attachment included */

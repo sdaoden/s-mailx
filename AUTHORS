@@ -23,10 +23,15 @@ Bob Tennent found a address encoding bug, sent some Red Hat patches
 	of mail spool directories.
 	He also informed me about libsafe of Bell Labs.
 
-Gabor Z. Papp announced nail on http://appwatch.com.
+Gabor Z. Papp announced nail on http://appwatch.com and found
+	an error in the SMTP envelope From generation.
 
 Marcel Oliver helped in finding a type signing error.
 
 Jacob Moorman provided support for GNU autoconf/automake.
 
 Edward V. Popkov found a type misassignment and a missing fflush().
+
+Steve Harris detected a wrong structure reference.
+
+James Sheeringer informed me about a possible buffer overflow.

@@ -1,4 +1,4 @@
-/*	$Id: tty.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: tty.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 /*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
-#else
-static char rcsid[]  = "@(#)$Id: tty.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: tty.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -440,7 +438,7 @@ char *prefix, *string;
 	saveint = safe_signal(SIGINT, ttyint);
 #endif
 #ifndef TIOCSTI
-	if (!ttyset && hp->h_to != NIL)
+	if (!ttyset && string != NIL)
 		ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
 #endif
 	ret = rtty_internal(prefix, string);

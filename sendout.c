@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.12 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.13 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -39,8 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
-#else
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.12 2000/05/30 01:11:34 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.13 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -54,37 +53,7 @@ static char rcsid[]  = "@(#)$Id: sendout.c,v 1.12 2000/05/30 01:11:34 gunnar Exp
  */
 
 const char randfile[] = "/dev/urandom";
-
-const static char b36table[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
 extern char *tempMail;
-
-/*
- * Convert i to a base36 character string and store it in b.
- * The caller has to ensure that the size of b is sufficient.
- */
-static char *
-itob36(i, b)
-unsigned i;
-char *b;
-{
-	char *p, *q, c;
-	
-	p = b;
-	while (i != 0) {
-		*p++ = b36table[i % 36];
-		i /= 36;
-	}
-	*p-- = '\0';
-	q = b;
-	while (p >= q) {
-		c = *q;
-		*q++ = *p;
-		*p-- = c;
-	}
-	return b;
-}
-
 static char *send_boundary;
 
 #define	BOUNDARRAY	8
@@ -130,14 +99,14 @@ makeboundary()
 	}
 	snprintf(bound, 73,
 			"%.5s%.5s-=-%.5s%.5s-CUT-HERE-%.5s%.5s-=-%.5s%.5s",
-			itob36((unsigned)r[0], b[0]),
-			itob36((unsigned)r[1], b[1]),
-			itob36((unsigned)r[2], b[2]),
-			itob36((unsigned)r[3], b[3]),
-			itob36((unsigned)r[4], b[4]),
-			itob36((unsigned)r[5], b[5]),
-			itob36((unsigned)r[6], b[6]),
-			itob36((unsigned)r[7], b[7]));
+			itostr(36, (unsigned)r[0], b[0]),
+			itostr(36, (unsigned)r[1], b[1]),
+			itostr(36, (unsigned)r[2], b[2]),
+			itostr(36, (unsigned)r[3], b[3]),
+			itostr(36, (unsigned)r[4], b[4]),
+			itostr(36, (unsigned)r[5], b[5]),
+			itostr(36, (unsigned)r[6], b[6]),
+			itostr(36, (unsigned)r[7], b[7]));
 	send_boundary = bound;
 	return send_boundary;
 }
@@ -406,7 +375,7 @@ infix(hp, fi, convert)
 	}
 	(void) rm(tempMail);
 	if (puthead(hp, nfo,
-		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GXMAIL|GMIME
+		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
 		   |GMSGID|GATTACH|GIDENT|GREF|GDATE,
 		   convert)) {
 		(void) Fclose(nfo);
@@ -712,7 +681,7 @@ FILE *fo;
 {
 	static unsigned long msgc;
 	time_t t;
-	char *fromaddr;
+	char *domainpart;
 	int rd;
 	long randbuf;
 	char datestr[sizeof(time_t) * 2 + 1];
@@ -734,18 +703,19 @@ FILE *fo;
 		srand((unsigned)(msgc * t));
 		randbuf = (long)rand();
 	}
-	itohex((unsigned)t, datestr);
-	itob36((unsigned)getpid(), pidstr);
-	itob36((unsigned)msgc, countstr);
-	itob36((unsigned)randbuf, randstr);
-	fprintf(fo, "Message-ID: <%s.%s%.5s%s%.5s",
-			datestr, progname, pidstr, countstr, randstr);
-	if ((fromaddr = skin(value("from")))
-			&& (fromaddr = strchr(fromaddr, '@'))) {
-		fprintf(fo, "%s>\n", fromaddr);
+	itostr(16, (unsigned)t, datestr);
+	itostr(36, (unsigned)getpid(), pidstr);
+	itostr(36, (unsigned)msgc, countstr);
+	itostr(36, (unsigned)randbuf, randstr);
+	if ((domainpart = skin(value("from")))
+			&& (domainpart = strchr(domainpart, '@'))) {
+		domainpart++;
 	} else {
-		fprintf(fo, "@%s>\n", hostname());
+		domainpart = nodename();
 	}
+	fprintf(fo, "Message-ID: <%s.%s%.5s%s%.5s@%s>\n",
+			datestr, progname, pidstr, countstr, randstr,
+			domainpart);
 }
 
 const static char *weekday_names[] = {
@@ -810,7 +780,7 @@ puthead(hp, fo, w, convert)
 		date_field(fo), gotcha++;
 	}
 	if (w & GIDENT) {
-		addr = value("from");
+		addr = myaddr();
 		if (addr != NULL) {
 			if (mime_name_invalid(addr))
 				return 1;
@@ -876,8 +846,8 @@ puthead(hp, fo, w, convert)
 			return 1;
 		gotcha++;
 	}
-	if (w & GXMAIL && stealthmua == 0) {
-		fprintf(fo, "X-Mailer: %s\n", version), gotcha++;
+	if (w & GUA && stealthmua == 0) {
+		fprintf(fo, "User-Agent: %s\n", version), gotcha++;
 	}
 	if (w & GMIME) {
 		fputs("MIME-Version: 1.0\n", fo), gotcha++;
@@ -982,7 +952,7 @@ struct name *to;
 		if (add_resent) {
 				fputs("Resent-", fo);
 			date_field(fo);
-			cp = value("from");
+			cp = myaddr();
 			if (cp != NULL) {
 				if (mime_name_invalid(cp))
 					return 1;

@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.7 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
-#else
-static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.7 2000/05/30 01:11:34 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -108,29 +106,43 @@ scroll(v)
 	void *v;
 {
 	char *arg = v;
-	int s, size;
+	int size;
 	int cur[1];
 
 	cur[0] = 0;
 	size = screensize();
-	s = screen;
 	switch (*arg) {
-	case 0:
+	case '1': case '2': case '3': case '4': case '5':
+	case '6': case '7': case '8': case '9': case '0':
+		screen = atoi(arg);
+		goto scroll_forward;
+	case '\0':
+		screen++;
+		goto scroll_forward;
+	case '$':
+		screen = msgcount / size;
+		goto scroll_forward;
 	case '+':
-		s++;
-		if (s * size > msgcount) {
+		if (arg[1] == '\0')
+			screen++;
+		else
+			screen += atoi(arg + 1);
+scroll_forward:
+		if (screen * size > msgcount) {
+			screen = msgcount / size;
 			printf("On last screenful of messages\n");
-			return(0);
 		}
-		screen = s;
 		break;
 
 	case '-':
-		if (--s < 0) {
+		if (arg[1] == '\0')
+			screen--;
+		else
+			screen -= atoi(arg + 1);
+		if (screen < 0) {
+			screen = 0;
 			printf("On first screenful of messages\n");
-			return(0);
 		}
-		screen = s;
 		break;
 
 	default:

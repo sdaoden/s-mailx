@@ -21,12 +21,13 @@ client code.
 
 Nail has been built successfully on the following operating systems:
 
-Linux 		2.2 with glibc 2.1; 2.0 with libc5
+Linux 		2.2, 2.0; glibc 2.1, libc5, libc4
 FreeBSD		4.0-STABLE
 Solaris		7; 2.6
 UnixWare	7.0.1; 2.1.2
 OpenServer	5.0.5
 Digital Unix	4.0
+HP-UX		10.20
 
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.

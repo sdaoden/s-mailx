@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.10 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.11 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.10 2000/05/30 01:11:34 gunnar Exp $
+ *	$Id: extern.h,v 1.11 2000/06/26 04:27:05 gunnar Exp $
  */
 
 struct name;
@@ -192,7 +192,6 @@ int	 metamess __P((int, int));
 int	 more __P((void *));
 int	 newfileinfo __P((void));
 int	 next __P((void *));
-int	 null __P((void *));
 void	 panic __P((const char *, ...))
 #ifdef	__GNUC__
     __attribute__((__format__(__printf__,1,2),__noreturn__));
@@ -277,7 +276,7 @@ int	 wait_child __P((int));
 int	 wait_command __P((int));
 int	 writeback __P((FILE *));
 void	*smalloc __P((size_t));
-char	*itohex __P((unsigned, char *));
+char	*itostr __P((unsigned, unsigned, char *));
 size_t	mime_write_tob64 __P((struct str*, FILE*));
 void	mime_fromb64 __P((struct str*, struct str*, int, int));
 void	mime_fromb64_b __P((struct str*, struct str*, int, int, FILE*));
@@ -300,5 +299,6 @@ char	*foldergets __P((char *, int, FILE *));
 char	* getcmd __P((char *, int *));
 int	forward_msg __P((struct message *, struct name *, int));
 int	smtp_mta __P((char *, struct name *, FILE *));
-char	*hostname __P((void));
+char	*nodename __P((void));
 int	mime_name_invalid __P((char *));
+char	*myaddr __P((void));

@@ -1,3 +1,14 @@
+[9.14] released 2000-06-26
+* Generate `User-Agent:' header fields instead of `X-Mailer:'
+* Addresses in SMTP commands are surrounded with angle brackets
+* Do not send an empty envelope From if using SMTP without given `from'
+* Add a From: line even without a given `from' variable if using SMTP
+* Removed wrong structure reference in tty.c
+* Interpret all commands beginning with `#' as comments
+* Insert an empty line after `xyz wrote:' in replies
+* Fixed a possible buffer overflow in address allocation routines
+* The `z' command now accepts a number that specifies a window
+
 [9.13] released 2000-05-30
 * Changed _PATH_ to PATH_ in defines
 * Fixed RFC 1522 encoding of header fields (important!)

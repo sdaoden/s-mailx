@@ -1,4 +1,4 @@
-/*	$Id: base64.c,v 1.9 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: base64.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
 
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -19,7 +19,9 @@
  */
 
 #ifndef lint
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.9 2000/05/01 22:27:04 gunnar Exp $";
+#if 0
+static char rcsid[]  = "@(#)$Id: base64.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+#endif
 #endif /* not lint */
 
 /*

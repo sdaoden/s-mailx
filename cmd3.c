@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
-#else
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -602,18 +600,6 @@ diction(a, b)
 	const void *a, *b;
 {
 	return(strcmp(*(char **)a, *(char **)b));
-}
-
-/*
- * The do nothing command for comments.
- */
-
-/*ARGSUSED*/
-int
-null(v)
-	void *v;
-{
-	return 0;
 }
 
 /*

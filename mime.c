@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.14 2000/05/30 01:16:14 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.15 2000/06/26 04:27:05 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -36,7 +36,9 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.14 2000/05/30 01:16:14 gunnar Exp $";
+#if 0
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.15 2000/06/26 04:27:05 gunnar Exp $";
+#endif
 #endif /* not lint */
 
 #include "rcv.h"
@@ -51,7 +53,7 @@ static char rcsid[]  = "@(#)$Id: mime.c,v 1.14 2000/05/30 01:16:14 gunnar Exp $"
 /*
  * You won't guess what these are for.
  */
-const static char hextable[16] = "0123456789ABCDEF";
+const static char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static char *mimetypes_world = "/etc/mime.types";
 static char *mimetypes_user = "~/mime.types";
 
@@ -518,20 +520,20 @@ FILE *f;
 }
 
 /*
- * Convert i to a hexadecimal character string and store it in b.
+ * Convert i to a baseX character string and store it in b.
  * The caller has to ensure that the size of b is sufficient.
  */
 char *
-itohex(i, b)
-unsigned i;
+itostr(base, i, b)
+unsigned base, i;
 char *b;
 {
 	char *p, *q, c;
 	
 	p = b;
 	while (i != 0) {
-		*p++ = hextable[i % 16];
-		i /= 16;
+		*p++ = basetable[i % base];
+		i /= base;
 	}
 	*p-- = '\0';
 	q = b;
@@ -555,11 +557,11 @@ char *hex;
 
 	hex[2] = '\0';
 	d = c % 16;
-	hex[1] = hextable[d];
+	hex[1] = basetable[d];
 	if (c > d)
-		hex[0] = hextable[(c - d) / 16];
+		hex[0] = basetable[(c - d) / 16];
 	else
-		hex[0] = hextable[0];
+		hex[0] = basetable[0];
 	return hex;
 }
 

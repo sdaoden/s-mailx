@@ -1,4 +1,4 @@
-/*	$Id: lex.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: lex.c,v 1.9 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 /*	NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp ";
-#else
-static char rcsid[]  = "@(#)$Id: lex.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: lex.c,v 1.9 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -284,6 +282,8 @@ execute(linebuf, contxt)
 		shell(cp+1);
 		return(0);
 	}
+	if (*cp == '#')
+		return 0;
 	cp2 = word;
 	while (*cp && strchr(" \t0123456789$^.:/-+*'\"", *cp) == NOSTR)
 		*cp2++ = *cp++;

@@ -1,4 +1,4 @@
-/*	$Id: temp.c,v 1.5 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: temp.c,v 1.6 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp 	*/
 /*	NetBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)temp.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp";
-#else
-static char rcsid[]  = "@(#)$Id: temp.c,v 1.5 2000/05/30 01:11:34 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: temp.c,v 1.6 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 

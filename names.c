@@ -1,4 +1,4 @@
-/*	$Id: names.c,v 1.6 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: names.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
 /*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)names.c	8.1 (Berkeley) 6/6/93";
-#elif 0
 static char rcsid[]  = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
-#else
-static char rcsid[]  = "@(#)$Id: names.c,v 1.6 2000/05/30 01:11:34 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: names.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -101,15 +99,15 @@ extract(line, ntype)
 	char line[];
 	int ntype;
 {
-	char *cp;
+	char *cp, *nbuf;
 	struct name *top, *np, *t;
-	char nbuf[BUFSIZ];
 
 	if (line == NOSTR || *line == '\0')
 		return NIL;
 	top = NIL;
 	np = NIL;
 	cp = line;
+	nbuf = (char*)smalloc(strlen(line) + 1);
 	while ((cp = yankword(cp, nbuf)) != NOSTR) {
 		t = nalloc(nbuf, ntype);
 		if (top == NIL)
@@ -119,6 +117,7 @@ extract(line, ntype)
 		t->n_blink = np;
 		np = t;
 	}
+	free(nbuf);
 	return top;
 }
 

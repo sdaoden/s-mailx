@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -38,10 +38,8 @@
 #ifndef lint
 #if 0
 static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
-#elif 0
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
-#else
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -173,8 +171,8 @@ collect(hp, printheaders, mp, quotefile)
 						collf, CONV_FROMHDR, 0);
 				mime_write(cp, sizeof(char), strlen(cp),
 						stdout, CONV_FROMHDR, 0);
-				fwrite(" wrote:\n", sizeof(char), 8, collf);
-				fwrite(" wrote:\n", sizeof(char), 8, stdout);
+				fwrite(" wrote:\n\n", sizeof(char), 9, collf);
+				fwrite(" wrote:\n\n", sizeof(char), 9, stdout);
 			}
 		}
 		cp = value("indentprefix");

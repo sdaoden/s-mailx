@@ -1,4 +1,4 @@
-/*	$Id: smtp.c,v 1.2 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: smtp.c,v 1.3 2000/06/26 04:27:05 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -34,7 +34,9 @@
  */
 
 #ifndef lint
-static char rcsid[]  = "@(#)$Id: smtp.c,v 1.2 2000/05/29 00:29:22 gunnar Exp $";
+#if 0
+static char rcsid[]  = "@(#)$Id: smtp.c,v 1.3 2000/06/26 04:27:05 gunnar Exp $";
+#endif
 #endif /* not lint */
 
 #include "rcv.h"
@@ -81,7 +83,7 @@ FILE *stream;
  * Return our hostname.
  */
 char *
-hostname()
+nodename()
 {
 	static char *hostname;
 	char *hn;
@@ -120,7 +122,7 @@ hostname()
  * Return the user's From: address.
  */
 char *
-fromaddr()
+myaddr()
 {
 	char *cp, *hn;
 	static char *addr;
@@ -128,9 +130,15 @@ fromaddr()
 
 	cp = value("from");
 	if (cp != NULL)
-		return skin(cp);
-	if (addr != NULL) {
-		hn = hostname();
+		return cp;
+	/*
+	 * When invoking sendmail directly, it's its task
+	 * to generate a From: address.
+	 */
+	if (value("smtp") == NULL)
+		return NULL;
+	if (addr == NULL) {
+		hn = nodename();
 		sz = strlen(myname) + strlen(hn) + 2;
 		addr = (char*)smalloc(sz);
 		snprintf(addr, sz, "%s@%s", myname, hn);
@@ -206,14 +214,14 @@ FILE *fi, *fsi, *fso;
 	char b[LINESIZE], o[LINESIZE];
 
 	SMTP_ANSWER(2);
-	snprintf(o, LINESIZE, "HELO %s\r\n", hostname());
+	snprintf(o, LINESIZE, "HELO %s\r\n", nodename());
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
-	snprintf(o, LINESIZE, "MAIL FROM: %s\r\n", fromaddr());
+	snprintf(o, LINESIZE, "MAIL FROM: <%s>\r\n", skin(myaddr()));
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
 	for (n = to; n != NULL; n = n->n_flink) {
-		snprintf(o, LINESIZE, "RCPT TO: %s\r\n", n->n_name);
+		snprintf(o, LINESIZE, "RCPT TO: <%s>\r\n", n->n_name);
 		SMTP_OUT(o);
 		SMTP_ANSWER(2);
 	}
