@@ -1,5 +1,6 @@
-/*	$OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp $	*/
-/*	$NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp $	*/
+/*	$Id: lex.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
+/*	NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp ";
 #else
-static char rcsid[] = "$OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: lex.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -77,7 +80,7 @@ setfile(name)
 	if ((name = expand(name)) == NOSTR)
 		return -1;
 
-	if ((ibuf = Fopen(name, "r")) == NULL) {
+	if ((ibuf = Fopen(name, "r")) == (FILE *)NULL) {
 		if (!isedit && errno == ENOENT)
 			goto nomail;
 		perror(name);
@@ -134,16 +137,19 @@ setfile(name)
 	}
 	shudclob = 1;
 	edit = isedit;
-	strcpy(prevfile, mailname);
-	if (name != mailname)
-		strcpy(mailname, name);
+	strncpy(prevfile, mailname, PATHSIZE);
+	prevfile[PATHSIZE-1]='\0';
+	if (name != mailname) {
+		strncpy(mailname, name, PATHSIZE);
+		mailname[PATHSIZE-1]='\0';
+	}
 	mailsize = fsize(ibuf);
-	if ((otf = fopen(tempMesg, "w")) == NULL) {
+	if ((otf = safe_fopen(tempMesg, "w")) == (FILE *)NULL) {
 		perror(tempMesg);
 		exit(1);
 	}
 	(void) fcntl(fileno(otf), F_SETFD, 1);
-	if ((itf = fopen(tempMesg, "r")) == NULL) {
+	if ((itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
 		perror(tempMesg);
 		exit(1);
 	}
@@ -256,7 +262,7 @@ execute(linebuf, contxt)
 {
 	char word[LINESIZE];
 	char *arglist[MAXARGC];
-	const struct cmd *com = NULL;
+	const struct cmd *com = (struct cmd *)NULL;
 	register char *cp, *cp2;
 	register int c;
 	int muvec[2];
@@ -352,9 +358,9 @@ execute(linebuf, contxt)
 		if (c  == 0) {
 			*msgvec = first(com->c_msgflag,
 				com->c_msgmask);
-			msgvec[1] = NULL;
+			msgvec[1] = 0;
 		}
-		if (*msgvec == NULL) {
+		if (*msgvec == 0) {
 			printf("No applicable messages\n");
 			break;
 		}
@@ -431,7 +437,7 @@ out:
 			unstack();
 		return 0;
 	}
-	if (com == NULL)
+	if (com == (struct cmd *)NULL)
 		return(0);
 	if (value("autoprint") != NOSTR && com->c_argtype & P)
 		if ((dot->m_flag & MDELETED) == 0) {
@@ -524,6 +530,7 @@ intr(s)
 		image = -1;
 	}
 	fprintf(stderr, "Interrupt\n");
+	fpurge(input);
 	reset(0);
 }
 
@@ -539,12 +546,13 @@ stop(s)
 
 	sigemptyset(&nset);
 	sigaddset(&nset, s);
-	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+	sigprocmask(SIG_UNBLOCK, &nset, (sigset_t *)NULL);
 	kill(0, s);
-	sigprocmask(SIG_BLOCK, &nset, NULL);
+	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
 	signal(s, old_action);
 	if (reset_on_stop) {
 		reset_on_stop = 0;
+		fpurge(input);
 		reset(0);
 	}
 }
@@ -616,10 +624,10 @@ newfileinfo()
 			s++;
 	}
 	ename = mailname;
-	if (getfold(fname) >= 0) {
+	if (getfold(fname, BUFSIZ-1) >= 0) {
 		strcat(fname, "/");
 		if (strncmp(fname, mailname, strlen(fname)) == 0) {
-			sprintf(zname, "+%s", mailname + strlen(fname));
+			snprintf(zname, BUFSIZ, "+%s", mailname + strlen(fname));
 			ename = zname;
 		}
 	}
@@ -666,7 +674,7 @@ load(name)
 {
 	register FILE *in, *oldin;
 
-	if ((in = Fopen(name, "r")) == NULL)
+	if ((in = Fopen(name, "r")) == (FILE *)NULL)
 		return;
 	oldin = input;
 	input = in;

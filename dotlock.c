@@ -1,5 +1,6 @@
-/*	$OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp $	*/
-/*	$NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp $	*/
+/*	$Id: dotlock.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
+/*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -31,7 +32,11 @@
  */
 
 #ifndef lint
-static char rcsid[] = "$OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp $";
+#if 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
+#else
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: dotlock.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+#endif
 #endif
 
 #include <sys/types.h>
@@ -47,11 +52,30 @@ static char rcsid[] = "$OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Ex
 #include <errno.h>
 #include <signal.h>
 
+#include "rcv.h"
 #include "extern.h"
 
 #ifndef O_SYNC
 #define O_SYNC	0
 #endif
+
+/*
+ * Set the gid if the path is in the normal mail spool
+ */
+static int perhaps_setgid (name, gid)
+char *name;
+gid_t gid;
+{
+	char safepath[]= _PATH_MAILDIR;
+
+	if (strncmp (name, safepath, sizeof (safepath)-1) ||
+	    strchr (name + sizeof (safepath), '/'))
+	{
+		return 0;
+	}
+	return (setgid (gid));
+}
+
 
 static int create_exclusive __P((const char *));
 /*
@@ -69,11 +93,12 @@ create_exclusive(fname)
 	const char *fname;
 {
 	char path[MAXPATHLEN], hostname[MAXHOSTNAMELEN];
+	char apid[40]; /* sufficient for storign 128 bits pids */
 	const char *ptr;
 	struct timeval tv;
 	pid_t pid;
 	size_t ntries, cookie;
-	int fd, serrno;
+	int fd, serrno, cc;
 	struct stat st;
 
 	(void) gettimeofday(&tv, NULL);
@@ -97,8 +122,12 @@ create_exclusive(fname)
 	 * We try to create the unique filename.
 	 */
 	for (ntries = 0; ntries < 5; ntries++) {
+		perhaps_setgid(path, effectivegid);
 		fd = open(path, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL|O_SYNC, 0);
+		setgid(realgid);
 		if (fd != -1) {
+			sprintf(apid,"%d",getpid());
+			write(fd, apid, strlen(apid));
 			(void) close(fd);
 			break;
 		}
@@ -107,11 +136,14 @@ create_exclusive(fname)
 		else
 			return -1;
 	}
-
 	/*
 	 * We link the path to the name
 	 */
-	if (link(path, fname) == -1)
+	perhaps_setgid(fname, effectivegid);
+	cc = link(path, fname);
+	setgid(realgid);
+   
+	if (cc == -1)
 		goto bad;
 
 	/*
@@ -121,7 +153,9 @@ create_exclusive(fname)
 	if (stat(path, &st) == -1)
 		goto bad;
 
+	perhaps_setgid(fname, effectivegid);
 	(void) unlink(path);
+	setgid(realgid);
 
 	/*
 	 * If the number of links was two (one for the unique file and one
@@ -149,6 +183,7 @@ dot_lock(fname, pollinterval, fp, msg)
 {
 	char path[MAXPATHLEN];
 	sigset_t nset, oset;
+	int i;
 
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGHUP);
@@ -162,7 +197,7 @@ dot_lock(fname, pollinterval, fp, msg)
 
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
 
-	for (;;) {
+	for (i=0;i<15;i++) {
 		(void) sigprocmask(SIG_BLOCK, &nset, &oset);
 		if (create_exclusive(path) != -1) {
 			(void) sigprocmask(SIG_SETMASK, &oset, NULL);
@@ -185,6 +220,8 @@ dot_lock(fname, pollinterval, fp, msg)
 			sleep(pollinterval);
 		}
 	}
+        fprintf(stderr,"%s seems a stale lock? Need to be removed by hand?\n",path);
+        return -1;
 }
 
 void
@@ -194,5 +231,7 @@ dot_unlock(fname)
 	char path[MAXPATHLEN];
 
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
+	perhaps_setgid(path, effectivegid);
 	(void) unlink(path);
+	setgid(realgid);
 }

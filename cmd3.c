@@ -1,5 +1,6 @@
-/*	$OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp $	*/
-/*	$NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp $	*/
+/*	$Id: cmd3.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
+/*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[] = "$OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: cmd3.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -65,8 +68,9 @@ shell(v)
 	char *shell;
 	char cmd[BUFSIZ];
 
-	(void) strcpy(cmd, str);
-	if (bangexp(cmd) < 0)
+	(void) strncpy(cmd, str, BUFSIZ);
+	cmd[BUFSIZ-1]='\0';
+	if (bangexp(cmd, BUFSIZ) < 0)
 		return 1;
 	if ((shell = value("SHELL")) == NOSTR)
 		shell = _PATH_CSHELL;
@@ -103,8 +107,9 @@ dosh(v)
 char	lastbang[128];
 
 int
-bangexp(str)
+bangexp(str, size)
 	char *str;
+	int size;
 {
 	char bangbuf[BUFSIZ];
 	register char *cp, *cp2;
@@ -144,7 +149,8 @@ overf:
 		printf("!%s\n", bangbuf);
 		fflush(stdout);
 	}
-	strcpy(str, bangbuf);
+	strncpy(str, bangbuf, size);
+	str[size-1]='\0';
 	strncpy(lastbang, bangbuf, 128);
 	lastbang[127] = 0;
 	return(0);
@@ -158,10 +164,10 @@ int
 help(v)
 	void *v;
 {
-	register c;
+	register int c;
 	register FILE *f;
 
-	if ((f = Fopen(_PATH_HELP, "r")) == NULL) {
+	if ((f = Fopen(_PATH_HELP, "r")) == (FILE *)NULL) {
 		perror(_PATH_HELP);
 		return(1);
 	}
@@ -263,8 +269,12 @@ _respond(msgvec)
 	} else
 		head.h_cc = NIL;
 	head.h_bcc = NIL;
+	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	mail1(&head, 1);
+	if (value("quote"))
+		mail1(&head, 1, mp);
+	else
+		mail1(&head, 1, NULL);
 	return(0);
 }
 
@@ -277,16 +287,20 @@ reedit(subj)
 	register char *subj;
 {
 	char *newsubj;
+	struct str in, out;
 
 	if (subj == NOSTR)
 		return NOSTR;
-	if ((subj[0] == 'r' || subj[0] == 'R') &&
-	    (subj[1] == 'e' || subj[1] == 'E') &&
-	    subj[2] == ':')
-		return subj;
-	newsubj = salloc(strlen(subj) + 5);
+	in.s = subj;
+	in.l = strlen(subj);
+	mime_fromhdr(&in, &out, 1); /* we strip unusual characters */
+	if ((out.s[0] == 'r' || out.s[0] == 'R') &&
+	    (out.s[1] == 'e' || out.s[1] == 'E') &&
+	    out.s[2] == ':')
+		return out.s;
+	newsubj = salloc(out.l + 5);
 	strcpy(newsubj, "Re: ");
-	strcpy(newsubj + 4, subj);
+	strcpy(newsubj + 4, out.s);
 	return newsubj;
 }
 
@@ -306,7 +320,7 @@ preserve(v)
 		printf("Cannot \"preserve\" in edit mode\n");
 		return(1);
 	}
-	for (ip = msgvec; *ip != NULL; ip++) {
+	for (ip = msgvec; *ip != 0; ip++) {
 		mesg = *ip;
 		mp = &message[mesg-1];
 		mp->m_flag |= MPRESERVE;
@@ -326,7 +340,7 @@ unread(v)
 	int	*msgvec = v;
 	register int *ip;
 
-	for (ip = msgvec; *ip != NULL; ip++) {
+	for (ip = msgvec; *ip != 0; ip++) {
 		dot = &message[*ip-1];
 		dot->m_flag &= ~(MREAD|MTOUCH);
 		dot->m_flag |= MSTATUS;
@@ -345,7 +359,7 @@ messize(v)
 	register struct message *mp;
 	register int *ip, mesg;
 
-	for (ip = msgvec; *ip != NULL; ip++) {
+	for (ip = msgvec; *ip != 0; ip++) {
 		mesg = *ip;
 		mp = &message[mesg-1];
 		printf("%d: %d/%ld\n", mesg, mp->m_lines, mp->m_size);
@@ -637,8 +651,12 @@ _Respond(msgvec)
 	head.h_subject = reedit(head.h_subject);
 	head.h_cc = NIL;
 	head.h_bcc = NIL;
+	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	mail1(&head, 1);
+	if (value("quote"))
+		mail1(&head, 1, mp);
+	else
+		mail1(&head, 1, NULL);
 	return 0;
 }
 

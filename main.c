@@ -1,5 +1,6 @@
-/*	$OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp $	*/
-/*	$NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp $	*/
+/*	$Id: main.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
+/*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -35,19 +36,32 @@
  */
 
 #ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
+static char copyright[] __attribute__ ((unused)) =
+"@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
 #endif /* not lint */
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)main.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)main.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: main.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
+/*
+ * Most strcpy/sprintf functions have been changed to strncpy/snprintf to
+ * correct several buffer overruns (at least one ot them was exploitable).
+ * Sat Jun 20 04:58:09 CEST 1998 Alvaro Martinez Echevarria <alvaro@lander.es>
+ * ---
+ * Note: We set egid to realgid ... and only if we need the egid we will
+ *       switch back temporary.  Nevertheless, I do not like seg faults.
+ *       Werner Fink, <werner@suse.de>
+ */
+
+
+#define _MAIL_GLOBS_
 #include "rcv.h"
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -60,6 +74,7 @@ static char rcsid[] = "$OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp $
  */
 
 jmp_buf	hdrjmp;
+char *progname;
 
 int
 main(argc, argv)
@@ -67,12 +82,31 @@ main(argc, argv)
 	char *argv[];
 {
 	register int i;
-	struct name *to, *cc, *bcc, *smopts;
+	struct name *to, *attach, *cc, *bcc, *smopts;
 	char *subject;
 	char *ef;
 	char nosrc = 0;
 	sig_t prevint;
 
+	/*
+	 * Absolutely the first thing we do is save our egid
+	 * and set it to the rgid, so that we can safely run
+	 * setgid.  We use the sgid (saved set-gid) to allow ourselves
+	 * to revert to the egid if we want (temporarily) to become
+	 * priveliged.
+	 */
+	effectivegid = getegid();
+	realgid = getgid();
+	if (setgid (realgid) < 0) {
+		perror("setgid");
+		exit(1);
+	}
+
+	progname = strrchr(argv[0], '/');
+	if (progname != NULL)
+		progname++;
+	else
+		progname = argv[0];
 	/*
 	 * Set up a reasonable environment.
 	 * Figure out whether we are being run interactively,
@@ -93,9 +127,10 @@ main(argc, argv)
 	to = NIL;
 	cc = NIL;
 	bcc = NIL;
+	attach = NIL;
 	smopts = NIL;
 	subject = NOSTR;
-	while ((i = getopt(argc, argv, "INT:b:c:dfins:u:v")) != EOF) {
+	while ((i = getopt(argc, argv, "INT:a:b:c:dfins:u:v")) != EOF) {
 		switch (i) {
 		case 'T':
 			/*
@@ -171,6 +206,12 @@ main(argc, argv)
 			 */
 			assign("interactive", "");
 			break;
+		case 'a':
+			/*
+			 * Get attachment filenames
+			 */
+			attach = cat(attach, nalloc(optarg, GATTACH));
+			break;
 		case 'c':
 			/*
 			 * Get Carbon Copy Recipient list
@@ -185,7 +226,8 @@ main(argc, argv)
 			break;
 		case '?':
 			fputs("\
-Usage: mail [-iInv] [-s subject] [-c cc-addr] [-b bcc-addr] to-addr ...\n\
+Usage: mail [-iInv] [-s subject] [-a attachment]
+            [-c cc-addr] [-b bcc-addr] to-addr ...\n\
             [- sendmail-options ...]\n\
        mail [-iInNv] -f [name]\n\
        mail [-iInNv] [-u user]\n",
@@ -221,7 +263,7 @@ Usage: mail [-iInv] [-s subject] [-c cc-addr] [-b bcc-addr] to-addr ...\n\
 	 */
 	load(expand("~/.mailrc"));
 	if (!rcvmode) {
-		mail(to, cc, bcc, smopts, subject);
+		mail(to, cc, bcc, smopts, subject, attach);
 		/*
 		 * why wait?
 		 */
@@ -237,8 +279,6 @@ Usage: mail [-iInv] [-s subject] [-c cc-addr] [-b bcc-addr] to-addr ...\n\
 	if (setfile(ef) < 0)
 		exit(1);		/* error already reported */
 	if (setjmp(hdrjmp) == 0) {
-		extern char *version;
-
 		if ((prevint = signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			signal(SIGINT, hdrstop);
 		if (value("quiet") == NOSTR)
@@ -287,12 +327,12 @@ setscreensize()
 	if (ioctl(1, TIOCGWINSZ, (char *) &ws) < 0)
 		ws.ws_col = ws.ws_row = 0;
 	if (tcgetattr(1, &tbuf) < 0)
-		ospeed = 9600;
+		ospeed = B9600;
 	else
 		ospeed = cfgetospeed(&tbuf);
-	if (ospeed < 1200)
+	if (ospeed < B1200)
 		screenheight = 9;
-	else if (ospeed == 1200)
+	else if (ospeed == B1200)
 		screenheight = 14;
 	else if (ws.ws_row != 0)
 		screenheight = ws.ws_row;

@@ -1,5 +1,6 @@
-/*	$OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp $	*/
-/*	$NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp $	*/
+/*	$Id: cmd1.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
+/*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
 /*-
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
 #else
-static char rcsid[] = "$OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: cmd1.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -162,7 +165,7 @@ from(v)
 	int *msgvec = v;
 	register int *ip;
 
-	for (ip = msgvec; *ip != NULL; ip++)
+	for (ip = msgvec; *ip != 0; ip++)
 		printhead(*ip);
 	if (--ip >= msgvec)
 		dot = &message[*ip - 1];
@@ -181,6 +184,7 @@ printhead(mesg)
 	char headline[LINESIZE], wcount[LINESIZE], *subjline, dispc, curind;
 	char pbuf[BUFSIZ];
 	struct headline hl;
+	struct str in, out;
 	int subjlen;
 	char *name;
 
@@ -188,6 +192,15 @@ printhead(mesg)
 	(void) readline(setinput(mp), headline, LINESIZE);
 	if ((subjline = hfield("subject", mp)) == NOSTR)
 		subjline = hfield("subj", mp);
+	if (subjline == NULL) {
+		subjline = "";
+		out.s = NULL;
+	} else {
+		in.s = subjline;
+		in.l = strlen(subjline);
+		mime_fromhdr(&in, &out, 1);
+		subjline = out.s;
+	}
 	/*
 	 * Bletch!
 	 */
@@ -206,6 +219,8 @@ printhead(mesg)
 	parse(headline, &hl, pbuf);
 	sprintf(wcount, "%3d/%-5ld", mp->m_lines, mp->m_size);
 	subjlen = screenwidth - 50 - strlen(wcount);
+	if (subjlen > out.l)
+		subjlen = out.l;
 	name = value("show-rcpt") != NOSTR ?
 		skin(hfield("to", mp)) : nameof(mp, 0);
 	if (subjline == NOSTR || subjlen < 0)		/* pretty pathetic */
@@ -215,6 +230,7 @@ printhead(mesg)
 		printf("%c%c%3d %-20.20s  %16.16s %s \"%.*s\"\n",
 			curind, dispc, mesg, name, hl.l_date, wcount,
 			subjlen, subjline);
+	if (out.s != NULL) free(out.s);
 }
 
 /*
@@ -240,7 +256,7 @@ pcmdlist(v)
 	register int cc;
 
 	printf("Commands are:\n");
-	for (cc = 0, cp = cmdtab; cp->c_name != NULL; cp++) {
+	for (cc = 0, cp = cmdtab; cp->c_name != NOSTR; cp++) {
 		cc += strlen(cp->c_name) + 2;
 		if (cc > 72) {
 			printf("\n");
@@ -310,7 +326,7 @@ type1(msgvec, doign, page)
 	int *msgvec;
 	int doign, page;
 {
-	register *ip;
+	register int *ip;
 	struct message *mp;
 	char *cp;
 	int nlines;
@@ -333,10 +349,10 @@ type1(msgvec, doign, page)
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			cp = value("PAGER");
-			if (cp == NULL || *cp == '\0')
+			if (cp == NOSTR || *cp == '\0')
 				cp = _PATH_MORE;
 			obuf = Popen(cp, "w");
-			if (obuf == NULL) {
+			if (obuf == (FILE*)NULL) {
 				perror(cp);
 				obuf = stdout;
 			} else
@@ -349,7 +365,7 @@ type1(msgvec, doign, page)
 		dot = mp;
 		if (value("quiet") == NOSTR)
 			fprintf(obuf, "Message %d:\n", *ip);
-		(void) send(mp, obuf, doign ? ignore : 0, NOSTR);
+		(void) send(mp, obuf, doign ? ignore : 0, NOSTR, CONV_TODISP);
 	}
 close_pipe:
 	if (obuf != stdout) {
@@ -465,7 +481,7 @@ folders(v)
 	char dirname[BUFSIZ];
 	char *cmd;
 
-	if (getfold(dirname) < 0) {
+	if (getfold(dirname, BUFSIZ) < 0) {
 		printf("No value set for \"folder\"\n");
 		return 1;
 	}

@@ -1,0 +1,132 @@
+.\" $Id: nail.1,v 1.2 2000/03/21 03:12:54 gunnar Exp $
+.TH NAIL 1 "March 03, 2000" "Gunnar Ritter" "User Commands"
+.SH NAME
+nail \- send and receive MIME conformant mail
+.SH SYNOPSIS
+.nf
+nail [-iInv] [-s subject] [-a attachment]
+                 [-c cc-addr] [-b bcc-addr] to-addr...
+nail [-iInNv] -f [name]
+nail [-iInNv] [-u user]
+.fi
+.SH DESCRIPTION
+Nail is an extension to Mail(1) to make it MIME-conformant. Basically,
+Mail and nail accept the same commands. Therefore, only the differences
+are described here.
+.SH SUMMARY
+The following options are different to those of Mail(1):
+.TP
+.B "-a"
+Attach the given files to the message.
+.PP
+The following commands are different to those of Mail(1):
+.TP
+.BR print \ or \ type
+If the message is a MIME multipart message, all parts with a content type
+of "text" or "message" are shown, the other are hidden except for their
+headers.
+.TP 
+.B write
+For conventional messages, the body without all headers is written.
+The output is converted to 8bit, if necessary.
+If the message is a MIME multipart message, the user is
+asked for a filename to save each single part. In this case there is
+nothing written to the given file, and it is deleted immediately if it
+did not exist before.
+In non-interactive mode, only the parts of the multipart message
+for that a filename is given in the part header are written,
+the other are discarded.
+The original message is never marked to be deleted in the originating
+mail folder.
+.PP
+The following tilde commands are different to those of Mail(1):
+.TP
+.B ~a
+Add the given files to the attachment list.
+.PP
+The following variables are different to those of Mail(1):
+.TP
+.B askattach
+If set, nail asks for files to attach at the end of each message. Responding
+with a newline indicates not to include an attachment.
+.TP
+.B charset
+The name of the character set used by nail.
+If unset, \fIiso-8859-1\fR is the default.
+Note that this value is only used in the header of outgoing text messages.
+The actual character set of mail messages depends on the character set of
+the terminal that nail runs on.
+So, the charset variable should be set to this value.
+If the message contains no special characters at all, its character
+set is set to \fIUS-ASCII\fR, without regard to the value of this variable.
+.TP
+.B encoding
+The default MIME encoding to use in outgoing text messages and message parts.
+Must be one of \fI8bit\fR, \fIquoted-printable\fR or \fIbase64\fR.
+The default is \fI8bit\fR.
+The recommended value, however, is \fIquoted-printable\fR.
+If there is no need to encode a message, \fI7bit\fR transfer mode is
+used, without regard to the value of this variable. Binary data is
+always encoded in \fIbase64\fR mode.
+.TP
+.B from
+The address to put into the \fI"From:"\fR field of the message header.
+If this variable is specified, a \fI"Sender:"\fR field
+containing the user's name is also generated.
+.TP
+.B quote
+If set, mail starts a replying message with the original message prefixed
+by the value of the variable \fIindentprefix\fR. This is mostly equivalent
+to the ~m command, except that it is done automatically and none of the
+message headers are printed.
+.TP
+.B replyto
+The address to put into the \fI"Reply-To:"\fR field of the message header.
+.SH MIME TYPES
+For any attachment, nail tries to determine the content type. It does this
+by reading MIME type files whose lines have the following syntax:
+.nf
+
+       type/subtype          extension [extension ...]
+
+.fi
+where type/subtype are strings describing the file contents, and extension
+is the part of a filename starting after the last dot.
+Any line not immediately beginning with an ASCII alphabetical character is
+ignored by nail. If there is a match with the extension of the file to
+attach, the given type/subtype pair is used. Otherwise, or if the filename
+has no extension, the content types text/plain or application/octet-stream
+are used, the first for text or international text files, the second
+for any file that contains formatting characters other than newlines
+and horizontal tabulators.
+.SH MIME CONFORMANCE
+Nail is intended to be a MIME-conformant mail user agent, with the
+following exceptions:
+.TP
+-
+Nail does not care at all about the character sets of messages. It simply
+displays all messages of the content types "text" or "message", but it
+replaces all formatting characters except newlines, linefeeds, backspaces
+and tabulators with question marks if displaying on a terminal to avoid
+strange results. Thus, every charset only partially equivalent to ASCII
+will be displayed in an at least basically readable form.
+.TP
+-
+No special handling of "multipart/alternative" messages is performed.
+All parts with content types of "text" or "message" are shown.
+This is done because the user should see as many information as possible.
+.SH BUGS
+.PP
+Due to limitations of nail's internal message handling, a singlepart
+message must always be a text message; the same applies to the first part
+of a multipart message. Binary files must be sent as attachments.
+.SH FILES
+.nf
+    ~/.mailrc                 File giving initial commands.
+    /usr/etc/nail.rc          System wide initialization file.
+    ~/.mime.types             Personal MIME types.
+    /etc/mime.types           System wide MIME types.
+    /usr/lib/nail.*help       Help files.
+.fi
+.SH "SEE ALSO"
+Mail(1), mail(1), sendmail(1)

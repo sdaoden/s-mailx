@@ -1,5 +1,6 @@
-/*	$OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp $	*/
-/*	$NetBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp $	*/
+/*	$Id: cmd2.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
+/*	NetBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp ";
 #else
-static char rcsid[] = "$OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: cmd2.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -67,7 +70,7 @@ next(v)
 	register int *ip, *ip2;
 	int list[2], mdot;
 
-	if (*msgvec != NULL) {
+	if (*msgvec != 0) {
 
 		/*
 		 * If some messages were supplied, find the 
@@ -82,10 +85,10 @@ next(v)
 		 * message list which follows dot.
 		 */
 
-		for (ip = msgvec; *ip != NULL; ip++)
+		for (ip = msgvec; *ip != 0; ip++)
 			if (*ip > mdot)
 				break;
-		if (*ip == NULL)
+		if (*ip == 0)
 			ip = msgvec;
 		ip2 = ip;
 		do {
@@ -94,9 +97,9 @@ next(v)
 				dot = mp;
 				goto hitit;
 			}
-			if (*ip2 != NULL)
+			if (*ip2 != 0)
 				ip2++;
-			if (*ip2 == NULL)
+			if (*ip2 == 0)
 				ip2 = msgvec;
 		} while (ip2 != ip);
 		printf("No messages applicable\n");
@@ -130,7 +133,7 @@ hitit:
 	 */
 
 	list[0] = dot - &message[0] + 1;
-	list[1] = NULL;
+	list[1] = 0;
 	return(type(list));
 }
 
@@ -144,7 +147,7 @@ save(v)
 {
 	char *str = v;
 
-	return save1(str, 1, "save", saveignore);
+	return save1(str, 1, "save", saveignore, CONV_NONE);
 }
 
 /*
@@ -156,7 +159,7 @@ copycmd(v)
 {
 	char *str = v;
 
-	return save1(str, 0, "copy", saveignore);
+	return save1(str, 0, "copy", saveignore, CONV_NONE);
 }
 
 /*
@@ -164,7 +167,7 @@ copycmd(v)
  * If mark is true, mark the message "saved."
  */
 int
-save1(str, mark, cmd, ignore)
+save1(str, mark, cmd, ignore, convert)
 	char str[];
 	int mark;
 	char *cmd;
@@ -175,36 +178,49 @@ save1(str, mark, cmd, ignore)
 	char *file, *disp;
 	int f, *msgvec;
 	FILE *obuf;
+	int newfile, nullfile = 0;
+	struct stat st;
 
 	msgvec = (int *) salloc((msgCount + 2) * sizeof *msgvec);
 	if ((file = snarf(str, &f)) == NOSTR)
 		return(1);
 	if (!f) {
 		*msgvec = first(0, MMNORM);
-		if (*msgvec == NULL) {
+		if (*msgvec == 0) {
 			printf("No messages to %s.\n", cmd);
 			return(1);
 		}
-		msgvec[1] = NULL;
+		msgvec[1] = 0;
 	}
 	if (f && getmsglist(str, msgvec, 0) < 0)
 		return(1);
 	if ((file = expand(file)) == NOSTR)
 		return(1);
-	printf("\"%s\" ", file);
-	fflush(stdout);
-	if (access(file, 0) >= 0)
+	if (convert != CONV_TOFILE) {
+		printf("\"%s\" ", file);
+		fflush(stdout);
+	}
+	if (access(file, 0) >= 0) {
+		newfile = 0;
 		disp = "[Appended]";
-	else
+	} else {
+		newfile = 1;
 		disp = "[New file]";
-	if ((obuf = Fopen(file, "a")) == NULL) {
+	}
+	if ((obuf = Fopen(file, "a")) == (FILE *)NULL) {
 		perror(NOSTR);
 		return(1);
+	}
+	if (newfile == 0) {
+		/* always insert a newline since some other mail readers
+		 * (notably Netscape 4.7) use this folder convention
+		 */
+		fputc('\n', obuf);
 	}
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
-		if (send(mp, obuf, ignore, NOSTR) < 0) {
+		if (send(mp, obuf, ignore, NOSTR, convert) < 0) {
 			perror(file);
 			Fclose(obuf);
 			return(1);
@@ -212,17 +228,36 @@ save1(str, mark, cmd, ignore)
 		if (mark)
 			mp->m_flag |= MSAVED;
 	}
-	fflush(obuf);
-	if (ferror(obuf))
-		perror(file);
+	if (convert == CONV_TOFILE) {
+		if (newfile) {
+			fflush(obuf);
+			if (fstat(fileno(obuf), &st) == 0
+				&& st.st_nlink == 1
+				&& st.st_size == 0) {
+				rm(file);
+				nullfile = 1;
+			} else if (ftell(obuf) == 0) {
+				nullfile = 1;
+			}
+		} else {
+			printf("\"%s\" ", file);
+		}
+	} 
+	if (nullfile == 0){
+		fflush(obuf);
+		if (ferror(obuf))
+			perror(file);
+	}
 	Fclose(obuf);
-	printf("%s\n", disp);
+	if (nullfile == 0)
+		printf("%s\n", disp);
 	return(0);
 }
 
 /*
  * Write the indicated messages at the end of the passed
  * file name, minus header and trailing blank line.
+ * NEW: This is the MIME save function.
  */
 int
 swrite(v)
@@ -230,7 +265,7 @@ swrite(v)
 {
 	char *str = v;
 
-	return save1(str, 1, "write", ignoreall);
+	return save1(str, 0, "write", ignoreall, CONV_TOFILE);
 }
 
 /*
@@ -305,7 +340,7 @@ deltype(v)
 		list[0] = dot - &message[0] + 1;
 		if (list[0] > lastdot) {
 			touch(dot);
-			list[1] = NULL;
+			list[1] = 0;
 			return(type(list));
 		}
 		printf("At EOF\n");
@@ -324,21 +359,21 @@ delm(msgvec)
 	int *msgvec;
 {
 	register struct message *mp;
-	register *ip;
+	register int *ip;
 	int last;
 
-	last = NULL;
-	for (ip = msgvec; *ip != NULL; ip++) {
+	last = 0;
+	for (ip = msgvec; *ip != 0; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		mp->m_flag |= MDELETED|MTOUCH;
 		mp->m_flag &= ~(MPRESERVE|MSAVED|MBOX);
 		last = *ip;
 	}
-	if (last != NULL) {
+	if (last != 0) {
 		dot = &message[last-1];
 		last = first(0, MDELETED);
-		if (last != NULL) {
+		if (last != 0) {
 			dot = &message[last-1];
 			return(0);
 		}
@@ -364,7 +399,7 @@ undeletecmd(v)
 {
 	int *msgvec = v;
 	register struct message *mp;
-	register *ip;
+	register int *ip;
 
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
@@ -496,7 +531,8 @@ ignore1(list, tab, which)
 	if (*list == NOSTR)
 		return igshow(tab, which);
 	for (ap = list; *ap != 0; ap++) {
-		istrcpy(field, *ap);
+		istrcpy(field, *ap, BUFSIZ);
+		field[BUFSIZ-1]='\0';
 		if (member(field, tab))
 			continue;
 		h = hash(field);

@@ -1,5 +1,6 @@
-/*	$OpenBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp $	*/
-/*	$NetBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp $	*/
+/*	$Id: strings.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp 	*/
+/*	NetBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)strings.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)strings.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: strings.c,v 1.5 1996/06/08 19:48:40 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: strings.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 

@@ -1,5 +1,6 @@
-/*	$OpenBSD: rcv.h,v 1.4 1996/06/08 19:48:38 christos Exp $	*/
-/*	$NetBSD: rcv.h,v 1.4 1996/06/08 19:48:38 christos Exp $	*/
+/*	$Id: rcv.h,v 1.1 2000/02/28 16:09:09 gunnar Exp $	*/
+/*	OpenBSD: rcv.h,v 1.4 1996/06/08 19:48:38 christos Exp 	*/
+/*	NetBSD: rcv.h,v 1.4 1996/06/08 19:48:38 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +35,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)rcv.h	8.1 (Berkeley) 6/6/93
- *	$NetBSD: rcv.h,v 1.4 1996/06/08 19:48:38 christos Exp $
+ *	NetBSD: rcv.h,v 1.4 1996/06/08 19:48:38 christos Exp
+ *	$Id: rcv.h,v 1.1 2000/02/28 16:09:09 gunnar Exp $
  */
 
 /*

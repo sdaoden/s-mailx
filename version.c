@@ -1,5 +1,6 @@
-/*	$OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp $	*/
-/*	$NetBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp $	*/
+/*	$Id: version.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $
+/*	OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
+/*	NetBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)version.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)version.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: version.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -46,4 +49,8 @@ static char rcsid[] = "$OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Ex
  * Just keep track of the date/sid of this version of Mail.
  * Load this file first to get a "total" Mail version.
  */
+#if 0
 char	*version = "8.1 6/6/93";
+#else
+const char *version = "nail 9.0 2000-03-20";
+#endif

@@ -1,5 +1,6 @@
-/*	$OpenBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp $	*/
-/*	$NetBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp $	*/
+/*	$Id: head.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp 	*/
+/*	NetBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)head.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)head.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: head.c,v 1.5 1996/06/08 19:48:26 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: head.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -73,9 +76,15 @@ ishead(linebuf)
 		fail(linebuf, "No from or date field");
 		return (0);
 	}
+	/* be very tolerant about the date */
 	if (!isdate(hl.l_date)) {
+#if 0
 		fail(linebuf, "Date field not legal date");
 		return (0);
+#else
+		fprintf(stderr, "Date field not legal date, ignored\n");
+		/* nothing */
+#endif
 	}
 	/*
 	 * I guess we got it!
@@ -167,21 +176,49 @@ copyin(src, space)
  * '0'	A digit
  * 'O'	An optional digit or space
  * ':'	A colon
+ * '+'	A sign
  * 'N'	A new line
  */
-char ctype[] = "Aaa Aaa O0 00:00:00 0000";
-char ctype_without_secs[] = "Aaa Aaa O0 00:00 0000";
-char tmztype[] = "Aaa Aaa O0 00:00:00 AAA 0000";
-char tmztype_without_secs[] = "Aaa Aaa O0 00:00 AAA 0000";
+static char  *tmztype[] = {
+	"Aaa Aaa O0 00:00:00 0000",
+	"Aaa Aaa O0 00:00 0000",
+	"Aaa Aaa O0 00:00:00 AAA 0000",
+	"Aaa Aaa O0 00:00 AAA 0000",
+	/*
+	 * Sommer time, e.g. MET DST
+	 */
+	"Aaa Aaa O0 00:00:00 AAA AAA 0000",
+	"Aaa Aaa O0 00:00 AAA AAA 0000",
+	/*
+	 * time zone offset, e.g.
+	 * +0200 or +0200 MET or +0200 MET DST
+	 */
+	"Aaa Aaa O0 00:00:00 +0000 0000",
+	"Aaa Aaa O0 00:00 +0000 0000",
+	"Aaa Aaa O0 00:00:00 +0000 AAA 0000",
+	"Aaa Aaa O0 00:00 +0000 AAA 0000",
+	"Aaa Aaa O0 00:00:00 +0000 AAA AAA 0000",
+	"Aaa Aaa O0 00:00 +0000 AAA AAA 0000",
+	/*
+	 * time zone offset without time zone specification (pine)
+	 */
+	"Aaa Aaa O0 00:00:00 0000 +0000",
+	NOSTR,
+};
 
 int
 isdate(date)
 	char date[];
 {
+	int ret = 0, form = 0;
 
-	return cmatch(date, ctype_without_secs) || 
-	       cmatch(date, tmztype_without_secs) || 
-	       cmatch(date, ctype) || cmatch(date, tmztype);
+	while (tmztype[form]) {
+		if ( (ret = cmatch(date, tmztype[form])) == 1 )
+			break;
+		form++;
+	}
+
+	return ret;
 }
 
 /*
@@ -220,6 +257,11 @@ cmatch(cp, tp)
 			if (*cp++ != ':')
 				return 0;
 			break;
+		case '+':
+			if (*cp != '+' && *cp != '-')
+				return 0;
+			cp++;
+			break;
 		case 'N':
 			if (*cp++ != '\n')
 				return 0;
@@ -239,7 +281,7 @@ char *
 nextword(wp, wbuf)
 	register char *wp, *wbuf;
 {
-	register c;
+	register int c;
 
 	if (wp == NOSTR) {
 		*wbuf = 0;

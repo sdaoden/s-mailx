@@ -1,9 +1,6 @@
-/*	$Id: pathnames.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
-/*	OpenBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp 	*/
-/*	NetBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp 	*/
 
 /*
- * Copyright (c) 1989, 1993
+ * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,37 +30,5 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
- *	NetBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp
- *	$Id: pathnames.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
  */
 
-#include "mailfiles.h"
-
-/* mail runtime files */
-#ifndef _PATH_MAILDIR
-#define _PATH_MAILDIR	"/var/spool/mail"
-#endif
-
-/* executables */
-#ifndef _PATH_CSHELL
-#define _PATH_CSHELL	"/bin/csh"
-#endif
-#ifndef _PATH_MORE
-#define _PATH_MORE	"/bin/more"
-#endif
-#ifndef _PATH_EX
-#define _PATH_EX	"/usr/bin/ex"
-#endif
-#ifndef _PATH_VI
-#define _PATH_VI	"/usr/bin/vi"
-#endif
-#ifndef _PATH_SENDMAIL
-#define _PATH_SENDMAIL	"/usr/sbin/sendmail"
-#endif
-
-/* directories */
-#ifndef _PATH_TMP
-#define _PATH_TMP	"/tmp/"
-#endif

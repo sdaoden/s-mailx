@@ -1,5 +1,6 @@
-/*	$OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp $	*/
-/*	$NetBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp $	*/
+/*	$Id: list.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp 	*/
+/*	NetBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)list.c	8.2 (Berkeley) 4/19/94";
+static char sccsid[] __attribute__ ((unused)) = "@(#)list.c	8.2 (Berkeley) 4/19/94";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp ";
 #else
-static char rcsid[] = "$OpenBSD: list.c,v 1.4 1996/06/08 19:48:30 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: list.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -515,7 +518,8 @@ scan(sp)
 	int quotec;
 
 	if (regretp >= 0) {
-		strcpy(lexstring, string_stack[regretp]);
+		strncpy(lexstring, string_stack[regretp], STRINGLEN);
+		lexstring[STRINGLEN-1]='\0';
 		lexnumber = numberstack[regretp];
 		return(regretstack[regretp--]);
 	}
@@ -695,10 +699,12 @@ matchsubj(str, mesg)
 	register char *cp, *cp2, *backup;
 
 	str++;
-	if (strlen(str) == 0)
+	if (strlen(str) == 0) {
 		str = lastscan;
-	else
-		strcpy(lastscan, str);
+	} else {
+		strncpy(lastscan, str, 128);
+		lastscan[127]='\0';
+	}
 	mp = &message[mesg-1];
 	
 	/*

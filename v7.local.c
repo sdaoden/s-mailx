@@ -1,5 +1,6 @@
-/*	$OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp $	*/
-/*	$NetBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp $	*/
+/*	$Id: v7.local.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp 	*/
+/*	NetBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)v7.local.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)v7.local.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: v7.local.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -60,15 +63,19 @@ static char rcsid[] = "$OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos E
  * mail is queued).
  */
 void
-findmail(user, buf)
+findmail(user, buf, size)
 	char *user, *buf;
+	int size;
 {
 	char *mbox;
 
-	if (!(mbox = getenv("MAIL")))
-		(void)sprintf(buf, "%s/%s", _PATH_MAILDIR, user);
-	else
-		(void)strcpy(buf, mbox);
+	if (!(mbox = getenv("MAIL"))) {
+		(void)snprintf(buf, size, "%s/%s", _PATH_MAILDIR, user);
+	} else {
+		(void)strncpy(buf, mbox, size);
+		buf[size-1]='\0';
+	}
+
 }
 
 /*

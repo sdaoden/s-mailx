@@ -1,5 +1,6 @@
-/*	$OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp $	*/
-/*	$NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp $	*/
+/*	$Id: aux.c,v 1.1 2000/02/28 16:09:48 gunnar Exp $	*/
+/*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
+/*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
 #else
-static char rcsid[] = "$OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: aux.c,v 1.1 2000/02/28 16:09:48 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -187,7 +190,7 @@ hfield(field, mp)
 	while (lc > 0) {
 		if ((lc = gethfield(ibuf, linebuf, lc, &colon)) < 0)
 			return oldhfield;
-		if ((hfield = ishfield(linebuf, colon, field)) != NULL)
+		if ((hfield = ishfield(linebuf, colon, field)) != NOSTR)
 			oldhfield = save2str(hfield, oldhfield);
 	}
 	return oldhfield;
@@ -280,16 +283,22 @@ ishfield(linebuf, colon, field)
  * Copy a string, lowercasing it as we go.
  */
 void
-istrcpy(dest, src)
+istrcpy(dest, src, size)
 	register char *dest, *src;
+	int size;
 {
+	register char *max;
 
-	do {
-		if (isupper(*src))
+	max=dest+size-1;
+	while (dest<=max) {
+		if (isupper(*src)) {
 			*dest++ = tolower(*src);
-		else
+		} else {
 			*dest++ = *src;
-	} while (*src++ != 0);
+		}
+		if (*src++ == 0)
+			break;
+	}
 }
 
 /*
@@ -320,7 +329,7 @@ source(v)
 
 	if ((cp = expand(*arglist)) == NOSTR)
 		return(1);
-	if ((fi = Fopen(cp, "r")) == NULL) {
+	if ((fi = Fopen(cp, "r")) == (FILE *)NULL) {
 		perror(cp);
 		return(1);
 	}
@@ -431,7 +440,7 @@ char *
 skip_comment(cp)
 	register char *cp;
 {
-	register nesting = 1;
+	register int nesting = 1;
 
 	for (; nesting > 0 && *cp; cp++) {
 		switch (*cp) {
@@ -592,24 +601,27 @@ newname:
 	*cp2 = '\0';
 	if (readline(ibuf, linebuf, LINESIZE) < 0)
 		return(savestr(namebuf));
-	if ((cp = index(linebuf, 'F')) == NULL)
+	if ((cp = index(linebuf, 'F')) == NOSTR)
 		return(savestr(namebuf));
 	if (strncmp(cp, "From", 4) != 0)
 		return(savestr(namebuf));
-	while ((cp = index(cp, 'r')) != NULL) {
+	while ((cp = index(cp, 'r')) != NOSTR) {
 		if (strncmp(cp, "remote", 6) == 0) {
-			if ((cp = index(cp, 'f')) == NULL)
+			if ((cp = index(cp, 'f')) == NOSTR)
 				break;
 			if (strncmp(cp, "from", 4) != 0)
 				break;
-			if ((cp = index(cp, ' ')) == NULL)
+			if ((cp = index(cp, ' ')) == NOSTR)
 				break;
 			cp++;
 			if (first) {
-				strcpy(namebuf, cp);
+				strncpy(namebuf, cp, LINESIZE);
 				first = 0;
-			} else
-				strcpy(rindex(namebuf, '!')+1, cp);
+			} else {
+				cp2=rindex(namebuf, '!')+1;
+				strncpy(cp2, cp, (namebuf+LINESIZE)-cp2);
+			}
+			namebuf[LINESIZE-2]='\0';
 			strcat(namebuf, "!");
 			goto newname;
 		}
@@ -691,7 +703,8 @@ isign(field, ignore)
 	 * Lower-case the string, so that "Status" and "status"
 	 * will hash to the same place.
 	 */
-	istrcpy(realfld, field);
+	istrcpy(realfld, field, BUFSIZ);
+	realfld[BUFSIZ-1]='\0';
 	if (ignore[1].i_count > 0)
 		return (!member(realfld, ignore + 1));
 	else

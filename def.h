@@ -1,3 +1,4 @@
+/*	$Id: def.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -33,7 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
- *	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $
+ *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
+ *	$Id: def.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
  */
 
 /*
@@ -68,6 +70,41 @@
 #define	MAXEXP		25		/* Maximum expansion of aliases */
 
 #define	equal(a, b)	(strcmp(a,b)==0)/* A nice function to string compare */
+
+enum {
+	MIME_NONE,			/* message is not in MIME format */
+	MIME_8B,			/* message is in 8bit encoding */
+	MIME_7B,			/* message is in 7bit encoding */
+	MIME_QP,			/* message is quoted-printable */
+	MIME_B64			/* message is in base64 encoding */
+};
+
+enum {
+	CONV_NONE,			/* no conversion */
+	CONV_7BIT,			/* no conversion, is 7bit */
+	CONV_TODISP,			/* convert in displayable form */
+	CONV_TOFILE,			/* convert for saving to a file */
+	CONV_QUOTE,			/* first part body only */
+	CONV_FROMQP,			/* convert from quoted-printable */
+	CONV_TOQP,			/* convert to quoted-printable */
+	CONV_FROMB64,			/* convert from base64 */
+	CONV_TOB64,			/* convert to base64 */
+	CONV_FROMHDR,			/* convert from RFC1522 format */
+	CONV_TOHDR			/* convert to RFC1522 format */
+};
+
+enum {
+	MIME_UNKNOWN,			/* unknown content */
+	MIME_SUBHDR,			/* inside a multipart subheader */
+	MIME_MESSAGE,			/* message/ content */
+	MIME_TEXT,			/* text/ content */
+	MIME_MULTI			/* multipart/ content */
+};
+
+struct str {
+	char *s;			/* the string's content */
+	size_t l;			/* the stings's length */
+};
 
 struct message {
 	short	m_flag;			/* flags, see below */
@@ -164,6 +201,12 @@ struct headline {
 #define	GNL	16		/* Print blank line after */
 #define	GDEL	32		/* Entity removed from list */
 #define	GCOMMA	64		/* detract puts in commas */
+#define	GXMAIL	128		/* generate X-Mailer field */
+#define	GMIME	256		/* generate MIME 1.0 fields */
+#define	GMSGID	512		/* generate a Message-ID */
+#define	GATTACH	1024		/* attachment included */
+#define	GFROM	2048		/* generate a From: header */
+#define	GREPLY	4096		/* generate a Reply-To: header */
 
 /*
  * Structure used to pass about the current
@@ -175,6 +218,7 @@ struct header {
 	char *h_subject;		/* Subject string */
 	struct name *h_cc;		/* Carbon copies string */
 	struct name *h_bcc;		/* Blind carbon copies */
+	struct name *h_attach;		/* MIME attachments */
 	struct name *h_smopts;		/* Sendmail options */
 };
 
@@ -277,3 +321,24 @@ struct ignoretab {
 	(void)fflush(stream); 						\
 	(void)ftruncate(fileno(stream), (off_t)ftell(stream));		\
 }
+
+
+/*
+ * Linux stdio has the odd quirk that if you are in a stdio() function and
+ * you longjmp() out of it, next time you enter that function you will
+ * return with whatever data had been successfully read the last time.
+ * Accordingly, you must fpurge() any outstanding data before longjmp()ing.
+ * We test _IO_stdin to try to verify that it's the right implementation.
+ *
+ * For glibc it is better to use the IOSAFE implementation.
+ */
+#undef fpurge
+#if defined(__linux__) && defined(_IO_stdin)
+#  define fpurge(file) ((file)->_IO_read_ptr = (file)->_IO_read_end)
+#else /* !__linux__ */
+#  define fpurge(file)
+#endif
+#if defined(__GLIBC__) &&  (__GLIBC__ >= 2) && !defined(IOSAFE)
+#  define IOSAFE
+#endif
+

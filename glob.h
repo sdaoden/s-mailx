@@ -1,5 +1,6 @@
-/*	$OpenBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp $	*/
-/*	$NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp $	*/
+/*	$Id: glob.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
+/*	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +35,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)glob.h	8.1 (Berkeley) 6/6/93
- *	$NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp $
+ *	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp
+ *	$Id: glob.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
  */
 
 /*
@@ -42,51 +44,63 @@
  * def.h must be included first.
  */
 
-int	msgCount;			/* Count of messages read in */
-int	rcvmode;			/* True if receiving mail */
-int	sawcom;				/* Set after first command */
-char	*Tflag;				/* -T temp file for netnews */
-int	senderr;			/* An error while checking */
-int	edit;				/* Indicates editing a file */
-int	readonly;			/* Will be unable to rewrite file */
-int	noreset;			/* String resets suspended */
-int	sourcing;			/* Currently reading variant file */
-int	loading;			/* Loading user definitions */
-int	cond;				/* Current state of conditional exc. */
-FILE	*itf;				/* Input temp file buffer */
-FILE	*otf;				/* Output temp file buffer */
-int	image;				/* File descriptor for image of msg */
-FILE	*input;				/* Current command input file */
-char	mailname[PATHSIZE];		/* Name of current file */
-char	prevfile[PATHSIZE];		/* Name of previous file */
-char	*homedir;			/* Path name of home directory */
-char	*myname;			/* My login name */
-off_t	mailsize;			/* Size of system mailbox */
-int	lexnumber;			/* Number of TNUMBER from scan() */
-char	lexstring[STRINGLEN];		/* String from TSTRING, scan() */
-int	regretp;			/* Pointer to TOS of regret tokens */
-int	regretstack[REGDEP];		/* Stack of regretted tokens */
-char	*string_stack[REGDEP];		/* Stack of regretted strings */
-int	numberstack[REGDEP];		/* Stack of regretted numbers */
-struct	message	*dot;			/* Pointer to current message */
-struct	message	*message;		/* The actual message structure */
-struct	var	*variables[HSHSIZE];	/* Pointer to active var list */
-struct	grouphead	*groups[HSHSIZE];/* Pointer to active groups */
-struct	ignoretab	ignore[2];	/* ignored and retained fields
+#if defined(_MAIL_GLOBS_)
+#  undef  _E
+#  define _E
+#else
+#  define _E	extern
+#endif
+
+_E int	msgCount;			/* Count of messages read in */
+_E int	rcvmode;			/* True if receiving mail */
+_E int	sawcom;				/* Set after first command */
+_E char	*Tflag;				/* -T temp file for netnews */
+_E int	senderr;			/* An error while checking */
+_E int	edit;				/* Indicates editing a file */
+_E int	readonly;			/* Will be unable to rewrite file */
+_E int	noreset;			/* String resets suspended */
+_E int	sourcing;			/* Currently reading variant file */
+_E int	loading;			/* Loading user definitions */
+_E int	cond;				/* Current state of conditional exc. */
+_E FILE	*itf;				/* Input temp file buffer */
+_E FILE	*otf;				/* Output temp file buffer */
+_E int	image;				/* File descriptor for image of msg */
+_E FILE	*input;				/* Current command input file */
+_E char	mailname[PATHSIZE];		/* Name of current file */
+_E char	prevfile[PATHSIZE];		/* Name of previous file */
+_E char	*homedir;			/* Path name of home directory */
+_E char *progname;			/* our name */
+_E char	*myname;			/* My login name */
+_E char *version;			/* version string */
+_E char *defcharset;			/* default charset */
+_E off_t mailsize;			/* Size of system mailbox */
+_E int	lexnumber;			/* Number of TNUMBER from scan() */
+_E char	lexstring[STRINGLEN];		/* String from TSTRING, scan() */
+_E int	regretp;			/* Pointer to TOS of regret tokens */
+_E int	regretstack[REGDEP];		/* Stack of regretted tokens */
+_E char	*string_stack[REGDEP];		/* Stack of regretted strings */
+_E int	numberstack[REGDEP];		/* Stack of regretted numbers */
+_E struct message *dot;			/* Pointer to current message */
+_E struct message *message;		/* The actual message structure */
+_E struct var *variables[HSHSIZE];	/* Pointer to active var list */
+_E struct grouphead *groups[HSHSIZE];	/* Pointer to active groups */
+_E struct ignoretab ignore[2];		/* ignored and retained fields
 					   0 is ignore, 1 is retain */
-struct	ignoretab	saveignore[2];	/* ignored and retained fields
+_E struct ignoretab saveignore[2];	/* ignored and retained fields
 					   on save to folder */
-struct	ignoretab	ignoreall[2];	/* special, ignore all headers */
-char	**altnames;			/* List of alternate names for user */
-int	debug;				/* Debug flag set */
-int	screenwidth;			/* Screen width, or best guess */
-int	screenheight;			/* Screen height, or best guess,
+_E struct ignoretab ignoreall[2];	/* special, ignore all headers */
+_E char	**altnames;			/* List of alternate names for user */
+_E int	debug;				/* Debug flag set */
+_E int	screenwidth;			/* Screen width, or best guess */
+_E int	screenheight;			/* Screen height, or best guess,
 					   for "header" command */
-int	realscreenheight;		/* the real screen height */
+_E int	realscreenheight;		/* the real screen height */
+_E gid_t	effectivegid;		/* Saved from when we started up */
+_E gid_t	realgid;		/* Saved from when we started up */
 
 #include <setjmp.h>
 
-jmp_buf	srbuf;
+_E jmp_buf	srbuf;
 
 
 /*
@@ -97,8 +111,10 @@ jmp_buf	srbuf;
  */
 
 #define	NSPACE	25			/* Total number of string spaces */
-struct strings {
+_E struct strings {
 	char	*s_topFree;		/* Beginning of this area */
 	char	*s_nextFree;		/* Next alloctable place here */
 	unsigned s_nleft;		/* Number of bytes left here */
 } stringdope[NSPACE];
+
+#undef  _E

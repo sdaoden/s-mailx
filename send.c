@@ -1,5 +1,6 @@
-/*	$OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp $	*/
-/*	$NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp $	*/
+/*	$Id: send.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
+/*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)send.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)send.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: send.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -51,6 +54,99 @@ static char rcsid[] = "$OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp $
  * Mail to others.
  */
 
+static char *boundary;
+
+static char *makeboundary()
+/* Generate a boundary for MIME multipart-messages. Since we use always
+ * quoted-printable or base64 encodings for multipart, this is an easy task
+ */
+{
+	boundary = "--=-=-=-CUT-HERE-=-=-=--";
+	return boundary;
+}
+
+static char *getcharset(convert)
+{
+	char *charset;
+
+	if (convert != CONV_7BIT) {
+		charset = value("charset");
+		if (charset == NULL) {
+			charset = defcharset;
+			assign("charset", charset);
+		}
+	} else {
+		charset = "US-ASCII";
+	}
+	return charset;
+}
+
+static char *getencoding(convert)
+{
+	switch (convert) {
+	case CONV_7BIT:
+		return "7bit";
+		break;
+	case CONV_NONE:
+		return "8bit";
+		break;
+	case CONV_TOQP:
+		return "quoted-printable";
+		break;
+	case CONV_TOB64:
+		return "base64";
+		break;
+	}
+}
+
+int gettextconversion()
+{
+	char *p;
+	int convert;
+
+	p = value("encoding");
+	if (p  == NULL)
+		convert = CONV_NONE;
+	if (equal(p, "quoted-printable"))
+		convert = CONV_TOQP;
+	else if (equal(p, "base64"))
+		convert = CONV_TOB64;
+	else
+		convert = CONV_NONE;
+	return convert;
+}
+
+static char *newfilename(f, num)
+char *f;
+{
+	char *b;
+	struct str in, out;
+
+	if (f != NULL && f != (char*)-1) {
+		in.s = f;
+		in.l = strlen(f);
+		mime_fromhdr(&in, &out, 1);
+		memcpy(f, out.s, out.l);
+		*(f + out.l) = '\0';
+		free(out.s);
+	}
+	b = (char*)smalloc(PATHSIZE + 1);
+	if (value("interactive") != NOSTR) {
+		printf("Enter filename for part #%d [%s]: ", num,
+				f && f != (char*)-1 ? f : "(none)");
+		if (readline(stdin, b, PATHSIZE) != 0) {
+			if (f != NULL && f != (char*)-1)
+				free(f);
+			f = b;
+		}
+	}
+	if (f == NULL || f == (char*)-1) {
+		f =(char*)smalloc(10);
+		strcpy(f, "/dev/null");
+	}
+	return f;
+}
+
 /*
  * Send message described by the passed pointer to the
  * passed output buffer.  Return -1 on error.
@@ -59,21 +155,28 @@ static char rcsid[] = "$OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp $
  * prefix is a string to prepend to each output line.
  */
 int
-send(mp, obuf, doign, prefix)
+send(mp, obuf, doign, prefix, convert)
 	register struct message *mp;
 	FILE *obuf;
 	struct ignoretab *doign;
 	char *prefix;
 {
 	long count;
-	register FILE *ibuf;
+	register FILE *ibuf, *oldobuf = (FILE*)-1;
 	char line[LINESIZE];
 	int ishead, infld, ignoring = 0, dostat, firstline;
 	register char *cp, *cp2;
 	register int c = 0;
 	int length;
 	int prefixlen = 0;
+	int mime_enc, mime_content = MIME_TEXT, partnumber,
+		new_content, action;
+	char *filename = (char*)-1, *mime_version = NULL;
+	size_t boundlen;
+	int error_return = 0;
 
+	boundary = NULL;
+	action = convert;
 	/*
 	 * Compute the prefix string, without trailing whitespace
 	 */
@@ -94,7 +197,7 @@ send(mp, obuf, doign, prefix)
 	 * Process headers first
 	 */
 	while (count > 0 && ishead) {
-		if (fgets(line, LINESIZE, ibuf) == NULL)
+		if (fgets(line, LINESIZE, ibuf) == NOSTR)
 			break;
 		count -= length = strlen(line);
 		if (firstline) {
@@ -122,8 +225,10 @@ send(mp, obuf, doign, prefix)
 			 * If this line is a continuation (via space or tab)
 			 * of a previous header field, just echo it
 			 * (unless the field should be ignored).
-			 * In other words, nothing to do.
 			 */
+			 if (mime_content == MIME_MULTI && boundary == NULL) {
+				 boundary = mime_getboundary(line);
+			 }
 		} else {
 			/*
 			 * Pick up the header field if we have one.
@@ -149,6 +254,44 @@ send(mp, obuf, doign, prefix)
 				ishead = 0;
 				ignoring = 0;
 			} else {
+				if (strncasecmp(line, "MIME-Version:", 13)
+						== 0) {
+					if (mime_version != NULL)
+						free(mime_version);
+					mime_version = mime_getparam(
+						"MIME-Version:", line);
+				}
+				if (convert == CONV_TODISP
+					|| convert == CONV_QUOTE
+					|| convert == CONV_TOFILE) {
+				if (strncasecmp(line, "Content-Type:", 13)
+						== 0) {
+					mime_content = mime_getcontent(line);
+					if (mime_content == MIME_MULTI)
+				 		boundary
+						      = mime_getboundary(line);
+				}
+				if (strncasecmp(line,
+					"Content-Transfer-Encoding:",
+					26) == 0) {
+					mime_enc = mime_getenc(line);
+					switch (mime_enc) {
+					case MIME_7B:
+					case MIME_8B:
+						convert = CONV_NONE;
+						break;
+					case MIME_QP:
+						convert = CONV_FROMQP;
+						break;
+					case MIME_B64:
+						convert = CONV_FROMB64;
+						break;
+					default:
+						convert = CONV_NONE;
+					}
+					boundary = mime_getboundary(line);
+				}
+				}
 				/*
 				 * If it is an ignored field and
 				 * we care about such things, skip it.
@@ -179,25 +322,219 @@ send(mp, obuf, doign, prefix)
 			 * Strip trailing whitespace from prefix
 			 * if line is blank.
 			 */
-			if (prefix != NOSTR)
+			if (prefix != NOSTR) {
 				if (length > 1)
 					fputs(prefix, obuf);
 				else
-					(void) fwrite(prefix, sizeof *prefix,
+					(void) fwrite(prefix,
+							  sizeof *prefix,
 							prefixlen, obuf);
-			(void) fwrite(line, sizeof *line, length, obuf);
-			if (ferror(obuf))
-				return -1;
+			}
+			(void) mime_write(line, sizeof *line,
+					length, obuf,
+						convert == CONV_TODISP 
+						|| convert == CONV_QUOTE ?
+						CONV_FROMHDR:CONV_NONE,
+						action == CONV_TODISP);
+			if (ferror(obuf)) {
+				error_return = -1;
+				goto send_end;
+			}
 		}
 	}
 	/*
 	 * Copy out message body
 	 */
+	if (mime_version == NULL || strcmp(mime_version, "1.0")) {
+		convert = CONV_NONE;
+		mime_content = MIME_TEXT;
+	}
+	if (action == CONV_TODISP
+			|| action == CONV_QUOTE
+			|| action == CONV_TOFILE) {
+		switch (mime_content) {
+		case MIME_MESSAGE:
+		case MIME_TEXT:
+			break;
+		case MIME_MULTI:
+			if (boundary == NULL) {
+				/* RFC1521 states there MUST be a boundary
+				 * field, but this is better than failing
+				 */
+				boundary = (char*)smalloc(3);
+				strcpy(boundary, "--");
+			}
+			boundlen = strlen(boundary);
+			partnumber = 0;
+			while (count > 0 && 
+					fgets(line, LINESIZE, ibuf) != NULL) {
+				count -= c = strlen(line);
+				if (line[0] == '-' && line[1] == '-'
+					&& strncmp(line, boundary, boundlen)
+							== 0) {
+					if (line[boundlen] == '\n') {
+						mime_content = MIME_SUBHDR;
+						partnumber++;
+						if (action == CONV_QUOTE
+							&& partnumber > 1) {
+							free(boundary);
+							goto send_end;
+						}
+						if (action != CONV_TOFILE) {
+							fprintf(obuf,
+								"\nPart %d:\n",
+								partnumber);
+						}
+						new_content = MIME_TEXT;
+					} else if (line[boundlen] == '-') {
+						break;
+					} else { /* ignore */
+						mime_content = MIME_MULTI;
+					}
+					if (oldobuf != (FILE*)-1) {
+						fclose(obuf);
+						obuf = oldobuf;
+						oldobuf = (FILE*)-1;
+					}
+					if (filename != (char*)-1
+						&& filename != NULL) {
+						free(filename);
+					}
+					filename = (char*)-1;
+					continue;
+				}
+				switch (mime_content) {
+				case MIME_SUBHDR:
+					if (*line == '\n') {
+						/* end of subheader */
+						mime_content = new_content;
+						if (action == CONV_TOFILE) {
+							filename =
+							 newfilename(
+								filename,
+								partnumber);
+							if (filename != NULL){
+								oldobuf = obuf;
+								obuf = fopen(
+								     filename,
+									"wb");
+								if (obuf
+								    == NULL) {
+								fprintf(
+					stderr, "Cannot open %s\n", filename);
+								obuf = oldobuf;
+								oldobuf =
+								  (FILE*)-1;
+								error_return=-1;
+								free(boundary);
+								goto
+								   send_end;
+
+								}
+							}
+						}
+					} else if (*line == 'C') {
+						if (strncasecmp(line,
+							"Content-Type:", 13)
+								== 0) {
+							new_content =
+							mime_getcontent(
+								line);
+						}
+						if (strncasecmp(line,
+						"Content-Transfer-Encoding:",
+						26) == 0) {
+							mime_enc = mime_getenc(
+								line);
+							switch (mime_enc) {
+							case MIME_7B:
+							case MIME_8B:
+							convert = CONV_NONE;
+								break;
+							case MIME_QP:
+							convert = CONV_FROMQP;
+								break;
+							case MIME_B64:
+							convert = CONV_FROMB64;
+								break;
+							default:
+							convert = CONV_NONE;
+							}
+						}
+						if (strncasecmp(line,
+							"Content-Disposition:",
+							20) == 0) {
+							filename =
+							mime_getfilename(line);
+						}
+					} else if (line[0] == ' ') {
+						if (filename == NULL)
+							filename =
+							mime_getfilename(line);
+					}
+					if (doign && (isign(line, doign)
+						|| doign == ignoreall))
+						break;
+					if (prefix != NOSTR) {
+						if (length > 1)
+							fputs(prefix, obuf);
+						else
+							(void)fwrite(prefix,
+							  sizeof *prefix,
+							  prefixlen, obuf);
+					}
+					(void) mime_write(line, sizeof *line,
+						strlen(line), obuf,
+						action == CONV_TOFILE ?
+						CONV_NONE:CONV_FROMHDR,
+						action == CONV_TODISP);
+					break;
+				case MIME_MESSAGE:
+				case MIME_TEXT:
+					if (prefix != NOSTR) {
+						if (c > 1)
+							fputs(prefix, obuf);
+						else
+							(void) fwrite(prefix,
+							      sizeof *prefix,
+							prefixlen, obuf);
+					}
+					(void)mime_write(line, sizeof *line,
+							 strlen(line), obuf,
+							 convert,
+							 action==CONV_TODISP);
+					break;
+				case MIME_MULTI:
+					/* unspecified part of a mp. msg. */
+					break;
+				default: /* We do not display this */
+					if (action == CONV_TOFILE) {
+						(void)mime_write(line,
+							 sizeof *line,
+							 strlen(line), obuf,
+							 convert,
+							 action==CONV_TODISP);
+					}
+				}
+				if (ferror(obuf)) {
+					error_return = -1;
+					break;
+				}
+			}
+			free(boundary);
+			goto send_end;
+		default:
+			if (action != CONV_TOFILE) {
+				/* we do not display this */
+				goto send_end;
+			}
+		}
+	}
 	if (doign == ignoreall)
 		count--;		/* skip final blank line */
 	if (prefix != NOSTR)
 		while (count > 0) {
-			if (fgets(line, LINESIZE, ibuf) == NULL) {
+			if (fgets(line, LINESIZE, ibuf) == NOSTR) {
 				c = 0;
 				break;
 			}
@@ -211,9 +548,12 @@ send(mp, obuf, doign, prefix)
 			else
 				(void) fwrite(prefix, sizeof *prefix,
 						prefixlen, obuf);
-			(void) fwrite(line, sizeof *line, c, obuf);
-			if (ferror(obuf))
-				return -1;
+			(void)mime_write(line, sizeof *line, c,
+					 obuf, convert, action == CONV_TODISP);
+			if (ferror(obuf)) {
+				error_return = -1;
+				goto send_end;
+			}
 		}
 	else
 		while (count > 0) {
@@ -221,14 +561,33 @@ send(mp, obuf, doign, prefix)
 			if ((c = fread(line, sizeof *line, c, ibuf)) <= 0)
 				break;
 			count -= c;
-			if (fwrite(line, sizeof *line, c, obuf) != c)
-				return -1;
+			if (mime_write(line, sizeof *line,
+				c, obuf, convert, action == CONV_TODISP) != c)
+			{
+				error_return = -1;
+				goto send_end;
+			}
 		}
+send_end:
+#if 0
 	if (doign == ignoreall && c > 0 && line[c - 1] != '\n')
 		/* no final blank line */
 		if ((c = getc(ibuf)) != EOF && putc(c, obuf) == EOF)
 			return -1;
-	return 0;
+#endif
+	if (oldobuf != (FILE*)-1) {
+		fclose(obuf);
+		obuf = oldobuf;
+		oldobuf = (FILE*)-1;
+	}
+	if (filename != (char*)-1
+		&& filename != NULL) {
+		free(filename);
+	}
+	if (mime_version != NULL)
+		free(mime_version);
+	filename = (char*)-1;
+	return error_return;
 }
 
 /*
@@ -258,8 +617,8 @@ statusput(mp, obuf, prefix)
  * which does all the dirty work.
  */
 int
-mail(to, cc, bcc, smopts, subject)
-	struct name *to, *cc, *bcc, *smopts;
+mail(to, cc, bcc, smopts, subject, attach)
+	struct name *to, *cc, *bcc, *smopts, *attach;
 	char *subject;
 {
 	struct header head;
@@ -268,8 +627,9 @@ mail(to, cc, bcc, smopts, subject)
 	head.h_subject = subject;
 	head.h_cc = cc;
 	head.h_bcc = bcc;
+	head.h_attach = attach;
 	head.h_smopts = smopts;
-	mail1(&head, 0);
+	mail1(&head, 0, NULL);
 	return(0);
 }
 
@@ -289,8 +649,9 @@ sendmail(v)
 	head.h_subject = NOSTR;
 	head.h_cc = NIL;
 	head.h_bcc = NIL;
+	head.h_attach = NIL;
 	head.h_smopts = NIL;
-	mail1(&head, 0);
+	mail1(&head, 0, NULL);
 	return(0);
 }
 
@@ -299,37 +660,45 @@ sendmail(v)
  * in the passed header.  (Internal interface).
  */
 void
-mail1(hp, printheaders)
+mail1(hp, printheaders, quote)
 	struct header *hp;
 	int printheaders;
+	struct message *quote;
 {
 	char *cp;
 	int pid;
 	char **namelist;
 	struct name *to;
 	FILE *mtf;
+	int convert;
 
+	convert = gettextconversion();
 	/*
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders)) == NULL)
+	if ((mtf = collect(hp, printheaders, quote)) == (FILE*)NULL)
 		return;
-	if (value("interactive") != NOSTR)
-		if (value("askcc") != NOSTR || value("askbcc") != NOSTR) {
+	if (value("interactive") != NOSTR) {
+		if (value("askcc") != NOSTR || value("askbcc") != NOSTR
+				|| value("askattach") != NOSTR) {
 			if (value("askcc") != NOSTR)
 				grabh(hp, GCC);
 			if (value("askbcc") != NOSTR)
 				grabh(hp, GBCC);
+			if (value("askattach") != NOSTR)
+				grabh(hp, GATTACH);
 		} else {
 			printf("EOT\n");
 			(void) fflush(stdout);
 		}
-	if (fsize(mtf) == 0)
+	}
+	if (fsize(mtf) == 0) {
 		if (hp->h_subject == NOSTR)
 			printf("No message, no subject; hope that's ok\n");
 		else
 			printf("Null message body; hope that's ok\n");
+	}
 	/*
 	 * Now, take the user names from the combined
 	 * to and cc lists and do all the alias
@@ -352,7 +721,7 @@ mail1(hp, printheaders)
 	if (count(to) == 0)
 		goto out;
 	fixhead(hp, to);
-	if ((mtf = infix(hp, mtf)) == NULL) {
+	if ((mtf = infix(hp, mtf, convert)) == (FILE*)NULL) {
 		fprintf(stderr, ". . . message lost, sorry.\n");
 		return;
 	}
@@ -431,34 +800,152 @@ fixhead(hp, tolist)
 				cat(hp->h_bcc, nalloc(np->n_name, np->n_type));
 }
 
+#define	INFIX_BUF	972	/* Do not change
+				 * you get incorrect base64 encodings else!
+				 */
+
+static void attach_file(path, fo)
+char *path;
+FILE *fo;
+{
+	FILE *fi;
+	char *charset, *contenttype, *basename, c;
+	int convert, typefound = 0;
+	size_t sz;
+	char buf[INFIX_BUF];
+
+	fi = fopen(path, "rb");
+	if (fi == NULL) {
+		perror(path);
+		return;
+	}
+	basename = strrchr(path, '/');
+	if (basename == NULL)
+		basename = path;
+	else
+		basename++;
+	if ((contenttype = mime_filecontent(basename)) != NULL) {
+		typefound = 1;
+	}
+	switch (mime_isclean(fi)) {
+	case 0:
+		convert = CONV_7BIT;
+		if (contenttype == NULL)
+			contenttype = "text/plain";
+		charset = getcharset(convert);
+		break;
+	case 1:
+		convert = gettextconversion();
+		if (convert == CONV_NONE)
+			convert = CONV_TOQP;
+		if (contenttype == NULL)
+			contenttype = "text/plain";
+		charset = getcharset(convert);
+		break;
+	case 2:
+		convert = CONV_TOB64;
+		if (contenttype == NULL)
+			contenttype = "application/octet-stream";
+		charset = NULL;
+		break;
+	}
+	fprintf(fo,
+		"--%s\n"
+		"Content-Type: %s",
+		boundary, contenttype);
+	if (typefound) free(contenttype);
+	if (charset == NULL)
+		fputc('\n', fo);
+	else
+		fprintf(fo, ";\n charset=%s\n", charset);
+	/* do not use raw 7bit */
+	if (convert == CONV_7BIT)
+		convert = CONV_TOQP;
+	fprintf(fo, "Content-Transfer-Encoding: %s\n"
+		"Content-Disposition: attachment;\n"
+		" filename=\"",
+		getencoding(convert));
+	mime_write(basename, sizeof(char), strlen(basename), fo,
+			CONV_TOHDR, 0);
+	fwrite("\"\n\n", sizeof(char), 3, fo);
+	while (sz = fread(buf, sizeof(char), INFIX_BUF, fi)) {
+		c = buf[sz - 1];
+		mime_write(buf, sizeof(char), sz, fo, convert, 0);
+	}
+	if (c != '\n')
+		fputc('\n', fo);
+	fclose(fi);
+}
+
+static void make_multipart(hp, convert, fi, fo)
+struct header *hp;
+FILE *fi, *fo;
+/* Generate the body of a MIME multipart message */
+{
+	char buf[INFIX_BUF], c;
+	size_t sz;
+	struct name *att;
+
+	fprintf(fo,
+		"This is a multi-part message in MIME format.\n"
+		"--%s\n"
+		"Content-Type: text/plain; charset=%s\n",
+		boundary, getcharset(convert));
+	/* do not use raw 7bit */
+	if (convert == CONV_7BIT)
+		convert = CONV_TOQP;
+	fprintf(fo, "Content-Transfer-Encoding: %s\n\n", getencoding(convert));
+	while (sz = fread(buf, sizeof(char), INFIX_BUF, fi)) {
+		c = buf[sz - 1];
+		mime_write(buf, sizeof(char), sz, fo, convert, 0);
+	}
+	if (c != '\n')
+		fputc('\n', fo);
+	for (att = hp->h_attach; att != NIL; att = att->n_flink) {
+		attach_file(att->n_name, fo);
+	}
+	/* the final boundary with two attached dashes */
+	fprintf(fo, "--%s--\n", boundary);
+}
+
 /*
  * Prepend a header in front of the collected stuff
  * and return the new file.
  */
 FILE *
-infix(hp, fi)
+infix(hp, fi, convert)
 	struct header *hp;
 	FILE *fi;
 {
 	extern char *tempMail;
 	register FILE *nfo, *nfi;
 	register int c;
+	size_t sz;
+	char buf[INFIX_BUF];
 
-	if ((nfo = Fopen(tempMail, "w")) == NULL) {
+	if ((nfo = Fopen(tempMail, "w")) == (FILE*)NULL) {
 		perror(tempMail);
 		return(fi);
 	}
-	if ((nfi = Fopen(tempMail, "r")) == NULL) {
+	if ((nfi = Fopen(tempMail, "r")) == (FILE*)NULL) {
 		perror(tempMail);
 		(void) Fclose(nfo);
 		return(fi);
 	}
+	if (mime_isclean(fi) == 0) {
+		convert = CONV_7BIT;
+	}
 	(void) rm(tempMail);
-	(void) puthead(hp, nfo, GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA);
-	c = getc(fi);
-	while (c != EOF) {
-		(void) putc(c, nfo);
-		c = getc(fi);
+	(void) puthead(hp, nfo,
+		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GXMAIL|GMIME
+		   |GMSGID|GATTACH|GFROM|GREPLY,
+		   convert);
+	if (hp->h_attach != NIL) {
+		make_multipart(hp, convert, fi, nfo);
+	} else {
+		while (sz = fread(buf, sizeof(char), INFIX_BUF, fi)) {
+			mime_write(buf, sizeof(char), sz, nfo, convert, 0);
+		}
 	}
 	if (ferror(fi)) {
 		perror("read");
@@ -479,27 +966,102 @@ infix(hp, fi)
 	return(nfi);
 }
 
+void message_id(fo)
+FILE *fo;
+{
+	char hostname[MAXHOSTNAMELEN];
+	char domainname[MAXHOSTNAMELEN];
+	char datestr[sizeof(time_t) * 2 + 1];
+	char pidstr[sizeof(pid_t) * 2 + 1];
+	time_t t;
+	char *fromaddr;
+
+	time(&t);
+	itohex((unsigned int)t, datestr);
+	itohex((unsigned int)getpid(), pidstr);
+	fprintf(fo, "Message-ID: <%s.%s%s",
+			datestr, progname, pidstr);
+	if ((fromaddr = skin(value("from")))
+			&& (fromaddr = strchr(fromaddr, '@'))) {
+		fprintf(fo, "%s>\n", fromaddr);
+	} else {
+		gethostname(hostname, MAXHOSTNAMELEN);
+		getdomainname(domainname, MAXHOSTNAMELEN);
+		fprintf(fo, "@%s.%s>\n", hostname, domainname);
+	}
+}
+
 /*
  * Dump the to, subject, cc header on the
  * passed file buffer.
  */
 int
-puthead(hp, fo, w)
+puthead(hp, fo, w, convert)
 	struct header *hp;
 	FILE *fo;
 	int w;
 {
 	register int gotcha;
+	char *addr;
 
 	gotcha = 0;
+	if (w & GFROM) {
+		addr = value("from");
+		if (addr != NULL) {
+			fprintf(fo, "Sender: %s\n", username());
+			fwrite("From: ", sizeof(char), 6, fo);
+			mime_write(addr, sizeof(char), strlen(addr), fo,
+					convert == CONV_TODISP ?
+					CONV_NONE:CONV_TOHDR,
+					convert == CONV_TODISP), gotcha++;
+			fputc('\n', fo);
+		}
+	}
+	if (w & GREPLY) {
+		addr = value("replyto");
+		if (addr != NULL) {
+			fwrite("Reply-To: ", sizeof(char), 10, fo);
+			mime_write(addr, sizeof(char), strlen(addr), fo,
+					convert == CONV_TODISP ?
+					CONV_NONE:CONV_TOHDR,
+					convert == CONV_TODISP), gotcha++;
+			fputc('\n', fo);
+		}
+	}
+	if (hp->h_to != NIL && w & GTO)
 	if (hp->h_to != NIL && w & GTO)
 		fmt("To:", hp->h_to, fo, w&GCOMMA), gotcha++;
-	if (hp->h_subject != NOSTR && w & GSUBJECT)
-		fprintf(fo, "Subject: %s\n", hp->h_subject), gotcha++;
+	if (hp->h_subject != NOSTR && w & GSUBJECT) {
+		fwrite("Subject: ", sizeof(char), 9, fo);
+		mime_write(hp->h_subject, sizeof(char), strlen(hp->h_subject),
+				fo, convert == CONV_TODISP ?
+				CONV_NONE:CONV_TOHDR,
+				convert == CONV_TODISP), gotcha++;
+		fwrite("\n", sizeof(char), 1, fo);
+	}
 	if (hp->h_cc != NIL && w & GCC)
 		fmt("Cc:", hp->h_cc, fo, w&GCOMMA), gotcha++;
 	if (hp->h_bcc != NIL && w & GBCC)
 		fmt("Bcc:", hp->h_bcc, fo, w&GCOMMA), gotcha++;
+	if (w & GMSGID) {
+		message_id(fo), gotcha++;
+	}
+	if (w & GXMAIL) {
+		fprintf(fo, "X-Mailer: %s\n", version), gotcha++;
+	}
+	if (w & GMIME) {
+		fputs("MIME-Version: 1.0\n", fo), gotcha++;
+		if (hp->h_attach != NIL && w & GATTACH) {
+			makeboundary();
+			fprintf(fo, "Content-Type: multipart/mixed;\n"
+				" boundary=\"%s\"\n", boundary);
+		} else {
+			fprintf(fo,
+				"Content-Type: text/plain; charset=%s\n"
+				"Content-Transfer-Encoding: %s\n",
+				getcharset(convert), getencoding(convert));
+		}
+	}
 	if (gotcha && w & GNL)
 		(void) putc('\n', fo);
 	return(0);
@@ -515,12 +1077,12 @@ fmt(str, np, fo, comma)
 	FILE *fo;
 	int comma;
 {
-	register col, len;
+	register int col, len;
 
 	comma = comma ? 1 : 0;
 	col = strlen(str);
 	if (col)
-		fputs(str, fo);
+		mime_write(str, sizeof(char), strlen(str), fo, CONV_TOHDR, 0);
 	for (; np != NIL; np = np->n_flink) {
 		if (np->n_flink == NIL)
 			comma = 0;
@@ -531,7 +1093,8 @@ fmt(str, np, fo, comma)
 			col = 4;
 		} else
 			putc(' ', fo);
-		fputs(np->n_name, fo);
+		mime_write(np->n_name, sizeof(char), strlen(np->n_name),
+				fo, CONV_TOHDR, 0);
 		if (comma)
 			putc(',', fo);
 		col += len + comma;
@@ -551,13 +1114,18 @@ savemail(name, fi)
 {
 	register FILE *fo;
 	char buf[BUFSIZ];
-	register i;
+	register int i;
 	time_t now;
+	int newfile = 0;
 
-	if ((fo = Fopen(name, "a")) == NULL) {
+	if (access(name, 0) < 0)
+		newfile = 1;
+	if ((fo = Fopen(name, "a")) == (FILE*)NULL) {
 		perror(name);
 		return (-1);
 	}
+	if (newfile == 0)
+		fputc('\n', fo);
 	(void) time(&now);
 	fprintf(fo, "From %s %s", myname, ctime(&now));
 	while ((i = fread(buf, 1, sizeof buf, fi)) > 0)

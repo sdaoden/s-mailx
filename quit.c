@@ -1,5 +1,6 @@
-/*	$OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp $	*/
-/*	$NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp $	*/
+/*	$Id: quit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
+/*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,14 +37,18 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: quit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
+#include <sys/file.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include "extern.h"
 
 /*
@@ -77,7 +82,7 @@ void
 quit()
 {
 	int mcount, p, modify, autohold, anystat, holdbit, nohold;
-	FILE *ibuf = NULL, *obuf, *fbuf, *rbuf, *readstat = NULL, *abuf;
+	FILE *ibuf = (FILE*)NULL, *obuf, *fbuf, *rbuf, *readstat = (FILE*)NULL, *abuf;
 	register struct message *mp;
 	register int c;
 	extern char *tempQuit, *tempResid;
@@ -110,7 +115,7 @@ quit()
 	 */
 
 	fbuf = Fopen(mailname, "r");
-	if (fbuf == NULL)
+	if (fbuf == (FILE*)NULL)
 		goto newmail;
 	if (flock(fileno(fbuf), LOCK_EX) == -1) {
 nolock:
@@ -120,11 +125,11 @@ nolock:
 	}
 	if (dot_lock(mailname, 1, stdout, ".") == -1)
 		goto nolock;
-	rbuf = NULL;
+	rbuf = (FILE*)NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
 		printf("New mail has arrived.\n");
 		rbuf = Fopen(tempResid, "w");
-		if (rbuf == NULL || fbuf == NULL)
+		if (rbuf == (FILE*)NULL || fbuf == (FILE*)NULL)
 			goto newmail;
 #ifdef APPEND
 		fseek(fbuf, (long)mailsize, 0);
@@ -140,7 +145,7 @@ nolock:
 		}
 #endif
 		Fclose(rbuf);
-		if ((rbuf = Fopen(tempResid, "r")) == NULL)
+		if ((rbuf = Fopen(tempResid, "r")) == (FILE*)NULL)
 			goto newmail;
 		rm(tempResid);
 	}
@@ -169,7 +174,7 @@ nolock:
 	}
 	modify = 0;
 	if (Tflag != NOSTR) {
-		if ((readstat = Fopen(Tflag, "w")) == NULL)
+		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
 			Tflag = NOSTR;
 	}
 	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
@@ -215,13 +220,13 @@ nolock:
 	mbox = expand("&");
 	mcount = c;
 	if (value("append") == NOSTR) {
-		if ((obuf = Fopen(tempQuit, "w")) == NULL) {
+		if ((obuf = Fopen(tempQuit, "w")) == (FILE*)NULL) {
 			perror(tempQuit);
 			Fclose(fbuf);
 			dot_unlock(mailname);
 			return;
 		}
-		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
+		if ((ibuf = Fopen(tempQuit, "r")) == (FILE*)NULL) {
 			perror(tempQuit);
 			rm(tempQuit);
 			Fclose(obuf);
@@ -230,7 +235,7 @@ nolock:
 			return;
 		}
 		rm(tempQuit);
-		if ((abuf = Fopen(mbox, "r")) != NULL) {
+		if ((abuf = Fopen(mbox, "r")) != (FILE*)NULL) {
 			while ((c = getc(abuf)) != EOF)
 				(void) putc(c, obuf);
 			Fclose(abuf);
@@ -245,7 +250,7 @@ nolock:
 		}
 		Fclose(obuf);
 		close(creat(mbox, 0600));
-		if ((obuf = Fopen(mbox, "r+")) == NULL) {
+		if ((obuf = Fopen(mbox, "r+")) == (FILE*)NULL) {
 			perror(mbox);
 			Fclose(ibuf);
 			Fclose(fbuf);
@@ -254,7 +259,7 @@ nolock:
 		}
 	}
 	else {
-		if ((obuf = Fopen(mbox, "a")) == NULL) {
+		if ((obuf = Fopen(mbox, "a")) == (FILE*)NULL) {
 			perror(mbox);
 			Fclose(fbuf);
 			dot_unlock(mailname);
@@ -264,9 +269,10 @@ nolock:
 	}
 	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if (mp->m_flag & MBOX)
-			if (send(mp, obuf, saveignore, NOSTR) < 0) {
+			if (send(mp, obuf, saveignore, NOSTR, CONV_NONE) < 0) {
 				perror(mbox);
-				Fclose(ibuf);
+				if (ibuf)
+					Fclose(ibuf);
 				Fclose(obuf);
 				Fclose(fbuf);
 				dot_unlock(mailname);
@@ -323,9 +329,9 @@ nolock:
 	 */
 
 cream:
-	if (rbuf != NULL) {
+	if (rbuf != (FILE*)NULL) {
 		abuf = Fopen(mailname, "r+");
-		if (abuf == NULL)
+		if (abuf == (FILE*)NULL)
 			goto newmail;
 		while ((c = getc(rbuf)) != EOF)
 			(void) putc(c, abuf);
@@ -344,7 +350,7 @@ cream:
 
 newmail:
 	printf("Thou hast new mail.\n");
-	if (fbuf != NULL) {
+	if (fbuf != (FILE*)NULL) {
 		Fclose(fbuf);
 		dot_unlock(mailname);
 	}
@@ -365,26 +371,27 @@ writeback(res)
 	FILE *obuf;
 
 	p = 0;
-	if ((obuf = Fopen(mailname, "r+")) == NULL) {
+	if ((obuf = Fopen(mailname, "r+")) == (FILE*)NULL) {
 		perror(mailname);
 		return(-1);
 	}
 #ifndef APPEND
-	if (res != NULL)
+	if (res != (FILE*)NULL)
 		while ((c = getc(res)) != EOF)
 			(void) putc(c, obuf);
 #endif
 	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
-			if (send(mp, obuf, (struct ignoretab *)0, NOSTR) < 0) {
+			if (send(mp, obuf, (struct ignoretab *)0,
+						NOSTR, CONV_NONE) < 0) {
 				perror(mailname);
 				Fclose(obuf);
 				return(-1);
 			}
 		}
 #ifdef APPEND
-	if (res != NULL)
+	if (res != (FILE*)NULL)
 		while ((c = getc(res)) != EOF)
 			(void) putc(c, obuf);
 #endif
@@ -395,7 +402,7 @@ writeback(res)
 		Fclose(obuf);
 		return(-1);
 	}
-	if (res != NULL)
+	if (res != (FILE*)NULL)
 		Fclose(res);
 	Fclose(obuf);
 	alter(mailname);
@@ -416,7 +423,7 @@ edstop()
 	extern char *tmpdir;
 	register int gotcha, c;
 	register struct message *mp;
-	FILE *obuf, *ibuf, *readstat = NULL;
+	FILE *obuf, *ibuf, *readstat = (FILE*)NULL;
 	struct stat statb;
 	char *tempname;
 
@@ -424,7 +431,7 @@ edstop()
 		return;
 	holdsigs();
 	if (Tflag != NOSTR) {
-		if ((readstat = Fopen(Tflag, "w")) == NULL)
+		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
 			Tflag = NOSTR;
 	}
 	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
@@ -445,16 +452,16 @@ edstop()
 		Fclose(readstat);
 	if (!gotcha || Tflag != NOSTR)
 		goto done;
-	ibuf = NULL;
+	ibuf = (FILE*)NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
 		tempname = tempnam(tmpdir, "mbox");
 
-		if ((obuf = Fopen(tempname, "w")) == NULL) {
+		if ((obuf = Fopen(tempname, "w")) == (FILE*)NULL) {
 			perror(tempname);
 			relsesigs();
 			reset(0);
 		}
-		if ((ibuf = Fopen(mailname, "r")) == NULL) {
+		if ((ibuf = Fopen(mailname, "r")) == (FILE*)NULL) {
 			perror(mailname);
 			Fclose(obuf);
 			rm(tempname);
@@ -466,7 +473,7 @@ edstop()
 			(void) putc(c, obuf);
 		Fclose(ibuf);
 		Fclose(obuf);
-		if ((ibuf = Fopen(tempname, "r")) == NULL) {
+		if ((ibuf = Fopen(tempname, "r")) == (FILE*)NULL) {
 			perror(tempname);
 			rm(tempname);
 			relsesigs();
@@ -477,7 +484,7 @@ edstop()
 	}
 	printf("\"%s\" ", mailname);
 	fflush(stdout);
-	if ((obuf = Fopen(mailname, "r+")) == NULL) {
+	if ((obuf = Fopen(mailname, "r+")) == (FILE*)NULL) {
 		perror(mailname);
 		relsesigs();
 		reset(0);
@@ -488,14 +495,15 @@ edstop()
 		if ((mp->m_flag & MDELETED) != 0)
 			continue;
 		c++;
-		if (send(mp, obuf, (struct ignoretab *) NULL, NOSTR) < 0) {
+		if (send(mp, obuf, (struct ignoretab *) NULL,
+					NOSTR, CONV_NONE) < 0) {
 			perror(mailname);
 			relsesigs();
 			reset(0);
 		}
 	}
-	gotcha = (c == 0 && ibuf == NULL);
-	if (ibuf != NULL) {
+	gotcha = (c == 0 && ibuf == (FILE*)NULL);
+	if (ibuf != (FILE*)NULL) {
 		while ((c = getc(ibuf)) != EOF)
 			(void) putc(c, obuf);
 		Fclose(ibuf);

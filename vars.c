@@ -1,5 +1,6 @@
-/*	$OpenBSD: vars.c,v 1.4 1996/06/08 19:48:45 christos Exp $	*/
-/*	$NetBSD: vars.c,v 1.4 1996/06/08 19:48:45 christos Exp $	*/
+/*	$Id: vars.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: vars.c,v 1.4 1996/06/08 19:48:45 christos Exp 	*/
+/*	NetBSD: vars.c,v 1.4 1996/06/08 19:48:45 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)vars.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)vars.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: vars.c,v 1.4 1996/06/08 19:48:45 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: vars.c,v 1.4 1996/06/08 19:48:45 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: vars.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -102,8 +105,7 @@ vcopy(str)
 	if (*str == '\0')
 		return "";
 	len = strlen(str) + 1;
-	if ((new = malloc(len)) == NULL)
-		panic("Out of memory");
+	new = (char*)smalloc(len);
 	bcopy(str, new, (int) len);
 	return new;
 }
@@ -185,7 +187,7 @@ int
 hash(name)
 	register char *name;
 {
-	register h = 0;
+	register int h = 0;
 
 	while (*name) {
 		h <<= 2;

@@ -1,5 +1,6 @@
-/*	$OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp $	*/
-/*	$NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp $	*/
+/*	$Id: popen.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp 	*/
+/*	NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,15 +37,18 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp";
 #else
-static char rcsid[] = "$OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: popen.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "extern.h"
 
 #define READ 0
@@ -71,12 +75,42 @@ static void delchild __P((struct child *));
 static int file_pid __P((FILE *));
 
 FILE *
+safe_fopen(file, mode)
+	char *file, *mode;
+{
+	int  omode, fd;
+
+	if (!strcmp(mode, "r")) {
+		omode = O_RDONLY;
+	} else if (!strcmp(mode, "w")) {
+		omode = O_WRONLY | O_CREAT | O_EXCL;
+	} else if (!strcmp(mode, "a")) {
+		omode = O_WRONLY | O_APPEND | O_CREAT;
+	} else if (!strcmp(mode, "a+")) {
+		omode = O_RDWR | O_APPEND;
+	} else if (!strcmp(mode, "r+")) {
+		omode = O_RDWR;
+	} else if (!strcmp(mode, "w+")) {
+		omode = O_RDWR   | O_CREAT | O_EXCL;
+	} else {
+		fprintf(stderr,
+			"Internal error: bad stdio open mode %s\n", mode);
+		errno = EINVAL;
+		return (FILE *)NULL;
+	}
+
+	if ((fd = open(file, omode, 0666)) < 0)
+		return (FILE *)NULL;
+	return fdopen(fd, mode);
+}
+
+FILE *
 Fopen(file, mode)
 	char *file, *mode;
 {
 	FILE *fp;
 
-	if ((fp = fopen(file, mode)) != NULL) {
+	if ((fp = safe_fopen(file, mode)) != (FILE *)NULL) {
 		register_file(fp, 0, 0);
 		(void) fcntl(fileno(fp), F_SETFD, 1);
 	}
@@ -90,7 +124,7 @@ Fdopen(fd, mode)
 {
 	FILE *fp;
 
-	if ((fp = fdopen(fd, mode)) != NULL) {
+	if ((fp = fdopen(fd, mode)) != (FILE *)NULL) {
 		register_file(fp, 0, 0);
 		(void) fcntl(fileno(fp), F_SETFD, 1);
 	}
@@ -117,7 +151,7 @@ Popen(cmd, mode)
 	FILE *fp;
 
 	if (pipe(p) < 0)
-		return NULL;
+		return (FILE *)NULL;
 	(void) fcntl(p[READ], F_SETFD, 1);
 	(void) fcntl(p[WRITE], F_SETFD, 1);
 	if (*mode == 'r') {
@@ -133,10 +167,10 @@ Popen(cmd, mode)
 	if ((pid = start_command(cmd, &nset, fd0, fd1, NOSTR, NOSTR, NOSTR)) < 0) {
 		close(p[READ]);
 		close(p[WRITE]);
-		return NULL;
+		return (FILE *)NULL;
 	}
 	(void) close(hisside);
-	if ((fp = fdopen(myside, mode)) != NULL)
+	if ((fp = fdopen(myside, mode)) != (FILE *)NULL)
 		register_file(fp, 1, pid);
 	return fp;
 }
@@ -156,7 +190,7 @@ Pclose(ptr)
 	sigaddset(&nset, SIGHUP);
 	sigprocmask(SIG_BLOCK, &nset, &oset);
 	i = wait_child(i);
-	sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 	return i;
 }
 
@@ -178,8 +212,7 @@ register_file(fp, pipe, pid)
 {
 	struct fp *fpp;
 
-	if ((fpp = (struct fp *) malloc(sizeof *fpp)) == NULL)
-		panic("Out of memory");
+	fpp = (struct fp*)smalloc(sizeof *fpp);
 	fpp->fp = fp;
 	fpp->pipe = pipe;
 	fpp->pid = pid;
@@ -193,7 +226,7 @@ unregister_file(fp)
 {
 	struct fp **pp, *p;
 
-	for (pp = &fp_head; (p = *pp) != NULL; pp = &p->link)
+	for (pp = &fp_head; (p = *pp) != (struct fp *)NULL; pp = &p->link)
 		if (p->fp == fp) {
 			*pp = p->link;
 			free((char *) p);
@@ -291,7 +324,7 @@ prepare_child(nset, infd, outfd)
 			(void) signal(SIGINT, SIG_DFL);
 	}
 	sigfillset(&fset);
-	(void) sigprocmask(SIG_UNBLOCK, &fset, NULL);
+	(void) sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
 }
 
 int
@@ -312,14 +345,14 @@ findchild(pid)
 {
 	register struct child **cpp;
 
-	for (cpp = &child; *cpp != NULL && (*cpp)->pid != pid;
+	for (cpp = &child; *cpp != (struct child *)NULL && (*cpp)->pid != pid;
 	     cpp = &(*cpp)->link)
 			;
-	if (*cpp == NULL) {
-		*cpp = (struct child *) malloc(sizeof (struct child));
+	if (*cpp == (struct child *)NULL) {
+		*cpp = (struct child *) smalloc(sizeof (struct child));
 		(*cpp)->pid = pid;
 		(*cpp)->done = (*cpp)->free = 0;
-		(*cpp)->link = NULL;
+		(*cpp)->link = (struct child *)NULL;
 	}
 	return *cpp;
 }
@@ -375,8 +408,11 @@ wait_child(pid)
 		sigsuspend(&oset);
 	wait_status = cp->status;
 	delchild(cp);
-	sigprocmask(SIG_SETMASK, &oset, NULL);
-	return wait_status.w_status ? -1 : 0;
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+	if (WIFEXITED(wait_status) && (WEXITSTATUS(wait_status) == 0))
+		return 0;
+	return -1;
 }
 
 /*
@@ -396,5 +432,5 @@ free_child(pid)
 		delchild(cp);
 	else
 		cp->free = 1;
-	sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 }

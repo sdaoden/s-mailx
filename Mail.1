@@ -109,7 +109,7 @@ writes undeleted messages back to this file.
 .It Fl u
 Is equivalent to:
 .Pp
-.Dl mail -f /var/mail/user
+.Dl mail -f /var/spool/mail/user
 .El
 .Ss Sending mail
 To send a message to one or more people,
@@ -990,8 +990,8 @@ and
 .Ev USER
 environment variables.
 .Sh FILES
-.Bl -tag -width /usr/share/misc/mail.*help -compact
-.It Pa /var/mail/*
+.Bl -tag -width /usr/lib/mail.*help -compact
+.It Pa /var/spool/mail/*
 Post office.
 .It ~/mbox
 User's old mail.
@@ -999,7 +999,7 @@ User's old mail.
 File giving initial mail commands.
 .It Pa /tmp/R*
 Temporary files.
-.It Pa /usr/share/misc/mail.*help
+.It Pa /usr/lib/mail.*help
 Help files.
 .It Pa /etc/mail.rc
 System initialization file.
@@ -1029,8 +1029,5 @@ There are some flags that are not documented here.
 Most are
 not useful to the general user.
 .Pp
-Usually,
-.Nm mail
-is just a link to
-.Nm Mail  ,
-which can be confusing.
+.\" This bug is not the case in this particular distribution.
+.\" Usually, .Nm mail is just a link to .Nm Mail, which can be confusing.

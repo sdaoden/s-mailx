@@ -1,5 +1,6 @@
-/*	$OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp $	*/
-/*	$NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp $	*/
+/*	$Id: edit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
+/*	NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: edit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -116,7 +119,7 @@ edit1(msgvec, type)
 		touch(mp);
 		sigint = signal(SIGINT, SIG_IGN);
 		fp = run_editor(setinput(mp), mp->m_size, type, readonly);
-		if (fp != NULL) {
+		if (fp != (FILE*)NULL) {
 			(void) fseek(otf, 0L, 2);
 			size = ftell(otf);
 			mp->m_block = blockof(size);
@@ -152,18 +155,18 @@ run_editor(fp, size, type, readonly)
 	off_t size;
 	int type, readonly;
 {
-	register FILE *nf = NULL;
+	register FILE *nf = (FILE*)NULL;
 	register int t;
 	time_t modtime;
 	char *edit;
 	struct stat statb;
 	extern char *tempEdit;
 
-	if ((t = creat(tempEdit, readonly ? 0400 : 0600)) < 0) {
+	if ((t = open(tempEdit, O_CREAT|O_WRONLY|O_EXCL, readonly ? 0400 : 0600)) < 0) {
 		perror(tempEdit);
 		goto out;
 	}
-	if ((nf = Fdopen(t, "w")) == NULL) {
+	if ((nf = Fdopen(t, "w")) == (FILE*)NULL) {
 		perror(tempEdit);
 		(void) unlink(tempEdit);
 		goto out;
@@ -183,16 +186,16 @@ run_editor(fp, size, type, readonly)
 		(void) Fclose(nf);
 		perror(tempEdit);
 		(void) unlink(tempEdit);
-		nf = NULL;
+		nf = (FILE*)NULL;
 		goto out;
 	}
 	if (Fclose(nf) < 0) {
 		perror(tempEdit);
 		(void) unlink(tempEdit);
-		nf = NULL;
+		nf = (FILE*)NULL;
 		goto out;
 	}
-	nf = NULL;
+	nf = (FILE*)NULL;
 	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NOSTR)
 		edit = type == 'e' ? _PATH_EX : _PATH_VI;
 	if (run_command(edit, 0, -1, -1, tempEdit, NOSTR, NOSTR) < 0) {
@@ -218,7 +221,7 @@ run_editor(fp, size, type, readonly)
 	/*
 	 * Now switch to new file.
 	 */
-	if ((nf = Fopen(tempEdit, "a+")) == NULL) {
+	if ((nf = Fopen(tempEdit, "a+")) == (FILE*)NULL) {
 		perror(tempEdit);
 		(void) unlink(tempEdit);
 		goto out;

@@ -1,5 +1,6 @@
-/*	$OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp $	*/
-/*	$NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp $	*/
+/*	$Id: collect.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
+/*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
+static char sccsid[] __attribute__ ((unused)) = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: collect.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -51,6 +54,12 @@ static char rcsid[] = "$OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Ex
 
 #include "rcv.h"
 #include "extern.h"
+
+#ifdef IOSAFE
+/* to interact between interrupt handlers and IO routines in fio.c */
+int got_interrupt;
+#endif
+
 
 /*
  * Read a message from standard output and return a read file to it
@@ -76,9 +85,10 @@ static	int	colljmp_p;		/* whether to long jump */
 static	jmp_buf	collabort;		/* To end collection with error */
 
 FILE *
-collect(hp, printheaders)
+collect(hp, printheaders, mp)
 	struct header *hp;
 	int printheaders;
+	struct message *mp;
 {
 	FILE *fbuf;
 	int lc, cc, escape, eofcount;
@@ -94,7 +104,7 @@ collect(hp, printheaders)
 	(void) &getsub;
 #endif
 
-	collf = NULL;
+	collf = (FILE*)NULL;
 	/*
 	 * Start catching signals from here, but we're still die on interrupts
 	 * until we're in the main loop.
@@ -114,10 +124,10 @@ collect(hp, printheaders)
 		rm(tempMail);
 		goto err;
 	}
-	sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 
 	noreset++;
-	if ((collf = Fopen(tempMail, "w+")) == NULL) {
+	if ((collf = Fopen(tempMail, "w+")) == (FILE *)NULL) {
 		perror(tempMail);
 		goto err;
 	}
@@ -134,15 +144,39 @@ collect(hp, printheaders)
 	    (value("ask") != NOSTR || value("asksub") != NOSTR))
 		t &= ~GNL, getsub++;
 	if (printheaders) {
-		puthead(hp, stdout, t);
+		puthead(hp, stdout, t, CONV_TODISP);
 		fflush(stdout);
 	}
+
+	/*
+	 * Quote an original message
+	 */
+	if (mp != NULL) {
+		cp = hfield("from", mp);
+		if (cp != NULL) {
+			mime_write(cp, sizeof(char), strlen(cp), collf,
+					CONV_FROMHDR, 0);
+			fwrite(" wrote:\n", sizeof(char), 8, collf);
+			mime_write(cp, sizeof(char), strlen(cp), stdout,
+					CONV_FROMHDR, 0);
+			fwrite(" wrote:\n", sizeof(char), 8, stdout);
+		}
+		cp = value("indentprefix");
+		if (cp != NULL && *cp == '\0')
+			cp = "\t";
+		send(mp, collf, ignoreall, cp, CONV_QUOTE);
+		send(mp, stdout, ignoreall, cp, CONV_QUOTE);
+	}
+
 	if ((cp = value("escape")) != NOSTR)
 		escape = *cp;
 	else
 		escape = ESCAPE;
 	eofcount = 0;
 	hadintr = 0;
+#ifdef IOSAFE
+	got_interrupt = 0;
+#endif
 
 	if (!setjmp(colljmp)) {
 		if (getsub)
@@ -166,6 +200,12 @@ cont:
 	for (;;) {
 		colljmp_p = 1;
 		c = readline(stdin, linebuf, LINESIZE);
+#ifdef IOSAFE
+		if (got_interrupt) {
+			got_interrupt = 0;
+			longjmp(colljmp,1);
+		} 
+#endif
 		colljmp_p = 0;
 		if (c < 0) {
 			if (value("interactive") != NOSTR &&
@@ -205,7 +245,7 @@ cont:
 			/*
 			 * Dump core.
 			 */
-			core(NULL);
+			core((void *)NULL);
 			break;
 		case '!':
 			/*
@@ -255,6 +295,13 @@ cont:
 				cp++;
 			hp->h_subject = savestr(cp);
 			break;
+		case 'a':
+			/*
+			 * Add to the attachment list.
+			 */
+			hp->h_attach = cat(hp->h_attach,
+					extract(&linebuf[2], GATTACH));
+			break;
 		case 'c':
 			/*
 			 * Add to the CC list.
@@ -268,7 +315,8 @@ cont:
 			hp->h_bcc = cat(hp->h_bcc, extract(&linebuf[2], GBCC));
 			break;
 		case 'd':
-			strcpy(linebuf + 2, getdeadletter());
+			strncpy(linebuf + 2, getdeadletter(), LINESIZE - 2);
+			linebuf[LINESIZE-1]='\0';
 			/* fall into . . . */
 		case 'r':
 		case '<':
@@ -291,7 +339,7 @@ cont:
 				printf("%s: Directory\n", cp);
 				break;
 			}
-			if ((fbuf = Fopen(cp, "r")) == NULL) {
+			if ((fbuf = Fopen(cp, "r")) == (FILE *)NULL) {
 				perror(cp);
 				break;
 			}
@@ -340,7 +388,7 @@ cont:
 				goto err;
 			goto cont;
 		case '?':
-			if ((fbuf = Fopen(_PATH_TILDE, "r")) == NULL) {
+			if ((fbuf = Fopen(_PATH_TILDE, "r")) == (FILE *)NULL) {
 				perror(_PATH_TILDE);
 				break;
 			}
@@ -355,9 +403,11 @@ cont:
 			 */
 			rewind(collf);
 			printf("-------\nMessage contains:\n");
-			puthead(hp, stdout, GTO|GSUBJECT|GCC|GBCC|GNL);
+			puthead(hp, stdout,
+				GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP);
 			while ((t = getc(collf)) != EOF)
 				(void) putchar(t);
+			fmt("Attachments:", hp->h_attach, stdout, GCOMMA);
 			goto cont;
 		case '|':
 			/*
@@ -381,24 +431,28 @@ cont:
 	}
 	goto out;
 err:
-	if (collf != NULL) {
+	if (collf != (FILE *)NULL) {
 		Fclose(collf);
-		collf = NULL;
+		collf = (FILE *)NULL;
 	}
 out:
-	if (collf != NULL)
+	if (collf != (FILE *)NULL)
 		rewind(collf);
 	noreset--;
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGINT);
 	sigaddset(&nset, SIGHUP);
+#ifndef OLDBUG
+	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
+#else
 	sigprocmask(SIG_BLOCK, &nset, &oset);
+#endif
 	signal(SIGINT, saveint);
 	signal(SIGHUP, savehup);
 	signal(SIGTSTP, savetstp);
 	signal(SIGTTOU, savettou);
 	signal(SIGTTIN, savettin);
-	sigprocmask(SIG_SETMASK, &oset, NULL);
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 	return collf;
 }
 
@@ -427,7 +481,7 @@ exwrite(name, fp, f)
 		fprintf(stderr, "File exists\n");
 		return(-1);
 	}
-	if ((of = Fopen(name, "w")) == NULL) {
+	if ((of = Fopen(name, "w")) == (FILE *)NULL) {
 		perror(NOSTR);
 		return(-1);
 	}
@@ -462,7 +516,7 @@ mesedit(fp, c)
 	sig_t sigint = signal(SIGINT, SIG_IGN);
 	FILE *nf = run_editor(fp, (off_t)-1, c, 0);
 
-	if (nf != NULL) {
+	if (nf != (FILE *)NULL) {
 		fseek(nf, 0L, 2);
 		collf = nf;
 		Fclose(fp);
@@ -486,7 +540,7 @@ mespipe(fp, cmd)
 	extern char *tempEdit;
 	char *shell;
 
-	if ((nf = Fopen(tempEdit, "w+")) == NULL) {
+	if ((nf = Fopen(tempEdit, "w+")) == (FILE *)NULL) {
 		perror(tempEdit);
 		goto out;
 	}
@@ -543,24 +597,24 @@ forward(ms, fp, f)
 		return(0);
 	if (*msgvec == 0) {
 		*msgvec = first(0, MMNORM);
-		if (*msgvec == NULL) {
+		if (*msgvec == 0) {
 			printf("No appropriate messages\n");
 			return(0);
 		}
-		msgvec[1] = NULL;
+		msgvec[1] = 0;
 	}
 	if (f == 'f' || f == 'F')
 		tabst = NOSTR;
 	else if ((tabst = value("indentprefix")) == NOSTR)
 		tabst = "\t";
-	ig = isupper(f) ? NULL : ignore;
+	ig = isupper(f) ? (struct ignoretab *)NULL : ignore;
 	printf("Interpolating:");
 	for (; *msgvec != 0; msgvec++) {
 		struct message *mp = message + *msgvec - 1;
 
 		touch(mp);
 		printf(" %d", *msgvec);
-		if (send(mp, fp, ig, tabst) < 0) {
+		if (send(mp, fp, ig, tabst, CONV_QUOTE) < 0) {
 			perror(tempMail);
 			return(-1);
 		}
@@ -582,14 +636,19 @@ collstop(s)
 
 	sigemptyset(&nset);
 	sigaddset(&nset, s);
-	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+	sigprocmask(SIG_UNBLOCK, &nset, (sigset_t *)NULL);
 	kill(0, s);
-	sigprocmask(SIG_BLOCK, &nset, NULL);
+	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
 	signal(s, old_action);
 	if (colljmp_p) {
 		colljmp_p = 0;
 		hadintr = 0;
+#ifdef IOSAFE
+		got_interrupt = s;
+#else
+		fpurge(stdin);
 		longjmp(colljmp, 1);
+#endif
 	}
 }
 
@@ -605,6 +664,9 @@ collint(s)
 	/*
 	 * the control flow is subtle, because we can be called from ~q.
 	 */
+#ifndef IOSAFE
+	fpurge(stdin);
+#endif
 	if (!hadintr) {
 		if (value("ignore") != NOSTR) {
 			puts("@");
@@ -613,7 +675,12 @@ collint(s)
 			return;
 		}
 		hadintr = 1;
+#ifdef IOSAFE
+		got_interrupt = s;
+		return;
+#else
 		longjmp(colljmp, 1);
+#endif
 	}
 	rewind(collf);
 	if (value("nosave") == NOSTR)
@@ -649,7 +716,7 @@ savedeadletter(fp)
 	c = umask(077);
 	dbuf = Fopen(cp, "a");
 	(void) umask(c);
-	if (dbuf == NULL)
+	if (dbuf == (FILE *)NULL)
 		return;
 	while ((c = getc(fp)) != EOF)
 		(void) putc(c, dbuf);

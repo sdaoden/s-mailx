@@ -1,5 +1,6 @@
-/*	$OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp $	*/
-/*	$NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp $	*/
+/*	$Id: extern.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
+/*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -34,7 +35,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- *	$NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp $
+ *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
+ *	$Id: extern.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
  */
 
 struct name;
@@ -50,10 +52,11 @@ struct name *outof __P((struct name *, FILE *, struct header *));
 struct name *put __P((struct name *, struct name *));
 struct name *tailof __P((struct name *));
 struct name *usermap __P((struct name *));
+FILE	*safe_fopen __P((char *, char *));
 FILE	*Fdopen __P((int, char *));
 FILE	*Fopen __P((char *, char *));
 FILE	*Popen __P((char *, char *));
-FILE	*collect __P((struct header *, int));
+FILE	*collect __P((struct header *, int, struct message*));
 char	*copy __P((char *, char *));
 char	*copyin __P((char *, char **));
 char	*detract __P((struct name *, int));
@@ -62,7 +65,7 @@ char	*getdeadletter __P((void));
 char	*getname __P((int));
 struct message;
 char	*hfield __P((char [], struct message *));
-FILE	*infix __P((struct header *, FILE *));
+FILE	*infix __P((struct header *, FILE *, int));
 char	*ishfield __P((char [], char[], char *));
 char	*name1 __P((struct message *, int));
 char	*nameof __P((struct message *, int));
@@ -94,7 +97,7 @@ int	 anyof __P((char *, char *));
 int	 append __P((struct message *, FILE *));
 int	 argcount __P((char **));
 void	 assign __P((char [], char []));
-int	 bangexp __P((char *));
+int	 bangexp __P((char *, int));
 int	 blankline __P((char []));
 void	 brokpipe __P((int));
 int	 charcount __P((char *, int));
@@ -130,7 +133,7 @@ void	 fail __P((char [], char []));
 int	 file __P((void *));
 struct grouphead *
 	 findgroup __P((char []));
-void	 findmail __P((char *, char *));
+void	 findmail __P((char *, char *, int));
 int	 first __P((int, int));
 void	 fixhead __P((struct header *, struct name *));
 void	 fmt __P((char *, struct name *, FILE *, int));
@@ -139,7 +142,7 @@ int	 forward __P((char [], FILE *, int));
 void	 free_child __P((int));
 int	 from __P((void *));
 off_t	 fsize __P((FILE *));
-int	 getfold __P((char *));
+int	 getfold __P((char *, int));
 int	 gethfield __P((FILE *, char [], int, char **));
 int	 getmsglist __P((char *, int *, int));
 int	 getrawlist __P((char [], char **, int));
@@ -164,15 +167,16 @@ int	 isfileaddr __P((char *));
 int	 ishead __P((char []));
 int	 isign __P((char *, struct ignoretab []));
 int	 isprefix __P((char *, char *));
-void	 istrcpy __P((char *, char *));
+void	 istrcpy __P((char *, char *, int));
 const struct cmd *
 	 lex __P((char []));
 void	 load __P((char *));
 struct var *
 	 lookup __P((char []));
 int	 mail __P((struct name *,
-	    struct name *, struct name *, struct name *, char *));
-void	 mail1 __P((struct header *, int));
+	    struct name *, struct name *, struct name *,
+	   	 char *, struct name *));
+void	 mail1 __P((struct header *, int, struct message *));
 void	 makemessage __P((FILE *));
 void	 mark __P((int));
 int	 markall __P((char [], int));
@@ -199,7 +203,7 @@ int	 preserve __P((void *));
 void	 prettyprint __P((struct name *));
 void	 printgroup __P((char []));
 void	 printhead __P((int));
-int	 puthead __P((struct header *, FILE *, int));
+int	 puthead __P((struct header *, FILE *, int, int));
 int	 putline __P((FILE *, char *));
 int	 pversion __P((void *));
 void	 quit __P((void));
@@ -215,7 +219,7 @@ int	 rexit __P((void *));
 int	 rm __P((char *));
 int	 run_command __P((char *, sigset_t *, int, int, char *, char *, char *));
 int	 save __P((void *));
-int	 save1 __P((char [], int, char *, struct ignoretab *));
+int	 save1 __P((char [], int, char *, struct ignoretab *, int));
 void	 savedeadletter __P((FILE *));
 int	 saveigfield __P((void *));
 int	 savemail __P((char [], FILE *));
@@ -225,7 +229,7 @@ void	 scaninit __P((void));
 int	 schdir __P((void *));
 int	 screensize __P((void));
 int	 scroll __P((void *));
-int	 send __P((struct message *, FILE *, struct ignoretab *, char *));
+int	 send __P((struct message *, FILE *, struct ignoretab *, char *, int));
 int	 sendmail __P((void *));
 int	 set __P((void *));
 int	 setfile __P((char *));
@@ -262,3 +266,18 @@ int	 visual __P((void *));
 int	 wait_child __P((int));
 int	 wait_command __P((int));
 int	 writeback __P((FILE *));
+void	*smalloc __P((size_t));
+size_t	mime_write_tob64 __P((struct str*, FILE*));
+void	mime_fromb64 __P((struct str*, struct str*, int));
+void	itohex __P((unsigned int, char*));
+char	*mime_strcasestr __P((char*,char*));
+int	mime_getenc __P((char*));
+int	mime_getcontent __P((char*));
+char	*mime_filecontent __P((char*));
+char	*mime_getparam __P((char*,char*));
+char	*mime_getboundary __P((char*));
+char	*mime_getfilename __P((char*));
+int	mime_isclean __P((FILE*));
+int	mime_save __P((void *));
+void	mime_fromhdr __P((struct str*, struct str*, int));
+size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int));

@@ -1,5 +1,6 @@
-/*	$OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp $	*/
-/*	$NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp $	*/
+/*	$Id: tty.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
+/*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: tty.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -50,6 +53,8 @@ static char rcsid[] = "$OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp $"
 
 #include "rcv.h"
 #include "extern.h"
+#include <errno.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 
 static	cc_t	c_erase;		/* Current erase char */
@@ -58,6 +63,11 @@ static	jmp_buf	rewrite;		/* Place to go when continued */
 static	jmp_buf	intjmp;			/* Place to go when interrupted */
 #ifndef TIOCSTI
 static	int	ttyset;			/* We must now do erase/kill */
+#endif
+
+#ifdef IOSAFE 
+static int got_interrupt;
+static int safegetc(FILE *ibuf);
 #endif
 
 /*
@@ -104,8 +114,15 @@ grabh(hp, gflags)
 	if ((savequit = signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
 		signal(SIGQUIT, SIG_DFL);
 #else
-	if (setjmp(intjmp))
+#ifdef IOSAFE
+	got_interrupt = 0;
+#endif
+	if (setjmp(intjmp)) {
+		/* avoid garbled output with C-c */
+		printf("\n");
+		fflush(stdout);
 		goto out;
+	}
 	saveint = signal(SIGINT, ttyint);
 #endif
 	if (gflags & GTO) {
@@ -138,6 +155,15 @@ grabh(hp, gflags)
 #endif
 		hp->h_bcc =
 			extract(readtty("Bcc: ", detract(hp->h_bcc, 0)), GBCC);
+	}
+	if (gflags & GATTACH) {
+#ifndef TIOCSTI
+		if (!ttyset && hp->h_attach != NIL)
+			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+		hp->h_attach =
+			extract(readtty("Attachments: ",
+					detract(hp->h_attach, 0)), GATTACH);
 	}
 out:
 	signal(SIGTSTP, savetstp);
@@ -207,12 +233,25 @@ readtty(pr, src)
 	cp2 = cp;
 	if (setjmp(rewrite))
 		goto redo;
+#ifdef IOSAFE
+	got_interrupt = 0;
+#endif
 	signal(SIGTSTP, ttystop);
 	signal(SIGTTOU, ttystop);
 	signal(SIGTTIN, ttystop);
 	clearerr(stdin);
 	while (cp2 < canonb + BUFSIZ) {
+#ifdef IOSAFE
+		c = safegetc(stdin);
+		/* this is full of ACE but hopefully, interrupts will only
+		   occur in the above read */
+		if (got_interrupt == SIGINT)
+			longjmp(intjmp,1);
+		else if (got_interrupt)
+			longjmp(rewrite,1);
+#else
 		c = getc(stdin);
+#endif
 		if (c == EOF || c == '\n')
 			break;
 		*cp2++ = c;
@@ -280,6 +319,11 @@ ttystop(s)
 	kill(0, s);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 	signal(s, old_action);
+#ifdef IOSAFE
+	got_interrupt = s;
+#else
+	fpurge(stdin);
+#endif
 	longjmp(rewrite, 1);
 }
 
@@ -288,5 +332,44 @@ void
 ttyint(s)
 	int s;
 {
+#ifdef IOSAFE
+	got_interrupt = s;
+#else
+	fpurge(stdin);
 	longjmp(intjmp, 1);
+#endif
 }
+
+#ifdef IOSAFE
+/* it is very awful, but only way I see to be able to do a
+   interruptable stdio call */ 
+static int safegetc(FILE *ibuf)
+{
+	int oldfl;
+	int res;
+	while (1) {
+		errno = 0;
+		oldfl = fcntl(fileno(ibuf),F_GETFL);
+		fcntl(fileno(ibuf),F_SETFL,oldfl | O_NONBLOCK);
+		res = getc(ibuf);
+		fcntl(fileno(ibuf),F_SETFL,oldfl);
+		if (res != EOF)
+			return res;
+		else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			fd_set rds;
+			clearerr(ibuf);
+			FD_ZERO(&rds);
+			FD_SET(fileno(ibuf),&rds);
+			select(fileno(ibuf)+1,&rds,NULL,NULL,NULL);
+			/* if an interrupt occur drops the current
+			   line and returns */
+			if (got_interrupt)
+				return EOF;
+		} else {
+			/* probably EOF one the file descriptors */
+			return EOF;
+		}
+	}
+}
+#endif
+

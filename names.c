@@ -1,5 +1,6 @@
-/*	$OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp $	*/
-/*	$NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp $	*/
+/*	$Id: names.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
+/*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)names.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)names.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: names.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -253,7 +256,8 @@ outof(names, fo, hp)
 		 */
 
 		if (image < 0) {
-			if ((fout = Fopen(tempEdit, "a")) == NULL) {
+			/* hopefully we always create the file, so I change the "a" to "w"  the line below */
+			if ((fout = Fopen(tempEdit, "w")) == (FILE *)NULL) {
 				perror(tempEdit);
 				senderr++;
 				goto cant;
@@ -268,7 +272,7 @@ outof(names, fo, hp)
 			}
 			(void) fcntl(image, F_SETFD, 1);
 			fprintf(fout, "From %s %s", myname, date);
-			puthead(hp, fout, GTO|GSUBJECT|GCC|GNL);
+			puthead(hp, fout, GTO|GSUBJECT|GCC|GNL, CONV_NONE);
 			while ((c = getc(fo)) != EOF)
 				(void) putc(c, fout);
 			rewind(fo);
@@ -312,17 +316,17 @@ outof(names, fo, hp)
 			free_child(pid);
 		} else {
 			int f;
-			if ((fout = Fopen(fname, "a")) == NULL) {
+			if ((fout = Fopen(fname, "a")) == (FILE *)NULL) {
 				perror(fname);
 				senderr++;
 				goto cant;
 			}
 			if ((f = dup(image)) < 0) {
 				perror("dup");
-				fin = NULL;
+				fin = (FILE *)NULL;
 			} else
 				fin = Fdopen(f, "r");
-			if (fin == NULL) {
+			if (fin == (FILE *)NULL) {
 				fprintf(stderr, "Can't reopen image\n");
 				(void) Fclose(fout);
 				senderr++;

@@ -1,5 +1,6 @@
-/*	$OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp $	*/
-/*	$NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp $	*/
+/*	$Id: fio.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
+/*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -36,9 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[] __attribute__ ((unused)) = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
+#elif 0
+static char rcsid[] __attribute__ ((unused)) = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
 #else
-static char rcsid[] = "$OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp $";
+static char rcsid[] __attribute__ ((unused)) = "$Id: fio.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -68,15 +71,15 @@ setptr(ibuf)
 	register int c, count;
 	register char *cp, *cp2;
 	struct message this;
-	FILE *mestmp;
+	FILE *mestmp = (FILE *)NULL;
 	off_t offset;
 	int maybe, inhead;
 	char linebuf[LINESIZE];
 
 	/* Get temporary file. */
-	(void)sprintf(linebuf, "%s/mail.XXXXXX", tmpdir);
+	(void)snprintf(linebuf,LINESIZE,"%s/mail.XXXXXX", tmpdir);
 	if ((c = mkstemp(linebuf)) == -1 ||
-	    (mestmp = Fdopen(c, "r+")) == NULL) {
+	    (mestmp = Fdopen(c, "r+")) == (FILE *)NULL) {
 		(void)fprintf(stderr, "mail: can't open %s\n", linebuf);
 		exit(1);
 	}
@@ -92,7 +95,7 @@ setptr(ibuf)
 	this.m_block = 0;
 	this.m_offset = 0;
 	for (;;) {
-		if (fgets(linebuf, LINESIZE, ibuf) == NULL) {
+		if (fgets(linebuf, LINESIZE, ibuf) == NOSTR) {
 			if (append(&this, mestmp)) {
 				perror("temporary file");
 				exit(1);
@@ -179,10 +182,54 @@ readline(ibuf, linebuf, linesize)
 	int linesize;
 {
 	register int n;
+#ifdef IOSAFE
+	register int oldfl;
+	char *res;
+#endif
 
 	clearerr(ibuf);
-	if (fgets(linebuf, linesize, ibuf) == NULL)
+#ifdef IOSAFE
+	/* we want to be able to get interrupts while waiting user-input
+	   we cannot to safely inside a stdio call, so we first ensure there  
+	   is now data in the stdio buffer by doing the stdio call with the
+	   descriptor in non-blocking state and then do a select. 
+	   Hope it is safe (the libc should not break on a EAGAIN) 
+	   lprylli@graville.fdn.fr*/ 
+
+	n = 0; /* number of caracters already read */
+	while (n < linesize - 1) {
+		errno = 0;
+		oldfl = fcntl(fileno(ibuf),F_GETFL);
+		fcntl(fileno(ibuf),F_SETFL,oldfl | O_NONBLOCK);
+		res = fgets(linebuf + n, linesize-n, ibuf);
+		fcntl(fileno(ibuf),F_SETFL,oldfl);
+		if (res != NULL) {
+			n = strlen(linebuf);
+			if (n > 0 && linebuf[n-1] == '\n')
+				break;
+		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			clearerr(ibuf);
+		} else {
+			/* probably EOF one the file descriptors */
+			if (n > 0)
+				break;
+			else
+				return -1;
+		}{
+			extern int got_interrupt;
+			fd_set rds;
+			FD_ZERO(&rds);
+			FD_SET(fileno(ibuf),&rds);
+			select(fileno(ibuf)+1,&rds,NULL,NULL,NULL);
+			/* if an interrupt occur drops the current line and returns */
+			if (got_interrupt)
+			return -1;
+		}
+	}
+#else
+	if (fgets(linebuf, linesize, ibuf) == NOSTR)
 		return -1;
+#endif
 	n = strlen(linebuf);
 	if (n > 0 && linebuf[n - 1] == '\n')
 		linebuf[--n] = '\0';
@@ -214,7 +261,7 @@ void
 makemessage(f)
 	FILE *f;
 {
-	register size = (msgCount + 1) * sizeof (struct message);
+	register int size = (msgCount + 1) * sizeof (struct message);
 
 	if (message != 0)
 		free((char *) message);
@@ -287,7 +334,7 @@ relsesigs()
 {
 
 	if (--sigdepth == 0)
-		sigprocmask(SIG_SETMASK, &oset, NULL);
+		sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 }
 
 /*
@@ -336,7 +383,7 @@ expand(name)
 	 */
 	switch (*name) {
 	case '%':
-		findmail(name[1] ? name + 1 : myname, xname);
+		findmail(name[1] ? name + 1 : myname, xname, PATHSIZE);
 		return savestr(xname);
 	case '#':
 		if (name[1] != 0)
@@ -351,13 +398,13 @@ expand(name)
 			name = "~/mbox";
 		/* fall through */
 	}
-	if (name[0] == '+' && getfold(cmdbuf) >= 0) {
-		sprintf(xname, "%s/%s", cmdbuf, name + 1);
+	if (name[0] == '+' && getfold(cmdbuf, PATHSIZE) >= 0) {
+		snprintf(xname, PATHSIZE, "%s/%s", cmdbuf, name + 1);
 		name = savestr(xname);
 	}
 	/* catch the most common shell meta character */
 	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
-		sprintf(xname, "%s%s", homedir, name + 1);
+		snprintf(xname, PATHSIZE, "%s%s", homedir, name + 1);
 		name = savestr(xname);
 	}
 	if (!anyof(name, "~{[*?$`'\"\\"))
@@ -366,7 +413,7 @@ expand(name)
 		perror("pipe");
 		return name;
 	}
-	sprintf(cmdbuf, "echo %s", name);
+	snprintf(cmdbuf, PATHSIZE, "echo %s", name);
 	if ((shell = value("SHELL")) == NOSTR)
 		shell = _PATH_CSHELL;
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NOSTR);
@@ -376,21 +423,22 @@ expand(name)
 		return NOSTR;
 	}
 	close(pivec[1]);
-	l = read(pivec[0], xname, BUFSIZ);
+	l = read(pivec[0], xname, PATHSIZE);
+	if (l < 0) {
+		perror("read");
+		close(pivec[0]);
+		return NOSTR;
+	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && wait_status.w_termsig != SIGPIPE) {
 		fprintf(stderr, "\"%s\": Expansion failed.\n", name);
-		return NOSTR;
-	}
-	if (l < 0) {
-		perror("read");
 		return NOSTR;
 	}
 	if (l == 0) {
 		fprintf(stderr, "\"%s\": No match.\n", name);
 		return NOSTR;
 	}
-	if (l == BUFSIZ) {
+	if (l == PATHSIZE) {
 		fprintf(stderr, "\"%s\": Expansion buffer overflow.\n", name);
 		return NOSTR;
 	}
@@ -409,17 +457,20 @@ expand(name)
  * Determine the current folder directory name.
  */
 int
-getfold(name)
+getfold(name, size)
 	char *name;
+	int size;
 {
 	char *folder;
 
 	if ((folder = value("folder")) == NOSTR)
 		return (-1);
-	if (*folder == '/')
-		strcpy(name, folder);
-	else
-		sprintf(name, "%s/%s", homedir, folder);
+	if (*folder == '/') {
+		strncpy(name, folder, size);
+		name[size-1]='\0';
+	} else {
+		snprintf(name, size, "%s/%s", homedir, folder);
+	}
 	return (0);
 }
 
@@ -436,7 +487,7 @@ getdeadletter()
 	else if (*cp != '/') {
 		char buf[PATHSIZE];
 
-		(void) sprintf(buf, "~/%s", cp);
+		(void) snprintf(buf, PATHSIZE, "~/%s", cp);
 		cp = expand(buf);
 	}
 	return cp;
