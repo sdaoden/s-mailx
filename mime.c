@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.29 (gritter) 10/11/04";
+static char sccsid[]  = "@(#)mime.c	2.36 (gritter) 10/21/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -89,7 +89,7 @@ static int gettextconversion(void);
 static char *ctohex(int c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
-		int (*mustquote)(int));
+		int (*mustquote)(int), int inhdr);
 static void mime_fromqp(struct str *in, struct str *out, int ishdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
 static size_t convhdra(char *str, size_t len, FILE *fp);
@@ -118,6 +118,8 @@ mustquote_hdr(int c)
 {
 	if (c != '\n' && (c < 040 || c >= 0177))
 		return 1;
+	if (c == '=' || c == '?' || c == '_')
+		return 1;
 	return 0;
 }
 
@@ -128,7 +130,7 @@ static int
 mustquote_inhdrq(int c)
 {
 	if (c != '\n'
-		&& (c < 040 || c == '=' || c == '?' || c == '_' || c >= 0177))
+		&& (c <= 040 || c == '=' || c == '?' || c == '_' || c >= 0177))
 		return 1;
 	return 0;
 }
@@ -933,7 +935,7 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 	sz = in->l;
 	upper = in->s + in->l;
 	for (p = in->s, l = 0; p < upper; p++) {
-		if (mustquote(*p) ||
+		if (mustquote(*p&0377) ||
 				*(p + 1) == '\n' && blankchar(*p & 0377) ||
 				*p == ' ' && l == 4 &&
 				p[-4] == 'F' && p[-3] == 'r' &&
@@ -968,7 +970,7 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
  * The mustquote function determines whether a character must be quoted.
  */
 static void 
-mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int))
+mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
 {
 	char *p, *q, *upper;
 
@@ -977,12 +979,16 @@ mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int))
 	out->l = in->l;
 	upper = in->s + in->l;
 	for (p = in->s; p < upper; p++) {
-		if (mustquote(*p) ||
-				*(p + 1) == '\n' && blankchar(*p & 0377)) {
-			out->l += 2;
-			*q++ = '=';
-			ctohex(*p&0377, q);
-			q += 2;
+		if (mustquote(*p&0377) || p+1 < upper && *(p + 1) == '\n' &&
+				blankchar(*p & 0377)) {
+			if (inhdr && *p == ' ') {
+				*q++ = '_';
+			} else {
+				out->l += 2;
+				*q++ = '=';
+				ctohex(*p&0377, q);
+				q += 2;
+			}
 		} else {
 			*q++ = *p;
 		}
@@ -1041,7 +1047,7 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
 void 
 mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 {
-	char *p, *q, *op, *upper, *cs, *cbeg, *tcs;
+	char *p, *q, *op, *upper, *cs, *cbeg, *tcs, *lastwordend = NULL;
 	struct str cin, cout;
 	int convert;
 	size_t maxstor;
@@ -1104,6 +1110,8 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 					mime_fromqp(&cin, &cout, 1);
 					break;
 			}
+			if (lastwordend)
+				q = lastwordend;
 #ifdef	HAVE_ICONV
 			if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
 				char *iptr, *mptr, *nptr, *uptr;
@@ -1134,6 +1142,7 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 			}
 #endif
 			free(cout.s);
+			lastwordend = q;
 		} else {
 notmime:
 			p = op;
@@ -1141,6 +1150,8 @@ notmime:
 				mime_fromhdr_inc(16);
 			*q++ = *p;
 			out->l++;
+			if (!blankchar(*p&0377))
+				lastwordend = NULL;
 		}
 	}
 fromhdr_end:
@@ -1160,7 +1171,7 @@ fromhdr_end:
 static size_t
 mime_write_tohdr(struct str *in, FILE *fo)
 {
-	char *upper, *wbeg, *wend, *charset;
+	char *upper, *wbeg, *wend, *charset, *lastwordend = NULL, *lastspc;
 	struct str cin, cout;
 	size_t sz = 0, col = 0, wr, charsetlen;
 	int mustquote,
@@ -1212,58 +1223,95 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		 * Print the field word-wise in quoted-printable.
 		 */
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
+			lastspc = NULL;
 			while (wbeg < upper && whitechar(*wbeg & 0377)) {
-				putc(*wbeg++, fo);
-				sz++, col++;
+				lastspc = lastspc ? lastspc : wbeg;
+				wbeg++;
+				col++;
 			}
-			if (wbeg == upper)
+			if (wbeg == upper) {
+				if (lastspc)
+					while (lastspc < wbeg) {
+						putc(*lastspc&0377, fo);
+							lastspc++,
+							sz++;
+						}
 				break;
+			}
 			mustquote = 0;
 			for (wend = wbeg;
 				wend < upper && !whitechar(*wend & 0377);
 					wend++) {
-				if (mustquote_hdr(*wend))
+				if (mustquote_hdr(*wend&0377))
 					mustquote++;
 			}
 			if (mustquote) {
 				for (;;) {
-					cin.s = wbeg;
-					cin.l = wend - wbeg;
+					cin.s = lastwordend ? lastwordend :
+						wbeg;
+					cin.l = wend - cin.s;
 					mime_str_toqp(&cin, &cout,
-							mustquote_inhdrq);
+							mustquote_inhdrq, 1);
 					if ((wr = cout.l + charsetlen + 7)
 							< maxcol - col) {
+						if (lastspc)
+							while (lastspc < wbeg) {
+								putc(*lastspc
+									&0377,
+									fo);
+								lastspc++,
+								sz++;
+							}
 						fprintf(fo, "=?%s?Q?",
 								charset);
 						fwrite(cout.s, sizeof *cout.s,
 								cout.l, fo);
-						fwrite("?=", sizeof (char),
-								2, fo);
+						fwrite("?=", 1, 2, fo);
 						sz += wr, col += wr;
 						free(cout.s);
 						break;
 					} else {
 						if (col) {
-							fprintf(fo, "\n ");
-							sz += 2;
+							putc('\n', fo);
+							sz++;
 							col = 0;
 							maxcol = 76;
+							if (lastspc == NULL) {
+								putc(' ', fo);
+								sz++;
+								maxcol--;
+							} else
+								maxcol -= wbeg -
+									lastspc;
 						} else {
 							wend -= 4;
 						}
 						free(cout.s);
 					}
 				}
+				lastwordend = wend;
 			} else {
 				if (col && wend - wbeg > maxcol - col) {
-					fwrite("\n ", sizeof (char), 2, fo);
-					sz += 2;
+					putc('\n', fo);
+					sz++;
 					col = 0;
 					maxcol = 76;
+					if (lastspc == NULL) {
+						putc(' ', fo);
+						sz++;
+						maxcol--;
+					} else
+						maxcol -= wbeg - lastspc;
 				}
+				if (lastspc)
+					while (lastspc < wbeg) {
+						putc(*lastspc&0377, fo);
+						lastspc++, sz++;
+					}
 				wr = fwrite(wbeg, sizeof *wbeg,
 						wend - wbeg, fo);
 				sz += wr, col += wr;
+				lastwordend = NULL;
 			}
 		}
 	}

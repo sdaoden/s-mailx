@@ -1,3 +1,24 @@
+[11.12] released 10/21/04
+* Blank characters between MIME encoded words in header fields are now
+  discarded for display purposes as demanded by RFC 2047.
+* Unless the 'fullnames' variable was set, nail did not generate 'To' header
+  fields when replying to messages since version 11.5 (Bugreport by Bob
+  Tennent).
+* An internal problem in the token scanning for junk mail detection has been
+  fixed; the end of the mail header was not always correctly determined.
+* Special characters in IMAP or POP3 account strings like 'imap://user@host'
+  can now be escaped using URL notation, e.g. 'foo%2Fbar' for 'foo/bar'. It
+  was previously not possible to use these characters. This is a slightly
+  incompatible change as the '%' character must now also be escaped, as
+  '%25'. (Bugreport by Thomas Wolff.)
+* The system mailbox is now locked using fcntl(2) for reading too (Problem
+  reported by Thomas Wolff).
+* When new mail arrives in an IMAP mailbox, the current message is now
+  properly advanced by the 'next' command if it has been printed before.
+* If neither the host name nor the user's email address can be determined,
+  no Message-ID fields are generated.
+* The empty string is now accepted as a message subject for sending.
+
 [11.11] released 10/13/04
 * When sending messages that contain ASCII control characters but neither
   NULs nor non-ASCII characters, the quoted-printable MIME encoding is now
