@@ -1,7 +1,7 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	1.9 (gritter) 2/17/01
+# Sccsid: @(#)configure.in	1.10 (gritter) 9/19/01
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
@@ -145,7 +145,7 @@ AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/param.h sys/select.h \
 	sys/stat.h sys/utsname.h sys/socket.h netinet/in.h arpa/inet.h)
-AC_CHECK_HEADERS(fcntl.h netdb.h signal.h unistd.h langinfo.h)
+AC_CHECK_HEADERS(fcntl.h netdb.h signal.h strings.h unistd.h langinfo.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

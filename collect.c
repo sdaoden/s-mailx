@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.8 (gritter) 2/20/01";
+static char sccsid[] = "@(#)collect.c	1.10 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -103,6 +103,7 @@ The following ~ escapes are defined:\n\
 ~|command       Pipe the message through the command\n\
 -----------------------------------------------------------\n";
 
+/*ARGSUSED*/
 static RETSIGTYPE
 onpipe(signo)
 {
@@ -117,7 +118,7 @@ insertcommand(fp, cmd)
 FILE *fp;
 char *cmd;
 {
-	FILE *obuf;
+	FILE *obuf = NULL;
 	char *cp, c;
 
 	cp = value("SHELL");
@@ -215,7 +216,7 @@ collect(hp, printheaders, mp, quotefile)
 	if (mp != NULL && (quote = value("quote")) != NULL) {
 		quoteig = allignore;
 		if (strcmp(quote, "noheading") == 0) {
-			/* do nothing here */
+			/*EMPTY*/
 		} else if (strcmp(quote, "headers") == 0) {
 			quoteig = ignore;
 		} else if (strcmp(quote, "allheaders") == 0) {
@@ -367,6 +368,7 @@ cont:
 			hadintr++;
 			collint(SIGINT);
 			exit(1);
+			/*NOTREACHED*/
 		case 'h':
 			/*
 			 * Grab a bunch of headers.
@@ -418,7 +420,7 @@ cont:
 		case 'd':
 			strncpy(linebuf + 2, getdeadletter(), LINESIZE - 2);
 			linebuf[LINESIZE-1]='\0';
-			/* fall into . . . */
+			/*FALLTHRU*/
 		case 'r':
 		case '<':
 			/*
@@ -714,8 +716,9 @@ forward(ms, fp, f)
 	struct ignoretab *ig;
 	char *tabst;
 
-	msgvec = (int *) salloc((msgcount+1) * sizeof *msgvec);
-	if (msgvec == (int *) NULL)
+	/*LINTED*/
+	msgvec = (int *)salloc((msgcount+1) * sizeof *msgvec);
+	if (msgvec == (int *)NULL)
 		return(0);
 	if (getmsglist(ms, msgvec, 0) < 0)
 		return(0);

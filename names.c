@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)names.c	1.8 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -45,6 +45,10 @@ static char sccsid[] = "@(#)names.c	1.6 (gritter) 11/18/00";
 
 #include "rcv.h"
 #include "extern.h"
+
+#ifdef	HAVE_STRINGS_H
+#include <strings.h>
+#endif
 
 /*
  * Allocate a single element of a name list,
@@ -58,7 +62,8 @@ nalloc(str, ntype)
 {
 	struct name *np;
 
-	np = (struct name *) salloc(sizeof *np);
+	/*LINTED*/
+	np = (struct name *)salloc(sizeof *np);
 	np->n_flink = NIL;
 	np->n_blink = NIL;
 	np->n_type = ntype;
@@ -230,6 +235,7 @@ yankword(ap, wbuf)
  * Recipients whose name begins with | are piped through the given
  * program and removed.
  */
+/*ARGSUSED 3*/
 struct name *
 outof(names, fo, hp)
 	struct name *names;
@@ -522,7 +528,8 @@ unpack(np)
 	verbose = value("verbose") != NULL;
 	if (verbose)
 		extra++;
-	top = (char **) salloc((t + extra) * sizeof *top);
+	/*LINTED*/
+	top = (char **)salloc((t + extra) * sizeof *top);
 	ap = top;
 	*ap++ = "send-mail";
 	*ap++ = "-i";

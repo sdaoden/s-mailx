@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)cmd1.c	1.6 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -245,6 +245,7 @@ printhead(mesg)
 /*
  * Print out the value of dot.
  */
+/*ARGSUSED*/
 int
 pdot(v)
 	void *v;
@@ -256,6 +257,7 @@ pdot(v)
 /*
  * Print out all the possible commands.
  */
+/*ARGSUSED*/
 int
 pcmdlist(v)
 	void *v;
@@ -438,7 +440,8 @@ char *str;
 	char *cmd;
 	int f, *msgvec;
 
-	msgvec = (int*) salloc((msgcount + 2) * sizeof *msgvec);
+	/*LINTED*/
+	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
 	cmd = getcmd(str, &f);
 	if (!f) {
 		*msgvec = first(0, MMNORM);
@@ -460,7 +463,7 @@ more(v)
 	void *v;
 {
 	int *msgvec = v;
-	return (type1(msgvec, 1, 1, 0, NULL));
+	return (type1(msgvec, 1, 1, 0, (char *)NULL));
 }
 
 /*
@@ -472,7 +475,7 @@ More(v)
 {
 	int *msgvec = v;
 
-	return (type1(msgvec, 0, 1, 0, NULL));
+	return (type1(msgvec, 0, 1, 0, (char *)NULL));
 }
 
 /*
@@ -484,7 +487,7 @@ type(v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 1, 0, 0, NULL));
+	return(type1(msgvec, 1, 0, 0, (char *)NULL));
 }
 
 /*
@@ -496,7 +499,7 @@ Type(v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, NULL));
+	return(type1(msgvec, 0, 0, 0, (char *)NULL));
 }
 
 /*
@@ -524,6 +527,7 @@ void *v;
  * Respond to a broken pipe signal --
  * probably caused by quitting more.
  */
+/*ARGSUSED*/
 RETSIGTYPE
 brokpipe(signo)
 	int signo;
@@ -615,6 +619,7 @@ mboxit(v)
 /*
  * List the folders the user currently has.
  */
+/*ARGSUSED*/
 int
 folders(v)
 	void *v;

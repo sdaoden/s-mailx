@@ -1,4 +1,4 @@
-#define	V	"9.27"
+#define	V	"9.28"
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,7 +34,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)version.c	1.30 (gritter) 5/13/01";
+static char sccsid[] = "@(#)version.c	1.38 (gritter) 10/23/01";
 #endif
 #endif /* not lint */
 
@@ -46,9 +46,12 @@ static char sccsid[] = "@(#)version.c	1.30 (gritter) 5/13/01";
  * Just keep track of the date/sid of this version of Mail.
  * Load this file first to get a "total" Mail version.
  */
-#if 0
-char	*version = "8.1 6/6/93";
-#else
-const char *version = "nail " V " 5/13/01";
-const static char *versionid = "@(#)nail " V " 5/13/01";
+/*char	*version = "8.1 6/6/93";*/
+const char *version = "nail " V " 10/23/01";
+#ifndef	lint
+const static char *versionid
+#ifdef	__GNUC__
+__attribute__ ((unused))
 #endif
+= "@(#)nail " V " 10/23/01";
+#endif	/* !lint */

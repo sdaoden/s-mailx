@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)lex.c	1.6 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -90,7 +90,7 @@ setfile(name)
 		perror(name);
 		return (-1);
 	} else if (S_ISREG(stb.st_mode)) {
-		/* do nothing here */;
+		/*EMPTY*/
 	} else {
 		Fclose(ibuf);
 		errno = EINVAL;

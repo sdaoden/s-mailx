@@ -32,13 +32,16 @@
  */
 
 #ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
+static char copyright[]
+#ifdef	__GNUC__
+__attribute__ ((unused))
+#endif
+= "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
 #endif /* not lint */
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.10 (gritter) 2/20/01";
+static char sccsid[] = "@(#)main.c	1.12 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -141,6 +144,7 @@ main(argc, argv)
 		case 'V':
 			puts(version);
 			exit(0);
+			/*NOTREACHED*/
 		case 'T':
 			/*
 			 * Next argument is temp file to write which
@@ -337,11 +341,14 @@ main(argc, argv)
 	safe_signal(SIGQUIT, SIG_IGN);
 	quit();
 	exit(0);
+	/*NOTREACHED*/
+	return 0;
 }
 
 /*
  * Interrupt printing of the headers.
  */
+/*ARGSUSED*/
 void
 hdrstop(signo)
 	int signo;

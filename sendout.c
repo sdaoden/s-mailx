@@ -33,13 +33,17 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	1.10 (gritter) 5/13/01";
+static char sccsid[] = "@(#)sendout.c	1.13 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
+
+#ifdef	HAVE_STRINGS_H
+#include <strings.h>
+#endif
 
 /*
  * Mail -- a mail program
@@ -113,18 +117,16 @@ getencoding(convert)
 	switch (convert) {
 	case CONV_7BIT:
 		return "7bit";
-		break;
 	case CONV_NONE:
 		return "8bit";
-		break;
 	case CONV_TOQP:
 		return "quoted-printable";
-		break;
 	case CONV_TOB64:
 		return "base64";
-		break;
 	}
 	abort();
+	/*NOTREACHED*/
+	return NULL;
 }
 
 /*
@@ -262,7 +264,8 @@ FILE *fo;
 		break;
 	case MIME_BINARY:
 		convert = CONV_TOB64;
-		if (contenttype == NULL)
+		if (contenttype == NULL
+				|| strncasecmp(contenttype, "text/", 5) == 0)
 			contenttype = "application/octet-stream";
 		charset = NULL;
 		break;
@@ -693,7 +696,6 @@ mail1(hp, printheaders, quote, quotefile)
 	char *quotefile;
 {
 	char *cp;
-	char **namelist;
 	struct name *to;
 	FILE *mtf, *nmtf;
 	int convert;
@@ -804,8 +806,8 @@ FILE *fo;
 	itostr(36, (unsigned)getpid(), pidstr);
 	itostr(36, (unsigned)msgc, countstr);
 	itostr(36, (unsigned)randbuf, randstr);
-	if ((domainpart = skin(value("from")))
-			&& (domainpart = strchr(domainpart, '@')))
+	if ((domainpart = skin(value("from"))) != NULL
+			&& (domainpart = strchr(domainpart, '@')) != NULL)
 		domainpart++;
 	else
 		domainpart = nodename();
@@ -814,11 +816,11 @@ FILE *fo;
 			domainpart);
 }
 
-const static char *weekday_names[] = {
+static const char *weekday_names[] = {
 	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 };
 
-const static char *month_names[] = {
+static const char *month_names[] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
@@ -968,7 +970,7 @@ puthead(hp, fo, w, convert)
 		message_id(fo), gotcha++;
 	if (hp->h_ref != NIL && w & GREF) {
 		fmt("References:", hp->h_ref, fo, 0, 1);
-		if ((np = hp->h_ref) && np->n_name) {
+		if ((np = hp->h_ref) != NULL && np->n_name) {
 			while (np->n_flink)
 				np = np->n_flink;
 			if (mime_name_invalid(np->n_name, 0) == 0) {

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)cmd2.c	1.7 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -172,10 +172,10 @@ save1(str, mark, cmd, ignore, convert)
 	char *file, *disp;
 	int f, *msgvec;
 	FILE *obuf;
-	int newfile, nullfile = 0;
-	struct stat st;
+	int newfile;
 
-	msgvec = (int *) salloc((msgcount + 2) * sizeof *msgvec);
+	/*LINTED*/
+	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
 	if ((file = snarf(str, &f)) == NULL)
 		return(1);
 	if (!f) {
@@ -385,12 +385,15 @@ undeletecmd(v)
 /*
  * Interactively dump core on "core"
  */
+/*ARGSUSED*/
 int
 core(v)
 	void *v;
 {
 	int pid;
+#ifdef	WCOREDUMP
 	extern int wait_status;
+#endif
 
 	switch (pid = fork()) {
 	case -1:
@@ -442,7 +445,7 @@ clob1(n)
 
 	if (n <= 0)
 		return;
-	for (cp = buf; cp < &buf[512]; *cp++ = 0xFF)
+	for (cp = buf; cp < &buf[512]; *cp++ = (char)0xFF)
 		;
 	clob1(n - 1);
 }
@@ -537,7 +540,8 @@ igshow(tab, which)
 		printf("No fields currently being %s.\n", which);
 		return 0;
 	}
-	ring = (char **) salloc((tab->i_count + 1) * sizeof (char *));
+	/*LINTED*/
+	ring = (char **)salloc((tab->i_count + 1) * sizeof (char *));
 	ap = ring;
 	for (h = 0; h < HSHSIZE; h++)
 		for (igp = tab->i_head[h]; igp != 0; igp = igp->i_link)

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)popen.c	1.6 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -387,6 +387,7 @@ delchild(cp)
 	free((char *) cp);
 }
 
+/*ARGSUSED*/
 RETSIGTYPE
 sigchild(signo)
 	int signo;

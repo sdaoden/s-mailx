@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)head.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)head.c	1.6 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -279,10 +279,10 @@ nextword(wp, wbuf)
 		*wbuf = 0;
 		return (NULL);
 	}
-	while ((c = *wp++) && c != ' ' && c != '\t') {
+	while ((c = *wp++) != '\0' && c != ' ' && c != '\t') {
 		*wbuf++ = c;
 		if (c == '"') {
- 			while ((c = *wp++) && c != '"')
+ 			while ((c = *wp++) != '\0' && c != '"')
  				*wbuf++ = c;
  			if (c == '"')
  				*wbuf++ = c;

@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.10 (gritter) 5/13/01
+.\"     Sccsid: @(#)nail.1	1.11 (gritter) 6/1/01
 .\"
-.TH NAIL 1 "5/13/01" "nail 9.27" "User Commands"
+.TH NAIL 1 "6/1/01" "nail 9.28" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -147,8 +147,7 @@ delivery are displayed on the user's terminal.
 .B \-V
 Print \fInail\fR's version and exit.
 .SH USAGE
-.TP
-.B "Sending mail."
+.SS "Sending mail"
 To send a message to one or more people,
 \fInail\fR can be invoked with arguments
 which are the names of people
@@ -159,8 +158,7 @@ The section below Replying to
 or originating mail,
 describes some features of \fInail\fR
 available to help you compose your letter.
-.TP
-.B "Reading mail."
+.SS "Reading mail"
 In normal usage \fInail\fR is given no arguments
 and checks your mail out of the post office,
 then prints out a one line header
@@ -174,8 +172,7 @@ much as you move between lines in
 .IR ed (1),
 with the commands '+' and '\-' moving backwards and forwards,
 and simple numbers.
-.TP
-.B "Disposing of mail."
+.SS "Disposing of mail"
 After examining a message
 you can delete 'd') the message
 or reply 'r') to it.
@@ -188,8 +185,7 @@ or the \fInail\fR session can be aborted
 by giving the exit 'x') command.
 Deleted messages will, however,
 usually disappear never to be seen again.
-.TP
-.B "Specifying messages."
+.SS "Specifying messages"
 Commands such as print and delete
 can be given a list of message numbers
 as arguments to apply to a number of messages at once.
@@ -200,8 +196,7 @@ and '$' addresses the last message;
 thus the command top which prints
 the first few lines of a message could be used
 in '\fItop *\fR' to print the first few lines of all messages.
-.TP
-.B "Replying to or originating mail."
+.SS "Replying to or originating mail"
 You can use the reply command
 to set up a response to a message,
 sending it back to the person who it was from.
@@ -221,8 +216,7 @@ and allow you to escape to an editor
 to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
-.TP
-.B "Ending a mail processing session."
+.SS "Ending a mail processing session"
 You can end a \fInail\fR session
 with the quit 'q') command.
 Messages which have been examined
@@ -232,8 +226,7 @@ in which case they are discarded.
 Unexamined messages go back
 to the post office.
 (See the \-f option above).
-.TP
-.B "Personal and systemwide distribution lists."
+.SS "Personal and systemwide distribution lists"
 It is also possible to create
 a personal distribution lists so that,
 for instance, you can send mail
@@ -260,8 +253,7 @@ System wide aliases are not expanded when the mail is sent,
 but any reply returned to the machine
 will have the system wide alias expanded
 as all mail goes through sendmail.
-.TP
-.B "Network mail (Internet / ARPA, UUCP, Berknet)."
+.SS "Network mail (Internet / ARPA, UUCP, Berknet)"
 See
 .IR mailaddr (7)
 for a description of network addresses.
@@ -270,8 +262,7 @@ which can be set in the .mailrc file
 to alter its behavior;
 thus '\fIset askcc\fR' enables the askcc feature.
 (These options are summarized below).
-.TP
-.B "MIME types."
+.SS "MIME types"
 For any outgoing attachment,
 \fInail\fR tries to determine the content type.
 It does this by reading MIME type files
@@ -292,23 +283,20 @@ the content types text/plain or application/octet-stream are used,
 the first for text or international text files,
 the second for any file that contains formatting characters
 other than newlines and horizontal tabulators.
-.TP
-.B "MIME conformance."
+.SS "MIME conformance"
 \fINail\fR is intended to be
 a MIME-conformant mail user agent,
 with the following exception:
 No special handling of "multipart/alternative" messages is performed.
 All parts with content types of "text" or "message" are shown.
 This is done because the user should see as much information as possible.
-.TP
-.B "Locale."
+.SS "Locale"
 \fINail\fR uses the LC_CTYPE locale setting
 to determine whether a character is printable.
 Thus, its value has to match
 the character set of the terminal
 \fInail\fR runs on.
-.TP
-.B "Character sets."
+.SS "Character sets"
 If a message contains non-ASCII characters,
 the character set being used
 must be declared within the header.
@@ -328,7 +316,7 @@ Any message that is displayed on a terminal
 is tried to convert, too,
 with characters not in the terminal character set
 replaced by question marks.
-.SH "COMMANDS"
+.SS "Commands"
 Each command is typed on a line by itself,
 and may take arguments following the command word.
 The command need not be typed in its entirety \(en
@@ -706,7 +694,7 @@ A number without a prefix specifies an
 absolute window number,
 and a '$' lets \fInail\fR scroll
 to the last window of messages.
-.SH "TILDE ESCAPES"
+.SS "Tilde escapes"
 Here is a summary of the tilde escapes,
 which are used when composing
 messages to perform special functions.
@@ -842,7 +830,7 @@ prefaced by a single ~.
 If you have changed the escape character,
 the you should double that character
 in order to send it.
-.SH "VARIABLE OPTIONS"
+.SS "Variable options"
 Options are controlled via set and unset commands,
 see their entries for a syntax description.
 An option is also set
@@ -1182,7 +1170,7 @@ and will be displayed by the \fIset\fP command.
 Note that this is not necessarily a character set name
 that can be used in Internet messages.
 If unset, its default is the value of the charset variable.
-.SH ENVIRONMENT
+.SH ENVIRONMENT VARIABLES
 Besides the variables described above, \fInail\fR uses
 the following environment strings:
 .TP

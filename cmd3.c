@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	1.6 (gritter) 2/16/01";
+static char sccsid[] = "@(#)cmd3.c	1.8 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -173,6 +173,7 @@ by spaces.  If omitted, Nail uses the last message typed.\n\
 A <user list> consists of user names or aliases separated by spaces.\n\
 Aliases are defined in .mailrc in your home directory.\n";
 
+/*ARGSUSED*/
 int
 help(v)
 	void *v;
@@ -342,7 +343,7 @@ reedit(subj)
 	char *newsubj;
 	struct str in, out;
 
-	if (subj == NULL)
+	if (subj == NULL || *subj == '\0')
 		return NULL;
 	in.s = subj;
 	in.l = strlen(subj);
@@ -425,6 +426,7 @@ messize(v)
  * Quit quickly.  If we are sourcing, just pop the input level
  * by returning an error.
  */
+/*ARGSUSED*/
 int
 rexit(v)
 	void *v;
@@ -453,7 +455,8 @@ set(v)
 		for (h = 0, s = 1; h < HSHSIZE; h++)
 			for (vp = variables[h]; vp != NOVAR; vp = vp->v_link)
 				s++;
-		ap = (char **) salloc(s * sizeof *ap);
+		/*LINTED*/
+		ap = (char **)salloc(s * sizeof *ap);
 		for (h = 0, p = ap; h < HSHSIZE; h++)
 			for (vp = variables[h]; vp != NOVAR; vp = vp->v_link)
 				*p++ = vp->v_name;
@@ -541,7 +544,8 @@ group(v)
 		for (h = 0, s = 1; h < HSHSIZE; h++)
 			for (gh = groups[h]; gh != NOGRP; gh = gh->g_link)
 				s++;
-		ap = (char **) salloc(s * sizeof *ap);
+		/*LINTED*/
+		ap = (char **)salloc(s * sizeof *ap);
 		for (h = 0, p = ap; h < HSHSIZE; h++)
 			for (gh = groups[h]; gh != NOGRP; gh = gh->g_link)
 				*p++ = gh->g_name;
@@ -741,6 +745,7 @@ ifcmd(v)
  * Implement 'else'.  This is pretty simple -- we just
  * flip over the conditional flag.
  */
+/*ARGSUSED*/
 int
 elsecmd(v)
 	void *v;
@@ -770,6 +775,7 @@ elsecmd(v)
 /*
  * End of if statement.  Just set cond back to anything.
  */
+/*ARGSUSED*/
 int
 endifcmd(v)
 	void *v;
@@ -827,8 +833,9 @@ void *v;
 	struct name sn;
 	int f, *ip, *msgvec;
 
-	str = (char*)v;
-	msgvec = (int*) salloc((msgcount + 2) * sizeof *msgvec);
+	str = (char *)v;
+	/*LINTED*/
+	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
 	name = getcmd(str, &f);
 	if (name == NULL) {
 		puts("No recipient specified.");

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)aux.c	1.8 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -88,6 +88,10 @@ save2str(str, old)
 #include <stdarg.h>
 #else
 #include <varargs.h>
+#endif
+
+#ifdef	HAVE_STRINGS_H
+#include <strings.h>
 #endif
 
 #ifndef	HAVE_SNPRINTF
@@ -555,7 +559,7 @@ skin(name)
 		case '>':
 			if (gotlt) {
 				gotlt = 0;
-				while ((c = *cp) && c != ',') {
+				while ((c = *cp) != '\0' && c != ',') {
 					cp++;
 					if (c == '(')
 						cp = skip_comment(cp);

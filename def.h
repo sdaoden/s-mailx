@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	1.7 (gritter) 2/7/01
+ *	Sccsid @(#)def.h	1.9 (gritter) 7/4/01
  */
 
 /*
@@ -56,7 +56,7 @@
 #define	PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
 #endif
 #define	HSHSIZE		59		/* Hash size for aliases and vars */
-#define	LINESIZE	BUFSIZ		/* max readable line width */
+#define	LINESIZE	2048		/* max readable line width */
 #define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
 #define	MAXARGC		1024		/* Maximum list of raw strings */
 #define	MAXEXP		25		/* Maximum expansion of aliases */

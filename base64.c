@@ -18,7 +18,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)base64.c	1.2 (gritter) 9/29/00";
+static char sccsid[] = "@(#)base64.c	1.3 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -31,9 +31,9 @@ static char sccsid[] = "@(#)base64.c	1.2 (gritter) 9/29/00";
 #include "rcv.h"
 #include "extern.h"
 
-const static char b64table[] =
+static const char b64table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const static char b64index[] = {
+static const char b64index[] = {
 	-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
 	-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
 	-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, -1,-1,-1,63,
@@ -91,7 +91,7 @@ FILE *fo;
 			if (p == upper)
 				break;
 		}
-		h = ctob64(q, pads);
+		h = ctob64((unsigned char *)q, pads);
 		fwrite(h, sizeof(char), 4, fo);
 		sz += 4, l += 4;
 		if (l >= 71) {

@@ -29,7 +29,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)dotlock.c	1.4 (gritter) 1/25/01";
+static char sccsid[] = "@(#)dotlock.c	1.5 (gritter) 9/19/01";
 #endif
 #endif
 
@@ -50,7 +50,7 @@ static char sccsid[] = "@(#)dotlock.c	1.4 (gritter) 1/25/01";
 /* Check if we can write a lock file at all */
 int
 maildir_access(fname)
-char *fname;
+const char *fname;
 {
 	char path[MAXPATHLEN];
 	char *p;
@@ -68,16 +68,14 @@ char *fname;
  * Set the gid if the path is in the normal mail spool
  */
 static int perhaps_setgid (name, gid)
-char *name;
+const char *name;
 gid_t gid;
 {
 	char safepath[]= PATH_MAILDIR;
 
-	if (strncmp (name, safepath, sizeof (safepath)-1) ||
-	    strchr (name + sizeof (safepath), '/'))
-	{
+	if (strncmp(name, safepath, sizeof (safepath)-1) ||
+			strchr(name + sizeof (safepath), '/'))
 		return 0;
-	}
 	return (setgid (gid));
 }
 

@@ -2,18 +2,18 @@ Welcome to nail, a mail user agent!
 
 Nail is derived from Berkeley Mail 8.1. Its concept is to include the
 essential features a modern MUA must provide but to remain compatible
-with its classic ancestor. Especially, nail has the ability to send
-and receive MIME messages.
+with its classic ancestor. Especially, nail has the ability to send and
+receive MIME messages.
 
-To compile nail, look at the file `INSTALL' that contains the
-generic instructions for autoconf builds.
+To compile nail, look at the file "INSTALL" that contains the generic
+instructions for autoconf builds.
 
-After compilation, edit the personal and system-wide run time configuration
-files to match your needs. You _really_ should do this or at least install
-the template in the `misc' directory of the build tree because most of
-the defaults still have the compatibility values of fifteen years ago.
-For batch usage, it may be more convenient to pass the configuration as
-environment variables only, as e.g. `from=user@host nail -n' does.
+After compilation, edit the personal and system-wide run time
+configuration files to match your needs. You _really_ should do this or
+at least install the template because most of the defaults still have
+the compatibility values of fifteen years ago.  For batch usage, it may
+be more convenient to pass the configuration as environment variables
+only, as e.g. "from=user@host nail -n" does.
 
 If you want to use nail with a POP or IMAP mailbox, you have to set up
 a program like e.g. fetchmail since nail does not contain such network
@@ -23,25 +23,26 @@ Nail has been built successfully on the following systems:
 
 Linux 		2.[024]; glibc 2.[12], libc[45]
 Solaris		8; 7; 2.6; 2.5
-UnixWare	7.[01].1; 2.1.2
+Open UNIX	8.0.0
+UnixWare	7.[01].1; 2.1.2; 2.1
 OpenServer	5.0.5
 Digital Unix	4.0
 HP-UX		10.20
 SINIX-Z		5.42
 FreeBSD		4.0-STABLE
-OpenBSD		2.8
+OpenBSD		2.[89]
 NetBSD		1.5
 
 If you can build it on other operating systems, please contact me and
-send me a diff with your changes so I can include them in this archive.
-If there are no changes, even better, but I would like to hear from
-you even then to extend this list.
+send me a diff with your changes so I can include them in this
+archive.  If there are no changes, even better, but I would like to
+hear from you even then to extend this list.
 
 It should generally be possible to build nail on most Unix-style
-systems without much effort; however, especially the character
-set support varies between them. See the file "I18N" for details.
+systems without much effort; however, especially the character set
+support varies between them. See the file "I18N" for details.
 
-Note that the mbox format variant based on the `Content-Length:' header
+Note that the mbox format variant based on the "Content-Length:" header
 field that is used on most SVR4 systems by default is not supported by
 nail. As this format generally is a design flaw, you should fix your
 system by either using procmail for local mail delivery, which is a
@@ -49,27 +50,27 @@ good idea anyway, or at least add the -E flag to the Mlocal line in
 /etc/sendmail.cf if using /usr/lib/mail.local.
 
 Although it is not bad, just obsolete, similar considerations apply to
-the MMDF format used on OpenServer systems; unless you switch to procmail,
-nail will not be able to read your mailbox there.
+the MMDF format used on OpenServer systems; unless you switch to
+procmail, nail will not be able to read your mailbox there.
 
 New nail versions will be announced on <http://appwatch.com> and on
 <http://freshmeat.net>. Nail's home page is currently at
-<http://omnibus.ruf.uni-freiburg.de/~gritter/>. If the version you
-have is older than a few months, please look for a new one before
-reporting bugs.
+<http://omnibus.ruf.uni-freiburg.de/~gritter/>. If the version you have
+is older than a few months, please look for a new one before reporting
+bugs.
 
 If you detect a bug and cannot fix it yourselves, please send me the
-unaltered mail message that caused the problem along with a description!
-This may be a privacy issue, but it is nearly impossible to fix the
-error without an exact reconstruction.
+unaltered mail message that caused the problem along with a
+description!  This may be a privacy issue, but it is nearly impossible
+to fix the error without an exact reconstruction.
 
 If you have an idea how to improve nail, you are also invited to write
-me. But you should remember that nail's primary goal is to remain
-clean and simple. All ideas are worth at least a discussion, though.
+me. But you should remember that nail's primary goal is to remain clean
+and simple. All ideas are worth at least a discussion, though.
 
 Enjoy!
 
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					5/13/01
+<g-r@bigfoot.de>					9/7/01

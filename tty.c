@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	1.6 (gritter) 2/20/01";
+static char sccsid[] = "@(#)tty.c	1.7 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -392,7 +392,6 @@ char *prefix, *string;
 	signal_handler_t savetstp;
 	signal_handler_t savettou;
 	signal_handler_t savettin;
-	int errs;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &saveint;
@@ -402,7 +401,6 @@ char *prefix, *string;
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
-	errs = 0;
 #ifndef TIOCSTI
 	ttyset = 0;
 #endif

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	1.3 (gritter) 11/15/00";
+static char sccsid[] = "@(#)smtp.c	1.4 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -69,7 +69,7 @@ FILE *stream;
 		l = fwrite(s, sizeof *s, l + 1, stream);
 	} else
 		l = fwrite(s, sizeof *s, l, stream);
-	if (l <= 0)
+	if (l == 0)
 		return EOF;
 	return l;
 }

@@ -32,16 +32,23 @@
  */
 
 #ifndef lint
-static char copyright[] =
-"@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
+static char copyright[]
+#ifdef	__GNUC__
+__attribute__ ((unused))
+#endif
+= "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.20 (gritter) 5/13/01";
+static char sccsid[]  = "@(#)mime.c	1.26 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
+
+#ifdef	HAVE_STRINGS_H
+#include <strings.h>
+#endif
 
 /*
  * Mail -- a mail program
@@ -52,7 +59,7 @@ static char sccsid[]  = "@(#)mime.c	1.20 (gritter) 5/13/01";
 /*
  * You won't guess what these are for.
  */
-const static char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static char *mimetypes_world = "/etc/mime.types";
 static char *mimetypes_user = "~/.mime.types";
 char *us_ascii = "us-ascii";
@@ -80,7 +87,6 @@ struct name *atts;
  */
 static int
 mustquote_body(c)
-unsigned char c;
 {
 	if (c != '\n' && (c < 040 || c == '=' || c >= 0177))
 		return 1;
@@ -92,7 +98,6 @@ unsigned char c;
  */
 static int
 mustquote_hdr(c)
-unsigned char c;
 {
 	if (c != '\n' && (c < 040 || c >= 0177))
 		return 1;
@@ -104,7 +109,6 @@ unsigned char c;
  */
 static int
 mustquote_inhdrq(c)
-unsigned char c;
 {
 	if (c != '\n'
 		&& (c < 040 || c == '=' || c == '?' || c == '_' || c >= 0177))
@@ -165,19 +169,19 @@ size_t l;
 	 * day, but we need it for testing.
 	 */
 	if (strcasecmp(gettcharset(), "utf-8") == 0)
-		return;
+		return l;
 #endif
 #endif
 	if (*s == '\0' || l == (size_t) 0)
-		return;
+		return 0;
 #ifdef	MB_CUR_MAX
 	if (MB_CUR_MAX > 1) {
 #endif
 		if (l >= LINESIZE)
-			return;
+			return l;
 		t = s;
-		if ((sz = xmbstowcs(w, t, LINESIZE)) == -1)
-			return;
+		if ((sz = xmbstowcs(w, t, LINESIZE)) == (size_t)-1)
+			return 0;
 		for (p = w, i = 0; *p && i < sz; p++, i++) {
 			if (!iswprint(*p) && *p != '\n' && *p != '\r'
 					&& *p != '\b' && *p != '\t')
@@ -226,7 +230,7 @@ char *name;
 			err = *p & 0377;
 			break;
 		} else if (in_domain == 2) {
-			if (*p == ']' && p[1] != '\0' || *p == '\0'
+			if ((*p == ']' && p[1] != '\0') || *p == '\0'
 					|| *p == '\\' || blankchar(*p)) {
 				err = *p & 0377;
 				break;
@@ -481,7 +485,7 @@ iconv_open_ft(tocode, fromcode)
 const char *tocode, *fromcode;
 {
 	iconv_t id;
-	char *t, *f, *p;
+	char *t, *f;
 
 	if (strcmp(tocode, fromcode) == 0) {
 		errno = 0;
@@ -779,40 +783,54 @@ int
 mime_isclean(f)
 FILE *f;
 {
-	int isclean = MIME_7BITTEXT;
 	long initial_pos;
+	unsigned curlen = 1, maxlen = 0;
+	int isclean = MIME_7BITTEXT;
 	int c;
 
 	initial_pos = ftell(f);
 	for (;;) {
 		c = getc(f);
-		if (c == EOF && (feof(f) || ferror(f))) {
-			break;
+		curlen++;
+		if (c == '\n' || c == EOF) {
+			/*
+			 * RFC 821 imposes a maximum line length of 1000
+			 * characters including the terminating CRLF
+			 * sequence.
+			 */
+			if (curlen > maxlen)
+				maxlen = curlen;
+			curlen = 1;
+			if (c == '\n')
+				continue;
+			else
+				break;
 		}
 		if (c & 0200) {
 			isclean = MIME_INTERTEXT;
 			continue;
 		}
-		if ((c < 040 && (c != ' ' && c != '\n' && c != '\t'))
-			|| c == 0177) {
+		if ((c < 040 && (c != ' ' && c != '\t')) || c == 0177) {
 			isclean = MIME_BINARY;
 			break;
 		}
 	}
 	clearerr(f);
 	fseek(f, initial_pos, SEEK_SET);
+	if (maxlen > 950)
+		isclean = MIME_BINARY;
 	return isclean;
 }
 
 /*
  * Print an error because of an invalid character sequence.
  */
+/*ARGSUSED*/
 static void
 invalid_seq(c)
 char c;
 {
 	/*fprintf(stderr, "iconv: cannot convert %c\n", c);*/
-	/*EMPTY*/ ;
 }
 
 /*
@@ -869,7 +887,7 @@ static size_t
 mime_write_toqp(in, fo, mustquote)
 struct str *in;
 FILE *fo;
-int (*mustquote)(unsigned char);
+int (*mustquote)(int);
 {
 	char *p, *upper, *h, hex[3];
 	int l;
@@ -912,9 +930,9 @@ int (*mustquote)(unsigned char);
 static void
 mime_str_toqp(in, out, mustquote)
 struct str *in, *out;
-int (*mustquote)(unsigned char);
+int (*mustquote)(int);
 {
-	char *p, *q, *upper, *h;
+	char *p, *q, *upper;
 
 	out->s = (char*)smalloc(in->l * 3 + 1);
 	q = out->s;
@@ -924,7 +942,7 @@ int (*mustquote)(unsigned char);
 		if (mustquote(*p) || (*(p + 1) == '\n' && spacechar(*p))) {
 			out->l += 2;
 			*q++ = '=';
-			h = ctohex(*p, q);
+			ctohex(*p, q);
 			q += 2;
 		} else {
 			*q++ = *p;
@@ -1025,6 +1043,8 @@ struct str *in, *out;
 			cin.s = ++p;
 			cin.l = 1;
 			for (;;) {
+				if (p == upper)
+					goto fromhdr_end;
 				if (*p++ == '?' && *p == '=')
 					break;
 				cin.l++;
@@ -1068,6 +1088,7 @@ struct str *in, *out;
 			out->l++;
 		}
 	}
+fromhdr_end:
 	*q = '\0';
 	if (flags & TD_ISPR)
 		out->l = makeprint(out->s, out->l);

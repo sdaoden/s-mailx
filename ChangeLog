@@ -1,3 +1,8 @@
+[9.28] released 10/23/01
+* Fixed a crash occuring at unterminated RFC 2047 header parts.
+* Fixed a crash that occured when replying to a message with empty subject.
+* Send attachments in base64 encoding if a line exceeds 950 characters.
+
 [9.27] released 5/13/01
 * Check addresses when they are entered and drop invalid ones.
 * Supress glibc's getopt(3) argument reordering.

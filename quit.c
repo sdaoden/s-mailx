@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.9 (gritter) 5/13/01";
+static char sccsid[] = "@(#)quit.c	1.10 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
@@ -54,6 +54,7 @@ static char sccsid[] = "@(#)quit.c	1.9 (gritter) 5/13/01";
 /*
  * The "quit" command.
  */
+/*ARGSUSED*/
 int
 quitcmd(v)
 	void *v;

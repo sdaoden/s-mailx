@@ -33,12 +33,16 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	1.7 (gritter) 1/30/01";
+static char sccsid[] = "@(#)send.c	1.9 (gritter) 9/19/01";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
+
+#ifdef	HAVE_STRINGS_H
+#include <strings.h>
+#endif
 
 /*
  * Mail -- a mail program
@@ -81,7 +85,6 @@ newfilename(f, b, b0)
 char *f;
 struct boundary *b, *b0;
 {
-	char *p;
 	struct str in, out;
 
 	if (f != NULL && f != (char *)-1) {
@@ -92,7 +95,6 @@ struct boundary *b, *b0;
 		*(f + out.l) = '\0';
 		free(out.s);
 	}
-	p = (char *)smalloc(PATHSIZE + 1);
 	if (value("interactive") != NULL) {
 		fputs("Enter filename for part ", stdout);
 		print_partnumber(stdout, b, b0);
@@ -207,9 +209,8 @@ struct boundary *b;
  * Send the body of a MIME multipart message.
  */
 static int
-send_multipart(mp, ibuf, obuf, doign, prefix, prefixlen, count, 
+send_multipart(ibuf, obuf, doign, prefix, prefixlen, count, 
 		convert, action, b0)
-struct message *mp;
 FILE *ibuf, *obuf;
 struct ignoretab *doign;
 char *prefix;
@@ -520,7 +521,6 @@ send_message(mp, obuf, doign, prefix, convert)
 	char *cp, *cp2;
 	int c = 0, length, prefixlen = 0;
 	int mime_enc, mime_content = MIME_TEXT, action;
-	char *mime_version = NULL;
 	int error_return = 0;
 	struct boundary b0;
 	char *(*f_gets) __P((char *s, int size, FILE *stream));
@@ -616,7 +616,8 @@ send_message(mp, obuf, doign, prefix, convert)
 			/*
 			 * Pick up the header field if we have one.
 			 */
-			for (cp = line; (c = *cp++) && c != ':' && !isspace(c);)
+			for (cp = line; (c = *cp++) != '\0' && c != ':' &&
+					!isspace(c);)
 				;
 			cp2 = --cp;
 			while (isspace(*cp++))
@@ -637,9 +638,6 @@ send_message(mp, obuf, doign, prefix, convert)
 				ishead = 0;
 				ignoring = 0;
 			} else {
-				if (strncasecmp(line, "mime-version:", 13) == 0)
-					mime_version = mime_getparam(
-						"mime-version:", line);
 				if (action == CONV_TODISP
 					|| action == CONV_QUOTE
 					|| action == CONV_TOFILE) {
@@ -718,12 +716,6 @@ send_message(mp, obuf, doign, prefix, convert)
 	/*
 	 * Copy out message body
 	 */
-#if 0	/* do not check the MIME version, discussion in comp.mail.mime */
-	if (mime_version == NULL || strcmp(mime_version, "1.0")) {
-		convert = CONV_NONE;
-		mime_content = MIME_TEXT;
-	}
-#endif
 	if (action == CONV_TODISP
 			|| action == CONV_QUOTE
 			|| action == CONV_TOFILE) {
@@ -735,7 +727,7 @@ send_message(mp, obuf, doign, prefix, convert)
 		case MIME_MESSAGE:
 			break;
 		case MIME_MULTI:
-			error_return = send_multipart(mp, ibuf, obuf, doign,
+			error_return = send_multipart(ibuf, obuf, doign,
 					prefix, prefixlen, count,
 					convert, action, &b0);
 			goto send_end;
