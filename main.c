@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.32 (gritter) 8/14/04";
+static char sccsid[] = "@(#)main.c	2.38 (gritter) 9/5/04";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -112,6 +112,7 @@ main(argc, argv)
 		exit(1);
 	}
 
+	starting = 1;
 	progname = strrchr(argv[0], '/');
 	if (progname != NULL)
 		progname++;
@@ -398,6 +399,9 @@ usage:
 		a[1] = NULL;
 		account(a);
 	}
+
+	starting = 0;
+
 	/*
 	 * From address from command line overrides rc files.
 	 */
@@ -417,6 +421,15 @@ usage:
 	 */
 	if (ef == NULL)
 		ef = "%";
+	else if (*ef == '@') {
+		/*
+		 * This must be treated specially to make invocation like
+		 * -A imap -f @mailbox work.
+		 */
+		if ((cp = value("folder")) != NULL &&
+				which_protocol(cp) == PROTO_IMAP)
+			strcpy(mailname, cp);
+	}
 	i = setfile(ef, 0);
 	if (i < 0)
 		exit(1);		/* error already reported */
@@ -424,11 +437,12 @@ usage:
 		exit(i);
 	if (headersonly) {
 		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(1, msgcount);
-		for (i = 1; i <= msgcount; i++)
+			imap_getheaders(1, msgCount);
+		for (i = 1; i <= msgCount; i++)
 			printhead(i, stdout, 0);
 		exit(exit_status);
 	}
+	callhook(mailname, 0);
 	if (i > 0 && value("emptystart") == NULL)
 		exit(1);
 	if (sigsetjmp(hdrjmp, 1) == 0) {

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# Sccsid @(#)makeconfig	1.24 (gritter) 8/28/04
+# Sccsid @(#)makeconfig	1.26 (gritter) 9/4/04
 #
 
 tmp=___build$$
@@ -175,6 +175,15 @@ int main()
 {
 	iswprint(L'c');
 	towupper(L'c');
+	return 0;
+}
+!
+
+link_check 'for wcwidth() ' '#define HAVE_WCWIDTH' <<\!
+#include <wchar.h>
+int main()
+{
+	wcwidth(L'c');
 	return 0;
 }
 !

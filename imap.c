@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap.c	1.137 (gritter) 8/29/04";
+static char sccsid[] = "@(#)imap.c	1.184 (gritter) 9/5/04";
 #endif
 #endif /* not lint */
 
@@ -87,85 +87,14 @@ static int	verbose;
 				} \
 			}
 
-static char	*imapbuf;
-static size_t	imapbufsize;
-static sigjmp_buf	imapjmp;
-static sighandler_type savealrm;
-static int	reset_tio;
-static struct termios	otio;
-static int	imapkeepalive;
-static long	had_exists = -1;
-static long	had_expunge = -1;
-static long	expunged_messages;
-static volatile int	imaplock;
-
-static int	same_imap_account;
-
-static void	imap_timer_off __P((void));
-static void	imap_other_get __P((char *));
-static void	imap_response_get __P((const char **));
-static void	imap_response_parse __P((void));
-static enum okay	imap_answer __P((struct mailbox *, int));
-static enum okay	imap_finish __P((struct mailbox *));
-static void	imapcatch __P((int));
-static enum okay	imap_noop __P((struct mailbox *));
-static void	imapalarm __P((int));
-static enum okay	imap_preauth __P((struct mailbox *, const char *,
-				const char *));
-static enum okay	imap_auth __P((struct mailbox *, const char *, char *,
-				const char *));
-static enum okay	imap_login __P((struct mailbox *, char *,
-				const char *));
-static enum okay	imap_cram_md5 __P((struct mailbox *, char *,
-				const char *));
-#ifdef	USE_GSSAPI
-static enum okay	imap_gss __P((struct mailbox *, char *));
-#endif	/* USE_GSSAPI */
-static enum okay	imap_flags __P((struct mailbox *));
-static void	imap_init __P((struct mailbox *, int));
-static void	imap_setptr __P((struct mailbox *, int, int));
-static char	*imap_have_password __P((const char *));
-static void	imap_split __P((char **, const char **, int *, const char **,
-			char **, char **, const char **, char **));
-static int	imap_fetchdata __P((struct mailbox *, struct message *, size_t,
-			int));
-static enum okay	imap_get __P((struct mailbox *, struct message *,
-				enum needspec));
-static void	commithdr __P((struct mailbox *, struct message *,
-				struct message));
-static enum okay	imap_fetchheaders __P((struct mailbox *,
-				struct message *, int, int));
-static int	imap_setfile1 __P((const char *, int, int, int));
-static enum okay	imap_exit __P((struct mailbox *));
-static enum okay	imap_delete __P((struct mailbox *, int,
-				struct message *));
-static enum okay	imap_expunge __P((struct mailbox *));
-static enum okay	imap_update __P((struct mailbox *));
-static enum okay	imap_store __P((struct mailbox *,
-				struct message *, int, int, const char *));
-static const char	*tag __P((int));
-static time_t	imap_read_date_time __P((const char *));
-static const char	*imap_make_date_time __P((time_t));
-static const char	*imap_quotestr __P((const char *));
-static const char	*imap_unquotestr __P((const char *));
-static enum okay	imap_append1 __P((struct mailbox *, const char *,
-				FILE *, off_t, long, int, time_t));
-static enum okay	imap_append0 __P((struct mailbox *, const char *,
-				FILE *));
-static enum okay	imap_parse_list __P((void));
-static enum okay	imap_list __P((struct mailbox *, const char *, FILE *));
-static enum okay	imap_copy1 __P((struct mailbox *, struct message *,
-				int, const char *));
-static char	*imap_strex __P((const char *));
-
-static void
-imap_timer_off()
-{
-	if (imapkeepalive > 0) {
-		alarm(0);
-		safe_signal(SIGALRM, savealrm);
-	}
-}
+static struct	record {
+	struct record	*rec_next;
+	unsigned long	rec_count;
+	enum rec_type {
+		REC_EXISTS,
+		REC_EXPUNGE
+	} rec_type;
+} *record, *recend;
 
 static enum {
 	RESPONSE_TAGGED,
@@ -202,6 +131,117 @@ static enum {
 	CAPABILITY_DATA,
 	RESPONSE_OTHER_UNKNOWN
 } response_other;
+
+static enum list_attributes {
+	LIST_NONE		= 000,
+	LIST_NOINFERIORS	= 001,
+	LIST_NOSELECT		= 002,
+	LIST_MARKED		= 004,
+	LIST_UNMARKED		= 010
+} list_attributes;
+
+static int	list_hierarchy_delimiter;
+static char	*list_name;
+
+struct list_item {
+	struct list_item	*l_next;
+	char	*l_name;
+	char	*l_base;
+	enum list_attributes	l_attr;
+	int	l_delim;
+	int	l_level;
+	int	l_has_children;
+};
+
+static char	*imapbuf;
+static size_t	imapbufsize;
+static sigjmp_buf	imapjmp;
+static sighandler_type savealrm;
+static int	reset_tio;
+static struct termios	otio;
+static int	imapkeepalive;
+static long	had_exists = -1;
+static long	had_expunge = -1;
+static long	expunged_messages;
+static volatile int	imaplock;
+
+static int	same_imap_account;
+
+static void	imap_timer_off __P((void));
+static void	imap_other_get __P((char *));
+static void	imap_response_get __P((const char **));
+static void	imap_response_parse __P((void));
+static enum okay	imap_answer __P((struct mailbox *, int));
+static enum okay	imap_finish __P((struct mailbox *));
+static void	imapcatch __P((int));
+static enum okay	imap_noop1 __P((struct mailbox *));
+static void	imapalarm __P((int));
+static void	rec_queue __P((enum rec_type, unsigned long));
+static enum okay	rec_dequeue __P((void));
+static void	rec_rmqueue __P((void));
+static enum okay	imap_preauth __P((struct mailbox *, const char *,
+				const char *));
+static enum okay	imap_capability __P((struct mailbox *));
+static enum okay	imap_auth __P((struct mailbox *, const char *, char *,
+				const char *));
+static enum okay	imap_login __P((struct mailbox *, char *,
+				const char *));
+static enum okay	imap_cram_md5 __P((struct mailbox *, char *,
+				const char *));
+#ifdef	USE_GSSAPI
+static enum okay	imap_gss __P((struct mailbox *, char *));
+#endif	/* USE_GSSAPI */
+static enum okay	imap_flags __P((struct mailbox *, unsigned, unsigned));
+static void	imap_init __P((struct mailbox *, int));
+static void	imap_setptr __P((struct mailbox *, int, int, int *));
+static char	*imap_have_password __P((const char *));
+static void	imap_split __P((char **, const char **, int *, const char **,
+			char **, char **, const char **, char **));
+static int	imap_fetchdata __P((struct mailbox *, struct message *, size_t,
+			int, const char *, size_t, long));
+static enum okay	imap_get __P((struct mailbox *, struct message *,
+				enum needspec));
+static void	commithdr __P((struct mailbox *, struct message *,
+				struct message));
+static enum okay	imap_fetchheaders __P((struct mailbox *,
+				struct message *, int, int));
+static int	imap_setfile1 __P((const char *, int, int, int));
+static enum okay	imap_exit __P((struct mailbox *));
+static enum okay	imap_delete __P((struct mailbox *, int,
+				struct message *));
+static enum okay	imap_close __P((struct mailbox *));
+static enum okay	imap_update __P((struct mailbox *));
+static enum okay	imap_store __P((struct mailbox *,
+				struct message *, int, int, const char *, int));
+static enum okay	imap_unstore __P((struct message *, int, const char *));
+static const char	*tag __P((int));
+static char	*imap_putflags __P((int));
+static void	imap_getflags __P((const char *, char **, enum mflag *));
+static enum okay	imap_append1 __P((struct mailbox *, const char *,
+				FILE *, off_t, long, enum mflag, time_t));
+static enum okay	imap_append0 __P((struct mailbox *, const char *,
+				FILE *));
+static enum okay	imap_parse_list __P((void));
+static enum okay	imap_list1 __P((struct mailbox *, const char *,
+				struct list_item **, struct list_item **, int));
+static enum okay	imap_list __P((struct mailbox *, const char *, int,
+				FILE *));
+static void	dopr __P((FILE *));
+static enum okay	imap_copy1 __P((struct mailbox *, struct message *,
+				int, const char *));
+static enum okay	imap_copyuid_parse __P((const char *, unsigned long *,
+				unsigned long *, unsigned long *));
+static enum okay	imap_appenduid_parse __P((const char *, unsigned long *,
+				unsigned long *));
+static enum okay	imap_copyuid __P((struct mailbox *, struct message *,
+				const char *));
+static enum okay	imap_appenduid __P((struct mailbox *, FILE *, time_t,
+				long, long, long, long, int, const char *));
+static enum okay	imap_appenduid_cached __P((struct mailbox *, FILE *));
+static enum okay	imap_search2 __P((struct mailbox *, struct message *,
+				int, const char *, int));
+static char	*imap_strex __P((const char *, char **));
+static enum okay	check_expunged __P((void));
 
 static void
 imap_other_get(pp)
@@ -342,9 +382,11 @@ again:	if ((sz = sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock)) > 0) {
 		if (response_status == RESPONSE_OTHER) {
 			if (response_other == MAILBOX_DATA_EXISTS) {
 				had_exists = responded_other_number;
+				rec_queue(REC_EXISTS, responded_other_number);
 				if (had_expunge > 0)
 					had_expunge = 0;
 			} else if (response_other == MESSAGE_DATA_EXPUNGE) {
+				rec_queue(REC_EXPUNGE, responded_other_number);
 				if (had_expunge < 0)
 					had_expunge = 0;
 				had_expunge++;
@@ -397,12 +439,78 @@ again:	if ((sz = sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock)) > 0) {
 }
 
 static enum okay
+imap_parse_list()
+{
+	char	*cp;
+
+	cp = responded_other_text;
+	list_attributes = LIST_NONE;
+	if (*cp == '(') {
+		while (*cp && *cp != ')') {
+			if (*cp == '\\') {
+				if (ascncasecmp(&cp[1], "Noinferiors ", 12)
+						== 0) {
+					list_attributes |= LIST_NOINFERIORS;
+					cp += 12;
+				} else if (ascncasecmp(&cp[1], "Noselect ", 9)
+						== 0) {
+					list_attributes |= LIST_NOSELECT;
+					cp += 9;
+				} else if (ascncasecmp(&cp[1], "Marked ", 7)
+						== 0) {
+					list_attributes |= LIST_MARKED;
+					cp += 7;
+				} else if (ascncasecmp(&cp[1], "Unmarked ", 9)
+						== 0) {
+					list_attributes |= LIST_UNMARKED;
+					cp += 9;
+				}
+			}
+			cp++;
+		}
+		if (*++cp != ' ')
+			return STOP;
+		while (*cp == ' ')
+			cp++;
+	}
+	list_hierarchy_delimiter = EOF;
+	if (*cp == '"') {
+		if (*++cp == '\\')
+			cp++;
+		list_hierarchy_delimiter = *cp++ & 0377;
+		if (cp[0] != '"' || cp[1] != ' ')
+			return STOP;
+		cp++;
+	} else if (cp[0] == 'N' && cp[1] == 'I' && cp[2] == 'L' &&
+			cp[3] == ' ') {
+		list_hierarchy_delimiter = EOF;
+		cp += 3;
+	}
+	while (*cp == ' ')
+		cp++;
+	list_name = cp;
+	while (*cp && *cp != '\r')
+		cp++;
+	*cp = '\0';
+	return OKAY;
+}
+
+static enum okay
 imap_finish(mp)
 	struct mailbox *mp;
 {
-	while (mp->mb_sock.s_fd >= 0 && mp->mb_active & MB_COMD)
+	while (mp->mb_sock.s_fd > 0 && mp->mb_active & MB_COMD)
 		imap_answer(mp, 1);
 	return OKAY;
+}
+
+static void
+imap_timer_off()
+{
+	if (imapkeepalive > 0) {
+		alarm(0);
+		safe_signal(SIGALRM, savealrm);
+	}
 }
 
 static void
@@ -424,7 +532,7 @@ imapcatch(s)
 }
 
 static enum okay
-imap_noop(mp)
+imap_noop1(mp)
 	struct mailbox *mp;
 {
 	char	o[LINESIZE];
@@ -434,6 +542,128 @@ imap_noop(mp)
 	IMAP_OUT(o, MB_COMD, return STOP)
 	IMAP_ANSWER()
 	return OKAY;
+}
+
+enum okay
+imap_noop()
+{
+	sighandler_type	saveint, savepipe;
+	enum okay	ok = STOP;
+
+	(void)&saveint;
+	(void)&savepipe;
+	(void)&ok;
+	if (mb.mb_type != MB_IMAP)
+		return STOP;
+	verbose = value("verbose") != NULL;
+	imaplock = 1;
+	saveint = safe_signal(SIGINT, SIG_IGN);
+	savepipe = safe_signal(SIGPIPE, SIG_IGN);
+	if (sigsetjmp(imapjmp, 1) == 0) {
+		if (saveint != SIG_IGN)
+			safe_signal(SIGINT, imapcatch);
+		if (savepipe != SIG_IGN)
+			safe_signal(SIGPIPE, imapcatch);
+		ok = imap_noop1(&mb);
+	}
+	safe_signal(SIGINT, saveint);
+	safe_signal(SIGPIPE, savepipe);
+	imaplock = 0;
+	return ok;
+}
+
+static void
+rec_queue(type, count)
+	enum rec_type	type;
+	unsigned long	count;
+{
+	struct record	*rp;
+
+	rp = scalloc(1, sizeof *rp);
+	rp->rec_type = type;
+	rp->rec_count = count;
+	if (record && recend) {
+		recend->rec_next = rp;
+		recend = rp;
+	} else
+		record = recend = rp;
+}
+
+static enum okay
+rec_dequeue()
+{
+	struct message	*omessage;
+	enum okay	ok = OKAY;
+	struct record	*rp = record, *rq = NULL;
+	unsigned long	exists = 0;
+	long	i;
+
+	if (record == NULL)
+		return STOP;
+	omessage = message;
+	message = smalloc((msgCount+1) * sizeof *message);
+	if (msgCount)
+		memcpy(message, omessage, msgCount * sizeof *message);
+	memset(&message[msgCount], 0, sizeof *message);
+	while (rp) {
+		switch (rp->rec_type) {
+		case REC_EXISTS:
+			exists = rp->rec_count;
+			break;
+		case REC_EXPUNGE:
+			if (rp->rec_count == 0) {
+				ok = STOP;
+				break;
+			}
+			if (rp->rec_count > msgCount) {
+				if (exists == 0 || rp->rec_count > exists--)
+					ok = STOP;
+				break;
+			}
+			if (exists > 0)
+				exists--;
+			delcache(&mb, &message[rp->rec_count-1]);
+			memmove(&message[rp->rec_count-1],
+				&message[rp->rec_count],
+				(msgCount - rp->rec_count + 1) *
+					sizeof *message);
+			msgCount--;
+			break;
+		}
+		free(rq);
+		rq = rp;
+		rp = rp->rec_next;
+	}
+	free(rq);
+	record = recend = NULL;
+	if (ok == OKAY && exists > msgCount) {
+		message = srealloc(message,
+				(exists + 1) * sizeof *message);
+		memset(&message[msgCount], 0,
+				(exists - msgCount + 1) * sizeof *message);
+		for (i = msgCount; i < exists; i++)
+			imap_init(&mb, i);
+		imap_flags(&mb, msgCount+1, exists);
+		msgCount = exists;
+	}
+	if (ok == STOP) {
+		free(message);
+		message = omessage;
+	}
+	return ok;
+}
+
+static void
+rec_rmqueue()
+{
+	struct record	*rp, *rq = NULL;
+
+	for (rp = record; rp; rp = rp->rec_next) {
+		free(rq);
+		rq = rp;
+	}
+	free(rq);
+	record = recend = NULL;
 }
 
 /*ARGSUSED*/
@@ -456,7 +686,7 @@ imapalarm(s)
 			safe_signal(SIGINT, imapcatch);
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
-		if (imap_noop(&mb) != OKAY) {
+		if (imap_noop1(&mb) != OKAY) {
 			safe_signal(SIGINT, saveint);
 			safe_signal(SIGPIPE, savepipe);
 			goto out;
@@ -512,7 +742,39 @@ imap_preauth(mp, xserver, uhp)
 		return STOP;
 	}
 #endif	/* !USE_SSL */
+	imap_capability(mp);
 	return OKAY;
+}
+
+static enum okay
+imap_capability(mp)
+	struct mailbox	*mp;
+{
+	char	o[LINESIZE];
+	FILE	*queuefp = NULL;
+	enum okay	ok = STOP;
+	const char	*cp;
+
+	snprintf(o, sizeof o, "%s CAPABILITY\r\n", tag(1));
+	IMAP_OUT(o, MB_COMD, return STOP)
+	while (mp->mb_active & MB_COMD) {
+		ok = imap_answer(mp, 0);
+		if (response_status == RESPONSE_OTHER &&
+				response_other == CAPABILITY_DATA) {
+			cp = responded_other_text;
+			while (*cp) {
+				while (spacechar(*cp&0377))
+					cp++;
+				if (strncmp(cp, "UIDPLUS", 7) == 0 &&
+						spacechar(cp[7]&0377))
+					/* RFC 2359 */
+					mp->mb_flags |= MB_UIDPLUS;
+				while (*cp && !spacechar(*cp&0377))
+					cp++;
+			}
+		}
+	}
+	return ok;
 }
 
 static enum okay
@@ -658,63 +920,71 @@ imap_select(mp, size, count, mbx)
 }
 
 static enum okay
-imap_flags(mp)
+imap_flags(mp, X, Y)
 	struct mailbox *mp;
+	unsigned	X, Y;
 {
 	char o[LINESIZE];
 	FILE	*queuefp = NULL;
-	const char	*cp;
+	char	*cp;
 	struct message *m;
+	unsigned 	x = X, y = Y;
 	int n;
 
-	if (msgcount == 0)
-		return OKAY;
-	snprintf(o, sizeof o,
-		"%s FETCH 1:%u (RFC822.SIZE FLAGS UID INTERNALDATE)\r\n",
-		tag(1), msgcount);
+	snprintf(o, sizeof o, "%s FETCH %u:%u (FLAGS UID)\r\n", tag(1), x, y);
 	IMAP_OUT(o, MB_COMD, return STOP)
 	while (mp->mb_active & MB_COMD) {
 		imap_answer(mp, 1);
 		if (response_status == RESPONSE_OTHER &&
 				response_other == MESSAGE_DATA_FETCH) {
 			n = responded_other_number;
-			if (n < 0 || n > msgcount)
+			if (n < x || n > y)
 				continue;
 			m = &message[n-1];
 			m->m_xsize = 0;
 		} else
 			continue;
 		if ((cp = asccasestr(responded_other_text, "FLAGS ")) != NULL) {
-			cp += 6;
-			if (*cp == '(') {
-				while (*cp != ')') {
-					if (*cp == '\\') {
-						if (ascncasecmp(cp, "\\Seen", 5)
-								== 0)
-							m->m_flag |= MREAD;
-						else if (ascncasecmp(cp,
-								"\\Recent", 7)
-								== 0)
-							m->m_flag |= MNEW;
-						else if (ascncasecmp(cp,
-								"\\Deleted", 8)
-								== 0)
-							m->m_flag |= MDELETED;
-					}
-					cp++;
-				}
-			}
+			cp += 5;
+			while (*cp == ' ')
+				cp++;
+			if (*cp == '(')
+				imap_getflags(cp, &cp, &m->m_flag);
 		}
-		if ((cp = asccasestr(responded_other_text, "RFC822.SIZE "))
-				!= NULL)
-			m->m_xsize = strtol(&cp[12], NULL, 10);
 		if ((cp = asccasestr(responded_other_text, "UID ")) != NULL)
 			m->m_uid = strtoul(&cp[4], NULL, 10);
-		if ((cp = asccasestr(responded_other_text, "INTERNALDATE "))
-				!= NULL)
-			m->m_time = imap_read_date_time(&cp[13]);
-		putcache(mp, m);
+		getcache1(mp, m, NEED_UNSPEC, 1);
+		m->m_flag &= ~MHIDDEN;
 	}
+	while (x <= y && message[x-1].m_xsize && message[x-1].m_time)
+		x++;
+	while (y > x && message[y-1].m_xsize && message[y-1].m_time)
+		y--;
+	if (x <= y) {
+		snprintf(o, sizeof o,
+			"%s FETCH %u:%u (RFC822.SIZE INTERNALDATE)\r\n",
+			tag(1), x, y);
+		IMAP_OUT(o, MB_COMD, return STOP)
+		while (mp->mb_active & MB_COMD) {
+			imap_answer(mp, 1);
+			if (response_status == RESPONSE_OTHER &&
+					response_other == MESSAGE_DATA_FETCH) {
+				n = responded_other_number;
+				if (n < x || n > y)
+					continue;
+				m = &message[n-1];
+			} else
+				continue;
+			if ((cp = asccasestr(responded_other_text,
+						"RFC822.SIZE ")) != NULL)
+				m->m_xsize = strtol(&cp[12], NULL, 10);
+			if ((cp = asccasestr(responded_other_text,
+						"INTERNALDATE ")) != NULL)
+				m->m_time = imap_read_date_time(&cp[13]);
+		}
+	}
+	for (n = X; n <= Y; n++)
+		putcache(mp, &message[n-1]);
 	return OKAY;
 }
 
@@ -731,44 +1001,55 @@ imap_init(mp, n)
 }
 
 static void
-imap_setptr(mp, newmail, transparent)
+imap_setptr(mp, newmail, transparent, prevcount)
 	struct mailbox *mp;
 	int newmail, transparent;
+	int *prevcount;
 {
 	struct message	*omessage = 0;
-	int i, omsgcount = 0;
+	int i, omsgCount = 0;
+	enum okay	dequeued = STOP;
 
 	if (newmail || transparent) {
 		omessage = message;
-		omsgcount = msgcount;
+		omsgCount = msgCount;
 	}
+	if (newmail)
+		dequeued = rec_dequeue();
 	if (had_exists >= 0) {
-		msgcount = had_exists;
+		if (dequeued != OKAY)
+			msgCount = had_exists;
 		had_exists = -1;
 	}
 	if (had_expunge >= 0) {
-		msgcount -= had_expunge;
+		if (dequeued != OKAY)
+			msgCount -= had_expunge;
 		had_expunge = -1;
 	}
 	if (newmail && expunged_messages)
 		printf("Expunged %ld message%s.\n",
 				expunged_messages,
 				expunged_messages != 1 ? "s" : "");
+	*prevcount = omsgCount - expunged_messages;
 	expunged_messages = 0;
-	if (msgcount < 0) {
+	if (msgCount < 0) {
 		fputs("IMAP error: Negative message count\n", stderr);
-		msgcount = 0;
+		msgCount = 0;
 	}
-	message = scalloc(msgcount + 1, sizeof *message);
-	for (i = 0; i < msgcount; i++)
-		imap_init(mp, i);
-	if (!newmail && mp->mb_type == MB_IMAP)
-		initcache(mp);
-	imap_flags(mp);
-	message[msgcount].m_size = 0;
-	message[msgcount].m_lines = 0;
+	if (dequeued != OKAY) {
+		message = scalloc(msgCount + 1, sizeof *message);
+		for (i = 0; i < msgCount; i++)
+			imap_init(mp, i);
+		if (!newmail && mp->mb_type == MB_IMAP)
+			initcache(mp);
+		if (msgCount > 0)
+			imap_flags(mp, 1, msgCount);
+		message[msgCount].m_size = 0;
+		message[msgCount].m_lines = 0;
+		rec_rmqueue();
+	}
 	if (newmail || transparent)
-		transflags(omessage, omsgcount, transparent);
+		transflags(omessage, omsgCount, transparent);
 	else
 		setdot(message);
 }
@@ -813,7 +1094,7 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 		*mbx = "INBOX";
 	}
 	*pass = imap_have_password(*uhp);
-	if ((*cp = strchr(*uhp, '@')) != NULL) {
+	if ((*cp = last_at_before_slash(*uhp)) != NULL) {
 		*user = salloc(*cp - *uhp + 1);
 		memcpy(*user, *uhp, *cp - *uhp);
 		(*user)[*cp - *uhp] = '\0';
@@ -844,6 +1125,8 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 	const char *cp, *sp, *pass;
 	char	*uhp, *mbx;
 	int use_ssl = 0;
+	enum	mbflags	same_flags;
+	int	prevcount;
 
 	(void)&sp;
 	(void)&use_ssl;
@@ -861,10 +1144,11 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 		imaplock = 1;
 		goto newmail;
 	}
+	same_flags = mb.mb_flags;
 	same_imap_account = 0;
 	sp = protbase(server);
 	if (mb.mb_imap_account) {
-		if (mb.mb_sock.s_fd >= 0 &&
+		if (mb.mb_sock.s_fd > 0 &&
 				strcmp(mb.mb_imap_account, sp) == 0 &&
 				disconnected(mb.mb_imap_account) == 0)
 			same_imap_account = 1;
@@ -884,8 +1168,10 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 	edit = isedit;
 	free(mb.mb_imap_account);
 	mb.mb_imap_account = account;
-	if (!same_imap_account)
-		mb.mb_sock.s_fd = -1;
+	if (!same_imap_account) {
+		if (mb.mb_sock.s_fd >= 0)
+			sclose(&mb.mb_sock);
+	}
 	same_imap_account = 0;
 	if (!transparent) {
 		if (mb.mb_itf) {
@@ -942,11 +1228,12 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 			imaplock = 0;
 			return 1;
 		}
-	}
+	} else	/* same account */
+		mb.mb_flags |= same_flags;
 	mb.mb_perm = MB_DELE;
 	mb.mb_type = MB_IMAP;
 	cache_dequeue(&mb);
-	if (imap_select(&mb, &mailsize, &msgcount, mbx) != OKAY) {
+	if (imap_select(&mb, &mailsize, &msgCount, mbx) != OKAY) {
 		/*sclose(&mb.mb_sock);
 		imap_timer_off();*/
 		safe_signal(SIGINT, saveint);
@@ -956,37 +1243,40 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 		return -1;
 	}
 newmail:
-	imap_setptr(&mb, newmail, transparent);
-done:	setmsize(msgcount);
-	sawcom = 0;
+	imap_setptr(&mb, newmail, transparent, &prevcount);
+done:	setmsize(msgCount);
+	if (!newmail && !transparent)
+		sawcom = 0;
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
 	imaplock = 0;
 	if (!newmail && mb.mb_type == MB_IMAP)
-		purgecache(&mb, message, msgcount);
+		purgecache(&mb, message, msgCount);
 	if ((newmail || transparent) && mb.mb_sorted) {
-		char	*args[2];
 		mb.mb_threaded = 0;
-		args[0] = mb.mb_sorted;
-		args[1] = NULL;
-		sort(args);
+		sort(NULL);
 	}
-	if (!newmail && !edit && msgcount == 0) {
+	if (!newmail && !edit && msgCount == 0) {
 		if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
 				value("emptystart") == NULL)
 			fprintf(stderr, catgets(catd, CATSET, 258,
 				"No mail at %s\n"), server);
 		return 1;
 	}
+	if (newmail)
+		newmailinfo(prevcount);
 	return 0;
 }
 
 static int
-imap_fetchdata(mp, m, expected, need)
+imap_fetchdata(mp, m, expected, need, head, headsize, headlines)
 	struct	mailbox *mp;
 	struct	message *m;
 	size_t	expected;
 	int	need;
+	const char	*head;
+	size_t	headsize;
+	long	headlines;
 {
 	char	*line = NULL, *lp;
 	size_t	linesize = 0, linelen, size = 0;
@@ -995,6 +1285,8 @@ imap_fetchdata(mp, m, expected, need)
 
 	fseek(mp->mb_otf, 0L, SEEK_END);
 	offset = ftell(mp->mb_otf);
+	if (head)
+		fwrite(head, 1, headsize, mp->mb_otf);
 	while (sgetline(&line, &linesize, &linelen, &mp->mb_sock) > 0) {
 		lp = line;
 		/*
@@ -1042,8 +1334,8 @@ imap_fetchdata(mp, m, expected, need)
 	}
 	fflush(mp->mb_otf);
 	if (m != NULL) {
-		m->m_size = size;
-		m->m_lines = lines;
+		m->m_size = size + headsize;
+		m->m_lines = lines + headlines;
 		m->m_block = nail_blockof(offset);
 		m->m_offset = nail_offsetof(offset);
 		switch (need) {
@@ -1070,10 +1362,12 @@ imap_get(mp, m, need)
 	sighandler_type	saveint = SIG_IGN;
 	sighandler_type savepipe = SIG_IGN;
 	char o[LINESIZE], *cp = NULL;
-	size_t expected;
+	size_t expected, headsize = 0;
 	int number = m - message + 1;
 	enum okay ok = STOP;
 	FILE	*queuefp = NULL;
+	char	*head = NULL;
+	long	headlines = 0;
 
 	(void)&saveint;
 	(void)&savepipe;
@@ -1081,6 +1375,9 @@ imap_get(mp, m, need)
 	(void)&need;
 	(void)&cp;
 	(void)&ok;
+	(void)&headsize;
+	(void)&head;
+	(void)&headlines;
 	verbose = value("verbose") != NULL;
 	if (getcache(mp, m, need) == OKAY)
 		return OKAY;
@@ -1098,6 +1395,21 @@ imap_get(mp, m, need)
 		break;
 	case NEED_BODY:
 		cp = "BODY.PEEK[]";
+		if (m->m_flag & HAVE_HEADER && m->m_size) {
+			char	*hdr = smalloc(m->m_size);
+			fflush(mp->mb_otf);
+			if (fseek(mp->mb_itf, (long)nail_positionof(m->m_block,
+						m->m_offset), SEEK_SET) < 0 ||
+					fread(hdr, 1, m->m_size, mp->mb_itf)
+						!= m->m_size) {
+				free(hdr);
+				break;
+			}
+			head = hdr;
+			headsize = m->m_size;
+			headlines = m->m_lines;
+			cp = "BODY.PEEK[TEXT]";
+		}
 		break;
 	case NEED_UNSPEC:
 		return STOP;
@@ -1120,19 +1432,22 @@ imap_get(mp, m, need)
 		snprintf(o, sizeof o,
 				"%s UID FETCH %lu (%s)\r\n",
 				tag(1), m->m_uid, cp);
-	else
+	else {
+		if (check_expunged() == STOP)
+			goto out;
 		snprintf(o, sizeof o,
 				"%s FETCH %u (%s)\r\n",
 				tag(1), number, cp);
+	}
 	IMAP_OUT(o, MB_COMD, goto out)
 	do
 		ok = imap_answer(mp, 1);
 	while (response_status != RESPONSE_OTHER ||
 			response_other != MESSAGE_DATA_FETCH);
-	if (ok == STOP || (cp = strchr(responded_other_text, '{')) == NULL)
+	if (ok == STOP || (cp = strrchr(responded_other_text, '{')) == NULL)
 		goto out;
 	expected = atol(&cp[1]);
-	imap_fetchdata(mp, m, expected, need);
+	imap_fetchdata(mp, m, expected, need, head, headsize, headlines);
 out:	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	if (saveint != SIG_IGN)
@@ -1142,6 +1457,7 @@ out:	while (mp->mb_active & MB_COMD)
 	imaplock--;
 	if (ok == OKAY)
 		putcache(mp, m);
+	free(head);
 	return ok;
 }
 
@@ -1190,10 +1506,13 @@ imap_fetchheaders(mp, m, bot, top)
 		snprintf(o, sizeof o,
 			"%s UID FETCH %lu:%lu (RFC822.HEADER)\r\n",
 			tag(1), m[bot-1].m_uid, m[top-1].m_uid);
-	else
+	else {
+		if (check_expunged() == STOP)
+			return STOP;
 		snprintf(o, sizeof o,
 			"%s FETCH %u:%u (RFC822.HEADER)\r\n",
 			tag(1), bot, top);
+	}
 	IMAP_OUT(o, MB_COMD, return STOP)
 	for (;;) {
 		ok = imap_answer(mp, 1);
@@ -1201,7 +1520,7 @@ imap_fetchheaders(mp, m, bot, top)
 			break;
 		if (response_other != MESSAGE_DATA_FETCH)
 			continue;
-		if (ok == STOP || (cp = strchr(responded_other_text, '{')) == 0)
+		if (ok == STOP || (cp=strrchr(responded_other_text, '{')) == 0)
 			return STOP;
 		expected = atol(&cp[1]);
 		if (m[bot-1].m_uid) {
@@ -1212,19 +1531,21 @@ imap_fetchheaders(mp, m, bot, top)
 						break;
 				if (n > top) {
 					imap_fetchdata(mp, NULL, expected,
-							NEED_HEADER);
+							NEED_HEADER,
+							NULL, 0, 0);
 					continue;
 				}
 			} else
 				n = -1;
 		} else {
 			n = responded_other_number;
-			if (n <= 0 || n > msgcount) {
-				imap_fetchdata(mp, NULL, expected, NEED_HEADER);
+			if (n <= 0 || n > msgCount) {
+				imap_fetchdata(mp, NULL, expected, NEED_HEADER,
+						NULL, 0, 0);
 				continue;
 			}
 		}
-		imap_fetchdata(mp, &mt, expected, NEED_HEADER);
+		imap_fetchdata(mp, &mt, expected, NEED_HEADER, NULL, 0, 0);
 		if (n > 0 && !(m[n-1].m_have & HAVE_HEADER))
 			commithdr(mp, &m[n-1], mt);
 		if (n == -1 && (sz = sgetline(&imapbuf, &imapbufsize, NULL,
@@ -1265,8 +1586,8 @@ imap_getheaders(bot, top)
 		return;
 	if (bot < 1)
 		bot = 1;
-	if (top > msgcount)
-		top = msgcount;
+	if (top > msgCount)
+		top = msgCount;
 	for (i = bot; i < top; i++) {
 		if (message[i-1].m_have & HAVE_HEADER ||
 				getcache(&mb, &message[i-1], NEED_HEADER)
@@ -1323,22 +1644,20 @@ imap_delete(mp, n, m)
 	int n;
 	struct message *m;
 {
-	enum okay	ok;
-
-	if ((ok = imap_store(mp, m, n, '+', "\\Deleted")) == OKAY &&
-			mp->mb_type == MB_IMAP)
+	imap_store(mp, m, n, '+', "\\Deleted", 0);
+	if (mp->mb_type == MB_IMAP)
 		delcache(mp, m);
-	return ok;
+	return OKAY;
 }
 
 static enum okay
-imap_expunge(mp)
+imap_close(mp)
 	struct mailbox *mp;
 {
 	char	o[LINESIZE];
 	FILE	*queuefp = NULL;
 
-	snprintf(o, sizeof o, "%s EXPUNGE\r\n", tag(1));
+	snprintf(o, sizeof o, "%s CLOSE\r\n", tag(1));
 	IMAP_OUT(o, MB_COMD, return STOP)
 	IMAP_ANSWER()
 	return OKAY;
@@ -1350,7 +1669,7 @@ imap_update(mp)
 {
 	FILE *readstat = NULL;
 	struct message *m;
-	int dodel, c, gotcha = 0, held = 0;
+	int dodel, c, gotcha = 0, held = 0, modflags = 0;
 
 	verbose = value("verbose") != NULL;
 	if (Tflag != NULL) {
@@ -1359,7 +1678,7 @@ imap_update(mp)
 	}
 	if (!edit && mp->mb_perm != 0) {
 		holdbits();
-		for (m = &message[0], c = 0; m < &message[msgcount]; m++) {
+		for (m = &message[0], c = 0; m < &message[msgCount]; m++) {
 			if (m->m_flag & MBOX)
 				c++;
 		}
@@ -1367,7 +1686,7 @@ imap_update(mp)
 			if (makembox() == STOP)
 				goto bypass;
 	}
-	for (m = &message[0], gotcha=0, held=0; m < &message[msgcount]; m++) {
+	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
@@ -1388,7 +1707,26 @@ imap_update(mp)
 			gotcha++;
 		} else {
 			if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
-				imap_store(mp, m, m-message+1, '+', "\\Seen");
+				imap_store(mp, m, m-message+1,
+						'+', "\\Seen", 0);
+			if (m->m_flag & MFLAG)
+				imap_store(mp, m, m-message+1,
+						'+', "\\Flagged", 0);
+			if (m->m_flag & MUNFLAG)
+				imap_store(mp, m, m-message+1,
+						'-', "\\Flagged", 0);
+			if (m->m_flag & MANSWER)
+				imap_store(mp, m, m-message+1,
+						'+', "\\Answered", 0);
+			if (m->m_flag & MUNANSWER)
+				imap_store(mp, m, m-message+1,
+						'-', "\\Answered", 0);
+			if (m->m_flag & MDRAFT)
+				imap_store(mp, m, m-message+1,
+						'+', "\\Draft", 0);
+			if (m->m_flag & MUNDRAFT)
+				imap_store(mp, m, m-message+1,
+						'-', "\\Draft", 0);
 			if (mp->mb_type != MB_CACHE ||
 				!edit && (!(m->m_flag&(MBOXED|MSAVED|MDELETED))
 					|| (m->m_flag &
@@ -1396,17 +1734,25 @@ imap_update(mp)
 				  		(MPRESERVE|MTOUCH)) ||
 				edit && !(m->m_flag & MDELETED))
 			held++;
+			if (m->m_flag & MNEW) {
+				m->m_flag &= ~MNEW;
+				m->m_flag |= MSTATUS;
+			}
 		}
 	}
 bypass:	if (readstat != NULL)
 		Fclose(readstat);
 	if (gotcha)
-		imap_expunge(mp);
-	for (m = &message[0]; m < &message[msgcount]; m++)
+		imap_close(mp);
+	for (m = &message[0]; m < &message[msgCount]; m++)
 		if (!(m->m_flag&MUNLINKED) &&
-				m->m_flag&(MBOXED|MDELETED|MSAVED|MSTATUS))
+				m->m_flag&(MBOXED|MDELETED|MSAVED|MSTATUS|
+					MFLAG|MUNFLAG|MANSWER|MUNANSWER|
+					MDRAFT|MUNDRAFT)) {
 			putcache(mp, m);
-	if (gotcha && edit) {
+			modflags++;
+		}
+	if ((gotcha || modflags) && edit) {
 		printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 170, "complete\n") :
@@ -1462,10 +1808,10 @@ imap_quit()
 }
 
 static enum okay
-imap_store(mp, m, n, c, sp)
+imap_store(mp, m, n, c, sp, needstat)
 	struct mailbox *mp;
 	struct message *m;
-	int n, c;
+	int n, c, needstat;
 	const char *sp;
 {
 	char	o[LINESIZE];
@@ -1477,12 +1823,18 @@ imap_store(mp, m, n, c, sp)
 		snprintf(o, sizeof o,
 				"%s UID STORE %lu %cFLAGS (%s)\r\n",
 				tag(1), m->m_uid, c, sp);
-	else
+	else {
+		if (check_expunged() == STOP)
+			return STOP;
 		snprintf(o, sizeof o,
 				"%s STORE %u %cFLAGS (%s)\r\n",
 				tag(1), n, c, sp);
+	}
 	IMAP_OUT(o, MB_COMD, return STOP)
-	IMAP_ANSWER()
+	if (needstat)
+		IMAP_ANSWER()
+	else
+		mb.mb_active &= ~MB_COMD;
 	if (queuefp != NULL)
 		Fclose(queuefp);
 	return OKAY;
@@ -1493,33 +1845,22 @@ imap_undelete(m, n)
 	struct message *m;
 	int n;
 {
-	sighandler_type	saveint, savepipe;
-	enum okay	ok = STOP;
-
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&ok;
-	verbose = value("verbose") != NULL;
-	imaplock = 1;
-	saveint = safe_signal(SIGINT, SIG_IGN);
-	savepipe = safe_signal(SIGPIPE, SIG_IGN);
-	if (sigsetjmp(imapjmp, 1) == 0) {
-		if (saveint != SIG_IGN)
-			safe_signal(SIGINT, imapcatch);
-		if (savepipe != SIG_IGN)
-			safe_signal(SIGPIPE, imapcatch);
-		ok = imap_store(&mb, m, n, '-', "\\Deleted");
-	}
-	safe_signal(SIGINT, saveint);
-	safe_signal(SIGPIPE, savepipe);
-	imaplock = 0;
-	return ok;
+	return imap_unstore(m, n, "\\Deleted");
 }
 
 enum okay
 imap_unread(m, n)
 	struct message *m;
 	int n;
+{
+	return imap_unstore(m, n, "\\Seen");
+}
+
+static enum okay
+imap_unstore(m, n, flag)
+	struct message *m;
+	int n;
+	const char	*flag;
 {
 	sighandler_type	saveint, savepipe;
 	enum okay	ok = STOP;
@@ -1536,7 +1877,7 @@ imap_unread(m, n)
 			safe_signal(SIGINT, imapcatch);
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
-		ok = imap_store(&mb, m, n, '-', "\\Seen");
+		ok = imap_store(&mb, m, n, '-', flag, 1);
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
@@ -1554,123 +1895,6 @@ tag(int new)
 		n++;
 	snprintf(ts, sizeof ts, "T%lu", n);
 	return ts;
-}
-
-static time_t
-imap_read_date_time(cp)
-	const char *cp;
-{
-	time_t	t;
-	int	i, year, month, day, hour, minute, second;
-	int	sign = -1;
-	char	buf[3];
-
-	/*
-	 * "25-Jul-2004 15:33:44 +0200"
-	 * |    |    |    |    |    |  
-	 * 0    5   10   15   20   25  
-	 */
-	if (cp[0] != '"' || strlen(cp) < 28 || cp[27] != '"')
-		goto invalid;
-	day = strtol(&cp[1], NULL, 10);
-	for (i = 0; month_names[i]; i++)
-		if (ascncasecmp(&cp[4], month_names[i], 3) == 0)
-			break;
-	if (month_names[i] == NULL)
-		goto invalid;
-	month = i + 1;
-	year = strtol(&cp[8], NULL, 10);
-	hour = strtol(&cp[13], NULL, 10);
-	minute = strtol(&cp[16], NULL, 10);
-	second = strtol(&cp[19], NULL, 10);
-	if ((t = combinetime(year, month, day, hour, minute, second)) ==
-			(time_t)-1)
-		goto invalid;
-	switch (cp[22]) {
-	case '-':
-		sign = 1;
-		break;
-	case '+':
-		break;
-	default:
-		goto invalid;
-	}
-	buf[2] = '\0';
-	buf[0] = cp[23];
-	buf[1] = cp[24];
-	t += strtol(buf, NULL, 10) * sign * 3600;
-	buf[0] = cp[25];
-	buf[1] = cp[26];
-	t += strtol(buf, NULL, 10) * sign * 60;
-	return t;
-invalid:
-	time(&t);
-	return t;
-}
-
-static const char *
-imap_make_date_time(t)
-	time_t t;
-{
-	static char	s[30];
-	struct tm	*tmptr;
-	int	tzdiff, tzdiff_hour, tzdiff_min;
-
-	tzdiff = t - mktime(gmtime(&t));
-	tzdiff_hour = (int)(tzdiff / 60);
-	tzdiff_min = tzdiff_hour % 60;
-	tzdiff_hour /= 60;
-	tmptr = localtime(&t);
-	if (tmptr->tm_isdst > 0)
-		tzdiff_hour++;
-	snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
-			tmptr->tm_mday,
-			month_names[tmptr->tm_mon],
-			tmptr->tm_year + 1900,
-			tmptr->tm_hour,
-			tmptr->tm_min,
-			tmptr->tm_sec,
-			tzdiff_hour,
-			tzdiff_min);
-	return s;
-}
-
-static const char *
-imap_quotestr(s)
-	const char *s;
-{
-	char	*n, *np;
-
-	np = n = salloc(2 * strlen(s) + 3);
-	*np++ = '"';
-	while (*s) {
-		if (*s == '"' || *s == '\\')
-			*np++ = '\\';
-		*np++ = *s++;
-	}
-	*np++ = '"';
-	*np = '\0';
-	return n;
-}
-
-static const char *
-imap_unquotestr(s)
-	const char *s;
-{
-	char	*n, *np;
-
-	if (*s != '"')
-		return s;
-	np = n = salloc(strlen(s) + 1);
-	while (*++s) {
-		if (*s == '\\')
-			s++;
-		else if (*s == '"')
-			break;
-		*np++ = *s;
-	}
-	*np = '\0';
-	return n;
 }
 
 int
@@ -1719,10 +1943,10 @@ imap_newmail(autoinc)
 	if (autoinc && had_exists < 0 && had_expunge < 0) {
 		verbose = value("verbose") != NULL;
 		imaplock = 1;
-		imap_noop(&mb);
+		imap_noop1(&mb);
 		imaplock = 0;
 	}
-	if (had_exists == msgcount && had_expunge < 0)
+	if (had_exists == msgCount && had_expunge < 0)
 		/*
 		 * Some servers always respond with EXISTS to NOOP. If
 		 * the mailbox has been changed but the number of messages
@@ -1733,6 +1957,74 @@ imap_newmail(autoinc)
 	return had_expunge >= 0 ? 2 : had_exists >= 0 ? 1 : 0;
 }
 
+static char *
+imap_putflags(f)
+	int	f;
+{
+	const char	*cp;
+	char	*buf, *bp;
+
+	bp = buf = salloc(100);
+	if (f & (MREAD|MFLAGGED|MANSWERED|MDRAFTED)) {
+		*bp++ = '(';
+		if (f & MREAD) {
+			if (bp[-1] != '(')
+				*bp++ = ' ';
+			for (cp = "\\Seen"; *cp; cp++)
+				*bp++ = *cp;
+		}
+		if (f & MFLAGGED) {
+			if (bp[-1] != '(')
+				*bp++ = ' ';
+			for (cp = "\\Flagged"; *cp; cp++)
+				*bp++ = *cp;
+		}
+		if (f & MANSWERED) {
+			if (bp[-1] != '(')
+				*bp++ = ' ';
+			for (cp = "\\Answered"; *cp; cp++)
+				*bp++ = *cp;
+		}
+		if (f & MDRAFT) {
+			if (bp[-1] != '(')
+				*bp++ = ' ';
+			for (cp = "\\Draft"; *cp; cp++)
+				*bp++ = *cp;
+		}
+		*bp++ = ')';
+		*bp++ = ' ';
+	}
+	*bp = '\0';
+	return buf;
+}
+
+static void
+imap_getflags(cp, xp, f)
+	const char	*cp;
+	char	**xp;
+	enum mflag	*f;
+{
+	while (*cp != ')') {
+		if (*cp == '\\') {
+			if (ascncasecmp(cp, "\\Seen", 5) == 0)
+				*f |= MREAD;
+			else if (ascncasecmp(cp, "\\Recent", 7) == 0)
+				*f |= MNEW;
+			else if (ascncasecmp(cp, "\\Deleted", 8) == 0)
+				*f |= MDELETED;
+			else if (ascncasecmp(cp, "\\Flagged", 8) == 0)
+				*f |= MFLAGGED;
+			else if (ascncasecmp(cp, "\\Answered", 9) == 0)
+				*f |= MANSWERED;
+			else if (ascncasecmp(cp, "\\Draft", 6) == 0)
+				*f |= MDRAFTED;
+		}
+		cp++;
+	}
+	if (xp)
+		*xp = (char *)cp;
+}
+
 static enum okay
 imap_append1(mp, name, fp, off1, xsize, flag, t)
 	struct mailbox *mp;
@@ -1740,14 +2032,14 @@ imap_append1(mp, name, fp, off1, xsize, flag, t)
 	FILE *fp;
 	off_t off1;
 	long xsize;
-	int flag;
+	enum mflag flag;
 	time_t t;
 {
 	char	o[LINESIZE];
 	char	*buf;
 	size_t	bufsize, buflen, count;
 	enum okay	ok = STOP;
-	long	size;
+	long	size, lines, ysize;
 	int	twice = 0;
 	FILE	*queuefp = NULL;
 
@@ -1764,7 +2056,7 @@ again:	size = xsize;
 	fseek(fp, off1, SEEK_SET);
 	snprintf(o, sizeof o, "%s APPEND %s %s%s {%ld}\r\n",
 			tag(1), imap_quotestr(name),
-			flag & MREAD ? "(\\Seen) " : "",
+			imap_putflags(flag),
 			imap_make_date_time(t),
 			size);
 	IMAP_OUT(o, MB_COMD, goto out)
@@ -1779,17 +2071,20 @@ again:	size = xsize;
 		else
 			goto out;
 	}
+	lines = ysize = 0;
 	while (size > 0) {
 		fgetline(&buf, &bufsize, &count, &buflen, fp, 1);
+		lines++;
+		ysize += buflen;
 		buf[buflen-1] = '\r';
 		buf[buflen] = '\n';
-		if (mp->mb_type == MB_IMAP)
+		if (mp->mb_type != MB_CACHE)
 			swrite1(&mp->mb_sock, buf, buflen+1, 1);
 		else if (queuefp)
 			fwrite(buf, 1, buflen+1, queuefp);
 		size -= buflen+1;
 	}
-	if (mp->mb_type == MB_IMAP)
+	if (mp->mb_type != MB_CACHE)
 		swrite(&mp->mb_sock, "\r\n");
 	else if (queuefp)
 		fputs("\r\n", queuefp);
@@ -1814,10 +2109,14 @@ again:	size = xsize;
 			goto again;
 		} else if (ok != OKAY)
 			fprintf(stderr, "IMAP error: %s", responded_text);
+		else if (response_status == RESPONSE_OK &&
+				mp->mb_flags & MB_UIDPLUS)
+			imap_appenduid(mp, fp, t, off1, xsize, ysize, lines,
+					flag, name);
 	}
-	if (queuefp != NULL)
+out:	if (queuefp != NULL)
 		Fclose(queuefp);
-out:	free(buf);
+	free(buf);
 	return ok;
 }
 
@@ -1831,7 +2130,7 @@ imap_append0(mp, name, fp)
 	size_t	bufsize, buflen, count;
 	off_t	off1 = -1, offs;
 	int	inhead = 1;
-	int	flag = MNEW;
+	int	flag = MNEW|MNEWEST;
 	long	size = 0;
 	time_t	tim;
 	enum okay	ok;
@@ -1873,7 +2172,25 @@ imap_append0(mp, name, fp)
 						flag |= MREAD;
 						break;
 					case 'O':
-						flag |= ~MNEW;
+						flag &= ~MNEW;
+						break;
+					}
+		} else if (bp && inhead &&
+				ascncasecmp(buf, "x-status", 8) == 0) {
+			lp = &buf[8];
+			while (whitechar(*lp&0377))
+				lp++;
+			if (*lp == ':')
+				while (*++lp != '\0')
+					switch (*lp) {
+					case 'F':
+						flag |= MFLAGGED;
+						break;
+					case 'A':
+						flag |= MANSWERED;
+						break;
+					case 'T':
+						flag |= MDRAFTED;
 						break;
 					}
 		}
@@ -1908,7 +2225,7 @@ imap_append(xserver, fp)
 		safe_signal(SIGINT, imapcatch);
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, imapcatch);
-	if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd >= 0) &&
+	if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd > 0) &&
 			mb.mb_imap_account &&
 			strcmp(protbase(server), mb.mb_imap_account) == 0) {
 		ok = imap_append0(&mb, mbx, fp);
@@ -1948,84 +2265,21 @@ out:	safe_signal(SIGINT, saveint);
 	return ok;
 }
 
-static enum {
-	LIST_NONE		= 000,
-	LIST_NOINFERIORS	= 001,
-	LIST_NOSELECT		= 002,
-	LIST_MARKED		= 004,
-	LIST_UNMARKED		= 010
-} list_attributes;
-static int	list_hierarchy_delimiter;
-static char	*list_name;
-
 static enum okay
-imap_parse_list()
-{
-	char	*cp;
-
-	cp = responded_other_text;
-	list_attributes = LIST_NONE;
-	if (*cp == '(') {
-		while (*cp && *cp != ')') {
-			if (*cp == '\\') {
-				if (ascncasecmp(&cp[1], "Noinferiors ", 12)
-						== 0) {
-					list_attributes |= LIST_NOINFERIORS;
-					cp += 12;
-				} else if (ascncasecmp(&cp[1], "Noselect ", 9)
-						== 0) {
-					list_attributes |= LIST_NOSELECT;
-					cp += 9;
-				} else if (ascncasecmp(&cp[1], "Marked ", 7)
-						== 0) {
-					list_attributes |= LIST_MARKED;
-					cp += 7;
-				} else if (ascncasecmp(&cp[1], "Unmarked ", 9)
-						== 0) {
-					list_attributes |= LIST_UNMARKED;
-					cp += 9;
-				}
-			}
-			cp++;
-		}
-		if (*++cp != ' ')
-			return STOP;
-		while (*cp == ' ')
-			cp++;
-	}
-	list_hierarchy_delimiter = EOF;
-	if (*cp == '"') {
-		if (*++cp == '\\')
-			cp++;
-		list_hierarchy_delimiter = *cp++ & 0377;
-		if (cp[0] != '"' || cp[1] != ' ')
-			return STOP;
-		cp++;
-	} else if (cp[0] == 'N' && cp[1] == 'I' && cp[2] == 'L' &&
-			cp[3] == ' ') {
-		list_hierarchy_delimiter = EOF;
-		cp += 3;
-	}
-	while (*cp == ' ')
-		cp++;
-	list_name = cp;
-	while (*cp && *cp != '\r')
-		cp++;
-	*cp = '\0';
-	return OKAY;
-}
-
-static enum okay
-imap_list(mp, base, fp)
+imap_list1(mp, base, list, lend, level)
 	struct mailbox *mp;
 	const char *base;
-	FILE *fp;
+	struct list_item	**list, **lend;
+	int	level;
 {
 	char	o[LINESIZE];
 	enum okay	ok = STOP;
-	const char	*cp, *bp;
+	char	*cp;
+	const char	*bp;
 	FILE	*queuefp = NULL;
+	struct list_item	*lp;
 
+	*list = *lend = NULL;
 	snprintf(o, sizeof o, "%s LIST %s %%\r\n",
 			tag(1), imap_quotestr(base));
 	IMAP_OUT(o, MB_COMD, return STOP);
@@ -2035,32 +2289,105 @@ imap_list(mp, base, fp)
 				response_other == MAILBOX_DATA_LIST &&
 				imap_parse_list() == OKAY) {
 			cp = imap_unquotestr(list_name);
+			lp = csalloc(1, sizeof *lp);
+			lp->l_name = cp;
 			for (bp = base; *bp && *bp == *cp; bp++)
 				cp++;
-			fprintf(fp, "%s\n", *cp ? cp : "INBOX");
+			lp->l_base = *cp ? cp : savestr(base);
+			lp->l_attr = list_attributes;
+			lp->l_level = level+1;
+			lp->l_delim = list_hierarchy_delimiter;
+			if (*list && *lend) {
+				(*lend)->l_next = lp;
+				*lend = lp;
+			} else
+				*list = *lend = lp;
 		}
 	}
 	return ok;
 }
 
+static enum okay
+imap_list(mp, base, strip, fp)
+	struct mailbox	*mp;
+	const char	*base;
+	int	strip;
+	FILE	*fp;
+{
+	struct list_item	*list, *lend, *lp, *lx, *ly;
+	int	n;
+	const char	*bp;
+	char	*cp;
+
+	verbose = value("verbose") != NULL;
+	if (imap_list1(mp, base, &list, &lend, 0) == STOP)
+		return STOP;
+	if (list == NULL || lend == NULL)
+		return OKAY;
+	for (lp = list; lp; lp = lp->l_next)
+		if (lp->l_delim != '/' && lp->l_delim != EOF &&
+				lp->l_level < 2 &&
+				(lp->l_attr&LIST_NOINFERIORS) == 0) {
+			cp = salloc((n = strlen(lp->l_name)) + 2);
+			strcpy(cp, lp->l_name);
+			cp[n] = lp->l_delim;
+			cp[n+1] = '\0';
+			if (imap_list1(mp, cp, &lx, &ly, lp->l_level) == OKAY &&
+					lx && ly) {
+				lp->l_has_children = 1;
+				if (strcmp(cp, lx->l_name) == 0)
+					lx = lx->l_next;
+				if (lx) {
+					lend->l_next = lx;
+					lend = ly;
+				}
+			}
+		}
+	for (lp = list; lp; lp = lp->l_next) {
+		if (strip) {
+			cp = lp->l_name;
+			for (bp = base; *bp && *bp == *cp; bp++)
+				cp++;
+		} else
+			cp = lp->l_name;
+		if ((lp->l_attr&LIST_NOSELECT) == 0)
+			fprintf(fp, "%s\n", *cp ? cp : base);
+		else if (lp->l_has_children == 0)
+			fprintf(fp, "%s%c\n", *cp ? cp : base,
+				lp->l_delim != EOF ? lp->l_delim : '\n');
+	}
+	return OKAY;
+}
+
 void
-imap_folders()
+imap_folders(name, strip)
+	const char	*name;
+	int	strip;
 {
 	sighandler_type	saveint, savepipe;
-	char	*fold, *tempfn;
+	const char	*fold, *cp, *sp;
+	char	*tempfn;
 	FILE	*fp;
 
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&fp;
 	(void)&fold;
-	if ((fold = value("folder")) == NULL)
-		fold = "";
+	cp = protbase(name);
+	sp = mb.mb_imap_account;
+	if (strcmp(cp, sp)) {
+		fprintf(stderr, "Cannot list folders on other than the "
+				"current IMAP account,\n\"%s\". "
+				"Try \"folders @\".\n", sp);
+		return;
+	}
+	fold = protfile(name);
 	if ((fp = Ftemp(&tempfn, "Ri", "w+", 0600, 1)) == NULL) {
 		perror("tmpfile");
 		return;
 	}
-	unlink(tempfn);
+	rm(tempfn);
+	Ftfree(&tempfn);
 	imaplock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -2071,23 +2398,68 @@ imap_folders()
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, imapcatch);
 	if (mb.mb_type == MB_CACHE)
-		cache_list(&mb, protfile(fold), fp);
+		cache_list(&mb, fold, strip, fp);
 	else
-		imap_list(&mb, protfile(fold), fp);
+		imap_list(&mb, fold, strip, fp);
 	imaplock = 0;
 	fflush(fp);
 	rewind(fp);
 	if (fsize(fp) > 0)
-		/*
-		 * This is not optimal. Unless we get a System V version
-		 * of pr, -F will not do what we want and names will be
-		 * truncated.
-		 */
-		run_command("pr -4 -F -t", 0, fileno(fp), -1, NULL, NULL, NULL);
+		dopr(fp);
+	else
+		fprintf(stderr, "Folder not found.\n");
 out:
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
 	Fclose(fp);
+}
+
+static void
+dopr(fp)
+	FILE	*fp;
+{
+	char	o[LINESIZE], *tempfn;
+	int	c;
+	long	n = 0, mx = 0, columns, width;
+	FILE	*out;
+
+	if ((out = Ftemp(&tempfn, "Ro", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		return;
+	}
+	rm(tempfn);
+	Ftfree(&tempfn);
+	while ((c = getc(fp)) != EOF) {
+		if (c == '\n') {
+			if (n > mx)
+				mx = n;
+			n = 0;
+		} else
+			n++;
+	}
+	rewind(fp);
+	width = scrnwidth;
+	if (mx < width / 2) {
+		columns = width / (mx+2);
+		snprintf(o, sizeof o,
+				"sort | pr -%lu -w%lu -t",
+				columns, width);
+	} else
+		strncpy(o, "sort", sizeof o)[sizeof o - 1] = '\0';
+	run_command(SHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
+	fflush(out);
+	rewind(out);
+	n = 0;
+	while ((c = getc(out)) != EOF)
+		if (c == '\n')
+			n++;
+	rewind(out);
+	if (n > scrnheight)
+		run_command(get_pager(), 0, fileno(out), -1, NULL, NULL, NULL);
+	else
+		while ((c = getc(out)) != EOF)
+			putchar(c);
+	Fclose(out);
 }
 
 static enum okay
@@ -2098,6 +2470,7 @@ imap_copy1(mp, m, n, name)
 	const char *name;
 {
 	char	o[LINESIZE];
+	const char	*qname;
 	enum okay	ok = STOP;
 	int	twice = 0;
 	FILE	*queuefp = NULL;
@@ -2107,24 +2480,43 @@ imap_copy1(mp, m, n, name)
 			return STOP;
 		ok = OKAY;
 	}
-	name = imap_quotestr(protfile(name));
+	qname = imap_quotestr(name = protfile(name));
 	/*
-	 * Since it is not possible to set flags on the copy, the \Seen
-	 * flag must be set on the original to include it in the copy.
+	 * Since it is not possible to set flags on the copy, recently
+	 * set flags must be set on the original to include it in the copy.
 	 */
 	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
-		imap_store(mp, m, n, '+', "\\Seen");
+		imap_store(mp, m, n, '+', "\\Seen", 0);
+	if (m->m_flag&MFLAG)
+		imap_store(mp, m, n, '+', "\\Flagged", 0);
+	if (m->m_flag&MUNFLAG)
+		imap_store(mp, m, n, '-', "\\Flagged", 0);
+	if (m->m_flag&MANSWER)
+		imap_store(mp, m, n, '+', "\\Answered", 0);
+	if (m->m_flag&MUNANSWER)
+		imap_store(mp, m, n, '-', "\\Flagged", 0);
+	if (m->m_flag&MDRAFT)
+		imap_store(mp, m, n, '+', "\\Draft", 0);
+	if (m->m_flag&MUNDRAFT)
+		imap_store(mp, m, n, '-', "\\Draft", 0);
 again:	if (m->m_uid)
 		snprintf(o, sizeof o, "%s UID COPY %lu %s\r\n",
-				tag(1), m->m_uid, name);
-	else
+				tag(1), m->m_uid, qname);
+	else {
+		if (check_expunged() == STOP)
+			goto out;
 		snprintf(o, sizeof o, "%s COPY %u %s\r\n",
-				tag(1), n, name);
+				tag(1), n, qname);
+	}
 	IMAP_OUT(o, MB_COMD, goto out)
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, twice);
+	if (mp->mb_type == MB_IMAP &&
+			mp->mb_flags & MB_UIDPLUS &&
+			response_status == RESPONSE_OK)
+		imap_copyuid(mp, m, name);
 	if (response_status == RESPONSE_NO && twice++ == 0) {
-		snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), name);
+		snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), qname);
 		IMAP_OUT(o, MB_COMD, goto out)
 		while (mp->mb_active & MB_COMD)
 			ok = imap_answer(mp, 1);
@@ -2140,7 +2532,19 @@ again:	if (m->m_uid)
 	 * the 'exit' command still leaves the message unread.
 	 */
 out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
-		imap_store(mp, m, n, '-', "\\Seen");
+		imap_store(mp, m, n, '-', "\\Seen", 0);
+	if (m->m_flag&MFLAG)
+		imap_store(mp, m, n, '-', "\\Flagged", 0);
+	if (m->m_flag&MUNFLAG)
+		imap_store(mp, m, n, '+', "\\Flagged", 0);
+	if (m->m_flag&MANSWER)
+		imap_store(mp, m, n, '-', "\\Answered", 0);
+	if (m->m_flag&MUNANSWER)
+		imap_store(mp, m, n, '+', "\\Answered", 0);
+	if (m->m_flag&MDRAFT)
+		imap_store(mp, m, n, '-', "\\Draft", 0);
+	if (m->m_flag&MUNDRAFT)
+		imap_store(mp, m, n, '+', "\\Draft", 0);
 	return ok;
 }
 
@@ -2173,10 +2577,271 @@ imap_copy(m, n, name)
 	return ok;
 }
 
+static enum okay
+imap_copyuid_parse(cp, uidvalidity, olduid, newuid)
+	const char	*cp;
+	unsigned long	*uidvalidity, *olduid, *newuid;
+{
+	char	*xp, *yp, *zp;
+
+	*uidvalidity = strtoul(cp, &xp, 10);
+	*olduid = strtoul(xp, &yp, 10);
+	*newuid = strtoul(yp, &zp, 10);
+	return *uidvalidity && *olduid && *newuid && xp > cp && *xp == ' ' &&
+		yp > xp && *yp == ' ' && zp > yp && *zp == ']';
+}
+
+static enum okay
+imap_appenduid_parse(cp, uidvalidity, uid)
+	const char	*cp;
+	unsigned long	*uidvalidity, *uid;
+{
+	char	*xp, *yp;
+
+	*uidvalidity = strtoul(cp, &xp, 10);
+	*uid = strtoul(xp, &yp, 10);
+	return *uidvalidity && *uid && xp > cp && *xp == ' ' &&
+		yp > xp && *yp == ']';
+}
+
+static enum okay
+imap_copyuid(mp, m, name)
+	struct mailbox	*mp;
+	struct message	*m;
+	const char	*name;
+{
+	const char	*cp;
+	unsigned long	uidvalidity, olduid, newuid;
+	struct mailbox	xmb;
+	struct message	xm;
+
+	if ((cp = asccasestr(responded_text, "[COPYUID ")) == NULL ||
+			imap_copyuid_parse(&responded_text[9], &uidvalidity,
+				&olduid, &newuid) == STOP)
+		return STOP;
+	xmb = *mp;
+	xmb.mb_cache_directory = NULL;
+	xmb.mb_imap_mailbox = savestr((char *)name);
+	xmb.mb_uidvalidity = uidvalidity;
+	initcache(&xmb);
+	if (m == NULL) {
+		memset(&xm, 0, sizeof xm);
+		xm.m_uid = olduid;
+		if (getcache1(mp, &xm, NEED_UNSPEC, 3) != OKAY)
+			return STOP;
+		getcache(mp, &xm, NEED_HEADER);
+		getcache(mp, &xm, NEED_BODY);
+	} else
+		xm = *m;
+	xm.m_uid = newuid;
+	xm.m_flag &= ~MFULLYCACHED;
+	putcache(&xmb, &xm);
+	return OKAY;
+}
+
+static enum okay
+imap_appenduid(mp, fp, t, off1, xsize, size, lines, flag, name)
+	struct mailbox	*mp;
+	FILE	*fp;
+	time_t	t;
+	long	off1, xsize, size, lines;
+	int	flag;
+	const char	*name;
+{
+	const char	*cp;
+	unsigned long	uidvalidity, uid;
+	struct mailbox	xmb;
+	struct message	xm;
+
+	if ((cp = asccasestr(responded_text, "[APPENDUID ")) == NULL ||
+			imap_appenduid_parse(&responded_text[11], &uidvalidity,
+				&uid) == STOP)
+		return STOP;
+	xmb = *mp;
+	xmb.mb_cache_directory = NULL;
+	xmb.mb_imap_mailbox = savestr((char *)name);
+	xmb.mb_uidvalidity = uidvalidity;
+	xmb.mb_otf = xmb.mb_itf = fp;
+	initcache(&xmb);
+	memset(&xm, 0, sizeof xm);
+	xm.m_flag = flag&MREAD | MNEW;
+	xm.m_time = t;
+	xm.m_block = nail_blockof(off1);
+	xm.m_offset = nail_offsetof(off1);
+	xm.m_size = size;
+	xm.m_xsize = xsize;
+	xm.m_lines = xm.m_xlines = lines;
+	xm.m_uid = uid;
+	xm.m_have = HAVE_HEADER|HAVE_BODY;
+	putcache(&xmb, &xm);
+	return OKAY;
+}
+
+static enum okay
+imap_appenduid_cached(mp, fp)
+	struct mailbox	*mp;
+	FILE	*fp;
+{
+	FILE	*tp = NULL;
+	time_t	t;
+	long	size, xsize, ysize, lines;
+	enum mflag	flag = MNEW;
+	char	*name, *buf, *bp, *cp, *tempCopy;
+	size_t	bufsize, buflen, count;
+	enum okay	ok = STOP;
+
+	buf = smalloc(bufsize = LINESIZE);
+	buflen = 0;
+	count = fsize(fp);
+	if (fgetline(&buf, &bufsize, &count, &buflen, fp, 0) == NULL)
+		goto stop;
+	for (bp = buf; *bp != ' '; bp++);	/* strip old tag */
+	while (*bp == ' ')
+		bp++;
+	if ((cp = strrchr(bp, '{')) == NULL)
+		goto stop;
+	xsize = atol(&cp[1]) + 2;
+	if ((name = imap_strex(&bp[7], &cp)) == NULL)
+		goto stop;
+	while (*cp == ' ')
+		cp++;
+	if (*cp == '(') {
+		imap_getflags(cp, &cp, &flag);
+		while (*++cp == ' ');
+	}
+	t = imap_read_date_time(cp);
+	if ((tp = Ftemp(&tempCopy, "Rc", "w+", 0600, 1)) == NULL)
+		goto stop;
+	rm(tempCopy);
+	Ftfree(&tempCopy);
+	size = xsize;
+	ysize = lines = 0;
+	while (size > 0) {
+		if (fgetline(&buf, &bufsize, &count, &buflen, fp, 0) == NULL)
+			goto stop;
+		size -= buflen;
+		buf[--buflen] = '\0';
+		buf[buflen-1] = '\n';
+		fwrite(buf, 1, buflen, tp);
+		ysize += buflen;
+		lines++;
+	}
+	fflush(tp);
+	rewind(tp);
+	imap_appenduid(mp, tp, t, 0, xsize-2, ysize-1, lines-1, flag,
+			imap_unquotestr(name));
+	ok = OKAY;
+stop:	free(buf);
+	if (tp)
+		Fclose(tp);
+	return ok;
+}
+
+static enum okay
+imap_search2(mp, m, count, spec, f)
+	struct mailbox	*mp;
+	struct message	*m;
+	int	count, f;
+	const char	*spec;
+{
+	char	*o;
+	size_t	osize;
+	FILE	*queuefp = NULL;
+	enum okay	ok = STOP;
+	int	i;
+	unsigned long	n;
+	const char	*cp;
+	char	*xp, *cs, c;
+
+	c = 0;
+	for (cp = spec; *cp; cp++)
+		c |= *cp;
+	if (c & 0200) {
+		cp = gettcharset();
+#ifdef	HAVE_ICONV
+		if (asccasecmp(cp, "utf-8")) {
+			iconv_t	it;
+			char	*sp, *nsp, *nspec;
+			size_t	sz, nsz;
+			if ((it = iconv_open_ft("utf-8", cp)) != (iconv_t)-1) {
+				sz = strlen(spec) + 1;
+				nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
+				sp = (char *)spec;
+				if (iconv(it, &sp, &sz, &nsp, &nsz) >= 0 &&
+						sz == 0) {
+					spec = nspec;
+					cp = "utf-8";
+				}
+				iconv_close(it);
+			}
+		}
+#endif	/* HAVE_ICONV */
+		cp = imap_quotestr(cp);
+		cs = salloc(n = strlen(cp) + 10);
+		snprintf(cs, n, "CHARSET %s ", cp);
+	} else
+		cs = "";
+	o = ac_alloc(osize = strlen(spec) + 60);
+	snprintf(o, osize, "%s UID SEARCH %s%s\r\n", tag(1), cs, spec);
+	IMAP_OUT(o, MB_COMD, goto out)
+	while (mp->mb_active & MB_COMD) {
+		ok = imap_answer(mp, 0);
+		if (response_status == RESPONSE_OTHER &&
+				response_other == MAILBOX_DATA_SEARCH) {
+			xp = responded_other_text;
+			while (*xp && *xp != '\r') {
+				n = strtoul(xp, &xp, 10);
+				for (i = 0; i < count; i++)
+					if (m[i].m_uid == n &&
+							(m[i].m_flag&MHIDDEN) 
+							== 0 &&
+							(f == MDELETED ||
+							 (m[i].m_flag&MDELETED)
+							 == 0))
+						mark(i+1, f);
+			}
+		}
+	}
+out:	ac_free(o);
+	return ok;
+}
+
+enum okay
+imap_search1(spec, f)
+	const char	*spec;
+	int	f;
+{
+	sighandler_type	saveint, savepipe;
+	enum okay	ok = STOP;
+
+	(void)&saveint;
+	(void)&savepipe;
+	(void)&ok;
+	if (mb.mb_type != MB_IMAP)
+		return STOP;
+	verbose = value("verbose") != NULL;
+	imaplock = 1;
+	saveint = safe_signal(SIGINT, SIG_IGN);
+	savepipe = safe_signal(SIGPIPE, SIG_IGN);
+	if (sigsetjmp(imapjmp, 1) == 0) {
+		if (saveint != SIG_IGN)
+			safe_signal(SIGINT, imapcatch);
+		if (savepipe != SIG_IGN)
+			safe_signal(SIGPIPE, imapcatch);
+		ok = imap_search2(&mb, message, msgCount, spec, f);
+	}
+	safe_signal(SIGINT, saveint);
+	safe_signal(SIGPIPE, savepipe);
+	imaplock = 0;
+	return ok;
+}
+
 int
 imap_thisaccount(cp)
 	const char *cp;
 {
+	if (mb.mb_type != MB_CACHE && mb.mb_type != MB_IMAP)
+		return 0;
 	if ((mb.mb_type != MB_CACHE && mb.mb_sock.s_fd < 0) ||
 			mb.mb_imap_account == NULL)
 		return 0;
@@ -2193,13 +2858,15 @@ imap_dequeue(mp, fp)
 	char	*buf, *bp, *cp, iob[4096];
 	size_t	bufsize, buflen, count;
 	enum okay	ok = OKAY, rok = OKAY;
-	long	offs, octets;
+	long	offs, offs1, offs2, octets;
 	int	n, twice, gotcha = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
 	buflen = 0;
 	count = fsize(fp);
-	while (fgetline(&buf, &bufsize, &count, &buflen, fp, 0) != NULL) {
+	while (offs1 = ftell(fp),
+			fgetline(&buf, &bufsize, &count, &buflen, fp, 0)
+			!= NULL) {
 		for (bp = buf; *bp != ' '; bp++);	/* strip old tag */
 		while (*bp == ' ')
 			bp++;
@@ -2214,13 +2881,18 @@ imap_dequeue(mp, fp)
 				goto fail;
 			while (*cp == ' ')
 				cp++;
-			if ((newname = imap_strex(cp)) == NULL)
+			if ((newname = imap_strex(cp, NULL)) == NULL)
 				goto fail;
 			IMAP_OUT(o, MB_COMD, continue)
 			while (mp->mb_active & MB_COMD)
 				ok = imap_answer(mp, twice);
 			if (response_status == RESPONSE_NO && twice++ == 0)
 				goto trycreate;
+			if (response_status == RESPONSE_OK &&
+					mp->mb_flags & MB_UIDPLUS) {
+				imap_copyuid(mp, NULL,
+						imap_unquotestr(newname));
+			}
 		} else if (ascncasecmp(bp, "UID STORE ", 10) == 0) {
 			IMAP_OUT(o, MB_COMD, continue)
 			while (mp->mb_active & MB_COMD)
@@ -2228,10 +2900,10 @@ imap_dequeue(mp, fp)
 			if (ok == OKAY)
 				gotcha++;
 		} else if (ascncasecmp(bp, "APPEND ", 7) == 0) {
-			if ((cp = strchr(bp, '{')) == NULL)
+			if ((cp = strrchr(bp, '{')) == NULL)
 				goto fail;
 			octets = atol(&cp[1]) + 2;
-			if ((newname = imap_strex(&bp[7])) == NULL)
+			if ((newname = imap_strex(&bp[7], NULL)) == NULL)
 				goto fail;
 			IMAP_OUT(o, MB_COMD, continue)
 			while (mp->mb_active & MB_COMD) {
@@ -2262,6 +2934,15 @@ imap_dequeue(mp, fp)
 					goto trycreate;
 				}
 			}
+			if (response_status == RESPONSE_OK &&
+					mp->mb_flags & MB_UIDPLUS) {
+				offs2 = ftell(fp);
+				fseek(fp, offs1, SEEK_SET);
+				if (imap_appenduid_cached(mp, fp) == STOP) {
+					fseek(fp, offs2, SEEK_SET);
+					goto fail;
+				}
+			}
 		} else {
 		fail:	fprintf(stderr,
 				"Invalid command in IMAP cache queue: \"%s\"\n",
@@ -2282,13 +2963,14 @@ imap_dequeue(mp, fp)
 	rewind(fp);
 	ftruncate(fileno(fp), 0);
 	if (gotcha)
-		imap_expunge(mp);
+		imap_close(mp);
 	return rok;
 }
 
 static char *
-imap_strex(cp)
+imap_strex(cp, xp)
 	const char	*cp;
+	char	**xp;
 {
 	const char	*cq;
 	char	*n;
@@ -2306,7 +2988,20 @@ imap_strex(cp)
 	n = salloc(cq - cp + 2);
 	memcpy(n, cp, cq - cp + 1);
 	n[cq - cp + 1] = '\0';
+	if (xp)
+		*xp = (char *)&cq[1];
 	return n;
+}
+
+static enum okay
+check_expunged()
+{
+	if (expunged_messages > 0) {
+		fprintf(stderr,
+			"Command not executed - messages have been expunged\n");
+		return STOP;
+	}
+	return OKAY;
 }
 
 /*ARGSUSED*/
@@ -2315,9 +3010,9 @@ cconnect(vp)
 	void	*vp;
 {
 	char	*cp, *cq;
-	int	omsgcount = msgcount;
+	int	omsgCount = msgCount;
 
-	if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd >= 0) {
+	if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd > 0) {
 		fprintf(stderr, "Already connected.\n");
 		return 1;
 	}
@@ -2334,8 +3029,8 @@ cconnect(vp)
 	unset_allow_undefined = 0;
 	if (mb.mb_type == MB_CACHE) {
 		imap_setfile1(mailname, 0, edit, 1);
-		if (msgcount > omsgcount)
-			newmailinfo(omsgcount);
+		if (msgCount > omsgCount)
+			newmailinfo(omsgCount);
 	}
 	return 0;
 }
@@ -2490,11 +3185,27 @@ imap_copy(m, n, name)
 	return STOP;
 }
 
+/*ARGSUSED*/
+enum okay
+imap_search1(spec, f)
+	const char	*spec;
+	int	f;
+{
+	return STOP;
+}
+
 int
 imap_thisaccount(cp)
 	const char *cp;
 {
 	return 0;
+}
+
+enum okay
+imap_noop()
+{
+	noimap();
+	return STOP;
 }
 
 /*ARGSUSED*/
@@ -2524,3 +3235,157 @@ ccache(vp)
 	return 1;
 }
 #endif	/* HAVE_SOCKETS */
+
+time_t
+imap_read_date_time(cp)
+	const char *cp;
+{
+	time_t	t;
+	int	i, year, month, day, hour, minute, second;
+	int	sign = -1;
+	char	buf[3];
+
+	/*
+	 * "25-Jul-2004 15:33:44 +0200"
+	 * |    |    |    |    |    |  
+	 * 0    5   10   15   20   25  
+	 */
+	if (cp[0] != '"' || strlen(cp) < 28 || cp[27] != '"')
+		goto invalid;
+	day = strtol(&cp[1], NULL, 10);
+	for (i = 0; month_names[i]; i++)
+		if (ascncasecmp(&cp[4], month_names[i], 3) == 0)
+			break;
+	if (month_names[i] == NULL)
+		goto invalid;
+	month = i + 1;
+	year = strtol(&cp[8], NULL, 10);
+	hour = strtol(&cp[13], NULL, 10);
+	minute = strtol(&cp[16], NULL, 10);
+	second = strtol(&cp[19], NULL, 10);
+	if ((t = combinetime(year, month, day, hour, minute, second)) ==
+			(time_t)-1)
+		goto invalid;
+	switch (cp[22]) {
+	case '-':
+		sign = 1;
+		break;
+	case '+':
+		break;
+	default:
+		goto invalid;
+	}
+	buf[2] = '\0';
+	buf[0] = cp[23];
+	buf[1] = cp[24];
+	t += strtol(buf, NULL, 10) * sign * 3600;
+	buf[0] = cp[25];
+	buf[1] = cp[26];
+	t += strtol(buf, NULL, 10) * sign * 60;
+	return t;
+invalid:
+	time(&t);
+	return t;
+}
+
+time_t
+imap_read_date(cp)
+	const char	*cp;
+{
+	time_t	t;
+	int	year, month, day, i, tzdiff;
+	struct tm	*tmptr;
+	char	*xp, *yp;
+
+	if (*cp == '"')
+		cp++;
+	day = strtol(cp, &xp, 10);
+	if (day <= 0 || day > 31 || *xp++ != '-')
+		return -1;
+	for (i = 0; month_names[i]; i++)
+		if (ascncasecmp(xp, month_names[i], 3) == 0)
+			break;
+	if (month_names[i] == NULL)
+		return -1;
+	month = i+1;
+	if (xp[3] != '-')
+		return -1;
+	year = strtol(&xp[4], &yp, 10);
+	if (year < 1970 || year > 2037 || yp != &xp[8])
+		return -1;
+	if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
+		return -1;
+	if ((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
+		return -1;
+	tzdiff = t - mktime(gmtime(&t));
+	tmptr = localtime(&t);
+	if (tmptr->tm_isdst > 0)
+		tzdiff += 3600;
+	t -= tzdiff;
+	return t;
+}
+
+const char *
+imap_make_date_time(t)
+	time_t t;
+{
+	static char	s[30];
+	struct tm	*tmptr;
+	int	tzdiff, tzdiff_hour, tzdiff_min;
+
+	tzdiff = t - mktime(gmtime(&t));
+	tzdiff_hour = (int)(tzdiff / 60);
+	tzdiff_min = tzdiff_hour % 60;
+	tzdiff_hour /= 60;
+	tmptr = localtime(&t);
+	if (tmptr->tm_isdst > 0)
+		tzdiff_hour++;
+	snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
+			tmptr->tm_mday,
+			month_names[tmptr->tm_mon],
+			tmptr->tm_year + 1900,
+			tmptr->tm_hour,
+			tmptr->tm_min,
+			tmptr->tm_sec,
+			tzdiff_hour,
+			tzdiff_min);
+	return s;
+}
+
+char *
+imap_quotestr(s)
+	const char *s;
+{
+	char	*n, *np;
+
+	np = n = salloc(2 * strlen(s) + 3);
+	*np++ = '"';
+	while (*s) {
+		if (*s == '"' || *s == '\\')
+			*np++ = '\\';
+		*np++ = *s++;
+	}
+	*np++ = '"';
+	*np = '\0';
+	return n;
+}
+
+char *
+imap_unquotestr(s)
+	const char *s;
+{
+	char	*n, *np;
+
+	if (*s != '"')
+		return savestr(s);
+	np = n = salloc(strlen(s) + 1);
+	while (*++s) {
+		if (*s == '\\')
+			s++;
+		else if (*s == '"')
+			break;
+		*np++ = *s;
+	}
+	*np = '\0';
+	return n;
+}

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)thread.c	1.37 (gritter) 8/29/04";
+static char sccsid[] = "@(#)thread.c	1.40 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -56,7 +56,7 @@ static char sccsid[] = "@(#)thread.c	1.37 (gritter) 8/29/04";
 
 /*
  * Open addressing is used for Message-IDs because the maximum number of
- * messages in the table is known in advance (== msgcount).
+ * messages in the table is known in advance (== msgCount).
  */
 struct	mitem {
 	struct message	*mi_data;
@@ -67,6 +67,7 @@ struct msort {
 	union {
 		long	ms_long;
 		char	*ms_char;
+		float	ms_float;
 	} ms_u;
 	int	ms_n;
 };
@@ -79,6 +80,7 @@ static struct message *interlink __P((struct message *, long));
 static void	finalize __P((struct message *));
 static int	mlonglt __P((const void *, const void *));
 static int	mcharlt __P((const void *, const void *));
+static int	mfloatlt __P((const void *, const void *));
 static void	lookup __P((struct message *, struct mitem *, int));
 static void	makethreads __P((struct message *, long));
 static char	*skipre __P((const char *));
@@ -285,6 +287,19 @@ mlonglt(a, b)
 }
 
 static int
+mfloatlt(a, b)
+	const void	*a, *b;
+{
+	float	i;
+
+	i = ((struct msort *)a)->ms_u.ms_float -
+		((struct msort *)b)->ms_u.ms_float;
+	if (i == 0)
+		i = ((struct msort *)a)->ms_n - ((struct msort *)b)->ms_n;
+	return i > 0 ? 1 : i < 0 ? -1 : 0;
+}
+
+static int
 mcharlt(a, b)
 	const void	*a, *b;
 {
@@ -394,8 +409,8 @@ thread(vp)
 {
 	if (mb.mb_threaded != 1 || vp == NULL) {
 		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(1, msgcount);
-		makethreads(message, msgcount);
+			imap_getheaders(1, msgCount);
+		makethreads(message, msgCount);
 		free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
 	}
@@ -493,6 +508,7 @@ sort(vp)
 		SORT_SIZE,
 		SORT_FROM,
 		SORT_TO,
+		SORT_SCORE,
 		SORT_THREAD
 	} method;
 	struct {
@@ -506,10 +522,11 @@ sort(vp)
 		{ "subject",	SORT_SUBJECT,	mcharlt },
 		{ "size",	SORT_SIZE,	mlonglt },
 		{ "status",	SORT_STATUS,	mlonglt },
+		{ "score",	SORT_SCORE,	mfloatlt },
 		{ "thread",	SORT_THREAD,	NULL },
 		{ NULL,		-1,		NULL }
 	};
-	char	**args = (char **)vp, *cp;
+	char	**args = (char **)vp, *cp, *_args[2];
 	int	(*func) __P((const void *, const void *));
 	struct msort	*ms;
 	struct str	in, out;
@@ -519,13 +536,17 @@ sort(vp)
 
 	msgvec[0] = dot - &message[0] + 1;
 	msgvec[1] = 0;
-	if (args[0] == NULL) {
+	if (vp == NULL) {
+		_args[0] = savestr(mb.mb_sorted);
+		_args[1] = NULL;
+		args = _args;
+	} else if (args[0] == NULL) {
 		printf("Current sorting criterion is: %s\n",
 				mb.mb_sorted ? mb.mb_sorted : "unsorted");
 		return 0;
 	}
 	for (i = 0; methnames[i].me_name; i++)
-		if (is_prefix(args[0], methnames[i].me_name))
+		if (*args[0] && is_prefix(args[0], methnames[i].me_name))
 			break;
 	if (methnames[i].me_name == NULL) {
 		fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
@@ -536,20 +557,20 @@ sort(vp)
 	free(mb.mb_sorted);
 	mb.mb_sorted = sstrdup(args[0]);
 	if (method == SORT_THREAD)
-		return thread(msgvec);
-	ms = ac_alloc(sizeof *ms * msgcount);
+		return thread(vp ? msgvec : NULL);
+	ms = ac_alloc(sizeof *ms * msgCount);
 	switch (method) {
 	case SORT_SUBJECT:
 	case SORT_DATE:
 	case SORT_FROM:
 	case SORT_TO:
 		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(1, msgcount);
+			imap_getheaders(1, msgCount);
 		break;
 	default:
 		break;
 	}
-	for (n = 0, i = 0; i < msgcount; i++) {
+	for (n = 0, i = 0; i < msgCount; i++) {
 		mp = &message[i];
 		if ((mp->m_flag&MHIDDEN) == 0) {
 			switch (method) {
@@ -564,6 +585,8 @@ sort(vp)
 					ms[n].ms_u.ms_long = 1;
 				else if ((mp->m_flag&(MNEW|MREAD)) == MNEW)
 					ms[n].ms_u.ms_long = 90;
+				else if (mp->m_flag & MFLAGGED)
+					ms[n].ms_u.ms_long = 85;
 				else if ((mp->m_flag&(MNEW|MBOX)) == MBOX)
 					ms[n].ms_u.ms_long = 70;
 				else if (mp->m_flag & MNEW)
@@ -575,6 +598,9 @@ sort(vp)
 				break;
 			case SORT_SIZE:
 				ms[n].ms_u.ms_long = mp->m_xsize;
+				break;
+			case SORT_SCORE:
+				ms[n].ms_u.ms_float = mp->m_score;
 				break;
 			case SORT_FROM:
 			case SORT_TO:
@@ -617,7 +643,7 @@ sort(vp)
 	finalize(threadroot);
 	mb.mb_threaded = 2;
 	ac_free(ms);
-	return value("header") ? headers(msgvec) : 0;
+	return vp && value("header") ? headers(msgvec) : 0;
 }
 
 static char *

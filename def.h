@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.58 (gritter) 8/20/04
+ *	Sccsid @(#)def.h	2.71 (gritter) 9/4/04
  */
 
 /*
@@ -104,6 +104,7 @@ enum conversion {
 	CONV_NONE,			/* no conversion */
 	CONV_7BIT,			/* no conversion, is 7bit */
 	CONV_TODISP,			/* convert in displayable form */
+	CONV_TOSRCH,			/* conver for IMAP search */
 	CONV_TOFILE,			/* convert for saving to a file */
 	CONV_QUOTE,			/* first part body only */
 	CONV_FROMQP,			/* convert from quoted-printable */
@@ -193,6 +194,10 @@ struct mailbox {
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
 	int mb_threaded;		/* mailbox has been threaded */
+	enum mbflags {
+		MB_NOFLAGS	= 000,
+		MB_UIDPLUS	= 001	/* supports IMAP UIDPLUS */
+	} mb_flags;
 	unsigned long	mb_uidvalidity;	/* IMAP unique identifier validity */
 	char	*mb_imap_account;	/* name of current IMAP account */
 	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
@@ -212,7 +217,7 @@ enum havespec {
 };
 
 /*
- * flag bits.
+ * flag bits. Attention: Flags that are used in cache.c may not change.
  */
 enum mflag {
 	MUSED		= (1<<0),	/* entry is used, but this bit isn't */
@@ -230,7 +235,19 @@ enum mflag {
 	MHIDDEN		= (1<<12),	/* message is hidden to user */
 	MFULLYCACHED	= (1<<13),	/* message is completely cached */
 	MBOXED		= (1<<14),	/* message has been sent to mbox */
-	MUNLINKED	= (1<<15)	/* message was unlinked from cache */
+	MUNLINKED	= (1<<15),	/* message was unlinked from cache */
+	MNEWEST		= (1<<16),	/* message is very new (newmail) */
+	MFLAG		= (1<<17),	/* message has been flagged recently */
+	MUNFLAG		= (1<<18),	/* message has been unflagged */
+	MFLAGGED	= (1<<19),	/* message is `flagged' */
+	MANSWER		= (1<<20),	/* message has been answered recently */
+	MUNANSWER	= (1<<21),	/* message has been unanswered */
+	MANSWERED	= (1<<22),	/* message is `answered' */
+	MDRAFT		= (1<<23),	/* message has been drafted recently */
+	MUNDRAFT	= (1<<24),	/* message has been undrafted */
+	MDRAFTED	= (1<<25),	/* message is marked as `draft' */
+	MKILL		= (1<<26),	/* message has been killed */
+	MOLDMARK	= (1<<27)	/* messages was marked previously */
 };
 
 struct message {
@@ -252,6 +269,7 @@ struct message {
 	struct message	*m_parent;	/* parent of this message */
 	unsigned	m_level;	/* thread level of message */
 	long		m_threadpos;	/* position in threaded display */
+	float		m_score;	/* score of message */
 };
 
 /*
@@ -436,11 +454,11 @@ enum ltoken {
 	TPLUS	= 10,			/* A '+' */
 	TERROR	= 11,			/* A lexical error */
 	TCOMMA	= 12,			/* A ',' */
-	TSEMI	= 13			/* A ';' */
+	TSEMI	= 13,			/* A ';' */
+	TBACK	= 14			/* A '`' */
 };
 
 #define	REGDEP	2			/* Maximum regret depth. */
-#define	STRINGLEN	1024		/* Maximum length of string token */
 
 /*
  * Constants for conditional commands.  These describe whether

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.27 (gritter) 8/14/04";
+static char sccsid[] = "@(#)pop3.c	2.32 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -67,7 +67,7 @@ static int	verbose;
 #define	POP3_OUT(x, y)	if (pop3_finish(mp) == STOP) \
 				return STOP; \
 			if (verbose) \
-				fputs(x, stderr); \
+				fprintf(stderr, ">>> %s", x); \
 			mp->mb_active |= (y); \
 			if (swrite(&mp->mb_sock, x) == STOP) \
 				return STOP;
@@ -85,7 +85,7 @@ static void pop3_timer_off __P((void));
 static enum okay pop3_answer __P((struct mailbox *));
 static enum okay pop3_finish __P((struct mailbox *));
 static void pop3catch __P((int));
-static enum okay pop3_noop __P((struct mailbox *));
+static enum okay pop3_noop1 __P((struct mailbox *));
 static void pop3alarm __P((int));
 static enum okay pop3_pass __P((struct mailbox *, const char *));
 static enum okay pop3_user __P((struct mailbox *, char *, const char *,
@@ -170,7 +170,7 @@ static enum okay
 pop3_finish(mp)
 	struct mailbox *mp;
 {
-	while (mp->mb_sock.s_fd >= 0 && mp->mb_active != MB_NONE)
+	while (mp->mb_sock.s_fd > 0 && mp->mb_active != MB_NONE)
 		pop3_answer(mp);
 	return OKAY;
 }
@@ -194,12 +194,38 @@ pop3catch(s)
 }
 
 static enum okay
-pop3_noop(mp)
+pop3_noop1(mp)
 	struct mailbox *mp;
 {
 	POP3_OUT("NOOP\r\n", MB_COMD)
 	POP3_ANSWER()
 	return OKAY;
+}
+
+enum okay
+pop3_noop()
+{
+	enum okay	ok = STOP;
+	sighandler_type	saveint, savepipe;
+
+	(void)&saveint;
+	(void)&savepipe;
+	(void)&ok;
+	verbose = value("verbose") != NULL;
+	pop3lock = 1;
+	saveint = safe_signal(SIGINT, SIG_IGN);
+	savepipe = safe_signal(SIGPIPE, SIG_IGN);
+	if (sigsetjmp(pop3jmp, 1) == 0) {
+		if (saveint != SIG_IGN)
+			safe_signal(SIGINT, pop3catch);
+		if (savepipe != SIG_IGN)
+			safe_signal(SIGPIPE, pop3catch);
+		ok = pop3_noop1(&mb);
+	}
+	safe_signal(SIGINT, saveint);
+	safe_signal(SIGPIPE, savepipe);
+	pop3lock = 0;
+	return ok;
 }
 
 /*ARGSUSED*/
@@ -222,7 +248,7 @@ pop3alarm(s)
 			safe_signal(SIGINT, pop3catch);
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, pop3catch);
-		if (pop3_noop(&mb) != OKAY) {
+		if (pop3_noop1(&mb) != OKAY) {
 			safe_signal(SIGINT, saveint);
 			safe_signal(SIGPIPE, savepipe);
 			goto out;
@@ -465,7 +491,7 @@ pop3_init(mp, n)
 	struct message *m = &message[n];
 	char *cp;
 
-	m->m_flag = MUSED|MNEW|MNOFROM;
+	m->m_flag = MUSED|MNEW|MNOFROM|MNEWEST;
 	m->m_block = 0;
 	m->m_offset = 0;
 	pop3_list(mp, m - message + 1, &m->m_xsize);
@@ -497,7 +523,7 @@ pop3_dates(mp)
 	 * or fall back to current time.
 	 */
 	time(&now);
-	for (i = 0; i < msgcount; i++) {
+	for (i = 0; i < msgCount; i++) {
 		m = &message[i];
 		if ((cp = hfield_mult("received", m, 0)) != NULL) {
 			while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
@@ -522,12 +548,12 @@ pop3_setptr(mp)
 {
 	int i;
 
-	message = scalloc(msgcount + 1, sizeof *message);
-	for (i = 0; i < msgcount; i++)
+	message = scalloc(msgCount + 1, sizeof *message);
+	for (i = 0; i < msgCount; i++)
 		pop3_init(mp, i);
 	setdot(message);
-	message[msgcount].m_size = 0;
-	message[msgcount].m_lines = 0;
+	message[msgCount].m_size = 0;
+	message[msgCount].m_lines = 0;
 	pop3_dates(mp);
 }
 
@@ -574,7 +600,7 @@ pop3_setfile(server, newmail, isedit)
 	}
 	uhp = sp;
 	pass = pop3_have_password(uhp);
-	if ((cp = strchr(sp, '@')) != NULL) {
+	if ((cp = last_at_before_slash(sp)) != NULL) {
 		user = salloc(cp - sp + 1);
 		memcpy(user, sp, cp - sp);
 		user[cp - sp] = '\0';
@@ -588,7 +614,8 @@ pop3_setfile(server, newmail, isedit)
 	}
 	quit();
 	edit = isedit;
-	mb.mb_sock.s_fd = -1;
+	if (mb.mb_sock.s_fd >= 0)
+		sclose(&mb.mb_sock);
 	if (mb.mb_itf) {
 		fclose(mb.mb_itf);
 		mb.mb_itf = NULL;
@@ -623,7 +650,7 @@ pop3_setfile(server, newmail, isedit)
 	mb.mb_sock.s_desc = "POP3";
 	mb.mb_sock.s_onclose = pop3_timer_off;
 	if (pop3_user(&mb, user, pass, uhp, sp) != OKAY ||
-			pop3_stat(&mb, &mailsize, &msgcount) != OKAY) {
+			pop3_stat(&mb, &mailsize, &msgCount) != OKAY) {
 		sclose(&mb.mb_sock);
 		pop3_timer_off();
 		safe_signal(SIGINT, saveint);
@@ -634,12 +661,12 @@ pop3_setfile(server, newmail, isedit)
 	mb.mb_type = MB_POP3;
 	mb.mb_perm = MB_DELE;
 	pop3_setptr(&mb);
-	setmsize(msgcount);
+	setmsize(msgCount);
 	sawcom = 0;
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;
-	if (!edit && msgcount == 0) {
+	if (!edit && msgCount == 0) {
 		if (mb.mb_type == MB_POP3 && value("emptystart") == NULL)
 			fprintf(stderr, catgets(catd, CATSET, 258,
 				"No mail at %s\n"), server);
@@ -839,14 +866,14 @@ pop3_update(mp)
 	}
 	if (!edit) {
 		holdbits();
-		for (m = &message[0], c = 0; m < &message[msgcount]; m++) {
+		for (m = &message[0], c = 0; m < &message[msgCount]; m++) {
 			if (m->m_flag & MBOX)
 				c++;
 		}
 		if (c > 0)
 			makembox();
 	}
-	for (m = &message[0], gotcha=0, held=0; m < &message[msgcount]; m++) {
+	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
@@ -953,5 +980,12 @@ void
 pop3_quit()
 {
 	nopop3();
+}
+
+enum okay
+pop3_noop()
+{
+	nopop3();
+	return STOP;
 }
 #endif	/* HAVE_SOCKETS */

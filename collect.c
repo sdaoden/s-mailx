@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.27 (gritter) 8/29/04";
+static char sccsid[] = "@(#)collect.c	2.29 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -685,6 +685,7 @@ cont:
 			/*
 			 * Escape to command mode, but be nice!
 			 */
+			inhook = 0;
 			execute(&linebuf[2], 1, count - 2);
 			goto cont;
 		case '.':
@@ -1081,7 +1082,7 @@ forward(ms, fp, f)
 	char *tabst;
 
 	/*LINTED*/
-	msgvec = (int *)salloc((msgcount+1) * sizeof *msgvec);
+	msgvec = (int *)salloc((msgCount+1) * sizeof *msgvec);
 	if (msgvec == NULL)
 		return(0);
 	if (getmsglist(ms, msgvec, 0) < 0)

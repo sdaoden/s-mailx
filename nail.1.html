@@ -19,6 +19,7 @@ BLOCKQUOTE { margin-top: 0px; }
 HR { width:100%; height:1pt; border-width:0px; background-color:#AAAAAA; }
 ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <BODY><A NAME=top></A>
+<!--  t -->
 <!--  Copyright (c) 1980, 1990, 1993 -->
 <!--      The Regents of the University of California.  All rights reserved. -->
 <!--  Copyright (c) 2000 -->
@@ -54,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.155 (gritter) 8/29/04 -->
+<!--      Sccsid: @(#)nail.1	2.209 (gritter) 9/5/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -65,7 +66,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 
 </A>
 <BLOCKQUOTE>
-nail - send and receive MIME conformant mail
+nail - send and receive Internet mail
 </BLOCKQUOTE>
 <A name=contents></A><H3>CONTENTS</H3></A>
 <BLOCKQUOTE>
@@ -91,13 +92,15 @@ nail - send and receive MIME conformant mail
 <A HREF=#20>Environment Variables</A><BR>
 <A HREF=#21>Files</A><BR>
 <A HREF=#22>Examples</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#23>IMAP or POP3 client setup</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#24>Reading HTML mail</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#25>Viewing PDF attachments</A><BR>
-<A HREF=#26>See Also</A><BR>
-<A HREF=#27>Notes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#23>Getting started</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#24>IMAP or POP3 client setup</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#25>Creating a score file or message filter</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#26>Reading HTML mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#27>Viewing PDF attachments</A><BR>
+<A HREF=#28>See Also</A><BR>
+<A HREF=#29>Notes</A><BR>
 </BLOCKQUOTE>
-<A name=28>
+<A name=30>
 
      <H3>SYNOPSIS</H3>
 
@@ -138,6 +141,11 @@ is intended to provide the functionality of the POSIX
 <B>mailx</B> command,
 and offers extensions
 for MIME messages, IMAP, POP3 and SMTP.
+<I>Nail</I> provides enhanced
+features for interactive use, such as caching and disconnected
+operation for IMAP, message threading, scoring, and filtering.
+It is also usable as a mail batch language, both for sending
+and receiving mail.
 <P>
 The following options are accepted:
 <TABLE cellpadding=3><!-- tsb: The following options are accepted:
@@ -224,6 +232,9 @@ Only applicable in combination with
 <TR valign=top><TD width=6% nowrap>
 <B>-n</B> </TD><TD valign=bottom>
 Inhibits reading /etc/nail.rc upon startup.
+This option should be activated for
+<I>nail</I> scripts that are invoked on more than one machine,
+because the contents of that file may differ between them.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>-N</B> </TD><TD valign=bottom>
@@ -371,21 +382,31 @@ All unread messages.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>:d</B> </TD><TD valign=bottom>
-All deleted messages.
+All deleted messages (for the
+<I>undelete</I> command).
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>:r</B> </TD><TD valign=bottom>
 All read messages.
 </TD></TR>
-<TR valign=top><TD colspan=2>
-<B>/</B><I>string</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-All messages that contain
-<I>string</I> in the subject field (case ignored).
+<TR valign=top><TD width=6% nowrap>
+<B>:f</B> </TD><TD valign=bottom>
+All &#39;flagged&#39; messages.
 </TD></TR>
-<TR valign=top><TD colspan=2>
-<I>address</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-All messages from
-<I>address</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:a</B> </TD><TD valign=bottom>
+All answered messages
+(cf. the
+<I>markanswered</I> variable).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:t</B> </TD><TD valign=bottom>
+All messages marked as draft.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:k</B> </TD><TD valign=bottom>
+All &#39;killed&#39; messages.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>.</B> </TD><TD valign=bottom>
 The current message.
@@ -448,7 +469,181 @@ the thread beginning with the current message is selected.
 <B>*</B> </TD><TD valign=bottom>
 All messages.
 </TD></TR>
-<TR></TR></TABLE><P></BLOCKQUOTE>
+<TR valign=top><TD width=6% nowrap>
+<B>&#39;</B> </TD><TD valign=bottom>
+All messages that were included in the message list
+for the previous command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>/</B><I>string</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the subject field (case ignored).
+See also the
+<I>searchheaders</I> variable.
+If
+<I>string</I> is empty,
+the string from the previous specification of that type is used again.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<I>address</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages from
+<I>address</I>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(</B><I>criterion</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that satisfy the given IMAP-style SEARCH
+<I>criterion</I>. This addressing mode is available with all types of folders;
+for folders not located on IMAP servers,
+or for servers unable to execute the SEARCH command,
+<I>nail</I> will perform the search locally.
+Strings must be enclosed by double quotes &#39;"&#39; in their entirety
+if they contain white space or parentheses;
+within the quotes,
+only backslash &#39;&#92;&#39; is recognized as an escape character.
+All string searches are case-insensitive.
+When the description indicates
+that the &#39;envelope&#39; representation of an address field is used,
+this means that the search string is checked against
+both a list constructed as
+<PRE>
+<P>
+<B>("</B><I>real name</I><B>" "</B><I>source-route</I><B>" "</B><I>local-part</I><B>" "</B><I>domain-part</I><B>")</B>
+<P>
+</PRE>
+for each address,
+and the addresses without real names
+from the respective header field.
+Criteria can be nested using parentheses.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(</B><I>criterion1 criterion2</I> ... <I>criterionN</I><B>)</B>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that satisfy all of the given criteria.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(or</B><I> criterion1 criterion2</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that satisfy either
+<I>criterion1</I> or
+<I>criterion2</I>, or both.
+To connect more than two criteria using &#39;or&#39;,
+(or) specifications have to be nested using additional parentheses,
+as with &#39;(or&nbsp;a&nbsp;(or&nbsp;b&nbsp;c))&#39;;
+&#39;(or&nbsp;a&nbsp;b&nbsp;c)&#39; means ((a or b) and c).
+For a simple &#39;or&#39; operation of independent criteria
+on the lowest nesting level,
+it is possible to achieve similar effects by using
+three separate criteria, as with
+&#39;(a)&nbsp;(b)&nbsp;(c)&#39;.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(not</B><I> criterion</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that do not satisfy
+<I>criterion</I>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(bcc</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the &#39;envelope&#39; representation of the
+<I>Bcc:</I> field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(cc</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the &#39;envelope&#39; representation of the
+<I>Cc:</I> field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(from</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the &#39;envelope&#39; representation of the
+<I>From:</I> field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(subject</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the
+<I>Subject:</I> field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(to</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the &#39;envelope&#39; representation of the
+<I>To:</I> field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(header</B><I> name string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the specified
+<I>Name:</I> field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(body</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in their body.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(text</B><I> string</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in their header or body.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(larger</B><I> size</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that are larger than
+<I>size</I> (in bytes).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(smaller</B><I> size</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that are smaller than
+<I>size</I> (in bytes).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(before</B><I> date</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that were received before
+<I>date</I>; <I>date</I> must be in the form
+<I>d</I>[<I>d</I>]<B>-</B><I>mon</I><B>-</B><I>yyyy</I>,
+where <I>d</I>[<I>d</I>] is the day of the month
+as one or two digits,
+<I>mon</I> is the name of the month&#151;one of
+&#39;Jan&#39;, &#39;Feb&#39;, &#39;Mar&#39;,
+&#39;Apr&#39;, &#39;May&#39;, &#39;Jun&#39;,
+&#39;Jul&#39;, &#39;Aug&#39;, &#39;Sep&#39;,
+&#39;Oct&#39;, &#39;Nov&#39;, or &#39;Dec&#39;,
+and
+<I>yyyy</I> is the year as four digits;
+e.g. "30-Aug-2004".
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(on</B><I> date</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that were received on the specified date.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(since</B><I> date</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that were received since the specified date.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(sentbefore</B><I> date</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that were sent on the specified date.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(senton</B><I> date</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that were sent on the specified date.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>(sentsince</B><I> date</I><B>)</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that were sent since the specified date.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>()</B> </TD><TD valign=bottom>
+The same criterion as for the previous search.
+This specification cannot be used as part of another criterion.
+If the previous command line contained more than one independent criterion,
+the last of those criteria is used.
+</TD></TR>
+<!-- PP ends table -->
+<TR></TR></TABLE><P>A practical method to read a set of messages
+is to issue a
+<I>from</I> command with the search criteria first
+to check for appropriate messages,
+and to read each single message then by typing &#39;<B>&#39;</B>&#39; repeatedly.
+</BLOCKQUOTE>
 <A name=7>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Replying to or originating mail</H4>
@@ -480,7 +675,7 @@ or to a shell to run some commands.
 </A>
 <BLOCKQUOTE>
 You can end a <I>nail</I> session
-with the quit &#39;q&#39;) command.
+with the quit (&#39;q&#39;) command.
 Messages which have been examined
 go to your mbox file
 unless they have been deleted
@@ -748,7 +943,7 @@ the list of accounts is printed.
 As an example,
 <P>
 <PRE>
-&nbsp;   account myisp &#92;
+&nbsp;   <B>account</B><I> myisp</I> &#92;
 &nbsp;       folder=imaps://mylogin@imap.myisp.example &#92;
 &nbsp;       record=+Sent &#92;
 &nbsp;       from="myname@myisp.example (My Name)" &#92;
@@ -780,11 +975,24 @@ If the alternates command is given
 with no argument,
 the current set of alternate names is displayed.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>answered</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(ans) Takes a message list and marks each message
+as a having been answered.
+This mark has no technical meaning in the mail system;
+it just causes messages to be marked in the header summary,
+and makes them specially addressable.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>cache</B> </TD><TD valign=bottom>
 Only applicable to cached IMAP mailboxes;
 takes a message list and reads the specified messages
 into the IMAP cache.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>call</B> </TD><TD valign=bottom>
+Calls a macro (see the
+<I>define</I> command).
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>cd</B> </TD><TD valign=bottom>
@@ -821,6 +1029,26 @@ Compressed files and IMAP mailboxes are handled as described for the
 of the sender address of the first message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>define</B> </TD><TD valign=bottom>
+Defines a macro.
+A macro definition is a sequence of commands in the following form:
+<P>
+<PRE>
+&nbsp;   <B>define</B> <I>name</I><B> {</B>
+&nbsp;       <I>command1</I>
+&nbsp;       <I>command2</I>
+&nbsp;       ...
+&nbsp;       <I>commandN</I>
+&nbsp;   <B>}</B>
+</PRE>
+<P>
+Once defined, a macro can be explicitly invoked using the
+<I>call</I> command,
+or can be implicitly invoked by setting the
+<I>folder-hook</I> or
+<I>folder-hook-fullname</I> variables.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>delete</B> </TD><TD valign=bottom>
 (d) Takes a list of messages as argument
 and marks them all as deleted.
@@ -849,6 +1077,14 @@ Deletes the current message
 and prints the next message.
 If there is no next message,
 <I>nail</I> says &#39;<I>at EOF</I>&#39;.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>draft</B> </TD><TD valign=bottom>
+Takes a message list and marks each message
+as a draft.
+This mark has no technical meaning in the mail system;
+it just causes messages to be marked in the header summary,
+and makes them specially addressable.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>echo</B> </TD><TD valign=bottom>
@@ -902,9 +1138,22 @@ or his edit file in -f.
 <B>file</B> </TD><TD valign=bottom>
 (fi) The same as folder.
 </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>flag</B> </TD><TD valign=bottom>
+(fl) Takes a message list
+and marks the messages as &#39;flagged&#39; for urgent/special attention.
+This mark has no technical meaning in the mail system;
+it just causes messages to be highlighted in the header summary,
+and makes them specially addressable.
+</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>folders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-List the names of the folders in your folder directory.
+With no arguments,
+list the names of the folders in the folder directory.
+With an existing folder as an argument,
+lists then names of folders below the named folder;
+e.g. the command &#39;folders @&#39;
+lists the folders on the base level of the current IMAP server.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>folder</B> </TD><TD valign=bottom>
@@ -1101,16 +1350,6 @@ Takes the name of an IMAP mailbox as an argument
 and prints the quotas that apply to the mailbox.
 Not all IMAP servers support this command.
 </TD></TR>
-<TR valign=top><TD width=6% nowrap>
-<B>list</B> </TD><TD valign=bottom>
-Takes two arguments,
-a <I>reference name</I>
-which specifies the desired hierarchy,
-and a <I>mailbox name</I>
-with possible wildcards.
-To get a list of all existing IMAP mailboxes,
-use &#39;imap list "" *&#39;.
-</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>namespace</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 <!--  RFC 2342 -->
@@ -1129,35 +1368,24 @@ Not all IMAP servers support this command.
 Takes the name of an existing IMAP mailbox as the first argument
 and renames it to the name given as second argument.
 </TD></TR>
-<TR valign=top><TD width=6% nowrap>
-<B>search</B> </TD><TD valign=bottom>
-Searches for messages that match the criteria
-given as arguments
-and prints their IMAP message numbers.
-For example,
-&#39;imap search body <I>string</I>&#39;
-looks for all messages which contain <I>string</I> in their body.
-</TD></TR>
 <TR></TR></TABLE><P></TD></TR>
-<TR valign=top><TD width=6%>
-
-</TD><TD>
-IMAP message numbers are usually identical
-to regular message numbers,
-but can change when a message is deleted on the server
-by another client or process.
-They should thus be used with care;
-if in doubt,
-use a &#39;print&#39; command to verify them.
-The problem does not occur
-with regular message numbers
-because <I>nail</I> internally uses IMAP <I>unique identifiers</I> (UIDs)
-to refer to them.
-</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>inc</B> </TD><TD valign=bottom>
 Same as
 <I>newmail</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>kill</B> </TD><TD valign=bottom>
+(k) Takes a list of messages and &#39;kills&#39; them.
+Killed messages are not printed in header summaries,
+and are ignored by the
+<I>next</I> command.
+The
+<I>kill</I> command also sets the score of the messages to negative infinity,
+so that subsequent
+<I>score</I> commands will not unkill them again.
+Killing is only effective for the current session on a folder;
+when it is quit, all messages are automatically unkilled.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>list</B> </TD><TD valign=bottom>
 Prints the names of all available commands.
@@ -1180,6 +1408,18 @@ Indicate that a list of messages be sent
 to mbox in your home directory when you quit.
 This is the default action for messages
 if you do not have the hold option set.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>move</B> </TD><TD valign=bottom>
+(mv) Acts like
+<I>copy</I>, but marks the messages for deletion
+if they were transferred successfully.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Move</B> </TD><TD valign=bottom>
+(Mv) Similar to
+<I>move</I>, but moves the messages to a file named after the local part
+of the sender address of the first message.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>newmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -1208,6 +1448,12 @@ Same as
 <B>online</B> </TD><TD valign=bottom>
 Same as
 <I>connect</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>noop</B> </TD><TD valign=bottom>
+If the current folder is located on an IMAP or POP3 server,
+a NOOP command is sent.
+Otherwise, no operation is performed.
+</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>preserve</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (pre) A synonym for
@@ -1367,6 +1613,18 @@ since it may strip header fields
 that are needed to decode the message correctly.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>score</B> </TD><TD valign=bottom>
+(sc) Takes a message list and a floating point number
+and adds the number to the score of each given message.
+All messages start at score 0 when a folder is opened.
+When the score of a message becomes negative, it is &#39;killed&#39;
+with the effects described for the
+<I>kill</I> command;
+otherwise if it was negative before and becomes positive,
+it is &#39;unkilled&#39;.
+Scores only refer to the currently opened instance of a folder.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>set</B> </TD><TD valign=bottom>
 (se) With no arguments, prints all variable values,
 piped through the pager if the output does not fit on the screen.
@@ -1430,6 +1688,10 @@ the sender&#39;s real name (if any) is used.
 <TR valign=top><TD width=6% nowrap>
 <B>size</B> </TD><TD valign=bottom>
 Sort the messages by their size.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>score</B> </TD><TD valign=bottom>
+Sort the messages by their score.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>status</B> </TD><TD valign=bottom>
@@ -1506,13 +1768,38 @@ and discards the remembered groups of users.
 The group names no longer have any significance.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>unanswered</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Takes a message list and marks each message
+as not having been answered.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>undef</B> </TD><TD valign=bottom>
+Undefines each of the named macros.
+It is not an error to use a name that does not belong to
+one of the currently defined macros.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>undelete</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (u) Takes a message list and marks each message as not being deleted.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>undraft</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Takes a message list and marks each message
+as a draft.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>unflag</B> </TD><TD valign=bottom>
+Takes a message list and marks each message as not being &#39;flagged&#39;.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>unignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Removes the header field names
 from the list of ignored fields.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>unkill</B> </TD><TD valign=bottom>
+Takes a message list and &#39;unkills&#39; each message.
+Also sets the score of the messages to 0.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>Unread</B> </TD><TD valign=bottom>
@@ -2095,6 +2382,15 @@ when you quit.
 To retain all saved messages,
 set this option.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>markanswered</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When a message is replied to
+and this variable is set,
+it is marked as having been answered.
+This mark has no technical meaning in the mail system;
+it just causes messages to be marked in the header summary,
+and makes them specially addressable.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>metoo</B> </TD><TD valign=bottom>
 Usually, when a group is expanded
@@ -2301,6 +2597,26 @@ The string options include the following:
  -->
 <TR></TR><TR></TR>
 <TR valign=top><TD colspan=2>
+<B>attrlist</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+A sequence of characters to print in the &#39;attribute&#39;
+column of a header summary,
+each for one type of messages in the following order:
+new,
+unread but old,
+new but read,
+read and old,
+saved,
+preserved,
+mboxed,
+flagged,
+answered,
+draft,
+killed.
+The default is &#39;NUROSPMFATK&#39;,
+or &#39;NU&nbsp;&nbsp;*HMFATK&#39; if
+<I>bsdflags</I> is set.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>autobcc</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Specifies a list of recipients to which
 a blind carbon copy of each outgoing message
@@ -2425,6 +2741,27 @@ refer to folders below the hierarchy base.
 See the
 <I>imap namespace</I> command for a method to detect the appropriate prefix and delimiter.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>folder-hook</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When a folder is opened and this variable is set,
+the macro corresponding to the value of this variable is executed.
+The macro is also invoked when new mail arrives,
+but message lists for commands executed from the macro
+only include newly arrived messages then.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>folder-hook-</B><I>fullname</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When a folder named
+<I>fullname</I> is opened,
+the macro corresponding to the value of this variable is executed.
+Unlike other folder specifications,
+the fully expanded name of a folder, without metacharacters,
+is used to avoid ambiguities.
+The macro specified with
+<I>folder-hook</I> is not executed if this variable is effective for a folder
+(unless it is explicitly invoked within the called macro).
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>from</B> </TD><TD valign=bottom>
 The address to put into the <I>&#39;From:&#39;</I> field of the message header.
@@ -2440,6 +2777,60 @@ If the machine&#39;s hostname is not valid at the Internet
 you have to set this variable
 or
 <I>hostname</I> to get correct Message-ID header fields.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>headline</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+A format string to use for the header summary,
+similar to
+<I>printf</I> formats.
+A &#39;%&#39; character introduces a format specifier.
+It may be followed by a number indicating the field width.
+If the field is a number,
+the width may be negative,
+which indicates that it is to be left-aligned.
+Valid format specifiers are:
+<P>
+<!-- ignored unsupported tag .in -->
+<P><BLOCKQUOTE><TABLE bgcolor=#E0E0E0 border=1 cellspacing=0 cellpadding=3>
+<TR valign=top>
+<TD><B>%a</B></TD><TD>Message attributes.</TD></TR>
+<TR valign=top>
+<TD><B>%c</B></TD><TD>The score of the message.</TD></TR>
+<TR valign=top>
+<TD><B>%d</B></TD><TD>The date when the message was received.</TD></TR>
+<TR valign=top>
+<TD><B>%e</B></TD><TD>The indenting level in threaded mode.</TD></TR>
+<TR valign=top>
+<TD><B>%f</B></TD><TD>The address of the message sender.</TD></TR>
+<TR valign=top>
+<TD><B>%i</B></TD><TD>One space per threading level.</TD></TR>
+<TR valign=top>
+<TD><B>%l</B></TD><TD>The number of lines of the message.</TD></TR>
+<TR valign=top>
+<TD><B>%m</B></TD><TD>Message number.</TD></TR>
+<TR valign=top>
+<TD><B>%o</B></TD><TD>The number of octets (bytes) in the message.</TD></TR>
+<TR valign=top>
+<TD><B>%s</B></TD><TD>Message subject (if any).</TD></TR>
+<TR valign=top>
+<TD><B>%S</B></TD><TD>Message subject (if any) in double quotes.</TD></TR>
+<TR valign=top>
+<TD><B>%t</B></TD><TD>The position in threaded/sorted order.</TD></TR>
+<TR valign=top>
+<TD><B>%&gt;</B></TD><TD>A &#39;&gt;&#39; for the current message, otherwise &#39; &#39;.</TD></TR>
+<TR valign=top>
+<TD><B>%&lt;</B></TD><TD>A &#39;&lt;&#39; for the current message, otherwise &#39; &#39;.</TD></TR>
+<TR valign=top>
+<TD><B>%%</B></TD><TD>A &#39;%&#39; character.</TD></TR>
+</TABLE></BLOCKQUOTE>
+<!-- ignored unsupported tag .in -->
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+The default is &#39;%&gt;%a%m&nbsp;%18f&nbsp;%16d&nbsp;%4l/%-5o&nbsp;%i%s&#39;,
+or &#39;%&gt;%a%m&nbsp;%20f&nbsp;&nbsp;%16d&nbsp;%3l/%-5o&nbsp;%i%S&#39; if
+<I>bsdcompat</I> is set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>hostname</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2895,6 +3286,10 @@ See
 <TR valign=top><TD width=6% nowrap>
 <B>MAILRC</B> </TD><TD valign=bottom>
 Is used as startup file instead of ~/.mailrc if set.
+When
+<I>nail</I> scripts are invoked on behalf of other users,
+this variable should be set to &#39;/dev/null&#39;
+to avoid side-effects from reading their configuration files.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>NAILRC</B> </TD><TD valign=bottom>
@@ -2943,6 +3338,310 @@ System wide MIME types.
 <BLOCKQUOTE>
 </BLOCKQUOTE>
 <A name=23>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Getting started</H4>
+</A>
+<BLOCKQUOTE>
+The
+<I>nail</I> command has two distinct usages, according to whether one
+wants to send or receive mail.
+Sending mail is simple: to send a
+message to a user whose email address is, say,
+&lt;bill@host.example&gt;,
+use the shell
+command:
+<PRE>
+<P>
+&nbsp;   $ <B>nail</B><I> bill@host.example</I>
+<P>
+</PRE>
+then type your message.
+<I>Nail</I> will prompt you for a message
+<I>subject</I> first;
+after that, lines typed by you form the body of the message.
+When you reach the end of the message, type
+an EOT (control-d) at the beginning of a line, which will cause
+<I>nail</I> to echo &#39;EOT&#39; and return you to the shell.
+<P>
+If, while you are composing the message
+you decide that you do not wish to send it after all, you can
+abort the letter with a <FONT size=-2>RUBOUT</FONT>.  Typing a single <FONT size=-2>RUBOUT</FONT>
+causes
+<I>nail</I> to print &#39;(Interrupt -- one more to kill letter)&#39;.
+Typing a second
+<FONT size=-2>RUBOUT</FONT> causes
+<I>nail</I> to save your partial letter on the file
+<I>dead.letter</I> in your home directory and abort the letter.
+Once you have
+sent mail to someone, there is no way to undo the act, so be
+careful.
+<P>
+If you want to send the same message to several other people,
+you can list their email addresses on the command line.
+Thus,
+<PRE>
+<P>
+&nbsp;   $ <B>nail</B><I> sam@workstation.example bob@server.example</I>
+&nbsp;   Subject: Fees
+&nbsp;   Tuition fees are due next Friday.  Don&#39;t forget!
+&nbsp;   &lt;Control-d&gt;
+&nbsp;   EOT
+&nbsp;   $
+<P>
+</PRE>
+will send the reminder to <I>&lt;sam@workstation.example&gt;</I>.
+and
+<I>&lt;bob@server.example&gt;</I>.
+<P>
+To read your mail, simply type
+<PRE>
+<P>
+&nbsp;   $ <B>nail</B>
+<P>
+</PRE>
+<I>Nail</I> will respond by typing its version number and date and then listing
+the messages you have waiting.
+Then it will type a prompt and await your command.
+The messages are assigned numbers starting with 1&#151;you
+refer to the messages with these numbers.
+<I>Nail</I> keeps track of which messages are
+<I>new</I> (have been sent since you last read your mail) and
+<I>read</I> (have been read by you).  New messages have an
+<B>N</B> next to them in the header listing and old, but unread messages have
+a
+<B>U</B> next to them.
+<I>Nail</I> keeps track of new/old and read/unread messages by putting a
+header field called
+<I>Status</I> into your messages.
+<P>
+To look at a specific message, use the
+<I>type</I> command, which may be abbreviated to simply
+<I>t .</I> For example, if you had the following messages:
+<PRE>
+<P>
+&nbsp;   O 1 drfoo@myhost.example Wed Sep  1 19:52  18/631 "Fees"
+&nbsp;   O 2 sam@friends.example  Thu Sep  2 00:08  30/895
+<P>
+</PRE>
+you could examine the first message by giving the command:
+<PRE>
+<P>
+&nbsp;   <B>type</B> 1
+<P>
+</PRE>
+which might cause
+<!-- ignored unsupported tag .N -->
+to respond with, for example:
+<PRE>
+<P>
+&nbsp;   Message  1:
+&nbsp;   From drfoo@myhost.example Wed Sep  1 19:52:25 2004
+&nbsp;   Subject: Fees
+&nbsp;   Status: R
+<P>
+&nbsp;   Tuition fees are due next Wednesday.  Don&#39;t forget!
+<P>
+</PRE>
+<P>
+Many
+<I>nail</I> commands that operate on messages take a message number as an
+argument like the
+<I>type</I> command.
+For these commands, there is a notion of a current message.
+When you enter the
+<I>nail</I> program, the current message is initially the first
+(or the first recent) one.
+Thus, you can often omit the message number and use, for example,
+<PRE>
+<P>
+&nbsp;   <B>t</B>
+<P>
+</PRE>
+to type the current message.
+As a further shorthand, you can type a message
+by simply giving its message number.
+Hence,
+<PRE>
+<P>
+&nbsp;   1
+<P>
+</PRE>
+would type the first message.
+<P>
+Frequently, it is useful to read the messages in your mailbox in order,
+one after another.
+You can read the next message in
+<I>nail</I> by simply typing a newline.
+As a special case, you can type a newline as your first command to
+<I>nail</I> to type the first message.
+<P>
+If, after typing a message, you wish to immediately send a reply,
+you can do so with the
+<I>reply</I> command.
+This command,
+like
+<I>type</I>, takes a message number as an argument.
+<I>nail</I> then begins a message addressed to the user who sent you the message.
+You may then type in your letter in reply, followed by a &lt;control-d&gt;
+at the beginning of a line, as before.
+<P>
+Note that
+<I>nail</I> copies the subject header from the original message.
+This is useful in that correspondence
+about a particular matter will tend to retain the same subject heading,
+making it easy to recognize.
+If there are other header fields in the message,
+like &#39;Cc:&#39;,
+the information found will also be used.
+<P>
+Sometimes you will receive a message that has been sent to
+several people and wish to reply only
+to the person who sent it.
+<I>Reply</I> with a capital
+<I>R</I> replies to a message, but sends a copy to the sender only.
+<P>
+If you wish, while reading your mail, to send a message to someone,
+but not as a reply to one of your messages, you can send the message
+directly with the
+<I>mail</I> command, which takes as arguments the names of the recipients you wish
+to send to.
+For example, to send a message to &lt;frank@machine.example&gt;,
+you would do:
+<PRE>
+<P>
+&nbsp;   <B>mail</B><I> frank@machine.example</I>
+</PRE>
+<P>
+To delete a message from the mail folder,
+you can use the
+<I>delete</I> command.
+In addition to not saving deleted messages,
+<I>nail</I> will not let you type them, either.
+The effect is to make the message disappear
+altogether, along with its number.
+<P>
+Many features of
+<I>nail</I> can be tailored to your liking with the
+<I>set</I> command.
+The
+<I>set</I> command has two forms, depending on whether you are setting a
+<I>binary</I> option or a
+<I>valued</I> option.
+Binary options are either on or off.  For example, the
+<I>askcc</I> option informs
+<I>nail</I> that each time you send a message, you want it to prompt you for
+a &#39;Cc:&#39; header,
+to be included in the message.
+To set the
+<I>askcc</I> option, you would type
+<PRE>
+<P>
+&nbsp;   <B>set</B> ask
+</PRE>
+<P>
+Valued options are values which
+<I>nail</I> uses to adapt to your tastes.
+For example, the
+<I>record</I> option tells
+<I>nail</I> where to save messages sent by you,
+and is specified by
+<PRE>
+<P>
+&nbsp;   <B>set</B> record=Sent
+<P>
+</PRE>
+for example.
+Note that no spaces are allowed in
+<I>set record=Sent .</I> <P>
+<I>Nail</I> includes a simple facility for maintaining groups of messages together
+in folders.
+To use the folder facility, you must tell
+<I>nail</I> where you wish to keep your folders.
+Each folder of messages will be a single file.
+For convenience, all of your folders are kept in
+a single directory of your choosing.
+To tell
+<I>nail</I> where your folder directory is, put a line of the form
+<PRE>
+<P>
+&nbsp;   <B>set folder=</B><I>letters</I>
+<P>
+</PRE>
+in your
+<I>.mailrc</I> file.
+If, as in the example above,
+your folder directory does not begin with a &#39;/&#39;,
+<I>nail</I> will assume that your folder directory is to be found starting from
+your home directory.
+<P>
+Anywhere a file name is expected, you can use a folder name, preceded
+with &#39;+&#39;.
+For example, to put a message into a folder with the
+<I>save</I> command, you can use:
+<PRE>
+<P>
+&nbsp;   <B>save +</B><I>classwork</I>
+<P>
+</PRE>
+to save the current message in the
+<I>classwork</I> folder.
+If the
+<I>classwork</I> folder does not yet exist, it will be created.
+Note that messages which are saved with the
+<I>save</I> command are automatically removed from your system mailbox.
+<P>
+In order to make a copy of a message in a folder without causing
+that message to be removed from your system mailbox, use the
+<I>copy</I> command, which is identical in all other respects to the
+<I>save</I> command.
+<P>
+The
+<I>folder</I> command
+can be used to direct
+<I>nail</I> to the contents of a different folder.
+For example,
+<PRE>
+<P>
+&nbsp;   <B>folder +</B><I>classwork</I>
+<P>
+</PRE>
+directs
+<I>nail</I> to read the contents of the
+<I>classwork</I> folder.
+All of the commands that you can use on your system
+mailbox are also applicable to folders, including
+<I>type</I>, <I>delete</I>, and
+<I>reply</I>. To inquire which folder you are currently editing, use simply:
+<PRE>
+<P>
+&nbsp;   <B>folder</B>
+</PRE>
+<P>
+To list your current set of folders, use the
+<I>folders</I> command.
+<P>
+Finally, the
+<I>help</I> command is available to print out a brief summary of the most important
+<I>nail</I> commands.
+<P>
+While typing in a message to be sent to others, it is often
+useful to be able to invoke the text editor on the partial message,
+print the message, execute a shell command, or do some other
+auxiliary function.
+<I>Nail</I> provides these capabilities through
+<I>tilde escapes ,</I> which consist of a tilde (~) at the beginning of a line, followed by
+a single character which indicates the function to be performed.
+For example, to print the text of the message so far, use:
+<PRE>
+<P>
+&nbsp;   <B>~p</B>
+<P>
+</PRE>
+which will print a line of dashes, the recipients of your message, and
+the text of the message so far.
+A list of the most important tilde escapes is available with &#39;~?&#39;.
+</BLOCKQUOTE>
+<A name=24>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; IMAP or POP3 client setup</H4>
 </A>
@@ -3182,9 +3881,64 @@ a forged certificate by this method.
 You can only completely rely
 on the authenticity of the CA certificate
 if you fetch it in a way that is trusted by other means,
-such as by personally receiving the cerfiticate on storage media.)
+such as by personally receiving the certificate on storage media.)
 </BLOCKQUOTE>
-<A name=24>
+<A name=25>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Creating a score file or message filter</H4>
+</A>
+<BLOCKQUOTE>
+The scoring commands are best separated
+from other configuration for clarity,
+and are mostly
+<I>nail</I> specific.
+It is thus recommended to put them in a separate file
+that is sourced from your NAIL_EXTRA_RC as follows:
+<PRE>
+<P>
+&nbsp;   <B>source</B><I> ~/.scores</I>
+<P>
+</PRE>
+The <I>.scores</I> file could then look as follows:
+<PRE>
+<P>
+&nbsp;   <B>define</B> <I>list</I> {
+&nbsp;       <B>score</B> (subject "important discussion") +10
+&nbsp;       <B>score</B> (subject "annoying discussion") -10
+&nbsp;       <B>score</B> (from "nicefellow@goodnet") +15
+&nbsp;       <B>score</B> (from "badguy@poornet") -5
+&nbsp;       <B>move</B> (header x-spam-flag "+++++") <I>+junk</I>
+&nbsp;   }
+&nbsp;   <B>set folder-hook-</B>imap://user@host/public.list=<I>list</I>
+<P>
+</PRE>
+In this scheme,
+you would see any mail from &#39;nicefellow@goodnet&#39;,
+even if the surrounding discussion is annoying;
+but you normally would not see mail from &#39;badguy@poornet&#39;,
+unless he participates in the important discussion.
+Messages that are marked with five or more plus characters
+in their &#39;X-Spam-Flag&#39; field are moved
+to the folder &#39;junk&#39; in the
+<I>folder</I> directory.
+<P>
+Be aware that all criteria in () lead to substring matches,
+so you would also score messages
+from e.g. &#39;notsobadguy@poornetmakers&#39; negative here.
+It is possible to select addresses exactly using <I>"address"</I>
+message specifications,
+but these cannot be executed remotely
+and will thus cause all headers
+to be downloaded from IMAP servers while looking for matches.
+<P>
+When searching messages on an IMAP server,
+best performance is usually achieved
+by sending as many criteria as possible
+in one large () specification,
+because each single such specification
+will result in a separate network operation.
+</BLOCKQUOTE>
+<A name=26>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading HTML mail</H4>
 </A>
@@ -3196,18 +3950,18 @@ or another command-line web browser
 that can write plain text to standard output.
 <PRE>
 <P>
-&nbsp;   <B>set pipe-text/html="</B><I>w3m -dump -T text/html</I><B>"</B>
+&nbsp;   <B>set pipe-text/html=</B>"w3m -dump -T text/html"
 <P>
 </PRE>
 or
 <PRE>
 <P>
-&nbsp;   <B>set pipe-text/html="</B><I>lynx -dump -force_html /dev/stdin</I><B>"</B>
+&nbsp;   <B>set pipe-text/html=</B>"lynx -dump -force_html /dev/stdin"
 <P>
 </PRE>
 will then cause HTML message parts to be converted into a more friendly form.
 </BLOCKQUOTE>
-<A name=25>
+<A name=27>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Viewing PDF attachments</H4>
 </A>
@@ -3216,8 +3970,8 @@ Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file, as with
 <PRE>
 <P>
-&nbsp;   <B>set pipe-application/pdf="cat &gt;/tmp/nail$$.pdf; &#92;
-&nbsp;          acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"</B>
+&nbsp;   <B>set pipe-application/pdf=</B>"cat &gt;/tmp/nail$$.pdf; &#92;
+&nbsp;          acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
 <P>
 </PRE>
 Note that security defects are discovered in PDF viewers
@@ -3227,7 +3981,7 @@ can compromise your system security,
 in particular if you stay not always informed
 about such issues.
 </BLOCKQUOTE>
-<A name=26>
+<A name=28>
 
      <H3>SEE ALSO</H3>
 
@@ -3237,7 +3991,6 @@ about such issues.
 newaliases(1),
 openssl(1),
 <a href=http://heirloom.sourceforge.net/man/pg.1.html>pg</a>(1),
-procmail(1),
 <a href=http://heirloom.sourceforge.net/man/more.1.html>more</a>(1),
 vacation(1),
 ssl(3),
@@ -3246,7 +3999,7 @@ locale(7),
 mailaddr(7),
 sendmail(8)
 </BLOCKQUOTE>
-<A name=27>
+<A name=29>
 
      <H3>NOTES</H3>
 
@@ -3255,13 +4008,26 @@ sendmail(8)
 Variables in the environment passed to
 <I>nail</I> cannot be unset.
 <P>
-The character set conversion relies heavily
+The character set conversion relies
 on the
 <I>iconv</I>(3)
 function.
 Its functionality differs widely
 between the various system environments
 <I>nail</I> runs on.
+If the message &#39;Cannot convert from <I>a</I> to <I>b</I>&#39; appears,
+either some characters within the message header or text
+are not appropriate for the currently selected terminal character set,
+or the needed conversion is not supported by the system.
+In the first case,
+it is necessary to set
+an appropriate LC_CTYPE locale (e.g. <I>en_US</I>)
+or the
+<I>ttycharset</I> variable.
+In the second case, the
+<I>charset</I> and
+<I>ttycharset</I> variables must be set to the same value
+to inhibit character set conversion.
 <P>
 Nail expects input text to be in Unix format,
 with lines separated by
@@ -3291,6 +4057,9 @@ The marking of messages as &#39;new&#39; is performed by the IMAP server;
 use of the
 <I>exit</I> command instead of
 <I>quit</I> will not cause it to be reset.
+The &#39;flagged&#39;, &#39;answered&#39;, and &#39;draft&#39; flags are usually permanent,
+but some IMAP servers are known to drop them without notification.
+<!--  This is why nail does not even check if storing them succeeds. -->
 Message numbers may change with IMAP
 every time before the prompt is printed
 if <I>nail</I> is notified by the server
@@ -3322,8 +4091,6 @@ A SSL/TLS encrypted IMAP or POP3 message download
 should not be interrupted,
 as this will very likely cause an error in the SSL transport.
 <P>
-There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
-<P>
 As <I>nail</I> is a mail user agent,
 it provides only basic SMTP services.
 If it fails to contact its upstream SMTP server,
@@ -3351,6 +4118,8 @@ Thus the recommended setup for sending mail in
 such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.e. to advise it to do that from a network startup script.
+<P>
+There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
 <P>
 <I>Nail</I> is intended to be
 a MIME-conformant mail user agent,
@@ -3380,5 +4149,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.4</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>8/29/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.5</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>9/5/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>

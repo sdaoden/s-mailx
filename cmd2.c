@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.27 (gritter) 8/15/04";
+static char sccsid[] = "@(#)cmd2.c	2.33 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -53,7 +53,8 @@ static char sccsid[] = "@(#)cmd2.c	2.27 (gritter) 8/15/04";
  * More user commands.
  */
 static int	igcomp __P((const void *, const void *));
-static int	save1 __P((char [], int, char *, struct ignoretab *, int, int));
+static int	save1 __P((char [], int, char *, struct ignoretab *, int, int,
+			int));
 static char	*snarf __P((char [], int *, int));
 static int	delm __P((int []));
 #ifdef	DEBUG_COMMANDS
@@ -93,11 +94,19 @@ next(v)
 		 * message list which follows dot.
 		 */
 
-		for (ip = msgvec; *ip != 0; ip++)
+		for (ip = msgvec; *ip != 0; ip++) {
+#ifdef	_CRAY
+/*
+ * Work around an optimizer bug in Cray Standard C Version 4.0.3  (057126).
+ * Otherwise, SIGFPE is received when mb.mb_threaded != 0.
+ */
+#pragma _CRI suppress ip
+#endif	/* _CRAY */
 			if (mb.mb_threaded ? message[*ip-1].m_threadpos >
 						dot->m_threadpos :
 					*ip > mdot)
 				break;
+		}
 		if (*ip == 0)
 			ip = msgvec;
 		ip2 = ip;
@@ -122,7 +131,7 @@ next(v)
 	 */
 
 	if (!sawcom) {
-		if (msgcount == 0)
+		if (msgCount == 0)
 			goto ateof;
 		goto hitit;
 	}
@@ -133,17 +142,17 @@ next(v)
 	 */
 
 	if (mb.mb_threaded == 0) {
-		for (mp = dot + did_print_dot; mp < &message[msgcount]; mp++)
-			if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN)) == 0)
+		for (mp = dot + did_print_dot; mp < &message[msgCount]; mp++)
+			if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN|MKILL)) == 0)
 				break;
 	} else {
 		mp = dot;
 		if (did_print_dot)
 			mp = next_in_thread(mp);
-		while (mp && mp->m_flag & (MDELETED|MSAVED|MHIDDEN))
+		while (mp && mp->m_flag & (MDELETED|MSAVED|MHIDDEN|MKILL))
 			mp = next_in_thread(mp);
 	}
-	if (mp == NULL || mp >= &message[msgcount]) {
+	if (mp == NULL || mp >= &message[msgCount]) {
 ateof:
 		printf(catgets(catd, CATSET, 22, "At EOF\n"));
 		return(0);
@@ -169,7 +178,7 @@ save(v)
 {
 	char *str = v;
 
-	return save1(str, 1, "save", saveignore, CONV_NONE, 0);
+	return save1(str, 1, "save", saveignore, CONV_NONE, 0, 0);
 }
 
 int
@@ -178,7 +187,7 @@ Save(v)
 {
 	char *str = v;
 
-	return save1(str, 1, "save", saveignore, CONV_NONE, 1);
+	return save1(str, 1, "save", saveignore, CONV_NONE, 1, 0);
 }
 
 /*
@@ -190,7 +199,7 @@ copycmd(v)
 {
 	char *str = v;
 
-	return save1(str, 0, "copy", saveignore, CONV_NONE, 0);
+	return save1(str, 0, "copy", saveignore, CONV_NONE, 0, 0);
 }
 
 int
@@ -199,7 +208,28 @@ Copycmd(v)
 {
 	char *str = v;
 
-	return save1(str, 0, "copy", saveignore, CONV_NONE, 1);
+	return save1(str, 0, "copy", saveignore, CONV_NONE, 1, 0);
+}
+
+/*
+ * Move a message to a file.
+ */
+int
+cmove(v)
+	void *v;
+{
+	char *str = v;
+
+	return save1(str, 0, "move", saveignore, CONV_NONE, 0, 1);
+}
+
+int
+cMove(v)
+	void *v;
+{
+	char *str = v;
+
+	return save1(str, 0, "move", saveignore, CONV_NONE, 1, 1);
 }
 
 /*
@@ -207,13 +237,13 @@ Copycmd(v)
  * If mark is true, mark the message "saved."
  */
 static int
-save1(str, mark, cmd, ignore, convert, sender_record)
+save1(str, mark, cmd, ignore, convert, sender_record, domove)
 	char str[];
 	int mark;
 	char *cmd;
 	struct ignoretab *ignore;
 	int convert;
-	int sender_record;
+	int sender_record, domove;
 {
 	int *ip;
 	struct message *mp;
@@ -228,7 +258,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	int success = 1;
 
 	/*LINTED*/
-	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
+	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	if (sender_record) {
 		for (cp = str; *cp && blankchar(*cp & 0377); cp++);
 		f = (*cp != '\0');
@@ -239,6 +269,8 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	if (!f) {
 		*msgvec = first(0, MMNORM);
 		if (*msgvec == 0) {
+			if (inhook)
+				return 0;
 			printf(catgets(catd, CATSET, 23,
 					"No messages to %s.\n"), cmd);
 			return(1);
@@ -248,6 +280,8 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	if (f && getmsglist(str, msgvec, 0) < 0)
 		return(1);
 	if (*msgvec == 0) {
+		if (inhook)
+			return 0;
 		printf("No applicable messages.\n");
 		return 1;
 	}
@@ -322,7 +356,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	}
 	tstats[0] = tstats[1] = 0;
 	imap_created_mailbox = 0;
-	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
+	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		if (prot == PROTO_IMAP &&
 				ignore[0].i_count == 0 &&
@@ -343,6 +377,8 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		touch(mp);
 		if (mark)
 			mp->m_flag |= MSAVED;
+		if (domove)
+			mp->m_flag |= MDELETED|MSAVED;
 		tstats[0] += mstats[0];
 		tstats[1] += mstats[1];
 	}
@@ -365,7 +401,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 			printf(catgets(catd, CATSET, 27, "binary"));
 		printf("/%lu\n", (long)tstats[1]);
 	} else if (mark)
-		for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
+		for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 			mp = &message[*ip - 1];
 			mp->m_flag &= ~MSAVED;
 		}
@@ -383,7 +419,7 @@ cwrite(v)
 {
 	char *str = v;
 
-	return save1(str, 0, "write", allignore, CONV_TOFILE, 0);
+	return save1(str, 0, "write", allignore, CONV_TOFILE, 0, 0);
 }
 
 /*
@@ -506,7 +542,7 @@ undeletecmd(v)
 	struct message *mp;
 	int *ip;
 
-	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
+	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);

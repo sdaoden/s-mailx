@@ -1,3 +1,8 @@
+Before you start making additions to nail, subscribe to the development
+mailing list at <https://lists.sourceforge.net/lists/listinfo/nail-devel>
+to coordinate your efforts with the maintainer and other people.
+
+------------------------------------------------------------------------
 The following features are missing for conformance with the Single Unix
 Specification, v.3:
 
@@ -12,10 +17,6 @@ Specification, v.3:
 The following IMAP features could be implemented in the future. If you
 need them and cannot wait, contribute code.
 
-- The cache could use the UIDPLUS extension (RFC 2359) to avoid fetching
-  messages from the server that are copies of cached or locally composed
-  messages.
-
 - The MIME capabilities of IMAP could be used so that not entire messages
   are downloaded all the time, but just the parts that are actually needed.
 
@@ -24,11 +25,10 @@ need them and cannot wait, contribute code.
 - Real interfaces for the tasks now handled by the generic 'imap' command
   could be created. These are just the tasks normally handled with shell
   commands for local mailboxes; '!rm' for 'imap delete', '!quota' for 'imap
-  getquotaroot', '!ls' or '!find' for 'imap list', '!mv' for 'imap rename',
-  '!grep' for 'imap search' etc. so this is why Mail/mailx/nail does not
-  have builtin commands for them. Also the IMAP commands are partially
-  obscure ('list' can get in an infinite loop) or not as powerful as Unix
-  users would like ('search' does not understand regular expressions).
+  getquotaroot', '!ls' or '!find' for 'imap list', '!mv' for 'imap rename'
+  etc. so this is why Mail/mailx/nail does not have builtin commands for
+  them. Also the IMAP commands are partially obscure ('list' can get in
+  an infinite loop).
 
   Another challenge is that those interfaces should also work with regular
   mailboxes, and should be sufficiently extensible to work with future
@@ -45,8 +45,8 @@ please write and contribute code.
 
 If you want to edit arbitrary header fields with the 'editheaders'
 option, you are invited to supply code for it. Be warned that this
-is a nontrivial task due to MIME. Contact the maintainer before you
-start coding.
+is a nontrivial task due to MIME. Contact the development mailing
+list before you start coding.
 
 Several people have suggested adding support for arrow keys at the
 command prompt, autocompletion for attachment filenames, etc. I am
@@ -79,4 +79,4 @@ window. For the receiving part, it is simply annoying. If you want
 a confirmation, ask the recipient to send one in the body of the
 message.
 
-	Gunnar Ritter					8/12/04
+	Gunnar Ritter					9/4/04

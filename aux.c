@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.53 (gritter) 8/14/04";
+static char sccsid[] = "@(#)aux.c	2.61 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -52,6 +52,9 @@ static char sccsid[] = "@(#)aux.c	2.53 (gritter) 8/14/04";
 #ifdef	HAVE_WCTYPE_H
 #include <wctype.h>
 #endif	/* HAVE_WCTYPE_H */
+#ifdef	HAVE_WCWIDTH
+#include <wchar.h>
+#endif	/* HAVE_WCWIDTH */
 
 #include "md5.h"
 
@@ -66,7 +69,7 @@ static char sccsid[] = "@(#)aux.c	2.53 (gritter) 8/14/04";
  */
 char *
 savestr(str)
-	char *str;
+	const char *str;
 {
 	char *new;
 	int size = strlen(str) + 1;
@@ -81,7 +84,7 @@ savestr(str)
  */
 char *
 save2str(str, old)
-	char *str, *old;
+	const char *str, *old;
 {
 	char *new;
 	int newsize = strlen(str) + 1;
@@ -271,6 +274,102 @@ makelow(cp)
 	}
 }
 
+int
+substr(str, sub)
+	const char	*str, *sub;
+{
+	const char	*cp, *backup;
+
+	cp = sub;
+	backup = str;
+	while (*str && *cp) {
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+		if (mb_cur_max > 1) {
+			wchar_t c, c2;
+			int sz;
+
+			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
+				goto singlebyte;
+			cp += sz;
+			if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
+				goto singlebyte;
+			str += sz;
+			c = towupper(c);
+			c2 = towupper(c2);
+			if (c != c2) {
+				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
+					backup += sz;
+					str = backup;
+				} else
+					str = ++backup;
+				cp = sub;
+			}
+		} else
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+		{
+			int c, c2;
+
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+	singlebyte:
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+			c = *cp++ & 0377;
+			if (islower(c))
+				c = toupper(c);
+			c2 = *str++ & 0377;
+			if (islower(c2))
+				c2 = toupper(c2);
+			if (c != c2) {
+				str = ++backup;
+				cp = sub;
+			}
+		}
+	}
+	return *cp == '\0';
+}
+
+char *
+colalign(cp, col, fill)
+	const char	*cp;
+	int	col;
+	int	fill;
+{
+	int	n, sz;
+	char	*nb, *np;
+
+	np = nb = salloc(mb_cur_max * strlen(cp) + col + 1);
+	while (*cp) {
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCWIDTH)
+		if (mb_cur_max > 1) {
+			wchar_t	wc;
+
+			if ((sz = mbtowc(&wc, cp, mb_cur_max)) < 0) {
+				n = sz = 1;
+			} else {
+				if ((n = wcwidth(wc)) < 1)
+					n = 1;
+			}
+		} else
+#endif	/* HAVE_MBTOWC && HAVE_WCWIDTH */
+		{
+			n = sz = 1;
+		}
+		if (n > col)
+			break;
+		col -= n;
+		if (sz == 1 && spacechar(*cp&0377)) {
+			*np++ = ' ';
+			cp++;
+		} else
+			while (sz--)
+				*np++ = *cp++;
+	}
+	if (fill)
+		while (col-- > 0)
+			*np++ = ' ';
+	*np = '\0';
+	return nb;
+}
+
 /*
  * The following code deals with input stacking to do source
  * commands.  All but the current file pointer are saved on
@@ -410,6 +509,19 @@ is_prefix(as1, as2)
 		if (*s2++ == '\0')
 			return(1);
 	return(*--s1 == '\0');
+}
+
+char *
+last_at_before_slash(sp)
+	const char	*sp;
+{
+	const char	*cp;
+
+	for (cp = sp; *cp; cp++)
+		if (*cp == '/')
+			break;
+	while (cp > sp && *--cp != '@');
+	return *cp == '@' ? (char *)cp : NULL;
 }
 
 enum protocol
@@ -658,9 +770,9 @@ getpassword(otio, reset_tio)
 }
 
 void
-transflags(omessage, omsgcount, transparent)
+transflags(omessage, omsgCount, transparent)
 	struct message	*omessage;
-	long	omsgcount;
+	long	omsgCount;
 	int	transparent;
 {
 	struct message	*omp, *nmp, *newdot, *newprevdot;
@@ -670,8 +782,8 @@ transflags(omessage, omsgcount, transparent)
 	nmp = message;
 	newdot = message;
 	newprevdot = NULL;
-	while (omp < &omessage[omsgcount] &&
-			nmp < &message[msgcount]) {
+	while (omp < &omessage[omsgCount] &&
+			nmp < &message[msgCount]) {
 		if (dot && nmp->m_uid == dot->m_uid)
 			newdot = nmp;
 		if (prevdot && nmp->m_uid == prevdot->m_uid)

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.29 (gritter) 8/15/04";
+static char sccsid[] = "@(#)list.c	2.46 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -64,12 +64,13 @@ static void	scaninit __P((void));
 static int	matchsender __P((char *, int, int));
 static int	matchmid __P((char *, int));
 static int	matchsubj __P((char *, int));
-static void	mark __P((int, int));
 static void	unmark __P((int));
 static int	metamess __P((int, int));
 
+static size_t	STRINGLEN;
+
 static int	lexnumber;		/* Number of TNUMBER from scan() */
-static char	lexstring[STRINGLEN];	/* String from TSTRING, scan() */
+static char	*lexstring;		/* String from TSTRING, scan() */
 static int	regretp;		/* Pointer to TOS of regret tokens */
 static int	regretstack[REGDEP];	/* Stack of regretted tokens */
 static char	*string_stack[REGDEP];	/* Stack of regretted strings */
@@ -89,16 +90,29 @@ getmsglist(buf, vector, flags)
 {
 	int *ip;
 	struct message *mp;
+	int	mc;
 
-	if (msgcount == 0) {
+	if (msgCount == 0) {
 		*vector = 0;
 		return 0;
 	}
 	if (markall(buf, flags) < 0)
 		return(-1);
 	ip = vector;
+	if (inhook & 2) {
+		mc = 0;
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+			if (mp->m_flag & MMARK) {
+				if ((mp->m_flag & MNEWEST) == 0)
+					unmark(mp - &message[0] + 1);
+				else
+					mc++;
+			}
+		if (mc == 0)
+			return -1;
+	}
 	if (mb.mb_threaded == 0) {
-		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
 			if (mp->m_flag & MMARK)
 				*ip++ = mp - &message[0] + 1;
 	} else {
@@ -125,6 +139,10 @@ getmsglist(buf, vector, flags)
 #define	CMUNREAD	04		/* Unread messages */
 #define	CMDELETED	010		/* Deleted messages */
 #define	CMREAD		020		/* Read messages */
+#define	CMFLAG		040		/* Flagged messages */
+#define	CMANSWER	0100		/* Answered messages */
+#define	CMDRAFT		0200		/* Draft messages */
+#define	CMKILL		0400		/* Killed messages */
 
 /*
  * The following table describes the letters which can follow
@@ -142,6 +160,10 @@ static struct coltab {
 	{ 'u',		CMUNREAD,	MREAD,		0 },
 	{ 'd',		CMDELETED,	MDELETED,	MDELETED },
 	{ 'r',		CMREAD,		MREAD,		MREAD },
+	{ 'f',		CMFLAG,		MFLAGGED,	MFLAGGED },
+	{ 'a',		CMANSWER,	MANSWERED,	MANSWERED },
+	{ 't',		CMDRAFT,	MDRAFTED,	MDRAFTED },
+	{ 'k',		CMKILL,		MKILL,		MKILL },
 	{ 0,		0,		0,		0 }
 };
 
@@ -166,6 +188,7 @@ add_to_namelist(namelist, nmlsize, np, string)
 
 #define	markall_ret(i)		{ \
 					retval = i; \
+					ac_free(lexstring); \
 					goto out; \
 				}
 
@@ -178,13 +201,18 @@ markall(buf, f)
 	int i, retval;
 	struct message *mp, *mx;
 	char **namelist, *bufp, *id = NULL, *cp;
-	int tok, beg, mc, star, other, valdot, colmod, colresult;
+	int tok, beg, mc, star, other, valdot, colmod, colresult, topen, tback;
 	size_t nmlsize;
 
+	lexstring = ac_alloc(STRINGLEN = 2 * strlen(buf) + 1);
 	valdot = dot - &message[0] + 1;
 	colmod = 0;
-	for (i = 1; i <= msgcount; i++)
+	for (i = 1; i <= msgCount; i++) {
+		message[i-1].m_flag &= ~MOLDMARK;
+		if (message[i-1].m_flag & MMARK)
+			message[i-1].m_flag |= MOLDMARK;
 		unmark(i);
+	}
 	bufp = buf;
 	mc = 0;
 	namelist = smalloc((nmlsize = 8) * sizeof *namelist);
@@ -194,6 +222,8 @@ markall(buf, f)
 	star = 0;
 	other = 0;
 	beg = 0;
+	topen = 0;
+	tback = 0;
 	while (tok != TEOL) {
 		switch (tok) {
 		case TNUMBER:
@@ -249,16 +279,17 @@ number:
 			do {
 				if (mb.mb_threaded) {
 					mx = next_in_thread(&message[i-1]);
-					i = mx ? mx-message+1 : msgcount+1;
+					i = mx ? mx-message+1 : msgCount+1;
 				} else
 					i++;
-				if (i > msgcount) {
+				if (i > msgCount) {
 					printf(catgets(catd, CATSET, 114,
 						"Referencing beyond EOF\n"));
 					markall_ret(-1)
 				}
 			} while (message[i-1].m_flag == MHIDDEN ||
-					(message[i-1].m_flag & MDELETED) != f);
+					(message[i-1].m_flag & MDELETED) != f ||
+					message[i-1].m_flag & MKILL);
 			mark(i, f);
 			break;
 
@@ -279,7 +310,9 @@ number:
 						markall_ret(-1)
 					}
 				} while (message[i-1].m_flag & MHIDDEN ||
-						(message[i-1].m_flag & MDELETED) != f);
+						(message[i-1].m_flag & MDELETED)
+							!= f ||
+						message[i-1].m_flag & MKILL);
 				mark(i, f);
 			}
 			break;
@@ -306,6 +339,12 @@ number:
 						np, savestr(lexstring));
 			break;
 
+		case TOPEN:
+			if (imap_search(lexstring, f) == STOP)
+				markall_ret(-1)
+			topen++;
+			break;
+
 		case TDOLLAR:
 		case TUP:
 		case TDOT:
@@ -314,6 +353,18 @@ number:
 			if (lexnumber == -1)
 				markall_ret(-1)
 			goto number;
+
+		case TBACK:
+			tback = 1;
+			for (i = 1; i <= msgCount; i++) {
+				if (message[i-1].m_flag&MHIDDEN ||
+						(message[i-1].m_flag&MDELETED)
+							!= f)
+					continue;
+				if (message[i-1].m_flag&MOLDMARK)
+					mark(i, f);
+			}
+			break;
 
 		case TSTAR:
 			if (other) {
@@ -325,9 +376,7 @@ number:
 			break;
 
 		case TCOMMA:
-			if ((cp = hfield("in-reply-to", dot)) != NULL)
-				id = savestr(cp);
-			else if ((cp = hfield("references", dot)) != NULL) {
+			if ((cp = hfield("references", dot)) != NULL) {
 				struct name *n;
 
 				if ((n = extract(cp, GREF)) != NULL) {
@@ -336,6 +385,9 @@ number:
 					id = savestr(n->n_name);
 				}
 			}
+			if (id == NULL &&
+					(cp=hfield("in-reply-to", dot)) != NULL)
+				id = savestr(cp);
 			if (id == NULL) {
 				printf(catgets(catd, CATSET, 227,
 		"Cannot determine parent Message-ID of the current message\n"));
@@ -354,7 +406,7 @@ number:
 	np--;
 	mc = 0;
 	if (star) {
-		for (i = 0; i < msgcount; i++) {
+		for (i = 0; i < msgCount; i++) {
 			if (!(message[i].m_flag & MHIDDEN) &&
 					(message[i].m_flag & MDELETED) == f) {
 				mark(i+1, f);
@@ -362,11 +414,25 @@ number:
 			}
 		}
 		if (mc == 0) {
-			printf(catgets(catd, CATSET, 119,
+			if (!inhook)
+				printf(catgets(catd, CATSET, 119,
 					"No applicable messages.\n"));
 			markall_ret(-1)
 		}
 		markall_ret(0)
+	}
+
+	if ((topen || tback) && mc == 0) {
+		for (i = 0; i < msgCount; i++)
+			if (message[i].m_flag & MMARK)
+				mc++;
+		if (mc == 0) {
+			if (!inhook)
+				printf(tback ?
+					"No previously marked messages.\n" :
+					"No messages satify (criteria).\n");
+			markall_ret(-1)
+		}
 	}
 
 	/*
@@ -376,7 +442,7 @@ number:
 	 */
 
 	if ((np > namelist || colmod != 0 || id) && mc == 0)
-		for (i = 1; i <= msgcount; i++) {
+		for (i = 1; i <= msgCount; i++) {
 			if (!(message[i-1].m_flag & MHIDDEN) &&
 					(message[i-1].m_flag & MDELETED) == f)
 				mark(i, f);
@@ -390,7 +456,7 @@ number:
 	if (np > namelist || id) {
 		int	allnet = value("allnet") != NULL;
 
-		for (i = 1; i <= msgcount; i++) {
+		for (i = 1; i <= msgCount; i++) {
 			mc = 0;
 			if (np > namelist) {
 				for (nq = &namelist[0]; *nq != NULL; nq++) {
@@ -420,13 +486,13 @@ number:
 		 */
 
 		mc = 0;
-		for (i = 1; i <= msgcount; i++)
+		for (i = 1; i <= msgCount; i++)
 			if (message[i-1].m_flag & MMARK) {
 				mc++;
 				break;
 			}
 		if (mc == 0) {
-			if (np > namelist) {
+			if (!inhook && np > namelist) {
 				printf(catgets(catd, CATSET, 120,
 					"No applicable messages from {%s"),
 					namelist[0]);
@@ -448,7 +514,7 @@ number:
 	 */
 
 	if (colmod != 0) {
-		for (i = 1; i <= msgcount; i++) {
+		for (i = 1; i <= msgCount; i++) {
 			struct coltab *colp;
 
 			mp = &message[i - 1];
@@ -459,18 +525,20 @@ number:
 						unmark(i);
 			
 		}
-		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
 			if (mp->m_flag & MMARK)
 				break;
-		if (mp >= &message[msgcount]) {
+		if (mp >= &message[msgCount]) {
 			struct coltab *colp;
 
-			printf(catgets(catd, CATSET, 123,
+			if (!inhook) {
+				printf(catgets(catd, CATSET, 123,
 						"No messages satisfy"));
-			for (colp = &coltab[0]; colp->co_char; colp++)
-				if (colp->co_bit & colmod)
-					printf(" :%c", colp->co_char);
-			printf("\n");
+				for (colp = &coltab[0]; colp->co_char; colp++)
+					if (colp->co_bit & colmod)
+						printf(" :%c", colp->co_char);
+				printf("\n");
+			}
 			markall_ret(-1)
 		}
 	}
@@ -509,7 +577,7 @@ check(mesg, f)
 {
 	struct message *mp;
 
-	if (mesg < 1 || mesg > msgcount) {
+	if (mesg < 1 || mesg > msgCount) {
 		printf(catgets(catd, CATSET, 124,
 			"%d: Invalid message number\n"), mesg);
 		return(-1);
@@ -654,6 +722,7 @@ static struct lex {
 	{ ')',	TCLOSE },
 	{ ',',	TCOMMA },
 	{ ';',	TSEMI },
+	{ '`',	TBACK },
 	{ 0,	0 }
 };
 
@@ -662,7 +731,7 @@ scan(sp)
 	char **sp;
 {
 	char *cp, *cp2;
-	int c;
+	int c, level, inquote;
 	struct lex *lp;
 	int quotec;
 
@@ -723,6 +792,53 @@ scan(sp)
 		*cp2 = '\0';
 		*sp = --cp;
 		return(TNUMBER);
+	}
+
+	/*
+	 * An IMAP SEARCH list. Note that TOPEN has always been included
+	 * in singles[] in Mail and mailx. Thus although there is no formal
+	 * definition for (LIST) lists, they do not collide with historical
+	 * practice because a subject string (LIST) could never been matched
+	 * this way.
+	 */
+
+	if (c == '(') {
+		level = 1;
+		inquote = 0;
+		*cp2++ = c;
+		do {
+			if ((c = *cp++&0377) == '\0') {
+			mtop:	fprintf(stderr, "Missing \")\".\n");
+				return TERROR;
+			}
+			if (inquote && c == '\\') {
+				*cp2++ = c;
+				c = *cp++&0377;
+				if (c == '\0')
+					goto mtop;
+			} else if (c == '"')
+				inquote = !inquote;
+			else if (inquote)
+				/*EMPTY*/;
+			else if (c == '(')
+				level++;
+			else if (c == ')')
+				level--;
+			else if (spacechar(c)) {
+				/*
+				 * Replace unquoted whitespace by single
+				 * space characters, to make the string
+				 * IMAP SEARCH conformant.
+				 */
+				c = ' ';
+				if (cp2[-1] == ' ')
+					cp2--;
+			}
+			*cp2++ = c;
+		} while (c != ')' || level > 0);
+		*cp2 = '\0';
+		*sp = cp;
+		return TOPEN;
 	}
 
 	/*
@@ -807,11 +923,11 @@ first(f, m)
 {
 	struct message *mp;
 
-	if (msgcount == 0)
+	if (msgCount == 0)
 		return 0;
 	f &= MDELETED;
 	m &= MDELETED;
-	for (mp = dot; mb.mb_threaded ? mp != NULL : mp < &message[msgcount];
+	for (mp = dot; mb.mb_threaded ? mp != NULL : mp < &message[msgCount];
 			mb.mb_threaded ? mp = next_in_thread(mp) : mp++) {
 		if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == f)
 			return mp - message + 1;
@@ -878,8 +994,9 @@ matchsubj(str, mesg)
 	int mesg;
 {
 	struct message *mp;
-	char *cp, *cp2, *backup;
+	char *cp, *cp2;
 	struct str in, out;
+	int	i;
 
 	str++;
 	if (strlen(str) == 0) {
@@ -908,62 +1025,15 @@ matchsubj(str, mesg)
 	in.s = cp2;
 	in.l = strlen(cp2);
 	mime_fromhdr(&in, &out, TD_ICONV);
-	cp2 = out.s;
-	backup = cp2;
-	while (*cp2) {
-		if (*cp == 0) {
-			free(out.s);
-			return(1);
-		}
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-		if (mb_cur_max > 1) {
-			wchar_t c, c2;
-			int sz;
-
-			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
-				goto singlebyte;
-			cp += sz;
-			if ((sz = mbtowc(&c2, cp2, mb_cur_max)) < 0)
-				goto singlebyte;
-			cp2 += sz;
-			c = towupper(c);
-			c2 = towupper(c2);
-			if (c != c2) {
-				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
-					backup += sz;
-					cp2 = backup;
-				} else
-					cp2 = ++backup;
-				cp = str;
-			}
-		} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-		{
-			int c, c2;
-
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-	singlebyte:
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-			c = *cp++ & 0377;
-			if (islower(c))
-				c = toupper(c);
-			c2 = *cp2++ & 0377;
-			if (islower(c2))
-				c2 = toupper(c2);
-			if (c != c2) {
-				cp2 = ++backup;
-				cp = str;
-			}
-		}
-	}
+	i = substr(out.s, cp);
 	free(out.s);
-	return(*cp == 0);
+	return i;
 }
 
 /*
  * Mark the named message by setting its mark bit.
  */
-static void
+void
 mark(mesg, f)
 	int mesg, f;
 {
@@ -971,7 +1041,7 @@ mark(mesg, f)
 	int i;
 
 	i = mesg;
-	if (i < 1 || i > msgcount)
+	if (i < 1 || i > msgCount)
 		panic(catgets(catd, CATSET, 129, "Bad message number to mark"));
 	if (threadflag) {
 		if ((message[i-1].m_flag & MHIDDEN) == 0) {
@@ -999,7 +1069,7 @@ unmark(mesg)
 	int i;
 
 	i = mesg;
-	if (i < 1 || i > msgcount)
+	if (i < 1 || i > msgCount)
 		panic(catgets(catd, CATSET, 130,
 					"Bad message number to unmark"));
 	message[i-1].m_flag &= ~MMARK;
@@ -1022,8 +1092,8 @@ metamess(meta, f)
 		 * First 'good' message left.
 		 */
 		mp = mb.mb_threaded ? threadroot : &message[0];
-		while (mp < &message[msgcount]) {
-			if (!(mp->m_flag & MHIDDEN) &&
+		while (mp < &message[msgCount]) {
+			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
 					(mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {
@@ -1033,7 +1103,9 @@ metamess(meta, f)
 			} else
 				mp++;
 		}
-		printf(catgets(catd, CATSET, 131, "No applicable messages\n"));
+		if (!inhook)
+			printf(catgets(catd, CATSET, 131,
+						"No applicable messages\n"));
 		return(-1);
 
 	case '$':
@@ -1041,9 +1113,9 @@ metamess(meta, f)
 		 * Last 'good message left.
 		 */
 		mp = mb.mb_threaded ? this_in_thread(threadroot, -1) :
-			&message[msgcount-1];
+			&message[msgCount-1];
 		while (mp >= &message[0]) {
-			if (!(mp->m_flag & MHIDDEN) &&
+			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
 					(mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {
@@ -1053,7 +1125,9 @@ metamess(meta, f)
 			} else
 				mp--;
 		}
-		printf(catgets(catd, CATSET, 132, "No applicable messages\n"));
+		if (!inhook)
+			printf(catgets(catd, CATSET, 132,
+						"No applicable messages\n"));
 		return(-1);
 
 	case '.':

@@ -69,7 +69,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap_gssapi.c	1.6 (gritter) 8/13/04";
+static char sccsid[] = "@(#)imap_gssapi.c	1.7 (gritter) 9/1/04";
 #endif
 #endif /* not lint */
 
@@ -148,7 +148,7 @@ imap_gss(mp, user)
 		server += 7;
 	else if (strncmp(server, "imaps://", 8) == 0)
 		server += 8;
-	if ((cp = strchr(server, '@')) != NULL)
+	if ((cp = last_at_before_slash(server)) != NULL)
 		server = &cp[1];
 	for (cp = server; *cp; cp++)
 		*cp = lowerconv(*cp&0377);

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.72 (gritter) 8/18/04
+ *	Sccsid @(#)extern.h	2.91 (gritter) 9/4/04
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -59,9 +59,10 @@ char	*hfield_mult __P((char [], struct message *, int));
 char	*nameof __P((struct message *, int));
 char	*name1 __P((struct message *, int));
 FILE	*run_editor __P((FILE *, off_t, int, int, char *, struct header *));
-char	*salloc __P((int));
-char	*savestr __P((char *));
-char	*save2str __P((char *, char *));
+void	*salloc __P((size_t));
+void	*csalloc __P((size_t, size_t));
+char	*savestr __P((const char *));
+char	*save2str __P((const char *, const char *));
 FILE	*setinput __P((struct mailbox *, struct message *, enum needspec));
 char	*routeaddr __P((const char *));
 char	*skip_comment __P((const char *));
@@ -290,11 +291,18 @@ int	imap_newmail __P((int));
 enum okay	imap_undelete __P((struct message *, int));
 enum okay	imap_unread __P((struct message *, int));
 enum okay	imap_copy __P((struct message *, int, const char *));
+enum okay	imap_search __P((const char *, int));
+enum okay	imap_search1 __P((const char *, int));
 int	imap_thisaccount __P((const char *));
 int	imap_imap __P((void *));
 enum okay	imap_append __P((const char *, FILE *));
-void	imap_folders __P((void));
+void	imap_folders __P((const char *, int));
 enum okay	imap_dequeue __P((struct mailbox *, FILE *));
+time_t	imap_read_date_time __P((const char *));
+time_t	imap_read_date __P((const char *));
+const char	*imap_make_date_time __P((time_t));
+char	*imap_quotestr __P((const char *));
+char	*imap_unquotestr __P((const char *));
 enum protocol	which_protocol __P((const char *));
 void	initbox __P((const char *));
 void	setmsize __P((int));
@@ -338,12 +346,14 @@ char	*strenc __P((const char *));
 char	*strdec __P((const char *));
 enum okay	getcache __P((struct mailbox *, struct message *,
 			enum needspec));
+enum okay	getcache1 __P((struct mailbox *, struct message *,
+			enum needspec, int));
 void	putcache __P((struct mailbox *, struct message *));
 void	initcache __P((struct mailbox *));
 void	purgecache __P((struct mailbox *, struct message *, long));
 void	delcache __P((struct mailbox *, struct message *));
 enum okay	cache_setptr __P((int));
-enum okay	cache_list __P((struct mailbox *, const char *, FILE *));
+enum okay	cache_list __P((struct mailbox *, const char *, int, FILE *));
 unsigned long	cached_uidvalidity __P((struct mailbox *));
 FILE	*cache_queue __P((struct mailbox *));
 enum okay	cache_dequeue __P((struct mailbox *));
@@ -352,7 +362,7 @@ int	zread __P((void *, char *, int));
 int	zwrite __P((void *, const char *, int));
 int	zfree __P((void *));
 int	disconnected __P((const char *));
-int	getmdot __P((void));
+int	getmdot __P((int));
 int	thread __P((void *));
 int	unthread __P((void *));
 int	msgidcmp __P((const char *, const char *));
@@ -370,3 +380,25 @@ int	sort __P((void *));
 int	is_prefix __P((const char *, const char *));
 void	makelow __P((char *));
 int	ccache __P((void *));
+void	mark __P((int, int));
+int	substr __P((const char *, const char *));
+char	*last_at_before_slash __P((const char *));
+int	cflag __P((void *));
+int	cunflag __P((void *));
+int	canswered __P((void *));
+int	cunanswered __P((void *));
+int	cdraft __P((void *));
+int	ckill __P((void *));
+int	cunkill __P((void *));
+int	cundraft __P((void *));
+int	cscore __P((void *));
+int	cdefine __P((void *));
+int	cundef __P((void *));
+int	ccall __P((void *));
+int	callhook __P((const char *, int));
+int	cmove __P((void *));
+int	cMove __P((void *));
+char	*colalign __P((const char *, int, int));
+int	cnoop __P((void *));
+enum okay	pop3_noop __P((void));
+enum okay	imap_noop __P((void));

@@ -1,11 +1,16 @@
 # This is the configuration file for nail, a mail user agent.
-# The values below are reasonable defaults.
 # See nail(1) for further options.
+# This file is not overwritten when 'make install' is run in
+# the nail build process again.
 
-# Sccsid @(#)nail.rc	2.3 (gritter) 8/17/04
+# Sccsid @(#)nail.rc	2.5 (gritter) 9/5/04
 
-# Append rather than prepend to mailboxes. Unsetting this is likely to
-# confuse other mail clients.
+# Do not forward to mbox by default since this is likely to be
+# irritating for most users today.
+set hold
+
+# Append rather than prepend when writing to mbox automatically.
+# This has no effect unless 'hold' is unset again.
 set append
 
 # Ask for a message subject.
@@ -18,28 +23,31 @@ set crt
 set dot
 
 # Do not remove empty mail folders in the spool directory.
-# This may be relevant for privacy.
+# This may be relevant for privacy since other users could
+# otherwise create them with different permissions.
 set keep
 
 # Do not remove empty private mail folders.
 set emptybox
 
-# Do not forward to mbox by default.
-set hold
-
 # Quote the original message in replies by "> " as usual on the Internet.
 set indentprefix="> "
-
-# Set the charset to iso-8859-1 which is the default on modern terminals.
-set charset=iso-8859-1
 
 # Automatically quote the text of the message that is responded to.
 set quote
 
+# Set the charset for outgoing messages to iso-8859-1. It would be
+# preferable to use utf-8 here, but this is not possible on many of
+# the older supported systems because iconv() is not able to handle
+# it there. If your system supports utf-8, you are encouraged to
+# change this setting.
+set charset=iso-8859-1
+
 # Display sender's real names in header summaries.
 set showname
 
-# Display the recipients of messages sent by the user himself.
+# Display the recipients of messages sent by the user himself in
+# header summaries.
 set showto
 
 # Automatically check for new messages at each prompt, but avoid polling

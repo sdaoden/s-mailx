@@ -76,9 +76,11 @@ INCLUDES        A list of additional include file directories, as
 
 LDFLAGS         Flags for the linker. To compile with GSSAPI authentication
                 included, some RedHat versions need -L/usr/kerberos/lib.
+                Also use this to specify the OpenSSL library path.
 
-LIBS            A list of additional libraries or library paths, such as
-                '-L/usr/local/lib -liconv'.
+LIBS            A list of additional libraries such as '-lfoo'. -lsocket,
+                -lnsl, -lssl, -lcrypto, and -liconv are automatically
+                included by makeconfig and should not be put into this.
 
 As usual with Makefile variables, you can pass these values to make in
 the environment or on the command line. Thus if you want to avoid to edit
@@ -161,4 +163,4 @@ anyway.)
 
 In short, everything is better now.
 
-        Gunnar Ritter                                   8/28/04
+        Gunnar Ritter                                   8/30/04

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.48 (gritter) 8/17/04";
+static char sccsid[] = "@(#)fio.c	2.55 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -104,7 +104,7 @@ setptr(ibuf, offset)
 	inhead = 0;
 	thiscnt = 0;
 	memset(&this, 0, sizeof this);
-	this.m_flag = MUSED|MNEW;
+	this.m_flag = MUSED|MNEW|MNEWEST;
 	filesize = mailsize - offset;
 	for (;;) {
 		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)
@@ -136,8 +136,8 @@ setptr(ibuf, offset)
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt++ > 0)
 				append(&this);
-			msgcount++;
-			this.m_flag = MUSED|MNEW;
+			msgCount++;
+			this.m_flag = MUSED|MNEW|MNEWEST;
 			this.m_size = 0;
 			this.m_lines = 0;
 			this.m_block = nail_blockof(offset);
@@ -156,7 +156,23 @@ setptr(ibuf, offset)
 							this.m_flag |= MREAD;
 						else if (c == 'O')
 							this.m_flag &= ~MNEW;
-					inhead = 0;
+					break;
+				}
+				if (*cp != c && *cp != upperconv(c))
+					break;
+			}
+			for (cp = linebuf, cp2 = "x-status";; cp++) {
+				if ((c = *cp2++) == 0) {
+					while (c = *cp++, whitechar(c));
+					if (cp[-1] != ':')
+						break;
+					while ((c = *cp++) != '\0')
+						if (c == 'F')
+							this.m_flag |= MFLAGGED;
+						else if (c == 'A')
+							this.m_flag|=MANSWERED;
+						else if (c == 'T')
+							this.m_flag|=MDRAFTED;
 					break;
 				}
 				if (*cp != c && *cp != upperconv(c))
@@ -288,7 +304,7 @@ setinput(mp, m, need)
 		return NULL;
 	fflush(mp->mb_otf);
 	if (fseek(mp->mb_itf, (long)nail_positionof(m->m_block,
-					m->m_offset), 0) < 0) {
+					m->m_offset), SEEK_SET) < 0) {
 		perror("fseek");
 		panic(catgets(catd, CATSET, 77, "temporary file seek"));
 	}
@@ -313,11 +329,11 @@ setdot(mp)
 static void
 makemessage()
 {
-	if (msgcount == 0)
+	if (msgCount == 0)
 		append(NULL);
 	setdot(message);
-	message[msgcount].m_size = 0;
-	message[msgcount].m_lines = 0;
+	message[msgCount].m_size = 0;
+	message[msgCount].m_lines = 0;
 }
 
 /*
@@ -327,10 +343,10 @@ static void
 append(mp)
 	struct message *mp;
 {
-	if (msgcount + 1 >= msgspace)
+	if (msgCount + 1 >= msgspace)
 		message = srealloc(message, (msgspace += 64) * sizeof *message);
-	if (msgcount > 0)
-		message[msgcount - 1] = *mp;
+	if (msgCount > 0)
+		message[msgCount - 1] = *mp;
 }
 
 /*
@@ -820,7 +836,7 @@ sclose(sp)
 {
 	int	i;
 
-	if (sp->s_fd >= 0) {
+	if (sp->s_fd > 0) {
 		if (sp->s_onclose != NULL)
 			(*sp->s_onclose)();
 #ifdef	USE_SSL
@@ -836,6 +852,7 @@ sclose(sp)
 		sp->s_fd = -1;
 		return i;
 	}
+	sp->s_fd = -1;
 	return 0;
 }
 

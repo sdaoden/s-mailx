@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.17 (gritter) 8/18/04";
+static char sccsid[] = "@(#)quit.c	2.20 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -95,7 +95,7 @@ writeback(res, obuf)
 		while ((c = getc(res)) != EOF)
 			putc(c, obuf);
 #endif
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
+	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
 			if (send_message(mp, obuf, (struct ignoretab *)0,
@@ -231,7 +231,7 @@ nolock:
 		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
 			Tflag = NULL;
 	}
-	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgcount]; mp++) {
+	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX)
 			c++;
 		if (mp->m_flag & MPRESERVE)
@@ -248,7 +248,7 @@ nolock:
 	}
 	if (readstat != NULL)
 		Fclose(readstat);
-	if (p == msgcount && !modify && !anystat) {
+	if (p == msgCount && !modify && !anystat) {
 		if (p == 1)
 			printf(catgets(catd, CATSET, 155,
 				"Held 1 message in %s\n"), mailname);
@@ -332,12 +332,13 @@ holdbits()
 	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
 	if (value("keepsave") != NULL)
 		nohold &= ~MSAVED;
-	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
+	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
 			mp->m_flag |= MSTATUS;
 		}
-		if (mp->m_flag & MSTATUS)
+		if (mp->m_flag & (MSTATUS|MFLAG|MUNFLAG|MANSWER|MUNANSWER|
+					MDRAFT|MUNDRAFT))
 			anystat++;
 		if ((mp->m_flag & MTOUCH) == 0)
 			mp->m_flag |= MPRESERVE;
@@ -408,7 +409,7 @@ makembox()
 		fchmod(fileno(obuf), 0600);
 	}
 	prot = which_protocol(mbox);
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
+	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if (mp->m_flag & MBOX) {
 			mcount++;
 			if (prot == PROTO_IMAP &&
@@ -484,12 +485,13 @@ edstop()
 		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
 			Tflag = NULL;
 	}
-	for (mp = &message[0], gotcha = 0; mp < &message[msgcount]; mp++) {
+	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
 			mp->m_flag |= MSTATUS;
 		}
-		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS))
+		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS|MFLAG|MUNFLAG|
+					MANSWER|MUNANSWER|MDRAFT|MUNDRAFT))
 			gotcha++;
 		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
@@ -544,7 +546,7 @@ edstop()
 	}
 	trunc(obuf);
 	c = 0;
-	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
+	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if ((mp->m_flag & MDELETED) != 0)
 			continue;
 		c++;

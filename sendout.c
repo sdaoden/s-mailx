@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.38 (gritter) 8/19/04";
+static char sccsid[] = "@(#)sendout.c	2.39 (gritter) 9/1/04";
 #endif
 #endif /* not lint */
 
@@ -933,7 +933,8 @@ FILE *fo;
 	itostr(36, (unsigned)msgc, countstr);
 	itostr(36, (unsigned)randbuf, randstr);
 	if ((domainpart = skin(value("from"))) != NULL
-			&& (domainpart = strchr(domainpart, '@')) != NULL)
+			&& (domainpart = last_at_before_slash(domainpart))
+			!= NULL)
 		domainpart++;
 	else
 		domainpart = nodename();

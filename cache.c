@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cache.c	1.44 (gritter) 8/20/04";
+static char sccsid[] = "@(#)cache.c	1.53 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -78,8 +78,6 @@ static void	cwrelse __P((struct cw *));
 
 static char	*encname __P((struct mailbox *, const char *, int));
 static char	*encuid __P((struct mailbox *, unsigned long));
-static enum okay	getcache1 __P((struct mailbox *, struct message *,
-				enum needspec, int));
 static FILE	*clean __P((struct mailbox *, struct cw *));
 static unsigned long	*builds __P((long *));
 static void	purge __P((struct mailbox *, struct message *, long,
@@ -92,7 +90,8 @@ static enum okay	dequeue1 __P((struct mailbox *));
 
 static const char	infofmt[] = "%c %lu %u %lu %lu";
 #define	INITSKIP	128L
-#define	USEBITS(f)	((f) & (MSAVED|MDELETED|MREAD|MBOXED))
+#define	USEBITS(f)	\
+	((f) & (MSAVED|MDELETED|MREAD|MBOXED|MNEW|MFLAGGED|MANSWERED|MDRAFTED))
 
 static const char	README1[] = "\
 This is a cache directory maintained by nail(1). You should not change any\n\
@@ -162,7 +161,7 @@ encuid(mp, uid)
 	return encname(mp, buf, 1);
 }
 
-static enum okay
+enum okay
 getcache1(mp, m, need, setflags)
 	struct mailbox *mp;
 	struct message	*m;
@@ -237,9 +236,11 @@ success:
 flags:	if (setflags) {
 		m->m_xsize = xsize;
 		m->m_time = xtime;
-		m->m_flag = xflag | MNOFROM;
-		if (b != 'B')
-			m->m_flag |= MHIDDEN;
+		if (setflags & 2) {
+			m->m_flag = xflag | MNOFROM;
+			if (b != 'B')
+				m->m_flag |= MHIDDEN;
+		}
 	}
 	if (xlines > 0 && m->m_xlines <= 0)
 		m->m_xlines = xlines;
@@ -250,7 +251,8 @@ flags:	if (setflags) {
 			m->m_flag |= MFULLYCACHED;
 		if (need == NEED_BODY) {
 			m->m_have |= HAVE_HEADER|HAVE_BODY;
-			m->m_xlines = m->m_lines;
+			if (m->m_lines > 0)
+				m->m_xlines = m->m_lines;
 			break;
 		}
 		/*FALLTHRU*/
@@ -310,6 +312,8 @@ putcache(mp, m)
 		if (fscanf(obuf, infofmt, &ob, &osize, &oflag, &otime,
 					&olines) >= 4 &&
 				(ob == 'B' || (ob == 'H' && c != 'B'))) {
+			if (m->m_xlines <= 0 && olines > 0)
+				m->m_xlines = olines;
 			if ((c != 'N' && osize != m->m_xsize) ||
 					oflag != USEBITS(m->m_flag) ||
 					otime != m->m_time ||
@@ -593,7 +597,10 @@ delcache(mp, m)
 	struct mailbox	*mp;
 	struct message	*m;
 {
-	if (unlink(encuid(mp, m->m_uid)) == 0)
+	char	*fn;
+
+	fn = encuid(mp, m->m_uid);
+	if (fn && unlink(fn) == 0)
 		m->m_flag |= MUNLINKED;
 }
 
@@ -608,11 +615,11 @@ cache_setptr(transparent)
 	long	contentelem;
 	enum okay	ok = STOP;
 	struct message	*omessage = NULL;
-	int	omsgcount = 0;
+	int	omsgCount = 0;
 
 	if (transparent) {
 		omessage = message;
-		omsgcount = msgcount;
+		omsgCount = msgCount;
 	}
 	free(mb.mb_cache_directory);
 	mb.mb_cache_directory = NULL;
@@ -624,24 +631,24 @@ cache_setptr(transparent)
 	if (chdir(name) < 0)
 		return STOP;
 	contents = builds(&contentelem);
-	msgcount = contentelem;
-	message = scalloc(msgcount + 1, sizeof *message);
+	msgCount = contentelem;
+	message = scalloc(msgCount + 1, sizeof *message);
 	if (cwret(&cw) == STOP) {
 		fputs("Fatal: Cannot change back to current directory.\n",
 				stderr);
 		abort();
 	}
 	cwrelse(&cw);
-	for (i = 0; i < msgcount; i++) {
+	for (i = 0; i < msgCount; i++) {
 		message[i].m_uid = contents[i];
-		getcache1(&mb, &message[i], NEED_UNSPEC, 1);
+		getcache1(&mb, &message[i], NEED_UNSPEC, 3);
 	}
 	ok = OKAY;
 	if (ok == OKAY) {
 		mb.mb_type = MB_CACHE;
 		mb.mb_perm = MB_DELE;
 		if (transparent)
-			transflags(omessage, omsgcount, 1);
+			transflags(omessage, omsgCount, 1);
 		else
 			setdot(message);
 	}
@@ -649,15 +656,16 @@ cache_setptr(transparent)
 }
 
 enum okay
-cache_list(mp, base, fp)
+cache_list(mp, base, strip, fp)
 	struct mailbox	*mp;
 	const char	*base;
+	int	strip;
 	FILE	*fp;
 {
 	char	*name, *cachedir, *eaccount;
 	DIR	*dirfd;
 	struct dirent	*dp;
-	const char	*cp, *bp;
+	const char	*cp, *bp, *sp;
 	int	namesz;
 
 	if ((cachedir = value("imap-cache")) == NULL)
@@ -671,9 +679,12 @@ cache_list(mp, base, fp)
 	while ((dp = readdir(dirfd)) != NULL) {
 		if (dp->d_name[0] == '.')
 			continue;
-		cp = strdec(dp->d_name);
-		for (bp = base; *bp && *bp == *cp; bp++)
-			cp++;
+		cp = sp = strdec(dp->d_name);
+		for (bp = base; *bp && *bp == *sp; bp++)
+			sp++;
+		if (*bp)
+			continue;
+		cp = strip ? sp : cp;
 		fprintf(fp, "%s\n", *cp ? cp : "INBOX");
 	}
 	closedir(dirfd);

@@ -1,7 +1,7 @@
-# Sccsid @(#)nail.spec	1.25 (gritter) 8/15/04
-Summary: A MIME capable implementation of the mailx command
+# Sccsid @(#)nail.spec	1.26 (gritter) 9/5/04
+Summary: An enhanced implementation of the mailx command
 Name: nail
-Version: 11.4
+Version: 11.5
 Release: 1
 License: BSD
 Group: Applications/Internet
@@ -16,10 +16,9 @@ Nail is derived from Berkeley Mail and is intended provide the
 functionality of the POSIX mailx command with additional support
 for MIME messages, IMAP, POP3, and SMTP. It provides enhanced
 features for interactive use, such as caching and disconnected
-operation for IMAP and message threading.
-
-Install nail if you need a command line tool with the ability to
-handle MIME messages.
+operation for IMAP, message threading, scoring, and filtering.
+It is also usable as a mail batch language, both for sending
+and receiving mail.
 
 %define	prefix		/usr
 %define	bindir		%{prefix}/bin

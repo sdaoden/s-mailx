@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmdtab.c	2.17 (gritter) 8/18/04";
+static char sccsid[] = "@(#)cmdtab.c	2.28 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -99,7 +99,7 @@ const struct cmd cmdtab[] = {
 	{ "followupall", followupall,	A|R|I|MSGLIST,	0,	MMNDEL },
 	{ "followupsender", followupsender, A|R|I|MSGLIST, 0,	MMNDEL },
 	{ "folder",	file,		T|M|RAWLIST,	0,	1 },
-	{ "folders",	folders,	T|M|NOLIST,	0,	0 },
+	{ "folders",	folders,	T|M|RAWLIST,	0,	1 },
 	{ "?",		help,		M|NOLIST,	0,	0 },
 	{ "z",		scroll,		A|M|STRLIST,	0,	0 },
 	{ "headers",	headers,	A|MSGLIST,	0,	MMNDEL },
@@ -155,6 +155,23 @@ const struct cmd cmdtab[] = {
 	{ "sort",	sort,		A|RAWLIST,	0,	1 },
 	{ "unsort",	unthread,	A|MSGLIST,	0,	0 },
 	{ "cache",	ccache,		A|MSGLIST,	0,	0 },
+	{ "flag",	cflag,		A|MSGLIST,	0,	0 },
+	{ "unflag",	cunflag,	A|MSGLIST,	0,	0 },
+	{ "answered",	canswered,	A|MSGLIST,	0,	0 },
+	{ "unanswered",	cunanswered,	A|MSGLIST,	0,	0 },
+	{ "draft",	cdraft,		A|MSGLIST,	0,	0 },
+	{ "undraft",	cundraft,	A|MSGLIST,	0,	0 },
+	{ "kill",	ckill,		A|MSGLIST,	0,	0 },
+	{ "unkill",	cunkill,	A|MSGLIST,	0,	0 },
+	{ "score",	cscore,		A|STRLIST,	0,	0 },
+	{ "define",	cdefine,	M|RAWLIST,	0,	2 },
+	{ "undef",	cundef,		M|RAWLIST,	0,	1000 },
+	{ "call",	ccall,		M|RAWLIST,	0,	1 },
+	{ "move",	cmove,		A|M|STRLIST,	0,	0 },
+	{ "mv",		cmove,		A|M|STRLIST,	0,	0 },
+	{ "Move",	cMove,		A|M|STRLIST,	0,	0 },
+	{ "Mv",		cMove,		A|M|STRLIST,	0,	0 },
+	{ "noop",	cnoop,		A|RAWLIST,	0,	0 },
 /*	{ "Header",	Header,		STRLIST,	0,	1000 },	*/
 #ifdef	DEBUG_COMMANDS
 	{ "core",	core,		M|NOLIST,	0,	0 },

@@ -1,3 +1,76 @@
+[11.5] released 9/5/04
+***************************************************************************
+* A mailing list has been created to discuss future nail developments and *
+* problem reports. If you like to participate, you can subscribe at       *
+* <https://lists.sourceforge.net/lists/listinfo/nail-devel>. Regardless   *
+* of your subscriber state, bug reports etc. should be sent to the list   *
+* address <nail-devel@lists.sourceforge.net> from now on.                 *
+***************************************************************************
+* A new message addressing mode '(criteria)' is now available. It uses the
+  IMAP SEARCH command if possible, and otherwise performs the equivalent
+  actions locally. This addressing mode is of interest even for those people
+  who do not use IMAP with nail because it adds powerful generic search
+  methods, such as a way to search within message bodies.
+* The 'folders' command now really works with IMAP accounts. It also accepts
+  an argument to list the subfolders of a specific folder.
+* The new 'headline' variable allows to customize the columns in the header
+  summary.
+* The new 'attrlist' variable allows to customize the attributes column in
+  the header summary.
+* The message flags 'Flagged' (F), 'Answered' (A), and 'Draft' (T) are now
+  available, for IMAP mailboxes as well as for local folders. See the 'flag',
+  'unflag', 'answered', 'unanswered', 'draft', and 'undraft' commands and the
+  'markanswered' variable.
+* The 'kill'/'unkill'/'score' commands were added to make messages invisible
+  on the user's wish.
+* It is now possible to define sequences of commands as macros, see the
+  'define', 'call', and 'undef' commands. Macros can also be automatically
+  invoked when a folder is opened using the 'folder-hook' and
+  'folder-hook-fullname' variables.
+* The new 'move' and 'Move' commands mark messages for deletion when they
+  have been successfully transferred to the target folder.
+* The new addressing mode '`' selects all messages that were included in the
+  message list to the previous command.
+* The combination of the previous additions allows a score/filter file to be
+  set up; this is described in the EXAMPLES section of the manual page.
+* New 'noop' command to send NOOP to POP3 or IMAP servers.
+* The IMAP UIDPLUS extension (RFC 2359) is now used if available on the
+  server. It speeds up the IMAP cache when copying messages to IMAP folders;
+  the message is copied directly to the cached target folder then and does
+  not need to be downloaded again when it is accessed there.
+* When an IMAP SELECT command fails and a connection to a folder that is
+  not located on the same server is made afterwards, the connection to
+  the old server is properly terminated now.
+* Command lines like 'nail -A imap -f @mailbox' now work.
+* IMAP or POP3 user names that contain an '@' character, such as 'foo@bar'
+  in 'imap://foo@bar@hostname', are now handled (Bugreport by Lars
+  Kellogg-Stedman).
+* If the 'autoinc'/'newmail' variables are set and new mail arrives in
+  threaded/sorted mode, no summary of old headers is printed anymore.
+* If new mail arrives and messages are expunged on an IMAP server at the same
+  time, all of the new messages are now announced correctly.
+* The 'inc'/'newmail' commands now set the current message to the first new
+  message again. This undoes the change made for version 11.1.
+* When the 'autoinc'/'newmail' variables are set and new mail arrives, the
+  'next' command or enter key prints the next message as usual if the current
+  one has been printed; it printed the current message again in this situation.
+* IMAP performance improvement: When new mail arrives, or when messages have
+  been expunged, metadata is fetched only for the new messages, instead of
+  fetching it for all messages in the folder again as it was done before.
+* IMAP performance improvement: If the header of a message was already
+  fetched from an IMAP server, nail now uses 'BODY.PEEK[TEXT]' when
+  fetching the whole message and does not download it again.
+* IMAP performance improvement: The CLOSE command is now used instead of
+  EXPUNGE when a mailbox is quit.
+* Cached IMAP performance improvement: When a mailbox is opened and messages
+  are cached, their sizes and internal dates are taken from the cache.
+* The wcwidth() library function is now used to determine the width of
+  multibyte characters if it is available.
+* If $MAIL does not exist and 'emptystart' is set, a proper error message
+  is printed now, and a following 'account' command succeeds.
+* The SSL code compiles with older versions of OpenSSL (e.g. 0.9.6b) again
+  (Bugreport by Lutz Horn).
+
 [11.4] released 8/29/04
 * The SSL/X509 DNS name verification code was fixed; it used incorrect code
   from a book which sometimes caused segmentation faults (Bugreport by Lars
@@ -25,7 +98,7 @@
   not found in one of the standard libraries (Matthias Andree).
 * Specifying LIBS on the make command line does now work with several make
   implementations of commercial Unices too (Bugreports by Matthias Andree,
-  Matt S).
+  Matthew Sienkiewicz).
 
 [11.3] released 8/18/04
 * When an IMAP mailbox is opened in threaded/sorted mode and new messages

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)strings.c	2.2 (gritter) 6/13/04";
+static char sccsid[] = "@(#)strings.c	2.3 (gritter) 9/1/04";
 #endif
 #endif /* not lint */
 
@@ -61,9 +61,9 @@ static char sccsid[] = "@(#)strings.c	2.2 (gritter) 6/13/04";
  * the occasional user with enormous string size requests.
  */
 
-char *
+void *
 salloc(size)
-	int size;
+	size_t size;
 {
 	char *t;
 	int s;
@@ -93,6 +93,17 @@ salloc(size)
 	t = sp->s_nextFree;
 	sp->s_nextFree += s;
 	return(t);
+}
+
+void *
+csalloc(nmemb, size)
+	size_t	nmemb, size;
+{
+	void	*vp;
+
+	vp = salloc(nmemb * size);
+	memset(vp, 0, nmemb * size);
+	return vp;
 }
 
 /*

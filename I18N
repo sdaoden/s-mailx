@@ -92,8 +92,9 @@
     sets are supported. The use of this implementation is a bit difficult
     since the names it accepts are proprietary and case-dependant. If this
     leads to error messages such as 'Cannot convert from 646 to iso-8859-1'
-    you have to specify the terminal character set by hand, as e. g. the
-    nail command 'set ttycharset=iso-8859-1' does.
+    you have either to specify the terminal character set by hand, as e. g.
+    the nail command 'set ttycharset=iso-8859-1' does, or have to set an
+    appropriate locale in the environment, like LC_CTYPE=en_US or de_DE.
 
   - UnixWare 7; 2.1.
 
@@ -101,4 +102,4 @@
     are proprietary and case-dependent; the conversion directions are
     limited, too.
 
-Gunnar Ritter	6/13/04
+Gunnar Ritter	9/3/04

@@ -1,3 +1,4 @@
+'\" t
 .\" Copyright (c) 1980, 1990, 1993
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
@@ -33,11 +34,11 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.155 (gritter) 8/29/04
+.\"     Sccsid: @(#)nail.1	2.209 (gritter) 9/5/04
 .\"
-.TH NAIL 1 "8/29/04" "nail 11.4" "User Commands"
+.TH NAIL 1 "9/5/04" "nail 11.5" "User Commands"
 .SH NAME
-nail \- send and receive MIME conformant mail
+nail \- send and receive Internet mail
 .SH SYNOPSIS
 .PD 0
 .HP
@@ -72,6 +73,12 @@ is intended to provide the functionality of the POSIX
 command,
 and offers extensions
 for MIME messages, IMAP, POP3 and SMTP.
+.I Nail
+provides enhanced
+features for interactive use, such as caching and disconnected
+operation for IMAP, message threading, scoring, and filtering.
+It is also usable as a mail batch language, both for sending
+and receiving mail.
 .PP
 The following options are accepted:
 .TP
@@ -145,6 +152,10 @@ Only applicable in combination with
 .TP
 .B \-n
 Inhibits reading /etc/nail.rc upon startup.
+This option should be activated for
+.I nail
+scripts that are invoked on more than one machine,
+because the contents of that file may differ between them.
 .TP
 .B \-N
 Inhibits the initial display of message headers when reading mail
@@ -263,19 +274,27 @@ All old messages (any not in state read or new).
 All unread messages.
 .TP
 .B :d
-All deleted messages.
+All deleted messages (for the
+.I undelete
+command).
 .TP
 .B :r
 All read messages.
 .TP
-.BI / string
-All messages that contain
-.I string
-in the subject field (case ignored).
+.B :f
+All `flagged' messages.
 .TP
-.I address
-All messages from
-.IR address .
+.B :a
+All answered messages
+(cf. the
+.I markanswered
+variable).
+.TP
+.B :t
+All messages marked as draft.
+.TP
+.B :k
+All `killed' messages.
 .TP
 .B .
 The current message.
@@ -335,6 +354,185 @@ the thread beginning with the current message is selected.
 .TP
 .B *
 All messages.
+.TP
+.B `
+All messages that were included in the message list
+for the previous command.
+.TP
+.BI / string
+All messages that contain
+.I string
+in the subject field (case ignored).
+See also the
+.I searchheaders
+variable.
+If
+.I string
+is empty,
+the string from the previous specification of that type is used again.
+.TP
+.I address
+All messages from
+.IR address .
+.TP
+.BI ( criterion )
+All messages that satisfy the given IMAP-style SEARCH
+.IR criterion .
+This addressing mode is available with all types of folders;
+for folders not located on IMAP servers,
+or for servers unable to execute the SEARCH command,
+.I nail
+will perform the search locally.
+Strings must be enclosed by double quotes `"' in their entirety
+if they contain white space or parentheses;
+within the quotes,
+only backslash `\e' is recognized as an escape character.
+All string searches are case-insensitive.
+When the description indicates
+that the `envelope' representation of an address field is used,
+this means that the search string is checked against
+both a list constructed as
+.nf
+.sp
+\fB("\fIreal name\fB" "\fIsource-route\fB" "\fIlocal-part\fB" "\fIdomain-part\fB")\fR
+.sp
+.fi
+for each address,
+and the addresses without real names
+from the respective header field.
+Criteria can be nested using parentheses.
+.TP
+\fB(\fIcriterion1 criterion2\fR .\|.\|. \fIcriterionN\fB)\fR
+All messages that satisfy all of the given criteria.
+.TP
+.BI (or " criterion1 criterion2" )
+All messages that satisfy either
+.I criterion1
+or
+.IR criterion2 ,
+or both.
+To connect more than two criteria using `or',
+(or) specifications have to be nested using additional parentheses,
+as with `(or\ a\ (or\ b\ c))';
+`(or\ a\ b\ c)' means ((a or b) and c).
+For a simple `or' operation of independent criteria
+on the lowest nesting level,
+it is possible to achieve similar effects by using
+three separate criteria, as with
+`(a)\ (b)\ (c)'.
+.TP
+.BI (not " criterion" )
+All messages that do not satisfy
+.IR criterion .
+.TP
+.BI (bcc " string" )
+All messages that contain
+.I string
+in the `envelope' representation of the
+.I Bcc:
+field.
+.TP
+.BI (cc " string" )
+All messages that contain
+.I string
+in the `envelope' representation of the
+.I Cc:
+field.
+.TP
+.BI (from " string" )
+All messages that contain
+.I string
+in the `envelope' representation of the
+.I From:
+field.
+.TP
+.BI (subject " string" )
+All messages that contain
+.I string
+in the
+.I Subject:
+field.
+.TP
+.BI (to " string" )
+All messages that contain
+.I string
+in the `envelope' representation of the
+.I To:
+field.
+.TP
+.BI (header " name string" )
+All messages that contain
+.I string
+in the specified
+.I Name:
+field.
+.TP
+.BI (body " string" )
+All messages that contain
+.I string
+in their body.
+.TP
+.BI (text " string" )
+All messages that contain
+.I string
+in their header or body.
+.TP
+.BI (larger " size" )
+All messages that are larger than
+.I size
+(in bytes).
+.TP
+.BI (smaller " size" )
+All messages that are smaller than
+.I size
+(in bytes).
+.TP
+.BI (before " date" )
+All messages that were received before
+.IR date ;
+.I date
+must be in the form
+\fId\fR[\fId\fR]\fB-\fImon\fB-\fIyyyy\fR,
+where \fId\fR[\fId\fR] is the day of the month
+as one or two digits,
+.I mon
+is the name of the month\(emone of
+`Jan', `Feb', `Mar',
+`Apr', `May', `Jun',
+`Jul', `Aug', `Sep',
+`Oct', `Nov', or `Dec',
+and
+.I yyyy
+is the year as four digits;
+e.\|g. "30-Aug-2004".
+.TP
+.BI (on " date" )
+All messages that were received on the specified date.
+.TP
+.BI (since " date" )
+All messages that were received since the specified date.
+.TP
+.BI (sentbefore " date" )
+All messages that were sent on the specified date.
+.TP
+.BI (senton " date" )
+All messages that were sent on the specified date.
+.TP
+.BI (sentsince " date" )
+All messages that were sent since the specified date.
+.TP
+.B ()
+The same criterion as for the previous search.
+This specification cannot be used as part of another criterion.
+If the previous command line contained more than one independent criterion,
+the last of those criteria is used.
+.PP
+A practical method to read a set of messages
+is to issue a
+.I from
+command with the search criteria first
+to check for appropriate messages,
+and to read each single message then by typing `\fB`\fR' repeatedly.
 .SS "Replying to or originating mail"
 You can use the reply command
 to set up a response to a message,
@@ -357,7 +555,7 @@ or to a shell to run some commands.
 (These options are given in the summary below.)
 .SS "Ending a mail processing session"
 You can end a \fInail\fR session
-with the quit `q') command.
+with the quit (`q') command.
 Messages which have been examined
 go to your mbox file
 unless they have been deleted
@@ -578,7 +776,7 @@ the list of accounts is printed.
 As an example,
 .sp
 .nf
-    account myisp \e
+    \fBaccount\fI myisp\fR \e
         folder=imaps://mylogin@imap.myisp.example \e
         record=+Sent \e
         from="myname@myisp.example (My Name)" \e
@@ -608,10 +806,22 @@ If the alternates command is given
 with no argument,
 the current set of alternate names is displayed.
 .TP
+.B answered
+(ans) Takes a message list and marks each message
+as a having been answered.
+This mark has no technical meaning in the mail system;
+it just causes messages to be marked in the header summary,
+and makes them specially addressable.
+.TP
 .B cache
 Only applicable to cached IMAP mailboxes;
 takes a message list and reads the specified messages
 into the IMAP cache.
+.TP
+.B call
+Calls a macro (see the
+.I define
+command).
 .TP
 .B cd
 Same as chdir.
@@ -646,6 +856,28 @@ command.
 but saves the messages in a file named after the local part
 of the sender address of the first message.
 .TP
+.B define
+Defines a macro.
+A macro definition is a sequence of commands in the following form:
+.sp
+.nf
+    \fBdefine\fR \fIname\fB {\fR
+        \fIcommand1\fR
+        \fIcommand2\fR
+        .\|.\|.
+        \fIcommandN\fR
+    \fB}\fR
+.fi
+.sp
+Once defined, a macro can be explicitly invoked using the
+.I call
+command,
+or can be implicitly invoked by setting the
+.I folder-hook
+or
+.I folder-hook-fullname
+variables.
+.TP
 .B delete
 (d) Takes a list of messages as argument
 and marks them all as deleted.
@@ -672,6 +904,13 @@ Deletes the current message
 and prints the next message.
 If there is no next message,
 \fInail\fR says `\fIat EOF\fR'.
+.TP
+.B draft
+Takes a message list and marks each message
+as a draft.
+This mark has no technical meaning in the mail system;
+it just causes messages to be marked in the header summary,
+and makes them specially addressable.
 .TP
 .B echo
 Echoes its arguments,
@@ -719,8 +958,20 @@ or his edit file in \-f.
 .B file
 (fi) The same as folder.
 .TP
+.B flag
+(fl) Takes a message list
+and marks the messages as `flagged' for urgent/special attention.
+This mark has no technical meaning in the mail system;
+it just causes messages to be highlighted in the header summary,
+and makes them specially addressable.
+.TP
 .B folders
-List the names of the folders in your folder directory.
+With no arguments,
+list the names of the folders in the folder directory.
+With an existing folder as an argument,
+lists then names of folders below the named folder;
+e.\|g. the command `folders @'
+lists the folders on the base level of the current IMAP server.
 .TP
 .B folder
 (fold) The folder command switches
@@ -918,15 +1169,6 @@ Takes the name of an IMAP mailbox as an argument
 and prints the quotas that apply to the mailbox.
 Not all IMAP servers support this command.
 .TP
-.B list
-Takes two arguments,
-a \fIreference name\fR
-which specifies the desired hierarchy,
-and a \fImailbox name\fR
-with possible wildcards.
-To get a list of all existing IMAP mailboxes,
-use `imap list "" *'.
-.TP
 .B namespace
 .\" RFC 2342
 Takes no arguments and prints the Personal Namespaces,
@@ -942,31 +1184,26 @@ Not all IMAP servers support this command.
 .B rename
 Takes the name of an existing IMAP mailbox as the first argument
 and renames it to the name given as second argument.
-.TP
-.B search
-Searches for messages that match the criteria
-given as arguments
-and prints their IMAP message numbers.
-For example,
-`imap search body \fIstring\fR'
-looks for all messages which contain \fIstring\fR in their body.
 .RE
-.IP
-IMAP message numbers are usually identical
-to regular message numbers,
-but can change when a message is deleted on the server
-by another client or process.
-They should thus be used with care;
-if in doubt,
-use a `print' command to verify them.
-The problem does not occur
-with regular message numbers
-because \fInail\fR internally uses IMAP \fIunique identifiers\fR (UIDs)
-to refer to them.
 .TP
 .B inc
 Same as
 .IR newmail .
+.TP
+.B kill
+(k) Takes a list of messages and `kills' them.
+Killed messages are not printed in header summaries,
+and are ignored by the
+.I next
+command.
+The
+.I kill
+command also sets the score of the messages to negative infinity,
+so that subsequent
+.I score
+commands will not unkill them again.
+Killing is only effective for the current session on a folder;
+when it is quit, all messages are automatically unkilled.
 .TP
 .B list
 Prints the names of all available commands.
@@ -987,6 +1224,18 @@ Indicate that a list of messages be sent
 to mbox in your home directory when you quit.
 This is the default action for messages
 if you do not have the hold option set.
+.TP
+.B move
+(mv) Acts like
+.IR copy ,
+but marks the messages for deletion
+if they were transferred successfully.
+.TP
+.B Move
+(Mv) Similar to
+.IR move ,
+but moves the messages to a file named after the local part
+of the sender address of the first message.
 .TP
 .B newmail
 Checks for new mail in the current folder
@@ -1013,6 +1262,11 @@ Same as
 .B online
 Same as
 .IR connect .
+.TP
+.B noop
+If the current folder is located on an IMAP or POP3 server,
+a NOOP command is sent.
+Otherwise, no operation is performed.
 .TP
 .B preserve
 (pre) A synonym for
@@ -1170,6 +1424,18 @@ The use of this command is strongly discouraged
 since it may strip header fields
 that are needed to decode the message correctly.
 .TP
+.B score
+(sc) Takes a message list and a floating point number
+and adds the number to the score of each given message.
+All messages start at score 0 when a folder is opened.
+When the score of a message becomes negative, it is `killed'
+with the effects described for the
+.I kill
+command;
+otherwise if it was negative before and becomes positive,
+it is `unkilled'.
+Scores only refer to the currently opened instance of a folder.
+.TP
 .B set
 (se) With no arguments, prints all variable values,
 piped through the pager if the output does not fit on the screen.
@@ -1231,6 +1497,9 @@ the sender's real name (if any) is used.
 .TP
 .B size
 Sort the messages by their size.
+.TP
+.B score
+Sort the messages by their score.
 .TP
 .B status
 Sort the messages by their message status
@@ -1297,12 +1566,32 @@ Takes a list of names defined by alias commands
 and discards the remembered groups of users.
 The group names no longer have any significance.
 .TP
+.B unanswered
+Takes a message list and marks each message
+as not having been answered.
+.TP
+.B undef
+Undefines each of the named macros.
+It is not an error to use a name that does not belong to
+one of the currently defined macros.
+.TP
 .B undelete
 (u) Takes a message list and marks each message as not being deleted.
+.TP
+.B undraft
+Takes a message list and marks each message
+as a draft.
+.TP
+.B unflag
+Takes a message list and marks each message as not being `flagged'.
 .TP
 .B unignore
 Removes the header field names
 from the list of ignored fields.
+.TP
+.B unkill
+Takes a message list and `unkills' each message.
+Also sets the score of the messages to 0.
 .TP
 .B Unread
 Same as
@@ -1809,6 +2098,14 @@ when you quit.
 To retain all saved messages,
 set this option.
 .TP
+.B markanswered
+When a message is replied to
+and this variable is set,
+it is marked as having been answered.
+This mark has no technical meaning in the mail system;
+it just causes messages to be marked in the header summary,
+and makes them specially addressable.
+.TP
 .B metoo
 Usually, when a group is expanded
 that contains the sender,
@@ -1986,6 +2283,26 @@ can view the screen if this option is enabled.
 .PP
 The string options include the following:
 .TP
+.B attrlist
+A sequence of characters to print in the `attribute'
+column of a header summary,
+each for one type of messages in the following order:
+new,
+unread but old,
+new but read,
+read and old,
+saved,
+preserved,
+mboxed,
+flagged,
+answered,
+draft,
+killed.
+The default is `NUROSPMFATK',
+or `NU\ \ *HMFATK' if
+.I bsdflags
+is set.
+.TP
 .B autobcc
 Specifies a list of recipients to which
 a blind carbon copy of each outgoing message
@@ -2097,6 +2414,26 @@ See the
 .I imap namespace
 command for a method to detect the appropriate prefix and delimiter.
 .TP
+.B folder-hook
+When a folder is opened and this variable is set,
+the macro corresponding to the value of this variable is executed.
+The macro is also invoked when new mail arrives,
+but message lists for commands executed from the macro
+only include newly arrived messages then.
+.TP
+\fBfolder-hook-\fIfullname\fR
+When a folder named
+.I fullname
+is opened,
+the macro corresponding to the value of this variable is executed.
+Unlike other folder specifications,
+the fully expanded name of a folder, without metacharacters,
+is used to avoid ambiguities.
+The macro specified with
+.I folder-hook
+is not executed if this variable is effective for a folder
+(unless it is explicitly invoked within the called macro).
+.TP
 .B from
 The address to put into the \fI`From:'\fR field of the message header.
 If replying to a message,
@@ -2112,6 +2449,44 @@ you have to set this variable
 or
 .I hostname
 to get correct Message-ID header fields.
+.TP
+.B headline
+A format string to use for the header summary,
+similar to
+.I printf
+formats.
+A `%' character introduces a format specifier.
+It may be followed by a number indicating the field width.
+If the field is a number,
+the width may be negative,
+which indicates that it is to be left-aligned.
+Valid format specifiers are:
+.sp
+.in +4m
+.TS
+lfB4 l.
+%a	Message attributes.
+%c	The score of the message.
+%d	The date when the message was received.
+%e	The indenting level in threaded mode.
+%f	The address of the message sender.
+%i	One space per threading level.
+%l	The number of lines of the message.
+%m	Message number.
+%o	The number of octets (bytes) in the message.
+%s	Message subject (if any).
+%S	Message subject (if any) in double quotes.
+%t	The position in threaded/sorted order.
+%>	A `>' for the current message, otherwise ` '.
+%<	A `<' for the current message, otherwise ` '.
+%%	A `%' character.
+.TE
+.in -4m
+.IP
+The default is `%>\&%a\&%m\ %18f\ %16d\ %4l/%\-5o\ %i%s',
+or `%>\&%a\&%m\ %20f\ \ %16d\ %3l/%\-5o\ %i%S' if
+.I bsdcompat
+is set.
 .TP
 .B hostname
 Use this string as hostname
@@ -2520,6 +2895,11 @@ See
 .TP
 .B MAILRC
 Is used as startup file instead of ~/.mailrc if set.
+When
+.I nail
+scripts are invoked on behalf of other users,
+this variable should be set to `/dev/null'
+to avoid side-effects from reading their configuration files.
 .TP
 .B NAILRC
 If this variable is set and
@@ -2543,6 +2923,371 @@ Personal MIME types.
 /etc/mime.types
 System wide MIME types.
 .SH EXAMPLES
+.SS "Getting started"
+The
+.I nail
+command has two distinct usages, according to whether one
+wants to send or receive mail.
+Sending mail is simple: to send a
+message to a user whose email address is, say,
+<bill@host.example>,
+use the shell
+command:
+.nf
+.sp
+    $ \fBnail\fI bill@host.example\fR
+.sp
+.fi
+then type your message.
+.I Nail
+will prompt you for a message
+.I subject 
+first;
+after that, lines typed by you form the body of the message.
+When you reach the end of the message, type
+an EOT (control\-d) at the beginning of a line, which will cause
+.I nail
+to echo `EOT' and return you to the shell.
+.PP
+If, while you are composing the message
+you decide that you do not wish to send it after all, you can
+abort the letter with a \s-2RUBOUT\s0.  Typing a single \s-2RUBOUT\s0
+causes
+.I nail
+to print `(Interrupt -- one more to kill letter)'.
+Typing a second
+\s-2RUBOUT\s0 causes
+.I nail
+to save your partial letter on the file
+.I dead.letter
+in your home directory and abort the letter.
+Once you have
+sent mail to someone, there is no way to undo the act, so be
+careful.
+.PP
+If you want to send the same message to several other people,
+you can list their email addresses on the command line.
+Thus,
+.nf
+.sp
+    $ \fBnail\fI sam@workstation.example bob@server.example\fR
+    Subject: Fees
+    Tuition fees are due next Friday.  Don't forget!
+    <Control\-d>
+    EOT
+    $
+.sp
+.fi
+will send the reminder to \fI<sam@workstation.example>\fR.
+and
+\fI<bob@server.example>\fR.
+.PP
+To read your mail, simply type
+.nf
+.sp
+    $ \fBnail\fR
+.sp
+.fi
+.I Nail
+will respond by typing its version number and date and then listing
+the messages you have waiting.
+Then it will type a prompt and await your command.
+The messages are assigned numbers starting with 1\(emyou
+refer to the messages with these numbers.
+.I Nail
+keeps track of which messages are
+.I new
+(have been sent since you last read your mail) and
+.I read
+(have been read by you).  New messages have an
+.B N
+next to them in the header listing and old, but unread messages have
+a
+.B U
+next to them.
+.I Nail
+keeps track of new/old and read/unread messages by putting a
+header field called
+.I Status
+into your messages.
+.PP
+To look at a specific message, use the
+.I type
+command, which may be abbreviated to simply
+.I t .
+For example, if you had the following messages:
+.nf
+.sp
+    O 1 drfoo@myhost.example Wed Sep  1 19:52  18/631 "Fees"
+    O 2 sam@friends.example  Thu Sep  2 00:08  30/895
+.sp
+.fi
+you could examine the first message by giving the command:
+.nf
+.sp
+    \fBtype\fR 1
+.sp
+.fi
+which might cause
+.N nail
+to respond with, for example:
+.nf
+.sp
+    Message  1:
+    From drfoo@myhost.example Wed Sep  1 19:52:25 2004
+    Subject: Fees
+    Status: R
+
+    Tuition fees are due next Wednesday.  Don't forget!
+.sp
+.fi
+.PP
+Many
+.I nail
+commands that operate on messages take a message number as an
+argument like the
+.I type
+command.
+For these commands, there is a notion of a current message.
+When you enter the
+.I nail
+program, the current message is initially the first
+(or the first recent) one.
+Thus, you can often omit the message number and use, for example,
+.nf
+.sp
+    \fBt\fR
+.sp
+.fi
+to type the current message.
+As a further shorthand, you can type a message
+by simply giving its message number.
+Hence,
+.nf
+.sp
+    1
+.sp
+.fi
+would type the first message.
+.PP
+Frequently, it is useful to read the messages in your mailbox in order,
+one after another.
+You can read the next message in
+.I nail
+by simply typing a newline.
+As a special case, you can type a newline as your first command to
+.I nail
+to type the first message.
+.PP
+If, after typing a message, you wish to immediately send a reply,
+you can do so with the
+.I reply
+command.
+This command,
+like
+.IR type ,
+takes a message number as an argument.
+.I nail
+then begins a message addressed to the user who sent you the message.
+You may then type in your letter in reply, followed by a <control-d>
+at the beginning of a line, as before.
+.PP
+Note that
+.I nail
+copies the subject header from the original message.
+This is useful in that correspondence
+about a particular matter will tend to retain the same subject heading,
+making it easy to recognize.
+If there are other header fields in the message,
+like `Cc:',
+the information found will also be used.
+.PP
+Sometimes you will receive a message that has been sent to
+several people and wish to reply only
+to the person who sent it.
+.I Reply
+with a capital
+.I R
+replies to a message, but sends a copy to the sender only.
+.PP
+If you wish, while reading your mail, to send a message to someone,
+but not as a reply to one of your messages, you can send the message
+directly with the
+.I mail
+command, which takes as arguments the names of the recipients you wish
+to send to.
+For example, to send a message to <frank@machine.example>,
+you would do:
+.nf
+.sp
+    \fBmail\fI frank@machine.example\fR
+.fi
+.PP
+To delete a message from the mail folder,
+you can use the
+.I delete
+command.
+In addition to not saving deleted messages,
+.I nail
+will not let you type them, either.
+The effect is to make the message disappear
+altogether, along with its number.
+.PP
+Many features of
+.I nail
+can be tailored to your liking with the
+.I set
+command.
+The
+.I set
+command has two forms, depending on whether you are setting a
+.I binary
+option or a
+.I valued
+option.
+Binary options are either on or off.  For example, the
+.I askcc
+option informs
+.I nail
+that each time you send a message, you want it to prompt you for
+a `Cc:' header,
+to be included in the message.
+To set the
+.I askcc
+option, you would type
+.nf
+.sp
+    \fBset\fR ask
+.fi
+.PP
+Valued options are values which
+.I nail
+uses to adapt to your tastes.
+For example, the
+.I record
+option tells
+.I nail
+where to save messages sent by you,
+and is specified by
+.nf
+.sp
+    \fBset\fR record=Sent
+.sp
+.fi
+for example.
+Note that no spaces are allowed in
+.I "set record=Sent".
+.PP
+.I Nail
+includes a simple facility for maintaining groups of messages together
+in folders.
+To use the folder facility, you must tell
+.I nail
+where you wish to keep your folders.
+Each folder of messages will be a single file.
+For convenience, all of your folders are kept in
+a single directory of your choosing.
+To tell
+.I nail
+where your folder directory is, put a line of the form
+.nf
+.sp
+    \fBset folder=\fIletters\fR
+.sp
+.fi
+in your
+.I .mailrc
+file.
+If, as in the example above,
+your folder directory does not begin with a `/',
+.I nail
+will assume that your folder directory is to be found starting from
+your home directory.
+.PP
+Anywhere a file name is expected, you can use a folder name, preceded
+with `+'.
+For example, to put a message into a folder with the
+.I save
+command, you can use:
+.nf
+.sp
+    \fBsave +\fIclasswork\fR
+.sp
+.fi
+to save the current message in the
+.I classwork
+folder.
+If the
+.I classwork
+folder does not yet exist, it will be created.
+Note that messages which are saved with the
+.I save
+command are automatically removed from your system mailbox.
+.PP
+In order to make a copy of a message in a folder without causing
+that message to be removed from your system mailbox, use the
+.I copy
+command, which is identical in all other respects to the
+.I save
+command.
+.PP
+The
+.I folder
+command
+can be used to direct
+.I nail
+to the contents of a different folder.
+For example,
+.nf
+.sp
+    \fBfolder +\fIclasswork\fR
+.sp
+.fi
+directs
+.I nail
+to read the contents of the
+.I classwork
+folder.
+All of the commands that you can use on your system
+mailbox are also applicable to folders, including
+.IR type ,
+.IR delete ,
+and
+.IR reply .
+To inquire which folder you are currently editing, use simply:
+.nf
+.sp
+    \fBfolder\fR
+.fi
+.PP
+To list your current set of folders, use the
+.I folders
+command.
+.PP
+Finally, the
+.I help
+command is available to print out a brief summary of the most important
+.I nail
+commands.
+.PP
+While typing in a message to be sent to others, it is often
+useful to be able to invoke the text editor on the partial message,
+print the message, execute a shell command, or do some other
+auxiliary function. 
+.I Nail
+provides these capabilities through
+.I "tilde escapes" ,
+which consist of a tilde (~) at the beginning of a line, followed by
+a single character which indicates the function to be performed.
+For example, to print the text of the message so far, use:
+.nf
+.sp
+    \fB~p\fR
+.sp
+.fi
+which will print a line of dashes, the recipients of your message, and
+the text of the message so far.
+A list of the most important tilde escapes is available with `~?'.
 .SS "IMAP or POP3 client setup"
 First you need the following data from your ISP:
 the host name of the IMAP or POP3 server,
@@ -2806,7 +3551,59 @@ a forged certificate by this method.
 You can only completely rely
 on the authenticity of the CA certificate
 if you fetch it in a way that is trusted by other means,
-such as by personally receiving the cerfiticate on storage media.)
+such as by personally receiving the certificate on storage media.)
+.SS "Creating a score file or message filter"
+The scoring commands are best separated
+from other configuration for clarity,
+and are mostly
+.I nail
+specific.
+It is thus recommended to put them in a separate file
+that is sourced from your NAIL_EXTRA_RC as follows:
+.nf
+.sp
+    \fBsource\fI ~/.scores\fR
+.sp
+.fi
+The \fI.scores\fR file could then look as follows:
+.nf
+.sp
+    \fBdefine\fR \fIlist\fR {
+        \fBscore\fR (subject "important discussion") +10
+        \fBscore\fR (subject "annoying discussion") \-10
+        \fBscore\fR (from "nicefellow@goodnet") +15
+        \fBscore\fR (from "badguy@poornet") \-5
+        \fBmove\fR (header x-spam-flag "+++++") \fI+junk\fR
+    }
+    \fBset folder-hook-\fRimap://user@host/public.list=\fIlist\fR
+.sp
+.fi
+In this scheme,
+you would see any mail from `nicefellow@goodnet',
+even if the surrounding discussion is annoying;
+but you normally would not see mail from `badguy@poornet',
+unless he participates in the important discussion.
+Messages that are marked with five or more plus characters
+in their `X-Spam-Flag' field are moved
+to the folder `junk' in the
+.I folder
+directory.
+.PP
+Be aware that all criteria in (\|) lead to substring matches,
+so you would also score messages
+from e.\|g. `notsobadguy@poornetmakers' negative here.
+It is possible to select addresses exactly using \fI"address"\fR
+message specifications,
+but these cannot be executed remotely 
+and will thus cause all headers
+to be downloaded from IMAP servers while looking for matches.
+.PP
+When searching messages on an IMAP server,
+best performance is usually achieved
+by sending as many criteria as possible
+in one large (\|) specification,
+because each single such specification
+will result in a separate network operation.
 .SS "Reading HTML mail"
 You need either the
 .I w3m
@@ -2817,13 +3614,13 @@ or another command-line web browser
 that can write plain text to standard output.
 .nf
 .sp
-    \fBset pipe-text/html="\fIw3m -dump -T text/html\fB"\fR
+    \fBset pipe-text/html=\fR"w3m -dump -T text/html"
 .sp
 .fi
 or
 .nf
 .sp
-    \fBset pipe-text/html="\fIlynx -dump -force_html /dev/stdin\fB"\fR
+    \fBset pipe-text/html=\fR"lynx -dump -force_html /dev/stdin"
 .sp
 .fi
 will then cause HTML message parts to be converted into a more friendly form.
@@ -2832,8 +3629,8 @@ Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file, as with
 .nf
 .sp
-    \fBset pipe-application/pdf="cat >/tmp/nail$$.pdf; \e
-           acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"\fR
+    \fBset pipe-application/pdf=\fR"cat >/tmp/nail$$.pdf; \e
+           acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
 .sp
 .fi
 Note that security defects are discovered in PDF viewers
@@ -2847,7 +3644,6 @@ fmt(1),
 newaliases(1),
 openssl(1),
 pg(1),
-procmail(1),
 more(1),
 vacation(1),
 ssl(3),
@@ -2861,13 +3657,29 @@ Variables in the environment passed to
 .I nail
 cannot be unset.
 .PP
-The character set conversion relies heavily
+The character set conversion relies
 on the
 .IR iconv (3)
 function.
 Its functionality differs widely
 between the various system environments
 \fInail\fR runs on.
+If the message `Cannot convert from \fIa\fR to \fIb\fR' appears,
+either some characters within the message header or text
+are not appropriate for the currently selected terminal character set,
+or the needed conversion is not supported by the system.
+In the first case,
+it is necessary to set
+an appropriate LC_CTYPE locale (e.\|g. \fIen_US\fR)
+or the
+.I ttycharset
+variable.
+In the second case, the
+.I charset
+and
+.I ttycharset
+variables must be set to the same value
+to inhibit character set conversion.
 .PP
 Nail expects input text to be in Unix format,
 with lines separated by 
@@ -2901,6 +3713,9 @@ use of the
 command instead of
 .I quit
 will not cause it to be reset.
+The `flagged', `answered', and `draft' flags are usually permanent,
+but some IMAP servers are known to drop them without notification.
+.\" This is why nail does not even check if storing them succeeds.
 Message numbers may change with IMAP
 every time before the prompt is printed
 if \fInail\fR is notified by the server
@@ -2932,8 +3747,6 @@ A SSL/TLS encrypted IMAP or POP3 message download
 should not be interrupted,
 as this will very likely cause an error in the SSL transport.
 .PP
-There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
-.PP
 As \fInail\fR is a mail user agent,
 it provides only basic SMTP services.
 If it fails to contact its upstream SMTP server,
@@ -2964,6 +3777,8 @@ mode is to configure a local SMTP server
 such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.\|e. to advise it to do that from a network startup script.
+.PP
+There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
 .PP
 \fINail\fR is intended to be
 a MIME-conformant mail user agent,

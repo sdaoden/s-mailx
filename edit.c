@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	2.12 (gritter) 8/8/04";
+static char sccsid[] = "@(#)edit.c	2.13 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -99,7 +99,7 @@ edit1(msgvec, type)
 	/*
 	 * Deal with each message to be edited . . .
 	 */
-	for (i = 0; msgvec[i] && i < msgcount; i++) {
+	for (i = 0; msgvec[i] && i < msgCount; i++) {
 		sighandler_type sigint;
 
 		if (i > 0) {

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.19 (gritter) 8/1/04";
+static char sccsid[] = "@(#)send.c	2.22 (gritter) 9/4/04";
 #endif
 #endif /* not lint */
 
@@ -94,6 +94,8 @@ static void	print_partnumber __P((FILE *, struct boundary *,
 static char	*newfilename __P((char *, struct boundary *,
 			struct boundary *, char *));
 static void	statusput __P((const struct message *, FILE *,
+			char *, off_t *));
+static void	xstatusput __P((const struct message *, FILE *,
 			char *, off_t *));
 static struct boundary	*get_top_boundary __P((struct boundary *));
 static struct boundary	*bound_alloc __P((struct boundary *));
@@ -252,6 +254,29 @@ statusput(mp, obuf, prefix, stats)
 		fprintf(obuf, "%sStatus: %s\n",
 			prefix == NULL ? "" : prefix, statout);
 	addstats(stats, 1, (prefix ? strlen(prefix) : 0) + 9 + cp - statout);
+}
+
+static void
+xstatusput(mp, obuf, prefix, stats)
+	const struct message *mp;
+	FILE *obuf;
+	char *prefix;
+	off_t *stats;
+{
+	char xstatout[4];
+	char *xp = xstatout;
+
+	if (mp->m_flag & MFLAGGED)
+		*xp++ = 'F';
+	if (mp->m_flag & MANSWERED)
+		*xp++ = 'A';
+	if (mp->m_flag & MDRAFTED)
+		*xp++ = 'T';
+	*xp = 0;
+	if (xstatout[0])
+		fprintf(obuf, "%sX-Status: %s\n",
+			prefix == NULL ? "" : prefix, xstatout);
+	addstats(stats, 1, (prefix ? strlen(prefix) : 0) + 11 + xp - xstatout);
 }
 
 /*
@@ -575,6 +600,8 @@ off_t *stats;
 	int ignoring = 0;
 	size_t sz;
 
+	if (rewritestatus)
+		rewritestatus = 3;
 	if (doign == allignore)
 		return 0;
 	if (ph == NULL && rewritestatus) {
@@ -585,16 +612,21 @@ off_t *stats;
 		 * not a header line at all -- then we should not
 		 * "correct" it.
 		 */
-		if (rewritestatus && !is_ign("status", 6, doign))
+		if (rewritestatus&1 && !is_ign("status", 6, doign))
 			statusput(mp, obuf, prefix, stats);
+		if (rewritestatus&2 && !is_ign("x-status", 8, doign))
+			xstatusput(mp, obuf, prefix, stats);
 		/*
 		 * Add blank line.
 		 */
 		sz = mime_write("\n", 1, 1, obuf,
-				action == CONV_TODISP || action == CONV_QUOTE ?
+				action == CONV_TODISP || action == CONV_QUOTE ||
+						CONV_TOSRCH ?
 					CONV_FROMHDR : CONV_NONE,
 				action == CONV_TODISP ?
-					TD_ISPR|TD_ICONV : TD_NONE,
+					TD_ISPR|TD_ICONV :
+					action == CONV_TOSRCH ? TD_ICONV :
+						TD_NONE,
 				prefix, prefixlen);
 		addstats(stats, 1, sz);
 	}
@@ -603,8 +635,10 @@ off_t *stats;
 			char *fieldname, *cp;
 
 		case '\n':
-			if (rewritestatus && !is_ign("status", 6, doign))
+			if (rewritestatus&1 && !is_ign("status", 6, doign))
 				statusput(mp, obuf, prefix, stats);
+			if (rewritestatus&2 && !is_ign("x-status", 8, doign))
+				xstatusput(mp, obuf, prefix, stats);
 			break;
 		case ' ':
 		case '\t':
@@ -630,11 +664,18 @@ off_t *stats;
 				cp--;
 			cp[1] = '\0';
 			ignoring = is_ign(fieldname, &cp[1] - fieldname, doign);
-			if (rewritestatus && !ignoring &&
+			if (rewritestatus&1 && !ignoring &&
 					asccasecmp(fieldname, "status") == 0) {
 				free(fieldname);
 				statusput(mp, obuf, prefix, stats);
-				rewritestatus = 0;	/* note */
+				rewritestatus &= ~1;	/* note */
+				continue;
+			}
+			if (rewritestatus&2 && !ignoring &&
+					asccasecmp(fieldname, "x-status")==0) {
+				free(fieldname);
+				xstatusput(mp, obuf, prefix, stats);
+				rewritestatus &= ~2;	/* note */
 				continue;
 			}
 			free(fieldname);
@@ -643,10 +684,13 @@ off_t *stats;
 		}
 		sz = mime_write(ph->hd_line, sizeof *ph->hd_line,
 				ph->hd_llen, obuf,
-				action == CONV_TODISP || action == CONV_QUOTE ?
+				action == CONV_TODISP || action == CONV_QUOTE ||
+						action == CONV_TOSRCH ?
 					CONV_FROMHDR : CONV_NONE,
 				action == CONV_TODISP ?
-					TD_ISPR|TD_ICONV : TD_NONE,
+					TD_ISPR|TD_ICONV :
+					action == CONV_TOSRCH ? TD_ICONV :
+						TD_NONE,
 				prefix, prefixlen);
 		if (ferror(obuf))
 			return 1;
@@ -878,7 +922,8 @@ send_multi_midbound:
 					if (action == CONV_QUOTE) {
 						if (b->b_count > 1)
 							goto send_multi_end;
-					} else if (action != CONV_TOFILE) {
+					} else if (action != CONV_TOFILE &&
+							action != CONV_TOSRCH) {
 						fputs(catgets(catd, CATSET, 174,
 							"\nPart "), obuf);
 						print_partnumber(obuf, b, b0,
@@ -962,7 +1007,8 @@ send_multi_parseheader:
 						"name");
 			del_hdr(ph);
 			if (new_content == MIME_822 && (action == CONV_TODISP ||
-						action == CONV_QUOTE)) {
+					action == CONV_QUOTE ||
+					action == CONV_TOSRCH)) {
 				new_content = MIME_TEXT;
 				/*
 				 * See comment in send_message().
@@ -982,15 +1028,17 @@ send_multi_parseheader:
 #ifdef	HAVE_ICONV
 				if (iconvd != (iconv_t)-1)
 					iconv_close(iconvd);
-				if (action == CONV_TODISP
-					|| action == CONV_QUOTE)
-				if (iconvd != (iconv_t)-1)
-					iconv_close(iconvd);
-				if (asccasecmp(tcs, cs)
-					&& asccasecmp(us_ascii, cs))
-					iconvd = iconv_open_ft(tcs, cs);
-				else
-					iconvd = (iconv_t)-1;
+				if (action == CONV_TODISP ||
+						action == CONV_QUOTE ||
+						action == CONV_TOSRCH) {
+					if (iconvd != (iconv_t)-1)
+						iconv_close(iconvd);
+					if (asccasecmp(tcs, cs)
+						&& asccasecmp(us_ascii, cs))
+						iconvd = iconv_open_ft(tcs, cs);
+					else
+						iconvd = (iconv_t)-1;
+				}
 #endif
 			if (convert == CONV_FROMB64)
 				convert = CONV_FROMB64_T;
@@ -1047,9 +1095,11 @@ send_multi_parseheader:
 				sz = mime_write(oline, sizeof *oline,
 					 olinelen, pbuf,
 					 convert,
-					 action == CONV_TODISP
-					 || action == CONV_QUOTE ?
-					 TD_ISPR|TD_ICONV:TD_NONE,
+					 action == CONV_TODISP ||
+						action == CONV_QUOTE ?
+					 TD_ISPR|TD_ICONV :
+					 	action == CONV_TOSRCH ?
+							TD_ICONV : TD_NONE,
 					pbuf == qbuf ? prefix : NULL,
 					pbuf == qbuf ? prefixlen : 0);
 				if (pbuf == origobuf)
@@ -1061,6 +1111,7 @@ send_multi_parseheader:
 			break;
 		default: /* We do not display this */
 			if (lineno > 0 && (action == CONV_TOFILE ||
+						action == CONV_TOSRCH ||
 						pbuf != obuf)) {
 				sz = mime_write(oline,
 					 sizeof *oline,
@@ -1189,10 +1240,13 @@ send_message(mp, obuf, doign, prefix, action, stats)
 		if ((cp = read_sendmsg(pm, &line, &linesize, &length, NULL, 0))
 				!= NULL && doign != allignore) {
 			sz = mime_write(line, sizeof *line, length, obuf,
-				action == CONV_TODISP || action == CONV_QUOTE ?
+				action == CONV_TODISP || action == CONV_QUOTE ||
+						action == CONV_TOSRCH ?
 					CONV_FROMHDR : CONV_NONE,
 				action == CONV_TODISP ?
-					TD_ISPR|TD_ICONV : TD_NONE,
+					TD_ISPR|TD_ICONV :
+					action == CONV_TOSRCH ? TD_ICONV :
+						TD_NONE,
 				prefix, prefixlen);
 			if (obuf == origobuf)
 				addstats(stats, 1, sz);
@@ -1252,6 +1306,7 @@ send_parseheader:
 		switch (action) {
 		case CONV_TODISP:
 		case CONV_QUOTE:
+		case CONV_TOSRCH:
 			mime_content = MIME_TEXT;
 			mainhdr = 0;
 			goto send_parseheader;
@@ -1269,9 +1324,8 @@ send_parseheader:
 	/*
 	 * Copy out message body
 	 */
-	if (action == CONV_TODISP
-			|| action == CONV_QUOTE
-			|| action == CONV_TOFILE) {
+	if (action == CONV_TODISP || action == CONV_QUOTE ||
+			action == CONV_TOFILE || action == CONV_TOSRCH) {
 		switch (mime_content) {
 		case MIME_TEXT:
 			if (convert == CONV_FROMB64)
@@ -1285,7 +1339,7 @@ send_parseheader:
 					convert, action, &b0, stats);
 			goto send_end;
 		default:
-			if (action != CONV_TOFILE) {
+			if (action != CONV_TOFILE && action != CONV_TOSRCH) {
 				/* we do not display this */
 				if (action == CONV_TODISP)
 					fputs(catgets(catd, CATSET, 210,
@@ -1297,7 +1351,8 @@ send_parseheader:
 	if (cs == NULL)
 		cs = us_ascii;
 #ifdef	HAVE_ICONV
-	if (action == CONV_TODISP || action == CONV_QUOTE) {
+	if (action == CONV_TODISP || action == CONV_QUOTE ||
+			action == CONV_TOSRCH) {
 		if (iconvd != (iconv_t)-1)
 				iconv_close(iconvd);
 		if (asccasecmp(tcs, cs) && asccasecmp(us_ascii, cs))
@@ -1325,9 +1380,11 @@ send_parseheader:
 		if (cp == NULL)
 			break;
 		sz = mime_write(line, sizeof *line, count,
-				 pbuf, convert, action == CONV_TODISP
-				 	|| action == CONV_QUOTE ?
-					TD_ISPR|TD_ICONV:TD_NONE,
+				 pbuf, convert, action == CONV_TODISP ||
+					action == CONV_QUOTE ?
+						TD_ISPR|TD_ICONV :
+						action == CONV_TOSRCH ?
+							TD_ICONV : TD_NONE,
 					pbuf == qbuf ? prefix : NULL,
 					pbuf == qbuf ? prefixlen : 0);
 		if (ferror(pbuf)) {

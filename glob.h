@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	2.14 (gritter) 8/8/04
+ *	Sccsid @(#)glob.h	2.17 (gritter) 9/5/04
  */
 
 /*
@@ -50,7 +50,7 @@
 #  define _E	extern
 #endif
 
-_E int	msgcount;			/* Count of messages read in */
+_E int	msgCount;			/* Count of messages read in */
 _E int	rcvmode;			/* True if receiving mail */
 _E int	sawcom;				/* Set after first command */
 _E int	Iflag;				/* -I show Newsgroups: field */
@@ -100,6 +100,8 @@ _E struct shortcut	*shortcuts;	/* list of shortcuts */
 _E int	mb_cur_max;			/* value of MB_CUR_MAX */
 _E int	imap_created_mailbox;		/* hack to get feedback from imap */
 _E int	unset_allow_undefined;		/* allow to unset undefined variables */
+_E int	inhook;				/* currently executing a hook */
+_E int	starting;			/* still in startup code */
 
 #ifdef	HAVE_ICONV
 _E iconv_t iconvd;

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.49 (gritter) 8/17/04";
+static char sccsid[] = "@(#)lex.c	2.66 (gritter) 9/5/04";
 #endif
 #endif /* not lint */
 
@@ -83,7 +83,7 @@ setfile(name, newmail)
 	static int shudclob;
 	extern int errno;
 	size_t offset;
-	int omsgcount = 0;
+	int omsgCount = 0;
 	struct shortcut *sh;
 
 	isedit = *name != '%' && ((sh = get_shortcut(name)) == NULL ||
@@ -102,21 +102,20 @@ setfile(name, newmail)
 		if (newmail) {
 			if (mb.mb_type == MB_CACHE)
 				return 1;
-			omsgcount = msgcount;
+			omsgCount = msgCount;
 		}
-		i = imap_setfile(name, newmail, isedit);
-		if (newmail)
-			goto newmail;
-		else
-			return i;
+		return imap_setfile(name, newmail, isedit);
 	case PROTO_UNKNOWN:
 		fprintf(stderr, catgets(catd, CATSET, 217,
 				"Cannot handle protocol: %s\n"), name);
 		return -1;
 	}
 	if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
-		if ((!isedit && errno == ENOENT) || newmail)
+		if ((!isedit && errno == ENOENT) || newmail) {
+			if (newmail)
+				goto nonewmail;
 			goto nomail;
+		}
 		perror(name);
 		return(-1);
 	}
@@ -124,7 +123,7 @@ setfile(name, newmail)
 	if (fstat(fileno(ibuf), &stb) < 0) {
 		Fclose(ibuf);
 		if (newmail)
-			goto nomail;
+			goto nonewmail;
 		perror("fstat");
 		return (-1);
 	}
@@ -132,7 +131,7 @@ setfile(name, newmail)
 	if (S_ISDIR(stb.st_mode)) {
 		Fclose(ibuf);
 		if (newmail)
-			goto nomail;
+			goto nonewmail;
 		errno = EISDIR;
 		perror(name);
 		return (-1);
@@ -141,7 +140,7 @@ setfile(name, newmail)
 	} else {
 		Fclose(ibuf);
 		if (newmail)
-			goto nomail;
+			goto nonewmail;
 		errno = EINVAL;
 		perror(name);
 		return (-1);
@@ -157,6 +156,11 @@ setfile(name, newmail)
 	holdsigs();
 	if (shudclob && !newmail)
 		quit();
+
+#ifdef	HAVE_SOCKETS
+	if (!newmail && mb.mb_sock.s_fd >= 0)
+		sclose(&mb.mb_sock);
+#endif	/* HAVE_SOCKETS */
 
 	/*
 	 * Copy the messages into /tmp
@@ -189,64 +193,69 @@ setfile(name, newmail)
 		fseek(mb.mb_otf, 0L, SEEK_END);
 		fseek(ibuf, mailsize, SEEK_SET);
 		offset = mailsize;
-		omsgcount = msgcount;
+		omsgCount = msgCount;
 	}
 	mailsize = fsize(ibuf);
 	if (newmail && mailsize <= offset) {
 		relsesigs();
-		goto nomail;
+		goto nonewmail;
 	}
 	setptr(ibuf, offset);
-	setmsize(msgcount);
+	setmsize(msgCount);
 	if (newmail && mb.mb_sorted) {
-		char	*args[2];
 		mb.mb_threaded = 0;
-		args[0] = mb.mb_sorted;
-		args[1] = NULL;
-		sort(args);
+		sort(NULL);
 	}
 	Fclose(ibuf);
 	relsesigs();
-	sawcom = 0;
-	if ((!edit || newmail) && msgcount == 0) {
-nomail:
+	if (!newmail)
+		sawcom = 0;
+	if ((!edit || newmail) && msgCount == 0) {
+nonewmail:
 		if (!newmail) {
 			if (value("emptystart") == NULL)
-				fprintf(stderr, catgets(catd, CATSET, 88,
+nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
 						"No mail for %s\n"), who);
 		}
 		return 1;
 	}
 	if (newmail) {
-newmail:	newmailinfo(omsgcount);
+		newmailinfo(omsgCount);
 	}
 	return(0);
 }
 
 
 int
-newmailinfo(omsgcount)
-	int	omsgcount;
+newmailinfo(omsgCount)
+	int	omsgCount;
 {
-	int	mdot = getmdot();
+	int	mdot;
+	int	i;
 
-	if (msgcount > omsgcount) {
+	for (i = 0; i < omsgCount; i++)
+		message[i].m_flag &= ~MNEWEST;
+	if (msgCount > omsgCount) {
+		for (i = omsgCount; i < msgCount; i++)
+			message[i].m_flag |= MNEWEST;
 		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
-		if (msgcount - omsgcount == 1)
+		if (msgCount - omsgCount == 1)
 			printf(catgets(catd, CATSET, 214,
 				"Loaded 1 new message\n"));
 		else
 			printf(catgets(catd, CATSET, 215,
 				"Loaded %d new messages\n"),
-				msgcount - omsgcount);
+				msgCount - omsgCount);
 	} else
-		printf("Loaded %d messages\n", msgcount);
+		printf("Loaded %d messages\n", msgCount);
+	callhook(mailname, 1);
+	mdot = getmdot(1);
 	if (value("header")) {
 		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(omsgcount+1, msgcount);
-		while (++omsgcount <= msgcount)
-			if (!(message[omsgcount-1].m_flag & MDELETED))
-				printhead(omsgcount, stdout, 0);
+			imap_getheaders(omsgCount+1, msgCount);
+		while (++omsgCount <= msgCount)
+			if (!(message[omsgCount-1].m_flag & MDELETED))
+				printhead(omsgCount, stdout, 0);
 	}
 	return mdot;
 }
@@ -346,6 +355,7 @@ commands()
 			break;
 		}
 		eofloop = 0;
+		inhook = 0;
 		if (execute(linebuf, 0, n))
 			break;
 	}
@@ -400,7 +410,8 @@ execute(linebuf, contxt, linesize)
 	}
 	cp2 = word;
 	if (*cp != '|') {
-		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;", *cp) == NULL)
+		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`", *cp)
+				== NULL)
 			*cp2++ = *cp++;
 	} else
 		*cp2++ = *cp++;
@@ -494,7 +505,8 @@ execute(linebuf, contxt, linesize)
 				msgvec[1] = 0;
 		}
 		if (*msgvec == 0) {
-			printf(catgets(catd, CATSET, 97,
+			if (!inhook)
+				printf(catgets(catd, CATSET, 97,
 					"No applicable messages\n"));
 			break;
 		}
@@ -581,7 +593,7 @@ out:
 	if (com == (struct cmd *)NULL)
 		return(0);
 	if (value("autoprint") != NULL && com->c_argtype & P)
-		if ((dot->m_flag & (MDELETED|MHIDDEN)) == 0) {
+		if ((dot->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
@@ -705,7 +717,7 @@ announce(printheaders)
 	vec[0] = mdot;
 	vec[1] = 0;
 	dot = &message[mdot - 1];
-	if (printheaders && msgcount > 0 && value("header") != NULL) {
+	if (printheaders && msgCount > 0 && value("header") != NULL) {
 		inithdr++;
 		headers(vec);
 		inithdr = 0;
@@ -720,24 +732,28 @@ int
 newfileinfo()
 {
 	struct message *mp;
-	int u, n, mdot, d, s, hidden;
+	int u, n, mdot, d, s, hidden, killed, moved;
 	char fname[PATHSIZE], zname[PATHSIZE], *ename;
 
 	if (mb.mb_type == MB_VOID)
 		return 1;
-	mdot = getmdot();
-	s = d = hidden = 0;
-	for (mp = &message[0], n = 0, u = 0; mp < &message[msgcount]; mp++) {
+	mdot = getmdot(0);
+	s = d = hidden = killed = moved =0;
+	for (mp = &message[0], n = 0, u = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW)
 			n++;
 		if ((mp->m_flag & MREAD) == 0)
 			u++;
-		if (mp->m_flag & MDELETED)
+		if ((mp->m_flag & (MDELETED|MSAVED)) == (MDELETED|MSAVED))
+			moved++;
+		if ((mp->m_flag & (MDELETED|MSAVED)) == MDELETED)
 			d++;
-		if (mp->m_flag & MSAVED)
+		if ((mp->m_flag & (MDELETED|MSAVED)) == MSAVED)
 			s++;
 		if (mp->m_flag & MHIDDEN)
 			hidden++;
+		if (mp->m_flag & MKILL)
+			killed++;
 	}
 	ename = mailname;
 	if (getfold(fname, sizeof fname - 1) >= 0) {
@@ -750,10 +766,10 @@ newfileinfo()
 		}
 	}
 	printf(catgets(catd, CATSET, 103, "\"%s\": "), ename);
-	if (msgcount == 1)
+	if (msgCount == 1)
 		printf(catgets(catd, CATSET, 104, "1 message"));
 	else
-		printf(catgets(catd, CATSET, 105, "%d messages"), msgcount);
+		printf(catgets(catd, CATSET, 105, "%d messages"), msgCount);
 	if (n > 0)
 		printf(catgets(catd, CATSET, 106, " %d new"), n);
 	if (u-n > 0)
@@ -762,8 +778,12 @@ newfileinfo()
 		printf(catgets(catd, CATSET, 108, " %d deleted"), d);
 	if (s > 0)
 		printf(catgets(catd, CATSET, 109, " %d saved"), s);
+	if (moved > 0)
+		printf(catgets(catd, CATSET, 109, " %d moved"), moved);
 	if (hidden > 0)
 		printf(catgets(catd, CATSET, 109, " %d hidden"), hidden);
+	if (killed > 0)
+		printf(catgets(catd, CATSET, 109, " %d killed"), killed);
 	if (mb.mb_type == MB_CACHE)
 		printf(" [Disconnected]");
 	else if (mb.mb_perm == 0)
@@ -773,7 +793,8 @@ newfileinfo()
 }
 
 int
-getmdot()
+getmdot(newmail)
+	int	newmail;
 {
 	struct message	*mp;
 	char	*cp;
@@ -782,50 +803,64 @@ getmdot()
 	if (value("autothread"))
 		thread(NULL);
 	else if ((cp = value("autosort")) != NULL) {
-		char	*args[2];
-		args[0] = cp;
-		args[1] = NULL;
-		sort(args);
+		free(mb.mb_sorted);
+		mb.mb_sorted = sstrdup(cp);
+		sort(NULL);
 	}
 	if (mb.mb_type == MB_VOID)
 		return 1;
-	for (mp = mb.mb_threaded ? threadroot : &message[0];
-			mb.mb_threaded ? mp != NULL: mp < &message[msgcount];
-			mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
-		if ((mp->m_flag & (MNEW|MHIDDEN)) == MNEW)
-			break;
-	if (mb.mb_threaded ? mp == NULL : mp >= &message[msgcount])
+	if (newmail)
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+			if ((mp->m_flag & (MNEWEST|MHIDDEN|MKILL)) == MNEWEST)
+				break;
+	if (!newmail || mp >= &message[msgCount]) {
+		for (mp = mb.mb_threaded ? threadroot : &message[0];
+				mb.mb_threaded ?
+					mp != NULL : mp < &message[msgCount];
+				mb.mb_threaded ?
+					mp = next_in_thread(mp) : mp++)
+			if ((mp->m_flag & (MNEW|MHIDDEN|MKILL)) == MNEW)
+				break;
+	}
+	if (mb.mb_threaded ? mp == NULL : mp >= &message[msgCount])
 		for (mp = mb.mb_threaded ? threadroot : &message[0];
 				mb.mb_threaded ? mp != NULL:
-					mp < &message[msgcount];
+					mp < &message[msgCount];
 				mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
-			if ((mp->m_flag & (MREAD|MHIDDEN)) == 0)
+			if (mp->m_flag & MFLAGGED)
 				break;
-	if (mb.mb_threaded ? mp != NULL : mp < &message[msgcount])
+	if (mb.mb_threaded ? mp == NULL : mp >= &message[msgCount])
+		for (mp = mb.mb_threaded ? threadroot : &message[0];
+				mb.mb_threaded ? mp != NULL:
+					mp < &message[msgCount];
+				mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
+			if ((mp->m_flag & (MREAD|MHIDDEN|MKILL)) == 0)
+				break;
+	if (mb.mb_threaded ? mp != NULL : mp < &message[msgCount])
 		mdot = mp - &message[0] + 1;
 	else if (value("showlast")) {
 		if (mb.mb_threaded) {
 			for (mp = this_in_thread(threadroot, -1); mp;
 					mp = prev_in_thread(mp))
-				if ((mp->m_flag & MHIDDEN) == 0)
+				if ((mp->m_flag & (MHIDDEN|MKILL)) == 0)
 					break;
-			mdot = mp ? mp - &message[0] + 1 : msgcount;
+			mdot = mp ? mp - &message[0] + 1 : msgCount;
 		} else {
-			for (mp = &message[msgcount-1]; mp >= &message[0]; mp--)
-				if ((mp->m_flag & MHIDDEN) == 0)
+			for (mp = &message[msgCount-1]; mp >= &message[0]; mp--)
+				if ((mp->m_flag & (MHIDDEN|MKILL)) == 0)
 					break;
-			mdot = mp >= &message[0] ? mp-&message[0]+1 : msgcount;
+			mdot = mp >= &message[0] ? mp-&message[0]+1 : msgCount;
 		}
 	} else if (mb.mb_threaded) {
 		for (mp = threadroot; mp; mp = next_in_thread(mp))
-			if ((mp->m_flag & MHIDDEN) == 0)
+			if ((mp->m_flag & (MHIDDEN|MKILL)) == 0)
 				break;
 		mdot = mp ? mp - &message[0] + 1 : 1;
 	} else {
-		for (mp = &message[0]; mp < &message[msgcount]; mp++)
-			if ((mp->m_flag & MHIDDEN) == 0)
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+			if ((mp->m_flag & (MHIDDEN|MKILL)) == 0)
 				break;
-		mdot = mp < &message[msgcount] ? mp-&message[0]+1 : 1;
+		mdot = mp < &message[msgCount] ? mp-&message[0]+1 : 1;
 	}
 	return mdot;
 }
@@ -893,7 +928,7 @@ initbox(name)
 	fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
 	rm(tempMesg);
 	Ftfree(&tempMesg);
-	msgcount = 0;
+	msgCount = 0;
 	if (message) {
 		free(message);
 		message = NULL;
@@ -902,6 +937,7 @@ initbox(name)
 	mb.mb_threaded = 0;
 	free(mb.mb_sorted);
 	mb.mb_sorted = NULL;
+	mb.mb_flags = MB_NOFLAGS;
 	prevdot = NULL;
 	dot = NULL;
 }

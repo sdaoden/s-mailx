@@ -38,10 +38,11 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.41 (gritter) 8/29/04";
+static char sccsid[] = "@(#)cmd3.c	2.60 (gritter) 9/5/04";
 #endif
 #endif /* not lint */
 
+#include <float.h>
 #include "rcv.h"
 #include "extern.h"
 #include <unistd.h>
@@ -66,6 +67,7 @@ static int	(*respond_or_Respond(int c))(int *, int);
 #else
 static int	(*respond_or_Respond())();
 #endif
+static float	huge __P((void));
 
 /*
  * Process a shell escape by saving signals, ignoring signals,
@@ -378,6 +380,8 @@ respond_internal(msgvec, recipient_record)
 	}
 	make_ref(mp, &head);
 	mail1(&head, 1, mp, NULL, recipient_record, 0);
+	if (value("markanswered"))
+		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
 }
 
@@ -733,9 +737,14 @@ file(v)
 		newfileinfo();
 		return 0;
 	}
+	if (inhook) {
+		fprintf(stderr, "Cannot change folder from within a hook.\n");
+		return 1;
+	}
 	i = setfile(*argv, 0);
 	if (i < 0)
 		return 1;
+	callhook(mailname, 0);
 	if (i > 0 && value("emptystart") == NULL)
 		return 1;
 	announce(value("bsdcompat") != NULL || value("bsdannounce") != NULL);
@@ -1013,7 +1022,7 @@ int add_resent;
 
 	str = (char *)v;
 	/*LINTED*/
-	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
+	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	name = laststring(str, &f, 1);
 	if (name == NULL) {
 		puts(catgets(catd, CATSET, 47, "No recipient specified."));
@@ -1022,6 +1031,8 @@ int add_resent;
 	if (!f) {
 		*msgvec = first(0, MMNORM);
 		if (*msgvec == 0) {
+			if (inhook)
+				return 0;
 			puts(catgets(catd, CATSET, 48,
 					"No applicable messages."));
 			return 1;
@@ -1029,9 +1040,15 @@ int add_resent;
 		msgvec[1] = 0;
 	} else if (getmsglist(str, msgvec, 0) < 0)
 		return 1;
+	if (*msgvec == 0) {
+		if (inhook)
+			return 0;
+		printf("No applicable messages.\n");
+		return 1;
+	}
 	sn = nalloc(name, GTO);
 	to = usermap(sn);
-	for (ip = msgvec; *ip && ip - msgvec < msgcount; ip++) {
+	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
 		if (forward_msg(&message[*ip - 1], to, add_resent) != 0)
 			return 1;
 	}
@@ -1071,7 +1088,7 @@ void *v;
 
 	if ((mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 			(val = setfile(mailname, 1)) == 0) {
-		mdot = getmdot();
+		mdot = getmdot(1);
 		setdot(&message[mdot - 1]);
 	}
 	return val;
@@ -1226,10 +1243,233 @@ account(v)
 		unset_allow_undefined = 1;
 		set(a->ac_vars);
 		unset_allow_undefined = 0;
-		if (*mailname) {
+		if (!starting) {
 			char	*av[2] = { "%", NULL };
 			return file(av);
-		} /* otherwise still in startup code */
+		}
+	}
+	return 0;
+}
+
+int
+cflag(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		if ((m->m_flag & (MFLAG|MFLAGGED)) == 0)
+			m->m_flag |= MFLAG|MFLAGGED;
+	}
+	return 0;
+}
+
+int
+cunflag(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		if (m->m_flag & (MFLAG|MFLAGGED)) {
+			m->m_flag &= ~(MFLAG|MFLAGGED);
+			m->m_flag |= MUNFLAG;
+		}
+	}
+	return 0;
+}
+
+int
+canswered(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		if ((m->m_flag & (MANSWER|MANSWERED)) == 0)
+			m->m_flag |= MANSWER|MANSWERED;
+	}
+	return 0;
+}
+
+int
+cunanswered(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		if (m->m_flag & (MANSWER|MANSWERED)) {
+			m->m_flag &= ~(MANSWER|MANSWERED);
+			m->m_flag |= MUNANSWER;
+		}
+	}
+	return 0;
+}
+
+int
+cdraft(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		if ((m->m_flag & (MDRAFT|MDRAFTED)) == 0)
+			m->m_flag |= MDRAFT|MDRAFTED;
+	}
+	return 0;
+}
+
+int
+cundraft(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		if (m->m_flag & (MDRAFT|MDRAFTED)) {
+			m->m_flag &= ~(MDRAFT|MDRAFTED);
+			m->m_flag |= MUNDRAFT;
+		}
+	}
+	return 0;
+}
+
+static float
+huge()
+{
+	/*
+	 * This is not perfect, but correct for machines with a 32-bit
+	 * IEEE float, and does at least not produce SIGFPE on the Cray
+	 * Y-MP.
+	 */
+	union {
+		float	f;
+		unsigned long	l;
+	} u;
+
+	u.l = 0xff800000; /* -inf */
+	return u.f;
+}
+
+int
+ckill(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		m->m_flag |= MKILL;
+		m->m_score = huge();
+	}
+	return 0;
+}
+
+int
+cunkill(v)
+	void	*v;
+{
+	struct message	*m;
+	int	*msgvec = v;
+	int	*ip;
+
+	for (ip = msgvec; *ip != 0; ip++) {
+		m = &message[*ip-1];
+		m->m_flag &= ~MKILL;
+		m->m_score = 0;
+	}
+	return 0;
+}
+
+int
+cscore(v)
+	void	*v;
+{
+	char	*str = v;
+	char	*sscore, *xp;
+	int	f, *msgvec, *ip;
+	double	nscore;
+	struct message	*m;
+
+	msgvec = salloc((msgCount+2) * sizeof *msgvec);
+	if ((sscore = laststring(str, &f, 0)) == NULL) {
+		fprintf(stderr, "No score given.\n");
+		return 1;
+	}
+	nscore = strtod(sscore, &xp);
+	if (*xp) {
+		fprintf(stderr, "Invalid score: \"%s\"\n", sscore);
+		return 1;
+	}
+	if (nscore > FLT_MAX)
+		nscore = FLT_MAX;
+	else if (nscore < -FLT_MAX)
+		nscore = -FLT_MAX;
+	if (!f) {
+		*msgvec = first(0, MMNORM);
+		if (*msgvec == 0) {
+			if (inhook)
+				return 0;
+			fprintf(stderr, "No messages to score.\n");
+			return 1;
+		}
+		msgvec[1] = 0;
+	} else if (getmsglist(str, msgvec, 0) < 0)
+		return 1;
+	if (*msgvec == 0) {
+		if (inhook)
+			return 0;
+		fprintf(stderr, "No applicable messages.\n");
+		return 1;
+	}
+	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
+		m = &message[*ip-1];
+		if (m->m_score != huge()) {
+			m->m_score += nscore;
+			if (m->m_score < 0)
+				m->m_flag |= MKILL;
+			else if (m->m_score > 0)
+				m->m_flag &= ~MKILL;
+		}
+	}
+	return 0;
+}
+
+/*ARGSUSED*/
+int
+cnoop(v)
+	void	*v;
+{
+	switch (mb.mb_type) {
+	case MB_IMAP:
+		imap_noop();
+		break;
+	case MB_POP3:
+		pop3_noop();
+		break;
+	default:
+		break;
 	}
 	return 0;
 }

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)ssl.c	1.3 (gritter) 8/20/04";
+static char sccsid[] = "@(#)ssl.c	1.5 (gritter) 9/2/04";
 #endif
 #endif /* not lint */
 
@@ -332,7 +332,7 @@ ssl_check_host(server, sp)
 	X509 *cert;
 	X509_NAME *subj;
 	char data[256];
-	GENERAL_NAMES	*gens;
+	/*GENERAL_NAMES*/STACK	*gens;
 	GENERAL_NAME	*gen;
 	int	i;
 
@@ -346,7 +346,8 @@ ssl_check_host(server, sp)
 		for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
 			gen = sk_GENERAL_NAME_value(gens, i);
 			if (gen->type == GEN_DNS &&
-					!asccasecmp(gen->d.ia5->data, server))
+					!asccasecmp(gen->d.ia5->data,
+						(char *)server))
 				goto found;
 		}
 	}
