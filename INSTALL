@@ -2,12 +2,12 @@ The configure script for 'nail' accepts the following specific options:
 
 --with-openssl          Use the OpenSSL library for SSL/TLS support. If this
                         option is not present, OpenSSL will not be used. Use
-                        the INCLUDE and LDFLAGS environment variables (see
+                        the INCLUDES and LDFLAGS environment variables (see
                         below) if OpenSSL is not installed in the default
                         include or library path. OpenSSL versions 0.9.6g was
                         used for development, other versions may or may not
                         work, fixes are welcome. RedHat 9 installations seem
-                        to need INCLUDE=-I/usr/kerberos/include in the
+                        to need INCLUDES=-I/usr/kerberos/include in the
                         environment to compile with SSL.
 
 --enable-all-chars      Nail normally uses the isprint(3) and iswprint(3)
@@ -41,7 +41,7 @@ The configure script for 'nail' accepts the following specific options:
                         using this option makes no sense unless you want
                         to contribute internationalization material.
 
-Gunnar Ritter                                                   4/27/03
+Gunnar Ritter                                                   5/28/03
 
 ***********************************************************************
 

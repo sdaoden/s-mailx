@@ -1,3 +1,18 @@
+[10.6] released 11/15/03
+* A nested MIME multipart message with a sub-part piped through an external
+  program (such as HTML with w3m) caused nail to abort after SIGPIPE if the
+  PAGER command terminated before reading the whole message.
+* A 'next' command following a 'hold' command displays the next message
+  after the one the 'hold' applies to (Bugreport by Mike Sipser). This 
+  might not be exactly what POSIX specifies, but it makes sense and is
+  consistent with traditional behavior. If you actually favor 'next'
+  not to advance after 'hold', contact me and I'll add a configuration
+  option for this.
+* If the value of the 'record' variable started with an environment
+  variable reference such as '$HOME' or with a tilde and the 'outfolder'
+  variable was set, it was not expanded correctly (Bugreport by Volker
+  Kuhlmann).
+
 [10.5] released 4/27/03
 * A command line argument specifying a To-address can contain multiple
   recipients separated by commas (Werner Fink).

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.22 (gritter) 3/30/03";
+static char sccsid[] = "@(#)cmd1.c	2.23 (gritter) 5/25/03";
 #endif
 #endif /* not lint */
 
@@ -285,14 +285,14 @@ printhead(mesg, f)
 		if ((mp->m_flag & (MREAD|MNEW)) == MREAD)
 			dispc = 'O';
 	}
-	if (mp->m_flag & MSAVED)
-		dispc = bsdflags ? '*' : 'S';
-	if (mp->m_flag & MPRESERVE)
-		dispc = bsdflags ? 'P' : 'H';
 	if ((mp->m_flag & (MREAD|MNEW)) == MNEW)
 		dispc = 'N';
 	if ((mp->m_flag & (MREAD|MNEW)) == 0)
 		dispc = 'U';
+	if (mp->m_flag & MSAVED)
+		dispc = bsdflags ? '*' : 'S';
+	if (mp->m_flag & MPRESERVE)
+		dispc = bsdflags ? 'P' : 'H';
 	if (mp->m_flag & MBOX)
 		dispc = 'M';
 	if ((mp->m_flag & MNOFROM) == 0) {

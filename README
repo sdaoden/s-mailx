@@ -4,7 +4,7 @@ Nail is derived from Berkeley Mail 8.1 and is intended provide the
 functionality of the POSIX.2 mailx command with additional support
 for MIME messages, POP3 and SMTP.
 
-To compile nail, look at the file "INSTALL" that documents the
+To compile nail, look at the file 'INSTALL' that documents the
 configure options. You can also build nail RPMs using 'rpm -ta
 nail-<version>.tar.gz'.
 
@@ -13,12 +13,12 @@ configuration files to match your needs. You _really_ should do this or
 at least install the template because most of the defaults still have
 the compatibility values of fifteen years ago.  For batch usage, it may
 be more convenient to pass the configuration as environment variables
-only, as e. g. "MAILRC=/dev/null from=user@host nail -n" does.
+only, as e. g. 'MAILRC=/dev/null from=user@host nail -n' does.
 
 Nail has been built successfully on the following systems:
 
-Linux 		2.[024]; glibc 2.[12], libc[45]
-Solaris		8; 7; 2.6; 2.5
+Linux 		2.x; glibc 2.x, libc[45]
+Solaris		9; 8; 7; 2.6; 2.5
 Open UNIX	8.0.0
 UnixWare	7.[01].1; 2.1.2; 2.1
 OpenServer	5.0.5
@@ -41,7 +41,7 @@ to extend this list.
 
 It should generally be possible to build nail on most Unix-style
 systems without much effort; however, especially the character set
-support varies between them. See the file "I18N" for details.
+support varies between them. See the file 'I18N' for details.
 
 On the other hand, I strongly discourage from porting nail to Windows
 and environments that make Windows look Unix-like; I won't accept any
@@ -65,34 +65,42 @@ free software to mainframes of a certain company is considered a good
 thing today. I just wish to express my opinion as a free software
 developer, and to inform you that I don't maintain such a port.
 
-The mbox format variant based on the "Content-Length:" header field that
+The mbox format variant based on the 'Content-Length:' header field that
 is used on most SVr4 systems by default is not supported by nail. As this
 format generally is a design flaw, you should fix your system by either
 using procmail for local mail delivery, which is a good idea anyway, or
 at least add the -E flag to the Mlocal line in /etc/sendmail.cf if using
 /usr/lib/mail.local.
 
-Although it is not bad, just obsolete, similar considerations apply to
-the MMDF format used on OpenServer systems; unless you switch to
-procmail, nail will not be able to read your mailbox there.
+Although it is not bad, just obsolete, similar considerations apply
+to the MMDF format used on OpenServer systems; unless you switch to
+procmail (or contribute support for this format), nail will not be
+able to read your mailbox there.
 
 New nail versions will be announced on <http://freshmeat.net>. Nail's
 home page is currently at <http://omnibus.ruf.uni-freiburg.de/~gritter/>.
-If the version you have is older than a few months, please look for a
-new one before reporting bugs.
+Please always look for the newest version before reporting bugs.
 
-If you detect a bug and cannot fix it yourselves, please send me the
-unaltered mail message that caused the problem along with a
-description!  This may be a privacy issue, but it is nearly impossible
-to fix the error without an exact reconstruction.
+If you detect a bug and cannot fix it yourself, please send me the
+unaltered mail message (if any) that caused the problem along with a
+description. This may be a privacy issue, but it is nearly impossible
+to fix such errors without an exact reconstruction. If the problem
+concerns the configure script, please include the relevant lines
+of the generated 'config.log' file.
 
-If you have an idea how to improve nail, you are also invited to write
-me. But you should remember that nail's primary goal is to remain clean
-and simple. All ideas are worth at least a discussion, though.
+If you have an idea how to improve nail, especially one not already
+mentioned in the 'TODO' file, you are also invited to write me. But
+please understand that 1) maintaining a program sometimes involves
+rejection of suggestions that fail to be consistently designed or
+to be useful for more than just one person, and 2) I often don't
+have the time to implement something even if I agree that it would
+be a considerable improvement. If you decide to write the code
+yourself and intend to contribute it, please contact me early so
+that we can avoid the problems mentioned as 1).
 
 Enjoy!
 
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<Gunnar.Ritter@pluto.uni-freiburg.de>				2/19/03
+<Gunnar.Ritter@pluto.uni-freiburg.de>				9/24/03

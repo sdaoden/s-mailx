@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.19 (gritter) 4/9/03";
+static char sccsid[] = "@(#)sendout.c	2.20 (gritter) 8/26/03";
 #endif
 #endif /* not lint */
 
@@ -774,7 +774,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	struct message *quote;
 	char *quotefile;
 {
-	char *cp, *cq;
+	char *cp, *cq, *ep;
 	struct name *to;
 	FILE *mtf, *nmtf;
 
@@ -855,13 +855,15 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	} else
 		cp = value("record");
 	if (cp != NULL) {
-		if (value("outfolder") && *cp != '/' && *cp != '+') {
+		ep = expand(cp);
+		if (value("outfolder") && *ep != '/' && *ep != '+') {
 			cq = salloc(strlen(cp) + 2);
 			cq[0] = '+';
 			strcpy(&cq[1], cp);
 			cp = cq;
+			ep = expand(cp);
 		}
-		savemail(expand(cp), mtf);
+		savemail(ep, mtf);
 	}
 	start_mta(to, hp->h_smopts, mtf);
 out:

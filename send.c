@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.15 (gritter) 1/10/03";
+static char sccsid[] = "@(#)send.c	2.16 (gritter) 11/15/03";
 #endif
 #endif /* not lint */
 
@@ -857,9 +857,11 @@ send_multi_lastbound:
 send_multi_midbound:
 					jump_to_bound = 0;
 					if (pbuf != qbuf) {
-						safe_signal(SIGPIPE, SIG_IGN);
+						sighandler_type	oldpipe;
+						oldpipe = safe_signal(SIGPIPE,
+								SIG_IGN);
 						Pclose(pbuf);
-						safe_signal(SIGPIPE, SIG_DFL);
+						safe_signal(SIGPIPE, oldpipe);
 						if (qbuf != obuf)
 							pipecpy(qbuf, obuf,
 								origobuf,
@@ -1100,9 +1102,10 @@ send_multi_end:
 		oldobuf = (FILE *)-1;
 	}
 	if (pbuf != qbuf) {
-		safe_signal(SIGPIPE, SIG_IGN);
+		sighandler_type	oldpipe;
+		oldpipe = safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(pbuf);
-		safe_signal(SIGPIPE, SIG_DFL);
+		safe_signal(SIGPIPE, oldpipe);
 		if (qbuf != obuf)
 			pipecpy(qbuf, obuf, origobuf, prefix, prefixlen, stats);
 	}
@@ -1340,9 +1343,10 @@ send_end:
 			return -1;
 #endif
 	if (pbuf != qbuf) {
-		safe_signal(SIGPIPE, SIG_IGN);
+		sighandler_type	oldpipe;
+		oldpipe = safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(pbuf);
-		safe_signal(SIGPIPE, SIG_DFL);
+		safe_signal(SIGPIPE, oldpipe);
 		if (qbuf != obuf)
 			pipecpy(qbuf, obuf, origobuf, prefix, prefixlen, stats);
 	}

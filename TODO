@@ -18,3 +18,38 @@ If you want to edit arbitrary header fields with the 'editheaders'
 option, you are invited to supply code for it. Be warned that this
 is a nontrivial task due to MIME. Contact the maintainer before you
 start coding.
+
+Several people have suggested adding support for arrow keys at the
+command prompt, autocompletion for attachment filenames, etc. I am
+personally not going to implement this as X Window Copy-and-Paste
+satisfies me. But if you desparately need it, you're invited to
+contribute code. You can't use libreadline, though, because its
+license is incompatible, and I insist that your implementation
+is done in a way that a) nail can still be compiled without
+requiring any further libraries (i. e. your code is optional)
+and b) your code works for all kinds of terminals, not just
+VT100/ANSI ones.
+
+There will certainly be support for signed and encrypted messages
+one day, but in the current situation (two standards with dozens
+of incompatible implementations, PKI effectively not working) it
+seems not to be much more than a geek toy. I will code this once
+there is true interoperability and one can do something practically
+useful with it, like signing legal documents (in fact, one could
+do this today in Germany, but the infrastructure is mostly missing
+so it's not worth much yet). If you need it before this day and
+write the code yourself, I would be thankful for the contribution,
+though.
+
+IMAP support will be added once I find the time to write it.
+
+Nail will not support 'Return-Receipt-To' or 'Disposition-Notification-To'
+header fields, neither for the sending nor for the receiving part.
+For the sending part it plainly doesn't work because one wants to
+know whether the human recipient has read the mail and not if he
+clicked on some send-a-receipt-button while looking out of the
+window. For the receiving part, it is simply annoying. If you want
+a confirmation, ask the recipient to send one in the body of the
+message.
+
+	Gunnar Ritter					7/9/03

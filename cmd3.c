@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.16 (gritter) 3/30/03";
+static char sccsid[] = "@(#)cmd3.c	2.18 (gritter) 6/3/03";
 #endif
 #endif /* not lint */
 
@@ -430,6 +430,7 @@ preserve(v)
 		mp->m_flag |= MPRESERVE;
 		mp->m_flag &= ~MBOX;
 		setdot(mp);
+		did_print_dot = 1;
 	}
 	return(0);
 }
@@ -515,6 +516,7 @@ set(v)
 	(void)&cp;
 	(void)&ap;
 	(void)&obuf;
+	(void)&bsdset;
 	if (*arglist == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)
 			for (vp = variables[h]; vp != NOVAR; vp = vp->v_link)

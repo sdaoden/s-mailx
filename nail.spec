@@ -1,7 +1,7 @@
-# Sccsid @(#)nail.spec	1.11 (gritter) 4/27/03
+# Sccsid @(#)nail.spec	1.13 (gritter) 11/15/03
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 10.5
+Version: 10.6
 Release: 1
 License: BSD
 Group: Applications/Internet
@@ -20,11 +20,8 @@ Install nail if you need a command line tool with the ability to
 handle MIME messages.
 
 %prep
-rm -fr %{buildroot}
-
+rm -rf %{buildroot}
 %setup
-
-
 %configure --prefix=/usr --with-openssl
 
 %build
@@ -35,11 +32,11 @@ make DESTDIR=%{buildroot} install
 gzip -9 %{buildroot}/usr/share/man/man1/nail.1
 
 %clean
-cd ..; rm -fr %{_builddir}/%{name}-%{version}
-
+cd ..; rm -rf %{_builddir}/%{name}-%{version}
+rm -rf %{buildroot}
 
 %files
 %doc COPYING AUTHORS INSTALL README TODO I18N ChangeLog
 %config(noreplace) /etc/nail.rc
 /usr/bin/nail
-/usr/share/man/man1/nail.1.gz
+/usr/share/man/man1/nail*
