@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.39 (gritter) 10/21/04";
+static char sccsid[] = "@(#)send.c	2.41 (gritter) 10/24/04";
 #endif
 #endif /* not lint */
 
@@ -616,7 +616,9 @@ const struct message *mp;	/* can be NULL if rewritestatus == 0 */
 				action == CONV_TODISP ?
 					TD_ISPR|TD_ICONV :
 					action == CONV_TOSRCH ?
-						TD_ICONV : TD_NONE,
+						TD_ICONV : 
+					action == CONV_TOFLTR ? 
+						TD_DELCTRL : TD_NONE,
 				prefix, prefixlen);
 		addstats(stats, 1, sz);
 	}
@@ -697,7 +699,9 @@ const struct message *mp;	/* can be NULL if rewritestatus == 0 */
 				action == CONV_TODISP ?
 					TD_ISPR|TD_ICONV :
 					action == CONV_TOSRCH ?
-						TD_ICONV : TD_NONE,
+						TD_ICONV :
+					action == CONV_TOFLTR ? 
+						TD_DELCTRL : TD_NONE,
 				prefix, prefixlen);
 		if (ferror(obuf))
 			return 1;
@@ -931,9 +935,10 @@ send_multi_midbound:
 					if (action == CONV_QUOTE) {
 						if (b->b_count > 1)
 							goto send_multi_end;
+					} else if (action == CONV_TOFLTR) {
+						putc('\0', obuf);
 					} else if (action != CONV_TOFILE &&
-							action != CONV_TOSRCH &&
-							action != CONV_TOFLTR) {
+							action != CONV_TOSRCH) {
 						fputs(catgets(catd, CATSET, 174,
 							"\nPart "), obuf);
 						print_partnumber(obuf, b, b0,
@@ -1025,8 +1030,12 @@ send_multi_parseheader:
 				/*
 				 * See comment in send_message().
 				 */
+				if (action == CONV_TOFLTR)
+					putc('\0', obuf);
 				goto send_multi_parseheader;
 			}
+			if (new_content == MIME_HTML && action == CONV_TOFLTR)
+				putc('\b', obuf);
 			lineno = -1;
 			if ((mime_content = new_content) == MIME_MULTI) {
 				if (b->b_str == NULL) {
@@ -1034,7 +1043,8 @@ send_multi_parseheader:
 					goto send_multi_end;
 				}
 				b->b_len = strlen(b->b_str);
-			} else if (mime_content == MIME_TEXT) {
+			} else if (mime_content == MIME_TEXT ||
+					mime_content == MIME_HTML) {
 				if (cs == NULL)
 					cs = us_ascii;
 #ifdef	HAVE_ICONV
@@ -1102,6 +1112,7 @@ send_multi_parseheader:
 			}
 			break;
 		case MIME_TEXT:
+		case MIME_HTML:
 		case MIME_MESSAGE:
 			if (lineno > 0) {
 				sz = mime_write(oline, sizeof *oline,
@@ -1111,7 +1122,9 @@ send_multi_parseheader:
 						action == CONV_QUOTE ?
 					 TD_ISPR|TD_ICONV :
 					 	action == CONV_TOSRCH ?
-							TD_ICONV : TD_NONE,
+							TD_ICONV :
+						action == CONV_TOFLTR ?
+							TD_DELCTRL : TD_NONE,
 					pbuf == qbuf ? prefix : NULL,
 					pbuf == qbuf ? prefixlen : 0);
 				if (pbuf == origobuf)
@@ -1259,7 +1272,9 @@ send_message(struct message *mp, FILE *obuf, struct ignoretab *doign,
 				action == CONV_TODISP ?
 					TD_ISPR|TD_ICONV :
 					action == CONV_TOSRCH ?
-						TD_ICONV : TD_NONE,
+						TD_ICONV :
+					action == CONV_TOFLTR ?
+						TD_DELCTRL : TD_NONE,
 				prefix, prefixlen);
 			if (obuf == origobuf)
 				addstats(stats, lines, sz);
@@ -1341,10 +1356,12 @@ send_parseheader:
 	del_hdr(ph);
 	if (mime_content == MIME_822) {
 		switch (action) {
+		case CONV_TOFLTR:
+			putc('\0', obuf);
+			/*FALLTHRU*/
 		case CONV_TODISP:
 		case CONV_QUOTE:
 		case CONV_TOSRCH:
-		case CONV_TOFLTR:
 			mime_content = MIME_TEXT;
 			mainhdr = 0;
 			goto send_parseheader;
@@ -1355,6 +1372,8 @@ send_parseheader:
 			mime_content = MIME_MESSAGE;
 		}
 	}
+	if (mime_content == MIME_HTML && action == CONV_TOFLTR)
+		putc('\b', obuf);
 	if (ferror(obuf)) {
 		error_return = -1;
 		goto send_end;
@@ -1367,6 +1386,7 @@ send_parseheader:
 			action == CONV_TOFLTR) {
 		switch (mime_content) {
 		case MIME_TEXT:
+		case MIME_HTML:
 			if (convert == CONV_FROMB64)
 				convert = CONV_FROMB64_T;
 			/*FALLTHROUGH*/
@@ -1424,7 +1444,9 @@ send_parseheader:
 					action == CONV_QUOTE ?
 						TD_ISPR|TD_ICONV :
 						action == CONV_TOSRCH ?
-							TD_ICONV : TD_NONE,
+							TD_ICONV :
+						action == CONV_TOFLTR ?
+							TD_DELCTRL : TD_NONE,
 					pbuf == qbuf ? prefix : NULL,
 					pbuf == qbuf ? prefixlen : 0);
 		if (ferror(pbuf)) {

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)junk.c	1.39 (gritter) 10/15/04";
+static char sccsid[] = "@(#)junk.c	1.54 (gritter) 10/25/04";
 #endif
 #endif /* not lint */
 
@@ -61,8 +61,6 @@ static char sccsid[] = "@(#)junk.c	1.39 (gritter) 10/15/04";
  * Bayesian Filtering", January 2003, <http://www.paulgraham.com/better.html>.
  */
 
-#define	BOT	.01
-#define	TOP	.99
 #define	DFL	.40
 #define	THR	.9
 #define	MID	.5
@@ -73,29 +71,23 @@ static char sccsid[] = "@(#)junk.c	1.39 (gritter) 10/15/04";
 
 /*
  * The dictionary consists of two files forming a hash table. The hash
- * consists of the first 32 bits of the result of applying MD5 to the
+ * consists of the first 56 bits of the result of applying MD5 to the
  * input word. This scheme ensures that collisions are unlikely enough
- * to make junk detection work, since the number of actually important
- * words is relatively small. (Experiments indicated that it still
- * worked acceptably even if only 19 bits were used.)
+ * to make junk detection work; according to the birthday paradox, a
+ * 50 % probability for one single collision is reached at 2^28 entries.
  *
- * On the other hand, using 32 bits makes it nearly impossible to derive
- * reasonably well chosen secret tokens like passwords from the database,
- * since e.g. all six-character ASCII alphanumeric words already map to
- * each possible hash thirteen times. Testing for occurences of randomly
- * chosen tokens will therefore likely not give useful results.
- *
- * To make the chain structure independent from input, the MD5 output is
+ * To make the chain structure independent from input, the MD5 input is
  * xor'ed with a random number. This makes it impossible that someone uses
  * a carefully crafted message for a denial-of-service attack against the
  * database.
  */
 #define	SIZEOF_node	17
-#define	OF_node_hash	0	/* mangled first 32 bits of MD5 of word */
+#define	OF_node_hash	0	/* first 32 bits of MD5 of word|mangle */
 #define	OF_node_next	4	/* bit-negated table index of next node */
 #define	OF_node_good	8	/* number of times this appeared in good msgs */
 #define	OF_node_bad	11	/* number of times this appeared in bad msgs */
-#define	OF_node_prob	14	/* transformed floating-point probability */
+#define	OF_node_prob_O	14	/* table_version<1: precomputed probability */
+#define	OF_node_hash2	14	/* upper 3 bytes of MD5 hash */
 static char	*nodes;
 
 #define	SIZEOF_super	262164
@@ -103,10 +95,20 @@ static char	*nodes;
 #define	OF_super_used	4	/* used nodes in the chain file */
 #define	OF_super_ngood	8	/* number of good messages scanned so far */
 #define	OF_super_nbad	12	/* number of bad messages scanned so far */
-#define	OF_super_mangle	16	/* used to mangle the MD5 hash */
+#define	OF_super_mangle	16	/* used to mangle the MD5 input */
 #define	OF_super_bucket	20	/* 65536 bit-negated node indices */
 #define	SIZEOF_entry	4
 static char	*super;
+
+/*
+ * Version history
+ * ---------------
+ * 0	Initial version
+ * 1	Fixed the mangling; it was ineffective in version 0.
+ *      Hash extended to 56 bits.
+ */
+static int	table_version;
+#define	current_table_version	1
 
 #define	get(e)	\
 	((unsigned)(((char *)(e))[0]&0377) + \
@@ -142,19 +144,30 @@ struct lexstat {
 	int	price;
 	int	url;
 	int	lastc;
+	int	hadamp;
 	enum loc {
 		FROM_LINE	= 0,
 		HEADER		= 1,
 		BODY		= 2
 	} loc;
+	enum html {
+		HTML_NONE	= 0,
+		HTML_TEXT	= 1,
+		HTML_TAG	= 2,
+		HTML_SKIP	= 3
+	} html;
+	char	tag[8];
+	char	*tagp;
 	char	field[LINESIZE];
 };
 
-#define	constituent(c, b, i, price) \
+#define	constituent(c, b, i, price, hadamp) \
 	((c) & 0200 || alnumchar(c) || (c) == '\'' || (c) == '"' || \
-		(c) == '$' || (c) == '!' || \
+		(c) == '$' || (c) == '!' || (c) == '_' || \
+		(c) == '#' || (c) == '%' || (c) == '&' || \
+		((c) == ';' && hadamp) || \
 		((c) == '-' && !(price)) || \
-		(((c) == '.' || (c) == ',') && \
+		(((c) == '.' || (c) == ',' || (c) == '/') && \
 		 (i) > 0 && digitchar((b)[(i)-1]&0377)))
 
 #define	url_xchar(c) \
@@ -176,9 +189,9 @@ enum entry {
 
 static const char	README1[] = "\
 This is a junk mail database maintained by nail(1). It does not contain any\n\
-of the actual words found in your messages. Instead, parts of mangled MD5\n\
-hashes are used for lookup. It is thus possible to tell if some given word\n\
-was likely contained in your mail from examining this data, at best.\n";
+of the actual words found in your messages. Instead, parts of MD5 hashes are\n\
+used for lookup. It is thus possible to tell if some given word was likely\n\
+contained in your mail from examining this data, at best.\n";
 static const char	README2[] = "\n\
 The database files are stored in compress(1) format by default. This saves\n\
 some space, but leads to higher processor usage when the database is read\n\
@@ -186,21 +199,23 @@ or updated. You can use uncompress(1) on these files if you prefer to store\n\
 them in flat form.\n";
 
 static int	verbose;
+static int	_debug;
 
 static enum okay getdb(void);
 static void putdb(void);
 static FILE *dbfp(enum db db, int rw, int *compressed);
-static char *lookup(unsigned long hash, int create);
+static char *lookup(unsigned long h1, unsigned long h2, int create);
 static char *nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 		struct lexstat *sp);
 static void add(const char *word, enum entry entry, struct lexstat *sp);
 static enum okay scan(struct message *m, enum entry entry,
 		void (*func)(const char *, enum entry, struct lexstat *));
 static void recompute(void);
+static float getprob(char *n);
 static int insert(int *msgvec, enum entry entry);
 static void clsf(struct message *m);
 static void rate(const char *word, enum entry entry, struct lexstat *sp);
-static unsigned long dbhash(const char *word);
+static void dbhash(const char *word, unsigned long *h1, unsigned long *h2);
 static void mkmangle(void);
 
 static enum okay 
@@ -296,6 +311,8 @@ putdb(void)
 	} else
 		fwrite(nodes, 1,
 			getn(&super[OF_super_size]) * SIZEOF_node, nfp);
+	trunc(sfp);
+	trunc(nfp);
 	safe_signal(SIGINT, saveint);
 	Fclose(sfp);
 	Fclose(nfp);
@@ -307,12 +324,16 @@ dbfp(enum db db, int rw, int *compressed)
 	FILE	*fp, *rp;
 	char	*dir, *fn;
 	struct flock	flp;
-	const char *const	sf[] = {
-		"super", "nodes"
+	char *sfx[][2] = {
+		{ "super",	"nodes" },
+		{ "super1",	"nodes1" }
 	};
-	const char *const	zf[] = {
-		"super.Z", "nodes.Z"
+	char **sf;
+	char *zfx[][2] = {
+		{ "super.Z",	"nodes.Z" },
+		{ "super1.Z",	"nodes1.Z" }
 	};
+	char **zf;
 	int	n;
 
 	if ((dir = value("junkdb")) == NULL) {
@@ -325,6 +346,10 @@ dbfp(enum db db, int rw, int *compressed)
 		fprintf(stderr, "Cannot create directory \"%s\"\n.", dir);
 		return (FILE *)-1;
 	}
+	if (!rw)
+		table_version = current_table_version;
+loop:	sf = sfx[table_version];
+	zf = zfx[table_version];
 	fn = ac_alloc((n = strlen(dir)) + 40);
 	strcpy(fn, dir);
 	fn[n] = '/';
@@ -347,6 +372,12 @@ dbfp(enum db db, int rw, int *compressed)
 			fputs(README2, rp);
 			Fclose(rp);
 		}
+	} else if (fp == NULL) {
+		if (table_version > 0) {
+			table_version--;
+			goto loop;
+		} else
+			table_version = current_table_version;
 	}
 okay:	ac_free(fn);
 	if (fp) {
@@ -360,17 +391,19 @@ okay:	ac_free(fn);
 }
 
 static char *
-lookup(unsigned long hash, int create)
+lookup(unsigned long h1, unsigned long h2, int create)
 {
 	char	*n, *lastn = NULL;
 	unsigned long	c, lastc = MAX4, used, size, incr;
 
 	used = getn(&super[OF_super_used]);
 	size = getn(&super[OF_super_size]);
-	c = ~getn(&super[OF_super_bucket + (hash&MAX2)*SIZEOF_entry]);
+	c = ~getn(&super[OF_super_bucket + (h1&MAX2)*SIZEOF_entry]);
 	n = &nodes[c*SIZEOF_node];
 	while (c < used) {
-		if (getn(&n[OF_node_hash]) == hash)
+		if (getn(&n[OF_node_hash]) == h1 &&
+				(table_version < 1 ? 1 :
+				get(&n[OF_node_hash2]) == h2))
 			return n;
 		lastc = c;
 		lastn = n;
@@ -392,11 +425,12 @@ lookup(unsigned long hash, int create)
 			lastn = &nodes[lastc*SIZEOF_node];
 		}
 		n = &nodes[used*SIZEOF_node];
-		putn(&n[OF_node_hash], hash);
+		putn(&n[OF_node_hash], h1);
+		put(&n[OF_node_hash2], h2);
 		if (lastc < used)
 			putn(&lastn[OF_node_next], ~used);
 		else
-			putn(&super[OF_super_bucket + (hash&MAX2)*SIZEOF_entry],
+			putn(&super[OF_super_bucket + (h1&MAX2)*SIZEOF_entry],
 					~used);
 		used++;
 		putn(&super[OF_super_used], used);
@@ -419,6 +453,7 @@ nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 	int	c, i, j, k;
 	char	*cp, *cq;
 
+loop:	sp->hadamp = 0;
 	if (sp->save) {
 		i = j = 0;
 		for (cp = sp->save; *cp; cp++) {
@@ -427,7 +462,7 @@ nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 		SAVE('\0')
 		free(sp->save);
 		sp->save = NULL;
-		return *buf;
+		goto out;
 	}
 	if (sp->loc == FROM_LINE)
 		while (*count > 0 && (c = getc(fp)) != EOF) {
@@ -437,7 +472,7 @@ nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 				break;
 			}
 		}
-loop:	i = 0;
+	i = 0;
 	j = 0;
 	if (sp->loc == HEADER && sp->field[0]) {
 	field:	cp = sp->field;
@@ -455,6 +490,49 @@ loop:	i = 0;
 	}
 	while (*count > 0 && (c = getc(fp)) != EOF) {
 		(*count)--;
+		if (c == '\0' && table_version >= 1) {
+			sp->loc = HEADER;
+			sp->lastc = '\n';
+			continue;
+		}
+		if (c == '\b' && table_version >= 1) {
+			sp->html = HTML_TEXT;
+			continue;
+		}
+		if (c == '<' && sp->html == HTML_TEXT) {
+			sp->html = HTML_TAG;
+			sp->tagp = sp->tag;
+			continue;
+		}
+		if (sp->html == HTML_TAG) {
+			if (spacechar(c)) {
+				*sp->tagp = '\0';
+				if (!asccasecmp(sp->tag, "a") ||
+						!asccasecmp(sp->tag, "img") ||
+						!asccasecmp(sp->tag, "font") ||
+						!asccasecmp(sp->tag, "span") ||
+						!asccasecmp(sp->tag, "meta") ||
+						!asccasecmp(sp->tag, "table") ||
+						!asccasecmp(sp->tag, "tr") ||
+						!asccasecmp(sp->tag, "td") ||
+						!asccasecmp(sp->tag, "p"))
+					sp->html = HTML_TEXT;
+				else
+					sp->html = HTML_SKIP;
+			} else if (c == '>') {
+				sp->html = HTML_TEXT;
+				continue;
+			} else {
+				if (sp->tagp - sp->tag < sizeof sp->tag - 1)
+					*sp->tagp++ = c;
+				continue;
+			}
+		}
+		if (sp->html == HTML_SKIP) {
+			if (c == '>')
+				sp->html = HTML_TEXT;
+			continue;
+		}
 		if (c == '$' && i == 0)
 			sp->price = 1;
 		if (sp->loc == HEADER && sp->lastc == '\n') {
@@ -479,6 +557,7 @@ loop:	i = 0;
 			} else if (c == '\n') {
 				j = 0;
 				sp->loc = BODY;
+				sp->html = HTML_NONE;
 			}
 		}
 		if (sp->url) {
@@ -497,9 +576,11 @@ loop:	i = 0;
 				break;
 			}
 			SAVE(c)
-		} else if (constituent(c, *buf, i+j, sp->price) ||
+		} else if (constituent(c, *buf, i+j, sp->price, sp->hadamp) ||
 				sp->loc == HEADER && c == '.' &&
 				asccasecmp(sp->field, "subject*")) {
+			if (c == '&')
+				sp->hadamp = 1;
 			SAVE(c)
 		} else if (i > 0 && c == ':' && *count > 2) {
 			if ((c = getc(fp)) != '/') {
@@ -542,7 +623,7 @@ loop:	i = 0;
 		}
 		sp->lastc = c;
 	}
-	if (i > 0) {
+out:	if (i > 0) {
 		SAVE('\0')
 		c = 0;
 		for (k = 0; k < i; k++)
@@ -588,11 +669,11 @@ static void
 add(const char *word, enum entry entry, struct lexstat *sp)
 {
 	unsigned	c;
-	unsigned long	h;
+	unsigned long	h1, h2;
 	char	*n;
 
-	h = dbhash(word);
-	if ((n = lookup(h, 1)) != NULL) {
+	dbhash(word, &h1, &h2);
+	if ((n = lookup(h1, h2, 1)) != NULL) {
 		switch (entry) {
 		case GOOD:
 			c = get(&n[OF_node_good]);
@@ -643,39 +724,55 @@ scan(struct message *m, enum entry entry,
 	return OKAY;
 }
 
-static void 
+static void
 recompute(void)
 {
 	unsigned long	used, i;
-	unsigned long	ngood, nbad;
-	unsigned	g, b, p;
+	unsigned	s;
 	char	*n;
-	float	d;
+	float	p;
 
 	used = getn(&super[OF_super_used]);
-	ngood = getn(&super[OF_super_ngood]);
-	nbad = getn(&super[OF_super_nbad]);
 	for (i = 0; i < used; i++) {
 		n = &nodes[i*SIZEOF_node];
-		g = get(&n[OF_node_good]) * 2;
-		b = get(&n[OF_node_bad]);
-		if (g + b >= 5) {
-			d = smin(1.0, nbad ? (float)b/nbad : 0.0) /
-				(smin(1.0, ngood ? (float)g/ngood : 0.0) +
-				 smin(1.0, nbad ? (float)b/nbad : 0.0));
-			d = smin(TOP, d);
-			d = smax(BOT, d);
-			p = f2s(d);
-			/*fprintf(stderr,
-				"i=%u g=%u b=%u d=%g p=%u re=%g "
-				"ngood=%lu nbad=%lu\n",
-				i, g, b, d, p, s2f(p), ngood, nbad);*/
-		} else if (g == 0 && b == 0)
-			p = f2s(DFL);
-		else
-			p = 0;
-		put(&n[OF_node_prob], p);
+		p = getprob(n);
+		s = f2s(p);
+		put(&n[OF_node_prob_O], s);
 	}
+}
+
+static float
+getprob(char *n)
+{
+	unsigned long	ngood, nbad;
+	unsigned	g, b;
+	float	p, BOT, TOP;
+
+	ngood = getn(&super[OF_super_ngood]);
+	nbad = getn(&super[OF_super_nbad]);
+	if (ngood + nbad >= 18000) {
+		BOT = .0001;
+		TOP = .9999;
+	} else if (ngood + nbad >= 9000) {
+		BOT = .001;
+		TOP = .999;
+	} else {
+		BOT = .01;
+		TOP = .99;
+	}
+	g = get(&n[OF_node_good]) * 2;
+	b = get(&n[OF_node_bad]);
+	if (g + b >= 5) {
+		p = smin(1.0, nbad ? (float)b/nbad : 0.0) /
+			(smin(1.0, ngood ? (float)g/ngood : 0.0) +
+			 smin(1.0, nbad ? (float)b/nbad : 0.0));
+		p = smin(TOP, p);
+		p = smax(BOT, p);
+	} else if (g == 0 && b == 0)
+		p = DFL;
+	else
+		p = 0;
+	return p;
 }
 
 static int 
@@ -696,6 +793,7 @@ insert(int *msgvec, enum entry entry)
 		break;
 	}
 	for (ip = msgvec; *ip; ip++) {
+		setdot(&message[*ip-1]);
 		if (u == MAX4) {
 			fprintf(stderr, "Junk mail database overflow.\n");
 			break;
@@ -715,7 +813,8 @@ insert(int *msgvec, enum entry entry)
 		putn(&super[OF_super_nbad], u);
 		break;
 	}
-	recompute();
+	if (table_version < 1)
+		recompute();
 	putdb();
 	free(super);
 	free(nodes);
@@ -740,10 +839,13 @@ cclassify(void *v)
 	int	*msgvec = v, *ip;
 
 	verbose = value("verbose") != NULL;
+	_debug = debug || value("debug") != NULL;
 	if (getdb() != OKAY)
 		return 1;
-	for (ip = msgvec; *ip; ip++)
+	for (ip = msgvec; *ip; ip++) {
+		setdot(&message[*ip-1]);
 		clsf(&message[*ip-1]);
+	}
 	free(super);
 	free(nodes);
 	return 0;
@@ -754,7 +856,8 @@ static struct {
 	float	dist;
 	float	prob;
 	char	*word;
-	unsigned long	hash;
+	unsigned long	hash1;
+	unsigned long	hash2;
 	enum loc	loc;
 } best[BEST];
 
@@ -782,10 +885,10 @@ clsf(struct message *m)
 		if (best[i].prob == -1)
 			break;
 		if (verbose)
-			fprintf(stderr, "Probe %2d: \"%s\", hash=%lu "
-				"prob=%g dist=%g\n",
+			fprintf(stderr, "Probe %2d: \"%s\", hash=%lu:%lu "
+				"prob=%.4g dist=%.4g\n",
 				i+1,
-				best[i].word, best[i].hash,
+				best[i].word, best[i].hash1, best[i].hash2,
 				best[i].prob, best[i].dist);
 		a *= best[i].prob;
 		b *= 1 - best[i].prob;
@@ -804,23 +907,26 @@ static void
 rate(const char *word, enum entry entry, struct lexstat *sp)
 {
 	char	*n;
-	unsigned long	h;
-	unsigned	s;
+	unsigned long	h1, h2;
 	float	p, d;
 	int	i, j;
 
-	h = dbhash(word);
-	if ((n = lookup(h, 0)) != NULL) {
-		s = get(&n[OF_node_prob]);
-		p = s2f(s);
+	dbhash(word, &h1, &h2);
+	if ((n = lookup(h1, h2, 0)) != NULL) {
+		p = getprob(n);
 	} else
 		p = DFL;
+	if (_debug)
+		fprintf(stderr, "h=%lu:%lu g=%u b=%u p=%.4g %s\n", h1, h2,
+				n ? get(&n[OF_node_good]) : 0,
+				n ? get(&n[OF_node_bad]) : 0,
+				p, word);
 	if (p == 0)
 		return;
 	d = p >= MID ? p - MID : MID - p;
 	if (d >= best[BEST-1].dist)
 		for (i = 0; i < BEST; i++) {
-			if (h == best[i].hash)
+			if (h1 == best[i].hash1 && h2 == best[i].hash2)
 				break;
 			/*
 			 * This selection prefers words from the end of the
@@ -835,25 +941,31 @@ rate(const char *word, enum entry entry, struct lexstat *sp)
 				best[i].dist = d;
 				best[i].prob = p;
 				best[i].word = savestr(word);
-				best[i].hash = h;
+				best[i].hash1 = h1;
+				best[i].hash2 = h2;
 				best[i].loc = sp->loc;
 				break;
 			}
 		}
 }
 
-static unsigned long
-dbhash(const char *word)
+static void
+dbhash(const char *word, unsigned long *h1, unsigned long *h2)
 {
 	unsigned char	digest[16];
-	unsigned long	h;
 	MD5_CTX	ctx;
 
 	MD5Init(&ctx);
 	MD5Update(&ctx, (unsigned char *)word, strlen(word));
+	if (table_version >= 1)
+		MD5Update(&ctx, (unsigned char *)&super[OF_super_mangle], 4);
 	MD5Final(digest, &ctx);
-	h = getn(digest) ^ getn(&super[OF_super_mangle]);
-	return h;
+	*h1 = getn(digest);
+	if (table_version < 1) {
+		*h1 ^= getn(&super[OF_super_mangle]);
+		*h2 = 0;
+	} else
+		*h2 = get(&digest[4]);
 }
 
 /*
@@ -861,7 +973,8 @@ dbhash(const char *word)
  * impossible for any person to determine the exact time when the database
  * was created first (without looking at the database, which would reveal the
  * value anyway), so we just use this. The MD5 hash here ensures that each
- * single second gives a completely different mangling value.
+ * single second gives a completely different mangling value (which is not
+ * necessary anymore if table_version>=1, but does not hurt).
  */
 static void 
 mkmangle(void)
@@ -881,4 +994,47 @@ mkmangle(void)
 	MD5Final(digest, &ctx);
 	s = getn(digest);
 	putn(&super[OF_super_mangle], s);
+}
+
+int
+cprobability(void *v)
+{
+	char	**args = v;
+	unsigned long	used, ngood, nbad;
+	unsigned long	h1, h2;
+	unsigned	g, b;
+	float	p, d;
+	char	*n;
+
+	if (*args == NULL) {
+		fprintf(stderr, "No words given.\n");
+		return 1;
+	}
+	if (getdb() != OKAY)
+		return 1;
+	used = getn(&super[OF_super_used]);
+	ngood = getn(&super[OF_super_ngood]);
+	nbad = getn(&super[OF_super_nbad]);
+	printf("Database statistics: words=%lu ngood=%lu nbad=%lu\n",
+			used, ngood, nbad);
+	do {
+		dbhash(*args, &h1, &h2);
+		printf("\"%s\", hash=%lu:%lu ", *args, h1, h2);
+		if ((n = lookup(h1, h2, 0)) != NULL) {
+			g = get(&n[OF_node_good]);
+			b = get(&n[OF_node_bad]);
+			printf("good=%u bad=%u ", g, b);
+			p = getprob(n);
+			if (p != 0) {
+				d = p >= MID ? p - MID : MID - p;
+				printf("prob=%.4g dist=%.4g", p, d);
+			} else
+				printf("too infrequent");
+		} else
+			printf("not in database");
+		putchar('\n');
+	} while (*++args);
+	free(super);
+	free(nodes);
+	return 0;
 }

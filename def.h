@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.81 (gritter) 10/13/04
+ *	Sccsid @(#)def.h	2.83 (gritter) 10/24/04
  */
 
 /*
@@ -117,6 +117,7 @@ enum mimecontent {
 	MIME_822,			/* message/rfc822 content */
 	MIME_MESSAGE,			/* message/ content */
 	MIME_TEXT,			/* text/ content */
+	MIME_HTML,			/* text/html content */
 	MIME_MULTI,			/* multipart/ content */
 	MIME_DISCARD			/* content is discarded */
 };
@@ -130,9 +131,10 @@ enum mimeclean {
 };
 
 enum tdflags {
-	TD_NONE	= 0,		/* no display conversion */
-	TD_ISPR	= 01,		/* use isprint() checks */
-	TD_ICONV= 02		/* use iconv() */
+	TD_NONE		= 0,	/* no display conversion */
+	TD_ISPR		= 01,	/* use isprint() checks */
+	TD_ICONV	= 02,	/* use iconv() */
+	TD_DELCTRL	= 04	/* delete control characters */
 };
 
 struct str {
@@ -515,7 +517,7 @@ extern const unsigned char	class_char[];
 			(C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)))
 #define	alphachar(c) (asciichar(c)&&(class_char[c]&(C_UPPER|C_LOWER)))
 #define	blankchar(c) (asciichar(c)&&(class_char[c]&(C_BLANK)))
-#define	cntrlchar(c) (asciichar(c)&&(class_char[c]==C_CNTRL)
+#define	cntrlchar(c) (asciichar(c)&&(class_char[c]==C_CNTRL))
 #define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_OCTAL)))
 #define	lowerchar(c) (asciichar(c)&&(class_char[c]&(C_LOWER)))
 #define	punctchar(c) (asciichar(c)&&(class_char[c]&(C_PUNCT)))

@@ -34,16 +34,16 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.255 (gritter) 10/19/04
+.\"     Sccsid: @(#)nail.1	2.259 (gritter) 10/24/04
 .\"
-.TH NAIL 1 "10/19/04" "nail 11.12" "User Commands"
+.TH NAIL 1 "10/24/04" "nail 11.13" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
 .PD 0
 .HP
 .ad l
-\fBnail\fR [\fB\-BDFintv~\fR]
+\fBnail\fR [\fB\-BDdFintv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
 [\fB\-h\fI\ hops\fR]
@@ -51,12 +51,12 @@ nail \- send and receive Internet mail
 \fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\fBnail\fR [\fB\-BDeHiInNv~\fR] [\fB\-T\fI\ name\fR]
+\fBnail\fR [\fB\-BDdeHiInNv~\fR] [\fB\-T\fI\ name\fR]
 [\fB\-A\fI\ account\fR]
 \fB\-f\fR [\fIname\fR]
 .HP
 .ad l
-\fBnail\fR [\fB\-BDeinNv~\fR]
+\fBnail\fR [\fB\-BDdeinNv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-u\fI\ user\fR]
 .br
@@ -108,6 +108,14 @@ Start in
 mode; see the description for the
 .I disconnected
 variable option.
+.TP
+.B \-d
+Enables debugging messages and disables the actual delivery of messages.
+Unlike
+.IR \-v ,
+this option is intended for
+.I nail
+development only.
 .TP
 .B \-e
 Just check if mail is present in the system mailbox.
@@ -1335,10 +1343,6 @@ If the current folder is located on an IMAP or POP3 server,
 a NOOP command is sent.
 Otherwise, no operation is performed.
 .TP
-.B preserve
-(pre) A synonym for
-.IR hold .
-.TP
 .B Pipe
 (Pi) Like
 .I pipe
@@ -1353,6 +1357,10 @@ the current message is piped
 through the command given by the \fIcmd\fR variable.
 If the \fI page\fR variable is set,
 every message is followed by a formfeed character.
+.TP
+.B preserve
+(pre) A synonym for
+.IR hold .
 .TP
 .B Print
 (P) Like
@@ -1373,6 +1381,10 @@ all parts with a content type of `text' or `message' are shown,
 the other are hidden except for their headers.
 Messages are decrypted and converted to the terminal character set
 if necessary.
+.TP
+.B probability
+(prob) For each word given as argument,
+the contents of its junk mail database entry are printed.
 .TP
 .B quit
 (q) Terminates the session, saving all undeleted,
@@ -2104,6 +2116,11 @@ converted to local time.
 .TP
 .B debug
 Prints debugging messages and disables the actual delivery of messages.
+Unlike
+.IR verbose ,
+this option is intended for
+.I nail
+development only.
 .TP
 .B disconnected
 When an IMAP mailbox is selected and this variable is set,
@@ -3995,11 +4012,6 @@ command,
 and the junk messages to the
 .I junk
 command.
-The number of good messages passed
-should not exceed the number of bad messages too much
-and vice-versa.
-Otherwise, words common to all kinds of messages
-might shift the detection mechanism too much in one direction.
 .PP
 Once a reasonable amount of statistics has been collected,
 new messages can be classified automatically.
@@ -4046,6 +4058,10 @@ along with their statistical probabilities.
 This can help you to find out
 why some messages are not classified
 as you would like them to be.
+To see the statistical probability of a given word,
+use the
+.I probability
+command.
 .SS "Reading HTML mail"
 You need either the
 .I w3m
