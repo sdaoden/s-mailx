@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.4 2000/04/05 02:49:51 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -36,7 +36,7 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.4 2000/04/05 02:49:51 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -53,7 +53,8 @@ char *defcharset = "iso-8859-1";
 static char *mimetypes_world = "/etc/mime.types";
 static char *mimetypes_user = "~/mime.types";
 
-int mustquote_body(c)
+int
+mustquote_body(c)
 unsigned char c;
 {
 	if (c != '\n' && (c < 0x20 || c == '=' || c > 126))
@@ -61,7 +62,8 @@ unsigned char c;
 	return 0;
 }
 
-int mustquote_hdr(c)
+int
+mustquote_hdr(c)
 unsigned char c;
 {
 	if (c != '\n'
@@ -70,7 +72,8 @@ unsigned char c;
 	return 0;
 }
 
-int isspecial(c)
+int
+isspecial(c)
 unsigned char c;
 {
 	if ((c >= 0177 && c < 0240)
@@ -79,12 +82,14 @@ unsigned char c;
 	return 0;
 }
 
-static void out_of_memory()
+static void
+out_of_memory()
 {
 	panic("Out of memory");
 }
 
-void *smalloc(s)
+void *
+smalloc(s)
 size_t s;
 {
 	void *p;
@@ -96,7 +101,8 @@ size_t s;
 	return p;
 }
 
-char *mime_strcasestr(haystack, needle)
+char *
+mime_strcasestr(haystack, needle)
 /* glibc 2.1 has such a function, but others ... */
 char *haystack, *needle;
 {
@@ -122,7 +128,8 @@ char *haystack, *needle;
 	return p;
 }
 
-int mime_getenc(h)
+int
+mime_getenc(h)
 char *h;
 /* Get the mime encoding from a Content-Transfer-Encoding header line */
 {
@@ -147,7 +154,8 @@ char *h;
 	return MIME_NONE;
 }
 
-int mime_getcontent(h)
+int
+mime_getcontent(h)
 char *h;
 {
 	char *p;
@@ -169,7 +177,8 @@ char *h;
 	return MIME_UNKNOWN;
 }
 
-char *mime_getparam(param, h)
+char *
+mime_getparam(param, h)
 char *param, *h;
 {
 	char *p, *q, *r;
@@ -197,7 +206,8 @@ char *param, *h;
 	return r;
 }
 
-char *mime_getboundary(h)
+char *
+mime_getboundary(h)
 char *h;
 {
 	char *p, *q;
@@ -215,13 +225,15 @@ char *h;
 	return q;
 }
 
-char *mime_getfilename(h)
+char *
+mime_getfilename(h)
 char *h;
 {
 	return mime_getparam("filename=", h);
 }
 
-static char *mime_tline(x, l)
+static char *
+mime_tline(x, l)
 char *x, *l;
 /* Get a line like "text/html html" and look if x matches the extension
  * The line must be terminated by a newline character
@@ -257,7 +269,8 @@ char *x, *l;
 	return NULL;
 }
 
-static char *mime_type(ext, filename)
+static char *
+mime_type(ext, filename)
 char *ext, *filename;
 {
 	FILE *f;
@@ -276,7 +289,8 @@ char *ext, *filename;
 	return type;
 }
 
-char *mime_filecontent(name)
+char *
+mime_filecontent(name)
 char *name;
 /* Return the Content-Type matching the extension of name */
 {
@@ -294,7 +308,8 @@ char *name;
 	return NULL;
 }
 
-int mime_isclean(f)
+int
+mime_isclean(f)
 FILE *f;
 /* Check file contents. Return:
  * 0 file is 7bit
@@ -349,7 +364,8 @@ char *b;
 	return b;
 }
 
-char *ctohex(c)
+char *
+ctohex(c)
 unsigned char c;
 {
 	static char hex[3];
@@ -365,7 +381,8 @@ unsigned char c;
 	return hex;
 }
 
-static size_t mime_write_toqp(in, fo, mustquote)
+static size_t
+mime_write_toqp(in, fo, mustquote)
 struct str *in;
 FILE *fo;
 int (*mustquote)(unsigned char);
@@ -377,7 +394,9 @@ int (*mustquote)(unsigned char);
 	sz = in->l;
 	upper = in->s + in->l;
 	for (p = in->s, l = 0; p < upper; p++) {
-		if (mustquote(*p)) {
+		if (mustquote(*p) 
+				|| (*(p + 1) == '\n' &&
+					(*p == ' ' || *p == '\t'))) {
 			sz += 2;
 			fputc('=', fo);
 			h = ctohex(*p);
@@ -397,7 +416,8 @@ int (*mustquote)(unsigned char);
 	return sz;
 }
 
-static void mime_fromqp(in, out, todisplay, ishdr)
+static void
+mime_fromqp(in, out, todisplay, ishdr)
 struct str *in, *out;
 {
 	char *p, *q, *upper;
@@ -435,7 +455,8 @@ struct str *in, *out;
 	return;
 }
 
-void mime_fromhdr(in, out, todisplay)
+void
+mime_fromhdr(in, out, todisplay)
 struct str *in, *out;
 /* convert from RFC1522 format */
 {
@@ -493,7 +514,8 @@ struct str *in, *out;
 	return;
 }
 
-static size_t mime_write_tohdr(in, fo)
+static size_t
+mime_write_tohdr(in, fo)
 struct str *in;
 FILE *fo;
 {
@@ -524,7 +546,8 @@ FILE *fo;
 	return sz;
 }
 
-size_t fwrite_tty(ptr, size, nmemb, f)
+size_t
+fwrite_tty(ptr, size, nmemb, f)
 void *ptr;
 size_t size, nmemb;
 FILE *f;
@@ -542,7 +565,8 @@ FILE *f;
 	return sz;
 }
 
-size_t mime_write(ptr, size, nmemb, f, convert, todisplay)
+size_t
+mime_write(ptr, size, nmemb, f, convert, todisplay)
 void *ptr;
 size_t size, nmemb;
 FILE *f;
@@ -564,7 +588,7 @@ FILE *f;
 		sz = mime_write_toqp(&in, f, mustquote_body);
 		break;
 	case CONV_FROMB64:
-		mime_fromb64(&in, &out, todisplay);
+		mime_fromb64_b(&in, &out, todisplay, f);
 		sz = fwrite(out.s, sizeof(char), out.l, f);
 		free(out.s);
 		break;

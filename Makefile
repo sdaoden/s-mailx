@@ -61,6 +61,9 @@ $(PROG): mailfiles.h $(OBJS)
 mailfiles.h: Makefile mailfiles.H
 	sed -e "s+DESTDIR+$(DESTDIR)+" mailfiles.H > mailfiles.h
 
+htmlman:
+	rman -r "" -f HTML $(MFILE) > $(MFILE:%.1=%.html)
+
 clean:
 	rm -f $(PROG) $(OBJS) *~ mailfiles.h dead.letter core
 

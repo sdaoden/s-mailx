@@ -1,4 +1,4 @@
-/*	$Id: send.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: send.c,v 1.5 2000/04/05 02:49:51 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: send.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: send.c,v 1.5 2000/04/05 02:49:51 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -64,7 +64,8 @@ struct boundary {
 	unsigned b_count;		/* The number of the boundary */
 };
 
-static char *makeboundary()
+static char *
+makeboundary()
 /* Generate a boundary for MIME multipart-messages */
 {
 	static unsigned msgcount;
@@ -91,7 +92,8 @@ static char *makeboundary()
 	return send_boundary;
 }
 
-static char *getcharset(convert)
+static char *
+getcharset(convert)
 {
 	char *charset;
 
@@ -107,7 +109,8 @@ static char *getcharset(convert)
 	return charset;
 }
 
-static char *getencoding(convert)
+static char *
+getencoding(convert)
 {
 	switch (convert) {
 	case CONV_7BIT:
@@ -125,7 +128,8 @@ static char *getencoding(convert)
 	}
 }
 
-int gettextconversion()
+int
+gettextconversion()
 {
 	char *p;
 	int convert;
@@ -158,7 +162,8 @@ struct boundary *b, *b0;
 	}
 }
 
-static char *newfilename(f, b, b0)
+static char *
+newfilename(f, b, b0)
 char *f;
 struct boundary *b, *b0;
 {
@@ -191,7 +196,8 @@ struct boundary *b, *b0;
 	return f;
 }
 
-char *foldergets(s, size, stream)
+char *
+foldergets(s, size, stream)
 /* This is fgets for mbox lines */
 char *s;
 FILE *stream;
@@ -215,7 +221,8 @@ FILE *stream;
 	return s;
 }
 
-struct boundary *get_top_boundary(b)
+struct boundary *
+get_top_boundary(b)
 struct boundary *b;
 {
 	while (b->b_nlink != NULL)
@@ -223,7 +230,8 @@ struct boundary *b;
 	return b;
 }
 
-struct boundary *bound_alloc(bprev)
+struct boundary *
+bound_alloc(bprev)
 struct boundary *bprev;
 {
 	struct boundary *b;
@@ -323,8 +331,8 @@ struct boundary *b0;
 						bound_free(b);
 					}
 					mime_content = MIME_DISCARD;
-				} else { /* ignore */
-					mime_content = MIME_DISCARD;
+				} else {
+					goto send_multi_nobound;
 				}
 				if (oldobuf != (FILE*)-1) {
 					fclose(obuf);
@@ -339,6 +347,7 @@ struct boundary *b0;
 				continue;
 			}
 		}
+send_multi_nobound:
 		switch (mime_content) {
 		case MIME_SUBHDR:
 			if (*line == '\n') {
@@ -981,7 +990,8 @@ fixhead(hp, tolist)
 				 * you get incorrect base64 encodings else!
 				 */
 
-static void attach_file(path, fo)
+static void
+attach_file(path, fo)
 char *path;
 FILE *fo;
 {
@@ -1056,7 +1066,8 @@ FILE *fo;
 	fclose(fi);
 }
 
-static void make_multipart(hp, convert, fi, fo)
+static void
+make_multipart(hp, convert, fi, fo)
 struct header *hp;
 FILE *fi, *fo;
 /* Generate the body of a MIME multipart message */
@@ -1147,7 +1158,8 @@ infix(hp, fi, convert)
 	return(nfi);
 }
 
-void message_id(fo)
+void
+message_id(fo)
 FILE *fo;
 {
 	static unsigned msgcount;
@@ -1169,14 +1181,14 @@ FILE *fo;
 			&& (fromaddr = strchr(fromaddr, '@'))) {
 		fprintf(fo, "%s>\n", fromaddr);
 	} else {
+		gethostname(hostname, MAXHOSTNAMELEN);
+		fprintf(fo, "@%s", hostname, domainname);
 #ifdef	__linux__
-		gethostname(hostname, MAXHOSTNAMELEN);
-		getdomainname(domainname, MAXHOSTNAMELEN);
-		fprintf(fo, "@%s.%s>\n", hostname, domainname);
-#else
-		gethostname(hostname, MAXHOSTNAMELEN);
-		fprintf(fo, "@%s>\n", hostname, domainname);
+		if (getdomainname(domainname, MAXHOSTNAMELEN) != -1) {
+			fprintf(fo, ".%s", domainname);
+		}
 #endif
+		fputs(">\n", fo);
 	}
 }
 
@@ -1192,7 +1204,12 @@ puthead(hp, fo, w, convert)
 {
 	register int gotcha;
 	char *addr;
+	int stealthmua;
 
+	if (value("stealthmua"))
+		stealthmua = 1;
+	else
+		stealthmua = 0;
 	gotcha = 0;
 	if (w & GFROM) {
 		addr = value("from");
@@ -1242,12 +1259,12 @@ puthead(hp, fo, w, convert)
 		fmt("Cc:", hp->h_cc, fo, w&GCOMMA), gotcha++;
 	if (hp->h_bcc != NIL && w & GBCC)
 		fmt("Bcc:", hp->h_bcc, fo, w&GCOMMA), gotcha++;
-	if (w & GMSGID) {
+	if (w & GMSGID && stealthmua == 0) {
 		message_id(fo), gotcha++;
 	}
 	if (hp->h_ref != NIL && w & GREF)
 		fmt("References:", hp->h_ref, fo, 0), gotcha++;
-	if (w & GXMAIL) {
+	if (w & GXMAIL && stealthmua == 0) {
 		fprintf(fo, "X-Mailer: %s\n", version), gotcha++;
 	}
 	if (w & GMIME) {

@@ -1,5 +1,5 @@
-.\" $Id: nail.1,v 1.3 2000/03/24 23:01:39 gunnar Exp $
-.TH NAIL 1 "March 23, 2000" "Gunnar Ritter" "User Commands"
+.\" $Id: nail.1,v 1.4 2000/04/05 02:49:51 gunnar Exp $
+.TH NAIL 1 "March 29, 2000" "Gunnar Ritter" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -70,13 +70,13 @@ used, without regard to the value of this variable. Binary data is
 always encoded in \fIbase64\fR mode.
 .TP
 .B from
-The address to put into the \fI"From:"\fR field of the message header.
-If this variable is specified, a \fI"Sender:"\fR field
+The address to put into the \fI`From:'\fR field of the message header.
+If this variable is specified, a \fI`Sender:'\fR field
 containing the user's name is also generated. If replying to a message,
 this address is handled as if it were in the alternates list.
 .TP
 .B ORGANIZATION
-The value to put into the \fI"Organization:"\fR field of the message header.
+The value to put into the \fI`Organization:'\fR field of the message header.
 .TP
 .B quote
 If set, mail starts a replying message with the original message prefixed
@@ -85,9 +85,17 @@ to the ~m command, except that it is done automatically and none of the
 message headers are printed.
 .TP
 .B replyto
-The address to put into the \fI"Reply-To:"\fR field of the message header.
+The address to put into the \fI`Reply-To:'\fR field of the message header.
 If replying to a message, this address is handled as if it were in the
 alternates list.
+.TP
+.B stealthmua
+Inhibits the generation of the \fI`Message-Id:'\fR and \fI`X-Mailer:'\fR
+header fields that include obvious references to nail. There are two
+pitfalls associated with this: First, the message id of outgoing messages
+is not known anymore. Second, an expert may still use the remaining
+information in the header to track down the originating mail user agent.
+So this option should only be set if there is a good reason to do that.
 .SH MIME TYPES
 For any attachment, nail tries to determine the content type. It does this
 by reading MIME type files whose lines have the following syntax:
@@ -123,7 +131,7 @@ All parts with content types of "text" or "message" are shown.
 This is done because the user should see as many information as possible.
 .SH BUGS
 .PP
-Due to limitations of nail's internal message handling, a singlepart
+Due to limitations of nail's internal message handling, an outgoing singlepart
 message must always be a text message; the same applies to the first part
 of a multipart message. Binary files must be sent as attachments.
 .SH FILES

@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.4 2000/04/05 02:49:51 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $
+ *	$Id: extern.h,v 1.4 2000/04/05 02:49:51 gunnar Exp $
  */
 
 struct name;
@@ -273,6 +273,7 @@ int	 writeback __P((FILE *));
 void	*smalloc __P((size_t));
 size_t	mime_write_tob64 __P((struct str*, FILE*));
 void	mime_fromb64 __P((struct str*, struct str*, int));
+void	mime_fromb64_b __P((struct str*, struct str*, int, FILE*));
 char	*itohex __P((unsigned int, char*));
 char	*mime_strcasestr __P((char*,char*));
 int	mime_getenc __P((char*));

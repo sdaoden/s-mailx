@@ -1,4 +1,4 @@
-/*	$Id: base64.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
+/*	$Id: base64.c,v 1.4 2000/03/31 22:05:47 gunnar Exp $	*/
 
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -19,7 +19,7 @@
  */
 
 #ifndef lint
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: base64.c,v 1.4 2000/03/31 22:05:47 gunnar Exp $";
 #endif /* not lint */
 
 /*
@@ -46,7 +46,8 @@ const static char b64index[] = {
 
 #define char64(c)  ((c) < 0 ? -1 : b64index[(c)])
 
-static char *ctob64(c, d, e, pad)
+static char *
+ctob64(c, d, e, pad)
 unsigned char c, d, e;
 {
 	static char b64[4];
@@ -65,7 +66,8 @@ unsigned char c, d, e;
 	return b64;
 }
 
-size_t mime_write_tob64(in, fo)
+size_t
+mime_write_tob64(in, fo)
 struct str *in;
 FILE *fo;
 {
@@ -96,7 +98,8 @@ FILE *fo;
 	return sz;
 }
 
-void mime_fromb64(in, out, todisplay)
+void
+mime_fromb64(in, out, todisplay)
 struct str *in, *out;
 {
 	char *p, *q, *upper, c, d, e, f, g;
@@ -147,4 +150,46 @@ struct str *in, *out;
 		}
 	}
 	return;
+}
+
+void
+mime_fromb64_b(in, out, todisplay, f)
+/* Buffer the base64 input so mime_fromb64 gets always multiples of
+ * 4 characters.
+ * As we have only one buffer, this function is not reentrant, but
+ * who cares ...
+ */
+struct str *in, *out;
+FILE *f;
+{
+	static char b[4];
+	static int n;
+	static FILE *f_b = (FILE*)-1;
+	char c;
+	int i;
+	struct str nin;
+
+	nin.s = (char*)smalloc(in->l + n);
+	if (n != 0 && f_b == f) {
+		for (nin.l = 0; nin.l < n; nin.l++)
+			nin.s[nin.l] = b[nin.l];
+	} else {
+		nin.l = 0;
+		n = 0;
+	}
+
+	for (i = 0; i <= in->l; i++) {
+		c = in->s[i];
+		if (char64(c) == -1 && c != '=')
+			continue;
+		b[n] = nin.s[nin.l++] = c;
+		if (n >= 3)
+			n = 0;
+		else
+			n++;
+	}
+	nin.l -= n;
+	mime_fromb64(&nin, out, todisplay);
+	free(nin.s);
+	f_b = f;
 }

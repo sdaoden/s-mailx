@@ -1,4 +1,11 @@
-[9.01]
+[9.02] relased 2000-04-05
+* Include the domainname in the message id only if there is one
+* Added the `stealthmua' option
+* Fixed decoding of base64 when lines are not multiples of 4 characters
+* Fixed erroneous recognition of message boundaries
+* Whitespace at the end of a line is now encoded in quoted-printable
+
+[9.01] released 2000-03-25
 * Added the `Organization:' stuff
 * Handle unknown encodings as application/octet stream for MIME conformance
 * Generate a `Reference:' header line in replies

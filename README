@@ -5,7 +5,7 @@ essential features a modern MUA must provide but to remain compatible
 with its classic ancestor.
 
 Currently, nail can handle the quoted-printable and base64 encodings as
-well as attachments. See the "nail.1" manual page for details.
+well as attachments. See the `nail.1' manual page for details.
 
 To use nail, you must have a working sendmail setup or another program
 that behaves like sendmail when it reveives mail from its standard input.
@@ -19,11 +19,13 @@ To compile nail, first look
 and set the definitions according to your system's settings. The defaults
 are set to match Linux 2.2.X systems using glibc 2.1.
 
-Then type "make" and optionally "make install". As a last step, edit
+Then type `make' and optionally `make install'. As a last step, edit
 the personal and system-wide run time configuration files to match
 your needs. You _really_ should do this or at least install the
-template in the "misc" directory of the build tree because most of
+template in the `misc' directory of the build tree because most of
 the defaults still have the compatibility values of fifteen years ago.
+For batch usage, it may be more convenient to pass the configuration as
+environment variables only, as e.g. `from=user@host nail -n' does.
 
 This version of nail has been built successfully on the following
 operating systems:
@@ -38,7 +40,7 @@ send me a diff with your changes so I can include them in this archive.
 It should generally be possible to build nail on any Linux, BSD or SVR4
 system without much effort.
 
-Note that the mbox format based on the "Content-Length:" header field that
+Note that the mbox format based on the `Content-Length:' header field that
 is used on most SVR4 systems by default is not supported by nail. As this
 format generally is a design flaw, you should fix your system by either
 using procmail for local mail delivery, which is a good idea anyway,
