@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -168,9 +168,9 @@ collect(hp, printheaders, mp, quotefile)
 			cp = hfield("from", mp);
 			if (cp != NULL) {
 				mime_write(cp, sizeof(char), strlen(cp),
-						collf, CONV_FROMHDR, 0);
+						collf, CONV_FROMHDR, TD_NONE);
 				mime_write(cp, sizeof(char), strlen(cp),
-						stdout, CONV_FROMHDR, 0);
+						stdout, CONV_FROMHDR, TD_NONE);
 				fwrite(" wrote:\n\n", sizeof(char), 9, collf);
 				fwrite(" wrote:\n\n", sizeof(char), 9, stdout);
 			}
@@ -442,8 +442,14 @@ cont:
 			printf("-------\nMessage contains:\n");
 			puthead(hp, stdout,
 				GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP);
-			while ((t = getc(collf)) != EOF)
-				(void) putchar(t);
+			{
+				char lbuf[LINESIZE];
+
+				while (fgets(lbuf, sizeof lbuf, collf)) {
+					makeprint(lbuf, strlen(lbuf));
+					fputs(lbuf, stdout);
+				}
+			}
 			if (hp->h_attach != NIL) {
 				fputs("Attachments:", stdout);
 				for (np = hp->h_attach; np != NULL;

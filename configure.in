@@ -1,18 +1,19 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-dnl $Id: configure.in,v 1.7 2000/06/26 04:27:05 gunnar Exp $
+dnl $Id: configure.in,v 1.9 2000/08/08 20:10:39 gunnar Exp $
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
 
 AC_INIT(mime.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(nail, 9.14)
-AC_DEFINE(REL_DATE, "2000-06-26")
+AM_INIT_AUTOMAKE(nail, 9.20)
+AC_DEFINE(REL_DATE, "2000-08-08")
 dnl AC_DEFINE(REL_DATE, "devel")
-AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging build [ default=no ]],enable_debug=yes,enable_debug=no)
-AC_ARG_ENABLE(efence, [  --enable-efence         enable debugging build (with efence) [ default=no ]],enable_debug=yes enable_efence=yes,enable_efence=no)
+AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging build (default=no)],enable_debug=yes,enable_debug=no)
+AC_ARG_ENABLE(efence, [  --enable-efence         enable debugging build (with efence) (default=no)],enable_debug=yes enable_efence=yes,enable_efence=no)
+AC_ARG_ENABLE(all-chars, [  --enable-all-chars      display all characters ignoring locale (default=no)],enable_all_chars=yes,enable_all_chars=no)
 
 AC_ARG_WITH(mailspool, [  --with-mailspool=DIR    mail spool directory],
 	arg_cv_mailspool=$withval,
@@ -40,7 +41,7 @@ AC_PROG_LN_S
 dnl Only use -Wall if we have gcc
 if test "x$enable_debug" = xyes
 then	if test "x$GCC" = xyes
-	then	CFLAGS="-Wall -Wno-unused -g"
+	then	CFLAGS="-Wall -Wno-unused -g -O"
 	else	CFLAGS="-g"
 	fi
 else
@@ -107,6 +108,10 @@ AC_CHECK_FUNCS(mktime strtol tempnam getopt, ,
 	echo "A required function was not found" >&2
 	exit 1)
 AC_CHECK_FUNCS(gethostname select strcasecmp snprintf uname)
+if test "x$enable_all_chars" != xyes
+then	AC_CHECK_HEADERS(iconv.h locale.h wchar.h wctype.h)
+	AC_CHECK_FUNCS(iconv setlocale mbsrtowcs)
+fi
 AC_FUNC_SELECT_ARGTYPES
 AC_CHECK_FUNC(gethostent, AC_DEFINE(HAVE_SOCKETS),
 	AC_CHECK_LIB(nsl, gethostent, AC_DEFINE(HAVE_SOCKETS)

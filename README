@@ -24,7 +24,7 @@ Nail has been built successfully on the following operating systems:
 Linux 		2.2, 2.0; glibc 2.1, libc5, libc4
 FreeBSD		4.0-STABLE
 Solaris		7; 2.6
-UnixWare	7.0.1; 2.1.2
+UnixWare	7.1.1; 7.0.1; 2.1.2
 OpenServer	5.0.5
 Digital Unix	4.0
 HP-UX		10.20
@@ -35,7 +35,8 @@ If there are no changes, even better, but I would like to hear from
 you anyway to extend this list then.
 
 It should generally be possible to build nail on most Unix-style
-systems without much effort.
+systems without much effort; however, especially the character
+set support varies between them. See the file "I18N" for details.
 
 Note that the mbox format based on the `Content-Length:' header field that
 is used on most SVR4 systems by default is not supported by nail. As this

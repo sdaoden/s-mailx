@@ -1,4 +1,4 @@
-/*	$Id: aux.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: aux.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 /*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
-static char rcsid[]  = "@(#)$Id: aux.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: aux.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -90,7 +90,7 @@ save2str(str, old)
 	return new;
 }
 
-#if __STDC__
+#ifdef	__STDC__
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -101,7 +101,7 @@ save2str(str, old)
  * Lazy vsprintf wrapper.
  */
 int
-#if __STDC__
+#ifdef	__STDC__
 snprintf(char *str, size_t size, const char *format, ...)
 #else
 snprintf(str, size, format, va_alist)
@@ -113,7 +113,7 @@ va_dcl
 {
 	va_list ap;
 	int ret;
-#if __STDC__
+#ifdef	__STDC__
 	va_start(ap, format);
 #else
 	va_start(ap);
@@ -128,7 +128,7 @@ va_dcl
  * Announce a fatal error and die.
  */
 void
-#if __STDC__
+#ifdef	__STDC__
 panic(const char *format, ...)
 #else
 panic(format, va_alist)
@@ -137,7 +137,7 @@ panic(format, va_alist)
 #endif
 {
 	va_list ap;
-#if __STDC__
+#ifdef	__STDC__
 	va_start(ap, format);
 #else
 	va_start(ap);

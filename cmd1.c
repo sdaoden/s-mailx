@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.10 2000/08/08 20:10:39 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
-static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.10 2000/08/08 20:10:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -210,7 +210,7 @@ printhead(mesg)
 	} else {
 		in.s = subjline;
 		in.l = strlen(subjline);
-		mime_fromhdr(&in, &out, 1);
+		mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
 		subjline = out.s;
 	}
 	/*
@@ -236,13 +236,15 @@ printhead(mesg)
 		subjlen = out.l;
 	name = value("show-rcpt") != NOSTR ?
 		skin(hfield("to", mp)) : nameof(mp, 0);
-	if (subjline == NOSTR || subjlen < 0)		/* pretty pathetic */
+	if (subjline == NOSTR || subjlen < 0) {         /* pretty pathetic */
 		printf("%c%c%3d %-20.20s  %16.16s %s\n",
 			curind, dispc, mesg, name, hl.l_date, wcount);
-	else
+	} else {
+		makeprint(subjline, subjlen);
 		printf("%c%c%3d %-20.20s  %16.16s %s \"%.*s\"\n",
 			curind, dispc, mesg, name, hl.l_date, wcount,
 			subjlen, subjline);
+	}
 	if (out.s != NULL) free(out.s);
 }
 
@@ -253,7 +255,7 @@ int
 pdot(v)
 	void *v;
 {
-	printf("%d\n", dot - &message[0] + 1);
+	printf("%d\n", (int) (dot - &message[0] + 1));
 	return(0);
 }
 

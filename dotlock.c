@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -34,7 +34,7 @@
 #ifndef lint
 #if 0
 static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif
 
@@ -142,7 +142,7 @@ create_exclusive(fname)
 		ptr++;
 
 	(void) snprintf(path, sizeof path, "%.*s.%s.%x", 
-	    ptr - fname, fname, hostname, cookie);
+	    (int) (ptr - fname), fname, hostname, (unsigned int) cookie);
 
 	/*
 	 * We try to create the unique filename.

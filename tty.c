@@ -1,4 +1,4 @@
-/*	$Id: tty.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: tty.c,v 1.9 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 /*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
-static char rcsid[]  = "@(#)$Id: tty.c,v 1.8 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: tty.c,v 1.9 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -402,7 +402,7 @@ char *prefix, *string;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &saveint;
-	(char*) &ret;
+	(void) &ret;
 #endif
 
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);

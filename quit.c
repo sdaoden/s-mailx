@@ -1,4 +1,4 @@
-/*	$Id: quit.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: quit.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 /*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
-static char rcsid[]  = "@(#)$Id: quit.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: quit.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -73,6 +73,80 @@ quitcmd(v)
 }
 
 /*
+ * Preserve all the appropriate messages back in the system
+ * mailbox, and print a nice message indicated how many were
+ * saved.  On any error, just return -1.  Else return 0.
+ * Incorporate the any new mail that we found.
+ */
+static int
+#ifndef	F_SETLK
+writeback(res)
+	FILE *res;
+#else
+writeback(res, obuf)
+	FILE *res, *obuf;
+#endif
+{
+	struct message *mp;
+	int p, c;
+#ifndef	F_SETLK
+	FILE *obuf;
+#endif
+
+	p = 0;
+#ifndef	F_SETLK
+	if ((obuf = Fopen(mailname, "r+")) == (FILE*)NULL) {
+		perror(mailname);
+		return(-1);
+	}
+#else
+	fseek(obuf, 0L, SEEK_SET);
+#endif
+#ifndef APPEND
+	if (res != (FILE*)NULL)
+		while ((c = getc(res)) != EOF)
+			(void) putc(c, obuf);
+#endif
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
+		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
+			p++;
+			if (send_message(mp, obuf, (struct ignoretab *)0,
+						NOSTR, CONV_NONE) < 0) {
+				perror(mailname);
+#ifndef	F_SETLK
+				Fclose(obuf);
+#endif
+				return(-1);
+			}
+		}
+#ifdef APPEND
+	if (res != (FILE*)NULL)
+		while ((c = getc(res)) != EOF)
+			(void) putc(c, obuf);
+#endif
+	fflush(obuf);
+	trunc(obuf);
+	if (ferror(obuf)) {
+		perror(mailname);
+#ifndef	F_SETLK
+		Fclose(obuf);
+#endif
+		return(-1);
+	}
+	if (res != (FILE*)NULL)
+		Fclose(res);
+#ifndef	F_SETLK
+	Fclose(obuf);
+#endif
+	alter(mailname);
+	if (p == 1)
+		printf("Held 1 message in %s\n", mailname);
+	else
+		printf("Held %d messages in %s\n", p, mailname);
+	return(0);
+}
+
+/*
  * Save all of the undetermined messages at the top of "mbox"
  * Save all untouched messages back in the system mailbox.
  * Remove the system mailbox, if none saved there.
@@ -88,7 +162,7 @@ quit()
 	struct stat minfo;
 	char *mbox;
 #ifdef	F_SETLK
-	struct flock flockptr;
+	struct flock flp;
 #endif
 
 	/*
@@ -116,17 +190,21 @@ quit()
 	 * a message.
 	 */
 
+#ifndef	F_SETLK
 	fbuf = Fopen(mailname, "r");
+#else
+	fbuf = Fopen(mailname, "r+");
+#endif
 	if (fbuf == (FILE*)NULL)
 		goto newmail;
 #ifndef	F_SETLK
 	if (flock(fileno(fbuf), LOCK_EX) == -1) {
 #else
-	flockptr.l_type = F_RDLCK;
-	flockptr.l_start = 0;
-	flockptr.l_whence = SEEK_SET;
-	flockptr.l_len = 0;
-	if (fcntl(fileno(fbuf), F_SETLK, &flockptr) == -1) {
+	flp.l_type = F_WRLCK;
+	flp.l_start = 0;
+	flp.l_whence = SEEK_SET;
+	flp.l_len = 0;
+	if (fcntl(fileno(fbuf), F_SETLK, &flp) == -1) {
 #endif
 nolock:
 		perror("Unable to lock mailbox");
@@ -135,7 +213,7 @@ nolock:
 	}
 	if (dot_lock(mailname, 1, stdout, ".") == -1)
 		goto nolock;
-	rbuf = (FILE*)NULL;
+	rbuf = (FILE *) NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
 		printf("New mail has arrived.\n");
 		rbuf = Fopen(tempResid, "w");
@@ -212,7 +290,11 @@ nolock:
 	}
 	if (c == 0) {
 		if (p != 0) {
+#ifndef	F_SETLK
 			writeback(rbuf);
+#else
+			writeback(rbuf, fbuf);
+#endif
 			Fclose(fbuf);
 			dot_unlock(mailname);
 			return;
@@ -328,7 +410,11 @@ nolock:
 	 */
 
 	if (p != 0) {
+#ifndef	F_SETLK
 		writeback(rbuf);
+#else
+		writeback(rbuf, fbuf);
+#endif
 		Fclose(fbuf);
 		dot_unlock(mailname);
 		return;
@@ -341,14 +427,20 @@ nolock:
 
 cream:
 	if (rbuf != (FILE*)NULL) {
+#ifndef	F_SETLK
 		abuf = Fopen(mailname, "r+");
 		if (abuf == (FILE*)NULL)
 			goto newmail;
+#else
+		abuf = fbuf;
+#endif
 		while ((c = getc(rbuf)) != EOF)
 			(void) putc(c, abuf);
 		Fclose(rbuf);
 		trunc(abuf);
+#ifndef	F_SETLK
 		Fclose(abuf);
+#endif
 		alter(mailname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -365,63 +457,6 @@ newmail:
 		Fclose(fbuf);
 		dot_unlock(mailname);
 	}
-}
-
-/*
- * Preserve all the appropriate messages back in the system
- * mailbox, and print a nice message indicated how many were
- * saved.  On any error, just return -1.  Else return 0.
- * Incorporate the any new mail that we found.
- */
-int
-writeback(res)
-	FILE *res;
-{
-	struct message *mp;
-	int p, c;
-	FILE *obuf;
-
-	p = 0;
-	if ((obuf = Fopen(mailname, "r+")) == (FILE*)NULL) {
-		perror(mailname);
-		return(-1);
-	}
-#ifndef APPEND
-	if (res != (FILE*)NULL)
-		while ((c = getc(res)) != EOF)
-			(void) putc(c, obuf);
-#endif
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
-		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
-			p++;
-			if (send_message(mp, obuf, (struct ignoretab *)0,
-						NOSTR, CONV_NONE) < 0) {
-				perror(mailname);
-				Fclose(obuf);
-				return(-1);
-			}
-		}
-#ifdef APPEND
-	if (res != (FILE*)NULL)
-		while ((c = getc(res)) != EOF)
-			(void) putc(c, obuf);
-#endif
-	fflush(obuf);
-	trunc(obuf);
-	if (ferror(obuf)) {
-		perror(mailname);
-		Fclose(obuf);
-		return(-1);
-	}
-	if (res != (FILE*)NULL)
-		Fclose(res);
-	Fclose(obuf);
-	alter(mailname);
-	if (p == 1)
-		printf("Held 1 message in %s\n", mailname);
-	else
-		printf("Held %d messages in %s\n", p, mailname);
-	return(0);
 }
 
 /*

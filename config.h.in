@@ -45,11 +45,20 @@
 /* Define if you have the getopt function.  */
 #undef HAVE_GETOPT
 
+/* Define if you have the iconv function.  */
+#undef HAVE_ICONV
+
+/* Define if you have the mbsrtowcs function.  */
+#undef HAVE_MBSRTOWCS
+
 /* Define if you have the mktime function.  */
 #undef HAVE_MKTIME
 
 /* Define if you have the select function.  */
 #undef HAVE_SELECT
+
+/* Define if you have the setlocale function.  */
+#undef HAVE_SETLOCALE
 
 /* Define if you have the snprintf function.  */
 #undef HAVE_SNPRINTF
@@ -71,6 +80,12 @@
 
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
+
+/* Define if you have the <iconv.h> header file.  */
+#undef HAVE_ICONV_H
+
+/* Define if you have the <locale.h> header file.  */
+#undef HAVE_LOCALE_H
 
 /* Define if you have the <netdb.h> header file.  */
 #undef HAVE_NETDB_H
@@ -105,6 +120,12 @@
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
 
+/* Define if you have the <wchar.h> header file.  */
+#undef HAVE_WCHAR_H
+
+/* Define if you have the <wctype.h> header file.  */
+#undef HAVE_WCTYPE_H
+
 /* Define if you have the efence library (-lefence).  */
 #undef HAVE_LIBEFENCE
 
@@ -114,7 +135,7 @@
 /* Version number of package */
 #undef VERSION
 
-/* $Id: acconfig.h,v 1.5 2000/05/30 01:11:34 gunnar Exp $ */
+/* $Id: acconfig.h,v 1.6 2000/08/02 21:16:22 gunnar Exp $ */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -219,12 +240,24 @@
 #ifdef	HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
+#ifdef	HAVE_LOCALE_H
+#include <locale.h>
+#endif
+#ifdef	HAVE_ICONV_H
+#include <iconv.h>
+#endif
 #ifdef	STDC_HEADERS
 #include <stdlib.h>
 #include <string.h>
 #endif
 #include <stdio.h>
 #include <ctype.h>
+#ifdef	HAVE_WCHAR_H
+#include <wchar.h>
+#endif
+#ifdef	HAVE_WCTYPE_H
+#include <wctype.h>
+#endif
 /* The number of signals in the system. */
 #ifndef	NSIG
 #undef	NSIG

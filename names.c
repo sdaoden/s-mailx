@@ -1,4 +1,4 @@
-/*	$Id: names.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: names.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
 /*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)names.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
-static char rcsid[]  = "@(#)$Id: names.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: names.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -204,9 +204,25 @@ yankword(ap, wbuf)
 	if (*cp ==  '<')
 		for (cp2 = wbuf; *cp && (*cp2++ = *cp++) != '>';)
 			;
-	else
-		for (cp2 = wbuf; *cp && !strchr(" \t,(", *cp); *cp2++ = *cp++)
-			;
+	else {
+		int incomm = 0;
+
+		for (cp2 = wbuf; *cp && (incomm || !strchr(" \t,(", *cp)); ) {
+			if (*cp == '\"') {
+				if (cp == ap || *(cp - 1) != '\\') {
+					if (incomm)
+						incomm--;
+					else
+						incomm++;
+				} else if (cp != ap) {
+					*(cp2 - 1) = '\"';
+				}
+				cp++;
+				continue;
+			}
+			*cp2++ = *cp++;
+		}
+	}
 	*cp2 = '\0';
 	return cp;
 }
@@ -273,6 +289,8 @@ outof(names, fo, hp)
 			while ((c = getc(fo)) != EOF)
 				(void) putc(c, fout);
 			rewind(fo);
+			if (c != '\n')
+				putc('\n', fout);
 			(void) putc('\n', fout);
 			(void) fflush(fout);
 			if (ferror(fout))

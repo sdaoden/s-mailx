@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: main.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 /*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
@@ -44,7 +44,7 @@ static char copyright[]  =
 #if 0
 static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
-static char rcsid[]  = "@(#)$Id: main.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: main.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -115,6 +115,12 @@ main(argc, argv)
 	(void) safe_signal(SIGCHLD, sigchild);
 	if (isatty(0))
 		assign("interactive", "");
+#ifdef	HAVE_SETLOCALE
+	setlocale(LC_CTYPE, "");
+#endif
+#ifdef	HAVE_ICONV
+	iconvd = (iconv_t) -1;
+#endif
 	image = -1;
 	/*
 	 * Now, determine how we are being used.

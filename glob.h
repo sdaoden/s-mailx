@@ -1,4 +1,4 @@
-/*	$Id: glob.h,v 1.4 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: glob.h,v 1.5 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
 /*	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	from: @(#)glob.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp
- *	$Id: glob.h,v 1.4 2000/05/01 22:27:04 gunnar Exp $
+ *	$Id: glob.h,v 1.5 2000/08/02 21:16:22 gunnar Exp $
  */
 
 /*
@@ -96,6 +96,15 @@ _E int	scrnheight;			/* Screen height, or best guess,
 _E int	realscreenheight;		/* the real screen height */
 _E gid_t	effectivegid;		/* Saved from when we started up */
 _E gid_t	realgid;		/* Saved from when we started up */
+
+#ifdef	HAVE_ICONV
+iconv_t iconvd;
+#endif
+
+/*
+ * These are initialized strings.
+ */
+extern char *us_ascii;			/* "us-ascii" */
 
 #include <setjmp.h>
 

@@ -1,4 +1,4 @@
-/*	$Id: popen.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: popen.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp 	*/
 /*	NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp";
-static char rcsid[]  = "@(#)$Id: popen.c,v 1.7 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: popen.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -415,7 +415,32 @@ sigchild(signo)
 int wait_status;
 
 /*
+ * Mark a child as don't care.
+ */
+void
+free_child(pid)
+	int pid;
+{
+	sigset_t nset, oset;
+	struct child *cp = findchild(pid);
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &nset, &oset);
+
+	if (cp->done)
+		delchild(cp);
+	else
+		cp->free = 1;
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+}
+
+/*
  * Wait for a specific child to die.
+ */
+#if 0
+/*
+ * This version is correct code, but causes harm on some loosing
+ * systems. So we use the second one instead.
  */
 int
 wait_child(pid)
@@ -437,23 +462,46 @@ wait_child(pid)
 		return 0;
 	return -1;
 }
-
-/*
- * Mark a child as don't care.
- */
-void
-free_child(pid)
-	int pid;
+#endif
+int
+wait_child(pid)
+int pid;
 {
-	sigset_t nset, oset;
-	struct child *cp = findchild(pid);
-	sigemptyset(&nset);
-	sigaddset(&nset, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &nset, &oset);
-
-	if (cp->done)
+	pid_t term;
+	struct child *cp;
+	struct sigaction nact, oact;
+	
+	nact.sa_handler = SIG_DFL;
+	sigemptyset(&nact.sa_mask);
+	nact.sa_flags = SA_NOCLDSTOP;
+	sigaction(SIGCHLD, &nact, &oact);
+	
+	cp = findchild(pid);
+	if (!cp->done) {
+		do {
+			term = wait(&wait_status);
+			if (term == 0 || term == -1)
+			break;
+			cp = findchild(term);
+			if (cp->free || term == pid) {
+				delchild(cp);
+			} else {
+				cp->done = 1;
+				cp->status = wait_status;
+			}
+		} while (term != pid);
+	} else {
+		wait_status = cp->status;
 		delchild(cp);
-	else
-		cp->free = 1;
-	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+	}
+	
+	sigaction(SIGCHLD, &oact, NULL);
+	/*
+	 * Make sure no zombies are left.
+	 */
+	sigchild(SIGCHLD);
+	
+	if (WIFEXITED(wait_status) && (WEXITSTATUS(wait_status) == 0))
+		return 0;
+	return -1;
 }

@@ -1,7 +1,7 @@
 # Makefile.am for nail, a mail user agent.
 # Process this file with automake to produce Makefile.in
 
-# $Id: Makefile.am,v 1.3 2000/05/29 00:29:22 gunnar Exp $
+# $Id: Makefile.am,v 1.4 2000/08/08 20:10:39 gunnar Exp $
 
 # Initially written by Jacob Moorman.
 # Changes by Gunnar Ritter.
@@ -18,7 +18,7 @@ nail_SOURCES = version.c aux.c base64.c cmd1.c cmd2.c cmd3.c \
 
 nail_MANS = nail.1
 
-EXTRA_DIST = nail.1 def.h extern.h glob.h rcv.h
+EXTRA_DIST = I18N nail.1 def.h extern.h glob.h rcv.h
 
 SUBDIRS = misc
 

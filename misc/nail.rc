@@ -30,7 +30,3 @@ set indentprefix="> "
 
 # Set the charset to iso-8859-1 which is the default on modern terminals.
 set charset=iso-8859-1
-
-# Send international texts in a manner that does not confuse older
-# mailgateways.
-set encoding=quoted-printable

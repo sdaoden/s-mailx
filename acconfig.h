@@ -1,5 +1,5 @@
 @BOTTOM@
-/* $Id: acconfig.h,v 1.5 2000/05/30 01:11:34 gunnar Exp $ */
+/* $Id: acconfig.h,v 1.6 2000/08/02 21:16:22 gunnar Exp $ */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -104,12 +104,24 @@
 #ifdef	HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
+#ifdef	HAVE_LOCALE_H
+#include <locale.h>
+#endif
+#ifdef	HAVE_ICONV_H
+#include <iconv.h>
+#endif
 #ifdef	STDC_HEADERS
 #include <stdlib.h>
 #include <string.h>
 #endif
 #include <stdio.h>
 #include <ctype.h>
+#ifdef	HAVE_WCHAR_H
+#include <wchar.h>
+#endif
+#ifdef	HAVE_WCTYPE_H
+#include <wctype.h>
+#endif
 /* The number of signals in the system. */
 #ifndef	NSIG
 #undef	NSIG

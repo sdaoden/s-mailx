@@ -1,3 +1,15 @@
+[9.20] released 2000-08-08
+* Initialize the 'in_quote' variable in mime.c
+* Better mailbox locking.
+* Use LC_CTYPE locale setting to determine printable characters.
+* Use iconv(3) to convert between character sets.
+* Introduced the 'ttycharset' variable.
+* Changed child process handling.
+* Can handle addresses with embedded comments.
+* Use base64 encoding for header fields containing many 8bit characters.
+* Fixed a bug that could cause too long lines in quoted-printable.
+* Proper handling of newlines at the end of multipart sections.
+
 [9.14] released 2000-06-26
 * Generate `User-Agent:' header fields instead of `X-Mailer:'
 * Addresses in SMTP commands are surrounded with angle brackets

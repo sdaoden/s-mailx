@@ -1,0 +1,77 @@
+*******************************************************************************
+*                                                                             *
+*                            INTERNATIONALIZATION                             *
+*                                                                             *
+*******************************************************************************
+
+* Locales.
+
+  Nail uses the LC_CTYPE locale setting to determine whether a character is
+  printable; if it is not, it is replaced by a question mark when writing a
+  message to a terminal. On most current systems, LC_CTYPE is an environment
+  variable. It has to match the character set of the terminal nail runs on;
+  however, the character set can often not directly be determined by just
+  looking at the environment setting.
+
+  In case the system's locales are totally broken, all support for locales
+  and other internationalization issues can be disabled by supplying a
+  "--enable-all-chars" parameter to "configure" when building nail. This
+  should only be used as a last resort since it drops useful functionality.
+
+* Character sets.
+
+  Since it is impossible to determine the character set of a given locale
+  in a portable manner, nail needs additional information about it. There
+  are two nail variables to set in this context: First, "charset" determines
+  the character set of outgoing messages. As this parameter is written
+  directly into the message's header, its value has to conform to the
+  definitions given in RFC 2046. The most commonly used values are currently
+  "iso-8859-X", where X is between 1 and 15, or "koi8-r" in Russia etc.
+
+  In most cases, the "charset" value will be the same as the terminal's
+  character set. In some situations, however, it may be desireable to
+  use different ones here; since Unicode messages are not generally well
+  understood by all mail user agents, users of an Unicode terminal may
+  choose to send in a ISO 8859 character set. For this purpose, the
+  "ttycharset" variable can be set; it defaults to the "charset" variable.
+
+  When nail is displaying a message out of a mail folder, the character
+  set that is indicated in the message's header is tried to convert to
+  the terminal character set, using "ttycharset", or, if unset, "charset".
+
+  If the values assigned to "charset" and "ttycharset" differ, outgoing
+  messages are tried to convert, too; the conversion will fail, of course,
+  if a character cannot be represented in the new set, and the message will
+  not get sent. It must be noted that the error conditions are somewhat
+  vague; thus some testing should be done before messages actually get
+  send to the outside world this way.
+
+  To perform these conversions, the system's iconv(3) function is used;
+  it should be present on all System V Release 4.2 variants as well as
+  on recent Linux systems. This function, however, suffers from a serious
+  design flaw: the character set strings it accepts are absolutely
+  implementation-dependent. The designers of the GNU C library were so
+  intelligent to support the values of RFC 2046 and of the IANA tables,
+  whilst others, e.g. on UnixWare, were not. Since nail is unable to
+  include translation tables for these proprietary character set names,
+  the iconv function is useless in the latter case and will always fail.
+  However, it were probably sufficient to insert the desired character set
+  names in /usr/lib/iconv/iconv_data, so this should be done by either the
+  vendor or the system's administrator.
+
+* Unicode.
+
+  Whereever an useful iconv function is available, nail can send and
+  display Unicode messages. Unless the terminal also supports Unicode,
+  the messages will contain mostly question marks when viewing, however;
+  this does not affect outgoing messages.
+
+  Recent versions of the "xterm" program contain experimental Unicode
+  support. When such a terminal is used, the "ttycharset" variable
+  can be set to "utf-8", and a vast number of international characters
+  are supported at once. It is quite recommended not to send UTF-8
+  messages today since most receivers will not be able to read them
+  correctly, so the "charset" variable should contain a more common
+  character set name like "iso-8859-1" or "koi8-r". However, to make
+  real use of such a terminal, the pager and the editor have to support
+  UTF-8, too, as on many recent System V variants.

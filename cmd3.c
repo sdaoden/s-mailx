@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -340,7 +340,7 @@ reedit(subj)
 		return NOSTR;
 	in.s = subj;
 	in.l = strlen(subj);
-	mime_fromhdr(&in, &out, 1); /* we strip unusual characters */
+	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 	if ((out.s[0] == 'r' || out.s[0] == 'R') &&
 	    (out.s[1] == 'e' || out.s[1] == 'E') &&
 	    out.s[2] == ':')

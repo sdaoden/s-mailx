@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.11 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.12 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.11 2000/06/26 04:27:05 gunnar Exp $
+ *	$Id: extern.h,v 1.12 2000/08/02 21:16:22 gunnar Exp $
  */
 
 struct name;
@@ -274,19 +274,18 @@ void	 vfree __P((char *));
 int	 visual __P((void *));
 int	 wait_child __P((int));
 int	 wait_command __P((int));
-int	 writeback __P((FILE *));
 void	*smalloc __P((size_t));
 char	*itostr __P((unsigned, unsigned, char *));
-size_t	mime_write_tob64 __P((struct str*, FILE*));
-void	mime_fromb64 __P((struct str*, struct str*, int, int));
-void	mime_fromb64_b __P((struct str*, struct str*, int, int, FILE*));
+size_t	mime_write_tob64 __P((struct str*, FILE*, int));
+void	mime_fromb64 __P((struct str*, struct str*, int));
+void	mime_fromb64_b __P((struct str*, struct str*, int, FILE*));
 int	mime_getenc __P((char*));
 int	mime_getcontent __P((char*));
 char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
 char	*mime_getfilename __P((char*));
-char	*mime_getcharset __P((int));
+char	*getcharset __P((int));
 int	mime_isclean __P((FILE*));
 int	mime_save __P((void *));
 void	mime_fromhdr __P((struct str*, struct str*, int));
@@ -302,3 +301,5 @@ int	smtp_mta __P((char *, struct name *, FILE *));
 char	*nodename __P((void));
 int	mime_name_invalid __P((char *));
 char	*myaddr __P((void));
+char	*gettcharset __P((void));
+void	makeprint __P((char *, size_t));

@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.9 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: def.h,v 1.10 2000/08/02 21:16:22 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.9 2000/06/26 04:27:05 gunnar Exp $
+ *	$Id: def.h,v 1.10 2000/08/02 21:16:22 gunnar Exp $
  */
 
 /*
@@ -100,7 +100,8 @@ enum {
 	CONV_FROMB64_T,			/* convert from base64/text */
 	CONV_TOB64,			/* convert to base64 */
 	CONV_FROMHDR,			/* convert from RFC1522 format */
-	CONV_TOHDR			/* convert to RFC1522 format */
+	CONV_TOHDR,			/* convert to RFC1522 format */
+	CONV_TOHDR_A			/* convert addresses for header */
 };
 
 enum {
@@ -118,6 +119,10 @@ enum {
 	MIME_INTERTEXT,			/* international text */
 	MIME_BINARY			/* binary content */
 };
+
+#define	TD_NONE		0		/* no display conversion */
+#define	TD_ISPR		01		/* use isprint() checks */
+#define	TD_ICONV	02		/* use iconv() */
 
 struct str {
 	char *s;			/* the string's content */
@@ -341,7 +346,6 @@ struct ignoretab {
 	(void)fflush(stream); 						\
 	(void)ftruncate(fileno(stream), (off_t)ftell(stream));		\
 }
-
 
 /*
  * Linux stdio has the odd quirk that if you are in a stdio() function and

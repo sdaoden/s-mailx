@@ -1,4 +1,4 @@
-/*	$Id: smtp.c,v 1.3 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: smtp.c,v 1.4 2000/08/02 21:16:22 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -35,7 +35,7 @@
 
 #ifndef lint
 #if 0
-static char rcsid[]  = "@(#)$Id: smtp.c,v 1.3 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: smtp.c,v 1.4 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -234,6 +234,8 @@ FILE *fi, *fsi, *fso;
 		else
 			crlfputs(b, fsi);
 	}
+	if (*(b + strlen(b) - 1) != '\n')
+		fputs("\r\n", fsi);
 	SMTP_OUT(".\r\n");
 	SMTP_ANSWER(2);
 	SMTP_OUT("QUIT\r\n");

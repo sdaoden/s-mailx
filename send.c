@@ -1,4 +1,4 @@
-/*	$Id: send.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: send.c,v 1.12 2000/08/08 20:10:39 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
-static char rcsid[]  = "@(#)$Id: send.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: send.c,v 1.12 2000/08/08 20:10:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -93,7 +93,7 @@ struct boundary *b, *b0;
 	if (f != NULL && f != (char*)-1) {
 		in.s = f;
 		in.l = strlen(f);
-		mime_fromhdr(&in, &out, 1);
+		mime_fromhdr(&in, &out, TD_ISPR);
 		memcpy(f, out.s, out.l);
 		*(f + out.l) = '\0';
 		free(out.s);
@@ -228,15 +228,17 @@ struct boundary *b0;
 	char line[LINESIZE];
 	char *filename = (char*)-1;
 	int c = 0, part = 0, error_return = 0, is_cont = 0;
-	char *boundend;
+	char *boundend, *cs = us_ascii, *tcs;
 	struct boundary *b = b0;
 	char *(*f_gets) __P((char *s, int size, FILE *stream));
 	long now;
+	int linelen = -1, lineno = -1;
 
 	if (action == CONV_NONE)
 		f_gets = fgets;
 	else
 		f_gets = foldergets;
+	tcs = gettcharset();
 	if (b0->b_str == NULL) {
 		error_return = 1;
 		goto send_multi_end;
@@ -272,6 +274,13 @@ struct boundary *b0;
 						fputs(":\n", obuf);
 					}
 					new_content = MIME_TEXT;
+					cs = us_ascii;
+#ifdef	HAVE_ICONV
+					if (iconvd != (iconv_t) -1) {
+						iconv_close(iconvd);
+						iconvd = (iconv_t) -1;
+					}
+#endif
 				} else if (*boundend == '-') {
 					if (b == b0)
 						break;
@@ -295,6 +304,7 @@ struct boundary *b0;
 			}
 		}
 send_multi_nobound:
+		linelen = strlen(line) - 1;
 		switch (mime_content) {
 		case MIME_SUBHDR:
 			if (*line == '\n') {
@@ -302,10 +312,13 @@ send_multi_nobound:
 					&& (action == CONV_TODISP
 						|| action == CONV_QUOTE)) {
 					fputc('\n', obuf);
-					new_content = -1;
+					new_content = MIME_TEXT;
 					continue;
 				}
-				/* end of subheader */
+				/*
+				 * End of subheader.
+				 */
+				lineno = -1;
 				mime_content = new_content;
 				if (mime_content == MIME_MULTI) {
 					if (b->b_str == NULL) {
@@ -314,6 +327,21 @@ send_multi_nobound:
 					}
 					b->b_len = strlen(b->b_str);
 				} else if (mime_content == MIME_TEXT) {
+					if (cs == NULL)
+						cs = us_ascii;
+#ifdef	HAVE_ICONV
+					if (iconvd != (iconv_t) -1)
+						iconv_close(iconvd);
+					if (action == CONV_TODISP
+						|| action == CONV_QUOTE)
+					if (iconvd != (iconv_t) -1)
+						iconv_close(iconvd);
+					if (strcasecmp(tcs, cs)
+						&& strcasecmp(us_ascii, cs))
+						iconvd = iconv_open(tcs, cs);
+					else
+						iconvd = (iconv_t) -1;
+#endif
 					if (convert == CONV_FROMB64) {
 						convert = CONV_FROMB64_T;
 					}
@@ -358,6 +386,7 @@ send_multi_nobound:
 					new_content =
 					mime_getcontent(
 						line);
+					cs = mime_getparam("charset=", line);
 					if (new_content == MIME_MULTI) {
 						b = bound_alloc(
 							get_top_boundary(b0));
@@ -401,11 +430,16 @@ send_multi_nobound:
 				if (filename == NULL)
 					filename =
 					mime_getfilename(line);
-			 		if (new_content == MIME_MULTI
-							&& b->b_str == NULL) {
-				 		b->b_str =
-							mime_getboundary(line);
-			 		}
+			 	if (new_content == MIME_MULTI
+						&& b->b_str == NULL) {
+			 		b->b_str = mime_getboundary(line);
+				} else if (new_content == MIME_TEXT
+							&& cs == NULL) {
+						cs = mime_getparam("charset=",
+								line);
+						if (cs == NULL)
+							cs = us_ascii;
+				}
 			}
 			if (doign && (isign(line, doign)
 				|| doign == allignore))
@@ -418,10 +452,14 @@ send_multi_nobound:
 				strlen(line), obuf, action == CONV_TODISP 
 				|| action == CONV_QUOTE ?
 				CONV_FROMHDR:CONV_NONE,
-				action == CONV_TODISP);
+				action == CONV_TODISP ?
+				TD_ISPR|TD_ICONV:TD_NONE);
 			break;
 		case MIME_TEXT:
 		case MIME_MESSAGE:
+			if (lineno > 0 && convert != CONV_FROMB64
+					&& is_cont == 0)
+				fputc('\n', obuf);
 			if (prefix != NOSTR && is_cont == 0) {
 				if (c > 1)
 					fputs(prefix, obuf);
@@ -435,28 +473,38 @@ send_multi_nobound:
 			else
 				is_cont = 0;
 			(void)mime_write(line, sizeof *line,
-					 strlen(line), obuf,
+					 linelen, obuf,
 					 convert,
-					 action==CONV_TODISP);
+					 action == CONV_TODISP
+					 || action == CONV_QUOTE ?
+					 TD_ISPR|TD_ICONV:TD_NONE);
 			break;
 		case MIME_DISCARD:
 			/* unspecified part of a mp. msg. */
 			break;
 		default: /* We do not display this */
 			if (action == CONV_TOFILE) {
+				if (lineno > 0 && convert != CONV_FROMB64)
+					fputc('\n', obuf);
 				(void)mime_write(line,
 					 sizeof *line,
-					 strlen(line), obuf,
-					 convert,
-					 action==CONV_TODISP);
+					 linelen, obuf,
+					 convert, TD_NONE);
 			}
 		}
 		if (ferror(obuf)) {
 			error_return = -1;
 			break;
 		}
+		lineno++;
 	}
 send_multi_end:
+#ifdef	HAVE_ICONV
+	if (iconvd != (iconv_t) -1) {
+		iconv_close(iconvd);
+		iconvd = (iconv_t) -1;
+	}
+#endif
 	if (oldobuf != (FILE*)-1 &&
 			obuf != origobuf) {
 		Fclose(obuf);
@@ -492,6 +540,7 @@ send_message(mp, obuf, doign, prefix, convert)
 	int error_return = 0;
 	struct boundary b0;
 	char *(*f_gets) __P((char *s, int size, FILE *stream));
+	char *cs = us_ascii, *tcs;
 
 	b0.b_str = NULL;
 	b0.b_nlink = b0.b_flink = NULL;
@@ -500,6 +549,7 @@ send_message(mp, obuf, doign, prefix, convert)
 		f_gets = fgets;
 	else
 		f_gets = foldergets;
+	tcs = gettcharset();
 	/*
 	 * Compute the prefix string, without trailing whitespace
 	 */
@@ -554,7 +604,7 @@ send_message(mp, obuf, doign, prefix, convert)
 								myname,
 								ctime(&now));
 					}
-					/* FALL THROUGH */
+					/*FALLTHROUGH*/
 				default:
 					mime_content = MIME_MESSAGE;
 				}
@@ -573,6 +623,10 @@ send_message(mp, obuf, doign, prefix, convert)
 			 */
 			 if (mime_content == MIME_MULTI && b0.b_str == NULL) {
 				 b0.b_str = mime_getboundary(line);
+			 } else if (mime_content == MIME_TEXT && cs == NULL) {
+				cs = mime_getparam("charset=", line);
+				if (cs == NULL)
+					cs = us_ascii;
 			 }
 		} else {
 			/*
@@ -601,8 +655,6 @@ send_message(mp, obuf, doign, prefix, convert)
 			} else {
 				if (strncasecmp(line, "mime-version:", 13)
 						== 0) {
-					if (mime_version != NULL)
-						free(mime_version);
 					mime_version = mime_getparam(
 						"mime-version:", line);
 				}
@@ -614,6 +666,7 @@ send_message(mp, obuf, doign, prefix, convert)
 							"content-type:", 13)
 							== 0) {
 					mime_content = mime_getcontent(line);
+					cs = mime_getparam("charset=", line);
 					if (mime_content == MIME_MULTI)
 				 		b0.b_str
 						      = mime_getboundary(line);
@@ -683,7 +736,8 @@ send_message(mp, obuf, doign, prefix, convert)
 						action == CONV_TODISP 
 						|| action == CONV_QUOTE ?
 						CONV_FROMHDR:CONV_NONE,
-						action == CONV_TODISP);
+						action == CONV_TODISP ?
+						TD_ISPR|TD_ICONV:TD_NONE);
 			if (ferror(obuf)) {
 				error_return = -1;
 				goto send_end;
@@ -706,7 +760,7 @@ send_message(mp, obuf, doign, prefix, convert)
 		case MIME_TEXT:
 			if (convert == CONV_FROMB64)
 				convert = CONV_FROMB64_T;
-			/* FALL THROUGH */
+			/*FALLTHROUGH*/
 		case MIME_MESSAGE:
 			break;
 		case MIME_MULTI:
@@ -721,6 +775,18 @@ send_message(mp, obuf, doign, prefix, convert)
 			}
 		}
 	}
+	if (cs == NULL)
+		cs = us_ascii;
+#ifdef	HAVE_ICONV
+	if (action == CONV_TODISP || action == CONV_QUOTE) {
+		if (iconvd != (iconv_t) -1)
+				iconv_close(iconvd);
+		if (strcasecmp(tcs, cs) && strcasecmp(us_ascii, cs))
+			iconvd = iconv_open(tcs, cs);
+		else
+			iconvd = (iconv_t) -1;
+	}
+#endif
 	if (doign == allignore)
 		count--;		/* skip final blank line */
 	while (count > 0) {
@@ -745,7 +811,9 @@ send_message(mp, obuf, doign, prefix, convert)
 		else
 			is_cont = 0;
 		(void)mime_write(line, sizeof *line, c,
-				 obuf, convert, action == CONV_TODISP);
+				 obuf, convert, action == CONV_TODISP
+				 	|| action == CONV_QUOTE ?
+					TD_ISPR|TD_ICONV:TD_NONE);
 		if (ferror(obuf)) {
 			error_return = -1;
 			goto send_end;
@@ -758,9 +826,13 @@ send_end:
 		if ((c = getc(ibuf)) != EOF && putc(c, obuf) == EOF)
 			return -1;
 #endif
+#ifdef	HAVE_ICONV
+	if (iconvd != (iconv_t) -1) {
+		iconv_close(iconvd);
+		iconvd = (iconv_t) -1;
+	}
+#endif
 	if (b0.b_str != NULL)
 		free(b0.b_str);
-	if (mime_version != NULL)
-		free(mime_version);
 	return error_return;
 }

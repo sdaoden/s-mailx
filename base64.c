@@ -1,4 +1,4 @@
-/*	$Id: base64.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: base64.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
 
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -20,7 +20,7 @@
 
 #ifndef lint
 #if 0
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: base64.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -76,7 +76,7 @@ unsigned char *p;
  * e.g. at 972 character bounds.
  */
 size_t
-mime_write_tob64(in, fo)
+mime_write_tob64(in, fo, is_header)
 struct str *in;
 FILE *fo;
 {
@@ -101,7 +101,7 @@ FILE *fo;
 			l = 0;
 		}
 	}
-	if (l != 0) {
+	if (l != 0 && !is_header) {
 		fputc('\n', fo), sz++;
 	}
 	return sz;
@@ -111,7 +111,7 @@ FILE *fo;
  * Decode from base64.
  */
 void
-mime_fromb64(in, out, todisplay, is_text)
+mime_fromb64(in, out, is_text)
 struct str *in, *out;
 {
 	char *p, *q, *upper;
@@ -137,8 +137,6 @@ struct str *in, *out;
 		c = char64(c);
 		d = char64(d);
 		g = ((c << 2) | ((d & 0x30) >> 4));
-		if (todisplay && is_undisplayable(g))
-			g = '?';
 		if (is_text) {
 			if (g == '\r') {
 				newline = 1;
@@ -157,8 +155,6 @@ struct str *in, *out;
 		} else {
 			e = char64(e);
 			g = (((d & 0xF) << 4) | ((e & 0x3C) >> 2));
-			if (todisplay && is_undisplayable(g))
-				g = '?';
 			if (is_text) {
 				if (g == '\r') {
 					newline = 1;
@@ -177,8 +173,6 @@ struct str *in, *out;
 			} else {
 				f = char64(f);
 				g = (((e & 0x03) << 6) | f);
-				if (todisplay && is_undisplayable(g))
-					g = '?';
 				if (is_text) {
 					if (g == '\r') {
 						newline = 1;
@@ -204,7 +198,7 @@ struct str *in, *out;
  * As we have only one buffer, this function is not reentrant.
  */
 void
-mime_fromb64_b(in, out, todisplay, is_text, f)
+mime_fromb64_b(in, out, is_text, f)
 struct str *in, *out;
 FILE *f;
 {
@@ -235,7 +229,7 @@ FILE *f;
 			n++;
 	}
 	nin.l -= n;
-	mime_fromb64(&nin, out, todisplay, is_text);
+	mime_fromb64(&nin, out, is_text);
 	free(nin.s);
 	f_b = f;
 }
