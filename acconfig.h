@@ -1,5 +1,5 @@
 @BOTTOM@
-/* Sccsid: @(#)acconfig.h	1.3 (gritter) 11/18/00 */
+/* Sccsid: @(#)acconfig.h	1.4 (gritter) 2/16/01 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -27,8 +27,6 @@
 #endif
 
 /* Path to nail's support files. */
-#undef PATH_HELP
-#undef PATH_TILDE
 #undef PATH_MASTER_RC
 
 /* The mail spool directory. */

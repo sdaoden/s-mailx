@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.8 (gritter) 1/25/01
+ *	Sccsid @(#)extern.h	1.9 (gritter) 2/17/01
  */
 
 struct name;
@@ -302,6 +302,6 @@ size_t	makeprint __P((char *, size_t));
 #ifdef	HAVE_ICONV
 iconv_t	iconv_open_ft __P((const char *, const char *));
 #endif
-#ifdef	HAVE_MBTOWC
+#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
 size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif

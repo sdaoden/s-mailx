@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	1.6 (gritter) 1/14/01
+ *	Sccsid @(#)def.h	1.7 (gritter) 2/7/01
  */
 
 /*
@@ -332,9 +332,11 @@ struct ignoretab {
 #define	reset(x)	siglongjmp(srbuf, x)
 
 /*
- * For standards compliance, check for ' ' or '\t' only instead of
+ * For standards compliance, check locale-independant for ASCII spaces
+ * only.
  */
 #define	spacechar(c)	((c) == ' ' || (c) == '\t')
+#define	blankchar(c)	(spacechar(c) || (c) == '\n')
 
 /*
  * Truncate a file to the last character written. This is

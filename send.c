@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)send.c	1.7 (gritter) 1/30/01";
 #endif
 #endif /* not lint */
 
@@ -224,7 +224,7 @@ struct boundary *b0;
 	char *boundend, *cs = us_ascii, *tcs;
 	struct boundary *b = b0;
 	char *(*f_gets) __P((char *s, int size, FILE *stream));
-	long now;
+	time_t now;
 	int linelen = 0, lineno = -1;
 
 	if (action == CONV_NONE)
@@ -512,7 +512,8 @@ send_message(mp, obuf, doign, prefix, convert)
 	struct ignoretab *doign;
 	char *prefix;
 {
-	long count, now;
+	long count;
+	time_t now;
 	FILE *ibuf;
 	char line[LINESIZE], *l;
 	int ishead, infld, ignoring = 0, dostat, firstline;

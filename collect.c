@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)collect.c	1.7 (gritter) 2/16/01";
 #endif
 #endif /* not lint */
 
@@ -77,6 +77,31 @@ static	int		colljmp_p;	/* whether to long jump */
 static	sigjmp_buf	collabort;	/* To end collection with error */
 
 static	sigjmp_buf pipejmp;		/* On broken pipe */
+
+static const char tildehelp[] =
+"-----------------------------------------------------------\n\
+The following ~ escapes are defined:\n\
+~~              Quote a single tilde\n\
+~a files        Attach files to message\n\
+~b users        Add users to \"blind\" cc list\n\
+~c users        Add users to cc list\n\
+~d              Read in dead.letter\n\
+~e              Edit the message buffer\n\
+~f messages     Read in messages\n\
+~F messages     Same as ~f, but keep all header lines\n\
+~h              Prompt for to list, subject and cc list\n\
+~r file         Read a file into the message buffer\n\
+~p              Print the message buffer\n\
+~m messages     Read in messages, right shifted by a tab\n\
+~M messages     Same as ~m, but keep all header lines\n\
+~s subject      Set subject\n\
+~t users        Add users to to list\n\
+~v              Invoke display editor on message\n\
+~w file         Write message onto file.\n\
+~?              Print this message\n\
+~!command       Invoke the shell\n\
+~|command       Pipe the message through the command\n\
+-----------------------------------------------------------\n";
 
 static RETSIGTYPE
 onpipe(signo)
@@ -474,13 +499,7 @@ cont:
 				goto err;
 			goto cont;
 		case '?':
-			if ((fbuf = Fopen(PATH_TILDE, "r")) == (FILE *)NULL) {
-				perror(PATH_TILDE);
-				break;
-			}
-			while ((t = getc(fbuf)) != EOF)
-				(void) putchar(t);
-			Fclose(fbuf);
+			fputs(tildehelp, stdout);
 			break;
 		case 'p':
 			/*

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	1.6 (gritter) 1/17/01";
+static char sccsid[] = "@(#)sendout.c	1.8 (gritter) 2/17/01";
 #endif
 #endif /* not lint */
 
@@ -502,17 +502,39 @@ savemail(name, fi)
 	char buf[BUFSIZ];
 	char *p;
 	time_t now;
-	int newfile = 0;
+	int prependnl = 0;
 
-	if (access(name, 0) < 0)
-		newfile = 1;
-	if ((fo = Fopen(name, "a")) == (FILE *)NULL) {
-		perror(name);
-		return (-1);
+	time(&now);
+	if ((fo = Fopen(name, "r+")) == (FILE *)NULL) {
+		if ((fo = Fopen(name, "w")) == (FILE *)NULL) {
+			perror(name);
+			return (-1);
+		}
+	} else {
+		if (fseek(fo, -2L, SEEK_END) == 0) {
+			switch (fread(buf, sizeof *buf, 2, fo)) {
+			case 2:
+				if (buf[1] != '\n') {
+					prependnl = 1;
+					break;
+				}
+				/*FALLTHRU*/
+			case 1:
+				if (buf[0] != '\n')
+					prependnl = 1;
+				break;
+			default:
+				if (ferror(fo)) {
+					perror(name);
+					return -1;
+				}
+			}
+			if (prependnl) {
+				putc('\n', fo);
+				fflush(fo);
+			}
+		}
 	}
-	if (newfile == 0)
-		fputc('\n', fo);
-	(void) time(&now);
 	fprintf(fo, "From %s %s", myname, ctime(&now));
 	while (fgets(buf, sizeof buf, fi) != NULL) {
 		if (*buf == '>') {
@@ -526,8 +548,8 @@ savemail(name, fi)
 			fputc('>', fo);
 		fputs(buf, fo);
 	}
-	(void) putc('\n', fo);
-	/* Some programs (notably netscape) expect this */
+	if (*(buf + strlen(buf) - 1) != '\n')
+		(void) putc('\n', fo);
 	(void) putc('\n', fo);
 	(void) fflush(fo);
 	if (ferror(fo))
@@ -623,6 +645,7 @@ FILE* input;
 	if ((pid = fork()) == -1) {
 		perror("fork");
 		savedeadletter(input);
+		senderr++;
 		return 1;
 	}
 	if (pid == 0) {
@@ -716,6 +739,7 @@ mail1(hp, printheaders, quote, quotefile)
 	fixhead(hp, to);
 	if ((nmtf = infix(hp, mtf, convert)) == (FILE *)NULL) {
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
+		senderr++;
 		rewind(mtf);
 		savedeadletter(mtf);
 		fputs(". . . message not sent.\n", stderr);
@@ -1114,10 +1138,12 @@ struct name *to;
 	struct header head;
 
 	if ((nfo = Fopen(tempMail, "w")) == (FILE *)NULL) {
+		senderr++;
 		perror(tempMail);
 		return 1;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == (FILE *)NULL) {
+		senderr++;
 		perror(tempMail);
 		return 1;
 	}
@@ -1128,6 +1154,7 @@ struct name *to;
 		= NULL;
 	fixhead(&head, to);
 	if (infix_fw(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
+		senderr++;
 		rewind(nfo);
 		savedeadletter(nfi);
 		fputs(". . . message not sent.\n", stderr);

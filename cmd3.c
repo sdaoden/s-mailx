@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)cmd3.c	1.6 (gritter) 2/16/01";
 #endif
 #endif /* not lint */
 
@@ -148,24 +148,36 @@ overf:
 	return(0);
 }
 
-/*
- * Print out a nice help message from some file or another.
- */
+static const char helptext[] =
+"    Nail   Commands\n\
+t <message list>                type messages\n\
+n                               goto and type next message\n\
+e <message list>                edit messages\n\
+f <message list>                give head lines of messages\n\
+d <message list>                delete messages\n\
+s <message list> file           append messages to file\n\
+u <message list>                undelete messages\n\
+R <message list>                reply to message senders\n\
+r <message list>                reply to message senders and all recipients\n\
+pre <message list>              make messages go back to /var/spool/mail\n\
+m <user list>                   mail to specific users\n\
+q                               quit, saving unresolved messages in mbox\n\
+x                               quit, do not remove system mailbox\n\
+h                               print out active message headers\n\
+!                               shell escape\n\
+cd [directory]                  chdir to directory or home if none given\n\
+\n\
+A <message list> consists of integers, ranges of same, or user names separated\n\
+by spaces.  If omitted, Nail uses the last message typed.\n\
+\n\
+A <user list> consists of user names or aliases separated by spaces.\n\
+Aliases are defined in .mailrc in your home directory.\n";
 
 int
 help(v)
 	void *v;
 {
-	int c;
-	FILE *f;
-
-	if ((f = Fopen(PATH_HELP, "r")) == (FILE *)NULL) {
-		perror(PATH_HELP);
-		return(1);
-	}
-	while ((c = getc(f)) != EOF)
-		putchar(c);
-	Fclose(f);
+	fputs(helptext, stdout);
 	return(0);
 }
 

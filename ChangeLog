@@ -1,3 +1,11 @@
+[9.26] released 2/17/01
+* Avoid to prepend or append multiple newline characters to the record folder.
+* Handle unquoted multipart boundaries again.
+* Help texts are compiled into the binary. Old files can be deleted.
+* nail.rc gets installed in /etc and is not overwritten if it exists.
+* Check for iswprint() before using wide character code.
+* Use a non-zero exit status if a message could not get formatted in send mode.
+
 [9.25] released 1/25/01
 * Fixed the problems some people had when viewing multipart messages.
 * Added the -r startup option to specify a From address.

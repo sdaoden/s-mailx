@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.8 (gritter) 1/19/01
+.\"     Sccsid: @(#)nail.1	1.9 (gritter) 2/16/01
 .\"
-.TH NAIL 1 "1/19/01" "nail 9.25" "User Commands"
+.TH NAIL 1 "2/16/01" "nail 9.25" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -114,7 +114,7 @@ In particular, the
 character when sending mail is only active in interactive mode.
 .TP
 .B \-n
-Inhibits reading /usr/etc/nail.rc upon startup.
+Inhibits reading /etc/nail.rc upon startup.
 .TP
 .B \-N
 Inhibits the initial display of message headers when reading mail
@@ -1204,7 +1204,7 @@ Is used as startup file instead of ~/.mailrc if set.
 ~/.mailrc
 File giving initial commands.
 .TP
-/usr/etc/nail.rc
+/etc/nail.rc
 System wide initialization file.
 .TP
 ~/.mime.types
@@ -1212,9 +1212,6 @@ Personal MIME types.
 .TP
 /etc/mime.types
 System wide MIME types.
-.TP
-/usr/lib/nail.*help
-Help files.
 .SH "SEE ALSO"
 fetchmail(1),
 fmt(1),

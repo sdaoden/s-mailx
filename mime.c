@@ -35,7 +35,7 @@
 static char copyright[] =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.15 (gritter) 1/18/01";
+static char sccsid[]  = "@(#)mime.c	1.17 (gritter) 2/17/01";
 #endif
 #endif /* not lint */
 
@@ -112,7 +112,7 @@ unsigned char c;
 	return 0;
 }
 
-#ifdef	HAVE_MBTOWC
+#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
 /*
  * A mbstowcs()-alike function that transparently handles invalid sequences.
  */
@@ -140,7 +140,7 @@ size_t nwcs;
 	mbtowc(pwcs, NULL, MB_CUR_MAX);
 	return nwcs - n;
 }
-#endif	/* HAVE_MBTOWC */
+#endif	/* HAVE_MBTOWC && HAVE_ISWPRINT */
 
 /*
  * Replace non-printable characters in s with question marks.
@@ -151,11 +151,11 @@ char *s;
 size_t l;
 {
 #ifdef	HAVE_SETLOCALE
-#ifdef	HAVE_MBTOWC
+	size_t sz;
+#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
 	int i;
 	wchar_t w[LINESIZE], *p;
 	char *t;
-	size_t sz;
 
 #ifdef	__GLIBC_MINOR__
 #if __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 1
@@ -190,7 +190,7 @@ size_t l;
 #else	/* !MB_CUR_MAX */
 	/*NOTREACHED*/
 #endif	/* !MB_CUR_MAX */
-#endif	/* HAVE_MBTOWC */
+#endif	/* HAVE_MBTOWC && HAVE_ISWPRINT */
 	sz = l;
 	for (; l > 0 && *s; s++, l--) {
 		if (!isprint(*s & 0377) && *s != '\n' && *s != '\r'
@@ -224,8 +224,7 @@ char *name;
 			err++;
 		} else if (in_domain == 2) {
 			if (*p == ']' && p[1] != '\0' || *p == '\0'
-					|| *p == '\\' || *p == '\n'
-					|| spacechar(*p)) {
+					|| *p == '\\' || blankchar(*p)) {
 				err++;
 				break;
 			}
@@ -520,7 +519,7 @@ char *h;
 	if ((p = strchr(h, ':')) == NULL)
 		return MIME_NONE;
 	p++;
-	while (*p && spacechar(*p))
+	while (*p && blankchar(*p))
 		p++;
 	if (strncasecmp(p, "7bit", 4) == 0)
 		return MIME_7B;
@@ -547,7 +546,7 @@ char *h;
 	if ((p = strchr(h, ':')) == NULL)
 		return 1;
 	p++;
-	while (*p && spacechar(*p))
+	while (*p && blankchar(*p))
 		p++;
 	if (strchr(p, '/') == NULL)	/* for compatibility with non-MIME */
 		return MIME_TEXT;
@@ -575,7 +574,7 @@ char *param, *h;
 	if ((p = strcasestr(h, param)) == NULL)
 		return NULL;
 	p += strlen(param);
-	while (spacechar(*p))
+	while (blankchar(*p))
 		p++;
 	if (*p == '\"') {
 		p++;
@@ -584,7 +583,7 @@ char *param, *h;
 		sz = q - p;
 	} else {
 		q = p;
-		while (spacechar(*q) == 0 && *q != ';')
+		while (blankchar(*q) == 0 && *q != ';')
 			q++;
 		sz = q - p;
 	}
@@ -1072,14 +1071,14 @@ FILE *fo;
 		 * Print the field word-wise in quoted-printable.
 		 */
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
-			while (wbeg < upper && spacechar(*wbeg)) {
+			while (wbeg < upper && blankchar(*wbeg)) {
 				fputc(*wbeg++, fo);
 				sz++, col++;
 			}
 			if (wbeg == upper)
 				break;
 			mustquote = 0;
-			for (wend = wbeg; wend < upper && !spacechar(*wend);
+			for (wend = wbeg; wend < upper && !blankchar(*wend);
 					wend++) {
 				if (mustquote_hdr(*wend))
 					mustquote++;
