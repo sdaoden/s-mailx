@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cache.c	1.43 (gritter) 8/17/04";
+static char sccsid[] = "@(#)cache.c	1.44 (gritter) 8/20/04";
 #endif
 #endif /* not lint */
 
@@ -593,7 +593,8 @@ delcache(mp, m)
 	struct mailbox	*mp;
 	struct message	*m;
 {
-	unlink(encuid(mp, m->m_uid));
+	if (unlink(encuid(mp, m->m_uid)) == 0)
+		m->m_flag |= MUNLINKED;
 }
 
 enum okay

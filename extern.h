@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.71 (gritter) 8/17/04
+ *	Sccsid @(#)extern.h	2.72 (gritter) 8/18/04
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -369,3 +369,4 @@ void	transflags __P((struct message *, long, int));
 int	sort __P((void *));
 int	is_prefix __P((const char *, const char *));
 void	makelow __P((char *));
+int	ccache __P((void *));

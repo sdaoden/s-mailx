@@ -83,7 +83,10 @@ LIBS            A list of additional libraries or library paths, such as
 As usual with Makefile variables, you can pass these values to make in
 the environment or on the command line. Thus if you want to avoid to edit
 the Makefile, you can create a shell script to invoke make, or set flags
-of general use (such as CFLAGS) in .profile.
+of general use (such as CFLAGS) in .profile. Note that passing flags on
+the command line does not override those specified in the Makefile itself
+with several commercial versions of make in combination with the recursive
+make calls that are executed at configuration time.
 
 Transition remarks concerning the old configure system
 ======================================================
@@ -158,4 +161,4 @@ anyway.)
 
 In short, everything is better now.
 
-        Gunnar Ritter                                   8/15/04
+        Gunnar Ritter                                   8/28/04

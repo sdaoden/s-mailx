@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap.c	1.129 (gritter) 8/18/04";
+static char sccsid[] = "@(#)imap.c	1.137 (gritter) 8/29/04";
 #endif
 #endif /* not lint */
 
@@ -1097,7 +1097,7 @@ imap_get(mp, m, need)
 		cp = "RFC822.HEADER";
 		break;
 	case NEED_BODY:
-		cp = "RFC822";
+		cp = "BODY.PEEK[]";
 		break;
 	case NEED_UNSPEC:
 		return STOP;
@@ -1357,7 +1357,7 @@ imap_update(mp)
 		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
 			Tflag = NULL;
 	}
-	if (!edit) {
+	if (!edit && mp->mb_perm != 0) {
 		holdbits();
 		for (m = &message[0], c = 0; m < &message[msgcount]; m++) {
 			if (m->m_flag & MBOX)
@@ -1375,21 +1375,26 @@ imap_update(mp)
 					(id = hfield("article-id", m)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
-		if (edit) {
+		if (mp->mb_perm == 0) {
+			dodel = 0;
+		} else if (edit) {
 			dodel = m->m_flag & MDELETED;
 		} else {
 			dodel = !((m->m_flag&MPRESERVE) ||
 					(m->m_flag&MTOUCH) == 0);
 		}
 		if (dodel) {
-			imap_delete(mp, m - message + 1, m);
+			imap_delete(mp, m-message+1, m);
 			gotcha++;
-		} else if (mp->mb_type != MB_CACHE ||
+		} else {
+			if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
+				imap_store(mp, m, m-message+1, '+', "\\Seen");
+			if (mp->mb_type != MB_CACHE ||
 				!edit && (!(m->m_flag&(MBOXED|MSAVED|MDELETED))
 					|| (m->m_flag &
 						(MBOXED|MPRESERVE|MTOUCH)) ==
 				  		(MPRESERVE|MTOUCH)) ||
-				edit && !(m->m_flag & MDELETED)) {
+				edit && !(m->m_flag & MDELETED))
 			held++;
 		}
 	}
@@ -1398,13 +1403,15 @@ bypass:	if (readstat != NULL)
 	if (gotcha)
 		imap_expunge(mp);
 	for (m = &message[0]; m < &message[msgcount]; m++)
-		putcache(mp, m);
+		if (!(m->m_flag&MUNLINKED) &&
+				m->m_flag&(MBOXED|MDELETED|MSAVED|MSTATUS))
+			putcache(mp, m);
 	if (gotcha && edit) {
 		printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 170, "complete\n") :
 				catgets(catd, CATSET, 212, "updated.\n"));
-	} else if (held && !edit) {
+	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
 			printf(catgets(catd, CATSET, 155,
 				"Held 1 message in %s\n"), mailname);
@@ -2101,18 +2108,24 @@ imap_copy1(mp, m, n, name)
 		ok = OKAY;
 	}
 	name = imap_quotestr(protfile(name));
+	/*
+	 * Since it is not possible to set flags on the copy, the \Seen
+	 * flag must be set on the original to include it in the copy.
+	 */
+	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
+		imap_store(mp, m, n, '+', "\\Seen");
 again:	if (m->m_uid)
 		snprintf(o, sizeof o, "%s UID COPY %lu %s\r\n",
 				tag(1), m->m_uid, name);
 	else
 		snprintf(o, sizeof o, "%s COPY %u %s\r\n",
 				tag(1), n, name);
-	IMAP_OUT(o, MB_COMD, return STOP)
+	IMAP_OUT(o, MB_COMD, goto out)
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, twice);
 	if (response_status == RESPONSE_NO && twice++ == 0) {
 		snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), name);
-		IMAP_OUT(o, MB_COMD, return STOP)
+		IMAP_OUT(o, MB_COMD, goto out)
 		while (mp->mb_active & MB_COMD)
 			ok = imap_answer(mp, 1);
 		if (ok == OKAY) {
@@ -2122,6 +2135,12 @@ again:	if (m->m_uid)
 	}
 	if (queuefp != NULL)
 		Fclose(queuefp);
+	/*
+	 * ... and reset the flag to its initial value so that
+	 * the 'exit' command still leaves the message unread.
+	 */
+out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
+		imap_store(mp, m, n, '-', "\\Seen");
 	return ok;
 }
 
@@ -2296,6 +2315,7 @@ cconnect(vp)
 	void	*vp;
 {
 	char	*cp, *cq;
+	int	omsgcount = msgcount;
 
 	if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd >= 0) {
 		fprintf(stderr, "Already connected.\n");
@@ -2312,16 +2332,20 @@ cconnect(vp)
 		*cq = '\0';
 	unset_internal(savecat("disconnected-", cp));
 	unset_allow_undefined = 0;
-	if (mb.mb_type == MB_CACHE)
+	if (mb.mb_type == MB_CACHE) {
 		imap_setfile1(mailname, 0, edit, 1);
+		if (msgcount > omsgcount)
+			newmailinfo(omsgcount);
+	}
 	return 0;
 }
 
-/*ARGSUSED*/
 int
 cdisconnect(vp)
 	void	*vp;
 {
+	int	*msgvec = vp;
+
 	if (mb.mb_type == MB_CACHE) {
 		fprintf(stderr, "Not connected.\n");
 		return 1;
@@ -2331,10 +2355,34 @@ cdisconnect(vp)
 			return 1;
 		}
 	}
+	if (*msgvec)
+		ccache(vp);
 	assign("disconnected", "");
 	if (mb.mb_type == MB_IMAP) {
 		sclose(&mb.mb_sock);
 		imap_setfile1(mailname, 0, edit, 1);
+	}
+	return 0;
+}
+int
+ccache(vp)
+	void	*vp;
+{
+	int	*msgvec = vp, *ip;
+	struct message	*mp;
+
+	if (mb.mb_type != MB_IMAP) {
+		fprintf(stderr, "Not connected to an IMAP server.\n");
+		return 1;
+	}
+	if (cached_uidvalidity(&mb) == 0) {
+		fprintf(stderr, "The current mailbox is not cached.\n");
+		return 1;
+	}
+	for (ip = msgvec; *ip; ip++) {
+		mp = &message[*ip-1];
+		if (!(mp->m_have & HAVE_BODY))
+			get_body(mp);
 	}
 	return 0;
 }
@@ -2461,6 +2509,15 @@ cconnect(vp)
 /*ARGSUSED*/
 int
 cdisconnect(vp)
+	void	*vp;
+{
+	noimap();
+	return 1;
+}
+
+/*ARGSUSED*/
+int
+ccache(vp)
 	void	*vp;
 {
 	noimap();

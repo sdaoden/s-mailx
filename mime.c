@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.20 (gritter) 8/15/04";
+static char sccsid[]  = "@(#)mime.c	2.21 (gritter) 8/19/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -421,6 +421,11 @@ need_hdrconv(hp, w)
 	}
 	if (w & GBCC) {
 		for (np = hp->h_bcc; np; np = np->n_flink)
+			if (has_highbit(np->n_name))
+				goto needs;
+	}
+	if (w & GREPLYTO) {
+		for (np = hp->h_replyto; np; np = np->n_flink)
 			if (has_highbit(np->n_name))
 				goto needs;
 	}

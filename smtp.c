@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.24 (gritter) 8/14/04";
+static char sccsid[] = "@(#)smtp.c	2.25 (gritter) 8/28/04";
 #endif
 #endif /* not lint */
 
@@ -85,8 +85,10 @@ nodename()
 #endif	/* !HAVE_IPv6_FUNCS */
 #endif	/* HAVE_SOCKETS */
 
-	if ((hn = value("hostname")) != NULL && *hn)
+	if ((hn = value("hostname")) != NULL && *hn) {
+		free(hostname);
 		hostname = sstrdup(hn);
+	}
 	if (hostname == NULL) {
 		uname(&ut);
 		hn = ut.nodename;

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.16 (gritter) 8/17/04";
+static char sccsid[] = "@(#)quit.c	2.17 (gritter) 8/18/04";
 #endif
 #endif /* not lint */
 
@@ -147,9 +147,11 @@ quit()
 
 	/*
 	 * If we are read only, we can't do anything,
-	 * so just return quickly.
+	 * so just return quickly. IMAP can set some
+	 * flags (e.g. "\\Seen") so imap_quit must be
+	 * called even then.
 	 */
-	if (mb.mb_perm == 0)
+	if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
 		return;
 	switch (mb.mb_type) {
 	case MB_FILE:

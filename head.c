@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)head.c	2.6 (gritter) 8/12/04";
+static char sccsid[] = "@(#)head.c	2.7 (gritter) 8/19/04";
 #endif
 #endif /* not lint */
 
@@ -301,10 +301,7 @@ extract_header(fp, hp)
 	struct header *hq = &nh;
 	int lc, c;
 
-	hq->h_to = NULL;
-	hq->h_cc = NULL;
-	hq->h_bcc = NULL;
-	hq->h_subject = NULL;
+	memset(hq, 0, sizeof *hq);
 	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++);
 	rewind(fp);
 	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {

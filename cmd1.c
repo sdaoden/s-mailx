@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.46 (gritter) 8/17/04";
+static char sccsid[] = "@(#)cmd1.c	2.48 (gritter) 8/29/04";
 #endif
 #endif /* not lint */
 
@@ -287,7 +287,8 @@ printhead(mesg, f, threaded)
 	FILE *ibuf;
 
 	mp = &message[mesg-1];
-	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL;
+	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
+		getenv("SYSV3") != NULL;
 	bsdheadline= value("bsdcompat") != NULL || value("bsdheadline") != NULL;
 	if ((mp->m_flag & MNOFROM) == 0) {
 		if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
@@ -343,9 +344,10 @@ printhead(mesg, f, threaded)
 	if (value("datefield") && (cp = hfield("date", mp)) != NULL)
 		hl.l_date = fakedate(rfctime(cp));
 	if (mp->m_xlines > 0)
-		snprintf(lcount, sizeof lcount, "%3ld", mp->m_xlines);
+		snprintf(lcount, sizeof lcount, "%*ld",
+				bsdheadline ? 3 : 4, mp->m_xlines);
 	else
-		strcpy(lcount, "   ");
+		strcpy(lcount, bsdheadline ? "   " : "    ");
 	snprintf(ccount, sizeof ccount, "%-5lu", (unsigned long)mp->m_xsize);
 	if (Iflag) {
 		if ((name = hfield("newsgroups", mp)) == NULL)
@@ -382,7 +384,7 @@ printhead(mesg, f, threaded)
 		}
 	}
 	fprintf(f, bsdheadline ? "%c%c%*d %s%-*.*s  %16.16s %s/%s" :
-			"%c%c%*d %s%-*.*s  %16.16s %s/%s",
+			"%c%c%*d %s%-*.*s %16.16s %s/%s",
 			curind, dispc, numlen, mesg, isto ? "To " : "",
 			fromlen, fromlen, name, hl.l_date, lcount, ccount);
 	if (threaded) {

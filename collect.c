@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.25 (gritter) 8/8/04";
+static char sccsid[] = "@(#)collect.c	2.27 (gritter) 8/29/04";
 #endif
 #endif /* not lint */
 
@@ -171,6 +171,8 @@ struct header *hp;
 			maxlines--;
 		if (hp->h_bcc)
 			maxlines--;
+		if (hp->h_replyto)
+			maxlines--;
 		if (hp->h_attach)
 			maxlines--;
 		if (linecnt > maxlines) {
@@ -187,7 +189,7 @@ struct header *hp;
 	}
 	fprintf(obuf, catgets(catd, CATSET, 62,
 				"-------\nMessage contains:\n"));
-	gf = GTO|GSUBJECT|GCC|GBCC|GNL;
+	gf = GTO|GSUBJECT|GCC|GBCC|GNL|GREPLYTO;
 	if (value("fullnames"))
 		gf |= GCOMMA;
 	puthead(hp, obuf, gf, CONV_TODISP, NULL, NULL);
@@ -431,30 +433,30 @@ collect(hp, printheaders, mp, quotefile, tflag)
 	int getfields;
 	sigset_t oset, nset;
 	long count;
-	const char *tildehelp = catgets(catd, CATSET, 49,
-"-----------------------------------------------------------\n\
-The following ~ escapes are defined:\n\
+	const char tildehelp[] =
+"-------------------- ~ ESCAPES ----------------------------\n\
 ~~              Quote a single tilde\n\
 ~@ [file ...]   Edit attachment list\n\
 ~b users        Add users to \"blind\" cc list\n\
 ~c users        Add users to cc list\n\
 ~d              Read in dead.letter\n\
 ~e              Edit the message buffer\n\
-~f messages     Read in messages\n\
+~f messages     Read in messages without indenting lines\n\
 ~F messages     Same as ~f, but keep all header lines\n\
-~h              Prompt for to list, subject and cc list\n\
+~h              Prompt for to list, subject, cc, and \"blind\" cc list\n\
 ~r file         Read a file into the message buffer\n\
 ~p              Print the message buffer\n\
-~m messages     Read in messages, right shifted by a tab\n\
+~q              Abort message composition and save text to dead.letter\n\
+~m messages     Read in messages with each line indented\n\
 ~M messages     Same as ~m, but keep all header lines\n\
 ~s subject      Set subject\n\
 ~t users        Add users to to list\n\
 ~v              Invoke display editor on message\n\
-~w file         Write message onto file.\n\
-~?              Print this message\n\
+~w file         Write message onto file\n\
+~x              Abort message composition and discard text written so far\n\
 ~!command       Invoke the shell\n\
-~|command       Pipe the message through the command\n\
------------------------------------------------------------\n");
+~:command       Execute a regular command\n\
+-----------------------------------------------------------\n";
 
 	(void) &escape;
 	(void) &eofcount;

@@ -54,7 +54,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.148 (gritter) 8/17/04 -->
+<!--      Sccsid: @(#)nail.1	2.155 (gritter) 8/29/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -81,24 +81,23 @@ nail - send and receive MIME conformant mail
 &nbsp; &nbsp; &nbsp;<A HREF=#10>Recipient address specifications</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#11>Network mail (Internet / ARPA, UUCP, Berknet)</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#12>MIME types</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#13>MIME conformance</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#14>Locale</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#15>Character sets</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#16>Commands</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#17>Tilde escapes</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#18>Variable options</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#19>Binary options</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#20>String Options</A><BR>
-<A HREF=#21>Environment Variables</A><BR>
-<A HREF=#22>Files</A><BR>
-<A HREF=#23>Examples</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#24>IMAP or POP3 client setup</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#25>Reading HTML mail</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#26>Viewing PDF attachments</A><BR>
-<A HREF=#27>See Also</A><BR>
-<A HREF=#28>Notes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#13>Locale</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#14>Character sets</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#15>Commands</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#16>Tilde escapes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#17>Variable options</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#18>Binary options</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#19>String Options</A><BR>
+<A HREF=#20>Environment Variables</A><BR>
+<A HREF=#21>Files</A><BR>
+<A HREF=#22>Examples</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#23>IMAP or POP3 client setup</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#24>Reading HTML mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#25>Viewing PDF attachments</A><BR>
+<A HREF=#26>See Also</A><BR>
+<A HREF=#27>Notes</A><BR>
 </BLOCKQUOTE>
-<A name=29>
+<A name=28>
 
      <H3>SYNOPSIS</H3>
 
@@ -594,18 +593,6 @@ other than newlines and horizontal tabulators.
 </BLOCKQUOTE>
 <A name=13>
 
-    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; MIME conformance</H4>
-</A>
-<BLOCKQUOTE>
-<I>Nail</I> is intended to be
-a MIME-conformant mail user agent,
-with the following exception:
-No special handling of &#39;multipart/alternative&#39; messages is performed.
-All parts with content types of &#39;text&#39; or &#39;message&#39; are shown.
-This is done because the user should see as much information as possible.
-</BLOCKQUOTE>
-<A name=14>
-
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Locale</H4>
 </A>
 <BLOCKQUOTE>
@@ -615,7 +602,7 @@ Thus, its value has to match
 the character set of the terminal
 <I>nail</I> runs on.
 </BLOCKQUOTE>
-<A name=15>
+<A name=14>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Character sets</H4>
 </A>
@@ -643,7 +630,7 @@ is tried to convert, too,
 with characters not in the terminal character set
 replaced by question marks.
 </BLOCKQUOTE>
-<A name=16>
+<A name=15>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Commands</H4>
 </A>
@@ -794,6 +781,12 @@ with no argument,
 the current set of alternate names is displayed.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>cache</B> </TD><TD valign=bottom>
+Only applicable to cached IMAP mailboxes;
+takes a message list and reads the specified messages
+into the IMAP cache.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>cd</B> </TD><TD valign=bottom>
 Same as chdir.
 </TD></TR>
@@ -844,6 +837,11 @@ Same as ignore.
 switch to disconnected mode while retaining the mailbox status.
 See the description of the
 <I>disconnected</I> variable for more information.
+A list of messages may optionally be given as argument;
+the respective messages are then read into the cache
+before the connection is closed.
+Thus &#39;disco *&#39; makes the entire current mailbox
+available for disconnected use.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>dp</B>&nbsp;or<B>&nbsp;dt</B> </TD><TD valign=bottom>
@@ -1404,13 +1402,16 @@ the size in characters of each message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>sort</B> </TD><TD valign=bottom>
-Create and print a sorted representation of the current folder,
+Create a sorted representation of the current folder,
 and change the
 <I>next</I> command and the addressing modes
 such that they refer to messages in the sorted order.
 Message numbers are the same as in regular mode.
-Possible sorting methods are:
-<TABLE width=100% cellpadding=3><!-- tsb: Create and print a sorted representation of the current folder,
+If the
+<I>header</I> variable is set,
+a header summary in the new order is also printed.
+Possible sorting criteria are:
+<TABLE width=100% cellpadding=3><!-- tsb: Create a sorted representation of the current folder,
  -->
 <TR></TR><TR></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1454,19 +1455,28 @@ If the
 the recipient&#39;s real name (if any) is used.
 </TD></TR>
 <TR></TR></TABLE><P></TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+If no argument is given,
+the current sorting criterion is printed.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>source</B> </TD><TD valign=bottom>
 The source command reads commands from a file.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>thread</B> </TD><TD valign=bottom>
-(th) Create and print a threaded representation of the current folder,
+(th) Create a threaded representation of the current folder,
 i.e. indent messages that are replies to other messages
 in the header display,
 and change the
 <I>next</I> command and the addressing modes
 such that they refer to messages in the threaded order.
 Message numbers are the same as in unthreaded mode.
+If the
+<I>header</I> variable is set,
+a header summary in threaded order is also printed.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>top</B> </TD><TD valign=bottom>
@@ -1543,7 +1553,10 @@ Deletes the shortcut names given as arguments.
 Disable sorted or threaded mode (see the
 <I>sort</I> and
 <I>thread</I> commands), return to normal message order
-and print a header summary.
+and,
+if the
+<I>header</I> variable is set,
+print a header summary.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>unthread</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -1598,7 +1611,7 @@ and a &#39;$&#39; lets <I>nail</I> scroll
 to the last window of messages.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=17>
+<A name=16>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Tilde escapes</H4>
 </A>
@@ -1808,7 +1821,7 @@ then you should double that character
 in order to send it.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=18>
+<A name=17>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Variable options</H4>
 </A>
@@ -1826,7 +1839,7 @@ in which case it is only significant
 to see whether they are set or not;
 or string, in which case the actual value is of interest.
 </BLOCKQUOTE>
-<A name=19>
+<A name=18>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Binary options</H4>
 </A>
@@ -2028,7 +2041,9 @@ and comments are retained.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>header</B> </TD><TD valign=bottom>
-Causes the header summary to be written at startup;
+Causes the header summary to be written at startup
+and after commands that affect the number of messages
+or the order of messages in the current folder;
 enabled by default.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -2276,7 +2291,7 @@ so care should be taken that no unauthorized option
 can view the screen if this option is enabled.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=20>
+<A name=19>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; String Options</H4>
 </A>
@@ -2613,9 +2628,10 @@ but saved to the &#39;dead.letter&#39; file instead.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>replyto</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-The address to put into the <I>&#39;Reply-To:&#39;</I> field of the message header.
-If replying to a message, this address is handled
-as if it were in the alternates list.
+A list of addresses to put into the <I>&#39;Reply-To:&#39;</I> field
+of the message header.
+If replying to a message, such addresses are handled
+as if they were in the alternates list.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>screen</B> </TD><TD valign=bottom>
@@ -2855,7 +2871,7 @@ Pathname of the text editor to use
 in the visual command and ~v escape.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=21>
+<A name=20>
 
      <H3>ENVIRONMENT VARIABLES</H3>
 
@@ -2891,7 +2907,7 @@ it is read as startup file.
 Used as directory for temporary files instead of /tmp, if set.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=22>
+<A name=21>
 
      <H3>FILES</H3>
 
@@ -2919,14 +2935,14 @@ Personal MIME types.
 System wide MIME types.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=23>
+<A name=22>
 
      <H3>EXAMPLES</H3>
 
 </A>
 <BLOCKQUOTE>
 </BLOCKQUOTE>
-<A name=24>
+<A name=23>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; IMAP or POP3 client setup</H4>
 </A>
@@ -3168,7 +3184,7 @@ on the authenticity of the CA certificate
 if you fetch it in a way that is trusted by other means,
 such as by personally receiving the cerfiticate on storage media.)
 </BLOCKQUOTE>
-<A name=25>
+<A name=24>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading HTML mail</H4>
 </A>
@@ -3191,7 +3207,7 @@ or
 </PRE>
 will then cause HTML message parts to be converted into a more friendly form.
 </BLOCKQUOTE>
-<A name=26>
+<A name=25>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Viewing PDF attachments</H4>
 </A>
@@ -3211,7 +3227,7 @@ can compromise your system security,
 in particular if you stay not always informed
 about such issues.
 </BLOCKQUOTE>
-<A name=27>
+<A name=26>
 
      <H3>SEE ALSO</H3>
 
@@ -3230,7 +3246,7 @@ locale(7),
 mailaddr(7),
 sendmail(8)
 </BLOCKQUOTE>
-<A name=28>
+<A name=27>
 
      <H3>NOTES</H3>
 
@@ -3271,7 +3287,10 @@ and delete the original.
 The line count for the header display
 is only appropriate if the entire message has been downloaded
 from the server.
-The &#39;exit&#39; command will not cause the message status to be reset.
+The marking of messages as &#39;new&#39; is performed by the IMAP server;
+use of the
+<I>exit</I> command instead of
+<I>quit</I> will not cause it to be reset.
 Message numbers may change with IMAP
 every time before the prompt is printed
 if <I>nail</I> is notified by the server
@@ -3333,6 +3352,13 @@ such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.e. to advise it to do that from a network startup script.
 <P>
+<I>Nail</I> is intended to be
+a MIME-conformant mail user agent,
+with the following exception:
+No special handling of &#39;multipart/alternative&#39; messages is performed;
+all parts with content types of &#39;text&#39; or &#39;message&#39; are shown.
+This is done because the user should see as much information as possible.
+<P>
 A <I>mail</I> command appeared in Version 1 AT&amp;T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
@@ -3354,5 +3380,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.3</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>8/17/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.4</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>8/29/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
 </BODY></HTML>

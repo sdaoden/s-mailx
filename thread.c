@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)thread.c	1.35 (gritter) 8/17/04";
+static char sccsid[] = "@(#)thread.c	1.37 (gritter) 8/29/04";
 #endif
 #endif /* not lint */
 
@@ -399,7 +399,7 @@ thread(vp)
 		free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
 	}
-	if (vp)
+	if (vp && value("header"))
 		return headers(vp);
 	return 0;
 }
@@ -411,7 +411,7 @@ unthread(vp)
 	mb.mb_threaded = 0;
 	free(mb.mb_sorted);
 	mb.mb_sorted = NULL;
-	if (vp)
+	if (vp && value("header"))
 		return headers(vp);
 	return 0;
 }
@@ -520,8 +520,9 @@ sort(vp)
 	msgvec[0] = dot - &message[0] + 1;
 	msgvec[1] = 0;
 	if (args[0] == NULL) {
-		fprintf(stderr, "No sorting method specified.\n");
-		return 1;
+		printf("Current sorting criterion is: %s\n",
+				mb.mb_sorted ? mb.mb_sorted : "unsorted");
+		return 0;
 	}
 	for (i = 0; methnames[i].me_name; i++)
 		if (is_prefix(args[0], methnames[i].me_name))
@@ -616,7 +617,7 @@ sort(vp)
 	finalize(threadroot);
 	mb.mb_threaded = 2;
 	ac_free(ms);
-	return headers(msgvec);
+	return value("header") ? headers(msgvec) : 0;
 }
 
 static char *

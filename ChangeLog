@@ -1,3 +1,32 @@
+[11.4] released 8/29/04
+* The SSL/X509 DNS name verification code was fixed; it used incorrect code
+  from a book which sometimes caused segmentation faults (Bugreport by Lars
+  Kellogg-Stedman).
+* The 'disconnect' command now accepts an optional message list specifying
+  messages to be read into the IMAP cache before the connection is closed.
+* The new 'cache' command reads a list of messages into the IMAP cache.
+* IMAP BODY.PEEK[] is now used when fetching messages from the server, and
+  the '\Seen' flag is set when the 'quit' command is executed. Thus an
+  'exit' command does not cause messages marked to be read.
+* The 'connect'/'online' commands now announce new messages that are found
+  on the server.
+* The 'replyto' variable can now contain multiple addresses.
+* If the 'sort' command is used without arguments, the current sorting
+  criterion is printed.
+* The 'sort', 'thread', 'unsort', and 'unthread' commands now only print a
+  header summary if the 'header' variable is set.
+* The 'size' command has been fixed to print the full sizes of messages that
+  have not yet been entirely read in IMAP and POP3 folders, instead of the
+  sizes of the already downloaded parts.
+* Deleted messages remained in the cache until an IMAP folder was accessed
+  a second time since 11.3. They are now deleted immediately when a folder
+  is quit in online mode.
+* The configuration system now also checks for iconv() in libiconv if it is
+  not found in one of the standard libraries (Matthias Andree).
+* Specifying LIBS on the make command line does now work with several make
+  implementations of commercial Unices too (Bugreports by Matthias Andree,
+  Matt S).
+
 [11.3] released 8/18/04
 * When an IMAP mailbox is opened in threaded/sorted mode and new messages
   arrive or old ones are deleted, the internal thread structure is now

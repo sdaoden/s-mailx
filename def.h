@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.56 (gritter) 8/17/04
+ *	Sccsid @(#)def.h	2.58 (gritter) 8/20/04
  */
 
 /*
@@ -229,7 +229,8 @@ enum mflag {
 	MNOFROM		= (1<<11),	/* no From line */
 	MHIDDEN		= (1<<12),	/* message is hidden to user */
 	MFULLYCACHED	= (1<<13),	/* message is completely cached */
-	MBOXED		= (1<<14)	/* message has been sent to mbox */
+	MBOXED		= (1<<14),	/* message has been sent to mbox */
+	MUNLINKED	= (1<<15)	/* message was unlinked from cache */
 };
 
 struct message {
@@ -333,10 +334,11 @@ enum gfield {
 	GREF	= 4096,		/* References: header */
 	GDATE	= 8192,		/* Date: header */
 	GFULL	= 16384,	/* include full names */
-	GSKIN	= 32768		/* skin names */
+	GSKIN	= 32768,	/* skin names */
+	GREPLYTO= 65536		/* a Reply-To field */
 };
 
-#define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
+#define	GMASK	(GTO|GSUBJECT|GCC|GBCC|GREPLYTO)/* Mask of places from whence */
 
 /*
  * Structure used to pass about the current
@@ -348,6 +350,7 @@ struct header {
 	char *h_subject;		/* Subject string */
 	struct name *h_cc;		/* Carbon copies string */
 	struct name *h_bcc;		/* Blind carbon copies */
+	struct name *h_replyto;		/* Reply-To address */
 	struct name *h_ref;		/* References */
 	struct name *h_smopts;		/* Sendmail options */
 	struct attachment *h_attach;	/* MIME attachments */

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.37 (gritter) 8/15/04";
+static char sccsid[] = "@(#)sendout.c	2.38 (gritter) 8/19/04";
 #endif
 #endif /* not lint */
 
@@ -61,7 +61,8 @@ static char	*send_boundary;
 
 static char	*makeboundary __P((void));
 static char	*getencoding __P((int));
-static struct name	*fixhead __P((struct header *, struct name *, int));
+static struct name	*fixhead __P((struct header *, struct name *,
+				enum gfield));
 static int	put_signature __P((FILE *, int));
 static int	attach_file __P((struct attachment *, FILE *));
 static int	make_multipart __P((struct header *, int, FILE *, FILE *,
@@ -158,7 +159,7 @@ static struct name *
 fixhead(hp, tolist, addauto)
 	struct header *hp;
 	struct name *tolist;
-	int addauto;
+	enum gfield addauto;
 {
 	struct name *np;
 	char	*cp;
@@ -166,6 +167,7 @@ fixhead(hp, tolist, addauto)
 	hp->h_to = NULL;
 	hp->h_cc = NULL;
 	hp->h_bcc = NULL;
+	hp->h_replyto = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
 		if ((np->n_type & GMASK) == GTO)
 			hp->h_to =
@@ -179,15 +181,23 @@ fixhead(hp, tolist, addauto)
 			hp->h_bcc =
 				cat(hp->h_bcc, nalloc(np->n_fullname,
 							np->n_type|GFULL));
-	if (addauto && (cp = value("autocc")) != NULL && *cp) {
-		np = checkaddrs(extract(cp, GCC|GFULL));
+		else if ((np->n_type & GMASK) == GREPLYTO)
+			hp->h_replyto =
+				cat(hp->h_replyto, nalloc(np->n_fullname,
+							np->n_type|GFULL));
+	if (addauto&GCC && (cp = value("autocc")) != NULL && *cp) {
+		np = checkaddrs(sextract(cp, GCC|GFULL));
 		hp->h_cc = cat(hp->h_cc, np);
 		tolist = cat(tolist, np);
 	}
-	if (addauto && (cp = value("autobcc")) != NULL && *cp) {
-		np = checkaddrs(extract(cp, GBCC|GFULL));
+	if (addauto&GBCC && (cp = value("autobcc")) != NULL && *cp) {
+		np = checkaddrs(sextract(cp, GBCC|GFULL));
 		hp->h_bcc = cat(hp->h_bcc, np);
 		tolist = cat(tolist, np);
+	}
+	if (addauto&GREPLYTO && (cp = value("replyto")) != NULL && *cp) {
+		np = checkaddrs(sextract(cp, GREPLYTO|GFULL));
+		hp->h_replyto = cat(hp->h_replyto, np);
 	}
 	return tolist;
 }
@@ -417,7 +427,7 @@ infix(hp, fi)
 	if (((isclean & MIME_HASNUL) == 0 && (isclean & MIME_HIGHBIT) &&
 				strcmp(charset, tcs)) ||
 			(convhdr = need_hdrconv(hp,
-					GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
+				GTO|GSUBJECT|GCC|GBCC|GREPLYTO|GIDENT)) != 0) {
 		if (convhdr)
 			charset = convhdr;
 		if (iconvd != (iconv_t)-1)
@@ -436,7 +446,7 @@ infix(hp, fi)
 #endif	/* HAVE_ICONV */
 	if (puthead(hp, nfo,
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
-		   |GMSGID|GIDENT|GREF|GDATE,
+		   |GMSGID|GIDENT|GREPLYTO|GREF|GDATE,
 		   convert, contenttype, charset)) {
 		Fclose(nfo);
 		Fclose(nfi);
@@ -644,24 +654,19 @@ mail(to, cc, bcc, smopts, subject, attach, quotefile, recipient_record, tflag)
 	struct header head;
 	struct str in, out;
 
+	memset(&head, 0, sizeof head);
 	/* The given subject may be in RFC1522 format. */
 	if (subject != NULL) {
 		in.s = subject;
 		in.l = strlen(subject);
 		mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 		head.h_subject = out.s;
-	} else
-		head.h_subject = NULL;
+	}
 	if (tflag == 0) {
 		head.h_to = to;
 		head.h_cc = cc;
 		head.h_bcc = bcc;
-	} else {
-		head.h_to = NULL;
-		head.h_cc = NULL;
-		head.h_bcc = NULL;
 	}
-	head.h_ref = NULL;
 	head.h_attach = attach;
 	head.h_smopts = smopts;
 	mail1(&head, 0, NULL, quotefile, recipient_record, tflag);
@@ -682,13 +687,8 @@ sendmail_internal(v, recipient_record)
 	char *str = v;
 	struct header head;
 
+	memset(&head, 0, sizeof head);
 	head.h_to = extract(str, GTO|GFULL);
-	head.h_subject = NULL;
-	head.h_cc = NULL;
-	head.h_bcc = NULL;
-	head.h_ref = NULL;
-	head.h_attach = NULL;
-	head.h_smopts = NULL;
 	mail1(&head, 0, NULL, NULL, recipient_record, 0);
 	return(0);
 }
@@ -841,7 +841,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 		printf(catgets(catd, CATSET, 186, "No recipients specified\n"));
 		senderr++;
 	}
-	to = fixhead(hp, to, 1);
+	to = fixhead(hp, to, GCC|GBCC|GREPLYTO);
 	if ((nmtf = infix(hp, mtf)) == NULL) {
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
 		perror("");
@@ -1057,21 +1057,12 @@ puthead(hp, fo, w, convert, contenttype, charset)
 			gotcha++;
 			putc('\n', fo);
 		}
-		addr = value("replyto");
-		if (addr != NULL) {
-			if (mime_name_invalid(addr, 1))
-				return 1;
-			fwrite("Reply-To: ", sizeof (char), 10, fo);
-			if (mime_write(addr, sizeof *addr, strlen(addr), fo,
-					convert == CONV_TODISP ?
-					CONV_NONE:CONV_TOHDR_A,
-					convert == CONV_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0) == 0)
-				return 1;
-			gotcha++;
-			putc('\n', fo);
-		}
+	}
+	if (hp->h_replyto != NULL && w & GREPLYTO) {
+		if (fmt("Reply-To:", hp->h_replyto, fo, w&GCOMMA, 0,
+					convert != CONV_TODISP))
+			return 1;
+		gotcha++;
 	}
 	if (hp->h_to != NULL && w & GTO) {
 		if (fmt("To:", hp->h_to, fo, w&GCOMMA, 0,convert!=CONV_TODISP))
@@ -1306,6 +1297,7 @@ int add_resent;
 	char *tempMail;
 	struct header head;
 
+	memset(&head, 0, sizeof head);
 	if ((to = checkaddrs(to)) == NULL) {
 		senderr++;
 		return 1;
@@ -1325,8 +1317,6 @@ int add_resent;
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
 		return 1;
 	head.h_to = to;
-	head.h_cc = head.h_bcc = head.h_ref = head.h_smopts = NULL;
-	head.h_attach = NULL;
 	to = fixhead(&head, to, 0);
 	if (infix_fw(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;

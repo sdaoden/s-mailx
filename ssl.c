@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)ssl.c	1.2 (gritter) 7/29/04";
+static char sccsid[] = "@(#)ssl.c	1.3 (gritter) 8/20/04";
 #endif
 #endif /* not lint */
 
@@ -332,42 +332,22 @@ ssl_check_host(server, sp)
 	X509 *cert;
 	X509_NAME *subj;
 	char data[256];
-	int i, extcount;
+	GENERAL_NAMES	*gens;
+	GENERAL_NAME	*gen;
+	int	i;
 
 	if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
 		fprintf(stderr, catgets(catd, CATSET, 248,
 				"no certificate from \"%s\"\n"), server);
 		return STOP;
 	}
-	extcount = X509_get_ext_count(cert);
-	for (i = 0; i < extcount; i++) {
-		const char *extstr;
-		X509_EXTENSION *ext;
-
-		ext = X509_get_ext(cert, i);
-		extstr= OBJ_nid2sn(OBJ_obj2nid(X509_EXTENSION_get_object(ext)));
-		if (equal(extstr, "subjectAltName")) {
-			int j;
-			unsigned char *data;
-			STACK_OF(CONF_VALUE) *val;
-			CONF_VALUE *nval;
-			X509V3_EXT_METHOD *meth;
-
-			if ((meth = X509V3_EXT_get(ext)) == NULL)
-				break;
-			data = ext->value->data;
-			val = meth->i2v(meth,
-					meth->d2i(NULL, &data,
-						ext->value->length),
-					NULL);
-			for (j = 0; j < sk_CONF_VALUE_num(val); j++) {
-				/*LINTED*/
-				nval = sk_CONF_VALUE_value(val, j);
-				if (equal(nval->name, "DNS") &&
-						asccasecmp(nval->value, server)
-						== 0)
-					goto found;
-			}
+	gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+	if (gens != NULL) {
+		for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
+			gen = sk_GENERAL_NAME_value(gens, i);
+			if (gen->type == GEN_DNS &&
+					!asccasecmp(gen->d.ia5->data, server))
+				goto found;
 		}
 	}
 	if ((subj = X509_get_subject_name(cert)) != NULL &&

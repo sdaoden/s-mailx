@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.38 (gritter) 8/17/04";
+static char sccsid[] = "@(#)cmd3.c	2.41 (gritter) 8/29/04";
 #endif
 #endif /* not lint */
 
@@ -173,32 +173,32 @@ int
 help(v)
 	void *v;
 {
-	const char *helptext = catgets(catd, CATSET, 36,
-"    Nail   Commands\n\
-t <message list>                type messages\n\
-n                               goto and type next message\n\
-e <message list>                edit messages\n\
-f <message list>                give head lines of messages\n\
-d <message list>                delete messages\n\
-s <message list> file           append messages to file\n\
-u <message list>                undelete messages\n\
-R <message list>                reply to message senders\n\
-r <message list>                reply to message senders and all recipients\n\
-pre <message list>              make messages go back to /var/mail\n\
-m <user list>                   mail to specific users\n\
-q                               quit, saving unresolved messages in mbox\n\
-x                               quit, do not remove system mailbox\n\
-h                               print out active message headers\n\
+	const char *helptext =
+"               %s commands\n\
+type <message list>             type messages\n\
+next                            goto and type next message\n\
+from <message list>             give head lines of messages\n\
+headers                         print out active message headers\n\
+delete <message list>           delete messages\n\
+undelete <message list>         undelete messages\n\
+save <message list> folder      append messages to folder and mark as saved\n\
+copy <message list> folder      append messages to folder without marking them\n\
+write <message list> file       append message texts to file, save attachments\n\
+preserve <message list>         keep incoming messages in mailbox even if saved\n\
+Reply <message list>            reply to message senders\n\
+reply <message list>            reply to message senders and all recipients\n\
+mail addresses                  mail to specific recipients\n\
+file folder                     change to another folder\n\
+quit                            quit and apply changes to folder\n\
+xit                             quit and discard changes made to folder\n\
 !                               shell escape\n\
-cd [directory]                  chdir to directory or home if none given\n\
+cd <directory>                  chdir to directory or home if none given\n\
+list                            list names of all available commands\n\
 \n\
-A <message list> consists of integers, ranges of same, or user names separated\n\
-by spaces.  If omitted, Nail uses the last message typed.\n\
-\n\
-A <user list> consists of user names or aliases separated by spaces.\n\
-Aliases are defined in .mailrc in your home directory.\n");
+A <message list> consists of integers, ranges of same, or other criteria\n\
+separated by spaces.  If omitted, %s uses the last message typed.\n";
 
-	fputs(helptext, stdout);
+	fprintf(stdout, helptext, progname, progname);
 	return(0);
 }
 
@@ -343,6 +343,7 @@ respond_internal(msgvec, recipient_record)
 	struct name *np = NULL;
 	struct header head;
 
+	memset(&head, 0, sizeof head);
 	if (msgvec[1] != 0) {
 		printf(catgets(catd, CATSET, 37,
 			"Sorry, can't reply to multiple messages at once\n"));
@@ -374,12 +375,8 @@ respond_internal(msgvec, recipient_record)
 		np = elide(sextract(cp, GCC|gf));
 		np = delete_alternates(np);
 		head.h_cc = np;
-	} else
-		head.h_cc = NULL;
-	head.h_bcc = NULL;
+	}
 	make_ref(mp, &head);
-	head.h_attach = NULL;
-	head.h_smopts = NULL;
 	mail1(&head, 1, mp, NULL, recipient_record, 0);
 	return(0);
 }
@@ -472,8 +469,12 @@ messize(v)
 	for (ip = msgvec; *ip != 0; ip++) {
 		mesg = *ip;
 		mp = &message[mesg-1];
-		printf(catgets(catd, CATSET, 40, "%d: %ld/%lu\n"),
-				mesg, mp->m_lines, (unsigned long)mp->m_size);
+		printf("%d: ", mesg);
+		if (mp->m_xlines > 0)
+			printf("%ld", mp->m_xlines);
+		else
+			putchar(' ');
+		printf("/%lu\n", (unsigned long)mp->m_xsize);
 	}
 	return(0);
 }
@@ -851,7 +852,7 @@ Respond_internal(msgvec, recipient_record)
 	int *ap;
 	char *cp;
 
-	head.h_to = NULL;
+	memset(&head, 0, sizeof head);
 	for (ap = msgvec; *ap != 0; ap++) {
 		mp = &message[*ap - 1];
 		touch(mp);
@@ -867,11 +868,7 @@ Respond_internal(msgvec, recipient_record)
 	if ((head.h_subject = hfield("subject", mp)) == NULL)
 		head.h_subject = hfield("subj", mp);
 	head.h_subject = reedit(head.h_subject);
-	head.h_cc = NULL;
-	head.h_bcc = NULL;
 	make_ref(mp, &head);
-	head.h_attach = NULL;
-	head.h_smopts = NULL;
 	mail1(&head, 1, mp, NULL, recipient_record, 0);
 	return 0;
 }
