@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.209 (gritter) 9/5/04 -->
+<!--      Sccsid: @(#)nail.1	2.215 (gritter) 9/7/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -456,13 +456,14 @@ the last message in the sorted/threaded order.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>&amp;</B><I>x</I> </TD><TD valign=bottom>
-Only recognized in threaded mode;
+In threaded mode,
 selects the message addressed with
 <I>x</I>, where
 <I>x</I> is any other message specification,
 and all messages from the thread that begins at it.
-If
-<I>n</I> is omitted,
+Otherwise, it is identical to
+<I>x</I>. If
+<I>x</I> is omitted,
 the thread beginning with the current message is selected.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -926,28 +927,28 @@ A synonym for the <I>pipe</I> command.
 <B>account</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (ac) Creates, selects or lists
 an email account.
-An account is formed by a group of variables.
+An account is formed by a group of commands,
+primarily of those to set variables.
 With two or more arguments,
 the first argument gives an account name,
-and the following arguments create a group of variables.
+and the following arguments create a group of commands.
 With one argument,
-the previously created group of variables
-for the account name is activated
-as described for the
-<I>set</I> command,
+the previously created group of commands
+for the account name is executed,
 and a
 <I>folder</I> command is executed for the system mailbox or inbox
 of that account.
 Without arguments,
-the list of accounts is printed.
+the list of accounts and their contents are printed.
 As an example,
 <P>
 <PRE>
-&nbsp;   <B>account</B><I> myisp</I> &#92;
-&nbsp;       folder=imaps://mylogin@imap.myisp.example &#92;
-&nbsp;       record=+Sent &#92;
-&nbsp;       from="myname@myisp.example (My Name)" &#92;
-&nbsp;       smtp=smtp.myisp.example
+&nbsp;   <B>account</B><I> myisp</I> <B>{</B>
+&nbsp;       set folder=imaps://mylogin@imap.myisp.example
+&nbsp;       set record=+Sent
+&nbsp;       set from="myname@myisp.example (My Name)"
+&nbsp;       set smtp=smtp.myisp.example
+&nbsp;   <B>}</B>
 </PRE>
 <P>
 creates an account named &#39;myisp&#39;
@@ -1030,7 +1031,7 @@ of the sender address of the first message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>define</B> </TD><TD valign=bottom>
-Defines a macro.
+(def) Defines a macro.
 A macro definition is a sequence of commands in the following form:
 <P>
 <PRE>
@@ -1047,6 +1048,10 @@ Once defined, a macro can be explicitly invoked using the
 or can be implicitly invoked by setting the
 <I>folder-hook</I> or
 <I>folder-hook-fullname</I> variables.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>defines</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Prints the currently defined macros including their contents.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>delete</B> </TD><TD valign=bottom>
@@ -1187,6 +1192,10 @@ respectively.
 Likewise, if <I>name</I> does not exist,
 but either <I>name</I><B>.gz</B> or <I>name</I><B>.bz2</B> exists,
 the compressed file is used.
+If <I>name</I> refers to a directory
+with the subdirectories &#39;tmp&#39;, &#39;new&#39;, and &#39;cur&#39;,
+it is treated as a folder in
+<I>maildir</I> format.
 A name of the form
 <PRE>
 <P>
@@ -2407,14 +2416,19 @@ For IMAP mailboxes,
 the server is then polled for new mail,
 which may result in delayed operation
 if the connection to the server is slow.
+A
+<I>maildir</I> folder must be re-scanned to determine
+if new mail has arrived.
 </TD></TR>
 <TR valign=top><TD width=6%>
 
 </TD><TD>
 If this variable is set to the special value
-<B>nopoll</B>, the server is not actively asked for new mail,
+<B>nopoll</B>, an IMAP server is not actively asked for new mail,
 but new mail may still be detected and announced
 with any other IMAP command that is sent to the server.
+A
+<I>maildir</I> folder is not scanned then.
 </TD></TR>
 <TR valign=top><TD width=6%>
 
@@ -2930,6 +2944,12 @@ to allow bypassing the configuration with e. g. &#39;MAILRC=/dev/null&#39;.
 Use this file for
 <I>nail</I> commands
 that are not understood by other mailx implementations.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>newfolders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this variable has the value
+<B>maildir</B>, newly created local folders will be in
+<I>maildir</I> format.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ORGANIZATION</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3668,7 +3688,7 @@ You should use IMAP if you can, though;
 first because it requires fewer network operations than POP3
 to get the contents of the mailbox
 and is thus faster;
-and second because message flags
+and second because message attributes
 are maintained by the IMAP server,
 so you can easily distinguish new and old messages
 each time you connect.
@@ -3727,9 +3747,10 @@ is more appropriate than the
 You can put the following in
 <I>~/.nailrc</I>: <P>
 <PRE>
-&nbsp;   <B>account </B><I>myisp </I>&#92;
-&nbsp;       <B>folder=imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example </I>&#92;
-&nbsp;       <B>record=+</B><I>Sent </I><B>MBOX=+</B><I>mbox </I><B>outfolder</B>
+&nbsp;   <B>account </B><I>myisp </I><B>{</B>
+&nbsp;       set <B>folder=imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example</I>
+&nbsp;       set <B>record=+</B><I>Sent </I><B>MBOX=+</B><I>mbox </I><B>outfolder</B>
+&nbsp;   <B>}</B>
 </PRE>
 <P>
 and can then access incoming mail for this account by invoking
@@ -4056,8 +4077,18 @@ from the server.
 The marking of messages as &#39;new&#39; is performed by the IMAP server;
 use of the
 <I>exit</I> command instead of
-<I>quit</I> will not cause it to be reset.
-The &#39;flagged&#39;, &#39;answered&#39;, and &#39;draft&#39; flags are usually permanent,
+<I>quit</I> will not cause it to be reset,
+and if the
+<I>autoinc</I>/<I>newmail</I> variables are unset,
+messages that arrived during a session
+will not be in state &#39;new&#39; anymore
+when the folder is opened again.
+Also if commands queued in disconnected mode are committed,
+the IMAP server will delete the &#39;new&#39; flag
+for all messages in the changed folder,
+and new messages will appear as unread
+when it is selected for viewing later.
+The &#39;flagged&#39;, &#39;answered&#39;, and &#39;draft&#39; attributes are usually permanent,
 but some IMAP servers are known to drop them without notification.
 <!--  This is why nail does not even check if storing them succeeds. -->
 Message numbers may change with IMAP
@@ -4149,5 +4180,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.5</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>9/5/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.6</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>9/7/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>

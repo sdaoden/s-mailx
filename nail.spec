@@ -1,7 +1,7 @@
 # Sccsid @(#)nail.spec	1.26 (gritter) 9/5/04
 Summary: An enhanced implementation of the mailx command
 Name: nail
-Version: 11.5
+Version: 11.6
 Release: 1
 License: BSD
 Group: Applications/Internet
