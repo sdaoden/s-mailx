@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.36 (gritter) 8/14/04";
+static char sccsid[] = "@(#)cmd3.c	2.38 (gritter) 8/17/04";
 #endif
 #endif /* not lint */
 
@@ -452,6 +452,8 @@ unread(v)
 		setdot(&message[*ip-1]);
 		dot->m_flag &= ~(MREAD|MTOUCH);
 		dot->m_flag |= MSTATUS;
+		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
+			imap_unread(&message[*ip-1], *ip);
 	}
 	return(0);
 }
@@ -1009,7 +1011,7 @@ int add_resent;
 {
 	char *name, *str;
 	struct name *to;
-	struct name sn;
+	struct name *sn;
 	int f, *ip, *msgvec;
 
 	str = (char *)v;
@@ -1030,10 +1032,8 @@ int add_resent;
 		msgvec[1] = 0;
 	} else if (getmsglist(str, msgvec, 0) < 0)
 		return 1;
-	sn.n_flink = sn.n_blink = NULL;
-	sn.n_type = GTO;
-	sn.n_name = name;
-	to = usermap(&sn);
+	sn = nalloc(name, GTO);
+	to = usermap(sn);
 	for (ip = msgvec; *ip && ip - msgvec < msgcount; ip++) {
 		if (forward_msg(&message[*ip - 1], to, add_resent) != 0)
 			return 1;

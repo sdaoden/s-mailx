@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)thread.c	1.34 (gritter) 8/15/04";
+static char sccsid[] = "@(#)thread.c	1.35 (gritter) 8/17/04";
 #endif
 #endif /* not lint */
 
@@ -120,9 +120,15 @@ mlook(id, mt, mdata, mprime)
 	int	mprime;
 {
 	struct mitem	*mp;
-	unsigned	c, n = 0;
+	unsigned	h, c, n = 0;
 
-	mp = &mt[c = mhash(id, mprime)];
+	if (id == NULL && (id = hfield("message-id", mdata)) == NULL)
+		return NULL;
+	if (mdata && mdata->m_idhash)
+		h = ~mdata->m_idhash;
+	else
+		h = mhash(id, mprime);
+	mp = &mt[c = h];
 	while (mp->mi_id != NULL) {
 		if (msgidcmp(mp->mi_id, id) == 0)
 			break;
@@ -137,6 +143,7 @@ mlook(id, mt, mdata, mprime)
 	if (mdata != NULL && mp->mi_id == NULL) {
 		mp->mi_id = id;
 		mp->mi_data = mdata;
+		mdata->m_idhash = ~h;
 	}
 	return mp->mi_id ? mp : NULL;
 }
@@ -332,7 +339,7 @@ makethreads(m, count)
 	struct message	*m;
 	long	count;
 {
-	struct mitem	*mt, *ip;
+	struct mitem	*mt;
 	char	*cp;
 	long	i;
 	int	primes[] = {
@@ -353,13 +360,12 @@ makethreads(m, count)
 		mprime = count;	/* not so prime, but better than failure */
 	mt = scalloc(mprime, sizeof *mt);
 	for (i = 0; i < count; i++) {
-		if ((m[i].m_flag&MHIDDEN) == 0 &&
-				(cp = hfield("message-id", &m[i])) != NULL) {
-			ip = mlook(cp, mt, &m[i], mprime);
-			if ((cp = hfield("date", &m[i])) != NULL)
-				m[i].m_date = rfctime(cp);
-			else
-				m[i].m_date = 0;
+		if ((m[i].m_flag&MHIDDEN) == 0) {
+			mlook(NULL, mt, &m[i], mprime);
+			if (m[i].m_date == 0) {
+				if ((cp = hfield("date", &m[i])) != NULL)
+					m[i].m_date = rfctime(cp);
+			}
 		}
 		m[i].m_child = m[i].m_younger = m[i].m_elder =
 			m[i].m_parent = NULL;
@@ -509,6 +515,7 @@ sort(vp)
 	struct str	in, out;
 	int	i, n, msgvec[2];
 	int	showname = value("showname") != NULL;
+	struct message	*mp;
 
 	msgvec[0] = dot - &message[0] + 1;
 	msgvec[1] = 0;
@@ -542,36 +549,36 @@ sort(vp)
 		break;
 	}
 	for (n = 0, i = 0; i < msgcount; i++) {
-		if ((message[i].m_flag&MHIDDEN) == 0) {
+		mp = &message[i];
+		if ((mp->m_flag&MHIDDEN) == 0) {
 			switch (method) {
 			case SORT_DATE:
-				if ((cp = hfield("date", &message[i])) != NULL)
-					ms[n].ms_u.ms_long = rfctime(cp);
-				else
-					ms[n].ms_u.ms_long = 0;
+				if (mp->m_date == 0 &&
+						(cp = hfield("date", mp)) != 0)
+					mp->m_date = rfctime(cp);
+				ms[n].ms_u.ms_long = mp->m_date;
 				break;
 			case SORT_STATUS:
-				if (message[i].m_flag & MDELETED)
+				if (mp->m_flag & MDELETED)
 					ms[n].ms_u.ms_long = 1;
-				else if ((message[i].m_flag&(MNEW|MREAD))==MNEW)
+				else if ((mp->m_flag&(MNEW|MREAD)) == MNEW)
 					ms[n].ms_u.ms_long = 90;
-				else if ((message[i].m_flag&(MNEW|MBOX))==MBOX)
+				else if ((mp->m_flag&(MNEW|MBOX)) == MBOX)
 					ms[n].ms_u.ms_long = 70;
-				else if (message[i].m_flag & MNEW)
+				else if (mp->m_flag & MNEW)
 					ms[n].ms_u.ms_long = 80;
-				else if (message[i].m_flag  & MREAD)
+				else if (mp->m_flag & MREAD)
 					ms[n].ms_u.ms_long = 40;
 				else
 					ms[n].ms_u.ms_long = 60;
 				break;
 			case SORT_SIZE:
-				ms[n].ms_u.ms_long = message[i].m_xsize;
+				ms[n].ms_u.ms_long = mp->m_xsize;
 				break;
 			case SORT_FROM:
 			case SORT_TO:
 				if ((cp = hfield(method == SORT_FROM ?
-						"from" : "to",
-						&message[i])) != NULL) {
+						"from" : "to", mp)) != NULL) {
 					ms[n].ms_u.ms_char = showname ?
 						realname(cp) : skin(cp);
 					makelow(ms[n].ms_u.ms_char);
@@ -580,7 +587,7 @@ sort(vp)
 				break;
 			default:
 			case SORT_SUBJECT:
-				if ((cp=hfield("subject", &message[i])) != 0) {
+				if ((cp = hfield("subject", mp)) != NULL) {
 					in.s = cp;
 					in.l = strlen(in.s);
 					mime_fromhdr(&in, &out, TD_ICONV);
@@ -594,9 +601,8 @@ sort(vp)
 			}
 			ms[n++].ms_n = i;
 		}
-		message[i].m_child = message[i].m_younger = message[i].m_elder =
-			message[i].m_parent = NULL;
-		message[i].m_level = 0;
+		mp->m_child = mp->m_younger = mp->m_elder = mp->m_parent = NULL;
+		mp->m_level = 0;
 	}
 	if (n > 0) {
 		qsort(ms, n, sizeof *ms, func);

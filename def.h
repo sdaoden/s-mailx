@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.54 (gritter) 8/14/04
+ *	Sccsid @(#)def.h	2.56 (gritter) 8/17/04
  */
 
 /*
@@ -228,13 +228,15 @@ enum mflag {
 	MBOX		= (1<<10),	/* Send this to mbox, regardless */
 	MNOFROM		= (1<<11),	/* no From line */
 	MHIDDEN		= (1<<12),	/* message is hidden to user */
-	MFULLYCACHED	= (1<<13)	/* message is completely cached */
+	MFULLYCACHED	= (1<<13),	/* message is completely cached */
+	MBOXED		= (1<<14)	/* message has been sent to mbox */
 };
 
 struct message {
 	enum mflag	m_flag;		/* flags */
 	time_t	m_time;			/* time the message was sent */
 	time_t	m_date;			/* time in the 'Date' field */
+	unsigned	m_idhash;	/* hash on Message-ID for threads */
 	int	m_block;		/* block number of this message */
 	size_t	m_offset;		/* offset in block of message */
 	size_t	m_size;			/* Bytes in the message */

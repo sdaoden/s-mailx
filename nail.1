@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.146 (gritter) 8/14/04
+.\"     Sccsid: @(#)nail.1	2.148 (gritter) 8/17/04
 .\"
-.TH NAIL 1 "8/14/04" "nail 11.2" "User Commands"
+.TH NAIL 1 "8/17/04" "nail 11.3" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -1799,24 +1799,24 @@ the sender to be included in the group.
 .B newmail
 Checks for new mail in the current folder
 each time the prompt is printed.
-.IP
 For IMAP mailboxes,
-new mail can be detected at any time
-even if this variable is not set
-and may also result in fewer messages within the folder
-if messages have been deleted on the server
-by another process or client.
-In this case, `Expunged \fIn\fR messages' is printed,
-and message numbers may have changed.
-Thus on IMAP mailboxes,
-the only effect of setting this variable
-is to check for new mail before the prompt is printed
-even if no other IMAP command is issued before.
+the server is then polled for new mail,
+which may result in delayed operation
+if the connection to the server is slow.
 .IP
-If this variable contains the special value
-.BR noimap ,
-it is treated as if it was not set for IMAP mailboxes
-but is effective for local folders.
+If this variable is set to the special value
+.BR nopoll ,
+the server is not actively asked for new mail,
+but new mail may still be detected and announced
+with any other IMAP command that is sent to the server.
+.IP
+In any case,
+the IMAP server may send notifications about messages
+that have been deleted on the server
+by another process or client.
+In this case, `Expunged \fIn\fR messages' is printed
+regardless of this variable,
+and message numbers may have changed.
 .TP
 .B noheader
 Setting the option noheader is the same

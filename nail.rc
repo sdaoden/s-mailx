@@ -2,7 +2,7 @@
 # The values below are reasonable defaults.
 # See nail(1) for further options.
 
-# Sccsid @(#)nail.rc	2.2 (gritter) 8/15/04
+# Sccsid @(#)nail.rc	2.3 (gritter) 8/17/04
 
 # Append rather than prepend to mailboxes. Unsetting this is likely to
 # confuse other mail clients.
@@ -42,8 +42,9 @@ set showname
 # Display the recipients of messages sent by the user himself.
 set showto
 
-# Automatically check for new messages at each prompt on local accounts.
-set newmail=noimap
+# Automatically check for new messages at each prompt, but avoid polling
+# of IMAP servers.
+set newmail=nopoll
 
 # Hide some header fields which are uninteresting for most human readers.
 ignore received in-reply-to message-id references

@@ -1,3 +1,24 @@
+[11.3] released 8/18/04
+* When an IMAP mailbox is opened in threaded/sorted mode and new messages
+  arrive or old ones are deleted, the internal thread structure is now
+  properly rebuilt. The previous failure to do so made nail dump core in
+  most cases.
+* The 'forward' command was fixed; it used an unitialized variable since
+  release 11.2, possibly leading to segmentation faults (Bugreport by Bob
+  Tennent).
+* The behavior of the 'autoinc'/'newmail' variables regarding IMAP folders
+  was changed. If both variables are unset, announcements are printed only
+  if messages have been deleted on the server.
+* The 'new'/'unread' commands now also work with IMAP folders.
+* When a message is deleted or saved in disconnected mode, its cache entry
+  is not removed until the message is actually removed from the server in
+  online mode. This in particular means that saved or 'mbox'ed messages
+  are still available in IMAP inboxes in disconnected mode until they have
+  reached their target folder in online mode.
+* When new messages were received in an IMAP mailbox after messages had
+  been deleted in a previously visited IMAP mailbox, 'Expunged x messages'
+  was erroneously printed.
+
 [11.2] released 8/15/04
 * A message thread-oriented mode is now optionally available; cf. the 'thread'
   and 'unthread' commands, the 'autothread' variable, and addressing changes.

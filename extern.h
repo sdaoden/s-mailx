@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.70 (gritter) 8/14/04
+ *	Sccsid @(#)extern.h	2.71 (gritter) 8/17/04
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -288,6 +288,7 @@ void	imap_getheaders __P((int, int));
 void	imap_quit __P((void));
 int	imap_newmail __P((int));
 enum okay	imap_undelete __P((struct message *, int));
+enum okay	imap_unread __P((struct message *, int));
 enum okay	imap_copy __P((struct message *, int, const char *));
 int	imap_thisaccount __P((const char *));
 int	imap_imap __P((void *));

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cache.c	1.42 (gritter) 8/14/04";
+static char sccsid[] = "@(#)cache.c	1.43 (gritter) 8/17/04";
 #endif
 #endif /* not lint */
 
@@ -92,7 +92,7 @@ static enum okay	dequeue1 __P((struct mailbox *));
 
 static const char	infofmt[] = "%c %lu %u %lu %lu";
 #define	INITSKIP	128L
-#define	USEBITS(f)	((f) & (MDELETED|MREAD))
+#define	USEBITS(f)	((f) & (MSAVED|MDELETED|MREAD|MBOXED))
 
 static const char	README1[] = "\
 This is a cache directory maintained by nail(1). You should not change any\n\
@@ -290,7 +290,7 @@ putcache(mp, m)
 
 	if ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
 			m->m_uid == 0 || m->m_time == 0 ||
-			m->m_flag & MFULLYCACHED)
+			(m->m_flag & (MTOUCH|MFULLYCACHED) == MFULLYCACHED))
 		return;
 	if (m->m_have & HAVE_BODY)
 		c = 'B';

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.47 (gritter) 8/12/04";
+static char sccsid[] = "@(#)fio.c	2.48 (gritter) 8/17/04";
 #endif
 #endif /* not lint */
 
@@ -103,11 +103,8 @@ setptr(ibuf, offset)
 	maybe = 1;
 	inhead = 0;
 	thiscnt = 0;
+	memset(&this, 0, sizeof this);
 	this.m_flag = MUSED|MNEW;
-	this.m_size = 0;
-	this.m_lines = 0;
-	this.m_block = 0;
-	this.m_offset = 0;
 	filesize = mailsize - offset;
 	for (;;) {
 		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)

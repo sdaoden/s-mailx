@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.48 (gritter) 8/15/04";
+static char sccsid[] = "@(#)lex.c	2.49 (gritter) 8/17/04";
 #endif
 #endif /* not lint */
 
@@ -262,7 +262,7 @@ void
 commands()
 {
 	int eofloop = 0;
-	int n;
+	int n, x;
 	char *linebuf = NULL, *av, *nv;
 	size_t linesize = 0;
 
@@ -289,13 +289,16 @@ commands()
 					mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
-				n = (av && strcmp(av, "noimap")) |
-					(nv && strcmp(nv, "noimap"));
+				n = (av && strcmp(av, "noimap") &&
+						strcmp(av, "nopoll")) |
+					(nv && strcmp(nv, "noimap") &&
+					 	strcmp(nv, "nopoll"));
+				x = !(av || nv);
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
 						(mb.mb_type == MB_IMAP &&
-						imap_newmail(n))) {
+						imap_newmail(n) > x)) {
 					int odot = dot - &message[0];
 					int odid = did_print_dot;
 

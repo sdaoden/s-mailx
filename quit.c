@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.15 (gritter) 8/7/04";
+static char sccsid[] = "@(#)quit.c	2.16 (gritter) 8/17/04";
 #endif
 #endif /* not lint */
 
@@ -423,6 +423,7 @@ makembox()
 				Fclose(obuf);
 				return STOP;
 			}
+			mp->m_flag |= MBOXED;
 		}
 
 	/*
