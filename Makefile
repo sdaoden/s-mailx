@@ -22,11 +22,13 @@ UCBINSTALL	= /usr/ucb/install
 #CFLAGS		=
 #CPPFLAGS	=
 #LDFLAGS		=
-#WARN		= -Wall -Werror
+#WARN		= -Wall -Wno-parentheses -Werror
 
 # Some RedHat versions need INCLUDES = -I/usr/kerberos/include to compile
-# with OpenSSL.
+# with OpenSSL, or to compile with GSSAPI authentication included. In the
+# latter case, they also need LDFLAGS = -L/usr/kerberos/lib.
 #INCLUDES	= -I/usr/kerberos/include
+#LDFLAGS	= -L/usr/kerberos/lib
 
 SHELL		= /bin/sh
 
@@ -44,9 +46,11 @@ FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
 
 OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
-	dotlock.o edit.o fio.o getname.o getopt.o head.o imap.o lex.o list.o \
-	lzw.o main.o mime.o names.o pop3.o popen.o quit.o send.o \
-	sendout.o smtp.o ssl.o strings.o temp.o tty.o v7.local.o vars.o \
+	dotlock.o edit.o fio.o getname.o getopt.o head.o hmac.o imap.o \
+	lex.o list.o lzw.o \
+	main.o md5.o mime.o names.o pop3.o popen.o quit.o send.o \
+	sendout.o smtp.o ssl.o strings.o temp.o thread.o tty.o \
+	v7.local.o vars.o \
 	version.o
 
 .SUFFIXES: .o .c .x
@@ -66,6 +70,8 @@ nail: $(OBJ) LIBS
 	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o nail
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
+imap.o: imap_gssapi.c
+md5.o imap.o hmac.o smtp.o aux.o pop3.o: md5.h
 
 config.h LIBS:
 	$(SHELL) ./makeconfig

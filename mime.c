@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.19 (gritter) 8/1/04";
+static char sccsid[]  = "@(#)mime.c	2.20 (gritter) 8/15/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -74,17 +74,17 @@ static size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif
 static char	*getcharset __P((int));
 static int	has_highbit __P((const char *));
+#ifdef	HAVE_ICONV
 static void	uppercopy __P((char *, const char *));
 static void	stripdash __P((char *));
-#ifdef	HAVE_ICONV
 static size_t	iconv_ft __P((iconv_t, char **, size_t *, char **, size_t *));
+static void	invalid_seq __P((int));
 #endif
 static int	is_this_enc __P((const char *, const char *));
 static char	*mime_tline __P((char *, char *));
 static char	*mime_type __P((char *, char *));
 static int	gettextconversion __P((void));
 static enum mimeclean	mime_isclean __P((FILE*));
-static void	invalid_seq __P((int));
 static char	*ctohex __P((int, char *));
 static size_t	mime_write_toqp __P((struct str *, FILE *, int (*)(int)));
 static void	mime_str_toqp __P((struct str *, struct str *, int (*)(int)));
@@ -561,6 +561,17 @@ char **outb;
 	}
 	return sz;
 }
+
+/*
+ * Print an error because of an invalid character sequence.
+ */
+/*ARGSUSED*/
+static void
+invalid_seq(c)
+char c;
+{
+	/*fprintf(stderr, "iconv: cannot convert %c\n", c);*/
+}
 #endif	/* HAVE_ICONV */
 
 static int
@@ -917,17 +928,6 @@ enum mimeclean *isclean;
 		*charset = getcharset(*isclean);
 	}
 	return convert;
-}
-
-/*
- * Print an error because of an invalid character sequence.
- */
-/*ARGSUSED*/
-static void
-invalid_seq(c)
-char c;
-{
-	/*fprintf(stderr, "iconv: cannot convert %c\n", c);*/
 }
 
 /*
@@ -1345,8 +1345,10 @@ convhdra(str, len, fp)
 	size_t	len;
 	FILE	*fp;
 {
+#ifdef	HAVE_ICONV
 	char	*ip, *op;
 	size_t	isz, osz;
+#endif
 	struct str	cin;
 	size_t	cbufsz;
 	char	*cbuf;

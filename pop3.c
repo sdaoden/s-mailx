@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.20 (gritter) 8/3/04";
+static char sccsid[] = "@(#)pop3.c	2.27 (gritter) 8/14/04";
 #endif
 #endif /* not lint */
 
@@ -50,7 +50,8 @@ static char sccsid[] = "@(#)pop3.c	2.20 (gritter) 8/3/04";
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
-#include <termios.h>
+
+#include "md5.h"
 
 /*
  * Mail -- a mail program
@@ -87,7 +88,14 @@ static void pop3catch __P((int));
 static enum okay pop3_noop __P((struct mailbox *));
 static void pop3alarm __P((int));
 static enum okay pop3_pass __P((struct mailbox *, const char *));
-static enum okay pop3_user __P((struct mailbox *, char *, const char *));
+static enum okay pop3_user __P((struct mailbox *, char *, const char *,
+			const char *, const char *));
+static char *pop3_find_timestamp __P((const char *));
+static int pop3_use_starttls __P((const char *));
+static int pop3_use_apop __P((const char *));
+static enum okay pop3_apop __P((struct mailbox *, char *, const char *,
+			const char *));
+static enum okay pop3_apop1 __P((struct mailbox *, const char *, const char *));
 static enum okay pop3_stat __P((struct mailbox *, off_t *, int *));
 static enum okay pop3_list __P((struct mailbox *, int, size_t *));
 static void pop3_init __P((struct mailbox *, int));
@@ -239,62 +247,156 @@ pop3_pass(mp, pass)
 	return OKAY;
 }
 
+static char *
+pop3_find_timestamp(bp)
+	const char	*bp;
+{
+	const char	*cp, *ep;
+	char	*rp;
+	int	hadat = 0;
+
+	if ((cp = strchr(bp, '<')) == NULL)
+		return NULL;
+	for (ep = cp; *ep; ep++) {
+		if (spacechar(*ep&0377))
+			return NULL;
+		else if (*ep == '@')
+			hadat = 1;
+		else if (*ep == '>') {
+			if (hadat != 1)
+				return NULL;
+			break;
+		}
+	}
+	if (*ep != '>')
+		return NULL;
+	rp = salloc(ep - cp + 2);
+	memcpy(rp, cp, ep - cp + 1);
+	rp[ep - cp + 1] = '\0';
+	return rp;
+}
+
 static enum okay
-pop3_user(mp, xuser, pass)
+pop3_apop(mp, xuser, pass, ts)
+	struct mailbox	*mp;
+	char	*xuser;
+	const char	*pass, *ts;
+{
+	char	*user, *catp, *xp;
+	unsigned char	digest[16];
+	MD5_CTX	ctx;
+
+retry:	if (xuser == NULL) {
+		if ((user = getuser()) == NULL)
+			return STOP;
+	} else
+		user = xuser;
+	if (pass == NULL) {
+		if ((pass = getpassword(&otio, &reset_tio)) == NULL)
+			return STOP;
+	}
+	catp = savecat(ts, pass);
+	MD5Init(&ctx);
+	MD5Update(&ctx, (unsigned char *)catp, strlen(catp));
+	MD5Final(digest, &ctx);
+	xp = md5tohex(digest);
+	if (pop3_apop1(mp, user, xp) == STOP) {
+		pass = NULL;
+		goto retry;
+	}
+	return OKAY;
+}
+
+static enum okay
+pop3_apop1(mp, user, xp)
+	struct mailbox	*mp;
+	const char	*user, *xp;
+{
+	char	o[LINESIZE];
+
+	snprintf(o, sizeof o, "APOP %s %s\r\n", user, xp);
+	POP3_OUT(o, MB_COMD)
+	POP3_ANSWER()
+	return OKAY;
+}
+
+static int
+pop3_use_starttls(uhp)
+	const char	*uhp;
+{
+	char	*var;
+
+	if (value("pop3-use-starttls"))
+		return 1;
+	var = savecat("pop3-use-starttls-", uhp);
+	return value(var) != NULL;
+}
+
+static int
+pop3_use_apop(uhp)
+	const char	*uhp;
+{
+	char	*var;
+
+	if (value("pop3-use-apop"))
+		return 1;
+	var = savecat("pop3-use-apop-", uhp);
+	return value(var) != NULL;
+}
+
+static enum okay
+pop3_user(mp, xuser, pass, uhp, xserver)
 	struct mailbox *mp;
 	char *xuser;
-	const char *pass;
+	const char *pass, *uhp, *xserver;
 {
-	char *line = NULL, o[LINESIZE], *user;
-	size_t linesize = 0;
-	struct termios tio;
-	int i;
+	char o[LINESIZE], *user, *ts = NULL, *server, *cp;
 
 	POP3_ANSWER()
-retry:	if (xuser == NULL) {
-		if (is_a_tty[0]) {
-			fputs("User: ", stdout);
-			fflush(stdout);
-		}
-		if (readline(stdin, &line, &linesize) == 0) {
-			if (line)
-				free(line);
+	if (pop3_use_apop(uhp)) {
+		if ((ts = pop3_find_timestamp(pop3buf)) == NULL) {
+			fprintf(stderr, "Could not determine timestamp from "
+				"server greeting. Impossible to use APOP.\n");
 			return STOP;
 		}
-		user = line;
+	}
+	if ((cp = strchr(xserver, ':')) != NULL) {
+		server = salloc(cp - xserver + 1);
+		memcpy(server, xserver, cp - xserver);
+		server[cp - xserver] = '\0';
+	} else
+		server = (char *)xserver;
+#ifdef	USE_SSL
+	if (mp->mb_sock.s_ssl == NULL && pop3_use_starttls(uhp)) {
+		POP3_OUT("STLS\r\n", MB_COMD)
+		POP3_ANSWER()
+		if (ssl_open(server, &mp->mb_sock, uhp) != OKAY)
+			return STOP;
+	}
+#else	/* !USE_SSL */
+	if (pop3_use_starttls(uhp)) {
+		fprintf(stderr, "No SSL support compiled in.\n");
+		return STOP;
+	}
+#endif	/* !USE_SSL */
+	if (ts != NULL)
+		return pop3_apop(mp, xuser, pass, ts);
+retry:	if (xuser == NULL) {
+		if ((user = getuser()) == NULL)
+			return STOP;
 	} else
 		user = xuser;
 	snprintf(o, sizeof o, "USER %s\r\n", user);
 	POP3_OUT(o, MB_COMD)
 	POP3_ANSWER()
 	if (pass == NULL) {
-		if (is_a_tty[0]) {
-			fputs("Password: ", stdout);
-			fflush(stdout);
-			tcgetattr(0, &tio);
-			otio = tio;
-			tio.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-			reset_tio = 1;
-			tcsetattr(0, TCSAFLUSH, &tio);
-		}
-		i = readline(stdin, &line, &linesize);
-		if (is_a_tty[0]) {
-			fputc('\n', stdout);
-			tcsetattr(0, TCSADRAIN, &otio);
-		}
-		reset_tio = 0;
-		if (i < 0) {
-			if (line)
-				free(line);
+		if ((pass = getpassword(&otio, &reset_tio)) == NULL)
 			return STOP;
-		}
 	}
-	if (pop3_pass(mp, pass ? pass : line) == STOP) {
+	if (pop3_pass(mp, pass) == STOP) {
 		pass = NULL;
 		goto retry;
 	}
-	if (line)
-		free(line);
 	return OKAY;
 }
 
@@ -449,6 +551,7 @@ pop3_setfile(server, newmail, isedit)
 	const char *server;
 	int newmail, isedit;
 {
+	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 	char *user;
@@ -457,41 +560,9 @@ pop3_setfile(server, newmail, isedit)
 
 	(void)&sp;
 	(void)&use_ssl;
+	(void)&user;
 	if (newmail)
 		return 1;
-	quit();
-	edit = isedit;
-	mb.mb_sock.s_fd = -1;
-	if (mb.mb_itf) {
-		fclose(mb.mb_itf);
-		mb.mb_itf = NULL;
-	}
-	if (mb.mb_otf) {
-		fclose(mb.mb_otf);
-		mb.mb_otf = NULL;
-	}
-	initbox(server);
-	mb.mb_type = MB_VOID;
-	pop3lock = 1;
-	saveint = safe_signal(SIGINT, SIG_IGN);
-	savepipe = safe_signal(SIGPIPE, SIG_IGN);
-	if (sigsetjmp(pop3jmp, 1)) {
-		sclose(&mb.mb_sock);
-		safe_signal(SIGINT, saveint);
-		safe_signal(SIGPIPE, savepipe);
-		pop3lock = 0;
-		return 1;
-	}
-	if (saveint != SIG_IGN)
-		safe_signal(SIGINT, pop3catch);
-	if (savepipe != SIG_IGN)
-		safe_signal(SIGPIPE, pop3catch);
-	if ((cp = value("pop3-keepalive")) != NULL) {
-		if ((pop3keepalive = strtol(cp, NULL, 10)) > 0) {
-			savealrm = safe_signal(SIGALRM, pop3alarm);
-			alarm(pop3keepalive);
-		}
-	}
 	if (strncmp(sp, "pop3://", 7) == 0) {
 		sp = &sp[7];
 		use_ssl = 0;
@@ -511,17 +582,47 @@ pop3_setfile(server, newmail, isedit)
 	} else
 		user = NULL;
 	verbose = value("verbose") != NULL;
-	if (sopen(sp, &mb.mb_sock, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
+	if (sopen(sp, &so, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
 				verbose) != OKAY) {
-		pop3_timer_off();
+		return -1;
+	}
+	quit();
+	edit = isedit;
+	mb.mb_sock.s_fd = -1;
+	if (mb.mb_itf) {
+		fclose(mb.mb_itf);
+		mb.mb_itf = NULL;
+	}
+	if (mb.mb_otf) {
+		fclose(mb.mb_otf);
+		mb.mb_otf = NULL;
+	}
+	initbox(server);
+	mb.mb_type = MB_VOID;
+	pop3lock = 1;
+	mb.mb_sock = so;
+	saveint = safe_signal(SIGINT, SIG_IGN);
+	savepipe = safe_signal(SIGPIPE, SIG_IGN);
+	if (sigsetjmp(pop3jmp, 1)) {
+		sclose(&mb.mb_sock);
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		pop3lock = 0;
 		return 1;
 	}
+	if (saveint != SIG_IGN)
+		safe_signal(SIGINT, pop3catch);
+	if (savepipe != SIG_IGN)
+		safe_signal(SIGPIPE, pop3catch);
+	if ((cp = value("pop3-keepalive")) != NULL) {
+		if ((pop3keepalive = strtol(cp, NULL, 10)) > 0) {
+			savealrm = safe_signal(SIGALRM, pop3alarm);
+			alarm(pop3keepalive);
+		}
+	}
 	mb.mb_sock.s_desc = "POP3";
 	mb.mb_sock.s_onclose = pop3_timer_off;
-	if (pop3_user(&mb, user, pass) != OKAY ||
+	if (pop3_user(&mb, user, pass, uhp, sp) != OKAY ||
 			pop3_stat(&mb, &mailsize, &msgcount) != OKAY) {
 		sclose(&mb.mb_sock);
 		pop3_timer_off();

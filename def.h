@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.45 (gritter) 8/7/04
+ *	Sccsid @(#)def.h	2.54 (gritter) 8/14/04
  */
 
 /*
@@ -179,6 +179,7 @@ struct mailbox {
 	} mb_active;
 	FILE *mb_itf;			/* temp file with messages, read open */
 	FILE *mb_otf;			/* same, write open */
+	char *mb_sorted;		/* sort method */
 	enum {
 		MB_VOID,		/* no type (e. g. connection failed) */
 		MB_FILE,		/* local file */
@@ -191,6 +192,7 @@ struct mailbox {
 		MB_EDIT = 02		/* may edit messages in mailbox */
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
+	int mb_threaded;		/* mailbox has been threaded */
 	unsigned long	mb_uidvalidity;	/* IMAP unique identifier validity */
 	char	*mb_imap_account;	/* name of current IMAP account */
 	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
@@ -231,7 +233,8 @@ enum mflag {
 
 struct message {
 	enum mflag	m_flag;		/* flags */
-	time_t	m_time;			/* time in the 'Date:' field */
+	time_t	m_time;			/* time the message was sent */
+	time_t	m_date;			/* time in the 'Date' field */
 	int	m_block;		/* block number of this message */
 	size_t	m_offset;		/* offset in block of message */
 	size_t	m_size;			/* Bytes in the message */
@@ -240,6 +243,12 @@ struct message {
 	long	m_xlines;		/* Lines in the full message */
 	unsigned long	m_uid;		/* IMAP unique identifier */
 	enum havespec	m_have;		/* downloaded parts of the message */
+	struct message	*m_child;	/* first child of this message */
+	struct message	*m_younger;	/* younger brother of this message */
+	struct message	*m_elder;	/* elder brother of this message */
+	struct message	*m_parent;	/* parent of this message */
+	unsigned	m_level;	/* thread level of message */
+	long		m_threadpos;	/* position in threaded display */
 };
 
 /*
@@ -320,7 +329,9 @@ enum gfield {
 	/*	  1024 */	/* unused */
 	GIDENT	= 2048,		/* From:, Reply-To: and Organization header */
 	GREF	= 4096,		/* References: header */
-	GDATE	= 8192		/* Date: header */
+	GDATE	= 8192,		/* Date: header */
+	GFULL	= 16384,	/* include full names */
+	GSKIN	= 32768		/* skin names */
 };
 
 #define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
@@ -351,6 +362,7 @@ struct name {
 	struct	name *n_blink;		/* Backward list link */
 	short	n_type;			/* From which list it came */
 	char	*n_name;		/* This fella's name */
+	char	*n_fullname;		/* Sometimes, name including comment */
 };
 
 /*

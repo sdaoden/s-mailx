@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	2.11 (gritter) 8/1/04";
+static char sccsid[] = "@(#)edit.c	2.12 (gritter) 8/8/04";
 #endif
 #endif /* not lint */
 
@@ -189,7 +189,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 	if (fromline)
 		fputs(fromline, nf);
 	if (hp)
-		puthead(hp, nf, GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP,
+		puthead(hp, nf, GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA, CONV_TODISP,
 				NULL, NULL);
 	if (size >= 0)
 		while (--size >= 0 && (t = getc(fp)) != EOF)

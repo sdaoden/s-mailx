@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap.c	1.96 (gritter) 8/7/04";
+static char sccsid[] = "@(#)imap.c	1.122 (gritter) 8/14/04";
 #endif
 #endif /* not lint */
 
@@ -51,7 +51,7 @@ static char sccsid[] = "@(#)imap.c	1.96 (gritter) 8/7/04";
 #include <unistd.h>
 #include <time.h>
 
-#include <termios.h>
+#include "md5.h"
 
 /*
  * Mail -- a mail program
@@ -77,7 +77,7 @@ static int	verbose;
 					if (imap_finish(mp) == STOP) \
 						return STOP; \
 					if (verbose) \
-						fputs(x, stderr); \
+						fprintf(stderr, ">>> %s", x); \
 					mp->mb_active |= (y); \
 					if (swrite(&mp->mb_sock, x) == STOP) \
 						action; \
@@ -110,11 +110,20 @@ static enum okay	imap_finish __P((struct mailbox *));
 static void	imapcatch __P((int));
 static enum okay	imap_noop __P((struct mailbox *));
 static void	imapalarm __P((int));
+static enum okay	imap_preauth __P((struct mailbox *, const char *,
+				const char *));
+static enum okay	imap_auth __P((struct mailbox *, const char *, char *,
+				const char *));
 static enum okay	imap_login __P((struct mailbox *, char *,
 				const char *));
+static enum okay	imap_cram_md5 __P((struct mailbox *, char *,
+				const char *));
+#ifdef	USE_GSSAPI
+static enum okay	imap_gss __P((struct mailbox *, char *));
+#endif	/* USE_GSSAPI */
 static enum okay	imap_flags __P((struct mailbox *));
 static void	imap_init __P((struct mailbox *, int));
-static void	imap_setptr __P((struct mailbox *, int));
+static void	imap_setptr __P((struct mailbox *, int, int));
 static char	*imap_have_password __P((const char *));
 static void	imap_split __P((char **, const char **, int *, const char **,
 			char **, char **, const char **, char **));
@@ -126,6 +135,7 @@ static void	commithdr __P((struct mailbox *, struct message *,
 				struct message));
 static enum okay	imap_fetchheaders __P((struct mailbox *,
 				struct message *, int, int));
+static int	imap_setfile1 __P((const char *, int, int, int));
 static enum okay	imap_exit __P((struct mailbox *));
 static enum okay	imap_delete __P((struct mailbox *, int,
 				struct message *));
@@ -222,7 +232,7 @@ imap_other_get(pp)
 		response_other = CAPABILITY_DATA;
 	} else {
 		responded_other_number = strtol(pp, &xp, 10);
-		if (*xp == ' ')
+		while (*xp == ' ')
 			xp++;
 		if (ascncasecmp(xp, "EXISTS\r\n", 8) == 0) {
 			response_other = MAILBOX_DATA_EXISTS;
@@ -300,6 +310,8 @@ imap_response_parse()
 		while (*pp != ' ')
 			pp++;
 		*pp++ = '\0';
+		while (*pp == ' ')
+			pp++;
 		ip = &imapbuf[pp - parsebuf];
 		response_type = RESPONSE_TAGGED;
 		imap_response_get(&ip);
@@ -456,71 +468,164 @@ brk:	alarm(imapkeepalive);
 out:	imaplock--;
 }
 
-static enum okay
-imap_login(mp, xuser, pass)
-	struct mailbox *mp;
-	char *xuser;
-	const char *pass;
+static int
+imap_use_starttls(uhp)
+	const char	*uhp;
 {
-	char *line = NULL, o[LINESIZE], *user;
-	FILE	*queuefp = NULL;
-	size_t linesize = 0;
-	struct termios tio;
-	int i = -1;
+	char	*var;
+
+	if (value("imap-use-starttls"))
+		return 1;
+	var = savecat("imap-use-starttls-", uhp);
+	return value(var) != NULL;
+}
+
+static enum okay
+imap_preauth(mp, xserver, uhp)
+	struct mailbox	*mp;
+	const char	*xserver, *uhp;
+{
+	char	*server, *cp;
 
 	mp->mb_active |= MB_PREAUTH;
 	imap_answer(mp, 1);
-	if (!(mp->mb_active & MB_PREAUTH))
-		return OKAY;
-retry:	if (xuser == NULL) {
-		if (is_a_tty[0]) {
-			fputs("User: ", stdout);
-			fflush(stdout);
-		}
-		if (readline(stdin, &line, &linesize) == 0) {
-			if (line)
-				free(line);
-			return STOP;
-		}
-		user = line;
+	if ((cp = strchr(xserver, ':')) != NULL) {
+		server = salloc(cp - xserver + 1);
+		memcpy(server, xserver, cp - xserver);
+		server[cp - xserver] = '\0';
 	} else
-		user = xuser;
-	if (pass == NULL) {
-		if (is_a_tty[0]) {
-			fputs("Password: ", stdout);
-			fflush(stdout);
-			tcgetattr(0, &tio);
-			otio = tio;
-			tio.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-			reset_tio = 1;
-			tcsetattr(0, TCSAFLUSH, &tio);
-		}
-		i = readline(stdin, &line, &linesize);
-		if (is_a_tty[0]) {
-			fputc('\n', stdout);
-			tcsetattr(0, TCSADRAIN, &otio);
-		}
-		reset_tio = 0;
-		if (i < 0) {
-			if (line)
-				free(line);
+		server = (char *)xserver;
+#ifdef	USE_SSL
+	if (mp->mb_sock.s_ssl == NULL && imap_use_starttls(uhp)) {
+		FILE	*queuefp = NULL;
+		char	o[LINESIZE];
+
+		snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
+		IMAP_OUT(o, MB_COMD, return STOP);
+		IMAP_ANSWER()
+		if (ssl_open(server, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
-		}
 	}
-	snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
-			tag(1), imap_quotestr(user),
-			imap_quotestr(pass ? pass : line));
-	IMAP_OUT(o, MB_COMD, return STOP)
-	while (mp->mb_active & MB_COMD)
-		i = imap_answer(mp, 1);
-	if (i == STOP) {
-		pass = NULL;
-		goto retry;
+#else	/* !USE_SSL */
+	if (imap_use_starttls(uhp)) {
+		fprintf(stderr, "No SSL support compiled in.\n");
+		return STOP;
 	}
-	if (line)
-		free(line);
+#endif	/* !USE_SSL */
 	return OKAY;
 }
+
+static enum okay
+imap_auth(mp, uhp, xuser, pass)
+	struct mailbox *mp;
+	char *xuser;
+	const char *uhp, *pass;
+{
+	char	*var;
+	char	*auth;
+
+	if (!(mp->mb_active & MB_PREAUTH))
+		return OKAY;
+	if ((auth = value("imap-auth")) == NULL) {
+		var = ac_alloc(strlen(uhp) + 11);
+		strcpy(var, "imap-auth-");
+		strcpy(&var[10], uhp);
+		auth = value(var);
+		ac_free(var);
+	}
+	if (auth == NULL || strcmp(auth, "login") == 0)
+		return imap_login(mp, xuser, pass);
+	if (strcmp(auth, "cram-md5") == 0)
+		return imap_cram_md5(mp, xuser, pass);
+	if (strcmp(auth, "gssapi") == 0) {
+#ifdef	USE_GSSAPI
+		return imap_gss(mp, xuser);
+#else	/* !USE_GSSAPI */
+		fprintf(stderr, "No GSSAPI support compiled in.\n");
+		return STOP;
+#endif	/* !USE_GSSAPI */
+	}
+	fprintf(stderr, "Unknown IMAP authentication method: \"%s\"\n", auth);
+	return STOP;
+}
+
+/*
+ * Implementation of RFC 2194.
+ */
+static enum okay
+imap_cram_md5(mp, xuser, xpass)
+	struct mailbox *mp;
+	char *xuser;
+	const char *xpass;
+{
+	char o[LINESIZE];
+	const char	*user, *pass;
+	char	*cp;
+	FILE	*queuefp = NULL;
+	enum okay	ok = STOP;
+
+retry:	if (xuser == NULL) {
+		if ((user = getuser()) == NULL)
+			return STOP;
+	} else
+		user = xuser;
+	if (xpass == NULL) {
+		if ((pass = getpassword(&otio, &reset_tio)) == NULL)
+			return STOP;
+	} else
+		pass = xpass;
+	snprintf(o, sizeof o, "%s AUTHENTICATE CRAM-MD5\r\n", tag(1));
+	IMAP_OUT(o, 0, return STOP)
+	imap_answer(mp, 1);
+	if (response_type != RESPONSE_CONT)
+		return STOP;
+	cp = cram_md5_string(user, pass, responded_text);
+	IMAP_OUT(cp, MB_COMD, return STOP)
+	while (mp->mb_active & MB_COMD)
+		ok = imap_answer(mp, 1);
+	if (ok == STOP) {
+		xpass = NULL;
+		goto retry;
+	}
+	return ok;
+}
+
+static enum okay
+imap_login(mp, xuser, xpass)
+	struct mailbox *mp;
+	char *xuser;
+	const char *xpass;
+{
+	char o[LINESIZE];
+	const char	*user, *pass;
+	FILE	*queuefp = NULL;
+	enum okay	ok = STOP;
+
+retry:	if (xuser == NULL) {
+		if ((user = getuser()) == NULL)
+			return STOP;
+	} else
+		user = xuser;
+	if (xpass == NULL) {
+		if ((pass = getpassword(&otio, &reset_tio)) == NULL)
+			return STOP;
+	} else
+		pass = xpass;
+	snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
+			tag(1), imap_quotestr(user), imap_quotestr(pass));
+	IMAP_OUT(o, MB_COMD, return STOP)
+	while (mp->mb_active & MB_COMD)
+		ok = imap_answer(mp, 1);
+	if (ok == STOP) {
+		xpass = NULL;
+		goto retry;
+	}
+	return OKAY;
+}
+
+#ifdef	USE_GSSAPI
+#include "imap_gssapi.c"
+#endif	/* USE_GSSAPI */
 
 enum okay
 imap_select(mp, size, count, mbx)
@@ -626,14 +731,14 @@ imap_init(mp, n)
 }
 
 static void
-imap_setptr(mp, newmail)
+imap_setptr(mp, newmail, transparent)
 	struct mailbox *mp;
-	int newmail;
+	int newmail, transparent;
 {
-	struct message	*omessage = 0, *omp, *nmp, *newdot, *newprevdot;
+	struct message	*omessage = 0;
 	int i, omsgcount = 0;
 
-	if (newmail) {
+	if (newmail || transparent) {
 		omessage = message;
 		omsgcount = msgcount;
 	}
@@ -661,28 +766,9 @@ imap_setptr(mp, newmail)
 	imap_flags(mp);
 	message[msgcount].m_size = 0;
 	message[msgcount].m_lines = 0;
-	if (newmail) {
-		omp = omessage;
-		nmp = message;
-		newdot = message;
-		newprevdot = NULL;
-		while (omp < &omessage[omsgcount] &&
-				nmp < &message[msgcount]) {
-			if (dot && nmp->m_uid == dot->m_uid)
-				newdot = nmp;
-			if (prevdot && nmp->m_uid == prevdot->m_uid)
-				newprevdot = nmp;
-			if (omp->m_uid == nmp->m_uid)
-				*nmp++ = *omp++;
-			else if (omp->m_uid < nmp->m_uid)
-				omp++;
-			else
-				nmp++;
-		}
-		setdot(newdot);
-		prevdot = newprevdot;
-		free(omessage);
-	} else
+	if (newmail || transparent)
+		transflags(omessage, omsgcount, transparent);
+	else
 		setdot(message);
 }
 
@@ -742,9 +828,18 @@ imap_setfile(xserver, newmail, isedit)
 	const char *xserver;
 	int newmail, isedit;
 {
+	return imap_setfile1(xserver, newmail, isedit, 0);
+}
+
+static int
+imap_setfile1(xserver, newmail, isedit, transparent)
+	const char *xserver;
+	int newmail, isedit, transparent;
+{
+	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
-	char *server, *user;
+	char *server, *user, *account;
 	const char *cp, *sp, *pass;
 	char	*uhp, *mbx;
 	int use_ssl = 0;
@@ -754,6 +849,7 @@ imap_setfile(xserver, newmail, isedit)
 	(void)&saveint;
 	(void)&savepipe;
 	server = savestr((char *)xserver);
+	verbose = value("verbose") != NULL;
 	if (newmail) {
 		saveint = safe_signal(SIGINT, SIG_IGN);
 		savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -771,33 +867,45 @@ imap_setfile(xserver, newmail, isedit)
 				strcmp(mb.mb_imap_account, sp) == 0 &&
 				disconnected(mb.mb_imap_account) == 0)
 			same_imap_account = 1;
-		free(mb.mb_imap_account);
 	}
-	mb.mb_imap_account = sstrdup(sp);
+	account = sstrdup(sp);
 	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &mbx, &pass, &user);
-	quit();
+	so.s_fd = -1;
+	if (!same_imap_account) {
+		if (!disconnected(account) &&
+				sopen(sp, &so, use_ssl, uhp,
+				use_ssl ? "imaps" : "imap", verbose) != OKAY)
+		return -1;
+	} else
+		so = mb.mb_sock;
+	if (!transparent)
+		quit();
 	edit = isedit;
+	free(mb.mb_imap_account);
+	mb.mb_imap_account = account;
 	if (!same_imap_account)
 		mb.mb_sock.s_fd = -1;
 	same_imap_account = 0;
-	if (mb.mb_itf) {
-		fclose(mb.mb_itf);
-		mb.mb_itf = NULL;
+	if (!transparent) {
+		if (mb.mb_itf) {
+			fclose(mb.mb_itf);
+			mb.mb_itf = NULL;
+		}
+		if (mb.mb_otf) {
+			fclose(mb.mb_otf);
+			mb.mb_otf = NULL;
+		}
+		free(mb.mb_imap_mailbox);
+		mb.mb_imap_mailbox = sstrdup(mbx);
+		initbox(server);
 	}
-	if (mb.mb_otf) {
-		fclose(mb.mb_otf);
-		mb.mb_otf = NULL;
-	}
-	free(mb.mb_imap_mailbox);
-	mb.mb_imap_mailbox = sstrdup(mbx);
-	initbox(server);
 	mb.mb_type = MB_VOID;
 	mb.mb_active = MB_NONE;;
 	imaplock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
 	if (sigsetjmp(imapjmp, 1)) {
-		sclose(&mb.mb_sock);
+		sclose(&so);
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		imaplock = 0;
@@ -807,10 +915,9 @@ imap_setfile(xserver, newmail, isedit)
 		safe_signal(SIGINT, imapcatch);
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, imapcatch);
-	verbose = value("verbose") != NULL;
 	if (mb.mb_sock.s_fd < 0) {
 		if (disconnected(mb.mb_imap_account)) {
-			if (cache_setptr() == STOP)
+			if (cache_setptr(transparent) == STOP)
 				fprintf(stderr,
 					"Mailbox \"%s\" is not cached.\n",
 					server);
@@ -822,17 +929,11 @@ imap_setfile(xserver, newmail, isedit)
 				alarm(imapkeepalive);
 			}
 		}
-		if (sopen(sp, &mb.mb_sock, use_ssl, uhp,
-				use_ssl ? "imaps" : "imap", verbose) != OKAY) {
-			imap_timer_off();
-			safe_signal(SIGINT, saveint);
-			safe_signal(SIGPIPE, savepipe);
-			imaplock = 0;
-			return 1;
-		}
+		mb.mb_sock = so;
 		mb.mb_sock.s_desc = "IMAP";
 		mb.mb_sock.s_onclose = imap_timer_off;
-		if (imap_login(&mb, user, pass) != OKAY) {
+		if (imap_preauth(&mb, sp, uhp) != OKAY ||
+				imap_auth(&mb, uhp, user, pass) != OKAY) {
 			sclose(&mb.mb_sock);
 			imap_timer_off();
 			safe_signal(SIGINT, saveint);
@@ -854,7 +955,7 @@ imap_setfile(xserver, newmail, isedit)
 		return -1;
 	}
 newmail:
-	imap_setptr(&mb, newmail);
+	imap_setptr(&mb, newmail, transparent);
 done:	setmsize(msgcount);
 	sawcom = 0;
 	safe_signal(SIGINT, saveint);
@@ -862,6 +963,13 @@ done:	setmsize(msgcount);
 	imaplock = 0;
 	if (!newmail && mb.mb_type == MB_IMAP)
 		purgecache(&mb, message, msgcount);
+	if (transparent && mb.mb_sorted) {
+		char	*args[2];
+		mb.mb_threaded = 0;
+		args[0] = mb.mb_sorted;
+		args[1] = NULL;
+		sort(args);
+	}
 	if (!newmail && !edit && msgcount == 0) {
 		if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
 				value("emptystart") == NULL)
@@ -1761,7 +1869,7 @@ imap_append(xserver, fp)
 	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &mbx, &pass, &user);
 	imaplock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
-	saveint = safe_signal(SIGPIPE, SIG_IGN);
+	savepipe = safe_signal(SIGPIPE, SIG_IGN);
 	if (sigsetjmp(imapjmp, 1))
 		goto out;
 	if (saveint != SIG_IGN)
@@ -1784,7 +1892,10 @@ imap_append(xserver, fp)
 				goto fail;
 			mx.mb_sock.s_desc = "IMAP";
 			mx.mb_type = MB_IMAP;
-			if (imap_login(&mx, user, pass) != OKAY) {
+			mx.mb_imap_account = (char *)protbase(server);
+			mx.mb_imap_mailbox = mbx;
+			if (imap_preauth(&mx, sp, uhp) != OKAY ||
+					imap_auth(&mx, uhp, user, pass)!=OKAY) {
 				sclose(&mx.mb_sock);
 				goto fail;
 			}
@@ -1845,19 +1956,26 @@ imap_parse_list()
 			}
 			cp++;
 		}
-		if (cp[1] != ' ')
+		if (*++cp != ' ')
 			return STOP;
-		cp += 2;
+		while (*cp == ' ')
+			cp++;
 	}
-	list_hierarchy_delimiter = 0;
+	list_hierarchy_delimiter = EOF;
 	if (*cp == '"') {
 		if (*++cp == '\\')
 			cp++;
 		list_hierarchy_delimiter = *cp++ & 0377;
 		if (cp[0] != '"' || cp[1] != ' ')
 			return STOP;
-		cp += 2;
+		cp++;
+	} else if (cp[0] == 'N' && cp[1] == 'I' && cp[2] == 'L' &&
+			cp[3] == ' ') {
+		list_hierarchy_delimiter = EOF;
+		cp += 3;
 	}
+	while (*cp == ' ')
+		cp++;
 	list_name = cp;
 	while (*cp && *cp != '\r')
 		cp++;
@@ -1994,6 +2112,7 @@ imap_copy(m, n, name)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
+	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -2038,7 +2157,8 @@ imap_dequeue(mp, fp)
 	count = fsize(fp);
 	while (fgetline(&buf, &bufsize, &count, &buflen, fp, 0) != NULL) {
 		for (bp = buf; *bp != ' '; bp++);	/* strip old tag */
-		bp++;
+		while (*bp == ' ')
+			bp++;
 		twice = 0;
 		offs = ftell(fp);
 	again:	snprintf(o, sizeof o, "%s %s", tag(1), bp);
@@ -2046,8 +2166,10 @@ imap_dequeue(mp, fp)
 			cp = &bp[9];
 			while (digitchar(*cp&0377))
 				cp++;
-			if (*cp++ != ' ')
+			if (*cp != ' ')
 				goto fail;
+			while (*cp == ' ')
+				cp++;
 			if ((newname = imap_strex(cp)) == NULL)
 				goto fail;
 			IMAP_OUT(o, MB_COMD, continue)
@@ -2142,6 +2264,55 @@ imap_strex(cp)
 	n[cq - cp + 1] = '\0';
 	return n;
 }
+
+/*ARGSUSED*/
+int
+cconnect(vp)
+	void	*vp;
+{
+	char	*cp, *cq;
+
+	if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd >= 0) {
+		fprintf(stderr, "Already connected.\n");
+		return 1;
+	}
+	unset_allow_undefined = 1;
+	unset_internal("disconnected");
+	cp = protbase(mailname);
+	if (strncmp(cp, "imap://", 7) == 0)
+		cp += 7;
+	else if (strncmp(cp, "imaps://", 8) == 0)
+		cp += 8;
+	if ((cq = strchr(cp, ':')) != NULL)
+		*cq = '\0';
+	unset_internal(savecat("disconnected-", cp));
+	unset_allow_undefined = 0;
+	if (mb.mb_type == MB_CACHE)
+		imap_setfile1(mailname, 0, edit, 1);
+	return 0;
+}
+
+/*ARGSUSED*/
+int
+cdisconnect(vp)
+	void	*vp;
+{
+	if (mb.mb_type == MB_CACHE) {
+		fprintf(stderr, "Not connected.\n");
+		return 1;
+	} else if (mb.mb_type == MB_IMAP) {
+		if (cached_uidvalidity(&mb) == 0) {
+			fprintf(stderr, "The current mailbox is not cached.\n");
+			return 1;
+		}
+	}
+	assign("disconnected", "");
+	if (mb.mb_type == MB_IMAP) {
+		sclose(&mb.mb_sock);
+		imap_setfile1(mailname, 0, edit, 1);
+	}
+	return 0;
+}
 #else	/* !HAVE_SOCKETS */
 static void
 noimap()
@@ -2195,8 +2366,10 @@ imap_imap(vp)
 	return 1;
 }
 
+/*ARGSUSED*/
 int
-imap_newmail()
+imap_newmail(dummy)
+	int	dummy;
 {
 	return 0;
 }
@@ -2240,5 +2413,23 @@ imap_thisaccount(cp)
 	const char *cp;
 {
 	return 0;
+}
+
+/*ARGSUSED*/
+int
+cconnect(vp)
+	void	*vp;
+{
+	noimap();
+	return 1;
+}
+
+/*ARGSUSED*/
+int
+cdisconnect(vp)
+	void	*vp;
+{
+	noimap();
+	return 1;
 }
 #endif	/* HAVE_SOCKETS */

@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.27 (gritter) 8/4/04";
+static char sccsid[] = "@(#)main.c	2.32 (gritter) 8/14/04";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -55,6 +55,10 @@ static char sccsid[] = "@(#)main.c	2.27 (gritter) 8/4/04";
  */
 
 
+#include "config.h"
+#ifdef	HAVE_NL_LANGINFO
+#include <langinfo.h>
+#endif	/* HAVE_NL_LANGINFO */
 #define _MAIL_GLOBS_
 #include "rcv.h"
 #include "extern.h"
@@ -127,6 +131,7 @@ main(argc, argv)
 	assign("save", "");
 #ifdef	HAVE_SETLOCALE
 	setlocale(LC_CTYPE, "");
+	setlocale(LC_COLLATE, "");
 	setlocale(LC_MESSAGES, "");
 	mb_cur_max = MB_CUR_MAX;
 #if defined (HAVE_NL_LANGINFO) && defined (CODESET)
@@ -292,14 +297,14 @@ main(argc, argv)
 			/*
 			 * Get Carbon Copy Recipient list
 			 */
-			cc = checkaddrs(cat(cc, extract(optarg, GCC)));
+			cc = checkaddrs(cat(cc, extract(optarg, GCC|GFULL)));
 			sendflag++;
 			break;
 		case 'b':
 			/*
 			 * Get Blind Carbon Copy Recipient list
 			 */
-			bcc = checkaddrs(cat(bcc, extract(optarg, GBCC)));
+			bcc = checkaddrs(cat(bcc, extract(optarg, GBCC|GFULL)));
 			sendflag++;
 			break;
 		case 'h':
@@ -339,7 +344,7 @@ usage:
 		}
 	} else {
 		for (i = optind; argv[i]; i++)
-			to = checkaddrs(cat(to, extract(argv[i], GTO)));
+			to = checkaddrs(cat(to, extract(argv[i], GTO|GFULL)));
 	}
 	/*
 	 * Check for inconsistent arguments.
@@ -388,7 +393,9 @@ usage:
 	 * Now we can set the account.
 	 */
 	if (Aflag) {
-		char	*a[2] = { Aflag, NULL };
+		char	*a[2];
+		a[0] = Aflag;
+		a[1] = NULL;
 		account(a);
 	}
 	/*
@@ -419,7 +426,7 @@ usage:
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgcount);
 		for (i = 1; i <= msgcount; i++)
-			printhead(i, stdout);
+			printhead(i, stdout, 0);
 		exit(exit_status);
 	}
 	if (i > 0 && value("emptystart") == NULL)

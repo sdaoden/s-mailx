@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.25 (gritter) 8/7/04";
+static char sccsid[] = "@(#)cmd2.c	2.27 (gritter) 8/15/04";
 #endif
 #endif /* not lint */
 
@@ -94,7 +94,9 @@ next(v)
 		 */
 
 		for (ip = msgvec; *ip != 0; ip++)
-			if (*ip > mdot)
+			if (mb.mb_threaded ? message[*ip-1].m_threadpos >
+						dot->m_threadpos :
+					*ip > mdot)
 				break;
 		if (*ip == 0)
 			ip = msgvec;
@@ -130,10 +132,18 @@ next(v)
 	 * wraparound.
 	 */
 
-	for (mp = dot + did_print_dot; mp < &message[msgcount]; mp++)
-		if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN)) == 0)
-			break;
-	if (mp >= &message[msgcount]) {
+	if (mb.mb_threaded == 0) {
+		for (mp = dot + did_print_dot; mp < &message[msgcount]; mp++)
+			if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN)) == 0)
+				break;
+	} else {
+		mp = dot;
+		if (did_print_dot)
+			mp = next_in_thread(mp);
+		while (mp && mp->m_flag & (MDELETED|MSAVED|MHIDDEN))
+			mp = next_in_thread(mp);
+	}
+	if (mp == NULL || mp >= &message[msgcount]) {
 ateof:
 		printf(catgets(catd, CATSET, 22, "At EOF\n"));
 		return(0);

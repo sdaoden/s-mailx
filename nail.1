@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.120 (gritter) 8/8/04
+.\"     Sccsid: @(#)nail.1	2.146 (gritter) 8/14/04
 .\"
-.TH NAIL 1 "8/8/04" "nail 11.1" "User Commands"
+.TH NAIL 1 "8/14/04" "nail 11.2" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -242,6 +242,15 @@ can be given a list of message numbers
 as arguments to apply to a number of messages at once.
 Thus `\fIdelete 1 2\fR' deletes messages 1 and 2,
 while `\fIdelete 1-5\fR' deletes messages 1 through 5.
+In sorted or threaded mode (see the
+.I sort
+and
+.I thread
+commands),
+`\fIdelete 1-5\fR' deletes the messages
+that are located between (and including) messages 1 through 5
+in the sorted/threaded order,
+as shown in the header summary.
 The following special message names exist:
 .TP
 .B :n
@@ -286,12 +295,16 @@ The next previous undeleted message,
 or the next previous deleted message for the
 .I undelete
 command.
+In sorted/threaded mode,
+the next previous such message in the sorted/threaded order.
 .TP
 .B +
 The next undeleted message,
 or the next deleted message for the
 .I undelete
 command.
+In sorted/threaded mode,
+the next such message in the sorted/threaded order.
 .TP
 .B ^
 The first undeleted message,
@@ -299,9 +312,26 @@ or the first deleted message
 for the
 .I undelete
 command.
+In sorted/threaded mode,
+the first such message in the sorted/threaded order.
 .TP
 .B $
 The last message.
+In sorted/threaded mode,
+the last message in the sorted/threaded order.
+.TP
+.BI & x
+Only recognized in threaded mode;
+selects the message addressed with
+.IR x ,
+where
+.I x
+is any other message specification,
+and all messages from the thread that begins at it.
+If
+.I n
+is omitted,
+the thread beginning with the current message is selected.
 .TP
 .B *
 All messages.
@@ -594,6 +624,14 @@ if given.
 If no directory is given,
 then changes to the user's login directory.
 .TP
+.B connect
+(conn) If operating in disconnected mode on an IMAP mailbox,
+switch to online mode and connect to the mail server
+while retaining the mailbox status.
+See the description of the
+.I disconnected
+variable for more information.
+.TP
 .B copy
 (c) The copy command does the same thing that
 .I save
@@ -618,6 +656,13 @@ nor will they be available for most other commands.
 .TP
 .B discard
 Same as ignore.
+.TP
+.B disconnect
+(disco) If operating in online mode on an IMAP mailbox,
+switch to disconnected mode while retaining the mailbox status.
+See the description of the
+.I disconnected
+variable for more information.
 .TP
 .BR dp \ or \ dt
 Deletes the current message
@@ -712,7 +757,7 @@ A name of the form
        \fIprotocol\fB://\fR[\fIuser\fB@\fR]\fIhost\fR[\fB:\fIport\fR][\fB/\fIfile\fR]
 
 .fi
-is taken as an internet mailbox specification.
+is taken as an Internet mailbox specification.
 The supported protocols are currently
 .B imap
 (IMAP v4r1),
@@ -962,6 +1007,10 @@ Same as
 Same as
 .IR unread .
 .TP
+.B online
+Same as
+.IR connect .
+.TP
 .B preserve
 (pre) A synonym for
 .IR hold .
@@ -1151,8 +1200,65 @@ a list of defined shortcuts is printed.
 Takes a message list and prints out
 the size in characters of each message.
 .TP
+.B sort
+Create and print a sorted representation of the current folder,
+and change the
+.I next
+command and the addressing modes
+such that they refer to messages in the sorted order.
+Message numbers are the same as in regular mode.
+Possible sorting methods are:
+.RS
+.TP
+.B date
+Sort the messages by their `Date:' field,
+that is by the time they were sent.
+.TP
+.B from
+Sort messages by the value of their `From:' field,
+that is by the address of the sender.
+If the
+.I showname
+variable is set,
+the sender's real name (if any) is used.
+.TP
+.B size
+Sort the messages by their size.
+.TP
+.B status
+Sort the messages by their message status
+(new, read, old, etc.).
+.TP
+.B subject
+Sort the messages by their subject.
+.TP
+.B thread
+Create a threaded order,
+as with the
+.I thread
+command.
+.TP
+.B to
+Sort messages by the value of their `To:' field,
+that is by the address of the recipient.
+If the
+.I showname
+variable is set,
+the recipient's real name (if any) is used.
+.RE
+.TP
 .B source
 The source command reads commands from a file.
+.TP
+.B thread
+(th) Create and print a threaded representation of the current folder,
+i.\|e. indent messages that are replies to other messages
+in the header display,
+and change the
+.I next
+command and the addressing modes
+such that they refer to messages in the threaded order.
+Message numbers are the same as in unthreaded mode.
 .TP
 .B top
 Takes a message list and prints the top few lines of each.
@@ -1211,6 +1317,18 @@ the inverse of set.
 .TP
 .B unshortcut
 Deletes the shortcut names given as arguments.
+.TP
+.B unsort
+Disable sorted or threaded mode (see the
+.I sort
+and
+.I thread
+commands), return to normal message order
+and print a header summary.
+.TP
+.B unthread
+(unth) Same as
+.IR unsort .
 .TP
 .B visual
 (v) Takes a message list and invokes the display editor
@@ -1501,6 +1619,12 @@ Causes the delete command to behave like dp \-
 thus, after deleting a message,
 the next one will be typed automatically.
 .TP
+.B autothread
+Causes threaded mode (see the
+.I thread
+command) to be entered automatically
+when a folder is opened.
+.TP
 .B bang
 Enables the substitution of `\fB!\fR'
 by the contents of the last command line
@@ -1610,6 +1734,14 @@ with the
 .I respond
 commands and vice-versa.
 .TP
+.B fullnames
+When replying to a message,
+\fInail\fR normally removes the comment parts of email addresses,
+which by convention contain the full names of the recipients.
+If this variable is set,
+such stripping is not performed,
+and comments are retained.
+.TP
 .B header
 Causes the header summary to be written at startup;
 enabled by default.
@@ -1627,6 +1759,19 @@ An option related to dot is ignoreeof
 which makes \fInail\fR refuse to
 accept a control-d as the end of a message.
 Ignoreeof also applies to \fInail\fR command mode.
+.TP
+.B imap-use-starttls
+Causes
+.I nail
+to issue a STARTTLS command
+to make an unencrypted IMAP session SSL/TLS encrypted.
+This functionality is not supported by all servers,
+and is not used if the session is already encrypted by the IMAPS method.
+.TP
+\fBimap-use-starttls-\fIuser\fB@\fIhost\fR
+Activates
+.I imap-use-starttls
+for a specific account.
 .TP
 .B keep
 This option causes \fInail\fR to truncate your system mailbox
@@ -1700,6 +1845,33 @@ Send messages to the
 .I pipe
 command without performing MIME and character set conversions.
 .TP
+.B pop3-use-apop
+If this variable is set,
+the APOP authentication method is used
+when a connection to a POP3 server is initiated.
+The advantage of this method over the usual USER/PASS authentication is
+that the password is not sent over the network in clear text.
+The connection fails
+if the server does not support the APOP command.
+.TP
+\fBpop3-use-apop-\fIuser\fB@\fIhost\fR
+Enables
+.I pop3-use-apop
+for a specific account.
+.TP
+.B pop3-use-starttls
+Causes
+.I nail
+to issue a STLS command
+to make an unencrypted POP3 session SSL/TLS encrypted.
+This functionality is not supported by all servers,
+and is not used if the session is already encrypted by the POP3S method.
+.TP
+\fBpop3-use-starttls-\fIuser\fB@\fIhost\fR
+Activates
+.I pop3-use-starttls
+for a specific account.
+.TP
 .B print-all-chars
 This option causes all characters to be considered printable.
 It is only effective if given in a startup file.
@@ -1751,6 +1923,14 @@ in the header field summary and in message specifications.
 Causes the recipient of the message to be shown in the header summary
 if the message was sent by the user.
 .TP
+.B smtp-use-starttls
+Causes \fInail\fR to issue a STARTTLS command
+to make an SMTP session SSL/TLS encrypted.
+Not all servers support this command;
+because of common implementation defects,
+it cannot be automatically determined
+whether a server supports it or not.
+.TP
 .B ssl-no-default-ca
 Do not load the default CA locations
 to verify SSL/TLS server certificates.
@@ -1773,8 +1953,15 @@ to track down the originating mail user agent.
 Setting the option verbose is the same
 as using the \-v flag on the command line.
 When \fInail\fR runs in verbose mode,
-the actual delivery of messages
-is displayed on the user's terminal.
+details of the actual message delivery
+and protocol conversations for IMAP, POP3, and SMTP
+are displayed on the user's terminal.
+This is sometimes useful to debug problems with specific servers.
+.I Nail
+prints all data that is sent to remote servers in clear texts,
+including passwords,
+so care should be taken that no unauthorized option
+can view the screen if this option is enabled.
 .SS "String Options"
 .PP
 The string options include the following:
@@ -1788,6 +1975,13 @@ will be sent automatically.
 Specifies a list of recipients to which
 a carbon copy of each outgoing message
 will be sent automatically.
+.TP
+.B autosort
+Causes sorted mode (see the
+.I sort
+command) to be entered automatically
+with the value of this option as sorting method
+when a folder is opened.
 .TP
 .B charset
 The name of the character set used by \fInail\fR.
@@ -1906,6 +2100,17 @@ instead of the value obtained from
 .IR uname (2)
 and
 .IR getaddrinfo (3).
+.TP
+.B imap-auth
+Sets the IMAP authentication method.
+Valid values are `login' for the usual password-based authentication
+(the default),
+`cram-md5', which is a password-based authentication
+that does not send the password over the network in clear text,
+and `gssapi' for GSSAPI-based authentication.
+.TP
+\fBimap-auth-\fIuser\fB@\fIhost\fR
+Sets the IMAP authentication method for a specific account.
 .TP
 .B imap-cache
 Enables caching of IMAP mailboxes.
@@ -2127,8 +2332,8 @@ There are two possible methods to get SSL/TLS encrypted SMTP sessions:
 First, the STARTTLS command can be used to encrypt a session
 after it has been initiated,
 but before any user-related data has been sent; see
-.I \%smtp-use-tls
-below.
+.I \%smtp-use-starttls
+above.
 Second, some servers accept sessions that are encrypted
 from their beginning on. This mode is configured by assigning
 \fBsmtps://\fIserver\fR[\fB:\fIport\fR]
@@ -2136,10 +2341,28 @@ to the
 .I smtp
 variable.
 .TP
+.B smtp-auth
+Sets the SMTP authentication method.
+If set to `login',
+or if unset and both smtp-auth-user and smtp-auth-password are set,
+AUTH LOGIN is used.
+If set to `cram-md5',
+AUTH CRAM-MD5 is used.
+Otherwise,
+no SMTP authentication is performed.
+.TP
+\fBsmtp-auth-\fIuser\fB@\fIhost\fR
+Overrides
+.I smtp-auth
+for specific values of sender addresses,
+depending on the
+.I from
+variable.
+.TP
 .B smtp-auth-password
-Sets the global password for SMTP AUTH LOGIN.
+Sets the global password for SMTP AUTH.
 Both user and password have to be given
-for SMTP AUTH.
+for AUTH LOGIN and AUTH CRAM-MD5.
 .TP
 \fBsmtp-auth-password-\fIuser\fB@\fIhost\fR
 Overrides
@@ -2150,9 +2373,9 @@ depending on the
 variable.
 .TP
 .B smtp-auth-user
-Sets the global user name for SMTP AUTH LOGIN.
+Sets the global user name for SMTP AUTH.
 Both user and password have to be given
-for SMTP AUTH.
+for AUTH LOGIN and AUTH CRAM-MD5.
 .TP
 \fBsmtp-auth-user-\fIuser\fB@\fIhost\fR
 Overrides
@@ -2161,14 +2384,6 @@ for specific values of sender addresses,
 depending on the
 .I from
 variable.
-.TP
-.B smtp-use-tls
-Causes \fInail\fR to issue a STARTTLS command
-to make an SMTP session SSL/TLS encrypted.
-Not all servers support this command;
-because of common implementation defects,
-it cannot be automatically determined
-whether a server supports it or not.
 .TP
 .B ssl-ca-dir
 Specifies a directory with CA certificates for verification.
@@ -2278,7 +2493,7 @@ the following environment strings:
 .B HOME
 The user's home directory.
 .TP
-\fBLANG\fR, \fBLC_ALL\fR, \fBLC_CTYPE\fR, \fBLC_MESSAGES\fR
+\fBLANG\fR, \fBLC_ALL\fR, \fBLC_COLLATE\fR, \fBLC_CTYPE\fR, \fBLC_MESSAGES\fR
 See
 .IR locale (7).
 .TP
@@ -2324,7 +2539,7 @@ command line option with
     \fBimaps://\fImylogin\fB@\fIserver.myisp.example\fR
 
 .fi
-(This string is not necessarily the same as your internet mail address.)
+(This string is not necessarily the same as your Internet mail address.)
 You can replace `imaps://' with `imap://'
 if the server does not support SSL/TLS,
 or use `pop3s://' or `pop3://' if the server does not offer IMAP.
@@ -2336,6 +2551,19 @@ and second because message flags
 are maintained by the IMAP server,
 so you can easily distinguish new and old messages
 each time you connect.
+Even if the server does not accept IMAPS or POP3S connections,
+it is possible that it supports the STARTTLS method
+to make a session SSL/TLS encrypted
+after the initial connection has been performed,
+but before authentication begins.
+The only reliable method to see if this works is to try it; enter one of
+.nf
+
+    \fBset imap-use-starttls\fR
+    \fBset pop3-use-starttls\fR
+
+.fi
+before you initiate the connection.
 .PP
 As you probably want messages to be deleted from this account
 after saving them,
@@ -2421,6 +2649,42 @@ you can give this password in the startup file as
 .fi
 You should change the permissions of this file to 0600, see
 .IR chmod (1).
+.PP
+.I Nail
+supports different authentication methods for both IMAP and POP3.
+If Kerberos is used at your location,
+you can try to activate GSSAPI-based authentication by
+.nf
+
+    \fBset imap-auth=gssapi\fR
+
+.fi
+The advantage of this method is that
+.I nail
+does not need to know your password at all,
+nor needs to send sensitive data over the network.
+Otherwise, the options
+.nf
+
+    \fBset imap-auth=cram-md5\fR
+    \fBset pop3-use-apop\fR
+
+.fi
+for IMAP and POP3, respectively,
+offer authentication methods
+that avoid to send the password in clear text over the network,
+which is especially important if SSL/TLS cannot be used.
+If the server does not offer any of these authentication methods,
+conventional user/password based authentication must be used.
+It is sometimes helpful to set the
+.I verbose
+option when authentication problems occur.
+.I Nail
+will display all data sent to the server in clear text on the screen
+with this option,
+including passwords.
+You should thus take care that no unauthorized person
+can look at your terminal when this option is set.
 .PP
 If you regularly use the same workstation
 to access IMAP accounts,
@@ -2548,9 +2812,15 @@ It is thus necessary to store the attachment in a temporary file, as with
 .nf
 .sp
     \fBset pipe-application/pdf="cat >/tmp/nail$$.pdf; \e
-           acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
+           acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"\fR
 .sp
 .fi
+Note that security defects are discovered in PDF viewers
+from time to time.
+Automatical command execution like this
+can compromise your system security,
+in particular if you stay not always informed
+about such issues.
 .SH "SEE ALSO"
 fmt(1),
 newaliases(1),

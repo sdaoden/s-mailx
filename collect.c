@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.23 (gritter) 8/1/04";
+static char sccsid[] = "@(#)collect.c	2.25 (gritter) 8/8/04";
 #endif
 #endif /* not lint */
 
@@ -148,6 +148,7 @@ struct header *hp;
 	FILE *obuf = stdout;
 	struct attachment *ap;
 	char *cp;
+	enum gfield	gf;
 	size_t	linecnt, maxlines, linesize = 0, linelen, count, count2;
 
 	(void)&obuf;
@@ -186,7 +187,10 @@ struct header *hp;
 	}
 	fprintf(obuf, catgets(catd, CATSET, 62,
 				"-------\nMessage contains:\n"));
-	puthead(hp, obuf, GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP, NULL, NULL);
+	gf = GTO|GSUBJECT|GCC|GBCC|GNL;
+	if (value("fullnames"))
+		gf |= GCOMMA;
+	puthead(hp, obuf, gf, CONV_TODISP, NULL, NULL);
 	while (fgetline(&lbuf, &linesize, &count, &linelen, collf, 1)) {
 		makeprint(lbuf, linelen);
 		fwrite(lbuf, sizeof *lbuf, linelen, obuf);
@@ -512,6 +516,8 @@ The following ~ escapes are defined:\n\
 	getfields = 0;
 	if (!tflag) {
 		t = GTO|GSUBJECT|GCC|GNL;
+		if (value("fullnames"))
+			t |= GCOMMA;
 		if (hp->h_subject == NULL && value("interactive") != NULL &&
 			    (value("ask") != NULL || value("asksub") != NULL))
 			t &= ~GNL, getfields |= GSUBJECT;
@@ -716,8 +722,8 @@ cont:
 			 * Add to the To list.
 			 */
 			while ((hp->h_to = checkaddrs(cat(hp->h_to,
-						sextract(&linebuf[2], GTO))))
-					== NULL);
+					sextract(&linebuf[2], GTO|GFULL))))
+				== NULL);
 			break;
 		case 's':
 			/*
@@ -743,14 +749,14 @@ cont:
 			 * Add to the CC list.
 			 */
 			hp->h_cc = checkaddrs(cat(hp->h_cc,
-						sextract(&linebuf[2], GCC)));
+				sextract(&linebuf[2], GCC|GFULL)));
 			break;
 		case 'b':
 			/*
 			 * Add stuff to blind carbon copies list.
 			 */
 			hp->h_bcc = checkaddrs(cat(hp->h_bcc,
-					sextract(&linebuf[2], GBCC)));
+				sextract(&linebuf[2], GBCC|GFULL)));
 			break;
 		case 'd':
 			strncpy(linebuf + 2, getdeadletter(), linesize - 2);

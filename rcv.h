@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)rcv.h	2.4 (gritter) 6/13/04
+ *	Sccsid @(#)rcv.h	2.5 (gritter) 8/12/04
  */
 
 /*
@@ -52,6 +52,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <termios.h>
 #ifdef	HAVE_ICONV
 #include <iconv.h>
 #endif	/* HAVE_ICONV */

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.38 (gritter) 8/7/04";
+static char sccsid[] = "@(#)lex.c	2.48 (gritter) 8/15/04";
 #endif
 #endif /* not lint */
 
@@ -58,7 +58,6 @@ static char sccsid[] = "@(#)lex.c	2.38 (gritter) 8/7/04";
 static char	*prompt;
 
 static const struct cmd	*lex __P((char []));
-static int	is_prefix __P((char *, char *));
 static void	intr __P((int));
 static void	stop __P((int));
 static void	hangup __P((int));
@@ -100,8 +99,11 @@ setfile(name, newmail)
 		return pop3_setfile(name, newmail, isedit);
 	case PROTO_IMAP:
 		shudclob = 1;
-		if (newmail)
+		if (newmail) {
+			if (mb.mb_type == MB_CACHE)
+				return 1;
 			omsgcount = msgcount;
+		}
 		i = imap_setfile(name, newmail, isedit);
 		if (newmail)
 			goto newmail;
@@ -196,6 +198,13 @@ setfile(name, newmail)
 	}
 	setptr(ibuf, offset);
 	setmsize(msgcount);
+	if (newmail && mb.mb_sorted) {
+		char	*args[2];
+		mb.mb_threaded = 0;
+		args[0] = mb.mb_sorted;
+		args[1] = NULL;
+		sort(args);
+	}
 	Fclose(ibuf);
 	relsesigs();
 	sawcom = 0;
@@ -237,7 +246,7 @@ newmailinfo(omsgcount)
 			imap_getheaders(omsgcount+1, msgcount);
 		while (++omsgcount <= msgcount)
 			if (!(message[omsgcount-1].m_flag & MDELETED))
-				printhead(omsgcount, stdout);
+				printhead(omsgcount, stdout, 0);
 	}
 	return mdot;
 }
@@ -612,24 +621,6 @@ lex(Word)
 }
 
 /*
- * Determine if as1 is a valid prefix of as2.
- * Return true if yep.
- */
-static int
-is_prefix(as1, as2)
-	char *as1, *as2;
-{
-	char *s1, *s2;
-
-	s1 = as1;
-	s2 = as2;
-	while (*s1++ == *s2)
-		if (*s2++ == '\0')
-			return(1);
-	return(*--s1 == '\0');
-}
-
-/*
  * The following gets called on receipt of an interrupt.  This is
  * to abort printout of a command, mainly.
  * Dispatching here when command() is inactive crashes rcv.
@@ -782,27 +773,57 @@ int
 getmdot()
 {
 	struct message	*mp;
+	char	*cp;
 	int	mdot;
 
+	if (value("autothread"))
+		thread(NULL);
+	else if ((cp = value("autosort")) != NULL) {
+		char	*args[2];
+		args[0] = cp;
+		args[1] = NULL;
+		sort(args);
+	}
 	if (mb.mb_type == MB_VOID)
 		return 1;
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
+	for (mp = mb.mb_threaded ? threadroot : &message[0];
+			mb.mb_threaded ? mp != NULL: mp < &message[msgcount];
+			mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
 		if ((mp->m_flag & (MNEW|MHIDDEN)) == MNEW)
 			break;
-	if (mp >= &message[msgcount])
-		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+	if (mb.mb_threaded ? mp == NULL : mp >= &message[msgcount])
+		for (mp = mb.mb_threaded ? threadroot : &message[0];
+				mb.mb_threaded ? mp != NULL:
+					mp < &message[msgcount];
+				mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
 			if ((mp->m_flag & (MREAD|MHIDDEN)) == 0)
 				break;
-	if (mp >= &message[msgcount])
+	if (mb.mb_threaded ? mp != NULL : mp < &message[msgcount])
+		mdot = mp - &message[0] + 1;
+	else if (value("showlast")) {
+		if (mb.mb_threaded) {
+			for (mp = this_in_thread(threadroot, -1); mp;
+					mp = prev_in_thread(mp))
+				if ((mp->m_flag & MHIDDEN) == 0)
+					break;
+			mdot = mp ? mp - &message[0] + 1 : msgcount;
+		} else {
+			for (mp = &message[msgcount-1]; mp >= &message[0]; mp--)
+				if ((mp->m_flag & MHIDDEN) == 0)
+					break;
+			mdot = mp >= &message[0] ? mp-&message[0]+1 : msgcount;
+		}
+	} else if (mb.mb_threaded) {
+		for (mp = threadroot; mp; mp = next_in_thread(mp))
+			if ((mp->m_flag & MHIDDEN) == 0)
+				break;
+		mdot = mp ? mp - &message[0] + 1 : 1;
+	} else {
 		for (mp = &message[0]; mp < &message[msgcount]; mp++)
 			if ((mp->m_flag & MHIDDEN) == 0)
 				break;
-	if (mp < &message[msgcount])
-		mdot = mp - &message[0] + 1;
-	else if (value("showlast"))
-		mdot = mp - &message[0];
-	else
-		mdot = 1;
+		mdot = mp < &message[msgcount] ? mp-&message[0]+1 : 1;
+	}
 	return mdot;
 }
 
@@ -875,6 +896,9 @@ initbox(name)
 		message = NULL;
 		msgspace = 0;
 	}
+	mb.mb_threaded = 0;
+	free(mb.mb_sorted);
+	mb.mb_sorted = NULL;
 	prevdot = NULL;
 	dot = NULL;
 }

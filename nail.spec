@@ -1,7 +1,7 @@
-# Sccsid @(#)nail.spec	1.23 (gritter) 6/13/04
+# Sccsid @(#)nail.spec	1.25 (gritter) 8/15/04
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 11.1
+Version: 11.2
 Release: 1
 License: BSD
 Group: Applications/Internet
@@ -13,8 +13,10 @@ BuildRoot: %{_tmppath}/%{name}-root
 
 %description
 Nail is derived from Berkeley Mail and is intended provide the 
-functionality of the POSIX.2 mailx command with additional support
-for MIME messages, POP3 and SMTP.
+functionality of the POSIX mailx command with additional support
+for MIME messages, IMAP, POP3, and SMTP. It provides enhanced
+features for interactive use, such as caching and disconnected
+operation for IMAP and message threading.
 
 Install nail if you need a command line tool with the ability to
 handle MIME messages.
@@ -33,17 +35,21 @@ handle MIME messages.
 
 %prep
 # Some RedHat releases refuse to compile with OpenSSL unless
-# -I/usr/kerberos/include is given.
+# -I/usr/kerberos/include is given. To compile with GSSAPI authentication
+# included, they also need -L/usr/kerberos/lib.
 test -d /usr/kerberos/include &&INCLUDES=-I/usr/kerberos/include export INCLUDES
+test -d /usr/kerberos/lib &&LDFLAGS=-L/usr/kerberos/lib export LDFLAGS
 rm -rf %{buildroot}
 %setup
 
 %build
 test -d /usr/kerberos/include &&INCLUDES=-I/usr/kerberos/include export INCLUDES
+test -d /usr/kerberos/lib &&LDFLAGS=-L/usr/kerberos/lib export LDFLAGS
 make %{makeflags}
 
 %install
 test -d /usr/kerberos/include &&INCLUDES=-I/usr/kerberos/include export INCLUDES
+test -d /usr/kerberos/lib &&LDFLAGS=-L/usr/kerberos/lib export LDFLAGS
 make DESTDIR=%{buildroot} %{makeflags} install
 gzip -9 %{buildroot}/usr/share/man/man1/nail.1
 

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.33 (gritter) 8/7/04";
+static char sccsid[] = "@(#)cmd1.c	2.45 (gritter) 8/13/04";
 #endif
 #endif /* not lint */
 
@@ -76,34 +76,64 @@ headers(v)
 	void *v;
 {
 	int *msgvec = v;
-	int n, mesg, flag;
-	struct message *mp;
+	int k, n, mesg, flag = 0;
+	struct message *mp, *mq;
 	int size;
 
 	size = screensize();
 	n = msgvec[0];
 	if (n != 0)
-		screen = (n-1)/size;
+		screen = ((mb.mb_threaded?message[n-1].m_threadpos:n)-1)/size;
 	if (screen < 0)
 		screen = 0;
-	mp = &message[screen * size];
-	if (mp >= &message[msgcount])
-		mp = &message[msgcount - size];
-	if (mp < &message[0])
-		mp = &message[0];
-	flag = 0;
-	mesg = mp - &message[0];
-	if (dot != &message[n-1])
-		setdot(mp);
-	if (mb.mb_type == MB_IMAP)
-		imap_getheaders(mesg+1, mesg + size);
-	for (; mp < &message[msgcount]; mp++) {
-		mesg++;
-		if (mp->m_flag & (MDELETED|MHIDDEN))
-			continue;
-		if (flag++ >= size)
-			break;
-		printhead(mesg, stdout);
+	if (mb.mb_threaded == 0) {
+		mp = &message[screen * size];
+		if (mp >= &message[msgcount])
+			mp = &message[msgcount - size];
+		if (mp < &message[0])
+			mp = &message[0];
+		mesg = mp - &message[0];
+		if (dot != &message[n-1]) {
+			for (mq = mp; mq < &message[msgcount]; mq++)
+				if ((mq->m_flag&(MDELETED|MHIDDEN)) == 0) {
+					setdot(mq);
+					break;
+				}
+		}
+		if (mb.mb_type == MB_IMAP)
+			imap_getheaders(mesg+1, mesg + size);
+		for (; mp < &message[msgcount]; mp++) {
+			mesg++;
+			if (mp->m_flag & (MDELETED|MHIDDEN))
+				continue;
+			if (flag++ >= size)
+				break;
+			printhead(mesg, stdout, 0);
+		}
+	} else {	/* threaded */
+		k = screen * size;
+		if (k >= msgcount)
+			k = msgcount - size;
+		if (k < 0)
+			k = 0;
+		mp = this_in_thread(threadroot, k+1);
+		if (mp == NULL)
+			mp = threadroot;
+		if (dot != &message[n-1]) {
+			for (mq = mp; mq; mq = next_in_thread(mq))
+				if ((mq->m_flag&(MDELETED|MHIDDEN)) == 0) {
+					setdot(mq);
+					break;
+				}
+		}
+		while (mp) {
+			if ((mp->m_flag & (MDELETED|MHIDDEN)) == 0) {
+				if (flag++ >= size)
+					break;
+				printhead(mp - &message[0] + 1, stdout, 1);
+			}
+			mp = next_in_thread(mp);
+		}
 	}
 	if (flag == 0) {
 		printf(catgets(catd, CATSET, 6, "No more mail.\n"));
@@ -223,7 +253,7 @@ from(v)
 		}
 	}
 	for (ip = msgvec; *ip != 0; ip++)
-		printhead(*ip, obuf);
+		printhead(*ip, obuf, mb.mb_threaded);
 	if (--ip >= msgvec)
 		setdot(&message[*ip - 1]);
 endpipe:
@@ -240,14 +270,14 @@ endpipe:
  * This is a slight improvement to the standard one.
  */
 void
-printhead(mesg, f)
-	int mesg;
+printhead(mesg, f, threaded)
+	int mesg, threaded;
 	FILE *f;
 {
 	struct message *mp;
 	char *headline = NULL, lcount[64], ccount[64], *subjline, dispc, curind;
 	size_t headsize = 0;
-	int headlen = 0;
+	int headlen = 0, indent = 0, numlen = 3, i;
 	char *pbuf = NULL;
 	struct headline hl;
 	struct str in, out;
@@ -277,6 +307,10 @@ printhead(mesg, f)
 		mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
 		subjline = out.s;
 	}
+	if (threaded)
+		for (i = msgcount; i > 999; i /= 10)
+			numlen++;
+
 	/*
 	 * Bletch!
 	 */
@@ -313,10 +347,6 @@ printhead(mesg, f)
 	else
 		strcpy(lcount, "   ");
 	snprintf(ccount, sizeof ccount, "%-5lu", (unsigned long)mp->m_xsize);
-	subjlen = scrnwidth - (bsdheadline ? 49 : 45) - strlen(ccount) -
-		strlen(ccount);
-	if (subjlen > out.l)
-		subjlen = out.l;
 	if (Iflag) {
 		if ((name = hfield("newsgroups", mp)) == NULL)
 			if ((name = hfield("article-id", mp)) == NULL)
@@ -351,23 +381,32 @@ printhead(mesg, f)
 			name = makeprint0(skin(name));
 		}
 	}
-	if (subjline == NULL || subjlen < 0) {         /* pretty pathetic */
-		fprintf(f, bsdheadline ?  catgets(catd, CATSET, 206,
-				"%c%c%3d %s%-*.*s  %16.16s %s/%s\n") :
-			catgets(catd, CATSET, 11,
-				"%c%c%3d %s%-*.*s  %16.16s %s/%s\n"),
-			curind, dispc, mesg, isto ? "To " : "",
+	fprintf(f, bsdheadline ? "%c%c%*d %s%-*.*s  %16.16s %s/%s" :
+			"%c%c%*d %s%-*.*s  %16.16s %s/%s",
+			curind, dispc, numlen, mesg, isto ? "To " : "",
 			fromlen, fromlen, name, hl.l_date, lcount, ccount);
-	} else {
+	if (threaded) {
+		while (indent++ < mp->m_level) {
+			if (indent >= scrnwidth - 60) {
+				putc('^', f);
+				indent++;
+				break;
+			}
+			putc(' ', f);
+		}
+		indent--;
+	}
+	subjlen = scrnwidth - (bsdheadline ? 46 : 42) - strlen(ccount) -
+		strlen(ccount) - numlen;
+	subjlen -= indent;
+	if (subjlen > out.l)
+		subjlen = out.l;
+	if (subjline != NULL && subjlen >= 0) {		/* pretty pathetic */
 		makeprint(subjline, subjlen);
-		fprintf(f, bsdheadline ? catgets(catd, CATSET, 207,
-				"%c%c%3d %s%-*.*s  %16.16s %s/%s \"%.*s\"\n") :
-			catgets(catd, CATSET, 12,
-				"%c%c%3d %s%-*.*s  %16.16s %s/%s %.*s\n"),
-			curind, dispc, mesg, isto ? "To " : "",
-			fromlen, fromlen, name, hl.l_date, lcount, ccount,
+		fprintf(f, bsdheadline ? " \"%.*s\"" : " %.*s",
 			subjlen, subjline);
 	}
+	putc('\n', f);
 	if (out.s)
 		free(out.s);
 	if (headline)
@@ -811,7 +850,7 @@ folders(v)
 				"No value set for \"folder\"\n"));
 		return 1;
 	}
-	if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
+	if (which_protocol(dirname) == PROTO_IMAP)
 		imap_folders();
 	else {
 		if ((cmd = value("LISTER")) == NULL)

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.18 (gritter) 8/3/04";
+static char sccsid[] = "@(#)smtp.c	2.24 (gritter) 8/14/04";
 #endif
 #endif /* not lint */
 
@@ -55,6 +55,8 @@ static char sccsid[] = "@(#)smtp.c	2.18 (gritter) 8/3/04";
 #endif	/* HAVE_ARPA_INET_H */
 #endif	/* HAVE_SOCKETS */
 #include <unistd.h>
+
+#include "md5.h"
 
 /*
  * Mail -- a mail program
@@ -142,6 +144,11 @@ myaddr()
 
 #ifdef	HAVE_SOCKETS
 
+static char	*auth_var __P((const char *, const char *));
+static int	read_smtp __P((struct sock *, int));
+static int	talk_smtp __P((struct name *, FILE *, struct sock *,
+			char *, char *));
+
 static char *
 auth_var(type, addr)
 	const char *type, *addr;
@@ -150,11 +157,11 @@ auth_var(type, addr)
 	int	len;
 
 	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
-	snprintf(var, len, "smtp-auth-%s-%s", type, addr);
+	snprintf(var, len, "smtp-auth%s-%s", type, addr);
 	if ((cp = value(var)) != NULL)
 		cp = savestr(cp);
 	else {
-		snprintf(var, len, "smtp-auth-%s", type);
+		snprintf(var, len, "smtp-auth%s", type);
 		if ((cp = value(var)) != NULL)
 			cp = savestr(cp);
 	}
@@ -226,12 +233,32 @@ char *server, *uhp;
 	struct name *n;
 	char *b = NULL, o[LINESIZE];
 	size_t blen, bsize = 0, count;
-	char	*user, *password, *b64, *skinned;
+	char	*user, *password, *b64, *skinned, *authstr, *cp;
+	enum	{ AUTH_NONE, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 
 	skinned = skin(myaddr());
+	user = auth_var("-user", skinned);
+	password = auth_var("-password", skinned);
+	if ((authstr = auth_var("", skinned)) == NULL)
+		auth = user && password ? AUTH_LOGIN : AUTH_NONE;
+	else if (strcmp(authstr, "login") == 0)
+		auth = AUTH_LOGIN;
+	else if (strcmp(authstr, "cram-md5") == 0)
+		auth = AUTH_CRAM_MD5;
+	else {
+		fprintf(stderr, "Unknown SMTP authentication "
+				"method: \"%s\"\n", authstr);
+		return 1;
+	}
+	if (auth != AUTH_NONE && (user == NULL || password == NULL)) {
+		fprintf(stderr, "User and password are necessary "
+				"for SMTP authentication.\n");
+		return 1;
+	}
 	SMTP_ANSWER(2);
 #ifdef	USE_SSL
-	if (value("smtp-use-tls")) {
+	if (value("smtp-use-starttls") ||
+			value("smtp-use-tls") /* v11.0 compatibility */) {
 		snprintf(o, sizeof o, "EHLO %s\r\n", nodename());
 		SMTP_OUT(o);
 		SMTP_ANSWER(2);
@@ -240,26 +267,42 @@ char *server, *uhp;
 		if (ssl_open(server, sp, uhp) != OKAY)
 			return 1;
 	}
-#endif	/* USE_SSL */
-	user = auth_var("user", skinned);
-	password = auth_var("password", skinned);
-	if (user && password) {
+#else	/* !USE_SSL */
+	if (value("smtp-use-starttls") || value("smtp-use-tls")) {
+		fprintf(stderr, "No SSL support compiled in.\n");
+		return 1;
+	}
+#endif	/* !USE_SSL */
+	if (auth != AUTH_NONE) {
 		snprintf(o, sizeof o, "EHLO %s\r\n", nodename());
 		SMTP_OUT(o);
 		SMTP_ANSWER(2);
-		snprintf(o, sizeof o, "AUTH LOGIN\r\n");
-		SMTP_OUT(o);
-		SMTP_ANSWER(3);
-		b64 = strtob64(user);
-		snprintf(o, sizeof o, "%s\r\n", b64);
-		free(b64);
-		SMTP_OUT(o);
-		SMTP_ANSWER(3);
-		b64 = strtob64(password);
-		snprintf(o, sizeof o, "%s\r\n", b64);
-		free(b64);
-		SMTP_OUT(o);
-		SMTP_ANSWER(2);
+		switch (auth) {
+		default:
+		case AUTH_LOGIN:
+			SMTP_OUT("AUTH LOGIN\r\n");
+			SMTP_ANSWER(3);
+			b64 = strtob64(user);
+			snprintf(o, sizeof o, "%s\r\n", b64);
+			free(b64);
+			SMTP_OUT(o);
+			SMTP_ANSWER(3);
+			b64 = strtob64(password);
+			snprintf(o, sizeof o, "%s\r\n", b64);
+			free(b64);
+			SMTP_OUT(o);
+			SMTP_ANSWER(2);
+			break;
+		case AUTH_CRAM_MD5:
+			SMTP_OUT("AUTH CRAM-MD5\r\n");
+			SMTP_ANSWER(3);
+			for (cp = smtpbuf; digitchar(*cp&0377); cp++);
+			while (blankchar(*cp&0377)) cp++;
+			cp = cram_md5_string(user, password, cp);
+			SMTP_OUT(cp);
+			SMTP_ANSWER(2);
+			break;
+		}
 	} else {
 		snprintf(o, sizeof o, "HELO %s\r\n", nodename());
 		SMTP_OUT(o);
@@ -270,7 +313,8 @@ char *server, *uhp;
 	SMTP_ANSWER(2);
 	for (n = to; n != NULL; n = n->n_flink) {
 		if ((n->n_type & GDEL) == 0) {
-			snprintf(o, sizeof o, "RCPT TO: <%s>\r\n", n->n_name);
+			snprintf(o, sizeof o, "RCPT TO: <%s>\r\n",
+					skin(n->n_name));
 			SMTP_OUT(o);
 			SMTP_ANSWER(2);
 		}

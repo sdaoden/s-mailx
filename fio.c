@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.46 (gritter) 8/3/04";
+static char sccsid[] = "@(#)fio.c	2.47 (gritter) 8/12/04";
 #endif
 #endif /* not lint */
 
@@ -1036,11 +1036,14 @@ sopen(xserver, sp, use_ssl, uhp, portstr, verbose)
 #ifdef	HAVE_IPv6_FUNCS
 	memset(&hints, 0, sizeof hints);
 	hints.ai_socktype = SOCK_STREAM;
+	if (verbose)
+		fprintf(stderr, "Resolving host %s . . .", server);
 	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
 		fprintf(stderr, catgets(catd, CATSET, 252,
 				"Could not resolve host: %s\n"), server);
 		return STOP;
-	}
+	} else if (verbose)
+		fprintf(stderr, " done.\n");
 	sockfd = -1;
 	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
 		if (verbose) {
@@ -1089,11 +1092,14 @@ sopen(xserver, sp, use_ssl, uhp, portstr, verbose)
 			port = ep->s_port;
 	} else
 		port = htons(port);
+	if (verbose)
+		fprintf(stderr, "Resolving host %s . . .", server);
 	if ((hp = gethostbyname(server)) == NULL) {
 		fprintf(stderr, catgets(catd, CATSET, 252,
 				"Could not resolve host: %s\n"), server);
 		return STOP;
-	}
+	} else if (verbose)
+		fprintf(stderr, " done.\n");
 	pptr = (struct in_addr **)hp->h_addr_list;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror(catgets(catd, CATSET, 253, "could not create socket"));

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	2.14 (gritter) 8/1/04";
+static char sccsid[] = "@(#)names.c	2.16 (gritter) 8/8/04";
 #endif
 #endif /* not lint */
 
@@ -74,13 +74,27 @@ nalloc(str, ntype)
 	int ntype;
 {
 	struct name *np;
+	struct str	in, out;
 
 	/*LINTED*/
 	np = (struct name *)salloc(sizeof *np);
 	np->n_flink = NULL;
 	np->n_blink = NULL;
 	np->n_type = ntype;
-	np->n_name = savestr(str);
+	if (ntype & GFULL) {
+		np->n_name = savestr(skin(str));
+		if (strcmp(np->n_name, str)) {
+			in.s = str;
+			in.l = strlen(str);
+			mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
+			np->n_fullname = savestr(out.s);
+			free(out.s);
+		} else
+			np->n_fullname = np->n_name;
+	} else if (ntype & GSKIN)
+		np->n_fullname = np->n_name = savestr(skin(str));
+	else
+		np->n_fullname = np->n_name = savestr(str);
 	return(np);
 }
 
@@ -176,7 +190,7 @@ detract(np, ntype)
 	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
-		s += strlen(p->n_name) + 1;
+		s += strlen(p->n_fullname) + 1;
 		if (comma)
 			s++;
 	}
@@ -188,7 +202,7 @@ detract(np, ntype)
 	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
-		cp = sstpcpy(cp, p->n_name);
+		cp = sstpcpy(cp, p->n_fullname);
 		if (comma && p->n_flink != NULL)
 			*cp++ = ',';
 		*cp++ = ' ';
@@ -512,7 +526,7 @@ gexpand(nlist, gh, metoo, ntype)
 			continue;
 		}
 quote:
-		np = nalloc(cp, ntype);
+		np = nalloc(cp, ntype|GFULL);
 		/*
 		 * At this point should allow to expand
 		 * to self if only person in group

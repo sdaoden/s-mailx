@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.33 (gritter) 8/4/04";
+static char sccsid[] = "@(#)cmd3.c	2.36 (gritter) 8/14/04";
 #endif
 #endif /* not lint */
 
@@ -56,7 +56,7 @@ static int	bangexp __P((char **, size_t *));
 static void	make_ref __P((struct message *, struct header *));
 static int	respond_internal __P((int *, int));
 static char	*reedit __P((char *));
-static void	sort __P((char **));
+static void	asort __P((char **));
 static int	Respond_internal __P((int [], int));
 static int	forward1 __P((void *, int));
 static void	onpipe __P((int));
@@ -339,6 +339,7 @@ respond_internal(msgvec, recipient_record)
 {
 	struct message *mp;
 	char *cp, *rcv;
+	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
 	struct name *np = NULL;
 	struct header head;
 
@@ -350,13 +351,13 @@ respond_internal(msgvec, recipient_record)
 	mp = &message[msgvec[0] - 1];
 	touch(mp);
 	setdot(mp);
-	if ((rcv = skin(hfield("reply-to", mp))) == NULL)
-		if ((rcv = skin(hfield("from", mp))) == NULL)
-			rcv = skin(nameof(mp, 1));
+	if ((rcv = hfield("reply-to", mp)) == NULL)
+		if ((rcv = hfield("from", mp)) == NULL)
+			rcv = nameof(mp, 1);
 	if (rcv != NULL)
-		np = extract(rcv, GTO);
-	if ((cp = skin(hfield("to", mp))) != NULL)
-		np = cat(np, extract(cp, GTO));
+		np = sextract(rcv, GTO|gf);
+	if ((cp = hfield("to", mp)) != NULL)
+		np = cat(np, sextract(cp, GTO|gf));
 	np = elide(np);
 	/*
 	 * Delete my name from the reply list,
@@ -364,13 +365,13 @@ respond_internal(msgvec, recipient_record)
 	 */
 	np = delete_alternates(np);
 	if (np == NULL)
-		np = extract(rcv, GTO);
+		np = sextract(rcv, GTO|gf);
 	head.h_to = np;
 	if ((head.h_subject = hfield("subject", mp)) == NULL)
 		head.h_subject = hfield("subj", mp);
 	head.h_subject = reedit(head.h_subject);
-	if ((cp = skin(hfield("cc", mp))) != NULL) {
-		np = elide(extract(cp, GCC));
+	if ((cp = hfield("cc", mp)) != NULL) {
+		np = elide(sextract(cp, GCC|gf));
 		np = delete_alternates(np);
 		head.h_cc = np;
 	} else
@@ -530,7 +531,7 @@ set(v)
 			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
 				*p++ = vp->v_name;
 		*p = NULL;
-		sort(ap);
+		asort(ap);
 		if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 			if (s > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
 				cp = get_pager();
@@ -632,7 +633,7 @@ group(v)
 			for (gh = groups[h]; gh != NULL; gh = gh->g_link)
 				*p++ = gh->g_name;
 		*p = NULL;
-		sort(ap);
+		asort(ap);
 		for (p = ap; *p != NULL; p++)
 			printgroup(*p);
 		return(0);
@@ -691,7 +692,7 @@ ungroup(v)
  * order.
  */
 static void
-sort(list)
+asort(list)
 	char **list;
 {
 	char **ap;
@@ -844,6 +845,7 @@ Respond_internal(msgvec, recipient_record)
 {
 	struct header head;
 	struct message *mp;
+	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
 	int *ap;
 	char *cp;
 
@@ -852,10 +854,10 @@ Respond_internal(msgvec, recipient_record)
 		mp = &message[*ap - 1];
 		touch(mp);
 		setdot(mp);
-		if ((cp = skin(hfield("reply-to", mp))) == NULL)
-			if ((cp = skin(hfield("from", mp))) == NULL)
-				cp = skin(nameof(mp, 2));
-		head.h_to = cat(head.h_to, extract(cp, GTO));
+		if ((cp = hfield("reply-to", mp)) == NULL)
+			if ((cp = hfield("from", mp)) == NULL)
+				cp = nameof(mp, 2);
+		head.h_to = cat(head.h_to, sextract(cp, GTO|gf));
 	}
 	if (head.h_to == NULL)
 		return 0;

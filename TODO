@@ -39,11 +39,9 @@ need them and cannot wait, contribute code.
 
 ------------------------------------------------------------------------
 
-The POP3 client supports USER/PASS authentication only. If you need
-other authentication methods and have the ability to test them, please
-write and contribute code.
-
-The APOP authentication should be especially easy to implement.
+The POP3 client supports USER/PASS and APOP authentications only. If you
+need other authentication methods and have the ability to test them,
+please write and contribute code.
 
 If you want to edit arbitrary header fields with the 'editheaders'
 option, you are invited to supply code for it. Be warned that this
@@ -81,4 +79,4 @@ window. For the receiving part, it is simply annoying. If you want
 a confirmation, ask the recipient to send one in the body of the
 message.
 
-	Gunnar Ritter					8/7/04
+	Gunnar Ritter					8/12/04

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.32 (gritter) 8/4/04";
+static char sccsid[] = "@(#)sendout.c	2.37 (gritter) 8/15/04";
 #endif
 #endif /* not lint */
 
@@ -72,7 +72,7 @@ static int	sendmail_internal __P((void *, int));
 static int	start_mta __P((struct name *, struct name *, FILE *));
 static void	message_id __P((FILE *));
 static void	date_field __P((FILE *));
-static int	fmt __P((char *, struct name *, FILE *, int, int));
+static int	fmt __P((char *, struct name *, FILE *, int, int, int));
 static int	infix_fw __P((FILE *, FILE *, struct message *,
 			struct name *, int));
 
@@ -169,20 +169,23 @@ fixhead(hp, tolist, addauto)
 	for (np = tolist; np != NULL; np = np->n_flink)
 		if ((np->n_type & GMASK) == GTO)
 			hp->h_to =
-				cat(hp->h_to, nalloc(np->n_name, np->n_type));
+				cat(hp->h_to, nalloc(np->n_fullname,
+							np->n_type|GFULL));
 		else if ((np->n_type & GMASK) == GCC)
 			hp->h_cc =
-				cat(hp->h_cc, nalloc(np->n_name, np->n_type));
+				cat(hp->h_cc, nalloc(np->n_fullname,
+							np->n_type|GFULL));
 		else if ((np->n_type & GMASK) == GBCC)
 			hp->h_bcc =
-				cat(hp->h_bcc, nalloc(np->n_name, np->n_type));
+				cat(hp->h_bcc, nalloc(np->n_fullname,
+							np->n_type|GFULL));
 	if (addauto && (cp = value("autocc")) != NULL && *cp) {
-		np = checkaddrs(extract(cp, GCC));
+		np = checkaddrs(extract(cp, GCC|GFULL));
 		hp->h_cc = cat(hp->h_cc, np);
 		tolist = cat(tolist, np);
 	}
 	if (addauto && (cp = value("autobcc")) != NULL && *cp) {
-		np = checkaddrs(extract(cp, GBCC));
+		np = checkaddrs(extract(cp, GBCC|GFULL));
 		hp->h_bcc = cat(hp->h_bcc, np);
 		tolist = cat(tolist, np);
 	}
@@ -391,11 +394,11 @@ infix(hp, fi)
 	FILE *nfo, *nfi;
 	char *tempMail;
 #ifdef	HAVE_ICONV
-	char *tcs;
+	char *tcs, *convhdr = NULL;
 #endif
 	enum mimeclean isclean;
 	int convert;
-	char *charset = NULL, *contenttype = NULL, *convhdr = NULL;
+	char *charset = NULL, *contenttype = NULL;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 178, "temporary mail file"));
@@ -679,7 +682,7 @@ sendmail_internal(v, recipient_record)
 	char *str = v;
 	struct header head;
 
-	head.h_to = extract(str, GTO);
+	head.h_to = extract(str, GTO|GFULL);
 	head.h_subject = NULL;
 	head.h_cc = NULL;
 	head.h_bcc = NULL;
@@ -749,6 +752,7 @@ FILE* input;
 		sigaddset(&nset, SIGTSTP);
 		sigaddset(&nset, SIGTTIN);
 		sigaddset(&nset, SIGTTOU);
+		freopen("/dev/null", "r", stdin);
 		if (smtp != NULL) {
 			prepare_child(&nset, 0, 1);
 			if (smtp_mta(smtp, to, input) == 0)
@@ -980,13 +984,15 @@ FILE *fo;
 #define	FMT_CC_AND_BCC	{ \
 				if (hp->h_cc != NULL && w & GCC) { \
 					if (fmt("Cc:", hp->h_cc, fo, \
-							w&GCOMMA, 0)) \
+							w&GCOMMA, 0, \
+							convert!=CONV_TODISP)) \
 						return 1; \
 					gotcha++; \
 				} \
 				if (hp->h_bcc != NULL && w & GBCC) { \
 					if (fmt("Bcc:", hp->h_bcc, fo, \
-							w&GCOMMA, 0)) \
+							w&GCOMMA, 0, \
+							convert!=CONV_TODISP)) \
 						return 1; \
 					gotcha++; \
 				} \
@@ -1068,7 +1074,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 		}
 	}
 	if (hp->h_to != NULL && w & GTO) {
-		if (fmt("To:", hp->h_to, fo, w&GCOMMA, 0))
+		if (fmt("To:", hp->h_to, fo, w&GCOMMA, 0,convert!=CONV_TODISP))
 			return 1;
 		gotcha++;
 	}
@@ -1104,7 +1110,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 	if (w & GMSGID && stealthmua == 0)
 		message_id(fo), gotcha++;
 	if (hp->h_ref != NULL && w & GREF) {
-		fmt("References:", hp->h_ref, fo, 0, 1);
+		fmt("References:", hp->h_ref, fo, 0, 1, 0);
 		if ((np = hp->h_ref) != NULL && np->n_name) {
 			while (np->n_flink)
 				np = np->n_flink;
@@ -1139,11 +1145,11 @@ puthead(hp, fo, w, convert, contenttype, charset)
  * Format the given header line to not exceed 72 characters.
  */
 static int
-fmt(str, np, fo, comma, dropinvalid)
+fmt(str, np, fo, comma, dropinvalid, domime)
 	char *str;
 	struct name *np;
 	FILE *fo;
-	int comma, dropinvalid;
+	int comma, dropinvalid, domime;
 {
 	int col, len, count = 0;
 	int is_to = 0;
@@ -1167,15 +1173,17 @@ fmt(str, np, fo, comma, dropinvalid)
 			else
 				return 1;
 		}
-		len = strlen(np->n_name);
+		len = strlen(np->n_fullname);
 		col++;		/* for the space */
 		if (count && col + len + comma > 72 && col > 1) {
 			fputs("\n ", fo);
 			col = 1;
 		} else
 			putc(' ', fo);
-		len = mime_write(np->n_name, sizeof *np->n_name, len, fo,
-				CONV_TOHDR_A, TD_ICONV, NULL, (size_t)0);
+		len = mime_write(np->n_fullname, sizeof *np->n_fullname,
+				len, fo,
+				domime?CONV_TOHDR_A:CONV_NONE,
+				TD_ICONV, NULL, (size_t)0);
 		if (comma && !(is_to && is_fileaddr(np->n_flink->n_name)))
 			putc(',', fo);
 		col += len + comma;
@@ -1259,7 +1267,7 @@ int add_resent;
 				putc('\n', fo);
 			}
 #endif	/* notdef */
-			if (fmt("Resent-To:", to, fo, 1, 1)) {
+			if (fmt("Resent-To:", to, fo, 1, 1, 0)) {
 				if (buf)
 					free(buf);
 				return 1;

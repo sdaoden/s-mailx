@@ -71,10 +71,19 @@ INCLUDES        A list of additional include file directories, as
                 files for OpenSSL or iconv(3) if they are not present
                 in the standard include directories. Also, some versions
                 of RedHat Linux need -I/usr/kerberos/include to compile
-                with OpenSSL.
+                with OpenSSL, or to compile with GSSAPI authentication
+                included.
+
+LDFLAGS         Flags for the linker. To compile with GSSAPI authentication
+                included, some RedHat versions need -L/usr/kerberos/lib.
 
 LIBS            A list of additional libraries or library paths, such as
                 '-L/usr/local/lib -liconv'.
+
+As usual with Makefile variables, you can pass these values to make in
+the environment or on the command line. Thus if you want to avoid to edit
+the Makefile, you can create a shell script to invoke make, or set flags
+of general use (such as CFLAGS) in .profile.
 
 Transition remarks concerning the old configure system
 ======================================================
@@ -149,4 +158,4 @@ anyway.)
 
 In short, everything is better now.
 
-        Gunnar Ritter                                   8/4/04
+        Gunnar Ritter                                   8/15/04

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.18 (gritter) 8/7/04";
+static char sccsid[] = "@(#)list.c	2.29 (gritter) 8/15/04";
 #endif
 #endif /* not lint */
 
@@ -64,7 +64,7 @@ static void	scaninit __P((void));
 static int	matchsender __P((char *, int, int));
 static int	matchmid __P((char *, int));
 static int	matchsubj __P((char *, int));
-static void	mark __P((int));
+static void	mark __P((int, int));
 static void	unmark __P((int));
 static int	metamess __P((int, int));
 
@@ -74,6 +74,7 @@ static int	regretp;		/* Pointer to TOS of regret tokens */
 static int	regretstack[REGDEP];	/* Stack of regretted tokens */
 static char	*string_stack[REGDEP];	/* Stack of regretted strings */
 static int	numberstack[REGDEP];	/* Stack of regretted numbers */
+static int	threadflag;		/* mark entire threads */
 
 /*
  * Convert the user string of message numbers and
@@ -96,9 +97,15 @@ getmsglist(buf, vector, flags)
 	if (markall(buf, flags) < 0)
 		return(-1);
 	ip = vector;
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
-		if (mp->m_flag & MMARK)
-			*ip++ = mp - &message[0] + 1;
+	if (mb.mb_threaded == 0) {
+		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+			if (mp->m_flag & MMARK)
+				*ip++ = mp - &message[0] + 1;
+	} else {
+		for (mp = threadroot; mp; mp = next_in_thread(mp))
+			if (mp->m_flag & MMARK)
+				*ip++ = mp - &message[0] + 1;
+	}
 	*ip = 0;
 	return(ip - vector);
 }
@@ -169,7 +176,7 @@ markall(buf, f)
 {
 	char **np, **nq;
 	int i, retval;
-	struct message *mp;
+	struct message *mp, *mx;
 	char **namelist, *bufp, *id = NULL, *cp;
 	int tok, beg, mc, star, other, valdot, colmod, colresult;
 	size_t nmlsize;
@@ -201,11 +208,22 @@ number:
 			if (beg != 0) {
 				if (check(lexnumber, f))
 					markall_ret(-1)
-				for (i = beg; i <= lexnumber; i++) {
-					if (message[i-1].m_flag & MHIDDEN)
-						continue;
-					if (f == MDELETED || (message[i-1].m_flag & MDELETED) == 0)
-						mark(i);
+				i = beg;
+				while (mb.mb_threaded ? 1 : i <= lexnumber) {
+					if (!(message[i-1].m_flag&MHIDDEN) &&
+							(f == MDELETED ||
+							 (message[i-1].m_flag &
+							  MDELETED) == 0))
+						mark(i, f);
+					if (mb.mb_threaded) {
+						if (i == lexnumber)
+							break;
+						mx = next_in_thread(&message[i-1]);
+						if (mx == NULL)
+							markall_ret(-1)
+						i = mx-message+1;
+					} else
+						i++;
 				}
 				beg = 0;
 				break;
@@ -216,7 +234,7 @@ number:
 			tok = scan(&bufp);
 			regret(tok);
 			if (tok != TDASH) {
-				mark(beg);
+				mark(beg, f);
 				beg = 0;
 			}
 			break;
@@ -229,7 +247,11 @@ number:
 			}
 			i = valdot;
 			do {
-				i++;
+				if (mb.mb_threaded) {
+					mx = next_in_thread(&message[i-1]);
+					i = mx ? mx-message+1 : msgcount+1;
+				} else
+					i++;
 				if (i > msgcount) {
 					printf(catgets(catd, CATSET, 114,
 						"Referencing beyond EOF\n"));
@@ -237,14 +259,19 @@ number:
 				}
 			} while (message[i-1].m_flag == MHIDDEN ||
 					(message[i-1].m_flag & MDELETED) != f);
-			mark(i);
+			mark(i, f);
 			break;
 
 		case TDASH:
 			if (beg == 0) {
 				i = valdot;
 				do {
-					i--;
+					if (mb.mb_threaded) {
+						mx = prev_in_thread(
+								&message[i-1]);
+						i = mx ? mx-message+1 : 0;
+					} else
+						i--;
 					if (i <= 0) {
 						printf(catgets(catd, CATSET,
 							115,
@@ -253,7 +280,7 @@ number:
 					}
 				} while (message[i-1].m_flag & MHIDDEN ||
 						(message[i-1].m_flag & MDELETED) != f);
-				mark(i);
+				mark(i, f);
 			}
 			break;
 
@@ -319,6 +346,7 @@ number:
 		case TERROR:
 			markall_ret(-1)
 		}
+		threadflag = 0;
 		tok = scan(&bufp);
 	}
 	lastcolmod = colmod;
@@ -327,10 +355,9 @@ number:
 	mc = 0;
 	if (star) {
 		for (i = 0; i < msgcount; i++) {
-			if (message[i].m_flag & MHIDDEN)
-				continue;
-			if ((message[i].m_flag & MDELETED) == f) {
-				mark(i+1);
+			if (!(message[i].m_flag & MHIDDEN) &&
+					(message[i].m_flag & MDELETED) == f) {
+				mark(i+1, f);
 				mc++;
 			}
 		}
@@ -350,10 +377,9 @@ number:
 
 	if ((np > namelist || colmod != 0 || id) && mc == 0)
 		for (i = 1; i <= msgcount; i++) {
-			if (message[i-1].m_flag & MHIDDEN)
-				continue;
-			if ((message[i-1].m_flag & MDELETED) == f)
-				mark(i);
+			if (!(message[i-1].m_flag & MHIDDEN) &&
+					(message[i-1].m_flag & MDELETED) == f)
+				mark(i, f);
 		}
 
 	/*
@@ -668,6 +694,20 @@ scan(sp)
 	}
 
 	/*
+	 * Only in threaded mode: select descendants of a message.
+	 */
+	if (mb.mb_threaded == 1 && c == '&') {
+		threadflag = 1;
+		if (*cp == '\0' || spacechar(*cp&0377)) {
+			lexstring[0] = '.';
+			lexstring[1] = '\0';
+			*sp = cp;
+			return TDOT;
+		}
+		c = *cp++;
+	}
+
+	/*
 	 * If the leading character is a digit, scan
 	 * the number and convert it on the fly.
 	 * Return TNUMBER when done.
@@ -754,6 +794,7 @@ static void
 scaninit()
 {
 	regretp = -1;
+	threadflag = 0;
 }
 
 /*
@@ -770,16 +811,14 @@ first(f, m)
 		return 0;
 	f &= MDELETED;
 	m &= MDELETED;
-	for (mp = dot; mp < &message[msgcount]; mp++) {
-		if (mp->m_flag & MHIDDEN)
-			continue;
-		if ((mp->m_flag & m) == f)
+	for (mp = dot; mb.mb_threaded ? mp != NULL : mp < &message[msgcount];
+			mb.mb_threaded ? mp = next_in_thread(mp) : mp++) {
+		if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == f)
 			return mp - message + 1;
 	}
-	for (mp = dot-1; mp >= &message[0]; mp--) {
-		if (mp->m_flag & MHIDDEN)
-			continue;
-		if ((mp->m_flag & m) == f)
+	for (mp = dot-1; mb.mb_threaded ? mp != NULL : mp >= &message[0];
+			mb.mb_threaded ? mp = prev_in_thread(mp) : mp--) {
+		if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == f)
 			return mp - message + 1;
 	}
 	return 0;
@@ -818,7 +857,7 @@ matchmid(id, mesg)
 	char *cp;
 
 	if ((cp = hfield("message-id", &message[mesg - 1])) != NULL &&
-			strcmp(cp, id) == 0)
+			msgidcmp(cp, id) == 0)
 		return 1;
 	return 0;
 }
@@ -925,15 +964,29 @@ matchsubj(str, mesg)
  * Mark the named message by setting its mark bit.
  */
 static void
-mark(mesg)
-	int mesg;
+mark(mesg, f)
+	int mesg, f;
 {
+	struct message	*mp;
 	int i;
 
 	i = mesg;
 	if (i < 1 || i > msgcount)
 		panic(catgets(catd, CATSET, 129, "Bad message number to mark"));
-	message[i-1].m_flag |= MMARK;
+	if (threadflag) {
+		if ((message[i-1].m_flag & MHIDDEN) == 0) {
+			if (f == MDELETED ||
+					(message[i-1].m_flag&MDELETED) == 0)
+			message[i-1].m_flag |= MMARK;
+		}
+		if (message[i-1].m_child) {
+			mp = message[i-1].m_child;
+			mark(mp-message+1, f);
+			for (mp = mp->m_younger; mp; mp = mp->m_younger)
+				mark(mp-message+1, f);
+		}
+	} else
+		message[i-1].m_flag |= MMARK;
 }
 
 /*
@@ -968,11 +1021,17 @@ metamess(meta, f)
 		/*
 		 * First 'good' message left.
 		 */
-		for (mp = &message[0]; mp < &message[msgcount]; mp++) {
-			if (mp->m_flag & MHIDDEN)
-				continue;
-			if ((mp->m_flag & MDELETED) == f)
+		mp = mb.mb_threaded ? threadroot : &message[0];
+		while (mp < &message[msgcount]) {
+			if (!(mp->m_flag & MHIDDEN) &&
+					(mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
+			if (mb.mb_threaded) {
+				mp = next_in_thread(mp);
+				if (mp == NULL)
+					break;
+			} else
+				mp++;
 		}
 		printf(catgets(catd, CATSET, 131, "No applicable messages\n"));
 		return(-1);
@@ -981,11 +1040,18 @@ metamess(meta, f)
 		/*
 		 * Last 'good message left.
 		 */
-		for (mp = &message[msgcount-1]; mp >= &message[0]; mp--) {
-			if (mp->m_flag & MHIDDEN)
-				continue;
-			if ((mp->m_flag & MDELETED) == f)
+		mp = mb.mb_threaded ? this_in_thread(threadroot, -1) :
+			&message[msgcount-1];
+		while (mp >= &message[0]) {
+			if (!(mp->m_flag & MHIDDEN) &&
+					(mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
+			if (mb.mb_threaded) {
+				mp = prev_in_thread(mp);
+				if (mp == NULL)
+					break;
+			} else
+				mp--;
 		}
 		printf(catgets(catd, CATSET, 132, "No applicable messages\n"));
 		return(-1);

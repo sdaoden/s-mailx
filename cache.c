@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cache.c	1.37 (gritter) 8/7/04";
+static char sccsid[] = "@(#)cache.c	1.42 (gritter) 8/14/04";
 #endif
 #endif /* not lint */
 
@@ -63,14 +63,27 @@ static char sccsid[] = "@(#)cache.c	1.37 (gritter) 8/7/04";
  * A cache for IMAP.
  */
 
+#ifdef	HAVE_FCHDIR
+struct	cw {
+	int	cw_fd;
+};
+#else	/* !HAVE_FCHDIR */
+struct	cw {
+	char	cw_wd[PATHSIZE];
+};
+#endif	/* !HAVE_FCHDIR */
+static enum okay	cwget __P((struct cw *));
+static enum okay	cwret __P((struct cw *));
+static void	cwrelse __P((struct cw *));
+
 static char	*encname __P((struct mailbox *, const char *, int));
 static char	*encuid __P((struct mailbox *, unsigned long));
 static enum okay	getcache1 __P((struct mailbox *, struct message *,
 				enum needspec, int));
-static FILE	*clean __P((struct mailbox *, int));
+static FILE	*clean __P((struct mailbox *, struct cw *));
 static unsigned long	*builds __P((long *));
 static void	purge __P((struct mailbox *, struct message *, long,
-				int, const char *));
+				struct cw *, const char *));
 static enum okay	makedir __P((const char *));
 static int	longlt __P((const void *, const void *));
 static void	remve __P((unsigned long));
@@ -365,7 +378,7 @@ initcache(mp)
 	char	*name, *uvname;
 	FILE	*uvfp;
 	unsigned long	uv;
-	int	curfd;
+	struct cw	cw;
 
 	free(mp->mb_cache_directory);
 	mp->mb_cache_directory = NULL;
@@ -374,17 +387,13 @@ initcache(mp)
 	mp->mb_cache_directory = sstrdup(name);
 	if ((uvname = encname(mp, "UIDVALIDITY", 1)) == NULL)
 		return;
-	if ((curfd = open(".", O_RDONLY)) < 0)
+	if (cwget(&cw) == STOP)
 		return;
-	if (fchdir(curfd) < 0) {
-		close(curfd);
-		return;
-	}
 	if ((uvfp = Fopen(uvname, "r+")) == NULL ||
 			(fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
 			fscanf(uvfp, "%lu", &uv) != 1 ||
 			uv != mp->mb_uidvalidity) {
-		if ((uvfp = clean(mp, curfd)) == NULL)
+		if ((uvfp = clean(mp, &cw)) == NULL)
 			goto out;
 	} else {
 		fflush(uvfp);
@@ -396,7 +405,7 @@ initcache(mp)
 		unlink(uvname);
 		mp->mb_uidvalidity = 0;
 	}
-out:	close(curfd);
+out:	cwrelse(&cw);
 }
 
 void
@@ -406,24 +415,20 @@ purgecache(mp, m, mc)
 	long	mc;
 {
 	char	*name;
-	int	curfd;
+	struct cw	cw;
 
 	if ((name = encname(mp, "", 1)) == NULL)
 		return;
-	if ((curfd = open(".", O_RDONLY)) < 0)
+	if (cwget(&cw) == STOP)
 		return;
-	if (fchdir(curfd) < 0) {
-		close(curfd);
-		return;
-	}
-	purge(mp, m, mc, curfd, name);
-	close(curfd);
+	purge(mp, m, mc, &cw, name);
+	cwrelse(&cw);
 }
 
 static FILE *
-clean(mp, curfd)
+clean(mp, cw)
 	struct mailbox	*mp;
-	int	curfd;
+	struct cw	*cw;
 {
 	char	*cachedir, *eaccount, *emailbox, *buf;
 	int	bufsz;
@@ -472,7 +477,7 @@ clean(mp, curfd)
 	}
 	closedir(dirfd);
 	fp = Fopen("UIDVALIDITY", "w");
-out:	if (fchdir(curfd) < 0) {
+out:	if (cwret(cw) == STOP) {
 		fputs("Fatal: Cannot change back to current directory.\n",
 				stderr);
 		abort();
@@ -533,11 +538,11 @@ builds(long *contentelem)
 }
 
 static void
-purge(mp, m, mc, curfd, name)
+purge(mp, m, mc, cw, name)
 	struct mailbox	*mp;
 	struct message	*m;
 	long	mc;
-	int	curfd;
+	struct cw	*cw;
 	const char	*name;
 {
 	unsigned long	*contents;
@@ -548,17 +553,17 @@ purge(mp, m, mc, curfd, name)
 	contents = builds(&contentelem);
 	if (contents) {
 		i = j = 0;
-		while (i < mc && j < contentelem) {
-			if (m[i].m_uid == contents[j]) {
+		while (j < contentelem) {
+			if (i < mc && m[i].m_uid == contents[j]) {
 				i++;
 				j++;
-			} else if (m[i].m_uid < contents[j])
+			} else if (i < mc && m[i].m_uid < contents[j])
 				i++;
 			else
 				remve(contents[j++]);
 		}
 	}
-	if (fchdir(curfd) < 0) {
+	if (cwret(cw) == STOP) {
 		fputs("Fatal: Cannot change back to current directory.\n",
 				stderr);
 		abort();
@@ -592,32 +597,40 @@ delcache(mp, m)
 }
 
 enum okay
-cache_setptr()
+cache_setptr(transparent)
+	int	transparent;
 {
-	int	curfd, i;
+	int	i;
+	struct cw	cw;
 	char	*name;
 	unsigned long	*contents;
 	long	contentelem;
 	enum okay	ok = STOP;
+	struct message	*omessage = NULL;
+	int	omsgcount = 0;
 
+	if (transparent) {
+		omessage = message;
+		omsgcount = msgcount;
+	}
 	free(mb.mb_cache_directory);
 	mb.mb_cache_directory = NULL;
 	if ((name = encname(&mb, "", 1)) == NULL)
 		return STOP;
 	mb.mb_cache_directory = sstrdup(name);
-	if ((curfd = open(".", O_RDONLY)) < 0)
+	if (cwget(&cw) == STOP)
 		return STOP;
-	if (fchdir(curfd) < 0 || chdir(name) < 0)
+	if (chdir(name) < 0)
 		return STOP;
 	contents = builds(&contentelem);
 	msgcount = contentelem;
 	message = scalloc(msgcount + 1, sizeof *message);
-	if (fchdir(curfd) < 0) {
+	if (cwret(&cw) == STOP) {
 		fputs("Fatal: Cannot change back to current directory.\n",
 				stderr);
 		abort();
 	}
-	close(curfd);
+	cwrelse(&cw);
 	for (i = 0; i < msgcount; i++) {
 		message[i].m_uid = contents[i];
 		getcache1(&mb, &message[i], NEED_UNSPEC, 1);
@@ -626,7 +639,10 @@ cache_setptr()
 	if (ok == OKAY) {
 		mb.mb_type = MB_CACHE;
 		mb.mb_perm = MB_DELE;
-		setdot(message);
+		if (transparent)
+			transflags(omessage, omsgcount, 1);
+		else
+			setdot(message);
 	}
 	return ok;
 }
@@ -663,7 +679,25 @@ cache_list(mp, base, fp)
 	return OKAY;
 }
 
-FILE *
+unsigned long
+cached_uidvalidity(mp)
+	struct mailbox	*mp;
+{
+	FILE	*uvfp;
+	char	*uvname;
+	unsigned long	uv;
+
+	if ((uvname = encname(mp, "UIDVALIDITY", 1)) == NULL)
+		return 0;
+	if ((uvfp = Fopen(uvname, "r")) == NULL ||
+			(fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
+			fscanf(uvfp, "%lu", &uv) != 1)
+		uv = 0;
+	Fclose(uvfp);
+	return uv;
+}
+
+static FILE *
 cache_queue1(mp, mode, xname)
 	struct mailbox	*mp;
 	char	*mode;
@@ -770,4 +804,59 @@ dequeue1(mp)
 	return OKAY;
 }
 
+#ifdef	HAVE_FCHDIR
+static enum okay
+cwget(cw)
+	struct cw	*cw;
+{
+	if ((cw->cw_fd = open(".", O_RDONLY)) < 0)
+		return STOP;
+	if (fchdir(cw->cw_fd) < 0) {
+		close(cw->cw_fd);
+		return STOP;
+	}
+	return OKAY;
+}
+
+static enum okay
+cwret(cw)
+	struct cw	*cw;
+{
+	if (fchdir(cw->cw_fd) < 0)
+		return STOP;
+	return OKAY;
+}
+
+static void
+cwrelse(cw)
+	struct cw	*cw;
+{
+	close(cw->cw_fd);
+}
+#else	/* !HAVE_FCHDIR */
+static enum okay
+cwget(cw)
+	struct cw	*cw;
+{
+	if (getcwd(cw->cw_wd, sizeof cw->cw_wd) == NULL || chdir(cw->cw_wd) < 0)
+		return STOP;
+	return OKAY;
+}
+
+static enum okay
+cwret(cw)
+	struct cw	*cw;
+{
+	if (chdir(cw->cw_wd) < 0)
+		return STOP;
+	return OKAY;
+}
+
+/*ARGSUSED*/
+static void
+cwrelse(cw)
+	struct cw	*cw;
+{
+}
+#endif	/* !HAVE_FCHDIR */
 #endif	/* HAVE_SOCKETS */

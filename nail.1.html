@@ -54,7 +54,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.120 (gritter) 8/8/04 -->
+<!--      Sccsid: @(#)nail.1	2.146 (gritter) 8/14/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -347,6 +347,13 @@ can be given a list of message numbers
 as arguments to apply to a number of messages at once.
 Thus &#39;<I>delete 1 2</I>&#39; deletes messages 1 and 2,
 while &#39;<I>delete 1-5</I>&#39; deletes messages 1 through 5.
+In sorted or threaded mode (see the
+<I>sort</I> and
+<I>thread</I> commands),
+&#39;<I>delete 1-5</I>&#39; deletes the messages
+that are located between (and including) messages 1 through 5
+in the sorted/threaded order,
+as shown in the header summary.
 The following special message names exist:
 <TABLE cellpadding=3><!-- tsb: Commands such as print and delete
  -->
@@ -401,12 +408,16 @@ of the current message.
 The next previous undeleted message,
 or the next previous deleted message for the
 <I>undelete</I> command.
+In sorted/threaded mode,
+the next previous such message in the sorted/threaded order.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>+</B> </TD><TD valign=bottom>
 The next undeleted message,
 or the next deleted message for the
 <I>undelete</I> command.
+In sorted/threaded mode,
+the next such message in the sorted/threaded order.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>^</B> </TD><TD valign=bottom>
@@ -414,10 +425,25 @@ The first undeleted message,
 or the first deleted message
 for the
 <I>undelete</I> command.
+In sorted/threaded mode,
+the first such message in the sorted/threaded order.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>$</B> </TD><TD valign=bottom>
 The last message.
+In sorted/threaded mode,
+the last message in the sorted/threaded order.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>&amp;</B><I>x</I> </TD><TD valign=bottom>
+Only recognized in threaded mode;
+selects the message addressed with
+<I>x</I>, where
+<I>x</I> is any other message specification,
+and all messages from the thread that begins at it.
+If
+<I>n</I> is omitted,
+the thread beginning with the current message is selected.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>*</B> </TD><TD valign=bottom>
@@ -778,6 +804,14 @@ if given.
 If no directory is given,
 then changes to the user&#39;s login directory.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>connect</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(conn) If operating in disconnected mode on an IMAP mailbox,
+switch to online mode and connect to the mail server
+while retaining the mailbox status.
+See the description of the
+<I>disconnected</I> variable for more information.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>copy</B> </TD><TD valign=bottom>
 (c) The copy command does the same thing that
@@ -803,6 +837,13 @@ nor will they be available for most other commands.
 <TR valign=top><TD colspan=2>
 <B>discard</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as ignore.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>disconnect</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(disco) If operating in online mode on an IMAP mailbox,
+switch to disconnected mode while retaining the mailbox status.
+See the description of the
+<I>disconnected</I> variable for more information.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>dp</B>&nbsp;or<B>&nbsp;dt</B> </TD><TD valign=bottom>
@@ -882,7 +923,7 @@ Some special conventions are recognized for the name.
 <B>#</B> means the previous file,
 <B>%</B> means your system mailbox,
 <B>%</B><I>user</I> means <I>user&#39;s</I> system mailbox,
-<TT>amp;</TT> means your mbox file,
+<B>&amp;</B> means your mbox file,
 and <B>+</B><I>file</I><I> means a </I><I>file</I> in your folder directory.
 <B>%:</B><I>filespec</I> expands to the same value as <I>filespec</I>,
 but the file is handled as a system mailbox
@@ -905,7 +946,7 @@ A name of the form
 &nbsp;      <I>protocol</I><B>://</B>[<I>user</I><B>@</B>]<I>host</I>[<B>:</B><I>port</I>][<B>/</B><I>file</I>]
 <P>
 </PRE>
-is taken as an internet mailbox specification.
+is taken as an Internet mailbox specification.
 The supported protocols are currently
 <B>imap</B> (IMAP v4r1),
 <B>imaps</B> (IMAP with SSL/TLS encryption),
@@ -1165,6 +1206,10 @@ Same as
 <B>new</B> </TD><TD valign=bottom>
 Same as
 <I>unread</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>online</B> </TD><TD valign=bottom>
+Same as
+<I>connect</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>preserve</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (pre) A synonym for
@@ -1358,8 +1403,70 @@ Takes a message list and prints out
 the size in characters of each message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>sort</B> </TD><TD valign=bottom>
+Create and print a sorted representation of the current folder,
+and change the
+<I>next</I> command and the addressing modes
+such that they refer to messages in the sorted order.
+Message numbers are the same as in regular mode.
+Possible sorting methods are:
+<TABLE width=100% cellpadding=3><!-- tsb: Create and print a sorted representation of the current folder,
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>date</B> </TD><TD valign=bottom>
+Sort the messages by their &#39;Date:&#39; field,
+that is by the time they were sent.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>from</B> </TD><TD valign=bottom>
+Sort messages by the value of their &#39;From:&#39; field,
+that is by the address of the sender.
+If the
+<I>showname</I> variable is set,
+the sender&#39;s real name (if any) is used.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>size</B> </TD><TD valign=bottom>
+Sort the messages by their size.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>status</B> </TD><TD valign=bottom>
+Sort the messages by their message status
+(new, read, old, etc.).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>subject</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sort the messages by their subject.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>thread</B> </TD><TD valign=bottom>
+Create a threaded order,
+as with the
+<I>thread</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>to</B> </TD><TD valign=bottom>
+Sort messages by the value of their &#39;To:&#39; field,
+that is by the address of the recipient.
+If the
+<I>showname</I> variable is set,
+the recipient&#39;s real name (if any) is used.
+</TD></TR>
+<TR></TR></TABLE><P></TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>source</B> </TD><TD valign=bottom>
 The source command reads commands from a file.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>thread</B> </TD><TD valign=bottom>
+(th) Create and print a threaded representation of the current folder,
+i.e. indent messages that are replies to other messages
+in the header display,
+and change the
+<I>next</I> command and the addressing modes
+such that they refer to messages in the threaded order.
+Message numbers are the same as in unthreaded mode.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>top</B> </TD><TD valign=bottom>
@@ -1431,6 +1538,17 @@ the inverse of set.
 <B>unshortcut</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Deletes the shortcut names given as arguments.
 </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>unsort</B> </TD><TD valign=bottom>
+Disable sorted or threaded mode (see the
+<I>sort</I> and
+<I>thread</I> commands), return to normal message order
+and print a header summary.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unthread</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(unth) Same as
+<I>unsort</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>visual</B> </TD><TD valign=bottom>
 (v) Takes a message list and invokes the display editor
@@ -1775,6 +1893,12 @@ Causes the delete command to behave like dp -
 thus, after deleting a message,
 the next one will be typed automatically.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>autothread</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes threaded mode (see the
+<I>thread</I> command) to be entered automatically
+when a folder is opened.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>bang</B> </TD><TD valign=bottom>
 Enables the substitution of &#39;<B>!</B>&#39;
@@ -1791,7 +1915,7 @@ Causes automatic display of a header summary after executing a
 Sets some cosmetical features to traditional BSD style;
 has the same affect as setting &#39;askatend&#39; and
 all other variables prefixed with &#39;bsd&#39;,
-setting prompt to &amp;&nbsp;&#39;, and changing the default pager to
+setting prompt to &#39;&amp;&nbsp;&#39;, and changing the default pager to
 <I>more</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>bsdflags</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -1893,6 +2017,15 @@ Exchanges the
 <I>Respond</I> with the
 <I>respond</I> commands and vice-versa.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>fullnames</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When replying to a message,
+<I>nail</I> normally removes the comment parts of email addresses,
+which by convention contain the full names of the recipients.
+If this variable is set,
+such stripping is not performed,
+and comments are retained.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>header</B> </TD><TD valign=bottom>
 Causes the header summary to be written at startup;
@@ -1914,6 +2047,20 @@ An option related to dot is ignoreeof
 which makes <I>nail</I> refuse to
 accept a control-d as the end of a message.
 Ignoreeof also applies to <I>nail</I> command mode.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>imap-use-starttls</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes
+<I>nail</I> to issue a STARTTLS command
+to make an unencrypted IMAP session SSL/TLS encrypted.
+This functionality is not supported by all servers,
+and is not used if the session is already encrypted by the IMAPS method.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>imap-use-starttls-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Activates
+<I>imap-use-starttls</I> for a specific account.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>keep</B> </TD><TD valign=bottom>
@@ -1996,6 +2143,36 @@ Send messages to the
 <I>pipe</I> command without performing MIME and character set conversions.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>pop3-use-apop</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this variable is set,
+the APOP authentication method is used
+when a connection to a POP3 server is initiated.
+The advantage of this method over the usual USER/PASS authentication is
+that the password is not sent over the network in clear text.
+The connection fails
+if the server does not support the APOP command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>pop3-use-apop-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Enables
+<I>pop3-use-apop</I> for a specific account.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>pop3-use-starttls</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes
+<I>nail</I> to issue a STLS command
+to make an unencrypted POP3 session SSL/TLS encrypted.
+This functionality is not supported by all servers,
+and is not used if the session is already encrypted by the POP3S method.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>pop3-use-starttls-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Activates
+<I>pop3-use-starttls</I> for a specific account.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>print-all-chars</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 This option causes all characters to be considered printable.
 It is only effective if given in a startup file.
@@ -2055,6 +2232,15 @@ Causes the recipient of the message to be shown in the header summary
 if the message was sent by the user.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>smtp-use-starttls</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes <I>nail</I> to issue a STARTTLS command
+to make an SMTP session SSL/TLS encrypted.
+Not all servers support this command;
+because of common implementation defects,
+it cannot be automatically determined
+whether a server supports it or not.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>ssl-no-default-ca</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Do not load the default CA locations
 to verify SSL/TLS server certificates.
@@ -2080,8 +2266,14 @@ to track down the originating mail user agent.
 Setting the option verbose is the same
 as using the -v flag on the command line.
 When <I>nail</I> runs in verbose mode,
-the actual delivery of messages
-is displayed on the user&#39;s terminal.
+details of the actual message delivery
+and protocol conversations for IMAP, POP3, and SMTP
+are displayed on the user&#39;s terminal.
+This is sometimes useful to debug problems with specific servers.
+<I>Nail</I> prints all data that is sent to remote servers in clear texts,
+including passwords,
+so care should be taken that no unauthorized option
+can view the screen if this option is enabled.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
 <A name=20>
@@ -2104,6 +2296,13 @@ will be sent automatically.
 Specifies a list of recipients to which
 a carbon copy of each outgoing message
 will be sent automatically.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>autosort</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes sorted mode (see the
+<I>sort</I> command) to be entered automatically
+with the value of this option as sorting method
+when a folder is opened.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>charset</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2235,6 +2434,20 @@ instead of the value obtained from
 <I>uname</I>(2)
 and
 <I>getaddrinfo</I>(3).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>imap-auth</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the IMAP authentication method.
+Valid values are &#39;login&#39; for the usual password-based authentication
+(the default),
+&#39;cram-md5&#39;, which is a password-based authentication
+that does not send the password over the network in clear text,
+and &#39;gssapi&#39; for GSSAPI-based authentication.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>imap-auth-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the IMAP authentication method for a specific account.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>imap-cache</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2369,7 +2582,7 @@ causes a NOOP command to be sent each
 <B>prompt</B> </TD><TD valign=bottom>
 The string printed when a command is accepted.
 Defaults to &#39;<B>?&nbsp;</B>&#39;,
-or to &#39;<TT>amp;&nbsp;</TT>&#39; if the
+or to &#39;<B>&amp;&nbsp;</B>&#39; if the
 <I>bsdcompat</I> variable is set.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -2469,7 +2682,7 @@ There are two possible methods to get SSL/TLS encrypted SMTP sessions:
 First, the STARTTLS command can be used to encrypt a session
 after it has been initiated,
 but before any user-related data has been sent; see
-<I>smtp-use-tls</I> below.
+<I>smtp-use-starttls</I> above.
 Second, some servers accept sessions that are encrypted
 from their beginning on. This mode is configured by assigning
 <B>smtps://</B><I>server</I>[<B>:</B><I>port</I>]
@@ -2477,10 +2690,29 @@ to the
 <I>smtp</I> variable.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>smtp-auth</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the SMTP authentication method.
+If set to &#39;login&#39;,
+or if unset and both smtp-auth-user and smtp-auth-password are set,
+AUTH LOGIN is used.
+If set to &#39;cram-md5&#39;,
+AUTH CRAM-MD5 is used.
+Otherwise,
+no SMTP authentication is performed.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smtp-auth-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>smtp-auth</I> for specific values of sender addresses,
+depending on the
+<I>from</I> variable.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>smtp-auth-password</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Sets the global password for SMTP AUTH LOGIN.
+Sets the global password for SMTP AUTH.
 Both user and password have to be given
-for SMTP AUTH.
+for AUTH LOGIN and AUTH CRAM-MD5.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>smtp-auth-password-</B><I>user</I><B>@</B><I>host</I>
@@ -2492,9 +2724,9 @@ depending on the
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>smtp-auth-user</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Sets the global user name for SMTP AUTH LOGIN.
+Sets the global user name for SMTP AUTH.
 Both user and password have to be given
-for SMTP AUTH.
+for AUTH LOGIN and AUTH CRAM-MD5.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>smtp-auth-user-</B><I>user</I><B>@</B><I>host</I>
@@ -2503,15 +2735,6 @@ Overrides
 <I>smtp-auth-user</I> for specific values of sender addresses,
 depending on the
 <I>from</I> variable.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>smtp-use-tls</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Causes <I>nail</I> to issue a STARTTLS command
-to make an SMTP session SSL/TLS encrypted.
-Not all servers support this command;
-because of common implementation defects,
-it cannot be automatically determined
-whether a server supports it or not.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-ca-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2648,7 +2871,7 @@ the following environment strings:
 The user&#39;s home directory.
 </TD></TR>
 <TR valign=top><TD colspan=2>
-<B>LANG</B>, <B>LC_ALL</B>, <B>LC_CTYPE</B>, <B>LC_MESSAGES</B>
+<B>LANG</B>, <B>LC_ALL</B>, <B>LC_COLLATE</B>, <B>LC_CTYPE</B>, <B>LC_MESSAGES</B>
 </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 See
 <I>locale</I>(7).
@@ -2722,7 +2945,7 @@ you can refer to this account using the
 &nbsp;   <B>imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example</I>
 <P>
 </PRE>
-(This string is not necessarily the same as your internet mail address.)
+(This string is not necessarily the same as your Internet mail address.)
 You can replace &#39;imaps://&#39; with &#39;imap://&#39;
 if the server does not support SSL/TLS,
 or use &#39;pop3s://&#39; or &#39;pop3://&#39; if the server does not offer IMAP.
@@ -2734,6 +2957,19 @@ and second because message flags
 are maintained by the IMAP server,
 so you can easily distinguish new and old messages
 each time you connect.
+Even if the server does not accept IMAPS or POP3S connections,
+it is possible that it supports the STARTTLS method
+to make a session SSL/TLS encrypted
+after the initial connection has been performed,
+but before authentication begins.
+The only reliable method to see if this works is to try it; enter one of
+<PRE>
+<P>
+&nbsp;   <B>set imap-use-starttls</B>
+&nbsp;   <B>set pop3-use-starttls</B>
+<P>
+</PRE>
+before you initiate the connection.
 <P>
 As you probably want messages to be deleted from this account
 after saving them,
@@ -2788,7 +3024,7 @@ After that,
 a command like &#39;copy <I>1</I> +<I>otherfolder</I>&#39;
 will refer to <I>otherfolder</I> on the IMAP server.
 In particular,
-&#39;fi&amp;&#39; will change to the
+&#39;fi &amp;&#39; will change to the
 <I>mbox</I> folder,
 and
 &#39;fi +Sent&#39; will show your recorded sent mail,
@@ -2806,6 +3042,38 @@ you can give this password in the startup file as
 </PRE>
 You should change the permissions of this file to 0600, see
 <I>chmod</I>(1).
+<P>
+<I>Nail</I> supports different authentication methods for both IMAP and POP3.
+If Kerberos is used at your location,
+you can try to activate GSSAPI-based authentication by
+<PRE>
+<P>
+&nbsp;   <B>set imap-auth=gssapi</B>
+<P>
+</PRE>
+The advantage of this method is that
+<I>nail</I> does not need to know your password at all,
+nor needs to send sensitive data over the network.
+Otherwise, the options
+<PRE>
+<P>
+&nbsp;   <B>set imap-auth=cram-md5</B>
+&nbsp;   <B>set pop3-use-apop</B>
+<P>
+</PRE>
+for IMAP and POP3, respectively,
+offer authentication methods
+that avoid to send the password in clear text over the network,
+which is especially important if SSL/TLS cannot be used.
+If the server does not offer any of these authentication methods,
+conventional user/password based authentication must be used.
+It is sometimes helpful to set the
+<I>verbose</I> option when authentication problems occur.
+<I>Nail</I> will display all data sent to the server in clear text on the screen
+with this option,
+including passwords.
+You should thus take care that no unauthorized person
+can look at your terminal when this option is set.
 <P>
 If you regularly use the same workstation
 to access IMAP accounts,
@@ -2884,7 +3152,7 @@ fetch its CA certificate by executing
 <PRE>
 <P>
 &nbsp;   <B>openssl s_client &lt;/dev/null -showcerts -connect &#92;
-&nbsp;          </B><I>server.myisp.example</I><B>:</B><I>imaps</I><B> 2&amp;1 | tee </B><I>log</I>
+&nbsp;          </B><I>server.myisp.example</I><B>:</B><I>imaps</I><B> 2&gt;&amp;1 | tee </B><I>log</I>
 <P>
 </PRE>
 (see
@@ -2933,11 +3201,16 @@ It is thus necessary to store the attachment in a temporary file, as with
 <PRE>
 <P>
 &nbsp;   <B>set pipe-application/pdf="cat &gt;/tmp/nail$$.pdf; &#92;
-&nbsp;          acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
+&nbsp;          acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"</B>
 <P>
 </PRE>
-<!-- resetStyles [FB] -->
-</B></BLOCKQUOTE>
+Note that security defects are discovered in PDF viewers
+from time to time.
+Automatical command execution like this
+can compromise your system security,
+in particular if you stay not always informed
+about such issues.
+</BLOCKQUOTE>
 <A name=27>
 
      <H3>SEE ALSO</H3>
@@ -3060,7 +3333,7 @@ such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.e. to advise it to do that from a network startup script.
 <P>
-A <I>mail</I> command appeared in Version 1 A&amp;T Unix.
+A <I>mail</I> command appeared in Version 1 AT&amp;T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
 from The Mail Reference Manual
@@ -3081,5 +3354,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.1</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>8/8/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.2</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>8/14/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
 </BODY></HTML>

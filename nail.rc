@@ -2,20 +2,24 @@
 # The values below are reasonable defaults.
 # See nail(1) for further options.
 
-# Sccsid @(#)nail.rc	2.1 (gritter) 9/1/02
+# Sccsid @(#)nail.rc	2.2 (gritter) 8/15/04
 
-# Append rather than prepend to mailboxes. Do not unset
-# or you will confuse other mail-handling programs!
+# Append rather than prepend to mailboxes. Unsetting this is likely to
+# confuse other mail clients.
 set append
 
 # Ask for a message subject.
 set ask
 
-# We assume a CRT-like Terminal and thus want to use a pager.
+# Assume a CRT-like terminal and invoke a pager.
 set crt
 
 # Messages may be terminated by a dot.
 set dot
+
+# Do not remove empty mail folders in the spool directory.
+# This may be relevant for privacy.
+set keep
 
 # Do not remove empty private mail folders.
 set emptybox
@@ -23,12 +27,24 @@ set emptybox
 # Do not forward to mbox by default.
 set hold
 
-# Do not remove empty mail folders in the spool directory.
-# This may be relevant for privacy.
-set keep
-
-# Quote the original message in replies by "> " as usual today.
+# Quote the original message in replies by "> " as usual on the Internet.
 set indentprefix="> "
 
 # Set the charset to iso-8859-1 which is the default on modern terminals.
 set charset=iso-8859-1
+
+# Automatically quote the text of the message that is responded to.
+set quote
+
+# Display sender's real names in header summaries.
+set showname
+
+# Display the recipients of messages sent by the user himself.
+set showto
+
+# Automatically check for new messages at each prompt on local accounts.
+set newmail=noimap
+
+# Hide some header fields which are uninteresting for most human readers.
+ignore received in-reply-to message-id references
+ignore mime-version content-transfer-encoding

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.58 (gritter) 8/4/04
+ *	Sccsid @(#)extern.h	2.70 (gritter) 8/14/04
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -61,9 +61,10 @@ char	*name1 __P((struct message *, int));
 FILE	*run_editor __P((FILE *, off_t, int, int, char *, struct header *));
 char	*salloc __P((int));
 char	*savestr __P((char *));
+char	*save2str __P((char *, char *));
 FILE	*setinput __P((struct mailbox *, struct message *, enum needspec));
-char	*routeaddr __P((char *));
-char	*skip_comment __P((char *));
+char	*routeaddr __P((const char *));
+char	*skip_comment __P((const char *));
 char	*skin __P((char *));
 char	*realname __P((char *));
 char	*username __P((void));
@@ -169,7 +170,7 @@ void	 prepare_child __P((sigset_t *, int, int));
 int	 preserve __P((void *));
 void	 prettyprint __P((struct name *));
 void	 printgroup __P((char []));
-void	 printhead __P((int, FILE *));
+void	 printhead __P((int, FILE *, int));
 int	 puthead __P((struct header *, FILE *, enum gfield, int, char *,
 			char *));
 int	 putline __P((FILE *, char *, size_t));
@@ -315,6 +316,7 @@ char	*need_hdrconv __P((struct header *, enum gfield));
 char	*savecat __P((const char *, const char *));
 FILE	*Zopen __P((char *, char *, int *));
 char	*strtob64 __P((const char *));
+void	*memtob64 __P((const void *, size_t));
 #ifdef	USE_SSL
 enum okay ssl_open __P((const char *, struct sock *, const char *));
 void ssl_gen_err __P((const char *));
@@ -339,8 +341,9 @@ void	putcache __P((struct mailbox *, struct message *));
 void	initcache __P((struct mailbox *));
 void	purgecache __P((struct mailbox *, struct message *, long));
 void	delcache __P((struct mailbox *, struct message *));
-enum okay	cache_setptr __P((void));
+enum okay	cache_setptr __P((int));
 enum okay	cache_list __P((struct mailbox *, const char *, FILE *));
+unsigned long	cached_uidvalidity __P((struct mailbox *));
 FILE	*cache_queue __P((struct mailbox *));
 enum okay	cache_dequeue __P((struct mailbox *));
 void	*zalloc __P((FILE *));
@@ -349,3 +352,19 @@ int	zwrite __P((void *, const char *, int));
 int	zfree __P((void *));
 int	disconnected __P((const char *));
 int	getmdot __P((void));
+int	thread __P((void *));
+int	unthread __P((void *));
+int	msgidcmp __P((const char *, const char *));
+struct message	*next_in_thread __P((struct message *));
+struct message	*prev_in_thread __P((struct message *));
+struct message	*this_in_thread __P((struct message *, long));
+char	*md5tohex __P((const void *));
+char	*cram_md5_string __P((const char *, const char *, const char *));
+char	*getuser __P((void));
+char	*getpassword __P((struct termios *, int *));
+int	cconnect __P((void *));
+int	cdisconnect __P((void *));
+void	transflags __P((struct message *, long, int));
+int	sort __P((void *));
+int	is_prefix __P((const char *, const char *));
+void	makelow __P((char *));

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.12 (gritter) 8/1/04";
+static char sccsid[] = "@(#)popen.c	2.13 (gritter) 8/14/04";
 #endif
 #endif /* not lint */
 
@@ -69,7 +69,7 @@ struct fp {
 		FP_UNCOMPRESSED	= 00,
 		FP_GZIPPED	= 01,
 		FP_BZIP2ED	= 02,
-		FP_IMAP		= 04,
+		FP_IMAP		= 04
 	} compressed;
 };
 static struct fp *fp_head;

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.16 (gritter) 8/1/04";
+static char sccsid[] = "@(#)tty.c	2.17 (gritter) 8/8/04";
 #endif
 #endif /* not lint */
 
@@ -304,7 +304,7 @@ grabh(hp, gflags, subjfirst)
 		TTYSET_CHECK(hp->h_to)
 		hp->h_to = checkaddrs(sextract(rtty_internal("To: ",
 						detract(hp->h_to, comma)),
-					GTO));
+					GTO|GFULL));
 	}
 	if (subjfirst)
 		GRAB_SUBJECT
@@ -312,13 +312,13 @@ grabh(hp, gflags, subjfirst)
 		TTYSET_CHECK(hp->h_cc)
 		hp->h_cc = checkaddrs(sextract(rtty_internal("Cc: ",
 						detract(hp->h_cc, comma)),
-					GCC));
+					GCC|GFULL));
 	}
 	if (gflags & GBCC) {
 		TTYSET_CHECK(hp->h_bcc)
 		hp->h_bcc = checkaddrs(sextract(rtty_internal("Bcc: ",
 						detract(hp->h_bcc, comma)),
-					GBCC));
+					GBCC|GFULL));
 	}
 	if (!subjfirst)
 		GRAB_SUBJECT

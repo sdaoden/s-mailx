@@ -1,3 +1,45 @@
+[11.2] released 8/15/04
+* A message thread-oriented mode is now optionally available; cf. the 'thread'
+  and 'unthread' commands, the 'autothread' variable, and addressing changes.
+* It is also possible to sort messages by various other criteria; cf. the
+  'sort' and 'unsort' commands, the 'autosort' variable, and addressing
+  changes.
+* New 'fullnames' variable: When replying to a message, full names for the
+  recipients are included if it is set, instead of using the plain email
+  address.
+* New commands 'disconnect' and 'connect'/'online' to switch to disconnected
+  IMAP mode and back while retaining the current mailbox.
+* IMAP GSSAPI authentication was implemented; it has been successfully
+  compiled with MIT, Solaris, and HP-UX GSS libraries. See the 'imap-auth'
+  and 'imap-auth-user@host' variables.
+* CRAM-MD5 authentication was implemented for IMAP and SMTP. See the
+  'imap-auth' and 'smtp-auth' variables.
+* POP3 APOP authentication is now supported; see 'pop3-use-apop'.
+* STARTTLS is now also supported for IMAP and POP3; see 'imap-use-starttls'
+  and 'pop3-use-starttls'.
+* Autodetection of the terminal character set works again (did not work since
+  10.8).
+* The 'showlast' variable works again; it had no effect since version 11.0.
+* Made it compile using the HP-UX C compiler again (did not work since 11.0).
+* Standard input is now redirected to /dev/null in the child process that
+  contacts the MTA. A result is that ssl-verify=ask has the same effect as
+  ssl-verify=strict for SMTP servers, and does not put the terminal in an
+  indeterminable state anymore.
+* The initial connection to IMAP or POP3 servers is now made before the
+  previous mailbox (if any) is quit. Thus if a server is unreachable, nail
+  keeps the previous mailbox open instead of getting in a mailbox-less
+  state.
+* Stale cache entries for messages deleted on the server were not removed
+  in some circumstances.
+* The 'inc'/'newmail' commands are now ignored in disconnected mode and no
+  longer display errors about hidden (uncached) messages.
+* The cache now compiles and works on systems that lack fchdir(), such as
+  some Cray machines (Thanks to Cray-Cyber.org).
+* The defaults for /etc/nail.rc have been updated. This will have no effect
+  on existing installations unless the file is copied by hand.
+* Nail does not hang anymore in disconnected mode if a message addressed
+  with ^ or $ is not cached.
+
 [11.1] released 8/8/04
 * IMAP mailboxes can now be cached locally. See the string variable
   'imap-cache' in the manual page. The cache can also be used for
