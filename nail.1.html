@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.220 (gritter) 9/14/04 -->
+<!--      Sccsid: @(#)nail.1	2.240 (gritter) 9/22/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -97,10 +97,12 @@ nail - send and receive Internet mail
 &nbsp; &nbsp; &nbsp;<A HREF=#25>Creating a score file or message filter</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#26>Reading HTML mail</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#27>Viewing PDF attachments</A><BR>
-<A HREF=#28>See Also</A><BR>
-<A HREF=#29>Notes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#28>Signed and encrypted messages with S/MIME</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#29>Using CRLs with S/MIME or SSL/TLS</A><BR>
+<A HREF=#30>See Also</A><BR>
+<A HREF=#31>Notes</A><BR>
 </BLOCKQUOTE>
-<A name=30>
+<A name=32>
 
      <H3>SYNOPSIS</H3>
 
@@ -140,7 +142,7 @@ It is based on Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 <B>mailx</B> command,
 and offers extensions
-for MIME messages, IMAP, POP3 and SMTP.
+for MIME, IMAP, POP3, SMTP, and S/MIME.
 <I>Nail</I> provides enhanced
 features for interactive use, such as caching and disconnected
 operation for IMAP, message threading, scoring, and filtering.
@@ -190,10 +192,11 @@ else, a non-zero value.
 <TR valign=top><TD colspan=2>
 <B>-f</B> [<I>file</I>]
 </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Read in the contents of your mbox
+Read in the contents of the user&#39;s mbox
 (or the specified file)
 for processing;
-when you quit, <I>nail</I> writes
+when
+<I>nail</I> is quit, it writes
 undeleted messages back
 to this file.
 The string <I>file</I> is handled
@@ -303,12 +306,12 @@ To send a message to one or more people,
 <I>nail</I> can be invoked with arguments
 which are the names of people
 to whom the mail will be sent.
-You are then expected to type in your message,
+The user is then expected to type in his message,
 followed by an &#39;control-D&#39; at the beginning of a line.
 The section below Replying to
 or originating mail,
 describes some features of <I>nail</I>
-available to help you compose your letter.
+available to help when composing letters.
 </BLOCKQUOTE>
 <A name=4>
 
@@ -316,15 +319,15 @@ available to help you compose your letter.
 </A>
 <BLOCKQUOTE>
 In normal usage <I>nail</I> is given no arguments
-and checks your mail out of the post office,
+and checks the user&#39;s mail out of the post office,
 then prints out a one line header
 of each message found.
 The current message is initially
 the first message (numbered 1)
 and can be printed using the print command
 which can be abbreviated &#39;p&#39;).
-You can move among the messages
-much as you move between lines in
+The user can move among the messages
+much as he moves between lines in
 <a href=http://heirloom.sourceforge.net/man/ed.1.html><i>ed</i></a>(1),
 with the commands &#39;+&#39; and &#39;-&#39; moving backwards and forwards,
 and simple numbers.
@@ -335,7 +338,7 @@ and simple numbers.
 </A>
 <BLOCKQUOTE>
 After examining a message
-you can delete &#39;d&#39;) the message
+the user can delete &#39;d&#39;) the message
 or reply &#39;r&#39;) to it.
 Deletion causes the <I>nail</I> program
 to forget about the message.
@@ -650,13 +653,14 @@ and to read each single message then by typing &#39;<B>&#39;</B>&#39; repeatedly
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Replying to or originating mail</H4>
 </A>
 <BLOCKQUOTE>
-You can use the reply command
+The
+<I>reply</I> command can be used
 to set up a response to a message,
 sending it back to the person who it was from.
-Text you then type in,
+Text the user types in then,
 up to an end-of-file,
 defines the contents of the message.
-While you are composing a message,
+While the user is composing a message,
 <I>nail</I> treats lines beginning with the character &#39;~&#39; specially.
 For instance, typing &#39;~m&#39; (alone on a line)
 will place a copy of the current message into the response
@@ -665,7 +669,7 @@ right shifting it by a tabstop
 Other escapes will set up subject fields,
 add and delete recipients to the message,
 attach files to it
-and allow you to escape to an editor
+and allow the user to escape to an editor
 to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
@@ -675,10 +679,10 @@ or to a shell to run some commands.
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Ending a mail processing session</H4>
 </A>
 <BLOCKQUOTE>
-You can end a <I>nail</I> session
+The user can end a <I>nail</I> session
 with the quit (&#39;q&#39;) command.
 Messages which have been examined
-go to your mbox file
+go to the user&#39;s mbox file
 unless they have been deleted
 in which case they are discarded.
 Unexamined messages go back
@@ -692,7 +696,7 @@ to the post office.
 <BLOCKQUOTE>
 It is also possible to create
 a personal distribution lists so that,
-for instance, you can send mail
+for instance, the user can send mail
 to &#39;<I>cohorts</I>&#39; and have it go
 to a group of people.
 Such lists can be defined by placing a line like
@@ -701,7 +705,7 @@ Such lists can be defined by placing a line like
 &nbsp;       <B>alias</B><I> cohorts bill ozalp jkf mark kridle@ucbcory</I>
 <P>
 </PRE>
-in the file .mailrc in your home directory.
+in the file .mailrc in the user&#39;s home directory.
 The current list of such aliases
 can be displayed with the alias command in <I>nail</I>.
 System wide distribution lists can be created
@@ -710,7 +714,7 @@ by editing /etc/aliases, see
 and
 <I>sendmail</I>(8);
 these are kept in a different syntax.
-In mail you send,
+In mail the user sends,
 personal aliases will be expanded
 in mail sent to others so that
 they will be able to reply to the recipients.
@@ -965,10 +969,10 @@ creates a new alias or changes an old one.
 <TR valign=top><TD colspan=2>
 <B>alternates</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (alt) The alternates command is useful
-if you have accounts on several machines.
+if the user has accounts on several machines.
 It can be used to inform <I>nail</I>
-that the listed addresses are really you.
-When you reply to messages,
+that the listed addresses all belong to the invoking user.
+When he replies to messages,
 <I>nail</I> will not send a copy of the message
 to any of the addresses
 listed on the alternates list.
@@ -999,6 +1003,16 @@ Calls a macro (see the
 <B>cd</B> </TD><TD valign=bottom>
 Same as chdir.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>certsave</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Only applicable to S/MIME signed messages.
+Takes a message list and a file name
+and saves the certificates contained within the message signatures
+to the named file in both human-readable and PEM format.
+The certificates can later be used to send encrypted messages
+to the messages&#39; originators by setting the
+<I>smime-encrypt-user@host</I> variable.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>chdir</B> </TD><TD valign=bottom>
 (ch) Changes the user&#39;s working directory to that specified,
@@ -1028,7 +1042,7 @@ See the description of the
 (c) The copy command does the same thing that
 <I>save</I> does,
 except that it does not mark the messages
-it is used on for deletion when you quit.
+it is used on for deletion when the user quits.
 Compressed files and IMAP mailboxes are handled as described for the
 <I>folder</I> command.
 </TD></TR>
@@ -1036,6 +1050,19 @@ Compressed files and IMAP mailboxes are handled as described for the
 <B>Copy</B> </TD><TD valign=bottom>
 (C) Similar to
 <I>copy</I>, but saves the messages in a file named after the local part
+of the sender address of the first message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>decrypt</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(dec) For unencrypted messages,
+this command is identical to
+<I>copy</I>. Encrypted messages are first decrypted, if possible,
+and then copied.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Decrypt</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(Dec) Similar to
+<I>decrypt</I>, but saves the messages in a file named after the local part
 of the sender address of the first message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1173,19 +1200,19 @@ lists the folders on the base level of the current IMAP server.
 <B>folder</B> </TD><TD valign=bottom>
 (fold) The folder command switches
 to a new mail file or folder.
-With no arguments, it tells you
-which file you are currently reading.
-If you give it an argument,
+With no arguments, it tells the user
+which file he is currently reading.
+If an argument is given,
 it will write out changes
-(such as deletions) you have made
+(such as deletions) the user has made
 in the current file and read in
 the new file.
 Some special conventions are recognized for the name.
 <B>#</B> means the previous file,
-<B>%</B> means your system mailbox,
+<B>%</B> means the invoking user&#39;s system mailbox,
 <B>%</B><I>user</I> means <I>user&#39;s</I> system mailbox,
-<B>&amp;</B> means your mbox file,
-and <B>+</B><I>file</I><I> means a </I><I>file</I> in your folder directory.
+<B>&amp;</B> means the invoking user&#39;s mbox file,
+and <B>+</B><I>file</I><I> means a </I><I>file</I> in the folder directory.
 <B>%:</B><I>filespec</I> expands to the same value as <I>filespec</I>,
 but the file is handled as a system mailbox
 e.&nbsp;g. by the mbox and save commands.
@@ -1302,9 +1329,9 @@ not the current one.
 <B>if</B> </TD><TD valign=bottom>
 Commands in <I>nail</I>&#39;s startup files
 can be executed conditionally
-depending on whether you are sending
+depending on whether the user is sending
 or receiving mail with the if command.
-For example, you can do:
+For example:
 <PRE>
 <P>
 &nbsp;       <B>if </B><I>receive</I>
@@ -1330,7 +1357,7 @@ Note that the only allowed conditions are
 <B>ignore</B> </TD><TD valign=bottom>
 Add the list of header fields named to the ignored list.
 Header fields in the ignore list are not printed
-on your terminal when you print a message.
+on the terminal when a message is printed.
 This command is very handy for suppression
 of certain machine-generated header fields.
 The Type and Print commands can be used
@@ -1356,11 +1383,6 @@ Useful IMAP commands are:
 Takes the name of an IMAP mailbox as an argument
 and creates it.
 </TD></TR>
-<TR valign=top><TD width=6% nowrap>
-<B>delete</B> </TD><TD valign=bottom>
-Takes the name of an IMAP mailbox as an argument
-and deletes it.
-</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>getquotaroot</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 <!--  RFC 2087 -->
@@ -1380,11 +1402,6 @@ inner parentheses separate them.
 For each namespace,
 a namespace prefix and a hierarchy separator is listed.
 Not all IMAP servers support this command.
-</TD></TR>
-<TR valign=top><TD width=6% nowrap>
-<B>rename</B> </TD><TD valign=bottom>
-Takes the name of an existing IMAP mailbox as the first argument
-and renames it to the name given as second argument.
 </TD></TR>
 <TR></TR></TABLE><P></TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1423,9 +1440,11 @@ and sends mail to those people.
 <TR valign=top><TD width=6% nowrap>
 <B>mbox</B> </TD><TD valign=bottom>
 Indicate that a list of messages be sent
-to mbox in your home directory when you quit.
+to mbox in the user&#39;s home directory when
+<I>nail</I> is quit.
 This is the default action for messages
-if you do not have the hold option set.
+if unless the
+<I>hold</I> option is set.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>move</B> </TD><TD valign=bottom>
@@ -1507,6 +1526,8 @@ on the user&#39;s terminal.
 If the message is a MIME multipart message,
 all parts with a content type of &#39;text&#39; or &#39;message&#39; are shown,
 the other are hidden except for their headers.
+Messages are decrypted and converted to the terminal character set
+if necessary.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>quit</B> </TD><TD valign=bottom>
@@ -1523,6 +1544,20 @@ A return to the Shell is effected,
 unless the rewrite of edit file fails,
 in which case the user can escape
 with the exit command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>remove</B> </TD><TD valign=bottom>
+(rem) Removes the named folders.
+The user is asked for confirmation
+in interactive mode.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>rename</B> </TD><TD valign=bottom>
+(ren) Takes the name of an existing folder
+and the name for the new folder
+and renames the first to the second one.
+Both folders must be of the same type
+and must be located on the current server for IMAP.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>Reply</B> </TD><TD valign=bottom>
@@ -1570,7 +1605,7 @@ Same as
 <B>retain</B> </TD><TD valign=bottom>
 Add the list of header fields named to the retained list.
 Only the header fields in the retain list are shown
-on your terminal when you print a message.
+on the terminal when a message is printed.
 All other header fields are suppressed.
 The Type and Print commands can be used
 to print a message in its entirety.
@@ -1880,6 +1915,18 @@ print a header summary.
 (unth) Same as
 <I>unsort</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>verify</B> </TD><TD valign=bottom>
+(ver)
+Takes a message list and verifies each message.
+If a message is not an S/MIME signed message,
+verification will fail for it.
+The verification process checks
+if the message was signed using a valid certificate,
+if the message sender&#39;s email address matches
+one of those contained within the certificate,
+and if the message content has been altered.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>visual</B> </TD><TD valign=bottom>
 (v) Takes a message list and invokes the display editor
 on each message.
@@ -1888,7 +1935,7 @@ on each message.
 <B>write</B> </TD><TD valign=bottom>
 (w) For conventional messages,
 the body without all headers is written.
-The output is converted
+The output is decrypted and converted
 to its native format, if necessary.
 If the output file exists,
 the text is appended.&#151;If a message is in MIME multipart format,
@@ -2006,14 +2053,14 @@ Add the given names to the list of carbon copy recipients.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>~d</B> </TD><TD valign=bottom>
-Read the file &#39;dead.letter&#39; from your home directory
+Read the file &#39;dead.letter&#39; from the user&#39;s home directory
 into the message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>~e</B> </TD><TD valign=bottom>
 Invoke the text editor on the message collected so far.
 After the editing session is finished,
-you may continue appending text
+the user may continue appending text
 to the message.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2073,7 +2120,7 @@ it is piped through the pager.
 <B>~q</B> </TD><TD valign=bottom>
 Abort the message being sent,
 copying the message to
-&#39;dead.letter&#39; in your home directory
+&#39;dead.letter&#39; in the user&#39;s home directory
 if save is set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2095,9 +2142,9 @@ Invoke an alternate editor
 on the message collected so far.
 Usually, the alternate editor
 will be a screen editor.
-After you quit the editor,
-you may resume appending text
-to the end of your message.
+After the editor is quit,
+the user may resume appending text
+to the end of the message.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>~w</B><I>filename</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2133,9 +2180,9 @@ Identical to ~:.
 <B>~~</B><I>string</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Insert the string of text in the message
 prefaced by a single ~.
-If you have changed the escape character,
-then you should double that character
-in order to send it.
+If the escape character has been changed,
+that character must be doubled
+in order to send it at the beginning of a line.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
 <A name=17>
@@ -2178,9 +2225,9 @@ This should always be set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ask</B>&nbsp;or<B>&nbsp;asksub</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Causes <I>nail</I> to prompt you for the subject
-of each message you send.
-If you respond with simply a newline,
+Causes <I>nail</I> to prompt for the subject
+of each message sent.
+If the user responds with simply a newline,
 no subject field will be sent.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2195,23 +2242,31 @@ Responding with a newline indicates not to include an attachment.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>askcc</B> </TD><TD valign=bottom>
-Causes you to be prompted
+Causes the user to be prompted
 for additional carbon copy recipients
 (at the end of each message if
 <I>askatend</I> or
 <I>bsdcompat</I> is set).
 Responding with a newline
-indicates your satisfaction with the current list.
+indicates the user&#39;s satisfaction with the current list.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>askbcc</B> </TD><TD valign=bottom>
-Causes you to be prompted
+Causes the user to be prompted
 for additional blind carbon copy recipients
 (at the end of each message if
 <I>askatend</I> or
 <I>bsdcompat</I> is set).
 Responding with a newline
-indicates your satisfaction with the current list.
+indicates the user&#39;s satisfaction with the current list.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>asksign</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes the user to be prompted
+if the message is to be signed
+at the end of each message.
+The
+<I>smime-sign</I> variable is ignored when this variable is set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>autocollapse</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2324,7 +2379,7 @@ but other accounts are not affected.
 <B>dot</B> </TD><TD valign=bottom>
 The binary option dot causes <I>nail</I> to interpret
 a period alone on a line
-as the terminator of a message you are sending.
+as the terminator of a message the user is sending.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>editheaders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2377,7 +2432,7 @@ in the system mailbox by default.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>ignore</B> </TD><TD valign=bottom>
-Causes interrupt signals from your terminal
+Causes interrupt signals from the terminal
 to be ignored and echoed as @&#39;s.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2403,7 +2458,7 @@ Activates
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>keep</B> </TD><TD valign=bottom>
-This option causes <I>nail</I> to truncate your system mailbox
+This option causes <I>nail</I> to truncate the user&#39;s system mailbox
 instead of deleting it when it is empty.
 This should always be set,
 since it prevents malicious users
@@ -2412,12 +2467,13 @@ in a world-writable spool directory.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>keepsave</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-When you save a message,
-<I>nail</I> usually discards it
+When a message is saved,
+it is usually discarded
 from the originating folder
-when you quit.
-To retain all saved messages,
-set this option.
+when
+<I>nail</I> is quit.
+Setting this option
+causes all saved message to be retained.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>markanswered</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2546,10 +2602,10 @@ Reverses the sense of reply and Reply commands.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>save</B> </TD><TD valign=bottom>
-When you abort a message
+When the user aborts a message
 with two RUBOUT (interrupt characters)
 <I>nail</I> copies the partial letter
-to the file &#39;dead.letter&#39; in your home directory.
+to the file &#39;dead.letter&#39; in the home directory.
 This option is set by default.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2585,6 +2641,29 @@ Causes the recipient of the message to be shown in the header summary
 if the message was sent by the user.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>smime-force-encryption</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes
+<I>nail</I> to refuse sending unencrypted messages.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-sign</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this variable is set,
+outgoing messages are S/MIME signed with the user&#39;s private key.
+Signing a message enables a recipient to verify
+that the sender used a valid certificate,
+that the email addresses in the certificate
+match those in the message header,
+and that the message content has not been altered.
+It does not change the message text,
+and people will be able to read the message as usual.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-no-default-ca</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Do not load the default CA locations
+when verifying S/MIME signed messages.
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>smtp-use-starttls</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Causes <I>nail</I> to issue a STARTTLS command
 to make an SMTP session SSL/TLS encrypted.
@@ -2597,6 +2676,7 @@ whether a server supports it or not.
 <B>ssl-no-default-ca</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Do not load the default CA locations
 to verify SSL/TLS server certificates.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-v2-allow</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2744,7 +2824,7 @@ refer to files below that directory.
 If the directory name begins with a &#39;/&#39;,
 <I>nail</I> considers it to be an absolute pathname;
 otherwise, the folder directory is found
-relative to your home directory.
+relative to the user&#39;s home directory.
 </TD></TR>
 <TR valign=top><TD width=6%>
 
@@ -2818,9 +2898,9 @@ this address is handled as if it were in the alternates list.
 <!--  and its value differs from \fIlocalhost\fR. -->
 If the machine&#39;s hostname is not valid at the Internet
 (for example at a dialup machine),
-you have to set this variable
-or
-<I>hostname</I> to get correct Message-ID header fields.
+either this variable or
+<I>hostname</I> have to be set
+to get correct Message-ID header fields.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>headline</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2982,6 +3062,29 @@ If this variable has the value
 <I>maildir</I> format.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>nss-config-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+A directory that contains the files
+cert<I>N</I>.db to retrieve certificates,
+key<I>N</I>.db to retrieve private keys,
+and secmod.db,
+where
+<I>N</I> is a digit.
+These are usually taken from Mozilla installations,
+so an appropriate value might be
+&#39;~/.mozilla/firefox/default.clm&#39;.
+<I>Nail</I> opens these files read-only
+and does not modify them.
+However, if the files are modified by Mozilla
+while
+<I>nail</I> is running,
+it will print a &#39;Bad database&#39; message.
+It may be necessary to create copies of these files
+that are exclusively used by
+<I>nail</I> then.
+Only applicable if S/MIME and SSL/TLS support is built using
+Network Security Services (NSS).
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>ORGANIZATION</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 The value to put into the <I>&#39;Organization:&#39;</I> field of the message header.
 </TD></TR>
@@ -3078,11 +3181,11 @@ as if they were in the alternates list.
 <B>screen</B> </TD><TD valign=bottom>
 When <I>nail</I> initially prints the message headers,
 it determines the number to print
-by looking at the speed of your terminal.
-The faster your terminal, the more it prints.
+by looking at the speed of the terminal.
+The faster the terminal, the more it prints.
 This option overrides this calculation
 and specifies how many message headers
-you want printed.
+are printed.
 This number is also used
 for scrolling with the z command.
 </TD></TR>
@@ -3119,6 +3222,131 @@ The file&#39;s content is then appended to each singlepart message
 and to the first part of each multipart message.
 Be warned that there is no possibility
 to edit the signature for an individual message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-ca-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a directory with CA certificates for verification
+of S/MIME signed messages.
+The format is the same as described in
+<I>SSL_CTX_load_verify_locations</I>(3).
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-ca-file</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a file with CA certificates for verification
+of S/MIME signed messages.
+The format is the same as described in
+<I>SSL_CTX_load_verify_locations</I>(3).
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-cipher-</B><I>user@host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a cipher to use when generating S/MIME encrypted messages
+for
+<I>user@host</I>. Valid ciphers are
+<B>rc2-40</B> (RC2 with 40 bits),
+<B>rc2-64</B> (RC2 with 64 bits),
+and
+<B>des-ede3</B> (3DES).
+The default is 3DES.
+It is not recommended to use the RC2 variants
+unless a recipient&#39;s client is actually unable to handle 3DES
+since they are comparatively weak;
+but even so, the recipient should upgrade his software in preference.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-crl-file</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a file that contains a CRL in PEM format
+to use when verifying S/MIME messages.
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-crl-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a directory that contains files with CRLs in PEM format
+to use when verifying S/MIME messages.
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-encrypt-</B><I>user@host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this variable is set,
+messages to
+<I>user@host</I> are encrypted before sending.
+If S/MIME support is built using OpenSSL,
+the value of the variable must be set to the name of a file
+that contains a certificate in PEM format.
+If S/MIME support is built using NSS,
+the value of this variable is ignored,
+but if multiple certificates for
+<I>user@host</I> are available, the
+<I>smime-nickname-user@host</I> variable should be set.
+Otherwise a certificate for the recipient
+is automatically retrieved from the certificate database,
+if possible.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+If a message is sent to multiple recipients,
+each of them for whom a corresponding variable is set
+will receive an individually encrypted message;
+other recipients will continue to receive the message in plain text
+unless the
+<I>smime-force-encryption</I> variable is set.
+It is recommended to sign encrypted messages,
+i.e. to also set the
+<I>smime-sign</I> variable.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-nickname-</B><I>user@host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies the nickname of a certificate
+to be used when encrypting messages for
+<I>user@host .</I> Only applicable if S/MIME support is built using NSS.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-sign-cert</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Points to a file in PEM format
+that contains the user&#39;s private key
+as well as his certificate.
+Both are used with S/MIME
+for signing and decrypting messages.
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-sign-cert-</B><I>user@host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>smime-sign-cert</I> for the specific addresses.
+When signing messages and the value of the
+<I>from</I> variable is set
+to
+<I>user@host</I>, the specific file is used.
+When decrypting messages,
+their recipient fields (To: and Cc:) are searched for addresses
+for which such a variable is set.
+<I>Nail</I> always uses the first address that matches,
+so if the same message is sent to more than one
+of the user&#39;s addresses using different encryption keys,
+decryption might fail.
+Only applicable if S/MIME support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-sign-nickname</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies that the named certificate be used for signing mail.
+If this variable is not set,
+but a single certificate matching the current
+<I>from</I> address is found in the database,
+that one is used automatically.
+Only applicable if S/MIME support is built using NSS.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smime-sign-nickname-</B><I>user@host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>smime-sign-nickname</I> for a specific address.
+Only applicable if S/MIME support is built using NSS.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>smtp</B> </TD><TD valign=bottom>
@@ -3195,23 +3423,28 @@ depending on the
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-ca-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Specifies a directory with CA certificates for verification.
+Specifies a directory with CA certificates for verification
+of SSL/TLS server certificates.
 See
 <I>SSL_CTX_load_verify_locations</I>(3)
 for more information.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-ca-file</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Specifies a file with CA certificates for verification.
+Specifies a file with CA certificates for verification
+of SSL/TLS server certificates.
 See
 <I>SSL_CTX_load_verify_locations</I>(3)
 for more information.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-cert</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Sets the file name
 for a SSL/TLS client certificate
 required by some servers.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-cert-</B><I>user</I><B>@</B><I>host</I>
@@ -3221,11 +3454,25 @@ for a SSL/TLS client certificate
 required by some servers.
 Overrides
 <I>ssl-cert</I> for the specified account.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-cipher-list</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Specifies a list of ciphers for SSL/TLS connections.
 See ciphers(1) for more information.
+Only applicable if SSL/TLS support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-crl-file</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a file that contains a CRL in PEM format
+to use when verifying SSL/TLS server certificates.
+Only applicable if SSL/TLS support is built using OpenSSL.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-crl-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a directory that contains files with CRLs in PEM format
+to use when verifying SSL/TLS server certificates.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-key</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3233,6 +3480,7 @@ Sets the file name
 for the private key of a SSL/TLS client certificate.
 If unset, the name of the certificate file is used.
 The file is expected to be in PEM format.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-key-</B><I>user</I><B>@</B><I>host</I>
@@ -3241,6 +3489,7 @@ Sets an account-specific file name
 for the private key of a SSL/TLS client certificate.
 Overrides
 <I>ssl-key</I> for the specified account.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-method</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3268,6 +3517,7 @@ see
 <I>RAND_load_file</I>(3).
 If the file is a regular file writable by the invoking user,
 new data is written to it after it has been loaded.
+Only applicable if SSL/TLS support is built using OpenSSL.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-verify</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3712,8 +3962,11 @@ you can refer to this account using the
 </PRE>
 (This string is not necessarily the same as your Internet mail address.)
 You can replace &#39;imaps://&#39; with &#39;imap://&#39;
-if the server does not support SSL/TLS,
-or use &#39;pop3s://&#39; or &#39;pop3://&#39; if the server does not offer IMAP.
+if the server does not support SSL/TLS.
+(If SSL/TLS support is built using NSS, the
+<I>nss-config-dir</I> variable must be set before a connection can be initiated,
+see above).
+Use &#39;pop3s://&#39; or &#39;pop3://&#39; if the server does not offer IMAP.
 You should use IMAP if you can, though;
 first because it requires fewer network operations than POP3
 to get the contents of the mailbox
@@ -3911,10 +4164,10 @@ or specify the protocol version with
 if you need a client certificate
 or if verification of the server certificate fails.
 If the failed certificate is indeed valid,
-fetch its CA certificate by executing
+fetch its CA certificate by executing the shell command
 <PRE>
 <P>
-&nbsp;   <B>openssl s_client &lt;/dev/null -showcerts -connect &#92;
+&nbsp;   $ <B>openssl s_client &lt;/dev/null -showcerts -connect &#92;
 &nbsp;          </B><I>server.myisp.example</I><B>:</B><I>imaps</I><B> 2&gt;&amp;1 | tee </B><I>log</I>
 <P>
 </PRE>
@@ -4031,6 +4284,211 @@ about such issues.
 </BLOCKQUOTE>
 <A name=28>
 
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Signed and encrypted messages with S/MIME</H4>
+</A>
+<BLOCKQUOTE>
+S/MIME provides two central mechanisms:
+message signing and message encryption.
+A signed message contains some data in addition
+to the regular text.
+The data can be used to verify
+that the message was sent using a valid certificate,
+that the sender&#39;s address in the message header
+matches that in the certificate,
+and that the message text has not been altered.
+Signing a message does not change its regular text;
+it can be read regardless of whether the recipient&#39;s software
+is able to handle S/MIME.
+It is thus usually possible to sign all outgoing messages
+if so desired.&#151;Encryption, in contrast,
+makes the message text invisible for all people
+except those who have access to the secret decryption key.
+To encrypt a message,
+the specific recipient&#39;s public encryption key must be known.
+It is thus not possible to send encrypted mail to people
+unless their key has been retrieved
+from either previous communication or public key directories.
+A message should always be signed before it is encrypted.
+Otherwise, it is still possible that the encrypted message text
+is altered.
+<P>
+A central concept to S/MIME is that of the certification authority (CA).
+A CA is a trusted institution that issues certificates.
+For each of these certificates,
+it can be verified that it really originates from the CA,
+provided that the CA&#39;s own certificate is previously known.
+A set of CA certificates is usually delivered with OpenSSL
+and installed on your system.
+If you trust the source of your OpenSSL software installation,
+this offers reasonable security for S/MIME on the Internet.
+In general, a certificate cannot be more secure
+than the method its CA certificate has been retrieved with, though.
+Thus if you download a CA certificate from the Internet,
+you can only trust the messages you verify using that certificate
+as much as you trust the download process.
+<P>
+The first thing you need for participating in S/MIME message exchange
+is your personal certificate,
+including a private key.
+The certificate contains public information,
+in particular your name and your email address,
+and the public key that is used by others
+to encrypt messages for you,
+and to verify signed messages they supposedly received from you.
+The certificate is included in each signed message you send.
+The private key must be kept secret.
+It is used to decrypt messages that were
+previously encrypted with your public key,
+and to sign messages.
+<P>
+For personal use,
+it is recommended that you get a S/MIME certificate
+from one of the major CAs on the Internet using your WWW browser.
+(Many CAs offer such certificates for free.)
+You will usually receive
+a combined certificate and private key
+in PKCS#12 format which
+<I>nail</I> does not directly accept
+if S/MIME support is built using OpenSSL.
+To convert it to PEM format,
+use the following shell command:
+<PRE>
+<P>
+&nbsp;   $ <B>openssl pkcs12 -in </B><I>cert.p12</I><B> -out </B><I>cert.pem</I><B> -clcerts &#92;
+&nbsp;       -nodes</B>
+<P>
+</PRE>
+If you omit the
+<I>-nodes</I> parameter,
+you can specifiy an additional
+<I>PEM pass phrase</I> for protecting the private key.
+<I>Nail</I> will then ask you for that pass phrase
+each time it signs or decrypts a message.
+You can then use
+<PRE>
+<P>
+&nbsp;   <B>set smime-sign-cert-</B><I>myname@myisp.example</I><B>=</B><I>cert.pem</I>
+<P>
+</PRE>
+to make this private key and certificate known to
+<I>nail</I>. <P>
+If S/MIME support is built using NSS,
+the PKCS#12 file must be installed using Mozilla
+(provided that
+<I>nss-config-dir</I> is set appropriately,
+see above),
+and no further action is necessary
+unless multiple user certificates
+for the same email address are installed.
+In this case,
+the
+<I>smime-sign-nickname</I> variable has to be set appropriately.
+<P>
+You can now sign outgoing messages.
+Just use
+<PRE>
+<P>
+&nbsp;   <B>set smime-sign</B>
+<P>
+</PRE>
+to do so.
+<P>
+From each signed message you send,
+the recipient can fetch your certificate
+and use it to send encrypted mail back to you.
+Accordingly if somebody sends you a signed message,
+you can do the same.
+First use the
+<I>verify</I> command to check the validity of the certificate.
+After that,
+retrieve the certificate and tell
+<I>nail</I> that it should use it for encryption:
+<PRE>
+<P>
+&nbsp;   <B>certsave</B><I> filename</I>
+&nbsp;   <B>set smime-encrypt-</B><I>user@host</I><B>=</B><I>filename</I>
+<P>
+</PRE>
+If S/MIME support is built using NSS,
+the saved certificate must be installed using Mozilla.
+The value of the
+<I>smime-encrypt-user@host</I> is ignored then,
+but if multiple certificates for the recipient are available,
+the
+<I>smime-nickname-user@host</I> variable must be set.
+<P>
+You should carefully consider
+if you prefer to store encrypted messages in decrypted form.
+If you do, anybody who has access to your mail folders can read them,
+but if you do not,
+you might be unable to read them yourself later
+if you happen to lose your private key.
+The
+<I>decrypt</I> command saves messages in decrypted form,
+while the
+<I>save</I>, <I>copy</I>, and
+<I>move</I> commands leave them encrypted.
+<P>
+Note that neither S/MIME signing nor encryption
+applies to message subjects or other header fields.
+Thus they may not contain sensitive information
+for encrypted messages,
+and cannot be trusted even if the message content
+has been verified.
+</BLOCKQUOTE>
+<A name=29>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Using CRLs with S/MIME or SSL/TLS</H4>
+</A>
+<BLOCKQUOTE>
+Certification authorities (CAs) issue
+certificate revocation lists (CRLs) on a regular basis.
+These lists contain the serial numbers of certificates
+that have been declared invalid after they have been issued.
+Such usually happens
+because the private key for the certificate has been compromised,
+because the owner of the certificate has left
+the organization that is mentioned in the certificate,
+etc.
+To seriously use S/MIME or SSL/TLS verification,
+an up-to-date CRL is required for each trusted CA.
+There is otherwise no method
+to distinguish between valid and invalidated certificates.
+<I>Nail</I> currently offers no mechanism to fetch CRLs,
+or to access them on the Internet,
+so you have to retrieve them by some external mechanism.
+<P>
+If S/MIME and SSL/TLS support are built using OpenSSL,
+<I>nail</I> accepts CRLs in PEM format only;
+CRLs in DER format must be converted,
+e.g. with the shell command
+<PRE>
+<P>
+&nbsp;   $ <B>openssl crl -inform DER -in </B><I>crl.der</I><B> -out </B><I>crl.pem</I>
+<P>
+</PRE>
+To tell
+<I>nail</I> about the CRLs,
+a directory
+that contains all CRL files
+(and no other files)
+must be created.
+The
+<I>smime-crl-dir</I> or
+<I>ssl-crl-dir</I> variables, respectively,
+must then be set to point to that directory.
+After that,
+<I>nail</I> requires a CRL to be present
+for each CA that is used
+to verify a certificate.
+<P>
+If S/MIME and SSL/TLS support are built using NSS,
+CRLs can be imported in Mozilla applications
+(provided that
+<I>nss-config-dir</I> is set appropriately).
+</BLOCKQUOTE>
+<A name=30>
+
      <H3>SEE ALSO</H3>
 
 </A>
@@ -4047,7 +4505,7 @@ locale(7),
 mailaddr(7),
 sendmail(8)
 </BLOCKQUOTE>
-<A name=29>
+<A name=31>
 
      <H3>NOTES</H3>
 
@@ -4139,6 +4597,7 @@ and with a server that does,
 the &#39;exit&#39; command will not cause the message status to be reset.
 The &#39;newmail&#39; command and the &#39;newmail&#39; variable
 have no effect.
+It is not possible to rename or to remove POP3 mailboxes.
 <P>
 An unencrypted IMAP or POP3 message download
 can be interrupted from the terminal,
@@ -4177,8 +4636,6 @@ such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.e. to advise it to do that from a network startup script.
 <P>
-There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
-<P>
 <I>Nail</I> is intended to be
 a MIME-conformant mail user agent,
 with the following exception:
@@ -4207,5 +4664,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.7pre</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>9/14/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.8</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>9/22/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>
