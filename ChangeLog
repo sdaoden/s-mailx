@@ -1,3 +1,21 @@
+[11.16] released 11/18/04
+* When a header field line that started and ended with a MIME encoded word
+  followed a line that ended with a MIME encoded word, the newline character
+  preceding the next header field was erroneously omitted when a message was
+  displayed since version 11.14.
+* If a header fields contains a MIME encoded word and a large string of
+  ASCII characters at another point, the large string is encoded as multiple
+  encoded words to comply to RFC 2047.
+* The pipe-type/subtype mechanism did not work for MIME contents other than
+  text/anything since release 11.14 (Bugreport by Bob Tennent).
+* When S/MIME support was built using Mozilla NSS, the verification of an
+  encrypted message that had not yet been downloaded from an IMAP or POP3
+  server failed at the first attempt.
+* Previous versions refused to write messages or attachments to /dev/null
+  on some Solaris versions.
+* If the 'from' variable is set to an address that does not contain an '@'
+  character, no (syntactically incorrect) Message-ID is generated anymore.
+
 [11.15] released 11/10/04
 * The compilation process was fixed to work without CPPFLAGS=-D_GNU_SOURCE on
   Linux/glibc again, although mremap() is not available then. It is therefore
