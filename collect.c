@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -589,6 +589,7 @@ mespipe(fp, cmd)
 		perror(tempEdit);
 		goto out;
 	}
+	fflush(fp);
 	(void) unlink(tempEdit);
 	/*
 	 * stdin = current message.

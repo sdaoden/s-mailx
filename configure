@@ -700,7 +700,7 @@ fi
 
 PACKAGE=nail
 
-VERSION=9.10
+VERSION=9.11
 
 if test "`cd $srcdir && pwd`" != "`pwd`" && test -f $srcdir/config.status; then
   { echo "configure: error: source directory already configured; run "make distclean" there first" 1>&2; exit 1; }
@@ -783,7 +783,7 @@ fi
 
 
 cat >> confdefs.h <<\EOF
-#define REL_DATE "2000-05-02"
+#define REL_DATE "2000-05-15"
 EOF
 
 # Check whether --enable-debug or --disable-debug was given.

@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.8 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $
+ *	$Id: extern.h,v 1.8 2000/05/15 00:22:13 gunnar Exp $
  */
 
 struct name;
@@ -69,7 +69,6 @@ char	*ishfield __P((char [], char[], char *));
 char	*name1 __P((struct message *, int));
 char	*nameof __P((struct message *, int));
 char	*nextword __P((char *, char *));
-char	*readtty __P((char [], char []));
 char 	*reedit __P((char *));
 FILE	*run_editor __P((FILE *, off_t, int, int));
 char	*salloc __P((int));
@@ -89,6 +88,7 @@ int	 Respond __P((void *));
 int	 Type __P((void *));
 int	 Pipecmd __P((void *));
 int	 pipecmd __P((void *));
+int	 forwardcmd __P((void *));
 int	 _Respond __P((int []));
 int	 _respond __P((int *));
 void	 alter __P((char *));
@@ -214,6 +214,7 @@ void	 quit __P((void));
 int	 quitcmd __P((void *));
 int	 aux_raise __P((int));
 int	 readline __P((FILE *, char *, int));
+char 	*readtty __P((char *, char *));
 void	 register_file __P((FILE *, int, int));
 void	 regret __P((int));
 void	 relsesigs __P((void));
@@ -253,8 +254,6 @@ int	 swrite __P((void *));
 void	 tinit __P((void));
 int	 top __P((void *));
 void	 touch __P((struct message *));
-void	 ttyint __P((int));
-void	 ttystop __P((int));
 int	 type __P((void *));
 int	 undeletecmd __P((void *));
 void	 unmark __P((int));
@@ -287,3 +286,7 @@ size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int));
 int	is_undisplayable __P((unsigned char));
 int	mime_check_attach __P((struct name *));
 signal_handler_t safe_signal __P((int, signal_handler_t));
+void	start_mta __P((struct name *, struct name *, FILE *));
+char	*foldergets __P((char *, int, FILE *));
+char	* getcmd __P((char *, int *));
+int	forward_msg __P((struct message *, struct name *));

@@ -1,4 +1,4 @@
-/*	$Id: cmd2.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: cmd2.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 /*	NetBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -198,10 +198,6 @@ save1(str, mark, cmd, ignore, convert)
 		return(1);
 	if ((file = expand(file)) == NOSTR)
 		return(1);
-	if (convert != CONV_TOFILE) {
-		printf("\"%s\" ", file);
-		fflush(stdout);
-	}
 	if (access(file, 0) >= 0) {
 		newfile = 0;
 		disp = "[Appended]";
@@ -230,29 +226,11 @@ save1(str, mark, cmd, ignore, convert)
 		if (mark)
 			mp->m_flag |= MSAVED;
 	}
-	if (convert == CONV_TOFILE) {
-		if (newfile) {
-			fflush(obuf);
-			if (fstat(fileno(obuf), &st) == 0
-				&& st.st_nlink == 1
-				&& st.st_size == 0) {
-				rm(file);
-				nullfile = 1;
-			} else if (ftell(obuf) == 0) {
-				nullfile = 1;
-			}
-		} else {
-			printf("\"%s\" ", file);
-		}
-	} 
-	if (nullfile == 0){
-		fflush(obuf);
-		if (ferror(obuf))
-			perror(file);
-	}
+	fflush(obuf);
+	if (ferror(obuf))
+		perror(file);
 	Fclose(obuf);
-	if (nullfile == 0)
-		printf("%s\n", disp);
+	printf("%s %s\n", file, disp);
 	return(0);
 }
 

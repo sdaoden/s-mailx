@@ -83,7 +83,7 @@ DIST_COMMON =  Makefile.am Makefile.in
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
-TAR = tar
+TAR = gtar
 GZIP_ENV = --best
 all: all-redirect
 .SUFFIXES:
@@ -106,7 +106,7 @@ distdir: $(DISTFILES)
 	@for file in $(DISTFILES); do \
 	  d=$(srcdir); \
 	  if test -d $$d/$$file; then \
-	    cp -pr $$/$$file $(distdir)/$$file; \
+	    cp -pr $$d/$$file $(distdir)/$$file; \
 	  else \
 	    test -f $(distdir)/$$file \
 	    || ln $$d/$$file $(distdir)/$$file 2> /dev/null \
@@ -175,9 +175,13 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
 
 install-data-local:
-	$(INSTALL_DATA) $(srcdir)/nail.rc $(sysconfdir)
-	$(INSTALL_DATA) $(srcdir)/nail.help $(libdir)
-	$(INSTALL_DATA) $(srcdir)/nail.tildehelp $(libdir)
+	if test -f $(sysconfdir)/nail.rc; \
+		then mv $(sysconfdir)/nail.rc $(sysconfdir)/nail.rc.old; fi
+	$(mkinstalldirs) $(sysconfdir)
+	$(INSTALL_DATA) $(srcdir)/nail.rc $(sysconfdir)/nail.rc
+	$(mkinstalldirs) $(libdir)
+	$(INSTALL_DATA) $(srcdir)/nail.help $(libdir)/nail.help
+	$(INSTALL_DATA) $(srcdir)/nail.tildehelp $(libdir)/nail.tildehelp
 
 uninstall-local:
 	rm -f $(libdir)/nail.help $(libdir)/nail.tildehelp

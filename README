@@ -25,9 +25,10 @@ Nail has been built successfully on the following operating systems:
 
 Linux 		2.2 with glibc 2.1; 2.0 with libc5
 FreeBSD		4.0-STABLE
-Solaris		7; 2.6
 UnixWare	7.0.1; 2.1.2
 OpenServer	5.0.5
+Solaris		7; 2.6
+Digital Unix	4.0
 
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.

@@ -1,4 +1,4 @@
-/*	$Id: cmdtab.c,v 1.4 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: cmdtab.c,v 1.5 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp 	*/
 /*	NetBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmdtab.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmdtab.c,v 1.6 1996/06/08 19:48:15 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: cmdtab.c,v 1.4 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmdtab.c,v 1.5 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -101,6 +101,7 @@ const struct cmd cmdtab[] = {
 	{ "Respond",	Respond,	R|I|MSGLIST,	0,	MMNDEL },
 	{ "reply",	respond,	R|I|MSGLIST,	0,	MMNDEL },
 	{ "respond",	respond,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "forward",	forwardcmd,	R|STRLIST,	0,	MMNDEL },
 	{ "edit",	editor,		I|MSGLIST,	0,	MMNORM },
 	{ "echo",	echo,		M|RAWLIST,	0,	1000 },
 	{ "quit",	quitcmd,	NOLIST,		0,	0 },

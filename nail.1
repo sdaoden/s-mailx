@@ -1,4 +1,4 @@
-.\" $Id: nail.1,v 1.12 2000/05/01 22:27:04 gunnar Exp $
+.\" $Id: nail.1,v 1.13 2000/05/15 00:22:13 gunnar Exp $
 .\"     $OpenBSD: mail.1,v 1.5 1994/06/29 05:09:32 deraadt Exp $
 .\" Copyright (c) 1980, 1990, 1993
 .\"     The Regents of the University of California.  All rights reserved.
@@ -37,7 +37,7 @@
 .\"
 .\"     from: @(#)mail.1        8.2 (Berkeley) 12/30/93
 .\"
-.TH NAIL 1 "May 2, 2000" "nail 9.10" "User Commands"
+.TH NAIL 1 "May 14, 2000" "nail 9.11" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -48,7 +48,7 @@ nail [-iInNv] -f [name]
 nail [-iInNv] [-u user]
 .fi
 .SH DESCRIPTION
-Nail is an intelligent mail processing system, which has
+\fINail\fR is an intelligent mail processing system, which has
 a command syntax reminiscent of ed(1)
 with lines replaced by messages.
 It is based on Berkeley Mail 8.1 and offers some extensions
@@ -115,7 +115,7 @@ The details of
 delivery are displayed on the user's terminal.
 .TP
 .B -V
-Print nail's version and exit.
+Print \fInail\fR's version and exit.
 .SH USAGE
 .TP
 .B "Sending mail."
@@ -229,7 +229,7 @@ as all mail goes through sendmail.
 .TP
 .B "Network mail (Internet / ARPA, UUCP, Berknet)."
 See mailaddr(7) for a description of network addresses.
-Nail has a number of options
+\fINail\fR has a number of options
 which can be set in the .mailrc file
 to alter its behavior;
 thus `\fIset askcc\fR' enables the askcc feature.
@@ -257,10 +257,11 @@ the second for any file that contains formatting characters
 other than newlines and horizontal tabulators.
 .TP
 .B "MIME conformance."
-Nail is intended to be a MIME-conformant mail user agent,
+\fINail\fR is intended to be
+a MIME-conformant mail user agent,
 with the following exceptions:
 .IP
-Nail does not care at all about the character sets of messages.
+\fINail\fR does not care at all about the character sets of messages.
 It simply displays all messages of the content types "text" or "message",
 but it replaces all formatting characters except newlines, linefeeds,
 backspaces and tabulators with question marks if displaying
@@ -411,6 +412,10 @@ Some special conventions are recognized for the name.
 %user means user's system mailbox,
 & means your mbox file,
 and +folder means a file in your folder directory.
+.TP
+.B forward
+(for) Takes a list of messages and a user name
+and sends each message to the named user.
 .TP
 .B from
 (f) Takes a list of messages
@@ -604,12 +609,14 @@ the inverse of set.
 on each message.
 .TP
 .B write
-(w) For conventional messages, the body without all headers is written.
-The output is converted if necessary.
-If the message is a MIME multipart message,
-the user is asked for a filename to save each single part.
-In this case there is nothing written to the given file,
-and it is deleted immediately if it did not exist before.
+(w) For conventional messages,
+the body without all headers is written.
+The output is converted
+to its native format, if necessary.
+If a message is in MIME multipart format,
+its first part is written to the specified file,
+and the user is asked for a filename
+to save each other part.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
 the other are discarded.
@@ -620,7 +627,7 @@ in the originating mail folder.
 (x) A synonym for exit.
 .TP
 .B z
-Nail presents message headers in windowfuls
+\fINail\fR presents message headers in windowfuls
 as described under the headers command.
 You can move \fInail\fR's attention forward
 to the next window with the z command.
@@ -758,6 +765,9 @@ or string, in which case the actual value is of interest.
 .PP
 The binary options include the following:
 .TP
+.B Replyall
+Reverses the sense of reply and Reply commands.
+.TP
 .B append
 Causes messages saved in mbox to be appended to the end
 rather than prepended.
@@ -801,6 +811,13 @@ as the terminator of a message you are sending.
 If set, an empty mailbox file is not removed.
 This may improve the interoperability with other MUAs
 when using a common folder directory.
+.TP
+.B emptystart
+If the mailbox is empty,
+\fInail\fR normally prints \fR`No mail for user'\fI
+and exits immediately.
+If this option is set,
+nail starts even with an empty mailbox.
 .TP
 .B hold
 This option is used to hold messages
@@ -915,9 +932,6 @@ or when crt variable is set.
 The default paginator more(1) is used
 if this option is not defined.
 .TP
-.B Replyall
-Reverses the sense of reply and Reply commands.
-.TP
 .B SHELL
 Pathname of the shell to use
 in the ! command and the ~! escape.
@@ -980,7 +994,7 @@ this address is handled as if it were in the alternates list.
 If this variable is set,
 a \fI`Sender:'\fR field containing the user's name
 is also generated.
-If the machine's hostname is not valid in the Internet
+If the machine's hostname is not valid at the Internet
 (for example at a dialup machine),
 you have to set this variable
 to get correct Message-ID header fields.
@@ -1062,6 +1076,7 @@ lines are printed.
 fetchmail(1),
 fmt(1),
 newaliases(1),
+procmail(1),
 vacation(1),
 aliases(5),
 mailaddr(7),
@@ -1072,6 +1087,15 @@ Due to limitations of \fRnail\fR's internal message handling,
 an outgoing singlepart message must always be a text message;
 the same applies to the first part of a multipart message.
 Binary files must be sent as attachments.
+.PP
+\fINail\fR cannot handle
+the \fIbinary\fR Content-Transfer-Encoding.
+The \fIbase64\fR encoding should be used instead.
+.PP
+Contrasting to some versions of BSD Mail,
+\fInail\fR is not able to act
+as a Mail Delivery Agent (MDA).
+Use procmail(1) for this purpose.
 .SH HISTORY
 A \fImail\fR command appeared in Version 6 AT&T UNIX.
 This man page is derived from

@@ -1,4 +1,4 @@
-/*	$Id: tty.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: tty.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 /*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: tty.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: tty.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -75,114 +75,80 @@ static int safegetc(FILE *ibuf);
 #endif
 
 /*
- * Read all relevant header fields.
+ * Receipt continuation.
  */
-
-int
-grabh(hp, gflags)
-	struct header *hp;
-	int gflags;
+static RETSIGTYPE
+ttystop(s)
+	int s;
 {
-	struct termios ttybuf;
-	signal_handler_t saveint;
-#ifndef TIOCSTI
-	signal_handler_t savequit;
-#endif
-	signal_handler_t savetstp;
-	signal_handler_t savettou;
-	signal_handler_t savettin;
-	int errs;
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &saveint;
-#endif
+	signal_handler_t old_action = safe_signal(s, SIG_DFL);
+	sigset_t nset;
 
-	savetstp = safe_signal(SIGTSTP, SIG_DFL);
-	savettou = safe_signal(SIGTTOU, SIG_DFL);
-	savettin = safe_signal(SIGTTIN, SIG_DFL);
-	errs = 0;
-#ifndef TIOCSTI
-	ttyset = 0;
-#endif
-	if (tcgetattr(fileno(stdin), &ttybuf) < 0) {
-		perror("tcgetattr");
-		return(-1);
-	}
-	c_erase = ttybuf.c_cc[VERASE];
-	c_kill = ttybuf.c_cc[VKILL];
-#ifndef TIOCSTI
-	ttybuf.c_cc[VERASE] = 0;
-	ttybuf.c_cc[VKILL] = 0;
-	if ((saveint = safe_signal(SIGINT, SIG_IGN)) == SIG_DFL)
-		safe_signal(SIGINT, SIG_DFL);
-	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
-		safe_signal(SIGQUIT, SIG_DFL);
-#else
+	sigemptyset(&nset);
+	sigaddset(&nset, s);
+	sigprocmask(SIG_BLOCK, &nset, NULL);
+	kill(0, s);
+	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+	safe_signal(s, old_action);
 #ifdef IOSAFE
-	got_interrupt = 0;
+	got_interrupt = s;
+#else
+	fpurge(stdin);
 #endif
-	if (sigsetjmp(intjmp, 1)) {
-		/* avoid garbled output with C-c */
-		printf("\n");
-		fflush(stdout);
-		goto out;
-	}
-	saveint = safe_signal(SIGINT, ttyint);
-#endif
-	if (gflags & GTO) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_to != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_to =
-			extract(readtty("To: ", detract(hp->h_to, 0)), GTO);
-	}
-	if (gflags & GSUBJECT) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_subject != NOSTR)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_subject = readtty("Subject: ", hp->h_subject);
-	}
-	if (gflags & GCC) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_cc != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_cc =
-			extract(readtty("Cc: ", detract(hp->h_cc, 0)), GCC);
-	}
-	if (gflags & GBCC) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_bcc != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_bcc =
-			extract(readtty("Bcc: ", detract(hp->h_bcc, 0)), GBCC);
-	}
-	if (gflags & GATTACH) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_attach != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_attach =
-			extract(readtty("Attachments: ",
-					detract(hp->h_attach, 0)), GATTACH);
-	}
-out:
-	safe_signal(SIGTSTP, savetstp);
-	safe_signal(SIGTTOU, savettou);
-	safe_signal(SIGTTIN, savettin);
-#ifndef TIOCSTI
-	ttybuf.c_cc[VERASE] = c_erase;
-	ttybuf.c_cc[VKILL] = c_kill;
-	if (ttyset)
-		tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-	safe_signal(SIGQUIT, savequit);
-#endif
-	safe_signal(SIGINT, saveint);
-	return(errs);
+	siglongjmp(rewrite, 1);
 }
+
+/*ARGSUSED*/
+static RETSIGTYPE
+ttyint(s)
+	int s;
+{
+#ifdef IOSAFE
+	got_interrupt = s;
+#else
+	fpurge(stdin);
+	siglongjmp(intjmp, 1);
+#endif
+}
+
+#ifdef IOSAFE
+/* it is very awful, but only way I see to be able to do a
+   interruptable stdio call */ 
+static int
+safegetc(ibuf)
+FILE *ibuf;
+{
+	fd_set rds;
+	int oldfl;
+	int res;
+	while (1) {
+		errno = 0;
+		oldfl = fcntl(fileno(ibuf),F_GETFL);
+		fcntl(fileno(ibuf),F_SETFL,oldfl | O_NONBLOCK);
+		res = getc(ibuf);
+		fcntl(fileno(ibuf),F_SETFL,oldfl);
+		if (res != EOF)
+			return res;
+		else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			clearerr(ibuf);
+			FD_ZERO(&rds);
+			FD_SET(fileno(ibuf),&rds);
+			select((SELECT_TYPE_ARG1)(fileno(ibuf) + 1),
+					SELECT_TYPE_ARG234(&rds),
+					SELECT_TYPE_ARG234(NULL),
+					SELECT_TYPE_ARG234(NULL),
+					SELECT_TYPE_ARG5(NULL));
+			/* if an interrupt occur drops the current
+			   line and returns */
+			if (got_interrupt)
+				return EOF;
+		} else {
+			/* probably EOF one the file descriptors */
+			return EOF;
+		}
+	}
+}
+#endif
 
 /*
  * Read up a header from standard input.
@@ -191,8 +157,8 @@ out:
  *
  */
 
-char *
-readtty(pr, src)
+static char *
+rtty_internal(pr, src)
 	char pr[], src[];
 {
 	char ch, canonb[BUFSIZ];
@@ -268,7 +234,7 @@ readtty(pr, src)
 redo:
 		cp = strlen(canonb) > 0 ? canonb : NOSTR;
 		clearerr(stdin);
-		return(readtty(pr, cp));
+		return(rtty_internal(pr, cp));
 	}
 #ifndef TIOCSTI
 	if (cp == NOSTR || *cp == '\0')
@@ -308,76 +274,189 @@ redo:
 }
 
 /*
- * Receipt continuation.
+ * Read all relevant header fields.
  */
-RETSIGTYPE
-ttystop(s)
-	int s;
-{
-	signal_handler_t old_action = safe_signal(s, SIG_DFL);
-	sigset_t nset;
 
-	sigemptyset(&nset);
-	sigaddset(&nset, s);
-	sigprocmask(SIG_BLOCK, &nset, NULL);
-	kill(0, s);
-	sigprocmask(SIG_UNBLOCK, &nset, NULL);
-	safe_signal(s, old_action);
-#ifdef IOSAFE
-	got_interrupt = s;
-#else
-	fpurge(stdin);
+int
+grabh(hp, gflags)
+	struct header *hp;
+	int gflags;
+{
+	struct termios ttybuf;
+	signal_handler_t saveint;
+#ifndef TIOCSTI
+	signal_handler_t savequit;
 #endif
-	siglongjmp(rewrite, 1);
-}
-
-/*ARGSUSED*/
-RETSIGTYPE
-ttyint(s)
-	int s;
-{
-#ifdef IOSAFE
-	got_interrupt = s;
-#else
-	fpurge(stdin);
-	siglongjmp(intjmp, 1);
+	signal_handler_t savetstp;
+	signal_handler_t savettou;
+	signal_handler_t savettin;
+	int errs;
+#ifdef __GNUC__
+	/* Avoid longjmp clobbering */
+	(void) &saveint;
 #endif
-}
 
-#ifdef IOSAFE
-/* it is very awful, but only way I see to be able to do a
-   interruptable stdio call */ 
-static int safegetc(FILE *ibuf)
-{
-	fd_set rds;
-	int oldfl;
-	int res;
-	while (1) {
-		errno = 0;
-		oldfl = fcntl(fileno(ibuf),F_GETFL);
-		fcntl(fileno(ibuf),F_SETFL,oldfl | O_NONBLOCK);
-		res = getc(ibuf);
-		fcntl(fileno(ibuf),F_SETFL,oldfl);
-		if (res != EOF)
-			return res;
-		else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			clearerr(ibuf);
-			FD_ZERO(&rds);
-			FD_SET(fileno(ibuf),&rds);
-			select((SELECT_TYPE_ARG1)(fileno(ibuf) + 1),
-					SELECT_TYPE_ARG234(&rds),
-					SELECT_TYPE_ARG234(NULL),
-					SELECT_TYPE_ARG234(NULL),
-					SELECT_TYPE_ARG5(NULL));
-			/* if an interrupt occur drops the current
-			   line and returns */
-			if (got_interrupt)
-				return EOF;
-		} else {
-			/* probably EOF one the file descriptors */
-			return EOF;
-		}
+	savetstp = safe_signal(SIGTSTP, SIG_DFL);
+	savettou = safe_signal(SIGTTOU, SIG_DFL);
+	savettin = safe_signal(SIGTTIN, SIG_DFL);
+	errs = 0;
+#ifndef TIOCSTI
+	ttyset = 0;
+#endif
+	if (tcgetattr(fileno(stdin), &ttybuf) < 0) {
+		perror("tcgetattr");
+		return(-1);
 	}
+	c_erase = ttybuf.c_cc[VERASE];
+	c_kill = ttybuf.c_cc[VKILL];
+#ifndef TIOCSTI
+	ttybuf.c_cc[VERASE] = 0;
+	ttybuf.c_cc[VKILL] = 0;
+	if ((saveint = safe_signal(SIGINT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGINT, SIG_DFL);
+	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGQUIT, SIG_DFL);
+#else
+#ifdef IOSAFE
+	got_interrupt = 0;
+#endif
+	if (sigsetjmp(intjmp, 1)) {
+		/* avoid garbled output with C-c */
+		printf("\n");
+		fflush(stdout);
+		goto out;
+	}
+	saveint = safe_signal(SIGINT, ttyint);
+#endif
+	if (gflags & GTO) {
+#ifndef TIOCSTI
+		if (!ttyset && hp->h_to != NIL)
+			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+		hp->h_to =
+			extract(rtty_internal("To: ", detract(hp->h_to, 0)), GTO);
+	}
+	if (gflags & GSUBJECT) {
+#ifndef TIOCSTI
+		if (!ttyset && hp->h_subject != NOSTR)
+			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+		hp->h_subject = rtty_internal("Subject: ", hp->h_subject);
+	}
+	if (gflags & GCC) {
+#ifndef TIOCSTI
+		if (!ttyset && hp->h_cc != NIL)
+			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+		hp->h_cc =
+			extract(rtty_internal("Cc: ", detract(hp->h_cc, 0)), GCC);
+	}
+	if (gflags & GBCC) {
+#ifndef TIOCSTI
+		if (!ttyset && hp->h_bcc != NIL)
+			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+		hp->h_bcc =
+			extract(rtty_internal("Bcc: ", detract(hp->h_bcc, 0)), GBCC);
+	}
+	if (gflags & GATTACH) {
+#ifndef TIOCSTI
+		if (!ttyset && hp->h_attach != NIL)
+			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+		hp->h_attach =
+			extract(rtty_internal("Attachments: ",
+					detract(hp->h_attach, 0)), GATTACH);
+	}
+out:
+	safe_signal(SIGTSTP, savetstp);
+	safe_signal(SIGTTOU, savettou);
+	safe_signal(SIGTTIN, savettin);
+#ifndef TIOCSTI
+	ttybuf.c_cc[VERASE] = c_erase;
+	ttybuf.c_cc[VKILL] = c_kill;
+	if (ttyset)
+		tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+	safe_signal(SIGQUIT, savequit);
+#endif
+	safe_signal(SIGINT, saveint);
+	return(errs);
 }
+
+/*
+ * Read a line from tty; to be called from elsewhere
+ */
+
+char *
+readtty(prefix, string)
+char *prefix, *string;
+{
+	char *ret = NULL;
+	struct termios ttybuf;
+	signal_handler_t saveint;
+#ifndef TIOCSTI
+	signal_handler_t savequit;
+#endif
+	signal_handler_t savetstp;
+	signal_handler_t savettou;
+	signal_handler_t savettin;
+	int errs;
+#ifdef __GNUC__
+	/* Avoid longjmp clobbering */
+	(void) &saveint;
+	(char*) &ret;
 #endif
 
+	savetstp = safe_signal(SIGTSTP, SIG_DFL);
+	savettou = safe_signal(SIGTTOU, SIG_DFL);
+	savettin = safe_signal(SIGTTIN, SIG_DFL);
+	errs = 0;
+#ifndef TIOCSTI
+	ttyset = 0;
+#endif
+	if (tcgetattr(fileno(stdin), &ttybuf) < 0) {
+		perror("tcgetattr");
+		return NULL;
+	}
+	c_erase = ttybuf.c_cc[VERASE];
+	c_kill = ttybuf.c_cc[VKILL];
+#ifndef TIOCSTI
+	ttybuf.c_cc[VERASE] = 0;
+	ttybuf.c_cc[VKILL] = 0;
+	if ((saveint = safe_signal(SIGINT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGINT, SIG_DFL);
+	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
+		safe_signal(SIGQUIT, SIG_DFL);
+#else
+#ifdef IOSAFE
+	got_interrupt = 0;
+#endif
+	if (sigsetjmp(intjmp, 1)) {
+		/* avoid garbled output with C-c */
+		printf("\n");
+		fflush(stdout);
+		goto out2;
+	}
+	saveint = safe_signal(SIGINT, ttyint);
+#endif
+#ifndef TIOCSTI
+	if (!ttyset && hp->h_to != NIL)
+		ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+#endif
+	ret = rtty_internal(prefix, string);
+	if (ret != NULL && *ret == '\0')
+		ret = NULL;
+out2:
+	safe_signal(SIGTSTP, savetstp);
+	safe_signal(SIGTTOU, savettou);
+	safe_signal(SIGTTIN, savettin);
+#ifndef TIOCSTI
+	ttybuf.c_cc[VERASE] = c_erase;
+	ttybuf.c_cc[VKILL] = c_kill;
+	if (ttyset)
+		tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
+	safe_signal(SIGQUIT, savequit);
+#endif
+	safe_signal(SIGINT, saveint);
+	return ret;
+}

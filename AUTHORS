@@ -28,4 +28,4 @@ Marcel Oliver helped in finding a type signing error.
 
 Jacob Moorman provided support for GNU autoconf/automake.
 
-Edward V. Popkov found a type misassignment.
+Edward V. Popkov found a type misassignment and a missing fflush().

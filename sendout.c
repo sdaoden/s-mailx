@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.9 2000/05/02 02:17:37 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.10 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,7 +40,7 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.9 2000/05/02 02:17:37 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.10 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -62,6 +62,8 @@ static char rcsid[]  = "@(#)$Id: sendout.c,v 1.9 2000/05/02 02:17:37 gunnar Exp 
 const char randfile[] = "/dev/urandom";
 
 const static char b36table[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+extern char *tempMail;
 
 /*
  * Convert i to a base36 character string and store it in b.
@@ -352,22 +354,25 @@ FILE *fi, *fo;
 	size_t sz;
 	struct name *att;
 
-	fprintf(fo,
-		"This is a multi-part message in MIME format.\n"
-		"--%s\n"
-		"Content-Type: text/plain; charset=%s\n",
-		send_boundary, mime_getcharset(convert));
-	fprintf(fo, "Content-Transfer-Encoding: %s\n\n", getencoding(convert));
-	while ((sz = fread(buf, sizeof(char), INFIX_BUF, fi)) != 0) {
-		c = buf[sz - 1];
-		mime_write(buf, sizeof(char), sz, fo, convert, 0);
+	fputs("This is a multi-part message in MIME format.\n", fo);
+	if (fsize(fi) != 0) {
+		fprintf(fo, "--%s\n"
+				"Content-Type: text/plain; charset=%s\n"
+				"Content-Transfer-Encoding: %s\n\n",
+				send_boundary,
+				mime_getcharset(convert),
+				getencoding(convert));
+		while ((sz = fread(buf, sizeof(char), INFIX_BUF, fi)) != 0) {
+			c = buf[sz - 1];
+			mime_write(buf, sizeof(char), sz, fo, convert, 0);
+		}
+		if (ferror(fi)) {
+			return -1;
+		}
+		if (c != '\n')
+			fputc('\n', fo);
+		put_signature(fo, convert);
 	}
-	if (ferror(fi)) {
-		return -1;
-	}
-	if (c != '\n')
-		fputc('\n', fo);
-	put_signature(fo, convert);
 	for (att = hp->h_attach; att != NIL; att = att->n_flink) {
 		if (attach_file(att->n_name, fo) != 0) {
 			return -1;
@@ -545,6 +550,61 @@ sendmail(v)
 	return(0);
 }
 
+/* Start the Mail Transfer Agent
+ * mailing to namelist and stdin redirected to input.
+ */
+void
+start_mta(to, mailargs, input)
+struct name *to, *mailargs;
+FILE* input;
+{
+	char **args, **t;
+	pid_t pid;
+	sigset_t nset;
+	char *cp;
+
+	args = unpack(cat(mailargs, to));
+	if (debug) {
+		printf("Sendmail arguments:");
+		for (t = args; *t != NOSTR; t++)
+			printf(" \"%s\"", *t);
+		printf("\n");
+		return;
+	}
+	/*
+	 * Fork, set up the temporary mail file as standard
+	 * input for "mail", and exec with the user list we generated
+	 * far above.
+	 */
+	pid = fork();
+	if (pid == -1) {
+		perror("fork");
+		savedeadletter(input);
+		return;
+	}
+	if (pid == 0) {
+		sigemptyset(&nset);
+		sigaddset(&nset, SIGHUP);
+		sigaddset(&nset, SIGINT);
+		sigaddset(&nset, SIGQUIT);
+		sigaddset(&nset, SIGTSTP);
+		sigaddset(&nset, SIGTTIN);
+		sigaddset(&nset, SIGTTOU);
+		prepare_child(&nset, fileno(input), -1);
+		if ((cp = value("sendmail")) != NOSTR)
+			cp = expand(cp);
+		else
+			cp = _PATH_SENDMAIL;
+		execv(cp, args);
+		perror(cp);
+		_exit(1);
+	}
+	if (value("verbose") != NOSTR)
+		(void) wait_child(pid);
+	else
+		free_child(pid);
+}
+
 /*
  * Mail a message on standard input to the people indicated
  * in the passed header.  (Internal interface).
@@ -557,7 +617,6 @@ mail1(hp, printheaders, quote, quotefile)
 	char *quotefile;
 {
 	char *cp;
-	int pid;
 	char **namelist;
 	struct name *to;
 	FILE *mtf, *nmtf;
@@ -624,51 +683,9 @@ mail1(hp, printheaders, quote, quotefile)
 	to = elide(to);
 	if (count(to) == 0)
 		goto out;
-	namelist = unpack(cat(hp->h_smopts, to));
-	if (debug) {
-		char **t;
-
-		printf("Sendmail arguments:");
-		for (t = namelist; *t != NOSTR; t++)
-			printf(" \"%s\"", *t);
-		printf("\n");
-		goto out;
-	}
 	if ((cp = value("record")) != NOSTR)
 		(void) savemail(expand(cp), mtf);
-	/*
-	 * Fork, set up the temporary mail file as standard
-	 * input for "mail", and exec with the user list we generated
-	 * far above.
-	 */
-	pid = fork();
-	if (pid == -1) {
-		perror("fork");
-		savedeadletter(mtf);
-		goto out;
-	}
-	if (pid == 0) {
-		sigset_t nset;
-		sigemptyset(&nset);
-		sigaddset(&nset, SIGHUP);
-		sigaddset(&nset, SIGINT);
-		sigaddset(&nset, SIGQUIT);
-		sigaddset(&nset, SIGTSTP);
-		sigaddset(&nset, SIGTTIN);
-		sigaddset(&nset, SIGTTOU);
-		prepare_child(&nset, fileno(mtf), -1);
-		if ((cp = value("sendmail")) != NOSTR)
-			cp = expand(cp);
-		else
-			cp = _PATH_SENDMAIL;
-		execv(cp, namelist);
-		perror(cp);
-		_exit(1);
-	}
-	if (value("verbose") != NOSTR)
-		(void) wait_child(pid);
-	else
-		free_child(pid);
+	start_mta(to, hp->h_smopts, mtf);
 out:
 	(void) Fclose(mtf);
 }
@@ -892,7 +909,8 @@ fmt(str, np, fo, comma)
 	col = strlen(str);
 	if (col) {
 		mime_write(str, sizeof(char), strlen(str), fo, CONV_TOHDR, 0);
-		if (col == 3 && strcasecmp(str, "To:") == 0)
+		if ((col == 3 && strcasecmp(str, "to:") == 0) ||
+			(col == 10 && strcasecmp(str, "Resent-To:") == 0))
 			is_to = 1;
 	}
 	for (; np != NIL; np = np->n_flink) {
@@ -914,4 +932,120 @@ fmt(str, np, fo, comma)
 		col += len + comma;
 	}
 	putc('\n', fo);
+}
+
+/*
+ * Rewrite a message for forwarding, adding the Resent-Headers.
+ */
+static int
+infix_fw(fi, fo, mp, to)
+FILE *fi, *fo;
+struct message *mp;
+struct name *to;
+{
+	long count;
+	char buf[LINESIZE], *cp;
+	size_t c;
+
+	count = mp->m_size;
+	/*
+	 * Write the original headers first.
+	 */
+	while (count > 0) {
+		if (foldergets(buf, LINESIZE, fi) == NULL)
+			break;
+		count -= c = strlen(buf);
+		if (count > 0 && *buf == '\n')
+			break;
+		if (strncasecmp("status: ", buf, 8) != 0
+				&& strncmp("From ", buf, 5) != 0) {
+			if (strncasecmp("resent-", buf, 7) == 0)
+				fputs("X-Old-", fo);
+			fwrite(buf, sizeof *buf, c, fo);
+		}
+	}
+	/*
+	 * Write the Resent-Headers, but only if the message
+	 * has headers at all.
+	 */
+	if (count > 0) {
+		fputs("Resent-", fo);
+		date_field(fo);
+		cp = value("from");
+		if (cp != NULL) {
+			fprintf(fo, "Resent-Sender: %s\n", username());
+			fwrite("Resent-From: ", sizeof(char), 13, fo);
+			mime_write(cp, sizeof *cp, strlen(cp), fo,
+					CONV_TOHDR, 0);
+			fputc('\n', fo);
+		}
+		cp = value("replyto");
+		if (cp != NULL) {
+			fwrite("Resent-Reply-To: ", sizeof(char), 10, fo);
+			mime_write(cp, sizeof(char), strlen(cp), fo,
+					CONV_TOHDR, 0);
+			fputc('\n', fo);
+		}
+		fmt("Resent-To:", to, fo, 1);
+		fputs("Resent-", fo);
+		message_id(fo);
+		fputc('\n', fo);
+		/*
+		 * Write the message body.
+		 */
+		while (count > 0) {
+			if (foldergets(buf, LINESIZE, fi) == NULL)
+				break;
+			count -= c = strlen(buf);
+			fwrite(buf, sizeof *buf, c, fo);
+		}
+	}
+	if (ferror(fo)) {
+		perror(tempMail);
+		return 1;
+	}
+	return 0;
+}
+
+int
+forward_msg(mp, to)
+struct message *mp;
+struct name *to;
+{
+	FILE *ibuf, *nfo, *nfi;
+	struct header head;
+
+	if ((nfo = Fopen(tempMail, "w")) == (FILE*)NULL) {
+		perror(tempMail);
+		return 1;
+	}
+	if ((nfi = Fopen(tempMail, "r")) == (FILE*)NULL) {
+		perror(tempMail);
+		return 1;
+	}
+	rm(tempMail);
+	ibuf = setinput(mp);
+	head.h_to = to;
+	head.h_cc = head.h_bcc = head.h_ref = head.h_attach = head.h_smopts
+		= NULL;
+	fixhead(&head, to);
+	if (infix_fw(ibuf, nfo, mp, head.h_to) != 0) {
+		rewind(nfo);
+		savedeadletter(nfi);
+		fputs(". . . message not sent.\n", stderr);
+		Fclose(nfo);
+		Fclose(nfi);
+		return 1;
+	}
+	fflush(nfo);
+	rewind(nfo);
+	Fclose(nfo);
+	to = outof(to, nfi, &head);
+	if (senderr)
+		savedeadletter(nfi);
+	to = elide(to);
+	if (count(to) != 0)
+		start_mta(to, head.h_smopts, nfi);
+	Fclose(nfi);
+	return 0;
 }

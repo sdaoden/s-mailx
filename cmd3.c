@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.6 2000/05/02 00:54:33 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.6 2000/05/02 00:54:33 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -817,4 +817,43 @@ alternates(v)
 	}
 	*ap2 = 0;
 	return(0);
+}
+
+/*
+ * Forward a message list to a third person.
+ */
+int
+forwardcmd(v)
+void *v;
+{
+	char *name, *str;
+	struct name *to;
+	struct name sn;
+	int f, *ip, *msgvec;
+
+	str = (char*)v;
+	msgvec = (int*) salloc((msgcount + 2) * sizeof *msgvec);
+	name = getcmd(str, &f);
+	if (name == NULL) {
+		puts("No recipient specified.");
+		return 1;
+	}
+	if (!f) {
+		*msgvec = first(0, MMNORM);
+		if (*msgvec == 0) {
+			puts("No applicable messages.");
+			return 1;
+		}
+		msgvec[1] = 0;
+	} else if (getmsglist(str, msgvec, 0) < 0)
+		return 1;
+	sn.n_flink = sn.n_blink = NULL;
+	sn.n_type = GTO;
+	sn.n_name = name;
+	to = usermap(&sn);
+	for (ip = msgvec; *ip && ip - msgvec < msgcount; ip++) {
+		if (forward_msg(&message[*ip - 1], to) != 0)
+			return 1;
+	}
+	return 0;
 }

@@ -1,3 +1,10 @@
+[9.11] released 2000-05-15
+* Do a fflush() before executing a ~| command
+* Make a backup copy of an already installed nail.rc file
+* The `write' command has a more consistent user interface
+* Added the `forward' command
+* Added the `emptystart' option
+
 [9.10] released 2000-05-02
 * Added the `-q' option
 * Convert a subject given on the command line from RFC 1522 format

@@ -1,4 +1,4 @@
-/*	$Id: send.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: send.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,7 +40,7 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: send.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: send.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -103,12 +103,7 @@ struct boundary *b, *b0;
 	if (value("interactive") != NOSTR) {
 		fputs("Enter filename for part ", stdout);
 		print_partnumber(stdout, b, b0);
-		printf(" [%s]: ", f && f != (char*)-1 ? f : "(none)");
-		if (readline(stdin, p, PATHSIZE) != 0) {
-			if (f != NULL && f != (char*)-1)
-				free(f);
-			f = p;
-		}
+		f = readtty(": ", f != (char*)-1 ? f : NULL);
 	}
 	if (f == NULL || f == (char*)-1) {
 		f =(char*)smalloc(10);
@@ -120,7 +115,7 @@ struct boundary *b, *b0;
 /*
  * This is fgets for mbox lines.
  */
-static char *
+char *
 foldergets(s, size, stream)
 char *s;
 FILE *stream;
@@ -230,11 +225,10 @@ long count;
 struct boundary *b0;
 {
 	int mime_enc, mime_content = MIME_TEXT, new_content = MIME_TEXT;
-	FILE *oldobuf = (FILE*)-1;
+	FILE *oldobuf = (FILE*)-1, *origobuf = (FILE*)-1;
 	char line[LINESIZE];
-	int c = 0;
 	char *filename = (char*)-1;
-	int error_return = 0;
+	int c = 0, part = 0, error_return = 0;
 	char *boundend;
 	struct boundary *b = b0;
 	char *(*f_gets) __P((char *s, int size, FILE *stream));
@@ -250,6 +244,7 @@ struct boundary *b0;
 	b0->b_count = 0;
 	b0->b_len = strlen(b0->b_str);
 	mime_content = MIME_DISCARD;
+	origobuf = obuf;
 	while (count > 0 && 
 			f_gets(line, LINESIZE, ibuf)
 			!= NULL) {
@@ -268,11 +263,10 @@ struct boundary *b0;
 				if (*boundend == '\n') {
 					mime_content = MIME_SUBHDR;
 					b->b_count++;
-					if (action == CONV_QUOTE
-						&& b->b_count > 1) {
-						goto send_multi_end;
-					}
-					if (action != CONV_TOFILE) {
+					if (action == CONV_QUOTE) {
+						if (b->b_count > 1)
+							goto send_multi_end;
+					} else if (action != CONV_TOFILE) {
 						fputs("\nPart ", obuf);
 						print_partnumber(obuf, b, b0);
 						fputs(":\n", obuf);
@@ -289,14 +283,12 @@ struct boundary *b0;
 				} else {
 					goto send_multi_nobound;
 				}
-				if (oldobuf != (FILE*)-1) {
+				part++;
+				if (oldobuf != (FILE*)-1 &&
+						obuf != origobuf) {
 					Fclose(obuf);
 					obuf = oldobuf;
 					oldobuf = (FILE*)-1;
-				}
-				if (filename != (char*)-1
-					&& filename != NULL) {
-					free(filename);
 				}
 				filename = (char*)-1;
 				continue;
@@ -319,7 +311,8 @@ send_multi_nobound:
 						convert = CONV_FROMB64_T;
 					}
 				}
-				if (action == CONV_TOFILE) {
+				if (action == CONV_TOFILE && part != 1
+						&& mime_content!=MIME_MULTI) {
 					filename =
 					 newfilename(
 						filename, b, b0);
@@ -338,7 +331,6 @@ send_multi_nobound:
 						error_return=-1;
 						goto
 						   send_multi_end;
-
 						}
 					}
 				}
@@ -445,14 +437,11 @@ send_multi_nobound:
 		}
 	}
 send_multi_end:
-	if (oldobuf != (FILE*)-1) {
+	if (oldobuf != (FILE*)-1 &&
+			obuf != origobuf) {
 		Fclose(obuf);
 		obuf = oldobuf;
 		oldobuf = (FILE*)-1;
-	}
-	if (filename != (char*)-1
-		&& filename != NULL) {
-		free(filename);
 	}
 	bound_free(b0);
 	return error_return;
