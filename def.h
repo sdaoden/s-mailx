@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.93 (gritter) 12/25/04
+ *	Sccsid @(#)def.h	2.97 (gritter) 1/10/05
  */
 
 /*
@@ -97,6 +97,7 @@ enum conversion {
 	CONV_7BIT,			/* no conversion, is 7bit */
 	CONV_FROMQP,			/* convert from quoted-printable */
 	CONV_TOQP,			/* convert to quoted-printable */
+	CONV_8BIT,			/* convert to 8bit (iconv) */
 	CONV_FROMB64,			/* convert from base64 */
 	CONV_FROMB64_T,			/* convert from base64/text */
 	CONV_TOB64,			/* convert to base64 */
@@ -107,6 +108,7 @@ enum conversion {
 
 enum sendaction {
 	SEND_MBOX,			/* no conversion to perform */
+	SEND_RFC822,			/* no conversion, no From_ line */
 	SEND_TODISP,			/* convert to displayable form */
 	SEND_TODISP_ALL,		/* same, include all MIME parts */
 	SEND_SHOW,			/* convert to 'show' command form */
@@ -415,6 +417,7 @@ struct header {
 	struct name *h_ref;		/* References */
 	struct name *h_smopts;		/* Sendmail options */
 	struct attachment *h_attach;	/* MIME attachments */
+	char	*h_charset;		/* preferred charset */
 };
 
 /*
@@ -443,6 +446,8 @@ struct attachment {
 	char	*a_content_disposition;	/* content disposition */
 	char	*a_content_id;		/* content id */
 	char	*a_content_description;	/* content description */
+	char	*a_charset;		/* character set */
+	int	a_msgno;		/* message number */
 };
 
 /*

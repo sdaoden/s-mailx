@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.287 (gritter) 12/28/04 -->
+<!--      Sccsid: @(#)nail.1	2.293 (gritter) 1/10/05 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -82,29 +82,28 @@ nail - send and receive Internet mail
 &nbsp; &nbsp; &nbsp;<A HREF=#10>Recipient address specifications</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#11>Network mail (Internet / ARPA, UUCP, Berknet)</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#12>MIME types</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#13>Locale</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#14>Character sets</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#15>Commands</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#16>Tilde escapes</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#17>Variable options</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#18>Binary options</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#19>String Options</A><BR>
-<A HREF=#20>Environment Variables</A><BR>
-<A HREF=#21>Files</A><BR>
-<A HREF=#22>Examples</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#23>Getting started</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#24>IMAP or POP3 client setup</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#25>Creating a score file or message filter</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#26>Activating the Bayesian filter</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#27>Reading HTML mail</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#28>Viewing PDF attachments</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#29>Signed and encrypted messages with S/MIME</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#30>Using CRLs with S/MIME or SSL/TLS</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#31>Sending mail from scripts</A><BR>
-<A HREF=#32>See Also</A><BR>
-<A HREF=#33>Notes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#13>Character sets</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#14>Commands</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#15>Tilde escapes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#16>Variable options</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#17>Binary options</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#18>String Options</A><BR>
+<A HREF=#19>Environment Variables</A><BR>
+<A HREF=#20>Files</A><BR>
+<A HREF=#21>Examples</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#22>Getting started</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#23>IMAP or POP3 client setup</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#24>Creating a score file or message filter</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#25>Activating the Bayesian filter</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#26>Reading HTML mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#27>Viewing PDF attachments</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#28>Signed and encrypted messages with S/MIME</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#29>Using CRLs with S/MIME or SSL/TLS</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#30>Sending mail from scripts</A><BR>
+<A HREF=#31>See Also</A><BR>
+<A HREF=#32>Notes</A><BR>
 </BLOCKQUOTE>
-<A name=34>
+<A name=33>
 
      <H3>SYNOPSIS</H3>
 
@@ -806,44 +805,57 @@ other than newlines and horizontal tabulators.
 </BLOCKQUOTE>
 <A name=13>
 
-    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Locale</H4>
-</A>
-<BLOCKQUOTE>
-<I>Nail</I> uses the LC_CTYPE locale setting
-to determine whether a character is printable.
-Thus, its value has to match
-the character set of the terminal
-<I>nail</I> runs on.
-</BLOCKQUOTE>
-<A name=14>
-
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Character sets</H4>
 </A>
 <BLOCKQUOTE>
-If a message contains non-ASCII characters,
+<I>Nail</I> normally detects the character set of the terminal
+using the LC_CTYPE locale setting.
+If the locale cannot be used appropriately,
+the <I>ttycharset</I> variable should be set
+to provide an explicit value.
+When reading messages,
+their text is converted to the terminal character set if possible.
+Unprintable characters and illegal byte sequences are detected
+and replaced by Unicode substitute characters or question marks
+unless the
+<I>print-all-chars</I> is set at initialization time.
+<P>
+The character set for outgoing messages
+is not necessarily the same
+as the one used on the terminal.
+If an outgoing text message
+contains characters not representable in US-ASCII,
 the character set being used
-must be declared within the header.
-Its value can be declared
-using the <I>charset</I> variable.
-It is normally assumed
-that this is the terminal character set, too.
-If the latter differs from the one
-that should be used in outgoing mail,
-the <I>ttycharset</I> variable can be used
-for its declaration.
-An outgoing message is then converted,
-resulting in errors when this process
-cannot be done for the entire text;
-if the message contains NUL
-characters,
-it is not converted.
-Attachments are never converted.
-Any message that is displayed on a terminal
-is tried to convert, too,
-with characters not in the terminal character set
-replaced by question marks.
+must be declared within its header.
+Permissible values can be declared
+using the <I>sendcharsets</I> variable,
+separated by commas;
+<I>nail</I> tries each of the values in order
+and uses the first appropriate one.
+If the message contains characters that cannot be represented
+in any of the given character sets,
+the message will not be sent,
+and its text will be saved to the &#39;dead.letter&#39; file.
+Messages that contains NUL bytes are not converted.
+<P>
+Outgoing attachments are also not converted even if they are plain text.
+If the
+<I>sendcharsets</I> variable contains more than one character set name,
+the
+<I>~@</I> tilde escape will ask for the character sets for individual attachments
+if it is invoked without arguments.
+<P>
+Best results are usually achieved
+when
+<I>nail</I> is run in a UTF-8 locale
+on a UTF-8 capable terminal.
+In this setup,
+characters from various countries can be displayed,
+while it is still possible to use more simple
+character sets for sending
+to retain maximum compatibility with older mail clients.
 </BLOCKQUOTE>
-<A name=15>
+<A name=14>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Commands</H4>
 </A>
@@ -2108,7 +2120,7 @@ Similar to
 that contains at least one new or &#39;flagged&#39; message.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=16>
+<A name=15>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Tilde escapes</H4>
 </A>
@@ -2323,7 +2335,7 @@ that character must be doubled
 in order to send it at the beginning of a line.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=17>
+<A name=16>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Variable options</H4>
 </A>
@@ -2341,7 +2353,7 @@ in which case it is only significant
 to see whether they are set or not;
 or string, in which case the actual value is of interest.
 </BLOCKQUOTE>
-<A name=18>
+<A name=17>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Binary options</H4>
 </A>
@@ -2562,6 +2574,16 @@ Exchanges the
 <I>respond</I> commands and vice-versa.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>forward-as-attachment</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Original messages are normally sent as inline text with the
+<I>forward</I> command,
+and only the first part of a multipart message is included.
+With this option,
+messages are sent as MIME
+<I>message/rfc822</I> attachments,
+and all of their parts are included.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>fullnames</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 When replying to a message,
 <I>nail</I> normally removes the comment parts of email addresses,
@@ -2766,6 +2788,15 @@ the
 <I>record</I> folder as it is normally only done for newly composed messages.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>reply-in-same-charset</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this variable is set,
+<I>nail</I> first tries to use the same character set
+of the original message for replies.
+If this fails,
+the
+<I>sendcharsets</I> variable is evaluated as usual.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>Replyall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Reverses the sense of reply and Reply commands.
 </TD></TR>
@@ -2890,7 +2921,7 @@ Setting this variable also disables
 MIME decoding and decryption for the editing commands.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=19>
+<A name=18>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; String Options</H4>
 </A>
@@ -2942,15 +2973,6 @@ Causes sorted mode (see the
 <I>sort</I> command) to be entered automatically
 with the value of this option as sorting method
 when a folder is opened.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>charset</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-The name of the character set used by <I>nail</I>.
-If unset, <I>iso-8859-1</I> is the default.
-The character set
-of all outgoing messages
-that contain non-ASCII characters
-is declared using its value.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>cmd</B> </TD><TD valign=bottom>
@@ -3090,7 +3112,9 @@ to get correct Message-ID header fields.
 <B>fwdheading</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 The string to print before the text of a message
 with the
-<I>forward</I> command.
+<I>forward</I> command
+(unless the
+<I>forward-as-attachment</I> variable is set).
 Defaults to &#39;&#39;-------- Original Message --------&#39;&#39; if unset.
 If it is set to the empty string,
 no heading is printed.
@@ -3400,6 +3424,28 @@ and specifies how many message headers
 are printed.
 This number is also used
 for scrolling with the z command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>sendcharsets</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+A comma-separated list of character set names
+that can be used in Internet mail.
+When a message that contains characters not representable in US-ASCII
+is prepared for sending,
+<I>nail</I> tries to convert its text
+to each of the given character sets in order
+and uses the first appropriate one.
+The default is &#39;utf-8&#39;.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+Character sets assigned to this variable should be ordered
+in ascending complexity.
+That is, the list should start with e.g.
+&#39;iso-8859-1&#39; for compatibility with older mail clients,
+might contain some other language-specific character sets,
+and should end with &#39;utf-8&#39;
+to handle messages that combine texts in multiple languages.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>sendmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3767,7 +3813,6 @@ if this succeeds, the value is assigned at startup
 and will be displayed by the <I>set</I> command.
 Note that this is not necessarily a character set name
 that can be used in Internet messages.
-If unset, its default is the value of the charset variable.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>VISUAL</B> </TD><TD valign=bottom>
@@ -3775,7 +3820,7 @@ Pathname of the text editor to use
 in the visual command and ~v escape.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=20>
+<A name=19>
 
      <H3>ENVIRONMENT VARIABLES</H3>
 
@@ -3819,7 +3864,7 @@ Changes the letters printed in the first column of a header summary.
 Used as directory for temporary files instead of /tmp, if set.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=21>
+<A name=20>
 
      <H3>FILES</H3>
 
@@ -3847,14 +3892,14 @@ Personal MIME types.
 System wide MIME types.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
-<A name=22>
+<A name=21>
 
      <H3>EXAMPLES</H3>
 
 </A>
 <BLOCKQUOTE>
 </BLOCKQUOTE>
-<A name=23>
+<A name=22>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Getting started</H4>
 </A>
@@ -4158,7 +4203,7 @@ which will print a line of dashes, the recipients of your message, and
 the text of the message so far.
 A list of the most important tilde escapes is available with &#39;~?&#39;.
 </BLOCKQUOTE>
-<A name=24>
+<A name=23>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; IMAP or POP3 client setup</H4>
 </A>
@@ -4401,7 +4446,7 @@ on the authenticity of the CA certificate
 if you fetch it in a way that is trusted by other means,
 such as by personally receiving the certificate on storage media.)
 </BLOCKQUOTE>
-<A name=25>
+<A name=24>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Creating a score file or message filter</H4>
 </A>
@@ -4457,7 +4502,7 @@ in one large () specification,
 because each single such specification
 will result in a separate network operation.
 </BLOCKQUOTE>
-<A name=26>
+<A name=25>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Activating the Bayesian filter</H4>
 </A>
@@ -4557,7 +4602,7 @@ You should thus restrict the size of messages for automatic filtering.
 If server-based filtering is also available,
 you might try if that works for you first.
 </BLOCKQUOTE>
-<A name=27>
+<A name=26>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading HTML mail</H4>
 </A>
@@ -4580,7 +4625,7 @@ or
 </PRE>
 will then cause HTML message parts to be converted into a more friendly form.
 </BLOCKQUOTE>
-<A name=28>
+<A name=27>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Viewing PDF attachments</H4>
 </A>
@@ -4600,7 +4645,7 @@ can compromise your system security,
 in particular if you stay not always informed
 about such issues.
 </BLOCKQUOTE>
-<A name=29>
+<A name=28>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Signed and encrypted messages with S/MIME</H4>
 </A>
@@ -4757,7 +4802,7 @@ When sending signed messages,
 it is recommended to repeat any important header information
 in the message text.
 </BLOCKQUOTE>
-<A name=30>
+<A name=29>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Using CRLs with S/MIME or SSL/TLS</H4>
 </A>
@@ -4808,7 +4853,7 @@ CRLs can be imported in Mozilla applications
 (provided that
 <I>nss-config-dir</I> is set appropriately).
 </BLOCKQUOTE>
-<A name=31>
+<A name=30>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Sending mail from scripts</H4>
 </A>
@@ -4841,7 +4886,7 @@ An invocation could thus look like
 &nbsp;         -a <I>attachment_file</I> <I>recipient@domain</I> &lt;<I>content_file</I>
 </PRE>
 </BLOCKQUOTE>
-<A name=32>
+<A name=31>
 
      <H3>SEE ALSO</H3>
 
@@ -4859,7 +4904,7 @@ locale(7),
 mailaddr(7),
 sendmail(8)
 </BLOCKQUOTE>
-<A name=33>
+<A name=32>
 
      <H3>NOTES</H3>
 
@@ -4885,9 +4930,13 @@ an appropriate LC_CTYPE locale (e.g. <I>en_US</I>)
 or the
 <I>ttycharset</I> variable.
 In the second case, the
-<I>charset</I> and
+<I>sendcharsets</I> and
 <I>ttycharset</I> variables must be set to the same value
 to inhibit character set conversion.
+If
+<I>iconv()</I> is not available at all,
+the value assigned to
+<I>sendcharsets</I> must match the character set that is used on the terminal.
 <P>
 Nail expects input text to be in Unix format,
 with lines separated by
@@ -5032,5 +5081,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.19</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>12/28/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.20</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>1/10/05</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>

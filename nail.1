@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.287 (gritter) 12/28/04
+.\"     Sccsid: @(#)nail.1	2.293 (gritter) 1/10/05
 .\"
-.TH NAIL 1 "12/28/04" "nail 11.19" "User Commands"
+.TH NAIL 1 "1/10/05" "nail 11.20" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -669,35 +669,59 @@ the content types text/plain or application/octet-stream are used,
 the first for text or international text files,
 the second for any file that contains formatting characters
 other than newlines and horizontal tabulators.
-.SS "Locale"
-\fINail\fR uses the LC_CTYPE locale setting
-to determine whether a character is printable.
-Thus, its value has to match
-the character set of the terminal
-\fInail\fR runs on.
 .SS "Character sets"
-If a message contains non-ASCII characters,
+.I Nail
+normally detects the character set of the terminal
+using the LC_CTYPE locale setting.
+If the locale cannot be used appropriately,
+the \fIttycharset\fR variable should be set
+to provide an explicit value.
+When reading messages,
+their text is converted to the terminal character set if possible.
+Unprintable characters and illegal byte sequences are detected
+and replaced by Unicode substitute characters or question marks
+unless the
+.I print-all-chars
+is set at initialization time.
+.PP
+The character set for outgoing messages
+is not necessarily the same
+as the one used on the terminal.
+If an outgoing text message
+contains characters not representable in US-ASCII,
 the character set being used
-must be declared within the header.
-Its value can be declared
-using the \fIcharset\fR variable.
-It is normally assumed
-that this is the terminal character set, too.
-If the latter differs from the one
-that should be used in outgoing mail,
-the \fIttycharset\fR variable can be used
-for its declaration.
-An outgoing message is then converted,
-resulting in errors when this process
-cannot be done for the entire text;
-if the message contains NUL
-characters,
-it is not converted.
-Attachments are never converted.
-Any message that is displayed on a terminal
-is tried to convert, too,
-with characters not in the terminal character set
-replaced by question marks.
+must be declared within its header.
+Permissible values can be declared
+using the \fIsendcharsets\fR variable,
+separated by commas;
+.I nail
+tries each of the values in order
+and uses the first appropriate one.
+If the message contains characters that cannot be represented
+in any of the given character sets,
+the message will not be sent,
+and its text will be saved to the `dead.letter' file.
+Messages that contains NUL bytes are not converted.
+.PP
+Outgoing attachments are also not converted even if they are plain text.
+If the
+.I sendcharsets
+variable contains more than one character set name,
+the
+.I ~@
+tilde escape will ask for the character sets for individual attachments
+if it is invoked without arguments.
+.PP
+Best results are usually achieved
+when
+.I nail
+is run in a UTF-8 locale
+on a UTF-8 capable terminal.
+In this setup,
+characters from various countries can be displayed,
+while it is still possible to use more simple
+character sets for sending
+to retain maximum compatibility with older mail clients.
 .SS "Commands"
 Each command is typed on a line by itself,
 and may take arguments following the command word.
@@ -2287,6 +2311,17 @@ with the
 .I respond
 commands and vice-versa.
 .TP
+.B forward-as-attachment
+Original messages are normally sent as inline text with the
+.I forward
+command,
+and only the first part of a multipart message is included.
+With this option,
+messages are sent as MIME
+.I message/rfc822
+attachments,
+and all of their parts are included.
+.TP
 .B fullnames
 When replying to a message,
 \fInail\fR normally removes the comment parts of email addresses,
@@ -2479,6 +2514,16 @@ commands save messages to the
 .I record
 folder as it is normally only done for newly composed messages.
 .TP
+.B reply-in-same-charset
+If this variable is set,
+.I nail
+first tries to use the same character set
+of the original message for replies.
+If this fails,
+the
+.I sendcharsets
+variable is evaluated as usual.
+.TP
 .B Replyall
 Reverses the sense of reply and Reply commands.
 .TP
@@ -2639,14 +2684,6 @@ command) to be entered automatically
 with the value of this option as sorting method
 when a folder is opened.
 .TP
-.B charset
-The name of the character set used by \fInail\fR.
-If unset, \fIiso-8859-1\fR is the default.
-The character set
-of all outgoing messages
-that contain non-ASCII characters
-is declared using its value.
-.TP
 .B cmd
 The default value for the \fIpipe\fR command.
 .TP
@@ -2773,7 +2810,10 @@ to get correct Message-ID header fields.
 The string to print before the text of a message
 with the
 .I forward
-command.
+command
+(unless the
+.I forward-as-attachment
+variable is set).
 Defaults to ``-------- Original Message --------'' if unset.
 If it is set to the empty string,
 no heading is printed.
@@ -3062,6 +3102,25 @@ and specifies how many message headers
 are printed.
 This number is also used
 for scrolling with the z command.
+.TP
+.B sendcharsets
+A comma-separated list of character set names
+that can be used in Internet mail.
+When a message that contains characters not representable in US-ASCII
+is prepared for sending,
+.I nail
+tries to convert its text
+to each of the given character sets in order
+and uses the first appropriate one.
+The default is `utf-8'.
+.IP
+Character sets assigned to this variable should be ordered
+in ascending complexity.
+That is, the list should start with e.\|g.
+`iso-8859-1' for compatibility with older mail clients,
+might contain some other language-specific character sets,
+and should end with `utf-8'
+to handle messages that combine texts in multiple languages.
 .TP
 .B sendmail
 To use an alternate mail delivery system,
@@ -3401,7 +3460,6 @@ if this succeeds, the value is assigned at startup
 and will be displayed by the \fIset\fP command.
 Note that this is not necessarily a character set name
 that can be used in Internet messages.
-If unset, its default is the value of the charset variable.
 .TP
 .B VISUAL
 Pathname of the text editor to use
@@ -4566,11 +4624,17 @@ or the
 .I ttycharset
 variable.
 In the second case, the
-.I charset
+.I sendcharsets
 and
 .I ttycharset
 variables must be set to the same value
 to inhibit character set conversion.
+If
+.I iconv()
+is not available at all,
+the value assigned to
+.I sendcharsets
+must match the character set that is used on the terminal.
 .PP
 Nail expects input text to be in Unix format,
 with lines separated by 

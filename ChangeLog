@@ -1,3 +1,45 @@
+[11.20] released 1/13/05
+* A 'forward-as-attachment' variable has been introduced. If it is set,
+  the 'forward' command uses a MIME 'message/rfc822' attachment for the
+  original message instead of including it in the newly created text.
+* The character set to be used for outgoing messages can now be specified
+  with the 'sendcharsets' variable. It can contain multiple values, with
+  the first appropriate one being used to send the message. The 'charset'
+  variable is still accepted but has been removed from the documentation.
+* If 'sendcharsets' contains more than one character set name, the '~@'
+  tilde escape now asks about character sets for individual attachments
+  if it is invoked without arguments.
+* If neither the 'sendcharsets' nor the 'charset' variable is set, the
+  character set for outgoing messages that contain non-ASCII characters is
+  now 'utf-8' instead of 'iso-8859-1'.
+* When the 'encoding' variable was set to '8bit' and a message contained
+  characters that were not representable in the outgoing character set
+  in its body but not in its header, the characters were replaced by
+  question marks and the message was sent, instead of being rejected
+  (Bugreport by Suresh Ramasubramanian).
+* When sending messages in 8bit, conversions from a multibyte terminal
+  character set failed because multibyte input characters where split
+  across two conversion buffers if they spanned across buffer boundaries.
+* A 'reply-in-same-charset' variable has been introduced. If it is set,
+  nail tries to reply in the character set of the original message first.
+* When the header of an outgoing message contained a non-ASCII character
+  but the body did not, the name of the international character set was
+  used for declaring the content-type of the body too. Us-ascii is now
+  used for the body in such cases.
+* When the 'fullnames' variable was set and the full name of a recipient
+  was the only string in both header and body of an outgoing message that
+  contained non-ASCII characters, no conversion between terminal character
+  set and outgoing character set was performed for it.
+* For files that contain ASCII control characters but no NULs, a 'charset'
+  parameter was erroneusly generated even though these are not 'text/plain'
+  according to MIME.
+* Resolved a symbol conflict with SVR4 systems like Solaris that lead to
+  failed builds because of a redeclaration of 'enum idtype'.
+* When announcing messages after a folder open or a 'newmail' command, a
+  deleted message can no longer become the current message unless all the
+  messages have been deleted. This applies to message deleted by the
+  'folder-hook' mechanism in particular.
+
 [11.19] released 1/2/05
 * A 'chained-junk-tokens' variable was introduced for the Bayesian junk
   mail filter. If set, the filter considers two-word tokens as described
