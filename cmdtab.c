@@ -1,7 +1,7 @@
 /*
  * Nail - a mail user agent derived from Berkeley Mail.
  *
- * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmdtab.c	2.35 (gritter) 9/22/04";
+static char sccsid[] = "@(#)cmdtab.c	2.39 (gritter) 10/2/04";
 #endif
 #endif /* not lint */
 
@@ -181,6 +181,11 @@ const struct cmd cmdtab[] = {
 	{ "certsave",	ccertsave,	A|STRLIST,	0,	0 },
 	{ "rename",	crename,	RAWLIST,	0,	2 },
 	{ "remove",	cremove,	RAWLIST,	0,	1000 },
+	{ "classify",	cclassify,	A|MSGLIST,	0,	0 },
+	{ "junk",	cjunk,		A|MSGLIST,	0,	0 },
+	{ "bad",	cjunk,		A|MSGLIST,	0,	0 },
+	{ "good",	cgood,		A|MSGLIST,	0,	0 },
+	{ "unjunk",	cgood,		A|MSGLIST,	0,	0 },
 /*	{ "Header",	Header,		STRLIST,	0,	1000 },	*/
 #ifdef	DEBUG_COMMANDS
 	{ "core",	core,		M|NOLIST,	0,	0 },

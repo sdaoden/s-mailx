@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.240 (gritter) 9/22/04 -->
+<!--      Sccsid: @(#)nail.1	2.249 (gritter) 10/2/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -95,14 +95,15 @@ nail - send and receive Internet mail
 &nbsp; &nbsp; &nbsp;<A HREF=#23>Getting started</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#24>IMAP or POP3 client setup</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#25>Creating a score file or message filter</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#26>Reading HTML mail</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#27>Viewing PDF attachments</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#28>Signed and encrypted messages with S/MIME</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#29>Using CRLs with S/MIME or SSL/TLS</A><BR>
-<A HREF=#30>See Also</A><BR>
-<A HREF=#31>Notes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#26>Activating the Bayesian filter</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#27>Reading HTML mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#28>Viewing PDF attachments</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#29>Signed and encrypted messages with S/MIME</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#30>Using CRLs with S/MIME or SSL/TLS</A><BR>
+<A HREF=#31>See Also</A><BR>
+<A HREF=#32>Notes</A><BR>
 </BLOCKQUOTE>
-<A name=32>
+<A name=33>
 
      <H3>SYNOPSIS</H3>
 
@@ -409,6 +410,10 @@ All messages marked as draft.
 <TR valign=top><TD width=6% nowrap>
 <B>:k</B> </TD><TD valign=bottom>
 All &#39;killed&#39; messages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:j</B> </TD><TD valign=bottom>
+All messages classified as junk.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>.</B> </TD><TD valign=bottom>
@@ -1021,6 +1026,14 @@ If no directory is given,
 then changes to the user&#39;s login directory.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>classify</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(cl) Takes a list of messages and
+examines their contents for characteristics of junk mail
+using Bayesian filtering.
+Messages considered to be junk are then marked as such.
+The junk mail database is not changed.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>collapse</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (coll)
 Only applicable to threaded mode.
@@ -1300,6 +1313,13 @@ and sends each message to the named user.
 and prints their message headers,
 piped through the pager if the output does not fit on the screen.
 </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>good</B> </TD><TD valign=bottom>
+(go) Takes a list of messages
+and marks all of them as not being junk mail.
+Data from these messages is then inserted
+into the junk mail database for future classification.
+</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>headers</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (h) Lists the current range of headers,
@@ -1408,6 +1428,13 @@ Not all IMAP servers support this command.
 <B>inc</B> </TD><TD valign=bottom>
 Same as
 <I>newmail</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>junk</B> </TD><TD valign=bottom>
+(j) Takes a list of messages
+and marks all of them as junk mail.
+Data from these messages is then inserted
+into the junk mail database for future classification.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>kill</B> </TD><TD valign=bottom>
 (k) Takes a list of messages and &#39;kills&#39; them.
@@ -1862,6 +1889,10 @@ Removes the header field names
 from the list of ignored fields.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>unjunk</B> </TD><TD valign=bottom>
+A synonym for
+<I>good</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>unkill</B> </TD><TD valign=bottom>
 Takes a message list and &#39;unkills&#39; each message.
 Also sets the score of the messages to 0.
@@ -1916,7 +1947,7 @@ print a header summary.
 <I>unsort</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>verify</B> </TD><TD valign=bottom>
-(ver)
+(verif)
 Takes a message list and verifies each message.
 If a message is not an S/MIME signed message,
 verification will fail for it.
@@ -2700,9 +2731,10 @@ Setting the option verbose is the same
 as using the -v flag on the command line.
 When <I>nail</I> runs in verbose mode,
 details of the actual message delivery
-and protocol conversations for IMAP, POP3, and SMTP
-are displayed on the user&#39;s terminal.
-This is sometimes useful to debug problems with specific servers.
+and protocol conversations for IMAP, POP3, and SMTP,
+as well as of other internal processes,
+are displayed on the user&#39;s terminal,
+This is sometimes useful to debug problems.
 <I>Nail</I> prints all data that is sent to remote servers in clear texts,
 including passwords,
 so care should be taken that no unauthorized option
@@ -2735,9 +2767,10 @@ answered,
 draft,
 killed,
 start of a collapsed thread,
-collapsed.
-The default is &#39;NUROSPMFATK+-&#39;,
-or &#39;NU&nbsp;&nbsp;*HMFATK+-&#39; if
+collapsed,
+classified as junk.
+The default is &#39;NUROSPMFATK+-J&#39;,
+or &#39;NU&nbsp;&nbsp;*HMFATK+-J&#39; if
 <I>bsdflags</I> is set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -3009,6 +3042,24 @@ Be sure to quote the value
 if it contains spaces or tabs.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>junkdb</B> </TD><TD valign=bottom>
+The location of the junk mail database.
+The string is treated like a folder name,
+as described for the
+<I>folder</I> command.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+The files in the junk mail database are normally stored in
+<I>compress</I>(1)
+format for saving space.
+If processing time is considered more important,
+<I>uncompress</I>(1)
+can be used to store them in plain form.
+<I>Nail</I> will then work using the uncompressed files.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>LISTER</B> </TD><TD valign=bottom>
 Pathname of the directory lister
 to use in the
@@ -3247,10 +3298,11 @@ for
 <I>user@host</I>. Valid ciphers are
 <B>rc2-40</B> (RC2 with 40 bits),
 <B>rc2-64</B> (RC2 with 64 bits),
+<B>des</B> (DES, 56 bits)
 and
-<B>des-ede3</B> (3DES).
+<B>des-ede3</B> (3DES, 112/168 bits).
 The default is 3DES.
-It is not recommended to use the RC2 variants
+It is not recommended to use the other ciphers
 unless a recipient&#39;s client is actually unable to handle 3DES
 since they are comparatively weak;
 but even so, the recipient should upgrade his software in preference.
@@ -4219,8 +4271,9 @@ even if the surrounding discussion is annoying;
 but you normally would not see mail from &#39;badguy@poornet&#39;,
 unless he participates in the important discussion.
 Messages that are marked with five or more plus characters
-in their &#39;X-Spam-Flag&#39; field are moved
-to the folder &#39;junk&#39; in the
+in their &#39;X-Spam-Flag&#39; field
+(inserted by some server-side filtering software)
+are moved to the folder &#39;junk&#39; in the
 <I>folder</I> directory.
 <P>
 Be aware that all criteria in () lead to substring matches,
@@ -4240,6 +4293,90 @@ because each single such specification
 will result in a separate network operation.
 </BLOCKQUOTE>
 <A name=26>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Activating the Bayesian filter</H4>
+</A>
+<BLOCKQUOTE>
+The Bayesian junk mail filter works
+by examining the words contained in messages.
+You decide yourself what a good and what a bad message is.
+Thus the resulting filter is your very personal one;
+once it is correctly set up,
+it will filter only messages similar to those
+previously specified by you.
+<P>
+To use the Bayesian filter,
+a location for the junk mail database must be defined first:
+<PRE>
+<P>
+&nbsp;   <B>set junkdb=</B><I>~/.junkdb</I>
+<P>
+</PRE>
+The junk mail database does not contain
+actual words extracted from messages,
+but hashed representations of them.
+A foreign person who can read the database
+could only examine the frequency of previously known words
+in your mail.
+<P>
+A set of good messages and junk messages must now be available;
+it is also possible to use the incoming new messages for this purpose,
+although it will of course take some time
+until the filter becomes useful then.
+Do not underestimate the amount of statistical data needed;
+some hundred messages are typically necessary
+to get satisfactory results,
+and many thousand messages for best operation.
+You have to pass the good messages to the
+<I>good</I> command,
+and the junk messages to the
+<I>junk</I> command.
+The number of good messages passed
+should not exceed the number of bad messages too much
+and vice-versa.
+Otherwise, words common to all kinds of messages
+might shift the detection mechanism too much in one direction.
+<P>
+Once a reasonable amount of statistics has been collected,
+new messages can be classified automatically.
+The
+<I>classify</I> command marks all messages that the filter considers to be junk,
+but it does not perform any action on them by default.
+It is recommended that you move these messages into a separate
+folder just for the case that false positives occur,
+or to pass them to the
+<I>junk</I> command later again to further improve the junk mail database.
+To automatically move incoming junk messages
+every time the inbox is opened,
+put lines like the following into your
+<I>.scores</I> file (or whatever name you gave to the file in the last example):
+<PRE>
+<P>
+&nbsp;   <B>define</B> <I>junkfilter</I> {
+&nbsp;       <B>classify (smaller </B><I>20000</I><B>) :n</B>
+&nbsp;       <B>move :j</B> <I>+junk</I>
+&nbsp;   }
+&nbsp;   <B>set folder-hook-</B>imap://user@host/INBOX=<I>junkfilter</I>
+<P>
+</PRE>
+Since the
+<I>classify</I> command must examine the entire text
+of all new messages in the respective folder,
+this will also cause all of them to be downloaded from the IMAP server.
+You should thus restrict the size of messages for automatic filtering.
+If server-based filtering is also available,
+you should try if that works for you first.
+<P>
+If you set the
+<I>verbose</I> option before running the
+<I>classify</I> command,
+<I>nail</I> prints the words it uses for calculating the junk status
+along with their statistical probabilities.
+This can help you to find out
+why some messages are not classified
+as you would like them to be.
+</BLOCKQUOTE>
+<A name=27>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading HTML mail</H4>
 </A>
@@ -4262,7 +4399,7 @@ or
 </PRE>
 will then cause HTML message parts to be converted into a more friendly form.
 </BLOCKQUOTE>
-<A name=27>
+<A name=28>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Viewing PDF attachments</H4>
 </A>
@@ -4282,7 +4419,7 @@ can compromise your system security,
 in particular if you stay not always informed
 about such issues.
 </BLOCKQUOTE>
-<A name=28>
+<A name=29>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Signed and encrypted messages with S/MIME</H4>
 </A>
@@ -4435,8 +4572,11 @@ Thus they may not contain sensitive information
 for encrypted messages,
 and cannot be trusted even if the message content
 has been verified.
+When sending signed messages,
+it is recommended to repeat any important header information
+in the message text.
 </BLOCKQUOTE>
-<A name=29>
+<A name=30>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Using CRLs with S/MIME or SSL/TLS</H4>
 </A>
@@ -4487,7 +4627,7 @@ CRLs can be imported in Mozilla applications
 (provided that
 <I>nss-config-dir</I> is set appropriately).
 </BLOCKQUOTE>
-<A name=30>
+<A name=31>
 
      <H3>SEE ALSO</H3>
 
@@ -4505,7 +4645,7 @@ locale(7),
 mailaddr(7),
 sendmail(8)
 </BLOCKQUOTE>
-<A name=31>
+<A name=32>
 
      <H3>NOTES</H3>
 
@@ -4664,5 +4804,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.8</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>9/22/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.9</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>10/2/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>
