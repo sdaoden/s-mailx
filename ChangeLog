@@ -1,3 +1,24 @@
+[11.19] released 1/2/05
+* A 'chained-junk-tokens' variable was introduced for the Bayesian junk
+  mail filter. If set, the filter considers two-word tokens as described
+  in Jonathan A. Zdziarski's paper 'Advanced Language Classification using
+  Chained Tokens', <http://www.nuclearelephant.com/papers/chained.html>.
+* When running in a UTF-8 locale, unprintable characters are now replaced
+  by Unicode control pictures or the Unicode replacement character when
+  printing to a terminal.
+* The 'show' command now also avoids writing unprintable characters to a
+  terminal. Same for the 'classify' command with the 'verbose' option set.
+* Only MIME-encode words in header fields if they start with '=?' or end
+  with '?=' (instead of encoding any words containing '?', '=', or '_'),
+  and declare them as 'us-ascii' if they do not contain any bytes with the
+  highest bit set (Bugreport by Suresh Ramasubramanian).
+* Fixed a junk mail tokenizer bug which caused the remainder of a message
+  to be ignored if a period occurred at the first position following another
+  token boundary.
+* 'In-Reply-To' fields that refer to multiple message-IDs are now handled;
+  the first matching ID wins for the 'thread' command, and the ',' address
+  selects all referenced messages.
+
 [11.18] released 12/9/04
 * When the 'write' command asks for an attachment filename and a '|' is
   given as the first character, the attachment is piped to the rest of

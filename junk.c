@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)junk.c	1.65 (gritter) 11/29/04";
+static char sccsid[] = "@(#)junk.c	1.71 (gritter) 12/29/04";
 #endif
 #endif /* not lint */
 
@@ -75,6 +75,10 @@ static char sccsid[] = "@(#)junk.c	1.65 (gritter) 11/29/04";
  * Junk classification, mostly according to Paul Graham's "A Plan for Spam",
  * August 2002, <http://www.paulgraham.com/spam.html>, and his "Better
  * Bayesian Filtering", January 2003, <http://www.paulgraham.com/better.html>.
+ *
+ * Chained tokens according to Jonathan A. Zdziarski's "Advanced Language
+ * Classification using Chained Tokens", February 2004,
+ * <http://www.nuclearelephant.com/papers/chained.html>.
  */
 
 #define	DFL	.40
@@ -119,6 +123,7 @@ static char	*super;
 static size_t	super_mmapped;
 static size_t	nodes_mmapped;
 static int	rw_map;
+static int	chained_tokens;
 
 /*
  * Version history
@@ -139,9 +144,6 @@ static int	table_version;
 	(((char *)(e))[0] = (n) & 0x0000ff, \
 	 ((char *)(e))[1] = ((n) & 0x00ff00) >> 8, \
 	 ((char *)(e))[2] = ((n) & 0xff0000) >> 16)
-
-#define	smin(a, b)	((a) < (b) ? (a) : (b))
-#define	smax(a, b)	((a) < (b) ? (b) : (a))
 
 #define	f2s(d)	(smin(((unsigned)((d) * MAX3)), MAX3))
 
@@ -230,7 +232,8 @@ static FILE *dbfp(enum db db, int rw, int *compressed, char **fn);
 static char *lookup(unsigned long h1, unsigned long h2, int create);
 static unsigned long grow(unsigned long size);
 static char *nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
-		struct lexstat *sp);
+		struct lexstat *sp, int *stop);
+static void join(char **buf, size_t *bufsize, const char *s1, const char *s2);
 static void add(const char *word, enum entry entry, struct lexstat *sp,
 		int incr);
 static enum okay scan(struct message *m, enum entry entry,
@@ -252,6 +255,7 @@ getdb(int rw)
 	long	n;
 	int	compressed;
 
+	chained_tokens = value("chained-junk-tokens") != NULL;
 	if ((sfp = dbfp(SUPER, rw, &compressed, &sname)) == (FILE *)-1)
 		return STOP;
 	if (sfp && !compressed) {
@@ -558,12 +562,13 @@ grow(unsigned long size)
 
 static char *
 nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
-		struct lexstat *sp)
+		struct lexstat *sp, int *stop)
 {
 	int	c, i, j, k;
 	char	*cp, *cq;
 
-loop:	sp->hadamp = 0;
+loop:	*stop = 0;
+	sp->hadamp = 0;
 	if (sp->save) {
 		i = j = 0;
 		for (cp = sp->save; *cp; cp++) {
@@ -603,6 +608,7 @@ loop:	sp->hadamp = 0;
 		if (c == '\0' && table_version >= 1) {
 			sp->loc = HEADER;
 			sp->lastc = '\n';
+			*stop = 1;
 			continue;
 		}
 		if (c == '\b' && table_version >= 1) {
@@ -663,11 +669,13 @@ loop:	sp->hadamp = 0;
 				sp->field[k++] = '*';
 				sp->field[k] = '\0';
 				j = 0;
+				*stop = 1;
 				goto field;
 			} else if (c == '\n') {
 				j = 0;
 				sp->loc = BODY;
 				sp->html = HTML_NONE;
+				*stop = 1;
 			}
 		}
 		if (sp->url) {
@@ -683,6 +691,7 @@ loop:	sp->hadamp = 0;
 						 *cq == '.' || *cq == '-'))
 					*cp++ = *cq++;
 				*cp = '\0';
+				*stop = 1;
 				break;
 			}
 			SAVE(c)
@@ -721,7 +730,7 @@ loop:	sp->hadamp = 0;
 			for (cq = "://"; *cq; cq++) {
 				SAVE(*cq&0377)
 			}
-		} else if (i > 0 && ((*buf)[i+j-1] == ',' ||
+		} else if (i > 1 && ((*buf)[i+j-1] == ',' ||
 				 (*buf)[i+j-1] == '.') && !digitchar(c)) {
 			i--;
 			ungetc(c, fp);
@@ -774,6 +783,25 @@ out:	if (i > 0) {
 	return NULL;
 }
 
+#define	JOINCHECK	if (i >= *bufsize) \
+				*buf = srealloc(*buf, *bufsize += 32)
+static void
+join(char **buf, size_t *bufsize, const char *s1, const char *s2)
+{
+	int	i = 0;
+
+	while (*s1) {
+		JOINCHECK;
+		(*buf)[i++] = *s1++;
+	}
+	JOINCHECK;
+	(*buf)[i++] = ' ';
+	do {
+		JOINCHECK;
+		(*buf)[i++] = *s2;
+	} while (*s2++);
+}
+
 /*ARGSUSED3*/
 static void
 add(const char *word, enum entry entry, struct lexstat *sp, int incr)
@@ -809,9 +837,10 @@ scan(struct message *m, enum entry entry,
 		int arg)
 {
 	FILE	*fp;
-	char	*buf = NULL, *cp;
-	size_t	bufsize = 0, count;
+	char	*buf0 = NULL, *buf1 = NULL, *buf2 = NULL, **bp, *cp;
+	size_t	bufsize0 = 0, bufsize1 = 0, bufsize2 = 0, *zp, count;
 	struct lexstat	*sp;
+	int	stop;
 
 	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
 		perror("tempfile");
@@ -827,9 +856,20 @@ scan(struct message *m, enum entry entry,
 	rewind(fp);
 	sp = scalloc(1, sizeof *sp);
 	count = fsize(fp);
-	while (nextword(&buf, &bufsize, &count, fp, sp) != NULL)
-		(*func)(buf, entry, sp, arg);
-	free(buf);
+	bp = &buf0;
+	zp = &bufsize0;
+	while (nextword(bp, zp, &count, fp, sp, &stop) != NULL) {
+		(*func)(*bp, entry, sp, arg);
+		if (chained_tokens && buf0 && *buf0 && buf1 && *buf1 && !stop) {
+			join(&buf2, &bufsize2, bp == &buf1 ? buf0 : buf1, *bp);
+			(*func)(buf2, entry, sp, arg);
+		}
+		bp = bp == &buf1 ? &buf0 : &buf1;
+		zp = zp == &bufsize1 ? &bufsize0 : &bufsize1;
+	}
+	free(buf0);
+	free(buf1);
+	free(buf2);
 	free(sp);
 	Fclose(fp);
 	return OKAY;
@@ -1011,8 +1051,8 @@ clsf(struct message *m)
 		if (verbose)
 			fprintf(stderr, "Probe %2d: \"%s\", hash=%lu:%lu "
 				"prob=%.4g dist=%.4g\n",
-				i+1,
-				best[i].word, best[i].hash1, best[i].hash2,
+				i+1, prstr(best[i].word),
+				best[i].hash1, best[i].hash2,
 				best[i].prob, best[i].dist);
 		a *= best[i].prob;
 		b *= 1 - best[i].prob;
@@ -1045,7 +1085,7 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 		fprintf(stderr, "h=%lu:%lu g=%u b=%u p=%.4g %s\n", h1, h2,
 				n ? get(&n[OF_node_good]) : 0,
 				n ? get(&n[OF_node_bad]) : 0,
-				p, word);
+				p, prstr(word));
 	if (p == 0)
 		return;
 	d = p >= MID ? p - MID : MID - p;
@@ -1140,7 +1180,7 @@ cprobability(void *v)
 	used = getn(&super[OF_super_used]);
 	ngood = getn(&super[OF_super_ngood]);
 	nbad = getn(&super[OF_super_nbad]);
-	printf("Database statistics: words=%lu ngood=%lu nbad=%lu\n",
+	printf("Database statistics: tokens=%lu ngood=%lu nbad=%lu\n",
 			used, ngood, nbad);
 	do {
 		dbhash(*args, &h1, &h2);

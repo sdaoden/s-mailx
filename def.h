@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.91 (gritter) 11/26/04
+ *	Sccsid @(#)def.h	2.93 (gritter) 12/25/04
  */
 
 /*
@@ -109,6 +109,7 @@ enum sendaction {
 	SEND_MBOX,			/* no conversion to perform */
 	SEND_TODISP,			/* convert to displayable form */
 	SEND_TODISP_ALL,		/* same, include all MIME parts */
+	SEND_SHOW,			/* convert to 'show' command form */
 	SEND_TOSRCH,			/* convert for IMAP SEARCH */
 	SEND_TOFLTR,			/* convert for junk mail filtering */
 	SEND_TOFILE,			/* convert for saving body to a file */
@@ -603,6 +604,9 @@ extern const unsigned char	class_char[];
 #endif	/* __GLIBC__ */
 
 #define	CBAD		(-15555)
+
+#define	smin(a, b)	((a) < (b) ? (a) : (b))
+#define	smax(a, b)	((a) < (b) ? (b) : (a))
 
 /*
  * For saving the current directory and later returning.

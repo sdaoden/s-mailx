@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.48 (gritter) 11/11/04";
+static char sccsid[]  = "@(#)mime.c	2.51 (gritter) 12/25/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -67,11 +67,8 @@ static char *mimetypes_user = "~/.mime.types";
 char *us_ascii = "us-ascii";
 
 static int mustquote_body(int c);
-static int mustquote_hdr(int c);
+static int mustquote_hdr(const char *cp, int wordstart, int wordend);
 static int mustquote_inhdrq(int c);
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-static size_t xmbstowcs(wchar_t *pwcs, const char *s, size_t nwcs);
-#endif
 static size_t	delctrl(char *cp, size_t sz);
 static char *getcharset(int isclean);
 static int has_highbit(register const char *s);
@@ -115,11 +112,16 @@ mustquote_body(int c)
  * Check if c must be quoted inside a message's header.
  */
 static int 
-mustquote_hdr(int c)
+mustquote_hdr(const char *cp, int wordstart, int wordend)
 {
+	int	c = *cp & 0377;
+
 	if (c != '\n' && (c < 040 || c >= 0177))
 		return 1;
-	if (c == '=' || c == '?' || c == '_')
+	if (wordstart && cp[0] == '=' && cp[1] == '?')
+		return 1;
+	if (cp[0] == '?' && cp[1] == '=' &&
+			(wordend || cp[2] == '\0' || whitechar(cp[2]&0377)))
 		return 1;
 	return 0;
 }
@@ -136,33 +138,6 @@ mustquote_inhdrq(int c)
 	return 0;
 }
 
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-/*
- * A mbstowcs()-alike function that transparently handles invalid sequences.
- */
-static size_t
-xmbstowcs(wchar_t *pwcs, const char *s, size_t nwcs)
-{
-	size_t n = nwcs;
-	register int c;
-
-	mbtowc(pwcs, NULL, mb_cur_max);
-	while (*s && n) {
-		if ((c = mbtowc(pwcs, s, mb_cur_max)) < 0) {
-			s++;
-			*pwcs = L'?';
-		} else
-			s += c;
-		pwcs++;
-		n--;
-	}
-	if (n)
-		*pwcs = L'\0';
-	mbtowc(pwcs, NULL, mb_cur_max);
-	return nwcs - n;
-}
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-
 static size_t
 delctrl(char *cp, size_t sz)
 {
@@ -174,80 +149,6 @@ delctrl(char *cp, size_t sz)
 		x++;
 	}
 	return y;
-}
-
-/*
- * Replace non-printable characters in s with question marks.
- */
-size_t
-makeprint(char *s, size_t l)
-{
-	size_t sz;
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-	int i;
-	wchar_t *w, *p;
-	char *t;
-	size_t ret;
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-
-	static int	print_all_chars = -1;
-	if (print_all_chars == -1)
-		print_all_chars = value("print-all-chars") != NULL;
-	if (print_all_chars)
-		return l;
-
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-#ifdef	__GLIBC_MINOR__
-#if __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 1
-	/*
-	 * This libc does not have correct utf-8 locales.
-	 * Just a strange hack that will disappear one
-	 * day, but we need it for testing.
-	 */
-	if (asccasecmp(gettcharset(), "utf-8") == 0)
-		return l;
-#endif
-#endif
-	if (*s == '\0' || l == (size_t) 0)
-		return 0;
-	if (mb_cur_max > 1) {
-		w = ac_alloc((l + 1) * sizeof *w);
-		t = s;
-		if ((sz = xmbstowcs(w, t, l + 1)) == (size_t)-1) {
-			ac_free(w);
-			return 0;
-		}
-		for (p = w, i = 0; *p && i < sz; p++, i++) {
-			if (!iswprint(*p) && *p != '\n' && *p != '\r'
-					&& *p != '\b' && *p != '\t')
-				*p = '?';
-		}
-		p = w;
-		ret = wcstombs(s, p, l + 1);
-		ac_free(w);
-		return ret;
-	}
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-	sz = l;
-	for (; l > 0 && *s; s++, l--) {
-		if (
-#ifdef	HAVE_SETLOCALE
-				!isprint(*s & 0377)
-#else	/* !HAVE_SETLOCALE */
-				!((*s&0377) >= 040 && (*s&0377) <= 0177)
-#endif	/* !HAVE_SETLOCALE */
-				&& *s != '\n' && *s != '\r'
-				&& *s != '\b' && *s != '\t')
-			*s = '?';
-	}
-	return sz;
-}
-
-char *
-makeprint0(char *s)
-{
-	makeprint(s, strlen(s));
-	return s;
 }
 
 /*
@@ -1165,8 +1066,12 @@ notmime:
 	}
 fromhdr_end:
 	*q = '\0';
-	if (flags & TD_ISPR)
-		out->l = makeprint(out->s, out->l);
+	if (flags & TD_ISPR) {
+		struct str	new;
+		makeprint(out, &new);
+		free(out->s);
+		*out = new;
+	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
 #ifdef	HAVE_ICONV
@@ -1182,18 +1087,26 @@ fromhdr_end:
 static size_t
 mime_write_tohdr(struct str *in, FILE *fo)
 {
-	char *upper, *wbeg, *wend, *charset, *lastwordend = NULL, *lastspc;
+	char *upper, *wbeg, *wend, *charset, *lastwordend = NULL, *lastspc, b,
+		*charset7;
 	struct str cin, cout;
-	size_t sz = 0, col = 0, wr, charsetlen;
+	size_t sz = 0, col = 0, wr, charsetlen, charset7len;
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
 	upper = in->s + in->l;
 	charset = getcharset(MIME_HIGHBIT);
+	if ((charset7 = value("charset7")) == NULL)
+		charset7 = us_ascii;
 	charsetlen = strlen(charset);
-	for (wbeg = in->s, quoteany = 0; wbeg < upper; wbeg++)
-		if (mustquote_hdr(*wbeg))
+	charset7len = strlen(charset7);
+	charsetlen = smax(charsetlen, charset7len);
+	b = 0;
+	for (wbeg = in->s, quoteany = 0; wbeg < upper; wbeg++) {
+		b |= *wbeg;
+		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
 			quoteany++;
+	}
 	if (2 * quoteany > in->l) {
 		/*
 		 * Print the entire field in base64.
@@ -1205,7 +1118,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
 				cin.l = wend - wbeg;
 				if (cin.l * 4/3 + 7 + charsetlen
 						< maxcol - col) {
-					fprintf(fo, "=?%s?B?", charset);
+					fprintf(fo, "=?%s?B?",
+						b&0200 ? charset : charset7);
 					wr = mime_write_tob64(&cin, fo, 1);
 					fwrite("?=", sizeof (char), 2, fo);
 					wr += 7 + charsetlen;
@@ -1252,10 +1166,13 @@ mime_write_tohdr(struct str *in, FILE *fo)
 				break;
 			}
 			mustquote = 0;
+			b = 0;
 			for (wend = wbeg;
 				wend < upper && !whitechar(*wend & 0377);
 					wend++) {
-				if (mustquote_hdr(*wend&0377))
+				b |= *wend;
+				if (mustquote_hdr(wend, wend == wbeg,
+							wbeg == &upper[-1]))
 					mustquote++;
 			}
 			if (mustquote || broken || (wend - wbeg) >= 74 &&
@@ -1276,8 +1193,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
 								lastspc++,
 								sz++;
 							}
-						fprintf(fo, "=?%s?Q?",
-								charset);
+						fprintf(fo, "=?%s?Q?", b&0200 ?
+							charset : charset7);
 						fwrite(cout.s, sizeof *cout.s,
 								cout.l, fo);
 						fwrite("?=", 1, 2, fo);
@@ -1543,12 +1460,12 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 	char *iptr, *nptr;
 	size_t inleft, outleft;
 #endif
-	char *mptr;
+	char *mptr, *xmptr, *mlptr = NULL;
 	size_t mptrsz;
 
 	csize = size * nmemb;
 	mptrsz = csize;
-	mptr = ac_alloc(mptrsz + 1);
+	mptr = xmptr = ac_alloc(mptrsz + 1);
 #ifdef	HAVE_ICONV
 	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
 	again:	inleft = csize;
@@ -1574,14 +1491,18 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 	upper = mptr + csize;
 	*upper = '\0';
 	if (flags & TD_ISPR) {
-		if ((csize = makeprint(mptr, upper - mptr)) >
-				upper - mptr)
-			csize = upper - mptr;
+		struct str	in, out;
+		in.s = mptr;
+		in.l = csize;
+		makeprint(&in, &out);
+		mptr = mlptr = out.s;
+		csize = out.l;
 	}
 	if (flags & TD_DELCTRL)
 		csize = delctrl(mptr, csize);
 	sz = prefixwrite(mptr, sizeof *mptr, csize, f, prefix, prefixlen);
-	ac_free(mptr);
+	ac_free(xmptr);
+	free(mlptr);
 	return sz;
 }
 
