@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)temp.c	1.11 (gritter) 2/20/02";
+static char sccsid[] = "@(#)temp.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -47,7 +52,7 @@ static char sccsid[] = "@(#)temp.c	1.11 (gritter) 2/20/02";
  * Temporary file handling.
  */
 
-char	*tmpdir;
+static char	*tmpdir;
 
 /*
  * Create a temporary file in tmpdir, use prefix for its name,
@@ -56,10 +61,11 @@ char	*tmpdir;
  * The permissions for the newly created file are given in bits.
  */
 FILE *
-Ftemp(fn, prefix, mode, bits)
+Ftemp(fn, prefix, mode, bits, register_file)
 char **fn;
 char *prefix, *mode;
 {
+	FILE *fp;
 	int fd;
 
 	*fn = (char *)smalloc(strlen(tmpdir) + strlen(prefix) + 8);
@@ -78,7 +84,13 @@ char *prefix, *mode;
 	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR|O_TRUNC, bits)) < 0)
 		goto Ftemperr;
 #endif	/* !HAVE_MKSTEMP */
-	return Fdopen(fd, mode);
+	if (register_file)
+		fp = Fdopen(fd, mode);
+	else {
+		fp = fdopen(fd, mode);
+		fcntl(fd, F_SETFD, FD_CLOEXEC);
+	}
+	return fp;
 Ftemperr:
 	Ftfree(fn);
 	return NULL;
@@ -113,7 +125,8 @@ tinit()
 	}
 	if (myname != NULL) {
 		if (getuserid(myname) < 0) {
-			printf("\"%s\" is not a user of this system\n",
+			printf(catgets(catd, CATSET, 198,
+				"\"%s\" is not a user of this system\n"),
 			    myname);
 			exit(1);
 		}
@@ -123,14 +136,15 @@ tinit()
 			if (rcvmode)
 				exit(1);
 		} else {
-			myname = (char *)malloc(strlen(cp) + 1);
+			myname = (char *)smalloc(strlen(cp) + 1);
 			strcpy(myname, cp);
 		}
 	}
 	if ((cp = getenv("HOME")) == NULL)
 		cp = ".";
-	homedir = (char *)malloc(strlen(cp) + 1);
+	homedir = (char *)smalloc(strlen(cp) + 1);
 	strcpy(homedir, cp);
-	if (debug)
-		printf("user = %s, homedir = %s\n", myname, homedir);
+	if (debug || value("debug"))
+		printf(catgets(catd, CATSET, 199,
+			"user = %s, homedir = %s\n"), myname, homedir);
 }

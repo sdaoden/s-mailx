@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	1.7 (gritter) 2/20/02";
+static char sccsid[] = "@(#)edit.c	2.2 (gritter) 9/4/02";
 #endif
 #endif /* not lint */
 
@@ -45,6 +50,7 @@ static char sccsid[] = "@(#)edit.c	1.7 (gritter) 2/20/02";
  *
  * Perform message editing functions.
  */
+static int	edit1 __P((int *, int));
 
 /*
  * Edit a message list.
@@ -75,7 +81,7 @@ visual(v)
  * (which should not exist) and forking an editor on it.
  * We get the editor from the stuff above.
  */
-int
+static int
 edit1(msgvec, type)
 	int *msgvec;
 	int type;
@@ -85,6 +91,8 @@ edit1(msgvec, type)
 	FILE *fp;
 	struct message *mp;
 	off_t size;
+	char *line = NULL;
+	size_t linesize;
 
 	/*
 	 * Deal with each message to be edited . . .
@@ -93,20 +101,21 @@ edit1(msgvec, type)
 		signal_handler_t sigint;
 
 		if (i > 0) {
-			char buf[100];
 			char *p;
 
-			printf("Edit message %d [ynq]? ", msgvec[i]);
-			if (fgets(buf, sizeof buf, stdin) == 0)
+			printf(catgets(catd, CATSET, 72,
+					"Edit message %d [ynq]? "), msgvec[i]);
+			fflush(stdout);
+			if (readline(stdin, &line, &linesize) < 0)
 				break;
-			for (p = buf; *p == ' ' || *p == '\t'; p++)
-				;
+			for (p = line; blankchar(*p & 0377); p++);
 			if (*p == 'q')
 				break;
 			if (*p == 'n')
 				continue;
 		}
-		dot = mp = &message[msgvec[i] - 1];
+		setdot(mp = &message[msgvec[i] - 1]);
+		did_print_dot = 1;
 		touch(mp);
 		sigint = safe_signal(SIGINT, SIG_IGN);
 		fp = run_editor(setinput(mp), mp->m_size, type, readonly);
@@ -119,10 +128,10 @@ edit1(msgvec, type)
 			mp->m_lines = 0;
 			mp->m_flag |= MODIFY;
 			rewind(fp);
-			while ((c = getc(fp)) != EOF) {
+			while ((c = sgetc(fp)) != EOF) {
 				if (c == '\n')
 					mp->m_lines++;
-				if (putc(c, otf) == EOF)
+				if (sputc(c, otf) == EOF)
 					break;
 			}
 			if (ferror(otf))
@@ -131,6 +140,8 @@ edit1(msgvec, type)
 		}
 		(void) safe_signal(SIGINT, sigint);
 	}
+	if (line)
+		free(line);
 	return 0;
 }
 
@@ -153,17 +164,17 @@ run_editor(fp, size, type, readonly)
 	struct stat statb;
 	char *tempEdit;
 
-	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600))
+	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600, 1))
 			== (FILE*)NULL) {
-		perror("temporary mail edit file");
+		perror(catgets(catd, CATSET, 73, "temporary mail edit file"));
 		goto out;
 	}
 	if (size >= 0)
-		while (--size >= 0 && (t = getc(fp)) != EOF)
-			(void) putc(t, nf);
+		while (--size >= 0 && (t = sgetc(fp)) != EOF)
+			(void) sputc(t, nf);
 	else
-		while ((t = getc(fp)) != EOF)
-			(void) putc(t, nf);
+		while ((t = sgetc(fp)) != EOF)
+			(void) sputc(t, nf);
 	(void) fflush(nf);
 	if (fstat(fileno(nf), &statb) < 0)
 		modtime = 0;

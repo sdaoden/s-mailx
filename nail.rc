@@ -2,7 +2,7 @@
 # The values below are reasonable defaults.
 # See nail(1) for further options.
 
-# Sccsid @(#)nail.rc	1.1 (gritter) 2/16/01
+# Sccsid @(#)nail.rc	2.1 (gritter) 9/1/02
 
 # Append rather than prepend to mailboxes. Do not unset
 # or you will confuse other mail-handling programs!

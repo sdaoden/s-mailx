@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,7 +34,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)dotlock.c	1.5 (gritter) 9/19/01";
+static char sccsid[] = "@(#)dotlock.c	2.1 (gritter) 9/1/02";
 #endif
 #endif
 
@@ -47,8 +52,11 @@ static char sccsid[] = "@(#)dotlock.c	1.5 (gritter) 9/19/01";
 #define O_SYNC	0
 #endif
 
+static int	perhaps_setgid __P((const char *name, gid_t gid));
+static int	maildir_access __P((const char *));
+
 /* Check if we can write a lock file at all */
-int
+static int
 maildir_access(fname)
 const char *fname;
 {
@@ -67,7 +75,8 @@ const char *fname;
 /*
  * Set the gid if the path is in the normal mail spool
  */
-static int perhaps_setgid (name, gid)
+static int
+perhaps_setgid(name, gid)
 const char *name;
 gid_t gid;
 {
@@ -271,7 +280,8 @@ dot_lock(fname, fd, pollinterval, fp, msg)
 		fcntl_lock(fd, LOCK_EX);
 #endif
 	}
-        fprintf(stderr,"%s seems a stale lock? Need to be removed by hand?\n",path);
+        fprintf(stderr, catgets(catd, CATSET, 71,
+		"%s seems a stale lock? Need to be removed by hand?\n"), path);
         return -1;
 }
 

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * These base64 routines are derived from the metamail-2.7 sources which
  * state the following copyright notice:
  *
@@ -18,7 +23,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)base64.c	1.3 (gritter) 9/19/01";
+static char sccsid[] = "@(#)base64.c	2.2 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -45,6 +50,8 @@ static const char b64index[] = {
 };
 
 #define char64(c)  ((c) < 0 ? -1 : b64index[(int)(c)])
+
+static signed char	*ctob64 __P((unsigned char *, int));
 
 /*
  * Convert three characters to base64.
@@ -95,12 +102,12 @@ FILE *fo;
 		fwrite(h, sizeof(char), 4, fo);
 		sz += 4, l += 4;
 		if (l >= 71) {
-			fputc('\n', fo), sz++;
+			sputc('\n', fo), sz++;
 			l = 0;
 		}
 	}
 	if (l != 0 && !is_header) {
-		fputc('\n', fo), sz++;
+		sputc('\n', fo), sz++;
 	}
 	return sz;
 }
@@ -120,14 +127,14 @@ struct str *in, *out;
 	out->l = 0;
 	upper = in->s + in->l;
 	for (p = in->s, q = out->s; p < upper; ) {
-		while (isspace(c = *p++));
+		while (c = *p++, whitechar(c));
 		if (p >= upper) break;
 		if (done) continue;
-		while (isspace(d = *p++));
+		while (d = *p++, whitechar(d));
 		if (p >= upper) break;
-		while (isspace(e = *p++));
+		while (e = *p++, whitechar(e));
 		if (p >= upper) break;
-		while (isspace(f = *p++));
+		while (f = *p++, whitechar(f));
 		if (c == '=' || d == '=') {
 			done = 1;
 			continue;

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	1.4 (gritter) 9/29/00
+ *	Sccsid @(#)glob.h	2.2 (gritter) 9/15/02
  */
 
 /*
@@ -48,6 +53,7 @@
 _E int	msgcount;			/* Count of messages read in */
 _E int	rcvmode;			/* True if receiving mail */
 _E int	sawcom;				/* Set after first command */
+_E int	Iflag;				/* -I show Newsgroups: field */
 _E char	*Tflag;				/* -T temp file for netnews */
 _E int	senderr;			/* An error while checking */
 _E int	edit;				/* Indicates editing a file */
@@ -65,14 +71,8 @@ _E char	prevfile[PATHSIZE];		/* Name of previous file */
 _E char	*homedir;			/* Path name of home directory */
 _E char *progname;			/* our name */
 _E char	*myname;			/* My login name */
-_E char *version;			/* version string */
+_E const char *version;			/* version string */
 _E off_t mailsize;			/* Size of system mailbox */
-_E int	lexnumber;			/* Number of TNUMBER from scan() */
-_E char	lexstring[STRINGLEN];		/* String from TSTRING, scan() */
-_E int	regretp;			/* Pointer to TOS of regret tokens */
-_E int	regretstack[REGDEP];		/* Stack of regretted tokens */
-_E char	*string_stack[REGDEP];		/* Stack of regretted strings */
-_E int	numberstack[REGDEP];		/* Stack of regretted numbers */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *message;		/* The actual message structure */
 _E struct var *variables[HSHSIZE];	/* Pointer to active var list */
@@ -90,9 +90,18 @@ _E int	scrnheight;			/* Screen height, or best guess,
 _E int	realscreenheight;		/* the real screen height */
 _E gid_t	effectivegid;		/* Saved from when we started up */
 _E gid_t	realgid;		/* Saved from when we started up */
+_E int	exit_status;			/* Exit status */
+_E int	is_a_tty[2];			/* isatty(0), isatty(1) */
+_E int	did_print_dot;			/* current message has been printed */
+_E int	tildeflag;			/* enable tilde escapes */
+_E char	*uflag;				/* name given with -u option */
 
 #ifdef	HAVE_ICONV
-iconv_t iconvd;
+_E iconv_t iconvd;
+#endif
+
+#ifdef	HAVE_CATGETS
+_E nl_catd	catd;
 #endif
 
 /*

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)head.c	1.6 (gritter) 9/19/01";
+static char sccsid[] = "@(#)head.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -45,6 +50,11 @@ static char sccsid[] = "@(#)head.c	1.6 (gritter) 9/19/01";
  *
  * Routines for processing and detecting headlines.
  */
+static void	fail __P((char [], char []));
+static char	*copyin __P((char *, char **));
+static int	is_date __P((char []));
+static int	cmatch __P((char *, char *));
+static char	*nextword __P((char *, char *));
 
 /*
  * See if the passed line buffer is a mail header.
@@ -52,40 +62,46 @@ static char sccsid[] = "@(#)head.c	1.6 (gritter) 9/19/01";
  * accomodate all funny formats.
  */
 int
-ishead(linebuf)
-	char linebuf[];
+is_head(linebuf, linelen)
+	char *linebuf;
+	size_t linelen;
 {
 	char *cp;
 	struct headline hl;
-	char parbuf[BUFSIZ];
+	char *parbuf;
 
 	cp = linebuf;
 	if (*cp++ != 'F' || *cp++ != 'r' || *cp++ != 'o' || *cp++ != 'm' ||
 	    *cp++ != ' ')
 		return (0);
-	parse(linebuf, &hl, parbuf);
+	parbuf = ac_alloc(linelen + 1);
+	parse(linebuf, linelen, &hl, parbuf);
 	if (hl.l_from == NULL || hl.l_date == NULL) {
-		fail(linebuf, "No from or date field");
+		fail(linebuf, catgets(catd, CATSET, 85,
+					"No from or date field"));
+		ac_free(parbuf);
 		return (0);
 	}
 	/* be very tolerant about the date */
-	if (!isdate(hl.l_date)) {
+	if (!is_date(hl.l_date)) {
 #if 0
 		fail(linebuf, "Date field not legal date");
 		return (0);
 #else
-		fprintf(stderr, "Date field not legal date, ignored\n");
+		fprintf(stderr, catgets(catd, CATSET, 86,
+				"Date field not legal date, ignored\n"));
 		/* nothing */
 #endif
 	}
 	/*
 	 * I guess we got it!
 	 */
+	ac_free(parbuf);
 	return (1);
 }
 
 /*ARGSUSED*/
-void
+static void
 fail(linebuf, reason)
 	char linebuf[], reason[];
 {
@@ -104,19 +120,21 @@ fail(linebuf, reason)
  * structure.  Actually, it scans.
  */
 void
-parse(line, hl, pbuf)
-	char line[], pbuf[];
+parse(line, linelen, hl, pbuf)
+	char *line, *pbuf;
+	size_t linelen;
 	struct headline *hl;
 {
 	char *cp;
 	char *sp;
-	char word[LINESIZE];
+	char *word;
 
 	hl->l_from = NULL;
 	hl->l_tty = NULL;
 	hl->l_date = NULL;
 	cp = line;
 	sp = pbuf;
+	word = ac_alloc(linelen + 1);
 	/*
 	 * Skip over "From" first.
 	 */
@@ -130,6 +148,7 @@ parse(line, hl, pbuf)
 	}
 	if (cp != NULL)
 		hl->l_date = copyin(cp, &sp);
+	ac_free(word);
 }
 
 /*
@@ -138,7 +157,7 @@ parse(line, hl, pbuf)
  * Thus, dynamically allocate space in the right string, copying
  * the left string into it.
  */
-char *
+static char *
 copyin(src, space)
 	char *src;
 	char **space;
@@ -198,8 +217,8 @@ static char  *tmztype[] = {
 	NULL,
 };
 
-int
-isdate(date)
+static int
+is_date(date)
 	char date[];
 {
 	int ret = 0, form = 0;
@@ -217,19 +236,20 @@ isdate(date)
  * Match the given string (cp) against the given template (tp).
  * Return 1 if they match, 0 if they don't
  */
-int
+static int
 cmatch(cp, tp)
 	char *cp, *tp;
 {
+	int c;
 
 	while (*cp && *tp)
 		switch (*tp++) {
 		case 'a':
-			if (!islower(*cp++))
+			if (c = *cp++, !lowerchar(c))
 				return 0;
 			break;
 		case 'A':
-			if (!isupper(*cp++))
+			if (c = *cp++, !upperchar(c))
 				return 0;
 			break;
 		case ' ':
@@ -237,11 +257,11 @@ cmatch(cp, tp)
 				return 0;
 			break;
 		case '0':
-			if (!isdigit(*cp++))
+			if (c = *cp++, !digitchar(c))
 				return 0;
 			break;
 		case 'O':
-			if (*cp != ' ' && !isdigit(*cp))
+			if (c = *cp, c != ' ' && !digitchar(c))
 				return 0;
 			cp++;
 			break;
@@ -269,7 +289,7 @@ cmatch(cp, tp)
  * passed.  Also, return a pointer to the next word following that,
  * or NULL if none follow.
  */
-char *
+static char *
 nextword(wp, wbuf)
 	char *wp, *wbuf;
 {
@@ -279,7 +299,7 @@ nextword(wp, wbuf)
 		*wbuf = 0;
 		return (NULL);
 	}
-	while ((c = *wp++) != '\0' && c != ' ' && c != '\t') {
+	while ((c = *wp++) != '\0' && !blankchar(c)) {
 		*wbuf++ = c;
 		if (c == '"') {
  			while ((c = *wp++) != '\0' && c != '"')
@@ -291,7 +311,7 @@ nextword(wp, wbuf)
  		}
 	}
 	*wbuf = '\0';
-	for (; c == ' ' || c == '\t'; c = *wp++)
+	for (; blankchar(c); c = *wp++)
 		;
 	if (c == 0)
 		return (NULL);

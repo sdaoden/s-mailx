@@ -1,4 +1,9 @@
-#define	V	"9.31"
+#define	V	"10.0"
+/*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,7 +39,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)version.c	1.64 (gritter) 6/18/02";
+static char sccsid[] = "@(#)version.c	2.22 (gritter) 9/29/02";
 #endif
 #endif /* not lint */
 
@@ -47,11 +52,11 @@ static char sccsid[] = "@(#)version.c	1.64 (gritter) 6/18/02";
  * Load this file first to get a "total" Mail version.
  */
 /*char	*version = "8.1 6/6/93";*/
-const char *version = "nail " V " 6/18/02";
+const char *version = "nail " V " 9/29/02";
 #ifndef	lint
-const static char *versionid
+static const char *versionid
 #ifdef	__GNUC__
 __attribute__ ((unused))
 #endif
-= "@(#)nail " V " 6/18/02";
+= "@(#)nail " V " 9/29/02";
 #endif	/* !lint */

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)strings.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)strings.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -77,14 +82,10 @@ salloc(size)
 		string_index++;
 	}
 	if (sp >= &stringdope[NSPACE])
-		panic("String too large");
+		panic(catgets(catd, CATSET, 195, "String too large"));
 	if (sp->s_topFree == NULL) {
 		string_index = sp - &stringdope[0];
-		sp->s_topFree = malloc(STRINGSIZE << string_index);
-		if (sp->s_topFree == NULL) {
-			fprintf(stderr, "No room for space %d\n", string_index);
-			panic("Internal error");
-		}
+		sp->s_topFree = smalloc(STRINGSIZE << string_index);
 		sp->s_nextFree = sp->s_topFree;
 		sp->s_nleft = STRINGSIZE << string_index;
 	}

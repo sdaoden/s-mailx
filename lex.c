@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	1.9 (gritter) 2/20/02";
+static char sccsid[] = "@(#)lex.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -47,7 +52,14 @@ static char sccsid[] = "@(#)lex.c	1.9 (gritter) 2/20/02";
  * Lexical processing of commands.
  */
 
-char	*prompt = "& ";
+static char	*prompt;
+
+static void	setmsize __P((int));
+static const struct cmd	*lex __P((char []));
+static int	is_prefix __P((char *, char *));
+static void	intr __P((int));
+static void	stop __P((int));
+static void	hangup __P((int));
 
 /*
  * Set up editing on the given file name.
@@ -132,8 +144,9 @@ setfile(name)
 		mailname[PATHSIZE-1]='\0';
 	}
 	mailsize = fsize(ibuf);
-	if ((otf = Ftemp(&tempMesg, "Rx", "w", 0600)) == (FILE *)NULL) {
-		perror("temporary mail message file");
+	if ((otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == (FILE *)NULL) {
+		perror(catgets(catd, CATSET, 87,
+					"temporary mail message file"));
 		exit(1);
 	}
 	(void) fcntl(fileno(otf), F_SETFD, FD_CLOEXEC);
@@ -152,14 +165,15 @@ setfile(name)
 	if (!edit && msgcount == 0) {
 nomail:
 		if (value("emptystart") == NULL )
-			fprintf(stderr, "No mail for %s\n", who);
+			fprintf(stderr, catgets(catd, CATSET, 88,
+					"No mail for %s\n"), who);
 		return 1;
 	}
 	return(0);
 }
 
-int	*msgvec;
-int	reset_on_stop;			/* do a reset() if stopped */
+static int	*msgvec;
+static int	reset_on_stop;			/* do a reset() if stopped */
 
 /*
  * Interpret user commands one by one.  If standard input is not a tty,
@@ -170,8 +184,9 @@ commands()
 {
 	int eofloop = 0;
 	int n;
-	char linebuf[LINESIZE];
-#if __GNUC__
+	char *linebuf = NULL;
+	size_t linesize = 0;
+#ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &eofloop;
 #endif
@@ -193,6 +208,8 @@ commands()
 		 */
 		if (!sourcing && value("interactive") != NULL) {
 			reset_on_stop = 1;
+			if ((prompt = value("prompt")) == NULL)
+				prompt = value("bsdcompat") ? "& " : "? ";
 			printf(prompt);
 		}
 		fflush(stdout);
@@ -203,17 +220,12 @@ commands()
 		 */
 		n = 0;
 		for (;;) {
-			if (readline(input, &linebuf[n], LINESIZE - n) < 0) {
-				if (n == 0)
-					n = -1;
+			n = readline_restart(input, &linebuf, &linesize, n);
+			if (n < 0)
 				break;
-			}
-			if ((n = strlen(linebuf)) == 0)
+			if (n == 0 || linebuf[n - 1] != '\\')
 				break;
-			n--;
-			if (linebuf[n] != '\\')
-				break;
-			linebuf[n++] = ' ';
+			linebuf[n - 1] = ' ';
 		}
 		reset_on_stop = 0;
 		if (n < 0) {
@@ -227,15 +239,18 @@ commands()
 			if (value("interactive") != NULL &&
 			    value("ignoreeof") != NULL &&
 			    ++eofloop < 25) {
-				printf("Use \"quit\" to quit.\n");
+				printf(catgets(catd, CATSET, 89,
+						"Use \"quit\" to quit.\n"));
 				continue;
 			}
 			break;
 		}
 		eofloop = 0;
-		if (execute(linebuf, 0))
+		if (execute(linebuf, 0, n))
 			break;
 	}
+	if (linebuf)
+		free(linebuf);
 }
 
 /*
@@ -246,11 +261,12 @@ commands()
  * Contxt is non-zero if called while composing mail.
  */
 int
-execute(linebuf, contxt)
+execute(linebuf, contxt, linesize)
 	char linebuf[];
 	int contxt;
+	size_t linesize;
 {
-	char word[LINESIZE];
+	char *word;
 	char *arglist[MAXARGC];
 	const struct cmd *com = (struct cmd *)NULL;
 	char *cp, *cp2;
@@ -266,19 +282,22 @@ execute(linebuf, contxt)
 	 * Handle ! escapes differently to get the correct
 	 * lexical conventions.
 	 */
-
-	for (cp = linebuf; isspace(*cp); cp++)
-		;
+	word = ac_alloc(linesize + 1);
+	for (cp = linebuf; whitechar(*cp & 0377); cp++);
 	if (*cp == '!') {
 		if (sourcing) {
-			printf("Can't \"!\" while sourcing\n");
+			printf(catgets(catd, CATSET, 90,
+					"Can't \"!\" while sourcing\n"));
 			goto out;
 		}
 		shell(cp+1);
+		ac_free(word);
 		return(0);
 	}
-	if (*cp == '#')
+	if (*cp == '#') {
+		ac_free(word);
 		return 0;
+	}
 	cp2 = word;
 	while (*cp && strchr(" \t0123456789$^.:/-+*'\"", *cp) == NULL)
 		*cp2++ = *cp++;
@@ -292,11 +311,14 @@ execute(linebuf, contxt)
 	 * confusion.
 	 */
 
-	if (sourcing && *word == '\0')
+	if (sourcing && *word == '\0') {
+		ac_free(word);
 		return(0);
+	}
 	com = lex(word);
 	if (com == NONE) {
-		printf("Unknown command: \"%s\"\n", word);
+		printf(catgets(catd, CATSET, 91,
+				"Unknown command: \"%s\"\n"), word);
 		goto out;
 	}
 
@@ -305,9 +327,12 @@ execute(linebuf, contxt)
 	 * we always execute it, otherwise, check the state of cond.
 	 */
 
-	if ((com->c_argtype & F) == 0)
-		if ((cond == CRCV && !rcvmode) || (cond == CSEND && rcvmode))
+	if ((com->c_argtype & F) == 0) {
+		if ((cond == CRCV && !rcvmode) || (cond == CSEND && rcvmode)) {
+			ac_free(word);
 			return(0);
+		}
+	}
 
 	/*
 	 * Process the arguments to the command, depending
@@ -317,22 +342,25 @@ execute(linebuf, contxt)
 	 */
 
 	if (!rcvmode && (com->c_argtype & M) == 0) {
-		printf("May not execute \"%s\" while sending\n",
-		    com->c_name);
+		printf(catgets(catd, CATSET, 92,
+			"May not execute \"%s\" while sending\n"), com->c_name);
 		goto out;
 	}
 	if (sourcing && com->c_argtype & I) {
-		printf("May not execute \"%s\" while sourcing\n",
-		    com->c_name);
+		printf(catgets(catd, CATSET, 93,
+			"May not execute \"%s\" while sourcing\n"),
+				com->c_name);
 		goto out;
 	}
 	if (readonly && com->c_argtype & W) {
-		printf("May not execute \"%s\" -- message file is read only\n",
+		printf(catgets(catd, CATSET, 94,
+		"May not execute \"%s\" -- message file is read only\n"),
 		   com->c_name);
 		goto out;
 	}
 	if (contxt && com->c_argtype & R) {
-		printf("Cannot recursively invoke \"%s\"\n", com->c_name);
+		printf(catgets(catd, CATSET, 95,
+			"Cannot recursively invoke \"%s\"\n"), com->c_name);
 		goto out;
 	}
 	switch (com->c_argtype & ~(F|P|I|M|T|W|R)) {
@@ -342,7 +370,8 @@ execute(linebuf, contxt)
 		 * legal message.
 		 */
 		if (msgvec == 0) {
-			printf("Illegal use of \"message list\"\n");
+			printf(catgets(catd, CATSET, 96,
+				"Illegal use of \"message list\"\n"));
 			break;
 		}
 		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
@@ -353,7 +382,8 @@ execute(linebuf, contxt)
 			msgvec[1] = 0;
 		}
 		if (*msgvec == 0) {
-			printf("No applicable messages\n");
+			printf(catgets(catd, CATSET, 97,
+					"No applicable messages\n"));
 			break;
 		}
 		e = (*com->c_func)(msgvec);
@@ -365,7 +395,8 @@ execute(linebuf, contxt)
 		 * if none exist.
 		 */
 		if (msgvec == 0) {
-			printf("Illegal use of \"message list\"\n");
+			printf(catgets(catd, CATSET, 98,
+				"Illegal use of \"message list\"\n"));
 			break;
 		}
 		if (getmsglist(cp, msgvec, com->c_msgflag) < 0)
@@ -378,7 +409,7 @@ execute(linebuf, contxt)
 		 * Just the straight string, with
 		 * leading blanks removed.
 		 */
-		while (isspace(*cp))
+		while (whitechar(*cp & 0377))
 			cp++;
 		e = (*com->c_func)(cp);
 		break;
@@ -387,16 +418,18 @@ execute(linebuf, contxt)
 		/*
 		 * A vector of strings, in shell style.
 		 */
-		if ((c = getrawlist(cp, arglist,
+		if ((c = getrawlist(cp, linesize, arglist,
 				sizeof arglist / sizeof *arglist)) < 0)
 			break;
 		if (c < com->c_minargs) {
-			printf("%s requires at least %d arg(s)\n",
+			printf(catgets(catd, CATSET, 99,
+				"%s requires at least %d arg(s)\n"),
 				com->c_name, com->c_minargs);
 			break;
 		}
 		if (c > com->c_maxargs) {
-			printf("%s takes no more than %d arg(s)\n",
+			printf(catgets(catd, CATSET, 100,
+				"%s takes no more than %d arg(s)\n"),
 				com->c_name, com->c_maxargs);
 			break;
 		}
@@ -412,10 +445,11 @@ execute(linebuf, contxt)
 		break;
 
 	default:
-		panic("Unknown argtype");
+		panic(catgets(catd, CATSET, 101, "Unknown argtype"));
 	}
 
 out:
+	ac_free(word);
 	/*
 	 * Exit the current source file on
 	 * error.
@@ -446,14 +480,14 @@ out:
  * Set the size of the message vector used to construct argument
  * lists to message list functions.
  */
-void
+static void
 setmsize(sz)
 	int sz;
 {
 
 	if (msgvec != 0)
 		free((char *) msgvec);
-	msgvec = (int *) calloc((unsigned) (sz + 1), sizeof *msgvec);
+	msgvec = (int *)scalloc((sz + 1), sizeof *msgvec);
 }
 
 /*
@@ -461,7 +495,7 @@ setmsize(sz)
  * to the passed command "word"
  */
 
-const struct cmd *
+static const struct cmd *
 lex(word)
 	char word[];
 {
@@ -469,7 +503,7 @@ lex(word)
 	const struct cmd *cp;
 
 	for (cp = &cmdtab[0]; cp->c_name != NULL; cp++)
-		if (isprefix(word, cp->c_name))
+		if (is_prefix(word, cp->c_name))
 			return(cp);
 	return(NONE);
 }
@@ -478,8 +512,8 @@ lex(word)
  * Determine if as1 is a valid prefix of as2.
  * Return true if yep.
  */
-int
-isprefix(as1, as2)
+static int
+is_prefix(as1, as2)
 	char *as1, *as2;
 {
 	char *s1, *s2;
@@ -500,10 +534,10 @@ isprefix(as1, as2)
  * Also, unstack all source files.
  */
 
-int	inithdr;			/* am printing startup headers */
+static int	inithdr;		/* am printing startup headers */
 
 /*ARGSUSED*/
-RETSIGTYPE
+static RETSIGTYPE
 intr(s)
 	int s;
 {
@@ -521,15 +555,14 @@ intr(s)
 		close(image);
 		image = -1;
 	}
-	fprintf(stderr, "Interrupt\n");
-	fpurge(input);
+	fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
 	reset(0);
 }
 
 /*
  * When we wake up after ^Z, reprint the prompt.
  */
-RETSIGTYPE
+static RETSIGTYPE
 stop(s)
 	int s;
 {
@@ -544,7 +577,6 @@ stop(s)
 	safe_signal(s, old_action);
 	if (reset_on_stop) {
 		reset_on_stop = 0;
-		fpurge(input);
 		reset(0);
 	}
 }
@@ -553,7 +585,7 @@ stop(s)
  * Branch here on hangup signal and simulate "exit".
  */
 /*ARGSUSED*/
-RETSIGTYPE
+static RETSIGTYPE
 hangup(s)
 	int s;
 {
@@ -567,7 +599,7 @@ hangup(s)
  * give the message count, and print a header listing.
  */
 void
-announce()
+announce(printheaders)
 {
 	int vec[2], mdot;
 
@@ -575,7 +607,7 @@ announce()
 	vec[0] = mdot;
 	vec[1] = 0;
 	dot = &message[mdot - 1];
-	if (msgcount > 0 && value("noheader") == NULL) {
+	if (printheaders && msgcount > 0 && value("header") != NULL) {
 		inithdr++;
 		headers(vec);
 		inithdr = 0;
@@ -591,7 +623,7 @@ newfileinfo()
 {
 	struct message *mp;
 	int u, n, mdot, d, s;
-	char fname[BUFSIZ], zname[BUFSIZ], *ename;
+	char fname[PATHSIZE], zname[PATHSIZE], *ename;
 
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MNEW)
@@ -618,29 +650,29 @@ newfileinfo()
 			s++;
 	}
 	ename = mailname;
-	if (getfold(fname, BUFSIZ-1) >= 0) {
+	if (getfold(fname, sizeof fname - 1) >= 0) {
 		strcat(fname, "/");
 		if (strncmp(fname, mailname, strlen(fname)) == 0) {
-			snprintf(zname, BUFSIZ, "+%s",
+			snprintf(zname, sizeof zname, "+%s",
 					mailname + strlen(fname));
 			ename = zname;
 		}
 	}
-	printf("\"%s\": ", ename);
+	printf(catgets(catd, CATSET, 103, "\"%s\": "), ename);
 	if (msgcount == 1)
-		printf("1 message");
+		printf(catgets(catd, CATSET, 104, "1 message"));
 	else
-		printf("%d messages", msgcount);
+		printf(catgets(catd, CATSET, 105, "%d messages"), msgcount);
 	if (n > 0)
-		printf(" %d new", n);
+		printf(catgets(catd, CATSET, 106, " %d new"), n);
 	if (u-n > 0)
-		printf(" %d unread", u);
+		printf(catgets(catd, CATSET, 107, " %d unread"), u);
 	if (d > 0)
-		printf(" %d deleted", d);
+		printf(catgets(catd, CATSET, 108, " %d deleted"), d);
 	if (s > 0)
-		printf(" %d saved", s);
+		printf(catgets(catd, CATSET, 109, " %d saved"), s);
 	if (readonly)
-		printf(" [Read only]");
+		printf(catgets(catd, CATSET, 110, " [Read only]"));
 	printf("\n");
 	return(mdot);
 }
@@ -654,9 +686,7 @@ int
 pversion(v)
 	void *v;
 {
-	extern char *version;
-
-	printf("Version %s\n", version);
+	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
 	return(0);
 }
 

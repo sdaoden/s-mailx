@@ -1,3 +1,8 @@
+/*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
 /*-
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -30,159 +35,110 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.14 (gritter) 5/22/02
+ *	Sccsid @(#)extern.h	2.5 (gritter) 9/15/02
  */
 
-struct name;
 struct name *cat __P((struct name *, struct name *));
-struct name *delname __P((struct name *, char []));
 struct name *elide __P((struct name *));
 struct name *extract __P((char [], int));
-struct grouphead;
-struct name *gexpand __P((struct name *, struct grouphead *, int, int));
 struct name *nalloc __P((char [], int));
-struct header;
 struct name *outof __P((struct name *, FILE *, struct header *));
-struct name *put __P((struct name *, struct name *));
-struct name *tailof __P((struct name *));
 struct name *usermap __P((struct name *));
 FILE	*safe_fopen __P((char *, char *));
 FILE	*Fdopen __P((int, char *));
 FILE	*Fopen __P((char *, char *));
 FILE	*Popen __P((char *, char *, char *, int));
 FILE	*collect __P((struct header *, int, struct message*, char *));
-char	*copy __P((char *, char *));
-char	*copyin __P((char *, char **));
 char	*detract __P((struct name *, int));
 char	*expand __P((char *));
 char	*getdeadletter __P((void));
 char	*getname __P((int));
-struct message;
 char	*hfield __P((char [], struct message *));
-char	*ishfield __P((char [], char[], char *));
-char	*name1 __P((struct message *, int));
 char	*nameof __P((struct message *, int));
-char	*nextword __P((char *, char *));
-char 	*reedit __P((char *));
 FILE	*run_editor __P((FILE *, off_t, int, int));
 char	*salloc __P((int));
 char	*savestr __P((char *));
 FILE	*setinput __P((struct message *));
 char	*skin __P((char *));
-char	*skip_comment __P((char *));
-char	*snarf __P((char [], int *));
 char	*username __P((void));
 char	*value __P((char []));
 char	*vcopy __P((char []));
-char	*yankword __P((char *, char []));
 int	 Fclose __P((FILE *));
 int	 More __P((void *));
 int	 Pclose __P((FILE *));
 int	 Respond __P((void *));
+int	 Followup __P((void *));
 int	 Type __P((void *));
 int	 Pipecmd __P((void *));
 int	 pipecmd __P((void *));
 int	 Forwardcmd __P((void *));
 int	 forwardcmd __P((void *));
-int	 _Respond __P((int []));
-int	 _respond __P((int *));
 void	 alter __P((char *));
 int	 alternates __P((void *));
-void	 announce __P((void));
+void	 announce __P((int));
 int	 anyof __P((char *, char *));
-int	 append __P((struct message *, FILE *));
 int	 argcount __P((char **));
 void	 assign __P((char [], char []));
-int	 bangexp __P((char *, int));
+int	 aux_raise __P((int));
 int	 blankline __P((char []));
-int	 charcount __P((char *, int));
-int	 check __P((int, int));
-void	 clob1 __P((int));
 int	 clobber __P((void *));
 void	 close_all_files __P((void));
-int	 cmatch __P((char *, char *));
-void	 collhup __P((int));
-void	 collint __P((int));
-void	 collstop __P((int));
 void	 commands __P((void));
 int	 copycmd __P((void *));
+int	 Copycmd __P((void *));
 int	 core __P((void *));
 int	 count __P((struct name *));
 int	 delete __P((void *));
-int	 delm __P((int []));
 int	 deltype __P((void *));
 void	 demail __P((void));
 int	 dosh __P((void *));
 int	 dot_lock __P((const char *, int, int, FILE *, const char *));
 void	 dot_unlock __P((const char *));
 int	 echo __P((void *));
-int	 edit1 __P((int *, int));
 int	 editor __P((void *));
-void	 edstop __P((void));
 int	 elsecmd __P((void *));
 int	 endifcmd __P((void *));
-int	 evalcol __P((int));
-int	 execute __P((char [], int));
-int	 exwrite __P((char [], FILE *, int));
-void	 fail __P((char [], char []));
+int	 execute __P((char [], int, size_t));
 int	 fcntl_lock __P((int, int));
 int	 file __P((void *));
-struct grouphead *
-	 findgroup __P((char []));
-void	 findmail __P((char *, char *, int));
+struct grouphead	*findgroup __P((char []));
+void	remove_group __P((const char *));
+void	 findmail __P((char *, int, char *, int));
 int	 first __P((int, int));
-int	 fmt __P((char *, struct name *, FILE *, int, int));
 int	 folders __P((void *));
-int	 forward __P((char [], FILE *, int));
 void	 free_child __P((int));
 int	 from __P((void *));
 off_t	 fsize __P((FILE *));
 int	 getfold __P((char *, int));
-int	 gethfield __P((FILE *, char [], int, char **));
 int	 getmsglist __P((char *, int *, int));
-int	 getrawlist __P((char [], char **, int));
+int	 getrawlist __P((char [], size_t, char **, int));
 int	 getuserid __P((char []));
 int	 grabh __P((struct header *, int));
 int	 group __P((void *));
-void	 hangup __P((int));
-int	 hash __P((char *));
-void	 hdrstop __P((int));
+int	 ungroup __P((void *));
+int	 hash __P((const char *));
 int	 headers __P((void *));
 int	 help __P((void *));
 void	 holdsigs __P((void));
 int	 ifcmd __P((void *));
 int	 igfield __P((void *));
-struct ignoretab;
-int	 ignore1 __P((char *[], struct ignoretab *, char *));
-int	 igshow __P((struct ignoretab *, char *));
-void	 intr __P((int));
-int	 isdate __P((char []));
-int	 isdir __P((char []));
-int	 isfileaddr __P((char *));
-int	 ishead __P((char []));
-int	 isign __P((char *, struct ignoretab []));
-int	 isprefix __P((char *, char *));
-void	 istrcpy __P((char *, char *, int));
-const struct cmd *
-	 lex __P((char []));
+int	unignore __P((void *));
+int	unretain __P((void *));
+int	unsaveignore __P((void *));
+int	unsaveretain __P((void *));
+int	 is_dir __P((char []));
+int	 is_fileaddr __P((char *));
+int	 is_head __P((char *, size_t));
+int	 is_ign __P((char *, size_t, struct ignoretab []));
+void	 i_strcpy __P((char *, char *, int));
 void	 load __P((char *));
-struct var *
-	 lookup __P((char []));
 int	 mail __P((struct name *,
 	    struct name *, struct name *, struct name *,
-	   	 char *, struct attachment *, char *));
-void	 mail1 __P((struct header *, int, struct message *, char *));
-void	 makemessage __P((FILE *));
-void	 mark __P((int));
-int	 markall __P((char [], int));
-int	 matchsender __P((char *, int));
-int	 matchsubj __P((char *, int));
+	   	 char *, struct attachment *, char *, int));
+void	 mail1 __P((struct header *, int, struct message *, char *, int));
 int	 mboxit __P((void *));
 int	 member __P((char *, struct ignoretab *));
-void	 mesedit __P((FILE *, int));
-void	 mespipe __P((FILE *, char []));
 int	 messize __P((void *));
-int	 metamess __P((int, int));
 int	 more __P((void *));
 int	 newfileinfo __P((void));
 int	 next __P((void *));
@@ -195,13 +151,12 @@ void	 panic __P((const char *, ...))
 #ifndef	HAVE_SNPRINTF
 int	 snprintf __P((char *, size_t, const char *, ...))
 #ifdef	__GNUC__
-    __attribute__((__format__(__printf__,1,2),__noreturn__));
+    __attribute__((__format__(__printf__,1,2)));
 #else
     ;
 #endif
 #endif
-struct headline;
-void	 parse __P((char [], struct headline *, char []));
+void	 parse __P((char *, size_t, struct headline *, char *));
 int	 pcmdlist __P((void *));
 int	 pdot __P((void *));
 void	 prepare_child __P((sigset_t *, int, int));
@@ -209,48 +164,44 @@ int	 preserve __P((void *));
 void	 prettyprint __P((struct name *));
 void	 printgroup __P((char []));
 void	 printhead __P((int));
-int	 puthead __P((struct header *, FILE *, int, int));
-int	 putline __P((FILE *, char *));
+int	 puthead __P((struct header *, FILE *, int, int, char *, char *));
+int	 putline __P((FILE *, char *, size_t));
 int	 pversion __P((void *));
 void	 quit __P((void));
 int	 quitcmd __P((void *));
-int	 aux_raise __P((int));
-int	 readline __P((FILE *, char *, int));
 char 	*readtty __P((char *, char *));
-void	 register_file __P((FILE *, int, int));
-void	 regret __P((int));
 void	 relsesigs __P((void));
 int	 respond __P((void *));
+int	 respondall __P((void *));
+int	 respondsender __P((void *));
+int	 followup __P((void *));
+int	 followupall __P((void *));
+int	 followupsender __P((void *));
 int	 retfield __P((void *));
 int	 rexit __P((void *));
 int	 rm __P((char *));
 int	 run_command __P((char *, sigset_t *, int, int, char *, char *, char *));
 int	 save __P((void *));
-int	 save1 __P((char [], int, char *, struct ignoretab *, int));
+int	 Save __P((void *));
 void	 savedeadletter __P((FILE *));
 int	 saveigfield __P((void *));
 int	 saveretfield __P((void *));
-int	 scan __P((char **));
-void	 scaninit __P((void));
 int	 schdir __P((void *));
 int	 screensize __P((void));
 int	 scroll __P((void *));
 int	 send_message __P((struct message *, FILE *,
-			struct ignoretab *, char *, int));
+			struct ignoretab *, char *, int, off_t *));
 int	 sendmail __P((void *));
+int	 Sendmail __P((void *));
 int	 set __P((void *));
 int	 setfile __P((char *));
-void	 setmsize __P((int));
 void	 setptr __P((FILE *));
-void	 setscreensize __P((void));
 int	 shell __P((void *));
 void	 sigchild __P((int));
-void	 sort __P((char **));
 int	 source __P((void *));
 void	 spreserve __P((void));
 void	 sreset __P((void));
 int	 start_command __P((char *, sigset_t *, int, int, char *, char *, char *));
-void	 stop __P((int));
 int	 stouch __P((void *));
 int	 swrite __P((void *));
 void	 tinit __P((void));
@@ -258,38 +209,31 @@ int	 top __P((void *));
 void	 touch __P((struct message *));
 int	 type __P((void *));
 int	 undeletecmd __P((void *));
-void	 unmark __P((int));
 char	**unpack __P((struct name *));
 int	 unread __P((void *));
-void	 unregister_file __P((FILE *));
 int	 unset __P((void *));
 int	 unstack __P((void));
-void	 vfree __P((char *));
 int	 visual __P((void *));
 int	 wait_child __P((int));
-int	 wait_command __P((int));
 void	*smalloc __P((size_t));
+void	*srealloc __P((void *, size_t));
+void	*scalloc __P((size_t, size_t));
+char	*sstrdup __P((const char *));
+char	*sstpcpy __P((char *, const char *));
 char	*itostr __P((unsigned, unsigned, char *));
 size_t	mime_write_tob64 __P((struct str*, FILE*, int));
 void	mime_fromb64 __P((struct str*, struct str*, int));
 void	mime_fromb64_b __P((struct str*, struct str*, int, FILE*));
 int	mime_getenc __P((char*));
-int	mime_getcontent __P((char*, char **));
+int	mime_getcontent __P((char*));
 char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
-char	*mime_getfilename __P((char*));
-char	*getcharset __P((int));
-int	mime_isclean __P((FILE*));
-int	mime_save __P((void *));
 void	mime_fromhdr __P((struct str*, struct str*, int));
 size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int, char *,
 			size_t));
-int	is_undisplayable __P((unsigned char));
 signal_handler_t safe_signal __P((int, signal_handler_t));
-int	start_mta __P((struct name *, struct name *, FILE *));
-char	*foldergets __P((char *, int, FILE *));
-char	* getcmd __P((char *, int *));
+char	*getcmd __P((char *, int *));
 int	forward_msg __P((struct message *, struct name *, int));
 int	smtp_mta __P((char *, struct name *, FILE *));
 char	*nodename __P((void));
@@ -301,12 +245,21 @@ size_t	makeprint __P((char *, size_t));
 #ifdef	HAVE_ICONV
 iconv_t	iconv_open_ft __P((const char *, const char *));
 #endif
-#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
-size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
-#endif
 size_t	prefixwrite __P((void *, size_t, size_t, FILE *, char *, size_t));
-FILE	*Ftemp __P((char **, char *, char *, int));
+FILE	*Ftemp __P((char **, char *, char *, int, int));
 void	Ftfree __P((char **));
 struct attachment	*edit_attachments __P((struct attachment *));
 struct attachment	*add_attachment __P((struct attachment *, const char *));
-
+struct name	*delete_alternates __P((struct name *));
+int	is_myname __P((char *));
+int	unset_internal __P((char *));
+char	*get_pager __P((void));
+struct message	*setdot __P((struct message *));
+char	*fgetline __P((char **, size_t *, size_t *, size_t *, FILE *, int));
+char	*foldergets __P((char **, size_t *, size_t *, size_t *, FILE *));
+int	readline_restart __P((FILE *, char **, size_t *, size_t));
+#define	readline(a, b, c)	readline_restart(a, b, c, 0)
+int	asccasecmp __P((const char *, const char *));
+int	ascncasecmp __P((const char *, const char *, size_t));
+int	get_mime_convert __P((FILE *, char **, char **, int *));
+void	newline_appended __P((void));

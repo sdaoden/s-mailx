@@ -1,7 +1,7 @@
 # Makefile.am for nail, a mail user agent.
 # Process this file with automake to produce Makefile.in
 
-# Sccsid: @(#)Makefile.am	1.6 (gritter) 2/20/01
+# Sccsid: @(#)Makefile.am	2.2 (gritter) 9/29/02
 
 # Initially written by Jacob Moorman.
 # Changes by Gunnar Ritter.
@@ -18,12 +18,14 @@ nail_SOURCES = version.c aux.c base64.c cmd1.c cmd2.c cmd3.c \
 
 nail_MANS = nail.1
 
-EXTRA_DIST = I18N nail.1 def.h extern.h glob.h rcv.h nail.rc
+EXTRA_DIST = I18N nail.1 def.h extern.h glob.h rcv.h nail.rc nail.spec \
+	catd/en_US
+DIST_SUBDIRS = catd
 
 man1dir = $(mandir)/man1
 man1_DATA = nail.1
 
 install-data-local:
-	-test -f $(DESTDIR)/etc/nail.rc || \
-		{ $(mkinstalldirs) $(DESTDIR)/etc; \
-		$(INSTALL_DATA) $(srcdir)/nail.rc $(DESTDIR)/etc/nail.rc; }
+	test -f "$(DESTDIR)$(PATH_MASTER_RC)" || \
+		{ $(mkinstalldirs) "`dirname \"$(DESTDIR)$(PATH_MASTER_RC)\"`"; \
+		$(INSTALL_DATA) $(srcdir)/nail.rc "$(DESTDIR)$(PATH_MASTER_RC)"; }

@@ -1,3 +1,8 @@
+/*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
 /*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	1.8 (gritter) 11/17/01";
+static char sccsid[] = "@(#)cmd1.c	2.5 (gritter) 9/6/02";
 #endif
 #endif /* not lint */
 
@@ -53,7 +58,19 @@ static char sccsid[] = "@(#)cmd1.c	1.8 (gritter) 11/17/01";
 
 static int screen;
 static RETSIGTYPE brokpipe __P((int));
+static int	pipe1 __P((char *, int));
+static int	type1 __P((int *, int, int, int, char *));
 
+char *
+get_pager()
+{
+	char *cp;
+
+	cp = value("PAGER");
+	if (cp == NULL || *cp == '\0')
+		cp = value("bsdcompat") ? PATH_MORE : PATH_PG;
+	return cp;
+}
 int
 headers(v)
 	void *v;
@@ -77,7 +94,7 @@ headers(v)
 	flag = 0;
 	mesg = mp - &message[0];
 	if (dot != &message[n-1])
-		dot = mp;
+		setdot(mp);
 	for (; mp < &message[msgcount]; mp++) {
 		mesg++;
 		if (mp->m_flag & MDELETED)
@@ -87,7 +104,7 @@ headers(v)
 		printhead(mesg);
 	}
 	if (flag == 0) {
-		printf("No more mail.\n");
+		printf(catgets(catd, CATSET, 6, "No more mail.\n"));
 		return(1);
 	}
 	return(0);
@@ -125,7 +142,8 @@ scroll(v)
 scroll_forward:
 		if (screen * size > msgcount) {
 			screen = msgcount / size;
-			printf("On last screenful of messages\n");
+			printf(catgets(catd, CATSET, 7,
+					"On last screenful of messages\n"));
 		}
 		break;
 
@@ -136,12 +154,14 @@ scroll_forward:
 			screen -= atoi(arg + 1);
 		if (screen < 0) {
 			screen = 0;
-			printf("On first screenful of messages\n");
+			printf(catgets(catd, CATSET, 8,
+					"On first screenful of messages\n"));
 		}
 		break;
 
 	default:
-		printf("Unrecognized scrolling command \"%s\"\n", arg);
+		printf(catgets(catd, CATSET, 9,
+			"Unrecognized scrolling command \"%s\"\n"), arg);
 		return(1);
 	}
 	return(headers(cur));
@@ -175,7 +195,7 @@ from(v)
 	for (ip = msgvec; *ip != 0; ip++)
 		printhead(*ip);
 	if (--ip >= msgvec)
-		dot = &message[*ip - 1];
+		setdot(&message[*ip - 1]);
 	return(0);
 }
 
@@ -188,15 +208,19 @@ printhead(mesg)
 	int mesg;
 {
 	struct message *mp;
-	char headline[LINESIZE], wcount[LINESIZE], *subjline, dispc, curind;
-	char pbuf[BUFSIZ];
+	char *headline = NULL, wcount[64], *subjline, dispc, curind;
+	size_t headsize = 0;
+	int headlen;
+	char *pbuf;
 	struct headline hl;
 	struct str in, out;
-	int subjlen;
-	char *name;
+	int subjlen, fromlen, isto = 0;
+	int bsdcompat = (value("bsdcompat") != NULL);
+	char *name, *cp;
 
 	mp = &message[mesg-1];
-	(void) readline(setinput(mp), headline, LINESIZE);
+	if ((headlen = readline(setinput(mp), &headline, &headsize)) < 0)
+		return;
 	if ((subjline = hfield("subject", mp)) == NULL)
 		subjline = hfield("subj", mp);
 	if (subjline == NULL) {
@@ -213,34 +237,71 @@ printhead(mesg)
 	 */
 	curind = dot == mp ? '>' : ' ';
 	dispc = ' ';
+	if (value("bsdcompat") == NULL) {
+		if (mp->m_flag & (MREAD|MNEW))
+			dispc = 'R';
+		if ((mp->m_flag & (MREAD|MNEW)) == MREAD)
+			dispc = 'O';
+	}
 	if (mp->m_flag & MSAVED)
-		dispc = '*';
+		dispc = bsdcompat ? '*' : 'S';
 	if (mp->m_flag & MPRESERVE)
-		dispc = 'P';
+		dispc = bsdcompat ? 'P' : 'H';
 	if ((mp->m_flag & (MREAD|MNEW)) == MNEW)
 		dispc = 'N';
 	if ((mp->m_flag & (MREAD|MNEW)) == 0)
 		dispc = 'U';
 	if (mp->m_flag & MBOX)
 		dispc = 'M';
-	parse(headline, &hl, pbuf);
-	snprintf(wcount, LINESIZE, "%3d/%-5u", mp->m_lines,
-			(unsigned int)mp->m_size);
-	subjlen = scrnwidth - 50 - strlen(wcount);
+	pbuf = ac_alloc(headlen + 1);
+	parse(headline, headlen, &hl, pbuf);
+	snprintf(wcount, sizeof wcount, catgets(catd, CATSET, 10, "%3d/%-5u"),
+			mp->m_lines, (unsigned int)mp->m_size);
+	subjlen = scrnwidth - (bsdcompat ? 50 : 46) - strlen(wcount);
 	if (subjlen > out.l)
 		subjlen = out.l;
-	name = value("show-rcpt") != NULL ?
-		skin(hfield("to", mp)) : nameof(mp, 0);
+	if (Iflag) {
+		if ((name = hfield("newsgroups", mp)) == NULL)
+			if ((name = hfield("article-id", mp)) == NULL)
+				name = "<>";
+	} else if (value("show-rcpt") == NULL) {
+		name = nameof(mp, 0);
+		if (value("showto") && name && is_myname(name)) {
+			if ((cp = skin(hfield("to", mp))) != NULL) {
+				name = cp;
+				isto = 1;
+			}
+		}
+	} else {
+		if ((name = skin(hfield("to", mp))) != NULL)
+			isto = 1;
+	}
+	if (name == NULL)
+		name = "";
+	if (bsdcompat)
+		fromlen = isto ? 17 : 20;
+	else
+		fromlen = isto ? 15 : 18;
 	if (subjline == NULL || subjlen < 0) {         /* pretty pathetic */
-		printf("%c%c%3d %-20.20s  %16.16s %s\n",
-			curind, dispc, mesg, name, hl.l_date, wcount);
+		printf(bsdcompat ?  catgets(catd, CATSET, 206,
+				"%c%c%3d %s%-*.*s  %16.16s %s\n") :
+			catgets(catd, CATSET, 11,
+				"%c%c%3d %s%-*.*s  %16.16s %s\n"),
+			curind, dispc, mesg, isto ? "To " : "",
+			fromlen, fromlen, name, hl.l_date, wcount);
 	} else {
 		makeprint(subjline, subjlen);
-		printf("%c%c%3d %-20.20s  %16.16s %s \"%.*s\"\n",
-			curind, dispc, mesg, name, hl.l_date, wcount,
+		printf(bsdcompat ? catgets(catd, CATSET, 207,
+				"%c%c%3d %s%-*.*s  %16.16s %s \"%.*s\"\n") :
+			catgets(catd, CATSET, 12,
+				"%c%c%3d %s%-*.*s  %16.16s %s %.*s\n"),
+			curind, dispc, mesg, isto ? "To " : "",
+			fromlen, fromlen, name, hl.l_date, wcount,
 			subjlen, subjline);
 	}
 	if (out.s != NULL) free(out.s);
+	free(headline);
+	ac_free(pbuf);
 }
 
 /*
@@ -251,7 +312,8 @@ int
 pdot(v)
 	void *v;
 {
-	printf("%d\n", (int) (dot - &message[0] + 1));
+	printf(catgets(catd, CATSET, 13, "%d\n"),
+			(int)(dot - &message[0] + 1));
 	return(0);
 }
 
@@ -267,7 +329,7 @@ pcmdlist(v)
 	const struct cmd *cp;
 	int cc;
 
-	printf("Commands are:\n");
+	printf(catgets(catd, CATSET, 14, "Commands are:\n"));
 	for (cc = 0, cp = cmdtab; cp->c_name != NULL; cp++) {
 		cc += strlen(cp->c_name) + 2;
 		if (cc > 72) {
@@ -275,7 +337,7 @@ pcmdlist(v)
 			cc = strlen(cp->c_name) + 2;
 		}
 		if ((cp+1)->c_name != NULL)
-			printf("%s, ", cp->c_name);
+			printf(catgets(catd, CATSET, 15, "%s, "), cp->c_name);
 		else
 			printf("%s\n", cp->c_name);
 	}
@@ -300,7 +362,7 @@ char *cmd;
 	 * Must be static to become excluded from sigsetjmp().
 	 */
 	static FILE *obuf;
-#if __GNUC__
+#ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &cp;
 	(void) &cmd;
@@ -314,7 +376,8 @@ char *cmd;
 		if (cmd == NULL) {
 			cmd = value("cmd");
 			if (cmd == NULL || *cmd == '\0') {
-				fputs("variable cmd not set\n", stderr);
+				fputs(catgets(catd, CATSET, 16,
+					"variable cmd not set\n"), stderr);
 				return 1;
 			}
 		}
@@ -336,9 +399,7 @@ char *cmd;
 				nlines += message[*ip - 1].m_lines;
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			cp = value("PAGER");
-			if (cp == NULL || *cp == '\0')
-				cp = PATH_MORE;
+			cp = get_pager();
 			obuf = Popen(cp, "w", NULL, 1);
 			if (obuf == (FILE*)NULL) {
 				perror(cp);
@@ -350,13 +411,14 @@ char *cmd;
 	for (ip = msgvec; *ip && ip - msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
-		dot = mp;
+		setdot(mp);
 		if (value("quiet") == NULL)
-			fprintf(obuf, "Message %d:\n", *ip);
+			fprintf(obuf, catgets(catd, CATSET, 17,
+				"Message %2d:\n"), *ip);
 		(void) send_message(mp, obuf, doign ? ignore : 0,
-				    NULL, CONV_TODISP);
+				    NULL, CONV_TODISP, NULL);
 		if (pipe && value("page")) {
-			fputc('\f', obuf);
+			sputc('\f', obuf);
 		}
 	}
 close_pipe:
@@ -388,7 +450,7 @@ int *flag;
 	/*
 	 * Strip away trailing blanks.
 	 */
-	while (cp > linebuf && isspace(*cp))
+	while (cp > linebuf && whitechar(*cp & 0377))
 		cp--;
 	*++cp = 0;
 	if (cp == linebuf) {
@@ -421,9 +483,9 @@ int *flag;
 		else
 			*flag = 0;
 	} else {
-		while (cp > linebuf && !isspace(*cp))
+		while (cp > linebuf && !whitechar(*cp & 0377))
 			cp--;
-		if (isspace(*cp))
+		if (whitechar(*cp & 0377))
 			*cp++ = 0;
 		else
 			*flag = 0;
@@ -437,7 +499,7 @@ int *flag;
 /*
  * Pipe the messages requested.
  */
-int
+static int
 pipe1(str, doign)
 char *str;
 {
@@ -450,7 +512,7 @@ char *str;
 	if (!f) {
 		*msgvec = first(0, MMNORM);
 		if (*msgvec == 0) {
-			puts("No messages to pipe.");
+			puts(catgets(catd, CATSET, 18, "No messages to pipe."));
 			return 1;
 		}
 		msgvec[1] = 0;
@@ -552,7 +614,8 @@ top(v)
 	int *ip;
 	struct message *mp;
 	int c, topl, lines, lineb;
-	char *valtop, linebuf[LINESIZE];
+	char *valtop, *linebuf = NULL;
+	size_t linesize;
 	FILE *ibuf;
 
 	topl = 5;
@@ -566,20 +629,24 @@ top(v)
 	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
-		dot = mp;
+		setdot(mp);
+		did_print_dot = 1;
 		if (value("quiet") == NULL)
-			printf("Message %d:\n", *ip);
+			printf(catgets(catd, CATSET, 19,
+					"Message %2d:\n"), *ip);
 		ibuf = setinput(mp);
 		c = mp->m_lines;
 		if (!lineb)
 			printf("\n");
 		for (lines = 0; lines < c && lines <= topl; lines++) {
-			if (readline(ibuf, linebuf, LINESIZE) < 0)
+			if (readline(ibuf, &linebuf, &linesize) < 0)
 				break;
 			puts(linebuf);
 			lineb = blankline(linebuf);
 		}
 	}
+	if (linebuf)
+		free(linebuf);
 	return(0);
 }
 
@@ -595,7 +662,7 @@ stouch(v)
 	int *ip;
 
 	for (ip = msgvec; *ip != 0; ip++) {
-		dot = &message[*ip-1];
+		setdot(&message[*ip-1]);
 		dot->m_flag |= MTOUCH;
 		dot->m_flag &= ~MPRESERVE;
 	}
@@ -613,7 +680,7 @@ mboxit(v)
 	int *ip;
 
 	for (ip = msgvec; *ip != 0; ip++) {
-		dot = &message[*ip-1];
+		setdot(&message[*ip-1]);
 		dot->m_flag |= MTOUCH|MBOX;
 		dot->m_flag &= ~MPRESERVE;
 	}
@@ -628,11 +695,12 @@ int
 folders(v)
 	void *v;
 {
-	char dirname[BUFSIZ];
+	char dirname[PATHSIZE];
 	char *cmd;
 
-	if (getfold(dirname, BUFSIZ) < 0) {
-		printf("No value set for \"folder\"\n");
+	if (getfold(dirname, sizeof dirname) < 0) {
+		printf(catgets(catd, CATSET, 20,
+				"No value set for \"folder\"\n"));
 		return 1;
 	}
 	if ((cmd = value("LISTER")) == NULL)

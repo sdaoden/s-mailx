@@ -33,51 +33,42 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.21 (gritter) 5/24/02
+.\"     Sccsid: @(#)nail.1	2.4 (gritter) 9/29/02
 .\"
-.TH NAIL 1 "5/24/02" "nail 9.31" "User Commands"
+.TH NAIL 1 "9/29/02" "nail 10.0" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
-.B nail
-[
-.B \-iInv
-] [
-.BI \-s \ subject
-] [
-.BI \-a \ attachment
-] [
-.BI \-c \ cc-addr
-] [
-.BI \-b \ bcc-addr
-] [
-.BI \-r \ from-addr
-] to-addr . . .
-.PP
-.B nail
-[
-.B \-eHiInNv
-]
-.B \-f
-[ name ]
-.PP
-.B nail
-[
-.B \-eiInNv
-] [
-.BI \-u \ user
-]
+.ad l
+\fBnail\fR [\fB\-BFinv~\fR]
+[\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
+[\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
+[\fB\-h\fI\ hops\fR] \fIto-addr\fR ...
+.sp
+\fBnail\fR [\fB\-BeHiInNv~\fR] [\fB\-T\fI\ name\fR] \fB\-f\fR [\fIname\fR]
+.sp
+\fBnail\fR [\fB\-BeinNv~\fR] [\fB\-u\fI\ user\fR]
+.br
+.ad b
 .SH DESCRIPTION
 \fINail\fR is an intelligent mail processing system, which has
 a command syntax reminiscent of
 .IR ed (1)
 with lines replaced by messages.
-It is based on Berkeley Mail 8.1 and offers some extensions
+It is based on Berkeley Mail 8.1,
+is intended to provide the functionality of the
+.SM POSIX.2
+.B mailx
+command,
+and offers some extensions
 for MIME messages.
 .SH OPTIONS
 .TP
 .BI \-a \ file
 Attach the given file to the message.
+.TP
+.B \-B
+Make standard input and standard output line-buffered.
 .TP
 .BI \-b \ address
 Send blind carbon copies to list.
@@ -92,7 +83,7 @@ Just check if mail is present in the system mailbox.
 If yes, return an exit status of zero,
 else, a non-zero value.
 .TP
-.BI \-f " [ file ]"
+\fB\-f\fR [\fIfile\fR]
 Read in the contents of your mbox
 (or the specified file)
 for processing;
@@ -100,8 +91,17 @@ when you quit, \fInail\fR writes
 undeleted messages back
 to this file.
 .TP
+.B \-F
+Save the message to send
+in a file named after the local part
+of the first recipient's address.
+.TP
 .B \-H
 Print header summaries for all messages and exit.
+.TP
+\fB\-h\fI hops\fR
+Invoke sendmail with the specified hop count.
+This option has no effect when SMTP is used for sending mail.
 .TP
 .B \-i
 Ignore tty interrupt signals.
@@ -110,11 +110,10 @@ particularly useful when using
 \fInail\fR on noisy phone lines.
 .TP
 .B \-I
-Forces \fInail\fR to run in interactive mode even when
-input is not a terminal.
-In particular, the
-'~' special
-character when sending mail is only active in interactive mode.
+Shows the `Newsgroup:' or `Article-Id:' fields
+in the header summary.
+Only applicable in combination with
+.BR \-f .
 .TP
 .B \-n
 Inhibits reading /etc/nail.rc upon startup.
@@ -133,11 +132,21 @@ Sets the
 address. Overrides any
 .I from
 variable specified in environment or startup files.
+Tilde escapes are disabled.
+The \fB\-r\fI address\fR options are passed to the mail transfer agent
+unless SMTP is used.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
 \-s flag is used as a subject; be careful to quote subjects
 containing spaces).
+.TP
+.BI \-T \ name
+Writes the `Message-Id' and `Article-Id' header fields
+of each message read in the file
+.IR name .
+Implies
+.BR \-I .
 .TP
 .BI \-u \ user
 Reads the mailbox of the given user name.
@@ -149,6 +158,9 @@ delivery are displayed on the user's terminal.
 .TP
 .B \-V
 Print \fInail\fR's version and exit.
+.TP
+.B \-~
+Enable tilde escapes even if not in interactive mode.
 .SH USAGE
 .SS "Sending mail"
 To send a message to one or more people,
@@ -349,9 +361,13 @@ If the latter differs from the one
 that should be used in outgoing mail,
 the \fIttycharset\fR variable can be used
 for its declaration.
-Any outgoing message is then converted,
+An outgoing message is then converted,
 resulting in errors when this process
-cannot be done for the entire text.
+cannot be done for the entire text;
+if the message contains
+.SM NUL
+characters,
+it is not converted.
 Attachments are never converted.
 Any message that is displayed on a terminal
 is tried to convert, too,
@@ -391,33 +407,6 @@ command which follows.
 .B |
 A synonym for the \fIpipe\fR command.
 .TP
-.B Forward
-(For) Like forward,
-but does not add any header lines.
-This is not a way to hide the sender's identity,
-but useful for sending a message again
-to the same recipients.
-.TP
-.B Pipe
-(Pi) Like pipe but also
-pipes ignored header fields.
-.TP
-.B Print
-(P) Like print but also
-prints out ignored header fields.
-See also print, ignore and retain.
-.TP
-.B Reply
-(R) Reply to originator.
-Does not reply to other recipients
-of the original message.
-.TP
-.B Respond
-Same as Reply.
-.TP
-.B Type
-(T) Identical to the Print command.
-.TP
 .B alias
 (a) With no arguments,
 prints out all currently-defined aliases.
@@ -442,15 +431,23 @@ the current set of alternate names is displayed.
 Same as chdir.
 .TP
 .B chdir
-(c) Changes the user's working directory to that specified,
+(ch) Changes the user's working directory to that specified,
 if given.
 If no directory is given,
 then changes to the user's login directory.
 .TP
 .B copy
-(co) The copy command does the same thing that save does,
+(c) The copy command does the same thing that
+.B save
+does,
 except that it does not mark the messages
 it is used on for deletion when you quit.
+.TP
+.B Copy
+(C) Similar to
+.BR copy ,
+but saves the messages in a file named after the local part
+of the sender address of the first message.
 .TP
 .B delete
 (d) Takes a list of messages as argument
@@ -502,7 +499,7 @@ or his edit file in \-f.
 List the names of the folders in your folder directory.
 .TP
 .B folder
-(fo) The folder command switches
+(fold) The folder command switches
 to a new mail file or folder.
 With no arguments, it tells you
 which file you are currently reading.
@@ -517,6 +514,43 @@ Some special conventions are recognized for the name.
 %user means user's system mailbox,
 & means your mbox file,
 and +folder means a file in your folder directory.
+.TP
+.B Followup
+(F) Similar to
+.BR Respond ,
+but saves the message in a file
+named after the local part of the first recipient's address.
+.TP
+.B followup
+(fo) Similar to
+.BR respond ,
+but saves the message in a file
+named after the local part of the first recipient's address.
+.TP
+.B followupall
+Similar to
+.BR followup ,
+but responds to all recipients regardless of the
+.B flipr
+and
+.B Replyall
+variables.
+.TP
+.B followupsender
+Similar to
+.BR Followup ,
+but responds to the sender only regardless of the
+.B flipr
+and
+.B Replyall
+variables.
+.TP
+.B Forward
+(For) Like forward,
+but does not add any header lines.
+This is not a way to hide the sender's identity,
+but useful for sending a message again
+to the same recipients.
 .TP
 .B forward
 (for) Takes a list of messages and a user name
@@ -580,6 +614,12 @@ it lists the current set of ignored fields.
 .B list
 Prints the names of all available commands.
 .TP
+.B Mail
+(M) Similar to
+.BR mail ,
+but saves the message in a file
+named after the local part of the first recipient's address.
+.TP
 .B mail
 (m) Takes as argument login names
 and distribution group names
@@ -596,8 +636,20 @@ if you do not have the hold option set.
 in sequence and types it.
 With an argument list, types the next matching message.
 .TP
+.B New
+Same as
+.BR unread .
+.TP
+.B new
+Same as
+.BR unread .
+.TP
 .B preserve
 (pre) A synonym for hold.
+.TP
+.B Pipe
+(Pi) Like pipe but also
+pipes ignored header fields.
 .TP
 .B pipe
 (pi) Takes a message list and a shell command
@@ -607,6 +659,11 @@ the current message is piped
 through the command given by the \fIcmd\fR variable.
 If the \fI page\fR variable is set,
 every message is followed by a formfeed character.
+.TP
+.B Print
+(P) Like print but also
+prints out ignored header fields.
+See also print, ignore and retain.
 .TP
 .B print
 (p) Takes a message list and types out each message
@@ -630,10 +687,49 @@ unless the rewrite of edit file fails,
 in which case the user can escape
 with the exit command.
 .TP
-.BR reply \ or \ respond
+.B Reply
+(R) Reply to originator.
+Does not reply to other recipients
+of the original message.
+.TP
+.BR reply
 (r) Takes a message list and sends mail
 to the sender and all recipients of the specified message.
 The default message must not be deleted.
+.TP
+.B replyall
+Similar to
+.BR reply ,
+but responds to all recipients regardless of the
+.B flipr
+and
+.B Replyall
+variables.
+.TP
+.B replysender
+Similar to
+.BR Reply ,
+but responds to the sender only regardless of the
+.B flipr
+and
+.B Replyall
+variables.
+.TP
+.B Respond
+Same as
+.BR Reply .
+.TP
+.B respond
+Same as
+.BR reply .
+.TP
+.B respondall
+Same as
+.BR replyall .
+.TP
+.B respondsender
+Same as
+.BR replysender .
 .TP
 .B retain
 Add the list of header fields named to the retained list.
@@ -645,6 +741,15 @@ to print a message in its entirety.
 If retain is executed with no arguments,
 it lists the current set of retained fields.
 .TP
+.B Save
+(S)
+Similar to
+.BR save ,
+but saves the messages
+in a file named after the local part
+of the sender of the first message
+instead of taking a filename argument.
+.TP
 .B save
 (s) Takes a message list and a filename
 and appends each message
@@ -654,7 +759,8 @@ followed by the line count and character count
 is echoed on the user's terminal.
 .TP
 .B set
-(se) With no arguments, prints all variable values.
+(se) With no arguments, prints all variable values,
+piped through the pager if the output does not fit on the screen.
 Otherwise, sets option.
 Arguments are of the form option=value
 (no space before or after =)
@@ -662,6 +768,13 @@ or option.
 Quotation marks may be placed around any part of the
 assignment statement to quote blanks
 or tabs, i.e. '\fIset indentprefix="\->"\fR'.
+If an argument begins with
+.BR no ,
+as in `\fBset no\fIsave\fR',
+the effect is the same as invoking the
+.B unset
+command with the remaining part of the variable
+(`\fBunset \fIsave\fR').
 .TP
 .B savediscard
 Same as saveignore.
@@ -706,6 +819,9 @@ and marks the messages for saving in the
 .I mbox
 file.
 .TP
+.B Type
+(T) Identical to the Print command.
+.TP
 .B type
 (t) A synonym for print.
 .TP
@@ -717,9 +833,29 @@ The group names no longer have any significance.
 .B undelete
 (u) Takes a message list and marks each message as not being deleted.
 .TP
+.B unignore
+Removes the header field names
+from the list of ignored fields.
+.TP
+.B Unread
+Same as
+.BR unread .
+.TP
 .B unread
 (U) Takes a message list and marks each message
 as not having been read.
+.TP
+.B unretain
+Removes the header field names
+from the list of retained fields.
+.TP
+.B unsaveignore
+Removes the header field names
+from the list of ignored fields for saving.
+.TP
+.B unsaveretain
+Removes the header field names
+from the list of retained fields for saving.
 .TP
 .B unset
 Takes a list of option names and discards their remembered
@@ -744,6 +880,8 @@ that have a filename given in the part header are written,
 the other are discarded.
 The original message is never marked for deletion
 in the originating mail folder.
+The contents of the destination file are overwritten
+if the file previously existed.
 .TP
 .B xit
 (x) A synonym for exit.
@@ -796,6 +934,18 @@ will ask for further attachments,
 until an empty file name is given.
 If \fIfilename\fP arguments are specified,
 all of them are appended to the end of the attachment list.
+.TP
+.B ~A
+Inserts the string contained in the
+.B Sign
+variable
+(same as `~i Sign').
+.TP
+.B ~a
+Inserts the string contained in the
+.B sign
+variable
+(same as `~i sign').
 .TP
 .BI ~b "name ..."
 Add the given names to the list of carbon copy recipients
@@ -856,6 +1006,8 @@ Identical to ~m, except all message headers are included.
 Print out the message collected so far,
 prefaced by the message header fields
 and followed by the attachment list, if any.
+If the message text is longer than the screen size,
+it is piped through the pager.
 .TP
 .B ~q
 Abort the message being sent,
@@ -923,11 +1075,13 @@ Options may be either binary,
 in which case it is only significant
 to see whether they are set or not;
 or string, in which case the actual value is of interest.
+.SS "Binary options"
 .PP
 The binary options include the following:
 .TP
-.B Replyall
-Reverses the sense of reply and Reply commands.
+.B allnet
+Causes only the local part to be evaluated
+when comparing addresses.
 .TP
 .B append
 Causes messages saved in mbox to be appended to the end
@@ -963,6 +1117,26 @@ Causes the delete command to behave like dp \-
 thus, after deleting a message,
 the next one will be typed automatically.
 .TP
+.B bang
+Enables the substitution of `\fB!\fR'
+by the contents of the last command line
+in shell escapes.
+.TP
+.B bsdcompat
+Sets some cosmetical features to traditional
+.SM BSD
+style;
+affects the default prompt,
+the order of header fields,
+the format of the header summary,
+the output format of the
+.B set
+command,
+and the default pager.
+.TP
+.B debug
+Prints debugging messages and disables the actual delivery of messages.
+.TP
 .B dot
 The binary option dot causes \fInail\fR to interpret
 a period alone on a line
@@ -979,6 +1153,17 @@ If the mailbox is empty,
 and exits immediately.
 If this option is set,
 \fInail\fR starts even with an empty mailbox.
+.TP
+.B flipr
+Exchanges the
+.B Respond
+with the
+.B respond
+commands and vice-versa.
+.TP
+.B header
+Causes the header summary to be written at startup;
+enabled by default.
 .TP
 .B hold
 This option is used to hold messages
@@ -1000,7 +1185,7 @@ instead of deleting it when it is empty.
 This should always be set,
 since it prevents malicious users
 from creating fake mail folders
-in a world-writeable spool directory.
+in a world-writable spool directory.
 .TP
 .B keepsave
 When you save a message,
@@ -1021,12 +1206,13 @@ the sender to be included in the group.
 Setting the option noheader is the same
 as giving the \-N flag on the command line.
 .TP
-.B nosave
-Normally, when you abort a message
-with two RUBOUT (interrupt characters)
-\fInail\fR copies the partial letter
-to the file '\fIdead.letter\fR' in your home directory.
-Setting the binary option nosave prevents this.
+.B outfolder
+Causes the filename given in the
+.B record
+variable to be interpreted relative to the directory given in the
+.B folder
+variable rather than to the current directory
+unless it is an absolute pathname.
 .TP
 .B page
 If set, each message the \fIpipe\fR command prints out
@@ -1035,6 +1221,16 @@ is followed by a formfeed character.
 .B quiet
 Suppresses the printing of the version when first invoked.
 .TP
+.B Replyall
+Reverses the sense of reply and Reply commands.
+.TP
+.B save
+When you abort a message
+with two RUBOUT (interrupt characters)
+\fInail\fR copies the partial letter
+to the file '\fIdead.letter\fR' in your home directory.
+This option is set by default.
+.TP
 .B searchheaders
 If this option is set, then
 a message-list specifier in the form '\fI/x:y\fR'
@@ -1042,9 +1238,18 @@ will expand to all messages containing
 the substring '\fIy\fR' in the header field '\fIx\fR'.
 The string search is case insensitive.
 .TP
+.B sendwait
+When sending a message,
+wait until the mail transfer agent exits
+before accepting further commands.
+.TP
 .B showlast
 Setting this option causes \fInail\fR to start at the
 last message instead of the first one when opening a mail folder.
+.TP
+.B showto
+Causes the recipient of the message to be shown in the header summary
+if the message was sent by the user.
 .TP
 .B stealthmua
 Inhibits the generation of
@@ -1062,53 +1267,9 @@ as using the \-v flag on the command line.
 When \fInail\fR runs in verbose mode,
 the actual delivery of messages
 is displayed on the user's terminal.
+.SS "String Options"
 .PP
 The string options include the following:
-.TP
-.B DEAD
-The name of the file to use
-for saving aborted messages.
-This defaults to '\fIdead.letter\fR'
-in the user's home directory.
-.TP
-.B EDITOR
-Pathname of the text editor to use
-in the edit command and ~e escape.
-If not defined,
-then a default editor is used.
-.TP
-.B LISTER
-Pathname of the directory lister
-to use in the folders command.
-Default is /bin/ls.
-.TP
-.B MBOX
-The name of the mbox file.
-It can be the name of a folder.
-The default is '\fImbox\fR'
-in the user's home directory.
-.TP
-.B ORGANIZATION
-The value to put into the \fI'Organization:'\fR field of the message header.
-.TP
-.B PAGER
-Pathname of the program to use
-in the more command
-or when crt variable is set.
-The default paginator
-.IR more (1)
-is used
-if this option is not defined.
-.TP
-.B SHELL
-Pathname of the shell to use
-in the ! command and the ~! escape.
-A default shell is used
-if this option is not defined.
-.TP
-.B VISUAL
-Pathname of the text editor to use
-in the visual command and ~v escape.
 .TP
 .B charset
 The name of the character set used by \fInail\fR.
@@ -1129,6 +1290,18 @@ If crt is set without a value,
 then the height of the terminal screen stored in the system
 is used to compute the threshold (see
 .IR stty (1)).
+.TP
+.B DEAD
+The name of the file to use
+for saving aborted messages.
+This defaults to '\fIdead.letter\fR'
+in the user's home directory.
+.TP
+.B EDITOR
+Pathname of the text editor to use
+in the edit command and ~e escape.
+If not defined,
+then a default editor is used.
 .TP
 .B encoding
 The default MIME encoding to use
@@ -1177,6 +1350,39 @@ in place of the normal tab character (^I).
 Be sure to quote the value
 if it contains spaces or tabs.
 .TP
+.B LISTER
+Pathname of the directory lister
+to use in the folders command.
+Default is /bin/ls.
+.TP
+.B MAILX_HEAD
+A string to put at the beginning of each new message.
+.TP
+.B MAILX_TAIL
+A string to put at the end of each new message.
+.TP
+.B MBOX
+The name of the mbox file.
+It can be the name of a folder.
+The default is '\fImbox\fR'
+in the user's home directory.
+.TP
+.B ORGANIZATION
+The value to put into the \fI'Organization:'\fR field of the message header.
+.TP
+.B PAGER
+Pathname of the program to use
+in the more command
+or when crt variable is set.
+The default paginator
+.IR pg (1)
+or, in
+.SM BSD
+compatibility mode,
+.IR more (1)
+is used
+if this option is not defined.
+.TP
 .BI pipe- content/subcontent
 When a MIME message part of
 .I content/subcontent
@@ -1191,7 +1397,7 @@ will format HTML text using the
 .B w3m
 web browser.
 Special care must be taken when using such commands
-as email viruses may be distributed by this method;
+as e-mail viruses may be distributed by this method;
 if messages of type
 .I application/x-sh
 were filtered through the shell, for example,
@@ -1199,6 +1405,13 @@ a message sender could easily execute arbitrary code
 on the system
 .B nail
 is running on.
+.TP
+.B prompt
+The string printed when a command is accepted.
+Defaults to "\fB? \fR",
+or to "\fB& \fR" if the
+.B bsdcompat
+variable is set.
 .TP
 .B quote
 If set, \fInail\fR starts a replying message with the original message prefixed
@@ -1232,6 +1445,23 @@ set this option to the full pathname
 of the program to use.
 This should be used with care.
 .TP
+.B SHELL
+Pathname of the shell to use
+in the ! command and the ~! escape.
+A default shell is used
+if this option is not defined.
+.TP
+.TP
+.B Sign
+A string for use with the
+.B ~A
+command.
+.TP
+.B sign
+A string for use with the
+.B ~a
+command.
+.TP
 .B smtp
 Normally, \fInail\fR invokes
 .IR sendmail (8)
@@ -1255,7 +1485,7 @@ If replying to a message, this address is handled
 as if it were in the alternates list.
 .TP
 .B signature
-Must correspondend to the name of a readable file if set.
+Must correspond to the name of a readable file if set.
 The file's content is then appended to each singlepart message
 and to the first part of each multipart message.
 Be warned that there is no possibility
@@ -1278,6 +1508,9 @@ and will be displayed by the \fIset\fP command.
 Note that this is not necessarily a character set name
 that can be used in Internet messages.
 If unset, its default is the value of the charset variable.
+.B VISUAL
+Pathname of the text editor to use
+in the visual command and ~v escape.
 .SH ENVIRONMENT VARIABLES
 Besides the variables described above, \fInail\fR uses
 the following environment strings:
@@ -1285,7 +1518,7 @@ the following environment strings:
 .B HOME
 The user's home directory.
 .TP
-.BR LANG ,\  LC_ALL ,\  LC_CTYPE
+\fBLANG\fR, \fBLC_ALL\fR, \fBLC_CTYPE\fR, \fBLC_MESSAGES\fR
 See
 .IR locale (7).
 .TP
@@ -1295,6 +1528,11 @@ Otherwise, a system-dependent default is used.
 .TP
 .B MAILRC
 Is used as startup file instead of ~/.mailrc if set.
+.TP
+.B NAILRC
+If this variable is set and
+.B MAILRC is not set,
+it is read as startup file.
 .TP
 .B TMPDIR
 Used as directory for temporary files instead of /tmp, if set.
@@ -1315,7 +1553,9 @@ System wide MIME types.
 fetchmail(1),
 fmt(1),
 newaliases(1),
+pg(1),
 procmail(1),
+more(1),
 vacation(1),
 aliases(5),
 locale(7),
@@ -1323,21 +1563,7 @@ mailaddr(7),
 sendmail(8)
 .SH NOTES
 .PP
-Due to limitations of \fRnail\fR's internal message handling,
-an outgoing singlepart message must always be a text message;
-the same applies to the first part of a multipart message.
-Binary files must be sent as attachments.
-.PP
-\fINail\fR cannot handle
-the \fIbinary\fR Content-Transfer-Encoding.
-The \fIbase64\fR encoding should be used instead.
-.PP
-Contrasting to some versions of BSD Mail,
-\fInail\fR is not able to act
-as a Mail Delivery Agent (MDA).
-Use
-.IR procmail (1)
-for this purpose.
+Variables in the environment passed to nail cannot be unset.
 .PP
 The character set conversion relies heavily
 on the
@@ -1346,8 +1572,10 @@ function.
 Its functionality differs widely
 between the various system environments
 \fInail\fR runs on.
-.SH HISTORY
-A \fImail\fR command appeared in Version 6 AT&T UNIX.
+.PP
+A \fImail\fR command appeared in Version 1 AT&T Unix.
+.SM BSD
+Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
 from The Mail Reference Manual
 originally written by Kurt Shoens.

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmdtab.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)cmdtab.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -63,25 +68,36 @@ const struct cmd cmdtab[] = {
 	{ "undelete",	undeletecmd,	P|MSGLIST,	MDELETED,MMNDEL },
 	{ "unset",	unset,		M|RAWLIST,	1,	1000 },
 	{ "mail",	sendmail,	R|M|I|STRLIST,	0,	0 },
+	{ "Mail",	Sendmail,	R|M|I|STRLIST,	0,	0 },
 	{ "mbox",	mboxit,		W|MSGLIST,	0,	0 },
 	{ "more",	more,		MSGLIST,	0,	MMNDEL },
 	{ "page",	more,		MSGLIST,	0,	MMNDEL },
 	{ "More",	More,		MSGLIST,	0,	MMNDEL },
 	{ "Page",	More,		MSGLIST,	0,	MMNDEL },
 	{ "unread",	unread,		MSGLIST,	0,	MMNDEL },
+	{ "Unread",	unread,		MSGLIST,	0,	MMNDEL },
+	{ "new",	unread,		MSGLIST,	0,	MMNDEL },
+	{ "New",	unread,		MSGLIST,	0,	MMNDEL },
 	{ "!",		shell,		I|STRLIST,	0,	0 },
 	{ "copy",	copycmd,	M|STRLIST,	0,	0 },
+	{ "Copy",	Copycmd,	M|STRLIST,	0,	0 },
 	{ "chdir",	schdir,		M|RAWLIST,	0,	1 },
 	{ "cd",		schdir,		M|RAWLIST,	0,	1 },
 	{ "save",	save,		STRLIST,	0,	0 },
+	{ "Save",	Save,		STRLIST,	0,	0 },
 	{ "source",	source,		M|RAWLIST,	1,	1 },
 	{ "set",	set,		M|RAWLIST,	0,	1000 },
 	{ "shell",	dosh,		I|NOLIST,	0,	0 },
 	{ "version",	pversion,	M|NOLIST,	0,	0 },
 	{ "group",	group,		M|RAWLIST,	0,	1000 },
+	{ "ungroup",	ungroup,	M|RAWLIST,	0,	1000 },
+	{ "unalias",	ungroup,	M|RAWLIST,	0,	1000 },
 	{ "write",	swrite,		STRLIST,	0,	0 },
 	{ "from",	from,		MSGLIST,	0,	MMNORM },
 	{ "file",	file,		T|M|RAWLIST,	0,	1 },
+	{ "followup",	followup,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "followupall", followupall,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "followupsender", followupsender, R|I|MSGLIST, 0,	MMNDEL },
 	{ "folder",	file,		T|M|RAWLIST,	0,	1 },
 	{ "folders",	folders,	T|M|NOLIST,	0,	0 },
 	{ "?",		help,		M|NOLIST,	0,	0 },
@@ -91,8 +107,13 @@ const struct cmd cmdtab[] = {
 	{ "=",		pdot,		NOLIST,		0,	0 },
 	{ "Reply",	Respond,	R|I|MSGLIST,	0,	MMNDEL },
 	{ "Respond",	Respond,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "Followup",	Followup,	R|I|MSGLIST,	0,	MMNDEL },
 	{ "reply",	respond,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "replyall",	respondall,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "replysender", respondsender,	R|I|MSGLIST,	0,	MMNDEL },
 	{ "respond",	respond,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "respondall",	respondall,	R|I|MSGLIST,	0,	MMNDEL },
+	{ "respondsender", respondsender, R|I|MSGLIST,	0,	MMNDEL },
 	{ "Forward",	Forwardcmd,	R|STRLIST,	0,	MMNDEL },
 	{ "forward",	forwardcmd,	R|STRLIST,	0,	MMNDEL },
 	{ "edit",	editor,		I|MSGLIST,	0,	MMNORM },
@@ -116,8 +137,14 @@ const struct cmd cmdtab[] = {
 	{ "saveignore",	saveigfield,	M|RAWLIST,	0,	1000 },
 	{ "savediscard",saveigfield,	M|RAWLIST,	0,	1000 },
 	{ "saveretain",	saveretfield,	M|RAWLIST,	0,	1000 },
+	{ "unignore",	unignore,	M|RAWLIST,	0,	1000 },
+	{ "unretain",	unretain,	M|RAWLIST,	0,	1000 },
+	{ "unsaveignore", unsaveignore,	M|RAWLIST,	0,	1000 },
+	{ "unsaveretain", unsaveretain,	M|RAWLIST,	0,	1000 },
 /*	{ "Header",	Header,		STRLIST,	0,	1000 },	*/
+#ifdef	DEBUG_COMMANDS
 	{ "core",	core,		M|NOLIST,	0,	0 },
 	{ "clobber",	clobber,	M|RAWLIST,	0,	1 },
+#endif	/* DEBUG_COMMANDS */
 	{ 0,		0,		0,		0,	0 }
 };

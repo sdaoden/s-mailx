@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	1.10 (gritter) 2/20/02";
+static char sccsid[] = "@(#)names.c	2.3 (gritter) 9/15/02";
 #endif
 #endif /* not lint */
 
@@ -49,6 +54,13 @@ static char sccsid[] = "@(#)names.c	1.10 (gritter) 2/20/02";
 #ifdef	HAVE_STRINGS_H
 #include <strings.h>
 #endif
+
+static struct name	*tailof __P((struct name *));
+static char	*yankword __P((char *, char []));
+static struct name	*gexpand __P((struct name *, struct grouphead *,
+				int, int));
+static struct name	*put __P((struct name *, struct name *));
+static struct name	*delname __P((struct name *, char []));
 
 /*
  * Allocate a single element of a name list,
@@ -74,7 +86,7 @@ nalloc(str, ntype)
 /*
  * Find the tail of a list and return it.
  */
-struct name *
+static struct name *
 tailof(name)
 	struct name *name;
 {
@@ -106,7 +118,7 @@ extract(line, ntype)
 	top = NIL;
 	np = NIL;
 	cp = line;
-	nbuf = (char*)smalloc(strlen(line) + 1);
+	nbuf = ac_alloc(strlen(line) + 1);
 	while ((cp = yankword(cp, nbuf)) != NULL) {
 		t = nalloc(nbuf, ntype);
 		if (top == NIL)
@@ -116,7 +128,7 @@ extract(line, ntype)
 		t->n_blink = np;
 		np = t;
 	}
-	free(nbuf);
+	ac_free(nbuf);
 	return top;
 }
 
@@ -138,8 +150,9 @@ detract(np, ntype)
 		return(NULL);
 	ntype &= ~GCOMMA;
 	s = 0;
-	if (debug && comma)
-		fprintf(stderr, "detract asked to insert commas\n");
+	if ((debug || value("debug")) && comma)
+		fprintf(stderr, catgets(catd, CATSET, 145,
+				"detract asked to insert commas\n"));
 	for (p = np; p != NIL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
@@ -155,7 +168,7 @@ detract(np, ntype)
 	for (p = np; p != NIL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
-		cp = copy(p->n_name, cp);
+		cp = sstpcpy(cp, p->n_name);
 		if (comma && p->n_flink != NIL)
 			*cp++ = ',';
 		*cp++ = ' ';
@@ -170,7 +183,7 @@ detract(np, ntype)
  * Grab a single word (liberal word)
  * Throw away things between ()'s, and take anything between <>.
  */
-char *
+static char *
 yankword(ap, wbuf)
 	char *ap, wbuf[];
 {
@@ -195,7 +208,7 @@ yankword(ap, wbuf)
 				if (nesting <= 0)
 					break;
 			}
-		} else if (*cp == ' ' || *cp == '\t' || *cp == ',')
+		} else if (blankchar(*cp & 0377) || *cp == ',')
 			cp++;
 		else
 			break;
@@ -254,7 +267,7 @@ outof(names, fo, hp)
 	(void) time(&now);
 	date = ctime(&now);
 	while (np != NIL) {
-		if (!isfileaddr(np->n_name) && np->n_name[0] != '|') {
+		if (!is_fileaddr(np->n_name) && np->n_name[0] != '|') {
 			np = np->n_flink;
 			continue;
 		}
@@ -272,9 +285,10 @@ outof(names, fo, hp)
 		if (image < 0) {
 			char *tempEdit;
 
-			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600))
+			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600, 1))
 					== (FILE *)NULL) {
-				perror("temporary edit file");
+				perror(catgets(catd, CATSET, 146,
+						"temporary edit file"));
 				senderr++;
 				goto cant;
 			}
@@ -282,22 +296,24 @@ outof(names, fo, hp)
 			(void) unlink(tempEdit);
 			Ftfree(&tempEdit);
 			if (image < 0) {
-				perror("temporary edit file");
+				perror(catgets(catd, CATSET, 147,
+						"temporary edit file"));
 				senderr++;
 				(void) Fclose(fout);
 				goto cant;
 			}
 			(void) fcntl(image, F_SETFD, FD_CLOEXEC);
 			fprintf(fout, "From %s %s", myname, date);
-			while ((c = getc(fo)) != EOF)
-				(void) putc(c, fout);
+			while ((c = sgetc(fo)) != EOF)
+				(void) sputc(c, fout);
 			rewind(fo);
 			if (c != '\n')
-				putc('\n', fout);
-			(void) putc('\n', fout);
+				sputc('\n', fout);
+			(void) sputc('\n', fout);
 			(void) fflush(fout);
 			if (ferror(fout))
-				perror("temporary edit file");
+				perror(catgets(catd, CATSET, 148,
+						"temporary edit file"));
 			(void) Fclose(fout);
 		}
 
@@ -345,14 +361,15 @@ outof(names, fo, hp)
 			} else
 				fin = Fdopen(f, "r");
 			if (fin == (FILE *)NULL) {
-				fprintf(stderr, "Can't reopen image\n");
+				fprintf(stderr, catgets(catd, CATSET, 149,
+						"Can't reopen image\n"));
 				(void) Fclose(fout);
 				senderr++;
 				goto cant;
 			}
 			rewind(fin);
-			while ((c = getc(fin)) != EOF)
-				(void) putc(c, fout);
+			while ((c = sgetc(fin)) != EOF)
+				(void) sputc(c, fout);
 			if (ferror(fout))
 				senderr++, perror(fname);
 			(void) Fclose(fout);
@@ -380,7 +397,7 @@ cant:
  * be a filename.  We cheat with .'s to allow path names like ./...
  */
 int
-isfileaddr(name)
+is_fileaddr(name)
 	char *name;
 {
 	char *cp;
@@ -394,6 +411,25 @@ isfileaddr(name)
 			return 1;
 	}
 	return 0;
+}
+
+static int
+same_name(char *n1, char *n2)
+{
+	int c1, c2;
+
+	if (value("allnet") != NULL) {
+		do {
+			c1 = (*n1++ & 0377);
+			c2 = (*n2++ & 0377);
+			c1 = lowerconv(c1);
+			c2 = lowerconv(c2);
+			if (c1 != c2)
+				return 0;
+		} while (c1 != '\0' && c2 != '\0' && c1 != '@' && c2 != '@');
+		return 1;
+	} else
+		return asccasecmp(n1, n2) == 0;
 }
 
 /*
@@ -438,7 +474,7 @@ usermap(names)
  * Direct recursion is not expanded for convenience.
  */
 
-struct name *
+static struct name *
 gexpand(nlist, gh, metoo, ntype)
 	struct name *nlist;
 	struct grouphead *gh;
@@ -451,7 +487,8 @@ gexpand(nlist, gh, metoo, ntype)
 	char *cp;
 
 	if (depth > MAXEXP) {
-		printf("Expanding alias to depth larger than %d\n", MAXEXP);
+		printf(catgets(catd, CATSET, 150,
+			"Expanding alias to depth larger than %d\n"), MAXEXP);
 		return(nlist);
 	}
 	depth++;
@@ -473,7 +510,7 @@ quote:
 		 */
 		if (gp == gh->g_list && gp->ge_link == NOGE)
 			goto skip;
-		if (!metoo && strcmp(cp, myname) == 0)
+		if (!metoo && same_name(cp, myname))
 			np->n_type |= GDEL;
 skip:
 		nlist = put(nlist, np);
@@ -515,7 +552,7 @@ unpack(np)
 
 	n = np;
 	if ((t = count(n)) == 0)
-		panic("No names to unpack");
+		panic(catgets(catd, CATSET, 151, "No names to unpack"));
 	/*
 	 * Compute the number of extra arguments we will need.
 	 * We need at least two extra -- one for "mail" and one for
@@ -568,7 +605,7 @@ elide(names)
 	new->n_flink = NIL;
 	while (np != NIL) {
 		t = new;
-		while (strcasecmp(t->n_name, np->n_name) < 0) {
+		while (asccasecmp(t->n_name, np->n_name) < 0) {
 			if (t->n_flink == NIL)
 				break;
 			t = t->n_flink;
@@ -579,7 +616,7 @@ elide(names)
 		 * the current value of t.
 		 */
 
-		if (strcasecmp(t->n_name, np->n_name) < 0) {
+		if (asccasecmp(t->n_name, np->n_name) < 0) {
 			t->n_flink = np;
 			np->n_blink = t;
 			t = np;
@@ -626,7 +663,7 @@ elide(names)
 	while (np != NIL) {
 		t = np;
 		while (t->n_flink != NIL &&
-		       strcasecmp(np->n_name, t->n_flink->n_name) == 0)
+		       asccasecmp(np->n_name, t->n_flink->n_name) == 0)
 			t = t->n_flink;
 		if (t == np || t == NIL) {
 			np = np->n_flink;
@@ -650,7 +687,7 @@ elide(names)
  * Put another node onto a list of names and return
  * the list.
  */
-struct name *
+static struct name *
 put(list, node)
 	struct name *list, *node;
 {
@@ -680,7 +717,7 @@ count(np)
 /*
  * Delete the given name from a namelist.
  */
-struct name *
+static struct name *
 delname(np, name)
 	struct name *np;
 	char name[];
@@ -688,7 +725,7 @@ delname(np, name)
 	struct name *p;
 
 	for (p = np; p != NIL; p = p->n_flink)
-		if (strcasecmp(p->n_name, name) == 0) {
+		if (same_name(p->n_name, name)) {
 			if (p->n_blink == NIL) {
 				if (p->n_flink != NIL)
 					p->n_flink->n_blink = NIL;
@@ -726,3 +763,37 @@ prettyprint(name)
 	fprintf(stderr, "\n");
 }
 */
+
+struct name *
+delete_alternates(struct name *np)
+{
+	char **ap;
+	char *cp;
+
+	np = delname(np, myname);
+	if (altnames)
+		for (ap = altnames; *ap; ap++)
+			np = delname(np, *ap);
+	if ((cp = skin(value("from"))) != NULL)
+		np = delname(np, cp);
+	if ((cp = skin(value("replyto"))) != NULL)
+		np = delname(np, cp);
+	return np;
+}
+
+int
+is_myname(char *name)
+{
+	char **ap, *cp;
+
+	if (same_name(myname, name))
+		return 1;
+	for (ap = altnames; *ap; ap++)
+		if (same_name(*ap, name))
+			return 1;
+	if ((cp = value("from")) != NULL && same_name(skin(cp), name))
+		return 1;
+	if ((cp = value("replyto")) != NULL && same_name(skin(cp), name))
+		return 1;
+	return 0;
+}

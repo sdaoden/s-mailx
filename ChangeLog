@@ -1,3 +1,73 @@
+[10.0] released 9/29/02
+* Base64 decoding was calling malloc(0) which caused "Out of memory"
+  errors on some platforms (Bugreport by Stan Tobias).
+* Install nail.rc in the place specified with --with-rcfile (Bugreport by
+  Jeffrey Neitzel)
+* Code cleanup in send.c (Contribution by Stan Tobias).
+* When writing attachment data, the 'w' command will no longer append to
+  a file, but truncate and overwrite it.
+* Extract filenames from obsolete 'Content-Type: ...; name=file' fields (Stan
+  Tobias).
+* Delete directory components from attachment filenames before saving (Fix by
+  Stan Tobias).
+* NAILRC variable (based on a suggestion by Stan Tobias).
+* "bsdcompat" and "prompt" variables; prompt defaults to "? ".
+* "allnet", "debug", "flipr", "outfolder", "sendwait", and "showto" variables
+* "bang" variable. NOTE: Previous versions behaved as if this variable
+   had been set.
+* ~a and ~A tilde escapes with standard semantics.
+* -F command line option, "Mail", "followup", "Followup", "Copy" and "Save"
+  commands.
+  NOTE: This changes the abbreviation of the "folder" command to "fold".
+* "set nofoo" unsets the variable "foo". The variables "nosave" and "noheader"
+  have therefore changed in their positive counterparts and are now set by
+  default.
+* The pg command is now the default pager unless bsdcompat is set.
+* Line and character counts are printed for copy and save commands.
+* MAILX_HEAD and MAILX_TAIL variables.
+* LC_MESSAGES support.
+* -I option prints 'Newsgroups:' field in header summary now. NOTE: The
+  functionality of the old -I option, "interactive", is no longer available
+  as an option. Use something like "env interactive= nail ..." instead. If
+  only tilde escapes in send mode are needed, the new -~ option can be used.
+* The optional name argument in combination with the -f option is now
+  evaluated as a separate operand, not as an argument to -f. This enables
+  usage as "nail -fin name", but "nail -f name -in" is no longer valid.
+* Pipe the output of ~p through the PAGER if the text is long (Bugreport
+  by Stan Tobias).
+* The output format of the "set" command is changed to 'variable="value"'
+  if bsdcompat is not set.
+* Pipe the output of the "set" command through the PAGER if it is long.
+* Headers are not printed automatically after executing a "folder" command
+  if bsdcompat is not set.
+* The "next" command was fixed according to the remark in the POSIX
+  rationale not to skip a message e. g. after "delete".
+* -B, -h and -~ command line options.
+* Lines in message files can now be of arbitrary length and can contain
+  NUL characters.
+* -r disables tilde escapes; -r flag and address is passed to sendmail.
+* followupall, followupsender, replyall, replysender, respondall, and
+  respondsender commands.
+* New, new, and Unread commands (are all aliases to unread command).
+* unalias command implemented (had been documented since 4.4BSD).
+* unignore, unretain, unsaveignore, and unsaveretain commands.
+* If data from standard input contains NUL characters, no character
+  conversions are performed and it is sent in base64 encoding.
+* Non-binary data with long lines is sent in quoted-printable encoding.
+* Fixed segmentation violation when using the "folder" command after
+  an interrupt signal was catched.
+* Resent-Reply-To: header field is no longer generated for conformance
+  with RFC 2822.
+* Fixed -u user option and %user special file name not to ignore 'user'.
+* The 'Reply' command uses the 'Reply-To:' header field in favor of
+  'From:'; the 'reply' command adds recipients given in the 'To:' and
+  'Cc:' fields if a 'Reply-To:' field was present in the message. This
+  means that 'Reply-To:' just overrides 'From:' without a special effect
+  on the 'reply' and 'Reply' commands.
+* When grabbing headers e. g. with the '~h' command, a comma is printed
+  between names if bsdcompat is not set.
+* RPM spec file (contributed by Didar Hussain).
+
 [9.31] released 6/18/02
 * New editing mechanism for attachment list: ~@ tilde escape.
 * The ~a tilde escape is obsoleted by ~@ and has been removed.

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	1.8 (gritter) 9/19/01";
+static char sccsid[] = "@(#)aux.c	2.3 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -46,7 +51,13 @@ static char sccsid[] = "@(#)aux.c	1.8 (gritter) 9/19/01";
  *
  * Auxiliary functions.
  */
-static char *save2str __P((char *, char *));
+static char	*save2str __P((char *, char *));
+static int	gethfield __P((FILE *, char **, size_t *, int, char **));
+static char	*is_hfield __P((char [], char[], char *));
+static char	*skip_comment __P((char *));
+static char	*name1 __P((struct message *, int));
+static int	charcount __P((char *, int));
+static void	out_of_memory __P((void));
 
 /*
  * Return a pointer to a dynamic copy of the argument.
@@ -140,10 +151,10 @@ panic(format, va_alist)
 #else
 	va_start(ap);
 #endif
-	(void)fprintf(stderr, "panic: ");
+	(void)fprintf(stderr, catgets(catd, CATSET, 1, "panic: "));
 	vfprintf(stderr, format, ap);
 	va_end(ap);
-	(void)fprintf(stderr, "\n");
+	(void)fprintf(stderr, catgets(catd, CATSET, 2, "\n"));
 	fflush(stderr);
 	abort();
 }
@@ -168,7 +179,7 @@ touch(mp)
  * Return true if it is.
  */
 int
-isdir(name)
+is_dir(name)
 	char name[];
 {
 	struct stat sbuf;
@@ -202,7 +213,8 @@ hfield(field, mp)
 	struct message *mp;
 {
 	FILE *ibuf;
-	char linebuf[LINESIZE];
+	char *linebuf = NULL;
+	size_t linesize = 0;
 	int lc;
 	char *hfield;
 	char *colon, *oldhfield = NULL;
@@ -210,14 +222,23 @@ hfield(field, mp)
 	ibuf = setinput(mp);
 	if ((lc = mp->m_lines - 1) < 0)
 		return NULL;
-	if (readline(ibuf, linebuf, LINESIZE) < 0)
+	if (readline(ibuf, &linebuf, &linesize) < 0) {
+		if (linebuf)
+			free(linebuf);
 		return NULL;
+	}
 	while (lc > 0) {
-		if ((lc = gethfield(ibuf, linebuf, lc, &colon)) < 0)
+		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon))
+				< 0) {
+			if (linebuf)
+				free(linebuf);
 			return oldhfield;
-		if ((hfield = ishfield(linebuf, colon, field)) != NULL)
+		}
+		if ((hfield = is_hfield(linebuf, colon, field)) != NULL)
 			oldhfield = save2str(hfield, oldhfield);
 	}
+	if (linebuf)
+		free(linebuf);
 	return oldhfield;
 }
 
@@ -227,55 +248,58 @@ hfield(field, mp)
  * "colon" is set to point to the colon in the header.
  * Must deal with \ continuations & other such fraud.
  */
-int
-gethfield(f, linebuf, rem, colon)
+static int
+gethfield(f, linebuf, linesize, rem, colon)
 	FILE *f;
-	char linebuf[];
+	char **linebuf;
+	size_t *linesize;
 	int rem;
 	char **colon;
 {
-	char line2[LINESIZE];
+	char *line2 = NULL;
+	size_t line2size = 0;
 	char *cp, *cp2;
 	int c;
 
 	for (;;) {
 		if (--rem < 0)
 			return -1;
-		if ((c = readline(f, linebuf, LINESIZE)) <= 0)
+		if ((c = readline(f, linebuf, linesize)) <= 0)
 			return -1;
-		for (cp = linebuf; isprint(*cp) && *cp != ' ' && *cp != ':';
-		     cp++)
-			;
-		if (*cp != ':' || cp == linebuf)
+		for (cp = *linebuf; fieldnamechar(*cp & 0377); cp++);
+		if (cp > *linebuf)
+			while (blankchar(*cp & 0377))
+				cp++;
+		if (*cp != ':' || cp == *linebuf)
 			continue;
 		/*
 		 * I guess we got a headline.
 		 * Handle wraparounding
 		 */
 		*colon = cp;
-		cp = linebuf + c;
+		cp = *linebuf + c;
 		for (;;) {
-			while (--cp >= linebuf && (*cp == ' ' || *cp == '\t'))
-				;
+			while (--cp >= *linebuf && blankchar(*cp & 0377));
 			cp++;
 			if (rem <= 0)
 				break;
-			ungetc(c = getc(f), f);
-			if (c != ' ' && c != '\t')
+			ungetc(c = sgetc(f), f);
+			if (!blankchar(c))
 				break;
-			if ((c = readline(f, line2, LINESIZE)) < 0)
+			if ((c = readline(f, &line2, &line2size)) < 0)
 				break;
 			rem--;
-			for (cp2 = line2; *cp2 == ' ' || *cp2 == '\t'; cp2++)
-				;
+			for (cp2 = line2; blankchar(*cp2 & 0377); cp2++);
 			c -= cp2 - line2;
-			if (cp + c >= linebuf + LINESIZE - 2)
+			if (cp + c >= *linebuf + *linesize - 2)
 				break;
 			*cp++ = ' ';
 			memcpy(cp, cp2, c);
 			cp += c;
 		}
 		*cp = 0;
+		if (line2)
+			free(line2);
 		return rem;
 	}
 	/* NOTREACHED */
@@ -286,21 +310,20 @@ gethfield(f, linebuf, rem, colon)
  * the desired breed.  Return the field body, or 0.
  */
 
-char*
-ishfield(linebuf, colon, field)
+static char *
+is_hfield(linebuf, colon, field)
 	char linebuf[], field[];
 	char *colon;
 {
 	char *cp = colon;
 
 	*cp = 0;
-	if (strcasecmp(linebuf, field) != 0) {
+	if (asccasecmp(linebuf, field) != 0) {
 		*cp = ':';
 		return 0;
 	}
 	*cp = ':';
-	for (cp++; *cp == ' ' || *cp == '\t'; cp++)
-		;
+	for (cp++; blankchar(*cp & 0377); cp++);
 	return cp;
 }
 
@@ -308,7 +331,7 @@ ishfield(linebuf, colon, field)
  * Copy a string, lowercasing it as we go.
  */
 void
-istrcpy(dest, src, size)
+i_strcpy(dest, src, size)
 	char *dest, *src;
 	int size;
 {
@@ -316,12 +339,8 @@ istrcpy(dest, src, size)
 
 	max=dest+size-1;
 	while (dest<=max) {
-		if (isupper(*src)) {
-			*dest++ = tolower(*src);
-		} else {
-			*dest++ = *src;
-		}
-		if (*src++ == 0)
+		*dest++ = lowerconv(*src & 0377);
+		if (*src++ == '\0')
 			break;
 	}
 }
@@ -359,7 +378,8 @@ source(v)
 		return(1);
 	}
 	if (ssp >= NOFILE - 1) {
-		printf("Too much \"sourcing\" going on.\n");
+		printf(catgets(catd, CATSET, 3,
+					"Too much \"sourcing\" going on.\n"));
 		Fclose(fi);
 		return(1);
 	}
@@ -382,13 +402,14 @@ int
 unstack()
 {
 	if (ssp <= 0) {
-		printf("\"Source\" stack over-pop.\n");
+		printf(catgets(catd, CATSET, 4,
+					"\"Source\" stack over-pop.\n"));
 		sourcing = 0;
 		return(1);
 	}
 	Fclose(input);
 	if (cond != CANY)
-		printf("Unmatched \"if\"\n");
+		printf(catgets(catd, CATSET, 5, "Unmatched \"if\"\n"));
 	ssp--;
 	cond = sstack[ssp].s_cond;
 	loading = sstack[ssp].s_loading;
@@ -427,7 +448,7 @@ blankline(linebuf)
 	char *cp;
 
 	for (cp = linebuf; *cp; cp++)
-		if (*cp != ' ' && *cp != '\t')
+		if (!blankchar(*cp & 0377))
 			return(0);
 	return(1);
 }
@@ -460,7 +481,7 @@ nameof(mp, reptype)
  * Start of a "comment".
  * Ignore it.
  */
-char *
+static char *
 skip_comment(cp)
 	char *cp;
 {
@@ -495,7 +516,7 @@ skin(name)
 	char *cp, *cp2;
 	char *bufend;
 	int gotlt, lastsp;
-	char nbuf[BUFSIZ];
+	char *nbuf;
 
 	if (name == NULL)
 		return(NULL);
@@ -504,6 +525,7 @@ skin(name)
 		return(name);
 	gotlt = 0;
 	lastsp = 0;
+	nbuf = ac_alloc(strlen(name) + 1);
 	bufend = nbuf;
 	for (cp = name, cp2 = bufend; (c = *cp++) != '\0'; ) {
 		switch (c) {
@@ -593,8 +615,9 @@ skin(name)
 		}
 	}
 	*cp2 = 0;
-
-	return(savestr(nbuf));
+	cp = savestr(nbuf);
+	ac_free(nbuf);
+	return cp;
 }
 
 /*
@@ -604,13 +627,15 @@ skin(name)
  *	1 -- get sender's name for reply
  *	2 -- get sender's name for Reply
  */
-char *
+static char *
 name1(mp, reptype)
 	struct message *mp;
 	int reptype;
 {
-	char namebuf[LINESIZE];
-	char linebuf[LINESIZE];
+	char *namebuf;
+	size_t namesize;
+	char *linebuf = NULL;
+	size_t linesize = 0;
 	char *cp, *cp2;
 	FILE *ibuf;
 	int first = 1;
@@ -620,24 +645,28 @@ name1(mp, reptype)
 	if (reptype == 0 && (cp = hfield("sender", mp)) != NULL)
 		return cp;
 	ibuf = setinput(mp);
+	namebuf = smalloc(namesize = 1);
 	namebuf[0] = 0;
-	if (readline(ibuf, linebuf, LINESIZE) < 0)
-		return(savestr(namebuf));
+	if (readline(ibuf, &linebuf, &linesize) < 0)
+		goto out;
 newname:
+	if (namesize <= linesize)
+		namebuf = srealloc(namebuf, namesize = linesize + 1);
 	for (cp = linebuf; *cp && *cp != ' '; cp++)
 		;
-	for (; *cp == ' ' || *cp == '\t'; cp++)
-		;
+	for (; blankchar(*cp & 0377); cp++);
 	for (cp2 = &namebuf[strlen(namebuf)];
-	     *cp && *cp != ' ' && *cp != '\t' && cp2 < namebuf + LINESIZE - 1;)
+	     *cp && !blankchar(*cp & 0377) && cp2 < namebuf + namesize - 1;)
 		*cp2++ = *cp++;
 	*cp2 = '\0';
-	if (readline(ibuf, linebuf, LINESIZE) < 0)
-		return(savestr(namebuf));
+	if (readline(ibuf, &linebuf, &linesize) < 0)
+		goto out;
 	if ((cp = strchr(linebuf, 'F')) == NULL)
-		return(savestr(namebuf));
+		goto out;
 	if (strncmp(cp, "From", 4) != 0)
-		return(savestr(namebuf));
+		goto out;
+	if (namesize <= linesize)
+		namebuf = srealloc(namebuf, namesize = linesize + 1);
 	while ((cp = strchr(cp, 'r')) != NULL) {
 		if (strncmp(cp, "remote", 6) == 0) {
 			if ((cp = strchr(cp, 'f')) == NULL)
@@ -648,25 +677,31 @@ newname:
 				break;
 			cp++;
 			if (first) {
-				strncpy(namebuf, cp, LINESIZE);
+				strncpy(namebuf, cp, namesize);
 				first = 0;
 			} else {
 				cp2=strrchr(namebuf, '!')+1;
-				strncpy(cp2, cp, (namebuf+LINESIZE)-cp2);
+				strncpy(cp2, cp, (namebuf+namesize)-cp2);
 			}
-			namebuf[LINESIZE-2]='\0';
+			namebuf[namesize-2]='\0';
 			strcat(namebuf, "!");
 			goto newname;
 		}
 		cp++;
 	}
-	return(savestr(namebuf));
+out:
+	cp = savestr(namebuf);
+	if (linebuf)
+		free(linebuf);
+	if (namebuf)
+		free(namebuf);
+	return cp;
 }
 
 /*
  * Count the occurances of c in str
  */
-int
+static int
 charcount(str, c)
 	char *str;
 	int c;
@@ -701,47 +736,37 @@ int
 aux_raise(c)
 	int c;
 {
-
-	if (islower(c))
-		return toupper(c);
-	return c;
-}
-
-/*
- * Copy s1 to s2, return pointer to null in s2.
- */
-char *
-copy(s1, s2)
-	char *s1, *s2;
-{
-
-	while ((*s2++ = *s1++) != '\0')
-		;
-	return s2 - 1;
+	return upperconv(c);
 }
 
 /*
  * See if the given header field is supposed to be ignored.
  */
 int
-isign(field, ignore)
+is_ign(field, fieldlen, ignore)
 	char *field;
+	size_t fieldlen;
 	struct ignoretab ignore[2];
 {
-	char realfld[BUFSIZ];
+	char *realfld;
+	int ret;
 
+	if (ignore == NULL)
+		return 0;
 	if (ignore == allignore)
 		return 1;
 	/*
 	 * Lower-case the string, so that "Status" and "status"
 	 * will hash to the same place.
 	 */
-	istrcpy(realfld, field, BUFSIZ);
-	realfld[BUFSIZ-1]='\0';
+	realfld = ac_alloc(fieldlen + 1);
+	i_strcpy(realfld, field, fieldlen + 1);
 	if (ignore[1].i_count > 0)
-		return (!member(realfld, ignore + 1));
+		ret = !member(realfld, ignore + 1);
 	else
-		return (member(realfld, ignore));
+		ret = member(realfld, ignore);
+	ac_free(realfld);
+	return ret;
 }
 
 int
@@ -757,3 +782,139 @@ member(realfield, table)
 			return (1);
 	return (0);
 }
+
+static void
+out_of_memory()
+{
+	panic("no memory");
+}
+
+void *
+smalloc(s)
+size_t s;
+{
+	void *p;
+
+	if (s == 0)
+		s = 1;
+	if ((p = malloc(s)) == NULL)
+		out_of_memory();
+	return p;
+}
+
+void *
+srealloc(v, s)
+void *v;
+size_t s;
+{
+	void *r;
+
+	if (s == 0)
+		s = 1;
+	if (v == NULL)
+		return smalloc(s);
+	if ((r = realloc(v, s)) == NULL)
+		out_of_memory();
+	return r;
+}
+
+void *
+scalloc(nmemb, size)
+size_t nmemb, size;
+{
+	void *vp;
+
+	if (size == 0)
+		size = 1;
+	if ((vp = calloc(nmemb, size)) == NULL)
+		out_of_memory();
+	return vp;
+}
+
+char *
+sstpcpy(dst, src)
+char *dst;
+const char *src;
+{
+	while ((*dst = *src++) != '\0')
+		dst++;
+	return dst;
+}
+
+char *
+sstrdup(cp)
+const char *cp;
+{
+	char	*dp = smalloc(strlen(cp) + 1);
+
+	strcpy(dp, cp);
+	return dp;
+}
+
+/*
+ * Locale-independent character class functions.
+ */
+int
+asccasecmp(s1, s2)
+const char *s1, *s2;
+{
+	register int cmp;
+
+	do
+		if ((cmp = lowerconv(*s1 & 0377) - lowerconv(*s2 & 0377)) != 0)
+			return cmp;
+	while (*s1++ != '\0' && *s2++ != '\0');
+	return 0;
+}
+
+int
+ascncasecmp(s1, s2, sz)
+const char *s1, *s2;
+size_t sz;
+{
+	register int cmp;
+	size_t i = 1;
+
+	if (sz == 0)
+		return 0;
+	do
+		if ((cmp = lowerconv(*s1 & 0377) - lowerconv(*s2 & 0377)) != 0)
+			return cmp;
+	while (i++ < sz && *s1++ != '\0' && *s2++ != '\0');
+	return 0;
+}
+
+const unsigned char class_char[] = {
+/*	000 nul	001 soh	002 stx	003 etx	004 eot	005 enq	006 ack	007 bel	*/
+	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
+/*	010 bs 	011 ht 	012 nl 	013 vt 	014 np 	015 cr 	016 so 	017 si 	*/
+	C_CNTRL,C_BLANK,C_WHITE,C_SPACE,C_SPACE,C_SPACE,C_CNTRL,C_CNTRL,
+/*	020 dle	021 dc1	022 dc2	023 dc3	024 dc4	025 nak	026 syn	027 etb	*/
+	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
+/*	030 can	031 em 	032 sub	033 esc	034 fs 	035 gs 	036 rs 	037 us 	*/
+	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
+/*	040 sp 	041  ! 	042  " 	043  # 	044  $ 	045  % 	046  & 	047  ' 	*/
+	C_BLANK,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	050  ( 	051  ) 	052  * 	053  + 	054  , 	055  - 	056  . 	057  / 	*/
+	C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	060  0 	061  1 	062  2 	063  3 	064  4 	065  5 	066  6 	067  7 	*/
+	C_DIGIT,C_DIGIT,C_DIGIT,C_DIGIT,C_DIGIT,C_DIGIT,C_DIGIT,C_DIGIT,
+/*	070  8 	071  9 	072  : 	073  ; 	074  < 	075  = 	076  > 	077  ? 	*/
+	C_DIGIT,C_DIGIT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	100  @ 	101  A 	102  B 	103  C 	104  D 	105  E 	106  F 	107  G 	*/
+	C_PUNCT,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
+/*	110  H 	111  I 	112  J 	113  K 	114  L 	115  M 	116  N 	117  O 	*/
+	C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
+/*	120  P 	121  Q 	122  R 	123  S 	124  T 	125  U 	126  V 	127  W 	*/
+	C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
+/*	130  X 	131  Y 	132  Z 	133  [ 	134  \ 	135  ] 	136  ^ 	137  _ 	*/
+	C_UPPER,C_UPPER,C_UPPER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	140  ` 	141  a 	142  b 	143  c 	144  d 	145  e 	146  f 	147  g 	*/
+	C_PUNCT,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
+/*	150  h 	151  i 	152  j 	153  k 	154  l 	155  m 	156  n 	157  o 	*/
+	C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
+/*	160  p 	161  q 	162  r 	163  s 	164  t 	165  u 	166  v 	167  w 	*/
+	C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
+/*	170  x 	171  y 	172  z 	173  { 	174  | 	175  } 	176  ~ 	177 del	*/
+	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
+};

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	1.6 (gritter) 5/23/02";
+static char sccsid[] = "@(#)list.c	2.2 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -46,6 +51,25 @@ static char sccsid[] = "@(#)list.c	1.6 (gritter) 5/23/02";
  *
  * Message list handling.
  */
+static char	**add_to_namelist __P((char ***, size_t *, char **, char *));
+static int	markall __P((char [], int));
+static int	evalcol __P((int));
+static int	check __P((int, int));
+static int	scan __P((char **));
+static void	regret __P((int));
+static void	scaninit __P((void));
+static int	matchsender __P((char *, int));
+static int	matchsubj __P((char *, int));
+static void	mark __P((int));
+static void	unmark __P((int));
+static int	metamess __P((int, int));
+
+static int	lexnumber;		/* Number of TNUMBER from scan() */
+static char	lexstring[STRINGLEN];	/* String from TSTRING, scan() */
+static int	regretp;		/* Pointer to TOS of regret tokens */
+static int	regretstack[REGDEP];	/* Stack of regretted tokens */
+static char	*string_stack[REGDEP];	/* Stack of regretted strings */
+static int	numberstack[REGDEP];	/* Stack of regretted numbers */
 
 /*
  * Convert the user string of message numbers and
@@ -96,7 +120,7 @@ getmsglist(buf, vector, flags)
  * the colon and gives the corresponding modifier bit.
  */
 
-struct coltab {
+static struct coltab {
 	char	co_char;		/* What to find past : */
 	int	co_bit;			/* Associated modifier bit */
 	int	co_mask;		/* m_status bits to mask */
@@ -112,16 +136,39 @@ struct coltab {
 
 static	int	lastcolmod;
 
-int
+static char **
+add_to_namelist(namelist, nmlsize, np, string)
+	char ***namelist;
+	size_t *nmlsize;
+	char **np;
+	char *string;
+{
+	size_t idx;
+
+	if ((idx = np - *namelist) >= *nmlsize) {
+		*namelist = srealloc(*namelist, (*nmlsize += 8) * sizeof *np);
+		np = &(*namelist)[idx];
+	}
+	*np++ = string;
+	return np;
+}
+
+#define	markall_ret(i)		{ \
+					retval = i; \
+					goto out; \
+				}
+
+static int
 markall(buf, f)
 	char buf[];
 	int f;
 {
 	char **np;
-	int i;
+	int i, retval;
 	struct message *mp;
-	char *namelist[NMLSIZE], *bufp;
+	char **namelist, *bufp;
 	int tok, beg, mc, star, other, valdot, colmod, colresult;
+	size_t nmlsize;
 
 	valdot = dot - &message[0] + 1;
 	colmod = 0;
@@ -129,6 +176,7 @@ markall(buf, f)
 		unmark(i);
 	bufp = buf;
 	mc = 0;
+	namelist = smalloc((nmlsize = 8) * sizeof *namelist);
 	np = &namelist[0];
 	scaninit();
 	tok = scan(&bufp);
@@ -140,14 +188,15 @@ markall(buf, f)
 		case TNUMBER:
 number:
 			if (star) {
-				printf("No numbers mixed with *\n");
-				return(-1);
+				printf(catgets(catd, CATSET, 112,
+					"No numbers mixed with *\n"));
+				markall_ret(-1)
 			}
 			mc++;
 			other++;
 			if (beg != 0) {
 				if (check(lexnumber, f))
-					return(-1);
+					markall_ret(-1)
 				for (i = beg; i <= lexnumber; i++)
 					if (f == MDELETED || (message[i - 1].m_flag & MDELETED) == 0)
 						mark(i);
@@ -156,7 +205,7 @@ number:
 			}
 			beg = lexnumber;
 			if (check(beg, f))
-				return(-1);
+				markall_ret(-1)
 			tok = scan(&bufp);
 			regret(tok);
 			if (tok != TDASH) {
@@ -167,15 +216,17 @@ number:
 
 		case TPLUS:
 			if (beg != 0) {
-				printf("Non-numeric second argument\n");
-				return(-1);
+				printf(catgets(catd, CATSET, 113,
+					"Non-numeric second argument\n"));
+				markall_ret(-1)
 			}
 			i = valdot;
 			do {
 				i++;
 				if (i > msgcount) {
-					printf("Referencing beyond EOF\n");
-					return(-1);
+					printf(catgets(catd, CATSET, 114,
+						"Referencing beyond EOF\n"));
+					markall_ret(-1)
 				}
 			} while ((message[i - 1].m_flag & MDELETED) != f);
 			mark(i);
@@ -187,8 +238,10 @@ number:
 				do {
 					i--;
 					if (i <= 0) {
-						printf("Referencing before 1\n");
-						return(-1);
+						printf(catgets(catd, CATSET,
+							115,
+						"Referencing before 1\n"));
+						markall_ret(-1)
 					}
 				} while ((message[i - 1].m_flag & MDELETED) != f);
 				mark(i);
@@ -197,21 +250,24 @@ number:
 
 		case TSTRING:
 			if (beg != 0) {
-				printf("Non-numeric second argument\n");
-				return(-1);
+				printf(catgets(catd, CATSET, 116,
+					"Non-numeric second argument\n"));
+				markall_ret(-1)
 			}
 			other++;
 			if (lexstring[0] == ':') {
 				colresult = evalcol(lexstring[1]);
 				if (colresult == 0) {
-					printf("Unknown colon modifier \"%s\"\n",
+					printf(catgets(catd, CATSET, 117,
+					"Unknown colon modifier \"%s\"\n"),
 					    lexstring);
-					return(-1);
+					markall_ret(-1)
 				}
 				colmod |= colresult;
 			}
 			else
-				*np++ = savestr(lexstring);
+				np = add_to_namelist(&namelist, &nmlsize,
+						np, savestr(lexstring));
 			break;
 
 		case TDOLLAR:
@@ -219,24 +275,26 @@ number:
 		case TDOT:
 			lexnumber = metamess(lexstring[0], f);
 			if (lexnumber == -1)
-				return(-1);
+				markall_ret(-1)
 			goto number;
 
 		case TSTAR:
 			if (other) {
-				printf("Can't mix \"*\" with anything\n");
-				return(-1);
+				printf(catgets(catd, CATSET, 118,
+					"Can't mix \"*\" with anything\n"));
+				markall_ret(-1)
 			}
 			star++;
 			break;
 
 		case TERROR:
-			return -1;
+			markall_ret(-1)
 		}
 		tok = scan(&bufp);
 	}
 	lastcolmod = colmod;
-	*np = NULL;
+	np = add_to_namelist(&namelist, &nmlsize, np, NULL);
+	np--;
 	mc = 0;
 	if (star) {
 		for (i = 0; i < msgcount; i++)
@@ -245,10 +303,11 @@ number:
 				mc++;
 			}
 		if (mc == 0) {
-			printf("No applicable messages.\n");
-			return(-1);
+			printf(catgets(catd, CATSET, 119,
+					"No applicable messages.\n"));
+			markall_ret(-1)
 		}
-		return(0);
+		markall_ret(0)
 	}
 
 	/*
@@ -297,12 +356,13 @@ number:
 				break;
 			}
 		if (mc == 0) {
-			printf("No applicable messages from {%s",
+			printf(catgets(catd, CATSET, 120,
+				"No applicable messages from {%s"),
 				namelist[0]);
 			for (np = &namelist[1]; *np != NULL; np++)
-				printf(", %s", *np);
-			printf("}\n");
-			return(-1);
+				printf(catgets(catd, CATSET, 121, ", %s"), *np);
+			printf(catgets(catd, CATSET, 122, "}\n"));
+			markall_ret(-1)
 		}
 	}
 
@@ -329,22 +389,26 @@ number:
 		if (mp >= &message[msgcount]) {
 			struct coltab *colp;
 
-			printf("No messages satisfy");
+			printf(catgets(catd, CATSET, 123,
+						"No messages satisfy"));
 			for (colp = &coltab[0]; colp->co_char; colp++)
 				if (colp->co_bit & colmod)
 					printf(" :%c", colp->co_char);
 			printf("\n");
-			return(-1);
+			markall_ret(-1)
 		}
 	}
-	return(0);
+	markall_ret(0)
+out:
+	free(namelist);
+	return retval;
 }
 
 /*
  * Turn the character after a colon modifier into a bit
  * value.
  */
-int
+static int
 evalcol(col)
 	int col;
 {
@@ -363,19 +427,21 @@ evalcol(col)
  * If f is MDELETED, then either kind will do.  Otherwise, the message
  * has to be undeleted.
  */
-int
+static int
 check(mesg, f)
 	int mesg, f;
 {
 	struct message *mp;
 
 	if (mesg < 1 || mesg > msgcount) {
-		printf("%d: Invalid message number\n", mesg);
+		printf(catgets(catd, CATSET, 124,
+			"%d: Invalid message number\n"), mesg);
 		return(-1);
 	}
 	mp = &message[mesg-1];
 	if (f != MDELETED && (mp->m_flag & MDELETED) != 0) {
-		printf("%d: Inappropriate message\n", mesg);
+		printf(catgets(catd, CATSET, 125,
+			"%d: Inappropriate message\n"), mesg);
 		return(-1);
 	}
 	return(0);
@@ -386,25 +452,26 @@ check(mesg, f)
  * for a RAWLIST.
  */
 int
-getrawlist(line, argv, argc)
+getrawlist(line, linesize, argv, argc)
 	char line[];
+	size_t linesize;
 	char **argv;
 	int  argc;
 {
 	char c, *cp, *cp2, quotec;
 	int argn;
-	char linebuf[BUFSIZ];
+	char *linebuf;
 
 	argn = 0;
 	cp = line;
+	linebuf = ac_alloc(linesize + 1);
 	for (;;) {
-		for (; *cp == ' ' || *cp == '\t'; cp++)
-			;
+		for (; blankchar(*cp & 0377); cp++);
 		if (*cp == '\0')
 			break;
 		if (argn >= argc - 1) {
-			printf(
-			"Too many elements in the list; excess discarded.\n");
+			printf(catgets(catd, CATSET, 126,
+			"Too many elements in the list; excess discarded.\n"));
 			break;
 		}
 		cp2 = linebuf;
@@ -466,7 +533,7 @@ getrawlist(line, argv, argc)
 					*cp2++ = c;
 			} else if (c == '"' || c == '\'')
 				quotec = c;
-			else if (c == ' ' || c == '\t')
+			else if (blankchar(c & 0377))
 				break;
 			else
 				*cp2++ = c;
@@ -475,6 +542,7 @@ getrawlist(line, argv, argc)
 		argv[argn++] = savestr(linebuf);
 	}
 	argv[argn] = NULL;
+	ac_free(linebuf);
 	return argn;
 }
 
@@ -485,7 +553,7 @@ getrawlist(line, argv, argc)
  * appropriate.  In any event, store the scanned `thing' in lexstring.
  */
 
-struct lex {
+static struct lex {
 	char	l_char;
 	char	l_token;
 } singles[] = {
@@ -500,7 +568,7 @@ struct lex {
 	{ 0,	0 }
 };
 
-int
+static int
 scan(sp)
 	char **sp;
 {
@@ -523,7 +591,7 @@ scan(sp)
 	 * strip away leading white space.
 	 */
 
-	while (c == ' ' || c == '\t')
+	while (blankchar(c))
 		c = *cp++;
 
 	/*
@@ -542,9 +610,9 @@ scan(sp)
 	 * Return TNUMBER when done.
 	 */
 
-	if (isdigit(c)) {
+	if (digitchar(c)) {
 		lexnumber = 0;
-		while (isdigit(c)) {
+		while (digitchar(c)) {
 			lexnumber = lexnumber*10 + c - '0';
 			*cp2++ = c;
 			c = *cp++;
@@ -585,14 +653,15 @@ scan(sp)
 			cp++;
 			break;
 		}
-		if (quotec == 0 && (c == ' ' || c == '\t'))
+		if (quotec == 0 && blankchar(c))
 			break;
 		if (cp2 - lexstring < STRINGLEN-1)
 			*cp2++ = c;
 		c = *cp++;
 	}
 	if (quotec && c == 0) {
-		fprintf(stderr, "Missing %c\n", quotec);
+		fprintf(stderr, catgets(catd, CATSET, 127,
+				"Missing %c\n"), quotec);
 		return TERROR;
 	}
 	*sp = --cp;
@@ -603,12 +672,12 @@ scan(sp)
 /*
  * Unscan the named token by pushing it onto the regret stack.
  */
-void
+static void
 regret(token)
 	int token;
 {
 	if (++regretp >= REGDEP)
-		panic("Too many regrets");
+		panic(catgets(catd, CATSET, 128, "Too many regrets"));
 	regretstack[regretp] = token;
 	lexstring[STRINGLEN-1] = '\0';
 	string_stack[regretp] = savestr(lexstring);
@@ -618,7 +687,7 @@ regret(token)
 /*
  * Reset all the scanner global variables.
  */
-void
+static void
 scaninit()
 {
 	regretp = -1;
@@ -651,7 +720,7 @@ first(f, m)
  * See if the passed name sent the passed message number.  Return true
  * if so.
  */
-int
+static int
 matchsender(str, mesg)
 	char *str;
 	int mesg;
@@ -667,8 +736,9 @@ matchsender(str, mesg)
  * previous search string.
  */
 
-char lastscan[128];
-int
+static char lastscan[128];
+
+static int
 matchsubj(str, mesg)
 	char *str;
 	int mesg;
@@ -680,8 +750,8 @@ matchsubj(str, mesg)
 	if (strlen(str) == 0) {
 		str = lastscan;
 	} else {
-		strncpy(lastscan, str, 128);
-		lastscan[127]='\0';
+		strncpy(lastscan, str, sizeof lastscan);
+		lastscan[sizeof lastscan - 1]='\0';
 	}
 	mp = &message[mesg-1];
 	
@@ -715,7 +785,7 @@ matchsubj(str, mesg)
 /*
  * Mark the named message by setting its mark bit.
  */
-void
+static void
 mark(mesg)
 	int mesg;
 {
@@ -723,14 +793,14 @@ mark(mesg)
 
 	i = mesg;
 	if (i < 1 || i > msgcount)
-		panic("Bad message number to mark");
+		panic(catgets(catd, CATSET, 129, "Bad message number to mark"));
 	message[i-1].m_flag |= MMARK;
 }
 
 /*
  * Unmark the named message.
  */
-void
+static void
 unmark(mesg)
 	int mesg;
 {
@@ -738,14 +808,15 @@ unmark(mesg)
 
 	i = mesg;
 	if (i < 1 || i > msgcount)
-		panic("Bad message number to unmark");
+		panic(catgets(catd, CATSET, 130,
+					"Bad message number to unmark"));
 	message[i-1].m_flag &= ~MMARK;
 }
 
 /*
  * Return the message number corresponding to the passed meta character.
  */
-int
+static int
 metamess(meta, f)
 	int meta, f;
 {
@@ -761,7 +832,7 @@ metamess(meta, f)
 		for (mp = &message[0]; mp < &message[msgcount]; mp++)
 			if ((mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
-		printf("No applicable messages\n");
+		printf(catgets(catd, CATSET, 131, "No applicable messages\n"));
 		return(-1);
 
 	case '$':
@@ -771,7 +842,7 @@ metamess(meta, f)
 		for (mp = &message[msgcount-1]; mp >= &message[0]; mp--)
 			if ((mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
-		printf("No applicable messages\n");
+		printf(catgets(catd, CATSET, 132, "No applicable messages\n"));
 		return(-1);
 
 	case '.':
@@ -780,13 +851,15 @@ metamess(meta, f)
 		 */
 		m = dot - &message[0] + 1;
 		if ((dot->m_flag & MDELETED) != f) {
-			printf("%d: Inappropriate message\n", m);
+			printf(catgets(catd, CATSET, 133,
+				"%d: Inappropriate message\n"), m);
 			return(-1);
 		}
 		return(m);
 
 	default:
-		printf("Unknown metachar (%c)\n", c);
+		printf(catgets(catd, CATSET, 134,
+				"Unknown metachar (%c)\n"), c);
 		return(-1);
 	}
 }

@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)v7.local.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)v7.local.c	2.2 (gritter) 9/15/02";
 #endif
 #endif /* not lint */
 
@@ -56,13 +61,13 @@ static char sccsid[] = "@(#)v7.local.c	1.5 (gritter) 11/18/00";
  * mail is queued).
  */
 void
-findmail(user, buf, size)
+findmail(user, force, buf, size)
 	char *user, *buf;
-	int size;
+	int size, force;
 {
 	char *mbox;
 
-	if (!(mbox = getenv("MAIL"))) {
+	if (force || (mbox = getenv("MAIL")) == NULL) {
 		(void)snprintf(buf, size, "%s/%s", PATH_MAILDIR, user);
 	} else {
 		(void)strncpy(buf, mbox, size);
@@ -95,6 +100,7 @@ username()
 		return np;
 	if ((np = getname(uid = getuid())) != NULL)
 		return np;
-	printf("Cannot associate a name with uid %d\n", (int)uid);
+	printf(catgets(catd, CATSET, 201,
+		"Cannot associate a name with uid %d\n"), (int)uid);
 	return NULL;
 }

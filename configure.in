@@ -1,7 +1,7 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	1.13 (gritter) 2/20/02
+# Sccsid: @(#)configure.in	2.1 (gritter) 9/1/02
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
@@ -13,6 +13,11 @@ AC_DEFINE(REL_DATE, "invalid")
 AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging build (default=no)],enable_debug=yes,enable_debug=no)
 AC_ARG_ENABLE(efence, [  --enable-efence         enable debugging build (with efence) (default=no)],enable_debug=yes enable_efence=yes,enable_efence=no)
 AC_ARG_ENABLE(all-chars, [  --enable-all-chars      display all characters ignoring locale (default=no)],enable_all_chars=yes,enable_all_chars=no)
+
+AC_ARG_WITH(catname, [  --with-catname=NAME     message catalogue name],
+	arg_cv_catname=$withval,
+	arg_cv_catname=UNKNOWN)
+AC_DEFINE_UNQUOTED(CATNAME, "$arg_cv_catname")
 
 AC_ARG_WITH(mailspool, [  --with-mailspool=DIR    mail spool directory],
 	arg_cv_mailspool=$withval,
@@ -62,6 +67,22 @@ AC_ARG_WITH(more, [  --with-more=FILE        more binary],
 	)
 )
 AC_DEFINE_UNQUOTED(PATH_MORE, "$arg_cv_more")
+
+AC_ARG_WITH(pg, [  --with-pg=FILE          pg binary],
+	arg_cv_pg=$withval,
+	AC_CACHE_CHECK(pg binary, arg_cv_pg,
+		for dir in /usr/local/bin /bin /usr/bin
+		do	if test -x $dir/pg
+			then	arg_cv_pg=$dir/pg
+				break
+			fi
+		done
+		if test "x$arg_cv_pg" = x
+		then	arg_cv_pg=$arg_cv_more
+		fi
+	)
+)
+AC_DEFINE_UNQUOTED(PATH_PG, "$arg_cv_pg")
 
 AC_ARG_WITH(ex, [  --with-ex=FILE          ex binary],
 	arg_cv_ex=$withval,
@@ -115,6 +136,8 @@ AC_ARG_WITH(rcfile,
 	[  --with-rcfile=FILE      system-wide configuration (/etc/nail.rc)],
 	arg_cv_rcfile=$withval, arg_cv_rcfile="/etc/nail.rc")
 AC_DEFINE_UNQUOTED(PATH_MASTER_RC, "$arg_cv_rcfile")
+PATH_MASTER_RC="$arg_cv_rcfile"
+AC_SUBST(PATH_MASTER_RC)
 
 dnl Checks for programs.
 
@@ -147,9 +170,10 @@ dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
-AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/param.h sys/select.h \
+AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/param.h \
 	sys/stat.h sys/utsname.h sys/socket.h netinet/in.h arpa/inet.h)
-AC_CHECK_HEADERS(fcntl.h netdb.h signal.h strings.h unistd.h langinfo.h)
+AC_CHECK_HEADERS(fcntl.h netdb.h signal.h strings.h unistd.h langinfo.h\
+	nl_types.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -175,9 +199,9 @@ AC_TRY_COMPILE([#include <unistd.h>], [optarg = (char *)0;],
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
-AC_CHECK_FUNCS(gethostname mkstemp select strcasecmp snprintf uname)
-AC_CHECK_FUNCS(nl_langinfo)
-AC_FUNC_SELECT_ARGTYPES
+AC_CHECK_FUNCS(gethostname mkstemp snprintf uname fpathconf)
+AC_CHECK_FUNCS(nl_langinfo catgets getc_unlocked putc_unlocked)
+AC_FUNC_ALLOCA
 AC_CHECK_FUNC(gethostent, AC_DEFINE(HAVE_SOCKETS),
 	AC_CHECK_LIB(nsl, gethostent, AC_DEFINE(HAVE_SOCKETS)
 					AC_DEFINE(HAVE_LIBNSL)

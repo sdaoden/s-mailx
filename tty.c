@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	1.10 (gritter) 5/22/02";
+static char sccsid[] = "@(#)tty.c	2.4 (gritter) 9/23/02";
 #endif
 #endif /* not lint */
 
@@ -49,9 +54,6 @@ static char sccsid[] = "@(#)tty.c	1.10 (gritter) 5/22/02";
 #ifdef	HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
-#ifdef	HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
 
 static	cc_t		c_erase;	/* Current erase char */
 static	cc_t		c_kill;		/* Current kill char */
@@ -62,10 +64,10 @@ static	int		ttyset;		/* We must now do erase/kill */
 #endif
 static	long		vdis;		/* _POSIX_VDISABLE char */
 
-#ifdef IOSAFE 
-static int got_interrupt;
-static int safegetc(FILE *ibuf);
-#endif
+static int safe_getc(FILE *ibuf);
+static char	*rtty_internal __P((char [], char []));
+static RETSIGTYPE	ttyint __P((int));
+static RETSIGTYPE	ttystop __P((int));
 
 /*
  * Receipt continuation.
@@ -83,11 +85,6 @@ ttystop(s)
 	kill(0, s);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 	safe_signal(s, old_action);
-#ifdef IOSAFE
-	got_interrupt = s;
-#else
-	fpurge(stdin);
-#endif
 	siglongjmp(rewrite, 1);
 }
 
@@ -96,69 +93,46 @@ static RETSIGTYPE
 ttyint(s)
 	int s;
 {
-#ifdef IOSAFE
-	got_interrupt = s;
-#else
-	fpurge(stdin);
 	siglongjmp(intjmp, 1);
-#endif
 }
 
-#ifdef IOSAFE
-/* it is very awful, but only way I see to be able to do a
-   interruptable stdio call */ 
+/*
+ * Interrupts will cause trouble if we are inside a stdio call. As
+ * this is only relevant if input comes from a terminal, we can simply
+ * bypass it by read() then.
+ */
 static int
-safegetc(ibuf)
+safe_getc(ibuf)
 FILE *ibuf;
 {
-	fd_set rds;
-	int oldfl;
-	int res;
-	while (1) {
-		errno = 0;
-		oldfl = fcntl(fileno(ibuf),F_GETFL);
-		fcntl(fileno(ibuf),F_SETFL,oldfl | O_NONBLOCK);
-		res = getc(ibuf);
-		fcntl(fileno(ibuf),F_SETFL,oldfl);
-		if (res != EOF)
-			return res;
-		else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			clearerr(ibuf);
-			FD_ZERO(&rds);
-			FD_SET(fileno(ibuf),&rds);
-			select((SELECT_TYPE_ARG1)(fileno(ibuf) + 1),
-					SELECT_TYPE_ARG234(&rds),
-					SELECT_TYPE_ARG234(NULL),
-					SELECT_TYPE_ARG234(NULL),
-					SELECT_TYPE_ARG5(NULL));
-			/* if an interrupt occur drops the current
-			   line and returns */
-			if (got_interrupt)
-				return EOF;
-		} else {
-			/* probably EOF one the file descriptors */
+	if (fileno(ibuf) == 0 && is_a_tty[0]) {
+		char c;
+
+again:
+		if (read(0, &c, 1) != 1) {
+			if (errno == EINTR)
+				goto again;
 			return EOF;
 		}
-	}
+		return c & 0377;
+	} else
+		return sgetc(ibuf);
 }
-#endif
 
 /*
  * Read up a header from standard input.
  * The source string has the preliminary contents to
  * be read.
- *
  */
-
 static char *
 rtty_internal(pr, src)
 	char pr[], src[];
 {
-	char ch, canonb[BUFSIZ];
+	char ch, canonb[LINESIZE];
 	int c;
 	char *cp, *cp2;
 
-#if __GNUC__
+#ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &c;
 	(void) &cp2;
@@ -166,15 +140,15 @@ rtty_internal(pr, src)
 
 	fputs(pr, stdout);
 	fflush(stdout);
-	if (src != NULL && strlen(src) > BUFSIZ - 2) {
-		printf("too long to edit\n");
+	if (src != NULL && strlen(src) > sizeof canonb - 2) {
+		printf(catgets(catd, CATSET, 200, "too long to edit\n"));
 		return(src);
 	}
 #ifndef TIOCSTI
 	if (src != NULL)
-		cp = copy(src, canonb);
+		cp = sstpcpy(canonb, src);
 	else
-		cp = copy("", canonb);
+		cp = sstpcpy(canonb, "");
 	fputs(canonb, stdout);
 	fflush(stdout);
 #else
@@ -192,30 +166,17 @@ rtty_internal(pr, src)
 	*cp = 0;
 #endif
 	cp2 = cp;
-	while (cp2 < canonb + BUFSIZ)
+	while (cp2 < canonb + sizeof canonb)
 		*cp2++ = 0;
 	cp2 = cp;
 	if (sigsetjmp(rewrite, 1))
 		goto redo;
-#ifdef IOSAFE
-	got_interrupt = 0;
-#endif
 	safe_signal(SIGTSTP, ttystop);
 	safe_signal(SIGTTOU, ttystop);
 	safe_signal(SIGTTIN, ttystop);
 	clearerr(stdin);
-	while (cp2 < canonb + BUFSIZ) {
-#ifdef IOSAFE
-		c = safegetc(stdin);
-		/* this is full of ACE but hopefully, interrupts will only
-		   occur in the above read */
-		if (got_interrupt == SIGINT)
-			siglongjmp(intjmp,1);
-		else if (got_interrupt)
-			siglongjmp(rewrite,1);
-#else
-		c = getc(stdin);
-#endif
+	while (cp2 < canonb + sizeof canonb) {
+		c = safe_getc(stdin);
 		if (c == EOF || c == '\n')
 			break;
 		*cp2++ = c;
@@ -271,6 +232,20 @@ redo:
  * Read all relevant header fields.
  */
 
+#ifndef	TIOCSTI
+#define	TTYSET_CHECK(h)	if (!ttyset && (h) != NULL) \
+					ttyset++, tcsetattr(0, TCSADRAIN, \
+					&ttybuf);
+#else
+#define	TTYSET_CHECK(h)
+#endif
+
+#define	GRAB_SUBJECT	if (gflags & GSUBJECT) { \
+				TTYSET_CHECK(hp->h_subject) \
+				hp->h_subject = rtty_internal("Subject: ", \
+						hp->h_subject); \
+			}
+
 int
 grabh(hp, gflags)
 	struct header *hp;
@@ -285,15 +260,18 @@ grabh(hp, gflags)
 	signal_handler_t savettou;
 	signal_handler_t savettin;
 	int errs;
+	int bsdcompat, comma;
+
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &saveint;
 #endif
-
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
 	errs = 0;
+	bsdcompat = value("bsdcompat") != 0;
+	comma = bsdcompat ? 0 : GCOMMA;
 #ifndef TIOCSTI
 	ttyset = 0;
 #endif
@@ -303,7 +281,7 @@ grabh(hp, gflags)
 	}
 	c_erase = ttybuf.c_cc[VERASE];
 	c_kill = ttybuf.c_cc[VKILL];
-#if defined (_PC_VDISABLE)
+#if defined (_PC_VDISABLE) && defined (HAVE_FPATHCONF)
 	if ((vdis = fpathconf(0, _PC_VDISABLE)) < 0)
 		vdis = '\377';
 #elif defined (_POSIX_VDISABLE)
@@ -319,9 +297,6 @@ grabh(hp, gflags)
 	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
 		safe_signal(SIGQUIT, SIG_DFL);
 #else	/* TIOCSTI */
-#ifdef IOSAFE
-	got_interrupt = 0;
-#endif
 	if (sigsetjmp(intjmp, 1)) {
 		/* avoid garbled output with C-c */
 		printf("\n");
@@ -331,36 +306,27 @@ grabh(hp, gflags)
 	saveint = safe_signal(SIGINT, ttyint);
 #endif	/* TIOCSTI */
 	if (gflags & GTO) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_to != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
+		TTYSET_CHECK(hp->h_to)
 		hp->h_to = checkaddrs(extract(rtty_internal("To: ",
-						detract(hp->h_to, 0)), GTO));
+						detract(hp->h_to, comma)),
+					GTO));
 	}
-	if (gflags & GSUBJECT) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_subject != NULL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
-		hp->h_subject = rtty_internal("Subject: ", hp->h_subject);
-	}
+	if (bsdcompat)
+		GRAB_SUBJECT
 	if (gflags & GCC) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_cc != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
+		TTYSET_CHECK(hp->h_cc)
 		hp->h_cc = checkaddrs(extract(rtty_internal("Cc: ",
-						detract(hp->h_cc, 0)), GCC));
+						detract(hp->h_cc, comma)),
+					GCC));
 	}
 	if (gflags & GBCC) {
-#ifndef TIOCSTI
-		if (!ttyset && hp->h_bcc != NIL)
-			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
+		TTYSET_CHECK(hp->h_bcc)
 		hp->h_bcc = checkaddrs(extract(rtty_internal("Bcc: ",
-						detract(hp->h_bcc, 0)), GBCC));
+						detract(hp->h_bcc, comma)),
+					GBCC));
 	}
+	if (!bsdcompat)
+		GRAB_SUBJECT
 out:
 	safe_signal(SIGTSTP, savetstp);
 	safe_signal(SIGTTOU, savettou);
@@ -419,9 +385,6 @@ char *prefix, *string;
 	if ((savequit = safe_signal(SIGQUIT, SIG_IGN)) == SIG_DFL)
 		safe_signal(SIGQUIT, SIG_DFL);
 #else
-#ifdef IOSAFE
-	got_interrupt = 0;
-#endif
 	if (sigsetjmp(intjmp, 1)) {
 		/* avoid garbled output with C-c */
 		printf("\n");
@@ -430,10 +393,7 @@ char *prefix, *string;
 	}
 	saveint = safe_signal(SIGINT, ttyint);
 #endif
-#ifndef TIOCSTI
-	if (!ttyset && string != NIL)
-		ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
-#endif
+	TTYSET_CHECK(string)
 	ret = rtty_internal(prefix, string);
 	if (ret != NULL && *ret == '\0')
 		ret = NULL;

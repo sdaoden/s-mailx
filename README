@@ -1,19 +1,21 @@
 Welcome to nail, a mail user agent!
 
-Nail is derived from Berkeley Mail 8.1. Its concept is to include the
-essential features a modern MUA must provide but to remain compatible
-with its classic ancestor. Especially, nail has the ability to send and
-receive MIME messages.
+Nail is derived from Berkeley Mail 8.1 and is intended provide the
+functionality of the POSIX.2 mailx command with additional support
+for MIME messages and SMTP.
 
 To compile nail, look at the file "INSTALL" that contains the generic
-instructions for autoconf builds.
+instructions for autoconf builds. The configuration file nail.rc will
+be installed in /etc unless --with-rcfile=FILE is passed as an option
+to configure; --prefix and --sysconfdir are ignored. You can also build
+nail RPMs using 'rpm -ta nail-<version>.tar.gz'.
 
 After compilation, edit the personal and system-wide run time
 configuration files to match your needs. You _really_ should do this or
 at least install the template because most of the defaults still have
 the compatibility values of fifteen years ago.  For batch usage, it may
 be more convenient to pass the configuration as environment variables
-only, as e.g. "from=user@host nail -n" does.
+only, as e.g. "MAILRC=/dev/null from=user@host nail -n" does.
 
 If you want to use nail with a POP or IMAP mailbox, you have to set up
 a program like e.g. fetchmail since nail does not contain such network
@@ -30,9 +32,12 @@ Digital Unix	4.0
 HP-UX		10.20
 SINIX-Z		5.42
 AIX		4.3.3.0
-FreeBSD		4.0-STABLE
-OpenBSD		2.[89]
+FreeBSD		4.0-STABLE, 4.5-RELEASE, 4.6-RELEASE
+OpenBSD		2.[89], 3.0, 3.1-current
 NetBSD		1.5
+Mac OS		10.1 (but note that there is no support for
+		case-insensitive file systems and other possible
+		Mac OS oddities).
 
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this
@@ -73,4 +78,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					6/2/02
+<g-r@bigfoot.de>					9/29/02

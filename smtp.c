@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 2000
  *	Gunnar Ritter.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	1.4 (gritter) 9/19/01";
+static char sccsid[] = "@(#)smtp.c	2.2 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -52,11 +57,13 @@ static char sccsid[] = "@(#)smtp.c	1.4 (gritter) 9/19/01";
 
 static int verbose;
 
+static int	crlfputs __P((char *, FILE *));
+
 /*
  * This is fputs with conversion to \r\n format.
  * Note that the string's terminating \0 may be overwritten.
  */
-int
+static int
 crlfputs(s, stream)
 char *s;
 FILE *stream;
@@ -152,7 +159,7 @@ FILE *f;
 	int oldfl, ret = 5;
 	char b[LINESIZE];
 
-	if (fgets(b, LINESIZE, f) != NULL) {
+	if (fgets(b, sizeof b, f) != NULL) {
 		if (verbose)
 			fputs(b, stderr);
 		switch (*b) {
@@ -163,13 +170,14 @@ FILE *f;
 		default: ret = 5;
 		}
 		if (value != ret)
-			fprintf(stderr, "smtp-server: %s", b + 4);
+			fprintf(stderr, catgets(catd, CATSET, 191,
+					"smtp-server: %s"), b + 4);
 		/*
 		 * Maybe the server has said too much.
 		 */
 		oldfl = fcntl(fileno(f), F_GETFL);
 		fcntl(fileno(f), F_SETFL, oldfl | O_NONBLOCK);
-		while (fgets(b, LINESIZE, f) != NULL);
+		while (fgets(b, sizeof b, f) != NULL);
 		fcntl(fileno(f), F_SETFL, oldfl);
 	} else if (ferror(f)) {
 		perror("smtp-read");
@@ -184,10 +192,14 @@ FILE *f;
 #define	SMTP_ANSWER(x)	fflush(fsi); \
 			if (ferror(fsi)) { \
 				perror("smtp-write"); \
+				if (b != NULL) \
+					free(b); \
 				return 1; \
 			} \
 			if (read_smtp(fso, x) != (x)) { \
 				fputs("QUIT\r\n", fsi); \
+				if (b != NULL) \
+					free(b); \
 				return 1; \
 			}
 
@@ -204,33 +216,37 @@ struct name *to;
 FILE *fi, *fsi, *fso;
 {
 	struct name *n;
-	char b[LINESIZE], o[LINESIZE];
+	char *b = NULL, o[LINESIZE];
+	size_t blen, bsize = 0, count;
 
 	SMTP_ANSWER(2);
-	snprintf(o, LINESIZE, "HELO %s\r\n", nodename());
+	snprintf(o, sizeof o, "HELO %s\r\n", nodename());
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
-	snprintf(o, LINESIZE, "MAIL FROM: <%s>\r\n", skin(myaddr()));
+	snprintf(o, sizeof o, "MAIL FROM: <%s>\r\n", skin(myaddr()));
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
 	for (n = to; n != NULL; n = n->n_flink) {
-		snprintf(o, LINESIZE, "RCPT TO: <%s>\r\n", n->n_name);
+		snprintf(o, sizeof o, "RCPT TO: <%s>\r\n", n->n_name);
 		SMTP_OUT(o);
 		SMTP_ANSWER(2);
 	}
 	SMTP_OUT("DATA\r\n");
 	SMTP_ANSWER(3);
-	while (fgets(b, LINESIZE, fi) != NULL) {
+	fflush(fi);
+	rewind(fi);
+	count = fsize(fi);
+	while (fgetline(&b, &bsize, &count, &blen, fi, 1) != NULL) {
 		if (*b == '.')
-			fputc('.', fsi);
+			sputc('.', fsi);
 		crlfputs(b, fsi);
 	}
-	if (*(b + strlen(b) - 1) != '\n')
-		fputs("\r\n", fsi);
 	SMTP_OUT(".\r\n");
 	SMTP_ANSWER(2);
 	SMTP_OUT("QUIT\r\n");
 	SMTP_ANSWER(2);
+	if (b != NULL)
+		free(b);
 	return 0;
 }
 
@@ -289,14 +305,15 @@ FILE *fi;
 	servaddr.sin_port = port;
 	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
 	if (verbose)
-		fprintf(stderr, "Connecting to %s . . .", inet_ntoa(**pptr));
+		fprintf(stderr, catgets(catd, CATSET, 192,
+				"Connecting to %s . . ."), inet_ntoa(**pptr));
 	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
 			!= 0) {
 		perror("connect");
 		return 1;
 	}
 	if (verbose)
-		fputs(" connected.\n", stderr);
+		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
 	fsi = (FILE *)Fdopen(sockfd, "w");
 	fso = (FILE *)Fdopen(sockfd, "r");
 	ret = talk_smtp(to, fi, fsi, fso);
@@ -311,7 +328,8 @@ char *server;
 struct name *to;
 FILE *fi;
 {
-	fputs("No SMTP support compiled in.\n", stderr);
+	fputs(catgets(catd, CATSET, 194,
+			"No SMTP support compiled in.\n"), stderr);
 	return 1;
 }
 #endif	/* !HAVE_SOCKETS */

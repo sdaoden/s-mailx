@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	1.8 (gritter) 5/22/02";
+static char sccsid[] = "@(#)fio.c	2.6 (gritter) 9/17/02";
 #endif
 #endif /* not lint */
 
@@ -41,9 +46,6 @@ static char sccsid[] = "@(#)fio.c	1.8 (gritter) 5/22/02";
 #include <sys/file.h>
 #ifdef	HAVE_SYS_WAIT_H
 #include <sys/wait.h>
-#endif
-#ifdef	HAVE_SYS_SELECT_H
-#include <sys/select.h>
 #endif
 
 #include <errno.h>
@@ -54,6 +56,11 @@ static char sccsid[] = "@(#)fio.c	1.8 (gritter) 5/22/02";
  *
  * File I/O.
  */
+static void	makemessage __P((FILE *));
+static int	append __P((struct message *, FILE *));
+static size_t	length_of_line __P((const char *, size_t));
+static char	*fgetline_byone __P((char **, size_t *, size_t *,
+			FILE *, int, size_t));
 
 /*
  * Set up the input pointers while copying the mail file into /tmp.
@@ -62,17 +69,20 @@ void
 setptr(ibuf)
 	FILE *ibuf;
 {
-	int c, count;
+	int c;
+	size_t count;
 	char *cp, *cp2;
 	struct message this;
 	FILE *mestmp;
 	off_t offset;
 	int maybe, inhead;
-	char linebuf[LINESIZE];
+	char *linebuf = NULL;
+	size_t linesize = 0, filesize;
 
 	/* Get temporary file. */
-	if ((mestmp = Ftemp(&cp, "mail.", "w+", 0600)) == (FILE *)NULL) {
-		fprintf(stderr, "cannot create tempfile\n");
+	if ((mestmp = Ftemp(&cp, "mail.", "w+", 0600, 1)) == (FILE *)NULL) {
+		fprintf(stderr, catgets(catd, CATSET, 74,
+				"cannot create tempfile\n"));
 		exit(1);
 	}
 	unlink(cp);
@@ -87,18 +97,24 @@ setptr(ibuf)
 	this.m_lines = 0;
 	this.m_block = 0;
 	this.m_offset = 0;
+	filesize = mailsize;
 	for (;;) {
-		if (fgets(linebuf, LINESIZE, ibuf) == NULL) {
+		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)
+				== NULL) {
 			if (append(&this, mestmp)) {
-				perror("temporary file");
+				perror(catgets(catd, CATSET, 75,
+						"temporary file"));
 				exit(1);
 			}
 			makemessage(mestmp);
+			if (linebuf)
+				free(linebuf);
 			return;
 		}
+#ifdef	notdef
 		if (linebuf[0] == '\0')
 			linebuf[0] = '.';
-		count = strlen(linebuf);
+#endif
 		(void) fwrite(linebuf, sizeof *linebuf, count, otf);
 		if (ferror(otf)) {
 			perror("/tmp");
@@ -106,10 +122,11 @@ setptr(ibuf)
 		}
 		if (linebuf[count - 1] == '\n')
 			linebuf[count - 1] = '\0';
-		if (maybe && linebuf[0] == 'F' && ishead(linebuf)) {
+		if (maybe && linebuf[0] == 'F' && is_head(linebuf, count)) {
 			msgcount++;
 			if (append(&this, mestmp)) {
-				perror("temporary file");
+				perror(catgets(catd, CATSET, 76,
+						"temporary file"));
 				exit(1);
 			}
 			this.m_flag = MUSED|MNEW;
@@ -123,8 +140,7 @@ setptr(ibuf)
 		} else if (inhead) {
 			for (cp = linebuf, cp2 = "status";; cp++) {
 				if ((c = *cp2++) == 0) {
-					while (isspace(*cp++))
-						;
+					while (c = *cp++, whitechar(c));
 					if (cp[-1] != ':')
 						break;
 					while ((c = *cp++) != '\0')
@@ -144,6 +160,7 @@ setptr(ibuf)
 		this.m_lines++;
 		maybe = linebuf[0] == 0;
 	}
+	/*NOTREACHED*/
 }
 
 /*
@@ -152,91 +169,80 @@ setptr(ibuf)
  * characters written, including the newline.
  */
 int
-putline(obuf, linebuf)
+putline(obuf, linebuf, count)
 	FILE *obuf;
 	char *linebuf;
+	size_t count;
 {
-	int c;
-
-	c = strlen(linebuf);
-	(void) fwrite(linebuf, sizeof *linebuf, c, obuf);
-	(void) putc('\n', obuf);
+	(void) fwrite(linebuf, sizeof *linebuf, count, obuf);
+	(void) sputc('\n', obuf);
 	if (ferror(obuf))
 		return (-1);
-	return (c + 1);
+	return (count + 1);
 }
 
 /*
  * Read up a line from the specified input into the line
  * buffer.  Return the number of characters read.  Do not
  * include the newline at the end.
+ *
+ * n is the number of characters already read.
  */
 int
-readline(ibuf, linebuf, linesize)
+readline_restart(ibuf, linebuf, linesize, n)
 	FILE *ibuf;
-	char *linebuf;
-	int linesize;
-{
+	char **linebuf;
+	size_t *linesize;
 	size_t n;
-#ifdef IOSAFE
-	int oldfl;
-	char *res;
-	extern int got_interrupt;
-	fd_set rds;
-#endif
+{
+	ssize_t sz;
 
 	clearerr(ibuf);
-#ifdef IOSAFE
 	/*
-	 * We want to be able to get interrupts while waiting user-input
-	 * we cannot to safely inside a stdio call, so we first ensure there  
-	 * is now data in the stdio buffer by doing the stdio call with the
-	 * descriptor in non-blocking state and then do a select. 
-	 * Hope it is safe (the libc should not break on a EAGAIN) 
-	 * lprylli@graville.fdn.fr
+	 * Interrupts will cause trouble if we are inside a stdio call. As
+	 * this is only relevant if input comes from a terminal, we can simply
+	 * bypass it by read() then.
 	 */
-
-	/*
-	 * number of characters already read
-	 */
-	n = 0;
-	while (n < linesize - 1) {
-		errno = 0;
-		oldfl = fcntl(fileno(ibuf), F_GETFL);
-		fcntl(fileno(ibuf), F_SETFL, oldfl | O_NONBLOCK);
-		res = fgets(linebuf + n, linesize - n, ibuf);
-		fcntl(fileno(ibuf), F_SETFL, oldfl);
-		if (res != NULL) {
-			n += strlen(linebuf + n);
-			if (n > 0 && linebuf[n - 1] == '\n')
-				break;
-		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			clearerr(ibuf);
-		} else {
-			/* probably EOF one the file descriptors */
-			if (n > 0)
-				break;
-			else
-				return -1;
+	if (fileno(ibuf) == 0 && is_a_tty[0]) {
+		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
+			*linebuf = srealloc(*linebuf,
+					*linesize = LINESIZE + n + 1);
+		for (;;) {
+			if (n >= *linesize - 128)
+				*linebuf = srealloc(*linebuf, *linesize += 256);
+again:
+			sz = read(0, *linebuf + n, *linesize - n - 1);
+			if (sz > 0) {
+				n += sz;
+				(*linebuf)[n] = '\0';
+				if (n > 0 && (*linebuf)[n - 1] == '\n')
+					break;
+			} else {
+				if (errno == EINTR)
+					goto again;
+				if (n > 0) {
+					if ((*linebuf)[n - 1] != '\n') {
+						newline_appended();
+						(*linebuf)[n++] = '\n';
+						(*linebuf)[n] = '\0';
+					}
+					break;
+				} else
+					return -1;
+			}
 		}
-		FD_ZERO(&rds);
-		FD_SET(fileno(ibuf), &rds);
-		select((SELECT_TYPE_ARG1)(fileno(ibuf) + 1),
-				SELECT_TYPE_ARG234(&rds),
-				SELECT_TYPE_ARG234(NULL),
-				SELECT_TYPE_ARG234(NULL),
-				SELECT_TYPE_ARG5(NULL));
-		/* if an interrupt occur drops the current line and returns */
-		if (got_interrupt)
+	} else {
+		/*
+		 * Not reading from standard input or standard input not
+		 * a terminal. We read one char at a time as it is the
+		 * only way to get lines with embedded NUL characters in
+		 * standard stdio.
+		 */
+		if (fgetline_byone(linebuf, linesize, &n, ibuf, 1, n) == NULL)
 			return -1;
 	}
-#else
-	if (fgets(linebuf, linesize, ibuf) == NULL)
-		return -1;
-#endif
-	n = strlen(linebuf);
-	if (n > 0 && linebuf[n - 1] == '\n')
-		linebuf[--n] = '\0';
+	if (n > 0 && (*linebuf)[n - 1] == '\n')
+		(*linebuf)[--n] = '\0';
 	return n;
 }
 
@@ -253,16 +259,25 @@ setinput(mp)
 	if (fseek(itf, (long)nail_positionof(mp->m_block,
 					mp->m_offset), 0) < 0) {
 		perror("fseek");
-		panic("temporary file seek");
+		panic(catgets(catd, CATSET, 77, "temporary file seek"));
 	}
 	return (itf);
+}
+
+struct message *
+setdot(mp)
+	struct message *mp;
+{
+	dot = mp;
+	did_print_dot = 0;
+	return dot;
 }
 
 /*
  * Take the data out of the passed ghost file and toss it into
  * a dynamically allocated message structure.
  */
-void
+static void
 makemessage(f)
 	FILE *f;
 {
@@ -270,14 +285,16 @@ makemessage(f)
 
 	if (message != 0)
 		free((char *) message);
-	if ((message = (struct message *) malloc((unsigned) size)) == 0)
-		panic("Insufficient memory for %d messages", msgcount);
-	dot = message;
+	if ((message = (struct message *)smalloc((unsigned) size)) == 0)
+		panic(catgets(catd, CATSET, 78,
+			"Insufficient memory for %d messages"), msgcount);
+	setdot(message);
 	size -= sizeof (struct message);
 	fflush(f);
 	(void) lseek(fileno(f), (off_t)sizeof *message, 0);
 	if (read(fileno(f), (char *) message, size) != size)
-		panic("Message temporary file corrupted");
+		panic(catgets(catd, CATSET, 79,
+				"Message temporary file corrupted"));
 	message[msgcount].m_size = 0;
 	message[msgcount].m_lines = 0;
 	Fclose(f);
@@ -287,7 +304,7 @@ makemessage(f)
  * Append the passed message descriptor onto the temp file.
  * If the write fails, return 1, else 0
  */
-int
+static int
 append(mp, f)
 	struct message *mp;
 	FILE *f;
@@ -388,13 +405,14 @@ expand(name)
 	 */
 	switch (*name) {
 	case '%':
-		findmail(name[1] ? name + 1 : myname, xname, PATHSIZE);
+		findmail(name[1] ? name + 1 : myname, name[1] != '\0' || uflag,
+				xname, sizeof xname);
 		return savestr(xname);
 	case '#':
 		if (name[1] != 0)
 			break;
 		if (prevfile[0] == 0) {
-			printf("No previous file\n");
+			printf(catgets(catd, CATSET, 80, "No previous file\n"));
 			return NULL;
 		}
 		return savestr(prevfile);
@@ -403,13 +421,13 @@ expand(name)
 			name = "~/mbox";
 		/* fall through */
 	}
-	if (name[0] == '+' && getfold(cmdbuf, PATHSIZE) >= 0) {
-		snprintf(xname, PATHSIZE, "%s/%s", cmdbuf, name + 1);
+	if (name[0] == '+' && getfold(cmdbuf, sizeof cmdbuf) >= 0) {
+		snprintf(xname, sizeof xname, "%s/%s", cmdbuf, name + 1);
 		name = savestr(xname);
 	}
 	/* catch the most common shell meta character */
 	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
-		snprintf(xname, PATHSIZE, "%s%s", homedir, name + 1);
+		snprintf(xname, sizeof xname, "%s%s", homedir, name + 1);
 		name = savestr(xname);
 	}
 	if (!anyof(name, "~{[*?$`'\"\\"))
@@ -418,7 +436,7 @@ expand(name)
 		perror("pipe");
 		return name;
 	}
-	snprintf(cmdbuf, PATHSIZE, "echo %s", name);
+	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
 		shell = PATH_CSHELL;
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
@@ -428,23 +446,29 @@ expand(name)
 		return NULL;
 	}
 	close(pivec[1]);
-	l = read(pivec[0], xname, PATHSIZE);
+again:
+	l = read(pivec[0], xname, sizeof xname);
 	if (l < 0) {
+		if (errno == EINTR)
+			goto again;
 		perror("read");
 		close(pivec[0]);
 		return NULL;
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
-		fprintf(stderr, "\"%s\": Expansion failed.\n", name);
+		fprintf(stderr, catgets(catd, CATSET, 81,
+				"\"%s\": Expansion failed.\n"), name);
 		return NULL;
 	}
 	if (l == 0) {
-		fprintf(stderr, "\"%s\": No match.\n", name);
+		fprintf(stderr, catgets(catd, CATSET, 82,
+					"\"%s\": No match.\n"), name);
 		return NULL;
 	}
-	if (l == PATHSIZE) {
-		fprintf(stderr, "\"%s\": Expansion buffer overflow.\n", name);
+	if (l == sizeof xname) {
+		fprintf(stderr, catgets(catd, CATSET, 83,
+				"\"%s\": Expansion buffer overflow.\n"), name);
 		return NULL;
 	}
 	xname[l] = 0;
@@ -452,7 +476,8 @@ expand(name)
 		;
 	cp[1] = '\0';
 	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
-		fprintf(stderr, "\"%s\": Ambiguous.\n", name);
+		fprintf(stderr, catgets(catd, CATSET, 84,
+				"\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
 	return savestr(xname);
@@ -490,10 +515,140 @@ getdeadletter()
 	if ((cp = value("DEAD")) == NULL || (cp = expand(cp)) == NULL)
 		cp = expand("~/dead.letter");
 	else if (*cp != '/') {
-		char buf[PATHSIZE];
+		char *buf;
+		size_t sz;
 
-		(void) snprintf(buf, PATHSIZE, "~/%s", cp);
+		buf = ac_alloc(sz = strlen(cp) + 3);
+		snprintf(buf, sz, "~/%s", cp);
+		snprintf(buf, sz, "~/%s", cp);
 		cp = expand(buf);
+		ac_free(buf);
 	}
 	return cp;
+}
+
+/*
+ * line is a buffer with the result of fgets(). Returns the first
+ * newline or the last character read.
+ */
+static size_t
+length_of_line(line, linesize)
+const char *line;
+size_t linesize;
+{
+	register size_t i;
+
+	/*
+	 * Last character is always '\0' and was added by fgets.
+	 */
+	linesize--;
+	for (i = 0; i < linesize; i++)
+		if (line[i] == '\n')
+			break;
+	return i < linesize ? i + 1 : linesize;
+}
+
+/*
+ * fgets replacement to handle lines of arbitrary size and with
+ * embedded \0 characters.
+ * line - line buffer. *line be NULL.
+ * linesize - allocated size of line buffer.
+ * count - maximum characters to read. May be NULL.
+ * llen - length_of_line(*line).
+ * fp - input FILE.
+ * appendnl - always terminate line with \n, append if necessary.
+ */
+char *
+fgetline(line, linesize, count, llen, fp, appendnl)
+char **line;
+size_t *linesize, *count, *llen;
+FILE *fp;
+{
+	ssize_t i_llen, sz;
+
+	if (count == NULL)
+		/*
+		 * If we have no count, we cannot determine where the
+		 * characters returned by fgets() end if there was no
+		 * newline. We have to read one character at one.
+		 */
+		return fgetline_byone(line, linesize, llen, fp, appendnl, 0);
+	if (*line == NULL || *linesize < LINESIZE)
+		*line = srealloc(*line, *linesize = LINESIZE);
+	sz = *linesize <= *count ? *linesize : *count + 1;
+	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
+		/*
+		 * Leave llen untouched; it is used to determine whether
+		 * the last line was \n-terminated in some callers.
+		 */
+		return NULL;
+	i_llen = length_of_line(*line, sz);
+	*count -= i_llen;
+	while ((*line)[i_llen - 1] != '\n') {
+		*line = srealloc(*line, *linesize += 256);
+		sz = *linesize - i_llen;
+		sz = (sz <= *count ? sz : *count + 1);
+		if (sz <= 1 || fgets(&(*line)[i_llen], sz, fp) == NULL) {
+			if (appendnl) {
+				newline_appended();
+				(*line)[i_llen++] = '\n';
+				(*line)[i_llen] = '\0';
+			}
+			break;
+		}
+		sz = length_of_line(&(*line)[i_llen], sz);
+		i_llen += sz;
+		*count -= sz;
+	}
+	if (llen)
+		*llen = i_llen;
+	return *line;
+}
+
+/*
+ * Read a line, one character at once.
+ */
+static char *
+fgetline_byone(line, linesize, llen, fp, appendnl, n)
+char **line;
+size_t *linesize, *llen;
+FILE *fp;
+size_t n;
+{
+	int c;
+
+	if (*line == NULL || *linesize < LINESIZE + n + 1)
+		*line = srealloc(*line, *linesize = LINESIZE + n + 1);
+	for (;;) {
+		if (n >= *linesize - 128)
+			*line = srealloc(*line, *linesize += 256);
+		c = sgetc(fp);
+		if (c != EOF) {
+			(*line)[n++] = c;
+			(*line)[n] = '\0';
+			if (c == '\n')
+				break;
+		} else {
+			if (n > 0) {
+				if (appendnl) {
+					newline_appended();
+					(*line)[n++] = '\n';
+					(*line)[n] = '\0';
+				}
+				break;
+			} else
+				return NULL;
+		}
+	}
+	if (llen)
+		*llen = n;
+	return *line;
+}
+
+void
+newline_appended()
+{
+	fprintf(stderr, catgets(catd, CATSET, 208,
+			"warning: incomplete line - newline appended\n"));
+	exit_status |= 010;
 }

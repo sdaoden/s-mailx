@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	1.11 (gritter) 5/22/02
+ *	Sccsid @(#)def.h	2.4 (gritter) 9/2/02
  */
 
 /*
@@ -48,10 +53,9 @@
 #define	APPEND				/* New mail goes to end of mailbox */
 
 #define	ESCAPE		'~'		/* Default escape for sending */
-#define	NMLSIZE		1024		/* max names in a message list */
 #ifndef	MAXPATHLEN
-#ifdef	_POSIX_MAX_PATH
-#define	MAXPATHLEN	_POSIX_MAX_PATH
+#ifdef	PATH_MAX
+#define	MAXPATHLEN	PATH_MAX
 #else
 #define	MAXPATHLEN	1024
 #endif
@@ -60,7 +64,7 @@
 #define	PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
 #endif
 #define	HSHSIZE		59		/* Hash size for aliases and vars */
-#define	LINESIZE	2048		/* max readable line width */
+#define	LINESIZE	2560		/* max readable line width */
 #define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
 #define	MAXARGC		1024		/* Maximum list of raw strings */
 #define	MAXEXP		25		/* Maximum expansion of aliases */
@@ -74,6 +78,12 @@
 #define	__P(a)	()
 #endif
 #endif
+
+#ifdef	HAVE_CATGETS
+#define	CATSET	1
+#else	/* !HAVE_CATGETS */
+#define	catgets(a, b, c, d)	(d)
+#endif	/* !HAVE_CATGETS */
 
 typedef RETSIGTYPE (*signal_handler_t) __P((int));
 
@@ -113,9 +123,10 @@ enum {
 };
 
 enum {
-	MIME_7BITTEXT,			/* us ascii text */
-	MIME_INTERTEXT,			/* international text */
-	MIME_BINARY			/* binary content */
+	MIME_HIGHBIT	= 001,		/* characters >= 0200 */
+	MIME_LONGLINES	= 002,		/* has lines too long for RFC 2822 */
+	MIME_CTRLCHAR	= 004,		/* contains control characters */
+	MIME_HASNUL	= 010,		/* contains \0 characters */
 };
 
 #define	TD_NONE		0		/* no display conversion */
@@ -350,11 +361,38 @@ struct ignoretab {
 #define	reset(x)	siglongjmp(srbuf, x)
 
 /*
- * For standards compliance, check locale-independant for ASCII spaces
- * only.
+ * Locale-independent character classes.
  */
-#define	spacechar(c)	((c) == ' ' || (c) == '\t')
-#define	blankchar(c)	(spacechar(c) || (c) == '\n')
+enum {
+	C_CNTRL	= 0001,
+	C_BLANK	= 0002,
+	C_SPACE	= 0004,
+	C_PUNCT	= 0010,
+	C_DIGIT	= 0020,
+	C_UPPER	= 0040,
+	C_LOWER	= 0100,
+	C_WHITE = 0200
+};
+
+extern const unsigned char	class_char[];
+
+#define	asciichar(c) ((unsigned)(c) <= 0177)
+#define	alnumchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_UPPER|C_LOWER)))
+#define	alphachar(c) (asciichar(c)&&(class_char[c]&(C_UPPER|C_LOWER)))
+#define	blankchar(c) (asciichar(c)&&(class_char[c]&(C_BLANK)))
+#define	cntrlchar(c) (asciichar(c)&&(class_char[c]&(C_CNTRL)))
+#define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT)))
+#define	lowerchar(c) (asciichar(c)&&(class_char[c]&(C_LOWER)))
+#define	punctchar(c) (asciichar(c)&&(class_char[c]&(C_PUNCT)))
+#define	spacechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_SPACE|C_WHITE)))
+#define	upperchar(c) (asciichar(c)&&(class_char[c]&(C_UPPER)))
+#define	whitechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_WHITE)))
+
+#define	upperconv(c) (lowerchar(c) ? (c)-'a'+'A' : (c))
+#define	lowerconv(c) (upperchar(c) ? (c)-'A'+'a' : (c))
+
+/*	RFC 822, 3.2.	*/
+#define	fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
 
 /*
  * Truncate a file to the last character written. This is
@@ -367,21 +405,30 @@ struct ignoretab {
 }
 
 /*
- * Linux stdio has the odd quirk that if you are in a stdio() function and
- * you longjmp() out of it, next time you enter that function you will
- * return with whatever data had been successfully read the last time.
- * Accordingly, you must fpurge() any outstanding data before longjmp()ing.
- * We test _IO_stdin to try to verify that it's the right implementation.
- *
- * For glibc it is better to use the IOSAFE implementation.
+ * Use either alloca() or smalloc()/free(). ac_alloc can be used to
+ * allocate space within a function. ac_free must be called when the
+ * space is no longer needed, but expands to nothing if using alloca().
  */
-#undef fpurge
-#if defined(__linux__) && defined(_IO_stdin)
-#  define fpurge(file) ((file)->_IO_read_ptr = (file)->_IO_read_end)
-#else /* !__linux__ */
-#  define fpurge(file)
-#endif
-#if defined(__GLIBC__) &&  (__GLIBC__ >= 2) && !defined(IOSAFE)
-#  define IOSAFE
-#endif
+#ifdef	HAVE_ALLOCA
+#define	ac_alloc(n)	alloca(n)
+#define	ac_free(n)
+#else	/* !HAVE_ALLOCA */
+#define	ac_alloc(n)	smalloc(n)
+#define	ac_free(n)	free(n)
+#endif	/* !HAVE_ALLOCA */
 
+/*
+ * glibc uses the slow thread-safe getc() even if _REENTRANT is not
+ * defined. Work around it.
+ */
+#if defined (HAVE_GETC_UNLOCKED) && defined (__GLIBC__)
+#define	sgetc(c)	getc_unlocked(c)
+#else	/* !HAVE_GETC_UNLOCKED */
+#define	sgetc(c)	getc(c)
+#endif	/* !HAVE_GETC_UNLOCKED */
+
+#if defined (HAVE_PUTC_UNLOCKED) && defined (__GLIBC__)
+#define	sputc(c, f)	putc_unlocked(c, f)
+#else	/* !HAVE_PUTC_UNLOCKED */
+#define	sputc(c, f)	putc(c, f)
+#endif	/* !HAVE_PUTC_UNLOCKED */

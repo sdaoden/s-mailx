@@ -29,14 +29,14 @@
   "iso-8859-X", where X is between 1 and 15, or "koi8-r" in Russia etc.
 
   In most cases, the "charset" value will be the same as the terminal's
-  character set. In some situations, however, it may be desireable to
+  character set. In some situations, however, it may be desirable to
   use different ones here; since Unicode messages are not generally well
   understood by all mail user agents, users of an Unicode terminal may
   choose to send in an ISO 8859 character set. For this purpose, the
   "ttycharset" variable can be set; it defaults to the "charset" variable.
   On systems where the CODESET parameter to nl_langinfo(3) is available
-  (e.g. on those conforming to SUSv2), nail determines the terminal's
-  character set dependant on the LC_CTYPE locale setting at startup. If
+  (e. g. on those conforming to SUSv2), nail determines the terminal's
+  character set dependent on the LC_CTYPE locale setting at startup. If
   this call is possible, the result is assigned to "ttycharset".
 
   When nail is displaying a message out of a mail folder, the character
@@ -53,7 +53,7 @@
 
 * Unicode.
 
-  Whereever an useful iconv(3) function is available, nail can send and
+  Wherever an useful iconv(3) function is available, nail can send and
   display Unicode messages. Unless the terminal also supports Unicode,
   messages originating from foreign environments will contain mostly
   question marks when viewing, however; this does not affect outgoing
@@ -93,7 +93,10 @@
 
     At least the conversions between Unicode/UTF-8 and the ISO 8859 character
     sets are supported. The use of this implementation is a bit difficult
-    since the names it accepts are proprietary and case-dependant.
+    since the names it accepts are proprietary and case-dependant. If this
+    leads to error messages such as 'Cannot convert from 646 to iso-8859-1'
+    you have to specify the terminal character set by hand, as e. g. the
+    nail command 'set ttycharset=iso-8859-1' does.
 
   - UnixWare 7; 2.1.
 
@@ -101,4 +104,4 @@
     are proprietary and case-dependent; the conversion directions are
     limited, too.
 
-Gunnar Ritter	1/11/01
+Gunnar Ritter	9/29/02

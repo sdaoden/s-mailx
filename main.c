@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,17 +37,11 @@
  */
 
 #ifndef lint
-static char copyright[]
-#ifdef	__GNUC__
-__attribute__ ((unused))
-#endif
-= "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.16 (gritter) 5/24/02";
-#endif
+static char copyright[]
+= "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
+static char sccsid[] = "@(#)main.c	2.4 (gritter) 9/17/02";
+#endif	/* DOSCCS */
 #endif /* not lint */
 
 /*
@@ -69,19 +68,24 @@ static char sccsid[] = "@(#)main.c	1.16 (gritter) 5/24/02";
  * Startup -- interface with user.
  */
 
-sigjmp_buf	hdrjmp;
-char *progname;
+static sigjmp_buf	hdrjmp;
+char	*progname;
+
+static void	hdrstop __P((int));
+static void	setscreensize __P((void));
 
 int
 main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	int i, existonly = 0, headersonly = 0;
+	const char *optstr = "+BHFINVT:a:b:c:defh:inqr:s:u:v~";
+	int i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
 	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL;
 	char nosrc = 0;
+	int Fflag = 0, Nflag = 0;
 	signal_handler_t prevint;
 
 	/*
@@ -93,7 +97,7 @@ main(argc, argv)
 	 */
 	effectivegid = getegid();
 	realgid = getgid();
-	if (setgid (realgid) < 0) {
+	if (setgid(realgid) < 0) {
 		perror("setgid");
 		exit(1);
 	}
@@ -109,15 +113,28 @@ main(argc, argv)
 	 * start the SIGCHLD catcher, and so forth.
 	 */
 	(void) safe_signal(SIGCHLD, sigchild);
-	if (isatty(0))
+	is_a_tty[0] = isatty(0);
+	is_a_tty[1] = isatty(1);
+	if (is_a_tty[0])
 		assign("interactive", "");
+	assign("header", "");
+	assign("save", "");
 #ifdef	HAVE_SETLOCALE
 	setlocale(LC_CTYPE, "");
+	setlocale(LC_MESSAGES, "");
 #if defined (HAVE_NL_LANGINFO) && defined (CODESET)
 	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
 		assign("ttycharset", cp);
 #endif
+#endif	/* HAVE_SETLOCALE */
+#ifdef	HAVE_CATGETS
+#ifdef	NL_CAT_LOCALE
+	i = NL_CAT_LOCALE;
+#else
+	i = 0;
 #endif
+	catd = catopen(CATNAME, i);
+#endif	/* HAVE_CATGETS */
 #ifdef	HAVE_ICONV
 	iconvd = (iconv_t) -1;
 #endif
@@ -137,17 +154,24 @@ main(argc, argv)
 	smopts = NIL;
 	subject = NULL;
 #ifndef	__GLIBC__
-	while ((i = getopt(argc, argv, "HINVT:a:b:c:definqr:s:u:v")) != EOF) {
-#else
-	while ((i = getopt(argc, argv, "+HINVT:a:b:c:definqr:s:u:v")) != EOF) {
+	optstr++;
 #endif
+	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
 		case 'V':
 			puts(version);
 			exit(0);
 			/*NOTREACHED*/
+		case 'B':
+			setvbuf(stdin, NULL, _IOLBF, 0);
+			setvbuf(stdout, NULL, _IOLBF, 0);
+			break;
 		case 'H':
 			headersonly = 1;
+			break;
+		case 'F':
+			Fflag = 1;
+			sendflag++;
 			break;
 		case 'T':
 			/*
@@ -160,12 +184,18 @@ main(argc, argv)
 				exit(1);
 			}
 			close(i);
+			/*FALLTHRU*/
+		case 'I':
+			/*
+			 * Show Newsgroups: field in header summary
+			 */
+			Iflag = 1;
 			break;
 		case 'u':
 			/*
 			 * Next argument is person to pretend to be.
 			 */
-			myname = optarg;
+			uflag = myname = optarg;
 			break;
 		case 'i':
 			/*
@@ -186,21 +216,18 @@ main(argc, argv)
 			 * non terminal
 			 */
 			subject = optarg;
+			sendflag++;
 			break;
 		case 'f':
 			/*
 			 * User is specifying file to "edit" with Mail,
 			 * as opposed to reading system mailbox.
-			 * If no argument is given after -f, we read his
+			 * If no argument is given, we read his
 			 * mbox file.
 			 *
-			 * getopt() can't handle optional arguments, so here
-			 * is an ugly hack to get around it.
+			 * Check for remaining arguments later.
 			 */
-			if ((argv[optind]) && (argv[optind][0] != '-'))
-				ef = argv[optind++];
-			else
-				ef = "&";
+			ef = "&";
 			break;
 		case 'q':
 			/*
@@ -211,6 +238,7 @@ main(argc, argv)
 				qf = argv[optind++];
 			else
 				qf = NULL;
+			sendflag++;
 			break;
 		case 'n':
 			/*
@@ -222,7 +250,8 @@ main(argc, argv)
 			/*
 			 * Avoid initial header printing.
 			 */
-			assign("noheader", "");
+			Nflag = 1;
+			unset_internal("header");
 			break;
 		case 'v':
 			/*
@@ -230,17 +259,15 @@ main(argc, argv)
 			 */
 			assign("verbose", "");
 			break;
-		case 'I':
-			/*
-			 * We're interactive
-			 */
-			assign("interactive", "");
-			break;
 		case 'r':
 			/*
 			 * Set From address.
 			 */
 			fromaddr = optarg;
+			smopts = cat(smopts, nalloc("-r", 0));
+			smopts = cat(smopts, nalloc(optarg, 0));
+			tildeflag = -1;
+			sendflag++;
 			break;
 		case 'a':
 			/*
@@ -250,46 +277,76 @@ main(argc, argv)
 				perror(optarg);
 				exit(1);
 			}
+			sendflag++;
 			break;
 		case 'c':
 			/*
 			 * Get Carbon Copy Recipient list
 			 */
 			cc = checkaddrs(cat(cc, extract(optarg, GCC)));
+			sendflag++;
 			break;
 		case 'b':
 			/*
 			 * Get Blind Carbon Copy Recipient list
 			 */
 			bcc = checkaddrs(cat(bcc, extract(optarg, GBCC)));
+			sendflag++;
+			break;
+		case 'h':
+			/*
+			 * Hop count for sendmail
+			 */
+			smopts = cat(smopts, nalloc("-h", 0));
+			smopts = cat(smopts, nalloc(optarg, 0));
+			sendflag++;
+			break;
+		case '~':
+			if (tildeflag == 0)
+				tildeflag = 1;
 			break;
 		case '?':
-			fprintf(stderr,
-			"Usage: %s [-iInv] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] to-addr ... [- sendmail-options ...]\n"
-			"       %s [-eHiInNv] -f [name]\n"
-			"       %s [-eiInNv] [-u user]\n",
+usage:
+			fprintf(stderr, catgets(catd, CATSET, 135,
+"Usage: %s [-BFinv~] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... [- sendmail-options ...]\n\
+       %s [-BeHiInNv~] [-T name] -f [name]\n\
+       %s [-BeinNv~] [-u user]\n"),
 				progname, progname, progname);
-			exit(1);
+			exit(2);
 		}
 	}
-	for (i = optind; (argv[i]) && (*argv[i] != '-'); i++)
-		to = checkaddrs(cat(to, nalloc(argv[i], GTO)));
-	for (; argv[i]; i++)
-		smopts = cat(smopts, nalloc(argv[i], 0));
+	if (ef != NULL) {
+		if (optind < argc) {
+			if (optind + 1 < argc) {
+				fprintf(stderr, catgets(catd, CATSET, 205,
+					"More than on file given with -f\n"));
+				goto usage;
+			}
+			ef = argv[optind];
+		}
+	} else {
+		for (i = optind; (argv[i]) && (*argv[i] != '-'); i++)
+			to = checkaddrs(cat(to, nalloc(argv[i], GTO)));
+		for (; argv[i]; i++)
+			smopts = cat(smopts, nalloc(argv[i], 0));
+	}
 	/*
 	 * Check for inconsistent arguments.
 	 */
-	if (to == NIL && (subject != NULL || cc != NIL || bcc != NIL)) {
-		fputs("You must specify direct recipients with -s, -c, or -b.\n", stderr);
-		exit(1);
-	}
 	if (ef != NULL && to != NIL) {
-		fprintf(stderr, "Cannot give -f and people to send to.\n");
-		exit(1);
+		fprintf(stderr, catgets(catd, CATSET, 137,
+			"Cannot give -f and people to send to.\n"));
+		goto usage;
 	}
-	if (qf != NULL && to == NIL) {
-		fprintf(stderr, "Cannot give -q without people to send to.\n");
-		exit(1);
+	if (sendflag && to == NIL) {
+		fprintf(stderr, catgets(catd, CATSET, 138,
+			"Send options without primary recipient specified.\n"));
+		goto usage;
+	}
+	if (Iflag && ef == NULL) {
+		fprintf(stderr, catgets(catd, CATSET, 204,
+					"Need -f with -I.\n"));
+		goto usage;
 	}
 	tinit();
 	setscreensize();
@@ -304,6 +361,8 @@ main(argc, argv)
 	 */
 	if ((cp = getenv("MAILRC")) != NULL)
 		load(expand(cp));
+	else if ((cp = getenv("NAILRC")) != NULL)
+		load(expand(cp));
 	else
 		load(expand("~/.mailrc"));
 	/*
@@ -312,7 +371,7 @@ main(argc, argv)
 	if (fromaddr)
 		assign("from", fromaddr);
 	if (!rcvmode) {
-		mail(to, cc, bcc, smopts, subject, attach, qf);
+		mail(to, cc, bcc, smopts, subject, attach, qf, Fflag);
 		/*
 		 * why wait?
 		 */
@@ -333,18 +392,22 @@ main(argc, argv)
 	if (headersonly) {
 		for (i = 1; i <= msgcount; i++)
 			printhead(i);
-		exit(0);
+		exit(exit_status);
 	}
 	if (i > 0 && value("emptystart") == NULL)
 		exit(1);
 	if (sigsetjmp(hdrjmp, 1) == 0) {
 		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			safe_signal(SIGINT, hdrstop);
-		if (value("quiet") == NULL)
-			printf("Mail version %s.  Type ? for help.\n",
-				version);
-		announce();
-		fflush(stdout);
+		if (Nflag == 0) {
+			if (value("quiet") == NULL)
+				printf(catgets(catd, CATSET, 140,
+					"%s version %s.  Type ? for help.\n"),
+					value("bsdcompat") ? "Mail" : "mailx",
+					version);
+			announce(1);
+			fflush(stdout);
+		}
 		safe_signal(SIGINT, prevint);
 	}
 	commands();
@@ -352,22 +415,20 @@ main(argc, argv)
 	safe_signal(SIGINT, SIG_IGN);
 	safe_signal(SIGQUIT, SIG_IGN);
 	quit();
-	exit(0);
-	/*NOTREACHED*/
-	return 0;
+	return exit_status;
 }
 
 /*
  * Interrupt printing of the headers.
  */
 /*ARGSUSED*/
-void
+static void
 hdrstop(signo)
 	int signo;
 {
 
 	fflush(stdout);
-	fprintf(stderr, "\nInterrupt\n");
+	fprintf(stderr, catgets(catd, CATSET, 141, "\nInterrupt\n"));
 	siglongjmp(hdrjmp, 1);
 }
 
@@ -379,7 +440,7 @@ hdrstop(signo)
  *	If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col;
  */
-void
+static void
 setscreensize()
 {
 	struct termios tbuf;

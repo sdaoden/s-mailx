@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	1.8 (gritter) 2/19/02";
+static char sccsid[] = "@(#)popen.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -62,10 +67,13 @@ struct child {
 	int status;
 	struct child *link;
 };
-static struct child *child;
-static struct child *findchild __P((int));
-static void delchild __P((struct child *));
-static int file_pid __P((FILE *));
+static struct child	*child;
+static struct child	*findchild __P((int));
+static void	delchild __P((struct child *));
+static int	file_pid __P((FILE *));
+static void	register_file __P((FILE *, int, int));
+static void	unregister_file __P((FILE *));
+static int	wait_command __P((int));
 
 /*
  * Provide BSD-like signal() on all systems.
@@ -96,6 +104,8 @@ safe_fopen(file, mode)
 	if (!strcmp(mode, "r")) {
 		omode = O_RDONLY;
 	} else if (!strcmp(mode, "w")) {
+		omode = O_WRONLY | O_CREAT | O_TRUNC;
+	} else if (!strcmp(mode, "wx")) {
 		omode = O_WRONLY | O_CREAT | O_EXCL;
 	} else if (!strcmp(mode, "a")) {
 		omode = O_WRONLY | O_APPEND | O_CREAT;
@@ -106,8 +116,8 @@ safe_fopen(file, mode)
 	} else if (!strcmp(mode, "w+")) {
 		omode = O_RDWR   | O_CREAT | O_EXCL;
 	} else {
-		fprintf(stderr,
-			"Internal error: bad stdio open mode %s\n", mode);
+		fprintf(stderr, catgets(catd, CATSET, 152,
+			"Internal error: bad stdio open mode %s\n"), mode);
 		errno = EINVAL;
 		return (FILE *)NULL;
 	}
@@ -232,7 +242,7 @@ close_all_files()
 			(void) Fclose(fp_head->fp);
 }
 
-void
+static void
 register_file(fp, pipe, pid)
 	FILE *fp;
 	int pipe, pid;
@@ -247,7 +257,7 @@ register_file(fp, pipe, pid)
 	fp_head = fpp;
 }
 
-void
+static void
 unregister_file(fp)
 	FILE *fp;
 {
@@ -259,7 +269,7 @@ unregister_file(fp)
 			free((char *) p);
 			return;
 		}
-	panic("Invalid file pointer");
+	panic(catgets(catd, CATSET, 153, "Invalid file pointer"));
 }
 
 static int
@@ -312,7 +322,8 @@ start_command(cmd, mask, infd, outfd, a0, a1, a2)
 	}
 	if (pid == 0) {
 		char *argv[100];
-		int i = getrawlist(cmd, argv, sizeof argv / sizeof *argv);
+		int i = getrawlist(cmd, strlen(cmd),
+				argv, sizeof argv / sizeof *argv);
 
 		if ((argv[i++] = a0) != NULL &&
 		    (argv[i++] = a1) != NULL &&
@@ -353,13 +364,13 @@ prepare_child(nset, infd, outfd)
 	(void) sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
 }
 
-int
+static int
 wait_command(pid)
 	int pid;
 {
 
 	if (wait_child(pid) < 0) {
-		printf("Fatal error in process.\n");
+		printf(catgets(catd, CATSET, 154, "Fatal error in process.\n"));
 		return -1;
 	}
 	return 0;

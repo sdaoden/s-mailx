@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)vars.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)vars.c	2.1 (gritter) 9/1/02";
 #endif
 #endif /* not lint */
 
@@ -45,6 +50,10 @@ static char sccsid[] = "@(#)vars.c	1.4 (gritter) 9/29/00";
  *
  * Variable handling stuff.
  */
+
+static void	vfree __P((char *));
+static struct var	*lookup __P((char []));
+static void	remove_grouplist __P((struct grouphead *));
 
 /*
  * Assign a value to a variable.
@@ -59,7 +68,7 @@ assign(name, value)
 	h = hash(name);
 	vp = lookup(name);
 	if (vp == NOVAR) {
-		vp = (struct var *) calloc(sizeof *vp, 1);
+		vp = (struct var *)scalloc(1, sizeof *vp);
 		vp->v_name = vcopy(name);
 		vp->v_link = variables[h];
 		variables[h] = vp;
@@ -74,7 +83,7 @@ assign(name, value)
  * strings whose value is "" since they are expected to be frequent.
  * Thus, we cannot free same!
  */
-void
+static void
 vfree(cp)
 	char *cp;
 {
@@ -123,7 +132,7 @@ value(name)
  * node.
  */
 
-struct var *
+static struct var *
 lookup(name)
 	char name[];
 {
@@ -162,13 +171,14 @@ printgroup(name)
 	struct group *gp;
 
 	if ((gh = findgroup(name)) == NOGRP) {
-		printf("\"%s\": not a group\n", name);
+		printf(catgets(catd, CATSET, 202, "\"%s\": not a group\n"),
+				name);
 		return;
 	}
 	printf("%s\t", gh->g_name);
 	for (gp = gh->g_list; gp != NOGE; gp = gp->ge_link)
 		printf(" %s", gp->ge_name);
-	putchar('\n');
+	sputc('\n', stdout);
 }
 
 /*
@@ -177,7 +187,7 @@ printgroup(name)
  */
 int
 hash(name)
-	char *name;
+	const char *name;
 {
 	int h = 0;
 
@@ -188,4 +198,70 @@ hash(name)
 	if (h < 0 && (h = -h) < 0)
 		h = 0;
 	return (h % HSHSIZE);
+}
+
+int
+unset_internal(name)
+	char *name;
+{
+	struct var *vp, *vp2;
+	int h;
+
+	if ((vp2 = lookup(name)) == NOVAR) {
+		if (!sourcing) {
+			printf(catgets(catd, CATSET, 203,
+				"\"%s\": undefined variable\n"), name);
+			return 1;
+		}
+		return 0;
+	}
+	h = hash(name);
+	if (vp2 == variables[h]) {
+		variables[h] = variables[h]->v_link;
+		vfree(vp2->v_name);
+		vfree(vp2->v_value);
+		free((char *)vp2);
+		return 0;
+	}
+	for (vp = variables[h]; vp->v_link != vp2; vp = vp->v_link);
+	vp->v_link = vp2->v_link;
+	vfree(vp2->v_name);
+	vfree(vp2->v_value);
+	free((char *) vp2);
+	return 0;
+}
+
+static void
+remove_grouplist(struct grouphead *gh)
+{
+	struct group *gp, *gq;
+
+	if ((gp = gh->g_list) != NULL) {
+		for (; gp; gp = gq) {
+			gq = gp->ge_link;
+			vfree(gp->ge_name);
+			free(gp);
+		}
+	}
+}
+
+void
+remove_group(const char *name)
+{
+	struct grouphead *gh, *gp = NULL;
+	int h = hash(name);
+
+	for (gh = groups[h]; gh != NOGRP; gh = gh->g_link) {
+		if (*gh->g_name == *name && equal(gh->g_name, name)) {
+			remove_grouplist(gh);
+			vfree(gh->g_name);
+			if (gp != NULL)
+				gp->g_link = gh->g_link;
+			else
+				groups[h] = NULL;
+			free(gh);
+			break;
+		}
+		gp = gh;
+	}
 }

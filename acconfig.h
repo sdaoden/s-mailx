@@ -1,5 +1,5 @@
 @BOTTOM@
-/* Sccsid: @(#)acconfig.h	1.5 (gritter) 2/19/02 */
+/* Sccsid: @(#)acconfig.h	2.1 (gritter) 9/1/02 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -9,6 +9,11 @@
 /* Path to `more'. */
 #ifndef PATH_MORE
 #undef PATH_MORE
+#endif
+
+/* Path to `pg'. */
+#ifndef PATH_PG
+#undef PATH_PG
 #endif
 
 /* Path to `ex'. */
@@ -32,6 +37,10 @@
 /* The mail spool directory. */
 #ifndef PATH_MAILDIR
 #undef PATH_MAILDIR
+#endif
+
+#ifndef	CATNAME
+#undef	CATNAME
 #endif
 
 /* The temporary directory. */
@@ -122,6 +131,12 @@
 #endif
 #ifdef	HAVE_LANGINFO_H
 #include <langinfo.h>
+#endif
+#ifdef	HAVE_NL_TYPES_H
+#include <nl_types.h>
+#endif
+#ifdef	HAVE_ALLOCA_H
+#include <alloca.h>
 #endif
 /* The number of signals in the system. */
 #ifndef	NSIG

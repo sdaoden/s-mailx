@@ -1,4 +1,9 @@
 /*
+ * Nail - a mail user agent derived from Berkeley Mail.
+ *
+ * Copyright (c) 2000-2002 Gunnar Ritter, Freiburg i. Br., Germany.
+ */
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.14 (gritter) 5/22/02";
+static char sccsid[] = "@(#)quit.c	2.2 (gritter) 9/7/02";
 #endif
 #endif /* not lint */
 
@@ -50,6 +55,7 @@ static char sccsid[] = "@(#)quit.c	1.14 (gritter) 5/22/02";
  *
  * Termination processing.
  */
+static void	edstop __P((void));
 
 /*
  * The "quit" command.
@@ -100,14 +106,14 @@ writeback(res, obuf)
 #endif
 #ifndef APPEND
 	if (res != (FILE*)NULL)
-		while ((c = getc(res)) != EOF)
-			(void) putc(c, obuf);
+		while ((c = sgetc(res)) != EOF)
+			(void) sputc(c, obuf);
 #endif
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
 			if (send_message(mp, obuf, (struct ignoretab *)0,
-						NULL, CONV_NONE) < 0) {
+						NULL, CONV_NONE, NULL) < 0) {
 				perror(mailname);
 #ifndef	F_SETLKW
 				Fclose(obuf);
@@ -119,8 +125,8 @@ writeback(res, obuf)
 		}
 #ifdef APPEND
 	if (res != (FILE*)NULL)
-		while ((c = getc(res)) != EOF)
-			(void) putc(c, obuf);
+		while ((c = sgetc(res)) != EOF)
+			(void) sputc(c, obuf);
 #endif
 	fflush(obuf);
 	trunc(obuf);
@@ -142,9 +148,11 @@ writeback(res, obuf)
 #endif
 	alter(mailname);
 	if (p == 1)
-		printf("Held 1 message in %s\n", mailname);
+		printf(catgets(catd, CATSET, 155,
+				"Held 1 message in %s\n"), mailname);
 	else
-		printf("Held %d messages in %s\n", p, mailname);
+		printf(catgets(catd, CATSET, 156,
+				"Held %d messages in %s\n"), p, mailname);
 	return(0);
 }
 
@@ -205,7 +213,7 @@ quit()
 	if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1) {
 #endif
 nolock:
-		perror("Unable to lock mailbox");
+		perror(catgets(catd, CATSET, 157, "Unable to lock mailbox"));
 		Fclose(fbuf);
 		return;
 	}
@@ -213,21 +221,21 @@ nolock:
 		goto nolock;
 	rbuf = (FILE *) NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
-		printf("New mail has arrived.\n");
-		rbuf = Ftemp(&tempResid, "Rq", "w", 0600);
+		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		rbuf = Ftemp(&tempResid, "Rq", "w", 0600, 1);
 		if (rbuf == (FILE*)NULL || fbuf == (FILE*)NULL)
 			goto newmail;
 #ifdef APPEND
 		fseek(fbuf, (long)mailsize, SEEK_SET);
-		while ((c = getc(fbuf)) != EOF)
-			(void) putc(c, rbuf);
+		while ((c = sgetc(fbuf)) != EOF)
+			(void) sputc(c, rbuf);
 #else
 		p = minfo.st_size - mailsize;
 		while (p-- > 0) {
-			c = getc(fbuf);
+			c = sgetc(fbuf);
 			if (c == EOF)
 				goto newmail;
-			(void) putc(c, rbuf);
+			(void) sputc(c, rbuf);
 		}
 #endif
 		Fclose(rbuf);
@@ -274,15 +282,18 @@ nolock:
 		if (Tflag != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("article-id", mp)) != NULL)
+			if ((id = hfield("message-id", mp)) != NULL ||
+					(id = hfield("article-id", mp)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 	}
 	if (Tflag != NULL)
 		Fclose(readstat);
 	if (p == msgcount && !modify && !anystat) {
-		printf("Held %d message%s in %s\n",
-			p, p == 1 ? "" : "s", mailname);
+		printf(catgets(catd, CATSET, 159, "Held %d message%s in %s\n"),
+			p, p == 1 ? catgets(catd, CATSET, 160, "")
+			: catgets(catd, CATSET, 161, "s"),
+			mailname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
 		return;
@@ -311,13 +322,14 @@ nolock:
 	mbox = expand("&");
 	mcount = c;
 	if (value("append") == NULL) {
-		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600)) == (FILE*)NULL) {
-			perror("temporary mail quit file");
+		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
+			perror(catgets(catd, CATSET, 162,
+					"temporary mail quit file"));
 			Fclose(fbuf);
 			dot_unlock(mailname);
 			return;
 		}
-		if ((ibuf = Fopen(tempQuit, "r")) == (FILE*)NULL) {
+		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
 			perror(tempQuit);
 			rm(tempQuit);
 			Ftfree(&tempQuit);
@@ -329,12 +341,13 @@ nolock:
 		rm(tempQuit);
 		Ftfree(&tempQuit);
 		if ((abuf = Fopen(mbox, "r")) != (FILE*)NULL) {
-			while ((c = getc(abuf)) != EOF)
-				(void) putc(c, obuf);
+			while ((c = sgetc(abuf)) != EOF)
+				(void) sputc(c, obuf);
 			Fclose(abuf);
 		}
 		if (ferror(obuf)) {
-			perror("temporary mail quit file");
+			perror(catgets(catd, CATSET, 163,
+					"temporary mail quit file"));
 			Fclose(ibuf);
 			Fclose(obuf);
 			Fclose(fbuf);
@@ -363,7 +376,7 @@ nolock:
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MBOX)
 			if (send_message(mp, obuf, saveignore,
-						NULL, CONV_NONE) < 0) {
+						NULL, CONV_NONE, NULL) < 0) {
 				perror(mbox);
 				if (ibuf)
 					Fclose(ibuf);
@@ -381,12 +394,12 @@ nolock:
 
 	if (value("append") == NULL) {
 		rewind(ibuf);
-		c = getc(ibuf);
+		c = sgetc(ibuf);
 		while (c != EOF) {
-			(void) putc(c, obuf);
+			(void) sputc(c, obuf);
 			if (ferror(obuf))
 				break;
-			c = getc(ibuf);
+			c = sgetc(ibuf);
 		}
 		Fclose(ibuf);
 		fflush(obuf);
@@ -401,9 +414,10 @@ nolock:
 	}
 	Fclose(obuf);
 	if (mcount == 1)
-		printf("Saved 1 message in mbox\n");
+		printf(catgets(catd, CATSET, 164, "Saved 1 message in mbox\n"));
 	else
-		printf("Saved %d messages in mbox\n", mcount);
+		printf(catgets(catd, CATSET, 165,
+				"Saved %d messages in mbox\n"), mcount);
 
 	/*
 	 * Now we are ready to copy back preserved files to
@@ -436,8 +450,8 @@ cream:
 		abuf = fbuf;
 		fseek(abuf, 0L, SEEK_SET);
 #endif
-		while ((c = getc(rbuf)) != EOF)
-			(void) putc(c, abuf);
+		while ((c = sgetc(rbuf)) != EOF)
+			(void) sputc(c, abuf);
 		Fclose(rbuf);
 		trunc(abuf);
 #ifndef	F_SETLKW
@@ -454,7 +468,7 @@ cream:
 	return;
 
 newmail:
-	printf("Thou hast new mail.\n");
+	printf(catgets(catd, CATSET, 166, "Thou hast new mail.\n"));
 	if (fbuf != (FILE*)NULL) {
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -465,7 +479,7 @@ newmail:
  * Terminate an editing session by attempting to write out the user's
  * file from the temporary.  Save any new stuff appended to the file.
  */
-void
+static void
 edstop()
 {
 	int gotcha, c;
@@ -490,7 +504,8 @@ edstop()
 		if (Tflag != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("article-id", mp)) != NULL)
+			if ((id = hfield("message-id", mp)) != NULL ||
+					(id = hfield("article-id", mp)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 	}
@@ -502,9 +517,8 @@ edstop()
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
 		char *tempname;
 
-		if ((obuf = Ftemp(&tempname, "mbox.", "w", 0600))
-				== (FILE *)NULL) {
-			perror("tmpfile");
+		if ((obuf = Ftemp(&tempname, "mbox.", "w", 0600, 1)) == NULL) {
+			perror(catgets(catd, CATSET, 167, "tmpfile"));
 			relsesigs();
 			reset(0);
 		}
@@ -517,8 +531,8 @@ edstop()
 			reset(0);
 		}
 		fseek(ibuf, (long)mailsize, SEEK_SET);
-		while ((c = getc(ibuf)) != EOF)
-			(void) putc(c, obuf);
+		while ((c = sgetc(ibuf)) != EOF)
+			(void) sputc(c, obuf);
 		Fclose(ibuf);
 		Fclose(obuf);
 		if ((ibuf = Fopen(tempname, "r")) == (FILE*)NULL) {
@@ -531,7 +545,7 @@ edstop()
 		rm(tempname);
 		Ftfree(&tempname);
 	}
-	printf("\"%s\" ", mailname);
+	printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
 	fflush(stdout);
 	if ((obuf = Fopen(mailname, "r+")) == (FILE*)NULL) {
 		perror(mailname);
@@ -545,7 +559,7 @@ edstop()
 			continue;
 		c++;
 		if (send_message(mp, obuf, (struct ignoretab *) NULL,
-					NULL, CONV_NONE) < 0) {
+					NULL, CONV_NONE, NULL) < 0) {
 			perror(mailname);
 			relsesigs();
 			reset(0);
@@ -553,8 +567,8 @@ edstop()
 	}
 	gotcha = (c == 0 && ibuf == (FILE*)NULL);
 	if (ibuf != (FILE*)NULL) {
-		while ((c = getc(ibuf)) != EOF)
-			(void) putc(c, obuf);
+		while ((c = sgetc(ibuf)) != EOF)
+			(void) sputc(c, obuf);
 		Fclose(ibuf);
 	}
 	fflush(obuf);
@@ -566,9 +580,13 @@ edstop()
 	Fclose(obuf);
 	if (gotcha && value("emptybox") == NULL) {
 		rm(mailname);
-		printf("removed\n");
+		printf(value("bsdcompat") ?
+				catgets(catd, CATSET, 169, "removed\n") :
+				catgets(catd, CATSET, 211, "removed.\n"));
 	} else
-		printf("complete\n");
+		printf(value("bsdcompat") ?
+				catgets(catd, CATSET, 170, "complete\n") :
+				catgets(catd, CATSET, 212, "updated.\n"));
 	fflush(stdout);
 
 done:
