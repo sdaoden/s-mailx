@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.12 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.14 2000/05/30 01:16:14 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -36,7 +36,7 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.12 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.14 2000/05/30 01:16:14 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -93,6 +93,19 @@ mustquote_hdr(c)
 unsigned char c;
 {
 	if (c != '\n'
+		&& (c < 0x20 || c > 126))
+		return 1;
+	return 0;
+}
+
+/*
+ * Check if c must be quoted inside a quoting in a message's header.
+ */
+static int
+mustquote_inhdrq(c)
+unsigned char c;
+{
+	if (c != '\n'
 		&& (c < 0x20 || c == '=' || c == '?' || c == '_' || c > 126))
 		return 1;
 	return 0;
@@ -109,6 +122,39 @@ unsigned char c;
 		|| (c < 0x20 && c!='\n' && c!='\r' && c!='\b' && c!='\t'))
 		return 1;
 	return 0;
+}
+
+/*
+ * Check if a name's address part contains invalid characters.
+ */
+int
+mime_name_invalid(name)
+char *name;
+{
+	char *addr, *p;
+	int in_quote, err = 0;
+
+	addr = skin(name);
+
+	if (addr == NULL || *addr == '\0')
+		return 1;
+	for (p = addr; *p != '\0'; p++) {
+		if (*p == '\"') {
+			in_quote = !in_quote;
+		} else if (*p < 040 || ((unsigned char)*p) >= 0177) {
+			err++;
+		} else if (in_quote) {
+			/* do nothing */;
+		} else if (*p == '(' || *p == ')' || *p == '<' || *p == '>'
+				|| *p == ',' || *p == ';' || *p == ':'
+				|| *p == '\\' || *p == '[' || *p == ']') {
+			err++;
+		}
+	}
+	if (err) {
+		fprintf(stderr, "%s contains invalid characters\n", addr);
+	}
+	return err;
 }
 
 static void
@@ -368,7 +414,7 @@ char *x, *l;
 	char *type, *n;
 	int match = 0;
 
-	if (*l & 0200 || isalpha(*l) == 0)
+	if ((*l & 0200) || isalpha(*l) == 0)
 		return NULL;
 	type = l;
 	while (isspace(*l) == 0 && *l != '\0') l++;
@@ -700,11 +746,10 @@ FILE *fo;
 {
 	char *upper, *wbeg, *wend, *charset;
 	struct str cin, cout;
-	size_t sz, col = 0, wr, charsetlen;
+	size_t sz = 0, col = 0, wr, charsetlen;
 	int mustquote,
 		maxcol = 65 /* there is the header field's name, too */;
 
-	sz = in->l;
 	upper = in->s + in->l;
 	charset = mime_getcharset(CONV_TOQP);
 	charsetlen = strlen(charset);
@@ -724,7 +769,7 @@ FILE *fo;
 			for (;;) {
 				cin.s = wbeg;
 				cin.l = wend - wbeg;
-				mime_str_toqp(&cin, &cout, mustquote_hdr);
+				mime_str_toqp(&cin, &cout, mustquote_inhdrq);
 				if ((wr = cout.l + charsetlen + 7)
 						< maxcol - col) {
 					fprintf(fo, "=?%s?Q?", charset);

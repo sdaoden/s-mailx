@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -427,8 +427,8 @@ cont:
 				goto err;
 			goto cont;
 		case '?':
-			if ((fbuf = Fopen(_PATH_TILDE, "r")) == (FILE *)NULL) {
-				perror(_PATH_TILDE);
+			if ((fbuf = Fopen(PATH_TILDE, "r")) == (FILE *)NULL) {
+				perror(PATH_TILDE);
 				break;
 			}
 			while ((t = getc(fbuf)) != EOF)
@@ -596,7 +596,7 @@ mespipe(fp, cmd)
 	 * stdout = new message.
 	 */
 	if ((shell = value("SHELL")) == NOSTR)
-		shell = _PATH_CSHELL;
+		shell = PATH_CSHELL;
 	if (run_command(shell,
 	    0, fileno(fp), fileno(nf), "-c", cmd, NOSTR) < 0) {
 		(void) Fclose(nf);

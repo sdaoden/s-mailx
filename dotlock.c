@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -35,7 +35,7 @@
 #if 0
 static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif
 
@@ -77,7 +77,7 @@ static int perhaps_setgid (name, gid)
 char *name;
 gid_t gid;
 {
-	char safepath[]= _PATH_MAILDIR;
+	char safepath[]= PATH_MAILDIR;
 
 	if (strncmp (name, safepath, sizeof (safepath)-1) ||
 	    strchr (name + sizeof (safepath), '/'))

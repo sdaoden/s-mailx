@@ -1,4 +1,4 @@
-/*	$Id: names.c,v 1.5 2000/04/21 19:56:24 gunnar Exp $	*/
+/*	$Id: names.c,v 1.6 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
 /*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)names.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: names.c,v 1.5 2000/04/21 19:56:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: names.c,v 1.6 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -300,7 +300,7 @@ outof(names, fo, hp)
 			 * on one another.
 			 */
 			if ((shell = value("SHELL")) == NOSTR)
-				shell = _PATH_CSHELL;
+				shell = PATH_CSHELL;
 			sigemptyset(&nset);
 			sigaddset(&nset, SIGHUP);
 			sigaddset(&nset, SIGINT);

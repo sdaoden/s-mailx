@@ -18,8 +18,9 @@ Alexey A. Shelkovich sent a core file to fix an illustrous null pointer.
 
 Anders Andersson helped by compiling on FreeBSD.
 
-Bob Tennent sent some Red Hat patches and gave important hints
-	about the world-writeability of mail spool directories.
+Bob Tennent found a address encoding bug, sent some Red Hat patches
+	and gave important hints about the world-writeability
+	of mail spool directories.
 	He also informed me about libsafe of Bell Labs.
 
 Gabor Z. Papp announced nail on http://appwatch.com.

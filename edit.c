@@ -1,4 +1,4 @@
-/*	$Id: edit.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: edit.c,v 1.7 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 /*	NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: edit.c,v 1.6 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: edit.c,v 1.7 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -146,7 +146,7 @@ edit1(msgvec, type)
  * Run an editor on the file at "fpp" of "size" bytes,
  * and return a new file pointer.
  * Signals must be handled by the caller.
- * "Type" is 'e' for _PATH_EX, 'v' for _PATH_VI.
+ * "Type" is 'e' for PATH_EX, 'v' for PATH_VI.
  */
 FILE *
 run_editor(fp, size, type, readonly)
@@ -196,7 +196,7 @@ run_editor(fp, size, type, readonly)
 	}
 	nf = (FILE*)NULL;
 	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NOSTR)
-		edit = type == 'e' ? _PATH_EX : _PATH_VI;
+		edit = type == 'e' ? PATH_EX : PATH_VI;
 	if (run_command(edit, 0, -1, -1, tempEdit, NOSTR, NOSTR) < 0) {
 		(void) unlink(tempEdit);
 		goto out;

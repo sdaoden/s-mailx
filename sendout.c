@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.11 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.12 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,7 +40,7 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.11 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.12 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -405,10 +405,14 @@ infix(hp, fi, convert)
 		convert = CONV_7BIT;
 	}
 	(void) rm(tempMail);
-	(void) puthead(hp, nfo,
+	if (puthead(hp, nfo,
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GXMAIL|GMIME
 		   |GMSGID|GATTACH|GIDENT|GREF|GDATE,
-		   convert);
+		   convert)) {
+		(void) Fclose(nfo);
+		(void) Fclose(nfi);
+		return NULL;
+	}
 	if (hp->h_attach != NIL) {
 		if (make_multipart(hp, convert, fi, nfo) != 0) {
 			(void) Fclose(nfo);
@@ -598,7 +602,7 @@ FILE* input;
 			if ((cp = value("sendmail")) != NOSTR)
 				cp = expand(cp);
 			else
-				cp = _PATH_SENDMAIL;
+				cp = PATH_SENDMAIL;
 			execv(cp, args);
 			perror(cp);
 		}
@@ -808,6 +812,8 @@ puthead(hp, fo, w, convert)
 	if (w & GIDENT) {
 		addr = value("from");
 		if (addr != NULL) {
+			if (mime_name_invalid(addr))
+				return 1;
 			if ((cp = value("smtp")) == NULL
 					|| strcmp(cp, "localhost") == 0)
 				fprintf(fo, "Sender: %s\n", username());
@@ -829,6 +835,8 @@ puthead(hp, fo, w, convert)
 		}
 		addr = value("replyto");
 		if (addr != NULL) {
+			if (mime_name_invalid(addr))
+				return 1;
 			fwrite("Reply-To: ", sizeof(char), 10, fo);
 			mime_write(addr, sizeof(char), strlen(addr), fo,
 					convert == CONV_TODISP ?
@@ -837,8 +845,11 @@ puthead(hp, fo, w, convert)
 			fputc('\n', fo);
 		}
 	}
-	if (hp->h_to != NIL && w & GTO)
-		fmt("To:", hp->h_to, fo, w&GCOMMA), gotcha++;
+	if (hp->h_to != NIL && w & GTO) {
+		if (fmt("To:", hp->h_to, fo, w&GCOMMA))
+			return 1;
+		gotcha++;
+	}
 	if (hp->h_subject != NOSTR && w & GSUBJECT) {
 		fwrite("Subject: ", sizeof(char), 9, fo);
 		mime_write(hp->h_subject, sizeof(char), strlen(hp->h_subject),
@@ -847,15 +858,24 @@ puthead(hp, fo, w, convert)
 				convert == CONV_TODISP), gotcha++;
 		fwrite("\n", sizeof(char), 1, fo);
 	}
-	if (hp->h_cc != NIL && w & GCC)
-		fmt("Cc:", hp->h_cc, fo, w&GCOMMA), gotcha++;
-	if (hp->h_bcc != NIL && w & GBCC)
-		fmt("Bcc:", hp->h_bcc, fo, w&GCOMMA), gotcha++;
+	if (hp->h_cc != NIL && w & GCC) {
+		if (fmt("Cc:", hp->h_cc, fo, w&GCOMMA))
+			return 1;
+		gotcha++;
+	}
+	if (hp->h_bcc != NIL && w & GBCC) {
+		if (fmt("Bcc:", hp->h_bcc, fo, w&GCOMMA))
+			return 1;
+		gotcha++;
+	}
 	if (w & GMSGID && stealthmua == 0) {
 		message_id(fo), gotcha++;
 	}
-	if (hp->h_ref != NIL && w & GREF)
-		fmt("References:", hp->h_ref, fo, 0), gotcha++;
+	if (hp->h_ref != NIL && w & GREF) {
+		if (fmt("References:", hp->h_ref, fo, 0))
+			return 1;
+		gotcha++;
+	}
 	if (w & GXMAIL && stealthmua == 0) {
 		fprintf(fo, "X-Mailer: %s\n", version), gotcha++;
 	}
@@ -881,7 +901,7 @@ puthead(hp, fo, w, convert)
 /*
  * Format the given header line to not exceed 72 characters.
  */
-void
+int
 fmt(str, np, fo, comma)
 	char *str;
 	struct name *np;
@@ -904,11 +924,13 @@ fmt(str, np, fo, comma)
 			continue;
 		if (np->n_flink == NIL)
 			comma = 0;
+		if (mime_name_invalid(np->n_name))
+			return 1;
 		len = strlen(np->n_name);
 		col++;		/* for the space */
-		if (count && col + len + comma > 72 && col > 4) {
-			fputs("\n    ", fo);
-			col = 4;
+		if (count && col + len + comma > 72 && col > 1) {
+			fputs("\n ", fo);
+			col = 1;
 		} else
 			putc(' ', fo);
 		len = mime_write(np->n_name, sizeof(char), len, fo,
@@ -919,6 +941,7 @@ fmt(str, np, fo, comma)
 		count++;
 	}
 	putc('\n', fo);
+	return 0;
 }
 
 /*
@@ -961,6 +984,8 @@ struct name *to;
 			date_field(fo);
 			cp = value("from");
 			if (cp != NULL) {
+				if (mime_name_invalid(cp))
+					return 1;
 				if ((cp2 = value("smtp")) == NULL
 					|| strcmp(cp2, "localhost") == 0)
 					fprintf(fo, "Resent-Sender: %s\n",
@@ -972,13 +997,16 @@ struct name *to;
 			}
 			cp = value("replyto");
 			if (cp != NULL) {
+				if (mime_name_invalid(cp))
+					return 1;
 				fwrite("Resent-Reply-To: ", sizeof(char),
 						10, fo);
 				mime_write(cp, sizeof(char), strlen(cp), fo,
 						CONV_TOHDR, 0);
 				fputc('\n', fo);
 			}
-			fmt("Resent-To:", to, fo, 1);
+			if (fmt("Resent-To:", to, fo, 1))
+				return 1;
 			if (value("stealthmua") == NULL) {
 				fputs("Resent-", fo);
 				message_id(fo);

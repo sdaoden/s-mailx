@@ -1,44 +1,44 @@
 @BOTTOM@
-/* $Id: acconfig.h,v 1.4 2000/05/29 01:30:29 gunnar Exp $ */
+/* $Id: acconfig.h,v 1.5 2000/05/30 01:11:34 gunnar Exp $ */
 
 /* The C shell's path. */
-#ifndef _PATH_CSHELL
-#undef _PATH_CSHELL
+#ifndef PATH_CSHELL
+#undef PATH_CSHELL
 #endif
 
 /* Path to `more'. */
-#ifndef _PATH_MORE
-#undef _PATH_MORE
+#ifndef PATH_MORE
+#undef PATH_MORE
 #endif
 
 /* Path to `ex'. */
-#ifndef _PATH_EX
-#undef _PATH_EX
+#ifndef PATH_EX
+#undef PATH_EX
 #endif
 
 /* Path to `vi'. */
-#ifndef _PATH_VI
-#undef _PATH_VI
+#ifndef PATH_VI
+#undef PATH_VI
 #endif
 
 /* Path to `sendmail'. */
-#ifndef _PATH_SENDMAIL
-#undef _PATH_SENDMAIL
+#ifndef PATH_SENDMAIL
+#undef PATH_SENDMAIL
 #endif
 
 /* Path to nail's support files. */
-#undef _PATH_HELP
-#undef _PATH_TILDE
-#undef _PATH_MASTER_RC
+#undef PATH_HELP
+#undef PATH_TILDE
+#undef PATH_MASTER_RC
 
 /* The mail spool directory. */
-#ifndef _PATH_MAILDIR
-#undef _PATH_MAILDIR
+#ifndef PATH_MAILDIR
+#undef PATH_MAILDIR
 #endif
 
 /* The temporary directory. */
-#ifndef _PATH_TMP
-#undef _PATH_TMP
+#ifndef PATH_TMP
+#undef PATH_TMP
 #endif
 
 #include <sys/types.h>

@@ -1,4 +1,4 @@
-/*	$Id: fio.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: fio.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 /*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
 #else
-static char rcsid[]  = "$Id: fio.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "$Id: fio.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -429,7 +429,7 @@ expand(name)
 	}
 	snprintf(cmdbuf, PATHSIZE, "echo %s", name);
 	if ((shell = value("SHELL")) == NOSTR)
-		shell = _PATH_CSHELL;
+		shell = PATH_CSHELL;
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NOSTR);
 	if (pid < 0) {
 		close(pivec[0]);

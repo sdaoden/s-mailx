@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -73,7 +73,7 @@ shell(v)
 	if (bangexp(cmd, BUFSIZ) < 0)
 		return 1;
 	if ((shell = value("SHELL")) == NOSTR)
-		shell = _PATH_CSHELL;
+		shell = PATH_CSHELL;
 	(void) run_command(shell, 0, -1, -1, "-c", cmd, NOSTR);
 	(void) safe_signal(SIGINT, sigint);
 	printf("!\n");
@@ -92,7 +92,7 @@ dosh(v)
 	char *shell;
 
 	if ((shell = value("SHELL")) == NOSTR)
-		shell = _PATH_CSHELL;
+		shell = PATH_CSHELL;
 	(void) run_command(shell, 0, -1, -1, NOSTR, NOSTR, NOSTR);
 	(void) safe_signal(SIGINT, sigint);
 	putchar('\n');
@@ -167,8 +167,8 @@ help(v)
 	int c;
 	FILE *f;
 
-	if ((f = Fopen(_PATH_HELP, "r")) == (FILE *)NULL) {
-		perror(_PATH_HELP);
+	if ((f = Fopen(PATH_HELP, "r")) == (FILE *)NULL) {
+		perror(PATH_HELP);
 		return(1);
 	}
 	while ((c = getc(f)) != EOF)

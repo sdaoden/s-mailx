@@ -1,3 +1,8 @@
+[9.13] released 2000-05-30
+* Changed _PATH_ to PATH_ in defines
+* Fixed RFC 1522 encoding of header fields (important!)
+* Check syntax of addresses before sending
+
 [9.12] released 2000-05-29
 * Do not print the indentprefix if a line to quote is being continued
   in quoted-printable

@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.9 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.10 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.9 2000/05/29 00:29:22 gunnar Exp $
+ *	$Id: extern.h,v 1.10 2000/05/30 01:11:34 gunnar Exp $
  */
 
 struct name;
@@ -137,7 +137,7 @@ struct grouphead *
 	 findgroup __P((char []));
 void	 findmail __P((char *, char *, int));
 int	 first __P((int, int));
-void	 fmt __P((char *, struct name *, FILE *, int));
+int	 fmt __P((char *, struct name *, FILE *, int));
 int	 folders __P((void *));
 int	 forward __P((char [], FILE *, int));
 void	 free_child __P((int));
@@ -301,3 +301,4 @@ char	* getcmd __P((char *, int *));
 int	forward_msg __P((struct message *, struct name *, int));
 int	smtp_mta __P((char *, struct name *, FILE *));
 char	*hostname __P((void));
+int	mime_name_invalid __P((char *));

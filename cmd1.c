@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.6 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.7 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.6 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.7 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -306,7 +306,7 @@ char *cmd;
 		}
 		cp = value("SHELL");
 		if (cp == NOSTR)
-			cp = _PATH_CSHELL;
+			cp = PATH_CSHELL;
 		obuf = Popen(cmd, "w", cp);
 		if (obuf == (FILE*)NULL) {
 			perror(cmd);
@@ -324,7 +324,7 @@ char *cmd;
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			cp = value("PAGER");
 			if (cp == NOSTR || *cp == '\0')
-				cp = _PATH_MORE;
+				cp = PATH_MORE;
 			obuf = Popen(cp, "w", NULL);
 			if (obuf == (FILE*)NULL) {
 				perror(cp);

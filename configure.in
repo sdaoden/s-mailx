@@ -1,15 +1,15 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-dnl $Id: configure.in,v 1.5 2000/05/29 01:30:29 gunnar Exp $
+dnl $Id: configure.in,v 1.6 2000/05/30 01:11:34 gunnar Exp $
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
 
 AC_INIT(mime.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(nail, 9.12)
-AC_DEFINE(REL_DATE, "2000-05-29")
+AM_INIT_AUTOMAKE(nail, 9.13)
+AC_DEFINE(REL_DATE, "2000-05-30")
 dnl AC_DEFINE(REL_DATE, "devel")
 AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging build [ default=no ]],enable_debug=yes,enable_debug=no)
 AC_ARG_ENABLE(efence, [  --enable-efence         enable debugging build (with efence) [ default=no ]],enable_debug=yes enable_efence=yes,enable_efence=no)
@@ -29,7 +29,7 @@ AC_ARG_WITH(mailspool, [  --with-mailspool=DIR    mail spool directory],
 		fi
 		)
 	)
-AC_DEFINE_UNQUOTED(_PATH_MAILDIR, "$arg_cv_mailspool")
+AC_DEFINE_UNQUOTED(PATH_MAILDIR, "$arg_cv_mailspool")
 
 dnl Checks for programs.
 
@@ -48,32 +48,32 @@ dnl Remove -g from CFLAGS
 	CFLAGS=`echo $CFLAGS | sed -e 's/^-g //' -e 's/^-g$//'`
 fi
 
-AC_PATH_PROG(_PATH_CSHELL, csh, /bin/csh)
-AC_DEFINE_UNQUOTED(_PATH_CSHELL, "$_PATH_CSHELL")
-AC_PATH_PROG(_PATH_MORE, more, /bin/more)
-AC_DEFINE_UNQUOTED(_PATH_MORE, "$_PATH_MORE")
-AC_PATH_PROG(_PATH_EX, ex, /usr/bin/ex)
-AC_DEFINE_UNQUOTED(_PATH_EX, "$_PATH_EX")
-AC_PATH_PROG(_PATH_VI, vi, /usr/bin/vi)
-AC_DEFINE_UNQUOTED(_PATH_VI, "$_PATH_VI")
-AC_PATH_PROG(_PATH_SENDMAIL, sendmail, ,
+AC_PATH_PROG(PATH_CSHELL, csh, /bin/csh)
+AC_DEFINE_UNQUOTED(PATH_CSHELL, "$PATH_CSHELL")
+AC_PATH_PROG(PATH_MORE, more, /bin/more)
+AC_DEFINE_UNQUOTED(PATH_MORE, "$PATH_MORE")
+AC_PATH_PROG(PATH_EX, ex, /usr/bin/ex)
+AC_DEFINE_UNQUOTED(PATH_EX, "$PATH_EX")
+AC_PATH_PROG(PATH_VI, vi, /usr/bin/vi)
+AC_DEFINE_UNQUOTED(PATH_VI, "$PATH_VI")
+AC_PATH_PROG(PATH_SENDMAIL, sendmail, ,
 	/usr/local/sbin:/usr/sbin:/sbin:/usr/lib:$PATH)
-if test "x$_PATH_SENDMAIL" = x
+if test "x$PATH_SENDMAIL" = x
 then	echo "This program requires a sendmail installation" >&2
 	exit 1
 fi
-AC_DEFINE_UNQUOTED(_PATH_SENDMAIL, "$_PATH_SENDMAIL")
+AC_DEFINE_UNQUOTED(PATH_SENDMAIL, "$PATH_SENDMAIL")
 
-AC_DEFINE_UNQUOTED(_PATH_TMP, "/tmp")
+AC_DEFINE_UNQUOTED(PATH_TMP, "/tmp")
 
 dnl Formulate proper paths based on prefix
 test "$prefix" = NONE && prefix=/usr/local
 dnl We need these seperate to use AC_DEFINED_UNQUOTED
 test "$libdir" = '${exec_prefix}/lib' && libdir=${prefix}/lib
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=${prefix}/etc
-AC_DEFINE_UNQUOTED(_PATH_HELP, "$libdir/nail.help")
-AC_DEFINE_UNQUOTED(_PATH_TILDE, "$libdir/nail.tildehelp")
-AC_DEFINE_UNQUOTED(_PATH_MASTER_RC, "$sysconfdir/nail.rc")
+AC_DEFINE_UNQUOTED(PATH_HELP, "$libdir/nail.help")
+AC_DEFINE_UNQUOTED(PATH_TILDE, "$libdir/nail.tildehelp")
+AC_DEFINE_UNQUOTED(PATH_MASTER_RC, "$sysconfdir/nail.rc")
 
 dnl Checks for libraries.
 if test "x$enable_efence" = xyes
@@ -87,9 +87,6 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/param.h sys/select.h \
 	sys/stat.h sys/utsname.h sys/socket.h netinet/in.h arpa/inet.h)
 AC_CHECK_HEADERS(fcntl.h netdb.h signal.h unistd.h)
-AC_DEFINE_UNQUOTED(NSIG, 32)
-AC_DEFINE_UNQUOTED(MAXHOSTNAMELEN, 64)
-AC_DEFINE_UNQUOTED(NOFILE, 256)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -98,6 +95,11 @@ AC_TYPE_OFF_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SIGNAL
+
+dnl Checks for constants
+AC_DEFINE_UNQUOTED(NSIG, 32)
+AC_DEFINE_UNQUOTED(MAXHOSTNAMELEN, 64)
+AC_DEFINE_UNQUOTED(NOFILE, 256)
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL

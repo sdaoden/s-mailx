@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: main.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 /*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
@@ -46,7 +46,7 @@ static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: main.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: main.c,v 1.9 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -275,7 +275,7 @@ main(argc, argv)
 	rcvmode = !to;
 	spreserve();
 	if (!nosrc)
-		load(_PATH_MASTER_RC);
+		load(PATH_MASTER_RC);
 	/*
 	 * Expand returns a savestr, but load only uses the file name
 	 * for fopen, so it's safe to do this.

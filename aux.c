@@ -1,4 +1,4 @@
-/*	$Id: aux.c,v 1.5 2000/05/29 00:29:22 gunnar Exp $	*/
+/*	$Id: aux.c,v 1.6 2000/05/30 01:11:34 gunnar Exp $	*/
 /*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 /*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: aux.c,v 1.5 2000/05/29 00:29:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: aux.c,v 1.6 2000/05/30 01:11:34 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -131,21 +131,21 @@ va_dcl
  */
 void
 #if __STDC__
-panic(const char *fmt, ...)
+panic(const char *format, ...)
 #else
-panic(fmt, va_alist)
-	char *fmt;
+panic(format, va_alist)
+	char *format;
         va_dcl
 #endif
 {
 	va_list ap;
 #if __STDC__
-	va_start(ap, fmt);
+	va_start(ap, format);
 #else
 	va_start(ap);
 #endif
 	(void)fprintf(stderr, "panic: ");
-	vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, format, ap);
 	va_end(ap);
 	(void)fprintf(stderr, "\n");
 	fflush(stderr);
