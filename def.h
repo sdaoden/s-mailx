@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.83 (gritter) 10/24/04
+ *	Sccsid @(#)def.h	2.89 (gritter) 11/3/04
  */
 
 /*
@@ -95,12 +95,6 @@ enum mimeenc {
 enum conversion {
 	CONV_NONE,			/* no conversion */
 	CONV_7BIT,			/* no conversion, is 7bit */
-	CONV_TODISP,			/* convert in displayable form */
-	CONV_TOSRCH,			/* convert for IMAP search */
-	CONV_TOFLTR,			/* convert for filtering */
-	CONV_TOFILE,			/* convert for saving to a file */
-	CONV_QUOTE,			/* first part body only */
-	CONV_DECRYPT,			/* decrypt message */
 	CONV_FROMQP,			/* convert from quoted-printable */
 	CONV_TOQP,			/* convert to quoted-printable */
 	CONV_FROMB64,			/* convert from base64 */
@@ -111,14 +105,29 @@ enum conversion {
 	CONV_TOHDR_A			/* convert addresses for header */
 };
 
+enum sendaction {
+	SEND_MBOX,			/* no conversion to perform */
+	SEND_TODISP,			/* convert to displayable form */
+	SEND_TODISP_ALL,		/* same, include all MIME parts */
+	SEND_TOSRCH,			/* convert for IMAP SEARCH */
+	SEND_TOFLTR,			/* convert for junk mail filtering */
+	SEND_TOFILE,			/* convert for saving body to a file */
+	SEND_QUOTE,			/* convert for quoting */
+	SEND_QUOTE_ALL,			/* same, include all MIME parts */
+	SEND_DECRYPT			/* decrypt */
+};
+
 enum mimecontent {
 	MIME_UNKNOWN,			/* unknown content */
 	MIME_SUBHDR,			/* inside a multipart subheader */
 	MIME_822,			/* message/rfc822 content */
-	MIME_MESSAGE,			/* message/ content */
-	MIME_TEXT,			/* text/ content */
-	MIME_HTML,			/* text/html content */
-	MIME_MULTI,			/* multipart/ content */
+	MIME_MESSAGE,			/* other message/ content */
+	MIME_TEXT_PLAIN,		/* text/plain content */
+	MIME_TEXT_HTML,			/* text/html content */
+	MIME_TEXT,			/* other text/ content */
+	MIME_ALTERNATIVE,		/* multipart/alternative content */
+	MIME_MULTI,			/* other multipart/ content */
+	MIME_PKCS7,			/* PKCS7 content */
 	MIME_DISCARD			/* content is discarded */
 };
 
@@ -254,19 +263,40 @@ enum mflag {
 	MJUNK		= (1<<28)	/* message is classified as junk */
 };
 
+struct mimepart {
+	enum mflag	m_flag;		/* flags */
+	enum havespec	m_have;		/* downloaded parts of the part */
+	int	m_block;		/* block number of this part */
+	size_t	m_offset;		/* offset in block of part */
+	size_t	m_size;			/* Bytes in the part */
+	size_t	m_xsize;		/* Bytes in the full part */
+	long	m_lines;		/* Lines in the message */
+	long	m_xlines;		/* Lines in the full message */
+	struct mimepart	*m_nextpart;	/* next part at same level */
+	struct mimepart	*m_multipart;	/* parts of multipart */
+	char	*m_ct_type;		/* content-type */
+	char	*m_ct_type_plain;	/* content-type without specs */
+	enum mimecontent	m_mimecontent;	/* same in enum */
+	char	*m_charset;		/* charset */
+	char	*m_ct_transfer_enc;	/* content-transfer-encoding */
+	enum mimeenc	m_mimeenc;	/* same in enum */
+	char	*m_partstring;		/* part level string */
+	char	*m_filename;		/* attachment filename */
+};
+
 struct message {
 	enum mflag	m_flag;		/* flags */
-	time_t	m_time;			/* time the message was sent */
-	time_t	m_date;			/* time in the 'Date' field */
-	unsigned	m_idhash;	/* hash on Message-ID for threads */
+	enum havespec	m_have;		/* downloaded parts of the message */
 	int	m_block;		/* block number of this message */
 	size_t	m_offset;		/* offset in block of message */
 	size_t	m_size;			/* Bytes in the message */
 	size_t	m_xsize;		/* Bytes in the full message */
 	long	m_lines;		/* Lines in the message */
 	long	m_xlines;		/* Lines in the full message */
+	time_t	m_time;			/* time the message was sent */
+	time_t	m_date;			/* time in the 'Date' field */
+	unsigned	m_idhash;	/* hash on Message-ID for threads */
 	unsigned long	m_uid;		/* IMAP unique identifier */
-	enum havespec	m_have;		/* downloaded parts of the message */
 	struct message	*m_child;	/* first child of this message */
 	struct message	*m_younger;	/* younger brother of this message */
 	struct message	*m_elder;	/* elder brother of this message */

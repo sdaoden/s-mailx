@@ -38,19 +38,34 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)junk.c	1.54 (gritter) 10/25/04";
+static char sccsid[] = "@(#)junk.c	1.61 (gritter) 11/3/04";
 #endif
 #endif /* not lint */
 
 #include "config.h"
-
 #include "rcv.h"
-#include "extern.h"
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef	HAVE_MMAP
+#include <sys/mman.h>
+#else	/* !HAVE_MMAP */
+#define	mmap(a, b, c, d, e, f)	MAP_FAILED
+#define	munmap(a, b)
+#endif	/* !HAVE_MMAP */
+#ifndef	HAVE_MREMAP
+#define	mremap(a, b, c, d)	MAP_FAILED
+#endif	/* !HAVE_MREMAP */
+
+#ifndef	MAP_FAILED
+#define	MAP_FAILED	((void *)-1)
+#endif	/* !MAP_FAILED */
+
+#include "extern.h"
 #include "md5.h"
 
 /*
@@ -99,6 +114,10 @@ static char	*nodes;
 #define	OF_super_bucket	20	/* 65536 bit-negated node indices */
 #define	SIZEOF_entry	4
 static char	*super;
+
+static size_t	super_mmapped;
+static size_t	nodes_mmapped;
+static int	rw_map;
 
 /*
  * Version history
@@ -200,11 +219,14 @@ them in flat form.\n";
 
 static int	verbose;
 static int	_debug;
+static FILE	*sfp, *nfp;
 
-static enum okay getdb(void);
+static enum okay getdb(int rw);
 static void putdb(void);
+static void relsedb(void);
 static FILE *dbfp(enum db db, int rw, int *compressed);
 static char *lookup(unsigned long h1, unsigned long h2, int create);
+static unsigned long grow(unsigned long size);
 static char *nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 		struct lexstat *sp);
 static void add(const char *word, enum entry entry, struct lexstat *sp);
@@ -219,15 +241,24 @@ static void dbhash(const char *word, unsigned long *h1, unsigned long *h2);
 static void mkmangle(void);
 
 static enum okay 
-getdb(void)
+getdb(int rw)
 {
-	FILE	*sfp, *nfp;
 	void	*zp = NULL;
 	long	n;
 	int	compressed;
 
-	if ((sfp = dbfp(SUPER, 0, &compressed)) == (FILE *)-1)
+	if ((sfp = dbfp(SUPER, rw, &compressed)) == (FILE *)-1)
 		return STOP;
+	if (sfp && !compressed) {
+		super = mmap(NULL, SIZEOF_super,
+				rw!=O_RDONLY ? PROT_READ|PROT_WRITE : PROT_READ,
+				MAP_SHARED, fileno(sfp), 0);
+		if (super != MAP_FAILED) {
+			super_mmapped = SIZEOF_super;
+			goto skip;
+		}
+	}
+	super_mmapped = 0;
 	super = smalloc(SIZEOF_super);
 	if (sfp) {
 		if (compressed)
@@ -250,18 +281,29 @@ getdb(void)
 		memset(super, 0, SIZEOF_super);
 		mkmangle();
 	}
-	if ((n = getn(&super[OF_super_size])) == 0) {
+skip:	if ((n = getn(&super[OF_super_size])) == 0) {
 		n = 1;
 		putn(&super[OF_super_size], 1);
 	}
-	nodes = smalloc(n * SIZEOF_node);
-	if (sfp && (nfp = dbfp(NODES, 0, &compressed)) != NULL) {
+	if (sfp && (nfp = dbfp(NODES, rw, &compressed)) != NULL) {
 		if (nfp == (FILE *)-1) {
-			Fclose(sfp);
-			free(super);
-			free(nodes);
+			relsedb();
 			return STOP;
 		}
+	}
+	rw_map = rw;
+	if (sfp && nfp && !compressed) {
+		nodes = mmap(NULL, n * SIZEOF_node,
+				rw!=O_RDONLY ? PROT_READ|PROT_WRITE : PROT_READ,
+				MAP_SHARED, fileno(nfp), 0);
+		if (nodes != MAP_FAILED) {
+			nodes_mmapped = n * SIZEOF_node;
+			return OKAY;
+		}
+	}
+	nodes_mmapped = 0;
+	nodes = smalloc(n * SIZEOF_node);
+	if (sfp && nfp) {
 		if (compressed)
 			zp = zalloc(nfp);
 		if ((compressed ? zread(zp, nodes, n * SIZEOF_node)
@@ -278,44 +320,73 @@ getdb(void)
 		if (compressed)
 			zfree(zp);
 		Fclose(nfp);
+		nfp = NULL;
 	} else
 		memset(nodes, 0, n * SIZEOF_node);
-	if (sfp)
+	if (sfp) {
 		Fclose(sfp);
+		sfp = NULL;
+	}
 	return OKAY;
 }
 
 static void 
 putdb(void)
 {
-	FILE	*sfp, *nfp;
 	sighandler_type	saveint;
 	void	*zp;
 	int	scomp, ncomp;
 
-	if ((sfp = dbfp(SUPER, 1, &scomp)) == NULL || sfp == (FILE *)-1)
+	if (!super_mmapped && (sfp = dbfp(SUPER, O_WRONLY, &scomp)) == NULL ||
+			sfp == (FILE *)-1)
 		return;
-	if ((nfp = dbfp(NODES, 1, &ncomp)) == NULL || nfp == (FILE *)-1)
+	if (!nodes_mmapped && (nfp = dbfp(NODES, O_WRONLY, &ncomp)) == NULL ||
+			nfp == (FILE *)-1)
 		return;
 	saveint = safe_signal(SIGINT, SIG_IGN);
-	if (scomp) {
+	if (super_mmapped)
+		/*EMPTY*/;
+	else if (scomp) {
 		zp = zalloc(sfp);
 		zwrite(zp, super, SIZEOF_super);
 		zfree(zp);
+		trunc(sfp);
 	} else
 		fwrite(super, 1, SIZEOF_super, sfp);
-	if (ncomp) {
+	if (nodes_mmapped)
+		/*EMPTY*/;
+	else if (ncomp) {
 		zp = zalloc(nfp);
 		zwrite(zp, nodes, getn(&super[OF_super_size]) * SIZEOF_node);
 		zfree(zp);
+		trunc(nfp);
 	} else
 		fwrite(nodes, 1,
 			getn(&super[OF_super_size]) * SIZEOF_node, nfp);
-	trunc(sfp);
-	trunc(nfp);
 	safe_signal(SIGINT, saveint);
-	Fclose(sfp);
-	Fclose(nfp);
+}
+
+static void
+relsedb(void)
+{
+	if (super_mmapped) {
+		munmap(super, super_mmapped);
+		super_mmapped = 0;
+	} else
+		free(super);
+	if (nodes_mmapped) {
+		munmap(nodes, nodes_mmapped);
+		nodes_mmapped = 0;
+	} else
+		free(nodes);
+	if (sfp && sfp != (FILE *)-1) {
+		Fclose(sfp);
+		sfp = NULL;
+	}
+	if (nfp && nfp != (FILE *)-1) {
+		Fclose(nfp);
+		nfp = NULL;
+	}
 }
 
 static FILE *
@@ -346,7 +417,7 @@ dbfp(enum db db, int rw, int *compressed)
 		fprintf(stderr, "Cannot create directory \"%s\"\n.", dir);
 		return (FILE *)-1;
 	}
-	if (!rw)
+	if (rw!=O_WRONLY)
 		table_version = current_table_version;
 loop:	sf = sfx[table_version];
 	zf = zfx[table_version];
@@ -355,17 +426,17 @@ loop:	sf = sfx[table_version];
 	fn[n] = '/';
 	*compressed = 0;
 	strcpy(&fn[n+1], sf[db]);
-	if ((fp = Fopen(fn, rw ? "r+" : "r")) != NULL)
+	if ((fp = Fopen(fn, rw!=O_RDONLY ? "r+" : "r")) != NULL)
 		goto okay;
 	*compressed = 1;
 	strcpy(&fn[n+1], zf[db]);
 	if ((fp = Fopen(fn, rw ? "r+" : "r")) == NULL &&
-			rw ? (fp = Fopen(fn, "w+")) == NULL : 0) {
+			rw==O_WRONLY ? (fp = Fopen(fn, "w+")) == NULL : 0) {
 		fprintf(stderr, "Cannot open junk mail database \"%s\".\n", fn);
 		ac_free(fn);
 		return NULL;
 	}
-	if (rw) {
+	if (rw==O_WRONLY) {
 		strcpy(&fn[n+1], "README");
 		if (access(fn, F_OK) < 0 && (rp = Fopen(fn, "w")) != NULL) {
 			fputs(README1, rp);
@@ -381,7 +452,7 @@ loop:	sf = sfx[table_version];
 	}
 okay:	ac_free(fn);
 	if (fp) {
-		flp.l_type = rw ? F_WRLCK : F_RDLCK;
+		flp.l_type = rw!=O_RDONLY ? F_WRLCK : F_RDLCK;
 		flp.l_start = 0;
 		flp.l_len = 0;
 		flp.l_whence = SEEK_SET;
@@ -394,7 +465,7 @@ static char *
 lookup(unsigned long h1, unsigned long h2, int create)
 {
 	char	*n, *lastn = NULL;
-	unsigned long	c, lastc = MAX4, used, size, incr;
+	unsigned long	c, lastc = MAX4, used, size;
 
 	used = getn(&super[OF_super_used]);
 	size = getn(&super[OF_super_size]);
@@ -412,16 +483,8 @@ lookup(unsigned long h1, unsigned long h2, int create)
 	}
 	if (create) {
 		if (used >= size) {
-			incr = size > MAX2 ? MAX2 : size;
-			if (size + incr > MAX4-MAX2) {
-				fprintf(stderr,
-					"Junk mail database overflow.\n");
+			if ((size = grow(size)) == 0)
 				return NULL;
-			}
-			nodes = srealloc(nodes, (size+incr)*SIZEOF_node);
-			memset(&nodes[size*SIZEOF_node], 0, incr*SIZEOF_node);
-			size += incr;
-			putn(&super[OF_super_size], size);
 			lastn = &nodes[lastc*SIZEOF_node];
 		}
 		n = &nodes[used*SIZEOF_node];
@@ -437,6 +500,46 @@ lookup(unsigned long h1, unsigned long h2, int create)
 		return n;
 	} else
 		return NULL;
+}
+
+static unsigned long
+grow(unsigned long size)
+{
+	unsigned long	incr, newsize;
+	void	*onodes;
+
+	incr = size > MAX2 ? MAX2 : size;
+	newsize = size + incr;
+	if (newsize > MAX4-MAX2) {
+	oflo:	fprintf(stderr, "Junk mail database overflow.\n");
+		return 0;
+	}
+	if (nodes_mmapped) {
+		if (lseek(fileno(nfp), newsize*SIZEOF_node-1, SEEK_SET)
+				== (off_t)-1 || write(fileno(nfp),"\0",1) != 1)
+			goto oflo;
+		onodes = nodes;
+		if ((nodes = mremap(nodes, nodes_mmapped, newsize*SIZEOF_node,
+				MREMAP_MAYMOVE)) == MAP_FAILED) {
+			if ((nodes = mmap(NULL, newsize*SIZEOF_node,
+						rw_map!=O_RDONLY ?
+							PROT_READ|PROT_WRITE :
+							PROT_READ,
+						MAP_SHARED, fileno(nfp), 0))
+					== MAP_FAILED) {
+				nodes = onodes;
+				goto oflo;
+			}
+			munmap(onodes, nodes_mmapped);
+		}
+		nodes_mmapped = newsize*SIZEOF_node;
+	} else {
+		nodes = srealloc(nodes, newsize*SIZEOF_node);
+		memset(&nodes[size*SIZEOF_node], 0, incr*SIZEOF_node);
+	}
+	size = newsize;
+	putn(&super[OF_super_size], size);
+	return size;
 }
 
 #define	SAVE(c)	{ \
@@ -708,7 +811,7 @@ scan(struct message *m, enum entry entry,
 	}
 	rm(cp);
 	Ftfree(&cp);
-	if (send_message(m, fp, NULL, NULL, CONV_TOFLTR, NULL) < 0) {
+	if (send(m, fp, NULL, NULL, SEND_TOFLTR, NULL) < 0) {
 		Fclose(fp);
 		return STOP;
 	}
@@ -782,7 +885,7 @@ insert(int *msgvec, enum entry entry)
 	unsigned long	u = 0;
 
 	verbose = value("verbose") != NULL;
-	if (getdb() != OKAY)
+	if (getdb(O_RDWR) != OKAY)
 		return 1;
 	switch (entry) {
 	case GOOD:
@@ -816,8 +919,7 @@ insert(int *msgvec, enum entry entry)
 	if (table_version < 1)
 		recompute();
 	putdb();
-	free(super);
-	free(nodes);
+	relsedb();
 	return 0;
 }
 
@@ -840,14 +942,13 @@ cclassify(void *v)
 
 	verbose = value("verbose") != NULL;
 	_debug = debug || value("debug") != NULL;
-	if (getdb() != OKAY)
+	if (getdb(O_RDONLY) != OKAY)
 		return 1;
 	for (ip = msgvec; *ip; ip++) {
 		setdot(&message[*ip-1]);
 		clsf(&message[*ip-1]);
 	}
-	free(super);
-	free(nodes);
+	relsedb();
 	return 0;
 }
 
@@ -1010,7 +1111,7 @@ cprobability(void *v)
 		fprintf(stderr, "No words given.\n");
 		return 1;
 	}
-	if (getdb() != OKAY)
+	if (getdb(O_RDONLY) != OKAY)
 		return 1;
 	used = getn(&super[OF_super_used]);
 	ngood = getn(&super[OF_super_ngood]);
@@ -1034,7 +1135,6 @@ cprobability(void *v)
 			printf("not in database");
 		putchar('\n');
 	} while (*++args);
-	free(super);
-	free(nodes);
+	relsedb();
 	return 0;
 }

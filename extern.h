@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.134 (gritter) 10/24/04
+ *	Sccsid @(#)extern.h	2.141 (gritter) 11/3/04
  */
 
 /* aux.c */
@@ -111,6 +111,7 @@ enum okay cache_dequeue(struct mailbox *mp);
 char *get_pager(void);
 int headers(void *v);
 int scroll(void *v);
+int Scroll(void *v);
 int screensize(void);
 int from(void *v);
 void printhead(int mesg, FILE *f, int threaded);
@@ -121,6 +122,7 @@ int more(void *v);
 int More(void *v);
 int type(void *v);
 int Type(void *v);
+int show(void *v);
 int pipecmd(void *v);
 int Pipecmd(void *v);
 int top(void *v);
@@ -212,7 +214,7 @@ void dot_unlock(const char *fname);
 int editor(void *v);
 int visual(void *v);
 FILE *run_editor(FILE *fp, off_t size, int type, int readonly,
-		char *fromline, struct header *hp);
+		struct header *hp, struct message *mp, enum sendaction action);
 /* fio.c */
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
@@ -429,8 +431,10 @@ enum okay makembox(void);
 /* send.c */
 char *foldergets(char **s, size_t *size, size_t *count, size_t *llen,
 		FILE *stream);
-int send_message(struct message *mp, FILE *obuf, struct ignoretab *doign,
-		char *prefix, enum conversion action, off_t *stats);
+#undef	send
+#define	send(a, b, c, d, e, f)	xsend(a, b, c, d, e, f)
+int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
+		char *prefix, enum sendaction action, off_t *stats);
 /* sendout.c */
 char *makeboundary(void);
 int mail(struct name *to, struct name *cc, struct name *bcc,
@@ -441,7 +445,8 @@ int Sendmail(void *v);
 enum okay mail1(struct header *hp, int printheaders, struct message *quote,
 		char *quotefile, int recipient_record, int tflag);
 int mkdate(FILE *fo, const char *field);
-int puthead(struct header *hp, FILE *fo, enum gfield w, int convert,
+int puthead(struct header *hp, FILE *fo, enum gfield w,
+		enum sendaction action, enum conversion convert,
 		char *contenttype, char *charset);
 int forward_msg(struct message *mp, struct name *to, int add_resent);
 /* smtp.c */

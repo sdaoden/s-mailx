@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.79 (gritter) 10/2/04";
+static char sccsid[] = "@(#)cmd1.c	2.86 (gritter) 11/3/04";
 #endif
 #endif /* not lint */
 
@@ -62,10 +62,11 @@ static char sccsid[] = "@(#)cmd1.c	2.79 (gritter) 10/2/04";
 static int screen;
 static void onpipe(int signo);
 static int dispc(struct message *mp, const char *a);
+static int scroll1(char *arg, int onlynew);
 static void hprf(const char *fmt, int mesg, FILE *f, int threaded,
 		const char *attrlist);
-static int type1(int *msgvec, int doign, int page, int pipe, char *cmd,
-		off_t *tstats);
+static int type1(int *msgvec, int doign, int page, int pipe, int decode,
+		char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
 static void brokpipe(int signo);
 
@@ -84,12 +85,13 @@ int
 headers(void *v)
 {
 	int *msgvec = v;
-	int g, k, n, mesg, flag = 0;
-	struct message *mp, *mq;
+	int g, k, n, mesg, flag = 0, lastg = 1;
+	struct message *mp, *mq, *lastmq = NULL;
 	int size;
+	enum mflag	fl = MNEW|MFLAGGED;
 
 	size = screensize();
-	n = msgvec[0];	/* n == 0: called from scroll() */
+	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
 	if (screen < 0)
 		screen = 0;
 	k = screen * size;
@@ -104,10 +106,21 @@ headers(void *v)
 			if ((mp->m_flag&(MDELETED|MHIDDEN|MKILL))==0) {
 				if (g % size == 0)
 					mq = mp;
-				if (n ? mp == &message[n-1] : g == k)
+				if (mp->m_flag&fl) {
+					lastg = g;
+					lastmq = mq;
+				}
+				if (n>0 && mp==&message[n-1] ||
+						n==0 && g==k ||
+						n==-2 && g==k+size && lastmq ||
+						n<0 && g>=k && mp->m_flag&fl)
 					break;
 				g++;
 			}
+		if (lastmq && (n==-2 || n==-1 && mp==&message[msgCount])) {
+			g = lastg;
+			mq = lastmq;
+		}
 		screen = g / size;
 		mp = mq;
 		mesg = mp - &message[0];
@@ -137,10 +150,21 @@ headers(void *v)
 					 mp == &message[n-1])) {
 				if (g % size == 0)
 					mq = mp;
-				if (n ? mp == &message[n-1] : g == k)
+				if (mp->m_flag&fl) {
+					lastg = g;
+					lastmq = mq;
+				}
+				if (n>0 && mp==&message[n-1] ||
+						n==0 && g==k ||
+						n==-2 && g==k+size && lastmq ||
+						n<0 && g>=k && mp->m_flag&fl)
 					break;
 				g++;
 			}
+		if (lastmq && (n==-2 || n==-1 && mp==&message[msgCount])) {
+			g = lastg;
+			mq = lastmq;
+		}
 		screen = g / size;
 		mp = mq;
 		if (dot != &message[n-1]) {
@@ -173,14 +197,25 @@ headers(void *v)
 /*
  * Scroll to the next/previous screen
  */
-int 
+int
 scroll(void *v)
 {
-	char *arg = v;
+	return scroll1(v, 0);
+}
+
+int
+Scroll(void *v)
+{
+	return scroll1(v, 1);
+}
+
+static int
+scroll1(char *arg, int onlynew)
+{
 	int size;
 	int cur[1];
 
-	cur[0] = 0;
+	cur[0] = onlynew ? -1 : 0;
 	size = screensize();
 	switch (*arg) {
 	case '1': case '2': case '3': case '4': case '5':
@@ -216,6 +251,8 @@ scroll_forward:
 			printf(catgets(catd, CATSET, 8,
 					"On first screenful of messages\n"));
 		}
+		if (cur[0] == -1)
+			cur[0] = -2;
 		break;
 
 	default:
@@ -647,7 +684,8 @@ pcmdlist(void *v)
 static sigjmp_buf	pipestop;
 
 static int
-type1(int *msgvec, int doign, int page, int pipe, char *cmd, off_t *tstats)
+type1(int *msgvec, int doign, int page, int pipe, int decode,
+		char *cmd, off_t *tstats)
 {
 	int *ip;
 	struct message *mp;
@@ -710,10 +748,11 @@ type1(int *msgvec, int doign, int page, int pipe, char *cmd, off_t *tstats)
 		if (value("quiet") == NULL)
 			fprintf(obuf, catgets(catd, CATSET, 17,
 				"Message %2d:\n"), *ip);
-		send_message(mp, obuf, doign ? ignore : 0, NULL,
-				    pipe && value("piperaw") ?
-				    	CONV_NONE : CONV_TODISP,
-				    mstats);
+		send(mp, obuf, doign ? ignore : 0, NULL,
+			decode || pipe && value("piperaw") ?
+				SEND_MBOX :
+				doign ? SEND_TODISP : SEND_TODISP_ALL,
+			mstats);
 		if (pipe && value("page")) {
 			putc('\f', obuf);
 		}
@@ -839,7 +878,7 @@ pipe1(char *str, int doign)
 	}
 	printf(catgets(catd, CATSET, 268, "Pipe to: \"%s\"\n"), cmd);
 	stats[0] = stats[1] = 0;
-	if ((ret = type1(msgvec, doign, 0, 1, cmd, stats)) == 0) {
+	if ((ret = type1(msgvec, doign, 0, 1, 0, cmd, stats)) == 0) {
 		printf("\"%s\" ", cmd);
 		if (stats[0] >= 0)
 			printf("%lu", (long)stats[0]);
@@ -857,7 +896,7 @@ int
 more(void *v)
 {
 	int *msgvec = v;
-	return (type1(msgvec, 1, 1, 0, NULL, NULL));
+	return (type1(msgvec, 1, 1, 0, 0, NULL, NULL));
 }
 
 /*
@@ -868,7 +907,7 @@ More(void *v)
 {
 	int *msgvec = v;
 
-	return (type1(msgvec, 0, 1, 0, NULL, NULL));
+	return (type1(msgvec, 0, 1, 0, 0, NULL, NULL));
 }
 
 /*
@@ -879,7 +918,7 @@ type(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 1, 0, 0, NULL, NULL));
+	return(type1(msgvec, 1, 0, 0, 0, NULL, NULL));
 }
 
 /*
@@ -890,7 +929,18 @@ Type(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, NULL, NULL));
+	return(type1(msgvec, 0, 0, 0, 0, NULL, NULL));
+}
+
+/*
+ * Show MIME-encoded message text, including all fields.
+ */
+int
+show(void *v)
+{
+	int *msgvec = v;
+
+	return(type1(msgvec, 0, 0, 0, 1, NULL, NULL));
 }
 
 /*

@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.259 (gritter) 10/24/04 -->
+<!--      Sccsid: @(#)nail.1	2.271 (gritter) 11/3/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -100,10 +100,11 @@ nail - send and receive Internet mail
 &nbsp; &nbsp; &nbsp;<A HREF=#28>Viewing PDF attachments</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#29>Signed and encrypted messages with S/MIME</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#30>Using CRLs with S/MIME or SSL/TLS</A><BR>
-<A HREF=#31>See Also</A><BR>
-<A HREF=#32>Notes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#31>Sending mail from scripts</A><BR>
+<A HREF=#32>See Also</A><BR>
+<A HREF=#33>Notes</A><BR>
 </BLOCKQUOTE>
-<A name=33>
+<A name=34>
 
      <H3>SYNOPSIS</H3>
 
@@ -1173,8 +1174,9 @@ command.
 (e) Takes a list of messages
 and points the text editor
 at each one in turn.
-On return from the editor,
-the message is read back in.
+Modified contents are discarded
+unless the
+<I>writebackedited</I> variable is set.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>else</B> </TD><TD valign=bottom>
@@ -1533,7 +1535,9 @@ Otherwise, no operation is performed.
 <B>Pipe</B> </TD><TD valign=bottom>
 (Pi) Like
 <I>pipe</I> but also
-pipes ignored header fields.
+pipes ignored header fields
+and all parts of MIME
+<I>multipart/alternative</I> messages.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>pipe</B> </TD><TD valign=bottom>
@@ -1553,7 +1557,9 @@ every message is followed by a formfeed character.
 <B>Print</B> </TD><TD valign=bottom>
 (P) Like
 <I>print</I> but also
-prints out ignored header fields.
+prints out ignored header fields
+and all parts of MIME
+<I>multipart/alternative</I> messages.
 See also
 <I>print</I>, <I>ignore</I>, and
 <I>retain</I>. </TD></TR>
@@ -1748,6 +1754,12 @@ as described for the
 <I>folder</I> command.
 With no arguments,
 a list of defined shortcuts is printed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>show</B> </TD><TD valign=bottom>
+(Sh) Like
+<I>print</I>, but performs neither MIME decoding nor decryption
+so that the raw message text is shown.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>size</B> </TD><TD valign=bottom>
@@ -1977,6 +1989,9 @@ and if the message content has been altered.
 <B>visual</B> </TD><TD valign=bottom>
 (v) Takes a message list and invokes the display editor
 on each message.
+Modified contents are discarded
+unless the
+<I>writebackedited</I> variable is set.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>write</B> </TD><TD valign=bottom>
@@ -2020,6 +2035,12 @@ A number without a prefix specifies an
 absolute window number,
 and a &#39;$&#39; lets <I>nail</I> scroll
 to the last window of messages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Z</B> </TD><TD valign=bottom>
+Similar to
+<I>z</I>, but scrolls to the next or previous window
+that contains at least one new or &#39;flagged&#39; message.
 </TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
 <A name=16>
@@ -2118,11 +2139,13 @@ read in the current message.
 Message headers currently being ignored
 (by the ignore or retain command)
 are not included.
+For MIME multipart messages,
+only the first printable part is included.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>~F</B><I>messages</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Identical to ~f,
-except all message headers are included.
+Identical to ~f, except all message headers and
+all MIME parts are included.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>~h</B> </TD><TD valign=bottom>
@@ -2150,10 +2173,13 @@ read the current message.
 Message headers currently being ignored
 (by the ignore or retain command)
 are not included.
+For MIME multipart messages,
+only the first printable part is included.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>~M</B><I>messages</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Identical to ~m, except all message headers are included.
+Identical to ~m, except all message headers and
+all MIME parts are included.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>~p</B> </TD><TD valign=bottom>
@@ -2642,6 +2668,14 @@ when printed;
 it should only be used as a last resort
 if no working system locale can be found.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>print-alternatives</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When a MIME message part of type
+<I>multipart/alternative</I> is displayed and it contains a subpart of type
+<I>text/plain</I>, other parts are normally discarded.
+Setting this variable causes all subparts to be displayed,
+just as if the surrounding part was of type
+<I>multipart/mixed</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>quiet</B> </TD><TD valign=bottom>
 Suppresses the printing of the version when first invoked.
@@ -2759,6 +2793,17 @@ including passwords,
 so care should be taken that no unauthorized option
 can view the screen if this option is enabled.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>writebackedited</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this variable is set,
+messages modified using the
+<I>edit</I> or
+<I>visual</I> commands are written back to the current folder when it is quit.
+This is only possible for writable folders in
+<I>mbox</I> format.
+Setting this variable also disables
+MIME decoding and decryption for the editing commands.
+</TD></TR>
 <TR></TR></TABLE><P></BLOCKQUOTE>
 <A name=19>
 
@@ -2790,7 +2835,9 @@ collapsed,
 classified as junk.
 The default is &#39;NUROSPMFATK+-J&#39;,
 or &#39;NU&nbsp;&nbsp;*HMFATK+-J&#39; if
-<I>bsdflags</I> is set.
+<I>bsdflags</I> or the
+<I>SYSV3</I> environment variable
+are set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>autobcc</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3228,6 +3275,7 @@ are printed above the message body,
 thus <I>quote</I> acts like an automatic ~m command then.
 If the string <I>allheaders</I> is assigned,
 all headers are printed above the message body,
+and all MIME parts are included,
 thus <I>quote</I> acts like an automatic ~M command then.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -3667,6 +3715,10 @@ to avoid side-effects from reading their configuration files.
 If this variable is set and
 <I>MAILRC</I> is not set,
 it is read as startup file.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>SYSV3</B> </TD><TD valign=bottom>
+Changes the letters printed in the first column of a header summary.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>TMPDIR</B> </TD><TD valign=bottom>
@@ -4646,6 +4698,39 @@ CRLs can be imported in Mozilla applications
 </BLOCKQUOTE>
 <A name=31>
 
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Sending mail from scripts</H4>
+</A>
+<BLOCKQUOTE>
+If you want to send mail from scripts,
+you must be aware that
+<I>nail</I> reads the user&#39;s configuration files by default.
+So unless your script is only intended for your own personal use
+(as e.g. a cron job),
+you need to circumvent this by invoking
+<I>nail</I> like
+<PRE>
+<P>
+&nbsp;   <B>MAILRC=/dev/null nail -n</B>
+<P>
+</PRE>
+You then need to create a configuration for
+<I>nail</I> for your script.
+This can be done by either pointing the
+<I>MAILRC</I> variable to a custom configuration file,
+or by passing the configuration in environment variables.
+Since many of the configuration options are not valid shell variables, the
+<I>env</I> command is useful in this situation.
+An invocation could thus look like
+<PRE>
+<P>
+&nbsp;   <B>env MAILRC=/dev/null</B> from=<I>scriptreply@domain</I> smtp=<I>host</I> &#92;
+&nbsp;         smtp-auth-user=<I>login</I> smtp-auth-password=<I>secret</I> &#92;
+&nbsp;         smtp-auth=<I>login</I> <B>nail -n</B> -s "<I>subject</I>" &#92;
+&nbsp;         -a <I>attachment_file</I> <I>recipient@domain</I> &lt;<I>content_file</I>
+</PRE>
+</BLOCKQUOTE>
+<A name=32>
+
      <H3>SEE ALSO</H3>
 
 </A>
@@ -4662,7 +4747,7 @@ locale(7),
 mailaddr(7),
 sendmail(8)
 </BLOCKQUOTE>
-<A name=32>
+<A name=33>
 
      <H3>NOTES</H3>
 
@@ -4793,13 +4878,6 @@ such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.e. to advise it to do that from a network startup script.
 <P>
-<I>Nail</I> is intended to be
-a MIME-conformant mail user agent,
-with the following exception:
-No special handling of &#39;multipart/alternative&#39; messages is performed;
-all parts with content types of &#39;text&#39; or &#39;message&#39; are shown.
-This is done because the user should see as much information as possible.
-<P>
 A <I>mail</I> command appeared in Version 1 AT&amp;T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
@@ -4821,5 +4899,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.13</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>10/24/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.14</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>11/3/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>

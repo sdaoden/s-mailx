@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.38 (gritter) 10/24/04";
+static char sccsid[]  = "@(#)mime.c	2.43 (gritter) 11/1/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -86,7 +86,7 @@ static int is_this_enc(const char *line, const char *encoding);
 static char *mime_tline(char *x, char *l);
 static char *mime_type(char *ext, char *filename);
 static enum mimeclean mime_isclean(FILE *f);
-static int gettextconversion(void);
+static enum conversion gettextconversion(void);
 static char *ctohex(int c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
@@ -590,18 +590,11 @@ is_this_enc(const char *line, const char *encoding)
 }
 
 /*
- * Get the mime encoding from a Content-Transfer-Encoding header line.
+ * Get the mime encoding from a Content-Transfer-Encoding header field.
  */
 enum mimeenc 
-mime_getenc(char *h)
+mime_getenc(char *p)
 {
-	char *p;
-
-	if ((p = strchr(h, ':')) == NULL)
-		return MIME_NONE;
-	p++;
-	while (*p && whitechar(*p & 0377))
-		p++;
 	if (is_this_enc(p, "7bit"))
 		return MIME_7B;
 	if (is_this_enc(p, "8bit"))
@@ -616,39 +609,31 @@ mime_getenc(char *h)
 }
 
 /*
- * Get the mime content from a Content-Type header line.
+ * Get the mime content from a Content-Type header field, other parameters
+ * already stripped.
  */
 int 
-mime_getcontent(char *h)
+mime_getcontent(char *s)
 {
-	char *p, *q, *r, *s;
-
-	if ((s = strchr(h, ':')) == NULL)
-		return 1;
-	s++;
-	while (*s && whitechar(*s & 0377))
-		s++;
-	if (*s == '"')
-		s++;
-	r = salloc(strlen(s) + 1);
-	p = s, q = r;
-	while (*p && !whitechar(*p & 0377) && *p != ';') {
-		*q++ = lowerconv(*p & 0377);
-		p++;
-	}
-	*q = '\0';
-	if (strchr(r, '/') == NULL)	/* for compatibility with non-MIME */
+	if (strchr(s, '/') == NULL)	/* for compatibility with non-MIME */
 		return MIME_TEXT;
-	if (strncmp(r, "text/html", 9) == 0)
-		return MIME_HTML;
-	if (strncmp(r, "text/", 5) == 0)
+	if (asccasecmp(s, "text/plain") == 0)
+		return MIME_TEXT_PLAIN;
+	if (asccasecmp(s, "text/html") == 0)
+		return MIME_TEXT_HTML;
+	if (ascncasecmp(s, "text/", 5) == 0)
 		return MIME_TEXT;
-	if (strncmp(r, "message/rfc822", 14) == 0)
+	if (asccasecmp(s, "message/rfc822") == 0)
 		return MIME_822;
-	if (strncmp(r, "message/", 8) == 0)
+	if (ascncasecmp(s, "message/", 8) == 0)
 		return MIME_MESSAGE;
-	if (strncmp(r, "multipart/", 10) == 0)
+	if (asccasecmp(s, "multipart/alternative") == 0)
+		return MIME_ALTERNATIVE;
+	if (ascncasecmp(s, "multipart/", 10) == 0)
 		return MIME_MULTI;
+	if (asccasecmp(s, "application/x-pkcs7-mime") == 0 ||
+				asccasecmp(s, "application/pkcs7-mime") == 0)
+		return MIME_PKCS7;
 	return MIME_UNKNOWN;
 }
 
@@ -731,7 +716,7 @@ mime_getboundary(char *h)
 	if ((p = mime_getparam("boundary", h)) == NULL)
 		return NULL;
 	sz = strlen(p);
-	q = smalloc(sz + 3);
+	q = salloc(sz + 3);
 	memcpy(q, "--", 2);
 	memcpy(q + 2, p, sz);
 	*(q + sz + 2) = '\0';
@@ -863,7 +848,7 @@ mime_isclean(FILE *f)
 /*
  * Get the conversion that matches the encoding specified in the environment.
  */
-static int 
+static enum conversion
 gettextconversion(void)
 {
 	char *p;

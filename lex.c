@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.75 (gritter) 10/19/04";
+static char sccsid[] = "@(#)lex.c	2.77 (gritter) 10/31/04";
 #endif
 #endif /* not lint */
 
@@ -175,10 +175,15 @@ setfile(char *name, int newmail)
 		mb.mb_type = MB_FILE;
 		mb.mb_perm = MB_DELE|MB_EDIT;
 		mb.mb_compressed = compressed;
-		if ((i = open(name, O_WRONLY)) < 0 && !mb.mb_compressed)
-			mb.mb_perm = 0;
-		else
-			close(i);
+		if (compressed) {
+			if (compressed & 0200)
+				mb.mb_perm = 0;
+		} else {
+			if ((i = open(name, O_WRONLY)) < 0)
+				mb.mb_perm = 0;
+			else
+				close(i);
+		}
 		if (shudclob) {
 			if (mb.mb_itf) {
 				fclose(mb.mb_itf);
@@ -194,7 +199,7 @@ setfile(char *name, int newmail)
 		initbox(name);
 		offset = 0;
 		flp.l_len = 0;
-		if (fcntl(fileno(ibuf), F_SETLKW, &flp) < 0) {
+		if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) < 0) {
 			perror("Unable to lock mailbox");
 			Fclose(ibuf);
 			return -1;
@@ -205,7 +210,7 @@ setfile(char *name, int newmail)
 		offset = mailsize;
 		omsgCount = msgCount;
 		flp.l_len = offset;
-		if (fcntl(fileno(ibuf), F_SETLKW, &flp) < 0)
+		if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) < 0)
 			goto nonewmail;
 	}
 	mailsize = fsize(ibuf);

@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.259 (gritter) 10/24/04
+.\"     Sccsid: @(#)nail.1	2.271 (gritter) 11/3/04
 .\"
-.TH NAIL 1 "10/24/04" "nail 11.13" "User Commands"
+.TH NAIL 1 "11/3/04" "nail 11.14" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -993,8 +993,10 @@ command.
 (e) Takes a list of messages
 and points the text editor
 at each one in turn.
-On return from the editor,
-the message is read back in.
+Modified contents are discarded
+unless the
+.I writebackedited
+variable is set.
 .TP
 .B else
 Marks the end of the then-part
@@ -1347,7 +1349,10 @@ Otherwise, no operation is performed.
 (Pi) Like
 .I pipe
 but also
-pipes ignored header fields.
+pipes ignored header fields
+and all parts of MIME
+.I multipart/alternative
+messages.
 .TP
 .B pipe
 (pi) Takes a message list and a shell command
@@ -1366,7 +1371,10 @@ every message is followed by a formfeed character.
 (P) Like
 .I print
 but also
-prints out ignored header fields.
+prints out ignored header fields
+and all parts of MIME
+.I multipart/alternative
+messages.
 See also
 .IR print ,
 .IR ignore ,
@@ -1557,6 +1565,12 @@ as described for the
 command.
 With no arguments,
 a list of defined shortcuts is printed.
+.TP
+.B show
+(Sh) Like
+.IR print ,
+but performs neither MIME decoding nor decryption
+so that the raw message text is shown.
 .TP
 .B size
 Takes a message list and prints out
@@ -1759,6 +1773,10 @@ and if the message content has been altered.
 .B visual
 (v) Takes a message list and invokes the display editor
 on each message.
+Modified contents are discarded
+unless the
+.I writebackedited
+variable is set.
 .TP
 .B write
 (w) For conventional messages,
@@ -1799,6 +1817,12 @@ A number without a prefix specifies an
 absolute window number,
 and a `$' lets \fInail\fR scroll
 to the last window of messages.
+.TP
+.B Z
+Similar to
+.IR z ,
+but scrolls to the next or previous window
+that contains at least one new or `flagged' message.
 .SS "Tilde escapes"
 Here is a summary of the tilde escapes,
 which are used when composing
@@ -1879,10 +1903,12 @@ read in the current message.
 Message headers currently being ignored
 (by the ignore or retain command)
 are not included.
+For MIME multipart messages,
+only the first printable part is included.
 .TP
 .BI ~F messages
-Identical to ~f,
-except all message headers are included.
+Identical to ~f, except all message headers and
+all MIME parts are included.
 .TP
 .B ~h
 Edit the message header fields
@@ -1907,9 +1933,12 @@ read the current message.
 Message headers currently being ignored
 (by the ignore or retain command)
 are not included.
+For MIME multipart messages,
+only the first printable part is included.
 .TP
 .BI ~M messages
-Identical to ~m, except all message headers are included.
+Identical to ~m, except all message headers and
+all MIME parts are included.
 .TP
 .B ~p
 Print out the message collected so far,
@@ -2347,6 +2376,16 @@ when printed;
 it should only be used as a last resort
 if no working system locale can be found.
 .TP
+.B print-alternatives
+When a MIME message part of type
+.I multipart/alternative
+is displayed and it contains a subpart of type
+.IR text/plain ,
+other parts are normally discarded.
+Setting this variable causes all subparts to be displayed,
+just as if the surrounding part was of type
+.IR multipart/mixed .
+.TP
 .B quiet
 Suppresses the printing of the version when first invoked.
 .TP
@@ -2450,6 +2489,19 @@ prints all data that is sent to remote servers in clear texts,
 including passwords,
 so care should be taken that no unauthorized option
 can view the screen if this option is enabled.
+.TP
+.B writebackedited
+If this variable is set,
+messages modified using the
+.I edit
+or
+.I visual
+commands are written back to the current folder when it is quit.
+This is only possible for writable folders in
+.I mbox
+format.
+Setting this variable also disables
+MIME decoding and decryption for the editing commands.
 .SS "String Options"
 .PP
 The string options include the following:
@@ -2475,7 +2527,10 @@ classified as junk.
 The default is `NUROSPMFATK+\-J',
 or `NU\ \ *HMFATK+\-J' if
 .I bsdflags
-is set.
+or the
+.I SYSV3
+environment variable
+are set.
 .TP
 .B autobcc
 Specifies a list of recipients to which
@@ -2880,6 +2935,7 @@ are printed above the message body,
 thus \fIquote\fR acts like an automatic ~m command then.
 If the string \fIallheaders\fR is assigned,
 all headers are printed above the message body,
+and all MIME parts are included,
 thus \fIquote\fR acts like an automatic ~M command then.
 .TP
 .B record
@@ -3275,6 +3331,9 @@ If this variable is set and
 .I MAILRC
 is not set,
 it is read as startup file.
+.TP
+.B SYSV3
+Changes the letters printed in the first column of a header summary.
 .TP
 .B TMPDIR
 Used as directory for temporary files instead of /tmp, if set.
@@ -4317,6 +4376,38 @@ CRLs can be imported in Mozilla applications
 (provided that
 .I nss-config-dir
 is set appropriately).
+.SS "Sending mail from scripts"
+If you want to send mail from scripts,
+you must be aware that
+.I nail
+reads the user's configuration files by default.
+So unless your script is only intended for your own personal use
+(as e.g. a cron job),
+you need to circumvent this by invoking
+.I nail
+like
+.nf
+.sp
+    \fBMAILRC=/dev/null nail \-n\fR
+.sp
+.fi
+You then need to create a configuration for
+.I nail
+for your script.
+This can be done by either pointing the
+.I MAILRC
+variable to a custom configuration file,
+or by passing the configuration in environment variables.
+Since many of the configuration options are not valid shell variables, the
+.I env
+command is useful in this situation.
+An invocation could thus look like
+.nf
+.sp
+    \fBenv MAILRC=/dev/null\fR from=\fIscriptreply@domain\fR smtp=\fIhost\fR \e
+          smtp-auth-user=\fIlogin\fR smtp-auth-password=\fIsecret\fR \e
+          smtp-auth=\fIlogin\fR \fBnail \-n\fR \-s "\fIsubject\fR" \e
+          \-a \fIattachment_file\fR \fIrecipient@domain\fR <\fIcontent_file\fR
 .SH "SEE ALSO"
 fmt(1),
 newaliases(1),
@@ -4467,13 +4558,6 @@ mode is to configure a local SMTP server
 such that it sends outgoing mail
 as soon as an external network connection is available again,
 i.\|e. to advise it to do that from a network startup script.
-.PP
-\fINail\fR is intended to be
-a MIME-conformant mail user agent,
-with the following exception:
-No special handling of `multipart/alternative' messages is performed;
-all parts with content types of `text' or `message' are shown.
-This is done because the user should see as much information as possible.
 .PP
 A \fImail\fR command appeared in Version 1 AT&T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
