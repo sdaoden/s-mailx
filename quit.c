@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.3 (gritter) 10/13/02";
+static char sccsid[] = "@(#)quit.c	2.6 (gritter) 10/27/02";
 #endif
 #endif /* not lint */
 
@@ -164,20 +164,28 @@ writeback(res, obuf)
 void
 quit()
 {
-	int mcount, p, modify, autohold, anystat, holdbit, nohold;
-	FILE *ibuf = (FILE*)NULL, *obuf, *fbuf, *rbuf, *readstat = (FILE*)NULL, *abuf;
+	int p, modify, anystat;
+	FILE *fbuf, *rbuf, *readstat = (FILE*)NULL, *abuf;
 	struct message *mp;
 	int c;
-	char *tempQuit, *tempResid;
+	char *tempResid;
 	struct stat minfo;
-	char *mbox;
 
 	/*
 	 * If we are read only, we can't do anything,
 	 * so just return quickly.
 	 */
-	if (readonly)
+	if (mb.mb_perm == 0)
 		return;
+	switch (mb.mb_type) {
+	case MB_FILE:
+		break;
+	case MB_POP3:
+		pop3_quit();
+		return;
+	case MB_VOID:
+		return;
+	}
 	/*
 	 * If editing (not reading system mail box), then do the work
 	 * in edstop()
@@ -245,28 +253,7 @@ nolock:
 		Ftfree(&tempResid);
 	}
 
-	/*
-	 * Adjust the message flags in each message.
-	 */
-
-	anystat = 0;
-	autohold = value("hold") != NULL;
-	holdbit = autohold ? MPRESERVE : MBOX;
-	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
-	if (value("keepsave") != NULL)
-		nohold &= ~MSAVED;
-	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
-		if (mp->m_flag & MNEW) {
-			mp->m_flag &= ~MNEW;
-			mp->m_flag |= MSTATUS;
-		}
-		if (mp->m_flag & MSTATUS)
-			anystat++;
-		if ((mp->m_flag & MTOUCH) == 0)
-			mp->m_flag |= MPRESERVE;
-		if ((mp->m_flag & nohold) == 0)
-			mp->m_flag |= holdbit;
-	}
+	anystat = holdbits();
 	modify = 0;
 	if (Tflag != NULL) {
 		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
@@ -279,7 +266,7 @@ nolock:
 			p++;
 		if (mp->m_flag & MODIFY)
 			modify++;
-		if (Tflag != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
+		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
 			if ((id = hfield("message-id", mp)) != NULL ||
@@ -287,7 +274,7 @@ nolock:
 				fprintf(readstat, "%s\n", id);
 		}
 	}
-	if (Tflag != NULL)
+	if (readstat != NULL)
 		Fclose(readstat);
 	if (p == msgcount && !modify && !anystat) {
 		if (p == 1)
@@ -314,113 +301,11 @@ nolock:
 		goto cream;
 	}
 
-	/*
-	 * Create another temporary file and copy user's mbox file
-	 * darin.  If there is no mbox, copy nothing.
-	 * If he has specified "append" don't copy his mailbox,
-	 * just copy saveable entries at the end.
-	 */
-
-	mbox = expand("&");
-	mcount = c;
-	if (value("append") == NULL) {
-		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
-			perror(catgets(catd, CATSET, 162,
-					"temporary mail quit file"));
-			Fclose(fbuf);
-			dot_unlock(mailname);
-			return;
-		}
-		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
-			perror(tempQuit);
-			rm(tempQuit);
-			Ftfree(&tempQuit);
-			Fclose(obuf);
-			Fclose(fbuf);
-			dot_unlock(mailname);
-			return;
-		}
-		rm(tempQuit);
-		Ftfree(&tempQuit);
-		if ((abuf = Fopen(mbox, "r")) != (FILE*)NULL) {
-			while ((c = sgetc(abuf)) != EOF)
-				(void) sputc(c, obuf);
-			Fclose(abuf);
-		}
-		if (ferror(obuf)) {
-			perror(catgets(catd, CATSET, 163,
-					"temporary mail quit file"));
-			Fclose(ibuf);
-			Fclose(obuf);
-			Fclose(fbuf);
-			dot_unlock(mailname);
-			return;
-		}
-		Fclose(obuf);
-		close(creat(mbox, 0600));
-		if ((obuf = Fopen(mbox, "r+")) == (FILE*)NULL) {
-			perror(mbox);
-			Fclose(ibuf);
-			Fclose(fbuf);
-			dot_unlock(mailname);
-			return;
-		}
-	}
-	else {
-		if ((obuf = Fopen(mbox, "a")) == (FILE*)NULL) {
-			perror(mbox);
-			Fclose(fbuf);
-			dot_unlock(mailname);
-			return;
-		}
-		fchmod(fileno(obuf), 0600);
-	}
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
-		if (mp->m_flag & MBOX)
-			if (send_message(mp, obuf, saveignore,
-						NULL, CONV_NONE, NULL) < 0) {
-				perror(mbox);
-				if (ibuf)
-					Fclose(ibuf);
-				Fclose(obuf);
-				Fclose(fbuf);
-				dot_unlock(mailname);
-				return;
-			}
-
-	/*
-	 * Copy the user's old mbox contents back
-	 * to the end of the stuff we just saved.
-	 * If we are appending, this is unnecessary.
-	 */
-
-	if (value("append") == NULL) {
-		rewind(ibuf);
-		c = sgetc(ibuf);
-		while (c != EOF) {
-			(void) sputc(c, obuf);
-			if (ferror(obuf))
-				break;
-			c = sgetc(ibuf);
-		}
-		Fclose(ibuf);
-		fflush(obuf);
-	}
-	trunc(obuf);
-	if (ferror(obuf)) {
-		perror(mbox);
-		Fclose(obuf);
+	if (makembox() == STOP) {
 		Fclose(fbuf);
 		dot_unlock(mailname);
 		return;
 	}
-	Fclose(obuf);
-	if (mcount == 1)
-		printf(catgets(catd, CATSET, 164, "Saved 1 message in mbox\n"));
-	else
-		printf(catgets(catd, CATSET, 165,
-				"Saved %d messages in mbox\n"), mcount);
-
 	/*
 	 * Now we are ready to copy back preserved files to
 	 * the system mailbox, if any were requested.
@@ -478,6 +363,141 @@ newmail:
 }
 
 /*
+ * Adjust the message flags in each message.
+ */
+int
+holdbits()
+{
+	struct message *mp;
+	int anystat, autohold, holdbit, nohold;
+
+	anystat = 0;
+	autohold = value("hold") != NULL;
+	holdbit = autohold ? MPRESERVE : MBOX;
+	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
+	if (value("keepsave") != NULL)
+		nohold &= ~MSAVED;
+	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
+		if (mp->m_flag & MNEW) {
+			mp->m_flag &= ~MNEW;
+			mp->m_flag |= MSTATUS;
+		}
+		if (mp->m_flag & MSTATUS)
+			anystat++;
+		if ((mp->m_flag & MTOUCH) == 0)
+			mp->m_flag |= MPRESERVE;
+		if ((mp->m_flag & nohold) == 0)
+			mp->m_flag |= holdbit;
+	}
+	return anystat;
+}
+
+/*
+ * Create another temporary file and copy user's mbox file
+ * darin.  If there is no mbox, copy nothing.
+ * If he has specified "append" don't copy his mailbox,
+ * just copy saveable entries at the end.
+ */
+
+enum okay
+makembox()
+{
+	struct message *mp;
+	char *mbox, *tempQuit;
+	int mcount, c;
+	FILE *ibuf = NULL, *obuf, *abuf;
+
+	mbox = expand("&");
+	mcount = 0;
+	if (value("append") == NULL) {
+		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
+			perror(catgets(catd, CATSET, 162,
+					"temporary mail quit file"));
+			return STOP;
+		}
+		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
+			perror(tempQuit);
+			rm(tempQuit);
+			Ftfree(&tempQuit);
+			Fclose(obuf);
+			return STOP;
+		}
+		rm(tempQuit);
+		Ftfree(&tempQuit);
+		if ((abuf = Fopen(mbox, "r")) != (FILE*)NULL) {
+			while ((c = sgetc(abuf)) != EOF)
+				(void) sputc(c, obuf);
+			Fclose(abuf);
+		}
+		if (ferror(obuf)) {
+			perror(catgets(catd, CATSET, 163,
+					"temporary mail quit file"));
+			Fclose(ibuf);
+			Fclose(obuf);
+			return STOP;
+		}
+		Fclose(obuf);
+		close(creat(mbox, 0600));
+		if ((obuf = Fopen(mbox, "r+")) == (FILE*)NULL) {
+			perror(mbox);
+			Fclose(ibuf);
+			return STOP;
+		}
+	}
+	else {
+		if ((obuf = Fopen(mbox, "a")) == (FILE*)NULL) {
+			perror(mbox);
+			return STOP;
+		}
+		fchmod(fileno(obuf), 0600);
+	}
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
+		if (mp->m_flag & MBOX) {
+			mcount++;
+			if (send_message(mp, obuf, saveignore,
+						NULL, CONV_NONE, NULL) < 0) {
+				perror(mbox);
+				if (ibuf)
+					Fclose(ibuf);
+				Fclose(obuf);
+				return STOP;
+			}
+		}
+
+	/*
+	 * Copy the user's old mbox contents back
+	 * to the end of the stuff we just saved.
+	 * If we are appending, this is unnecessary.
+	 */
+
+	if (value("append") == NULL) {
+		rewind(ibuf);
+		c = sgetc(ibuf);
+		while (c != EOF) {
+			(void) sputc(c, obuf);
+			if (ferror(obuf))
+				break;
+			c = sgetc(ibuf);
+		}
+		Fclose(ibuf);
+		fflush(obuf);
+	}
+	trunc(obuf);
+	if (ferror(obuf)) {
+		perror(mbox);
+		Fclose(obuf);
+		return STOP;
+	}
+	Fclose(obuf);
+	if (mcount == 1)
+		printf(catgets(catd, CATSET, 164, "Saved 1 message in mbox\n"));
+	else
+		printf(catgets(catd, CATSET, 165,
+				"Saved %d messages in mbox\n"), mcount);
+	return OKAY;
+}
+
+/*
  * Terminate an editing session by attempting to write out the user's
  * file from the temporary.  Save any new stuff appended to the file.
  */
@@ -486,10 +506,10 @@ edstop()
 {
 	int gotcha, c;
 	struct message *mp;
-	FILE *obuf, *ibuf, *readstat = (FILE*)NULL;
+	FILE *obuf, *ibuf = NULL, *readstat = (FILE*)NULL;
 	struct stat statb;
 
-	if (readonly)
+	if (mb.mb_perm == 0)
 		return;
 	holdsigs();
 	if (Tflag != NULL) {
@@ -503,7 +523,7 @@ edstop()
 		}
 		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS))
 			gotcha++;
-		if (Tflag != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
+		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
 			if ((id = hfield("message-id", mp)) != NULL ||
@@ -511,7 +531,7 @@ edstop()
 				fprintf(readstat, "%s\n", id);
 		}
 	}
-	if (Tflag != NULL)
+	if (readstat != NULL)
 		Fclose(readstat);
 	if (!gotcha || Tflag != NULL)
 		goto done;

@@ -2,24 +2,18 @@ Welcome to nail, a mail user agent!
 
 Nail is derived from Berkeley Mail 8.1 and is intended provide the
 functionality of the POSIX.2 mailx command with additional support
-for MIME messages and SMTP.
+for MIME messages, POP3 and SMTP.
 
-To compile nail, look at the file "INSTALL" that contains the generic
-instructions for autoconf builds. The configuration file nail.rc will
-be installed in /etc unless --with-rcfile=FILE is passed as an option
-to configure; --prefix and --sysconfdir are ignored. You can also build
-nail RPMs using 'rpm -ta nail-<version>.tar.gz'.
+To compile nail, look at the file "INSTALL" that documents the
+configure options. You can also build nail RPMs using 'rpm -ta
+nail-<version>.tar.gz'.
 
 After compilation, edit the personal and system-wide run time
 configuration files to match your needs. You _really_ should do this or
 at least install the template because most of the defaults still have
 the compatibility values of fifteen years ago.  For batch usage, it may
 be more convenient to pass the configuration as environment variables
-only, as e.g. "MAILRC=/dev/null from=user@host nail -n" does.
-
-If you want to use nail with a POP or IMAP mailbox, you have to set up
-a program like e.g. fetchmail since nail does not contain such network
-client code.
+only, as e. g. "MAILRC=/dev/null from=user@host nail -n" does.
 
 Nail has been built successfully on the following systems:
 
@@ -78,4 +72,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					9/29/02
+<g-r@bigfoot.de>					11/1/02

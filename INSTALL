@@ -1,3 +1,48 @@
+The configure script for 'nail' accepts the following specific options:
+
+--with-openssl          Use the OpenSSL library for SSL/TLS support. If this
+                        option is not present, OpenSSL will not be used. Use
+                        the INCLUDE and LDFLAGS environment variables (see
+                        below) if OpenSSL is not installed in the default
+                        include or library path. OpenSSL versions 0.9.6g was
+                        used for development, other versions may or may not
+                        work, fixes are welcome.
+
+--enable-all-chars      Nail normally uses the isprint(3) and iswprint(3)
+                        functions do determine whether a character to be
+                        written on the user's terminal is printable, and
+                        iconv(3) to convert characters in messages to the
+                        terminal character set. This option causes all
+                        characters to be printable and suppresses character
+                        conversion. Use it only if you encounter problems
+			with characters you cannot solve by setting the
+			LC_CTYPE environment variable.
+
+--with-rcfile=FILE      Path to the system-wide configuration file, defaults
+                        to /etc/nail.rc. The --prefix and --sysconfdir
+                        configure switches have no effect.
+
+--with-mailspool=DIR    The name of the mail spool directory, usually
+                        auto-detected in /var/mail.
+
+--with-csh=FILE         Paths to user commands. Normally auto-detected and
+--with-more=FILE        overridden by the SHELL, PAGER, EDITOR, and VISUAL
+--with-pg=FILE          environment variables.
+--with-ex=FILE
+--with-vi=FILE
+
+--with-sendmail=FILE    Path to sendmail(1m or 8), normally auto-detected.
+
+--with-catname=NAME     Sets the name of the message catalogue passed as
+                        the first argument to catopen(3). Nail does not
+                        provide any translated message catalogues yet, so
+                        using this option makes no sense unless you want
+                        to contribute internationalization material.
+
+Gunnar Ritter                                                   10/28/02
+
+***********************************************************************
+
 Basic Installation
 ==================
 

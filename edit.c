@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	2.2 (gritter) 9/4/02";
+static char sccsid[] = "@(#)edit.c	2.6 (gritter) 11/1/02";
 #endif
 #endif /* not lint */
 
@@ -91,14 +91,14 @@ edit1(msgvec, type)
 	FILE *fp;
 	struct message *mp;
 	off_t size;
-	char *line = NULL;
+	char *line = NULL, *fromline = NULL;
 	size_t linesize;
 
 	/*
 	 * Deal with each message to be edited . . .
 	 */
 	for (i = 0; msgvec[i] && i < msgcount; i++) {
-		signal_handler_t sigint;
+		sighandler_type sigint;
 
 		if (i > 0) {
 			char *p;
@@ -118,10 +118,23 @@ edit1(msgvec, type)
 		did_print_dot = 1;
 		touch(mp);
 		sigint = safe_signal(SIGINT, SIG_IGN);
-		fp = run_editor(setinput(mp), mp->m_size, type, readonly);
+		if (mp->m_flag & MNOFROM) {
+			char *from, *date;
+			size_t sz;
+
+			from = fakefrom(mp);
+			date = fakedate(mp->m_time);
+			sz = strlen(from) + strlen(date) + 8;
+			fromline = salloc(sz);
+			snprintf(fromline, sz, "From %s %s\n", from, date);
+		}
+		if ((fp = setinput(mp, NEED_BODY)) == NULL)
+			return 1;
+		fp = run_editor(fp, mp->m_size, type,
+				(mb.mb_perm & MB_EDIT) == 0, fromline, NULL);
 		if (fp != (FILE*)NULL) {
-			(void) fseek(otf, 0L, SEEK_END);
-			size = ftell(otf);
+			(void) fseek(mb.mb_otf, 0L, SEEK_END);
+			size = ftell(mb.mb_otf);
 			mp->m_block = nail_blockof(size);
 			mp->m_offset = nail_offsetof(size);
 			mp->m_size = fsize(fp);
@@ -131,10 +144,10 @@ edit1(msgvec, type)
 			while ((c = sgetc(fp)) != EOF) {
 				if (c == '\n')
 					mp->m_lines++;
-				if (sputc(c, otf) == EOF)
+				if (sputc(c, mb.mb_otf) == EOF)
 					break;
 			}
-			if (ferror(otf))
+			if (ferror(mb.mb_otf))
 				perror("/tmp");
 			(void) Fclose(fp);
 		}
@@ -152,10 +165,12 @@ edit1(msgvec, type)
  * "Type" is 'e' for PATH_EX, 'v' for PATH_VI.
  */
 FILE *
-run_editor(fp, size, type, readonly)
+run_editor(fp, size, type, readonly, fromline, hp)
 	FILE *fp;
 	off_t size;
 	int type, readonly;
+	char *fromline;
+	struct header *hp;
 {
 	FILE *nf = (FILE*)NULL;
 	int t;
@@ -169,6 +184,11 @@ run_editor(fp, size, type, readonly)
 		perror(catgets(catd, CATSET, 73, "temporary mail edit file"));
 		goto out;
 	}
+	if (fromline)
+		fputs(fromline, nf);
+	if (hp)
+		puthead(hp, nf, GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP,
+				NULL, NULL);
 	if (size >= 0)
 		while (--size >= 0 && (t = sgetc(fp)) != EOF)
 			(void) sputc(t, nf);
@@ -225,14 +245,10 @@ run_editor(fp, size, type, readonly)
 	/*
 	 * Now switch to new file.
 	 */
-	if ((nf = Fopen(tempEdit, "a+")) == (FILE*)NULL) {
+	if ((nf = Fopen(tempEdit, "a+")) == NULL)
 		perror(tempEdit);
-		(void) unlink(tempEdit);
-		Ftfree(&tempEdit);
-		goto out;
-	}
+out:
 	(void) unlink(tempEdit);
 	Ftfree(&tempEdit);
-out:
 	return nf;
 }

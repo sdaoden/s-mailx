@@ -91,6 +91,9 @@
 /* Define if you have the uname function.  */
 #undef HAVE_UNAME
 
+/* Define if you have the wordexp function.  */
+#undef HAVE_WORDEXP
+
 /* Define if you have the <arpa/inet.h> header file.  */
 #undef HAVE_ARPA_INET_H
 
@@ -148,6 +151,9 @@
 /* Define if you have the <wctype.h> header file.  */
 #undef HAVE_WCTYPE_H
 
+/* Define if you have the <wordexp.h> header file.  */
+#undef HAVE_WORDEXP_H
+
 /* Define if you have the efence library (-lefence).  */
 #undef HAVE_LIBEFENCE
 
@@ -157,7 +163,7 @@
 /* Version number of package */
 #undef VERSION
 
-/* Sccsid: @(#)acconfig.h	2.1 (gritter) 9/1/02 */
+/* Sccsid: @(#)acconfig.h	2.2 (gritter) 10/21/02 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -322,4 +328,8 @@ extern int	optind;
 
 #ifdef	NEED_OPTARG
 extern char	*optarg;
+#endif
+
+#ifndef	USE_SSL
+#undef	USE_SSL
 #endif

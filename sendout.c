@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.6 (gritter) 10/14/02";
+static char sccsid[] = "@(#)sendout.c	2.13 (gritter) 11/17/02";
 #endif
 #endif /* not lint */
 
@@ -232,7 +232,9 @@ FILE *fo;
 {
 	FILE *fi;
 	char *charset = NULL, *contenttype = NULL, *basename;
-	int convert = CONV_TOB64, err = 0, isclean;
+	int convert = CONV_TOB64;
+	int err = 0;
+	enum mimeclean isclean;
 	size_t sz;
 	char *buf;
 	size_t bufsize, count;
@@ -374,7 +376,8 @@ infix(hp, fi)
 #ifdef	HAVE_ICONV
 	char *tcs;
 #endif
-	int isclean, convert;
+	enum mimeclean isclean;
+	int convert;
 	char *charset = NULL, *contenttype = NULL;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
@@ -549,6 +552,7 @@ savemail(name, fi)
 					return -1;
 				}
 			}
+			fflush(fo);
 			if (prependnl) {
 				sputc('\n', fo);
 				fflush(fo);
@@ -590,7 +594,7 @@ savemail(name, fi)
  * which does all the dirty work.
  */
 int
-mail(to, cc, bcc, smopts, subject, attach, quotefile, recipient_record)
+mail(to, cc, bcc, smopts, subject, attach, quotefile, recipient_record, tflag)
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
 	char *subject, *quotefile;
@@ -606,13 +610,19 @@ mail(to, cc, bcc, smopts, subject, attach, quotefile, recipient_record)
 		head.h_subject = out.s;
 	} else
 		head.h_subject = NULL;
-	head.h_to = to;
-	head.h_cc = cc;
-	head.h_bcc = bcc;
-	head.h_ref = NIL;
+	if (tflag == 0) {
+		head.h_to = to;
+		head.h_cc = cc;
+		head.h_bcc = bcc;
+	} else {
+		head.h_to = NULL;
+		head.h_cc = NULL;
+		head.h_bcc = NULL;
+	}
+	head.h_ref = NULL;
 	head.h_attach = attach;
 	head.h_smopts = smopts;
-	mail1(&head, 0, NULL, quotefile, recipient_record);
+	mail1(&head, 0, NULL, quotefile, recipient_record, tflag);
 	if (subject != NULL)
 		free(out.s);
 	return(0);
@@ -636,7 +646,7 @@ sendmail_internal(v, recipient_record)
 	head.h_ref = NIL;
 	head.h_attach = NULL;
 	head.h_smopts = NIL;
-	mail1(&head, 0, NULL, NULL, recipient_record);
+	mail1(&head, 0, NULL, NULL, recipient_record, 0);
 	return(0);
 }
 
@@ -729,7 +739,7 @@ FILE* input;
  * in the passed header.  (Internal interface).
  */
 void
-mail1(hp, printheaders, quote, quotefile, recipient_record)
+mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	struct header *hp;
 	int printheaders;
 	struct message *quote;
@@ -749,15 +759,16 @@ mail1(hp, printheaders, quote, quotefile, recipient_record)
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders, quote, quotefile)) == (FILE *)NULL)
+	if ((mtf = collect(hp, printheaders, quote, quotefile, tflag)) == NULL)
 		return;
 	if (value("interactive") != NULL) {
-		if (value("askcc") != NULL || value("askbcc") != NULL
-				|| value("askattach") != NULL) {
+		if ((value("bsdcompat") && (value("askcc") != NULL ||
+					value("askbcc") != NULL)) ||
+				value("askattach") != NULL) {
 			if (value("askcc") != NULL)
-				grabh(hp, GCC);
+				grabh(hp, GCC, 1);
 			if (value("askbcc") != NULL)
-				grabh(hp, GBCC);
+				grabh(hp, GBCC, 1);
 			if (value("askattach") != NULL)
 				hp->h_attach = edit_attachments(hp->h_attach);
 		} else {
@@ -876,9 +887,9 @@ static const char *weekday_names[] = {
 	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 };
 
-static const char *month_names[] = {
+const char *month_names[] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
 };
 
 /*
@@ -893,10 +904,11 @@ FILE *fo;
 {
 	time_t t;
 	struct tm *tmptr;
-	int tzdiff_hour, tzdiff_min;
+	int tzdiff, tzdiff_hour, tzdiff_min;
 
 	time(&t);
-	tzdiff_hour = ((int)((t - mktime(gmtime(&t)))) / 60);
+	tzdiff = t - mktime(gmtime(&t));
+	tzdiff_hour = (int)(tzdiff / 60);
 	tzdiff_min = tzdiff_hour % 60;
 	tzdiff_hour /= 60;
 	tmptr = localtime(&t);
@@ -932,7 +944,7 @@ int
 puthead(hp, fo, w, convert, contenttype, charset)
 	struct header *hp;
 	FILE *fo;
-	int w;
+	enum gfield w;
 	char *contenttype, *charset;
 {
 	int gotcha;
@@ -1139,8 +1151,6 @@ struct name *to;
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
 				&& strncmp("From ", buf, 5) != 0) {
-			if (ascncasecmp("resent-", buf, 7) == 0)
-				fputs("X-Old-", fo);
 			fwrite(buf, sizeof *buf, c, fo);
 		}
 	}
@@ -1159,15 +1169,15 @@ struct name *to;
 						free(buf);
 					return 1;
 				}
-				if ((cp2 = value("smtp")) == NULL
-					|| strcmp(cp2, "localhost") == 0)
-					fprintf(fo, "Resent-Sender: %s\n",
-							username());
 				fwrite("Resent-From: ", sizeof (char), 13, fo);
 				mime_write(cp, sizeof *cp, strlen(cp), fo,
 						CONV_TOHDR_A, TD_ICONV,
 						NULL, (size_t)0);
 				sputc('\n', fo);
+				if ((cp2 = value("smtp")) == NULL
+					|| strcmp(cp2, "localhost") == 0)
+					fprintf(fo, "Resent-Sender: %s\n",
+							username());
 			}
 #ifdef	notdef
 			/*
@@ -1242,7 +1252,8 @@ struct name *to;
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
-	ibuf = setinput(mp);
+	if ((ibuf = setinput(mp, NEED_BODY)) == NULL)
+		return 1;
 	head.h_to = to;
 	head.h_cc = head.h_bcc = head.h_ref = head.h_smopts = NULL;
 	head.h_attach = NULL;

@@ -1,11 +1,11 @@
-# Sccsid @(#)nail.spec	1.2 (gritter) 9/29/02
+# Sccsid @(#)nail.spec	1.5 (gritter) 11/2/02
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 10.0
+Version: 10.2
 Release: 1
 License: BSD
 Group: Applications/Internet
-Source: nail-10.0.tar.gz
+Source: nail-10.2.tar.gz
 URL: <http://omnibus.ruf.uni-freiburg.de/~gritter/>
 Vendor: Gunnar Ritter <g-r@bigfoot.de>
 Packager: Didar Hussain <dhs@rediffmail.com>
@@ -14,7 +14,7 @@ BuildRoot: %{_tmppath}/%{name}-root
 %description
 Nail is derived from Berkeley Mail 8.1 and is intended provide the 
 functionality of the POSIX.2 mailx command with additional support
-for MIME messages and SMTP.
+for MIME messages, POP3 and SMTP.
 
 Install nail if you need a command line tool with the ability to
 handle MIME messages.
@@ -25,7 +25,7 @@ rm -fr %{buildroot}
 %setup
 
 
-%configure --prefix=/usr 
+%configure --prefix=/usr --with-openssl
 
 %build
 make

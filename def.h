@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.4 (gritter) 9/2/02
+ *	Sccsid @(#)def.h	2.19 (gritter) 11/1/02
  */
 
 /*
@@ -85,9 +85,14 @@
 #define	catgets(a, b, c, d)	(d)
 #endif	/* !HAVE_CATGETS */
 
-typedef RETSIGTYPE (*signal_handler_t) __P((int));
+typedef RETSIGTYPE (*sighandler_type) __P((int));
 
-enum {
+enum okay {
+	STOP = 0,
+	OKAY = 1
+};
+
+enum mimeenc {
 	MIME_NONE,			/* message is not in MIME format */
 	MIME_BIN,			/* message is in binary encoding */
 	MIME_8B,			/* message is in 8bit encoding */
@@ -96,7 +101,7 @@ enum {
 	MIME_B64			/* message is in base64 encoding */
 };
 
-enum {
+enum conversion {
 	CONV_NONE,			/* no conversion */
 	CONV_7BIT,			/* no conversion, is 7bit */
 	CONV_TODISP,			/* convert in displayable form */
@@ -112,7 +117,7 @@ enum {
 	CONV_TOHDR_A			/* convert addresses for header */
 };
 
-enum {
+enum mimecontent {
 	MIME_UNKNOWN,			/* unknown content */
 	MIME_SUBHDR,			/* inside a multipart subheader */
 	MIME_822,			/* message/rfc822 content */
@@ -122,45 +127,98 @@ enum {
 	MIME_DISCARD			/* content is discarded */
 };
 
-enum {
+enum mimeclean {
+	MIME_CLEAN	= 000,		/* plain RFC 2822 message */
 	MIME_HIGHBIT	= 001,		/* characters >= 0200 */
 	MIME_LONGLINES	= 002,		/* has lines too long for RFC 2822 */
 	MIME_CTRLCHAR	= 004,		/* contains control characters */
-	MIME_HASNUL	= 010,		/* contains \0 characters */
+	MIME_HASNUL	= 010		/* contains \0 characters */
 };
 
-#define	TD_NONE		0		/* no display conversion */
-#define	TD_ISPR		01		/* use isprint() checks */
-#define	TD_ICONV	02		/* use iconv() */
+enum tdflags {
+	TD_NONE	= 0,		/* no display conversion */
+	TD_ISPR	= 01,		/* use isprint() checks */
+	TD_ICONV= 02		/* use iconv() */
+};
 
 struct str {
 	char *s;			/* the string's content */
 	size_t l;			/* the stings's length */
 };
 
-struct message {
-	int	m_flag;			/* flags, see below */
-	int	m_block;		/* block number of this message */
-	size_t	m_offset;		/* offset in block of message */
-	size_t	m_size;			/* Bytes in the message */
-	int	m_lines;		/* Lines in the message */
+enum protocol {
+	PROTO_FILE,			/* refers to a local file */
+	PROTO_POP3,			/* is a pop3 server string */
+	PROTO_UNKNOWN			/* unknown protocol */
+};
+
+struct mailbox {
+	int mb_sock;			/* socket file descriptor */
+	char *mb_ptr;			/* read pointer to mb_buf */
+	int mb_sz;			/* size of last read in mb_buf */
+	enum {
+		MB_NONE = 00,		/* no reply expected */
+		MB_COMD = 01,		/* command reply expected */
+		MB_MULT = 02		/* multiline reply expected */
+	} mb_active;
+	char mb_buf[LINESIZE+1];	/* read buffer */
+	FILE *mb_itf;			/* temp file with messages, read open */
+	FILE *mb_otf;			/* same, write open */
+	enum {
+		MB_VOID,		/* no type (e. g. connection failed) */
+		MB_FILE,		/* local file */
+		MB_POP3			/* POP3 mailbox */
+	} mb_type;			/* type of mailbox */
+	enum {
+		MB_DELE = 01,		/* may delete messages in mailbox */
+		MB_EDIT = 02		/* may edit messages in mailbox */
+	} mb_perm;
+#ifdef	USE_SSL
+	void *mb_ssl;			/* SSL object */
+	void *mb_ctx;			/* SSL context object */
+#endif	/* USE_SSL */
+};
+
+enum needspec {
+	NEED_HEADER,			/* need the header of a message */
+	NEED_BODY			/* need header and body of a message */
+};
+
+enum havespec {
+	HAVE_NOTHING = 0,		/* nothing downloaded yet */
+	HAVE_HEADER = 01,		/* header is downloaded */
+	HAVE_BODY = 02			/* entire message is downloaded */
 };
 
 /*
  * flag bits.
  */
+enum mflag {
+	MUSED		= (1<<0),	/* entry is used, but this bit isn't */
+	MDELETED	= (1<<1),	/* entry has been deleted */
+	MSAVED		= (1<<2),	/* entry has been saved */
+	MTOUCH		= (1<<3),	/* entry has been noticed */
+	MPRESERVE	= (1<<4),	/* keep entry in sys mailbox */
+	MMARK		= (1<<5),	/* message is marked! */
+	MODIFY		= (1<<6),	/* message has been modified */
+	MNEW		= (1<<7),	/* message has never been seen */
+	MREAD		= (1<<8),	/* message has been read sometime. */
+	MSTATUS		= (1<<9),	/* message status has changed */
+	MBOX		= (1<<10),	/* Send this to mbox, regardless */
+	MNOFROM		= (1<<11)	/* no From line */
+};
 
-#define	MUSED		(1<<0)		/* entry is used, but this bit isn't */
-#define	MDELETED	(1<<1)		/* entry has been deleted */
-#define	MSAVED		(1<<2)		/* entry has been saved */
-#define	MTOUCH		(1<<3)		/* entry has been noticed */
-#define	MPRESERVE	(1<<4)		/* keep entry in sys mailbox */
-#define	MMARK		(1<<5)		/* message is marked! */
-#define	MODIFY		(1<<6)		/* message has been modified */
-#define	MNEW		(1<<7)		/* message has never been seen */
-#define	MREAD		(1<<8)		/* message has been read sometime. */
-#define	MSTATUS		(1<<9)		/* message status has changed */
-#define	MBOX		(1<<10)		/* Send this to mbox, regardless */
+struct message {
+	enum mflag	m_flag;		/* flags */
+	time_t	m_time;			/* time in the 'Date:' field */
+	int	m_block;		/* block number of this message */
+	size_t	m_offset;		/* offset in block of message */
+	size_t	m_size;			/* Bytes in the message */
+	size_t	m_xsize;		/* Bytes in the full message */
+	int	m_lines;		/* Lines in the message */
+	int	m_xlines;		/* Lines in the full message */
+	enum havespec	m_have;		/* downloaded parts of the message */
+};
 
 /*
  * Given a file address, determine the block number it represents.
@@ -170,6 +228,32 @@ struct message {
 #define nail_positionof(block, offset)	((off_t)(block) * 4096 + (offset))
 
 /*
+ * Argument types.
+ */
+enum argtype {
+	MSGLIST	= 0,		/* Message list type */
+	STRLIST	= 1,		/* A pure string */
+	RAWLIST	= 2,		/* Shell string list */
+	NOLIST	= 3,		/* Just plain 0 */
+	NDMLIST	= 4,		/* Message list, no defaults */
+	P	= 040,		/* Autoprint dot after command */
+	I	= 0100,		/* Interactive command bit */
+	M	= 0200,		/* Legal from send mode bit */
+	W	= 0400,		/* Illegal when read only bit */
+	F	= 01000,	/* Is a conditional command */
+	T	= 02000,	/* Is a transparent command */
+	R	= 04000,	/* Cannot be called from collect */
+	A	= 010000	/* Needs an active mailbox */
+};
+
+/*
+ * Oft-used mask values
+ */
+
+#define	MMNORM		(MDELETED|MSAVED)/* Look at both save and delete bits */
+#define	MMNDEL		MDELETED	/* Look only at deleted bit */
+
+/*
  * Format of the command description table.
  * The actual table is declared and initialized
  * in lex.c
@@ -177,7 +261,7 @@ struct message {
 struct cmd {
 	char	*c_name;		/* Name of command */
 	int	(*c_func) __P((void *));/* Implementor of the command */
-	short	c_argtype;		/* Type of arglist (see below) */
+	enum argtype	c_argtype;	/* Type of arglist (see below) */
 	short	c_msgflag;		/* Required flags of messages */
 	short	c_msgmask;		/* Relevant flags of messages */
 };
@@ -186,31 +270,6 @@ struct cmd {
 
 #define	c_minargs c_msgflag		/* Minimum argcount for RAWLIST */
 #define	c_maxargs c_msgmask		/* Max argcount for RAWLIST */
-
-/*
- * Argument types.
- */
-
-#define	MSGLIST	 0		/* Message list type */
-#define	STRLIST	 1		/* A pure string */
-#define	RAWLIST	 2		/* Shell string list */
-#define	NOLIST	 3		/* Just plain 0 */
-#define	NDMLIST	 4		/* Message list, no defaults */
-
-#define	P	040		/* Autoprint dot after command */
-#define	I	0100		/* Interactive command bit */
-#define	M	0200		/* Legal from send mode bit */
-#define	W	0400		/* Illegal when read only bit */
-#define	F	01000		/* Is a conditional command */
-#define	T	02000		/* Is a transparent command */
-#define	R	04000		/* Cannot be called from collect */
-
-/*
- * Oft-used mask values
- */
-
-#define	MMNORM		(MDELETED|MSAVED)/* Look at both save and delete bits */
-#define	MMNDEL		MDELETED	/* Look only at deleted bit */
 
 /*
  * Structure used to return a break down of a head
@@ -223,23 +282,25 @@ struct headline {
 	char	*l_date;	/* The entire date string */
 };
 
-#define	GTO	1		/* Grab To: line */
-#define	GSUBJECT 2		/* Likewise, Subject: line */
-#define	GCC	4		/* And the Cc: line */
-#define	GBCC	8		/* And also the Bcc: line */
-#define	GMASK	(GTO|GSUBJECT|GCC|GBCC)
-				/* Mask of places from whence */
+enum gfield {
+	GTO	= 1,		/* Grab To: line */
+	GSUBJECT= 2,		/* Likewise, Subject: line */
+	GCC	= 4,		/* And the Cc: line */
+	GBCC	= 8,		/* And also the Bcc: line */
 
-#define	GNL	16		/* Print blank line after */
-#define	GDEL	32		/* Entity removed from list */
-#define	GCOMMA	64		/* detract puts in commas */
-#define	GUA	128		/* User-Agent field */
-#define	GMIME	256		/* MIME 1.0 fields */
-#define	GMSGID	512		/* a Message-ID */
-/*		1024		unused */
-#define	GIDENT	2048		/* From:, Reply-To: and Organization header */
-#define	GREF	4096		/* References: header */
-#define	GDATE	8192		/* Date: header */
+	GNL	= 16,		/* Print blank line after */
+	GDEL	= 32,		/* Entity removed from list */
+	GCOMMA	= 64,		/* detract puts in commas */
+	GUA	= 128,		/* User-Agent field */
+	GMIME	= 256,		/* MIME 1.0 fields */
+	GMSGID	= 512,		/* a Message-ID */
+	/*	  1024 */	/* unused */
+	GIDENT	= 2048,		/* From:, Reply-To: and Organization header */
+	GREF	= 4096,		/* References: header */
+	GDATE	= 8192		/* Date: header */
+};
+
+#define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
 
 /*
  * Structure used to pass about the current
@@ -327,19 +388,22 @@ struct ignoretab {
  * Token values returned by the scanner used for argument lists.
  * Also, sizes of scanner-related things.
  */
-
-#define	TEOL	0			/* End of the command line */
-#define	TNUMBER	1			/* A message number */
-#define	TDASH	2			/* A simple dash */
-#define	TSTRING	3			/* A string (possibly containing -) */
-#define	TDOT	4			/* A "." */
-#define	TUP	5			/* An "^" */
-#define	TDOLLAR	6			/* A "$" */
-#define	TSTAR	7			/* A "*" */
-#define	TOPEN	8			/* An '(' */
-#define	TCLOSE	9			/* A ')' */
-#define TPLUS	10			/* A '+' */
-#define TERROR	11			/* A lexical error */
+enum ltoken {
+	TEOL	= 0,			/* End of the command line */
+	TNUMBER	= 1,			/* A message number */
+	TDASH	= 2,			/* A simple dash */
+	TSTRING	= 3,			/* A string (possibly containing -) */
+	TDOT	= 4,			/* A "." */
+	TUP	= 5,			/* An "^" */
+	TDOLLAR	= 6,			/* A "$" */
+	TSTAR	= 7,			/* A "*" */
+	TOPEN	= 8,			/* An '(' */
+	TCLOSE	= 9,			/* A ')' */
+	TPLUS	= 10,			/* A '+' */
+	TERROR	= 11,			/* A lexical error */
+	TCOMMA	= 12,			/* A ',' */
+	TSEMI	= 13			/* A ';' */
+};
 
 #define	REGDEP	2			/* Maximum regret depth. */
 #define	STRINGLEN	1024		/* Maximum length of string token */
@@ -348,10 +412,22 @@ struct ignoretab {
  * Constants for conditional commands.  These describe whether
  * we should be executing stuff or not.
  */
+enum condition {
+	CANY	= 0,	/* Execute in send or receive mode */
+	CRCV	= 1,	/* Execute in receive mode only */
+	CSEND	= 2,	/* Execute in send mode only */
+	CTERM	= 3,	/* Execute only if stdin is a tty */
+	CNONTERM= 4	/* Execute only if stdin not tty */
+};
 
-#define	CANY		0		/* Execute in send or receive mode */
-#define	CRCV		1		/* Execute in receive mode only */
-#define	CSEND		2		/* Execute in send mode only */
+/*
+ * For the 'shortcut' and 'unshortcut' functionality.
+ */
+struct shortcut {
+	struct shortcut	*sh_next;	/* next shortcut in list */
+	char	*sh_short;		/* shortcut string */
+	char	*sh_long;		/* expanded form */
+};
 
 /*
  * Kludges to handle the change from setexit / reset to setjmp / longjmp

@@ -1,4 +1,4 @@
-$ Sccsid @(#)en_US	1.26 (gritter) 10/13/02
+$ Sccsid @(#)en_US	1.54 (gritter) 11/9/02
 $quote $
 $ Messages for nail, a mail user agent
 $set 1
@@ -11,7 +11,7 @@ $set 1
 7 On last screenful of messages\n
 8 On first screenful of messages\n
 9 Unrecognized scrolling command "%s"\n
-10 %3d/%-5u
+10 --- DELETED ---
 11 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 12 $%c%c%3d %s%-*.*s  %16.16s %s %.*s\n$
 13 %d\n
@@ -265,3 +265,56 @@ addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... \
 213 <Unknown date>
 214 Loaded 1 new message\n
 215 Loaded %d new messages\n
+216 No POP3 support compiled in.\n
+217 Cannot handle protocol: %s\n
+218 POP3 error: %s
+219 POP3 connection already closed.\n
+220 expasion name for shortcut missing\n
+221 too many arguments\n
+222 need shortcut names to remove\n
+223 %s: no such shortcut\n
+224 --- DELETED ---
+225 No SSL support compiled in.\n
+226 Cannot determine parent Message-ID of the current message\n
+227 Parent message not found\n
+228 No previously current message\n
+229 Error with certificate at depth: %i\n
+230 $ issuer = %s\n$
+231 $ subject = %s\n$
+232 $ err %i: %s\n$
+233 Error loading
+234 $ %s$
+235 $ or$
+236 $ %s$
+237 \n
+238 cannot load private key from file %s\n
+239 cannot load certificate from file %s\n
+240 invalid ciphers: %s\n
+241 Unexpected EOF on SMTP connection\n
+242 Syntax error in "%s"\n
+243 Error loading default CA locations\n
+244 Invalid SSL method "%s"\n
+245 entropy daemon at "%s" not available\n
+246 entropy file at "%s" not available\n
+247 writing entropy data to "%s" failed\n
+248 no certificate from "%s"\n
+249 host certificate does not match "%s"\n
+250 POP3 read failed
+251 unknown service: %s\n
+252 could not resolve host: %s\n
+253 could not create socket
+254 could not connect
+255 SMTP read failed
+256 SMTP write error
+257 Cannot execute "%s" without active mailbox\n
+258 No mail at %s\n
+259 POP3 write error
+260 invalid POP3 STAT response: %s\n
+261 SSL_CTX_new() failed
+262 SSL_new() failed
+263 could not initiate SSL/TLS connection
+264 $Continue (y/n)? $
+265 invalid value of ssl-verify: %s\n
+266 Ignoring header field "%s"\n
+267 Restoring deleted header lines\n
+268 Pipe to: "%s"\n

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	2.3 (gritter) 9/15/02";
+static char sccsid[] = "@(#)names.c	2.7 (gritter) 11/8/02";
 #endif
 #endif /* not lint */
 
@@ -138,7 +138,7 @@ extract(line, ntype)
 char *
 detract(np, ntype)
 	struct name *np;
-	int ntype;
+	enum gfield ntype;
 {
 	int s;
 	char *cp, *top;
@@ -190,29 +190,8 @@ yankword(ap, wbuf)
 	char *cp, *cp2;
 
 	cp = ap;
-	for (;;) {
-		if (*cp == '\0')
-			return NULL;
-		if (*cp == '(') {
-			int nesting = 0;
-
-			while (*cp != '\0') {
-				switch (*cp++) {
-				case '(':
-					nesting++;
-					break;
-				case ')':
-					--nesting;
-					break;
-				}
-				if (nesting <= 0)
-					break;
-			}
-		} else if (blankchar(*cp & 0377) || *cp == ',')
-			cp++;
-		else
-			break;
-	}
+	if ((cp = nexttoken(cp)) == NULL)
+		return NULL;
 	if (*cp ==  '<')
 		for (cp2 = wbuf; *cp && (*cp2++ = *cp++) != '>';)
 			;
@@ -255,7 +234,7 @@ outof(names, fo, hp)
 	FILE *fo;
 	struct header *hp;
 {
-	int c;
+	int c, lastc;
 	struct name *np, *top;
 	time_t now;
 	char *date, *fname;
@@ -304,10 +283,11 @@ outof(names, fo, hp)
 			}
 			(void) fcntl(image, F_SETFD, FD_CLOEXEC);
 			fprintf(fout, "From %s %s", myname, date);
-			while ((c = sgetc(fo)) != EOF)
+			c = EOF;
+			while (lastc = c, (c = sgetc(fo)) != EOF)
 				(void) sputc(c, fout);
 			rewind(fo);
-			if (c != '\n')
+			if (lastc != '\n')
 				sputc('\n', fout);
 			(void) sputc('\n', fout);
 			(void) fflush(fout);
@@ -788,9 +768,10 @@ is_myname(char *name)
 
 	if (same_name(myname, name))
 		return 1;
-	for (ap = altnames; *ap; ap++)
-		if (same_name(*ap, name))
-			return 1;
+	if (altnames)
+		for (ap = altnames; *ap; ap++)
+			if (same_name(*ap, name))
+				return 1;
 	if ((cp = value("from")) != NULL && same_name(skin(cp), name))
 		return 1;
 	if ((cp = value("replyto")) != NULL && same_name(skin(cp), name))

@@ -1,3 +1,46 @@
+[10.2] released 11/23/02
+* Fixed a NULL pointer dereference that occured if the 'showto' variable
+  was used without the 'alternates' command (Bugreport by Bob Tennent).
+* POP3 client with SSL/TLS support. See the description of the 'folder'
+  command, the 'EXAMPLES' and 'NOTES' sections in the manual page, and
+  the description of the new variables 'password-user@host,
+  'pop3-keepalive', 'ssl-no-default-ca', 'ssl-v2-allow', 'ssl-verify',
+  'ssl-ca-dir', 'ssl-ca-file', 'ssl-cert', 'ssl-cert-user@host',
+  'ssl-key', 'ssl-key-user@host', 'ssl-method', 'ssl-cipher-list'
+  'ssl-rand-egd', 'ssl-rand-file'. You need to execute './configure
+  --with-openssl' to compile with SSL support.
+* Respect assignments to the MAIL variable in startup scripts.
+* Secondary mailboxes with %:folder (see the 'folder' command).
+* 'shortcut' and 'unshortcut' commands.
+* NAIL_EXTRA_RC variable.
+* ',' address (matches the parent of the current message).
+* ';' address (matches the message that was previously the current message).
+* Recognize MIME in header field searches with '/'.
+* The 'save' and 'copy' commands use the mbox file if invoked without
+  an argument.
+* Use wordexp() to expand special characters in filenames if available.
+  $SHELL-specific metacharacters are thus no longer recognized.
+* The output of the 'from' command is piped through the pager if it exceeds
+  the screen height.
+* 'datefield' variable.
+* 'editheaders' variable (contributed by Stephen Isard).
+* '-t' command line option.
+* 'term' condition for 'if' command (contributed by Stephen Isard).
+* Don't prepend a message with a blank line when saving if a blank line 
+  is already present at the end of the file.
+* Fixed quoting for command argument of 'pipe' (Stephen Isard).
+* 'save' and 'copy' commands accept quoted file names with embedded whitespace.
+* Allow '|shell-cmd' (Stephen Isard).
+* 'piperaw' variable (Stephen Isard).
+* If 'askcc' or 'askbcc' are set and 'bsdcompat' is not set, the user is
+  asked for additional recipients before composing the message starts.
+* Don't append an additional newline to filenames in recipient lists.
+* Message lines starting with '>' were truncated by the 'forward' command.
+* Don't rename old Resent-xxx fields when creating new ones.
+* Deletion of attachments with '~@' fixed.
+* Don't mark the saved copy of an unread message as read.
+* Fixed use of a char variable for getc() (Arthur Korn).
+
 [10.1] released 10/14/02
 * POSIX.2 leaves the characters following 'From ' unspecified, so the
   presence of sender or date strings is no longer required to separate

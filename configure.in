@@ -1,7 +1,7 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	2.1 (gritter) 9/1/02
+# Sccsid: @(#)configure.in	2.4 (gritter) 10/28/02
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
@@ -139,6 +139,10 @@ AC_DEFINE_UNQUOTED(PATH_MASTER_RC, "$arg_cv_rcfile")
 PATH_MASTER_RC="$arg_cv_rcfile"
 AC_SUBST(PATH_MASTER_RC)
 
+AC_ARG_WITH(openssl, [ --with-openssl           use OpenSSL library ],
+	AC_DEFINE(USE_SSL, 1) LIBS="-lssl -lcrypto $LIBS"
+)
+
 dnl Checks for programs.
 
 AC_PROG_CC
@@ -173,7 +177,7 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/param.h \
 	sys/stat.h sys/utsname.h sys/socket.h netinet/in.h arpa/inet.h)
 AC_CHECK_HEADERS(fcntl.h netdb.h signal.h strings.h unistd.h langinfo.h\
-	nl_types.h)
+	nl_types.h wordexp.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -199,7 +203,7 @@ AC_TRY_COMPILE([#include <unistd.h>], [optarg = (char *)0;],
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
-AC_CHECK_FUNCS(gethostname mkstemp snprintf uname fpathconf)
+AC_CHECK_FUNCS(gethostname mkstemp snprintf uname fpathconf wordexp)
 AC_CHECK_FUNCS(nl_langinfo catgets getc_unlocked putc_unlocked)
 AC_FUNC_ALLOCA
 AC_CHECK_FUNC(gethostent, AC_DEFINE(HAVE_SOCKETS),

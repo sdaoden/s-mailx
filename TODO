@@ -7,3 +7,14 @@ Specification, v.3:
 
 * onehop variable (not demanded by POSIX standards). Seems absolutely
   obsolete. If anybody has a need for it, he should contribute code.
+
+------------------------------------------------------------------------
+
+The POP3 client supports USER/PASS authentication only. If you need
+other authentication methods and have the ability to test them, please
+write and contribute code.
+
+If you want to edit arbitrary header fields with the 'editheaders'
+option, you are invited to supply code for it. Be warned that this
+is a nontrivial task due to MIME. Contact the maintainer before you
+start coding.

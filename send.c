@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.6 (gritter) 9/15/02";
+static char sccsid[] = "@(#)send.c	2.14 (gritter) 11/13/02";
 #endif
 #endif /* not lint */
 
@@ -125,7 +125,7 @@ static void	onpipe __P((int));
 static void	exchange __P((char **, size_t *, size_t *,
 			char **, size_t *, size_t *));
 static int	send_multipart __P((struct sendmsg *, FILE *,
-			struct ignoretab *, char *, int, int, int,
+			struct ignoretab *, char *, int, enum conversion, int,
 			struct boundary *, off_t *));
 
 
@@ -226,8 +226,8 @@ FILE *stream;
 			do
 				p[0] = p[1];
 			while (++p < top);
+			(*llen)--;
 		}
-		(*llen)--;
 	}
 	return *s;
 }
@@ -767,8 +767,9 @@ struct ignoretab *doign;
 char *prefix;
 struct boundary *b0;
 off_t *stats;
+enum conversion convert;
 {
-	int mime_content = MIME_TEXT, new_content = MIME_TEXT;
+	enum mimecontent mime_content = MIME_TEXT, new_content = MIME_TEXT;
 	FILE *oldobuf = (FILE *)-1, *origobuf = (FILE *)-1, *pbuf = obuf,
 		*qbuf = obuf;
 	char *line = NULL, *oline = NULL;
@@ -778,8 +779,21 @@ off_t *stats;
 	char *cs = us_ascii, *tcs;
 	struct boundary *b = b0;
 	int lineno = -1, jump_to_bound = 0;
-	size_t sz, linesize = 0, linelen, olinesize = 0, olinelen;
+	size_t sz, linesize = 0, linelen, olinesize = 0, olinelen = 0;
 
+	(void)&mime_content;
+	(void)&new_content;
+	(void)&oldobuf;
+	(void)&origobuf;
+	(void)&pbuf;
+	(void)&filename;
+	(void)&part;
+	(void)&error_return;
+	(void)&b;
+	(void)&lineno;
+	(void)&jump_to_bound;
+	(void)&obuf;
+	(void)&convert;
 	tcs = gettcharset();
 	if (b0->b_str == NULL) {
 		error_return = 1;
@@ -1117,6 +1131,7 @@ send_message(mp, obuf, doign, prefix, action, stats)
 	struct ignoretab *doign;
 	char *prefix;
 	off_t *stats;
+	enum conversion action;
 {
 	FILE *ibuf, *pbuf = obuf, *qbuf = obuf, *origobuf = obuf;
 	struct sendmsg *pm;
@@ -1125,7 +1140,8 @@ send_message(mp, obuf, doign, prefix, action, stats)
 	char *scontent = NULL;
 	int prefixlen = 0;
 	size_t length, count;
-	int mime_content = MIME_TEXT, convert = CONV_NONE;
+	int mime_content = MIME_TEXT;
+	enum conversion convert = CONV_NONE;
 	int error_return = 0;
 	struct boundary b0;
 	char *cs = us_ascii, *tcs;
@@ -1133,6 +1149,11 @@ send_message(mp, obuf, doign, prefix, action, stats)
 	struct hdrline *ph;
 	size_t sz, linesize = 0;
 
+	(void)&pbuf;
+	(void)&pm;
+	(void)&prefixlen;
+	(void)&convert;
+	(void)&error_return;
 	if (mp == dot)
 		did_print_dot = 1;
 	b0.b_str = NULL;
@@ -1151,22 +1172,36 @@ send_message(mp, obuf, doign, prefix, action, stats)
 		prefixlen = cp2 == 0 ? 0 : cp2 - prefix + 1;
 	} else
 		prefixlen = 0;
-	ibuf = setinput(mp);
-	pm = open_sendmsg(ibuf, mp->m_size, action != CONV_NONE);
 	/*
 	 * Process headers first. First line is the From_ line, so no
 	 * headers there to worry about.
 	 */
-	if ((cp = read_sendmsg(pm, &line, &linesize, &length, NULL, 0))
-			!= NULL && doign != allignore) {
-		sz = mime_write(line, sizeof *line, length, obuf,
+	if ((mp->m_flag & MNOFROM) == 0) {
+		if ((ibuf = setinput(mp, NEED_BODY)) == NULL)
+			return -1;
+		pm = open_sendmsg(ibuf, mp->m_size, action != CONV_NONE);
+		if ((cp = read_sendmsg(pm, &line, &linesize, &length, NULL, 0))
+				!= NULL && doign != allignore) {
+			sz = mime_write(line, sizeof *line, length, obuf,
 				action == CONV_TODISP || action == CONV_QUOTE ?
 					CONV_FROMHDR : CONV_NONE,
 				action == CONV_TODISP ?
 					TD_ISPR|TD_ICONV : TD_NONE,
 				prefix, prefixlen);
-		if (obuf == origobuf)
-			addstats(stats, 1, sz);
+			if (obuf == origobuf)
+				addstats(stats, 1, sz);
+		}
+	} else {
+		if ((mp->m_have & HAVE_BODY) == 0) {
+			if (get_body(mp) != OKAY)
+				return -1;
+		}
+		if (doign != allignore)
+			fprintf(obuf, "From %s %s\n", fakefrom(mp),
+					fakedate(mp->m_time));
+		if ((ibuf = setinput(mp, NEED_BODY)) == NULL)
+			return -1;
+		pm = open_sendmsg(ibuf, mp->m_size, action != CONV_NONE);
 	}
 send_parseheader:
 	ph = NULL;

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.2 (gritter) 9/1/02";
+static char sccsid[] = "@(#)list.c	2.9 (gritter) 10/27/02";
 #endif
 #endif /* not lint */
 
@@ -59,6 +59,7 @@ static int	scan __P((char **));
 static void	regret __P((int));
 static void	scaninit __P((void));
 static int	matchsender __P((char *, int));
+static int	matchmid __P((char *, int));
 static int	matchsubj __P((char *, int));
 static void	mark __P((int));
 static void	unmark __P((int));
@@ -163,10 +164,10 @@ markall(buf, f)
 	char buf[];
 	int f;
 {
-	char **np;
+	char **np, **nq;
 	int i, retval;
 	struct message *mp;
-	char **namelist, *bufp;
+	char **namelist, *bufp, *id = NULL, *cp;
 	int tok, beg, mc, star, other, valdot, colmod, colresult;
 	size_t nmlsize;
 
@@ -273,6 +274,7 @@ number:
 		case TDOLLAR:
 		case TUP:
 		case TDOT:
+		case TSEMI:
 			lexnumber = metamess(lexstring[0], f);
 			if (lexnumber == -1)
 				markall_ret(-1)
@@ -285,6 +287,25 @@ number:
 				markall_ret(-1)
 			}
 			star++;
+			break;
+
+		case TCOMMA:
+			if ((cp = hfield("in-reply-to", dot)) != NULL)
+				id = savestr(cp);
+			else if ((cp = hfield("references", dot)) != NULL) {
+				struct name *n;
+
+				if ((n = extract(cp, GREF)) != NULL) {
+					while (n->n_flink != NULL)
+						n = n->n_flink;
+					id = savestr(n->n_name);
+				}
+			}
+			if (id == NULL) {
+				printf(catgets(catd, CATSET, 227,
+		"Cannot determine parent Message-ID of the current message\n"));
+				markall_ret(-1)
+			}
 			break;
 
 		case TERROR:
@@ -316,7 +337,7 @@ number:
 	 * if any user names were given.
 	 */
 
-	if ((np > namelist || colmod != 0) && mc == 0)
+	if ((np > namelist || colmod != 0 || id) && mc == 0)
 		for (i = 1; i <= msgcount; i++)
 			if ((message[i-1].m_flag & MDELETED) == f)
 				mark(i);
@@ -326,21 +347,27 @@ number:
 	 * messages whose senders were not requested.
 	 */
 
-	if (np > namelist) {
+	if (np > namelist || id) {
 		for (i = 1; i <= msgcount; i++) {
-			for (mc = 0, np = &namelist[0]; *np != NULL; np++)
-				if (**np == '/') {
-					if (matchsubj(*np, i)) {
-						mc++;
-						break;
+			mc = 0;
+			if (np > namelist) {
+				for (nq = &namelist[0]; *nq != NULL; nq++) {
+					if (**nq == '/') {
+						if (matchsubj(*nq, i)) {
+							mc++;
+							break;
+						}
+					}
+					else {
+						if (matchsender(*nq, i)) {
+							mc++;
+							break;
+						}
 					}
 				}
-				else {
-					if (matchsender(*np, i)) {
-						mc++;
-						break;
-					}
-				}
+			}
+			if (mc == 0 && id && matchmid(id, i))
+				mc++;
 			if (mc == 0)
 				unmark(i);
 		}
@@ -356,12 +383,18 @@ number:
 				break;
 			}
 		if (mc == 0) {
-			printf(catgets(catd, CATSET, 120,
-				"No applicable messages from {%s"),
-				namelist[0]);
-			for (np = &namelist[1]; *np != NULL; np++)
-				printf(catgets(catd, CATSET, 121, ", %s"), *np);
-			printf(catgets(catd, CATSET, 122, "}\n"));
+			if (np > namelist) {
+				printf(catgets(catd, CATSET, 120,
+					"No applicable messages from {%s"),
+					namelist[0]);
+				for (nq = &namelist[1]; *nq != NULL; nq++)
+					printf(catgets(catd, CATSET, 121,
+								", %s"), *nq);
+				printf(catgets(catd, CATSET, 122, "}\n"));
+			} else if (id) {
+				printf(catgets(catd, CATSET, 227,
+					"Parent message not found\n"));
+			}
 			markall_ret(-1)
 		}
 	}
@@ -555,7 +588,7 @@ getrawlist(line, linesize, argv, argc)
 
 static struct lex {
 	char	l_char;
-	char	l_token;
+	enum ltoken	l_token;
 } singles[] = {
 	{ '$',	TDOLLAR },
 	{ '.',	TDOT },
@@ -565,6 +598,8 @@ static struct lex {
 	{ '+',	TPLUS },
 	{ '(',	TOPEN },
 	{ ')',	TCLOSE },
+	{ ',',	TCOMMA },
+	{ ';',	TSEMI },
 	{ 0,	0 }
 };
 
@@ -728,6 +763,19 @@ matchsender(str, mesg)
 	return !strcmp(str, nameof(&message[mesg - 1], 0));
 }
 
+static int
+matchmid(id, mesg)
+	char *id;
+	int mesg;
+{
+	char *cp;
+
+	if ((cp = hfield("message-id", &message[mesg - 1])) != NULL &&
+			strcmp(cp, id) == 0)
+		return 1;
+	return 0;
+}
+
 /*
  * See if the given string matches inside the subject field of the
  * given message.  For the purpose of the scan, we ignore case differences.
@@ -745,6 +793,7 @@ matchsubj(str, mesg)
 {
 	struct message *mp;
 	char *cp, *cp2, *backup;
+	struct str in, out;
 
 	str++;
 	if (strlen(str) == 0) {
@@ -770,15 +819,55 @@ matchsubj(str, mesg)
 	}
 	if (cp2 == NULL)
 		return(0);
+	in.s = cp2;
+	in.l = strlen(cp2);
+	mime_fromhdr(&in, &out, TD_ICONV);
+	cp2 = out.s;
 	backup = cp2;
 	while (*cp2) {
-		if (*cp == 0)
+		if (*cp == 0) {
+			free(out.s);
 			return(1);
-		if (aux_raise(*cp++) != aux_raise(*cp2++)) {
-			cp2 = ++backup;
-			cp = str;
+		}
+#ifdef	HAVE_MBTOWC
+		if (mb_cur_max > 1) {
+			wchar_t c, c2;
+			int sz;
+
+			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
+				goto singlebyte;
+			cp += sz;
+			if ((sz = mbtowc(&c2, cp2, mb_cur_max)) < 0)
+				goto singlebyte;
+			cp2 += sz;
+			c = towupper(c);
+			c2 = towupper(c2);
+			if (c != c2) {
+				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
+					backup += sz;
+					cp2 = backup;
+				} else
+					cp2 = ++backup;
+				cp = str;
+			}
+		} else
+#endif	/* HAVE_MBTOWC */
+		{
+			int c, c2;
+
+	singlebyte:	c = *cp++ & 0377;
+			if (islower(c))
+				c = toupper(c);
+			c2 = *cp2++ & 0377;
+			if (islower(c2))
+				c2 = toupper(c2);
+			if (c != c2) {
+				cp2 = ++backup;
+				cp = str;
+			}
 		}
 	}
+	free(out.s);
 	return(*cp == 0);
 }
 
@@ -851,6 +940,23 @@ metamess(meta, f)
 		 */
 		m = dot - &message[0] + 1;
 		if ((dot->m_flag & MDELETED) != f) {
+			printf(catgets(catd, CATSET, 133,
+				"%d: Inappropriate message\n"), m);
+			return(-1);
+		}
+		return(m);
+
+	case ';':
+		/*
+		 * Previously current message.
+		 */
+		if (prevdot == NULL) {
+			printf(catgets(catd, CATSET, 228,
+				"No previously current message\n"));
+			return(-1);
+		}
+		m = prevdot - &message[0] + 1;
+		if ((prevdot->m_flag & MDELETED) != f) {
 			printf(catgets(catd, CATSET, 133,
 				"%d: Inappropriate message\n"), m);
 			return(-1);

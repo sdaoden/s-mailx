@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.4 (gritter) 9/23/02";
+static char sccsid[] = "@(#)tty.c	2.10 (gritter) 11/8/02";
 #endif
 #endif /* not lint */
 
@@ -65,9 +65,9 @@ static	int		ttyset;		/* We must now do erase/kill */
 static	long		vdis;		/* _POSIX_VDISABLE char */
 
 static int safe_getc(FILE *ibuf);
-static char	*rtty_internal __P((char [], char []));
 static RETSIGTYPE	ttyint __P((int));
 static RETSIGTYPE	ttystop __P((int));
+static char	*rtty_internal __P((char *, char *));
 
 /*
  * Receipt continuation.
@@ -76,7 +76,7 @@ static RETSIGTYPE
 ttystop(s)
 	int s;
 {
-	signal_handler_t old_action = safe_signal(s, SIG_DFL);
+	sighandler_type old_action = safe_signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);
@@ -107,10 +107,11 @@ FILE *ibuf;
 {
 	if (fileno(ibuf) == 0 && is_a_tty[0]) {
 		char c;
+		ssize_t sz;
 
 again:
-		if (read(0, &c, 1) != 1) {
-			if (errno == EINTR)
+		if ((sz = read(0, &c, 1)) != 1) {
+			if (sz < 0 && errno == EINTR)
 				goto again;
 			return EOF;
 		}
@@ -126,7 +127,7 @@ again:
  */
 static char *
 rtty_internal(pr, src)
-	char pr[], src[];
+	char *pr, *src;
 {
 	char ch, canonb[LINESIZE];
 	int c;
@@ -247,20 +248,20 @@ redo:
 			}
 
 int
-grabh(hp, gflags)
+grabh(hp, gflags, subjfirst)
 	struct header *hp;
-	int gflags;
+	enum gfield gflags;
 {
 	struct termios ttybuf;
-	signal_handler_t saveint;
+	sighandler_type saveint;
 #ifndef TIOCSTI
-	signal_handler_t savequit;
+	sighandler_type savequit;
 #endif
-	signal_handler_t savetstp;
-	signal_handler_t savettou;
-	signal_handler_t savettin;
+	sighandler_type savetstp;
+	sighandler_type savettou;
+	sighandler_type savettin;
 	int errs;
-	int bsdcompat, comma;
+	int comma;
 
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
@@ -270,8 +271,7 @@ grabh(hp, gflags)
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
 	errs = 0;
-	bsdcompat = value("bsdcompat") != 0;
-	comma = bsdcompat ? 0 : GCOMMA;
+	comma = value("bsdcompat") ? 0 : GCOMMA;
 #ifndef TIOCSTI
 	ttyset = 0;
 #endif
@@ -311,7 +311,7 @@ grabh(hp, gflags)
 						detract(hp->h_to, comma)),
 					GTO));
 	}
-	if (bsdcompat)
+	if (subjfirst)
 		GRAB_SUBJECT
 	if (gflags & GCC) {
 		TTYSET_CHECK(hp->h_cc)
@@ -325,7 +325,7 @@ grabh(hp, gflags)
 						detract(hp->h_bcc, comma)),
 					GBCC));
 	}
-	if (!bsdcompat)
+	if (!subjfirst)
 		GRAB_SUBJECT
 out:
 	safe_signal(SIGTSTP, savetstp);
@@ -352,13 +352,13 @@ char *prefix, *string;
 {
 	char *ret = NULL;
 	struct termios ttybuf;
-	signal_handler_t saveint;
+	sighandler_type saveint;
 #ifndef TIOCSTI
-	signal_handler_t savequit;
+	sighandler_type savequit;
 #endif
-	signal_handler_t savetstp;
-	signal_handler_t savettou;
-	signal_handler_t savettin;
+	sighandler_type savetstp;
+	sighandler_type savettou;
+	sighandler_type savettin;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &saveint;

@@ -13,7 +13,7 @@
 # Makefile.am for nail, a mail user agent.
 # Process this file with automake to produce Makefile.in
 
-# Sccsid: @(#)Makefile.am	2.2 (gritter) 9/29/02
+# Sccsid: @(#)Makefile.am	2.3 (gritter) 10/21/02
 
 # Initially written by Jacob Moorman.
 # Changes by Gunnar Ritter.
@@ -78,7 +78,7 @@ AUTOMAKE_OPTIONS = no-dependencies foreign
 
 bin_PROGRAMS = nail
 
-nail_SOURCES = version.c aux.c base64.c cmd1.c cmd2.c cmd3.c 	cmdtab.c collect.c dotlock.c edit.c fio.c getname.c head.c 	v7.local.c lex.c list.c main.c mime.c names.c popen.c 	quit.c send.c sendout.c smtp.c strings.c temp.c tty.c vars.c 
+nail_SOURCES = version.c aux.c base64.c cmd1.c cmd2.c cmd3.c 	cmdtab.c collect.c dotlock.c edit.c fio.c getname.c head.c 	v7.local.c lex.c list.c main.c mime.c names.c pop3.c popen.c 	quit.c send.c sendout.c smtp.c strings.c temp.c tty.c vars.c 
 
 
 nail_MANS = nail.1
@@ -102,8 +102,8 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 nail_OBJECTS =  version.o aux.o base64.o cmd1.o cmd2.o cmd3.o cmdtab.o \
 collect.o dotlock.o edit.o fio.o getname.o head.o v7.local.o lex.o \
-list.o main.o mime.o names.o popen.o quit.o send.o sendout.o smtp.o \
-strings.o temp.o tty.o vars.o
+list.o main.o mime.o names.o pop3.o popen.o quit.o send.o sendout.o \
+smtp.o strings.o temp.o tty.o vars.o
 nail_LDADD = $(LDADD)
 nail_DEPENDENCIES = 
 nail_LDFLAGS = 

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	2.3 (gritter) 10/11/02
+ *	Sccsid @(#)glob.h	2.9 (gritter) 11/1/02
  */
 
 /*
@@ -57,13 +57,11 @@ _E int	Iflag;				/* -I show Newsgroups: field */
 _E char	*Tflag;				/* -T temp file for netnews */
 _E int	senderr;			/* An error while checking */
 _E int	edit;				/* Indicates editing a file */
-_E int	readonly;			/* Will be unable to rewrite file */
 _E int	noreset;			/* String resets suspended */
 _E int	sourcing;			/* Currently reading variant file */
 _E int	loading;			/* Loading user definitions */
-_E int	cond;				/* Current state of conditional exc. */
-_E FILE	*itf;				/* Input temp file buffer */
-_E FILE	*otf;				/* Output temp file buffer */
+_E enum condition	cond;		/* Current state of conditional exc. */
+_E struct mailbox mb;			/* Current mailbox */
 _E int	image;				/* File descriptor for image of msg */
 _E FILE	*input;				/* Current command input file */
 _E char	mailname[PATHSIZE];		/* Name of current file */
@@ -74,6 +72,7 @@ _E char	*myname;			/* My login name */
 _E const char *version;			/* version string */
 _E off_t mailsize;			/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
+_E struct message *prevdot;		/* Previous current message */
 _E struct message *message;		/* The actual message structure */
 _E int msgspace;			/* Number of allocated struct m */
 _E struct var *variables[HSHSIZE];	/* Pointer to active var list */
@@ -96,6 +95,8 @@ _E int	is_a_tty[2];			/* isatty(0), isatty(1) */
 _E int	did_print_dot;			/* current message has been printed */
 _E int	tildeflag;			/* enable tilde escapes */
 _E char	*uflag;				/* name given with -u option */
+_E struct shortcut	*shortcuts;	/* list of shortcuts */
+_E int	mb_cur_max;			/* value of MB_CUR_MAX */
 
 #ifdef	HAVE_ICONV
 _E iconv_t iconvd;
@@ -109,6 +110,7 @@ _E nl_catd	catd;
  * These are initialized strings.
  */
 extern char *us_ascii;			/* "us-ascii" */
+extern const char *month_names[];
 
 #include <setjmp.h>
 

@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.5 (gritter) 10/11/02";
+static char sccsid[] = "@(#)main.c	2.14 (gritter) 11/3/02";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -79,15 +79,16 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	const char *optstr = "+BHFINVT:a:b:c:defh:inqr:s:u:v~";
+	const char *optstr = "+BHFINVT:a:b:c:defh:inqr:s:tu:v~";
 	int i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
 	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL;
 	char nosrc = 0;
-	int Fflag = 0, Nflag = 0;
-	signal_handler_t prevint;
+	int Fflag = 0, Nflag = 0, tflag = 0;
+	sighandler_type prevint;
 
+	(void)&Nflag;
 	/*
 	 * Absolutely the first thing we do is save our egid
 	 * and set it to the rgid, so that we can safely run
@@ -122,11 +123,14 @@ main(argc, argv)
 #ifdef	HAVE_SETLOCALE
 	setlocale(LC_CTYPE, "");
 	setlocale(LC_MESSAGES, "");
+	mb_cur_max = MB_CUR_MAX;
 #if defined (HAVE_NL_LANGINFO) && defined (CODESET)
 	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
 		assign("ttycharset", cp);
 #endif
-#endif	/* HAVE_SETLOCALE */
+#else	/* !HAVE_SETLOCALE */
+	mb_cur_max = 1;
+#endif	/* !HAVE_SETLOCALE */
 #ifdef	HAVE_CATGETS
 #ifdef	NL_CAT_LOCALE
 	i = NL_CAT_LOCALE;
@@ -305,10 +309,14 @@ main(argc, argv)
 			if (tildeflag == 0)
 				tildeflag = 1;
 			break;
+		case 't':
+			sendflag = 1;
+			tflag = 1;
+			break;
 		case '?':
 usage:
 			fprintf(stderr, catgets(catd, CATSET, 135,
-"Usage: %s [-BFinv~] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... [- sendmail-options ...]\n\
+"Usage: %s [-BFintv~] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... [- sendmail-options ...]\n\
        %s [-BeHiInNv~] [-T name] -f [name]\n\
        %s [-BeinNv~] [-u user]\n"),
 				progname, progname, progname);
@@ -338,7 +346,7 @@ usage:
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
-	if (sendflag && to == NIL) {
+	if (sendflag && !tflag && to == NIL) {
 		fprintf(stderr, catgets(catd, CATSET, 138,
 			"Send options without primary recipient specified.\n"));
 		goto usage;
@@ -351,7 +359,7 @@ usage:
 	tinit();
 	setscreensize();
 	input = stdin;
-	rcvmode = !to;
+	rcvmode = !to && !tflag;
 	spreserve();
 	if (!nosrc)
 		load(PATH_MASTER_RC);
@@ -365,13 +373,16 @@ usage:
 		load(expand(cp));
 	else
 		load(expand("~/.mailrc"));
+	if (getenv("NAIL_EXTRA_RC") == NULL &&
+			(cp = value("NAIL_EXTRA_RC")) != NULL)
+		load(expand(cp));
 	/*
 	 * From address from command line overrides rc files.
 	 */
 	if (fromaddr)
 		assign("from", fromaddr);
 	if (!rcvmode) {
-		mail(to, cc, bcc, smopts, subject, attach, qf, Fflag);
+		mail(to, cc, bcc, smopts, subject, attach, qf, Fflag, tflag);
 		/*
 		 * why wait?
 		 */
@@ -391,7 +402,7 @@ usage:
 		exit(i);
 	if (headersonly) {
 		for (i = 1; i <= msgcount; i++)
-			printhead(i);
+			printhead(i, stdout);
 		exit(exit_status);
 	}
 	if (i > 0 && value("emptystart") == NULL)
@@ -411,9 +422,11 @@ usage:
 		safe_signal(SIGINT, prevint);
 	}
 	commands();
-	safe_signal(SIGHUP, SIG_IGN);
-	safe_signal(SIGINT, SIG_IGN);
-	safe_signal(SIGQUIT, SIG_IGN);
+	if (mb.mb_type == MB_FILE) {
+		safe_signal(SIGHUP, SIG_IGN);
+		safe_signal(SIGINT, SIG_IGN);
+		safe_signal(SIGQUIT, SIG_IGN);
+	}
 	quit();
 	return exit_status;
 }

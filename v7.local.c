@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)v7.local.c	2.2 (gritter) 9/15/02";
+static char sccsid[] = "@(#)v7.local.c	2.3 (gritter) 10/21/02";
 #endif
 #endif /* not lint */
 
@@ -67,7 +67,7 @@ findmail(user, force, buf, size)
 {
 	char *mbox;
 
-	if (force || (mbox = getenv("MAIL")) == NULL) {
+	if (force || (mbox = value("MAIL")) == NULL) {
 		(void)snprintf(buf, size, "%s/%s", PATH_MAILDIR, user);
 	} else {
 		(void)strncpy(buf, mbox, size);

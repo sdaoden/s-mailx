@@ -33,14 +33,14 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.7 (gritter) 10/14/02
+.\"     Sccsid: @(#)nail.1	2.48 (gritter) 11/10/02
 .\"
-.TH NAIL 1 "10/14/02" "nail 10.1" "User Commands"
+.TH NAIL 1 "11/10/02" "nail 10.2" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
 .ad l
-\fBnail\fR [\fB\-BFinv~\fR]
+\fBnail\fR [\fB\-BFintv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
 [\fB\-h\fI\ hops\fR] \fIto-addr\fR ...
@@ -56,12 +56,11 @@ a command syntax reminiscent of
 .IR ed (1)
 with lines replaced by messages.
 It is based on Berkeley Mail 8.1,
-is intended to provide the functionality of the
-.SM POSIX.2
+is intended to provide the functionality of the POSIX.2
 .B mailx
 command,
-and offers some extensions
-for MIME messages.
+and offers extensions
+for MIME messages, POP3 and SMTP.
 .SH OPTIONS
 .TP
 .BI \-a \ file
@@ -147,6 +146,11 @@ of each message read in the file
 .IR name .
 Implies
 .BR \-I .
+.TP
+.B \-t
+The message to be sent is expected to contain a message header
+with `To:', `Cc:', or `Bcc:' fields giving its recipients.
+Recipients specified on the command line are ignored.
 .TP
 .BI \-u \ user
 Reads the mailbox of the given user name.
@@ -235,6 +239,16 @@ All messages from
 .B .
 The current message.
 .TP
+.B ;
+The message that was previously the current message.
+.TP
+.B ,
+The parent message of the current message,
+that is the message with the Message-ID
+given in the `In-Reply-To:' field
+or the last entry of the `References:' field
+of the current message.
+.TP
 .B -
 The previous message.
 .TP
@@ -287,7 +301,9 @@ to '\fIcohorts\fR' and have it go
 to a group of people.
 Such lists can be defined by placing a line like
 .nf
-        alias cohorts bill ozalp jkf mark kridle@ucbcory
+
+        \fBalias\fI cohorts bill ozalp jkf mark kridle@ucbcory\fR
+
 .fi
 in the file .mailrc in your home directory.
 The current list of such aliases
@@ -322,7 +338,7 @@ It does this by reading MIME type files
 whose lines have the following syntax:
 .nf
 
-        type/subtype      extension [extension ...]
+        \fItype\fB/\fIsubtype      extension \fR[\fIextension \fR...]\fR
 
 .fi
 where type/subtype are strings describing the file contents,
@@ -364,8 +380,7 @@ for its declaration.
 An outgoing message is then converted,
 resulting in errors when this process
 cannot be done for the entire text;
-if the message contains
-.SM NUL
+if the message contains NUL
 characters,
 it is not converted.
 Attachments are never converted.
@@ -509,11 +524,31 @@ it will write out changes
 in the current file and read in
 the new file.
 Some special conventions are recognized for the name.
-# means the previous file,
-% means your system mailbox,
-%user means user's system mailbox,
-& means your mbox file,
-and +folder means a file in your folder directory.
+\fB#\fR means the previous file,
+\fB%\fR means your system mailbox,
+\fB%\fIuser\fR means \fIuser's\fR system mailbox,
+\fB&\fR means your mbox file,
+and \fB+\fIfile\fI means a \fIfile\fR in your folder directory.
+\fB%:\fIfilespec\fR expands to the same value as \fIfilespec\fR,
+but the file is handled as a system mailbox
+e.\|g. by the mbox and save commands.
+If the name matches one of the strings defined with the
+.B shortcut
+command,
+it is replaced by its long form and expanded.
+A name of the form
+.nf
+
+       \fIprotocol\fB://\fR[\fIuser\fB@\fR]\fIhost\fR[\fB:\fIport]\fR
+
+.fi
+is taken as an internet mailbox specification.
+The supported protocols are currently
+.B pop3
+(POP3)
+and
+.B pop3s
+(i. e. POP3 with SSL/TLS encryption).
 .TP
 .B Followup
 (F) Similar to
@@ -558,7 +593,8 @@ and sends each message to the named user.
 .TP
 .B from
 (f) Takes a list of messages
-and prints their message headers.
+and prints their message headers,
+piped through the pager if the output does not fit on the screen.
 .TP
 .B headers
 (h) Lists the current range of headers,
@@ -585,19 +621,28 @@ depending on whether you are sending
 or receiving mail with the if command.
 For example, you can do:
 .nf
-        if receive
+
+        \fBif \fIreceive\fR
                 \fIcommands ...\fR
-        endif
+        \fBendif\fR
+
 .fi
 An else form is also available:
 .nf
-        if receive
+
+        \fBif \fIreceive\fR
                 \fIcommands ...\fR
-        else
+        \fBelse\fR
                 \fIcommands ...\fR
-        endif
+        \fBendif\fR
+
 .fi
-Note that the only allowed conditions are receive and send.
+Note that the only allowed conditions are
+.BR receive ,
+.BR send ,
+and
+.B term
+(execute command if standard input is a tty).
 .TP
 .B ignore
 Add the list of header fields named to the ignored list.
@@ -767,9 +812,13 @@ instead of taking a filename argument.
 (s) Takes a message list and a filename
 and appends each message
 in turn to the end of the file.
+If no filename is given,
+the mbox file is used.
 The filename in quotes,
 followed by the line count and character count
 is echoed on the user's terminal.
+If editing a system mailbox,
+the messages are marked for deletion.
 .TP
 .B set
 (se) With no arguments, prints all variable values,
@@ -812,6 +861,14 @@ that are needed to decode the message correctly.
 .TP
 .B shell
 (sh) Invokes an interactive version of the shell.
+.TP
+.B shortcut
+Defines a shortcut name and its string for expansion,
+as described for the
+.B folder
+command.
+With no arguments,
+a list of defined shortcuts is printed.
 .TP
 .B size
 Takes a message list and prints out
@@ -874,6 +931,9 @@ from the list of retained fields for saving.
 Takes a list of option names and discards their remembered
 values;
 the inverse of set.
+.TP
+.B unshortcut
+Deletes the shortcut names given as arguments.
 .TP
 .B visual
 (v) Takes a message list and invokes the display editor
@@ -942,7 +1002,7 @@ First, the user can edit all existing attachment data.
 If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
-.B nail
+.I nail
 will ask for further attachments,
 until an empty file name is given.
 If \fIfilename\fP arguments are specified,
@@ -1114,14 +1174,18 @@ Responding with a newline indicates not to include an attachment.
 .B askcc
 Causes you to be prompted
 for additional carbon copy recipients
-at the end of each message.
+(at the end of each message if
+.I bsdcompat
+is set).
 Responding with a newline
 indicates your satisfaction with the current list.
 .TP
 .B askbcc
 Causes you to be prompted
 for additional blind carbon copy recipients
-at the end of each message.
+(at the end of each message if
+.I bsdcompat
+is set).
 Responding with a newline
 indicates your satisfaction with the current list.
 .TP
@@ -1140,9 +1204,7 @@ by the contents of the last command line
 in shell escapes.
 .TP
 .B bsdcompat
-Sets some cosmetical features to traditional
-.SM BSD
-style;
+Sets some cosmetical features to traditional BSD style;
 affects the default prompt,
 the order of header fields,
 the format of the header summary,
@@ -1151,6 +1213,13 @@ the output format of the
 command,
 and the default pager.
 .TP
+.B datefield
+The date in a header summary
+is normally the date of the mailbox `From\ ' line of the message.
+If this variable is set,
+the date as given in the `Date:' header field is used,
+converted to local time.
+.TP
 .B debug
 Prints debugging messages and disables the actual delivery of messages.
 .TP
@@ -1158,6 +1227,13 @@ Prints debugging messages and disables the actual delivery of messages.
 The binary option dot causes \fInail\fR to interpret
 a period alone on a line
 as the terminator of a message you are sending.
+.TP
+.B editheaders
+When a message is edited while being composed,
+its header is included in the editable text.
+`To:', `Cc:', `Bcc:', and `Subject:' fields
+are accepted within the header,
+other fields are ignored.
 .TP
 .B emptybox
 If set, an empty mailbox file is not removed.
@@ -1239,6 +1315,11 @@ unless it is an absolute pathname.
 If set, each message the \fIpipe\fR command prints out
 is followed by a formfeed character.
 .TP
+.B piperaw
+Send messages to the
+.I pipe
+command without performing MIME and character set conversions.
+.TP
 .B quiet
 Suppresses the printing of the version when first invoked.
 .TP
@@ -1272,6 +1353,15 @@ last message instead of the first one when opening a mail folder.
 Causes the recipient of the message to be shown in the header summary
 if the message was sent by the user.
 .TP
+.B ssl-no-default-ca
+Do not load the default CA locations
+to verify SSL/TLS server certificates.
+.TP
+.B ssl-v2-allow
+Accept SSLv2 connections.
+These are normally not allowed
+because this protocol version is insecure.
+.TP
 .B stealthmua
 Inhibits the generation of
 the \fI'Message-Id:'\fR and \fI'User-Agent:'\fR
@@ -1280,7 +1370,6 @@ There are two pitfalls associated with this:
 First, the message id of outgoing messages is not known anymore.
 Second, an expert may still use the remaining information in the header
 to track down the originating mail user agent.
-So this option should only be set if there is a good reason to do that.
 .TP
 .B verbose
 Setting the option verbose is the same
@@ -1376,6 +1465,15 @@ Pathname of the directory lister
 to use in the folders command.
 Default is /bin/ls.
 .TP
+.B MAIL
+Is used as the user's mailbox, if set.
+Otherwise, a system-dependent default is used.
+Can be a
+\fIprotocol\fB://\fR
+string (see the
+.B folder
+command for more information).
+.TP
 .B MAILX_HEAD
 A string to put at the beginning of each new message.
 .TP
@@ -1388,6 +1486,17 @@ It can be the name of a folder.
 The default is '\fImbox\fR'
 in the user's home directory.
 .TP
+.B NAIL_EXTRA_RC
+The name of an optional startup file
+to be read after ~/.mailrc.
+This variable is ignored if it is imported from the environment;
+it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
+to allow bypassing the configuration with e. g. `MAILRC=/dev/null'.
+Use this file for
+.I nail
+commands
+that are not understood by other mailx implementations.
+.TP
 .B ORGANIZATION
 The value to put into the \fI'Organization:'\fR field of the message header.
 .TP
@@ -1397,12 +1506,22 @@ in the more command
 or when crt variable is set.
 The default paginator
 .IR pg (1)
-or, in
-.SM BSD
-compatibility mode,
+or, in BSD compatibility mode,
 .IR more (1)
 is used
 if this option is not defined.
+.TP
+\fBpassword-\fIuser\fB@\fIhost\fR
+Set the password for
+.I user
+when connecting to
+.IR host .
+If no such variable is defined for a host,
+the user will be asked for a password on standard input.
+Specifying passwords in a startup file
+is generally a security risk,
+the file should be readable
+by the invoking user only.
 .TP
 .BI pipe- content/subcontent
 When a MIME message part of
@@ -1410,27 +1529,30 @@ When a MIME message part of
 type is displayed or it is replied to,
 its text is filtered through the value of this variable
 interpreted as a shell command.
-For example,
-.nf
-        set pipe-text/html="w3m -dump -T text/html"
-.fi
-will format HTML text using the
-.B w3m
-web browser.
 Special care must be taken when using such commands
-as e-mail viruses may be distributed by this method;
+as mail viruses may be distributed by this method;
 if messages of type
 .I application/x-sh
 were filtered through the shell, for example,
 a message sender could easily execute arbitrary code
 on the system
-.B nail
+.I nail
 is running on.
+.TP
+.B pop3-keepalive
+Many POP3 servers will close the connection
+after a period of inactivity.
+Setting this variable to a numeric
+.I value
+greater than 0
+causes a NOOP command to be sent each
+.I value
+seconds if no other operation is performed.
 .TP
 .B prompt
 The string printed when a command is accepted.
-Defaults to "\fB? \fR",
-or to "\fB& \fR" if the
+Defaults to "\fB?\ \fR",
+or to "\fB&\ \fR" if the
 .B bsdcompat
 variable is set.
 .TP
@@ -1494,6 +1616,76 @@ If the SMTP server does not use the standard port,
 a value of \fIserver:port\fR can be given,
 with \fIport\fR as a name or as a number.
 .TP
+.B ssl-ca-dir
+Specifies a directory with CA certificates for verification.
+See
+.IR SSL_CTX_load_verify_locations (3)
+for more information.
+.TP
+.B ssl-ca-file
+Specifies a file with CA certificates for verification.
+See
+.IR SSL_CTX_load_verify_locations (3)
+for more information.
+.TP
+.B ssl-cert
+Sets the file name 
+for a SSL/TLS client certificate
+required by some servers.
+.TP
+\fBssl-cert-\fIuser\fB@\fIhost\fR
+Sets an account-specific file name
+for a SSL/TLS client certificate
+required by some servers.
+Overrides
+.B ssl-cert
+for the specified account.
+.TP
+.B ssl-cipher-list
+Specifies a list of ciphers for SSL/TLS connections.
+See ciphers(1) for more information.
+.TP
+.B ssl-key
+Sets the file name
+for the private key of a SSL/TLS client certificate.
+If unset, the name of the certificate file is used.
+The file is expected to be in PEM format.
+.TP
+\fBssl-key-\fIuser\fB@\fIhost\fR
+Sets an account-specific file name
+for the private key of a SSL/TLS client certificate.
+Overrides
+.B ssl-key
+for the specified account.
+.TP
+.B ssl-method
+Selects a SSL/TLS protocol version;
+valid values are `ssl2', `ssl3', and `tls1'.
+If unset, the method is selected automatically,
+if possible.
+.TP
+.B ssl-rand-egd
+Gives the pathname to an entropy daemon socket,
+see
+.IR RAND_egd (3).
+.TP
+.B ssl-rand-file
+Gives the pathname to a file with entropy data,
+see
+.IR RAND_load_file (3).
+If the file is a regular file writable by the invoking user,
+new data is written to it after it has been loaded.
+.TP
+.B ssl-verify
+Sets the action to be performed if an error occurs
+during SSL/TLS server certificate validation.
+Valid values are
+`strict' (fail and close connection immediately),
+`ask' (ask whether to continue on standard input),
+`warn' (print a warning and continue),
+`ignore' (do not perform validation).
+The default is `ask'.
+.TP
 .B record
 If defined, gives the pathname of the file
 used to record all outgoing mail.
@@ -1544,10 +1736,6 @@ The user's home directory.
 See
 .IR locale (7).
 .TP
-.B MAIL
-Is used as the user's mailbox, if set.
-Otherwise, a system-dependent default is used.
-.TP
 .B MAILRC
 Is used as startup file instead of ~/.mailrc if set.
 .TP
@@ -1572,21 +1760,135 @@ Personal MIME types.
 .TP
 /etc/mime.types
 System wide MIME types.
+.SH EXAMPLES
+.SS "POP3 client setup"
+First, you need the following data from your ISP:
+the host name of its POP3 server,
+user name and password for this server,
+and a notice whether the server uses SSL/TLS encryption.
+Assuming the host name is `server.myisp.example'
+and your user name for that server is `myname',
+you can refer to this account using the
+.I folder
+command or
+.I \-f
+command line option with
+.nf
+
+    \fBpop3://\fImyname\fB@\fIserver.myisp.example\fR
+
+.fi
+(replace `pop3://' with `pop3s://' if the server supports SSL/TLS).
+The string is not necessarily the same as your internet mail address.
+As you probably want messages to be deleted from this account
+after saving them,
+prefix it with `\fI%:\fR'.
+The
+.I shortcut
+command can be used to avoid typing that many characters
+every time you want to connect:
+.nf
+
+    \fBshortcut \fImyisp\fB \fB%:pop3://\fImyname\fB@\fIserver.myisp.example\fR
+
+.fi
+You probably want to put this string into a startup file.
+As the
+.I shortcut
+command is
+.IR nail- specific
+and will confuse other
+.I mailx
+implementations,
+it should not be used in
+.IR ~/.mailrc ,
+instead, put
+.nf
+
+    \fBset NAIL_EXTRA_RC=\fI~/.nailrc\fR
+
+.fi
+in
+.I ~/.mailrc
+and create a file
+.I ~/.nailrc
+containing the
+.I shortcut
+command above.
+.I Nail
+will ask you for a password string
+each time you connect to this account.
+If you can reasonably trust the security
+of the machine you are working on,
+you can give this password in the startup file as
+.nf
+
+    \fBset password-\fImyname\fB@\fIserver.myisp.example\fB="\fISECRET\fB"\fR
+
+.fi
+You should change the permissions of this file to 0600, see
+.IR chmod (1).
+Many POP3 servers will close the connection
+after a short period of inactivity. Use
+.nf
+
+    \fBset pop3-keepalive=\fI30\fR
+
+.fi
+to send a keepalive message each 30 seconds.
+If you encounter problems connecting to a SSL/TLS server,
+try the
+.I ssl-rand-egd
+and
+.I ssl-rand-file
+variables (see the OpenSSL FAQ for more information)
+or specify the protocol version with
+.IR ssl-method .
+Contact your ISP
+if you need a client certificate
+or if verification of the server certificate fails.
+If the failed certificate is indeed valid,
+fetch it by executing
+.nf
+
+    \fBopenssl s_client -connect \fIserver.myisp.example\fB:\fIpop3s\fR
+
+.fi
+(see
+.IR s_client (1))
+and put it into the file specified with
+.IR ssl-ca-file .
+.SS "Reading HTML mail"
+You need the
+.I w3m
+utility
+or another command-line web browser
+that can write plain text to standard output.
+.nf
+
+    \fBset pipe-text/html="\fIw3m -dump -T text/html\fB"\fR
+
+.fi
+will then cause HTML text to be converted into a more friendly form,
+the command string depends on the browser you are using.
 .SH "SEE ALSO"
-fetchmail(1),
 fmt(1),
 newaliases(1),
+openssl(1),
 pg(1),
 procmail(1),
 more(1),
 vacation(1),
+ssl(3),
 aliases(5),
 locale(7),
 mailaddr(7),
 sendmail(8)
 .SH NOTES
 .PP
-Variables in the environment passed to nail cannot be unset.
+Variables in the environment passed to
+.I nail
+cannot be unset.
 .PP
 The character set conversion relies heavily
 on the
@@ -1596,9 +1898,32 @@ Its functionality differs widely
 between the various system environments
 \fInail\fR runs on.
 .PP
+POP3 mailboxes are limited in some ways:
+It is not possible to edit messages,
+they can only be copied and deleted.
+The line count for the header display
+is only appropriate if the entire message has been downloaded
+from the server.
+The status field of a message is maintained by the server
+between connections;
+some servers do not update it at all,
+and with a server that does,
+the `exit' command will not cause the message status to be reset.
+The `newmail' command and the `newmail' variable
+have no effect.
+An unencrypted POP3 message download
+can be interrupted from the terminal,
+but the part that was not downloaded
+will have to be downloaded
+before the next command is sent.
+A SSL/TLS encrypted POP3 message download
+should not be interrupted,
+as this will very likely cause an error in the SSL transport.
+.PP
+There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
+.PP
 A \fImail\fR command appeared in Version 1 AT&T Unix.
-.SM BSD
-Mail was written in 1978 by Kurt Shoens.
+Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
 from The Mail Reference Manual
 originally written by Kurt Shoens.

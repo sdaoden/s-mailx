@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.7 (gritter) 10/11/02";
+static char sccsid[] = "@(#)fio.c	2.23 (gritter) 11/8/02";
 #endif
 #endif /* not lint */
 
@@ -46,6 +46,9 @@ static char sccsid[] = "@(#)fio.c	2.7 (gritter) 10/11/02";
 #include <sys/file.h>
 #ifdef	HAVE_SYS_WAIT_H
 #include <sys/wait.h>
+#endif
+#ifdef	HAVE_WORDEXP_H
+#include <wordexp.h>
 #endif
 
 #include <errno.h>
@@ -58,9 +61,11 @@ static char sccsid[] = "@(#)fio.c	2.7 (gritter) 10/11/02";
  */
 static void	makemessage __P((void));
 static void	append __P((struct message *));
+static char	*globname __P((char *));
 static size_t	length_of_line __P((const char *, size_t));
 static char	*fgetline_byone __P((char **, size_t *, size_t *,
 			FILE *, int, size_t));
+static enum okay	get_header __P((struct message *));
 
 /*
  * Set up the input pointers while copying the mail file into /tmp.
@@ -77,6 +82,7 @@ setptr(ibuf, offset)
 	int maybe, inhead, thiscnt;
 	char *linebuf = NULL;
 	size_t linesize = 0, filesize;
+	int broken_mbox = value("broken-mbox") != NULL;
 
 	maybe = 1;
 	inhead = 0;
@@ -90,6 +96,9 @@ setptr(ibuf, offset)
 	for (;;) {
 		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)
 				== NULL) {
+			this.m_xsize = this.m_size;
+			this.m_xlines = this.m_lines;
+			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt > 0)
 				append(&this);
 			makemessage();
@@ -101,14 +110,17 @@ setptr(ibuf, offset)
 		if (linebuf[0] == '\0')
 			linebuf[0] = '.';
 #endif
-		(void) fwrite(linebuf, sizeof *linebuf, count, otf);
-		if (ferror(otf)) {
+		(void) fwrite(linebuf, sizeof *linebuf, count, mb.mb_otf);
+		if (ferror(mb.mb_otf)) {
 			perror("/tmp");
 			exit(1);
 		}
 		if (linebuf[count - 1] == '\n')
 			linebuf[count - 1] = '\0';
 		if (maybe && linebuf[0] == 'F' && is_head(linebuf, count)) {
+			this.m_xsize = this.m_size;
+			this.m_xlines = this.m_lines;
+			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt++ > 0)
 				append(&this);
 			msgcount++;
@@ -141,7 +153,8 @@ setptr(ibuf, offset)
 		offset += count;
 		this.m_size += count;
 		this.m_lines++;
-		maybe = linebuf[0] == 0;
+		if (!broken_mbox)
+			maybe = linebuf[0] == 0;
 	}
 	/*NOTREACHED*/
 }
@@ -201,7 +214,7 @@ again:
 				if (n > 0 && (*linebuf)[n - 1] == '\n')
 					break;
 			} else {
-				if (errno == EINTR)
+				if (sz < 0 && errno == EINTR)
 					goto again;
 				if (n > 0) {
 					if ((*linebuf)[n - 1] != '\n') {
@@ -234,23 +247,43 @@ again:
  * passed message pointer.
  */
 FILE *
-setinput(mp)
+setinput(mp, need)
 	struct message *mp;
+	enum needspec need;
 {
+	enum okay ok = STOP;
 
-	fflush(otf);
-	if (fseek(itf, (long)nail_positionof(mp->m_block,
+	switch (need) {
+	case NEED_HEADER:
+		if (mp->m_have & HAVE_HEADER)
+			ok = OKAY;
+		else
+			ok = get_header(mp);
+		break;
+	case NEED_BODY:
+		if (mp->m_have & HAVE_BODY)
+			ok = OKAY;
+		else
+			ok = get_body(mp);
+		break;
+	}
+	if (ok != OKAY)
+		return NULL;
+	fflush(mb.mb_otf);
+	if (fseek(mb.mb_itf, (long)nail_positionof(mp->m_block,
 					mp->m_offset), 0) < 0) {
 		perror("fseek");
 		panic(catgets(catd, CATSET, 77, "temporary file seek"));
 	}
-	return (itf);
+	return (mb.mb_itf);
 }
 
 struct message *
 setdot(mp)
 	struct message *mp;
 {
+	if (dot != mp)
+		prevdot = dot;
 	dot = mp;
 	did_print_dot = 0;
 	return dot;
@@ -263,9 +296,9 @@ setdot(mp)
 static void
 makemessage()
 {
-	setdot(message);
 	if (msgcount == 0)
 		append(NULL);
+	setdot(message);
 	message[msgcount].m_size = 0;
 	message[msgcount].m_lines = 0;
 }
@@ -361,12 +394,8 @@ expand(name)
 	char *name;
 {
 	char xname[PATHSIZE];
-	char cmdbuf[PATHSIZE];		/* also used for file names */
-	int pid, l;
-	char *cp, *shell;
-	int pivec[2];
-	struct stat sbuf;
-	extern int wait_status;
+	char foldbuf[PATHSIZE];
+	struct shortcut *sh;
 
 	/*
 	 * The order of evaluation is "%" and "#" expand into constants.
@@ -374,8 +403,15 @@ expand(name)
 	 * Shell meta characters expand into constants.
 	 * This way, we make no recursive expansion.
 	 */
+	if ((sh = get_shortcut(name)) != NULL)
+		name = sh->sh_long;
+next:
 	switch (*name) {
 	case '%':
+		if (name[1] == ':' && name[2]) {
+			name = &name[2];
+			goto next;
+		}
 		findmail(name[1] ? name + 1 : myname, name[1] != '\0' || uflag,
 				xname, sizeof xname);
 		return savestr(xname);
@@ -392,8 +428,8 @@ expand(name)
 			name = "~/mbox";
 		/* fall through */
 	}
-	if (name[0] == '+' && getfold(cmdbuf, sizeof cmdbuf) >= 0) {
-		snprintf(xname, sizeof xname, "%s/%s", cmdbuf, name + 1);
+	if (name[0] == '+' && getfold(foldbuf, sizeof foldbuf) >= 0) {
+		snprintf(xname, sizeof xname, "%s/%s", foldbuf, name + 1);
 		name = savestr(xname);
 	}
 	/* catch the most common shell meta character */
@@ -401,8 +437,72 @@ expand(name)
 		snprintf(xname, sizeof xname, "%s%s", homedir, name + 1);
 		name = savestr(xname);
 	}
-	if (!anyof(name, "~{[*?$`'\"\\"))
+	if (!anyof(name, "|&;<>~{}()[]*?$`'\"\\"))
 		return name;
+	return globname(name);
+}
+
+static char *
+globname(name)
+	char *name;
+{
+#ifdef	HAVE_WORDEXP
+	wordexp_t we;
+	char *cp;
+	sigset_t nset;
+	int i;
+
+	/*
+	 * Some systems (notably Open UNIX 8.0.0) fork a shell for
+	 * wordexp() and wait for it; waiting will fail if our SIGCHLD
+	 * handler is active.
+	 */
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &nset, NULL);
+	i = wordexp(name, &we, 0);
+	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+	switch (i) {
+	case 0:
+		break;
+	case WRDE_NOSPACE:
+		fprintf(stderr, catgets(catd, CATSET, 83,
+				"\"%s\": Expansion buffer overflow.\n"), name);
+		return NULL;
+	case WRDE_BADCHAR:
+	case WRDE_SYNTAX:
+	default:
+		printf("val=%d\n", i);
+		perror("wordexp");
+		fprintf(stderr, catgets(catd, CATSET, 242,
+				"Syntax error in \"%s\"\n"), name);
+		return NULL;
+	}
+	switch (we.we_wordc) {
+	case 1:
+		cp = savestr(we.we_wordv[0]);
+		break;
+	case 0:
+		fprintf(stderr, catgets(catd, CATSET, 82,
+					"\"%s\": No match.\n"), name);
+		cp = NULL;
+		break;
+	default:
+		fprintf(stderr, catgets(catd, CATSET, 84,
+				"\"%s\": Ambiguous.\n"), name);
+		cp = NULL;
+	}
+	wordfree(&we);
+	return cp;
+#else	/* !HAVE_WORDEXP */
+	char xname[PATHSIZE];
+	char cmdbuf[PATHSIZE];		/* also used for file names */
+	int pid, l;
+	char *cp, *shell;
+	int pivec[2];
+	extern int wait_status;
+	struct stat sbuf;
+
 	if (pipe(pivec) < 0) {
 		perror("pipe");
 		return name;
@@ -452,6 +552,7 @@ again:
 		return NULL;
 	}
 	return savestr(xname);
+#endif	/* !HAVE_WORDEXP */
 }
 
 /*
@@ -622,4 +723,68 @@ newline_appended()
 	fprintf(stderr, catgets(catd, CATSET, 208,
 			"warning: incomplete line - newline appended\n"));
 	exit_status |= 010;
+}
+
+static enum okay
+get_header(mp)
+	struct message *mp;
+{
+	switch (mb.mb_type) {
+	case MB_FILE:
+		return OKAY;
+	case MB_POP3:
+		return pop3_header(mp);
+	case MB_VOID:
+		return STOP;
+	}
+	/*NOTREACHED*/
+	return STOP;
+}
+
+enum okay
+get_body(mp)
+	struct message *mp;
+{
+	switch (mb.mb_type) {
+	case MB_FILE:
+		return OKAY;
+	case MB_POP3:
+		return pop3_body(mp);
+	case MB_VOID:
+		return STOP;
+	}
+	/*NOTREACHED*/
+	return STOP;
+}
+
+/*
+ * This is fputs with conversion to \r\n format.
+ */
+int
+crlfputs(s, stream)
+char *s;
+FILE *stream;
+{
+	size_t len, wsz = 0;
+
+	if ((len = strlen(s)) == 0)
+		return 0;
+	if (s[len - 1] == '\n' && (len == 1 || s[len - 2] != '\r')) {
+		if (--len > 0)
+			wsz = fwrite(s, sizeof *s, len, stream);
+		if (wsz > 0 || len == 0) {
+			if (fputc('\r', stream) != EOF) {
+				wsz++;
+				if (fputc('\n', stream) != EOF)
+					wsz++;
+				else
+					wsz = 0;
+			} else
+				wsz = 0;
+		}
+	} else
+		wsz = fwrite(s, sizeof *s, len, stream);
+	if (wsz == 0)
+		return EOF;
+	return wsz;
 }

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.2 (gritter) 9/1/02";
+static char sccsid[] = "@(#)collect.c	2.13 (gritter) 11/21/02";
 #endif
 #endif /* not lint */
 
@@ -63,11 +63,11 @@ static char sccsid[] = "@(#)collect.c	2.2 (gritter) 9/1/02";
  * away on dead.letter.
  */
 
-static	signal_handler_t	saveint;	/* Previous SIGINT value */
-static	signal_handler_t	savehup;	/* Previous SIGHUP value */
-static	signal_handler_t	savetstp;	/* Previous SIGTSTP value */
-static	signal_handler_t	savettou;	/* Previous SIGTTOU value */
-static	signal_handler_t	savettin;	/* Previous SIGTTIN value */
+static	sighandler_type		saveint;	/* Previous SIGINT value */
+static	sighandler_type		savehup;	/* Previous SIGHUP value */
+static	sighandler_type		savetstp;	/* Previous SIGTSTP value */
+static	sighandler_type		savettou;	/* Previous SIGTTOU value */
+static	sighandler_type		savettin;	/* Previous SIGTTIN value */
 static	FILE	*collf;			/* File for saving away */
 static	int	hadintr;		/* Have seen one SIGINT so far */
 
@@ -81,8 +81,9 @@ static struct attachment	*read_attachment_data __P((struct attachment *,
 					unsigned));
 static void	insertcommand __P((FILE *, char *));
 static int	exwrite __P((char [], FILE *, int));
-static void	mesedit __P((FILE *, int));
-static void	mespipe __P((FILE *, char []));
+static enum okay	makeheader __P((FILE *, struct header *));
+static void	mesedit __P((int, struct header *));
+static void	mespipe __P((char []));
 static int	forward __P((char [], FILE *, int));
 static void	collhup __P((int));
 static int	include_file __P((FILE *, char *, int *, int *, int));
@@ -91,7 +92,6 @@ static void	collstop __P((int));
 static struct attachment	*append_attachments __P((struct attachment *,
 					char *));
 static RETSIGTYPE	onpipe __P((int));
-
 
 /*ARGSUSED*/
 static RETSIGTYPE
@@ -109,8 +109,11 @@ FILE *fp;
 char *cmd;
 {
 	FILE *obuf = NULL;
-	char *cp, c;
+	char *cp;
+	int c;
 
+	(void)&obuf;
+	(void)&cp;
 	cp = value("SHELL");
 	if (sigsetjmp(pipejmp, 1))
 		goto endpipe;
@@ -143,6 +146,8 @@ struct header *hp;
 	char *cp;
 	size_t	linecnt, maxlines, linesize = 0, linelen, count, count2;
 
+	(void)&obuf;
+	(void)&cp;
 	fflush(collf);
 	rewind(collf);
 	count = count2 = fsize(collf);
@@ -309,8 +314,12 @@ edit_attachments(attach)
 		if ((nap = read_attachment_data(ap, attno)) == NULL) {
 			if (ap->a_blink)
 				ap->a_blink->a_flink = ap->a_flink;
+			else
+				attach = ap->a_flink;
 			if (ap->a_flink)
 				ap->a_flink->a_blink = ap->a_blink;
+			else
+				return attach;
 		} else
 			attno++;
 	}
@@ -396,7 +405,7 @@ append_attachments(attach, names)
 }
 
 FILE *
-collect(hp, printheaders, mp, quotefile)
+collect(hp, printheaders, mp, quotefile, tflag)
 	struct header *hp;
 	int printheaders;
 	struct message *mp;
@@ -443,6 +452,7 @@ The following ~ escapes are defined:\n\
 	(void) &eofcount;
 	(void) &getfields;
 	(void) &tempMail;
+	(void) &tflag;
 #endif
 
 	collf = (FILE*)NULL;
@@ -497,16 +507,24 @@ The following ~ escapes are defined:\n\
 	 * refrain from printing a newline after
 	 * the headers (since some people mind).
 	 */
-	t = GTO|GSUBJECT|GCC|GNL;
 	getfields = 0;
-	if (hp->h_subject == NULL && value("interactive") != NULL &&
-	    (value("ask") != NULL || value("asksub") != NULL))
-		t &= ~GNL, getfields |= GSUBJECT;
-	if (hp->h_to == NULL && value("interactive") != NULL)
-		t &= ~GNL, getfields |= GTO;
-	if (printheaders) {
-		puthead(hp, stdout, t, CONV_TODISP, NULL, NULL);
-		fflush(stdout);
+	if (!tflag) {
+		t = GTO|GSUBJECT|GCC|GNL;
+		if (hp->h_subject == NULL && value("interactive") != NULL &&
+			    (value("ask") != NULL || value("asksub") != NULL))
+			t &= ~GNL, getfields |= GSUBJECT;
+		if (hp->h_to == NULL && value("interactive") != NULL)
+			t &= ~GNL, getfields |= GTO;
+		if (value("bsdcompat") == NULL && value("interactive")) {
+			if (hp->h_bcc == NULL && value("askbcc"))
+				t &= ~GNL, getfields |= GBCC;
+			if (hp->h_cc == NULL && value("askcc"))
+				t &= ~GNL, getfields |= GCC;
+		}
+		if (printheaders) {
+			puthead(hp, stdout, t, CONV_TODISP, NULL, NULL);
+			fflush(stdout);
+		}
 	}
 
 	/*
@@ -551,7 +569,7 @@ The following ~ escapes are defined:\n\
 
 	if (!sigsetjmp(colljmp, 1)) {
 		if (getfields)
-			grabh(hp, getfields);
+			grabh(hp, getfields, 1);
 		if (quotefile != NULL) {
 			if (include_file(NULL, quotefile, &lc, &cc, 1) != 0)
 				goto err;
@@ -572,7 +590,8 @@ cont:
 			fflush(stdout);
 		}
 	}
-	if (value("interactive") == NULL && tildeflag <= 0 && !is_a_tty[0]) {
+	if (value("interactive") == NULL && tildeflag <= 0 && !is_a_tty[0] &&
+			!tflag) {
 		/*
 		 * No tilde escapes, interrupts not expected. Copy
 		 * standard input the simple way.
@@ -598,6 +617,14 @@ cont:
 				continue;
 			}
 			break;
+		}
+		if (tflag && count == 0) {
+			rewind(collf);
+			if (makeheader(collf, hp) != OKAY)
+				goto err;
+			rewind(collf);
+			tflag = 0;
+			continue;
 		}
 		eofcount = 0;
 		hadintr = 0;
@@ -676,7 +703,8 @@ cont:
 			 * Grab a bunch of headers.
 			 */
 			do
-				grabh(hp, GTO|GSUBJECT|GCC|GBCC);
+				grabh(hp, GTO|GSUBJECT|GCC|GBCC,
+						value("bsdcompat") != NULL);
 			while (hp->h_to == NULL);
 			goto cont;
 		case 't':
@@ -829,7 +857,7 @@ cont:
 			 * Collect output as new message.
 			 */
 			rewind(collf);
-			mespipe(collf, &linebuf[2]);
+			mespipe(&linebuf[2]);
 			goto cont;
 		case 'v':
 		case 'e':
@@ -839,7 +867,7 @@ cont:
 			 * 'v' means to use VISUAL
 			 */
 			rewind(collf);
-			mesedit(collf, c);
+			mesedit(c, value("editheaders") ? hp : NULL);
 			goto cont;
 		}
 	}
@@ -925,22 +953,55 @@ exwrite(name, fp, f)
 	return(0);
 }
 
+static enum okay
+makeheader(fp, hp)
+	FILE *fp;
+	struct header *hp;
+{
+	char *tempEdit;
+	FILE *nf;
+	int c;
+
+	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == NULL) {
+		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));
+		Fclose(nf);
+		unlink(tempEdit);
+		Ftfree(&tempEdit);
+		return STOP;
+	}
+	unlink(tempEdit);
+	Ftfree(&tempEdit);
+	extract_header(fp, hp);
+	while ((c = sgetc(fp)) != EOF)
+		sputc(c, nf);
+	if (fp != collf)
+		Fclose(collf);
+	Fclose(fp);
+	collf = nf;
+	return OKAY;
+}
+
 /*
  * Edit the message being collected on fp.
  * On return, make the edit file the new temp file.
  */
-void
-mesedit(fp, c)
-	FILE *fp;
+static void
+mesedit(c, hp)
 	int c;
+	struct header *hp;
 {
-	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
-	FILE *nf = run_editor(fp, (off_t)-1, c, 0);
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
+	FILE *nf = run_editor(collf, (off_t)-1, c, 0, NULL, hp);
 
-	if (nf != (FILE *)NULL) {
-		fseek(nf, 0L, SEEK_END);
-		collf = nf;
-		Fclose(fp);
+	if (nf != NULL) {
+		if (hp) {
+			rewind(nf);
+			makeheader(nf, hp);
+		} else {
+			fseek(nf, 0L, SEEK_END);
+			Fclose(collf);
+			collf = nf;
+		}
 	}
 	(void) safe_signal(SIGINT, sigint);
 }
@@ -952,12 +1013,11 @@ mesedit(fp, c)
  * Sh -c must return 0 to accept the new message.
  */
 static void
-mespipe(fp, cmd)
-	FILE *fp;
+mespipe(cmd)
 	char cmd[];
 {
 	FILE *nf;
-	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *tempEdit;
 	char *shell;
 
@@ -965,7 +1025,7 @@ mespipe(fp, cmd)
 		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));
 		goto out;
 	}
-	fflush(fp);
+	fflush(collf);
 	(void) unlink(tempEdit);
 	Ftfree(&tempEdit);
 	/*
@@ -975,7 +1035,7 @@ mespipe(fp, cmd)
 	if ((shell = value("SHELL")) == NULL)
 		shell = PATH_CSHELL;
 	if (run_command(shell,
-	    0, fileno(fp), fileno(nf), "-c", cmd, NULL) < 0) {
+	    0, fileno(collf), fileno(nf), "-c", cmd, NULL) < 0) {
 		(void) Fclose(nf);
 		goto out;
 	}
@@ -989,8 +1049,8 @@ mespipe(fp, cmd)
 	 * Take new files.
 	 */
 	(void) fseek(nf, 0L, SEEK_END);
+	(void) Fclose(collf);
 	collf = nf;
-	(void) Fclose(fp);
 out:
 	(void) safe_signal(SIGINT, sigint);
 }
@@ -1057,7 +1117,7 @@ static RETSIGTYPE
 collstop(s)
 	int s;
 {
-	signal_handler_t old_action = safe_signal(s, SIG_DFL);
+	sighandler_type old_action = safe_signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);

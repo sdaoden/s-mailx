@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.3 (gritter) 9/1/02";
+static char sccsid[] = "@(#)aux.c	2.18 (gritter) 11/1/02";
 #endif
 #endif /* not lint */
 
@@ -57,7 +57,7 @@ static char	*is_hfield __P((char [], char[], char *));
 static char	*skip_comment __P((char *));
 static char	*name1 __P((struct message *, int));
 static int	charcount __P((char *, int));
-static void	out_of_memory __P((void));
+static time_t	combinetime __P((int, int, int, int, int, int));
 
 /*
  * Return a pointer to a dynamic copy of the argument.
@@ -203,12 +203,83 @@ argcount(argv)
 	return ap - argv - 1;
 }
 
+void
+extract_header(fp, hp)
+	FILE *fp;
+	struct header *hp;
+{
+	char *linebuf = NULL;
+	size_t linesize = 0;
+	int seenfields = 0;
+	char *colon, *cp;
+	struct header nh;
+	struct header *hq = &nh;
+	int lc, c;
+
+	hq->h_to = NULL;
+	hq->h_cc = NULL;
+	hq->h_bcc = NULL;
+	hq->h_subject = NULL;
+	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++);
+	rewind(fp);
+	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
+		if (is_hfield(linebuf, colon, "to") != NULL) {
+			seenfields++;
+			hq->h_to = checkaddrs(cat(hq->h_to,
+						extract(&colon[1], GTO)));
+		} else if (is_hfield(linebuf, colon, "cc") != NULL) {
+			seenfields++;
+			hq->h_cc = checkaddrs(cat(hq->h_cc,
+						extract(&colon[1], GCC)));
+		} else if (is_hfield(linebuf, colon, "bcc") != NULL) {
+			seenfields++;
+			hq->h_bcc = checkaddrs(cat(hq->h_bcc,
+						extract(&colon[1], GBCC)));
+		} else if (is_hfield(linebuf, colon, "subject") != NULL ||
+				is_hfield(linebuf, colon, "subj") != NULL) {
+			seenfields++;
+			for (cp = &colon[1]; blankchar(*cp & 0377); cp++);
+			hq->h_subject = hq->h_subject ?
+				save2str(hq->h_subject, cp) :
+				savestr(cp);
+		} else
+			fprintf(stderr, catgets(catd, CATSET, 266,
+					"Ignoring header field \"%s\"\n"),
+					linebuf);
+	}
+	/*
+	 * In case the blank line after the header has been edited out.
+	 * Otherwise, fetch the header separator.
+	 */
+	if (linebuf) {
+		if (linebuf[0] != '\0') {
+			for (cp = linebuf; *(++cp) != '\0'; );
+			fseek(fp, (long)-(1 + cp - linebuf), SEEK_CUR);
+		} else {
+			if ((c = getc(fp)) != '\n' && c != EOF)
+				ungetc(c, fp);
+		}
+	}
+	if (seenfields) {
+		hp->h_to = hq->h_to;
+		hp->h_cc = hq->h_cc;
+		hp->h_bcc = hq->h_bcc;
+		hp->h_subject = hq->h_subject;
+	} else
+		fprintf(stderr, catgets(catd, CATSET, 267,
+				"Restoring deleted header lines\n"));
+	if (linebuf)
+		free(linebuf);
+}
+
 /*
  * Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).
+ * If mult is zero, return the content of the first matching header
+ * field only, the content of all matching header fields else.
  */
 char *
-hfield(field, mp)
+hfield_mult(field, mp, mult)
 	char field[];
 	struct message *mp;
 {
@@ -219,13 +290,16 @@ hfield(field, mp)
 	char *hfield;
 	char *colon, *oldhfield = NULL;
 
-	ibuf = setinput(mp);
+	if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
+		return NULL;
 	if ((lc = mp->m_lines - 1) < 0)
 		return NULL;
-	if (readline(ibuf, &linebuf, &linesize) < 0) {
-		if (linebuf)
-			free(linebuf);
-		return NULL;
+	if ((mp->m_flag & MNOFROM) == 0) {
+		if (readline(ibuf, &linebuf, &linesize) < 0) {
+			if (linebuf)
+				free(linebuf);
+			return NULL;
+		}
 	}
 	while (lc > 0) {
 		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon))
@@ -234,8 +308,11 @@ hfield(field, mp)
 				free(linebuf);
 			return oldhfield;
 		}
-		if ((hfield = is_hfield(linebuf, colon, field)) != NULL)
+		if ((hfield = is_hfield(linebuf, colon, field)) != NULL) {
 			oldhfield = save2str(hfield, oldhfield);
+			if (mult == 0)
+				break;
+		}
 	}
 	if (linebuf)
 		free(linebuf);
@@ -261,6 +338,9 @@ gethfield(f, linebuf, linesize, rem, colon)
 	char *cp, *cp2;
 	int c;
 
+	if (*linebuf == NULL)
+		*linebuf = srealloc(*linebuf, *linesize = 1);
+	**linebuf = '\0';
 	for (;;) {
 		if (--rem < 0)
 			return -1;
@@ -291,8 +371,12 @@ gethfield(f, linebuf, linesize, rem, colon)
 			rem--;
 			for (cp2 = line2; blankchar(*cp2 & 0377); cp2++);
 			c -= cp2 - line2;
-			if (cp + c >= *linebuf + *linesize - 2)
-				break;
+			if (cp + c >= *linebuf + *linesize - 2) {
+				size_t diff = cp - *linebuf;
+				*linebuf = srealloc(*linebuf,
+						*linesize += c + 2);
+				cp = &(*linebuf)[diff];
+			}
 			*cp++ = ' ';
 			memcpy(cp, cp2, c);
 			cp += c;
@@ -309,7 +393,6 @@ gethfield(f, linebuf, linesize, rem, colon)
  * Check whether the passed line is a header line of
  * the desired breed.  Return the field body, or 0.
  */
-
 static char *
 is_hfield(linebuf, colon, field)
 	char linebuf[], field[];
@@ -354,7 +437,7 @@ i_strcpy(dest, src, size)
 static	int	ssp;			/* Top of file stack */
 struct sstack {
 	FILE	*s_file;		/* File we were in. */
-	int	s_cond;			/* Saved state of conditionals */
+	enum condition	s_cond;		/* Saved state of conditionals */
 	int	s_loading;		/* Loading .mailrc, etc. */
 } sstack[NOFILE];
 
@@ -640,13 +723,17 @@ name1(mp, reptype)
 	FILE *ibuf;
 	int first = 1;
 
-	if ((cp = hfield("from", mp)) != NULL)
+	if ((cp = hfield("from", mp)) != NULL && *cp != '\0')
 		return cp;
-	if (reptype == 0 && (cp = hfield("sender", mp)) != NULL)
+	if (reptype == 0 && (cp = hfield("sender", mp)) != NULL &&
+			*cp != '\0')
 		return cp;
-	ibuf = setinput(mp);
 	namebuf = smalloc(namesize = 1);
 	namebuf[0] = 0;
+	if (mp->m_flag & MNOFROM)
+		goto out;
+	if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
+		goto out;
 	if (readline(ibuf, &linebuf, &linesize) < 0)
 		goto out;
 newname:
@@ -690,11 +777,12 @@ newname:
 		cp++;
 	}
 out:
-	cp = savestr(namebuf);
+	if (*namebuf != '\0' || ((cp = hfield("return-path", mp))) == NULL ||
+			*cp == '\0')
+		cp = savestr(namebuf);
 	if (linebuf)
 		free(linebuf);
-	if (namebuf)
-		free(namebuf);
+	free(namebuf);
 	return cp;
 }
 
@@ -727,16 +815,6 @@ anyof(s1, s2)
 		if (strchr(s2, *s1++))
 			return 1;
 	return 0;
-}
-
-/*
- * Convert c to upper case
- */
-int
-aux_raise(c)
-	int c;
-{
-	return upperconv(c);
 }
 
 /*
@@ -783,7 +861,201 @@ member(realfield, table)
 	return (0);
 }
 
-static void
+/*
+ * Fake Sender for From_ lines if missing, e. g. with POP3.
+ */
+char *
+fakefrom(mp)
+	struct message *mp;
+{
+	char *name;
+
+	if (((name = skin(hfield("return-path", mp))) == NULL ||
+				*name == '\0' ) &&
+			((name = skin(hfield("from", mp))) == NULL ||
+				*name == '\0'))
+		name = "-";
+	return name;
+}
+
+char *
+fakedate(t)
+	time_t t;
+{
+	char *cp, *cq;
+
+	cp = ctime(&t);
+	for (cq = cp; *cq && *cq != '\n'; cq++);
+	*cq = '\0';
+	return savestr(cp);
+}
+
+char *
+nexttoken(cp)
+	char *cp;
+{
+	for (;;) {
+		if (*cp == '\0')
+			return NULL;
+		if (*cp == '(') {
+			int nesting = 0;
+
+			while (*cp != '\0') {
+				switch (*cp++) {
+				case '(':
+					nesting++;
+					break;
+				case ')':
+					nesting--;
+					break;
+				}
+				if (nesting <= 0)
+					break;
+			}
+		} else if (blankchar(*cp & 0377) || *cp == ',')
+			cp++;
+		else
+			break;
+	}
+	return cp;
+}
+
+time_t
+rfctime(date)
+	char *date;
+{
+	char *cp = date, *x;
+	time_t t;
+	int i, year, month, day, hour, minute, second;
+
+	if ((cp = nexttoken(cp)) == NULL)
+		goto invalid;
+	if (alphachar(cp[0] & 0377) && alphachar(cp[1] & 0377) &&
+				alphachar(cp[2] & 0377) && cp[3] == ',') {
+		if ((cp = nexttoken(&cp[4])) == NULL)
+			goto invalid;
+	}
+	day = strtol(cp, &x, 10);
+	if ((cp = nexttoken(x)) == NULL)
+		goto invalid;
+	for (i = 0; month_names[i]; i++) {
+		if (strncmp(cp, month_names[i], 3) == 0)
+			break;
+	}
+	if (month_names[i] == NULL)
+		goto invalid;
+	month = i + 1;
+	if ((cp = nexttoken(&cp[3])) == NULL)
+		goto invalid;
+	year = strtol(cp, &x, 10);
+	if ((cp = nexttoken(x)) == NULL)
+		goto invalid;
+	hour = strtol(cp, &x, 10);
+	if (*x != ':')
+		goto invalid;
+	cp = &x[1];
+	minute = strtol(cp, &x, 10);
+	if (*x == ':') {
+		cp = &x[1];
+		second = strtol(cp, &x, 10);
+	} else
+		second = 0;
+	if ((t = combinetime(year, month, day, hour, minute, second)) ==
+			(time_t)-1)
+		goto invalid;
+	if ((cp = nexttoken(x)) != NULL) {
+		int sign = -1;
+		char buf[3];
+
+		switch (*cp) {
+		case '-':
+			sign = 1;
+			/*FALLTHRU*/
+		case '+':
+			cp++;
+		}
+		if (digitchar(cp[0] & 0377) && digitchar(cp[1] & 0377) &&
+				digitchar(cp[2] & 0377) &&
+				digitchar(cp[3] & 0377)) {
+			buf[2] = '\0';
+			buf[0] = cp[0];
+			buf[1] = cp[1];
+			t += strtol(buf, NULL, 10) * sign * 3600;
+			buf[0] = cp[2];
+			buf[1] = cp[3];
+			t += strtol(buf, NULL, 10) * sign * 60;
+		}
+	}
+	return t;
+invalid:
+	return 0;
+}
+
+#define	leapyear(year)	((year % 100 ? year : year / 100) % 4 == 0)
+
+static time_t
+combinetime(year, month, day, hour, minute, second)
+{
+	time_t t;
+
+	if (second < 0 || minute < 0 || hour < 0 || day < 1)
+		return -1;
+	t = second + minute * 60 + hour * 3600 + (day - 1) * 86400;
+	if (year < 70)
+		year += 2000;
+	else if (year < 1900)
+		year += 1900;
+	if (month > 1)
+		t += 86400 * 31;
+	if (month > 2)
+		t += 86400 * (leapyear(year) ? 29 : 28);
+	if (month > 3)
+		t += 86400 * 31;
+	if (month > 4)
+		t += 86400 * 30;
+	if (month > 5)
+		t += 86400 * 31;
+	if (month > 6)
+		t += 86400 * 30;
+	if (month > 7)
+		t += 86400 * 31;
+	if (month > 8)
+		t += 86400 * 31;
+	if (month > 9)
+		t += 86400 * 30;
+	if (month > 10)
+		t += 86400 * 31;
+	if (month > 11)
+		t += 86400 * 30;
+	year -= 1900;
+	t += (year - 70) * 31536000 + ((year - 69) / 4) * 86400 -
+		((year - 1) / 100) * 86400 + ((year + 299) / 400) * 86400;
+	return t;
+}
+
+enum protocol
+which_protocol(name)
+	const char *name;
+{
+	register const char *cp;
+
+	for (cp = name; *cp && *cp != ':'; cp++);
+	if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+		if (strncmp(name, "pop3://", 7) == 0)
+			return PROTO_POP3;
+		if (strncmp(name, "pop3s://", 8) == 0)
+#ifdef	USE_SSL
+			return PROTO_POP3;
+#else	/* !USE_SSL */
+			fprintf(stderr, catgets(catd, CATSET, 225,
+					"No SSL support compiled in.\n"));
+#endif	/* !USE_SSL */
+		return PROTO_UNKNOWN;
+	} else
+		return PROTO_FILE;
+}
+
+void
 out_of_memory()
 {
 	panic("no memory");

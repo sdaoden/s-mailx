@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.3 (gritter) 10/11/02";
+static char sccsid[] = "@(#)lex.c	2.16 (gritter) 11/8/02";
 #endif
 #endif /* not lint */
 
@@ -54,7 +54,6 @@ static char sccsid[] = "@(#)lex.c	2.3 (gritter) 10/11/02";
 
 static char	*prompt;
 
-static void	setmsize __P((int));
 static const struct cmd	*lex __P((char []));
 static int	is_prefix __P((char *, char *));
 static void	intr __P((int));
@@ -76,17 +75,30 @@ setfile(name, newmail)
 	FILE *ibuf;
 	int i;
 	struct stat stb;
-	char isedit = *name != '%';
+	char isedit;
 	char *who = name[1] ? name + 1 : myname;
 	static int shudclob;
-	char *tempMesg;
 	extern int errno;
 	size_t offset;
-	int omsgcount;
+	int omsgcount = 0;
+	struct shortcut *sh;
 
+	isedit = *name != '%' && ((sh = get_shortcut(name)) == NULL ||
+			*sh->sh_long != '%');
 	if ((name = expand(name)) == NULL)
 		return -1;
 
+	switch (which_protocol(name)) {
+	case PROTO_FILE:
+		break;
+	case PROTO_POP3:
+		shudclob = 1;
+		return pop3_setfile(name, newmail, isedit);
+	case PROTO_UNKNOWN:
+		fprintf(stderr, catgets(catd, CATSET, 217,
+				"Cannot handle protocol: %s\n"), name);
+		return -1;
+	}
 	if ((ibuf = Fopen(name, "r")) == (FILE *)NULL) {
 		if ((!isedit && errno == ENOENT) || newmail)
 			goto nomail;
@@ -137,45 +149,28 @@ setfile(name, newmail)
 	 */
 
 	if (!newmail) {
-		readonly = 0;
+		mb.mb_type = MB_FILE;
+		mb.mb_perm = MB_DELE|MB_EDIT;
 		if ((i = open(name, O_WRONLY)) < 0)
-			readonly++;
+			mb.mb_perm = 0;
 		else
 			close(i);
 		if (shudclob) {
-			fclose(itf);
-			fclose(otf);
+			if (mb.mb_itf) {
+				fclose(mb.mb_itf);
+				mb.mb_itf = NULL;
+			}
+			if (mb.mb_otf) {
+				fclose(mb.mb_otf);
+				mb.mb_otf = NULL;
+			}
 		}
 		shudclob = 1;
 		edit = isedit;
-		strncpy(prevfile, mailname, PATHSIZE);
-		prevfile[PATHSIZE-1]='\0';
-		if (name != mailname) {
-			strncpy(mailname, name, PATHSIZE);
-			mailname[PATHSIZE-1]='\0';
-		}
-		if ((otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == (FILE *)NULL) {
-			perror(catgets(catd, CATSET, 87,
-						"temporary mail message file"));
-			exit(1);
-		}
-		(void) fcntl(fileno(otf), F_SETFD, FD_CLOEXEC);
-		if ((itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
-			perror(tempMesg);
-			exit(1);
-		}
-		(void) fcntl(fileno(itf), F_SETFD, FD_CLOEXEC);
-		rm(tempMesg);
-		Ftfree(&tempMesg);
-		msgcount = 0;
-		if (message) {
-			free(message);
-			message = NULL;
-			msgspace = 0;
-		}
+		initbox(name);
 		offset = 0;
 	} else /* newmail */{
-		fseek(otf, 0L, SEEK_END);
+		fseek(mb.mb_otf, 0L, SEEK_END);
 		fseek(ibuf, mailsize, SEEK_SET);
 		offset = mailsize;
 		omsgcount = msgcount;
@@ -210,7 +205,7 @@ nomail:
 				msgcount - omsgcount);
 		if (value("header"))
 			while (++omsgcount <= msgcount)
-				printhead(omsgcount);
+				printhead(omsgcount, stdout);
 	}
 	return(0);
 }
@@ -254,7 +249,8 @@ commands()
 						|| value("newmail"))) {
 				struct stat st;
 
-				if (stat(mailname, &st) == 0 &&
+				if (mb.mb_type == MB_FILE &&
+						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) {
 					struct message *odot = dot;
 					int odid = did_print_dot;
@@ -356,7 +352,10 @@ execute(linebuf, contxt, linesize)
 		return 0;
 	}
 	cp2 = word;
-	while (*cp && strchr(" \t0123456789$^.:/-+*'\"", *cp) == NULL)
+	if (*cp != '|') {
+		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;", *cp) == NULL)
+			*cp2++ = *cp++;
+	} else
 		*cp2++ = *cp++;
 	*cp2 = '\0';
 
@@ -385,7 +384,10 @@ execute(linebuf, contxt, linesize)
 	 */
 
 	if ((com->c_argtype & F) == 0) {
-		if ((cond == CRCV && !rcvmode) || (cond == CSEND && rcvmode)) {
+		if ((cond == CRCV && !rcvmode) ||
+				(cond == CSEND && rcvmode) ||
+				(cond == CTERM && !is_a_tty[0]) ||
+				(cond == CNONTERM && is_a_tty[0])) {
 			ac_free(word);
 			return(0);
 		}
@@ -409,7 +411,7 @@ execute(linebuf, contxt, linesize)
 				com->c_name);
 		goto out;
 	}
-	if (readonly && com->c_argtype & W) {
+	if ((mb.mb_perm & MB_DELE) == 0 && com->c_argtype & W) {
 		printf(catgets(catd, CATSET, 94,
 		"May not execute \"%s\" -- message file is read only\n"),
 		   com->c_name);
@@ -420,7 +422,13 @@ execute(linebuf, contxt, linesize)
 			"Cannot recursively invoke \"%s\"\n"), com->c_name);
 		goto out;
 	}
-	switch (com->c_argtype & ~(F|P|I|M|T|W|R)) {
+	if (mb.mb_type == MB_VOID && com->c_argtype & A) {
+		printf(catgets(catd, CATSET, 257,
+			"Cannot execute \"%s\" without active mailbox\n"),
+				com->c_name);
+		goto out;
+	}
+	switch (com->c_argtype & ~(F|P|I|M|T|W|R|A)) {
 	case MSGLIST:
 		/*
 		 * A message list defaulting to nearest forward
@@ -433,10 +441,10 @@ execute(linebuf, contxt, linesize)
 		}
 		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
 			break;
-		if (c  == 0) {
-			*msgvec = first(com->c_msgflag,
-				com->c_msgmask);
-			msgvec[1] = 0;
+		if (c == 0) {
+			if ((*msgvec = first(com->c_msgflag, com->c_msgmask))
+					!= 0)
+				msgvec[1] = 0;
 		}
 		if (*msgvec == 0) {
 			printf(catgets(catd, CATSET, 97,
@@ -537,7 +545,7 @@ out:
  * Set the size of the message vector used to construct argument
  * lists to message list functions.
  */
-static void
+void
 setmsize(sz)
 	int sz;
 {
@@ -623,7 +631,7 @@ static RETSIGTYPE
 stop(s)
 	int s;
 {
-	signal_handler_t old_action = safe_signal(s, SIG_DFL);
+	sighandler_type old_action = safe_signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);
@@ -682,6 +690,8 @@ newfileinfo()
 	int u, n, mdot, d, s;
 	char fname[PATHSIZE], zname[PATHSIZE], *ename;
 
+	if (mb.mb_type == MB_VOID)
+		return 1;
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MNEW)
 			break;
@@ -728,7 +738,7 @@ newfileinfo()
 		printf(catgets(catd, CATSET, 108, " %d deleted"), d);
 	if (s > 0)
 		printf(catgets(catd, CATSET, 109, " %d saved"), s);
-	if (readonly)
+	if (mb.mb_perm == 0)
 		printf(catgets(catd, CATSET, 110, " [Read only]"));
 	printf("\n");
 	return(mdot);
@@ -767,4 +777,41 @@ load(name)
 	sourcing = 0;
 	input = oldin;
 	Fclose(in);
+}
+
+void
+initbox(name)
+	const char *name;
+{
+	char *tempMesg;
+
+	if (mb.mb_type != MB_VOID) {
+		strncpy(prevfile, mailname, PATHSIZE);
+		prevfile[PATHSIZE-1]='\0';
+	}
+	if (name != mailname) {
+		strncpy(mailname, name, PATHSIZE);
+		mailname[PATHSIZE-1]='\0';
+	}
+	if ((mb.mb_otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == (FILE *)NULL) {
+		perror(catgets(catd, CATSET, 87,
+					"temporary mail message file"));
+		exit(1);
+	}
+	(void) fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
+	if ((mb.mb_itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
+		perror(tempMesg);
+		exit(1);
+	}
+	(void) fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
+	rm(tempMesg);
+	Ftfree(&tempMesg);
+	msgcount = 0;
+	if (message) {
+		free(message);
+		message = NULL;
+		msgspace = 0;
+	}
+	prevdot = NULL;
+	dot = NULL;
 }

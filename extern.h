@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.6 (gritter) 10/11/02
+ *	Sccsid @(#)extern.h	2.22 (gritter) 11/8/02
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -48,17 +48,18 @@ FILE	*safe_fopen __P((char *, char *));
 FILE	*Fdopen __P((int, char *));
 FILE	*Fopen __P((char *, char *));
 FILE	*Popen __P((char *, char *, char *, int));
-FILE	*collect __P((struct header *, int, struct message*, char *));
-char	*detract __P((struct name *, int));
+FILE	*collect __P((struct header *, int, struct message*, char *, int));
+char	*detract __P((struct name *, enum gfield));
 char	*expand __P((char *));
 char	*getdeadletter __P((void));
 char	*getname __P((int));
-char	*hfield __P((char [], struct message *));
+char	*hfield_mult __P((char [], struct message *, int));
+#define	hfield(a, b)	hfield_mult(a, b, 1)
 char	*nameof __P((struct message *, int));
-FILE	*run_editor __P((FILE *, off_t, int, int));
+FILE	*run_editor __P((FILE *, off_t, int, int, char *, struct header *));
 char	*salloc __P((int));
 char	*savestr __P((char *));
-FILE	*setinput __P((struct message *));
+FILE	*setinput __P((struct message *, enum needspec));
 char	*skin __P((char *));
 char	*username __P((void));
 char	*value __P((char []));
@@ -79,7 +80,6 @@ void	 announce __P((int));
 int	 anyof __P((char *, char *));
 int	 argcount __P((char **));
 void	 assign __P((char [], char []));
-int	 aux_raise __P((int));
 int	 blankline __P((char []));
 int	 clobber __P((void *));
 void	 close_all_files __P((void));
@@ -113,7 +113,7 @@ int	 getfold __P((char *, int));
 int	 getmsglist __P((char *, int *, int));
 int	 getrawlist __P((char [], size_t, char **, int));
 int	 getuserid __P((char []));
-int	 grabh __P((struct header *, int));
+int	 grabh __P((struct header *, enum gfield, int));
 int	 group __P((void *));
 int	 ungroup __P((void *));
 int	 hash __P((const char *));
@@ -134,8 +134,8 @@ void	 i_strcpy __P((char *, char *, int));
 void	 load __P((char *));
 int	 mail __P((struct name *,
 	    struct name *, struct name *, struct name *,
-	   	 char *, struct attachment *, char *, int));
-void	 mail1 __P((struct header *, int, struct message *, char *, int));
+	   	 char *, struct attachment *, char *, int, int));
+void	 mail1 __P((struct header *, int, struct message *, char *, int, int));
 int	 mboxit __P((void *));
 int	 member __P((char *, struct ignoretab *));
 int	 messize __P((void *));
@@ -163,8 +163,9 @@ void	 prepare_child __P((sigset_t *, int, int));
 int	 preserve __P((void *));
 void	 prettyprint __P((struct name *));
 void	 printgroup __P((char []));
-void	 printhead __P((int));
-int	 puthead __P((struct header *, FILE *, int, int, char *, char *));
+void	 printhead __P((int, FILE *));
+int	 puthead __P((struct header *, FILE *, enum gfield, int, char *,
+			char *));
 int	 putline __P((FILE *, char *, size_t));
 int	 pversion __P((void *));
 void	 quit __P((void));
@@ -190,7 +191,7 @@ int	 schdir __P((void *));
 int	 screensize __P((void));
 int	 scroll __P((void *));
 int	 send_message __P((struct message *, FILE *,
-			struct ignoretab *, char *, int, off_t *));
+			struct ignoretab *, char *, enum conversion, off_t *));
 int	 sendmail __P((void *));
 int	 Sendmail __P((void *));
 int	 set __P((void *));
@@ -224,16 +225,16 @@ char	*itostr __P((unsigned, unsigned, char *));
 size_t	mime_write_tob64 __P((struct str*, FILE*, int));
 void	mime_fromb64 __P((struct str*, struct str*, int));
 void	mime_fromb64_b __P((struct str*, struct str*, int, FILE*));
-int	mime_getenc __P((char*));
+enum mimeenc	mime_getenc __P((char*));
 int	mime_getcontent __P((char*));
 char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
-void	mime_fromhdr __P((struct str*, struct str*, int));
-size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int, char *,
+void	mime_fromhdr __P((struct str*, struct str*, enum tdflags));
+size_t	mime_write __P((void*, size_t, size_t, FILE*, int, enum tdflags, char *,
 			size_t));
-signal_handler_t safe_signal __P((int, signal_handler_t));
-char	*getcmd __P((char *, int *));
+sighandler_type safe_signal __P((int, sighandler_type));
+char	*laststring __P((char *, int *, int));
 int	forward_msg __P((struct message *, struct name *, int));
 int	smtp_mta __P((char *, struct name *, FILE *));
 char	*nodename __P((void));
@@ -261,6 +262,26 @@ int	readline_restart __P((FILE *, char **, size_t *, size_t));
 #define	readline(a, b, c)	readline_restart(a, b, c, 0)
 int	asccasecmp __P((const char *, const char *));
 int	ascncasecmp __P((const char *, const char *, size_t));
-int	get_mime_convert __P((FILE *, char **, char **, int *));
+int	get_mime_convert __P((FILE *, char **, char **, enum mimeclean *));
 void	newline_appended __P((void));
 int	newmail __P((void *));
+int	pop3_setfile __P((const char *, int, int));
+enum okay	pop3_header __P((struct message *));
+enum okay	pop3_body __P((struct message *));
+void	pop3_quit __P((void));
+int	crlfputs __P((char *, FILE *));
+enum protocol	which_protocol __P((const char *));
+void	initbox __P((const char *));
+void	setmsize __P((int));
+char	*fakefrom __P((struct message *));
+char	*fakedate __P((time_t));
+int	holdbits __P((void));
+enum okay	makembox();
+char	*nexttoken __P((char *));
+enum okay	get_body __P((struct message *));
+int	shortcut __P((void *));
+int	unshortcut __P((void *));
+struct shortcut	*get_shortcut __P((const char *));
+void	out_of_memory __P((void));
+time_t	rfctime __P((char *));
+void	extract_header __P((FILE *, struct header *));

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.2 (gritter) 9/1/02";
+static char sccsid[] = "@(#)smtp.c	2.5 (gritter) 10/27/02";
 #endif
 #endif /* not lint */
 
@@ -56,30 +56,6 @@ static char sccsid[] = "@(#)smtp.c	2.2 (gritter) 9/1/02";
  */
 
 static int verbose;
-
-static int	crlfputs __P((char *, FILE *));
-
-/*
- * This is fputs with conversion to \r\n format.
- * Note that the string's terminating \0 may be overwritten.
- */
-static int
-crlfputs(s, stream)
-char *s;
-FILE *stream;
-{
-	size_t l = strlen(s);
-
-	if (*(s + l - 1) == '\n' && *(s + l - 2) != '\r') {
-		*(s + l - 1) = '\r';
-		*(s + l) = '\n';
-		l = fwrite(s, sizeof *s, l + 1, stream);
-	} else
-		l = fwrite(s, sizeof *s, l, stream);
-	if (l == 0)
-		return EOF;
-	return l;
-}
 
 /*
  * Return our hostname.
@@ -149,6 +125,9 @@ myaddr()
 
 #ifdef	HAVE_SOCKETS
 
+static char	*smtpbuf;
+static size_t	smtpbufsize;
+
 /*
  * Get the SMTP server's answer, expecting value.
  */
@@ -156,13 +135,23 @@ static int
 read_smtp(f, value)
 FILE *f;
 {
-	int oldfl, ret = 5;
-	char b[LINESIZE];
+	int ret;
+	size_t len;
 
-	if (fgets(b, sizeof b, f) != NULL) {
+	do {
+		if (fgetline(&smtpbuf, &smtpbufsize, NULL, &len, f, 0) == NULL
+				|| len < 6) {
+			if (ferror(f))
+				perror(catgets(catd, CATSET, 255,
+						"SMTP read failed"));
+			else
+				fprintf(stderr, catgets(catd, CATSET, 241,
+					"Unexpected EOF on SMTP connection\n"));
+			return 5;
+		}
 		if (verbose)
-			fputs(b, stderr);
-		switch (*b) {
+			fputs(smtpbuf, stderr);
+		switch (*smtpbuf) {
 		case '1': ret = 1; break;
 		case '2': ret = 2; break;
 		case '3': ret = 3; break;
@@ -171,27 +160,17 @@ FILE *f;
 		}
 		if (value != ret)
 			fprintf(stderr, catgets(catd, CATSET, 191,
-					"smtp-server: %s"), b + 4);
-		/*
-		 * Maybe the server has said too much.
-		 */
-		oldfl = fcntl(fileno(f), F_GETFL);
-		fcntl(fileno(f), F_SETFL, oldfl | O_NONBLOCK);
-		while (fgets(b, sizeof b, f) != NULL);
-		fcntl(fileno(f), F_SETFL, oldfl);
-	} else if (ferror(f)) {
-		perror("smtp-read");
-		return 5;
-	}
+					"smtp-server: %s"), smtpbuf);
+	} while (smtpbuf[3] == '-');
 	return ret;
 }
 
 /*
  * Macros for talk_smtp.
  */
-#define	SMTP_ANSWER(x)	fflush(fsi); \
-			if (ferror(fsi)) { \
-				perror("smtp-write"); \
+#define	SMTP_ANSWER(x)	if (ferror(fsi)) { \
+				perror(catgets(catd, CATSET, 256, \
+					"SMTP write error")); \
 				if (b != NULL) \
 					free(b); \
 				return 1; \
@@ -203,9 +182,10 @@ FILE *f;
 				return 1; \
 			}
 
-#define	SMTP_OUT(x)	fputs(x, fsi); \
-			if (verbose) \
-				fprintf(stderr, ">>> %s", x);
+#define	SMTP_OUT(x)	if (verbose) \
+				fprintf(stderr, ">>> %s", x); \
+			fputs(x, fsi); \
+			fflush(fsi);
 
 /*
  * Talk to a SMTP server.
@@ -269,10 +249,7 @@ FILE *fi;
 	unsigned short port = 0;
 	char *portstr;
 
-	if (value("verbose") != NULL)
-		verbose = 1;
-	else
-		verbose = 0;
+	verbose = value("verbose") != NULL;
 	portstr = strchr(server, ':');
 	if (portstr == NULL)
 		portstr = "smtp";
@@ -285,19 +262,25 @@ FILE *fi;
 	}
 	if (port == 0) {
 		if ((sp = getservbyname(portstr, "tcp")) == NULL) {
-			perror("getservbyname");
-			return 1;
+			if (equal(portstr, "smtp"))
+				port = htons(25);
+			else {
+				fprintf(stderr, catgets(catd, CATSET, 251,
+					"unknown service: %s\n"), portstr);
+				return 1;
+			}
 		}
 		port = sp->s_port;
 	} else
 		port = htons(port);
 	if ((hp = gethostbyname(server)) == NULL) {
-		perror("gethostbyname");
+		fprintf(stderr, catgets(catd, CATSET, 252,
+				"could not resolve host: %s\n"));
 		return 1;
 	}
 	pptr = (struct in_addr **) hp->h_addr_list;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror("socket");
+		perror(catgets(catd, CATSET, 253, "could not create socket"));
 		return 1;
 	}
 	memset(&servaddr, 0, sizeof servaddr);
@@ -309,7 +292,7 @@ FILE *fi;
 				"Connecting to %s . . ."), inet_ntoa(**pptr));
 	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
 			!= 0) {
-		perror("connect");
+		perror(catgets(catd, CATSET, 254, "could not connect"));
 		return 1;
 	}
 	if (verbose)
@@ -319,6 +302,11 @@ FILE *fi;
 	ret = talk_smtp(to, fi, fsi, fso);
 	Fclose(fsi);
 	Fclose(fso);
+	if (smtpbuf) {
+		free(smtpbuf);
+		smtpbuf = NULL;
+		smtpbufsize = 0;
+	}
 	return ret;
 }
 #else	/* !HAVE_SOCKETS */

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.2 (gritter) 10/13/02";
+static char sccsid[] = "@(#)popen.c	2.4 (gritter) 10/24/02";
 #endif
 #endif /* not lint */
 
@@ -78,9 +78,9 @@ static int	wait_command __P((int));
 /*
  * Provide BSD-like signal() on all systems.
  */
-signal_handler_t
+sighandler_type
 safe_signal(signum, handler)
-signal_handler_t handler;
+sighandler_type handler;
 {
 	struct sigaction nact, oact;
 
@@ -415,6 +415,7 @@ sigchild(signo)
 	int status;
 	struct child *cp;
 
+again:
 	while ((pid = waitpid(-1, (int*)&status, WNOHANG)) > 0) {
 		cp = findchild(pid);
 		if (cp->free)
@@ -424,6 +425,8 @@ sigchild(signo)
 			cp->status = status;
 		}
 	}
+	if (pid == -1 && errno == EINTR)
+		goto again;
 }
 
 int wait_status;
@@ -494,8 +497,10 @@ int pid;
 	if (!cp->done) {
 		do {
 			term = wait(&wait_status);
+			if (term == -1 && errno == EINTR)
+				continue;
 			if (term == 0 || term == -1)
-			break;
+				break;
 			cp = findchild(term);
 			if (cp->free || term == pid) {
 				delchild(cp);

@@ -1,5 +1,5 @@
 @BOTTOM@
-/* Sccsid: @(#)acconfig.h	2.1 (gritter) 9/1/02 */
+/* Sccsid: @(#)acconfig.h	2.2 (gritter) 10/21/02 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -164,4 +164,8 @@ extern int	optind;
 
 #ifdef	NEED_OPTARG
 extern char	*optarg;
+#endif
+
+#ifndef	USE_SSL
+#undef	USE_SSL
 #endif

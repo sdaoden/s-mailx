@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)head.c	2.2 (gritter) 9/30/02";
+static char sccsid[] = "@(#)head.c	2.4 (gritter) 10/27/02";
 #endif
 #endif /* not lint */
 
@@ -51,7 +51,6 @@ static char sccsid[] = "@(#)head.c	2.2 (gritter) 9/30/02";
  * Routines for processing and detecting headlines.
  */
 static char	*copyin __P((char *, char **));
-static int	cmatch __P((char *, char *));
 static char	*nextword __P((char *, char *));
 
 /*
@@ -60,6 +59,7 @@ static char	*nextword __P((char *, char *));
  * following 'From ' unspecified, so don't care about
  * it.
  */
+/*ARGSUSED 2*/
 int
 is_head(linebuf, linelen)
 	char *linebuf;
@@ -136,6 +136,7 @@ copyin(src, space)
 }
 
 #ifdef	notdef
+static int	cmatch __P((char *, char *));
 /*
  * Test to see if the passed string is a ctime(3) generated
  * date string as documented in the manual.  The template

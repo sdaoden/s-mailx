@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.5 (gritter) 9/6/02";
+static char sccsid[] = "@(#)cmd1.c	2.18 (gritter) 11/22/02";
 #endif
 #endif /* not lint */
 
@@ -59,7 +59,7 @@ static char sccsid[] = "@(#)cmd1.c	2.5 (gritter) 9/6/02";
 static int screen;
 static RETSIGTYPE brokpipe __P((int));
 static int	pipe1 __P((char *, int));
-static int	type1 __P((int *, int, int, int, char *));
+static int	type1 __P((int *, int, int, int, char *, off_t *));
 
 char *
 get_pager()
@@ -101,7 +101,7 @@ headers(v)
 			continue;
 		if (flag++ >= size)
 			break;
-		printhead(mesg);
+		printhead(mesg, stdout);
 	}
 	if (flag == 0) {
 		printf(catgets(catd, CATSET, 6, "No more mail.\n"));
@@ -181,6 +181,15 @@ screensize()
 	return scrnheight - 4;
 }
 
+static sigjmp_buf	pipejmp;
+
+/*ARGSUSED*/
+static RETSIGTYPE
+onpipe(signo)
+{
+	siglongjmp(pipejmp, 1);
+}
+
 /*
  * Print out the headlines for each message
  * in the passed message list.
@@ -190,12 +199,36 @@ from(v)
 	void *v;
 {
 	int *msgvec = v;
-	int *ip;
+	int *ip, n;
+	FILE *obuf = stdout;
+	char *cp;
 
+	(void)&obuf;
+	(void)&cp;
+	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
+		for (n = 0, ip = msgvec; *ip; ip++)
+			n++;
+		if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
+			cp = get_pager();
+			if (sigsetjmp(pipejmp, 1))
+				goto endpipe;
+			if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
+				perror(cp);
+				obuf = stdout;
+			} else
+				safe_signal(SIGPIPE, onpipe);
+		}
+	}
 	for (ip = msgvec; *ip != 0; ip++)
-		printhead(*ip);
+		printhead(*ip, obuf);
 	if (--ip >= msgvec)
 		setdot(&message[*ip - 1]);
+endpipe:
+	if (obuf != stdout) {
+		safe_signal(SIGPIPE, SIG_IGN);
+		Pclose(obuf);
+		safe_signal(SIGPIPE, SIG_DFL);
+	}
 	return(0);
 }
 
@@ -204,28 +237,35 @@ from(v)
  * This is a slight improvement to the standard one.
  */
 void
-printhead(mesg)
+printhead(mesg, f)
 	int mesg;
+	FILE *f;
 {
 	struct message *mp;
-	char *headline = NULL, wcount[64], *subjline, dispc, curind;
+	char *headline = NULL, lcount[64], ccount[64], *subjline, dispc, curind;
 	size_t headsize = 0;
-	int headlen;
-	char *pbuf;
+	int headlen = 0;
+	char *pbuf = NULL;
 	struct headline hl;
 	struct str in, out;
 	int subjlen, fromlen, isto = 0;
 	int bsdcompat = (value("bsdcompat") != NULL);
 	char *name, *cp;
+	FILE *ibuf;
 
 	mp = &message[mesg-1];
-	if ((headlen = readline(setinput(mp), &headline, &headsize)) < 0)
-		return;
+	if ((mp->m_flag & MNOFROM) == 0) {
+		if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
+			return;
+		if ((headlen = readline(ibuf, &headline, &headsize)) < 0)
+			return;
+	}
 	if ((subjline = hfield("subject", mp)) == NULL)
 		subjline = hfield("subj", mp);
 	if (subjline == NULL) {
 		subjline = "";
 		out.s = NULL;
+		out.l = 0;
 	} else {
 		in.s = subjline;
 		in.l = strlen(subjline);
@@ -253,11 +293,23 @@ printhead(mesg)
 		dispc = 'U';
 	if (mp->m_flag & MBOX)
 		dispc = 'M';
-	pbuf = ac_alloc(headlen + 1);
-	parse(headline, headlen, &hl, pbuf);
-	snprintf(wcount, sizeof wcount, catgets(catd, CATSET, 10, "%3d/%-5u"),
-			mp->m_lines, (unsigned int)mp->m_size);
-	subjlen = scrnwidth - (bsdcompat ? 50 : 46) - strlen(wcount);
+	if ((mp->m_flag & MNOFROM) == 0) {
+		pbuf = ac_alloc(headlen + 1);
+		parse(headline, headlen, &hl, pbuf);
+	} else {
+		hl.l_from = /*fakefrom(mp);*/NULL;
+		hl.l_tty = NULL;
+		hl.l_date = fakedate(mp->m_time);
+	}
+	if (value("datefield") && (cp = hfield("date", mp)) != NULL)
+		hl.l_date = fakedate(rfctime(cp));
+	if (mp->m_xlines > 0)
+		snprintf(lcount, sizeof lcount, "%3d", mp->m_xlines);
+	else
+		strcpy(lcount, "   ");
+	snprintf(ccount, sizeof ccount, "%-5u", (unsigned)mp->m_xsize);
+	subjlen = scrnwidth - (bsdcompat ? 49 : 45) - strlen(ccount) -
+		strlen(ccount);
 	if (subjlen > out.l)
 		subjlen = out.l;
 	if (Iflag) {
@@ -283,25 +335,28 @@ printhead(mesg)
 	else
 		fromlen = isto ? 15 : 18;
 	if (subjline == NULL || subjlen < 0) {         /* pretty pathetic */
-		printf(bsdcompat ?  catgets(catd, CATSET, 206,
-				"%c%c%3d %s%-*.*s  %16.16s %s\n") :
+		fprintf(f, bsdcompat ?  catgets(catd, CATSET, 206,
+				"%c%c%3d %s%-*.*s  %16.16s %s/%s\n") :
 			catgets(catd, CATSET, 11,
-				"%c%c%3d %s%-*.*s  %16.16s %s\n"),
+				"%c%c%3d %s%-*.*s  %16.16s %s/%s\n"),
 			curind, dispc, mesg, isto ? "To " : "",
-			fromlen, fromlen, name, hl.l_date, wcount);
+			fromlen, fromlen, name, hl.l_date, lcount, ccount);
 	} else {
 		makeprint(subjline, subjlen);
-		printf(bsdcompat ? catgets(catd, CATSET, 207,
-				"%c%c%3d %s%-*.*s  %16.16s %s \"%.*s\"\n") :
+		fprintf(f, bsdcompat ? catgets(catd, CATSET, 207,
+				"%c%c%3d %s%-*.*s  %16.16s %s/%s \"%.*s\"\n") :
 			catgets(catd, CATSET, 12,
-				"%c%c%3d %s%-*.*s  %16.16s %s %.*s\n"),
+				"%c%c%3d %s%-*.*s  %16.16s %s/%s %.*s\n"),
 			curind, dispc, mesg, isto ? "To " : "",
-			fromlen, fromlen, name, hl.l_date, wcount,
+			fromlen, fromlen, name, hl.l_date, lcount, ccount,
 			subjlen, subjline);
 	}
-	if (out.s != NULL) free(out.s);
-	free(headline);
-	ac_free(pbuf);
+	if (out.s)
+		free(out.s);
+	if (headline)
+		free(headline);
+	if (pbuf)
+		ac_free(pbuf);
 }
 
 /*
@@ -350,14 +405,16 @@ pcmdlist(v)
 static sigjmp_buf	pipestop;
 
 static int
-type1(msgvec, doign, page, pipe, cmd)
+type1(msgvec, doign, page, pipe, cmd, tstats)
 int *msgvec;
 char *cmd;
+off_t *tstats;
 {
 	int *ip;
 	struct message *mp;
 	char *cp;
 	int nlines;
+	off_t mstats[2];
 	/*
 	 * Must be static to become excluded from sigsetjmp().
 	 */
@@ -373,14 +430,6 @@ char *cmd;
 	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
 	if (pipe) {
-		if (cmd == NULL) {
-			cmd = value("cmd");
-			if (cmd == NULL || *cmd == '\0') {
-				fputs(catgets(catd, CATSET, 16,
-					"variable cmd not set\n"), stderr);
-				return 1;
-			}
-		}
 		cp = value("SHELL");
 		if (cp == NULL)
 			cp = PATH_CSHELL;
@@ -395,8 +444,14 @@ char *cmd;
 	    (page || (cp = value("crt")) != NULL)) {
 		nlines = 0;
 		if (!page) {
-			for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++)
+			for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
+				if ((message[*ip-1].m_have & HAVE_BODY) == 0) {
+					if ((get_body(&message[*ip - 1])) !=
+							OKAY)
+						return 1;
+				}
 				nlines += message[*ip - 1].m_lines;
+			}
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			cp = get_pager();
@@ -415,10 +470,16 @@ char *cmd;
 		if (value("quiet") == NULL)
 			fprintf(obuf, catgets(catd, CATSET, 17,
 				"Message %2d:\n"), *ip);
-		(void) send_message(mp, obuf, doign ? ignore : 0,
-				    NULL, CONV_TODISP, NULL);
+		(void) send_message(mp, obuf, doign ? ignore : 0, NULL,
+				    pipe && value("piperaw") ?
+				    	CONV_NONE : CONV_TODISP,
+				    mstats);
 		if (pipe && value("page")) {
 			sputc('\f', obuf);
+		}
+		if (tstats) {
+			tstats[0] += mstats[0];
+			tstats[1] += mstats[1];
 		}
 	}
 close_pipe:
@@ -434,10 +495,10 @@ close_pipe:
 }
 
 /*
- * Get the shell command out of the pipe command's arguments.
+ * Get the last, possibly quoted part of linebuf.
  */
 char *
-getcmd(linebuf, flag)
+laststring(linebuf, flag, strip)
 char *linebuf;
 int *flag;
 {
@@ -464,7 +525,9 @@ int *flag;
 	quoted = *(cp - 1);
 	if (quoted == '\'' || quoted == '\"') {
 		cp--;
-		*cp-- = '\0';
+		if (strip)
+			*cp = '\0';
+		cp--;
 		while (cp > linebuf) {
 			if (*cp != quoted) {
 				cp--;
@@ -478,9 +541,12 @@ int *flag;
 				cp--;
 			}
 		}
-		if (*cp == quoted)
-			*cp++ = 0;
-		else
+		if (cp == linebuf)
+			*flag = 0;
+		if (*cp == quoted) {
+			if (strip)
+				*cp++ = 0;
+		} else
 			*flag = 0;
 	} else {
 		while (cp > linebuf && !whitechar(*cp & 0377))
@@ -504,11 +570,19 @@ pipe1(str, doign)
 char *str;
 {
 	char *cmd;
-	int f, *msgvec;
+	int f, *msgvec, ret;
+	off_t stats[2];
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
-	cmd = getcmd(str, &f);
+	if ((cmd = laststring(str, &f, 1)) == NULL) {
+		cmd = value("cmd");
+		if (cmd == NULL || *cmd == '\0') {
+			fputs(catgets(catd, CATSET, 16,
+				"variable cmd not set\n"), stderr);
+			return 1;
+		}
+	}
 	if (!f) {
 		*msgvec = first(0, MMNORM);
 		if (*msgvec == 0) {
@@ -518,7 +592,17 @@ char *str;
 		msgvec[1] = 0;
 	} else if (getmsglist(str, msgvec, 0) < 0)
 		return 1;
-	return type1(msgvec, doign, 0, 1, cmd);
+	printf(catgets(catd, CATSET, 268, "Pipe to: \"%s\"\n"), cmd);
+	stats[0] = stats[1] = 0;
+	if ((ret = type1(msgvec, doign, 0, 1, cmd, stats)) == 0) {
+		printf("\"%s\" ", cmd);
+		if (stats[0] >= 0)
+			printf("%lu", (long)stats[0]);
+		else
+			printf(catgets(catd, CATSET, 27, "binary"));
+		printf("/%lu\n", (long)stats[1]);
+	}
+	return ret;
 }
 
 /*
@@ -529,7 +613,7 @@ more(v)
 	void *v;
 {
 	int *msgvec = v;
-	return (type1(msgvec, 1, 1, 0, (char *)NULL));
+	return (type1(msgvec, 1, 1, 0, NULL, NULL));
 }
 
 /*
@@ -541,7 +625,7 @@ More(v)
 {
 	int *msgvec = v;
 
-	return (type1(msgvec, 0, 1, 0, (char *)NULL));
+	return (type1(msgvec, 0, 1, 0, NULL, NULL));
 }
 
 /*
@@ -553,7 +637,7 @@ type(v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 1, 0, 0, (char *)NULL));
+	return(type1(msgvec, 1, 0, 0, NULL, NULL));
 }
 
 /*
@@ -565,7 +649,7 @@ Type(v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, (char *)NULL));
+	return(type1(msgvec, 0, 0, 0, NULL, NULL));
 }
 
 /*
@@ -634,7 +718,11 @@ top(v)
 		if (value("quiet") == NULL)
 			printf(catgets(catd, CATSET, 19,
 					"Message %2d:\n"), *ip);
-		ibuf = setinput(mp);
+		if (mp->m_flag & MNOFROM)
+			printf("From %s %s\n", fakefrom(mp),
+					fakedate(mp->m_time));
+		if ((ibuf = setinput(mp, NEED_BODY)) == NULL)	/* XXX could use TOP */
+			return 1;
 		c = mp->m_lines;
 		if (!lineb)
 			printf("\n");

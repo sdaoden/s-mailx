@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.9 (gritter) 9/17/02";
+static char sccsid[]  = "@(#)mime.c	2.11 (gritter) 10/26/02";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -82,7 +82,7 @@ static int	is_this_enc __P((const char *, const char *));
 static char	*mime_tline __P((char *, char *));
 static char	*mime_type __P((char *, char *));
 static int	gettextconversion __P((void));
-static int	mime_isclean __P((FILE*));
+static enum mimeclean	mime_isclean __P((FILE*));
 static void	invalid_seq __P((int));
 static char	*ctohex __P((int, char *));
 static size_t	mime_write_toqp __P((struct str *, FILE *, int (*)(int)));
@@ -90,7 +90,7 @@ static void	mime_str_toqp __P((struct str *, struct str *, int (*)(int)));
 static void	mime_fromqp __P((struct str *, struct str *, int));
 static size_t	mime_write_tohdr __P((struct str *, FILE *));
 static size_t	mime_write_tohdr_a __P((struct str *, FILE *));
-static size_t	fwrite_td __P((void *, size_t, size_t, FILE *, int,
+static size_t	fwrite_td __P((void *, size_t, size_t, FILE *, enum tdflags,
 			char *, size_t));
 
 /*
@@ -140,9 +140,9 @@ size_t nwcs;
 	size_t n = nwcs;
 	register int c;
 
-	mbtowc(pwcs, NULL, MB_CUR_MAX);
+	mbtowc(pwcs, NULL, mb_cur_max);
 	while (*s && n) {
-		if ((c = mbtowc(pwcs, s, MB_CUR_MAX)) < 0) {
+		if ((c = mbtowc(pwcs, s, mb_cur_max)) < 0) {
 			s++;
 			*pwcs = L'?';
 		} else
@@ -152,7 +152,7 @@ size_t nwcs;
 	}
 	if (n)
 		*pwcs = L'\0';
-	mbtowc(pwcs, NULL, MB_CUR_MAX);
+	mbtowc(pwcs, NULL, mb_cur_max);
 	return nwcs - n;
 }
 #endif	/* HAVE_MBTOWC && HAVE_ISWPRINT */
@@ -186,9 +186,7 @@ size_t l;
 #endif
 	if (*s == '\0' || l == (size_t) 0)
 		return 0;
-#ifdef	MB_CUR_MAX
-	if (MB_CUR_MAX > 1) {
-#endif
+	if (mb_cur_max > 1) {
 		w = ac_alloc((l + 1) * sizeof *w);
 		t = s;
 		if ((sz = xmbstowcs(w, t, l + 1)) == (size_t)-1) {
@@ -204,11 +202,7 @@ size_t l;
 		ret = wcstombs(s, p, l + 1);
 		ac_free(w);
 		return ret;
-#ifdef	MB_CUR_MAX
 	}
-#else	/* !MB_CUR_MAX */
-	/*NOTREACHED*/
-#endif	/* !MB_CUR_MAX */
 #endif	/* HAVE_MBTOWC && HAVE_ISWPRINT */
 	sz = l;
 	for (; l > 0 && *s; s++, l--) {
@@ -511,7 +505,7 @@ is_this_enc(const char *line, const char *encoding)
 /*
  * Get the mime encoding from a Content-Transfer-Encoding header line.
  */
-int
+enum mimeenc
 mime_getenc(h)
 char *h;
 {
@@ -747,13 +741,13 @@ char *name;
 /*
  * Check file contents.
  */
-static int
+static enum mimeclean
 mime_isclean(f)
 FILE *f;
 {
 	long initial_pos;
 	unsigned curlen = 1, maxlen = 0;
-	int isclean = 0;
+	enum mimeclean isclean = 0;
 	int c;
 
 	initial_pos = ftell(f);
@@ -813,7 +807,7 @@ get_mime_convert(fp, contenttype, charset, isclean)
 FILE *fp;
 char **contenttype;
 char **charset;
-int *isclean;
+enum mimeclean *isclean;
 {
 	int convert;
 
@@ -1024,6 +1018,7 @@ struct str *in, *out;
 void
 mime_fromhdr(in, out, flags)
 struct str *in, *out;
+enum tdflags flags;
 {
 	char *p, *q, *op, *upper, *cs, *cbeg, *tcs;
 	struct str cin, cout;
@@ -1410,6 +1405,7 @@ void *ptr;
 char *prefix;
 size_t size, nmemb, prefixlen;
 FILE *f;
+enum tdflags flags;
 {
 	char *upper;
 	size_t sz, csize;
@@ -1465,6 +1461,7 @@ void *ptr;
 size_t size, nmemb, prefixlen;
 char *prefix;
 FILE *f;
+enum tdflags dflags;
 {
 	struct str in, out;
 	size_t sz, csize;

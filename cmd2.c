@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.2 (gritter) 9/1/02";
+static char sccsid[] = "@(#)cmd2.c	2.8 (gritter) 11/20/02";
 #endif
 #endif /* not lint */
 
@@ -58,7 +58,7 @@ static char sccsid[] = "@(#)cmd2.c	2.2 (gritter) 9/1/02";
  */
 static int	igcomp __P((const void *, const void *));
 static int	save1 __P((char [], int, char *, struct ignoretab *, int, int));
-static char	*snarf __P((char [], int *));
+static char	*snarf __P((char [], int *, int));
 static int	delm __P((int []));
 #ifdef	DEBUG_COMMANDS
 static void	clob1 __P((int));
@@ -222,7 +222,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		for (cp = str; *cp && blankchar(*cp & 0377); cp++);
 		f = (*cp != '\0');
 	} else {
-		if ((file = snarf(str, &f)) == NULL)
+		if ((file = snarf(str, &f, convert != CONV_TOFILE)) == NULL)
 			return(1);
 	}
 	if (!f) {
@@ -261,25 +261,50 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		newfile = 1;
 		disp = catgets(catd, CATSET, 26, "[New file]");
 	}
-	if ((obuf = Fopen(file, "a")) == (FILE *)NULL) {
-		perror(NULL);
-		return(1);
-	}
-	if (newfile == 0) {
-		/* always insert a newline since some other mail readers
-		 * (notably Netscape 4.7) use this folder convention
-		 */
-		sputc('\n', obuf);
+	if ((obuf = Fopen(file, "a+")) == NULL) {
+		if ((obuf = Fopen(file, "wx")) == NULL) {
+			perror(file);
+			return(1);
+		}
+	} else {
+		if (!newfile && fseek(obuf, -2L, SEEK_END) == 0) {
+			char buf[2];
+			int prependnl = 0;
+
+			switch (fread(buf, sizeof *buf, 2, obuf)) {
+			case 2:
+				if (buf[1] != '\n') {
+					prependnl = 1;
+					break;
+				}
+				/*FALLTHRU*/
+			case 1:
+				if (buf[0] != '\n')
+					prependnl = 1;
+				break;
+			default:
+				if (ferror(obuf)) {
+					perror(file);
+					return(1);
+				}
+				prependnl = 0;
+			}
+			fflush(obuf);
+			if (prependnl) {
+				sputc('\n', obuf);
+				fflush(obuf);
+			}
+		}
 	}
 	tstats[0] = tstats[1] = 0;
 	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
-		touch(mp);
 		if (send_message(mp, obuf, ignore, NULL, convert, mstats) < 0) {
 			perror(file);
 			Fclose(obuf);
 			return(1);
 		}
+		touch(mp);
 		if (mark)
 			mp->m_flag |= MSAVED;
 		tstats[0] += mstats[0];
@@ -289,7 +314,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	if (ferror(obuf))
 		perror(file);
 	Fclose(obuf);
-	printf("%s %s ", file, disp);
+	printf("\"%s\" %s ", file, disp);
 	if (tstats[0] >= 0)
 		printf("%lu", (long)tstats[0]);
 	else
@@ -315,44 +340,30 @@ swrite(v)
 /*
  * Snarf the file from the end of the command line and
  * return a pointer to it.  If there is no file attached,
- * just return NULL.  Put a null in front of the file
+ * return the mbox file.  Put a null in front of the file
  * name so that the message list processing won't see it,
  * unless the file name is the only thing on the line, in
  * which case, return 0 in the reference flag variable.
  */
 
 static char *
-snarf(linebuf, flag)
+snarf(linebuf, flag, usembox)
 	char linebuf[];
 	int *flag;
 {
 	char *cp;
 
 	*flag = 1;
-	cp = strlen(linebuf) + linebuf - 1;
-
-	/*
-	 * Strip away trailing blanks.
-	 */
-
-	while (cp > linebuf && whitechar(*cp & 0377))
-		cp--;
-	*++cp = 0;
-
-	/*
-	 * Now search for the beginning of the file name.
-	 */
-
-	while (cp > linebuf && !whitechar(*cp & 0377))
-		cp--;
-	if (*cp == '\0') {
-		printf(catgets(catd, CATSET, 28, "No file specified.\n"));
-		return(NULL);
+	if ((cp = laststring(linebuf, flag, 0)) == NULL) {
+		if (usembox) {
+			*flag = 0;
+			return expand("&");
+		} else {
+			printf(catgets(catd, CATSET, 28,
+						"No file specified.\n"));
+			return NULL;
+		}
 	}
-	if (whitechar(*cp & 0377))
-		*cp++ = 0;
-	else
-		*flag = 0;
 	return(cp);
 }
 

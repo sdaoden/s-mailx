@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.5 (gritter) 10/11/02";
+static char sccsid[] = "@(#)cmd3.c	2.15 (gritter) 11/8/02";
 #endif
 #endif /* not lint */
 
@@ -59,6 +59,7 @@ static void	sort __P((char **));
 static int	Respond_internal __P((int [], int));
 static int	forward1 __P((void *, int));
 static RETSIGTYPE	onpipe __P((int));
+static enum okay	delete_shortcut __P((const char *));
 #ifdef	__STDC__
 static int	(*respond_or_Respond(int c))(int *, int);
 #else
@@ -74,7 +75,7 @@ shell(v)
 	void *v;
 {
 	char *str = v;
-	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *shell;
 	char *cmd;
 	size_t cmdsize;
@@ -100,7 +101,7 @@ int
 dosh(v)
 	void *v;
 {
-	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *shell;
 
 	if ((shell = value("SHELL")) == NULL)
@@ -336,7 +337,7 @@ respond_internal(msgvec, recipient_record)
 {
 	struct message *mp;
 	char *cp, *rcv;
-	struct name *np;
+	struct name *np = NULL;
 	struct header head;
 
 	if (msgvec[1] != 0) {
@@ -376,7 +377,7 @@ respond_internal(msgvec, recipient_record)
 	make_ref(mp, &head);
 	head.h_attach = NULL;
 	head.h_smopts = NIL;
-	mail1(&head, 1, mp, NULL, recipient_record);
+	mail1(&head, 1, mp, NULL, recipient_record, 0);
 	return(0);
 }
 
@@ -511,6 +512,9 @@ set(v)
 	FILE *obuf = stdout;
 	int bsdcompat = (value("bsdcompat") != NULL);
 
+	(void)&cp;
+	(void)&ap;
+	(void)&obuf;
 	if (*arglist == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)
 			for (vp = variables[h]; vp != NOVAR; vp = vp->v_link)
@@ -801,7 +805,7 @@ Respond_internal(msgvec, recipient_record)
 	make_ref(mp, &head);
 	head.h_attach = NULL;
 	head.h_smopts = NIL;
-	mail1(&head, 1, mp, NULL, recipient_record);
+	mail1(&head, 1, mp, NULL, recipient_record, 0);
 	return 0;
 }
 
@@ -829,6 +833,10 @@ ifcmd(v)
 
 	case 's': case 'S':
 		cond = CSEND;
+		break;
+
+	case 't': case 'T':
+		cond = CTERM;
 		break;
 
 	default:
@@ -861,6 +869,10 @@ elsecmd(v)
 
 	case CRCV:
 		cond = CSEND;
+		break;
+
+	case CTERM:
+		cond = CNONTERM;
 		break;
 
 	default:
@@ -937,7 +949,7 @@ void *v;
 	str = (char *)v;
 	/*LINTED*/
 	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
-	name = getcmd(str, &f);
+	name = laststring(str, &f, 1);
 	if (name == NULL) {
 		puts(catgets(catd, CATSET, 47, "No recipient specified."));
 		return 1;
@@ -1000,4 +1012,103 @@ void *v;
 		setdot(&message[omsgcount]);
 	}
 	return val;
+}
+
+static void
+list_shortcuts()
+{
+	struct shortcut *s;
+
+	for (s = shortcuts; s; s = s->sh_next)
+		printf("%s=%s\n", s->sh_short, s->sh_long);
+}
+
+int
+shortcut(v)
+	void *v;
+{
+	char **args = (char **)v;
+	struct shortcut *s;
+
+	if (args[0] == NULL) {
+		list_shortcuts();
+		return 0;
+	}
+	if (args[1] == NULL) {
+		fprintf(stderr, catgets(catd, CATSET, 220,
+				"expansion name for shortcut missing\n"));
+		return 1;
+	}
+	if (args[2] != NULL) {
+		fprintf(stderr, catgets(catd, CATSET, 221,
+				"too many arguments\n"));
+		return 1;
+	}
+	if ((s = get_shortcut(args[0])) != NULL) {
+		free(s->sh_long);
+		s->sh_long = sstrdup(args[1]);
+	} else {
+		s = scalloc(1, sizeof *s);
+		s->sh_short = sstrdup(args[0]);
+		s->sh_long = sstrdup(args[1]);
+		s->sh_next = shortcuts;
+		shortcuts = s;
+	}
+	return 0;
+}
+
+struct shortcut *
+get_shortcut(str)
+	const char *str;
+{
+	struct shortcut *s;
+
+	for (s = shortcuts; s; s = s->sh_next)
+		if (strcmp(str, s->sh_short) == 0)
+			break;
+	return s;
+}
+
+static enum okay
+delete_shortcut(str)
+	const char *str;
+{
+	struct shortcut *sp, *sq;
+
+	for (sp = shortcuts, sq = NULL; sp; sq = sp, sp = sp->sh_next) {
+		if (strcmp(sp->sh_short, str) == 0) {
+			free(sp->sh_short);
+			free(sp->sh_long);
+			if (sq)
+				sq->sh_next = sp->sh_next;
+			if (sp == shortcuts)
+				shortcuts = sp->sh_next;
+			free(sp);
+			return OKAY;
+		}
+	}
+	return STOP;
+}
+
+int
+unshortcut(v)
+	void *v;
+{
+	char **args = (char **)v;
+	int errs = 0;
+
+	if (args[0] == NULL) {
+		fprintf(stderr, catgets(catd, CATSET, 222,
+				"need shortcut names to remove\n"));
+		return 1;
+	}
+	while (*args != NULL) {
+		if (delete_shortcut(*args) != OKAY) {
+			errs = 1;
+			fprintf(stderr, catgets(catd, CATSET, 223,
+				"%s: no such shortcut\n"), *args);
+		}
+		args++;
+	}
+	return errs;
 }
