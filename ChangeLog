@@ -1,3 +1,15 @@
+[11.22] released 3/20/05
+* In threaded mode, the thread structure is now shown using line-drawing
+  characters in the header summary. (This looks best on a UTF-8 terminal.)
+* If a message contains both a 'References' and an 'In-Reply-To' header
+  field, 'In-Reply-To' is now preferred for threading and the ',' address.
+* When a message part of content-type text/anything is written with the
+  pipe-type/subtype mechanism, it is now converted to the character encoding
+  of the locale (as it was before 11.14 or so).
+* When using a hostname with a port number attached with SMTP STARTTLS,
+  strip the port number for correct host name verification (Bugreport by
+  Gary E. Rafe).
+
 [11.21] released 2/19/05
 * When mail is sent using SMTP, 'Bcc:' fields are not passed to the
   server anymore (Bugreport by Matthew Fischer.)
