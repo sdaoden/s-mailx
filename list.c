@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.16 (gritter) 6/13/04";
+static char sccsid[] = "@(#)list.c	2.18 (gritter) 8/7/04";
 #endif
 #endif /* not lint */
 
@@ -201,9 +201,12 @@ number:
 			if (beg != 0) {
 				if (check(lexnumber, f))
 					markall_ret(-1)
-				for (i = beg; i <= lexnumber; i++)
-					if (f == MDELETED || (message[i - 1].m_flag & MDELETED) == 0)
+				for (i = beg; i <= lexnumber; i++) {
+					if (message[i-1].m_flag & MHIDDEN)
+						continue;
+					if (f == MDELETED || (message[i-1].m_flag & MDELETED) == 0)
 						mark(i);
+				}
 				beg = 0;
 				break;
 			}
@@ -232,7 +235,8 @@ number:
 						"Referencing beyond EOF\n"));
 					markall_ret(-1)
 				}
-			} while ((message[i - 1].m_flag & MDELETED) != f);
+			} while (message[i-1].m_flag == MHIDDEN ||
+					(message[i-1].m_flag & MDELETED) != f);
 			mark(i);
 			break;
 
@@ -247,7 +251,8 @@ number:
 						"Referencing before 1\n"));
 						markall_ret(-1)
 					}
-				} while ((message[i - 1].m_flag & MDELETED) != f);
+				} while (message[i-1].m_flag & MHIDDEN ||
+						(message[i-1].m_flag & MDELETED) != f);
 				mark(i);
 			}
 			break;
@@ -321,11 +326,14 @@ number:
 	np--;
 	mc = 0;
 	if (star) {
-		for (i = 0; i < msgcount; i++)
+		for (i = 0; i < msgcount; i++) {
+			if (message[i].m_flag & MHIDDEN)
+				continue;
 			if ((message[i].m_flag & MDELETED) == f) {
 				mark(i+1);
 				mc++;
 			}
+		}
 		if (mc == 0) {
 			printf(catgets(catd, CATSET, 119,
 					"No applicable messages.\n"));
@@ -341,9 +349,12 @@ number:
 	 */
 
 	if ((np > namelist || colmod != 0 || id) && mc == 0)
-		for (i = 1; i <= msgcount; i++)
+		for (i = 1; i <= msgcount; i++) {
+			if (message[i-1].m_flag & MHIDDEN)
+				continue;
 			if ((message[i-1].m_flag & MDELETED) == f)
 				mark(i);
+		}
 
 	/*
 	 * If any names were given, go through and eliminate any
@@ -478,7 +489,8 @@ check(mesg, f)
 		return(-1);
 	}
 	mp = &message[mesg-1];
-	if (f != MDELETED && (mp->m_flag & MDELETED) != 0) {
+	if (mp->m_flag & MHIDDEN || (f != MDELETED &&
+				(mp->m_flag & MDELETED) != 0)) {
 		printf(catgets(catd, CATSET, 125,
 			"%d: Inappropriate message\n"), mesg);
 		return(-1);
@@ -758,12 +770,18 @@ first(f, m)
 		return 0;
 	f &= MDELETED;
 	m &= MDELETED;
-	for (mp = dot; mp < &message[msgcount]; mp++)
+	for (mp = dot; mp < &message[msgcount]; mp++) {
+		if (mp->m_flag & MHIDDEN)
+			continue;
 		if ((mp->m_flag & m) == f)
 			return mp - message + 1;
-	for (mp = dot-1; mp >= &message[0]; mp--)
+	}
+	for (mp = dot-1; mp >= &message[0]; mp--) {
+		if (mp->m_flag & MHIDDEN)
+			continue;
 		if ((mp->m_flag & m) == f)
 			return mp - message + 1;
+	}
 	return 0;
 }
 
@@ -950,9 +968,12 @@ metamess(meta, f)
 		/*
 		 * First 'good' message left.
 		 */
-		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+		for (mp = &message[0]; mp < &message[msgcount]; mp++) {
+			if (mp->m_flag & MHIDDEN)
+				continue;
 			if ((mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
+		}
 		printf(catgets(catd, CATSET, 131, "No applicable messages\n"));
 		return(-1);
 
@@ -960,9 +981,12 @@ metamess(meta, f)
 		/*
 		 * Last 'good message left.
 		 */
-		for (mp = &message[msgcount-1]; mp >= &message[0]; mp--)
+		for (mp = &message[msgcount-1]; mp >= &message[0]; mp--) {
+			if (mp->m_flag & MHIDDEN)
+				continue;
 			if ((mp->m_flag & MDELETED) == f)
 				return(mp - &message[0] + 1);
+		}
 		printf(catgets(catd, CATSET, 132, "No applicable messages\n"));
 		return(-1);
 
@@ -971,7 +995,7 @@ metamess(meta, f)
 		 * Current message.
 		 */
 		m = dot - &message[0] + 1;
-		if ((dot->m_flag & MDELETED) != f) {
+		if (dot->m_flag & MHIDDEN || (dot->m_flag & MDELETED) != f) {
 			printf(catgets(catd, CATSET, 133,
 				"%d: Inappropriate message\n"), m);
 			return(-1);
@@ -988,7 +1012,7 @@ metamess(meta, f)
 			return(-1);
 		}
 		m = prevdot - &message[0] + 1;
-		if ((prevdot->m_flag & MDELETED) != f) {
+		if (prevdot->m_flag&MHIDDEN || (prevdot->m_flag&MDELETED)!=f) {
 			printf(catgets(catd, CATSET, 133,
 				"%d: Inappropriate message\n"), m);
 			return(-1);

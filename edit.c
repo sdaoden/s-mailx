@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	2.9 (gritter) 6/13/04";
+static char sccsid[] = "@(#)edit.c	2.11 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -130,12 +130,12 @@ edit1(msgvec, type)
 			fromline = salloc(sz);
 			snprintf(fromline, sz, "From %s %s\n", from, date);
 		}
-		if ((fp = setinput(mp, NEED_BODY)) == NULL)
+		if ((fp = setinput(&mb, mp, NEED_BODY)) == NULL)
 			return 1;
 		fp = run_editor(fp, mp->m_size, type,
 				(mb.mb_perm & MB_EDIT) == 0, fromline, NULL);
-		if (fp != (FILE*)NULL) {
-			(void) fseek(mb.mb_otf, 0L, SEEK_END);
+		if (fp != NULL) {
+			fseek(mb.mb_otf, 0L, SEEK_END);
 			size = ftell(mb.mb_otf);
 			mp->m_block = nail_blockof(size);
 			mp->m_offset = nail_offsetof(size);
@@ -143,17 +143,17 @@ edit1(msgvec, type)
 			mp->m_lines = 0;
 			mp->m_flag |= MODIFY;
 			rewind(fp);
-			while ((c = sgetc(fp)) != EOF) {
+			while ((c = getc(fp)) != EOF) {
 				if (c == '\n')
 					mp->m_lines++;
-				if (sputc(c, mb.mb_otf) == EOF)
+				if (putc(c, mb.mb_otf) == EOF)
 					break;
 			}
 			if (ferror(mb.mb_otf))
 				perror("/tmp");
-			(void) Fclose(fp);
+			Fclose(fp);
 		}
-		(void) safe_signal(SIGINT, sigint);
+		safe_signal(SIGINT, sigint);
 	}
 	if (line)
 		free(line);
@@ -174,7 +174,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 	char *fromline;
 	struct header *hp;
 {
-	FILE *nf = (FILE*)NULL;
+	FILE *nf = NULL;
 	int t;
 	time_t modtime;
 	char *edit;
@@ -182,7 +182,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 	char *tempEdit;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600, 1))
-			== (FILE*)NULL) {
+			== NULL) {
 		perror(catgets(catd, CATSET, 73, "temporary mail edit file"));
 		goto out;
 	}
@@ -192,36 +192,36 @@ run_editor(fp, size, type, readonly, fromline, hp)
 		puthead(hp, nf, GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP,
 				NULL, NULL);
 	if (size >= 0)
-		while (--size >= 0 && (t = sgetc(fp)) != EOF)
-			(void) sputc(t, nf);
+		while (--size >= 0 && (t = getc(fp)) != EOF)
+			putc(t, nf);
 	else
-		while ((t = sgetc(fp)) != EOF)
-			(void) sputc(t, nf);
-	(void) fflush(nf);
+		while ((t = getc(fp)) != EOF)
+			putc(t, nf);
+	fflush(nf);
 	if (fstat(fileno(nf), &statb) < 0)
 		modtime = 0;
 	else
 		modtime = statb.st_mtime;
 	if (ferror(nf)) {
-		(void) Fclose(nf);
+		Fclose(nf);
 		perror(tempEdit);
-		(void) unlink(tempEdit);
+		unlink(tempEdit);
 		Ftfree(&tempEdit);
-		nf = (FILE*)NULL;
+		nf = NULL;
 		goto out;
 	}
 	if (Fclose(nf) < 0) {
 		perror(tempEdit);
-		(void) unlink(tempEdit);
+		unlink(tempEdit);
 		Ftfree(&tempEdit);
-		nf = (FILE*)NULL;
+		nf = NULL;
 		goto out;
 	}
-	nf = (FILE*)NULL;
+	nf = NULL;
 	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
 		edit = type == 'e' ? "ed" : "vi";
 	if (run_command(edit, 0, -1, -1, tempEdit, NULL, NULL) < 0) {
-		(void) unlink(tempEdit);
+		unlink(tempEdit);
 		Ftfree(&tempEdit);
 		goto out;
 	}
@@ -230,7 +230,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 	 * temporary and return.
 	 */
 	if (readonly) {
-		(void) unlink(tempEdit);
+		unlink(tempEdit);
 		Ftfree(&tempEdit);
 		goto out;
 	}
@@ -240,7 +240,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 		goto out;
 	}
 	if (modtime == statb.st_mtime) {
-		(void) unlink(tempEdit);
+		unlink(tempEdit);
 		Ftfree(&tempEdit);
 		goto out;
 	}
@@ -250,7 +250,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 	if ((nf = Fopen(tempEdit, "a+")) == NULL)
 		perror(tempEdit);
 out:
-	(void) unlink(tempEdit);
+	unlink(tempEdit);
 	Ftfree(&tempEdit);
 	return nf;
 }

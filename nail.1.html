@@ -54,7 +54,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.101 (gritter) 7/29/04 -->
+<!--      Sccsid: @(#)nail.1	2.120 (gritter) 8/8/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -106,7 +106,7 @@ nail - send and receive MIME conformant mail
 <BLOCKQUOTE>
 <P>
 <!-- ignored unsupported tag .ad -->
-<B>nail</B> [<B>-BFintv~</B>]
+<B>nail</B> [<B>-BDFintv~</B>]
 [<B>-s</B><I>&nbsp;subject</I>] [<B>-a</B><I>&nbsp;attachment</I> ]
 [<B>-c</B><I>&nbsp;cc-addr</I>] [<B>-b</B><I>&nbsp;bcc-addr</I>] [<B>-r</B><I>&nbsp;from-addr</I>]
 [<B>-h</B><I>&nbsp;hops</I>]
@@ -114,12 +114,12 @@ nail - send and receive MIME conformant mail
 <I>to-addr</I> .&nbsp;.&nbsp;.
 <P>
 <!-- ignored unsupported tag .ad -->
-<B>nail</B> [<B>-BeHiInNv~</B>] [<B>-T</B><I>&nbsp;name</I>]
+<B>nail</B> [<B>-BDeHiInNv~</B>] [<B>-T</B><I>&nbsp;name</I>]
 [<B>-A</B><I>&nbsp;account</I>]
 <B>-f</B> [<I>name</I>]
 <P>
 <!-- ignored unsupported tag .ad -->
-<B>nail</B> [<B>-BeinNv~</B>]
+<B>nail</B> [<B>-BDeinNv~</B>]
 [<B>-A</B><I>&nbsp;account</I>]
 [<B>-u</B><I>&nbsp;user</I>]
 <!-- ignored unsupported tag .ad -->
@@ -169,6 +169,12 @@ list of names.
 Send carbon copies to list of users.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>-D</B> </TD><TD valign=bottom>
+Start in
+<I>disconnected</I> mode; see the description for the
+<I>disconnected</I> variable option.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>-e</B> </TD><TD valign=bottom>
 Just check if mail is present in the system mailbox.
 If yes, return an exit status of zero,
@@ -215,7 +221,7 @@ particularly useful when using
 Shows the &#39;Newsgroup:&#39; or &#39;Article-Id:&#39; fields
 in the header summary.
 Only applicable in combination with
-<B>-f</B>. </TD></TR>
+<I>-f</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>-n</B> </TD><TD valign=bottom>
 Inhibits reading /etc/nail.rc upon startup.
@@ -236,13 +242,13 @@ Sets the
 <I>From</I> address. Overrides any
 <I>from</I> variable specified in environment or startup files.
 Tilde escapes are disabled.
-The <B>-r</B><I> address</I> options are passed to the mail transfer agent
+The <I>-r</I><I> address</I> options are passed to the mail transfer agent
 unless SMTP is used.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>-s</B><I>&nbsp;subject</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Specify subject on command line (only the first argument after the
--s flag is used as a subject; be careful to quote subjects
+<I>-s</I> flag is used as a subject; be careful to quote subjects
 containing spaces).
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -250,7 +256,7 @@ containing spaces).
 Writes the &#39;Message-Id&#39; and &#39;Article-Id&#39; header fields
 of each message read in the file
 <I>name</I>. Implies
-<B>-I</B>. Compressed files are handled as described for the
+<I>-I</I>. Compressed files are handled as described for the
 <I>folder</I> command below.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1139,7 +1145,7 @@ if you do not have the hold option set.
 <TR valign=top><TD colspan=2>
 <B>newmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Checks for new mail in the current folder
-without commiting any changes before.
+without committing any changes before.
 If new mail is present, a message is printed.
 If the
 <I>header</I> variable is set,
@@ -1246,11 +1252,11 @@ Same as
 Same as
 <I>reply</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
-<I>respondall</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+<B>respondall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
-<B>replyall</B>. </TD></TR>
+<I>replyall</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
-<I>respondsender</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+<B>respondsender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
 <I>replysender</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1441,7 +1447,9 @@ the text is appended.&#151;If a message is in MIME multipart format,
 its first part is written to the specified file
 as for conventional messages,
 and the user is asked for a filename
-to save each other part.
+to save each other part;
+if the contents of the first part are not to be saved,
+&#39;write /dev/null&#39; can be used.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
 the other are discarded.
@@ -1824,6 +1832,33 @@ converted to local time.
 <B>debug</B> </TD><TD valign=bottom>
 Prints debugging messages and disables the actual delivery of messages.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>disconnected</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When an IMAP mailbox is selected and this variable is set,
+no connection to the server is initiated.
+Instead, data is obtained from the local cache (see
+<I>imap-cache</I>). Mailboxes that are not present in the cache
+and messages that have not yet entirely been fetched from the server
+are not available;
+to fetch all messages in a mailbox at once,
+the command &#39;copy * /dev/null&#39; can be used
+while still in
+<I>online</I> mode.
+Changes that are made to IMAP mailboxes in disconnected mode
+are queued and committed later
+when a connection to that server is opened in online mode.
+This procedure is not completely reliable
+since it cannot be guaranteed that the IMAP unique identifiers (UIDs)
+on the server still match the ones in the cache at that time.
+Data is saved to &#39;dead.letter&#39; when this problem occurs.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>disconnected-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The specified account is handled as described for the
+<I>disconnected</I> variable above,
+but other accounts are not affected.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>dot</B> </TD><TD valign=bottom>
 The binary option dot causes <I>nail</I> to interpret
@@ -1910,11 +1945,29 @@ the sender to be included in the group.
 <B>newmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Checks for new mail in the current folder
 each time the prompt is printed.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
 For IMAP mailboxes,
-this is always performed
+new mail can be detected at any time
+even if this variable is not set
 and may also result in fewer messages within the folder
 if messages have been deleted on the server
 by another process or client.
+In this case, &#39;Expunged <I>n</I> messages&#39; is printed,
+and message numbers may have changed.
+Thus on IMAP mailboxes,
+the only effect of setting this variable
+is to check for new mail before the prompt is printed
+even if no other IMAP command is issued before.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+If this variable contains the special value
+<B>noimap</B>, it is treated as if it was not set for IMAP mailboxes
+but is effective for local folders.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>noheader</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2163,11 +2216,11 @@ See the
 The address to put into the <I>&#39;From:&#39;</I> field of the message header.
 If replying to a message,
 this address is handled as if it were in the alternates list.
-If this variable is set,
-a <I>&#39;Sender:&#39;</I> field containing the user&#39;s name
-is also generated,
-unless the variable <I>smtp</I> is set
-and its value differs from <I>localhost</I>.
+<!--  If this variable is set, -->
+<!--  a \fI`Sender:'\fR field containing the user's name -->
+<!--  is also generated, -->
+<!--  unless the variable \fIsmtp\fR is set -->
+<!--  and its value differs from \fIlocalhost\fR. -->
 If the machine&#39;s hostname is not valid at the Internet
 (for example at a dialup machine),
 you have to set this variable
@@ -2182,6 +2235,15 @@ instead of the value obtained from
 <I>uname</I>(2)
 and
 <I>getaddrinfo</I>(3).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>imap-cache</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Enables caching of IMAP mailboxes.
+The value of this variable must point to a directory
+that is either existent or can be created by
+<I>nail</I>. All contents of the cache can be deleted by
+<I>nail</I> at any time;
+it is not safe to make assumptions about them.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>imap-keepalive</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2327,6 +2389,22 @@ all headers are printed above the message body,
 thus <I>quote</I> acts like an automatic ~M command then.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>record</B> </TD><TD valign=bottom>
+If defined, gives the pathname of the folder
+used to record all outgoing mail.
+If not defined,
+then outgoing mail is not so saved.
+When saving to this folder fails,
+the message is not sent
+but saved to the &#39;dead.letter&#39; file instead.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>replyto</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The address to put into the <I>&#39;Reply-To:&#39;</I> field of the message header.
+If replying to a message, this address is handled
+as if it were in the alternates list.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>screen</B> </TD><TD valign=bottom>
 When <I>nail</I> initially prints the message headers,
 it determines the number to print
@@ -2363,6 +2441,14 @@ A string for use with the
 <B>sign</B> </TD><TD valign=bottom>
 A string for use with the
 <I>~a</I> command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>signature</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Must correspond to the name of a readable file if set.
+The file&#39;s content is then appended to each singlepart message
+and to the first part of each multipart message.
+Be warned that there is no possibility
+to edit the signature for an individual message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>smtp</B> </TD><TD valign=bottom>
@@ -2401,7 +2487,7 @@ for SMTP AUTH.
 </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Overrides
 <I>smtp-auth-password</I> for specific values of sender addresses,
-dependant on the
+depending on the
 <I>from</I> variable.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2415,7 +2501,7 @@ for SMTP AUTH.
 </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Overrides
 <I>smtp-auth-user</I> for specific values of sender addresses,
-dependant on the
+depending on the
 <I>from</I> variable.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -2520,30 +2606,6 @@ The default is &#39;ask&#39;.
 Overrides
 <I>ssl-verify</I> for a specific account.
 </TD></TR>
-<TR valign=top><TD width=6% nowrap>
-<B>record</B> </TD><TD valign=bottom>
-If defined, gives the pathname of the folder
-used to record all outgoing mail.
-If not defined,
-then outgoing mail is not so saved.
-When saving to this folder fails,
-the message is not sent
-but saved to the &#39;dead.letter&#39; file instead.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>replyto</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-The address to put into the <I>&#39;Reply-To:&#39;</I> field of the message header.
-If replying to a message, this address is handled
-as if it were in the alternates list.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>signature</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Must correspond to the name of a readable file if set.
-The file&#39;s content is then appended to each singlepart message
-and to the first part of each multipart message.
-Be warned that there is no possibility
-to edit the signature for an individual message.
-</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>toplines</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 If defined, gives the number of lines
@@ -2646,8 +2708,8 @@ System wide MIME types.
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; IMAP or POP3 client setup</H4>
 </A>
 <BLOCKQUOTE>
-First, you need the following data from your ISP:
-the host name of its IMAP or POP3 server,
+First you need the following data from your ISP:
+the host name of the IMAP or POP3 server,
 user name and password for this server,
 and a notice whether the server uses SSL/TLS encryption.
 Assuming the host name is &#39;server.myisp.example&#39;
@@ -2660,9 +2722,19 @@ you can refer to this account using the
 &nbsp;   <B>imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example</I>
 <P>
 </PRE>
-(replace &#39;imaps://&#39; with &#39;imap://&#39; if the server does not support SSL/TLS,
-or use &#39;pop3s://&#39; or &#39;pop3://&#39; if the server does not offer IMAP).
-The string is not necessarily the same as your internet mail address.
+(This string is not necessarily the same as your internet mail address.)
+You can replace &#39;imaps://&#39; with &#39;imap://&#39;
+if the server does not support SSL/TLS,
+or use &#39;pop3s://&#39; or &#39;pop3://&#39; if the server does not offer IMAP.
+You should use IMAP if you can, though;
+first because it requires fewer network operations than POP3
+to get the contents of the mailbox
+and is thus faster;
+and second because message flags
+are maintained by the IMAP server,
+so you can easily distinguish new and old messages
+each time you connect.
+<P>
 As you probably want messages to be deleted from this account
 after saving them,
 prefix it with &#39;<I>%:</I>&#39;.
@@ -2674,7 +2746,7 @@ every time you want to connect:
 &nbsp;   <B>shortcut </B><I>myisp</I><B> </B><B>%:imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example</I>
 <P>
 </PRE>
-You probably want to put this string into a startup file.
+You might want to put this string into a startup file.
 As the
 <I>shortcut</I> command is
 <I>nail-</I>specific and will confuse other
@@ -2690,18 +2762,42 @@ in
 <I>~/.mailrc</I> and create a file
 <I>~/.nailrc</I> containing the
 <I>shortcut</I> command above.
+You can then access your remote mailbox by invoking
+&#39;nail -f <I>myisp</I>&#39; on the command line,
+or by executing &#39;fi <I>myisp</I>&#39; within nail.
 <P>
 If you want to use more than one IMAP mailbox on a server,
+or if you want to use the IMAP server for mail storage too,
 the
 <I>account</I> command
 (which is also <I>nail-</I>specific)
 is more appropriate than the
 <I>shortcut</I> command.
+You can put the following in
+<I>~/.nailrc</I>: <P>
+<PRE>
+&nbsp;   <B>account </B><I>myisp </I>&#92;
+&nbsp;       <B>folder=imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example </I>&#92;
+&nbsp;       <B>record=+</B><I>Sent </I><B>MBOX=+</B><I>mbox </I><B>outfolder</B>
+</PRE>
+<P>
+and can then access incoming mail for this account by invoking
+&#39;nail -A <I>myisp</I>&#39; on the command line,
+or by executing &#39;ac <I>myisp</I>&#39; within nail.
+After that,
+a command like &#39;copy <I>1</I> +<I>otherfolder</I>&#39;
+will refer to <I>otherfolder</I> on the IMAP server.
+In particular,
+&#39;fi&amp;&#39; will change to the
+<I>mbox</I> folder,
+and
+&#39;fi +Sent&#39; will show your recorded sent mail,
+with both folders located on the IMAP server.
 <P>
 <I>Nail</I> will ask you for a password string
-each time you connect to this account.
+each time you connect to a remote account.
 If you can reasonably trust the security
-of the machine you are working on,
+of your workstation,
 you can give this password in the startup file as
 <PRE>
 <P>
@@ -2711,6 +2807,56 @@ you can give this password in the startup file as
 You should change the permissions of this file to 0600, see
 <I>chmod</I>(1).
 <P>
+If you regularly use the same workstation
+to access IMAP accounts,
+you can greatly enhance performance
+by enabling local caching of IMAP messages.
+For any message that has been fully or partially fetched from the server,
+a local copy is made and is used when the message is accessed again,
+so most data is transferred over the network once only.
+To enable the IMAP cache,
+select a local directory name and put
+<PRE>
+<P>
+&nbsp;   <B>set imap-cache=</B><I>~/localdirectory</I>
+<P>
+</PRE>
+in the startup file.
+All files within that directory
+can be overwritten or deleted by <I>nail</I> at any time,
+so you should not use the directory to store other information.
+<P>
+Once the cache contains some messages,
+it is not strictly necessary anymore
+to open a connection to the IMAP server
+to access them.
+When <I>nail</I> is invoked with the <I>-D</I> option,
+or when the
+<I>disconnected</I> variable is set,
+only cached data is used
+for any folder you open.
+Messages that have not yet been completely cached
+are not available then,
+but all other messages can be handled
+as usual.
+Changes made to IMAP mailboxes in
+<I>disconnected</I> mode are committed to the IMAP server
+next time it is used in
+<I>online</I> mode.
+Synchronizing the local status
+with the status on the server
+is thus partially within your responsibility;
+if you forget to initiate a connection to the server again
+before you leave your location,
+changes made on one workstation
+are not available on others.
+Also if you alter IMAP mailboxes from a workstation
+while uncommitted changes are still pending on another,
+the latter data may become invalid.
+The same might also happen because of internal server status changes.
+You should thus carefully evaluate this feature in your environment
+before you rely on it.
+<P>
 Many POP3 servers will close the connection
 after a short period of inactivity. Use
 <PRE>
@@ -2719,6 +2865,11 @@ after a short period of inactivity. Use
 <P>
 </PRE>
 to send a keepalive message each 30 seconds.
+A similar
+<I>imap-keepalive</I> variable is also available,
+but since IMAP servers tend to wait much longer
+until they close an idle connection,
+it is usually not necessary to activate it.
 <P>
 If you encounter problems connecting to a SSL/TLS server,
 try the
@@ -2729,23 +2880,34 @@ or specify the protocol version with
 if you need a client certificate
 or if verification of the server certificate fails.
 If the failed certificate is indeed valid,
-fetch it by executing
+fetch its CA certificate by executing
 <PRE>
 <P>
-&nbsp;   <B>openssl s_client -connect </B><I>server.myisp.example</I><B>:</B><I>imaps</I>
+&nbsp;   <B>openssl s_client &lt;/dev/null -showcerts -connect &#92;
+&nbsp;          </B><I>server.myisp.example</I><B>:</B><I>imaps</I><B> 2&amp;1 | tee </B><I>log</I>
 <P>
 </PRE>
 (see
 <I>s_client</I>(1))
 and put it into the file specified with
-<I>ssl-ca-file</I>. </BLOCKQUOTE>
+<I>ssl-ca-file</I>. The data you need is located at the end of the certificate chain
+within (and including) the &#39;BEGIN CERTIFICATE&#39;
+and &#39;END CERTIFICATE&#39; lines.
+(Note that it is possible to fetch
+a forged certificate by this method.
+You can only completely rely
+on the authenticity of the CA certificate
+if you fetch it in a way that is trusted by other means,
+such as by personally receiving the cerfiticate on storage media.)
+</BLOCKQUOTE>
 <A name=25>
 
     <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading HTML mail</H4>
 </A>
 <BLOCKQUOTE>
-You need the
-<I>w3m</I> utility
+You need either the
+<I>w3m</I> or
+<I>lynx</I> utility
 or another command-line web browser
 that can write plain text to standard output.
 <PRE>
@@ -2753,8 +2915,13 @@ that can write plain text to standard output.
 &nbsp;   <B>set pipe-text/html="</B><I>w3m -dump -T text/html</I><B>"</B>
 <P>
 </PRE>
-will then cause HTML text to be converted into a more friendly form,
-the command string depends on the browser you are using.
+or
+<PRE>
+<P>
+&nbsp;   <B>set pipe-text/html="</B><I>lynx -dump -force_html /dev/stdin</I><B>"</B>
+<P>
+</PRE>
+will then cause HTML message parts to be converted into a more friendly form.
 </BLOCKQUOTE>
 <A name=26>
 
@@ -2765,7 +2932,8 @@ Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file, as with
 <PRE>
 <P>
-&nbsp;   <B>set pipe-application-pdf="cat &gt;/tmp/nail$$.pdf; acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
+&nbsp;   <B>set pipe-application/pdf="cat &gt;/tmp/nail$$.pdf; &#92;
+&nbsp;          acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
 <P>
 </PRE>
 <!-- resetStyles [FB] -->
@@ -2836,6 +3004,8 @@ every time before the prompt is printed
 if <I>nail</I> is notified by the server
 that messages have been deleted
 by some other client or process.
+In this case, &#39;Expunged <I>n</I> messages&#39; is printed,
+and message numbers may have changed.
 <P>
 Limitations with POP3 mailboxes are:
 It is not possible to edit messages,
@@ -2877,6 +3047,19 @@ However, care should be taken when using a remote server of an ISP;
 it might be better to set up a local SMTP server then
 which just acts as a proxy.
 <P>
+<I>Nail</I> immediately contacts the SMTP server (or
+<I>/usr/lib/sendmail</I>) even when operating in
+<I>disconnected</I> mode.
+It would not make much sense for <I>nail</I> to defer outgoing mail
+since SMTP servers usually provide
+much more elaborated delay handling
+than <I>nail</I> could perform as a client.
+Thus the recommended setup for sending mail in
+<I>disconnected</I> mode is to configure a local SMTP server
+such that it sends outgoing mail
+as soon as an external network connection is available again,
+i.e. to advise it to do that from a network startup script.
+<P>
 A <I>mail</I> command appeared in Version 1 A&amp;T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
@@ -2898,5 +3081,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.0</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>7/29/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.1</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>8/8/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
 </BODY></HTML>

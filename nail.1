@@ -33,16 +33,16 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.101 (gritter) 7/29/04
+.\"     Sccsid: @(#)nail.1	2.120 (gritter) 8/8/04
 .\"
-.TH NAIL 1 "7/29/04" "nail 11.0" "User Commands"
+.TH NAIL 1 "8/8/04" "nail 11.1" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
 .PD 0
 .HP
 .ad l
-\fBnail\fR [\fB\-BFintv~\fR]
+\fBnail\fR [\fB\-BDFintv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
 [\fB\-h\fI\ hops\fR]
@@ -50,12 +50,12 @@ nail \- send and receive MIME conformant mail
 \fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\fBnail\fR [\fB\-BeHiInNv~\fR] [\fB\-T\fI\ name\fR]
+\fBnail\fR [\fB\-BDeHiInNv~\fR] [\fB\-T\fI\ name\fR]
 [\fB\-A\fI\ account\fR]
 \fB\-f\fR [\fIname\fR]
 .HP
 .ad l
-\fBnail\fR [\fB\-BeinNv~\fR]
+\fBnail\fR [\fB\-BDeinNv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-u\fI\ user\fR]
 .br
@@ -94,6 +94,13 @@ list of names.
 .TP
 .BI \-c \ address
 Send carbon copies to list of users.
+.TP
+.B \-D
+Start in
+.I disconnected
+mode; see the description for the
+.I disconnected
+variable option.
 .TP
 .B \-e
 Just check if mail is present in the system mailbox.
@@ -134,7 +141,7 @@ particularly useful when using
 Shows the `Newsgroup:' or `Article-Id:' fields
 in the header summary.
 Only applicable in combination with
-.BR \-f .
+.IR \-f .
 .TP
 .B \-n
 Inhibits reading /etc/nail.rc upon startup.
@@ -154,12 +161,13 @@ address. Overrides any
 .I from
 variable specified in environment or startup files.
 Tilde escapes are disabled.
-The \fB\-r\fI address\fR options are passed to the mail transfer agent
+The \fI\-r\fI address\fR options are passed to the mail transfer agent
 unless SMTP is used.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
-\-s flag is used as a subject; be careful to quote subjects
+.I \-s
+flag is used as a subject; be careful to quote subjects
 containing spaces).
 .TP
 .BI \-T \ name
@@ -167,7 +175,7 @@ Writes the `Message-Id' and `Article-Id' header fields
 of each message read in the file
 .IR name .
 Implies
-.BR \-I .
+.IR \-I .
 Compressed files are handled as described for the
 .I folder
 command below.
@@ -934,7 +942,7 @@ if you do not have the hold option set.
 .TP
 .B newmail
 Checks for new mail in the current folder
-without commiting any changes before.
+without committing any changes before.
 If new mail is present, a message is printed.
 If the
 .I header
@@ -1042,11 +1050,11 @@ Same as
 Same as
 .IR reply .
 .TP
-.I respondall
+.B respondall
 Same as
-.BR replyall .
+.IR replyall .
 .TP
-.I respondsender
+.B respondsender
 Same as
 .IR replysender .
 .TP
@@ -1119,7 +1127,7 @@ Arguments are of the form option=value
 or option.
 Quotation marks may be placed around any part of the
 assignment statement to quote blanks
-or tabs, i.e. `\fIset indentprefix="\->"\fR'.
+or tabs, i.\|e. `\fIset indentprefix="\->"\fR'.
 If an argument begins with
 .BR no ,
 as in `\fBset no\fIsave\fR',
@@ -1218,7 +1226,9 @@ the text is appended.\(emIf a message is in MIME multipart format,
 its first part is written to the specified file
 as for conventional messages,
 and the user is asked for a filename
-to save each other part.
+to save each other part;
+if the contents of the first part are not to be saved,
+`write /dev/null' can be used.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
 the other are discarded.
@@ -1542,6 +1552,33 @@ converted to local time.
 .B debug
 Prints debugging messages and disables the actual delivery of messages.
 .TP
+.B disconnected
+When an IMAP mailbox is selected and this variable is set,
+no connection to the server is initiated.
+Instead, data is obtained from the local cache (see
+.IR imap-cache ).
+Mailboxes that are not present in the cache
+and messages that have not yet entirely been fetched from the server
+are not available;
+to fetch all messages in a mailbox at once,
+the command `copy * /dev/null' can be used
+while still in
+.I online
+mode.
+Changes that are made to IMAP mailboxes in disconnected mode
+are queued and committed later
+when a connection to that server is opened in online mode.
+This procedure is not completely reliable
+since it cannot be guaranteed that the IMAP unique identifiers (UIDs)
+on the server still match the ones in the cache at that time.
+Data is saved to `dead.letter' when this problem occurs.
+.TP
+\fBdisconnected-\fIuser\fB@\fIhost\fR
+The specified account is handled as described for the
+.I disconnected
+variable above,
+but other accounts are not affected.
+.TP
 .B dot
 The binary option dot causes \fInail\fR to interpret
 a period alone on a line
@@ -1617,11 +1654,24 @@ the sender to be included in the group.
 .B newmail
 Checks for new mail in the current folder
 each time the prompt is printed.
+.IP
 For IMAP mailboxes,
-this is always performed
+new mail can be detected at any time
+even if this variable is not set
 and may also result in fewer messages within the folder
 if messages have been deleted on the server
 by another process or client.
+In this case, `Expunged \fIn\fR messages' is printed,
+and message numbers may have changed.
+Thus on IMAP mailboxes,
+the only effect of setting this variable
+is to check for new mail before the prompt is printed
+even if no other IMAP command is issued before.
+.IP
+If this variable contains the special value
+.BR noimap ,
+it is treated as if it was not set for IMAP mailboxes
+but is effective for local folders.
 .TP
 .B noheader
 Setting the option noheader is the same
@@ -1837,11 +1887,11 @@ command for a method to detect the appropriate prefix and delimiter.
 The address to put into the \fI`From:'\fR field of the message header.
 If replying to a message,
 this address is handled as if it were in the alternates list.
-If this variable is set,
-a \fI`Sender:'\fR field containing the user's name
-is also generated,
-unless the variable \fIsmtp\fR is set
-and its value differs from \fIlocalhost\fR.
+.\" If this variable is set,
+.\" a \fI`Sender:'\fR field containing the user's name
+.\" is also generated,
+.\" unless the variable \fIsmtp\fR is set
+.\" and its value differs from \fIlocalhost\fR.
 If the machine's hostname is not valid at the Internet
 (for example at a dialup machine),
 you have to set this variable
@@ -1856,6 +1906,16 @@ instead of the value obtained from
 .IR uname (2)
 and
 .IR getaddrinfo (3).
+.TP
+.B imap-cache
+Enables caching of IMAP mailboxes.
+The value of this variable must point to a directory
+that is either existent or can be created by
+.IR nail .
+All contents of the cache can be deleted by
+.I nail
+at any time;
+it is not safe to make assumptions about them.
 .TP
 .B imap-keepalive
 IMAP servers may close the connection
@@ -1997,6 +2057,20 @@ If the string \fIallheaders\fR is assigned,
 all headers are printed above the message body,
 thus \fIquote\fR acts like an automatic ~M command then.
 .TP
+.B record
+If defined, gives the pathname of the folder
+used to record all outgoing mail.
+If not defined,
+then outgoing mail is not so saved.
+When saving to this folder fails,
+the message is not sent
+but saved to the `dead.letter' file instead.
+.TP
+.B replyto
+The address to put into the \fI`Reply-To:'\fR field of the message header.
+If replying to a message, this address is handled
+as if it were in the alternates list.
+.TP
 .B screen
 When \fInail\fR initially prints the message headers,
 it determines the number to print
@@ -2031,6 +2105,13 @@ A string for use with the
 .I ~a
 command.
 .TP
+.B signature
+Must correspond to the name of a readable file if set.
+The file's content is then appended to each singlepart message
+and to the first part of each multipart message.
+Be warned that there is no possibility
+to edit the signature for an individual message.
+.TP
 .B smtp
 Normally, \fInail\fR invokes
 .IR sendmail (8)
@@ -2064,7 +2145,7 @@ for SMTP AUTH.
 Overrides
 .I smtp-auth-password
 for specific values of sender addresses,
-dependant on the
+depending on the
 .I from
 variable.
 .TP
@@ -2077,7 +2158,7 @@ for SMTP AUTH.
 Overrides
 .I smtp-auth-user
 for specific values of sender addresses,
-dependant on the
+depending on the
 .I from
 variable.
 .TP
@@ -2169,27 +2250,6 @@ Overrides
 .I ssl-verify
 for a specific account.
 .TP
-.B record
-If defined, gives the pathname of the folder
-used to record all outgoing mail.
-If not defined,
-then outgoing mail is not so saved.
-When saving to this folder fails,
-the message is not sent
-but saved to the `dead.letter' file instead.
-.TP
-.B replyto
-The address to put into the \fI`Reply-To:'\fR field of the message header.
-If replying to a message, this address is handled
-as if it were in the alternates list.
-.TP
-.B signature
-Must correspond to the name of a readable file if set.
-The file's content is then appended to each singlepart message
-and to the first part of each multipart message.
-Be warned that there is no possibility
-to edit the signature for an individual message.
-.TP
 .B toplines
 If defined, gives the number of lines
 of a message to be printed out
@@ -2248,8 +2308,8 @@ Personal MIME types.
 System wide MIME types.
 .SH EXAMPLES
 .SS "IMAP or POP3 client setup"
-First, you need the following data from your ISP:
-the host name of its IMAP or POP3 server,
+First you need the following data from your ISP:
+the host name of the IMAP or POP3 server,
 user name and password for this server,
 and a notice whether the server uses SSL/TLS encryption.
 Assuming the host name is `server.myisp.example'
@@ -2264,9 +2324,19 @@ command line option with
     \fBimaps://\fImylogin\fB@\fIserver.myisp.example\fR
 
 .fi
-(replace `imaps://' with `imap://' if the server does not support SSL/TLS,
-or use `pop3s://' or `pop3://' if the server does not offer IMAP).
-The string is not necessarily the same as your internet mail address.
+(This string is not necessarily the same as your internet mail address.)
+You can replace `imaps://' with `imap://'
+if the server does not support SSL/TLS,
+or use `pop3s://' or `pop3://' if the server does not offer IMAP.
+You should use IMAP if you can, though;
+first because it requires fewer network operations than POP3
+to get the contents of the mailbox
+and is thus faster;
+and second because message flags
+are maintained by the IMAP server,
+so you can easily distinguish new and old messages
+each time you connect.
+.PP
 As you probably want messages to be deleted from this account
 after saving them,
 prefix it with `\fI%:\fR'.
@@ -2279,7 +2349,7 @@ every time you want to connect:
     \fBshortcut \fImyisp\fB \fB%:imaps://\fImylogin\fB@\fIserver.myisp.example\fR
 
 .fi
-You probably want to put this string into a startup file.
+You might want to put this string into a startup file.
 As the
 .I shortcut
 command is
@@ -2302,8 +2372,12 @@ and create a file
 containing the
 .I shortcut
 command above.
+You can then access your remote mailbox by invoking
+`nail \-f \fImyisp\fR' on the command line,
+or by executing `fi \fImyisp\fR' within nail.
 .PP
 If you want to use more than one IMAP mailbox on a server,
+or if you want to use the IMAP server for mail storage too,
 the
 .I account
 command
@@ -2311,12 +2385,34 @@ command
 is more appropriate than the
 .I shortcut
 command.
+You can put the following in
+.IR ~/.nailrc :
+.sp
+.nf
+    \fBaccount \fImyisp \fR\e
+        \fBfolder=imaps://\fImylogin\fB@\fIserver.myisp.example \fR\e
+        \fBrecord=+\fISent \fBMBOX=+\fImbox \fBoutfolder\fR
+.fi
+.sp
+and can then access incoming mail for this account by invoking
+`nail \-A \fImyisp\fR' on the command line,
+or by executing `ac \fImyisp\fR' within nail.
+After that,
+a command like `copy \fI1\fR +\fIotherfolder\fR'
+will refer to \fIotherfolder\fR on the IMAP server.
+In particular,
+`fi &' will change to the
+.I mbox
+folder,
+and
+`fi +Sent' will show your recorded sent mail,
+with both folders located on the IMAP server.
 .PP
 .I Nail
 will ask you for a password string
-each time you connect to this account.
+each time you connect to a remote account.
 If you can reasonably trust the security
-of the machine you are working on,
+of your workstation,
 you can give this password in the startup file as
 .nf
 
@@ -2326,6 +2422,59 @@ you can give this password in the startup file as
 You should change the permissions of this file to 0600, see
 .IR chmod (1).
 .PP
+If you regularly use the same workstation
+to access IMAP accounts,
+you can greatly enhance performance
+by enabling local caching of IMAP messages.
+For any message that has been fully or partially fetched from the server,
+a local copy is made and is used when the message is accessed again,
+so most data is transferred over the network once only.
+To enable the IMAP cache,
+select a local directory name and put
+.nf
+
+    \fBset imap-cache=\fI~/localdirectory\fR
+
+.fi
+in the startup file.
+All files within that directory
+can be overwritten or deleted by \fInail\fR at any time,
+so you should not use the directory to store other information.
+.PP
+Once the cache contains some messages,
+it is not strictly necessary anymore
+to open a connection to the IMAP server
+to access them.
+When \fInail\fR is invoked with the \fI\-D\fR option,
+or when the
+.I disconnected
+variable is set,
+only cached data is used
+for any folder you open.
+Messages that have not yet been completely cached
+are not available then,
+but all other messages can be handled
+as usual.
+Changes made to IMAP mailboxes in
+.I disconnected
+mode are committed to the IMAP server
+next time it is used in
+.I online
+mode.
+Synchronizing the local status
+with the status on the server
+is thus partially within your responsibility;
+if you forget to initiate a connection to the server again
+before you leave your location,
+changes made on one workstation
+are not available on others.
+Also if you alter IMAP mailboxes from a workstation
+while uncommitted changes are still pending on another,
+the latter data may become invalid.
+The same might also happen because of internal server status changes.
+You should thus carefully evaluate this feature in your environment
+before you rely on it.
+.PP
 Many POP3 servers will close the connection
 after a short period of inactivity. Use
 .nf
@@ -2334,6 +2483,12 @@ after a short period of inactivity. Use
 
 .fi
 to send a keepalive message each 30 seconds.
+A similar
+.I imap-keepalive
+variable is also available,
+but since IMAP servers tend to wait much longer
+until they close an idle connection,
+it is usually not necessary to activate it.
 .PP
 If you encounter problems connecting to a SSL/TLS server,
 try the
@@ -2347,19 +2502,31 @@ Contact your ISP
 if you need a client certificate
 or if verification of the server certificate fails.
 If the failed certificate is indeed valid,
-fetch it by executing
+fetch its CA certificate by executing
 .nf
 
-    \fBopenssl s_client -connect \fIserver.myisp.example\fB:\fIimaps\fR
+    \fBopenssl s_client </dev/null \-showcerts \-connect \e
+           \fIserver.myisp.example\fB:\fIimaps\fB 2>&1 | tee \fIlog\fR
 
 .fi
 (see
 .IR s_client (1))
 and put it into the file specified with
 .IR ssl-ca-file .
+The data you need is located at the end of the certificate chain
+within (and including) the `BEGIN CERTIFICATE'
+and `END CERTIFICATE' lines.
+(Note that it is possible to fetch
+a forged certificate by this method.
+You can only completely rely
+on the authenticity of the CA certificate
+if you fetch it in a way that is trusted by other means,
+such as by personally receiving the cerfiticate on storage media.)
 .SS "Reading HTML mail"
-You need the
+You need either the
 .I w3m
+or
+.I lynx
 utility
 or another command-line web browser
 that can write plain text to standard output.
@@ -2368,14 +2535,20 @@ that can write plain text to standard output.
     \fBset pipe-text/html="\fIw3m -dump -T text/html\fB"\fR
 .sp
 .fi
-will then cause HTML text to be converted into a more friendly form,
-the command string depends on the browser you are using.
+or
+.nf
+.sp
+    \fBset pipe-text/html="\fIlynx -dump -force_html /dev/stdin\fB"\fR
+.sp
+.fi
+will then cause HTML message parts to be converted into a more friendly form.
 .SS "Viewing PDF attachments"
 Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file, as with
 .nf
 .sp
-    \fBset pipe-application-pdf="cat >/tmp/nail$$.pdf; acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
+    \fBset pipe-application/pdf="cat >/tmp/nail$$.pdf; \e
+           acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
 .sp
 .fi
 .SH "SEE ALSO"
@@ -2437,6 +2610,8 @@ every time before the prompt is printed
 if \fInail\fR is notified by the server
 that messages have been deleted
 by some other client or process.
+In this case, `Expunged \fIn\fR messages' is printed,
+and message numbers may have changed.
 .PP
 Limitations with POP3 mailboxes are:
 It is not possible to edit messages,
@@ -2477,6 +2652,22 @@ as the computer on which \fInail\fR is run.
 However, care should be taken when using a remote server of an ISP;
 it might be better to set up a local SMTP server then
 which just acts as a proxy.
+.PP
+\fINail\fR immediately contacts the SMTP server (or
+.IR \%/usr/lib/sendmail )
+even when operating in
+.I disconnected
+mode.
+It would not make much sense for \fInail\fR to defer outgoing mail
+since SMTP servers usually provide
+much more elaborated delay handling
+than \fInail\fR could perform as a client.
+Thus the recommended setup for sending mail in
+.I disconnected
+mode is to configure a local SMTP server
+such that it sends outgoing mail
+as soon as an external network connection is available again,
+i.\|e. to advise it to do that from a network startup script.
 .PP
 A \fImail\fR command appeared in Version 1 AT&T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.

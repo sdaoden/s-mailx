@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)vars.c	2.2 (gritter) 6/13/04";
+static char sccsid[] = "@(#)vars.c	2.5 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -67,7 +67,7 @@ assign(name, value)
 
 	h = hash(name);
 	vp = lookup(name);
-	if (vp == NOVAR) {
+	if (vp == NULL) {
 		vp = (struct var *)scalloc(1, sizeof *vp);
 		vp->v_name = vcopy(name);
 		vp->v_link = variables[h];
@@ -106,7 +106,7 @@ vcopy(str)
 	if (*str == '\0')
 		return "";
 	len = strlen(str) + 1;
-	new = (char*)smalloc(len);
+	new = smalloc(len);
 	memcpy(new, str, (int) len);
 	return new;
 }
@@ -122,7 +122,7 @@ value(name)
 {
 	struct var *vp;
 
-	if ((vp = lookup(name)) == NOVAR)
+	if ((vp = lookup(name)) == NULL)
 		return(getenv(name));
 	return(vp->v_value);
 }
@@ -138,10 +138,10 @@ lookup(name)
 {
 	struct var *vp;
 
-	for (vp = variables[hash(name)]; vp != NOVAR; vp = vp->v_link)
+	for (vp = variables[hash(name)]; vp != NULL; vp = vp->v_link)
 		if (*vp->v_name == *name && equal(vp->v_name, name))
 			return(vp);
-	return(NOVAR);
+	return(NULL);
 }
 
 /*
@@ -154,10 +154,10 @@ findgroup(name)
 {
 	struct grouphead *gh;
 
-	for (gh = groups[hash(name)]; gh != NOGRP; gh = gh->g_link)
+	for (gh = groups[hash(name)]; gh != NULL; gh = gh->g_link)
 		if (*gh->g_name == *name && equal(gh->g_name, name))
 			return(gh);
-	return(NOGRP);
+	return(NULL);
 }
 
 /*
@@ -170,15 +170,15 @@ printgroup(name)
 	struct grouphead *gh;
 	struct group *gp;
 
-	if ((gh = findgroup(name)) == NOGRP) {
+	if ((gh = findgroup(name)) == NULL) {
 		printf(catgets(catd, CATSET, 202, "\"%s\": not a group\n"),
 				name);
 		return;
 	}
 	printf("%s\t", gh->g_name);
-	for (gp = gh->g_list; gp != NOGE; gp = gp->ge_link)
+	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link)
 		printf(" %s", gp->ge_name);
-	sputc('\n', stdout);
+	putchar('\n');
 }
 
 /*
@@ -207,8 +207,8 @@ unset_internal(name)
 	struct var *vp, *vp2;
 	int h;
 
-	if ((vp2 = lookup(name)) == NOVAR) {
-		if (!sourcing) {
+	if ((vp2 = lookup(name)) == NULL) {
+		if (!sourcing && !unset_allow_undefined) {
 			printf(catgets(catd, CATSET, 203,
 				"\"%s\": undefined variable\n"), name);
 			return 1;
@@ -220,14 +220,14 @@ unset_internal(name)
 		variables[h] = variables[h]->v_link;
 		vfree(vp2->v_name);
 		vfree(vp2->v_value);
-		free((char *)vp2);
+		free(vp2);
 		return 0;
 	}
 	for (vp = variables[h]; vp->v_link != vp2; vp = vp->v_link);
 	vp->v_link = vp2->v_link;
 	vfree(vp2->v_name);
 	vfree(vp2->v_value);
-	free((char *) vp2);
+	free(vp2);
 	return 0;
 }
 
@@ -251,7 +251,7 @@ remove_group(const char *name)
 	struct grouphead *gh, *gp = NULL;
 	int h = hash(name);
 
-	for (gh = groups[h]; gh != NOGRP; gh = gh->g_link) {
+	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
 		if (*gh->g_name == *name && equal(gh->g_name, name)) {
 			remove_grouplist(gh);
 			vfree(gh->g_name);

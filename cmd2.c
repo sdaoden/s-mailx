@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.15 (gritter) 7/29/04";
+static char sccsid[] = "@(#)cmd2.c	2.25 (gritter) 8/7/04";
 #endif
 #endif /* not lint */
 
@@ -101,7 +101,7 @@ next(v)
 		ip2 = ip;
 		do {
 			mp = &message[*ip2 - 1];
-			if ((mp->m_flag & MDELETED) == 0) {
+			if ((mp->m_flag & (MDELETED|MHIDDEN)) == 0) {
 				setdot(mp);
 				goto hitit;
 			}
@@ -131,7 +131,7 @@ next(v)
 	 */
 
 	for (mp = dot + did_print_dot; mp < &message[msgcount]; mp++)
-		if ((mp->m_flag & (MDELETED|MSAVED)) == 0)
+		if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN)) == 0)
 			break;
 	if (mp >= &message[msgcount]) {
 ateof:
@@ -202,13 +202,15 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	int mark;
 	char *cmd;
 	struct ignoretab *ignore;
+	int convert;
+	int sender_record;
 {
 	int *ip;
 	struct message *mp;
-	char *file = NULL, *disp;
+	char *file = NULL, *disp = "";
 	int f, *msgvec;
 	FILE *obuf;
-	int newfile;
+	int newfile = 0;
 	char *cp, *cq;
 	off_t mstats[2], tstats[2];
 	int compressed = 0;
@@ -235,6 +237,10 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	}
 	if (f && getmsglist(str, msgvec, 0) < 0)
 		return(1);
+	if (*msgvec == 0) {
+		printf("No applicable messages.\n");
+		return 1;
+	}
 	if (sender_record) {
 		if ((cp = nameof(&message[*msgvec - 1], 0)) == NULL) {
 			printf(catgets(catd, CATSET, 24,
@@ -254,12 +260,14 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	if ((file = expand(file)) == NULL)
 		return(1);
 	prot = which_protocol(file);
-	if (prot == PROTO_IMAP || access(file, 0) >= 0) {
-		newfile = 0;
-		disp = catgets(catd, CATSET, 25, "[Appended]");
-	} else {
-		newfile = 1;
-		disp = catgets(catd, CATSET, 26, "[New file]");
+	if (prot != PROTO_IMAP) {
+		if (access(file, 0) >= 0) {
+			newfile = 0;
+			disp = catgets(catd, CATSET, 25, "[Appended]");
+		} else {
+			newfile = 1;
+			disp = catgets(catd, CATSET, 26, "[New file]");
+		}
 	}
 	if ((obuf = convert == CONV_TOFILE ? Fopen(file, "a+") :
 			Zopen(file, "a+", &compressed)) == NULL) {
@@ -297,7 +305,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 			}
 			fflush(obuf);
 			if (prependnl) {
-				sputc('\n', obuf);
+				putc('\n', obuf);
 				fflush(obuf);
 			}
 		}
@@ -337,7 +345,8 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		success = 0;
 	if (success) {
 		if (prot == PROTO_IMAP)
-			disp = imap_created_mailbox ?
+			disp = disconnected(file) ? "[Queued]" :
+				imap_created_mailbox ?
 				"[New file]" : "[Appended]";
 		printf("\"%s\" %s ", file, disp);
 		if (tstats[0] >= 0)
@@ -380,6 +389,7 @@ static char *
 snarf(linebuf, flag, usembox)
 	char linebuf[];
 	int *flag;
+	int usembox;
 {
 	char *cp;
 
@@ -491,7 +501,7 @@ undeletecmd(v)
 		touch(mp);
 		setdot(mp);
 		mp->m_flag &= ~MDELETED;
-		if (mb.mb_type == MB_IMAP)
+		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 			imap_undelete(mp, *ip);
 	}
 	return 0;

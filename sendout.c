@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.28 (gritter) 7/27/04";
+static char sccsid[] = "@(#)sendout.c	2.32 (gritter) 8/4/04";
 #endif
 #endif /* not lint */
 
@@ -134,6 +134,7 @@ makeboundary()
  */
 static char *
 getencoding(convert)
+	int convert;
 {
 	switch (convert) {
 	case CONV_7BIT:
@@ -157,14 +158,15 @@ static struct name *
 fixhead(hp, tolist, addauto)
 	struct header *hp;
 	struct name *tolist;
+	int addauto;
 {
 	struct name *np;
 	char	*cp;
 
-	hp->h_to = NIL;
-	hp->h_cc = NIL;
-	hp->h_bcc = NIL;
-	for (np = tolist; np != NIL; np = np->n_flink)
+	hp->h_to = NULL;
+	hp->h_cc = NULL;
+	hp->h_bcc = NULL;
+	for (np = tolist; np != NULL; np = np->n_flink)
 		if ((np->n_type & GMASK) == GTO)
 			hp->h_to =
 				cat(hp->h_to, nalloc(np->n_name, np->n_type));
@@ -199,6 +201,7 @@ fixhead(hp, tolist, addauto)
 static int
 put_signature(fo, convert)
 FILE *fo;
+int convert;
 {
 	char *sig, buf[INFIX_BUF], c = '\n';
 	FILE *fsig;
@@ -230,7 +233,7 @@ FILE *fo;
 	}
 	Fclose(fsig);
 	if (c != '\n')
-		sputc('\n', fo);
+		putc('\n', fo);
 	return 0;
 }
 
@@ -269,7 +272,7 @@ FILE *fo;
 		"Content-Type: %s",
 		send_boundary, contenttype);
 	if (charset == NULL)
-		sputc('\n', fo);
+		putc('\n', fo);
 	else
 		fprintf(fo, ";\n charset=%s\n", charset);
 	if (ap->a_content_disposition == NULL)
@@ -287,7 +290,7 @@ FILE *fo;
 	if (ap->a_content_description)
 		fprintf(fo, "Content-Description: %s\n",
 				ap->a_content_description);
-	sputc('\n', fo);
+	putc('\n', fo);
 	buf = smalloc(bufsize = INFIX_BUF);
 	if (convert == CONV_TOQP) {
 		fflush(fi);
@@ -322,6 +325,7 @@ struct header *hp;
 FILE *fi, *fo;
 const char *contenttype;
 const char *charset;
+int convert;
 {
 	struct attachment *att;
 
@@ -363,7 +367,7 @@ const char *charset;
 		if (ferror(fi))
 			return -1;
 		if (c != '\n')
-			sputc('\n', fo);
+			putc('\n', fo);
 		if (charset != NULL)
 			put_signature(fo, convert);
 	}
@@ -397,12 +401,12 @@ infix(hp, fi)
 		perror(catgets(catd, CATSET, 178, "temporary mail file"));
 		return(NULL);
 	}
-	if ((nfi = Fopen(tempMail, "r")) == (FILE *)NULL) {
+	if ((nfi = Fopen(tempMail, "r")) == NULL) {
 		perror(tempMail);
-		(void) Fclose(nfo);
+		Fclose(nfo);
 		return(NULL);
 	}
-	(void) rm(tempMail);
+	rm(tempMail);
 	Ftfree(&tempMail);
 	convert = get_mime_convert(fi, &contenttype, &charset, &isclean);
 #ifdef	HAVE_ICONV
@@ -431,8 +435,8 @@ infix(hp, fi)
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
 		   |GMSGID|GIDENT|GREF|GDATE,
 		   convert, contenttype, charset)) {
-		(void) Fclose(nfo);
-		(void) Fclose(nfi);
+		Fclose(nfo);
+		Fclose(nfi);
 #ifdef	HAVE_ICONV
 		if (iconvd != (iconv_t)-1) {
 			iconv_close(iconvd);
@@ -450,8 +454,8 @@ infix(hp, fi)
 	if (hp->h_attach != NULL) {
 		if (make_multipart(hp, convert, fi, nfo,
 					contenttype, charset) != 0) {
-			(void) Fclose(nfo);
-			(void) Fclose(nfi);
+			Fclose(nfo);
+			Fclose(nfi);
 #ifdef	HAVE_ICONV
 			if (iconvd != (iconv_t)-1) {
 				iconv_close(iconvd);
@@ -481,8 +485,8 @@ infix(hp, fi)
 			}
 			if (mime_write(buf, sizeof *buf, sz, nfo, convert,
 					TD_ICONV, NULL, (size_t)0) == 0) {
-				(void) Fclose(nfo);
-				(void) Fclose(nfi);
+				Fclose(nfo);
+				Fclose(nfi);
 				perror("read");
 #ifdef	HAVE_ICONV
 				if (iconvd != (iconv_t)-1) {
@@ -496,8 +500,8 @@ infix(hp, fi)
 		}
 		free(buf);
 		if (ferror(fi)) {
-			(void) Fclose(nfo);
-			(void) Fclose(nfi);
+			Fclose(nfo);
+			Fclose(nfi);
 			perror("read");
 #ifdef	HAVE_ICONV
 			if (iconvd != (iconv_t)-1) {
@@ -516,15 +520,15 @@ infix(hp, fi)
 		iconvd = (iconv_t)-1;
 	}
 #endif
-	(void) fflush(nfo);
+	fflush(nfo);
 	if (ferror(nfo)) {
 		perror(catgets(catd, CATSET, 180, "temporary mail file"));
-		(void) Fclose(nfo);
-		(void) Fclose(nfi);
+		Fclose(nfo);
+		Fclose(nfi);
 		return NULL;
 	}
-	(void) Fclose(nfo);
-	(void) Fclose(fi);
+	Fclose(nfo);
+	Fclose(fi);
 	fflush(nfi);
 	rewind(nfi);
 	return(nfi);
@@ -550,8 +554,8 @@ savemail(name, fi)
 
 	buf = smalloc(bufsize = LINESIZE);
 	time(&now);
-	if ((fo = Zopen(name, "a+", NULL)) == (FILE *)NULL) {
-		if ((fo = Zopen(name, "wx", NULL)) == (FILE *)NULL) {
+	if ((fo = Zopen(name, "a+", NULL)) == NULL) {
+		if ((fo = Zopen(name, "wx", NULL)) == NULL) {
 			perror(name);
 			free(buf);
 			return (-1);
@@ -578,7 +582,7 @@ savemail(name, fi)
 			}
 			fflush(fo);
 			if (prependnl) {
-				sputc('\n', fo);
+				putc('\n', fo);
 				fflush(fo);
 			}
 		}
@@ -595,15 +599,15 @@ savemail(name, fi)
 				p++;
 			if (strncmp(p, "From ", 5) == 0)
 				/* we got a masked From line */
-				sputc('>', fo);
+				putc('>', fo);
 		} else if (strncmp(buf, "From ", 5) == 0)
-			sputc('>', fo);
+			putc('>', fo);
 		fwrite(buf, sizeof *buf, buflen, fo);
 	}
 	if (buflen && *(buf + buflen - 1) != '\n')
-		(void) sputc('\n', fo);
-	(void) sputc('\n', fo);
-	(void) fflush(fo);
+		putc('\n', fo);
+	putc('\n', fo);
+	fflush(fo);
 	if (ferror(fo)) {
 		perror(name);
 		error = -1;
@@ -632,6 +636,7 @@ mail(to, cc, bcc, smopts, subject, attach, quotefile, recipient_record, tflag)
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
 	char *subject, *quotefile;
+	int recipient_record, tflag;
 {
 	struct header head;
 	struct str in, out;
@@ -669,17 +674,18 @@ mail(to, cc, bcc, smopts, subject, attach, quotefile, recipient_record, tflag)
 static int
 sendmail_internal(v, recipient_record)
 	void *v;
+	int recipient_record;
 {
 	char *str = v;
 	struct header head;
 
 	head.h_to = extract(str, GTO);
 	head.h_subject = NULL;
-	head.h_cc = NIL;
-	head.h_bcc = NIL;
-	head.h_ref = NIL;
+	head.h_cc = NULL;
+	head.h_bcc = NULL;
+	head.h_ref = NULL;
 	head.h_attach = NULL;
-	head.h_smopts = NIL;
+	head.h_smopts = NULL;
 	mail1(&head, 0, NULL, NULL, recipient_record, 0);
 	return(0);
 }
@@ -779,6 +785,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	int printheaders;
 	struct message *quote;
 	char *quotefile;
+	int recipient_record, tflag;
 {
 	char *cp, *cq, *ep;
 	struct name *to;
@@ -809,7 +816,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 				hp->h_attach = edit_attachments(hp->h_attach);
 		} else {
 			printf(catgets(catd, CATSET, 183, "EOT\n"));
-			(void) fflush(stdout);
+			fflush(stdout);
 		}
 	}
 	if (fsize(mtf) == 0) {
@@ -826,12 +833,12 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	 * processing.
 	 */
 	senderr = 0;
-	if ((to = usermap(cat(hp->h_bcc, cat(hp->h_to, hp->h_cc)))) == NIL) {
+	if ((to = usermap(cat(hp->h_bcc, cat(hp->h_to, hp->h_cc)))) == NULL) {
 		printf(catgets(catd, CATSET, 186, "No recipients specified\n"));
 		senderr++;
 	}
 	to = fixhead(hp, to, 1);
-	if ((nmtf = infix(hp, mtf)) == (FILE *)NULL) {
+	if ((nmtf = infix(hp, mtf)) == NULL) {
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
 		perror("");
 		senderr++;
@@ -971,13 +978,13 @@ FILE *fo;
 }
 
 #define	FMT_CC_AND_BCC	{ \
-				if (hp->h_cc != NIL && w & GCC) { \
+				if (hp->h_cc != NULL && w & GCC) { \
 					if (fmt("Cc:", hp->h_cc, fo, \
 							w&GCOMMA, 0)) \
 						return 1; \
 					gotcha++; \
 				} \
-				if (hp->h_bcc != NIL && w & GBCC) { \
+				if (hp->h_bcc != NULL && w & GBCC) { \
 					if (fmt("Bcc:", hp->h_bcc, fo, \
 							w&GCOMMA, 0)) \
 						return 1; \
@@ -994,9 +1001,10 @@ puthead(hp, fo, w, convert, contenttype, charset)
 	FILE *fo;
 	enum gfield w;
 	char *contenttype, *charset;
+	int convert;
 {
 	int gotcha;
-	char *addr, *cp;
+	char *addr/*, *cp*/;
 	int stealthmua;
 	struct name *np;
 
@@ -1014,9 +1022,11 @@ puthead(hp, fo, w, convert, contenttype, charset)
 		if (addr != NULL) {
 			if (mime_name_invalid(addr, 1))
 				return 1;
+			/*
 			if ((cp = value("smtp")) == NULL
 					|| strcmp(cp, "localhost") == 0)
 				fprintf(fo, "Sender: %s\n", username());
+			*/
 			fwrite("From: ", sizeof (char), 6, fo);
 			if (mime_write(addr, sizeof *addr, strlen(addr), fo,
 					convert == CONV_TODISP ?
@@ -1026,7 +1036,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 					NULL, (size_t)0) == 0)
 				return 1;
 			gotcha++;
-			sputc('\n', fo);
+			putc('\n', fo);
 		}
 		addr = value("ORGANIZATION");
 		if (addr != NULL) {
@@ -1039,7 +1049,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 					NULL, (size_t)0) == 0)
 				return 1;
 			gotcha++;
-			sputc('\n', fo);
+			putc('\n', fo);
 		}
 		addr = value("replyto");
 		if (addr != NULL) {
@@ -1054,10 +1064,10 @@ puthead(hp, fo, w, convert, contenttype, charset)
 					NULL, (size_t)0) == 0)
 				return 1;
 			gotcha++;
-			sputc('\n', fo);
+			putc('\n', fo);
 		}
 	}
-	if (hp->h_to != NIL && w & GTO) {
+	if (hp->h_to != NULL && w & GTO) {
 		if (fmt("To:", hp->h_to, fo, w&GCOMMA, 0))
 			return 1;
 		gotcha++;
@@ -1093,7 +1103,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 		FMT_CC_AND_BCC
 	if (w & GMSGID && stealthmua == 0)
 		message_id(fo), gotcha++;
-	if (hp->h_ref != NIL && w & GREF) {
+	if (hp->h_ref != NULL && w & GREF) {
 		fmt("References:", hp->h_ref, fo, 0, 1);
 		if ((np = hp->h_ref) != NULL && np->n_name) {
 			while (np->n_flink)
@@ -1121,7 +1131,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 		}
 	}
 	if (gotcha && w & GNL)
-		(void) sputc('\n', fo);
+		putc('\n', fo);
 	return(0);
 }
 
@@ -1133,7 +1143,7 @@ fmt(str, np, fo, comma, dropinvalid)
 	char *str;
 	struct name *np;
 	FILE *fo;
-	int comma;
+	int comma, dropinvalid;
 {
 	int col, len, count = 0;
 	int is_to = 0;
@@ -1146,10 +1156,10 @@ fmt(str, np, fo, comma, dropinvalid)
 			(col == 10 && asccasecmp(str, "Resent-To:") == 0))
 			is_to = 1;
 	}
-	for (; np != NIL; np = np->n_flink) {
+	for (; np != NULL; np = np->n_flink) {
 		if (is_to && is_fileaddr(np->n_name))
 			continue;
-		if (np->n_flink == NIL)
+		if (np->n_flink == NULL)
 			comma = 0;
 		if (mime_name_invalid(np->n_name, !dropinvalid)) {
 			if (dropinvalid)
@@ -1163,15 +1173,15 @@ fmt(str, np, fo, comma, dropinvalid)
 			fputs("\n ", fo);
 			col = 1;
 		} else
-			sputc(' ', fo);
+			putc(' ', fo);
 		len = mime_write(np->n_name, sizeof *np->n_name, len, fo,
 				CONV_TOHDR_A, TD_ICONV, NULL, (size_t)0);
 		if (comma && !(is_to && is_fileaddr(np->n_flink->n_name)))
-			sputc(',', fo);
+			putc(',', fo);
 		col += len + comma;
 		count++;
 	}
-	sputc('\n', fo);
+	putc('\n', fo);
 	return 0;
 }
 
@@ -1183,9 +1193,10 @@ infix_fw(fi, fo, mp, to, add_resent)
 FILE *fi, *fo;
 struct message *mp;
 struct name *to;
+int add_resent;
 {
 	size_t count;
-	char *buf = NULL, *cp, *cp2;
+	char *buf = NULL, *cp/*, *cp2*/;
 	size_t c, bufsize = 0;
 
 	count = mp->m_size;
@@ -1221,11 +1232,13 @@ struct name *to;
 				mime_write(cp, sizeof *cp, strlen(cp), fo,
 						CONV_TOHDR_A, TD_ICONV,
 						NULL, (size_t)0);
-				sputc('\n', fo);
+				putc('\n', fo);
+				/*
 				if ((cp2 = value("smtp")) == NULL
 					|| strcmp(cp2, "localhost") == 0)
 					fprintf(fo, "Resent-Sender: %s\n",
 							username());
+				*/
 			}
 #ifdef	notdef
 			/*
@@ -1243,7 +1256,7 @@ struct name *to;
 				mime_write(cp, sizeof *cp, strlen(cp), fo,
 						CONV_TOHDR_A, TD_ICONV,
 						NULL, (size_t)0);
-				sputc('\n', fo);
+				putc('\n', fo);
 			}
 #endif	/* notdef */
 			if (fmt("Resent-To:", to, fo, 1, 1)) {
@@ -1256,7 +1269,7 @@ struct name *to;
 				message_id(fo);
 			}
 		}
-		sputc('\n', fo);
+		putc('\n', fo);
 		/*
 		 * Write the message body.
 		 */
@@ -1279,6 +1292,7 @@ int
 forward_msg(mp, to, add_resent)
 struct message *mp;
 struct name *to;
+int add_resent;
 {
 	FILE *ibuf, *nfo, *nfi;
 	char *tempMail;
@@ -1293,14 +1307,14 @@ struct name *to;
 		perror(catgets(catd, CATSET, 189, "temporary mail file"));
 		return 1;
 	}
-	if ((nfi = Fopen(tempMail, "r")) == (FILE *)NULL) {
+	if ((nfi = Fopen(tempMail, "r")) == NULL) {
 		senderr++;
 		perror(tempMail);
 		return 1;
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
-	if ((ibuf = setinput(mp, NEED_BODY)) == NULL)
+	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
 		return 1;
 	head.h_to = to;
 	head.h_cc = head.h_bcc = head.h_ref = head.h_smopts = NULL;

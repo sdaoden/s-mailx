@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.17 (gritter) 6/13/04";
+static char sccsid[] = "@(#)send.c	2.19 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -153,7 +153,7 @@ off_t *stats;
 
 	for (bc = b0; ; bc = bc->b_nlink) {
 		if (bc != b0) {
-			sputc('.', obuf);
+			putc('.', obuf);
 			if (stats)
 				stats[1]++;
 		}
@@ -195,7 +195,7 @@ struct boundary *b, *b0;
 				f != (char *)-1 ? f : NULL);
 	}
 	if (f == NULL || f == (char *)-1) {
-		f = (char *)smalloc(10);
+		f = smalloc(10);
 		strcpy(f, "/dev/null");
 	}
 	return f;
@@ -308,6 +308,7 @@ static FILE *
 getpipetype(content, qbuf, quote)
 char *content;
 FILE **qbuf;
+int quote;
 {
 	char *penv, *pipecmd, *shell, *cp, *cq;
 	FILE *rbuf = *qbuf;
@@ -326,7 +327,7 @@ FILE **qbuf;
 			char *tempPipe;
 
 			if ((*qbuf = Ftemp(&tempPipe, "Rp", "w+", 0600, 1))
-					== (FILE *)NULL) {
+					== NULL) {
 				perror(catgets(catd, CATSET, 173, "tmpfile"));
 				*qbuf = rbuf;
 			}
@@ -386,6 +387,7 @@ static struct sendmsg *
 open_sendmsg(ibuf, count, unmask_from)
 FILE *ibuf;
 size_t count;
+int unmask_from;
 {
 	struct sendmsg *pm;
 
@@ -415,6 +417,7 @@ read_sendmsg(pm, s, size, ex_llen, ex_count, appendnl)
 	size_t *size;
 	size_t *ex_llen;
 	long *ex_count;
+	int appendnl;
 {
 	size_t in_llen;
 	char *stripped;
@@ -519,6 +522,7 @@ static int
 read_hdr(ph, pm, allowempty)
 struct hdrline **ph;
 struct sendmsg *pm;
+int allowempty;
 {
 	char *line = NULL, *cp;
 	size_t lineno = 0, linesize = 0, linelen;
@@ -766,6 +770,7 @@ char *prefix;
 struct boundary *b0;
 off_t *stats;
 enum conversion convert;
+int action, prefixlen;
 {
 	enum mimecontent mime_content = MIME_TEXT, new_content = MIME_TEXT;
 	FILE *oldobuf = (FILE *)-1, *origobuf = (FILE *)-1, *pbuf = obuf,
@@ -1178,7 +1183,7 @@ send_message(mp, obuf, doign, prefix, action, stats)
 	 * headers there to worry about.
 	 */
 	if ((mp->m_flag & MNOFROM) == 0) {
-		if ((ibuf = setinput(mp, NEED_BODY)) == NULL)
+		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
 			return -1;
 		pm = open_sendmsg(ibuf, mp->m_size, action != CONV_NONE);
 		if ((cp = read_sendmsg(pm, &line, &linesize, &length, NULL, 0))
@@ -1200,7 +1205,7 @@ send_message(mp, obuf, doign, prefix, action, stats)
 		if (doign != allignore)
 			fprintf(obuf, "From %s %s\n", fakefrom(mp),
 					fakedate(mp->m_time));
-		if ((ibuf = setinput(mp, NEED_BODY)) == NULL)
+		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
 			return -1;
 		pm = open_sendmsg(ibuf, mp->m_size, action != CONV_NONE);
 	}
@@ -1337,7 +1342,7 @@ send_end:
 #if 0
 	if (doign == allignore && count > 0 && line[count - 1] != '\n')
 		/* no final blank line */
-		if ((c = sgetc(ibuf)) != EOF && sputc(c, pbuf) == EOF)
+		if ((c = getc(ibuf)) != EOF && putc(c, pbuf) == EOF)
 			return -1;
 #endif
 	if (pbuf != qbuf) {

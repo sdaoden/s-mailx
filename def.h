@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.32 (gritter) 7/29/04
+ *	Sccsid @(#)def.h	2.45 (gritter) 8/7/04
  */
 
 /*
@@ -169,7 +169,7 @@ struct sock {				/* data associated with a socket */
 };
 
 struct mailbox {
-	struct sock	sock;		/* socket structure */
+	struct sock	mb_sock;	/* socket structure */
 	enum {
 		MB_NONE		= 000,	/* no reply expected */
 		MB_COMD		= 001,	/* command reply expected */
@@ -177,24 +177,28 @@ struct mailbox {
 		MB_PREAUTH	= 004,	/* not in authenticated state */
 		MB_BYE		= 010	/* may accept a BYE state */
 	} mb_active;
-	char mb_buf[LINESIZE+1];	/* read buffer */
 	FILE *mb_itf;			/* temp file with messages, read open */
 	FILE *mb_otf;			/* same, write open */
 	enum {
 		MB_VOID,		/* no type (e. g. connection failed) */
 		MB_FILE,		/* local file */
 		MB_POP3,		/* POP3 mailbox */
-		MB_IMAP			/* IMAP mailbox */
+		MB_IMAP,		/* IMAP mailbox */
+		MB_CACHE		/* cached mailbox */
 	} mb_type;			/* type of mailbox */
 	enum {
 		MB_DELE = 01,		/* may delete messages in mailbox */
 		MB_EDIT = 02		/* may edit messages in mailbox */
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
-	unsigned  mb_uidvalidity;	/* IMAP unique identifier validity */
+	unsigned long	mb_uidvalidity;	/* IMAP unique identifier validity */
+	char	*mb_imap_account;	/* name of current IMAP account */
+	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
+	char	*mb_cache_directory;	/* name of cache directory */
 };
 
 enum needspec {
+	NEED_UNSPEC,			/* unspecified need, don't fetch */
 	NEED_HEADER,			/* need the header of a message */
 	NEED_BODY			/* need header and body of a message */
 };
@@ -220,7 +224,9 @@ enum mflag {
 	MREAD		= (1<<8),	/* message has been read sometime. */
 	MSTATUS		= (1<<9),	/* message status has changed */
 	MBOX		= (1<<10),	/* Send this to mbox, regardless */
-	MNOFROM		= (1<<11)	/* no From line */
+	MNOFROM		= (1<<11),	/* no From line */
+	MHIDDEN		= (1<<12),	/* message is hidden to user */
+	MFULLYCACHED	= (1<<13)	/* message is completely cached */
 };
 
 struct message {
@@ -230,9 +236,9 @@ struct message {
 	size_t	m_offset;		/* offset in block of message */
 	size_t	m_size;			/* Bytes in the message */
 	size_t	m_xsize;		/* Bytes in the full message */
-	int	m_lines;		/* Lines in the message */
-	int	m_xlines;		/* Lines in the full message */
-	unsigned	m_uid;		/* IMAP unique identifier */
+	long	m_lines;		/* Lines in the message */
+	long	m_xlines;		/* Lines in the full message */
+	unsigned long	m_uid;		/* IMAP unique identifier */
 	enum havespec	m_have;		/* downloaded parts of the message */
 };
 
@@ -267,8 +273,8 @@ enum argtype {
  * Oft-used mask values
  */
 
-#define	MMNORM		(MDELETED|MSAVED)/* Look at both save and delete bits */
-#define	MMNDEL		MDELETED	/* Look only at deleted bit */
+#define	MMNORM		(MDELETED|MSAVED|MHIDDEN)/* Look at both save and delete bits */
+#define	MMNDEL		(MDELETED|MHIDDEN)	/* Look only at deleted bit */
 
 /*
  * Format of the command description table.
@@ -384,12 +390,6 @@ struct grouphead {
 	struct	group *g_list;		/* Users in group. */
 };
 
-#define	NIL	((struct name *) 0)	/* The nil pointer for namelists */
-#define	NONE	((struct cmd *) 0)	/* The nil pointer to command tab */
-#define	NOVAR	((struct var *) 0)	/* The nil pointer to variables */
-#define	NOGRP	((struct grouphead *) 0)/* The nil grouphead pointer */
-#define	NOGE	((struct group *) 0)	/* The nil group pointer */
-
 /*
  * Structure of the hash table of ignored header fields
  */
@@ -504,8 +504,8 @@ extern const unsigned char	class_char[];
  * for read/write.
  */
 #define trunc(stream) {							\
-	(void)fflush(stream); 						\
-	(void)ftruncate(fileno(stream), (off_t)ftell(stream));		\
+	fflush(stream); 						\
+	ftruncate(fileno(stream), (off_t)ftell(stream));		\
 }
 
 /*
@@ -526,9 +526,10 @@ extern const unsigned char	class_char[];
  * defined. Work around it.
  */
 #ifdef	__GLIBC__
-#define	sgetc(c)	getc_unlocked(c)
-#define	sputc(c, f)	putc_unlocked(c, f)
-#else	/* !__GLIBC__ */
-#define	sgetc(c)	getc(c)
-#define	sputc(c, f)	putc(c, f)
-#endif	/* !__GLIBC__ */
+#undef	getc
+#define	getc(c)		getc_unlocked(c)
+#undef	putc
+#define	putc(c, f)	putc_unlocked(c, f)
+#undef	putchar
+#define	putchar(c)	putc_unlocked((c), stdout)
+#endif	/* __GLIBC__ */

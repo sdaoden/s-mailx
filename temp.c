@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)temp.c	2.4 (gritter) 6/13/04";
+static char sccsid[] = "@(#)temp.c	2.5 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -66,11 +66,12 @@ FILE *
 Ftemp(fn, prefix, mode, bits, register_file)
 char **fn;
 char *prefix, *mode;
+int bits, register_file;
 {
 	FILE *fp;
 	int fd;
 
-	*fn = (char *)smalloc(strlen(tmpdir) + strlen(prefix) + 8);
+	*fn = smalloc(strlen(tmpdir) + strlen(prefix) + 8);
 	strcpy(*fn, tmpdir);
 	strcat(*fn, "/");
 	strcat(*fn, prefix);
@@ -120,7 +121,7 @@ tinit()
 	char *cp;
 
 	if ((cp = getenv("TMPDIR")) != NULL) {
-		tmpdir = (char *)smalloc(strlen(cp) + 1);
+		tmpdir = smalloc(strlen(cp) + 1);
 		strcpy(tmpdir, cp);
 	} else {
 		tmpdir = "/tmp";
@@ -138,13 +139,13 @@ tinit()
 			if (rcvmode)
 				exit(1);
 		} else {
-			myname = (char *)smalloc(strlen(cp) + 1);
+			myname = smalloc(strlen(cp) + 1);
 			strcpy(myname, cp);
 		}
 	}
 	if ((cp = getenv("HOME")) == NULL)
 		cp = ".";
-	homedir = (char *)smalloc(strlen(cp) + 1);
+	homedir = smalloc(strlen(cp) + 1);
 	strcpy(homedir, cp);
 	if (debug || value("debug"))
 		printf(catgets(catd, CATSET, 199,

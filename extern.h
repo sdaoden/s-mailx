@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.47 (gritter) 7/29/04
+ *	Sccsid @(#)extern.h	2.58 (gritter) 8/4/04
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -61,7 +61,7 @@ char	*name1 __P((struct message *, int));
 FILE	*run_editor __P((FILE *, off_t, int, int, char *, struct header *));
 char	*salloc __P((int));
 char	*savestr __P((char *));
-FILE	*setinput __P((struct message *, enum needspec));
+FILE	*setinput __P((struct mailbox *, struct message *, enum needspec));
 char	*routeaddr __P((char *));
 char	*skip_comment __P((char *));
 char	*skin __P((char *));
@@ -146,6 +146,7 @@ int	 member __P((char *, struct ignoretab *));
 int	 messize __P((void *));
 int	 more __P((void *));
 int	 newfileinfo __P((void));
+int	 newmailinfo __P((int));
 int	 next __P((void *));
 void	 panic __P((const char *, ...))
 #ifdef	__GNUC__
@@ -278,16 +279,20 @@ enum okay	pop3_header __P((struct message *));
 enum okay	pop3_body __P((struct message *));
 void	pop3_quit __P((void));
 int	imap_setfile __P((const char *, int, int));
+enum okay	imap_select __P((struct mailbox *, off_t *, int *,
+			const char *));
 enum okay	imap_header __P((struct message *));
 enum okay	imap_body __P((struct message *));
+void	imap_getheaders __P((int, int));
 void	imap_quit __P((void));
-int	imap_newmail __P((void));
+int	imap_newmail __P((int));
 enum okay	imap_undelete __P((struct message *, int));
 enum okay	imap_copy __P((struct message *, int, const char *));
 int	imap_thisaccount __P((const char *));
 int	imap_imap __P((void *));
 enum okay	imap_append __P((const char *, FILE *));
 void	imap_folders __P((void));
+enum okay	imap_dequeue __P((struct mailbox *, FILE *));
 enum protocol	which_protocol __P((const char *));
 void	initbox __P((const char *));
 void	setmsize __P((int));
@@ -315,13 +320,32 @@ enum okay ssl_open __P((const char *, struct sock *, const char *));
 void ssl_gen_err __P((const char *));
 #endif	/* USE_SSL */
 time_t	combinetime __P((int, int, int, int, int, int));
-const char	*protbase __P((const char *));
+char	*protbase __P((const char *));
 const char	*protfile __P((const char *));
 #ifdef	HAVE_SOCKETS
 int	sclose __P((struct sock *));
 enum okay	swrite __P((struct sock *, const char *));
 enum okay	swrite1 __P((struct sock *, const char *, int, int));
 int	sgetline __P((char **, size_t *, size_t *, struct sock *));
+void	sunget __P((struct sock *, const char *));
 enum okay	sopen __P((const char *, struct sock *, int,
 			const char *, const char *, int));
 #endif	/* HAVE_SOCKETS */
+char	*strenc __P((const char *));
+char	*strdec __P((const char *));
+enum okay	getcache __P((struct mailbox *, struct message *,
+			enum needspec));
+void	putcache __P((struct mailbox *, struct message *));
+void	initcache __P((struct mailbox *));
+void	purgecache __P((struct mailbox *, struct message *, long));
+void	delcache __P((struct mailbox *, struct message *));
+enum okay	cache_setptr __P((void));
+enum okay	cache_list __P((struct mailbox *, const char *, FILE *));
+FILE	*cache_queue __P((struct mailbox *));
+enum okay	cache_dequeue __P((struct mailbox *));
+void	*zalloc __P((FILE *));
+int	zread __P((void *, char *, int));
+int	zwrite __P((void *, const char *, int));
+int	zfree __P((void *));
+int	disconnected __P((const char *));
+int	getmdot __P((void));

@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.18 (gritter) 6/13/04";
+static char sccsid[]  = "@(#)mime.c	2.19 (gritter) 8/1/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -102,6 +102,7 @@ static size_t	fwrite_td __P((void *, size_t, size_t, FILE *, enum tdflags,
  */
 static int
 mustquote_body(c)
+	int c;
 {
 	if (c != '\n' && (c < 040 || c == '=' || c >= 0177))
 		return 1;
@@ -113,6 +114,7 @@ mustquote_body(c)
  */
 static int
 mustquote_hdr(c)
+	int c;
 {
 	if (c != '\n' && (c < 040 || c >= 0177))
 		return 1;
@@ -124,6 +126,7 @@ mustquote_hdr(c)
  */
 static int
 mustquote_inhdrq(c)
+	int c;
 {
 	if (c != '\n'
 		&& (c < 040 || c == '=' || c == '?' || c == '_' || c >= 0177))
@@ -244,6 +247,7 @@ makeprint0(s)
 int
 mime_name_invalid(name, putmsg)
 char *name;
+int putmsg;
 {
 	char *addr, *p;
 	int in_quote = 0, in_domain = 0, err = 0, hadat = 0;
@@ -303,7 +307,7 @@ char *name;
 #else	/* !HAVE_SETLOCALE */
 		if (err >= 040 && err <= 0177)
 #endif	/* !HAVE_SETLOCALE */
-			sputc(err, stderr);
+			putc(err, stderr);
 		else
 			fprintf(stderr, "\\%03o", err);
 		fprintf(stderr, catgets(catd, CATSET, 144, "'\n"));
@@ -341,6 +345,7 @@ static char defcharset[] = "iso-8859-1";
  */
 static char *
 getcharset(isclean)
+	int isclean;
 {
 	char *charset;
 
@@ -498,9 +503,9 @@ const char *tocode, *fromcode;
 	/*
 	 * Solaris prefers upper-case charset names. Don't ask...
 	 */
-	t = (char *)salloc(strlen(tocode) + 1);
+	t = salloc(strlen(tocode) + 1);
 	uppercopy(t, tocode);
-	f = (char *)salloc(strlen(fromcode) + 1);
+	f = salloc(strlen(fromcode) + 1);
 	uppercopy(f, fromcode);
 	if (strcmp(t, f) == 0) {
 		errno = 0;
@@ -700,7 +705,7 @@ char *param, *h;
 			q++;
 	}
 	sz = q - p;
-	r = (char*)salloc(q - p + 1);
+	r = salloc(q - p + 1);
 	memcpy(r, p, sz);
 	*(r + sz) = '\0';
 	return r;
@@ -719,7 +724,7 @@ char *h;
 	if ((p = mime_getparam("boundary", h)) == NULL)
 		return NULL;
 	sz = strlen(p);
-	q = (char*)smalloc(sz + 3);
+	q = smalloc(sz + 3);
 	memcpy(q, "--", 2);
 	memcpy(q + 2, p, sz);
 	*(q + sz + 2) = '\0';
@@ -762,7 +767,7 @@ char *x, *l;
 			l++;
 	}
 	if (match != 0) {
-		n = (char *)salloc(strlen(type) + 1);
+		n = salloc(strlen(type) + 1);
 		strcpy(n, type);
 		return n;
 	}
@@ -825,7 +830,7 @@ FILE *f;
 
 	initial_pos = ftell(f);
 	do {
-		c = sgetc(f);
+		c = getc(f);
 		curlen++;
 		if (c == '\n' || c == EOF) {
 			/*
@@ -996,7 +1001,7 @@ int (*mustquote)(int);
 				l = 0;
 			}
 			sz += 2;
-			sputc('=', fo);
+			putc('=', fo);
 			h = ctohex(*p, hex);
 			fwrite(h, sizeof *h, 2, fo);
 			l += 3;
@@ -1008,7 +1013,7 @@ int (*mustquote)(int);
 				fwrite("=\n", sizeof (char), 2, fo);
 				l = 0;
 			}
-			sputc(*p, fo);
+			putc(*p, fo);
 			l++;
 		}
 	}
@@ -1026,7 +1031,7 @@ int (*mustquote)(int);
 {
 	char *p, *q, *upper;
 
-	out->s = (char*)smalloc(in->l * 3 + 1);
+	out->s = smalloc(in->l * 3 + 1);
 	q = out->s;
 	out->l = in->l;
 	upper = in->s + in->l;
@@ -1050,6 +1055,7 @@ int (*mustquote)(int);
 static void
 mime_fromqp(in, out, ishdr)
 struct str *in, *out;
+int ishdr;
 {
 	char *p, *q, *upper;
 	char quote[4];
@@ -1120,7 +1126,7 @@ enum tdflags flags;
 				p++;	/* strip charset */
 			if (p >= upper)
 				goto notmime;
-			cs = (char *)salloc(++p - cbeg);
+			cs = salloc(++p - cbeg);
 			memcpy(cs, cbeg, p - cbeg - 1);
 			cs[p - cbeg - 1] = '\0';
 #ifdef	HAVE_ICONV
@@ -1272,7 +1278,7 @@ FILE *fo;
 		 */
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			while (wbeg < upper && whitechar(*wbeg & 0377)) {
-				sputc(*wbeg++, fo);
+				putc(*wbeg++, fo);
 				sz++, col++;
 			}
 			if (wbeg == upper)
@@ -1526,7 +1532,7 @@ char *prefix;
 	}
 	lastf = f;
 	for (rsz = size * nmemb; rsz; rsz--, p++, wsz++) {
-		sputc(*p, f);
+		putc(*p, f);
 		if (*p != '\n' || rsz == 1) {
 			continue;
 		}

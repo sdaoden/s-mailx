@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.11 (gritter) 7/27/04";
+static char sccsid[] = "@(#)popen.c	2.12 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -95,6 +95,7 @@ static int	wait_command __P((int));
  */
 sighandler_type
 safe_signal(signum, handler)
+int signum;
 sighandler_type handler;
 {
 	struct sigaction nact, oact;
@@ -149,7 +150,7 @@ safe_fopen(file, mode, omode)
 	if (scan_mode(mode, omode) < 0) 
 		return NULL;
 	if ((fd = open(file, *omode, 0666)) < 0)
-		return (FILE *)NULL;
+		return NULL;
 	return fdopen(fd, mode);
 }
 
@@ -160,9 +161,9 @@ Fopen(file, mode)
 	FILE *fp;
 	int omode;
 
-	if ((fp = safe_fopen(file, mode, &omode)) != (FILE *)NULL) {
+	if ((fp = safe_fopen(file, mode, &omode)) != NULL) {
 		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
-		(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+		fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -176,9 +177,9 @@ Fdopen(fd, mode)
 	int	omode;
 
 	scan_mode(mode, &omode);
-	if ((fp = fdopen(fd, mode)) != (FILE *)NULL) {
+	if ((fp = fdopen(fd, mode)) != NULL) {
 		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
-		(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+		fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -280,6 +281,7 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 FILE *
 Popen(cmd, mode, shell, newfd1)
 char *cmd, *mode, *shell;
+int newfd1;
 {
 	int p[2];
 	int myside, hisside, fd0, fd1;
@@ -289,9 +291,9 @@ char *cmd, *mode, *shell;
 	FILE *fp;
 
 	if (pipe(p) < 0)
-		return (FILE *)NULL;
-	(void) fcntl(p[READ], F_SETFD, FD_CLOEXEC);
-	(void) fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
+		return NULL;
+	fcntl(p[READ], F_SETFD, FD_CLOEXEC);
+	fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
 	if (*mode == 'r') {
 		myside = p[READ];
 		fd0 = -1;
@@ -317,10 +319,10 @@ char *cmd, *mode, *shell;
 	if (pid < 0) {
 		close(p[READ]);
 		close(p[WRITE]);
-		return (FILE *)NULL;
+		return NULL;
 	}
-	(void) close(hisside);
-	if ((fp = fdopen(myside, mod)) != (FILE *)NULL)
+	close(hisside);
+	if ((fp = fdopen(myside, mod)) != NULL)
 		register_file(fp, 0, 1, pid, FP_UNCOMPRESSED, NULL, 0L);
 	return fp;
 }
@@ -336,7 +338,7 @@ Pclose(ptr)
 	if (i < 0)
 		return 0;
 	unregister_file(ptr);
-	(void) fclose(ptr);
+	fclose(ptr);
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGINT);
 	sigaddset(&nset, SIGHUP);
@@ -352,9 +354,9 @@ close_all_files()
 
 	while (fp_head)
 		if (fp_head->pipe)
-			(void) Pclose(fp_head->fp);
+			Pclose(fp_head->fp);
 		else
-			(void) Fclose(fp_head->fp);
+			Fclose(fp_head->fp);
 }
 
 static void
@@ -450,7 +452,7 @@ unregister_file(fp)
 			if (p->compressed != FP_UNCOMPRESSED)
 				ok = compress(p);
 			*pp = p->link;
-			free((char *) p);
+			free(p);
 			return ok;
 		}
 	panic(catgets(catd, CATSET, 153, "Invalid file pointer"));
@@ -542,12 +544,12 @@ prepare_child(nset, infd, outfd)
 	if (nset) {
 		for (i = 1; i <= NSIG; i++)
 			if (sigismember(nset, i))
-				(void) safe_signal(i, SIG_IGN);
+				safe_signal(i, SIG_IGN);
 		if (!sigismember(nset, SIGINT))
-			(void) safe_signal(SIGINT, SIG_DFL);
+			safe_signal(SIGINT, SIG_DFL);
 	}
 	sigfillset(&fset);
-	(void) sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
+	sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
 }
 
 static int
@@ -589,7 +591,7 @@ delchild(cp)
 	for (cpp = &child; *cpp != cp; cpp = &(*cpp)->link)
 		;
 	*cpp = cp->link;
-	free((char *) cp);
+	free(cp);
 }
 
 /*ARGSUSED*/

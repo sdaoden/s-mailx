@@ -43,9 +43,9 @@ SHELL		= /bin/sh
 FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
 
-OBJ = aux.o base64.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
+OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o fio.o getname.o getopt.o head.o imap.o lex.o list.o \
-	main.o mime.o names.o pop3.o popen.o quit.o send.o \
+	lzw.o main.o mime.o names.o pop3.o popen.o quit.o send.o \
 	sendout.o smtp.o ssl.o strings.o temp.o tty.o v7.local.o vars.o \
 	version.o
 

@@ -12,10 +12,12 @@ Specification, v.3:
 The following IMAP features could be implemented in the future. If you
 need them and cannot wait, contribute code.
 
+- The cache could use the UIDPLUS extension (RFC 2359) to avoid fetching
+  messages from the server that are copies of cached or locally composed
+  messages.
+
 - The MIME capabilities of IMAP could be used so that not entire messages
   are downloaded all the time, but just the parts that are actually needed.
-
-- One could locally cache IMAP mailboxes.
 
 - Different authentication methods could be implemented.
 
@@ -32,9 +34,8 @@ need them and cannot wait, contribute code.
   mailboxes, and should be sufficiently extensible to work with future
   protocols or protocol extensions.
 
-  Given these facts, I tend to think that it might be better to stay with
-  different sets of generic shell and IMAP commands; however, if you have
-  an elaborated proposal for an interface, let me know.
+  Probably at least commands for 'rename' and 'delete' should be added to
+  transparently update the IMAP cache.
 
 ------------------------------------------------------------------------
 
@@ -80,4 +81,4 @@ window. For the receiving part, it is simply annoying. If you want
 a confirmation, ask the recipient to send one in the body of the
 message.
 
-	Gunnar Ritter					7/28/04
+	Gunnar Ritter					8/7/04

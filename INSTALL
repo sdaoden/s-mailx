@@ -4,41 +4,41 @@ How to configure and install nail
 Quick start
 -----------
 
-	make
-	make install
+        make
+        make install
 
 No 'configure' step is necessary anymore. If 'make install' fails because
 no /usr/ucb/install program is present, try
 
-	make install UCBINSTALL=/usr/bin/install
+        make install UCBINSTALL=/usr/bin/install
 
 Detailed description
 --------------------
 
 Path names are configurable as Makefile variables:
 
-PREFIX		The default Makefile puts BINDIR and MANDIR below this.
+PREFIX          The default Makefile puts BINDIR and MANDIR below this.
 
-BINDIR		The nail binary is installed there.
+BINDIR          The nail binary is installed there.
 
-MANDIR		The nail manual page is put in $(MANDIR)/man1.
+MANDIR          The nail manual page is put in $(MANDIR)/man1.
 
-SYSCONFDIR	nail.rc is installed in this directory unless it already
-		exists.
+SYSCONFDIR      nail.rc is installed in this directory unless it already
+                exists.
 
-MAILSPOOL	The directory where the mail files of users are stored
-		under their respective names and in mbox format. If only
-		POP3 is used to read mail, the value does not matter.
+MAILSPOOL       The directory where the mail files of users are stored
+                under their respective names and in mbox format. If only
+                POP3 is used to read mail, the value does not matter.
 
-SENDMAIL	Path to the de-facto standard /usr/lib/sendmail interface
-		normally offered by Unix MTAs. If only SMTP is used to send
-		mail, the value does not matter.
+SENDMAIL        Path to the de-facto standard /usr/lib/sendmail interface
+                normally offered by Unix MTAs. If only SMTP is used to send
+                mail, the value does not matter.
 
-DESTDIR		Prepended to BINDIR, MANDIR etc. at 'make install'. Mostly
-		useful for package building.
+DESTDIR         Prepended to BINDIR, MANDIR etc. at 'make install'. Mostly
+                useful for package building.
 
-UCBINSTALL	Path name to a BSD-style install, like /usr/ucb/install on
-		SVR4 or GNU install.
+UCBINSTALL      Path name to a BSD-style install, like /usr/ucb/install on
+                SVR4 or GNU install.
 
 Nail uses a simple shell script named 'makeconfig' to check for header
 files and library functions. It is automatically invoked by 'make all'.
@@ -50,15 +50,31 @@ run, so they can be edited by hand without much fear of losing them.
 
 Useful Makefile targets:
 
-all		Initiates the build; just type 'make'.
+all             Initiates the build; just type 'make'.
 
-install		Installs the binary and the manual page. If the systemwide
-		configuration file is not present already, is is also
-		installed.
+install         Installs the binary and the manual page. If the systemwide
+                configuration file is not present already, is is also
+                installed.
 
-clean		Removes object files.
+clean           Removes object files.
 
-mrproper	Removes object files and the configuration results.
+mrproper        Removes object files and the configuration results.
+
+Makefile variables to control the build process:
+
+CFLAGS          Flags for the C compiler, such as '-O'.
+
+CPPFLAGS        Flags for the C preprocessor.
+
+INCLUDES        A list of additional include file directories, as
+                '-I/usr/local/include'. Use this to locate the include
+                files for OpenSSL or iconv(3) if they are not present
+                in the standard include directories. Also, some versions
+                of RedHat Linux need -I/usr/kerberos/include to compile
+                with OpenSSL.
+
+LIBS            A list of additional libraries or library paths, such as
+                '-L/usr/local/lib -liconv'.
 
 Transition remarks concerning the old configure system
 ======================================================
@@ -89,11 +105,11 @@ Transition remarks concerning the old configure system
 In short, if you were using
 --------
 
-	./configure --prefix=/opt/nail --with-rcfile=/opt/nail/etc/nail.rc
+        ./configure --prefix=/opt/nail --with-rcfile=/opt/nail/etc/nail.rc
 
 up to now, replace it by
 
-	make PREFIX=/opt/nail SYSCONFDIR=/opt/nail/etc
+        make PREFIX=/opt/nail SYSCONFDIR=/opt/nail/etc
 
 The DESTDIR variable for building packages is available as before.
 If you intend to build nail packages, a look at 'nail.spec' might
@@ -133,4 +149,4 @@ anyway.)
 
 In short, everything is better now.
 
-	Gunnar Ritter					7/26/04
+        Gunnar Ritter                                   8/4/04

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.22 (gritter) 7/23/04";
+static char sccsid[] = "@(#)collect.c	2.23 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -99,6 +99,7 @@ static int	putesc __P((const char *, FILE *));
 /*ARGSUSED*/
 static void
 onpipe(signo)
+	int signo;
 {
 	siglongjmp(pipejmp, 1);
 }
@@ -122,13 +123,13 @@ char *cmd;
 		goto endpipe;
 	if (cp == NULL)
 		cp = SHELL;
-	if ((obuf = Popen(cmd, "r", cp, 0)) == (FILE *) NULL) {
+	if ((obuf = Popen(cmd, "r", cp, 0)) == NULL) {
 		perror(cmd);
 		return;
 	}
 	safe_signal(SIGPIPE, onpipe);
-	while ((c = sgetc(obuf)) != EOF)
-		sputc(c, fp);
+	while ((c = getc(obuf)) != EOF)
+		putc(c, fp);
 endpipe:
 	safe_signal(SIGPIPE, SIG_IGN);
 	Pclose(obuf);
@@ -211,6 +212,7 @@ include_file(fbuf, name, linecount, charcount, echo)
 FILE *fbuf;
 char *name;
 int *linecount, *charcount;
+int echo;
 {
 	char *interactive, *linebuf = NULL;
 	size_t linesize = 0, linelen, count;
@@ -413,6 +415,7 @@ collect(hp, printheaders, mp, quotefile, tflag)
 	int printheaders;
 	struct message *mp;
 	char *quotefile;
+	int tflag;
 {
 	FILE *fbuf;
 	struct ignoretab *quoteig;
@@ -449,16 +452,13 @@ The following ~ escapes are defined:\n\
 ~|command       Pipe the message through the command\n\
 -----------------------------------------------------------\n");
 
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
 	(void) &escape;
 	(void) &eofcount;
 	(void) &getfields;
 	(void) &tempMail;
 	(void) &tflag;
-#endif
 
-	collf = (FILE*)NULL;
+	collf = NULL;
 	/*
 	 * Start catching signals from here, but we're still die on interrupts
 	 * until we're in the main loop.
@@ -491,7 +491,7 @@ The following ~ escapes are defined:\n\
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 
 	noreset++;
-	if ((collf = Ftemp(&tempMail, "Rs", "w+", 0600, 1)) == (FILE *)NULL) {
+	if ((collf = Ftemp(&tempMail, "Rs", "w+", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 51, "temporary mail file"));
 		goto err;
 	}
@@ -662,7 +662,7 @@ cont:
 			/*
 			 * Dump core.
 			 */
-			core((void *)NULL);
+			core(NULL);
 			break;
 #endif	/* DEBUG_COMMANDS */
 		case '!':
@@ -783,7 +783,7 @@ cont:
 						"%s: Directory\n"), cp);
 				break;
 			}
-			if ((fbuf = Fopen(cp, "r")) == (FILE *)NULL) {
+			if ((fbuf = Fopen(cp, "r")) == NULL) {
 				perror(cp);
 				break;
 			}
@@ -879,12 +879,12 @@ cont:
 	}
 	goto out;
 err:
-	if (collf != (FILE *)NULL) {
+	if (collf != NULL) {
 		Fclose(collf);
-		collf = (FILE *)NULL;
+		collf = NULL;
 	}
 out:
-	if (collf != (FILE *)NULL) {
+	if (collf != NULL) {
 		if ((cp = value("MAILX_TAIL")) != NULL) {
 			if (is_a_tty[0])
 				putesc(cp, stdout);
@@ -929,17 +929,17 @@ exwrite(name, fp, f)
 		printf("\"%s\" ", name);
 		fflush(stdout);
 	}
-	if ((of = Fopen(name, "a")) == (FILE *)NULL) {
+	if ((of = Fopen(name, "a")) == NULL) {
 		perror(NULL);
 		return(-1);
 	}
 	lc = 0;
 	cc = 0;
-	while ((c = sgetc(fp)) != EOF) {
+	while ((c = getc(fp)) != EOF) {
 		cc++;
 		if (c == '\n')
 			lc++;
-		(void) sputc(c, of);
+		putc(c, of);
 		if (ferror(of)) {
 			perror(name);
 			Fclose(of);
@@ -971,8 +971,8 @@ makeheader(fp, hp)
 	unlink(tempEdit);
 	Ftfree(&tempEdit);
 	extract_header(fp, hp);
-	while ((c = sgetc(fp)) != EOF)
-		sputc(c, nf);
+	while ((c = getc(fp)) != EOF)
+		putc(c, nf);
 	if (fp != collf)
 		Fclose(collf);
 	Fclose(fp);
@@ -1002,7 +1002,7 @@ mesedit(c, hp)
 			collf = nf;
 		}
 	}
-	(void) safe_signal(SIGINT, sigint);
+	safe_signal(SIGINT, sigint);
 }
 
 /*
@@ -1020,12 +1020,12 @@ mespipe(cmd)
 	char *tempEdit;
 	char *shell;
 
-	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == (FILE *)NULL) {
+	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));
 		goto out;
 	}
 	fflush(collf);
-	(void) unlink(tempEdit);
+	unlink(tempEdit);
 	Ftfree(&tempEdit);
 	/*
 	 * stdin = current message.
@@ -1035,23 +1035,23 @@ mespipe(cmd)
 		shell = SHELL;
 	if (run_command(shell,
 	    0, fileno(collf), fileno(nf), "-c", cmd, NULL) < 0) {
-		(void) Fclose(nf);
+		Fclose(nf);
 		goto out;
 	}
 	if (fsize(nf) == 0) {
 		fprintf(stderr, catgets(catd, CATSET, 67,
 				"No bytes from \"%s\" !?\n"), cmd);
-		(void) Fclose(nf);
+		Fclose(nf);
 		goto out;
 	}
 	/*
 	 * Take new files.
 	 */
-	(void) fseek(nf, 0L, SEEK_END);
-	(void) Fclose(collf);
+	fseek(nf, 0L, SEEK_END);
+	Fclose(collf);
 	collf = nf;
 out:
-	(void) safe_signal(SIGINT, sigint);
+	safe_signal(SIGINT, sigint);
 }
 
 /*
@@ -1074,7 +1074,7 @@ forward(ms, fp, f)
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgcount+1) * sizeof *msgvec);
-	if (msgvec == (int *)NULL)
+	if (msgvec == NULL)
 		return(0);
 	if (getmsglist(ms, msgvec, 0) < 0)
 		return(0);
@@ -1188,11 +1188,11 @@ savedeadletter(fp)
 	cp = getdeadletter();
 	c = umask(077);
 	dbuf = Fopen(cp, "a");
-	(void) umask(c);
-	if (dbuf == (FILE *)NULL)
+	umask(c);
+	if (dbuf == NULL)
 		return;
-	while ((c = sgetc(fp)) != EOF)
-		(void) sputc(c, dbuf);
+	while ((c = getc(fp)) != EOF)
+		putc(c, dbuf);
 	Fclose(dbuf);
 	rewind(fp);
 }
@@ -1205,22 +1205,22 @@ putesc(const char *s, FILE *stream)
 	while (s[0]) {
 		if (s[0] == '\\') {
 			if (s[1] == 't') {
-				sputc('\t', stream);
+				putc('\t', stream);
 				n++;
 				s += 2;
 				continue;
 			}
 			if (s[1] == 'n') {
-				sputc('\n', stream);
+				putc('\n', stream);
 				n++;
 				s += 2;
 				continue;
 			}
 		}
-		sputc(s[0]&0377, stream);
+		putc(s[0]&0377, stream);
 		n++;
 		s++;
 	}
-	sputc('\n', stream);
+	putc('\n', stream);
 	return ++n;
 }

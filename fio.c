@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.37 (gritter) 7/29/04";
+static char sccsid[] = "@(#)fio.c	2.46 (gritter) 8/3/04";
 #endif
 #endif /* not lint */
 
@@ -126,7 +126,7 @@ setptr(ibuf, offset)
 		if (linebuf[0] == '\0')
 			linebuf[0] = '.';
 #endif
-		(void) fwrite(linebuf, sizeof *linebuf, count, mb.mb_otf);
+		fwrite(linebuf, sizeof *linebuf, count, mb.mb_otf);
 		if (ferror(mb.mb_otf)) {
 			perror("/tmp");
 			exit(1);
@@ -186,8 +186,8 @@ putline(obuf, linebuf, count)
 	char *linebuf;
 	size_t count;
 {
-	(void) fwrite(linebuf, sizeof *linebuf, count, obuf);
-	(void) sputc('\n', obuf);
+	fwrite(linebuf, sizeof *linebuf, count, obuf);
+	putc('\n', obuf);
 	if (ferror(obuf))
 		return (-1);
 	return (count + 1);
@@ -263,35 +263,39 @@ again:
  * passed message pointer.
  */
 FILE *
-setinput(mp, need)
-	struct message *mp;
+setinput(mp, m, need)
+	struct mailbox *mp;
+	struct message *m;
 	enum needspec need;
 {
 	enum okay ok = STOP;
 
 	switch (need) {
 	case NEED_HEADER:
-		if (mp->m_have & HAVE_HEADER)
+		if (m->m_have & HAVE_HEADER)
 			ok = OKAY;
 		else
-			ok = get_header(mp);
+			ok = get_header(m);
 		break;
 	case NEED_BODY:
-		if (mp->m_have & HAVE_BODY)
+		if (m->m_have & HAVE_BODY)
 			ok = OKAY;
 		else
-			ok = get_body(mp);
+			ok = get_body(m);
+		break;
+	case NEED_UNSPEC:
+		ok = OKAY;
 		break;
 	}
 	if (ok != OKAY)
 		return NULL;
-	fflush(mb.mb_otf);
-	if (fseek(mb.mb_itf, (long)nail_positionof(mp->m_block,
-					mp->m_offset), 0) < 0) {
+	fflush(mp->mb_otf);
+	if (fseek(mp->mb_itf, (long)nail_positionof(m->m_block,
+					m->m_offset), 0) < 0) {
 		perror("fseek");
 		panic(catgets(catd, CATSET, 77, "temporary file seek"));
 	}
-	return (mb.mb_itf);
+	return (mp->mb_itf);
 }
 
 struct message *
@@ -662,6 +666,7 @@ fgetline(line, linesize, count, llen, fp, appendnl)
 char **line;
 size_t *linesize, *count, *llen;
 FILE *fp;
+int appendnl;
 {
 	long i_llen, sz;
 
@@ -712,6 +717,7 @@ fgetline_byone(line, linesize, llen, fp, appendnl, n)
 char **line;
 size_t *linesize, *llen;
 FILE *fp;
+int appendnl;
 size_t n;
 {
 	int c;
@@ -721,7 +727,7 @@ size_t n;
 	for (;;) {
 		if (n >= *linesize - 128)
 			*line = srealloc(*line, *linesize += 256);
-		c = sgetc(fp);
+		c = getc(fp);
 		if (c != EOF) {
 			(*line)[n++] = c;
 			(*line)[n] = '\0';
@@ -762,6 +768,7 @@ get_header(mp)
 	case MB_POP3:
 		return pop3_header(mp);
 	case MB_IMAP:
+	case MB_CACHE:
 		return imap_header(mp);
 	case MB_VOID:
 		return STOP;
@@ -780,6 +787,7 @@ get_body(mp)
 	case MB_POP3:
 		return pop3_body(mp);
 	case MB_IMAP:
+	case MB_CACHE:
 		return imap_body(mp);
 	case MB_VOID:
 		return STOP;
@@ -791,6 +799,7 @@ get_body(mp)
 #ifdef	HAVE_SOCKETS
 static long
 xwrite(fd, data, sz)
+	int fd;
 	const char *data;
 	size_t sz;
 {
@@ -886,9 +895,11 @@ swrite1(sp, data, sz, use_buffer)
 			sp->s_wbufpos > 0) {
 		x = sp->s_wbufpos;
 		sp->s_wbufpos = 0;
-		if (swrite1(sp, sp->s_wbuf, x, 0) != OKAY)
+		if (swrite1(sp, sp->s_wbuf, x, -1) != OKAY)
 			return STOP;
 	}
+	if (sz == 0)
+		return OKAY;
 #ifdef	USE_SSL
 	if (sp->s_ssl) {
 ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
@@ -1103,6 +1114,7 @@ sopen(xserver, sp, use_ssl, uhp, portstr, verbose)
 #endif	/* !HAVE_IPv6_FUNCS */
 	if (verbose)
 		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
+	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
 #ifdef	USE_SSL
 	if (use_ssl) {

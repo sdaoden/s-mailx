@@ -1,3 +1,34 @@
+[11.1] released 8/8/04
+* IMAP mailboxes can now be cached locally. See the string variable
+  'imap-cache' in the manual page. The cache can also be used for
+  disconnected operation mode, see 'disconnected' and also the '-D'
+  command line option.
+* When nail is notified by the server that messages have been expunged,
+  the user is informed about this condition even if new messages have
+  also arrived.
+* When the group of variables for an 'account' command contains a variable
+  prefixed by 'no...' and the related variable is not set, it is not an
+  error to unset it.
+* The 'headers' command has been made faster when operating on an IMAP
+  mailbox by bundling IMAP requests.
+* When a 'folder' command was executed to change from an uncompressed
+  file to a compressed one, the latter was incorrectly detected as
+  being read-only.
+* Unless one of the 'autoinc' or 'newmail' variables is set, nail does
+  not actively check for new messages in the current IMAP mailbox before
+  each prompt. New messages may nevertheless be detected after any
+  other IMAP command has been issued, so the effect is mostly that
+  not every nail command causes an IMAP command to be sent. Also if
+  'autoinc' or 'newmail' are set to the value "noimap", they are
+  ignored for IMAP mailboxes but still effective for local folders.
+* The 'inc' and 'newmail' commands now use the same method to determine
+  the location of the current message as the 'folder' command does. That
+  means if there has been new mail before that is still unread when newer
+  mail arrives, the older messages are displayed first.
+* Nail does not generate 'Sender:' fields anymore.
+* If OpenSSL is not available, STARTTLS support is not built, and nail
+  compiles again without OpenSSL.
+
 [11.0] released 7/30/04
 * IMAP support has been added. It should considered to be in beta state
   now, but should not have any disturbing effects on other code unless

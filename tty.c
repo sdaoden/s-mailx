@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.15 (gritter) 7/23/04";
+static char sccsid[] = "@(#)tty.c	2.16 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -117,7 +117,7 @@ again:
 		}
 		return c & 0377;
 	} else
-		return sgetc(ibuf);
+		return getc(ibuf);
 }
 
 /*
@@ -133,12 +133,8 @@ rtty_internal(pr, src)
 	int c;
 	char *cp, *cp2;
 
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
 	(void) &c;
 	(void) &cp2;
-#endif
-
 	fputs(pr, stdout);
 	fflush(stdout);
 	if (src != NULL && strlen(src) > sizeof canonb - 2) {
@@ -251,6 +247,7 @@ int
 grabh(hp, gflags, subjfirst)
 	struct header *hp;
 	enum gfield gflags;
+	int subjfirst;
 {
 	struct termios ttybuf;
 	sighandler_type saveint;
@@ -263,11 +260,8 @@ grabh(hp, gflags, subjfirst)
 	int errs;
 	int comma;
 
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
 	(void) &comma;
 	(void) &saveint;
-#endif
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
@@ -360,12 +354,9 @@ char *prefix, *string;
 	sighandler_type savetstp;
 	sighandler_type savettou;
 	sighandler_type savettin;
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
+
 	(void) &saveint;
 	(void) &ret;
-#endif
-
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);

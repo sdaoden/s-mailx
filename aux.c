@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.39 (gritter) 7/26/04";
+static char sccsid[] = "@(#)aux.c	2.43 (gritter) 8/2/04";
 #endif
 #endif /* not lint */
 
@@ -164,10 +164,10 @@ panic(format, va_alist)
 #else
 	va_start(ap);
 #endif
-	(void)fprintf(stderr, catgets(catd, CATSET, 1, "panic: "));
+	fprintf(stderr, catgets(catd, CATSET, 1, "panic: "));
 	vfprintf(stderr, format, ap);
 	va_end(ap);
-	(void)fprintf(stderr, catgets(catd, CATSET, 2, "\n"));
+	fprintf(stderr, catgets(catd, CATSET, 2, "\n"));
 	fflush(stderr);
 	abort();
 }
@@ -295,6 +295,7 @@ char *
 hfield_mult(field, mp, mult)
 	char field[];
 	struct message *mp;
+	int mult;
 {
 	FILE *ibuf;
 	char *linebuf = NULL;
@@ -303,7 +304,7 @@ hfield_mult(field, mp, mult)
 	char *hfield;
 	char *colon, *oldhfield = NULL;
 
-	if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
+	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		return NULL;
 	if ((lc = mp->m_lines - 1) < 0)
 		return NULL;
@@ -376,7 +377,7 @@ gethfield(f, linebuf, linesize, rem, colon)
 			cp++;
 			if (rem <= 0)
 				break;
-			ungetc(c = sgetc(f), f);
+			ungetc(c = getc(f), f);
 			if (!blankchar(c))
 				break;
 			if ((c = readline(f, &line2, &line2size)) < 0)
@@ -472,7 +473,7 @@ source(v)
 
 	if ((cp = expand(*arglist)) == NULL)
 		return(1);
-	if ((fi = Fopen(cp, "r")) == (FILE *)NULL) {
+	if ((fi = Fopen(cp, "r")) == NULL) {
 		perror(cp);
 		return(1);
 	}
@@ -533,7 +534,7 @@ alter(name)
 		return;
 	utb.actime = time((time_t *)0) + 1;
 	utb.modtime = sb.st_mtime;
-	(void)utime(name, &utb);
+	utime(name, &utb);
 }
 
 /*
@@ -896,7 +897,7 @@ name1(mp, reptype)
 	namebuf[0] = 0;
 	if (mp->m_flag & MNOFROM)
 		goto out;
-	if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
+	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		goto out;
 	if (readline(ibuf, &linebuf, &linesize) < 0)
 		goto out;
@@ -1312,7 +1313,7 @@ protfile(xcp)
 	return cp;
 }
 
-const char *
+char *
 protbase(cp)
 	const char *cp;
 {
@@ -1327,6 +1328,76 @@ protbase(cp)
 		} else if (cp[0] == '/')
 			break;
 		else
+			*np++ = *cp++;
+	}
+	*np = '\0';
+	return n;
+}
+
+int
+disconnected(file)
+	const char	*file;
+{
+	char	*cp, *cq, *vp;
+	int	vs, r;
+
+	if (value("disconnected"))
+		return 1;
+	cp = protbase(file);
+	if (strncmp(cp, "imap://", 7) == 0)
+		cp += 7;
+	else if (strncmp(cp, "imaps://", 8) == 0)
+		cp += 8;
+	else
+		return 0;
+	if ((cq = strchr(cp, ':')) != NULL)
+		*cq = '\0';
+	vp = ac_alloc(vs = strlen(cp) + 14);
+	snprintf(vp, vs, "disconnected-%s", cp);
+	r = value(vp) != NULL;
+	ac_free(vp);
+	return r;
+}
+
+char *
+strenc(cp)
+	const char *cp;
+{
+	char	*n, *np;
+	int	i;
+
+	np = n = salloc(strlen(cp) * 3 + 1);
+	while (*cp) {
+		if (alnumchar(*cp&0377) || *cp == '_' || *cp == '@' ||
+				(np > n && (*cp == '.' || *cp == '-' ||
+					    *cp == ':')))
+			*np++ = *cp;
+		else {
+			*np++ = '%';
+			i = (*cp & 0xf0) >> 4;
+			*np++ = i > 9 ? i-10 + 'A' : i + '0';
+			i = *cp & 0x0f;
+			*np++ = i > 9 ? i-10 + 'A' : i + '0';
+		}
+		cp++;
+	}
+	*np = '\0';
+	return n;
+}
+
+char *
+strdec(cp)
+	const char *cp;
+{
+	char	*n, *np;
+
+	np = n = salloc(strlen(cp) + 1);
+	while (*cp) {
+		if (cp[0] == '%' && cp[1] && cp[2]) {
+			*np = (int)(cp[1]>'9'?cp[1]-'A'+10:cp[1]-'0') << 4;
+			*np++ |= cp[2]>'9'?cp[2]-'A'+10:cp[2]-'0';
+			cp += 3;
+		} else
 			*np++ = *cp++;
 	}
 	*np = '\0';

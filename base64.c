@@ -23,7 +23,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)base64.c	2.6 (gritter) 7/4/04";
+static char sccsid[] = "@(#)base64.c	2.7 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -59,6 +59,7 @@ static signed char	*ctob64 __P((unsigned char *, int));
 static signed char *
 ctob64(p, pad)
 unsigned char *p;
+int pad;
 {
 	static signed char b64[4];
 
@@ -109,6 +110,7 @@ size_t
 mime_write_tob64(in, fo, is_header)
 struct str *in;
 FILE *fo;
+int is_header;
 {
 	char *p, *upper, q[3];
 	signed char *h;
@@ -127,12 +129,12 @@ FILE *fo;
 		fwrite(h, sizeof(char), 4, fo);
 		sz += 4, l += 4;
 		if (l >= 71) {
-			sputc('\n', fo), sz++;
+			putc('\n', fo), sz++;
 			l = 0;
 		}
 	}
 	if (l != 0 && !is_header) {
-		sputc('\n', fo), sz++;
+		putc('\n', fo), sz++;
 	}
 	return sz;
 }
@@ -143,6 +145,7 @@ FILE *fo;
 void
 mime_fromb64(in, out, is_text)
 struct str *in, *out;
+int is_text;
 {
 	char *p, *q, *upper;
 	signed char c, d, e, f, g;
@@ -231,15 +234,16 @@ void
 mime_fromb64_b(in, out, is_text, f)
 struct str *in, *out;
 FILE *f;
+int is_text;
 {
 	static signed char b[4];
 	static int n;
-	static FILE *f_b = (FILE*)-1;
+	static FILE *f_b = (FILE *)-1;
 	signed char c;
 	int i;
 	struct str nin;
 
-	nin.s = (char*)smalloc(in->l + n);
+	nin.s = smalloc(in->l + n);
 	if (n != 0 && f_b == f) {
 		for (nin.l = 0; nin.l < n; nin.l++)
 			nin.s[nin.l] = b[nin.l];

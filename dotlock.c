@@ -34,7 +34,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)dotlock.c	2.3 (gritter) 6/13/04";
+static char sccsid[] = "@(#)dotlock.c	2.5 (gritter) 8/1/04";
 #endif
 #endif
 
@@ -132,7 +132,7 @@ create_exclusive(fname)
 	else
 		ptr++;
 
-	(void) snprintf(path, sizeof path, "%.*s.%s.%x", 
+	snprintf(path, sizeof path, "%.*s.%s.%x", 
 	    (int) (ptr - fname), fname, hostname, (unsigned int) cookie);
 
 	/*
@@ -145,7 +145,7 @@ create_exclusive(fname)
 		if (fd != -1) {
 			snprintf(apid, APID_SZ, "%d", (int)getpid());
 			write(fd, apid, strlen(apid));
-			(void) close(fd);
+			close(fd);
 			break;
 		}
 		else if (errno == EEXIST)
@@ -171,7 +171,7 @@ create_exclusive(fname)
 		goto bad;
 
 	perhaps_setgid(fname, effectivegid);
-	(void) unlink(path);
+	unlink(path);
 	setgid(realgid);
 
 	/*
@@ -186,15 +186,15 @@ create_exclusive(fname)
 
 bad:
 	serrno = errno;
-	(void) unlink(path);
+	unlink(path);
 	errno = serrno;
 	return -1;
 }
 
 int
 fcntl_lock(fd, type)
+	int fd, type;
 {
-#ifdef	F_SETLKW
 	struct flock flp;
 
 	flp.l_type = type;
@@ -202,9 +202,6 @@ fcntl_lock(fd, type)
 	flp.l_whence = SEEK_SET;
 	flp.l_len = 0;
 	return fcntl(fd, F_SETLKW, &flp);
-#else	/* !F_SETLKW */
-	return flock(fd, type);
-#endif	/* !F_SETLKW */
 }
 
 int
@@ -232,29 +229,25 @@ dot_lock(fname, fd, pollinterval, fp, msg)
 	sigaddset(&nset, SIGTSTP);
 	sigaddset(&nset, SIGCHLD);
 
-	(void) snprintf(path, sizeof(path), "%s.lock", fname);
+	snprintf(path, sizeof(path), "%s.lock", fname);
 
 	for (i=0;i<15;i++) {
-		(void) sigprocmask(SIG_BLOCK, &nset, &oset);
+		sigprocmask(SIG_BLOCK, &nset, &oset);
 		if (create_exclusive(path) != -1) {
-			(void) sigprocmask(SIG_SETMASK, &oset, NULL);
+			sigprocmask(SIG_SETMASK, &oset, NULL);
 			return 0;
 		}
 		else {
 			olderrno = errno;
-			(void) sigprocmask(SIG_SETMASK, &oset, NULL);
+			sigprocmask(SIG_SETMASK, &oset, NULL);
 		}
 
-#ifdef	F_SETLKW
 		fcntl_lock(fd, F_UNLCK);
-#else
-		fcntl_lock(fd, LOCK_UN);
-#endif
 		if (olderrno != EEXIST)
 			return -1;
 
 		if (fp && msg)
-		    (void) fputs(msg, fp);
+		    fputs(msg, fp);
 
 		if (pollinterval) {
 			if (pollinterval == -1) {
@@ -263,11 +256,7 @@ dot_lock(fname, fd, pollinterval, fp, msg)
 			}
 			sleep(pollinterval);
 		}
-#ifdef	F_SETLKW
 		fcntl_lock(fd, F_WRLCK);
-#else
-		fcntl_lock(fd, LOCK_EX);
-#endif
 	}
         fprintf(stderr, catgets(catd, CATSET, 71,
 		"%s seems a stale lock? Need to be removed by hand?\n"), path);
@@ -283,8 +272,8 @@ dot_unlock(fname)
 	if (maildir_access(fname) != 0)
 		return;
 
-	(void) snprintf(path, sizeof(path), "%s.lock", fname);
+	snprintf(path, sizeof(path), "%s.lock", fname);
 	perhaps_setgid(path, effectivegid);
-	(void) unlink(path);
+	unlink(path);
 	setgid(realgid);
 }

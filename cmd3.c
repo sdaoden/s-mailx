@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.27 (gritter) 7/27/04";
+static char sccsid[] = "@(#)cmd3.c	2.33 (gritter) 8/4/04";
 #endif
 #endif /* not lint */
 
@@ -87,8 +87,8 @@ shell(v)
 		return 1;
 	if ((shell = value("SHELL")) == NULL)
 		shell = SHELL;
-	(void) run_command(shell, 0, -1, -1, "-c", cmd, NULL);
-	(void) safe_signal(SIGINT, sigint);
+	run_command(shell, 0, -1, -1, "-c", cmd, NULL);
+	safe_signal(SIGINT, sigint);
 	printf("!\n");
 	free(cmd);
 	return 0;
@@ -107,9 +107,9 @@ dosh(v)
 
 	if ((shell = value("SHELL")) == NULL)
 		shell = SHELL;
-	(void) run_command(shell, 0, -1, -1, NULL, NULL, NULL);
-	(void) safe_signal(SIGINT, sigint);
-	sputc('\n', stdout);
+	run_command(shell, 0, -1, -1, NULL, NULL, NULL);
+	safe_signal(SIGINT, sigint);
+	putchar('\n');
 	return 0;
 }
 
@@ -335,6 +335,7 @@ followupsender(v)
 static int
 respond_internal(msgvec, recipient_record)
 	int *msgvec;
+	int recipient_record;
 {
 	struct message *mp;
 	char *cp, *rcv;
@@ -362,7 +363,7 @@ respond_internal(msgvec, recipient_record)
 	 * and with it, all my alternate names.
 	 */
 	np = delete_alternates(np);
-	if (np == NIL)
+	if (np == NULL)
 		np = extract(rcv, GTO);
 	head.h_to = np;
 	if ((head.h_subject = hfield("subject", mp)) == NULL)
@@ -373,11 +374,11 @@ respond_internal(msgvec, recipient_record)
 		np = delete_alternates(np);
 		head.h_cc = np;
 	} else
-		head.h_cc = NIL;
-	head.h_bcc = NIL;
+		head.h_cc = NULL;
+	head.h_bcc = NULL;
 	make_ref(mp, &head);
 	head.h_attach = NULL;
-	head.h_smopts = NIL;
+	head.h_smopts = NULL;
 	mail1(&head, 1, mp, NULL, recipient_record, 0);
 	return(0);
 }
@@ -468,8 +469,8 @@ messize(v)
 	for (ip = msgvec; *ip != 0; ip++) {
 		mesg = *ip;
 		mp = &message[mesg-1];
-		printf(catgets(catd, CATSET, 40, "%d: %d/%u\n"),
-				mesg, mp->m_lines, (unsigned int)mp->m_size);
+		printf(catgets(catd, CATSET, 40, "%d: %ld/%lu\n"),
+				mesg, mp->m_lines, (unsigned long)mp->m_size);
 	}
 	return(0);
 }
@@ -494,6 +495,7 @@ static sigjmp_buf	pipejmp;
 /*ARGSUSED*/
 static void
 onpipe(signo)
+	int signo;
 {
 	siglongjmp(pipejmp, 1);
 }
@@ -520,12 +522,12 @@ set(v)
 	(void)&bsdset;
 	if (*arglist == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)
-			for (vp = variables[h]; vp != NOVAR; vp = vp->v_link)
+			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
 				s++;
 		/*LINTED*/
 		ap = (char **)salloc(s * sizeof *ap);
 		for (h = 0, p = ap; h < HSHSIZE; h++)
-			for (vp = variables[h]; vp != NOVAR; vp = vp->v_link)
+			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
 				*p++ = vp->v_name;
 		*p = NULL;
 		sort(ap);
@@ -622,12 +624,12 @@ group(v)
 
 	if (*argv == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)
-			for (gh = groups[h]; gh != NOGRP; gh = gh->g_link)
+			for (gh = groups[h]; gh != NULL; gh = gh->g_link)
 				s++;
 		/*LINTED*/
 		ap = (char **)salloc(s * sizeof *ap);
 		for (h = 0, p = ap; h < HSHSIZE; h++)
-			for (gh = groups[h]; gh != NOGRP; gh = gh->g_link)
+			for (gh = groups[h]; gh != NULL; gh = gh->g_link)
 				*p++ = gh->g_name;
 		*p = NULL;
 		sort(ap);
@@ -641,10 +643,10 @@ group(v)
 	}
 	gname = *argv;
 	h = hash(gname);
-	if ((gh = findgroup(gname)) == NOGRP) {
+	if ((gh = findgroup(gname)) == NULL) {
 		gh = (struct grouphead *)scalloc(1, sizeof *gh);
 		gh->g_name = vcopy(gname);
-		gh->g_list = NOGE;
+		gh->g_list = NULL;
 		gh->g_link = groups[h];
 		groups[h] = gh;
 	}
@@ -748,31 +750,31 @@ shellecho(const char *cp)
 			case '\0':
 				return cflag;
 			case 'a':
-				sputc('\a', stdout);
+				putchar('\a');
 				break;
 			case 'b':
-				sputc('\b', stdout);
+				putchar('\b');
 				break;
 			case 'c':
 				cflag = 1;
 				break;
 			case 'f':
-				sputc('\f', stdout);
+				putchar('\f');
 				break;
 			case 'n':
-				sputc('\n', stdout);
+				putchar('\n');
 				break;
 			case 'r':
-				sputc('\r', stdout);
+				putchar('\r');
 				break;
 			case 't':
-				sputc('\t', stdout);
+				putchar('\t');
 				break;
 			case 'v':
-				sputc('\v', stdout);
+				putchar('\v');
 				break;
 			default:
-				sputc(*cp&0377, stdout);
+				putchar(*cp&0377);
 				break;
 			case '0':
 				c = 0;
@@ -782,10 +784,10 @@ shellecho(const char *cp)
 					c |= cp[1] - '0';
 					cp++;
 				}
-				sputc(c, stdout);
+				putchar(c);
 			}
 		} else
-			sputc(*cp & 0377, stdout);
+			putchar(*cp & 0377);
 		cp++;
 	}
 	return cflag;
@@ -807,12 +809,12 @@ echo(v)
 		cp = *ap;
 		if ((cp = expand(cp)) != NULL) {
 			if (ap != argv)
-				sputc(' ', stdout);
+				putchar(' ');
 			cflag |= shellecho(cp);
 		}
 	}
 	if (!cflag)
-		sputc('\n', stdout);
+		putchar('\n');
 	return 0;
 }
 
@@ -838,13 +840,14 @@ Followup(v)
 static int
 Respond_internal(msgvec, recipient_record)
 	int msgvec[];
+	int recipient_record;
 {
 	struct header head;
 	struct message *mp;
 	int *ap;
 	char *cp;
 
-	head.h_to = NIL;
+	head.h_to = NULL;
 	for (ap = msgvec; *ap != 0; ap++) {
 		mp = &message[*ap - 1];
 		touch(mp);
@@ -854,17 +857,17 @@ Respond_internal(msgvec, recipient_record)
 				cp = skin(nameof(mp, 2));
 		head.h_to = cat(head.h_to, extract(cp, GTO));
 	}
-	if (head.h_to == NIL)
+	if (head.h_to == NULL)
 		return 0;
 	mp = &message[msgvec[0] - 1];
 	if ((head.h_subject = hfield("subject", mp)) == NULL)
 		head.h_subject = hfield("subj", mp);
 	head.h_subject = reedit(head.h_subject);
-	head.h_cc = NIL;
-	head.h_bcc = NIL;
+	head.h_cc = NULL;
+	head.h_bcc = NULL;
 	make_ref(mp, &head);
 	head.h_attach = NULL;
-	head.h_smopts = NIL;
+	head.h_smopts = NULL;
 	mail1(&head, 1, mp, NULL, recipient_record, 0);
 	return 0;
 }
@@ -983,10 +986,10 @@ alternates(v)
 		return(0);
 	}
 	if (altnames != 0)
-		free((char *) altnames);
-	altnames = (char **)scalloc(c, sizeof (char *));
+		free(altnames);
+	altnames = scalloc(c, sizeof (char *));
 	for (ap = namelist, ap2 = altnames; *ap; ap++, ap2++) {
-		cp = (char *)scalloc(strlen(*ap) + 1, sizeof (char));
+		cp = scalloc(strlen(*ap) + 1, sizeof (char));
 		strcpy(cp, *ap);
 		*ap2 = cp;
 	}
@@ -1000,6 +1003,7 @@ alternates(v)
 static int
 forward1(v, add_resent)
 void *v;
+int add_resent;
 {
 	char *name, *str;
 	struct name *to;
@@ -1064,12 +1068,12 @@ int
 newmail(v)
 void *v;
 {
-	int omsgcount = msgcount;
-	int val;
+	int val = 1, mdot;
 
-	if ((val = setfile(mailname, 1)) == 0) {
-		newfileinfo();
-		setdot(&message[omsgcount]);
+	if ((mb.mb_type != MB_IMAP || imap_newmail(1)) &&
+			(val = setfile(mailname, 1)) == 0) {
+		mdot = getmdot();
+		setdot(&message[mdot - 1]);
 	}
 	return val;
 }
@@ -1220,7 +1224,9 @@ account(v)
 		for (i = 0; args[i+1]; i++)
 			a->ac_vars[i] = sstrdup(args[i+1]);
 	} else {
+		unset_allow_undefined = 1;
 		set(a->ac_vars);
+		unset_allow_undefined = 0;
 		if (*mailname) {
 			char	*av[2] = { "%", NULL };
 			return file(av);

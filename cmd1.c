@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.25 (gritter) 7/26/04";
+static char sccsid[] = "@(#)cmd1.c	2.33 (gritter) 8/7/04";
 #endif
 #endif /* not lint */
 
@@ -95,9 +95,11 @@ headers(v)
 	mesg = mp - &message[0];
 	if (dot != &message[n-1])
 		setdot(mp);
+	if (mb.mb_type == MB_IMAP)
+		imap_getheaders(mesg+1, mesg + size);
 	for (; mp < &message[msgcount]; mp++) {
 		mesg++;
-		if (mp->m_flag & MDELETED)
+		if (mp->m_flag & (MDELETED|MHIDDEN))
 			continue;
 		if (flag++ >= size)
 			break;
@@ -186,6 +188,7 @@ static sigjmp_buf	pipejmp;
 /*ARGSUSED*/
 static void
 onpipe(signo)
+	int signo;
 {
 	siglongjmp(pipejmp, 1);
 }
@@ -257,7 +260,7 @@ printhead(mesg, f)
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL;
 	bsdheadline= value("bsdcompat") != NULL || value("bsdheadline") != NULL;
 	if ((mp->m_flag & MNOFROM) == 0) {
-		if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
+		if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 			return;
 		if ((headlen = readline(ibuf, &headline, &headsize)) < 0)
 			return;
@@ -306,10 +309,10 @@ printhead(mesg, f)
 	if (value("datefield") && (cp = hfield("date", mp)) != NULL)
 		hl.l_date = fakedate(rfctime(cp));
 	if (mp->m_xlines > 0)
-		snprintf(lcount, sizeof lcount, "%3d", mp->m_xlines);
+		snprintf(lcount, sizeof lcount, "%3ld", mp->m_xlines);
 	else
 		strcpy(lcount, "   ");
-	snprintf(ccount, sizeof ccount, "%-5u", (unsigned)mp->m_xsize);
+	snprintf(ccount, sizeof ccount, "%-5lu", (unsigned long)mp->m_xsize);
 	subjlen = scrnwidth - (bsdheadline ? 49 : 45) - strlen(ccount) -
 		strlen(ccount);
 	if (subjlen > out.l)
@@ -422,6 +425,7 @@ static int
 type1(msgvec, doign, page, pipe, cmd, tstats)
 int *msgvec;
 char *cmd;
+int doign, page, pipe;
 off_t *tstats;
 {
 	int *ip;
@@ -448,7 +452,7 @@ off_t *tstats;
 		if (cp == NULL)
 			cp = SHELL;
 		obuf = Popen(cmd, "w", cp, 1);
-		if (obuf == (FILE*)NULL) {
+		if (obuf == NULL) {
 			perror(cmd);
 			obuf = stdout;
 		} else {
@@ -470,7 +474,7 @@ off_t *tstats;
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			cp = get_pager();
 			obuf = Popen(cp, "w", NULL, 1);
-			if (obuf == (FILE*)NULL) {
+			if (obuf == NULL) {
 				perror(cp);
 				obuf = stdout;
 			} else
@@ -484,12 +488,12 @@ off_t *tstats;
 		if (value("quiet") == NULL)
 			fprintf(obuf, catgets(catd, CATSET, 17,
 				"Message %2d:\n"), *ip);
-		(void) send_message(mp, obuf, doign ? ignore : 0, NULL,
+		send_message(mp, obuf, doign ? ignore : 0, NULL,
 				    pipe && value("piperaw") ?
 				    	CONV_NONE : CONV_TODISP,
 				    mstats);
 		if (pipe && value("page")) {
-			sputc('\f', obuf);
+			putc('\f', obuf);
 		}
 		if (tstats) {
 			tstats[0] += mstats[0];
@@ -515,6 +519,7 @@ char *
 laststring(linebuf, flag, strip)
 char *linebuf;
 int *flag;
+int strip;
 {
 	char *cp, *p;
 	char quoted;
@@ -582,6 +587,7 @@ int *flag;
 static int
 pipe1(str, doign)
 char *str;
+int doign;
 {
 	char *cmd;
 	int f, *msgvec, ret;
@@ -735,7 +741,7 @@ top(v)
 		if (mp->m_flag & MNOFROM)
 			printf("From %s %s\n", fakefrom(mp),
 					fakedate(mp->m_time));
-		if ((ibuf = setinput(mp, NEED_BODY)) == NULL)	/* XXX could use TOP */
+		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)	/* XXX could use TOP */
 			return 1;
 		c = mp->m_lines;
 		if (!lineb)
@@ -805,7 +811,7 @@ folders(v)
 				"No value set for \"folder\"\n"));
 		return 1;
 	}
-	if (which_protocol(dirname) == PROTO_IMAP)
+	if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 		imap_folders();
 	else {
 		if ((cmd = value("LISTER")) == NULL)

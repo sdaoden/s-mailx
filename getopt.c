@@ -4,13 +4,17 @@
  * Gunnar Ritter, Freiburg i. Br., Germany, March 2002.
  */
 
-/*	Sccsid @(#)getopt.c	1.3 (gritter) 7/10/04	*/
+/*	Sccsid @(#)getopt.c	1.5 (gritter) 8/7/04	*/
 
 #include	"config.h"
 #include	<sys/types.h>
+#ifdef	HAVE_ALLOCA
 #ifdef	HAVE_ALLOCA_H
 #include	<alloca.h>
-#endif	/* HAVE_ALLOCA_H */
+#else	/* !HAVE_ALLOCA_H */
+#include	<stdlib.h>
+#endif	/* !HAVE_ALLOCA_H */
+#endif	/* HAVE_ALLOCA */
 #include	<string.h>
 
 #ifdef	HAVE_ALLOCA

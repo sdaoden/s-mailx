@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	2.12 (gritter) 7/27/04
+ *	Sccsid @(#)glob.h	2.13 (gritter) 8/1/04
  */
 
 /*
@@ -98,6 +98,7 @@ _E char	*uflag;				/* name given with -u option */
 _E struct shortcut	*shortcuts;	/* list of shortcuts */
 _E int	mb_cur_max;			/* value of MB_CUR_MAX */
 _E int	imap_created_mailbox;		/* hack to get feedback from imap */
+_E int	unset_allow_undefined;		/* allow to unset undefined variables */
 
 #ifdef	HAVE_ICONV
 _E iconv_t iconvd;

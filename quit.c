@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.11 (gritter) 7/25/04";
+static char sccsid[] = "@(#)quit.c	2.15 (gritter) 8/7/04";
 #endif
 #endif /* not lint */
 
@@ -82,33 +82,18 @@ quitcmd(v)
  * Incorporate the any new mail that we found.
  */
 static int
-#ifndef	F_SETLKW
-writeback(res)
-	FILE *res;
-#else
 writeback(res, obuf)
 	FILE *res, *obuf;
-#endif
 {
 	struct message *mp;
 	int p, c;
-#ifndef	F_SETLKW
-	FILE *obuf;
-#endif
 
 	p = 0;
-#ifndef	F_SETLKW
-	if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
-		perror(mailname);
-		return(-1);
-	}
-#else
 	fseek(obuf, 0L, SEEK_SET);
-#endif
 #ifndef APPEND
 	if (res != NULL)
-		while ((c = sgetc(res)) != EOF)
-			(void) sputc(c, obuf);
+		while ((c = getc(res)) != EOF)
+			putc(c, obuf);
 #endif
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
@@ -116,37 +101,25 @@ writeback(res, obuf)
 			if (send_message(mp, obuf, (struct ignoretab *)0,
 						NULL, CONV_NONE, NULL) < 0) {
 				perror(mailname);
-#ifndef	F_SETLKW
-				Fclose(obuf);
-#else
 				fseek(obuf, 0L, SEEK_SET);
-#endif
 				return(-1);
 			}
 		}
 #ifdef APPEND
 	if (res != NULL)
-		while ((c = sgetc(res)) != EOF)
-			(void) sputc(c, obuf);
+		while ((c = getc(res)) != EOF)
+			putc(c, obuf);
 #endif
 	fflush(obuf);
 	trunc(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
-#ifndef	F_SETLKW
-		Fclose(obuf);
-#else
 		fseek(obuf, 0L, SEEK_SET);
-#endif
 		return(-1);
 	}
 	if (res != NULL)
 		Fclose(res);
-#ifndef	F_SETLKW
-	Fclose(obuf);
-#else
 	fseek(obuf, 0L, SEEK_SET);
-#endif
 	alter(mailname);
 	if (p == 1)
 		printf(catgets(catd, CATSET, 155,
@@ -185,6 +158,7 @@ quit()
 		pop3_quit();
 		return;
 	case MB_IMAP:
+	case MB_CACHE:
 		imap_quit();
 		return;
 	case MB_VOID:
@@ -209,21 +183,13 @@ quit()
 	 * a message.
 	 */
 
-#ifndef	F_SETLKW
-	fbuf = Zopen(mailname, "r", &mb.mb_compressed);
-#else
 	fbuf = Zopen(mailname, "r+", &mb.mb_compressed);
-#endif
 	if (fbuf == NULL) {
 		if (errno == ENOENT)
 			return;
 		goto newmail;
 	}
-#ifndef	F_SETLKW
-	if (fcntl_lock(fileno(fbuf), LOCK_EX) == -1) {
-#else
 	if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1) {
-#endif
 nolock:
 		perror(catgets(catd, CATSET, 157, "Unable to lock mailbox"));
 		Fclose(fbuf);
@@ -239,15 +205,15 @@ nolock:
 			goto newmail;
 #ifdef APPEND
 		fseek(fbuf, (long)mailsize, SEEK_SET);
-		while ((c = sgetc(fbuf)) != EOF)
-			(void) sputc(c, rbuf);
+		while ((c = getc(fbuf)) != EOF)
+			putc(c, rbuf);
 #else
 		p = minfo.st_size - mailsize;
 		while (p-- > 0) {
-			c = sgetc(fbuf);
+			c = getc(fbuf);
 			if (c == EOF)
 				goto newmail;
-			(void) sputc(c, rbuf);
+			putc(c, rbuf);
 		}
 #endif
 		Fclose(rbuf);
@@ -293,11 +259,7 @@ nolock:
 	}
 	if (c == 0) {
 		if (p != 0) {
-#ifndef	F_SETLKW
-			writeback(rbuf);
-#else
 			writeback(rbuf, fbuf);
-#endif
 			Fclose(fbuf);
 			dot_unlock(mailname);
 			return;
@@ -316,11 +278,7 @@ nolock:
 	 */
 
 	if (p != 0) {
-#ifndef	F_SETLKW
-		writeback(rbuf);
-#else
 		writeback(rbuf, fbuf);
-#endif
 		Fclose(fbuf);
 		dot_unlock(mailname);
 		return;
@@ -333,21 +291,12 @@ nolock:
 
 cream:
 	if (rbuf != NULL) {
-#ifndef	F_SETLKW
-		abuf = Zopen(mailname, "r+", &mb.mb_compressed);
-		if (abuf == NULL)
-			goto newmail;
-#else
 		abuf = fbuf;
 		fseek(abuf, 0L, SEEK_SET);
-#endif
-		while ((c = sgetc(rbuf)) != EOF)
-			(void) sputc(c, abuf);
+		while ((c = getc(rbuf)) != EOF)
+			putc(c, abuf);
 		Fclose(rbuf);
 		trunc(abuf);
-#ifndef	F_SETLKW
-		Fclose(abuf);
-#endif
 		alter(mailname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -410,6 +359,7 @@ makembox()
 	char *mbox, *tempQuit;
 	int mcount, c;
 	FILE *ibuf = NULL, *obuf, *abuf;
+	enum protocol	prot;
 
 	mbox = expand("&");
 	mcount = 0;
@@ -429,8 +379,8 @@ makembox()
 		rm(tempQuit);
 		Ftfree(&tempQuit);
 		if ((abuf = Zopen(mbox, "r", NULL)) != NULL) {
-			while ((c = sgetc(abuf)) != EOF)
-				(void) sputc(c, obuf);
+			while ((c = getc(abuf)) != EOF)
+				putc(c, obuf);
 			Fclose(abuf);
 		}
 		if (ferror(obuf)) {
@@ -455,13 +405,20 @@ makembox()
 		}
 		fchmod(fileno(obuf), 0600);
 	}
+	prot = which_protocol(mbox);
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MBOX) {
 			mcount++;
-			if (send_message(mp, obuf, saveignore,
+			if (prot == PROTO_IMAP &&
+					saveignore[0].i_count == 0 &&
+					saveignore[1].i_count == 0 &&
+					imap_thisaccount(mbox)) {
+				if (imap_copy(mp, mp-message+1, mbox) == STOP)
+					goto err;
+			} else if (send_message(mp, obuf, saveignore,
 						NULL, CONV_NONE, NULL) < 0) {
 				perror(mbox);
-				if (ibuf)
+			err:	if (ibuf)
 					Fclose(ibuf);
 				Fclose(obuf);
 				return STOP;
@@ -476,12 +433,12 @@ makembox()
 
 	if (value("append") == NULL) {
 		rewind(ibuf);
-		c = sgetc(ibuf);
+		c = getc(ibuf);
 		while (c != EOF) {
-			(void) sputc(c, obuf);
+			putc(c, obuf);
 			if (ferror(obuf))
 				break;
-			c = sgetc(ibuf);
+			c = getc(ibuf);
 		}
 		Fclose(ibuf);
 		fflush(obuf);
@@ -492,7 +449,11 @@ makembox()
 		Fclose(obuf);
 		return STOP;
 	}
-	Fclose(obuf);
+	if (Fclose(obuf) != 0) {
+		if (prot != PROTO_IMAP)
+			perror(mbox);
+		return STOP;
+	}
 	if (mcount == 1)
 		printf(catgets(catd, CATSET, 164, "Saved 1 message in mbox\n"));
 	else
@@ -557,8 +518,8 @@ edstop()
 			reset(0);
 		}
 		fseek(ibuf, (long)mailsize, SEEK_SET);
-		while ((c = sgetc(ibuf)) != EOF)
-			(void) sputc(c, obuf);
+		while ((c = getc(ibuf)) != EOF)
+			putc(c, obuf);
 		Fclose(ibuf);
 		Fclose(obuf);
 		if ((ibuf = Fopen(tempname, "r")) == NULL) {
@@ -593,8 +554,8 @@ edstop()
 	}
 	gotcha = (c == 0 && ibuf == NULL);
 	if (ibuf != NULL) {
-		while ((c = sgetc(ibuf)) != EOF)
-			(void) sputc(c, obuf);
+		while ((c = getc(ibuf)) != EOF)
+			putc(c, obuf);
 		Fclose(ibuf);
 	}
 	fflush(obuf);

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.15 (gritter) 7/29/04";
+static char sccsid[] = "@(#)smtp.c	2.18 (gritter) 8/3/04";
 #endif
 #endif /* not lint */
 
@@ -107,7 +107,7 @@ nodename()
 		}
 #endif	/* !HAVE_IPv6_FUNCS */
 #endif	/* HAVE_SOCKETS */
-		hostname = (char *)smalloc(strlen(hn) + 1);
+		hostname = smalloc(strlen(hn) + 1);
 		strcpy(hostname, hn);
 	}
 	return hostname;
@@ -134,7 +134,7 @@ myaddr()
 	if (addr == NULL) {
 		hn = nodename();
 		sz = strlen(myname) + strlen(hn) + 2;
-		addr = (char *)smalloc(sz);
+		addr = smalloc(sz);
 		snprintf(addr, sz, "%s@%s", myname, hn);
 	}
 	return addr;
@@ -230,6 +230,7 @@ char *server, *uhp;
 
 	skinned = skin(myaddr());
 	SMTP_ANSWER(2);
+#ifdef	USE_SSL
 	if (value("smtp-use-tls")) {
 		snprintf(o, sizeof o, "EHLO %s\r\n", nodename());
 		SMTP_OUT(o);
@@ -239,6 +240,7 @@ char *server, *uhp;
 		if (ssl_open(server, sp, uhp) != OKAY)
 			return 1;
 	}
+#endif	/* USE_SSL */
 	user = auth_var("user", skinned);
 	password = auth_var("password", skinned);
 	if (user && password) {
@@ -321,6 +323,7 @@ FILE *fi;
 	if (sopen(server, &so, use_ssl, server, use_ssl ? "smtps" : "smtp",
 				verbose) != OKAY)
 		return 1;
+	so.s_desc = "SMTP";
 	ret = talk_smtp(to, fi, &so, server, server);
 	sclose(&so);
 	if (smtpbuf) {

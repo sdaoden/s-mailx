@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.25 (gritter) 7/27/04";
+static char sccsid[] = "@(#)lex.c	2.38 (gritter) 8/7/04";
 #endif
 #endif /* not lint */
 
@@ -74,9 +74,10 @@ static void	hangup __P((int));
 int
 setfile(name, newmail)
 	char *name;
+	int newmail;
 {
 	FILE *ibuf;
-	int i;
+	int i, compressed = 0;
 	struct stat stb;
 	char isedit;
 	char *who = name[1] ? name + 1 : myname;
@@ -111,8 +112,7 @@ setfile(name, newmail)
 				"Cannot handle protocol: %s\n"), name);
 		return -1;
 	}
-	mb.mb_compressed = 0;
-	if ((ibuf = Zopen(name, "r", &mb.mb_compressed)) == (FILE *)NULL) {
+	if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
 		if ((!isedit && errno == ENOENT) || newmail)
 			goto nomail;
 		perror(name);
@@ -164,6 +164,7 @@ setfile(name, newmail)
 	if (!newmail) {
 		mb.mb_type = MB_FILE;
 		mb.mb_perm = MB_DELE|MB_EDIT;
+		mb.mb_compressed = compressed;
 		if ((i = open(name, O_WRONLY)) < 0 && !mb.mb_compressed)
 			mb.mb_perm = 0;
 		else
@@ -208,26 +209,37 @@ nomail:
 		return 1;
 	}
 	if (newmail) {
-newmail:	if (msgcount > omsgcount) {
-			printf(catgets(catd, CATSET, 158,
-						"New mail has arrived.\n"));
-			if (msgcount - omsgcount == 1)
-				printf(catgets(catd, CATSET, 214,
-					"Loaded 1 new message\n"));
-			else
-				printf(catgets(catd, CATSET, 215,
-					"Loaded %d new messages\n"),
-					msgcount - omsgcount);
-		} else {
-			printf("Mail has been deleted.\n");
-			printf("Loaded %d messages\n", msgcount);
-		}
-		if (value("header"))
-			while (++omsgcount <= msgcount)
-				if (!(message[omsgcount-1].m_flag & MDELETED))
-				printhead(omsgcount, stdout);
+newmail:	newmailinfo(omsgcount);
 	}
 	return(0);
+}
+
+
+int
+newmailinfo(omsgcount)
+	int	omsgcount;
+{
+	int	mdot = getmdot();
+
+	if (msgcount > omsgcount) {
+		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		if (msgcount - omsgcount == 1)
+			printf(catgets(catd, CATSET, 214,
+				"Loaded 1 new message\n"));
+		else
+			printf(catgets(catd, CATSET, 215,
+				"Loaded %d new messages\n"),
+				msgcount - omsgcount);
+	} else
+		printf("Loaded %d messages\n", msgcount);
+	if (value("header")) {
+		if (mb.mb_type == MB_IMAP)
+			imap_getheaders(omsgcount+1, msgcount);
+		while (++omsgcount <= msgcount)
+			if (!(message[omsgcount-1].m_flag & MDELETED))
+				printhead(omsgcount, stdout);
+	}
+	return mdot;
 }
 
 static int	*msgvec;
@@ -242,13 +254,10 @@ commands()
 {
 	int eofloop = 0;
 	int n;
-	char *linebuf = NULL;
+	char *linebuf = NULL, *av, *nv;
 	size_t linesize = 0;
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &eofloop;
-#endif
 
+	(void)&eofloop;
 	if (!sourcing) {
 		if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGINT, intr);
@@ -265,16 +274,19 @@ commands()
 		 * string space, and flush the output.
 		 */
 		if (!sourcing && value("interactive") != NULL) {
-			if (is_a_tty[0] && (value("autoinc")
-						|| value("newmail")
-						|| mb.mb_type == MB_IMAP)) {
+			av = (av = value("autoinc")) ? savestr(av) : NULL;
+			nv = (nv = value("newmail")) ? savestr(nv) : NULL;
+			if (is_a_tty[0] && (av != NULL || nv != NULL ||
+					mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
+				n = (av && strcmp(av, "noimap")) |
+					(nv && strcmp(nv, "noimap"));
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
 						(mb.mb_type == MB_IMAP &&
-						imap_newmail())) {
+						imap_newmail(n))) {
 					int odot = dot - &message[0];
 					int odid = did_print_dot;
 
@@ -395,7 +407,7 @@ execute(linebuf, contxt, linesize)
 		return(0);
 	}
 	com = lex(word);
-	if (com == NONE) {
+	if (com == NULL) {
 		printf(catgets(catd, CATSET, 91,
 				"Unknown command: \"%s\"\n"), word);
 		goto out;
@@ -557,7 +569,7 @@ out:
 	if (com == (struct cmd *)NULL)
 		return(0);
 	if (value("autoprint") != NULL && com->c_argtype & P)
-		if ((dot->m_flag & MDELETED) == 0) {
+		if ((dot->m_flag & (MDELETED|MHIDDEN)) == 0) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
@@ -577,7 +589,7 @@ setmsize(sz)
 {
 
 	if (msgvec != 0)
-		free((char *) msgvec);
+		free(msgvec);
 	msgvec = (int *)scalloc((sz + 1), sizeof *msgvec);
 }
 
@@ -596,7 +608,7 @@ lex(Word)
 	for (cp = &cmdtab[0]; cp->c_name != NULL; cp++)
 		if (is_prefix(Word, cp->c_name))
 			return(cp);
-	return(NONE);
+	return(NULL);
 }
 
 /*
@@ -691,6 +703,7 @@ hangup(s)
  */
 void
 announce(printheaders)
+	int printheaders;
 {
 	int vec[2], mdot;
 
@@ -713,25 +726,13 @@ int
 newfileinfo()
 {
 	struct message *mp;
-	int u, n, mdot, d, s;
+	int u, n, mdot, d, s, hidden;
 	char fname[PATHSIZE], zname[PATHSIZE], *ename;
 
 	if (mb.mb_type == MB_VOID)
 		return 1;
-	for (mp = &message[0]; mp < &message[msgcount]; mp++)
-		if (mp->m_flag & MNEW)
-			break;
-	if (mp >= &message[msgcount])
-		for (mp = &message[0]; mp < &message[msgcount]; mp++)
-			if ((mp->m_flag & MREAD) == 0)
-				break;
-	if (mp < &message[msgcount])
-		mdot = mp - &message[0] + 1;
-	else if (value("showlast"))
-		mdot = mp - &message[0];
-	else
-		mdot = 1;
-	s = d = 0;
+	mdot = getmdot();
+	s = d = hidden = 0;
 	for (mp = &message[0], n = 0, u = 0; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MNEW)
 			n++;
@@ -741,6 +742,8 @@ newfileinfo()
 			d++;
 		if (mp->m_flag & MSAVED)
 			s++;
+		if (mp->m_flag & MHIDDEN)
+			hidden++;
 	}
 	ename = mailname;
 	if (getfold(fname, sizeof fname - 1) >= 0) {
@@ -765,10 +768,42 @@ newfileinfo()
 		printf(catgets(catd, CATSET, 108, " %d deleted"), d);
 	if (s > 0)
 		printf(catgets(catd, CATSET, 109, " %d saved"), s);
-	if (mb.mb_perm == 0)
+	if (hidden > 0)
+		printf(catgets(catd, CATSET, 109, " %d hidden"), hidden);
+	if (mb.mb_type == MB_CACHE)
+		printf(" [Disconnected]");
+	else if (mb.mb_perm == 0)
 		printf(catgets(catd, CATSET, 110, " [Read only]"));
 	printf("\n");
 	return(mdot);
+}
+
+int
+getmdot()
+{
+	struct message	*mp;
+	int	mdot;
+
+	if (mb.mb_type == MB_VOID)
+		return 1;
+	for (mp = &message[0]; mp < &message[msgcount]; mp++)
+		if ((mp->m_flag & (MNEW|MHIDDEN)) == MNEW)
+			break;
+	if (mp >= &message[msgcount])
+		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+			if ((mp->m_flag & (MREAD|MHIDDEN)) == 0)
+				break;
+	if (mp >= &message[msgcount])
+		for (mp = &message[0]; mp < &message[msgcount]; mp++)
+			if ((mp->m_flag & MHIDDEN) == 0)
+				break;
+	if (mp < &message[msgcount])
+		mdot = mp - &message[0] + 1;
+	else if (value("showlast"))
+		mdot = mp - &message[0];
+	else
+		mdot = 1;
+	return mdot;
 }
 
 /*
@@ -793,7 +828,7 @@ load(name)
 {
 	FILE *in, *oldin;
 
-	if ((in = Fopen(name, "r")) == (FILE *)NULL)
+	if ((in = Fopen(name, "r")) == NULL)
 		return;
 	oldin = input;
 	input = in;
@@ -821,17 +856,17 @@ initbox(name)
 		strncpy(mailname, name, PATHSIZE);
 		mailname[PATHSIZE-1]='\0';
 	}
-	if ((mb.mb_otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == (FILE *)NULL) {
+	if ((mb.mb_otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == NULL) {
 		perror(catgets(catd, CATSET, 87,
 					"temporary mail message file"));
 		exit(1);
 	}
-	(void) fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
-	if ((mb.mb_itf = safe_fopen(tempMesg, "r", &dummy)) == (FILE *)NULL) {
+	fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
+	if ((mb.mb_itf = safe_fopen(tempMesg, "r", &dummy)) == NULL) {
 		perror(tempMesg);
 		exit(1);
 	}
-	(void) fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
+	fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
 	rm(tempMesg);
 	Ftfree(&tempMesg);
 	msgcount = 0;

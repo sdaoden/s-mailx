@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	2.12 (gritter) 7/23/04";
+static char sccsid[] = "@(#)names.c	2.14 (gritter) 8/1/04";
 #endif
 #endif /* not lint */
 
@@ -77,8 +77,8 @@ nalloc(str, ntype)
 
 	/*LINTED*/
 	np = (struct name *)salloc(sizeof *np);
-	np->n_flink = NIL;
-	np->n_blink = NIL;
+	np->n_flink = NULL;
+	np->n_blink = NULL;
 	np->n_type = ntype;
 	np->n_name = savestr(str);
 	return(np);
@@ -94,9 +94,9 @@ tailof(name)
 	struct name *np;
 
 	np = name;
-	if (np == NIL)
-		return(NIL);
-	while (np->n_flink != NIL)
+	if (np == NULL)
+		return(NULL);
+	while (np->n_flink != NULL)
 		np = np->n_flink;
 	return(np);
 }
@@ -104,7 +104,7 @@ tailof(name)
 /*
  * Extract a list of names from a line,
  * and make a list of names from it.
- * Return the list or NIL if none found.
+ * Return the list or NULL if none found.
  */
 struct name *
 extract(line, ntype)
@@ -134,14 +134,14 @@ extract1(line, ntype, separators, copypfx)
 	struct name *top, *np, *t;
 
 	if (line == NULL || *line == '\0')
-		return NIL;
-	top = NIL;
-	np = NIL;
+		return NULL;
+	top = NULL;
+	np = NULL;
 	cp = line;
 	nbuf = ac_alloc(strlen(line) + 1);
 	while ((cp = yankword(cp, nbuf, separators, copypfx)) != NULL) {
 		t = nalloc(nbuf, ntype);
-		if (top == NIL)
+		if (top == NULL)
 			top = t;
 		else
 			np->n_flink = t;
@@ -166,14 +166,14 @@ detract(np, ntype)
 	int comma;
 
 	comma = ntype & GCOMMA;
-	if (np == NIL)
+	if (np == NULL)
 		return(NULL);
 	ntype &= ~GCOMMA;
 	s = 0;
 	if ((debug || value("debug")) && comma)
 		fprintf(stderr, catgets(catd, CATSET, 145,
 				"detract asked to insert commas\n"));
-	for (p = np; p != NIL; p = p->n_flink) {
+	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
 		s += strlen(p->n_name) + 1;
@@ -185,11 +185,11 @@ detract(np, ntype)
 	s += 2;
 	top = salloc(s);
 	cp = top;
-	for (p = np; p != NIL; p = p->n_flink) {
+	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
 		cp = sstpcpy(cp, p->n_name);
-		if (comma && p->n_flink != NIL)
+		if (comma && p->n_flink != NULL)
 			*cp++ = ',';
 		*cp++ = ' ';
 	}
@@ -270,9 +270,9 @@ outof(names, fo, hp)
 
 	top = names;
 	np = names;
-	(void) time(&now);
+	time(&now);
 	date = ctime(&now);
-	while (np != NIL) {
+	while (np != NULL) {
 		if (!is_fileaddr(np->n_name) && np->n_name[0] != '|') {
 			np = np->n_flink;
 			continue;
@@ -292,36 +292,36 @@ outof(names, fo, hp)
 			char *tempEdit;
 
 			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600, 1))
-					== (FILE *)NULL) {
+					== NULL) {
 				perror(catgets(catd, CATSET, 146,
 						"temporary edit file"));
 				senderr++;
 				goto cant;
 			}
 			image = open(tempEdit, O_RDWR);
-			(void) unlink(tempEdit);
+			unlink(tempEdit);
 			Ftfree(&tempEdit);
 			if (image < 0) {
 				perror(catgets(catd, CATSET, 147,
 						"temporary edit file"));
 				senderr++;
-				(void) Fclose(fout);
+				Fclose(fout);
 				goto cant;
 			}
-			(void) fcntl(image, F_SETFD, FD_CLOEXEC);
+			fcntl(image, F_SETFD, FD_CLOEXEC);
 			fprintf(fout, "From %s %s", myname, date);
 			c = EOF;
-			while (lastc = c, (c = sgetc(fo)) != EOF)
-				(void) sputc(c, fout);
+			while (lastc = c, (c = getc(fo)) != EOF)
+				putc(c, fout);
 			rewind(fo);
 			if (lastc != '\n')
-				sputc('\n', fout);
-			(void) sputc('\n', fout);
-			(void) fflush(fout);
+				putc('\n', fout);
+			putc('\n', fout);
+			fflush(fout);
 			if (ferror(fout))
 				perror(catgets(catd, CATSET, 148,
 						"temporary edit file"));
-			(void) Fclose(fout);
+			Fclose(fout);
 		}
 
 		/*
@@ -357,30 +357,30 @@ outof(names, fo, hp)
 			free_child(pid);
 		} else {
 			int f;
-			if ((fout = Zopen(fname, "a", NULL)) == (FILE *)NULL) {
+			if ((fout = Zopen(fname, "a", NULL)) == NULL) {
 				perror(fname);
 				senderr++;
 				goto cant;
 			}
 			if ((f = dup(image)) < 0) {
 				perror("dup");
-				fin = (FILE *)NULL;
+				fin = NULL;
 			} else
 				fin = Fdopen(f, "r");
-			if (fin == (FILE *)NULL) {
+			if (fin == NULL) {
 				fprintf(stderr, catgets(catd, CATSET, 149,
 						"Can't reopen image\n"));
-				(void) Fclose(fout);
+				Fclose(fout);
 				senderr++;
 				goto cant;
 			}
 			rewind(fin);
-			while ((c = sgetc(fin)) != EOF)
-				(void) sputc(c, fout);
+			while ((c = getc(fin)) != EOF)
+				putc(c, fout);
 			if (ferror(fout))
 				senderr++, perror(fname);
-			(void) Fclose(fout);
-			(void) Fclose(fin);
+			Fclose(fout);
+			Fclose(fin);
 		}
 cant:
 		/*
@@ -392,7 +392,7 @@ cant:
 		np = np->n_flink;
 	}
 	if (image >= 0) {
-		(void) close(image);
+		close(image);
 		image = -1;
 	}
 	return(top);
@@ -456,10 +456,10 @@ usermap(names)
 	struct grouphead *gh;
 	int metoo;
 
-	new = NIL;
+	new = NULL;
 	np = names;
 	metoo = (value("metoo") != NULL);
-	while (np != NIL) {
+	while (np != NULL) {
 		if (np->n_name[0] == '\\') {
 			cp = np->n_flink;
 			new = put(new, np);
@@ -468,7 +468,7 @@ usermap(names)
 		}
 		gh = findgroup(np->n_name);
 		cp = np->n_flink;
-		if (gh != NOGRP)
+		if (gh != NULL)
 			new = gexpand(new, gh, metoo, np->n_type);
 		else
 			new = put(new, np);
@@ -501,13 +501,13 @@ gexpand(nlist, gh, metoo, ntype)
 		return(nlist);
 	}
 	depth++;
-	for (gp = gh->g_list; gp != NOGE; gp = gp->ge_link) {
+	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link) {
 		cp = gp->ge_name;
 		if (*cp == '\\')
 			goto quote;
 		if (strcmp(cp, gh->g_name) == 0)
 			goto quote;
-		if ((ngh = findgroup(cp)) != NOGRP) {
+		if ((ngh = findgroup(cp)) != NULL) {
 			nlist = gexpand(nlist, ngh, metoo, ntype);
 			continue;
 		}
@@ -517,7 +517,7 @@ quote:
 		 * At this point should allow to expand
 		 * to self if only person in group
 		 */
-		if (gp == gh->g_list && gp->ge_link == NOGE)
+		if (gp == gh->g_list && gp->ge_link == NULL)
 			goto skip;
 		if (!metoo && same_name(cp, myname))
 			np->n_type |= GDEL;
@@ -537,9 +537,9 @@ cat(n1, n2)
 {
 	struct name *tail;
 
-	if (n1 == NIL)
+	if (n1 == NULL)
 		return(n2);
-	if (n2 == NIL)
+	if (n2 == NULL)
 		return(n1);
 	tail = tailof(n1);
 	tail->n_flink = n2;
@@ -585,7 +585,7 @@ unpack(np)
 		*ap++ = "-m";
 	if (verbose)
 		*ap++ = "-v";
-	for (; n != NIL; n = n->n_flink)
+	for (; n != NULL; n = n->n_flink)
 		if ((n->n_type & GDEL) == 0)
 			*ap++ = n->n_name;
 	*ap = NULL;
@@ -604,18 +604,18 @@ elide(names)
 	struct name *np, *t, *new;
 	struct name *x;
 
-	if (names == NIL)
-		return(NIL);
+	if (names == NULL)
+		return(NULL);
 	new = names;
 	np = names;
 	np = np->n_flink;
-	if (np != NIL)
-		np->n_blink = NIL;
-	new->n_flink = NIL;
-	while (np != NIL) {
+	if (np != NULL)
+		np->n_blink = NULL;
+	new->n_flink = NULL;
+	while (np != NULL) {
 		t = new;
 		while (asccasecmp(t->n_name, np->n_name) < 0) {
-			if (t->n_flink == NIL)
+			if (t->n_flink == NULL)
 				break;
 			t = t->n_flink;
 		}
@@ -630,7 +630,7 @@ elide(names)
 			np->n_blink = t;
 			t = np;
 			np = np->n_flink;
-			t->n_flink = NIL;
+			t->n_flink = NULL;
 			continue;
 		}
 
@@ -645,7 +645,7 @@ elide(names)
 			np = np->n_flink;
 			t->n_flink = new;
 			new->n_blink = t;
-			t->n_blink = NIL;
+			t->n_blink = NULL;
 			new = t;
 			continue;
 		}
@@ -669,12 +669,12 @@ elide(names)
 	 */
 
 	np = new;
-	while (np != NIL) {
+	while (np != NULL) {
 		t = np;
-		while (t->n_flink != NIL &&
+		while (t->n_flink != NULL &&
 		       asccasecmp(np->n_name, t->n_flink->n_name) == 0)
 			t = t->n_flink;
-		if (t == np || t == NIL) {
+		if (t == np || t == NULL) {
 			np = np->n_flink;
 			continue;
 		}
@@ -685,7 +685,7 @@ elide(names)
 		 */
 
 		np->n_flink = t->n_flink;
-		if (t->n_flink != NIL)
+		if (t->n_flink != NULL)
 			t->n_flink->n_blink = np;
 		np = np->n_flink;
 	}
@@ -701,8 +701,8 @@ put(list, node)
 	struct name *list, *node;
 {
 	node->n_flink = list;
-	node->n_blink = NIL;
-	if (list != NIL)
+	node->n_blink = NULL;
+	if (list != NULL)
 		list->n_blink = node;
 	return(node);
 }
@@ -717,7 +717,7 @@ count(np)
 {
 	int c;
 
-	for (c = 0; np != NIL; np = np->n_flink)
+	for (c = 0; np != NULL; np = np->n_flink)
 		if ((np->n_type & GDEL) == 0)
 			c++;
 	return c;
@@ -733,17 +733,17 @@ delname(np, name)
 {
 	struct name *p;
 
-	for (p = np; p != NIL; p = p->n_flink)
+	for (p = np; p != NULL; p = p->n_flink)
 		if (same_name(p->n_name, name)) {
-			if (p->n_blink == NIL) {
-				if (p->n_flink != NIL)
-					p->n_flink->n_blink = NIL;
+			if (p->n_blink == NULL) {
+				if (p->n_flink != NULL)
+					p->n_flink->n_blink = NULL;
 				np = p->n_flink;
 				continue;
 			}
-			if (p->n_flink == NIL) {
-				if (p->n_blink != NIL)
-					p->n_blink->n_flink = NIL;
+			if (p->n_flink == NULL) {
+				if (p->n_blink != NULL)
+					p->n_blink->n_flink = NULL;
 				continue;
 			}
 			p->n_blink->n_flink = p->n_flink;
@@ -765,7 +765,7 @@ prettyprint(name)
 	struct name *np;
 
 	np = name;
-	while (np != NIL) {
+	while (np != NULL) {
 		fprintf(stderr, "%s(%d) ", np->n_name, np->n_type);
 		np = np->n_flink;
 	}
