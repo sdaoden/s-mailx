@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.13 (gritter) 11/17/02";
+static char sccsid[] = "@(#)sendout.c	2.15 (gritter) 11/28/02";
 #endif
 #endif /* not lint */
 
@@ -378,7 +378,7 @@ infix(hp, fi)
 #endif
 	enum mimeclean isclean;
 	int convert;
-	char *charset = NULL, *contenttype = NULL;
+	char *charset = NULL, *contenttype = NULL, *convhdr = NULL;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 178, "temporary mail file"));
@@ -394,8 +394,12 @@ infix(hp, fi)
 	convert = get_mime_convert(fi, &contenttype, &charset, &isclean);
 #ifdef	HAVE_ICONV
 	tcs = gettcharset();
-	if ((isclean & MIME_HASNUL) == 0 && (isclean & MIME_HIGHBIT) &&
-			strcmp(charset, tcs)) {
+	if (((isclean & MIME_HASNUL) == 0 && (isclean & MIME_HIGHBIT) &&
+				strcmp(charset, tcs)) ||
+			(convhdr = need_hdrconv(hp,
+					GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
+		if (convhdr)
+			charset = convhdr;
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1
@@ -423,6 +427,10 @@ infix(hp, fi)
 		}
 #endif
 		return NULL;
+	}
+	if (convhdr && iconvd != (iconv_t)-1) {
+		iconv_close(iconvd);
+		iconvd = (iconv_t)-1;
 	}
 	if (hp->h_attach != NULL) {
 		if (make_multipart(hp, convert, fi, nfo,
@@ -585,6 +593,13 @@ savemail(name, fi)
 	(void) Fclose(fo);
 	fflush(fi);
 	rewind(fi);
+	/*
+	 * OpenBSD 3.2 and NetBSD 1.5.2 were reported not to 
+	 * reset the kernel file offset after the calls above,
+	 * a clear violation of IEEE Std 1003.1, 1996, 8.2.3.7.
+	 * So do it 'manually'.
+	 */
+	lseek(fileno(fi), 0, SEEK_SET);
 	free(buf);
 	return (0);
 }
@@ -797,6 +812,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	fixhead(hp, to);
 	if ((nmtf = infix(hp, mtf)) == (FILE *)NULL) {
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
+		perror("");
 		senderr++;
 		rewind(mtf);
 		savedeadletter(mtf);

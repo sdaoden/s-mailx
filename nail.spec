@@ -1,7 +1,7 @@
-# Sccsid @(#)nail.spec	1.5 (gritter) 11/2/02
+# Sccsid @(#)nail.spec	1.6 (gritter) 11/29/02
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 10.2
+Version: 10.3
 Release: 1
 License: BSD
 Group: Applications/Internet
@@ -12,7 +12,7 @@ Packager: Didar Hussain <dhs@rediffmail.com>
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
-Nail is derived from Berkeley Mail 8.1 and is intended provide the 
+Nail is derived from Berkeley Mail and is intended provide the 
 functionality of the POSIX.2 mailx command with additional support
 for MIME messages, POP3 and SMTP.
 

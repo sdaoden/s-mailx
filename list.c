@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.9 (gritter) 10/27/02";
+static char sccsid[] = "@(#)list.c	2.10 (gritter) 11/24/02";
 #endif
 #endif /* not lint */
 
@@ -829,7 +829,7 @@ matchsubj(str, mesg)
 			free(out.s);
 			return(1);
 		}
-#ifdef	HAVE_MBTOWC
+#if defined (HAVE_MBTOWC) && defined (HAVE_TOWUPPER)
 		if (mb_cur_max > 1) {
 			wchar_t c, c2;
 			int sz;
@@ -851,7 +851,7 @@ matchsubj(str, mesg)
 				cp = str;
 			}
 		} else
-#endif	/* HAVE_MBTOWC */
+#endif	/* HAVE_MBTOWC && HAVE_TOWUPPER */
 		{
 			int c, c2;
 

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.1 (gritter) 11/23/02";
+static char sccsid[] = "@(#)pop3.c	2.2 (gritter) 11/24/02";
 #endif
 #endif /* not lint */
 
@@ -1401,7 +1401,7 @@ nopop3()
 }
 
 int
-pop3_setfile(server, newmail)
+pop3_setfile(server, newmail, isedit)
 	const char *server;
 {
 	nopop3();

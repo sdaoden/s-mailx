@@ -88,6 +88,9 @@
 /* Define if you have the snprintf function.  */
 #undef HAVE_SNPRINTF
 
+/* Define if you have the towupper function.  */
+#undef HAVE_TOWUPPER
+
 /* Define if you have the uname function.  */
 #undef HAVE_UNAME
 

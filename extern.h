@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.22 (gritter) 11/8/02
+ *	Sccsid @(#)extern.h	2.23 (gritter) 11/24/02
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -231,8 +231,8 @@ char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
 void	mime_fromhdr __P((struct str*, struct str*, enum tdflags));
-size_t	mime_write __P((void*, size_t, size_t, FILE*, int, enum tdflags, char *,
-			size_t));
+size_t	mime_write __P((void*, size_t, size_t, FILE*, enum conversion,
+			enum tdflags, char *, size_t));
 sighandler_type safe_signal __P((int, sighandler_type));
 char	*laststring __P((char *, int *, int));
 int	forward_msg __P((struct message *, struct name *, int));
@@ -285,3 +285,4 @@ struct shortcut	*get_shortcut __P((const char *));
 void	out_of_memory __P((void));
 time_t	rfctime __P((char *));
 void	extract_header __P((FILE *, struct header *));
+char	*need_hdrconv __P((struct header *, enum gfield));

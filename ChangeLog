@@ -1,3 +1,22 @@
+[10.3] released 11/29/02
+* Fixed a buffer overflow that occured with iconv() support disabled (Stan
+  Tobias).
+* MIME encoding of '(non-ASCII-string' comment strings in address fields
+  fixed (non-ASCII-string immediately following the opening parenthesis).
+* Convert header fields to outgoing character set even if the body contains
+  ASCII characters only.
+* Build properly on platforms without socket support (J.A. Neitzel).
+* Don't require towupper() with mbtowc() (J.A. Neitzel). Searches for
+  wide characters in subject fields are not case-insensitive without
+  towupper().
+* Some OpenBSD and NetBSD versions don't adjust the kernel file offset
+  properly after a 'fflush(); rewind()' sequence, violating POSIX.1.
+  This caused empty mails to be sent if the 'record' variable was set.
+  The code now works around the problem (Thanks to J.A. Neitzel).
+* NetBSD lacks gethostent(), causing the configure check for socket
+  support to fail. gethostbyname() is now used instead (Thanks to J.A.
+  Neitzel).
+
 [10.2] released 11/23/02
 * Fixed a NULL pointer dereference that occured if the 'showto' variable
   was used without the 'alternates' command (Bugreport by Bob Tennent).

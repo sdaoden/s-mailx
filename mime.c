@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.11 (gritter) 10/26/02";
+static char sccsid[]  = "@(#)mime.c	2.12 (gritter) 11/24/02";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -73,6 +73,7 @@ static int	mustquote_inhdrq __P((int));
 static size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif
 static char	*getcharset __P((int));
+static int	has_highbit __P((const char *));
 static void	uppercopy __P((char *, const char *));
 static void	stripdash __P((char *));
 #ifdef	HAVE_ICONV
@@ -352,6 +353,57 @@ gettcharset()
 		if ((t = value("charset")) == NULL)
 			t = defcharset;
 	return t;
+}
+
+static int
+has_highbit(s)
+	register const char *s;
+{
+	if (s) {
+		do
+			if (*s & 0200)
+				return 1;
+		while (*s++ != '\0');
+	}
+	return 0;
+}
+
+char *
+need_hdrconv(hp, w)
+	struct header *hp;
+	enum gfield w;
+{
+	struct name *np;
+
+	if (w & GIDENT) {
+		if (has_highbit(myaddr()))
+			goto needs;
+		if (has_highbit(value("ORGANIZATION")))
+			goto needs;
+		if (has_highbit(value("replyto")))
+			goto needs;
+	}
+	if (w & GTO) {
+		for (np = hp->h_to; np; np = np->n_flink)
+			if (has_highbit(np->n_name))
+				goto needs;
+	}
+	if (w & GCC) {
+		for (np = hp->h_cc; np; np = np->n_flink)
+			if (has_highbit(np->n_name))
+				goto needs;
+	}
+	if (w & GBCC) {
+		for (np = hp->h_bcc; np; np = np->n_flink)
+			if (has_highbit(np->n_name))
+				goto needs;
+	}
+	if (w & GSUBJECT) {
+		if (has_highbit(hp->h_subject))
+			goto needs;
+	}
+	return NULL;
+needs:	return getcharset(MIME_HIGHBIT);
 }
 
 #ifdef	HAVE_ICONV
@@ -1012,6 +1064,11 @@ struct str *in, *out;
 	return;
 }
 
+#define	mime_fromhdr_inc(inc) { \
+		size_t diff = q - out->s; \
+		out->s = srealloc(out->s, (maxstor += inc) + 1); \
+		q = &(out->s)[diff]; \
+	}
 /*
  * Convert header fields from RFC 1522 format
  */
@@ -1029,8 +1086,8 @@ enum tdflags flags;
 #endif
 
 	tcs = gettcharset();
-	maxstor = 4 * in->l;
-	out->s = (char *)smalloc(maxstor + 1);
+	maxstor = in->l;
+	out->s = smalloc(maxstor + 1);
 	out->l = 0;
 	upper = in->s + in->l;
 	for (p = in->s, q = out->s; p < upper; p++) {
@@ -1088,17 +1145,24 @@ enum tdflags flags;
 				char *iptr, *mptr, *nptr, *uptr;
 				size_t inleft, outleft;
 
-				inleft = cout.l;
+			again:	inleft = cout.l;
 				outleft = maxstor - out->l;
 				mptr = nptr = q;
 				uptr = nptr + outleft;
 				iptr = cout.s;
-				iconv_ft(fhicd, &iptr, &inleft,
-						&nptr, &outleft);
+				if (iconv_ft(fhicd, &iptr, &inleft,
+						&nptr, &outleft) != 0 &&
+						errno == E2BIG) {
+					mime_fromhdr_inc(inleft);
+					goto again;
+				}
 				out->l += uptr - mptr - outleft;
 				q += uptr - mptr - outleft;
 			} else {
 #endif
+				while (cout.l > maxstor - out->l)
+					mime_fromhdr_inc(cout.l -
+							(maxstor - out->l));
 				memcpy(q, cout.s, cout.l);
 				q += cout.l;
 				out->l += cout.l;
@@ -1109,6 +1173,8 @@ enum tdflags flags;
 		} else {
 notmime:
 			p = op;
+			while (out->l >= maxstor)
+				mime_fromhdr_inc(16);
 			*q++ = *p;
 			out->l++;
 		}
@@ -1252,88 +1318,101 @@ FILE *f;
 {
 	char *p, *q, *ip, *op;
 	struct str cin;
-	size_t sz = 0, isz, osz;
-	char cbuf[LINESIZE];
-#ifdef	HAVE_ICONV
-	iconv_t fhicd = (iconv_t)-1;
-#endif
+	size_t sz = 0, isz, osz, cbufsz;
+	char *cbuf;
 
+	cbuf = ac_alloc(cbufsz = 1);
 	*(in->s + in->l) = '\0';
-	if (strpbrk(in->s, "(<") == NULL)
+	if (strpbrk(in->s, "(<") == NULL) {
+		ac_free(cbuf);
 		return fwrite(in->s, sizeof *in->s, in->l, f);
+	}
 	if ((p = strchr(in->s, '<')) != NULL) {
 		q = strchr(p, '>');
-		if (q++ == NULL)
+		if (q++ == NULL) {
+			ac_free(cbuf);
 			return 0;
+		}
 #ifdef	HAVE_ICONV
-		if (fhicd == (iconv_t)-1) {
+		if (iconvd == (iconv_t)-1) {
 #endif
 			cin.s = in->s;
 			cin.l = p - in->s;
 #ifdef	HAVE_ICONV
 		} else {
-			ip = in->s;
+		again1:	ip = in->s;
 			isz = p - in->s;
 			op = cbuf;
-			osz = sizeof cbuf;
-			if (iconv(fhicd, &ip, &isz, &op, &osz) == (size_t)-1) {
-				iconv_close(fhicd);
-				return 0;
+			osz = cbufsz;
+			if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
+				if (errno != E2BIG) {
+					ac_free(cbuf);
+					return 0;
+				}
+				cbuf = ac_alloc(cbufsz += isz);
+				goto again1;
 			}
 			cin.s = cbuf;
-			cin.l = sizeof cbuf - osz;
+			cin.l = cbufsz - osz;
 		}
 #endif
 		sz = mime_write_tohdr(&cin, f);
 		sz += fwrite(p, sizeof *p, q - p, f);
 #ifdef	HAVE_ICONV
-		if (fhicd == (iconv_t)-1) {
+		if (iconvd == (iconv_t)-1) {
 #endif
 			cin.s = q;
 			cin.l = in->s + in->l - q;
 #ifdef	HAVE_ICONV
 		} else {
-			ip = q;
+		again2:	ip = q;
 			isz = in->s + in->l - q;
 			op = cbuf;
-			osz = sizeof cbuf;
-			if (iconv(fhicd, &ip, &isz, &op, &osz) == (size_t)-1)
-				return 0;
+			osz = cbufsz;
+			if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
+				if (errno != E2BIG) {
+					ac_free(cbuf);
+					return 0;
+				}
+				cbuf = ac_alloc(cbufsz += isz);
+				goto again2;
+			}
 			cin.s = cbuf;
-			cin.l = sizeof cbuf - osz;
+			cin.l = cbufsz - osz;
 		}
 #endif
 		sz += mime_write_tohdr(&cin, f);
 	} else if ((p = strchr(in->s, '(')) != NULL) {
+		p++;
 		q = in->s;
 		do {
 			sz += fwrite(q, sizeof *q, p - q, f);
 			q = strchr(p, ')');
 			if (q++ == NULL) {
-#ifdef	HAVE_ICONV
-				if (fhicd != (iconv_t)-1)
-					iconv_close(fhicd);
-#endif
+				ac_free(cbuf);
 				return 0;
 			}
 #ifdef	HAVE_ICONV
-			if (fhicd == (iconv_t)-1) {
+			if (iconvd == (iconv_t)-1) {
 #endif
 				cin.s = p;
 				cin.l = q - p;
 #ifdef	HAVE_ICONV
 			} else {
-				ip = p;
+			again3:	ip = p;
 				isz = q - p;
 				op = cbuf;
-				osz = sizeof cbuf;
-				if (iconv(fhicd, &ip, &isz,
-					&op, &osz) == (size_t)-1) {
-					iconv_close(fhicd);
-					return 0;
+				osz = cbufsz;
+				if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
+					if (errno != E2BIG) {
+						ac_free(cbuf);
+						return 0;
+					}
+					cbuf = ac_alloc(cbufsz += isz);
+					goto again3;
 				}
 				cin.s = cbuf;
-				cin.l = sizeof cbuf - osz;
+				cin.l = cbufsz - osz;
 			}
 #endif
 			sz += mime_write_tohdr(&cin, f);
@@ -1342,10 +1421,7 @@ FILE *f;
 		if (*q != '\0')
 			sz += fwrite(q, sizeof *q, in->s + in->l - q, f);
 	}
-#ifdef	HAVE_ICONV
-	if (fhicd != (iconv_t)-1)
-		iconv_close(fhicd);
-#endif
+	ac_free(cbuf);
 	return sz;
 }
 
@@ -1416,37 +1492,38 @@ enum tdflags flags;
 	char *mptr;
 	size_t mptrsz;
 
-	csize = size * nmemb / sizeof (char);
-#ifdef	HAVE_ICONV
-	mptrsz = csize * 4;
-#else
+	csize = size * nmemb;
 	mptrsz = csize;
-#endif
-	mptr = ac_alloc(mptrsz);
+	mptr = ac_alloc(mptrsz + 1);
 #ifdef	HAVE_ICONV
 	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
-		inleft = csize;
+	again:	inleft = csize;
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
-		iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft);
+		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft) != 0 &&
+				errno == E2BIG) {
+			ac_free(mptr);
+			mptrsz += inleft;
+			mptr = ac_alloc(mptrsz + 1);
+			goto again;
+		}
 		nmemb = mptrsz - outleft;
 		size = sizeof (char);
 		ptr = mptr;
-		csize = size * nmemb / sizeof (char);
+		csize = size * nmemb;
 	} else
 #endif
 	{
-		memcpy(mptr, ptr, nmemb / size);
+		memcpy(mptr, ptr, csize);
 	}
-	upper = (char *)mptr + csize;
+	upper = mptr + csize;
 	*upper = '\0';
 	if (flags & TD_ISPR) {
-		if ((csize = makeprint(mptr, upper - (char *)mptr)) >
-				upper - (char *)mptr)
-			csize = upper - (char *)mptr;
-	} else
-		csize = upper - (char *)mptr;
+		if ((csize = makeprint(mptr, upper - mptr)) >
+				upper - mptr)
+			csize = upper - mptr;
+	}
 	sz = prefixwrite(mptr, sizeof *mptr, csize, f, prefix, prefixlen);
 	ac_free(mptr);
 	return sz;
@@ -1461,13 +1538,14 @@ void *ptr;
 size_t size, nmemb, prefixlen;
 char *prefix;
 FILE *f;
+enum conversion convert;
 enum tdflags dflags;
 {
 	struct str in, out;
 	size_t sz, csize;
 	int is_text = 0;
 #ifdef	HAVE_ICONV
-	char mptr[LINESIZE * 4];
+	char mptr[LINESIZE * 6];
 	char *iptr, *nptr;
 	size_t inleft, outleft;
 #endif
@@ -1480,7 +1558,6 @@ enum tdflags dflags;
 			&& iconvd != (iconv_t)-1
 			&& (convert == CONV_TOQP || convert == CONV_TOB64
 				|| convert == CONV_TOHDR)) {
-
 		inleft = csize;
 		outleft = sizeof mptr;
 		nptr = mptr;

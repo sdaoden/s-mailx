@@ -1,7 +1,7 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	2.4 (gritter) 10/28/02
+# Sccsid: @(#)configure.in	2.6 (gritter) 11/28/02
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
@@ -206,8 +206,8 @@ AC_PROG_GCC_TRADITIONAL
 AC_CHECK_FUNCS(gethostname mkstemp snprintf uname fpathconf wordexp)
 AC_CHECK_FUNCS(nl_langinfo catgets getc_unlocked putc_unlocked)
 AC_FUNC_ALLOCA
-AC_CHECK_FUNC(gethostent, AC_DEFINE(HAVE_SOCKETS),
-	AC_CHECK_LIB(nsl, gethostent, AC_DEFINE(HAVE_SOCKETS)
+AC_CHECK_FUNC(gethostbyname, AC_DEFINE(HAVE_SOCKETS),
+	AC_CHECK_LIB(nsl, gethostbyname, AC_DEFINE(HAVE_SOCKETS)
 					AC_DEFINE(HAVE_LIBNSL)
 					LIBS="-lnsl $LIBS"
 	)
@@ -224,6 +224,6 @@ then	AC_CHECK_HEADERS(iconv.h, AC_CHECK_FUNCS(iconv, ,
 		echo "*** Locale support not available ***" >&2),
 		echo "*** Locale support not available ***" >&2)
 	AC_CHECK_HEADERS(wchar.h wctype.h)
-	AC_CHECK_FUNCS(mbtowc iswprint)
+	AC_CHECK_FUNCS(mbtowc iswprint towupper)
 fi
 AC_OUTPUT(Makefile)
