@@ -5,7 +5,7 @@
 
 Summary: An enhanced implementation of the mailx command
 Name: nail
-Version: 11.14
+Version: 11.15
 Release: 1
 License: BSD
 Group: Applications/Internet

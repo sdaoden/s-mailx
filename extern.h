@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.141 (gritter) 11/3/04
+ *	Sccsid @(#)extern.h	2.148 (gritter) 11/7/04
  */
 
 /* aux.c */
@@ -43,6 +43,8 @@ char *savestr(const char *str);
 char *save2str(const char *str, const char *old);
 char *savecat(const char *s1, const char *s2);
 void panic(const char *format, ...);
+void holdint(void);
+void relseint(void);
 void touch(struct message *mp);
 int is_dir(char *name);
 int argcount(char **argv);
@@ -164,13 +166,14 @@ int followupall(void *v);
 int followupsender(void *v);
 int preserve(void *v);
 int unread(void *v);
+int seen(void *v);
 int messize(void *v);
 int rexit(void *v);
 int set(void *v);
 int unset(void *v);
 int group(void *v);
 int ungroup(void *v);
-int file(void *v);
+int cfile(void *v);
 int echo(void *v);
 int Respond(void *v);
 int Followup(void *v);
@@ -178,8 +181,8 @@ int ifcmd(void *v);
 int elsecmd(void *v);
 int endifcmd(void *v);
 int alternates(void *v);
-int forwardcmd(void *v);
-int Forwardcmd(void *v);
+int resendcmd(void *v);
+int Resendcmd(void *v);
 int newmail(void *v);
 int shortcut(void *v);
 struct shortcut *get_shortcut(const char *str);
@@ -214,7 +217,8 @@ void dot_unlock(const char *fname);
 int editor(void *v);
 int visual(void *v);
 FILE *run_editor(FILE *fp, off_t size, int type, int readonly,
-		struct header *hp, struct message *mp, enum sendaction action);
+		struct header *hp, struct message *mp, enum sendaction action,
+		sighandler_type oldint);
 /* fio.c */
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
@@ -303,6 +307,8 @@ enum okay imap_search(const char *spec, int f);
 /* junk.c */
 int cgood(void *v);
 int cjunk(void *v);
+int cungood(void *v);
+int cunjunk(void *v);
 int cclassify(void *v);
 int cprobability(void *v);
 /* lex.c */
@@ -311,6 +317,7 @@ int newmailinfo(int omsgCount);
 void commands(void);
 int execute(char *linebuf, int contxt, size_t linesize);
 void setmsize(int sz);
+void onintr(int s);
 void announce(int printheaders);
 int newfileinfo(void);
 int getmdot(int newmail);
@@ -448,7 +455,7 @@ int mkdate(FILE *fo, const char *field);
 int puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
 		char *contenttype, char *charset);
-int forward_msg(struct message *mp, struct name *to, int add_resent);
+int resend_msg(struct message *mp, struct name *to, int add_resent);
 /* smtp.c */
 char *nodename(int mayoverride);
 char *myaddr(void);

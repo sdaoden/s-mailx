@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.271 (gritter) 11/3/04
+.\"     Sccsid: @(#)nail.1	2.278 (gritter) 11/9/04
 .\"
-.TH NAIL 1 "11/3/04" "nail 11.14" "User Commands"
+.TH NAIL 1 "11/9/04" "nail 11.15" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -1132,18 +1132,6 @@ and
 .I Replyall
 variables.
 .TP
-.B Forward
-(For) Like
-.IR forward ,
-but does not add any header lines.
-This is not a way to hide the sender's identity,
-but useful for sending a message again
-to the same recipients.
-.TP
-.B forward
-(for) Takes a list of messages and a user name
-and sends each message to the named user.
-.TP
 .B from
 (f) Takes a list of messages
 and prints their message headers,
@@ -1449,6 +1437,20 @@ and
 .I Replyall
 variables.
 .TP
+.B Resend
+Like
+.IR resend ,
+but does not add any header lines.
+This is not a way to hide the sender's identity,
+but useful for sending a message again
+to the same recipients.
+.TP
+.B resend
+Takes a list of messages and a user name
+and sends each message to the named user.
+`Resent-From:' and related header fields are prepended
+to the new copy of the message.
+.TP
 .B Respond
 Same as
 .IR Reply .
@@ -1554,6 +1556,9 @@ the effect is the same as invoking the
 .I unset
 command with the remaining part of the variable
 (`\fIunset \fIsave\fR').
+.TP
+.B seen
+Takes a message list and marks all messages as having been read.
 .TP
 .B shell
 (sh) Invokes an interactive version of the shell.
@@ -1703,13 +1708,19 @@ as a draft.
 .B unflag
 Takes a message list and marks each message as not being `flagged'.
 .TP
+.B ungood
+Takes a message list and undoes the effect of a
+.I good
+command that was previously applied on exactly these messages.
+.TP
 .B unignore
 Removes the header field names
 from the list of ignored fields.
 .TP
 .B unjunk
-A synonym for
-.IR good .
+Takes a message list and undoes the effect of a
+.I junk
+command that was previously applied on exactly these messages.
 .TP
 .B unkill
 Takes a message list and `unkills' each message.
@@ -4071,6 +4082,12 @@ command,
 and the junk messages to the
 .I junk
 command.
+If you ever accidentally mark a good message as junk or vice-versa,
+call the
+.I ungood
+or
+.I unjunk
+command to correct this.
 .PP
 Once a reasonable amount of statistics has been collected,
 new messages can be classified automatically.
@@ -4097,15 +4114,6 @@ file (or whatever name you gave to the file in the last example):
     \fBset folder-hook-\fRimap://user@host/INBOX=\fIjunkfilter\fR
 .sp
 .fi
-Since the
-.I classify
-command must examine the entire text
-of all new messages in the respective folder,
-this will also cause all of them to be downloaded from the IMAP server.
-You should thus restrict the size of messages for automatic filtering.
-If server-based filtering is also available,
-you should try if that works for you first.
-.PP
 If you set the
 .I verbose
 option before running the
@@ -4121,6 +4129,25 @@ To see the statistical probability of a given word,
 use the
 .I probability
 command.
+.PP
+If a junk message was not recognized as such,
+use the
+.I junk
+command to correct this.
+Also if you encounter a false positive
+(a good message that was wrongly classified as junk),
+pass it to the
+.I good
+command.
+.PP
+Since the
+.I classify
+command must examine the entire text
+of all new messages in the respective folder,
+this will also cause all of them to be downloaded from the IMAP server.
+You should thus restrict the size of messages for automatic filtering.
+If server-based filtering is also available,
+you might try if that works for you first.
 .SS "Reading HTML mail"
 You need either the
 .I w3m
@@ -4519,14 +4546,27 @@ The `newmail' command and the `newmail' variable
 have no effect.
 It is not possible to rename or to remove POP3 mailboxes.
 .PP
-An unencrypted IMAP or POP3 message download
-can be interrupted from the terminal,
-but the part that was not downloaded
-will have to be downloaded
-before the next command is sent.
-A SSL/TLS encrypted IMAP or POP3 message download
-should not be interrupted,
-as this will very likely cause an error in the SSL transport.
+If a
+.SM RUBOUT
+(interrupt) is typed while an IMAP or POP3 operation is in progress,
+.I nail
+will wait until the operation can be safely aborted,
+and will then return to the command loop
+and print the prompt again.
+When a second
+.I RUBOUT
+is typed while
+.I nail
+is waiting for the operation to complete,
+the operation itself will be canceled.
+In this case,
+data that has not been fetched yet
+will have to be fetched
+before the next command can be performed.
+If the canceled operation
+was using an SSL/TLS encrypted channel,
+an error in the SSL transport will very likely result,
+and the connection is no longer usable.
 .PP
 As \fInail\fR is a mail user agent,
 it provides only basic SMTP services.

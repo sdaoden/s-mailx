@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)junk.c	1.61 (gritter) 11/3/04";
+static char sccsid[] = "@(#)junk.c	1.64 (gritter) 11/7/04";
 #endif
 #endif /* not lint */
 
@@ -50,6 +50,7 @@ static char sccsid[] = "@(#)junk.c	1.61 (gritter) 11/3/04";
 #include <limits.h>
 #include <time.h>
 #include <unistd.h>
+#include <utime.h>
 
 #ifdef	HAVE_MMAP
 #include <sys/mman.h>
@@ -220,23 +221,27 @@ them in flat form.\n";
 static int	verbose;
 static int	_debug;
 static FILE	*sfp, *nfp;
+static char	*sname, *nname;
 
 static enum okay getdb(int rw);
 static void putdb(void);
 static void relsedb(void);
-static FILE *dbfp(enum db db, int rw, int *compressed);
+static FILE *dbfp(enum db db, int rw, int *compressed, char **fn);
 static char *lookup(unsigned long h1, unsigned long h2, int create);
 static unsigned long grow(unsigned long size);
 static char *nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 		struct lexstat *sp);
-static void add(const char *word, enum entry entry, struct lexstat *sp);
+static void add(const char *word, enum entry entry, struct lexstat *sp,
+		int incr);
 static enum okay scan(struct message *m, enum entry entry,
-		void (*func)(const char *, enum entry, struct lexstat *));
+		void (*func)(const char *, enum entry, struct lexstat *, int),
+		int arg);
 static void recompute(void);
 static float getprob(char *n);
-static int insert(int *msgvec, enum entry entry);
+static int insert(int *msgvec, enum entry entry, int incr);
 static void clsf(struct message *m);
-static void rate(const char *word, enum entry entry, struct lexstat *sp);
+static void rate(const char *word, enum entry entry, struct lexstat *sp,
+		int unused);
 static void dbhash(const char *word, unsigned long *h1, unsigned long *h2);
 static void mkmangle(void);
 
@@ -247,7 +252,7 @@ getdb(int rw)
 	long	n;
 	int	compressed;
 
-	if ((sfp = dbfp(SUPER, rw, &compressed)) == (FILE *)-1)
+	if ((sfp = dbfp(SUPER, rw, &compressed, &sname)) == (FILE *)-1)
 		return STOP;
 	if (sfp && !compressed) {
 		super = mmap(NULL, SIZEOF_super,
@@ -285,7 +290,7 @@ skip:	if ((n = getn(&super[OF_super_size])) == 0) {
 		n = 1;
 		putn(&super[OF_super_size], 1);
 	}
-	if (sfp && (nfp = dbfp(NODES, rw, &compressed)) != NULL) {
+	if (sfp && (nfp = dbfp(NODES, rw, &compressed, &nname)) != NULL) {
 		if (nfp == (FILE *)-1) {
 			relsedb();
 			return STOP;
@@ -333,19 +338,23 @@ skip:	if ((n = getn(&super[OF_super_size])) == 0) {
 static void 
 putdb(void)
 {
-	sighandler_type	saveint;
 	void	*zp;
 	int	scomp, ncomp;
 
-	if (!super_mmapped && (sfp = dbfp(SUPER, O_WRONLY, &scomp)) == NULL ||
-			sfp == (FILE *)-1)
+	if (!super_mmapped && (sfp = dbfp(SUPER, O_WRONLY, &scomp, &sname))
+			== NULL || sfp == (FILE *)-1)
 		return;
-	if (!nodes_mmapped && (nfp = dbfp(NODES, O_WRONLY, &ncomp)) == NULL ||
-			nfp == (FILE *)-1)
+	if (!nodes_mmapped && (nfp = dbfp(NODES, O_WRONLY, &ncomp, &nname))
+			== NULL || nfp == (FILE *)-1)
 		return;
-	saveint = safe_signal(SIGINT, SIG_IGN);
+	if (super_mmapped == 0 || nodes_mmapped == 0)
+		holdint();
+	/*
+	 * Use utime() with mmap() since Linux does not update st_mtime
+	 * reliably otherwise.
+	 */
 	if (super_mmapped)
-		/*EMPTY*/;
+		utime(sname, NULL);
 	else if (scomp) {
 		zp = zalloc(sfp);
 		zwrite(zp, super, SIZEOF_super);
@@ -354,7 +363,7 @@ putdb(void)
 	} else
 		fwrite(super, 1, SIZEOF_super, sfp);
 	if (nodes_mmapped)
-		/*EMPTY*/;
+		utime(nname, NULL);
 	else if (ncomp) {
 		zp = zalloc(nfp);
 		zwrite(zp, nodes, getn(&super[OF_super_size]) * SIZEOF_node);
@@ -363,7 +372,8 @@ putdb(void)
 	} else
 		fwrite(nodes, 1,
 			getn(&super[OF_super_size]) * SIZEOF_node, nfp);
-	safe_signal(SIGINT, saveint);
+	if (super_mmapped == 0 || nodes_mmapped == 0)
+		relseint();
 }
 
 static void
@@ -390,10 +400,10 @@ relsedb(void)
 }
 
 static FILE *
-dbfp(enum db db, int rw, int *compressed)
+dbfp(enum db db, int rw, int *compressed, char **fn)
 {
 	FILE	*fp, *rp;
-	char	*dir, *fn;
+	char	*dir;
 	struct flock	flp;
 	char *sfx[][2] = {
 		{ "super",	"nodes" },
@@ -421,24 +431,23 @@ dbfp(enum db db, int rw, int *compressed)
 		table_version = current_table_version;
 loop:	sf = sfx[table_version];
 	zf = zfx[table_version];
-	fn = ac_alloc((n = strlen(dir)) + 40);
-	strcpy(fn, dir);
-	fn[n] = '/';
+	*fn = salloc((n = strlen(dir)) + 40);
+	strcpy(*fn, dir);
+	(*fn)[n] = '/';
 	*compressed = 0;
-	strcpy(&fn[n+1], sf[db]);
-	if ((fp = Fopen(fn, rw!=O_RDONLY ? "r+" : "r")) != NULL)
+	strcpy(&(*fn)[n+1], sf[db]);
+	if ((fp = Fopen(*fn, rw!=O_RDONLY ? "r+" : "r")) != NULL)
 		goto okay;
 	*compressed = 1;
-	strcpy(&fn[n+1], zf[db]);
-	if ((fp = Fopen(fn, rw ? "r+" : "r")) == NULL &&
-			rw==O_WRONLY ? (fp = Fopen(fn, "w+")) == NULL : 0) {
-		fprintf(stderr, "Cannot open junk mail database \"%s\".\n", fn);
-		ac_free(fn);
+	strcpy(&(*fn)[n+1], zf[db]);
+	if ((fp = Fopen(*fn, rw ? "r+" : "r")) == NULL &&
+			rw==O_WRONLY ? (fp = Fopen(*fn, "w+")) == NULL : 0) {
+		fprintf(stderr, "Cannot open junk mail database \"%s\".\n",*fn);
 		return NULL;
 	}
 	if (rw==O_WRONLY) {
-		strcpy(&fn[n+1], "README");
-		if (access(fn, F_OK) < 0 && (rp = Fopen(fn, "w")) != NULL) {
+		strcpy(&(*fn)[n+1], "README");
+		if (access(*fn, F_OK) < 0 && (rp = Fopen(*fn, "w")) != NULL) {
 			fputs(README1, rp);
 			fputs(README2, rp);
 			Fclose(rp);
@@ -450,8 +459,7 @@ loop:	sf = sfx[table_version];
 		} else
 			table_version = current_table_version;
 	}
-okay:	ac_free(fn);
-	if (fp) {
+okay:	if (fp) {
 		flp.l_type = rw!=O_RDONLY ? F_WRLCK : F_RDLCK;
 		flp.l_start = 0;
 		flp.l_len = 0;
@@ -487,6 +495,7 @@ lookup(unsigned long h1, unsigned long h2, int create)
 				return NULL;
 			lastn = &nodes[lastc*SIZEOF_node];
 		}
+		putn(&super[OF_super_used], used+1);
 		n = &nodes[used*SIZEOF_node];
 		putn(&n[OF_node_hash], h1);
 		put(&n[OF_node_hash2], h2);
@@ -495,8 +504,6 @@ lookup(unsigned long h1, unsigned long h2, int create)
 		else
 			putn(&super[OF_super_bucket + (h1&MAX2)*SIZEOF_entry],
 					~used);
-		used++;
-		putn(&super[OF_super_used], used);
 		return n;
 	} else
 		return NULL;
@@ -769,7 +776,7 @@ out:	if (i > 0) {
 
 /*ARGSUSED3*/
 static void
-add(const char *word, enum entry entry, struct lexstat *sp)
+add(const char *word, enum entry entry, struct lexstat *sp, int incr)
 {
 	unsigned	c;
 	unsigned long	h1, h2;
@@ -780,15 +787,15 @@ add(const char *word, enum entry entry, struct lexstat *sp)
 		switch (entry) {
 		case GOOD:
 			c = get(&n[OF_node_good]);
-			if (c < MAX3) {
-				c++;
+			if (incr>0 && c<MAX3-incr || incr<0 && c>=-incr) {
+				c += incr;
 				put(&n[OF_node_good], c);
 			}
 			break;
 		case BAD:
 			c = get(&n[OF_node_bad]);
-			if (c < MAX3) {
-				c++;
+			if (incr>0 && c<MAX3-incr || incr<0 && c>=-incr) {
+				c += incr;
 				put(&n[OF_node_bad], c);
 			}
 			break;
@@ -798,7 +805,8 @@ add(const char *word, enum entry entry, struct lexstat *sp)
 
 static enum okay 
 scan(struct message *m, enum entry entry,
-		void (*func)(const char *, enum entry, struct lexstat *))
+		void (*func)(const char *, enum entry, struct lexstat *, int),
+		int arg)
 {
 	FILE	*fp;
 	char	*buf = NULL, *cp;
@@ -820,7 +828,7 @@ scan(struct message *m, enum entry entry,
 	sp = scalloc(1, sizeof *sp);
 	count = fsize(fp);
 	while (nextword(&buf, &bufsize, &count, fp, sp) != NULL)
-		(*func)(buf, entry, sp);
+		(*func)(buf, entry, sp, arg);
 	free(buf);
 	free(sp);
 	Fclose(fp);
@@ -879,7 +887,7 @@ getprob(char *n)
 }
 
 static int 
-insert(int *msgvec, enum entry entry)
+insert(int *msgvec, enum entry entry, int incr)
 {
 	int	*ip;
 	unsigned long	u = 0;
@@ -897,16 +905,19 @@ insert(int *msgvec, enum entry entry)
 	}
 	for (ip = msgvec; *ip; ip++) {
 		setdot(&message[*ip-1]);
-		if (u == MAX4) {
+		if (incr > 0 && u == MAX4-incr+1) {
 			fprintf(stderr, "Junk mail database overflow.\n");
 			break;
+		} else if (incr < 0 && -incr > u) {
+			fprintf(stderr, "Junk mail database underflow.\n");
+			break;
 		}
-		u++;
+		u += incr;
 		if (entry == GOOD)
 			message[*ip-1].m_flag &= ~MJUNK;
 		else
 			message[*ip-1].m_flag |= MJUNK;
-		scan(&message[*ip-1], entry, add);
+		scan(&message[*ip-1], entry, add, incr);
 	}
 	switch (entry) {
 	case GOOD:
@@ -923,16 +934,28 @@ insert(int *msgvec, enum entry entry)
 	return 0;
 }
 
-int 
+int
 cgood(void *v)
 {
-	return insert(v, GOOD);
+	return insert(v, GOOD, 1);
 }
 
-int 
+int
 cjunk(void *v)
 {
-	return insert(v, BAD);
+	return insert(v, BAD, 1);
+}
+
+int
+cungood(void *v)
+{
+	return insert(v, GOOD, -1);
+}
+
+int
+cunjunk(void *v)
+{
+	return insert(v, BAD, -1);
 }
 
 int 
@@ -974,7 +997,7 @@ clsf(struct message *m)
 		best[i].dist = 0;
 		best[i].prob = -1;
 	}
-	if (scan(m, -1, rate) != OKAY)
+	if (scan(m, -1, rate, 0) != OKAY)
 		return;
 	if (best[0].prob == -1) {
 		if (verbose)
@@ -1004,8 +1027,9 @@ clsf(struct message *m)
 		m->m_flag &= ~MJUNK;
 }
 
+/*ARGSUSED4*/
 static void
-rate(const char *word, enum entry entry, struct lexstat *sp)
+rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 {
 	char	*n;
 	unsigned long	h1, h2;

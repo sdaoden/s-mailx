@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.271 (gritter) 11/3/04 -->
+<!--      Sccsid: @(#)nail.1	2.278 (gritter) 11/9/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -1307,19 +1307,6 @@ Similar to
 <I>flipr</I> and
 <I>Replyall</I> variables.
 </TD></TR>
-<TR valign=top><TD colspan=2>
-<B>Forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-(For) Like
-<I>forward</I>, but does not add any header lines.
-This is not a way to hide the sender&#39;s identity,
-but useful for sending a message again
-to the same recipients.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-(for) Takes a list of messages and a user name
-and sends each message to the named user.
-</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>from</B> </TD><TD valign=bottom>
 (f) Takes a list of messages
@@ -1634,6 +1621,21 @@ Similar to
 <I>flipr</I> and
 <I>Replyall</I> variables.
 </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Resend</B> </TD><TD valign=bottom>
+Like
+<I>resend</I>, but does not add any header lines.
+This is not a way to hide the sender&#39;s identity,
+but useful for sending a message again
+to the same recipients.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>resend</B> </TD><TD valign=bottom>
+Takes a list of messages and a user name
+and sends each message to the named user.
+&#39;Resent-From:&#39; and related header fields are prepended
+to the new copy of the message.
+</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>Respond</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
@@ -1742,6 +1744,10 @@ If an argument begins with
 the effect is the same as invoking the
 <I>unset</I> command with the remaining part of the variable
 (&#39;<I>unset </I><I>save</I>&#39;).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>seen</B> </TD><TD valign=bottom>
+Takes a message list and marks all messages as having been read.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>shell</B> </TD><TD valign=bottom>
@@ -1911,6 +1917,11 @@ as a draft.
 <B>unflag</B> </TD><TD valign=bottom>
 Takes a message list and marks each message as not being &#39;flagged&#39;.
 </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>ungood</B> </TD><TD valign=bottom>
+Takes a message list and undoes the effect of a
+<I>good</I> command that was previously applied on exactly these messages.
+</TD></TR>
 <TR valign=top><TD colspan=2>
 <B>unignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Removes the header field names
@@ -1918,8 +1929,9 @@ from the list of ignored fields.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>unjunk</B> </TD><TD valign=bottom>
-A synonym for
-<I>good</I>. </TD></TR>
+Takes a message list and undoes the effect of a
+<I>junk</I> command that was previously applied on exactly these messages.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>unkill</B> </TD><TD valign=bottom>
 Takes a message list and &#39;unkills&#39; each message.
@@ -4402,6 +4414,10 @@ You have to pass the good messages to the
 <I>good</I> command,
 and the junk messages to the
 <I>junk</I> command.
+If you ever accidentally mark a good message as junk or vice-versa,
+call the
+<I>ungood</I> or
+<I>unjunk</I> command to correct this.
 <P>
 Once a reasonable amount of statistics has been collected,
 new messages can be classified automatically.
@@ -4425,14 +4441,6 @@ put lines like the following into your
 &nbsp;   <B>set folder-hook-</B>imap://user@host/INBOX=<I>junkfilter</I>
 <P>
 </PRE>
-Since the
-<I>classify</I> command must examine the entire text
-of all new messages in the respective folder,
-this will also cause all of them to be downloaded from the IMAP server.
-You should thus restrict the size of messages for automatic filtering.
-If server-based filtering is also available,
-you should try if that works for you first.
-<P>
 If you set the
 <I>verbose</I> option before running the
 <I>classify</I> command,
@@ -4444,6 +4452,22 @@ as you would like them to be.
 To see the statistical probability of a given word,
 use the
 <I>probability</I> command.
+<P>
+If a junk message was not recognized as such,
+use the
+<I>junk</I> command to correct this.
+Also if you encounter a false positive
+(a good message that was wrongly classified as junk),
+pass it to the
+<I>good</I> command.
+<P>
+Since the
+<I>classify</I> command must examine the entire text
+of all new messages in the respective folder,
+this will also cause all of them to be downloaded from the IMAP server.
+You should thus restrict the size of messages for automatic filtering.
+If server-based filtering is also available,
+you might try if that works for you first.
 </BLOCKQUOTE>
 <A name=27>
 
@@ -4841,14 +4865,23 @@ The &#39;newmail&#39; command and the &#39;newmail&#39; variable
 have no effect.
 It is not possible to rename or to remove POP3 mailboxes.
 <P>
-An unencrypted IMAP or POP3 message download
-can be interrupted from the terminal,
-but the part that was not downloaded
-will have to be downloaded
-before the next command is sent.
-A SSL/TLS encrypted IMAP or POP3 message download
-should not be interrupted,
-as this will very likely cause an error in the SSL transport.
+If a
+<FONT size=-1>RUBOUT</FONT> (interrupt) is typed while an IMAP or POP3 operation is in progress,
+<I>nail</I> will wait until the operation can be safely aborted,
+and will then return to the command loop
+and print the prompt again.
+When a second
+<I>RUBOUT</I> is typed while
+<I>nail</I> is waiting for the operation to complete,
+the operation itself will be canceled.
+In this case,
+data that has not been fetched yet
+will have to be fetched
+before the next command can be performed.
+If the canceled operation
+was using an SSL/TLS encrypted channel,
+an error in the SSL transport will very likely result,
+and the connection is no longer usable.
 <P>
 As <I>nail</I> is a mail user agent,
 it provides only basic SMTP services.
@@ -4899,5 +4932,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.14</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>11/3/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.15</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>11/9/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>
