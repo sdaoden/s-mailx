@@ -18,10 +18,8 @@ Alexey A. Shelkovich sent a core file to fix an illustrous null pointer.
 
 Anders Andersson helped by compiling on FreeBSD.
 
-Bob Tennent found a address encoding bug, sent some Red Hat patches
-	and gave important hints about the world-writeability
-	of mail spool directories.
-	He also informed me about libsafe of Bell Labs.
+Bob Tennent contributed too many suggestions, bug reports and fixes to
+	list them here. Special thanks!
 
 Gabor Z. Papp announced nail on http://appwatch.com and found
 	an error in the SMTP envelope From generation.
@@ -40,3 +38,7 @@ James Sheeringer informed me about a possible buffer overflow.
 Gelu G. Lupas sent a core dump.
 
 Thomas Fieseler detected a locale problem on Solaris.
+
+Allan Peda detected a mistyped string.
+
+Russell Kroll found a mishandling of tabs.

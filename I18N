@@ -21,7 +21,7 @@
 * Character sets.
 
   Since it is impossible to determine the character set of a given locale
-  in a portable manner, nail needs additional information about it. There
+  in a portable manner, nail may need additional information about it. There
   are two nail variables to set in this context: First, "charset" determines
   the character set of outgoing messages. As this parameter is written
   directly into the message's header, its value has to conform to the
@@ -34,24 +34,30 @@
   understood by all mail user agents, users of an Unicode terminal may
   choose to send in an ISO 8859 character set. For this purpose, the
   "ttycharset" variable can be set; it defaults to the "charset" variable.
+  On systems where the CODESET parameter to nl_langinfo(3) is available
+  (e.g. on those conforming to SUSv2), nail determines the terminal's
+  character set dependant on the LC_CTYPE locale setting at startup. If
+  this call is possible, the result is assigned to "ttycharset".
 
   When nail is displaying a message out of a mail folder, the character
   set that is indicated in the message's header is tried to convert to
   the terminal character set, using "ttycharset", or, if unset, "charset".
 
-  If the values assigned to "charset" and "ttycharset" differ, outgoing
-  messages are tried to convert, too; the conversion will fail, of course,
-  if a character cannot be represented in the new set, and the message will
-  not get sent. It must be noted that the error conditions are somewhat
-  vague; thus some testing should be done before messages actually get
-  send to the outside world this way.
+  If the values assigned to "charset" and "ttycharset" (or the automatically
+  determined terminal character set) differ, outgoing messages are tried to
+  convert, too; the conversion will fail, of course, if a character cannot
+  be represented in the new set, and the message will not get sent. It must
+  be noted that the error conditions are somewhat vague; thus some testing
+  should be done before messages actually get sent to the outside world
+  this way.
 
 * Unicode.
 
-  Whereever an useful iconv function is available, nail can send and
+  Whereever an useful iconv(3) function is available, nail can send and
   display Unicode messages. Unless the terminal also supports Unicode,
-  the messages will contain mostly question marks when viewing, however;
-  this does not affect outgoing messages.
+  messages originating from foreign environments will contain mostly
+  question marks when viewing, however; this does not affect outgoing
+  messages.
 
   Recent versions of the "xterm" program contain experimental Unicode
   support. When such a terminal is used, the "ttycharset" variable
@@ -59,9 +65,14 @@
   are supported at once. It is quite recommended not to send UTF-8
   messages today since most receivers will not be able to read them
   correctly, so the "charset" variable should contain a more common
-  character set name like "iso-8859-1" or "koi8-r". To make real use
-  of such a terminal, the pager and the editor have to support UTF-8,
-  too, as on many recent System V variants.
+  character set name like "iso-8859-1" or "koi8-r".
+
+  To make real use of such a terminal, the pager and the editor have
+  to support UTF-8, too, as on many recent System V variants. You
+  might also try the "pg" command available from my home page at
+  <http://omnibus.ruf.uni-freiburg.de/~gritter/> for viewing, and,
+  as a last resort, the classic "ed" editor for writing. The latter
+  will do this work as long as you do not use regular expressions.
 
 * System dependencies.
 
@@ -69,22 +80,25 @@
   is used; it should be present on all System V Release 4.2 variants as
   well as on recent Linux systems. This function, however, suffers from
   a serious design flaw: the character set strings it accepts are absolutely
-  implementation-dependent. Currently, the following implementations are
+  implementation-dependant. Currently, the following implementations are
   tested:
 
-  - GNU C Library 2.1.
+  - GNU C Library 2.1, 2.2.
 
     This implementation supports many of the character sets that are defined
-    in RFC 2046 respective the IANA tables and knows of its names, too.
+    in RFC 2046 respective the IANA tables and knows of its names, too. Version
+    2.2 includes full UTF-8 support.
 
   - Solaris 8.
 
     At least the conversions between Unicode/UTF-8 and the ISO 8859 character
     sets are supported. The use of this implementation is a bit difficult
-    since the names it accepts are proprietary and case-dependent.
+    since the names it accepts are proprietary and case-dependant.
 
   - UnixWare 7; 2.1.
 
     This iconv() is nearly useless since not only the character set names
     are proprietary and case-dependent; the conversion directions are
     limited, too.
+
+Gunnar Ritter	1/11/01

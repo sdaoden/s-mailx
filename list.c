@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)list.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -236,7 +236,7 @@ number:
 		tok = scan(&bufp);
 	}
 	lastcolmod = colmod;
-	*np = NOSTR;
+	*np = NULL;
 	mc = 0;
 	if (star) {
 		for (i = 0; i < msgcount; i++)
@@ -269,7 +269,7 @@ number:
 
 	if (np > namelist) {
 		for (i = 1; i <= msgcount; i++) {
-			for (mc = 0, np = &namelist[0]; *np != NOSTR; np++)
+			for (mc = 0, np = &namelist[0]; *np != NULL; np++)
 				if (**np == '/') {
 					if (matchsubj(*np, i)) {
 						mc++;
@@ -299,7 +299,7 @@ number:
 		if (mc == 0) {
 			printf("No applicable messages from {%s",
 				namelist[0]);
-			for (np = &namelist[1]; *np != NOSTR; np++)
+			for (np = &namelist[1]; *np != NULL; np++)
 				printf(", %s", *np);
 			printf("}\n");
 			return(-1);
@@ -474,7 +474,7 @@ getrawlist(line, argv, argc)
 		*cp2 = '\0';
 		argv[argn++] = savestr(linebuf);
 	}
-	argv[argn] = NOSTR;
+	argv[argn] = NULL;
 	return argn;
 }
 
@@ -712,7 +712,7 @@ matchsubj(str, mesg)
 		cp = str;
 		cp2 = hfield("subject", mp);
 	}
-	if (cp2 == NOSTR)
+	if (cp2 == NULL)
 		return(0);
 	backup = cp2;
 	while (*cp2) {

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	1.2 (gritter) 9/29/00";
+static char sccsid[] = "@(#)smtp.c	1.3 (gritter) 11/15/00";
 #endif
 #endif /* not lint */
 
@@ -61,17 +61,14 @@ crlfputs(s, stream)
 char *s;
 FILE *stream;
 {
-	size_t l;
-
-	l = strlen(s);
+	size_t l = strlen(s);
 
 	if (*(s + l - 1) == '\n' && *(s + l - 2) != '\r') {
 		*(s + l - 1) = '\r';
 		*(s + l) = '\n';
-		l = fwrite(s, sizeof(char), l + 1, stream);
-	} else {
-		l = fwrite(s, sizeof(char), l, stream);
-	}
+		l = fwrite(s, sizeof *s, l + 1, stream);
+	} else
+		l = fwrite(s, sizeof *s, l, stream);
 	if (l <= 0)
 		return EOF;
 	return l;
@@ -110,7 +107,7 @@ nodename()
 			hn = hent->h_name;
 		}
 #endif
-		hostname = (char*)smalloc(strlen(hn) + 1);
+		hostname = (char *)smalloc(strlen(hn) + 1);
 		strcpy(hostname, hn);
 	}
 	return hostname;
@@ -126,8 +123,7 @@ myaddr()
 	static char *addr;
 	size_t sz;
 
-	cp = value("from");
-	if (cp != NULL)
+	if ((cp = value("from")) != NULL)
 		return cp;
 	/*
 	 * When invoking sendmail directly, it's its task
@@ -138,7 +134,7 @@ myaddr()
 	if (addr == NULL) {
 		hn = nodename();
 		sz = strlen(myname) + strlen(hn) + 2;
-		addr = (char*)smalloc(sz);
+		addr = (char *)smalloc(sz);
 		snprintf(addr, sz, "%s@%s", myname, hn);
 	}
 	return addr;
@@ -166,9 +162,8 @@ FILE *f;
 		case '4': ret = 4; break;
 		default: ret = 5;
 		}
-		if (value != ret) {
+		if (value != ret)
 			fprintf(stderr, "smtp-server: %s", b + 4);
-		}
 		/*
 		 * Maybe the server has said too much.
 		 */
@@ -269,28 +264,23 @@ FILE *fi;
 		*portstr++ = '\0';
 		if (*portstr == '\0')
 			portstr = "smtp";
-		else {
+		else
 			port = (unsigned short)strtol(portstr, NULL, 10);
-		}
 	}
 	if (port == 0) {
-		sp = getservbyname(portstr, "tcp");
-		if (sp == NULL) {
+		if ((sp = getservbyname(portstr, "tcp")) == NULL) {
 			perror("getservbyname");
 			return 1;
 		}
 		port = sp->s_port;
-	} else {
+	} else
 		port = htons(port);
-	}
-	hp = gethostbyname(server);
-	if (hp == NULL) {
+	if ((hp = gethostbyname(server)) == NULL) {
 		perror("gethostbyname");
 		return 1;
 	}
 	pptr = (struct in_addr **) hp->h_addr_list;
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd == -1) {
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("socket");
 		return 1;
 	}
@@ -307,8 +297,8 @@ FILE *fi;
 	}
 	if (verbose)
 		fputs(" connected.\n", stderr);
-	fsi = (FILE*)Fdopen(sockfd, "w");
-	fso = (FILE*)Fdopen(sockfd, "r");
+	fsi = (FILE *)Fdopen(sockfd, "w");
+	fso = (FILE *)Fdopen(sockfd, "r");
 	ret = talk_smtp(to, fi, fsi, fso);
 	Fclose(fsi);
 	Fclose(fso);

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)lex.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -68,7 +68,7 @@ setfile(name)
 	extern char *tempMesg;
 	extern int errno;
 
-	if ((name = expand(name)) == NOSTR)
+	if ((name = expand(name)) == NULL)
 		return -1;
 
 	if ((ibuf = Fopen(name, "r")) == (FILE *)NULL) {
@@ -190,7 +190,7 @@ commands()
 		 * Print the prompt, if needed.  Clear out
 		 * string space, and flush the output.
 		 */
-		if (!sourcing && value("interactive") != NOSTR) {
+		if (!sourcing && value("interactive") != NULL) {
 			reset_on_stop = 1;
 			printf(prompt);
 		}
@@ -223,8 +223,8 @@ commands()
 				unstack();
 				continue;
 			}
-			if (value("interactive") != NOSTR &&
-			    value("ignoreeof") != NOSTR &&
+			if (value("interactive") != NULL &&
+			    value("ignoreeof") != NULL &&
 			    ++eofloop < 25) {
 				printf("Use \"quit\" to quit.\n");
 				continue;
@@ -279,7 +279,7 @@ execute(linebuf, contxt)
 	if (*cp == '#')
 		return 0;
 	cp2 = word;
-	while (*cp && strchr(" \t0123456789$^.:/-+*'\"", *cp) == NOSTR)
+	while (*cp && strchr(" \t0123456789$^.:/-+*'\"", *cp) == NULL)
 		*cp2++ = *cp++;
 	*cp2 = '\0';
 
@@ -430,7 +430,7 @@ out:
 	}
 	if (com == (struct cmd *)NULL)
 		return(0);
-	if (value("autoprint") != NOSTR && com->c_argtype & P)
+	if (value("autoprint") != NULL && com->c_argtype & P)
 		if ((dot->m_flag & MDELETED) == 0) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
@@ -467,7 +467,7 @@ lex(word)
 	extern const struct cmd cmdtab[];
 	const struct cmd *cp;
 
-	for (cp = &cmdtab[0]; cp->c_name != NOSTR; cp++)
+	for (cp = &cmdtab[0]; cp->c_name != NULL; cp++)
 		if (isprefix(word, cp->c_name))
 			return(cp);
 	return(NONE);
@@ -574,7 +574,7 @@ announce()
 	vec[0] = mdot;
 	vec[1] = 0;
 	dot = &message[mdot - 1];
-	if (msgcount > 0 && value("noheader") == NOSTR) {
+	if (msgcount > 0 && value("noheader") == NULL) {
 		inithdr++;
 		headers(vec);
 		inithdr = 0;

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)cmd2.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -176,7 +176,7 @@ save1(str, mark, cmd, ignore, convert)
 	struct stat st;
 
 	msgvec = (int *) salloc((msgcount + 2) * sizeof *msgvec);
-	if ((file = snarf(str, &f)) == NOSTR)
+	if ((file = snarf(str, &f)) == NULL)
 		return(1);
 	if (!f) {
 		*msgvec = first(0, MMNORM);
@@ -188,7 +188,7 @@ save1(str, mark, cmd, ignore, convert)
 	}
 	if (f && getmsglist(str, msgvec, 0) < 0)
 		return(1);
-	if ((file = expand(file)) == NOSTR)
+	if ((file = expand(file)) == NULL)
 		return(1);
 	if (access(file, 0) >= 0) {
 		newfile = 0;
@@ -198,7 +198,7 @@ save1(str, mark, cmd, ignore, convert)
 		disp = "[New file]";
 	}
 	if ((obuf = Fopen(file, "a")) == (FILE *)NULL) {
-		perror(NOSTR);
+		perror(NULL);
 		return(1);
 	}
 	if (newfile == 0) {
@@ -210,7 +210,7 @@ save1(str, mark, cmd, ignore, convert)
 	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
-		if (send_message(mp, obuf, ignore, NOSTR, convert) < 0) {
+		if (send_message(mp, obuf, ignore, NULL, convert) < 0) {
 			perror(file);
 			Fclose(obuf);
 			return(1);
@@ -243,7 +243,7 @@ swrite(v)
 /*
  * Snarf the file from the end of the command line and
  * return a pointer to it.  If there is no file attached,
- * just return NOSTR.  Put a null in front of the file
+ * just return NULL.  Put a null in front of the file
  * name so that the message list processing won't see it,
  * unless the file name is the only thing on the line, in
  * which case, return 0 in the reference flag variable.
@@ -275,7 +275,7 @@ snarf(linebuf, flag)
 		cp--;
 	if (*cp == '\0') {
 		printf("No file specified.\n");
-		return(NOSTR);
+		return(NULL);
 	}
 	if (isspace(*cp))
 		*cp++ = 0;
@@ -502,7 +502,7 @@ ignore1(list, tab, which)
 	struct ignore *igp;
 	char **ap;
 
-	if (*list == NOSTR)
+	if (*list == NULL)
 		return igshow(tab, which);
 	for (ap = list; *ap != 0; ap++) {
 		istrcpy(field, *ap, BUFSIZ);

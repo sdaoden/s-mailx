@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)aux.c	1.6 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -58,7 +58,7 @@ savestr(str)
 	char *new;
 	int size = strlen(str) + 1;
 
-	if ((new = salloc(size)) != NOSTR)
+	if ((new = salloc(size)) != NULL)
 		memcpy(new, str, size);
 	return new;
 }
@@ -74,7 +74,7 @@ save2str(str, old)
 	int newsize = strlen(str) + 1;
 	int oldsize = old ? strlen(old) + 1 : 0;
 
-	if ((new = salloc(newsize + oldsize)) != NOSTR) {
+	if ((new = salloc(newsize + oldsize)) != NULL) {
 		if (oldsize) {
 			memcpy(new, old, oldsize);
 			new[oldsize - 1] = ' ';
@@ -183,14 +183,14 @@ argcount(argv)
 {
 	char **ap;
 
-	for (ap = argv; *ap++ != NOSTR;)
+	for (ap = argv; *ap++ != NULL;)
 		;	
 	return ap - argv - 1;
 }
 
 /*
  * Return the desired header line from the passed message
- * pointer (or NOSTR if the desired header field is not available).
+ * pointer (or NULL if the desired header field is not available).
  */
 char *
 hfield(field, mp)
@@ -201,17 +201,17 @@ hfield(field, mp)
 	char linebuf[LINESIZE];
 	int lc;
 	char *hfield;
-	char *colon, *oldhfield = NOSTR;
+	char *colon, *oldhfield = NULL;
 
 	ibuf = setinput(mp);
 	if ((lc = mp->m_lines - 1) < 0)
-		return NOSTR;
+		return NULL;
 	if (readline(ibuf, linebuf, LINESIZE) < 0)
-		return NOSTR;
+		return NULL;
 	while (lc > 0) {
 		if ((lc = gethfield(ibuf, linebuf, lc, &colon)) < 0)
 			return oldhfield;
-		if ((hfield = ishfield(linebuf, colon, field)) != NOSTR)
+		if ((hfield = ishfield(linebuf, colon, field)) != NULL)
 			oldhfield = save2str(hfield, oldhfield);
 	}
 	return oldhfield;
@@ -348,7 +348,7 @@ source(v)
 	FILE *fi;
 	char *cp;
 
-	if ((cp = expand(*arglist)) == NOSTR)
+	if ((cp = expand(*arglist)) == NULL)
 		return(1);
 	if ((fi = Fopen(cp, "r")) == (FILE *)NULL) {
 		perror(cp);
@@ -493,10 +493,10 @@ skin(name)
 	int gotlt, lastsp;
 	char nbuf[BUFSIZ];
 
-	if (name == NOSTR)
-		return(NOSTR);
-	if (strchr(name, '(') == NOSTR && strchr(name, '<') == NOSTR
-	    && strchr(name, ' ') == NOSTR)
+	if (name == NULL)
+		return(NULL);
+	if (strchr(name, '(') == NULL && strchr(name, '<') == NULL
+	    && strchr(name, ' ') == NULL)
 		return(name);
 	gotlt = 0;
 	lastsp = 0;
@@ -611,9 +611,9 @@ name1(mp, reptype)
 	FILE *ibuf;
 	int first = 1;
 
-	if ((cp = hfield("from", mp)) != NOSTR)
+	if ((cp = hfield("from", mp)) != NULL)
 		return cp;
-	if (reptype == 0 && (cp = hfield("sender", mp)) != NOSTR)
+	if (reptype == 0 && (cp = hfield("sender", mp)) != NULL)
 		return cp;
 	ibuf = setinput(mp);
 	namebuf[0] = 0;
@@ -630,17 +630,17 @@ newname:
 	*cp2 = '\0';
 	if (readline(ibuf, linebuf, LINESIZE) < 0)
 		return(savestr(namebuf));
-	if ((cp = strchr(linebuf, 'F')) == NOSTR)
+	if ((cp = strchr(linebuf, 'F')) == NULL)
 		return(savestr(namebuf));
 	if (strncmp(cp, "From", 4) != 0)
 		return(savestr(namebuf));
-	while ((cp = strchr(cp, 'r')) != NOSTR) {
+	while ((cp = strchr(cp, 'r')) != NULL) {
 		if (strncmp(cp, "remote", 6) == 0) {
-			if ((cp = strchr(cp, 'f')) == NOSTR)
+			if ((cp = strchr(cp, 'f')) == NULL)
 				break;
 			if (strncmp(cp, "from", 4) != 0)
 				break;
-			if ((cp = strchr(cp, ' ')) == NOSTR)
+			if ((cp = strchr(cp, ' ')) == NULL)
 				break;
 			cp++;
 			if (first) {

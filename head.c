@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)head.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)head.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -64,7 +64,7 @@ ishead(linebuf)
 	    *cp++ != ' ')
 		return (0);
 	parse(linebuf, &hl, parbuf);
-	if (hl.l_from == NOSTR || hl.l_date == NOSTR) {
+	if (hl.l_from == NULL || hl.l_date == NULL) {
 		fail(linebuf, "No from or date field");
 		return (0);
 	}
@@ -91,7 +91,7 @@ fail(linebuf, reason)
 {
 
 	/*
-	if (value("debug") == NOSTR)
+	if (value("debug") == NULL)
 		return;
 	fprintf(stderr, "\"%s\"\nnot a header because %s\n", linebuf, reason);
 	*/
@@ -112,9 +112,9 @@ parse(line, hl, pbuf)
 	char *sp;
 	char word[LINESIZE];
 
-	hl->l_from = NOSTR;
-	hl->l_tty = NOSTR;
-	hl->l_date = NOSTR;
+	hl->l_from = NULL;
+	hl->l_tty = NULL;
+	hl->l_date = NULL;
 	cp = line;
 	sp = pbuf;
 	/*
@@ -124,11 +124,11 @@ parse(line, hl, pbuf)
 	cp = nextword(cp, word);
 	if (*word)
 		hl->l_from = copyin(word, &sp);
-	if (cp != NOSTR && cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
+	if (cp != NULL && cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
 		cp = nextword(cp, word);
 		hl->l_tty = copyin(word, &sp);
 	}
-	if (cp != NOSTR)
+	if (cp != NULL)
 		hl->l_date = copyin(cp, &sp);
 }
 
@@ -195,7 +195,7 @@ static char  *tmztype[] = {
 	 * time zone offset without time zone specification (pine)
 	 */
 	"Aaa Aaa O0 00:00:00 0000 +0000",
-	NOSTR,
+	NULL,
 };
 
 int
@@ -267,7 +267,7 @@ cmatch(cp, tp)
 /*
  * Collect a liberal (space, tab delimited) word into the word buffer
  * passed.  Also, return a pointer to the next word following that,
- * or NOSTR if none follow.
+ * or NULL if none follow.
  */
 char *
 nextword(wp, wbuf)
@@ -275,9 +275,9 @@ nextword(wp, wbuf)
 {
 	int c;
 
-	if (wp == NOSTR) {
+	if (wp == NULL) {
 		*wbuf = 0;
-		return (NOSTR);
+		return (NULL);
 	}
 	while ((c = *wp++) && c != ' ' && c != '\t') {
 		*wbuf++ = c;
@@ -294,6 +294,6 @@ nextword(wp, wbuf)
 	for (; c == ' ' || c == '\t'; c = *wp++)
 		;
 	if (c == 0)
-		return (NOSTR);
+		return (NULL);
 	return (wp - 1);
 }

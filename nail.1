@@ -33,44 +33,64 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.3 (gritter) 11/15/00
+.\"     Sccsid: @(#)nail.1	1.6 (gritter) 12/27/00
 .\"
-.TH nail 1 "November 15, 2000" "nail 9.23" "User Commands"
+.TH NAIL 1 "12/27/00" "nail 9.24" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
-nail [-iInv] [-s subject] [-a attachment]
-.br
-                [-c cc-addr] [-b bcc-addr] to-addr...
-.br
-nail [-eiInNv] -f [name]
-.br
-nail [-eiInNv] [-u user]
+.B nail
+[
+.B \-iInv
+] [
+.BI \-s \ subject
+] [
+.BI \-a \ attachment
+] [
+.BI \-c \ cc-addr
+] [
+.BI \-b \ bcc-addr
+] to-addr . . .
+.PP
+.B nail
+[
+.B \-eiInNv
+]
+.B \-f
+[ name ]
+.PP
+.B nail
+[
+.B \-eiInNv
+] [
+.BI \-u \ user
+]
 .SH DESCRIPTION
 \fINail\fR is an intelligent mail processing system, which has
-a command syntax reminiscent of ed(1)
+a command syntax reminiscent of
+.IR ed (1)
 with lines replaced by messages.
 It is based on Berkeley Mail 8.1 and offers some extensions
 for MIME messages.
 .SH OPTIONS
 .TP
-.BI -a \ file
+.BI \-a \ file
 Attach the given file to the message.
 .TP
-.BI -b \ address
+.BI \-b \ address
 Send blind carbon copies to list.
 List should be a comma-separated
 list of names.
 .TP
-.BI -c \ address
+.BI \-c \ address
 Send carbon copies to list of users.
 .TP
-.B -e
+.B \-e
 Just check if mail is present in the system mailbox.
 If yes, return an exit status of zero,
 else, a non-zero value.
 .TP
-.BI -f \ [file]
+.BI \-f " [ file ]"
 Read in the contents of your mbox
 (or the specified file)
 for processing;
@@ -78,44 +98,44 @@ when you quit, \fInail\fR writes
 undeleted messages back
 to this file.
 .TP
-.B -i
+.B \-i
 Ignore tty interrupt signals.
 This is
 particularly useful when using
 \fInail\fR on noisy phone lines.
 .TP
-.B -I
+.B \-I
 Forces \fInail\fR to run in interactive mode even when
 input is not a terminal.
 In particular, the
 '~' special
 character when sending mail is only active in interactive mode.
 .TP
-.B -n
+.B \-n
 Inhibits reading /usr/etc/nail.rc upon startup.
 .TP
-.B -N
+.B \-N
 Inhibits the initial display of message headers when reading mail
 or editing a mail folder.
 .TP
-.BI -q \ file
+.BI \-q \ file
 Start the message with the contents of the specified file.
 May be given in send mode only.
 .TP
-.BI -s \ subject
+.BI \-s \ subject
 Specify subject on command line (only the first argument after the
--s flag is used as a subject; be careful to quote subjects
+\-s flag is used as a subject; be careful to quote subjects
 containing spaces).
 .TP
-.BI -u \ user
+.BI \-u \ user
 Reads the mailbox of the given user name.
 .TP
-.B -v
+.B \-v
 Verbose mode.
 The details of
 delivery are displayed on the user's terminal.
 .TP
-.B -V
+.B \-V
 Print \fInail\fR's version and exit.
 .SH USAGE
 .TP
@@ -141,8 +161,9 @@ the first message (numbered 1)
 and can be printed using the print command
 which can be abbreviated 'p').
 You can move among the messages
-much as you move between lines in ed(1),
-with the commands '+' and '-' moving backwards and forwards,
+much as you move between lines in
+.IR ed (1),
+with the commands '+' and '\-' moving backwards and forwards,
 and simple numbers.
 .TP
 .B "Disposing of mail."
@@ -201,7 +222,7 @@ unless they have been deleted
 in which case they are discarded.
 Unexamined messages go back
 to the post office.
-(See the -f option above).
+(See the \-f option above).
 .TP
 .B "Personal and systemwide distribution lists."
 It is also possible to create
@@ -217,7 +238,10 @@ in the file .mailrc in your home directory.
 The current list of such aliases
 can be displayed with the alias command in \fInail\fR.
 System wide distribution lists can be created
-by editing /etc/aliases, see aliases(5) and sendmail(8);
+by editing /etc/aliases, see
+.IR aliases (5)
+and
+.IR sendmail (8);
 these are kept in a different syntax.
 In mail you send,
 personal aliases will be expanded
@@ -229,7 +253,9 @@ will have the system wide alias expanded
 as all mail goes through sendmail.
 .TP
 .B "Network mail (Internet / ARPA, UUCP, Berknet)."
-See mailaddr(7) for a description of network addresses.
+See
+.IR mailaddr (7)
+for a description of network addresses.
 \fINail\fR has a number of options
 which can be set in the .mailrc file
 to alter its behavior;
@@ -296,7 +322,7 @@ replaced by question marks.
 .SH "COMMANDS"
 Each command is typed on a line by itself,
 and may take arguments following the command word.
-The command need not be typed in its entirety -
+The command need not be typed in its entirety \(en
 the first command which matches the typed prefix is used.
 For commands which take message lists as arguments,
 if no message list is given,
@@ -309,7 +335,7 @@ and if there are no good messages at all,
 If the command begins with a \fI#\fR sign,
 the line is ignored.
 .TP
-.B -
+.B \-
 Print out the preceding message.
 If given a numeric argument n,
 goes to the n'th previous message and prints it.
@@ -318,7 +344,10 @@ goes to the n'th previous message and prints it.
 Prints a brief summary of commands.
 .TP
 .B !
-Executes the shell (see sh(1) and csh(1))
+Executes the shell (see
+.IR sh (1)
+and
+.IR csh (1))
 command which follows.
 .TP
 .B |
@@ -412,7 +441,7 @@ Marks the end of an if statement.
 (ex or x) Effects an immediate return to the Shell
 without modifying the user's system mailbox,
 his mbox file,
-or his edit file in -f.
+or his edit file in \-f.
 .TP
 .B file
 (fi) The same as folder.
@@ -450,7 +479,7 @@ and prints their message headers.
 which is an 18-message group.
 If a '+' argument is given,
 then the next 18-message group is printed,
-and if a '-' argument is given,
+and if a '\-' argument is given,
 the previous 18-message group is printed.
 .TP
 .B help
@@ -539,7 +568,7 @@ or never referenced in his system mailbox,
 and removing all other messages from his system mailbox.
 If new mail has arrived during the session,
 the message '\fIYou have new mail\fR' is given.
-If given while editing a mailbox file with the -f flag,
+If given while editing a mailbox file with the \-f flag,
 then the edit file is rewritten.
 A return to the Shell is effected,
 unless the rewrite of edit file fails,
@@ -577,7 +606,7 @@ Arguments are of the form option=value
 or option.
 Quotation marks may be placed around any part of the
 assignment statement to quote blanks
-or tabs, i.e. '\fIset indentprefix="->"\fR'.
+or tabs, i.e. '\fIset indentprefix="\->"\fR'.
 .TP
 .B saveignore
 Saveignore is to save what ignore is to print and type.
@@ -661,7 +690,7 @@ as described under the headers command.
 The z command scrolls to the next window of messages.
 If an argument is given,
 it specifies the window to use.
-A number prefixed by '+' or '-' indicates
+A number prefixed by '+' or '\-' indicates
 that the window is calculated in relation
 to the current position.
 A number without a prefix specifies an
@@ -786,7 +815,9 @@ Write the message onto the named file.
 Pipe the message through the command as a filter.
 If the command gives no output or terminates abnormally,
 retain the original text of the message.
-The command fmt(1) is often used
+The command
+.IR fmt (1)
+is often used
 as command to rejustify the message.
 .TP
 .BI ~: nail-command
@@ -850,7 +881,7 @@ Responding with a newline
 indicates your satisfaction with the current list.
 .TP
 .B autoprint
-Causes the delete command to behave like dp -
+Causes the delete command to behave like dp \-
 thus, after deleting a message,
 the next one will be typed automatically.
 .TP
@@ -910,7 +941,7 @@ the sender to be included in the group.
 .TP
 .B noheader
 Setting the option noheader is the same
-as giving the -N flag on the command line.
+as giving the \-N flag on the command line.
 .TP
 .B nosave
 Normally, when you abort a message
@@ -945,7 +976,7 @@ So this option should only be set if there is a good reason to do that.
 .TP
 .B verbose
 Setting the option verbose is the same
-as using the -v flag on the command line.
+as using the \-v flag on the command line.
 When \fInail\fR runs in verbose mode,
 the actual delivery of messages
 is displayed on the user's terminal.
@@ -982,7 +1013,9 @@ The value to put into the \fI'Organization:'\fR field of the message header.
 Pathname of the program to use
 in the more command
 or when crt variable is set.
-The default paginator more(1) is used
+The default paginator
+.IR more (1)
+is used
 if this option is not defined.
 .TP
 .B SHELL
@@ -1012,7 +1045,8 @@ to determine how long a message must be
 before PAGER is used to read it.
 If crt is set without a value,
 then the height of the terminal screen stored in the system
-is used to compute the threshold (see stty(1)).
+is used to compute the threshold (see
+.IR stty (1)).
 .TP
 .B encoding
 The default MIME encoding to use
@@ -1094,8 +1128,9 @@ of the program to use.
 This should be used with care.
 .TP
 .B smtp
-Normally, \fInail\fR invokes sendmail(8) directly
-to transfer messages.
+Normally, \fInail\fR invokes
+.IR sendmail (8)
+directly to transfer messages.
 If \fIsmtp\fR is set, a SMTP connection to
 the server specified by the value of this variable
 is used instead.
@@ -1129,10 +1164,15 @@ normally, the first five
 lines are printed.
 .TP
 .B ttycharset
-The character set of the terminal device
-\fInail\fR operates on.
-It defaults to the value
-of the charset variable.
+The character set of the terminal \fInail\fR operates on.
+There is normally no need to set this variable
+since \fInail\fR can determine this automatically
+by looking at the LC_CTYPE locale setting;
+if this succeeds, the value is assigned at startup
+and will be displayed by the \fIset\fP command.
+Note that this is not necessarily a character set name
+that can be used in Internet messages.
+If unset, its default is the value of the charset variable.
 .SH ENVIRONMENT
 Besides the variables described above, \fInail\fR uses
 the following environment strings:
@@ -1140,8 +1180,9 @@ the following environment strings:
 .B HOME
 The user's home directory.
 .TP
-.BR LANG ,\ LC_ALL ,\ LC_CTYPE
-See locale(7).
+.BR LANG ,\  LC_ALL ,\  LC_CTYPE
+See
+.IR locale (7).
 .TP
 .B MAIL
 Is used as the user's mailbox, if set.
@@ -1189,10 +1230,14 @@ The \fIbase64\fR encoding should be used instead.
 Contrasting to some versions of BSD Mail,
 \fInail\fR is not able to act
 as a Mail Delivery Agent (MDA).
-Use procmail(1) for this purpose.
+Use
+.IR procmail (1)
+for this purpose.
 .PP
 The character set conversion relies heavily
-on the iconv(3) function.
+on the
+.IR iconv (3)
+function.
 Its functionality differs widely
 between the various system environments
 \fInail\fR runs on.

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)getname.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)getname.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -44,7 +44,7 @@ static char sccsid[] = "@(#)getname.c	1.4 (gritter) 9/29/00";
 /* Getname / getuserid for those with hashed passwd data base). */
 
 /*
- * Search the passwd file for a uid.  Return name on success, NOSTR on failure
+ * Search the passwd file for a uid.  Return name on success, NULL on failure
  */
 char *
 getname(uid)
@@ -53,7 +53,7 @@ getname(uid)
 	struct passwd *pw;
 
 	if ((pw = getpwuid(uid)) == (struct passwd *)NULL)
-		return NOSTR;
+		return NULL;
 	return pw->pw_name;
 }
 

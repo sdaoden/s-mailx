@@ -1,3 +1,14 @@
+[9.24]
+* Use nl_langinfo to get the terminal's character set.
+* Add an In-Reply-To header field in replies.
+* Correct user's mime type file to ~/.mime.types as documented.
+* Build even if no sendmail installation is detected.
+* Adjust string length if an invalid multibyte character was replaced by '?'.
+* Properly display lines that contain an invalid multibyte character sequence.
+* Handle tabulators in MIME headers correctly.
+* Drop invalid entries for the References field instead of refusing to send.
+* Do not refuse valid domain literals in addresses.
+
 [9.23] released 11/15/00
 * Added the ~<! and ~i tilde escapes.
 * Honor the MAILRC environment variable.

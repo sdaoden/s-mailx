@@ -21,10 +21,10 @@ client code.
 
 Nail has been built successfully on the following operating systems:
 
-Linux 		2.2, 2.0; glibc 2.1, libc5, libc4
+Linux 		2.[024]; glibc 2.[12], libc[45]
 FreeBSD		4.0-STABLE
 Solaris		8; 7; 2.6
-UnixWare	7.1.1; 7.0.1; 2.1.2
+UnixWare	7.[01].1; 2.1.2
 OpenServer	5.0.5
 Digital Unix	4.0
 HP-UX		10.20
@@ -32,28 +32,28 @@ HP-UX		10.20
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.
 If there are no changes, even better, but I would like to hear from
-you anyway to extend this list then.
+you even then to extend this list.
 
 It should generally be possible to build nail on most Unix-style
 systems without much effort; however, especially the character
 set support varies between them. See the file "I18N" for details.
 
-Note that the mbox format based on the `Content-Length:' header field that
-is used on most SVR4 systems by default is not supported by nail. As this
-format generally is a design flaw, you should fix your system by either
-using procmail for local mail delivery, which is a good idea anyway,
-or at least add the -E flag to the Mlocal line in /etc/sendmail.cf if
-using /usr/lib/mail.local.
+Note that the mbox format variant based on the `Content-Length:' header
+field that is used on most SVR4 systems by default is not supported by
+nail. As this format generally is a design flaw, you should fix your
+system by either using procmail for local mail delivery, which is a
+good idea anyway, or at least add the -E flag to the Mlocal line in
+/etc/sendmail.cf if using /usr/lib/mail.local.
 
 Although it is not bad, just obsolete, similar considerations apply to
 the MMDF format used on OpenServer systems; unless you switch to procmail,
 nail will not be able to read your mailbox there.
 
-If you are using gcc to compile nail and get warnings, it is usually
-something serious or at least interesting, so they are worth mailing
-me. If you use another compiler (especially on SysV), however, do not
-assume anything; these compilers are sometimes too stupid to recognize
-correct code, hopefully they can compile it at least.
+New nail versions will be announced on <http://appwatch.com> and on
+<http://freshmeat.net>. Nail's home page is currently at
+<http://omnibus.ruf.uni-freiburg.de/~gritter/>. If the version you
+have is older than a few months, please look for a new one before
+reporting bugs.
 
 If you detect a bug and cannot fix it yourselves, please send me the
 unaltered mail message that caused the problem along with a description!
@@ -64,11 +64,11 @@ If nail dumps core and you work on a Linux i386 system, please send me also
 - the version of the kernel and of the libc
 - the nail binary that dumped core
 - a strace(1) or ltrace(1) output.
-Do not send me the core file unless you enabled the debugging
-while you compiled nail.
+Do not send me the core file unless your nail binary includes debugging
+information.
 
 If you work on another kind of machine, you can send me a description
-and a trace output, of cause, but I cannot handle your binaries then.
+and a trace output, of course, but I cannot handle your binaries then.
 
 If you have an idea how to improve nail, you are also invited to write
 me. But you should remember that nail's primary goal is to remain
@@ -79,4 +79,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>
+<g-r@bigfoot.de>					1/11/01

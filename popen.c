@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)popen.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -177,9 +177,9 @@ char *cmd, *mode, *shell;
 	}
 	sigemptyset(&nset);
 	if (shell == NULL) {
-		pid = start_command(cmd, &nset, fd0, fd1, NOSTR, NOSTR, NOSTR);
+		pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL);
 	} else {
-		pid = start_command(shell, &nset, fd0, fd1, "-c", cmd, NOSTR);
+		pid = start_command(shell, &nset, fd0, fd1, "-c", cmd, NULL);
 	}
 	if (pid < 0) {
 		close(p[READ]);
@@ -306,10 +306,10 @@ start_command(cmd, mask, infd, outfd, a0, a1, a2)
 		char *argv[100];
 		int i = getrawlist(cmd, argv, sizeof argv / sizeof *argv);
 
-		if ((argv[i++] = a0) != NOSTR &&
-		    (argv[i++] = a1) != NOSTR &&
-		    (argv[i++] = a2) != NOSTR)
-			argv[i] = NOSTR;
+		if ((argv[i++] = a0) != NULL &&
+		    (argv[i++] = a1) != NULL &&
+		    (argv[i++] = a2) != NULL)
+			argv[i] = NULL;
 		prepare_child(mask, infd, outfd);
 		execvp(argv[0], argv);
 		perror(argv[0]);

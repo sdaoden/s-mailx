@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)strings.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)strings.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -70,7 +70,7 @@ salloc(size)
 	s &= ~(sizeof (char *) - 1);
 	string_index = 0;
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
-		if (sp->s_topFree == NOSTR && (STRINGSIZE << string_index) >= s)
+		if (sp->s_topFree == NULL && (STRINGSIZE << string_index) >= s)
 			break;
 		if (sp->s_nleft >= s)
 			break;
@@ -78,10 +78,10 @@ salloc(size)
 	}
 	if (sp >= &stringdope[NSPACE])
 		panic("String too large");
-	if (sp->s_topFree == NOSTR) {
+	if (sp->s_topFree == NULL) {
 		string_index = sp - &stringdope[0];
 		sp->s_topFree = malloc(STRINGSIZE << string_index);
-		if (sp->s_topFree == NOSTR) {
+		if (sp->s_topFree == NULL) {
 			fprintf(stderr, "No room for space %d\n", string_index);
 			panic("Internal error");
 		}
@@ -109,7 +109,7 @@ sreset()
 		return;
 	string_index = 0;
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
-		if (sp->s_topFree == NOSTR)
+		if (sp->s_topFree == NULL)
 			continue;
 		sp->s_nextFree = sp->s_topFree;
 		sp->s_nleft = STRINGSIZE << string_index;
@@ -127,5 +127,5 @@ spreserve()
 	struct strings *sp;
 
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++)
-		sp->s_topFree = NOSTR;
+		sp->s_topFree = NULL;
 }

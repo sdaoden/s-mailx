@@ -38,7 +38,7 @@ static char copyright[] =
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)main.c	1.8 (gritter) 12/3/00";
 #endif
 #endif /* not lint */
 
@@ -109,6 +109,10 @@ main(argc, argv)
 		assign("interactive", "");
 #ifdef	HAVE_SETLOCALE
 	setlocale(LC_CTYPE, "");
+#if defined (HAVE_NL_LANGINFO) && defined (CODESET)
+	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+		assign("ttycharset", cp);
+#endif
 #endif
 #ifdef	HAVE_ICONV
 	iconvd = (iconv_t) -1;
@@ -121,13 +125,13 @@ main(argc, argv)
 	 * of users to mail to.  Argp will be set to point to the
 	 * first of these users.
 	 */
-	ef = NOSTR;
+	ef = NULL;
 	to = NIL;
 	cc = NIL;
 	bcc = NIL;
 	attach = NIL;
 	smopts = NIL;
-	subject = NOSTR;
+	subject = NULL;
 	while ((i = getopt(argc, argv, "INVT:a:b:c:definqs:u:v")) != EOF) {
 		switch (i) {
 		case 'V':
@@ -256,15 +260,15 @@ main(argc, argv)
 	/*
 	 * Check for inconsistent arguments.
 	 */
-	if (to == NIL && (subject != NOSTR || cc != NIL || bcc != NIL)) {
+	if (to == NIL && (subject != NULL || cc != NIL || bcc != NIL)) {
 		fputs("You must specify direct recipients with -s, -c, or -b.\n", stderr);
 		exit(1);
 	}
-	if (ef != NOSTR && to != NIL) {
+	if (ef != NULL && to != NIL) {
 		fprintf(stderr, "Cannot give -f and people to send to.\n");
 		exit(1);
 	}
-	if (qf != NOSTR && to == NIL) {
+	if (qf != NULL && to == NIL) {
 		fprintf(stderr, "Cannot give -q without people to send to.\n");
 		exit(1);
 	}
@@ -295,7 +299,7 @@ main(argc, argv)
 	 * Decide whether we are editing a mailbox or reading
 	 * the system mailbox, and open up the right stuff.
 	 */
-	if (ef == NOSTR)
+	if (ef == NULL)
 		ef = "%";
 	i = setfile(ef);
 	if (i < 0)
@@ -307,7 +311,7 @@ main(argc, argv)
 	if (sigsetjmp(hdrjmp, 1) == 0) {
 		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			safe_signal(SIGINT, hdrstop);
-		if (value("quiet") == NOSTR)
+		if (value("quiet") == NULL)
 			printf("Mail version %s.  Type ? for help.\n",
 				version);
 		announce();

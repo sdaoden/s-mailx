@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)cmd1.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -155,7 +155,7 @@ screensize()
 	int s;
 	char *cp;
 
-	if ((cp = value("screen")) != NOSTR && (s = atoi(cp)) > 0)
+	if ((cp = value("screen")) != NULL && (s = atoi(cp)) > 0)
 		return s;
 	return scrnheight - 4;
 }
@@ -196,7 +196,7 @@ printhead(mesg)
 
 	mp = &message[mesg-1];
 	(void) readline(setinput(mp), headline, LINESIZE);
-	if ((subjline = hfield("subject", mp)) == NOSTR)
+	if ((subjline = hfield("subject", mp)) == NULL)
 		subjline = hfield("subj", mp);
 	if (subjline == NULL) {
 		subjline = "";
@@ -228,9 +228,9 @@ printhead(mesg)
 	subjlen = scrnwidth - 50 - strlen(wcount);
 	if (subjlen > out.l)
 		subjlen = out.l;
-	name = value("show-rcpt") != NOSTR ?
+	name = value("show-rcpt") != NULL ?
 		skin(hfield("to", mp)) : nameof(mp, 0);
-	if (subjline == NOSTR || subjlen < 0) {         /* pretty pathetic */
+	if (subjline == NULL || subjlen < 0) {         /* pretty pathetic */
 		printf("%c%c%3d %-20.20s  %16.16s %s\n",
 			curind, dispc, mesg, name, hl.l_date, wcount);
 	} else {
@@ -265,13 +265,13 @@ pcmdlist(v)
 	int cc;
 
 	printf("Commands are:\n");
-	for (cc = 0, cp = cmdtab; cp->c_name != NOSTR; cp++) {
+	for (cc = 0, cp = cmdtab; cp->c_name != NULL; cp++) {
 		cc += strlen(cp->c_name) + 2;
 		if (cc > 72) {
 			printf("\n");
 			cc = strlen(cp->c_name) + 2;
 		}
-		if ((cp+1)->c_name != NOSTR)
+		if ((cp+1)->c_name != NULL)
 			printf("%s, ", cp->c_name);
 		else
 			printf("%s\n", cp->c_name);
@@ -313,7 +313,7 @@ char *cmd;
 			}
 		}
 		cp = value("SHELL");
-		if (cp == NOSTR)
+		if (cp == NULL)
 			cp = PATH_CSHELL;
 		obuf = Popen(cmd, "w", cp);
 		if (obuf == (FILE*)NULL) {
@@ -322,8 +322,8 @@ char *cmd;
 		} else {
 			safe_signal(SIGPIPE, brokpipe);
 		}
-	} else if (value("interactive") != NOSTR &&
-	    (page || (cp = value("crt")) != NOSTR)) {
+	} else if (value("interactive") != NULL &&
+	    (page || (cp = value("crt")) != NULL)) {
 		nlines = 0;
 		if (!page) {
 			for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++)
@@ -331,7 +331,7 @@ char *cmd;
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			cp = value("PAGER");
-			if (cp == NOSTR || *cp == '\0')
+			if (cp == NULL || *cp == '\0')
 				cp = PATH_MORE;
 			obuf = Popen(cp, "w", NULL);
 			if (obuf == (FILE*)NULL) {
@@ -345,10 +345,10 @@ char *cmd;
 		mp = &message[*ip - 1];
 		touch(mp);
 		dot = mp;
-		if (value("quiet") == NOSTR)
+		if (value("quiet") == NULL)
 			fprintf(obuf, "Message %d:\n", *ip);
 		(void) send_message(mp, obuf, doign ? ignore : 0,
-				    NOSTR, CONV_TODISP);
+				    NULL, CONV_TODISP);
 		if (pipe && value("page")) {
 			fputc('\f', obuf);
 		}
@@ -387,7 +387,7 @@ int *flag;
 	*++cp = 0;
 	if (cp == linebuf) {
 		*flag = 0;
-		return NOSTR;
+		return NULL;
 	}
 
 	/*
@@ -423,7 +423,7 @@ int *flag;
 			*flag = 0;
 	}
 	if (*cp == '\0') {
-		return(NOSTR);
+		return(NULL);
 	}
 	return(cp);
 }
@@ -549,7 +549,7 @@ top(v)
 
 	topl = 5;
 	valtop = value("toplines");
-	if (valtop != NOSTR) {
+	if (valtop != NULL) {
 		topl = atoi(valtop);
 		if (topl < 0 || topl > 10000)
 			topl = 5;
@@ -559,7 +559,7 @@ top(v)
 		mp = &message[*ip - 1];
 		touch(mp);
 		dot = mp;
-		if (value("quiet") == NOSTR)
+		if (value("quiet") == NULL)
 			printf("Message %d:\n", *ip);
 		ibuf = setinput(mp);
 		c = mp->m_lines;
@@ -626,8 +626,8 @@ folders(v)
 		printf("No value set for \"folder\"\n");
 		return 1;
 	}
-	if ((cmd = value("LISTER")) == NOSTR)
+	if ((cmd = value("LISTER")) == NULL)
 		cmd = "ls";
-	(void) run_command(cmd, 0, -1, -1, dirname, NOSTR, NOSTR);
+	(void) run_command(cmd, 0, -1, -1, dirname, NULL, NULL);
 	return 0;
 }

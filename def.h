@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	1.4 (gritter) 9/29/00
+ *	Sccsid @(#)def.h	1.6 (gritter) 1/14/01
  */
 
 /*
@@ -59,7 +59,6 @@
 #define	LINESIZE	BUFSIZ		/* max readable line width */
 #define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
 #define	MAXARGC		1024		/* Maximum list of raw strings */
-#define	NOSTR		((char *) 0)	/* Null string pointer */
 #define	MAXEXP		25		/* Maximum expansion of aliases */
 
 #define	equal(a, b)	(strcmp(a,b)==0)/* A nice function to string compare */
@@ -331,6 +330,11 @@ struct ignoretab {
 
 #define	setexit()	sigsetjmp(srbuf, 1)
 #define	reset(x)	siglongjmp(srbuf, x)
+
+/*
+ * For standards compliance, check for ' ' or '\t' only instead of
+ */
+#define	spacechar(c)	((c) == ' ' || (c) == '\t')
 
 /*
  * Truncate a file to the last character written. This is

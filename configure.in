@@ -1,16 +1,15 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	1.3 (gritter) 11/15/00
+# Sccsid: @(#)configure.in	1.6 (gritter) 1/11/01
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
 
 AC_INIT(mime.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(nail, 9.23)
-AC_DEFINE(REL_DATE, "11/15/00")
-dnl AC_DEFINE(REL_DATE, "devel")
+AM_INIT_AUTOMAKE(nail, 0.00)
+AC_DEFINE(REL_DATE, "invalid")
 AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging build (default=no)],enable_debug=yes,enable_debug=no)
 AC_ARG_ENABLE(efence, [  --enable-efence         enable debugging build (with efence) (default=no)],enable_debug=yes enable_efence=yes,enable_efence=no)
 AC_ARG_ENABLE(all-chars, [  --enable-all-chars      display all characters ignoring locale (default=no)],enable_all_chars=yes,enable_all_chars=no)
@@ -31,6 +30,22 @@ AC_ARG_WITH(mailspool, [  --with-mailspool=DIR    mail spool directory],
 	)
 )
 AC_DEFINE_UNQUOTED(PATH_MAILDIR, "$arg_cv_mailspool")
+
+AC_ARG_WITH(sendmail, [  --with-sendmail=FILE    sendmail binary],
+	arg_cv_sendmail=$withval,
+	AC_CACHE_CHECK(sendmail binary, arg_cv_sendmail,
+		for dir in /usr/local/sbin /sbin /usr/sbin /usr/lib
+		do	if test -x $dir/sendmail
+			then	arg_cv_sendmail=$dir/sendmail
+				break
+			fi
+		done
+		if test "x$arg_cv_sendmail" = x
+		then	arg_cv_sendmail=/usr/lib/sendmail
+		fi
+	)
+)
+AC_DEFINE_UNQUOTED(PATH_SENDMAIL, "$arg_cv_sendmail")
 
 dnl Checks for programs.
 
@@ -54,14 +69,6 @@ AC_PATH_PROG(PATH_EX, ex, /usr/bin/ex)
 AC_DEFINE_UNQUOTED(PATH_EX, "$PATH_EX")
 AC_PATH_PROG(PATH_VI, vi, /usr/bin/vi)
 AC_DEFINE_UNQUOTED(PATH_VI, "$PATH_VI")
-AC_PATH_PROG(PATH_SENDMAIL, sendmail, ,
-	/usr/local/sbin:/usr/sbin:/sbin:/usr/lib:$PATH)
-if test "x$PATH_SENDMAIL" = x
-then	echo "This program requires a sendmail installation" >&2
-	exit 1
-fi
-AC_DEFINE_UNQUOTED(PATH_SENDMAIL, "$PATH_SENDMAIL")
-
 AC_DEFINE_UNQUOTED(PATH_TMP, "/tmp")
 
 dnl Formulate proper paths based on prefix
@@ -84,7 +91,7 @@ AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/param.h sys/select.h \
 	sys/stat.h sys/utsname.h sys/socket.h netinet/in.h arpa/inet.h)
-AC_CHECK_HEADERS(fcntl.h netdb.h signal.h unistd.h)
+AC_CHECK_HEADERS(fcntl.h netdb.h signal.h unistd.h langinfo.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -105,6 +112,7 @@ AC_CHECK_FUNCS(mktime strtol tempnam getopt, ,
 	echo "A required function was not found" >&2
 	exit 1)
 AC_CHECK_FUNCS(gethostname mkstemp select strcasecmp snprintf uname)
+AC_CHECK_FUNCS(nl_langinfo)
 AC_FUNC_SELECT_ARGTYPES
 AC_CHECK_FUNC(gethostent, AC_DEFINE(HAVE_SOCKETS),
 	AC_CHECK_LIB(nsl, gethostent, AC_DEFINE(HAVE_SOCKETS)
@@ -124,6 +132,6 @@ then	AC_CHECK_HEADERS(iconv.h, AC_CHECK_FUNCS(iconv, ,
 		echo "*** Locale support not available ***" >&2),
 		echo "*** Locale support not available ***" >&2)
 	AC_CHECK_HEADERS(wchar.h wctype.h)
-	AC_CHECK_FUNCS(mbstowcs)
+	AC_CHECK_FUNCS(mbtowc)
 fi
 AC_OUTPUT(Makefile misc/Makefile)

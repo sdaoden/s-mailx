@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)quit.c	1.6 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -105,7 +105,7 @@ writeback(res, obuf)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
 			if (send_message(mp, obuf, (struct ignoretab *)0,
-						NOSTR, CONV_NONE) < 0) {
+						NULL, CONV_NONE) < 0) {
 				perror(mailname);
 #ifndef	F_SETLK
 				Fclose(obuf);
@@ -243,10 +243,10 @@ nolock:
 	 */
 
 	anystat = 0;
-	autohold = value("hold") != NOSTR;
+	autohold = value("hold") != NULL;
 	holdbit = autohold ? MPRESERVE : MBOX;
 	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
-	if (value("keepsave") != NOSTR)
+	if (value("keepsave") != NULL)
 		nohold &= ~MSAVED;
 	for (mp = &message[0]; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MNEW) {
@@ -261,9 +261,9 @@ nolock:
 			mp->m_flag |= holdbit;
 	}
 	modify = 0;
-	if (Tflag != NOSTR) {
+	if (Tflag != NULL) {
 		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
-			Tflag = NOSTR;
+			Tflag = NULL;
 	}
 	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MBOX)
@@ -272,14 +272,14 @@ nolock:
 			p++;
 		if (mp->m_flag & MODIFY)
 			modify++;
-		if (Tflag != NOSTR && (mp->m_flag & (MREAD|MDELETED)) != 0) {
+		if (Tflag != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("article-id", mp)) != NOSTR)
+			if ((id = hfield("article-id", mp)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 	}
-	if (Tflag != NOSTR)
+	if (Tflag != NULL)
 		Fclose(readstat);
 	if (p == msgcount && !modify && !anystat) {
 		printf("Held %d message%s in %s\n",
@@ -311,7 +311,7 @@ nolock:
 
 	mbox = expand("&");
 	mcount = c;
-	if (value("append") == NOSTR) {
+	if (value("append") == NULL) {
 		if ((obuf = Fopen(tempQuit, "w")) == (FILE*)NULL) {
 			perror(tempQuit);
 			Fclose(fbuf);
@@ -362,7 +362,7 @@ nolock:
 	for (mp = &message[0]; mp < &message[msgcount]; mp++)
 		if (mp->m_flag & MBOX)
 			if (send_message(mp, obuf, saveignore,
-						NOSTR, CONV_NONE) < 0) {
+						NULL, CONV_NONE) < 0) {
 				perror(mbox);
 				if (ibuf)
 					Fclose(ibuf);
@@ -378,7 +378,7 @@ nolock:
 	 * If we are appending, this is unnecessary.
 	 */
 
-	if (value("append") == NOSTR) {
+	if (value("append") == NULL) {
 		rewind(ibuf);
 		c = getc(ibuf);
 		while (c != EOF) {
@@ -477,9 +477,9 @@ edstop()
 	if (readonly)
 		return;
 	holdsigs();
-	if (Tflag != NOSTR) {
+	if (Tflag != NULL) {
 		if ((readstat = Fopen(Tflag, "w")) == (FILE*)NULL)
-			Tflag = NOSTR;
+			Tflag = NULL;
 	}
 	for (mp = &message[0], gotcha = 0; mp < &message[msgcount]; mp++) {
 		if (mp->m_flag & MNEW) {
@@ -488,16 +488,16 @@ edstop()
 		}
 		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS))
 			gotcha++;
-		if (Tflag != NOSTR && (mp->m_flag & (MREAD|MDELETED)) != 0) {
+		if (Tflag != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("article-id", mp)) != NOSTR)
+			if ((id = hfield("article-id", mp)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 	}
-	if (Tflag != NOSTR)
+	if (Tflag != NULL)
 		Fclose(readstat);
-	if (!gotcha || Tflag != NOSTR)
+	if (!gotcha || Tflag != NULL)
 		goto done;
 	ibuf = (FILE *)NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
@@ -551,7 +551,7 @@ edstop()
 			continue;
 		c++;
 		if (send_message(mp, obuf, (struct ignoretab *) NULL,
-					NOSTR, CONV_NONE) < 0) {
+					NULL, CONV_NONE) < 0) {
 			perror(mailname);
 			relsesigs();
 			reset(0);

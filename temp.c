@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)temp.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)temp.c	1.6 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -105,21 +105,21 @@ tinit()
 	 * It's okay to call savestr in here because main will
 	 * do a spreserve() after us.
 	 */
-	if (myname != NOSTR) {
+	if (myname != NULL) {
 		if (getuserid(myname) < 0) {
 			printf("\"%s\" is not a user of this system\n",
 			    myname);
 			exit(1);
 		}
 	} else {
-		if ((cp = username()) == NOSTR) {
+		if ((cp = username()) == NULL) {
 			myname = "nobody";
 			if (rcvmode)
 				exit(1);
 		} else
 			myname = savestr(cp);
 	}
-	if ((cp = getenv("HOME")) == NOSTR)
+	if ((cp = getenv("HOME")) == NULL)
 		cp = ".";
 	homedir = savestr(cp);
 	if (debug)

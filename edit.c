@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)edit.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -187,9 +187,9 @@ run_editor(fp, size, type, readonly)
 		goto out;
 	}
 	nf = (FILE*)NULL;
-	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NOSTR)
+	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
 		edit = type == 'e' ? PATH_EX : PATH_VI;
-	if (run_command(edit, 0, -1, -1, tempEdit, NOSTR, NOSTR) < 0) {
+	if (run_command(edit, 0, -1, -1, tempEdit, NULL, NULL) < 0) {
 		(void) unlink(tempEdit);
 		goto out;
 	}

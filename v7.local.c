@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)v7.local.c	1.4 (gritter) 9/29/00";
+static char sccsid[] = "@(#)v7.local.c	1.5 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -78,7 +78,7 @@ void
 demail()
 {
 
-	if (value("keep") != NOSTR || rm(mailname) < 0)
+	if (value("keep") != NULL || rm(mailname) < 0)
 		close(creat(mailname, 0600));
 }
 
@@ -91,10 +91,10 @@ username()
 	char *np;
 	uid_t uid;
 
-	if ((np = getenv("USER")) != NOSTR)
+	if ((np = getenv("USER")) != NULL)
 		return np;
-	if ((np = getname(uid = getuid())) != NOSTR)
+	if ((np = getname(uid = getuid())) != NULL)
 		return np;
 	printf("Cannot associate a name with uid %d\n", (int)uid);
-	return NOSTR;
+	return NULL;
 }

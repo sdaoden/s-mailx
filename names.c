@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)names.c	1.6 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -96,13 +96,13 @@ extract(line, ntype)
 	char *cp, *nbuf;
 	struct name *top, *np, *t;
 
-	if (line == NOSTR || *line == '\0')
+	if (line == NULL || *line == '\0')
 		return NIL;
 	top = NIL;
 	np = NIL;
 	cp = line;
 	nbuf = (char*)smalloc(strlen(line) + 1);
-	while ((cp = yankword(cp, nbuf)) != NOSTR) {
+	while ((cp = yankword(cp, nbuf)) != NULL) {
 		t = nalloc(nbuf, ntype);
 		if (top == NIL)
 			top = t;
@@ -130,7 +130,7 @@ detract(np, ntype)
 
 	comma = ntype & GCOMMA;
 	if (np == NIL)
-		return(NOSTR);
+		return(NULL);
 	ntype &= ~GCOMMA;
 	s = 0;
 	if (debug && comma)
@@ -143,7 +143,7 @@ detract(np, ntype)
 			s++;
 	}
 	if (s == 0)
-		return(NOSTR);
+		return(NULL);
 	s += 2;
 	top = salloc(s);
 	cp = top;
@@ -174,7 +174,7 @@ yankword(ap, wbuf)
 	cp = ap;
 	for (;;) {
 		if (*cp == '\0')
-			return NOSTR;
+			return NULL;
 		if (*cp == '(') {
 			int nesting = 0;
 
@@ -311,14 +311,14 @@ outof(names, fo, hp)
 			 * share the same lseek location and trample
 			 * on one another.
 			 */
-			if ((shell = value("SHELL")) == NOSTR)
+			if ((shell = value("SHELL")) == NULL)
 				shell = PATH_CSHELL;
 			sigemptyset(&nset);
 			sigaddset(&nset, SIGHUP);
 			sigaddset(&nset, SIGINT);
 			sigaddset(&nset, SIGQUIT);
 			pid = start_command(shell, &nset,
-				image, -1, "-c", fname, NOSTR);
+				image, -1, "-c", fname, NULL);
 			if (pid < 0) {
 				senderr++;
 				goto cant;
@@ -405,7 +405,7 @@ usermap(names)
 
 	new = NIL;
 	np = names;
-	metoo = (value("metoo") != NOSTR);
+	metoo = (value("metoo") != NULL);
 	while (np != NIL) {
 		if (np->n_name[0] == '\\') {
 			cp = np->n_flink;
@@ -516,10 +516,10 @@ unpack(np)
 	 */
 	extra = 2;
 	extra++;
-	metoo = value("metoo") != NOSTR;
+	metoo = value("metoo") != NULL;
 	if (metoo)
 		extra++;
-	verbose = value("verbose") != NOSTR;
+	verbose = value("verbose") != NULL;
 	if (verbose)
 		extra++;
 	top = (char **) salloc((t + extra) * sizeof *top);
@@ -533,7 +533,7 @@ unpack(np)
 	for (; n != NIL; n = n->n_flink)
 		if ((n->n_type & GDEL) == 0)
 			*ap++ = n->n_name;
-	*ap = NOSTR;
+	*ap = NULL;
 	return(top);
 }
 

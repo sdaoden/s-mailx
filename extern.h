@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.4 (gritter) 9/29/00
+ *	Sccsid @(#)extern.h	1.7 (gritter) 1/17/01
  */
 
 struct name;
@@ -131,7 +131,7 @@ struct grouphead *
 	 findgroup __P((char []));
 void	 findmail __P((char *, char *, int));
 int	 first __P((int, int));
-int	 fmt __P((char *, struct name *, FILE *, int));
+int	 fmt __P((char *, struct name *, FILE *, int, int));
 int	 folders __P((void *));
 int	 forward __P((char [], FILE *, int));
 void	 free_child __P((int));
@@ -294,10 +294,13 @@ char	* getcmd __P((char *, int *));
 int	forward_msg __P((struct message *, struct name *, int));
 int	smtp_mta __P((char *, struct name *, FILE *));
 char	*nodename __P((void));
-int	mime_name_invalid __P((char *));
+int	mime_name_invalid __P((char *, int));
 char	*myaddr __P((void));
 char	*gettcharset __P((void));
-void	makeprint __P((char *, size_t));
+size_t	makeprint __P((char *, size_t));
 #ifdef	HAVE_ICONV
 iconv_t	iconv_open_ft __P((const char *, const char *));
+#endif
+#ifdef	HAVE_MBTOWC
+size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif

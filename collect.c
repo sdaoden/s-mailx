@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)collect.c	1.6 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -98,7 +98,7 @@ char *cmd;
 	cp = value("SHELL");
 	if (sigsetjmp(pipejmp, 1))
 		goto endpipe;
-	if (cp == NOSTR)
+	if (cp == NULL)
 		cp = PATH_CSHELL;
 	if ((obuf = Popen(cmd, "r", cp)) == (FILE *) NULL) {
 		perror(cmd);
@@ -176,8 +176,8 @@ collect(hp, printheaders, mp, quotefile)
 	 */
 	t = GTO|GSUBJECT|GCC|GNL;
 	getsub = 0;
-	if (hp->h_subject == NOSTR && value("interactive") != NOSTR &&
-	    (value("ask") != NOSTR || value("asksub") != NOSTR))
+	if (hp->h_subject == NULL && value("interactive") != NULL &&
+	    (value("ask") != NULL || value("asksub") != NULL))
 		t &= ~GNL, getsub++;
 	if (printheaders) {
 		puthead(hp, stdout, t, CONV_TODISP);
@@ -215,7 +215,7 @@ collect(hp, printheaders, mp, quotefile)
 		send_message(mp, stdout, quoteig, cp, CONV_QUOTE);
 	}
 
-	if ((cp = value("escape")) != NOSTR)
+	if ((cp = value("escape")) != NULL)
 		escape = *cp;
 	else
 		escape = ESCAPE;
@@ -276,8 +276,8 @@ cont:
 #endif
 		colljmp_p = 0;
 		if (c < 0) {
-			if (value("interactive") != NOSTR &&
-			    value("ignoreeof") != NOSTR && ++eofcount < 25) {
+			if (value("interactive") != NULL &&
+			    value("ignoreeof") != NULL && ++eofcount < 25) {
 				printf("Use \".\" to terminate letter\n");
 				continue;
 			}
@@ -286,10 +286,10 @@ cont:
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-		    value("interactive") != NOSTR &&
-		    (value("dot") != NOSTR || value("ignoreeof") != NOSTR))
+		    value("interactive") != NULL &&
+		    (value("dot") != NULL || value("ignoreeof") != NULL))
 			break;
-		if (linebuf[0] != escape || value("interactive") == NOSTR) {
+		if (linebuf[0] != escape || value("interactive") == NULL) {
 			if (putline(collf, linebuf) < 0)
 				goto err;
 			continue;
@@ -407,7 +407,7 @@ cont:
 				break;
 			}
 			cp = expand(cp);
-			if (cp == NOSTR)
+			if (cp == NULL)
 				break;
 			if (isdir(cp)) {
 				printf("%s: Directory\n", cp);
@@ -455,7 +455,7 @@ cont:
 				fprintf(stderr, "Write what file!?\n");
 				break;
 			}
-			if ((cp = expand(cp)) == NOSTR)
+			if ((cp = expand(cp)) == NULL)
 				break;
 			rewind(collf);
 			exwrite(cp, collf, 1);
@@ -580,7 +580,7 @@ exwrite(name, fp, f)
 		return(-1);
 	}
 	if ((of = Fopen(name, "w")) == (FILE *)NULL) {
-		perror(NOSTR);
+		perror(NULL);
 		return(-1);
 	}
 	lc = 0;
@@ -648,10 +648,10 @@ mespipe(fp, cmd)
 	 * stdin = current message.
 	 * stdout = new message.
 	 */
-	if ((shell = value("SHELL")) == NOSTR)
+	if ((shell = value("SHELL")) == NULL)
 		shell = PATH_CSHELL;
 	if (run_command(shell,
-	    0, fileno(fp), fileno(nf), "-c", cmd, NOSTR) < 0) {
+	    0, fileno(fp), fileno(nf), "-c", cmd, NULL) < 0) {
 		(void) Fclose(nf);
 		goto out;
 	}
@@ -690,7 +690,7 @@ forward(ms, fp, f)
 	char *tabst;
 
 	msgvec = (int *) salloc((msgcount+1) * sizeof *msgvec);
-	if (msgvec == (int *) NOSTR)
+	if (msgvec == (int *) NULL)
 		return(0);
 	if (getmsglist(ms, msgvec, 0) < 0)
 		return(0);
@@ -703,8 +703,8 @@ forward(ms, fp, f)
 		msgvec[1] = 0;
 	}
 	if (f == 'f' || f == 'F')
-		tabst = NOSTR;
-	else if ((tabst = value("indentprefix")) == NOSTR)
+		tabst = NULL;
+	else if ((tabst = value("indentprefix")) == NULL)
 		tabst = "\t";
 	ig = isupper(f) ? (struct ignoretab *)NULL : ignore;
 	printf("Interpolating:");
@@ -767,7 +767,7 @@ collint(s)
 	fpurge(stdin);
 #endif
 	if (!hadintr) {
-		if (value("ignore") != NOSTR) {
+		if (value("ignore") != NULL) {
 			puts("@");
 			fflush(stdout);
 			clearerr(stdin);
@@ -782,7 +782,7 @@ collint(s)
 #endif
 	}
 	rewind(collf);
-	if (value("nosave") == NOSTR)
+	if (value("nosave") == NULL)
 		savedeadletter(collf);
 	siglongjmp(collabort, 1);
 }

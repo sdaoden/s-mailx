@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	1.5 (gritter) 10/19/00";
+static char sccsid[] = "@(#)fio.c	1.6 (gritter) 11/18/00";
 #endif
 #endif /* not lint */
 
@@ -100,7 +100,7 @@ setptr(ibuf)
 	this.m_block = 0;
 	this.m_offset = 0;
 	for (;;) {
-		if (fgets(linebuf, LINESIZE, ibuf) == NOSTR) {
+		if (fgets(linebuf, LINESIZE, ibuf) == NULL) {
 			if (append(&this, mestmp)) {
 				perror("temporary file");
 				exit(1);
@@ -243,7 +243,7 @@ readline(ibuf, linebuf, linesize)
 			return -1;
 	}
 #else
-	if (fgets(linebuf, linesize, ibuf) == NOSTR)
+	if (fgets(linebuf, linesize, ibuf) == NULL)
 		return -1;
 #endif
 	n = strlen(linebuf);
@@ -407,11 +407,11 @@ expand(name)
 			break;
 		if (prevfile[0] == 0) {
 			printf("No previous file\n");
-			return NOSTR;
+			return NULL;
 		}
 		return savestr(prevfile);
 	case '&':
-		if (name[1] == 0 && (name = value("MBOX")) == NOSTR)
+		if (name[1] == 0 && (name = value("MBOX")) == NULL)
 			name = "~/mbox";
 		/* fall through */
 	}
@@ -431,33 +431,33 @@ expand(name)
 		return name;
 	}
 	snprintf(cmdbuf, PATHSIZE, "echo %s", name);
-	if ((shell = value("SHELL")) == NOSTR)
+	if ((shell = value("SHELL")) == NULL)
 		shell = PATH_CSHELL;
-	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NOSTR);
+	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);
-		return NOSTR;
+		return NULL;
 	}
 	close(pivec[1]);
 	l = read(pivec[0], xname, PATHSIZE);
 	if (l < 0) {
 		perror("read");
 		close(pivec[0]);
-		return NOSTR;
+		return NULL;
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, "\"%s\": Expansion failed.\n", name);
-		return NOSTR;
+		return NULL;
 	}
 	if (l == 0) {
 		fprintf(stderr, "\"%s\": No match.\n", name);
-		return NOSTR;
+		return NULL;
 	}
 	if (l == PATHSIZE) {
 		fprintf(stderr, "\"%s\": Expansion buffer overflow.\n", name);
-		return NOSTR;
+		return NULL;
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
@@ -465,7 +465,7 @@ expand(name)
 	cp[1] = '\0';
 	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
 		fprintf(stderr, "\"%s\": Ambiguous.\n", name);
-		return NOSTR;
+		return NULL;
 	}
 	return savestr(xname);
 }
@@ -480,7 +480,7 @@ getfold(name, size)
 {
 	char *folder;
 
-	if ((folder = value("folder")) == NOSTR)
+	if ((folder = value("folder")) == NULL)
 		return (-1);
 	if (*folder == '/') {
 		strncpy(name, folder, size);
@@ -499,7 +499,7 @@ getdeadletter()
 {
 	char *cp;
 
-	if ((cp = value("DEAD")) == NOSTR || (cp = expand(cp)) == NOSTR)
+	if ((cp = value("DEAD")) == NULL || (cp = expand(cp)) == NULL)
 		cp = expand("~/dead.letter");
 	else if (*cp != '/') {
 		char buf[PATHSIZE];

@@ -1,5 +1,5 @@
 @BOTTOM@
-/* Sccsid: @(#)acconfig.h	1.2 (gritter) 9/29/00 */
+/* Sccsid: @(#)acconfig.h	1.3 (gritter) 11/18/00 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -121,6 +121,9 @@
 #endif
 #ifdef	HAVE_WCTYPE_H
 #include <wctype.h>
+#endif
+#ifdef	HAVE_LANGINFO_H
+#include <langinfo.h>
 #endif
 /* The number of signals in the system. */
 #ifndef	NSIG
