@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)temp.c	2.1 (gritter) 9/1/02";
+static char sccsid[] = "@(#)temp.c	2.2 (gritter) 2/19/03";
 #endif
 #endif /* not lint */
 
@@ -81,7 +81,7 @@ char *prefix, *mode;
 #else	/* !HAVE_MKSTEMP */
 	if (mktemp(*fn) == NULL)
 		goto Ftemperr;
-	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR|O_TRUNC, bits)) < 0)
+	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR, bits)) < 0)
 		goto Ftemperr;
 #endif	/* !HAVE_MKSTEMP */
 	if (register_file)

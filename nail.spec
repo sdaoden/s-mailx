@@ -1,13 +1,13 @@
-# Sccsid @(#)nail.spec	1.8 (gritter) 1/19/03
+# Sccsid @(#)nail.spec	1.11 (gritter) 4/27/03
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 10.4
+Version: 10.5
 Release: 1
 License: BSD
 Group: Applications/Internet
 Source: %{name}-%{version}.tar.gz
 URL: <http://omnibus.ruf.uni-freiburg.de/~gritter/>
-Vendor: Gunnar Ritter <g-r@bigfoot.de>
+Vendor: Gunnar Ritter <Gunnar.Ritter@pluto.uni-freiburg.de>
 Packager: Didar Hussain <dhs@rediffmail.com>
 BuildRoot: %{_tmppath}/%{name}-root
 
@@ -40,6 +40,6 @@ cd ..; rm -fr %{_builddir}/%{name}-%{version}
 
 %files
 %doc COPYING AUTHORS INSTALL README TODO I18N ChangeLog
-%config /etc/nail.rc
+%config(noreplace) /etc/nail.rc
 /usr/bin/nail
 /usr/share/man/man1/nail.1.gz

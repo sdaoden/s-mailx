@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.14 (gritter) 11/3/02";
+static char sccsid[] = "@(#)main.c	2.15 (gritter) 2/27/03";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -334,7 +334,7 @@ usage:
 		}
 	} else {
 		for (i = optind; (argv[i]) && (*argv[i] != '-'); i++)
-			to = checkaddrs(cat(to, nalloc(argv[i], GTO)));
+			to = checkaddrs(cat(to, extract(argv[i], GTO)));
 		for (; argv[i]; i++)
 			smopts = cat(smopts, nalloc(argv[i], 0));
 	}

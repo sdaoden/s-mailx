@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.16 (gritter) 11/8/02";
+static char sccsid[] = "@(#)lex.c	2.17 (gritter) 4/7/03";
 #endif
 #endif /* not lint */
 
@@ -252,11 +252,11 @@ commands()
 				if (mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) {
-					struct message *odot = dot;
+					int odot = dot - &message[0];
 					int odid = did_print_dot;
 
 					setfile(mailname, 1);
-					dot = odot;
+					dot = &message[odot];
 					did_print_dot = odid;
 				}
 			}

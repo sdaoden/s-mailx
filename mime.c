@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.12 (gritter) 11/24/02";
+static char sccsid[]  = "@(#)mime.c	2.15 (gritter) 3/23/03";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -90,6 +90,9 @@ static size_t	mime_write_toqp __P((struct str *, FILE *, int (*)(int)));
 static void	mime_str_toqp __P((struct str *, struct str *, int (*)(int)));
 static void	mime_fromqp __P((struct str *, struct str *, int));
 static size_t	mime_write_tohdr __P((struct str *, FILE *));
+static size_t	convhdra __P((char *, size_t, FILE *));
+static void	addstr __P((char **, size_t *, size_t *, char *, size_t));
+static void	addconv __P((char **, size_t *, size_t *, char *, size_t));
 static size_t	mime_write_tohdr_a __P((struct str *, FILE *));
 static size_t	fwrite_td __P((void *, size_t, size_t, FILE *, enum tdflags,
 			char *, size_t));
@@ -215,6 +218,14 @@ size_t l;
 #else	/* !HAVE_SETLOCALE */
 	return l;
 #endif	/* !HAVE_SETLOCALE */
+}
+
+char *
+makeprint0(s)
+	char *s;
+{
+	makeprint(s, strlen(s));
+	return s;
 }
 
 /*
@@ -1309,6 +1320,53 @@ FILE *fo;
 }
 
 /*
+ * Write len characters of the passed string to the passed file, 
+ * doing charset and header conversion.
+ */
+static size_t
+convhdra(str, len, fp)
+	char	*str;
+	size_t	len;
+	FILE	*fp;
+{
+	char	*ip, *op;
+	size_t	isz, osz;
+	struct str	cin;
+	size_t	cbufsz;
+	char	*cbuf;
+	size_t	sz;
+
+	cbuf = ac_alloc(cbufsz = 1);
+#ifdef	HAVE_ICONV
+	if (iconvd == (iconv_t)-1) {
+#endif
+		cin.s = str;
+		cin.l = len;
+#ifdef	HAVE_ICONV
+	} else {
+	again:	ip = str;
+		isz = len;
+		op = cbuf;
+		osz = cbufsz;
+		if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
+			if (errno != E2BIG) {
+				ac_free(cbuf);
+				return 0;
+			}
+			cbuf = ac_alloc(cbufsz += isz);
+			goto again;
+		}
+		cin.s = cbuf;
+		cin.l = cbufsz - osz;
+	}
+#endif	/* HAVE_ICONV */
+	sz = mime_write_tohdr(&cin, fp);
+	ac_free(cbuf);
+	return sz;
+}
+
+
+/*
  * Write an address to a header field.
  */
 static size_t
@@ -1316,113 +1374,114 @@ mime_write_tohdr_a(in, f)
 struct str *in;
 FILE *f;
 {
-	char *p, *q, *ip, *op;
-	struct str cin;
-	size_t sz = 0, isz, osz, cbufsz;
-	char *cbuf;
+	char	*cp, *lastcp;
+	size_t	sz = 0;
 
-	cbuf = ac_alloc(cbufsz = 1);
-	*(in->s + in->l) = '\0';
-	if (strpbrk(in->s, "(<") == NULL) {
-		ac_free(cbuf);
-		return fwrite(in->s, sizeof *in->s, in->l, f);
+	in->s[in->l] = '\0';
+	lastcp = in->s;
+	if ((cp = routeaddr(in->s)) != NULL && cp > lastcp) {
+		sz += convhdra(lastcp, cp - lastcp, f);
+		lastcp = cp;
+	} else
+		cp = in->s;
+	for ( ; *cp; cp++) {
+		switch (*cp) {
+		case '(':
+			sz += fwrite(lastcp, 1, cp - lastcp + 1, f);
+			lastcp = ++cp;
+			cp = skip_comment(cp);
+			if (--cp > lastcp)
+				sz += convhdra(lastcp, cp - lastcp, f);
+			lastcp = cp;
+			break;
+		case '"':
+			while (*cp) {
+				if (*++cp == '"')
+					break;
+				if (*cp == '\\' && cp[1])
+					cp++;
+			}
+			break;
+		}
 	}
-	if ((p = strchr(in->s, '<')) != NULL) {
-		q = strchr(p, '>');
-		if (q++ == NULL) {
-			ac_free(cbuf);
-			return 0;
-		}
-#ifdef	HAVE_ICONV
-		if (iconvd == (iconv_t)-1) {
-#endif
-			cin.s = in->s;
-			cin.l = p - in->s;
-#ifdef	HAVE_ICONV
-		} else {
-		again1:	ip = in->s;
-			isz = p - in->s;
-			op = cbuf;
-			osz = cbufsz;
-			if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
-				if (errno != E2BIG) {
-					ac_free(cbuf);
-					return 0;
-				}
-				cbuf = ac_alloc(cbufsz += isz);
-				goto again1;
-			}
-			cin.s = cbuf;
-			cin.l = cbufsz - osz;
-		}
-#endif
-		sz = mime_write_tohdr(&cin, f);
-		sz += fwrite(p, sizeof *p, q - p, f);
-#ifdef	HAVE_ICONV
-		if (iconvd == (iconv_t)-1) {
-#endif
-			cin.s = q;
-			cin.l = in->s + in->l - q;
-#ifdef	HAVE_ICONV
-		} else {
-		again2:	ip = q;
-			isz = in->s + in->l - q;
-			op = cbuf;
-			osz = cbufsz;
-			if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
-				if (errno != E2BIG) {
-					ac_free(cbuf);
-					return 0;
-				}
-				cbuf = ac_alloc(cbufsz += isz);
-				goto again2;
-			}
-			cin.s = cbuf;
-			cin.l = cbufsz - osz;
-		}
-#endif
-		sz += mime_write_tohdr(&cin, f);
-	} else if ((p = strchr(in->s, '(')) != NULL) {
-		p++;
-		q = in->s;
-		do {
-			sz += fwrite(q, sizeof *q, p - q, f);
-			q = strchr(p, ')');
-			if (q++ == NULL) {
-				ac_free(cbuf);
-				return 0;
-			}
-#ifdef	HAVE_ICONV
-			if (iconvd == (iconv_t)-1) {
-#endif
-				cin.s = p;
-				cin.l = q - p;
-#ifdef	HAVE_ICONV
-			} else {
-			again3:	ip = p;
-				isz = q - p;
-				op = cbuf;
-				osz = cbufsz;
-				if (iconv(iconvd, &ip, &isz, &op, &osz) != 0) {
-					if (errno != E2BIG) {
-						ac_free(cbuf);
-						return 0;
-					}
-					cbuf = ac_alloc(cbufsz += isz);
-					goto again3;
-				}
-				cin.s = cbuf;
-				cin.l = cbufsz - osz;
-			}
-#endif
-			sz += mime_write_tohdr(&cin, f);
-			p = strchr(q, '(');
-		} while (p != NULL);
-		if (*q != '\0')
-			sz += fwrite(q, sizeof *q, in->s + in->l - q, f);
-	}
-	ac_free(cbuf);
+	if (cp > lastcp)
+		sz += fwrite(lastcp, 1, cp - lastcp, f);
 	return sz;
+}
+
+static void
+addstr(buf, sz, pos, str, len)
+	char **buf;
+	size_t *sz, *pos;
+	char *str;
+	size_t len;
+{
+	*buf = srealloc(*buf, *sz += len);
+	memcpy(&(*buf)[*pos], str, len);
+	*pos += len;
+}
+
+static void
+addconv(buf, sz, pos, str, len)
+	char **buf;
+	size_t *sz, *pos;
+	char *str;
+	size_t len;
+{
+	struct str	in, out;
+
+	in.s = str;
+	in.l = len;
+	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
+	addstr(buf, sz, pos, out.s, out.l);
+	free(out.s);
+}
+
+/*
+ * Interpret MIME strings in parts of an address field.
+ */
+char *
+mime_fromaddr(name)
+	char *name;
+{
+	char	*cp, *lastcp;
+	char	*res = NULL;
+	size_t	ressz = 1, rescur = 0;
+
+	if (name == NULL || *name == '\0')
+		return name;
+	if ((cp = routeaddr(name)) != NULL && cp > name) {
+		addconv(&res, &ressz, &rescur, name, cp - name);
+		lastcp = cp;
+	} else
+		cp = lastcp = name;
+	for ( ; *cp; cp++) {
+		switch (*cp) {
+		case '(':
+			addstr(&res, &ressz, &rescur, lastcp, cp - lastcp + 1);
+			lastcp = ++cp;
+			cp = skip_comment(cp);
+			if (--cp > lastcp)
+				addconv(&res, &ressz, &rescur, lastcp,
+						cp - lastcp);
+			lastcp = cp;
+			break;
+		case '"':
+			while (*cp) {
+				if (*++cp == '"')
+					break;
+				if (*cp == '\\' && cp[1])
+					cp++;
+			}
+			break;
+		}
+	}
+	if (cp > lastcp)
+		addstr(&res, &ressz, &rescur, lastcp, cp - lastcp);
+	res[rescur] = '\0';
+	cp = savestr(res);
+	free(res);
+	return cp;
 }
 
 /*

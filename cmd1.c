@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.18 (gritter) 11/22/02";
+static char sccsid[] = "@(#)cmd1.c	2.22 (gritter) 3/30/03";
 #endif
 #endif /* not lint */
 
@@ -248,12 +248,14 @@ printhead(mesg, f)
 	char *pbuf = NULL;
 	struct headline hl;
 	struct str in, out;
-	int subjlen, fromlen, isto = 0;
-	int bsdcompat = (value("bsdcompat") != NULL);
+	int subjlen, fromlen, isto = 0, isaddr = 0;
+	int bsdflags, bsdheadline;
 	char *name, *cp;
 	FILE *ibuf;
 
 	mp = &message[mesg-1];
+	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL;
+	bsdheadline= value("bsdcompat") != NULL || value("bsdheadline") != NULL;
 	if ((mp->m_flag & MNOFROM) == 0) {
 		if ((ibuf = setinput(mp, NEED_HEADER)) == NULL)
 			return;
@@ -277,16 +279,16 @@ printhead(mesg, f)
 	 */
 	curind = dot == mp ? '>' : ' ';
 	dispc = ' ';
-	if (value("bsdcompat") == NULL) {
+	if (bsdflags == 0) {
 		if (mp->m_flag & (MREAD|MNEW))
 			dispc = 'R';
 		if ((mp->m_flag & (MREAD|MNEW)) == MREAD)
 			dispc = 'O';
 	}
 	if (mp->m_flag & MSAVED)
-		dispc = bsdcompat ? '*' : 'S';
+		dispc = bsdflags ? '*' : 'S';
 	if (mp->m_flag & MPRESERVE)
-		dispc = bsdcompat ? 'P' : 'H';
+		dispc = bsdflags ? 'P' : 'H';
 	if ((mp->m_flag & (MREAD|MNEW)) == MNEW)
 		dispc = 'N';
 	if ((mp->m_flag & (MREAD|MNEW)) == 0)
@@ -308,7 +310,7 @@ printhead(mesg, f)
 	else
 		strcpy(lcount, "   ");
 	snprintf(ccount, sizeof ccount, "%-5u", (unsigned)mp->m_xsize);
-	subjlen = scrnwidth - (bsdcompat ? 49 : 45) - strlen(ccount) -
+	subjlen = scrnwidth - (bsdheadline ? 49 : 45) - strlen(ccount) -
 		strlen(ccount);
 	if (subjlen > out.l)
 		subjlen = out.l;
@@ -316,26 +318,38 @@ printhead(mesg, f)
 		if ((name = hfield("newsgroups", mp)) == NULL)
 			if ((name = hfield("article-id", mp)) == NULL)
 				name = "<>";
+		name = makeprint0(name);
 	} else if (value("show-rcpt") == NULL) {
-		name = nameof(mp, 0);
-		if (value("showto") && name && is_myname(name)) {
-			if ((cp = skin(hfield("to", mp))) != NULL) {
+		name = name1(mp, 0);
+		isaddr = 1;
+		if (value("showto") && name && is_myname(skin(name))) {
+			if ((cp = hfield("to", mp)) != NULL) {
 				name = cp;
 				isto = 1;
 			}
 		}
 	} else {
-		if ((name = skin(hfield("to", mp))) != NULL)
+		isaddr = 1;
+		if ((name = hfield("to", mp)) != NULL)
 			isto = 1;
 	}
-	if (name == NULL)
+	if (name == NULL) {
 		name = "";
-	if (bsdcompat)
+		isaddr = 0;
+	}
+	if (bsdheadline)
 		fromlen = isto ? 17 : 20;
 	else
 		fromlen = isto ? 15 : 18;
+	if (isaddr) {
+		if (value("showname"))
+			name = realname(name);
+		else {
+			name = makeprint0(skin(name));
+		}
+	}
 	if (subjline == NULL || subjlen < 0) {         /* pretty pathetic */
-		fprintf(f, bsdcompat ?  catgets(catd, CATSET, 206,
+		fprintf(f, bsdheadline ?  catgets(catd, CATSET, 206,
 				"%c%c%3d %s%-*.*s  %16.16s %s/%s\n") :
 			catgets(catd, CATSET, 11,
 				"%c%c%3d %s%-*.*s  %16.16s %s/%s\n"),
@@ -343,7 +357,7 @@ printhead(mesg, f)
 			fromlen, fromlen, name, hl.l_date, lcount, ccount);
 	} else {
 		makeprint(subjline, subjlen);
-		fprintf(f, bsdcompat ? catgets(catd, CATSET, 207,
+		fprintf(f, bsdheadline ? catgets(catd, CATSET, 207,
 				"%c%c%3d %s%-*.*s  %16.16s %s/%s \"%.*s\"\n") :
 			catgets(catd, CATSET, 12,
 				"%c%c%3d %s%-*.*s  %16.16s %s/%s %.*s\n"),

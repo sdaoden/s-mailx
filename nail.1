@@ -33,20 +33,23 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.50 (gritter) 12/24/02
+.\"     Sccsid: @(#)nail.1	2.57 (gritter) 3/30/03
 .\"
-.TH NAIL 1 "12/24/02" "nail 10.4" "User Commands"
+.TH NAIL 1 "3/30/03" "nail 10.5" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
+.HP
 .ad l
 \fBnail\fR [\fB\-BFintv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
-[\fB\-h\fI\ hops\fR] \fIto-addr\fR ...
-.sp
+[\fB\-h\fI\ hops\fR] \fIto-addr\fR .\ .\ .
+.HP
+.ad l
 \fBnail\fR [\fB\-BeHiInNv~\fR] [\fB\-T\fI\ name\fR] \fB\-f\fR [\fIname\fR]
-.sp
+.HP
+.ad l
 \fBnail\fR [\fB\-BeinNv~\fR] [\fB\-u\fI\ user\fR]
 .br
 .ad b
@@ -172,7 +175,7 @@ To send a message to one or more people,
 which are the names of people
 to whom the mail will be sent.
 You are then expected to type in your message,
-followed by an 'control-D' at the beginning of a line.
+followed by an `control-D' at the beginning of a line.
 The section below Replying to
 or originating mail,
 describes some features of \fInail\fR
@@ -185,7 +188,7 @@ of each message found.
 The current message is initially
 the first message (numbered 1)
 and can be printed using the print command
-which can be abbreviated 'p').
+which can be abbreviated `p').
 You can move among the messages
 much as you move between lines in
 .IR ed (1),
@@ -193,15 +196,15 @@ with the commands '+' and '\-' moving backwards and forwards,
 and simple numbers.
 .SS "Disposing of mail"
 After examining a message
-you can delete 'd') the message
-or reply 'r') to it.
+you can delete `d') the message
+or reply `r') to it.
 Deletion causes the \fInail\fR program
 to forget about the message.
 This is not irreversible;
-the message can be undeleted 'u')
+the message can be undeleted `u')
 by giving its number,
 or the \fInail\fR session can be aborted
-by giving the exit 'x') command.
+by giving the exit `x') command.
 Deleted messages will, however,
 usually disappear never to be seen again.
 .SS "Specifying messages"
@@ -285,7 +288,7 @@ or to a shell to run some commands.
 (These options are given in the summary below.)
 .SS "Ending a mail processing session"
 You can end a \fInail\fR session
-with the quit 'q') command.
+with the quit `q') command.
 Messages which have been examined
 go to your mbox file
 unless they have been deleted
@@ -338,7 +341,7 @@ It does this by reading MIME type files
 whose lines have the following syntax:
 .nf
 
-        \fItype\fB/\fIsubtype      extension \fR[\fIextension \fR...]\fR
+        \fItype\fB/\fIsubtype      extension \fR[\fIextension \fR.\ .\ .]\fR
 
 .fi
 where type/subtype are strings describing the file contents,
@@ -356,8 +359,8 @@ other than newlines and horizontal tabulators.
 \fINail\fR is intended to be
 a MIME-conformant mail user agent,
 with the following exception:
-No special handling of "multipart/alternative" messages is performed.
-All parts with content types of "text" or "message" are shown.
+No special handling of `multipart/alternative' messages is performed.
+All parts with content types of `text' or `message' are shown.
 This is done because the user should see as much information as possible.
 .SS "Locale"
 \fINail\fR uses the LC_CTYPE locale setting
@@ -531,7 +534,7 @@ Some special conventions are recognized for the name.
 and \fB+\fIfile\fI means a \fIfile\fR in your folder directory.
 \fB%:\fIfilespec\fR expands to the same value as \fIfilespec\fR,
 but the file is handled as a system mailbox
-e.\|g. by the mbox and save commands.
+e.\ g. by the mbox and save commands.
 If the name matches one of the strings defined with the
 .B shortcut
 command,
@@ -623,7 +626,7 @@ For example, you can do:
 .nf
 
         \fBif \fIreceive\fR
-                \fIcommands ...\fR
+                \fIcommands .\ .\ .\fR
         \fBendif\fR
 
 .fi
@@ -631,9 +634,9 @@ An else form is also available:
 .nf
 
         \fBif \fIreceive\fR
-                \fIcommands ...\fR
+                \fIcommands .\ .\ .\fR
         \fBelse\fR
-                \fIcommands ...\fR
+                \fIcommands .\ .\ .\fR
         \fBendif\fR
 
 .fi
@@ -727,7 +730,7 @@ See also print, ignore and retain.
 (p) Takes a message list and types out each message
 on the user's terminal.
 If the message is a MIME multipart message,
-all parts with a content type of "text" or "message" are shown,
+all parts with a content type of `text' or `message' are shown,
 the other are hidden except for their headers.
 .TP
 .B quit
@@ -996,7 +999,7 @@ Identical to ~r.
 Command is executed using the shell.
 Its standard output is inserted into the message.
 .TP
-\fB~@\fR [\fIfilename\fR ... ]
+\fB~@\fR [\fIfilename\fR .\ .\ . ]
 With no arguments, edit the attachment list.
 First, the user can edit all existing attachment data.
 If an attachment's file name is left empty,
@@ -1020,12 +1023,12 @@ Inserts the string contained in the
 variable
 (same as `~i sign').
 .TP
-.BI ~b "name ..."
+.BI ~b "name .\ .\ ."
 Add the given names to the list of carbon copy recipients
 but do not make the names visible in the Cc: line
-("blind" carbon copy).
+(`blind' carbon copy).
 .TP
-.BI ~c "name ..."
+.BI ~c "name .\ .\ ."
 Add the given names to the list of carbon copy recipients.
 .TP
 .B ~d
@@ -1085,7 +1088,7 @@ it is piped through the pager.
 .B ~q
 Abort the message being sent,
 copying the message to
-"\fIdead.letter\fR" in your home directory
+`\fIdead.letter\fR' in your home directory
 if save is set.
 .TP
 .BI ~r filename
@@ -1094,7 +1097,7 @@ Read the named file into the message.
 .BI ~s string
 Cause the named string to become the current subject field.
 .TP
-.BI ~t "name ..."
+.BI ~t "name .\ .\ ."
 Add the given names to the direct recipient list.
 .TP
 .B ~v
@@ -1167,6 +1170,10 @@ of each message you send.
 If you respond with simply a newline,
 no subject field will be sent.
 .TP
+.B askatend
+Causes the prompts for `Cc:' and `Bcc:' lists
+to appear after the message has been edited.
+.TP
 .B askattach
 If set, \fInail\fR asks for files to attach at the end of each message.
 Responding with a newline indicates not to include an attachment.
@@ -1175,6 +1182,8 @@ Responding with a newline indicates not to include an attachment.
 Causes you to be prompted
 for additional carbon copy recipients
 (at the end of each message if
+.I askatend
+or
 .I bsdcompat
 is set).
 Responding with a newline
@@ -1184,6 +1193,8 @@ indicates your satisfaction with the current list.
 Causes you to be prompted
 for additional blind carbon copy recipients
 (at the end of each message if
+.I askatend
+or
 .I bsdcompat
 is set).
 Responding with a newline
@@ -1203,15 +1214,41 @@ Enables the substitution of `\fB!\fR'
 by the contents of the last command line
 in shell escapes.
 .TP
+.B bsdannounce
+Causes automatic display of a header summary after executing a
+.I folder
+command.
+.TP
 .B bsdcompat
 Sets some cosmetical features to traditional BSD style;
-affects the default prompt,
-the order of header fields,
-the format of the header summary,
-the output format of the
-.B set
-command,
-and the default pager.
+has the same affect as setting `askatend' and
+all other variables prefixed with `bsd',
+setting prompt to `&\ ', and changing the default pager to
+.IR more .
+.TP
+.B bsdflags
+Changes the letters printed in the first column of a header summary
+to traditional BSD style.
+.TP
+.B bsdheadline
+Changes the display of columns in a header summary
+to traditional BSD style.
+.TP
+.B bsdmsgs
+Changes some informational messages
+to traditional BSD style.
+.TP
+.B bsdorder
+Causes the `Subject:' field to appear
+immediately after the `To:' field
+in message headers and with the
+.I ~h
+tilde command.
+.TP
+.B bsdset
+Changes the output format of the
+.I set
+command to traditional BSD style.
 .TP
 .B datefield
 The date in a header summary
@@ -1349,6 +1386,12 @@ before accepting further commands.
 Setting this option causes \fInail\fR to start at the
 last message instead of the first one when opening a mail folder.
 .TP
+.B showname
+Causes
+.I nail
+to use the sender's real name instead of the plain address
+in the header field summary and in message specifications.
+.TP
 .B showto
 Causes the recipient of the message to be shown in the header summary
 if the message was sent by the user.
@@ -1364,7 +1407,7 @@ because this protocol version is insecure.
 .TP
 .B stealthmua
 Inhibits the generation of
-the \fI'Message-Id:'\fR and \fI'User-Agent:'\fR
+the \fI`Message-Id:'\fR and \fI`User-Agent:'\fR
 header fields that include obvious references to \fInail\fR.
 There are two pitfalls associated with this:
 First, the message id of outgoing messages is not known anymore.
@@ -1380,6 +1423,16 @@ is displayed on the user's terminal.
 .SS "String Options"
 .PP
 The string options include the following:
+.TP
+.B autobcc
+Specifies a list of recipients to which
+a blind carbon copy of each outgoing message
+will be sent automatically.
+.TP
+.B autocc
+Specifies a list of recipients to which
+a carbon copy of each outgoing message
+will be sent automatically.
 .TP
 .B charset
 The name of the character set used by \fInail\fR.
@@ -1439,11 +1492,11 @@ otherwise, the folder directory is found
 relative to your home directory.
 .TP
 .B from
-The address to put into the \fI'From:'\fR field of the message header.
+The address to put into the \fI`From:'\fR field of the message header.
 If replying to a message,
 this address is handled as if it were in the alternates list.
 If this variable is set,
-a \fI'Sender:'\fR field containing the user's name
+a \fI`Sender:'\fR field containing the user's name
 is also generated,
 unless the variable \fIsmtp\fR is set
 and its value differs from \fIlocalhost\fR.
@@ -1498,7 +1551,7 @@ commands
 that are not understood by other mailx implementations.
 .TP
 .B ORGANIZATION
-The value to put into the \fI'Organization:'\fR field of the message header.
+The value to put into the \fI`Organization:'\fR field of the message header.
 .TP
 .B PAGER
 Pathname of the program to use
@@ -1551,15 +1604,15 @@ seconds if no other operation is performed.
 .TP
 .B prompt
 The string printed when a command is accepted.
-Defaults to "\fB?\ \fR",
-or to "\fB&\ \fR" if the
+Defaults to `\fB?\ \fR',
+or to `\fB&\ \fR' if the
 .B bsdcompat
 variable is set.
 .TP
 .B quote
 If set, \fInail\fR starts a replying message with the original message prefixed
 by the value of the variable \fIindentprefix\fR.
-Normally, a heading consisting of 'Fromheaderfield wrote:' is printed
+Normally, a heading consisting of `Fromheaderfield wrote:' is printed
 before the quotation.
 If the string \fInoheading\fR is assigned to the \fIquote\fR variable,
 this heading is omitted.
@@ -1693,7 +1746,7 @@ If not defined,
 then outgoing mail is not so saved.
 .TP
 .B replyto
-The address to put into the \fI'Reply-To:'\fR field of the message header.
+The address to put into the \fI`Reply-To:'\fR field of the message header.
 If replying to a message, this address is handled
 as if it were in the alternates list.
 .TP
@@ -1897,6 +1950,22 @@ function.
 Its functionality differs widely
 between the various system environments
 \fInail\fR runs on.
+.PP
+Nail expects input text to be in Unix format,
+with lines separated by 
+.I newline
+(^J, \en) characters only.
+Non-Unix text files that use
+.I carriage return
+(^M, \er)
+characters in addition will be treated as binary data;
+to send such files as text, strip these characters e.\ g. by
+.RS
+.sp
+tr \-d '\e015' <input | nail .\ .\ .
+.sp
+.RE
+or fix the tools that generate them.
 .PP
 POP3 mailboxes are limited in some ways:
 It is not possible to edit messages,

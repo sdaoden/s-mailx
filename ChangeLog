@@ -1,4 +1,18 @@
-[10.4] released 1/19/02
+[10.5] released 4/27/03
+* A command line argument specifying a To-address can contain multiple
+  recipients separated by commas (Werner Fink).
+* 'showname' variable (based on code contributed by Stephen Isard).
+* Display nonprintable characters in mail addresses as question marks.
+* Fixed MIME encoding of user's From address with respect to quoted
+  characters.
+* 'autobcc' and 'autocc' variables.
+* The effects of the 'bsdcompat' variable are now individually configurable.
+  This introduces the 'bsdflags', 'bsdheadline', 'bsdset', 'bsdannounce',
+  'askatend', 'bsdorder', and 'bsdmsgs' variables.
+* The current message pointer could be garbled when 'newmail' was set and
+  new messages appeared (Fix by Stephen Isard).
+
+[10.4] released 1/19/03
 * A missing #ifdef HAVE_ICONV caused build errors on platforms without
   iconv() support (J.A. Neitzel, Jens Schleusener, Lars Kellogg-Stedman,
   Felicia Neff, Chris Pinnock).

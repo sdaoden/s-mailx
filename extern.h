@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.23 (gritter) 11/24/02
+ *	Sccsid @(#)extern.h	2.26 (gritter) 3/22/03
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -56,11 +56,15 @@ char	*getname __P((int));
 char	*hfield_mult __P((char [], struct message *, int));
 #define	hfield(a, b)	hfield_mult(a, b, 1)
 char	*nameof __P((struct message *, int));
+char	*name1 __P((struct message *, int));
 FILE	*run_editor __P((FILE *, off_t, int, int, char *, struct header *));
 char	*salloc __P((int));
 char	*savestr __P((char *));
 FILE	*setinput __P((struct message *, enum needspec));
+char	*routeaddr __P((char *));
+char	*skip_comment __P((char *));
 char	*skin __P((char *));
+char	*realname __P((char *));
 char	*username __P((void));
 char	*value __P((char []));
 char	*vcopy __P((char []));
@@ -231,6 +235,7 @@ char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
 void	mime_fromhdr __P((struct str*, struct str*, enum tdflags));
+char	*mime_fromaddr __P((char *));
 size_t	mime_write __P((void*, size_t, size_t, FILE*, enum conversion,
 			enum tdflags, char *, size_t));
 sighandler_type safe_signal __P((int, sighandler_type));
@@ -243,6 +248,7 @@ struct name	*checkaddrs __P((struct name *));
 char	*myaddr __P((void));
 char	*gettcharset __P((void));
 size_t	makeprint __P((char *, size_t));
+char	*makeprint0 __P((char *));
 #ifdef	HAVE_ICONV
 iconv_t	iconv_open_ft __P((const char *, const char *));
 #endif

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.19 (gritter) 12/7/02";
+static char sccsid[] = "@(#)aux.c	2.26 (gritter) 3/28/03";
 #endif
 #endif /* not lint */
 
@@ -54,8 +54,6 @@ static char sccsid[] = "@(#)aux.c	2.19 (gritter) 12/7/02";
 static char	*save2str __P((char *, char *));
 static int	gethfield __P((FILE *, char **, size_t *, int, char **));
 static char	*is_hfield __P((char [], char[], char *));
-static char	*skip_comment __P((char *));
-static char	*name1 __P((struct message *, int));
 static int	charcount __P((char *, int));
 static time_t	combinetime __P((int, int, int, int, int, int));
 
@@ -566,7 +564,7 @@ nameof(mp, reptype)
  * Start of a "comment".
  * Ignore it.
  */
-static char *
+char *
 skip_comment(cp)
 	char *cp;
 {
@@ -587,6 +585,39 @@ skip_comment(cp)
 		}
 	}
 	return cp;
+}
+
+/*
+ * Return the start of a route-addr (address in angle brackets),
+ * if present.
+ */
+char *
+routeaddr(char *name)
+{
+	char	*np, *rp = NULL;
+
+	for (np = name; *np; np++) {
+		switch (*np) {
+		case '(':
+			np = skip_comment(np) - 1;
+			break;
+		case '"':
+			while (*np) {
+				if (*++np == '"')
+					break;
+				if (*np == '\\' && np[1])
+					np++;
+			}
+			break;
+		case '<':
+			rp = np;
+			break;
+		case '>':
+			return rp;
+			break;
+		}
+	}
+	return NULL;
 }
 
 /*
@@ -706,13 +737,128 @@ skin(name)
 }
 
 /*
+ * Fetch the real name from an internet mail address field.
+ */
+char *
+realname(char *name)
+{
+	char	*cstart = NULL, *cend = NULL, *cp, *cq;
+	char	*rname, *rp;
+	struct str	in, out;
+	int	quoted, good, nogood;
+
+	if (name == NULL)
+		return NULL;
+	for (cp = name; *cp; cp++) {
+		switch (*cp) {
+		case '(':
+			if (cstart)
+				/*
+				 * More than one comment in address, doesn't
+				 * make sense to display it without context.
+				 * Return the entire field,
+				 */
+				return mime_fromaddr(name);
+			cstart = cp++;
+			cp = skip_comment(cp);
+			cend = cp--;
+			if (cend <= cstart)
+				cend = cstart = NULL;
+			break;
+		case '"':
+			while (*cp) {
+				if (*++cp == '"')
+					break;
+				if (*cp == '\\' && cp[1])
+					cp++;
+			}
+			break;
+		case '<':
+			if (cp > name) {
+				cstart = name;
+				cend = cp;
+			}
+			break;
+		}
+	}
+	if (cstart == NULL) {
+		if (*name == '<')
+			/*
+			 * If name contains only a route-addr, the
+			 * surrounding angle brackets don't serve any
+			 * useful purpose when displaying, so they
+			 * are removed.
+			 */
+			return makeprint0(skin(name));
+		return mime_fromaddr(name);
+	}
+	rp = rname = ac_alloc(cend - cstart + 1);
+	/*
+	 * Strip quotes. Note that quotes that appear within a MIME-
+	 * encoded word are not stripped. The idea is to strip only
+	 * syntactical relevant things (but this is not necessarily
+	 * the most sensible way in practice).
+	 */
+	quoted = 0;
+	for (cp = cstart; cp < cend; cp++) {
+		if (*cp == '(' && !quoted) {
+			cq = skip_comment(++cp);
+			if (--cq > cend)
+				cq = cend;
+			while (cp < cq) {
+				if (*cp == '\\' && &cp[1] < cq)
+					cp++;
+				*rp++ = *cp++;
+			}
+		} else if (*cp == '\\' && &cp[1] < cend)
+			*rp++ = *++cp;
+		else if (*cp == '"') {
+			quoted = !quoted;
+			continue;
+		} else
+			*rp++ = *cp;
+	}
+	*rp = '\0';
+	in.s = rname;
+	in.l = rp - rname;
+	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
+	ac_free(rname);
+	rname = savestr(out.s);
+	free(out.s);
+	while (blankchar(*rname & 0377))
+		rname++;
+	for (rp = rname; *rp; rp++);
+	while (--rp >= rname && blankchar(*rp & 0377))
+		*rp = '\0';
+	if (rp == rname)
+		return mime_fromaddr(name);
+	/*
+	 * mime_fromhdr() has converted all nonprintable characters to
+	 * question marks now. These and blanks are considered uninteresting;
+	 * if the displayed part of the real name contains more than 25% of
+	 * them, it is probably better to display the plain email address
+	 * instead.
+	 */
+	good = 0;
+	nogood = 0;
+	for (rp = rname; *rp && rp < &rname[20]; rp++)
+		if (*rp == '?' || blankchar(*rp & 0377))
+			nogood++;
+		else
+			good++;
+	if (good*3 < nogood)
+		return makeprint0(skin(name));
+	return rname;
+}
+
+/*
  * Fetch the sender's name from the passed message.
  * Reptype can be
  *	0 -- get sender's name for display purposes
  *	1 -- get sender's name for reply
  *	2 -- get sender's name for Reply
  */
-static char *
+char *
 name1(mp, reptype)
 	struct message *mp;
 	int reptype;

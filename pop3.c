@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.3 (gritter) 1/13/03";
+static char sccsid[] = "@(#)pop3.c	2.4 (gritter) 3/30/03";
 #endif
 #endif /* not lint */
 
@@ -1386,7 +1386,7 @@ pop3_update(mp)
 		Fclose(readstat);
 	if (gotcha && edit) {
 		printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
-		printf(value("bsdcompat") ?
+		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 170, "complete\n") :
 				catgets(catd, CATSET, 212, "updated.\n"));
 	} else if (held && !edit) {

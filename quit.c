@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.6 (gritter) 10/27/02";
+static char sccsid[] = "@(#)quit.c	2.7 (gritter) 3/30/03";
 #endif
 #endif /* not lint */
 
@@ -602,11 +602,11 @@ edstop()
 	Fclose(obuf);
 	if (gotcha && value("emptybox") == NULL) {
 		rm(mailname);
-		printf(value("bsdcompat") ?
+		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 169, "removed\n") :
 				catgets(catd, CATSET, 211, "removed.\n"));
 	} else
-		printf(value("bsdcompat") ?
+		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 170, "complete\n") :
 				catgets(catd, CATSET, 212, "updated.\n"));
 	fflush(stdout);

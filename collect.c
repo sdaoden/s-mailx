@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.13 (gritter) 11/21/02";
+static char sccsid[] = "@(#)collect.c	2.14 (gritter) 3/30/03";
 #endif
 #endif /* not lint */
 
@@ -515,7 +515,8 @@ The following ~ escapes are defined:\n\
 			t &= ~GNL, getfields |= GSUBJECT;
 		if (hp->h_to == NULL && value("interactive") != NULL)
 			t &= ~GNL, getfields |= GTO;
-		if (value("bsdcompat") == NULL && value("interactive")) {
+		if (value("bsdcompat") == NULL && value("askatend") == NULL &&
+				value("interactive")) {
 			if (hp->h_bcc == NULL && value("askbcc"))
 				t &= ~GNL, getfields |= GBCC;
 			if (hp->h_cc == NULL && value("askcc"))
@@ -704,7 +705,8 @@ cont:
 			 */
 			do
 				grabh(hp, GTO|GSUBJECT|GCC|GBCC,
-						value("bsdcompat") != NULL);
+						value("bsdcompat") != NULL &&
+						value("bsdorder") != NULL);
 			while (hp->h_to == NULL);
 			goto cont;
 		case 't':

@@ -8,7 +8,8 @@ The code that nail is based on contains numerous patches from OpenBSD, NetBSD,
 RedHat and Debian. Namely the OpenBSD/NetBSD developer Christos Zoulas wrote
 much of it.
 
-The maintainer and primary developer of nail is Gunnar Ritter <g-r@bigfoot.de>.
-Nail development started in February 2000 and added especially the MIME code.
+The maintainer and primary developer of nail is Gunnar Ritter
+<Gunnar.Ritter@pluto.uni-freiburg.de>. Nail development started
+in February 2000 and added especially the MIME code.
 
 See the ChangeLog for people who have contributed to nail.

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.11 (gritter) 1/10/03";
+static char sccsid[] = "@(#)list.c	2.13 (gritter) 3/28/03";
 #endif
 #endif /* not lint */
 
@@ -775,7 +775,8 @@ matchsender(str, mesg, allnet)
 		} while (cp++, *str++ != '\0');
 		return 0;
 	}
-	return !strcmp(str, nameof(&message[mesg - 1], 0));
+	return !strcmp(str, (value("showname") ? realname : skin)
+			(name1(&message[mesg - 1], 0)));
 }
 
 static int

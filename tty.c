@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.10 (gritter) 11/8/02";
+static char sccsid[] = "@(#)tty.c	2.11 (gritter) 3/30/03";
 #endif
 #endif /* not lint */
 
@@ -271,7 +271,7 @@ grabh(hp, gflags, subjfirst)
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
 	errs = 0;
-	comma = value("bsdcompat") ? 0 : GCOMMA;
+	comma = value("bsdcompat") || value("bsdmsgs") ? 0 : GCOMMA;
 #ifndef TIOCSTI
 	ttyset = 0;
 #endif

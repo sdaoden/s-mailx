@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.16 (gritter) 11/30/02";
+static char sccsid[] = "@(#)sendout.c	2.19 (gritter) 4/9/03";
 #endif
 #endif /* not lint */
 
@@ -61,7 +61,7 @@ static char	*send_boundary;
 
 static char	*makeboundary __P((void));
 static char	*getencoding __P((int));
-static void	fixhead __P((struct header *, struct name *));
+static struct name	*fixhead __P((struct header *, struct name *, int));
 static int	put_signature __P((FILE *, int));
 static int	attach_file __P((struct attachment *, FILE *));
 static int	make_multipart __P((struct header *, int, FILE *, FILE *,
@@ -153,12 +153,13 @@ getencoding(convert)
  * Fix the header by glopping all of the expanded names from
  * the distribution list into the appropriate fields.
  */
-static void
-fixhead(hp, tolist)
+static struct name *
+fixhead(hp, tolist, addauto)
 	struct header *hp;
 	struct name *tolist;
 {
 	struct name *np;
+	char	*cp;
 
 	hp->h_to = NIL;
 	hp->h_cc = NIL;
@@ -173,6 +174,17 @@ fixhead(hp, tolist)
 		else if ((np->n_type & GMASK) == GBCC)
 			hp->h_bcc =
 				cat(hp->h_bcc, nalloc(np->n_name, np->n_type));
+	if (addauto && (cp = value("autocc")) != NULL && *cp) {
+		np = usermap(checkaddrs(extract(cp, GCC)));
+		hp->h_cc = cat(hp->h_cc, nalloc(np->n_name, np->n_type));
+		tolist = cat(tolist, nalloc(np->n_name, np->n_type));
+	}
+	if (addauto && (cp = value("autobcc")) != NULL && *cp) {
+		np = usermap(checkaddrs(extract(cp, GBCC)));
+		hp->h_bcc = cat(hp->h_bcc, nalloc(np->n_name, np->n_type));
+		tolist = cat(tolist, nalloc(np->n_name, np->n_type));
+	}
+	return tolist;
 }
 
 
@@ -779,7 +791,8 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 	if ((mtf = collect(hp, printheaders, quote, quotefile, tflag)) == NULL)
 		return;
 	if (value("interactive") != NULL) {
-		if ((value("bsdcompat") && (value("askcc") != NULL ||
+		if (((value("bsdcompat") || value("askatend"))
+					&& (value("askcc") != NULL ||
 					value("askbcc") != NULL)) ||
 				value("askattach") != NULL) {
 			if (value("askcc") != NULL)
@@ -797,7 +810,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 		if (hp->h_subject == NULL)
 			printf(catgets(catd, CATSET, 184,
 				"No message, no subject; hope that's ok\n"));
-		else if (value("bsdcompat"))
+		else if (value("bsdcompat") || value("bsdmsgs"))
 			printf(catgets(catd, CATSET, 185,
 				"Null message body; hope that's ok\n"));
 	}
@@ -811,7 +824,7 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 		printf(catgets(catd, CATSET, 186, "No recipients specified\n"));
 		senderr++;
 	}
-	fixhead(hp, to);
+	to = fixhead(hp, to, 1);
 	if ((nmtf = infix(hp, mtf)) == (FILE *)NULL) {
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
 		perror("");
@@ -1032,7 +1045,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 			return 1;
 		gotcha++;
 	}
-	if (value("bsdcompat") == NULL)
+	if (value("bsdcompat") == NULL && value("bsdorder") == NULL)
 		FMT_CC_AND_BCC
 	if (hp->h_subject != NULL && w & GSUBJECT) {
 		fwrite("Subject: ", sizeof (char), 9, fo);
@@ -1059,7 +1072,7 @@ puthead(hp, fo, w, convert, contenttype, charset)
 		gotcha++;
 		fwrite("\n", sizeof (char), 1, fo);
 	}
-	if (value("bsdcompat"))
+	if (value("bsdcompat") || value("bsdorder"))
 		FMT_CC_AND_BCC
 	if (w & GMSGID && stealthmua == 0)
 		message_id(fo), gotcha++;
@@ -1275,7 +1288,7 @@ struct name *to;
 	head.h_to = to;
 	head.h_cc = head.h_bcc = head.h_ref = head.h_smopts = NULL;
 	head.h_attach = NULL;
-	fixhead(&head, to);
+	to = fixhead(&head, to, 0);
 	if (infix_fw(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;
 		rewind(nfo);

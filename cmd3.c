@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.15 (gritter) 11/8/02";
+static char sccsid[] = "@(#)cmd3.c	2.16 (gritter) 3/30/03";
 #endif
 #endif /* not lint */
 
@@ -510,7 +510,7 @@ set(v)
 	char **ap, **p;
 	int errs, h, s;
 	FILE *obuf = stdout;
-	int bsdcompat = (value("bsdcompat") != NULL);
+	int bsdset = value("bsdcompat") != NULL || value("bsdset") != NULL;
 
 	(void)&cp;
 	(void)&ap;
@@ -539,7 +539,7 @@ set(v)
 			}
 		}
 		for (p = ap; *p != NULL; p++) {
-			if (bsdcompat)
+			if (bsdset)
 				fprintf(obuf, "%s\t%s\n", *p, value(*p));
 			else {
 				if ((cp = value(*p)) != NULL && *cp)
@@ -729,7 +729,7 @@ file(v)
 		return 1;
 	if (i > 0 && value("emptystart") == NULL)
 		return 1;
-	announce(value("bsdcompat") != NULL);
+	announce(value("bsdcompat") != NULL || value("bsdannounce") != NULL);
 	return 0;
 }
 
