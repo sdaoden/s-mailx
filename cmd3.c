@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -625,12 +625,16 @@ file(v)
 	void *v;
 {
 	char **argv = v;
+	int i;
 
 	if (argv[0] == NOSTR) {
 		newfileinfo();
 		return 0;
 	}
-	if (setfile(*argv) < 0)
+	i = setfile(*argv);
+	if (i < 0)
+		return 1;
+	if (i > 0 && value("emptystart") == NULL)
 		return 1;
 	announce();
 	return 0;
@@ -820,10 +824,10 @@ alternates(v)
 }
 
 /*
- * Forward a message list to a third person.
+ * Do the real work of forwarding.
  */
 int
-forwardcmd(v)
+forward1(v, add_resent)
 void *v;
 {
 	char *name, *str;
@@ -852,8 +856,28 @@ void *v;
 	sn.n_name = name;
 	to = usermap(&sn);
 	for (ip = msgvec; *ip && ip - msgvec < msgcount; ip++) {
-		if (forward_msg(&message[*ip - 1], to) != 0)
+		if (forward_msg(&message[*ip - 1], to, add_resent) != 0)
 			return 1;
 	}
 	return 0;
+}
+
+/*
+ * Forward a message list to a third person.
+ */
+int
+forwardcmd(v)
+void *v;
+{
+	return forward1(v, 1);
+}
+
+/*
+ * Forward a message list to a third person without adding headers.
+ */
+int
+Forwardcmd(v)
+void *v;
+{
+	return forward1(v, 0);
 }

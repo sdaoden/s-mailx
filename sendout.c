@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.10 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.11 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,18 +40,12 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.10 2000/05/15 00:22:13 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.11 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
-#ifdef	HAVE_SYS_UTSNAME_H
-#include <sys/utsname.h>
-#endif
-#ifdef	HAVE_SOCKETS
-#include <netdb.h>
-#endif
 
 /*
  * Mail -- a mail program
@@ -134,7 +128,8 @@ makeboundary()
 				r[i] *= (unsigned long)rand();
 		}
 	}
-	sprintf(bound, "%.5s%.5s-=-%.5s%.5s-CUT-HERE-%.5s%.5s-=-%.5s%.5s",
+	snprintf(bound, 73,
+			"%.5s%.5s-=-%.5s%.5s-CUT-HERE-%.5s%.5s-=-%.5s%.5s",
 			itob36((unsigned)r[0], b[0]),
 			itob36((unsigned)r[1], b[1]),
 			itob36((unsigned)r[2], b[2]),
@@ -550,10 +545,11 @@ sendmail(v)
 	return(0);
 }
 
-/* Start the Mail Transfer Agent
+/*
+ * Start the Mail Transfer Agent
  * mailing to namelist and stdin redirected to input.
  */
-void
+int
 start_mta(to, mailargs, input)
 struct name *to, *mailargs;
 FILE* input;
@@ -561,15 +557,18 @@ FILE* input;
 	char **args, **t;
 	pid_t pid;
 	sigset_t nset;
-	char *cp;
+	char *cp, *smtp;
 
-	args = unpack(cat(mailargs, to));
-	if (debug) {
-		printf("Sendmail arguments:");
-		for (t = args; *t != NOSTR; t++)
-			printf(" \"%s\"", *t);
-		printf("\n");
-		return;
+	smtp = value("smtp");
+	if (smtp == NULL) {
+		args = unpack(cat(mailargs, to));
+		if (debug) {
+			printf("Sendmail arguments:");
+			for (t = args; *t != NOSTR; t++)
+				printf(" \"%s\"", *t);
+			printf("\n");
+			return 0;
+		}
 	}
 	/*
 	 * Fork, set up the temporary mail file as standard
@@ -580,7 +579,7 @@ FILE* input;
 	if (pid == -1) {
 		perror("fork");
 		savedeadletter(input);
-		return;
+		return 1;
 	}
 	if (pid == 0) {
 		sigemptyset(&nset);
@@ -590,19 +589,28 @@ FILE* input;
 		sigaddset(&nset, SIGTSTP);
 		sigaddset(&nset, SIGTTIN);
 		sigaddset(&nset, SIGTTOU);
-		prepare_child(&nset, fileno(input), -1);
-		if ((cp = value("sendmail")) != NOSTR)
-			cp = expand(cp);
-		else
-			cp = _PATH_SENDMAIL;
-		execv(cp, args);
-		perror(cp);
+		if (smtp != NULL) {
+			prepare_child(&nset, 0, 1);
+			if (smtp_mta(smtp, to, input) == 0)
+				_exit(0);
+		} else {
+			prepare_child(&nset, fileno(input), -1);
+			if ((cp = value("sendmail")) != NOSTR)
+				cp = expand(cp);
+			else
+				cp = _PATH_SENDMAIL;
+			execv(cp, args);
+			perror(cp);
+		}
+		savedeadletter(input);
+		fputs(". . . message not sent.\n", stderr);
 		_exit(1);
 	}
 	if (value("verbose") != NOSTR)
 		(void) wait_child(pid);
 	else
 		free_child(pid);
+	return 0;
 }
 
 /*
@@ -699,7 +707,6 @@ message_id(fo)
 FILE *fo;
 {
 	static unsigned long msgc;
-	char *hostname;
 	time_t t;
 	char *fromaddr;
 	int rd;
@@ -708,14 +715,6 @@ FILE *fo;
 	char pidstr[sizeof(pid_t) * 2+ 1];
 	char countstr[sizeof(msgc) * 2 + 1];
 	char randstr[sizeof(randbuf) * 2+ 1];
-#if defined (HAVE_UNAME)
-	struct utsname ut;
-#elif defined (HAVE_GETHOSTNAME)
-	char host__name[MAXHOSTNAMELEN];
-#endif
-#ifdef	HAVE_SOCKETS
-	struct hostent *hent;
-#endif
 
 
 	msgc++;
@@ -741,22 +740,7 @@ FILE *fo;
 			&& (fromaddr = strchr(fromaddr, '@'))) {
 		fprintf(fo, "%s>\n", fromaddr);
 	} else {
-#if defined (HAVE_UNAME)
-		uname(&ut);
-		hostname = ut.nodename;
-#elif defined (HAVE_GETHOSTNAME)
-		gethostname(host__name, MAXHOSTNAMELEN);
-		hostname = host__name;
-#else
-		hostname = "unknown";
-#endif
-#ifdef	HAVE_SOCKETS
-		hent = gethostbyname(hostname);
-		if (hent != NULL) {
-			hostname = hent->h_name;
-		}
-#endif
-		fprintf(fo, "@%s>\n", hostname);
+		fprintf(fo, "@%s>\n", hostname());
 	}
 }
 
@@ -809,7 +793,7 @@ puthead(hp, fo, w, convert)
 	int w;
 {
 	int gotcha;
-	char *addr;
+	char *addr, *cp;
 	int stealthmua;
 
 
@@ -824,7 +808,9 @@ puthead(hp, fo, w, convert)
 	if (w & GIDENT) {
 		addr = value("from");
 		if (addr != NULL) {
-			fprintf(fo, "Sender: %s\n", username());
+			if ((cp = value("smtp")) == NULL
+					|| strcmp(cp, "localhost") == 0)
+				fprintf(fo, "Sender: %s\n", username());
 			fwrite("From: ", sizeof(char), 6, fo);
 			mime_write(addr, sizeof(char), strlen(addr), fo,
 					convert == CONV_TODISP ?
@@ -902,13 +888,13 @@ fmt(str, np, fo, comma)
 	FILE *fo;
 	int comma;
 {
-	int col, len;
+	int col, len, count = 0;
 	int is_to = 0;
 
 	comma = comma ? 1 : 0;
 	col = strlen(str);
 	if (col) {
-		mime_write(str, sizeof(char), strlen(str), fo, CONV_TOHDR, 0);
+		fwrite(str, sizeof(char), strlen(str), fo);
 		if ((col == 3 && strcasecmp(str, "to:") == 0) ||
 			(col == 10 && strcasecmp(str, "Resent-To:") == 0))
 			is_to = 1;
@@ -920,16 +906,17 @@ fmt(str, np, fo, comma)
 			comma = 0;
 		len = strlen(np->n_name);
 		col++;		/* for the space */
-		if (col + len + comma > 72 && col > 4) {
+		if (count && col + len + comma > 72 && col > 4) {
 			fputs("\n    ", fo);
 			col = 4;
 		} else
 			putc(' ', fo);
-		mime_write(np->n_name, sizeof(char), strlen(np->n_name),
-				fo, CONV_TOHDR, 0);
+		len = mime_write(np->n_name, sizeof(char), len, fo,
+				CONV_TOHDR, 0);
 		if (comma && !(is_to && isfileaddr(np->n_flink->n_name)))
 			putc(',', fo);
 		col += len + comma;
+		count++;
 	}
 	putc('\n', fo);
 }
@@ -938,13 +925,13 @@ fmt(str, np, fo, comma)
  * Rewrite a message for forwarding, adding the Resent-Headers.
  */
 static int
-infix_fw(fi, fo, mp, to)
+infix_fw(fi, fo, mp, to, add_resent)
 FILE *fi, *fo;
 struct message *mp;
 struct name *to;
 {
 	long count;
-	char buf[LINESIZE], *cp;
+	char buf[LINESIZE], *cp, *cp2;
 	size_t c;
 
 	count = mp->m_size;
@@ -969,26 +956,34 @@ struct name *to;
 	 * has headers at all.
 	 */
 	if (count > 0) {
-		fputs("Resent-", fo);
-		date_field(fo);
-		cp = value("from");
-		if (cp != NULL) {
-			fprintf(fo, "Resent-Sender: %s\n", username());
-			fwrite("Resent-From: ", sizeof(char), 13, fo);
-			mime_write(cp, sizeof *cp, strlen(cp), fo,
-					CONV_TOHDR, 0);
-			fputc('\n', fo);
+		if (add_resent) {
+				fputs("Resent-", fo);
+			date_field(fo);
+			cp = value("from");
+			if (cp != NULL) {
+				if ((cp2 = value("smtp")) == NULL
+					|| strcmp(cp2, "localhost") == 0)
+					fprintf(fo, "Resent-Sender: %s\n",
+							username());
+				fwrite("Resent-From: ", sizeof(char), 13, fo);
+				mime_write(cp, sizeof *cp, strlen(cp), fo,
+						CONV_TOHDR, 0);
+				fputc('\n', fo);
+			}
+			cp = value("replyto");
+			if (cp != NULL) {
+				fwrite("Resent-Reply-To: ", sizeof(char),
+						10, fo);
+				mime_write(cp, sizeof(char), strlen(cp), fo,
+						CONV_TOHDR, 0);
+				fputc('\n', fo);
+			}
+			fmt("Resent-To:", to, fo, 1);
+			if (value("stealthmua") == NULL) {
+				fputs("Resent-", fo);
+				message_id(fo);
+			}
 		}
-		cp = value("replyto");
-		if (cp != NULL) {
-			fwrite("Resent-Reply-To: ", sizeof(char), 10, fo);
-			mime_write(cp, sizeof(char), strlen(cp), fo,
-					CONV_TOHDR, 0);
-			fputc('\n', fo);
-		}
-		fmt("Resent-To:", to, fo, 1);
-		fputs("Resent-", fo);
-		message_id(fo);
 		fputc('\n', fo);
 		/*
 		 * Write the message body.
@@ -1008,7 +1003,7 @@ struct name *to;
 }
 
 int
-forward_msg(mp, to)
+forward_msg(mp, to, add_resent)
 struct message *mp;
 struct name *to;
 {
@@ -1029,7 +1024,7 @@ struct name *to;
 	head.h_cc = head.h_bcc = head.h_ref = head.h_attach = head.h_smopts
 		= NULL;
 	fixhead(&head, to);
-	if (infix_fw(ibuf, nfo, mp, head.h_to) != 0) {
+	if (infix_fw(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		rewind(nfo);
 		savedeadletter(nfi);
 		fputs(". . . message not sent.\n", stderr);

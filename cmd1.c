@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.5 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.6 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.5 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.6 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -217,7 +217,8 @@ printhead(mesg)
 	if (mp->m_flag & MBOX)
 		dispc = 'M';
 	parse(headline, &hl, pbuf);
-	sprintf(wcount, "%3d/%-5u", mp->m_lines, (unsigned int)mp->m_size);
+	snprintf(wcount, LINESIZE, "%3d/%-5u", mp->m_lines,
+			(unsigned int)mp->m_size);
 	subjlen = scrnwidth - 50 - strlen(wcount);
 	if (subjlen > out.l)
 		subjlen = out.l;

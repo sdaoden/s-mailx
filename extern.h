@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.8 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.9 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.8 2000/05/15 00:22:13 gunnar Exp $
+ *	$Id: extern.h,v 1.9 2000/05/29 00:29:22 gunnar Exp $
  */
 
 struct name;
@@ -88,6 +88,7 @@ int	 Respond __P((void *));
 int	 Type __P((void *));
 int	 Pipecmd __P((void *));
 int	 pipecmd __P((void *));
+int	 Forwardcmd __P((void *));
 int	 forwardcmd __P((void *));
 int	 _Respond __P((int []));
 int	 _respond __P((int *));
@@ -198,6 +199,14 @@ void	 panic __P((const char *, ...))
 #else
     ;
 #endif
+#ifndef	HAVE_SNPRINTF
+int	 snprintf __P((char *, size_t, const char *, ...))
+#ifdef	__GNUC__
+    __attribute__((__format__(__printf__,1,2),__noreturn__));
+#else
+    ;
+#endif
+#endif
 struct headline;
 void	 parse __P((char [], struct headline *, char []));
 int	 pcmdlist __P((void *));
@@ -286,7 +295,9 @@ size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int));
 int	is_undisplayable __P((unsigned char));
 int	mime_check_attach __P((struct name *));
 signal_handler_t safe_signal __P((int, signal_handler_t));
-void	start_mta __P((struct name *, struct name *, FILE *));
+int	start_mta __P((struct name *, struct name *, FILE *));
 char	*foldergets __P((char *, int, FILE *));
 char	* getcmd __P((char *, int *));
-int	forward_msg __P((struct message *, struct name *));
+int	forward_msg __P((struct message *, struct name *, int));
+int	smtp_mta __P((char *, struct name *, FILE *));
+char	*hostname __P((void));

@@ -1,4 +1,4 @@
-/*	$Id: send.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: send.c,v 1.9 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,7 +40,7 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: send.c,v 1.8 2000/05/15 00:22:13 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: send.c,v 1.9 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -202,7 +202,7 @@ struct boundary *b;
 
 	bn = b->b_nlink;
 	b->b_nlink = NULL;
-	while(bn != NULL) {
+	while (bn != NULL) {
 		b = bn->b_nlink;
 		if (bn->b_str != NULL)
 			free(bn->b_str);
@@ -228,10 +228,11 @@ struct boundary *b0;
 	FILE *oldobuf = (FILE*)-1, *origobuf = (FILE*)-1;
 	char line[LINESIZE];
 	char *filename = (char*)-1;
-	int c = 0, part = 0, error_return = 0;
+	int c = 0, part = 0, error_return = 0, is_cont = 0;
 	char *boundend;
 	struct boundary *b = b0;
 	char *(*f_gets) __P((char *s, int size, FILE *stream));
+	long now;
 
 	if (action == CONV_NONE)
 		f_gets = fgets;
@@ -298,6 +299,13 @@ send_multi_nobound:
 		switch (mime_content) {
 		case MIME_SUBHDR:
 			if (*line == '\n') {
+				if (new_content == MIME_822
+					&& (action == CONV_TODISP
+						|| action == CONV_QUOTE)) {
+					fputc('\n', obuf);
+					new_content = -1;
+					continue;
+				}
 				/* end of subheader */
 				mime_content = new_content;
 				if (mime_content == MIME_MULTI) {
@@ -333,6 +341,15 @@ send_multi_nobound:
 						   send_multi_end;
 						}
 					}
+				}
+				if (mime_content == MIME_822) {
+					if (action == CONV_TOFILE) {
+						time (&now);
+						fprintf(obuf, "From %s %s",
+								myname,
+								ctime(&now));
+					}
+					mime_content = MIME_MESSAGE;
 				}
 			} else if (*line == 'C' || *line == 'c') {
 				if (new_content != MIME_UNKNOWN
@@ -406,7 +423,7 @@ send_multi_nobound:
 			break;
 		case MIME_TEXT:
 		case MIME_MESSAGE:
-			if (prefix != NOSTR) {
+			if (prefix != NOSTR && is_cont == 0) {
 				if (c > 1)
 					fputs(prefix, obuf);
 				else
@@ -414,6 +431,10 @@ send_multi_nobound:
 					      sizeof *prefix,
 					prefixlen, obuf);
 			}
+			if (convert == CONV_FROMQP && *(line + c - 2) == '=')
+				is_cont = 1;
+			else
+				is_cont = 0;
 			(void)mime_write(line, sizeof *line,
 					 strlen(line), obuf,
 					 convert,
@@ -461,14 +482,12 @@ send_message(mp, obuf, doign, prefix, convert)
 	struct ignoretab *doign;
 	char *prefix;
 {
-	long count;
+	long count, now;
 	FILE *ibuf;
 	char line[LINESIZE];
 	int ishead, infld, ignoring = 0, dostat, firstline;
 	char *cp, *cp2;
-	int c = 0;
-	int length;
-	int prefixlen = 0;
+	int c = 0, length, is_cont = 0, prefixlen = 0;
 	int mime_enc, mime_content = MIME_TEXT, action;
 	char *mime_version = NULL;
 	int error_return = 0;
@@ -519,6 +538,28 @@ send_message(mp, obuf, doign, prefix, convert)
 			 * and note that we are no longer in header
 			 * fields
 			 */
+			if (mime_content == MIME_822) {
+				switch (action) {
+				case CONV_TODISP:
+				case CONV_QUOTE:
+					if (prefix != NOSTR)
+						(void) fwrite(prefix,
+							  sizeof *prefix,
+							prefixlen, obuf);
+					fputc('\n', obuf);
+					continue;
+				case CONV_TOFILE:
+					if (action == CONV_TOFILE) {
+						time (&now);
+						fprintf(obuf, "From %s %s",
+								myname,
+								ctime(&now));
+					}
+					/* FALL THROUGH */
+				default:
+					mime_content = MIME_MESSAGE;
+				}
+			}
 			if (dostat) {
 				statusput(mp, obuf, prefix);
 				dostat = 0;
@@ -689,7 +730,7 @@ send_message(mp, obuf, doign, prefix, convert)
 			break;
 		}
 		count -= c = strlen(line);
-		if (prefix != NOSTR) {
+		if (prefix != NOSTR && is_cont == 0) {
 			/*
 			 * Strip trailing whitespace from prefix
 			 * if line is blank.
@@ -700,6 +741,10 @@ send_message(mp, obuf, doign, prefix, convert)
 				(void) fwrite(prefix, sizeof *prefix,
 						prefixlen, obuf);
 		}
+		if (convert == CONV_FROMQP && *(line + c - 2) == '=')
+			is_cont = 1;
+		else
+			is_cont = 0;
 		(void)mime_write(line, sizeof *line, c,
 				 obuf, convert, action == CONV_TODISP);
 		if (ferror(obuf)) {

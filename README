@@ -5,12 +5,6 @@ essential features a modern MUA must provide but to remain compatible
 with its classic ancestor. Especially, nail has the ability to send
 and receive MIME messages.
 
-To use nail, you must have a working sendmail setup or another program
-that behaves like sendmail when it reveives mail from its standard input.
-If you want to read from a POP or IMAP mailbox, you also have to set up
-a program like e.g. fetchmail since nail does not contain any network
-client code.
-
 To compile nail, look at the file `INSTALL' that contains the
 generic instructions for autoconf builds.
 
@@ -21,13 +15,17 @@ the defaults still have the compatibility values of fifteen years ago.
 For batch usage, it may be more convenient to pass the configuration as
 environment variables only, as e.g. `from=user@host nail -n' does.
 
+If you want to use nail with a POP or IMAP mailbox, you have to set up
+a program like e.g. fetchmail since nail does not contain such network
+client code.
+
 Nail has been built successfully on the following operating systems:
 
 Linux 		2.2 with glibc 2.1; 2.0 with libc5
 FreeBSD		4.0-STABLE
+Solaris		7; 2.6
 UnixWare	7.0.1; 2.1.2
 OpenServer	5.0.5
-Solaris		7; 2.6
 Digital Unix	4.0
 
 If you can build it on other operating systems, please contact me and

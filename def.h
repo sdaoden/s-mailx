@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: def.h,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.7 2000/05/01 22:27:04 gunnar Exp $
+ *	$Id: def.h,v 1.8 2000/05/29 00:29:22 gunnar Exp $
  */
 
 /*
@@ -45,34 +45,6 @@
  */
 
 #include "config.h"
-#ifdef	HAVE_SYS_STAT_H
-#include <sys/stat.h>
-#endif
-
-#ifdef	TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#ifdef	HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <termios.h>
-#ifdef	HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#ifdef	HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
-#ifdef	STDC_HEADERS
-#include <stdlib.h>
-#include <string.h>
-#endif
-#include <stdio.h>
-#include <ctype.h>
 
 #define	APPEND				/* New mail goes to end of mailbox */
 
@@ -134,6 +106,7 @@ enum {
 enum {
 	MIME_UNKNOWN,			/* unknown content */
 	MIME_SUBHDR,			/* inside a multipart subheader */
+	MIME_822,			/* message/rfc822 content */
 	MIME_MESSAGE,			/* message/ content */
 	MIME_TEXT,			/* text/ content */
 	MIME_MULTI,			/* multipart/ content */

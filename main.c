@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $	*/
+/*	$Id: main.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 /*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
@@ -46,7 +46,7 @@ static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: main.c,v 1.7 2000/05/15 00:22:13 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: main.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -295,8 +295,11 @@ main(argc, argv)
 	 */
 	if (ef == NOSTR)
 		ef = "%";
-	if (setfile(ef) < 0 && value("emptystart") == NULL)
+	i = setfile(ef);
+	if (i < 0)
 		exit(1);		/* error already reported */
+	if (i > 0 && value("emptystart") == NULL)
+		exit(1);
 	if (sigsetjmp(hdrjmp, 1) == 0) {
 		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			safe_signal(SIGINT, hdrstop);

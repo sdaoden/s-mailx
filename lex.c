@@ -1,4 +1,4 @@
-/*	$Id: lex.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: lex.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 /*	NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: lex.c,v 1.7 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: lex.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -158,8 +158,9 @@ setfile(name)
 	sawcom = 0;
 	if (!edit && msgcount == 0) {
 nomail:
-		fprintf(stderr, "No mail for %s\n", who);
-		return -1;
+		if (value("emptystart") == NULL )
+			fprintf(stderr, "No mail for %s\n", who);
+		return 1;
 	}
 	return(0);
 }
@@ -623,12 +624,8 @@ newfileinfo()
 	if (getfold(fname, BUFSIZ-1) >= 0) {
 		strcat(fname, "/");
 		if (strncmp(fname, mailname, strlen(fname)) == 0) {
-#ifdef	HAVE_SNPRINTF
 			snprintf(zname, BUFSIZ, "+%s",
 					mailname + strlen(fname));
-#else
-			sprintf(zname, "+%s", mailname + strlen(fname));
-#endif
 			ename = zname;
 		}
 	}

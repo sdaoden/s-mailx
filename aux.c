@@ -1,4 +1,4 @@
-/*	$Id: aux.c,v 1.4 2000/05/01 22:27:04 gunnar Exp $	*/
+/*	$Id: aux.c,v 1.5 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 /*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 
@@ -41,13 +41,13 @@ static char sccsid[]  = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: aux.c,v 1.4 2000/05/01 22:27:04 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: aux.c,v 1.5 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
-#include <utime.h>
 #include "rcv.h"
 #include "extern.h"
+#include <utime.h>
 
 /*
  * Mail -- a mail program
@@ -92,15 +92,43 @@ save2str(str, old)
 	return new;
 }
 
-/*
- * Announce a fatal error and die.
- */
 #if __STDC__
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
 
+#ifndef	HAVE_SNPRINTF
+/*
+ * Lazy vsprintf wrapper.
+ */
+int
+#if __STDC__
+snprintf(char *str, size_t size, const char *format, ...)
+#else
+snprintf(str, size, format, va_alist)
+char *str;
+size_t size;
+const char *format;
+va_dcl
+#endif
+{
+	va_list ap;
+	int ret;
+#if __STDC__
+	va_start(ap, format);
+#else
+	va_start(ap);
+#endif
+	ret = vsprintf(str, format, ap);
+	va_end(ap);
+	return ret;
+}
+#endif	/* !HAVE_SNPRINTF */
+
+/*
+ * Announce a fatal error and die.
+ */
 void
 #if __STDC__
 panic(const char *fmt, ...)

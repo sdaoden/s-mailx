@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.11 2000/05/02 02:17:37 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.12 2000/05/29 00:29:22 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -36,7 +36,7 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.11 2000/05/02 02:17:37 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.12 2000/05/29 00:29:22 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -229,7 +229,7 @@ mime_getcharset(convert)
 		 */
 		charset = value("charset7");
 		if (charset == NULL) {
-			charset = "US-ASCII";
+			charset = "us-ascii";
 		}
 	} else {
 		charset = value("charset");
@@ -287,6 +287,8 @@ char *h;
 		return MIME_TEXT;
 	if (strncasecmp(p, "text/", 5) == 0)
 		return MIME_TEXT;
+	if (strncasecmp(p, "message/rfc822", 14) == 0)
+		return MIME_822;
 	if (strncasecmp(p, "message/", 8) == 0)
 		return MIME_MESSAGE;
 	if (strncasecmp(p, "multipart/", 10) == 0)
@@ -733,7 +735,7 @@ FILE *fo;
 					free(cout.s);
 					break;
 				} else {
-					if (col > 0) {
+					if (col) {
 						fprintf(fo, "\n ");
 						sz += 2;
 						col = 0;
@@ -745,7 +747,7 @@ FILE *fo;
 				}
 			}
 		} else {
-			if (wend - wbeg > maxcol - col) {
+			if (col && wend - wbeg > maxcol - col) {
 				fwrite("\n ", sizeof(char), 2, fo);
 				sz += 2;
 				col = 0;

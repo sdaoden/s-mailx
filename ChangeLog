@@ -1,3 +1,12 @@
+[9.12] released 2000-05-29
+* Do not print the indentprefix if a line to quote is being continued
+  in quoted-printable
+* Omit the "No mail for ..." message if variable `emptystart' is set
+* Implemented handling of message/rfc822 format
+* Added SMTP client code
+* Added the `Forward' command
+* Avoid doubling line breaks when printing long addresses in header
+
 [9.11] released 2000-05-15
 * Do a fflush() before executing a ~| command
 * Make a backup copy of an already installed nail.rc file

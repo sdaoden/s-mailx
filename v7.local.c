@@ -1,4 +1,4 @@
-/*	$Id: v7.local.c,v 1.6 2000/04/21 19:56:24 gunnar Exp $	*/
+/*	$Id: v7.local.c,v 1.7 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp 	*/
 /*	NetBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)v7.local.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: v7.local.c,v 1.7 1996/06/08 19:48:44 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: v7.local.c,v 1.6 2000/04/21 19:56:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: v7.local.c,v 1.7 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -71,11 +71,7 @@ findmail(user, buf, size)
 	char *mbox;
 
 	if (!(mbox = getenv("MAIL"))) {
-#ifdef	HAVE_SNPRINTF
 		(void)snprintf(buf, size, "%s/%s", _PATH_MAILDIR, user);
-#else
-		(void)sprintf(buf, "%s/%s", _PATH_MAILDIR, user);
-#endif
 	} else {
 		(void)strncpy(buf, mbox, size);
 		buf[size-1]='\0';

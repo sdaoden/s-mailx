@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.7 2000/04/21 20:03:29 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -35,7 +35,7 @@
 #if 0
 static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.7 2000/04/21 20:03:29 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.8 2000/05/29 00:29:22 gunnar Exp $";
 #endif
 #endif
 
@@ -89,6 +89,8 @@ gid_t gid;
 
 
 static int create_exclusive __P((const char *));
+
+#define	APID_SZ	40	/* sufficient for storign 128 bits pids */
 /*
  * Create a unique file. O_EXCL does not really work over NFS so we follow
  * the following trick: [Inspired by  S.R. van den Berg]
@@ -105,7 +107,7 @@ create_exclusive(fname)
 {
 	char path[MAXPATHLEN];
 	char *hostname;
-	char apid[40]; /* sufficient for storign 128 bits pids */
+	char apid[APID_SZ];
 	const char *ptr;
 	time_t t;
 	pid_t pid;
@@ -140,13 +142,8 @@ create_exclusive(fname)
 	else
 		ptr++;
 
-#ifdef	HAVE_SNPRINTF
-	(void) snprintf(path, sizeof(path), "%.*s.%s.%x", 
+	(void) snprintf(path, sizeof path, "%.*s.%s.%x", 
 	    ptr - fname, fname, hostname, cookie);
-#else
-	(void) sprintf(path, "%.*s.%s.%x", 
-	    ptr - fname, fname, hostname, cookie);
-#endif
 
 	/*
 	 * We try to create the unique filename.
@@ -156,7 +153,7 @@ create_exclusive(fname)
 		fd = open(path, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL|O_SYNC, 0);
 		setgid(realgid);
 		if (fd != -1) {
-			sprintf(apid,"%d",(int)getpid());
+			snprintf(apid, APID_SZ, "%d", (int)getpid());
 			write(fd, apid, strlen(apid));
 			(void) close(fd);
 			break;
@@ -228,11 +225,7 @@ dot_lock(fname, pollinterval, fp, msg)
 	sigaddset(&nset, SIGTSTP);
 	sigaddset(&nset, SIGCHLD);
 
-#ifdef	HAVE_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
-#else
-	(void) sprintf(path, "%s.lock", fname);
-#endif
 
 	for (i=0;i<15;i++) {
 		(void) sigprocmask(SIG_BLOCK, &nset, &oset);
@@ -270,11 +263,7 @@ dot_unlock(fname)
 	if (maildir_access(fname) != 0)
 		return;
 
-#ifdef	HAVE_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
-#else
-	(void) sprintf(path, "%s.lock", fname);
-#endif
 	perhaps_setgid(path, effectivegid);
 	(void) unlink(path);
 	setgid(realgid);
