@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.4 (gritter) 9/23/02";
+static char sccsid[] = "@(#)cmd3.c	2.5 (gritter) 10/11/02";
 #endif
 #endif /* not lint */
 
@@ -720,7 +720,7 @@ file(v)
 		newfileinfo();
 		return 0;
 	}
-	i = setfile(*argv);
+	i = setfile(*argv, 0);
 	if (i < 0)
 		return 1;
 	if (i > 0 && value("emptystart") == NULL)
@@ -981,4 +981,23 @@ Forwardcmd(v)
 void *v;
 {
 	return forward1(v, 0);
+}
+
+/*
+ * 'newmail' or 'inc' command: Check for new mail without writing old
+ * mail back.
+ */
+/*ARGSUSED*/
+int
+newmail(v)
+void *v;
+{
+	int omsgcount = msgcount;
+	int val;
+
+	if ((val = setfile(mailname, 1)) == 0) {
+		newfileinfo();
+		setdot(&message[omsgcount]);
+	}
+	return val;
 }

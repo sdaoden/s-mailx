@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)head.c	2.1 (gritter) 9/1/02";
+static char sccsid[] = "@(#)head.c	2.2 (gritter) 9/30/02";
 #endif
 #endif /* not lint */
 
@@ -50,16 +50,15 @@ static char sccsid[] = "@(#)head.c	2.1 (gritter) 9/1/02";
  *
  * Routines for processing and detecting headlines.
  */
-static void	fail __P((char [], char []));
 static char	*copyin __P((char *, char **));
-static int	is_date __P((char []));
 static int	cmatch __P((char *, char *));
 static char	*nextword __P((char *, char *));
 
 /*
  * See if the passed line buffer is a mail header.
- * Return true if yes.  Note the extreme pains to
- * accomodate all funny formats.
+ * Return true if yes.  POSIX.2 leaves the content
+ * following 'From ' unspecified, so don't care about
+ * it.
  */
 int
 is_head(linebuf, linelen)
@@ -67,50 +66,12 @@ is_head(linebuf, linelen)
 	size_t linelen;
 {
 	char *cp;
-	struct headline hl;
-	char *parbuf;
 
 	cp = linebuf;
 	if (*cp++ != 'F' || *cp++ != 'r' || *cp++ != 'o' || *cp++ != 'm' ||
 	    *cp++ != ' ')
 		return (0);
-	parbuf = ac_alloc(linelen + 1);
-	parse(linebuf, linelen, &hl, parbuf);
-	if (hl.l_from == NULL || hl.l_date == NULL) {
-		fail(linebuf, catgets(catd, CATSET, 85,
-					"No from or date field"));
-		ac_free(parbuf);
-		return (0);
-	}
-	/* be very tolerant about the date */
-	if (!is_date(hl.l_date)) {
-#if 0
-		fail(linebuf, "Date field not legal date");
-		return (0);
-#else
-		fprintf(stderr, catgets(catd, CATSET, 86,
-				"Date field not legal date, ignored\n"));
-		/* nothing */
-#endif
-	}
-	/*
-	 * I guess we got it!
-	 */
-	ac_free(parbuf);
-	return (1);
-}
-
-/*ARGSUSED*/
-static void
-fail(linebuf, reason)
-	char linebuf[], reason[];
-{
-
-	/*
-	if (value("debug") == NULL)
-		return;
-	fprintf(stderr, "\"%s\"\nnot a header because %s\n", linebuf, reason);
-	*/
+	return(1);
 }
 
 /*
@@ -148,6 +109,8 @@ parse(line, linelen, hl, pbuf)
 	}
 	if (cp != NULL)
 		hl->l_date = copyin(cp, &sp);
+	else
+		hl->l_date = catgets(catd, CATSET, 213, "<Unknown date>");
 	ac_free(word);
 }
 
@@ -172,6 +135,7 @@ copyin(src, space)
 	return (top);
 }
 
+#ifdef	notdef
 /*
  * Test to see if the passed string is a ctime(3) generated
  * date string as documented in the manual.  The template
@@ -283,6 +247,7 @@ cmatch(cp, tp)
 		return 0;
 	return (1);
 }
+#endif	/* notdef */
 
 /*
  * Collect a liberal (space, tab delimited) word into the word buffer

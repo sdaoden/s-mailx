@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	2.2 (gritter) 9/15/02
+ *	Sccsid @(#)glob.h	2.3 (gritter) 10/11/02
  */
 
 /*
@@ -75,6 +75,7 @@ _E const char *version;			/* version string */
 _E off_t mailsize;			/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *message;		/* The actual message structure */
+_E int msgspace;			/* Number of allocated struct m */
 _E struct var *variables[HSHSIZE];	/* Pointer to active var list */
 _E struct grouphead *groups[HSHSIZE];	/* Pointer to active groups */
 _E struct ignoretab ignore[2];		/* ignored and retained fields

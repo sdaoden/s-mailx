@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.4 (gritter) 9/17/02";
+static char sccsid[] = "@(#)main.c	2.5 (gritter) 10/11/02";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -384,7 +384,7 @@ usage:
 	 */
 	if (ef == NULL)
 		ef = "%";
-	i = setfile(ef);
+	i = setfile(ef, 0);
 	if (i < 0)
 		exit(1);		/* error already reported */
 	if (existonly)

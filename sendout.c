@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.4 (gritter) 9/2/02";
+static char sccsid[] = "@(#)sendout.c	2.6 (gritter) 10/14/02";
 #endif
 #endif /* not lint */
 
@@ -391,7 +391,8 @@ infix(hp, fi)
 	convert = get_mime_convert(fi, &contenttype, &charset, &isclean);
 #ifdef	HAVE_ICONV
 	tcs = gettcharset();
-	if ((isclean & MIME_HASNUL) == 0 && strcmp(charset, tcs)) {
+	if ((isclean & MIME_HASNUL) == 0 && (isclean & MIME_HIGHBIT) &&
+			strcmp(charset, tcs)) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1
@@ -498,6 +499,7 @@ infix(hp, fi)
 	}
 	(void) Fclose(nfo);
 	(void) Fclose(fi);
+	fflush(nfi);
 	rewind(nfi);
 	return(nfi);
 }
@@ -577,6 +579,7 @@ savemail(name, fi)
 	if (ferror(fo))
 		perror(name);
 	(void) Fclose(fo);
+	fflush(fi);
 	rewind(fi);
 	free(buf);
 	return (0);

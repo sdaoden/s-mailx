@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.1 (gritter) 9/1/02";
+static char sccsid[] = "@(#)lex.c	2.3 (gritter) 10/11/02";
 #endif
 #endif /* not lint */
 
@@ -66,9 +66,11 @@ static void	hangup __P((int));
  * If the first character of name is %, we are considered to be
  * editing the file, otherwise we are reading our mail which has
  * signficance for mbox and so forth.
+ *
+ * newmail: Check for new mail in the current folder only.
  */
 int
-setfile(name)
+setfile(name, newmail)
 	char *name;
 {
 	FILE *ibuf;
@@ -79,25 +81,31 @@ setfile(name)
 	static int shudclob;
 	char *tempMesg;
 	extern int errno;
+	size_t offset;
+	int omsgcount;
 
 	if ((name = expand(name)) == NULL)
 		return -1;
 
 	if ((ibuf = Fopen(name, "r")) == (FILE *)NULL) {
-		if (!isedit && errno == ENOENT)
+		if ((!isedit && errno == ENOENT) || newmail)
 			goto nomail;
 		perror(name);
 		return(-1);
 	}
 
 	if (fstat(fileno(ibuf), &stb) < 0) {
-		perror("fstat");
 		Fclose(ibuf);
+		if (newmail)
+			goto nomail;
+		perror("fstat");
 		return (-1);
 	}
 
 	if (S_ISDIR(stb.st_mode)) {
 		Fclose(ibuf);
+		if (newmail)
+			goto nomail;
 		errno = EISDIR;
 		perror(name);
 		return (-1);
@@ -105,6 +113,8 @@ setfile(name)
 		/*EMPTY*/
 	} else {
 		Fclose(ibuf);
+		if (newmail)
+			goto nomail;
 		errno = EINVAL;
 		perror(name);
 		return (-1);
@@ -118,7 +128,7 @@ setfile(name)
 	 */
 
 	holdsigs();
-	if (shudclob)
+	if (shudclob && !newmail)
 		quit();
 
 	/*
@@ -126,48 +136,81 @@ setfile(name)
 	 * and set pointers.
 	 */
 
-	readonly = 0;
-	if ((i = open(name, 1)) < 0)
-		readonly++;
-	else
-		close(i);
-	if (shudclob) {
-		fclose(itf);
-		fclose(otf);
-	}
-	shudclob = 1;
-	edit = isedit;
-	strncpy(prevfile, mailname, PATHSIZE);
-	prevfile[PATHSIZE-1]='\0';
-	if (name != mailname) {
-		strncpy(mailname, name, PATHSIZE);
-		mailname[PATHSIZE-1]='\0';
+	if (!newmail) {
+		readonly = 0;
+		if ((i = open(name, O_WRONLY)) < 0)
+			readonly++;
+		else
+			close(i);
+		if (shudclob) {
+			fclose(itf);
+			fclose(otf);
+		}
+		shudclob = 1;
+		edit = isedit;
+		strncpy(prevfile, mailname, PATHSIZE);
+		prevfile[PATHSIZE-1]='\0';
+		if (name != mailname) {
+			strncpy(mailname, name, PATHSIZE);
+			mailname[PATHSIZE-1]='\0';
+		}
+		if ((otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == (FILE *)NULL) {
+			perror(catgets(catd, CATSET, 87,
+						"temporary mail message file"));
+			exit(1);
+		}
+		(void) fcntl(fileno(otf), F_SETFD, FD_CLOEXEC);
+		if ((itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
+			perror(tempMesg);
+			exit(1);
+		}
+		(void) fcntl(fileno(itf), F_SETFD, FD_CLOEXEC);
+		rm(tempMesg);
+		Ftfree(&tempMesg);
+		msgcount = 0;
+		if (message) {
+			free(message);
+			message = NULL;
+			msgspace = 0;
+		}
+		offset = 0;
+	} else /* newmail */{
+		fseek(otf, 0L, SEEK_END);
+		fseek(ibuf, mailsize, SEEK_SET);
+		offset = mailsize;
+		omsgcount = msgcount;
 	}
 	mailsize = fsize(ibuf);
-	if ((otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == (FILE *)NULL) {
-		perror(catgets(catd, CATSET, 87,
-					"temporary mail message file"));
-		exit(1);
+	if (newmail && mailsize <= offset) {
+		relsesigs();
+		goto nomail;
 	}
-	(void) fcntl(fileno(otf), F_SETFD, FD_CLOEXEC);
-	if ((itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
-		perror(tempMesg);
-		exit(1);
-	}
-	(void) fcntl(fileno(itf), F_SETFD, FD_CLOEXEC);
-	rm(tempMesg);
-	Ftfree(&tempMesg);
-	setptr(ibuf);
+	setptr(ibuf, offset);
 	setmsize(msgcount);
 	Fclose(ibuf);
 	relsesigs();
 	sawcom = 0;
-	if (!edit && msgcount == 0) {
+	if ((!edit || newmail) && msgcount == 0) {
 nomail:
-		if (value("emptystart") == NULL )
-			fprintf(stderr, catgets(catd, CATSET, 88,
-					"No mail for %s\n"), who);
+		if (!newmail) {
+			if (value("emptystart") == NULL)
+				fprintf(stderr, catgets(catd, CATSET, 88,
+						"No mail for %s\n"), who);
+		}
 		return 1;
+	}
+	if (newmail) {
+		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		if (msgcount - omsgcount == 1)
+			printf(catgets(catd, CATSET, 214,
+				"Loaded 1 new message\n"));
+		else
+			printf(catgets(catd, CATSET, 215,
+				"Loaded %d new messages\n"),
+				msgcount - omsgcount);
+		if (value("header"))
+			while (++omsgcount <= msgcount)
+				printhead(omsgcount);
 	}
 	return(0);
 }
@@ -207,6 +250,20 @@ commands()
 		 * string space, and flush the output.
 		 */
 		if (!sourcing && value("interactive") != NULL) {
+			if (is_a_tty[0] && (value("autoinc")
+						|| value("newmail"))) {
+				struct stat st;
+
+				if (stat(mailname, &st) == 0 &&
+						st.st_size > mailsize) {
+					struct message *odot = dot;
+					int odid = did_print_dot;
+
+					setfile(mailname, 1);
+					dot = odot;
+					did_print_dot = odid;
+				}
+			}
 			reset_on_stop = 1;
 			if ((prompt = value("prompt")) == NULL)
 				prompt = value("bsdcompat") ? "& " : "? ";

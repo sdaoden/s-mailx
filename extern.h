@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.5 (gritter) 9/15/02
+ *	Sccsid @(#)extern.h	2.6 (gritter) 10/11/02
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -194,8 +194,8 @@ int	 send_message __P((struct message *, FILE *,
 int	 sendmail __P((void *));
 int	 Sendmail __P((void *));
 int	 set __P((void *));
-int	 setfile __P((char *));
-void	 setptr __P((FILE *));
+int	 setfile __P((char *, int));
+void	 setptr __P((FILE *, off_t));
 int	 shell __P((void *));
 void	 sigchild __P((int));
 int	 source __P((void *));
@@ -263,3 +263,4 @@ int	asccasecmp __P((const char *, const char *));
 int	ascncasecmp __P((const char *, const char *, size_t));
 int	get_mime_convert __P((FILE *, char **, char **, int *));
 void	newline_appended __P((void));
+int	newmail __P((void *));

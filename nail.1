@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.4 (gritter) 9/29/02
+.\"     Sccsid: @(#)nail.1	2.7 (gritter) 10/14/02
 .\"
-.TH NAIL 1 "9/29/02" "nail 10.0" "User Commands"
+.TH NAIL 1 "10/14/02" "nail 10.1" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -230,7 +230,7 @@ in the subject field (case ignored).
 .TP
 .I address
 All messages from
-.BR address .
+.IR address .
 .TP
 .B .
 The current message.
@@ -611,6 +611,10 @@ including ignored fields.
 If ignore is executed with no arguments,
 it lists the current set of ignored fields.
 .TP
+.B inc
+Same as
+.BR newmail .
+.TP
 .B list
 Prints the names of all available commands.
 .TP
@@ -630,6 +634,15 @@ Indicate that a list of messages be sent
 to mbox in your home directory when you quit.
 This is the default action for messages
 if you do not have the hold option set.
+.TP
+.B newmail
+Checks for new mail in the current folder
+without commiting any changes before.
+If new mail is present, a message is printed.
+If the
+.B header
+variable is set,
+the headers of each new message are also printed.
 .TP
 .B next
 (n) like + or CR) Goes to the next message
@@ -1112,6 +1125,10 @@ at the end of each message.
 Responding with a newline
 indicates your satisfaction with the current list.
 .TP
+.B autoinc
+Same as
+.BR newmail .
+.TP
 .B autoprint
 Causes the delete command to behave like dp \-
 thus, after deleting a message,
@@ -1201,6 +1218,10 @@ that contains the sender,
 the sender is removed from the expansion.
 Setting this option causes
 the sender to be included in the group.
+.TP
+.B newmail
+Checks for new mail in the current folder
+each time the prompt is printed.
 .TP
 .B noheader
 Setting the option noheader is the same
@@ -1508,6 +1529,7 @@ and will be displayed by the \fIset\fP command.
 Note that this is not necessarily a character set name
 that can be used in Internet messages.
 If unset, its default is the value of the charset variable.
+.TP
 .B VISUAL
 Pathname of the text editor to use
 in the visual command and ~v escape.
@@ -1531,7 +1553,8 @@ Is used as startup file instead of ~/.mailrc if set.
 .TP
 .B NAILRC
 If this variable is set and
-.B MAILRC is not set,
+.B MAILRC
+is not set,
 it is read as startup file.
 .TP
 .B TMPDIR

@@ -1,3 +1,15 @@
+[10.1] released 10/14/02
+* POSIX.2 leaves the characters following 'From ' unspecified, so the
+  presence of sender or date strings is no longer required to separate
+  messages in a folder.
+* 'inc' and 'newmail' commands, 'autoinc' and 'newmail' variables.
+* Don't use iconv() if a message contains us-ascii characters only
+  (Problem reported by Thomas Fieseler).
+* Don't report 'Held n messages in mailfile' if n == 0.
+* Don't report a 'Fatal error in process' with '!' unless bsdcompat is set.
+* Missing fflush() caused empty mails with some GNU libc versions to be
+  sent, unless SMTP was used (Problem reported by Thomas Fieseler).
+
 [10.0] released 9/29/02
 * Base64 decoding was calling malloc(0) which caused "Out of memory"
   errors on some platforms (Bugreport by Stan Tobias).

@@ -1,4 +1,4 @@
-$ Sccsid @(#)en_US	1.22 (gritter) 9/23/02
+$ Sccsid @(#)en_US	1.26 (gritter) 10/13/02
 $quote $
 $ Messages for nail, a mail user agent
 $set 1
@@ -120,18 +120,18 @@ The following ~ escapes are defined:\n\
 72 $Edit message %d [ynq]? $
 73 temporary mail edit file
 74 cannot create tempfile\n
-75 temporary file
-76 temporary file
+75 --- DELETED ---
+76 --- DELETED ---
 77 temporary file seek
-78 Insufficient memory for %d messages
-79 Message temporary file corrupted
+78 --- DELETED ---
+79 --- DELETED ---
 80 No previous file\n
 81 "%s": Expansion failed.\n
 82 "%s": No match.\n
 83 "%s": Expansion buffer overflow.\n
 84 "%s": Ambiguous.\n
-85 No from or date field
-86 Date field not legal date, ignored\n
+85 --- DELETED ---
+86 --- DELETED ---
 87 temporary mail message file
 88 No mail for %s\n
 89 Use "quit" to quit.\n
@@ -208,9 +208,9 @@ addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... \
 156 Held %d messages in %s\n
 157 Unable to lock mailbox
 158 New mail has arrived.\n
-159 Held %d message%s in %s\n
-160 $$
-161 s
+159 --- DELETED ---
+160 --- DELETED ---
+161 --- DELETED ---
 162 temporary mail quit file
 163 temporary mail quit file
 164 Saved 1 message in mbox\n
@@ -262,3 +262,6 @@ addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... \
 210 [Binary content]\n\n
 211 removed.\n
 212 updated.\n
+213 <Unknown date>
+214 Loaded 1 new message\n
+215 Loaded %d new messages\n

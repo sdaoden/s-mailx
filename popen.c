@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.1 (gritter) 9/1/02";
+static char sccsid[] = "@(#)popen.c	2.2 (gritter) 10/13/02";
 #endif
 #endif /* not lint */
 
@@ -369,7 +369,7 @@ wait_command(pid)
 	int pid;
 {
 
-	if (wait_child(pid) < 0) {
+	if (wait_child(pid) < 0 && value("bsdcompat")) {
 		printf(catgets(catd, CATSET, 154, "Fatal error in process.\n"));
 		return -1;
 	}

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.2 (gritter) 9/7/02";
+static char sccsid[] = "@(#)quit.c	2.3 (gritter) 10/13/02";
 #endif
 #endif /* not lint */
 
@@ -290,10 +290,12 @@ nolock:
 	if (Tflag != NULL)
 		Fclose(readstat);
 	if (p == msgcount && !modify && !anystat) {
-		printf(catgets(catd, CATSET, 159, "Held %d message%s in %s\n"),
-			p, p == 1 ? catgets(catd, CATSET, 160, "")
-			: catgets(catd, CATSET, 161, "s"),
-			mailname);
+		if (p == 1)
+			printf(catgets(catd, CATSET, 155,
+				"Held 1 message in %s\n"), mailname);
+		else if (p > 1)
+			printf(catgets(catd, CATSET, 156,
+				"Held %d messages in %s\n"), p, mailname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
 		return;

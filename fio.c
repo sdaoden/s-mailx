@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.6 (gritter) 9/17/02";
+static char sccsid[] = "@(#)fio.c	2.7 (gritter) 10/11/02";
 #endif
 #endif /* not lint */
 
@@ -56,8 +56,8 @@ static char sccsid[] = "@(#)fio.c	2.6 (gritter) 9/17/02";
  *
  * File I/O.
  */
-static void	makemessage __P((FILE *));
-static int	append __P((struct message *, FILE *));
+static void	makemessage __P((void));
+static void	append __P((struct message *));
 static size_t	length_of_line __P((const char *, size_t));
 static char	*fgetline_byone __P((char **, size_t *, size_t *,
 			FILE *, int, size_t));
@@ -66,47 +66,33 @@ static char	*fgetline_byone __P((char **, size_t *, size_t *,
  * Set up the input pointers while copying the mail file into /tmp.
  */
 void
-setptr(ibuf)
+setptr(ibuf, offset)
 	FILE *ibuf;
+	off_t offset;
 {
 	int c;
 	size_t count;
 	char *cp, *cp2;
 	struct message this;
-	FILE *mestmp;
-	off_t offset;
-	int maybe, inhead;
+	int maybe, inhead, thiscnt;
 	char *linebuf = NULL;
 	size_t linesize = 0, filesize;
 
-	/* Get temporary file. */
-	if ((mestmp = Ftemp(&cp, "mail.", "w+", 0600, 1)) == (FILE *)NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 74,
-				"cannot create tempfile\n"));
-		exit(1);
-	}
-	unlink(cp);
-	Ftfree(&cp);
-
-	msgcount = 0;
 	maybe = 1;
 	inhead = 0;
-	offset = 0;
+	thiscnt = 0;
 	this.m_flag = MUSED|MNEW;
 	this.m_size = 0;
 	this.m_lines = 0;
 	this.m_block = 0;
 	this.m_offset = 0;
-	filesize = mailsize;
+	filesize = mailsize - offset;
 	for (;;) {
 		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)
 				== NULL) {
-			if (append(&this, mestmp)) {
-				perror(catgets(catd, CATSET, 75,
-						"temporary file"));
-				exit(1);
-			}
-			makemessage(mestmp);
+			if (thiscnt > 0)
+				append(&this);
+			makemessage();
 			if (linebuf)
 				free(linebuf);
 			return;
@@ -123,12 +109,9 @@ setptr(ibuf)
 		if (linebuf[count - 1] == '\n')
 			linebuf[count - 1] = '\0';
 		if (maybe && linebuf[0] == 'F' && is_head(linebuf, count)) {
+			if (thiscnt++ > 0)
+				append(&this);
 			msgcount++;
-			if (append(&this, mestmp)) {
-				perror(catgets(catd, CATSET, 76,
-						"temporary file"));
-				exit(1);
-			}
 			this.m_flag = MUSED|MNEW;
 			this.m_size = 0;
 			this.m_lines = 0;
@@ -278,38 +261,26 @@ setdot(mp)
  * a dynamically allocated message structure.
  */
 static void
-makemessage(f)
-	FILE *f;
+makemessage()
 {
-	int size = (msgcount + 1) * sizeof (struct message);
-
-	if (message != 0)
-		free((char *) message);
-	if ((message = (struct message *)smalloc((unsigned) size)) == 0)
-		panic(catgets(catd, CATSET, 78,
-			"Insufficient memory for %d messages"), msgcount);
 	setdot(message);
-	size -= sizeof (struct message);
-	fflush(f);
-	(void) lseek(fileno(f), (off_t)sizeof *message, 0);
-	if (read(fileno(f), (char *) message, size) != size)
-		panic(catgets(catd, CATSET, 79,
-				"Message temporary file corrupted"));
+	if (msgcount == 0)
+		append(NULL);
 	message[msgcount].m_size = 0;
 	message[msgcount].m_lines = 0;
-	Fclose(f);
 }
 
 /*
- * Append the passed message descriptor onto the temp file.
- * If the write fails, return 1, else 0
+ * Append the passed message descriptor onto the message structure.
  */
-static int
-append(mp, f)
+static void
+append(mp)
 	struct message *mp;
-	FILE *f;
 {
-	return fwrite((char *) mp, sizeof *mp, 1, f) != 1;
+	if (msgcount + 1 >= msgspace)
+		message = srealloc(message, (msgspace += 64) * sizeof *message);
+	if (msgcount > 0)
+		message[msgcount - 1] = *mp;
 }
 
 /*
