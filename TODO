@@ -9,6 +9,34 @@ Specification, v.3:
   obsolete. If anybody has a need for it, he should contribute code.
 
 ------------------------------------------------------------------------
+The following IMAP features could be implemented in the future. If you
+need them and cannot wait, contribute code.
+
+- The MIME capabilities of IMAP could be used so that not entire messages
+  are downloaded all the time, but just the parts that are actually needed.
+
+- One could locally cache IMAP mailboxes.
+
+- Different authentication methods could be implemented.
+
+- Real interfaces for the tasks now handled by the generic 'imap' command
+  could be created. These are just the tasks normally handled with shell
+  commands for local mailboxes; '!rm' for 'imap delete', '!quota' for 'imap
+  getquotaroot', '!ls' or '!find' for 'imap list', '!mv' for 'imap rename',
+  '!grep' for 'imap search' etc. so this is why Mail/mailx/nail does not
+  have builtin commands for them. Also the IMAP commands are partially
+  obscure ('list' can get in an infinite loop) or not as powerful as Unix
+  users would like ('search' does not understand regular expressions).
+
+  Another challenge is that those interfaces should also work with regular
+  mailboxes, and should be sufficiently extensible to work with future
+  protocols or protocol extensions.
+
+  Given these facts, I tend to think that it might be better to stay with
+  different sets of generic shell and IMAP commands; however, if you have
+  an elaborated proposal for an interface, let me know.
+
+------------------------------------------------------------------------
 
 The POP3 client supports USER/PASS authentication only. If you need
 other authentication methods and have the ability to test them, please
@@ -43,8 +71,6 @@ so it's not worth much yet). If you need it before this day and
 write the code yourself, I would be thankful for the contribution,
 though.
 
-IMAP support will be added once I find the time to write it.
-
 Nail will not support 'Return-Receipt-To' or 'Disposition-Notification-To'
 header fields, neither for the sending nor for the receiving part.
 For the sending part it plainly doesn't work because one wants to
@@ -54,4 +80,4 @@ window. For the receiving part, it is simply annoying. If you want
 a confirmation, ask the recipient to send one in the body of the
 message.
 
-	Gunnar Ritter					11/21/03
+	Gunnar Ritter					7/28/04

@@ -54,7 +54,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.74 (gritter) 6/13/04 -->
+<!--      Sccsid: @(#)nail.1	2.101 (gritter) 7/29/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -92,7 +92,7 @@ nail - send and receive MIME conformant mail
 <A HREF=#21>Environment Variables</A><BR>
 <A HREF=#22>Files</A><BR>
 <A HREF=#23>Examples</A><BR>
-&nbsp; &nbsp; &nbsp;<A HREF=#24>POP3 client setup</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#24>IMAP or POP3 client setup</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#25>Reading HTML mail</A><BR>
 &nbsp; &nbsp; &nbsp;<A HREF=#26>Viewing PDF attachments</A><BR>
 <A HREF=#27>See Also</A><BR>
@@ -109,13 +109,19 @@ nail - send and receive MIME conformant mail
 <B>nail</B> [<B>-BFintv~</B>]
 [<B>-s</B><I>&nbsp;subject</I>] [<B>-a</B><I>&nbsp;attachment</I> ]
 [<B>-c</B><I>&nbsp;cc-addr</I>] [<B>-b</B><I>&nbsp;bcc-addr</I>] [<B>-r</B><I>&nbsp;from-addr</I>]
-[<B>-h</B><I>&nbsp;hops</I>] <I>to-addr</I> .&nbsp;.&nbsp;.
+[<B>-h</B><I>&nbsp;hops</I>]
+[<B>-A</B><I>&nbsp;account</I>]
+<I>to-addr</I> .&nbsp;.&nbsp;.
 <P>
 <!-- ignored unsupported tag .ad -->
-<B>nail</B> [<B>-BeHiInNv~</B>] [<B>-T</B><I>&nbsp;name</I>] <B>-f</B> [<I>name</I>]
+<B>nail</B> [<B>-BeHiInNv~</B>] [<B>-T</B><I>&nbsp;name</I>]
+[<B>-A</B><I>&nbsp;account</I>]
+<B>-f</B> [<I>name</I>]
 <P>
 <!-- ignored unsupported tag .ad -->
-<B>nail</B> [<B>-BeinNv~</B>] [<B>-u</B><I>&nbsp;user</I>]
+<B>nail</B> [<B>-BeinNv~</B>]
+[<B>-A</B><I>&nbsp;account</I>]
+[<B>-u</B><I>&nbsp;user</I>]
 <!-- ignored unsupported tag .ad -->
 </BLOCKQUOTE>
 <A name=2>
@@ -132,12 +138,18 @@ It is based on Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 <B>mailx</B> command,
 and offers extensions
-for MIME messages, POP3 and SMTP.
+for MIME messages, IMAP, POP3 and SMTP.
 <P>
 The following options are accepted:
 <TABLE cellpadding=3><!-- tsb: The following options are accepted:
  -->
 <TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-A</B><I>&nbsp;name</I> </TD><TD valign=bottom>
+Executes an
+<I>account</I> command (see below)
+for <I>name</I> after the startup files have been read.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>-a</B><I>&nbsp;file</I> </TD><TD valign=bottom>
 Attach the given file to the message.
@@ -696,6 +708,37 @@ command which follows.
 <B>|</B> </TD><TD valign=bottom>
 A synonym for the <I>pipe</I> command.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>account</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(ac) Creates, selects or lists
+an email account.
+An account is formed by a group of variables.
+With two or more arguments,
+the first argument gives an account name,
+and the following arguments create a group of variables.
+With one argument,
+the previously created group of variables
+for the account name is activated
+as described for the
+<I>set</I> command,
+and a
+<I>folder</I> command is executed for the system mailbox or inbox
+of that account.
+Without arguments,
+the list of accounts is printed.
+As an example,
+<P>
+<PRE>
+&nbsp;   account myisp &#92;
+&nbsp;       folder=imaps://mylogin@imap.myisp.example &#92;
+&nbsp;       record=+Sent &#92;
+&nbsp;       from="myname@myisp.example (My Name)" &#92;
+&nbsp;       smtp=smtp.myisp.example
+</PRE>
+<P>
+creates an account named &#39;myisp&#39;
+which can later be selected by specifying &#39;account myisp&#39;.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>alias</B> </TD><TD valign=bottom>
 (a) With no arguments,
@@ -732,16 +775,16 @@ then changes to the user&#39;s login directory.
 <TR valign=top><TD width=6% nowrap>
 <B>copy</B> </TD><TD valign=bottom>
 (c) The copy command does the same thing that
-<B>save</B> does,
+<I>save</I> does,
 except that it does not mark the messages
 it is used on for deletion when you quit.
-Compressed files are handled as described for the
+Compressed files and IMAP mailboxes are handled as described for the
 <I>folder</I> command.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>Copy</B> </TD><TD valign=bottom>
 (C) Similar to
-<B>copy</B>, but saves the messages in a file named after the local part
+<I>copy</I>, but saves the messages in a file named after the local part
 of the sender address of the first message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -839,7 +882,7 @@ and <B>+</B><I>file</I><I> means a </I><I>file</I> in your folder directory.
 but the file is handled as a system mailbox
 e.&nbsp;g. by the mbox and save commands.
 If the name matches one of the strings defined with the
-<B>shortcut</B> command,
+<I>shortcut</I> command,
 it is replaced by its long form and expanded.
 If the name ends with <B>.gz</B> or <B>.bz2</B>,
 it is treated as compressed with
@@ -853,47 +896,56 @@ the compressed file is used.
 A name of the form
 <PRE>
 <P>
-&nbsp;      <I>protocol</I><B>://</B>[<I>user</I><B>@</B>]<I>host</I>[<B>:</B><I>port]</I>
+&nbsp;      <I>protocol</I><B>://</B>[<I>user</I><B>@</B>]<I>host</I>[<B>:</B><I>port</I>][<B>/</B><I>file</I>]
 <P>
 </PRE>
 is taken as an internet mailbox specification.
 The supported protocols are currently
-<B>pop3</B> (POP3)
+<B>imap</B> (IMAP v4r1),
+<B>imaps</B> (IMAP with SSL/TLS encryption),
+<B>pop3</B> (POP3),
 and
-<B>pop3s</B> (i. e. POP3 with SSL/TLS encryption).
-Compressed files are handled as described for the
-<I>folder</I> command.
+<B>pop3s</B> (POP3 with SSL/TLS encryption).
+The optional
+<I>file</I> part applies to IMAP only;
+if it is omitted,
+the default &#39;INBOX&#39; is used.
+If <I>nail</I> is connected to an IMAP server,
+a name of the form <B>@</B><I>mailbox</I>
+refers to the <I>mailbox</I> on that server.
+If the &#39;folder&#39; variable refers to an IMAP account,
+the special name &#39;%&#39; selects the &#39;INBOX&#39; on that account.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>Followup</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (F) Similar to
-<B>Respond</B>, but saves the message in a file
+<I>Respond</I>, but saves the message in a file
 named after the local part of the first recipient&#39;s address.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>followup</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 (fo) Similar to
-<B>respond</B>, but saves the message in a file
+<I>respond</I>, but saves the message in a file
 named after the local part of the first recipient&#39;s address.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>followupall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Similar to
-<B>followup</B>, but responds to all recipients regardless of the
-<B>flipr</B> and
-<B>Replyall</B> variables.
+<I>followup</I>, but responds to all recipients regardless of the
+<I>flipr</I> and
+<I>Replyall</I> variables.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>followupsender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Similar to
-<B>Followup</B>, but responds to the sender only regardless of the
-<B>flipr</B> and
-<B>Replyall</B> variables.
+<I>Followup</I>, but responds to the sender only regardless of the
+<I>flipr</I> and
+<I>Replyall</I> variables.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>Forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-(For) Like forward,
-but does not add any header lines.
+(For) Like
+<I>forward</I>, but does not add any header lines.
 This is not a way to hide the sender&#39;s identity,
 but useful for sending a message again
 to the same recipients.
@@ -976,9 +1028,91 @@ If ignore is executed with no arguments,
 it lists the current set of ignored fields.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
+<B>imap</B> </TD><TD valign=bottom>
+Sends command strings directly to the current IMAP server.
+<I>Nail</I> operates always in IMAP <I>selected state</I>
+on the current mailbox;
+commands that change this
+will produce undesirable results
+and should be avoided.
+Useful IMAP commands are:
+<TABLE width=100% cellpadding=3><!-- tsb: Sends command strings directly to the current IMAP server.
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>create</B> </TD><TD valign=bottom>
+Takes the name of an IMAP mailbox as an argument
+and creates it.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>delete</B> </TD><TD valign=bottom>
+Takes the name of an IMAP mailbox as an argument
+and deletes it.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>getquotaroot</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+<!--  RFC 2087 -->
+Takes the name of an IMAP mailbox as an argument
+and prints the quotas that apply to the mailbox.
+Not all IMAP servers support this command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>list</B> </TD><TD valign=bottom>
+Takes two arguments,
+a <I>reference name</I>
+which specifies the desired hierarchy,
+and a <I>mailbox name</I>
+with possible wildcards.
+To get a list of all existing IMAP mailboxes,
+use &#39;imap list "" *&#39;.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>namespace</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+<!--  RFC 2342 -->
+Takes no arguments and prints the Personal Namespaces,
+the Other User&#39;s Namespaces,
+and the Shared Namespaces.
+Each namespace type is printed in parentheses;
+if there are multiple namespaces of the same type,
+inner parentheses separate them.
+For each namespace,
+a namespace prefix and a hierarchy separator is listed.
+Not all IMAP servers support this command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>rename</B> </TD><TD valign=bottom>
+Takes the name of an existing IMAP mailbox as the first argument
+and renames it to the name given as second argument.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>search</B> </TD><TD valign=bottom>
+Searches for messages that match the criteria
+given as arguments
+and prints their IMAP message numbers.
+For example,
+&#39;imap search body <I>string</I>&#39;
+looks for all messages which contain <I>string</I> in their body.
+</TD></TR>
+<TR></TR></TABLE><P></TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+IMAP message numbers are usually identical
+to regular message numbers,
+but can change when a message is deleted on the server
+by another client or process.
+They should thus be used with care;
+if in doubt,
+use a &#39;print&#39; command to verify them.
+The problem does not occur
+with regular message numbers
+because <I>nail</I> internally uses IMAP <I>unique identifiers</I> (UIDs)
+to refer to them.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
 <B>inc</B> </TD><TD valign=bottom>
 Same as
-<B>newmail</B>. </TD></TR>
+<I>newmail</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>list</B> </TD><TD valign=bottom>
 Prints the names of all available commands.
@@ -986,7 +1120,7 @@ Prints the names of all available commands.
 <TR valign=top><TD width=6% nowrap>
 <B>Mail</B> </TD><TD valign=bottom>
 (M) Similar to
-<B>mail</B>, but saves the message in a file
+<I>mail</I>, but saves the message in a file
 named after the local part of the first recipient&#39;s address.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1008,7 +1142,7 @@ Checks for new mail in the current folder
 without commiting any changes before.
 If new mail is present, a message is printed.
 If the
-<B>header</B> variable is set,
+<I>header</I> variable is set,
 the headers of each new message are also printed.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1020,18 +1154,19 @@ With an argument list, types the next matching message.
 <TR valign=top><TD width=6% nowrap>
 <B>New</B> </TD><TD valign=bottom>
 Same as
-<B>unread</B>. </TD></TR>
+<I>unread</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>new</B> </TD><TD valign=bottom>
 Same as
-<B>unread</B>. </TD></TR>
+<I>unread</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>preserve</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-(pre) A synonym for hold.
-</TD></TR>
+(pre) A synonym for
+<I>hold</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>Pipe</B> </TD><TD valign=bottom>
-(Pi) Like pipe but also
+(Pi) Like
+<I>pipe</I> but also
 pipes ignored header fields.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1046,10 +1181,12 @@ every message is followed by a formfeed character.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>Print</B> </TD><TD valign=bottom>
-(P) Like print but also
+(P) Like
+<I>print</I> but also
 prints out ignored header fields.
-See also print, ignore and retain.
-</TD></TR>
+See also
+<I>print</I>, <I>ignore</I>, and
+<I>retain</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>print</B> </TD><TD valign=bottom>
 (p) Takes a message list and types out each message
@@ -1089,33 +1226,33 @@ The default message must not be deleted.
 <TR valign=top><TD colspan=2>
 <B>replyall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Similar to
-<B>reply</B>, but responds to all recipients regardless of the
-<B>flipr</B> and
-<B>Replyall</B> variables.
+<I>reply</I>, but responds to all recipients regardless of the
+<I>flipr</I> and
+<I>Replyall</I> variables.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>replysender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Similar to
-<B>Reply</B>, but responds to the sender only regardless of the
-<B>flipr</B> and
-<B>Replyall</B> variables.
+<I>Reply</I>, but responds to the sender only regardless of the
+<I>flipr</I> and
+<I>Replyall</I> variables.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>Respond</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
-<B>Reply</B>. </TD></TR>
+<I>Reply</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>respond</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
-<B>reply</B>. </TD></TR>
+<I>reply</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
-<B>respondall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+<I>respondall</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
 <B>replyall</B>. </TD></TR>
 <TR valign=top><TD colspan=2>
-<B>respondsender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+<I>respondsender</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
-<B>replysender</B>. </TD></TR>
+<I>replysender</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>retain</B> </TD><TD valign=bottom>
 Add the list of header fields named to the retained list.
@@ -1131,7 +1268,7 @@ it lists the current set of retained fields.
 <B>Save</B> </TD><TD valign=bottom>
 (S)
 Similar to
-<B>save</B>, but saves the messages
+<I>save</I>, but saves the messages
 in a file named after the local part
 of the sender of the first message
 instead of taking a filename argument.
@@ -1148,8 +1285,37 @@ followed by the line count and character count
 is echoed on the user&#39;s terminal.
 If editing a system mailbox,
 the messages are marked for deletion.
-Compressed files are handled as described for the
+Compressed files and IMAP mailboxes are handled as described for the
 <I>-f</I> command line option above.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>savediscard</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as saveignore.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>saveignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Saveignore is to save what ignore is to print and type.
+Header fields thus marked are filtered out
+when saving a message by save
+or when automatically saving to mbox.
+This command should only be applied to header fields
+that do not contain information needed to decode the message,
+as MIME content fields do.
+If saving messages on an IMAP account,
+ignoring fields makes it impossible
+to copy the data directly on the server,
+thus operation usually becomes much slower.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>saveretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Saveretain is to save what retain is to print and type.
+Header fields thus marked are the only ones
+saved with a message when saving by save
+or when automatically saving to mbox.
+Saveretain overrides saveignore.
+The use of this command is strongly discouraged
+since it may strip header fields
+that are needed to decode the message correctly.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>set</B> </TD><TD valign=bottom>
@@ -1165,32 +1331,8 @@ or tabs, i.e. &#39;<I>set indentprefix="-&gt;"</I>&#39;.
 If an argument begins with
 <B>no</B>, as in &#39;<B>set no</B><I>save</I>&#39;,
 the effect is the same as invoking the
-<B>unset</B> command with the remaining part of the variable
-(&#39;<B>unset </B><I>save</I>&#39;).
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>savediscard</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Same as saveignore.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>saveignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Saveignore is to save what ignore is to print and type.
-Header fields thus marked are filtered out
-when saving a message by save
-or when automatically saving to mbox.
-This command should only be applied to header fields
-that do not contain content information.
-</TD></TR>
-<TR valign=top><TD colspan=2>
-<B>saveretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Saveretain is to save what retain is to print and type.
-Header fields thus marked are the only ones
-saved with a message when saving by save
-or when automatically saving to mbox.
-Saveretain overrides saveignore.
-The use of this command is strongly discouraged
-since it may strip header fields
-that are needed to decode the message correctly.
+<I>unset</I> command with the remaining part of the variable
+(&#39;<I>unset </I><I>save</I>&#39;).
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>shell</B> </TD><TD valign=bottom>
@@ -1200,7 +1342,7 @@ that are needed to decode the message correctly.
 <B>shortcut</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Defines a shortcut name and its string for expansion,
 as described for the
-<B>folder</B> command.
+<I>folder</I> command.
 With no arguments,
 a list of defined shortcuts is printed.
 </TD></TR>
@@ -1252,7 +1394,7 @@ from the list of ignored fields.
 <TR valign=top><TD width=6% nowrap>
 <B>Unread</B> </TD><TD valign=bottom>
 Same as
-<B>unread</B>. </TD></TR>
+<I>unread</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>unread</B> </TD><TD valign=bottom>
 (U) Takes a message list and marks each message
@@ -1383,7 +1525,7 @@ with the first method (no <I>filename</I> arguments).
 <TR valign=top><TD width=6% nowrap>
 <B>~A</B> </TD><TD valign=bottom>
 Inserts the string contained in the
-<B>Sign</B> variable
+<I>Sign</I> variable
 (same as &#39;~i Sign&#39;).
 The escape sequences &#39;<B>&#92;t</B>&#39; (tabulator) and &#39;<B>&#92;n</B>&#39; (newline)
 are understood.
@@ -1408,7 +1550,7 @@ Add the given names to the list of carbon copy recipients.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>~d</B> </TD><TD valign=bottom>
-Read the file &#39;<I>dead.letter</I>&#39; from your home directory
+Read the file &#39;dead.letter&#39; from your home directory
 into the message.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1475,7 +1617,7 @@ it is piped through the pager.
 <B>~q</B> </TD><TD valign=bottom>
 Abort the message being sent,
 copying the message to
-&#39;<I>dead.letter</I>&#39; in your home directory
+&#39;dead.letter&#39; in your home directory
 if save is set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -1510,7 +1652,7 @@ the message is appended to it.
 <TR valign=top><TD width=6% nowrap>
 <B>~x</B> </TD><TD valign=bottom>
 Same as ~q,
-except that the message is not saved to the dead.letter file.
+except that the message is not saved to the &#39;dead.letter&#39; file.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>~|</B><I>command</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -1618,7 +1760,7 @@ indicates your satisfaction with the current list.
 <TR valign=top><TD colspan=2>
 <B>autoinc</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Same as
-<B>newmail</B>. </TD></TR>
+<I>newmail</I>. </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>autoprint</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Causes the delete command to behave like dp -
@@ -1699,7 +1841,7 @@ other fields are ignored.
 <TR valign=top><TD colspan=2>
 <B>emptybox</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 If set, an empty mailbox file is not removed.
-This may improve the interoperability with other MUAs
+This may improve the interoperability with other mail user agents
 when using a common folder directory.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -1713,8 +1855,8 @@ If this option is set,
 <TR valign=top><TD width=6% nowrap>
 <B>flipr</B> </TD><TD valign=bottom>
 Exchanges the
-<B>Respond</B> with the
-<B>respond</B> commands and vice-versa.
+<I>Respond</I> with the
+<I>respond</I> commands and vice-versa.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>header</B> </TD><TD valign=bottom>
@@ -1768,6 +1910,11 @@ the sender to be included in the group.
 <B>newmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Checks for new mail in the current folder
 each time the prompt is printed.
+For IMAP mailboxes,
+this is always performed
+and may also result in fewer messages within the folder
+if messages have been deleted on the server
+by another process or client.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>noheader</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -1777,8 +1924,12 @@ as giving the -N flag on the command line.
 <TR valign=top><TD colspan=2>
 <B>outfolder</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Causes the filename given in the
-<B>record</B> variable to be interpreted relative to the directory given in the
-<B>folder</B> variable rather than to the current directory
+<I>record</I> variable
+and the sender-based filenames for the
+<I>Copy</I> and
+<I>Save</I> commands
+to be interpreted relative to the directory given in the
+<I>folder</I> variable rather than to the current directory
 unless it is an absolute pathname.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1815,7 +1966,7 @@ Reverses the sense of reply and Reply commands.
 When you abort a message
 with two RUBOUT (interrupt characters)
 <I>nail</I> copies the partial letter
-to the file &#39;<I>dead.letter</I>&#39; in your home directory.
+to the file &#39;dead.letter&#39; in your home directory.
 This option is set by default.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -1928,7 +2079,7 @@ is used to compute the threshold (see
 <B>DEAD</B> </TD><TD valign=bottom>
 The name of the file to use
 for saving aborted messages.
-This defaults to &#39;<I>dead.letter</I>&#39;
+This defaults to &#39;dead.letter&#39;
 in the user&#39;s home directory.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -1961,10 +2112,51 @@ gives the character to use in the place of ~ to denote escapes.
 <B>folder</B> </TD><TD valign=bottom>
 The name of the directory to use
 for storing folders of messages.
-If this name begins with a &#39;/&#39;,
+All folder names that begin with &#39;+&#39;
+refer to files below that directory.
+If the directory name begins with a &#39;/&#39;,
 <I>nail</I> considers it to be an absolute pathname;
 otherwise, the folder directory is found
 relative to your home directory.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+The directory name may also refer to an IMAP account;
+any names that begin with &#39;+&#39;
+then refer to IMAP mailboxes on that account.
+An IMAP folder is normally given in the form
+<P>
+<PRE>
+&nbsp;   imaps://mylogin@imap.myisp.example
+</PRE>
+<P>
+In this case,
+the &#39;+&#39; and &#39;@&#39; prefixes for folder names
+have the same effect
+(see the
+<I>folder</I> command).
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+Some IMAP servers do not accept the creation of mailboxes
+in the hierarchy base;
+they require that they are created as subfolders of &#39;INBOX&#39;.
+With such servers,
+a folder name of the form
+<P>
+<PRE>
+&nbsp;   imaps://mylogin@imap.myisp.example/INBOX.
+</PRE>
+<P>
+should be used
+(the last character is the server&#39;s hierarchy delimiter).
+Folder names prefixed by &#39;+&#39; will then refer to folders below &#39;INBOX&#39;,
+while folder names prefixed by &#39;@&#39;
+refer to folders below the hierarchy base.
+See the
+<I>imap namespace</I> command for a method to detect the appropriate prefix and delimiter.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>from</B> </TD><TD valign=bottom>
@@ -1992,6 +2184,17 @@ and
 <I>getaddrinfo</I>(3).
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>imap-keepalive</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+IMAP servers may close the connection
+after a period of inactivity;
+the standard requires this to be at least 30 minutes,
+but practical experience may vary.
+Setting this variable to a numeric
+<I>value</I> greater than 0
+causes a NOOP command to be sent each
+<I>value</I> seconds if no other operation is performed.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>indentprefix</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 String used by the &#39;<I>~m</I>&#39; and &#39;<I>~M</I>&#39; tilde escapes
 and by the <I>quote</I> option
@@ -2003,7 +2206,9 @@ if it contains spaces or tabs.
 <TR valign=top><TD width=6% nowrap>
 <B>LISTER</B> </TD><TD valign=bottom>
 Pathname of the directory lister
-to use in the folders command.
+to use in the
+<I>folders</I> command
+when operating on local mailboxes.
 Default is /bin/ls.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -2013,7 +2218,7 @@ Otherwise, a system-dependent default is used.
 Can be a
 <I>protocol</I><B>://</B>
 string (see the
-<B>folder</B> command for more information).
+<I>folder</I> command for more information).
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>MAILX_HEAD</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2089,8 +2294,10 @@ on the system
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>pop3-keepalive</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
-Many POP3 servers will close the connection
-after a period of inactivity.
+POP3 servers may close the connection
+after a period of inactivity;
+the standard requires this to be at least 10 minutes,
+but practical experience may vary.
 Setting this variable to a numeric
 <I>value</I> greater than 0
 causes a NOOP command to be sent each
@@ -2101,7 +2308,7 @@ causes a NOOP command to be sent each
 The string printed when a command is accepted.
 Defaults to &#39;<B>?&nbsp;</B>&#39;,
 or to &#39;<TT>amp;&nbsp;</TT>&#39; if the
-<B>bsdcompat</B> variable is set.
+<I>bsdcompat</I> variable is set.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>quote</B> </TD><TD valign=bottom>
@@ -2150,24 +2357,75 @@ if this option is not defined.
 <TR valign=top><TD width=6% nowrap>
 <B>Sign</B> </TD><TD valign=bottom>
 A string for use with the
-<B>~A</B> command.
+<I>~A</I> command.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>sign</B> </TD><TD valign=bottom>
 A string for use with the
-<B>~a</B> command.
+<I>~a</I> command.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>smtp</B> </TD><TD valign=bottom>
 Normally, <I>nail</I> invokes
 <I>sendmail</I>(8)
 directly to transfer messages.
-If <I>smtp</I> is set, a SMTP connection to
+If the <I>smtp</I> variable is set, a SMTP connection to
 the server specified by the value of this variable
 is used instead.
 If the SMTP server does not use the standard port,
 a value of <I>server:port</I> can be given,
 with <I>port</I> as a name or as a number.
+</TD></TR>
+<TR valign=top><TD width=6%>
+
+</TD><TD>
+There are two possible methods to get SSL/TLS encrypted SMTP sessions:
+First, the STARTTLS command can be used to encrypt a session
+after it has been initiated,
+but before any user-related data has been sent; see
+<I>smtp-use-tls</I> below.
+Second, some servers accept sessions that are encrypted
+from their beginning on. This mode is configured by assigning
+<B>smtps://</B><I>server</I>[<B>:</B><I>port</I>]
+to the
+<I>smtp</I> variable.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smtp-auth-password</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the global password for SMTP AUTH LOGIN.
+Both user and password have to be given
+for SMTP AUTH.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smtp-auth-password-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>smtp-auth-password</I> for specific values of sender addresses,
+dependant on the
+<I>from</I> variable.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smtp-auth-user</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the global user name for SMTP AUTH LOGIN.
+Both user and password have to be given
+for SMTP AUTH.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smtp-auth-user-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>smtp-auth-user</I> for specific values of sender addresses,
+dependant on the
+<I>from</I> variable.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>smtp-use-tls</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes <I>nail</I> to issue a STARTTLS command
+to make an SMTP session SSL/TLS encrypted.
+Not all servers support this command;
+because of common implementation defects,
+it cannot be automatically determined
+whether a server supports it or not.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-ca-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2196,7 +2454,7 @@ Sets an account-specific file name
 for a SSL/TLS client certificate
 required by some servers.
 Overrides
-<B>ssl-cert</B> for the specified account.
+<I>ssl-cert</I> for the specified account.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-cipher-list</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2216,7 +2474,7 @@ The file is expected to be in PEM format.
 Sets an account-specific file name
 for the private key of a SSL/TLS client certificate.
 Overrides
-<B>ssl-key</B> for the specified account.
+<I>ssl-key</I> for the specified account.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>ssl-method</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2264,10 +2522,13 @@ Overrides
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>record</B> </TD><TD valign=bottom>
-If defined, gives the pathname of the file
+If defined, gives the pathname of the folder
 used to record all outgoing mail.
 If not defined,
 then outgoing mail is not so saved.
+When saving to this folder fails,
+the message is not sent
+but saved to the &#39;dead.letter&#39; file instead.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>replyto</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2337,7 +2598,7 @@ Is used as startup file instead of ~/.mailrc if set.
 <TR valign=top><TD width=6% nowrap>
 <B>NAILRC</B> </TD><TD valign=bottom>
 If this variable is set and
-<B>MAILRC</B> is not set,
+<I>MAILRC</I> is not set,
 it is read as startup file.
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
@@ -2382,24 +2643,25 @@ System wide MIME types.
 </BLOCKQUOTE>
 <A name=24>
 
-    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; POP3 client setup</H4>
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; IMAP or POP3 client setup</H4>
 </A>
 <BLOCKQUOTE>
 First, you need the following data from your ISP:
-the host name of its POP3 server,
+the host name of its IMAP or POP3 server,
 user name and password for this server,
 and a notice whether the server uses SSL/TLS encryption.
 Assuming the host name is &#39;server.myisp.example&#39;
-and your user name for that server is &#39;myname&#39;,
+and your user name for that server is &#39;mylogin&#39;,
 you can refer to this account using the
 <I>folder</I> command or
 <I>-f</I> command line option with
 <PRE>
 <P>
-&nbsp;   <B>pop3://</B><I>myname</I><B>@</B><I>server.myisp.example</I>
+&nbsp;   <B>imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example</I>
 <P>
 </PRE>
-(replace &#39;pop3://&#39; with &#39;pop3s://&#39; if the server supports SSL/TLS).
+(replace &#39;imaps://&#39; with &#39;imap://&#39; if the server does not support SSL/TLS,
+or use &#39;pop3s://&#39; or &#39;pop3://&#39; if the server does not offer IMAP).
 The string is not necessarily the same as your internet mail address.
 As you probably want messages to be deleted from this account
 after saving them,
@@ -2409,7 +2671,7 @@ The
 every time you want to connect:
 <PRE>
 <P>
-&nbsp;   <B>shortcut </B><I>myisp</I><B> </B><B>%:pop3://</B><I>myname</I><B>@</B><I>server.myisp.example</I>
+&nbsp;   <B>shortcut </B><I>myisp</I><B> </B><B>%:imaps://</B><I>mylogin</I><B>@</B><I>server.myisp.example</I>
 <P>
 </PRE>
 You probably want to put this string into a startup file.
@@ -2428,6 +2690,14 @@ in
 <I>~/.mailrc</I> and create a file
 <I>~/.nailrc</I> containing the
 <I>shortcut</I> command above.
+<P>
+If you want to use more than one IMAP mailbox on a server,
+the
+<I>account</I> command
+(which is also <I>nail-</I>specific)
+is more appropriate than the
+<I>shortcut</I> command.
+<P>
 <I>Nail</I> will ask you for a password string
 each time you connect to this account.
 If you can reasonably trust the security
@@ -2435,11 +2705,12 @@ of the machine you are working on,
 you can give this password in the startup file as
 <PRE>
 <P>
-&nbsp;   <B>set password-</B><I>myname</I><B>@</B><I>server.myisp.example</I><B>="</B><I>SECRET</I><B>"</B>
+&nbsp;   <B>set password-</B><I>mylogin</I><B>@</B><I>server.myisp.example</I><B>="</B><I>SECRET</I><B>"</B>
 <P>
 </PRE>
 You should change the permissions of this file to 0600, see
 <I>chmod</I>(1).
+<P>
 Many POP3 servers will close the connection
 after a short period of inactivity. Use
 <PRE>
@@ -2448,6 +2719,7 @@ after a short period of inactivity. Use
 <P>
 </PRE>
 to send a keepalive message each 30 seconds.
+<P>
 If you encounter problems connecting to a SSL/TLS server,
 try the
 <I>ssl-rand-egd</I> and
@@ -2460,7 +2732,7 @@ If the failed certificate is indeed valid,
 fetch it by executing
 <PRE>
 <P>
-&nbsp;   <B>openssl s_client -connect </B><I>server.myisp.example</I><B>:</B><I>pop3s</I>
+&nbsp;   <B>openssl s_client -connect </B><I>server.myisp.example</I><B>:</B><I>imaps</I>
 <P>
 </PRE>
 (see
@@ -2548,7 +2820,24 @@ tr -d &#39;&#92;015&#39; &lt;input | nail .&nbsp;.&nbsp;.
 </BLOCKQUOTE>
 or fix the tools that generate them.
 <P>
-POP3 mailboxes are limited in some ways:
+Limitations with IMAP mailboxes are:
+It is not possible to edit messages,
+but it is possible to append them.
+Thus to edit a message,
+create a local copy of it,
+edit it, append it,
+and delete the original.
+The line count for the header display
+is only appropriate if the entire message has been downloaded
+from the server.
+The &#39;exit&#39; command will not cause the message status to be reset.
+Message numbers may change with IMAP
+every time before the prompt is printed
+if <I>nail</I> is notified by the server
+that messages have been deleted
+by some other client or process.
+<P>
+Limitations with POP3 mailboxes are:
 It is not possible to edit messages,
 they can only be copied and deleted.
 The line count for the header display
@@ -2561,23 +2850,40 @@ and with a server that does,
 the &#39;exit&#39; command will not cause the message status to be reset.
 The &#39;newmail&#39; command and the &#39;newmail&#39; variable
 have no effect.
-An unencrypted POP3 message download
+<P>
+An unencrypted IMAP or POP3 message download
 can be interrupted from the terminal,
 but the part that was not downloaded
 will have to be downloaded
 before the next command is sent.
-A SSL/TLS encrypted POP3 message download
+A SSL/TLS encrypted IMAP or POP3 message download
 should not be interrupted,
 as this will very likely cause an error in the SSL transport.
 <P>
 There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
+<P>
+As <I>nail</I> is a mail user agent,
+it provides only basic SMTP services.
+If it fails to contact its upstream SMTP server,
+it will not make further attempts to transfer the message
+at a later time,
+and it does not leave other information about this condition
+than an error message on the terminal
+and a &#39;dead.letter&#39; file.
+This is usually not a problem if the SMTP server
+is located in the same local network
+as the computer on which <I>nail</I> is run.
+However, care should be taken when using a remote server of an ISP;
+it might be better to set up a local SMTP server then
+which just acts as a proxy.
 <P>
 A <I>mail</I> command appeared in Version 1 A&amp;T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
 from The Mail Reference Manual
 originally written by Kurt Shoens.
-A revision for <I>nail</I> was done by Gunnar Ritter.
+<I>Nail</I> enhancements are maintained and documented
+by Gunnar Ritter.
 <P>
 Portions of this text are reprinted and reproduced in electronic form
 from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology
@@ -2592,5 +2898,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 10.8</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>6/13/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.0</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>7/29/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
 </BODY></HTML>

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.24 (gritter) 6/13/04";
+static char sccsid[] = "@(#)cmd1.c	2.25 (gritter) 7/26/04";
 #endif
 #endif /* not lint */
 
@@ -805,8 +805,12 @@ folders(v)
 				"No value set for \"folder\"\n"));
 		return 1;
 	}
-	if ((cmd = value("LISTER")) == NULL)
-		cmd = "ls";
-	(void) run_command(cmd, 0, -1, -1, dirname, NULL, NULL);
+	if (which_protocol(dirname) == PROTO_IMAP)
+		imap_folders();
+	else {
+		if ((cmd = value("LISTER")) == NULL)
+			cmd = "ls";
+		run_command(cmd, 0, -1, -1, dirname, NULL, NULL);
+	}
 	return 0;
 }

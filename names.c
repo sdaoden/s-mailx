@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	2.11 (gritter) 6/13/04";
+static char sccsid[] = "@(#)names.c	2.12 (gritter) 7/23/04";
 #endif
 #endif /* not lint */
 
@@ -56,7 +56,8 @@ static char sccsid[] = "@(#)names.c	2.11 (gritter) 6/13/04";
 #include <unistd.h>
 
 static struct name	*tailof __P((struct name *));
-static char	*yankword __P((char *, char []));
+static struct name	*extract1 __P((char [], int, char [], int));
+static char	*yankword __P((char *, char [], char [], int));
 static struct name	*gexpand __P((struct name *, struct grouphead *,
 				int, int));
 static struct name	*put __P((struct name *, struct name *));
@@ -110,6 +111,25 @@ extract(line, ntype)
 	char line[];
 	int ntype;
 {
+	return extract1(line, ntype, " \t,(", 0);
+}
+
+struct name *
+sextract(line, ntype)
+	char line[];
+	int ntype;
+{
+	if (line && strpbrk(line, ",\"\\(<"))
+		return extract1(line, ntype, ",", 1);
+	else
+		return extract(line, ntype);
+}
+
+static struct name *
+extract1(line, ntype, separators, copypfx)
+	char line[], separators[];
+	int ntype, copypfx;
+{
 	char *cp, *nbuf;
 	struct name *top, *np, *t;
 
@@ -119,7 +139,7 @@ extract(line, ntype)
 	np = NIL;
 	cp = line;
 	nbuf = ac_alloc(strlen(line) + 1);
-	while ((cp = yankword(cp, nbuf)) != NULL) {
+	while ((cp = yankword(cp, nbuf, separators, copypfx)) != NULL) {
 		t = nalloc(nbuf, ntype);
 		if (top == NIL)
 			top = t;
@@ -184,38 +204,45 @@ detract(np, ntype)
  * Throw away things between ()'s, and take anything between <>.
  */
 static char *
-yankword(ap, wbuf)
-	char *ap, wbuf[];
+yankword(ap, wbuf, separators, copypfx)
+	char *ap, wbuf[], separators[];
+	int copypfx;
 {
-	char *cp, *cp2;
+	char *cp, *pp, *wp;
 
 	cp = ap;
+	wp = wbuf;
+	while (blankchar(*cp & 0377) || *cp == ',')
+		cp++;
+	pp = cp;
 	if ((cp = nexttoken(cp)) == NULL)
 		return NULL;
+	if (copypfx)
+		while (pp < cp)
+			*wp++ = *pp++;
 	if (*cp ==  '<')
-		for (cp2 = wbuf; *cp && (*cp2++ = *cp++) != '>';)
-			;
+		while (*cp && (*wp++ = *cp++) != '>');
 	else {
 		int incomm = 0;
 
-		for (cp2 = wbuf; *cp && (incomm || !strchr(" \t,(", *cp)); ) {
+		while (*cp && (incomm || !strchr(separators, *cp))) {
 			if (*cp == '\"') {
 				if (cp == ap || *(cp - 1) != '\\') {
 					if (incomm)
 						incomm--;
 					else
 						incomm++;
-					*cp2++ = '\"';
+					*wp++ = '\"';
 				} else if (cp != ap) {
-					*(cp2 - 1) = '\"';
+					*(wp - 1) = '\"';
 				}
 				cp++;
 				continue;
 			}
-			*cp2++ = *cp++;
+			*wp++ = *cp++;
 		}
 	}
-	*cp2 = '\0';
+	*wp = '\0';
 	return cp;
 }
 

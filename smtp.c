@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.10 (gritter) 6/13/04";
+static char sccsid[] = "@(#)smtp.c	2.15 (gritter) 7/29/04";
 #endif
 #endif /* not lint */
 
@@ -142,6 +142,26 @@ myaddr()
 
 #ifdef	HAVE_SOCKETS
 
+static char *
+auth_var(type, addr)
+	const char *type, *addr;
+{
+	char	*var, *cp;
+	int	len;
+
+	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
+	snprintf(var, len, "smtp-auth-%s-%s", type, addr);
+	if ((cp = value(var)) != NULL)
+		cp = savestr(cp);
+	else {
+		snprintf(var, len, "smtp-auth-%s", type);
+		if ((cp = value(var)) != NULL)
+			cp = savestr(cp);
+	}
+	ac_free(var);
+	return cp;
+}
+
 static char	*smtpbuf;
 static size_t	smtpbufsize;
 
@@ -149,19 +169,16 @@ static size_t	smtpbufsize;
  * Get the SMTP server's answer, expecting value.
  */
 static int
-read_smtp(f, value)
-FILE *f;
+read_smtp(sp, value)
+struct sock *sp;
+int value;
 {
 	int ret;
-	size_t len;
+	int len;
 
 	do {
-		if (fgetline(&smtpbuf, &smtpbufsize, NULL, &len, f, 0) == NULL
-				|| len < 6) {
-			if (ferror(f))
-				perror(catgets(catd, CATSET, 255,
-						"SMTP read failed"));
-			else
+		if ((len = sgetline(&smtpbuf, &smtpbufsize, NULL, sp)) < 6) {
+			if (len >= 0)
 				fprintf(stderr, catgets(catd, CATSET, 241,
 					"Unexpected EOF on SMTP connection\n"));
 			return 5;
@@ -185,15 +202,8 @@ FILE *f;
 /*
  * Macros for talk_smtp.
  */
-#define	SMTP_ANSWER(x)	if (ferror(fsi)) { \
-				perror(catgets(catd, CATSET, 256, \
-					"SMTP write error")); \
-				if (b != NULL) \
-					free(b); \
-				return 1; \
-			} \
-			if (read_smtp(fso, x) != (x)) { \
-				fputs("QUIT\r\n", fsi); \
+#define	SMTP_ANSWER(x)	if (read_smtp(sp, x) != (x)) { \
+				swrite(sp, "QUIT\r\n"); \
 				if (b != NULL) \
 					free(b); \
 				return 1; \
@@ -201,26 +211,59 @@ FILE *f;
 
 #define	SMTP_OUT(x)	if (verbose) \
 				fprintf(stderr, ">>> %s", x); \
-			fputs(x, fsi); \
-			fflush(fsi);
+			swrite(sp, x);
 
 /*
  * Talk to a SMTP server.
  */
 static int
-talk_smtp(to, fi, fsi, fso)
+talk_smtp(to, fi, sp, server, uhp)
 struct name *to;
-FILE *fi, *fsi, *fso;
+FILE *fi;
+struct sock *sp;
+char *server, *uhp;
 {
 	struct name *n;
 	char *b = NULL, o[LINESIZE];
 	size_t blen, bsize = 0, count;
+	char	*user, *password, *b64, *skinned;
 
+	skinned = skin(myaddr());
 	SMTP_ANSWER(2);
-	snprintf(o, sizeof o, "HELO %s\r\n", nodename());
-	SMTP_OUT(o);
-	SMTP_ANSWER(2);
-	snprintf(o, sizeof o, "MAIL FROM: <%s>\r\n", skin(myaddr()));
+	if (value("smtp-use-tls")) {
+		snprintf(o, sizeof o, "EHLO %s\r\n", nodename());
+		SMTP_OUT(o);
+		SMTP_ANSWER(2);
+		SMTP_OUT("STARTTLS\r\n");
+		SMTP_ANSWER(2);
+		if (ssl_open(server, sp, uhp) != OKAY)
+			return 1;
+	}
+	user = auth_var("user", skinned);
+	password = auth_var("password", skinned);
+	if (user && password) {
+		snprintf(o, sizeof o, "EHLO %s\r\n", nodename());
+		SMTP_OUT(o);
+		SMTP_ANSWER(2);
+		snprintf(o, sizeof o, "AUTH LOGIN\r\n");
+		SMTP_OUT(o);
+		SMTP_ANSWER(3);
+		b64 = strtob64(user);
+		snprintf(o, sizeof o, "%s\r\n", b64);
+		free(b64);
+		SMTP_OUT(o);
+		SMTP_ANSWER(3);
+		b64 = strtob64(password);
+		snprintf(o, sizeof o, "%s\r\n", b64);
+		free(b64);
+		SMTP_OUT(o);
+		SMTP_ANSWER(2);
+	} else {
+		snprintf(o, sizeof o, "HELO %s\r\n", nodename());
+		SMTP_OUT(o);
+		SMTP_ANSWER(2);
+	}
+	snprintf(o, sizeof o, "MAIL FROM: <%s>\r\n", skinned);
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
 	for (n = to; n != NULL; n = n->n_flink) {
@@ -237,8 +280,10 @@ FILE *fi, *fsi, *fso;
 	count = fsize(fi);
 	while (fgetline(&b, &bsize, &count, &blen, fi, 1) != NULL) {
 		if (*b == '.')
-			sputc('.', fsi);
-		crlfputs(b, fsi);
+			swrite1(sp, ".", 1, 1);
+		b[blen-1] = '\r';
+		b[blen] = '\n';
+		swrite1(sp, b, blen+1, 1);
 	}
 	SMTP_OUT(".\r\n");
 	SMTP_ANSWER(2);
@@ -258,112 +303,26 @@ char *server;
 struct name *to;
 FILE *fi;
 {
-	int sockfd;
-#ifdef	HAVE_IPv6_FUNCS
-	struct addrinfo hints, *res, *res0;
-	char hbuf[NI_MAXHOST];
-#else	/* !HAVE_IPv6_FUNCS */
-	struct sockaddr_in servaddr;
-	struct in_addr **pptr;
-	struct hostent *hp;
-	struct servent *sp;
-	unsigned short port = 0;
-#endif	/* !HAVE_IPv6_FUNCS */
-	FILE *fsi, *fso;
-	int ret;
-	char *portstr;
+	struct sock	so;
+	int	use_ssl, ret;
 
+	memset(&so, 0, sizeof so);
 	verbose = value("verbose") != NULL;
-	portstr = strchr(server, ':');
-	if (portstr == NULL)
-		portstr = "smtp";
-	else {
-		*portstr++ = '\0';
-		if (*portstr == '\0')
-			portstr = "smtp";
-#ifndef	HAVE_IPv6_FUNCS
-		else
-			port = (unsigned short)strtol(portstr, NULL, 10);
+	if (strncmp(server, "smtp://", 7) == 0) {
+		use_ssl = 0;
+		server += 7;
+#ifdef	USE_SSL
+	} else if (strncmp(server, "smtps://", 8) == 0) {
+		use_ssl = 1;
+		server += 8;
 #endif
-	}
-#ifdef	HAVE_IPv6_FUNCS
-	memset(&hints, 0, sizeof hints);
-	hints.ai_socktype = SOCK_STREAM;
-	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"could not resolve host: %s\n"),
-				server);
-		return 1;
-	}
-	sockfd = -1;
-	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
-		if (verbose) {
-			if (getnameinfo(res->ai_addr, res->ai_addrlen,
-						hbuf, sizeof hbuf, NULL, 0,
-						NI_NUMERICHOST) != 0)
-				strcpy(hbuf, "unknown host");
-			fprintf(stderr, catgets(catd, CATSET, 192,
-					"Connecting to %s . . ."), hbuf);
-		}
-		if ((sockfd = socket(res->ai_family, res->ai_socktype,
-						res->ai_protocol)) >= 0) {
-			if (connect(sockfd, res->ai_addr, res->ai_addrlen)!=0) {
-				close(sockfd);
-				sockfd = -1;
-			}
-		}
-	}
-	if (sockfd < 0) {
-		freeaddrinfo(res0);
-		perror(catgets(catd, CATSET, 254, "could not connect"));
-		return 1;
-	}
-	freeaddrinfo(res0);
-#else	/* !HAVE_IPv6_FUNCS */
-	if (port == 0) {
-		if ((sp = getservbyname(portstr, "tcp")) == NULL) {
-			if (equal(portstr, "smtp"))
-				port = htons(25);
-			else {
-				fprintf(stderr, catgets(catd, CATSET, 251,
-					"unknown service: %s\n"), portstr);
-				return 1;
-			}
-		}
-		port = sp->s_port;
 	} else
-		port = htons(port);
-	if ((hp = gethostbyname(server)) == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"could not resolve host: %s\n"),
-				server);
+		use_ssl = 0;
+	if (sopen(server, &so, use_ssl, server, use_ssl ? "smtps" : "smtp",
+				verbose) != OKAY)
 		return 1;
-	}
-	pptr = (struct in_addr **) hp->h_addr_list;
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror(catgets(catd, CATSET, 253, "could not create socket"));
-		return 1;
-	}
-	memset(&servaddr, 0, sizeof servaddr);
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = port;
-	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
-	if (verbose)
-		fprintf(stderr, catgets(catd, CATSET, 192,
-				"Connecting to %s . . ."), inet_ntoa(**pptr));
-	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
-			!= 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
-		return 1;
-	}
-#endif	/* !HAVE_IPv6_FUNCS */
-	if (verbose)
-		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
-	fsi = (FILE *)Fdopen(sockfd, "w");
-	fso = (FILE *)Fdopen(sockfd, "r");
-	ret = talk_smtp(to, fi, fsi, fso);
-	Fclose(fsi);
-	Fclose(fso);
+	ret = talk_smtp(to, fi, &so, server, server);
+	sclose(&so);
 	if (smtpbuf) {
 		free(smtpbuf);
 		smtpbuf = NULL;

@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.74 (gritter) 6/13/04
+.\"     Sccsid: @(#)nail.1	2.101 (gritter) 7/29/04
 .\"
-.TH NAIL 1 "6/13/04" "nail 10.8" "User Commands"
+.TH NAIL 1 "7/29/04" "nail 11.0" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -45,13 +45,19 @@ nail \- send and receive MIME conformant mail
 \fBnail\fR [\fB\-BFintv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
-[\fB\-h\fI\ hops\fR] \fIto-addr\fR .\ .\ .
+[\fB\-h\fI\ hops\fR]
+[\fB\-A\fI\ account\fR]
+\fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\fBnail\fR [\fB\-BeHiInNv~\fR] [\fB\-T\fI\ name\fR] \fB\-f\fR [\fIname\fR]
+\fBnail\fR [\fB\-BeHiInNv~\fR] [\fB\-T\fI\ name\fR]
+[\fB\-A\fI\ account\fR]
+\fB\-f\fR [\fIname\fR]
 .HP
 .ad l
-\fBnail\fR [\fB\-BeinNv~\fR] [\fB\-u\fI\ user\fR]
+\fBnail\fR [\fB\-BeinNv~\fR]
+[\fB\-A\fI\ account\fR]
+[\fB\-u\fI\ user\fR]
 .br
 .PD
 .ad b
@@ -65,9 +71,15 @@ is intended to provide the functionality of the POSIX
 .B mailx
 command,
 and offers extensions
-for MIME messages, POP3 and SMTP.
+for MIME messages, IMAP, POP3 and SMTP.
 .PP
 The following options are accepted:
+.TP
+.BI \-A \ name
+Executes an 
+.I account
+command (see below)
+for \fIname\fR after the startup files have been read.
 .TP
 .BI \-a \ file
 Attach the given file to the message.
@@ -513,6 +525,38 @@ command which follows.
 .B |
 A synonym for the \fIpipe\fR command.
 .TP
+.B account
+(ac) Creates, selects or lists
+an email account.
+An account is formed by a group of variables.
+With two or more arguments,
+the first argument gives an account name,
+and the following arguments create a group of variables.
+With one argument,
+the previously created group of variables
+for the account name is activated
+as described for the
+.I set
+command,
+and a
+.I folder
+command is executed for the system mailbox or inbox
+of that account.
+Without arguments,
+the list of accounts is printed.
+As an example,
+.sp
+.nf
+    account myisp \e
+        folder=imaps://mylogin@imap.myisp.example \e
+        record=+Sent \e
+        from="myname@myisp.example (My Name)" \e
+        smtp=smtp.myisp.example
+.fi
+.sp
+creates an account named `myisp'
+which can later be selected by specifying `account myisp'.
+.TP
 .B alias
 (a) With no arguments,
 prints out all currently-defined aliases.
@@ -544,17 +588,17 @@ then changes to the user's login directory.
 .TP
 .B copy
 (c) The copy command does the same thing that
-.B save
+.I save
 does,
 except that it does not mark the messages
 it is used on for deletion when you quit.
-Compressed files are handled as described for the
+Compressed files and IMAP mailboxes are handled as described for the
 .I folder
 command.
 .TP
 .B Copy
 (C) Similar to
-.BR copy ,
+.IR copy ,
 but saves the messages in a file named after the local part
 of the sender address of the first message.
 .TP
@@ -642,7 +686,7 @@ and \fB+\fIfile\fI means a \fIfile\fR in your folder directory.
 but the file is handled as a system mailbox
 e.\ g. by the mbox and save commands.
 If the name matches one of the strings defined with the
-.B shortcut
+.I shortcut
 command,
 it is replaced by its long form and expanded.
 If the name ends with \fB.gz\fR or \fB.bz2\fR,
@@ -657,52 +701,64 @@ the compressed file is used.
 A name of the form
 .nf
 
-       \fIprotocol\fB://\fR[\fIuser\fB@\fR]\fIhost\fR[\fB:\fIport]\fR
+       \fIprotocol\fB://\fR[\fIuser\fB@\fR]\fIhost\fR[\fB:\fIport\fR][\fB/\fIfile\fR]
 
 .fi
 is taken as an internet mailbox specification.
 The supported protocols are currently
+.B imap
+(IMAP v4r1),
+.B imaps
+(IMAP with SSL/TLS encryption),
 .B pop3
-(POP3)
+(POP3),
 and
 .B pop3s
-(i. e. POP3 with SSL/TLS encryption).
-Compressed files are handled as described for the
-.I folder
-command.
+(POP3 with SSL/TLS encryption).
+The optional
+.I file
+part applies to IMAP only;
+if it is omitted,
+the default `INBOX' is used.
+If \fInail\fR is connected to an IMAP server,
+a name of the form \fB@\fImailbox\fR
+refers to the \fImailbox\fR on that server.
+If the `folder' variable refers to an IMAP account,
+the special name `%' selects the `INBOX' on that account.
 .TP
 .B Followup
 (F) Similar to
-.BR Respond ,
+.IR Respond ,
 but saves the message in a file
 named after the local part of the first recipient's address.
 .TP
 .B followup
 (fo) Similar to
-.BR respond ,
+.IR respond ,
 but saves the message in a file
 named after the local part of the first recipient's address.
 .TP
 .B followupall
 Similar to
-.BR followup ,
+.IR followup ,
 but responds to all recipients regardless of the
-.B flipr
+.I flipr
 and
-.B Replyall
+.I Replyall
 variables.
 .TP
 .B followupsender
 Similar to
-.BR Followup ,
+.IR Followup ,
 but responds to the sender only regardless of the
-.B flipr
+.I flipr
 and
-.B Replyall
+.I Replyall
 variables.
 .TP
 .B Forward
-(For) Like forward,
+(For) Like
+.IR forward ,
 but does not add any header lines.
 This is not a way to hide the sender's identity,
 but useful for sending a message again
@@ -782,16 +838,86 @@ including ignored fields.
 If ignore is executed with no arguments,
 it lists the current set of ignored fields.
 .TP
+.B imap
+Sends command strings directly to the current IMAP server.
+\fINail\fR operates always in IMAP \fIselected state\fR
+on the current mailbox;
+commands that change this
+will produce undesirable results
+and should be avoided.
+Useful IMAP commands are:
+.RS
+.TP
+.B create
+Takes the name of an IMAP mailbox as an argument
+and creates it.
+.TP
+.B delete
+Takes the name of an IMAP mailbox as an argument
+and deletes it.
+.TP
+.B getquotaroot
+.\" RFC 2087
+Takes the name of an IMAP mailbox as an argument
+and prints the quotas that apply to the mailbox.
+Not all IMAP servers support this command.
+.TP
+.B list
+Takes two arguments,
+a \fIreference name\fR
+which specifies the desired hierarchy,
+and a \fImailbox name\fR
+with possible wildcards.
+To get a list of all existing IMAP mailboxes,
+use `imap list "" *'.
+.TP
+.B namespace
+.\" RFC 2342
+Takes no arguments and prints the Personal Namespaces,
+the Other User's Namespaces,
+and the Shared Namespaces.
+Each namespace type is printed in parentheses;
+if there are multiple namespaces of the same type,
+inner parentheses separate them.
+For each namespace,
+a namespace prefix and a hierarchy separator is listed.
+Not all IMAP servers support this command.
+.TP
+.B rename
+Takes the name of an existing IMAP mailbox as the first argument
+and renames it to the name given as second argument.
+.TP
+.B search
+Searches for messages that match the criteria
+given as arguments
+and prints their IMAP message numbers.
+For example,
+`imap search body \fIstring\fR'
+looks for all messages which contain \fIstring\fR in their body.
+.RE
+.IP
+IMAP message numbers are usually identical
+to regular message numbers,
+but can change when a message is deleted on the server
+by another client or process.
+They should thus be used with care;
+if in doubt,
+use a `print' command to verify them.
+The problem does not occur
+with regular message numbers
+because \fInail\fR internally uses IMAP \fIunique identifiers\fR (UIDs)
+to refer to them.
+.TP
 .B inc
 Same as
-.BR newmail .
+.IR newmail .
 .TP
 .B list
 Prints the names of all available commands.
 .TP
 .B Mail
 (M) Similar to
-.BR mail ,
+.IR mail ,
 but saves the message in a file
 named after the local part of the first recipient's address.
 .TP
@@ -811,7 +937,7 @@ Checks for new mail in the current folder
 without commiting any changes before.
 If new mail is present, a message is printed.
 If the
-.B header
+.I header
 variable is set,
 the headers of each new message are also printed.
 .TP
@@ -822,17 +948,20 @@ With an argument list, types the next matching message.
 .TP
 .B New
 Same as
-.BR unread .
+.IR unread .
 .TP
 .B new
 Same as
-.BR unread .
+.IR unread .
 .TP
 .B preserve
-(pre) A synonym for hold.
+(pre) A synonym for
+.IR hold .
 .TP
 .B Pipe
-(Pi) Like pipe but also
+(Pi) Like
+.I pipe
+but also
 pipes ignored header fields.
 .TP
 .B pipe
@@ -845,9 +974,15 @@ If the \fI page\fR variable is set,
 every message is followed by a formfeed character.
 .TP
 .B Print
-(P) Like print but also
+(P) Like
+.I print
+but also
 prints out ignored header fields.
-See also print, ignore and retain.
+See also
+.IR print ,
+.IR ignore ,
+and
+.IR retain .
 .TP
 .B print
 (p) Takes a message list and types out each message
@@ -883,37 +1018,37 @@ The default message must not be deleted.
 .TP
 .B replyall
 Similar to
-.BR reply ,
+.IR reply ,
 but responds to all recipients regardless of the
-.B flipr
+.I flipr
 and
-.B Replyall
+.I Replyall
 variables.
 .TP
 .B replysender
 Similar to
-.BR Reply ,
+.IR Reply ,
 but responds to the sender only regardless of the
-.B flipr
+.I flipr
 and
-.B Replyall
+.I Replyall
 variables.
 .TP
 .B Respond
 Same as
-.BR Reply .
+.IR Reply .
 .TP
 .B respond
 Same as
-.BR reply .
+.IR reply .
 .TP
-.B respondall
+.I respondall
 Same as
 .BR replyall .
 .TP
-.B respondsender
+.I respondsender
 Same as
-.BR replysender .
+.IR replysender .
 .TP
 .B retain
 Add the list of header fields named to the retained list.
@@ -928,7 +1063,7 @@ it lists the current set of retained fields.
 .B Save
 (S)
 Similar to
-.BR save ,
+.IR save ,
 but saves the messages
 in a file named after the local part
 of the sender of the first message
@@ -945,9 +1080,35 @@ followed by the line count and character count
 is echoed on the user's terminal.
 If editing a system mailbox,
 the messages are marked for deletion.
-Compressed files are handled as described for the
+Compressed files and IMAP mailboxes are handled as described for the
 .I \-f
 command line option above.
+.TP
+.B savediscard
+Same as saveignore.
+.TP
+.B saveignore
+Saveignore is to save what ignore is to print and type.
+Header fields thus marked are filtered out
+when saving a message by save
+or when automatically saving to mbox.
+This command should only be applied to header fields
+that do not contain information needed to decode the message,
+as MIME content fields do.
+If saving messages on an IMAP account,
+ignoring fields makes it impossible
+to copy the data directly on the server,
+thus operation usually becomes much slower.
+.TP
+.B saveretain
+Saveretain is to save what retain is to print and type.
+Header fields thus marked are the only ones
+saved with a message when saving by save
+or when automatically saving to mbox.
+Saveretain overrides saveignore.
+The use of this command is strongly discouraged
+since it may strip header fields
+that are needed to decode the message correctly.
 .TP
 .B set
 (se) With no arguments, prints all variable values,
@@ -963,30 +1124,9 @@ If an argument begins with
 .BR no ,
 as in `\fBset no\fIsave\fR',
 the effect is the same as invoking the
-.B unset
+.I unset
 command with the remaining part of the variable
-(`\fBunset \fIsave\fR').
-.TP
-.B savediscard
-Same as saveignore.
-.TP
-.B saveignore
-Saveignore is to save what ignore is to print and type.
-Header fields thus marked are filtered out
-when saving a message by save
-or when automatically saving to mbox.
-This command should only be applied to header fields
-that do not contain content information.
-.TP
-.B saveretain
-Saveretain is to save what retain is to print and type.
-Header fields thus marked are the only ones
-saved with a message when saving by save
-or when automatically saving to mbox.
-Saveretain overrides saveignore.
-The use of this command is strongly discouraged
-since it may strip header fields
-that are needed to decode the message correctly.
+(`\fIunset \fIsave\fR').
 .TP
 .B shell
 (sh) Invokes an interactive version of the shell.
@@ -994,7 +1134,7 @@ that are needed to decode the message correctly.
 .B shortcut
 Defines a shortcut name and its string for expansion,
 as described for the
-.B folder
+.I folder
 command.
 With no arguments,
 a list of defined shortcuts is printed.
@@ -1038,7 +1178,7 @@ from the list of ignored fields.
 .TP
 .B Unread
 Same as
-.BR unread .
+.IR unread .
 .TP
 .B unread
 (U) Takes a message list and marks each message
@@ -1146,7 +1286,7 @@ with the first method (no \fIfilename\fP arguments).
 .TP
 .B ~A
 Inserts the string contained in the
-.B Sign
+.I Sign
 variable
 (same as `~i Sign').
 The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
@@ -1169,7 +1309,7 @@ but do not make the names visible in the Cc: line
 Add the given names to the list of carbon copy recipients.
 .TP
 .B ~d
-Read the file `\fIdead.letter\fR' from your home directory
+Read the file `dead.letter' from your home directory
 into the message.
 .TP
 .B ~e
@@ -1227,7 +1367,7 @@ it is piped through the pager.
 .B ~q
 Abort the message being sent,
 copying the message to
-`\fIdead.letter\fR' in your home directory
+`dead.letter' in your home directory
 if save is set.
 .TP
 .BI ~r filename
@@ -1256,7 +1396,7 @@ the message is appended to it.
 .TP
 .B ~x
 Same as ~q,
-except that the message is not saved to the dead.letter file.
+except that the message is not saved to the `dead.letter' file.
 .TP
 .BI ~| command
 Pipe the message through the command as a filter.
@@ -1344,7 +1484,7 @@ indicates your satisfaction with the current list.
 .TP
 .B autoinc
 Same as
-.BR newmail .
+.IR newmail .
 .TP
 .B autoprint
 Causes the delete command to behave like dp \-
@@ -1416,7 +1556,7 @@ other fields are ignored.
 .TP
 .B emptybox
 If set, an empty mailbox file is not removed.
-This may improve the interoperability with other MUAs
+This may improve the interoperability with other mail user agents
 when using a common folder directory.
 .TP
 .B emptystart
@@ -1428,9 +1568,9 @@ If this option is set,
 .TP
 .B flipr
 Exchanges the
-.B Respond
+.I Respond
 with the
-.B respond
+.I respond
 commands and vice-versa.
 .TP
 .B header
@@ -1477,6 +1617,11 @@ the sender to be included in the group.
 .B newmail
 Checks for new mail in the current folder
 each time the prompt is printed.
+For IMAP mailboxes,
+this is always performed
+and may also result in fewer messages within the folder
+if messages have been deleted on the server
+by another process or client.
 .TP
 .B noheader
 Setting the option noheader is the same
@@ -1484,9 +1629,15 @@ as giving the \-N flag on the command line.
 .TP
 .B outfolder
 Causes the filename given in the
-.B record
-variable to be interpreted relative to the directory given in the
-.B folder
+.I record
+variable
+and the sender-based filenames for the
+.I Copy
+and
+.I Save
+commands
+to be interpreted relative to the directory given in the
+.I folder
 variable rather than to the current directory
 unless it is an absolute pathname.
 .TP
@@ -1519,7 +1670,7 @@ Reverses the sense of reply and Reply commands.
 When you abort a message
 with two RUBOUT (interrupt characters)
 \fInail\fR copies the partial letter
-to the file `\fIdead.letter\fR' in your home directory.
+to the file `dead.letter' in your home directory.
 This option is set by default.
 .TP
 .B searchheaders
@@ -1611,7 +1762,7 @@ is used to compute the threshold (see
 .B DEAD
 The name of the file to use
 for saving aborted messages.
-This defaults to `\fIdead.letter\fR'
+This defaults to `dead.letter'
 in the user's home directory.
 .TP
 .B EDITOR
@@ -1640,10 +1791,47 @@ gives the character to use in the place of ~ to denote escapes.
 .B folder
 The name of the directory to use
 for storing folders of messages.
-If this name begins with a `/',
+All folder names that begin with `+'
+refer to files below that directory.
+If the directory name begins with a `/',
 \fInail\fR considers it to be an absolute pathname;
 otherwise, the folder directory is found
 relative to your home directory.
+.IP
+The directory name may also refer to an IMAP account;
+any names that begin with `+'
+then refer to IMAP mailboxes on that account.
+An IMAP folder is normally given in the form
+.sp
+.nf
+    imaps://mylogin@imap.myisp.example
+.fi
+.sp
+In this case,
+the `+' and `@' prefixes for folder names
+have the same effect
+(see the
+.I folder
+command).
+.IP
+Some IMAP servers do not accept the creation of mailboxes
+in the hierarchy base;
+they require that they are created as subfolders of `INBOX'.
+With such servers,
+a folder name of the form
+.sp
+.nf
+    imaps://mylogin@imap.myisp.example/INBOX.\&
+.fi
+.sp
+should be used
+(the last character is the server's hierarchy delimiter).
+Folder names prefixed by `+' will then refer to folders below `INBOX',
+while folder names prefixed by `@'
+refer to folders below the hierarchy base.
+See the
+.I imap namespace
+command for a method to detect the appropriate prefix and delimiter.
 .TP
 .B from
 The address to put into the \fI`From:'\fR field of the message header.
@@ -1669,6 +1857,18 @@ instead of the value obtained from
 and
 .IR getaddrinfo (3).
 .TP
+.B imap-keepalive
+IMAP servers may close the connection
+after a period of inactivity;
+the standard requires this to be at least 30 minutes,
+but practical experience may vary.
+Setting this variable to a numeric
+.I value
+greater than 0
+causes a NOOP command to be sent each
+.I value
+seconds if no other operation is performed.
+.TP
 .B indentprefix
 String used by the `\fI~m\fR' and `\fI~M\fR' tilde escapes
 and by the \fIquote\fR option
@@ -1679,7 +1879,10 @@ if it contains spaces or tabs.
 .TP
 .B LISTER
 Pathname of the directory lister
-to use in the folders command.
+to use in the
+.I folders
+command
+when operating on local mailboxes.
 Default is /bin/ls.
 .TP
 .B MAIL
@@ -1688,7 +1891,7 @@ Otherwise, a system-dependent default is used.
 Can be a
 \fIprotocol\fB://\fR
 string (see the
-.B folder
+.I folder
 command for more information).
 .TP
 .B MAILX_HEAD
@@ -1761,8 +1964,10 @@ on the system
 is running on.
 .TP
 .B pop3-keepalive
-Many POP3 servers will close the connection
-after a period of inactivity.
+POP3 servers may close the connection
+after a period of inactivity;
+the standard requires this to be at least 10 minutes,
+but practical experience may vary.
 Setting this variable to a numeric
 .I value
 greater than 0
@@ -1774,7 +1979,7 @@ seconds if no other operation is performed.
 The string printed when a command is accepted.
 Defaults to `\fB?\ \fR',
 or to `\fB&\ \fR' if the
-.B bsdcompat
+.I bsdcompat
 variable is set.
 .TP
 .B quote
@@ -1818,24 +2023,71 @@ if this option is not defined.
 .TP
 .B Sign
 A string for use with the
-.B ~A
+.I ~A
 command.
 .TP
 .B sign
 A string for use with the
-.B ~a
+.I ~a
 command.
 .TP
 .B smtp
 Normally, \fInail\fR invokes
 .IR sendmail (8)
 directly to transfer messages.
-If \fIsmtp\fR is set, a SMTP connection to
+If the \fIsmtp\fR variable is set, a SMTP connection to
 the server specified by the value of this variable
 is used instead.
 If the SMTP server does not use the standard port,
 a value of \fIserver:port\fR can be given,
 with \fIport\fR as a name or as a number.
+.IP
+There are two possible methods to get SSL/TLS encrypted SMTP sessions:
+First, the STARTTLS command can be used to encrypt a session
+after it has been initiated,
+but before any user-related data has been sent; see
+.I \%smtp-use-tls
+below.
+Second, some servers accept sessions that are encrypted
+from their beginning on. This mode is configured by assigning
+\fBsmtps://\fIserver\fR[\fB:\fIport\fR]
+to the
+.I smtp
+variable.
+.TP
+.B smtp-auth-password
+Sets the global password for SMTP AUTH LOGIN.
+Both user and password have to be given
+for SMTP AUTH.
+.TP
+\fBsmtp-auth-password-\fIuser\fB@\fIhost\fR
+Overrides
+.I smtp-auth-password
+for specific values of sender addresses,
+dependant on the
+.I from
+variable.
+.TP
+.B smtp-auth-user
+Sets the global user name for SMTP AUTH LOGIN.
+Both user and password have to be given
+for SMTP AUTH.
+.TP
+\fBsmtp-auth-user-\fIuser\fB@\fIhost\fR
+Overrides
+.I smtp-auth-user
+for specific values of sender addresses,
+dependant on the
+.I from
+variable.
+.TP
+.B smtp-use-tls
+Causes \fInail\fR to issue a STARTTLS command
+to make an SMTP session SSL/TLS encrypted.
+Not all servers support this command;
+because of common implementation defects,
+it cannot be automatically determined
+whether a server supports it or not.
 .TP
 .B ssl-ca-dir
 Specifies a directory with CA certificates for verification.
@@ -1859,7 +2111,7 @@ Sets an account-specific file name
 for a SSL/TLS client certificate
 required by some servers.
 Overrides
-.B ssl-cert
+.I ssl-cert
 for the specified account.
 .TP
 .B ssl-cipher-list
@@ -1876,7 +2128,7 @@ The file is expected to be in PEM format.
 Sets an account-specific file name
 for the private key of a SSL/TLS client certificate.
 Overrides
-.B ssl-key
+.I ssl-key
 for the specified account.
 .TP
 .B ssl-method
@@ -1918,10 +2170,13 @@ Overrides
 for a specific account.
 .TP
 .B record
-If defined, gives the pathname of the file
+If defined, gives the pathname of the folder
 used to record all outgoing mail.
 If not defined,
 then outgoing mail is not so saved.
+When saving to this folder fails,
+the message is not sent
+but saved to the `dead.letter' file instead.
 .TP
 .B replyto
 The address to put into the \fI`Reply-To:'\fR field of the message header.
@@ -1972,7 +2227,7 @@ Is used as startup file instead of ~/.mailrc if set.
 .TP
 .B NAILRC
 If this variable is set and
-.B MAILRC
+.I MAILRC
 is not set,
 it is read as startup file.
 .TP
@@ -1992,13 +2247,13 @@ Personal MIME types.
 /etc/mime.types
 System wide MIME types.
 .SH EXAMPLES
-.SS "POP3 client setup"
+.SS "IMAP or POP3 client setup"
 First, you need the following data from your ISP:
-the host name of its POP3 server,
+the host name of its IMAP or POP3 server,
 user name and password for this server,
 and a notice whether the server uses SSL/TLS encryption.
 Assuming the host name is `server.myisp.example'
-and your user name for that server is `myname',
+and your user name for that server is `mylogin',
 you can refer to this account using the
 .I folder
 command or
@@ -2006,10 +2261,11 @@ command or
 command line option with
 .nf
 
-    \fBpop3://\fImyname\fB@\fIserver.myisp.example\fR
+    \fBimaps://\fImylogin\fB@\fIserver.myisp.example\fR
 
 .fi
-(replace `pop3://' with `pop3s://' if the server supports SSL/TLS).
+(replace `imaps://' with `imap://' if the server does not support SSL/TLS,
+or use `pop3s://' or `pop3://' if the server does not offer IMAP).
 The string is not necessarily the same as your internet mail address.
 As you probably want messages to be deleted from this account
 after saving them,
@@ -2020,7 +2276,7 @@ command can be used to avoid typing that many characters
 every time you want to connect:
 .nf
 
-    \fBshortcut \fImyisp\fB \fB%:pop3://\fImyname\fB@\fIserver.myisp.example\fR
+    \fBshortcut \fImyisp\fB \fB%:imaps://\fImylogin\fB@\fIserver.myisp.example\fR
 
 .fi
 You probably want to put this string into a startup file.
@@ -2046,6 +2302,16 @@ and create a file
 containing the
 .I shortcut
 command above.
+.PP
+If you want to use more than one IMAP mailbox on a server,
+the
+.I account
+command
+(which is also \fInail-\fRspecific)
+is more appropriate than the
+.I shortcut
+command.
+.PP
 .I Nail
 will ask you for a password string
 each time you connect to this account.
@@ -2054,11 +2320,12 @@ of the machine you are working on,
 you can give this password in the startup file as
 .nf
 
-    \fBset password-\fImyname\fB@\fIserver.myisp.example\fB="\fISECRET\fB"\fR
+    \fBset password-\fImylogin\fB@\fIserver.myisp.example\fB="\fISECRET\fB"\fR
 
 .fi
 You should change the permissions of this file to 0600, see
 .IR chmod (1).
+.PP
 Many POP3 servers will close the connection
 after a short period of inactivity. Use
 .nf
@@ -2067,6 +2334,7 @@ after a short period of inactivity. Use
 
 .fi
 to send a keepalive message each 30 seconds.
+.PP
 If you encounter problems connecting to a SSL/TLS server,
 try the
 .I ssl-rand-egd
@@ -2082,7 +2350,7 @@ If the failed certificate is indeed valid,
 fetch it by executing
 .nf
 
-    \fBopenssl s_client -connect \fIserver.myisp.example\fB:\fIpop3s\fR
+    \fBopenssl s_client -connect \fIserver.myisp.example\fB:\fIimaps\fR
 
 .fi
 (see
@@ -2153,7 +2421,24 @@ tr \-d '\e015' <input | nail .\ .\ .
 .RE
 or fix the tools that generate them.
 .PP
-POP3 mailboxes are limited in some ways:
+Limitations with IMAP mailboxes are:
+It is not possible to edit messages,
+but it is possible to append them.
+Thus to edit a message,
+create a local copy of it,
+edit it, append it,
+and delete the original.
+The line count for the header display
+is only appropriate if the entire message has been downloaded
+from the server.
+The `exit' command will not cause the message status to be reset.
+Message numbers may change with IMAP
+every time before the prompt is printed
+if \fInail\fR is notified by the server
+that messages have been deleted
+by some other client or process.
+.PP
+Limitations with POP3 mailboxes are:
 It is not possible to edit messages,
 they can only be copied and deleted.
 The line count for the header display
@@ -2166,23 +2451,40 @@ and with a server that does,
 the `exit' command will not cause the message status to be reset.
 The `newmail' command and the `newmail' variable
 have no effect.
-An unencrypted POP3 message download
+.PP
+An unencrypted IMAP or POP3 message download
 can be interrupted from the terminal,
 but the part that was not downloaded
 will have to be downloaded
 before the next command is sent.
-A SSL/TLS encrypted POP3 message download
+A SSL/TLS encrypted IMAP or POP3 message download
 should not be interrupted,
 as this will very likely cause an error in the SSL transport.
 .PP
 There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
+.PP
+As \fInail\fR is a mail user agent,
+it provides only basic SMTP services.
+If it fails to contact its upstream SMTP server,
+it will not make further attempts to transfer the message
+at a later time,
+and it does not leave other information about this condition
+than an error message on the terminal
+and a `dead.letter' file.
+This is usually not a problem if the SMTP server
+is located in the same local network
+as the computer on which \fInail\fR is run.
+However, care should be taken when using a remote server of an ISP;
+it might be better to set up a local SMTP server then
+which just acts as a proxy.
 .PP
 A \fImail\fR command appeared in Version 1 AT&T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from
 from The Mail Reference Manual
 originally written by Kurt Shoens.
-A revision for \fInail\fR was done by Gunnar Ritter.
+\fINail\fR enhancements are maintained and documented
+by Gunnar Ritter.
 .PP
 Portions of this text are reprinted and reproduced in electronic form
 from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology

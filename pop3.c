@@ -38,19 +38,11 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.10 (gritter) 6/13/04";
+static char sccsid[] = "@(#)pop3.c	2.16 (gritter) 7/29/04";
 #endif
 #endif /* not lint */
 
 #include "config.h"
-
-#ifdef	USE_SSL
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509.h>
-#include <openssl/rand.h>
-#endif	/* USE_SSL */
 
 #include "rcv.h"
 #include "extern.h"
@@ -58,16 +50,6 @@ static char sccsid[] = "@(#)pop3.c	2.10 (gritter) 6/13/04";
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
-
-#ifdef	HAVE_SOCKETS
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
-#endif	/* HAVE_SOCKETS */
-
 #include <termios.h>
 
 /*
@@ -86,7 +68,7 @@ static int	verbose;
 			if (verbose) \
 				fputs(x, stderr); \
 			mp->mb_active |= (y); \
-			if (pop3_write(mp, x) == STOP) \
+			if (swrite(&mp->sock, x) == STOP) \
 				return STOP;
 
 static char	*pop3buf;
@@ -99,17 +81,11 @@ static int	pop3keepalive;
 static volatile int	pop3lock;
 
 static void pop3_timer_off __P((void));
-static int pop3_close __P((struct mailbox *));
-static ssize_t xwrite __P((int, const char *, size_t));
-static enum okay pop3_write __P((struct mailbox *, char *));
-static int pop3_getline __P((char **, size_t *, size_t *, struct mailbox *));
 static enum okay pop3_answer __P((struct mailbox *));
 static enum okay pop3_finish __P((struct mailbox *));
 static void pop3catch __P((int));
 static enum okay pop3_noop __P((struct mailbox *));
 static void pop3alarm __P((int));
-static enum okay pop3_open __P((const char *, struct mailbox *, int,
-			const char *));
 static enum okay pop3_pass __P((struct mailbox *, const char *));
 static enum okay pop3_user __P((struct mailbox *, char *, const char *));
 static enum okay pop3_stat __P((struct mailbox *, off_t *, int *));
@@ -124,387 +100,6 @@ static enum okay pop3_exit __P((struct mailbox *));
 static enum okay pop3_delete __P((struct mailbox *, int));
 static enum okay pop3_update __P((struct mailbox *));
 
-#ifdef	USE_SSL
-/*
- * OpenSSL client implementation according to: John Viega, Matt Messier,
- * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
- */
-
-enum {
-	VRFY_IGNORE,
-	VRFY_WARN,
-	VRFY_ASK,
-	VRFY_STRICT
-} ssl_vrfy_level;
-
-static void ssl_set_vrfy_level __P((const char *));
-static enum okay ssl_vrfy_decide __P((void));
-static int ssl_rand_init __P((void));
-static SSL_METHOD *ssl_select_method __P((const char *));
-static int ssl_verify_cb __P((int, X509_STORE_CTX *));
-static void ssl_load_verifications __P((struct mailbox *));
-static void ssl_certificate __P((struct mailbox *, const char *));
-static enum okay ssl_check_host __P((const char *,
-			struct mailbox *));
-static enum okay ssl_open __P((const char *, struct mailbox *, const char *));
-static void ssl_gen_err __P((const char *));
-
-static void
-ssl_set_vrfy_level(uhp)
-	const char *uhp;
-{
-	char *cp;
-	char *vrvar;
-
-	ssl_vrfy_level = VRFY_ASK;
-	vrvar = ac_alloc(strlen(uhp) + 12);
-	strcpy(vrvar, "ssl-verify-");
-	strcpy(&vrvar[11], uhp);
-	if ((cp = value(vrvar)) == NULL)
-		cp = value("ssl-verify");
-	ac_free(vrvar);
-	if (cp != NULL) {
-		if (equal(cp, "strict"))
-			ssl_vrfy_level = VRFY_STRICT;
-		else if (equal(cp, "ask"))
-			ssl_vrfy_level = VRFY_ASK;
-		else if (equal(cp, "warn"))
-			ssl_vrfy_level = VRFY_WARN;
-		else if (equal(cp, "ignore"))
-			ssl_vrfy_level = VRFY_IGNORE;
-		else
-			fprintf(stderr, catgets(catd, CATSET, 265,
-					"invalid value of ssl-verify: %s\n"),
-					cp);
-	}
-}
-
-static enum okay
-ssl_vrfy_decide()
-{
-	enum okay ok = STOP;
-
-	switch (ssl_vrfy_level) {
-	case VRFY_STRICT:
-		ok = STOP;
-		break;
-	case VRFY_ASK:
-		{
-			char *line = NULL;
-			size_t linesize = 0;
-
-			fprintf(stderr, catgets(catd, CATSET, 264,
-					"Continue (y/n)? "));
-			if (readline(stdin, &line, &linesize) > 0 &&
-					*line == 'y')
-				ok = OKAY;
-			else
-				ok = STOP;
-			if (line)
-				free(line);
-		}
-		break;
-	case VRFY_WARN:
-	case VRFY_IGNORE:
-		ok = OKAY;
-	}
-	return ok;
-}
-
-static int
-ssl_rand_init()
-{
-	char *cp;
-	int state = 0;
-
-	if ((cp = value("ssl-rand-egd")) != NULL) {
-		cp = expand(cp);
-		if (RAND_egd(cp) == -1) {
-			fprintf(stderr, catgets(catd, CATSET, 245,
-				"entropy daemon at \"%s\" not available\n"),
-					cp);
-		} else
-			state = 1;
-	} else if ((cp = value("ssl-rand-file")) != NULL) {
-		cp = expand(cp);
-		if (RAND_load_file(cp, 1024) == -1) {
-			fprintf(stderr, catgets(catd, CATSET, 246,
-				"entropy file at \"%s\" not available\n"), cp);
-		} else {
-			struct stat st;
-
-			if (stat(cp, &st) == 0 && S_ISREG(st.st_mode) &&
-					access(cp, W_OK) == 0) {
-				if (RAND_write_file(cp) == -1) {
-					fprintf(stderr, catgets(catd, CATSET,
-								247,
-				"writing entropy data to \"%s\" failed\n"), cp);
-				}
-			}
-			state = 1;
-		}
-	}
-	return state;
-}
-
-static SSL_METHOD *
-ssl_select_method(uhp)
-	const char *uhp;
-{
-	SSL_METHOD *method;
-	char *cp, *mtvar;
-
-	mtvar = ac_alloc(strlen(uhp) + 12);
-	strcpy(mtvar, "ssl-method-");
-	strcpy(&mtvar[11], uhp);
-	if ((cp = value(mtvar)) == NULL)
-		cp = value("ssl-method");
-	ac_free(mtvar);
-	if (cp != NULL) {
-		if (equal(cp, "ssl2"))
-			method = SSLv2_client_method();
-		else if (equal(cp, "ssl3"))
-			method = SSLv3_client_method();
-		else if (equal(cp, "tls1"))
-			method = TLSv1_client_method();
-		else {
-			fprintf(stderr, catgets(catd, CATSET, 244,
-					"Invalid SSL method \"%s\"\n"), cp);
-			method = SSLv23_client_method();
-		}
-	} else
-		method = SSLv23_client_method();
-	return method;
-}
-
-static int
-ssl_verify_cb(int success, X509_STORE_CTX *store)
-{
-	if (success == 0) {
-		char data[256];
-		X509 *cert = X509_STORE_CTX_get_current_cert(store);
-		int depth = X509_STORE_CTX_get_error_depth(store);
-		int err = X509_STORE_CTX_get_error(store);
-
-		fprintf(stderr, catgets(catd, CATSET, 229,
-				"Error with certificate at depth: %i\n"),
-				depth);
-		X509_NAME_oneline(X509_get_issuer_name(cert), data,
-				sizeof data);
-		fprintf(stderr, catgets(catd, CATSET, 230, " issuer = %s\n"),
-				data);
-		X509_NAME_oneline(X509_get_subject_name(cert), data,
-				sizeof data);
-		fprintf(stderr, catgets(catd, CATSET, 231, " subject = %s\n"),
-				data);
-		fprintf(stderr, catgets(catd, CATSET, 232, " err %i: %s\n"),
-				err, X509_verify_cert_error_string(err));
-		if (ssl_vrfy_decide() != OKAY)
-			return 0;
-	}
-	return 1;
-}
-
-static void
-ssl_load_verifications(mp)
-	struct mailbox *mp;
-{
-	char *ca_dir, *ca_file;
-
-	if (ssl_vrfy_level == VRFY_IGNORE)
-		return;
-	if ((ca_dir = value("ssl-ca-dir")) != NULL)
-		ca_dir = expand(ca_dir);
-	if ((ca_file = value("ssl-ca-file")) != NULL)
-		ca_file = expand(ca_file);
-	if (ca_dir || ca_file) {
-		if (SSL_CTX_load_verify_locations(mp->mb_ctx,
-					ca_file, ca_dir) != 1) {
-			fprintf(stderr, catgets(catd, CATSET, 233,
-						"Error loading"));
-			if (ca_dir) {
-				fprintf(stderr, catgets(catd, CATSET, 234,
-							" %s"), ca_dir);
-				if (ca_file)
-					fprintf(stderr, catgets(catd, CATSET,
-							235, " or"));
-			}
-			if (ca_file)
-				fprintf(stderr, catgets(catd, CATSET, 236,
-						" %s"), ca_file);
-			fprintf(stderr, catgets(catd, CATSET, 237, "\n"));
-		}
-	}
-	if (value("ssl-no-default-ca") == NULL) {
-		if (SSL_CTX_set_default_verify_paths(mp->mb_ctx) != 1)
-			fprintf(stderr, catgets(catd, CATSET, 243,
-				"Error loading default CA locations\n"));
-	}
-	SSL_CTX_set_verify(mp->mb_ctx, SSL_VERIFY_PEER, ssl_verify_cb);
-}
-
-static void
-ssl_certificate(mp, uhp)
-	struct mailbox *mp;
-	const char *uhp;
-{
-	char *certvar, *keyvar, *cert, *key;
-
-	certvar = ac_alloc(strlen(uhp) + 10);
-	strcpy(certvar, "ssl-cert-");
-	strcpy(&certvar[9], uhp);
-	if ((cert = value(certvar)) != NULL ||
-			(cert = value("ssl-cert")) != NULL) {
-		cert = expand(cert);
-		if (SSL_CTX_use_certificate_chain_file(mp->mb_ctx, cert) == 1) {
-			keyvar = ac_alloc(strlen(uhp) + 9);
-			strcpy(keyvar, "ssl-key-");
-			if ((key = value(keyvar)) == NULL &&
-					(key = value("ssl-key")) == NULL)
-				key = cert;
-			else
-				key = expand(key);
-			if (SSL_CTX_use_PrivateKey_file(mp->mb_ctx, key,
-						SSL_FILETYPE_PEM) != 1)
-				fprintf(stderr, catgets(catd, CATSET, 238,
-				"cannot load private key from file %s\n"),
-						key);
-			ac_free(keyvar);
-		} else
-			fprintf(stderr, catgets(catd, CATSET, 239,
-				"cannot load certificate from file %s\n"),
-					cert);
-	}
-	ac_free(certvar);
-}
-
-static enum okay
-ssl_check_host(server, mp)
-	const char *server;
-	struct mailbox *mp;
-{
-	X509 *cert;
-	X509_NAME *subj;
-	char data[256];
-	int i, extcount;
-
-	if ((cert = SSL_get_peer_certificate(mp->mb_ssl)) == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 248,
-				"no certificate from \"%s\"\n"), server);
-		return STOP;
-	}
-	extcount = X509_get_ext_count(cert);
-	for (i = 0; i < extcount; i++) {
-		const char *extstr;
-		X509_EXTENSION *ext;
-
-		ext = X509_get_ext(cert, i);
-		extstr= OBJ_nid2sn(OBJ_obj2nid(X509_EXTENSION_get_object(ext)));
-		if (equal(extstr, "subjectAltName")) {
-			int j;
-			unsigned char *data;
-			STACK_OF(CONF_VALUE) *val;
-			CONF_VALUE *nval;
-			X509V3_EXT_METHOD *meth;
-
-			if ((meth = X509V3_EXT_get(ext)) == NULL)
-				break;
-			data = ext->value->data;
-			val = meth->i2v(meth,
-					meth->d2i(NULL, &data,
-						ext->value->length),
-					NULL);
-			for (j = 0; j < sk_CONF_VALUE_num(val); j++) {
-				/*LINTED*/
-				nval = sk_CONF_VALUE_value(val, j);
-				if (equal(nval->name, "DNS") &&
-						asccasecmp(nval->value, server)
-						== 0)
-					goto found;
-			}
-		}
-	}
-	if ((subj = X509_get_subject_name(cert)) != NULL &&
-			X509_NAME_get_text_by_NID(subj, NID_commonName,
-				data, sizeof data) > 0) {
-		data[sizeof data - 1] = 0;
-		if (asccasecmp(data, server) == 0)
-			goto found;
-	}
-	X509_free(cert);
-	return STOP;
-found:	X509_free(cert);
-	return OKAY;
-}
-
-static enum okay
-ssl_open(server, mp, uhp)
-	const char *server;
-	struct mailbox *mp;
-	const char *uhp;
-{
-	static int initialized, rand_init;
-	char *cp;
-	long options;
-
-	if (initialized == 0) {
-		SSL_library_init();
-		initialized = 1;
-	}
-	if (rand_init == 0)
-		rand_init = ssl_rand_init();
-	ssl_set_vrfy_level(uhp);
-	if ((mp->mb_ctx = SSL_CTX_new(ssl_select_method(uhp))) == NULL) {
-		ssl_gen_err(catgets(catd, CATSET, 261, "SSL_CTX_new() failed"));
-		return STOP;
-	}
-#ifdef	SSL_MODE_AUTO_RETRY
-	/* available with OpenSSL 0.9.6 or later */
-	SSL_CTX_set_mode(mp->mb_ctx, SSL_MODE_AUTO_RETRY);
-#endif	/* SSL_MODE_AUTO_RETRY */
-	options = SSL_OP_ALL;
-	if (value("ssl-v2-allow") == NULL)
-		options |= SSL_OP_NO_SSLv2;
-	SSL_CTX_set_options(mp->mb_ctx, options);
-	ssl_load_verifications(mp);
-	ssl_certificate(mp, uhp);
-	if ((cp = value("ssl-cipher-list")) != NULL) {
-		if (SSL_CTX_set_cipher_list(mp->mb_ctx, cp) != 1)
-			fprintf(stderr, catgets(catd, CATSET, 240,
-					"invalid ciphers: %s\n"), cp);
-	}
-	if ((mp->mb_ssl = SSL_new(mp->mb_ctx)) == NULL) {
-		ssl_gen_err(catgets(catd, CATSET, 262, "SSL_new() failed"));
-		return STOP;
-	}
-	SSL_set_fd(mp->mb_ssl, mp->mb_sock);
-	if (SSL_connect(mp->mb_ssl) < 0) {
-		ssl_gen_err(catgets(catd, CATSET, 263,
-				"could not initiate SSL/TLS connection"));
-		return STOP;
-	}
-	if (ssl_vrfy_level != VRFY_IGNORE) {
-		if (ssl_check_host(server, mp) != OKAY) {
-			fprintf(stderr, catgets(catd, CATSET, 249,
-				"host certificate does not match \"%s\"\n"),
-				server);
-			if (ssl_vrfy_decide() != OKAY)
-				return STOP;
-		}
-	}
-	return OKAY;
-}
-
-static void
-ssl_gen_err(msg)
-	const char *msg;
-{
-	SSL_load_error_strings();
-	fprintf(stderr, "%s: %s\n", msg,
-		ERR_error_string(ERR_get_error(), NULL));
-}
-#endif	/* USE_SSL */
-
 static void
 pop3_timer_off()
 {
@@ -514,149 +109,6 @@ pop3_timer_off()
 	}
 }
 
-static int
-pop3_close(mp)
-	struct mailbox *mp;
-{
-	int i;
-
-	if (mp->mb_sock >= 0) {
-		pop3_timer_off();
-#ifdef	USE_SSL
-		if (mp->mb_ssl) {
-			SSL_shutdown(mp->mb_ssl);
-			SSL_free(mp->mb_ssl);
-			mp->mb_ssl = NULL;
-			SSL_CTX_free(mp->mb_ctx);
-			mp->mb_ctx = NULL;
-		}
-#endif	/* USE_SSL */
-		i = close(mp->mb_sock);
-		mp->mb_sock = -1;
-		return i;
-	}
-	return 0;
-}
-
-static ssize_t
-xwrite(fd, data, sz)
-	const char *data;
-	size_t sz;
-{
-	ssize_t wo, wt = 0;
-
-	do {
-		if ((wo = write(fd, data + wt, sz - wt)) < 0) {
-			if (errno == EINTR)
-				continue;
-			else
-				return -1;
-		}
-		wt += wo;
-	} while (wt < sz);
-	return sz;
-}
-
-static enum okay
-pop3_write(mp, data)
-	struct mailbox *mp;
-	char *data;
-{
-	int sz = strlen(data), x;
-
-#ifdef	USE_SSL
-	if (mp->mb_ssl) {
-ssl_retry:	x = SSL_write(mp->mb_ssl, data, sz);
-		if (x < 0) {
-			switch(SSL_get_error(mp->mb_ssl, x)) {
-			case SSL_ERROR_WANT_READ:
-			case SSL_ERROR_WANT_WRITE:
-				goto ssl_retry;
-			}
-		}
-	} else
-#endif	/* USE_SSL */
-	{
-		x = xwrite(mp->mb_sock, data, sz);
-	}
-	if (x != sz) {
-#ifdef	USE_SSL
-		(mp->mb_ssl ? ssl_gen_err : perror)
-#else	/* !USE_SSL */
-			perror
-#endif	/* !USE_SSL */
-				(catgets(catd, CATSET, 259,
-					"POP3 write error"));
-		if (x < 0)
-			pop3_close(mp);
-		return STOP;
-	}
-	return OKAY;
-}
-
-static int
-pop3_getline(line, linesize, linelen, mp)
-	char **line;
-	size_t *linesize, *linelen;
-	struct mailbox *mp;
-{
-	char *lp = *line;
-
-	if (mp->mb_sz < 0) {
-		pop3_close(mp);
-		return mp->mb_sz;
-	}
-	do {
-		if (*line == NULL || lp > &(*line)[*linesize - 128]) {
-			size_t diff = lp - *line;
-			*line = srealloc(*line, *linesize += 256);
-			lp = &(*line)[diff];
-		}
-		if (mp->mb_ptr == NULL ||
-				mp->mb_ptr >= &mp->mb_buf[mp->mb_sz]) {
-#ifdef	USE_SSL
-			if (mp->mb_ssl) {
-		ssl_retry:	if ((mp->mb_sz = SSL_read(mp->mb_ssl,
-						mp->mb_buf,
-						sizeof mp->mb_buf)) <= 0) {
-					if (mp->mb_sz < 0) {
-						switch(SSL_get_error(mp->mb_ssl,
-							mp->mb_sz)) {
-						case SSL_ERROR_WANT_READ:
-						case SSL_ERROR_WANT_WRITE:
-							goto ssl_retry;
-						}
-						ssl_gen_err(catgets(catd,
-							CATSET, 250,
-							"POP3 read failed"));
-
-					}
-					break;
-				}
-			} else
-#endif	/* USE_SSL */
-			{
-			again:	if ((mp->mb_sz = read(mp->mb_sock, mp->mb_buf,
-						sizeof mp->mb_buf)) <= 0) {
-					if (mp->mb_sz < 0) {
-						if (errno == EINTR)
-							goto again;
-						perror(catgets(catd, CATSET,
-							250,
-							"POP3 read failed"));
-					}
-					break;
-				}
-			}
-			mp->mb_ptr = mp->mb_buf;
-		}
-	} while ((*lp++ = *mp->mb_ptr++) != '\n');
-	*lp = '\0';
-	if (linelen)
-		*linelen = lp - *line;
-	return lp - *line;
-}
-
 static enum okay
 pop3_answer(mp)
 	struct mailbox *mp;
@@ -664,7 +116,7 @@ pop3_answer(mp)
 	int sz;
 	enum okay ok = STOP;
 
-retry:	if ((sz = pop3_getline(&pop3buf, &pop3bufsize, NULL, mp)) > 0) {
+retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->sock)) > 0) {
 		if ((mp->mb_active & (MB_COMD|MB_MULT)) == MB_MULT)
 			goto multiline;
 		if (verbose)
@@ -690,8 +142,8 @@ retry:	if ((sz = pop3_getline(&pop3buf, &pop3bufsize, NULL, mp)) > 0) {
 	multiline:	 while (pop3buf[0] != '.' || pop3buf[1] != '\r' ||
 					pop3buf[2] != '\n' ||
 					pop3buf[3] != '\0') {
-				sz = pop3_getline(&pop3buf, &pop3bufsize,
-						NULL, mp);
+				sz = sgetline(&pop3buf, &pop3bufsize,
+						NULL, &mp->sock);
 				if (sz <= 0)
 					goto eof;
 			}
@@ -721,8 +173,15 @@ pop3catch(s)
 {
 	if (reset_tio)
 		tcsetattr(0, TCSADRAIN, &otio);
-	if (s == SIGPIPE)
-		pop3_close(&mb);
+	switch (s) {
+	case SIGINT:
+		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		break;
+	case SIGPIPE:
+		fprintf(stderr, "Received SIGPIPE during POP3 operation\n");
+		sclose(&mb.sock);
+		break;
+	}
 	siglongjmp(pop3jmp, 1);
 }
 
@@ -765,121 +224,6 @@ pop3alarm(s)
 	}
 brk:	alarm(pop3keepalive);
 out:	pop3lock--;
-}
-
-static enum okay
-pop3_open(xserver, mp, use_ssl, uhp)
-	const char *xserver;
-	struct mailbox *mp;
-	const char *uhp;
-{
-	int sockfd;
-#ifdef	HAVE_IPv6_FUNCS
-	char hbuf[NI_MAXHOST];
-	struct addrinfo hints, *res0, *res;
-#else	/* !HAVE_IPv6_FUNCS */
-	struct sockaddr_in servaddr;
-	struct in_addr **pptr;
-	struct hostent *hp;
-	struct servent *sp;
-	unsigned short port = 0;
-#endif	/* !HAVE_IPv6_FUNCS */
-	char *portstr = use_ssl ? "pop3s" : "pop3", *cp;
-	char *server = (char *)xserver;
-
-	if ((cp = strchr(server, ':')) != NULL) {
-		portstr = &cp[1];
-#ifndef	HAVE_IPv6_FUNCS
-		port = (unsigned short)strtol(portstr, NULL, 10);
-#endif	/* !HAVE_IPv6_FUNCS */
-		server = salloc(cp - xserver + 1);
-		memcpy(server, xserver, cp - xserver);
-		server[cp - xserver] = '\0';
-	}
-#ifdef	HAVE_IPv6_FUNCS
-	memset(&hints, 0, sizeof hints);
-	hints.ai_socktype = SOCK_STREAM;
-	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"could not resolve host: %s\n"), server);
-		return STOP;
-	}
-	sockfd = -1;
-	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
-		if (verbose) {
-			if (getnameinfo(res->ai_addr, res->ai_addrlen,
-						hbuf, sizeof hbuf, NULL, 0,
-						NI_NUMERICHOST) != 0)
-				strcpy(hbuf, "unknown host");
-			fprintf(stderr, catgets(catd, CATSET, 192,
-					"Connecting to %s . . ."), hbuf);
-		}
-		if ((sockfd = socket(res->ai_family, res->ai_socktype,
-				res->ai_protocol)) >= 0) {
-			if (connect(sockfd, res->ai_addr, res->ai_addrlen)!=0) {
-				close(sockfd);
-				sockfd = -1;
-			}
-		}
-	}
-	if (sockfd < 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
-		freeaddrinfo(res0);
-		return STOP;
-	}
-	freeaddrinfo(res0);
-#else	/* !HAVE_IPv6_FUNCS */
-	if (port == 0) {
-		if ((sp = getservbyname(portstr, "tcp")) == NULL) {
-			if (equal(portstr, "pop3"))
-				port = htons(110);
-			else if (equal(portstr, "pop3s"))
-				port = htons(995);
-			else {
-				fprintf(stderr, catgets(catd, CATSET, 251,
-					"unknown service: %s\n"), portstr);
-				return STOP;
-			}
-		} else
-			port = sp->s_port;
-	} else
-		port = htons(port);
-	if ((hp = gethostbyname(server)) == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"could not resolve host: %s\n"), server);
-		return STOP;
-	}
-	pptr = (struct in_addr **)hp->h_addr_list;
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror(catgets(catd, CATSET, 253, "could not create socket"));
-		return STOP;
-	}
-	memset(&servaddr, 0, sizeof servaddr);
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = port;
-	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
-	if (verbose)
-		fprintf(stderr, catgets(catd, CATSET, 192,
-				"Connecting to %s . . ."), inet_ntoa(**pptr));
-	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
-			!= 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
-		return STOP;
-	}
-#endif	/* !HAVE_IPv6_FUNCS */
-	if (verbose)
-		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
-	mp->mb_sock = sockfd;
-#ifdef	USE_SSL
-	if (use_ssl) {
-		enum okay ok;
-
-		if ((ok = ssl_open(server, mp, uhp)) != OKAY)
-			pop3_close(mp);
-		return ok;
-	}
-#endif	/* USE_SSL */
-	return OKAY;
 }
 
 static enum okay
@@ -1115,7 +459,7 @@ pop3_setfile(server, newmail, isedit)
 		return 1;
 	quit();
 	edit = isedit;
-	mb.mb_sock = -1;
+	mb.sock.s_fd = -1;
 	if (mb.mb_itf) {
 		fclose(mb.mb_itf);
 		mb.mb_itf = NULL;
@@ -1130,7 +474,7 @@ pop3_setfile(server, newmail, isedit)
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
 	if (sigsetjmp(pop3jmp, 1)) {
-		pop3_close(&mb);
+		sclose(&mb.sock);
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		pop3lock = 0;
@@ -1165,16 +509,19 @@ pop3_setfile(server, newmail, isedit)
 	} else
 		user = NULL;
 	verbose = value("verbose") != NULL;
-	if (pop3_open(sp, &mb, use_ssl, uhp) != OKAY) {
+	if (sopen(sp, &mb.sock, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
+				verbose) != OKAY) {
 		pop3_timer_off();
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		pop3lock = 0;
 		return 1;
 	}
+	mb.sock.s_desc = "POP3";
+	mb.sock.s_onclose = pop3_timer_off;
 	if (pop3_user(&mb, user, pass) != OKAY ||
 			pop3_stat(&mb, &mailsize, &msgcount) != OKAY) {
-		pop3_close(&mb);
+		sclose(&mb.sock);
 		pop3_timer_off();
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
@@ -1218,7 +565,7 @@ pop3_get(mp, m, need)
 	(void)&emptyline;
 	(void)&need;
 	verbose = value("verbose") != NULL;
-	if (mp->mb_sock < 0) {
+	if (mp->sock.s_fd < 0) {
 		fprintf(stderr, catgets(catd, CATSET, 219,
 				"POP3 connection already closed.\n"));
 		return STOP;
@@ -1261,7 +608,7 @@ retry:	switch (need) {
 	}
 	size = 0;
 	lines = 0;
-	while (pop3_getline(&line, &linesize, &linelen, mp) > 0) {
+	while (sgetline(&line, &linesize, &linelen, &mp->sock) > 0) {
 		if (line[0] == '.' && line[1] == '\r' && line[2] == '\n' &&
 				line[3] == '\0') {
 			mp->mb_active &= ~MB_MULT;
@@ -1319,7 +666,7 @@ retry:	switch (need) {
 		m->m_have |= HAVE_HEADER;
 		break;
 	case NEED_BODY:
-		m->m_have |= HAVE_BODY;
+		m->m_have |= HAVE_HEADER|HAVE_BODY;
 		m->m_xlines = m->m_lines;
 		m->m_xsize = m->m_size;
 		break;
@@ -1437,7 +784,7 @@ pop3_quit()
 	sighandler_type savepipe;
 
 	verbose = value("verbose") != NULL;
-	if (mb.mb_sock < 0) {
+	if (mb.sock.s_fd < 0) {
 		fprintf(stderr, catgets(catd, CATSET, 219,
 				"POP3 connection already closed.\n"));
 		return;
@@ -1457,7 +804,7 @@ pop3_quit()
 		safe_signal(SIGPIPE, pop3catch);
 	pop3_update(&mb);
 	pop3_exit(&mb);
-	pop3_close(&mb);
+	sclose(&mb.sock);
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;

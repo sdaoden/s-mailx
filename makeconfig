@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# Sccsid @(#)makeconfig	1.10 (gritter) 6/27/04
+# Sccsid @(#)makeconfig	1.11 (gritter) 7/10/04
 #
 
 tmp=___build$$
@@ -117,6 +117,17 @@ link_check 'for alloca()' '#define HAVE_ALLOCA' <<\!
 int main(void)
 {
 	alloca(1);
+	return 0;
+}
+!
+
+compile_check 'for ssize_t' '#define HAVE_SSIZE_T' <<\!
+#include <sys/types.h>
+#include <unistd.h>
+int main(void)
+{
+	ssize_t	i = 3;
+	write(1, "foo", i);
 	return 0;
 }
 !

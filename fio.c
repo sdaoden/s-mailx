@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.25 (gritter) 6/13/04";
+static char sccsid[] = "@(#)fio.c	2.37 (gritter) 7/29/04";
 #endif
 #endif /* not lint */
 
@@ -50,6 +50,22 @@ static char sccsid[] = "@(#)fio.c	2.25 (gritter) 6/13/04";
 #include <wordexp.h>
 #endif	/* HAVE_WORDEXP */
 #include <unistd.h>
+
+#ifdef	USE_SSL
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
+#include <openssl/rand.h>
+#endif	/* USE_SSL */
+#ifdef	HAVE_SOCKETS
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#ifdef	HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif	/* HAVE_ARPA_INET_H */
+#endif	/* HAVE_SOCKETS */
 
 #include <errno.h>
 #include "extern.h"
@@ -191,7 +207,7 @@ readline_restart(ibuf, linebuf, linesize, n)
 	size_t *linesize;
 	size_t n;
 {
-	ssize_t sz;
+	long sz;
 
 	clearerr(ibuf);
 	/*
@@ -428,9 +444,20 @@ next:
 			name = "~/mbox";
 		/* fall through */
 	}
-	if (name[0] == '+' && getfold(foldbuf, sizeof foldbuf) >= 0) {
-		snprintf(xname, sizeof xname, "%s/%s", foldbuf, name + 1);
+	if (name[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
+		snprintf(xname, sizeof xname, "%s/%s", protbase(mailname),
+				&name[1]);
 		name = savestr(xname);
+	}
+	if (name[0] == '+' && getfold(foldbuf, sizeof foldbuf) >= 0) {
+		if (which_protocol(foldbuf) == PROTO_IMAP &&
+				strcmp(foldbuf, protbase(foldbuf)))
+		snprintf(xname, sizeof xname, "%s%s", foldbuf, name+1);
+		else
+			snprintf(xname, sizeof xname, "%s/%s", foldbuf, name+1);
+		name = savestr(xname);
+		if (foldbuf[0] == '%' && foldbuf[1] == ':')
+			goto next;
 	}
 	/* catch the most common shell meta character */
 	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
@@ -567,7 +594,7 @@ getfold(name, size)
 
 	if ((folder = value("folder")) == NULL)
 		return (-1);
-	if (*folder == '/') {
+	if (*folder == '/' || which_protocol(folder) != PROTO_FILE) {
 		strncpy(name, folder, size);
 		name[size-1]='\0';
 	} else {
@@ -636,7 +663,7 @@ char **line;
 size_t *linesize, *count, *llen;
 FILE *fp;
 {
-	ssize_t i_llen, sz;
+	long i_llen, sz;
 
 	if (count == NULL)
 		/*
@@ -734,6 +761,8 @@ get_header(mp)
 		return OKAY;
 	case MB_POP3:
 		return pop3_header(mp);
+	case MB_IMAP:
+		return imap_header(mp);
 	case MB_VOID:
 		return STOP;
 	}
@@ -750,6 +779,8 @@ get_body(mp)
 		return OKAY;
 	case MB_POP3:
 		return pop3_body(mp);
+	case MB_IMAP:
+		return imap_body(mp);
 	case MB_VOID:
 		return STOP;
 	}
@@ -757,34 +788,331 @@ get_body(mp)
 	return STOP;
 }
 
-/*
- * This is fputs with conversion to \r\n format.
- */
-int
-crlfputs(s, stream)
-char *s;
-FILE *stream;
+#ifdef	HAVE_SOCKETS
+static long
+xwrite(fd, data, sz)
+	const char *data;
+	size_t sz;
 {
-	size_t len, wsz = 0;
+	long wo, wt = 0;
 
-	if ((len = strlen(s)) == 0)
-		return 0;
-	if (s[len - 1] == '\n' && (len == 1 || s[len - 2] != '\r')) {
-		if (--len > 0)
-			wsz = fwrite(s, sizeof *s, len, stream);
-		if (wsz > 0 || len == 0) {
-			if (fputc('\r', stream) != EOF) {
-				wsz++;
-				if (fputc('\n', stream) != EOF)
-					wsz++;
-				else
-					wsz = 0;
+	do {
+		if ((wo = write(fd, data + wt, sz - wt)) < 0) {
+			if (errno == EINTR)
+				continue;
+			else
+				return -1;
+		}
+		wt += wo;
+	} while (wt < sz);
+	return sz;
+}
+
+int
+sclose(sp)
+	struct sock *sp;
+{
+	int	i;
+
+	if (sp->s_fd >= 0) {
+		if (sp->s_onclose != NULL)
+			(*sp->s_onclose)();
+#ifdef	USE_SSL
+		if (sp->s_ssl) {
+			SSL_shutdown(sp->s_ssl);
+			SSL_free(sp->s_ssl);
+			sp->s_ssl = NULL;
+			SSL_CTX_free(sp->s_ctx);
+			sp->s_ctx = NULL;
+		}
+#endif	/* USE_SSL */
+		i = close(sp->s_fd);
+		sp->s_fd = -1;
+		return i;
+	}
+	return 0;
+}
+
+enum okay
+swrite(sp, data)
+	struct sock	*sp;
+	const char	*data;
+{
+	return swrite1(sp, data, strlen(data), 0);
+}
+
+enum okay
+swrite1(sp, data, sz, use_buffer)
+	struct sock	*sp;
+	const char	*data;
+	int	sz, use_buffer;
+{
+	int	x;
+
+	if (use_buffer > 0) {
+		int	di;
+		enum okay	ok;
+
+		if (sp->s_wbuf == NULL) {
+			sp->s_wbufsize = 4096;
+			sp->s_wbuf = smalloc(sp->s_wbufsize);
+			sp->s_wbufpos = 0;
+		}
+		while (sp->s_wbufpos + sz > sp->s_wbufsize) {
+			di = sp->s_wbufsize - sp->s_wbufpos;
+			sz -= di;
+			if (sp->s_wbufpos > 0) {
+				memcpy(&sp->s_wbuf[sp->s_wbufpos], data, di);
+				ok = swrite1(sp, sp->s_wbuf,
+						sp->s_wbufsize, -1);
 			} else
-				wsz = 0;
+				ok = swrite1(sp, data,
+						sp->s_wbufsize, -1);
+			if (ok != OKAY)
+				return STOP;
+			data += di;
+			sp->s_wbufpos = 0;
+		}
+		if (sz == sp->s_wbufsize) {
+			ok = swrite1(sp, data, sp->s_wbufsize, -1);
+			if (ok != OKAY)
+				return STOP;
+		} else if (sz) {
+			memcpy(&sp->s_wbuf[sp->s_wbufpos], data, sz);
+			sp->s_wbufpos += sz;
+		}
+		return OKAY;
+	} else if (use_buffer == 0 && sp->s_wbuf != NULL &&
+			sp->s_wbufpos > 0) {
+		x = sp->s_wbufpos;
+		sp->s_wbufpos = 0;
+		if (swrite1(sp, sp->s_wbuf, x, 0) != OKAY)
+			return STOP;
+	}
+#ifdef	USE_SSL
+	if (sp->s_ssl) {
+ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
+		if (x < 0) {
+			switch (SSL_get_error(sp->s_ssl, x)) {
+			case SSL_ERROR_WANT_READ:
+			case SSL_ERROR_WANT_WRITE:
+				goto ssl_retry;
+			}
 		}
 	} else
-		wsz = fwrite(s, sizeof *s, len, stream);
-	if (wsz == 0)
-		return EOF;
-	return wsz;
+#endif	/* USE_SSL */
+	{
+		x = xwrite(sp->s_fd, data, sz);
+	}
+	if (x != sz) {
+		char	o[512];
+		snprintf(o, sizeof o, "%s write error",
+				sp->s_desc ? sp->s_desc : "socket");
+#ifdef	USE_SSL
+		(sp->s_ssl ? ssl_gen_err : perror)
+#else	/* USE_SSL */
+		perror
+#endif	/* USE_SSL */
+			(o);
+		if (x < 0)
+			sclose(sp);
+		return STOP;
+	}
+	return OKAY;
 }
+
+int
+sgetline(line, linesize, linelen, sp)
+	char	**line;
+	size_t	*linesize, *linelen;
+	struct sock	*sp;
+{
+	char	*lp = *line;
+
+	if (sp->s_rsz < 0) {
+		sclose(sp);
+		return sp->s_rsz;
+	}
+	do {
+		if (*line == NULL || lp > &(*line)[*linesize - 128]) {
+			size_t diff = lp - *line;
+			*line = srealloc(*line, *linesize += 256);
+			lp = &(*line)[diff];
+		}
+		if (sp->s_rbufptr == NULL ||
+				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
+#ifdef	USE_SSL
+			if (sp->s_ssl) {
+		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
+						sp->s_rbuf,
+						sizeof sp->s_rbuf)) <= 0) {
+					if (sp->s_rsz < 0) {
+						char	o[512];
+						switch(SSL_get_error(sp->s_ssl,
+							sp->s_rsz)) {
+						case SSL_ERROR_WANT_READ:
+						case SSL_ERROR_WANT_WRITE:
+							goto ssl_retry;
+						}
+						snprintf(o, sizeof o,
+							sp->s_desc ?
+								sp->s_desc :
+								"socket");
+						ssl_gen_err(o);
+
+					}
+					break;
+				}
+			} else
+#endif	/* USE_SSL */
+			{
+			again:	if ((sp->s_rsz = read(sp->s_fd, sp->s_rbuf,
+						sizeof sp->s_rbuf)) <= 0) {
+					if (sp->s_rsz < 0) {
+						char	o[512];
+						if (errno == EINTR)
+							goto again;
+						snprintf(o, sizeof o,
+							sp->s_desc ?
+								sp->s_desc :
+								"socket");
+						perror(o);
+					}
+					break;
+				}
+			}
+			sp->s_rbufptr = sp->s_rbuf;
+		}
+	} while ((*lp++ = *sp->s_rbufptr++) != '\n');
+	*lp = '\0';
+	if (linelen)
+		*linelen = lp - *line;
+	return lp - *line;
+}
+
+enum okay
+sopen(xserver, sp, use_ssl, uhp, portstr, verbose)
+	const char	*xserver;
+	struct sock	*sp;
+	int	use_ssl;
+	const char	*uhp;
+	const char	*portstr;
+	int	verbose;
+{
+#ifdef	HAVE_IPv6_FUNCS
+	char	hbuf[NI_MAXHOST];
+	struct addrinfo	hints, *res0, *res;
+#else	/* !HAVE_IPv6_FUNCS */
+	struct sockaddr_in	servaddr;
+	struct in_addr	**pptr;
+	struct hostent	*hp;
+	struct servent	*ep;
+	unsigned short	port = 0;
+#endif	/* !HAVE_IPv6_FUNCS */
+	int	sockfd;
+	char	*cp;
+	char	*server = (char *)xserver;
+
+	if ((cp = strchr(server, ':')) != NULL) {
+		portstr = &cp[1];
+#ifndef	HAVE_IPv6_FUNCS
+		port = strtol(portstr, NULL, 10);
+#endif	/* HAVE_IPv6_FUNCS */
+		server = salloc(cp - xserver + 1);
+		memcpy(server, xserver, cp - xserver);
+		server[cp - xserver] = '\0';
+	}
+#ifdef	HAVE_IPv6_FUNCS
+	memset(&hints, 0, sizeof hints);
+	hints.ai_socktype = SOCK_STREAM;
+	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
+		fprintf(stderr, catgets(catd, CATSET, 252,
+				"Could not resolve host: %s\n"), server);
+		return STOP;
+	}
+	sockfd = -1;
+	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
+		if (verbose) {
+			if (getnameinfo(res->ai_addr, res->ai_addrlen,
+						hbuf, sizeof hbuf, NULL, 0,
+						NI_NUMERICHOST) != 0)
+				strcpy(hbuf, "unknown host");
+			fprintf(stderr, catgets(catd, CATSET, 192,
+					"Connecting to %s . . ."), hbuf);
+		}
+		if ((sockfd = socket(res->ai_family, res->ai_socktype,
+				res->ai_protocol)) >= 0) {
+			if (connect(sockfd, res->ai_addr, res->ai_addrlen)!=0) {
+				close(sockfd);
+				sockfd = -1;
+			}
+		}
+	}
+	if (sockfd < 0) {
+		perror(catgets(catd, CATSET, 254, "could not connect"));
+		freeaddrinfo(res0);
+		return STOP;
+	}
+	freeaddrinfo(res0);
+#else	/* !HAVE_IPv6_FUNCS */
+	if (port == 0) {
+		if ((ep = getservbyname(portstr, "tcp")) == NULL) {
+			if (equal(portstr, "smtp"))
+				port = htons(25);
+			else if (equal(portstr, "smtps"))
+				port = htons(465);
+			else if (equal(portstr, "imap"))
+				port = htons(143);
+			else if (equal(portstr, "imaps"))
+				port = htons(993);
+			else if (equal(portstr, "pop3"))
+				port = htons(110);
+			else if (equal(portstr, "pop3s"))
+				port = htons(995);
+			else {
+				fprintf(stderr, catgets(catd, CATSET, 251,
+					"Unknown service: %s\n"), portstr);
+				return STOP;
+			}
+		} else
+			port = ep->s_port;
+	} else
+		port = htons(port);
+	if ((hp = gethostbyname(server)) == NULL) {
+		fprintf(stderr, catgets(catd, CATSET, 252,
+				"Could not resolve host: %s\n"), server);
+		return STOP;
+	}
+	pptr = (struct in_addr **)hp->h_addr_list;
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		perror(catgets(catd, CATSET, 253, "could not create socket"));
+		return STOP;
+	}
+	memset(&servaddr, 0, sizeof servaddr);
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = port;
+	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
+	if (verbose)
+		fprintf(stderr, catgets(catd, CATSET, 192,
+				"Connecting to %s . . ."), inet_ntoa(**pptr));
+	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
+			!= 0) {
+		perror(catgets(catd, CATSET, 254, "could not connect"));
+		return STOP;
+	}
+#endif	/* !HAVE_IPv6_FUNCS */
+	if (verbose)
+		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
+	sp->s_fd = sockfd;
+#ifdef	USE_SSL
+	if (use_ssl) {
+		enum okay ok;
+
+		if ((ok = ssl_open(server, sp, uhp)) != OKAY)
+			sclose(sp);
+		return ok;
+	}
+#endif	/* USE_SSL */
+	return OKAY;
+}
+#endif	/* HAVE_SOCKETS */

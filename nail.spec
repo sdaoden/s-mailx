@@ -1,7 +1,7 @@
 # Sccsid @(#)nail.spec	1.23 (gritter) 6/13/04
 Summary: A MIME capable implementation of the mailx command
 Name: nail
-Version: 10.8
+Version: 11.0
 Release: 1
 License: BSD
 Group: Applications/Internet

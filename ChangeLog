@@ -1,3 +1,41 @@
+[11.0] released 7/30/04
+* IMAP support has been added. It should considered to be in beta state
+  now, but should not have any disturbing effects on other code unless
+  it is actually used. (So the version jump does not require vendors to
+  continue to ship older releases.)
+  To get started with IMAP, see the manual page for the 'account',
+  'folder', and 'imap' commands, and for the 'folder' variable, as
+  well as the EXAMPLES and NOTES sections.
+* Support for SMTP AUTH LOGIN was added (contributed by John Fawcett).
+* It is now possible to encrypt SMTP with SSL/TLS, using the STARTTLS
+  method as well as with the SMTPS variant.
+* New 'account' command to set groups of variables.
+* Line and column limits (used e.g. for the header summary) are updated
+  when the size of the terminal is changed (handling SIGWINCH).
+* If saving an outgoing message to the folder given in the 'record'
+  variable fails, the message is not sent but put in 'dead.letter'
+  instead. This rarely happens with local record folders, but is of
+  concern if 'record' refers to an IMAP mailbox.
+* For addresses specified with the ~b, ~c, ~h, and ~t tilde escapes
+  or by the 'editheaders' method, if a comma, parenthesis, angle bracket,
+  or quoting character appears, only the comma is accepted as an address
+  separator. Otherwise, whitespace separates addresses as elsewhere. This
+  allows the insertion of comments in recipient addresses and more closely
+  matches the behavior of System V mailx. (Thanks to Ryan Lovett and Hilko
+  Bengen.)
+* An internal version of getopt() is now used to properly work around
+  system defects such as the option reordering on GNU libc based
+  systems. If you really prefer the libc version, remove getopt.o from
+  the list of objects in the Makefile. (Note that nail already worked
+  around the glibc problem, so unless _your_ patches changed its
+  behavior, use the new internal getopt() to remain compatible.)
+* The undocumented facility to pass sendmail options on the command
+  line of nail has been removed because it was not compatible with
+  POSIX and System V. If you need to pass options to sendmail, create
+  a shell script which invokes it appropriately and let the nail
+  variable 'sendmail' point to its location.
+* Fixed the text of some usage messages (thanks to Christian Reiber).
+
 [10.8] released 6/28/04
 * Support for IPv6 is not built by default anymore. There are just too
   many hosts on which it doesn't work while the IPv4 functions work

@@ -122,7 +122,7 @@ system did. Since it is written in standard languages (shell and make),
 any Unix developer can read and understand it; to make adjustments to
 it, no special versions of third-party tools are needed. Every serious
 developer should understand the advantage (except perhaps some GNU
-addicts who have all versions of automake installed anyway).
+addicts who have learned and installed all versions of automake anyway).
 
 For the user who just wants to build nail, the new system is not more
 complicated than the old one; transition mostly involves passing path
@@ -133,4 +133,4 @@ anyway.)
 
 In short, everything is better now.
 
-	Gunnar Ritter					6/19/04
+	Gunnar Ritter					7/26/04

@@ -35,12 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.29 (gritter) 6/13/04
+ *	Sccsid @(#)extern.h	2.47 (gritter) 7/29/04
  */
 
 struct name *cat __P((struct name *, struct name *));
 struct name *elide __P((struct name *));
 struct name *extract __P((char [], int));
+struct name *sextract __P((char [], int));
 struct name *nalloc __P((char [], int));
 struct name *outof __P((struct name *, FILE *, struct header *));
 struct name *usermap __P((struct name *));
@@ -208,7 +209,7 @@ void	 spreserve __P((void));
 void	 sreset __P((void));
 int	 start_command __P((char *, sigset_t *, int, int, char *, char *, char *));
 int	 stouch __P((void *));
-int	 swrite __P((void *));
+int	 cwrite __P((void *));
 void	 tinit __P((void));
 int	 top __P((void *));
 void	 touch __P((struct message *));
@@ -268,6 +269,7 @@ int	readline_restart __P((FILE *, char **, size_t *, size_t));
 #define	readline(a, b, c)	readline_restart(a, b, c, 0)
 int	asccasecmp __P((const char *, const char *));
 int	ascncasecmp __P((const char *, const char *, size_t));
+char	*asccasestr __P((const char *, const char *));
 int	get_mime_convert __P((FILE *, char **, char **, enum mimeclean *));
 void	newline_appended __P((void));
 int	newmail __P((void *));
@@ -275,7 +277,17 @@ int	pop3_setfile __P((const char *, int, int));
 enum okay	pop3_header __P((struct message *));
 enum okay	pop3_body __P((struct message *));
 void	pop3_quit __P((void));
-int	crlfputs __P((char *, FILE *));
+int	imap_setfile __P((const char *, int, int));
+enum okay	imap_header __P((struct message *));
+enum okay	imap_body __P((struct message *));
+void	imap_quit __P((void));
+int	imap_newmail __P((void));
+enum okay	imap_undelete __P((struct message *, int));
+enum okay	imap_copy __P((struct message *, int, const char *));
+int	imap_thisaccount __P((const char *));
+int	imap_imap __P((void *));
+enum okay	imap_append __P((const char *, FILE *));
+void	imap_folders __P((void));
 enum protocol	which_protocol __P((const char *));
 void	initbox __P((const char *));
 void	setmsize __P((int));
@@ -288,9 +300,28 @@ enum okay	get_body __P((struct message *));
 int	shortcut __P((void *));
 int	unshortcut __P((void *));
 struct shortcut	*get_shortcut __P((const char *));
+int	account __P((void *));
+struct account	*get_account __P((const char *));
 void	out_of_memory __P((void));
 time_t	rfctime __P((char *));
+time_t	unixtime __P((char *));
 void	extract_header __P((FILE *, struct header *));
 char	*need_hdrconv __P((struct header *, enum gfield));
 char	*savecat __P((const char *, const char *));
 FILE	*Zopen __P((char *, char *, int *));
+char	*strtob64 __P((const char *));
+#ifdef	USE_SSL
+enum okay ssl_open __P((const char *, struct sock *, const char *));
+void ssl_gen_err __P((const char *));
+#endif	/* USE_SSL */
+time_t	combinetime __P((int, int, int, int, int, int));
+const char	*protbase __P((const char *));
+const char	*protfile __P((const char *));
+#ifdef	HAVE_SOCKETS
+int	sclose __P((struct sock *));
+enum okay	swrite __P((struct sock *, const char *));
+enum okay	swrite1 __P((struct sock *, const char *, int, int));
+int	sgetline __P((char **, size_t *, size_t *, struct sock *));
+enum okay	sopen __P((const char *, struct sock *, int,
+			const char *, const char *, int));
+#endif	/* HAVE_SOCKETS */

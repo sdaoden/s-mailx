@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.25 (gritter) 6/13/04
+ *	Sccsid @(#)def.h	2.32 (gritter) 7/29/04
  */
 
 /*
@@ -148,17 +148,34 @@ struct str {
 enum protocol {
 	PROTO_FILE,			/* refers to a local file */
 	PROTO_POP3,			/* is a pop3 server string */
+	PROTO_IMAP,			/* is an imap server string */
 	PROTO_UNKNOWN			/* unknown protocol */
 };
 
+struct sock {				/* data associated with a socket */
+	int	s_fd;			/* file descriptor */
+#ifdef	USE_SSL
+	void	*s_ssl;			/* SSL object */
+	void	*s_ctx;			/* SSL context object */
+#endif	/* USE_SSL */
+	char	*s_wbuf;		/* for buffered writes */
+	int	s_wbufsize;		/* allocated size of s_buf */
+	int	s_wbufpos;		/* position of first empty data byte */
+	char	s_rbuf[LINESIZE+1];	/* for buffered reads */
+	char	*s_rbufptr;		/* read pointer to s_rbuf */
+	int	s_rsz;			/* size of last read in s_rbuf */
+	char	*s_desc;		/* description of error messages */
+	void	(*s_onclose) __P((void));	/* execute on close */
+};
+
 struct mailbox {
-	int mb_sock;			/* socket file descriptor */
-	char *mb_ptr;			/* read pointer to mb_buf */
-	int mb_sz;			/* size of last read in mb_buf */
+	struct sock	sock;		/* socket structure */
 	enum {
-		MB_NONE = 00,		/* no reply expected */
-		MB_COMD = 01,		/* command reply expected */
-		MB_MULT = 02		/* multiline reply expected */
+		MB_NONE		= 000,	/* no reply expected */
+		MB_COMD		= 001,	/* command reply expected */
+		MB_MULT		= 002,	/* multiline reply expected */
+		MB_PREAUTH	= 004,	/* not in authenticated state */
+		MB_BYE		= 010	/* may accept a BYE state */
 	} mb_active;
 	char mb_buf[LINESIZE+1];	/* read buffer */
 	FILE *mb_itf;			/* temp file with messages, read open */
@@ -166,17 +183,15 @@ struct mailbox {
 	enum {
 		MB_VOID,		/* no type (e. g. connection failed) */
 		MB_FILE,		/* local file */
-		MB_POP3			/* POP3 mailbox */
+		MB_POP3,		/* POP3 mailbox */
+		MB_IMAP			/* IMAP mailbox */
 	} mb_type;			/* type of mailbox */
 	enum {
 		MB_DELE = 01,		/* may delete messages in mailbox */
 		MB_EDIT = 02		/* may edit messages in mailbox */
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
-#ifdef	USE_SSL
-	void *mb_ssl;			/* SSL object */
-	void *mb_ctx;			/* SSL context object */
-#endif	/* USE_SSL */
+	unsigned  mb_uidvalidity;	/* IMAP unique identifier validity */
 };
 
 enum needspec {
@@ -217,6 +232,7 @@ struct message {
 	size_t	m_xsize;		/* Bytes in the full message */
 	int	m_lines;		/* Lines in the message */
 	int	m_xlines;		/* Lines in the full message */
+	unsigned	m_uid;		/* IMAP unique identifier */
 	enum havespec	m_have;		/* downloaded parts of the message */
 };
 
@@ -428,6 +444,15 @@ struct shortcut {
 	struct shortcut	*sh_next;	/* next shortcut in list */
 	char	*sh_short;		/* shortcut string */
 	char	*sh_long;		/* expanded form */
+};
+
+/*
+ * For the 'account' functionality.
+ */
+struct account {
+	struct account	*ac_next;	/* next account in list */
+	char	*ac_name;		/* name of account */
+	char	**ac_vars;		/* variables to set */
 };
 
 /*

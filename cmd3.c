@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.20 (gritter) 6/13/04";
+static char sccsid[] = "@(#)cmd3.c	2.27 (gritter) 7/27/04";
 #endif
 #endif /* not lint */
 
@@ -1171,4 +1171,60 @@ unshortcut(v)
 		args++;
 	}
 	return errs;
+}
+
+static struct account	*accounts;
+
+struct account *
+get_account(name)
+	const char *name;
+{
+	struct account	*a;
+
+	for (a = accounts; a; a = a->ac_next)
+		if (strcmp(name, a->ac_name) == 0)
+			break;
+	return a;
+}
+
+int
+account(v)
+	void *v;
+{
+	char	**args = (char **)v;
+	struct account	*a;
+	int	i;
+
+	if (args[0] == NULL) {
+		for (a = accounts; a; a = a->ac_next) {
+			printf("%s:\n", a->ac_name);
+			for (i = 0; a->ac_vars[i]; i++)
+				printf("\t%s\n", a->ac_vars[i]);
+		}
+		return 0;
+	}
+	if ((a = get_account(args[0])) == NULL) {
+		if (args[1]) {
+			a = scalloc(1, sizeof *a);
+			a->ac_next = accounts;
+			accounts = a;
+		} else {
+			printf("Account %s does not exist.\n", args[0]);
+			return 1;
+		}
+	}
+	a->ac_name = sstrdup(args[0]);
+	if (args[1]) {
+		for (i = 1; args[i]; i++);
+		a->ac_vars = scalloc(i, sizeof *a->ac_vars);
+		for (i = 0; args[i+1]; i++)
+			a->ac_vars[i] = sstrdup(args[i+1]);
+	} else {
+		set(a->ac_vars);
+		if (*mailname) {
+			char	*av[2] = { "%", NULL };
+			return file(av);
+		} /* otherwise still in startup code */
+	}
+	return 0;
 }

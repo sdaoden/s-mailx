@@ -23,7 +23,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)base64.c	2.4 (gritter) 6/13/04";
+static char sccsid[] = "@(#)base64.c	2.6 (gritter) 7/4/04";
 #endif
 #endif /* not lint */
 
@@ -74,6 +74,31 @@ unsigned char *p;
 		b64[3] = b64table[p[2] & 0x3F];
 	}
 	return b64;
+}
+
+char *
+strtob64(p)
+	const char *p;
+{
+	char	q[3];
+	signed char	*h;
+	int	i, l = 0, sz = 0, pads;
+	char	*rs = NULL;
+
+	do {
+		for (pads = 2, i = 0; i <= 2; i++, pads--) {
+			q[i] = *p++;
+			if (*p == '\0')
+				break;
+		}
+		h = ctob64((unsigned char *)q, pads);
+		if (l + 5 >= sz)
+			rs = srealloc(rs, sz = l + 100);
+		for (i = 0; i < 4; i++)
+			rs[l++] = h[i];
+	} while (*p);
+	rs[l] = '\0';
+	return rs;
 }
 
 /*

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	2.10 (gritter) 6/13/04
+ *	Sccsid @(#)glob.h	2.12 (gritter) 7/27/04
  */
 
 /*
@@ -69,7 +69,7 @@ _E char	prevfile[PATHSIZE];		/* Name of previous file */
 _E char	*homedir;			/* Path name of home directory */
 _E char *progname;			/* our name */
 _E char	*myname;			/* My login name */
-_E const char *version;			/* version string */
+extern const char *version;		/* version string */
 _E off_t mailsize;			/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *prevdot;		/* Previous current message */
@@ -97,6 +97,7 @@ _E int	tildeflag;			/* enable tilde escapes */
 _E char	*uflag;				/* name given with -u option */
 _E struct shortcut	*shortcuts;	/* list of shortcuts */
 _E int	mb_cur_max;			/* value of MB_CUR_MAX */
+_E int	imap_created_mailbox;		/* hack to get feedback from imap */
 
 #ifdef	HAVE_ICONV
 _E iconv_t iconvd;

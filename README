@@ -2,7 +2,7 @@ Welcome to nail, a mail user agent!
 
 Nail is derived from Berkeley Mail 8.1 and is intended provide the
 functionality of the POSIX.2 mailx command with additional support
-for MIME messages, POP3 and SMTP.
+for MIME messages, IMAP, POP3 and SMTP.
 
 To compile and install nail, look at the file 'INSTALL'. You can also
 build nail RPMs using 'rpmbuild -tb nail-<version>.tar.bz2'.
@@ -17,16 +17,17 @@ only, as e. g. 'MAILRC=/dev/null from=user@host nail -n' does.
 Nail has been built successfully in the following environments using
 the current configuration system:
 
-Linux		Kernel 2.2 and above; libc4, glibc 2.2 and above, diet libc;
-		gcc, Intel C
-Solaris		8 and above; Sun C, gcc
-Open UNIX	8.0.0
-FreeBSD		4.9-RELEASE, 5.2.1-RELEASE
-HP-UX		B.11.11, B.11.23
-Tru64 UNIX	4.0G, 5.1B
-NetBSD		1.6
-AIX		5.1
-UNICOS		9.0.2.2
+Linux           Kernel 2.2 and above; libc4, glibc 2.2 and above, diet libc;
+                gcc, Intel C
+Solaris         8 and above; Sun C, gcc
+Open UNIX       8.0.0
+FreeBSD         4.9-RELEASE, 5.2.1-RELEASE
+HP-UX           B.11.11, B.11.23
+Tru64 UNIX      4.0G, 5.1B
+NetBSD          1.6
+AIX             5.1
+UNICOS          9.0.2.2
+EP/IX           2.2.1AA; /svr4/bin/cc
 
 If you can build it on other systems, please contact me and send
 me a diff with your changes so I can include them in this archive
@@ -98,4 +99,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<Gunnar.Ritter@pluto.uni-freiburg.de>				6/13/04
+<Gunnar.Ritter@pluto.uni-freiburg.de>                           7/26/04

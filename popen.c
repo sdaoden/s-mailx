@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.9 (gritter) 6/13/04";
+static char sccsid[] = "@(#)popen.c	2.11 (gritter) 7/27/04";
 #endif
 #endif /* not lint */
 
@@ -68,7 +68,8 @@ struct fp {
 	enum {
 		FP_UNCOMPRESSED	= 00,
 		FP_GZIPPED	= 01,
-		FP_BZIP2ED	= 02
+		FP_BZIP2ED	= 02,
+		FP_IMAP		= 04,
 	} compressed;
 };
 static struct fp *fp_head;
@@ -85,7 +86,7 @@ static struct child	*findchild __P((int));
 static void	delchild __P((struct child *));
 static int	file_pid __P((FILE *));
 static void	register_file __P((FILE *, int, int, int, int, char *, long));
-static void	unregister_file __P((FILE *));
+static enum okay	unregister_file __P((FILE *));
 static int	decompress __P((int, int, int));
 static int	wait_command __P((int));
 
@@ -186,8 +187,12 @@ int
 Fclose(fp)
 	FILE *fp;
 {
-	unregister_file(fp);
-	return fclose(fp);
+	int	i = 0;
+	if (unregister_file(fp) == OKAY)
+		i |= 1;
+	if (fclose(fp) == 0)
+		i |= 2;
+	return i == 3 ? 0 : EOF;
 }
 
 FILE *
@@ -210,6 +215,13 @@ Zopen(file, mode, compression)
 	if (compression == NULL)
 		compression = &_compression;
 	bits = R_OK | (omode == O_RDONLY ? 0 : W_OK);
+	if (omode & O_APPEND && which_protocol(file) == PROTO_IMAP) {
+		*compression = FP_IMAP;
+		omode = O_RDWR | O_APPEND | O_CREAT;
+		rp = file;
+		input = -1;
+		goto open;
+	}
 	if ((extension = strrchr(file, '.')) != NULL) {
 		rp = file;
 		if (strcmp(extension, ".gz") == 0)
@@ -231,13 +243,13 @@ Zopen(file, mode, compression)
 	if ((input = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
 			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
 		return NULL;
-	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
+open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 		perror(catgets(catd, CATSET, 167, "tmpfile"));
 		close(input);
 		return NULL;
 	}
 	unlink(tempfn);
-	if (input >= 0) {
+	if (input >= 0 || *compression == FP_IMAP) {
 		if (decompress(*compression, input, fileno(output)) < 0) {
 			close(input);
 			Fclose(output);
@@ -366,24 +378,27 @@ register_file(fp, omode, pipe, pid, compressed, realfile, offset)
 	fp_head = fpp;
 }
 
-static void
+static enum okay
 compress(struct fp *fpp)
 {
 	int	output;
 	char	*command[2];
+	enum okay	ok;
 
 	if (fpp->omode == O_RDONLY)
-		return;
+		return OKAY;
 	fflush(fpp->fp);
 	clearerr(fpp->fp);
 	fseek(fpp->fp, fpp->offset, SEEK_SET);
+	if (fpp->compressed == FP_IMAP) {
+		return imap_append(fpp->realfile, fpp->fp);
+	}
 	if ((output = open(fpp->realfile,
 			(fpp->omode|O_CREAT)&~O_EXCL,
 			0666)) < 0) {
 		fprintf(stderr, "Fatal: cannot create ");
 		perror(fpp->realfile);
-		exit_status |= 1;
-		return;
+		return STOP;
 	}
 	if ((fpp->omode & O_APPEND) == 0)
 		ftruncate(output, 0);
@@ -397,8 +412,11 @@ compress(struct fp *fpp)
 	}
 	if (run_command(command[0], 0, fileno(fpp->fp), output,
 				command[1], NULL, NULL) < 0)
-		exit_status |= 1;
+		ok = STOP;
+	else
+		ok = OKAY;
 	close(output);
+	return ok;
 }
 
 static int
@@ -413,27 +431,31 @@ decompress(int compression, int input, int output)
 	switch (compression) {
 	case FP_GZIPPED:	command[0] = "gzip"; command[1] = "-cd"; break;
 	case FP_BZIP2ED:	command[0] = "bzip2"; command[1] = "-cd"; break;
+	case FP_IMAP:		return 0;
 	default:		command[0] = "cat"; command[1] = NULL;
 	}
 	return run_command(command[0], 0, input, output,
 			command[1], NULL, NULL);
 }
 
-static void
+static enum okay
 unregister_file(fp)
 	FILE *fp;
 {
 	struct fp **pp, *p;
+	enum okay	ok = OKAY;
 
 	for (pp = &fp_head; (p = *pp) != (struct fp *)NULL; pp = &p->link)
 		if (p->fp == fp) {
 			if (p->compressed != FP_UNCOMPRESSED)
-				compress(p);
+				ok = compress(p);
 			*pp = p->link;
 			free((char *) p);
-			return;
+			return ok;
 		}
 	panic(catgets(catd, CATSET, 153, "Invalid file pointer"));
+	/*NOTREACHED*/
+	return STOP;
 }
 
 static int

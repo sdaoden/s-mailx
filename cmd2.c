@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.10 (gritter) 6/13/04";
+static char sccsid[] = "@(#)cmd2.c	2.15 (gritter) 7/29/04";
 #endif
 #endif /* not lint */
 
@@ -212,6 +212,8 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	char *cp, *cq;
 	off_t mstats[2], tstats[2];
 	int compressed = 0;
+	enum protocol prot;
+	int success = 1;
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
@@ -251,7 +253,8 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	}
 	if ((file = expand(file)) == NULL)
 		return(1);
-	if (access(file, 0) >= 0) {
+	prot = which_protocol(file);
+	if (prot == PROTO_IMAP || access(file, 0) >= 0) {
 		newfile = 0;
 		disp = catgets(catd, CATSET, 25, "[Appended]");
 	} else {
@@ -300,9 +303,21 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		}
 	}
 	tstats[0] = tstats[1] = 0;
+	imap_created_mailbox = 0;
 	for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
 		mp = &message[*ip - 1];
-		if (send_message(mp, obuf, ignore, NULL, convert, mstats) < 0) {
+		if (prot == PROTO_IMAP &&
+				ignore[0].i_count == 0 &&
+				ignore[1].i_count == 0 &&
+				imap_thisaccount(file)) {
+			if (imap_copy(mp, *ip, file) == STOP) {
+				Fclose(obuf);
+				return 1;
+			}
+			mstats[0] = -1;
+			mstats[1] = mp->m_xsize;
+		} else if (send_message(mp, obuf, ignore, NULL,
+					convert, mstats) < 0) {
 			perror(file);
 			Fclose(obuf);
 			return(1);
@@ -314,16 +329,28 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		tstats[1] += mstats[1];
 	}
 	fflush(obuf);
-	if (ferror(obuf))
+	if (ferror(obuf)) {
 		perror(file);
-	Fclose(obuf);
-	printf("\"%s\" %s ", file, disp);
-	if (tstats[0] >= 0)
-		printf("%lu", (long)tstats[0]);
-	else
-		printf(catgets(catd, CATSET, 27, "binary"));
-	printf("/%lu\n", (long)tstats[1]);
-	return(0);
+		success = 0;
+	}
+	if (Fclose(obuf) != 0)
+		success = 0;
+	if (success) {
+		if (prot == PROTO_IMAP)
+			disp = imap_created_mailbox ?
+				"[New file]" : "[Appended]";
+		printf("\"%s\" %s ", file, disp);
+		if (tstats[0] >= 0)
+			printf("%lu", (long)tstats[0]);
+		else
+			printf(catgets(catd, CATSET, 27, "binary"));
+		printf("/%lu\n", (long)tstats[1]);
+	} else if (mark)
+		for (ip = msgvec; *ip && ip-msgvec < msgcount; ip++) {
+			mp = &message[*ip - 1];
+			mp->m_flag &= ~MSAVED;
+		}
+	return(success == 0);
 }
 
 /*
@@ -332,7 +359,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
  * This is the MIME save function.
  */
 int
-swrite(v)
+cwrite(v)
 	void *v;
 {
 	char *str = v;
@@ -464,6 +491,8 @@ undeletecmd(v)
 		touch(mp);
 		setdot(mp);
 		mp->m_flag &= ~MDELETED;
+		if (mb.mb_type == MB_IMAP)
+			imap_undelete(mp, *ip);
 	}
 	return 0;
 }

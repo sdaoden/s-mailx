@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.22 (gritter) 6/13/04";
+static char sccsid[] = "@(#)lex.c	2.25 (gritter) 7/27/04";
 #endif
 #endif /* not lint */
 
@@ -97,6 +97,15 @@ setfile(name, newmail)
 	case PROTO_POP3:
 		shudclob = 1;
 		return pop3_setfile(name, newmail, isedit);
+	case PROTO_IMAP:
+		shudclob = 1;
+		if (newmail)
+			omsgcount = msgcount;
+		i = imap_setfile(name, newmail, isedit);
+		if (newmail)
+			goto newmail;
+		else
+			return i;
 	case PROTO_UNKNOWN:
 		fprintf(stderr, catgets(catd, CATSET, 217,
 				"Cannot handle protocol: %s\n"), name);
@@ -199,16 +208,23 @@ nomail:
 		return 1;
 	}
 	if (newmail) {
-		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
-		if (msgcount - omsgcount == 1)
-			printf(catgets(catd, CATSET, 214,
-				"Loaded 1 new message\n"));
-		else
-			printf(catgets(catd, CATSET, 215,
-				"Loaded %d new messages\n"),
-				msgcount - omsgcount);
+newmail:	if (msgcount > omsgcount) {
+			printf(catgets(catd, CATSET, 158,
+						"New mail has arrived.\n"));
+			if (msgcount - omsgcount == 1)
+				printf(catgets(catd, CATSET, 214,
+					"Loaded 1 new message\n"));
+			else
+				printf(catgets(catd, CATSET, 215,
+					"Loaded %d new messages\n"),
+					msgcount - omsgcount);
+		} else {
+			printf("Mail has been deleted.\n");
+			printf("Loaded %d messages\n", msgcount);
+		}
 		if (value("header"))
 			while (++omsgcount <= msgcount)
+				if (!(message[omsgcount-1].m_flag & MDELETED))
 				printhead(omsgcount, stdout);
 	}
 	return(0);
@@ -250,12 +266,15 @@ commands()
 		 */
 		if (!sourcing && value("interactive") != NULL) {
 			if (is_a_tty[0] && (value("autoinc")
-						|| value("newmail"))) {
+						|| value("newmail")
+						|| mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
-				if (mb.mb_type == MB_FILE &&
+				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
-						st.st_size > mailsize) {
+						st.st_size > mailsize) ||
+						(mb.mb_type == MB_IMAP &&
+						imap_newmail())) {
 					int odot = dot - &message[0];
 					int odid = did_print_dot;
 
@@ -726,7 +745,8 @@ newfileinfo()
 	ename = mailname;
 	if (getfold(fname, sizeof fname - 1) >= 0) {
 		strcat(fname, "/");
-		if (strncmp(fname, mailname, strlen(fname)) == 0) {
+		if (which_protocol(fname) != PROTO_IMAP &&
+				strncmp(fname, mailname, strlen(fname)) == 0) {
 			snprintf(zname, sizeof zname, "+%s",
 					mailname + strlen(fname));
 			ename = zname;

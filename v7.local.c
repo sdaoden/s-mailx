@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)v7.local.c	2.5 (gritter) 6/13/04";
+static char sccsid[] = "@(#)v7.local.c	2.7 (gritter) 7/26/04";
 #endif
 #endif /* not lint */
 
@@ -65,15 +65,18 @@ findmail(user, force, buf, size)
 	char *user, *buf;
 	int size, force;
 {
-	char *mbox;
+	char *mbox, *cp;
 
-	if (force || (mbox = value("MAIL")) == NULL) {
-		(void)snprintf(buf, size, "%s/%s", MAILSPOOL, user);
+	if (strcmp(user, myname) == 0 && !force &&
+			(cp = value("folder")) != NULL &&
+			which_protocol(cp) == PROTO_IMAP) {
+		snprintf(buf, size, "%s/INBOX", protbase(cp));
+	} else if (force || (mbox = value("MAIL")) == NULL) {
+		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
 	} else {
-		(void)strncpy(buf, mbox, size);
+		strncpy(buf, mbox, size);
 		buf[size-1]='\0';
 	}
-
 }
 
 /*

@@ -44,9 +44,9 @@ FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
 
 OBJ = aux.o base64.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
-	dotlock.o edit.o fio.o getname.o head.o lex.o list.o \
+	dotlock.o edit.o fio.o getname.o getopt.o head.o imap.o lex.o list.o \
 	main.o mime.o names.o pop3.o popen.o quit.o send.o \
-	sendout.o smtp.o strings.o temp.o tty.o v7.local.o vars.o \
+	sendout.o smtp.o ssl.o strings.o temp.o tty.o v7.local.o vars.o \
 	version.o
 
 .SUFFIXES: .o .c .x

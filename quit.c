@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	2.10 (gritter) 6/13/04";
+static char sccsid[] = "@(#)quit.c	2.11 (gritter) 7/25/04";
 #endif
 #endif /* not lint */
 
@@ -183,6 +183,9 @@ quit()
 		break;
 	case MB_POP3:
 		pop3_quit();
+		return;
+	case MB_IMAP:
+		imap_quit();
 		return;
 	case MB_VOID:
 		return;

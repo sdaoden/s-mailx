@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.20 (gritter) 6/13/04";
+static char sccsid[] = "@(#)collect.c	2.22 (gritter) 7/23/04";
 #endif
 #endif /* not lint */
 
@@ -423,7 +423,7 @@ collect(hp, printheaders, mp, quotefile, tflag)
 	char *tempMail = NULL;
 	int getfields;
 	sigset_t oset, nset;
-	ssize_t count;
+	long count;
 	const char *tildehelp = catgets(catd, CATSET, 49,
 "-----------------------------------------------------------\n\
 The following ~ escapes are defined:\n\
@@ -716,7 +716,7 @@ cont:
 			 * Add to the To list.
 			 */
 			while ((hp->h_to = checkaddrs(cat(hp->h_to,
-						extract(&linebuf[2], GTO))))
+						sextract(&linebuf[2], GTO))))
 					== NULL);
 			break;
 		case 's':
@@ -743,14 +743,14 @@ cont:
 			 * Add to the CC list.
 			 */
 			hp->h_cc = checkaddrs(cat(hp->h_cc,
-						extract(&linebuf[2], GCC)));
+						sextract(&linebuf[2], GCC)));
 			break;
 		case 'b':
 			/*
 			 * Add stuff to blind carbon copies list.
 			 */
 			hp->h_bcc = checkaddrs(cat(hp->h_bcc,
-					extract(&linebuf[2], GBCC)));
+					sextract(&linebuf[2], GBCC)));
 			break;
 		case 'd':
 			strncpy(linebuf + 2, getdeadletter(), linesize - 2);

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.26 (gritter) 6/13/04";
+static char sccsid[] = "@(#)sendout.c	2.28 (gritter) 7/27/04";
 #endif
 #endif /* not lint */
 
@@ -546,10 +546,11 @@ savemail(name, fi)
 	char *p;
 	time_t now;
 	int prependnl = 0;
+	int error = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
 	time(&now);
-	if ((fo = Zopen(name, "r+", NULL)) == (FILE *)NULL) {
+	if ((fo = Zopen(name, "a+", NULL)) == (FILE *)NULL) {
 		if ((fo = Zopen(name, "wx", NULL)) == (FILE *)NULL) {
 			perror(name);
 			free(buf);
@@ -603,9 +604,12 @@ savemail(name, fi)
 		(void) sputc('\n', fo);
 	(void) sputc('\n', fo);
 	(void) fflush(fo);
-	if (ferror(fo))
+	if (ferror(fo)) {
 		perror(name);
-	(void) Fclose(fo);
+		error = -1;
+	}
+	if (Fclose(fo) != 0)
+		error = -1;
 	fflush(fi);
 	rewind(fi);
 	/*
@@ -616,7 +620,7 @@ savemail(name, fi)
 	 */
 	lseek(fileno(fi), 0, SEEK_SET);
 	free(buf);
-	return (0);
+	return error;
 }
 
 /*
@@ -858,14 +862,23 @@ mail1(hp, printheaders, quote, quotefile, recipient_record, tflag)
 		cp = value("record");
 	if (cp != NULL) {
 		ep = expand(cp);
-		if (value("outfolder") && *ep != '/' && *ep != '+') {
+		if (value("outfolder") && *ep != '/' && *ep != '+' &&
+				which_protocol(ep) == PROTO_FILE) {
 			cq = salloc(strlen(cp) + 2);
 			cq[0] = '+';
 			strcpy(&cq[1], cp);
 			cp = cq;
 			ep = expand(cp);
 		}
-		savemail(ep, mtf);
+		if (savemail(ep, mtf) != 0) {
+			fprintf(stderr,
+				"Error while saving message to %s - "
+				"message not sent\n", ep);
+			rewind(mtf);
+			exit_status |= 1;
+			savedeadletter(mtf);
+			goto out;
+		}
 	}
 	start_mta(to, hp->h_smopts, mtf);
 out:

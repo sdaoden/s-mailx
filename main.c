@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.18 (gritter) 6/13/04";
+static char sccsid[] = "@(#)main.c	2.23 (gritter) 7/27/04";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -77,18 +77,18 @@ static sigjmp_buf	hdrjmp;
 char	*progname;
 
 static void	hdrstop __P((int));
-static void	setscreensize __P((void));
+static void	setscreensize __P((int));
 
 int
 main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	const char *optstr = "+BHFINVT:a:b:c:defh:inqr:s:tu:v~";
+	const char optstr[] = "A:BHFINVT:a:b:c:defh:inqr:s:tu:v~";
 	int i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
-	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL;
+	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL, *Aflag = NULL;
 	char nosrc = 0;
 	int Fflag = 0, Nflag = 0, tflag = 0;
 	sighandler_type prevint;
@@ -162,9 +162,6 @@ main(argc, argv)
 	attach = NULL;
 	smopts = NIL;
 	subject = NULL;
-#ifndef	__GLIBC__
-	optstr++;
-#endif
 	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
 		case 'V':
@@ -318,13 +315,13 @@ main(argc, argv)
 			sendflag = 1;
 			tflag = 1;
 			break;
+		case 'A':
+			Aflag = optarg;
+			break;
 		case '?':
 usage:
 			fprintf(stderr, catgets(catd, CATSET, 135,
-"Usage: %s [-BFintv~] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... [- sendmail-options ...]\n\
-       %s [-BeHiInNv~] [-T name] -f [name]\n\
-       %s [-BeinNv~] [-u user]\n"),
-				progname, progname, progname);
+"Usage: %s -eiIUdFntBNHV~ -T FILE -u USER -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -A ACCOUNT -b USERS -c USERS users\n"), progname);
 			exit(2);
 		}
 	}
@@ -332,16 +329,14 @@ usage:
 		if (optind < argc) {
 			if (optind + 1 < argc) {
 				fprintf(stderr, catgets(catd, CATSET, 205,
-					"More than on file given with -f\n"));
+					"More than one file given with -f\n"));
 				goto usage;
 			}
 			ef = argv[optind];
 		}
 	} else {
-		for (i = optind; (argv[i]) && (*argv[i] != '-'); i++)
+		for (i = optind; argv[i]; i++)
 			to = checkaddrs(cat(to, extract(argv[i], GTO)));
-		for (; argv[i]; i++)
-			smopts = cat(smopts, nalloc(argv[i], 0));
 	}
 	/*
 	 * Check for inconsistent arguments.
@@ -362,7 +357,12 @@ usage:
 		goto usage;
 	}
 	tinit();
-	setscreensize();
+	setscreensize(0);
+#ifdef	SIGWINCH
+	if (value("interactive"))
+		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
+			safe_signal(SIGWINCH, setscreensize);
+#endif	/* SIGWINCH */
 	input = stdin;
 	rcvmode = !to && !tflag;
 	spreserve();
@@ -381,6 +381,13 @@ usage:
 	if (getenv("NAIL_EXTRA_RC") == NULL &&
 			(cp = value("NAIL_EXTRA_RC")) != NULL)
 		load(expand(cp));
+	/*
+	 * Now we can set the account.
+	 */
+	if (Aflag) {
+		char	*a[2] = { Aflag, NULL };
+		account(a);
+	}
 	/*
 	 * From address from command line overrides rc files.
 	 */
@@ -458,8 +465,10 @@ hdrstop(signo)
  *	If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col;
  */
+/*ARGSUSED*/
 static void
-setscreensize()
+setscreensize(dummy)
+	int dummy;
 {
 	struct termios tbuf;
 #ifdef	TIOCGWINSZ

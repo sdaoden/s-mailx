@@ -1,4 +1,4 @@
-$ Sccsid @(#)en_US	1.54 (gritter) 11/9/02
+$ Sccsid @(#)en_US	1.55 (gritter) 7/10/04
 $quote $
 $ Messages for nail, a mail user agent
 $set 1
@@ -180,11 +180,7 @@ The following ~ escapes are defined:\n\
 132 No applicable messages\n
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
-135 $Usage: %s [-BFinv~] [-s subject] [-a attachment] [-c cc-\
-addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... \
-[- sendmail-options ...]\n\
-       %s [-BeHiInNv~] [-T name] -f [name]\n\
-       %s [-BeinNv~] [-u user]\n$
+135 Usage: %s -eiIUdFntBNHV~ -T FILE -u USER -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -b USERS -c USERS users\n
 136 --- DELETED ---
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n
@@ -254,7 +250,7 @@ addr] [-b bcc-addr] [-r from-addr] [-h hops] to-addr ... \
 202 "%s": not a group\n
 203 "%s": undefined variable\n
 204 Need -f with -I.\n
-205 More than on file given with -f\n
+205 More than one file given with -f\n
 206 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 207 $%c%c%3d %s%-*.*s  %16.16s %s "%.*s"\n$
 208 warning: incomplete line - newline appended\n

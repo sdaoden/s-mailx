@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.30 (gritter) 6/13/04";
+static char sccsid[] = "@(#)aux.c	2.39 (gritter) 7/26/04";
 #endif
 #endif /* not lint */
 
@@ -57,7 +57,6 @@ static char	*save2str __P((char *, char *));
 static int	gethfield __P((FILE *, char **, size_t *, int, char **));
 static char	*is_hfield __P((char [], char[], char *));
 static int	charcount __P((char *, int));
-static time_t	combinetime __P((int, int, int, int, int, int));
 
 /*
  * Return a pointer to a dynamic copy of the argument.
@@ -240,15 +239,15 @@ extract_header(fp, hp)
 		if (is_hfield(linebuf, colon, "to") != NULL) {
 			seenfields++;
 			hq->h_to = checkaddrs(cat(hq->h_to,
-						extract(&colon[1], GTO)));
+						sextract(&colon[1], GTO)));
 		} else if (is_hfield(linebuf, colon, "cc") != NULL) {
 			seenfields++;
 			hq->h_cc = checkaddrs(cat(hq->h_cc,
-						extract(&colon[1], GCC)));
+						sextract(&colon[1], GCC)));
 		} else if (is_hfield(linebuf, colon, "bcc") != NULL) {
 			seenfields++;
 			hq->h_bcc = checkaddrs(cat(hq->h_bcc,
-						extract(&colon[1], GBCC)));
+						sextract(&colon[1], GBCC)));
 		} else if (is_hfield(linebuf, colon, "subject") != NULL ||
 				is_hfield(linebuf, colon, "subj") != NULL) {
 			seenfields++;
@@ -1085,6 +1084,64 @@ nexttoken(cp)
 	return cp;
 }
 
+/*
+ * From username Fri Jan  2 20:13:51 2004
+ *               |    |    |    |    | 
+ *               0    5   10   15   20
+ */
+time_t
+unixtime(from)
+	char *from;
+{
+	char	*fp, *xp;
+	time_t	t;
+	int	i, year, month, day, hour, minute, second;
+	int	tzdiff;
+	struct tm	*tmptr;
+
+	for (fp = from; *fp && *fp != '\n'; fp++);
+	fp -= 24;
+	if (fp - from < 7)
+		goto invalid;
+	if (fp[3] != ' ')
+		goto invalid;
+	for (i = 0; month_names[i]; i++)
+		if (strncmp(&fp[4], month_names[i], 3) == 0)
+			break;
+	if (month_names[i] == 0)
+		goto invalid;
+	month = i + 1;
+	if (fp[7] != ' ')
+		goto invalid;
+	day = strtol(&fp[8], &xp, 10);
+	if (*xp != ' ' || xp != &fp[10])
+		goto invalid;
+	hour = strtol(&fp[11], &xp, 10);
+	if (*xp != ':' || xp != &fp[13])
+		goto invalid;
+	minute = strtol(&fp[14], &xp, 10);
+	if (*xp != ':' || xp != &fp[16])
+		goto invalid;
+	second = strtol(&fp[17], &xp, 10);
+	if (*xp != ' ' || xp != &fp[19])
+		goto invalid;
+	year = strtol(&fp[20], &xp, 10);
+	if (xp != &fp[24])
+		goto invalid;
+	if ((t = combinetime(year, month, day, hour, minute, second)) ==
+			(time_t)-1)
+		goto invalid;
+	tzdiff = t - mktime(gmtime(&t));
+	tmptr = localtime(&t);
+	if (tmptr->tm_isdst > 0)
+		tzdiff += 3600;
+	t -= tzdiff;
+	return t;
+invalid:
+	time(&t);
+	return t;
+}
+
 time_t
 rfctime(date)
 	char *date;
@@ -1158,8 +1215,9 @@ invalid:
 
 #define	leapyear(year)	((year % 100 ? year : year / 100) % 4 == 0)
 
-static time_t
+time_t
 combinetime(year, month, day, hour, minute, second)
+	int year, month, day, hour, minute, second;
 {
 	time_t t;
 
@@ -1204,7 +1262,11 @@ which_protocol(name)
 {
 	register const char *cp;
 
-	for (cp = name; *cp && *cp != ':'; cp++);
+	if (name[0] == '%' && name[1] == ':')
+		name += 2;
+	for (cp = name; *cp && *cp != ':'; cp++)
+		if (!alnumchar(*cp&0377))
+			return PROTO_FILE;
 	if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
 		if (strncmp(name, "pop3://", 7) == 0)
 			return PROTO_POP3;
@@ -1215,9 +1277,60 @@ which_protocol(name)
 			fprintf(stderr, catgets(catd, CATSET, 225,
 					"No SSL support compiled in.\n"));
 #endif	/* !USE_SSL */
+		if (strncmp(name, "imap://", 7) == 0)
+			return PROTO_IMAP;
+		if (strncmp(name, "imaps://", 8) == 0)
+#ifdef	USE_SSL
+			return PROTO_IMAP;
+#else	/* !USE_SSL */
+			fprintf(stderr, catgets(catd, CATSET, 225,
+					"No SSL support compiled in.\n"));
+#endif	/* !USE_SSL */
 		return PROTO_UNKNOWN;
 	} else
 		return PROTO_FILE;
+}
+
+const char *
+protfile(xcp)
+	const char *xcp;
+{
+	const char	*cp = xcp;
+	int	state = 0;
+
+	while (*cp) {
+		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+			cp += 3;
+			state = 1;
+		}
+		if (cp[0] == '/' && state == 1)
+			return &cp[1];
+		if (cp[0] == '/')
+			return xcp;
+		cp++;
+	}
+	return cp;
+}
+
+const char *
+protbase(cp)
+	const char *cp;
+{
+	char	*n = salloc(strlen(cp) + 1);
+	char	*np = n;
+
+	while (*cp) {
+		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+			*np++ = *cp++;
+			*np++ = *cp++;
+			*np++ = *cp++;
+		} else if (cp[0] == '/')
+			break;
+		else
+			*np++ = *cp++;
+	}
+	*np = '\0';
+	return n;
 }
 
 void
@@ -1282,10 +1395,14 @@ char *
 sstrdup(cp)
 const char *cp;
 {
-	char	*dp = smalloc(strlen(cp) + 1);
-
-	strcpy(dp, cp);
-	return dp;
+	char	*dp;
+	
+	if (cp) {
+		dp = smalloc(strlen(cp) + 1);
+		strcpy(dp, cp);
+		return dp;
+	} else
+		return NULL;
 }
 
 /*
@@ -1319,6 +1436,36 @@ size_t sz;
 			return cmp;
 	while (i++ < sz && *s1++ != '\0' && *s2++ != '\0');
 	return 0;
+}
+
+char *
+asccasestr(haystack, xneedle)
+const char *haystack, *xneedle;
+{
+	char	*needle, *NEEDLE;
+	int	i, sz;
+
+	sz = strlen(xneedle);
+	if (sz == 0)
+		return (char *)haystack;
+	needle = ac_alloc(sz);
+	NEEDLE = ac_alloc(sz);
+	for (i = 0; i < sz; i++) {
+		needle[i] = lowerconv(xneedle[i]&0377);
+		NEEDLE[i] = upperconv(xneedle[i]&0377);
+	}
+	while (*haystack) {
+		if (*haystack == *needle || *haystack == *NEEDLE) {
+			for (i = 1; i < sz; i++)
+				if (haystack[i] != needle[i] &&
+						haystack[i] != NEEDLE[i])
+					break;
+			if (i == sz)
+				return (char *)haystack;
+		}
+		haystack++;
+	}
+	return NULL;
 }
 
 const unsigned char class_char[] = {

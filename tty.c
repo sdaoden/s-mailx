@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.13 (gritter) 6/13/04";
+static char sccsid[] = "@(#)tty.c	2.15 (gritter) 7/23/04";
 #endif
 #endif /* not lint */
 
@@ -107,7 +107,7 @@ FILE *ibuf;
 {
 	if (fileno(ibuf) == 0 && is_a_tty[0]) {
 		char c;
-		ssize_t sz;
+		int sz;
 
 again:
 		if ((sz = read(0, &c, 1)) != 1) {
@@ -308,7 +308,7 @@ grabh(hp, gflags, subjfirst)
 #endif	/* TIOCSTI */
 	if (gflags & GTO) {
 		TTYSET_CHECK(hp->h_to)
-		hp->h_to = checkaddrs(extract(rtty_internal("To: ",
+		hp->h_to = checkaddrs(sextract(rtty_internal("To: ",
 						detract(hp->h_to, comma)),
 					GTO));
 	}
@@ -316,13 +316,13 @@ grabh(hp, gflags, subjfirst)
 		GRAB_SUBJECT
 	if (gflags & GCC) {
 		TTYSET_CHECK(hp->h_cc)
-		hp->h_cc = checkaddrs(extract(rtty_internal("Cc: ",
+		hp->h_cc = checkaddrs(sextract(rtty_internal("Cc: ",
 						detract(hp->h_cc, comma)),
 					GCC));
 	}
 	if (gflags & GBCC) {
 		TTYSET_CHECK(hp->h_bcc)
-		hp->h_bcc = checkaddrs(extract(rtty_internal("Bcc: ",
+		hp->h_bcc = checkaddrs(sextract(rtty_internal("Bcc: ",
 						detract(hp->h_bcc, comma)),
 					GBCC));
 	}
