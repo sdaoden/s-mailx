@@ -1,4 +1,4 @@
-/*	$Id: pathnames.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: pathnames.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp 	*/
 /*	NetBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp 	*/
 
@@ -36,10 +36,14 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: pathnames.h,v 1.4 1996/06/08 19:48:34 christos Exp
- *	$Id: pathnames.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
+ *	$Id: pathnames.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $
  */
 
 #include "mailfiles.h"
+
+#ifndef	SYSVR4
+#include <paths.h>
+#endif
 
 /* mail runtime files */
 #ifndef _PATH_MAILDIR
@@ -60,7 +64,7 @@
 #define _PATH_VI	"/usr/bin/vi"
 #endif
 #ifndef _PATH_SENDMAIL
-#define _PATH_SENDMAIL	"/usr/sbin/sendmail"
+#define _PATH_SENDMAIL	"/usr/lib/sendmail"
 #endif
 
 /* directories */

@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -33,9 +33,9 @@
 
 #ifndef lint
 #if 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
+static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: dotlock.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif
 

@@ -1,23 +1,45 @@
-#	$Id: Makefile,v 1.3 2000/03/21 03:52:04 gunnar Exp $
-#	OpenBSD: Makefile,v 1.8 1996/06/08 19:48:09 christos Exp
-#	NetBSD: Makefile,v 1.8 1996/06/08 19:48:09 christos Exp
+#############################################################################
+# NAIL - A MAIL USER AGENT
+#############################################################################
 
-PROG=	nail
-CC=gcc
-DESTDIR=/usr/local
+#############################################################################
+# Change the following to match your system's configuration
+#############################################################################
 
-INCLUDE = $(shell test -d /usr/include/bsd && echo -I/usr/include/bsd)
-CPPFLAGS=-D_BSD_SOURCE -D_GNU_SOURCE $(INCLUDE)
-CFLAGS=-O2 -fno-strength-reduce -fomit-frame-pointer
-LDFLAGS=
-LIBS=
+# the destination directory, with subdirectories bin, etc, man, lib
+DESTDIR		= /usr/local
 
-#CFLAGS = -g
-#LIBS=-lefence
+# uncomment if on linux
+CC		= gcc
+CFLAGS		= -O2 -fno-strength-reduce -fomit-frame-pointer
+CPPFLAGS	= -D_BSD_SOURCE -D_GNU_SOURCE
 
-SRCS=	version.c aux.c cmd1.c cmd2.c cmd3.c cmdtab.c collect.c dotlock.c \
-	edit.c fio.c getname.c head.c v7.local.c lex.c list.c main.c names.c \
-	popen.c quit.c send.c strings.c temp.c tty.c vars.c base64.c mime.c
+# uncomment if on System V Release 4
+# do NOT use /usr/ucb/cc !
+#CC		= cc
+#CFLAGS		= -O
+#CPPFLAGS	= -DSYSVR4 -I/usr/ucbinclude
+#LIBS		= -YP,:/usr/ucblib:/usr/ccs/lib:/usr/lib \
+#			-Bstatic -lucb -Bdynamic -lc
+
+# in case you need it
+#LDFLAGS	=
+#LIBS		=
+
+# for debugging
+#CFLAGS		= -g
+#LIBS		= -lefence
+
+##############################################################################
+# There is nothing to change beyond this line.
+##############################################################################
+
+PROG = nail
+
+SRCS=	version.c aux.c base64.c cmd1.c cmd2.c cmd3.c cmdtab.c \
+	collect.c dotlock.c edit.c fio.c getname.c head.c \
+	v7.local.c lex.c list.c main.c mime.c names.c popen.c \
+	quit.c send.c strings.c temp.c tty.c vars.c
 
 OBJS=$(SRCS:%.c=%.o)
 
@@ -36,17 +58,12 @@ $(PROG): mailfiles.h $(OBJS)
  .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-mailfiles.h: Makefile
-	echo -e "/* mail installes files */\
-\n#define	_PATH_HELP	\"$(DESTDIR)/lib/nail.help\"\
-\n#define	_PATH_TILDE	\"$(DESTDIR)/lib/nail.tildehelp\"\
-\n#define	_PATH_MASTER_RC	\"$(DESTDIR)/etc/nail.rc\"" > mailfiles.h
+mailfiles.h: Makefile mailfiles.H
+	sed -e "s+DESTDIR+$(DESTDIR)+" mailfiles.H > mailfiles.h
 
 clean:
 	rm -f $(PROG) $(OBJS) *~ mailfiles.h dead.letter core
 
-mail:
- 
 install: all
 	mkdir -p $(DESTDIR)/bin $(DESTDIR)/man/man1 \
 	$(DESTDIR)/etc $(DESTDIR)/lib
@@ -55,12 +72,19 @@ install: all
 	cd misc && install -c -m 0644 $(SFILES) $(DESTDIR)/lib
 	install -c -m 0644 $(MFILE) $(DESTDIR)/man/man1
 
-mailinstall: install mail
+mailinstall: install
 	install -c -m 0644 $(MAILMFILE) $(DESTDIR)/man/man1
-	ln -sf $(DESTDIR)/bin/$(PROG) /bin/mail
+	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/Mail
 
-cmdtab.o:   cmdtab.c   def.h extern.h
+checkin:
+	ci -mcomplete_checkin `ls RCS | sed s/,v$$//`
+
+checkout:
+	co `ls RCS | sed s/,v$$//` </dev/null
+
+cmdtab.o:   cmdtab.c   def.h extern.h mailfiles.h
 aux.o:      aux.c      rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
+base64.o:   base64.c   rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 cmd1.o:     cmd1.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 cmd2.o:     cmd2.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 cmd3.o:     cmd3.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
@@ -73,6 +97,7 @@ head.o:     head.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 lex.o:      lex.c      rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 list.o:     list.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 main.o:     main.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
+mime.o:     mime.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 names.o:    names.c    rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 popen.o:    popen.c    rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 quit.o:     quit.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
@@ -82,4 +107,3 @@ temp.o:     temp.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 tty.o:      tty.c      rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 v7.local.o: v7.local.c rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
 vars.o:     vars.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h
-mime.o:     mime.c     rcv.h def.h glob.h extern.h pathnames.h mailfiles.h

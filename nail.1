@@ -1,5 +1,5 @@
-.\" $Id: nail.1,v 1.2 2000/03/21 03:12:54 gunnar Exp $
-.TH NAIL 1 "March 03, 2000" "Gunnar Ritter" "User Commands"
+.\" $Id: nail.1,v 1.3 2000/03/24 23:01:39 gunnar Exp $
+.TH NAIL 1 "March 23, 2000" "Gunnar Ritter" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -72,7 +72,11 @@ always encoded in \fIbase64\fR mode.
 .B from
 The address to put into the \fI"From:"\fR field of the message header.
 If this variable is specified, a \fI"Sender:"\fR field
-containing the user's name is also generated.
+containing the user's name is also generated. If replying to a message,
+this address is handled as if it were in the alternates list.
+.TP
+.B ORGANIZATION
+The value to put into the \fI"Organization:"\fR field of the message header.
 .TP
 .B quote
 If set, mail starts a replying message with the original message prefixed
@@ -82,6 +86,8 @@ message headers are printed.
 .TP
 .B replyto
 The address to put into the \fI"Reply-To:"\fR field of the message header.
+If replying to a message, this address is handled as if it were in the
+alternates list.
 .SH MIME TYPES
 For any attachment, nail tries to determine the content type. It does this
 by reading MIME type files whose lines have the following syntax:

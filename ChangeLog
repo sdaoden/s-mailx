@@ -1,0 +1,20 @@
+[9.01]
+* Added the `Organization:' stuff
+* Handle unknown encodings as application/octet stream for MIME conformance
+* Generate a `Reference:' header line in replies
+* Handle addresses in the `from' and `replyto' variables as if they were in
+  the alternates list
+* Added a message count to the generated message-id to ensure it is unique
+  even when more than one message is sent per second
+* Mbox format: Mask `^From ' lines inside messages with '>'
+* Proper handling of nested multipart messages implemented
+* We now ignore the MIME-Version header field and look at the Content-Type
+  field instead
+* Can now compile on SVR4 systems using -lucb
+* Changed generation of multipart boundaries
+* Sending MIME messages to files now works
+* Fixed core dump if variable `encoding' was unset (thanks to Alexey
+  A. Shelkovich who provided the core)
+
+[9.0] released 2000-03-20
+* Initial release

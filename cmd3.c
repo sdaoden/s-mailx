@@ -1,4 +1,4 @@
-/*	$Id: cmd3.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: cmd3.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 /*	NetBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
+static char rcsid[]  = "OpenBSD: cmd3.c,v 1.5 1996/06/08 19:48:14 christos Exp ";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: cmd3.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd3.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -64,7 +64,7 @@ shell(v)
 	void *v;
 {
 	char *str = v;
-	sig_t sigint = signal(SIGINT, SIG_IGN);
+	sighandler_t sigint = signal(SIGINT, SIG_IGN);
 	char *shell;
 	char cmd[BUFSIZ];
 
@@ -88,7 +88,7 @@ int
 dosh(v)
 	void *v;
 {
-	sig_t sigint = signal(SIGINT, SIG_IGN);
+	sighandler_t sigint = signal(SIGINT, SIG_IGN);
 	char *shell;
 
 	if ((shell = value("SHELL")) == NOSTR)
@@ -199,6 +199,34 @@ schdir(v)
 	return 0;
 }
 
+void
+make_ref(mp, head)
+struct message *mp;
+struct header *head;
+{
+	char *oldref, *oldmsgid, *newref;
+	size_t reflen;
+
+	oldref = hfield("references", mp);
+	oldmsgid = hfield("message-id", mp);
+	reflen = 1;
+	if (oldref)
+		reflen += strlen(oldref) + 2;
+	if (newref)
+		reflen += strlen(oldmsgid);
+	newref = (char*)smalloc(reflen);
+	if (oldref) {
+		strcpy(newref, oldref);
+		if (oldmsgid) {
+			strcat(newref, ", ");
+			strcat(newref, oldmsgid);
+		}
+	} else if (oldmsgid)
+		strcpy(newref, oldmsgid);
+	head->h_ref = extract(newref, GREF);
+	free(newref);
+}
+
 int
 respond(v)
 	void *v;
@@ -248,6 +276,10 @@ _respond(msgvec)
 	if (altnames)
 		for (ap = altnames; *ap; ap++)
 			np = delname(np, *ap);
+	if (cp = skin(value("from")))
+		np = delname(np, cp);
+	if (cp = skin(value("replyto")))
+		np = delname(np, cp);
 	if (np != NIL && replyto == NOSTR)
 		np = cat(np, extract(rcv, GTO));
 	else if (np == NIL) {
@@ -269,6 +301,7 @@ _respond(msgvec)
 	} else
 		head.h_cc = NIL;
 	head.h_bcc = NIL;
+	make_ref(mp, &head);
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
 	if (value("quote"))
@@ -651,6 +684,7 @@ _Respond(msgvec)
 	head.h_subject = reedit(head.h_subject);
 	head.h_cc = NIL;
 	head.h_bcc = NIL;
+	make_ref(mp, &head);
 	head.h_attach = NIL;
 	head.h_smopts = NIL;
 	if (value("quote"))

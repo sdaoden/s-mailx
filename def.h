@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: def.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
+ *	$Id: def.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $
  */
 
 /*
@@ -71,8 +71,25 @@
 
 #define	equal(a, b)	(strcmp(a,b)==0)/* A nice function to string compare */
 
+#ifndef	__P
+#ifdef	__STDC__
+#define	__P(a)	a
+#else
+#define	__P(a)	()
+#endif
+#endif
+
+#ifndef	MAXHOSTNAMELEN
+#define	MAXHOSTNAMELEN	64
+#endif
+
+#ifdef	SYSVR4
+typedef void (*sighandler_t) __P((int));
+#endif
+
 enum {
 	MIME_NONE,			/* message is not in MIME format */
+	MIME_BIN,			/* message is in binary encoding */
 	MIME_8B,			/* message is in 8bit encoding */
 	MIME_7B,			/* message is in 7bit encoding */
 	MIME_QP,			/* message is quoted-printable */
@@ -98,7 +115,8 @@ enum {
 	MIME_SUBHDR,			/* inside a multipart subheader */
 	MIME_MESSAGE,			/* message/ content */
 	MIME_TEXT,			/* text/ content */
-	MIME_MULTI			/* multipart/ content */
+	MIME_MULTI,			/* multipart/ content */
+	MIME_DISCARD			/* content is discarded */
 };
 
 struct str {
@@ -201,12 +219,14 @@ struct headline {
 #define	GNL	16		/* Print blank line after */
 #define	GDEL	32		/* Entity removed from list */
 #define	GCOMMA	64		/* detract puts in commas */
-#define	GXMAIL	128		/* generate X-Mailer field */
-#define	GMIME	256		/* generate MIME 1.0 fields */
-#define	GMSGID	512		/* generate a Message-ID */
+#define	GXMAIL	128		/* X-Mailer field */
+#define	GMIME	256		/* MIME 1.0 fields */
+#define	GMSGID	512		/* a Message-ID */
 #define	GATTACH	1024		/* attachment included */
-#define	GFROM	2048		/* generate a From: header */
-#define	GREPLY	4096		/* generate a Reply-To: header */
+#define	GFROM	2048		/* From: header */
+#define	GREPLY	4096		/* Reply-To: header */
+#define	GORG	8192		/* Organization: header */
+#define	GREF	16384		/* References: header */
 
 /*
  * Structure used to pass about the current
@@ -219,6 +239,7 @@ struct header {
 	struct name *h_cc;		/* Carbon copies string */
 	struct name *h_bcc;		/* Blind carbon copies */
 	struct name *h_attach;		/* MIME attachments */
+	struct name *h_ref;		/* References */
 	struct name *h_smopts;		/* Sendmail options */
 };
 

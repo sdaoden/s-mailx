@@ -1,4 +1,4 @@
-/*	$Id: cmd1.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: cmd1.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 /*	NetBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
+static char rcsid[]  = "OpenBSD: cmd1.c,v 1.5 1996/06/08 19:48:11 christos Exp ";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: cmd1.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd1.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 

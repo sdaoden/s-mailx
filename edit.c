@@ -1,4 +1,4 @@
-/*	$Id: edit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: edit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 /*	NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
+static char rcsid[]  = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: edit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: edit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -99,7 +99,7 @@ edit1(msgvec, type)
 	 * Deal with each message to be edited . . .
 	 */
 	for (i = 0; msgvec[i] && i < msgCount; i++) {
-		sig_t sigint;
+		sighandler_t sigint;
 
 		if (i > 0) {
 			char buf[100];

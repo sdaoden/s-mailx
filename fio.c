@@ -1,4 +1,4 @@
-/*	$Id: fio.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: fio.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 /*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
+static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "$Id: fio.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "$Id: fio.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -50,7 +50,6 @@ static char rcsid[] __attribute__ ((unused)) = "$Id: fio.c,v 1.2 2000/03/21 03:1
 #include <sys/wait.h>
 
 #include <unistd.h>
-#include <paths.h>
 #include <errno.h>
 #include "extern.h"
 
@@ -80,7 +79,7 @@ setptr(ibuf)
 	(void)snprintf(linebuf,LINESIZE,"%s/mail.XXXXXX", tmpdir);
 	if ((c = mkstemp(linebuf)) == -1 ||
 	    (mestmp = Fdopen(c, "r+")) == (FILE *)NULL) {
-		(void)fprintf(stderr, "mail: can't open %s\n", linebuf);
+		(void)fprintf(stderr, "cannot open %s\n", linebuf);
 		exit(1);
 	}
 	(void)unlink(linebuf);
@@ -373,7 +372,7 @@ expand(name)
 	register char *cp, *shell;
 	int pivec[2];
 	struct stat sbuf;
-	extern union wait wait_status;
+	extern int wait_status;
 
 	/*
 	 * The order of evaluation is "%" and "#" expand into constants.
@@ -430,7 +429,7 @@ expand(name)
 		return NOSTR;
 	}
 	close(pivec[0]);
-	if (wait_child(pid) < 0 && wait_status.w_termsig != SIGPIPE) {
+	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, "\"%s\": Expansion failed.\n", name);
 		return NOSTR;
 	}

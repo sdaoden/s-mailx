@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -34,9 +34,9 @@
  */
 
 #ifndef lint
-static char copyright[] __attribute__ ((unused)) =
+static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: mime.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -140,6 +140,8 @@ char *h;
 		return MIME_8B;
 	if (strncasecmp(p, "base64", 6) == 0)
 		return MIME_B64;
+	if (strncasecmp(p, "binary", 6) == 0)
+		return MIME_BIN;
 	if (strncasecmp(p, "quoted-printable", 16) == 0)
 		return MIME_QP;
 	return MIME_NONE;
@@ -156,6 +158,8 @@ char *h;
 	p++;
 	while (*p && *p == ' ')
 		p++;
+	if (strchr(p, '/') == NULL)	/* for compatibility with non-MIME */
+		return MIME_TEXT;
 	if (strncasecmp(p, "text/", 5) == 0)
 		return MIME_TEXT;
 	if (strncasecmp(p, "message/", 8) == 0)
@@ -324,7 +328,8 @@ FILE *f;
 	return isclean;
 }
 
-void itohex(i, b)
+char *
+itohex(i, b)
 unsigned i;
 char *b;
 {
@@ -341,6 +346,7 @@ char *b;
 		*b++ = *p;
 		*p-- = c;
 	}
+	return b;
 }
 
 char *ctohex(c)
@@ -526,7 +532,7 @@ FILE *f;
 	char *p, *upper;
 	size_t sz;
 
-	upper = ptr + nmemb / size;
+	upper = (char*)ptr + nmemb / size;
 	for (p = ptr, sz = 0; p < upper; p++, sz++) {
 		if (isspecial(*p)) {
 			fputc('?', f);

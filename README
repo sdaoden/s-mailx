@@ -7,20 +7,62 @@ with its classic ancestor.
 Currently, nail can handle the quoted-printable and base64 encodings as
 well as attachments. See the "nail.1" manual page for details.
 
-This has been built successfull on my SuSE 6.3 Linux system and nowhere
-else. It should be possible also on every glibc 2.1 / egcs Linux. If
-you can build it on other operating systems, please contact me and
+To use nail, you must have a working sendmail setup or another program
+that behaves like sendmail when it reveives mail from its standard input.
+If you want to read from a POP or IMAP mailbox, you also have to set up
+a program like e.g. fetchmail since nail does not contain any network
+client code.
+
+To compile nail, first look
+- at the top of the Makefile
+- at pathnames.h
+and set the definitions according to your system's settings. The defaults
+are set to match Linux 2.2.X systems using glibc 2.1.
+
+Then type "make" and optionally "make install". As a last step, edit
+the personal and system-wide run time configuration files to match
+your needs. You _really_ should do this or at least install the
+template in the "misc" directory of the build tree because most of
+the defaults still have the compatibility values of fifteen years ago.
+
+This version of nail has been built successfully on the following
+operating systems:
+
+Linux 		2.2.X with glibc 2.1
+Solaris		2.6
+UnixWare	2.1.2
+
+If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.
+
+It should generally be possible to build nail on any Linux, BSD or SVR4
+system without much effort.
+
+Note that the mbox format based on the "Content-Length:" header field that
+is used on most SVR4 systems by default is not supported by nail. As this
+format generally is a design flaw, you should fix your system by either
+using procmail for local mail delivery, which is a good idea anyway,
+or at least add the -E flag to the Mlocal line in /etc/sendmail.cf if
+using /usr/lib/mail.local.
 
 If you detect a bug and cannot fix it yourselves, please send me the
 unaltered mail message that caused the problem along with a description!
 This may be a privacy issue, but it is nearly impossible to fix the
 error without an exact reconstruction.
 
+If nail dumps core and you work on a Linux i386 system, please send me also
+- the version of the kernel and of the libc
+- the nail binary that dumped core
+- a strace(1) or ltrace(1) output.
+Do not send me the core file unless you enabled the debugging using the
+-g flag while you compiled nail.
+
+If you work on another kind of machine, you can send me a description
+and a trace output, of cause, but I cannot handle your binaries then.
+
 Enjoy!
 
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-
 <g-r@bigfoot.de>

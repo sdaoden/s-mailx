@@ -1,4 +1,4 @@
-/*	$Id: quit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: quit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 /*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
+static char rcsid[]  = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: quit.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: quit.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -88,6 +88,9 @@ quit()
 	extern char *tempQuit, *tempResid;
 	struct stat minfo;
 	char *mbox;
+#ifdef	F_SETLK
+	struct flock flockptr;
+#endif
 
 	/*
 	 * If we are read only, we can't do anything,
@@ -117,7 +120,15 @@ quit()
 	fbuf = Fopen(mailname, "r");
 	if (fbuf == (FILE*)NULL)
 		goto newmail;
+#ifndef	F_SETLK
 	if (flock(fileno(fbuf), LOCK_EX) == -1) {
+#else
+	flockptr.l_type = F_RDLCK;
+	flockptr.l_start = 0;
+	flockptr.l_whence = SEEK_SET;
+	flockptr.l_len = 0;
+	if (fcntl(fileno(fbuf), F_SETLK, &flockptr) == -1) {
+#endif
 nolock:
 		perror("Unable to lock mailbox");
 		Fclose(fbuf);

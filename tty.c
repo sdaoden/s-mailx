@@ -1,4 +1,4 @@
-/*	$Id: tty.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: tty.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 /*	NetBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)tty.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
+static char rcsid[]  = "OpenBSD: tty.c,v 1.5 1996/06/08 19:48:43 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: tty.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: tty.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -80,13 +80,13 @@ grabh(hp, gflags)
 	int gflags;
 {
 	struct termios ttybuf;
-	sig_t saveint;
+	sighandler_t saveint;
 #ifndef TIOCSTI
-	sig_t savequit;
+	sighandler_t savequit;
 #endif
-	sig_t savetstp;
-	sig_t savettou;
-	sig_t savettin;
+	sighandler_t savetstp;
+	sighandler_t savettou;
+	sighandler_t savettin;
 	int errs;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
@@ -310,7 +310,7 @@ void
 ttystop(s)
 	int s;
 {
-	sig_t old_action = signal(s, SIG_DFL);
+	sighandler_t old_action = signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);

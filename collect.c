@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
+static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
+static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: collect.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -72,11 +72,11 @@ int got_interrupt;
  * away on dead.letter.
  */
 
-static	sig_t	saveint;		/* Previous SIGINT value */
-static	sig_t	savehup;		/* Previous SIGHUP value */
-static	sig_t	savetstp;		/* Previous SIGTSTP value */
-static	sig_t	savettou;		/* Previous SIGTTOU value */
-static	sig_t	savettin;		/* Previous SIGTTIN value */
+static	sighandler_t	saveint;		/* Previous SIGINT value */
+static	sighandler_t	savehup;		/* Previous SIGHUP value */
+static	sighandler_t	savetstp;		/* Previous SIGTSTP value */
+static	sighandler_t	savettou;		/* Previous SIGTTOU value */
+static	sighandler_t	savettin;		/* Previous SIGTTIN value */
 static	FILE	*collf;			/* File for saving away */
 static	int	hadintr;		/* Have seen one SIGINT so far */
 
@@ -407,7 +407,9 @@ cont:
 				GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP);
 			while ((t = getc(collf)) != EOF)
 				(void) putchar(t);
-			fmt("Attachments:", hp->h_attach, stdout, GCOMMA);
+			if (hp->h_attach != NIL)
+				fmt("Attachments:", hp->h_attach,
+						stdout, GCOMMA);
 			goto cont;
 		case '|':
 			/*
@@ -513,7 +515,7 @@ mesedit(fp, c)
 	FILE *fp;
 	int c;
 {
-	sig_t sigint = signal(SIGINT, SIG_IGN);
+	sighandler_t sigint = signal(SIGINT, SIG_IGN);
 	FILE *nf = run_editor(fp, (off_t)-1, c, 0);
 
 	if (nf != (FILE *)NULL) {
@@ -536,7 +538,7 @@ mespipe(fp, cmd)
 	char cmd[];
 {
 	FILE *nf;
-	sig_t sigint = signal(SIGINT, SIG_IGN);
+	sighandler_t sigint = signal(SIGINT, SIG_IGN);
 	extern char *tempEdit;
 	char *shell;
 
@@ -631,7 +633,7 @@ void
 collstop(s)
 	int s;
 {
-	sig_t old_action = signal(s, SIG_DFL);
+	sighandler_t old_action = signal(s, SIG_DFL);
 	sigset_t nset;
 
 	sigemptyset(&nset);

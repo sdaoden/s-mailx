@@ -1,4 +1,4 @@
-/*	$Id: cmd2.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: cmd2.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 /*	NetBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp ";
+static char rcsid[]  = "OpenBSD: cmd2.c,v 1.5 1996/06/08 19:48:13 christos Exp ";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: cmd2.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: cmd2.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -418,7 +418,7 @@ core(v)
 	void *v;
 {
 	int pid;
-	extern union wait wait_status;
+	extern int wait_status;
 
 	switch (pid = vfork()) {
 	case -1:
@@ -431,10 +431,12 @@ core(v)
 	printf("Okie dokie");
 	fflush(stdout);
 	wait_child(pid);
-	if (wait_status.w_coredump)
+#ifdef	WCOREDUMP
+	if (WCOREDUMP(wait_status))
 		printf(" -- Core dumped.\n");
 	else
 		printf(" -- Can't dump core.\n");
+#endif
 	return 0;
 }
 

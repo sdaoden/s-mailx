@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: main.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 /*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
 
@@ -36,17 +36,17 @@
  */
 
 #ifndef lint
-static char copyright[] __attribute__ ((unused)) =
+static char copyright[]  =
 "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
 #endif /* not lint */
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)main.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
+static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: main.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: main.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -86,7 +86,7 @@ main(argc, argv)
 	char *subject;
 	char *ef;
 	char nosrc = 0;
-	sig_t prevint;
+	sighandler_t prevint;
 
 	/*
 	 * Absolutely the first thing we do is save our egid
@@ -225,13 +225,13 @@ main(argc, argv)
 			bcc = cat(bcc, nalloc(optarg, GBCC));
 			break;
 		case '?':
-			fputs("\
-Usage: mail [-iInv] [-s subject] [-a attachment]
-            [-c cc-addr] [-b bcc-addr] to-addr ...\n\
-            [- sendmail-options ...]\n\
-       mail [-iInNv] -f [name]\n\
-       mail [-iInNv] [-u user]\n",
-				stderr);
+			fprintf(stderr,
+			"Usage: %s [-iInv] [-s subject] [-a attachment]\n"
+			"             [-c cc-addr] [-b bcc-addr] to-addr ...\n"
+			"             [- sendmail-options ...]\n"
+			"       %s [-iInNv] -f [name]\n"
+			"       %s [-iInNv] [-u user]\n",
+				progname, progname, progname);
 			exit(1);
 		}
 	}

@@ -1,4 +1,4 @@
-/*	$Id: names.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: names.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
 /*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
 
@@ -37,11 +37,11 @@
 
 #ifndef lint
 #if 0
-static char sccsid[] __attribute__ ((unused)) = "@(#)names.c	8.1 (Berkeley) 6/6/93";
+static char sccsid[]  = "@(#)names.c	8.1 (Berkeley) 6/6/93";
 #elif 0
-static char rcsid[] __attribute__ ((unused)) = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
+static char rcsid[]  = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
 #else
-static char rcsid[] __attribute__ ((unused)) = "@(#)$Id: names.c,v 1.2 2000/03/21 03:12:24 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: names.c,v 1.3 2000/03/24 23:01:39 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -272,7 +272,6 @@ outof(names, fo, hp)
 			}
 			(void) fcntl(image, F_SETFD, 1);
 			fprintf(fout, "From %s %s", myname, date);
-			puthead(hp, fout, GTO|GSUBJECT|GCC|GNL, CONV_NONE);
 			while ((c = getc(fo)) != EOF)
 				(void) putc(c, fout);
 			rewind(fo);

@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.2 2000/03/21 03:12:24 gunnar Exp $
+ *	$Id: extern.h,v 1.3 2000/03/24 23:01:39 gunnar Exp $
  */
 
 struct name;
@@ -193,7 +193,11 @@ int	 newfileinfo __P((void));
 int	 next __P((void *));
 int	 null __P((void *));
 void	 panic __P((const char *, ...))
+#ifdef	__GNUC__
     __attribute__((__format__(__printf__,1,2),__noreturn__));
+#else
+    ;
+#endif
 struct headline;
 void	 parse __P((char [], struct headline *, char []));
 int	 pcmdlist __P((void *));
@@ -269,7 +273,7 @@ int	 writeback __P((FILE *));
 void	*smalloc __P((size_t));
 size_t	mime_write_tob64 __P((struct str*, FILE*));
 void	mime_fromb64 __P((struct str*, struct str*, int));
-void	itohex __P((unsigned int, char*));
+char	*itohex __P((unsigned int, char*));
 char	*mime_strcasestr __P((char*,char*));
 int	mime_getenc __P((char*));
 int	mime_getcontent __P((char*));
