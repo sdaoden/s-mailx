@@ -1,5 +1,3 @@
-/*	$Id: base64.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
-
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
  * state the following copyright notice:
@@ -19,8 +17,8 @@
  */
 
 #ifndef lint
-#if 0
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)base64.c	1.2 (gritter) 9/29/00";
 #endif
 #endif /* not lint */
 

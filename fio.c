@@ -1,7 +1,3 @@
-/*	$Id: fio.c,v 1.11 2000/08/20 22:33:41 gunnar Exp $	*/
-/*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
-/*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
-static char rcsid[]  = "$Id: fio.c,v 1.11 2000/08/20 22:33:41 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)fio.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -78,11 +72,21 @@ setptr(ibuf)
 	char linebuf[LINESIZE];
 
 	/* Get temporary file. */
+#ifdef	HAVE_MKSTEMP
+	cp = (char *)smalloc(strlen(tmpdir) + 14);
+	strcpy(cp, tmpdir);
+	strcat(cp, "/mail.XXXXXX");
+	if ((c = mkstemp(cp)) < 0 || (mestmp = Fdopen(c, "w+")) == NULL) {
+		fprintf(stderr, "cannot create tempfile\n");
+		exit(1);
+	}
+#else	/* !HAVE_MKSTEMP */
 	cp = tempnam(tmpdir, "mail.");
 	if (cp == NULL || (mestmp = Fopen(cp, "w+")) == NULL) {
 		fprintf(stderr, "cannot open %s\n", cp);
 		exit(1);
 	}
+#endif	/* !HAVE_MKSTEMP */
 	unlink(cp);
 	free(cp);
 

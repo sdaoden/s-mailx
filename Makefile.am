@@ -1,7 +1,7 @@
 # Makefile.am for nail, a mail user agent.
 # Process this file with automake to produce Makefile.in
 
-# $Id: Makefile.am,v 1.4 2000/08/08 20:10:39 gunnar Exp $
+# Sccsid: @(#)Makefile.am	1.3 (gritter) 11/15/00
 
 # Initially written by Jacob Moorman.
 # Changes by Gunnar Ritter.
@@ -33,5 +33,6 @@ mailinstall: install
 	ln -sf $(bindir)/$(bin_PROGRAMS) $(bindir)/mailx
 
 
+SUFFIXES = .html .1
 .1.html:
 	rman -r off -f HTML $< > $@

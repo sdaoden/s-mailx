@@ -1,5 +1,3 @@
-/*	$Id: smtp.c,v 1.5 2000/08/20 22:33:41 gunnar Exp $	*/
-
 /*
  * Copyright (c) 2000
  *	Gunnar Ritter.  All rights reserved.
@@ -34,8 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char rcsid[]  = "@(#)$Id: smtp.c,v 1.5 2000/08/20 22:33:41 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)smtp.c	1.2 (gritter) 9/29/00";
 #endif
 #endif /* not lint */
 

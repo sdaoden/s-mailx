@@ -1,7 +1,3 @@
-/*	$Id: popen.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
-/*	OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp 	*/
-/*	NetBSD: popen.c,v 1.4 1996/06/08 19:48:35 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)popen.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: popen.c,v 1.3 1996/06/26 21:22:34 dm Exp";
-static char rcsid[]  = "@(#)$Id: popen.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)popen.c	1.4 (gritter) 9/29/00";
 #endif
 #endif /* not lint */
 

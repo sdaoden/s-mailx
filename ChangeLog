@@ -1,3 +1,9 @@
+[9.23] released 11/15/00
+* Added the ~<! and ~i tilde escapes.
+* Honor the MAILRC environment variable.
+* Added the -e startup option.
+* Do not remove quotes when skinning names.
+
 [9.22] released 2000-09-29
 * Use iconv() and setlocale() only if appropriate header files are found
 * Clean UTF-8 decoding of continued quoted-printable lines

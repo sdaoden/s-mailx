@@ -48,8 +48,11 @@
 /* Define if you have the iconv function.  */
 #undef HAVE_ICONV
 
-/* Define if you have the mbsrtowcs function.  */
-#undef HAVE_MBSRTOWCS
+/* Define if you have the mbstowcs function.  */
+#undef HAVE_MBSTOWCS
+
+/* Define if you have the mkstemp function.  */
+#undef HAVE_MKSTEMP
 
 /* Define if you have the mktime function.  */
 #undef HAVE_MKTIME
@@ -135,7 +138,7 @@
 /* Version number of package */
 #undef VERSION
 
-/* $Id: acconfig.h,v 1.6 2000/08/02 21:16:22 gunnar Exp $ */
+/* Sccsid: @(#)acconfig.h	1.2 (gritter) 9/29/00 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL

@@ -1,7 +1,3 @@
-/*	$Id: main.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
-/*	OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
-/*	NetBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,15 +32,13 @@
  */
 
 #ifndef lint
-static char copyright[]  =
+static char copyright[] =
 "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
 #endif /* not lint */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)main.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: main.c,v 1.5 1996/06/08 19:48:31 christos Exp";
-static char rcsid[]  = "@(#)$Id: main.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)main.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -80,11 +74,9 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	int i;
+	int i, existonly = 0;
 	struct name *to, *attach, *cc, *bcc, *smopts;
-	char *subject;
-	char *ef;
-	char *qf = NULL;
+	char *subject, *cp, *ef, *qf = NULL;
 	char nosrc = 0;
 	signal_handler_t prevint;
 
@@ -136,7 +128,7 @@ main(argc, argv)
 	attach = NIL;
 	smopts = NIL;
 	subject = NOSTR;
-	while ((i = getopt(argc, argv, "INVT:a:b:c:dfinqs:u:v")) != EOF) {
+	while ((i = getopt(argc, argv, "INVT:a:b:c:definqs:u:v")) != EOF) {
 		switch (i) {
 		case 'V':
 			puts(version);
@@ -168,6 +160,9 @@ main(argc, argv)
 			break;
 		case 'd':
 			debug++;
+			break;
+		case 'e':
+			existonly++;
 			break;
 		case 's':
 			/*
@@ -248,8 +243,8 @@ main(argc, argv)
 			"Usage: %s [-iInv] [-s subject] [-a attachment]\n"
 			"             [-c cc-addr] [-b bcc-addr] to-addr ...\n"
 			"             [- sendmail-options ...]\n"
-			"       %s [-iInNv] -f [name]\n"
-			"       %s [-iInNv] [-u user]\n",
+			"       %s [-eiInNv] -f [name]\n"
+			"       %s [-eiInNv] [-u user]\n",
 				progname, progname, progname);
 			exit(1);
 		}
@@ -284,7 +279,10 @@ main(argc, argv)
 	 * Expand returns a savestr, but load only uses the file name
 	 * for fopen, so it's safe to do this.
 	 */
-	load(expand("~/.mailrc"));
+	if ((cp = getenv("MAILRC")) != NULL)
+		load(expand(cp));
+	else
+		load(expand("~/.mailrc"));
 	if (!rcvmode) {
 		mail(to, cc, bcc, smopts, subject, attach, qf);
 		/*
@@ -302,6 +300,8 @@ main(argc, argv)
 	i = setfile(ef);
 	if (i < 0)
 		exit(1);		/* error already reported */
+	if (existonly)
+		exit(i);
 	if (i > 0 && value("emptystart") == NULL)
 		exit(1);
 	if (sigsetjmp(hdrjmp, 1) == 0) {

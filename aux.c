@@ -1,7 +1,3 @@
-/*	$Id: aux.c,v 1.9 2000/08/20 22:33:41 gunnar Exp $	*/
-/*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
-/*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
-static char rcsid[]  = "@(#)$Id: aux.c,v 1.9 2000/08/20 22:33:41 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)aux.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -519,10 +513,13 @@ skin(name)
 			 * Start of a "quoted-string".
 			 * Copy it in its entirety.
 			 */
+			*cp2++ = c;
 			while ((c = *cp) != '\0') {
 				cp++;
-				if (c == '"')
+				if (c == '"') {
+					*cp2++ = c;
 					break;
+				}
 				if (c != '\\')
 					*cp2++ = c;
 				else if ((c = *cp) != '\0') {

@@ -1,7 +1,3 @@
-/*	$Id: temp.c,v 1.6 2000/06/26 04:27:05 gunnar Exp $	*/
-/*	OpenBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp 	*/
-/*	NetBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)temp.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: temp.c,v 1.5 1996/06/08 19:48:42 christos Exp";
-static char rcsid[]  = "@(#)$Id: temp.c,v 1.6 2000/06/26 04:27:05 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)temp.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -60,6 +54,30 @@ char	*tempResid;
 char	*tempMesg;
 char	*tmpdir;
 
+#ifdef	HAVE_MKSTEMP
+/*
+ * This is mainly done because of glibc 2.2's fascist warnings.
+ */
+char *
+maket(prefix)
+char *prefix;
+{
+	int fd;
+	char *fn = (char *)smalloc(strlen(tmpdir) + strlen(prefix) + 8);
+	strcpy(fn, tmpdir);
+	strcat(fn, "/");
+	strcat(fn, prefix);
+	strcat(fn, "XXXXXX");
+	if ((fd = mkstemp(fn)) < 0) {
+		perror(fn);
+		exit(1);
+	}
+	close(fd);
+	unlink(fn);
+	return fn;
+}
+#endif	/* HAVE_MKSTEMP */
+
 void
 tinit()
 {
@@ -69,11 +87,19 @@ tinit()
 		tmpdir = PATH_TMP;
 	}
 
+#ifdef	HAVE_MKSTEMP
+	tempMail  = maket("Rs");
+	tempResid = maket("Rq");
+	tempQuit  = maket("Rm");
+	tempEdit  = maket("Re");
+	tempMesg  = maket("Rx");
+#else	/* !HAVE_MKSTEMP */
 	tempMail  = tempnam (tmpdir, "Rs");
 	tempResid = tempnam (tmpdir, "Rq");
 	tempQuit  = tempnam (tmpdir, "Rm");
 	tempEdit  = tempnam (tmpdir, "Re");
 	tempMesg  = tempnam (tmpdir, "Rx");
+#endif	/* !HAVE_MKSTEMP */
 
 	/*
 	 * It's okay to call savestr in here because main will

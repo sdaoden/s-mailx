@@ -1,6 +1,3 @@
-/*	$Id: def.h,v 1.11 2000/08/20 22:33:41 gunnar Exp $	*/
-/*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
-/*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -33,9 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)def.h	8.2 (Berkeley) 3/21/94
- *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.11 2000/08/20 22:33:41 gunnar Exp $
+ *	Sccsid @(#)def.h	1.4 (gritter) 9/29/00
  */
 
 /*

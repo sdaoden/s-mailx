@@ -1,7 +1,3 @@
-/*	$Id: quit.c,v 1.9 2000/09/29 04:03:29 gunnar Exp $	*/
-/*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
-/*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
-static char rcsid[]  = "@(#)$Id: quit.c,v 1.9 2000/09/29 04:03:29 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)quit.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -505,16 +499,24 @@ edstop()
 		Fclose(readstat);
 	if (!gotcha || Tflag != NOSTR)
 		goto done;
-	ibuf = (FILE*)NULL;
+	ibuf = (FILE *)NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
+#ifdef	HAVE_MKSTEMP
+		tempname = (char *)smalloc(strlen(tmpdir) + 14);
+		strcpy(tempname, tmpdir);
+		strcat(tempname, "/mbox.XXXXXX");
+		if ((c = mkstemp(tempname)) < 0
+			|| (obuf = Fdopen(c, "w")) == (FILE *)NULL) {
+			perror("tmpfile");
+#else	/* !HAVE_MKSTEMP */
 		tempname = tempnam(tmpdir, "mbox");
-
-		if ((obuf = Fopen(tempname, "w")) == (FILE*)NULL) {
+		if ((obuf = Fopen(tempname, "w")) == (FILE *)NULL) {
 			perror(tempname);
+#endif	/* !HAVE_MKSTEMP */
 			relsesigs();
 			reset(0);
 		}
-		if ((ibuf = Fopen(mailname, "r")) == (FILE*)NULL) {
+		if ((ibuf = Fopen(mailname, "r")) == (FILE *)NULL) {
 			perror(mailname);
 			Fclose(obuf);
 			rm(tempname);

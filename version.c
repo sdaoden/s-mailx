@@ -1,7 +1,3 @@
-/*	$Id: version.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
-/*	OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
-/*	NetBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)version.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: version.c,v 1.4 1996/06/08 19:48:46 christos Exp";
-static char rcsid[]  = "@(#)$Id: version.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)version.c	1.6 (gritter) 11/15/00";
 #endif
 #endif /* not lint */
 
@@ -54,6 +48,6 @@ static char rcsid[]  = "@(#)$Id: version.c,v 1.10 2000/06/26 04:27:05 gunnar Exp
 #if 0
 char	*version = "8.1 6/6/93";
 #else
-const char *version = "nail " VERSION " " REL_DATE;
-const static char *versionid = "@(#)nail " VERSION " " REL_DATE;
+const char *version = "nail " VERSION " 11/15/00";
+const static char *versionid = "@(#)nail " VERSION " 11/15/00";
 #endif

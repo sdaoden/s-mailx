@@ -1,7 +1,3 @@
-/*	$Id: collect.c,v 1.12 2000/09/29 04:03:29 gunnar Exp $	*/
-/*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
-/*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
-static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.12 2000/09/29 04:03:29 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)collect.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -81,6 +75,43 @@ static	int	hadintr;		/* Have seen one SIGINT so far */
 static	sigjmp_buf	colljmp;	/* To get back to work */
 static	int		colljmp_p;	/* whether to long jump */
 static	sigjmp_buf	collabort;	/* To end collection with error */
+
+static	sigjmp_buf pipejmp;		/* On broken pipe */
+
+static RETSIGTYPE
+onpipe(signo)
+{
+	siglongjmp(pipejmp, 1);
+}
+
+/*
+ * Execute cmd and insert its standard output into fp.
+ */
+void
+insertcommand(fp, cmd)
+FILE *fp;
+char *cmd;
+{
+	FILE *obuf;
+	char *cp, c;
+
+	cp = value("SHELL");
+	if (sigsetjmp(pipejmp, 1))
+		goto endpipe;
+	if (cp == NOSTR)
+		cp = PATH_CSHELL;
+	if ((obuf = Popen(cmd, "r", cp)) == (FILE *) NULL) {
+		perror(cmd);
+		return;
+	}
+	safe_signal(SIGPIPE, onpipe);
+	while ((c = fgetc(obuf)) != EOF)
+		fputc(c, fp);
+endpipe:
+	safe_signal(SIGPIPE, SIG_IGN);
+	Pclose(obuf);
+	safe_signal(SIGPIPE, SIG_DFL);
+}
 
 FILE *
 collect(hp, printheaders, mp, quotefile)
@@ -371,6 +402,10 @@ cont:
 				printf("Interpolate what file?\n");
 				break;
 			}
+			if (*cp == '!') {
+				insertcommand(collf, cp + 1);
+				break;
+			}
 			cp = expand(cp);
 			if (cp == NOSTR)
 				break;
@@ -396,6 +431,18 @@ cont:
 			}
 			Fclose(fbuf);
 			printf("%d/%d\n", lc, cc);
+			break;
+		case 'i':
+			/*
+			 * Insert an environment variable into the file.
+			 */
+			cp = &linebuf[2];
+			while (isspace(*cp))
+				cp++;
+			if ((cp = value(cp)) == NULL || *cp == '\0')
+				break;
+			fputs(cp, collf);
+			fputc('\n', collf);
 			break;
 		case 'w':
 			/*

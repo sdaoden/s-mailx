@@ -1,5 +1,3 @@
-/*	$Id: mime.c,v 1.19 2000/09/29 04:03:29 gunnar Exp $	*/
-
 /*
  * Copyright (c) 2000
  *	Gunnar Ritter.  All rights reserved.
@@ -34,10 +32,10 @@
  */
 
 #ifndef lint
-static char copyright[]  =
+static char copyright[] =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-#if 0
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.19 2000/09/29 04:03:29 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[]  = "@(#)mime.c	1.4 (gritter) 10/25/00";
 #endif
 #endif /* not lint */
 
@@ -124,7 +122,7 @@ char *s;
 size_t l;
 {
 #ifdef	HAVE_SETLOCALE
-#ifdef	HAVE_MBSRTOWCS
+#ifdef	HAVE_MBSTOWCS
 	int i;
 	wchar_t w[LINESIZE], *p;
 	char *t;
@@ -149,8 +147,7 @@ size_t l;
 		if (l >= LINESIZE)
 			return;
 		t = s;
-		wl = mbsrtowcs(w, (const char **) &t, LINESIZE, NULL);
-		if (wl == -1)
+		if ((wl = mbstowcs(w, t, LINESIZE)) == -1)
 			return;
 		for (p = w, i = 0; *p && i < wl; p++, i++) {
 			if (!iswprint(*p) && *p != '\n' && *p != '\r'
@@ -158,14 +155,14 @@ size_t l;
 				*p = '?';
 		}
 		p = w;
-		wcsrtombs(s, (const wchar_t **) &p, l + 1, NULL);
+		wcstombs(s, p, l + 1);
 		return;
 #ifdef	MB_CUR_MAX
 	}
 #else	/* !MB_CUR_MAX */
 	/*NOTREACHED*/
 #endif	/* !MB_CUR_MAX */
-#endif	/* HAVE_MBSRTOWCS */
+#endif	/* HAVE_MBSTOWCS */
 	for (; l > 0 && *s; s++, l--) {
 		if (!isprint(*s & 0377) && *s != '\n' && *s != '\r'
 				&& *s != '\b' && *s != '\t')
@@ -445,7 +442,7 @@ const char *tocode, *fromcode;
 size_t
 iconv_ft(cd, inb, inbleft, outb, outbleft)
 iconv_t cd;
-const char **inb;
+char **inb;
 size_t *inbleft, *outbleft;
 char **outb;
 {
@@ -1133,7 +1130,7 @@ FILE *f;
 			isz = p - in->s;
 			op = cbuf;
 			osz = sizeof cbuf;
-			if (iconv(fhicd, (const char **) &ip, &isz,
+			if (iconv(fhicd, &ip, &isz,
 				&op, &osz) == (size_t) -1) {
 				iconv_close(fhicd);
 				return 0;
@@ -1155,7 +1152,7 @@ FILE *f;
 			isz = in->s + in->l - q;
 			op = cbuf;
 			osz = sizeof cbuf;
-			if (iconv(fhicd, (const char **) &ip, &isz,
+			if (iconv(fhicd, &ip, &isz,
 				&op, &osz) == (size_t) -1)
 				return 0;
 			cin.s = cbuf;
@@ -1186,7 +1183,7 @@ FILE *f;
 				isz = q - p;
 				op = cbuf;
 				osz = sizeof cbuf;
-				if (iconv(fhicd, (const char **) &ip, &isz,
+				if (iconv(fhicd, &ip, &isz,
 					&op, &osz) == (size_t) -1) {
 					iconv_close(fhicd);
 					return 0;
@@ -1334,7 +1331,7 @@ FILE *f;
 		outleft = sizeof mptr;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv(iconvd, (const char **) &iptr, &inleft,
+		if (iconv(iconvd, &iptr, &inleft,
 				&nptr, &outleft) != (size_t) -1) {
 			in.l = sizeof mptr - outleft;
 			in.s = mptr;

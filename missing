@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# Sccsid @(#)missing	1.2 (gritter) 9/29/00
+#
 echo "Arguments to $0 are: $*" >&2
 echo "You have modified a part of this archive and need special tools
 to build now. You can either get the tools (which are free software)

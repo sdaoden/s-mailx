@@ -1,7 +1,3 @@
-/*	$Id: dotlock.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
-/*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
-/*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
-
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
  *
@@ -32,9 +28,8 @@
  */
 
 #ifndef lint
-#if 0
-static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)dotlock.c	1.3 (gritter) 9/29/00";
 #endif
 #endif
 

@@ -1,7 +1,3 @@
-/*	$Id: glob.h,v 1.5 2000/08/02 21:16:22 gunnar Exp $	*/
-/*	OpenBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
-/*	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,9 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	from: @(#)glob.h	8.1 (Berkeley) 6/6/93
- *	NetBSD: glob.h,v 1.4 1996/06/08 19:48:25 christos Exp
- *	$Id: glob.h,v 1.5 2000/08/02 21:16:22 gunnar Exp $
+ *	Sccsid @(#)glob.h	1.4 (gritter) 9/29/00
  */
 
 /*

@@ -1,7 +1,3 @@
-/*	$Id: names.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
-/*	OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp */
-/*	NetBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)names.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: names.c,v 1.5 1996/06/08 19:48:32 christos Exp";
-static char rcsid[]  = "@(#)$Id: names.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)names.c	1.5 (gritter) 10/19/00";
 #endif
 #endif /* not lint */
 
@@ -214,6 +208,7 @@ yankword(ap, wbuf)
 						incomm--;
 					else
 						incomm++;
+					*cp2++ = '\"';
 				} else if (cp != ap) {
 					*(cp2 - 1) = '\"';
 				}

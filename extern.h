@@ -1,7 +1,3 @@
-/*	$Id: extern.h,v 1.14 2000/09/29 04:03:29 gunnar Exp $	*/
-/*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
-/*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
-
 /*-
  * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,9 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.14 2000/09/29 04:03:29 gunnar Exp $
+ *	Sccsid @(#)extern.h	1.4 (gritter) 9/29/00
  */
 
 struct name;

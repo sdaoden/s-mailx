@@ -1,5 +1,5 @@
 @BOTTOM@
-/* $Id: acconfig.h,v 1.6 2000/08/02 21:16:22 gunnar Exp $ */
+/* Sccsid: @(#)acconfig.h	1.2 (gritter) 9/29/00 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL

@@ -1,7 +1,3 @@
-/*	$Id: sendout.c,v 1.16 2000/09/29 04:03:29 gunnar Exp $	*/
-/*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
-/*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
-
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,10 +32,8 @@
  */
 
 #ifndef lint
-#if 0
-static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
-static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.16 2000/09/29 04:03:29 gunnar Exp $";
+#ifdef	DOSCCS
+static char sccsid[] = "@(#)sendout.c	1.2 (gritter) 9/29/00";
 #endif
 #endif /* not lint */
 
