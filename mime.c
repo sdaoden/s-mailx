@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.18 2000/08/20 22:33:41 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.19 2000/09/29 04:03:29 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -37,7 +37,7 @@
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #if 0
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.18 2000/08/20 22:33:41 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.19 2000/09/29 04:03:29 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -780,20 +780,26 @@ int (*mustquote)(unsigned char);
 		if (mustquote(*p) 
 				|| (*(p + 1) == '\n' &&
 					(*p == ' ' || *p == '\t'))) {
+			if (l >= 69) {
+				sz += 2;
+				fwrite("=\n", sizeof(char), 2, fo);
+				l = 0;
+			}
 			sz += 2;
 			fputc('=', fo);
 			h = ctohex(*p, hex);
 			fwrite(h, sizeof(char), 2, fo);
 			l += 3;
 		} else {
-			if (*p == '\n') l = 0;
+			if (*p == '\n')
+				l = 0;
+			else if (l >= 71) {
+				sz += 2;
+				fwrite("=\n", sizeof(char), 2, fo);
+				l = 0;
+			}
 			fputc(*p, fo);
 			l++;
-		}
-		if (l >= 70) {
-			sz += 2;
-			fwrite("=\n", sizeof(char), 2, fo);
-			l = 0;
 		}
 	}
 	return sz;
@@ -1203,12 +1209,60 @@ FILE *f;
 }
 
 /*
+ * fwrite whilst adding prefix, if present.
+ */
+static size_t
+prefixwrite(ptr, size, nmemb, f, prefix, prefixlen)
+void *ptr;
+size_t size, nmemb, prefixlen;
+FILE *f;
+char *prefix;
+{
+	static FILE *lastf;
+	static char lastc = '\n';
+	size_t rsz, wsz = 0;
+	char *p = ptr;
+
+	if (nmemb == 0)
+		return 0;
+	if (prefix == NULL) {
+		lastf = f;
+		lastc = ((char *)ptr)[size * nmemb - 1];
+		return fwrite(ptr, size, nmemb, f);
+	}
+	if (f != lastf || lastc == '\n') {
+		if (*p == '\n' || *p == '\0')
+			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
+		else {
+			fputs(prefix, f);
+			wsz += strlen(prefix);
+		}
+	}
+	lastf = f;
+	for (rsz = size * nmemb; rsz; rsz--, p++, wsz++) {
+		fputc(*p, f);
+		if (*p != '\n' || rsz == 1) {
+			continue;
+		}
+		if (p[1] == '\n' || p[1] == '\0')
+			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
+		else {
+			fputs(prefix, f);
+			wsz += strlen(prefix);
+		}
+	}
+	lastc = p[-1];
+	return wsz;
+}
+
+/*
  * fwrite while checking for displayability.
  */
 static size_t
-fwrite_td(ptr, size, nmemb, f, flags)
+fwrite_td(ptr, size, nmemb, f, flags, prefix, prefixlen)
 void *ptr;
-size_t size, nmemb;
+char *prefix;
+size_t size, nmemb, prefixlen;
 FILE *f;
 {
 	char *upper;
@@ -1223,7 +1277,7 @@ FILE *f;
 
 	csize = size * nmemb / sizeof (char);
 	if (flags == 0 || csize >= sizeof mptr)
-		return fwrite(ptr, size, nmemb, f);
+		return prefixwrite(ptr, size, nmemb, f, prefix, prefixlen);
 #ifdef	HAVE_ICONV
 	if ((flags & TD_ICONV) && iconvd != (iconv_t) -1) {
 		inleft = csize;
@@ -1245,7 +1299,8 @@ FILE *f;
 	*upper = '\0';
 	if (flags & TD_ISPR)
 		makeprint(mptr, upper - (char *) mptr);
-	sz = fwrite(mptr, sizeof(char), upper - (char *) mptr, f);
+	sz = prefixwrite(mptr, sizeof(char), upper - (char *) mptr, f,
+			prefix, prefixlen);
 	return sz;
 }
 
@@ -1253,9 +1308,10 @@ FILE *f;
  * fwrite performing the given MIME conversion.
  */
 size_t
-mime_write(ptr, size, nmemb, f, convert, dflags)
+mime_write(ptr, size, nmemb, f, convert, dflags, prefix, prefixlen)
 void *ptr;
-size_t size, nmemb;
+size_t size, nmemb, prefixlen;
+char *prefix;
 FILE *f;
 {
 	struct str in, out;
@@ -1297,7 +1353,8 @@ FILE *f;
 	switch (convert) {
 	case CONV_FROMQP:
 		mime_fromqp(&in, &out, 0);
-		sz = fwrite_td(out.s, sizeof(char), out.l, f, dflags);
+		sz = fwrite_td(out.s, sizeof(char), out.l, f, dflags,
+				prefix, prefixlen);
 		free(out.s);
 		break;
 	case CONV_TOQP:
@@ -1308,7 +1365,8 @@ FILE *f;
 		/*FALLTHROUGH*/
 	case CONV_FROMB64:
 		mime_fromb64_b(&in, &out, is_text, f);
-		sz = fwrite_td(out.s, sizeof(char), out.l, f, dflags);
+		sz = fwrite_td(out.s, sizeof(char), out.l, f, dflags,
+				prefix, prefixlen);
 		free(out.s);
 		break;
 	case CONV_TOB64:
@@ -1316,7 +1374,8 @@ FILE *f;
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-		sz = fwrite_td(out.s, sizeof(char), out.l, f, TD_NONE);
+		sz = fwrite_td(out.s, sizeof(char), out.l, f, TD_NONE,
+				prefix, prefixlen);
 		free(out.s);
 		break;
 	case CONV_TOHDR:
@@ -1326,7 +1385,8 @@ FILE *f;
 		sz = mime_write_tohdr_a(&in, f);
 		break;
 	default:
-		sz = fwrite_td(in.s, sizeof(char), in.l, f, dflags);
+		sz = fwrite_td(in.s, sizeof(char), in.l, f, dflags,
+				prefix, prefixlen);
 	}
 	return sz;
 }

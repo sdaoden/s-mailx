@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.13 2000/08/20 22:33:41 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.14 2000/09/29 04:03:29 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.13 2000/08/20 22:33:41 gunnar Exp $
+ *	$Id: extern.h,v 1.14 2000/09/29 04:03:29 gunnar Exp $
  */
 
 struct name;
@@ -289,7 +289,8 @@ char	*getcharset __P((int));
 int	mime_isclean __P((FILE*));
 int	mime_save __P((void *));
 void	mime_fromhdr __P((struct str*, struct str*, int));
-size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int));
+size_t	mime_write __P((void*, size_t, size_t, FILE*, int, int, char *,
+			size_t));
 int	is_undisplayable __P((unsigned char));
 int	mime_check_attach __P((struct name *));
 signal_handler_t safe_signal __P((int, signal_handler_t));

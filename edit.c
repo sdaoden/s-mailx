@@ -1,4 +1,4 @@
-/*	$Id: edit.c,v 1.9 2000/08/20 22:33:41 gunnar Exp $	*/
+/*	$Id: edit.c,v 1.10 2000/09/29 04:03:29 gunnar Exp $	*/
 /*	OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 /*	NetBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)edit.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: edit.c,v 1.5 1996/06/08 19:48:20 christos Exp";
-static char rcsid[]  = "@(#)$Id: edit.c,v 1.9 2000/08/20 22:33:41 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: edit.c,v 1.10 2000/09/29 04:03:29 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -117,7 +117,7 @@ edit1(msgvec, type)
 		sigint = safe_signal(SIGINT, SIG_IGN);
 		fp = run_editor(setinput(mp), mp->m_size, type, readonly);
 		if (fp != (FILE*)NULL) {
-			(void) fseek(otf, 0L, 2);
+			(void) fseek(otf, 0L, SEEK_END);
 			size = ftell(otf);
 			mp->m_block = nail_blockof(size);
 			mp->m_offset = nail_offsetof(size);

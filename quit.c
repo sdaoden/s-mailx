@@ -1,4 +1,4 @@
-/*	$Id: quit.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
+/*	$Id: quit.c,v 1.9 2000/09/29 04:03:29 gunnar Exp $	*/
 /*	OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 /*	NetBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)quit.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: quit.c,v 1.5 1996/06/08 19:48:37 christos Exp";
-static char rcsid[]  = "@(#)$Id: quit.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: quit.c,v 1.9 2000/09/29 04:03:29 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -115,6 +115,8 @@ writeback(res, obuf)
 				perror(mailname);
 #ifndef	F_SETLK
 				Fclose(obuf);
+#else
+				fseek(obuf, 0L, SEEK_SET);
 #endif
 				return(-1);
 			}
@@ -130,6 +132,8 @@ writeback(res, obuf)
 		perror(mailname);
 #ifndef	F_SETLK
 		Fclose(obuf);
+#else
+		fseek(obuf, 0L, SEEK_SET);
 #endif
 		return(-1);
 	}
@@ -137,6 +141,8 @@ writeback(res, obuf)
 		Fclose(res);
 #ifndef	F_SETLK
 	Fclose(obuf);
+#else
+	fseek(obuf, 0L, SEEK_SET);
 #endif
 	alter(mailname);
 	if (p == 1)
@@ -220,7 +226,7 @@ nolock:
 		if (rbuf == (FILE*)NULL || fbuf == (FILE*)NULL)
 			goto newmail;
 #ifdef APPEND
-		fseek(fbuf, (long)mailsize, 0);
+		fseek(fbuf, (long)mailsize, SEEK_SET);
 		while ((c = getc(fbuf)) != EOF)
 			(void) putc(c, rbuf);
 #else
@@ -433,6 +439,7 @@ cream:
 			goto newmail;
 #else
 		abuf = fbuf;
+		fseek(abuf, 0L, SEEK_SET);
 #endif
 		while ((c = getc(rbuf)) != EOF)
 			(void) putc(c, abuf);
@@ -514,7 +521,7 @@ edstop()
 			relsesigs();
 			reset(0);
 		}
-		fseek(ibuf, (long)mailsize, 0);
+		fseek(ibuf, (long)mailsize, SEEK_SET);
 		while ((c = getc(ibuf)) != EOF)
 			(void) putc(c, obuf);
 		Fclose(ibuf);

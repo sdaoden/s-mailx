@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.15 2000/08/20 22:33:41 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.16 2000/09/29 04:03:29 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.15 2000/08/20 22:33:41 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.16 2000/09/29 04:03:29 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -215,7 +215,8 @@ FILE *fo;
 	}
 	while ((sz = fread(buf, sizeof(char), INFIX_BUF, fsig)) != 0) {
 		c = buf[sz - 1];
-		if (mime_write(buf, sizeof(char), sz, fo, convert, TD_NONE)
+		if (mime_write(buf, sizeof(char), sz, fo, convert, TD_NONE,
+					NULL, (size_t) 0)
 				== 0) {
 			perror(sig);
 			Fclose(fsig);
@@ -285,7 +286,7 @@ FILE *fo;
 		convert = CONV_TOQP;
 	}
 	fprintf(fo,
-		"--%s\n"
+		"\n--%s\n"
 		"Content-Type: %s",
 		send_boundary, contenttype);
 	if (charset == NULL)
@@ -297,7 +298,7 @@ FILE *fo;
 		" filename=\"",
 		getencoding(convert));
 	mime_write(basename, sizeof(char), strlen(basename), fo,
-			CONV_TOHDR, TD_NONE);
+			CONV_TOHDR, TD_NONE, NULL, (size_t) 0);
 	fwrite("\"\n\n", sizeof(char), 3, fo);
 	if (typefound) free(contenttype);
 	for (;;) {
@@ -310,13 +311,13 @@ FILE *fo;
 			if (sz == 0)
 				break;
 		}
-		if (mime_write(buf, sizeof(char), sz, fo, convert, TD_NONE)
+		if (mime_write(buf, sizeof(char), sz, fo, convert, TD_NONE,
+					NULL, (size_t) 0)
 				== 0)
 			err = -1;
 	}
 	if (ferror(fi))
 		err = -1;
-	fputc('\n', fo);
 	Fclose(fi);
 	return err;
 }
@@ -335,7 +336,7 @@ FILE *fi, *fo;
 
 	fputs("This is a multi-part message in MIME format.\n", fo);
 	if (fsize(fi) != 0) {
-		fprintf(fo, "--%s\n"
+		fprintf(fo, "\n--%s\n"
 				"Content-Type: text/plain; charset=%s\n"
 				"Content-Transfer-Encoding: %s\n\n",
 				send_boundary,
@@ -353,7 +354,7 @@ FILE *fi, *fo;
 			}
 			c = buf[sz - 1];
 			if (mime_write(buf, sizeof(char), sz, fo, convert,
-					TD_ICONV) == 0)
+					TD_ICONV, NULL, (size_t) 0) == 0)
 				return -1;
 		}
 		if (ferror(fi)) {
@@ -369,7 +370,7 @@ FILE *fi, *fo;
 		}
 	}
 	/* the final boundary with two attached dashes */
-	fprintf(fo, "--%s--\n", send_boundary);
+	fprintf(fo, "\n--%s--\n", send_boundary);
 	return 0;
 }
 
@@ -463,7 +464,7 @@ infix(hp, fi, convert)
 			}
 			if (mime_write(buf, sizeof(char), sz,
 						nfo, convert,
-					TD_ICONV) == 0) {
+					TD_ICONV, NULL, (size_t) 0) == 0) {
 				(void) Fclose(nfo);
 				(void) Fclose(nfi);
 				perror("read");
@@ -888,7 +889,8 @@ puthead(hp, fo, w, convert)
 					convert == CONV_TODISP ?
 					CONV_NONE:CONV_TOHDR_A,
 					convert == CONV_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV) == 0)
+					TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t) 0) == 0)
 				return 1;
 			gotcha++;
 			fputc('\n', fo);
@@ -900,7 +902,8 @@ puthead(hp, fo, w, convert)
 					convert == CONV_TODISP ?
 					CONV_NONE:CONV_TOHDR,
 					convert == CONV_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV) == 0)
+					TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t) 0) == 0)
 				return 1;
 			gotcha++;
 			fputc('\n', fo);
@@ -914,7 +917,8 @@ puthead(hp, fo, w, convert)
 					convert == CONV_TODISP ?
 					CONV_NONE:CONV_TOHDR_A,
 					convert == CONV_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV) == 0)
+					TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t) 0) == 0)
 				return 1;
 			gotcha++;
 			fputc('\n', fo);
@@ -927,13 +931,26 @@ puthead(hp, fo, w, convert)
 	}
 	if (hp->h_subject != NOSTR && w & GSUBJECT) {
 		fwrite("Subject: ", sizeof(char), 9, fo);
-		if (mime_write(hp->h_subject, sizeof(char),
-				strlen(hp->h_subject),
-				fo, convert == CONV_TODISP ?
-				CONV_NONE:CONV_TOHDR,
-				convert == CONV_TODISP ?
-				TD_ISPR|TD_ICONV:TD_ICONV) == 0)
-			return 1;
+		if (strncasecmp(hp->h_subject, "re: ", 4) == 0) {
+			fwrite("Re: ", sizeof(char), 4, fo);
+			if (mime_write(hp->h_subject + 4, sizeof(char),
+					strlen(hp->h_subject + 4),
+					fo, convert == CONV_TODISP ?
+					CONV_NONE:CONV_TOHDR,
+					convert == CONV_TODISP ?
+					TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t) 0) == 0)
+				return 1;
+		} else {
+			if (mime_write(hp->h_subject, sizeof(char),
+					strlen(hp->h_subject),
+					fo, convert == CONV_TODISP ?
+					CONV_NONE:CONV_TOHDR,
+					convert == CONV_TODISP ?
+					TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t) 0) == 0)
+				return 1;
+		}
 		gotcha++;
 		fwrite("\n", sizeof(char), 1, fo);
 	}
@@ -1013,7 +1030,7 @@ fmt(str, np, fo, comma)
 		} else
 			putc(' ', fo);
 		len = mime_write(np->n_name, sizeof(char), len, fo,
-				CONV_TOHDR_A, TD_ICONV);
+				CONV_TOHDR_A, TD_ICONV, NULL, (size_t) 0);
 		if (comma && !(is_to && isfileaddr(np->n_flink->n_name)))
 			putc(',', fo);
 		col += len + comma;
@@ -1071,7 +1088,8 @@ struct name *to;
 							username());
 				fwrite("Resent-From: ", sizeof(char), 13, fo);
 				mime_write(cp, sizeof *cp, strlen(cp), fo,
-						CONV_TOHDR_A, TD_ICONV);
+						CONV_TOHDR_A, TD_ICONV,
+						NULL, (size_t) 0);
 				fputc('\n', fo);
 			}
 			cp = value("replyto");
@@ -1081,7 +1099,8 @@ struct name *to;
 				fwrite("Resent-Reply-To: ", sizeof(char),
 						10, fo);
 				mime_write(cp, sizeof(char), strlen(cp), fo,
-						CONV_TOHDR_A, TD_ICONV);
+						CONV_TOHDR_A, TD_ICONV,
+						NULL, (size_t) 0);
 				fputc('\n', fo);
 			}
 			if (fmt("Resent-To:", to, fo, 1))

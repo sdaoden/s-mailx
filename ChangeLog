@@ -1,3 +1,12 @@
+[9.22] released 2000-09-29
+* Use iconv() and setlocale() only if appropriate header files are found
+* Clean UTF-8 decoding of continued quoted-printable lines
+* Quote base64-encoded texts correctly
+* Never perform RFC 1522 encodings of "Re: " in subject fields
+* Quoted-printable encoder will not generate empty continued lines anymore
+* Do not generate dupes when new mail arrives while old mail is deleted
+* Multipart sections without MIME declaration are correctly handled as text
+
 [9.21] released 2000-08-21
 * Always add a dot to a line that starts with one in SMTP mode.
 * Fixed a core dump that occured on glibc 2.0 if the subject line was empty.

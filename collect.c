@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.12 2000/09/29 04:03:29 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.11 2000/08/02 21:16:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.12 2000/09/29 04:03:29 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -168,9 +168,11 @@ collect(hp, printheaders, mp, quotefile)
 			cp = hfield("from", mp);
 			if (cp != NULL) {
 				mime_write(cp, sizeof(char), strlen(cp),
-						collf, CONV_FROMHDR, TD_NONE);
+						collf, CONV_FROMHDR, TD_NONE,
+						NULL, (size_t) 0);
 				mime_write(cp, sizeof(char), strlen(cp),
-						stdout, CONV_FROMHDR, TD_NONE);
+						stdout, CONV_FROMHDR, TD_NONE,
+						NULL, (size_t) 0);
 				fwrite(" wrote:\n\n", sizeof(char), 9, collf);
 				fwrite(" wrote:\n\n", sizeof(char), 9, stdout);
 			}
@@ -566,7 +568,7 @@ mesedit(fp, c)
 	FILE *nf = run_editor(fp, (off_t)-1, c, 0);
 
 	if (nf != (FILE *)NULL) {
-		fseek(nf, 0L, 2);
+		fseek(nf, 0L, SEEK_END);
 		collf = nf;
 		Fclose(fp);
 	}
@@ -614,7 +616,7 @@ mespipe(fp, cmd)
 	/*
 	 * Take new files.
 	 */
-	(void) fseek(nf, 0L, 2);
+	(void) fseek(nf, 0L, SEEK_END);
 	collf = nf;
 	(void) Fclose(fp);
 out:
