@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.11 (gritter) 11/17/01
+ *	Sccsid @(#)extern.h	1.13 (gritter) 2/20/02
  */
 
 struct name;
@@ -306,3 +306,5 @@ iconv_t	iconv_open_ft __P((const char *, const char *));
 size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif
 size_t	prefixwrite __P((void *, size_t, size_t, FILE *, char *, size_t));
+FILE	*Ftemp __P((char **, char *, char *, int));
+void	Ftfree __P((char **));

@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.12 (gritter) 11/17/01
+.\"     Sccsid: @(#)nail.1	1.14 (gritter) 2/19/02
 .\"
-.TH NAIL 1 "11/17/01" "nail 9.29" "User Commands"
+.TH NAIL 1 "2/19/02" "nail 9.30" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -961,6 +961,10 @@ will expand to all messages containing
 the substring '\fIy\fR' in the header field '\fIx\fR'.
 The string search is case insensitive.
 .TP
+.B showlast
+Setting this option causes \fInail\fR to start at the
+last message instead of the first one when opening a mail folder.
+.TP
 .B stealthmua
 Inhibits the generation of
 the \fI'Message-Id:'\fR and \fI'User-Agent:'\fR
@@ -1210,6 +1214,9 @@ Otherwise, a system-dependent default is used.
 .TP
 .B MAILRC
 Is used as startup file instead of ~/.mailrc if set.
+.TP
+.B TMPDIR
+Used as directory for temporary files instead of /tmp, if set.
 .SH FILES
 .TP
 ~/.mailrc

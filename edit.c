@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)edit.c	1.7 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -151,15 +151,11 @@ run_editor(fp, size, type, readonly)
 	time_t modtime;
 	char *edit;
 	struct stat statb;
-	extern char *tempEdit;
+	char *tempEdit;
 
-	if ((t = open(tempEdit, O_CREAT|O_WRONLY|O_EXCL, readonly ? 0400 : 0600)) < 0) {
-		perror(tempEdit);
-		goto out;
-	}
-	if ((nf = Fdopen(t, "w")) == (FILE*)NULL) {
-		perror(tempEdit);
-		(void) unlink(tempEdit);
+	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600))
+			== (FILE*)NULL) {
+		perror("temporary mail edit file");
 		goto out;
 	}
 	if (size >= 0)
@@ -177,12 +173,14 @@ run_editor(fp, size, type, readonly)
 		(void) Fclose(nf);
 		perror(tempEdit);
 		(void) unlink(tempEdit);
+		Ftfree(&tempEdit);
 		nf = (FILE*)NULL;
 		goto out;
 	}
 	if (Fclose(nf) < 0) {
 		perror(tempEdit);
 		(void) unlink(tempEdit);
+		Ftfree(&tempEdit);
 		nf = (FILE*)NULL;
 		goto out;
 	}
@@ -191,6 +189,7 @@ run_editor(fp, size, type, readonly)
 		edit = type == 'e' ? PATH_EX : PATH_VI;
 	if (run_command(edit, 0, -1, -1, tempEdit, NULL, NULL) < 0) {
 		(void) unlink(tempEdit);
+		Ftfree(&tempEdit);
 		goto out;
 	}
 	/*
@@ -199,14 +198,17 @@ run_editor(fp, size, type, readonly)
 	 */
 	if (readonly) {
 		(void) unlink(tempEdit);
+		Ftfree(&tempEdit);
 		goto out;
 	}
 	if (stat(tempEdit, &statb) < 0) {
 		perror(tempEdit);
+		Ftfree(&tempEdit);
 		goto out;
 	}
 	if (modtime == statb.st_mtime) {
 		(void) unlink(tempEdit);
+		Ftfree(&tempEdit);
 		goto out;
 	}
 	/*
@@ -215,9 +217,11 @@ run_editor(fp, size, type, readonly)
 	if ((nf = Fopen(tempEdit, "a+")) == (FILE*)NULL) {
 		perror(tempEdit);
 		(void) unlink(tempEdit);
+		Ftfree(&tempEdit);
 		goto out;
 	}
 	(void) unlink(tempEdit);
+	Ftfree(&tempEdit);
 out:
 	return nf;
 }

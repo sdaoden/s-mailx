@@ -1,3 +1,11 @@
+[9.30] released 2/20/02
+* Avoid to prepend quote prefix twice when replying to multipart messages.
+* Fixed a problem with empty Content-type fields in multipart messages.
+* Allow name lists for -b and -c command line options.
+* Added a --with-rcfile option to configure for nail.rc.
+* Added the "showlast" option.
+* Properly respect TMPDIR; create a new name for each temporary file.
+
 [9.29] released 12/10/01
 * Fixed a SIGPIPE problem concerning the PAGER.
 * Avoid to display parts of next message when encountering masked From lines.

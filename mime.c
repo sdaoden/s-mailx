@@ -38,7 +38,7 @@ __attribute__ ((unused))
 #endif
 = "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.28 (gritter) 11/17/01";
+static char sccsid[]  = "@(#)mime.c	1.29 (gritter) 2/19/02";
 #endif
 #endif /* not lint */
 
@@ -320,10 +320,10 @@ size_t s;
 }
 
 /*
- * glibc 2.1 provides such a function, but others ...
+ * Case-independent strstr().
  */
 char *
-strcasestr(haystack, needle)
+scasestr(haystack, needle)
 char *haystack, *needle;
 {
 	char *p, initial[3];
@@ -650,7 +650,7 @@ char *param, *h;
 	char *p, *q, *r;
 	size_t sz;
 
-	if ((p = strcasestr(h, param)) == NULL)
+	if ((p = scasestr(h, param)) == NULL)
 		return NULL;
 	p += strlen(param);
 	while (blankchar(*p))

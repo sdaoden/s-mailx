@@ -1,4 +1,4 @@
-#define	V	"9.29"
+#define	V	"9.30"
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,7 +34,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)version.c	1.43 (gritter) 12/10/01";
+static char sccsid[] = "@(#)version.c	1.55 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -47,11 +47,11 @@ static char sccsid[] = "@(#)version.c	1.43 (gritter) 12/10/01";
  * Load this file first to get a "total" Mail version.
  */
 /*char	*version = "8.1 6/6/93";*/
-const char *version = "nail " V " 12/10/01";
+const char *version = "nail " V " 2/20/02";
 #ifndef	lint
 const static char *versionid
 #ifdef	__GNUC__
 __attribute__ ((unused))
 #endif
-= "@(#)nail " V " 12/10/01";
+= "@(#)nail " V " 2/20/02";
 #endif	/* !lint */

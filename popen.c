@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	1.7 (gritter) 11/17/01";
+static char sccsid[] = "@(#)popen.c	1.8 (gritter) 2/19/02";
 #endif
 #endif /* not lint */
 
@@ -125,7 +125,7 @@ Fopen(file, mode)
 
 	if ((fp = safe_fopen(file, mode)) != (FILE *)NULL) {
 		register_file(fp, 0, 0);
-		(void) fcntl(fileno(fp), F_SETFD, 1);
+		(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -139,7 +139,7 @@ Fdopen(fd, mode)
 
 	if ((fp = fdopen(fd, mode)) != (FILE *)NULL) {
 		register_file(fp, 0, 0);
-		(void) fcntl(fileno(fp), F_SETFD, 1);
+		(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -165,8 +165,8 @@ char *cmd, *mode, *shell;
 
 	if (pipe(p) < 0)
 		return (FILE *)NULL;
-	(void) fcntl(p[READ], F_SETFD, 1);
-	(void) fcntl(p[WRITE], F_SETFD, 1);
+	(void) fcntl(p[READ], F_SETFD, FD_CLOEXEC);
+	(void) fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
 	if (*mode == 'r') {
 		myside = p[READ];
 		fd0 = -1;

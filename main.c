@@ -41,7 +41,7 @@ __attribute__ ((unused))
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.12 (gritter) 9/19/01";
+static char sccsid[] = "@(#)main.c	1.13 (gritter) 1/13/02";
 #endif
 #endif /* not lint */
 
@@ -248,13 +248,13 @@ main(argc, argv)
 			/*
 			 * Get Carbon Copy Recipient list
 			 */
-			cc = checkaddrs(cat(cc, nalloc(optarg, GCC)));
+			cc = checkaddrs(cat(cc, extract(optarg, GCC)));
 			break;
 		case 'b':
 			/*
 			 * Get Blind Carbon Copy Recipient list
 			 */
-			bcc = checkaddrs(cat(bcc, nalloc(optarg, GBCC)));
+			bcc = checkaddrs(cat(bcc, extract(optarg, GBCC)));
 			break;
 		case '?':
 			fprintf(stderr,

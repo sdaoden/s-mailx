@@ -1,5 +1,5 @@
 @BOTTOM@
-/* Sccsid: @(#)acconfig.h	1.4 (gritter) 2/16/01 */
+/* Sccsid: @(#)acconfig.h	1.5 (gritter) 2/19/02 */
 
 /* The C shell's path. */
 #ifndef PATH_CSHELL
@@ -141,4 +141,12 @@
 /* The maximum length of a host name. */
 #ifndef MAXHOSTNAMELEN
 #undef MAXHOSTNAMELEN
+#endif
+
+#ifdef	NEED_OPTIND
+extern int	optind;
+#endif
+
+#ifdef	NEED_OPTARG
+extern char	*optarg;
 #endif

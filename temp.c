@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)temp.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)temp.c	1.11 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -44,67 +44,73 @@ static char sccsid[] = "@(#)temp.c	1.6 (gritter) 11/18/00";
 /*
  * Mail -- a mail program
  *
- * Give names to all the temporary files that we will need.
+ * Temporary file handling.
  */
 
-char	*tempMail;
-char	*tempQuit;
-char	*tempEdit;
-char	*tempResid;
-char	*tempMesg;
 char	*tmpdir;
 
-#ifdef	HAVE_MKSTEMP
 /*
- * This is mainly done because of glibc 2.2's fascist warnings.
+ * Create a temporary file in tmpdir, use prefix for its name,
+ * store the unique name in fn, and return a stdio FILE pointer
+ * with access mode.
+ * The permissions for the newly created file are given in bits.
  */
-char *
-maket(prefix)
-char *prefix;
+FILE *
+Ftemp(fn, prefix, mode, bits)
+char **fn;
+char *prefix, *mode;
 {
 	int fd;
-	char *fn = (char *)smalloc(strlen(tmpdir) + strlen(prefix) + 8);
-	strcpy(fn, tmpdir);
-	strcat(fn, "/");
-	strcat(fn, prefix);
-	strcat(fn, "XXXXXX");
-	if ((fd = mkstemp(fn)) < 0) {
-		perror(fn);
-		exit(1);
-	}
-	close(fd);
-	unlink(fn);
-	return fn;
+
+	*fn = (char *)smalloc(strlen(tmpdir) + strlen(prefix) + 8);
+	strcpy(*fn, tmpdir);
+	strcat(*fn, "/");
+	strcat(*fn, prefix);
+	strcat(*fn, "XXXXXX");
+#ifdef	HAVE_MKSTEMP
+	if ((fd = mkstemp(*fn)) < 0)
+		goto Ftemperr;
+	if (fchmod(fd, bits) < 0)
+		goto Ftemperr;
+#else	/* !HAVE_MKSTEMP */
+	if (mktemp(*fn) == NULL)
+		goto Ftemperr;
+	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR|O_TRUNC, bits)) < 0)
+		goto Ftemperr;
+#endif	/* !HAVE_MKSTEMP */
+	return Fdopen(fd, mode);
+Ftemperr:
+	Ftfree(fn);
+	return NULL;
 }
-#endif	/* HAVE_MKSTEMP */
+
+/*
+ * Free the resources associated with the given filename. To be
+ * called after unlink().
+ * Since this function can be called after receiving a signal,
+ * the variable must be made NULL first and then free()d, to avoid
+ * more than one free() call in all circumstances.
+ */
+void
+Ftfree(char **fn)
+{
+	char *cp = *fn;
+
+	*fn = NULL;
+	free(cp);
+}
 
 void
 tinit()
 {
 	char *cp;
 
-	if ((tmpdir = getenv("TMPDIR")) == NULL) {
+	if ((cp = getenv("TMPDIR")) != NULL) {
+		tmpdir = (char *)smalloc(strlen(cp) + 1);
+		strcpy(tmpdir, cp);
+	} else {
 		tmpdir = PATH_TMP;
 	}
-
-#ifdef	HAVE_MKSTEMP
-	tempMail  = maket("Rs");
-	tempResid = maket("Rq");
-	tempQuit  = maket("Rm");
-	tempEdit  = maket("Re");
-	tempMesg  = maket("Rx");
-#else	/* !HAVE_MKSTEMP */
-	tempMail  = tempnam (tmpdir, "Rs");
-	tempResid = tempnam (tmpdir, "Rq");
-	tempQuit  = tempnam (tmpdir, "Rm");
-	tempEdit  = tempnam (tmpdir, "Re");
-	tempMesg  = tempnam (tmpdir, "Rx");
-#endif	/* !HAVE_MKSTEMP */
-
-	/*
-	 * It's okay to call savestr in here because main will
-	 * do a spreserve() after us.
-	 */
 	if (myname != NULL) {
 		if (getuserid(myname) < 0) {
 			printf("\"%s\" is not a user of this system\n",
@@ -116,12 +122,15 @@ tinit()
 			myname = "nobody";
 			if (rcvmode)
 				exit(1);
-		} else
-			myname = savestr(cp);
+		} else {
+			myname = (char *)malloc(strlen(cp) + 1);
+			strcpy(myname, cp);
+		}
 	}
 	if ((cp = getenv("HOME")) == NULL)
 		cp = ".";
-	homedir = savestr(cp);
+	homedir = (char *)malloc(strlen(cp) + 1);
+	strcpy(homedir, cp);
 	if (debug)
 		printf("user = %s, homedir = %s\n", myname, homedir);
 }

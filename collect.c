@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.11 (gritter) 11/17/01";
+static char sccsid[] = "@(#)collect.c	1.13 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -152,7 +152,7 @@ collect(hp, printheaders, mp, quotefile)
 	int lc, cc, escape, eofcount;
 	int c, t;
 	char linebuf[LINESIZE], *cp, *quote;
-	extern char *tempMail;
+	char *tempMail;
 	char getsub;
 	sigset_t oset, nset;
 #if __GNUC__
@@ -160,6 +160,7 @@ collect(hp, printheaders, mp, quotefile)
 	(void) &escape;
 	(void) &eofcount;
 	(void) &getsub;
+	(void) &tempMail;
 #endif
 
 	collf = (FILE*)NULL;
@@ -179,21 +180,28 @@ collect(hp, printheaders, mp, quotefile)
 	savettou = safe_signal(SIGTTOU, collstop);
 	savettin = safe_signal(SIGTTIN, collstop);
 	if (sigsetjmp(collabort, 1)) {
-		rm(tempMail);
+		if (tempMail != NULL) {
+			rm(tempMail);
+			Ftfree(&tempMail);
+		}
 		goto err;
 	}
 	if (sigsetjmp(colljmp, 1)) {
-		rm(tempMail);
+		if (tempMail != NULL) {
+			rm(tempMail);
+			Ftfree(&tempMail);
+		}
 		goto err;
 	}
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 
 	noreset++;
-	if ((collf = Fopen(tempMail, "w+")) == (FILE *)NULL) {
-		perror(tempMail);
+	if ((collf = Ftemp(&tempMail, "Rs", "w+", 0600)) == (FILE *)NULL) {
+		perror("temporary mail file");
 		goto err;
 	}
 	unlink(tempMail);
+	Ftfree(&tempMail);
 
 	/*
 	 * If we are going to prompt for a subject,
@@ -662,15 +670,16 @@ mespipe(fp, cmd)
 {
 	FILE *nf;
 	signal_handler_t sigint = safe_signal(SIGINT, SIG_IGN);
-	extern char *tempEdit;
+	char *tempEdit;
 	char *shell;
 
-	if ((nf = Fopen(tempEdit, "w+")) == (FILE *)NULL) {
-		perror(tempEdit);
+	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600)) == (FILE *)NULL) {
+		perror("temporary mail edit file");
 		goto out;
 	}
 	fflush(fp);
 	(void) unlink(tempEdit);
+	Ftfree(&tempEdit);
 	/*
 	 * stdin = current message.
 	 * stdout = new message.
@@ -712,7 +721,6 @@ forward(ms, fp, f)
 	int f;
 {
 	int *msgvec;
-	extern char *tempMail;
 	struct ignoretab *ig;
 	char *tabst;
 
@@ -742,7 +750,7 @@ forward(ms, fp, f)
 		touch(mp);
 		printf(" %d", *msgvec);
 		if (send_message(mp, fp, ig, tabst, CONV_QUOTE) < 0) {
-			perror(tempMail);
+			perror("temporary mail file");
 			return(-1);
 		}
 	}

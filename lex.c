@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	1.6 (gritter) 9/19/01";
+static char sccsid[] = "@(#)lex.c	1.9 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -65,7 +65,7 @@ setfile(name)
 	char isedit = *name != '%';
 	char *who = name[1] ? name + 1 : myname;
 	static int shudclob;
-	extern char *tempMesg;
+	char *tempMesg;
 	extern int errno;
 
 	if ((name = expand(name)) == NULL)
@@ -132,17 +132,18 @@ setfile(name)
 		mailname[PATHSIZE-1]='\0';
 	}
 	mailsize = fsize(ibuf);
-	if ((otf = safe_fopen(tempMesg, "w")) == (FILE *)NULL) {
-		perror(tempMesg);
+	if ((otf = Ftemp(&tempMesg, "Rx", "w", 0600)) == (FILE *)NULL) {
+		perror("temporary mail message file");
 		exit(1);
 	}
-	(void) fcntl(fileno(otf), F_SETFD, 1);
+	(void) fcntl(fileno(otf), F_SETFD, FD_CLOEXEC);
 	if ((itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
 		perror(tempMesg);
 		exit(1);
 	}
-	(void) fcntl(fileno(itf), F_SETFD, 1);
+	(void) fcntl(fileno(itf), F_SETFD, FD_CLOEXEC);
 	rm(tempMesg);
+	Ftfree(&tempMesg);
 	setptr(ibuf);
 	setmsize(msgcount);
 	Fclose(ibuf);
@@ -601,6 +602,8 @@ newfileinfo()
 				break;
 	if (mp < &message[msgcount])
 		mdot = mp - &message[0] + 1;
+	else if (value("showlast"))
+		mdot = mp - &message[0];
 	else
 		mdot = 1;
 	s = d = 0;

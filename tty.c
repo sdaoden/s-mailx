@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	1.7 (gritter) 9/19/01";
+static char sccsid[] = "@(#)tty.c	1.8 (gritter) 2/19/02";
 #endif
 #endif /* not lint */
 
@@ -60,6 +60,7 @@ static	sigjmp_buf	intjmp;		/* Place to go when interrupted */
 #ifndef TIOCSTI
 static	int		ttyset;		/* We must now do erase/kill */
 #endif
+static	long		vdis;		/* _POSIX_VDISABLE char */
 
 #ifdef IOSAFE 
 static int got_interrupt;
@@ -156,6 +157,7 @@ rtty_internal(pr, src)
 	char ch, canonb[BUFSIZ];
 	int c;
 	char *cp, *cp2;
+
 #if __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &c;
@@ -178,8 +180,8 @@ rtty_internal(pr, src)
 #else
 	cp = src == NULL ? "" : src;
 	while ((c = *cp++) != '\0') {
-		if ((c_erase != _POSIX_VDISABLE && c == c_erase) ||
-		    (c_kill != _POSIX_VDISABLE && c == c_kill)) {
+		if ((c_erase != vdis && c == c_erase) ||
+		    (c_kill != vdis && c == c_kill)) {
 			ch = '\\';
 			ioctl(0, TIOCSTI, &ch);
 		}
@@ -236,7 +238,7 @@ redo:
 		return(strlen(canonb) > 0 ? savestr(canonb) : NULL);
 	while (*cp != '\0') {
 		c = *cp++;
-		if (c_erase != _POSIX_VDISABLE && c == c_erase) {
+		if (c_erase != vdis && c == c_erase) {
 			if (cp2 == canonb)
 				continue;
 			if (cp2[-1] == '\\') {
@@ -246,7 +248,7 @@ redo:
 			cp2--;
 			continue;
 		}
-		if (c_kill != _POSIX_VDISABLE && c == c_kill) {
+		if (c_kill != vdis && c == c_kill) {
 			if (cp2 == canonb)
 				continue;
 			if (cp2[-1] == '\\') {
@@ -311,6 +313,14 @@ grabh(hp, gflags)
 #else
 #ifdef IOSAFE
 	got_interrupt = 0;
+#endif
+#if defined (_PC_VDISABLE)
+	if ((vdis = fpathconf(0, _PC_VDISABLE)) < 0)
+		vdis = '\377';
+#elif defined (_POSIX_VDISABLE)
+	vdis = _POSIX_VDISABLE;
+#else
+	vdis = '\377';
 #endif
 	if (sigsetjmp(intjmp, 1)) {
 		/* avoid garbled output with C-c */

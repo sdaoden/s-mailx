@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	1.8 (gritter) 9/19/01";
+static char sccsid[] = "@(#)names.c	1.10 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -248,7 +248,6 @@ outof(names, fo, hp)
 	char *date, *fname;
 	FILE *fout, *fin;
 	int ispipe;
-	extern char *tempEdit;
 
 	top = names;
 	np = names;
@@ -271,21 +270,24 @@ outof(names, fo, hp)
 		 */
 
 		if (image < 0) {
-			/* hopefully we always create the file, so I change the "a" to "w"  the line below */
-			if ((fout = Fopen(tempEdit, "w")) == (FILE *)NULL) {
-				perror(tempEdit);
+			char *tempEdit;
+
+			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600))
+					== (FILE *)NULL) {
+				perror("temporary edit file");
 				senderr++;
 				goto cant;
 			}
-			image = open(tempEdit, 2);
+			image = open(tempEdit, O_RDWR);
 			(void) unlink(tempEdit);
+			Ftfree(&tempEdit);
 			if (image < 0) {
-				perror(tempEdit);
+				perror("temporary edit file");
 				senderr++;
 				(void) Fclose(fout);
 				goto cant;
 			}
-			(void) fcntl(image, F_SETFD, 1);
+			(void) fcntl(image, F_SETFD, FD_CLOEXEC);
 			fprintf(fout, "From %s %s", myname, date);
 			while ((c = getc(fo)) != EOF)
 				(void) putc(c, fout);
@@ -295,7 +297,7 @@ outof(names, fo, hp)
 			(void) putc('\n', fout);
 			(void) fflush(fout);
 			if (ferror(fout))
-				perror(tempEdit);
+				perror("temporary edit file");
 			(void) Fclose(fout);
 		}
 

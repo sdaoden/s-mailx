@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	1.9 (gritter) 7/4/01
+ *	Sccsid @(#)def.h	1.10 (gritter) 2/19/02
  */
 
 /*
@@ -40,6 +40,10 @@
  */
 
 #include "config.h"
+
+#ifndef	FD_CLOEXEC
+#define	FD_CLOEXEC	1
+#endif
 
 #define	APPEND				/* New mail goes to end of mailbox */
 

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.10 (gritter) 9/19/01";
+static char sccsid[] = "@(#)quit.c	1.13 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -160,7 +160,7 @@ quit()
 	FILE *ibuf = (FILE*)NULL, *obuf, *fbuf, *rbuf, *readstat = (FILE*)NULL, *abuf;
 	struct message *mp;
 	int c;
-	extern char *tempQuit, *tempResid;
+	char *tempQuit, *tempResid;
 	struct stat minfo;
 	char *mbox;
 
@@ -214,7 +214,7 @@ nolock:
 	rbuf = (FILE *) NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
 		printf("New mail has arrived.\n");
-		rbuf = Fopen(tempResid, "w");
+		rbuf = Ftemp(&tempResid, "Rq", "w", 0600);
 		if (rbuf == (FILE*)NULL || fbuf == (FILE*)NULL)
 			goto newmail;
 #ifdef APPEND
@@ -234,6 +234,7 @@ nolock:
 		if ((rbuf = Fopen(tempResid, "r")) == (FILE*)NULL)
 			goto newmail;
 		rm(tempResid);
+		Ftfree(&tempResid);
 	}
 
 	/*
@@ -310,8 +311,8 @@ nolock:
 	mbox = expand("&");
 	mcount = c;
 	if (value("append") == NULL) {
-		if ((obuf = Fopen(tempQuit, "w")) == (FILE*)NULL) {
-			perror(tempQuit);
+		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600)) == (FILE*)NULL) {
+			perror("temporary mail quit file");
 			Fclose(fbuf);
 			dot_unlock(mailname);
 			return;
@@ -319,19 +320,21 @@ nolock:
 		if ((ibuf = Fopen(tempQuit, "r")) == (FILE*)NULL) {
 			perror(tempQuit);
 			rm(tempQuit);
+			Ftfree(&tempQuit);
 			Fclose(obuf);
 			Fclose(fbuf);
 			dot_unlock(mailname);
 			return;
 		}
 		rm(tempQuit);
+		Ftfree(&tempQuit);
 		if ((abuf = Fopen(mbox, "r")) != (FILE*)NULL) {
 			while ((c = getc(abuf)) != EOF)
 				(void) putc(c, obuf);
 			Fclose(abuf);
 		}
 		if (ferror(obuf)) {
-			perror(tempQuit);
+			perror("temporary mail quit file");
 			Fclose(ibuf);
 			Fclose(obuf);
 			Fclose(fbuf);
@@ -470,7 +473,6 @@ edstop()
 	struct message *mp;
 	FILE *obuf, *ibuf, *readstat = (FILE*)NULL;
 	struct stat statb;
-	char *tempname;
 
 	if (readonly)
 		return;
@@ -499,18 +501,11 @@ edstop()
 		goto done;
 	ibuf = (FILE *)NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
-#ifdef	HAVE_MKSTEMP
-		tempname = (char *)smalloc(strlen(tmpdir) + 14);
-		strcpy(tempname, tmpdir);
-		strcat(tempname, "/mbox.XXXXXX");
-		if ((c = mkstemp(tempname)) < 0
-			|| (obuf = Fdopen(c, "w")) == (FILE *)NULL) {
+		char *tempname;
+
+		if ((obuf = Ftemp(&tempname, "mbox.", "w", 0600))
+				== (FILE *)NULL) {
 			perror("tmpfile");
-#else	/* !HAVE_MKSTEMP */
-		tempname = tempnam(tmpdir, "mbox");
-		if ((obuf = Fopen(tempname, "w")) == (FILE *)NULL) {
-			perror(tempname);
-#endif	/* !HAVE_MKSTEMP */
 			relsesigs();
 			reset(0);
 		}
@@ -518,6 +513,7 @@ edstop()
 			perror(mailname);
 			Fclose(obuf);
 			rm(tempname);
+			Ftfree(&tempname);
 			relsesigs();
 			reset(0);
 		}
@@ -529,11 +525,12 @@ edstop()
 		if ((ibuf = Fopen(tempname, "r")) == (FILE*)NULL) {
 			perror(tempname);
 			rm(tempname);
+			Ftfree(&tempname);
 			relsesigs();
 			reset(0);
 		}
 		rm(tempname);
-		free(tempname);
+		Ftfree(&tempname);
 	}
 	printf("\"%s\" ", mailname);
 	fflush(stdout);

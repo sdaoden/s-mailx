@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	1.12 (gritter) 11/19/01";
+static char sccsid[] = "@(#)send.c	1.17 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -207,31 +207,41 @@ struct boundary *b;
 }
 
 static FILE *
-getpipetype(content, obuf)
+getpipetype(content, qbuf, quote)
 char *content;
-FILE *obuf;
+FILE **qbuf;
 {
 	char *penv, *pipecmd, *shell;
-	FILE *rbuf;
+	FILE *rbuf = *qbuf;
 
 	if (content == NULL)
-		return obuf;
+		return *qbuf;
 	penv = smalloc(strlen(content) + 6);
 	strcpy(penv, "pipe-");
 	strcat(penv, content);
 	if ((pipecmd = value(penv)) != NULL) {
+		if (quote) {
+			char *tempPipe;
+
+			if ((*qbuf = Ftemp(&tempPipe, "Rp", "w+", 0600))
+					== (FILE *)NULL) {
+				perror("tmpfile");
+				*qbuf = rbuf;
+			}
+			unlink(tempPipe);
+			Ftfree(&tempPipe);
+		}
 		if ((shell = value("SHELL")) == NULL)
 			shell = PATH_CSHELL;
-		if ((rbuf = Popen(pipecmd, "W", shell, fileno(obuf))) == NULL) {
+		if ((rbuf = Popen(pipecmd, "W", shell, fileno(*qbuf)))
+				== NULL) {
 			perror(pipecmd);
-			rbuf = obuf;
 		} else {
-			fflush(obuf);
-			if (obuf != stdout)
+			fflush(*qbuf);
+			if (*qbuf != stdout)
 				fflush(stdout);
 		}
-	} else
-		rbuf = obuf;
+	}
 	free(penv);
 	return rbuf;
 }
@@ -290,6 +300,7 @@ struct boundary *b0;
 		count -= strlen(l) + (cp - l);
 		if (l[0] == '-' && l[1] == '-') {
 			boundend = NULL;
+			scontent = NULL;
 			for (b = b0; b != NULL; b = b->b_nlink) {
 				if (strncmp(l, b->b_str, b->b_len)
 					== 0) {
@@ -300,7 +311,7 @@ struct boundary *b0;
 			}
 			if (boundend != NULL) {
 				if (*boundend == '\n') {
-					if (pbuf != obuf) {
+					if (pbuf != qbuf) {
 						safe_signal(SIGPIPE, SIG_IGN);
 						Pclose(pbuf);
 						safe_signal(SIGPIPE, SIG_DFL);
@@ -407,14 +418,10 @@ send_multi_nobound:
 				}
 				if (action == CONV_TODISP ||
 						action == CONV_QUOTE) {
-					if (action == CONV_QUOTE &&
-							(qbuf = tmpfile())
-							!= NULL) {
-						/*EMPTY*/;
-					} else
-						qbuf = obuf;
-					if ((pbuf = getpipetype(scontent,
-							qbuf)) != qbuf) {
+					qbuf = obuf;
+					pbuf = getpipetype(scontent, &qbuf,
+							action == CONV_QUOTE);
+					if (pbuf != qbuf) {
 						safe_signal(SIGPIPE, onpipe);
 						if (sigsetjmp(pipejmp, 1))
 							mime_content =
@@ -590,10 +597,10 @@ send_multi_end:
 	if (oldobuf != (FILE *)-1 &&
 			obuf != origobuf) {
 		Fclose(obuf);
-		pbuf = obuf = oldobuf;
+		qbuf = pbuf = obuf = oldobuf;
 		oldobuf = (FILE *)-1;
 	}
-	if (pbuf != obuf) {
+	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(pbuf);
 		safe_signal(SIGPIPE, SIG_DFL);
@@ -626,7 +633,7 @@ send_message(mp, obuf, doign, prefix, convert)
 {
 	long count;
 	time_t now;
-	FILE *ibuf, *pbuf = obuf, *qbuf;
+	FILE *ibuf, *pbuf = obuf, *qbuf = obuf;
 	char line[LINESIZE], *l;
 	int ishead, infld, ignoring = 0, dostat, firstline;
 	char *cp, *cp2;
@@ -867,12 +874,9 @@ send_message(mp, obuf, doign, prefix, convert)
 	l = line;
 	c = 0;
 	if (action == CONV_TODISP || action == CONV_QUOTE) {
-		if (action == CONV_QUOTE &&
-				(qbuf = tmpfile()) != NULL) {
-			/*EMPTY*/;
-		} else
-			qbuf = obuf;
-		if ((pbuf = getpipetype(scontent, qbuf)) != qbuf) {
+		qbuf = obuf;
+		pbuf = getpipetype(scontent, &qbuf, action == CONV_QUOTE);
+		if (pbuf != qbuf) {
 			safe_signal(SIGPIPE, onpipe);
 			if (sigsetjmp(pipejmp, 1))
 				goto send_end;
@@ -897,8 +901,8 @@ send_message(mp, obuf, doign, prefix, convert)
 				 pbuf, convert, action == CONV_TODISP
 				 	|| action == CONV_QUOTE ?
 					TD_ISPR|TD_ICONV:TD_NONE,
-					obuf == qbuf ? prefix : NULL,
-					obuf == qbuf ? prefixlen : 0);
+					pbuf == qbuf ? prefix : NULL,
+					pbuf == qbuf ? prefixlen : 0);
 		c = 0;
 		if (ferror(pbuf)) {
 			error_return = -1;
@@ -912,7 +916,7 @@ send_end:
 		if ((c = getc(ibuf)) != EOF && putc(c, pbuf) == EOF)
 			return -1;
 #endif
-	if (pbuf != obuf) {
+	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(pbuf);
 		safe_signal(SIGPIPE, SIG_DFL);

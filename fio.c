@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)fio.c	1.7 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -66,29 +66,18 @@ setptr(ibuf)
 	int c, count;
 	char *cp, *cp2;
 	struct message this;
-	FILE *mestmp = (FILE *)NULL;
+	FILE *mestmp;
 	off_t offset;
 	int maybe, inhead;
 	char linebuf[LINESIZE];
 
 	/* Get temporary file. */
-#ifdef	HAVE_MKSTEMP
-	cp = (char *)smalloc(strlen(tmpdir) + 14);
-	strcpy(cp, tmpdir);
-	strcat(cp, "/mail.XXXXXX");
-	if ((c = mkstemp(cp)) < 0 || (mestmp = Fdopen(c, "w+")) == NULL) {
+	if ((mestmp = Ftemp(&cp, "mail.", "w+", 0600)) == (FILE *)NULL) {
 		fprintf(stderr, "cannot create tempfile\n");
 		exit(1);
 	}
-#else	/* !HAVE_MKSTEMP */
-	cp = tempnam(tmpdir, "mail.");
-	if (cp == NULL || (mestmp = Fopen(cp, "w+")) == NULL) {
-		fprintf(stderr, "cannot open %s\n", cp);
-		exit(1);
-	}
-#endif	/* !HAVE_MKSTEMP */
 	unlink(cp);
-	free(cp);
+	Ftfree(&cp);
 
 	msgcount = 0;
 	maybe = 1;

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	1.14 (gritter) 11/15/01";
+static char sccsid[] = "@(#)sendout.c	1.16 (gritter) 2/20/02";
 #endif
 #endif /* not lint */
 
@@ -52,7 +52,6 @@ static char sccsid[] = "@(#)sendout.c	1.14 (gritter) 11/15/01";
  */
 
 const char randfile[] = "/dev/urandom";
-extern char *tempMail;
 static char *send_boundary;
 
 #define	BOUNDARRAY	8
@@ -367,16 +366,16 @@ infix(hp, fi, convert)
 	struct header *hp;
 	FILE *fi;
 {
-	extern char *tempMail;
 	FILE *nfo, *nfi;
 	size_t sz;
 	char buf[INFIX_BUF];
+	char *tempMail;
 #ifdef	HAVE_ICONV
 	char *cs, *tcs;
 #endif
 
-	if ((nfo = Fopen(tempMail, "w")) == (FILE *)NULL) {
-		perror(tempMail);
+	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600)) == (FILE *)NULL) {
+		perror("temporary mail file");
 		return(NULL);
 	}
 	if ((nfi = Fopen(tempMail, "r")) == (FILE *)NULL) {
@@ -385,6 +384,7 @@ infix(hp, fi, convert)
 		return(NULL);
 	}
 	(void) rm(tempMail);
+	Ftfree(&tempMail);
 #ifdef	HAVE_ICONV
 	cs = getcharset(convert);
 	if (mime_isclean(fi) == MIME_7BITTEXT)
@@ -481,7 +481,7 @@ infix(hp, fi, convert)
 #endif
 	(void) fflush(nfo);
 	if (ferror(nfo)) {
-		perror(tempMail);
+		perror("temporary mail file");
 		(void) Fclose(nfo);
 		(void) Fclose(nfi);
 		return NULL;
@@ -1130,7 +1130,7 @@ struct name *to;
 		}
 	}
 	if (ferror(fo)) {
-		perror(tempMail);
+		perror("temporary mail file");
 		return 1;
 	}
 	return 0;
@@ -1142,15 +1142,16 @@ struct message *mp;
 struct name *to;
 {
 	FILE *ibuf, *nfo, *nfi;
+	char *tempMail;
 	struct header head;
 
 	if ((to = checkaddrs(to)) == NULL) {
 		senderr++;
 		return 1;
 	}
-	if ((nfo = Fopen(tempMail, "w")) == (FILE *)NULL) {
+	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600)) == (FILE *)NULL) {
 		senderr++;
-		perror(tempMail);
+		perror("temporary mail file");
 		return 1;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == (FILE *)NULL) {
@@ -1159,6 +1160,7 @@ struct name *to;
 		return 1;
 	}
 	rm(tempMail);
+	Ftfree(&tempMail);
 	ibuf = setinput(mp);
 	head.h_to = to;
 	head.h_cc = head.h_bcc = head.h_ref = head.h_attach = head.h_smopts
