@@ -14,31 +14,17 @@ Nail development started in February 2000 and added especially the MIME code.
 The following people contributed to nail, listed in the order of
 the time of their first contribution:
 
-Alexey A. Shelkovich sent a core file to fix an illustrous null pointer.
-
-Anders Andersson helped by compiling on FreeBSD.
-
-Bob Tennent contributed too many suggestions, bug reports and fixes to
-	list them here. Special thanks!
-
-Gabor Z. Papp announced nail on http://appwatch.com and found
-	an error in the SMTP envelope From generation.
-
-Marcel Oliver helped in finding a type signing error.
-
-Jacob Moorman provided support for GNU autoconf/automake.
-
-Edward V. Popkov found a type misassignment, a missing fflush()
-	and an uninitialized variable.
-
-Steve Harris detected a wrong structure reference.
-
-James Sheeringer informed me about a possible buffer overflow.
-
-Gelu G. Lupas sent a core dump.
-
-Thomas Fieseler detected a locale problem on Solaris.
-
-Allan Peda detected a mistyped string.
-
-Russell Kroll found a mishandling of tabs.
+Alexey A. Shelkovich
+Anders Andersson
+Bob Tennent
+Gabor Z. Papp
+Marcel Oliver
+Jacob Moorman
+Edward V. Popkov
+Steve Harris
+James Sheeringer
+Gelu G. Lupas
+Thomas Fieseler
+Allan Peda
+Russell Kroll
+Arthur Korn

@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.6 (gritter) 11/18/00";
+static char sccsid[] = "@(#)quit.c	1.7 (gritter) 1/25/01";
 #endif
 #endif /* not lint */
 
@@ -73,7 +73,7 @@ quitcmd(v)
  * Incorporate the any new mail that we found.
  */
 static int
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 writeback(res)
 	FILE *res;
 #else
@@ -83,12 +83,12 @@ writeback(res, obuf)
 {
 	struct message *mp;
 	int p, c;
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 	FILE *obuf;
 #endif
 
 	p = 0;
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 	if ((obuf = Fopen(mailname, "r+")) == (FILE*)NULL) {
 		perror(mailname);
 		return(-1);
@@ -107,7 +107,7 @@ writeback(res, obuf)
 			if (send_message(mp, obuf, (struct ignoretab *)0,
 						NULL, CONV_NONE) < 0) {
 				perror(mailname);
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 				Fclose(obuf);
 #else
 				fseek(obuf, 0L, SEEK_SET);
@@ -124,7 +124,7 @@ writeback(res, obuf)
 	trunc(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 		Fclose(obuf);
 #else
 		fseek(obuf, 0L, SEEK_SET);
@@ -133,7 +133,7 @@ writeback(res, obuf)
 	}
 	if (res != (FILE*)NULL)
 		Fclose(res);
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 	Fclose(obuf);
 #else
 	fseek(obuf, 0L, SEEK_SET);
@@ -161,9 +161,6 @@ quit()
 	extern char *tempQuit, *tempResid;
 	struct stat minfo;
 	char *mbox;
-#ifdef	F_SETLK
-	struct flock flp;
-#endif
 
 	/*
 	 * If we are read only, we can't do anything,
@@ -190,28 +187,24 @@ quit()
 	 * a message.
 	 */
 
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 	fbuf = Fopen(mailname, "r");
 #else
 	fbuf = Fopen(mailname, "r+");
 #endif
 	if (fbuf == (FILE*)NULL)
 		goto newmail;
-#ifndef	F_SETLK
-	if (flock(fileno(fbuf), LOCK_EX) == -1) {
+#ifndef	F_SETLKW
+	if (fcntl_lock(fileno(fbuf), LOCK_EX) == -1) {
 #else
-	flp.l_type = F_WRLCK;
-	flp.l_start = 0;
-	flp.l_whence = SEEK_SET;
-	flp.l_len = 0;
-	if (fcntl(fileno(fbuf), F_SETLK, &flp) == -1) {
+	if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1) {
 #endif
 nolock:
 		perror("Unable to lock mailbox");
 		Fclose(fbuf);
 		return;
 	}
-	if (dot_lock(mailname, 1, stdout, ".") == -1)
+	if (dot_lock(mailname, fileno(fbuf), 1, stdout, ".") == -1)
 		goto nolock;
 	rbuf = (FILE *) NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
@@ -290,7 +283,7 @@ nolock:
 	}
 	if (c == 0) {
 		if (p != 0) {
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 			writeback(rbuf);
 #else
 			writeback(rbuf, fbuf);
@@ -410,7 +403,7 @@ nolock:
 	 */
 
 	if (p != 0) {
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 		writeback(rbuf);
 #else
 		writeback(rbuf, fbuf);
@@ -427,7 +420,7 @@ nolock:
 
 cream:
 	if (rbuf != (FILE*)NULL) {
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 		abuf = Fopen(mailname, "r+");
 		if (abuf == (FILE*)NULL)
 			goto newmail;
@@ -439,7 +432,7 @@ cream:
 			(void) putc(c, abuf);
 		Fclose(rbuf);
 		trunc(abuf);
-#ifndef	F_SETLK
+#ifndef	F_SETLKW
 		Fclose(abuf);
 #endif
 		alter(mailname);

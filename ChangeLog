@@ -1,4 +1,10 @@
-[9.24]
+[9.25] released 1/25/01
+* Fixed the problems some people had when viewing multipart messages.
+* Added the -r startup option to specify a From address.
+* Make fallback paths for csh, more, ex and vi configureable.
+* Remove fcntl lock of mailbox while waiting for dot lock.
+
+[9.24] released 1/18/01
 * Use nl_langinfo to get the terminal's character set.
 * Add an In-Reply-To header field in replies.
 * Correct user's mime type file to ~/.mime.types as documented.

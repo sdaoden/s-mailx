@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.7 (gritter) 1/17/01
+ *	Sccsid @(#)extern.h	1.8 (gritter) 1/25/01
  */
 
 struct name;
@@ -114,7 +114,7 @@ int	 delm __P((int []));
 int	 deltype __P((void *));
 void	 demail __P((void));
 int	 dosh __P((void *));
-int	 dot_lock __P((const char *, int, FILE *, const char *));
+int	 dot_lock __P((const char *, int, int, FILE *, const char *));
 void	 dot_unlock __P((const char *));
 int	 echo __P((void *));
 int	 edit1 __P((int *, int));
@@ -126,6 +126,7 @@ int	 evalcol __P((int));
 int	 execute __P((char [], int));
 int	 exwrite __P((char [], FILE *, int));
 void	 fail __P((char [], char []));
+int	 fcntl_lock __P((int, int));
 int	 file __P((void *));
 struct grouphead *
 	 findgroup __P((char []));

@@ -35,7 +35,7 @@
 static char copyright[] =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.13 (gritter) 1/17/01";
+static char sccsid[]  = "@(#)mime.c	1.15 (gritter) 1/18/01";
 #endif
 #endif /* not lint */
 
@@ -112,6 +112,7 @@ unsigned char c;
 	return 0;
 }
 
+#ifdef	HAVE_MBTOWC
 /*
  * A mbstowcs()-alike function that transparently handles invalid sequences.
  */
@@ -139,6 +140,7 @@ size_t nwcs;
 	mbtowc(pwcs, NULL, MB_CUR_MAX);
 	return nwcs - n;
 }
+#endif	/* HAVE_MBTOWC */
 
 /*
  * Replace non-printable characters in s with question marks.
@@ -227,7 +229,6 @@ char *name;
 				err++;
 				break;
 			}
-			continue;
 		} else if (in_quote && in_domain == 0) {
 			/*EMPTY*/;
 		} else if (*p == '\\' && p[1] != '\0') {
@@ -1324,9 +1325,11 @@ FILE *f;
 	}
 	upper = (char *)mptr + csize;
 	*upper = '\0';
-	if (flags & TD_ISPR)
-		csize = makeprint(mptr, upper - (char *)mptr);
-	else
+	if (flags & TD_ISPR) {
+		if ((csize = makeprint(mptr, upper - (char *)mptr)) >
+				upper - (char *)mptr)
+			csize = upper - (char *)mptr;
+	} else
 		csize = upper - (char *)mptr;
 	sz = prefixwrite(mptr, sizeof *mptr, csize, f, prefix, prefixlen);
 	return sz;

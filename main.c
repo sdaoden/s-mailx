@@ -38,7 +38,7 @@ static char copyright[] =
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.8 (gritter) 12/3/00";
+static char sccsid[] = "@(#)main.c	1.9 (gritter) 1/19/01";
 #endif
 #endif /* not lint */
 
@@ -76,7 +76,7 @@ main(argc, argv)
 {
 	int i, existonly = 0;
 	struct name *to, *attach, *cc, *bcc, *smopts;
-	char *subject, *cp, *ef, *qf = NULL;
+	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL;
 	char nosrc = 0;
 	signal_handler_t prevint;
 
@@ -132,7 +132,7 @@ main(argc, argv)
 	attach = NIL;
 	smopts = NIL;
 	subject = NULL;
-	while ((i = getopt(argc, argv, "INVT:a:b:c:definqs:u:v")) != EOF) {
+	while ((i = getopt(argc, argv, "INVT:a:b:c:definqr:s:u:v")) != EOF) {
 		switch (i) {
 		case 'V':
 			puts(version);
@@ -224,6 +224,12 @@ main(argc, argv)
 			 */
 			assign("interactive", "");
 			break;
+		case 'r':
+			/*
+			 * Set From address.
+			 */
+			fromaddr = optarg;
+			break;
 		case 'a':
 			/*
 			 * Get attachment filenames
@@ -244,9 +250,7 @@ main(argc, argv)
 			break;
 		case '?':
 			fprintf(stderr,
-			"Usage: %s [-iInv] [-s subject] [-a attachment]\n"
-			"             [-c cc-addr] [-b bcc-addr] to-addr ...\n"
-			"             [- sendmail-options ...]\n"
+			"Usage: %s [-iInv] [-s subject] [-a attachment] [-c cc-addr] [-b bcc-addr] [-r from-addr] to-addr ... [- sendmail-options ...]\n"
 			"       %s [-eiInNv] -f [name]\n"
 			"       %s [-eiInNv] [-u user]\n",
 				progname, progname, progname);
@@ -287,6 +291,11 @@ main(argc, argv)
 		load(expand(cp));
 	else
 		load(expand("~/.mailrc"));
+	/*
+	 * From address from command line overrides rc files.
+	 */
+	if (fromaddr)
+		assign("from", fromaddr);
 	if (!rcvmode) {
 		mail(to, cc, bcc, smopts, subject, attach, qf);
 		/*

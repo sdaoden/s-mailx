@@ -29,7 +29,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)dotlock.c	1.3 (gritter) 9/29/00";
+static char sccsid[] = "@(#)dotlock.c	1.4 (gritter) 1/25/01";
 #endif
 #endif
 
@@ -196,15 +196,32 @@ bad:
 }
 
 int
-dot_lock(fname, pollinterval, fp, msg)
+fcntl_lock(fd, type)
+{
+#ifdef	F_SETLKW
+	struct flock flp;
+
+	flp.l_type = type;
+	flp.l_start = 0;
+	flp.l_whence = SEEK_SET;
+	flp.l_len = 0;
+	return fcntl(fd, F_SETLKW, &flp);
+#else	/* !F_SETLKW */
+	return flock(fd, type);
+#endif	/* !F_SETLKW */
+}
+
+int
+dot_lock(fname, fd, pollinterval, fp, msg)
 	const char *fname;	/* Pathname to lock */
+	int fd;			/* File descriptor for fname, for fcntl lock */
 	int pollinterval;	/* Interval to check for lock, -1 return */
 	FILE *fp;		/* File to print message */
 	const char *msg;	/* Message to print */
 {
 	char path[MAXPATHLEN];
 	sigset_t nset, oset;
-	int i;
+	int i, olderrno;
 
 	if (maildir_access(fname) != 0)
 		return 0;
@@ -227,10 +244,17 @@ dot_lock(fname, pollinterval, fp, msg)
 			(void) sigprocmask(SIG_SETMASK, &oset, NULL);
 			return 0;
 		}
-		else
+		else {
+			olderrno = errno;
 			(void) sigprocmask(SIG_SETMASK, &oset, NULL);
+		}
 
-		if (errno != EEXIST)
+#ifdef	F_SETLKW
+		fcntl_lock(fd, F_UNLCK);
+#else
+		fcntl_lock(fd, LOCK_UN);
+#endif
+		if (olderrno != EEXIST)
 			return -1;
 
 		if (fp && msg)
@@ -243,6 +267,11 @@ dot_lock(fname, pollinterval, fp, msg)
 			}
 			sleep(pollinterval);
 		}
+#ifdef	F_SETLKW
+		fcntl_lock(fd, F_WRLCK);
+#else
+		fcntl_lock(fd, LOCK_EX);
+#endif
 	}
         fprintf(stderr,"%s seems a stale lock? Need to be removed by hand?\n",path);
         return -1;
