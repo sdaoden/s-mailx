@@ -1,3 +1,9 @@
+[9.29] released 12/10/01
+* Fixed a SIGPIPE problem concerning the PAGER.
+* Avoid to display parts of next message when encountering masked From lines.
+* Implemented pipe-content/subcontent MIME display mechanism.
+* Respect continued MIME quoted-printable lines in non-text content.
+
 [9.28] released 10/23/01
 * Fixed a crash occuring at unterminated RFC 2047 header parts.
 * Fixed a crash that occured when replying to a message with empty subject.

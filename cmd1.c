@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	1.6 (gritter) 9/19/01";
+static char sccsid[] = "@(#)cmd1.c	1.8 (gritter) 11/17/01";
 #endif
 #endif /* not lint */
 
@@ -52,6 +52,7 @@ static char sccsid[] = "@(#)cmd1.c	1.6 (gritter) 9/19/01";
  */
 
 static int screen;
+static RETSIGTYPE brokpipe __P((int));
 
 int
 headers(v)
@@ -284,7 +285,7 @@ pcmdlist(v)
 /*
  * Type out the messages requested.
  */
-sigjmp_buf	pipestop;
+static sigjmp_buf	pipestop;
 
 static int
 type1(msgvec, doign, page, pipe, cmd)
@@ -295,7 +296,10 @@ char *cmd;
 	struct message *mp;
 	char *cp;
 	int nlines;
-	FILE *obuf;
+	/*
+	 * Must be static to become excluded from sigsetjmp().
+	 */
+	static FILE *obuf;
 #if __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &cp;
@@ -317,7 +321,7 @@ char *cmd;
 		cp = value("SHELL");
 		if (cp == NULL)
 			cp = PATH_CSHELL;
-		obuf = Popen(cmd, "w", cp);
+		obuf = Popen(cmd, "w", cp, 1);
 		if (obuf == (FILE*)NULL) {
 			perror(cmd);
 			obuf = stdout;
@@ -335,7 +339,7 @@ char *cmd;
 			cp = value("PAGER");
 			if (cp == NULL || *cp == '\0')
 				cp = PATH_MORE;
-			obuf = Popen(cp, "w", NULL);
+			obuf = Popen(cp, "w", NULL, 1);
 			if (obuf == (FILE*)NULL) {
 				perror(cp);
 				obuf = stdout;
@@ -528,7 +532,7 @@ void *v;
  * probably caused by quitting more.
  */
 /*ARGSUSED*/
-RETSIGTYPE
+static RETSIGTYPE
 brokpipe(signo)
 	int signo;
 {

@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.10 (gritter) 2/20/01
+ *	Sccsid @(#)extern.h	1.11 (gritter) 11/17/01
  */
 
 struct name;
@@ -49,7 +49,7 @@ struct name *usermap __P((struct name *));
 FILE	*safe_fopen __P((char *, char *));
 FILE	*Fdopen __P((int, char *));
 FILE	*Fopen __P((char *, char *));
-FILE	*Popen __P((char *, char *, char *));
+FILE	*Popen __P((char *, char *, char *, int));
 FILE	*collect __P((struct header *, int, struct message*, char *));
 char	*copy __P((char *, char *));
 char	*copyin __P((char *, char **));
@@ -95,7 +95,6 @@ int	 argcount __P((char **));
 void	 assign __P((char [], char []));
 int	 bangexp __P((char *, int));
 int	 blankline __P((char []));
-void	 brokpipe __P((int));
 int	 charcount __P((char *, int));
 int	 check __P((int, int));
 void	 clob1 __P((int));
@@ -275,7 +274,7 @@ size_t	mime_write_tob64 __P((struct str*, FILE*, int));
 void	mime_fromb64 __P((struct str*, struct str*, int));
 void	mime_fromb64_b __P((struct str*, struct str*, int, FILE*));
 int	mime_getenc __P((char*));
-int	mime_getcontent __P((char*));
+int	mime_getcontent __P((char*, char **));
 char	*mime_filecontent __P((char*));
 char	*mime_getparam __P((char*,char*));
 char	*mime_getboundary __P((char*));
@@ -306,3 +305,4 @@ iconv_t	iconv_open_ft __P((const char *, const char *));
 #if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
 size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif
+size_t	prefixwrite __P((void *, size_t, size_t, FILE *, char *, size_t));

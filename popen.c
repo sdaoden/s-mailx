@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	1.6 (gritter) 9/19/01";
+static char sccsid[] = "@(#)popen.c	1.7 (gritter) 11/17/01";
 #endif
 #endif /* not lint */
 
@@ -153,12 +153,13 @@ Fclose(fp)
 }
 
 FILE *
-Popen(cmd, mode, shell)
+Popen(cmd, mode, shell, newfd1)
 char *cmd, *mode, *shell;
 {
 	int p[2];
 	int myside, hisside, fd0, fd1;
 	int pid;
+	char mod[2] = { '0', '\0' };
 	sigset_t nset;
 	FILE *fp;
 
@@ -170,10 +171,17 @@ char *cmd, *mode, *shell;
 		myside = p[READ];
 		fd0 = -1;
 		hisside = fd1 = p[WRITE];
+		mod[0] = *mode;
+	} else if (*mode == 'W') {
+		myside = p[WRITE];
+		hisside = fd0 = p[READ];
+		fd1 = newfd1;
+		mod[0] = 'w';
 	} else {
 		myside = p[WRITE];
 		hisside = fd0 = p[READ];
 		fd1 = -1;
+		mod[0] = 'w';
 	}
 	sigemptyset(&nset);
 	if (shell == NULL) {
@@ -187,7 +195,7 @@ char *cmd, *mode, *shell;
 		return (FILE *)NULL;
 	}
 	(void) close(hisside);
-	if ((fp = fdopen(myside, mode)) != (FILE *)NULL)
+	if ((fp = fdopen(myside, mod)) != (FILE *)NULL)
 		register_file(fp, 1, pid);
 	return fp;
 }

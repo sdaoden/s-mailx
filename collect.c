@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.10 (gritter) 9/19/01";
+static char sccsid[] = "@(#)collect.c	1.11 (gritter) 11/17/01";
 #endif
 #endif /* not lint */
 
@@ -126,7 +126,7 @@ char *cmd;
 		goto endpipe;
 	if (cp == NULL)
 		cp = PATH_CSHELL;
-	if ((obuf = Popen(cmd, "r", cp)) == (FILE *) NULL) {
+	if ((obuf = Popen(cmd, "r", cp, 0)) == (FILE *) NULL) {
 		perror(cmd);
 		return;
 	}

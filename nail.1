@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	1.11 (gritter) 6/1/01
+.\"     Sccsid: @(#)nail.1	1.12 (gritter) 11/17/01
 .\"
-.TH NAIL 1 "6/1/01" "nail 9.28" "User Commands"
+.TH NAIL 1 "11/17/01" "nail 9.29" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -1091,6 +1091,29 @@ for indenting messages,
 in place of the normal tab character (^I).
 Be sure to quote the value
 if it contains spaces or tabs.
+.TP
+.BI pipe- content/subcontent
+When a MIME message part of
+.I content/subcontent
+type is displayed or it is replied to,
+its text is filtered through the value of this variable
+interpreted as a shell command.
+For example,
+.nf
+        set pipe-text/html="w3m -dump -T text/html"
+.fi
+will format HTML text using the
+.B w3m
+web browser.
+Special care must be taken when using such commands
+as email viruses may be distributed by this method;
+if messages of type
+.I application/x-sh
+were filtered through the shell, for example,
+a message sender could easily execute arbitrary code
+on the system
+.B nail
+is running on.
 .TP
 .B quote
 If set, \fInail\fR starts a replying message with the original message prefixed

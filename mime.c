@@ -38,7 +38,7 @@ __attribute__ ((unused))
 #endif
 = "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.26 (gritter) 9/19/01";
+static char sccsid[]  = "@(#)mime.c	1.28 (gritter) 11/17/01";
 #endif
 #endif /* not lint */
 
@@ -609,25 +609,33 @@ char *h;
  * Get the mime content from a Content-Type header line.
  */
 int
-mime_getcontent(h)
+mime_getcontent(h, ret)
 char *h;
+char **ret;
 {
-	char *p;
+	char *p, *q, *s;
 
-	if ((p = strchr(h, ':')) == NULL)
+	if ((s = strchr(h, ':')) == NULL) {
+		ret = NULL;
 		return 1;
-	p++;
-	while (*p && blankchar(*p))
-		p++;
-	if (strchr(p, '/') == NULL)	/* for compatibility with non-MIME */
+	}
+	s++;
+	while (*s && blankchar(*s))
+		s++;
+	*ret = salloc(strlen(s) + 1);
+	p = s, q = *ret;
+	while (*p && !blankchar(*p) && *p != ';')
+		*q++ = tolower(*p++);
+	*q = '\0';
+	if (strchr(*ret, '/') == NULL)	/* for compatibility with non-MIME */
 		return MIME_TEXT;
-	if (strncasecmp(p, "text/", 5) == 0)
+	if (strncmp(*ret, "text/", 5) == 0)
 		return MIME_TEXT;
-	if (strncasecmp(p, "message/rfc822", 14) == 0)
+	if (strncmp(*ret, "message/rfc822", 14) == 0)
 		return MIME_822;
-	if (strncasecmp(p, "message/", 8) == 0)
+	if (strncmp(*ret, "message/", 8) == 0)
 		return MIME_MESSAGE;
-	if (strncasecmp(p, "multipart/", 10) == 0)
+	if (strncmp(*ret, "multipart/", 10) == 0)
 		return MIME_MULTI;
 	return MIME_UNKNOWN;
 }
@@ -1326,7 +1334,7 @@ FILE *f;
 /*
  * fwrite whilst adding prefix, if present.
  */
-static size_t
+size_t
 prefixwrite(ptr, size, nmemb, f, prefix, prefixlen)
 void *ptr;
 size_t size, nmemb, prefixlen;

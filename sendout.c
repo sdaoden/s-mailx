@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	1.13 (gritter) 9/19/01";
+static char sccsid[] = "@(#)sendout.c	1.14 (gritter) 11/15/01";
 #endif
 #endif /* not lint */
 
@@ -1066,9 +1066,9 @@ struct name *to;
 	 * Write the original headers first.
 	 */
 	while (count > 0) {
-		if (foldergets(buf, LINESIZE, fi) == NULL)
+		if ((cp = foldergets(buf, LINESIZE, fi)) == NULL)
 			break;
-		count -= c = strlen(buf);
+		count -= c = strlen(buf) - (cp - buf);
 		if (count > 0 && *buf == '\n')
 			break;
 		if (strncasecmp("status: ", buf, 8) != 0
@@ -1123,9 +1123,9 @@ struct name *to;
 		 * Write the message body.
 		 */
 		while (count > 0) {
-			if (foldergets(buf, LINESIZE, fi) == NULL)
+			if ((cp = foldergets(buf, LINESIZE, fi)) == NULL)
 				break;
-			count -= c = strlen(buf);
+			count -= c = strlen(buf) - (cp - buf);
 			fwrite(buf, sizeof *buf, c, fo);
 		}
 	}

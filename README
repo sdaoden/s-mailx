@@ -29,6 +29,7 @@ OpenServer	5.0.5
 Digital Unix	4.0
 HP-UX		10.20
 SINIX-Z		5.42
+AIX		4.3.3.0
 FreeBSD		4.0-STABLE
 OpenBSD		2.[89]
 NetBSD		1.5
@@ -73,4 +74,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					9/7/01
+<g-r@bigfoot.de>					11/12/01
