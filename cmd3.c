@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.78 (gritter) 1/7/05";
+static char sccsid[] = "@(#)cmd3.c	2.80 (gritter) 2/12/05";
 #endif
 #endif /* not lint */
 
@@ -364,7 +364,7 @@ respond_internal(int *msgvec, int recipient_record)
 	}
 	make_ref_and_cs(mp, &head);
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0) == OKAY &&
-			value("markanswered"))
+			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
 }
@@ -516,6 +516,9 @@ preserve(void *v)
 		mp->m_flag |= MPRESERVE;
 		mp->m_flag &= ~MBOX;
 		setdot(mp);
+		/*
+		 * This is now Austin Group Request XCU #20.
+		 */
 		did_print_dot = 1;
 	}
 	return(0);
@@ -536,6 +539,10 @@ unread(void *v)
 		dot->m_flag |= MSTATUS;
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 			imap_unread(&message[*ip-1], *ip);
+		/*
+		 * The "unread" command is not part of POSIX mailx.
+		 */
+		did_print_dot = 1;
 	}
 	return(0);
 }
@@ -969,7 +976,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0) == OKAY &&
-			value("markanswered"))
+			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return 0;
 }
