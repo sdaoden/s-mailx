@@ -1,229 +1,136 @@
-The configure script for 'nail' accepts the following specific options:
+How to configure and install nail
+=================================
 
---with-openssl          Use the OpenSSL library for SSL/TLS support. If this
-                        option is not present, OpenSSL will not be used. Use
-                        the INCLUDES and LDFLAGS environment variables (see
-                        below) if OpenSSL is not installed in the default
-                        include or library path. OpenSSL versions 0.9.6g was
-                        used for development, other versions may or may not
-                        work, fixes are welcome. RedHat 9 installations seem
-                        to need INCLUDES=-I/usr/kerberos/include in the
-                        environment to compile with SSL.
+Quick start
+-----------
 
---enable-all-chars      Nail normally uses the isprint(3) and iswprint(3)
-                        functions do determine whether a character to be
-                        written on the user's terminal is printable, and
-                        iconv(3) to convert characters in messages to the
-                        terminal character set. This option causes all
-                        characters to be printable and suppresses character
-                        conversion. Use it only if you encounter problems
-                        with characters you cannot solve by setting the
-                        LC_CTYPE environment variable.
+	make
+	make install
 
---with-rcfile=FILE      Path to the system-wide configuration file, defaults
-                        to /etc/nail.rc. The --prefix and --sysconfdir
-                        configure switches have no effect.
+No 'configure' step is necessary anymore. If 'make install' fails because
+no /usr/ucb/install program is present, try
 
---with-mailspool=DIR    The name of the mail spool directory, usually
-                        auto-detected in /var/mail.
+	make install UCBINSTALL=/usr/bin/install
 
---with-csh=FILE         Paths to user commands. Normally auto-detected and
---with-more=FILE        overridden by the SHELL, PAGER, EDITOR, and VISUAL
---with-pg=FILE          environment variables.
---with-ex=FILE
---with-vi=FILE
+Detailed description
+--------------------
 
---with-sendmail=FILE    Path to sendmail(1m or 8), normally auto-detected.
+Path names are configurable as Makefile variables:
 
---with-catname=NAME     Sets the name of the message catalogue passed as
-                        the first argument to catopen(3). Nail does not
-                        provide any translated message catalogues yet, so
-                        using this option makes no sense unless you want
-                        to contribute internationalization material.
+PREFIX		The default Makefile puts BINDIR and MANDIR below this.
 
-Gunnar Ritter                                                   5/28/03
+BINDIR		The nail binary is installed there.
 
-***********************************************************************
+MANDIR		The nail manual page is put in $(MANDIR)/man1.
 
-Basic Installation
-==================
+SYSCONFDIR	nail.rc is installed in this directory unless it already
+		exists.
 
-   These are generic installation instructions.
+MAILSPOOL	The directory where the mail files of users are stored
+		under their respective names and in mbox format. If only
+		POP3 is used to read mail, the value does not matter.
 
-   The `configure' shell script attempts to guess correct values for
-various system-dependent variables used during compilation.  It uses
-those values to create a `Makefile' in each directory of the package.
-It may also create one or more `.h' files containing system-dependent
-definitions.  Finally, it creates a shell script `config.status' that
-you can run in the future to recreate the current configuration, a file
-`config.cache' that saves the results of its tests to speed up
-reconfiguring, and a file `config.log' containing compiler output
-(useful mainly for debugging `configure').
+SENDMAIL	Path to the de-facto standard /usr/lib/sendmail interface
+		normally offered by Unix MTAs. If only SMTP is used to send
+		mail, the value does not matter.
 
-   If you need to do unusual things to compile the package, please try
-to figure out how `configure' could check whether to do them, and mail
-diffs or instructions to the address given in the `README' so they can
-be considered for the next release.  If at some point `config.cache'
-contains results you don't want to keep, you may remove or edit it.
+DESTDIR		Prepended to BINDIR, MANDIR etc. at 'make install'. Mostly
+		useful for package building.
 
-   The file `configure.in' is used to create `configure' by a program
-called `autoconf'.  You only need `configure.in' if you want to change
-it or regenerate `configure' using a newer version of `autoconf'.
+UCBINSTALL	Path name to a BSD-style install, like /usr/ucb/install on
+		SVR4 or GNU install.
 
-The simplest way to compile this package is:
+Nail uses a simple shell script named 'makeconfig' to check for header
+files and library functions. It is automatically invoked by 'make all'.
+The script generates three files, 'config.h', 'LIBS', and 'config.log'.
+'config.h' is included as usual, 'LIBS' contains options for the linker,
+and 'config.log' contains all test programs and test results. Neither of
+these files is changed by make once it exists until 'make mrproper' is
+run, so they can be edited by hand without much fear of losing them.
 
-  1. `cd' to the directory containing the package's source code and type
-     `./configure' to configure the package for your system.  If you're
-     using `csh' on an old version of System V, you might need to type
-     `sh ./configure' instead to prevent `csh' from trying to execute
-     `configure' itself.
+Useful Makefile targets:
 
-     Running `configure' takes awhile.  While running, it prints some
-     messages telling which features it is checking for.
+all		Initiates the build; just type 'make'.
 
-  2. Type `make' to compile the package.
+install		Installs the binary and the manual page. If the systemwide
+		configuration file is not present already, is is also
+		installed.
 
-  3. Optionally, type `make check' to run any self-tests that come with
-     the package.
+clean		Removes object files.
 
-  4. Type `make install' to install the programs and any data files and
-     documentation.
+mrproper	Removes object files and the configuration results.
 
-  5. You can remove the program binaries and object files from the
-     source code directory by typing `make clean'.  To also remove the
-     files that `configure' created (so you can compile the package for
-     a different kind of computer), type `make distclean'.  There is
-     also a `make maintainer-clean' target, but that is intended mainly
-     for the package's developers.  If you use it, you may have to get
-     all sorts of other programs in order to regenerate files that came
-     with the distribution.
+Transition remarks concerning the old configure system
+======================================================
 
-Compilers and Options
-=====================
+* --prefix and other common configure options: Path names can be specified
+  in the Makefile or as assignment arguments to make.
 
-   Some systems require unusual options for compilation or linking that
-the `configure' script does not know about.  You can give `configure'
-initial values for variables by setting them in the environment.  Using
-a Bourne-compatible shell, you can do that on the command line like
-this:
-     CC=c89 CFLAGS=-O2 LIBS=-lposix ./configure
+* --with-openssl: No longer available. Nail is always built with OpenSSL
+  support if possible. If you really want to have a nail binary without
+  OpenSSL support, edit config.h after running 'make config.h'.
 
-Or on systems that have the `env' program, you can do it like this:
-     env CPPFLAGS=-I/usr/local/include LDFLAGS=-s ./configure
+* --enable-all-chars: No longer available at compile time. 'print-all-chars'
+  can be set in nail in those cases where use of this option was necessary.
 
-Compiling For Multiple Architectures
-====================================
+* --with-rcfile, --with-mailspool, --with-sendmail: These path names can
+  be set in the Makefile or as arguments to make.
 
-   You can compile the package for more than one kind of computer at the
-same time, by placing the object files for each architecture in their
-own directory.  To do this, you must use a version of `make' that
-supports the `VPATH' variable, such as GNU `make'.  `cd' to the
-directory where you want the object files and executables to go and run
-the `configure' script.  `configure' automatically checks for the
-source code in the directory that `configure' is in and in `..'.
+* --with-csh: No longer used. Nail now uses /bin/sh for executing commands
+  if the SHELL variable is not set.
 
-   If you have to use a `make' that does not supports the `VPATH'
-variable, you have to compile the package for one architecture at a time
-in the source code directory.  After you have installed the package for
-one architecture, use `make distclean' before reconfiguring for another
-architecture.
+* --with-more, --with-pg, --with-ed, --with-vi: No longer available. If the
+  PAGER, EDITOR, or VISUAL variables are not set, the executable is looked
+  up using $PATH.
 
-Installation Names
-==================
+* --with-catname=NAME: Contact the author if you want usable message
+  catalogue support.
 
-   By default, `make install' will install the package's files in
-`/usr/local/bin', `/usr/local/man', etc.  You can specify an
-installation prefix other than `/usr/local' by giving `configure' the
-option `--prefix=PATH'.
+In short, if you were using
+--------
 
-   You can specify separate installation prefixes for
-architecture-specific files and architecture-independent files.  If you
-give `configure' the option `--exec-prefix=PATH', the package will use
-PATH as the prefix for installing programs and libraries.
-Documentation and other data files will still use the regular prefix.
+	./configure --prefix=/opt/nail --with-rcfile=/opt/nail/etc/nail.rc
 
-   In addition, if you use an unusual directory layout you can give
-options like `--bindir=PATH' to specify different values for particular
-kinds of files.  Run `configure --help' for a list of the directories
-you can set and what kinds of files go in them.
+up to now, replace it by
 
-   If the package supports it, you can cause programs to be installed
-with an extra prefix or suffix on their names by giving `configure' the
-option `--program-prefix=PREFIX' or `--program-suffix=SUFFIX'.
+	make PREFIX=/opt/nail SYSCONFDIR=/opt/nail/etc
 
-Optional Features
-=================
+The DESTDIR variable for building packages is available as before.
+If you intend to build nail packages, a look at 'nail.spec' might
+be helpful - even if you don't use RPM, the process is likely to
+be similar.
 
-   Some packages pay attention to `--enable-FEATURE' options to
-`configure', where FEATURE indicates an optional part of the package.
-They may also pay attention to `--with-PACKAGE' options, where PACKAGE
-is something like `gnu-as' or `x' (for the X Window System).  The
-`README' should mention any `--enable-' and `--with-' options that the
-package recognizes.
+Why autoconf/automake are no longer used
+========================================
 
-   For packages that use the X Window System, `configure' can usually
-find the X include and library files automatically, but if it doesn't,
-you can use the `configure' options `--x-includes=DIR' and
-`--x-libraries=DIR' to specify their locations.
+Autoconf and automake are systems of considerable complexity which
+one must know well to make real use of them. The autoconf/automake
+scripts for nail were supplied by a contributor in 2000 and were
+out of date as of 2004; they wouldn't work with recent versions of
+automake, in particular. But I'm not very interested in learning
+automake myself, and I'm absolutely not interested in keeping such
+knowledge up-to-date with new automake versions.
 
-Specifying the System Type
-==========================
+Furthermore, I've made some horrible hacks for the autoconf/automake
+scripts in previous versions (such as --with-rcfile) because once one
+doesn't like some particular behavior of them, working around can be
+difficult. Such hacks are unnecessary now.
 
-   There may be some features `configure' can not figure out
-automatically, but needs to determine by the type of host the package
-will run on.  Usually `configure' can figure that out, but if it prints
-a message saying it can not guess the host type, give it the
-`--host=TYPE' option.  TYPE can either be a short name for the system
-type, such as `sun4', or a canonical name with three fields:
-     CPU-COMPANY-SYSTEM
+The new build system needs approximately the same number of lines
+as just the maintainer-supplied portions of the old autoconf/automake
+system did. Since it is written in standard languages (shell and make),
+any Unix developer can read and understand it; to make adjustments to
+it, no special versions of third-party tools are needed. Every serious
+developer should understand the advantage (except perhaps some GNU
+addicts who have all versions of automake installed anyway).
 
-See the file `config.sub' for the possible values of each field.  If
-`config.sub' isn't included in this package, then this package doesn't
-need to know the host type.
+For the user who just wants to build nail, the new system is not more
+complicated than the old one; transition mostly involves passing path
+names to make instead of passing them to configure. (It's not even an
+argument that the user needs to know the names of Makefile variables;
+--prefix didn't work as designed by the GNU folks with the old system
+anyway.)
 
-   If you are building compiler tools for cross-compiling, you can also
-use the `--target=TYPE' option to select the type of system they will
-produce code for and the `--build=TYPE' option to select the type of
-system on which you are compiling the package.
+In short, everything is better now.
 
-Sharing Defaults
-================
-
-   If you want to set default values for `configure' scripts to share,
-you can create a site shell script called `config.site' that gives
-default values for variables like `CC', `cache_file', and `prefix'.
-`configure' looks for `PREFIX/share/config.site' if it exists, then
-`PREFIX/etc/config.site' if it exists.  Or, you can set the
-`CONFIG_SITE' environment variable to the location of the site script.
-A warning: not all `configure' scripts look for a site script.
-
-Operation Controls
-==================
-
-   `configure' recognizes the following options to control how it
-operates.
-
-`--cache-file=FILE'
-     Use and save the results of the tests in FILE instead of
-     `./config.cache'.  Set FILE to `/dev/null' to disable caching, for
-     debugging `configure'.
-
-`--help'
-     Print a summary of the options to `configure', and exit.
-
-`--quiet'
-`--silent'
-`-q'
-     Do not print messages saying which checks are being made.  To
-     suppress all normal output, redirect it to `/dev/null' (any error
-     messages will still be shown).
-
-`--srcdir=DIR'
-     Look for the package's source code in directory DIR.  Usually
-     `configure' can determine that directory automatically.
-
-`--version'
-     Print the version of Autoconf used to generate the `configure'
-     script, and exit.
-
-`configure' also accepts some other, not widely useful, options.
+	Gunnar Ritter					6/19/04

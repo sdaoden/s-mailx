@@ -38,12 +38,14 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	2.6 (gritter) 11/1/02";
+static char sccsid[] = "@(#)edit.c	2.9 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
+#include <sys/stat.h>
+#include <unistd.h>
 
 /*
  * Mail -- a mail program
@@ -162,7 +164,7 @@ edit1(msgvec, type)
  * Run an editor on the file at "fpp" of "size" bytes,
  * and return a new file pointer.
  * Signals must be handled by the caller.
- * "Type" is 'e' for PATH_EX, 'v' for PATH_VI.
+ * "Type" is 'e' for ed, 'v' for vi.
  */
 FILE *
 run_editor(fp, size, type, readonly, fromline, hp)
@@ -217,7 +219,7 @@ run_editor(fp, size, type, readonly, fromline, hp)
 	}
 	nf = (FILE*)NULL;
 	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
-		edit = type == 'e' ? PATH_EX : PATH_VI;
+		edit = type == 'e' ? "ed" : "vi";
 	if (run_command(edit, 0, -1, -1, tempEdit, NULL, NULL) < 0) {
 		(void) unlink(tempEdit);
 		Ftfree(&tempEdit);

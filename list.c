@@ -38,13 +38,16 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.15 (gritter) 12/9/03";
+static char sccsid[] = "@(#)list.c	2.16 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include <ctype.h>
 #include "extern.h"
+#ifdef	HAVE_WCTYPE_H
+#include <wctype.h>
+#endif	/* HAVE_WCTYPE_H */
 
 /*
  * Mail -- a mail program
@@ -855,7 +858,7 @@ matchsubj(str, mesg)
 			free(out.s);
 			return(1);
 		}
-#if defined (HAVE_MBTOWC) && defined (HAVE_TOWUPPER)
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 		if (mb_cur_max > 1) {
 			wchar_t c, c2;
 			int sz;
@@ -877,11 +880,14 @@ matchsubj(str, mesg)
 				cp = str;
 			}
 		} else
-#endif	/* HAVE_MBTOWC && HAVE_TOWUPPER */
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
 		{
 			int c, c2;
 
-	singlebyte:	c = *cp++ & 0377;
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+	singlebyte:
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+			c = *cp++ & 0377;
 			if (islower(c))
 				c = toupper(c);
 			c2 = *cp2++ & 0377;

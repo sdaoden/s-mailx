@@ -38,11 +38,11 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmdtab.c	2.6 (gritter) 12/9/03";
+static char sccsid[] = "@(#)cmdtab.c	2.7 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
-#include "def.h"
+#include "rcv.h"
 #include "extern.h"
 
 /*

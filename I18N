@@ -13,10 +13,10 @@
   however, the character set can often not directly be determined by just
   looking at the environment setting.
 
-  In case the system's locales are totally broken, all support for locales
-  and other internationalization issues can be disabled by supplying a
-  "--enable-all-chars" parameter to "configure" when building nail. This
-  should only be used as a last resort since it drops useful functionality.
+  In case the system's locales are totally broken, the binary variable
+  'print-all-chars' can be set in nail (see the manual page). This causes
+  all characters to be considered printable, but should not normally be
+  used since the terminal state can be garbled by escape sequences.
 
 * Character sets.
 
@@ -69,7 +69,7 @@
 
   To make real use of such a terminal, the pager and the editor have
   to support UTF-8, too. The Heirloom Toolchest available at
-  <http://heirloom.berlios.de> provides full UTF-8 support.
+  <http://heirloom.sourceforge.net> provides full UTF-8 support.
 
 * System dependencies.
 
@@ -101,4 +101,4 @@
     are proprietary and case-dependent; the conversion directions are
     limited, too.
 
-Gunnar Ritter	3/19/04
+Gunnar Ritter	6/13/04

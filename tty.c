@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.11 (gritter) 3/30/03";
+static char sccsid[] = "@(#)tty.c	2.13 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
@@ -51,9 +51,9 @@ static char sccsid[] = "@(#)tty.c	2.11 (gritter) 3/30/03";
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
-#ifdef	HAVE_SYS_IOCTL_H
+#include <termios.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
-#endif
 
 static	cc_t		c_erase;	/* Current erase char */
 static	cc_t		c_kill;		/* Current kill char */
@@ -65,14 +65,14 @@ static	int		ttyset;		/* We must now do erase/kill */
 static	long		vdis;		/* _POSIX_VDISABLE char */
 
 static int safe_getc(FILE *ibuf);
-static RETSIGTYPE	ttyint __P((int));
-static RETSIGTYPE	ttystop __P((int));
+static void	ttyint __P((int));
+static void	ttystop __P((int));
 static char	*rtty_internal __P((char *, char *));
 
 /*
  * Receipt continuation.
  */
-static RETSIGTYPE
+static void
 ttystop(s)
 	int s;
 {
@@ -89,7 +89,7 @@ ttystop(s)
 }
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 ttyint(s)
 	int s;
 {
@@ -265,6 +265,7 @@ grabh(hp, gflags, subjfirst)
 
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
+	(void) &comma;
 	(void) &saveint;
 #endif
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);

@@ -38,16 +38,23 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.8 (gritter) 1/8/04";
+static char sccsid[] = "@(#)smtp.c	2.10 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
 
-#if defined (HAVE_UNAME)
 #include <sys/utsname.h>
-#endif
+#ifdef	HAVE_SOCKETS
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#ifdef	HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif	/* HAVE_ARPA_INET_H */
+#endif	/* HAVE_SOCKETS */
+#include <unistd.h>
 
 /*
  * Mail -- a mail program
@@ -55,7 +62,9 @@ static char sccsid[] = "@(#)smtp.c	2.8 (gritter) 1/8/04";
  * SMTP client and other internet related functions.
  */
 
+#ifdef	HAVE_SOCKETS
 static int verbose;
+#endif
 
 /*
  * Return our hostname.
@@ -65,11 +74,7 @@ nodename()
 {
 	static char *hostname;
 	char *hn;
-#if defined (HAVE_UNAME)
         struct utsname ut;
-#elif defined (HAVE_GETHOSTNAME)
-        char host__name[MAXHOSTNAMELEN];
-#endif
 #ifdef	HAVE_SOCKETS
 #ifdef	HAVE_IPv6_FUNCS
 	struct addrinfo hints, *res;
@@ -81,15 +86,8 @@ nodename()
 	if ((hn = value("hostname")) != NULL && *hn)
 		hostname = sstrdup(hn);
 	if (hostname == NULL) {
-#if defined (HAVE_UNAME)
 		uname(&ut);
 		hn = ut.nodename;
-#elif defined (HAVE_GETHOSTNAME)
-		gethostname(host__name, MAXHOSTNAMELEN);
-		hn = host__name;
-#else
-		hn = "unknown";
-#endif
 #ifdef	HAVE_SOCKETS
 #ifdef	HAVE_IPv6_FUNCS
 		memset(&hints, 0, sizeof hints);
@@ -293,7 +291,8 @@ FILE *fi;
 	hints.ai_socktype = SOCK_STREAM;
 	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
 		fprintf(stderr, catgets(catd, CATSET, 252,
-				"could not resolve host: %s\n"));
+				"could not resolve host: %s\n"),
+				server);
 		return 1;
 	}
 	sockfd = -1;
@@ -336,7 +335,8 @@ FILE *fi;
 		port = htons(port);
 	if ((hp = gethostbyname(server)) == NULL) {
 		fprintf(stderr, catgets(catd, CATSET, 252,
-				"could not resolve host: %s\n"));
+				"could not resolve host: %s\n"),
+				server);
 		return 1;
 	}
 	pptr = (struct in_addr **) hp->h_addr_list;

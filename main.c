@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.16 (gritter) 3/19/04";
+static char sccsid[] = "@(#)main.c	2.18 (gritter) 6/13/04";
 #endif	/* DOSCCS */
 #endif /* not lint */
 
@@ -57,10 +57,15 @@ static char sccsid[] = "@(#)main.c	2.16 (gritter) 3/19/04";
 
 #define _MAIL_GLOBS_
 #include "rcv.h"
-#ifdef	HAVE_SYS_IOCTL_H
-#include <sys/ioctl.h>
-#endif
 #include "extern.h"
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+#ifdef	HAVE_SETLOCALE
+#include <locale.h>
+#endif	/* HAVE_SETLOCALE */
 
 /*
  * Mail -- a mail program
@@ -362,7 +367,7 @@ usage:
 	rcvmode = !to && !tflag;
 	spreserve();
 	if (!nosrc)
-		load(PATH_MASTER_RC);
+		load(MAILRC);
 	/*
 	 * Expand returns a savestr, but load only uses the file name
 	 * for fopen, so it's safe to do this.

@@ -4,9 +4,8 @@ Nail is derived from Berkeley Mail 8.1 and is intended provide the
 functionality of the POSIX.2 mailx command with additional support
 for MIME messages, POP3 and SMTP.
 
-To compile nail, look at the file 'INSTALL' that documents the
-configure options. You can also build nail RPMs using 'rpm -ta
-nail-<version>.tar.gz'.
+To compile and install nail, look at the file 'INSTALL'. You can also
+build nail RPMs using 'rpmbuild -tb nail-<version>.tar.bz2'.
 
 After compilation, edit the personal and system-wide run time
 configuration files to match your needs. You _really_ should do this or
@@ -15,29 +14,25 @@ the compatibility values of fifteen years ago.  For batch usage, it may
 be more convenient to pass the configuration as environment variables
 only, as e. g. 'MAILRC=/dev/null from=user@host nail -n' does.
 
-Nail has been built successfully on the following systems:
+Nail has been built successfully in the following environments using
+the current configuration system:
 
-Linux 		2.x; glibc 2.x, libc[45]
-Solaris		9; 8; 7; 2.6; 2.5
+Linux		Kernel 2.2 and above; libc4, glibc 2.2 and above, diet libc;
+		gcc, Intel C
+Solaris		8 and above; Sun C, gcc
 Open UNIX	8.0.0
-UnixWare	7.[01].1; 2.1.2; 2.1
-OpenServer	5.0.5
-Digital Unix	4.0
-HP-UX		10.20
-SINIX-Z		5.42
-AIX		4.3.3.0
-FreeBSD		4.0-STABLE, 4.5-RELEASE, 4.6-RELEASE
-OpenBSD		2.[89], 3.0, 3.1-current
-NetBSD		1.5
-Mac OS		10.1 (but note that there is no support for
-		case-insensitive file systems and other possible
-		Mac OS oddities).
+FreeBSD		4.9-RELEASE, 5.2.1-RELEASE
+HP-UX		B.11.11, B.11.23
+Tru64 UNIX	4.0G, 5.1B
+NetBSD		1.6
+AIX		5.1
+UNICOS		9.0.2.2
 
-If you can build it on other operating systems, please contact me
-and send me a diff with your changes so I can include them in this
-archive (preferably a unified diff, gnu-diff -u). If there are no
-changes, even better, but I would like to hear from you even then
-to extend this list.
+If you can build it on other systems, please contact me and send
+me a diff with your changes so I can include them in this archive
+(preferably a unified diff, diff -u). If there are no changes,
+even better, but it would be nice to hear from you even then to
+extend the list above.
 
 It should generally be possible to build nail on most Unix-style
 systems without much effort; however, especially the character set
@@ -78,8 +73,8 @@ procmail (or contribute support for this format), nail will not be
 able to read your mailbox there.
 
 New nail versions will be announced on <http://freshmeat.net>. Nail's
-home page is currently at <http://nail.berlios.de>. Please always look
-for the newest version before reporting bugs.
+home page is currently at <http://nail.sourceforge.net>. Please always
+look for the newest version before reporting bugs.
 
 If you detect a bug and cannot fix it yourself, please send me the
 unaltered mail message (if any) that caused the problem along with a
@@ -103,4 +98,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<Gunnar.Ritter@pluto.uni-freiburg.de>				3/19/04
+<Gunnar.Ritter@pluto.uni-freiburg.de>				6/13/04

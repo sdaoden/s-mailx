@@ -40,17 +40,17 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.15 (gritter) 3/23/03";
+static char sccsid[]  = "@(#)mime.c	2.18 (gritter) 6/13/04";
 #endif /* DOSCCS */
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
+#include <ctype.h>
 #include <errno.h>
-
-#ifdef	HAVE_STRINGS_H
-#include <strings.h>
-#endif
+#ifdef	HAVE_WCTYPE_H
+#include <wctype.h>
+#endif	/* HAVE_WCTYPE_H */
 
 /*
  * Mail -- a mail program
@@ -69,7 +69,7 @@ char *us_ascii = "us-ascii";
 static int	mustquote_body __P((int));
 static int	mustquote_hdr __P((int));
 static int	mustquote_inhdrq __P((int));
-#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 static size_t	xmbstowcs __P((wchar_t *, const char *, size_t));
 #endif
 static char	*getcharset __P((int));
@@ -131,7 +131,7 @@ mustquote_inhdrq(c)
 	return 0;
 }
 
-#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 /*
  * A mbstowcs()-alike function that transparently handles invalid sequences.
  */
@@ -159,7 +159,7 @@ size_t nwcs;
 	mbtowc(pwcs, NULL, mb_cur_max);
 	return nwcs - n;
 }
-#endif	/* HAVE_MBTOWC && HAVE_ISWPRINT */
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
 
 /*
  * Replace non-printable characters in s with question marks.
@@ -169,14 +169,21 @@ makeprint(s, l)
 char *s;
 size_t l;
 {
-#ifdef	HAVE_SETLOCALE
 	size_t sz;
-#if defined (HAVE_MBTOWC) && defined (HAVE_ISWPRINT)
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 	int i;
 	wchar_t *w, *p;
 	char *t;
 	size_t ret;
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
 
+	static int	print_all_chars = -1;
+	if (print_all_chars == -1)
+		print_all_chars = value("print-all-chars") != NULL;
+	if (print_all_chars)
+		return l;
+
+#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 #ifdef	__GLIBC_MINOR__
 #if __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 1
 	/*
@@ -207,17 +214,20 @@ size_t l;
 		ac_free(w);
 		return ret;
 	}
-#endif	/* HAVE_MBTOWC && HAVE_ISWPRINT */
+#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
 	sz = l;
 	for (; l > 0 && *s; s++, l--) {
-		if (!isprint(*s & 0377) && *s != '\n' && *s != '\r'
+		if (
+#ifdef	HAVE_SETLOCALE
+				!isprint(*s & 0377)
+#else	/* !HAVE_SETLOCALE */
+				!((*s&0377) >= 040 && (*s&0377) <= 0177)
+#endif	/* !HAVE_SETLOCALE */
+				&& *s != '\n' && *s != '\r'
 				&& *s != '\b' && *s != '\t')
 			*s = '?';
 	}
 	return sz;
-#else	/* !HAVE_SETLOCALE */
-	return l;
-#endif	/* !HAVE_SETLOCALE */
 }
 
 char *
@@ -290,12 +300,12 @@ char *name;
 				"%s contains invalid character '"), addr);
 #ifdef	HAVE_SETLOCALE
 		if (isprint(err))
-#endif	/* HAVE_SETLOCALE */
+#else	/* !HAVE_SETLOCALE */
+		if (err >= 040 && err <= 0177)
+#endif	/* !HAVE_SETLOCALE */
 			sputc(err, stderr);
-#ifdef	HAVE_SETLOCALE
 		else
 			fprintf(stderr, "\\%03o", err);
-#endif	/* HAVE_SETLOCALE */
 		fprintf(stderr, catgets(catd, CATSET, 144, "'\n"));
 	}
 	return err;

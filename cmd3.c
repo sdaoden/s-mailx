@@ -38,12 +38,13 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.19 (gritter) 12/9/03";
+static char sccsid[] = "@(#)cmd3.c	2.20 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
+#include <unistd.h>
 
 /*
  * Mail -- a mail program
@@ -58,7 +59,7 @@ static char	*reedit __P((char *));
 static void	sort __P((char **));
 static int	Respond_internal __P((int [], int));
 static int	forward1 __P((void *, int));
-static RETSIGTYPE	onpipe __P((int));
+static void	onpipe __P((int));
 static enum okay	delete_shortcut __P((const char *));
 #ifdef	__STDC__
 static int	(*respond_or_Respond(int c))(int *, int);
@@ -85,7 +86,7 @@ shell(v)
 	if (bangexp(&cmd, &cmdsize) < 0)
 		return 1;
 	if ((shell = value("SHELL")) == NULL)
-		shell = PATH_CSHELL;
+		shell = SHELL;
 	(void) run_command(shell, 0, -1, -1, "-c", cmd, NULL);
 	(void) safe_signal(SIGINT, sigint);
 	printf("!\n");
@@ -105,7 +106,7 @@ dosh(v)
 	char *shell;
 
 	if ((shell = value("SHELL")) == NULL)
-		shell = PATH_CSHELL;
+		shell = SHELL;
 	(void) run_command(shell, 0, -1, -1, NULL, NULL, NULL);
 	(void) safe_signal(SIGINT, sigint);
 	sputc('\n', stdout);
@@ -491,7 +492,7 @@ rexit(v)
 static sigjmp_buf	pipejmp;
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 onpipe(signo)
 {
 	siglongjmp(pipejmp, 1);

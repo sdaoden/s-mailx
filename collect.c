@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.18 (gritter) 12/29/03";
+static char sccsid[] = "@(#)collect.c	2.20 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
@@ -51,6 +51,8 @@ static char sccsid[] = "@(#)collect.c	2.18 (gritter) 12/29/03";
 
 #include "rcv.h"
 #include "extern.h"
+#include <unistd.h>
+#include <sys/stat.h>
 
 /*
  * Read a message from standard output and return a read file to it
@@ -91,11 +93,11 @@ static void	collint __P((int));
 static void	collstop __P((int));
 static struct attachment	*append_attachments __P((struct attachment *,
 					char *));
-static RETSIGTYPE	onpipe __P((int));
+static void	onpipe __P((int));
 static int	putesc __P((const char *, FILE *));
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 onpipe(signo)
 {
 	siglongjmp(pipejmp, 1);
@@ -119,7 +121,7 @@ char *cmd;
 	if (sigsetjmp(pipejmp, 1))
 		goto endpipe;
 	if (cp == NULL)
-		cp = PATH_CSHELL;
+		cp = SHELL;
 	if ((obuf = Popen(cmd, "r", cp, 0)) == (FILE *) NULL) {
 		perror(cmd);
 		return;
@@ -1030,7 +1032,7 @@ mespipe(cmd)
 	 * stdout = new message.
 	 */
 	if ((shell = value("SHELL")) == NULL)
-		shell = PATH_CSHELL;
+		shell = SHELL;
 	if (run_command(shell,
 	    0, fileno(collf), fileno(nf), "-c", cmd, NULL) < 0) {
 		(void) Fclose(nf);
@@ -1110,7 +1112,7 @@ forward(ms, fp, f)
  * Print (continue) when continued after ^Z.
  */
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 collstop(s)
 	int s;
 {
@@ -1135,7 +1137,7 @@ collstop(s)
  * Then jump out of the collection loop.
  */
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 collint(s)
 	int s;
 {
@@ -1160,7 +1162,7 @@ collint(s)
 }
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 collhup(s)
 	int s;
 {

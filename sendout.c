@@ -38,17 +38,17 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.23 (gritter) 3/19/04";
+static char sccsid[] = "@(#)sendout.c	2.26 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
-
-#ifdef	HAVE_STRINGS_H
-#include <strings.h>
-#endif
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
 
 /*
  * Mail -- a mail program
@@ -549,8 +549,8 @@ savemail(name, fi)
 
 	buf = smalloc(bufsize = LINESIZE);
 	time(&now);
-	if ((fo = Fopen(name, "r+")) == (FILE *)NULL) {
-		if ((fo = Fopen(name, "wx")) == (FILE *)NULL) {
+	if ((fo = Zopen(name, "r+", NULL)) == (FILE *)NULL) {
+		if ((fo = Zopen(name, "wx", NULL)) == (FILE *)NULL) {
 			perror(name);
 			free(buf);
 			return (-1);
@@ -748,7 +748,7 @@ FILE* input;
 			if ((cp = value("sendmail")) != NULL)
 				cp = expand(cp);
 			else
-				cp = PATH_SENDMAIL;
+				cp = SENDMAIL;
 			execv(cp, args);
 			perror(cp);
 		}

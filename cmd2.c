@@ -38,18 +38,14 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.8 (gritter) 11/20/02";
+static char sccsid[] = "@(#)cmd2.c	2.10 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
-#ifdef	HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
 #include "extern.h"
-#ifdef	HAVE_STRINGS_H
-#include <strings.h>
-#endif
+#include <sys/wait.h>
+#include <unistd.h>
 
 /*
  * Mail -- a mail program
@@ -215,6 +211,7 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 	int newfile;
 	char *cp, *cq;
 	off_t mstats[2], tstats[2];
+	int compressed = 0;
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgcount + 2) * sizeof *msgvec);
@@ -261,12 +258,18 @@ save1(str, mark, cmd, ignore, convert, sender_record)
 		newfile = 1;
 		disp = catgets(catd, CATSET, 26, "[New file]");
 	}
-	if ((obuf = Fopen(file, "a+")) == NULL) {
-		if ((obuf = Fopen(file, "wx")) == NULL) {
+	if ((obuf = convert == CONV_TOFILE ? Fopen(file, "a+") :
+			Zopen(file, "a+", &compressed)) == NULL) {
+		if ((obuf = convert == CONV_TOFILE ? Fopen(file, "wx") :
+				Zopen(file, "wx", &compressed)) == NULL) {
 			perror(file);
 			return(1);
 		}
 	} else {
+		if (compressed) {
+			newfile = 0;
+			disp = catgets(catd, CATSET, 25, "[Appended]");
+		}
 		if (!newfile && fseek(obuf, -2L, SEEK_END) == 0) {
 			char buf[2];
 			int prependnl = 0;

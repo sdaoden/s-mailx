@@ -33,9 +33,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.69 (gritter) 3/19/04
+.\"     Sccsid: @(#)nail.1	2.74 (gritter) 6/13/04
 .\"
-.TH NAIL 1 "3/19/04" "nail 10.7" "User Commands"
+.TH NAIL 1 "6/13/04" "nail 10.8" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -95,6 +95,10 @@ for processing;
 when you quit, \fInail\fR writes
 undeleted messages back
 to this file.
+The string \fIfile\fR is handled
+as described for the
+.I folder
+command below.
 .TP
 .B \-F
 Save the message to send
@@ -152,6 +156,9 @@ of each message read in the file
 .IR name .
 Implies
 .BR \-I .
+Compressed files are handled as described for the
+.I folder
+command below.
 .TP
 .B \-t
 The message to be sent is expected to contain a message header
@@ -364,6 +371,9 @@ or
 .RB ` % '
 character before also specifies a folder name;
 what remains is treated as a mail address.
+Compressed folders are handled as described for the
+.I folder
+command below.
 .SS "Network mail (Internet / ARPA, UUCP, Berknet)"
 See
 .IR mailaddr (7)
@@ -538,6 +548,9 @@ then changes to the user's login directory.
 does,
 except that it does not mark the messages
 it is used on for deletion when you quit.
+Compressed files are handled as described for the
+.I folder
+command.
 .TP
 .B Copy
 (C) Similar to
@@ -632,6 +645,15 @@ If the name matches one of the strings defined with the
 .B shortcut
 command,
 it is replaced by its long form and expanded.
+If the name ends with \fB.gz\fR or \fB.bz2\fR,
+it is treated as compressed with
+.IR gzip (1)
+or
+.IR bzip2 (1),
+respectively.
+Likewise, if \fIname\fR does not exist,
+but either \fIname\fB.gz\fR or \fIname\fB.bz2\fR exists,
+the compressed file is used.
 A name of the form
 .nf
 
@@ -645,6 +667,9 @@ The supported protocols are currently
 and
 .B pop3s
 (i. e. POP3 with SSL/TLS encryption).
+Compressed files are handled as described for the
+.I folder
+command.
 .TP
 .B Followup
 (F) Similar to
@@ -920,6 +945,9 @@ followed by the line count and character count
 is echoed on the user's terminal.
 If editing a system mailbox,
 the messages are marked for deletion.
+Compressed files are handled as described for the
+.I \-f
+command line option above.
 .TP
 .B set
 (se) With no arguments, prints all variable values,
@@ -1059,6 +1087,7 @@ in the originating mail folder.
 For attachments,
 the contents of the destination file are overwritten
 if the file previously existed.
+No special handling of compressed files is performed.
 .TP
 .B xit
 (x) A synonym for exit.
@@ -1470,6 +1499,16 @@ Send messages to the
 .I pipe
 command without performing MIME and character set conversions.
 .TP
+.B print-all-chars
+This option causes all characters to be considered printable.
+It is only effective if given in a startup file.
+With this option set,
+some character sequences in messages
+may put the user's terminal in an undefined state
+when printed;
+it should only be used as a last resort
+if no working system locale can be found.
+.TP
 .B quiet
 Suppresses the printing of the version when first invoked.
 .TP
@@ -1846,6 +1885,11 @@ valid values are `ssl2', `ssl3', and `tls1'.
 If unset, the method is selected automatically,
 if possible.
 .TP
+\fBssl-method-\fIuser\fB@\fIhost\fR
+Overrides
+.I ssl-method
+for a specific account.
+.TP
 .B ssl-rand-egd
 Gives the pathname to an entropy daemon socket,
 see
@@ -1867,6 +1911,11 @@ Valid values are
 `warn' (print a warning and continue),
 `ignore' (do not perform validation).
 The default is `ask'.
+.TP
+\fBssl-verify-\fIuser\fB@\fIhost\fR
+Overrides
+.I ssl-verify
+for a specific account.
 .TP
 .B record
 If defined, gives the pathname of the file

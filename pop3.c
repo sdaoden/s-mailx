@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.4 (gritter) 3/30/03";
+static char sccsid[] = "@(#)pop3.c	2.10 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
@@ -55,6 +55,20 @@ static char sccsid[] = "@(#)pop3.c	2.4 (gritter) 3/30/03";
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <time.h>
+
+#ifdef	HAVE_SOCKETS
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#ifdef	HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif	/* HAVE_ARPA_INET_H */
+#endif	/* HAVE_SOCKETS */
+
+#include <termios.h>
 
 /*
  * Mail -- a mail program
@@ -123,10 +137,10 @@ enum {
 	VRFY_STRICT
 } ssl_vrfy_level;
 
-static void ssl_set_vrfy_level __P((void));
+static void ssl_set_vrfy_level __P((const char *));
 static enum okay ssl_vrfy_decide __P((void));
 static int ssl_rand_init __P((void));
-static SSL_METHOD *ssl_select_method __P((void));
+static SSL_METHOD *ssl_select_method __P((const char *));
 static int ssl_verify_cb __P((int, X509_STORE_CTX *));
 static void ssl_load_verifications __P((struct mailbox *));
 static void ssl_certificate __P((struct mailbox *, const char *));
@@ -136,12 +150,20 @@ static enum okay ssl_open __P((const char *, struct mailbox *, const char *));
 static void ssl_gen_err __P((const char *));
 
 static void
-ssl_set_vrfy_level()
+ssl_set_vrfy_level(uhp)
+	const char *uhp;
 {
 	char *cp;
+	char *vrvar;
 
 	ssl_vrfy_level = VRFY_ASK;
-	if ((cp = value("ssl-verify")) != NULL) {
+	vrvar = ac_alloc(strlen(uhp) + 12);
+	strcpy(vrvar, "ssl-verify-");
+	strcpy(&vrvar[11], uhp);
+	if ((cp = value(vrvar)) == NULL)
+		cp = value("ssl-verify");
+	ac_free(vrvar);
+	if (cp != NULL) {
 		if (equal(cp, "strict"))
 			ssl_vrfy_level = VRFY_STRICT;
 		else if (equal(cp, "ask"))
@@ -226,12 +248,19 @@ ssl_rand_init()
 }
 
 static SSL_METHOD *
-ssl_select_method()
+ssl_select_method(uhp)
+	const char *uhp;
 {
 	SSL_METHOD *method;
-	char *cp;
+	char *cp, *mtvar;
 
-	if ((cp = value("ssl-method")) != NULL) {
+	mtvar = ac_alloc(strlen(uhp) + 12);
+	strcpy(mtvar, "ssl-method-");
+	strcpy(&mtvar[11], uhp);
+	if ((cp = value(mtvar)) == NULL)
+		cp = value("ssl-method");
+	ac_free(mtvar);
+	if (cp != NULL) {
 		if (equal(cp, "ssl2"))
 			method = SSLv2_client_method();
 		else if (equal(cp, "ssl3"))
@@ -424,8 +453,8 @@ ssl_open(server, mp, uhp)
 	}
 	if (rand_init == 0)
 		rand_init = ssl_rand_init();
-	ssl_set_vrfy_level();
-	if ((mp->mb_ctx = SSL_CTX_new(ssl_select_method())) == NULL) {
+	ssl_set_vrfy_level(uhp);
+	if ((mp->mb_ctx = SSL_CTX_new(ssl_select_method(uhp))) == NULL) {
 		ssl_gen_err(catgets(catd, CATSET, 261, "SSL_CTX_new() failed"));
 		return STOP;
 	}
@@ -686,7 +715,7 @@ pop3_finish(mp)
 	return OKAY;
 }
 
-static RETSIGTYPE
+static void
 pop3catch(s)
 	int s;
 {
@@ -707,7 +736,7 @@ pop3_noop(mp)
 }
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 pop3alarm(s)
 	int s;
 {
@@ -1350,7 +1379,7 @@ pop3_update(mp)
 	int dodel, c, gotcha, held;
 
 	if (Tflag != NULL) {
-		if ((readstat = Fopen(Tflag, "w")) == NULL)
+		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
 			Tflag = NULL;
 	}
 	if (!edit) {

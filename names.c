@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)names.c	2.8 (gritter) 1/9/04";
+static char sccsid[] = "@(#)names.c	2.11 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
@@ -50,10 +50,10 @@ static char sccsid[] = "@(#)names.c	2.8 (gritter) 1/9/04";
 
 #include "rcv.h"
 #include "extern.h"
-
-#ifdef	HAVE_STRINGS_H
-#include <strings.h>
-#endif
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <unistd.h>
 
 static struct name	*tailof __P((struct name *));
 static char	*yankword __P((char *, char []));
@@ -316,7 +316,7 @@ outof(names, fo, hp)
 			 * on one another.
 			 */
 			if ((shell = value("SHELL")) == NULL)
-				shell = PATH_CSHELL;
+				shell = SHELL;
 			sigemptyset(&nset);
 			sigaddset(&nset, SIGHUP);
 			sigaddset(&nset, SIGINT);
@@ -330,7 +330,7 @@ outof(names, fo, hp)
 			free_child(pid);
 		} else {
 			int f;
-			if ((fout = Fopen(fname, "a")) == (FILE *)NULL) {
+			if ((fout = Zopen(fname, "a", NULL)) == (FILE *)NULL) {
 				perror(fname);
 				senderr++;
 				goto cant;

@@ -38,18 +38,18 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.23 (gritter) 11/8/02";
+static char sccsid[] = "@(#)fio.c	2.25 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
+#include <sys/stat.h>
 #include <sys/file.h>
-#ifdef	HAVE_SYS_WAIT_H
 #include <sys/wait.h>
-#endif
-#ifdef	HAVE_WORDEXP_H
+#ifdef	HAVE_WORDEXP
 #include <wordexp.h>
-#endif
+#endif	/* HAVE_WORDEXP */
+#include <unistd.h>
 
 #include <errno.h>
 #include "extern.h"
@@ -146,7 +146,7 @@ setptr(ibuf, offset)
 					inhead = 0;
 					break;
 				}
-				if (*cp != c && *cp != toupper(c))
+				if (*cp != c && *cp != upperconv(c))
 					break;
 			}
 		}
@@ -509,7 +509,7 @@ globname(name)
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
-		shell = PATH_CSHELL;
+		shell = SHELL;
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);

@@ -34,16 +34,16 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)dotlock.c	2.1 (gritter) 9/1/02";
+static char sccsid[] = "@(#)dotlock.c	2.3 (gritter) 6/13/04";
 #endif
 #endif
 
 #include "rcv.h"
-#include <sys/types.h>
-#ifdef	HAVE_SYS_UTSNAME_H
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
 #include <sys/utsname.h>
-#endif
-
 #include <errno.h>
 
 #include "extern.h"
@@ -80,7 +80,7 @@ perhaps_setgid(name, gid)
 const char *name;
 gid_t gid;
 {
-	char safepath[]= PATH_MAILDIR;
+	char safepath[]= MAILSPOOL;
 
 	if (strncmp(name, safepath, sizeof (safepath)-1) ||
 			strchr(name + sizeof (safepath), '/'))
@@ -115,22 +115,11 @@ create_exclusive(fname)
 	size_t ntries, cookie;
 	int fd, serrno, cc;
 	struct stat st;
-#if defined (HAVE_UNAME)
 	struct utsname ut;
-#elif defined (HAVE_GETHOSTNAME)
-	char host__name[MAXHOSTNAMELEN];
-#endif
 
 	time(&t);
-#if defined (HAVE_UNAME)
 	uname(&ut);
 	hostname = ut.nodename;
-#elif defined (HAVE_GETHOSTNAME)
-	gethostname(host__name, MAXHOSTNAMELEN);
-	hostname = host__name;
-#else
-	hostname = "unknown";
-#endif
 	pid = getpid();
 
 	cookie = (int)pid ^ (int)t;

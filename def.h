@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.22 (gritter) 12/9/03
+ *	Sccsid @(#)def.h	2.25 (gritter) 6/13/04
  */
 
 /*
@@ -44,19 +44,9 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#include "config.h"
-
 #if !defined (NI_MAXHOST) || (NI_MAXHOST) < 1025
 #undef	NI_MAXHOST
 #define	NI_MAXHOST	1025
-#endif
-
-#if defined (HAVE_GETADDRINFO) && defined (HAVE_GETNAMEINFO)
-#define	HAVE_IPv6_FUNCS
-#endif
-
-#ifndef	FD_CLOEXEC
-#define	FD_CLOEXEC	1
 #endif
 
 #define	APPEND				/* New mail goes to end of mailbox */
@@ -94,7 +84,7 @@
 #define	catgets(a, b, c, d)	(d)
 #endif	/* !HAVE_CATGETS */
 
-typedef RETSIGTYPE (*sighandler_type) __P((int));
+typedef void (*sighandler_type) __P((int));
 
 enum okay {
 	STOP = 0,
@@ -182,6 +172,7 @@ struct mailbox {
 		MB_DELE = 01,		/* may delete messages in mailbox */
 		MB_EDIT = 02		/* may edit messages in mailbox */
 	} mb_perm;
+	int mb_compressed;		/* is a compressed mbox file */
 #ifdef	USE_SSL
 	void *mb_ssl;			/* SSL object */
 	void *mb_ctx;			/* SSL context object */
@@ -509,14 +500,10 @@ extern const unsigned char	class_char[];
  * glibc uses the slow thread-safe getc() even if _REENTRANT is not
  * defined. Work around it.
  */
-#if defined (HAVE_GETC_UNLOCKED) && defined (__GLIBC__)
+#ifdef	__GLIBC__
 #define	sgetc(c)	getc_unlocked(c)
-#else	/* !HAVE_GETC_UNLOCKED */
-#define	sgetc(c)	getc(c)
-#endif	/* !HAVE_GETC_UNLOCKED */
-
-#if defined (HAVE_PUTC_UNLOCKED) && defined (__GLIBC__)
 #define	sputc(c, f)	putc_unlocked(c, f)
-#else	/* !HAVE_PUTC_UNLOCKED */
+#else	/* !__GLIBC__ */
+#define	sgetc(c)	getc(c)
 #define	sputc(c, f)	putc(c, f)
-#endif	/* !HAVE_PUTC_UNLOCKED */
+#endif	/* !__GLIBC__ */

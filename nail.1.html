@@ -1,0 +1,2596 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<TITLE>nail.1</TITLE>
+<META NAME="keywords" CONTENT="nail, Linux, Unix, Solaris, command, utility, tool, manual page, manpage,
+source, source code, open source, free software, implementation">
+<STYLE TYPE="text/css">
+<!-- BODY { max-width:480pt; }
+BODY,TD,P,BLOCKQUOTE,PRE { text-align:justify;
+	font-family:Verdana,Arial,Helvetica,sans-serif;
+	font-size:10pt; line-height:14pt; }
+H1,H2,H3,H4,H5,H6 { color:#666666; 
+	font-family:Verdana,Arial,Helvetica,sans-serif; }
+H1 { line-height:32pt; font-size:24pt; font-weight:bold; }
+H3 { line-height:20pt; font-size:16pt; font-weight:bold;
+	margin-bottom: 0px; }
+H4 { line-height:16pt; font-size:13pt; font-weight:bold;
+	margin-bottom: 0px; }
+BLOCKQUOTE { margin-top: 0px; } 
+HR { width:100%; height:1pt; border-width:0px; background-color:#AAAAAA; }
+ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
+<BODY><A NAME=top></A>
+<!--  Copyright (c) 1980, 1990, 1993 -->
+<!--      The Regents of the University of California.  All rights reserved. -->
+<!--  Copyright (c) 2000 -->
+<!--      Gunnar Ritter.  All rights reserved. -->
+<!--  -->
+<!--  Redistribution and use in source and binary forms, with or without -->
+<!--  modification, are permitted provided that the following conditions -->
+<!--  are met: -->
+<!--  1. Redistributions of source code must retain the above copyright -->
+<!--     notice, this list of conditions and the following disclaimer. -->
+<!--  2. Redistributions in binary form must reproduce the above copyright -->
+<!--     notice, this list of conditions and the following disclaimer in the -->
+<!--     documentation and/or other materials provided with the distribution. -->
+<!--  3. All advertising materials mentioning features or use of this software -->
+<!--     must display the following acknowledgement: -->
+<!--      This product includes software developed by the University of -->
+<!--      California, Berkeley and its contributors. -->
+<!--      This product includes software developed by Gunnar Ritter -->
+<!--      and his contributors. -->
+<!--  4. Neither the name of the University nor the names of its contributors -->
+<!--     may be used to endorse or promote products derived from this software -->
+<!--     without specific prior written permission. -->
+<!--  -->
+<!--  THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS '\fIAS IS\fR' AND -->
+<!--  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE -->
+<!--  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE -->
+<!--  ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE -->
+<!--  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL -->
+<!--  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS -->
+<!--  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) -->
+<!--  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT -->
+<!--  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY -->
+<!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
+<!--  SUCH DAMAGE. -->
+<!--  -->
+<!--      Sccsid: @(#)nail.1	2.74 (gritter) 6/13/04 -->
+<!--  -->
+<CENTER>
+<H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
+</CENTER>
+<A name=0>
+
+     <H3>NAME</H3>
+
+</A>
+<BLOCKQUOTE>
+nail - send and receive MIME conformant mail
+</BLOCKQUOTE>
+<A name=contents></A><H3>CONTENTS</H3></A>
+<BLOCKQUOTE>
+<A HREF=#1>Synopsis</A><BR>
+<A HREF=#2>Description</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#3>Sending mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#4>Reading mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#5>Disposing of mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#6>Specifying messages</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#7>Replying to or originating mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#8>Ending a mail processing session</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#9>Personal and systemwide distribution lists</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#10>Recipient address specifications</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#11>Network mail (Internet / ARPA, UUCP, Berknet)</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#12>MIME types</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#13>MIME conformance</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#14>Locale</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#15>Character sets</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#16>Commands</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#17>Tilde escapes</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#18>Variable options</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#19>Binary options</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#20>String Options</A><BR>
+<A HREF=#21>Environment Variables</A><BR>
+<A HREF=#22>Files</A><BR>
+<A HREF=#23>Examples</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#24>POP3 client setup</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#25>Reading HTML mail</A><BR>
+&nbsp; &nbsp; &nbsp;<A HREF=#26>Viewing PDF attachments</A><BR>
+<A HREF=#27>See Also</A><BR>
+<A HREF=#28>Notes</A><BR>
+</BLOCKQUOTE>
+<A name=29>
+
+     <H3>SYNOPSIS</H3>
+
+</A>
+<BLOCKQUOTE>
+<P>
+<!-- ignored unsupported tag .ad -->
+<B>nail</B> [<B>-BFintv~</B>]
+[<B>-s</B><I>&nbsp;subject</I>] [<B>-a</B><I>&nbsp;attachment</I> ]
+[<B>-c</B><I>&nbsp;cc-addr</I>] [<B>-b</B><I>&nbsp;bcc-addr</I>] [<B>-r</B><I>&nbsp;from-addr</I>]
+[<B>-h</B><I>&nbsp;hops</I>] <I>to-addr</I> .&nbsp;.&nbsp;.
+<P>
+<!-- ignored unsupported tag .ad -->
+<B>nail</B> [<B>-BeHiInNv~</B>] [<B>-T</B><I>&nbsp;name</I>] <B>-f</B> [<I>name</I>]
+<P>
+<!-- ignored unsupported tag .ad -->
+<B>nail</B> [<B>-BeinNv~</B>] [<B>-u</B><I>&nbsp;user</I>]
+<!-- ignored unsupported tag .ad -->
+</BLOCKQUOTE>
+<A name=2>
+
+     <H3>DESCRIPTION</H3>
+
+</A>
+<BLOCKQUOTE>
+<I>Nail</I> is an intelligent mail processing system, which has
+a command syntax reminiscent of
+<a href=http://heirloom.sourceforge.net/man/ed.1.html><i>ed</i></a>(1)
+with lines replaced by messages.
+It is based on Berkeley Mail 8.1,
+is intended to provide the functionality of the POSIX
+<B>mailx</B> command,
+and offers extensions
+for MIME messages, POP3 and SMTP.
+<P>
+The following options are accepted:
+<TABLE cellpadding=3><!-- tsb: The following options are accepted:
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-a</B><I>&nbsp;file</I> </TD><TD valign=bottom>
+Attach the given file to the message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-B</B> </TD><TD valign=bottom>
+Make standard input and standard output line-buffered.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>-b</B><I>&nbsp;address</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Send blind carbon copies to list.
+List should be a comma-separated
+list of names.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>-c</B><I>&nbsp;address</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Send carbon copies to list of users.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-e</B> </TD><TD valign=bottom>
+Just check if mail is present in the system mailbox.
+If yes, return an exit status of zero,
+else, a non-zero value.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>-f</B> [<I>file</I>]
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Read in the contents of your mbox
+(or the specified file)
+for processing;
+when you quit, <I>nail</I> writes
+undeleted messages back
+to this file.
+The string <I>file</I> is handled
+as described for the
+<I>folder</I> command below.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-F</B> </TD><TD valign=bottom>
+Save the message to send
+in a file named after the local part
+of the first recipient&#39;s address.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-H</B> </TD><TD valign=bottom>
+Print header summaries for all messages and exit.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-h</B><I> hops</I>
+</TD><TD valign=bottom>
+Invoke sendmail with the specified hop count.
+This option has no effect when SMTP is used for sending mail.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-i</B> </TD><TD valign=bottom>
+Ignore tty interrupt signals.
+This is
+particularly useful when using
+<I>nail</I> on noisy phone lines.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-I</B> </TD><TD valign=bottom>
+Shows the &#39;Newsgroup:&#39; or &#39;Article-Id:&#39; fields
+in the header summary.
+Only applicable in combination with
+<B>-f</B>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-n</B> </TD><TD valign=bottom>
+Inhibits reading /etc/nail.rc upon startup.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-N</B> </TD><TD valign=bottom>
+Inhibits the initial display of message headers when reading mail
+or editing a mail folder.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-q</B><I>&nbsp;file</I> </TD><TD valign=bottom>
+Start the message with the contents of the specified file.
+May be given in send mode only.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>-r</B><I>&nbsp;address</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the
+<I>From</I> address. Overrides any
+<I>from</I> variable specified in environment or startup files.
+Tilde escapes are disabled.
+The <B>-r</B><I> address</I> options are passed to the mail transfer agent
+unless SMTP is used.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>-s</B><I>&nbsp;subject</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specify subject on command line (only the first argument after the
+-s flag is used as a subject; be careful to quote subjects
+containing spaces).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-T</B><I>&nbsp;name</I> </TD><TD valign=bottom>
+Writes the &#39;Message-Id&#39; and &#39;Article-Id&#39; header fields
+of each message read in the file
+<I>name</I>. Implies
+<B>-I</B>. Compressed files are handled as described for the
+<I>folder</I> command below.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-t</B> </TD><TD valign=bottom>
+The message to be sent is expected to contain a message header
+with &#39;To:&#39;, &#39;Cc:&#39;, or &#39;Bcc:&#39; fields giving its recipients.
+Recipients specified on the command line are ignored.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-u</B><I>&nbsp;user</I> </TD><TD valign=bottom>
+Reads the mailbox of the given user name.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-v</B> </TD><TD valign=bottom>
+Verbose mode.
+The details of
+delivery are displayed on the user&#39;s terminal.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-V</B> </TD><TD valign=bottom>
+Print <I>nail</I>&#39;s version and exit.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-~</B> </TD><TD valign=bottom>
+Enable tilde escapes even if not in interactive mode.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=3>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Sending mail</H4>
+</A>
+<BLOCKQUOTE>
+To send a message to one or more people,
+<I>nail</I> can be invoked with arguments
+which are the names of people
+to whom the mail will be sent.
+You are then expected to type in your message,
+followed by an &#39;control-D&#39; at the beginning of a line.
+The section below Replying to
+or originating mail,
+describes some features of <I>nail</I>
+available to help you compose your letter.
+</BLOCKQUOTE>
+<A name=4>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading mail</H4>
+</A>
+<BLOCKQUOTE>
+In normal usage <I>nail</I> is given no arguments
+and checks your mail out of the post office,
+then prints out a one line header
+of each message found.
+The current message is initially
+the first message (numbered 1)
+and can be printed using the print command
+which can be abbreviated &#39;p&#39;).
+You can move among the messages
+much as you move between lines in
+<a href=http://heirloom.sourceforge.net/man/ed.1.html><i>ed</i></a>(1),
+with the commands &#39;+&#39; and &#39;-&#39; moving backwards and forwards,
+and simple numbers.
+</BLOCKQUOTE>
+<A name=5>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Disposing of mail</H4>
+</A>
+<BLOCKQUOTE>
+After examining a message
+you can delete &#39;d&#39;) the message
+or reply &#39;r&#39;) to it.
+Deletion causes the <I>nail</I> program
+to forget about the message.
+This is not irreversible;
+the message can be undeleted &#39;u&#39;)
+by giving its number,
+or the <I>nail</I> session can be aborted
+by giving the exit &#39;x&#39;) command.
+Deleted messages will, however,
+usually disappear never to be seen again.
+</BLOCKQUOTE>
+<A name=6>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Specifying messages</H4>
+</A>
+<BLOCKQUOTE>
+Commands such as print and delete
+can be given a list of message numbers
+as arguments to apply to a number of messages at once.
+Thus &#39;<I>delete 1 2</I>&#39; deletes messages 1 and 2,
+while &#39;<I>delete 1-5</I>&#39; deletes messages 1 through 5.
+The following special message names exist:
+<TABLE cellpadding=3><!-- tsb: Commands such as print and delete
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:n</B> </TD><TD valign=bottom>
+All new messages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:o</B> </TD><TD valign=bottom>
+All old messages (any not in state read or new).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:u</B> </TD><TD valign=bottom>
+All unread messages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:d</B> </TD><TD valign=bottom>
+All deleted messages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>:r</B> </TD><TD valign=bottom>
+All read messages.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>/</B><I>string</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages that contain
+<I>string</I> in the subject field (case ignored).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<I>address</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+All messages from
+<I>address</I>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>.</B> </TD><TD valign=bottom>
+The current message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>;</B> </TD><TD valign=bottom>
+The message that was previously the current message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>,</B> </TD><TD valign=bottom>
+The parent message of the current message,
+that is the message with the Message-ID
+given in the &#39;In-Reply-To:&#39; field
+or the last entry of the &#39;References:&#39; field
+of the current message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-</B> </TD><TD valign=bottom>
+The next previous undeleted message,
+or the next previous deleted message for the
+<I>undelete</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>+</B> </TD><TD valign=bottom>
+The next undeleted message,
+or the next deleted message for the
+<I>undelete</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>^</B> </TD><TD valign=bottom>
+The first undeleted message,
+or the first deleted message
+for the
+<I>undelete</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>$</B> </TD><TD valign=bottom>
+The last message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>*</B> </TD><TD valign=bottom>
+All messages.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=7>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Replying to or originating mail</H4>
+</A>
+<BLOCKQUOTE>
+You can use the reply command
+to set up a response to a message,
+sending it back to the person who it was from.
+Text you then type in,
+up to an end-of-file,
+defines the contents of the message.
+While you are composing a message,
+<I>nail</I> treats lines beginning with the character &#39;~&#39; specially.
+For instance, typing &#39;~m&#39; (alone on a line)
+will place a copy of the current message into the response
+right shifting it by a tabstop
+(see indentprefix variable, below).
+Other escapes will set up subject fields,
+add and delete recipients to the message,
+attach files to it
+and allow you to escape to an editor
+to revise the message
+or to a shell to run some commands.
+(These options are given in the summary below.)
+</BLOCKQUOTE>
+<A name=8>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Ending a mail processing session</H4>
+</A>
+<BLOCKQUOTE>
+You can end a <I>nail</I> session
+with the quit &#39;q&#39;) command.
+Messages which have been examined
+go to your mbox file
+unless they have been deleted
+in which case they are discarded.
+Unexamined messages go back
+to the post office.
+(See the -f option above).
+</BLOCKQUOTE>
+<A name=9>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Personal and systemwide distribution lists</H4>
+</A>
+<BLOCKQUOTE>
+It is also possible to create
+a personal distribution lists so that,
+for instance, you can send mail
+to &#39;<I>cohorts</I>&#39; and have it go
+to a group of people.
+Such lists can be defined by placing a line like
+<PRE>
+<P>
+&nbsp;       <B>alias</B><I> cohorts bill ozalp jkf mark kridle@ucbcory</I>
+<P>
+</PRE>
+in the file .mailrc in your home directory.
+The current list of such aliases
+can be displayed with the alias command in <I>nail</I>.
+System wide distribution lists can be created
+by editing /etc/aliases, see
+<I>aliases</I>(5)
+and
+<I>sendmail</I>(8);
+these are kept in a different syntax.
+In mail you send,
+personal aliases will be expanded
+in mail sent to others so that
+they will be able to reply to the recipients.
+System wide aliases are not expanded when the mail is sent,
+but any reply returned to the machine
+will have the system wide alias expanded
+as all mail goes through sendmail.
+</BLOCKQUOTE>
+<A name=10>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Recipient address specifications</H4>
+</A>
+<BLOCKQUOTE>
+When an address is used to name a recipient
+(in any of To, Cc, or Bcc),
+names of local mail folders
+and pipes to external commands
+can also be specified;
+the message text is then written to them.
+The rules are: Any name which starts with a
+&#39;<B>|</B>&#39; character specifies a pipe,
+the command string following the &#39;|&#39;
+is executed and the message is sent to its standard input;
+any other name which contains a
+&#39;<B>@</B>&#39; character is treated as a mail address;
+any other name which starts with a
+&#39;<B>+</B>&#39; character specifies a folder name;
+any other name which contains a
+&#39;<B>/</B>&#39; character
+but no
+&#39;<B>!</B>&#39; or
+&#39;<B>%</B>&#39; character before also specifies a folder name;
+what remains is treated as a mail address.
+Compressed folders are handled as described for the
+<I>folder</I> command below.
+</BLOCKQUOTE>
+<A name=11>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Network mail (Internet / ARPA, UUCP, Berknet)</H4>
+</A>
+<BLOCKQUOTE>
+See
+<I>mailaddr</I>(7)
+for a description of network addresses.
+<I>Nail</I> has a number of options
+which can be set in the .mailrc file
+to alter its behavior;
+thus &#39;<I>set askcc</I>&#39; enables the askcc feature.
+(These options are summarized below).
+</BLOCKQUOTE>
+<A name=12>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; MIME types</H4>
+</A>
+<BLOCKQUOTE>
+For any outgoing attachment,
+<I>nail</I> tries to determine the content type.
+It does this by reading MIME type files
+whose lines have the following syntax:
+<PRE>
+<P>
+&nbsp;       <I>type</I><B>/</B><I>subtype      extension </I>[<I>extension </I>.&nbsp;.&nbsp;.]
+<P>
+</PRE>
+where type/subtype are strings describing the file contents,
+and extension is the part of a filename starting after the last dot.
+Any line not immediately beginning with an ASCII alphabetical character is
+ignored by <I>nail</I>.
+If there is a match with the extension of the file to attach,
+the given type/subtype pair is used.
+Otherwise, or if the filename has no extension,
+the content types text/plain or application/octet-stream are used,
+the first for text or international text files,
+the second for any file that contains formatting characters
+other than newlines and horizontal tabulators.
+</BLOCKQUOTE>
+<A name=13>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; MIME conformance</H4>
+</A>
+<BLOCKQUOTE>
+<I>Nail</I> is intended to be
+a MIME-conformant mail user agent,
+with the following exception:
+No special handling of &#39;multipart/alternative&#39; messages is performed.
+All parts with content types of &#39;text&#39; or &#39;message&#39; are shown.
+This is done because the user should see as much information as possible.
+</BLOCKQUOTE>
+<A name=14>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Locale</H4>
+</A>
+<BLOCKQUOTE>
+<I>Nail</I> uses the LC_CTYPE locale setting
+to determine whether a character is printable.
+Thus, its value has to match
+the character set of the terminal
+<I>nail</I> runs on.
+</BLOCKQUOTE>
+<A name=15>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Character sets</H4>
+</A>
+<BLOCKQUOTE>
+If a message contains non-ASCII characters,
+the character set being used
+must be declared within the header.
+Its value can be declared
+using the <I>charset</I> variable.
+It is normally assumed
+that this is the terminal character set, too.
+If the latter differs from the one
+that should be used in outgoing mail,
+the <I>ttycharset</I> variable can be used
+for its declaration.
+An outgoing message is then converted,
+resulting in errors when this process
+cannot be done for the entire text;
+if the message contains NUL
+characters,
+it is not converted.
+Attachments are never converted.
+Any message that is displayed on a terminal
+is tried to convert, too,
+with characters not in the terminal character set
+replaced by question marks.
+</BLOCKQUOTE>
+<A name=16>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Commands</H4>
+</A>
+<BLOCKQUOTE>
+Each command is typed on a line by itself,
+and may take arguments following the command word.
+The command need not be typed in its entirety -
+the first command which matches the typed prefix is used.
+For commands which take message lists as arguments,
+if no message list is given,
+then the next message forward which satisfies
+the command&#39;s requirements is used.
+If there are no messages forward of the current message,
+the search proceeds backwards,
+and if there are no good messages at all,
+<I>nail</I> types &#39;<I>applicable messages</I>&#39; and aborts the command.
+If the command begins with a <I>#</I> sign,
+the line is ignored.
+<P>
+The arguments to commands can be quoted, using the following methods:
+<TABLE cellpadding=3><!-- tsb: The arguments to commands can be quoted, using the following methods:
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6%>
+o
+</TD><TD>
+An argument can be enclosed between paired double-quotes
+"" or single-quotes &#39;&#39;; any white space, shell
+word expansion, or backslash characters within the quotes
+are treated literally as part of the argument.
+A double-quote will be treated literally within
+single-quotes and vice versa. These special properties of
+the quote marks occur only when they are paired at the
+beginning and end of the argument.
+</TD></TR>
+<TR valign=top><TD width=6%>
+o
+</TD><TD>
+A backslash outside of the enclosing quotes is discarded
+and the following character is treated literally as part of
+the argument.
+</TD></TR>
+<TR valign=top><TD width=6%>
+o
+</TD><TD>
+An unquoted backslash at the end of a command line is
+discarded and the next line continues the command.
+</TD></TR>
+<TR><TD colspan=2>
+Filenames, where expected, are subjected to the following
+transformations, in sequence:
+</TD></TR>
+<TR valign=top><TD width=6%>
+o
+</TD><TD>
+If the filename begins with an unquoted plus sign, and
+the
+<I>folder</I> variable is defined,
+the plus sign will be replaced by the value of the
+<I>folder</I> variable followed by a slash. If the
+<I>folder</I> variable is
+unset or is set to null, the filename will be unchanged.
+</TD></TR>
+<TR valign=top><TD width=6%>
+o
+</TD><TD>
+Shell word expansions are applied to the filename.
+If more than a single pathname results
+from this expansion and the command is expecting one
+file, an error results.
+</TD></TR>
+<TR><TD colspan=2>
+The following commands are provided:
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>-</B> </TD><TD valign=bottom>
+Print out the preceding message.
+If given a numeric argument n,
+goes to the n&#39;th previous message and prints it.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>?</B> </TD><TD valign=bottom>
+Prints a brief summary of commands.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>!</B> </TD><TD valign=bottom>
+Executes the shell (see
+<I>sh</I>(1)
+and
+<I>csh</I>(1))
+command which follows.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>|</B> </TD><TD valign=bottom>
+A synonym for the <I>pipe</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>alias</B> </TD><TD valign=bottom>
+(a) With no arguments,
+prints out all currently-defined aliases.
+With one argument, prints out that alias.
+With more than one argument,
+creates a new alias or changes an old one.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>alternates</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(alt) The alternates command is useful
+if you have accounts on several machines.
+It can be used to inform <I>nail</I>
+that the listed addresses are really you.
+When you reply to messages,
+<I>nail</I> will not send a copy of the message
+to any of the addresses
+listed on the alternates list.
+If the alternates command is given
+with no argument,
+the current set of alternate names is displayed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>cd</B> </TD><TD valign=bottom>
+Same as chdir.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>chdir</B> </TD><TD valign=bottom>
+(ch) Changes the user&#39;s working directory to that specified,
+if given.
+If no directory is given,
+then changes to the user&#39;s login directory.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>copy</B> </TD><TD valign=bottom>
+(c) The copy command does the same thing that
+<B>save</B> does,
+except that it does not mark the messages
+it is used on for deletion when you quit.
+Compressed files are handled as described for the
+<I>folder</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Copy</B> </TD><TD valign=bottom>
+(C) Similar to
+<B>copy</B>, but saves the messages in a file named after the local part
+of the sender address of the first message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>delete</B> </TD><TD valign=bottom>
+(d) Takes a list of messages as argument
+and marks them all as deleted.
+Deleted messages will not be saved in mbox,
+nor will they be available for most other commands.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>discard</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as ignore.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>dp</B>&nbsp;or<B>&nbsp;dt</B> </TD><TD valign=bottom>
+Deletes the current message
+and prints the next message.
+If there is no next message,
+<I>nail</I> says &#39;<I>at EOF</I>&#39;.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>echo</B> </TD><TD valign=bottom>
+Echoes its arguments,
+resolving special names
+as documented for the folder command.
+The escape sequences
+&#39;<B>&#92;a</B>&#39;,
+&#39;<B>&#92;b</B>&#39;,
+&#39;<B>&#92;c</B>&#39;,
+&#39;<B>&#92;f</B>&#39;,
+&#39;<B>&#92;n</B>&#39;,
+&#39;<B>&#92;r</B>&#39;,
+&#39;<B>&#92;t</B>&#39;,
+&#39;<B>&#92;v</B>&#39;,
+&#39;<B>&#92;&#92;</B>&#39;, and
+&#39;<B>&#92;0</B><I>num</I>&#39;
+are interpreted
+as with the
+<I>echo</I>(1)
+command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>edit</B> </TD><TD valign=bottom>
+(e) Takes a list of messages
+and points the text editor
+at each one in turn.
+On return from the editor,
+the message is read back in.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>else</B> </TD><TD valign=bottom>
+Marks the end of the then-part
+of an if statement
+and the beginning of the part
+to take effect if the condition
+of the if statement is false.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>endif</B> </TD><TD valign=bottom>
+Marks the end of an if statement.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>exit</B> </TD><TD valign=bottom>
+(ex or x) Effects an immediate return to the Shell
+without modifying the user&#39;s system mailbox,
+his mbox file,
+or his edit file in -f.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>file</B> </TD><TD valign=bottom>
+(fi) The same as folder.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>folders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+List the names of the folders in your folder directory.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>folder</B> </TD><TD valign=bottom>
+(fold) The folder command switches
+to a new mail file or folder.
+With no arguments, it tells you
+which file you are currently reading.
+If you give it an argument,
+it will write out changes
+(such as deletions) you have made
+in the current file and read in
+the new file.
+Some special conventions are recognized for the name.
+<B>#</B> means the previous file,
+<B>%</B> means your system mailbox,
+<B>%</B><I>user</I> means <I>user&#39;s</I> system mailbox,
+<TT>amp;</TT> means your mbox file,
+and <B>+</B><I>file</I><I> means a </I><I>file</I> in your folder directory.
+<B>%:</B><I>filespec</I> expands to the same value as <I>filespec</I>,
+but the file is handled as a system mailbox
+e.&nbsp;g. by the mbox and save commands.
+If the name matches one of the strings defined with the
+<B>shortcut</B> command,
+it is replaced by its long form and expanded.
+If the name ends with <B>.gz</B> or <B>.bz2</B>,
+it is treated as compressed with
+<I>gzip</I>(1)
+or
+<I>bzip2</I>(1),
+respectively.
+Likewise, if <I>name</I> does not exist,
+but either <I>name</I><B>.gz</B> or <I>name</I><B>.bz2</B> exists,
+the compressed file is used.
+A name of the form
+<PRE>
+<P>
+&nbsp;      <I>protocol</I><B>://</B>[<I>user</I><B>@</B>]<I>host</I>[<B>:</B><I>port]</I>
+<P>
+</PRE>
+is taken as an internet mailbox specification.
+The supported protocols are currently
+<B>pop3</B> (POP3)
+and
+<B>pop3s</B> (i. e. POP3 with SSL/TLS encryption).
+Compressed files are handled as described for the
+<I>folder</I> command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Followup</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(F) Similar to
+<B>Respond</B>, but saves the message in a file
+named after the local part of the first recipient&#39;s address.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>followup</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(fo) Similar to
+<B>respond</B>, but saves the message in a file
+named after the local part of the first recipient&#39;s address.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>followupall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Similar to
+<B>followup</B>, but responds to all recipients regardless of the
+<B>flipr</B> and
+<B>Replyall</B> variables.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>followupsender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Similar to
+<B>Followup</B>, but responds to the sender only regardless of the
+<B>flipr</B> and
+<B>Replyall</B> variables.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(For) Like forward,
+but does not add any header lines.
+This is not a way to hide the sender&#39;s identity,
+but useful for sending a message again
+to the same recipients.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(for) Takes a list of messages and a user name
+and sends each message to the named user.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>from</B> </TD><TD valign=bottom>
+(f) Takes a list of messages
+and prints their message headers,
+piped through the pager if the output does not fit on the screen.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>headers</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(h) Lists the current range of headers,
+which is an 18-message group.
+If a &#39;+&#39; argument is given,
+then the next 18-message group is printed,
+and if a &#39;-&#39; argument is given,
+the previous 18-message group is printed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>help</B> </TD><TD valign=bottom>
+A synonym for ?.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>hold</B> </TD><TD valign=bottom>
+(ho, also preserve) Takes a message list
+and marks each message therein to be saved
+in the user&#39;s system mailbox
+instead of in mbox.
+Does not override the delete command.
+<I>nail</I> deviates from the POSIX standard with this command,
+as a &#39;next&#39; command issued after &#39;hold&#39;
+will display the following message,
+not the current one.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>if</B> </TD><TD valign=bottom>
+Commands in <I>nail</I>&#39;s startup files
+can be executed conditionally
+depending on whether you are sending
+or receiving mail with the if command.
+For example, you can do:
+<PRE>
+<P>
+&nbsp;       <B>if </B><I>receive</I>
+&nbsp;               <I>commands .&nbsp;.&nbsp;.</I>
+&nbsp;       <B>endif</B>
+<P>
+</PRE>
+An else form is also available:
+<PRE>
+<P>
+&nbsp;       <B>if </B><I>receive</I>
+&nbsp;               <I>commands .&nbsp;.&nbsp;.</I>
+&nbsp;       <B>else</B>
+&nbsp;               <I>commands .&nbsp;.&nbsp;.</I>
+&nbsp;       <B>endif</B>
+<P>
+</PRE>
+Note that the only allowed conditions are
+<B>receive</B>, <B>send</B>, and
+<B>term</B> (execute command if standard input is a tty).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>ignore</B> </TD><TD valign=bottom>
+Add the list of header fields named to the ignored list.
+Header fields in the ignore list are not printed
+on your terminal when you print a message.
+This command is very handy for suppression
+of certain machine-generated header fields.
+The Type and Print commands can be used
+to print a message in its entirety,
+including ignored fields.
+If ignore is executed with no arguments,
+it lists the current set of ignored fields.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>inc</B> </TD><TD valign=bottom>
+Same as
+<B>newmail</B>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>list</B> </TD><TD valign=bottom>
+Prints the names of all available commands.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Mail</B> </TD><TD valign=bottom>
+(M) Similar to
+<B>mail</B>, but saves the message in a file
+named after the local part of the first recipient&#39;s address.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>mail</B> </TD><TD valign=bottom>
+(m) Takes as argument login names
+and distribution group names
+and sends mail to those people.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>mbox</B> </TD><TD valign=bottom>
+Indicate that a list of messages be sent
+to mbox in your home directory when you quit.
+This is the default action for messages
+if you do not have the hold option set.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>newmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Checks for new mail in the current folder
+without commiting any changes before.
+If new mail is present, a message is printed.
+If the
+<B>header</B> variable is set,
+the headers of each new message are also printed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>next</B> </TD><TD valign=bottom>
+(n) like + or CR) Goes to the next message
+in sequence and types it.
+With an argument list, types the next matching message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>New</B> </TD><TD valign=bottom>
+Same as
+<B>unread</B>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>new</B> </TD><TD valign=bottom>
+Same as
+<B>unread</B>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>preserve</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(pre) A synonym for hold.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Pipe</B> </TD><TD valign=bottom>
+(Pi) Like pipe but also
+pipes ignored header fields.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>pipe</B> </TD><TD valign=bottom>
+(pi) Takes a message list and a shell command
+and pipes the messages through the command.
+Without an argument,
+the current message is piped
+through the command given by the <I>cmd</I> variable.
+If the <I> page</I> variable is set,
+every message is followed by a formfeed character.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Print</B> </TD><TD valign=bottom>
+(P) Like print but also
+prints out ignored header fields.
+See also print, ignore and retain.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>print</B> </TD><TD valign=bottom>
+(p) Takes a message list and types out each message
+on the user&#39;s terminal.
+If the message is a MIME multipart message,
+all parts with a content type of &#39;text&#39; or &#39;message&#39; are shown,
+the other are hidden except for their headers.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>quit</B> </TD><TD valign=bottom>
+(q) Terminates the session, saving all undeleted,
+unsaved messages in the user&#39;s mbox file in his login directory,
+preserving all messages marked with hold or preserve
+or never referenced in his system mailbox,
+and removing all other messages from his system mailbox.
+If new mail has arrived during the session,
+the message &#39;<I>You have new mail</I>&#39; is given.
+If given while editing a mailbox file with the -f flag,
+then the edit file is rewritten.
+A return to the Shell is effected,
+unless the rewrite of edit file fails,
+in which case the user can escape
+with the exit command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Reply</B> </TD><TD valign=bottom>
+(R) Reply to originator.
+Does not reply to other recipients
+of the original message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>reply</B> </TD><TD valign=bottom>
+(r) Takes a message list and sends mail
+to the sender and all recipients of the specified message.
+The default message must not be deleted.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>replyall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Similar to
+<B>reply</B>, but responds to all recipients regardless of the
+<B>flipr</B> and
+<B>Replyall</B> variables.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>replysender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Similar to
+<B>Reply</B>, but responds to the sender only regardless of the
+<B>flipr</B> and
+<B>Replyall</B> variables.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Respond</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as
+<B>Reply</B>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>respond</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as
+<B>reply</B>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>respondall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as
+<B>replyall</B>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>respondsender</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as
+<B>replysender</B>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>retain</B> </TD><TD valign=bottom>
+Add the list of header fields named to the retained list.
+Only the header fields in the retain list are shown
+on your terminal when you print a message.
+All other header fields are suppressed.
+The Type and Print commands can be used
+to print a message in its entirety.
+If retain is executed with no arguments,
+it lists the current set of retained fields.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Save</B> </TD><TD valign=bottom>
+(S)
+Similar to
+<B>save</B>, but saves the messages
+in a file named after the local part
+of the sender of the first message
+instead of taking a filename argument.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>save</B> </TD><TD valign=bottom>
+(s) Takes a message list and a filename
+and appends each message
+in turn to the end of the file.
+If no filename is given,
+the mbox file is used.
+The filename in quotes,
+followed by the line count and character count
+is echoed on the user&#39;s terminal.
+If editing a system mailbox,
+the messages are marked for deletion.
+Compressed files are handled as described for the
+<I>-f</I> command line option above.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>set</B> </TD><TD valign=bottom>
+(se) With no arguments, prints all variable values,
+piped through the pager if the output does not fit on the screen.
+Otherwise, sets option.
+Arguments are of the form option=value
+(no space before or after =)
+or option.
+Quotation marks may be placed around any part of the
+assignment statement to quote blanks
+or tabs, i.e. &#39;<I>set indentprefix="-&gt;"</I>&#39;.
+If an argument begins with
+<B>no</B>, as in &#39;<B>set no</B><I>save</I>&#39;,
+the effect is the same as invoking the
+<B>unset</B> command with the remaining part of the variable
+(&#39;<B>unset </B><I>save</I>&#39;).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>savediscard</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as saveignore.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>saveignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Saveignore is to save what ignore is to print and type.
+Header fields thus marked are filtered out
+when saving a message by save
+or when automatically saving to mbox.
+This command should only be applied to header fields
+that do not contain content information.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>saveretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Saveretain is to save what retain is to print and type.
+Header fields thus marked are the only ones
+saved with a message when saving by save
+or when automatically saving to mbox.
+Saveretain overrides saveignore.
+The use of this command is strongly discouraged
+since it may strip header fields
+that are needed to decode the message correctly.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>shell</B> </TD><TD valign=bottom>
+(sh) Invokes an interactive version of the shell.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>shortcut</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Defines a shortcut name and its string for expansion,
+as described for the
+<B>folder</B> command.
+With no arguments,
+a list of defined shortcuts is printed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>size</B> </TD><TD valign=bottom>
+Takes a message list and prints out
+the size in characters of each message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>source</B> </TD><TD valign=bottom>
+The source command reads commands from a file.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>top</B> </TD><TD valign=bottom>
+Takes a message list and prints the top few lines of each.
+The number of lines printed is controlled
+by the variable toplines
+and defaults to five.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>touch</B> </TD><TD valign=bottom>
+Takes a message list
+and marks the messages for saving in the
+<I>mbox</I> file.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Type</B> </TD><TD valign=bottom>
+(T) Identical to the Print command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>type</B> </TD><TD valign=bottom>
+(t) A synonym for print.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unalias</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Takes a list of names defined by alias commands
+and discards the remembered groups of users.
+The group names no longer have any significance.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>undelete</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(u) Takes a message list and marks each message as not being deleted.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Removes the header field names
+from the list of ignored fields.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Unread</B> </TD><TD valign=bottom>
+Same as
+<B>unread</B>. </TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>unread</B> </TD><TD valign=bottom>
+(U) Takes a message list and marks each message
+as not having been read.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Removes the header field names
+from the list of retained fields.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unsaveignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Removes the header field names
+from the list of ignored fields for saving.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unsaveretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Removes the header field names
+from the list of retained fields for saving.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>unset</B> </TD><TD valign=bottom>
+Takes a list of option names and discards their remembered
+values;
+the inverse of set.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unshortcut</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Deletes the shortcut names given as arguments.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>visual</B> </TD><TD valign=bottom>
+(v) Takes a message list and invokes the display editor
+on each message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>write</B> </TD><TD valign=bottom>
+(w) For conventional messages,
+the body without all headers is written.
+The output is converted
+to its native format, if necessary.
+If the output file exists,
+the text is appended.&#151;If a message is in MIME multipart format,
+its first part is written to the specified file
+as for conventional messages,
+and the user is asked for a filename
+to save each other part.
+In non-interactive mode, only the parts of the multipart message
+that have a filename given in the part header are written,
+the other are discarded.
+The original message is never marked for deletion
+in the originating mail folder.
+For attachments,
+the contents of the destination file are overwritten
+if the file previously existed.
+No special handling of compressed files is performed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>xit</B> </TD><TD valign=bottom>
+(x) A synonym for exit.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>z</B> </TD><TD valign=bottom>
+<I>Nail</I> presents message headers in windowfuls
+as described under the headers command.
+The z command scrolls to the next window of messages.
+If an argument is given,
+it specifies the window to use.
+A number prefixed by &#39;+&#39; or &#39;-&#39; indicates
+that the window is calculated in relation
+to the current position.
+A number without a prefix specifies an
+absolute window number,
+and a &#39;$&#39; lets <I>nail</I> scroll
+to the last window of messages.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=17>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Tilde escapes</H4>
+</A>
+<BLOCKQUOTE>
+Here is a summary of the tilde escapes,
+which are used when composing
+messages to perform special functions.
+Tilde escapes are only recognized
+at the beginning of lines.
+The name &#39;<I>tilde escape</I>&#39; is somewhat of a misnomer
+since the actual escape character can be set
+by the option escape.
+<TABLE cellpadding=3><!-- tsb: Here is a summary of the tilde escapes,
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD colspan=2>
+<B>~!</B><I>command</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Execute the indicated shell command,
+then return to the message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~.</B> </TD><TD valign=bottom>
+Same effect as typing the end-of-file character.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~&lt;</B><I>filename</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Identical to ~r.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~&lt;!</B><I>command</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Command is executed using the shell.
+Its standard output is inserted into the message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~@</B> [<I>filename</I> .&nbsp;.&nbsp;. ]
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+With no arguments, edit the attachment list.
+First, the user can edit all existing attachment data.
+If an attachment&#39;s file name is left empty,
+that attachment is deleted from the list.
+When the end of the attachment list is reached,
+<I>nail</I> will ask for further attachments,
+until an empty file name is given.
+If <I>filename</I> arguments are specified,
+all of them are appended to the end of the attachment list.
+Filenames which contain white space
+can only be specified
+with the first method (no <I>filename</I> arguments).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~A</B> </TD><TD valign=bottom>
+Inserts the string contained in the
+<B>Sign</B> variable
+(same as &#39;~i Sign&#39;).
+The escape sequences &#39;<B>&#92;t</B>&#39; (tabulator) and &#39;<B>&#92;n</B>&#39; (newline)
+are understood.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~a</B> </TD><TD valign=bottom>
+Inserts the string contained in the
+<B>sign</B> variable
+(same as &#39;~i sign&#39;).
+The escape sequences &#39;<B>&#92;t</B>&#39; (tabulator) and &#39;<B>&#92;n</B>&#39; (newline)
+are understood.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~b</B><I>name .&nbsp;.&nbsp;.</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Add the given names to the list of carbon copy recipients
+but do not make the names visible in the Cc: line
+(&#39;blind&#39; carbon copy).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~c</B><I>name .&nbsp;.&nbsp;.</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Add the given names to the list of carbon copy recipients.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~d</B> </TD><TD valign=bottom>
+Read the file &#39;<I>dead.letter</I>&#39; from your home directory
+into the message.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~e</B> </TD><TD valign=bottom>
+Invoke the text editor on the message collected so far.
+After the editing session is finished,
+you may continue appending text
+to the message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~f</B><I>messages</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Read the named messages into the message being sent.
+If no messages are specified,
+read in the current message.
+Message headers currently being ignored
+(by the ignore or retain command)
+are not included.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~F</B><I>messages</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Identical to ~f,
+except all message headers are included.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~h</B> </TD><TD valign=bottom>
+Edit the message header fields
+by typing each one in turn
+and allowing the user to append text
+to the end or modify the field
+by using the current terminal erase and kill characters.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~i</B><I>variable</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Insert the value of the specified variable
+into the message adding a newline character at the end.
+If the variable is unset or empty,
+the message remains unaltered.
+The escape sequences &#39;<B>&#92;t</B>&#39; (tabulator) and &#39;<B>&#92;n</B>&#39; (newline)
+are understood.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~m</B><I>messages</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Read the named messages into the message being sent,
+indented by a tab or by the value of indentprefix.
+If no messages are specified,
+read the current message.
+Message headers currently being ignored
+(by the ignore or retain command)
+are not included.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~M</B><I>messages</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Identical to ~m, except all message headers are included.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~p</B> </TD><TD valign=bottom>
+Print out the message collected so far,
+prefaced by the message header fields
+and followed by the attachment list, if any.
+If the message text is longer than the screen size,
+it is piped through the pager.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~q</B> </TD><TD valign=bottom>
+Abort the message being sent,
+copying the message to
+&#39;<I>dead.letter</I>&#39; in your home directory
+if save is set.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~r</B><I>filename</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Read the named file into the message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~s</B><I>string</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Cause the named string to become the current subject field.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~t</B><I>name .&nbsp;.&nbsp;.</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Add the given names to the direct recipient list.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~v</B> </TD><TD valign=bottom>
+Invoke an alternate editor
+(defined by the VISUAL option)
+on the message collected so far.
+Usually, the alternate editor
+will be a screen editor.
+After you quit the editor,
+you may resume appending text
+to the end of your message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~w</B><I>filename</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Write the message onto the named file.
+If the file exists,
+the message is appended to it.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~x</B> </TD><TD valign=bottom>
+Same as ~q,
+except that the message is not saved to the dead.letter file.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~|</B><I>command</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Pipe the message through the command as a filter.
+If the command gives no output or terminates abnormally,
+retain the original text of the message.
+The command
+<I>fmt</I>(1)
+is often used
+as command to rejustify the message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~:</B><I>nail-command</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Execute the given <I>nail</I> command.
+Not all commands, however, are allowed.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~_</B><I>nail-command</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Identical to ~:.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>~~</B><I>string</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Insert the string of text in the message
+prefaced by a single ~.
+If you have changed the escape character,
+then you should double that character
+in order to send it.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=18>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Variable options</H4>
+</A>
+<BLOCKQUOTE>
+Options are controlled via set and unset commands,
+see their entries for a syntax description.
+An option is also set
+if it is passed to <I>nail</I>
+as part of the environment
+(this is not restricted to specific variables as in the POSIX standard).
+A value given in a startup file overrides
+a value imported from the environment.
+Options may be either binary,
+in which case it is only significant
+to see whether they are set or not;
+or string, in which case the actual value is of interest.
+</BLOCKQUOTE>
+<A name=19>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Binary options</H4>
+</A>
+<BLOCKQUOTE>
+The binary options include the following:
+<TABLE cellpadding=3><!-- tsb: The binary options include the following:
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>allnet</B> </TD><TD valign=bottom>
+Causes only the local part to be evaluated
+when comparing addresses.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>append</B> </TD><TD valign=bottom>
+Causes messages saved in mbox to be appended to the end
+rather than prepended.
+This should always be set.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ask</B>&nbsp;or<B>&nbsp;asksub</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes <I>nail</I> to prompt you for the subject
+of each message you send.
+If you respond with simply a newline,
+no subject field will be sent.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>askatend</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes the prompts for &#39;Cc:&#39; and &#39;Bcc:&#39; lists
+to appear after the message has been edited.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>askattach</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If set, <I>nail</I> asks for files to attach at the end of each message.
+Responding with a newline indicates not to include an attachment.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>askcc</B> </TD><TD valign=bottom>
+Causes you to be prompted
+for additional carbon copy recipients
+(at the end of each message if
+<I>askatend</I> or
+<I>bsdcompat</I> is set).
+Responding with a newline
+indicates your satisfaction with the current list.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>askbcc</B> </TD><TD valign=bottom>
+Causes you to be prompted
+for additional blind carbon copy recipients
+(at the end of each message if
+<I>askatend</I> or
+<I>bsdcompat</I> is set).
+Responding with a newline
+indicates your satisfaction with the current list.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>autoinc</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Same as
+<B>newmail</B>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>autoprint</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes the delete command to behave like dp -
+thus, after deleting a message,
+the next one will be typed automatically.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>bang</B> </TD><TD valign=bottom>
+Enables the substitution of &#39;<B>!</B>&#39;
+by the contents of the last command line
+in shell escapes.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>bsdannounce</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes automatic display of a header summary after executing a
+<I>folder</I> command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>bsdcompat</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets some cosmetical features to traditional BSD style;
+has the same affect as setting &#39;askatend&#39; and
+all other variables prefixed with &#39;bsd&#39;,
+setting prompt to &amp;&nbsp;&#39;, and changing the default pager to
+<I>more</I>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>bsdflags</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Changes the letters printed in the first column of a header summary
+to traditional BSD style.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>bsdheadline</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Changes the display of columns in a header summary
+to traditional BSD style.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>bsdmsgs</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Changes some informational messages
+to traditional BSD style.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>bsdorder</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes the &#39;Subject:&#39; field to appear
+immediately after the &#39;To:&#39; field
+in message headers and with the
+<I>~h</I> tilde command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>bsdset</B> </TD><TD valign=bottom>
+Changes the output format of the
+<I>set</I> command to traditional BSD style.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>datefield</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The date in a header summary
+is normally the date of the mailbox &#39;From&nbsp;&#39; line of the message.
+If this variable is set,
+the date as given in the &#39;Date:&#39; header field is used,
+converted to local time.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>debug</B> </TD><TD valign=bottom>
+Prints debugging messages and disables the actual delivery of messages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>dot</B> </TD><TD valign=bottom>
+The binary option dot causes <I>nail</I> to interpret
+a period alone on a line
+as the terminator of a message you are sending.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>editheaders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When a message is edited while being composed,
+its header is included in the editable text.
+&#39;To:&#39;, &#39;Cc:&#39;, &#39;Bcc:&#39;, and &#39;Subject:&#39; fields
+are accepted within the header,
+other fields are ignored.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>emptybox</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If set, an empty mailbox file is not removed.
+This may improve the interoperability with other MUAs
+when using a common folder directory.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>emptystart</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If the mailbox is empty,
+<I>nail</I> normally prints <I>&#39;No mail for user&#39;</I>
+and exits immediately.
+If this option is set,
+<I>nail</I> starts even with an empty mailbox.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>flipr</B> </TD><TD valign=bottom>
+Exchanges the
+<B>Respond</B> with the
+<B>respond</B> commands and vice-versa.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>header</B> </TD><TD valign=bottom>
+Causes the header summary to be written at startup;
+enabled by default.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>hold</B> </TD><TD valign=bottom>
+This option is used to hold messages
+in the system mailbox by default.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>ignore</B> </TD><TD valign=bottom>
+Causes interrupt signals from your terminal
+to be ignored and echoed as @&#39;s.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ignoreeof</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+An option related to dot is ignoreeof
+which makes <I>nail</I> refuse to
+accept a control-d as the end of a message.
+Ignoreeof also applies to <I>nail</I> command mode.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>keep</B> </TD><TD valign=bottom>
+This option causes <I>nail</I> to truncate your system mailbox
+instead of deleting it when it is empty.
+This should always be set,
+since it prevents malicious users
+from creating fake mail folders
+in a world-writable spool directory.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>keepsave</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When you save a message,
+<I>nail</I> usually discards it
+from the originating folder
+when you quit.
+To retain all saved messages,
+set this option.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>metoo</B> </TD><TD valign=bottom>
+Usually, when a group is expanded
+that contains the sender,
+the sender is removed from the expansion.
+Setting this option causes
+the sender to be included in the group.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>newmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Checks for new mail in the current folder
+each time the prompt is printed.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>noheader</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Setting the option noheader is the same
+as giving the -N flag on the command line.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>outfolder</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes the filename given in the
+<B>record</B> variable to be interpreted relative to the directory given in the
+<B>folder</B> variable rather than to the current directory
+unless it is an absolute pathname.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>page</B> </TD><TD valign=bottom>
+If set, each message the <I>pipe</I> command prints out
+is followed by a formfeed character.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>piperaw</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Send messages to the
+<I>pipe</I> command without performing MIME and character set conversions.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>print-all-chars</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+This option causes all characters to be considered printable.
+It is only effective if given in a startup file.
+With this option set,
+some character sequences in messages
+may put the user&#39;s terminal in an undefined state
+when printed;
+it should only be used as a last resort
+if no working system locale can be found.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>quiet</B> </TD><TD valign=bottom>
+Suppresses the printing of the version when first invoked.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Replyall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Reverses the sense of reply and Reply commands.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>save</B> </TD><TD valign=bottom>
+When you abort a message
+with two RUBOUT (interrupt characters)
+<I>nail</I> copies the partial letter
+to the file &#39;<I>dead.letter</I>&#39; in your home directory.
+This option is set by default.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>searchheaders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If this option is set, then
+a message-list specifier in the form &#39;<I>/x:y</I>&#39;
+will expand to all messages containing
+the substring &#39;<I>y</I>&#39; in the header field &#39;<I>x</I>&#39;.
+The string search is case insensitive.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>sendwait</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When sending a message,
+wait until the mail transfer agent exits
+before accepting further commands.
+If the mail transfer agent returns a non-zero exit status,
+the exit status of nail will also be non-zero.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>showlast</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Setting this option causes <I>nail</I> to start at the
+last message instead of the first one when opening a mail folder.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>showname</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Causes
+<I>nail</I> to use the sender&#39;s real name instead of the plain address
+in the header field summary and in message specifications.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>showto</B> </TD><TD valign=bottom>
+Causes the recipient of the message to be shown in the header summary
+if the message was sent by the user.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-no-default-ca</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Do not load the default CA locations
+to verify SSL/TLS server certificates.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-v2-allow</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Accept SSLv2 connections.
+These are normally not allowed
+because this protocol version is insecure.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>stealthmua</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Inhibits the generation of
+the <I>&#39;Message-Id:&#39;</I> and <I>&#39;User-Agent:&#39;</I>
+header fields that include obvious references to <I>nail</I>.
+There are two pitfalls associated with this:
+First, the message id of outgoing messages is not known anymore.
+Second, an expert may still use the remaining information in the header
+to track down the originating mail user agent.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>verbose</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Setting the option verbose is the same
+as using the -v flag on the command line.
+When <I>nail</I> runs in verbose mode,
+the actual delivery of messages
+is displayed on the user&#39;s terminal.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=20>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; String Options</H4>
+</A>
+<BLOCKQUOTE>
+The string options include the following:
+<TABLE cellpadding=3><!-- tsb: The string options include the following:
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD colspan=2>
+<B>autobcc</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a list of recipients to which
+a blind carbon copy of each outgoing message
+will be sent automatically.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>autocc</B> </TD><TD valign=bottom>
+Specifies a list of recipients to which
+a carbon copy of each outgoing message
+will be sent automatically.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>charset</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The name of the character set used by <I>nail</I>.
+If unset, <I>iso-8859-1</I> is the default.
+The character set
+of all outgoing messages
+that contain non-ASCII characters
+is declared using its value.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>cmd</B> </TD><TD valign=bottom>
+The default value for the <I>pipe</I> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>crt</B> </TD><TD valign=bottom>
+The valued option crt is used as a threshold
+to determine how long a message must be
+before PAGER is used to read it.
+If crt is set without a value,
+then the height of the terminal screen stored in the system
+is used to compute the threshold (see
+<I>stty</I>(1)).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>DEAD</B> </TD><TD valign=bottom>
+The name of the file to use
+for saving aborted messages.
+This defaults to &#39;<I>dead.letter</I>&#39;
+in the user&#39;s home directory.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>EDITOR</B> </TD><TD valign=bottom>
+Pathname of the text editor to use
+in the edit command and ~e escape.
+If not defined,
+then a default editor is used.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>encoding</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The default MIME encoding to use
+in outgoing text messages and message parts.
+Valid values are <I>8bit</I> or <I>quoted-printable</I>.
+The default is <I>8bit</I>.
+In case the mail transfer system
+is not ESMTP compliant,
+<I>quoted-printable</I> should be used instead.
+If there is no need to encode a message,
+<I>7bit</I> transfer mode is used,
+without regard to the value of this variable.
+Binary data is always encoded in <I>base64</I> mode.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>escape</B> </TD><TD valign=bottom>
+If defined, the first character of this option
+gives the character to use in the place of ~ to denote escapes.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>folder</B> </TD><TD valign=bottom>
+The name of the directory to use
+for storing folders of messages.
+If this name begins with a &#39;/&#39;,
+<I>nail</I> considers it to be an absolute pathname;
+otherwise, the folder directory is found
+relative to your home directory.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>from</B> </TD><TD valign=bottom>
+The address to put into the <I>&#39;From:&#39;</I> field of the message header.
+If replying to a message,
+this address is handled as if it were in the alternates list.
+If this variable is set,
+a <I>&#39;Sender:&#39;</I> field containing the user&#39;s name
+is also generated,
+unless the variable <I>smtp</I> is set
+and its value differs from <I>localhost</I>.
+If the machine&#39;s hostname is not valid at the Internet
+(for example at a dialup machine),
+you have to set this variable
+or
+<I>hostname</I> to get correct Message-ID header fields.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>hostname</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Use this string as hostname
+when expanding local addresses
+instead of the value obtained from
+<I>uname</I>(2)
+and
+<I>getaddrinfo</I>(3).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>indentprefix</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+String used by the &#39;<I>~m</I>&#39; and &#39;<I>~M</I>&#39; tilde escapes
+and by the <I>quote</I> option
+for indenting messages,
+in place of the normal tab character (^I).
+Be sure to quote the value
+if it contains spaces or tabs.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>LISTER</B> </TD><TD valign=bottom>
+Pathname of the directory lister
+to use in the folders command.
+Default is /bin/ls.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>MAIL</B> </TD><TD valign=bottom>
+Is used as the user&#39;s mailbox, if set.
+Otherwise, a system-dependent default is used.
+Can be a
+<I>protocol</I><B>://</B>
+string (see the
+<B>folder</B> command for more information).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>MAILX_HEAD</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+A string to put at the beginning of each new message.
+The escape sequences &#39;<B>&#92;t</B>&#39; (tabulator) and &#39;<B>&#92;n</B>&#39; (newline)
+are understood.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>MAILX_TAIL</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+A string to put at the end of each new message.
+The escape sequences &#39;<B>&#92;t</B>&#39; (tabulator) and &#39;<B>&#92;n</B>&#39; (newline)
+are understood.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>MBOX</B> </TD><TD valign=bottom>
+The name of the mbox file.
+It can be the name of a folder.
+The default is &#39;<I>mbox</I>&#39;
+in the user&#39;s home directory.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>NAIL_EXTRA_RC</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The name of an optional startup file
+to be read after ~/.mailrc.
+This variable is ignored if it is imported from the environment;
+it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
+to allow bypassing the configuration with e. g. &#39;MAILRC=/dev/null&#39;.
+Use this file for
+<I>nail</I> commands
+that are not understood by other mailx implementations.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ORGANIZATION</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The value to put into the <I>&#39;Organization:&#39;</I> field of the message header.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>PAGER</B> </TD><TD valign=bottom>
+Pathname of the program to use
+in the more command
+or when crt variable is set.
+The default paginator
+<I>pg</I>(1)
+or, in BSD compatibility mode,
+<I>more</I>(1)
+is used
+if this option is not defined.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>password-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Set the password for
+<I>user</I> when connecting to
+<I>host</I>. If no such variable is defined for a host,
+the user will be asked for a password on standard input.
+Specifying passwords in a startup file
+is generally a security risk,
+the file should be readable
+by the invoking user only.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>pipe-</B><I>content/subcontent</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+When a MIME message part of
+<I>content/subcontent</I> type is displayed or it is replied to,
+its text is filtered through the value of this variable
+interpreted as a shell command.
+Special care must be taken when using such commands
+as mail viruses may be distributed by this method;
+if messages of type
+<I>application/x-sh</I> were filtered through the shell, for example,
+a message sender could easily execute arbitrary code
+on the system
+<I>nail</I> is running on.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>pop3-keepalive</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Many POP3 servers will close the connection
+after a period of inactivity.
+Setting this variable to a numeric
+<I>value</I> greater than 0
+causes a NOOP command to be sent each
+<I>value</I> seconds if no other operation is performed.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>prompt</B> </TD><TD valign=bottom>
+The string printed when a command is accepted.
+Defaults to &#39;<B>?&nbsp;</B>&#39;,
+or to &#39;<TT>amp;&nbsp;</TT>&#39; if the
+<B>bsdcompat</B> variable is set.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>quote</B> </TD><TD valign=bottom>
+If set, <I>nail</I> starts a replying message with the original message prefixed
+by the value of the variable <I>indentprefix</I>.
+Normally, a heading consisting of &#39;Fromheaderfield wrote:&#39; is printed
+before the quotation.
+If the string <I>noheading</I> is assigned to the <I>quote</I> variable,
+this heading is omitted.
+If the string <I>headers</I> is assigned,
+the headers selected by the ignore/retain commands
+are printed above the message body,
+thus <I>quote</I> acts like an automatic ~m command then.
+If the string <I>allheaders</I> is assigned,
+all headers are printed above the message body,
+thus <I>quote</I> acts like an automatic ~M command then.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>screen</B> </TD><TD valign=bottom>
+When <I>nail</I> initially prints the message headers,
+it determines the number to print
+by looking at the speed of your terminal.
+The faster your terminal, the more it prints.
+This option overrides this calculation
+and specifies how many message headers
+you want printed.
+This number is also used
+for scrolling with the z command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>sendmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+To use an alternate mail delivery system,
+set this option to the full pathname
+of the program to use.
+This should be used with care.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>SHELL</B> </TD><TD valign=bottom>
+Pathname of the shell to use
+in the ! command and the ~! escape.
+A default shell is used
+if this option is not defined.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>Sign</B> </TD><TD valign=bottom>
+A string for use with the
+<B>~A</B> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>sign</B> </TD><TD valign=bottom>
+A string for use with the
+<B>~a</B> command.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>smtp</B> </TD><TD valign=bottom>
+Normally, <I>nail</I> invokes
+<I>sendmail</I>(8)
+directly to transfer messages.
+If <I>smtp</I> is set, a SMTP connection to
+the server specified by the value of this variable
+is used instead.
+If the SMTP server does not use the standard port,
+a value of <I>server:port</I> can be given,
+with <I>port</I> as a name or as a number.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-ca-dir</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a directory with CA certificates for verification.
+See
+<I>SSL_CTX_load_verify_locations</I>(3)
+for more information.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-ca-file</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a file with CA certificates for verification.
+See
+<I>SSL_CTX_load_verify_locations</I>(3)
+for more information.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-cert</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the file name
+for a SSL/TLS client certificate
+required by some servers.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-cert-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets an account-specific file name
+for a SSL/TLS client certificate
+required by some servers.
+Overrides
+<B>ssl-cert</B> for the specified account.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-cipher-list</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies a list of ciphers for SSL/TLS connections.
+See ciphers(1) for more information.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-key</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the file name
+for the private key of a SSL/TLS client certificate.
+If unset, the name of the certificate file is used.
+The file is expected to be in PEM format.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-key-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets an account-specific file name
+for the private key of a SSL/TLS client certificate.
+Overrides
+<B>ssl-key</B> for the specified account.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-method</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Selects a SSL/TLS protocol version;
+valid values are &#39;ssl2&#39;, &#39;ssl3&#39;, and &#39;tls1&#39;.
+If unset, the method is selected automatically,
+if possible.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-method-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>ssl-method</I> for a specific account.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-rand-egd</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Gives the pathname to an entropy daemon socket,
+see
+<I>RAND_egd</I>(3).
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-rand-file</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Gives the pathname to a file with entropy data,
+see
+<I>RAND_load_file</I>(3).
+If the file is a regular file writable by the invoking user,
+new data is written to it after it has been loaded.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-verify</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Sets the action to be performed if an error occurs
+during SSL/TLS server certificate validation.
+Valid values are
+&#39;strict&#39; (fail and close connection immediately),
+&#39;ask&#39; (ask whether to continue on standard input),
+&#39;warn&#39; (print a warning and continue),
+&#39;ignore&#39; (do not perform validation).
+The default is &#39;ask&#39;.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ssl-verify-</B><I>user</I><B>@</B><I>host</I>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Overrides
+<I>ssl-verify</I> for a specific account.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>record</B> </TD><TD valign=bottom>
+If defined, gives the pathname of the file
+used to record all outgoing mail.
+If not defined,
+then outgoing mail is not so saved.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>replyto</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The address to put into the <I>&#39;Reply-To:&#39;</I> field of the message header.
+If replying to a message, this address is handled
+as if it were in the alternates list.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>signature</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Must correspond to the name of a readable file if set.
+The file&#39;s content is then appended to each singlepart message
+and to the first part of each multipart message.
+Be warned that there is no possibility
+to edit the signature for an individual message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>toplines</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If defined, gives the number of lines
+of a message to be printed out
+with the top command;
+normally, the first five
+lines are printed.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>ttycharset</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The character set of the terminal <I>nail</I> operates on.
+There is normally no need to set this variable
+since <I>nail</I> can determine this automatically
+by looking at the LC_CTYPE locale setting;
+if this succeeds, the value is assigned at startup
+and will be displayed by the <I>set</I> command.
+Note that this is not necessarily a character set name
+that can be used in Internet messages.
+If unset, its default is the value of the charset variable.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>VISUAL</B> </TD><TD valign=bottom>
+Pathname of the text editor to use
+in the visual command and ~v escape.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=21>
+
+     <H3>ENVIRONMENT VARIABLES</H3>
+
+</A>
+<BLOCKQUOTE>
+Besides the variables described above, <I>nail</I> uses
+the following environment strings:
+<TABLE cellpadding=3><!-- tsb: Besides the variables described above, <I>nail</I> uses
+ -->
+<TR></TR><TR></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>HOME</B> </TD><TD valign=bottom>
+The user&#39;s home directory.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>LANG</B>, <B>LC_ALL</B>, <B>LC_CTYPE</B>, <B>LC_MESSAGES</B>
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+See
+<I>locale</I>(7).
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>MAILRC</B> </TD><TD valign=bottom>
+Is used as startup file instead of ~/.mailrc if set.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>NAILRC</B> </TD><TD valign=bottom>
+If this variable is set and
+<B>MAILRC</B> is not set,
+it is read as startup file.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>TMPDIR</B> </TD><TD valign=bottom>
+Used as directory for temporary files instead of /tmp, if set.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=22>
+
+     <H3>FILES</H3>
+
+</A>
+<BLOCKQUOTE>
+<TABLE cellpadding=3>
+<TR valign=top><TD colspan=2>
+~/.mailrc
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+File giving initial commands.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+/etc/nail.rc
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+System wide initialization file.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+~/.mime.types
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Personal MIME types.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+/etc/mime.types
+</TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+System wide MIME types.
+</TD></TR>
+<TR></TR></TABLE><P></BLOCKQUOTE>
+<A name=23>
+
+     <H3>EXAMPLES</H3>
+
+</A>
+<BLOCKQUOTE>
+</BLOCKQUOTE>
+<A name=24>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; POP3 client setup</H4>
+</A>
+<BLOCKQUOTE>
+First, you need the following data from your ISP:
+the host name of its POP3 server,
+user name and password for this server,
+and a notice whether the server uses SSL/TLS encryption.
+Assuming the host name is &#39;server.myisp.example&#39;
+and your user name for that server is &#39;myname&#39;,
+you can refer to this account using the
+<I>folder</I> command or
+<I>-f</I> command line option with
+<PRE>
+<P>
+&nbsp;   <B>pop3://</B><I>myname</I><B>@</B><I>server.myisp.example</I>
+<P>
+</PRE>
+(replace &#39;pop3://&#39; with &#39;pop3s://&#39; if the server supports SSL/TLS).
+The string is not necessarily the same as your internet mail address.
+As you probably want messages to be deleted from this account
+after saving them,
+prefix it with &#39;<I>%:</I>&#39;.
+The
+<I>shortcut</I> command can be used to avoid typing that many characters
+every time you want to connect:
+<PRE>
+<P>
+&nbsp;   <B>shortcut </B><I>myisp</I><B> </B><B>%:pop3://</B><I>myname</I><B>@</B><I>server.myisp.example</I>
+<P>
+</PRE>
+You probably want to put this string into a startup file.
+As the
+<I>shortcut</I> command is
+<I>nail-</I>specific and will confuse other
+<I>mailx</I> implementations,
+it should not be used in
+<I>~/.mailrc</I>, instead, put
+<PRE>
+<P>
+&nbsp;   <B>set NAIL_EXTRA_RC=</B><I>~/.nailrc</I>
+<P>
+</PRE>
+in
+<I>~/.mailrc</I> and create a file
+<I>~/.nailrc</I> containing the
+<I>shortcut</I> command above.
+<I>Nail</I> will ask you for a password string
+each time you connect to this account.
+If you can reasonably trust the security
+of the machine you are working on,
+you can give this password in the startup file as
+<PRE>
+<P>
+&nbsp;   <B>set password-</B><I>myname</I><B>@</B><I>server.myisp.example</I><B>="</B><I>SECRET</I><B>"</B>
+<P>
+</PRE>
+You should change the permissions of this file to 0600, see
+<I>chmod</I>(1).
+Many POP3 servers will close the connection
+after a short period of inactivity. Use
+<PRE>
+<P>
+&nbsp;   <B>set pop3-keepalive=</B><I>30</I>
+<P>
+</PRE>
+to send a keepalive message each 30 seconds.
+If you encounter problems connecting to a SSL/TLS server,
+try the
+<I>ssl-rand-egd</I> and
+<I>ssl-rand-file</I> variables (see the OpenSSL FAQ for more information)
+or specify the protocol version with
+<I>ssl-method</I>. Contact your ISP
+if you need a client certificate
+or if verification of the server certificate fails.
+If the failed certificate is indeed valid,
+fetch it by executing
+<PRE>
+<P>
+&nbsp;   <B>openssl s_client -connect </B><I>server.myisp.example</I><B>:</B><I>pop3s</I>
+<P>
+</PRE>
+(see
+<I>s_client</I>(1))
+and put it into the file specified with
+<I>ssl-ca-file</I>. </BLOCKQUOTE>
+<A name=25>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Reading HTML mail</H4>
+</A>
+<BLOCKQUOTE>
+You need the
+<I>w3m</I> utility
+or another command-line web browser
+that can write plain text to standard output.
+<PRE>
+<P>
+&nbsp;   <B>set pipe-text/html="</B><I>w3m -dump -T text/html</I><B>"</B>
+<P>
+</PRE>
+will then cause HTML text to be converted into a more friendly form,
+the command string depends on the browser you are using.
+</BLOCKQUOTE>
+<A name=26>
+
+    <H4 STYLE="margin-top: 0px;">&nbsp; &nbsp; Viewing PDF attachments</H4>
+</A>
+<BLOCKQUOTE>
+Most PDF viewers do not accept input directly from a pipe.
+It is thus necessary to store the attachment in a temporary file, as with
+<PRE>
+<P>
+&nbsp;   <B>set pipe-application-pdf="cat &gt;/tmp/nail$$.pdf; acroread /tmp/nail$$.pdf; rm /tmp/nail$$.pdf"
+<P>
+</PRE>
+<!-- resetStyles [FB] -->
+</B></BLOCKQUOTE>
+<A name=27>
+
+     <H3>SEE ALSO</H3>
+
+</A>
+<BLOCKQUOTE>
+<a href=http://heirloom.sourceforge.net/man/fmt.1.html>fmt</a>(1),
+newaliases(1),
+openssl(1),
+<a href=http://heirloom.sourceforge.net/man/pg.1.html>pg</a>(1),
+procmail(1),
+<a href=http://heirloom.sourceforge.net/man/more.1.html>more</a>(1),
+vacation(1),
+ssl(3),
+aliases(5),
+locale(7),
+mailaddr(7),
+sendmail(8)
+</BLOCKQUOTE>
+<A name=28>
+
+     <H3>NOTES</H3>
+
+</A>
+<BLOCKQUOTE>
+Variables in the environment passed to
+<I>nail</I> cannot be unset.
+<P>
+The character set conversion relies heavily
+on the
+<I>iconv</I>(3)
+function.
+Its functionality differs widely
+between the various system environments
+<I>nail</I> runs on.
+<P>
+Nail expects input text to be in Unix format,
+with lines separated by
+<I>newline</I> (^J, &#92;n) characters only.
+Non-Unix text files that use
+<I>carriage return</I> (^M, &#92;r)
+characters in addition will be treated as binary data;
+to send such files as text, strip these characters e.&nbsp;g. by
+<BLOCKQUOTE>
+<P>
+tr -d &#39;&#92;015&#39; &lt;input | nail .&nbsp;.&nbsp;.
+<P>
+</BLOCKQUOTE>
+or fix the tools that generate them.
+<P>
+POP3 mailboxes are limited in some ways:
+It is not possible to edit messages,
+they can only be copied and deleted.
+The line count for the header display
+is only appropriate if the entire message has been downloaded
+from the server.
+The status field of a message is maintained by the server
+between connections;
+some servers do not update it at all,
+and with a server that does,
+the &#39;exit&#39; command will not cause the message status to be reset.
+The &#39;newmail&#39; command and the &#39;newmail&#39; variable
+have no effect.
+An unencrypted POP3 message download
+can be interrupted from the terminal,
+but the part that was not downloaded
+will have to be downloaded
+before the next command is sent.
+A SSL/TLS encrypted POP3 message download
+should not be interrupted,
+as this will very likely cause an error in the SSL transport.
+<P>
+There is no support for SSL/TLS certificate revocation lists (CRLs) yet.
+<P>
+A <I>mail</I> command appeared in Version 1 A&amp;T Unix.
+Berkeley Mail was written in 1978 by Kurt Shoens.
+This man page is derived from
+from The Mail Reference Manual
+originally written by Kurt Shoens.
+A revision for <I>nail</I> was done by Gunnar Ritter.
+<P>
+Portions of this text are reprinted and reproduced in electronic form
+from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology
+&#151; Operating System Interface (POSIX), The Open Group Base
+Specifications Issue 6, Copyright &#169; 2001-2003 by the Institute of
+Electrical and Electronics Engineers, Inc and The Open Group. In the
+event of any discrepancy between this version and the original IEEE and
+The Open Group Standard, the original IEEE and The Open Group Standard
+is the referee document. The original Standard can be obtained online at
+<A HREF="http://www.opengroup.org/unix/online.html">http://www.opengroup.org/unix/online.html</A>&nbsp;.
+Redistribution of this material is permitted so long as this notice remains
+intact.
+</BLOCKQUOTE>
+<P><HR>
+<TABLE width=100%><TR> <TD width=33%><I>nail 10.8</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>6/13/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros.</FONT>
+</BODY></HTML>

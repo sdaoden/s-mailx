@@ -38,13 +38,15 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)temp.c	2.2 (gritter) 2/19/03";
+static char sccsid[] = "@(#)temp.c	2.4 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
-#include <errno.h>
 #include "extern.h"
+#include <errno.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /*
  * Mail -- a mail program
@@ -121,7 +123,7 @@ tinit()
 		tmpdir = (char *)smalloc(strlen(cp) + 1);
 		strcpy(tmpdir, cp);
 	} else {
-		tmpdir = PATH_TMP;
+		tmpdir = "/tmp";
 	}
 	if (myname != NULL) {
 		if (getuserid(myname) < 0) {

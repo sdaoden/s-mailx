@@ -38,16 +38,14 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.16 (gritter) 11/15/03";
+static char sccsid[] = "@(#)send.c	2.17 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
-
-#ifdef	HAVE_STRINGS_H
-#include <strings.h>
-#endif
+#include <time.h>
+#include <unistd.h>
 
 /*
  * Mail -- a mail program
@@ -336,7 +334,7 @@ FILE **qbuf;
 			Ftfree(&tempPipe);
 		}
 		if ((shell = value("SHELL")) == NULL)
-			shell = PATH_CSHELL;
+			shell = SHELL;
 		if ((rbuf = Popen(pipecmd, "W", shell, fileno(*qbuf)))
 				== NULL) {
 			perror(pipecmd);
@@ -735,7 +733,7 @@ char *param;
 static sigjmp_buf	pipejmp;
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 onpipe(signo)
 int signo;
 {

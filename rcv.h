@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)rcv.h	2.1 (gritter) 9/1/02
+ *	Sccsid @(#)rcv.h	2.4 (gritter) 6/13/04
  */
 
 /*
@@ -44,6 +44,22 @@
  * This file is included by normal files which want both
  * globals and declarations.
  */
+
+#include "config.h"
+
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
+#ifdef	HAVE_ICONV
+#include <iconv.h>
+#endif	/* HAVE_ICONV */
+#ifdef	HAVE_ALLOCA_H
+#include <alloca.h>
+#endif	/* HAVE_ALLOCA_H */
+
+#define	SHELL		"/bin/sh"
 
 #include "def.h"
 #include "glob.h"

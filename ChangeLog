@@ -1,3 +1,29 @@
+[10.8] released 6/28/04
+* Support for IPv6 is not built by default anymore. There are just too
+  many hosts on which it doesn't work while the IPv4 functions work
+  fine. If you have use for IPv6 support and know that it works, enable
+  it in the Makefile.
+* autoconf and automake are no longer used for building. See the file
+  'INSTALL' which describes the transition of existing build setups.
+* The --enable-all-chars configuration option is no longer available. A
+  run-time nail option variable 'print-all-chars' has been introduced
+  instead.
+* Nail can now handle folders in compressed mbox format. If a file name
+  given on the command line or with the 'folder', 'copy', and 'save'
+  commands ends with '.gz' or '.bz2', gzip(1) or bzip2(1) are executed
+  when reading and writing to it. Likewise, if a folder 'name' does not
+  exist, but either 'name.gz' or 'name.bz2' are found, the compressed
+  folder is used. To make use of compressed folders, just compress the
+  respective mbox format file.
+* If the variable SHELL is not set, the default shell is now /bin/sh
+  instead of csh.
+* If the variable EDITOR is not set, the default editor is now 'ed', as
+  specified by SUSv3.
+* Introduced an 'ssl-verify-user@host' variable as an account-specific
+  variant of 'ssl-verify'.
+* Introduced an 'ssl-method-user@host' variable as an account-specific
+  variant of 'ssl-method'.
+
 [10.7] released 3/19/04
 * The IEEE and The Open Group have granted permission to use parts of
   the POSIX standard text for the documentation of 'nail'. See the

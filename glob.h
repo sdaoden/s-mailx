@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)glob.h	2.9 (gritter) 11/1/02
+ *	Sccsid @(#)glob.h	2.10 (gritter) 6/13/04
  */
 
 /*

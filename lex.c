@@ -38,13 +38,16 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.18 (gritter) 12/9/03";
+static char sccsid[] = "@(#)lex.c	2.22 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
-#include <errno.h>
 #include "extern.h"
+#include <errno.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 /*
  * Mail -- a mail program
@@ -99,7 +102,8 @@ setfile(name, newmail)
 				"Cannot handle protocol: %s\n"), name);
 		return -1;
 	}
-	if ((ibuf = Fopen(name, "r")) == (FILE *)NULL) {
+	mb.mb_compressed = 0;
+	if ((ibuf = Zopen(name, "r", &mb.mb_compressed)) == (FILE *)NULL) {
 		if ((!isedit && errno == ENOENT) || newmail)
 			goto nomail;
 		perror(name);
@@ -151,7 +155,7 @@ setfile(name, newmail)
 	if (!newmail) {
 		mb.mb_type = MB_FILE;
 		mb.mb_perm = MB_DELE|MB_EDIT;
-		if ((i = open(name, O_WRONLY)) < 0)
+		if ((i = open(name, O_WRONLY)) < 0 && !mb.mb_compressed)
 			mb.mb_perm = 0;
 		else
 			close(i);
@@ -564,14 +568,14 @@ setmsize(sz)
  */
 
 static const struct cmd *
-lex(word)
-	char word[];
+lex(Word)
+	char Word[];
 {
 	extern const struct cmd cmdtab[];
 	const struct cmd *cp;
 
 	for (cp = &cmdtab[0]; cp->c_name != NULL; cp++)
-		if (is_prefix(word, cp->c_name))
+		if (is_prefix(Word, cp->c_name))
 			return(cp);
 	return(NONE);
 }
@@ -605,7 +609,7 @@ is_prefix(as1, as2)
 static int	inithdr;		/* am printing startup headers */
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 intr(s)
 	int s;
 {
@@ -630,7 +634,7 @@ intr(s)
 /*
  * When we wake up after ^Z, reprint the prompt.
  */
-static RETSIGTYPE
+static void
 stop(s)
 	int s;
 {
@@ -653,7 +657,7 @@ stop(s)
  * Branch here on hangup signal and simulate "exit".
  */
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 hangup(s)
 	int s;
 {
@@ -787,6 +791,7 @@ initbox(name)
 	const char *name;
 {
 	char *tempMesg;
+	int dummy;
 
 	if (mb.mb_type != MB_VOID) {
 		strncpy(prevfile, mailname, PATHSIZE);
@@ -802,7 +807,7 @@ initbox(name)
 		exit(1);
 	}
 	(void) fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
-	if ((mb.mb_itf = safe_fopen(tempMesg, "r")) == (FILE *)NULL) {
+	if ((mb.mb_itf = safe_fopen(tempMesg, "r", &dummy)) == (FILE *)NULL) {
 		perror(tempMesg);
 		exit(1);
 	}

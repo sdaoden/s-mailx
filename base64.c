@@ -23,7 +23,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)base64.c	2.3 (gritter) 2/20/04";
+static char sccsid[] = "@(#)base64.c	2.4 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 

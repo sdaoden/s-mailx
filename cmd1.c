@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.23 (gritter) 5/25/03";
+static char sccsid[] = "@(#)cmd1.c	2.24 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
@@ -57,7 +57,7 @@ static char sccsid[] = "@(#)cmd1.c	2.23 (gritter) 5/25/03";
  */
 
 static int screen;
-static RETSIGTYPE brokpipe __P((int));
+static void	brokpipe __P((int));
 static int	pipe1 __P((char *, int));
 static int	type1 __P((int *, int, int, int, char *, off_t *));
 
@@ -68,7 +68,7 @@ get_pager()
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
-		cp = value("bsdcompat") ? PATH_MORE : PATH_PG;
+		cp = value("bsdcompat") ? "more" : "pg";
 	return cp;
 }
 int
@@ -184,7 +184,7 @@ screensize()
 static sigjmp_buf	pipejmp;
 
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 onpipe(signo)
 {
 	siglongjmp(pipejmp, 1);
@@ -446,7 +446,7 @@ off_t *tstats;
 	if (pipe) {
 		cp = value("SHELL");
 		if (cp == NULL)
-			cp = PATH_CSHELL;
+			cp = SHELL;
 		obuf = Popen(cmd, "w", cp, 1);
 		if (obuf == (FILE*)NULL) {
 			perror(cmd);
@@ -692,7 +692,7 @@ void *v;
  * probably caused by quitting more.
  */
 /*ARGSUSED*/
-static RETSIGTYPE
+static void
 brokpipe(signo)
 	int signo;
 {

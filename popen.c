@@ -38,25 +38,38 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)popen.c	2.6 (gritter) 12/9/03";
+static char sccsid[] = "@(#)popen.c	2.9 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
-#ifdef	HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
-#include <errno.h>
 #include "extern.h"
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <errno.h>
+
+#ifndef	NSIG
+#define	NSIG	32
+#endif
 
 #define READ 0
 #define WRITE 1
 
 struct fp {
 	FILE *fp;
+	struct fp *link;
+	char *realfile;
+	long offset;
+	int omode;
 	int pipe;
 	int pid;
-	struct fp *link;
+	enum {
+		FP_UNCOMPRESSED	= 00,
+		FP_GZIPPED	= 01,
+		FP_BZIP2ED	= 02
+	} compressed;
 };
 static struct fp *fp_head;
 
@@ -71,8 +84,9 @@ static struct child	*child;
 static struct child	*findchild __P((int));
 static void	delchild __P((struct child *));
 static int	file_pid __P((FILE *));
-static void	register_file __P((FILE *, int, int));
+static void	register_file __P((FILE *, int, int, int, int, char *, long));
 static void	unregister_file __P((FILE *));
+static int	decompress __P((int, int, int));
 static int	wait_command __P((int));
 
 /*
@@ -95,34 +109,45 @@ sighandler_type handler;
 	return oact.sa_handler;
 }
 
-FILE *
-safe_fopen(file, mode)
-	char *file, *mode;
+static int
+scan_mode(mode, omode)
+	const char *mode;
+	int	*omode;
 {
-	int  omode, fd;
 
 	if (!strcmp(mode, "r")) {
-		omode = O_RDONLY;
+		*omode = O_RDONLY;
 	} else if (!strcmp(mode, "w")) {
-		omode = O_WRONLY | O_CREAT | O_TRUNC;
+		*omode = O_WRONLY | O_CREAT | O_TRUNC;
 	} else if (!strcmp(mode, "wx")) {
-		omode = O_WRONLY | O_CREAT | O_EXCL;
+		*omode = O_WRONLY | O_CREAT | O_EXCL;
 	} else if (!strcmp(mode, "a")) {
-		omode = O_WRONLY | O_APPEND | O_CREAT;
+		*omode = O_WRONLY | O_APPEND | O_CREAT;
 	} else if (!strcmp(mode, "a+")) {
-		omode = O_RDWR | O_APPEND;
+		*omode = O_RDWR | O_APPEND;
 	} else if (!strcmp(mode, "r+")) {
-		omode = O_RDWR;
+		*omode = O_RDWR;
 	} else if (!strcmp(mode, "w+")) {
-		omode = O_RDWR   | O_CREAT | O_EXCL;
+		*omode = O_RDWR   | O_CREAT | O_EXCL;
 	} else {
 		fprintf(stderr, catgets(catd, CATSET, 152,
 			"Internal error: bad stdio open mode %s\n"), mode);
 		errno = EINVAL;
-		return (FILE *)NULL;
+		return -1;
 	}
+	return 0;
+}
 
-	if ((fd = open(file, omode, 0666)) < 0)
+FILE *
+safe_fopen(file, mode, omode)
+	char *file, *mode;
+	int	*omode;
+{
+	int  fd;
+
+	if (scan_mode(mode, omode) < 0) 
+		return NULL;
+	if ((fd = open(file, *omode, 0666)) < 0)
 		return (FILE *)NULL;
 	return fdopen(fd, mode);
 }
@@ -132,9 +157,10 @@ Fopen(file, mode)
 	char *file, *mode;
 {
 	FILE *fp;
+	int omode;
 
-	if ((fp = safe_fopen(file, mode)) != (FILE *)NULL) {
-		register_file(fp, 0, 0);
+	if ((fp = safe_fopen(file, mode, &omode)) != (FILE *)NULL) {
+		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
 		(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
@@ -146,9 +172,11 @@ Fdopen(fd, mode)
 	char *mode;
 {
 	FILE *fp;
+	int	omode;
 
+	scan_mode(mode, &omode);
 	if ((fp = fdopen(fd, mode)) != (FILE *)NULL) {
-		register_file(fp, 0, 0);
+		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
 		(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
@@ -160,6 +188,81 @@ Fclose(fp)
 {
 	unregister_file(fp);
 	return fclose(fp);
+}
+
+FILE *
+Zopen(file, mode, compression)
+	char *file, *mode;
+	int *compression;
+{
+	int	input;
+	FILE	*output;
+	char	*rp;
+	int	omode;
+	char	*tempfn;
+	int	bits;
+	int	_compression;
+	long	offset;
+	char	*extension;
+
+	if (scan_mode(mode, &omode) < 0)
+		return NULL;
+	if (compression == NULL)
+		compression = &_compression;
+	bits = R_OK | (omode == O_RDONLY ? 0 : W_OK);
+	if ((extension = strrchr(file, '.')) != NULL) {
+		rp = file;
+		if (strcmp(extension, ".gz") == 0)
+			goto gzip;
+		if (strcmp(extension, ".bz2") == 0)
+			goto bz2;
+	}
+	if (access(file, F_OK) == 0) {
+		*compression = FP_UNCOMPRESSED;
+		return Fopen(file, mode);
+	} else if (access(rp=savecat(file, ".gz"), bits) == 0) {
+	gzip:	*compression = FP_GZIPPED;
+	} else if (access(rp=savecat(file, ".bz2"), bits) == 0) {
+	bz2:	*compression = FP_BZIP2ED;
+	} else {
+		*compression = FP_UNCOMPRESSED;
+		return Fopen(file, mode);
+	}
+	if ((input = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
+			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
+		return NULL;
+	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
+		perror(catgets(catd, CATSET, 167, "tmpfile"));
+		close(input);
+		return NULL;
+	}
+	unlink(tempfn);
+	if (input >= 0) {
+		if (decompress(*compression, input, fileno(output)) < 0) {
+			close(input);
+			Fclose(output);
+			return NULL;
+		}
+	} else {
+		if ((input = creat(rp, 0666)) < 0) {
+			Fclose(output);
+			return NULL;
+		}
+	}
+	close(input);
+	fflush(output);
+	if (omode & O_APPEND) {
+		int	flags;
+
+		if ((flags = fcntl(fileno(output), F_GETFL)) != -1)
+			fcntl(fileno(output), F_SETFL, flags | O_APPEND);
+		offset = ftell(output);
+	} else {
+		rewind(output);
+		offset = 0;
+	}
+	register_file(output, omode, 0, 0, *compression, rp, offset);
+	return output;
 }
 
 FILE *
@@ -206,7 +309,7 @@ char *cmd, *mode, *shell;
 	}
 	(void) close(hisside);
 	if ((fp = fdopen(myside, mod)) != (FILE *)NULL)
-		register_file(fp, 1, pid);
+		register_file(fp, 0, 1, pid, FP_UNCOMPRESSED, NULL, 0L);
 	return fp;
 }
 
@@ -243,18 +346,77 @@ close_all_files()
 }
 
 static void
-register_file(fp, pipe, pid)
+register_file(fp, omode, pipe, pid, compressed, realfile, offset)
 	FILE *fp;
-	int pipe, pid;
+	int omode, pipe, pid, compressed;
+	char *realfile;
+	long offset;
 {
 	struct fp *fpp;
 
 	fpp = (struct fp*)smalloc(sizeof *fpp);
 	fpp->fp = fp;
+	fpp->omode = omode;
 	fpp->pipe = pipe;
 	fpp->pid = pid;
 	fpp->link = fp_head;
+	fpp->compressed = compressed;
+	fpp->realfile = realfile ? sstrdup(realfile) : NULL;
+	fpp->offset = offset;
 	fp_head = fpp;
+}
+
+static void
+compress(struct fp *fpp)
+{
+	int	output;
+	char	*command[2];
+
+	if (fpp->omode == O_RDONLY)
+		return;
+	fflush(fpp->fp);
+	clearerr(fpp->fp);
+	fseek(fpp->fp, fpp->offset, SEEK_SET);
+	if ((output = open(fpp->realfile,
+			(fpp->omode|O_CREAT)&~O_EXCL,
+			0666)) < 0) {
+		fprintf(stderr, "Fatal: cannot create ");
+		perror(fpp->realfile);
+		exit_status |= 1;
+		return;
+	}
+	if ((fpp->omode & O_APPEND) == 0)
+		ftruncate(output, 0);
+	switch (fpp->compressed) {
+	case FP_GZIPPED:
+		command[0] = "gzip"; command[1] = "-c"; break;
+	case FP_BZIP2ED:
+		command[0] = "bzip2"; command[1] = "-c"; break;
+	default:
+		command[0] = "cat"; command[1] = NULL; break;
+	}
+	if (run_command(command[0], 0, fileno(fpp->fp), output,
+				command[1], NULL, NULL) < 0)
+		exit_status |= 1;
+	close(output);
+}
+
+static int
+decompress(int compression, int input, int output)
+{
+	char	*command[2];
+
+	/*
+	 * Note that it is not possible to handle 'pack' or 'compress'
+	 * formats because appending data does not work with them.
+	 */
+	switch (compression) {
+	case FP_GZIPPED:	command[0] = "gzip"; command[1] = "-cd"; break;
+	case FP_BZIP2ED:	command[0] = "bzip2"; command[1] = "-cd"; break;
+	default:		command[0] = "cat"; command[1] = NULL;
+	}
+	return run_command(command[0], 0, input, output,
+			command[1], NULL, NULL);
 }
 
 static void
@@ -265,6 +427,8 @@ unregister_file(fp)
 
 	for (pp = &fp_head; (p = *pp) != (struct fp *)NULL; pp = &p->link)
 		if (p->fp == fp) {
+			if (p->compressed != FP_UNCOMPRESSED)
+				compress(p);
 			*pp = p->link;
 			free((char *) p);
 			return;
@@ -407,7 +571,7 @@ delchild(cp)
 }
 
 /*ARGSUSED*/
-RETSIGTYPE
+void
 sigchild(signo)
 	int signo;
 {

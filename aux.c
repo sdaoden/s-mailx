@@ -38,13 +38,15 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.27 (gritter) 12/9/03";
+static char sccsid[] = "@(#)aux.c	2.30 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
+#include <sys/stat.h>
 #include <utime.h>
+#include <time.h>
 
 /*
  * Mail -- a mail program
@@ -93,15 +95,29 @@ save2str(str, old)
 	return new;
 }
 
+char *
+savecat(s1, s2)
+const char *s1;
+const char *s2;
+{
+	const char	*cp;
+	char	*ns, *np;
+
+	np = ns = salloc(strlen(s1) + strlen(s2) + 1);
+	for (cp = s1; *cp; cp++)
+		*np++ = *cp;
+	for (cp = s2; *cp; cp++)
+		*np++ = *cp;
+	*np = '\0';
+	return ns;
+}
+
 #ifdef	__STDC__
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
 
-#ifdef	HAVE_STRINGS_H
-#include <strings.h>
-#endif
 
 #ifndef	HAVE_SNPRINTF
 /*
@@ -439,7 +455,8 @@ struct sstack {
 	FILE	*s_file;		/* File we were in. */
 	enum condition	s_cond;		/* Saved state of conditionals */
 	int	s_loading;		/* Loading .mailrc, etc. */
-} sstack[NOFILE];
+#define	SSTACK	20
+} sstack[SSTACK];
 
 /*
  * Pushdown current input file and switch to a new one.
@@ -460,7 +477,7 @@ source(v)
 		perror(cp);
 		return(1);
 	}
-	if (ssp >= NOFILE - 1) {
+	if (ssp >= SSTACK - 1) {
 		printf(catgets(catd, CATSET, 3,
 					"Too much \"sourcing\" going on.\n"));
 		Fclose(fi);

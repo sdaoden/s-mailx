@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)v7.local.c	2.3 (gritter) 10/21/02";
+static char sccsid[] = "@(#)v7.local.c	2.5 (gritter) 6/13/04";
 #endif
 #endif /* not lint */
 
@@ -51,10 +51,10 @@ static char sccsid[] = "@(#)v7.local.c	2.3 (gritter) 10/21/02";
  */
 
 #include "rcv.h"
-#ifdef	STDC_HEADERS
-#include <stdlib.h>
-#endif
 #include "extern.h"
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 /*
  * Locate the user's mailbox file (ie, the place where new, unread
@@ -68,7 +68,7 @@ findmail(user, force, buf, size)
 	char *mbox;
 
 	if (force || (mbox = value("MAIL")) == NULL) {
-		(void)snprintf(buf, size, "%s/%s", PATH_MAILDIR, user);
+		(void)snprintf(buf, size, "%s/%s", MAILSPOOL, user);
 	} else {
 		(void)strncpy(buf, mbox, size);
 		buf[size-1]='\0';

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.27 (gritter) 12/9/03
+ *	Sccsid @(#)extern.h	2.29 (gritter) 6/13/04
  */
 
 struct name *cat __P((struct name *, struct name *));
@@ -44,7 +44,7 @@ struct name *extract __P((char [], int));
 struct name *nalloc __P((char [], int));
 struct name *outof __P((struct name *, FILE *, struct header *));
 struct name *usermap __P((struct name *));
-FILE	*safe_fopen __P((char *, char *));
+FILE	*safe_fopen __P((char *, char *, int *));
 FILE	*Fdopen __P((int, char *));
 FILE	*Fopen __P((char *, char *));
 FILE	*Popen __P((char *, char *, char *, int));
@@ -292,3 +292,5 @@ void	out_of_memory __P((void));
 time_t	rfctime __P((char *));
 void	extract_header __P((FILE *, struct header *));
 char	*need_hdrconv __P((struct header *, enum gfield));
+char	*savecat __P((const char *, const char *));
+FILE	*Zopen __P((char *, char *, int *));
