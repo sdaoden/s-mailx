@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.280 (gritter) 11/18/04 -->
+<!--      Sccsid: @(#)nail.1	2.284 (gritter) 12/2/04 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -1307,12 +1307,42 @@ Similar to
 <I>flipr</I> and
 <I>Replyall</I> variables.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(fwd)
+Takes a message and the address of a recipient
+and forwards the message to him.
+The text of the original message is included in the new one,
+with the value of the
+<I>fwdheading</I> variable printed before.
+The
+<I>fwdignore</I> and
+<I>fwdretain</I> commands specify which header fields are included in the new message.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Forward</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(Fwd)
+Similar to
+<I>forward</I>, but saves the message in a file named after
+the local part of the recipient&#39;s address.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>from</B> </TD><TD valign=bottom>
 (f) Takes a list of messages
 and prints their message headers,
 piped through the pager if the output does not fit on the screen.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>fwdignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies which header fields are to be ignored with the
+<I>forward</I> command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>fwdretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Specifies which header fields are to be retained with the
+<I>forward</I> command.
+<I>fwdretain</I> overrides
+<I>fwdignore</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>good</B> </TD><TD valign=bottom>
 (go) Takes a list of messages
@@ -1581,6 +1611,14 @@ unless the rewrite of edit file fails,
 in which case the user can escape
 with the exit command.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>redirect</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(red) Same as
+<I>resend</I>. </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>Redirect</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+(Red) Same as
+<I>Resend</I>. </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>remove</B> </TD><TD valign=bottom>
 (rem) Removes the named folders.
@@ -1917,6 +1955,18 @@ as a draft.
 <B>unflag</B> </TD><TD valign=bottom>
 Takes a message list and marks each message as not being &#39;flagged&#39;.
 </TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unfwdignore</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Removes the header field names
+from the list of ignored fields for the
+<I>forward</I> command.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>unfwdretain</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+Removes the header field names
+from the list of retained fields for the
+<I>forward</I> command.
+</TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>ungood</B> </TD><TD valign=bottom>
 Takes a message list and undoes the effect of a
@@ -2019,6 +2069,9 @@ and the user is asked for a filename
 to save each other part;
 if the contents of the first part are not to be saved,
 &#39;write /dev/null&#39; can be used.
+If the filename given starts with a &#39;|&#39; character,
+the part is piped through the remainder of the filename
+interpreted as a shell command.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
 the other are discarded.
@@ -2693,6 +2746,15 @@ just as if the surrounding part was of type
 Suppresses the printing of the version when first invoked.
 </TD></TR>
 <TR valign=top><TD colspan=2>
+<B>record-resent</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+If both this variable and the
+<I>record</I> variable are set,
+the
+<I>resend</I> and
+<I>Resend</I> commands save messages to the
+<I>record</I> folder as it is normally only done for newly composed messages.
+</TD></TR>
+<TR valign=top><TD colspan=2>
 <B>Replyall</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 Reverses the sense of reply and Reply commands.
 </TD></TR>
@@ -3012,6 +3074,15 @@ If the machine&#39;s hostname is not valid at the Internet
 either this variable or
 <I>hostname</I> have to be set
 to get correct Message-ID header fields.
+</TD></TR>
+<TR valign=top><TD colspan=2>
+<B>fwdheading</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
+The string to print before the text of a message
+with the
+<I>forward</I> command.
+Defaults to &#39;&#39;-------- Original Message --------&#39;&#39; if unset.
+If it is set to the empty string,
+no heading is printed.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>headline</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -4932,5 +5003,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.17</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>11/18/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.18</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>12/2/04</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>

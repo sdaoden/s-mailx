@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.280 (gritter) 11/18/04
+.\"     Sccsid: @(#)nail.1	2.284 (gritter) 12/2/04
 .\"
-.TH NAIL 1 "11/18/04" "nail 11.17" "User Commands"
+.TH NAIL 1 "12/2/04" "nail 11.18" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -1132,10 +1132,44 @@ and
 .I Replyall
 variables.
 .TP
+.B forward
+(fwd)
+Takes a message and the address of a recipient
+and forwards the message to him.
+The text of the original message is included in the new one,
+with the value of the
+.I fwdheading
+variable printed before.
+The
+.I fwdignore
+and
+.I fwdretain
+commands specify which header fields are included in the new message.
+.TP
+.B Forward
+(Fwd)
+Similar to
+.IR forward ,
+but saves the message in a file named after
+the local part of the recipient's address.
+.TP
 .B from
 (f) Takes a list of messages
 and prints their message headers,
 piped through the pager if the output does not fit on the screen.
+.TP
+.B fwdignore
+Specifies which header fields are to be ignored with the
+.I forward
+command.
+.TP
+.B fwdretain
+Specifies which header fields are to be retained with the
+.I forward
+command.
+.I fwdretain
+overrides
+.IR fwdignore .
 .TP
 .B good
 (go) Takes a list of messages
@@ -1396,6 +1430,14 @@ A return to the Shell is effected,
 unless the rewrite of edit file fails,
 in which case the user can escape
 with the exit command.
+.TP
+.B redirect
+(red) Same as
+.IR resend .
+.TP
+.B Redirect
+(Red) Same as
+.IR Resend .
 .TP
 .B remove
 (rem) Removes the named folders.
@@ -1708,6 +1750,18 @@ as a draft.
 .B unflag
 Takes a message list and marks each message as not being `flagged'.
 .TP
+.B unfwdignore
+Removes the header field names
+from the list of ignored fields for the
+.I forward
+command.
+.TP
+.B unfwdretain
+Removes the header field names
+from the list of retained fields for the
+.I forward
+command.
+.TP
 .B ungood
 Takes a message list and undoes the effect of a
 .I good
@@ -1802,6 +1856,9 @@ and the user is asked for a filename
 to save each other part;
 if the contents of the first part are not to be saved,
 `write /dev/null' can be used.
+If the filename given starts with a `|' character,
+the part is piped through the remainder of the filename
+interpreted as a shell command.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
 the other are discarded.
@@ -2400,6 +2457,18 @@ just as if the surrounding part was of type
 .B quiet
 Suppresses the printing of the version when first invoked.
 .TP
+.B record-resent
+If both this variable and the
+.I record
+variable are set,
+the
+.I resend
+and
+.I Resend
+commands save messages to the
+.I record
+folder as it is normally only done for newly composed messages.
+.TP
 .B Replyall
 Reverses the sense of reply and Reply commands.
 .TP
@@ -2689,6 +2758,15 @@ either this variable or
 .I hostname
 have to be set
 to get correct Message-ID header fields.
+.TP
+.B fwdheading
+The string to print before the text of a message
+with the
+.I forward
+command.
+Defaults to ``-------- Original Message --------'' if unset.
+If it is set to the empty string,
+no heading is printed.
 .TP
 .B headline
 A format string to use for the header summary,

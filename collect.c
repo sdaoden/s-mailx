@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.38 (gritter) 11/6/04";
+static char sccsid[] = "@(#)collect.c	2.41 (gritter) 12/8/04";
 #endif
 #endif /* not lint */
 
@@ -186,7 +186,7 @@ print_collf(FILE *collf, struct header *hp)
 	}
 	fprintf(obuf, catgets(catd, CATSET, 62,
 				"-------\nMessage contains:\n"));
-	gf = GTO|GSUBJECT|GCC|GBCC|GNL|GREPLYTO;
+	gf = GTO|GSUBJECT|GCC|GBCC|GNL|GREPLYTO|GFILES;
 	if (value("fullnames"))
 		gf |= GCOMMA;
 	puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -403,13 +403,13 @@ append_attachments(struct attachment *attach, char *names)
 
 FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int tflag)
+		char *quotefile, int doprefix, int tflag)
 {
 	FILE *fbuf;
 	struct ignoretab *quoteig;
 	int lc, cc, escape, eofcount;
 	int c, t;
-	char *linebuf = NULL, *cp, *quote;
+	char *linebuf = NULL, *cp, *quote = NULL;
 	size_t linesize;
 	char *tempMail = NULL;
 	int getfields;
@@ -447,6 +447,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	(void) &getfields;
 	(void) &tempMail;
 	(void) &tflag;
+	(void) &quote;
 
 	collf = NULL;
 	/*
@@ -527,11 +528,19 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	/*
 	 * Quote an original message
 	 */
-	if (mp != NULL && (quote = value("quote")) != NULL) {
+	if (mp != NULL && (doprefix || (quote = value("quote")) != NULL)) {
 		quoteig = allignore;
 		action = SEND_QUOTE;
-		if (strcmp(quote, "noheading") == 0) {
-			/*EMPTY*/
+		if (doprefix) {
+			quoteig = fwdignore;
+			if ((cp = value("fwdheading")) == NULL)
+				cp = "-------- Original Message --------";
+			if (*cp) {
+				fprintf(collf, "%s\n", cp);
+				fprintf(stdout, "%s\n", cp);
+			}
+		} else if (strcmp(quote, "noheading") == 0) {
+			/*EMPTY*/;
 		} else if (strcmp(quote, "headers") == 0) {
 			quoteig = ignore;
 		} else if (strcmp(quote, "allheaders") == 0) {
@@ -555,8 +564,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		cp = value("indentprefix");
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
-		send(mp, collf, quoteig, cp, action, NULL);
-		send(mp, stdout, quoteig, cp, action, NULL);
+		send(mp, collf, quoteig, doprefix ? NULL : cp, action, NULL);
+		send(mp, stdout, quoteig, doprefix ? NULL : cp, action, NULL);
 	}
 
 	if ((cp = value("escape")) != NULL)

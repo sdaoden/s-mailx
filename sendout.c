@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.69 (gritter) 11/17/04";
+static char sccsid[] = "@(#)sendout.c	2.72 (gritter) 12/2/04";
 #endif
 #endif /* not lint */
 
@@ -617,7 +617,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 	}
 	head.h_attach = attach;
 	head.h_smopts = smopts;
-	mail1(&head, 0, NULL, quotefile, recipient_record, tflag);
+	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag);
 	if (subject != NULL)
 		free(out.s);
 	return(0);
@@ -635,7 +635,7 @@ sendmail_internal(void *v, int recipient_record)
 
 	memset(&head, 0, sizeof head);
 	head.h_to = extract(str, GTO|GFULL);
-	mail1(&head, 0, NULL, NULL, recipient_record, 0);
+	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0);
 	return(0);
 }
 
@@ -772,14 +772,52 @@ start_mta(struct name *to, struct name *mailargs, FILE *input)
 }
 
 /*
+ * Record outgoing mail if instructed to do so.
+ */
+static enum okay
+mightrecord(FILE *fp, struct name *to, int recipient_record)
+{
+	char	*cp, *cq, *ep;
+
+	if (recipient_record) {
+		cq = skin(to->n_name);
+		cp = salloc(strlen(cq) + 1);
+		strcpy(cp, cq);
+		for (cq = cp; *cq && *cq != '@'; cq++);
+		*cq = '\0';
+	} else
+		cp = value("record");
+	if (cp != NULL) {
+		ep = expand(cp);
+		if (value("outfolder") && *ep != '/' && *ep != '+' &&
+				which_protocol(ep) == PROTO_FILE) {
+			cq = salloc(strlen(cp) + 2);
+			cq[0] = '+';
+			strcpy(&cq[1], cp);
+			cp = cq;
+			ep = expand(cp);
+		}
+		if (savemail(ep, fp) != 0) {
+			fprintf(stderr,
+				"Error while saving message to %s - "
+				"message not sent\n", ep);
+			rewind(fp);
+			exit_status |= 1;
+			savedeadletter(fp);
+			return STOP;
+		}
+	}
+	return OKAY;
+}
+
+/*
  * Mail a message on standard input to the people indicated
  * in the passed header.  (Internal interface).
  */
 enum okay 
 mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int tflag)
+		char *quotefile, int recipient_record, int doprefix, int tflag)
 {
-	char *cp, *cq, *ep;
 	struct name *to;
 	FILE *mtf, *nmtf;
 	enum okay	ok = STOP;
@@ -795,7 +833,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders, quote, quotefile, tflag)) == NULL)
+	if ((mtf = collect(hp, printheaders, quote, quotefile, doprefix,
+					tflag)) == NULL)
 		return STOP;
 	if (value("interactive") != NULL) {
 		if (((value("bsdcompat") || value("askatend"))
@@ -870,34 +909,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		ok = OKAY;
 		goto out;
 	}
-	if (recipient_record) {
-		cq = skin(to->n_name);
-		cp = salloc(strlen(cq) + 1);
-		strcpy(cp, cq);
-		for (cq = cp; *cq && *cq != '@'; cq++);
-		*cq = '\0';
-	} else
-		cp = value("record");
-	if (cp != NULL) {
-		ep = expand(cp);
-		if (value("outfolder") && *ep != '/' && *ep != '+' &&
-				which_protocol(ep) == PROTO_FILE) {
-			cq = salloc(strlen(cp) + 2);
-			cq[0] = '+';
-			strcpy(&cq[1], cp);
-			cp = cq;
-			ep = expand(cp);
-		}
-		if (savemail(ep, mtf) != 0) {
-			fprintf(stderr,
-				"Error while saving message to %s - "
-				"message not sent\n", ep);
-			rewind(mtf);
-			exit_status |= 1;
-			savedeadletter(mtf);
-			goto out;
-		}
-	}
+	if (mightrecord(mtf, to, recipient_record) != OKAY)
+		goto out;
 	ok = transfer(to, hp->h_smopts, mtf);
 out:
 	Fclose(mtf);
@@ -965,14 +978,14 @@ mkdate(FILE *fo, const char *field)
 #define	FMT_CC_AND_BCC	{ \
 				if (hp->h_cc != NULL && w & GCC) { \
 					if (fmt("Cc:", hp->h_cc, fo, \
-							w&GCOMMA, 0, \
+							w&(GCOMMA|GFILES), 0, \
 							action!=SEND_TODISP)) \
 						return 1; \
 					gotcha++; \
 				} \
 				if (hp->h_bcc != NULL && w & GBCC) { \
 					if (fmt("Bcc:", hp->h_bcc, fo, \
-							w&GCOMMA, 0, \
+							w&(GCOMMA|GFILES), 0, \
 							action!=SEND_TODISP)) \
 						return 1; \
 					gotcha++; \
@@ -1037,13 +1050,14 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		}
 	}
 	if (hp->h_replyto != NULL && w & GREPLYTO) {
-		if (fmt("Reply-To:", hp->h_replyto, fo, w&GCOMMA, 0,
+		if (fmt("Reply-To:", hp->h_replyto, fo, w&(GCOMMA|GFILES), 0,
 					action != SEND_TODISP))
 			return 1;
 		gotcha++;
 	}
 	if (hp->h_to != NULL && w & GTO) {
-		if (fmt("To:", hp->h_to, fo, w&GCOMMA, 0,action!=SEND_TODISP))
+		if (fmt("To:", hp->h_to, fo, w&(GCOMMA|GFILES), 0,
+					action!=SEND_TODISP))
 			return 1;
 		gotcha++;
 	}
@@ -1114,20 +1128,21 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
  * Format the given header line to not exceed 72 characters.
  */
 static int
-fmt(char *str, struct name *np, FILE *fo, int comma, int dropinvalid,
+fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 		int domime)
 {
 	int col, len, count = 0;
-	int is_to = 0;
+	int is_to = 0, comma;
 
-	comma = comma ? 1 : 0;
+	comma = flags&GCOMMA ? 1 : 0;
 	col = strlen(str);
 	if (col) {
 		fwrite(str, sizeof *str, strlen(str), fo);
-		if (col == 3 && asccasecmp(str, "to:") == 0 ||
-			col == 3 && asccasecmp(str, "cc:") == 0 ||
-			col == 4 && asccasecmp(str, "bcc:") == 0 ||
-			col == 10 && asccasecmp(str, "Resent-To:") == 0)
+		if ((flags&GFILES) == 0 &&
+				col == 3 && asccasecmp(str, "to:") == 0 ||
+				col == 3 && asccasecmp(str, "cc:") == 0 ||
+				col == 4 && asccasecmp(str, "bcc:") == 0 ||
+				col == 10 && asccasecmp(str, "Resent-To:") == 0)
 			is_to = 1;
 	}
 	for (; np != NULL; np = np->n_flink) {
@@ -1265,7 +1280,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	FILE *ibuf, *nfo, *nfi;
 	char *tempMail;
 	struct header head;
-	enum okay	ok;
+	enum okay	ok = STOP;
 
 	memset(&head, 0, sizeof head);
 	if ((to = checkaddrs(to)) == NULL) {
@@ -1305,9 +1320,11 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	if (senderr)
 		savedeadletter(nfi);
 	to = elide(to);
-	if (count(to) != 0)
-		ok = transfer(to, head.h_smopts, nfi);
-	else
+	if (count(to) != 0) {
+		if (value("record-resent") == NULL ||
+				mightrecord(nfi, to, 0) == OKAY)
+			ok = transfer(to, head.h_smopts, nfi);
+	} else
 		ok = OKAY;
 	Fclose(nfi);
 	return ok;
