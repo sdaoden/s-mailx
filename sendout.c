@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	1.8 (gritter) 2/17/01";
+static char sccsid[] = "@(#)sendout.c	1.10 (gritter) 5/13/01";
 #endif
 #endif /* not lint */
 
@@ -390,7 +390,8 @@ infix(hp, fi, convert)
 	if (strcmp(cs, tcs)) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
-		if ((iconvd = iconv_open_ft(cs, tcs)) == (iconv_t)-1) {
+		if ((iconvd = iconv_open_ft(cs, tcs)) == (iconv_t)-1
+				&& errno != 0) {
 			if (errno == EINVAL)
 				fprintf(stderr,
 			"Cannot convert from %s to %s\n", tcs, cs);
@@ -697,6 +698,10 @@ mail1(hp, printheaders, quote, quotefile)
 	FILE *mtf, *nmtf;
 	int convert;
 
+	if ((hp->h_to = checkaddrs(hp->h_to)) == NULL) {
+		senderr++;
+		return;
+	}
 	convert = gettextconversion();
 	/*
 	 * Collect user's mail from standard input.
@@ -1137,6 +1142,10 @@ struct name *to;
 	FILE *ibuf, *nfo, *nfi;
 	struct header head;
 
+	if ((to = checkaddrs(to)) == NULL) {
+		senderr++;
+		return 1;
+	}
 	if ((nfo = Fopen(tempMail, "w")) == (FILE *)NULL) {
 		senderr++;
 		perror(tempMail);

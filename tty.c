@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	1.5 (gritter) 11/18/00";
+static char sccsid[] = "@(#)tty.c	1.6 (gritter) 2/20/01";
 #endif
 #endif /* not lint */
 
@@ -325,8 +325,8 @@ grabh(hp, gflags)
 		if (!ttyset && hp->h_to != NIL)
 			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
 #endif
-		hp->h_to =
-			extract(rtty_internal("To: ", detract(hp->h_to, 0)), GTO);
+		hp->h_to = checkaddrs(extract(rtty_internal("To: ",
+						detract(hp->h_to, 0)), GTO));
 	}
 	if (gflags & GSUBJECT) {
 #ifndef TIOCSTI
@@ -340,16 +340,16 @@ grabh(hp, gflags)
 		if (!ttyset && hp->h_cc != NIL)
 			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
 #endif
-		hp->h_cc =
-			extract(rtty_internal("Cc: ", detract(hp->h_cc, 0)), GCC);
+		hp->h_cc = checkaddrs(extract(rtty_internal("Cc: ",
+						detract(hp->h_cc, 0)), GCC));
 	}
 	if (gflags & GBCC) {
 #ifndef TIOCSTI
 		if (!ttyset && hp->h_bcc != NIL)
 			ttyset++, tcsetattr(fileno(stdin), TCSADRAIN, &ttybuf);
 #endif
-		hp->h_bcc =
-			extract(rtty_internal("Bcc: ", detract(hp->h_bcc, 0)), GBCC);
+		hp->h_bcc = checkaddrs(extract(rtty_internal("Bcc: ",
+						detract(hp->h_bcc, 0)), GBCC));
 	}
 	if (gflags & GATTACH) {
 #ifndef TIOCSTI

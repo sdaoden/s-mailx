@@ -33,12 +33,13 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)quit.c	1.7 (gritter) 1/25/01";
+static char sccsid[] = "@(#)quit.c	1.9 (gritter) 5/13/01";
 #endif
 #endif /* not lint */
 
 #include "rcv.h"
 #include <stdio.h>
+#include <errno.h>
 #include "extern.h"
 #ifdef	HAVE_SYS_FILE_H
 #include <sys/file.h>
@@ -192,8 +193,11 @@ quit()
 #else
 	fbuf = Fopen(mailname, "r+");
 #endif
-	if (fbuf == (FILE*)NULL)
+	if (fbuf == (FILE*)NULL) {
+		if (errno == ENOENT)
+			return;
 		goto newmail;
+	}
 #ifndef	F_SETLKW
 	if (fcntl_lock(fileno(fbuf), LOCK_EX) == -1) {
 #else

@@ -38,7 +38,7 @@ static char copyright[] =
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)main.c	1.9 (gritter) 1/19/01";
+static char sccsid[] = "@(#)main.c	1.10 (gritter) 2/20/01";
 #endif
 #endif /* not lint */
 
@@ -132,7 +132,11 @@ main(argc, argv)
 	attach = NIL;
 	smopts = NIL;
 	subject = NULL;
+#ifndef	__GLIBC__
 	while ((i = getopt(argc, argv, "INVT:a:b:c:definqr:s:u:v")) != EOF) {
+#else
+	while ((i = getopt(argc, argv, "+INVT:a:b:c:definqr:s:u:v")) != EOF) {
+#endif
 		switch (i) {
 		case 'V':
 			puts(version);
@@ -240,13 +244,13 @@ main(argc, argv)
 			/*
 			 * Get Carbon Copy Recipient list
 			 */
-			cc = cat(cc, nalloc(optarg, GCC));
+			cc = checkaddrs(cat(cc, nalloc(optarg, GCC)));
 			break;
 		case 'b':
 			/*
 			 * Get Blind Carbon Copy Recipient list
 			 */
-			bcc = cat(bcc, nalloc(optarg, GBCC));
+			bcc = checkaddrs(cat(bcc, nalloc(optarg, GBCC)));
 			break;
 		case '?':
 			fprintf(stderr,
@@ -258,7 +262,7 @@ main(argc, argv)
 		}
 	}
 	for (i = optind; (argv[i]) && (*argv[i] != '-'); i++)
-		to = cat(to, nalloc(argv[i], GTO));
+		to = checkaddrs(cat(to, nalloc(argv[i], GTO)));
 	for (; argv[i]; i++)
 		smopts = cat(smopts, nalloc(argv[i], 0));
 	/*

@@ -1,3 +1,9 @@
+[9.27] released 5/13/01
+* Check addresses when they are entered and drop invalid ones.
+* Supress glibc's getopt(3) argument reordering.
+* Fix handling of last entry on a mime.types file line (bug introduced in 9.24).
+* Improved handling of proprietary character set names on SVr4 iconv.
+
 [9.26] released 2/17/01
 * Avoid to prepend or append multiple newline characters to the record folder.
 * Handle unquoted multipart boundaries again.

@@ -35,7 +35,7 @@
 static char copyright[] =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #ifdef	DOSCCS
-static char sccsid[]  = "@(#)mime.c	1.17 (gritter) 2/17/01";
+static char sccsid[]  = "@(#)mime.c	1.20 (gritter) 5/13/01";
 #endif
 #endif /* not lint */
 
@@ -211,8 +211,10 @@ mime_name_invalid(name, putmsg)
 char *name;
 {
 	char *addr, *p;
-	int in_quote = 0, in_domain = 0, err = 0;
+	int in_quote = 0, in_domain = 0, err = 0, hadat = 0;
 
+	if (isfileaddr(name))
+		return 0;
 	addr = skin(name);
 
 	if (addr == NULL || *addr == '\0')
@@ -221,11 +223,12 @@ char *name;
 		if (*p == '\"') {
 			in_quote = !in_quote;
 		} else if (*p < 040 || (*p & 0377) >= 0177) {
-			err++;
+			err = *p & 0377;
+			break;
 		} else if (in_domain == 2) {
 			if (*p == ']' && p[1] != '\0' || *p == '\0'
 					|| *p == '\\' || blankchar(*p)) {
-				err++;
+				err = *p & 0377;
 				break;
 			}
 		} else if (in_quote && in_domain == 0) {
@@ -233,21 +236,65 @@ char *name;
 		} else if (*p == '\\' && p[1] != '\0') {
 			p++;
 		} else if (*p == '@') {
+			if (hadat++) {
+				if (putmsg) {
+					fprintf(stderr,
+					"%s contains invalid @@ sequence\n",
+						addr);
+					putmsg = 0;
+				}
+				err = *p;
+				break;
+			}
 			if (p[1] == '[')
 				in_domain = 2;
 			else
 				in_domain = 1;
+			continue;
 		} else if (*p == '(' || *p == ')' || *p == '<' || *p == '>'
 				|| *p == ',' || *p == ';' || *p == ':'
 				|| *p == '\\' || *p == '[' || *p == ']') {
-			err++;
+			err = *p & 0377;
 			break;
 		}
+		hadat = 0;
 	}
 	if (err && putmsg) {
-		fprintf(stderr, "%s contains invalid characters\n", addr);
+		fprintf(stderr, "%s contains invalid character '", addr);
+#ifdef	HAVE_SETLOCALE
+		if (isprint(err))
+#endif	/* HAVE_SETLOCALE */
+			fputc(err, stderr);
+#ifdef	HAVE_SETLOCALE
+		else
+			fprintf(stderr, "\\%03o", err);
+#endif	/* HAVE_SETLOCALE */
+		fprintf(stderr, "'\n");
 	}
 	return err;
+}
+
+/*
+ * Check all addresses in np and delete invalid ones.
+ */
+struct name *
+checkaddrs(np)
+struct name *np;
+{
+	struct name *n = np;
+
+	while (n != NULL) {
+		if (mime_name_invalid(n->n_name, 1)) {
+			if (n->n_blink)
+				n->n_blink->n_flink = n->n_flink;
+			if (n->n_flink)
+				n->n_flink->n_blink = n->n_blink;
+			if (n == np)
+				np = n->n_flink;
+		}
+		n = n->n_flink;
+	}
+	return np;
 }
 
 static void
@@ -436,6 +483,10 @@ const char *tocode, *fromcode;
 	iconv_t id;
 	char *t, *f, *p;
 
+	if (strcmp(tocode, fromcode) == 0) {
+		errno = 0;
+		return (iconv_t)-1;
+	}
 	/*
 	 * On Linux systems, this call may succeed.
 	 */
@@ -446,10 +497,18 @@ const char *tocode, *fromcode;
 	 */
 	if (strncasecmp(tocode, "iso-", 4) == 0)
 		tocode += 4;
+	else if (strncasecmp(tocode, "iso", 3) == 0)
+		tocode += 3;
 	if (strncasecmp(fromcode, "iso-", 4) == 0)
 		fromcode += 4;
+	else if (strncasecmp(fromcode, "iso", 3) == 0)
+		fromcode += 3;
 	if (*tocode == '\0' || *fromcode == '\0')
 		return (iconv_t) -1;
+	if (strcmp(tocode, fromcode) == 0) {
+		errno = 0;
+		return (iconv_t)-1;
+	}
 	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
 		return id;
 	/*
@@ -459,6 +518,10 @@ const char *tocode, *fromcode;
 	strupcpy(t, tocode);
 	f = (char *)salloc(strlen(fromcode) + 1);
 	strupcpy(f, fromcode);
+	if (strcmp(t, f) == 0) {
+		errno = 0;
+		return (iconv_t)-1;
+	}
 	if ((id = iconv_open(t, f)) != (iconv_t)-1)
 		return id;
 	/*
@@ -466,6 +529,10 @@ const char *tocode, *fromcode;
 	 */
 	stripdash(t);
 	stripdash(f);
+	if (strcmp(t, f) == 0) {
+		errno = 0;
+		return (iconv_t)-1;
+	}
 	if ((id = iconv_open(t, f)) != (iconv_t)-1)
 		return id;
 	/*
@@ -645,7 +712,7 @@ char *x, *l;
 		return NULL;
 	while (*l != '\0') {
 		n = l;
-		while (spacechar(*l) == 0 && *l != '\0')
+		while (blankchar(*l) == 0 && *l != '\0')
 			l++;
 		if (*l == '\0')
 			return NULL;

@@ -19,15 +19,18 @@ If you want to use nail with a POP or IMAP mailbox, you have to set up
 a program like e.g. fetchmail since nail does not contain such network
 client code.
 
-Nail has been built successfully on the following operating systems:
+Nail has been built successfully on the following systems:
 
 Linux 		2.[024]; glibc 2.[12], libc[45]
-FreeBSD		4.0-STABLE
-Solaris		8; 7; 2.6
+Solaris		8; 7; 2.6; 2.5
 UnixWare	7.[01].1; 2.1.2
 OpenServer	5.0.5
 Digital Unix	4.0
 HP-UX		10.20
+SINIX-Z		5.42
+FreeBSD		4.0-STABLE
+OpenBSD		2.8
+NetBSD		1.5
 
 If you can build it on other operating systems, please contact me and
 send me a diff with your changes so I can include them in this archive.
@@ -60,16 +63,6 @@ unaltered mail message that caused the problem along with a description!
 This may be a privacy issue, but it is nearly impossible to fix the
 error without an exact reconstruction.
 
-If nail dumps core and you work on a Linux i386 system, please send me also
-- the version of the kernel and of the libc
-- the nail binary that dumped core
-- a strace(1) or ltrace(1) output.
-Do not send me the core file unless your nail binary includes debugging
-information.
-
-If you work on another kind of machine, you can send me a description
-and a trace output, of course, but I cannot handle your binaries then.
-
 If you have an idea how to improve nail, you are also invited to write
 me. But you should remember that nail's primary goal is to remain
 clean and simple. All ideas are worth at least a discussion, though.
@@ -79,4 +72,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					1/11/01
+<g-r@bigfoot.de>					5/13/01

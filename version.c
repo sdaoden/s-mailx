@@ -1,4 +1,4 @@
-#define	V	"9.26"
+#define	V	"9.27"
 /*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,7 +34,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)version.c	1.26 (gritter) 2/17/01";
+static char sccsid[] = "@(#)version.c	1.30 (gritter) 5/13/01";
 #endif
 #endif /* not lint */
 
@@ -49,6 +49,6 @@ static char sccsid[] = "@(#)version.c	1.26 (gritter) 2/17/01";
 #if 0
 char	*version = "8.1 6/6/93";
 #else
-const char *version = "nail " V " 2/17/01";
-const static char *versionid = "@(#)nail " V " 2/17/01";
+const char *version = "nail " V " 5/13/01";
+const static char *versionid = "@(#)nail " V " 5/13/01";
 #endif

@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	1.9 (gritter) 2/17/01
+ *	Sccsid @(#)extern.h	1.10 (gritter) 2/20/01
  */
 
 struct name;
@@ -296,6 +296,7 @@ int	forward_msg __P((struct message *, struct name *, int));
 int	smtp_mta __P((char *, struct name *, FILE *));
 char	*nodename __P((void));
 int	mime_name_invalid __P((char *, int));
+struct name	*checkaddrs __P((struct name *));
 char	*myaddr __P((void));
 char	*gettcharset __P((void));
 size_t	makeprint __P((char *, size_t));

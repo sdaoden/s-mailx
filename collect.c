@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	1.7 (gritter) 2/16/01";
+static char sccsid[] = "@(#)collect.c	1.8 (gritter) 2/20/01";
 #endif
 #endif /* not lint */
 
@@ -371,13 +371,17 @@ cont:
 			/*
 			 * Grab a bunch of headers.
 			 */
-			grabh(hp, GTO|GSUBJECT|GCC|GBCC);
+			do
+				grabh(hp, GTO|GSUBJECT|GCC|GBCC);
+			while (hp->h_to == NULL);
 			goto cont;
 		case 't':
 			/*
 			 * Add to the To list.
 			 */
-			hp->h_to = cat(hp->h_to, extract(&linebuf[2], GTO));
+			while ((hp->h_to = checkaddrs(cat(hp->h_to,
+						extract(&linebuf[2], GTO))))
+					== NULL);
 			break;
 		case 's':
 			/*
@@ -401,13 +405,15 @@ cont:
 			/*
 			 * Add to the CC list.
 			 */
-			hp->h_cc = cat(hp->h_cc, extract(&linebuf[2], GCC));
+			hp->h_cc = checkaddrs(cat(hp->h_cc,
+						extract(&linebuf[2], GCC)));
 			break;
 		case 'b':
 			/*
 			 * Add stuff to blind carbon copies list.
 			 */
-			hp->h_bcc = cat(hp->h_bcc, extract(&linebuf[2], GBCC));
+			hp->h_bcc = checkaddrs(cat(hp->h_bcc,
+					extract(&linebuf[2], GBCC)));
 			break;
 		case 'd':
 			strncpy(linebuf + 2, getdeadletter(), LINESIZE - 2);
