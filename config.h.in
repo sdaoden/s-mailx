@@ -58,11 +58,17 @@
 /* Define if you have the fpathconf function.  */
 #undef HAVE_FPATHCONF
 
+/* Define if you have the getaddrinfo function.  */
+#undef HAVE_GETADDRINFO
+
 /* Define if you have the getc_unlocked function.  */
 #undef HAVE_GETC_UNLOCKED
 
 /* Define if you have the gethostname function.  */
 #undef HAVE_GETHOSTNAME
+
+/* Define if you have the getnameinfo function.  */
+#undef HAVE_GETNAMEINFO
 
 /* Define if you have the iconv function.  */
 #undef HAVE_ICONV

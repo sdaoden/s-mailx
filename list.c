@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.10 (gritter) 11/24/02";
+static char sccsid[] = "@(#)list.c	2.11 (gritter) 1/10/03";
 #endif
 #endif /* not lint */
 
@@ -58,7 +58,7 @@ static int	check __P((int, int));
 static int	scan __P((char **));
 static void	regret __P((int));
 static void	scaninit __P((void));
-static int	matchsender __P((char *, int));
+static int	matchsender __P((char *, int, int));
 static int	matchmid __P((char *, int));
 static int	matchsubj __P((char *, int));
 static void	mark __P((int));
@@ -348,6 +348,8 @@ number:
 	 */
 
 	if (np > namelist || id) {
+		int	allnet = value("allnet") != NULL;
+
 		for (i = 1; i <= msgcount; i++) {
 			mc = 0;
 			if (np > namelist) {
@@ -359,7 +361,8 @@ number:
 						}
 					}
 					else {
-						if (matchsender(*nq, i)) {
+						if (matchsender(*nq, i,
+								allnet)) {
 							mc++;
 							break;
 						}
@@ -756,10 +759,22 @@ first(f, m)
  * if so.
  */
 static int
-matchsender(str, mesg)
+matchsender(str, mesg, allnet)
 	char *str;
-	int mesg;
+	int mesg, allnet;
 {
+	if (allnet) {
+		char *cp = nameof(&message[mesg - 1], 0);
+
+		do {
+			if ((*cp == '@' || *cp == '\0') &&
+					(*str == '@' || *str == '\0'))
+				return 1;
+			if (*cp != *str)
+				break;
+		} while (cp++, *str++ != '\0');
+		return 0;
+	}
 	return !strcmp(str, nameof(&message[mesg - 1], 0));
 }
 

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.18 (gritter) 11/1/02";
+static char sccsid[] = "@(#)aux.c	2.19 (gritter) 12/7/02";
 #endif
 #endif /* not lint */
 
@@ -373,9 +373,11 @@ gethfield(f, linebuf, linesize, rem, colon)
 			c -= cp2 - line2;
 			if (cp + c >= *linebuf + *linesize - 2) {
 				size_t diff = cp - *linebuf;
+				size_t colondiff = *colon - *linebuf;
 				*linebuf = srealloc(*linebuf,
 						*linesize += c + 2);
 				cp = &(*linebuf)[diff];
+				*colon = &(*linebuf)[colondiff];
 			}
 			*cp++ = ' ';
 			memcpy(cp, cp2, c);

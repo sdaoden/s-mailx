@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.15 (gritter) 11/28/02";
+static char sccsid[] = "@(#)sendout.c	2.16 (gritter) 11/30/02";
 #endif
 #endif /* not lint */
 
@@ -428,10 +428,12 @@ infix(hp, fi)
 #endif
 		return NULL;
 	}
+#ifdef	HAVE_ICONV
 	if (convhdr && iconvd != (iconv_t)-1) {
 		iconv_close(iconvd);
 		iconvd = (iconv_t)-1;
 	}
+#endif
 	if (hp->h_attach != NULL) {
 		if (make_multipart(hp, convert, fi, nfo,
 					contenttype, charset) != 0) {

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.2 (gritter) 11/24/02";
+static char sccsid[] = "@(#)pop3.c	2.3 (gritter) 1/13/03";
 #endif
 #endif /* not lint */
 
@@ -745,21 +745,61 @@ pop3_open(xserver, mp, use_ssl, uhp)
 	const char *uhp;
 {
 	int sockfd;
+#ifdef	HAVE_IPv6_FUNCS
+	char hbuf[NI_MAXHOST];
+	struct addrinfo hints, *res0, *res;
+#else	/* !HAVE_IPv6_FUNCS */
 	struct sockaddr_in servaddr;
 	struct in_addr **pptr;
 	struct hostent *hp;
 	struct servent *sp;
 	unsigned short port = 0;
+#endif	/* !HAVE_IPv6_FUNCS */
 	char *portstr = use_ssl ? "pop3s" : "pop3", *cp;
 	char *server = (char *)xserver;
 
 	if ((cp = strchr(server, ':')) != NULL) {
 		portstr = &cp[1];
+#ifndef	HAVE_IPv6_FUNCS
 		port = (unsigned short)strtol(portstr, NULL, 10);
+#endif	/* !HAVE_IPv6_FUNCS */
 		server = salloc(cp - xserver + 1);
 		memcpy(server, xserver, cp - xserver);
 		server[cp - xserver] = '\0';
 	}
+#ifdef	HAVE_IPv6_FUNCS
+	memset(&hints, 0, sizeof hints);
+	hints.ai_socktype = SOCK_STREAM;
+	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
+		fprintf(stderr, catgets(catd, CATSET, 252,
+				"could not resolve host: %s\n"), server);
+		return STOP;
+	}
+	sockfd = -1;
+	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
+		if (verbose) {
+			if (getnameinfo(res->ai_addr, res->ai_addrlen,
+						hbuf, sizeof hbuf, NULL, 0,
+						NI_NUMERICHOST) != 0)
+				strcpy(hbuf, "unknown host");
+			fprintf(stderr, catgets(catd, CATSET, 192,
+					"Connecting to %s . . ."), hbuf);
+		}
+		if ((sockfd = socket(res->ai_family, res->ai_socktype,
+				res->ai_protocol)) >= 0) {
+			if (connect(sockfd, res->ai_addr, res->ai_addrlen)!=0) {
+				close(sockfd);
+				sockfd = -1;
+			}
+		}
+	}
+	if (sockfd < 0) {
+		perror(catgets(catd, CATSET, 254, "could not connect"));
+		freeaddrinfo(res0);
+		return STOP;
+	}
+	freeaddrinfo(res0);
+#else	/* !HAVE_IPv6_FUNCS */
 	if (port == 0) {
 		if ((sp = getservbyname(portstr, "tcp")) == NULL) {
 			if (equal(portstr, "pop3"))
@@ -797,6 +837,7 @@ pop3_open(xserver, mp, use_ssl, uhp)
 		perror(catgets(catd, CATSET, 254, "could not connect"));
 		return STOP;
 	}
+#endif	/* !HAVE_IPv6_FUNCS */
 	if (verbose)
 		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
 	mp->mb_sock = sockfd;

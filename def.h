@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.19 (gritter) 11/1/02
+ *	Sccsid @(#)def.h	2.20 (gritter) 1/13/03
  */
 
 /*
@@ -45,6 +45,15 @@
  */
 
 #include "config.h"
+
+#if !defined (NI_MAXHOST) || (NI_MAXHOST) < 1025
+#undef	NI_MAXHOST
+#define	NI_MAXHOST	1025
+#endif
+
+#if defined (HAVE_GETADDRINFO) && defined (HAVE_GETNAMEINFO)
+#define	HAVE_IPv6_FUNCS
+#endif
 
 #ifndef	FD_CLOEXEC
 #define	FD_CLOEXEC	1

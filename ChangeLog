@@ -1,3 +1,15 @@
+[10.4] released 1/19/02
+* A missing #ifdef HAVE_ICONV caused build errors on platforms without
+  iconv() support (J.A. Neitzel, Jens Schleusener, Lars Kellogg-Stedman,
+  Felicia Neff, Chris Pinnock).
+* Extraction of parts from header fields with more than 2560 characters
+  fixed (Lukasz Sznuk, William Cherry).
+* Source archive name in nail.spec corrected (Didar Hussain).
+* Fixed segmentation violation when encountering multipart header fields
+  that contain no ':' character (William Cherry).
+* Respect the 'allnet' variable when comparing strings in message lists.
+* IPv6 support (Jun-ichiro itojun Hagino).
+
 [10.3] released 11/29/02
 * Fixed a buffer overflow that occured with iconv() support disabled (Stan
   Tobias).

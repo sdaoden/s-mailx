@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.14 (gritter) 11/13/02";
+static char sccsid[] = "@(#)send.c	2.15 (gritter) 1/10/03";
 #endif
 #endif /* not lint */
 
@@ -616,7 +616,7 @@ off_t *stats;
 			 */
 			fieldname = sstrdup(ph->hd_line);
 			cp = strchr(fieldname, ':');
-			if (*cp == '\0') {
+			if (cp == NULL) {
 				/*
 				 * Bad header.
 				 */

@@ -33,21 +33,44 @@ Mac OS		10.1 (but note that there is no support for
 		case-insensitive file systems and other possible
 		Mac OS oddities).
 
-If you can build it on other operating systems, please contact me and
-send me a diff with your changes so I can include them in this
-archive.  If there are no changes, even better, but I would like to
-hear from you even then to extend this list.
+If you can build it on other operating systems, please contact me
+and send me a diff with your changes so I can include them in this
+archive (preferably a unified diff, gnu-diff -u). If there are no
+changes, even better, but I would like to hear from you even then
+to extend this list.
 
 It should generally be possible to build nail on most Unix-style
 systems without much effort; however, especially the character set
 support varies between them. See the file "I18N" for details.
 
-Note that the mbox format variant based on the "Content-Length:" header
-field that is used on most SVR4 systems by default is not supported by
-nail. As this format generally is a design flaw, you should fix your
-system by either using procmail for local mail delivery, which is a
-good idea anyway, or at least add the -E flag to the Mlocal line in
-/etc/sendmail.cf if using /usr/lib/mail.local.
+On the other hand, I strongly discourage from porting nail to Windows
+and environments that make Windows look Unix-like; I won't accept any
+patches or suggestions that go in this direction. There are two major
+reasons for this: First, any port makes maintaining harder; there are
+always more work-arounds in the source, and introducing new features
+involves the question whether they will work an all supported platforms.
+The more different a platform behaves from, let's say, the common Unix
+way, the more hacks have to be made, costing human time that could
+otherwise have been used to enhance the software for Unix platforms.
+Windows is just not worth this, and here we are at the second point:
+Porting software to Windows encourages people to use -- that is: to buy
+-- Windows. It supports a company that is known to threaten Open Source
+software like nail. In short, porting nail (or similar free software)
+to Windows has an ill effect on that software. Don't do it.
+
+Note that my statement doesn't legally restrict you if you want to port
+nail to any platform. This would not be the way of free software either,
+especially since I might be wrong in the future; as an example, porting
+free software to mainframes of a certain company is considered a good
+thing today. I just wish to express my opinion as a free software
+developer, and to inform you that I don't maintain such a port.
+
+The mbox format variant based on the "Content-Length:" header field that
+is used on most SVr4 systems by default is not supported by nail. As this
+format generally is a design flaw, you should fix your system by either
+using procmail for local mail delivery, which is a good idea anyway, or
+at least add the -E flag to the Mlocal line in /etc/sendmail.cf if using
+/usr/lib/mail.local.
 
 Although it is not bad, just obsolete, similar considerations apply to
 the MMDF format used on OpenServer systems; unless you switch to
@@ -72,4 +95,4 @@ Enjoy!
 Gunnar Ritter
 Freiburg i. Br.
 Germany
-<g-r@bigfoot.de>					11/1/02
+<g-r@bigfoot.de>					1/17/03

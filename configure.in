@@ -1,7 +1,7 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-# Sccsid: @(#)configure.in	2.6 (gritter) 11/28/02
+# Sccsid: @(#)configure.in	2.7 (gritter) 1/13/03
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
@@ -216,6 +216,7 @@ AC_CHECK_FUNC(gethostbyname, AC_DEFINE(HAVE_SOCKETS),
 					LIBS="-lsocket $LIBS"
 	)
 )
+AC_CHECK_FUNCS(getaddrinfo getnameinfo)
 if test "x$enable_all_chars" != xyes
 then	AC_CHECK_HEADERS(iconv.h, AC_CHECK_FUNCS(iconv, ,
 		echo "*** Character set conversion not available ***" >&2),

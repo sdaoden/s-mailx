@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.5 (gritter) 10/27/02";
+static char sccsid[] = "@(#)smtp.c	2.6 (gritter) 1/13/03";
 #endif
 #endif /* not lint */
 
@@ -71,8 +71,12 @@ nodename()
         char host__name[MAXHOSTNAMELEN];
 #endif
 #ifdef	HAVE_SOCKETS
+#ifdef	HAVE_IPv6_FUNCS
+	struct addrinfo hints, *res;
+#else	/* !HAVE_IPv6_FUNCS */
         struct hostent *hent;
-#endif
+#endif	/* !HAVE_IPv6_FUNCS */
+#endif	/* HAVE_SOCKETS */
 
 	if (hostname == NULL) {
 #if defined (HAVE_UNAME)
@@ -85,11 +89,24 @@ nodename()
 		hn = "unknown";
 #endif
 #ifdef	HAVE_SOCKETS
+#ifdef	HAVE_IPv6_FUNCS
+		memset(&hints, 0, sizeof hints);
+		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
+		hints.ai_flags = AI_CANONNAME;
+		if (getaddrinfo(hn, "0", &hints, &res) == 0) {
+			if (res->ai_canonname) {
+				hn = salloc(strlen(res->ai_canonname) + 1);
+				strcpy(hn, res->ai_canonname);
+			}
+			freeaddrinfo(res);
+		}
+#else	/* !HAVE_IPv6_FUNCS */
 		hent = gethostbyname(hn);
 		if (hent != NULL) {
 			hn = hent->h_name;
 		}
-#endif
+#endif	/* !HAVE_IPv6_FUNCS */
+#endif	/* HAVE_SOCKETS */
 		hostname = (char *)smalloc(strlen(hn) + 1);
 		strcpy(hostname, hn);
 	}
@@ -240,13 +257,18 @@ struct name *to;
 FILE *fi;
 {
 	int sockfd;
+#ifdef	HAVE_IPv6_FUNCS
+	struct addrinfo hints, *res, *res0;
+	char hbuf[NI_MAXHOST];
+#else	/* !HAVE_IPv6_FUNCS */
 	struct sockaddr_in servaddr;
 	struct in_addr **pptr;
 	struct hostent *hp;
 	struct servent *sp;
+	unsigned short port = 0;
+#endif	/* !HAVE_IPv6_FUNCS */
 	FILE *fsi, *fso;
 	int ret;
-	unsigned short port = 0;
 	char *portstr;
 
 	verbose = value("verbose") != NULL;
@@ -257,9 +279,44 @@ FILE *fi;
 		*portstr++ = '\0';
 		if (*portstr == '\0')
 			portstr = "smtp";
+#ifndef	HAVE_IPv6_FUNCS
 		else
 			port = (unsigned short)strtol(portstr, NULL, 10);
+#endif
 	}
+#ifdef	HAVE_IPv6_FUNCS
+	memset(&hints, 0, sizeof hints);
+	hints.ai_socktype = SOCK_STREAM;
+	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
+		fprintf(stderr, catgets(catd, CATSET, 252,
+				"could not resolve host: %s\n"));
+		return 1;
+	}
+	sockfd = -1;
+	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
+		if (verbose) {
+			if (getnameinfo(res->ai_addr, res->ai_addrlen,
+						hbuf, sizeof hbuf, NULL, 0,
+						NI_NUMERICHOST) != 0)
+				strcpy(hbuf, "unknown host");
+			fprintf(stderr, catgets(catd, CATSET, 192,
+					"Connecting to %s . . ."), hbuf);
+		}
+		if ((sockfd = socket(res->ai_family, res->ai_socktype,
+						res->ai_protocol)) >= 0) {
+			if (connect(sockfd, res->ai_addr, res->ai_addrlen)!=0) {
+				close(sockfd);
+				sockfd = -1;
+			}
+		}
+	}
+	if (sockfd < 0) {
+		freeaddrinfo(res0);
+		perror(catgets(catd, CATSET, 254, "could not connect"));
+		return 1;
+	}
+	freeaddrinfo(res0);
+#else	/* !HAVE_IPv6_FUNCS */
 	if (port == 0) {
 		if ((sp = getservbyname(portstr, "tcp")) == NULL) {
 			if (equal(portstr, "smtp"))
@@ -295,6 +352,7 @@ FILE *fi;
 		perror(catgets(catd, CATSET, 254, "could not connect"));
 		return 1;
 	}
+#endif	/* !HAVE_IPv6_FUNCS */
 	if (verbose)
 		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
 	fsi = (FILE *)Fdopen(sockfd, "w");
