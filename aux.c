@@ -1,4 +1,4 @@
-/*	$Id: aux.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $	*/
+/*	$Id: aux.c,v 1.9 2000/08/20 22:33:41 gunnar Exp $	*/
 /*	OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 /*	NetBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)aux.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: aux.c,v 1.4 1996/06/08 19:48:10 christos Exp ";
-static char rcsid[]  = "@(#)$Id: aux.c,v 1.8 2000/08/02 21:16:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: aux.c,v 1.9 2000/08/20 22:33:41 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -539,8 +539,14 @@ skin(name)
 			else
 			if (cp[0] == '@' && cp[1] == ' ')
 				cp += 2, *cp2++ = '@';
+#if 0
+			/*
+			 * RFC 822 specifies spaces are STRIPPED when
+			 * in an adress specifier.
+			 */
 			else
 				lastsp = 1;
+#endif
 			break;
 
 		case '<':

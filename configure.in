@@ -1,15 +1,15 @@
 dnl configure.in for nail, a mail user agent.
 dnl Process this file with autoconf to produce a configure script.
 
-dnl $Id: configure.in,v 1.9 2000/08/08 20:10:39 gunnar Exp $
+dnl $Id: configure.in,v 1.10 2000/08/20 22:33:41 gunnar Exp $
 
 dnl Initially written by Jacob Moorman.
 dnl Changes by Gunnar Ritter.
 
 AC_INIT(mime.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(nail, 9.20)
-AC_DEFINE(REL_DATE, "2000-08-08")
+AM_INIT_AUTOMAKE(nail, 9.21)
+AC_DEFINE(REL_DATE, "2000-08-21")
 dnl AC_DEFINE(REL_DATE, "devel")
 AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging build (default=no)],enable_debug=yes,enable_debug=no)
 AC_ARG_ENABLE(efence, [  --enable-efence         enable debugging build (with efence) (default=no)],enable_debug=yes enable_efence=yes,enable_efence=no)

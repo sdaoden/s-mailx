@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.17 2000/08/08 20:10:39 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.18 2000/08/20 22:33:41 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -37,7 +37,7 @@
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
 #if 0
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.17 2000/08/08 20:10:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.18 2000/08/20 22:33:41 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -141,6 +141,8 @@ size_t l;
 		return;
 #endif
 #endif
+	if (*s == '\0' || l == (size_t) 0)
+		return;
 #ifdef	MB_CUR_MAX
 	if (MB_CUR_MAX > 1) {
 #endif
@@ -165,7 +167,7 @@ size_t l;
 #endif	/* !MB_CUR_MAX */
 #endif	/* HAVE_MBSRTOWCS */
 	for (; l > 0 && *s; s++, l--) {
-		if (!isprint(*s) && *s != '\n' && *s != '\r'
+		if (!isprint(*s & 0377) && *s != '\n' && *s != '\r'
 				&& *s != '\b' && *s != '\t')
 			*s = '?';
 	}
@@ -356,6 +358,87 @@ gettcharset()
 }
 
 #ifdef	HAVE_ICONV
+/*
+ * Convert a string, upper-casing the characters.
+ */
+void
+strupcpy(dest, src)
+char *dest;
+const char *src;
+{
+	do {
+		if (islower(*src & 0377))
+			*dest++ = toupper(*src);
+		else
+			*dest++ = *src;
+	} while (*src++);
+}
+
+/*
+ * Strip dashes.
+ */
+void
+stripdash(p)
+char *p;
+{
+	char *q = p;
+
+	do {
+		*q = *p;
+		if (*p != '-')
+			q++;
+	} while (*p++);
+}
+
+/*
+ * An iconv_open wrapper that tries to convert between character set
+ * naming conventions.
+ */
+iconv_t
+iconv_open_ft(tocode, fromcode)
+const char *tocode, *fromcode;
+{
+	iconv_t id;
+	char *t, *f, *p;
+
+	/*
+	 * On Linux systems, this call may succeed.
+	 */
+	if ((id = iconv_open(tocode, fromcode)) != (iconv_t) -1)
+		return id;
+	/*
+	 * Remove the "iso-" prefixes for Solaris.
+	 */
+	if (strncasecmp(tocode, "iso-", 4) == 0)
+		tocode += 4;
+	if (strncasecmp(fromcode, "iso-", 4) == 0)
+		fromcode += 4;
+	if (*tocode == '\0' || *fromcode == '\0')
+		return (iconv_t) -1;
+	if ((id = iconv_open(tocode, fromcode)) != (iconv_t) -1)
+		return id;
+	/*
+	 * Solaris prefers upper-case charset names. Don't ask...
+	 */
+	t = (char*) salloc(strlen(tocode) + 1);
+	strupcpy(t, tocode);
+	f = (char*) salloc(strlen(fromcode) + 1);
+	strupcpy(f, fromcode);
+	if ((id = iconv_open(t, f)) != (iconv_t) -1)
+		return id;
+	/*
+	 * Strip dashes for UnixWare.
+	 */
+	stripdash(t);
+	stripdash(f);
+	if ((id = iconv_open(t, f)) != (iconv_t) -1)
+		return id;
+	/*
+	 * Add you vendor's sillynesses here.
+	 */
+	return id;
+}
+
 /*
  * Fault-tolerant iconv() function.
  */
@@ -609,7 +692,7 @@ FILE *f;
 			isclean = MIME_INTERTEXT;
 			continue;
 		}
-		if ((c < 0x20 && (c != ' ' && c != '\n' && c != '\t'))
+		if ((c < 040 && (c != ' ' && c != '\n' && c != '\t'))
 			|| c == 0177) {
 			isclean = MIME_BINARY;
 			break;
@@ -820,7 +903,7 @@ struct str *in, *out;
 			if (fhicd != (iconv_t) -1)
 				iconv_close(fhicd);
 			if (strcmp(cs, tcs))
-				fhicd = iconv_open(tcs, cs);
+				fhicd = iconv_open_ft(tcs, cs);
 			else
 				fhicd = (iconv_t) -1;
 #endif

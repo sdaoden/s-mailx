@@ -1,4 +1,4 @@
-/*	$Id: def.h,v 1.10 2000/08/02 21:16:22 gunnar Exp $	*/
+/*	$Id: def.h,v 1.11 2000/08/20 22:33:41 gunnar Exp $	*/
 /*	$OpenBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*	$NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp $	*/
 /*
@@ -35,7 +35,7 @@
  *
  *	@(#)def.h	8.2 (Berkeley) 3/21/94
  *	NetBSD: def.h,v 1.8 1996/06/08 19:48:18 christos Exp 
- *	$Id: def.h,v 1.10 2000/08/02 21:16:22 gunnar Exp $
+ *	$Id: def.h,v 1.11 2000/08/20 22:33:41 gunnar Exp $
  */
 
 /*
@@ -156,9 +156,9 @@ struct message {
 /*
  * Given a file address, determine the block number it represents.
  */
-#define blockof(off)			((int) ((off) / 4096))
-#define offsetof(off)			((int) ((off) % 4096))
-#define positionof(block, offset)	((off_t)(block) * 4096 + (offset))
+#define nail_blockof(off)		((int) ((off) / 4096))
+#define nail_offsetof(off)		((int) ((off) % 4096))
+#define nail_positionof(block, offset)	((off_t)(block) * 4096 + (offset))
 
 /*
  * Format of the command description table.

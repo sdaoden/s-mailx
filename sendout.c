@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.14 2000/08/02 21:16:22 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.15 2000/08/20 22:33:41 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.14 2000/08/02 21:16:22 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.15 2000/08/20 22:33:41 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -402,11 +402,13 @@ infix(hp, fi, convert)
 	(void) rm(tempMail);
 #ifdef	HAVE_ICONV
 	cs = getcharset(convert);
+	if (mime_isclean(fi) == MIME_7BITTEXT)
+		convert = CONV_7BIT;
 	tcs = gettcharset();
 	if (strcmp(cs, tcs)) {
 		if (iconvd != (iconv_t) -1)
 			iconv_close(iconvd);
-		iconvd = iconv_open(cs, tcs);
+		iconvd = iconv_open_ft(cs, tcs);
 		if (iconvd == (iconv_t) -1) {
 			if (errno == EINVAL)
 				fprintf(stderr,
@@ -416,11 +418,12 @@ infix(hp, fi, convert)
 			Fclose(nfo);
 			return NULL;
 		}
-	} else
-#endif
+	}
+#else	/* !HAVE_ICONV */
 	if (mime_isclean(fi) == MIME_7BITTEXT) {
 		convert = CONV_7BIT;
 	}
+#endif	/* !HAVE_ICONV */
 	if (puthead(hp, nfo,
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
 		   |GMSGID|GATTACH|GIDENT|GREF|GDATE,

@@ -1,3 +1,11 @@
+[9.21] released 2000-08-21
+* Always add a dot to a line that starts with one in SMTP mode.
+* Fixed a core dump that occured on glibc 2.0 if the subject line was empty.
+* Removed some (up to now, harmless) namespace conflicts on Solaris.
+* Fixed a problem with isprint() on Solaris.
+* Support a few iconv naming conventions on Solaris.
+* Corrected charset declaration of 7bit messages.
+
 [9.20] released 2000-08-08
 * Initialize the 'in_quote' variable in mime.c
 * Better mailbox locking.

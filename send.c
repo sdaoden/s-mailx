@@ -1,4 +1,4 @@
-/*	$Id: send.c,v 1.12 2000/08/08 20:10:39 gunnar Exp $	*/
+/*	$Id: send.c,v 1.13 2000/08/20 22:33:41 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
-static char rcsid[]  = "@(#)$Id: send.c,v 1.12 2000/08/08 20:10:39 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: send.c,v 1.13 2000/08/20 22:33:41 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -338,7 +338,7 @@ send_multi_nobound:
 						iconv_close(iconvd);
 					if (strcasecmp(tcs, cs)
 						&& strcasecmp(us_ascii, cs))
-						iconvd = iconv_open(tcs, cs);
+						iconvd = iconv_open_ft(tcs, cs);
 					else
 						iconvd = (iconv_t) -1;
 #endif
@@ -782,7 +782,7 @@ send_message(mp, obuf, doign, prefix, convert)
 		if (iconvd != (iconv_t) -1)
 				iconv_close(iconvd);
 		if (strcasecmp(tcs, cs) && strcasecmp(us_ascii, cs))
-			iconvd = iconv_open(tcs, cs);
+			iconvd = iconv_open_ft(tcs, cs);
 		else
 			iconvd = (iconv_t) -1;
 	}

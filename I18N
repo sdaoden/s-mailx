@@ -32,7 +32,7 @@
   character set. In some situations, however, it may be desireable to
   use different ones here; since Unicode messages are not generally well
   understood by all mail user agents, users of an Unicode terminal may
-  choose to send in a ISO 8859 character set. For this purpose, the
+  choose to send in an ISO 8859 character set. For this purpose, the
   "ttycharset" variable can be set; it defaults to the "charset" variable.
 
   When nail is displaying a message out of a mail folder, the character
@@ -45,19 +45,6 @@
   not get sent. It must be noted that the error conditions are somewhat
   vague; thus some testing should be done before messages actually get
   send to the outside world this way.
-
-  To perform these conversions, the system's iconv(3) function is used;
-  it should be present on all System V Release 4.2 variants as well as
-  on recent Linux systems. This function, however, suffers from a serious
-  design flaw: the character set strings it accepts are absolutely
-  implementation-dependent. The designers of the GNU C library were so
-  intelligent to support the values of RFC 2046 and of the IANA tables,
-  whilst others, e.g. on UnixWare, were not. Since nail is unable to
-  include translation tables for these proprietary character set names,
-  the iconv function is useless in the latter case and will always fail.
-  However, it were probably sufficient to insert the desired character set
-  names in /usr/lib/iconv/iconv_data, so this should be done by either the
-  vendor or the system's administrator.
 
 * Unicode.
 
@@ -72,6 +59,32 @@
   are supported at once. It is quite recommended not to send UTF-8
   messages today since most receivers will not be able to read them
   correctly, so the "charset" variable should contain a more common
-  character set name like "iso-8859-1" or "koi8-r". However, to make
-  real use of such a terminal, the pager and the editor have to support
-  UTF-8, too, as on many recent System V variants.
+  character set name like "iso-8859-1" or "koi8-r". To make real use
+  of such a terminal, the pager and the editor have to support UTF-8,
+  too, as on many recent System V variants.
+
+* System dependencies.
+
+  To perform character set conversions, the system's iconv(3) function
+  is used; it should be present on all System V Release 4.2 variants as
+  well as on recent Linux systems. This function, however, suffers from
+  a serious design flaw: the character set strings it accepts are absolutely
+  implementation-dependent. Currently, the following implementations are
+  tested:
+
+  - GNU C Library 2.1.
+
+    This implementation supports many of the character sets that are defined
+    in RFC 2046 respective the IANA tables and knows of its names, too.
+
+  - Solaris 8.
+
+    At least the conversions between Unicode/UTF-8 and the ISO 8859 character
+    sets are supported. The use of this implementation is a bit difficult
+    since the names it accepts are proprietary and case-dependent.
+
+  - UnixWare 7; 2.1.
+
+    This iconv() is nearly useless since not only the character set names
+    are proprietary and case-dependent; the conversion directions are
+    limited, too.

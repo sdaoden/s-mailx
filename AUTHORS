@@ -36,3 +36,7 @@ Edward V. Popkov found a type misassignment, a missing fflush()
 Steve Harris detected a wrong structure reference.
 
 James Sheeringer informed me about a possible buffer overflow.
+
+Gelu G. Lupas sent a core dump.
+
+Thomas Fieseler detected a locale problem on Solaris.

@@ -1,4 +1,4 @@
-.\" $Id: nail.1,v 1.19 2000/08/08 20:10:39 gunnar Exp $
+.\" $Id: nail.1,v 1.20 2000/08/20 22:33:41 gunnar Exp $
 .\"     $OpenBSD: mail.1,v 1.5 1994/06/29 05:09:32 deraadt Exp $
 .\" Copyright (c) 1980, 1990, 1993
 .\"     The Regents of the University of California.  All rights reserved.
@@ -37,7 +37,7 @@
 .\"
 .\"     from: @(#)mail.1        8.2 (Berkeley) 12/30/93
 .\"
-.TH NAIL 1 "August 08, 2000" "nail 9.20" "User Commands"
+.TH NAIL 1 "August 14, 2000" "nail 9.21" "User Commands"
 .SH NAME
 nail \- send and receive MIME conformant mail
 .SH SYNOPSIS
@@ -583,6 +583,8 @@ Saveignore is to save what ignore is to print and type.
 Header fields thus marked are filtered out
 when saving a message by save
 or when automatically saving to mbox.
+This command should only be applied to header fields
+that do not contain content information.
 .TP
 .B saveretain
 Saveretain is to save what retain is to print and type.
@@ -590,6 +592,9 @@ Header fields thus marked are the only ones
 saved with a message when saving by save
 or when automatically saving to mbox.
 Saveretain overrides saveignore.
+The use of this command is strongly discouraged
+since it may strip header fields
+that are needed to decode the message correctly.
 .TP
 .B shell
 (sh) Invokes an interactive version of the shell.

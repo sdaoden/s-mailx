@@ -23,7 +23,7 @@ Nail has been built successfully on the following operating systems:
 
 Linux 		2.2, 2.0; glibc 2.1, libc5, libc4
 FreeBSD		4.0-STABLE
-Solaris		7; 2.6
+Solaris		8; 7; 2.6
 UnixWare	7.1.1; 7.0.1; 2.1.2
 OpenServer	5.0.5
 Digital Unix	4.0

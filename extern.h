@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.12 2000/08/02 21:16:22 gunnar Exp $	*/
+/*	$Id: extern.h,v 1.13 2000/08/20 22:33:41 gunnar Exp $	*/
 /*	OpenBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 /*	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp 	*/
 
@@ -36,7 +36,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *	NetBSD: extern.h,v 1.4 1996/06/08 19:48:21 christos Exp
- *	$Id: extern.h,v 1.12 2000/08/02 21:16:22 gunnar Exp $
+ *	$Id: extern.h,v 1.13 2000/08/20 22:33:41 gunnar Exp $
  */
 
 struct name;
@@ -303,3 +303,6 @@ int	mime_name_invalid __P((char *));
 char	*myaddr __P((void));
 char	*gettcharset __P((void));
 void	makeprint __P((char *, size_t));
+#ifdef	HAVE_ICONV
+iconv_t	iconv_open_ft __P((const char *, const char *));
+#endif

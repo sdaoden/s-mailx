@@ -1,4 +1,4 @@
-/*	$Id: fio.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $	*/
+/*	$Id: fio.c,v 1.11 2000/08/20 22:33:41 gunnar Exp $	*/
 /*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 /*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
-static char rcsid[]  = "$Id: fio.c,v 1.10 2000/06/26 04:27:05 gunnar Exp $";
+static char rcsid[]  = "$Id: fio.c,v 1.11 2000/08/20 22:33:41 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -123,8 +123,8 @@ setptr(ibuf)
 			this.m_flag = MUSED|MNEW;
 			this.m_size = 0;
 			this.m_lines = 0;
-			this.m_block = blockof(offset);
-			this.m_offset = offsetof(offset);
+			this.m_block = nail_blockof(offset);
+			this.m_offset = nail_offsetof(offset);
 			inhead = 1;
 		} else if (linebuf[0] == 0) {
 			inhead = 0;
@@ -258,7 +258,8 @@ setinput(mp)
 {
 
 	fflush(otf);
-	if (fseek(itf, (long)positionof(mp->m_block, mp->m_offset), 0) < 0) {
+	if (fseek(itf, (long)nail_positionof(mp->m_block,
+					mp->m_offset), 0) < 0) {
 		perror("fseek");
 		panic("temporary file seek");
 	}
