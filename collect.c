@@ -1,4 +1,4 @@
-/*	$Id: collect.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: collect.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
 /*	OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 /*	NetBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)collect.c	8.2 (Berkeley) 4/19/94";
 #elif 0
 static char rcsid[]  = "OpenBSD: collect.c,v 1.6 1996/06/08 19:48:16 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: collect.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: collect.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -92,6 +92,7 @@ collect(hp, printheaders, mp)
 {
 	FILE *fbuf;
 	struct ignoretab *quoteig;
+	struct name *np;
 	int lc, cc, escape, eofcount;
 	int c, t;
 	char linebuf[LINESIZE], *cp, *quote;
@@ -423,9 +424,13 @@ cont:
 				GTO|GSUBJECT|GCC|GBCC|GNL, CONV_TODISP);
 			while ((t = getc(collf)) != EOF)
 				(void) putchar(t);
-			if (hp->h_attach != NIL)
-				fmt("Attachments:", hp->h_attach,
-						stdout, GCOMMA);
+			if (hp->h_attach != NIL) {
+				fputs("Attachments:", stdout);
+				for (np = hp->h_attach; np != NULL;
+						np = np->n_flink)
+					fprintf(stdout, " %s", np->n_name);
+				fputs("\n", stdout);
+			}
 			goto cont;
 		case '|':
 			/*

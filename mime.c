@@ -1,4 +1,4 @@
-/*	$Id: mime.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $	*/
+/*	$Id: mime.c,v 1.8 2000/04/16 23:05:28 gunnar Exp $	*/
 
 /*
  * Copyright (c) 2000
@@ -36,7 +36,7 @@
 #ifndef lint
 static char copyright[]  =
 "@(#) Copyright (c) 2000 Gunnar Ritter. All rights reserved.\n";
-static char rcsid[]  = "@(#)$Id: mime.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: mime.c,v 1.8 2000/04/16 23:05:28 gunnar Exp $";
 #endif /* not lint */
 
 #include "rcv.h"
@@ -390,7 +390,7 @@ FILE *f;
 {
 	int isclean;
 	long initial_pos;
-	char c;
+	int c;
 
 	isclean = 0;
 	initial_pos = ftell(f);

@@ -29,6 +29,12 @@ CFLAGS		= -O2 -fno-strength-reduce -fomit-frame-pointer
 # An example is UnixWare 2.1.2.
 #CPPFLAGS	+= -DNEED_STRCASECMP
 
+# If your system does not provide snprint(), uncomment this.
+# Since the sprintf() function then used can lead to buffer
+# overflows, you should not run nail suid/sgid then.
+# Claim your vendor for snprintf - the free OSs have it.
+#CPPFLAG	+= -DNO_SNPRINTF
+
 # POSIX.1 does not know the NSIG value, giving the number of signals
 # provided by the operating system. It is defined on all systems known
 # to me, though. In case your system really does not have it, check
@@ -65,7 +71,6 @@ OBJS=$(SRCS:%.c=%.o)
 SFILES=	nail.help nail.tildehelp
 EFILES=	nail.rc
 MFILE =	nail.1
-MAILMFILE = Mail.1
 
 default: all
 
@@ -74,14 +79,18 @@ all: $(PROG)
 $(PROG): mailfiles.h $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
  
- .c.o:
+.SUFFIXES: .o .c
+.c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+
+.SUFFIXES: .html .1
+.1.html:
+	rman -r off -f HTML $< > $@
 
 mailfiles.h: Makefile mailfiles.H
 	sed -e "s:DESTDIR:$(DESTDIR):" mailfiles.H > mailfiles.h
 
-htmlman:
-	rman -r "" -f HTML $(MFILE) > $(MFILE:%.1=%.html)
+htmlman: nail.html
 
 clean:
 	rm -f $(PROG) $(OBJS) *~ mailfiles.h core $(MFILE:%.1=%.html)
@@ -95,7 +104,6 @@ install: all
 	install -c -m 0644 $(MFILE) $(DESTDIR)/man/man1
 
 mailinstall: install
-	install -c -m 0644 $(MAILMFILE) $(DESTDIR)/man/man1
 	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/Mail
 	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/mail
 	ln -sf $(DESTDIR)/bin/$(PROG) $(DESTDIR)/bin/mailx

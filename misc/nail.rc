@@ -1,3 +1,36 @@
-set ask append crt dot emptybox hold save
-set charset=iso-8859-1 encoding=quoted-printable
+# This is the configuration file for nail, a mail user agent.
+# The values below are reasonable defaults.
+# See nail(1) for further options.
+
+# Append rather than prepend to mailboxes. Do not unset
+# or you will confuse other mail-handling programs!
+set append
+
+# Ask for a message subject.
+set ask
+
+# We assume a CRT-like Terminal and thus want to use a pager.
+set crt
+
+# Messages may be terminated by a dot.
+set dot
+
+# Do not remove empty private mail folders.
+set emptybox
+
+# Do not forward to mbox by default.
+set hold
+
+# Do not remove empty mail folders in the spool directory.
+# This may be relevant for privacy.
+set keep
+
+# Quote the original message in replies by "> " as usual today.
 set indentprefix="> "
+
+# Set the charset to iso-8859-1 which is the default on modern terminals.
+set charset=iso-8859-1
+
+# Send international texts in a manner that does not confuse older
+# mailgateways.
+set encoding=quoted-printable

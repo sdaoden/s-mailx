@@ -2,10 +2,8 @@ Welcome to nail, a mail user agent!
 
 Nail is derived from Berkeley Mail 8.1. Its concept is to include the
 essential features a modern MUA must provide but to remain compatible
-with its classic ancestor.
-
-Currently, nail can handle the quoted-printable and base64 encodings as
-well as attachments. See the `nail.1' manual page for details.
+with its classic ancestor. Especially, nail has the ability to send
+and receive MIME messages.
 
 To use nail, you must have a working sendmail setup or another program
 that behaves like sendmail when it reveives mail from its standard input.
@@ -29,7 +27,7 @@ environment variables only, as e.g. `from=user@host nail -n' does.
 
 Nail has been built successfully on the following operating systems:
 
-Linux 		2.2 with glibc 2.1
+Linux 		2.2 with glibc 2.1, 2.0 with libc5
 FreeBSD		4.0-STABLE
 Solaris		2.6
 UnixWare	2.1.2
@@ -48,6 +46,12 @@ format generally is a design flaw, you should fix your system by either
 using procmail for local mail delivery, which is a good idea anyway,
 or at least add the -E flag to the Mlocal line in /etc/sendmail.cf if
 using /usr/lib/mail.local.
+
+If you are using gcc to compile nail and get warnings, it is usually
+something serious or at least interesting, so they are worth mailing
+me. If you use another compiler (especially on SysV), however, do not
+assume anything; these compilers are sometimes too stupid to recognize
+correct code, hopefully they can compile it at least.
 
 If you detect a bug and cannot fix it yourselves, please send me the
 unaltered mail message that caused the problem along with a description!

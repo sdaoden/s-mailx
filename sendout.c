@@ -1,4 +1,4 @@
-/*	$Id: sendout.c,v 1.1 2000/04/10 07:09:10 gunnar Exp $	*/
+/*	$Id: sendout.c,v 1.2 2000/04/16 23:05:28 gunnar Exp $	*/
 /*	OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 /*	NetBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp 	*/
 
@@ -40,7 +40,7 @@
 static char sccsid[]  = "@(#)send.c	8.1 (Berkeley) 6/6/93";
 static char rcsid[]  = "OpenBSD: send.c,v 1.6 1996/06/08 19:48:39 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: sendout.c,v 1.1 2000/04/10 07:09:10 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: sendout.c,v 1.2 2000/04/16 23:05:28 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -627,8 +627,7 @@ FILE *fo;
 		fprintf(fo, "%s>\n", fromaddr);
 	} else {
 		uname(&ut);
-		fprintf(fo, "@%s", ut.nodename);
-		fputs(">\n", fo);
+		fprintf(fo, "@%s>\n", ut.nodename);
 	}
 }
 

@@ -1,4 +1,4 @@
-/*	$Id: dotlock.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: dotlock.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
 /*	OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 /*	NetBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp 	*/
 
@@ -35,7 +35,7 @@
 #if 0
 static char rcsid[]  = "OpenBSD: dotlock.c,v 1.1 1996/06/08 19:48:19 christos Exp";
 #else
-static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: dotlock.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
 #endif
 #endif
 
@@ -134,8 +134,13 @@ create_exclusive(fname)
 	else
 		ptr++;
 
+#ifndef	NO_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%.*s.%s.%x", 
 	    ptr - fname, fname, ut.nodename, cookie);
+#else
+	(void) sprintf(path, "%.*s.%s.%x", 
+	    ptr - fname, fname, ut.nodename, cookie);
+#endif
 
 	/*
 	 * We try to create the unique filename.
@@ -217,7 +222,11 @@ dot_lock(fname, pollinterval, fp, msg)
 	sigaddset(&nset, SIGTSTP);
 	sigaddset(&nset, SIGCHLD);
 
+#ifndef	NO_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
+#else
+	(void) sprintf(path, "%s.lock", fname);
+#endif
 
 	for (i=0;i<15;i++) {
 		(void) sigprocmask(SIG_BLOCK, &nset, &oset);
@@ -255,7 +264,11 @@ dot_unlock(fname)
 	if (maildir_access(fname) != 0)
 		return;
 
+#ifndef	NO_SNPRINTF
 	(void) snprintf(path, sizeof(path), "%s.lock", fname);
+#else
+	(void) sprintf(path, "%s.lock", fname);
+#endif
 	perhaps_setgid(path, effectivegid);
 	(void) unlink(path);
 	setgid(realgid);

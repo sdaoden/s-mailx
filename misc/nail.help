@@ -1,4 +1,4 @@
-    Mail   Commands
+    Nail   Commands
 t <message list>		type messages
 n				goto and type next message
 e <message list>		edit messages
@@ -17,7 +17,7 @@ h				print out active message headers
 cd [directory]			chdir to directory or home if none given
 
 A <message list> consists of integers, ranges of same, or user names separated
-by spaces.  If omitted, Mail uses the last message typed.
+by spaces.  If omitted, Nail uses the last message typed.
 
 A <user list> consists of user names or aliases separated by spaces.
 Aliases are defined in .mailrc in your home directory.

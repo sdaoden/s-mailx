@@ -1,4 +1,4 @@
-/*	$Id: lex.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: lex.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
 /*	OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 /*	NetBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)lex.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: lex.c,v 1.7 1996/06/08 19:48:28 christos Exp ";
 #else
-static char rcsid[]  = "@(#)$Id: lex.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: lex.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -624,7 +624,12 @@ newfileinfo()
 	if (getfold(fname, BUFSIZ-1) >= 0) {
 		strcat(fname, "/");
 		if (strncmp(fname, mailname, strlen(fname)) == 0) {
-			snprintf(zname, BUFSIZ, "+%s", mailname + strlen(fname));
+#ifndef	NO_SNPRINTF
+			snprintf(zname, BUFSIZ, "+%s",
+					mailname + strlen(fname));
+#else
+			sprintf(zname, "+%s", mailname + strlen(fname));
+#endif
 			ename = zname;
 		}
 	}

@@ -1,4 +1,4 @@
-/*	$Id: base64.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $	*/
+/*	$Id: base64.c,v 1.7 2000/04/12 13:59:56 gunnar Exp $	*/
 
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -19,7 +19,7 @@
  */
 
 #ifndef lint
-static char rcsid[]  = "@(#)$Id: base64.c,v 1.6 2000/04/11 16:42:23 gunnar Exp $";
+static char rcsid[]  = "@(#)$Id: base64.c,v 1.7 2000/04/12 13:59:56 gunnar Exp $";
 #endif /* not lint */
 
 /*
@@ -50,7 +50,7 @@ static char *
 ctob64(p, pad)
 unsigned char *p;
 {
-	static char b64[4];
+	static signed char b64[4];
 
 	b64[0] = b64table[p[0] >> 2];
 	b64[1] = b64table[((p[0] & 0x3) << 4) | ((p[1] & 0xF0) >> 4)];
@@ -71,7 +71,7 @@ mime_write_tob64(in, fo)
 struct str *in;
 FILE *fo;
 {
-	char *p, *h, *upper, q[3];
+	signed char *p, *h, *upper, q[3];
 	int i, l, pads;
 	size_t sz;
 
@@ -101,7 +101,7 @@ void
 mime_fromb64(in, out, todisplay, is_text)
 struct str *in, *out;
 {
-	char *p, *q, *upper, c, d, e, f, g;
+	signed char *p, *q, *upper, c, d, e, f, g;
 	int done = 0, newline = 0;
 
 	out->s = smalloc(in->l * 3 / 4 + 2);
@@ -194,10 +194,10 @@ mime_fromb64_b(in, out, todisplay, is_text, f)
 struct str *in, *out;
 FILE *f;
 {
-	static char b[4];
+	static signed char b[4];
 	static int n;
 	static FILE *f_b = (FILE*)-1;
-	char c;
+	signed char c;
 	int i;
 	struct str nin;
 

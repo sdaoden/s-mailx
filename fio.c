@@ -1,4 +1,4 @@
-/*	$Id: fio.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $	*/
+/*	$Id: fio.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $	*/
 /*	OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 /*	NetBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp 	*/
 
@@ -41,7 +41,7 @@ static char sccsid[]  = "@(#)fio.c	8.1 (Berkeley) 6/6/93";
 #elif 0
 static char rcsid[]  = "OpenBSD: fio.c,v 1.5 1996/06/08 19:48:22 christos Exp";
 #else
-static char rcsid[]  = "$Id: fio.c,v 1.4 2000/04/11 16:37:15 gunnar Exp $";
+static char rcsid[]  = "$Id: fio.c,v 1.5 2000/04/16 23:05:28 gunnar Exp $";
 #endif
 #endif /* not lint */
 
@@ -401,12 +401,20 @@ expand(name)
 		/* fall through */
 	}
 	if (name[0] == '+' && getfold(cmdbuf, PATHSIZE) >= 0) {
+#ifndef	NO_SNPRINTF
 		snprintf(xname, PATHSIZE, "%s/%s", cmdbuf, name + 1);
+#else
+		sprintf(xname, "%s/%s", cmdbuf, name + 1);
+#endif
 		name = savestr(xname);
 	}
 	/* catch the most common shell meta character */
 	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
+#ifndef	NO_SNPRINTF
 		snprintf(xname, PATHSIZE, "%s%s", homedir, name + 1);
+#else
+		sprintf(xname, "%s%s", homedir, name + 1);
+#endif
 		name = savestr(xname);
 	}
 	if (!anyof(name, "~{[*?$`'\"\\"))
@@ -415,7 +423,11 @@ expand(name)
 		perror("pipe");
 		return name;
 	}
+#ifndef	NO_SNPRINTF
 	snprintf(cmdbuf, PATHSIZE, "echo %s", name);
+#else
+	sprintf(cmdbuf, "echo %s", name);
+#endif
 	if ((shell = value("SHELL")) == NOSTR)
 		shell = _PATH_CSHELL;
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NOSTR);
@@ -471,7 +483,11 @@ getfold(name, size)
 		strncpy(name, folder, size);
 		name[size-1]='\0';
 	} else {
+#ifndef	NO_SNPRINTF
 		snprintf(name, size, "%s/%s", homedir, folder);
+#else
+		sprintf(name, "%s/%s", homedir, folder);
+#endif
 	}
 	return (0);
 }
@@ -489,7 +505,11 @@ getdeadletter()
 	else if (*cp != '/') {
 		char buf[PATHSIZE];
 
+#ifndef	NO_SNPRINTF
 		(void) snprintf(buf, PATHSIZE, "~/%s", cp);
+#else
+		(void) sprintf(buf, "~/%s", cp);
+#endif
 		cp = expand(buf);
 	}
 	return cp;

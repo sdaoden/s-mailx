@@ -1,3 +1,10 @@
+[9.04] released 2000-04-17
+* Some fixes for machines where chars are unsigned by default
+* Merged the Mail.1 and nail.1 manual pages and added some missing
+  features from `The Mail Reference Manual'
+* Print attachment names correctly in ~p escape
+* Use sprintf() if snprintf() is not available
+
 [9.03] released 2000-04-11
 * Some fixes to compile on FreeBSD 4.0
 * Check for write permission before dot-locking mail files
