@@ -1,3 +1,28 @@
+[11.7] released 9/16/04
+* A collapsed view of message threads was introduced. See the 'collapse'
+  and 'uncollapse' commands, and the 'autocollapse' variable.
+* The 'z' command now always shifts the header summary by a full screen
+  of messages and is not disturbed by deleted, hidden, or killed messages
+  anymore.
+* When an 'account' command was executed and messages were sent to mbox
+  when the old mailbox was quit, the mbox on the new account was used.
+  Messages from the old mailbox now go to the mbox on the old account.
+* Nail did not properly keep the mark for the current message if messages
+  were expunged on an IMAP server.
+* The 'move'/'Move' command now sets the current message to the first
+  undeleted message following the last message it moved, like the 'delete'
+  command.
+* The 'markanswered' variable has been fixed to be effective with the
+  'Reply' command too, and not to mark messages if the reply has been
+  aborted by '~q' or '~x' or if a send error was detected.
+* If the initial connection setup to an IMAP server is interrupted or if
+  authentication fails, folder hooks are no longer executed.
+* If the 'inc'/'newmail' commands were executed on an IMAP connection that
+  was already closed by the server, nail did not catch SIGPIPE properly and
+  was terminated.
+* IMAP or POP3 servers that erroneously send a Unix 'From ' line at the
+  beginning of message headers are now handled gracefully.
+
 [11.6] released 9/7/04
 * An IMAP performance improvement introduced in release 11.5 lead to an
   inconsistency in the internal states if a command like 'copy' was

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.67 (gritter) 9/4/04";
+static char sccsid[] = "@(#)cmd1.c	2.75 (gritter) 9/9/04";
 #endif
 #endif /* not lint */
 
@@ -81,22 +81,32 @@ headers(v)
 	void *v;
 {
 	int *msgvec = v;
-	int k, n, mesg, flag = 0;
+	int g, k, n, mesg, flag = 0;
 	struct message *mp, *mq;
 	int size;
 
 	size = screensize();
-	n = msgvec[0];
-	if (n != 0)
-		screen = ((mb.mb_threaded?message[n-1].m_threadpos:n)-1)/size;
+	n = msgvec[0];	/* n == 0: called from scroll() */
 	if (screen < 0)
 		screen = 0;
+	k = screen * size;
+	if (k >= msgCount)
+		k = msgCount - size;
+	if (k < 0)
+		k = 0;
 	if (mb.mb_threaded == 0) {
-		mp = &message[screen * size];
-		if (mp >= &message[msgCount])
-			mp = &message[msgCount - size];
-		if (mp < &message[0])
-			mp = &message[0];
+		g = 0;
+		mq = &message[0];
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+			if ((mp->m_flag&(MDELETED|MHIDDEN|MKILL))==0) {
+				if (g % size == 0)
+					mq = mp;
+				if (n ? mp == &message[n-1] : g == k)
+					break;
+				g++;
+			}
+		screen = g / size;
+		mp = mq;
 		mesg = mp - &message[0];
 		if (dot != &message[n-1]) {
 			for (mq = mp; mq < &message[msgCount]; mq++)
@@ -116,23 +126,32 @@ headers(v)
 			printhead(mesg, stdout, 0);
 		}
 	} else {	/* threaded */
-		k = screen * size;
-		if (k >= msgCount)
-			k = msgCount - size;
-		if (k < 0)
-			k = 0;
-		mp = this_in_thread(threadroot, k+1);
-		if (mp == NULL)
-			mp = threadroot;
+		g = 0;
+		mq = threadroot;
+		for (mp = threadroot; mp; mp = next_in_thread(mp))
+			if ((mp->m_flag&(MDELETED|MHIDDEN|MKILL))==0 &&
+					(mp->m_collapsed <= 0 ||
+					 mp == &message[n-1])) {
+				if (g % size == 0)
+					mq = mp;
+				if (n ? mp == &message[n-1] : g == k)
+					break;
+				g++;
+			}
+		screen = g / size;
+		mp = mq;
 		if (dot != &message[n-1]) {
 			for (mq = mp; mq; mq = next_in_thread(mq))
-				if ((mq->m_flag&(MDELETED|MHIDDEN|MKILL))==0) {
+				if ((mq->m_flag&(MDELETED|MHIDDEN|MKILL))==0 &&
+						mq->m_collapsed <= 0) {
 					setdot(mq);
 					break;
 				}
 		}
 		while (mp) {
-			if ((mp->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0) {
+			if ((mp->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 &&
+					(mp->m_collapsed <= 0 ||
+					 mp == &message[n-1])) {
 				if (flag++ >= size)
 					break;
 				printhead(mp - &message[0] + 1, stdout,
@@ -303,6 +322,10 @@ dispc(mp, a)
 		dispc = a[7];
 	if (mp->m_flag & MKILL)
 		dispc = a[10];
+	if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
+		dispc = a[12];
+	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
+		dispc = a[11];
 	return dispc;
 }
 
@@ -569,7 +592,7 @@ printhead(mesg, f, threaded)
 
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
 		getenv("SYSV3") != NULL;
-	strcpy(attrlist, bsdflags ? "NU  *HMFATK" : "NUROSPMFATK");
+	strcpy(attrlist, bsdflags ? "NU  *HMFATK+-" : "NUROSPMFATK+-");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
 		if (sz > sizeof attrlist - 1)
@@ -694,6 +717,7 @@ off_t *tstats;
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
+		uncollapse1(mp, 1);
 		if (value("quiet") == NULL)
 			fprintf(obuf, catgets(catd, CATSET, 17,
 				"Message %2d:\n"), *ip);

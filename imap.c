@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap.c	1.188 (gritter) 9/7/04";
+static char sccsid[] = "@(#)imap.c	1.196 (gritter) 9/15/04";
 #endif
 #endif /* not lint */
 
@@ -202,8 +202,8 @@ static int	imap_fetchdata __P((struct mailbox *, struct message *, size_t,
 			int, const char *, size_t, long));
 static enum okay	imap_get __P((struct mailbox *, struct message *,
 				enum needspec));
-static void	commithdr __P((struct mailbox *, struct message *,
-				struct message));
+static void	commitmsg __P((struct mailbox *, struct message *,
+				struct message, enum havespec));
 static enum okay	imap_fetchheaders __P((struct mailbox *,
 				struct message *, int, int));
 static int	imap_setfile1 __P((const char *, int, int, int));
@@ -649,6 +649,15 @@ rec_dequeue()
 				(msgCount - rp->rec_count + 1) *
 					sizeof *message);
 			msgCount--;
+			/*
+			 * If the message was part of a collapsed thread,
+			 * the m_collapsed field of one of its ancestors
+			 * should be incremented. It seems hardly possible
+			 * to do this with the current message structure,
+			 * though. The result is that a '+' may be shown
+			 * in the header summary even if no collapsed
+			 * children exists.
+			 */
 			break;
 		}
 		free(rq);
@@ -1217,7 +1226,7 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		imaplock = 0;
-		return 1;
+		return -1;
 	}
 	if (saveint != SIG_IGN)
 		safe_signal(SIGINT, imapcatch);
@@ -1247,7 +1256,7 @@ imap_setfile1(xserver, newmail, isedit, transparent)
 			safe_signal(SIGINT, saveint);
 			safe_signal(SIGPIPE, savepipe);
 			imaplock = 0;
-			return 1;
+			return -1;
 		}
 	} else	/* same account */
 		mb.mb_flags |= same_flags;
@@ -1275,7 +1284,7 @@ done:	setmsize(msgCount);
 		purgecache(&mb, message, msgCount);
 	if ((newmail || transparent) && mb.mb_sorted) {
 		mb.mb_threaded = 0;
-		sort(NULL);
+		sort((void *)-1);
 	}
 	if (!newmail && !edit && msgCount == 0) {
 		if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
@@ -1310,6 +1319,10 @@ imap_fetchdata(mp, m, expected, need, head, headsize, headlines)
 		fwrite(head, 1, headsize, mp->mb_otf);
 	while (sgetline(&line, &linesize, &linelen, &mp->mb_sock) > 0) {
 		lp = line;
+		if (linelen > expected) {
+			excess = linelen - expected;
+			linelen = expected;
+		}
 		/*
 		 * Need to mask 'From ' lines. This cannot be done properly
 		 * since some servers pass them as 'From ' and others as
@@ -1318,15 +1331,18 @@ imap_fetchdata(mp, m, expected, need, head, headsize, headlines)
 		 * second as '>From ' may also come from a server of the
 		 * first type as actual data. So do what is absolutely
 		 * necessary only - mask 'From '.
+		 *
+		 * If the line is the first line of the message header, it
+		 * is likely a real 'From ' line. In this case, it is just
+		 * ignored since it violates all standards.
 		 */
 		if (lp[0] == 'F' && lp[1] == 'r' && lp[2] == 'o' &&
 				lp[3] == 'm' && lp[4] == ' ') {
-			fputc('>', mp->mb_otf);
-			size++;
-		}
-		if (linelen > expected) {
-			excess = linelen - expected;
-			linelen = expected;
+			if (lines + headlines != 0) {
+				fputc('>', mp->mb_otf);
+				size++;
+			} else
+				goto skip;
 		}
 		if (lp[linelen-1] == '\n' && (linelen == 1 ||
 					lp[linelen-2] == '\r')) {
@@ -1341,7 +1357,7 @@ imap_fetchdata(mp, m, expected, need, head, headsize, headlines)
 			size += linelen;
 		}
 		lines++;
-		if ((expected -= linelen) <= 0)
+	skip:	if ((expected -= linelen) <= 0)
 			break;
 	}
 	if (!emptyline) {
@@ -1382,13 +1398,16 @@ imap_get(mp, m, need)
 {
 	sighandler_type	saveint = SIG_IGN;
 	sighandler_type savepipe = SIG_IGN;
-	char o[LINESIZE], *cp = NULL;
+	char o[LINESIZE], *cp = NULL, *item = NULL, *resp = NULL;
 	size_t expected, headsize = 0;
 	int number = m - message + 1;
 	enum okay ok = STOP;
 	FILE	*queuefp = NULL;
 	char	*head = NULL;
 	long	headlines = 0;
+	struct message	mt;
+	long	n = -1;
+	unsigned long	u = 0;
 
 	(void)&saveint;
 	(void)&savepipe;
@@ -1399,6 +1418,9 @@ imap_get(mp, m, need)
 	(void)&headsize;
 	(void)&head;
 	(void)&headlines;
+	(void)&item;
+	(void)&resp;
+	(void)&u;
 	verbose = value("verbose") != NULL;
 	if (getcache(mp, m, need) == OKAY)
 		return OKAY;
@@ -1412,10 +1434,11 @@ imap_get(mp, m, need)
 	}
 	switch (need) {
 	case NEED_HEADER:
-		cp = "RFC822.HEADER";
+		resp = item = "RFC822.HEADER";
 		break;
 	case NEED_BODY:
-		cp = "BODY.PEEK[]";
+		item = "BODY.PEEK[]";
+		resp = "BODY[]";
 		if (m->m_flag & HAVE_HEADER && m->m_size) {
 			char	*hdr = smalloc(m->m_size);
 			fflush(mp->mb_otf);
@@ -1429,7 +1452,8 @@ imap_get(mp, m, need)
 			head = hdr;
 			headsize = m->m_size;
 			headlines = m->m_lines;
-			cp = "BODY.PEEK[TEXT]";
+			item = "BODY.PEEK[TEXT]";
+			resp = "BODY[TEXT]";
 		}
 		break;
 	case NEED_UNSPEC:
@@ -1452,38 +1476,61 @@ imap_get(mp, m, need)
 	if (m->m_uid)
 		snprintf(o, sizeof o,
 				"%s UID FETCH %lu (%s)\r\n",
-				tag(1), m->m_uid, cp);
+				tag(1), m->m_uid, item);
 	else {
 		if (check_expunged() == STOP)
 			goto out;
 		snprintf(o, sizeof o,
 				"%s FETCH %u (%s)\r\n",
-				tag(1), number, cp);
+				tag(1), number, item);
 	}
 	IMAP_OUT(o, MB_COMD, goto out)
 	for (;;) {
 		ok = imap_answer(mp, 1);
+		if (ok == STOP)
+			break;
 		if (response_status != RESPONSE_OTHER ||
 				response_other != MESSAGE_DATA_FETCH)
 			continue;
-#if 0
+		if (asccasestr(responded_other_text, resp) == NULL)
+			continue;
+		if ((cp = strrchr(responded_other_text, '{')) == NULL)
+			continue;
+		expected = atol(&cp[1]);
 		if (m->m_uid) {
-			if ((cp=asccasestr(responded_other_text, "UID ")) == 0)
-				continue;
-			if (strtol(&cp[4], NULL, 10) == m->m_uid)
-				break;
-		} else {
-			if (responded_other_number == number)
-				break;
+			if ((cp = asccasestr(responded_other_text, "UID "))) {
+				u = atol(&cp[4]);
+				n = 0;
+			} else {
+				n = -1;
+				u = 0;
+			}
+		} else
+			n = responded_other_number;
+		if (m->m_uid ? n == 0 && m->m_uid != u : n != number) {
+			imap_fetchdata(mp, NULL, expected, need, NULL, 0, 0);
+			continue;
 		}
-#else
-		break;
-#endif
+		mt = *m;
+		imap_fetchdata(mp, &mt, expected, need,
+				head, headsize, headlines);
+		if (n >= 0) {
+			commitmsg(mp, m, mt, mt.m_have);
+			break;
+		}
+		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
+						&mp->mb_sock) > 0) {
+			if (verbose)
+				fputs(imapbuf, stderr);
+			if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
+				u = atol(&cp[4]);
+				if (u == m->m_uid) {
+					commitmsg(mp, m, mt, mt.m_have);
+					break;
+				}
+			}
+		}
 	}
-	if (ok == STOP || (cp = strrchr(responded_other_text, '{')) == NULL)
-		goto out;
-	expected = atol(&cp[1]);
-	imap_fetchdata(mp, m, expected, need, head, headsize, headlines);
 out:	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	if (saveint != SIG_IGN)
@@ -1513,15 +1560,20 @@ imap_body(m)
 }
 
 static void
-commithdr(mp, to, from)
+commitmsg(mp, to, from, have)
 	struct mailbox *mp;
 	struct message *to, from;
+	enum havespec	have;
 {
 	to->m_size = from.m_size;
 	to->m_lines = from.m_lines;
 	to->m_block = from.m_block;
 	to->m_offset = from.m_offset;
-	to->m_have = HAVE_HEADER;
+	to->m_have = have;
+	if (have & HAVE_BODY) {
+		to->m_xlines = from.m_lines;
+		to->m_xsize = from.m_size;
+	}
 	putcache(mp, to);
 }
 
@@ -1558,6 +1610,8 @@ imap_fetchheaders(mp, m, bot, top)
 			continue;
 		if (ok == STOP || (cp=strrchr(responded_other_text, '{')) == 0)
 			return STOP;
+		if (asccasestr(responded_other_text, "RFC822.HEADER") == NULL)
+			continue;
 		expected = atol(&cp[1]);
 		if (m[bot-1].m_uid) {
 			if ((cp=asccasestr(responded_other_text, "UID "))) {
@@ -1582,8 +1636,8 @@ imap_fetchheaders(mp, m, bot, top)
 			}
 		}
 		imap_fetchdata(mp, &mt, expected, NEED_HEADER, NULL, 0, 0);
-		if (n > 0 && !(m[n-1].m_have & HAVE_HEADER))
-			commithdr(mp, &m[n-1], mt);
+		if (n >= 0 && !(m[n-1].m_have & HAVE_HEADER))
+			commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
 		if (n == -1 && (sz = sgetline(&imapbuf, &imapbufsize, NULL,
 					&mp->mb_sock)) > 0) {
 			if (verbose)
@@ -1594,7 +1648,7 @@ imap_fetchheaders(mp, m, bot, top)
 					if (m[n-1].m_uid == u)
 						break;
 				if (n <= top && !(m[n-1].m_have & HAVE_HEADER))
-					commithdr(mp, &m[n-1], mt);
+					commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
 				n = 0;
 			}
 		}
@@ -1979,7 +2033,7 @@ imap_newmail(autoinc)
 	if (autoinc && had_exists < 0 && had_expunge < 0) {
 		verbose = value("verbose") != NULL;
 		imaplock = 1;
-		imap_noop1(&mb);
+		imap_noop();
 		imaplock = 0;
 	}
 	if (had_exists == msgCount && had_expunge < 0)
@@ -2557,19 +2611,19 @@ again:	if (m->m_uid)
 	 * the 'exit' command still leaves the message unread.
 	 */
 out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
-		imap_store(mp, m, n, '-', "\\Seen", 1);
+		imap_store(mp, m, n, '-', "\\Seen", 0);
 	if (m->m_flag&MFLAG)
-		imap_store(mp, m, n, '-', "\\Flagged", 1);
+		imap_store(mp, m, n, '-', "\\Flagged", 0);
 	if (m->m_flag&MUNFLAG)
-		imap_store(mp, m, n, '+', "\\Flagged", 1);
+		imap_store(mp, m, n, '+', "\\Flagged", 0);
 	if (m->m_flag&MANSWER)
-		imap_store(mp, m, n, '-', "\\Answered", 1);
+		imap_store(mp, m, n, '-', "\\Answered", 0);
 	if (m->m_flag&MUNANSWER)
-		imap_store(mp, m, n, '+', "\\Answered", 1);
+		imap_store(mp, m, n, '+', "\\Answered", 0);
 	if (m->m_flag&MDRAFT)
-		imap_store(mp, m, n, '-', "\\Draft", 1);
+		imap_store(mp, m, n, '-', "\\Draft", 0);
 	if (m->m_flag&MUNDRAFT)
-		imap_store(mp, m, n, '+', "\\Draft", 1);
+		imap_store(mp, m, n, '+', "\\Draft", 0);
 	return ok;
 }
 

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)thread.c	1.42 (gritter) 9/7/04";
+static char sccsid[] = "@(#)thread.c	1.50 (gritter) 9/9/04";
 #endif
 #endif /* not lint */
 
@@ -76,14 +76,17 @@ static unsigned	mhash __P((const char *, int));
 static struct mitem	*mlook __P((char *, struct mitem *, struct message *,
 				int));
 static void	adopt __P((struct message *, struct message *, int));
-static struct message *interlink __P((struct message *, long));
+static struct message *interlink __P((struct message *, long, int));
 static void	finalize __P((struct message *));
 static int	mlonglt __P((const void *, const void *));
 static int	mcharlt __P((const void *, const void *));
 static int	mfloatlt __P((const void *, const void *));
 static void	lookup __P((struct message *, struct mitem *, int));
-static void	makethreads __P((struct message *, long));
+static void	makethreads __P((struct message *, long, int));
 static char	*skipre __P((const char *));
+static int	colpt __P((int *, int));
+static void	colps __P((struct message *, int));
+static void	colpm __P((struct message *, int, int *, int *));
 
 static unsigned
 mhash(cp, mprime)
@@ -230,18 +233,23 @@ adopt(parent, child, dist)
  * links.
  */
 static struct message *
-interlink(m, count)
+interlink(m, count, newmail)
 	struct message	*m;
 	long	count;
+	int	newmail;
 {
 	int	i;
 	long	n;
 	struct msort	*ms;
 	struct message	*root;
+	int	autocollapse = !newmail && !(inhook&2) &&
+			value("autocollapse") != NULL;
 
 	ms = smalloc(sizeof *ms * count);
 	for (n = 0, i = 0; i < count; i++) {
 		if (m[i].m_parent == NULL) {
+			if (autocollapse)
+				colps(&m[i], 1);
 			ms[n].ms_u.ms_long = m[i].m_date;
 			ms[n].ms_n = i;
 			n++;
@@ -350,9 +358,10 @@ lookup(m, mi, mprime)
 }
 
 static void
-makethreads(m, count)
+makethreads(m, count, newmail)
 	struct message	*m;
 	long	count;
+	int	newmail;
 {
 	struct mitem	*mt;
 	char	*cp;
@@ -373,6 +382,8 @@ makethreads(m, count)
 		m[i].m_child = m[i].m_younger = m[i].m_elder =
 			m[i].m_parent = NULL;
 		m[i].m_level = 0;
+		if (!newmail && !(inhook&2))
+			m[i].m_collapsed = 0;
 	}
 	/*
 	 * Most folders contain the eldest messages first. Traversing
@@ -385,7 +396,7 @@ makethreads(m, count)
 	 */
 	for (i = count-1; i >= 0; i--)
 		lookup(&m[i], mt, mprime);
-	threadroot = interlink(m, count);
+	threadroot = interlink(m, count, newmail);
 	finalize(threadroot);
 	free(mt);
 	mb.mb_threaded = 1;
@@ -395,14 +406,14 @@ int
 thread(vp)
 	void	*vp;
 {
-	if (mb.mb_threaded != 1 || vp == NULL) {
+	if (mb.mb_threaded != 1 || vp == NULL || vp == (void *)-1) {
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
-		makethreads(message, msgCount);
+		makethreads(message, msgCount, vp == (void *)-1);
 		free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
 	}
-	if (vp && !inhook && value("header"))
+	if (vp && vp != (void *)-1 && !inhook && value("header"))
 		return headers(vp);
 	return 0;
 }
@@ -411,9 +422,13 @@ int
 unthread(vp)
 	void	*vp;
 {
+	struct message	*m;
+
 	mb.mb_threaded = 0;
 	free(mb.mb_sorted);
 	mb.mb_sorted = NULL;
+	for (m = &message[0]; m < &message[msgCount]; m++)
+		m->m_collapsed = 0;
 	if (vp && !inhook && value("header"))
 		return headers(vp);
 	return 0;
@@ -524,7 +539,7 @@ sort(vp)
 
 	msgvec[0] = dot - &message[0] + 1;
 	msgvec[1] = 0;
-	if (vp == NULL) {
+	if (vp == NULL || vp == (void *)-1) {
 		_args[0] = savestr(mb.mb_sorted);
 		_args[1] = NULL;
 		args = _args;
@@ -545,7 +560,7 @@ sort(vp)
 	free(mb.mb_sorted);
 	mb.mb_sorted = sstrdup(args[0]);
 	if (method == SORT_THREAD)
-		return thread(vp ? msgvec : NULL);
+		return thread(vp && vp != (void *)-1 ? msgvec : vp);
 	ms = ac_alloc(sizeof *ms * msgCount);
 	switch (method) {
 	case SORT_SUBJECT:
@@ -631,7 +646,8 @@ sort(vp)
 	finalize(threadroot);
 	mb.mb_threaded = 2;
 	ac_free(ms);
-	return vp && !inhook && value("header") ? headers(msgvec) : 0;
+	return vp && vp != (void *)-1 && !inhook &&
+		value("header") ? headers(msgvec) : 0;
 }
 
 static char *
@@ -647,4 +663,106 @@ skipre(cp)
 			cp++;
 	}
 	return (char *)cp;
+}
+
+int
+ccollapse(v)
+	void	*v;
+{
+	return colpt(v, 1);
+}
+
+int
+cuncollapse(v)
+	void	*v;
+{
+	return colpt(v, 0);
+}
+
+static int
+colpt(msgvec, cl)
+	int	*msgvec;
+	int	cl;
+{
+	int	*ip;
+
+	if (mb.mb_threaded != 1) {
+		puts("Not in threaded mode.");
+		return 1;
+	}
+	for (ip = msgvec; *ip != 0; ip++)
+		colps(&message[*ip-1], cl);
+	return 0;
+}
+
+static void
+colps(b, cl)
+	struct message	*b;
+	int	cl;
+{
+	struct message	*m;
+	int	cc = 0, uc = 0;
+
+	if (cl && (b->m_collapsed > 0 || (b->m_flag & (MNEW|MREAD)) == MNEW))
+		return;
+	if (b->m_child) {
+		m = b->m_child;
+		colpm(m, cl, &cc, &uc);
+		for (m = m->m_younger; m; m = m->m_younger)
+			colpm(m, cl, &cc, &uc);
+	}
+	if (cl) {
+		b->m_collapsed = -cc;
+		for (m = b->m_parent; m; m = m->m_parent)
+			if (m->m_collapsed <= -uc ) {
+				m->m_collapsed += uc;
+				break;
+			}
+	} else {
+		if (b->m_collapsed > 0) {
+			b->m_collapsed = 0;
+			uc++;
+		}
+		for (m = b; m; m = m->m_parent)
+			if (m->m_collapsed <= -uc) {
+				m->m_collapsed += uc;
+				break;
+			}
+	}
+}
+
+static void
+colpm(m, cl, cc, uc)
+	struct message	*m;
+	int	cl;
+	int	*cc, *uc;
+{
+	if (cl) {
+		if (m->m_collapsed > 0)
+			(*uc)++;
+		if ((m->m_flag & (MNEW|MREAD)) != MNEW || m->m_collapsed < 0)
+			m->m_collapsed = 1;
+		if (m->m_collapsed > 0)
+			(*cc)++;
+	} else {
+		if (m->m_collapsed > 0) {
+			m->m_collapsed = 0;
+			(*uc)++;
+		}
+	}
+	if (m->m_child) {
+		m = m->m_child;
+		colpm(m, cl, cc, uc);
+		for (m = m->m_younger; m; m = m->m_younger)
+			colpm(m, cl, cc, uc);
+	}
+}
+
+void
+uncollapse1(m, always)
+	struct message	*m;
+	int	always;
+{
+	if (mb.mb_threaded == 1 && (always || m->m_collapsed > 0))
+		colps(m, 0);
 }

@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.63 (gritter) 9/5/04";
+static char sccsid[] = "@(#)cmd3.c	2.65 (gritter) 9/14/04";
 #endif
 #endif /* not lint */
 
@@ -52,6 +52,7 @@ static char sccsid[] = "@(#)cmd3.c	2.63 (gritter) 9/5/04";
  *
  * Still more user commands.
  */
+static int	file1 __P((char *));
 static int	diction __P((const void *, const void *));
 static int	bangexp __P((char **, size_t *));
 static void	make_ref __P((struct message *, struct header *));
@@ -379,8 +380,8 @@ respond_internal(msgvec, recipient_record)
 		head.h_cc = np;
 	}
 	make_ref(mp, &head);
-	mail1(&head, 1, mp, NULL, recipient_record, 0);
-	if (value("markanswered"))
+	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
+			value("markanswered"))
 		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
 }
@@ -731,17 +732,26 @@ file(v)
 	void *v;
 {
 	char **argv = v;
-	int i;
 
 	if (argv[0] == NULL) {
 		newfileinfo();
 		return 0;
 	}
+	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
+	return file1(*argv);
+}
+
+static int
+file1(name)
+	char	*name;
+{
+	int	i;
+
 	if (inhook) {
 		fprintf(stderr, "Cannot change folder from within a hook.\n");
 		return 1;
 	}
-	i = setfile(*argv, 0);
+	i = setfile(name, 0);
 	if (i < 0)
 		return 1;
 	callhook(mailname, 0);
@@ -878,7 +888,9 @@ Respond_internal(msgvec, recipient_record)
 		head.h_subject = hfield("subj", mp);
 	head.h_subject = reedit(head.h_subject);
 	make_ref(mp, &head);
-	mail1(&head, 1, mp, NULL, recipient_record, 0);
+	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
+			value("markanswered"))
+		mp->m_flag |= MANSWER|MANSWERED;
 	return 0;
 }
 
@@ -1253,6 +1265,7 @@ account(v)
 			a->ac_name = NULL;
 		return define1(args[0], 1);
 	}
+	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
 	if ((a = get_oldaccount(args[0])) == NULL) {
 		if (args[1]) {
 			a = scalloc(1, sizeof *a);
@@ -1276,10 +1289,8 @@ account(v)
 		unset_allow_undefined = 1;
 		set(a->ac_vars);
 		unset_allow_undefined = 0;
-	setf:	if (!starting) {
-			char	*av[2] = { "%", NULL };
-			return file(av);
-		}
+	setf:	if (!starting)
+			return file1("%");
 	}
 	return 0;
 }
