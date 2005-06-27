@@ -55,7 +55,7 @@ ADDRESS { font-style:normal; } //--> </STYLE> </HEAD>
 <!--  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF -->
 <!--  SUCH DAMAGE. -->
 <!--  -->
-<!--      Sccsid: @(#)nail.1	2.298 (gritter) 3/17/05 -->
+<!--      Sccsid: @(#)nail.1	2.302 (gritter) 6/9/05 -->
 <!--  -->
 <CENTER>
 <H1><HR><NOBR>NAIL (1)</NOBR><HR></H1>
@@ -265,6 +265,9 @@ Sets the
 Tilde escapes are disabled.
 The <I>-r</I><I> address</I> options are passed to the mail transfer agent
 unless SMTP is used.
+This option exists for compatibility only;
+it is recommended to set the
+<I>from</I> variable directly instead.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>-s</B><I>&nbsp;subject</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -274,7 +277,7 @@ containing spaces).
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>-T</B><I>&nbsp;name</I> </TD><TD valign=bottom>
-Writes the &#39;Message-Id&#39; and &#39;Article-Id&#39; header fields
+Writes the &#39;Message-Id:&#39; and &#39;Article-Id:&#39; header fields
 of each message read in the file
 <I>name</I>. Implies
 <I>-I</I>. Compressed files are handled as described for the
@@ -677,7 +680,8 @@ While the user is composing a message,
 For instance, typing &#39;~m&#39; (alone on a line)
 will place a copy of the current message into the response
 right shifting it by a tabstop
-(see indentprefix variable, below).
+(see
+<I>indentprefix</I> variable, below).
 Other escapes will set up subject fields,
 add and delete recipients to the message,
 attach files to it
@@ -2241,10 +2245,22 @@ all MIME parts are included.
 <TR valign=top><TD width=6% nowrap>
 <B>~h</B> </TD><TD valign=bottom>
 Edit the message header fields
+&#39;To:&#39;, &#39;Cc:&#39;, &#39;Bcc:&#39;, and &#39;Subject:&#39;
 by typing each one in turn
 and allowing the user to append text
 to the end or modify the field
 by using the current terminal erase and kill characters.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>~H</B> </TD><TD valign=bottom>
+Edit the message header fields
+&#39;From:&#39;, &#39;Reply-To:&#39;, &#39;Sender:&#39;, and &#39;Organization:&#39;
+in the same manner as described for
+<I>~h</I>. The default values for these fields originate from the
+<I>from</I>, <I>replyto</I>, and
+<I>ORGANIZATION</I> variables.
+If this tilde command has been used,
+changing the variables has no effect on the current message anymore.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>~i</B><I>variable</I> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -2563,8 +2579,9 @@ as the terminator of a message the user is sending.
 <B>editheaders</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
 When a message is edited while being composed,
 its header is included in the editable text.
-&#39;To:&#39;, &#39;Cc:&#39;, &#39;Bcc:&#39;, and &#39;Subject:&#39; fields
-are accepted within the header,
+&#39;To:&#39;, &#39;Cc:&#39;, &#39;Bcc:&#39;, &#39;Subject:&#39;, &#39;From:&#39;, &#39;Reply-To:&#39;, &#39;Sender:&#39;,
+and &#39;Organization:&#39;
+fields are accepted within the header,
 other fields are ignored.
 </TD></TR>
 <TR valign=top><TD colspan=2>
@@ -3112,9 +3129,10 @@ The macro specified with
 </TD></TR>
 <TR valign=top><TD width=6% nowrap>
 <B>from</B> </TD><TD valign=bottom>
-The address to put into the <I>&#39;From:&#39;</I> field of the message header.
+The address (or a list of addresses)
+to put into the <I>&#39;From:&#39;</I> field of the message header.
 If replying to a message,
-this address is handled as if it were in the alternates list.
+these addresses are handled as if they were in the alternates list.
 <!--  If this variable is set, -->
 <!--  a \fI`Sender:'\fR field containing the user's name -->
 <!--  is also generated, -->
@@ -3125,6 +3143,10 @@ If the machine&#39;s hostname is not valid at the Internet
 either this variable or
 <I>hostname</I> have to be set
 to get correct Message-ID header fields.
+If
+<I>from</I> contains more than one address,
+the
+<I>sender</I> variable must also be set.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>fwdheading</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -3464,6 +3486,23 @@ That is, the list should start with e.g.
 might contain some other language-specific character sets,
 and should end with &#39;utf-8&#39;
 to handle messages that combine texts in multiple languages.
+</TD></TR>
+<TR valign=top><TD width=6% nowrap>
+<B>sender</B> </TD><TD valign=bottom>
+An address that is put into the &#39;Sender:&#39; field
+of outgoing messages.
+This field needs not normally be present.
+It is, however, required
+if the &#39;From:&#39; field contains more than one address.
+It can also be used to indicate that a message
+was sent on behalf of somebody other;
+in this case, &#39;From:&#39; should contain the address
+of the person that took responsibility for the message,
+and &#39;Sender:&#39; should contain the address
+of the person that actually sent the message.
+The
+<I>sender</I> address is handled as if it were in the
+<I>alternates</I> list.
 </TD></TR>
 <TR valign=top><TD colspan=2>
 <B>sendmail</B> </TD></TR><TR valign=top><TD width=6%>&nbsp;</TD><TD>
@@ -5099,5 +5138,5 @@ Redistribution of this material is permitted so long as this notice remains
 intact.
 </BLOCKQUOTE>
 <P><HR>
-<TABLE width=100%><TR> <TD width=33%><I>nail 11.22</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>3/17/05</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
+<TABLE width=100%><TR> <TD width=33%><I>nail 11.23</I></TD> <TD width=33% align=center>NAIL (1)</TD> <TD align=right width=33%><I>6/9/05</I></TD> </TR></TABLE><FONT SIZE=-1>Generated by a modified version of <A HREF="http://www.squarebox.co.uk/download/manServer.shtml">manServer 1.07</A> from nail.1 using man macros with tbl support.</FONT>
 </BODY></HTML>

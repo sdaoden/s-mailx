@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.298 (gritter) 3/17/05
+.\"     Sccsid: @(#)nail.1	2.302 (gritter) 6/9/05
 .\"
-.TH NAIL 1 "3/17/05" "nail 11.22" "User Commands"
+.TH NAIL 1 "6/9/05" "nail 11.23" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -184,6 +184,10 @@ variable specified in environment or startup files.
 Tilde escapes are disabled.
 The \fI\-r\fI address\fR options are passed to the mail transfer agent
 unless SMTP is used.
+This option exists for compatibility only;
+it is recommended to set the 
+.I from
+variable directly instead.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
@@ -192,7 +196,7 @@ flag is used as a subject; be careful to quote subjects
 containing spaces).
 .TP
 .BI \-T \ name
-Writes the `Message-Id' and `Article-Id' header fields
+Writes the `Message-Id:' and `Article-Id:' header fields
 of each message read in the file
 .IR name .
 Implies
@@ -322,7 +326,7 @@ given in the `In-Reply-To:' field
 or the last entry of the `References:' field
 of the current message.
 .TP
-.B -
+.B \-
 The next previous undeleted message,
 or the next previous deleted message for the
 .I undelete
@@ -562,7 +566,9 @@ While the user is composing a message,
 For instance, typing `~m' (alone on a line)
 will place a copy of the current message into the response
 right shifting it by a tabstop
-(see indentprefix variable, below).
+(see
+.I indentprefix
+variable, below).
 Other escapes will set up subject fields,
 add and delete recipients to the message,
 attach files to it
@@ -2023,10 +2029,25 @@ all MIME parts are included.
 .TP
 .B ~h
 Edit the message header fields
+`To:', `Cc:', `Bcc:', and `Subject:'
 by typing each one in turn
 and allowing the user to append text
 to the end or modify the field
 by using the current terminal erase and kill characters.
+.TP
+.B ~H
+Edit the message header fields
+`From:', `Reply-To:', `Sender:', and `Organization:'
+in the same manner as described for
+.IR ~h .
+The default values for these fields originate from the
+.IR from ,
+.IR replyto ,
+and
+.I ORGANIZATION
+variables.
+If this tilde command has been used,
+changing the variables has no effect on the current message anymore.
 .TP
 .BI ~i variable
 Insert the value of the specified variable
@@ -2307,8 +2328,9 @@ as the terminator of a message the user is sending.
 .B editheaders
 When a message is edited while being composed,
 its header is included in the editable text.
-`To:', `Cc:', `Bcc:', and `Subject:' fields
-are accepted within the header,
+`To:', `Cc:', `Bcc:', `Subject:', `From:', `Reply-To:', `Sender:',
+and 'Organization:'
+fields are accepted within the header,
 other fields are ignored.
 .TP
 .B emptybox
@@ -2817,9 +2839,10 @@ is not executed if this variable is effective for a folder
 (unless it is explicitly invoked within the called macro).
 .TP
 .B from
-The address to put into the \fI`From:'\fR field of the message header.
+The address (or a list of addresses)
+to put into the \fI`From:'\fR field of the message header.
 If replying to a message,
-this address is handled as if it were in the alternates list.
+these addresses are handled as if they were in the alternates list.
 .\" If this variable is set,
 .\" a \fI`Sender:'\fR field containing the user's name
 .\" is also generated,
@@ -2831,6 +2854,12 @@ either this variable or
 .I hostname
 have to be set
 to get correct Message-ID header fields.
+If
+.I from
+contains more than one address,
+the
+.I sender
+variable must also be set.
 .TP
 .B fwdheading
 The string to print before the text of a message
@@ -3147,6 +3176,24 @@ That is, the list should start with e.\|g.
 might contain some other language-specific character sets,
 and should end with `utf-8'
 to handle messages that combine texts in multiple languages.
+.TP
+.B sender
+An address that is put into the `Sender:' field
+of outgoing messages.
+This field needs not normally be present.
+It is, however, required
+if the `From:' field contains more than one address.
+It can also be used to indicate that a message
+was sent on behalf of somebody other;
+in this case, `From:' should contain the address
+of the person that took responsibility for the message,
+and `Sender:' should contain the address
+of the person that actually sent the message.
+The
+.I sender
+address is handled as if it were in the
+.I alternates
+list.
 .TP
 .B sendmail
 To use an alternate mail delivery system,

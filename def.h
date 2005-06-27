@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)def.h	2.98 (gritter) 3/4/05
+ *	Sccsid @(#)def.h	2.102 (gritter) 6/9/05
  */
 
 /*
@@ -393,16 +393,19 @@ enum gfield {
 	GMIME	= 256,		/* MIME 1.0 fields */
 	GMSGID	= 512,		/* a Message-ID */
 	/*	  1024 */	/* unused */
-	GIDENT	= 2048,		/* From:, Reply-To: and Organization header */
-	GREF	= 4096,		/* References: header */
-	GDATE	= 8192,		/* Date: header */
+	GIDENT	= 2048,		/* From:, Reply-To: and Organization: field */
+	GREF	= 4096,		/* References: field */
+	GDATE	= 8192,		/* Date: field */
 	GFULL	= 16384,	/* include full names */
 	GSKIN	= 32768,	/* skin names */
-	GREPLYTO= 65536,	/* a Reply-To field */
+	GEXTRA	= 65536, 	/* extra fields */
 	GFILES	= 131072	/* include filename addresses */
 };
 
-#define	GMASK	(GTO|GSUBJECT|GCC|GBCC|GREPLYTO)/* Mask of places from whence */
+#define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
+
+#define	visible(mp)	(((mp)->m_flag&(MDELETED|MHIDDEN|MKILL))==0|| \
+				dot==(mp) && (mp)->m_flag&MKILL)
 
 /*
  * Structure used to pass about the current
@@ -414,11 +417,14 @@ struct header {
 	char *h_subject;		/* Subject string */
 	struct name *h_cc;		/* Carbon copies string */
 	struct name *h_bcc;		/* Blind carbon copies */
-	struct name *h_replyto;		/* Reply-To address */
 	struct name *h_ref;		/* References */
 	struct name *h_smopts;		/* Sendmail options */
 	struct attachment *h_attach;	/* MIME attachments */
 	char	*h_charset;		/* preferred charset */
+	struct name *h_from;		/* overridden "From:" field */
+	struct name *h_replyto;		/* overridden "Reply-To:" field */
+	struct name *h_sender;		/* overridden "Sender:" field */
+	char *h_organization;		/* overridden "Organization:" field */
 };
 
 /*

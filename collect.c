@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.45 (gritter) 2/19/05";
+static char sccsid[] = "@(#)collect.c	2.50 (gritter) 6/9/05";
 #endif
 #endif /* not lint */
 
@@ -168,10 +168,13 @@ print_collf(FILE *collf, struct header *hp)
 			maxlines--;
 		if (hp->h_bcc)
 			maxlines--;
-		if (hp->h_replyto)
-			maxlines--;
 		if (hp->h_attach)
 			maxlines--;
+		maxlines -= myaddrs() != NULL || hp->h_from != NULL;
+		maxlines -= value("ORGANIZATION") != NULL ||
+			hp->h_organization != NULL;
+		maxlines -= value("replyto") != NULL || hp->h_replyto != NULL;
+		maxlines -= value("sender") != NULL || hp->h_sender != NULL;
 		if (linecnt > maxlines) {
 			cp = get_pager();
 			if (sigsetjmp(pipejmp, 1))
@@ -186,7 +189,7 @@ print_collf(FILE *collf, struct header *hp)
 	}
 	fprintf(obuf, catgets(catd, CATSET, 62,
 				"-------\nMessage contains:\n"));
-	gf = GTO|GSUBJECT|GCC|GBCC|GNL|GREPLYTO|GFILES;
+	gf = GIDENT|GTO|GSUBJECT|GCC|GBCC|GNL|GFILES;
 	if (value("fullnames"))
 		gf |= GCOMMA;
 	puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -643,7 +646,8 @@ cont:
 		    (value("dot") != NULL || value("ignoreeof") != NULL))
 			break;
 		if (linebuf[0] != escape || (value("interactive") == NULL &&
-					tildeflag <= 0)) {
+					tildeflag == 0 ||
+					tildeflag < 0)) {
 			if (putline(collf, linebuf, count) < 0)
 				goto err;
 			continue;
@@ -718,6 +722,14 @@ cont:
 						value("bsdcompat") != NULL &&
 						value("bsdorder") != NULL);
 			while (hp->h_to == NULL);
+			goto cont;
+		case 'H':
+			/*
+			 * Grab extra headers.
+			 */
+			do
+				grabh(hp, GEXTRA, 0);
+			while (check_from_and_sender(hp->h_from, hp->h_sender));
 			goto cont;
 		case 't':
 			/*
@@ -982,6 +994,8 @@ makeheader(FILE *fp, struct header *hp)
 		Fclose(collf);
 	Fclose(fp);
 	collf = nf;
+	if (check_from_and_sender(hp->h_from, hp->h_sender))
+		return STOP;
 	return OKAY;
 }
 
@@ -1178,7 +1192,7 @@ void
 savedeadletter(FILE *fp)
 {
 	FILE *dbuf;
-	int c;
+	int c, lines = 0, bytes = 0;
 	char *cp;
 
 	if (fsize(fp) == 0)
@@ -1189,9 +1203,15 @@ savedeadletter(FILE *fp)
 	umask(c);
 	if (dbuf == NULL)
 		return;
-	while ((c = getc(fp)) != EOF)
+	printf("\"%s\" ", cp);
+	while ((c = getc(fp)) != EOF) {
 		putc(c, dbuf);
+		bytes++;
+		if (c == '\n')
+			lines++;
+	}
 	Fclose(dbuf);
+	printf("%d/%d\n", lines, bytes);
 	rewind(fp);
 }
 
