@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.25 (gritter) 6/9/05";
+static char sccsid[] = "@(#)tty.c	2.27 (gritter) 7/13/05";
 #endif
 #endif /* not lint */
 
@@ -169,7 +169,7 @@ rtty_internal(const char *pr, char *src)
 	safe_signal(SIGTTOU, ttystop);
 	safe_signal(SIGTTIN, ttystop);
 	clearerr(stdin);
-	while (cp2 < canonb + sizeof canonb) {
+	while (cp2 < canonb + sizeof canonb - 1) {
 		c = safe_getc(stdin);
 		if (c == EOF || c == '\n')
 			break;
@@ -319,7 +319,7 @@ grabh(struct header *hp, enum gfield gflags, int subjfirst)
 		hp->h_bcc = grabaddrs("Bcc: ", hp->h_bcc, comma, GBCC|GFULL);
 	if (gflags & GEXTRA) {
 		if (hp->h_from == NULL)
-			hp->h_from = sextract(myaddrs(), GEXTRA|GFULL);
+			hp->h_from = sextract(myaddrs(hp), GEXTRA|GFULL);
 		hp->h_from = grabaddrs("From: ", hp->h_from, comma,
 				GEXTRA|GFULL);
 		if (hp->h_replyto == NULL)

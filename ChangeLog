@@ -1,3 +1,26 @@
+[11.24] released 7/14/05
+* When the 'replyto' variable was set, sending a message resulted in a
+  segmentation fault due to a NULL pointer dereference (Bug reported by
+  Nick Pasich).
+* An 'imap-list-depth' variable was introduced to control the maximum depth
+  of the folder traversal for the 'folders' command if the folder separator
+  on the IMAP server is not the slash '/'.
+* If standard output is not a terminal device, the output of the 'folders'
+  command applied to an IMAP account is no longer arranged into columns.
+* The new '-R' option causes all folders to be opened read-only.
+* When the From address was changed with '~H', the value obtained from the
+  'from' variable was still used for the SMTP transfer, for generating the
+  Message-Id, and for S/MIME signing. This has been fixed; the changed
+  address is now used throughout.
+* When reading header fields from a terminal, the input buffer could
+  overflow by one byte (Patch by Ulf Harnhammar).
+* Only applicable if Mozilla NSS is used for SSL support: If the certificate
+  of the server contains a dNSName, NSS ignores the CN. Thus if the CN
+  contains a name that does not also appear as one of the dNSNames, the
+  certificate is rejected. This case is now verified separately in nail,
+  and the certificate is accepted if the CN matches the host name of the
+  server.
+
 [11.23] released 6/28/05
 * The output for the '~p' tilde escape was extended to include the fields
   implied by the 'from', 'replyto', 'sender', and 'ORGANIZATION' variables

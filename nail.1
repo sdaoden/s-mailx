@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)nail.1	2.302 (gritter) 6/9/05
+.\"     Sccsid: @(#)nail.1	2.306 (gritter) 7/13/05
 .\"
-.TH NAIL 1 "6/9/05" "nail 11.23" "User Commands"
+.TH NAIL 1 "7/13/05" "nail 11.24" "User Commands"
 .SH NAME
 nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -51,12 +51,12 @@ nail \- send and receive Internet mail
 \fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\fBnail\fR [\fB\-BDdeHiInNv~\fR] [\fB\-T\fI\ name\fR]
+\fBnail\fR [\fB\-BDdeHiInNRv~\fR] [\fB\-T\fI\ name\fR]
 [\fB\-A\fI\ account\fR]
 \fB\-f\fR [\fIname\fR]
 .HP
 .ad l
-\fBnail\fR [\fB\-BDdeinNv~\fR]
+\fBnail\fR [\fB\-BDdeinNRv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-u\fI\ user\fR]
 .br
@@ -188,6 +188,9 @@ This option exists for compatibility only;
 it is recommended to set the 
 .I from
 variable directly instead.
+.TP
+.B \-R
+Opens any folders read-only.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
@@ -1061,6 +1064,9 @@ With an existing folder as an argument,
 lists then names of folders below the named folder;
 e.\|g. the command `folders @'
 lists the folders on the base level of the current IMAP server.
+See also the
+.I imap-list-depth
+variable.
 .TP
 .B folder
 (fold) The folder command switches
@@ -2951,6 +2957,19 @@ greater than 0
 causes a NOOP command to be sent each
 .I value
 seconds if no other operation is performed.
+.TP
+.B imap-list-depth
+When retrieving the list of folders on an IMAP server, the
+.I folders
+command stops after it has reached a certain depth
+to avoid possible infinite loops.
+The value of this variable sets the maximum depth allowed.
+The default is 2.
+If the folder separator on the current IMAP server is a slash `/',
+this variable has no effect,
+and the
+.I folders
+command does not descend to subfolders.
 .TP
 .B indentprefix
 String used by the `\fI~m\fR' and `\fI~M\fR' tilde escapes

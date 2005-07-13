@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap.c	1.210 (gritter) 11/8/04";
+static char sccsid[] = "@(#)imap.c	1.213 (gritter) 7/5/05";
 #endif
 #endif /* not lint */
 
@@ -1253,7 +1253,7 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		}
 	} else	/* same account */
 		mb.mb_flags |= same_flags;
-	mb.mb_perm = MB_DELE;
+	mb.mb_perm = Rflag ? 0 : MB_DELE;
 	mb.mb_type = MB_IMAP;
 	cache_dequeue(&mb);
 	if (imap_select(&mb, &mailsize, &msgCount, mbx) != OKAY) {
@@ -2420,15 +2420,17 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	int	n;
 	const char	*bp;
 	char	*cp;
+	int	depth;
 
 	verbose = value("verbose") != NULL;
+	depth = (cp = value("imap-list-depth")) != NULL ? atoi(cp) : 2;
 	if (imap_list1(mp, base, &list, &lend, 0) == STOP)
 		return STOP;
 	if (list == NULL || lend == NULL)
 		return OKAY;
 	for (lp = list; lp; lp = lp->l_next)
 		if (lp->l_delim != '/' && lp->l_delim != EOF &&
-				lp->l_level < 2 &&
+				lp->l_level < depth &&
 				(lp->l_attr&LIST_NOINFERIORS) == 0) {
 			cp = salloc((n = strlen(lp->l_name)) + 2);
 			strcpy(cp, lp->l_name);
@@ -2468,6 +2470,7 @@ imap_folders(const char *name, int strip)
 	const char	*fold, *cp, *sp;
 	char	*tempfn;
 	FILE	*fp;
+	int	columnize = is_a_tty[1];
 
 	(void)&saveint;
 	(void)&savepipe;
@@ -2482,12 +2485,15 @@ imap_folders(const char *name, int strip)
 		return;
 	}
 	fold = protfile(name);
-	if ((fp = Ftemp(&tempfn, "Ri", "w+", 0600, 1)) == NULL) {
-		perror("tmpfile");
-		return;
-	}
-	rm(tempfn);
-	Ftfree(&tempfn);
+	if (columnize) {
+		if ((fp = Ftemp(&tempfn, "Ri", "w+", 0600, 1)) == NULL) {
+			perror("tmpfile");
+			return;
+		}
+		rm(tempfn);
+		Ftfree(&tempfn);
+	} else
+		fp = stdout;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2502,19 +2508,23 @@ imap_folders(const char *name, int strip)
 		imap_list(&mb, fold, strip, fp);
 	imaplock = 0;
 	if (interrupts) {
-		Fclose(fp);
+		if (columnize)
+			Fclose(fp);
 		onintr(0);
 	}
 	fflush(fp);
-	rewind(fp);
-	if (fsize(fp) > 0)
-		dopr(fp);
-	else
-		fprintf(stderr, "Folder not found.\n");
+	if (columnize) {
+		rewind(fp);
+		if (fsize(fp) > 0)
+			dopr(fp);
+		else
+			fprintf(stderr, "Folder not found.\n");
+	}
 out:
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
-	Fclose(fp);
+	if (columnize)
+		Fclose(fp);
 }
 
 static void
