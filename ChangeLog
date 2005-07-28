@@ -1,3 +1,32 @@
+[11.25] released 7/29/05
+* The base64 encoder used an invalid encoding for the last unit of data if
+  (bytes_of_input % 3 == 2); it wrote two encoded bits beyond the last byte
+  then. Most base64 decoders, including nail's own, ignore such bits since
+  base64 data is always a multiple of 8-bit bytes. This might explain why
+  no harm caused by this error has been found for years. (Bug reported by
+  Lukasz Iwaszkiewicz).
+* When a completely cached IMAP message was copied on a server supporting
+  the UIDPLUS IMAP extension and the message had not been printed during
+  the current session yet, the cached entry for the target message contained
+  the message body twice. This bug has been fixed, but cached messages
+  written by previous nail versions may still suffer from this error. To get
+  rid of them, delete them from the IMAP cache directory. The file README in
+  that directory explains its structure.
+* When sending messages, input data that lacks a terminating newline is now
+  always encoded in quoted-printable.
+* Wildcard host names in certificates according to RFC 2595 are now accepted
+  (Bug reported by Svend Sorensen).
+* The new "maximum-unencoded-line-length" variable allows to configure the
+  limit on the line length that causes an ASCII text message to be sent in
+  quoted-printable if exceeded (on request by Greg Cox).
+* Since RFC 2595 allows wildcards at other places than RFC 2818 which is
+  implemented by Mozilla NSS, host name verification is now done separately.
+* The "sort xyz" commands now uncollapse all threads of a previously threaded
+  folder view; messages in collapsed threads were previously not shown when
+  the folder was sorted.
+* The junk mail filter now also ignores the "X-pstn" header fields generated
+  by "postini" filtering software.
+
 [11.24] released 7/14/05
 * When the 'replyto' variable was set, sending a message resulted in a
   segmentation fault due to a NULL pointer dereference (Bug reported by

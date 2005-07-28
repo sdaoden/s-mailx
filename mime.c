@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.60 (gritter) 7/13/05";
+static char sccsid[]  = "@(#)mime.c	2.63 (gritter) 7/29/05";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -720,19 +720,22 @@ static enum mimeclean
 mime_isclean(FILE *f)
 {
 	long initial_pos;
-	unsigned curlen = 1, maxlen = 0;
+	unsigned curlen = 1, maxlen = 0, limit = -1;
 	enum mimeclean isclean = 0;
-	int c;
+	char	*cp;
+	int c = EOF, lastc;
 
 	initial_pos = ftell(f);
 	do {
+		lastc = c;
 		c = getc(f);
 		curlen++;
 		if (c == '\n' || c == EOF) {
 			/*
 			 * RFC 821 imposes a maximum line length of 1000
 			 * characters including the terminating CRLF
-			 * sequence.
+			 * sequence. The configurable limit must not
+			 * exceed that including a safety zone.
 			 */
 			if (curlen > maxlen)
 				maxlen = curlen;
@@ -746,9 +749,15 @@ mime_isclean(FILE *f)
 			isclean |= MIME_CTRLCHAR;
 		}
 	} while (c != EOF);
+	if (lastc != '\n')
+		isclean |= MIME_NOTERMNL;
 	clearerr(f);
 	fseek(f, initial_pos, SEEK_SET);
-	if (maxlen > 950)
+	if ((cp = value("maximum-unencoded-line-length")) != NULL)
+		limit = atoi(cp);
+	if (limit < 0 || limit > 950)
+		limit = 950;
+	if (maxlen > limit)
 		isclean |= MIME_LONGLINES;
 	return isclean;
 }
@@ -783,13 +792,14 @@ get_mime_convert(FILE *fp, char **contenttype, char **charset,
 	int convert;
 
 	*isclean = mime_isclean(fp);
-	if (*isclean & MIME_HASNUL) {
+	if (*isclean & (MIME_HASNUL)) {
 		convert = CONV_TOB64;
 		if (*contenttype == NULL ||
 				ascncasecmp(*contenttype, "text/", 5) == 0)
 			*contenttype = "application/octet-stream";
 		*charset = NULL;
-	} else if (*isclean & (MIME_LONGLINES|MIME_CTRLCHAR) || dosign)
+	} else if (*isclean & (MIME_LONGLINES|MIME_CTRLCHAR|MIME_NOTERMNL) ||
+			dosign)
 		convert = CONV_TOQP;
 	else if (*isclean & MIME_HIGHBIT)
 		convert = gettextconversion();
