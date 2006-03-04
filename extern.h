@@ -1,5 +1,5 @@
 /*
- * Nail - a mail user agent derived from Berkeley Mail.
+ * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  */
@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Sccsid @(#)extern.h	2.156 (gritter) 7/15/05
+ *	Sccsid @(#)extern.h	2.159 (gritter) 3/4/06
  */
 
 /* aux.c */
@@ -465,12 +465,14 @@ int mkdate(FILE *fo, const char *field);
 int puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
 		char *contenttype, char *charset);
-int resend_msg(struct message *mp, struct name *to, int add_resent);
+enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
 /* smtp.c */
 char *nodename(int mayoverride);
 char *myaddrs(struct header *hp);
 char *myorigin(struct header *hp);
-int smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp);
+char *smtp_auth_var(const char *type, const char *addr);
+int smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
+		const char *user, const char *password, const char *skinned);
 /* ssl.c */
 void ssl_set_vrfy_level(const char *uhp);
 enum okay ssl_vrfy_decide(void);

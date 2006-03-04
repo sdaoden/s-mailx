@@ -1,5 +1,5 @@
 /*
- * Nail - a mail user agent derived from Berkeley Mail.
+ * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  */
@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.34 (gritter) 7/13/05";
+static char sccsid[] = "@(#)smtp.c	2.38 (gritter) 3/4/06";
 #endif
 #endif /* not lint */
 
@@ -54,6 +54,7 @@ static char sccsid[] = "@(#)smtp.c	2.34 (gritter) 7/13/05";
 #endif	/* HAVE_ARPA_INET_H */
 #endif	/* HAVE_SOCKETS */
 #include <unistd.h>
+#include <setjmp.h>
 
 #include "extern.h"
 #include "md5.h"
@@ -165,13 +166,13 @@ myorigin(struct header *hp)
 
 #ifdef	HAVE_SOCKETS
 
-static char *auth_var(const char *type, const char *addr);
 static int read_smtp(struct sock *sp, int value);
 static int talk_smtp(struct name *to, FILE *fi, struct sock *sp,
-		char *server, char *uhp, struct header *hp);
+		char *server, char *uhp, struct header *hp,
+		const char *user, const char *password, const char *skinned);
 
-static char *
-auth_var(const char *type, const char *addr)
+char *
+smtp_auth_var(const char *type, const char *addr)
 {
 	char	*var, *cp;
 	int	len;
@@ -243,19 +244,17 @@ read_smtp(struct sock *sp, int value)
  */
 static int
 talk_smtp(struct name *to, FILE *fi, struct sock *sp,
-		char *xserver, char *uhp, struct header *hp)
+		char *xserver, char *uhp, struct header *hp,
+		const char *user, const char *password, const char *skinned)
 {
 	struct name *n;
 	char *b = NULL, o[LINESIZE];
 	size_t blen, bsize = 0, count;
-	char	*user, *password, *b64, *skinned, *authstr, *cp;
+	char	*b64, *authstr, *cp;
 	enum	{ AUTH_NONE, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 	int	inhdr = 1, inbcc = 0;
 
-	skinned = skin(myorigin(hp));
-	user = auth_var("-user", skinned);
-	password = auth_var("-password", skinned);
-	if ((authstr = auth_var("", skinned)) == NULL)
+	if ((authstr = smtp_auth_var("", skinned)) == NULL)
 		auth = user && password ? AUTH_LOGIN : AUTH_NONE;
 	else if (strcmp(authstr, "login") == 0)
 		auth = AUTH_LOGIN;
@@ -331,12 +330,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_OUT(o);
 		SMTP_ANSWER(2);
 	}
-	snprintf(o, sizeof o, "MAIL FROM: <%s>\r\n", skinned);
+	snprintf(o, sizeof o, "MAIL FROM:<%s>\r\n", skinned);
 	SMTP_OUT(o);
 	SMTP_ANSWER(2);
 	for (n = to; n != NULL; n = n->n_flink) {
 		if ((n->n_type & GDEL) == 0) {
-			snprintf(o, sizeof o, "RCPT TO: <%s>\r\n",
+			snprintf(o, sizeof o, "RCPT TO:<%s>\r\n",
 					skin(n->n_name));
 			SMTP_OUT(o);
 			SMTP_ANSWER(2);
@@ -387,18 +386,35 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	return 0;
 }
 
+static jmp_buf	smtpjmp;
+
+static void
+onterm(int signo)
+{
+	siglongjmp(smtpjmp, 1);
+}
+
 /*
  * Connect to a SMTP server.
  */
 int
-smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp)
+smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
+		const char *user, const char *password, const char *skinned)
 {
 	struct sock	so;
 	int	use_ssl, ret;
+	sighandler_type	saveterm;
 
 	memset(&so, 0, sizeof so);
 	verbose = value("verbose") != NULL;
 	_debug = value("debug") != NULL;
+	saveterm = safe_signal(SIGTERM, SIG_IGN);
+	if (sigsetjmp(smtpjmp, 1)) {
+		safe_signal(SIGTERM, saveterm);
+		return 1;
+	}
+	if (saveterm != SIG_IGN)
+		safe_signal(SIGTERM, onterm);
 	if (strncmp(server, "smtp://", 7) == 0) {
 		use_ssl = 0;
 		server += 7;
@@ -410,10 +426,13 @@ smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp)
 	} else
 		use_ssl = 0;
 	if (!debug && !_debug && sopen(server, &so, use_ssl, server,
-				use_ssl ? "smtps" : "smtp", verbose) != OKAY)
+				use_ssl ? "smtps" : "smtp", verbose) != OKAY) {
+		safe_signal(SIGTERM, saveterm);
 		return 1;
+	}
 	so.s_desc = "SMTP";
-	ret = talk_smtp(to, fi, &so, server, server, hp);
+	ret = talk_smtp(to, fi, &so, server, server, hp,
+			user, password, skinned);
 	if (!debug && !_debug)
 		sclose(&so);
 	if (smtpbuf) {
@@ -421,11 +440,13 @@ smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp)
 		smtpbuf = NULL;
 		smtpbufsize = 0;
 	}
+	safe_signal(SIGTERM, saveterm);
 	return ret;
 }
 #else	/* !HAVE_SOCKETS */
 int
-smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp)
+smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
+		const char *user, const char *password, const char *skinned)
 {
 	fputs(catgets(catd, CATSET, 194,
 			"No SMTP support compiled in.\n"), stderr);

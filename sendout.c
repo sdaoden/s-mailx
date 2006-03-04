@@ -1,5 +1,5 @@
 /*
- * Nail - a mail user agent derived from Berkeley Mail.
+ * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  */
@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.88 (gritter) 7/29/05";
+static char sccsid[] = "@(#)sendout.c	2.92 (gritter) 3/4/06";
 #endif
 #endif /* not lint */
 
@@ -749,7 +749,10 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 	pid_t pid;
 	sigset_t nset;
 	char *cp, *smtp;
+	char	*user = NULL, *password = NULL, *skinned = NULL;
 	enum okay	ok = STOP;
+	struct termios	otio;
+	int	reset_tio;
 
 	if ((smtp = value("smtp")) == NULL) {
 		args = unpack(cat(mailargs, to));
@@ -761,6 +764,13 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 			printf("\n");
 			return OKAY;
 		}
+	}
+	if (smtp != NULL) {
+		skinned = skin(myorigin(hp));
+		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
+				(password = smtp_auth_var("-password",
+					skinned)) == NULL)
+			password = getpassword(&otio, &reset_tio, NULL);
 	}
 	/*
 	 * Fork, set up the temporary mail file as standard
@@ -784,7 +794,8 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 		freopen("/dev/null", "r", stdin);
 		if (smtp != NULL) {
 			prepare_child(&nset, 0, 1);
-			if (smtp_mta(smtp, to, input, hp) == 0)
+			if (smtp_mta(smtp, to, input, hp,
+					user, password, skinned) == 0)
 				_exit(0);
 		} else {
 			prepare_child(&nset, fileno(input), -1);
@@ -974,7 +985,8 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 		savedeadletter(mtf);
 	to = elide(to);
 	if (count(to) == 0) {
-		ok = OKAY;
+		if (senderr == 0)
+			ok = OKAY;
 		goto out;
 	}
 	if (mightrecord(mtf, to, recipient_record) != OKAY)
@@ -1197,7 +1209,8 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		}
 	}
 	if (w & GUA && stealthmua == 0)
-		fprintf(fo, "User-Agent: %s\n", version), gotcha++;
+		fprintf(fo, "User-Agent: Heirloom mailx %s\n",
+				version), gotcha++;
 	if (w & GMIME) {
 		fputs("MIME-Version: 1.0\n", fo), gotcha++;
 		if (hp->h_attach != NULL) {
@@ -1361,7 +1374,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	return 0;
 }
 
-int 
+enum okay 
 resend_msg(struct message *mp, struct name *to, int add_resent)
 {
 	FILE *ibuf, *nfo, *nfi;
@@ -1372,22 +1385,22 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	memset(&head, 0, sizeof head);
 	if ((to = checkaddrs(to)) == NULL) {
 		senderr++;
-		return 1;
+		return STOP;
 	}
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		senderr++;
 		perror(catgets(catd, CATSET, 189, "temporary mail file"));
-		return 1;
+		return STOP;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
 		senderr++;
 		perror(tempMail);
-		return 1;
+		return STOP;
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-		return 1;
+		return STOP;
 	head.h_to = to;
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
@@ -1398,7 +1411,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 				". . . message not sent.\n"), stderr);
 		Fclose(nfo);
 		Fclose(nfi);
-		return 1;
+		return STOP;
 	}
 	fflush(nfo);
 	rewind(nfo);
@@ -1411,7 +1424,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 		if (value("record-resent") == NULL ||
 				mightrecord(nfi, to, 0) == OKAY)
 			ok = transfer(to, head.h_smopts, nfi, NULL);
-	} else
+	} else if (senderr == 0)
 		ok = OKAY;
 	Fclose(nfi);
 	return ok;

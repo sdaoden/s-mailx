@@ -1,5 +1,5 @@
 /*
- * Nail - a mail user agent derived from Berkeley Mail.
+ * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  */
@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.41 (gritter) 7/5/05";
+static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
 #endif
 #endif /* not lint */
 
@@ -183,13 +183,12 @@ pop3catch(int s)
 	switch (s) {
 	case SIGINT:
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		siglongjmp(pop3jmp, 1);
 		break;
 	case SIGPIPE:
 		fprintf(stderr, "Received SIGPIPE during POP3 operation\n");
-		sclose(&mb.mb_sock);
 		break;
 	}
-	siglongjmp(pop3jmp, 1);
 }
 
 static void
@@ -751,8 +750,8 @@ retry:	switch (need) {
 	}
 	m->m_size = size;
 	m->m_lines = lines;
-	m->m_block = nail_blockof(offset);
-	m->m_offset = nail_offsetof(offset);
+	m->m_block = mailx_blockof(offset);
+	m->m_offset = mailx_offsetof(offset);
 	fflush(mp->mb_otf);
 	switch (need) {
 	case NEED_HEADER:
