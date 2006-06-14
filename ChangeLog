@@ -1,3 +1,21 @@
+[12.1] released 6/15/06
+* The base64 encoder also used an invalid encoding for the last unit of
+  data if (bytes_of_input % 3 == 1). As with the previous similar bug,
+  most base64 decoders, including mailx's own, ignore such bits since
+  base64 data is always a multiple of 8-bit bytes. (Patch by
+  Lukasz Stelmach.)
+* Quotes are now placed around the "protocol" parameter in S/MIME headers
+  in accordance to RFC 2045 (Marco Arioli, Jeffrey Stedfast).
+* The conversion of messages in state-dependent encodings has been fixed;
+  garbage characters could be inserted because the state was not properly
+  reset when a buffer was enlarged (patch by Matthew Fischer).
+* A warning about an initalization of an unsigned value to -1 has been
+  eliminated (patch by Matthew Sienkiewicz).
+* Percent characters in the "prompt" variable are now handled correctly;
+  values of "folder" beginning with an at character and longer than the
+  maximum system path length do not cause a heap overflow anymore (patch
+  by Ulf Harnhammar).
+
 [12.0] released 3/4/06
 * The program has been integrated into the Heirloom project as "mailx". The
   new project homepage is at <http://heirloom.sourceforge.net/mailx.html>.

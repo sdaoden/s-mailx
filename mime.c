@@ -40,7 +40,7 @@
 #ifdef	DOSCCS
 static char copyright[]
 = "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.64 (gritter) 3/4/06";
+static char sccsid[]  = "@(#)mime.c	2.66 (gritter) 4/7/06";
 #endif /* DOSCCS */
 #endif /* not lint */
 
@@ -720,7 +720,7 @@ static enum mimeclean
 mime_isclean(FILE *f)
 {
 	long initial_pos;
-	unsigned curlen = 1, maxlen = 0, limit = -1;
+	unsigned curlen = 1, maxlen = 0, limit = 950;
 	enum mimeclean isclean = 0;
 	char	*cp;
 	int c = EOF, lastc;
@@ -1049,6 +1049,7 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				if (iconv_ft(fhicd, &iptr, &inleft,
 						&nptr, &outleft) != 0 &&
 						errno == E2BIG) {
+					iconv(fhicd, NULL, NULL, NULL, NULL);
 					mime_fromhdr_inc(inleft);
 					goto again;
 				}
@@ -1489,6 +1490,7 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		iptr = ptr;
 		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft) != 0 &&
 				errno == E2BIG) {
+			iconv(iconvd, NULL, NULL, NULL, NULL);
 			ac_free(mptr);
 			mptrsz += inleft;
 			mptr = ac_alloc(mptrsz + 1);
