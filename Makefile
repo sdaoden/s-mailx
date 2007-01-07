@@ -36,7 +36,7 @@ UCBINSTALL	= /usr/ucb/install
 
 # If you want to include SSL support using Mozilla NSS instead of OpenSSL,
 # set something like the following paths. (You might also need to set LDFLAGS).
-#MOZINC		= /usr/include/mozilla-1.7.3
+#MOZINC		= /usr/include/mozilla-seamonkey-1.0.5
 #INCLUDES	= -I$(MOZINC)/nspr -I$(MOZINC)/nss
 # These paths are suitable to activate NSS support on Solaris, provided that
 # the packages SUNWmoznss, SUNWmoznss-devel, SUNWmoznspr, and SUNWmoznspr-devel
@@ -51,6 +51,11 @@ SHELL		= /bin/sh
 # If you know that the IPv6 functions work on your machine, you can enable
 # them here.
 #IPv6		= -DHAVE_IPv6_FUNCS
+
+#
+# Binaries are stripped with this command after installation.
+#
+STRIP = strip
 
 ###########################################################################
 ###########################################################################
@@ -96,7 +101,8 @@ config.h LIBS:
 
 install: all
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
-	$(UCBINSTALL) -c -s mailx $(DESTDIR)$(BINDIR)/mailx
+	$(UCBINSTALL) -c mailx $(DESTDIR)$(BINDIR)/mailx
+	$(STRIP) $(DESTDIR)$(BINDIR)/mailx
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
 	$(UCBINSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/mailx.1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
