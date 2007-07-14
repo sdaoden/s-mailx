@@ -96,7 +96,7 @@ imap.o: imap_gssapi.c
 md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
 
-config.h LIBS:
+config.h LIBS: makeconfig
 	$(SHELL) ./makeconfig
 
 install: all
@@ -114,3 +114,19 @@ clean:
 
 mrproper: clean
 	rm -f config.h config.log LIBS
+
+PKGROOT = /var/tmp/mailx
+PKGTEMP = /var/tmp
+PKGPROTO = pkgproto
+
+mailx.pkg: all
+	rm -rf $(PKGROOT)
+	mkdir -p $(PKGROOT)
+	$(MAKE) DESTDIR=$(PKGROOT) install
+	rm -f $(PKGPROTO)
+	echo 'i pkginfo' >$(PKGPROTO)
+	(cd $(PKGROOT) && find . -print | pkgproto) | >>$(PKGPROTO) sed 's:^\([df] [^ ]* [^ ]* [^ ]*\) .*:\1 root root:; s:^f\( [^ ]* etc/\):v \1:; s:^f\( [^ ]* var/\):v \1:; s:^\(s [^ ]* [^ ]*=\)\([^/]\):\1./\2:'
+	rm -rf $(PKGTEMP)/$@
+	pkgmk -a `uname -m` -d $(PKGTEMP) -r $(PKGROOT) -f $(PKGPROTO) $@
+	pkgtrans -o -s $(PKGTEMP) `pwd`/$@ $@
+	rm -rf $(PKGROOT) $(PKGPROTO) $(PKGTEMP)/$@

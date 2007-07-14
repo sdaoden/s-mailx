@@ -33,7 +33,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)nss.c	1.45 (gritter) 12/25/06";
+static char sccsid[] = "@(#)nss.c	1.47 (gritter) 6/16/07";
 #endif
 #endif /* not lint */
 
@@ -64,11 +64,25 @@ static sigjmp_buf	nssjmp;
 #include <secerr.h>
 #include <smime.h>
 #include <ciferfam.h>
+#ifdef HAVE_XCONST_H
 #include <xconst.h>
+#endif
+#ifdef HAVE_GENNAME_H
 #include <genname.h>
+#endif
 #include <private/pprio.h>
 
 #include "extern.h"
+
+#ifndef	HAVE_CERTAltNameEncodedContext
+/*
+ * NSS 3.11.5 neither installs genname.h nor provides this
+ * structure otherwise, so define it here.
+ */
+typedef struct CERTAltNameEncodedContextStr {
+	SECItem	**encodedGenName;
+} CERTAltNameEncodedContext;
+#endif	/* !HAVE_CERTAltNameEncodedContext */
 
 #include "nsserr.c"
 
@@ -757,16 +771,18 @@ base64_cb(void *arg, const char *buf, unsigned long len)
 		pos = 0;
 		while (len - pos >= sizeof back - fill) {
 			memcpy(&back[fill], &buf[pos], sizeof back - fill);
-			mime_write(back, sizeof *back, sizeof back, arg,
-					CONV_TOB64, TD_NONE, NULL, 0);
+			mime_write(back, sizeof back, arg,
+					CONV_TOB64, TD_NONE, NULL, 0,
+					NULL, NULL);
 			pos += sizeof back - fill;
 			fill = 0;
 		}
 		memcpy(&back[fill], &buf[pos], len - pos);
 		fill += len - pos;
 	} else if (buf == (void *)-1) {
-		mime_write(back, sizeof *back, fill, arg,
-				CONV_TOB64, TD_NONE, NULL, 0);
+		mime_write(back, fill, arg,
+				CONV_TOB64, TD_NONE, NULL, 0,
+				NULL, NULL);
 		fill = 0;
 	}
 }
@@ -1186,9 +1202,10 @@ dumpcert(CERTCertificate *cert, FILE *op)
 	fprintf(op, "subject=%s\n", cert->subjectName);
 	fprintf(op, "issuer=%s\n", cert->issuerName);
 	fputs("-----BEGIN CERTIFICATE-----\n", op);
-	mime_write(cert->derCert.data, sizeof *cert->derCert.data,
+	mime_write(cert->derCert.data,
 		cert->derCert.len, op,
-		CONV_TOB64, TD_NONE, NULL, 0);
+		CONV_TOB64, TD_NONE, NULL, 0,
+		NULL, NULL);
 	fputs("-----END CERTIFICATE-----\n", op);
 }
 

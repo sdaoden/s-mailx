@@ -1,3 +1,27 @@
+[12.3] released 7/15/07
+* Multibyte characters are now handled correctly when printing texts
+  encoded in base64. Previously, if a multibyte character spanned
+  across a line in the base64-encoded representation, it was not
+  recognized, and substitution characters were printed instead.
+* In an SMTP exchange, ignore if the server closes the connection
+  following the QUIT command instead of sending a proper response code,
+  fixing a problem with GMail (Dr. Gary E. Rafe).
+* A null pointer dereference that lead to a segmentation fault when
+  the user hit return at a yes/no question has been fixed (patch by
+  Martin Neitzel).
+* If no proper boundary is present in a MIME multipart message, print
+  a notification message since otherwise no content is shown at all
+  (problem reported by Thomas Wolff).
+* When both standard input and standard output refer to a terminal,
+  ignore SIGPIPE since there is no reason why it should ever terminate
+  mailx then. This fixes problems with mailx terminating when reading
+  a message and ^C is typed in the pager under some circumstances
+  (analysis by Stephen Isard and Perry Hutchison).
+* Build without socket support again (patch by Andreas Niederl).
+* Fixed a single quote in "makeconfig" that could cause a problem with
+  the C preprocessor (patch by Martin Neitzel).
+* Building with recent versions of Mozilla NSS is now possible.
+
 [12.2] released 1/7/07
 * When a MIME message part is not of the "text/" content type, always
   send it in base64 to avoid issues with CRLF conversion (David Ronis).

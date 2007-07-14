@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.38 (gritter) 3/4/06";
+static char sccsid[] = "@(#)smtp.c	2.42 (gritter) 01/12/07";
 #endif
 #endif /* not lint */
 
@@ -166,7 +166,7 @@ myorigin(struct header *hp)
 
 #ifdef	HAVE_SOCKETS
 
-static int read_smtp(struct sock *sp, int value);
+static int read_smtp(struct sock *sp, int value, int ign_eof);
 static int talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		char *server, char *uhp, struct header *hp,
 		const char *user, const char *password, const char *skinned);
@@ -197,17 +197,17 @@ static size_t	smtpbufsize;
  * Get the SMTP server's answer, expecting value.
  */
 static int 
-read_smtp(struct sock *sp, int value)
+read_smtp(struct sock *sp, int value, int ign_eof)
 {
 	int ret;
 	int len;
 
 	do {
 		if ((len = sgetline(&smtpbuf, &smtpbufsize, NULL, sp)) < 6) {
-			if (len >= 0)
+			if (len >= 0 && !ign_eof)
 				fprintf(stderr, catgets(catd, CATSET, 241,
 					"Unexpected EOF on SMTP connection\n"));
-			return 5;
+			return -1;
 		}
 		if (verbose || debug || _debug)
 			fputs(smtpbuf, stderr);
@@ -228,11 +228,18 @@ read_smtp(struct sock *sp, int value)
 /*
  * Macros for talk_smtp.
  */
-#define	SMTP_ANSWER(x)	if (!debug && !_debug && read_smtp(sp, x) != (x)) { \
-				if (b != NULL) \
-					free(b); \
-				return 1; \
+#define	_SMTP_ANSWER(x, ign_eof)	\
+			if (!debug && !_debug) { \
+				int	y; \
+				if ((y = read_smtp(sp, x, ign_eof)) != (x) && \
+					(!(ign_eof) || y != -1)) { \
+					if (b != NULL) \
+						free(b); \
+					return 1; \
+				} \
 			}
+
+#define	SMTP_ANSWER(x)	_SMTP_ANSWER(x, 0)
 
 #define	SMTP_OUT(x)	if (verbose || debug || _debug) \
 				fprintf(stderr, ">>> %s", x); \
@@ -380,13 +387,13 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	SMTP_OUT(".\r\n");
 	SMTP_ANSWER(2);
 	SMTP_OUT("QUIT\r\n");
-	SMTP_ANSWER(2);
+	_SMTP_ANSWER(2, 1);
 	if (b != NULL)
 		free(b);
 	return 0;
 }
 
-static jmp_buf	smtpjmp;
+static sigjmp_buf	smtpjmp;
 
 static void
 onterm(int signo)

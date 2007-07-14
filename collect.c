@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.52 (gritter) 3/4/06";
+static char sccsid[] = "@(#)collect.c	2.54 (gritter) 6/16/07";
 #endif
 #endif /* not lint */
 
@@ -132,7 +132,7 @@ insertcommand(FILE *fp, char *cmd)
 endpipe:
 	safe_signal(SIGPIPE, SIG_IGN);
 	Pclose(obuf);
-	safe_signal(SIGPIPE, SIG_DFL);
+	safe_signal(SIGPIPE, dflpipe);
 }
 
 /*
@@ -211,7 +211,7 @@ endpipe:
 	if (obuf != stdout) {
 		safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(obuf);
-		safe_signal(SIGPIPE, SIG_DFL);
+		safe_signal(SIGPIPE, dflpipe);
 	}
 	if (lbuf)
 		free(lbuf);
@@ -554,12 +554,14 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		} else {
 			cp = hfield("from", mp);
 			if (cp != NULL) {
-				mime_write(cp, sizeof(char), strlen(cp),
+				mime_write(cp, strlen(cp),
 						collf, CONV_FROMHDR, TD_NONE,
-						NULL, (size_t) 0);
-				mime_write(cp, sizeof(char), strlen(cp),
+						NULL, (size_t) 0,
+						NULL, NULL);
+				mime_write(cp, strlen(cp),
 						stdout, CONV_FROMHDR, TD_NONE,
-						NULL, (size_t) 0);
+						NULL, (size_t) 0,
+						NULL, NULL);
 				fwrite(catgets(catd, CATSET, 52,
 					" wrote:\n\n"), sizeof(char), 9, collf);
 				fwrite(catgets(catd, CATSET, 52,
