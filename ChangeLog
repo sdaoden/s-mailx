@@ -1,3 +1,36 @@
+[12.4] released 7/29/08
+* With the "-E" command line option or if the "skipemptybody" variable is
+  set, outgoing messages that contain no text in their first or only part
+  are not sent but silently discarded (contributed by Eygene Ryabinkin).
+* Support for SMTP AUTH PLAIN has been added (contributed by Joe Feise).
+  Set "smtp-auth=plain" to use it.
+* When the text of an outgoing message contains illegal byte sequences
+  in non-interactive mode, do not refuse sending it but send it with
+  the "application/octet-stream" content type instead (thanks for the
+  report and further help to Hilko Bengen).
+* When an attachment that would have a "text/something" content type
+  contains illegal byte sequences, it is now reliably sent out with the
+  "application/octet-stream" content type instead (bugreport by
+  Hilko Bengen).
+* The values of the "sendcharsets" variable are now separately traversed
+  for each part of a multipart message, so that if e.g. the main body can
+  be represented in ISO-8859-1 but an attachment text needs UTF-8, these
+  two encodings will be chosen, respectively.
+* Fixed a bug that caused messages to be truncated with IMAP servers that
+  use LF as line ending in message data, such as Google Mail (reported by 
+  Matthew L. Shobe).
+* Do not run filename expansion for IMAP or POP3 mailboxes names, making
+  it possible to select mailboxes that contain both brackets and spaces
+  in their names (reported by Matthew L. Shobe).
+* Fixed the format of the timezone in "Date" header fields for zones in
+  the Western Hemisphere whose offsets are not an integral number of hours
+  (patch by Matthew Fischer).
+* Print an error message when an attempt is made to S/MIME sign a
+  message but no "from" address can be determined (Georgi Stanojevski).
+* Made the getopt() substitute work with the getopt$UNIX2003() function
+  redirection mechanism on Mac OS X Leopard.
+* Fixed an incorrect type of enum (patch by Matthew Fischer).
+
 [12.3] released 7/15/07
 * Multibyte characters are now handled correctly when printing texts
   encoded in base64. Previously, if a multibyte character spanned

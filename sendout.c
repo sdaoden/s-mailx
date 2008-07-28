@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)sendout.c	2.95 (gritter) 6/16/07";
+static char sccsid[] = "@(#)sendout.c	2.99 (gritter) 7/4/08";
 #endif
 #endif /* not lint */
 
@@ -62,6 +62,7 @@ static char	*send_boundary;
 static char *getencoding(enum conversion convert);
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
+static int attach_file1(struct attachment *ap, FILE *fo, int dosign);
 static int attach_file(struct attachment *ap, FILE *fo, int dosign);
 static int attach_message(struct attachment *ap, FILE *fo, int dosign);
 static int make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
@@ -194,7 +195,7 @@ put_signature(FILE *fo, int convert)
  * Write an attachment to the file buffer, converting to MIME.
  */
 static int
-attach_file(struct attachment *ap, FILE *fo, int dosign)
+attach_file1(struct attachment *ap, FILE *fo, int dosign)
 {
 	FILE *fi;
 	char *charset = NULL, *contenttype = NULL, *basename;
@@ -258,7 +259,7 @@ attach_file(struct attachment *ap, FILE *fo, int dosign)
 	if ((isclean & (MIME_HASNUL|MIME_CTRLCHAR)) == 0 &&
 			ascncasecmp(contenttype, "text/", 5) == 0 &&
 			isclean & MIME_HIGHBIT &&
-			charset != NULL && asccasecmp(charset, tcs)) {
+			charset != NULL) {
 		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1 &&
 				errno != 0) {
 			if (errno == EINVAL)
@@ -305,6 +306,45 @@ attach_file(struct attachment *ap, FILE *fo, int dosign)
 	Fclose(fi);
 	free(buf);
 	return err;
+}
+
+/*
+ * Try out different character set conversions to attach a file.
+ */
+static int
+attach_file(struct attachment *ap, FILE *fo, int dosign)
+{
+	char	*_wantcharset, *charsets, *ncs;
+	size_t	offs = ftell(fo);
+
+	if (ap->a_charset || (charsets = value("sendcharsets")) == NULL)
+		return attach_file1(ap, fo, dosign);
+	_wantcharset = wantcharset;
+	wantcharset = savestr(charsets);
+loop:	if ((ncs = strchr(wantcharset, ',')) != NULL)
+		*ncs++ = '\0';
+try:	if (attach_file1(ap, fo, dosign) != 0) {
+		if (errno == EILSEQ || errno == EINVAL) {
+			if (ncs && *ncs) {
+				wantcharset = ncs;
+				clearerr(fo);
+				fseek(fo, offs, SEEK_SET);
+				goto loop;
+			}
+			if (wantcharset) {
+				if (wantcharset == (char *)-1)
+					wantcharset = NULL;
+				else {
+					wantcharset = (char *)-1;
+					clearerr(fo);
+					fseek(fo, offs, SEEK_SET);
+					goto try;
+				}
+			}
+		}
+	}
+	wantcharset = _wantcharset;
+	return 0;
 }
 
 /*
@@ -431,8 +471,7 @@ infix(struct header *hp, FILE *fi, int dosign)
 			&isclean, dosign);
 #ifdef	HAVE_ICONV
 	tcs = gettcharset();
-	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0 &&
-			asccasecmp(convhdr, tcs)) {
+	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if ((iconvd = iconv_open_ft(convhdr, tcs)) == (iconv_t)-1
@@ -469,7 +508,7 @@ infix(struct header *hp, FILE *fi, int dosign)
 	if ((isclean & (MIME_HASNUL|MIME_CTRLCHAR)) == 0 &&
 			ascncasecmp(contenttype, "text/", 5) == 0 &&
 			isclean & MIME_HIGHBIT &&
-			charset != NULL && asccasecmp(charset, tcs)) {
+			charset != NULL) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1
@@ -675,7 +714,7 @@ savemail(char *name, FILE *fi)
 int 
 mail(struct name *to, struct name *cc, struct name *bcc,
 		struct name *smopts, char *subject, struct attachment *attach,
-		char *quotefile, int recipient_record, int tflag)
+		char *quotefile, int recipient_record, int tflag, int Eflag)
 {
 	struct header head;
 	struct str in, out;
@@ -695,7 +734,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 	}
 	head.h_attach = attach;
 	head.h_smopts = smopts;
-	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag);
+	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag, Eflag);
 	if (subject != NULL)
 		free(out.s);
 	return(0);
@@ -708,12 +747,14 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 static int 
 sendmail_internal(void *v, int recipient_record)
 {
+	int Eflag;
 	char *str = v;
 	struct header head;
 
 	memset(&head, 0, sizeof head);
 	head.h_to = extract(str, GTO|GFULL);
-	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0);
+	Eflag = value("skipemptybody") != NULL;
+	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0, Eflag);
 	return(0);
 }
 
@@ -910,7 +951,8 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
  */
 enum okay 
 mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int doprefix, int tflag)
+		char *quotefile, int recipient_record, int doprefix, int tflag,
+		int Eflag)
 {
 	struct name *to;
 	FILE *mtf, *nmtf;
@@ -956,6 +998,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		}
 	}
 	if (fsize(mtf) == 0) {
+		if (Eflag)
+			goto out;
 		if (hp->h_subject == NULL)
 			printf(catgets(catd, CATSET, 184,
 				"No message, no subject; hope that's ok\n"));
@@ -996,10 +1040,21 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 			hp->h_charset = NULL;
 			goto hloop;
 		}
-		if (ncs && *ncs && (errno == EILSEQ || errno == EINVAL)) {
-			rewind(mtf);
-			wantcharset = ncs;
-			goto loop;
+		if (errno == EILSEQ || errno == EINVAL) {
+			if (ncs && *ncs) {
+				rewind(mtf);
+				wantcharset = ncs;
+				goto loop;
+			}
+			if (wantcharset && value("interactive") == NULL) {
+				if (wantcharset == (char *)-1)
+					wantcharset = NULL;
+				else {
+					rewind(mtf);
+					wantcharset = (char *)-1;
+					goto try;
+				}
+			}
 		}
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
 		perror("");
@@ -1087,13 +1142,13 @@ mkdate(FILE *fo, const char *field)
 	tmptr = localtime(&t);
 	if (tmptr->tm_isdst > 0)
 		tzdiff_hour++;
-	return fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+03d%02d\n",
+	return fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
 			field,
 			weekday_names[tmptr->tm_wday],
 			tmptr->tm_mday, month_names[tmptr->tm_mon],
 			tmptr->tm_year + 1900, tmptr->tm_hour,
 			tmptr->tm_min, tmptr->tm_sec,
-			tzdiff_hour, tzdiff_min);
+			tzdiff_hour * 100 + tzdiff_min);
 }
 
 static enum okay
