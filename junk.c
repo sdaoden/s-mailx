@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)junk.c	1.73 (gritter) 3/4/06";
+static char sccsid[] = "@(#)junk.c	1.75 (gritter) 9/14/08";
 #endif
 #endif /* not lint */
 
@@ -920,6 +920,10 @@ getprob(char *n)
 			 smin(1.0, nbad ? (float)b/nbad : 0.0));
 		p = smin(TOP, p);
 		p = smax(BOT, p);
+		if (p == TOP && b <= 10 && g == 0)
+			p -= BOT;
+		else if (p == BOT && g <= 10 && b == 0)
+			p += BOT;
 	} else if (g == 0 && b == 0)
 		p = DFL;
 	else
@@ -1095,13 +1099,20 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 			if (h1 == best[i].hash1 && h2 == best[i].hash2)
 				break;
 			/*
-			 * This selection prefers words from the end of the
-			 * header and from the start of the body. It does
-			 * probably not matter much at all, but gives at
-			 * least the most interesting verbose output.
+			 * For equal distance, this selection prefers
+			 * words with a low probability, since a false
+			 * negative is better than a false positive,
+			 * and since experience has shown that false
+			 * positives are more likely otherwise. Then,
+			 * words from the end of the header and from
+			 * the start of the body are preferred. This
+			 * gives the most interesting verbose output.
 			 */
-			if (d > best[i].dist || best[i].loc == HEADER &&
-					d >= best[i].dist) {
+			if (d > best[i].dist ||
+					d == best[i].dist &&
+						p < best[i].prob ||
+					best[i].loc == HEADER &&
+						d == best[i].dist) {
 				for (j = BEST-2; j >= i; j--)
 					best[j+1] = best[j];
 				best[i].dist = d;

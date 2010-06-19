@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.73 (gritter) 1/7/08";
+static char sccsid[] = "@(#)fio.c	2.76 (gritter) 9/16/09";
 #endif
 #endif /* not lint */
 
@@ -108,6 +108,7 @@ setptr(FILE *ibuf, off_t offset)
 	memset(&this, 0, sizeof this);
 	this.m_flag = MUSED|MNEW|MNEWEST;
 	filesize = mailsize - offset;
+	offset = ftell(mb.mb_otf);
 	for (;;) {
 		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)
 				== NULL) {
@@ -1050,7 +1051,8 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 						NI_NUMERICHOST) != 0)
 				strcpy(hbuf, "unknown host");
 			fprintf(stderr, catgets(catd, CATSET, 192,
-					"Connecting to %s . . ."), hbuf);
+					"Connecting to %s:%s . . ."),
+					hbuf, portstr);
 		}
 		if ((sockfd = socket(res->ai_family, res->ai_socktype,
 				res->ai_protocol)) >= 0) {
@@ -1068,26 +1070,25 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	freeaddrinfo(res0);
 #else	/* !HAVE_IPv6_FUNCS */
 	if (port == 0) {
-		if ((ep = getservbyname((char *)portstr, "tcp")) == NULL) {
-			if (equal(portstr, "smtp"))
-				port = htons(25);
-			else if (equal(portstr, "smtps"))
-				port = htons(465);
-			else if (equal(portstr, "imap"))
-				port = htons(143);
-			else if (equal(portstr, "imaps"))
-				port = htons(993);
-			else if (equal(portstr, "pop3"))
-				port = htons(110);
-			else if (equal(portstr, "pop3s"))
-				port = htons(995);
-			else {
-				fprintf(stderr, catgets(catd, CATSET, 251,
-					"Unknown service: %s\n"), portstr);
-				return STOP;
-			}
-		} else
+		if (equal(portstr, "smtp"))
+			port = htons(25);
+		else if (equal(portstr, "smtps"))
+			port = htons(465);
+		else if (equal(portstr, "imap"))
+			port = htons(143);
+		else if (equal(portstr, "imaps"))
+			port = htons(993);
+		else if (equal(portstr, "pop3"))
+			port = htons(110);
+		else if (equal(portstr, "pop3s"))
+			port = htons(995);
+		else if ((ep = getservbyname((char *)portstr, "tcp")) != NULL)
 			port = ep->s_port;
+		else {
+			fprintf(stderr, catgets(catd, CATSET, 251,
+				"Unknown service: %s\n"), portstr);
+			return STOP;
+		}
 	} else
 		port = htons(port);
 	if (verbose)
@@ -1109,7 +1110,8 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
 	if (verbose)
 		fprintf(stderr, catgets(catd, CATSET, 192,
-				"Connecting to %s . . ."), inet_ntoa(**pptr));
+				"Connecting to %s:%d . . ."),
+				inet_ntoa(**pptr), ntohs(port));
 	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
 			!= 0) {
 		perror(catgets(catd, CATSET, 254, "could not connect"));

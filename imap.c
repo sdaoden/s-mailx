@@ -38,7 +38,7 @@
 
 #ifndef lint
 #ifdef	DOSCCS
-static char sccsid[] = "@(#)imap.c	1.219 (gritter) 1/6/08";
+static char sccsid[] = "@(#)imap.c	1.222 (gritter) 3/13/09";
 #endif
 #endif /* not lint */
 
@@ -1821,57 +1821,62 @@ imap_update(struct mailbox *mp)
 		 * reading their results.
 		 */
 		needstat = stored > 0 && stored % 800 == 0;
+		/*
+		 * Even if this message has been deleted, continue
+		 * to set further flags. This is necessary to support
+		 * Gmail semantics, where "delete" actually means
+		 * "archive", and the flags are applied to the copy
+		 * in "All Mail".
+		 */
+		if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS)) {
+			imap_store(mp, m, m-message+1,
+					'+', "\\Seen", needstat);
+			stored++;
+		}
+		if (m->m_flag & MFLAG) {
+			imap_store(mp, m, m-message+1,
+					'+', "\\Flagged", needstat);
+			stored++;
+		}
+		if (m->m_flag & MUNFLAG) {
+			imap_store(mp, m, m-message+1,
+					'-', "\\Flagged", needstat);
+			stored++;
+		}
+		if (m->m_flag & MANSWER) {
+			imap_store(mp, m, m-message+1,
+					'+', "\\Answered", needstat);
+			stored++;
+		}
+		if (m->m_flag & MUNANSWER) {
+			imap_store(mp, m, m-message+1,
+					'-', "\\Answered", needstat);
+			stored++;
+		}
+		if (m->m_flag & MDRAFT) {
+			imap_store(mp, m, m-message+1,
+					'+', "\\Draft", needstat);
+			stored++;
+		}
+		if (m->m_flag & MUNDRAFT) {
+			imap_store(mp, m, m-message+1,
+					'-', "\\Draft", needstat);
+			stored++;
+		}
 		if (dodel) {
 			imap_delete(mp, m-message+1, m, needstat);
 			stored++;
 			gotcha++;
-		} else {
-			if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS)) {
-				imap_store(mp, m, m-message+1,
-						'+', "\\Seen", needstat);
-				stored++;
-			}
-			if (m->m_flag & MFLAG) {
-				imap_store(mp, m, m-message+1,
-						'+', "\\Flagged", needstat);
-				stored++;
-			}
-			if (m->m_flag & MUNFLAG) {
-				imap_store(mp, m, m-message+1,
-						'-', "\\Flagged", needstat);
-				stored++;
-			}
-			if (m->m_flag & MANSWER) {
-				imap_store(mp, m, m-message+1,
-						'+', "\\Answered", needstat);
-				stored++;
-			}
-			if (m->m_flag & MUNANSWER) {
-				imap_store(mp, m, m-message+1,
-						'-', "\\Answered", needstat);
-				stored++;
-			}
-			if (m->m_flag & MDRAFT) {
-				imap_store(mp, m, m-message+1,
-						'+', "\\Draft", needstat);
-				stored++;
-			}
-			if (m->m_flag & MUNDRAFT) {
-				imap_store(mp, m, m-message+1,
-						'-', "\\Draft", needstat);
-				stored++;
-			}
-			if (mp->mb_type != MB_CACHE ||
-				!edit && (!(m->m_flag&(MBOXED|MSAVED|MDELETED))
-					|| (m->m_flag &
-						(MBOXED|MPRESERVE|MTOUCH)) ==
-				  		(MPRESERVE|MTOUCH)) ||
-					edit && !(m->m_flag & MDELETED))
-				held++;
-			if (m->m_flag & MNEW) {
-				m->m_flag &= ~MNEW;
-				m->m_flag |= MSTATUS;
-			}
+		} else if (mp->mb_type != MB_CACHE ||
+			!edit && (!(m->m_flag&(MBOXED|MSAVED|MDELETED))
+				|| (m->m_flag &
+					(MBOXED|MPRESERVE|MTOUCH)) ==
+					(MPRESERVE|MTOUCH)) ||
+				edit && !(m->m_flag & MDELETED))
+			held++;
+		if (m->m_flag & MNEW) {
+			m->m_flag &= ~MNEW;
+			m->m_flag |= MSTATUS;
 		}
 	}
 bypass:	if (readstat != NULL)
@@ -2571,6 +2576,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
 	const char	*qname;
 	enum okay	ok = STOP;
 	int	twice = 0;
+	int	stored = 0;
 	FILE	*queuefp = NULL;
 
 	if (mp->mb_type == MB_CACHE) {
@@ -2629,20 +2635,38 @@ again:	if (m->m_uid)
 	 * ... and reset the flag to its initial value so that
 	 * the 'exit' command still leaves the message unread.
 	 */
-out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS))
+out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS)) {
 		imap_store(mp, m, n, '-', "\\Seen", 0);
-	if (m->m_flag&MFLAG)
+		stored++;
+	}
+	if (m->m_flag&MFLAG) {
 		imap_store(mp, m, n, '-', "\\Flagged", 0);
-	if (m->m_flag&MUNFLAG)
+		stored++;
+	}
+	if (m->m_flag&MUNFLAG) {
 		imap_store(mp, m, n, '+', "\\Flagged", 0);
-	if (m->m_flag&MANSWER)
+		stored++;
+	}
+	if (m->m_flag&MANSWER) {
 		imap_store(mp, m, n, '-', "\\Answered", 0);
-	if (m->m_flag&MUNANSWER)
+		stored++;
+	}
+	if (m->m_flag&MUNANSWER) {
 		imap_store(mp, m, n, '+', "\\Answered", 0);
-	if (m->m_flag&MDRAFT)
+		stored++;
+	}
+	if (m->m_flag&MDRAFT) {
 		imap_store(mp, m, n, '-', "\\Draft", 0);
-	if (m->m_flag&MUNDRAFT)
+		stored++;
+	}
+	if (m->m_flag&MUNDRAFT) {
 		imap_store(mp, m, n, '+', "\\Draft", 0);
+		stored++;
+	}
+	if (stored) {
+		mp->mb_active |= MB_COMD;
+		imap_finish(mp);
+	}
 	return ok;
 }
 

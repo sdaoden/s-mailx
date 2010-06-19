@@ -1,3 +1,34 @@
+[12.5] as of 6/20/10
+* Fixed a message corruption that occurred when the "inc" command was used
+  with a mbox format mailbox after encrypted messages had been viewed
+  (reported by Martin Neitzel).
+* Fixed a condition that caused mailx to hang when looking at a message,
+  copying that message, and issuing a "z" command evaluating an uncached
+  portion of an IMAP folder.
+* Make it compile with OpenSSL 1.0.0-beta2 (patch by Bernhard Rosenkränzer).
+* When executing an "account" command, ensure that the values of the "hold",
+  "keepsave", "append", and "emptybox" variables remain those of the previous
+  account for all outstanding operations on that account (bug reported by
+  Jeff Woodall).
+* Support Gmail IMAP semantics of "delete" turning into "archive". Previously,
+  when mailx was setting the "\Deleted" flag on a message, it did not set any
+  other flags. This caused mails that had been read and then deleted to appear
+  as unread in Gmail's "All Mail". Now, flags besides "\Deleted" are also set,
+  so that they are kept in the archived copy (reported by Jeremy O'Brien).
+* For RFC 2047 MIME "encoded-word" parts in headers, assume that the end of
+  each word resets the conversion state (Yedidyah Bar-David).
+* When the ORGANIZATION variable has an empty value, do not generate an
+  "Organization:" header field. Previously, this condition resulted in
+  mailx refusing to send mail (Thomas E. Kammeyer).
+* When classifying messages with the junk filter, when selecting the most
+  representative tokens, prefer non-junk tokens over junk tokens if both
+  have the same (reversed) probability, in order to avoid false positives.
+* When calculating the probabilities of tokens that have occurred only in
+  good messages or only in junk messages so far, and these tokens occurred
+  less than ten times, give them slightly less than the minimum/maximum.
+* Fixed "unignore" and similar commands; they did not work at all so far
+  (http://www.freebsd.org/cgi/query-pr.cgi?pr=146280).
+
 [12.4] released 7/29/08
 * With the "-E" command line option or if the "skipemptybody" variable is
   set, outgoing messages that contain no text in their first or only part
