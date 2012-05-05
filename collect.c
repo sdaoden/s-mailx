@@ -175,7 +175,7 @@ print_collf(FILE *collf, struct header *hp)
 			hp->h_organization != NULL;
 		maxlines -= value("replyto") != NULL || hp->h_replyto != NULL;
 		maxlines -= value("sender") != NULL || hp->h_sender != NULL;
-		if (linecnt > maxlines) {
+		if ((long)maxlines < 0 || linecnt > maxlines) {
 			cp = get_pager();
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
