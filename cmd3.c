@@ -2,6 +2,8 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -345,7 +347,7 @@ respond_internal(int *msgvec, int recipient_record)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
 		np = sextract(rcv, GTO|gf);
-	if ((cp = hfield("to", mp)) != NULL)
+	if (! value("recipients-in-cc") && (cp = hfield("to", mp)) != NULL)
 		np = cat(np, sextract(cp, GTO|gf));
 	np = elide(np);
 	/*
@@ -359,11 +361,14 @@ respond_internal(int *msgvec, int recipient_record)
 	if ((head.h_subject = hfield("subject", mp)) == NULL)
 		head.h_subject = hfield("subj", mp);
 	head.h_subject = reedit(head.h_subject);
-	if ((cp = hfield("cc", mp)) != NULL) {
-		np = elide(sextract(cp, GCC|gf));
-		np = delete_alternates(np);
-		head.h_cc = np;
-	}
+	/* Cc: */
+	np = NULL;
+	if (value("recipients-in-cc") && (cp = hfield("to", mp)) != NULL)
+		np = sextract(cp, GCC|gf);
+	if ((cp = hfield("cc", mp)) != NULL)
+		np = cat(np, sextract(cp, GCC|gf));
+	if (np != NULL)
+		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
 	Eflag = value("skipemptybody") != NULL;
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
