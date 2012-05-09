@@ -1,5 +1,13 @@
-Welcome to Heirloom mailx!
-==========================
+Welcome to S-nail
+=================
+
+S-nail(1) is a fork of Heirloom mailx, formerly known as nail(1).
+It was forked from Heirloom mailx 12.5 on 2012-05-08.
+In the git(1) repository the branch "heirloom" will track development of
+Heirloom mailx, "heirloom-plus" adds onto that the patches that have
+been sent to nail-devel@lists.sourceforge.net, and "master" actually
+tracks S-nail(1) development.  "master" will also be rebased onto
+"heirloom" to keep the history linear.
 
 Mailx is derived from Berkeley Mail and is intended provide the
 functionality of the POSIX mailx command with additional support

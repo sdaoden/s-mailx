@@ -2,6 +2,8 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -1310,7 +1312,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		}
 	}
 	if (w & GUA && stealthmua == 0)
-		fprintf(fo, "User-Agent: Heirloom mailx %s\n",
+		fprintf(fo, "User-Agent: S-nail %s\n",
 				version), gotcha++;
 	if (w & GMIME) {
 		fputs("MIME-Version: 1.0\n", fo), gotcha++;

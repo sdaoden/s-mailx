@@ -2,6 +2,8 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -410,12 +412,12 @@ usage:
 	 */
 	if ((cp = getenv("MAILRC")) != NULL)
 		load(expand(cp));
-	else if ((cp = getenv("NAILRC")) != NULL)
+	else if ((cp = getenv("SNAILRC")) != NULL)
 		load(expand(cp));
 	else
 		load(expand("~/.mailrc"));
-	if (getenv("NAIL_EXTRA_RC") == NULL &&
-			(cp = value("NAIL_EXTRA_RC")) != NULL)
+	if (getenv("SNAIL_EXTRA_RC") == NULL &&
+			(cp = value("SNAIL_EXTRA_RC")) != NULL)
 		load(expand(cp));
 	/*
 	 * Now we can set the account.
@@ -485,9 +487,9 @@ usage:
 		if (Nflag == 0) {
 			if (value("quiet") == NULL)
 				printf(catgets(catd, CATSET, 140,
-					"Heirloom %s version %s.  "
+					"%s version %s.  "
 					"Type ? for help.\n"),
-					value("bsdcompat") ? "Mail" : "mailx",
+					value("bsdcompat") ? "Mail" : "S-nail",
 					version);
 			announce(1);
 			fflush(stdout);

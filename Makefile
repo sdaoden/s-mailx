@@ -1,5 +1,5 @@
 #
-# Makefile for mailx
+# Makefile for s-nail
 #
 
 #
@@ -8,16 +8,15 @@
 
 PREFIX		= /usr/local
 BINDIR		= $(PREFIX)/bin
-MANDIR		= $(PREFIX)/share/man
-SYSCONFDIR	= /etc
-
-MAILRC		= $(SYSCONFDIR)/nail.rc
-MAILSPOOL	= /var/mail
-SENDMAIL	= /usr/lib/sendmail
-
+MANDIR		= $(PREFIX)/man
+SYSCONFDIR	= $(PREFIX)/etc
 DESTDIR		=
 
-UCBINSTALL	= /usr/ucb/install
+MAILRC		= $(SYSCONFDIR)/s-nail.rc
+MAILSPOOL	= /var/mail
+SENDMAIL	= /usr/sbin/sendmail
+INSTALL		= /usr/bin/install
+
 
 # Define compiler, preprocessor, and linker flags here.
 # Note that some Linux/glibc versions need -D_GNU_SOURCE in CPPFLAGS, or
@@ -86,47 +85,39 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) \
 		$(LDFLAGS) $< `grep '^[^#]' LIBS` $(LIBS) -o $@
 
-all: mailx
+all: s-nail
 
-mailx: $(OBJ) LIBS
-	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o mailx
+s-nail: $(OBJ)
+	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o s-nail
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
 md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
+version.o: version.h
 
-config.h LIBS: makeconfig
+#version.h: $(OBJ:.o=.c)
+version.h:
+	eval VERSION=`git describe --dirty --tags`; \
+	echo > version.h \
+		"#define V \"<12.5 7/5/10; $${VERSION:-S-nail spooned}>\""
+
+config.h: makeconfig
 	$(SHELL) ./makeconfig
 
 install: all
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
-	$(UCBINSTALL) -c mailx $(DESTDIR)$(BINDIR)/mailx
-	$(STRIP) $(DESTDIR)$(BINDIR)/mailx
+	$(INSTALL) -c s-nail $(DESTDIR)$(BINDIR)/s-nail
+	$(STRIP) $(DESTDIR)$(BINDIR)/s-nail
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(UCBINSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/mailx.1
+	$(INSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/s-nail.1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	test -f $(DESTDIR)$(MAILRC) || \
-		$(UCBINSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
+		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
 
 clean:
-	rm -f $(OBJ) mailx *~ core log
+	rm -f $(OBJ) s-nail *~ core log
 
-mrproper: clean
+distclean: clean
 	rm -f config.h config.log LIBS
 
-PKGROOT = /var/tmp/mailx
-PKGTEMP = /var/tmp
-PKGPROTO = pkgproto
-
-mailx.pkg: all
-	rm -rf $(PKGROOT)
-	mkdir -p $(PKGROOT)
-	$(MAKE) DESTDIR=$(PKGROOT) install
-	rm -f $(PKGPROTO)
-	echo 'i pkginfo' >$(PKGPROTO)
-	(cd $(PKGROOT) && find . -print | pkgproto) | >>$(PKGPROTO) sed 's:^\([df] [^ ]* [^ ]* [^ ]*\) .*:\1 root root:; s:^f\( [^ ]* etc/\):v \1:; s:^f\( [^ ]* var/\):v \1:; s:^\(s [^ ]* [^ ]*=\)\([^/]\):\1./\2:'
-	rm -rf $(PKGTEMP)/$@
-	pkgmk -a `uname -m` -d $(PKGTEMP) -r $(PKGROOT) -f $(PKGPROTO) $@
-	pkgtrans -o -s $(PKGTEMP) `pwd`/$@ $@
-	rm -rf $(PKGROOT) $(PKGPROTO) $(PKGTEMP)/$@

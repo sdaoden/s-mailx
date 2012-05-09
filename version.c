@@ -1,8 +1,10 @@
-#define	V	"12.5"
+#include "version.h"
 /*
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -48,7 +50,8 @@ static char sccsid[] = "@(#)version.c	2.404 (gritter) 7/5/10";
  * Load this file first to get a "total" Mail version.
  */
 /*char	*version = "8.1 6/6/93";*/
-const char *version = V " 7/5/10";
+/*const char *version = V " 7/5/10";*/
+const char *version = V;
 #ifndef	lint
 #if __GNUC__ >= 3 && __GNUC_MINOR__ >= 4 || __GNUC__ >= 4
 #define USED    __attribute__ ((used))
