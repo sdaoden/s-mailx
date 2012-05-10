@@ -336,7 +336,8 @@ readin(const char *name, struct message *m)
 
 	if ((fp = Fopen(m->m_maildir_file, "r")) == NULL) {
 		fprintf(stderr, "Cannot read \"%s/%s\" for message %d\n",
-				name, m->m_maildir_file, m - &message[0] + 1);
+				name, m->m_maildir_file,
+				(int)(m - &message[0] + 1));
 		m->m_flag |= MHIDDEN;
 		return;
 	}
@@ -443,7 +444,7 @@ maildir_update(void)
 				fprintf(stderr, "Cannot delete file \"%s/%s\" "
 						"for message %d.\n",
 						mailname, m->m_maildir_file,
-						m - &message[0] + 1);
+						(int)(m - &message[0] + 1));
 			else
 				gotcha++;
 		} else {
@@ -492,7 +493,7 @@ move(struct message *m)
 				"message %d not touched.\n",
 				mailname, m->m_maildir_file,
 				mailname, new,
-				m - &message[0] + 1);
+				(int)(m - &message[0] + 1));
 		return;
 	}
 	if (unlink(m->m_maildir_file) < 0)
