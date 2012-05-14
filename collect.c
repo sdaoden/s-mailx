@@ -2,6 +2,8 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -271,8 +273,11 @@ read_attachment_data(struct attachment *ap, unsigned number)
 	snprintf(prefix, sizeof prefix, catgets(catd, CATSET, 50,
 			"#%u\tfilename: "), number);
 	for (;;) {
+		char *exf;
 		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL)
 			break;
+		if ((exf = expand(ap->a_name)) != NULL)
+			ap->a_name = exf;
 		if (access(ap->a_name, R_OK) == 0)
 			break;
 		perror(ap->a_name);
@@ -351,16 +356,21 @@ edit_attachments(struct attachment *attach)
  * Put the given file to the end of the attachment list.
  */
 struct attachment *
-add_attachment(struct attachment *attach, const char *file)
+add_attachment(struct attachment *attach, char *file, int expand_file)
 {
 	struct attachment *ap, *nap;
 
+	if (expand_file) {
+		file = expand(file);
+		if (file == NULL)
+			return NULL;
+	} else
+		file = savestr(file);
 	if (access(file, R_OK) != 0)
 		return NULL;
 	/*LINTED*/
 	nap = csalloc(1, sizeof *nap);
-	nap->a_name = salloc(strlen(file) + 1);
-	strcpy(nap->a_name, file);
+	nap->a_name = file;
 	if (attach != NULL) {
 		for (ap = attach; ap->a_flink != NULL; ap = ap->a_flink);
 		ap->a_flink = nap;
@@ -393,7 +403,7 @@ append_attachments(struct attachment *attach, char *names)
 		c = *cp;
 		*cp++ = '\0';
 		if (*names != '\0') {
-			if ((ap = add_attachment(attach, names)) == NULL)
+			if ((ap = add_attachment(attach, names, 1)) == NULL)
 				perror(names);
 			else
 				attach = ap;

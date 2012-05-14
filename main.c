@@ -310,7 +310,8 @@ main(int argc, char *argv[])
 			/*
 			 * Get attachment filenames
 			 */
-			if ((attach = add_attachment(attach, optarg)) == NULL) {
+			attach = add_attachment(attach, optarg, 0);
+			if (attach == NULL) {
 				perror(optarg);
 				exit(1);
 			}

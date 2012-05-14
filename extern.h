@@ -2,6 +2,8 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*-
  * Copyright (c) 1992, 1993
@@ -214,7 +216,8 @@ int crename(void *v);
 /* cmdtab.c */
 /* collect.c */
 struct attachment *edit_attachments(struct attachment *attach);
-struct attachment *add_attachment(struct attachment *attach, const char *file);
+struct attachment *add_attachment(struct attachment *attach, char *file,
+					int expand_file);
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);
 void savedeadletter(FILE *fp);
