@@ -2,6 +2,8 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * All rights reserved.
  */
 /*
  * Copyright (c) 2002
@@ -115,6 +117,12 @@ static int smime_verify(struct message *m, int n, STACK *chain,
 static EVP_CIPHER *smime_cipher(const char *name);
 static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
 static FILE *smime_sign_cert(const char *xname, const char *xname2, int warn);
+static char *smime_sign_include_certs(char *name);
+#ifdef HAVE_STACK_OF
+static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
+#else
+static int smime_sign_include_chain_creat(STACK **chain, char *cfiles);
+#endif
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
 static enum okay load_crl1(X509_STORE *store, const char *name);
 #endif
@@ -428,6 +436,11 @@ smime_sign(FILE *ip, struct header *headp)
 	FILE	*sp, *fp, *bp, *hp;
 	char	*cp, *addr;
 	X509	*cert;
+#ifdef HAVE_STACK_OF
+	STACK_OF(X509)	*chain = NULL;
+#else
+	STACK	*chain = NULL;
+#endif
 	PKCS7	*pkcs7;
 	EVP_PKEY	*pkey;
 	BIO	*bb, *sb;
@@ -453,8 +466,16 @@ smime_sign(FILE *ip, struct header *headp)
 		return NULL;
 	}
 	Fclose(fp);
+	if ((cp = smime_sign_include_certs(addr)) != NULL &&
+			!smime_sign_include_chain_creat(&chain, cp)) {
+		X509_free(cert);
+		EVP_PKEY_free(pkey);
+		return NULL;
+	}
 	if ((sp = Ftemp(&cp, "Rs", "w+", 0600, 1)) == NULL) {
 		perror("tempfile");
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
@@ -464,6 +485,8 @@ smime_sign(FILE *ip, struct header *headp)
 	rewind(ip);
 	if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
@@ -472,16 +495,20 @@ smime_sign(FILE *ip, struct header *headp)
 			(sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
 		ssl_gen_err("Error creating BIO signing objects");
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
 	}
-	if ((pkcs7 = PKCS7_sign(cert, pkey, NULL, bb,
+	if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb,
 			PKCS7_DETACHED)) == NULL) {
 		ssl_gen_err("Error creating the PKCS#7 signing object");
 		BIO_free(bb);
 		BIO_free(sb);
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
@@ -491,12 +518,16 @@ smime_sign(FILE *ip, struct header *headp)
 		BIO_free(bb);
 		BIO_free(sb);
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
 	}
 	BIO_free(bb);
 	BIO_free(sb);
+	if (chain != NULL)
+		sk_X509_pop_free(chain, X509_free);
 	X509_free(cert);
 	EVP_PKEY_free(pkey);
 	rewind(bp);
@@ -965,6 +996,79 @@ open:	cp = expand(cp);
 		return NULL;
 	}
 	return fp;
+}
+
+static char *
+smime_sign_include_certs(char *name)
+{
+	/* See comments in smime_sign_cert() for algorithm pitfalls */
+	if (name) {
+		struct name *np = sextract(savestr(name), GTO|GSKIN);
+		while (np) {
+			int vs;
+			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
+			snprintf(vn, vs, "smime-sign-include-certs-%s",
+				np->n_name);
+			if ((name = value(vn)) != NULL)
+				return name;
+			np = np->n_flink;
+		}
+	}
+	return value("smime-sign-include-certs");
+}
+
+static int
+smime_sign_include_chain_creat(
+#ifdef HAVE_STACK_OF
+	STACK_OF(X509) **chain,
+#else
+	STACK **chain,
+#endif
+	char *cfiles)
+{
+	*chain = sk_X509_new_null();
+
+	for (;;) {
+		X509 *tmp;
+		FILE *fp;
+		char *exp, *ncf = strchr(cfiles, ',');
+		if (ncf)
+			*ncf++ = '\0';
+		/* This fails for '=,file' constructs, but those are sick */
+		if (! *cfiles)
+			break;
+
+		if ((exp = expand(cfiles)) != NULL)
+			cfiles = exp;
+		if ((fp = Fopen(cfiles, "r")) == NULL) {
+			perror(cfiles);
+			goto jerr;
+		}
+		if ((tmp = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)
+				) == NULL) {
+			ssl_gen_err("Error reading certificate from \"%s\"",
+				cfiles);
+			Fclose(fp);
+			goto jerr;
+		}
+		sk_X509_push(*chain, tmp);
+		Fclose(fp);
+
+		if (! ncf)
+			break;
+		cfiles = ncf;
+	}
+
+	if (sk_X509_num(*chain) == 0) {
+		fprintf(stderr, "smime-sign-include-certs defined but empty\n");
+		goto jerr;
+	}
+
+jleave:	return (*chain != NULL);
+
+jerr:	sk_X509_pop_free(*chain, X509_free);
+	*chain = NULL;
+	goto jleave;
 }
 
 enum okay

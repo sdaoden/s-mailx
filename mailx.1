@@ -3416,6 +3416,23 @@ of the user's addresses using different encryption keys,
 decryption might fail.
 Only applicable if S/MIME support is built using OpenSSL.
 .TP
+.B smime-sign-include-certs
+If used, this must be set to a comma-separated list of files,
+each of which containing a single certificate in PEM format
+to be included in the S/MIME message in addition to the
+.IR smime-sign-cert
+certificate.
+This is most useful for long certificate chains if it is
+desired to aid the receiving party's verification process.
+Only applicable if S/MIME support is built using OpenSSL.
+.TP
+\fBsmime-sign-include-certs-\fIuser@host\fR
+Overrides
+.I smime-sign-include-certs
+for the specific addresses.
+Refer to the discussion of \fBsmime-sign-cert-\fIuser@host\fR
+for more on this topic.
+.TP
 .B smime-sign-nickname
 Specifies that the named certificate be used for signing mail.
 If this variable is not set,
