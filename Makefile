@@ -76,7 +76,8 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 
 .SUFFIXES: .o .c .x
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) \
+		`grep '^[^#]' INCS` $(INCLUDES) $(WARN) -c $<
 
 .c.x:
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) -E $< >$@
@@ -119,5 +120,5 @@ clean:
 	rm -f $(OBJ) s-nail *~ core log
 
 distclean: clean
-	rm -f config.h config.log LIBS
+	rm -f config.h config.log LIBS INCS
 
