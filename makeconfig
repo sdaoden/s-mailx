@@ -447,7 +447,13 @@ int main(void)
 #define GSSAPI_OLD_STYLE' '-lgssapi_krb5' <<\! || \
 			link_check gssapi 'for GSSAPI in libgssapi' \
 				'#define USE_GSSAPI
-#define	GSSAPI_REG_INCLUDE' '-lgssapi' <<\%
+#define	GSSAPI_REG_INCLUDE' '-lgssapi' <<\% || \
+			link_check gssapi \
+				'for GSSAPI in libgssapi, OpenBSD-style' \
+				'#define USE_GSSAPI
+#define	GSSAPI_REG_INCLUDE' \
+		'-lgssapi -lkrb5 -lcrypto' '-I/usr/include/kerberosV' <<\?
+
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
 
@@ -467,6 +473,15 @@ int main(void)
 	return 0;
 }
 %
+#include <gssapi.h>
+
+int main(void)
+{
+	gss_import_name(0, 0, GSS_C_NT_HOSTBASED_SERVICE, 0);
+	gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
+	return 0;
+}
+?
 
 cat >$tmp2.c <<\!
 #include "config.h"
