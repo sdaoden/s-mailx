@@ -5,7 +5,8 @@
 #
 
 tmp=___build$$
-tmp2=___tmp$$
+tmp2=___tmp1$$
+tmp3=___tmp2$$
 out=config.h
 log=config.log
 lib=LIBS
@@ -40,7 +41,7 @@ echo "
 ">$inc
 
 trap "rm -f $out $lib $inc; exit" 1 2 15
-trap "rm -f $tmp.? $tmp $tmp2.? $tmp2" 0
+trap "rm -f $tmp.? $tmp $tmp2.? $tmp2 $tmp3.? $tmp3" 0
 
 msg() {
 	fmt=$1
@@ -438,6 +439,8 @@ int main(void)
 }
 !
 
+sed -e '1s/gssapi\///' < $tmp2.c > $tmp3.c
+
 <$tmp2.c link_check gssapi 'for GSSAPI in libgss' \
 		'#define USE_GSSAPI' '-lgss' ||
 	<$tmp2.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
@@ -445,14 +448,14 @@ int main(void)
 		link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
 				'#define USE_GSSAPI
 #define GSSAPI_OLD_STYLE' '-lgssapi_krb5' <<\! || \
-			link_check gssapi 'for GSSAPI in libgssapi' \
+			<$tmp3.c link_check gssapi 'for GSSAPI in libgssapi' \
 				'#define USE_GSSAPI
-#define	GSSAPI_REG_INCLUDE' '-lgssapi' <<\% || \
-			link_check gssapi \
+#define	GSSAPI_REG_INCLUDE' '-lgssapi' || \
+			<$tmp3.c link_check gssapi \
 				'for GSSAPI in libgssapi, OpenBSD-style' \
 				'#define USE_GSSAPI
 #define	GSSAPI_REG_INCLUDE' \
-		'-lgssapi -lkrb5 -lcrypto' '-I/usr/include/kerberosV' <<\?
+		'-lgssapi -lkrb5 -lcrypto' '-I/usr/include/kerberosV'
 
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
@@ -464,24 +467,6 @@ int main(void)
 	return 0;
 }
 !
-#include <gssapi.h>
-
-int main(void)
-{
-	gss_import_name(0, 0, GSS_C_NT_HOSTBASED_SERVICE, 0);
-	gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
-	return 0;
-}
-%
-#include <gssapi.h>
-
-int main(void)
-{
-	gss_import_name(0, 0, GSS_C_NT_HOSTBASED_SERVICE, 0);
-	gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
-	return 0;
-}
-?
 
 cat >$tmp2.c <<\!
 #include "config.h"
