@@ -89,7 +89,7 @@ static void setscreensize(int dummy);
 int 
 main(int argc, char *argv[])
 {
-	const char optstr[] = "A:BHEFINVT:RS:a:b:c:dDefh:inqr:s:tu:v~";
+	const char optstr[] = "A:BHEFINVT:RS:a:b:c:dDefh:inqr:s:tu:v~O:";
 	int i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
@@ -336,6 +336,13 @@ main(int argc, char *argv[])
 			 * Hop count for sendmail
 			 */
 			smopts = cat(smopts, nalloc("-h", 0));
+			smopts = cat(smopts, nalloc(optarg, 0));
+			sendflag++;
+			break;
+		case 'O':
+			/*
+			 * Additional options to pass-through to MTA
+			 */
 			smopts = cat(smopts, nalloc(optarg, 0));
 			sendflag++;
 			break;

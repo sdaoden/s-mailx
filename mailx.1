@@ -38,14 +38,14 @@
 .\"
 .\"     Sccsid: @(#)mailx.1	2.329 (gritter) 10/9/10
 .\"
-.TH S-NAIL 1 "2012-05-08" "S-nail; fork of Heirloom mailx 12.5" "User Commands"
+.TH S-NAIL 1 "2012-06-30" "S-nail; fork of Heirloom mailx 12.5" "User Commands"
 .SH NAME
 s-nail \- send and receive Internet mail
 .SH SYNOPSIS
 .PD 0
 .HP
 .ad l
-\fBs-nail\fR [\fB\-BDdEFintv~\fR]
+\fBs-nail\fR [\fB\-BDdEFinOtv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
 [\fB\-h\fI\ hops\fR]
@@ -186,6 +186,10 @@ because the contents of that file may differ between them.
 .B \-N
 Inhibits the initial display of message headers when reading mail
 or editing a mail folder.
+.TP
+.BI \-O \ option
+Pass the given option through to sendmail.
+This option has no effect when SMTP is used for sending mail.
 .TP
 .BI \-q \ file
 Start the message with the contents of the specified file.
