@@ -3218,6 +3218,19 @@ all headers are printed above the message body,
 and all MIME parts are included,
 thus \fIquote\fR acts like an automatic ~M command then.
 .TP
+.B quote-fold
+If set in addition to \fIindentprefix\fR, \fIs-nail\fR interprets this
+number as the maximum line length of the quotation when replying to a
+message.
+Setting this turns on a more fancy quotation algorithm in that leading
+quotation characters are compressed and overlong lines are folded to
+\fIquote-fold\fR characters each, breaking at whitespace as necessary
+and starting the follow lines with fillers to pad up to the last
+quotation markers width.
+The value of \fIquote-fold\fR can't be smaller than the length of
+\fIindentprefix\fR plus some additional pad.  It is automatically
+adjusted to the minimum as necessary.
+.TP
 .B record
 If defined, gives the pathname of the folder
 used to record all outgoing mail.

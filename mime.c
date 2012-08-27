@@ -1439,37 +1439,113 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 {
 	static FILE *lastf;
 	static char lastc = '\n';
-	size_t rsz, wsz = 0;
-	char *p = ptr;
+	size_t lpref, i, qfold = 0, lnlen = 0, rsz = size * nmemb, wsz = 0;
+	char *p, *maxp, c;
 
-	if (nmemb == 0)
+	if (rsz == 0)
 		return 0;
 	if (prefix == NULL) {
 		lastf = f;
-		lastc = ((char *)ptr)[size * nmemb - 1];
-		return fwrite(ptr, size, nmemb, f);
+		lastc = ((char *)ptr)[rsz - 1];
+		return fwrite(ptr, 1, rsz, f);
 	}
+
+	if ((p = value("quote-fold")) != NULL) {
+		qfold = (size_t)strtol(p, NULL, 10);
+		if (qfold < prefixlen + 4)
+			qfold = prefixlen + 4;
+		--qfold; /* The newline escape */
+	}
+
 	if (f != lastf || lastc == '\n') {
-		if (*p == '\n' || *p == '\0')
-			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-		else {
-			fputs(prefix, f);
-			wsz += strlen(prefix);
-		}
+		wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
+		lnlen = prefixlen;
 	}
 	lastf = f;
-	for (rsz = size * nmemb; rsz; rsz--, p++, wsz++) {
-		putc(*p, f);
-		if (*p != '\n' || rsz == 1) {
-			continue;
-		}
-		if (p[1] == '\n' || p[1] == '\0')
+
+	p = ptr;
+	maxp = p + rsz;
+
+	if (! qfold) {
+		for (;;) {
+			c = *p++;
+			putc(c, f);
+			wsz++;
+			if (p == maxp)
+				break;
+			if (c != '\n')
+				continue;
 			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-		else {
-			fputs(prefix, f);
-			wsz += strlen(prefix);
+		}
+	} else {
+		for (;;) {
+			/*
+			 * After writing a real newline followed by our prefix,
+			 * compress the quoted prefixes
+			 */
+			for (lpref = 0; p != maxp;) {
+				c = *p++;
+				if (isblank(c) &&
+				    (p == maxp || *p == '>' || *p == '|'))
+					continue;
+				if (c != '>' && c != '|') {
+					--p;
+					break;
+				}
+				++lpref;
+				putc(c, f);
+				++wsz;
+			}
+			lnlen += lpref;
+
+jsoftnl:		/*
+			 * Search forward until either *quote-fold* or NL.
+			 * In the former case try to break at whitespace,
+			 * but only if that lies in the 2nd half of the data
+			 */
+			for (c = rsz = i = 0; p + i < maxp;) {
+				c = p[i++];
+				if (c == '\n')
+					break;
+				if (spacechar(c))
+					rsz = i;
+				if (lnlen + i >= qfold) {
+					c = 0;
+					if (rsz > qfold >> 1)
+						i = rsz;
+					break;
+				}
+			}
+
+			if (i > 0) {
+				wsz += fwrite(p, sizeof *p, i, f);
+				p += i;
+			}
+			if (p >= maxp)
+				break;
+	
+			if (c != '\n') {
+				putc('\\', f);
+				putc('\n', f);
+				wsz += 2;
+			}
+
+			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
+			lnlen = prefixlen;
+			if (c == '\n')
+				continue;
+
+			if ((i = lpref)) {
+				for (; i > 0; ++wsz, ++lnlen, --i)
+					(void)putc('.', f);
+				(void)putc(' ', f);
+				++wsz;
+				++lnlen;
+			}
+			goto jsoftnl;
 		}
 	}
+
 	lastc = p[-1];
 	return wsz;
 }
