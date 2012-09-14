@@ -698,13 +698,6 @@ savemail(char *name, FILE *fi)
 		error = -1;
 	fflush(fi);
 	rewind(fi);
-	/*
-	 * OpenBSD 3.2 and NetBSD 1.5.2 were reported not to 
-	 * reset the kernel file offset after the calls above,
-	 * a clear violation of IEEE Std 1003.1, 1996, 8.2.3.7.
-	 * So do it 'manually'.
-	 */
-	lseek(fileno(fi), 0, SEEK_SET);
 	free(buf);
 	return error;
 }
