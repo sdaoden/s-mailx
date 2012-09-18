@@ -297,10 +297,13 @@ main(int argc, char *argv[])
 		case 'r':
 			/*
 			 * Set From address.
+			 * MTA is only interested in plain address so strip
+			 * anything else (but still give user the option to
+			 * simply pass a fully fledged email address)
 			 */
 			fromaddr = optarg;
 			smopts = cat(smopts, nalloc("-r", 0));
-			smopts = cat(smopts, nalloc(optarg, 0));
+			smopts = cat(smopts, nalloc(optarg, GFULL));
 			tildeflag = -1;
 			sendflag++;
 			break;
