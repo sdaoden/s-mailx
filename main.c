@@ -90,7 +90,7 @@ int
 main(int argc, char *argv[])
 {
 	const char optstr[] = "A:BHEFINVT:RS:a:b:c:dDefh:inqr:s:tu:v~O:";
-	int i, existonly = 0, headersonly = 0, sendflag = 0;
+	int scnt, i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
 	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL, *Aflag = NULL;
@@ -181,6 +181,7 @@ main(int argc, char *argv[])
 	attach = NULL;
 	smopts = NULL;
 	subject = NULL;
+	scnt = 0;
 	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
 		case 'V':
@@ -201,11 +202,8 @@ main(int argc, char *argv[])
 			Fflag = 1;
 			sendflag++;
 			break;
-		case 'S': {
-				char *args[] = { NULL, NULL };
-				args[0] = optarg;
-				set(args);
-			}
+		case 'S':
+			argv[scnt++] = optarg;
 			break;
 		case 'T':
 			/*
@@ -436,12 +434,18 @@ usage:
 		a[1] = NULL;
 		account(a);
 	}
-
 	/*
 	 * Override 'skipemptybody' if '-E' flag was given.
 	 */
 	if (Eflag)
 		assign("skipemptybody", "");
+	/*
+	 * -S arguments override rc files.
+	 */
+	for (i = 0; i < scnt; ++i) {
+		char *args[] = { argv[i], NULL };
+		set(args);
+	}
 
 	starting = 0;
 
