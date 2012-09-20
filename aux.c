@@ -555,7 +555,12 @@ which_protocol(const char *name)
 			goto file;
 	if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
 		if (strncmp(name, "pop3://", 7) == 0)
+#ifdef USE_POP3
 			return PROTO_POP3;
+#else
+			fprintf(stderr, catgets(catd, CATSET, 216,
+					"No POP3 support compiled in.\n"));
+#endif
 		if (strncmp(name, "pop3s://", 8) == 0)
 #ifdef	USE_SSL
 			return PROTO_POP3;
@@ -564,7 +569,12 @@ which_protocol(const char *name)
 					"No SSL support compiled in.\n"));
 #endif	/* !USE_SSL */
 		if (strncmp(name, "imap://", 7) == 0)
+#ifdef USE_IMAP
 			return PROTO_IMAP;
+#else
+			fprintf(stderr, catgets(catd, CATSET, 269,
+					"No IMAP support compiled in.\n"));
+#endif
 		if (strncmp(name, "imaps://", 8) == 0)
 #ifdef	USE_SSL
 			return PROTO_IMAP;

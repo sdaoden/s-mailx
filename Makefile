@@ -103,7 +103,7 @@ version.h:
 	echo > version.h \
 		"#define V \"<12.5 7/5/10; $${VERSION:-S-nail spooned}>\""
 
-config.h: makeconfig
+config.h: user.conf makeconfig
 	$(SHELL) ./makeconfig
 
 install: all

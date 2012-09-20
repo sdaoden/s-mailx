@@ -824,10 +824,10 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 	char *cp, *smtp;
 	char	*user = NULL, *password = NULL, *skinned = NULL;
 	enum okay	ok = STOP;
-#ifdef	HAVE_SOCKETS
+#ifdef USE_SMTP
 	struct termios	otio;
 	int	reset_tio;
-#endif	/* HAVE_SOCKETS */
+#endif
 
 	if ((smtp = value("smtp")) == NULL) {
 		args = unpack(cat(mailargs, to));
@@ -840,7 +840,7 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 			return OKAY;
 		}
 	}
-#ifdef	HAVE_SOCKETS
+#ifdef USE_SMTP
 	if (smtp != NULL) {
 		skinned = skin(myorigin(hp));
 		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
@@ -848,7 +848,7 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 					skinned)) == NULL)
 			password = getpassword(&otio, &reset_tio, NULL);
 	}
-#endif	/* HAVE_SOCKETS */
+#endif
 	/*
 	 * Fork, set up the temporary mail file as standard
 	 * input for "mail", and exec with the user list we generated

@@ -59,7 +59,7 @@ static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
  * POP3 client.
  */
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_POP3
 static int	verbose;
 
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
@@ -900,7 +900,7 @@ pop3_quit(void)
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;
 }
-#else	/* !HAVE_SOCKETS */
+#else	/* !USE_POP3 */
 static void 
 nopop3(void)
 {
@@ -941,4 +941,4 @@ pop3_noop(void)
 	nopop3();
 	return STOP;
 }
-#endif	/* HAVE_SOCKETS */
+#endif	/* USE_POP3 */

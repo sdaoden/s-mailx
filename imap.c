@@ -56,7 +56,7 @@ static char sccsid[] = "@(#)imap.c	1.222 (gritter) 3/13/09";
 #include <unistd.h>
 #include <time.h>
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_IMAP
 
 #include "md5.h"
 
@@ -3296,14 +3296,14 @@ ccache(void *vp)
 	}
 	return 0;
 }
-#else	/* !HAVE_SOCKETS */
+#else	/* !USE_IMAP */
 
 #include "extern.h"
 
 static void 
 noimap(void)
 {
-	fprintf(stderr, catgets(catd, CATSET, 216,
+	fprintf(stderr, catgets(catd, CATSET, 269,
 				"No IMAP support compiled in.\n"));
 }
 
@@ -3449,7 +3449,7 @@ ccache(void *vp)
 	noimap();
 	return 1;
 }
-#endif	/* HAVE_SOCKETS */
+#endif	/* USE_IMAP */
 
 time_t
 imap_read_date_time(const char *cp)

@@ -45,14 +45,14 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
 #include "rcv.h"
 
 #include <sys/utsname.h>
-#ifdef	HAVE_SOCKETS
+#ifdef HAVE_SOCKETS
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #ifdef	HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif	/* HAVE_ARPA_INET_H */
-#endif	/* HAVE_SOCKETS */
+#endif	/* USE_SMTP */
 #include <unistd.h>
 #include <setjmp.h>
 
@@ -65,7 +65,7 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
  * SMTP client and other internet related functions.
  */
 
-#ifdef	HAVE_SOCKETS
+#ifdef HAVE_SOCKETS
 static int verbose;
 static int _debug;
 #endif
@@ -164,7 +164,7 @@ myorigin(struct header *hp)
 	return np->n_flink != NULL ? value("sender") : cp;
 }
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_SMTP
 
 static int read_smtp(struct sock *sp, int value, int ign_eof);
 static int talk_smtp(struct name *to, FILE *fi, struct sock *sp,
@@ -462,7 +462,7 @@ smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 	safe_signal(SIGTERM, saveterm);
 	return ret;
 }
-#else	/* !HAVE_SOCKETS */
+#else	/* !USE_SMTP */
 int
 smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned)
@@ -471,4 +471,4 @@ smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 			"No SMTP support compiled in.\n"), stderr);
 	return 1;
 }
-#endif	/* !HAVE_SOCKETS */
+#endif	/* USE_SMTP */

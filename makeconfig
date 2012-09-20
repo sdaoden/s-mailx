@@ -117,6 +117,23 @@ link_check() {
 	fi
 }
 
+wantfeat() {
+	local i
+	eval i=\$WANT_${1}
+	[ -z "${i}" ] && return 0
+	[ "${i}" = "0" ] && return 1
+	return 0
+}
+
+[ -f user.conf ] && . user.conf
+if ! wantfeat IMAP && ! wantfeat POP3 && ! wantfeat SMTP; then
+	WANT_SOCKET=0
+	WANT_SSL=0
+fi
+if ! wantfeat IMAP; then
+	WANT_GSSAPI=0
+fi
+
 link_check hello 'if a hello world program can be built' <<\! || { \
     echo 'This problem is most certainly not specific to this software.' >&5; \
     echo "Read the file '$log' and check your compiler installation." >&5; \
@@ -282,6 +299,10 @@ int main(void)
 }
 !
 
+## user.conf added later, indentation not adjusted ##
+
+if wantfeat SOCKET; then
+
 compile_check arpa_inet_h 'for <arpa/inet.h>' '#define HAVE_ARPA_INET_H' <<\!
 #include "config.h"
 #include <sys/types.h>
@@ -311,13 +332,15 @@ int main(void)
 }
 !
 
+WANT_SOCKET=1
 <$tmp2.c link_check sockets 'for socket functionality in libc' \
 		'#define HAVE_SOCKETS' ||
 	<$tmp2.c link_check sockets 'for socket functionality in libnsl' \
 			'#define HAVE_SOCKETS' '-lnsl' ||
 		<$tmp2.c link_check sockets \
 			'for socket functionality in libsocket and libnsl' \
-			'#define HAVE_SOCKETS' '-lsocket -lnsl'
+			'#define HAVE_SOCKETS' '-lsocket -lnsl' ||
+		WANT_SOCKET=0
 
 #link_check ipv6 'for IPv6 functionality' '#define HAVE_IPv6_FUNCS' <<\!
 ##include "config.h"
@@ -336,6 +359,29 @@ int main(void)
 #	return 0;
 #}
 #!
+
+	[ ${WANT_SOCKET} -eq 1 ] ||
+		WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
+	if wantfeat IMAP; then
+		echo "#define USE_IMAP" >> $out
+	else
+		echo "/* #define USE_IMAP */" >> $out
+	fi
+	if wantfeat POP3; then
+		echo "#define USE_POP3" >>$out
+	else
+		echo "/* #define USE_POP3 */" >> $out
+	fi
+	if wantfeat SMTP; then
+		echo "#define USE_SMTP" >>$out
+	else
+		echo "/* #define USE_SMTP */" >> $out
+	fi
+else
+	echo '/* Socket (IMAP/POP3/SMTP) support not configured */' >> $out
+	WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
+fi # wantfeat SOCKET
+if wantfeat SSL; then
 
 link_check nss 'for Network Security Services (NSS)' '#define USE_SSL
 #define USE_NSS' '-lsmime3 -lnss3 -lssl3 -lnspr4 -lplc4' <<\! || \
@@ -428,6 +474,11 @@ int main(void)
 !
 fi
 
+else
+	echo '/* Socket/SSL support not configured */' >> $out
+fi # wantfeat SSL
+if wantfeat GSSAPI; then
+
 cat >$tmp2.c <<\!
 #include <gssapi/gssapi.h>
 
@@ -468,6 +519,10 @@ int main(void)
 }
 !
 
+else
+	echo '/* IMAP/GSSAPI support not configured */' >> $out
+fi # wantfeat GSSAPI
+
 cat >$tmp2.c <<\!
 #include "config.h"
 #ifdef HAVE_NL_LANGINFO
@@ -488,7 +543,19 @@ cat >$tmp2.c <<\!
 : + Automatic detection of terminal character set
 #endif
 #ifdef	HAVE_SOCKETS
+# if defined USE_IMAP && defined USE_POP3 && defined USE_SMTP
 : + Networking support (IMAP, POP3, and SMTP)
+# else
+#  ifdef USE_IMAP
+: + Networking support (IMAP)
+#  endif
+#  ifdef USE_POP3
+: + Networking support (POP3)
+#  endif
+#  ifdef USE_SMTP
+: + Networking support (SMTP)
+#  endif
+# endif
 #endif
 #ifdef	USE_GSSAPI
 : + IMAP GSSAPI authentication
@@ -517,6 +584,16 @@ cat >$tmp2.c <<\!
 #endif
 #ifndef	HAVE_SOCKETS
 : - Networking support (IMAP, POP3, and SMTP)
+#else
+# ifndef USE_IMAP
+: - Networking support (IMAP)
+# endif
+# ifndef USE_POP3
+: - Networking support (POP3)
+# endif
+# ifndef USE_SMTP
+: - Networking support (SMTP)
+# endif
 #endif
 #ifndef	USE_GSSAPI
 : - IMAP GSSAPI authentication

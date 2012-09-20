@@ -44,7 +44,7 @@ static char sccsid[] = "@(#)cache.c	1.61 (gritter) 3/4/06";
 
 #include "config.h"
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_IMAP
 
 #include "rcv.h"
 #include "extern.h"
@@ -811,4 +811,4 @@ dequeue1(struct mailbox *mp)
 	}
 	return OKAY;
 }
-#endif	/* HAVE_SOCKETS */
+#endif	/* USE_IMAP */
