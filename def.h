@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso
  */
 /*
  * Copyright (c) 1980, 1993
@@ -50,6 +51,9 @@
 #endif
 
 #define	APPEND				/* New mail goes to end of mailbox */
+
+/* Is *C* a quoting character (for *quote-fold* compression) */
+#define ISQUOTE(C)	((C) == '>' || (C) == '|')
 
 #define	ESCAPE		'~'		/* Default escape for sending */
 #ifndef	MAXPATHLEN
@@ -566,6 +570,7 @@ extern const unsigned char	class_char[];
 			(C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)))
 #define	alphachar(c) (asciichar(c)&&(class_char[c]&(C_UPPER|C_LOWER)))
 #define	blankchar(c) (asciichar(c)&&(class_char[c]&(C_BLANK)))
+#define	blankspacechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_SPACE)))
 #define	cntrlchar(c) (asciichar(c)&&(class_char[c]==C_CNTRL))
 #define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_OCTAL)))
 #define	lowerchar(c) (asciichar(c)&&(class_char[c]&(C_LOWER)))

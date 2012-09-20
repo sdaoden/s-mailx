@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso
  */
 /*
  * Copyright (c) 2000
@@ -1484,19 +1485,20 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 			 * compress the quoted prefixes
 			 */
 			for (lpref = 0; p != maxp;) {
-				c = *p++;
-				if (isblank(c) &&
-				    (p == maxp || *p == '>' || *p == '|'))
-					continue;
-				if (c != '>' && c != '|') {
-					--p;
+				for (i = 0; p + i < maxp;) {
+					c = p[i++];
+					if (blankspacechar(c)) /* XXX U+A0+ */
+						continue;
+					if (! ISQUOTE(c))
+						goto jquoteok;
 					break;
 				}
+				p += i;
 				++lpref;
 				putc(c, f);
 				++wsz;
 			}
-			lnlen += lpref;
+jquoteok:		lnlen += lpref;
 
 jsoftnl:		/*
 			 * Search forward until either *quote-fold* or NL.
