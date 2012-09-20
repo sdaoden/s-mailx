@@ -523,6 +523,12 @@ else
 	echo '/* IMAP/GSSAPI support not configured */' >> $out
 fi # wantfeat GSSAPI
 
+if wantfeat JUNK; then
+	echo "#define USE_JUNK" >>$out
+else
+	echo "/* #define USE_JUNK */" >> $out
+fi
+
 cat >$tmp2.c <<\!
 #include "config.h"
 #ifdef HAVE_NL_LANGINFO
@@ -566,6 +572,9 @@ cat >$tmp2.c <<\!
 #if defined (USE_OPENSSL)
 : + S/MIME and SSL/TLS using OpenSSL
 #endif
+#ifdef USE_JUNK
+: + Gunnar Ritter's junk-mail management
+#endif
 :
 :The following optional features are disabled:
 #ifndef	HAVE_SETLOCALE
@@ -600,6 +609,9 @@ cat >$tmp2.c <<\!
 #endif
 #ifndef	USE_SSL
 : - SSL/TLS (network transport authentication and encryption)
+#endif
+#ifndef USE_JUNK
+: - Gunnar Ritter's junk-mail management
 #endif
 :
 :Remarks:

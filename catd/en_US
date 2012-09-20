@@ -315,3 +315,4 @@ The following ~ escapes are defined:\n\
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
 269 No IMAP support compiled in.\n
+270 No JUNK support compiled in.\n

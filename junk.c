@@ -45,6 +45,7 @@ static char sccsid[] = "@(#)junk.c	1.75 (gritter) 9/14/08";
 #include "config.h"
 #include "rcv.h"
 
+#ifdef USE_JUNK
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -1215,3 +1216,57 @@ cprobability(void *v)
 	relsedb();
 	return 0;
 }
+
+#else /* !USE_JUNK */
+
+static int
+nojunk(void)
+{
+	fputs(catgets(catd, CATSET, 270, "No JUNK support compiled in.\n"),
+		stderr);
+	return (1);
+}
+
+int
+cgood(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cjunk(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cungood(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cunjunk(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cclassify(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cprobability(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+#endif /* USE_JUNK */
