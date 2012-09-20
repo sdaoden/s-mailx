@@ -1,16 +1,20 @@
-How to configure and install mailx
-==================================
+How to configure and install S-nail
+===================================
 
 Quick start
 -----------
 
+Look into user.conf and maybe adjust some feature settings.
+You may also want to look into the Makefile.  Then run
+
         make
         make install
 
-No 'configure' step is necessary anymore. If 'make install' fails because
-no /usr/ucb/install program is present, try
+The rest of this document is taken plain from Heirloom mailx.
+The variables in *Detailed description* are still valid, but note that
+*UCBINSTALL* no longer exists but has been converted to *INSTALL* (see
+Makefile).
 
-        make install UCBINSTALL=/usr/bin/install
 
 Detailed description
 --------------------
