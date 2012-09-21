@@ -1,13 +1,39 @@
 Welcome to S-nail
 =================
 
-S-nail(1) is a fork of Heirloom mailx, formerly known as nail(1).
+S-nail(1) is a fork of Heirloom mailx(1), formerly known as nail(1).
 It was forked from Heirloom mailx 12.5 on 2012-05-08.
-In the git(1) repository the branch "heirloom" will track development of
-Heirloom mailx, "heirloom-plus" adds onto that the patches that have
-been sent to nail-devel@lists.sourceforge.net, and "master" actually
-tracks S-nail(1) development.  "master" will also be rebased onto
-"heirloom" to keep the history linear.
+S-nail is only a git(1) repository on git.code.sf.net/p/s-nail/code (or
+browse it at http://sourceforge.net/p/s-nail/code/), anything else is
+supposed to live on nail-devel@lists.sourceforge.net.
+The git(1) repository consists of three branches:
+
+- heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
+  repository.
+
+- heirloom-plus: rooted on top of *heirloom*, this branch contains
+  patches that i or others have send to nail-devel@ and that i've
+  integrated into the code.
+  These are patches that i think would be integrated by Gunnar Ritter
+  into plain Heirloom mailx(1).  Sometimes i may be mistaken here.
+
+- master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
+  S-nail(1).  It thus changes the name and Makefile stuff and adds some
+  changes that i don't think will ever go into Heirloom mailx(1).
+  Besides these *master* and *heirloom-plus* are somewhat identical.
+
+Note:
+when i write "on top" above i mean just that.  Should Gunnar Ritter ever
+continue his work on Heirloom mailx(1) it is planned that the branches
+are rebased on top of that work again.  This is at least the plan.
+Should the changes be to drastical it may happen that no real rebasing
+occurs but only cherry-picking.  But still it has to be expected that
+git(1) SHA1 commit hashes change due to tree rebasing "on top" of work
+that is integrated deeper in the tree!
+
+
+Welcome to Heirloom mailx!
+==========================
 
 Mailx is derived from Berkeley Mail and is intended provide the
 functionality of the POSIX mailx command with additional support
