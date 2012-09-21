@@ -1,22 +1,25 @@
-#
-# Makefile for s-nail
-#
-
-#
-# See the file INSTALL if you need help.
-#
+#@ Makefile for s-nail
+#@ See the file INSTALL if you need help.
 
 PREFIX		= /usr/local
+# Prepended to all paths at installation time (for e.g. package building)
+DESTDIR		=
+
+# (For those who want to install S-nail(1) as nail(1), use an empty *SID*)
+SID		= s-
+
+# Not uninstalled via uninstall: rule
+MAILRC		= $(SYSCONFDIR)/$(SID)nail.rc
+
 BINDIR		= $(PREFIX)/bin
 MANDIR		= $(PREFIX)/man
 SYSCONFDIR	= $(PREFIX)/etc
-DESTDIR		=
 
-MAILRC		= $(SYSCONFDIR)/s-nail.rc
 MAILSPOOL	= /var/mail
 SENDMAIL	= /usr/sbin/sendmail
+SHELL		= /bin/sh
+STRIP		= strip
 INSTALL		= /usr/bin/install
-
 
 # Define compiler, preprocessor, and linker flags here.
 # Note that some Linux/glibc versions need -D_GNU_SOURCE in CPPFLAGS, or
@@ -25,36 +28,13 @@ INSTALL		= /usr/bin/install
 #CFLAGS		=
 #CPPFLAGS	=
 #LDFLAGS		=
-#WARN		= -Wall -Wno-parentheses -Werror
-
-# Some RedHat versions need INCLUDES = -I/usr/kerberos/include to compile
-# with OpenSSL, or to compile with GSSAPI authentication included. In the
-# latter case, they also need LDFLAGS = -L/usr/kerberos/lib.
-#INCLUDES	= -I/usr/kerberos/include
-#LDFLAGS	= -L/usr/kerberos/lib
-
-# If you want to include SSL support using Mozilla NSS instead of OpenSSL,
-# set something like the following paths. (You might also need to set LDFLAGS).
-#MOZINC		= /usr/include/mozilla-seamonkey-1.0.5
-#INCLUDES	= -I$(MOZINC)/nspr -I$(MOZINC)/nss
-# These paths are suitable to activate NSS support on Solaris, provided that
-# the packages SUNWmoznss, SUNWmoznss-devel, SUNWmoznspr, and SUNWmoznspr-devel
-# are installed.
-#MOZINC		= /usr/sfw/include/mozilla
-#MOZLIB		= /usr/sfw/lib/mozilla
-#INCLUDES	= -I$(MOZINC)/nspr -I$(MOZINC)/nss
-#LDFLAGS	= -L$(MOZLIB) -R$(MOZLIB)
-
-SHELL		= /bin/sh
+#WARN		= -W -Wall -Wno-parentheses -Werror
 
 # If you know that the IPv6 functions work on your machine, you can enable
 # them here.
 #IPv6		= -DHAVE_IPv6_FUNCS
 
-#
-# Binaries are stripped with this command after installation.
-#
-STRIP = strip
+##  --  >8  --  8<  --  ##
 
 ###########################################################################
 ###########################################################################
@@ -86,10 +66,10 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) \
 		$(LDFLAGS) $< `grep '^[^#]' LIBS` $(LIBS) -o $@
 
-all: s-nail
+all: $(SID)nail
 
-s-nail: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o s-nail
+$(SID)nail: $(OBJ)
+	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
@@ -108,16 +88,20 @@ config.h: user.conf makeconfig
 
 install: all
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
-	$(INSTALL) -c s-nail $(DESTDIR)$(BINDIR)/s-nail
-	$(STRIP) $(DESTDIR)$(BINDIR)/s-nail
+	$(INSTALL) -c $(SID)nail $(DESTDIR)$(BINDIR)/$(SID)nail
+	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)nail
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(INSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/s-nail.1
+	$(INSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	test -f $(DESTDIR)$(MAILRC) || \
 		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
 
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(SID)nail \
+		$(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
+
 clean:
-	rm -f $(OBJ) s-nail *~ core log
+	rm -f $(OBJ) $(SID)nail *~ core log
 
 distclean: clean
 	rm -f config.h config.log LIBS INCS
