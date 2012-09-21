@@ -2,8 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen Daode Nurpmeso.
- * All rights reserved.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -224,9 +223,12 @@ ssl_select_method(const char *uhp)
 
 	cp = ssl_method_string(uhp);
 	if (cp != NULL) {
+#ifndef OPENSSL_NO_SSL2
 		if (equal(cp, "ssl2"))
 			method = SSLv2_client_method();
-		else if (equal(cp, "ssl3"))
+		else
+#endif
+		if (equal(cp, "ssl3"))
 			method = SSLv3_client_method();
 		else if (equal(cp, "tls1"))
 			method = TLSv1_client_method();
