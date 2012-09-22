@@ -4,6 +4,42 @@
 # Sccsid @(#)makeconfig	1.44 (gritter) 5/26/09
 #
 
+if [ -z "${CONFIG}" ]; then
+	[ -f user.conf ] && . user.conf
+else
+	case ${CONFIG} in
+	MINIMAL)
+		WANT_JUNK=0 WANT_SOCKET=0
+		;;
+	NETLESS)
+		WANT_SOCKET=0
+		;;
+	NETSEND)
+		WANT_JUNK=0 WANT_IMAP=0 WANT_POP3=0
+		;;
+	*)
+		echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
+		echo >&2 'Possible values: MINIMAL, NETLESS, NETSEND'
+		exit 1
+	esac
+fi
+
+wantfeat() {
+	local i
+	eval i=\$WANT_${1}
+	[ -z "${i}" ] && return 0
+	[ "${i}" = "0" ] && return 1
+	return 0
+}
+
+if ! wantfeat IMAP && ! wantfeat POP3 && ! wantfeat SMTP; then
+	WANT_SOCKET=0
+	WANT_SSL=0
+fi
+if ! wantfeat IMAP; then
+	WANT_GSSAPI=0
+fi
+
 tmp=___build$$
 tmp2=___tmp1$$
 tmp3=___tmp2$$
@@ -116,23 +152,6 @@ link_check() {
 		return 1
 	fi
 }
-
-wantfeat() {
-	local i
-	eval i=\$WANT_${1}
-	[ -z "${i}" ] && return 0
-	[ "${i}" = "0" ] && return 1
-	return 0
-}
-
-[ -f user.conf ] && . user.conf
-if ! wantfeat IMAP && ! wantfeat POP3 && ! wantfeat SMTP; then
-	WANT_SOCKET=0
-	WANT_SSL=0
-fi
-if ! wantfeat IMAP; then
-	WANT_GSSAPI=0
-fi
 
 link_check hello 'if a hello world program can be built' <<\! || { \
     echo 'This problem is most certainly not specific to this software.' >&5; \

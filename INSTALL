@@ -17,7 +17,23 @@ command line, e.g., to change the installation directory:
 
 	$ make PREFIX=/some/nasty/prefix STRIP='/usr/bin/strip -s' install
 
-You still want to edit user.conf.
+And instead of editing user.conf you may also choose predefined CONFIG-sets
+from the command line:
+
+- CONFIG=MINIMAL: all settings from user.conf are off.
+- CONFIG=NETLESS: all settings from user.conf relating internet connectivity
+  are off.
+- CONFIG=NETSEND: WANT_SMTP and WANT_SSL settings are enabled, otherwise
+  identical to MINIMAL.
+
+E.g.:
+
+	$ make CONFIG=MINIMAL DESTDIR=xtest PREFIX=/usr SID=mini- install
+
+would create a "mini-nail" binary and install "mini-xy" manpages etc.
+under the prefix /usr but rooted under [./]xtest, i.e., the binary would
+be installed to "[./]xtest/usr/bin/mini-nail".  Note that for "make
+uninstall" the exact command line should be repeated.
 
 
 How to configure and install mailx
