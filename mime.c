@@ -474,6 +474,7 @@ iconv_ft(iconv_t cd, char **inb, size_t *inbleft, char **outb, size_t *outbleft)
 static void 
 invalid_seq(int c)
 {
+	(void)c;
 	/*fprintf(stderr, "iconv: cannot convert %c\n", c);*/
 }
 #endif	/* HAVE_ICONV */
@@ -754,8 +755,8 @@ mime_isclean(FILE *f)
 	clearerr(f);
 	fseek(f, initial_pos, SEEK_SET);
 	if ((cp = value("maximum-unencoded-line-length")) != NULL)
-		limit = atoi(cp);
-	if (limit < 0 || limit > 950)
+		limit = (unsigned)atoi(cp);
+	if (limit > 950)
 		limit = 950;
 	if (maxlen > limit)
 		isclean |= MIME_LONGLINES;
@@ -793,7 +794,8 @@ get_mime_convert(FILE *fp, char **contenttype, char **charset,
 
 	*isclean = mime_isclean(fp);
 	if (*isclean & MIME_HASNUL ||
-			*contenttype && ascncasecmp(*contenttype, "text/", 5)) {
+			(*contenttype &&
+			ascncasecmp(*contenttype, "text/", 5))) {
 		convert = CONV_TOB64;
 		if (*contenttype == NULL ||
 				ascncasecmp(*contenttype, "text/", 5) == 0)
@@ -861,13 +863,13 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 	upper = in->s + in->l;
 	for (p = in->s, l = 0; p < upper; p++) {
 		if (mustquote(*p&0377) ||
-				p < upper-1 && p[1] == '\n' &&
-					blankchar(p[0]&0377) ||
-				p < upper-4 && l == 0 &&
+				(p < upper-1 && p[1] == '\n' &&
+					blankchar(p[0]&0377)) ||
+				(p < upper-4 && l == 0 &&
 					p[0] == 'F' && p[1] == 'r' &&
-					p[2] == 'o' && p[3] == 'm' ||
-				*p == '.' && l == 0 && p < upper-1 &&
-					p[1] == '\n') {
+					p[2] == 'o' && p[3] == 'm') ||
+				(*p == '.' && l == 0 && p < upper-1 &&
+					p[1] == '\n')) {
 			if (l >= 69) {
 				sz += 2;
 				fwrite("=\n", sizeof (char), 2, fo);
@@ -907,8 +909,8 @@ mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
 	out->l = in->l;
 	upper = in->s + in->l;
 	for (p = in->s; p < upper; p++) {
-		if (mustquote(*p&0377) || p+1 < upper && *(p + 1) == '\n' &&
-				blankchar(*p & 0377)) {
+		if (mustquote(*p&0377) || (p+1 < upper && *(p + 1) == '\n' &&
+				blankchar(*p & 0377))) {
 			if (inhdr && *p == ' ') {
 				*q++ = '_';
 			} else {
@@ -1139,7 +1141,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
 			quoteany++;
 	}
-	if (2 * quoteany > in->l) {
+	if (2u * quoteany > in->l) {
 		/*
 		 * Print the entire field in base64.
 		 */
@@ -1207,8 +1209,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
 							wbeg == &upper[-1]))
 					mustquote++;
 			}
-			if (mustquote || broken || (wend - wbeg) >= 74 &&
-					quoteany) {
+			if (mustquote || broken ||
+					((wend - wbeg) >= 74 && quoteany)) {
 				for (;;) {
 					cin.s = lastwordend ? lastwordend :
 						wbeg;
@@ -1255,7 +1257,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
 				}
 				lastwordend = wend;
 			} else {
-				if (col && wend - wbeg > maxcol - col) {
+				if (col &&
+				    (size_t)(wend - wbeg) > maxcol - col) {
 					putc('\n', fo);
 					sz++;
 					col = 0;
@@ -1489,7 +1492,8 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 			 * compress the quoted prefixes
 			 */
 			for (lpref = 0; p != maxp;) {
-				for (i = 0; p + i < maxp;) {
+				/* (c: keep cc happy) */
+				for (c = i = 0; p + i < maxp;) {
 					c = p[i++];
 					if (blankspacechar(c)) /* XXX U+A0+ */
 						continue;
