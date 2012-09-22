@@ -565,20 +565,22 @@ enum {
 
 extern const unsigned char	class_char[];
 
-#define	asciichar(c) ((unsigned)(c) <= 0177)
-#define	alnumchar(c) (asciichar(c)&&(class_char[c]&\
-			(C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)))
-#define	alphachar(c) (asciichar(c)&&(class_char[c]&(C_UPPER|C_LOWER)))
-#define	blankchar(c) (asciichar(c)&&(class_char[c]&(C_BLANK)))
-#define	blankspacechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_SPACE)))
-#define	cntrlchar(c) (asciichar(c)&&(class_char[c]==C_CNTRL))
-#define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_OCTAL)))
-#define	lowerchar(c) (asciichar(c)&&(class_char[c]&(C_LOWER)))
-#define	punctchar(c) (asciichar(c)&&(class_char[c]&(C_PUNCT)))
-#define	spacechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_SPACE|C_WHITE)))
-#define	upperchar(c) (asciichar(c)&&(class_char[c]&(C_UPPER)))
-#define	whitechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_WHITE)))
-#define	octalchar(c) (asciichar(c)&&(class_char[c]&(C_OCTAL)))
+#define __ischarof(C, FLAGS) (asciichar(C) && class_char[(size_t)C] & (FLAGS))
+#define __ischareq(C, FLAGS) (asciichar(C) && class_char[(size_t)C] == (FLAGS))
+
+#define	asciichar(c) ((size_t)(c) <= 0177)
+#define	alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
+#define	alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
+#define	blankchar(c) __ischarof(c, C_BLANK)
+#define	blankspacechar(c) __ischarof(c, C_BLANK|C_SPACE)
+#define	cntrlchar(c) __ischareq(c, C_CNTRL)
+#define	digitchar(c) __ischarof(c, C_DIGIT|C_OCTAL)
+#define	lowerchar(c) __ischarof(c, C_LOWER)
+#define	punctchar(c) __ischarof(c, C_PUNCT)
+#define	spacechar(c) __ischarof(c, C_BLANK|C_SPACE|C_WHITE)
+#define	upperchar(c) __ischarof(c, C_UPPER)
+#define	whitechar(c) __ischarof(c, C_BLANK|C_WHITE)
+#define	octalchar(c) __ischarof(c, C_OCTAL)
 
 #define	upperconv(c) (lowerchar(c) ? (c)-'a'+'A' : (c))
 #define	lowerconv(c) (upperchar(c) ? (c)-'A'+'a' : (c))
