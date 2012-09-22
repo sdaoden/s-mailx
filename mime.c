@@ -318,21 +318,25 @@ char *
 need_hdrconv(struct header *hp, enum gfield w)
 {
 	if (w & GIDENT) {
-		if (hp->h_from && name_highbit(hp->h_from))
+		if (hp->h_from) {
+			if (name_highbit(hp->h_from))
+				goto needs;
+		} else if (has_highbit(myaddrs(hp)))
 			goto needs;
-		else if (has_highbit(myaddrs(hp)))
+		if (hp->h_organization) {
+			if (has_highbit(hp->h_organization))
+				goto needs;
+		} else if (has_highbit(value("ORGANIZATION")))
 			goto needs;
-		if (hp->h_organization && has_highbit(hp->h_organization))
+		if (hp->h_replyto) {
+			if (name_highbit(hp->h_replyto))
+				goto needs;
+		} else if (has_highbit(value("replyto")))
 			goto needs;
-		else if (has_highbit(value("ORGANIZATION")))
-			goto needs;
-		if (hp->h_replyto && name_highbit(hp->h_replyto))
-			goto needs;
-		else if (has_highbit(value("replyto")))
-			goto needs;
-		if (hp->h_sender && name_highbit(hp->h_sender))
-			goto needs;
-		else if (has_highbit(value("sender")))
+		if (hp->h_sender) {
+			if (name_highbit(hp->h_sender))
+				goto needs;
+		} else if (has_highbit(value("sender")))
 			goto needs;
 	}
 	if (w & GTO && name_highbit(hp->h_to))
