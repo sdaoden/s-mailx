@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -586,6 +587,7 @@ sigchild(int signo)
 	int pid;
 	int status;
 	struct child *cp;
+	(void)signo;
 
 again:
 	while ((pid = waitpid(-1, (int*)&status, WNOHANG)) > 0) {
