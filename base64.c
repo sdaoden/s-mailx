@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * These base64 routines are derived from the metamail-2.7 sources which
@@ -240,10 +241,10 @@ void
 mime_fromb64_b(struct str *in, struct str *out, int is_text, FILE *f)
 {
 	static signed char b[4];
-	static int n;
+	static size_t n;
 	static FILE *f_b = (FILE *)-1;
 	signed char c;
-	int i;
+	size_t i;
 	struct str nin;
 
 	nin.s = smalloc(in->l + n);
