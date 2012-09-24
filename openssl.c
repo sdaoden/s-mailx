@@ -45,8 +45,9 @@ static char sccsid[] = "@(#)openssl.c	1.26 (gritter) 5/26/09";
 
 #include "config.h"
 
-#ifndef	USE_NSS
-#ifdef	USE_OPENSSL
+#ifdef USE_NSS
+typedef int avoid_empty_file_compiler_warning;
+#elif defined USE_OPENSSL
 
 #include <setjmp.h>
 #include <termios.h>
@@ -934,9 +935,9 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 	sighandler_type	saveint;
 	char	*pass = NULL;
 	int	len;
+	(void)rwflag;
+	(void)userdata;
 
-	(void)&saveint;
-	(void)&pass;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	if (sigsetjmp(ssljmp, 1) == 0) {
 		if (saveint != SIG_IGN)
@@ -1237,7 +1238,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 	return OKAY;
 }
 
-#else	/* !USE_OPENSSL */
+#else	/* !NSS && !USE_OPENSSL */
 
 #include <stdio.h>
 
@@ -1251,6 +1252,7 @@ nosmime(void)
 FILE *
 smime_sign(FILE *fp)
 {
+	(void)fp;
 	nosmime();
 	return NULL;
 }
@@ -1259,6 +1261,7 @@ smime_sign(FILE *fp)
 int 
 cverify(void *vp)
 {
+	(void)vp;
 	nosmime();
 	return 1;
 }
@@ -1267,6 +1270,9 @@ cverify(void *vp)
 FILE *
 smime_encrypt(FILE *fp, const char *certfile, const char *to)
 {
+	(void)fp;
+	(void)certfile;
+	(void)to;
 	nosmime();
 	return NULL;
 }
@@ -1275,6 +1281,10 @@ smime_encrypt(FILE *fp, const char *certfile, const char *to)
 struct message *
 smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 {
+	(void)m;
+	(void)to;
+	(void)cc;
+	(void)signcall;
 	nosmime();
 	return NULL;
 }
@@ -1283,8 +1293,8 @@ smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 int 
 ccertsave(void *v)
 {
+	(void)v;
 	nosmime();
 	return 1;
 }
-#endif	/* !USE_OPENSSL */
-#endif	/* !USE_NSS */
+#endif	/* !USE_NSS && !USE_OPENSSL */
