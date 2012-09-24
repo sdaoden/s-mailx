@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -505,7 +506,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 		return itexecute(mp, m, c, n->n_x) &
 			itexecute(mp, m, c, n->n_y);
 	case ITSET:
-		return c == n->n_n;
+		return (unsigned long)c == n->n_n;
 	case ITALL:
 		return 1;
 	case ITANSWERED:
@@ -513,7 +514,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITBCC:
 		return matchenvelope(m, "bcc", n->n_v);
 	case ITBEFORE:
-		return m->m_time < n->n_n;
+		return (unsigned long)m->m_time < n->n_n;
 	case ITBODY:
 		return matchmsg(m, n->n_v, 0);
 	case ITCC:
@@ -539,7 +540,8 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITOLD:
 		return (m->m_flag&MNEW) == 0;
 	case ITON:
-		return m->m_time >= n->n_n && m->m_time < n->n_n + 86400;
+		return ((unsigned long)m->m_time >= n->n_n &&
+			(unsigned long)m->m_time < n->n_n + 86400);
 	case ITOR:
 		return itexecute(mp, m, c, n->n_x) |
 			itexecute(mp, m, c, n->n_y);
@@ -548,15 +550,16 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITSEEN:
 		return (m->m_flag&MREAD) != 0;
 	case ITSENTBEFORE:
-		return m->m_date < n->n_n;
+		return (unsigned long)m->m_date < n->n_n;
 	case ITSENTON:
-		return m->m_date >= n->n_n && m->m_date < n->n_n + 86400;
+		return ((unsigned long)m->m_date >= n->n_n &&
+			(unsigned long)m->m_date < n->n_n + 86400);
 	case ITSENTSINCE:
-		return m->m_date >= n->n_n;
+		return (unsigned long)m->m_date >= n->n_n;
 	case ITSINCE:
-		return m->m_time >= n->n_n;
+		return (unsigned long)m->m_time >= n->n_n;
 	case ITSMALLER:
-		return m->m_xsize < n->n_n;
+		return (unsigned long)m->m_xsize < n->n_n;
 	case ITSUBJECT:
 		return matchfield(m, "subject", n->n_v);
 	case ITTEXT:
@@ -735,7 +738,7 @@ around(const char *cp)
 
 	for (i = 0; i < SURROUNDING && cp > begin; i++)
 		cp--;
-	for (i = 0; i < sizeof ab - 1; i++)
+	for (i = 0; i < (int)sizeof ab - 1; i++)
 		ab[i] = *cp++;
 	ab[i] = '\0';
 	return ab;
