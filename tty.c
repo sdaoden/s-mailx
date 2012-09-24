@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -48,6 +49,10 @@ static char sccsid[] = "@(#)tty.c	2.29 (gritter) 3/9/07";
  * Generally useful tty stuff.
  */
 
+/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
+ * TODO Problem: Popen doesn't encapsulate all cases of open failures,
+ * TODO may leave child running if fdopen() fails! */
+
 #include "rcv.h"
 #include "extern.h"
 #include <errno.h>
@@ -92,6 +97,7 @@ ttystop(int s)
 static void 
 ttyint(int s)
 {
+	(void)s;
 	siglongjmp(intjmp, 1);
 }
 
@@ -431,6 +437,6 @@ yorn(char *msg)
 	do
 		cp = readtty(msg, NULL);
 	while (cp == NULL ||
-		*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
+		(*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N'));
 	return *cp == 'y' || *cp == 'Y';
 }
