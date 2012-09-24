@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -569,6 +570,7 @@ imapcatch(int s)
 static void
 maincatch(int s)
 {
+	(void)s;
 	if (interrupts++ == 0) {
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
 		return;
@@ -638,8 +640,7 @@ rec_dequeue(void)
 	struct message	*omessage;
 	enum okay	ok = OKAY;
 	struct record	*rp = record, *rq = NULL;
-	unsigned long	exists = 0;
-	long	i;
+	unsigned long	exists = 0, i;
 
 	if (record == NULL)
 		return STOP;
@@ -658,7 +659,7 @@ rec_dequeue(void)
 				ok = STOP;
 				break;
 			}
-			if (rp->rec_count > msgCount) {
+			if (rp->rec_count > (unsigned long)msgCount) {
 				if (exists == 0 || rp->rec_count > exists--)
 					ok = STOP;
 				break;
@@ -688,7 +689,7 @@ rec_dequeue(void)
 	}
 	free(rq);
 	record = recend = NULL;
-	if (ok == OKAY && exists > msgCount) {
+	if (ok == OKAY && exists > (unsigned long)msgCount) {
 		message = srealloc(message,
 				(exists + 1) * sizeof *message);
 		memset(&message[msgCount], 0,
@@ -724,6 +725,7 @@ imapalarm(int s)
 {
 	sighandler_type	saveint;
 	sighandler_type savepipe;
+	(void)s;
 
 	if (imaplock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -933,6 +935,7 @@ imap_select(struct mailbox *mp, off_t *size, int *count, const char *mbx)
 	char	*cp;
 	char o[LINESIZE];
 	FILE	*queuefp = NULL;
+	(void)size;
 
 	mp->mb_uidvalidity = 0;
 	snprintf(o, sizeof o, "%s SELECT %s\r\n", tag(1), imap_quotestr(mbx));
@@ -959,8 +962,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
 	FILE	*queuefp = NULL;
 	char	*cp;
 	struct message *m;
-	unsigned 	x = X, y = Y;
-	int n;
+	unsigned 	x = X, y = Y, n;
 
 	snprintf(o, sizeof o, "%s FETCH %u:%u (FLAGS UID)\r\n", tag(1), x, y);
 	IMAP_OUT(o, MB_COMD, return STOP)
@@ -1023,6 +1025,7 @@ static void
 imap_init(struct mailbox *mp, int n)
 {
 	struct message *m = &message[n];
+	(void)mp;
 
 	m->m_flag = MUSED|MNOFROM;
 	m->m_block = 0;
@@ -1641,9 +1644,9 @@ imap_fetchheaders (
 		expected = atol(&cp[1]);
 		if (m[bot-1].m_uid) {
 			if ((cp=asccasestr(responded_other_text, "UID "))) {
-				u = atol(&cp[4]);
+				u = atoi(&cp[4]);
 				for (n = bot; n <= top; n++)
-					if (m[n-1].m_uid == u)
+					if ((unsigned long)u == m[n-1].m_uid)
 						break;
 				if (n > top) {
 					imap_fetchdata(mp, NULL, expected,
@@ -1669,9 +1672,9 @@ imap_fetchheaders (
 			if (verbose)
 				fputs(imapbuf, stderr);
 			if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
-				u = atol(&cp[4]);
+				u = atoi(&cp[4]);
 				for (n = bot; n <= top; n++)
-					if (m[n-1].m_uid == u)
+					if ((unsigned long)u == m[n-1].m_uid)
 						break;
 				if (n <= top && !(m[n-1].m_have & HAVE_HEADER))
 					commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
@@ -1868,11 +1871,10 @@ imap_update(struct mailbox *mp)
 			stored++;
 			gotcha++;
 		} else if (mp->mb_type != MB_CACHE ||
-			!edit && (!(m->m_flag&(MBOXED|MSAVED|MDELETED))
-				|| (m->m_flag &
-					(MBOXED|MPRESERVE|MTOUCH)) ==
-					(MPRESERVE|MTOUCH)) ||
-				edit && !(m->m_flag & MDELETED))
+			(! edit && ! (m->m_flag&(MBOXED|MSAVED|MDELETED))) ||
+				(m->m_flag & (MBOXED|MPRESERVE|MTOUCH)) ==
+					(MPRESERVE|MTOUCH) ||
+				(edit && ! (m->m_flag & MDELETED)))
 			held++;
 		if (m->m_flag & MNEW) {
 			m->m_flag &= ~MNEW;
@@ -2779,7 +2781,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1,
 	xmb.mb_otf = xmb.mb_itf = fp;
 	initcache(&xmb);
 	memset(&xm, 0, sizeof xm);
-	xm.m_flag = flag&MREAD | MNEW;
+	xm.m_flag = (flag & MREAD) | MNEW;
 	xm.m_time = t;
 	xm.m_block = mailx_blockof(off1);
 	xm.m_offset = mailx_offsetof(off1);
@@ -3079,7 +3081,7 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 	size_t	bufsize, buflen, count;
 	enum okay	ok = OKAY, rok = OKAY;
 	long	offs, offs1, offs2, octets;
-	int	n, twice, gotcha = 0;
+	int	twice, gotcha = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
 	buflen = 0;
@@ -3139,9 +3141,10 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 				goto fail;
 			}
 			while (octets > 0) {
-				n = octets > sizeof iob ? sizeof iob : octets;
+				size_t n = (size_t)octets > sizeof iob
+					? sizeof iob : (size_t)octets;
 				octets -= n;
-				if (fread(iob, 1, n, fp) != n)
+				if (n != fread(iob, 1, n, fp))
 					goto fail;
 				swrite1(&mp->mb_sock, iob, n, 1);
 			}
@@ -3228,6 +3231,7 @@ cconnect(void *vp)
 {
 	char	*cp, *cq;
 	int	omsgCount = msgCount;
+	(void)vp;
 
 	if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd > 0) {
 		fprintf(stderr, "Already connected.\n");
@@ -3310,6 +3314,9 @@ noimap(void)
 int 
 imap_setfile(const char *server, int newmail, int isedit)
 {
+	(void)server;
+	(void)newmail;
+	(void)isedit;
 	noimap();
 	return -1;
 }
@@ -3317,6 +3324,7 @@ imap_setfile(const char *server, int newmail, int isedit)
 enum okay 
 imap_header(struct message *mp)
 {
+	(void)mp;
 	noimap();
 	return STOP;
 }
@@ -3324,6 +3332,7 @@ imap_header(struct message *mp)
 enum okay 
 imap_body(struct message *mp)
 {
+	(void)mp;
 	noimap();
 	return STOP;
 }
@@ -3331,6 +3340,8 @@ imap_body(struct message *mp)
 void 
 imap_getheaders(int bot, int top)
 {
+	(void)bot;
+	(void)top;
 }
 
 void 
@@ -3343,6 +3354,7 @@ imap_quit(void)
 int 
 imap_imap(void *vp)
 {
+	(void)vp;
 	noimap();
 	return 1;
 }
@@ -3351,6 +3363,7 @@ imap_imap(void *vp)
 int 
 imap_newmail(int dummy)
 {
+	(void)dummy;
 	return 0;
 }
 
@@ -3358,6 +3371,8 @@ imap_newmail(int dummy)
 enum okay 
 imap_undelete(struct message *m, int n)
 {
+	(void)m;
+	(void)n;
 	return STOP;
 }
 
@@ -3365,6 +3380,8 @@ imap_undelete(struct message *m, int n)
 enum okay 
 imap_unread(struct message *m, int n)
 {
+	(void)m;
+	(void)n;
 	return STOP;
 }
 
@@ -3372,6 +3389,8 @@ imap_unread(struct message *m, int n)
 enum okay
 imap_append(const char *server, FILE *fp)
 {
+	(void)server;
+	(void)fp;
 	noimap();
 	return STOP;
 }
@@ -3380,6 +3399,8 @@ imap_append(const char *server, FILE *fp)
 void 
 imap_folders(const char *name, int strip)
 {
+	(void)name;
+	(void)strip;
 	noimap();
 }
 
@@ -3387,6 +3408,7 @@ imap_folders(const char *name, int strip)
 enum okay 
 imap_remove(const char *name)
 {
+	(void)name;
 	noimap();
 	return STOP;
 }
@@ -3395,6 +3417,8 @@ imap_remove(const char *name)
 enum okay 
 imap_rename(const char *old, const char *new)
 {
+	(void)old;
+	(void)new;
 	noimap();
 	return STOP;
 }
@@ -3402,6 +3426,9 @@ imap_rename(const char *old, const char *new)
 enum okay 
 imap_copy(struct message *m, int n, const char *name)
 {
+	(void)m;
+	(void)n;
+	(void)name;
 	noimap();
 	return STOP;
 }
@@ -3410,12 +3437,15 @@ imap_copy(struct message *m, int n, const char *name)
 enum okay 
 imap_search1(const char *spec, int f)
 {
+	(void)spec;
+	(void)f;
 	return STOP;
 }
 
 int 
 imap_thisaccount(const char *cp)
 {
+	(void)cp;
 	return 0;
 }
 
@@ -3430,6 +3460,7 @@ imap_noop(void)
 int 
 cconnect(void *vp)
 {
+	(void)vp;
 	noimap();
 	return 1;
 }
@@ -3438,6 +3469,7 @@ cconnect(void *vp)
 int 
 cdisconnect(void *vp)
 {
+	(void)vp;
 	noimap();
 	return 1;
 }
@@ -3446,6 +3478,7 @@ cdisconnect(void *vp)
 int 
 ccache(void *vp)
 {
+	(void)vp;
 	noimap();
 	return 1;
 }
