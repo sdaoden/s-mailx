@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -58,6 +59,10 @@ static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
  *
  * POP3 client.
  */
+
+/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
+ * TODO Problem: Popen doesn't encapsulate all cases of open failures,
+ * TODO may leave child running if fdopen() fails! */
 
 #ifdef USE_POP3
 static int	verbose;
@@ -194,6 +199,7 @@ pop3catch(int s)
 static void
 maincatch(int s)
 {
+	(void)s;
 	if (interrupts++ == 0) {
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
 		return;
@@ -240,6 +246,7 @@ pop3alarm(int s)
 {
 	sighandler_type	saveint;
 	sighandler_type savepipe;
+	(void)s;
 
 	if (pop3lock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -495,6 +502,7 @@ static void
 pop3_dates(struct mailbox *mp)
 {
 	int	i;
+	(void)mp;
 
 	for (i = 0; i < msgCount; i++)
 		substdate(&message[i]);
@@ -911,6 +919,9 @@ nopop3(void)
 int 
 pop3_setfile(const char *server, int newmail, int isedit)
 {
+	(void)server;
+	(void)newmail;
+	(void)isedit;
 	nopop3();
 	return -1;
 }
@@ -918,6 +929,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 enum okay 
 pop3_header(struct message *mp)
 {
+	(void)mp;
 	nopop3();
 	return STOP;
 }
@@ -925,6 +937,7 @@ pop3_header(struct message *mp)
 enum okay 
 pop3_body(struct message *mp)
 {
+	(void)mp;
 	nopop3();
 	return STOP;
 }
