@@ -2,8 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen Daode Nurpmeso.
- * All rights reserved.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -356,6 +355,7 @@ static int
 attach_message(struct attachment *ap, FILE *fo, int dosign)
 {
 	struct message	*mp;
+	(void)dosign;
 
 	fprintf(fo, "\n--%s\n"
 		    "Content-Type: message/rfc822\n"
@@ -1340,11 +1340,12 @@ fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 	col = strlen(str);
 	if (col) {
 		fwrite(str, sizeof *str, strlen(str), fo);
-		if ((flags&GFILES) == 0 &&
-				col == 3 && asccasecmp(str, "to:") == 0 ||
-				col == 3 && asccasecmp(str, "cc:") == 0 ||
-				col == 4 && asccasecmp(str, "bcc:") == 0 ||
-				col == 10 && asccasecmp(str, "Resent-To:") == 0)
+		if (((flags&GFILES) == 0 &&
+				col == 3 && asccasecmp(str, "to:") == 0) ||
+				(col == 3 && asccasecmp(str, "cc:") == 0) ||
+				(col == 4 && asccasecmp(str, "bcc:") == 0) ||
+				(col == 10 &&
+					asccasecmp(str, "Resent-To:") == 0))
 			is_to = 1;
 	}
 	for (; np != NULL; np = np->n_flink) {
