@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -54,6 +55,10 @@ static char sccsid[] = "@(#)send.c	2.86 (gritter) 2/4/08";
  * Mail to mail folders and displays.
  */
 
+/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
+ * TODO Problem: Popen doesn't encapsulate all cases of open failures,
+ * TODO may leave child running if fdopen() fails! */
+
 enum parseflags {
 	PARSE_DEFAULT	= 0,
 	PARSE_DECRYPT	= 01,
@@ -100,6 +105,7 @@ static sigjmp_buf	pipejmp;
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
