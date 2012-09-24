@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -44,7 +45,9 @@ static char sccsid[] = "@(#)cache.c	1.61 (gritter) 3/4/06";
 
 #include "config.h"
 
-#ifdef USE_IMAP
+#ifndef USE_IMAP
+typedef int avoid_empty_file_compiler_warning;
+#else
 
 #include "rcv.h"
 #include "extern.h"
@@ -75,7 +78,7 @@ static void remve(unsigned long n);
 static FILE *cache_queue1(struct mailbox *mp, char *mode, char **xname);
 static enum okay dequeue1(struct mailbox *mp);
 
-static const char	infofmt[] = "%c %lu %u %lu %lu";
+static const char	infofmt[] = "%c %lu %d %lu %ld";
 #define	INITSKIP	128L
 #define	USEBITS(f)	\
 	((f) & (MSAVED|MDELETED|MREAD|MBOXED|MNEW|MFLAGGED|MANSWERED|MDRAFTED))
@@ -164,7 +167,8 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 	if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
 		return STOP;
 	fcntl_lock(fileno(fp), F_RDLCK);
-	if (fscanf(fp, infofmt, &b, &xsize, &xflag, &xtime, &xlines) < 4)
+	if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
+			(unsigned long*)&xtime, &xlines) < 4)
 		goto fail;
 	if (need != NEED_UNSPEC) {
 		switch (b) {
@@ -286,22 +290,23 @@ putcache(struct mailbox *mp, struct message *m)
 		fcntl_lock(fileno(obuf), F_WRLCK);
 	} else {
 		fcntl_lock(fileno(obuf), F_WRLCK);
-		if (fscanf(obuf, infofmt, &ob, &osize, &oflag, &otime,
-					&olines) >= 4 && ob != '\0' &&
-				(ob == 'B' || (ob == 'H' && c != 'B'))) {
+		if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
+				(unsigned long*)&otime, &olines) >= 4 &&
+				ob != '\0' && (ob == 'B' ||
+					(ob == 'H' && c != 'B'))) {
 			if (m->m_xlines <= 0 && olines > 0)
 				m->m_xlines = olines;
-			if ((c != 'N' && osize != m->m_xsize) ||
-					oflag != USEBITS(m->m_flag) ||
+			if ((c != 'N' && (size_t)osize != m->m_xsize) ||
+					oflag != (int)USEBITS(m->m_flag) ||
 					otime != m->m_time ||
 					(m->m_xlines > 0 &&
 					 olines != m->m_xlines)) {
 				fflush(obuf);
 				rewind(obuf);
 				fprintf(obuf, infofmt, ob,
-					(long)m->m_xsize,
+					(unsigned long)m->m_xsize,
 					USEBITS(m->m_flag),
-					(long)m->m_time,
+					(unsigned long)m->m_time,
 					m->m_xlines);
 				putc('\n', obuf);
 			}
@@ -322,9 +327,10 @@ putcache(struct mailbox *mp, struct message *m)
 	zp = zalloc(obuf);
 	count = m->m_size;
 	while (count > 0) {
-		n = count > sizeof iob ? sizeof iob : count;
+		n = count > (long)sizeof iob ? (long)sizeof iob : count;
 		count -= n;
-		if (fread(iob, 1, n, ibuf) != n || zwrite(zp, iob, n) != n) {
+		if ((size_t)n != fread(iob, 1, n, ibuf) ||
+				n != (long)zwrite(zp, iob, n)) {
 			unlink(name);
 			zfree(zp);
 			goto out;
@@ -335,9 +341,9 @@ putcache(struct mailbox *mp, struct message *m)
 		goto out;
 	}
 done:	rewind(obuf);
-	fprintf(obuf, infofmt, c, (long)m->m_xsize,
+	fprintf(obuf, infofmt, c, (unsigned long)m->m_xsize,
 			USEBITS(m->m_flag),
-			(long)m->m_time,
+			(unsigned long)m->m_time,
 			m->m_xlines);
 	putc('\n', obuf);
 	if (ferror(obuf)) {
@@ -501,6 +507,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
 {
 	unsigned long	*contents;
 	long	i, j, contentelem;
+	(void)mp;
 
 	if (chdir(name) < 0)
 		return;
