@@ -2,8 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen Daode Nurpmeso.
- * All rights reserved.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -56,6 +55,10 @@ static char sccsid[] = "@(#)collect.c	2.54 (gritter) 6/16/07";
 #include <unistd.h>
 #include <sys/stat.h>
 
+/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
+ * TODO Problem: Popen doesn't encapsulate all cases of open failures,
+ * TODO may leave child running if fdopen() fails! */
+
 /*
  * Read a message from standard output and return a read file to it
  * or NULL on error.
@@ -104,6 +107,7 @@ static int putesc(const char *s, FILE *stream);
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -117,8 +121,6 @@ insertcommand(FILE *fp, char *cmd)
 	char *cp;
 	int c;
 
-	(void)&obuf;
-	(void)&cp;
 	cp = value("SHELL");
 	if (sigsetjmp(pipejmp, 1))
 		goto endpipe;
@@ -282,9 +284,9 @@ read_attachment_data(struct attachment *ap, unsigned number)
 			break;
 		perror(ap->a_name);
 	}
-	if (ap->a_name && (value("attachment-ask-charset") ||
-			(cp = value("sendcharsets")) != NULL &&
-			strchr(cp, ',') != NULL)) {
+	if ((ap->a_name && (value("attachment-ask-charset"))) ||
+			((cp = value("sendcharsets")) != NULL &&
+			 strchr(cp, ',') != NULL)) {
 		snprintf(prefix, sizeof prefix, "#%u\tcharset: ", number);
 		ap->a_charset = readtty(prefix, ap->a_charset);
 	}
@@ -432,37 +434,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	long count;
 	enum sendaction	action;
 	sighandler_type	savedtop;
-	const char tildehelp[] =
-"-------------------- ~ ESCAPES ----------------------------\n\
-~~              Quote a single tilde\n\
-~@ [file ...]   Edit attachment list\n\
-~b users        Add users to \"blind\" cc list\n\
-~c users        Add users to cc list\n\
-~d              Read in dead.letter\n\
-~e              Edit the message buffer\n\
-~f messages     Read in messages without indenting lines\n\
-~F messages     Same as ~f, but keep all header lines\n\
-~h              Prompt for to list, subject, cc, and \"blind\" cc list\n\
-~r file         Read a file into the message buffer\n\
-~p              Print the message buffer\n\
-~q              Abort message composition and save text to dead.letter\n\
-~m messages     Read in messages with each line indented\n\
-~M messages     Same as ~m, but keep all header lines\n\
-~s subject      Set subject\n\
-~t users        Add users to to list\n\
-~v              Invoke display editor on message\n\
-~w file         Write message onto file\n\
-~x              Abort message composition and discard text written so far\n\
-~!command       Invoke the shell\n\
-~:command       Execute a regular command\n\
------------------------------------------------------------\n";
-
-	(void) &escape;
-	(void) &eofcount;
-	(void) &getfields;
-	(void) &tempMail;
-	(void) &tflag;
-	(void) &quote;
 
 	collf = NULL;
 	/*
@@ -624,8 +595,8 @@ cont:
 		linebuf = srealloc(linebuf, linesize = BUFSIZ);
 		while ((count = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
-			if (fwrite(linebuf, sizeof *linebuf,
-						count, collf) != count)
+			if ((size_t)count != fwrite(linebuf, sizeof *linebuf,
+						count, collf))
 				goto err;
 		}
 		goto out;
@@ -657,9 +628,10 @@ cont:
 		    value("interactive") != NULL &&
 		    (value("dot") != NULL || value("ignoreeof") != NULL))
 			break;
-		if (linebuf[0] != escape || (value("interactive") == NULL &&
-					tildeflag == 0 ||
-					tildeflag < 0)) {
+		if (linebuf[0] != escape ||
+				(value("interactive") == NULL &&
+					tildeflag == 0) ||
+				tildeflag < 0) {
 			if (putline(collf, linebuf, count) < 0)
 				goto err;
 			continue;
@@ -880,9 +852,6 @@ cont:
 			if (forward(linebuf + 2, collf, c) < 0)
 				goto err;
 			goto cont;
-		case '?':
-			fputs(tildehelp, stdout);
-			break;
 		case 'p':
 			/*
 			 * Print out the current state of the
@@ -908,6 +877,40 @@ cont:
 			rewind(collf);
 			mesedit(c, value("editheaders") ? hp : NULL);
 			goto cont;
+		case '?':
+			/*
+			 * Last the lengthy help string.
+			 * (Very ugly, but take care for compiler supported
+			 * string lengths :()
+			 */
+			puts(
+"-------------------- ~ ESCAPES ----------------------------\n"
+"~~             Quote a single tilde\n"
+"~@ [file ...]  Edit attachment list\n"
+"~b users       Add users to \"blind\" cc list\n"
+"~c users       Add users to cc list\n"
+"~d             Read in dead.letter\n"
+"~e             Edit the message buffer\n"
+"~f messages    Read in messages without indenting lines\n"
+"~F messages    Same as ~f, but keep all header lines\n"
+"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n");
+			puts(
+"~r file        Read a file into the message buffer\n"
+"~p             Print the message buffer\n"
+"~q             Abort message composition and save text to dead.letter\n"
+"~m messages    Read in messages with each line indented\n"
+"~M messages    Same as ~m, but keep all header lines\n"
+"~s subject     Set subject\n"
+"~t users       Add users to to list\n"
+"~v             Invoke display editor on message\n"
+"~w file        Write message onto file\n"
+"~x             Abort message composition and discard text written so far\n");
+			puts(
+"~!command      Invoke the shell\n"
+"~:command      Execute a regular command\n"
+"-----------------------------------------------------------\n");
+			break;
+
 		}
 	}
 	goto out;
@@ -1191,6 +1194,7 @@ collint(int s)
 static void 
 collhup(int s)
 {
+	(void)s;
 	rewind(collf);
 	savedeadletter(collf);
 	/*
