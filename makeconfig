@@ -162,6 +162,8 @@ link_check hello 'if a hello world program can be built' <<\! || { \
 
 int main(int argc, char *argv[])
 {
+	(void)argc;
+	(void)argv;
 	puts("hello world");
 	return 0;
 }
