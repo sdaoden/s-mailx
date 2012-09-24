@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -46,13 +47,13 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
 
 #include <sys/utsname.h>
 #ifdef HAVE_SOCKETS
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
-#endif	/* USE_SMTP */
+# include <sys/socket.h>
+# include <netdb.h>
+# include <netinet/in.h>
+# ifdef HAVE_ARPA_INET_H
+#  include <arpa/inet.h>
+# endif
+#endif
 #include <unistd.h>
 #include <setjmp.h>
 
@@ -64,6 +65,10 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
  *
  * SMTP client and other internet related functions.
  */
+
+/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
+ * TODO Problem: Popen doesn't encapsulate all cases of open failures,
+ * TODO may leave child running if fdopen() fails! */
 
 #ifdef HAVE_SOCKETS
 static int verbose;
@@ -260,6 +265,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	char	*b64, *authstr, *cp;
 	enum	{ AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 	int	inhdr = 1, inbcc = 0;
+	(void)hp;
 
 	if ((authstr = smtp_auth_var("", skinned)) == NULL)
 		auth = user && password ? AUTH_LOGIN : AUTH_NONE;
@@ -410,6 +416,7 @@ static sigjmp_buf	smtpjmp;
 static void
 onterm(int signo)
 {
+	(void)signo;
 	siglongjmp(smtpjmp, 1);
 }
 
@@ -467,6 +474,13 @@ int
 smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned)
 {
+	(void)server;
+	(void)to;
+	(void)fi;
+	(void)hp;
+	(void)user;
+	(void)password;
+	(void)skinned;
 	fputs(catgets(catd, CATSET, 194,
 			"No SMTP support compiled in.\n"), stderr);
 	return 1;
