@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -213,7 +214,7 @@ setfile(char *name, int newmail)
 			goto nonewmail;
 	}
 	mailsize = fsize(ibuf);
-	if (newmail && mailsize <= offset) {
+	if (newmail && (size_t)mailsize <= offset) {
 		relsesigs();
 		goto nonewmail;
 	}
@@ -720,7 +721,7 @@ stop(int s)
 static void 
 hangup(int s)
 {
-
+	(void)s;
 	/* nothing to do? */
 	exit(1);
 }
@@ -896,6 +897,7 @@ getmdot(int newmail)
 int 
 pversion(void *v)
 {
+	(void)v;
 	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
 	return(0);
 }
