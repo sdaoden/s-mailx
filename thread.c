@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -118,7 +119,7 @@ mhash(const char *cp, int mprime)
 			h = h ^ g;
 		}
 	}
-	return at ? h % mprime : mprime;
+	return at ? h % (unsigned int)mprime : (unsigned int)mprime;
 }
 
 #define	NOT_AN_ID	((struct mitem *)-1)
@@ -139,7 +140,7 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
 		h = ~mdata->m_idhash;
 	else {
 		h = mhash(id, mprime);
-		if (h == mprime)
+		if (h == (unsigned int)mprime)
 			return NOT_AN_ID;
 	}
 	mp = &mt[c = h];
@@ -148,7 +149,7 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
 			break;
 		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
 		n++;
-		while (c >= mprime)
+		while (c >= (unsigned int)mprime)
 			c -= mprime;
 		mp = &mt[c];
 	}
