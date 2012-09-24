@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -599,8 +600,8 @@ getfold(char *name, int size)
 
 	if ((folder = value("folder")) == NULL)
 		return (-1);
-	if (*folder == '/' || (p = which_protocol(folder)) != PROTO_FILE &&
-			p != PROTO_MAILDIR) {
+	if (*folder == '/' || ((p = which_protocol(folder)) != PROTO_FILE &&
+			p != PROTO_MAILDIR)) {
 		strncpy(name, folder, size);
 		name[size-1]='\0';
 	} else {
@@ -665,7 +666,7 @@ char *
 fgetline(char **line, size_t *linesize, size_t *count, size_t *llen,
 		FILE *fp, int appendnl)
 {
-	long i_llen, sz;
+	size_t i_llen, sz;
 
 	if (count == NULL)
 		/*
@@ -785,7 +786,8 @@ static long xwrite(int fd, const char *data, size_t sz);
 static long
 xwrite(int fd, const char *data, size_t sz)
 {
-	long wo, wt = 0;
+	long wo;
+	size_t wt = 0;
 
 	do {
 		if ((wo = write(fd, data + wt, sz - wt)) < 0) {
