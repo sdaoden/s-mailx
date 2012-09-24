@@ -2,8 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen Daode Nurpmeso.
- * All rights reserved.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -45,6 +44,10 @@ static char copyright[]
 static char sccsid[] = "@(#)main.c	2.51 (gritter) 10/1/07";
 #endif	/* DOSCCS */
 #endif /* not lint */
+
+/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
+ * TODO Problem: Popen doesn't encapsulate all cases of open failures,
+ * TODO may leave child running if fdopen() fails! */
 
 /*
  * Most strcpy/sprintf functions have been changed to strncpy/snprintf to
@@ -446,8 +449,10 @@ usage:
 	 * -S arguments override rc files.
 	 */
 	for (i = 0; i < scnt; ++i) {
-		char *args[] = { argv[i], NULL };
-		set(args);
+		char *a[2];
+		a[0] = argv[i];
+		a[1] = NULL;
+		set(a);
 	}
 
 	starting = 0;
@@ -529,6 +534,7 @@ usage:
 static void 
 hdrstop(int signo)
 {
+	(void)signo;
 
 	fflush(stdout);
 	fprintf(stderr, catgets(catd, CATSET, 141, "\nInterrupt\n"));
@@ -552,6 +558,7 @@ setscreensize(int dummy)
 	struct winsize ws;
 #endif
 	speed_t ospeed;
+	(void)dummy;
 
 #ifdef	TIOCGWINSZ
 	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
