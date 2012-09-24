@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -241,6 +242,7 @@ cleantmp(const char *name)
 	char	*fn = NULL;
 	size_t	fnsz = 0, ssz;
 	time_t	now;
+	(void)name;
 
 	if ((dirfd = opendir("tmp")) == NULL)
 		return;
@@ -277,6 +279,7 @@ append(const char *name, const char *sub, const char *fn)
 	enum mflag	f = MUSED|MNOFROM|MNEWEST;
 	const char	*cp;
 	char	*xp;
+	(void)name;
 
 	if (fn && sub) {
 		if (strcmp(sub, "new") == 0)
@@ -683,9 +686,9 @@ maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 	}
 	fseek(fp, off1, SEEK_SET);
 	while (size > 0) {
-		z = size > sizeof buf ? sizeof buf : size;
+		z = size > (long)sizeof buf ? (long)sizeof buf : size;
 		if ((n = fread(buf, 1, z, fp)) != z ||
-				fwrite(buf, 1, n, op) != n) {
+				(size_t)n != fwrite(buf, 1, n, op)) {
 			fprintf(stderr, "Error writing to \"%s\".\n", tmp);
 			Fclose(op);
 			unlink(tmp);
@@ -764,8 +767,8 @@ mdlook(const char *name, struct message *data)
 			break;
 		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
 		n++;
-		while (c >= mdprime)
-			c -= mdprime;
+		while (c >= (unsigned)mdprime)
+			c -= (unsigned)mdprime;
 		md = &mdtable[c];
 	}
 	if (data != NULL && md->md_data == NULL)
