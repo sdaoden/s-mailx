@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*-
  * Copyright (c) 1980, 1993
@@ -111,14 +112,16 @@ headers(void *v)
 					lastg = g;
 					lastmq = mq;
 				}
-				if (n>0 && mp==&message[n-1] ||
-						n==0 && g==k ||
-						n==-2 && g==k+size && lastmq ||
-						n<0 && g>=k && mp->m_flag&fl)
+				if ((n > 0 && mp == &message[n-1]) ||
+						(n == 0 && g == k) ||
+						(n == -2 && g == k + size &&
+						 lastmq) ||
+						(n < 0 && g >= k &&
+						 (mp->m_flag & fl) != 0))
 					break;
 				g++;
 			}
-		if (lastmq && (n==-2 || n==-1 && mp==&message[msgCount])) {
+		if (lastmq && (n==-2 || (n==-1 && mp == &message[msgCount]))) {
 			g = lastg;
 			mq = lastmq;
 		}
@@ -154,14 +157,16 @@ headers(void *v)
 					lastg = g;
 					lastmq = mq;
 				}
-				if (n>0 && mp==&message[n-1] ||
-						n==0 && g==k ||
-						n==-2 && g==k+size && lastmq ||
-						n<0 && g>=k && mp->m_flag&fl)
+				if ((n > 0 && mp == &message[n-1]) ||
+						(n == 0 && g == k) ||
+						(n == -2 && g == k + size &&
+						 lastmq) ||
+						(n < 0 && g >= k &&
+						 (mp->m_flag & fl) != 0))
 					break;
 				g++;
 			}
-		if (lastmq && (n==-2 || n==-1 && mp==&message[msgCount])) {
+		if (lastmq && (n==-2 || (n==-1 && mp==&message[msgCount]))) {
 			g = lastg;
 			mq = lastmq;
 		}
@@ -281,6 +286,7 @@ static sigjmp_buf	pipejmp;
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -296,13 +302,15 @@ from(void *v)
 	FILE *obuf = stdout;
 	char *cp;
 
-	(void)&obuf;
-	(void)&cp;
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
 			cp = get_pager();
+			/* TODO should be below the Popen?
+			 * TODO Problem: Popen doesn't encapsulate it,
+			 * TODO may leave child running if fdopen() fails!
+			 * TODO even more such stuff in this file! */
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
 			if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
@@ -616,7 +624,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 	cs = ac_alloc(mp->m_level);
 	us = ac_alloc(mp->m_level * sizeof *us);
 	i = mp->m_level - 1;
-	if (mp->m_younger && mp->m_younger->m_level == i + 1) {
+	if (mp->m_younger && (unsigned)i + 1 == mp->m_younger->m_level) {
 		if (mp->m_parent && mp->m_parent->m_flag & important)
 			us[i] = mp->m_flag & important ? 0x2523 : 0x2520;
 		else
@@ -632,7 +640,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 	mq = mp->m_parent;
 	for (i = mp->m_level - 2; i >= 0; i--) {
 		if (mq) {
-			if (i > mq->m_level - 1) {
+			if ((unsigned)i > mq->m_level - 1) {
 				us[i] = cs[i] = ' ';
 				continue;
 			}
@@ -649,7 +657,8 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 		} else
 			us[i] = cs[i] = ' ';
 	}
-	for (indent = 0; indent < mp->m_level && indent < maxwidth; indent++) {
+	for (indent = 0; (unsigned)indent < mp->m_level && indent < maxwidth;
+			++indent) {
 		if (indent < maxwidth - 1)
 			putuc(us[indent], cs[indent] & 0377, fp);
 		else
@@ -675,8 +684,8 @@ printhead(int mesg, FILE *f, int threaded)
 	strcpy(attrlist, bsdflags ? "NU  *HMFATK+-J" : "NUROSPMFATK+-J");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
-		if (sz > sizeof attrlist - 1)
-			sz = sizeof attrlist - 1;
+		if (sz > (int)sizeof attrlist - 1)
+			sz = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, sz);
 	}
 	bsdheadline = value("bsdcompat") != NULL ||
@@ -695,6 +704,7 @@ printhead(int mesg, FILE *f, int threaded)
 int 
 pdot(void *v)
 {
+	(void)v;
 	printf(catgets(catd, CATSET, 13, "%d\n"),
 			(int)(dot - &message[0] + 1));
 	return(0);
@@ -710,6 +720,7 @@ pcmdlist(void *v)
 	extern const struct cmd cmdtab[];
 	const struct cmd *cp;
 	int cc;
+	(void)v;
 
 	printf(catgets(catd, CATSET, 14, "Commands are:\n"));
 	for (cc = 0, cp = cmdtab; cp->c_name != NULL; cp++) {
@@ -1018,6 +1029,7 @@ Pipecmd(void *v)
 void
 brokpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipestop, 1);
 }
 
