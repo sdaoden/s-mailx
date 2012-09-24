@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Changes Copyright (c) 2004
@@ -39,7 +40,9 @@ static char sccsid[] = "@(#)nss.c	1.48 (gritter) 8/4/07";
 
 #include "config.h"
 
-#ifdef	USE_NSS
+#ifndef USE_NSS
+typedef int avoid_empty_file_compiler_warning;
+#else
 
 #include "rcv.h"
 
