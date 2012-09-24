@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -707,7 +708,7 @@ nextprime(long n)
 			268435399, 536870909, 1073741789, 2147483647
 		};
 	long	mprime = 7;
-	int	i;
+	size_t	i;
 
 	for (i = 0; i < sizeof primes / sizeof *primes; i++)
 		if ((mprime = primes[i]) >= (n < 65536 ? n*4 :
@@ -894,14 +895,15 @@ getrandstring(size_t length)
 {
 	static unsigned char	nodedigest[16];
 	static pid_t	pid;
-	int	i, fd = -1;
+	int	fd = -1;
 	char	*data;
 	char	*cp, *rp;
+	size_t	i;
 	MD5_CTX	ctx;
 
 	data = salloc(length);
 	if ((fd = open("/dev/urandom", O_RDONLY)) < 0 ||
-			read(fd, data, length) != length) {
+			length != (size_t)read(fd, data, length)) {
 		if (pid == 0) {
 			pid = getpid();
 			srand(pid);
@@ -911,8 +913,9 @@ getrandstring(size_t length)
 			MD5Final(nodedigest, &ctx);
 		}
 		for (i = 0; i < length; i++)
-			data[i] = (int)(255 * (rand() / (RAND_MAX + 1.0))) ^
-				nodedigest[i % sizeof nodedigest];
+			data[i] = (char)
+			    ((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
+				nodedigest[i % sizeof nodedigest]);
 	}
 	if (fd > 0)
 		close(fd);
