@@ -2,7 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -76,8 +76,6 @@ static int has_highbit(register const char *s);
 #ifdef	HAVE_ICONV
 static void uppercopy(char *dest, const char *src);
 static void stripdash(char *p);
-static size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
-		char **outb, size_t *outbleft);
 static void invalid_seq(int c);
 #endif	/* HAVE_ICONV */
 static int is_this_enc(const char *line, const char *encoding);
@@ -441,14 +439,30 @@ iconv_open_ft(const char *tocode, const char *fromcode)
 
 /*
  * Fault-tolerant iconv() function.
+ * (2012-09-24: export and use it exclusively to isolate prototype problems
+ * (*inb* is 'const char**' except in POSIX) in a single place.
+ * GNU libiconv even allows for configuration time const/non-const..
+ * In the end it's an ugly guess, but we can't do better since make(1) doesn't
+ * support compiler invocations which bail on error, so no -Werror.
  */
-static size_t
-iconv_ft(iconv_t cd, char **inb, size_t *inbleft, char **outb, size_t *outbleft)
-{
-	size_t sz = 0;
+/* Citrus project? */
+#if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
+# define __INBCAST	(const char**)
+#endif
+#ifndef __INBCAST
+# define __INBCAST
+#endif
 
-	while ((sz = iconv(cd, inb, inbleft, outb, outbleft)) == (size_t)-1
-			&& (errno == EILSEQ || errno == EINVAL)) {
+size_t
+iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant)
+{
+	size_t sz;
+
+	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft)) ==
+				(size_t)-1
+#undef __INBCAST
+			&& tolerant && (errno == EILSEQ || errno == EINVAL)) {
 		if (*inbleft > 0) {
 			(*inb)++;
 			(*inbleft)--;
@@ -1055,9 +1069,10 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				uptr = nptr + outleft;
 				iptr = cout.s;
 				if (iconv_ft(fhicd, &iptr, &inleft,
-					&nptr, &outleft) == (size_t)-1 &&
+					&nptr, &outleft, 0) == (size_t)-1 &&
 						errno == E2BIG) {
-					iconv(fhicd, NULL, NULL, NULL, NULL);
+					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
+						0);
 					mime_fromhdr_inc(inleft);
 					goto again;
 				}
@@ -1067,8 +1082,8 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				 * that states are restricted to
 				 * single encoded-word parts.
 				 */
-				while (iconv(fhicd, NULL, NULL,
-					&nptr, &outleft) == (size_t)-1 &&
+				while (iconv_ft(fhicd, NULL, NULL,
+					&nptr, &outleft, 0) == (size_t)-1 &&
 						errno == E2BIG)
 					mime_fromhdr_inc(16);
 				out->l += uptr - mptr - outleft;
@@ -1313,7 +1328,7 @@ convhdra(char *str, size_t len, FILE *fp)
 		isz = len;
 		op = cbuf;
 		osz = cbufsz;
-		if (iconv(iconvd, &ip, &isz, &op, &osz) == (size_t)-1) {
+		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
 			if (errno != E2BIG) {
 				ac_free(cbuf);
 				return 0;
@@ -1585,10 +1600,10 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft) ==
+		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 0) ==
 					(size_t)-1 &&
 				errno == E2BIG) {
-			iconv(iconvd, NULL, NULL, NULL, NULL);
+			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
 			ac_free(mptr);
 			mptrsz += inleft;
 			mptr = ac_alloc(mptrsz + 1);
@@ -1652,8 +1667,8 @@ mime_write(void *ptr, size_t size, FILE *f,
 		outleft = sizeof mptr;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv(iconvd, &iptr, &inleft,
-				&nptr, &outleft) != (size_t)-1) {
+		if (iconv_ft(iconvd, &iptr, &inleft,
+				&nptr, &outleft, 0) != (size_t)-1) {
 			in.l = sizeof mptr - outleft;
 			in.s = mptr;
 		} else {

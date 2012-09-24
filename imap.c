@@ -2879,7 +2879,7 @@ imap_search2(struct mailbox *mp, struct message *m, int count,
 				sz = strlen(spec) + 1;
 				nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
 				sp = (char *)spec;
-				if (iconv(it, &sp, &sz, &nsp, &nsz)
+				if (iconv_ft(it, &sp, &sz, &nsp, &nsz, 0)
 						!= (size_t)-1 && sz == 0) {
 					spec = nspec;
 					cp = "utf-8";

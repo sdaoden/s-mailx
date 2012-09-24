@@ -374,6 +374,8 @@ char *gettcharset(void);
 char *need_hdrconv(struct header *hp, enum gfield w);
 #ifdef	HAVE_ICONV
 iconv_t iconv_open_ft(const char *tocode, const char *fromcode);
+size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant);
 #endif	/* HAVE_ICONV */
 enum mimeenc mime_getenc(char *h);
 int mime_getcontent(char *h);
