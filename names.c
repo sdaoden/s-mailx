@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -267,6 +268,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 	char *date, *fname;
 	FILE *fout, *fin;
 	int ispipe;
+	(void)hp;
 
 	top = names;
 	np = names;
