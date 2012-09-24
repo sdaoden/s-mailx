@@ -2,6 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -65,7 +66,7 @@ void *
 salloc(size_t size)
 {
 	char *t;
-	int s;
+	unsigned int s;
 	struct strings *sp;
 	int string_index;
 
