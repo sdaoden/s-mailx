@@ -409,8 +409,8 @@ enum gfield {
 
 #define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
 
-#define	visible(mp)	(((mp)->m_flag&(MDELETED|MHIDDEN|MKILL))==0|| \
-				dot==(mp) && (mp)->m_flag&MKILL)
+#define	visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 || \
+				(dot == (mp) && (mp)->m_flag & MKILL))
 
 /*
  * Structure used to pass about the current
@@ -604,7 +604,7 @@ extern const unsigned char	class_char[];
  */
 #ifdef	HAVE_ALLOCA
 #define	ac_alloc(n)	alloca(n)
-#define	ac_free(n)
+#define	ac_free(n)	do {} while (0)
 #else	/* !HAVE_ALLOCA */
 #define	ac_alloc(n)	smalloc(n)
 #define	ac_free(n)	free(n)
