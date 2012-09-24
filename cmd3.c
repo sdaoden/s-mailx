@@ -2,8 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen Daode Nurpmeso.
- * All rights reserved.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -109,6 +108,7 @@ dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *shell;
+	(void)v;
 
 	if ((shell = value("SHELL")) == NULL)
 		shell = SHELL;
@@ -175,32 +175,37 @@ bangexp(char **str, size_t *size)
 int 
 help(void *v)
 {
-	const char *helptext =
-"               %s commands\n\
-type <message list>             type messages\n\
-next                            goto and type next message\n\
-from <message list>             give head lines of messages\n\
-headers                         print out active message headers\n\
-delete <message list>           delete messages\n\
-undelete <message list>         undelete messages\n\
-save <message list> folder      append messages to folder and mark as saved\n\
-copy <message list> folder      append messages to folder without marking them\n\
-write <message list> file       append message texts to file, save attachments\n\
-preserve <message list>         keep incoming messages in mailbox even if saved\n\
-Reply <message list>            reply to message senders\n\
-reply <message list>            reply to message senders and all recipients\n\
-mail addresses                  mail to specific recipients\n\
-file folder                     change to another folder\n\
-quit                            quit and apply changes to folder\n\
-xit                             quit and discard changes made to folder\n\
-!                               shell escape\n\
-cd <directory>                  chdir to directory or home if none given\n\
-list                            list names of all available commands\n\
-\n\
-A <message list> consists of integers, ranges of same, or other criteria\n\
-separated by spaces.  If omitted, %s uses the last message typed.\n";
-
-	fprintf(stdout, helptext, progname, progname);
+	(void)v;
+	/* Very ugly, but take care for compiler supported string lengths :( */
+	fprintf(stdout,
+"%s commands:\n",
+		progname);
+	puts(
+"type <message list>         type messages\n"
+"next                        goto and type next message\n"
+"from <message list>         give head lines of messages\n"
+"headers                     print out active message headers\n"
+"delete <message list>       delete messages\n"
+"undelete <message list>     undelete messages\n");
+	puts(
+"save <message list> folder  append messages to folder and mark as saved\n"
+"copy <message list> folder  append messages to folder without marking them\n"
+"write <message list> file   append message texts to file, save attachments\n"
+"preserve <message list>     keep incoming messages in mailbox even if saved\n"
+"Reply <message list>        reply to message senders\n"
+"reply <message list>        reply to message senders and all recipients\n");
+	puts(
+"mail addresses              mail to specific recipients\n"
+"file folder                 change to another folder\n"
+"quit                        quit and apply changes to folder\n"
+"xit                         quit and discard changes made to folder\n"
+"!                           shell escape\n"
+"cd <directory>              chdir to directory or home if none given\n"
+"list                        list names of all available commands\n");
+	fprintf(stdout,
+"\nA <message list> consists of integers, ranges of same, or other criteria\n"
+"separated by spaces.  If omitted, %s uses the last message typed.\n",
+		progname);
 	return(0);
 }
 
@@ -604,6 +609,7 @@ messize(void *v)
 int 
 rexit(void *v)
 {
+	(void)v;
 	if (sourcing)
 		return(1);
 	exit(0);
@@ -616,6 +622,7 @@ static sigjmp_buf	pipejmp;
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -634,10 +641,6 @@ set(void *v)
 	FILE *obuf = stdout;
 	int bsdset = value("bsdcompat") != NULL || value("bsdset") != NULL;
 
-	(void)&cp;
-	(void)&ap;
-	(void)&obuf;
-	(void)&bsdset;
 	if (*arglist == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)
 			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
@@ -652,6 +655,10 @@ set(void *v)
 		if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 			if (s > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
 				cp = get_pager();
+				/* TODO should be below the Popen?
+				 * TODO Problem: Popen doesn't encapsulate it,
+				 * TODO may leave child run if fdopen() fails!
+				 * TODO even more such stuff in this file! */
 				if (sigsetjmp(pipejmp, 1))
 					goto endpipe;
 				if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
@@ -1038,6 +1045,7 @@ ifcmd(void *v)
 int 
 elsecmd(void *v)
 {
+	(void)v;
 
 	switch (cond) {
 	case CANY:
@@ -1073,6 +1081,7 @@ elsecmd(void *v)
 int 
 endifcmd(void *v)
 {
+	(void)v;
 
 	if (cond == CANY) {
 		printf(catgets(catd, CATSET, 46,
@@ -1187,6 +1196,7 @@ int
 newmail(void *v)
 {
 	int val = 1, mdot;
+	(void)v;
 
 	if ((mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 			(val = setfile(mailname, 1)) == 0) {
@@ -1603,6 +1613,8 @@ cscore(void *v)
 int 
 cnoop(void *v)
 {
+	(void)v;
+
 	switch (mb.mb_type) {
 	case MB_IMAP:
 		imap_noop();
