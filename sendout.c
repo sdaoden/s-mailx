@@ -1409,26 +1409,6 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
-#ifdef	notdef
-		/*
-		 * RFC 2822 disallows generation of this field.
-		 */
-		cp = value("replyto");
-		if (cp != NULL) {
-			if (mime_name_invalid(cp, 1)) {
-				if (buf)
-					free(buf);
-				return 1;
-			}
-			fwrite("Resent-Reply-To: ", sizeof (char),
-					17, fo);
-			mime_write(cp, strlen(cp), fo,
-					CONV_TOHDR_A, TD_ICONV,
-					NULL, (size_t)0,
-					NULL, NULL);
-			putc('\n', fo);
-		}
-#endif	/* notdef */
 		if (fmt("Resent-To:", to, fo, 1, 1, 0)) {
 			if (buf)
 				free(buf);
