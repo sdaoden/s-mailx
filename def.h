@@ -2,7 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -441,10 +441,18 @@ struct header {
  * kind of stuff.
  */
 
+enum nameflags {
+	NAME_MIME_CHECKED	= 1<<0,	/* mime_name_invalid() yet checked.. */
+	NAME_MIME_INVALID	= 1<<1,	/* ..and it was invalid */
+	NAME_IDNA_REQUIRED	= 1<<2,	/* IDNA convertion desired.. */
+	NAME_IDNA_APPLIED	= 1<<3	/* ..and is applied to name.n_name */
+};
+
 struct name {
 	struct	name *n_flink;		/* Forward link in list. */
 	struct	name *n_blink;		/* Backward list link */
 	enum gfield	n_type;		/* From which list it came */
+	int	n_flags;		/* enum nameflags */
 	char	*n_name;		/* This fella's name */
 	char	*n_fullname;		/* Sometimes, name including comment */
 };

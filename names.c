@@ -82,6 +82,7 @@ nalloc(char *str, enum gfield ntype)
 	np->n_flink = NULL;
 	np->n_blink = NULL;
 	np->n_type = ntype;
+	np->n_flags = 0;
 	if (ntype & GFULL) {
 		np->n_name = savestr(skin(str));
 		if (strcmp(np->n_name, str)) {
