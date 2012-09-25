@@ -100,6 +100,22 @@ nalloc(char *str, enum gfield ntype)
 	return(np);
 }
 
+struct name *
+ndup(struct name *np, enum gfield addtype)
+{
+	struct name *nnp;
+
+	nnp = (struct name*)salloc(sizeof *np);
+	nnp->n_flink = NULL;
+	nnp->n_blink = NULL;
+	nnp->n_type = np->n_type | addtype;
+	nnp->n_flags = np->n_flags;
+	nnp->n_name = savestr(np->n_name);
+	nnp->n_fullname = (np->n_name == np->n_fullname) ? nnp->n_name
+				: savestr(np->n_fullname);
+	return (nnp);
+}
+
 /*
  * Find the tail of a list and return it.
  */
