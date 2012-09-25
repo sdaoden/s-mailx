@@ -332,14 +332,15 @@ main(int argc, char *argv[])
 			/*
 			 * Get Carbon Copy Recipient list
 			 */
-			cc = checkaddrs(cat(cc, extract(optarg, GCC|GFULL)));
+			cc = checkaddrs(cat(cc, sextract(optarg, GCC|GFULL)));
 			sendflag++;
 			break;
 		case 'b':
 			/*
 			 * Get Blind Carbon Copy Recipient list
 			 */
-			bcc = checkaddrs(cat(bcc, extract(optarg, GBCC|GFULL)));
+			bcc = checkaddrs(cat(bcc,
+				sextract(optarg, GBCC|GFULL)));
 			sendflag++;
 			break;
 		case 'h':
