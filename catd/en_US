@@ -180,7 +180,7 @@ The following ~ escapes are defined:\n\
 132 No applicable messages\n
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
-135 Usage: %s -eiIUdFntBNHV~ -T FILE -u USER -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -b USERS -c USERS users\n
+135 Usage: %s -eiIUdEFntBDNHRV~ -T FILE -u USER -O MTAARG -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -A ACCOUNT -b USERS -c USERS -S OPTION users\n
 136 --- DELETED ---
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n

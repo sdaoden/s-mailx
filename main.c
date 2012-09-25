@@ -366,8 +366,8 @@ main(int argc, char *argv[])
 			break;
 		case '?':
 usage:
-			fprintf(stderr, catgets(catd, CATSET, 135,
-"Usage: %s -eiIUdEFntBDNHRV~ -T FILE -u USER -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -A ACCOUNT -b USERS -c USERS -S OPTION users\n"), progname);
+			fprintf(stderr, tr(135,
+"Usage: %s -eiIUdEFntBDNHRV~ -T FILE -u USER -O MTAARG -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -A ACCOUNT -b USERS -c USERS -S OPTION users\n"), progname);
 			exit(2);
 		}
 	}
