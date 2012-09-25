@@ -159,12 +159,18 @@ mime_name_invalid(struct name *np, int putmsg)
 	char *name = np->n_name, *addr, *p;
 	int in_quote = 0, in_domain = 0, err = 0, hadat = 0;
 
+	if (np->n_flags & NAME_MIME_CHECKED)
+		return (np->n_flags & NAME_MIME_INVALID) != 0;
+	np->n_flags |= NAME_MIME_CHECKED;
+
 	if (is_fileaddr(name))
 		return 0;
 	addr = skin(name);
 
-	if (addr == NULL || *addr == '\0')
+	if (addr == NULL || *addr == '\0') {
+		np->n_flags |= NAME_MIME_INVALID;
 		return 1;
+	}
 	for (p = addr; *p != '\0'; p++) {
 		if (*p == '\"') {
 			in_quote = !in_quote;
@@ -206,18 +212,20 @@ mime_name_invalid(struct name *np, int putmsg)
 		}
 		hadat = 0;
 	}
-	if (err && putmsg) {
-		fprintf(stderr, catgets(catd, CATSET, 143,
-				"%s contains invalid character '"), addr);
-#ifdef	HAVE_SETLOCALE
-		if (isprint(err))
-#else	/* !HAVE_SETLOCALE */
-		if (err >= 040 && err <= 0177)
-#endif	/* !HAVE_SETLOCALE */
-			putc(err, stderr);
-		else
-			fprintf(stderr, "\\%03o", err);
-		fprintf(stderr, catgets(catd, CATSET, 144, "'\n"));
+	if (err) {
+		np->n_flags |= NAME_MIME_INVALID;
+		if (putmsg) {
+			char ce[sizeof(void*)];
+			/* 2012-09-25: dropped isprint(3) even if available
+			 * since that fails for UTF-8 anyway */
+			if (err >= 040 && err <= 0177)
+				ce[0] = (char)err, ce[1] = '\0';
+			else
+				snprintf(ce, sizeof(ce), "\\%03o", err);
+			fprintf(stderr,
+				tr(143, "%s contains invalid character '%s'\n"),
+				addr, ce);
+		}
 	}
 	return err;
 }

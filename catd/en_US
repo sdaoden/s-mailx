@@ -188,8 +188,8 @@ The following ~ escapes are defined:\n\
 140 $%s version %s.  Type ? for help.\n$
 141 \nInterrupt\n
 142 %s contains invalid @@ sequence\n
-143 %s contains invalid character '
-144 '\n
+143 %s contains invalid character '%s'\n
+144 --- DELETED ---
 145 detract asked to insert commas\n
 146 temporary edit file
 147 temporary edit file
