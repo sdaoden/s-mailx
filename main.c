@@ -304,9 +304,16 @@ main(int argc, char *argv[])
 			 * anything else (but still give user the option to
 			 * simply pass a fully fledged email address)
 			 */
+			i = count(smopts);
 			fromaddr = optarg;
 			smopts = cat(smopts, nalloc("-r", 0));
-			smopts = cat(smopts, nalloc(optarg, GFULL));
+			smopts = cat(smopts, sextract(optarg, GFULL));
+			if (count(smopts) != i + 2) {
+				fprintf(stderr, tr(271,
+					"More than one address "
+					"given with -r\n"));
+				goto usage;
+			}
 			tildeflag = -1;
 			sendflag++;
 			break;
