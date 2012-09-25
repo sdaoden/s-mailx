@@ -132,17 +132,11 @@ fixhead(struct header *hp, struct name *tolist)
 	hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
 		if ((np->n_type & GMASK) == GTO)
-			hp->h_to =
-				cat(hp->h_to, nalloc(np->n_fullname,
-							np->n_type|GFULL));
+			hp->h_to = cat(hp->h_to, ndup(np, GFULL));
 		else if ((np->n_type & GMASK) == GCC)
-			hp->h_cc =
-				cat(hp->h_cc, nalloc(np->n_fullname,
-							np->n_type|GFULL));
+			hp->h_cc = cat(hp->h_cc, ndup(np, GFULL));
 		else if ((np->n_type & GMASK) == GBCC)
-			hp->h_bcc =
-				cat(hp->h_bcc, nalloc(np->n_fullname,
-							np->n_type|GFULL));
+			hp->h_bcc = cat(hp->h_bcc, ndup(np, GFULL));
 	return tolist;
 }
 
