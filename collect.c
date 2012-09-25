@@ -422,10 +422,14 @@ FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag)
 {
+	enum {
+		val_INTERACT	= 1
+	};
+
 	FILE *fbuf;
 	struct ignoretab *quoteig;
 	int lc, cc, escape, eofcount;
-	int c, t;
+	int val, c, t;
 	char *linebuf = NULL, *cp, *quote = NULL;
 	size_t linesize;
 	char *tempMail = NULL;
@@ -434,6 +438,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	long count;
 	enum sendaction	action;
 	sighandler_type	savedtop;
+
+	val = 0;
+	if (value("interactive") != NULL)
+		val |= val_INTERACT;
 
 	collf = NULL;
 	/*
@@ -492,13 +500,13 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		t = GTO|GSUBJECT|GCC|GNL;
 		if (value("fullnames"))
 			t |= GCOMMA;
-		if (hp->h_subject == NULL && value("interactive") != NULL &&
+		if (hp->h_subject == NULL && (val & val_INTERACT) &&
 			    (value("ask") != NULL || value("asksub") != NULL))
 			t &= ~GNL, getfields |= GSUBJECT;
-		if (hp->h_to == NULL && value("interactive") != NULL)
+		if (hp->h_to == NULL && (val & val_INTERACT))
 			t &= ~GNL, getfields |= GTO;
 		if (value("bsdcompat") == NULL && value("askatend") == NULL &&
-				value("interactive")) {
+				(val & val_INTERACT)) {
 			if (hp->h_bcc == NULL && value("askbcc"))
 				t &= ~GNL, getfields |= GBCC;
 			if (hp->h_cc == NULL && value("askcc"))
@@ -586,8 +594,8 @@ cont:
 			fflush(stdout);
 		}
 	}
-	if (value("interactive") == NULL && tildeflag <= 0 && !is_a_tty[0] &&
-			!tflag) {
+	if ((val & val_INTERACT) == 0 && tildeflag <= 0 &&
+			!is_a_tty[0] && !tflag) {
 		/*
 		 * No tilde escapes, interrupts not expected. Copy
 		 * standard input the simple way.
@@ -606,7 +614,7 @@ cont:
 		count = readline(stdin, &linebuf, &linesize);
 		colljmp_p = 0;
 		if (count < 0) {
-			if (value("interactive") != NULL &&
+			if ((val & val_INTERACT) &&
 			    value("ignoreeof") != NULL && ++eofcount < 25) {
 				printf(catgets(catd, CATSET, 55,
 					"Use \".\" to terminate letter\n"));
@@ -625,12 +633,11 @@ cont:
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-		    value("interactive") != NULL &&
+				(val & val_INTERACT) &&
 		    (value("dot") != NULL || value("ignoreeof") != NULL))
 			break;
 		if (linebuf[0] != escape ||
-				(value("interactive") == NULL &&
-					tildeflag == 0) ||
+				((val & val_INTERACT) == 0 && tildeflag == 0) ||
 				tildeflag < 0) {
 			if (putline(collf, linebuf, count) < 0)
 				goto err;
