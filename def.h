@@ -74,11 +74,14 @@
 
 #define	equal(a, b)	(strcmp(a,b)==0)/* A nice function to string compare */
 
-#ifdef	HAVE_CATGETS
-#define	CATSET	1
-#else	/* !HAVE_CATGETS */
-#define	catgets(a, b, c, d)	(d)
-#endif	/* !HAVE_CATGETS */
+#undef tr
+#ifdef HAVE_CATGETS
+# define CATSET			1
+# define tr(c, d)		catgets(catd, CATSET, c, d)
+#else
+# define catgets(a, b, c, d)	(d)
+# define tr(c, d)		(d)
+#endif
 
 typedef void (*sighandler_type)(int);
 
