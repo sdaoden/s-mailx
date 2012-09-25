@@ -154,9 +154,9 @@ delctrl(char *cp, size_t sz)
  * Check if a name's address part contains invalid characters.
  */
 int 
-mime_name_invalid(char *name, int putmsg)
+mime_name_invalid(struct name *np, int putmsg)
 {
-	char *addr, *p;
+	char *name = np->n_name, *addr, *p;
 	int in_quote = 0, in_domain = 0, err = 0, hadat = 0;
 
 	if (is_fileaddr(name))
@@ -231,7 +231,7 @@ checkaddrs(struct name *np)
 	struct name *n = np;
 
 	while (n != NULL) {
-		if (mime_name_invalid(n->n_name, 1)) {
+		if (mime_name_invalid(n, 1)) {
 			if (n->n_blink)
 				n->n_blink->n_flink = n->n_flink;
 			if (n->n_flink)

@@ -1292,7 +1292,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		if ((np = hp->h_ref) != NULL && np->n_name) {
 			while (np->n_flink)
 				np = np->n_flink;
-			if (mime_name_invalid(np->n_name, 0) == 0) {
+			if (mime_name_invalid(np, 0) == 0) {
 				fprintf(fo, "In-Reply-To: %s\n", np->n_name);
 				gotcha++;
 			}
@@ -1347,7 +1347,7 @@ fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 			continue;
 		if (np->n_flink == NULL)
 			comma = 0;
-		if (mime_name_invalid(np->n_name, !dropinvalid)) {
+		if (mime_name_invalid(np, !dropinvalid)) {
 			if (dropinvalid)
 				continue;
 			else

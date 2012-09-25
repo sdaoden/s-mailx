@@ -2,7 +2,7 @@
  * Heirloom mailx - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen Daode Nurpmeso.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  * All rights reserved.
  */
 /*-
@@ -368,7 +368,7 @@ enum okay maildir_remove(const char *name);
 /* main.c */
 int main(int argc, char *argv[]);
 /* mime.c */
-int mime_name_invalid(char *name, int putmsg);
+int mime_name_invalid(struct name *np, int putmsg);
 struct name *checkaddrs(struct name *np);
 char *gettcharset(void);
 char *need_hdrconv(struct header *hp, enum gfield w);
