@@ -43,6 +43,13 @@ fi
 if ! wantfeat IMAP; then
 	WANT_GSSAPI=0
 fi
+# If we don't need MD5 except for producing boundary and message-id strings,
+# leave it off, plain old srand(3) should be enough for that purpose.
+if ! wantfeat SOCKET && ! wantfeat JUNK; then
+	WANT_MD5=0
+elif wantfeat JUNK; then
+	WANT_MD5=1
+fi
 
 tmp=___build$$
 tmp2=___tmp1$$
@@ -556,6 +563,12 @@ else
 	echo "/* #define USE_JUNK */" >> $out
 fi
 
+if wantfeat MD5; then
+	echo "#define USE_MD5" >> $out
+else
+	echo "/* #define USE_MD5 */" >> $out
+fi
+
 cat >$tmp2.c <<\!
 #include "config.h"
 #ifdef HAVE_NL_LANGINFO
@@ -599,6 +612,9 @@ cat >$tmp2.c <<\!
 #ifdef USE_JUNK
 : + Gunnar Ritter's junk-mail management
 #endif
+#ifdef USE_MD5
+: + The MD5 message digest
+#endif
 :
 :The following optional features are disabled:
 #ifndef	HAVE_SETLOCALE
@@ -635,6 +651,9 @@ cat >$tmp2.c <<\!
 #endif
 #ifndef USE_JUNK
 : - Gunnar Ritter's junk-mail management
+#endif
+#ifndef USE_MD5
+: - The MD5 message digest
 #endif
 :
 :Remarks:

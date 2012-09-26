@@ -71,8 +71,10 @@ unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
 char *strdec(const char *cp);
+#ifdef USE_MD5
 char *md5tohex(const void *vp);
 char *cram_md5_string(const char *user, const char *pass, const char *b64);
+#endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 void transflags(struct message *omessage, long omsgCount, int transparent);

@@ -52,7 +52,9 @@ static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
 #include <unistd.h>
 #include <time.h>
 
-#include "md5.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
@@ -94,13 +96,15 @@ static void maincatch(int s);
 static enum okay pop3_noop1(struct mailbox *mp);
 static void pop3alarm(int s);
 static enum okay pop3_pass(struct mailbox *mp, const char *pass);
+#ifdef USE_MD5
 static char *pop3_find_timestamp(const char *bp);
 static enum okay pop3_apop(struct mailbox *mp, char *xuser, const char *pass,
 		const char *ts);
 static enum okay pop3_apop1(struct mailbox *mp,
 		const char *user, const char *xp);
-static int pop3_use_starttls(const char *uhp);
 static int pop3_use_apop(const char *uhp);
+#endif
+static int pop3_use_starttls(const char *uhp);
 static enum okay pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		const char *uhp, const char *xserver);
 static enum okay pop3_stat(struct mailbox *mp, off_t *size, int *count);
@@ -282,6 +286,7 @@ pop3_pass(struct mailbox *mp, const char *pass)
 	return OKAY;
 }
 
+#ifdef USE_MD5
 static char *
 pop3_find_timestamp(const char *bp)
 {
@@ -350,6 +355,18 @@ pop3_apop1(struct mailbox *mp, const char *user, const char *xp)
 }
 
 static int 
+pop3_use_apop(const char *uhp)
+{
+	char	*var;
+
+	if (value("pop3-use-apop"))
+		return 1;
+	var = savecat("pop3-use-apop-", uhp);
+	return value(var) != NULL;
+}
+#endif /* USE_MD5 */
+
+static int 
 pop3_use_starttls(const char *uhp)
 {
 	char	*var;
@@ -360,24 +377,17 @@ pop3_use_starttls(const char *uhp)
 	return value(var) != NULL;
 }
 
-static int 
-pop3_use_apop(const char *uhp)
-{
-	char	*var;
-
-	if (value("pop3-use-apop"))
-		return 1;
-	var = savecat("pop3-use-apop-", uhp);
-	return value(var) != NULL;
-}
-
 static enum okay 
 pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		const char *uhp, const char *xserver)
 {
-	char o[LINESIZE], *user, *ts = NULL, *server, *cp;
+	char o[LINESIZE], *user, *server, *cp;
+#ifdef USE_MD5
+	char *ts = NULL;
+#endif
 
 	POP3_ANSWER()
+#ifdef USE_MD5
 	if (pop3_use_apop(uhp)) {
 		if ((ts = pop3_find_timestamp(pop3buf)) == NULL) {
 			fprintf(stderr, tr(276,
@@ -386,6 +396,7 @@ pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 			return STOP;
 		}
 	}
+#endif
 	if ((cp = strchr(xserver, ':')) != NULL) {
 		server = salloc(cp - xserver + 1);
 		memcpy(server, xserver, cp - xserver);
@@ -405,8 +416,10 @@ pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		return STOP;
 	}
 #endif	/* !USE_SSL */
+#ifdef USE_MD5
 	if (ts != NULL)
 		return pop3_apop(mp, xuser, pass, ts);
+#endif
 retry:	if (xuser == NULL) {
 		if ((user = getuser()) == NULL)
 			return STOP;

@@ -35,7 +35,11 @@ documentation and/or software.
 /*	Sccsid @(#)md5.c	1.8 (gritter) 3/4/06	*/
 
 #include "rcv.h"
-#include "md5.h"
+
+#ifndef USE_MD5
+typedef int avoid_empty_file_compiler_warning;
+#else
+# include "md5.h"
 
 #define UINT4B_MAX	0xFFFFFFFFul
 
@@ -331,3 +335,4 @@ Decode(md5_type *output, unsigned char *input, unsigned int len)
 			(md5_type)input[j+2] << 16 |
 			(md5_type)input[j+3] << 24) & UINT4B_MAX;
 }
+#endif /* USE_MD5 */

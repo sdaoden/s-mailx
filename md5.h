@@ -33,6 +33,8 @@ documentation and/or software.
 
 /*	Sccsid @(#)md5.h	1.8 (gritter) 3/4/06	*/
 
+#ifdef USE_MD5
+
 /*
  * This version of MD5 has been changed such that any unsigned type with
  * at least 32 bits is acceptable. This is important e.g. for Cray vector
@@ -51,3 +53,5 @@ void	MD5Update(MD5_CTX *, unsigned char *, unsigned int);
 void	MD5Final(unsigned char[16], MD5_CTX *);
 
 void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
+
+#endif /* USE_MD5 */

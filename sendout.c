@@ -50,7 +50,6 @@ static char sccsid[] = "@(#)sendout.c	2.100 (gritter) 3/1/09";
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
-#include "md5.h"
 
 /*
  * Mail -- a mail program

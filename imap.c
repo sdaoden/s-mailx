@@ -58,8 +58,9 @@ static char sccsid[] = "@(#)imap.c	1.222 (gritter) 3/13/09";
 #include <time.h>
 
 #ifdef USE_IMAP
-
-#include "md5.h"
+# ifdef USE_MD5
+#  include "md5.h"
+# endif
 
 #include <sys/socket.h>
 #include <netdb.h>
@@ -199,8 +200,10 @@ static enum okay imap_preauth(struct mailbox *mp, const char *xserver,
 static enum okay imap_capability(struct mailbox *mp);
 static enum okay imap_auth(struct mailbox *mp, const char *uhp,
 		char *xuser, const char *pass);
+#ifdef USE_MD5
 static enum okay imap_cram_md5(struct mailbox *mp,
-		char *xuser, const char *xpass);
+			char *xuser, const char *xpass);
+#endif
 static enum okay imap_login(struct mailbox *mp, char *xuser, const char *xpass);
 #ifdef	USE_GSSAPI
 static enum okay imap_gss(struct mailbox *mp, char *user);
@@ -842,8 +845,14 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
 	}
 	if (auth == NULL || strcmp(auth, "login") == 0)
 		return imap_login(mp, xuser, pass);
-	if (strcmp(auth, "cram-md5") == 0)
+	if (strcmp(auth, "cram-md5") == 0) {
+#ifdef USE_MD5
 		return imap_cram_md5(mp, xuser, pass);
+#else
+		fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+		return (STOP);
+#endif
+	}
 	if (strcmp(auth, "gssapi") == 0) {
 #ifdef	USE_GSSAPI
 		return imap_gss(mp, xuser);
@@ -860,6 +869,7 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
 /*
  * Implementation of RFC 2194.
  */
+#ifdef USE_MD5
 static enum okay 
 imap_cram_md5(struct mailbox *mp, char *xuser, const char *xpass)
 {
@@ -894,6 +904,7 @@ retry:	if (xuser == NULL) {
 	}
 	return ok;
 }
+#endif /* USE_MD5 */
 
 static enum okay 
 imap_login(struct mailbox *mp, char *xuser, const char *xpass)

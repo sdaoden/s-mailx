@@ -762,6 +762,7 @@ strdec(const char *cp)
 	return n;
 }
 
+#ifdef USE_MD5
 char *
 md5tohex(const void *vp)
 {
@@ -802,6 +803,7 @@ cram_md5_string(const char *user, const char *pass, const char *b64)
 	free(cp);
 	return rp;
 }
+#endif /* USE_MD5 */
 
 char *
 getuser(void)
@@ -899,7 +901,11 @@ getrandstring(size_t length)
 	char	*data;
 	char	*cp, *rp;
 	size_t	i;
+#ifdef USE_MD5
 	MD5_CTX	ctx;
+#else
+	size_t j;
+#endif
 
 	data = salloc(length);
 	if ((fd = open("/dev/urandom", O_RDONLY)) < 0 ||
@@ -908,9 +914,18 @@ getrandstring(size_t length)
 			pid = getpid();
 			srand(pid);
 			cp = nodename(0);
+#ifdef USE_MD5
 			MD5Init(&ctx);
 			MD5Update(&ctx, (unsigned char *)cp, strlen(cp));
 			MD5Final(nodedigest, &ctx);
+#else
+			/* In that case it's only used for boundaries and
+			 * Message-Id:s so that srand(3) should suffice */
+			j = strlen(cp) + 1;
+			for (i = 0; i < sizeof(nodedigest); ++i)
+				nodedigest[i] = (unsigned char)(
+					cp[i % j] ^ rand());
+#endif
 		}
 		for (i = 0; i < length; i++)
 			data[i] = (char)

@@ -58,7 +58,10 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
 #include <setjmp.h>
 
 #include "extern.h"
-#include "md5.h"
+
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
@@ -273,9 +276,14 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		auth = AUTH_PLAIN;
 	else if (strcmp(authstr, "login") == 0)
 		auth = AUTH_LOGIN;
-	else if (strcmp(authstr, "cram-md5") == 0)
+	else if (strcmp(authstr, "cram-md5") == 0) {
+#ifdef USE_MD5
 		auth = AUTH_CRAM_MD5;
-	else {
+#else
+		fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+		return (1);
+#endif
+	} else {
 		fprintf(stderr, tr(274,
 			"Unknown SMTP authentication method: %s\n"), authstr);
 		return 1;
@@ -341,6 +349,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			SMTP_OUT(o);
 			SMTP_ANSWER(2);
 			break;
+#ifdef USE_MD5
 		case AUTH_CRAM_MD5:
 			SMTP_OUT("AUTH CRAM-MD5\r\n");
 			SMTP_ANSWER(3);
@@ -350,6 +359,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			SMTP_OUT(cp);
 			SMTP_ANSWER(2);
 			break;
+#endif
 		}
 	} else {
 		snprintf(o, sizeof o, "HELO %s\r\n", nodename(1));
