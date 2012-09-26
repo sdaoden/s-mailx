@@ -321,3 +321,4 @@ The following ~ escapes are defined:\n\
 273 Unknown IMAP authentication method: %s\n
 274 Unknown SMTP authentication method: %s\n
 275 User and password are necessary for SMTP authentication.\n
+276 Could not determine timestamp from server greeting.  Can't use APOP.\n

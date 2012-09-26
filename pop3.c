@@ -380,8 +380,9 @@ pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 	POP3_ANSWER()
 	if (pop3_use_apop(uhp)) {
 		if ((ts = pop3_find_timestamp(pop3buf)) == NULL) {
-			fprintf(stderr, "Could not determine timestamp from "
-				"server greeting. Impossible to use APOP.\n");
+			fprintf(stderr, tr(276,
+				"Could not determine timestamp from "
+				"server greeting.  Can't use APOP.\n"));
 			return STOP;
 		}
 	}
