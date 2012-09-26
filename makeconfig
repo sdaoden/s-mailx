@@ -32,9 +32,13 @@ wantfeat() {
 	return 0
 }
 
+if ! wantfeat SOCKET; then
+	WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
+fi
 if ! wantfeat IMAP && ! wantfeat POP3 && ! wantfeat SMTP; then
-	WANT_SOCKET=0
-	WANT_SSL=0
+	WANT_SOCKET=0 WANT_SSL=0
+else
+	WANT_SOCKET=1
 fi
 if ! wantfeat IMAP; then
 	WANT_GSSAPI=0
@@ -381,27 +385,29 @@ WANT_SOCKET=1
 #}
 #!
 
+	# XXX Shouldn't it be a hard error if there is no socket support, then?
 	[ ${WANT_SOCKET} -eq 1 ] ||
 		WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
-	if wantfeat IMAP; then
-		echo "#define USE_IMAP" >> $out
-	else
-		echo "/* #define USE_IMAP */" >> $out
-	fi
-	if wantfeat POP3; then
-		echo "#define USE_POP3" >>$out
-	else
-		echo "/* #define USE_POP3 */" >> $out
-	fi
-	if wantfeat SMTP; then
-		echo "#define USE_SMTP" >>$out
-	else
-		echo "/* #define USE_SMTP */" >> $out
-	fi
-else
-	echo '/* Socket (IMAP/POP3/SMTP) support not configured */' >> $out
-	WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
 fi # wantfeat SOCKET
+
+if wantfeat IMAP; then
+	echo "#define USE_IMAP" >> $out
+else
+	echo "/* #define USE_IMAP */" >> $out
+fi
+
+if wantfeat POP3; then
+	echo "#define USE_POP3" >>$out
+else
+	echo "/* #define USE_POP3 */" >> $out
+fi
+
+if wantfeat SMTP; then
+	echo "#define USE_SMTP" >>$out
+else
+	echo "/* #define USE_SMTP */" >> $out
+fi
+
 if wantfeat SSL; then
 
 link_check nss 'for Network Security Services (NSS)' '#define USE_SSL
@@ -545,7 +551,7 @@ else
 fi # wantfeat GSSAPI
 
 if wantfeat JUNK; then
-	echo "#define USE_JUNK" >>$out
+	echo "#define USE_JUNK" >> $out
 else
 	echo "/* #define USE_JUNK */" >> $out
 fi
@@ -569,29 +575,26 @@ cat >$tmp2.c <<\!
 #if defined (HAVE_SETLOCALE) && defined (HAVE_NL_LANGINFO) && defined (CODESET)
 : + Automatic detection of terminal character set
 #endif
-#ifdef	HAVE_SOCKETS
-# if defined USE_IMAP && defined USE_POP3 && defined USE_SMTP
-: + Networking support (IMAP, POP3, and SMTP)
-# else
-#  ifdef USE_IMAP
-: + Networking support (IMAP)
-#  endif
-#  ifdef USE_POP3
-: + Networking support (POP3)
-#  endif
-#  ifdef USE_SMTP
-: + Networking support (SMTP)
-#  endif
-# endif
+#ifdef HAVE_SOCKETS
+: + Network support
 #endif
-#ifdef	USE_GSSAPI
-: + IMAP GSSAPI authentication
-#endif
-#if defined (USE_NSS)
+#ifdef USE_NSS
 : + S/MIME and SSL/TLS using Network Security Services (NSS)
 #endif
-#if defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 : + S/MIME and SSL/TLS using OpenSSL
+#endif
+#ifdef USE_IMAP
+: + IMAP protocol
+#endif
+#ifdef USE_GSSAPI
+: + IMAP GSSAPI authentication
+#endif
+#ifdef USE_POP3
+: + POP3 protocol
+#endif
+#ifdef USE_SMTP
+: + SMTP protocol
 #endif
 #ifdef USE_JUNK
 : + Gunnar Ritter's junk-mail management
@@ -613,23 +616,22 @@ cat >$tmp2.c <<\!
 : - Automatic detection of terminal character set
 #endif
 #ifndef	HAVE_SOCKETS
-: - Networking support (IMAP, POP3, and SMTP)
-#else
-# ifndef USE_IMAP
-: - Networking support (IMAP)
-# endif
-# ifndef USE_POP3
-: - Networking support (POP3)
-# endif
-# ifndef USE_SMTP
-: - Networking support (SMTP)
-# endif
+: - Network support
+#endif
+#if ! defined USE_SSL && ! defined USE_NSS
+: - SSL/TLS (network transport authentication and encryption)
+#endif
+#ifndef USE_IMAP
+: - IMAP protocol
 #endif
 #ifndef	USE_GSSAPI
 : - IMAP GSSAPI authentication
 #endif
-#ifndef	USE_SSL
-: - SSL/TLS (network transport authentication and encryption)
+#ifndef USE_POP3
+: - POP3 protocol
+#endif
+#ifndef USE_SMTP
+: - SMTP protocol
 #endif
 #ifndef USE_JUNK
 : - Gunnar Ritter's junk-mail management
