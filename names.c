@@ -225,6 +225,7 @@ detract(struct name *np, enum gfield ntype)
 /*
  * Grab a single word (liberal word)
  * Throw away things between ()'s, and take anything between <>.
+ * Strip trailing whitespace as *ap* may come directly from user.
  */
 static char *
 yankword(char *ap, char *wbuf, char *separators, int copypfx)
@@ -263,6 +264,8 @@ yankword(char *ap, char *wbuf, char *separators, int copypfx)
 			*wp++ = *cp++;
 		}
 	}
+	while (wp > wbuf && blankspacechar(wp[-1]))
+		--wp;
 	*wp = '\0';
 	return cp;
 }
