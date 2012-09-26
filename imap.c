@@ -848,11 +848,12 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
 #ifdef	USE_GSSAPI
 		return imap_gss(mp, xuser);
 #else	/* !USE_GSSAPI */
-		fprintf(stderr, "No GSSAPI support compiled in.\n");
+		fprintf(stderr, tr(272, "No GSSAPI support compiled in.\n"));
 		return STOP;
 #endif	/* !USE_GSSAPI */
 	}
-	fprintf(stderr, "Unknown IMAP authentication method: \"%s\"\n", auth);
+	fprintf(stderr, tr(273, "Unknown IMAP authentication method: %s\n"),
+		auth);
 	return STOP;
 }
 
