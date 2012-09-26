@@ -72,12 +72,18 @@ static unsigned char PADDING[64] = {
 };
 
 /*
- * F, G, H and I are basic MD5 functions.
+#define	F(x,y,z)	(((x) & (y))  |  ((~(x)) & (z)))
+#define	G(x,y,z)	(((x) & (z))  |  ((y) & (~(z))))
+*/
+
+/* As pointed out by Wei Dai <weidai@eskimo.com>, the above can be
+ * simplified to the code below.  Wei attributes these optimizations
+ * to Peter Gutmann's SHS code, and he attributes it to Rich Schroeppel.
  */
-#define	F(x, y, z)	(((x) & (y)) | (~(x) & (z)))
-#define	G(x, y, z)	(((x) & (z)) | ((y) & ~(z)))
-#define	H(x, y, z)	((x) ^ (y) ^ (z))
-#define	I(x, y, z)	((y) ^ ((x) | (~(z) & UINT4B_MAX)))
+#define	F(b,c,d)	((((c) ^ (d)) & (b)) ^ (d))
+#define	G(b,c,d)	((((b) ^ (c)) & (d)) ^ (c))
+#define	H(b,c,d)	((b) ^ (c) ^ (d))
+#define	I(b,c,d)	(((~(d) & UINT4B_MAX) | (b)) ^ (c))
 
 /*
  * ROTATE_LEFT rotates x left n bits.
