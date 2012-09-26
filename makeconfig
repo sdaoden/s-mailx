@@ -1,9 +1,5 @@
 #!/bin/sh
 
-#
-# Sccsid @(#)makeconfig	1.44 (gritter) 5/26/09
-#
-
 if [ -z "${CONFIG}" ]; then
 	[ -f user.conf ] && . user.conf
 else

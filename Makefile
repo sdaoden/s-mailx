@@ -75,13 +75,11 @@ $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
 md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
-version.o: version.h
 
-#version.h: $(OBJ:.o=.c)
-version.h:
+new-version:
 	eval VERSION=`git describe --dirty --tags`; \
-	echo > version.h \
-		"#define V \"<12.5 7/5/10; $${VERSION:-S-nail spooned}>\""
+	echo > version.c \
+	"const char *version = \"<12.5 7/5/10; S-nail $${VERSION:-spooned}>\";"
 
 config.h: user.conf makeconfig
 	$(SHELL) ./makeconfig
@@ -91,7 +89,7 @@ install: all
 	$(INSTALL) -c $(SID)nail $(DESTDIR)$(BINDIR)/$(SID)nail
 	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)nail
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(INSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
+	$(INSTALL) -c -m 644 s-nail.1 $(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	test -f $(DESTDIR)$(MAILRC) || \
 		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)

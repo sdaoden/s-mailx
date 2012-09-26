@@ -1,5 +1,5 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
@@ -36,14 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char copyright[]
-= "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.71 (gritter) 7/5/10";
-#endif /* DOSCCS */
-#endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"

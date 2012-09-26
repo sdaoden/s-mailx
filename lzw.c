@@ -1,5 +1,5 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
@@ -60,8 +60,6 @@
  * Diomidis Spinellis <dds@doc.ic.ac.uk>.
  *
  * Adopted for Heirloom mailx by Gunnar Ritter.
- *
- * Sccsid @(#)lzw.c	1.11 (gritter) 3/4/06
  */
 
 #include "config.h"

@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2005 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Generated from
@@ -23,11 +24,7 @@
  * Communications Corporation.  Portions created by Netscape are 
  * Copyright (C) 1994-2000 Netscape Communications Corporation.  All
  * Rights Reserved.
- * 
- * Contributor(s):
  */
-
-/*	"@(#)nsserr.c	1.3 (gritter) 3/4/06"	*/
 
 #include <sslerr.h>
 #include <secerr.h>

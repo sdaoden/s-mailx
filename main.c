@@ -1,5 +1,5 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
@@ -36,14 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char copyright[]
-= "@(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] = "@(#)main.c	2.51 (gritter) 10/1/07";
-#endif	/* DOSCCS */
-#endif /* not lint */
 
 /* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
  * TODO Problem: Popen doesn't encapsulate all cases of open failures,
