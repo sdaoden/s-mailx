@@ -1024,6 +1024,8 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	int	sockfd;
 	char	*cp;
 	char	*server = (char *)xserver;
+	(void)use_ssl;
+	(void)uhp;
 
 	if ((cp = strchr(server, ':')) != NULL) {
 		portstr = &cp[1];
