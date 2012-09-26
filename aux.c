@@ -58,7 +58,9 @@
 #include <fcntl.h>
 #include <limits.h>
 
-#include "md5.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
