@@ -319,3 +319,5 @@ The following ~ escapes are defined:\n\
 271 More than one address given with -r\n
 272 No GSSAPI support compiled in.\n
 273 Unknown IMAP authentication method: %s\n
+274 Unknown SMTP authentication method: %s\n
+275 User and password are necessary for SMTP authentication.\n

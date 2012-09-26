@@ -276,13 +276,14 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	else if (strcmp(authstr, "cram-md5") == 0)
 		auth = AUTH_CRAM_MD5;
 	else {
-		fprintf(stderr, "Unknown SMTP authentication "
-				"method: \"%s\"\n", authstr);
+		fprintf(stderr, tr(274,
+			"Unknown SMTP authentication method: %s\n"), authstr);
 		return 1;
 	}
 	if (auth != AUTH_NONE && (user == NULL || password == NULL)) {
-		fprintf(stderr, "User and password are necessary "
-				"for SMTP authentication.\n");
+		fprintf(stderr, tr(275,
+			"User and password are necessary "
+			"for SMTP authentication.\n"));
 		return 1;
 	}
 	SMTP_ANSWER(2);
@@ -306,7 +307,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	}
 #else	/* !USE_SSL */
 	if (value("smtp-use-starttls") || value("smtp-use-tls")) {
-		fprintf(stderr, "No SSL support compiled in.\n");
+		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		return 1;
 	}
 #endif	/* !USE_SSL */
