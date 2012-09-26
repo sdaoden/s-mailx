@@ -70,7 +70,7 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
  * TODO Problem: Popen doesn't encapsulate all cases of open failures,
  * TODO may leave child running if fdopen() fails! */
 
-#ifdef HAVE_SOCKETS
+#ifdef USE_SMTP
 static int verbose;
 static int _debug;
 #endif
