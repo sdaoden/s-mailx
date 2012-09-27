@@ -202,10 +202,10 @@ struct s_zstate {
 #define	FIRST	257		/* First free entry. */
 #define	CLEAR	256		/* Table clear output code. */
 
-static int output(struct s_zstate *zs, code_int ocode);
-static code_int getcode(struct s_zstate *zs);
-static int cl_block(struct s_zstate *zs);
-static void cl_hash(struct s_zstate *zs, count_int cl_hsize);
+static int	cl_block(struct s_zstate *);
+static void	cl_hash(struct s_zstate *, count_int);
+static code_int	getcode(struct s_zstate *);
+static int	output(struct s_zstate *, code_int);
 
 /*-
  * Algorithm from "A Technique for High Performance Data Compression",
@@ -233,7 +233,7 @@ static void cl_hash(struct s_zstate *zs, count_int cl_hsize);
  * file size for noticeable speed improvement on small files.  Please direct
  * questions about this implementation to ames!jaw.
  */
-int 
+int
 zwrite(void *cookie, const char *wbp, int num)
 {
 	code_int i;
@@ -322,7 +322,7 @@ nomatch:	if (output(zs, (code_int) ent) == -1)
 	return (num);
 }
 
-int 
+int
 zfree(void *cookie)
 {
 	struct s_zstate *zs;
@@ -363,7 +363,7 @@ static char_type lmask[9] =
 static char_type rmask[9] =
 	{0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff};
 
-static int 
+static int
 output(struct s_zstate *zs, code_int ocode)
 {
 	int r_off;
@@ -451,7 +451,7 @@ output(struct s_zstate *zs, code_int ocode)
  * compressed file.  The tables used herein are shared with those of the
  * compress() routine.  See the definitions above.
  */
-int 
+int
 zread(void *cookie, char *rbp, int num)
 {
 	u_int count;
@@ -566,7 +566,7 @@ eof:	return (num - count);
  * Outputs:
  * 	code or -1 is returned.
  */
-static code_int 
+static code_int
 getcode(struct s_zstate *zs)
 {
 	code_int gcode;
@@ -624,7 +624,7 @@ getcode(struct s_zstate *zs)
 	return (gcode);
 }
 
-static int 
+static int
 cl_block(struct s_zstate *zs)		/* Table clear for block compress. */
 {
 	long rat;
@@ -652,7 +652,7 @@ cl_block(struct s_zstate *zs)		/* Table clear for block compress. */
 	return (0);
 }
 
-static void 
+static void
 cl_hash(struct s_zstate *zs, count_int cl_hsize)	/* Reset code table. */
 {
 	count_int *htab_p;
