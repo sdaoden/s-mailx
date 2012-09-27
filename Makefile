@@ -1,4 +1,4 @@
-#@ Makefile for s-nail
+#@ Makefile for S-nail.
 #@ See the file INSTALL if you need help.
 
 PREFIX		= /usr/local
@@ -21,26 +21,11 @@ SHELL		= /bin/sh
 STRIP		= strip
 INSTALL		= /usr/bin/install
 
-# Define compiler, preprocessor, and linker flags here.
-# Note that some Linux/glibc versions need -D_GNU_SOURCE in CPPFLAGS, or
-# wcwidth() will not be available and multibyte characters will not be
-# displayed correctly.
 #CFLAGS		=
-#CPPFLAGS	=
+#WARN		= -W -Wall -pedantic
 #LDFLAGS		=
-#WARN		= -W -Wall -Wno-parentheses -Werror
-
-# If you know that the IPv6 functions work on your machine, you can enable
-# them here.
-#IPv6		= -DHAVE_IPv6_FUNCS
 
 ##  --  >8  --  8<  --  ##
-
-###########################################################################
-###########################################################################
-# You should really know what you do if you change anything below this line
-###########################################################################
-###########################################################################
 
 FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
@@ -54,22 +39,19 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	v7.local.o vars.o \
 	version.o
 
-.SUFFIXES: .o .c .x
+.SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) \
-		`grep '^[^#]' INCS` $(INCLUDES) $(WARN) -c $<
+	$(CC) $(CFLAGS) $(WARN) $(FEATURES) `cat INCS` -c $<
 
 .c.x:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) -E $< >$@
+	$(CC) $(CFLAGS) $(WARN) $(FEATURES) -E $< >$@
 
-.c:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) \
-		$(LDFLAGS) $< `grep '^[^#]' LIBS` $(LIBS) -o $@
+.c .y: ;
 
 all: $(SID)nail
 
 $(SID)nail: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJ) `cat LIBS` -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
