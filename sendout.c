@@ -1182,9 +1182,9 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
 
 
-	if (value("stealthmua"))
-		stealthmua = 1;
-	else
+	if ((addr = value("stealthmua")) != NULL) {
+		stealthmua = (strcmp(addr, "noagent") == 0) ? -1 : 1;
+	} else
 		stealthmua = 0;
 	gotcha = 0;
 	if (w & GDATE) {
@@ -1278,7 +1278,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 	}
 	if (value("bsdcompat") || value("bsdorder"))
 		FMT_CC_AND_BCC
-	if (w & GMSGID && stealthmua == 0)
+	if (w & GMSGID && stealthmua <= 0)
 		message_id(fo, hp), gotcha++;
 	if (hp->h_ref != NULL && w & GREF) {
 		fmt("References:", hp->h_ref, fo, 0, 1, 0);
@@ -1401,7 +1401,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 				free(buf);
 			return 1;
 		}
-		if (value("stealthmua") == NULL) {
+		if ((cp = value("stealthmua")) == NULL ||
+				strcmp(cp, "noagent") == 0) {
 			fputs("Resent-", fo);
 			message_id(fo, NULL);
 		}

@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.TH S-NAIL 1 "2012-09-26" "S-nail" "User Commands"
+.TH S-NAIL 1 "2012-09-28" "S-nail" "User Commands"
 .SH NAME
 s-nail \- send and receive Internet mail
 .SH SYNOPSIS
@@ -2713,15 +2713,6 @@ Accept SSLv2 connections.
 These are normally not allowed
 because this protocol version is insecure.
 .TP
-.B stealthmua
-Inhibits the generation of
-the \fI`Message-Id:'\fR and \fI`User-Agent:'\fR
-header fields that include obvious references to \fIs-nail\fR.
-There are two pitfalls associated with this:
-First, the message id of outgoing messages is not known anymore.
-Second, an expert may still use the remaining information in the header
-to track down the originating mail user agent.
-.TP
 .B verbose
 Setting the option verbose is the same
 as using the \-v flag on the command line.
@@ -3651,6 +3642,17 @@ The default is `ask'.
 Overrides
 .I ssl-verify
 for a specific account.
+.TP
+.B stealthmua
+If only set without a value assigned, then this option inhibits the
+generation of the \fI`Message-Id:'\fR and \fI`User-Agent:'\fR
+header fields that include obvious references to \fIs-nail\fR.
+There are two pitfalls associated with this:
+First, the message id of outgoing messages is not known anymore.
+Second, an expert may still use the remaining information in the header
+to track down the originating mail user agent.
+If set to the value `noagent', then the mentioned \fI`Message-Id:'\fR
+supression doesn't occur.
 .TP
 .B toplines
 If defined, gives the number of lines
