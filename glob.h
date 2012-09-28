@@ -69,7 +69,8 @@ _E char	prevfile[PATHSIZE];		/* Name of previous file */
 _E char	*homedir;			/* Path name of home directory */
 _E char *progname;			/* our name */
 _E char	*myname;			/* My login name */
-extern const char *version;		/* version string */
+_E const char *const uagent;		/* User agent */
+_E const char *const version;		/* The version string */
 _E off_t mailsize;			/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *prevdot;		/* Previous current message */

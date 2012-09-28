@@ -509,7 +509,7 @@ usage:
 				printf(catgets(catd, CATSET, 140,
 					"%s version %s.  "
 					"Type ? for help.\n"),
-					value("bsdcompat") ? "Mail" : "S-nail",
+					value("bsdcompat") ? "Mail" : uagent,
 					version);
 			announce(1);
 			fflush(stdout);

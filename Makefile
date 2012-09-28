@@ -24,7 +24,11 @@ INSTALL		= /usr/bin/install
 
 ##  --  >8  --  8<  --  ##
 
-MAILRC		= $(SYSCONFDIR)/$(SID)nail.rc
+# To ease the life of forkers and packagers one may even adjust the "nail"
+# of nail(1).  If nail.1 is adjusted in addition (\*(UA, \*(ua and \*(ba)
+# to the above occurrences, a new fork has been created all through.
+NAIL		= nail
+MAILRC		= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
 
@@ -46,9 +50,9 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 
 .c .y: ;
 
-all: $(SID)nail
+all: $(SID)$(NAIL)
 
-$(SID)nail: $(OBJ)
+$(SID)$(NAIL): $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) `cat LIBS` -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
@@ -57,29 +61,30 @@ md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
 
 new-version:
-	eval VERSION=`git describe --dirty --tags`; \
+	eval VERSION="`git describe --dirty --tags`"; \
 	echo > version.c \
-	"const char *version = \"<12.5 7/5/10; S-nail $${VERSION:-spooned}>\";"
+	"const char *const uagent = \"S-nail\",\
+		*const version = \"<12.5 7/5/10; $${VERSION:-spooky}>\";"
 
-config.h: user.conf makeconfig
+config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
 
 install: all
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
-	$(INSTALL) -c $(SID)nail $(DESTDIR)$(BINDIR)/$(SID)nail
-	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)nail
+	$(INSTALL) -c $(SID)$(NAIL) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
+	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(INSTALL) -c -m 644 nail.1 $(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
+	$(INSTALL) -c -m 644 nail.1 $(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	test -f $(DESTDIR)$(MAILRC) || \
 		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
 
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/$(SID)nail \
-		$(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
+	rm -f $(DESTDIR)$(BINDIR)/$(SID)$(NAIL) \
+		$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 
 clean:
-	rm -f $(OBJ) $(SID)nail *~ core log
+	rm -f $(OBJ) $(SID)$(NAIL) *~ core log
 
 distclean: clean
 	rm -f config.h config.log LIBS INCS

@@ -1292,8 +1292,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		}
 	}
 	if (w & GUA && stealthmua == 0)
-		fprintf(fo, "User-Agent: S-nail %s\n",
-				version), gotcha++;
+		fprintf(fo, "User-Agent: %s %s\n", uagent, version), gotcha++;
 	if (w & GMIME) {
 		fputs("MIME-Version: 1.0\n", fo), gotcha++;
 		if (hp->h_attach != NULL) {
