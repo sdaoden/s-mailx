@@ -1,15 +1,12 @@
 #@ Makefile for S-nail.
 #@ See the file INSTALL if you need help.
 
+# General prefix
 PREFIX		= /usr/local
 # Prepended to all paths at installation time (for e.g. package building)
 DESTDIR		=
-
 # (For those who want to install S-nail(1) as nail(1), use an empty *SID*)
 SID		= s-
-
-# Not uninstalled via uninstall: rule
-MAILRC		= $(SYSCONFDIR)/$(SID)nail.rc
 
 BINDIR		= $(PREFIX)/bin
 MANDIR		= $(PREFIX)/man
@@ -27,6 +24,7 @@ INSTALL		= /usr/bin/install
 
 ##  --  >8  --  8<  --  ##
 
+MAILRC		= $(SYSCONFDIR)/$(SID)nail.rc
 FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
 
@@ -71,7 +69,7 @@ install: all
 	$(INSTALL) -c $(SID)nail $(DESTDIR)$(BINDIR)/$(SID)nail
 	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)nail
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(INSTALL) -c -m 644 s-nail.1 $(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
+	$(INSTALL) -c -m 644 nail.1 $(DESTDIR)$(MANDIR)/man1/$(SID)nail.1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	test -f $(DESTDIR)$(MAILRC) || \
 		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
