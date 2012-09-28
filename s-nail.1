@@ -36,13 +36,17 @@
 .\" SUCH DAMAGE.
 .\"
 .TH S-NAIL 1 "2012-09-28" "S-nail" "User Commands"
+.ds UA \\fIS-nail\\fR
+.ds ua \\fIs-nail\\fR
+.ds ba \\fBs-nail\\fR
+.\" ##  --  >8  --  8<  --  ##
 .SH NAME
-s-nail \- send and receive Internet mail
+\*(UA \- send and receive Internet mail
 .SH SYNOPSIS
 .PD 0
 .HP
 .ad l
-\fBs-nail\fR [\fB\-BDdEFinOtv~\fR]
+\*(ba [\fB\-BDdEFinOtv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
 [\fB\-h\fI\ hops\fR]
@@ -51,13 +55,13 @@ s-nail \- send and receive Internet mail
 \fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\fBs-nail\fR [\fB\-BDdeEHiInNRv~\fR] [\fB\-T\fI\ name\fR]
+\*(ba [\fB\-BDdeEHiInNRv~\fR] [\fB\-T\fI\ name\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
 \fB\-f\fR [\fIname\fR]
 .HP
 .ad l
-\fBs-nail\fR [\fB\-BDdeEinNRv~\fR]
+\*(ba [\fB\-BDdeEinNRv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
 [\fB\-u\fI\ user\fR]
@@ -65,7 +69,7 @@ s-nail \- send and receive Internet mail
 .PD
 .ad b
 .SH DESCRIPTION
-\fIS-nail\fR is an intelligent mail processing system, which has
+\*(UA is an intelligent mail processing system, which has
 a command syntax reminiscent of
 .IR ed (1)
 with lines replaced by messages.
@@ -75,8 +79,7 @@ is intended to provide the functionality of the POSIX
 command,
 and offers extensions
 for MIME, IMAP, POP3, SMTP, and S/MIME.
-.I S-nail
-provides enhanced
+\*(UA provides enhanced
 features for interactive use, such as caching and disconnected
 operation for IMAP, message threading, scoring, and filtering.
 It is also usable as a mail batch language, both for sending
@@ -115,9 +118,7 @@ variable option.
 Enables debugging messages and disables the actual delivery of messages.
 Unlike
 .IR \-v ,
-this option is intended for
-.I s-nail
-development only.
+this option is intended for \*(UA development only.
 .TP
 .B \-e
 Just check if mail is present in the system mailbox.
@@ -139,9 +140,7 @@ from scripts started by
 Read in the contents of the user's mbox
 (or the specified file)
 for processing;
-when
-.I s-nail
-is quit, it writes
+when \*(UA is quit, it writes
 undeleted messages back
 to this file.
 The string \fIfile\fR is handled
@@ -165,7 +164,7 @@ This option has no effect when SMTP is used for sending mail.
 Ignore tty interrupt signals.
 This is
 particularly useful when using
-\fIs-nail\fR on noisy phone lines.
+\*(UA on noisy phone lines.
 .TP
 .B \-I
 Shows the `Newsgroup:' or `Article-Id:' fields
@@ -174,10 +173,9 @@ Only applicable in combination with
 .IR \-f .
 .TP
 .B \-n
-Inhibits reading /etc/s-nail.rc upon startup.
+Inhibits reading /etc/\*(ua.rc upon startup.
 This option should be activated for
-.I s-nail
-scripts that are invoked on more than one machine,
+\*(UA scripts that are invoked on more than one machine,
 because the contents of that file may differ between them.
 .TP
 .B \-N
@@ -249,23 +247,23 @@ The details of
 delivery are displayed on the user's terminal.
 .TP
 .B \-V
-Print \fIs-nail\fR's version and exit.
+Print \*(UA's version and exit.
 .TP
 .B \-~
 Enable tilde escapes even if not in interactive mode.
 .SS "Sending mail"
 To send a message to one or more people,
-\fIs-nail\fR can be invoked with arguments
+\*(UA can be invoked with arguments
 which are the names of people
 to whom the mail will be sent.
 The user is then expected to type in his message,
 followed by an `control-D' at the beginning of a line.
 The section below Replying to
 or originating mail,
-describes some features of \fIs-nail\fR
+describes some features of /*(UA
 available to help when composing letters.
 .SS "Reading mail"
-In normal usage \fIs-nail\fR is given no arguments
+In normal usage \*(UA is given no arguments
 and checks the user's mail out of the post office,
 then prints out a one line header
 of each message found.
@@ -282,12 +280,12 @@ and simple numbers.
 After examining a message
 the user can delete `d') the message
 or reply `r') to it.
-Deletion causes the \fIs-nail\fR program
+Deletion causes the \*(UA program
 to forget about the message.
 This is not irreversible;
 the message can be undeleted `u')
 by giving its number,
-or the \fIs-nail\fR session can be aborted
+or the \*(UA session can be aborted
 by giving the exit `x') command.
 Deleted messages will, however,
 usually disappear never to be seen again.
@@ -445,8 +443,7 @@ All messages that satisfy the given IMAP-style SEARCH
 This addressing mode is available with all types of folders;
 for folders not located on IMAP servers,
 or for servers unable to execute the SEARCH command,
-.I s-nail
-will perform the search locally.
+\*(UA will perform the search locally.
 Strings must be enclosed by double quotes `"' in their entirety
 if they contain white space or parentheses;
 within the quotes,
@@ -607,7 +604,7 @@ Text the user types in then,
 up to an end-of-file,
 defines the contents of the message.
 While the user is composing a message,
-\fIs-nail\fR treats lines beginning with the character `~' specially.
+\*(UA treats lines beginning with the character `~' specially.
 For instance, typing `~m' (alone on a line)
 will place a copy of the current message into the response
 right shifting it by a tabstop
@@ -622,7 +619,7 @@ to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
 .SS "Ending a mail processing session"
-The user can end a \fIs-nail\fR session
+The user can end a \*(UA session
 with the quit (`q') command.
 Messages which have been examined
 go to the user's mbox file
@@ -645,7 +642,7 @@ Such lists can be defined by placing a line like
 .fi
 in the file .mailrc in the user's home directory.
 The current list of such aliases
-can be displayed with the alias command in \fIs-nail\fR.
+can be displayed with the alias command in \*(UA.
 System wide distribution lists can be created
 by editing /etc/aliases, see
 .IR aliases (5)
@@ -694,14 +691,14 @@ command below.
 See
 .IR mailaddr (7)
 for a description of network addresses.
-\fIS-nail\fR has a number of options
+\*(UA has a number of options
 which can be set in the .mailrc file
 to alter its behavior;
 thus `\fIset askcc\fR' enables the askcc feature.
 (These options are summarized below).
 .SS "MIME types"
 For any outgoing attachment,
-\fIs-nail\fR tries to determine the content type.
+\*(UA tries to determine the content type.
 It does this by reading MIME type files
 whose lines have the following syntax:
 .nf
@@ -712,7 +709,7 @@ whose lines have the following syntax:
 where type/subtype are strings describing the file contents,
 and extension is the part of a filename starting after the last dot.
 Any line not immediately beginning with an ASCII alphabetical character is
-ignored by \fIs-nail\fR.
+ignored by \*(UA.
 If there is a match with the extension of the file to attach,
 the given type/subtype pair is used.
 Otherwise, or if the filename has no extension,
@@ -721,8 +718,7 @@ the first for text or international text files,
 the second for any file that contains formatting characters
 other than newlines and horizontal tabulators.
 .SS "Character sets"
-.I S-nail
-normally detects the character set of the terminal
+\*(UA normally detects the character set of the terminal
 using the LC_CTYPE locale setting.
 If the locale cannot be used appropriately,
 the \fIttycharset\fR variable should be set
@@ -745,8 +741,7 @@ must be declared within its header.
 Permissible values can be declared
 using the \fIsendcharsets\fR variable,
 separated by commas;
-.I s-nail
-tries each of the values in order
+\*(UA tries each of the values in order
 and uses the first appropriate one.
 If the message contains characters that cannot be represented
 in any of the given character sets,
@@ -764,9 +759,7 @@ tilde escape will ask for the character sets for individual attachments
 if it is invoked without arguments.
 .PP
 Best results are usually achieved
-when
-.I s-nail
-is run in a UTF-8 locale
+when \*(UA is run in a UTF-8 locale
 on a UTF-8 capable terminal.
 In this setup,
 characters from various countries can be displayed,
@@ -785,7 +778,7 @@ the command's requirements is used.
 If there are no messages forward of the current message,
 the search proceeds backwards,
 and if there are no good messages at all,
-\fIs-nail\fR types `\fIapplicable messages\fR' and aborts the command.
+\*(UA types `\fIapplicable messages\fR' and aborts the command.
 If the command begins with a \fI#\fR sign,
 the line is ignored.
 .PP
@@ -889,10 +882,10 @@ creates a new alias or changes an old one.
 .B alternates
 (alt) The alternates command is useful
 if the user has accounts on several machines.
-It can be used to inform \fIs-nail\fR
+It can be used to inform \*(UA
 that the listed addresses all belong to the invoking user.
 When he replies to messages,
-\fIs-nail\fR will not send a copy of the message
+\*(UA will not send a copy of the message
 to any of the addresses
 listed on the alternates list.
 If the alternates command is given
@@ -1037,7 +1030,7 @@ available for disconnected use.
 Deletes the current message
 and prints the next message.
 If there is no next message,
-\fIs-nail\fR says `\fIat EOF\fR'.
+\*(UA says `\fIat EOF\fR'.
 .TP
 .B draft
 Takes a message list and marks each message
@@ -1176,7 +1169,7 @@ The optional
 part applies to IMAP only;
 if it is omitted,
 the default `INBOX' is used.
-If \fIs-nail\fR is connected to an IMAP server,
+If \*(UA is connected to an IMAP server,
 a name of the form \fB@\fImailbox\fR
 refers to the \fImailbox\fR on that server.
 If the `folder' variable refers to an IMAP account,
@@ -1283,14 +1276,13 @@ and marks each message therein to be saved
 in the user's system mailbox
 instead of in mbox.
 Does not override the delete command.
-.I S-nail
-deviates from the POSIX standard with this command,
+\*(UA deviates from the POSIX standard with this command,
 as a `next' command issued after `hold'
 will display the following message,
 not the current one.
 .TP
 .B if
-Commands in \fIs-nail\fR's startup files
+Commands in \*(UA's startup files
 can be executed conditionally
 depending on whether the user is sending
 or receiving mail with the if command.
@@ -1333,7 +1325,7 @@ it lists the current set of ignored fields.
 .TP
 .B imap
 Sends command strings directly to the current IMAP server.
-\fIS-nail\fR operates always in IMAP \fIselected state\fR
+\*(UA operates always in IMAP \fIselected state\fR
 on the current mailbox;
 commands that change this
 will produce undesirable results
@@ -1406,14 +1398,12 @@ and sends mail to those people.
 .B mbox
 Indicate that a list of messages be sent
 to mbox in the user's home directory when
-.I s-nail
-is quit.
+\*(UA is quit.
 This is the default action for messages
 if unless the
 .I hold
 option is set.
-.I S-nail
-deviates from the POSIX standard with this command,
+\*(UA deviates from the POSIX standard with this command,
 as a `next' command issued after `mbox'
 will display the following message,
 not the current one.
@@ -1802,8 +1792,7 @@ Takes a message list
 and marks the messages for saving in the
 .I mbox
 file.
-.I S-nail
-deviates from the POSIX standard with this command,
+\*(UA deviates from the POSIX standard with this command,
 as a `next' command issued after `mbox'
 will display the following message,
 not the current one.
@@ -1973,7 +1962,7 @@ No special handling of compressed files is performed.
 (x) A synonym for exit.
 .TP
 .B z
-\fIS-nail\fR presents message headers in windowfuls
+\*(UA presents message headers in windowfuls
 as described under the headers command.
 The z command scrolls to the next window of messages.
 If an argument is given,
@@ -1983,7 +1972,7 @@ that the window is calculated in relation
 to the current position.
 A number without a prefix specifies an
 absolute window number,
-and a `$' lets \fIs-nail\fR scroll
+and a `$' lets \*(UA scroll
 to the last window of messages.
 .TP
 .B Z
@@ -2021,8 +2010,7 @@ First, the user can edit all existing attachment data.
 If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
-.I s-nail
-will ask for further attachments,
+\*(UA will ask for further attachments,
 until an empty file name is given.
 If \fIfilename\fP arguments are specified,
 all of them are appended to the end of the attachment list.
@@ -2173,11 +2161,11 @@ The command
 is often used
 as command to rejustify the message.
 .TP
-.BI ~: s-nail-command
-Execute the given \fIs-nail\fR command.
+.BI ~: \*(ua-command
+Execute the given \*(UA command.
 Not all commands, however, are allowed.
 .TP
-.BI ~_ s-nail-command
+.BI ~_ \*(ua-command
 Identical to ~:.
 .TP
 .BI ~~ string
@@ -2190,7 +2178,7 @@ in order to send it at the beginning of a line.
 Options are controlled via set and unset commands,
 see their entries for a syntax description.
 An option is also set
-if it is passed to \fIs-nail\fR
+if it is passed to \*(UA
 as part of the environment
 (this is not restricted to specific variables as in the POSIX standard).
 A value given in a startup file overrides
@@ -2213,7 +2201,7 @@ rather than prepended.
 This should always be set.
 .TP
 .BR ask \ or \ asksub
-Causes \fIs-nail\fR to prompt for the subject
+Causes \*(UA to prompt for the subject
 of each message sent.
 If the user responds with simply a newline,
 no subject field will be sent.
@@ -2223,7 +2211,7 @@ Causes the prompts for `Cc:' and `Bcc:' lists
 to appear after the message has been edited.
 .TP
 .B askattach
-If set, \fIs-nail\fR asks for files to attach at the end of each message.
+If set, \*(UA asks for files to attach at the end of each message.
 Responding with a newline indicates not to include an attachment.
 .TP
 .B askcc
@@ -2340,9 +2328,7 @@ converted to local time.
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
 .IR verbose ,
-this option is intended for
-.I s-nail
-development only.
+this option is intended for \*(UA development only.
 .TP
 .B disconnected
 When an IMAP mailbox is selected and this variable is set,
@@ -2372,7 +2358,7 @@ variable above,
 but other accounts are not affected.
 .TP
 .B dot
-The binary option dot causes \fIs-nail\fR to interpret
+The binary option dot causes \*(UA to interpret
 a period alone on a line
 as the terminator of a message the user is sending.
 .TP
@@ -2391,10 +2377,10 @@ when using a common folder directory.
 .TP
 .B emptystart
 If the mailbox is empty,
-\fIs-nail\fR normally prints \fI`No mail for user'\fR
+\*(UA normally prints \fI`No mail for user'\fR
 and exits immediately.
 If this option is set,
-\fIs-nail\fR starts even with an empty mailbox.
+\*(UA starts even with an empty mailbox.
 .TP
 .B flipr
 Exchanges the
@@ -2423,7 +2409,7 @@ option is set.
 .TP
 .B fullnames
 When replying to a message,
-\fIs-nail\fR normally removes the comment parts of email addresses,
+\*(UA normally removes the comment parts of email addresses,
 which by convention contain the full names of the recipients.
 If this variable is set,
 such stripping is not performed,
@@ -2445,14 +2431,12 @@ to be ignored and echoed as @'s.
 .TP
 .B ignoreeof
 An option related to dot is ignoreeof
-which makes \fIs-nail\fR refuse to
+which makes \*(UA refuse to
 accept a control-d as the end of a message.
-Ignoreeof also applies to \fIs-nail\fR command mode.
+Ignoreeof also applies to \*(UA command mode.
 .TP
 .B imap-use-starttls
-Causes
-.I s-nail
-to issue a STARTTLS command
+Causes \*(UA to issue a STARTTLS command
 to make an unencrypted IMAP session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
@@ -2463,7 +2447,7 @@ Activates
 for a specific account.
 .TP
 .B keep
-This option causes \fIs-nail\fR to truncate the user's system mailbox
+This option causes \*(UA to truncate the user's system mailbox
 instead of deleting it when it is empty.
 This should always be set,
 since it prevents malicious users
@@ -2474,9 +2458,7 @@ in a world-writable spool directory.
 When a message is saved,
 it is usually discarded
 from the originating folder
-when
-.I s-nail
-is quit.
+when \*(UA is quit.
 Setting this option
 causes all saved message to be retained.
 .TP
@@ -2566,9 +2548,7 @@ Enables
 for a specific account.
 .TP
 .B pop3-use-starttls
-Causes
-.I s-nail
-to issue a STLS command
+Causes \*(UA to issue a STLS command
 to make an unencrypted POP3 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the POP3S method.
@@ -2620,8 +2600,7 @@ folder as it is normally only done for newly composed messages.
 .TP
 .B reply-in-same-charset
 If this variable is set,
-.I s-nail
-first tries to use the same character set
+\*(UA first tries to use the same character set
 of the original message for replies.
 If this fails,
 the
@@ -2634,7 +2613,7 @@ Reverses the sense of reply and Reply commands.
 .B save
 When the user aborts a message
 with two RUBOUT (interrupt characters)
-\fIs-nail\fR copies the partial letter
+\*(UA copies the partial letter
 to the file `dead.letter' in the home directory.
 This option is set by default.
 .TP
@@ -2650,15 +2629,14 @@ When sending a message,
 wait until the mail transfer agent exits
 before accepting further commands.
 If the mail transfer agent returns a non-zero exit status,
-the exit status of s-nail will also be non-zero.
+the exit status of \*(ua will also be non-zero.
 .TP
 .B showlast
-Setting this option causes \fIs-nail\fR to start at the
+Setting this option causes \*(UA to start at the
 last message instead of the first one when opening a mail folder.
 .TP
 .B showname
-Causes
-.I s-nail
+Causes \*(UA
 to use the sender's real name instead of the plain address
 in the header field summary and in message specifications.
 .TP
@@ -2675,8 +2653,7 @@ do not send it but discard it silently
 option).
 .TP
 .B smime-force-encryption
-Causes
-.I s-nail
+Causes \*(UA
 to refuse sending unencrypted messages.
 .TP
 .B smime-sign
@@ -2696,7 +2673,7 @@ when verifying S/MIME signed messages.
 Only applicable if S/MIME support is built using OpenSSL.
 .TP
 .B smtp-use-starttls
-Causes \fIs-nail\fR to issue a STARTTLS command
+Causes \*(UA to issue a STARTTLS command
 to make an SMTP session SSL/TLS encrypted.
 Not all servers support this command;
 because of common implementation defects,
@@ -2716,14 +2693,13 @@ because this protocol version is insecure.
 .B verbose
 Setting the option verbose is the same
 as using the \-v flag on the command line.
-When \fIs-nail\fR runs in verbose mode,
+When \*(UA runs in verbose mode,
 details of the actual message delivery
 and protocol conversations for IMAP, POP3, and SMTP,
 as well as of other internal processes,
 are displayed on the user's terminal,
 This is sometimes useful to debug problems.
-.I S-nail
-prints all data that is sent to remote servers in clear texts,
+\*(UA prints all data that is sent to remote servers in clear texts,
 including passwords,
 so care should be taken that no unauthorized option
 can view the screen if this option is enabled.
@@ -2834,7 +2810,7 @@ for storing folders of messages.
 All folder names that begin with `+'
 refer to files below that directory.
 If the directory name begins with a `/',
-\fIs-nail\fR considers it to be an absolute pathname;
+\*(UA considers it to be an absolute pathname;
 otherwise, the folder directory is found
 relative to the user's home directory.
 .IP
@@ -2988,10 +2964,8 @@ Sets the IMAP authentication method for a specific account.
 .B imap-cache
 Enables caching of IMAP mailboxes.
 The value of this variable must point to a directory
-that is either existent or can be created by
-.IR s-nail .
-All contents of the cache can be deleted by
-.I s-nail
+that is either existent or can be created by \*(UA.
+All contents of the cache can be deleted by \*(UA
 at any time;
 it is not safe to make assumptions about them.
 .TP
@@ -3041,8 +3015,7 @@ format for saving space.
 If processing time is considered more important,
 .IR uncompress (1)
 can be used to store them in plain form.
-.I S-nail
-will then work using the uncompressed files.
+\*(UA will then work using the uncompressed files.
 .TP
 .B LISTER
 Pathname of the directory lister
@@ -3094,7 +3067,7 @@ This variable is ignored if it is imported from the environment;
 it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
 to allow bypassing the configuration with e. g. `MAILRC=/dev/null'.
 Use this file for commands
-that are not understood by other s-nail implementations.
+that are not understood by other \*(UA implementations.
 .TP
 .B newfolders
 If this variable has the value
@@ -3116,18 +3089,13 @@ is a digit.
 These are usually taken from Mozilla installations,
 so an appropriate value might be
 `~/.mozilla/firefox/default.clm'.
-.I S-nail
-opens these files read-only
+\*(UA opens these files read-only
 and does not modify them.
 However, if the files are modified by Mozilla
-while
-.I s-nail
-is running,
+while \*(UA is running,
 it will print a `Bad database' message.
 It may be necessary to create copies of these files
-that are exclusively used by
-.I s-nail
-then.
+that are exclusively used by \*(UA then.
 Only applicable if S/MIME and SSL/TLS support is built using
 Network Security Services (NSS).
 .TP
@@ -3169,9 +3137,7 @@ if messages of type
 .I application/x-sh
 were filtered through the shell, for example,
 a message sender could easily execute arbitrary code
-on the system
-.I s-nail
-is running on.
+on the system \*(UA is running on.
 .TP
 .B pop3-keepalive
 POP3 servers may close the connection
@@ -3193,7 +3159,7 @@ or to `\fB&\ \fR' if the
 variable is set.
 .TP
 .B quote
-If set, \fIs-nail\fR starts a replying message with the original message
+If set, \*(UA starts a replying message with the original message
 prefixed by the value of the variable \fIindentprefix\fR.
 Normally, a heading consisting of `Fromheaderfield wrote:' is printed
 before the quotation.
@@ -3209,7 +3175,7 @@ and all MIME parts are included,
 thus \fIquote\fR acts like an automatic ~M command then.
 .TP
 .B quote-fold
-If set in addition to \fIindentprefix\fR, \fIs-nail\fR interprets this
+If set in addition to \fIindentprefix\fR, \*(UA interprets this
 number as the maximum line length of the quotation when replying to a
 message.
 Setting this turns on a more fancy quotation algorithm in that leading
@@ -3237,7 +3203,7 @@ If replying to a message, such addresses are handled
 as if they were in the alternates list.
 .TP
 .B screen
-When \fIs-nail\fR initially prints the message headers,
+When \*(UA initially prints the message headers,
 it determines the number to print
 by looking at the speed of the terminal.
 The faster the terminal, the more it prints.
@@ -3252,8 +3218,7 @@ A comma-separated list of character set names
 that can be used in Internet mail.
 When a message that contains characters not representable in US-ASCII
 is prepared for sending,
-.I s-nail
-tries to convert its text
+\*(UA tries to convert its text
 to each of the given character sets in order
 and uses the first appropriate one.
 The default is `utf-8'.
@@ -3416,8 +3381,7 @@ the specific file is used.
 When decrypting messages,
 their recipient fields (To: and Cc:) are searched for addresses
 for which such a variable is set.
-.I S-nail
-always uses the first address that matches,
+\*(UA always uses the first address that matches,
 so if the same message is sent to more than one
 of the user's addresses using different encryption keys,
 decryption might fail.
@@ -3456,7 +3420,7 @@ for a specific address.
 Only applicable if S/MIME support is built using NSS.
 .TP
 .B smtp
-Normally, \fIs-nail\fR invokes
+Normally, \*(UA invokes
 .IR sendmail (8)
 directly to transfer messages.
 If the \fIsmtp\fR variable is set, a SMTP connection to
@@ -3532,8 +3496,7 @@ If this variable is set but neither
 or a matching
 .I smtp-auth-password-user@host
 can be found,
-.I s-nail
-will as for a password on the user's terminal.
+\*(UA will as for a password on the user's terminal.
 .TP
 \fBsmtp-auth-user-\fIuser\fB@\fIhost\fR
 Overrides
@@ -3646,7 +3609,7 @@ for a specific account.
 .B stealthmua
 If only set without a value assigned, then this option inhibits the
 generation of the \fI`Message-Id:'\fR and \fI`User-Agent:'\fR
-header fields that include obvious references to \fIs-nail\fR.
+header fields that include obvious references to \*(UA.
 There are two pitfalls associated with this:
 First, the message id of outgoing messages is not known anymore.
 Second, an expert may still use the remaining information in the header
@@ -3662,9 +3625,9 @@ normally, the first five
 lines are printed.
 .TP
 .B ttycharset
-The character set of the terminal \fIs-nail\fR operates on.
+The character set of the terminal \*(UA operates on.
 There is normally no need to set this variable
-since \fIs-nail\fR can determine this automatically
+since \*(UA can determine this automatically
 by looking at the LC_CTYPE locale setting;
 if this succeeds, the value is assigned at startup
 and will be displayed by the \fIset\fP command.
@@ -3675,7 +3638,7 @@ that can be used in Internet messages.
 Pathname of the text editor to use
 in the visual command and ~v escape.
 .SH ENVIRONMENT VARIABLES
-Besides the variables described above, \fIs-nail\fR uses
+Besides the variables described above, \*(UA uses
 the following environment strings:
 .TP
 .B HOME
@@ -3687,8 +3650,7 @@ See
 .TP
 .B MAILRC
 Is used as startup file instead of ~/.mailrc if set.
-When
-.I s-nail
+When \*(UA
 scripts are invoked on behalf of other users,
 this variable should be set to `/dev/null'
 to avoid side-effects from reading their configuration files.
@@ -3709,7 +3671,7 @@ Used as directory for temporary files instead of /tmp, if set.
 ~/.mailrc
 File giving initial commands.
 .TP
-/etc/s-nail.rc
+/etc/\*(ua.rc
 System wide initialization file.
 .TP
 ~/.mime.types
@@ -3719,8 +3681,7 @@ Personal MIME types.
 System wide MIME types.
 .SH EXAMPLES
 .SS "Getting started"
-The
-.I s-nail
+The \*(UA
 command has two distinct usages, according to whether one
 wants to send or receive mail.
 Sending mail is simple: to send a
@@ -3730,29 +3691,25 @@ use the shell
 command:
 .nf
 .sp
-    $ \fBs-nail\fI bill@host.example\fR
+    $ \*(ba\fI bill@host.example\fR
 .sp
 .fi
 then type your message.
-.I S-nail
-will prompt you for a message
+\*(UA will prompt you for a message
 .I subject 
 first;
 after that, lines typed by you form the body of the message.
 When you reach the end of the message, type
 an EOT (control\-d) at the beginning of a line, which will cause
-.I s-nail
-to echo `EOT' and return you to the shell.
+\*(UA to echo `EOT' and return you to the shell.
 .PP
 If, while you are composing the message
 you decide that you do not wish to send it after all, you can
 abort the letter with a \s-2RUBOUT\s0.  Typing a single \s-2RUBOUT\s0
-causes
-.I s-nail
+causes \*(UA
 to print `(Interrupt -- one more to kill letter)'.
 Typing a second
-\s-2RUBOUT\s0 causes
-.I s-nail
+\s-2RUBOUT\s0 causes \*(UA
 to save your partial letter on the file `dead.letter'
 in your home directory and abort the letter.
 Once you have
@@ -3764,7 +3721,7 @@ you can list their email addresses on the command line.
 Thus,
 .nf
 .sp
-    $ \fBs-nail\fI sam@workstation.example bob@server.example\fR
+    $ \*(ba\fI sam@workstation.example bob@server.example\fR
     Subject: Fees
     Tuition fees are due next Friday.  Don't forget!
     <Control\-d>
@@ -3779,17 +3736,16 @@ and
 To read your mail, simply type
 .nf
 .sp
-    $ \fBs-nail\fR
+    $ \*(ba
 .sp
 .fi
-.I S-nail
+\*(UA
 will respond by typing its version number and date and then listing
 the messages you have waiting.
 Then it will type a prompt and await your command.
 The messages are assigned numbers starting with 1\(emyou
 refer to the messages with these numbers.
-.I S-nail
-keeps track of which messages are
+\*(UA keeps track of which messages are
 .I new
 (have been sent since you last read your mail) and
 .I read
@@ -3799,8 +3755,7 @@ next to them in the header listing and old, but unread messages have
 a
 .B U
 next to them.
-.I S-nail
-keeps track of new/old and read/unread messages by putting a
+\*(UA keeps track of new/old and read/unread messages by putting a
 header field called
 .I Status
 into your messages.
@@ -3822,9 +3777,7 @@ you could examine the first message by giving the command:
     \fBtype\fR 1
 .sp
 .fi
-which might cause
-.B s-nail
-to respond with, for example:
+which might cause \*(UA to respond with, for example:
 .nf
 .sp
     Message  1:
@@ -3836,15 +3789,13 @@ to respond with, for example:
 .sp
 .fi
 .PP
-Many
-.I s-nail
+Many \*(UA
 commands that operate on messages take a message number as an
 argument like the
 .I type
 command.
 For these commands, there is a notion of a current message.
-When you enter the
-.I s-nail
+When you enter the \*(UA
 program, the current message is initially the first
 (or the first recent) one.
 Thus, you can often omit the message number and use, for example,
@@ -3866,12 +3817,10 @@ would type the first message.
 .PP
 Frequently, it is useful to read the messages in your mailbox in order,
 one after another.
-You can read the next message in
-.I s-nail
+You can read the next message in \*(UA
 by simply typing a newline.
 As a special case, you can type a newline as your first command to
-.I s-nail
-to type the first message.
+\*(UA to type the first message.
 .PP
 If, after typing a message, you wish to immediately send a reply,
 you can do so with the
@@ -3881,13 +3830,12 @@ This command,
 like
 .IR type ,
 takes a message number as an argument.
-.I s-nail
+\*(UA
 then begins a message addressed to the user who sent you the message.
 You may then type in your letter in reply, followed by a <control-d>
 at the beginning of a line, as before.
 .PP
-Note that
-.I s-nail
+Note that \*(UA
 copies the subject header from the original message.
 This is useful in that correspondence
 about a particular matter will tend to retain the same subject heading,
@@ -3922,14 +3870,11 @@ you can use the
 .I delete
 command.
 In addition to not saving deleted messages,
-.I s-nail
-will not let you type them, either.
+\*(UA will not let you type them, either.
 The effect is to make the message disappear
 altogether, along with its number.
 .PP
-Many features of
-.I s-nail
-can be tailored to your liking with the
+Many features of \*(UA can be tailored to your liking with the
 .I set
 command.
 The
@@ -3941,8 +3886,7 @@ option or a
 option.
 Binary options are either on or off.  For example, the
 .I askcc
-option informs
-.I s-nail
+option informs \*(UA
 that each time you send a message, you want it to prompt you for
 a `Cc:' header,
 to be included in the message.
@@ -3954,13 +3898,10 @@ option, you would type
     \fBset\fR askcc
 .fi
 .PP
-Valued options are values which
-.I s-nail
-uses to adapt to your tastes.
+Valued options are values which \*(UA uses to adapt to your tastes.
 For example, the
 .I record
-option tells
-.I s-nail
+option tells \*(UA
 where to save messages sent by you,
 and is specified by
 .nf
@@ -3972,18 +3913,14 @@ for example.
 Note that no spaces are allowed in
 .I "set record=Sent".
 .PP
-.I S-nail
-includes a simple facility for maintaining groups of messages together
-in folders.
-To use the folder facility, you must tell
-.I s-nail
+\*(UA includes a simple facility for maintaining groups of messages
+together in folders.
+To use the folder facility, you must tell \*(UA
 where you wish to keep your folders.
 Each folder of messages will be a single file.
 For convenience, all of your folders are kept in
 a single directory of your choosing.
-To tell
-.I s-nail
-where your folder directory is, put a line of the form
+To tell \*(UA where your folder directory is, put a line of the form
 .nf
 .sp
     \fBset folder=\fIletters\fR
@@ -3994,9 +3931,8 @@ in your
 file.
 If, as in the example above,
 your folder directory does not begin with a `/',
-.I s-nail
-will assume that your folder directory is to be found starting from
-your home directory.
+\*(UA will assume that your folder directory is to be found starting
+from your home directory.
 .PP
 Anywhere a file name is expected, you can use a folder name, preceded
 with `+'.
@@ -4028,18 +3964,14 @@ command.
 The
 .I folder
 command
-can be used to direct
-.I s-nail
-to the contents of a different folder.
+can be used to direct \*(UA to the contents of a different folder.
 For example,
 .nf
 .sp
     \fBfolder +\fIclasswork\fR
 .sp
 .fi
-directs
-.I s-nail
-to read the contents of the
+directs \*(UA to read the contents of the
 .I classwork
 folder.
 All of the commands that you can use on your system
@@ -4061,15 +3993,13 @@ command.
 Finally, the
 .I help
 command is available to print out a brief summary of the most important
-.I s-nail
-commands.
+\*(UA commands.
 .PP
 While typing in a message to be sent to others, it is often
 useful to be able to invoke the text editor on the partial message,
 print the message, execute a shell command, or do some other
 auxiliary function. 
-.I S-nail
-provides these capabilities through
+\*(UA provides these capabilities through
 .I "tilde escapes" ,
 which consist of a tilde (~) at the beginning of a line, followed by
 a single character which indicates the function to be performed.
@@ -4145,38 +4075,37 @@ You might want to put this string into a startup file.
 As the
 .I shortcut
 command is specific to this implementation of
-.I s-nail
-and will confuse other implementations,
+\*(UA and will confuse other implementations,
 it should not be used in
 .IR ~/.mailrc ,
 instead, put
 .nf
 
-    \fBset SNAIL_EXTRA_RC=\fI~/.s-nailrc\fR
+    \fBset SNAIL_EXTRA_RC=\fI~/.\*(uarc\fR
 
 .fi
 in
 .I ~/.mailrc
 and create a file
-.I ~/.s-nailrc
+.I ~/.\*(uarc
 containing the
 .I shortcut
 command above.
 You can then access your remote mailbox by invoking
-`s-nail \-f \fImyisp\fR' on the command line,
-or by executing `fi \fImyisp\fR' within s-nail.
+`\*(ua \-f \fImyisp\fR' on the command line,
+or by executing `fi \fImyisp\fR' within \*(UA.
 .PP
 If you want to use more than one IMAP mailbox on a server,
 or if you want to use the IMAP server for mail storage too,
 the
 .I account
 command
-(which is also \fIs-nail-\fRspecific)
+(which is also \*(UA-\fRspecific)
 is more appropriate than the
 .I shortcut
 command.
 You can put the following in
-.IR ~/.s-nailrc :
+.IR ~/.\*(uarc :
 .sp
 .nf
     \fBaccount \fImyisp \fB{\fR
@@ -4186,8 +4115,8 @@ You can put the following in
 .fi
 .sp
 and can then access incoming mail for this account by invoking
-`s-nail \-A \fImyisp\fR' on the command line,
-or by executing `ac \fImyisp\fR' within s-nail.
+`\*(ua \-A \fImyisp\fR' on the command line,
+or by executing `ac \fImyisp\fR' within \*(UA.
 After that,
 a command like `copy \fI1\fR +\fIotherfolder\fR'
 will refer to \fIotherfolder\fR on the IMAP server.
@@ -4199,8 +4128,7 @@ and
 `fi +Sent' will show your recorded sent mail,
 with both folders located on the IMAP server.
 .PP
-.I S-nail
-will ask you for a password string
+\*(UA will ask you for a password string
 each time you connect to a remote account.
 If you can reasonably trust the security
 of your workstation,
@@ -4213,8 +4141,7 @@ you can give this password in the startup file as
 You should change the permissions of this file to 0600, see
 .IR chmod (1).
 .PP
-.I S-nail
-supports different authentication methods for both IMAP and POP3.
+\*(UA supports different authentication methods for both IMAP and POP3.
 If Kerberos is used at your location,
 you can try to activate GSSAPI-based authentication by
 .nf
@@ -4223,8 +4150,7 @@ you can try to activate GSSAPI-based authentication by
 
 .fi
 The advantage of this method is that
-.I s-nail
-does not need to know your password at all,
+\*(UA does not need to know your password at all,
 nor needs to send sensitive data over the network.
 Otherwise, the options
 .nf
@@ -4242,9 +4168,8 @@ conventional user/password based authentication must be used.
 It is sometimes helpful to set the
 .I verbose
 option when authentication problems occur.
-.I S-nail
-will display all data sent to the server in clear text on the screen
-with this option,
+\*(UA will display all data sent to the server in clear text on the
+screen with this option,
 including passwords.
 You should thus take care that no unauthorized person
 can look at your terminal when this option is set.
@@ -4265,14 +4190,14 @@ select a local directory name and put
 .fi
 in the startup file.
 All files within that directory
-can be overwritten or deleted by \fIs-nail\fR at any time,
+can be overwritten or deleted by \*(UA at any time,
 so you should not use the directory to store other information.
 .PP
 Once the cache contains some messages,
 it is not strictly necessary anymore
 to open a connection to the IMAP server
 to access them.
-When \fIs-nail\fR is invoked with the \fI\-D\fR option,
+When \*(UA is invoked with the \fI\-D\fR option,
 or when the
 .I disconnected
 variable is set,
@@ -4348,9 +4273,7 @@ such as by personally receiving the certificate on storage media.)
 .SS "Creating a score file or message filter"
 The scoring commands are best separated
 from other configuration for clarity,
-and are mostly
-.I s-nail
-specific.
+and are mostly \*(UA specific.
 It is thus recommended to put them in a separate file
 that is sourced from your SNAIL_EXTRA_RC as follows:
 .nf
@@ -4479,8 +4402,7 @@ If you set the
 option before running the
 .I classify
 command,
-.I s-nail
-prints the words it uses for calculating the junk status
+\*(UA prints the words it uses for calculating the junk status
 along with their statistical probabilities.
 This can help you to find out
 why some messages are not classified
@@ -4533,8 +4455,8 @@ Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file, as with
 .nf
 .sp
-    \fBset pipe-application/pdf=\fR"cat >/tmp/s-nail$$.pdf; \e
-           acroread /tmp/s-nail$$.pdf; rm /tmp/s-nail$$.pdf"
+    \fBset pipe-application/pdf=\fR"cat >/tmp/\*(ua$$.pdf; \e
+           acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
 .sp
 .fi
 Note that security defects are discovered in PDF viewers
@@ -4605,8 +4527,7 @@ from one of the major CAs on the Internet using your WWW browser.
 You will usually receive
 a combined certificate and private key
 in PKCS#12 format which
-.I s-nail
-does not directly accept
+\*(UA does not directly accept
 if S/MIME support is built using OpenSSL.
 To convert it to PEM format,
 use the following shell command:
@@ -4622,8 +4543,7 @@ parameter,
 you can specifiy an additional
 .I "PEM pass phrase"
 for protecting the private key.
-.I S-nail
-will then ask you for that pass phrase
+\*(UA will then ask you for that pass phrase
 each time it signs or decrypts a message.
 You can then use
 .nf
@@ -4631,8 +4551,7 @@ You can then use
     \fBset smime-sign-cert-\fImyname@myisp.example\fB=\fIcert.pem\fR
 .sp
 .fi
-to make this private key and certificate known to
-.IR s-nail .
+to make this private key and certificate known to \*(UA.
 .PP
 If S/MIME support is built using NSS,
 the PKCS#12 file must be installed using Mozilla
@@ -4667,8 +4586,7 @@ First use the
 command to check the validity of the certificate.
 After that,
 retrieve the certificate and tell
-.I s-nail
-that it should use it for encryption:
+\*(UA that it should use it for encryption:
 .nf
 .sp
     \fBcertsave\fI filename\fR
@@ -4724,14 +4642,12 @@ To seriously use S/MIME or SSL/TLS verification,
 an up-to-date CRL is required for each trusted CA.
 There is otherwise no method
 to distinguish between valid and invalidated certificates.
-.I S-nail
-currently offers no mechanism to fetch CRLs,
+\*(UA currently offers no mechanism to fetch CRLs,
 or to access them on the Internet,
 so you have to retrieve them by some external mechanism.
 .PP
 If S/MIME and SSL/TLS support are built using OpenSSL,
-.I s-nail
-accepts CRLs in PEM format only;
+\*(UA accepts CRLs in PEM format only;
 CRLs in DER format must be converted,
 e.\|g. with the shell command
 .nf
@@ -4739,9 +4655,7 @@ e.\|g. with the shell command
     $ \fBopenssl crl \-inform DER \-in \fIcrl.der\fB \-out \fIcrl.pem\fR
 .sp
 .fi
-To tell
-.I s-nail
-about the CRLs,
+To tell \*(UA about the CRLs,
 a directory
 that contains all CRL files
 (and no other files)
@@ -4753,8 +4667,7 @@ or
 variables, respectively,
 must then be set to point to that directory.
 After that,
-.I s-nail
-requires a CRL to be present
+\*(UA requires a CRL to be present
 for each CA that is used
 to verify a certificate.
 .PP
@@ -4766,21 +4679,16 @@ is set appropriately).
 .SS "Sending mail from scripts"
 If you want to send mail from scripts,
 you must be aware that
-.I s-nail
-reads the user's configuration files by default.
+\*(UA reads the user's configuration files by default.
 So unless your script is only intended for your own personal use
 (as e.g. a cron job),
-you need to circumvent this by invoking
-.I s-nail
-like
+you need to circumvent this by invoking \*(UA like
 .nf
 .sp
-    \fBMAILRC=/dev/null s-nail \-n\fR
+    \fBMAILRC=/dev/null \*(ua \-n\fR
 .sp
 .fi
-You then need to create a configuration for
-.I s-nail
-for your script.
+You then need to create a configuration for \*(UA for your script.
 This can be done by either pointing the
 .I MAILRC
 variable to a custom configuration file,
@@ -4793,7 +4701,7 @@ An invocation could thus look like
 .sp
     \fBenv MAILRC=/dev/null\fR from=\fIscriptreply@domain\fR smtp=\fIhost\fR \e
           smtp-auth-user=\fIlogin\fR smtp-auth-password=\fIsecret\fR \e
-          smtp-auth=\fIlogin\fR \fBs-nail \-n\fR \-s "\fIsubject\fR" \e
+          smtp-auth=\fIlogin\fR \*(ba\fB \-n\fR \-s "\fIsubject\fR" \e
           \-a \fIattachment_file\fR \fIrecipient@domain\fR <\fIcontent_file\fR
 .SH "SEE ALSO"
 fmt(1),
@@ -4809,17 +4717,14 @@ mailaddr(7),
 sendmail(8)
 .SH NOTES
 .PP
-Variables in the environment passed to
-.I s-nail
-cannot be unset.
+Variables in the environment passed to \*(UA cannot be unset.
 .PP
 The character set conversion relies
 on the
 .IR iconv (3)
 function.
 Its functionality differs widely
-between the various system environments
-\fIs-nail\fR runs on.
+between the various system environments \*(UA runs on.
 If the message `Cannot convert from \fIa\fR to \fIb\fR' appears,
 either some characters within the message header or text
 are not appropriate for the currently selected terminal character set,
@@ -4843,7 +4748,7 @@ the value assigned to
 .I sendcharsets
 must match the character set that is used on the terminal.
 .PP
-S-nail expects input text to be in Unix format,
+\*(UA expects input text to be in Unix format,
 with lines separated by 
 .I newline
 (^J, \en) characters only.
@@ -4854,7 +4759,7 @@ characters in addition will be treated as binary data;
 to send such files as text, strip these characters e.\ g. by
 .RS
 .sp
-tr \-d '\e015' <input | s-nail .\ .\ .
+tr \-d '\e015' <input | \*(ua .\ .\ .
 .sp
 .RE
 or fix the tools that generate them.
@@ -4888,10 +4793,10 @@ and new messages will appear as unread
 when it is selected for viewing later.
 The `flagged', `answered', and `draft' attributes are usually permanent,
 but some IMAP servers are known to drop them without notification.
-.\" This is why s-nail does not even check if storing them succeeds.
+.\" This is why \*(UA does not even check if storing them succeeds.
 Message numbers may change with IMAP
 every time before the prompt is printed
-if \fIs-nail\fR is notified by the server
+if \*(UA is notified by the server
 that messages have been deleted
 by some other client or process.
 In this case, `Expunged \fIn\fR messages' is printed,
@@ -4915,15 +4820,12 @@ It is not possible to rename or to remove POP3 mailboxes.
 If a
 .SM RUBOUT
 (interrupt) is typed while an IMAP or POP3 operation is in progress,
-.I s-nail
-will wait until the operation can be safely aborted,
+\*(UA will wait until the operation can be safely aborted,
 and will then return to the command loop
 and print the prompt again.
 When a second
 .I RUBOUT
-is typed while
-.I s-nail
-is waiting for the operation to complete,
+is typed while \*(UA is waiting for the operation to complete,
 the operation itself will be canceled.
 In this case,
 data that has not been fetched yet
@@ -4934,7 +4836,7 @@ was using an SSL/TLS encrypted channel,
 an error in the SSL transport will very likely result,
 and the connection is no longer usable.
 .PP
-As \fIs-nail\fR is a mail user agent,
+As \*(UA is a mail user agent,
 it provides only basic SMTP services.
 If it fails to contact its upstream SMTP server,
 it will not make further attempts to transfer the message
@@ -4944,20 +4846,20 @@ than an error message on the terminal
 and a `dead.letter' file.
 This is usually not a problem if the SMTP server
 is located in the same local network
-as the computer on which \fIs-nail\fR is run.
+as the computer on which \*(UA is run.
 However, care should be taken when using a remote server of an ISP;
 it might be better to set up a local SMTP server then
 which just acts as a proxy.
 .PP
-\fIS-nail\fR immediately contacts the SMTP server (or
+\*(UA immediately contacts the SMTP server (or
 .IR \%/usr/lib/sendmail )
 even when operating in
 .I disconnected
 mode.
-It would not make much sense for \fIs-nail\fR to defer outgoing mail
+It would not make much sense for \*(UA to defer outgoing mail
 since SMTP servers usually provide
 much more elaborated delay handling
-than \fIs-nail\fR could perform as a client.
+than \*(UA could perform as a client.
 Thus the recommended setup for sending mail in
 .I disconnected
 mode is to configure a local SMTP server
