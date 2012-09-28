@@ -478,7 +478,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	unlink(tempMail);
 	Ftfree(&tempMail);
 
-	if ((cp = value("SNAIL_HEAD")) != NULL) {
+	if ((cp = value("NAIL_HEAD")) != NULL) {
 		if (is_a_tty[0])
 			putesc(cp, stdout);
 		putesc(cp, collf);
@@ -922,7 +922,7 @@ err:
 	}
 out:
 	if (collf != NULL) {
-		if ((cp = value("SNAIL_TAIL")) != NULL) {
+		if ((cp = value("NAIL_TAIL")) != NULL) {
 			if (is_a_tty[0])
 				putesc(cp, stdout);
 			fflush(collf);

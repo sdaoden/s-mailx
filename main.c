@@ -424,12 +424,12 @@ usage:
 	 */
 	if ((cp = getenv("MAILRC")) != NULL)
 		load(expand(cp));
-	else if ((cp = getenv("SNAILRC")) != NULL)
+	else if ((cp = getenv("NAILRC")) != NULL)
 		load(expand(cp));
 	else
 		load(expand("~/.mailrc"));
-	if (getenv("SNAIL_EXTRA_RC") == NULL &&
-			(cp = value("SNAIL_EXTRA_RC")) != NULL)
+	if (getenv("NAIL_EXTRA_RC") == NULL &&
+			(cp = value("NAIL_EXTRA_RC")) != NULL)
 		load(expand(cp));
 	/*
 	 * Now we can set the account.

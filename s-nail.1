@@ -3034,12 +3034,27 @@ string (see the
 .I folder
 command for more information).
 .TP
-.B SNAIL_HEAD
+.B MBOX
+The name of the mbox file.
+It can be the name of a folder.
+The default is `\fImbox\fR'
+in the user's home directory.
+.TP
+.B NAIL_EXTRA_RC
+The name of an optional startup file
+to be read after ~/.mailrc.
+This variable is ignored if it is imported from the environment;
+it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
+to allow bypassing the configuration with e. g. `MAILRC=/dev/null'.
+Use this file for commands
+that are not understood by other \*(UA implementations.
+.TP
+.B NAIL_HEAD
 A string to put at the beginning of each new message.
 The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
 are understood.
 .TP
-.B SNAIL_TAIL
+.B NAIL_TAIL
 A string to put at the end of each new message.
 The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
 are understood.
@@ -3053,21 +3068,6 @@ If set to 0,
 all ASCII text messages are encoded in quoted-printable.
 S/MIME signed messages are always encoded
 in quoted-printable regardless of the value of this variable.
-.TP
-.B MBOX
-The name of the mbox file.
-It can be the name of a folder.
-The default is `\fImbox\fR'
-in the user's home directory.
-.TP
-.B SNAIL_EXTRA_RC
-The name of an optional startup file
-to be read after ~/.mailrc.
-This variable is ignored if it is imported from the environment;
-it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
-to allow bypassing the configuration with e. g. `MAILRC=/dev/null'.
-Use this file for commands
-that are not understood by other \*(UA implementations.
 .TP
 .B newfolders
 If this variable has the value
@@ -3655,7 +3655,7 @@ scripts are invoked on behalf of other users,
 this variable should be set to `/dev/null'
 to avoid side-effects from reading their configuration files.
 .TP
-.B SNAILRC
+.B NAILRC
 If this variable is set and
 .I MAILRC
 is not set,
@@ -4081,7 +4081,7 @@ it should not be used in
 instead, put
 .nf
 
-    \fBset SNAIL_EXTRA_RC=\fI~/.\*(uarc\fR
+    \fBset NAIL_EXTRA_RC=\fI~/.\*(uarc\fR
 
 .fi
 in
@@ -4275,7 +4275,7 @@ The scoring commands are best separated
 from other configuration for clarity,
 and are mostly \*(UA specific.
 It is thus recommended to put them in a separate file
-that is sourced from your SNAIL_EXTRA_RC as follows:
+that is sourced from your NAIL_EXTRA_RC as follows:
 .nf
 .sp
     \fBsource\fI ~/.scores\fR
