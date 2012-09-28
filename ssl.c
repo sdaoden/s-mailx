@@ -60,18 +60,17 @@ ssl_set_vrfy_level(const char *uhp)
 		cp = value("ssl-verify");
 	ac_free(vrvar);
 	if (cp != NULL) {
-		if (equal(cp, "strict"))
+		if (strcmp(cp, "strict") == 0)
 			ssl_vrfy_level = VRFY_STRICT;
-		else if (equal(cp, "ask"))
+		else if (strcmp(cp, "ask") == 0)
 			ssl_vrfy_level = VRFY_ASK;
-		else if (equal(cp, "warn"))
+		else if (strcmp(cp, "warn") == 0)
 			ssl_vrfy_level = VRFY_WARN;
-		else if (equal(cp, "ignore"))
+		else if (strcmp(cp, "ignore") == 0)
 			ssl_vrfy_level = VRFY_IGNORE;
 		else
-			fprintf(stderr, catgets(catd, CATSET, 265,
-					"invalid value of ssl-verify: %s\n"),
-					cp);
+			fprintf(stderr, tr(265,
+				"invalid value of ssl-verify: %s\n"), cp);
 	}
 }
 

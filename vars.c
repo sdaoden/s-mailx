@@ -157,7 +157,7 @@ lookup(const char *name)
 	struct var *vp;
 
 	for (vp = variables[hash(name)]; vp != NULL; vp = vp->v_link)
-		if (*vp->v_name == *name && equal(vp->v_name, name))
+		if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0)
 			return(vp);
 	return(NULL);
 }
@@ -172,7 +172,7 @@ findgroup(char *name)
 	struct grouphead *gh;
 
 	for (gh = groups[hash(name)]; gh != NULL; gh = gh->g_link)
-		if (*gh->g_name == *name && equal(gh->g_name, name))
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0)
 			return(gh);
 	return(NULL);
 }
@@ -267,7 +267,7 @@ remove_group(const char *name)
 	int h = hash(name);
 
 	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
-		if (*gh->g_name == *name && equal(gh->g_name, name)) {
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
 			remove_grouplist(gh);
 			vfree(gh->g_name);
 			if (gp != NULL)

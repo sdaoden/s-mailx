@@ -1068,23 +1068,23 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	freeaddrinfo(res0);
 #else	/* !HAVE_IPv6_FUNCS */
 	if (port == 0) {
-		if (equal(portstr, "smtp"))
+		if (strcmp(portstr, "smtp") == 0)
 			port = htons(25);
-		else if (equal(portstr, "smtps"))
+		else if (strcmp(portstr, "smtps") == 0)
 			port = htons(465);
-		else if (equal(portstr, "imap"))
+		else if (strcmp(portstr, "imap") == 0)
 			port = htons(143);
-		else if (equal(portstr, "imaps"))
+		else if (strcmp(portstr, "imaps") == 0)
 			port = htons(993);
-		else if (equal(portstr, "pop3"))
+		else if (strcmp(portstr, "pop3") == 0)
 			port = htons(110);
-		else if (equal(portstr, "pop3s"))
+		else if (strcmp(portstr, "pop3s") == 0)
 			port = htons(995);
 		else if ((ep = getservbyname((char *)portstr, "tcp")) != NULL)
 			port = ep->s_port;
 		else {
-			fprintf(stderr, catgets(catd, CATSET, 251,
-				"Unknown service: %s\n"), portstr);
+			fprintf(stderr, tr(251, "Unknown service: %s\n"),
+				portstr);
 			return STOP;
 		}
 	} else

@@ -217,9 +217,7 @@ redo:
 	}
 	*cp2 = '\0';
 #endif
-	if (equal("", canonb))
-		return(NULL);
-	return(savestr(canonb));
+	return ((*canonb == '\0') ? NULL : savestr(canonb));
 }
 
 /*

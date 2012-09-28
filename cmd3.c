@@ -695,9 +695,8 @@ endpipe:
 			cp = "";
 		else
 			cp++;
-		if (equal(varbuf, "")) {
-			printf(catgets(catd, CATSET, 41,
-					"Non-null variable name required\n"));
+		if (strcmp(varbuf, "") == 0) {
+			printf(tr(41, "Non-null variable name required\n"));
 			errs++;
 			ac_free(varbuf);
 			continue;

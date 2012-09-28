@@ -256,15 +256,15 @@ nss_select_method(const char *uhp)
 	methods = SSL2|SSL3|TLS1;
 	cp = ssl_method_string(uhp);
 	if (cp != NULL) {
-		if (equal(cp, "ssl2"))
+		if (strcmp(cp, "ssl2") == 0)
 			methods = SSL2;
-		else if (equal(cp, "ssl3"))
+		else if (strcmp(cp, "ssl3") == 0)
 			methods = SSL3;
-		else if (equal(cp, "tls1"))
+		else if (strcmp(cp, "tls1") == 0)
 			methods = TLS1;
 		else {
-			fprintf(stderr, catgets(catd, CATSET, 244,
-					"Invalid SSL method \"%s\"\n"), cp);
+			fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"),
+				cp);
 		}
 	}
 	if (value("ssl-v2-allow") == NULL)

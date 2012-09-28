@@ -1005,7 +1005,7 @@ member(char *realfield, struct ignoretab *table)
 
 	for (igp = table->i_head[hash(realfield)]; igp != 0; igp = igp->i_link)
 		if (*igp->i_field == *realfield &&
-		    equal(igp->i_field, realfield))
+		    strcmp(igp->i_field, realfield) == 0)
 			return (1);
 	return (0);
 }

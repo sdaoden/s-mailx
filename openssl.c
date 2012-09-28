@@ -219,17 +219,17 @@ ssl_select_method(const char *uhp)
 	cp = ssl_method_string(uhp);
 	if (cp != NULL) {
 #ifndef OPENSSL_NO_SSL2
-		if (equal(cp, "ssl2"))
+		if (strcmp(cp, "ssl2") == 0)
 			method = SSLv2_client_method();
 		else
 #endif
-		if (equal(cp, "ssl3"))
+		if (strcmp(cp, "ssl3") == 0)
 			method = SSLv3_client_method();
-		else if (equal(cp, "tls1"))
+		else if (strcmp(cp, "tls1") == 0)
 			method = TLSv1_client_method();
 		else {
-			fprintf(stderr, catgets(catd, CATSET, 244,
-					"Invalid SSL method \"%s\"\n"), cp);
+			fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"),
+				cp);
 			method = SSLv23_client_method();
 		}
 	} else

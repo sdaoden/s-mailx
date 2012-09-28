@@ -788,12 +788,12 @@ gettextconversion(void)
 
 	if ((p = value("encoding")) == NULL)
 		return CONV_8BIT;
-	if (equal(p, "quoted-printable"))
+	if (strcmp(p, "quoted-printable") == 0)
 		convert = CONV_TOQP;
-	else if (equal(p, "8bit"))
+	else if (strcmp(p, "8bit") == 0)
 		convert = CONV_8BIT;
 	else {
-		fprintf(stderr, catgets(catd, CATSET, 177,
+		fprintf(stderr, tr(177,
 			"Warning: invalid encoding %s, using 8bit\n"), p);
 		convert = CONV_8BIT;
 	}

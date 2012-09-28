@@ -74,8 +74,6 @@
 #define	MAXARGC		1024		/* Maximum list of raw strings */
 #define	MAXEXP		25		/* Maximum expansion of aliases */
 
-#define	equal(a, b)	(strcmp(a,b)==0)/* A nice function to string compare */
-
 #undef tr
 #ifdef HAVE_CATGETS
 # define CATSET			1
