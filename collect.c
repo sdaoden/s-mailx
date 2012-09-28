@@ -594,7 +594,7 @@ cont:
 		 * No tilde escapes, interrupts not expected. Copy
 		 * standard input the simple way.
 		 */
-		linebuf = srealloc(linebuf, linesize = BUFSIZ);
+		linebuf = srealloc(linebuf, linesize = LINESIZE);
 		while ((count = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
 			if ((size_t)count != fwrite(linebuf, sizeof *linebuf,

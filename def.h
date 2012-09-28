@@ -65,7 +65,11 @@
 #define	PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
 #endif
 #define	HSHSIZE		59		/* Hash size for aliases and vars */
-#define	LINESIZE	2560		/* max readable line width */
+#if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
+# define LINESIZE	BUFSIZ		/* max readable line width */
+#else
+# define LINESIZE	2560
+#endif
 #define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
 #define	MAXARGC		1024		/* Maximum list of raw strings */
 #define	MAXEXP		25		/* Maximum expansion of aliases */

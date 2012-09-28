@@ -513,7 +513,7 @@ int main(void)
 fi
 
 else
-	echo '/* Socket/SSL support not configured */' >> $out
+	echo '/* Socket/SSL support not desired */' >> $out
 fi # wantfeat SSL
 if wantfeat GSSAPI; then
 
@@ -558,7 +558,7 @@ int main(void)
 !
 
 else
-	echo '/* IMAP/GSSAPI support not configured */' >> $out
+	echo '/* IMAP/GSSAPI support not desired */' >> $out
 fi # wantfeat GSSAPI
 
 if wantfeat JUNK; then
