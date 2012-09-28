@@ -83,6 +83,21 @@ savestr(const char *str)
 }
 
 /*
+ * Return new string copy of a non-terminated argument.
+ */
+char *
+savestrbuf(const char *sbuf, size_t sbuf_len)
+{
+	char *news;
+
+	if ((news = salloc(sbuf_len + 1)) != NULL) {
+		memcpy(news, sbuf, sbuf_len);
+		news[sbuf_len] = 0;
+	}
+	return (news);
+}
+
+/*
  * Make a copy of new argument incorporating old one.
  */
 char *
