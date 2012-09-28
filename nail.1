@@ -2883,8 +2883,9 @@ If the machine's hostname is not valid at the Internet
 (for example at a dialup machine),
 either this variable or
 .I hostname
-have to be set
-to get correct Message-ID header fields.
+have to be set or \*(UA will not generate Message-ID header fields
+but leave that task up to a (obviously present) local Mail Transfer
+Agent (MTA).
 If
 .I from
 contains more than one address,
@@ -2944,11 +2945,12 @@ is set.
 .TP
 .B hostname
 Use this string as hostname
-when expanding local addresses
-instead of the value obtained from
+when expanding local addresses instead of the value obtained from
 .IR uname (2)
 and
 .IR getaddrinfo (3).
+Note that this must be set explicitly to become used for the
+generation of Message-ID fields.
 .TP
 .B imap-auth
 Sets the IMAP authentication method.
