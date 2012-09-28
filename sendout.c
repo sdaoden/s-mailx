@@ -120,17 +120,24 @@ fixhead(struct header *hp, struct name *tolist)
 {
 	struct name *np;
 
-	hp->h_to = NULL;
-	hp->h_cc = NULL;
-	hp->h_bcc = NULL;
+	hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
-		if ((np->n_type & GMASK) == GTO)
+		if (np->n_type & GDEL)
+			continue;
+		else switch (np->n_type & GMASK) {
+		case (GTO):
 			hp->h_to = cat(hp->h_to, ndup(np, GFULL));
-		else if ((np->n_type & GMASK) == GCC)
+			break;
+		case (GCC):
 			hp->h_cc = cat(hp->h_cc, ndup(np, GFULL));
-		else if ((np->n_type & GMASK) == GBCC)
+			break;
+		case (GBCC):
 			hp->h_bcc = cat(hp->h_bcc, ndup(np, GFULL));
-	return tolist;
+			break;
+		default:
+			break;
+		}
+	return (tolist);
 }
 
 
