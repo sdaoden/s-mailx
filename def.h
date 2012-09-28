@@ -620,17 +620,16 @@ extern const unsigned char	class_char[];
 #endif	/* !HAVE_ALLOCA */
 
 /*
- * glibc uses the slow thread-safe getc() even if _REENTRANT is not
- * defined. Work around it.
+ * Single-threaded, use unlocked I/O.
  */
-#ifdef	__GLIBC__
-#undef	getc
-#define	getc(c)		getc_unlocked(c)
-#undef	putc
-#define	putc(c, f)	putc_unlocked(c, f)
-#undef	putchar
-#define	putchar(c)	putc_unlocked((c), stdout)
-#endif	/* __GLIBC__ */
+#ifdef HAVE_PUTC_UNLOCKED
+# undef	getc
+# define getc(c)	getc_unlocked(c)
+# undef	putc
+# define putc(c, f)	putc_unlocked(c, f)
+# undef	putchar
+# define putchar(c)	putc_unlocked((c), stdout)
+#endif
 
 #define	CBAD		(-15555)
 

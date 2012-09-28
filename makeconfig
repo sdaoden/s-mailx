@@ -209,6 +209,15 @@ int main(void)
 }
 !
 
+link_check putc_unlocked 'for putc_unlocked()' '#define HAVE_PUTC_UNLOCKED' <<\!
+#include <stdio.h>
+int main(void)
+{
+	putc_unlocked('@', stdout);
+	return 0;
+}
+!
+
 link_check fchdir 'for fchdir()' '#define HAVE_FCHDIR' <<\!
 #include <unistd.h>
 int main(void)
