@@ -903,7 +903,7 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 	char	*cp, *cq, *ep;
 
 	if (recipient_record) {
-		cq = skin(to->n_name);
+		cq = skinned_name(to);
 		cp = salloc(strlen(cq) + 1);
 		strcpy(cp, cq);
 		for (cq = cp; *cq && *cq != '@'; cq++);

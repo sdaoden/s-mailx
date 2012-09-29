@@ -366,7 +366,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	for (n = to; n != NULL; n = n->n_flink) {
 		if ((n->n_type & GDEL) == 0) {
 			snprintf(o, sizeof o, "RCPT TO:<%s>\r\n",
-					skin(n->n_name));
+				skinned_name(n));
 			SMTP_OUT(o);
 			SMTP_ANSWER(2);
 		}
