@@ -29,10 +29,11 @@ wantfeat() {
 }
 
 if ! wantfeat SOCKET; then
-	WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
+	WANT_IPV6=0 WANT_SSL=0
+	WANT_IMAP=0 WANT_GSSAPI=0 WANT_POP3=0 WANT_SMTP=0
 fi
 if ! wantfeat IMAP && ! wantfeat POP3 && ! wantfeat SMTP; then
-	WANT_SOCKET=0 WANT_SSL=0
+	WANT_SOCKET=0 WANT_IPV6=0 WANT_SSL=0
 else
 	WANT_SOCKET=1
 fi
@@ -378,28 +379,33 @@ WANT_SOCKET=1
 			'#define HAVE_SOCKETS' '-lsocket -lnsl' ||
 		WANT_SOCKET=0
 
-#link_check ipv6 'for IPv6 functionality' '#define HAVE_IPv6_FUNCS' <<\!
-##include "config.h"
-##include <sys/types.h>
-##include <sys/socket.h>
-##include <netdb.h>
-##include <netinet/in.h>
-##ifdef	HAVE_ARPA_INET_H
-##include <arpa/inet.h>
-##endif	/* HAVE_ARPA_INET_H */
-#
-#int main(void)
-#{
-#	struct addrinfo	a, *ap;
-#	getaddrinfo("foo", "0", &a, &ap);
-#	return 0;
-#}
-#!
-
 	# XXX Shouldn't it be a hard error if there is no socket support, then?
 	[ ${WANT_SOCKET} -eq 1 ] ||
-		WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_SSL=0 WANT_GSSAPI=0
+		WANT_IPV6=0 WANT_SSL=0 \
+		WANT_IMAP=0 WANT_GSSAPI=0 WANT_POP3=0 WANT_SMTP=0
+
 fi # wantfeat SOCKET
+if wantfeat IPV6; then
+
+link_check ipv6 'for IPv6 functionality' '#define USE_IPV6' << \!
+#include "config.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
+int main(void)
+{
+	struct addrinfo	a, *ap;
+	getaddrinfo("foo", "0", &a, &ap);
+	return 0;
+}
+!
+
+fi # wantfeat IPV6
 
 if wantfeat IMAP; then
 	echo "#define USE_IMAP" >> $out
@@ -607,6 +613,9 @@ cat >$tmp2.c <<\!
 #ifdef HAVE_SOCKETS
 : + Network support
 #endif
+#ifdef	USE_IPV6
+: + Support for Internet Protocol v6 (IPv6)
+#endif
 #ifdef USE_NSS
 : + S/MIME and SSL/TLS using Network Security Services (NSS)
 #endif
@@ -649,6 +658,9 @@ cat >$tmp2.c <<\!
 #endif
 #ifndef	HAVE_SOCKETS
 : - Network support
+#endif
+#ifndef	USE_IPV6
+: - Support for Internet Protocol v6 (IPv6)
 #endif
 #if ! defined USE_SSL && ! defined USE_NSS
 : - SSL/TLS (network transport authentication and encryption)

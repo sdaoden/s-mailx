@@ -81,13 +81,13 @@ nodename(int mayoverride)
 	static char *hostname;
 	char *hn;
         struct utsname ut;
-#ifdef	HAVE_SOCKETS
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
 	struct addrinfo hints, *res;
-#else	/* !HAVE_IPv6_FUNCS */
+# else
         struct hostent *hent;
-#endif	/* !HAVE_IPv6_FUNCS */
-#endif	/* HAVE_SOCKETS */
+# endif
+#endif
 
 	if (mayoverride && (hn = value("hostname")) != NULL && *hn) {
 		free(hostname);
@@ -96,8 +96,8 @@ nodename(int mayoverride)
 	if (hostname == NULL) {
 		uname(&ut);
 		hn = ut.nodename;
-#ifdef	HAVE_SOCKETS
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
 		memset(&hints, 0, sizeof hints);
 		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
 		hints.ai_flags = AI_CANONNAME;
@@ -108,13 +108,13 @@ nodename(int mayoverride)
 			}
 			freeaddrinfo(res);
 		}
-#else	/* !HAVE_IPv6_FUNCS */
+# else
 		hent = gethostbyname(hn);
 		if (hent != NULL) {
 			hn = hent->h_name;
 		}
-#endif	/* !HAVE_IPv6_FUNCS */
-#endif	/* HAVE_SOCKETS */
+# endif
+#endif
 		hostname = smalloc(strlen(hn) + 1);
 		strcpy(hostname, hn);
 	}

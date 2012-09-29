@@ -30,7 +30,7 @@ INSTALL		= /usr/bin/install
 NAIL		= nail
 MAILRC		= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
-			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
+			-DSENDMAIL='"$(SENDMAIL)"'
 
 OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o fio.o getname.o getopt.o head.o hmac.o \

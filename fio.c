@@ -1005,16 +1005,16 @@ enum okay
 sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose)
 {
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef USE_IPV6
 	char	hbuf[NI_MAXHOST];
 	struct addrinfo	hints, *res0, *res;
-#else	/* !HAVE_IPv6_FUNCS */
+#else
 	struct sockaddr_in	servaddr;
 	struct in_addr	**pptr;
 	struct hostent	*hp;
 	struct servent	*ep;
 	unsigned short	port = 0;
-#endif	/* !HAVE_IPv6_FUNCS */
+#endif
 	int	sockfd;
 	char	*cp;
 	char	*server = (char *)xserver;
@@ -1023,14 +1023,14 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 
 	if ((cp = strchr(server, ':')) != NULL) {
 		portstr = &cp[1];
-#ifndef	HAVE_IPv6_FUNCS
+#ifndef USE_IPV6
 		port = strtol(portstr, NULL, 10);
-#endif	/* HAVE_IPv6_FUNCS */
+#endif
 		server = salloc(cp - xserver + 1);
 		memcpy(server, xserver, cp - xserver);
 		server[cp - xserver] = '\0';
 	}
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef USE_IPV6
 	memset(&hints, 0, sizeof hints);
 	hints.ai_socktype = SOCK_STREAM;
 	if (verbose)
@@ -1066,7 +1066,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		return STOP;
 	}
 	freeaddrinfo(res0);
-#else	/* !HAVE_IPv6_FUNCS */
+#else /* USE_IPV6 */
 	if (port == 0) {
 		if (strcmp(portstr, "smtp") == 0)
 			port = htons(25);
@@ -1115,12 +1115,12 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		perror(catgets(catd, CATSET, 254, "could not connect"));
 		return STOP;
 	}
-#endif	/* !HAVE_IPv6_FUNCS */
+#endif /* USE_IPV6 */
 	if (verbose)
 		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
 	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
-#if defined (USE_SSL)
+#ifdef USE_SSL
 	if (use_ssl) {
 		enum okay ok;
 
@@ -1128,7 +1128,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 			sclose(sp);
 		return ok;
 	}
-#endif	/* USE_SSL */
+#endif
 	return OKAY;
 }
 #endif	/* HAVE_SOCKETS */
