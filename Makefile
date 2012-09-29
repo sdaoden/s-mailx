@@ -63,7 +63,7 @@ nss.o: nsserr.c
 new-version:
 	eval VERSION="`git describe --dirty --tags`"; \
 	echo > version.c \
-	"const char *const uagent = \"S-nail\",\
+	"const char *const uagent = \"$(SID)$(NAIL)\",\
 		*const version = \"<12.5 7/5/10; $${VERSION:-spooky}>\";"
 
 config.h: user.conf makeconfig Makefile
