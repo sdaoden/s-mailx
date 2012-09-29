@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.TH S-NAIL 1 "2012-09-28" "S-nail" "User Commands"
+.TH S-NAIL 1 "2012-09-29" "S-nail" "User Commands"
 .ds UA \\fIS-nail\\fR
 .ds ua \\fIs-nail\\fR
 .ds ba \\fBs-nail\\fR
@@ -46,10 +46,10 @@
 .PD 0
 .HP
 .ad l
-\*(ba [\fB\-BDdEFinOtv~\fR]
+\*(ba [\fB\-BDdEFintv~\fR]
 [\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
 [\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
-[\fB\-h\fI\ hops\fR]
+[\fB\-O\fI\ mta-option [\fB\-O\fI mta-option-argument]\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
 \fIto-addr\fR .\ .\ .
@@ -69,29 +69,28 @@
 .PD
 .ad b
 .SH DESCRIPTION
-\*(UA is an intelligent mail processing system, which has
-a command syntax reminiscent of
+\*(UA is an intelligent mail processing system, which has a command syntax
+reminiscent of
 .IR ed (1)
 with lines replaced by messages.
 It is based on Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 .B mailx
 command,
-and offers extensions
-for MIME, IMAP, POP3, SMTP, and S/MIME.
-\*(UA provides enhanced
-features for interactive use, such as caching and disconnected
-operation for IMAP, message threading, scoring, and filtering.
-It is also usable as a mail batch language, both for sending
-and receiving mail.
+and offers extensions for MIME, IMAP, POP3, SMTP, and S/MIME.
+\*(UA provides enhanced features for interactive use, such as caching
+and disconnected operation for IMAP, message threading, scoring, and
+filtering.
+It is also usable as a mail batch language, both for sending and
+receiving mail.
 .PP
 The following options are accepted:
 .TP
 .BI \-A \ name
 Executes an 
 .I account
-command (see below)
-for \fIname\fR after the startup files have been read.
+command (see below) for \fIname\fR after the startup files have been
+read.
 .TP
 .BI \-a \ file
 Attach the given file to the message.
@@ -100,12 +99,13 @@ Attach the given file to the message.
 Make standard input and standard output line-buffered.
 .TP
 .BI \-b \ address
-Send blind carbon copies to list.
-List should be a comma-separated
-list of names.
+Send blind carbon copies to the given list of addresses.
+List should be a comma-separated list of email addresses, i.e., plain
+addresses, complete specifications including names or comments, or mail
+aliases (see below for more on \fIalias\fRes).
 .TP
 .BI \-c \ address
-Send carbon copies to list of users.
+Send carbon copies to the given list of addresses.
 .TP
 .B \-D
 Start in
@@ -122,69 +122,56 @@ this option is intended for \*(UA development only.
 .TP
 .B \-e
 Just check if mail is present in the system mailbox.
-If yes, return an exit status of zero,
-else, a non-zero value.
+If yes, return an exit status of zero, a non-zero value otherwise.
 .TP
 .B \-E
-If an outgoing message does not contain any text
-in its first or only message part,
-do not send it but discard it silently,
+If an outgoing message does not contain any text in its first or only
+message part, do not send but discard it silently,
 effectively setting the
 .I skipemptybody
 variable at program startup.
-This is useful for sending messages
-from scripts started by
+This is useful for sending messages from scripts started by
 .IR cron (8).
 .TP
 \fB\-f\fR [\fIfile\fR]
-Read in the contents of the user's mbox
-(or the specified file)
+Read in the contents of the user's mbox (or the specified file)
 for processing;
-when \*(UA is quit, it writes
-undeleted messages back
-to this file.
-The string \fIfile\fR is handled
-as described for the
+when \*(UA is quit, it writes undeleted messages back to this file.
+The string \fIfile\fR is handled as described for the
 .I folder
 command below.
 .TP
 .B \-F
-Save the message to send
-in a file named after the local part
-of the first recipient's address.
+Save the message to send in a file named after the local part of the
+first recipient's address.
 .TP
 .B \-H
 Print header summaries for all messages and exit.
 .TP
-\fB\-h\fI hops\fR
-Invoke sendmail with the specified hop count.
-This option has no effect when SMTP is used for sending mail.
-.TP
 .B \-i
 Ignore tty interrupt signals.
-This is
-particularly useful when using
-\*(UA on noisy phone lines.
+This is particularly useful when using \*(UA on noisy phone lines.
 .TP
 .B \-I
-Shows the `Newsgroup:' or `Article-Id:' fields
-in the header summary.
+Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
 Only applicable in combination with
 .IR \-f .
 .TP
 .B \-n
 Inhibits reading /etc/\*(ua.rc upon startup.
-This option should be activated for
-\*(UA scripts that are invoked on more than one machine,
-because the contents of that file may differ between them.
+This option should be activated for \*(UA scripts that are invoked on
+more than one machine, because the contents of that file may differ
+between them.
 .TP
 .B \-N
 Inhibits the initial display of message headers when reading mail
 or editing a mail folder.
 .TP
 .BI \-O \ option
-Pass the given option through to sendmail.
+Pass the given option through to the mail-transfer-agent (MTA).
 This option has no effect when SMTP is used for sending mail.
+E.g., to specify the hop count to an old \fIsendmail(1)\fR, use
+`\fI-O-h -Onumber\fR', which will be passed as `\fI-h number\fR'.
 .TP
 .BI \-q \ file
 Start the message with the contents of the specified file.
@@ -199,8 +186,7 @@ variable specified in environment or startup files.
 Tilde escapes are disabled.
 The \fI\-r\fI address\fR options are passed to the mail transfer agent
 unless SMTP is used.
-This option exists for compatibility only;
-it is recommended to set the 
+This option exists for compatibility only; it is recommended to set the
 .I from
 variable directly instead.
 .TP
@@ -216,15 +202,14 @@ containing spaces).
 \fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]
 Sets the internal option
 .I variable
-and, in case of a string option,
-assigns
+and, in case of a string option, assigns
 .I value
 to it.
 These assignments take place after the resource files have been loaded.
 .TP
 .BI \-T \ name
-Writes the `Message-Id:' and `Article-Id:' header fields
-of each message read in the file
+Writes the `Message-Id:' and `Article-Id:' header fields of each message
+read in the file
 .IR name .
 Implies
 .IR \-I .
@@ -233,9 +218,9 @@ Compressed files are handled as described for the
 command below.
 .TP
 .B \-t
-The message to be sent is expected to contain a message header
-with `To:', `Cc:', or `Bcc:' fields giving its recipients
-and `Subject:' giving the subject of the message.
+The message to be sent is expected to contain a message header with
+`To:', `Cc:', or `Bcc:' fields giving its recipients and `Subject:'
+giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
 .TP
 .BI \-u \ user
@@ -243,8 +228,7 @@ Reads the mailbox of the given user name.
 .TP
 .B \-v
 Verbose mode.
-The details of
-delivery are displayed on the user's terminal.
+The details of delivery are displayed on the user's terminal.
 .TP
 .B \-V
 Print \*(UA's version and exit.
@@ -252,58 +236,47 @@ Print \*(UA's version and exit.
 .B \-~
 Enable tilde escapes even if not in interactive mode.
 .SS "Sending mail"
-To send a message to one or more people,
-\*(UA can be invoked with arguments
-which are the names of people
-to whom the mail will be sent.
-The user is then expected to type in his message,
-followed by an `control-D' at the beginning of a line.
-The section below Replying to
-or originating mail,
-describes some features of /*(UA
-available to help when composing letters.
+To send a message to one or more people, \*(UA can be invoked with
+arguments which are the names of people to whom the mail will be sent.
+These names may be \fIalias\fRes, plain addresses or full address
+specifications including user names and comments, in which case care
+for proper quoting may be necessary.
+The user is then expected to type in his message, followed by an
+`control-D' at the beginning of a line.
+The section below Replying to or originating mail, describes some
+features of \*(UA available to help when composing letters.
 .SS "Reading mail"
-In normal usage \*(UA is given no arguments
-and checks the user's mail out of the post office,
-then prints out a one line header
-of each message found.
-The current message is initially
-the first message (numbered 1)
-and can be printed using the print command
-which can be abbreviated `p').
-The user can move among the messages
-much as he moves between lines in
+In normal usage \*(UA is given no arguments and checks the user's mail
+out of the post office, then prints out a one line header of each
+message found.
+The current message is initially the first message (numbered 1) and can
+be printed using the print command which can be abbreviated `p').
+The user can move among the messages much as he moves between lines in
 .IR ed (1),
 with the commands `+' and `\-' moving backwards and forwards,
 and simple numbers.
 .SS "Disposing of mail"
-After examining a message
-the user can delete `d') the message
-or reply `r') to it.
-Deletion causes the \*(UA program
-to forget about the message.
+After examining a message the user can delete `d') the message or reply
+`r') to it.
+Deletion causes the \*(UA program to forget about the message.
 This is not irreversible;
-the message can be undeleted `u')
-by giving its number,
-or the \*(UA session can be aborted
-by giving the exit `x') command.
-Deleted messages will, however,
-usually disappear never to be seen again.
+the message can be undeleted `u') by giving its number,
+or the \*(UA session can be aborted by giving the exit `x') command.
+Deleted messages will, however, usually disappear never to be seen
+again.
 .SS "Specifying messages"
-Commands such as print and delete
-can be given a list of message numbers
+Commands such as print and delete can be given a list of message numbers
 as arguments to apply to a number of messages at once.
-Thus `\fIdelete 1 2\fR' deletes messages 1 and 2,
-while `\fIdelete 1-5\fR' deletes messages 1 through 5.
+Thus `\fIdelete 1 2\fR' deletes messages 1 and 2, while
+`\fIdelete 1-5\fR' deletes messages 1 through 5.
 In sorted or threaded mode (see the
 .I sort
 and
 .I thread
 commands),
-`\fIdelete 1-5\fR' deletes the messages
-that are located between (and including) messages 1 through 5
-in the sorted/threaded order,
-as shown in the header summary.
+`\fIdelete 1-5\fR' deletes the messages that are located between (and
+including) messages 1 through 5 in the sorted/threaded order, as shown
+in the header summary.
 The following special message names exist:
 .TP
 .B :n
