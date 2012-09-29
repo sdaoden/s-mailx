@@ -84,7 +84,7 @@ static void setscreensize(int dummy);
 int 
 main(int argc, char *argv[])
 {
-	const char optstr[] = "A:BHEFINVT:RS:a:b:c:dDefh:inqr:s:tu:v~O:";
+	const char optstr[] = "A:BHEFINVT:RS:a:b:c:dDefinqr:s:tu:v~O:";
 	int scnt, i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
@@ -335,14 +335,6 @@ main(int argc, char *argv[])
 				sextract(optarg, GBCC|GFULL)));
 			sendflag++;
 			break;
-		case 'h':
-			/*
-			 * Hop count for sendmail
-			 */
-			smopts = cat(smopts, nalloc("-h", 0));
-			smopts = cat(smopts, nalloc(optarg, 0));
-			sendflag++;
-			break;
 		case 'O':
 			/*
 			 * Additional options to pass-through to MTA
@@ -367,7 +359,12 @@ main(int argc, char *argv[])
 		case '?':
 usage:
 			fprintf(stderr, tr(135,
-"Usage: %s -eiIUdEFntBDNHRV~ -T FILE -u USER -O MTAARG -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -A ACCOUNT -b USERS -c USERS -S OPTION users\n"), progname);
+					"Usage: %s -eiIUdEFntBDNHRV~ -T FILE "
+					"-u USER -O MTAARG -r address "
+					"-s SUBJECT -a FILE -q FILE -f FILE "
+					"-A ACCOUNT -b USERS -c USERS "
+					"-S OPTION USERS\n"),
+				progname);
 			exit(2);
 		}
 	}
