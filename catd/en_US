@@ -184,7 +184,7 @@ The following ~ escapes are defined:\n\
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n
 139 --- DELETED ---
-140 $%s version %s.  Type ? for help.\n$
+140 %s version %s.  Type ? for help.\n
 141 \nInterrupt\n
 142 %s contains invalid @@ sequence\n
 143 %s contains invalid character '%s'\n

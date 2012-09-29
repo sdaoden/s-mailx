@@ -371,7 +371,7 @@ usage:
 	if (ef != NULL) {
 		if (optind < argc) {
 			if (optind + 1 < argc) {
-				fprintf(stderr, catgets(catd, CATSET, 205,
+				fprintf(stderr, tr(205,
 					"More than one file given with -f\n"));
 				goto usage;
 			}
@@ -385,12 +385,12 @@ usage:
 	 * Check for inconsistent arguments.
 	 */
 	if (ef != NULL && to != NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 137,
+		fprintf(stderr, tr(137,
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
 	if (sendflag && !tflag && to == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 138,
+		fprintf(stderr, tr(138,
 			"Send options without primary recipient specified.\n"));
 		goto usage;
 	}
@@ -399,8 +399,7 @@ usage:
 		goto usage;
 	}
 	if (Iflag && ef == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 204,
-					"Need -f with -I.\n"));
+		fprintf(stderr, tr(204, "Need -f with -I.\n"));
 		goto usage;
 	}
 	tinit();
@@ -503,9 +502,8 @@ usage:
 			safe_signal(SIGINT, hdrstop);
 		if (Nflag == 0) {
 			if (value("quiet") == NULL)
-				printf(catgets(catd, CATSET, 140,
-					"%s version %s.  "
-					"Type ? for help.\n"),
+				printf(tr(140,
+					"%s version %s.  Type ? for help.\n"),
 					value("bsdcompat") ? "Mail" : uagent,
 					version);
 			announce(1);
@@ -534,7 +532,7 @@ hdrstop(int signo)
 	(void)signo;
 
 	fflush(stdout);
-	fprintf(stderr, catgets(catd, CATSET, 141, "\nInterrupt\n"));
+	fprintf(stderr, tr(141, "\nInterrupt\n"));
 	siglongjmp(hdrjmp, 1);
 }
 
