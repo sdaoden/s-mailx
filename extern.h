@@ -273,6 +273,7 @@ char *nameof(struct message *mp, int reptype);
 char *skip_comment(const char *cp);
 char *routeaddr(const char *name);
 char *skin(char *name);
+char *skinned_name(struct name *np);
 char *realname(char *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);

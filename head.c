@@ -584,6 +584,16 @@ routeaddr(const char *name)
 }
 
 /*
+ * Returned the skinned n_name, use the cached value if available.
+ * Note well that it may *not* create a duplicate.
+ */
+char *
+skinned_name(struct name *np)
+{
+	return ((np->n_flags & NAME_SKINNED) ? np->n_name : skin(np->n_name));
+}
+
+/*
  * Skin an arpa net address according to the RFC 822 interpretation
  * of "host-phrase."
  */
