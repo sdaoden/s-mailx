@@ -382,7 +382,7 @@ usage:
 		}
 	} else {
 		for (i = optind; argv[i]; i++)
-			to = checkaddrs(cat(to, extract(argv[i], GTO|GFULL)));
+			to = checkaddrs(cat(to, sextract(argv[i], GTO|GFULL)));
 	}
 	/*
 	 * Check for inconsistent arguments.
