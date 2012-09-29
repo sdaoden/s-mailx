@@ -126,13 +126,13 @@ fixhead(struct header *hp, struct name *tolist)
 			continue;
 		else switch (np->n_type & GMASK) {
 		case (GTO):
-			hp->h_to = cat(hp->h_to, ndup(np, GFULL));
+			hp->h_to = cat(hp->h_to, ndup(np, np->n_type|GFULL));
 			break;
 		case (GCC):
-			hp->h_cc = cat(hp->h_cc, ndup(np, GFULL));
+			hp->h_cc = cat(hp->h_cc, ndup(np, np->n_type|GFULL));
 			break;
 		case (GBCC):
-			hp->h_bcc = cat(hp->h_bcc, ndup(np, GFULL));
+			hp->h_bcc = cat(hp->h_bcc, ndup(np, np->n_type|GFULL));
 			break;
 		default:
 			break;
@@ -773,8 +773,7 @@ transfer(struct name *to, struct name *mailargs, FILE *input, struct header *hp)
 		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
 		if ((cp = value(o)) != NULL) {
 			if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
-				nt = nalloc(np->n_name,
-					np->n_type & ~(GFULL|GSKIN));
+				nt = ndup(np, np->n_type & ~(GFULL|GSKIN));
 				if (start_mta(nt, mailargs, ef, hp) != OKAY)
 					ok = STOP;
 				Fclose(ef);

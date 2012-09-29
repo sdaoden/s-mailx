@@ -95,18 +95,19 @@ nalloc(char *str, enum gfield ntype)
 }
 
 struct name *
-ndup(struct name *np, enum gfield addtype)
+ndup(struct name *np, enum gfield ntype)
 {
 	struct name *nnp;
 
 	nnp = (struct name*)salloc(sizeof *np);
 	nnp->n_flink = NULL;
 	nnp->n_blink = NULL;
-	nnp->n_type = np->n_type | addtype;
+	nnp->n_type = ntype;
 	nnp->n_flags = np->n_flags;
 	nnp->n_name = savestr(np->n_name);
-	nnp->n_fullname = (np->n_name == np->n_fullname) ? nnp->n_name
-				: savestr(np->n_fullname);
+	nnp->n_fullname = (((ntype & (GFULL|GSKIN)) == 0) ||
+			np->n_name == np->n_fullname)
+		? nnp->n_name : savestr(np->n_fullname);
 	return (nnp);
 }
 

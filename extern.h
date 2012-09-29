@@ -395,7 +395,7 @@ size_t mime_write(void *ptr, size_t size, FILE *f,
 		char **rest, size_t *restsize);
 /* names.c */
 struct name *nalloc(char *str, enum gfield ntype);
-struct name *ndup(struct name *np, enum gfield addtype);
+struct name *ndup(struct name *np, enum gfield ntype);
 struct name *extract(char *line, enum gfield ntype);
 struct name *sextract(char *line, enum gfield ntype);
 char *detract(struct name *np, enum gfield ntype);
