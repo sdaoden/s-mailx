@@ -576,10 +576,12 @@ enum {
 
 extern const unsigned char	class_char[];
 
-#define __ischarof(C, FLAGS) (asciichar(C) && class_char[(size_t)C] & (FLAGS))
-#define __ischareq(C, FLAGS) (asciichar(C) && class_char[(size_t)C] == (FLAGS))
+#define __ischarof(C, FLAGS)	\
+	(asciichar(C) && class_char[(unsigned char)(C)] & (FLAGS))
+#define __ischareq(C, FLAGS)	\
+	(asciichar(C) && class_char[(unsigned char)(C)] == (FLAGS))
 
-#define	asciichar(c) ((size_t)(c) <= 0177)
+#define	asciichar(c) ((unsigned char)(c) <= 0177)
 #define	alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
 #define	alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
 #define	blankchar(c) __ischarof(c, C_BLANK)
