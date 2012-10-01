@@ -42,5 +42,9 @@ v14 (and later)
 - Check against newest POSIX.
 - The current maintainer doesn't like longjmp()s.
 - The current maintainer doesn't like signals.
+- The current maintainer would like to see that compilation with a C++
+  compiler is possible, though that would be a long way and be especially
+  problematic due to the way enums are used.  He never understood why there
+  is not "bitenum", btw.
 
 vim:set fenc=utf-8 syntax=txt ts=8 sts=2 sw=2 et tw=75:
