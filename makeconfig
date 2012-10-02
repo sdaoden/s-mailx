@@ -1,5 +1,6 @@
 #!/bin/sh
 
+[ -z "${WANT_ASSERTS}" ] && WANT_ASSERTS=0
 if [ -z "${CONFIG}" ]; then
 	[ -f user.conf ] && . user.conf
 else
@@ -579,6 +580,12 @@ else
 	echo "/* #define USE_MD5 */" >> $out
 fi
 
+if wantfeat ASSERTS; then
+	echo "#define HAVE_ASSERTS" >> $out
+else
+	echo "/* #define HAVE_ASSERTS */" >> $out
+fi
+
 # Since we cat(1) the content of those to cc/"ld", convert them to single line
 squeeze_em() {
 	< "${1}" > "${2}" awk \
@@ -695,6 +702,11 @@ cat > $tmp2.c << \!
 : * The function fchdir() could not be found. mailx will be compiled to use
 : chdir() instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.
+#endif
+#ifdef HAVE_ASSERTS
+: * WANT_ASSERTS is enabled, the program binary will contain code assertions.
+: Such a binary is not meant to be used by end-users, but only for
+: development purposes.  Thanks!
 #endif
 :
 !

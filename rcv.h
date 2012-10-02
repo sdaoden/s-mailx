@@ -52,12 +52,18 @@
 #include <signal.h>
 #include <string.h>
 #include <termios.h>
-#ifdef	HAVE_ICONV
-#include <iconv.h>
-#endif	/* HAVE_ICONV */
-#ifdef	HAVE_ALLOCA_H
-#include <alloca.h>
-#endif	/* HAVE_ALLOCA_H */
+#ifdef HAVE_ICONV
+# include <iconv.h>
+#endif
+#ifdef HAVE_ALLOCA_H
+# include <alloca.h>
+#endif
+#ifdef HAVE_ASSERTS
+# include <assert.h>
+#else
+# undef assert
+# define assert(X)	do {} while (0)
+#endif
 
 #define	SHELL		"/bin/sh"
 
