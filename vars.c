@@ -62,14 +62,13 @@ static void remove_grouplist(struct grouphead *gh);
 static char *
 canonify(const char *vn)
 {
-	const char	*vp;
+	const char *vp;
 
-	if (upperchar(*vn&0377))
-		return (char *)vn;
-	for (vp = vn; *vp && *vp != '@'; vp++);
-	if (*vp == '@')
-		return i_strdup(vn);
-	return (char *)vn;
+	if (upperchar(*vn))
+		return ((char*)vn);
+	for (vp = vn; *vp && *vp != '@'; vp++)
+		;
+	return ((*vp == '@') ? i_strdup(vn) : (char*)vn);
 }
 
 /*
