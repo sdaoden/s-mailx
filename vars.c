@@ -200,6 +200,7 @@ printgroup(char *name)
 /*
  * Hash the passed string and return an index into
  * the variable or group hash table.
+ * Use Chris Torek's hash algorithm.
  */
 int 
 hash(const char *name)
@@ -207,7 +208,7 @@ hash(const char *name)
 	int h = 0;
 
 	while (*name) {
-		h <<= 2;
+		h *= 33;
 		h += *name++;
 	}
 	if (h < 0 && (h = -h) < 0)
