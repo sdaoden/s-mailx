@@ -451,11 +451,11 @@ next:
 		name = savestr(xname);
 	}
 	if (name[0] == '+' && getfold(foldbuf, sizeof foldbuf) >= 0) {
-		if (which_protocol(foldbuf) == PROTO_IMAP &&
-				strcmp(foldbuf, protbase(foldbuf)))
-		snprintf(xname, sizeof xname, "%s%s", foldbuf, name+1);
-		else
-			snprintf(xname, sizeof xname, "%s/%s", foldbuf, name+1);
+		snprintf(xname, sizeof xname,
+			((which_protocol(foldbuf) == PROTO_IMAP &&
+					strcmp(foldbuf, protbase(foldbuf)))
+				? "%s%s" : "%s/%s"),
+			foldbuf, name+1);
 		name = savestr(xname);
 		if (foldbuf[0] == '%' && foldbuf[1] == ':')
 			goto next;
