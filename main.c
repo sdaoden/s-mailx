@@ -299,7 +299,7 @@ main(int argc, char *argv[])
 			i = count(smopts);
 			fromaddr = optarg;
 			smopts = cat(smopts, nalloc("-r", 0));
-			smopts = cat(smopts, sextract(optarg, GFULL));
+			smopts = cat(smopts, userarg_extract(optarg, GFULL));
 			if (count(smopts) != i + 2) {
 				fprintf(stderr, tr(271,
 					"More than one address "
@@ -324,7 +324,8 @@ main(int argc, char *argv[])
 			/*
 			 * Get Carbon Copy Recipient list
 			 */
-			cc = checkaddrs(cat(cc, sextract(optarg, GCC|GFULL)));
+			cc = checkaddrs(cat(cc,
+				userarg_extract(optarg, GCC|GFULL)));
 			sendflag++;
 			break;
 		case 'b':
@@ -332,7 +333,7 @@ main(int argc, char *argv[])
 			 * Get Blind Carbon Copy Recipient list
 			 */
 			bcc = checkaddrs(cat(bcc,
-				sextract(optarg, GBCC|GFULL)));
+				userarg_extract(optarg, GBCC|GFULL)));
 			sendflag++;
 			break;
 		case 'O':
@@ -379,7 +380,8 @@ usage:
 		}
 	} else {
 		for (i = optind; argv[i]; i++)
-			to = checkaddrs(cat(to, sextract(argv[i], GTO|GFULL)));
+			to = checkaddrs(cat(to,
+				userarg_extract(argv[i], GTO|GFULL)));
 	}
 	/*
 	 * Check for inconsistent arguments.

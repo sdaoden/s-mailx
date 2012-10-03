@@ -147,6 +147,12 @@ sextract(char *line, enum gfield ntype)
 		return extract(line, ntype);
 }
 
+struct name *
+userarg_extract(char *line, enum gfield ntype)
+{
+	return (extract1(line, ntype, ",", 1));
+}
+
 static struct name *
 extract1(char *line, enum gfield ntype, char *separators, int copypfx)
 {
