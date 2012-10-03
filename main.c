@@ -54,8 +54,8 @@
 
 #include "config.h"
 #ifdef	HAVE_NL_LANGINFO
-#include <langinfo.h>
-#endif	/* HAVE_NL_LANGINFO */
+# include <langinfo.h>
+#endif
 #define _MAIL_GLOBS_
 #include "rcv.h"
 #include "extern.h"
@@ -64,9 +64,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
-#ifdef	HAVE_SETLOCALE
-#include <locale.h>
-#endif	/* HAVE_SETLOCALE */
+#ifdef HAVE_SETLOCALE
+# include <locale.h>
+#endif
 
 /*
  * Mail -- a mail program
@@ -75,7 +75,8 @@
  */
 
 static sigjmp_buf	hdrjmp;
-char	*progname;
+
+char		*progname;
 sighandler_type	dflpipe = SIG_DFL;
 
 static void hdrstop(int signo);
@@ -130,15 +131,13 @@ main(int argc, char *argv[])
 	assign("header", "");
 	assign("save", "");
 #ifdef	HAVE_SETLOCALE
-	setlocale(LC_CTYPE, "");
-	setlocale(LC_COLLATE, "");
-	setlocale(LC_MESSAGES, "");
+	setlocale(LC_ALL, "");
 	mb_cur_max = MB_CUR_MAX;
-#if defined (HAVE_NL_LANGINFO) && defined (CODESET)
+# if defined HAVE_NL_LANGINFO && defined CODESET
 	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
 		assign("ttycharset", cp);
-#endif	/* HAVE_NL_LANGINFO && CODESET */
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+# endif
+# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
 	if (mb_cur_max > 1) {
 		wchar_t	wc;
 		if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
@@ -146,19 +145,19 @@ main(int argc, char *argv[])
 				wc == 0x20AC)
 			utf8 = 1;
 	}
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-#else	/* !HAVE_SETLOCALE */
-	mb_cur_max = 1;
-#endif	/* !HAVE_SETLOCALE */
-#ifdef	HAVE_CATGETS
-#ifdef	NL_CAT_LOCALE
-	i = NL_CAT_LOCALE;
+# endif
 #else
-	i = 0;
+	mb_cur_max = 1;
 #endif
+#ifdef HAVE_CATGETS
+# ifdef NL_CAT_LOCALE
+	i = NL_CAT_LOCALE;
+# else
+	i = 0;
+# endif
 	catd = catopen(CATNAME, i);
-#endif	/* HAVE_CATGETS */
-#ifdef	HAVE_ICONV
+#endif
+#ifdef HAVE_ICONV
 	iconvd = (iconv_t) -1;
 #endif
 	image = -1;
@@ -406,11 +405,11 @@ usage:
 	}
 	tinit();
 	setscreensize(0);
-#ifdef	SIGWINCH
+#ifdef SIGWINCH
 	if (value("interactive"))
 		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGWINCH, setscreensize);
-#endif	/* SIGWINCH */
+#endif
 	input = stdin;
 	rcvmode = !to && !tflag;
 	spreserve();
