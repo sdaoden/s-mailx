@@ -48,7 +48,7 @@
 
 static char *canonify(const char *vn);
 static void vfree(char *cp);
-static struct var *lookup(const char *name);
+static struct var *lookup(const char *name, int h);
 static void remove_grouplist(struct grouphead *gh);
 
 /*
@@ -83,9 +83,10 @@ assign(const char *name, const char *value)
 
 	name = canonify(name);
 	h = hash(name);
-	vp = lookup(name);
+
+	vp = lookup(name, h);
 	if (vp == NULL) {
-		vp = (struct var *)scalloc(1, sizeof *vp);
+		vp = (struct var*)scalloc(1, sizeof *vp);
 		vp->v_name = vcopy(name);
 		vp->v_link = variables[h];
 		variables[h] = vp;
@@ -115,15 +116,15 @@ vfree(char *cp)
 char *
 vcopy(const char *str)
 {
-	char *new;
+	char *news;
 	unsigned len;
 
 	if (*str == '\0')
 		return "";
 	len = strlen(str) + 1;
-	new = smalloc(len);
-	memcpy(new, str, (int) len);
-	return new;
+	news = smalloc(len);
+	memcpy(news, str, (int)len);
+	return (news);
 }
 
 /*
@@ -135,31 +136,38 @@ char *
 value(const char *name)
 {
 	struct var *vp;
-	char	*vs;
+	char *vs;
 
 	name = canonify(name);
-	if ((vp = lookup(name)) == NULL) {
+	if ((vp = lookup(name, -1)) == NULL) {
 		if ((vs = getenv(name)) != NULL && *vs)
 			vs = savestr(vs);
-		return vs;
+		return (vs);
 	}
-	return vp->v_value;
+	return (vp->v_value);
 }
 
 /*
- * Locate a variable and return its variable
- * node.
+ * Locate a variable and return its variable node.
  */
-
 static struct var *
-lookup(const char *name)
+lookup(const char *name, int h)
 {
-	struct var *vp;
+	struct var **vap, *lvp, *vp;
 
-	for (vp = variables[hash(name)]; vp != NULL; vp = vp->v_link)
-		if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0)
-			return(vp);
-	return(NULL);
+	vap = variables + ((h >= 0) ? h : hash(name));
+
+	for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
+		if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0) {
+			/* Relink as head, hope it "sorts on usage" over time */
+			if (lvp != NULL) {
+				lvp->v_link = vp->v_link;
+				vp->v_link = *vap;
+				*vap = vp;
+			}
+			return (vp);
+		}
+	return (NULL);
 }
 
 /*
@@ -219,32 +227,26 @@ hash(const char *name)
 int 
 unset_internal(const char *name)
 {
-	struct var *vp, *vp2;
 	int h;
+	struct var *vp;
 
 	name = canonify(name);
-	if ((vp2 = lookup(name)) == NULL) {
-		if (!sourcing && !unset_allow_undefined) {
-			printf(catgets(catd, CATSET, 203,
-				"\"%s\": undefined variable\n"), name);
-			return 1;
-		}
-		return 0;
-	}
 	h = hash(name);
-	if (vp2 == variables[h]) {
-		variables[h] = variables[h]->v_link;
-		vfree(vp2->v_name);
-		vfree(vp2->v_value);
-		free(vp2);
-		return 0;
+
+	if ((vp = lookup(name, h)) == NULL) {
+		if (! sourcing && ! unset_allow_undefined) {
+			printf(tr(203, "\"%s\": undefined variable\n"), name);
+			return (1);
+		}
+		return (0);
 	}
-	for (vp = variables[h]; vp->v_link != vp2; vp = vp->v_link);
-	vp->v_link = vp2->v_link;
-	vfree(vp2->v_name);
-	vfree(vp2->v_value);
-	free(vp2);
-	return 0;
+
+	/* Always listhead after lookup() */
+	variables[h] = variables[h]->v_link;
+	vfree(vp->v_name);
+	vfree(vp->v_value);
+	free(vp);
+	return (0);
 }
 
 static void
