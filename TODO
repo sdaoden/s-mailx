@@ -4,22 +4,43 @@ subscribe to the development mailing list at
 <https://lists.sourceforge.net/lists/listinfo/nail-devel>
 to coordinate your efforts with the maintainer and other people.
 
-v13
-===
-
+- [v13:started] Reformat the manual.
+  roff style is fine, but lines should be ~64 characters, not only ~25.
 - IDNA.
-- Mail-Followup-To:, if it's possible to implement it without too much
-  hacking in the control flow (unlikely).
-- Reformat the manual.  roff style is fine, but lines should be ~64
-  characters, not ~25.
-
-v14 (and later)
-===============
-
-- Deal with faults message selection that may occur when selecting threads
+- Mail-Followup-To:.
+- NetBSD mailx(1) removes all recipients in up Cc: and To: that are also
+  specified in Bcc.
+  [Note: i plan to make this default.  Please complain.]
+- At least optionally disallow silent discarding of invalid addresses,
+  i.e., cause sending to be aborted if not all recipient addresses pass the
+  validity test.
+  And shouldn't it generally be marked as an error and reported when the
+  program exits?  At least in non-interactive mode??  Yet there is no
+  indication that anything has happened at all!
+  [Note: i plan to report error in non-interactive mode.  Please complain.]
+- Think about a name bypass hashmap cache, and whenever we have to skin or
+  nalloc() or whatever, look in there.  Maybe even an additional link for
+  non GFULL(/GSKIN) and fully skinned struct name objects.
+  The amount of duplicated work in this codebase if frustrating, but the
+  real healing would make necessary a complete rewrite of the name handling!
+  Such a cache would work without touching the current code flow ... or
+  allow a smooth transition to a new one anyway.
+- Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
-- Try to add command line editing;  problems may be signals and even
-  more longjmp()s, and how they are used at the moment.
+- Try to add command line editing; problems may be signals and even
+  more longjmp()s, and how they are used at the moment.  Check that.
+- Add the possibility to simply place whatever header in the editor (and
+  in the mail read in due to the -t command line option, and...).
+- Make it possible to really edit mails "in place" (in that they are stored
+  back in the MBOX and replace the original).
+- Check against RFC 5322.
+  Really recheck all the header parsing code.
+- What about RFC 6531?
+- Check against newest POSIX.
+- Maybe add a bash(1)ish POSIXLY_CORRECT (or so) switch that can be used to
+  disallow extensions (e.g. specification of "full" addresses on command
+  line).
+
 - Revise the code:
   + Add C99-likeish typedefs for integers and use them everywhere.
   + Don't use magic constants/values.
@@ -27,24 +48,19 @@ v14 (and later)
   + Try to thin out the onion and reduce work that is done over and over
     again.  Maybe introduce objects to represent header[field/body] and
     content and find a way to pass those all through that vegetable.
-  + The current maintainer worked with all-tabs for almost one and a half
-    decade and turned over to all-spaces afterwards.  (Really changing this
-    would make it however rather impossible to perform any cherry-picking
-    onto the heirloom-plus branch.)
-- Mail-Followup-To:, if it's not possible to implement it without too much
-  hacking in the control flow (likely).
-- Add the possibility to simply place whatever header in the editor (and
-  in the mail read in due to the -t command line option, and...).
-- Make it possible to really edit mails "in place".
-- Check against RFC 5322.
-  Really recheck all the header parsing code.
-- What about RFC 6531?
-- Check against newest POSIX.
+  + The current codebase assumes that in multibyte encodings plains ASCII
+    characters can be tested "as-is".  This assumption is wrong for some
+    encodings that use U+001B (escape) or another ASCII thing to introduce
+    shift states.  The only real solution to this problem would be to
+    rewrite the entire codebase and use wide characters (IMO) everywhere.
+  + [v13:started] Resort the functions and where they are implemented.
 - The current maintainer doesn't like longjmp()s.
 - The current maintainer doesn't like signals.
 - The current maintainer would like to see that compilation with a C++
   compiler is possible, though that would be a long way and be especially
-  problematic due to the way enums are used.  He never understood why there
-  is not "bitenum", btw.
+  problematic due to the (C ish) way enums are used.  He never understood
+  why there is not "bitenum", btw.
+- The current maintainer worked with all-tabs for almost one and a half
+  decade and turned over to all-spaces afterwards.
 
 vim:set fenc=utf-8 syntax=txt ts=8 sts=2 sw=2 et tw=75:
