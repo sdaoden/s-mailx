@@ -2164,6 +2164,12 @@ or string, in which case the actual value is of interest.
 .PP
 The binary options include the following:
 .TP
+.B add-file-recipients
+When file or pipe recipients have been specified,
+mention them in the corresponding address fields of the message instead of
+silently stripping them from their recipient list.
+By default such addressees are not mentioned.
+.TP
 .B allnet
 Causes only the local part to be evaluated
 when comparing addresses.
@@ -3590,7 +3596,7 @@ First, the message id of outgoing messages is not known anymore.
 Second, an expert may still use the remaining information in the header
 to track down the originating mail user agent.
 If set to the value `noagent', then the mentioned \fI`Message-Id:'\fR
-supression doesn't occur.
+suppression doesn't occur.
 .TP
 .B toplines
 If defined, gives the number of lines
