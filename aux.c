@@ -39,17 +39,18 @@
 
 #include "rcv.h"
 #include "extern.h"
+
 #include <sys/stat.h>
 #include <utime.h>
 #include <time.h>
 #include <termios.h>
 #include <ctype.h>
 #ifdef	HAVE_WCTYPE_H
-#include <wctype.h>
-#endif	/* HAVE_WCTYPE_H */
+# include <wctype.h>
+#endif
 #ifdef	HAVE_WCWIDTH
-#include <wchar.h>
-#endif	/* HAVE_WCWIDTH */
+# include <wchar.h>
+#endif
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -57,6 +58,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdarg.h>
 
 #ifdef USE_MD5
 # include "md5.h"
@@ -69,75 +71,9 @@
  */
 
 /*
- * Return a pointer to a dynamic copy of the argument.
- */
-char *
-savestr(const char *str)
-{
-	char *new;
-	int size = strlen(str) + 1;
-
-	if ((new = salloc(size)) != NULL)
-		memcpy(new, str, size);
-	return new;
-}
-
-/*
- * Return new string copy of a non-terminated argument.
- */
-char *
-savestrbuf(const char *sbuf, size_t sbuf_len)
-{
-	char *news;
-
-	if ((news = salloc(sbuf_len + 1)) != NULL) {
-		memcpy(news, sbuf, sbuf_len);
-		news[sbuf_len] = 0;
-	}
-	return (news);
-}
-
-/*
- * Make a copy of new argument incorporating old one.
- */
-char *
-save2str(const char *str, const char *old)
-{
-	char *new;
-	int newsize = strlen(str) + 1;
-	int oldsize = old ? strlen(old) + 1 : 0;
-
-	if ((new = salloc(newsize + oldsize)) != NULL) {
-		if (oldsize) {
-			memcpy(new, old, oldsize);
-			new[oldsize - 1] = ' ';
-		}
-		memcpy(new + oldsize, str, newsize);
-	}
-	return new;
-}
-
-char *
-savecat(const char *s1, const char *s2)
-{
-	const char	*cp;
-	char	*ns, *np;
-
-	np = ns = salloc(strlen(s1) + strlen(s2) + 1);
-	for (cp = s1; *cp; cp++)
-		*np++ = *cp;
-	for (cp = s2; *cp; cp++)
-		*np++ = *cp;
-	*np = '\0';
-	return ns;
-}
-
-#include <stdarg.h>
-
-#ifndef	HAVE_SNPRINTF
-/*
  * Lazy vsprintf wrapper.
  */
+#ifndef HAVE_SNPRINTF
 int
 snprintf(char *str, size_t size, const char *format, ...)
 {
@@ -149,7 +85,7 @@ snprintf(char *str, size_t size, const char *format, ...)
 	va_end(ap);
 	return ret;
 }
-#endif	/* !HAVE_SNPRINTF */
+#endif
 
 /*
  * Announce a fatal error and die.

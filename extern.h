@@ -39,10 +39,6 @@
  */
 
 /* aux.c */
-char *savestr(const char *str);
-char *savestrbuf(const char *sbuf, size_t sbuf_len);
-char *save2str(const char *str, const char *old);
-char *savecat(const char *s1, const char *s2);
 void panic(const char *format, ...);
 void holdint(void);
 void relseint(void);
@@ -501,6 +497,10 @@ void *salloc(size_t size);
 void *csalloc(size_t nmemb, size_t size);
 void sreset(void);
 void spreserve(void);
+char *savestr(const char *str);
+char *savestrbuf(const char *sbuf, size_t sbuf_len);
+char *save2str(const char *str, const char *old);
+char *savecat(const char *s1, const char *s2);
 /* temp.c */
 FILE *Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
 void Ftfree(char **fn);
