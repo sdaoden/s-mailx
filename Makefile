@@ -61,10 +61,10 @@ md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
 
 new-version:
-	eval VERSION="`git describe --dirty --tags`"; \
+	[ -z "$${VERSION}" ] && eval VERSION="`git describe --dirty --tags`"; \
 	echo > version.c \
-	"const char *const uagent = \"$(SID)$(NAIL)\",\
-		*const version = \"<12.5 7/5/10; $${VERSION:-spooky}>\";"
+	"const char *const uagent = \"$(SID)$(NAIL)\", \
+	*const version = \"$${VERSION:-spooky}\";"
 
 config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
