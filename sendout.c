@@ -1334,51 +1334,57 @@ static int
 fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 		int domime)
 {
-	int col, len, count = 0;
-	int is_to = 0, comma;
+	enum {
+		m_INIT	= 1<<0,
+		m_COMMA	= 1<<1,
+		m_NOPF	= 1<<2,
+		m_CSEEN	= 1<<3
+	} m = (flags & GCOMMA) ? m_COMMA : 0;
+	int col, len;
 
-	comma = flags&GCOMMA ? 1 : 0;
 	col = strlen(str);
 	if (col) {
 		fwrite(str, sizeof *str, strlen(str), fo);
-		if (((flags&GFILES) == 0 &&
-				col == 3 && asccasecmp(str, "to:") == 0) ||
-				(col == 3 && asccasecmp(str, "cc:") == 0) ||
+		if ((flags&GFILES) == 0 && ! value("add-file-recipients") &&
+				((col == 3 && (asccasecmp(str, "to:") == 0) ||
+					asccasecmp(str, "cc:") == 0) ||
 				(col == 4 && asccasecmp(str, "bcc:") == 0) ||
 				(col == 10 &&
-					asccasecmp(str, "Resent-To:") == 0))
-			is_to = 1;
+					asccasecmp(str, "Resent-To:") == 0)))
+			m |= m_NOPF;
 	}
 	for (; np != NULL; np = np->n_flink) {
-		if (is_to && is_fileaddr(np->n_name))
+		if ((m & m_NOPF) && is_fileorpipe_addr(np))
 			continue;
-		if (np->n_flink == NULL)
-			comma = 0;
-		if (mime_name_invalid(np, !dropinvalid)) {
+		if (mime_name_invalid(np, ! dropinvalid)) {
 			if (dropinvalid)
 				continue;
 			else
-				return 1;
+				return (1);
+		}
+		if ((m & (m_INIT | m_COMMA)) == (m_INIT | m_COMMA)) {
+			putc(',', fo);
+			m |= m_CSEEN;
+			++col;
 		}
 		len = strlen(np->n_fullname);
-		col++;		/* for the space */
-		if (count && col + len + comma > 72 && col > 1) {
+		++col; /* The separating space */
+		if ((m & m_INIT) && col > 1 && col + len > 72) {
 			fputs("\n ", fo);
 			col = 1;
+			m &= ~m_CSEEN;
 		} else
 			putc(' ', fo);
+		m = (m & ~m_CSEEN) | m_INIT;
 		len = mime_write(np->n_fullname,
 				len, fo,
 				domime?CONV_TOHDR_A:CONV_NONE,
 				TD_ICONV, NULL, (size_t)0,
 				NULL, NULL);
-		if (comma && !(is_to && is_fileaddr(np->n_flink->n_name)))
-			putc(',', fo);
-		col += len + comma;
-		count++;
+		col += len;
 	}
 	putc('\n', fo);
-	return 0;
+	return (0);
 }
 
 /*
