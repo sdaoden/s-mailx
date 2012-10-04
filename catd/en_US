@@ -190,10 +190,10 @@ The following ~ escapes are defined:\n\
 143 %s contains invalid character '%s'\n
 144 --- DELETED ---
 145 detract asked to insert commas\n
-146 temporary edit file
-147 temporary edit file
-148 temporary edit file
-149 Can't reopen image\n
+146 Creation of temporary image
+147 Creating descriptor duplicate of temporary image
+148 Finalizing write of temporary image
+149 Failed to open a duplicate of the temporary image
 150 Expanding alias to depth larger than %d\n
 151 No names to unpack
 152 Internal error: bad stdio open mode %s\n

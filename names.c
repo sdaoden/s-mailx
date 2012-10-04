@@ -279,72 +279,123 @@ yankword(char *ap, char *wbuf, char *separators, int copypfx)
  * Recipients whose name begins with | are piped through the given
  * program and removed.
  */
-/*ARGSUSED 3*/
 struct name *
 outof(struct name *names, FILE *fo, struct header *hp)
 {
-	int c, lastc;
-	struct name *np, *top;
+	int pipecnt, xcnt, *fda, i;
+	char *shell, *date;
+	struct name *np;
 	time_t now;
-	char *date, *fname;
-	FILE *fout, *fin;
-	int ispipe;
+	FILE *fin = NULL, *fout;
 	(void)hp;
 
-	top = names;
-	np = names;
+	/*
+	 * Look through all recipients and do a quick return if no file or pipe
+	 * addressee is found.
+	 */
+	for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink) {
+		assert(np->n_flags & NAME_ADDRSPEC_CHECKED);
+		if ((np->n_flags & NAME_ADDRSPEC_ISPIPE) != 0)
+			++pipecnt;
+		else if ((np->n_flags & NAME_ADDRSPEC_ISFILE) != 0)
+			++xcnt;
+	}
+	if (pipecnt == 0 && xcnt == 0)
+		goto jleave;
+
+	/*
+	 * Otherwise create an array of file descriptors for each found pipe
+	 * addressee to get around the dup(2)-shared-file-offset problem, i.e.,
+	 * each pipe subprocess needs its very own file descriptor, and we need
+	 * to deal with that.
+	 * To make our life a bit easier let's just use the auto-reclaimed
+	 * string storage.
+	 */
+	if (pipecnt == 0) {
+		fda = NULL;
+		shell = NULL;
+	} else {
+		fda = (int*)salloc(sizeof(int) * pipecnt);
+		for (i = 0; i < pipecnt; ++i)
+			fda[i] = -1;
+		if ((shell = value("SHELL")) == NULL)
+			shell = SHELL;
+	}
+
 	time(&now);
 	date = ctime(&now);
-	while (np != NULL) {
-		if (!is_fileaddr(np->n_name) && np->n_name[0] != '|') {
+
+	for (np = names; np != NULL;) {
+		if ((np->n_flags & (NAME_ADDRSPEC_ISFILE|NAME_ADDRSPEC_ISPIPE))
+				== 0) {
 			np = np->n_flink;
 			continue;
 		}
-		ispipe = np->n_name[0] == '|';
-		if (ispipe)
-			fname = np->n_name+1;
-		else
-			fname = expand(np->n_name);
 
 		/*
 		 * See if we have copied the complete message out yet.
 		 * If not, do so.
 		 */
-
 		if (image < 0) {
+			int c;
 			char *tempEdit;
 
 			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600, 1))
 					== NULL) {
-				perror(catgets(catd, CATSET, 146,
-						"temporary edit file"));
-				senderr++;
-				goto cant;
+				perror(tr(146, "Creation of temporary image"));
+				++senderr;
+				goto jcant;
 			}
 			image = open(tempEdit, O_RDWR);
+			if (image >= 0)
+				for (i = 0; i < pipecnt; ++i) {
+					int fd = open(tempEdit, O_RDONLY);
+					if (fd < 0) {
+						(void)close(image);
+						image = -1;
+						pipecnt = i;
+						break;
+					}
+					fda[i] = fd;
+					(void)fcntl(fd, F_SETFD, FD_CLOEXEC);
+				}
 			unlink(tempEdit);
 			Ftfree(&tempEdit);
 			if (image < 0) {
-				perror(catgets(catd, CATSET, 147,
-						"temporary edit file"));
-				senderr++;
+				perror(tr(147, "Creating descriptor duplicate "
+					"of temporary image"));
+				++senderr;
 				Fclose(fout);
-				goto cant;
+				goto jcant;
 			}
 			fcntl(image, F_SETFD, FD_CLOEXEC);
+
 			fprintf(fout, "From %s %s", myname, date);
 			c = EOF;
-			while (lastc = c, (c = getc(fo)) != EOF)
+			while (i = c, (c = getc(fo)) != EOF)
 				putc(c, fout);
 			rewind(fo);
-			if (lastc != '\n')
+			if (i != '\n')
 				putc('\n', fout);
 			putc('\n', fout);
 			fflush(fout);
 			if (ferror(fout))
-				perror(catgets(catd, CATSET, 148,
-						"temporary edit file"));
+				perror(tr(148, "Finalizing write of temporary "
+					"image"));
 			Fclose(fout);
+
+			/* If we have to serve file addressees, open reader */
+			if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
+				perror(tr(149, "Failed to open a duplicate of "
+					"the temporary image"));
+				++senderr;
+				(void)close(image);
+				image = -1;
+				goto jcant;
+			}
+
+			/* From now on use xcnt as a counter for pipecnt */
+			xcnt = 0;
 		}
 
 		/*
@@ -353,59 +404,38 @@ outof(struct name *names, FILE *fo, struct header *hp)
 		 * program as appropriate.
 		 */
 
-		if (ispipe) {
+		if (np->n_flags & NAME_ADDRSPEC_ISPIPE) {
 			int pid;
-			char *shell;
 			sigset_t nset;
 
-			/*
-			 * XXX
-			 * We can't really reuse the same image file,
-			 * because multiple piped recipients will
-			 * share the same lseek location and trample
-			 * on one another.
-			 */
-			if ((shell = value("SHELL")) == NULL)
-				shell = SHELL;
 			sigemptyset(&nset);
 			sigaddset(&nset, SIGHUP);
 			sigaddset(&nset, SIGINT);
 			sigaddset(&nset, SIGQUIT);
 			pid = start_command(shell, &nset,
-				image, -1, "-c", fname, NULL);
+				fda[xcnt++], -1, "-c", np->n_name + 1, NULL);
 			if (pid < 0) {
-				senderr++;
-				goto cant;
+				++senderr;
+				goto jcant;
 			}
 			free_child(pid);
 		} else {
-			int f;
+			char *fname = expand(np->n_name);
 			if ((fout = Zopen(fname, "a", NULL)) == NULL) {
 				perror(fname);
-				senderr++;
-				goto cant;
-			}
-			if ((f = dup(image)) < 0) {
-				perror("dup");
-				fin = NULL;
-			} else
-				fin = Fdopen(f, "r");
-			if (fin == NULL) {
-				fprintf(stderr, catgets(catd, CATSET, 149,
-						"Can't reopen image\n"));
-				Fclose(fout);
-				senderr++;
-				goto cant;
+				++senderr;
+				goto jcant;
 			}
 			rewind(fin);
-			while ((c = getc(fin)) != EOF)
-				putc(c, fout);
-			if (ferror(fout))
-				senderr++, perror(fname);
+			while ((i = getc(fin)) != EOF)
+				putc(i, fout);
+			if (ferror(fout)) {
+				++senderr;
+				perror(fname);
+			}
 			Fclose(fout);
-			Fclose(fin);
 		}
-cant:
+jcant:
 		/*
 		 * In days of old we removed the entry from the
 		 * the list; now for sake of header expansion
@@ -413,12 +443,28 @@ cant:
 		 */
 		np->n_type |= GDEL;
 		np = np->n_flink;
+		if (image < 0)
+			goto jdelall;
 	}
+jleave:
+	if (fin != NULL)
+		Fclose(fin);
+	for (i = 0; i < pipecnt; ++i)
+		(void)close(fda[i]);
 	if (image >= 0) {
 		close(image);
 		image = -1;
 	}
-	return(top);
+	return (names);
+
+jdelall:
+	while (np != NULL) {
+		if ((np->n_flags & (NAME_ADDRSPEC_ISFILE|NAME_ADDRSPEC_ISPIPE))
+				!= 0)
+			np->n_type |= GDEL;
+		np = np->n_flink;
+	}
+	goto jleave;
 }
 
 /*
