@@ -413,8 +413,9 @@ usage:
 	input = stdin;
 	rcvmode = !to && !tflag;
 	spreserve();
-	if (!nosrc)
-		load(MAILRC);
+
+	if (! nosrc)
+		load(SYSCONFRC);
 	/*
 	 * Expand returns a savestr, but load only uses the file name
 	 * for fopen, so it's safe to do this.

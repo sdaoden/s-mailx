@@ -35,11 +35,20 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.TH S-NAIL 1 "2012-09-29" "S-nail" "User Commands"
+.\"--MKMAN-START--
+.ds UU S-NAIL
+.ds uu S-nail
 .ds UA \\fIS-nail\\fR
 .ds ua \\fIs-nail\\fR
 .ds ba \\fBs-nail\\fR
+.ds UR s-nail.rc
+.\"--MKMAN-END--
+.\" If not ~/.mailrc, it breaks POSIX compatibility.  And adjust main.c.
+.ds ur ~/.mailrc
+.\"
 .\" ##  --  >8  --  8<  --  ##
+.\"
+.TH "\*(UU" 1 "2012-10-05" "\*(uu" "User Commands"
 .SH NAME
 \*(UA \- send and receive Internet mail
 .SH SYNOPSIS
@@ -156,7 +165,7 @@ Only applicable in combination with
 .IR \-f .
 .TP
 .B \-n
-Inhibits reading /etc/\*(ua.rc upon startup.
+Inhibits reading \*(UR upon startup.
 This option should be activated for \*(UA scripts that are invoked on
 more than one machine, because the contents of that file may differ
 between them.
@@ -613,23 +622,19 @@ Such lists can be defined by placing a line like
         \fBalias\fI cohorts bill ozalp jkf mark kridle@ucbcory\fR
 
 .fi
-in the file .mailrc in the user's home directory.
-The current list of such aliases
-can be displayed with the alias command in \*(UA.
-System wide distribution lists can be created
-by editing /etc/aliases, see
+in the file \*(ur in the user's home directory.
+The currently defined list of such aliases can be displayed with the alias
+command in \*(UA.
+System wide distribution lists can be created by editing /etc/aliases, see
 .IR aliases (5)
 and
 .IR sendmail (8);
-these are kept in a different syntax.
-In mail the user sends,
-personal aliases will be expanded
-in mail sent to others so that
-they will be able to reply to the recipients.
+these are kept in a different syntax and are used by the MTA, not \*(UA.
+In mail the user sends, personal aliases will be expanded in mail sent to
+others so that they will be able to reply to the recipients.
 System wide aliases are not expanded when the mail is sent,
-but any reply returned to the machine
-will have the system wide alias expanded
-as all mail goes through sendmail.
+but any reply returned to the machine will have the system wide alias
+expanded as all mail goes through sendmail.
 .SS "Recipient address specifications"
 When an address is used to name a recipient
 (in any of To, Cc, or Bcc),
@@ -664,8 +669,7 @@ command below.
 See
 .IR mailaddr (7)
 for a description of network addresses.
-\*(UA has a number of options
-which can be set in the .mailrc file
+\*(UA has a number of options which can be set in the \*(ur file
 to alter its behavior;
 thus `\fIset askcc\fR' enables the askcc feature.
 (These options are summarized below).
@@ -3018,17 +3022,15 @@ command for more information).
 .B MBOX
 The name of the mbox file.
 It can be the name of a folder.
-The default is `\fImbox\fR'
-in the user's home directory.
+The default is `\fImbox\fR' in the user's home directory.
 .TP
 .B NAIL_EXTRA_RC
-The name of an optional startup file
-to be read after ~/.mailrc.
+The name of an optional startup file to be read after \*(ur.
 This variable is ignored if it is imported from the environment;
-it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
-to allow bypassing the configuration with e. g. `MAILRC=/dev/null'.
-Use this file for commands
-that are not understood by other \*(UA implementations.
+it has an effect only if it is set in \*(UR or \*(ur to allow bypassing the
+configuration with e. g. `MAILRC=/dev/null'.
+Use this file for commands that are not understood by other \*(UA
+implementations.
 .TP
 .B NAIL_HEAD
 A string to put at the beginning of each new message.
@@ -3630,11 +3632,10 @@ See
 .IR locale (7).
 .TP
 .B MAILRC
-Is used as startup file instead of ~/.mailrc if set.
-When \*(UA
-scripts are invoked on behalf of other users,
-this variable should be set to `/dev/null'
-to avoid side-effects from reading their configuration files.
+Is used as a startup file instead of \*(ur if set.
+When \*(UA scripts are invoked on behalf of other users,
+this variable should be set to `/dev/null' to avoid side-effects from
+reading their configuration files.
 .TP
 .B NAILRC
 If this variable is set and
@@ -3649,10 +3650,10 @@ Changes the letters printed in the first column of a header summary.
 Used as directory for temporary files instead of /tmp, if set.
 .SH FILES
 .TP
-~/.mailrc
+\*(ur
 File giving initial commands.
 .TP
-/etc/\*(ua.rc
+\*(UR
 System wide initialization file.
 .TP
 ~/.mime.types
@@ -3907,9 +3908,7 @@ To tell \*(UA where your folder directory is, put a line of the form
     \fBset folder=\fIletters\fR
 .sp
 .fi
-in your
-.I .mailrc
-file.
+in your \*(ur file.
 If, as in the example above,
 your folder directory does not begin with a `/',
 \*(UA will assume that your folder directory is to be found starting
@@ -4055,20 +4054,14 @@ every time you want to connect:
 You might want to put this string into a startup file.
 As the
 .I shortcut
-command is specific to this implementation of
-\*(UA and will confuse other implementations,
-it should not be used in
-.IR ~/.mailrc ,
-instead, put
+command is specific to this implementation of \*(UA and will confuse other
+implementations, it should not be used in \*(ur, instead, put
 .nf
 
     \fBset NAIL_EXTRA_RC=\fI~/.\*(uarc\fR
 
 .fi
-in
-.I ~/.mailrc
-and create a file
-.I ~/.\*(uarc
+in \*(ur and create a file \fI~/.\*(uarc\fR
 containing the
 .I shortcut
 command above.

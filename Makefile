@@ -3,14 +3,15 @@
 
 # General prefix
 PREFIX		= /usr/local
-# Prepended to all paths at installation time (for e.g. package building)
-DESTDIR		=
-# (For those who want to install S-nail(1) as nail(1), use an empty *SID*)
-SID		= s-
 
 BINDIR		= $(PREFIX)/bin
 MANDIR		= $(PREFIX)/man
 SYSCONFDIR	= $(PREFIX)/etc
+
+# Prepended to all paths at installation time (for e.g. package building)
+DESTDIR		=
+# (For those who want to install S-nail(1) as nail(1), use an empty *SID*)
+SID		= s-
 
 MAILSPOOL	= /var/mail
 SENDMAIL	= /usr/sbin/sendmail
@@ -25,11 +26,13 @@ INSTALL		= /usr/bin/install
 ##  --  >8  --  8<  --  ##
 
 # To ease the life of forkers and packagers one may even adjust the "nail"
-# of nail(1).  If nail.1 is adjusted in addition (\*(UA, \*(ua and \*(ba)
-# to the above occurrences, a new fork has been created all through.
+# of nail(1).  Note that $(SID)$(NAIL) must be longer than two characters.
+# There you go.  Two lines for a completely clean fork.
 NAIL		= nail
-MAILRC		= $(SYSCONFDIR)/$(SID)$(NAIL).rc
-FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
+SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
+
+# Binaries builtin paths
+PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"'
 
 OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
@@ -69,12 +72,35 @@ new-version:
 config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
 
-install: all
+mkman.1: nail.1
+	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
+	< $< > $@ awk 'BEGIN {written = 0} \
+	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ { \
+		if (written == 1) \
+			next; \
+		written = 1; \
+		OFS = ""; \
+		unail = toupper(ENVIRON["_NAIL"]); \
+		lnail = tolower(unail); \
+		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2); \
+		print ".ds UU ", unail; \
+		print ".ds uu ", cnail; \
+		print ".ds UA \\\\fI", cnail, "\\\\fR"; \
+		print ".ds ua \\\\fI", lnail, "\\\\fR"; \
+		print ".ds ba \\\\fB", lnail, "\\\\fR"; \
+		print ".ds UR ", ENVIRON["_SYSCONFRC"]; \
+		OFS = " "; \
+		next \
+	} \
+	{print} \
+	'
+
+install: all mkman.1
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -c $(SID)$(NAIL) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
 	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(INSTALL) -c -m 644 nail.1 $(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
+	$(INSTALL) -c -m 644 mkman.1 $(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
 	test -f $(DESTDIR)$(MAILRC) || \
 		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
@@ -84,7 +110,7 @@ uninstall:
 		$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 
 clean:
-	rm -f $(OBJ) $(SID)$(NAIL) *~ core log
+	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 *~ core log
 
 distclean: clean
 	rm -f config.h config.log LIBS INCS
