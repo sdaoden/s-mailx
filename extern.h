@@ -257,7 +257,9 @@ enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 char *getname(int uid);
 int getuserid(char *name);
 /* getopt.c */
+#ifdef USE_BUILTIN_GETOPT
 int getopt(int argc, char *const argv[], const char *optstring);
+#endif
 /* head.c */
 int is_head(char *linebuf, size_t linelen);
 void parse(char *line, size_t linelen, struct headline *hl, char *pbuf);
