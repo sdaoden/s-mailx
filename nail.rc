@@ -1,6 +1,8 @@
-# This is the configuration file for S-nail(1), a fork of
+#--MKRC-START--
+# /etc/s-nail.rc
+# Configuration file for S-nail(1), a fork of
+#--MKRC-END--
 # Heirloom mailx (formerly known under the name "nail").
-# See s-nail(1) for further options.
 # This file is not overwritten when 'make install' is run in
 # the mailx build process again.
 
@@ -34,6 +36,13 @@ set indentprefix="> "
 
 # Automatically quote the text of the message that is responded to.
 set quote
+# But don't let quoted lines get longer than 79 characters
+set quote-fold=79
+
+# On group replies, specify only the sender of the original mail in  To: and
+# mention it's other recipients in the secondary Cc: instead of placing them
+# also in To:
+set recipients-in-cc
 
 # Outgoing messages are sent in ISO-8859-1 if all their characters are
 # representable in it, otherwise in UTF-8.

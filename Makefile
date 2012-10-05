@@ -95,22 +95,40 @@ mkman.1: nail.1
 	{print} \
 	'
 
-install: all mkman.1
+mkrc.rc: nail.rc
+	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
+	< $< > $@ awk 'BEGIN {written = 0} \
+	/#--MKRC-START--/, /#--MKRC-END--/ { \
+		if (written == 1) \
+			next; \
+		written = 1; \
+		OFS = ""; \
+		lnail = tolower(ENVIRON["_NAIL"]); \
+		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2); \
+		print "# ", ENVIRON["_SYSCONFRC"]; \
+		print "# Configuration file for ", cnail, "(1), a fork of"; \
+		OFS = " "; \
+		next \
+	} \
+	{print} \
+	'
+
+install: all mkman.1 mkrc.rc
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -c $(SID)$(NAIL) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
 	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
 	$(INSTALL) -c -m 644 mkman.1 $(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
-	test -f $(DESTDIR)$(MAILRC) || \
-		$(INSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
+	test -f $(DESTDIR)$(SYSCONFRC) || \
+		$(INSTALL) -c -m 644 mkrc.rc $(DESTDIR)$(SYSCONFRC)
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/$(SID)$(NAIL) \
 		$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 
 clean:
-	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 *~ core log
+	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 mkrc.rc *~ core log
 
 distclean: clean
 	rm -f config.h config.log LIBS INCS
