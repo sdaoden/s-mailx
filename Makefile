@@ -44,12 +44,9 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	v7.local.o vars.o \
 	version.o
 
-.SUFFIXES: .o .c .x .y
+.SUFFIXES: .o .c .y
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FEATURES) `cat INCS` -c $<
-
-.c.x:
-	$(CC) $(CFLAGS) $(WARN) $(FEATURES) -E $< >$@
+	$(CC) $(CFLAGS) $(WARN) $(PATHDEFS) `cat INCS` -c $<
 
 .c .y: ;
 
@@ -62,12 +59,6 @@ $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
 md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
-
-new-version:
-	[ -z "$${VERSION}" ] && eval VERSION="`git describe --dirty --tags`"; \
-	echo > version.c \
-	"const char *const uagent = \"$(SID)$(NAIL)\", \
-	*const version = \"$${VERSION:-spooky}\";"
 
 config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
@@ -133,3 +124,8 @@ clean:
 distclean: clean
 	rm -f config.h config.log LIBS INCS
 
+new-version:
+	[ -z "$${VERSION}" ] && eval VERSION="`git describe --dirty --tags`"; \
+	echo > version.c \
+	"const char *const uagent = \"$(SID)$(NAIL)\", \
+	*const version = \"$${VERSION:-huih buh}\";"
