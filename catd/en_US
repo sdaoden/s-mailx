@@ -179,7 +179,13 @@ The following ~ escapes are defined:\n\
 132 No applicable messages\n
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
-135 Usage: %s -eiIUdEFntBDNHRV~ -T FILE -u USER -O MTAARG -r address -s SUBJECT -a FILE -q FILE -f FILE -A ACCOUNT -b USERS -c USERS -S OPTION USERS\n
+135 Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n\
+\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n\
+\t\t[-q file] [-r from-addr] [-S var[=value]]\n\
+\t\t[-s subject] to-addr...\n\
+\t%s [-BDdEeHIiNnRv~] [-A acct]\n\
+\t\t[-S var[=value]] [-T name] -f [file]\n\
+\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
 136 --- DELETED ---
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n

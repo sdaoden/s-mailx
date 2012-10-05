@@ -85,7 +85,16 @@ static void setscreensize(int dummy);
 int 
 main(int argc, char *argv[])
 {
-	const char optstr[] = "A:BHEFINVT:RS:a:b:c:dDefinqr:s:tu:v~O:";
+	const char optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:Ss:T:tu:Vv~",
+		usagestr[] =
+		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
+		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
+		"\t\t[-q file] [-r from-addr] [-S var[=value]]\n"
+		"\t\t[-s subject] to-addr...\n"
+		"\t%s [-BDdEeHIiNnRv~] [-A acct]\n"
+		"\t\t[-S var[=value]] [-T name] -f [file]\n"
+		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
+
 	int scnt, i, existonly = 0, headersonly = 0, sendflag = 0;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
@@ -178,123 +187,99 @@ main(int argc, char *argv[])
 	scnt = 0;
 	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
-		case 'V':
-			puts(version);
-			exit(0);
-			/*NOTREACHED*/
+		case 'A':
+			/* Execute an account command later on */
+			Aflag = optarg;
+			break;
+		case 'a':
+			/* Get attachment filenames */
+			attach = add_attachment(attach, optarg, 0);
+			if (attach == NULL) {
+				perror(optarg);
+				exit(1);
+			}
+			sendflag++;
+			break;
 		case 'B':
+			/* Make 0/1 line buffered */
 			setvbuf(stdin, NULL, _IOLBF, 0);
 			setvbuf(stdout, NULL, _IOLBF, 0);
 			break;
-		case 'H':
-			headersonly = 1;
-			break;
-		case 'E':
-			Eflag = 1;
-			break;
-		case 'F':
-			Fflag = 1;
+		case 'b':
+			/* Get Blind Carbon Copy Recipient list */
+			bcc = checkaddrs(cat(bcc,
+				userarg_extract(optarg, GBCC|GFULL)));
 			sendflag++;
 			break;
-		case 'S':
-			argv[scnt++] = optarg;
-			break;
-		case 'T':
-			/*
-			 * Next argument is temp file to write which
-			 * articles have been read/deleted for netnews.
-			 */
-			Tflag = optarg;
-			if ((i = creat(Tflag, 0600)) < 0) {
-				perror(Tflag);
-				exit(1);
-			}
-			close(i);
-			/*FALLTHRU*/
-		case 'I':
-			/*
-			 * Show Newsgroups: field in header summary
-			 */
-			Iflag = 1;
-			break;
-		case 'u':
-			/*
-			 * Next argument is person to pretend to be.
-			 */
-			uflag = myname = optarg;
-			break;
-		case 'i':
-			/*
-			 * User wants to ignore interrupts.
-			 * Set the variable "ignore"
-			 */
-			assign("ignore", "");
-			break;
-		case 'd':
-			debug++;
+		case 'c':
+			/* Get Carbon Copy Recipient list */
+			cc = checkaddrs(cat(cc,
+				userarg_extract(optarg, GCC|GFULL)));
+			sendflag++;
 			break;
 		case 'D':
 			assign("disconnected", "");
 			break;
+		case 'd':
+			debug++;
+			break;
+		case 'E':
+			Eflag = 1;
+			break;
 		case 'e':
 			existonly++;
 			break;
-		case 's':
-			/*
-			 * Give a subject field for sending from
-			 * non terminal
-			 */
-			subject = optarg;
+		case 'F':
+			Fflag = 1;
 			sendflag++;
 			break;
 		case 'f':
 			/*
 			 * User is specifying file to "edit" with Mail,
 			 * as opposed to reading system mailbox.
-			 * If no argument is given, we read his
-			 * mbox file.
-			 *
+			 * If no argument is given, we read his mbox file.
 			 * Check for remaining arguments later.
 			 */
 			ef = "&";
 			break;
-		case 'q':
-			/*
-			 * User is specifying file to quote in front of
-			 * the mail to be collected.
-			 */
-			if ((argv[optind]) && (argv[optind][0] != '-'))
-				qf = argv[optind++];
-			else
-				qf = NULL;
-			sendflag++;
+		case 'H':
+			headersonly = 1;
 			break;
-		case 'n':
-			/*
-			 * User doesn't want to source /usr/lib/Mail.rc
-			 */
-			nosrc++;
+jIflag:		case 'I':
+			/* Show Newsgroups: field in header summary */
+			Iflag = 1;
+			break;
+
+		case 'i':
+			/* Ignore interrupts */
+			assign("ignore", "");
 			break;
 		case 'N':
-			/*
-			 * Avoid initial header printing.
-			 */
+			/* Avoid initial header printing */
 			Nflag = 1;
 			unset_internal("header");
 			break;
-		case 'v':
-			/*
-			 * Send mailer verbose flag
-			 */
-			assign("verbose", "");
+		case 'n':
+			/* Don't source "unspecified system start-up file" */
+			++nosrc;
+			break;
+		case 'O':
+			/* Additional options to pass-through to MTA */
+			smopts = cat(smopts, nalloc(optarg, 0));
+			sendflag++;
+			break;
+		case 'q':
+			/* Quote file TODO drop? -Q with real quote?? what ? */
+			if (*optarg != '-')
+				qf = optarg;
+			sendflag++;
+			break;
+		case 'R':
+			/* Open folders read-only */
+			Rflag = 1;
 			break;
 		case 'r':
-			/*
-			 * Set From address.
-			 * MTA is only interested in plain address so strip
-			 * anything else (but still give user the option to
-			 * simply pass a fully fledged email address)
-			 */
+			/* Set From address. */
 			i = count(smopts);
 			fromaddr = optarg;
 			smopts = cat(smopts, nalloc("-r", 0));
@@ -308,66 +293,56 @@ main(int argc, char *argv[])
 			tildeflag = -1;
 			sendflag++;
 			break;
-		case 'a':
+		case 'S':
+			/* Set variable (do so later, after RC loading..) */
+			argv[scnt++] = optarg;
+			break;
+		case 's':
+			/* Subject: */
+			subject = optarg;
+			sendflag++;
+			break;
+		case 'T':
 			/*
-			 * Get attachment filenames
+			 * Next argument is temp file to write which
+			 * articles have been read/deleted for netnews.
 			 */
-			attach = add_attachment(attach, optarg, 0);
-			if (attach == NULL) {
-				perror(optarg);
+			Tflag = optarg;
+			if ((i = creat(Tflag, 0600)) < 0) {
+				perror(Tflag);
 				exit(1);
 			}
-			sendflag++;
-			break;
-		case 'c':
-			/*
-			 * Get Carbon Copy Recipient list
-			 */
-			cc = checkaddrs(cat(cc,
-				userarg_extract(optarg, GCC|GFULL)));
-			sendflag++;
-			break;
-		case 'b':
-			/*
-			 * Get Blind Carbon Copy Recipient list
-			 */
-			bcc = checkaddrs(cat(bcc,
-				userarg_extract(optarg, GBCC|GFULL)));
-			sendflag++;
-			break;
-		case 'O':
-			/*
-			 * Additional options to pass-through to MTA
-			 */
-			smopts = cat(smopts, nalloc(optarg, 0));
-			sendflag++;
-			break;
-		case '~':
-			if (tildeflag == 0)
-				tildeflag = 1;
-			break;
+			close(i);
+			goto jIflag;
 		case 't':
+			/* Read defined set of headers from mail to be send */
 			sendflag = 1;
 			tflag = 1;
 			break;
-		case 'A':
-			Aflag = optarg;
+		case 'u':
+			/* Set user name to pretend to be  */
+			uflag = myname = optarg;
 			break;
-		case 'R':
-			Rflag = 1;
+		case 'V':
+			puts(version);
+			exit(0);
+			/*NOTREACHED*/
+		case 'v':
+			/* Be verbose */
+			assign("verbose", "");
+			break;
+		case '~':
+			/* Enable tilde escapes even in non-interactive mode */
+			if (tildeflag == 0)
+				tildeflag = 1;
 			break;
 		case '?':
-usage:
-			fprintf(stderr, tr(135,
-					"Usage: %s -eiIUdEFntBDNHRV~ -T FILE "
-					"-u USER -O MTAARG -r address "
-					"-s SUBJECT -a FILE -q FILE -f FILE "
-					"-A ACCOUNT -b USERS -c USERS "
-					"-S OPTION USERS\n"),
-				progname);
+usage:			fprintf(stderr, tr(135, usagestr),
+				progname, progname, progname);
 			exit(2);
 		}
 	}
+
 	if (ef != NULL) {
 		if (optind < argc) {
 			if (optind + 1 < argc) {
@@ -382,9 +357,8 @@ usage:
 			to = checkaddrs(cat(to,
 				userarg_extract(argv[i], GTO|GFULL)));
 	}
-	/*
-	 * Check for inconsistent arguments.
-	 */
+
+	/* Check for inconsistent arguments */
 	if (ef != NULL && to != NULL) {
 		fprintf(stderr, tr(137,
 			"Cannot give -f and people to send to.\n"));
@@ -403,6 +377,7 @@ usage:
 		fprintf(stderr, tr(204, "Need -f with -I.\n"));
 		goto usage;
 	}
+
 	tinit();
 	setscreensize(0);
 #ifdef SIGWINCH
@@ -429,6 +404,7 @@ usage:
 	if (getenv("NAIL_EXTRA_RC") == NULL &&
 			(cp = value("NAIL_EXTRA_RC")) != NULL)
 		load(expand(cp));
+
 	/*
 	 * Now we can set the account.
 	 */

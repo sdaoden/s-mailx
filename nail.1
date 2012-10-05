@@ -56,21 +56,25 @@
 .HP
 .ad l
 \*(ba [\fB\-BDdEFintv~\fR]
-[\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
-[\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
-[\fB\-O\fI\ mta-option [\fB\-O\fI mta-option-argument]\fR]
 [\fB\-A\fI\ account\fR]
+[\fB\-a\fI\ attachment\fR]
+[\fB\-b\fI\ bcc-addr\fR] [\fB\-c\fI\ cc-addr\fR]
+[\fB\-O\fI\ mta-option [\fB\-O\fI mta-option-argument]\fR]
+[\fB\-q\fI\ quote-file\fR]
+[\fB\-r\fI\ from-addr\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
+[\fB\-s\fI\ subject\fR]
 \fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\*(ba [\fB\-BDdeEHiInNRv~\fR] [\fB\-T\fI\ name\fR]
+\*(ba [\fB\-BDdEeHIiNnRv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
-\fB\-f\fR [\fIname\fR]
+[\fB\-T\fI\ name\fR]
+\fB\-f\fR [\fIfile\fR]
 .HP
 .ad l
-\*(ba [\fB\-BDdeEinNRv~\fR]
+\*(ba [\fB\-BDdEeiNnRv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
 [\fB\-u\fI\ user\fR]
@@ -82,7 +86,7 @@
 reminiscent of
 .IR ed (1)
 with lines replaced by messages.
-It is based on Berkeley Mail 8.1,
+It is based on Heirloom mailx, that is based on Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 .B mailx
 command,
@@ -94,6 +98,7 @@ It is also usable as a mail batch language, both for sending and
 receiving mail.
 .PP
 The following options are accepted:
+.\"
 .TP
 .BI \-A \ name
 Executes an 
@@ -127,10 +132,6 @@ Unlike
 .IR \-v ,
 this option is intended for \*(UA development only.
 .TP
-.B \-e
-Just check if mail is present in the system mailbox.
-If yes, return an exit status of zero, a non-zero value otherwise.
-.TP
 .B \-E
 If an outgoing message does not contain any text in its first or only
 message part, do not send but discard it silently,
@@ -140,6 +141,14 @@ variable at program startup.
 This is useful for sending messages from scripts started by
 .IR cron (8).
 .TP
+.B \-e
+Just check if mail is present in the system mailbox.
+If yes, return an exit status of zero, a non-zero value otherwise.
+.TP
+.B \-F
+Save the message to send in a file named after the local part of the
+first recipient's address.
+.TP
 \fB\-f\fR [\fIfile\fR]
 Read in the contents of the user's mbox (or the specified file)
 for processing;
@@ -147,32 +156,31 @@ when \*(UA is quit, it writes undeleted messages back to this file.
 The string \fIfile\fR is handled as described for the
 .I folder
 command below.
-.TP
-.B \-F
-Save the message to send in a file named after the local part of the
-first recipient's address.
+Note that \fIfile\fR is not a direct argument to the \fB-f\fR option,
+but instead taken from the command line after option processing has been
+completed.
 .TP
 .B \-H
 Print header summaries for all messages and exit.
-.TP
-.B \-i
-Ignore tty interrupt signals.
-This is particularly useful when using \*(UA on noisy phone lines.
 .TP
 .B \-I
 Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
 Only applicable in combination with
 .IR \-f .
 .TP
+.B \-i
+Ignore tty interrupt signals.
+This is particularly useful when using \*(UA on noisy phone lines.
+.TP
+.B \-N
+Inhibits the initial display of message headers when reading mail
+or editing a mail folder.
+.TP
 .B \-n
 Inhibits reading \*(UR upon startup.
 This option should be activated for \*(UA scripts that are invoked on
 more than one machine, because the contents of that file may differ
 between them.
-.TP
-.B \-N
-Inhibits the initial display of message headers when reading mail
-or editing a mail folder.
 .TP
 .BI \-O \ option
 Pass the given option through to the mail-transfer-agent (MTA).
@@ -183,6 +191,9 @@ E.g., to specify the hop count to an old \fIsendmail(1)\fR, use
 .BI \-q \ file
 Start the message with the contents of the specified file.
 May be given in send mode only.
+.TP
+.B \-R
+Opens any folders read-only.
 .TP
 .BI \-r \ address
 Sets the
@@ -197,22 +208,16 @@ This option exists for compatibility only; it is recommended to set the
 .I from
 variable directly instead.
 .TP
-.B \-R
-Opens any folders read-only.
+\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]
+Sets the internal option
+.I variable
+and, in case of a string option, assigns \fIvalue\fR to it.
+These assignments take place after the resource files have been loaded.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
 .I \-s
-flag is used as a subject; be careful to quote subjects
-containing spaces).
-.TP
-\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]
-Sets the internal option
-.I variable
-and, in case of a string option, assigns
-.I value
-to it.
-These assignments take place after the resource files have been loaded.
+flag is used as a subject; be careful to quote subjects containing spaces).
 .TP
 .BI \-T \ name
 Writes the `Message-Id:' and `Article-Id:' header fields of each message
@@ -220,9 +225,8 @@ read in the file
 .IR name .
 Implies
 .IR \-I .
-Compressed files are handled as described for the
-.I folder
-command below.
+Compressed files are handled as described for the \fIfolder\fR command
+below.
 .TP
 .B \-t
 The message to be sent is expected to contain a message header with
@@ -233,15 +237,16 @@ Recipients and subject specified on the command line are ignored.
 .BI \-u \ user
 Reads the mailbox of the given user name.
 .TP
+.B \-V
+Print \*(UA's version and exit.
+.TP
 .B \-v
 Verbose mode.
 The details of delivery are displayed on the user's terminal.
 .TP
-.B \-V
-Print \*(UA's version and exit.
-.TP
 .B \-~
 Enable tilde escapes even if not in interactive mode.
+.\"
 .SS "Sending mail"
 To send a message to one or more people, \*(UA can be invoked with
 arguments which are the names of people to whom the mail will be sent.
