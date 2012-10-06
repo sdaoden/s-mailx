@@ -116,26 +116,30 @@ edit1(int *msgvec, int type)
 				(mb.mb_perm & MB_EDIT) == 0 || !wb,
 				NULL, mp, wb ? SEND_MBOX : SEND_TODISP_ALL,
 				sigint);
+		++mp->m_size; /* XXX[edithack] */
 		if (fp != NULL) {
 			fseek(mb.mb_otf, 0L, SEEK_END);
 			size = ftell(mb.mb_otf);
 			mp->m_block = mailx_blockof(size);
 			mp->m_offset = mailx_offsetof(size);
-			mp->m_size = fsize(fp) + 1;
 			mp->m_lines = 0;
 			mp->m_flag |= MODIFY;
 			rewind(fp);
 			lastnl = 0;
+			size = 0;
 			while ((c = getc(fp)) != EOF) {
 				if ((lastnl = c == '\n'))
 					mp->m_lines++;
 				if (putc(c, mb.mb_otf) == EOF)
 					break;
+				++size;
 			}
-			/* It is an MBOX XXX[edithack] is this always MBOX? */
-			if (! lastnl)
-				(void)putc('\n', mb.mb_otf);
-			(void)putc('\n', mb.mb_otf);
+			/* MBOX finalize XXX[edithack] is this always MBOX? */
+			if (! lastnl && putc('\n', mb.mb_otf) != EOF)
+				++size;
+			if (putc('\n', mb.mb_otf) != EOF)
+				++size;
+			mp->m_size = (size_t)size;/*XXX[edithack] inc.MBOX?!? */
 			if (ferror(mb.mb_otf))
 				perror("/tmp");
 			Fclose(fp);
