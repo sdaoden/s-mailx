@@ -1,15 +1,23 @@
-TODO reminder for the maintainer.
-Before you start making additions to Heirloom mailx and S-nail,
+TODO reminder.
+Before you start making additions to (Heirloom mailx and) S-nail,
 subscribe to the development mailing list at
 <https://lists.sourceforge.net/lists/listinfo/nail-devel>
 to coordinate your efforts with the maintainer and other people.
 
-- [v13:started] Reformat the manual.
-  roff style is fine, but lines should be ~64 characters, not only ~25.
-- IDNA.
-- Mail-Followup-To:.
+Backward-compatibility breakers
+-------------------------------
+
+- Is anybody actually using the NSS code?  Does this still apply?
+  Check and verify -- or remove it!
+  [Note: due to lack of personal interest...  Please complain.]
+- Recipients specified on the command line should be added to those
+  specified in the message when the -t option is set.
+- The -q option makes me sad as it doesn't use *indentprefix* for the
+  quoted file.  So either there should be -Q which does so, or -q should be
+  changed.
+  [Note: i think i go for the latter.  Please complain.]
 - NetBSD mailx(1) removes all recipients in up Cc: and To: that are also
-  specified in Bcc.
+  specified in Bcc.  At least configurable.
   [Note: i plan to make this default.  Please complain.]
 - At least optionally disallow silent discarding of invalid addresses,
   i.e., cause sending to be aborted if not all recipient addresses pass the
@@ -18,6 +26,27 @@ to coordinate your efforts with the maintainer and other people.
   program exits?  At least in non-interactive mode??  Yet there is no
   indication that anything has happened at all!
   [Note: i plan to report error in non-interactive mode.  Please complain.]
+- POSIX says that, when written to DEAD: "If the file exists, the message
+  shall be written to replace the contents of the file".  This is mentioned
+  for ASYNCHRONOUS EVENTS, but it's the only description of what should be
+  done in which way to DEAD.  savedeadletter() yet appends.
+- Furthermore, *all* file operations yet append, even recipient target
+  files are appended.  I don't know if this is really desirable behaviour,
+  but i have not thought about that for real.  Maybe this should be at
+  least configurable.
+
+Non-breakers
+------------
+
+- [v13:started] Reformat the manual.
+  roff style is fine, but lines should be ~70 characters, not only ~25.
+- IDNA.
+- Mail-Followup-To:.
+- Offer the possibility to work with certificate fingerprints instead of
+  full certificates, in equal spirit to the current maintainers S-Postman
+  and Mercurial.  S-nail(1) could simply offer something in equal spirit to
+  the formers --fingerprint, so that no other tool is necessary for
+  certificate management (for secure transport at least).
 - Think about a name bypass hashmap cache, and whenever we have to skin or
   nalloc() or whatever, look in there.  Maybe even an additional link for
   non GFULL(/GSKIN) and fully skinned struct name objects.
@@ -31,8 +60,6 @@ to coordinate your efforts with the maintainer and other people.
   more longjmp()s, and how they are used at the moment.  Check that.
 - Add the possibility to simply place whatever header in the editor (and
   in the mail read in due to the -t command line option, and...).
-- Make it possible to really edit mails "in place" (in that they are stored
-  back in the MBOX and replace the original).
 - Check against RFC 5322.
   Really recheck all the header parsing code.
 - What about RFC 6531?
@@ -40,6 +67,9 @@ to coordinate your efforts with the maintainer and other people.
 - Maybe add a bash(1)ish POSIXLY_CORRECT (or so) switch that can be used to
   disallow extensions (e.g. specification of "full" addresses on command
   line).
+- Maybe there should be an additional ZOMBIE directive that is served in
+  equal spirit to DEAD, but that could be a valid MBOX... ?
+  What i want is a *real* resend, best if possible from command line.
 
 - Revise the code:
   + Add C99-likeish typedefs for integers and use them everywhere.
@@ -54,6 +84,8 @@ to coordinate your efforts with the maintainer and other people.
     shift states.  The only real solution to this problem would be to
     rewrite the entire codebase and use wide characters (IMO) everywhere.
   + [v13:started] Resort the functions and where they are implemented.
+    It's really terrible.  Just think about outof(), savedeadletter(),
+    savemail() etc..
 - The current maintainer doesn't like longjmp()s.
 - The current maintainer doesn't like signals.
 - The current maintainer would like to see that compilation with a C++
