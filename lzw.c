@@ -64,6 +64,10 @@
 
 #include "config.h"
 
+#if ! defined USE_IMAP && ! defined USE_JUNK
+typedef int avoid_empty_file_compiler_warning;
+#else
+
 #include "rcv.h"
 #include "extern.h"
 
@@ -684,11 +688,11 @@ cl_hash(struct s_zstate *zs, count_int cl_hsize)	/* Reset code table. */
 		*--htab_p = m1;
 }
 
-#undef	fp
+#undef fp
 void *
 zalloc(FILE *fp)
 {
-#define	bits	BITS
+#define bits	BITS
 	struct s_zstate *zs;
 
 	zs = scalloc(1, sizeof *zs);
@@ -708,3 +712,4 @@ zalloc(FILE *fp)
 	zs->zs_fp = fp;
 	return zs;
 }
+#endif /* ! defined USE_IMAP && ! defined USE_JUNK */
