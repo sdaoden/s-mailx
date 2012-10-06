@@ -225,7 +225,7 @@ read in the file
 .IR name .
 Implies
 .IR \-I .
-Compressed files are handled as described for the \fIfolder\fR command
+Compressed files are handled as described for the \fIfolder\fR command
 below.
 .TP
 .B \-t
@@ -631,15 +631,13 @@ in the file \*(ur in the user's home directory.
 The currently defined list of such aliases can be displayed with the alias
 command in \*(UA.
 System wide distribution lists can be created by editing /etc/aliases, see
-.IR aliases (5)
-and
-.IR sendmail (8);
+\fIaliases(5)\fR and \fIsendmail(1)\fR;
 these are kept in a different syntax and are used by the MTA, not \*(UA.
 In mail the user sends, personal aliases will be expanded in mail sent to
 others so that they will be able to reply to the recipients.
 System wide aliases are not expanded when the mail is sent,
 but any reply returned to the machine will have the system wide alias
-expanded as all mail goes through sendmail.
+expanded as all mail goes through \fIsendmail(1)\fR.
 .SS "Recipient address specifications"
 When an address is used to name a recipient
 (in any of To, Cc, or Bcc),
@@ -1271,19 +1269,19 @@ or receiving mail with the if command.
 For example:
 .nf
 
-        \fBif \fIreceive\fR
-                \fIcommands .\ .\ .\fR
-        \fBendif\fR
+    \fBif \fIreceive\fR
+        \fIcommands .\ .\ .\fR
+    \fBendif\fR
 
 .fi
 An else form is also available:
 .nf
 
-        \fBif \fIreceive\fR
-                \fIcommands .\ .\ .\fR
-        \fBelse\fR
-                \fIcommands .\ .\ .\fR
-        \fBendif\fR
+    \fBif \fIreceive\fR
+        \fIcommands .\ .\ .\fR
+    \fBelse\fR
+        \fIcommands .\ .\ .\fR
+    \fBendif\fR
 
 .fi
 Note that the only allowed conditions are
@@ -3239,16 +3237,13 @@ list.
 .TP
 .B sendmail
 To use an alternate mail delivery system,
-set this option to the full pathname
-of the program to use.
-This should be used with care.
+set this option to the full pathname of the program to use.
 .TP
 .B SHELL
 Pathname of the shell to use
 in the ! command and the ~! escape.
 A default shell is used
 if this option is not defined.
-.TP
 .TP
 .B Sign
 A string for use with the
@@ -3408,12 +3403,9 @@ for a specific address.
 Only applicable if S/MIME support is built using NSS.
 .TP
 .B smtp
-Normally, \*(UA invokes
-.IR sendmail (8)
-directly to transfer messages.
-If the \fIsmtp\fR variable is set, a SMTP connection to
-the server specified by the value of this variable
-is used instead.
+Normally, \*(UA invokes \fIsendmail(1)\fR directly to transfer messages.
+If the \fIsmtp\fR variable is set, a SMTP connection to the server
+specified by the value of this variable is used instead.
 If the SMTP server does not use the standard port,
 a value of \fIserver:port\fR can be given,
 with \fIport\fR as a name or as a number.
@@ -3749,8 +3741,7 @@ into your messages.
 .PP
 To look at a specific message, use the
 .I type
-command, which may be abbreviated to simply
-.I t .
+command, which may be abbreviated to simply \fIt\fR.
 For example, if you had the following messages:
 .nf
 .sp
@@ -3897,8 +3888,7 @@ and is specified by
 .sp
 .fi
 for example.
-Note that no spaces are allowed in
-.I "set record=Sent".
+Note that no spaces are allowed in \fI"set record=Sent"\fR.
 .PP
 \*(UA includes a simple facility for maintaining groups of messages
 together in folders.
@@ -3984,8 +3974,7 @@ While typing in a message to be sent to others, it is often
 useful to be able to invoke the text editor on the partial message,
 print the message, execute a shell command, or do some other
 auxiliary function. 
-\*(UA provides these capabilities through
-.I "tilde escapes" ,
+\*(UA provides these capabilities through \fI"tilde escapes"\fR,
 which consist of a tilde (~) at the beginning of a line, followed by
 a single character which indicates the function to be performed.
 For example, to print the text of the message so far, use:
@@ -4063,11 +4052,10 @@ command is specific to this implementation of \*(UA and will confuse other
 implementations, it should not be used in \*(ur, instead, put
 .nf
 
-    \fBset NAIL_EXTRA_RC=\fI~/.\*(uarc\fR
+    \fBset NAIL_EXTRA_RC=.\*(uarc
 
 .fi
-in \*(ur and create a file \fI~/.\*(uarc\fR
-containing the
+in \*(ur and create a file ~/.\*(uarc containing the
 .I shortcut
 command above.
 You can then access your remote mailbox by invoking
@@ -4233,7 +4221,7 @@ fetch its CA certificate by executing the shell command
 .nf
 
     $ \fBopenssl s_client </dev/null \-showcerts \-connect \e
-           \fIserver.myisp.example\fB:\fIimaps\fB 2>&1 | tee \fIlog\fR
+        \fIserver.myisp.example\fB:\fIimaps\fB 2>&1 | tee \fIlog\fR
 
 .fi
 (see
@@ -4243,12 +4231,10 @@ and put it into the file specified with
 The data you need is located at the end of the certificate chain
 within (and including) the `BEGIN CERTIFICATE'
 and `END CERTIFICATE' lines.
-(Note that it is possible to fetch
-a forged certificate by this method.
-You can only completely rely
-on the authenticity of the CA certificate
-if you fetch it in a way that is trusted by other means,
-such as by personally receiving the certificate on storage media.)
+Note that the example above is \fIinsecure\fR!
+One should use the `-verify' and `-CAfile' options of
+.IR s_client (1)
+to be "on the safe side" regarding the fetched certificates.
 .SS "Creating a score file or message filter"
 The scoring commands are best separated
 from other configuration for clarity,
@@ -4435,7 +4421,7 @@ It is thus necessary to store the attachment in a temporary file, as with
 .nf
 .sp
     \fBset pipe-application/pdf=\fR"cat >/tmp/\*(ua$$.pdf; \e
-           acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
+        acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
 .sp
 .fi
 Note that security defects are discovered in PDF viewers
@@ -4458,9 +4444,10 @@ Signing a message does not change its regular text;
 it can be read regardless of whether the recipient's software
 is able to handle S/MIME.
 It is thus usually possible to sign all outgoing messages
-if so desired.\(emEncryption, in contrast,
-makes the message text invisible for all people
-except those who have access to the secret decryption key.
+if so desired.
+Encryption, in contrast,
+makes the message text invisible for all people except those who have
+access to the secret decryption key.
 To encrypt a message,
 the specific recipient's public encryption key must be known.
 It is thus not possible to send encrypted mail to people
@@ -4679,21 +4666,21 @@ An invocation could thus look like
 .nf
 .sp
     \fBenv MAILRC=/dev/null\fR from=\fIscriptreply@domain\fR smtp=\fIhost\fR \e
-          smtp-auth-user=\fIlogin\fR smtp-auth-password=\fIsecret\fR \e
-          smtp-auth=\fIlogin\fR \*(ba\fB \-n\fR \-s "\fIsubject\fR" \e
-          \-a \fIattachment_file\fR \fIrecipient@domain\fR <\fIcontent_file\fR
+        smtp-auth-user=\fIlogin\fR smtp-auth-password=\fIsecret\fR \e
+        smtp-auth=\fIlogin\fR \*(ba\fB \-n\fR \-s "\fIsubject\fR" \e
+        \-a \fIattachment_file\fR \fIrecipient@domain\fR <\fIcontent_file\fR
 .SH "SEE ALSO"
 fmt(1),
+more(1),
 newaliases(1),
 openssl(1),
 pg(1),
-more(1),
+sendmail(1)
 vacation(1),
 ssl(3),
 aliases(5),
 locale(7),
-mailaddr(7),
-sendmail(8)
+mailaddr(7)
 .SH NOTES
 .PP
 Variables in the environment passed to \*(UA cannot be unset.
@@ -4736,9 +4723,8 @@ Non-Unix text files that use
 (^M, \er)
 characters in addition will be treated as binary data;
 to send such files as text, strip these characters e.\ g. by
-.RS
 .sp
-tr \-d '\e015' <input | \*(ua .\ .\ .
+    $ tr \-d '\e015' <input | \*(ua .\ .\ .
 .sp
 .RE
 or fix the tools that generate them.
@@ -4805,12 +4791,12 @@ and print the prompt again.
 When a second
 .I RUBOUT
 is typed while \*(UA is waiting for the operation to complete,
-the operation itself will be canceled.
+the operation itself will be cancelled.
 In this case,
 data that has not been fetched yet
 will have to be fetched
 before the next command can be performed.
-If the canceled operation
+If the cancelled operation
 was using an SSL/TLS encrypted channel,
 an error in the SSL transport will very likely result,
 and the connection is no longer usable.
@@ -4830,8 +4816,7 @@ However, care should be taken when using a remote server of an ISP;
 it might be better to set up a local SMTP server then
 which just acts as a proxy.
 .PP
-\*(UA immediately contacts the SMTP server (or
-.IR \%/usr/lib/sendmail )
+\*(UA immediately contacts the SMTP server (or \fIsendmail(1)\fR)
 even when operating in
 .I disconnected
 mode.
@@ -4876,6 +4861,6 @@ Electrical and Electronics Engineers, Inc and The Open Group. In the
 event of any discrepancy between this version and the original IEEE and
 The Open Group Standard, the original IEEE and The Open Group Standard
 is the referee document. The original Standard can be obtained online at
-\%http://www.opengroup.org/unix/online.html\ .
+\%<http://www.opengroup.org/unix/online.html>.
 Redistribution of this material is permitted so long as this notice remains
 intact.
