@@ -85,7 +85,7 @@ static void setscreensize(int dummy);
 int 
 main(int argc, char *argv[])
 {
-	const char optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:Ss:T:tu:Vv~",
+	const char optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
 		usagestr[] =
 		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
 		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
