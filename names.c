@@ -662,17 +662,25 @@ unpack(struct name *np)
 struct name *
 elide(struct name *names)
 {
-	struct name *np, *t, *new;
-	struct name *x;
+	struct name *np, *t, *new, *x;
 
 	if (names == NULL)
-		return(NULL);
-	new = names;
-	np = names;
+		return (NULL);
+	/* Throw away all deleted nodes */
+	for (np = NULL; names != NULL; names = names->n_flink)
+		if  ((names->n_type & GDEL) == 0)
+			np = names;
+		else if (np)
+			np->n_flink = names->n_flink;
+	if (np == NULL)
+		return (NULL);
+
+	new = np;
 	np = np->n_flink;
 	if (np != NULL)
 		np->n_blink = NULL;
 	new->n_flink = NULL;
+
 	while (np != NULL) {
 		t = new;
 		while (asccasecmp(t->n_name, np->n_name) < 0) {
