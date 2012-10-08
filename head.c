@@ -294,15 +294,15 @@ extract_header(FILE *fp, struct header *hp)
 		if ((value = thisfield(linebuf, "to")) != NULL) {
 			seenfields++;
 			hq->h_to = checkaddrs(cat(hq->h_to,
-					sextract(value, GTO|GFULL)));
+					lextract(value, GTO|GFULL)));
 		} else if ((value = thisfield(linebuf, "cc")) != NULL) {
 			seenfields++;
 			hq->h_cc = checkaddrs(cat(hq->h_cc,
-					sextract(value, GCC|GFULL)));
+					lextract(value, GCC|GFULL)));
 		} else if ((value = thisfield(linebuf, "bcc")) != NULL) {
 			seenfields++;
 			hq->h_bcc = checkaddrs(cat(hq->h_bcc,
-					sextract(value, GBCC|GFULL)));
+					lextract(value, GBCC|GFULL)));
 		} else if ((value = thisfield(linebuf, "from")) != NULL) {
 			seenfields++;
 			hq->h_from = checkaddrs(cat(hq->h_from,

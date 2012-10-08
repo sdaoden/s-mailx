@@ -955,10 +955,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	}
 #endif
 	if ((cp = value("autocc")) != NULL && *cp)
-		hp->h_cc = cat(hp->h_cc, checkaddrs(sextract(cp, GCC|GFULL)));
+		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC|GFULL)));
 	if ((cp = value("autobcc")) != NULL && *cp)
-		hp->h_bcc = cat(hp->h_bcc,
-				checkaddrs(sextract(cp, GBCC|GFULL)));
+		hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp,GBCC|GFULL)));
 	/*
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.

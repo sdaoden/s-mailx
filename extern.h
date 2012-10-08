@@ -397,7 +397,7 @@ struct name *nalloc(char *str, enum gfield ntype);
 struct name *ndup(struct name *np, enum gfield ntype);
 struct name *extract(char *line, enum gfield ntype);
 struct name *sextract(char *line, enum gfield ntype);
-struct name *userarg_extract(char *line, enum gfield ntype);
+struct name *lextract(char *line, enum gfield ntype);
 char *detract(struct name *np, enum gfield ntype);
 struct name *outof(struct name *names, FILE *fo, struct header *hp);
 int is_fileaddr(char *name);

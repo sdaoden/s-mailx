@@ -148,7 +148,7 @@ sextract(char *line, enum gfield ntype)
 }
 
 struct name *
-userarg_extract(char *line, enum gfield ntype)
+lextract(char *line, enum gfield ntype)
 {
 	return (extract1(line, ntype, ",", 1));
 }
