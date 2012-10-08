@@ -245,7 +245,8 @@ grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
 
 	TTYSET_CHECK(np);
 	loop:
-		np = sextract(rtty_internal(field, detract(np, comma)), gflags);
+		np = userarg_extract(rtty_internal(field, detract(np, comma)),
+			gflags);
 		for (nq = np; nq != NULL; nq = nq->n_flink)
 			if (mime_name_invalid(nq, 1))
 				goto loop;
@@ -265,7 +266,6 @@ grabh(struct header *hp, enum gfield gflags, int subjfirst)
 	int errs;
 	int comma;
 
-	(void) &comma;
 	(void) &saveint;
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
