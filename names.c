@@ -662,27 +662,30 @@ unpack(struct name *np)
 struct name *
 elide(struct name *names)
 {
-	struct name *np, *t, *new, *x;
+	struct name *np, *t, *newn, *x;
 
 	if (names == NULL)
 		return (NULL);
-	/* Throw away all deleted nodes */
+	/* Throw away all deleted nodes (XXX merge with plain sort below?) */
 	for (np = NULL; names != NULL; names = names->n_flink)
-		if  ((names->n_type & GDEL) == 0)
+		if  ((names->n_type & GDEL) == 0) {
+			names->n_blink = np;
+			if (np)
+				np->n_flink = names;
+			else
+				newn = names;
 			np = names;
-		else if (np)
-			np->n_flink = names->n_flink;
-	if (np == NULL)
+		}
+	if (newn == NULL)
 		return (NULL);
 
-	new = np;
-	np = np->n_flink;
+	np = newn->n_flink;
 	if (np != NULL)
 		np->n_blink = NULL;
-	new->n_flink = NULL;
+	newn->n_flink = NULL;
 
 	while (np != NULL) {
-		t = new;
+		t = newn;
 		while (asccasecmp(t->n_name, np->n_name) < 0) {
 			if (t->n_flink == NULL)
 				break;
@@ -709,13 +712,13 @@ elide(struct name *names)
 		 * the new guy becomes the new head of the list.
 		 */
 
-		if (t == new) {
+		if (t == newn) {
 			t = np;
 			np = np->n_flink;
-			t->n_flink = new;
-			new->n_blink = t;
+			t->n_flink = newn;
+			newn->n_blink = t;
 			t->n_blink = NULL;
-			new = t;
+			newn = t;
 			continue;
 		}
 
@@ -737,7 +740,7 @@ elide(struct name *names)
 	 * Go through it and remove duplicates.
 	 */
 
-	np = new;
+	np = newn;
 	while (np != NULL) {
 		t = np;
 		while (t->n_flink != NULL &&
@@ -758,7 +761,7 @@ elide(struct name *names)
 			t->n_flink->n_blink = np;
 		np = np->n_flink;
 	}
-	return(new);
+	return (newn);
 }
 
 /*
