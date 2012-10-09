@@ -1298,9 +1298,9 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		FMT_CC_AND_BCC
 	if (w & GMSGID && stealthmua <= 0)
 		message_id(fo, hp), gotcha++;
-	if (hp->h_ref != NULL && w & GREF) {
-		fmt("References:", hp->h_ref, fo, 0, 1, 0);
-		if ((np = hp->h_ref) != NULL && np->n_name) {
+	if ((np = hp->h_ref) != NULL && w & GREF) {
+		fmt("References:", np, fo, 0, 1, 0);
+		if (np->n_name) {
 			while (np->n_flink)
 				np = np->n_flink;
 			if (is_addr_invalid(np, 0) == 0) {
