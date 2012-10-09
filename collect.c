@@ -720,7 +720,7 @@ cont:
 			/*
 			 * Add to the To list.
 			 */
-			while ((hp->h_to = checkaddrs(cat(hp->h_to,
+			while ((hp->h_to = cat(hp->h_to, checkaddrs(
 					lextract(&linebuf[2], GTO|GFULL))))
 				== NULL);
 			break;
@@ -747,15 +747,15 @@ cont:
 			/*
 			 * Add to the CC list.
 			 */
-			hp->h_cc = checkaddrs(cat(hp->h_cc,
-				lextract(&linebuf[2], GCC|GFULL)));
+			hp->h_cc = cat(hp->h_cc, checkaddrs(
+					lextract(&linebuf[2], GCC|GFULL)));
 			break;
 		case 'b':
 			/*
 			 * Add stuff to blind carbon copies list.
 			 */
-			hp->h_bcc = checkaddrs(cat(hp->h_bcc,
-				lextract(&linebuf[2], GBCC|GFULL)));
+			hp->h_bcc = cat(hp->h_bcc, checkaddrs(
+					lextract(&linebuf[2], GBCC|GFULL)));
 			break;
 		case 'd':
 			strncpy(linebuf + 2, getdeadletter(), linesize - 2);

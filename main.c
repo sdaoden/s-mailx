@@ -207,12 +207,12 @@ main(int argc, char *argv[])
 			break;
 		case 'b':
 			/* Get Blind Carbon Copy Recipient list */
-			bcc = checkaddrs(cat(bcc, lextract(optarg,GBCC|GFULL)));
+			bcc = cat(bcc, checkaddrs(lextract(optarg,GBCC|GFULL)));
 			sendflag++;
 			break;
 		case 'c':
 			/* Get Carbon Copy Recipient list */
-			cc = checkaddrs(cat(cc, lextract(optarg, GCC|GFULL)));
+			cc = cat(cc, checkaddrs(lextract(optarg, GCC|GFULL)));
 			sendflag++;
 			break;
 		case 'D':
@@ -352,7 +352,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		}
 	} else {
 		for (i = optind; argv[i]; i++)
-			to = checkaddrs(cat(to, lextract(argv[i], GTO|GFULL)));
+			to = cat(to, checkaddrs(lextract(argv[i], GTO|GFULL)));
 	}
 
 	/* Check for inconsistent arguments */
