@@ -14,7 +14,7 @@ Backward-compatibility breakers
   specified in the message when the -t option is set.
 - The -q option makes me sad as it doesn't use *indentprefix* for the
   quoted file.  So either there should be -Q which does so, or -q should be
-  changed.
+  changed.  Also see ~R below.
   [Note: i think i go for the latter.  Please complain.]
 - NetBSD mailx(1) removes all recipients in up Cc: and To: that are also
   specified in Bcc.  At least configurable.
@@ -42,6 +42,8 @@ Non-breakers
   roff style is fine, but lines should be ~70 characters, not only ~25.
 - IDNA.
 - Mail-Followup-To:.
+- I want to have a ~R tilde command that works like ~r except it performs
+  quoting of the input just as ~m does.  Also see -q above.
 - Offer the possibility to work with certificate fingerprints instead of
   full certificates, in equal spirit to the current maintainers S-Postman
   and Mercurial.  S-nail(1) could simply offer something in equal spirit to
