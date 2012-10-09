@@ -1366,11 +1366,9 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 
 	if (rsz == 0)
 		return 0;
-	if (prefix == NULL) {
-		lastf = f;
-		lastc = ((char *)ptr)[rsz - 1];
+
+	if (prefix == NULL)
 		return fwrite(ptr, 1, rsz, f);
-	}
 
 	if ((p = value("quote-fold")) != NULL) {
 		qfold = (size_t)strtol(p, NULL, 10);
@@ -1471,7 +1469,7 @@ jsoftnl:		/*
 	}
 
 	lastc = p[-1];
-	return wsz;
+	return (wsz);
 }
 
 /*

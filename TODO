@@ -70,6 +70,15 @@ Non-breakers
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
+- mime.c:prefixwrite() tracks state internally instead of having a cookie
+  argument.  That doesn't really make sense.  Either it is capable to work
+  with multiple files concurrently and prefix-quotes them correctly in the
+  same fashion, or it doesn't track anything at all.  It even tracked those
+  calls that do not write a prefix at all before, just to make this
+  mechanism work ... Or not?  Well, if you track the last file and if there
+  was a newline last, and you switch files, then the last newline state is
+  lost, and you do write the prefix even if in the other file there was no
+  newline last.  I'm confused now.  Change this, please.
 
 - Revise the code:
   + Add C99-likeish typedefs for integers and use them everywhere.
