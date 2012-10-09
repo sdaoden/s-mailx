@@ -95,7 +95,6 @@ setptr(FILE *ibuf, off_t offset)
 	int maybe, inhead, thiscnt;
 	char *linebuf = NULL;
 	size_t linesize = 0, filesize;
-	int broken_mbox = value("broken-mbox") != NULL;
 
 	maybe = 1;
 	inhead = 0;
@@ -180,8 +179,7 @@ setptr(FILE *ibuf, off_t offset)
 		offset += count;
 		this.m_size += count;
 		this.m_lines++;
-		if (!broken_mbox)
-			maybe = linebuf[0] == 0;
+		maybe = linebuf[0] == 0;
 	}
 	/*NOTREACHED*/
 }
