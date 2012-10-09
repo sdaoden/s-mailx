@@ -293,13 +293,15 @@ outof(struct name *names, FILE *fo, struct header *hp)
 	 * Look through all recipients and do a quick return if no file or pipe
 	 * addressee is found.
 	 */
-	for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink) {
-		assert(np->n_flags & NAME_ADDRSPEC_CHECKED);
-		if ((np->n_flags & NAME_ADDRSPEC_ISPIPE) != 0)
-			++pipecnt;
-		else if ((np->n_flags & NAME_ADDRSPEC_ISFILE) != 0)
+	for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink)
+		switch (np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) {
+		case NAME_ADDRSPEC_ISFILE:
 			++xcnt;
-	}
+			break;
+		case NAME_ADDRSPEC_ISPIPE:
+			++pipecnt;
+			break;
+		}
 	if (pipecnt == 0 && xcnt == 0)
 		goto jleave;
 
