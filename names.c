@@ -50,15 +50,16 @@
 #include <time.h>
 #include <unistd.h>
 
-static struct name *tailof(struct name *name);
-static struct name *extract1(char *line, enum gfield ntype, char *separators,
-		int copypfx);
-static char *yankword(char *ap, char *wbuf, char *separators, int copypfx);
-static int same_name(char *n1, char *n2);
-static struct name *gexpand(struct name *nlist, struct grouphead *gh,
-		int metoo, int ntype);
-static struct name *put(struct name *list, struct name *node);
-static struct name *delname(struct name *np, char *name);
+static struct name *	tailof(struct name *name);
+static struct name *	extract1(char *line, enum gfield ntype,
+				char *separators, int copypfx);
+static char *		yankword(char *ap, char *wbuf, char *separators,
+				int copypfx);
+static int		same_name(char *n1, char *n2);
+static struct name *	gexpand(struct name *nlist, struct grouphead *gh,
+				int metoo, int ntype);
+static struct name *	put(struct name *list, struct name *node);
+static struct name *	delname(struct name *np, char *name);
 
 /*
  * Allocate a single element of a name list,
@@ -68,30 +69,38 @@ static struct name *delname(struct name *np, char *name);
 struct name *
 nalloc(char *str, enum gfield ntype)
 {
+	struct addrguts ag;
+	struct str in, out;
 	struct name *np;
-	struct str	in, out;
 
-	/*LINTED*/
-	np = (struct name *)salloc(sizeof *np);
+	np = (struct name*)salloc(sizeof *np);
 	np->n_flink = NULL;
 	np->n_blink = NULL;
 	np->n_type = ntype;
 	np->n_flags = 0;
-	if (ntype & GFULL) {
-		np->n_name = savestr(skin(str));
-		if (strcmp(np->n_name, str)) {
+
+	if (ntype & (GFULL | GSKIN)) {
+		(void)addrspec_with_guts(1, str, &ag);
+		if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0) {
+			ag.ag_n_flags |= NAME_NAME_SALLOC;
+			ag.ag_skinned = savestr(ag.ag_skinned);
+		}
+		np->n_name = np->n_fullname = ag.ag_skinned;
+		np->n_flags = ag.ag_n_flags;
+		if ((ntype & GFULL) && ag.ag_ilen != ag.ag_slen) {
 			in.s = str;
-			in.l = strlen(str);
+			in.l = ag.ag_ilen;
 			mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 			np->n_fullname = savestr(out.s);
 			free(out.s);
-		} else
-			np->n_fullname = np->n_name;
-	} else if (ntype & GSKIN)
-		np->n_fullname = np->n_name = savestr(skin(str));
-	else
+			np->n_flags |= NAME_FULLNAME_SALLOC;
+		}
+	} else {
 		np->n_fullname = np->n_name = savestr(str);
-	return(np);
+		(void)addrspec_with_guts(0, str, &ag);
+		np->n_flags = ag.ag_n_flags | NAME_NAME_SALLOC;
+	}
+	return (np);
 }
 
 struct name *
@@ -99,15 +108,25 @@ ndup(struct name *np, enum gfield ntype)
 {
 	struct name *nnp;
 
+	if ((ntype & (GFULL|GSKIN)) && (np->n_flags & NAME_SKINNED) == 0) {
+		nnp = nalloc(np->n_name, ntype);
+		goto jleave;
+	}
+
 	nnp = (struct name*)salloc(sizeof *np);
-	nnp->n_flink = NULL;
-	nnp->n_blink = NULL;
+	nnp->n_flink = nnp->n_blink = NULL;
 	nnp->n_type = ntype;
-	nnp->n_flags = np->n_flags;
+	nnp->n_flags = (np->n_flags &
+			~(NAME_NAME_SALLOC | NAME_FULLNAME_SALLOC)) |
+		NAME_NAME_SALLOC;
 	nnp->n_name = savestr(np->n_name);
-	nnp->n_fullname = (((ntype & (GFULL|GSKIN)) == 0) ||
-			np->n_name == np->n_fullname)
-		? nnp->n_name : savestr(np->n_fullname);
+	if (np->n_name == np->n_fullname || (ntype & (GFULL|GSKIN)) == 0)
+		nnp->n_fullname = nnp->n_name;
+	else {
+		nnp->n_flags |= NAME_FULLNAME_SALLOC;
+		nnp->n_fullname = savestr(np->n_fullname);
+	}
+jleave:
 	return (nnp);
 }
 
@@ -235,8 +254,8 @@ yankword(char *ap, char *wbuf, char *separators, int copypfx)
 
 	cp = ap;
 	wp = wbuf;
-	while (blankchar(*cp & 0377) || *cp == ',')
-		cp++;
+	while (blankspacechar(*cp) || *cp == ',')
+		++cp;
 	pp = cp;
 	if ((cp = nexttoken(cp)) == NULL)
 		return NULL;
@@ -269,6 +288,28 @@ yankword(char *ap, char *wbuf, char *separators, int copypfx)
 		--wp;
 	*wp = '\0';
 	return cp;
+}
+
+/*
+ * Check all addresses in np and delete invalid ones.
+ */
+struct name *
+checkaddrs(struct name *np)
+{
+	struct name *n;
+
+	for (n = np; n != NULL;) {
+		if (is_addr_invalid(n, 1)) {
+			if (n->n_blink)
+				n->n_blink->n_flink = n->n_flink;
+			if (n->n_flink)
+				n->n_flink->n_blink = n->n_blink;
+			if (n == np)
+				np = n->n_flink;
+		}
+		n = n->n_flink;
+	}
+	return (np);
 }
 
 /*
@@ -467,29 +508,6 @@ jdelall:
 		np = np->n_flink;
 	}
 	goto jleave;
-}
-
-/*
- * Determine if the passed address is a local "send to file" address.
- * If any of the network metacharacters precedes any slashes, it can't
- * be a filename.  We cheat with .'s to allow path names like ./...
- */
-int 
-is_fileaddr(char *name)
-{
-	char *cp;
-
-	if (strchr(name, '@') != NULL)
-		return 0;
-	if (*name == '+')
-		return 1;
-	for (cp = name; *cp; cp++) {
-		if (*cp == '!' || *cp == '%')
-			return 0;
-		if (*cp == '/')
-			return 1;
-	}
-	return 0;
 }
 
 static int

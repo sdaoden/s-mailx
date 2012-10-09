@@ -284,8 +284,12 @@ char *thisfield(const char *linebuf, const char *field);
 char *nameof(struct message *mp, int reptype);
 char *skip_comment(const char *cp);
 char *routeaddr(const char *name);
-char *skin(char *name);
+#define is_fileorpipe_addr(NP) \
+	(((NP)->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) != 0)
+int is_addr_invalid(struct name *np, int putmsg);
 char *skinned_name(struct name *np);
+char *skin(char *name);
+int addrspec_with_guts(int doskin, char *name, struct addrguts *agp);
 char *realname(char *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
@@ -392,8 +396,6 @@ enum okay maildir_remove(const char *name);
 int main(int argc, char *argv[]);
 
 /* mime.c */
-int mime_name_invalid(struct name *np, int putmsg);
-struct name *checkaddrs(struct name *np);
 char *gettcharset(void);
 char *need_hdrconv(struct header *hp, enum gfield w);
 #ifdef HAVE_ICONV
@@ -423,8 +425,8 @@ struct name *extract(char *line, enum gfield ntype);
 struct name *sextract(char *line, enum gfield ntype);
 struct name *lextract(char *line, enum gfield ntype);
 char *detract(struct name *np, enum gfield ntype);
+struct name *checkaddrs(struct name *np);
 struct name *outof(struct name *names, FILE *fo, struct header *hp);
-int is_fileaddr(char *name);
 struct name *usermap(struct name *names);
 struct name *cat(struct name *n1, struct name *n2);
 char **unpack(struct name *np);

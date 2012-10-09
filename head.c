@@ -47,12 +47,13 @@
  * Routines for processing and detecting headlines.
  */
 
-static char *copyin(char *src, char **space);
-static char *nextword(char *wp, char *wbuf);
-static int gethfield(FILE *f, char **linebuf, size_t *linesize, int rem,
-		char **colon);
-static int msgidnextc(const char **cp, int *status);
-static int charcount(char *str, int c);
+static char *	copyin(char *src, char **space);
+static char *	nextword(char *wp, char *wbuf);
+static int	gethfield(FILE *f, char **linebuf, size_t *linesize, int rem,
+			char **colon);
+static int	addrspec_check(int doskin, struct addrguts *agp);
+static int	msgidnextc(const char **cp, int *status);
+static int	charcount(char *str, int c);
 
 /*
  * See if the passed line buffer is a mail header.
@@ -277,7 +278,7 @@ nextword(char *wp, char *wbuf)
 }
 
 void
-extract_header(FILE *fp, struct header *hp)
+extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 {
 	char *linebuf = NULL;
 	size_t linesize = 0;
@@ -584,13 +585,48 @@ routeaddr(const char *name)
 }
 
 /*
+ * Check if a name's address part contains invalid characters.
+ */
+int 
+is_addr_invalid(struct name *np, int putmsg)
+{
+	char *name = np->n_name;
+	int f = np->n_flags;
+
+	if ((f & NAME_ADDRSPEC_INVALID) == 0 || ! putmsg ||
+			(f & NAME_ADDRSPEC_ERR_EMPTY) != 0)
+		;
+	else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
+		fprintf(stderr, tr(142, "%s contains invalid @@ sequence\n"),
+			name);
+	else {
+		char ce[sizeof(1ul)];
+		unsigned char c = NAME_ADDRSPEC_ERR_GETC(f);
+
+		if ((unsigned char)c >= 040 && (unsigned char)c <= 0177)
+			ce[0] = c, ce[1] = '\0';
+		else
+			snprintf(ce, sizeof(ce), "\\%03o", (unsigned int)c);
+		fprintf(stderr, tr(143,
+			"%s contains invalid character '%s'\n"),
+			name, ce);
+	}
+	return ((f & NAME_ADDRSPEC_INVALID) != 0);
+}
+
+/*
  * Returned the skinned n_name, use the cached value if available.
  * Note well that it may *not* create a duplicate.
  */
 char *
-skinned_name(struct name *np)
+skinned_name(struct name *np) /* TODO !HAVE_ASSERTS legacy */
 {
+#ifdef HAVE_ASSERTS
+	assert(np->n_flags & NAME_SKINNED);
+	return (np->n_name);
+#else
 	return ((np->n_flags & NAME_SKINNED) ? np->n_name : skin(np->n_name));
+#endif
 }
 
 /*
@@ -600,22 +636,169 @@ skinned_name(struct name *np)
 char *
 skin(char *name)
 {
-	int c;
-	char *cp, *cp2;
-	char *bufend;
-	int gotlt, lastsp;
-	char *nbuf;
+	struct addrguts ag;
 
 	if (name == NULL)
-		return(NULL);
-	if (strchr(name, '(') == NULL && strchr(name, '<') == NULL
-	    && strchr(name, ' ') == NULL)
-		return(name);
-	gotlt = 0;
-	lastsp = 0;
-	nbuf = ac_alloc(strlen(name) + 1);
-	bufend = nbuf;
-	for (cp = name, cp2 = bufend; (c = *cp++) != '\0'; ) {
+		return (NULL);
+
+	(void)addrspec_with_guts(1, name, &ag);
+	name = ag.ag_skinned;
+	if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
+		name = savestrbuf(name, ag.ag_slen);
+	return (name);
+}
+
+/*
+ * Classify and check a (possibly skinned) header body according to RFC
+ * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
+ * also a file or a pipe command, so check that first, then.
+ * Otherwise perform content checking and isolate the domain part (for IDNA).
+ */
+static int
+addrspec_check(int skinned, struct addrguts *agp)
+{
+	char *addr, *p, in_quote, in_domain, hadat;
+	union {char c; unsigned char u;} c;
+
+	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
+	addr = agp->ag_skinned;
+
+	if (agp->ag_iaddr_end <= agp->ag_iaddr_start) {
+		agp->ag_n_flags |= NAME_ADDRSPEC_INVALID |
+			NAME_ADDRSPEC_ERR_EMPTY;
+		goto jleave;
+	}
+
+	/* If the field is not a recipient, it cannot be a file or a pipe */
+	if (! skinned) /* XXX  || (gfield & (GTO | GCC | GBCC)) == 0) */
+		goto jaddr_check;
+
+	/*
+	 * Excerpt from nail.1:
+	 *
+	 * Recipient address specifications
+	 * The rules are: Any name which starts with a `|' character specifies
+	 * a pipe,  the  command  string  following  the `|' is executed and
+	 * the message is sent to its standard input; any other name which
+	 * contains a  `@' character  is treated as a mail address; any other
+	 * name which starts with a `+' character specifies a folder name; any
+	 * other name  which  contains  a  `/' character  but  no `!'  or `%'
+	 * character before also specifies a folder name; what remains is
+	 * treated as a mail  address.
+	 */
+	if (*addr == '|') {
+		agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
+		goto jleave;
+	}
+	if (memchr(addr, '@', agp->ag_slen) == NULL) {
+		if (*addr == '+')
+			goto jisfile;
+		for (p = addr; (c.c = *p); ++p) {
+			if (c.c == '!' || c.c == '%')
+				break;
+			if (c.c == '/') {
+jisfile:			agp->ag_n_flags |= NAME_ADDRSPEC_ISFILE;
+				goto jleave;
+			}
+		}
+	}
+
+jaddr_check:
+	in_quote = in_domain = hadat = 0;
+
+	for (p = addr; (c.c = *p++) != '\0';) {
+		if (c.c == '\"') {
+			in_quote = ! in_quote;
+		} else if (c.u < 040 || c.u >= 0177) { /*FIXME IDNA!!in_domin */
+		/*
+			if (in_domain)
+				agp->ag_n_flags |= NAME_ADDRSPEC_IDNA;
+			else*/
+				break;
+		} else if (in_domain == 2) {
+			if ((c.c == ']' && *p != '\0') || c.c == '\\' ||
+					whitechar(c.c))
+				break;
+		} else if (in_quote && in_domain == 0) {
+			/*EMPTY*/;
+		} else if (c.c == '\\' && *p != '\0') {
+			++p;
+		} else if (c.c == '@') {
+			if (hadat++) {
+				agp->ag_n_flags |= NAME_ADDRSPEC_INVALID |
+					NAME_ADDRSPEC_ERR_ATSEQ |
+					NAME_ADDRSPEC_ERR_SETC('@');
+				goto jleave;
+			}
+			agp->ag_sdom_start = (size_t)(p - addr);
+			in_domain = (*p == '[') ? 2 : 1;
+			continue;
+		} else if (c.c == '(' || c.c == ')' ||
+				c.c == '<' || c.c == '>' ||
+				c.c == ',' || c.c == ';' || c.c == ':' ||
+				c.c == '\\' || c.c == '[' || c.c == ']')
+			break;
+		hadat = 0;
+	}
+
+	if (c.c == '\0') {
+		agp->ag_sdom_end = (size_t)(--p - addr);
+	} else
+		agp->ag_n_flags |= NAME_ADDRSPEC_INVALID |
+			NAME_ADDRSPEC_ERR_SETC(c.c);
+jleave:
+	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
+}
+
+/*
+ * TODO addrspec_with_guts(!DOSKIN): 'want to release v13, but the code is evil
+ * TODO in that {,GSKIN,GFULL} are not really enough to handle all names.
+ * TODO We will have to classify *exactly* those fields we really care about,
+ * TODO and simply perform high-bit-set checking only (?) for all the others.
+ * TODO For those we do care for, provide special parsers that classify and
+ * TODO extract the stuff *exactly* (after a short glance i think NetBSD mailx
+ * TODO does this).  And *do* see namecache and header object TODO notes.
+ */
+/*
+ * Skin *name* and extract the *addr-spec* according to RFC 5322. TODO 822:5322
+ * Store the result in .ag_skinned and also fill in those .ag_ fields that have
+ * actually been seen.
+ * Return 0 if something good has been parsed, 1 if fun didn't exactly know how
+ * to deal with the input, or if that was plain invalid.
+ */
+int
+addrspec_with_guts(int doskin, char *name, struct addrguts *agp)
+{
+	char *cp, *cp2, *bufend, *nbuf, c;
+	int gotlt, lastsp;
+
+	memset(agp, 0, sizeof *agp);
+
+	if ((agp->ag_input = name) == NULL || /* XXX ever? */
+			(agp->ag_ilen = strlen(name)) == 0) {
+		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED |
+			NAME_ADDRSPEC_INVALID | NAME_ADDRSPEC_ERR_EMPTY;
+		return (1);
+	}
+
+	if (! doskin || (memchr(name, '(', agp->ag_ilen) == NULL &&
+				memchr(name, '<', agp->ag_ilen) == NULL &&
+				memchr(name, ' ', agp->ag_ilen) == NULL)) {
+		/*agp->ag_iaddr_start = 0;*/
+		agp->ag_iaddr_end = agp->ag_ilen - 1;
+		agp->ag_skinned = name;
+		agp->ag_slen = agp->ag_ilen;
+		agp->ag_n_flags = NAME_SKINNED;
+		return (addrspec_check(doskin, agp));
+	}
+
+	/* Something makes us think we have to perform the skin operation */
+	nbuf = ac_alloc(agp->ag_ilen + 1);
+	/*agp->ag_iaddr_start = 0;*/
+	cp2 = bufend = nbuf;
+	gotlt = lastsp = 0;
+
+	for (cp = name; (c = *cp++) != '\0'; ) {
 		switch (c) {
 		case '(':
 			cp = skip_comment(cp);
@@ -626,6 +809,10 @@ skin(char *name)
 			/*
 			 * Start of a "quoted-string".
 			 * Copy it in its entirety.
+			 * XXX RFC: quotes are "semantically invisible"
+			 * XXX But it was explicitly added (Changelog.Heirloom,
+			 * XXX [9.23] released 11/15/00, "Do not remove quotes
+			 * XXX when skinning names"?  No more info..
 			 */
 			*cp2++ = c;
 			while ((c = *cp) != '\0') {
@@ -650,17 +837,12 @@ skin(char *name)
 			else
 			if (cp[0] == '@' && cp[1] == ' ')
 				cp += 2, *cp2++ = '@';
-#if 0
-			/*
-			 * RFC 822 specifies spaces are STRIPPED when
-			 * in an adress specifier.
-			 */
 			else
 				lastsp = 1;
-#endif
 			break;
 
 		case '<':
+			agp->ag_iaddr_start = (size_t)(cp - name);
 			cp2 = bufend;
 			gotlt++;
 			lastsp = 0;
@@ -668,6 +850,8 @@ skin(char *name)
 
 		case '>':
 			if (gotlt) {
+				/* (addrspec_check() verifies these later!) */
+				agp->ag_iaddr_end = (size_t)(cp - 1 - name);
 				gotlt = 0;
 				while ((c = *cp) != '\0' && c != ',') {
 					cp++;
@@ -685,7 +869,7 @@ skin(char *name)
 				lastsp = 0;
 				break;
 			}
-			/* Fall into . . . */
+			/* FALLTRHOUGH */
 
 		default:
 			if (lastsp) {
@@ -693,19 +877,23 @@ skin(char *name)
 				*cp2++ = ' ';
 			}
 			*cp2++ = c;
-			if (c == ',' && !gotlt) {
+			if (c == ',' && ! gotlt) {
 				*cp2++ = ' ';
-				for (; *cp == ' '; cp++)
+				for (; *cp == ' '; ++cp)
 					;
 				lastsp = 0;
 				bufend = cp2;
 			}
 		}
 	}
-	*cp2 = 0;
-	cp = savestr(nbuf);
+	agp->ag_slen = (size_t)(cp2 - nbuf);
+	if (agp->ag_iaddr_end == 0)
+		agp->ag_iaddr_end = agp->ag_iaddr_start + agp->ag_slen;
+
+	agp->ag_skinned = cp = savestrbuf(nbuf, agp->ag_slen);
 	ac_free(nbuf);
-	return cp;
+	agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
+	return (addrspec_check(doskin, agp));
 }
 
 /*

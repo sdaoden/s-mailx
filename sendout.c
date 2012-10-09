@@ -116,15 +116,19 @@ getencoding(enum conversion convert)
  * the distribution list into the appropriate fields.
  */
 static struct name *
-fixhead(struct header *hp, struct name *tolist)
+fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 {
 	struct name *np;
 
 	hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
-		if (np->n_type & GDEL)
+		if (np->n_type & GDEL) {
+#ifdef HAVE_ASSERTS
+			assert(0); /* Shouldn't happen here, but later on :)) */
+#else
 			continue;
-		else switch (np->n_type & GMASK) {
+#endif
+		} else switch (np->n_type & GMASK) {
 		case (GTO):
 			hp->h_to = cat(hp->h_to, ndup(np, np->n_type|GFULL));
 			break;
@@ -1299,7 +1303,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		if ((np = hp->h_ref) != NULL && np->n_name) {
 			while (np->n_flink)
 				np = np->n_flink;
-			if (mime_name_invalid(np, 0) == 0) {
+			if (is_addr_invalid(np, 0) == 0) {
 				fprintf(fo, "In-Reply-To: %s\n", np->n_name);
 				gotcha++;
 			}
@@ -1355,7 +1359,7 @@ fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 	for (; np != NULL; np = np->n_flink) {
 		if ((m & m_NOPF) && is_fileorpipe_addr(np))
 			continue;
-		if (mime_name_invalid(np, ! dropinvalid)) {
+		if (is_addr_invalid(np, ! dropinvalid)) {
 			if (dropinvalid)
 				continue;
 			else

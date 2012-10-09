@@ -142,108 +142,6 @@ delctrl(char *cp, size_t sz)
 	return y;
 }
 
-/*
- * Check if a name's address part contains invalid characters.
- */
-int 
-mime_name_invalid(struct name *np, int putmsg)
-{
-	char *name = np->n_name, *addr, *p;
-	int in_quote = 0, in_domain = 0, err = 0, hadat = 0;
-
-	if (np->n_flags & NAME_MIME_CHECKED)
-		return (np->n_flags & NAME_MIME_INVALID) != 0;
-	np->n_flags |= NAME_MIME_CHECKED;
-
-	if (is_fileaddr(name))
-		return 0;
-	addr = skin(name);
-
-	if (addr == NULL || *addr == '\0') {
-		np->n_flags |= NAME_MIME_INVALID;
-		return 1;
-	}
-	for (p = addr; *p != '\0'; p++) {
-		if (*p == '\"') {
-			in_quote = !in_quote;
-		} else if (*p < 040 || (*p & 0377) >= 0177) {
-			err = *p & 0377;
-			break;
-		} else if (in_domain == 2) {
-			if ((*p == ']' && p[1] != '\0') || *p == '\0'
-					|| *p == '\\' || whitechar(*p & 0377)) {
-				err = *p & 0377;
-				break;
-			}
-		} else if (in_quote && in_domain == 0) {
-			/*EMPTY*/;
-		} else if (*p == '\\' && p[1] != '\0') {
-			p++;
-		} else if (*p == '@') {
-			if (hadat++) {
-				if (putmsg) {
-					fprintf(stderr, catgets(catd, CATSET,
-								142,
-					"%s contains invalid @@ sequence\n"),
-						addr);
-					putmsg = 0;
-				}
-				err = *p;
-				break;
-			}
-			if (p[1] == '[')
-				in_domain = 2;
-			else
-				in_domain = 1;
-			continue;
-		} else if (*p == '(' || *p == ')' || *p == '<' || *p == '>'
-				|| *p == ',' || *p == ';' || *p == ':'
-				|| *p == '\\' || *p == '[' || *p == ']') {
-			err = *p & 0377;
-			break;
-		}
-		hadat = 0;
-	}
-	if (err) {
-		np->n_flags |= NAME_MIME_INVALID;
-		if (putmsg) {
-			char ce[sizeof(void*)];
-			/* 2012-09-25: dropped isprint(3) even if available
-			 * since that fails for UTF-8 anyway */
-			if (err >= 040 && err <= 0177)
-				ce[0] = (char)err, ce[1] = '\0';
-			else
-				snprintf(ce, sizeof(ce), "\\%03o", err);
-			fprintf(stderr,
-				tr(143, "%s contains invalid character '%s'\n"),
-				addr, ce);
-		}
-	}
-	return err;
-}
-
-/*
- * Check all addresses in np and delete invalid ones.
- */
-struct name *
-checkaddrs(struct name *np)
-{
-	struct name *n = np;
-
-	while (n != NULL) {
-		if (mime_name_invalid(n, 1)) {
-			if (n->n_blink)
-				n->n_blink->n_flink = n->n_flink;
-			if (n->n_flink)
-				n->n_flink->n_blink = n->n_blink;
-			if (n == np)
-				np = n->n_flink;
-		}
-		n = n->n_flink;
-	}
-	return np;
-}
-
 static char defcharset[] = "utf-8";
 
 /*
@@ -800,6 +698,7 @@ gettextconversion(void)
 	return convert;
 }
 
+/*TODO Dobson: be037047c, contenttype==NULL||"text"==NULL control flow! */
 int
 get_mime_convert(FILE *fp, char **contenttype, char **charset,
 		enum mimeclean *isclean, int dosign)
@@ -876,13 +775,13 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 	sz = in->l;
 	upper = in->s + in->l;
 	for (p = in->s, l = 0; p < upper; p++) {
-		if (mustquote(*p&0377) ||
-				(p < upper-1 && p[1] == '\n' &&
-					blankchar(p[0]&0377)) ||
-				(p < upper-4 && l == 0 &&
-					p[0] == 'F' && p[1] == 'r' &&
+		if (mustquote(*p) ||
+				(p < upper - 1 && p[1] == '\n' &&
+					blankchar(*p)) ||
+				(p < upper - 4 && l == 0 &&
+					*p == 'F' && p[1] == 'r' &&
 					p[2] == 'o' && p[3] == 'm') ||
-				(*p == '.' && l == 0 && p < upper-1 &&
+				(*p == '.' && l == 0 && p < upper - 1 &&
 					p[1] == '\n')) {
 			if (l >= 69) {
 				sz += 2;
@@ -891,7 +790,7 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 			}
 			sz += 2;
 			putc('=', fo);
-			h = ctohex(*p&0377, hex);
+			h = ctohex(*p, hex);
 			fwrite(h, sizeof *h, 2, fo);
 			l += 3;
 		} else {
@@ -1510,7 +1409,7 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 				/* (c: keep cc happy) */
 				for (c = i = 0; p + i < maxp;) {
 					c = p[i++];
-					if (blankspacechar(c)) /* XXX U+A0+ */
+					if (blankspacechar(c))
 						continue;
 					if (! ISQUOTE(c))
 						goto jquoteok;

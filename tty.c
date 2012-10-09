@@ -247,7 +247,7 @@ grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
 	loop:
 		np = lextract(rtty_internal(field, detract(np, comma)), gflags);
 		for (nq = np; nq != NULL; nq = nq->n_flink)
-			if (mime_name_invalid(nq, 1))
+			if (is_addr_invalid(nq, 1))
 				goto loop;
 	return np;
 }

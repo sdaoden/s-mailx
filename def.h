@@ -442,19 +442,45 @@ struct header {
  */
 
 enum nameflags {
-	NAME_MIME_CHECKED	= 1<<0,	/* mime_name_invalid() yet checked.. */
-	NAME_MIME_INVALID	= 1<<1,	/* ..and it was invalid */
-	NAME_IDNA_REQUIRED	= 1<<2,	/* IDNA convertion desired.. */
-	NAME_IDNA_APPLIED	= 1<<3	/* ..and is applied to name.n_name */
+	NAME_NAME_SALLOC	= 1<<0,	/* .n_name is doped */
+	NAME_FULLNAME_SALLOC	= 1<<1,	/* .n_fullname is doped */
+	NAME_SKINNED		= 1<<2,	/* Is actually skin()ned */
+	NAME_ADDRSPEC_CHECKED	= 1<<3,
+	NAME_ADDRSPEC_ISFILE  	= 1<<4,	/* is a file path */
+	NAME_ADDRSPEC_ISPIPE 	= 1<<5,	/* is a command for pipeing */
+	NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE |
+					NAME_ADDRSPEC_ISPIPE,
+	NAME_ADDRSPEC_INVALID	= 1<<6,	/* An invalid addr-spec */
+	NAME_ADDRSPEC_ERR_EMPTY	= 1<<7,	/* An empty string (or NULL) */
+	NAME_ADDRSPEC_ERR_ATSEQ	= 1<<8,	/* Weird @ sequence */
+	/* More on _ERR_ below */
+	NAME_IDNA		= 1<<9,	/* IDNA convertion needed/applied */
+	/* Bit range for storing a faulty character */
+	_NAME_ADDRSPEC_ERR_MASKC = 0xFF << 16
 };
+
+#define NAME_ADDRSPEC_ERR_GETC(F)	(((F) & 0x00FF0000) >> 16)
+#define NAME_ADDRSPEC_ERR_SETC(C)	(((unsigned char)(C) & 0xFF) << 16)
 
 struct name {
 	struct	name *n_flink;		/* Forward link in list. */
 	struct	name *n_blink;		/* Backward list link */
 	enum gfield	n_type;		/* From which list it came */
-	int	n_flags;		/* enum nameflags */
+	enum nameflags	n_flags;	/* enum nameflags */
 	char	*n_name;		/* This fella's name */
 	char	*n_fullname;		/* Sometimes, name including comment */
+};
+
+struct addrguts {
+	const char	*ag_input;	/* Input string as given */
+	size_t		ag_ilen;	/* strlen() of input */
+	size_t		ag_iaddr_start;	/* Start of address in .ag_input, */
+	size_t		ag_iaddr_end;	/* its end (only if ! _FILEADDR) */
+	char		*ag_skinned;	/* Output (alloced if !=.ag_input) */
+	size_t		ag_slen;	/* strlen() of .ag_skinned */
+	size_t		ag_sdom_start;	/* Start of domain in .ag_skinned, */
+	size_t		ag_sdom_end;	/* its end */
+	enum nameflags	ag_n_flags;	/* enum nameflags of .ag_skinned */
 };
 
 /*
