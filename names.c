@@ -79,15 +79,16 @@ nalloc(char *str, enum gfield ntype)
 	np->n_type = ntype;
 	np->n_flags = 0;
 
-	if (ntype & (GFULL | GSKIN)) {
-		(void)addrspec_with_guts(1, str, &ag);
-		if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0) {
-			ag.ag_n_flags |= NAME_NAME_SALLOC;
-			ag.ag_skinned = savestr(ag.ag_skinned);
-		}
-		np->n_name = np->n_fullname = ag.ag_skinned;
-		np->n_flags = ag.ag_n_flags;
-		if ((ntype & GFULL) && ag.ag_ilen != ag.ag_slen) {
+	(void)addrspec_with_guts((ntype & (GFULL|GSKIN|GREF)) != 0, str, &ag);
+	if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0) {
+		ag.ag_n_flags |= NAME_NAME_SALLOC;
+		ag.ag_skinned = savestr(ag.ag_skinned);
+	}
+	np->n_fullname = np->n_name = ag.ag_skinned;
+	np->n_flags = ag.ag_n_flags;
+
+	if (ntype & GFULL) {
+		if (ag.ag_ilen != ag.ag_slen) {
 			in.s = str;
 			in.l = ag.ag_ilen;
 			mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
@@ -95,10 +96,18 @@ nalloc(char *str, enum gfield ntype)
 			free(out.s);
 			np->n_flags |= NAME_FULLNAME_SALLOC;
 		}
-	} else {
-		np->n_fullname = np->n_name = savestr(str);
-		(void)addrspec_with_guts(0, str, &ag);
-		np->n_flags = ag.ag_n_flags | NAME_NAME_SALLOC;
+	} else if (ntype & GREF) { /* TODO LEGACY */
+		/* TODO Unfortunately we had to skin GREFerences i.e. the
+		 * TODO surrounding angle brackets have been stripped away.
+		 * TODO Necessarily since otherwise the plain address check
+		 * TODO fails due to them; insert them back so that valid
+		 * TODO headers will be created */
+		np->n_fullname = np->n_name = str = salloc(ag.ag_slen + 2 + 1);
+		*(str++) = '<';
+		memcpy(str, ag.ag_skinned, ag.ag_slen);
+		str += ag.ag_slen;
+		*(str++) = '>';
+		*str = '\0';
 	}
 	return (np);
 }
