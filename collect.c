@@ -535,7 +535,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			quoteig = NULL;
 			action = SEND_QUOTE_ALL;
 		} else {
-			cp = hfield("from", mp);
+			cp = hfield1("from", mp);
 			if (cp != NULL) {
 				mime_write(cp, strlen(cp),
 						collf, CONV_FROMHDR, TD_NONE,

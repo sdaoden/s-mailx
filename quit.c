@@ -239,8 +239,8 @@ nolock:
 		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("message-id", mp)) != NULL ||
-					(id = hfield("article-id", mp)) != NULL)
+			if ((id = hfield1("message-id", mp)) != NULL ||
+					(id = hfield1("article-id",mp)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 	}
@@ -494,8 +494,8 @@ edstop(void)
 		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("message-id", mp)) != NULL ||
-					(id = hfield("article-id", mp)) != NULL)
+			if ((id = hfield1("message-id", mp)) != NULL ||
+					(id = hfield1("article-id",mp)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 	}

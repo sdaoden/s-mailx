@@ -724,7 +724,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 {
 	char	*cp;
 
-	ip->m_ct_type = hfield("content-type", (struct message *)ip);
+	ip->m_ct_type = hfield1("content-type", (struct message *)ip);
 	if (ip->m_ct_type != NULL) {
 		ip->m_ct_type_plain = savestr(ip->m_ct_type);
 		if ((cp = strchr(ip->m_ct_type_plain, ';')) != NULL)
@@ -738,11 +738,11 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
 		ip->m_charset = us_ascii;
-	ip->m_ct_transfer_enc = hfield("content-transfer-encoding",
+	ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
 			(struct message *)ip);
 	ip->m_mimeenc = ip->m_ct_transfer_enc ?
 		mime_getenc(ip->m_ct_transfer_enc) : MIME_7B;
-	if ((cp = hfield("content-disposition", (struct message *)ip)) == 0 ||
+	if ((cp = hfield1("content-disposition", (struct message *)ip)) == 0 ||
 			(ip->m_filename = mime_getparam("filename", cp)) == 0)
 		if (ip->m_ct_type != NULL)
 			ip->m_filename = mime_getparam("name", ip->m_ct_type);
@@ -925,8 +925,8 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	char	*to, *cc;
 
 	memcpy(&m, ip, sizeof m);
-	to = hfield("to", zmp);
-	cc = hfield("cc", zmp);
+	to = hfield1("to", zmp);
+	cc = hfield1("cc", zmp);
 	if ((xmp = smime_decrypt(&m, to, cc, 0)) != NULL) {
 		np = csalloc(1, sizeof *np);
 		np->m_flag = xmp->m_flag;

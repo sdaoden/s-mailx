@@ -846,9 +846,9 @@ name1(struct message *mp, int reptype)
 	FILE *ibuf;
 	int first = 1;
 
-	if ((cp = hfield("from", mp)) != NULL && *cp != '\0')
+	if ((cp = hfield1("from", mp)) != NULL && *cp != '\0')
 		return cp;
-	if (reptype == 0 && (cp = hfield("sender", mp)) != NULL &&
+	if (reptype == 0 && (cp = hfield1("sender", mp)) != NULL &&
 			*cp != '\0')
 		return cp;
 	namebuf = smalloc(namesize = 1);
@@ -900,7 +900,7 @@ newname:
 		cp++;
 	}
 out:
-	if (*namebuf != '\0' || ((cp = hfield("return-path", mp))) == NULL ||
+	if (*namebuf != '\0' || ((cp = hfield1("return-path", mp))) == NULL ||
 			*cp == '\0')
 		cp = savestr(namebuf);
 	if (linebuf)
@@ -1028,9 +1028,9 @@ fakefrom(struct message *mp)
 {
 	char *name;
 
-	if (((name = skin(hfield("return-path", mp))) == NULL ||
+	if (((name = skin(hfield1("return-path", mp))) == NULL ||
 				*name == '\0' ) &&
-			((name = skin(hfield("from", mp))) == NULL ||
+			((name = skin(hfield1("from", mp))) == NULL ||
 				*name == '\0'))
 		name = "-";
 	return name;
@@ -1258,7 +1258,7 @@ substdate(struct message *m)
 	 * or fall back to current time.
 	 */
 	time(&now);
-	if ((cp = hfield_mult("received", m, 0)) != NULL) {
+	if ((cp = hfield1("received", m)) != NULL) {
 		while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
 			do
 				cp++;
@@ -1268,7 +1268,7 @@ substdate(struct message *m)
 			m->m_time = rfctime(cp);
 	}
 	if (m->m_time == 0 || m->m_time > now)
-		if ((cp = hfield("date", m)) != NULL)
+		if ((cp = hfield1("date", m)) != NULL)
 			m->m_time = rfctime(cp);
 	if (m->m_time == 0 || m->m_time > now)
 		m->m_time = now;
@@ -1296,8 +1296,8 @@ getsender(struct message *mp)
 	char	*cp;
 	struct name	*np;
 
-	if ((cp = hfield("from", mp)) == NULL ||
+	if ((cp = hfield1("from", mp)) == NULL ||
 			(np = sextract(cp, GEXTRA|GSKIN)) == NULL)
 		return NULL;
-	return np->n_flink != NULL ? skin(hfield("sender", mp)) : np->n_name;
+	return np->n_flink != NULL ? skin(hfield1("sender", mp)) : np->n_name;
 }

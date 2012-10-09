@@ -1810,8 +1810,8 @@ imap_update(struct mailbox *mp)
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("message-id", m)) != NULL ||
-					(id = hfield("article-id", m)) != NULL)
+			if ((id = hfield1("message-id", m)) != NULL ||
+					(id = hfieldX("article-id", m)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 		if (mp->mb_perm == 0) {

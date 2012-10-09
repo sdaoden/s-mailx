@@ -951,12 +951,12 @@ getsig(struct message *m, int n, NSSCMSMessage **msg)
 	int	inhdr, binary;
 	int	detached = 1;
 
-loop:	if ((ct = hfield("content-type", m)) == NULL)
+loop:	if ((ct = hfield1("content-type", m)) == NULL)
 		goto not;
 	if (strncmp(ct, "application/x-pkcs7-mime", 24) == 0 ||
 			strncmp(ct, "application/pkcs7-mime", 22) == 0) {
-		to = hfield("to", m);
-		cc = hfield("cc", m);
+		to = hfield1("to", m);
+		cc = hfield1("cc", m);
 		if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
 			return NULL;
 		if (x != (struct message *)-1) {
@@ -1048,7 +1048,7 @@ getdig(struct message *m, int n, SECItem ***digests,
 	NSSCMSDigestContext	*digctx;
 
 	*poolp = PORT_NewArena(1024);
-	if ((ct = hfield("content-type", m)) == NULL ||
+	if ((ct = hfield1("content-type", m)) == NULL ||
 			strncmp(ct, "multipart/signed", 16) ||
 			(pt = mime_getparam("protocol", ct)) == NULL ||
 			strcmp(pt, "application/x-pkcs7-signature") &&

@@ -494,7 +494,7 @@ pop3_init(struct mailbox *mp, int n)
 	m->m_block = 0;
 	m->m_offset = 0;
 	pop3_list(mp, m - message + 1, &m->m_xsize);
-	if ((cp = hfield("status", m)) != NULL) {
+	if ((cp = hfield1("status", m)) != NULL) {
 		while (*cp != '\0') {
 			if (*cp == 'R')
 				m->m_flag |= MREAD;
@@ -849,8 +849,8 @@ pop3_update(struct mailbox *mp)
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("message-id", m)) != NULL ||
-					(id = hfield("article-id", m)) != NULL)
+			if ((id = hfield1("message-id", m)) != NULL ||
+					(id = hfieldX("article-id", m)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 		if (edit) {

@@ -377,12 +377,12 @@ number:
 		case TCOMMA:
 			if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 				imap_getheaders(1, msgCount);
-			if (id == NULL && (cp = hfield("in-reply-to", dot))
+			if (id == NULL && (cp = hfield1("in-reply-to", dot))
 					!= NULL) {
 				id = savestr(cp);
 				idfield = ID_IN_REPLY_TO;
 			}
-			if (id == NULL && (cp = hfield("references", dot))
+			if (id == NULL && (cp = hfield1("references", dot))
 					!= NULL) {
 				struct name	*np;
 				if ((np = extract(cp, GREF)) != NULL) {
@@ -980,7 +980,7 @@ matchmid(char *id, enum idfield idfield, int mesg)
 	struct name	*np;
 	char *cp;
 
-	if ((cp = hfield("message-id", &message[mesg - 1])) != NULL) {
+	if ((cp = hfield1("message-id", &message[mesg - 1])) != NULL) {
 		switch (idfield) {
 		case ID_REFERENCES:
 			return msgidcmp(id, cp) == 0;
@@ -1029,12 +1029,12 @@ matchsubj(char *str, int mesg)
 
 	if (value("searchheaders") && (cp = strchr(str, ':'))) {
 		*cp++ = '\0';
-		cp2 = hfield(str, mp);
+		cp2 = hfieldX(str, mp);
 		cp[-1] = ':';
 		str = cp;
 	} else {
 		cp = str;
-		cp2 = hfield("subject", mp);
+		cp2 = hfield1("subject", mp);
 	}
 	if (cp2 == NULL)
 		return(0);

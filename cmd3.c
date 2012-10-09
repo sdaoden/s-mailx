@@ -232,8 +232,8 @@ make_ref_and_cs(struct message *mp, struct header *head)
 	unsigned i;
 	struct name *n;
 
-	oldref = hfield("references", mp);
-	oldmsgid = hfield("message-id", mp);
+	oldref = hfield1("references", mp);
+	oldmsgid = hfield1("message-id", mp);
 	if (oldmsgid == NULL || *oldmsgid == '\0') {
 		head->h_ref = NULL;
 		return;
@@ -268,7 +268,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
 	n->n_blink = NULL;
 	head->h_ref = n;
 	if (value("reply-in-same-charset") != NULL &&
-			(cp = hfield("content-type", mp)) != NULL)
+			(cp = hfield1("content-type", mp)) != NULL)
 		head->h_charset = mime_getparam("charset", cp);
 }
 
@@ -341,12 +341,12 @@ respond_internal(int *msgvec, int recipient_record)
 	mp = &message[msgvec[0] - 1];
 	touch(mp);
 	setdot(mp);
-	if ((rcv = hfield("reply-to", mp)) == NULL)
-		if ((rcv = hfield("from", mp)) == NULL)
+	if ((rcv = hfield1("reply-to", mp)) == NULL)
+		if ((rcv = hfield1("from", mp)) == NULL)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
 		np = sextract(rcv, GTO|gf);
-	if (! value("recipients-in-cc") && (cp = hfield("to", mp)) != NULL)
+	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
 		np = cat(np, sextract(cp, GTO|gf));
 	np = elide(np);
 	/*
@@ -357,14 +357,13 @@ respond_internal(int *msgvec, int recipient_record)
 	if (np == NULL)
 		np = sextract(rcv, GTO|gf);
 	head.h_to = np;
-	if ((head.h_subject = hfield("subject", mp)) == NULL)
-		head.h_subject = hfield("subj", mp);
+	head.h_subject = hfield1("subject", mp);
 	head.h_subject = reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
-	if (value("recipients-in-cc") && (cp = hfield("to", mp)) != NULL)
+	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
 		np = sextract(cp, GCC|gf);
-	if ((cp = hfield("cc", mp)) != NULL)
+	if ((cp = hfield1("cc", mp)) != NULL)
 		np = cat(np, sextract(cp, GCC|gf));
 	if (np != NULL)
 		head.h_cc = elide(delete_alternates(np));
@@ -454,8 +453,7 @@ forward1(char *str, int recipient_record)
 		touch(mp);
 		setdot(mp);
 	}
-	if ((head.h_subject = hfield("subject", mp)) == NULL)
-		head.h_subject = hfield("subj", mp);
+	head.h_subject = hfield1("subject", mp);
 	head.h_subject = fwdedit(head.h_subject);
 	Eflag = value("skipemptybody") != NULL;
 	mail1(&head, 1, forward_as_attachment ? NULL : mp,
@@ -974,16 +972,15 @@ Respond_internal(int *msgvec, int recipient_record)
 		mp = &message[*ap - 1];
 		touch(mp);
 		setdot(mp);
-		if ((cp = hfield("reply-to", mp)) == NULL)
-			if ((cp = hfield("from", mp)) == NULL)
+		if ((cp = hfield1("reply-to", mp)) == NULL)
+			if ((cp = hfield1("from", mp)) == NULL)
 				cp = nameof(mp, 2);
 		head.h_to = cat(head.h_to, sextract(cp, GTO|gf));
 	}
 	if (head.h_to == NULL)
 		return 0;
 	mp = &message[msgvec[0] - 1];
-	if ((head.h_subject = hfield("subject", mp)) == NULL)
-		head.h_subject = hfield("subj", mp);
+	head.h_subject = hfield1("subject", mp);
 	head.h_subject = reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 	Eflag = value("skipemptybody") != NULL;

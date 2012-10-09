@@ -485,7 +485,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITSENTON:
 	case ITSENTSINCE:
 		if (m->m_date == 0)
-			if ((cp = hfield("date", m)) != NULL)
+			if ((cp = hfield1("date", m)) != NULL)
 				m->m_date = rfctime(cp);
 		break;
 	default:
@@ -581,7 +581,7 @@ matchfield(struct message *m, const char *field, const char *what)
 	struct str	in, out;
 	int	i;
 
-	if ((in.s = hfield(imap_unquotestr(field), m)) == NULL)
+	if ((in.s = hfieldX(imap_unquotestr(field), m)) == NULL)
 		return 0;
 	in.l = strlen(in.s);
 	mime_fromhdr(&in, &out, TD_ICONV);
@@ -597,7 +597,7 @@ matchenvelope(struct message *m, const char *field, const char *what)
 	struct name	*np;
 	char	*cp;
 
-	if ((cp = hfield(imap_unquotestr(field), m)) == NULL)
+	if ((cp = hfieldX(imap_unquotestr(field), m)) == NULL)
 		return 0;
 	what = imap_unquotestr(what);
 	np = sextract(cp, GFULL);

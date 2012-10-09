@@ -427,8 +427,8 @@ maildir_update(void)
 	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char	*id;
-			if ((id = hfield("message-id", m)) != NULL ||
-					(id = hfield("article-id", m)) != NULL)
+			if ((id = hfield1("message-id", m)) != NULL ||
+					(id = hfieldX("article-id", m)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 		if (edit)

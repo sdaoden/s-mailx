@@ -277,7 +277,8 @@ int getopt(int argc, char *const argv[], const char *optstring);
 int is_head(char *linebuf, size_t linelen);
 void parse(char *line, size_t linelen, struct headline *hl, char *pbuf);
 void extract_header(FILE *fp, struct header *hp);
-#define	hfield(a, b)	hfield_mult(a, b, 1)
+#define	hfieldX(a, b)	hfield_mult(a, b, 1)
+#define	hfield1(a, b)	hfield_mult(a, b, 0)
 char *hfield_mult(char *field, struct message *mp, int mult);
 char *thisfield(const char *linebuf, const char *field);
 char *nameof(struct message *mp, int reptype);

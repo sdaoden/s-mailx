@@ -128,7 +128,7 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
 	struct mitem	*mp;
 	unsigned	h, c, n = 0;
 
-	if (id == NULL && (id = hfield("message-id", mdata)) == NULL)
+	if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
 		return NULL;
 	if (mdata && mdata->m_idhash)
 		h = ~mdata->m_idhash;
@@ -325,7 +325,7 @@ lookup(struct message *m, struct mitem *mi, int mprime)
 	if (m->m_flag & MHIDDEN)
 		return;
 	dist = 1;
-	if ((cp = hfield("in-reply-to", m)) != NULL) {
+	if ((cp = hfield1("in-reply-to", m)) != NULL) {
 		if ((np = extract(cp, GREF)) != NULL)
 			do {
 				if ((ip = mlook(np->n_name, mi, NULL, mprime))
@@ -335,7 +335,7 @@ lookup(struct message *m, struct mitem *mi, int mprime)
 				}
 			} while ((np = np->n_flink) != NULL);
 	}
-	if ((cp = hfield("references", m)) != NULL) {
+	if ((cp = hfield1("references", m)) != NULL) {
 		if ((np = extract(cp, GREF)) != NULL) {
 			while (np->n_flink != NULL)
 				np = np->n_flink;
@@ -368,7 +368,7 @@ makethreads(struct message *m, long count, int newmail)
 		if ((m[i].m_flag&MHIDDEN) == 0) {
 			mlook(NULL, mt, &m[i], mprime);
 			if (m[i].m_date == 0) {
-				if ((cp = hfield("date", &m[i])) != NULL)
+				if ((cp = hfield1("date", &m[i])) != NULL)
 					m[i].m_date = rfctime(cp);
 			}
 		}
@@ -565,7 +565,7 @@ sort(void *vp)
 			switch (method) {
 			case SORT_DATE:
 				if (mp->m_date == 0 &&
-						(cp = hfield("date", mp)) != 0)
+						(cp = hfield1("date", mp)) != 0)
 					mp->m_date = rfctime(cp);
 				ms[n].ms_u.ms_long = mp->m_date;
 				break;
@@ -593,7 +593,7 @@ sort(void *vp)
 				break;
 			case SORT_FROM:
 			case SORT_TO:
-				if ((cp = hfield(method == SORT_FROM ?
+				if ((cp = hfield1(method == SORT_FROM ?
 						"from" : "to", mp)) != NULL) {
 					ms[n].ms_u.ms_char = showname ?
 						realname(cp) : skin(cp);
@@ -603,7 +603,7 @@ sort(void *vp)
 				break;
 			default:
 			case SORT_SUBJECT:
-				if ((cp = hfield("subject", mp)) != NULL) {
+				if ((cp = hfield1("subject", mp)) != NULL) {
 					in.s = cp;
 					in.l = strlen(in.s);
 					mime_fromhdr(&in, &out, TD_ICONV);

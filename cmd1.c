@@ -386,9 +386,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		if ((headlen = readline(ibuf, &headline, &headsize)) < 0)
 			return;
 	}
-	if ((subjline = hfield("subject", mp)) == NULL)
-		subjline = hfield("subj", mp);
-	if (subjline == NULL) {
+	if ((subjline = hfield1("subject", mp)) == NULL) {
 		out.s = NULL;
 		out.l = 0;
 	} else {
@@ -405,25 +403,25 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		hl.l_tty = NULL;
 		hl.l_date = fakedate(mp->m_time);
 	}
-	if (value("datefield") && (cp = hfield("date", mp)) != NULL)
+	if (value("datefield") && (cp = hfield1("date", mp)) != NULL)
 		hl.l_date = fakedate(rfctime(cp));
 	if (Iflag) {
-		if ((name = hfield("newsgroups", mp)) == NULL)
-			if ((name = hfield("article-id", mp)) == NULL)
+		if ((name = hfieldX("newsgroups", mp)) == NULL)
+			if ((name = hfieldX("article-id", mp)) == NULL)
 				name = "<>";
 		name = prstr(name);
 	} else if (value("show-rcpt") == NULL) {
 		name = name1(mp, 0);
 		isaddr = 1;
 		if (value("showto") && name && is_myname(skin(name))) {
-			if ((cp = hfield("to", mp)) != NULL) {
+			if ((cp = hfield1("to", mp)) != NULL) {
 				name = cp;
 				isto = 1;
 			}
 		}
 	} else {
 		isaddr = 1;
-		if ((name = hfield("to", mp)) != NULL)
+		if ((name = hfield1("to", mp)) != NULL)
 			isto = 1;
 	}
 	if (name == NULL) {

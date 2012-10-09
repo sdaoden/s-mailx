@@ -561,9 +561,9 @@ smime_verify(struct message *m, int n, STACK *chain, X509_STORE *store)
 	verify_error_found = 0;
 	message_number = n;
 loop:	sender = getsender(m);
-	to = hfield("to", m);
-	cc = hfield("cc", m);
-	cnttype = hfield("content-type", m);
+	to = hfield1("to", m);
+	cc = hfield1("cc", m);
+	cnttype = hfield1("content-type", m);
 	if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
 		return 1;
 	if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
@@ -1089,9 +1089,9 @@ smime_certsave(struct message *m, int n, FILE *op)
 	enum okay	ok = OKAY;
 
 	message_number = n;
-loop:	to = hfield("to", m);
-	cc = hfield("cc", m);
-	cnttype = hfield("content-type", m);
+loop:	to = hfield1("to", m);
+	cc = hfield1("cc", m);
+	cnttype = hfield1("content-type", m);
 	if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
 		return STOP;
 	if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
