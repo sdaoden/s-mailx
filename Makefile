@@ -20,7 +20,7 @@ STRIP		= strip
 INSTALL		= /usr/bin/install
 
 #CFLAGS		=
-#WARN		= -W -Wall -pedantic
+#WARN		= -W -Wall -Wextra -pedantic
 #LDFLAGS		=
 
 ##  --  >8  --  8<  --  ##
