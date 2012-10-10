@@ -630,8 +630,9 @@ set(void *v)
 	char *cp, *cp2;
 	char **ap, **p;
 	int errs, h, s;
-	FILE *obuf = stdout;
-	int bsdset = value("bsdcompat") != NULL || value("bsdset") != NULL;
+	FILE *volatile obuf = stdout;
+	int volatile bsdset = (value("bsdcompat") != NULL ||
+				value("bsdset") != NULL);
 
 	if (*arglist == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)

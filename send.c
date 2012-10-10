@@ -184,33 +184,19 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
-		enum sendaction action, off_t *stats, int level)
+		enum sendaction action, off_t *volatile stats, int level)
 {
-	char	*line = NULL;
-	size_t	linesize = 0, linelen, count, len;
-	int	dostat, infld = 0, ignoring = 1, isenc;
-	char	*cp, *cp2, *start;
-	int	c;
+	char *line = NULL, *cp, *cp2, *start, *tcs, *pipecmd = NULL, *rest;
+	size_t linesize = 0, linelen, count, len, restsize;
+	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
 	struct mimepart	*np;
-	FILE	*ibuf = NULL, *pbuf = obuf, *qbuf = obuf, *origobuf = obuf;
-	char	*tcs, *pipecmd = NULL;
-	enum conversion	convert;
-	sighandler_type	oldpipe = SIG_DFL;
-	int	rt = 0;
-	long	lineno = 0;
-	int ispipe = 0;
-	char	*rest;
-	size_t	restsize;
-	int	eof;
+	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
+		*volatile qbuf = obuf, *origobuf = obuf;
+	enum conversion	volatile convert;
+	sighandler_type	volatile oldpipe = SIG_DFL;
+	long lineno = 0;
 
-	(void)&ibuf;
-	(void)&pbuf;
-	(void)&convert;
-	(void)&oldpipe;
-	(void)&rt;
-	(void)&obuf;
-	(void)&stats;
-	(void)&action;
+
 	if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
 			action != SEND_MBOX && action != SEND_RFC822 &&
 			action != SEND_SHOW)
@@ -513,7 +499,9 @@ skip:	switch (ip->m_mimecontent) {
 						break;
 					stats = NULL;
 					if ((obuf = newfile(np, &ispipe,
-							&oldpipe)) == NULL)
+							(sighandler_type*)
+								&oldpipe))
+							== NULL)
 						continue;
 					break;
 				case SEND_TODISP:
@@ -632,7 +620,7 @@ skip:	switch (ip->m_mimecontent) {
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
 			pipecmd != NULL) {
 		qbuf = obuf;
-		pbuf = getpipefile(pipecmd, &qbuf,
+		pbuf = getpipefile(pipecmd, (FILE**)&qbuf,
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {

@@ -429,8 +429,9 @@ onterm(int signo)
  * Connect to a SMTP server.
  */
 int
-smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
-		const char *user, const char *password, const char *skinned)
+smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
+		struct header *hp, const char *user, const char *password,
+		const char *skinned)
 {
 	struct sock	so;
 	int	use_ssl, ret;

@@ -255,17 +255,13 @@ grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
 int 
 grabh(struct header *hp, enum gfield gflags, int subjfirst)
 {
-	sighandler_type saveint;
+	sighandler_type saveint, savetstp, savettou, savettin;
 #ifndef TIOCSTI
 	sighandler_type savequit;
 #endif
-	sighandler_type savetstp;
-	sighandler_type savettou;
-	sighandler_type savettin;
 	int errs;
-	int comma;
+	int volatile comma;
 
-	(void) &saveint;
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);

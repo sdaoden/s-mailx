@@ -551,12 +551,9 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 	char *user;
-	const char *cp, *sp = server, *pass, *uhp;
+	const char *cp, *pass, *uhp, *volatile sp = server;
 	int use_ssl = 0;
 
-	(void)&sp;
-	(void)&use_ssl;
-	(void)&user;
 	if (newmail)
 		return 1;
 	if (strncmp(sp, "pop3://", 7) == 0) {
@@ -647,15 +644,13 @@ pop3_setfile(const char *server, int newmail, int isedit)
 }
 
 static enum okay 
-pop3_get(struct mailbox *mp, struct message *m, enum needspec need)
+pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 {
-	sighandler_type	saveint = SIG_IGN;
-	sighandler_type savepipe = SIG_IGN;
+	sighandler_type	volatile saveint = SIG_IGN, savepipe = SIG_IGN;
 	off_t offset;
 	char o[LINESIZE], *line = NULL, *lp;
 	size_t linesize = 0, linelen, size;
-	int number = m - message + 1;
-	int emptyline = 0, lines;
+	int number = m - message + 1, emptyline = 0, lines;
 
 	(void)&saveint;
 	(void)&savepipe;

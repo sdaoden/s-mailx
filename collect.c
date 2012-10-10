@@ -112,7 +112,7 @@ static void
 insertcommand(FILE *fp, char *cmd)
 {
 	FILE *obuf = NULL;
-	char *cp;
+	char *volatile cp;
 	int c;
 
 	cp = value("SHELL");
@@ -140,7 +140,7 @@ static void
 print_collf(FILE *collf, struct header *hp)
 {
 	char *lbuf = NULL;
-	FILE *obuf = stdout;
+	FILE *volatile obuf = stdout;
 	struct attachment *ap;
 	char *cp;
 	enum gfield	gf;
@@ -416,7 +416,7 @@ append_attachments(struct attachment *attach, char *names)
 
 FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int doprefix, int tflag)
+		char *quotefile, int doprefix, int volatile tflag)
 {
 	enum {
 		val_INTERACT	= 1
@@ -424,7 +424,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
 	FILE *fbuf;
 	struct ignoretab *quoteig;
-	int lc, cc, escape, eofcount, val, c, t, getfields;
+	int lc, cc, eofcount, val, c, t;
+	int volatile escape, getfields;
 	char *linebuf = NULL, *cp, *quote = NULL, *tempMail = NULL;
 	size_t linesize;
 	long count;

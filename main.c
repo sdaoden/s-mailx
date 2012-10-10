@@ -100,7 +100,8 @@ main(int argc, char *argv[])
 	struct attachment *attach;
 	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL, *Aflag = NULL;
 	char nosrc = 0;
-	int Eflag = 0, Fflag = 0, Nflag = 0, tflag = 0;
+	int Eflag = 0, Fflag = 0, tflag = 0;
+	int volatile Nflag = 0;
 	sighandler_type prevint;
 
 	(void)&Nflag;

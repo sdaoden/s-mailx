@@ -293,7 +293,7 @@ from(void *v)
 {
 	int *msgvec = v;
 	int *ip, n;
-	FILE *obuf = stdout;
+	FILE *volatile obuf = stdout;
 	char *cp;
 
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {

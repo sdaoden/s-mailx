@@ -1150,8 +1150,7 @@ static int
 imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 {
 	struct sock	so;
-	sighandler_type	saveint;
-	sighandler_type savepipe;
+	sighandler_type	volatile saveint, savepipe;
 	char *server, *user, *account;
 	const char *cp, *sp, *pass;
 	char	*uhp, *mbx;
@@ -1420,32 +1419,20 @@ imap_putstr(struct mailbox *mp, struct message *m, const char *str,
 static enum okay 
 imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
-	sighandler_type	saveint = SIG_IGN;
-	sighandler_type savepipe = SIG_IGN;
-	char o[LINESIZE], *cp = NULL, *item = NULL, *resp = NULL, *loc = NULL;
-	size_t expected, headsize = 0;
+	struct message mt;
+	sighandler_type	saveint = SIG_IGN, savepipe = SIG_IGN;
+	char o[LINESIZE], *cp = NULL, *loc = NULL,
+		*volatile item = NULL, *volatile resp = NULL,
+		*volatile head = NULL;
+	size_t expected;
+	size_t volatile headsize = 0;
 	int number = m - message + 1;
 	enum okay ok = STOP;
-	FILE	*queuefp = NULL;
-	char	*head = NULL;
-	long	headlines = 0;
-	struct message	mt;
-	long	n = -1;
+	FILE *queuefp = NULL;
+	long volatile headlines = 0;
+	long n = -1;
 	unsigned long	u = 0;
 
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&number;
-	(void)&need;
-	(void)&cp;
-	(void)&loc;
-	(void)&ok;
-	(void)&headsize;
-	(void)&head;
-	(void)&headlines;
-	(void)&item;
-	(void)&resp;
-	(void)&u;
 	verbose = value("verbose") != NULL;
 	if (getcache(mp, m, need) == OKAY)
 		return OKAY;
@@ -1694,17 +1681,12 @@ imap_fetchheaders (
 }
 
 void 
-imap_getheaders(int bot, int top)
+imap_getheaders(int volatile bot, int top)
 {
 	sighandler_type	saveint, savepipe;
-	enum okay	ok = STOP;
-	int	i, chunk = 256;
+	enum okay ok = STOP;
+	int i, chunk = 256;
 
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&ok;
-	(void)&bot;
-	(void)&top;
 	verbose = value("verbose") != NULL;
 	if (mb.mb_type == MB_CACHE)
 		return;
@@ -2481,15 +2463,11 @@ void
 imap_folders(const char *name, int strip)
 {
 	sighandler_type	saveint, savepipe;
-	const char	*fold, *cp, *sp;
-	char	*tempfn;
-	FILE	*fp;
-	int	columnize = is_a_tty[1];
+	const char *fold, *cp, *sp;
+	char *tempfn;
+	FILE *volatile fp;
+	int columnize = is_a_tty[1];
 
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&fp;
-	(void)&fold;
 	cp = protbase(name);
 	sp = mb.mb_imap_account;
 	if (strcmp(cp, sp)) {
