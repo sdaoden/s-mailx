@@ -697,7 +697,7 @@ elide(struct name *names)
 	if (names == NULL)
 		return (NULL);
 	/* Throw away all deleted nodes (XXX merge with plain sort below?) */
-	for (np = NULL; names != NULL; names = names->n_flink)
+	for (newn = np = NULL; names != NULL; names = names->n_flink)
 		if  ((names->n_type & GDEL) == 0) {
 			names->n_blink = np;
 			if (np)
