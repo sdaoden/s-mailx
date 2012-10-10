@@ -551,7 +551,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 	char *user;
-	const char *cp, *pass, *uhp, *volatile sp = server;
+	const char *cp, *uhp, *volatile pass, *volatile sp = server;
 	int use_ssl = 0;
 
 	if (newmail)
@@ -559,11 +559,11 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	if (strncmp(sp, "pop3://", 7) == 0) {
 		sp = &sp[7];
 		use_ssl = 0;
-#ifdef	USE_SSL
+#ifdef USE_SSL
 	} else if (strncmp(sp, "pop3s://", 8) == 0) {
 		sp = &sp[8];
 		use_ssl = 1;
-#endif	/* USE_SSL */
+#endif
 	}
 	uhp = sp;
 	pass = pop3_have_password(uhp);
