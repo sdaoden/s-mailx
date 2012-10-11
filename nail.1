@@ -1912,30 +1912,25 @@ unless the
 variable is set.
 .TP
 .B write
-(w) For conventional messages,
-the body without all headers is written.
-The output is decrypted and converted
-to its native format, if necessary.
-If the output file exists,
-the text is appended.\(emIf a message is in MIME multipart format,
-its first part is written to the specified file
-as for conventional messages,
-and the user is asked for a filename
-to save each other part;
-if the contents of the first part are not to be saved,
-`write /dev/null' can be used.
-For the second and subsequent parts,
-if the filename given starts with a `|' character,
-the part is piped through the remainder of the filename
-interpreted as a shell command.
+(w) For conventional messages the body without all headers is written.
+The output is decrypted and converted to its native format as necessary.
+If the output file exists, the text is appended.
+If a message is in MIME multipart format its first part is written to
+the specified file as for conventional messages,
+and the user is asked for a filename to save each other part.
+For convience saving of each part may be skipped by giving an empty value;
+the same result can also be achieved by writing it to '/dev/null'.
+For the second and subsequent parts a leading '|' character causes the
+part to be piped to the remainder of the user input interpreted as
+a shell command.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
-the other are discarded.
-The original message is never marked for deletion
-in the originating mail folder.
+the others are discarded.
+The original message is never marked for deletion in the originating
+mail folder.
 For attachments,
-the contents of the destination file are overwritten
-if the file previously existed.
+the contents of the destination file are overwritten if the file
+previously existed.
 No special handling of compressed files is performed.
 .TP
 .B xit

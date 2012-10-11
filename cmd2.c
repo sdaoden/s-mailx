@@ -435,7 +435,9 @@ cwrite(void *v)
 {
 	char *str = v;
 
-	return save1(str, 0, "write", allignore, SEND_TOFILE, 0, 0);
+	if (str == NULL || *str == '\0')
+		str = savestr("/dev/null");
+	return (save1(str, 0, "write", allignore, SEND_TOFILE, 0, 0));
 }
 
 /*
@@ -456,14 +458,11 @@ snarf(char *linebuf, int *flag, int usembox)
 	if ((cp = laststring(linebuf, flag, 0)) == NULL) {
 		if (usembox) {
 			*flag = 0;
-			return expand("&");
-		} else {
-			printf(catgets(catd, CATSET, 28,
-						"No file specified.\n"));
-			return NULL;
-		}
+			cp = expand("&");
+		} else
+			printf(tr(28, "No file specified.\n"));
 	}
-	return(cp);
+	return (cp);
 }
 
 /*
