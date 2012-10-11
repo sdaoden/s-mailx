@@ -369,9 +369,9 @@ cat >$tmp2.c <<\!
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
+#endif
 
 int main(void)
 {
@@ -478,8 +478,7 @@ int main(void)
 	return 0;
 }
 %
-if test x$have_nss = xyes
-then
+if [ "${have_nss}" = 'yes' ]; then
 	compile_check genname_h 'for genname.h' '#define HAVE_GENNAME_H' <<\!
 #include <genname.h>
 !
@@ -512,8 +511,7 @@ CERTAltNameEncodedContext	foo;
 !
 fi
 
-if test x$have_openssl = xyes
-then
+if [ "${have_openssl}" = 'yes' ]; then
 	compile_check stack_of 'for STACK_OF()' '#define HAVE_STACK_OF' <<\!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -618,22 +616,22 @@ cat > $tmp2.c << \!
 #endif
 :
 :The following optional features are enabled:
-#ifdef	HAVE_SETLOCALE
+#ifdef HAVE_SETLOCALE
 : + Locale support: Printable characters depend on the environment
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
 : + Multibyte character support
 #endif
-#endif	/* HAVE_SETLOCALE */
-#ifdef	HAVE_ICONV
+#endif
+#ifdef HAVE_ICONV
 : + Character set conversion using iconv()
 #endif
-#if defined (HAVE_SETLOCALE) && defined (HAVE_NL_LANGINFO) && defined (CODESET)
+#if defined HAVE_SETLOCALE && defined HAVE_NL_LANGINFO && defined CODESET
 : + Automatic detection of terminal character set
 #endif
 #ifdef HAVE_SOCKETS
 : + Network support
 #endif
-#ifdef	USE_IPV6
+#ifdef USE_IPV6
 : + Support for Internet Protocol v6 (IPv6)
 #endif
 #ifdef USE_NSS
@@ -665,15 +663,13 @@ cat > $tmp2.c << \!
 #ifndef	HAVE_SETLOCALE
 : - Locale support: Only ASCII characters are recognized
 #endif
-#if !defined (HAVE_SETLOCALE) || !defined (HAVE_MBTOWC) || \
-	!defined (HAVE_WCTYPE_H)
+#if ! defined HAVE_SETLOCALE || ! defined HAVE_MBTOWC || !defined HAVE_WCTYPE_H
 : - Multibyte character support
 #endif
 #ifndef	HAVE_ICONV
 : - Character set conversion using iconv()
 #endif
-#if !defined (HAVE_SETLOCALE) || !defined (HAVE_NL_LANGINFO) || \
-	!defined (CODESET)
+#if ! defined HAVE_SETLOCALE || ! defined HAVE_NL_LANGINFO || ! defined CODESET
 : - Automatic detection of terminal character set
 #endif
 #ifndef	HAVE_SOCKETS
@@ -722,6 +718,7 @@ cat > $tmp2.c << \!
 #endif
 #ifdef HAVE_ASSERTS
 : * WANT_ASSERTS is enabled, the program binary will contain code assertions.
+: There are also additional commands available, like "core".
 : Such a binary is not meant to be used by end-users, but only for
 : development purposes.  Thanks!
 #endif
