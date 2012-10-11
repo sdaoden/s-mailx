@@ -420,10 +420,9 @@ yorn(char *msg)
 	char	*cp;
 
 	if (value("interactive") == NULL)
-		return 1;
-	do
-		cp = readtty(msg, NULL);
-	while (cp == NULL ||
-		(*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N'));
-	return *cp == 'y' || *cp == 'Y';
+		return (1);
+	do if ((cp = readtty(msg, NULL)) == NULL)
+		return (0);
+	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
+	return (*cp == 'y' || *cp == 'Y');
 }
