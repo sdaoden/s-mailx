@@ -148,6 +148,8 @@ int cmove(void *v);
 int cMove(void *v);
 int cdecrypt(void *v);
 int cDecrypt(void *v);
+int clobber(void *v);
+int core(void *v);
 int cwrite(void *v);
 int delete(void *v);
 int deltype(void *v);

@@ -645,14 +645,12 @@ jcont:
 			}
 			printf(tr(56, "Unknown tilde escape.\n"));
 			break;
-#ifdef	DEBUG_COMMANDS
+#ifdef HAVE_ASSERTS
 		case 'C':
-			/*
-			 * Dump core.
-			 */
+			/* Dump core */
 			core(NULL);
 			break;
-#endif	/* DEBUG_COMMANDS */
+#endif
 		case '!':
 			/* Shell escape, send the balance of line to sh -c */
 			shell(&linebuf[2]);

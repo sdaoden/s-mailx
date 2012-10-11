@@ -200,9 +200,9 @@ const struct cmd cmdtab[] = {
 	{ "unfwdignore", unfwdignore,	M|RAWLIST,	0,	1000 },
 	{ "unfwdretain", unfwdretain,	M|RAWLIST,	0,	1000 },
 /*	{ "Header",	Header,		STRLIST,	0,	1000 },	*/
-#ifdef	DEBUG_COMMANDS
+#ifdef HAVE_ASSERTS
 	{ "core",	core,		M|NOLIST,	0,	0 },
 	{ "clobber",	clobber,	M|RAWLIST,	0,	1 },
-#endif	/* DEBUG_COMMANDS */
+#endif
 	{ 0,		0,		0,		0,	0 }
 };
