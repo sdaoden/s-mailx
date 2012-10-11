@@ -337,13 +337,16 @@ int main(void)
 }
 !
 
-link_check getopt 'for getopt()' '#define __WE_WILL_USE_SYS_GETOPT' << \! || \
-	echo '#define USE_BUILTIN_GETOPT' >> $out
+link_check getopt 'for getopt()' '#define HAVE_GETOPT' << \!
 #include <unistd.h>
 int main(int argc, char **argv)
 {
+#if defined __GLIBC__ || defined __linux__
+	Argument and option reordering is not a desired feature.
+#else
 	getopt(argc, argv, "oPt");
-	return ((long)optarg + optind) & 0x7F;
+#endif
+	return (((long)optarg + optind) & 0x7F);
 }
 !
 
@@ -713,9 +716,9 @@ cat > $tmp2.c << \!
 : chdir() instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.
 #endif
-#ifndef __WE_WILL_USE_SYS_GETOPT
-: * A (usable) getopt() functionality could not be found.  A simple builtin
-: version is used instead.
+#ifndef HAVE_GETOPT
+: * A (usable) getopt() functionality could not be found.
+: A builtin version is used instead.
 #endif
 #ifdef HAVE_ASSERTS
 : * WANT_ASSERTS is enabled, the program binary will contain code assertions.

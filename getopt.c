@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#ifndef USE_BUILTIN_GETOPT
+#ifdef HAVE_GETOPT
 typedef int avoid_empty_file_compiler_warning;
 #else
 
@@ -159,4 +159,4 @@ getopt$UNIX2003(int argc, char *const argv[], const char *optstring)
 	return getopt(argc, argv, optstring);
 }
 # endif	/* __APPLE__ */
-#endif /* USE_BUILTIN_GETOPT */
+#endif /* HAVE_GETOPT */

@@ -271,7 +271,7 @@ char *getname(int uid);
 int getuserid(char *name);
 
 /* getopt.c */
-#ifdef USE_BUILTIN_GETOPT
+#ifndef HAVE_GETOPT
 int getopt(int argc, char *const argv[], const char *optstring);
 #endif
 
