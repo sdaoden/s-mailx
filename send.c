@@ -995,9 +995,9 @@ addstats(off_t *stats, off_t lines, off_t bytes)
 static FILE *
 newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 {
-	char	*f = ip->m_filename;
-	struct str	in, out;
-	FILE	*fp;
+	char *f = ip->m_filename;
+	struct str in, out;
+	FILE *fp;
 
 	*ispipe = 0;
 	if (f != NULL && f != (char *)-1) {
@@ -1008,12 +1008,24 @@ newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 		*(f + out.l) = '\0';
 		free(out.s);
 	}
+
 	if (value("interactive") != NULL) {
-		printf("Enter filename for part %s (%s)",
-				ip->m_partstring ? ip->m_partstring : "?",
-				ip->m_ct_type_plain);
-		f = readtty(catgets(catd, CATSET, 173, ": "),
-				f != (char *)-1 ? f : NULL);
+		char *f2, *f3;
+jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
+			ip->m_partstring ? ip->m_partstring : "?",
+			ip->m_ct_type_plain);
+		f2 = readtty(": ", f != (char *)-1 ? f : NULL);
+		if (f2 == NULL || *f2 == '\0') {
+			fprintf(stderr, tr(279, "... skipping this\n"));
+			return (NULL);
+		} else if (*f2 == '|')
+			/* Pipes are expanded by the shell */
+			f = f2;
+		else if ((f3 = expand(f2)) == NULL)
+			/* (Error message written by expand()) */
+			goto jgetname;
+		else
+			f = f3;
 	}
 	if (f == NULL || f == (char *)-1)
 		return NULL;
@@ -1023,7 +1035,7 @@ newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 		cp = value("SHELL");
 		if (cp == NULL)
 			cp = SHELL;
-		fp = Popen(f+1, "w", cp, 1);
+		fp = Popen(f + 1, "w", cp, 1);
 		if (fp == NULL) {
 			perror(f);
 			fp = stdout;
@@ -1033,9 +1045,9 @@ newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 		}
 	} else {
 		if ((fp = Fopen(f, "w")) == NULL)
-			fprintf(stderr, "Cannot open %s\n", f);
+			fprintf(stderr, tr(176, "Cannot open %s\n"), f);
 	}
-	return fp;
+	return (fp);
 }
 
 static char *

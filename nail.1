@@ -1922,7 +1922,9 @@ For convience saving of each part may be skipped by giving an empty value;
 the same result can also be achieved by writing it to '/dev/null'.
 For the second and subsequent parts a leading '|' character causes the
 part to be piped to the remainder of the user input interpreted as
-a shell command.
+a shell command;
+otherwise the user input is expanded as usually for folders,
+e.g., tilde expansion is performed.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
 the others are discarded.

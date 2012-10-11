@@ -328,3 +328,5 @@ The following ~ escapes are defined:\n\
 275 User and password are necessary for SMTP authentication.\n
 276 Could not determine timestamp from server greeting.  Can't use APOP.\n
 277 No CRAM-MD5 support compiled in.\n
+278 Enter filename for part %s (%s)
+279 ... skipping this\n
