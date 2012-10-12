@@ -76,7 +76,7 @@
 
 static void makemessage(void);
 static void append(struct message *mp);
-static char *globname(char *name);
+static char *globname(char const*name);
 static size_t length_of_line(const char *line, size_t linesize);
 static char *fgetline_byone(char **line, size_t *linesize, size_t *llen,
 		FILE *fp, int appendnl, size_t n);
@@ -395,6 +395,64 @@ fsize(FILE *iob)
 }
 
 /*
+ * Evaluate a string and expand file meta characters:
+ *	+file	file in folder directory
+ *	any shell meta character
+ * Return the file name as a dynamic string.
+ */
+char *
+file_expand(char const*name)
+{
+	char foldbuf[PATHSIZE];
+	struct str s;
+	struct shortcut *sh;
+	char const*orig = name;
+
+	if ((sh = get_shortcut(name)) != NULL)
+		name = sh->sh_long;
+
+	s.s = NULL;
+
+	if (name[0] == '+' && getfold(foldbuf, sizeof foldbuf) >= 0) {
+		switch (which_protocol(foldbuf)) {
+		/* XXX file_expand(): really "ok!" PROTO_MAILDIR misuse? */
+		case PROTO_FILE:
+		case PROTO_MAILDIR:
+			(void)str_concat_csvl(&s, foldbuf, "/", name + 1, NULL);
+			if (s.l >= PATHSIZE) {
+				fprintf(stderr, tr(83,
+					"\"%s\": Expansion buffer overflow.\n"),
+					orig);
+				return (NULL);
+			}
+			name = s.s;
+			break;
+		default:
+			fprintf(stderr, tr(280, "\"%s\": only a local file or "
+				"directory may be used\n"), orig);
+			return (NULL);
+		}
+	}
+
+	/* Catch the most common shell meta character */
+	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
+		(void)str_concat_csvl(&s, homedir, name + 1, NULL);
+		if (s.l >= PATHSIZE) {
+			fprintf(stderr, tr(83,
+				"\"%s\": Expansion buffer overflow.\n"),
+				orig);
+			return (NULL);
+		}
+		name = s.s;
+	}
+
+	if (name[0] != '|' && anyof(name, "|&;<>~{}()[]*?$`'\"\\") &&
+			which_protocol(name) == PROTO_FILE)
+		return (globname(name));
+	return (s.s ? s.s : savestr(name));
+}
+
+/*
  * Evaluate the string given as a new mailbox name.
  * Supported meta characters:
  *	%	for my system mail box
@@ -472,7 +530,7 @@ next:
 }
 
 static char *
-globname(char *name)
+globname(char const*name)
 {
 #ifdef	HAVE_WORDEXP
 	wordexp_t we;

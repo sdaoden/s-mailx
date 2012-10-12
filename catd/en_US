@@ -330,3 +330,4 @@ The following ~ escapes are defined:\n\
 277 No CRAM-MD5 support compiled in.\n
 278 Enter filename for part %s (%s)
 279 ... skipping this\n
+280 "%s": only a local file or directory may be used\n
