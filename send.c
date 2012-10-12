@@ -1021,8 +1021,8 @@ jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 		} else if (*f2 == '|')
 			/* Pipes are expanded by the shell */
 			f = f2;
-		else if ((f3 = expand(f2)) == NULL)
-			/* (Error message written by expand()) */
+		else if ((f3 = file_expand(f2)) == NULL)
+			/* (Error message written by file_expand()) */
 			goto jgetname;
 		else
 			f = f3;

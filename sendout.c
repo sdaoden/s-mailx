@@ -164,7 +164,7 @@ put_signature(FILE *fo, int convert)
 	if (sig == NULL || *sig == '\0')
 		return 0;
 	else
-		sig = expand(sig);
+		sig = file_expand(sig);
 	if ((fsig = Fopen(sig, "r")) == NULL) {
 		perror(sig);
 		return -1;
@@ -874,7 +874,7 @@ start_mta(struct name *to, struct name *mailargs, FILE *input,
 		} else {
 			prepare_child(&nset, fileno(input), -1);
 			if ((cp = value("sendmail")) != NULL)
-				cp = expand(cp);
+				cp = file_expand(cp);
 			else
 				cp = SENDMAIL;
 			execv(cp, args);

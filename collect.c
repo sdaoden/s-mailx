@@ -274,8 +274,9 @@ read_attachment_data(struct attachment *ap, unsigned number)
 		char *exf;
 		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL)
 			break;
-		if ((exf = expand(ap->a_name)) != NULL)
-			ap->a_name = exf;
+		if ((exf = file_expand(ap->a_name)) == NULL)
+			continue;
+		ap->a_name = exf;
 		if (access(ap->a_name, R_OK) == 0)
 			break;
 		perror(ap->a_name);
@@ -359,7 +360,7 @@ add_attachment(struct attachment *attach, char *file, int expand_file)
 	struct attachment *ap, *nap;
 
 	if (expand_file) {
-		file = expand(file);
+		file = file_expand(file);
 		if (file == NULL)
 			return NULL;
 	} else
@@ -747,7 +748,7 @@ jcont:
 				insertcommand(collf, cp + 1);
 				break;
 			}
-			cp = expand(cp);
+			cp = file_expand(cp);
 			if (cp == NULL)
 				break;
 			if (is_dir(cp)) {
@@ -793,7 +794,7 @@ jcont:
 			cp = &linebuf[2];
 			while (blankchar(*cp))
 				++cp;
-			if (*cp == '\0' || (cp = expand(cp)) == NULL) {
+			if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
 				fprintf(stderr, tr(61, "Write what file!?\n"));
 				break;
 			}

@@ -473,7 +473,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			}
 			free_child(pid);
 		} else {
-			char *fname = expand(np->n_name);
+			char *fname = file_expand(np->n_name);
 			if ((fout = Zopen(fname, "a", NULL)) == NULL) {
 				perror(fname);
 				++senderr;

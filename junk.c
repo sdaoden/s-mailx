@@ -422,7 +422,7 @@ dbfp(enum db db, int rw, int *compressed, char **fn)
 				"Set the junkdb variable.\n");
 		return (FILE *)-1;
 	}
-	dir = expand(dir);
+	dir = file_expand(dir);
 	if (makedir(dir) == STOP) {
 		fprintf(stderr, "Cannot create directory \"%s\"\n.", dir);
 		return (FILE *)-1;

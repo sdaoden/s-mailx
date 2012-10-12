@@ -668,19 +668,17 @@ getdeadletter(void)
 {
 	char *cp;
 
-	if ((cp = value("DEAD")) == NULL || (cp = expand(cp)) == NULL)
-		cp = expand("~/dead.letter");
+	if ((cp = value("DEAD")) == NULL || (cp = file_expand(cp)) == NULL)
+		cp = file_expand("~/dead.letter");
 	else if (*cp != '/') {
-		char *buf;
-		size_t sz;
+		size_t sz = strlen(cp) + 3;
+		char *buf = ac_alloc(sz);
 
-		buf = ac_alloc(sz = strlen(cp) + 3);
 		snprintf(buf, sz, "~/%s", cp);
-		snprintf(buf, sz, "~/%s", cp);
-		cp = expand(buf);
+		cp = file_expand(buf);
 		ac_free(buf);
 	}
-	return cp;
+	return (cp);
 }
 
 /*

@@ -138,7 +138,7 @@ ssl_rand_init(void)
 	int state = 0;
 
 	if ((cp = value("ssl-rand-egd")) != NULL) {
-		cp = expand(cp);
+		cp = file_expand(cp);
 		if (RAND_egd(cp) == -1) {
 			fprintf(stderr, catgets(catd, CATSET, 245,
 				"entropy daemon at \"%s\" not available\n"),
@@ -146,7 +146,7 @@ ssl_rand_init(void)
 		} else
 			state = 1;
 	} else if ((cp = value("ssl-rand-file")) != NULL) {
-		cp = expand(cp);
+		cp = file_expand(cp);
 		if (RAND_load_file(cp, 1024) == -1) {
 			fprintf(stderr, catgets(catd, CATSET, 246,
 				"entropy file at \"%s\" not available\n"), cp);
@@ -246,9 +246,9 @@ ssl_load_verifications(struct sock *sp)
 	if (ssl_vrfy_level == VRFY_IGNORE)
 		return;
 	if ((ca_dir = value("ssl-ca-dir")) != NULL)
-		ca_dir = expand(ca_dir);
+		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("ssl-ca-file")) != NULL)
-		ca_file = expand(ca_file);
+		ca_file = file_expand(ca_file);
 	if (ca_dir || ca_file) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
 					ca_file, ca_dir) != 1) {
@@ -289,7 +289,7 @@ ssl_certificate(struct sock *sp, const char *uhp)
 	strcpy(&certvar[9], uhp);
 	if ((cert = value(certvar)) != NULL ||
 			(cert = value("ssl-cert")) != NULL) {
-		cert = expand(cert);
+		cert = file_expand(cert);
 		if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) == 1) {
 			keyvar = ac_alloc(strlen(uhp) + 9);
 			strcpy(keyvar, "ssl-key-");
@@ -297,7 +297,7 @@ ssl_certificate(struct sock *sp, const char *uhp)
 					(key = value("ssl-key")) == NULL)
 				key = cert;
 			else
-				key = expand(key);
+				key = file_expand(key);
 			if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key,
 						SSL_FILETYPE_PEM) != 1)
 				fprintf(stderr, catgets(catd, CATSET, 238,
@@ -677,9 +677,9 @@ cverify(void *vp)
 	}
 	X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
 	if ((ca_dir = value("smime-ca-dir")) != NULL)
-		ca_dir = expand(ca_dir);
+		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("smime-ca-file")) != NULL)
-		ca_file = expand(ca_file);
+		ca_file = file_expand(ca_file);
 	if (ca_dir || ca_file) {
 		if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
 			ssl_gen_err("Error loading %s",
@@ -745,7 +745,7 @@ smime_encrypt(FILE *ip, const char *certfile, const char *to)
 #endif
 	EVP_CIPHER	*cipher;
 
-	certfile = expand((char *)certfile);
+	certfile = file_expand((char *)certfile);
 	ssl_init();
 	if ((cipher = smime_cipher(to)) == NULL)
 		return NULL;
@@ -987,7 +987,7 @@ loop:	if (name) {
 		fputc('\n', stderr);
 	}
 	return NULL;
-open:	cp = expand(cp);
+open:	cp = file_expand(cp);
 	if ((fp = Fopen(cp, "r")) == NULL) {
 		perror(cp);
 		return NULL;
@@ -1035,7 +1035,7 @@ smime_sign_include_chain_creat(
 		if (! *cfiles)
 			break;
 
-		if ((exp = expand(cfiles)) != NULL)
+		if ((exp = file_expand(cfiles)) != NULL)
 			cfiles = exp;
 		if ((fp = Fopen(cfiles, "r")) == NULL) {
 			perror(cfiles);
@@ -1179,7 +1179,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 
 	if ((crl_file = value(vfile)) != NULL) {
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-		crl_file = expand(crl_file);
+		crl_file = file_expand(crl_file);
 		if (load_crl1(store, crl_file) != OKAY)
 			return STOP;
 #else	/* old OpenSSL */
@@ -1190,7 +1190,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 	}
 	if ((crl_dir = value(vdir)) != NULL) {
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-		crl_dir = expand(crl_dir);
+		crl_dir = file_expand(crl_dir);
 		ds = strlen(crl_dir);
 		if ((dirfd = opendir(crl_dir)) == NULL) {
 			perror(crl_dir);

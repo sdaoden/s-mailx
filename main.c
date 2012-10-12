@@ -391,14 +391,14 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	 * for fopen, so it's safe to do this.
 	 */
 	if ((cp = getenv("MAILRC")) != NULL)
-		load(expand(cp));
+		load(file_expand(cp));
 	else if ((cp = getenv("NAILRC")) != NULL)
-		load(expand(cp));
+		load(file_expand(cp));
 	else
-		load(expand("~/.mailrc"));
+		load(file_expand("~/.mailrc"));
 	if (getenv("NAIL_EXTRA_RC") == NULL &&
 			(cp = value("NAIL_EXTRA_RC")) != NULL)
-		load(expand(cp));
+		load(file_expand(cp));
 
 	/*
 	 * Now we can set the account.

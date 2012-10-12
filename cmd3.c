@@ -215,7 +215,7 @@ schdir(void *v)
 	if (*arglist == NULL)
 		cp = homedir;
 	else
-		if ((cp = expand(*arglist)) == NULL)
+		if ((cp = file_expand(*arglist)) == NULL)
 			return(1);
 	if (chdir(cp) < 0) {
 		perror(cp);

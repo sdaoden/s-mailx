@@ -117,7 +117,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 	} else {
 		if ((cachedir = value("imap-cache")) == NULL)
 			return NULL;
-		cachedir = expand(cachedir);
+		cachedir = file_expand(cachedir);
 		eaccount = strenc(mp->mb_imap_account);
 		if (box)
 			emailbox = strenc(box);
@@ -414,7 +414,7 @@ clean(struct mailbox *mp, struct cw *cw)
 
 	if ((cachedir = value("imap-cache")) == NULL)
 		return NULL;
-	cachedir = expand(cachedir);
+	cachedir = file_expand(cachedir);
 	eaccount = strenc(mp->mb_imap_account);
 	if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
 		emailbox = strenc(mp->mb_imap_mailbox);
@@ -612,7 +612,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 
 	if ((cachedir = value("imap-cache")) == NULL)
 		return STOP;
-	cachedir = expand(cachedir);
+	cachedir = file_expand(cachedir);
 	eaccount = strenc(mp->mb_imap_account);
 	name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
 	snprintf(name, namesz, "%s/%s", cachedir, eaccount);
@@ -749,7 +749,7 @@ cache_dequeue(struct mailbox *mp)
 
 	if ((cachedir = value("imap-cache")) == NULL)
 		return OKAY;
-	cachedir = expand(cachedir);
+	cachedir = file_expand(cachedir);
 	eaccount = strenc(mp->mb_imap_account);
 	buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
 	snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
