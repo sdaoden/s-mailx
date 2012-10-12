@@ -95,16 +95,14 @@ main(int argc, char *argv[])
 		"\t\t[-S var[=value]] [-T name] -f [file]\n"
 		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
-	int scnt, i, existonly = 0, headersonly = 0, sendflag = 0;
+	int scnt, i;
 	struct name *to, *cc, *bcc, *smopts;
 	struct attachment *attach;
-	char *subject, *cp, *ef, *qf = NULL, *fromaddr = NULL, *Aflag = NULL;
-	char nosrc = 0;
-	int Eflag = 0, Fflag = 0, tflag = 0;
-	int volatile Nflag = 0;
+	char *cp, *subject, *ef, *qf, *fromaddr, *Aflag;
+	char existonly, headersonly, sendflag, nosrc, Eflag, Fflag, tflag;
+	char volatile Nflag;
 	sighandler_type prevint;
 
-	(void)&Nflag;
 	/*
 	 * Absolutely the first thing we do is save our egid
 	 * and set it to the rgid, so that we can safely run
@@ -178,14 +176,14 @@ main(int argc, char *argv[])
 	 * of users to mail to.  Argp will be set to point to the
 	 * first of these users.
 	 */
-	ef = NULL;
-	to = NULL;
-	cc = NULL;
-	bcc = NULL;
-	attach = NULL;
-	smopts = NULL;
-	subject = NULL;
 	scnt = 0;
+	to = cc = bcc = smopts = NULL;
+	attach = NULL;
+	subject = ef = qf = fromaddr = Aflag = NULL;
+	existonly = headersonly = sendflag = nosrc =
+	Eflag = Fflag = tflag = 0;
+	Nflag = 0;
+
 	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
 		case 'A':
@@ -199,7 +197,7 @@ main(int argc, char *argv[])
 				perror(optarg);
 				exit(1);
 			}
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'B':
 			/* Make 0/1 line buffered */
@@ -209,28 +207,28 @@ main(int argc, char *argv[])
 		case 'b':
 			/* Get Blind Carbon Copy Recipient list */
 			bcc = cat(bcc, checkaddrs(lextract(optarg,GBCC|GFULL)));
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'c':
 			/* Get Carbon Copy Recipient list */
 			cc = cat(cc, checkaddrs(lextract(optarg, GCC|GFULL)));
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'D':
 			assign("disconnected", "");
 			break;
 		case 'd':
-			debug++;
+			++debug;
 			break;
 		case 'E':
 			Eflag = 1;
 			break;
 		case 'e':
-			existonly++;
+			existonly = 1;
 			break;
 		case 'F':
 			Fflag = 1;
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'f':
 			/*
@@ -248,7 +246,6 @@ jIflag:		case 'I':
 			/* Show Newsgroups: field in header summary */
 			Iflag = 1;
 			break;
-
 		case 'i':
 			/* Ignore interrupts */
 			assign("ignore", "");
@@ -260,18 +257,18 @@ jIflag:		case 'I':
 			break;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
-			++nosrc;
+			nosrc = 1;
 			break;
 		case 'O':
 			/* Additional options to pass-through to MTA */
 			smopts = cat(smopts, nalloc(optarg, 0));
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'q':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
 			if (*optarg != '-')
 				qf = optarg;
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'R':
 			/* Open folders read-only */
@@ -290,7 +287,7 @@ jIflag:		case 'I':
 				goto usage;
 			}
 			tildeflag = -1;
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'S':
 			/* Set variable (do so later, after RC loading..) */
@@ -299,7 +296,7 @@ jIflag:		case 'I':
 		case 's':
 			/* Subject: */
 			subject = optarg;
-			sendflag++;
+			sendflag = 1;
 			break;
 		case 'T':
 			/*
