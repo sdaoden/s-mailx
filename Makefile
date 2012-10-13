@@ -19,8 +19,11 @@ SHELL		= /bin/sh
 STRIP		= strip
 INSTALL		= /usr/bin/install
 
-#CFLAGS		=
-#WARN		= -W -Wall -Wextra -pedantic
+#CFLAGS		= -std=c89 -O1
+#WARN		= -g -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
+#		-Winit-self -fstrict-overflow -Wstrict-overflow=5
+# Warnings that are not handled very well (yet)
+#		-Wshadow -Wcast-qual -Wwrite-strings
 #LDFLAGS		=
 
 ##  --  >8  --  8<  --  ##
