@@ -42,6 +42,8 @@ Non-breakers
   roff style is fine, but lines should be ~70 characters, not only ~25.
 - IDNA.
 - Mail-Followup-To:.
+- Make it possible to reply to/save/write/xy part X.Y[.Z] by allowing its
+  specification directly, as in, e.g., ':w 1.2'.  (Martin Neitzel)
 - I want to have a ~R tilde command that works like ~r except it performs
   quoting of the input just as ~m does.  Also see -q above.
 - Offer the possibility to work with certificate fingerprints instead of
@@ -56,10 +58,15 @@ Non-breakers
   real healing would make necessary a complete rewrite of the name handling!
   Such a cache would work without touching the current code flow ... or
   allow a smooth transition to a new one anyway.
+- It would be nice if it would be possible to define a format string for
+  *quote*, like 'set quote="format=some formats"'.
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
-- Try to add command line editing; problems may be signals and even
-  more longjmp()s, and how they are used at the moment.  Check that.
+- On the long run -- try to add command line editing.
+- For those who use S-nail(1) only with a MTA it may be desirable to have
+  some "smopts" expansion mechanism in equal spirit to NetBSD mailx(1).
+- While talking about NetBSD mailx(1), the author can imagine that being
+  able to use the optional -H:xy stuff is sometimes nice.
 - Add the possibility to simply place whatever header in the editor (and
   in the mail read in due to the -t command line option, and...).
 - Check against RFC 5322.
@@ -72,6 +79,7 @@ Non-breakers
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
+  Meaning, also the possibility to postpone a message.
 - mime.c:prefixwrite() tracks state internally instead of having a cookie
   argument.  That doesn't really make sense.  Either it is capable to work
   with multiple files concurrently and prefix-quotes them correctly in the
@@ -85,7 +93,6 @@ Non-breakers
 - Revise the code:
   + Add C99-likeish typedefs for integers and use them everywhere.
   + Don't use magic constants/values.
-  + Document the functions in the interface declarators.
   + Try to thin out the onion and reduce work that is done over and over
     again.  Maybe introduce objects to represent header[field/body] and
     content and find a way to pass those all through that vegetable.
@@ -94,6 +101,7 @@ Non-breakers
     encodings that use U+001B (escape) or another ASCII thing to introduce
     shift states.  The only real solution to this problem would be to
     rewrite the entire codebase and use wide characters (IMO) everywhere.
+  + Document the functions in the interface declarators.
   + [v13:started] Resort the functions and where they are implemented.
     It's really terrible.  Just think about outof(), savedeadletter(),
     savemail() etc..
