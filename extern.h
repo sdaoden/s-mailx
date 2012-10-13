@@ -55,7 +55,7 @@ int source(void *v);
 int unstack(void);
 void alter(char *name);
 int blankline(char *linebuf);
-int anyof(char *s1, char *s2);
+int anyof(char const*s1, char const*s2);
 int is_prefix(const char *as1, const char *as2);
 char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);

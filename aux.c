@@ -449,7 +449,7 @@ blankline(char *linebuf)
  * Are any of the characters in the two strings the same?
  */
 int 
-anyof(char *s1, char *s2)
+anyof(char const*s1, char const*s2)
 {
 
 	while (*s1)
