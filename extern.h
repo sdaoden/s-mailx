@@ -542,6 +542,8 @@ char *savestrbuf(const char *sbuf, size_t sbuf_len);
 char *save2str(const char *str, const char *old);
 char *savecat(const char *s1, const char *s2);
 
+struct str *str_concat_csvl(struct str *self, ...);
+
 /* temp.c */
 FILE *Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
 void Ftfree(char **fn);

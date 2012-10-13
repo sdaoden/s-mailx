@@ -48,6 +48,8 @@
 #include "rcv.h"
 #include "extern.h"
 
+#include <stdarg.h>
+
 /*
  * Allocate size more bytes of space and return the address of the
  * first byte to the caller.  An even number of bytes are always
@@ -196,4 +198,30 @@ savecat(const char *s1, const char *s2)
 		*np++ = *cp;
 	*np = '\0';
 	return ns;
+}
+
+struct str *
+str_concat_csvl(struct str *self, ...)
+{
+	va_list vl;
+	size_t l;
+	char const*cs;
+
+	va_start(vl, self);
+	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
+		l += strlen(cs);
+	va_end(vl);
+
+	self->l = l;
+	self->s = salloc(l + 1);
+
+	va_start(vl, self);
+	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
+		size_t i = strlen(cs);
+		memcpy(self->s + l, cs, i);
+		l += i;
+	}
+	self->s[l] = '\0';
+	va_end(vl);
+	return (self);
 }
