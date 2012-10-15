@@ -640,12 +640,10 @@ sort(void *vp)
 static char *
 skipre(const char *cp)
 {
-	if (lowerconv(cp[0]&0377) == 'r' &&
-			lowerconv(cp[1]&0377) == 'e' &&
-			cp[2] == ':' &&
-			spacechar(cp[3]&0377)) {
+	if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' &&
+			cp[2] == ':' && spacechar(cp[3])) {
 		cp = &cp[4];
-		while (spacechar(*cp&0377))
+		while (spacechar(*cp))
 			cp++;
 	}
 	return (char *)cp;
