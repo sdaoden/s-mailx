@@ -34,6 +34,10 @@ Backward-compatibility breakers
   files are appended.  I don't know if this is really desirable behaviour,
   but i have not thought about that for real.  Maybe this should be at
   least configurable.
+- The current maintainer really would like to make the new
+  *rfc822-no-body-from_* option the default, or, even better, get rid of
+  these "pseudo From_"s that were introduced in
+  50fef89 (* A mbox-style "From " line is now generated.., 2004-11-06).
 
 Non-breakers
 ------------

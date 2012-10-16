@@ -217,6 +217,18 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
 			action == SEND_TOSRCH || action == SEND_TOFLTR ?
 		CONV_FROMHDR : CONV_NONE;
+
+	/*
+	 * Normally headers included in "Content-Type: message/rfc822" messages
+	 * will not show up in replies to the encapsulating envelope.
+	 * This is nail(1) specific and thus may be configured differently.
+	 */
+	if (ip->m_mimecontent == MIME_TEXT_PLAIN && ip->m_parent != NULL &&
+			ip->m_parent->m_mimecontent == MIME_822 &&
+			value("rfc822-show-all"))
+		goto skip;
+
+	/* Work the headers */
 	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
 		lineno++;
 		if (line[0] == '\n') {
@@ -364,6 +376,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	}
 	free(line);
 	line = NULL;
+
 skip:	switch (ip->m_mimecontent) {
 	case MIME_822:
 		switch (action) {
@@ -374,7 +387,16 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			put_from_(obuf, ip->m_multipart, stats);
+			if (! value("rfc822-no-body-from_")) {
+				if (prefixlen && value("rfc822-show-all")) {
+					size_t i = fwrite(prefix,
+						sizeof *prefix, prefixlen,
+						obuf);
+					if (i == prefixlen)
+						addstats(stats, 0, i);
+				}
+				put_from_(obuf, ip->m_multipart, stats);
+			}
 			/*FALLTHRU*/
 		case SEND_TOSRCH:
 		case SEND_DECRYPT:
@@ -714,6 +736,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		ip->m_ct_type_plain = "message/rfc822";
 	else
 		ip->m_ct_type_plain = "text/plain";
+
 	ip->m_mimecontent = mime_getcontent(ip->m_ct_type_plain);
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
@@ -892,8 +915,10 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
 	ip->m_multipart = np;
-	substdate((struct message *)np);
-	np->m_from = fakefrom((struct message *)np);
+	if (! value("rfc822-no-body-from_")) {
+		substdate((struct message *)np);
+		np->m_from = fakefrom((struct message *)np);
+	}
 	parsepart(zmp, np, pf, level+1);
 }
 

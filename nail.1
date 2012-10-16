@@ -2593,6 +2593,24 @@ variable is evaluated as usual.
 .B Replyall
 Reverses the sense of reply and Reply commands.
 .TP
+.B rfc822-no-body-from_
+By default \*(UA shows a so-called "From " line when a message contains
+another message via the message/rfc822 MIME mechanism.
+This may be misleading since it intransparently adds content on the
+one hand,
+and also silently maps any missing information from the envelope mail
+onto the embedded one on the other.
+If this value is set then no "From " line is shown for embedded
+message/rfc822 mail messages.
+.TP
+.B rfc822-show-all
+Messages that embed message/rfc822 MIME messages,
+and most remarkably those envelopes that only forward another mail via
+this mechanism,
+do not print/show/quote the encapsulated headers but after filtering
+them through the normal mechanisms.
+If this value is set then the embedded mail is treated as a unity.
+.TP
 .B save
 When the user aborts a message
 with two RUBOUT (interrupt characters)
