@@ -82,7 +82,7 @@ static size_t out(char *buf, size_t len, FILE *fp,
 		char **restp, size_t *restsizep);
 static void addstats(off_t *stats, off_t lines, off_t bytes);
 static FILE *newfile(struct mimepart *ip, int *ispipe,
-		sighandler_type *oldpipe);
+		sighandler_type volatile*oldpipe);
 static char *getpipecmd(char *content);
 static FILE *getpipefile(char *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
@@ -499,7 +499,6 @@ skip:	switch (ip->m_mimecontent) {
 						break;
 					stats = NULL;
 					if ((obuf = newfile(np, &ispipe,
-							(sighandler_type*)
 								&oldpipe))
 							== NULL)
 						continue;
@@ -993,7 +992,7 @@ addstats(off_t *stats, off_t lines, off_t bytes)
  * Get a file for an attachment.
  */
 static FILE *
-newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
+newfile(struct mimepart *ip, int *ispipe, sighandler_type volatile*oldpipe)
 {
 	char *f = ip->m_filename;
 	struct str in, out;
