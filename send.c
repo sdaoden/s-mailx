@@ -88,10 +88,10 @@ static FILE *getpipefile(char *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
 		char *prefix, size_t prefixlen, off_t *stats);
 static void statusput(const struct message *mp, FILE *obuf,
-		char *prefix, off_t *stats);
+		char *prefix, size_t prefixlen, off_t *stats);
 static void xstatusput(const struct message *mp, FILE *obuf,
-		char *prefix, off_t *stats);
-static void put_from_(FILE *fp, struct mimepart *ip);
+		char *prefix, size_t prefixlen, off_t *stats);
+static void put_from_(FILE *fp, struct mimepart *ip, off_t *stats);
 
 static sigjmp_buf	pipejmp;
 
@@ -117,47 +117,38 @@ int
 send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		char *prefix, enum sendaction action, off_t *stats)
 {
-	size_t	count;
-	FILE	*ibuf;
-	size_t	prefixlen, sz;
-	int	c;
-	enum parseflags	pf;
-	struct mimepart	*ip;
-	char	*cp, *cp2;
+	size_t prefixlen, count, sz, i;
+	FILE *ibuf;
+	int c;
+	enum parseflags pf;
+	struct mimepart *ip;
 
 	if (mp == dot && action != SEND_TOSRCH && action != SEND_TOFLTR)
 		did_print_dot = 1;
 	if (stats)
 		stats[0] = stats[1] = 0;
-	/*
-	 * Compute the prefix string, without trailing whitespace
-	 */
-	if (prefix != NULL) {
-		cp2 = 0;
-		for (cp = prefix; *cp; cp++)
-			if (!blankchar(*cp & 0377))
-				cp2 = cp;
-		prefixlen = cp2 == 0 ? 0 : cp2 - prefix + 1;
-	} else
-		prefixlen = 0;
+	prefixlen = (prefix != NULL) ? strlen(prefix) : 0;
+
 	/*
 	 * First line is the From_ line, so no headers there to worry about.
 	 */
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-		return -1;
+		return (-1);
 	count = mp->m_size;
 	sz = 0;
 	if (mp->m_flag & MNOFROM) {
 		if (doign != allignore && doign != fwdignore &&
 				action != SEND_RFC822)
-			sz = fprintf(obuf, "%sFrom %s %s\n",
-					prefix ? prefix : "",
+			sz = fprintf(obuf, "%.*sFrom %s %s\n",
+					(int)prefixlen, prefixlen ? prefix :"",
 					fakefrom(mp), fakedate(mp->m_time));
 	} else {
-		if (prefix && doign != allignore && doign != fwdignore &&
+		if (prefixlen && doign != allignore && doign != fwdignore &&
 				action != SEND_RFC822) {
-			fputs(prefix, obuf);
-			sz += strlen(prefix);
+			i = fwrite(prefix, sizeof *prefix, prefixlen, obuf);
+			if (i != prefixlen)
+				return (-1);
+			sz += i;
 		}
 		while (count && (c = getc(ibuf)) != EOF) {
 			if (doign != allignore && doign != fwdignore &&
@@ -176,9 +167,9 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
 		pf |= PARSE_DECRYPT|PARSE_PARTS;
 	if ((ip = parsemsg(mp, pf)) == NULL)
-		return -1;
-	return sendpart(mp, ip, obuf, doign, prefix, prefixlen, action, stats,
-			0);
+		return (-1);
+	return (sendpart(mp, ip, obuf, doign, prefix, prefixlen, action, stats,
+			0));
 }
 
 static int
@@ -195,7 +186,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	enum conversion	volatile convert;
 	sighandler_type	volatile oldpipe = SIG_DFL;
 	long lineno = 0;
-
 
 	if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
 			action != SEND_MBOX && action != SEND_RFC822 &&
@@ -237,9 +227,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 * fields
 			 */
 			if (dostat & 1)
-				statusput(zmp, obuf, prefix, stats);
+				statusput(zmp, obuf, prefix, prefixlen, stats);
 			if (dostat & 2)
-				xstatusput(zmp, obuf, prefix, stats);
+				xstatusput(zmp, obuf, prefix, prefixlen, stats);
 			if (doign != allignore)
 				out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
 						prefix, prefixlen, stats,
@@ -275,9 +265,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * there are no headers at all.
 				 */
 				if (dostat & 1)
-					statusput(zmp, obuf, prefix, stats);
+					statusput(zmp, obuf, prefix, prefixlen,
+						stats);
 				if (dostat & 2)
-					xstatusput(zmp, obuf, prefix, stats);
+					xstatusput(zmp, obuf, prefix,
+						prefixlen, stats);
 				if (doign != allignore)
 					out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
 						prefix, prefixlen, stats,
@@ -298,7 +290,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				  * and print the real Status: field
 				  */
 				if (dostat & 1) {
-					statusput(zmp, obuf, prefix, stats);
+					statusput(zmp, obuf, prefix, prefixlen,
+						stats);
 					dostat &= ~1;
 					ignoring = 1;
 				}
@@ -308,7 +301,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * and print the real Status: field
 				 */
 				if (dostat & 2) {
-					xstatusput(zmp, obuf, prefix, stats);
+					xstatusput(zmp, obuf, prefix,
+						prefixlen, stats);
 					dostat &= ~2;
 					ignoring = 1;
 				}
@@ -380,14 +374,14 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			put_from_(obuf, ip->m_multipart);
+			put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_TOSRCH:
 		case SEND_DECRYPT:
 			goto multi;
 		case SEND_TOFILE:
 		case SEND_TOPIPE:
-			put_from_(obuf, ip->m_multipart);
+			put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_MBOX:
 		case SEND_RFC822:
@@ -1126,7 +1120,8 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
  * Output a reasonable looking status field.
  */
 static void
-statusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
+statusput(const struct message *mp, FILE *obuf, char *prefix, size_t prefixlen,
+	off_t *stats)
 {
 	char statout[3];
 	char *cp = statout;
@@ -1137,13 +1132,14 @@ statusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
 		*cp++ = 'O';
 	*cp = 0;
 	if (statout[0])
-		fprintf(obuf, "%sStatus: %s\n",
-			prefix == NULL ? "" : prefix, statout);
-	addstats(stats, 1, (prefix ? strlen(prefix) : 0) + 9 + cp - statout);
+		fprintf(obuf, "%.*sStatus: %s\n",
+			(int)prefixlen, (prefixlen ? prefix : ""), statout);
+	addstats(stats, 1, prefixlen + 9 + cp - statout);
 }
 
 static void
-xstatusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
+xstatusput(const struct message *mp, FILE *obuf, char *prefix,
+	size_t prefixlen, off_t *stats)
 {
 	char xstatout[4];
 	char *xp = xstatout;
@@ -1156,22 +1152,32 @@ xstatusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
 		*xp++ = 'T';
 	*xp = 0;
 	if (xstatout[0])
-		fprintf(obuf, "%sX-Status: %s\n",
-			prefix == NULL ? "" : prefix, xstatout);
-	addstats(stats, 1, (prefix ? strlen(prefix) : 0) + 11 + xp - xstatout);
+		fprintf(obuf, "%.*sX-Status: %s\n",
+			(int)prefixlen, (prefixlen ? prefix : ""), xstatout);
+	addstats(stats, 1, prefixlen + 11 + xp - xstatout);
 }
 
 static void
-put_from_(FILE *fp, struct mimepart *ip)
+put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 {
-	time_t	now;
+	time_t now;
+	char const *from, *date, *nl;
+	int i;
 
-	if (ip && ip->m_from)
-		fprintf(fp, "From %s %s\n", ip->m_from, fakedate(ip->m_time));
-	else {
+	if (ip && ip->m_from) {
+		from = ip->m_from;
+		date = fakedate(ip->m_time);
+		nl = "\n";
+	} else {
 		time(&now);
-		fprintf(fp, "From %s %s", myname, ctime(&now));
+		from = myname;
+		date = ctime(&now);
+		nl = "";
 	}
+
+	i = fprintf(fp, "From %s %s%s", from, date, nl);
+	if (i > 0)
+		addstats(stats, (*nl != '\0'), i);
 }
 
 /*

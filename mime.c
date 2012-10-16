@@ -1367,7 +1367,7 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 	if (rsz == 0)
 		return 0;
 
-	if (prefix == NULL)
+	if (prefixlen == 0)
 		return fwrite(ptr, 1, rsz, f);
 
 	if ((p = value("quote-fold")) != NULL) {
