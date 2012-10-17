@@ -45,10 +45,13 @@
 
 #include "rcv.h"
 #include "extern.h"
-#include <sys/stat.h>
+
+#include <errno.h>
+
 #include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 static struct name *	tailof(struct name *name);
 static struct name *	extract1(char *line, enum gfield ntype,
@@ -432,16 +435,19 @@ outof(struct name *names, FILE *fo, struct header *hp)
 				putc('\n', fout);
 			putc('\n', fout);
 			fflush(fout);
-			if (ferror(fout))
+			if (ferror(fout)) {
 				perror(tr(148, "Finalizing write of temporary "
 					"image"));
+				Fclose(fout);
+				goto jcantfout;
+			}
 			Fclose(fout);
 
 			/* If we have to serve file addressees, open reader */
 			if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
 				perror(tr(149, "Failed to open a duplicate of "
 					"the temporary image"));
-				++senderr;
+jcantfout:			++senderr;
 				(void)close(image);
 				image = -1;
 				goto jcant;
@@ -468,6 +474,9 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			pid = start_command(shell, &nset,
 				fda[xcnt++], -1, "-c", np->n_name + 1, NULL);
 			if (pid < 0) {
+				fprintf(stderr, tr(281,
+					"Message piping to <%s> failed\n"),
+					np->n_name);
 				++senderr;
 				goto jcant;
 			}
@@ -475,7 +484,9 @@ outof(struct name *names, FILE *fo, struct header *hp)
 		} else {
 			char *fname = file_expand(np->n_name);
 			if ((fout = Zopen(fname, "a", NULL)) == NULL) {
-				perror(fname);
+				fprintf(stderr, tr(282,
+					"Message writing to <%s> failed: %s\n"),
+					fname, strerror(errno));
 				++senderr;
 				goto jcant;
 			}
@@ -483,8 +494,10 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			while ((i = getc(fin)) != EOF)
 				putc(i, fout);
 			if (ferror(fout)) {
+				fprintf(stderr, tr(282,
+					"Message writing to <%s> failed: %s\n"),
+					fname, tr(283, "write error"));
 				++senderr;
-				perror(fname);
 			}
 			Fclose(fout);
 		}

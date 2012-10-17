@@ -331,3 +331,6 @@ The following ~ escapes are defined:\n\
 278 Enter filename for part %s (%s)
 279 ... skipping this\n
 280 "%s": only a local file or directory may be used\n
+281 Message piping to <%s> failed\n
+282 Message writing to <%s> failed: %s\n
+283 write error
