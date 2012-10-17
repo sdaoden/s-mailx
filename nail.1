@@ -2604,12 +2604,10 @@ If this value is set then no "From " line is shown for embedded
 message/rfc822 mail messages.
 .TP
 .B rfc822-show-all
-Messages that embed message/rfc822 MIME messages,
-and most remarkably those envelopes that only forward another mail via
-this mechanism,
-do not print/show/quote the encapsulated headers but after filtering
-them through the normal mechanisms.
-If this value is set then the embedded mail is treated as a unity.
+Messages or MIME message parts that embed entire mail message via the
+message/rfc822 MIME mechanism do not print/show/quote headers of the
+embedded message but after filtering them through the normal mechanism.
+If this value is set then an embedded mail is treated as a unity.
 .TP
 .B save
 When the user aborts a message
