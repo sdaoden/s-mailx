@@ -288,6 +288,12 @@ jIflag:		case 'I':
 		case 'S':
 			/* Set variable (do so later, after RC loading..) */
 			argv[scnt++] = optarg;
+			/* TODO Also set -S directly (see TODO) */
+			{	char *a[2];
+				a[0] = optarg;
+				a[1] = NULL;
+				set(a);
+			}
 			break;
 		case 's':
 			/* Subject: */

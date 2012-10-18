@@ -212,7 +212,8 @@ variable directly instead.
 Sets the internal option
 .I variable
 and, in case of a string option, assigns \fIvalue\fR to it.
-These assignments take place after the resource files have been loaded.
+These assignments become active immediately,
+but also cannot be overwritten by resource file content.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
