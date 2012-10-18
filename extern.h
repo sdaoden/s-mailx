@@ -290,7 +290,7 @@ char *routeaddr(const char *name);
 #define is_fileorpipe_addr(NP) \
 	(((NP)->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) != 0)
 int is_addr_invalid(struct name *np, int putmsg);
-char *skinned_name(struct name *np);
+char *skinned_name(struct name const*np);
 char *skin(char *name);
 int addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
 char *realname(char *name);

@@ -39,7 +39,14 @@
 
 #include "rcv.h"
 #include "extern.h"
+
 #include <time.h>
+
+#ifdef USE_IDNA
+# include <idna.h>
+# include <stringprep.h>
+# include <tld.h>
+#endif
 
 /*
  * Mail -- a mail program
@@ -51,6 +58,9 @@ static char *	copyin(char *src, char **space);
 static char *	nextword(char *wp, char *wbuf);
 static int	gethfield(FILE *f, char **linebuf, size_t *linesize, int rem,
 			char **colon);
+#ifdef USE_IDNA
+static struct addrguts * idna_apply(struct addrguts *agp);
+#endif
 static int	addrspec_check(int doskin, struct addrguts *agp);
 static int	msgidnextc(const char **cp, int *status);
 static int	charcount(char *str, int c);
@@ -590,27 +600,32 @@ routeaddr(const char *name)
 int 
 is_addr_invalid(struct name *np, int putmsg)
 {
-	char *name = np->n_name;
-	int f = np->n_flags;
+	char cbuf[sizeof "'\\U12340'"], *name = np->n_name;
+	int f = np->n_flags, ok8bit = 1;
+	unsigned int c;
+	char const *fmt = "'\\x%02X'", *cs;
 
 	if ((f & NAME_ADDRSPEC_INVALID) == 0 || ! putmsg ||
 			(f & NAME_ADDRSPEC_ERR_EMPTY) != 0)
-		;
-	else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
-		fprintf(stderr, tr(142, "%s contains invalid @@ sequence\n"),
-			name);
-	else {
-		char ce[sizeof(1ul)];
-		unsigned char c = NAME_ADDRSPEC_ERR_GETC(f);
+		goto jleave;
 
-		if ((unsigned char)c >= 040 && (unsigned char)c <= 0177)
-			ce[0] = c, ce[1] = '\0';
-		else
-			snprintf(ce, sizeof(ce), "\\%03o", (unsigned int)c);
-		fprintf(stderr, tr(143,
-			"%s contains invalid character '%s'\n"),
-			name, ce);
-	}
+	if (f & NAME_ADDRSPEC_ERR_IDNA)
+		cs = tr(284, "Invalid domain name: \"%s\", character %s\n"),
+		fmt = "'\\U%04X'",
+		ok8bit = 0;
+	else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
+		cs = tr(142, "\"%s\" contains invalid %s sequence\n");
+	else
+		cs = tr(143, "\"%s\" contains invalid character %s\n");
+
+	c = NAME_ADDRSPEC_ERR_GETWC(f);
+	if (ok8bit && c >= 040 && c <= 0177)
+		snprintf(cbuf, sizeof cbuf, "'%c'", c);
+	else
+		snprintf(cbuf, sizeof cbuf, fmt, c);
+
+	fprintf(stderr, cs, name, cbuf);
+jleave:
 	return ((f & NAME_ADDRSPEC_INVALID) != 0);
 }
 
@@ -619,7 +634,7 @@ is_addr_invalid(struct name *np, int putmsg)
  * Note well that it may *not* create a duplicate.
  */
 char *
-skinned_name(struct name *np) /* TODO !HAVE_ASSERTS legacy */
+skinned_name(struct name const*np) /* TODO !HAVE_ASSERTS legacy */
 {
 #ifdef HAVE_ASSERTS
 	assert(np->n_flags & NAME_SKINNED);
@@ -649,6 +664,93 @@ skin(char *name)
 }
 
 /*
+ * Convert the domain part of a skinned address to IDNA.
+ * If an error occurs before Unicode information is available, revert the IDNA
+ * error to a normal CHAR one so that the error message doesn't talk Unicode.
+ */
+#ifdef USE_IDNA
+static struct addrguts *
+idna_apply(struct addrguts *agp)
+{
+	char *idna_utf8, *idna_ascii, *cs;
+	uint32_t *idna_uni;
+	size_t sz, i;
+	int strict = (value("idna-strict-checks") != NULL);
+
+	sz = agp->ag_slen - agp->ag_sdom_start;
+	assert(sz > 0);
+	idna_utf8 = ac_alloc(sz + 1);
+	memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
+	idna_utf8[sz] = '\0';
+
+	if (! utf8) {
+		char *tmp = stringprep_locale_to_utf8(idna_utf8);
+		ac_free(idna_utf8);
+		idna_utf8 = tmp;
+		if (idna_utf8 == NULL) {
+			agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
+					NAME_ADDRSPEC_ERR_CHAR;
+			goto jleave;
+		}
+	}
+
+	if (idna_to_ascii_8z(idna_utf8, &idna_ascii,
+			strict ? IDNA_USE_STD3_ASCII_RULES : 0)
+			!= IDNA_SUCCESS) {
+		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
+				NAME_ADDRSPEC_ERR_CHAR;
+		goto jleave1;
+	}
+
+	idna_uni = NULL;
+	if (! strict)
+		goto jset;
+
+	/*
+	 * Due to normalization that may have occurred we must convert back to
+	 * be able to check for top level domain issues
+	 */
+	if (idna_to_unicode_8z4z(idna_ascii, &idna_uni, 0) != IDNA_SUCCESS) {
+		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
+				NAME_ADDRSPEC_ERR_CHAR;
+		goto jleave2;
+	}
+
+	i = (size_t)tld_check_4z(idna_uni, &sz, NULL);
+	free(idna_uni);
+	if (i != TLD_SUCCESS) {
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
+			idna_uni[sz]);
+		goto jleave2;
+	}
+
+jset:	/* Replace the domain part of .ag_skinned with IDNA version */
+	sz = strlen(idna_ascii);
+	i = agp->ag_sdom_start;
+	cs = salloc(agp->ag_slen - i + sz + 1);
+	memcpy(cs, agp->ag_skinned, i);
+	memcpy(cs + i, idna_ascii, sz);
+	i += sz;
+	cs[i] = '\0';
+
+	agp->ag_skinned = cs;
+	agp->ag_slen = i;
+	NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+		NAME_NAME_SALLOC|NAME_SKINNED|NAME_IDNA, 0);
+
+jleave2:
+	free(idna_ascii);
+jleave1:
+	if (utf8)
+		ac_free(idna_utf8);
+	else
+		free(idna_utf8);
+jleave:
+	return (agp);
+}
+#endif 
+
+/*
  * Classify and check a (possibly skinned) header body according to RFC
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
@@ -659,18 +761,21 @@ addrspec_check(int skinned, struct addrguts *agp)
 {
 	char *addr, *p, in_quote, in_domain, hadat;
 	union {char c; unsigned char u;} c;
+#ifdef USE_IDNA
+	char use_idna = (value("idna-disable") == NULL);
+#endif
 
 	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 	addr = agp->ag_skinned;
 
 	if (agp->ag_iaddr_end <= agp->ag_iaddr_start) {
-		agp->ag_n_flags |= NAME_ADDRSPEC_INVALID |
-			NAME_ADDRSPEC_ERR_EMPTY;
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
+			0);
 		goto jleave;
 	}
 
 	/* If the field is not a recipient, it cannot be a file or a pipe */
-	if (! skinned) /* XXX  || (gfield & (GTO | GCC | GBCC)) == 0) */
+	if (! skinned)
 		goto jaddr_check;
 
 	/*
@@ -709,11 +814,15 @@ jaddr_check:
 	for (p = addr; (c.c = *p++) != '\0';) {
 		if (c.c == '"') {
 			in_quote = ! in_quote;
-		} else if (c.u < 040 || c.u >= 0177) { /*FIXME IDNA!!in_domin */
-		/*
-			if (in_domain)
-				agp->ag_n_flags |= NAME_ADDRSPEC_IDNA;
-			else*/
+		} else if (c.u < 040 || c.u >= 0177) {
+#ifdef USE_IDNA
+			if (in_domain && use_idna) {
+				if (use_idna == 1)
+					NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+						NAME_ADDRSPEC_ERR_IDNA, c.u);
+				use_idna = 2;
+			} else
+#endif
 				break;
 		} else if (in_domain == 2) {
 			if ((c.c == ']' && *p != '\0') || c.c == '\\' ||
@@ -725,9 +834,8 @@ jaddr_check:
 			++p;
 		} else if (c.c == '@') {
 			if (hadat++) {
-				agp->ag_n_flags |= NAME_ADDRSPEC_INVALID |
-					NAME_ADDRSPEC_ERR_ATSEQ |
-					NAME_ADDRSPEC_ERR_SETC('@');
+				NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+					NAME_ADDRSPEC_ERR_ATSEQ, c.u);
 				goto jleave;
 			}
 			agp->ag_sdom_start = (size_t)(p - addr);
@@ -741,24 +849,21 @@ jaddr_check:
 		hadat = 0;
 	}
 
-	if (c.c == '\0') {
-		agp->ag_sdom_end = (size_t)(--p - addr);
-	} else
-		agp->ag_n_flags |= NAME_ADDRSPEC_INVALID |
-			NAME_ADDRSPEC_ERR_SETC(c.c);
+	if (c.c != '\0') {
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR,
+			c.u);
+		goto jleave;
+	}
+
+#ifdef USE_IDNA
+	if (use_idna == 2)
+		agp = idna_apply(agp);
+#endif
+
 jleave:
 	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
 }
 
-/*
- * TODO addrspec_with_guts(!DOSKIN): 'want to release v13, but the code is evil
- * TODO in that {,GSKIN,GFULL} are not really enough to handle all names.
- * TODO We will have to classify *exactly* those fields we really care about,
- * TODO and simply perform high-bit-set checking only (?) for all the others.
- * TODO For those we do care for, provide special parsers that classify and
- * TODO extract the stuff *exactly* (after a short glance i think NetBSD mailx
- * TODO does this).  And *do* see namecache and header object TODO notes.
- */
 /*
  * Skin *name* and extract the *addr-spec* according to RFC 5322. TODO 822:5322
  * Store the result in .ag_skinned and also fill in those .ag_ fields that have
@@ -769,17 +874,19 @@ jleave:
 int
 addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
-	char *cp, *cp2, *bufend, *nbuf, c;
+	char const *cp;
+	char *cp2, *bufend, *nbuf, c;
 	int gotlt, lastsp;
 
 	memset(agp, 0, sizeof *agp);
 
 	if ((agp->ag_input = name) == NULL || /* XXX ever? */
 			(agp->ag_ilen = strlen(name)) == 0) {
-		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED |
-			NAME_ADDRSPEC_INVALID | NAME_ADDRSPEC_ERR_EMPTY;
 		agp->ag_skinned = ""; /* NAME_SALLOC not set */
 		agp->ag_slen = 0;
+		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
+			0);
 		return (1);
 	}
 
