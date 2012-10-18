@@ -350,11 +350,11 @@ int main(int argc, char **argv)
 }
 !
 
-## user.conf added later, indentation not adjusted ##
+##
 
 if wantfeat SOCKET; then
-
-compile_check arpa_inet_h 'for <arpa/inet.h>' '#define HAVE_ARPA_INET_H' <<\!
+	compile_check arpa_inet_h 'for <arpa/inet.h>' \
+		'#define HAVE_ARPA_INET_H' << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -363,7 +363,7 @@ compile_check arpa_inet_h 'for <arpa/inet.h>' '#define HAVE_ARPA_INET_H' <<\!
 #include <arpa/inet.h>
 !
 
-cat >$tmp2.c <<\!
+	cat >$tmp2.c << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -383,13 +383,13 @@ int main(void)
 }
 !
 
-WANT_SOCKET=1
-<$tmp2.c link_check sockets 'for socket functionality in libc' \
-		'#define HAVE_SOCKETS' ||
-	<$tmp2.c link_check sockets 'for socket functionality in libnsl' \
+	WANT_SOCKET=1
+	<$tmp2.c link_check sockets 'for sockets in libc' \
+			'#define HAVE_SOCKETS' ||
+		<$tmp2.c link_check sockets 'for sockets in libnsl' \
 			'#define HAVE_SOCKETS' '-lnsl' ||
 		<$tmp2.c link_check sockets \
-			'for socket functionality in libsocket and libnsl' \
+			'for sockets in libsocket and libnsl' \
 			'#define HAVE_SOCKETS' '-lsocket -lnsl' ||
 		WANT_SOCKET=0
 
@@ -397,11 +397,10 @@ WANT_SOCKET=1
 	[ ${WANT_SOCKET} -eq 1 ] ||
 		WANT_IPV6=0 WANT_SSL=0 \
 		WANT_IMAP=0 WANT_GSSAPI=0 WANT_POP3=0 WANT_SMTP=0
-
 fi # wantfeat SOCKET
-if wantfeat IPV6; then
 
-link_check ipv6 'for IPv6 functionality' '#define USE_IPV6' << \!
+if wantfeat IPV6; then
+	link_check ipv6 'for IPv6 functionality' '#define USE_IPV6' << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -440,12 +439,12 @@ else
 fi
 
 if wantfeat SSL; then
-
-link_check nss 'for Network Security Services (NSS)' '#define USE_SSL
-#define USE_NSS' '-lsmime3 -lnss3 -lssl3 -lnspr4 -lplc4' <<\! || \
+	link_check nss 'for Network Security Services (NSS)' '#define USE_SSL
+			#define USE_NSS' \
+			'-lsmime3 -lnss3 -lssl3 -lnspr4 -lplc4' <<\! || \
 		link_check openssl 'for sufficiently recent OpenSSL' \
 			'#define USE_SSL
-#define USE_OPENSSL' '-lssl -lcrypto' <<\%
+			#define USE_OPENSSL' '-lssl -lcrypto' << \%
 #include <nss.h>
 #include <ssl.h>
 #include <prinit.h>
@@ -478,16 +477,21 @@ int main(void)
 	return 0;
 }
 %
-if [ "${have_nss}" = 'yes' ]; then
-	compile_check genname_h 'for genname.h' '#define HAVE_GENNAME_H' <<\!
+
+	if [ "${have_nss}" = 'yes' ]; then
+		compile_check genname_h 'for genname.h' \
+			'#define HAVE_GENNAME_H' << \!
 #include <genname.h>
 !
-	compile_check xconst_h 'for xconst.h' '#define HAVE_XCONST_H' <<\!
+
+		compile_check xconst_h 'for xconst.h' \
+			'#define HAVE_XCONST_H' << \!
 #include <xconst.h>
 !
-	compile_check CERTAltNameEncodedContext \
-		'for CERTAltNameEncodedContext type' \
-		'#define HAVE_CERTAltNameEncodedContext' <<\!
+
+		compile_check CERTAltNameEncodedContext \
+			'for CERTAltNameEncodedContext type' \
+			'#define HAVE_CERTAltNameEncodedContext' << \!
 #include "config.h"
 #include <nss.h>
 #include <ssl.h>
@@ -509,10 +513,11 @@ if [ "${have_nss}" = 'yes' ]; then
 
 CERTAltNameEncodedContext	foo;
 !
-fi
+	fi
 
-if [ "${have_openssl}" = 'yes' ]; then
-	compile_check stack_of 'for STACK_OF()' '#define HAVE_STACK_OF' <<\!
+	if [ "${have_openssl}" = 'yes' ]; then
+		compile_check stack_of 'for STACK_OF()' \
+			'#define HAVE_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -528,14 +533,14 @@ int main(void)
 	return 0;
 }
 !
-fi
+	fi
 
 else
 	echo '/* Socket/SSL support not desired */' >> $out
 fi # wantfeat SSL
-if wantfeat GSSAPI; then
 
-cat >$tmp2.c <<\!
+if wantfeat GSSAPI; then
+	cat >$tmp2.c <<\!
 #include <gssapi/gssapi.h>
 
 int main(void)
@@ -546,23 +551,23 @@ int main(void)
 }
 !
 
-sed -e '1s/gssapi\///' < $tmp2.c > $tmp3.c
+	sed -e '1s/gssapi\///' < $tmp2.c > $tmp3.c
 
-<$tmp2.c link_check gssapi 'for GSSAPI in libgss' \
-		'#define USE_GSSAPI' '-lgss' ||
-	<$tmp2.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
+	<$tmp2.c link_check gssapi 'for GSSAPI in libgss' \
+			'#define USE_GSSAPI' '-lgss' ||
+		<$tmp2.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
 			'#define USE_GSSAPI' '-lgssapi_krb5' ||
 		link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
-				'#define USE_GSSAPI
-#define GSSAPI_OLD_STYLE' '-lgssapi_krb5' <<\! || \
-			<$tmp3.c link_check gssapi 'for GSSAPI in libgssapi' \
-				'#define USE_GSSAPI
-#define	GSSAPI_REG_INCLUDE' '-lgssapi' || \
-			<$tmp3.c link_check gssapi \
-				'for GSSAPI in libgssapi, OpenBSD-style' \
-				'#define USE_GSSAPI
-#define	GSSAPI_REG_INCLUDE' \
-		'-lgssapi -lkrb5 -lcrypto' '-I/usr/include/kerberosV'
+			'#define USE_GSSAPI
+			#define GSSAPI_OLD_STYLE' '-lgssapi_krb5' <<\! || \
+		<$tmp3.c link_check gssapi 'for GSSAPI in libgssapi' \
+			'#define USE_GSSAPI
+			#define	GSSAPI_REG_INCLUDE' '-lgssapi' || \
+		<$tmp3.c link_check gssapi \
+			'for GSSAPI in libgssapi, OpenBSD-style' \
+			'#define USE_GSSAPI
+			#define	GSSAPI_REG_INCLUDE' \
+			'-lgssapi -lkrb5 -lcrypto' '-I/usr/include/kerberosV'
 
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
