@@ -584,6 +584,33 @@ else
 	echo '/* IMAP/GSSAPI support not desired */' >> $out
 fi # wantfeat GSSAPI
 
+if wantfeat IDNA; then
+	link_check idna 'for GNU Libidn' '#define USE_IDNA' '-lidn' << \!
+#include <idna.h>
+#include <stringprep.h>
+#include <tld.h>
+
+int main(void)
+{
+	char *utf8, *idna_ascii;
+	uint32_t *idna_uni;
+	size_t sz;
+	utf8 = stringprep_locale_to_utf8("does.this.work");
+	if (idna_to_ascii_8z(utf8, &idna_ascii, IDNA_USE_STD3_ASCII_RULES)
+			!= IDNA_SUCCESS)
+		return (1);
+	if (idna_to_unicode_8z4z(idna_ascii, &idna_uni, 0) != IDNA_SUCCESS)
+		return (1 + (unsigned char)idna_strerror(0)[0]);
+	if (tld_check_4z(idna_uni, &sz, NULL) != TLD_SUCCESS)
+		return (2 + (unsigned char)tld_strerror(0)[0]);
+	return (0);
+}
+!
+
+else
+	echo '/* IDNA support not desired */' >> $out
+fi # wantfeat IDNA
+
 if wantfeat JUNK; then
 	echo "#define USE_JUNK" >> $out
 else
@@ -663,6 +690,9 @@ cat > $tmp2.c << \!
 #ifdef USE_MD5
 : + The MD5 message digest
 #endif
+#ifdef USE_IDNA
+: + IDNA (internationalized domain names for applications) support
+#endif
 :
 :The following optional features are disabled:
 #ifndef	HAVE_SETLOCALE
@@ -703,6 +733,9 @@ cat > $tmp2.c << \!
 #endif
 #ifndef USE_MD5
 : - The MD5 message digest
+#endif
+#ifndef USE_IDNA
+: - IDNA (internationalized domain names for applications) support
 #endif
 :
 :Remarks:
