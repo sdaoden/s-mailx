@@ -127,7 +127,7 @@ clean:
 distclean: clean
 	rm -f config.h config.log LIBS INCS
 
-new-version:
+update-version:
 	[ -z "$${VERSION}" ] && eval VERSION="`git describe --dirty --tags`"; \
 	echo > version.c \
 	"const char *const uagent = \"$(SID)$(NAIL)\", \
