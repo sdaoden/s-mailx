@@ -49,10 +49,6 @@
  * Mail to mail folders and displays.
  */
 
-/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
- * TODO Problem: Popen doesn't encapsulate all cases of open failures,
- * TODO may leave child running if fdopen() fails! */
-
 enum parseflags {
 	PARSE_DEFAULT	= 0,
 	PARSE_DECRYPT	= 01,

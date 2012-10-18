@@ -49,10 +49,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
- * TODO Problem: Popen doesn't encapsulate all cases of open failures,
- * TODO may leave child running if fdopen() fails! */
-
 /*
  * Read a message from standard output and return a read file to it
  * or NULL on error.

@@ -37,10 +37,6 @@
  * SUCH DAMAGE.
  */
 
-/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
- * TODO Problem: Popen doesn't encapsulate all cases of open failures,
- * TODO may leave child running if fdopen() fails! */
-
 /*
  * Most strcpy/sprintf functions have been changed to strncpy/snprintf to
  * correct several buffer overruns (at least one ot them was exploitable).

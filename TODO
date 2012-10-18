@@ -7,9 +7,6 @@ to coordinate your efforts with the maintainer and other people.
 Backward-compatibility breakers
 -------------------------------
 
-- Is anybody actually using the NSS code?  Does this still apply?
-  Check and verify -- or remove it!
-  [Note: due to lack of personal interest...  Please complain.]
 - Recipients specified on the command line should be added to those
   specified in the message when the -t option is set.
 - The -q option makes me sad as it doesn't use *indentprefix* for the
@@ -17,15 +14,14 @@ Backward-compatibility breakers
   changed.  Also see ~R below.
   [Note: i think i go for the latter.  Please complain.]
 - NetBSD mailx(1) removes all recipients in up Cc: and To: that are also
-  specified in Bcc.  At least configurable.
-  [Note: i plan to make this default.  Please complain.]
+  specified in Bcc.  I think some kind of "yet-exists stack" as in
+  Cc:->To:->Bcc would be a win.
 - At least optionally disallow silent discarding of invalid addresses,
   i.e., cause sending to be aborted if not all recipient addresses pass the
   validity test.
-  And shouldn't it generally be marked as an error and reported when the
-  program exits?  At least in non-interactive mode??  Yet there is no
-  indication that anything has happened at all!
-  [Note: i plan to report error in non-interactive mode.  Please complain.]
+- IIRC some error messages go to STDOUT, some to STDERR.  Only latter.
+- IIRC i saw invocations that returned with a 0 exit status and that
+  surprised me, then.  Errors should truly be reported.
 - POSIX says that, when written to DEAD: "If the file exists, the message
   shall be written to replace the contents of the file".  This is mentioned
   for ASYNCHRONOUS EVENTS, but it's the only description of what should be
@@ -38,16 +34,38 @@ Backward-compatibility breakers
   *rfc822-no-body-from_* option the default, or, even better, get rid of
   these "pseudo From_"s that were introduced in
   50fef89 (* A mbox-style "From " line is now generated.., 2004-11-06).
+- Implement true RFC 4155 MBOX parsing; since that may not work with
+  incompatible mailboxes (any?), add an option to turn this behaviour off.
+  (The code practically exists already for many years, almost complete..)
+- The current maintainer hates the way the command line arguments are
+  processed.  Because, many things that come in from the command line may
+  depend on what the configuration files say.
+  It would be much better to collect the command line once, then load all
+  the configuration files that are desired, then process the command line
+  again (that way most likely faster than creating dynamic storage for all
+  the command line arguments).  This will enable +PATH expansions for
+  attachments, IDNA settings for addresses etc.  Until then -Svariable sets
+  its argument after loading of the RC files as documented, *and* directly
+  once parsed.
 
 Non-breakers
 ------------
 
 - [v13:started] Reformat the manual.
   roff style is fine, but lines should be ~70 characters, not only ~25.
-- IDNA.
+- IDNA decoding.  It may be that this will never be supported.  But
+  wouldn't it be nice for at least viewing messages?
 - Mail-Followup-To:.
 - Make it possible to reply to/save/write/xy part X.Y[.Z] by allowing its
-  specification directly, as in, e.g., ':w 1.2'.  (Martin Neitzel)
+  specification directly, as in, e.g., ':w 1.2'.  If doing so on an
+  embedded message/rfc822, e.g., a message embedded in a digest, it should
+  be possible to reply to the very message in respect to its header fields,
+  but (optionally?) keep the original Cc:'d.  (Parts by Martin Neitzel)
+- Yet the first part is used for forwarding and replying etc..  In MIME
+  multipart messages it is however possible to make the HTML version the
+  first, etc., so in case the normal "pick first part" algorithm is used
+  that should maybe do "pick first plain text part if present, else first"
+  insteadl.
 - I want to have a ~R tilde command that works like ~r except it performs
   quoting of the input just as ~m does.  Also see -q above.
 - Offer the possibility to work with certificate fingerprints instead of
@@ -55,13 +73,6 @@ Non-breakers
   and Mercurial.  S-nail(1) could simply offer something in equal spirit to
   the formers --fingerprint, so that no other tool is necessary for
   certificate management (for secure transport at least).
-- Think about a name bypass hashmap cache, and whenever we have to skin or
-  nalloc() or whatever, look in there.  Maybe even an additional link for
-  non GFULL(/GSKIN) and fully skinned struct name objects.
-  The amount of duplicated work in this codebase if frustrating, but the
-  real healing would make necessary a complete rewrite of the name handling!
-  Such a cache would work without touching the current code flow ... or
-  allow a smooth transition to a new one anyway.
 - It would be nice if it would be possible to define a format string for
   *quote*, like 'set quote="format=some formats"'.
 - Deal with faulty message selection that may occur when selecting threads
@@ -74,8 +85,9 @@ Non-breakers
 - Add the possibility to simply place whatever header in the editor (and
   in the mail read in due to the -t command line option, and...).
 - Check against RFC 5322.
-  Really recheck all the header parsing code.
-- What about RFC 6531?
+  Rework all the header parsing code.  Actually understand the content,
+  classify the stuff so that it matches what is defined in RFC dependent on
+  header field.  Place the result in objects that know what they represent.
 - Check against newest POSIX.
 - Maybe add a bash(1)ish POSIXLY_CORRECT (or so) switch that can be used to
   disallow extensions (e.g. specification of "full" addresses on command
@@ -84,15 +96,9 @@ Non-breakers
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
   Meaning, also the possibility to postpone a message.
-- mime.c:prefixwrite() tracks state internally instead of having a cookie
-  argument.  That doesn't really make sense.  Either it is capable to work
-  with multiple files concurrently and prefix-quotes them correctly in the
-  same fashion, or it doesn't track anything at all.  It even tracked those
-  calls that do not write a prefix at all before, just to make this
-  mechanism work ... Or not?  Well, if you track the last file and if there
-  was a newline last, and you switch files, then the last newline state is
-  lost, and you do write the prefix even if in the other file there was no
-  newline last.  I'm confused now.  Change this, please.
+
+Low-Level
+---------
 
 - Revise the code:
   + Add C99-likeish typedefs for integers and use them everywhere.
@@ -109,6 +115,30 @@ Non-breakers
   + [v13:started] Resort the functions and where they are implemented.
     It's really terrible.  Just think about outof(), savedeadletter(),
     savemail() etc..
+  + Make more use of struct str, and offer more support functions for it.
+  + Make more use of value carriers in the call stack.  There are functions
+    with an incredible amount of arguments, needlessly.
+  + makeconfig: link_check/compile_check.  More of the latter suffice.
+- Check all Popen() calls, i've had the impressions that Popen() doesn't
+  close all resources on failure.  Also, Popen() callers often do a lot of
+  work in respect to signals.  Try to find a solution that all problems are
+  encapsulaten in Popen(), at least better than today.
+- Think about a name bypass hashmap cache, and whenever we have to skin or
+  nalloc() or whatever, look in there.  Maybe even an additional link for
+  non GFULL(/GSKIN) and fully skinned struct name objects.
+  The amount of duplicated work in this codebase if frustrating, but the
+  real healing would make necessary a complete rewrite of the name handling!
+  Such a cache would work without touching the current code flow ... or
+  allow a smooth transition to a new one anyway.
+- mime.c:prefixwrite() tracks state internally instead of having a cookie
+  argument.  That doesn't really make sense.  Either it is capable to work
+  with multiple files concurrently and prefix-quotes them correctly in the
+  same fashion, or it doesn't track anything at all.  It even tracked those
+  calls that do not write a prefix at all before, just to make this
+  mechanism work ... Or not?  Well, if you track the last file and if there
+  was a newline last, and you switch files, then the last newline state is
+  lost, and you do write the prefix even if in the other file there was no
+  newline last.  I'm confused now.  Change this, please.
 - The current maintainer doesn't like longjmp()s.
 - The current maintainer doesn't like signals.
 - The current maintainer would like to see that compilation with a C++

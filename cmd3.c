@@ -648,10 +648,6 @@ set(void *v)
 		if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 			if (s > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
 				cp = get_pager();
-				/* TODO should be below the Popen?
-				 * TODO Problem: Popen doesn't encapsulate it,
-				 * TODO may leave child run if fdopen() fails!
-				 * TODO even more such stuff in this file! */
 				if (sigsetjmp(pipejmp, 1))
 					goto endpipe;
 				if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {

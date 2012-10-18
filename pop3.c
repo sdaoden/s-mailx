@@ -56,10 +56,6 @@
  * POP3 client.
  */
 
-/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
- * TODO Problem: Popen doesn't encapsulate all cases of open failures,
- * TODO may leave child running if fdopen() fails! */
-
 #ifdef USE_POP3
 static int	verbose;
 

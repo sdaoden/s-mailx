@@ -63,10 +63,6 @@
  * SMTP client and other internet related functions.
  */
 
-/* TODO longjmp() globbering as in cmd1.c and cmd3.c (see there)
- * TODO Problem: Popen doesn't encapsulate all cases of open failures,
- * TODO may leave child running if fdopen() fails! */
-
 #ifdef USE_SMTP
 static int verbose;
 static int _debug;
