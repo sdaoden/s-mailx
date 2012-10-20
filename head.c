@@ -707,7 +707,7 @@ jaddr_check:
 	in_quote = in_domain = hadat = 0;
 
 	for (p = addr; (c.c = *p++) != '\0';) {
-		if (c.c == '\"') {
+		if (c.c == '"') {
 			in_quote = ! in_quote;
 		} else if (c.u < 040 || c.u >= 0177) { /*FIXME IDNA!!in_domin */
 		/*
@@ -778,15 +778,15 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			(agp->ag_ilen = strlen(name)) == 0) {
 		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED |
 			NAME_ADDRSPEC_INVALID | NAME_ADDRSPEC_ERR_EMPTY;
+		agp->ag_skinned = ""; /* NAME_SALLOC not set */
+		agp->ag_slen = 0;
 		return (1);
 	}
 
-	if (! doskin || (memchr(name, '(', agp->ag_ilen) == NULL &&
-				memchr(name, '<', agp->ag_ilen) == NULL &&
-				memchr(name, ' ', agp->ag_ilen) == NULL)) {
+	if (! doskin || ! anyof(name, "(< ")) {
 		/*agp->ag_iaddr_start = 0;*/
 		agp->ag_iaddr_end = agp->ag_ilen - 1;
-		agp->ag_skinned = (char*)name;
+		agp->ag_skinned = (char*)name; /* XXX (NAME_SALLOC not set) */
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
 		return (addrspec_check(doskin, agp));
@@ -890,7 +890,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	if (agp->ag_iaddr_end == 0)
 		agp->ag_iaddr_end = agp->ag_iaddr_start + agp->ag_slen;
 
-	agp->ag_skinned = cp = savestrbuf(nbuf, agp->ag_slen);
+	agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
 	ac_free(nbuf);
 	agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 	return (addrspec_check(doskin, agp));
