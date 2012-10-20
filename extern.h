@@ -300,7 +300,6 @@ int is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2]);
 int member(char *realfield, struct ignoretab *table);
 char *fakefrom(struct message *mp);
 char *fakedate(time_t t);
-char const *nexttoken(char const *cp);
 time_t unixtime(char const *from);
 time_t rfctime(char const *date);
 time_t combinetime(int year, int month, int day,

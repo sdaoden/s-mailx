@@ -1343,7 +1343,7 @@ fakedate(time_t t)
 	return savestr(cp);
 }
 
-char const *
+static char const *
 nexttoken(char const *cp)
 {
 	for (;;) {

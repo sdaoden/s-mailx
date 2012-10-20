@@ -287,6 +287,35 @@ detract(struct name *np, enum gfield ntype)
 	return(top);
 }
 
+static char *
+nexttoken(char *cp)
+{
+	for (;;) {
+		if (*cp == '\0')
+			return NULL;
+		if (*cp == '(') {
+			int nesting = 0;
+
+			while (*cp != '\0') {
+				switch (*cp++) {
+				case '(':
+					nesting++;
+					break;
+				case ')':
+					nesting--;
+					break;
+				}
+				if (nesting <= 0)
+					break;
+			}
+		} else if (blankchar(*cp & 0377) || *cp == ',')
+			cp++;
+		else
+			break;
+	}
+	return cp;
+}
+
 /*
  * Grab a single word (liberal word)
  * Throw away things between ()'s, and take anything between <>.
