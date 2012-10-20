@@ -768,7 +768,7 @@ addrspec_check(int skinned, struct addrguts *agp)
 	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 	addr = agp->ag_skinned;
 
-	if (agp->ag_iaddr_end <= agp->ag_iaddr_start) {
+	if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
 		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
 			0);
 		goto jleave;
@@ -892,7 +892,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 
 	if (! doskin || ! anyof(name, "(< ")) {
 		/*agp->ag_iaddr_start = 0;*/
-		agp->ag_iaddr_end = agp->ag_ilen - 1;
+		agp->ag_iaddr_aend = agp->ag_ilen;
 		agp->ag_skinned = (char*)name; /* XXX (NAME_SALLOC not set) */
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
@@ -905,7 +905,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	cp2 = bufend = nbuf;
 	gotlt = gotaddr = lastsp = 0;
 
-	for (cp = name; (c = *cp++) != '\0'; ) {
+	for (cp = name++; (c = *cp++) != '\0'; ) {
 		switch (c) {
 		case '(':
 			cp = skip_comment(cp);
@@ -938,6 +938,10 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			break;
 		case ' ':
 		case '\t':
+			if (gotaddr == 1) {
+				gotaddr = 2;
+				agp->ag_iaddr_aend = (size_t)(cp - name);
+			}
 			if (cp[0] == 'a' && cp[1] == 't' && blankchar(cp[2]))
 				cp += 3, *cp2++ = '@';
 			else if (cp[0] == '@' && blankchar(cp[1]))
@@ -946,7 +950,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 				lastsp = 1;
 			break;
 		case '<':
-			agp->ag_iaddr_start = (size_t)(cp - name);
+			agp->ag_iaddr_start = (size_t)(cp - (name - 1));
 			cp2 = bufend;
 			gotlt = gotaddr = 1;
 			lastsp = 0;
@@ -954,7 +958,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 		case '>':
 			if (gotlt) {
 				/* (addrspec_check() verifies these later!) */
-				agp->ag_iaddr_end = (size_t)(cp - 1 - name);
+				agp->ag_iaddr_aend = (size_t)(cp - name);
 				gotlt = 0;
 				while ((c = *cp) != '\0' && c != ',') {
 					cp++;
@@ -989,14 +993,14 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 					bufend = cp2;
 				}
 			} else if (! gotaddr) {
-				agp->ag_iaddr_start = (size_t)(cp - 1 - name);
 				gotaddr = 1;
+				agp->ag_iaddr_start = (size_t)(cp - name);
 			}
 		}
 	}
 	agp->ag_slen = (size_t)(cp2 - nbuf);
-	if (agp->ag_iaddr_end == 0)
-		agp->ag_iaddr_end = agp->ag_iaddr_start + agp->ag_slen;
+	if (agp->ag_iaddr_aend == 0)
+		agp->ag_iaddr_aend = agp->ag_ilen;
 
 	agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
 	ac_free(nbuf);

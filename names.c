@@ -53,16 +53,118 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+/* Grab a single name (liberal name) */
+static char const *	yankname(char const *ap, char *wbuf,
+				char const *separators, int keepcomms);
+/* Extraction multiplexer that splits an input line to names */
+static struct name *	extract1(char const *line, enum gfield ntype,
+				char const *separators, int keepcomms);
+
 static struct name *	tailof(struct name *name);
-static struct name *	extract1(char *line, enum gfield ntype,
-				char *separators, int copypfx);
-static char *		yankword(char *ap, char *wbuf, char *separators,
-				int copypfx);
 static int		same_name(char *n1, char *n2);
 static struct name *	gexpand(struct name *nlist, struct grouphead *gh,
 				int metoo, int ntype);
 static struct name *	put(struct name *list, struct name *node);
 static struct name *	delname(struct name *np, char *name);
+
+static char const *
+yankname(char const *ap, char *wbuf, char const *separators, int keepcomms)
+{
+	char const *cp;
+	char *wp, c, inquote, lc, lastsp;
+
+	*(wp = wbuf) = '\0';
+
+	/* Skip over intermediate list trash, as in ".org>  ,  <xy@zz.org>" */
+	for (c = *ap; blankchar(c) || c == ','; c = *++ap)
+		;
+	if (c == '\0') {
+		cp = NULL;
+		goto jleave;
+	}
+
+	/*
+	 * Parse a full name: TODO RFC 5322
+	 * - Keep everything in quotes, liberal handle *quoted-pair*s therein
+	 * - Skip entire (nested) comments
+	 * - In non-quote, non-comment, join adjacent space to a single SP
+	 * - Understand separators only in non-quote, non-comment context,
+	 *   and only if not part of a *quoted-pair* (XXX too liberal)
+	 */
+	cp = ap;
+	for (inquote = lc = lastsp = 0;; lc = c, ++cp) {
+		c = *cp;
+		if (c == '\0')
+			break;
+		if (c == '\\') {
+			lastsp = 0;
+			continue;
+		}
+		if (c == '"') {
+			if (lc != '\\')
+				inquote = ! inquote;
+			else
+				--wp;
+			goto jwpwc;
+		}
+		if (inquote || lc == '\\') {
+jwpwc:			*wp++ = c;
+			lastsp = 0;
+			continue;
+		}
+		if (c == '(') {
+			ap = cp;
+			cp = skip_comment(cp + 1);
+			if (keepcomms)
+				while (ap < cp)
+					*wp++ = *ap++;
+			--cp;
+			lastsp = 0;
+			continue;
+		}
+		if (strchr(separators, c) != NULL)
+			break;
+
+		lc = lastsp;
+		lastsp = blankchar(c);
+		if (! lastsp || ! lc)
+			*wp++ = c;
+	}
+	if (blankchar(lc))
+		--wp;
+
+	*wp = '\0';
+jleave:
+	return (cp);
+}
+
+static struct name *
+extract1(char const *line, enum gfield ntype, char const *separators,
+	int keepcomms)
+{
+	struct name *top, *np, *t;
+	char const *cp;
+	char *nbuf;
+
+	top = NULL;
+	if (line == NULL || *line == '\0')
+		goto jleave;
+	np = NULL;
+	cp = line;
+	nbuf = ac_alloc(strlen(line) + 1);
+	while ((cp = yankname(cp, nbuf, separators, keepcomms)) != NULL) {
+		t = nalloc(nbuf, ntype);
+		if (top == NULL)
+			top = t;
+		else
+			np->n_flink = t;
+		t->n_blink = np;
+		np = t;
+	}
+	ac_free(nbuf);
+jleave:
+	return (top);
+}
 
 /*
  * Allocate a single element of a name list, initialize its name field to the
@@ -112,12 +214,12 @@ nalloc(char *str, enum gfield ntype)
 			 * since MIME doesn't perform encoding of addresses.
 			 */
 			size_t l = ag.ag_iaddr_start,
-				lsuff = ag.ag_ilen - ag.ag_iaddr_end;
+				lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
 			in.s = ac_alloc(l + ag.ag_slen + lsuff + 1);
 			memcpy(in.s, str, l);
 			memcpy(in.s + l, ag.ag_skinned, ag.ag_slen);
 			l += ag.ag_slen;
-			memcpy(in.s + l, str + ag.ag_iaddr_end, lsuff);
+			memcpy(in.s + l, str + ag.ag_iaddr_aend, lsuff);
 			l += lsuff;
 			in.s[l] = '\0';
 			in.l = l;
@@ -197,13 +299,13 @@ tailof(struct name *name)
  * Return the list or NULL if none found.
  */
 struct name *
-extract(char *line, enum gfield ntype)
+extract(char const *line, enum gfield ntype)
 {
 	return extract1(line, ntype, " \t,(", 0);
 }
 
 struct name *
-sextract(char *line, enum gfield ntype)
+sextract(char const *line, enum gfield ntype)
 {
 	if (line && strpbrk(line, ",\"\\(<"))
 		return extract1(line, ntype, ",", 1);
@@ -212,34 +314,9 @@ sextract(char *line, enum gfield ntype)
 }
 
 struct name *
-lextract(char *line, enum gfield ntype)
+lextract(char const *line, enum gfield ntype)
 {
 	return (extract1(line, ntype, ",", 1));
-}
-
-static struct name *
-extract1(char *line, enum gfield ntype, char *separators, int copypfx)
-{
-	char *cp, *nbuf;
-	struct name *top, *np, *t;
-
-	if (line == NULL || *line == '\0')
-		return NULL;
-	top = NULL;
-	np = NULL;
-	cp = line;
-	nbuf = ac_alloc(strlen(line) + 1);
-	while ((cp = yankword(cp, nbuf, separators, copypfx)) != NULL) {
-		t = nalloc(nbuf, ntype);
-		if (top == NULL)
-			top = t;
-		else
-			np->n_flink = t;
-		t->n_blink = np;
-		np = t;
-	}
-	ac_free(nbuf);
-	return top;
 }
 
 /*
@@ -285,83 +362,6 @@ detract(struct name *np, enum gfield ntype)
 	if (comma && *--cp == ',')
 		*cp = 0;
 	return(top);
-}
-
-static char *
-nexttoken(char *cp)
-{
-	for (;;) {
-		if (*cp == '\0')
-			return NULL;
-		if (*cp == '(') {
-			int nesting = 0;
-
-			while (*cp != '\0') {
-				switch (*cp++) {
-				case '(':
-					nesting++;
-					break;
-				case ')':
-					nesting--;
-					break;
-				}
-				if (nesting <= 0)
-					break;
-			}
-		} else if (blankchar(*cp & 0377) || *cp == ',')
-			cp++;
-		else
-			break;
-	}
-	return cp;
-}
-
-/*
- * Grab a single word (liberal word)
- * Throw away things between ()'s, and take anything between <>.
- * Strip trailing whitespace as *ap* may come directly from user.
- */
-static char *
-yankword(char *ap, char *wbuf, char *separators, int copypfx)
-{
-	char *cp, *pp, *wp;
-
-	cp = ap;
-	wp = wbuf;
-	while (blankspacechar(*cp) || *cp == ',')
-		++cp;
-	pp = cp;
-	if ((cp = (char*)nexttoken((char*)cp)) == NULL)
-		return NULL;
-	if (copypfx)
-		while (pp < cp)
-			*wp++ = *pp++;
-	if (*cp ==  '<')
-		while (*cp && (*wp++ = *cp++) != '>');
-	else {
-		int incomm = 0;
-
-		while (*cp && (incomm || !strchr(separators, *cp))) {
-			if (*cp == '\"') {
-				if (cp == ap || *(cp - 1) != '\\') {
-					if (incomm)
-						incomm--;
-					else
-						incomm++;
-					*wp++ = '\"';
-				} else if (cp != ap) {
-					*(wp - 1) = '\"';
-				}
-				cp++;
-				continue;
-			}
-			*wp++ = *cp++;
-		}
-	}
-	while (wp > wbuf && blankspacechar(wp[-1]))
-		--wp;
-	*wp = '\0';
-	return cp;
 }
 
 /*

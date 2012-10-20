@@ -423,9 +423,9 @@ size_t mime_write(void *ptr, size_t size, FILE *f,
 /* names.c */
 struct name *nalloc(char *str, enum gfield ntype);
 struct name *ndup(struct name *np, enum gfield ntype);
-struct name *extract(char *line, enum gfield ntype);
-struct name *sextract(char *line, enum gfield ntype);
-struct name *lextract(char *line, enum gfield ntype);
+struct name *extract(char const *line, enum gfield ntype);
+struct name *sextract(char const *line, enum gfield ntype);
+struct name *lextract(char const *line, enum gfield ntype);
 char *detract(struct name *np, enum gfield ntype);
 struct name *checkaddrs(struct name *np);
 struct name *outof(struct name *names, FILE *fo, struct header *hp);

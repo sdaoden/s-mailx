@@ -484,8 +484,8 @@ struct name {
 struct addrguts {
 	char const 	*ag_input;	/* Input string as given */
 	size_t		ag_ilen;	/* strlen() of input */
-	size_t		ag_iaddr_start;	/* Start of address in .ag_input, */
-	size_t		ag_iaddr_end;	/* its end (addresses only) */
+	size_t		ag_iaddr_start;	/* Start of *addr-spec* in .ag_input */
+	size_t		ag_iaddr_aend;	/* ..and one past its end */
 	char		*ag_skinned;	/* Output (alloced if !=.ag_input) */
 	size_t		ag_slen;	/* strlen() of .ag_skinned */
 	size_t		ag_sdom_start;	/* Start of domain in .ag_skinned, */
