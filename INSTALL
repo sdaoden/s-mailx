@@ -1,40 +1,46 @@
-How to configure and install S-nail
-===================================
+I n s t a l l i n g  S - n a i l
+================================
 
 Quick start
 -----------
 
-Look into user.conf and maybe adjust some feature settings according to your
+Read user.conf and maybe adjust some feature settings according to your
 needs.  You may also want to look into the Makefile, e.g., to change the
 PREFIX, or to adjust whatever else before the >8 scissor line.  Then run
 
-	$ make && make install  # (Or only make install)
-	$ make uninstall	# (Will not remove the example configuration)
-	$ make distclean	# *Completely* cleanup working directory
+  $ make && make install  # (Or only make install)
+  $ make uninstall        # (Will not remove the example configuration)
+  $ make distclean        # *Completely* cleanup working directory
 
-Instead of editing the Makefile you may also override some variables on the
-command line, e.g., to change the installation directory:
+Instead of editing the Makefile you may also override some variables on
+the command line, e.g., to change the installation directory:
 
-	$ make PREFIX=/some/nasty/prefix STRIP='/usr/bin/strip -s' install
+  $ make PREFIX=/some/nasty/prefix STRIP='/usr/bin/strip -s' install
 
-And instead of editing user.conf you may also choose predefined CONFIG-sets
-from the command line:
+And instead of editing user.conf you may also choose predefined CONFIG
+sets from the command line:
 
-- CONFIG=MINIMAL: all settings from user.conf are off.
-- CONFIG=NETLESS: all settings from user.conf relating internet connectivity
-  are off.
-- CONFIG=NETSEND: WANT_SMTP and WANT_SSL settings are enabled, otherwise
-  identical to MINIMAL.
+  CONFIG=MINIMAL  little is left but some air to breathe.
+  CONFIG=NETLESS  all settings from user.conf relating internet connect-
+                  ivity are off.
+  CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
+                  identical to MINIMAL.
+
+When this CONFIG-set approach is used, the following additional switches
+may be used on the command line:
+
+  WANT_IDNA=0     Do not (try to) support internationalized domain names.
 
 E.g.:
 
-	$ make CONFIG=MINIMAL DESTDIR=xtest PREFIX=/usr SID=mini- install
+  $ make CONFIG=MINIMAL WANT_IDNA=0 DESTDIR=xtest SID=mini- install
 
 would create a "mini-nail" binary and install "mini-xy" manpages etc.
-under the prefix /usr but rooted under [./]xtest, i.e., the binary would
-be installed to "[./]xtest/usr/bin/mini-nail".  Note that for "make
-uninstall" the exact command line should be repeated.
+under the prefix /usr/local but rooted under [./]xtest, i.e., the binary
+would be installed to "[./]xtest/usr/local/bin/mini-nail".  Note that for
+"make uninstall" the exact command line should be repeated.
 
+[Heirloom file content follows]
 
 How to configure and install mailx
 ==================================
