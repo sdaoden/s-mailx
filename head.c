@@ -530,8 +530,8 @@ nameof(struct message *mp, int reptype)
  * Start of a "comment".
  * Ignore it.
  */
-char *
-skip_comment(const char *cp)
+char const *
+skip_comment(char const *cp)
 {
 	int nesting = 1;
 
@@ -549,7 +549,7 @@ skip_comment(const char *cp)
 			break;
 		}
 	}
-	return (char *)cp;
+	return (cp);
 }
 
 /*
@@ -767,7 +767,7 @@ jleave:
  * to deal with the input, or if that was plain invalid.
  */
 int
-addrspec_with_guts(int doskin, char *name, struct addrguts *agp)
+addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
 	char *cp, *cp2, *bufend, *nbuf, c;
 	int gotlt, lastsp;
@@ -786,7 +786,7 @@ addrspec_with_guts(int doskin, char *name, struct addrguts *agp)
 				memchr(name, ' ', agp->ag_ilen) == NULL)) {
 		/*agp->ag_iaddr_start = 0;*/
 		agp->ag_iaddr_end = agp->ag_ilen - 1;
-		agp->ag_skinned = name;
+		agp->ag_skinned = (char*)name;
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
 		return (addrspec_check(doskin, agp));
@@ -902,14 +902,14 @@ addrspec_with_guts(int doskin, char *name, struct addrguts *agp)
 char *
 realname(char *name)
 {
-	char	*cstart = NULL, *cend = NULL, *cp, *cq;
-	char	*rname, *rp;
-	struct str	in, out;
-	int	quoted, good, nogood;
+	char const *cp, *cq, *cstart = NULL, *cend = NULL;
+	char *rname, *rp;
+	struct str in, out;
+	int quoted, good, nogood;
 
 	if (name == NULL)
 		return NULL;
-	for (cp = name; *cp; cp++) {
+	for (cp = (char*)name; *cp; cp++) {
 		switch (*cp) {
 		case '(':
 			if (cstart)
@@ -1235,8 +1235,8 @@ fakedate(time_t t)
 	return savestr(cp);
 }
 
-char *
-nexttoken(char *cp)
+char const *
+nexttoken(char const *cp)
 {
 	for (;;) {
 		if (*cp == '\0')
@@ -1270,9 +1270,10 @@ nexttoken(char *cp)
  *               0    5   10   15   20
  */
 time_t
-unixtime(char *from)
+unixtime(char const *from)
 {
-	char	*fp, *xp;
+	char const *fp;
+	char *xp;
 	time_t	t;
 	int	i, year, month, day, hour, minute, second;
 	int	tzdiff;
@@ -1322,9 +1323,10 @@ invalid:
 }
 
 time_t
-rfctime(char *date)
+rfctime(char const *date)
 {
-	char *cp = date, *x;
+	char const *cp = date;
+	char *x;
 	time_t t;
 	int i, year, month, day, hour, minute, second;
 
@@ -1436,7 +1438,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second)
 void 
 substdate(struct message *m)
 {
-	char *cp;
+	char const *cp;
 	time_t now;
 
 	/*

@@ -269,7 +269,7 @@ yankword(char *ap, char *wbuf, char *separators, int copypfx)
 	while (blankspacechar(*cp) || *cp == ',')
 		++cp;
 	pp = cp;
-	if ((cp = nexttoken(cp)) == NULL)
+	if ((cp = (char*)nexttoken((char*)cp)) == NULL)
 		return NULL;
 	if (copypfx)
 		while (pp < cp)

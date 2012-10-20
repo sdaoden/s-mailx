@@ -1266,7 +1266,7 @@ mime_write_tohdr_a(struct str *in, FILE *f)
 		case '(':
 			sz += fwrite(lastcp, 1, cp - lastcp + 1, f);
 			lastcp = ++cp;
-			cp = skip_comment(cp);
+			cp = (char*)skip_comment(cp);
 			if (--cp > lastcp)
 				sz += convhdra(lastcp, cp - lastcp, f);
 			lastcp = cp;
@@ -1328,7 +1328,7 @@ mime_fromaddr(char *name)
 		case '(':
 			addstr(&res, &ressz, &rescur, lastcp, cp - lastcp + 1);
 			lastcp = ++cp;
-			cp = skip_comment(cp);
+			cp = (char*)skip_comment(cp);
 			if (--cp > lastcp)
 				addconv(&res, &ressz, &rescur, lastcp,
 						cp - lastcp);
