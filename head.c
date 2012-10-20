@@ -876,7 +876,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
 	char const *cp;
 	char *cp2, *bufend, *nbuf, c;
-	int gotlt, lastsp;
+	char gotlt, gotaddr, lastsp;
 
 	memset(agp, 0, sizeof *agp);
 
@@ -903,7 +903,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	nbuf = ac_alloc(agp->ag_ilen + 1);
 	/*agp->ag_iaddr_start = 0;*/
 	cp2 = bufend = nbuf;
-	gotlt = lastsp = 0;
+	gotlt = gotaddr = lastsp = 0;
 
 	for (cp = name; (c = *cp++) != '\0'; ) {
 		switch (c) {
@@ -911,7 +911,6 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			cp = skip_comment(cp);
 			lastsp = 0;
 			break;
-
 		case '"':
 			/*
 			 * Start of a "quoted-string".
@@ -922,7 +921,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			 * XXX when skinning names"?  No more info..
 			 */
 			*cp2++ = c;
-			while ((c = *cp) != '\0') {
+			while ((c = *cp) != '\0') { /* TODO improve */
 				cp++;
 				if (c == '"') {
 					*cp2++ = c;
@@ -937,24 +936,21 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			}
 			lastsp = 0;
 			break;
-
 		case ' ':
-			if (cp[0] == 'a' && cp[1] == 't' && cp[2] == ' ')
+		case '\t':
+			if (cp[0] == 'a' && cp[1] == 't' && blankchar(cp[2]))
 				cp += 3, *cp2++ = '@';
-			else
-			if (cp[0] == '@' && cp[1] == ' ')
+			else if (cp[0] == '@' && blankchar(cp[1]))
 				cp += 2, *cp2++ = '@';
 			else
 				lastsp = 1;
 			break;
-
 		case '<':
 			agp->ag_iaddr_start = (size_t)(cp - name);
 			cp2 = bufend;
-			gotlt++;
+			gotlt = gotaddr = 1;
 			lastsp = 0;
 			break;
-
 		case '>':
 			if (gotlt) {
 				/* (addrspec_check() verifies these later!) */
@@ -977,19 +973,24 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 				break;
 			}
 			/* FALLTRHOUGH */
-
 		default:
 			if (lastsp) {
 				lastsp = 0;
-				*cp2++ = ' ';
+				if (gotaddr)
+					*cp2++ = ' ';
 			}
 			*cp2++ = c;
-			if (c == ',' && ! gotlt) {
-				*cp2++ = ' ';
-				for (; *cp == ' '; ++cp)
-					;
-				lastsp = 0;
-				bufend = cp2;
+			if (c == ',') {
+				if (! gotlt) {
+					*cp2++ = ' ';
+					for (; blankchar(*cp); ++cp)
+						;
+					lastsp = 0;
+					bufend = cp2;
+				}
+			} else if (! gotaddr) {
+				agp->ag_iaddr_start = (size_t)(cp - 1 - name);
+				gotaddr = 1;
 			}
 		}
 	}
