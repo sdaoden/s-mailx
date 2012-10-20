@@ -483,6 +483,13 @@ jcantfout:			++senderr;
 			free_child(pid);
 		} else {
 			char *fname = file_expand(np->n_name);
+			if (fname == NULL) {
+				fprintf(stderr, tr(81,
+					"\"%s\": Expansion failed.\n"),
+					np->n_name);
+				++senderr;
+				goto jcant;
+			}
 			if ((fout = Zopen(fname, "a", NULL)) == NULL) {
 				fprintf(stderr, tr(282,
 					"Message writing to <%s> failed: %s\n"),
