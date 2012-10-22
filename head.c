@@ -317,15 +317,15 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 		} else if ((value = thisfield(linebuf, "from")) != NULL) {
 			seenfields++;
 			hq->h_from = cat(hq->h_from, checkaddrs(
-					sextract(value, GEXTRA|GFULL)));
+					lextract(value, GEXTRA|GFULL)));
 		} else if ((value = thisfield(linebuf, "reply-to")) != NULL) {
 			seenfields++;
 			hq->h_replyto = cat(hq->h_replyto, checkaddrs(
-					sextract(value, GEXTRA|GFULL)));
+					lextract(value, GEXTRA|GFULL)));
 		} else if ((value = thisfield(linebuf, "sender")) != NULL) {
 			seenfields++;
 			hq->h_sender = cat(hq->h_sender, checkaddrs(
-					sextract(value, GEXTRA|GFULL)));
+					lextract(value, GEXTRA|GFULL)));
 		} else if ((value = thisfield(linebuf,
 						"organization")) != NULL) {
 			seenfields++;
@@ -1599,7 +1599,7 @@ getsender(struct message *mp)
 	struct name	*np;
 
 	if ((cp = hfield1("from", mp)) == NULL ||
-			(np = sextract(cp, GEXTRA|GSKIN)) == NULL)
+			(np = lextract(cp, GEXTRA|GSKIN)) == NULL)
 		return NULL;
 	return np->n_flink != NULL ? skin(hfield1("sender", mp)) : np->n_name;
 }

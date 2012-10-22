@@ -157,7 +157,7 @@ myorigin(struct header *hp)
 	struct name	*np;
 
 	if ((cp = myaddrs(hp)) == NULL ||
-			(np = sextract(cp, GEXTRA|GFULL)) == NULL)
+			(np = lextract(cp, GEXTRA|GFULL)) == NULL)
 		return NULL;
 	return np->n_flink != NULL ? value("sender") : cp;
 }

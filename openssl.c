@@ -958,7 +958,7 @@ smime_sign_cert(const char *xname, const char *xname2, int warn)
 	const char	*name = xname, *name2 = xname2;
 
 loop:	if (name) {
-		np = sextract(savestr(name), GTO|GSKIN);
+		np = lextract(name, GTO|GSKIN);
 		while (np) {
 			/*
 			 * This needs to be more intelligent since it will
@@ -1000,7 +1000,7 @@ smime_sign_include_certs(char *name)
 {
 	/* See comments in smime_sign_cert() for algorithm pitfalls */
 	if (name) {
-		struct name *np = sextract(savestr(name), GTO|GSKIN);
+		struct name *np = lextract(name, GTO|GSKIN);
 		while (np) {
 			int vs;
 			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);

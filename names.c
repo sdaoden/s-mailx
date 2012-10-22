@@ -301,16 +301,7 @@ tailof(struct name *name)
 struct name *
 extract(char const *line, enum gfield ntype)
 {
-	return extract1(line, ntype, " \t,(", 0);
-}
-
-struct name *
-sextract(char const *line, enum gfield ntype)
-{
-	if (line && strpbrk(line, ",\"\\(<"))
-		return extract1(line, ntype, ",", 1);
-	else
-		return extract(line, ntype);
+	return extract1(line, ntype, " \t,", 0);
 }
 
 struct name *
@@ -962,17 +953,17 @@ delete_alternates(struct name *np)
 	if (altnames)
 		for (ap = altnames; *ap; ap++)
 			np = delname(np, *ap);
-	if ((xp = sextract(value("from"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
 		while (xp) {
 			np = delname(np, xp->n_name);
 			xp = xp->n_flink;
 		}
-	if ((xp = sextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
 		while (xp) {
 			np = delname(np, xp->n_name);
 			xp = xp->n_flink;
 		}
-	if ((xp = sextract(value("sender"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(value("sender"), GEXTRA|GSKIN)) != NULL)
 		while (xp) {
 			np = delname(np, xp->n_name);
 			xp = xp->n_flink;
@@ -992,19 +983,19 @@ is_myname(char *name)
 		for (ap = altnames; *ap; ap++)
 			if (same_name(*ap, name))
 				return 1;
-	if ((xp = sextract(value("from"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
 		while (xp) {
 			if (same_name(xp->n_name, name))
 				return 1;
 			xp = xp->n_flink;
 		}
-	if ((xp = sextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
 		while (xp) {
 			if (same_name(xp->n_name, name))
 				return 1;
 			xp = xp->n_flink;
 		}
-	if ((xp = sextract(value("sender"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(value("sender"), GEXTRA|GSKIN)) != NULL)
 		while (xp) {
 			if (same_name(xp->n_name, name))
 				return 1;

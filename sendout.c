@@ -1157,7 +1157,7 @@ putname(char *line, enum gfield w, enum sendaction action, int *gotcha,
 {
 	struct name	*np;
 
-	np = sextract(line, GEXTRA|GFULL);
+	np = lextract(line, GEXTRA|GFULL);
 	if (xp)
 		*xp = np;
 	if (np == NULL)
