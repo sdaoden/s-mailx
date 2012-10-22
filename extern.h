@@ -420,21 +420,26 @@ size_t mime_write(void *ptr, size_t size, FILE *f,
 		enum conversion convert, enum tdflags dflags,
 		char *prefix, size_t prefixlen, char **rest, size_t *restsize);
 
-/* names.c */
-struct name *nalloc(char *str, enum gfield ntype);
-struct name *ndup(struct name *np, enum gfield ntype);
-struct name *extract(char const *line, enum gfield ntype);
-struct name *lextract(char const *line, enum gfield ntype);
-char *detract(struct name *np, enum gfield ntype);
-struct name *checkaddrs(struct name *np);
-struct name *outof(struct name *names, FILE *fo, struct header *hp);
-struct name *usermap(struct name *names);
-struct name *cat(struct name *n1, struct name *n2);
-char **unpack(struct name *np);
-struct name *elide(struct name *names);
-int count(struct name *np);
-struct name *delete_alternates(struct name *np);
-int is_myname(char *name);
+/*
+ * names.c
+ */
+struct name *	nalloc(char *str, enum gfield ntype);
+struct name *	ndup(struct name *np, enum gfield ntype);
+struct name *	cat(struct name *n1, struct name *n2);
+int		count(struct name const *np);
+
+struct name *	extract(char const *line, enum gfield ntype);
+struct name *	lextract(char const *line, enum gfield ntype);
+char *		detract(struct name *np, enum gfield ntype);
+char **		unpack(struct name *np);
+
+struct name *	checkaddrs(struct name *np);
+struct name *	usermap(struct name *names);
+struct name *	elide(struct name *names);
+struct name *	delete_alternates(struct name *np);
+int		is_myname(char const *name);
+
+struct name *	outof(struct name *names, FILE *fo, struct header *hp);
 
 /* nss.c */
 #ifdef USE_NSS
