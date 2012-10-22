@@ -745,7 +745,7 @@ sendmail_internal(void *v, int recipient_record)
 	struct header head;
 
 	memset(&head, 0, sizeof head);
-	head.h_to = extract(str, GTO|GFULL);
+	head.h_to = lextract(str, GTO|GFULL);
 	Eflag = value("skipemptybody") != NULL;
 	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0, Eflag);
 	return(0);
