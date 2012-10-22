@@ -47,25 +47,84 @@
 #include "extern.h"
 
 #include <errno.h>
-
 #include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
+/* Same name, taking care for *allnet*? */
+static int		same_name(char const *n1, char const *n2);
+/* Delete the given name from a namelist */
+static struct name *	delname(struct name *np, char const *name);
+/* Put another node onto a list of names and return the list */
+static struct name *	put(struct name *list, struct name *node);
 /* Grab a single name (liberal name) */
 static char const *	yankname(char const *ap, char *wbuf,
 				char const *separators, int keepcomms);
 /* Extraction multiplexer that splits an input line to names */
 static struct name *	extract1(char const *line, enum gfield ntype,
 				char const *separators, int keepcomms);
-
-static struct name *	tailof(struct name *name);
-static int		same_name(char *n1, char *n2);
+/* Recursively expand a group name.  We limit the expansion to some fixed level
+ * to keep things from going haywire.  Direct recursion is not expanded for
+ * convenience */
 static struct name *	gexpand(struct name *nlist, struct grouphead *gh,
 				int metoo, int ntype);
-static struct name *	put(struct name *list, struct name *node);
-static struct name *	delname(struct name *np, char *name);
+
+static int
+same_name(char const *n1, char const *n2)
+{
+	int ret = 0;
+	char c1, c2;
+
+	if (value("allnet") != NULL) {
+		do {
+			c1 = *n1++;
+			c2 = *n2++;
+			c1 = lowerconv(c1);
+			c2 = lowerconv(c2);
+			if (c1 != c2)
+				goto jleave;
+		} while (c1 != '\0' && c2 != '\0' && c1 != '@' && c2 != '@');
+		ret = 1;
+	} else
+		ret = (asccasecmp(n1, n2) == 0);
+jleave:
+	return (ret);
+}
+
+static struct name *
+delname(struct name *np, char const *name)
+{
+	struct name *p;
+
+	for (p = np; p != NULL; p = p->n_flink)
+		if (same_name(p->n_name, name)) {
+			if (p->n_blink == NULL) {
+				if (p->n_flink != NULL)
+					p->n_flink->n_blink = NULL;
+				np = p->n_flink;
+				continue;
+			}
+			if (p->n_flink == NULL) {
+				if (p->n_blink != NULL)
+					p->n_blink->n_flink = NULL;
+				continue;
+			}
+			p->n_blink->n_flink = p->n_flink;
+			p->n_flink->n_blink = p->n_blink;
+		}
+	return (np);
+}
+
+static struct name *
+put(struct name *list, struct name *node)
+{
+	node->n_flink = list;
+	node->n_blink = NULL;
+	if (list != NULL)
+		list->n_blink = node;
+	return (node);
+}
 
 static char const *
 yankname(char const *ap, char *wbuf, char const *separators, int keepcomms)
@@ -149,6 +208,7 @@ extract1(char const *line, enum gfield ntype, char const *separators,
 	top = NULL;
 	if (line == NULL || *line == '\0')
 		goto jleave;
+
 	np = NULL;
 	cp = line;
 	nbuf = ac_alloc(strlen(line) + 1);
@@ -162,8 +222,53 @@ extract1(char const *line, enum gfield ntype, char const *separators,
 		np = t;
 	}
 	ac_free(nbuf);
+
 jleave:
 	return (top);
+}
+
+static struct name *
+gexpand(struct name *nlist, struct grouphead *gh, int metoo, int ntype)
+{
+	struct group *gp;
+	struct grouphead *ngh;
+	struct name *np;
+	static int depth;
+	char *cp;
+
+	if (depth > MAXEXP) {
+		printf(tr(150, "Expanding alias to depth larger than %d\n"),
+			MAXEXP);
+		goto jleave;
+	}
+	depth++;
+
+	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link) {
+		cp = gp->ge_name;
+		if (*cp == '\\')
+			goto quote;
+		if (strcmp(cp, gh->g_name) == 0)
+			goto quote;
+		if ((ngh = findgroup(cp)) != NULL) {
+			nlist = gexpand(nlist, ngh, metoo, ntype);
+			continue;
+		}
+quote:
+		np = nalloc(cp, ntype|GFULL);
+		/*
+		 * At this point should allow to expand
+		 * to self if only person in group
+		 */
+		if (gp == gh->g_list && gp->ge_link == NULL)
+			goto skip;
+		if (! metoo && same_name(cp, myname))
+			np->n_type |= GDEL;
+skip:
+		nlist = put(nlist, np);
+	}
+	--depth;
+jleave:
+	return (nlist);
 }
 
 /*
@@ -278,19 +383,39 @@ jleave:
 }
 
 /*
- * Find the tail of a list and return it.
+ * Concatenate the two passed name lists, return the result.
  */
-static struct name *
-tailof(struct name *name)
+struct name *
+cat(struct name *n1, struct name *n2)
 {
-	struct name *np;
+	struct name *tail;
 
-	np = name;
-	if (np == NULL)
-		return(NULL);
-	while (np->n_flink != NULL)
-		np = np->n_flink;
-	return(np);
+	if (n1 == NULL)
+		return (n2);
+	if (n2 == NULL)
+		return (n1);
+
+	tail = n1;
+	while (tail->n_flink != NULL)
+		tail = tail->n_flink;
+	tail->n_flink = n2;
+	n2->n_blink = tail;
+	return (n1);
+}
+
+/*
+ * Determine the number of undeleted elements in
+ * a name list and return it.
+ */
+int
+count(struct name const*np)
+{
+	int c;
+
+	for (c = 0; np != NULL; np = np->n_flink)
+		if ((np->n_type & GDEL) == 0)
+			c++;
+	return (c);
 }
 
 /*
@@ -316,19 +441,19 @@ lextract(char const *line, enum gfield ntype)
 char *
 detract(struct name *np, enum gfield ntype)
 {
-	int s;
-	char *cp, *top;
+	char *top, *cp;
 	struct name *p;
-	int comma;
+	int comma, s;
+
+	top = NULL;
+	if (np == NULL)
+		goto jleave;
 
 	comma = ntype & GCOMMA;
-	if (np == NULL)
-		return(NULL);
 	ntype &= ~GCOMMA;
 	s = 0;
 	if ((debug || value("debug")) && comma)
-		fprintf(stderr, catgets(catd, CATSET, 145,
-				"detract asked to insert commas\n"));
+		fprintf(stderr, tr(145, "detract asked to insert commas\n"));
 	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
@@ -337,7 +462,8 @@ detract(struct name *np, enum gfield ntype)
 			s++;
 	}
 	if (s == 0)
-		return(NULL);
+		goto jleave;
+
 	s += 2;
 	top = salloc(s);
 	cp = top;
@@ -352,7 +478,52 @@ detract(struct name *np, enum gfield ntype)
 	*--cp = 0;
 	if (comma && *--cp == ',')
 		*cp = 0;
-	return(top);
+jleave:
+	return (top);
+}
+
+/*
+ * Unpack the name list onto a vector of strings.
+ * Return an error if the name list won't fit.
+ */
+char **
+unpack(struct name *np)
+{
+	char **ap, **top;
+	struct name *n;
+	int t, extra, metoo, verbose;
+
+	n = np;
+	if ((t = count(n)) == 0)
+		panic(tr(151, "No names to unpack"));
+	/*
+	 * Compute the number of extra arguments we will need.
+	 * We need at least two extra -- one for "mail" and one for
+	 * the terminating 0 pointer.  Additional spots may be needed
+	 * to pass along -f to the host mailer.
+	 */
+	extra = 2;
+	extra++;
+	metoo = value("metoo") != NULL;
+	if (metoo)
+		extra++;
+	verbose = value("verbose") != NULL;
+	if (verbose)
+		extra++;
+	/*LINTED*/
+	top = (char **)salloc((t + extra) * sizeof *top);
+	ap = top;
+	*ap++ = "send-mail";
+	*ap++ = "-i";
+	if (metoo)
+		*ap++ = "-m";
+	if (verbose)
+		*ap++ = "-v";
+	for (; n != NULL; n = n->n_flink)
+		if ((n->n_type & GDEL) == 0)
+			*ap++ = n->n_name;
+	*ap = NULL;
+	return (top);
 }
 
 /*
@@ -375,6 +546,214 @@ checkaddrs(struct name *np)
 		n = n->n_flink;
 	}
 	return (np);
+}
+
+/*
+ * Map all of the aliased users in the invoker's mailrc
+ * file and insert them into the list.
+ * Changed after all these months of service to recursively
+ * expand names (2/14/80).
+ */
+struct name *
+usermap(struct name *names)
+{
+	struct name *new, *np, *cp;
+	struct grouphead *gh;
+	int metoo;
+
+	new = NULL;
+	np = names;
+	metoo = (value("metoo") != NULL);
+	while (np != NULL) {
+		if (np->n_name[0] == '\\') {
+			cp = np->n_flink;
+			new = put(new, np);
+			np = cp;
+			continue;
+		}
+		gh = findgroup(np->n_name);
+		cp = np->n_flink;
+		if (gh != NULL)
+			new = gexpand(new, gh, metoo, np->n_type);
+		else
+			new = put(new, np);
+		np = cp;
+	}
+	return(new);
+}
+
+/*
+ * Remove all of the duplicates from the passed name list by
+ * insertion sorting them, then checking for dups.
+ * Return the head of the new list.
+ */
+struct name *
+elide(struct name *names)
+{
+	struct name *np, *t, *newn, *x;
+
+	if (names == NULL)
+		return (NULL);
+	/* Throw away all deleted nodes (XXX merge with plain sort below?) */
+	for (newn = np = NULL; names != NULL; names = names->n_flink)
+		if  ((names->n_type & GDEL) == 0) {
+			names->n_blink = np;
+			if (np)
+				np->n_flink = names;
+			else
+				newn = names;
+			np = names;
+		}
+	if (newn == NULL)
+		return (NULL);
+
+	np = newn->n_flink;
+	if (np != NULL)
+		np->n_blink = NULL;
+	newn->n_flink = NULL;
+
+	while (np != NULL) {
+		t = newn;
+		while (asccasecmp(t->n_name, np->n_name) < 0) {
+			if (t->n_flink == NULL)
+				break;
+			t = t->n_flink;
+		}
+
+		/*
+		 * If we ran out of t's, put the new entry after
+		 * the current value of t.
+		 */
+
+		if (asccasecmp(t->n_name, np->n_name) < 0) {
+			t->n_flink = np;
+			np->n_blink = t;
+			t = np;
+			np = np->n_flink;
+			t->n_flink = NULL;
+			continue;
+		}
+
+		/*
+		 * Otherwise, put the new entry in front of the
+		 * current t.  If at the front of the list,
+		 * the new guy becomes the new head of the list.
+		 */
+
+		if (t == newn) {
+			t = np;
+			np = np->n_flink;
+			t->n_flink = newn;
+			newn->n_blink = t;
+			t->n_blink = NULL;
+			newn = t;
+			continue;
+		}
+
+		/*
+		 * The normal case -- we are inserting into the
+		 * middle of the list.
+		 */
+
+		x = np;
+		np = np->n_flink;
+		x->n_flink = t;
+		x->n_blink = t->n_blink;
+		t->n_blink->n_flink = x;
+		t->n_blink = x;
+	}
+
+	/*
+	 * Now the list headed up by new is sorted.
+	 * Go through it and remove duplicates.
+	 */
+
+	np = newn;
+	while (np != NULL) {
+		t = np;
+		while (t->n_flink != NULL &&
+		       asccasecmp(np->n_name, t->n_flink->n_name) == 0)
+			t = t->n_flink;
+		if (t == np || t == NULL) {
+			np = np->n_flink;
+			continue;
+		}
+
+		/*
+		 * Now t points to the last entry with the same name
+		 * as np.  Make np point beyond t.
+		 */
+
+		np->n_flink = t->n_flink;
+		if (t->n_flink != NULL)
+			t->n_flink->n_blink = np;
+		np = np->n_flink;
+	}
+	return (newn);
+}
+
+struct name *
+delete_alternates(struct name *np)
+{
+	struct name *xp;
+	char **ap;
+
+	np = delname(np, myname);
+	if (altnames)
+		for (ap = altnames; *ap; ap++)
+			np = delname(np, *ap);
+	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
+		while (xp) {
+			np = delname(np, xp->n_name);
+			xp = xp->n_flink;
+		}
+	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
+		while (xp) {
+			np = delname(np, xp->n_name);
+			xp = xp->n_flink;
+		}
+	if ((xp = extract(value("sender"), GEXTRA|GSKIN)) != NULL)
+		while (xp) {
+			np = delname(np, xp->n_name);
+			xp = xp->n_flink;
+		}
+	return (np);
+}
+
+int
+is_myname(char const *name)
+{
+	int ret = 1;
+	struct name *xp;
+	char **ap;
+
+	if (same_name(myname, name))
+		goto jleave;
+	if (altnames)
+		for (ap = altnames; *ap; ap++)
+			if (same_name(*ap, name))
+				goto jleave;
+	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
+		while (xp) {
+			if (same_name(xp->n_name, name))
+				goto jleave;
+			xp = xp->n_flink;
+		}
+	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
+		while (xp) {
+			if (same_name(xp->n_name, name))
+				goto jleave;
+			xp = xp->n_flink;
+		}
+	if ((xp = extract(value("sender"), GEXTRA|GSKIN)) != NULL)
+		while (xp) {
+			if (same_name(xp->n_name, name))
+				goto jleave;
+			xp = xp->n_flink;
+		}
+	ret = 0;
+jleave:
+	return (ret);
 }
 
 /*
@@ -591,415 +970,4 @@ jdelall:
 		np = np->n_flink;
 	}
 	goto jleave;
-}
-
-static int
-same_name(char *n1, char *n2)
-{
-	int c1, c2;
-
-	if (value("allnet") != NULL) {
-		do {
-			c1 = (*n1++ & 0377);
-			c2 = (*n2++ & 0377);
-			c1 = lowerconv(c1);
-			c2 = lowerconv(c2);
-			if (c1 != c2)
-				return 0;
-		} while (c1 != '\0' && c2 != '\0' && c1 != '@' && c2 != '@');
-		return 1;
-	} else
-		return asccasecmp(n1, n2) == 0;
-}
-
-/*
- * Map all of the aliased users in the invoker's mailrc
- * file and insert them into the list.
- * Changed after all these months of service to recursively
- * expand names (2/14/80).
- */
-
-struct name *
-usermap(struct name *names)
-{
-	struct name *new, *np, *cp;
-	struct grouphead *gh;
-	int metoo;
-
-	new = NULL;
-	np = names;
-	metoo = (value("metoo") != NULL);
-	while (np != NULL) {
-		if (np->n_name[0] == '\\') {
-			cp = np->n_flink;
-			new = put(new, np);
-			np = cp;
-			continue;
-		}
-		gh = findgroup(np->n_name);
-		cp = np->n_flink;
-		if (gh != NULL)
-			new = gexpand(new, gh, metoo, np->n_type);
-		else
-			new = put(new, np);
-		np = cp;
-	}
-	return(new);
-}
-
-/*
- * Recursively expand a group name.  We limit the expansion to some
- * fixed level to keep things from going haywire.
- * Direct recursion is not expanded for convenience.
- */
-
-static struct name *
-gexpand(struct name *nlist, struct grouphead *gh, int metoo, int ntype)
-{
-	struct group *gp;
-	struct grouphead *ngh;
-	struct name *np;
-	static int depth;
-	char *cp;
-
-	if (depth > MAXEXP) {
-		printf(catgets(catd, CATSET, 150,
-			"Expanding alias to depth larger than %d\n"), MAXEXP);
-		return(nlist);
-	}
-	depth++;
-	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link) {
-		cp = gp->ge_name;
-		if (*cp == '\\')
-			goto quote;
-		if (strcmp(cp, gh->g_name) == 0)
-			goto quote;
-		if ((ngh = findgroup(cp)) != NULL) {
-			nlist = gexpand(nlist, ngh, metoo, ntype);
-			continue;
-		}
-quote:
-		np = nalloc(cp, ntype|GFULL);
-		/*
-		 * At this point should allow to expand
-		 * to self if only person in group
-		 */
-		if (gp == gh->g_list && gp->ge_link == NULL)
-			goto skip;
-		if (!metoo && same_name(cp, myname))
-			np->n_type |= GDEL;
-skip:
-		nlist = put(nlist, np);
-	}
-	depth--;
-	return(nlist);
-}
-
-/*
- * Concatenate the two passed name lists, return the result.
- */
-struct name *
-cat(struct name *n1, struct name *n2)
-{
-	struct name *tail;
-
-	if (n1 == NULL)
-		return(n2);
-	if (n2 == NULL)
-		return(n1);
-	tail = tailof(n1);
-	tail->n_flink = n2;
-	n2->n_blink = tail;
-	return(n1);
-}
-
-/*
- * Unpack the name list onto a vector of strings.
- * Return an error if the name list won't fit.
- */
-char **
-unpack(struct name *np)
-{
-	char **ap, **top;
-	struct name *n;
-	int t, extra, metoo, verbose;
-
-	n = np;
-	if ((t = count(n)) == 0)
-		panic(catgets(catd, CATSET, 151, "No names to unpack"));
-	/*
-	 * Compute the number of extra arguments we will need.
-	 * We need at least two extra -- one for "mail" and one for
-	 * the terminating 0 pointer.  Additional spots may be needed
-	 * to pass along -f to the host mailer.
-	 */
-	extra = 2;
-	extra++;
-	metoo = value("metoo") != NULL;
-	if (metoo)
-		extra++;
-	verbose = value("verbose") != NULL;
-	if (verbose)
-		extra++;
-	/*LINTED*/
-	top = (char **)salloc((t + extra) * sizeof *top);
-	ap = top;
-	*ap++ = "send-mail";
-	*ap++ = "-i";
-	if (metoo)
-		*ap++ = "-m";
-	if (verbose)
-		*ap++ = "-v";
-	for (; n != NULL; n = n->n_flink)
-		if ((n->n_type & GDEL) == 0)
-			*ap++ = n->n_name;
-	*ap = NULL;
-	return(top);
-}
-
-/*
- * Remove all of the duplicates from the passed name list by
- * insertion sorting them, then checking for dups.
- * Return the head of the new list.
- */
-struct name *
-elide(struct name *names)
-{
-	struct name *np, *t, *newn, *x;
-
-	if (names == NULL)
-		return (NULL);
-	/* Throw away all deleted nodes (XXX merge with plain sort below?) */
-	for (newn = np = NULL; names != NULL; names = names->n_flink)
-		if  ((names->n_type & GDEL) == 0) {
-			names->n_blink = np;
-			if (np)
-				np->n_flink = names;
-			else
-				newn = names;
-			np = names;
-		}
-	if (newn == NULL)
-		return (NULL);
-
-	np = newn->n_flink;
-	if (np != NULL)
-		np->n_blink = NULL;
-	newn->n_flink = NULL;
-
-	while (np != NULL) {
-		t = newn;
-		while (asccasecmp(t->n_name, np->n_name) < 0) {
-			if (t->n_flink == NULL)
-				break;
-			t = t->n_flink;
-		}
-
-		/*
-		 * If we ran out of t's, put the new entry after
-		 * the current value of t.
-		 */
-
-		if (asccasecmp(t->n_name, np->n_name) < 0) {
-			t->n_flink = np;
-			np->n_blink = t;
-			t = np;
-			np = np->n_flink;
-			t->n_flink = NULL;
-			continue;
-		}
-
-		/*
-		 * Otherwise, put the new entry in front of the
-		 * current t.  If at the front of the list,
-		 * the new guy becomes the new head of the list.
-		 */
-
-		if (t == newn) {
-			t = np;
-			np = np->n_flink;
-			t->n_flink = newn;
-			newn->n_blink = t;
-			t->n_blink = NULL;
-			newn = t;
-			continue;
-		}
-
-		/*
-		 * The normal case -- we are inserting into the
-		 * middle of the list.
-		 */
-
-		x = np;
-		np = np->n_flink;
-		x->n_flink = t;
-		x->n_blink = t->n_blink;
-		t->n_blink->n_flink = x;
-		t->n_blink = x;
-	}
-
-	/*
-	 * Now the list headed up by new is sorted.
-	 * Go through it and remove duplicates.
-	 */
-
-	np = newn;
-	while (np != NULL) {
-		t = np;
-		while (t->n_flink != NULL &&
-		       asccasecmp(np->n_name, t->n_flink->n_name) == 0)
-			t = t->n_flink;
-		if (t == np || t == NULL) {
-			np = np->n_flink;
-			continue;
-		}
-		
-		/*
-		 * Now t points to the last entry with the same name
-		 * as np.  Make np point beyond t.
-		 */
-
-		np->n_flink = t->n_flink;
-		if (t->n_flink != NULL)
-			t->n_flink->n_blink = np;
-		np = np->n_flink;
-	}
-	return (newn);
-}
-
-/*
- * Put another node onto a list of names and return
- * the list.
- */
-static struct name *
-put(struct name *list, struct name *node)
-{
-	node->n_flink = list;
-	node->n_blink = NULL;
-	if (list != NULL)
-		list->n_blink = node;
-	return(node);
-}
-
-/*
- * Determine the number of undeleted elements in
- * a name list and return it.
- */
-int 
-count(struct name *np)
-{
-	int c;
-
-	for (c = 0; np != NULL; np = np->n_flink)
-		if ((np->n_type & GDEL) == 0)
-			c++;
-	return c;
-}
-
-/*
- * Delete the given name from a namelist.
- */
-static struct name *
-delname(struct name *np, char *name)
-{
-	struct name *p;
-
-	for (p = np; p != NULL; p = p->n_flink)
-		if (same_name(p->n_name, name)) {
-			if (p->n_blink == NULL) {
-				if (p->n_flink != NULL)
-					p->n_flink->n_blink = NULL;
-				np = p->n_flink;
-				continue;
-			}
-			if (p->n_flink == NULL) {
-				if (p->n_blink != NULL)
-					p->n_blink->n_flink = NULL;
-				continue;
-			}
-			p->n_blink->n_flink = p->n_flink;
-			p->n_flink->n_blink = p->n_blink;
-		}
-	return np;
-}
-
-/*
- * Pretty print a name list
- * Uncomment it if you need it.
- */
-
-/*
-void
-prettyprint(struct name *name)
-{
-	struct name *np;
-
-	np = name;
-	while (np != NULL) {
-		fprintf(stderr, "%s(%d) ", np->n_name, np->n_type);
-		np = np->n_flink;
-	}
-	fprintf(stderr, "\n");
-}
-*/
-
-struct name *
-delete_alternates(struct name *np)
-{
-	struct name	*xp;
-	char	**ap;
-
-	np = delname(np, myname);
-	if (altnames)
-		for (ap = altnames; *ap; ap++)
-			np = delname(np, *ap);
-	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
-		while (xp) {
-			np = delname(np, xp->n_name);
-			xp = xp->n_flink;
-		}
-	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
-		while (xp) {
-			np = delname(np, xp->n_name);
-			xp = xp->n_flink;
-		}
-	if ((xp = lextract(value("sender"), GEXTRA|GSKIN)) != NULL)
-		while (xp) {
-			np = delname(np, xp->n_name);
-			xp = xp->n_flink;
-		}
-	return np;
-}
-
-int
-is_myname(char *name)
-{
-	struct name	*xp;
-	char	**ap;
-
-	if (same_name(myname, name))
-		return 1;
-	if (altnames)
-		for (ap = altnames; *ap; ap++)
-			if (same_name(*ap, name))
-				return 1;
-	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
-		while (xp) {
-			if (same_name(xp->n_name, name))
-				return 1;
-			xp = xp->n_flink;
-		}
-	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
-		while (xp) {
-			if (same_name(xp->n_name, name))
-				return 1;
-			xp = xp->n_flink;
-		}
-	if ((xp = lextract(value("sender"), GEXTRA|GSKIN)) != NULL)
-		while (xp) {
-			if (same_name(xp->n_name, name))
-				return 1;
-			xp = xp->n_flink;
-		}
-	return 0;
 }
