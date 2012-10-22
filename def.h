@@ -416,23 +416,20 @@ enum gfield {
 				(dot == (mp) && (mp)->m_flag & MKILL))
 
 /*
- * Structure used to pass about the current
- * state of the user-typed message header.
+ * Structure used to pass about the current state of a message (header).
  */
-
 struct header {
-	struct name *h_to;		/* Dynamic "To:" string */
-	char *h_subject;		/* Subject string */
-	struct name *h_cc;		/* Carbon copies string */
-	struct name *h_bcc;		/* Blind carbon copies */
-	struct name *h_ref;		/* References */
-	struct name *h_smopts;		/* Sendmail options */
+	struct name	*h_to;		/* Dynamic "To:" string */
+	char		*h_subject;	/* Subject string */
+	struct name	*h_cc;		/* Carbon copies string */
+	struct name	*h_bcc;		/* Blind carbon copies */
+	struct name	*h_ref;		/* References */
 	struct attachment *h_attach;	/* MIME attachments */
-	char	*h_charset;		/* preferred charset */
-	struct name *h_from;		/* overridden "From:" field */
-	struct name *h_replyto;		/* overridden "Reply-To:" field */
-	struct name *h_sender;		/* overridden "Sender:" field */
-	char *h_organization;		/* overridden "Organization:" field */
+	char		*h_charset;	/* preferred charset */
+	struct name	*h_from;	/* overridden "From:" field */
+	struct name	*h_replyto;	/* overridden "Reply-To:" field */
+	struct name	*h_sender;	/* overridden "Sender:" field */
+	char		*h_organization; /* overridden "Organization:" field */
 };
 
 /*

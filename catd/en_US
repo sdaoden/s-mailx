@@ -201,7 +201,7 @@ The following ~ escapes are defined:\n\
 148 Finalizing write of temporary image
 149 Failed to open a duplicate of the temporary image
 150 Expanding alias to depth larger than %d\n
-151 No names to unpack
+151 --- DELETED ---
 152 Internal error: bad stdio open mode %s\n
 153 Invalid file pointer
 154 Fatal error in process.\n
@@ -321,7 +321,7 @@ The following ~ escapes are defined:\n\
 268 Pipe to: "%s"\n
 269 No IMAP support compiled in.\n
 270 No JUNK support compiled in.\n
-271 More than one address given with -r\n
+271 Invalid address argument with -r\n
 272 No GSSAPI support compiled in.\n
 273 Unknown IMAP authentication method: %s\n
 274 Unknown SMTP authentication method: %s\n

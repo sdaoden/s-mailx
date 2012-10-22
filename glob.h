@@ -69,6 +69,8 @@ _E char	prevfile[PATHSIZE];		/* Name of previous file */
 _E char	*homedir;			/* Path name of home directory */
 _E char *progname;			/* our name */
 _E char	*myname;			/* My login name */
+_E char		**smopts;		/* sendmail(1) options, command line */
+_E size_t	smopts_count;		/* Entries in smopts */
 _E char const *const uagent;		/* User agent */
 _E char const *const version;		/* The version string */
 _E off_t mailsize;			/* Size of system mailbox */

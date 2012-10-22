@@ -64,10 +64,9 @@ static int make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 static FILE *infix(struct header *hp, FILE *fi, int dosign);
 static int savemail(char *name, FILE *fi);
 static int sendmail_internal(void *v, int recipient_record);
-static enum okay transfer(struct name *to, struct name *mailargs, FILE *input,
-		struct header *hp);
-static enum okay start_mta(struct name *to, struct name *mailargs, FILE *input,
-		struct header *hp);
+static enum okay transfer(struct name *to, FILE *input, struct header *hp);
+static char ** prepare_mta_args(struct name *to);
+static enum okay start_mta(struct name *to, FILE *input, struct header *hp);
 static void message_id(FILE *fo, struct header *hp);
 static int fmt(char *str, struct name *np, FILE *fo, int comma,
 		int dropinvalid, int domime);
@@ -706,7 +705,7 @@ savemail(char *name, FILE *fi)
  */
 int 
 mail(struct name *to, struct name *cc, struct name *bcc,
-		struct name *smopts, char *subject, struct attachment *attach,
+		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record, int tflag, int Eflag)
 {
 	struct header head;
@@ -726,7 +725,6 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 		head.h_bcc = bcc;
 	}
 	head.h_attach = attach;
-	head.h_smopts = smopts;
 	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag, Eflag);
 	if (subject != NULL)
 		free(out.s);
@@ -764,7 +762,7 @@ Sendmail(void *v)
 }
 
 static enum okay
-transfer(struct name *to, struct name *mailargs, FILE *input, struct header *hp)
+transfer(struct name *to, FILE *input, struct header *hp)
 {
 	char	o[LINESIZE], *cp;
 	struct name	*np, *nt;
@@ -778,7 +776,7 @@ transfer(struct name *to, struct name *mailargs, FILE *input, struct header *hp)
 		if ((cp = value(o)) != NULL) {
 			if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
 				nt = ndup(np, np->n_type & ~(GFULL|GSKIN));
-				if (start_mta(nt, mailargs, ef, hp) != OKAY)
+				if (start_mta(nt, ef, hp) != OKAY)
 					ok = STOP;
 				Fclose(ef);
 			} else {
@@ -801,10 +799,32 @@ transfer(struct name *to, struct name *mailargs, FILE *input, struct header *hp)
 	}
 	if (cnt) {
 		if (value("smime-force-encryption") ||
-				start_mta(to, mailargs, input, hp) != OKAY)
+				start_mta(to, input, hp) != OKAY)
 			ok = STOP;
 	}
 	return ok;
+}
+
+static char **
+prepare_mta_args(struct name *to)
+{
+	size_t j, i = 4 + smopts_count + count(to) + 1;
+	char **args = salloc(i * sizeof(char*));
+
+	args[0] = "send-mail";
+	args[1] = "-i";
+	i = 2;
+	if (value("metoo"))
+		args[i++] = "-m";
+	if (value("verbose"))
+		args[i++] = "-v";
+	for (j = 0; j < smopts_count; ++j, ++i)
+		args[i] = smopts[j];
+	for (; to != NULL; to = to->n_flink)
+		if ((to->n_type & GDEL) == 0)
+			args[i++] = to->n_name;
+	args[i] = NULL;
+	return (args);
 }
 
 /*
@@ -812,29 +832,26 @@ transfer(struct name *to, struct name *mailargs, FILE *input, struct header *hp)
  * mailing to namelist and stdin redirected to input.
  */
 static enum okay
-start_mta(struct name *to, struct name *mailargs, FILE *input,
-		struct header *hp)
+start_mta(struct name *to, FILE *input, struct header *hp)
 {
-	char **args = NULL, **t;
+#ifdef USE_SMTP
+	struct termios otio;
+	int reset_tio;
+#endif
+	char **args = NULL, *user = NULL, *password = NULL, *skinned = NULL,
+		**t, *cp, *smtp;
+	enum okay ok = STOP;
 	pid_t pid;
 	sigset_t nset;
-	char *cp, *smtp;
-	char	*user = NULL, *password = NULL, *skinned = NULL;
-	enum okay	ok = STOP;
-#ifdef USE_SMTP
-	struct termios	otio;
-	int	reset_tio;
-#endif
 
 	if ((smtp = value("smtp")) == NULL) {
-		args = unpack(cat(mailargs, to));
+		args = prepare_mta_args(to);
 		if (debug || value("debug")) {
-			printf(catgets(catd, CATSET, 181,
-					"Sendmail arguments:"));
+			printf(tr(181, "Sendmail arguments:"));
 			for (t = args; *t != NULL; t++)
 				printf(" \"%s\"", *t);
 			printf("\n");
-			return OKAY;
+			return (OKAY);
 		}
 	}
 #ifdef USE_SMTP
@@ -1078,7 +1095,7 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 	}
 	if (mightrecord(mtf, to, recipient_record) != OKAY)
 		goto out;
-	ok = transfer(to, hp->h_smopts, mtf, hp);
+	ok = transfer(to, mtf, hp);
 out:
 	Fclose(mtf);
 	return ok;
@@ -1513,7 +1530,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	if (count(to) != 0) {
 		if (value("record-resent") == NULL ||
 				mightrecord(nfi, to, 0) == OKAY)
-			ok = transfer(to, head.h_smopts, nfi, NULL);
+			ok = transfer(to, nfi, NULL);
 	} else if (senderr == 0)
 		ok = OKAY;
 	Fclose(nfi);
