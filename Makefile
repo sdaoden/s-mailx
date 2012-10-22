@@ -130,5 +130,5 @@ distclean: clean
 update-version:
 	[ -z "$${VERSION}" ] && eval VERSION="`git describe --dirty --tags`"; \
 	echo > version.c \
-	"const char *const uagent = \"$(SID)$(NAIL)\", \
+	"char const *const uagent = \"$(SID)$(NAIL)\", \
 	*const version = \"$${VERSION:-huih buh}\";"
