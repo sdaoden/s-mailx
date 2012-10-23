@@ -597,7 +597,7 @@ mime_type(char *ext, char *filename)
 	size_t linesize = 0;
 	char *type = NULL;
 
-	if ((f = Fopen(filename, "r")) == NULL)
+	if (filename == NULL || (f = Fopen(filename, "r")) == NULL)
 		return NULL;
 	while (fgetline(&line, &linesize, NULL, NULL, f, 0)) {
 		if ((type = mime_tline(ext, line)) != NULL)
