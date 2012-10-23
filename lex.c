@@ -82,7 +82,7 @@ setfile(char *name, int newmail)
 	isedit = *name != '%' && ((sh = get_shortcut(name)) == NULL ||
 			*sh->sh_long != '%');
 	if ((name = expand(name)) == NULL)
-		return -1;
+		return (-1);
 
 	switch (which_protocol(name)) {
 	case PROTO_FILE:
