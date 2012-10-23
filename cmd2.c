@@ -307,7 +307,7 @@ save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
 			file = cp;
 	}
 	if ((file = expand(file)) == NULL)
-		return(1);
+		return (1);
 	prot = which_protocol(file);
 	if (prot != PROTO_IMAP) {
 		if (access(file, 0) >= 0) {
@@ -448,7 +448,6 @@ cwrite(void *v)
  * unless the file name is the only thing on the line, in
  * which case, return 0 in the reference flag variable.
  */
-
 static char *
 snarf(char *linebuf, int *flag, int usembox)
 {
@@ -460,7 +459,7 @@ snarf(char *linebuf, int *flag, int usembox)
 			*flag = 0;
 			cp = expand("&");
 		} else
-			printf(tr(28, "No file specified.\n"));
+			fprintf(stderr, tr(28, "No file specified.\n"));
 	}
 	return (cp);
 }
