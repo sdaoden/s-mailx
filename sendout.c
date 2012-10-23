@@ -162,8 +162,8 @@ put_signature(FILE *fo, int convert)
 	sig = value("signature");
 	if (sig == NULL || *sig == '\0')
 		return 0;
-	else
-		sig = file_expand(sig);
+	else if ((sig = file_expand(sig)) == NULL)
+		return (-1);
 	if ((fsig = Fopen(sig, "r")) == NULL) {
 		perror(sig);
 		return -1;
@@ -839,12 +839,18 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	int reset_tio;
 #endif
 	char **args = NULL, *user = NULL, *password = NULL, *skinned = NULL,
-		**t, *cp, *smtp;
+		**t, *smtp, *mta;
 	enum okay ok = STOP;
 	pid_t pid;
 	sigset_t nset;
 
 	if ((smtp = value("smtp")) == NULL) {
+		if ((mta = value("sendmail")) != NULL) {
+			if ((mta = file_expand(mta)) == NULL)
+				goto jstop;
+		} else
+			mta = SENDMAIL;
+
 		args = prepare_mta_args(to);
 		if (debug || value("debug")) {
 			printf(tr(181, "Sendmail arguments:"));
@@ -855,7 +861,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		}
 	}
 #ifdef USE_SMTP
-	if (smtp != NULL) {
+	else {
 		skinned = skin(myorigin(hp));
 		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
 				(password = smtp_auth_var("-password",
@@ -870,7 +876,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	 */
 	if ((pid = fork()) == -1) {
 		perror("fork");
-		savedeadletter(input);
+jstop:		savedeadletter(input);
 		senderr++;
 		return STOP;
 	}
@@ -890,16 +896,11 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 				_exit(0);
 		} else {
 			prepare_child(&nset, fileno(input), -1);
-			if ((cp = value("sendmail")) != NULL)
-				cp = file_expand(cp);
-			else
-				cp = SENDMAIL;
-			execv(cp, args);
-			perror(cp);
+			execv(mta, args);
+			perror(mta);
 		}
 		savedeadletter(input);
-		fputs(catgets(catd, CATSET, 182,
-				". . . message not sent.\n"), stderr);
+		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
 	if (value("verbose") != NULL || value("sendwait") || debug
@@ -912,7 +913,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		ok = OKAY;
 		free_child(pid);
 	}
-	return ok;
+	return (ok);
 }
 
 /*
@@ -933,6 +934,10 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 		cp = value("record");
 	if (cp != NULL) {
 		ep = expand(cp);
+		if (ep == NULL) {
+			ep = "NULL";
+			goto jbail;
+		}
 		if (value("outfolder") && *ep != '/' && *ep != '+' &&
 				which_protocol(ep) == PROTO_FILE) {
 			cq = salloc(strlen(cp) + 2);
@@ -940,11 +945,15 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 			strcpy(&cq[1], cp);
 			cp = cq;
 			ep = expand(cp);
+			if (ep == NULL) {
+				ep = "NULL";
+				goto jbail;
+			}
 		}
 		if (savemail(ep, fp) != 0) {
-			fprintf(stderr,
-				"Error while saving message to %s - "
-				"message not sent\n", ep);
+jbail:			fprintf(stderr, tr(285,
+				"Failed to save message in %s - "
+				"message not sent\n"), ep);
 			rewind(fp);
 			exit_status |= 1;
 			savedeadletter(fp);
