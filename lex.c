@@ -904,7 +904,7 @@ load(char *name)
 {
 	FILE *in, *oldin;
 
-	if ((in = Fopen(name, "r")) == NULL)
+	if (name == NULL || (in = Fopen(name, "r")) == NULL)
 		return;
 	oldin = input;
 	input = in;
