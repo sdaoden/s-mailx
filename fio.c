@@ -678,6 +678,8 @@ getdeadletter(void)
 		cp = file_expand(buf);
 		ac_free(buf);
 	}
+	if (cp == NULL)
+		cp = "dead.letter";
 	return (cp);
 }
 
