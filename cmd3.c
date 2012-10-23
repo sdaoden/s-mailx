@@ -829,14 +829,16 @@ diction(const void *a, const void *b)
 int 
 cfile(void *v)
 {
-	char **argv = v;
+	char **argv = v, *exp;
 
 	if (argv[0] == NULL) {
 		newfileinfo();
-		return 0;
+		return (0);
 	}
-	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
-	return file1(*argv);
+	if ((exp = expand("&")) == NULL)
+		return (0);
+	strncpy(mboxname, exp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
+	return (file1(*argv));
 }
 
 static int 
@@ -1346,7 +1348,11 @@ account(void *v)
 			a->ac_name = NULL;
 		return define1(args[0], 1);
 	}
-	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
+
+	if ((cp = expand("&")) == NULL)
+		return (1);
+	strncpy(mboxname, cp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
+
 	oqf = savequitflags();
 	if ((a = get_oldaccount(args[0])) == NULL) {
 		if (args[1]) {
@@ -1624,20 +1630,21 @@ cremove(void *v)
 	int	ec = 0;
 
 	if (*args == NULL) {
-		fprintf(stderr, "Syntax is: remove mailbox ...\n");
-		return 1;
+		fprintf(stderr, tr(290, "Syntax is: remove mailbox ...\n"));
+		return (1);
 	}
 	do {
 		if ((name = expand(*args)) == NULL)
 			continue;
 		if (strcmp(name, mailname) == 0) {
-			fprintf(stderr,
-				"Cannot remove current mailbox \"%s\".\n",
+			fprintf(stderr, tr(286,
+				"Cannot remove current mailbox \"%s\".\n"),
 				name);
 			ec |= 1;
 			continue;
 		}
-		snprintf(vb, sizeof vb, "Remove \"%s\" (y/n) ? ", name);
+		snprintf(vb, sizeof vb, tr(287, "Remove \"%s\" (y/n) ? "),
+			name);
 		if (yorn(vb) == 0)
 			continue;
 		switch (which_protocol(name)) {
@@ -1648,7 +1655,8 @@ cremove(void *v)
 			}
 			break;
 		case PROTO_POP3:
-			fprintf(stderr, "Cannot remove POP3 mailbox \"%s\".\n",
+			fprintf(stderr, tr(288,
+				"Cannot remove POP3 mailbox \"%s\".\n"),
 					name);
 			ec |= 1;
 			break;
@@ -1661,8 +1669,8 @@ cremove(void *v)
 				ec |= 1;
 			break;
 		case PROTO_UNKNOWN:
-			fprintf(stderr,
-				"Unknown protocol in \"%s\". Not removed.\n",
+			fprintf(stderr, tr(289,
+				"Unknown protocol in \"%s\". Not removed.\n"),
 				name);
 			ec |= 1;
 		}
@@ -1679,18 +1687,24 @@ crename(void *v)
 
 	if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
 		fprintf(stderr, "Syntax: rename old new\n");
-		return 1;
+		return (1);
 	}
-	old = expand(args[0]);
+
+	if ((old = expand(args[0])) == NULL)
+		return (1);
 	oldp = which_protocol(old);
-	new = expand(args[1]);
+	if ((new = expand(args[1])) == NULL)
+		return (1);
 	newp = which_protocol(new);
+
 	if (strcmp(old, mailname) == 0 || strcmp(new, mailname) == 0) {
-		fprintf(stderr, "Cannot rename current mailbox \"%s\".\n", old);
+		fprintf(stderr, tr(291,
+		"Cannot rename current mailbox \"%s\".\n"), old);
 		return 1;
 	}
 	if ((oldp == PROTO_IMAP || newp == PROTO_IMAP) && oldp != newp) {
-		fprintf(stderr, "Can only rename folders of same type.\n");
+		fprintf(stderr, tr(292,
+			"Can only rename folders of same type.\n"));
 		return 1;
 	}
 	if (newp == PROTO_POP3)
@@ -1723,7 +1737,7 @@ crename(void *v)
 		}
 		break;
 	case PROTO_POP3:
-	nopop3:	fprintf(stderr, "Cannot rename POP3 mailboxes.\n");
+	nopop3:	fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
 		ec |= 1;
 		break;
 	case PROTO_IMAP:
@@ -1731,8 +1745,9 @@ crename(void *v)
 			ec |= 1;
 		break;
 	case PROTO_UNKNOWN:
-		fprintf(stderr, "Unknown protocol in \"%s\" and \"%s\". "
-				"Not renamed.\n", old, new);
+		fprintf(stderr, tr(294,
+			"Unknown protocol in \"%s\" and \"%s\".  "
+			"Not renamed.\n"), old, new);
 		ec |= 1;
 	}
 	return ec;

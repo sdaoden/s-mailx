@@ -335,3 +335,12 @@ The following ~ escapes are defined:\n\
 282 Message writing to <%s> failed: %s\n
 283 write error
 284 Invalid domain name: "%s", character %s\n
+286 Cannot remove current mailbox "%s".\n
+287 $Remove "%s" (y/n) ? $
+288 Cannot remove POP3 mailbox "%s".\n
+289 Unknown protocol in "%s". Not removed.\n
+290 Syntax is: remove mailbox ...\n
+291 Cannot rename current mailbox "%s".\n
+292 Can only rename folders of same type.\n
+293 Cannot rename POP3 mailboxes.\n
+294 Unknown protocol in "%s" and "%s".  Not renamed.\n
