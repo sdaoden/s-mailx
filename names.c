@@ -872,9 +872,6 @@ jcantfout:			++senderr;
 		} else {
 			char *fname = file_expand(np->n_name);
 			if (fname == NULL) {
-				fprintf(stderr, tr(81,
-					"\"%s\": Expansion failed.\n"),
-					np->n_name);
 				++senderr;
 				goto jcant;
 			}
