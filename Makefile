@@ -68,7 +68,7 @@ config.h: user.conf makeconfig Makefile
 
 mkman.1: nail.1
 	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
-	< $< > $@ awk 'BEGIN {written = 0} \
+	< nail.1 > $@ awk 'BEGIN {written = 0} \
 	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ { \
 		if (written == 1) \
 			next; \
@@ -91,7 +91,7 @@ mkman.1: nail.1
 
 mkrc.rc: nail.rc
 	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
-	< $< > $@ awk 'BEGIN {written = 0} \
+	< nail.rc > $@ awk 'BEGIN {written = 0} \
 	/#--MKRC-START--/, /#--MKRC-END--/ { \
 		if (written == 1) \
 			next; \
