@@ -1152,10 +1152,12 @@ statusput(const struct message *mp, FILE *obuf, char *prefix, size_t prefixlen,
 	if ((mp->m_flag & MNEW) == 0)
 		*cp++ = 'O';
 	*cp = 0;
-	if (statout[0])
-		fprintf(obuf, "%.*sStatus: %s\n",
+	if (statout[0]) {
+		int i = fprintf(obuf, "%.*sStatus: %s\n",
 			(int)prefixlen, (prefixlen ? prefix : ""), statout);
-	addstats(stats, 1, prefixlen + 9 + cp - statout);
+		if (i > 0)
+			addstats(stats, 1, i);
+	}
 }
 
 static void
@@ -1172,10 +1174,12 @@ xstatusput(const struct message *mp, FILE *obuf, char *prefix,
 	if (mp->m_flag & MDRAFTED)
 		*xp++ = 'T';
 	*xp = 0;
-	if (xstatout[0])
-		fprintf(obuf, "%.*sX-Status: %s\n",
+	if (xstatout[0]) {
+		int i = fprintf(obuf, "%.*sX-Status: %s\n",
 			(int)prefixlen, (prefixlen ? prefix : ""), xstatout);
-	addstats(stats, 1, prefixlen + 11 + xp - xstatout);
+		if (i > 0)
+			addstats(stats, 1, i);
+	}
 }
 
 static void
