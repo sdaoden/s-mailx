@@ -303,7 +303,9 @@ jIflag:		case 'I':
 			{	char *a[2];
 				a[0] = optarg;
 				a[1] = NULL;
+				unset_allow_undefined = 1;
 				set(a);
+				unset_allow_undefined = 0;
 			}
 			break;
 		case 's':
