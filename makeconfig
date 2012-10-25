@@ -177,15 +177,14 @@ int main(int argc, char *argv[])
 }
 !
 
-compile_check alloca_h 'for <alloca.h>' '#define HAVE_ALLOCA_H' <<\!
-#include <alloca.h>
-!
-
-link_check alloca 'for alloca()' '#define HAVE_ALLOCA' <<\!
-#include "rcv.h"
+# Due to NetBSD PR lib/47120 it seems to be best to not use non-cc-builtin
+# versions of alloca(3) since modern compilers just can't be trusted not to
+# overoptimize and silently break some code
+link_check alloca 'for __builtin_alloca()' \
+	'#define HAVE_ALLOCA __builtin_alloca' << \!
 int main(void)
 {
-	alloca(1);
+	__builtin_alloca(1);
 	return 0;
 }
 !
