@@ -1,1 +1,1 @@
-const char *const uagent = "S-nail",	*const version = "<12.5 7/5/10; spooky>";
+char const *const uagent = "s-nail", *const version = "s-nailv13";
