@@ -19,11 +19,15 @@ SHELL		= /bin/sh
 STRIP		= strip
 INSTALL		= /usr/bin/install
 
-#CFLAGS		= -std=c89 -O1
+#CFLAGS		= -std=c89 -O2
 #WARN		= -g -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
-#		-Winit-self -fstrict-overflow -Wstrict-overflow=5
+#		-Winit-self
 # Warnings that are not handled very well (yet)
 #		-Wshadow -Wcast-qual -Wwrite-strings
+# The gcc(1) from NetBSD 6 produces a lot of errors with -fstrict-overflow,
+# so that this needs to be revisited; it was enabled on OS X 6 and FreeBSD 9,
+# and seemed to be good for gcc(1) and clang(1)
+#		-fstrict-overflow -Wstrict-overflow=5
 #LDFLAGS		=
 
 ##  --  >8  --  8<  --  ##
