@@ -431,7 +431,6 @@ int		count(struct name const *np);
 struct name *	extract(char const *line, enum gfield ntype);
 struct name *	lextract(char const *line, enum gfield ntype);
 char *		detract(struct name *np, enum gfield ntype);
-char **		unpack(struct name *np);
 
 struct name *	checkaddrs(struct name *np);
 struct name *	usermap(struct name *names);
@@ -504,7 +503,7 @@ int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 /* sendout.c */
 char *makeboundary(void);
 int mail(struct name *to, struct name *cc, struct name *bcc,
-		struct name *smopts, char *subject, struct attachment *attach,
+		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record, int tflag, int Eflag);
 int sendmail(void *v);
 int Sendmail(void *v);

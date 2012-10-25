@@ -187,6 +187,8 @@ Pass the given option through to the mail-transfer-agent (MTA).
 This option has no effect when SMTP is used for sending mail.
 E.g., to specify the hop count to an old \fIsendmail(1)\fR, use
 `\fI-O-h -Onumber\fR', which will be passed as `\fI-h number\fR'.
+Options set like that persist for a complete (interactive) session,
+i.e., will be used for all interactions with the MTA.
 .TP
 .BI \-q \ file
 Start the message with the contents of the specified file.
@@ -196,17 +198,14 @@ May be given in send mode only.
 Opens any folders read-only.
 .TP
 .BI \-r \ address
-Sets the
-.I From
-address. Overrides any
-.I from
-variable specified in environment or startup files.
+Sets the \fIFrom\fR address.
+Overrides any \fIfrom\fR variable specified in environment, in startup
+files or via \fI\-S\fR option processing.
 Tilde escapes are disabled.
-The \fI\-r\fI address\fR options are passed to the mail transfer agent
-unless SMTP is used.
-This option exists for compatibility only; it is recommended to set the
-.I from
-variable directly instead.
+The \fI\-r\fI address\fR option is passed through to the MTA
+(mail-transfer-agent) unless SMTP is used,
+and persists for a complete (interactive) session,
+i.e., will be used for all interactions with the MTA.
 .TP
 \fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]
 Sets the internal option
@@ -2648,9 +2647,9 @@ The string search is case insensitive.
 .TP
 .B sendwait
 When sending a message,
-wait until the mail transfer agent exits
+wait until the mail-transfer-agent exits
 before accepting further commands.
-If the mail transfer agent returns a non-zero exit status,
+If the mail-transfer-agent returns a non-zero exit status,
 the exit status of \*(ua will also be non-zero.
 .TP
 .B showlast

@@ -75,8 +75,18 @@ static sigjmp_buf	hdrjmp;
 char		*progname;
 sighandler_type	dflpipe = SIG_DFL;
 
-static void hdrstop(int signo);
-static void setscreensize(int dummy);
+/* Add an option for sendmail(1) */
+static void	add_smopt(int argc_left, char *arg);
+static void	hdrstop(int signo);
+static void	setscreensize(int dummy);
+
+static void
+add_smopt(int argc_left, char *arg)
+{
+	if (smopts == NULL)
+		smopts = salloc((argc_left + 1) * sizeof(char*));
+	smopts[smopts_count++] = arg;
+}
 
 int 
 main(int argc, char *argv[])
@@ -92,7 +102,7 @@ main(int argc, char *argv[])
 		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
 	int scnt, i;
-	struct name *to, *cc, *bcc, *smopts;
+	struct name *to, *cc, *bcc;
 	struct attachment *attach;
 	char *cp, *subject, *ef, *qf, *fromaddr, *Aflag;
 	char existonly, headersonly, sendflag, nosrc, Eflag, Fflag, tflag;
@@ -173,7 +183,7 @@ main(int argc, char *argv[])
 	 * first of these users.
 	 */
 	scnt = 0;
-	to = cc = bcc = smopts = NULL;
+	to = cc = bcc = NULL;
 	attach = NULL;
 	subject = ef = qf = fromaddr = Aflag = NULL;
 	existonly = headersonly = sendflag = nosrc =
@@ -257,8 +267,7 @@ jIflag:		case 'I':
 			break;
 		case 'O':
 			/* Additional options to pass-through to MTA */
-			smopts = cat(smopts, nalloc(optarg, 0));
-			sendflag = 1;
+			add_smopt(argc - optind, skin(optarg));
 			break;
 		case 'q':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
@@ -272,18 +281,20 @@ jIflag:		case 'I':
 			break;
 		case 'r':
 			/* Set From address. */
-			i = count(smopts);
-			fromaddr = optarg;
-			smopts = cat(smopts, nalloc("-r", 0));
-			smopts = cat(smopts, lextract(optarg, GFULL));
-			if (count(smopts) != i + 2) {
-				fprintf(stderr, tr(271,
-					"More than one address "
-					"given with -r\n"));
-				goto usage;
+			{	struct name *fa = nalloc(optarg, GFULL);
+				if (is_addr_invalid(fa, 1) ||
+						is_fileorpipe_addr(fa)) {
+					fprintf(stderr, tr(271,
+						"Invalid address argument "
+						"with -r\n"));
+					goto usage;
+				}
+				fromaddr = fa->n_fullname;
+				add_smopt(argc - optind, "-r");
+				add_smopt(-1, fa->n_name);
+				/* ..and fa goes even though it is ready :/ */
 			}
 			tildeflag = -1;
-			sendflag = 1;
 			break;
 		case 'S':
 			/* Set variable (do so later, after RC loading..) */
@@ -361,7 +372,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
-	if (sendflag && !tflag && to == NULL) {
+	if (sendflag && ! tflag && to == NULL) {
 		fprintf(stderr, tr(138,
 			"Send options without primary recipient specified.\n"));
 		goto usage;
@@ -402,40 +413,31 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			(cp = value("NAIL_EXTRA_RC")) != NULL)
 		load(file_expand(cp));
 
-	/*
-	 * Now we can set the account.
-	 */
+	/* Now we can set the account */
 	if (Aflag) {
-		char	*a[2];
+		char *a[2];
 		a[0] = Aflag;
 		a[1] = NULL;
 		account(a);
 	}
-	/*
-	 * Override 'skipemptybody' if '-E' flag was given.
-	 */
+	/* Override 'skipemptybody' if '-E' flag was given */
 	if (Eflag)
 		assign("skipemptybody", "");
-	/*
-	 * -S arguments override rc files.
-	 */
+	/* -S arguments override rc files */
 	for (i = 0; i < scnt; ++i) {
 		char *a[2];
 		a[0] = argv[i];
 		a[1] = NULL;
 		set(a);
 	}
+	/* From address from command line overrides rc files */
+	if (fromaddr)
+		assign("from", fromaddr);
 
 	starting = 0;
 
-	/*
-	 * From address from command line overrides rc files.
-	 */
-	if (fromaddr)
-		assign("from", fromaddr);
 	if (!rcvmode) {
-		mail(to, cc, bcc, smopts, subject, attach, qf, Fflag, tflag,
-		    Eflag);
+		mail(to, cc, bcc, subject, attach, qf, Fflag, tflag, Eflag);
 		/*
 		 * why wait?
 		 */
