@@ -55,9 +55,6 @@
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_ALLOCA_H
-# include <alloca.h>
-#endif
 #ifdef HAVE_ASSERTS
 # include <assert.h>
 #else

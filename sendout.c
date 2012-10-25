@@ -1373,7 +1373,7 @@ fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 
 	col = strlen(str);
 	if (col) {
-		fwrite(str, sizeof *str, strlen(str), fo);
+		fwrite(str, sizeof *str, col, fo);
 		if ((flags&GFILES) == 0 && ! value("add-file-recipients") &&
 				((col == 3 && ((asccasecmp(str, "to:") == 0) ||
 					asccasecmp(str, "cc:") == 0)) ||

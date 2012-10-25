@@ -641,17 +641,16 @@ extern unsigned char const 	class_char[];
 }
 
 /*
- * Use either alloca() or smalloc()/free(). ac_alloc can be used to
- * allocate space within a function. ac_free must be called when the
- * space is no longer needed, but expands to nothing if using alloca().
+ * Try to use alloca() for some function-local buffers and data,
+ * fall back to smalloc()/free() if not available.
  */
-#ifdef	HAVE_ALLOCA
-#define	ac_alloc(n)	alloca(n)
-#define	ac_free(n)	do {} while (0)
-#else	/* !HAVE_ALLOCA */
-#define	ac_alloc(n)	smalloc(n)
-#define	ac_free(n)	free(n)
-#endif	/* !HAVE_ALLOCA */
+#ifdef HAVE_ALLOCA
+# define ac_alloc(n)	HAVE_ALLOCA(n)
+# define ac_free(n)	do {} while (0)
+#else
+# define ac_alloc(n)	smalloc(n)
+# define ac_free(n)	free(n)
+#endif
 
 /*
  * Single-threaded, use unlocked I/O.

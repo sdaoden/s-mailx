@@ -10,24 +10,7 @@
 typedef int avoid_empty_file_compiler_warning;
 #else
 
-# include <sys/types.h>
-# ifdef	HAVE_ALLOCA
-#  ifdef HAVE_ALLOCA_H
-#   include <alloca.h>
-#  else
-#   include <stdlib.h>
-#  endif
-# endif
-# include <string.h>
-
-# ifdef HAVE_ALLOCA
-#  define ac_alloc(n)	alloca(n)
-#  define ac_free(n)
-# else
-extern void *smalloc(size_t);
-#  define ac_alloc(n)	smalloc(n)
-#  define ac_free(n)	free(n)
-# endif
+# include "rcv.h"
 
 # ifndef HAVE_SSIZE_T
 typedef	long	ssize_t;

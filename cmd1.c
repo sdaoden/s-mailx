@@ -291,21 +291,21 @@ onpipe(int signo)
 int 
 from(void *v)
 {
-	int *msgvec = v;
-	int *ip, n;
+	int *msgvec = v, *ip, n;
 	FILE *volatile obuf = stdout;
-	char *cp;
+	char volatile *cp;
 
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
-		if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
+		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
 			cp = get_pager();
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
-			if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
-				perror(cp);
+			if ((obuf = Popen((char*)cp, "w", NULL, 1)) == NULL) {
+				perror((char*)cp);
 				obuf = stdout;
+				cp=NULL;
 			} else
 				safe_signal(SIGPIPE, onpipe);
 		}
