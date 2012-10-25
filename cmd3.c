@@ -345,9 +345,9 @@ respond_internal(int *msgvec, int recipient_record)
 		if ((rcv = hfield1("from", mp)) == NULL)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
-		np = sextract(rcv, GTO|gf);
+		np = lextract(rcv, GTO|gf);
 	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
-		np = cat(np, sextract(cp, GTO|gf));
+		np = cat(np, lextract(cp, GTO|gf));
 	np = elide(np);
 	/*
 	 * Delete my name from the reply list,
@@ -355,16 +355,16 @@ respond_internal(int *msgvec, int recipient_record)
 	 */
 	np = delete_alternates(np);
 	if (np == NULL)
-		np = sextract(rcv, GTO|gf);
+		np = lextract(rcv, GTO|gf);
 	head.h_to = np;
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
 	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
-		np = sextract(cp, GCC|gf);
+		np = lextract(cp, GCC|gf);
 	if ((cp = hfield1("cc", mp)) != NULL)
-		np = cat(np, sextract(cp, GCC|gf));
+		np = cat(np, lextract(cp, GCC|gf));
 	if (np != NULL)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
@@ -442,7 +442,7 @@ forward1(char *str, int recipient_record)
 		return 1;
 	}
 	memset(&head, 0, sizeof head);
-	if ((head.h_to = sextract(recipient,
+	if ((head.h_to = lextract(recipient,
 			GTO | (value("fullnames") ? GFULL : GSKIN))) == NULL)
 		return 1;
 	mp = &message[*msgvec - 1];
@@ -972,7 +972,7 @@ Respond_internal(int *msgvec, int recipient_record)
 		if ((cp = hfield1("reply-to", mp)) == NULL)
 			if ((cp = hfield1("from", mp)) == NULL)
 				cp = nameof(mp, 2);
-		head.h_to = cat(head.h_to, sextract(cp, GTO|gf));
+		head.h_to = cat(head.h_to, lextract(cp, GTO|gf));
 	}
 	if (head.h_to == NULL)
 		return 0;

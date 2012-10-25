@@ -600,7 +600,7 @@ matchenvelope(struct message *m, const char *field, const char *what)
 	if ((cp = hfieldX(imap_unquotestr(field), m)) == NULL)
 		return 0;
 	what = imap_unquotestr(what);
-	np = sextract(cp, GFULL);
+	np = lextract(cp, GFULL);
 	while (np) {
 		if (substr(np->n_name, what))
 			return 1;

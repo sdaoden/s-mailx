@@ -317,15 +317,15 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 		} else if ((value = thisfield(linebuf, "from")) != NULL) {
 			seenfields++;
 			hq->h_from = cat(hq->h_from, checkaddrs(
-					sextract(value, GEXTRA|GFULL)));
+					lextract(value, GEXTRA|GFULL)));
 		} else if ((value = thisfield(linebuf, "reply-to")) != NULL) {
 			seenfields++;
 			hq->h_replyto = cat(hq->h_replyto, checkaddrs(
-					sextract(value, GEXTRA|GFULL)));
+					lextract(value, GEXTRA|GFULL)));
 		} else if ((value = thisfield(linebuf, "sender")) != NULL) {
 			seenfields++;
 			hq->h_sender = cat(hq->h_sender, checkaddrs(
-					sextract(value, GEXTRA|GFULL)));
+					lextract(value, GEXTRA|GFULL)));
 		} else if ((value = thisfield(linebuf,
 						"organization")) != NULL) {
 			seenfields++;
@@ -768,7 +768,7 @@ addrspec_check(int skinned, struct addrguts *agp)
 	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 	addr = agp->ag_skinned;
 
-	if (agp->ag_iaddr_end <= agp->ag_iaddr_start) {
+	if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
 		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
 			0);
 		goto jleave;
@@ -876,7 +876,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
 	char const *cp;
 	char *cp2, *bufend, *nbuf, c;
-	int gotlt, lastsp;
+	char gotlt, gotaddr, lastsp;
 
 	memset(agp, 0, sizeof *agp);
 
@@ -892,7 +892,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 
 	if (! doskin || ! anyof(name, "(< ")) {
 		/*agp->ag_iaddr_start = 0;*/
-		agp->ag_iaddr_end = agp->ag_ilen - 1;
+		agp->ag_iaddr_aend = agp->ag_ilen;
 		agp->ag_skinned = (char*)name; /* XXX (NAME_SALLOC not set) */
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
@@ -903,15 +903,14 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	nbuf = ac_alloc(agp->ag_ilen + 1);
 	/*agp->ag_iaddr_start = 0;*/
 	cp2 = bufend = nbuf;
-	gotlt = lastsp = 0;
+	gotlt = gotaddr = lastsp = 0;
 
-	for (cp = name; (c = *cp++) != '\0'; ) {
+	for (cp = name++; (c = *cp++) != '\0'; ) {
 		switch (c) {
 		case '(':
 			cp = skip_comment(cp);
 			lastsp = 0;
 			break;
-
 		case '"':
 			/*
 			 * Start of a "quoted-string".
@@ -922,7 +921,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			 * XXX when skinning names"?  No more info..
 			 */
 			*cp2++ = c;
-			while ((c = *cp) != '\0') {
+			while ((c = *cp) != '\0') { /* TODO improve */
 				cp++;
 				if (c == '"') {
 					*cp2++ = c;
@@ -937,28 +936,29 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			}
 			lastsp = 0;
 			break;
-
 		case ' ':
-			if (cp[0] == 'a' && cp[1] == 't' && cp[2] == ' ')
+		case '\t':
+			if (gotaddr == 1) {
+				gotaddr = 2;
+				agp->ag_iaddr_aend = (size_t)(cp - name);
+			}
+			if (cp[0] == 'a' && cp[1] == 't' && blankchar(cp[2]))
 				cp += 3, *cp2++ = '@';
-			else
-			if (cp[0] == '@' && cp[1] == ' ')
+			else if (cp[0] == '@' && blankchar(cp[1]))
 				cp += 2, *cp2++ = '@';
 			else
 				lastsp = 1;
 			break;
-
 		case '<':
-			agp->ag_iaddr_start = (size_t)(cp - name);
+			agp->ag_iaddr_start = (size_t)(cp - (name - 1));
 			cp2 = bufend;
-			gotlt++;
+			gotlt = gotaddr = 1;
 			lastsp = 0;
 			break;
-
 		case '>':
 			if (gotlt) {
 				/* (addrspec_check() verifies these later!) */
-				agp->ag_iaddr_end = (size_t)(cp - 1 - name);
+				agp->ag_iaddr_aend = (size_t)(cp - name);
 				gotlt = 0;
 				while ((c = *cp) != '\0' && c != ',') {
 					cp++;
@@ -977,25 +977,30 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 				break;
 			}
 			/* FALLTRHOUGH */
-
 		default:
 			if (lastsp) {
 				lastsp = 0;
-				*cp2++ = ' ';
+				if (gotaddr)
+					*cp2++ = ' ';
 			}
 			*cp2++ = c;
-			if (c == ',' && ! gotlt) {
-				*cp2++ = ' ';
-				for (; *cp == ' '; ++cp)
-					;
-				lastsp = 0;
-				bufend = cp2;
+			if (c == ',') {
+				if (! gotlt) {
+					*cp2++ = ' ';
+					for (; blankchar(*cp); ++cp)
+						;
+					lastsp = 0;
+					bufend = cp2;
+				}
+			} else if (! gotaddr) {
+				gotaddr = 1;
+				agp->ag_iaddr_start = (size_t)(cp - name);
 			}
 		}
 	}
 	agp->ag_slen = (size_t)(cp2 - nbuf);
-	if (agp->ag_iaddr_end == 0)
-		agp->ag_iaddr_end = agp->ag_iaddr_start + agp->ag_slen;
+	if (agp->ag_iaddr_aend == 0)
+		agp->ag_iaddr_aend = agp->ag_ilen;
 
 	agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
 	ac_free(nbuf);
@@ -1342,7 +1347,7 @@ fakedate(time_t t)
 	return savestr(cp);
 }
 
-char const *
+static char const *
 nexttoken(char const *cp)
 {
 	for (;;) {
@@ -1594,7 +1599,7 @@ getsender(struct message *mp)
 	struct name	*np;
 
 	if ((cp = hfield1("from", mp)) == NULL ||
-			(np = sextract(cp, GEXTRA|GSKIN)) == NULL)
+			(np = lextract(cp, GEXTRA|GSKIN)) == NULL)
 		return NULL;
 	return np->n_flink != NULL ? skin(hfield1("sender", mp)) : np->n_name;
 }

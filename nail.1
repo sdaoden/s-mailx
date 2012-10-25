@@ -254,8 +254,10 @@ arguments which are the names of people to whom the mail will be sent.
 These names may be \fIalias\fRes, plain addresses or full address
 specifications including user names and comments, in which case care
 for proper quoting may be necessary.
+If this manual refers to a \fIlist of addresses\fR,
+then \*(UA expects a comma-separated list of such names.
 The section \fIRecipient address specifications\fR below explains the
-interpretation of addresses in more detail.
+interpretation of names in more detail.
 The user is then expected to type in his message, followed by an
 `control-D' at the beginning of a line.
 The section \fIReplying to or originating mail\fI, describes some
@@ -649,8 +651,8 @@ the message text is then written to them.
 The rules are: Any name which starts with a
 .RB ` | '
 character specifies a pipe,
-the command string following the `|'
-is executed and the message is sent to its standard input;
+the command string following the `|' is executed
+and the message is sent to its standard input;
 any other name which contains a
 .RB ` @ '
 character is treated as a mail address;
@@ -1372,9 +1374,9 @@ but saves the message in a file
 named after the local part of the first recipient's address.
 .TP
 .B mail
-(m) Takes as argument login names
-and distribution group names
-and sends mail to those people.
+(m) Takes as arguments the usual recipient addresses,
+or asks on standard input if none were given;
+then collects remain mail content and sends it out.
 .TP
 .B mbox
 Indicate that a list of messages be sent
