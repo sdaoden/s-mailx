@@ -23,7 +23,11 @@ Backward-compatibility breakers
   i.e., cause sending to be aborted if not all recipient addresses pass the
   validity test.
 
-- IIRC some error messages go to STDOUT, some to STDERR.  Only latter.
+- Ditto if a resource file can't be found that has been explicitly set via
+  environment variables there should be some feedback.
+
+- [v13:started] IIRC some error messages go to STDOUT, some to STDERR.
+  Only latter.
 
 - IIRC i saw invocations that returned with a 0 exit status and that
   surprised me, then.  Errors should truly be reported.
@@ -31,17 +35,12 @@ Backward-compatibility breakers
 - POSIX says that, when written to DEAD: "If the file exists, the message
   shall be written to replace the contents of the file".  This is mentioned
   for ASYNCHRONOUS EVENTS, but it's the only description of what should be
-  done in which way to DEAD.  savedeadletter() yet appends.
+  done in which way to DEAD.  savedeadletter() yet appends.  See ZOMBIE ,)
 
 - Furthermore, *all* file operations yet append, even recipient target
   files are appended.  I don't know if this is really desirable behaviour,
   but i have not thought about that for real.  Maybe this should be at
   least configurable.
-
-- The current maintainer really would like to make the new
-  *rfc822-no-body-from_* option the default, or, even better, get rid of
-  these "pseudo From_"s that were introduced in
-  50fef89 (* A mbox-style "From " line is now generated.., 2004-11-06).
 
 - Implement true RFC 4155 MBOX parsing; since that may not work with
   incompatible mailboxes (any?), add an option to turn this behaviour off.
@@ -81,6 +80,16 @@ Non-breakers
   that should maybe do "pick first plain text part if present, else first"
   insteadl.
 
+- If pipes fail for part viewers then at least the usual PART X.Y should be
+  shown, maybe even including some error message.
+  I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
+  does not have lynx(1), and i thought i've found a S-nail(1) bug.
+  And so it was.
+  In general it would be nice if not everything would be suppressed by
+  default.  If i only see PART X.Y .. it may be just about anything, and
+  i don't want to "P" all the header stuff just to see that.  One should
+  see at a glance what content the part contains.
+
 - I want to have a ~R tilde command that works like ~r except it performs
   quoting of the input just as ~m does.  Also see -q above.
 
@@ -119,7 +128,7 @@ Non-breakers
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
-  Meaning, also the possibility to postpone a message.
+  Meaning, also the possibility to postpone a message.  In general.
 
 Low-Level
 ---------
@@ -197,9 +206,14 @@ Low-Level
   the entire codebase and use wide characters (IMO) everywhere.
   (Really.  For at least header content.)
 
+- It seems some IMAP functions return OKAY even on error.  The current
+  maintainer yet doesn't know what this is about, but surely wants to look
+  at that again later.
+
 - The current maintainer doesn't like longjmp()s.
 
 - The current maintainer doesn't like signals.
+  He suspects many signal related pitfalls in the codebase.
 
 - The current maintainer would like to see that compilation with a C++
   compiler is possible, though that would be a long way and be especially
