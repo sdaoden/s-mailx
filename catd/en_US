@@ -192,8 +192,8 @@ The following ~ escapes are defined:\n\
 139 --- DELETED ---
 140 %s version %s.  Type ? for help.\n
 141 \nInterrupt\n
-142 %s contains invalid @@ sequence\n
-143 %s contains invalid character '%s'\n
+142 "%s" contains invalid %s sequence\n
+143 "%s" contains invalid character %s\n
 144 --- DELETED ---
 145 detract asked to insert commas\n
 146 Creation of temporary image
@@ -334,3 +334,4 @@ The following ~ escapes are defined:\n\
 281 Message piping to <%s> failed\n
 282 Message writing to <%s> failed: %s\n
 283 write error
+284 Invalid domain name: "%s", character %s\n

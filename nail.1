@@ -90,7 +90,7 @@ It is based on Heirloom mailx, that is based on Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 .B mailx
 command,
-and offers extensions for MIME, IMAP, POP3, SMTP, and S/MIME.
+and offers extensions for IDNA, MIME, IMAP, POP3, SMTP, and S/MIME.
 \*(UA provides enhanced features for interactive use, such as caching
 and disconnected operation for IMAP, message threading, scoring, and
 filtering.
@@ -2408,6 +2408,26 @@ enabled by default.
 .B hold
 This option is used to hold messages
 in the system mailbox by default.
+.TP
+.B idna-disable
+Unless this is set domain names that fail to pass their content test are
+handed over to the IDNA (internationalized domain names for applications)
+converter, and, in case the encoding succeeds,
+are replaced with the converted version.
+Because the domain names are expected to be in locale encoding,
+a locale which uses the UTF-8 charset is required to represent all
+possible international domain names.
+(Note that the \fIttycharset\fR option does not affect IDNA encoding.)
+.TP
+.B idna-strict-checks
+If this is set (and \fIidna-disable\fR is not),
+then the IDNA-conversion is enforced to apply stricter error checking in
+respect to the content of domain names.
+Also, a successfully encoded (and thus normalized) domain name is
+converted back to the locale version, so that special TLD (top-level
+domain) checks can be performed on it;
+e.g., the \fI.no\fR TLD does not allow the Euro currency symbol,
+but only this strict check will catch this error.
 .TP
 .B ignore
 Causes interrupt signals from the terminal

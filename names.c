@@ -65,9 +65,8 @@ static struct name *	put(struct name *list, struct name *node);
 static struct name *	delname(struct name *np, char *name);
 
 /*
- * Allocate a single element of a name list,
- * initialize its name field to the passed
- * name and return it.
+ * Allocate a single element of a name list, initialize its name field to the
+ * passed name and return it.
  */
 struct name *
 nalloc(char *str, enum gfield ntype)
@@ -85,20 +84,53 @@ nalloc(char *str, enum gfield ntype)
 	(void)addrspec_with_guts((ntype & (GFULL|GSKIN|GREF)) != 0, str, &ag);
 	if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0) {
 		ag.ag_n_flags |= NAME_NAME_SALLOC;
-		ag.ag_skinned = savestr(ag.ag_skinned);
+		ag.ag_skinned = savestrbuf(ag.ag_skinned, ag.ag_slen);
 	}
 	np->n_fullname = np->n_name = ag.ag_skinned;
 	np->n_flags = ag.ag_n_flags;
 
 	if (ntype & GFULL) {
-		if (ag.ag_ilen != ag.ag_slen) {
+		if (ag.ag_ilen == ag.ag_slen
+#ifdef USE_IDNA
+	                        && (ag.ag_n_flags & NAME_IDNA) == 0
+#endif
+                )
+			goto jleave;
+		if (ag.ag_n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
+			goto jleave;
+#ifdef USE_IDNA
+		if ((ag.ag_n_flags & NAME_IDNA) == 0) {
+#endif
 			in.s = str;
 			in.l = ag.ag_ilen;
-			mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-			np->n_fullname = savestr(out.s);
-			free(out.s);
-			np->n_flags |= NAME_FULLNAME_SALLOC;
+#ifdef USE_IDNA
+		} else {
+			/*
+			 * The domain name was IDNA and has been converted.
+			 * We also have to ensure that the domain name in
+			 * .n_fullname is replaced with the converted version,
+			 * since MIME doesn't perform encoding of addresses.
+			 */
+			size_t l = ag.ag_iaddr_start,
+				lsuff = ag.ag_ilen - ag.ag_iaddr_end;
+			in.s = ac_alloc(l + ag.ag_slen + lsuff + 1);
+			memcpy(in.s, str, l);
+			memcpy(in.s + l, ag.ag_skinned, ag.ag_slen);
+			l += ag.ag_slen;
+			memcpy(in.s + l, str + ag.ag_iaddr_end, lsuff);
+			l += lsuff;
+			in.s[l] = '\0';
+			in.l = l;
 		}
+#endif
+		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
+		np->n_fullname = savestr(out.s);
+		free(out.s);
+#ifdef USE_IDNA
+		if (ag.ag_n_flags & NAME_IDNA)
+			ac_free(in.s);
+#endif
+		np->n_flags |= NAME_FULLNAME_SALLOC;
 	} else if (ntype & GREF) { /* TODO LEGACY */
 		/* TODO Unfortunately we had to skin GREFerences i.e. the
 		 * TODO surrounding angle brackets have been stripped away.
@@ -112,6 +144,7 @@ nalloc(char *str, enum gfield ntype)
 		*(str++) = '>';
 		*str = '\0';
 	}
+jleave:
 	return (np);
 }
 

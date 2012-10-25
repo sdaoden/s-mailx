@@ -442,25 +442,35 @@ struct header {
  */
 
 enum nameflags {
-	NAME_NAME_SALLOC	= 1<<0,	/* .n_name is doped */
-	NAME_FULLNAME_SALLOC	= 1<<1,	/* .n_fullname is doped */
-	NAME_SKINNED		= 1<<2,	/* Is actually skin()ned */
-	NAME_ADDRSPEC_CHECKED	= 1<<3,
-	NAME_ADDRSPEC_ISFILE  	= 1<<4,	/* is a file path */
-	NAME_ADDRSPEC_ISPIPE 	= 1<<5,	/* is a command for pipeing */
+	NAME_NAME_SALLOC	= 1<< 0,	/* .n_name is doped */
+	NAME_FULLNAME_SALLOC	= 1<< 1,	/* .n_fullname is doped */
+	NAME_SKINNED		= 1<< 2,	/* Is actually skin()ned */
+	NAME_IDNA		= 1<< 3,	/* IDNA was applied */
+	NAME_ADDRSPEC_CHECKED	= 1<< 4,	/* Address has been .. and */
+	NAME_ADDRSPEC_ISFILE	= 1<< 5,	/* ..is a file path */
+	NAME_ADDRSPEC_ISPIPE	= 1<< 6,	/* ..is a command for piping */
 	NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE |
 					NAME_ADDRSPEC_ISPIPE,
-	NAME_ADDRSPEC_INVALID	= 1<<6,	/* An invalid addr-spec */
-	NAME_ADDRSPEC_ERR_EMPTY	= 1<<7,	/* An empty string (or NULL) */
-	NAME_ADDRSPEC_ERR_ATSEQ	= 1<<8,	/* Weird @ sequence */
-	/* More on _ERR_ below */
-	NAME_IDNA		= 1<<9,	/* IDNA convertion needed/applied */
-	/* Bit range for storing a faulty character */
-	_NAME_ADDRSPEC_ERR_MASKC = 0xFF << 16
+	NAME_ADDRSPEC_ERR_EMPTY	= 1<< 7,	/* An empty string (or NULL) */
+	NAME_ADDRSPEC_ERR_ATSEQ	= 1<< 8,	/* Weird @ sequence */
+	NAME_ADDRSPEC_ERR_CHAR	= 1<< 9,	/* Invalid character */
+	NAME_ADDRSPEC_ERR_IDNA	= 1<<10,	/* IDNA convertion failed */
+	NAME_ADDRSPEC_INVALID	= NAME_ADDRSPEC_ERR_EMPTY |
+					NAME_ADDRSPEC_ERR_ATSEQ |
+					NAME_ADDRSPEC_ERR_CHAR |
+					NAME_ADDRSPEC_ERR_IDNA,
+	_NAME_SHIFTWC = 11,
+	_NAME_MAXWC = 0xFFFFF,
+	_NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
 };
 
-#define NAME_ADDRSPEC_ERR_GETC(F)	(((F) & 0x00FF0000) >> 16)
-#define NAME_ADDRSPEC_ERR_SETC(C)	(((unsigned char)(C) & 0xFF) << 16)
+/* In the !_ERR_EMPTY case, the failing character can be queried */
+#define NAME_ADDRSPEC_ERR_GETWC(F)	\
+	((((unsigned int)(F) & _NAME_MASKWC) >> _NAME_SHIFTWC) & _NAME_MAXWC)
+#define NAME_ADDRSPEC_ERR_SET(F, E, WC)	\
+do	(F) = ((F) & ~(NAME_ADDRSPEC_INVALID | _NAME_MASKWC)) | \
+		(E) | (((unsigned int)(WC) & _NAME_MAXWC) << _NAME_SHIFTWC); \
+while (0)
 
 struct name {
 	struct	name *n_flink;		/* Forward link in list. */
@@ -472,14 +482,13 @@ struct name {
 };
 
 struct addrguts {
-	const char	*ag_input;	/* Input string as given */
+	char const 	*ag_input;	/* Input string as given */
 	size_t		ag_ilen;	/* strlen() of input */
 	size_t		ag_iaddr_start;	/* Start of address in .ag_input, */
-	size_t		ag_iaddr_end;	/* its end (only if ! _FILEADDR) */
+	size_t		ag_iaddr_end;	/* its end (addresses only) */
 	char		*ag_skinned;	/* Output (alloced if !=.ag_input) */
 	size_t		ag_slen;	/* strlen() of .ag_skinned */
 	size_t		ag_sdom_start;	/* Start of domain in .ag_skinned, */
-	size_t		ag_sdom_end;	/* its end */
 	enum nameflags	ag_n_flags;	/* enum nameflags of .ag_skinned */
 };
 
