@@ -75,7 +75,7 @@ static char *mime_tline(char *x, char *l);
 static char *mime_type(char *ext, char *filename);
 static enum mimeclean mime_isclean(FILE *f);
 static enum conversion gettextconversion(void);
-static char *ctohex(int c, char *hex);
+static char *ctohex(unsigned char c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
 		int (*mustquote)(int), int inhdr);
@@ -747,7 +747,7 @@ get_mime_convert(FILE *fp, char **contenttype, char **charset,
  * Convert c to a hexadecimal character string and store it in hex.
  */
 static char *
-ctohex(int c, char *hex)
+ctohex(unsigned char c, char *hex)
 {
 	unsigned char d;
 
@@ -790,7 +790,7 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 			}
 			sz += 2;
 			putc('=', fo);
-			h = ctohex(*p, hex);
+			h = ctohex((unsigned char)*p, hex);
 			fwrite(h, sizeof *h, 2, fo);
 			l += 3;
 		} else {
@@ -829,7 +829,7 @@ mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
 			} else {
 				out->l += 2;
 				*q++ = '=';
-				ctohex(*p&0377, q);
+				ctohex((unsigned char)*p, q);
 				q += 2;
 			}
 		} else {
@@ -968,7 +968,7 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				uptr = nptr + outleft;
 				iptr = cout.s;
 				if (iconv_ft(fhicd, &iptr, &inleft,
-					&nptr, &outleft, 0) == (size_t)-1 &&
+					&nptr, &outleft, 1) == (size_t)-1 &&
 						errno == E2BIG) {
 					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
 						0);
@@ -1497,7 +1497,7 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 0) ==
+		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 1) ==
 					(size_t)-1 &&
 				errno == E2BIG) {
 			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
