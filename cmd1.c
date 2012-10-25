@@ -1122,18 +1122,16 @@ mboxit(void *v)
 int 
 folders(void *v)
 {
-	char	**argv = v;
-	char dirname[PATHSIZE];
-	char *cmd, *name;
+	char dirname[PATHSIZE], *name, *cmd, **argv = v;
 
-	if (*argv)
-		name = expand(*argv);
+	if (*argv && (name = expand(*argv)) == NULL)
+		return (1);
 	else if (getfold(dirname, sizeof dirname) < 0) {
-		printf(catgets(catd, CATSET, 20,
-				"No value set for \"folder\"\n"));
-		return 1;
+		fprintf(stderr, tr(20, "No value set for \"folder\"\n"));
+		return (1);
 	} else
 		name = dirname;
+
 	if (which_protocol(name) == PROTO_IMAP)
 		imap_folders(name, *argv == NULL);
 	else {
@@ -1141,5 +1139,5 @@ folders(void *v)
 			cmd = "ls";
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
-	return 0;
+	return (0);
 }

@@ -225,11 +225,11 @@ nss_init(void)
 
 	verbose = value("verbose") != NULL;
 	if (initialized == 0) {
-		if ((cp = value("nss-config-dir")) == NULL) {
+		if ((cp = value("nss-config-dir")) == NULL ||
+				(cp = file_expand(cp) == NULL)) {
 			fputs("Missing \"nss-config-dir\" variable.\n", stderr);
 			return STOP;
 		}
-		cp = file_expand(cp);
 		PR_Init(0, 0, 0);
 		PK11_SetPasswordFunc(password_cb);
 		if (NSS_Init(cp) == SECSuccess) {

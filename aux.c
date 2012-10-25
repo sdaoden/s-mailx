@@ -365,17 +365,16 @@ source(void *v)
 	FILE *fi;
 	char *cp;
 
-	if ((cp = expand(*arglist)) == NULL)
-		return(1);
+	if ((cp = file_expand(*arglist)) == NULL)
+		return (1);
 	if ((fi = Fopen(cp, "r")) == NULL) {
 		perror(cp);
-		return(1);
+		return (1);
 	}
 	if (ssp >= SSTACK - 1) {
-		printf(catgets(catd, CATSET, 3,
-					"Too much \"sourcing\" going on.\n"));
+		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
 		Fclose(fi);
-		return(1);
+		return (1);
 	}
 	sstack[ssp].s_file = input;
 	sstack[ssp].s_cond = cond;

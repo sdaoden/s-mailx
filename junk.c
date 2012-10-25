@@ -417,12 +417,12 @@ dbfp(enum db db, int rw, int *compressed, char **fn)
 	char **zf;
 	int	n;
 
-	if ((dir = value("junkdb")) == NULL) {
+	if ((dir = value("junkdb")) == NULL ||
+			(dir = file_expand(dir)) == NULL) {
 		fprintf(stderr, "No junk mail database specified. "
 				"Set the junkdb variable.\n");
 		return (FILE *)-1;
 	}
-	dir = file_expand(dir);
 	if (makedir(dir) == STOP) {
 		fprintf(stderr, "Cannot create directory \"%s\"\n.", dir);
 		return (FILE *)-1;

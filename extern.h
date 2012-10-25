@@ -253,7 +253,7 @@ void holdsigs(void);
 void relsesigs(void);
 off_t fsize(FILE *iob);
 char *file_expand(char const *name);
-char *expand(char *name);
+char *expand(char const *name);
 int getfold(char *name, int size);
 char *getdeadletter(void);
 char *fgetline(char **line, size_t *linesize, size_t *count,

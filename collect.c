@@ -356,9 +356,8 @@ add_attachment(struct attachment *attach, char *file, int expand_file)
 	struct attachment *ap, *nap;
 
 	if (expand_file) {
-		file = file_expand(file);
-		if (file == NULL)
-			return NULL;
+		if ((file = file_expand(file)) == NULL)
+			return (NULL);
 	} else
 		file = savestr(file);
 	if (access(file, R_OK) != 0)
@@ -737,18 +736,18 @@ jcont:
 			while (whitechar(*cp))
 				cp++;
 			if (*cp == '\0') {
-				printf(tr(57, "Interpolate what file?\n"));
+				fprintf(stderr, tr(57,
+					"Interpolate what file?\n"));
 				break;
 			}
 			if (*cp == '!') {
 				insertcommand(collf, cp + 1);
 				break;
 			}
-			cp = file_expand(cp);
-			if (cp == NULL)
+			if ((cp = file_expand(cp)) == NULL)
 				break;
 			if (is_dir(cp)) {
-				printf(tr(58, "%s: Directory\n"), cp);
+				fprintf(stderr, tr(58, "%s: Directory\n"), cp);
 				break;
 			}
 			if ((fbuf = Fopen(cp, "r")) == NULL) {
