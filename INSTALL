@@ -41,8 +41,8 @@ under the prefix /usr/local but rooted under [./]xtest, i.e., the binary
 would be installed as "[./]xtest/usr/local/bin/mini-nail".  Note that
 for "make uninstall" the *exact* command line should be repeated.
 
-Notes for S-nail(1) v13
------------------------
+Notes for S-nail(1) v13.1
+-------------------------
 
 - Mac OS X Snow Leopard.  Tested with all features (except IPv6) with
   the default CC=clang(1) and CC=gcc(1), -O2 and -O3, the WARNs

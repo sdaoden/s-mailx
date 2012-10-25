@@ -1,6 +1,30 @@
 S - n a i l  N e w s
 ====================
 
+v13.1, 2012-10-25
+-----------------
+
+Well, a version number 13 is anyway an ugly thing...
+
+  commit 4f534bb33b7c911272cc66a0e3a9e47b73ad8deb
+  Date:   2012-10-25 20:46:07 +0200
+
+      FIX MIME quoted-printable encoding (char cast)..
+      
+      (;-{
+      Auauauauau!!
+      
+      Well, one of the things that have already been started in v13 is
+      the turn from using "int" when working with 8-bit characters to
+      "unsigned char" (and as long as we do not support wide
+      characters).
+      
+      Unfortunately one very important piece of code, that is handling
+      encoding to quoted-printable, still used integer instead of
+      unsigned char, which caused an automatic extension cast to take
+      place, and that resulted in a messed up output.
+      Sorry!
+
 v13, 2012-10-25
 ---------------
 
