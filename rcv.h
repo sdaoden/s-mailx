@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -34,8 +35,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	Sccsid @(#)rcv.h	2.7 (gritter) 3/4/06
  */
 
 /*
@@ -53,12 +52,15 @@
 #include <signal.h>
 #include <string.h>
 #include <termios.h>
-#ifdef	HAVE_ICONV
-#include <iconv.h>
-#endif	/* HAVE_ICONV */
-#ifdef	HAVE_ALLOCA_H
-#include <alloca.h>
-#endif	/* HAVE_ALLOCA_H */
+#ifdef HAVE_ICONV
+# include <iconv.h>
+#endif
+#ifdef HAVE_ASSERTS
+# include <assert.h>
+#else
+# undef assert
+# define assert(X)	do {} while (0)
+#endif
 
 #define	SHELL		"/bin/sh"
 

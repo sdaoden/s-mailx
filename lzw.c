@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*-
  * Copyright (c) 1985, 1986, 1992, 1993
@@ -19,10 +20,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -43,6 +40,10 @@
 /*	from zopen.c	8.1 (Berkeley) 6/27/93	*/
 /*	from FreeBSD: /repoman/r/ncvs/src/usr.bin/compress/zopen.c,v
  *	1.5.6.1 2002/07/16 00:52:08 tjr Exp */
+/*	from FreeBSD: git://git.freebsd.org/freebsd,
+ *	master:usr.bin/compress/zopen.c,
+ *	(Fix handling of corrupt compress(1)ed data. [11:04], 2011-09-28),
+ *	2902cb5e28a1e38bce859ef1ae14e9d22fe50214. */
 
 /*-
  * lzw.c - File compression ala IEEE Computer, June 1984.
@@ -59,26 +60,37 @@
  * Diomidis Spinellis <dds@doc.ic.ac.uk>.
  *
  * Adopted for Heirloom mailx by Gunnar Ritter.
- *
- * Sccsid @(#)lzw.c	1.11 (gritter) 3/4/06
  */
 
 #include "config.h"
 
+#if ! defined USE_IMAP && ! defined USE_JUNK
+typedef int avoid_empty_file_compiler_warning;
+#else
+
 #include "rcv.h"
 #include "extern.h"
+
 #include <stdio.h>
+
+/* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */
+#undef u_int
+#define u_int		unsigned int
+#undef u_short
+#define u_short		unsigned short
+#undef u_char
+#define u_char		unsigned char
 
 #define	BITS		16		/* Default bits. */
 #define	HSIZE		69001		/* 95% occupancy */
 
 /* A code_int must be able to hold 2**BITS values of type int, and also -1. */
-typedef long	code_int;
-typedef long	count_int;
+typedef long code_int;
+typedef long count_int;
 
-typedef unsigned char	char_type;
-static char_type	magic_header[] =
-	{037, 0235};		/* 1F 9D */
+typedef u_char char_type;
+static char_type magic_header[] =
+	{'\037', '\235'};		/* 1F 9D */
 
 #define	BIT_MASK	0x1f		/* Defines for third byte of header. */
 #define	BLOCK_MASK	0x80
@@ -95,14 +107,14 @@ struct s_zstate {
 	FILE *zs_fp;			/* File stream for I/O */
 	char zs_mode;			/* r or w */
 	enum {
-		ST_START, ST_MIDDLE, ST_EOF
+		S_START, S_MIDDLE, S_EOF
 	} zs_state;			/* State of computation */
-	unsigned zs_n_bits;		/* Number of bits/code. */
-	unsigned zs_maxbits;		/* User settable max # bits/code. */
+	u_int zs_n_bits;		/* Number of bits/code. */
+	u_int zs_maxbits;		/* User settable max # bits/code. */
 	code_int zs_maxcode;		/* Maximum code, given n_bits. */
 	code_int zs_maxmaxcode;		/* Should NEVER generate this code. */
-	count_int	zs_htab[HSIZE];
-	unsigned short	zs_codetab[HSIZE];
+	count_int zs_htab [HSIZE];
+	u_short zs_codetab [HSIZE];
 	code_int zs_hsize;		/* For dynamic table sizing. */
 	code_int zs_free_ent;		/* First unused entry. */
 	/*
@@ -113,24 +125,24 @@ struct s_zstate {
 	int zs_clear_flg;
 	long zs_ratio;
 	count_int zs_checkpoint;
-	unsigned zs_offset;
+	u_int zs_offset;
 	long zs_in_count;		/* Length of input. */
 	long zs_bytes_out;		/* Length of compressed output. */
 	long zs_out_count;		/* # of codes output (for debugging). */
-	char_type zs_buf[BITS+1];
+	char_type zs_buf[BITS];
 	union {
 		struct {
 			long zs_fcode;
 			code_int zs_ent;
 			code_int zs_hsize_reg;
 			int zs_hshift;
-		} w;			/* Write paramenters */
+		} w;			/* Write parameters */
 		struct {
 			char_type *zs_stackp;
 			int zs_finchar;
 			code_int zs_code, zs_oldcode, zs_incode;
 			int zs_roffset, zs_size;
-			char_type zs_gbuf[BITS+1];
+			char_type zs_gbuf[BITS];
 		} r;			/* Read parameters */
 	} u;
 };
@@ -194,10 +206,10 @@ struct s_zstate {
 #define	FIRST	257		/* First free entry. */
 #define	CLEAR	256		/* Table clear output code. */
 
-static int output(struct s_zstate *zs, code_int ocode);
-static code_int getcode(struct s_zstate *zs);
-static int cl_block(struct s_zstate *zs);
-static void cl_hash(struct s_zstate *zs, count_int cl_hsize);
+static int	cl_block(struct s_zstate *);
+static void	cl_hash(struct s_zstate *, count_int);
+static code_int	getcode(struct s_zstate *);
+static int	output(struct s_zstate *, code_int);
 
 /*-
  * Algorithm from "A Technique for High Performance Data Compression",
@@ -225,14 +237,14 @@ static void cl_hash(struct s_zstate *zs, count_int cl_hsize);
  * file size for noticeable speed improvement on small files.  Please direct
  * questions about this implementation to ames!jaw.
  */
-int 
+int
 zwrite(void *cookie, const char *wbp, int num)
 {
 	code_int i;
 	int c, disp;
 	struct s_zstate *zs;
-	const unsigned char *bp;
-	unsigned char tmp;
+	const u_char *bp;
+	u_char tmp;
 	int count;
 
 	if (num == 0)
@@ -241,16 +253,16 @@ zwrite(void *cookie, const char *wbp, int num)
 	zs = cookie;
 	zmode = 'w';
 	count = num;
-	bp = (const unsigned char *)wbp;
-	if (state == ST_MIDDLE)
+	bp = (const u_char *)wbp;
+	if (state == S_MIDDLE)
 		goto middle;
-	state = ST_MIDDLE;
+	state = S_MIDDLE;
 
 	maxmaxcode = 1L << maxbits;
 	if (fwrite(magic_header,
 	    sizeof(char), sizeof(magic_header), fp) != sizeof(magic_header))
 		return (-1);
-	tmp = (unsigned char)((maxbits) | block_compress);
+	tmp = (u_char)((maxbits) | block_compress);
 	if (fwrite(&tmp, sizeof(char), sizeof(tmp), fp) != sizeof(tmp))
 		return (-1);
 
@@ -314,7 +326,7 @@ nomatch:	if (output(zs, (code_int) ent) == -1)
 	return (num);
 }
 
-int 
+int
 zfree(void *cookie)
 {
 	struct s_zstate *zs;
@@ -355,11 +367,11 @@ static char_type lmask[9] =
 static char_type rmask[9] =
 	{0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff};
 
-static int 
+static int
 output(struct s_zstate *zs, code_int ocode)
 {
 	int r_off;
-	unsigned bits;
+	u_int bits;
 	char_type *bp;
 
 	r_off = offset;
@@ -443,26 +455,26 @@ output(struct s_zstate *zs, code_int ocode)
  * compressed file.  The tables used herein are shared with those of the
  * compress() routine.  See the definitions above.
  */
-int 
+int
 zread(void *cookie, char *rbp, int num)
 {
-	unsigned count;
+	u_int count;
 	struct s_zstate *zs;
-	unsigned char *bp, header[3];
+	u_char *bp, header[3];
 
 	if (num == 0)
 		return (0);
 
 	zs = cookie;
 	count = num;
-	bp = (unsigned char *)rbp;
+	bp = (u_char *)rbp;
 	switch (state) {
-	case ST_START:
-		state = ST_MIDDLE;
+	case S_START:
+		state = S_MIDDLE;
 		break;
-	case ST_MIDDLE:
+	case S_MIDDLE:
 		goto middle;
-	case ST_EOF:
+	case S_EOF:
 		goto eof;
 	}
 
@@ -476,7 +488,7 @@ zread(void *cookie, char *rbp, int num)
 	block_compress = maxbits & BLOCK_MASK;
 	maxbits &= BIT_MASK;
 	maxmaxcode = 1L << maxbits;
-	if (maxbits > BITS) {
+	if (maxbits > BITS || maxbits < 12) {
 		return (-1);
 	}
 	/* As above, initialize the first 256 entries in the table. */
@@ -492,7 +504,7 @@ zread(void *cookie, char *rbp, int num)
 		return (0);	/* Get out of here */
 
 	/* First code must be 8 bits = char. */
-	*bp++ = (unsigned char)finchar;
+	*bp++ = (u_char)finchar;
 	count--;
 	stackp = de_stack;
 
@@ -502,17 +514,26 @@ zread(void *cookie, char *rbp, int num)
 			for (code = 255; code >= 0; code--)
 				tab_prefixof(code) = 0;
 			clear_flg = 1;
-			free_ent = FIRST - 1;
-			if ((code = getcode(zs)) == -1)	/* O, untimely death! */
-				break;
+			free_ent = FIRST;
+			oldcode = -1;
+			continue;
 		}
 		incode = code;
 
-		/* Special case for KwKwK string. */
+		/* Special case for kWkWk string. */
 		if (code >= free_ent) {
+			if (code > free_ent || oldcode == -1) {
+				return (-1);
+			}
 			*stackp++ = finchar;
 			code = oldcode;
 		}
+		/*
+		 * The above condition ensures that code < free_ent.
+		 * The construction of tab_prefixof in turn guarantees that
+		 * each iteration decreases code and therefore stack usage is
+		 * bound by 1 << BITS - 256.
+		 */
 
 		/* Generate output characters in reverse order. */
 		while (code >= 256) {
@@ -529,8 +550,8 @@ middle:		do {
 		} while (stackp > de_stack);
 
 		/* Generate the new entry. */
-		if ((code = free_ent) < maxmaxcode) {
-			tab_prefixof(code) = (unsigned short) oldcode;
+		if ((code = free_ent) < maxmaxcode && oldcode != -1) {
+			tab_prefixof(code) = (u_short) oldcode;
 			tab_suffixof(code) = finchar;
 			free_ent = code + 1;
 		}
@@ -538,7 +559,7 @@ middle:		do {
 		/* Remember previous code. */
 		oldcode = incode;
 	}
-	state = ST_EOF;
+	state = S_EOF;
 eof:	return (num - count);
 }
 
@@ -549,7 +570,7 @@ eof:	return (num - count);
  * Outputs:
  * 	code or -1 is returned.
  */
-static code_int 
+static code_int
 getcode(struct s_zstate *zs)
 {
 	code_int gcode;
@@ -607,10 +628,8 @@ getcode(struct s_zstate *zs)
 	return (gcode);
 }
 
-static int 
-cl_block (			/* Table clear for block compress. */
-    struct s_zstate *zs
-)
+static int
+cl_block(struct s_zstate *zs)		/* Table clear for block compress. */
 {
 	long rat;
 
@@ -637,11 +656,8 @@ cl_block (			/* Table clear for block compress. */
 	return (0);
 }
 
-static void 
-cl_hash (			/* Reset code table. */
-    struct s_zstate *zs,
-    count_int cl_hsize
-)
+static void
+cl_hash(struct s_zstate *zs, count_int cl_hsize)	/* Reset code table. */
 {
 	count_int *htab_p;
 	long i, m1;
@@ -672,11 +688,11 @@ cl_hash (			/* Reset code table. */
 		*--htab_p = m1;
 }
 
-#undef	fp
+#undef fp
 void *
 zalloc(FILE *fp)
 {
-#define	bits	BITS
+#define bits	BITS
 	struct s_zstate *zs;
 
 	zs = scalloc(1, sizeof *zs);
@@ -690,9 +706,10 @@ zalloc(FILE *fp)
 	checkpoint = CHECK_GAP;
 	in_count = 1;			/* Length of input. */
 	out_count = 0;			/* # of codes output (for debugging). */
-	state = ST_START;
+	state = S_START;
 	roffset = 0;
 	size = 0;
 	zs->zs_fp = fp;
 	return zs;
 }
+#endif /* ! defined USE_IMAP && ! defined USE_JUNK */

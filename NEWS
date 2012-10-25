@@ -1,0 +1,115 @@
+S - n a i l  N e w s
+====================
+
+v13, 2012-10-25
+---------------
+
+I want to give prominence to the following people that helped to improve
+S-nail(1) during this development cycle, in order of appearance: Martin
+Neitzel, Ezequiel Garzón, Björn Persson, Paul Vojta, and, especially,
+John Dodson for warm words from beautiful Australia!  Many thanks also
+to Christos Zoulas.
+
+After i've officially forked nail(1) aka Heirloom mailx(1) as S-nail(1)
+on 2012-09-18 i have been able to work five weeks almost fulltime on
+S-nail(1) development.  The first three weeks can be characterized as
+hectic fireworks here and there, but then it got better and i was able
+to work more or less topic-centric.  In the meanwhile S-nail(1) is more
+than 230 commits away from the Heirloom base--and drifting further apart.
+
+S-nail(1) v13 is the first release of S-nail(1), but it was forked from
+Heirloom mailx(1) 12.5 7/5/10 that arose from Berkeley Mail 8. unless
+i'm mistaken.  What characterizes S-nail(1) v13?
+
+- The build system has been reworked almost completely.
+  It is possible to fine-tune which features should be present in the
+  binary and which don't.  The name of the binary can be chosen, and
+  that choice is reflected all through the manual and the template
+  resource file.  The manual is always complete and thus may document
+  features that are not supported by the actual binary, though.
+  Please see INSTALL for more.
+
+- Compiler warnings can now be used.  Please see the example WARN= flags
+  in the Makefile, but '-Wall -Wextra -pedantic' should be silent though
+  certainly insufficient to reflect the complex work of modern compilers.
+
+- The following recipient address list combines some of the major
+  improvements that have been made:
+
+    <addr1@cdröm.de>  (bier) , ./file1,
+    Steffen Smöregäs (Humbabä) <sauer@bäüer.de> (Hummpäa)    ,
+         sabberlot@träbbel.de  ,  (bier2) <a2@bür2.de> ,
+       a3@b3.de (bier3)  , <a4@b4.de> (bier4, und \"bier5\")  ,
+    |cat > pipe1 ,   (bier 6) <a6@bür6.de>  ,   ./file2        ,
+    (co\$mm1) abc1@düf.de (cö,bmm,2)   (co\"m\"m.3) ,
+    co\$bmm1 \"c,ömm2\" co\"m\"m.3 <abc2@däf2.de>  ,  |cat > pipe2 ,
+    moppel@höppel.org
+
+  That, on a single line, may be given to ":m" or (quoted) on the
+  command line, or to "~c" or whatever, and it will work as expected
+  (well, everything else would be a bug..) and result in the following
+  sendmail(1) invocation:
+
+  SENDMAIL.SH
+  <-i a2@xn--br2-hoa.de a3@b3.de a4@b4.de a6@xn--br6-hoa.de abc1@xn--df-xka.de abc2@xn--df2-qla.de addr1@xn--cdrm-7qa.de moppel@xn--hppel-jua.org sabberlot@xn--trbbel-cua.de sauer@xn--ber-qla4j.de>
+  >>>>>>>>>>>>>>>>>
+  Date: Thu, 25 Oct 2012 17:12:15 +0200
+  To:
+  Cc: Steffen =?utf-8?Q?Sm=C3=B6reg=C3=A4s?=
+    =?utf-8?Q?_(Humbab=C3=A4)?= <sauer@xn--ber-qla4j.de> (=?utf-8?Q?Hummp=C3=A4a?=),
+    sabberlot@xn--trbbel-cua.de, moppel@xn--hppel-jua.org,
+    <addr1@xn--cdrm-7qa.de> (bier),
+    co$bmm1 =?utf-8?Q?"c,=C3=B6mm2"?= co"m"m.3 <abc2@xn--df2-qla.de>,
+    (co$mm1) abc1@xn--df-xka.de (=?utf-8?Q?c=C3=B6,bmm,2?=) (co"m"m.3),
+    (bier 6) <a6@xn--br6-hoa.de>, <a4@b4.de> (bier4, und "bier5"),
+    a3@b3.de (bier3), (bier2) <a2@xn--br2-hoa.de>
+  Subject: Re: SubjectTest
+  MIME-Version: 1.0
+  Content-Type: text/plain; charset=us-ascii
+  Content-Transfer-Encoding: 7bit
+
+  body
+  <<<<<<<<<<<<<<<<<
+
+  So list parsing has been fixed, IDNA support has been added, and it is
+  possible to mix pipe and file recipients *and* multiple thereof, and
+  the result is still correct for *all* of them.
+  I think this kind of list can be given wherever a user can directly
+  enter such a list.  And i think all that is unique to S-nail(1).
+
+- When writing back edited messages the target MBOX mailbox can no
+  longer become "corrupted" when the trailing newline was removed during
+  the edit.  Also affected FreeBSD and NetBSD mail(1).
+
+- A security fix for CVE-2011-2895 was applied.
+
+- The generated Message-Id: is now more human-friendly.
+
+- The -h command line option has been dropped.  Use "-O -h XY" if your
+  MTA really supports that.
+
+- The -O and -r command line options no longer enforce a one-shot send
+  mode, and instead persist for the duration of the entire session.
+
+- Variables set via the -S command line option are now (un)set twice;
+  immediately and after all the resource files have been loaded.
+
+- Other new or changed options/commands, in order of appearance:
+  recipients-in-cc, smime-sign-include-certs, quote-fold, stealthmua,
+  add-file-recipients, write, rfc822-no-body-from_, rfc822-show-all,
+  mail/Mail, idna-disable, idna-strict-checks, ??
+
+- In the codebase itself an effort to reduce duplicate work and
+  introduce caching, and to minimize the use of local variables, was
+  started, but that is long term.  A lot of improvements here and there,
+  too, like using the well MD5 optimization from Wei Dai, Chris Torek's
+  hash algorithm for hash tables etc.
+
+- Incredibly important: an heraldic animal was found: snailmail.jpg!
+
+The full history can be inspected by issuing the git(1) command
+
+  $ git log --reverse s-nail..s-nailv13
+
+A new TODO has been introduced, and it is getting longer and longer.
+Thanks.

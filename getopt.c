@@ -4,31 +4,17 @@
  * Gunnar Ritter, Freiburg i. Br., Germany, March 2002.
  */
 
-/*	Sccsid @(#)getopt.c	1.7 (gritter) 12/16/07	*/
+#include "config.h"
 
-#include	"config.h"
-#include	<sys/types.h>
-#ifdef	HAVE_ALLOCA
-#ifdef	HAVE_ALLOCA_H
-#include	<alloca.h>
-#else	/* !HAVE_ALLOCA_H */
-#include	<stdlib.h>
-#endif	/* !HAVE_ALLOCA_H */
-#endif	/* HAVE_ALLOCA */
-#include	<string.h>
+#ifdef HAVE_GETOPT
+typedef int avoid_empty_file_compiler_warning;
+#else
 
-#ifdef	HAVE_ALLOCA
-#define	ac_alloc(n)	alloca(n)
-#define	ac_free(n)
-#else	/* !HAVE_ALLOCA */
-extern void	*smalloc(size_t);
-#define	ac_alloc(n)	smalloc(n)
-#define	ac_free(n)	free(n)
-#endif	/* !HAVE_ALLOCA */
+# include "rcv.h"
 
-#ifndef	HAVE_SSIZE_T
-typedef	int	ssize_t;
-#endif	/* !HAVE_SSIZE_T */
+# ifndef HAVE_SSIZE_T
+typedef	long	ssize_t;
+# endif
 
 /*
  * One should not think that re-implementing this is necessary, but
@@ -141,7 +127,7 @@ getopt(int argc, char *const argv[], const char *optstring)
 	return '?';
 }
 
-#ifdef __APPLE__
+# ifdef __APPLE__
 /*
  * Starting with Mac OS 10.5 Leopard, <unistd.h> turns getopt()
  * into getopt$UNIX2003() by default. Consequently, this function
@@ -155,4 +141,5 @@ getopt$UNIX2003(int argc, char *const argv[], const char *optstring)
 {
 	return getopt(argc, argv, optstring);
 }
-#endif	/* __APPLE__ */
+# endif	/* __APPLE__ */
+#endif /* HAVE_GETOPT */

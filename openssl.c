@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -36,16 +37,11 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)openssl.c	1.26 (gritter) 5/26/09";
-#endif
-#endif /* not lint */
-
 #include "config.h"
 
-#ifndef	USE_NSS
-#ifdef	USE_OPENSSL
+#ifdef USE_NSS
+typedef int avoid_empty_file_compiler_warning;
+#elif defined USE_OPENSSL
 
 #include <setjmp.h>
 #include <termios.h>
@@ -115,6 +111,12 @@ static int smime_verify(struct message *m, int n, STACK *chain,
 static EVP_CIPHER *smime_cipher(const char *name);
 static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
 static FILE *smime_sign_cert(const char *xname, const char *xname2, int warn);
+static char *smime_sign_include_certs(char *name);
+#ifdef HAVE_STACK_OF
+static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
+#else
+static int smime_sign_include_chain_creat(STACK **chain, char *cfiles);
+#endif
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
 static enum okay load_crl1(X509_STORE *store, const char *name);
 #endif
@@ -136,19 +138,21 @@ ssl_rand_init(void)
 	int state = 0;
 
 	if ((cp = value("ssl-rand-egd")) != NULL) {
-		cp = expand(cp);
-		if (RAND_egd(cp) == -1) {
-			fprintf(stderr, catgets(catd, CATSET, 245,
+		if ((cp = file_expand(cp)) == NULL)
+			;
+		else if (RAND_egd(cp) == -1)
+			fprintf(stderr, tr(245,
 				"entropy daemon at \"%s\" not available\n"),
 					cp);
-		} else
+		else
 			state = 1;
 	} else if ((cp = value("ssl-rand-file")) != NULL) {
-		cp = expand(cp);
-		if (RAND_load_file(cp, 1024) == -1) {
-			fprintf(stderr, catgets(catd, CATSET, 246,
+		if ((cp = file_expand(cp)) == NULL)
+			;
+		else if (RAND_load_file(cp, 1024) == -1)
+			fprintf(stderr, tr(246,
 				"entropy file at \"%s\" not available\n"), cp);
-		} else {
+		else {
 			struct stat st;
 
 			if (stat(cp, &st) == 0 && S_ISREG(st.st_mode) &&
@@ -216,15 +220,18 @@ ssl_select_method(const char *uhp)
 
 	cp = ssl_method_string(uhp);
 	if (cp != NULL) {
-		if (equal(cp, "ssl2"))
+#ifndef OPENSSL_NO_SSL2
+		if (strcmp(cp, "ssl2") == 0)
 			method = SSLv2_client_method();
-		else if (equal(cp, "ssl3"))
+		else
+#endif
+		if (strcmp(cp, "ssl3") == 0)
 			method = SSLv3_client_method();
-		else if (equal(cp, "tls1"))
+		else if (strcmp(cp, "tls1") == 0)
 			method = TLSv1_client_method();
 		else {
-			fprintf(stderr, catgets(catd, CATSET, 244,
-					"Invalid SSL method \"%s\"\n"), cp);
+			fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"),
+				cp);
 			method = SSLv23_client_method();
 		}
 	} else
@@ -241,9 +248,9 @@ ssl_load_verifications(struct sock *sp)
 	if (ssl_vrfy_level == VRFY_IGNORE)
 		return;
 	if ((ca_dir = value("ssl-ca-dir")) != NULL)
-		ca_dir = expand(ca_dir);
+		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("ssl-ca-file")) != NULL)
-		ca_file = expand(ca_file);
+		ca_file = file_expand(ca_file);
 	if (ca_dir || ca_file) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
 					ca_file, ca_dir) != 1) {
@@ -277,32 +284,38 @@ ssl_load_verifications(struct sock *sp)
 static void 
 ssl_certificate(struct sock *sp, const char *uhp)
 {
-	char *certvar, *keyvar, *cert, *key;
+	char *certvar, *keyvar, *cert, *key, *x;
 
 	certvar = ac_alloc(strlen(uhp) + 10);
 	strcpy(certvar, "ssl-cert-");
 	strcpy(&certvar[9], uhp);
 	if ((cert = value(certvar)) != NULL ||
 			(cert = value("ssl-cert")) != NULL) {
-		cert = expand(cert);
-		if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) == 1) {
+		x = cert;
+		if ((cert = file_expand(cert)) == NULL) {
+			cert = x;
+			goto jbcert;
+		} else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert)
+				== 1) {
 			keyvar = ac_alloc(strlen(uhp) + 9);
 			strcpy(keyvar, "ssl-key-");
 			if ((key = value(keyvar)) == NULL &&
 					(key = value("ssl-key")) == NULL)
 				key = cert;
-			else
-				key = expand(key);
+			else if ((x = key, key = file_expand(key)) == NULL) {
+				key = x;
+				goto jbkey;
+			}
 			if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key,
 						SSL_FILETYPE_PEM) != 1)
-				fprintf(stderr, catgets(catd, CATSET, 238,
-				"cannot load private key from file %s\n"),
-						key);
+jbkey:				fprintf(stderr, tr(238,
+					"cannot load private key from file "
+					"%s\n"), key);
 			ac_free(keyvar);
 		} else
-			fprintf(stderr, catgets(catd, CATSET, 239,
+jbcert:			fprintf(stderr, tr(239,
 				"cannot load certificate from file %s\n"),
-					cert);
+				cert);
 	}
 	ac_free(certvar);
 }
@@ -428,6 +441,11 @@ smime_sign(FILE *ip, struct header *headp)
 	FILE	*sp, *fp, *bp, *hp;
 	char	*cp, *addr;
 	X509	*cert;
+#ifdef HAVE_STACK_OF
+	STACK_OF(X509)	*chain = NULL;
+#else
+	STACK	*chain = NULL;
+#endif
 	PKCS7	*pkcs7;
 	EVP_PKEY	*pkey;
 	BIO	*bb, *sb;
@@ -453,8 +471,16 @@ smime_sign(FILE *ip, struct header *headp)
 		return NULL;
 	}
 	Fclose(fp);
+	if ((cp = smime_sign_include_certs(addr)) != NULL &&
+			!smime_sign_include_chain_creat(&chain, cp)) {
+		X509_free(cert);
+		EVP_PKEY_free(pkey);
+		return NULL;
+	}
 	if ((sp = Ftemp(&cp, "Rs", "w+", 0600, 1)) == NULL) {
 		perror("tempfile");
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
@@ -464,6 +490,8 @@ smime_sign(FILE *ip, struct header *headp)
 	rewind(ip);
 	if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
@@ -472,16 +500,20 @@ smime_sign(FILE *ip, struct header *headp)
 			(sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
 		ssl_gen_err("Error creating BIO signing objects");
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
 	}
-	if ((pkcs7 = PKCS7_sign(cert, pkey, NULL, bb,
+	if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb,
 			PKCS7_DETACHED)) == NULL) {
 		ssl_gen_err("Error creating the PKCS#7 signing object");
 		BIO_free(bb);
 		BIO_free(sb);
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
@@ -491,12 +523,16 @@ smime_sign(FILE *ip, struct header *headp)
 		BIO_free(bb);
 		BIO_free(sb);
 		Fclose(sp);
+		if (chain != NULL)
+			sk_X509_pop_free(chain, X509_free);
 		X509_free(cert);
 		EVP_PKEY_free(pkey);
 		return NULL;
 	}
 	BIO_free(bb);
 	BIO_free(sb);
+	if (chain != NULL)
+		sk_X509_pop_free(chain, X509_free);
 	X509_free(cert);
 	EVP_PKEY_free(pkey);
 	rewind(bp);
@@ -533,9 +569,9 @@ smime_verify(struct message *m, int n, STACK *chain, X509_STORE *store)
 	verify_error_found = 0;
 	message_number = n;
 loop:	sender = getsender(m);
-	to = hfield("to", m);
-	cc = hfield("cc", m);
-	cnttype = hfield("content-type", m);
+	to = hfield1("to", m);
+	cc = hfield1("cc", m);
+	cnttype = hfield1("content-type", m);
 	if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
 		return 1;
 	if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
@@ -639,7 +675,7 @@ cverify(void *vp)
 	STACK	*chain = NULL;
 #endif
 	X509_STORE	*store;
-	char	*ca_dir, *ca_file;
+	char *ca_dir, *ca_file;
 
 	ssl_init();
 	ssl_vrfy_level = VRFY_STRICT;
@@ -649,9 +685,9 @@ cverify(void *vp)
 	}
 	X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
 	if ((ca_dir = value("smime-ca-dir")) != NULL)
-		ca_dir = expand(ca_dir);
+		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("smime-ca-file")) != NULL)
-		ca_file = expand(ca_file);
+		ca_file = file_expand(ca_file);
 	if (ca_dir || ca_file) {
 		if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
 			ssl_gen_err("Error loading %s",
@@ -703,10 +739,10 @@ smime_cipher(const char *name)
 }
 
 FILE *
-smime_encrypt(FILE *ip, const char *certfile, const char *to)
+smime_encrypt(FILE *ip, const char *xcertfile, const char *to)
 {
+	char	*certfile = (char*)xcertfile, *cp;
 	FILE	*yp, *fp, *bp, *hp;
-	char	*cp;
 	X509	*cert;
 	PKCS7	*pkcs7;
 	BIO	*bb, *yb;
@@ -717,7 +753,9 @@ smime_encrypt(FILE *ip, const char *certfile, const char *to)
 #endif
 	EVP_CIPHER	*cipher;
 
-	certfile = expand((char *)certfile);
+	if ((certfile = file_expand(certfile)) == NULL)
+		return NULL;
+
 	ssl_init();
 	if ((cipher = smime_cipher(to)) == NULL)
 		return NULL;
@@ -901,9 +939,9 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 	sighandler_type	saveint;
 	char	*pass = NULL;
 	int	len;
+	(void)rwflag;
+	(void)userdata;
 
-	(void)&saveint;
-	(void)&pass;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	if (sigsetjmp(ssljmp, 1) == 0) {
 		if (saveint != SIG_IGN)
@@ -930,7 +968,7 @@ smime_sign_cert(const char *xname, const char *xname2, int warn)
 	const char	*name = xname, *name2 = xname2;
 
 loop:	if (name) {
-		np = sextract(savestr(name), GTO|GSKIN);
+		np = lextract(name, GTO|GSKIN);
 		while (np) {
 			/*
 			 * This needs to be more intelligent since it will
@@ -959,12 +997,87 @@ loop:	if (name) {
 		fputc('\n', stderr);
 	}
 	return NULL;
-open:	cp = expand(cp);
+open:	vn = cp;
+	if ((cp = file_expand(cp)) == NULL)
+		return (NULL);
 	if ((fp = Fopen(cp, "r")) == NULL) {
 		perror(cp);
 		return NULL;
 	}
 	return fp;
+}
+
+static char *
+smime_sign_include_certs(char *name)
+{
+	/* See comments in smime_sign_cert() for algorithm pitfalls */
+	if (name) {
+		struct name *np = lextract(name, GTO|GSKIN);
+		while (np) {
+			int vs;
+			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
+			snprintf(vn, vs, "smime-sign-include-certs-%s",
+				np->n_name);
+			if ((name = value(vn)) != NULL)
+				return name;
+			np = np->n_flink;
+		}
+	}
+	return value("smime-sign-include-certs");
+}
+
+static int
+smime_sign_include_chain_creat(
+#ifdef HAVE_STACK_OF
+	STACK_OF(X509) **chain,
+#else
+	STACK **chain,
+#endif
+	char *cfiles)
+{
+	*chain = sk_X509_new_null();
+
+	for (;;) {
+		X509 *tmp;
+		FILE *fp;
+		char *ncf = strchr(cfiles, ',');
+		if (ncf)
+			*ncf++ = '\0';
+		/* This fails for '=,file' constructs, but those are sick */
+		if (! *cfiles)
+			break;
+
+		if ((cfiles = file_expand(cfiles)) != NULL)
+			goto jerr;
+		if ((fp = Fopen(cfiles, "r")) == NULL) {
+			perror(cfiles);
+			goto jerr;
+		}
+		if ((tmp = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)
+				) == NULL) {
+			ssl_gen_err("Error reading certificate from \"%s\"",
+				cfiles);
+			Fclose(fp);
+			goto jerr;
+		}
+		sk_X509_push(*chain, tmp);
+		Fclose(fp);
+
+		if (! ncf)
+			break;
+		cfiles = ncf;
+	}
+
+	if (sk_X509_num(*chain) == 0) {
+		fprintf(stderr, "smime-sign-include-certs defined but empty\n");
+		goto jerr;
+	}
+
+jleave:	return (*chain != NULL);
+
+jerr:	sk_X509_pop_free(*chain, X509_free);
+	*chain = NULL;
+	goto jleave;
 }
 
 enum okay
@@ -988,9 +1101,9 @@ smime_certsave(struct message *m, int n, FILE *op)
 	enum okay	ok = OKAY;
 
 	message_number = n;
-loop:	to = hfield("to", m);
-	cc = hfield("cc", m);
-	cnttype = hfield("content-type", m);
+loop:	to = hfield1("to", m);
+	cc = hfield1("cc", m);
+	cnttype = hfield1("content-type", m);
 	if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
 		return STOP;
 	if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
@@ -1078,8 +1191,8 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 
 	if ((crl_file = value(vfile)) != NULL) {
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-		crl_file = expand(crl_file);
-		if (load_crl1(store, crl_file) != OKAY)
+		if ((crl_file = file_expand(crl_file)) == NULL ||
+				load_crl1(store, crl_file) != OKAY)
 			return STOP;
 #else	/* old OpenSSL */
 		fprintf(stderr,
@@ -1089,12 +1202,13 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 	}
 	if ((crl_dir = value(vdir)) != NULL) {
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-		crl_dir = expand(crl_dir);
-		ds = strlen(crl_dir);
-		if ((dirfd = opendir(crl_dir)) == NULL) {
+		char *x;
+		if ((x = file_expand(crl_dir)) == NULL ||
+				(dirfd = opendir(crl_dir = x)) == NULL) {
 			perror(crl_dir);
 			return STOP;
 		}
+		ds = strlen(crl_dir);
 		fn = smalloc(fs = ds + 20);
 		strcpy(fn, crl_dir);
 		fn[ds] = '/';
@@ -1131,7 +1245,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 	return OKAY;
 }
 
-#else	/* !USE_OPENSSL */
+#else	/* !NSS && !USE_OPENSSL */
 
 #include <stdio.h>
 
@@ -1145,6 +1259,7 @@ nosmime(void)
 FILE *
 smime_sign(FILE *fp)
 {
+	(void)fp;
 	nosmime();
 	return NULL;
 }
@@ -1153,6 +1268,7 @@ smime_sign(FILE *fp)
 int 
 cverify(void *vp)
 {
+	(void)vp;
 	nosmime();
 	return 1;
 }
@@ -1161,6 +1277,9 @@ cverify(void *vp)
 FILE *
 smime_encrypt(FILE *fp, const char *certfile, const char *to)
 {
+	(void)fp;
+	(void)certfile;
+	(void)to;
 	nosmime();
 	return NULL;
 }
@@ -1169,6 +1288,10 @@ smime_encrypt(FILE *fp, const char *certfile, const char *to)
 struct message *
 smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 {
+	(void)m;
+	(void)to;
+	(void)cc;
+	(void)signcall;
 	nosmime();
 	return NULL;
 }
@@ -1177,8 +1300,8 @@ smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 int 
 ccertsave(void *v)
 {
+	(void)v;
 	nosmime();
 	return 1;
 }
-#endif	/* !USE_OPENSSL */
-#endif	/* !USE_NSS */
+#endif	/* !USE_NSS && !USE_OPENSSL */

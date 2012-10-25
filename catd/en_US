@@ -1,4 +1,3 @@
-$ Sccsid @(#)en_US	1.55 (gritter) 7/10/04
 $quote $
 $ Messages for nail, a mail user agent
 $set 1
@@ -180,23 +179,29 @@ The following ~ escapes are defined:\n\
 132 No applicable messages\n
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
-135 Usage: %s -eiIUdFntBNHV~ -T FILE -u USER -h hops -r address -s SUBJECT -a FILE -q FILE -f FILE -b USERS -c USERS users\n
+135 Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n\
+\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n\
+\t\t[-q file] [-r from-addr] [-S var[=value]]\n\
+\t\t[-s subject] to-addr...\n\
+\t%s [-BDdEeHIiNnRv~] [-A acct]\n\
+\t\t[-S var[=value]] [-T name] -f [file]\n\
+\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
 136 --- DELETED ---
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n
 139 --- DELETED ---
-140 $%s version %s.  Type ? for help.\n$
+140 %s version %s.  Type ? for help.\n
 141 \nInterrupt\n
-142 %s contains invalid @@ sequence\n
-143 %s contains invalid character '
-144 '\n
+142 "%s" contains invalid %s sequence\n
+143 "%s" contains invalid character %s\n
+144 --- DELETED ---
 145 detract asked to insert commas\n
-146 temporary edit file
-147 temporary edit file
-148 temporary edit file
-149 Can't reopen image\n
+146 Creation of temporary image
+147 Creating descriptor duplicate of temporary image
+148 Finalizing write of temporary image
+149 Failed to open a duplicate of the temporary image
 150 Expanding alias to depth larger than %d\n
-151 No names to unpack
+151 --- DELETED ---
 152 Internal error: bad stdio open mode %s\n
 153 Invalid file pointer
 154 Fatal error in process.\n
@@ -314,3 +319,29 @@ The following ~ escapes are defined:\n\
 266 Ignoring header field "%s"\n
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
+269 No IMAP support compiled in.\n
+270 No JUNK support compiled in.\n
+271 Invalid address argument with -r\n
+272 No GSSAPI support compiled in.\n
+273 Unknown IMAP authentication method: %s\n
+274 Unknown SMTP authentication method: %s\n
+275 User and password are necessary for SMTP authentication.\n
+276 Could not determine timestamp from server greeting.  Can't use APOP.\n
+277 No CRAM-MD5 support compiled in.\n
+278 Enter filename for part %s (%s)
+279 ... skipping this\n
+280 "%s": only a local file or directory may be used\n
+281 Message piping to <%s> failed\n
+282 Message writing to <%s> failed: %s\n
+283 write error
+284 Invalid domain name: "%s", character %s\n
+285 Failed to save message in %s - message not sent\n
+286 Cannot remove current mailbox "%s".\n
+287 $Remove "%s" (y/n) ? $
+288 Cannot remove POP3 mailbox "%s".\n
+289 Unknown protocol in "%s". Not removed.\n
+290 Syntax is: remove mailbox ...\n
+291 Cannot rename current mailbox "%s".\n
+292 Can only rename folders of same type.\n
+293 Cannot rename POP3 mailboxes.\n
+294 Unknown protocol in "%s" and "%s".  Not renamed.\n

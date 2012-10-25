@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Derived from RFC 1321:
@@ -31,10 +32,14 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-/*	Sccsid @(#)md5.c	1.8 (gritter) 3/4/06	*/
-
 #include "rcv.h"
-#include "md5.h"
+
+#ifndef USE_MD5
+typedef int avoid_empty_file_compiler_warning;
+#else
+# include "md5.h"
+
+#define UINT4B_MAX	0xFFFFFFFFul
 
 /*
  * Constants for MD5Transform routine.
@@ -67,44 +72,50 @@ static unsigned char PADDING[64] = {
 };
 
 /*
- * F, G, H and I are basic MD5 functions.
+#define	F(x,y,z)	(((x) & (y))  |  ((~(x)) & (z)))
+#define	G(x,y,z)	(((x) & (z))  |  ((y) & (~(z))))
+*/
+
+/* As pointed out by Wei Dai <weidai@eskimo.com>, the above can be
+ * simplified to the code below.  Wei attributes these optimizations
+ * to Peter Gutmann's SHS code, and he attributes it to Rich Schroeppel.
  */
-#define	F(x, y, z)	((x) & (y) | ~(x) & (z))
-#define	G(x, y, z)	((x) & (z) | (y) & ~(z))
-#define	H(x, y, z)	((x) ^ (y) ^ (z))
-#define	I(x, y, z)	((y) ^ ((x) | ~(z)&0xffffffff))
+#define	F(b,c,d)	((((c) ^ (d)) & (b)) ^ (d))
+#define	G(b,c,d)	((((b) ^ (c)) & (d)) ^ (c))
+#define	H(b,c,d)	((b) ^ (c) ^ (d))
+#define	I(b,c,d)	(((~(d) & UINT4B_MAX) | (b)) ^ (c))
 
 /*
  * ROTATE_LEFT rotates x left n bits.
  */
-#define	ROTATE_LEFT(x, n)	((x)<<(n) & 0xffffffff | (x) >> 32-(n))
+#define	ROTATE_LEFT(x, n) ((((x) << (n)) & UINT4B_MAX) | ((x) >> (32 - (n))))
 
 /*
  * FF, GG, HH, and II transformations for rounds 1, 2, 3, and 4.
  * Rotation is separate from addition to prevent recomputation.
  */
 #define FF(a, b, c, d, x, s, ac) { \
-	(a) = (a) + F((b), (c), (d)) + (x) + ((ac)&0xffffffff) & 0xffffffff; \
+	(a) = ((a) + F(b, c, d) + (x) + ((ac) & UINT4B_MAX)) & UINT4B_MAX; \
 	(a) = ROTATE_LEFT((a), (s)); \
-	(a) = (a) + (b) & 0xffffffff; \
+	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
 #define GG(a, b, c, d, x, s, ac) { \
-	(a) = (a) + G((b), (c), (d)) + (x) + ((ac)&0xffffffff) & 0xffffffff; \
+	(a) = ((a) + G(b, c, d) + (x) + ((ac) & UINT4B_MAX)) & UINT4B_MAX; \
 	(a) = ROTATE_LEFT((a), (s)); \
-	(a) = (a) + (b) & 0xffffffff; \
+	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
 #define HH(a, b, c, d, x, s, ac) { \
-	(a) = (a) + H((b), (c), (d)) + (x) + ((ac)&0xffffffff) & 0xffffffff; \
+	(a) = ((a) + H(b, c, d) + (x) + ((ac) & UINT4B_MAX)) & UINT4B_MAX; \
 	(a) = ROTATE_LEFT((a), (s)); \
-	(a) = (a) + (b) & 0xffffffff; \
+	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
 #define II(a, b, c, d, x, s, ac) { \
-	(a) = (a) + I((b), (c), (d)) + (x) + ((ac)&0xffffffff) & 0xffffffff; \
+	(a) = ((a) + I(b, c, d) + (x) + ((ac) & UINT4B_MAX)) & UINT4B_MAX; \
 	(a) = ROTATE_LEFT((a), (s)); \
-	(a) = (a) + (b) & 0xffffffff; \
+	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
 /*
@@ -143,10 +154,11 @@ MD5Update (
 	index = context->count[0]>>3 & 0x3F;
 
 	/* Update number of bits */
-	if ((context->count[0] = context->count[0] + (inputLen<<3) & 0xffffffff)
-			< (inputLen<<3 & 0xffffffff))
-	context->count[1] = context->count[1] + 1 & 0xffffffff;
-	context->count[1] = context->count[1] + (inputLen>>29) & 0xffffffff;
+	if ((context->count[0] = (context->count[0] + (inputLen<<3)) &
+					UINT4B_MAX)
+			< ((inputLen << 3) & UINT4B_MAX))
+	context->count[1] = (context->count[1] + 1) & UINT4B_MAX;
+	context->count[1] = (context->count[1] + (inputLen >> 29)) & UINT4B_MAX;
 
 	partLen = 64 - index;
 
@@ -284,10 +296,10 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 	II(c, d, a, b, x[ 2], S43, 0x2ad7d2bb); /* 63 */
 	II(b, c, d, a, x[ 9], S44, 0xeb86d391); /* 64 */
 
-	state[0] = state[0] + a & 0xffffffff;
-	state[1] = state[1] + b & 0xffffffff;
-	state[2] = state[2] + c & 0xffffffff;
-	state[3] = state[3] + d & 0xffffffff;
+	state[0] = (state[0] + a) & UINT4B_MAX;
+	state[1] = (state[1] + b) & UINT4B_MAX;
+	state[2] = (state[2] + c) & UINT4B_MAX;
+	state[3] = (state[3] + d) & UINT4B_MAX;
 
 	/*
 	 * Zeroize sensitive information.
@@ -306,9 +318,9 @@ Encode(unsigned char *output, md5_type *input, unsigned int len)
 
 	for (i = 0, j = 0; j < len; i++, j += 4) {
 		output[j] = input[i] & 0xff;
-		output[j+1] = input[i]>>8 & 0xff;
-		output[j+2] = input[i]>>16 & 0xff;
-		output[j+3] = input[i]>> 24 & 0xff;
+		output[j+1] = (input[i] >> 8) & 0xff;
+		output[j+2] = (input[i] >> 16) & 0xff;
+		output[j+3] = (input[i] >> 24) & 0xff;
 	}
 }
 
@@ -325,5 +337,6 @@ Decode(md5_type *output, unsigned char *input, unsigned int len)
  		output[i] = ((md5_type)input[j] |
 			(md5_type)input[j+1] << 8 |
 			(md5_type)input[j+2] << 16 |
-			(md5_type)input[j+3] << 24) & 0xffffffff;
+			(md5_type)input[j+3] << 24) & UINT4B_MAX;
 }
+#endif /* USE_MD5 */

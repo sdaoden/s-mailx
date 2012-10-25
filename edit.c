@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)edit.c	2.24 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
@@ -85,14 +80,12 @@ visual(void *v)
 static int 
 edit1(int *msgvec, int type)
 {
-	int c;
-	int i;
+	int c, i, wb, lastnl;
 	FILE *fp = NULL;
 	struct message *mp;
 	off_t size;
 	char *line = NULL;
 	size_t linesize;
-	int	wb;
 
 	/*
 	 * Deal with each message to be edited . . .
@@ -104,8 +97,7 @@ edit1(int *msgvec, int type)
 		if (i > 0) {
 			char *p;
 
-			printf(catgets(catd, CATSET, 72,
-					"Edit message %d [ynq]? "), msgvec[i]);
+			printf(tr(72, "Edit message %d [ynq]? "), msgvec[i]);
 			fflush(stdout);
 			if (readline(stdin, &line, &linesize) < 0)
 				break;
@@ -119,25 +111,35 @@ edit1(int *msgvec, int type)
 		did_print_dot = 1;
 		touch(mp);
 		sigint = safe_signal(SIGINT, SIG_IGN);
-		fp = run_editor(fp, mp->m_size, type,
+		--mp->m_size; /* XXX[edithack] strip final NL */
+		fp = run_editor(fp, -1/*mp->m_size*/, type,
 				(mb.mb_perm & MB_EDIT) == 0 || !wb,
 				NULL, mp, wb ? SEND_MBOX : SEND_TODISP_ALL,
 				sigint);
+		++mp->m_size; /* XXX[edithack] */
 		if (fp != NULL) {
 			fseek(mb.mb_otf, 0L, SEEK_END);
 			size = ftell(mb.mb_otf);
 			mp->m_block = mailx_blockof(size);
 			mp->m_offset = mailx_offsetof(size);
-			mp->m_size = fsize(fp);
 			mp->m_lines = 0;
 			mp->m_flag |= MODIFY;
 			rewind(fp);
+			lastnl = 0;
+			size = 0;
 			while ((c = getc(fp)) != EOF) {
-				if (c == '\n')
+				if ((lastnl = c == '\n'))
 					mp->m_lines++;
 				if (putc(c, mb.mb_otf) == EOF)
 					break;
+				++size;
 			}
+			/* MBOX finalize XXX[edithack] is this always MBOX? */
+			if (! lastnl && putc('\n', mb.mb_otf) != EOF)
+				++size;
+			if (putc('\n', mb.mb_otf) != EOF)
+				++size;
+			mp->m_size = (size_t)size;/*XXX[edithack] inc.MBOX?!? */
 			if (ferror(mb.mb_otf))
 				perror("/tmp");
 			Fclose(fp);

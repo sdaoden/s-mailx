@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)collect.c	2.54 (gritter) 6/16/07";
-#endif
-#endif /* not lint */
 
 /*
  * Mail -- a mail program
@@ -102,6 +97,7 @@ static int putesc(const char *s, FILE *stream);
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -112,11 +108,9 @@ static void
 insertcommand(FILE *fp, char *cmd)
 {
 	FILE *obuf = NULL;
-	char *cp;
+	char *volatile cp;
 	int c;
 
-	(void)&obuf;
-	(void)&cp;
 	cp = value("SHELL");
 	if (sigsetjmp(pipejmp, 1))
 		goto endpipe;
@@ -142,7 +136,7 @@ static void
 print_collf(FILE *collf, struct header *hp)
 {
 	char *lbuf = NULL;
-	FILE *obuf = stdout;
+	FILE *volatile obuf = stdout;
 	struct attachment *ap;
 	char *cp;
 	enum gfield	gf;
@@ -175,7 +169,7 @@ print_collf(FILE *collf, struct header *hp)
 			hp->h_organization != NULL;
 		maxlines -= value("replyto") != NULL || hp->h_replyto != NULL;
 		maxlines -= value("sender") != NULL || hp->h_sender != NULL;
-		if (linecnt > maxlines) {
+		if ((long)maxlines < 0 || linecnt > maxlines) {
 			cp = get_pager();
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
@@ -227,7 +221,7 @@ include_file(FILE *fbuf, char *name, int *linecount, int *charcount, int echo)
 		fbuf = Fopen(name, "r");
 	if (fbuf == NULL) {
 		perror(name);
-		return -1;
+		return (-1);
 	}
 	interactive = value("interactive");
 	*linecount = 0;
@@ -240,7 +234,7 @@ include_file(FILE *fbuf, char *name, int *linecount, int *charcount, int echo)
 		if (fwrite(linebuf, sizeof *linebuf, linelen, collf)
 				!= linelen) {
 			Fclose(fbuf);
-			return -1;
+			return (-1);
 		}
 		if (interactive != NULL && echo)
 			fwrite(linebuf, sizeof *linebuf, linelen, stdout);
@@ -250,7 +244,9 @@ include_file(FILE *fbuf, char *name, int *linecount, int *charcount, int echo)
 	if (linebuf)
 		free(linebuf);
 	Fclose(fbuf);
-	return 0;
+	if (fflush(collf))
+		return (-1);
+	return (0);
 }
 
 /*
@@ -271,15 +267,19 @@ read_attachment_data(struct attachment *ap, unsigned number)
 	snprintf(prefix, sizeof prefix, catgets(catd, CATSET, 50,
 			"#%u\tfilename: "), number);
 	for (;;) {
+		char *exf;
 		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL)
 			break;
+		if ((exf = file_expand(ap->a_name)) == NULL)
+			continue;
+		ap->a_name = exf;
 		if (access(ap->a_name, R_OK) == 0)
 			break;
 		perror(ap->a_name);
 	}
-	if (ap->a_name && (value("attachment-ask-charset") ||
-			(cp = value("sendcharsets")) != NULL &&
-			strchr(cp, ',') != NULL)) {
+	if ((ap->a_name && (value("attachment-ask-charset"))) ||
+			((cp = value("sendcharsets")) != NULL &&
+			 strchr(cp, ',') != NULL)) {
 		snprintf(prefix, sizeof prefix, "#%u\tcharset: ", number);
 		ap->a_charset = readtty(prefix, ap->a_charset);
 	}
@@ -351,16 +351,20 @@ edit_attachments(struct attachment *attach)
  * Put the given file to the end of the attachment list.
  */
 struct attachment *
-add_attachment(struct attachment *attach, const char *file)
+add_attachment(struct attachment *attach, char *file, int expand_file)
 {
 	struct attachment *ap, *nap;
 
+	if (expand_file) {
+		if ((file = file_expand(file)) == NULL)
+			return (NULL);
+	} else
+		file = savestr(file);
 	if (access(file, R_OK) != 0)
 		return NULL;
 	/*LINTED*/
 	nap = csalloc(1, sizeof *nap);
-	nap->a_name = salloc(strlen(file) + 1);
-	strcpy(nap->a_name, file);
+	nap->a_name = file;
 	if (attach != NULL) {
 		for (ap = attach; ap->a_flink != NULL; ap = ap->a_flink);
 		ap->a_flink = nap;
@@ -393,7 +397,7 @@ append_attachments(struct attachment *attach, char *names)
 		c = *cp;
 		*cp++ = '\0';
 		if (*names != '\0') {
-			if ((ap = add_attachment(attach, names)) == NULL)
+			if ((ap = add_attachment(attach, names, 1)) == NULL)
 				perror(names);
 			else
 				attach = ap;
@@ -408,51 +412,26 @@ append_attachments(struct attachment *attach, char *names)
 
 FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int doprefix, int tflag)
+		char *quotefile, int doprefix, int volatile tflag)
 {
+	enum {
+		val_INTERACT	= 1
+	};
+
 	FILE *fbuf;
 	struct ignoretab *quoteig;
-	int lc, cc, escape, eofcount;
-	int c, t;
-	char *linebuf = NULL, *cp, *quote = NULL;
+	int lc, cc, eofcount, val, c, t;
+	int volatile escape, getfields;
+	char *linebuf = NULL, *cp, *quote = NULL, *tempMail = NULL;
 	size_t linesize;
-	char *tempMail = NULL;
-	int getfields;
-	sigset_t oset, nset;
 	long count;
 	enum sendaction	action;
+	sigset_t oset, nset;
 	sighandler_type	savedtop;
-	const char tildehelp[] =
-"-------------------- ~ ESCAPES ----------------------------\n\
-~~              Quote a single tilde\n\
-~@ [file ...]   Edit attachment list\n\
-~b users        Add users to \"blind\" cc list\n\
-~c users        Add users to cc list\n\
-~d              Read in dead.letter\n\
-~e              Edit the message buffer\n\
-~f messages     Read in messages without indenting lines\n\
-~F messages     Same as ~f, but keep all header lines\n\
-~h              Prompt for to list, subject, cc, and \"blind\" cc list\n\
-~r file         Read a file into the message buffer\n\
-~p              Print the message buffer\n\
-~q              Abort message composition and save text to dead.letter\n\
-~m messages     Read in messages with each line indented\n\
-~M messages     Same as ~m, but keep all header lines\n\
-~s subject      Set subject\n\
-~t users        Add users to to list\n\
-~v              Invoke display editor on message\n\
-~w file         Write message onto file\n\
-~x              Abort message composition and discard text written so far\n\
-~!command       Invoke the shell\n\
-~:command       Execute a regular command\n\
------------------------------------------------------------\n";
 
-	(void) &escape;
-	(void) &eofcount;
-	(void) &getfields;
-	(void) &tempMail;
-	(void) &tflag;
-	(void) &quote;
+	val = 0;
+	if (value("interactive") != NULL)
+		val |= val_INTERACT;
 
 	collf = NULL;
 	/*
@@ -471,35 +450,22 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	savetstp = safe_signal(SIGTSTP, collstop);
 	savettou = safe_signal(SIGTTOU, collstop);
 	savettin = safe_signal(SIGTTIN, collstop);
-	if (sigsetjmp(collabort, 1)) {
-		if (tempMail != NULL) {
-			rm(tempMail);
-			Ftfree(&tempMail);
-		}
-		goto err;
-	}
-	if (sigsetjmp(colljmp, 1)) {
-		if (tempMail != NULL) {
-			rm(tempMail);
-			Ftfree(&tempMail);
-		}
-		goto err;
-	}
+	if (sigsetjmp(collabort, 1))
+		goto jerr;
+	if (sigsetjmp(colljmp, 1))
+		goto jerr;
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 
 	noreset++;
 	if ((collf = Ftemp(&tempMail, "Rs", "w+", 0600, 1)) == NULL) {
-		perror(catgets(catd, CATSET, 51, "temporary mail file"));
-		goto err;
+		perror(tr(51, "temporary mail file"));
+		goto jerr;
 	}
 	unlink(tempMail);
 	Ftfree(&tempMail);
 
-	if ((cp = value("MAILX_HEAD")) != NULL) {
-		if (is_a_tty[0])
-			putesc(cp, stdout);
-		putesc(cp, collf);
-	}
+	if ((cp = value("NAIL_HEAD")) != NULL && putesc(cp, collf) < 0)
+		goto jerr;
 
 	/*
 	 * If we are going to prompt for a subject,
@@ -507,26 +473,26 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	 * the headers (since some people mind).
 	 */
 	getfields = 0;
-	if (!tflag) {
+	if (! tflag) {
 		t = GTO|GSUBJECT|GCC|GNL;
 		if (value("fullnames"))
 			t |= GCOMMA;
-		if (hp->h_subject == NULL && value("interactive") != NULL &&
+		if (hp->h_subject == NULL && (val & val_INTERACT) &&
 			    (value("ask") != NULL || value("asksub") != NULL))
 			t &= ~GNL, getfields |= GSUBJECT;
-		if (hp->h_to == NULL && value("interactive") != NULL)
+		if (hp->h_to == NULL && (val & val_INTERACT))
 			t &= ~GNL, getfields |= GTO;
 		if (value("bsdcompat") == NULL && value("askatend") == NULL &&
-				value("interactive")) {
+				(val & val_INTERACT)) {
 			if (hp->h_bcc == NULL && value("askbcc"))
 				t &= ~GNL, getfields |= GBCC;
 			if (hp->h_cc == NULL && value("askcc"))
 				t &= ~GNL, getfields |= GCC;
 		}
 		if (printheaders) {
-			puthead(hp, stdout, t, SEND_TODISP, CONV_NONE,
+			(void)puthead(hp, stdout, t, SEND_TODISP, CONV_NONE,
 					NULL, NULL);
-			fflush(stdout);
+			(void)fflush(stdout);
 		}
 	}
 
@@ -540,10 +506,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			quoteig = fwdignore;
 			if ((cp = value("fwdheading")) == NULL)
 				cp = "-------- Original Message --------";
-			if (*cp) {
-				fprintf(collf, "%s\n", cp);
-				fprintf(stdout, "%s\n", cp);
-			}
+			if (*cp && fprintf(collf, "%s\n", cp) < 0)
+				goto jerr;
 		} else if (strcmp(quote, "noheading") == 0) {
 			/*EMPTY*/;
 		} else if (strcmp(quote, "headers") == 0) {
@@ -552,42 +516,44 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			quoteig = NULL;
 			action = SEND_QUOTE_ALL;
 		} else {
-			cp = hfield("from", mp);
-			if (cp != NULL) {
-				mime_write(cp, strlen(cp),
+			cp = hfield1("from", mp);
+			if (cp != NULL && (count = (long)strlen(cp)) > 0) {
+				if (mime_write(cp, count,
 						collf, CONV_FROMHDR, TD_NONE,
 						NULL, (size_t) 0,
-						NULL, NULL);
-				mime_write(cp, strlen(cp),
-						stdout, CONV_FROMHDR, TD_NONE,
-						NULL, (size_t) 0,
-						NULL, NULL);
-				fwrite(catgets(catd, CATSET, 52,
-					" wrote:\n\n"), sizeof(char), 9, collf);
-				fwrite(catgets(catd, CATSET, 52,
-					" wrote:\n\n"), sizeof(char), 9, stdout);
+						NULL, NULL) == 0)
+					goto jerr;
+				if (fprintf(collf, tr(52, " wrote:\n\n")) < 0)
+					goto jerr;
 			}
 		}
+		if (fflush(collf))
+			goto jerr;
 		cp = value("indentprefix");
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
-		send(mp, collf, quoteig, doprefix ? NULL : cp, action, NULL);
-		send(mp, stdout, quoteig, doprefix ? NULL : cp, action, NULL);
+		if (send(mp, collf, quoteig, (doprefix ? NULL : cp), action,
+				NULL) < 0)
+			goto jerr;
 	}
 
-	if ((cp = value("escape")) != NULL)
-		escape = *cp;
-	else
-		escape = ESCAPE;
+	/* Print what we have sofar also on the terminal */
+	(void)rewind(collf);
+	while ((c = getc(collf)) != EOF)
+		(void)putc(c, stdout);
+	if (fseek(collf, 0, SEEK_END))
+		goto jerr;
+
+	escape = ((cp = value("escape")) != NULL) ? *cp : ESCAPE;
 	eofcount = 0;
 	hadintr = 0;
 
-	if (!sigsetjmp(colljmp, 1)) {
+	if (! sigsetjmp(colljmp, 1)) {
 		if (getfields)
 			grabh(hp, getfields, 1);
 		if (quotefile != NULL) {
 			if (include_file(NULL, quotefile, &lc, &cc, 1) != 0)
-				goto err;
+				goto jerr;
 		}
 	} else {
 		/*
@@ -595,39 +561,43 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		 * Duplicate messages won't be printed because
 		 * the write is aborted if we get a SIGTTOU.
 		 */
-cont:
+jcont:
 		if (hadintr) {
-			fflush(stdout);
-			fprintf(stderr, catgets(catd, CATSET, 53,
+			(void)fprintf(stderr, tr(53,
 				"\n(Interrupt -- one more to kill letter)\n"));
 		} else {
-			printf(catgets(catd, CATSET, 54, "(continue)\n"));
-			fflush(stdout);
+			printf(tr(54, "(continue)\n"));
+			(void)fflush(stdout);
 		}
 	}
-	if (value("interactive") == NULL && tildeflag <= 0 && !is_a_tty[0] &&
-			!tflag) {
-		/*
-		 * No tilde escapes, interrupts not expected. Copy
-		 * standard input the simple way.
-		 */
-		linebuf = srealloc(linebuf, linesize = BUFSIZ);
+
+	/*
+	 * No tilde escapes, interrupts not expected.  Simply copy STDIN
+	 */
+	if ((val & val_INTERACT) == 0 && tildeflag <= 0 && ! tflag) {
+		linebuf = srealloc(linebuf, linesize = LINESIZE);
 		while ((count = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
-			if (fwrite(linebuf, sizeof *linebuf,
-						count, collf) != count)
-				goto err;
+			if ((size_t)count != fwrite(linebuf, sizeof *linebuf,
+						count, collf))
+				goto jerr;
 		}
-		goto out;
+		if (fflush(collf))
+			goto jerr;
+		goto jout;
 	}
+
+	/*
+	 * The interactive collect loop
+	 */
 	for (;;) {
 		colljmp_p = 1;
 		count = readline(stdin, &linebuf, &linesize);
 		colljmp_p = 0;
 		if (count < 0) {
-			if (value("interactive") != NULL &&
+			if ((val & val_INTERACT) &&
 			    value("ignoreeof") != NULL && ++eofcount < 25) {
-				printf(catgets(catd, CATSET, 55,
+				printf(tr(55,
 					"Use \".\" to terminate letter\n"));
 				continue;
 			}
@@ -636,7 +606,7 @@ cont:
 		if (tflag && count == 0) {
 			rewind(collf);
 			if (makeheader(collf, hp) != OKAY)
-				goto err;
+				goto jerr;
 			rewind(collf);
 			tflag = 0;
 			continue;
@@ -644,16 +614,18 @@ cont:
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-		    value("interactive") != NULL &&
-		    (value("dot") != NULL || value("ignoreeof") != NULL))
+				(val & val_INTERACT) &&
+				(value("dot") != NULL ||
+					value("ignoreeof") != NULL))
 			break;
-		if (linebuf[0] != escape || (value("interactive") == NULL &&
-					tildeflag == 0 ||
-					tildeflag < 0)) {
+		if (linebuf[0] != escape ||
+				((val & val_INTERACT) == 0 && tildeflag == 0) ||
+				tildeflag < 0) {
 			if (putline(collf, linebuf, count) < 0)
-				goto err;
+				goto jerr;
 			continue;
 		}
+
 		c = linebuf[1];
 		switch (c) {
 		default:
@@ -663,45 +635,33 @@ cont:
 			 */
 			if (c == escape) {
 				if (putline(collf, &linebuf[1], count - 1) < 0)
-					goto err;
+					goto jerr;
 				else
 					break;
 			}
-			printf(catgets(catd, CATSET, 56,
-					"Unknown tilde escape.\n"));
+			printf(tr(56, "Unknown tilde escape.\n"));
 			break;
-#ifdef	DEBUG_COMMANDS
+#ifdef HAVE_ASSERTS
 		case 'C':
-			/*
-			 * Dump core.
-			 */
+			/* Dump core */
 			core(NULL);
 			break;
-#endif	/* DEBUG_COMMANDS */
+#endif
 		case '!':
-			/*
-			 * Shell escape, send the balance of the
-			 * line to sh -c.
-			 */
+			/* Shell escape, send the balance of line to sh -c */
 			shell(&linebuf[2]);
 			break;
 		case ':':
 		case '_':
-			/*
-			 * Escape to command mode, but be nice!
-			 */
+			/* Escape to command mode, but be nice! */
 			inhook = 0;
 			execute(&linebuf[2], 1, count - 2);
-			goto cont;
+			goto jcont;
 		case '.':
-			/*
-			 * Simulate end of file on input.
-			 */
-			goto out;
+			/* Simulate end of file on input */
+			goto jout;
 		case 'x':
-			/*
-			 * Same as 'q', but no dead.letter saving.
-			 */
+			/* Same as 'q', but no dead.letter saving */
 			hadintr++;
 			collint(0);
 			exit(1);
@@ -716,44 +676,35 @@ cont:
 			exit(1);
 			/*NOTREACHED*/
 		case 'h':
-			/*
-			 * Grab a bunch of headers.
-			 */
+			/* Grab a bunch of headers */
 			do
 				grabh(hp, GTO|GSUBJECT|GCC|GBCC,
 						value("bsdcompat") != NULL &&
 						value("bsdorder") != NULL);
 			while (hp->h_to == NULL);
-			goto cont;
+			goto jcont;
 		case 'H':
-			/*
-			 * Grab extra headers.
-			 */
+			/* Grab extra headers */
 			do
 				grabh(hp, GEXTRA, 0);
 			while (check_from_and_sender(hp->h_from, hp->h_sender));
-			goto cont;
+			goto jcont;
 		case 't':
-			/*
-			 * Add to the To list.
-			 */
-			while ((hp->h_to = checkaddrs(cat(hp->h_to,
-					sextract(&linebuf[2], GTO|GFULL))))
-				== NULL);
+			/* Add to the To list */
+			while ((hp->h_to = cat(hp->h_to, checkaddrs(
+					lextract(&linebuf[2], GTO|GFULL))))
+					== NULL)
+				;
 			break;
 		case 's':
-			/*
-			 * Set the Subject list.
-			 */
+			/* Set the Subject list */
 			cp = &linebuf[2];
-			while (whitechar(*cp & 0377))
-				cp++;
+			while (whitechar(*cp))
+				++cp;
 			hp->h_subject = savestr(cp);
 			break;
 		case '@':
-			/*
-			 * Edit the attachment list.
-			 */
+			/* Edit the attachment list */
 			if (linebuf[2] != '\0')
 				hp->h_attach = append_attachments(hp->h_attach,
 						&linebuf[2]);
@@ -761,18 +712,14 @@ cont:
 				hp->h_attach = edit_attachments(hp->h_attach);
 			break;
 		case 'c':
-			/*
-			 * Add to the CC list.
-			 */
-			hp->h_cc = checkaddrs(cat(hp->h_cc,
-				sextract(&linebuf[2], GCC|GFULL)));
+			/* Add to the CC list */
+			hp->h_cc = cat(hp->h_cc, checkaddrs(
+					lextract(&linebuf[2], GCC|GFULL)));
 			break;
 		case 'b':
-			/*
-			 * Add stuff to blind carbon copies list.
-			 */
-			hp->h_bcc = checkaddrs(cat(hp->h_bcc,
-				sextract(&linebuf[2], GBCC|GFULL)));
+			/* Add stuff to blind carbon copies list */
+			hp->h_bcc = cat(hp->h_bcc, checkaddrs(
+					lextract(&linebuf[2], GBCC|GFULL)));
 			break;
 		case 'd':
 			strncpy(linebuf + 2, getdeadletter(), linesize - 2);
@@ -786,76 +733,69 @@ cont:
 			 * then open it and copy the contents to collf.
 			 */
 			cp = &linebuf[2];
-			while (whitechar(*cp & 0377))
+			while (whitechar(*cp))
 				cp++;
 			if (*cp == '\0') {
-				printf(catgets(catd, CATSET, 57,
-						"Interpolate what file?\n"));
+				fprintf(stderr, tr(57,
+					"Interpolate what file?\n"));
 				break;
 			}
 			if (*cp == '!') {
 				insertcommand(collf, cp + 1);
 				break;
 			}
-			cp = expand(cp);
-			if (cp == NULL)
+			if ((cp = file_expand(cp)) == NULL)
 				break;
 			if (is_dir(cp)) {
-				printf(catgets(catd, CATSET, 58,
-						"%s: Directory\n"), cp);
+				fprintf(stderr, tr(58, "%s: Directory\n"), cp);
 				break;
 			}
 			if ((fbuf = Fopen(cp, "r")) == NULL) {
 				perror(cp);
 				break;
 			}
-			printf(catgets(catd, CATSET, 59, "\"%s\" "), cp);
+			printf(tr(59, "\"%s\" "), cp);
 			fflush(stdout);
 			if (include_file(fbuf, cp, &lc, &cc, 0) != 0)
-				goto err;
-			printf(catgets(catd, CATSET, 60, "%d/%d\n"), lc, cc);
+				goto jerr;
+			printf(tr(60, "%d/%d\n"), lc, cc);
 			break;
 		case 'i':
-			/*
-			 * Insert an environment variable into the file.
-			 */
+			/* Insert an environment variable into the file */
 			cp = &linebuf[2];
-			while (whitechar(*cp & 0377))
-				cp++;
+			while (whitechar(*cp))
+				++cp;
 			if ((cp = value(cp)) == NULL || *cp == '\0')
 				break;
-			if (is_a_tty[0])
-				putesc(cp, stdout);
-			putesc(cp, collf);
+			if (putesc(cp, collf) < 0)
+				goto jerr;
+			if ((val & val_INTERACT) && putesc(cp, stdout) < 0)
+				goto jerr;
 			break;
 		case 'a':
 		case 'A':
-			/*
-			 * Insert the contents of a signature variable.
-			 */
+			/* Insert the contents of a signature variable */
 			if ((cp = value(c == 'a' ? "sign" : "Sign")) != NULL &&
 					*cp != '\0') {
-				if (is_a_tty[0])
-					putesc(cp, stdout);
-				putesc(cp, collf);
+				if (putesc(cp, collf) < 0)
+					goto jerr;
+				if ((val & val_INTERACT) &&
+						putesc(cp, stdout) < 0)
+					goto jerr;
 			}
 			break;
 		case 'w':
-			/*
-			 * Write the message on a file.
-			 */
+			/* Write the message on a file */
 			cp = &linebuf[2];
-			while (blankchar(*cp & 0377))
-				cp++;
-			if (*cp == '\0') {
-				fprintf(stderr, catgets(catd, CATSET, 61,
-						"Write what file!?\n"));
+			while (blankchar(*cp))
+				++cp;
+			if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
+				fprintf(stderr, tr(61, "Write what file!?\n"));
 				break;
 			}
-			if ((cp = expand(cp)) == NULL)
-				break;
 			rewind(collf);
-			exwrite(cp, collf, 1);
+			if (exwrite(cp, collf, 1) < 0)
+				goto jerr;
 			break;
 		case 'm':
 		case 'M':
@@ -868,18 +808,15 @@ cont:
 			 * If ~f is given, we don't shift over.
 			 */
 			if (forward(linebuf + 2, collf, c) < 0)
-				goto err;
-			goto cont;
-		case '?':
-			fputs(tildehelp, stdout);
-			break;
+				goto jerr;
+			goto jcont;
 		case 'p':
 			/*
 			 * Print out the current state of the
 			 * message without altering anything.
 			 */
 			print_collf(collf, hp);
-			goto cont;
+			goto jcont;
 		case '|':
 			/*
 			 * Pipe message through command.
@@ -887,7 +824,7 @@ cont:
 			 */
 			rewind(collf);
 			mespipe(&linebuf[2]);
-			goto cont;
+			goto jcont;
 		case 'v':
 		case 'e':
 			/*
@@ -897,22 +834,50 @@ cont:
 			 */
 			rewind(collf);
 			mesedit(c, value("editheaders") ? hp : NULL);
-			goto cont;
+			goto jcont;
+		case '?':
+			/*
+			 * Last the lengthy help string.
+			 * (Very ugly, but take care for compiler supported
+			 * string lengths :()
+			 */
+			(void)puts(
+"-------------------- ~ ESCAPES ----------------------------\n"
+"~~             Quote a single tilde\n"
+"~@ [file ...]  Edit attachment list\n"
+"~b users       Add users to \"blind\" cc list\n"
+"~c users       Add users to cc list\n"
+"~d             Read in dead.letter\n"
+"~e             Edit the message buffer\n"
+"~f messages    Read in messages without indenting lines\n"
+"~F messages    Same as ~f, but keep all header lines\n"
+"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n");
+			(void)puts(
+"~r file        Read a file into the message buffer\n"
+"~p             Print the message buffer\n"
+"~q             Abort message composition and save text to dead.letter\n"
+"~m messages    Read in messages with each line indented\n"
+"~M messages    Same as ~m, but keep all header lines\n"
+"~s subject     Set subject\n"
+"~t users       Add users to to list\n"
+"~v             Invoke display editor on message\n"
+"~w file        Write message onto file\n"
+"~x             Abort message composition and discard text written so far\n");
+			(void)puts(
+"~!command      Invoke the shell\n"
+"~:command      Execute a regular command\n"
+"-----------------------------------------------------------\n");
+			break;
+
 		}
 	}
-	goto out;
-err:
+jout:
 	if (collf != NULL) {
-		Fclose(collf);
-		collf = NULL;
-	}
-out:
-	if (collf != NULL) {
-		if ((cp = value("MAILX_TAIL")) != NULL) {
-			if (is_a_tty[0])
-				putesc(cp, stdout);
-			fflush(collf);
-			putesc(cp, collf);
+		if ((cp = value("NAIL_TAIL")) != NULL) {
+			if (putesc(cp, collf) < 0)
+				goto jerr;
+			if ((val & val_INTERACT) && putesc(cp, stdout) < 0)
+				goto jerr;
 		}
 		rewind(collf);
 	}
@@ -921,18 +886,24 @@ out:
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGINT);
 	sigaddset(&nset, SIGHUP);
-#ifndef OLDBUG
-	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
-#else
-	sigprocmask(SIG_BLOCK, &nset, &oset);
-#endif
+	sigprocmask(SIG_BLOCK, &nset, (sigset_t*)NULL);
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGHUP, savehup);
 	safe_signal(SIGTSTP, savetstp);
 	safe_signal(SIGTTOU, savettou);
 	safe_signal(SIGTTIN, savettin);
-	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
-	return collf;
+	sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
+	return (collf);
+jerr:
+	if (tempMail != NULL) {
+		rm(tempMail);
+		Ftfree(&tempMail);
+	}
+	if (collf != NULL) {
+		Fclose(collf);
+		collf = NULL;
+	}
+	goto jout;
 }
 
 /*
@@ -1181,6 +1152,7 @@ collint(int s)
 static void 
 collhup(int s)
 {
+	(void)s;
 	rewind(collf);
 	savedeadletter(collf);
 	/*
@@ -1225,22 +1197,26 @@ putesc(const char *s, FILE *stream)
 	while (s[0]) {
 		if (s[0] == '\\') {
 			if (s[1] == 't') {
-				putc('\t', stream);
+				if (putc('\t', stream) == EOF)
+					return (-1);
 				n++;
 				s += 2;
 				continue;
 			}
 			if (s[1] == 'n') {
-				putc('\n', stream);
+				if (putc('\n', stream) == EOF)
+					return (-1);
 				n++;
 				s += 2;
 				continue;
 			}
 		}
-		putc(s[0]&0377, stream);
+		if (putc(s[0], stream) == EOF)
+			return (-1);
 		n++;
 		s++;
 	}
-	putc('\n', stream);
-	return ++n;
+	if (putc('\n', stream) == EOF)
+		return (-1);
+	return (++n);
 }

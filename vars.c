@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,12 +37,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)vars.c	2.12 (gritter) 10/1/08";
-#endif
-#endif /* not lint */
-
 #include "rcv.h"
 #include "extern.h"
 
@@ -53,7 +48,7 @@ static char sccsid[] = "@(#)vars.c	2.12 (gritter) 10/1/08";
 
 static char *canonify(const char *vn);
 static void vfree(char *cp);
-static struct var *lookup(const char *name);
+static struct var *lookup(const char *name, int h);
 static void remove_grouplist(struct grouphead *gh);
 
 /*
@@ -67,14 +62,13 @@ static void remove_grouplist(struct grouphead *gh);
 static char *
 canonify(const char *vn)
 {
-	const char	*vp;
+	const char *vp;
 
-	if (upperchar(*vn&0377))
-		return (char *)vn;
-	for (vp = vn; *vp && *vp != '@'; vp++);
-	if (*vp == '@')
-		return i_strdup(vn);
-	return (char *)vn;
+	if (upperchar(*vn))
+		return ((char*)vn);
+	for (vp = vn; *vp && *vp != '@'; vp++)
+		;
+	return ((*vp == '@') ? i_strdup(vn) : (char*)vn);
 }
 
 /*
@@ -88,9 +82,10 @@ assign(const char *name, const char *value)
 
 	name = canonify(name);
 	h = hash(name);
-	vp = lookup(name);
+
+	vp = lookup(name, h);
 	if (vp == NULL) {
-		vp = (struct var *)scalloc(1, sizeof *vp);
+		vp = (struct var*)scalloc(1, sizeof *vp);
 		vp->v_name = vcopy(name);
 		vp->v_link = variables[h];
 		variables[h] = vp;
@@ -120,15 +115,15 @@ vfree(char *cp)
 char *
 vcopy(const char *str)
 {
-	char *new;
+	char *news;
 	unsigned len;
 
 	if (*str == '\0')
 		return "";
 	len = strlen(str) + 1;
-	new = smalloc(len);
-	memcpy(new, str, (int) len);
-	return new;
+	news = smalloc(len);
+	memcpy(news, str, (int)len);
+	return (news);
 }
 
 /*
@@ -140,31 +135,38 @@ char *
 value(const char *name)
 {
 	struct var *vp;
-	char	*vs;
+	char *vs;
 
 	name = canonify(name);
-	if ((vp = lookup(name)) == NULL) {
+	if ((vp = lookup(name, -1)) == NULL) {
 		if ((vs = getenv(name)) != NULL && *vs)
 			vs = savestr(vs);
-		return vs;
+		return (vs);
 	}
-	return vp->v_value;
+	return (vp->v_value);
 }
 
 /*
- * Locate a variable and return its variable
- * node.
+ * Locate a variable and return its variable node.
  */
-
 static struct var *
-lookup(const char *name)
+lookup(const char *name, int h)
 {
-	struct var *vp;
+	struct var **vap, *lvp, *vp;
 
-	for (vp = variables[hash(name)]; vp != NULL; vp = vp->v_link)
-		if (*vp->v_name == *name && equal(vp->v_name, name))
-			return(vp);
-	return(NULL);
+	vap = variables + ((h >= 0) ? h : hash(name));
+
+	for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
+		if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0) {
+			/* Relink as head, hope it "sorts on usage" over time */
+			if (lvp != NULL) {
+				lvp->v_link = vp->v_link;
+				vp->v_link = *vap;
+				*vap = vp;
+			}
+			return (vp);
+		}
+	return (NULL);
 }
 
 /*
@@ -177,7 +179,7 @@ findgroup(char *name)
 	struct grouphead *gh;
 
 	for (gh = groups[hash(name)]; gh != NULL; gh = gh->g_link)
-		if (*gh->g_name == *name && equal(gh->g_name, name))
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0)
 			return(gh);
 	return(NULL);
 }
@@ -205,6 +207,7 @@ printgroup(char *name)
 /*
  * Hash the passed string and return an index into
  * the variable or group hash table.
+ * Use Chris Torek's hash algorithm.
  */
 int 
 hash(const char *name)
@@ -212,7 +215,7 @@ hash(const char *name)
 	int h = 0;
 
 	while (*name) {
-		h <<= 2;
+		h *= 33;
 		h += *name++;
 	}
 	if (h < 0 && (h = -h) < 0)
@@ -223,32 +226,26 @@ hash(const char *name)
 int 
 unset_internal(const char *name)
 {
-	struct var *vp, *vp2;
 	int h;
+	struct var *vp;
 
 	name = canonify(name);
-	if ((vp2 = lookup(name)) == NULL) {
-		if (!sourcing && !unset_allow_undefined) {
-			printf(catgets(catd, CATSET, 203,
-				"\"%s\": undefined variable\n"), name);
-			return 1;
-		}
-		return 0;
-	}
 	h = hash(name);
-	if (vp2 == variables[h]) {
-		variables[h] = variables[h]->v_link;
-		vfree(vp2->v_name);
-		vfree(vp2->v_value);
-		free(vp2);
-		return 0;
+
+	if ((vp = lookup(name, h)) == NULL) {
+		if (! sourcing && ! unset_allow_undefined) {
+			printf(tr(203, "\"%s\": undefined variable\n"), name);
+			return (1);
+		}
+		return (0);
 	}
-	for (vp = variables[h]; vp->v_link != vp2; vp = vp->v_link);
-	vp->v_link = vp2->v_link;
-	vfree(vp2->v_name);
-	vfree(vp2->v_value);
-	free(vp2);
-	return 0;
+
+	/* Always listhead after lookup() */
+	variables[h] = variables[h]->v_link;
+	vfree(vp->v_name);
+	vfree(vp->v_value);
+	free(vp);
+	return (0);
 }
 
 static void
@@ -272,7 +269,7 @@ remove_group(const char *name)
 	int h = hash(name);
 
 	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
-		if (*gh->g_name == *name && equal(gh->g_name, name)) {
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
 			remove_grouplist(gh);
 			vfree(gh->g_name);
 			if (gp != NULL)

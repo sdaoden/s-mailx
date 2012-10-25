@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Derived from:
@@ -30,10 +31,12 @@ Appendix -- Sample Code
    vectors (the code is based on MD5 code as described in [MD5]).
 */
 
-/*	Sccsid @(#)hmac.c	1.8 (gritter) 3/4/06	*/
-
 #include "rcv.h"
 #include "md5.h"
+
+#ifndef USE_MD5
+typedef int avoid_empty_file_compiler_warning;
+#else
 
 /*
 ** Function: hmac_md5
@@ -111,3 +114,4 @@ hmac_md5 (
 					      * hash */
 	MD5Final(digest, &context);	     /* finish up 2nd pass */
 }
+#endif /* USE_MD5 */

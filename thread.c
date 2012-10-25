@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)thread.c	1.57 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
 
 #include "config.h"
 
@@ -118,7 +113,7 @@ mhash(const char *cp, int mprime)
 			h = h ^ g;
 		}
 	}
-	return at ? h % mprime : mprime;
+	return at ? h % (unsigned int)mprime : (unsigned int)mprime;
 }
 
 #define	NOT_AN_ID	((struct mitem *)-1)
@@ -133,13 +128,13 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
 	struct mitem	*mp;
 	unsigned	h, c, n = 0;
 
-	if (id == NULL && (id = hfield("message-id", mdata)) == NULL)
+	if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
 		return NULL;
 	if (mdata && mdata->m_idhash)
 		h = ~mdata->m_idhash;
 	else {
 		h = mhash(id, mprime);
-		if (h == mprime)
+		if (h == (unsigned int)mprime)
 			return NOT_AN_ID;
 	}
 	mp = &mt[c = h];
@@ -148,7 +143,7 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
 			break;
 		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
 		n++;
-		while (c >= mprime)
+		while (c >= (unsigned int)mprime)
 			c -= mprime;
 		mp = &mt[c];
 	}
@@ -330,7 +325,7 @@ lookup(struct message *m, struct mitem *mi, int mprime)
 	if (m->m_flag & MHIDDEN)
 		return;
 	dist = 1;
-	if ((cp = hfield("in-reply-to", m)) != NULL) {
+	if ((cp = hfield1("in-reply-to", m)) != NULL) {
 		if ((np = extract(cp, GREF)) != NULL)
 			do {
 				if ((ip = mlook(np->n_name, mi, NULL, mprime))
@@ -340,7 +335,7 @@ lookup(struct message *m, struct mitem *mi, int mprime)
 				}
 			} while ((np = np->n_flink) != NULL);
 	}
-	if ((cp = hfield("references", m)) != NULL) {
+	if ((cp = hfield1("references", m)) != NULL) {
 		if ((np = extract(cp, GREF)) != NULL) {
 			while (np->n_flink != NULL)
 				np = np->n_flink;
@@ -373,7 +368,7 @@ makethreads(struct message *m, long count, int newmail)
 		if ((m[i].m_flag&MHIDDEN) == 0) {
 			mlook(NULL, mt, &m[i], mprime);
 			if (m[i].m_date == 0) {
-				if ((cp = hfield("date", &m[i])) != NULL)
+				if ((cp = hfield1("date", &m[i])) != NULL)
 					m[i].m_date = rfctime(cp);
 			}
 		}
@@ -570,7 +565,7 @@ sort(void *vp)
 			switch (method) {
 			case SORT_DATE:
 				if (mp->m_date == 0 &&
-						(cp = hfield("date", mp)) != 0)
+						(cp = hfield1("date", mp)) != 0)
 					mp->m_date = rfctime(cp);
 				ms[n].ms_u.ms_long = mp->m_date;
 				break;
@@ -598,7 +593,7 @@ sort(void *vp)
 				break;
 			case SORT_FROM:
 			case SORT_TO:
-				if ((cp = hfield(method == SORT_FROM ?
+				if ((cp = hfield1(method == SORT_FROM ?
 						"from" : "to", mp)) != NULL) {
 					ms[n].ms_u.ms_char = showname ?
 						realname(cp) : skin(cp);
@@ -608,7 +603,7 @@ sort(void *vp)
 				break;
 			default:
 			case SORT_SUBJECT:
-				if ((cp = hfield("subject", mp)) != NULL) {
+				if ((cp = hfield1("subject", mp)) != NULL) {
 					in.s = cp;
 					in.l = strlen(in.s);
 					mime_fromhdr(&in, &out, TD_ICONV);
@@ -645,12 +640,10 @@ sort(void *vp)
 static char *
 skipre(const char *cp)
 {
-	if (lowerconv(cp[0]&0377) == 'r' &&
-			lowerconv(cp[1]&0377) == 'e' &&
-			cp[2] == ':' &&
-			spacechar(cp[3]&0377)) {
+	if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' &&
+			cp[2] == ':' && spacechar(cp[3])) {
 		cp = &cp[4];
-		while (spacechar(*cp&0377))
+		while (spacechar(*cp))
 			cp++;
 	}
 	return (char *)cp;

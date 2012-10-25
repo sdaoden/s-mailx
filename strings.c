@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,22 +37,18 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)strings.c	2.6 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
-
 /*
  * Mail -- a mail program
  *
- * String allocation routines.
+ * String allocation routines and support routines that build on top of them.
  * Strings handed out here are reclaimed at the top of the command
  * loop each time, so they need not be freed.
  */
 
 #include "rcv.h"
 #include "extern.h"
+
+#include <stdarg.h>
 
 /*
  * Allocate size more bytes of space and return the address of the
@@ -60,12 +57,11 @@ static char sccsid[] = "@(#)strings.c	2.6 (gritter) 3/4/06";
  * The string spaces are of exponentially increasing size, to satisfy
  * the occasional user with enormous string size requests.
  */
-
 void *
 salloc(size_t size)
 {
 	char *t;
-	int s;
+	unsigned int s;
 	struct strings *sp;
 	int string_index;
 
@@ -81,7 +77,7 @@ salloc(size_t size)
 		string_index++;
 	}
 	if (sp >= &stringdope[NSPACE])
-		panic(catgets(catd, CATSET, 195, "String too large"));
+		panic(tr(195, "String too large"));
 	if (sp->s_topFree == NULL) {
 		string_index = sp - &stringdope[0];
 		sp->s_topFree = smalloc(STRINGSIZE << string_index);
@@ -97,7 +93,7 @@ salloc(size_t size)
 void *
 csalloc(size_t nmemb, size_t size)
 {
-	void	*vp;
+	void *vp;
 
 	vp = salloc(nmemb * size);
 	memset(vp, 0, nmemb * size);
@@ -138,4 +134,94 @@ spreserve(void)
 
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++)
 		sp->s_topFree = NULL;
+}
+
+/*
+ * Return a pointer to a dynamic copy of the argument.
+ */
+char *
+savestr(const char *str)
+{
+	char *news;
+	int size = strlen(str) + 1;
+
+	if ((news = salloc(size)) != NULL)
+		memcpy(news, str, size);
+	return (news);
+}
+
+/*
+ * Return new string copy of a non-terminated argument.
+ */
+char *
+savestrbuf(const char *sbuf, size_t sbuf_len)
+{
+	char *news;
+
+	if ((news = salloc(sbuf_len + 1)) != NULL) {
+		memcpy(news, sbuf, sbuf_len);
+		news[sbuf_len] = 0;
+	}
+	return (news);
+}
+
+/*
+ * Make a copy of new argument incorporating old one.
+ */
+char *
+save2str(const char *str, const char *old)
+{
+	char *news;
+	int newsize = strlen(str) + 1;
+	int oldsize = old ? strlen(old) + 1 : 0;
+
+	if ((news = salloc(newsize + oldsize)) != NULL) {
+		if (oldsize) {
+			memcpy(news, old, oldsize);
+			news[oldsize - 1] = ' ';
+		}
+		memcpy(news + oldsize, str, newsize);
+	}
+	return (news);
+}
+
+char *
+savecat(const char *s1, const char *s2)
+{
+	const char *cp;
+	char *ns, *np;
+
+	np = ns = salloc(strlen(s1) + strlen(s2) + 1);
+	for (cp = s1; *cp; cp++)
+		*np++ = *cp;
+	for (cp = s2; *cp; cp++)
+		*np++ = *cp;
+	*np = '\0';
+	return ns;
+}
+
+struct str *
+str_concat_csvl(struct str *self, ...)
+{
+	va_list vl;
+	size_t l;
+	char const*cs;
+
+	va_start(vl, self);
+	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
+		l += strlen(cs);
+	va_end(vl);
+
+	self->l = l;
+	self->s = salloc(l + 1);
+
+	va_start(vl, self);
+	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
+		size_t i = strlen(cs);
+		memcpy(self->s + l, cs, i);
+		l += i;
+	}
+	self->s[l] = '\0';
+	va_end(vl);
+	return (self);
 }

@@ -1,65 +1,229 @@
-Before you start making additions to mailx, subscribe to the development
-mailing list at <https://lists.sourceforge.net/lists/listinfo/nail-devel>
+TODO reminder.
+Before you start making additions to (Heirloom mailx and) S-nail,
+subscribe to the development mailing list at
+<https://lists.sourceforge.net/lists/listinfo/nail-devel>
 to coordinate your efforts with the maintainer and other people.
 
-------------------------------------------------------------------------
-The following features are missing for conformance with the Single Unix
-Specification, v.3:
+Backward-compatibility breakers
+-------------------------------
 
-* LC_TIME environment. This conflicts with the mail RFCs and historical
-  usage. It was optional POSIX.2, but the newer standards mention this
-  in the rationale only. Won't be implemented here.
+- Recipients specified on the command line should be added to those
+  specified in the message when the -t option is set.
 
-* onehop variable (not demanded by POSIX standards). Seems absolutely
-  obsolete. If anybody has a need for it, he should contribute code.
+- The -q option makes me sad as it doesn't use *indentprefix* for the
+  quoted file.  So either there should be -Q which does so, or -q should be
+  changed.  Also see ~R below.
+  [Note: i think i go for the latter.  Please complain.]
 
-------------------------------------------------------------------------
-The following IMAP features could be implemented in the future. If you
-need them and cannot wait, contribute code.
+- NetBSD mailx(1) removes all recipients in up Cc: and To: that are also
+  specified in Bcc.  I think some kind of "yet-exists stack" as in
+  Cc:->To:->Bcc would be a win.
 
-- The MIME capabilities of IMAP could be used so that not entire messages
-  are downloaded all the time, but just the parts that are actually needed.
+- At least optionally disallow silent discarding of invalid addresses,
+  i.e., cause sending to be aborted if not all recipient addresses pass the
+  validity test.
 
-- SASL authentication methods could be implemented.
+- Ditto if a resource file can't be found that has been explicitly set via
+  environment variables there should be some feedback.
 
-- The deletion code (more general, all STORE code) should be able to
-  generate requests for ranges of messages to speed up operation.
+- [v13:started] IIRC some error messages go to STDOUT, some to STDERR.
+  Only latter.
 
-- Large messages should be transferred in separate parts with IMAP so
-  that the operation can be interrupted in between.
+- IIRC i saw invocations that returned with a 0 exit status and that
+  surprised me, then.  Errors should truly be reported.
 
-------------------------------------------------------------------------
+- POSIX says that, when written to DEAD: "If the file exists, the message
+  shall be written to replace the contents of the file".  This is mentioned
+  for ASYNCHRONOUS EVENTS, but it's the only description of what should be
+  done in which way to DEAD.  savedeadletter() yet appends.  See ZOMBIE ,)
 
-The POP3 client supports USER/PASS and APOP authentications only. If you
-need other authentication methods and have the ability to test them,
-please write and contribute code.
+- Furthermore, *all* file operations yet append, even recipient target
+  files are appended.  I don't know if this is really desirable behaviour,
+  but i have not thought about that for real.  Maybe this should be at
+  least configurable.
 
-A variable should be added to specify the default character set for
-messages without MIME declarations.
+- Implement true RFC 4155 MBOX parsing; since that may not work with
+  incompatible mailboxes (any?), add an option to turn this behaviour off.
+  (The code practically exists already for many years, almost complete..)
 
-If you want to edit arbitrary header fields with the 'editheaders'
-option, you are invited to supply code for it. Be warned that this
-is a nontrivial task due to MIME. Contact the development mailing
-list before you start coding.
+- The current maintainer hates the way the command line arguments are
+  processed.  Because, many things that come in from the command line may
+  depend on what the configuration files say.
+  It would be much better to collect the command line once, then load all
+  the configuration files that are desired, then process the command line
+  again (that way most likely faster than creating dynamic storage for all
+  the command line arguments).  This will enable +PATH expansions for
+  attachments, IDNA settings for addresses etc.  Until then -Svariable sets
+  its argument after loading of the RC files as documented, *and* directly
+  once parsed.
 
-Several people have suggested adding support for arrow keys at the
-command prompt, autocompletion for attachment filenames, etc. I am
-personally not going to implement this as X Window Copy-and-Paste
-satisfies me. But if you desparately need it, you're invited to
-contribute code. You can't use libreadline, though, because its
-license is incompatible, and I insist that your implementation
-is done in a way that a) mailx can still be compiled without
-requiring any further libraries (i. e. your code is optional)
-and b) your code works for all kinds of terminals, not just
-VT100/ANSI ones.
+Non-breakers
+------------
 
-Mailx will not support 'Return-Receipt-To' or 'Disposition-Notification-To'
-header fields, neither for the sending nor for the receiving part.
-For the sending part it plainly doesn't work because one wants to
-know whether the human recipient has read the mail and not if he
-clicked on some send-a-receipt-button while looking out of the
-window. For the receiving part, it is simply annoying. If you want
-a confirmation, ask the recipient to send one in the body of the
-message.
+- [v13:started] Reformat the manual.
+  roff style is fine, but lines should be ~70 characters, not only ~25.
 
-	Gunnar Ritter					3/4/06
+- IDNA decoding.  It may be that this will never be supported.  But
+  wouldn't it be nice for at least viewing messages?
+
+- Mail-Followup-To:.
+
+- Make it possible to reply to/save/write/xy part X.Y[.Z] by allowing its
+  specification directly, as in, e.g., ':w 1.2'.  If doing so on an
+  embedded message/rfc822, e.g., a message embedded in a digest, it should
+  be possible to reply to the very message in respect to its header fields,
+  but (optionally?) keep the original Cc:'d.  (Parts by Martin Neitzel)
+
+- Yet the first part is used for forwarding and replying etc..  In MIME
+  multipart messages it is however possible to make the HTML version the
+  first, etc., so in case the normal "pick first part" algorithm is used
+  that should maybe do "pick first plain text part if present, else first"
+  insteadl.
+
+- If pipes fail for part viewers then at least the usual PART X.Y should be
+  shown, maybe even including some error message.
+  I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
+  does not have lynx(1), and i thought i've found a S-nail(1) bug.
+  And so it was.
+  In general it would be nice if not everything would be suppressed by
+  default.  If i only see PART X.Y .. it may be just about anything, and
+  i don't want to "P" all the header stuff just to see that.  One should
+  see at a glance what content the part contains.
+
+- I want to have a ~R tilde command that works like ~r except it performs
+  quoting of the input just as ~m does.  Also see -q above.
+
+- Offer the possibility to work with certificate fingerprints instead of
+  full certificates, in equal spirit to the current maintainers S-Postman
+  and Mercurial.  S-nail(1) could simply offer something in equal spirit to
+  the formers --fingerprint, so that no other tool is necessary for
+  certificate management (for secure transport at least).
+
+- It would be nice if it would be possible to define a format string for
+  *quote*, like 'set quote="format=some formats"'.
+
+- Deal with faulty message selection that may occur when selecting threads
+  via & (when at least mixed with other selectors).
+
+- On the long run -- try to add command line editing.
+
+- For those who use S-nail(1) only with a MTA it may be desirable to have
+  some "smopts" expansion mechanism in equal spirit to NetBSD mailx(1).
+
+- While talking about NetBSD mailx(1), the author can imagine that being
+  able to use the optional -H:xy stuff is sometimes nice.
+
+- Add the possibility to simply place whatever header in the editor (and
+  in the mail read in due to the -t command line option, and...).
+
+- Check against RFC 5322.
+  Rework all the header parsing code.  Actually understand the content,
+  classify the stuff so that it matches what is defined in RFC dependent on
+  header field.  Place the result in objects that know what they represent.
+  See the name extraction topic below.
+
+- Also check against newest POSIX.
+  Maybe add a bash(1)ish POSIXLY_CORRECT (or so) variable?  Though..
+
+- Maybe there should be an additional ZOMBIE directive that is served in
+  equal spirit to DEAD, but that could be a valid MBOX... ?
+  What i want is a *real* resend, best if possible from command line.
+  Meaning, also the possibility to postpone a message.  In general.
+
+Low-Level
+---------
+
+- Revise the code:
+  + Add C99-likeish typedefs for integers and use them everywhere.
+  + Don't use magic constants/values.
+  + [v13:started] Use const arguments whenever possible.  Yet started, but
+    with ugly casts at some places because this is a can of worms.
+  + Inline functions?  [Restrict pointers?]
+  + Document the functions in the interface declarators.
+  + [v13:started] Resort the functions and where they are implemented.
+    It's really terrible.  Just think about outof(), savedeadletter(),
+    savemail() etc..
+  + Make more use of struct str, and offer more support functions for it.
+  + Make more use of value carriers in the call stack.  There are functions
+    with an incredible amount of arguments, needlessly.
+  + makeconfig: link_check/compile_check.  More of the latter suffice.
+
+- [v13:started] Improve name extraction rules.  And field parsing.  There
+  are structured and unstructured fields.  There are quoted pairs and
+  comments etc.  Rewrite the entire parsing mechanism to comply to RFC
+  5322, and try to merge all those many subparsers around in the codebase,
+  and accordingly.  So much duplicated work ...
+  Name parsing has been improved a bit for v13, but it's still broken.
+  yankword(), *extract(), etc.: RFC 5322 says that comments in address
+  fields SHOULD NOT be used (mutt(1) maps them to full name-addr forms if
+  approbiate, even if that actually changes content!!?), and that full
+  name-addr SHOULD be used.  Our functions are yet quite silly (i.e.,
+  leading comments remain, as in "(bier2) <a2@b2.de>", unless the address
+  doesn't come in angle brackets, trailing go away, as in "<a6@b6.de>
+  (bier6)", that becomes "<a6@b6.de>").
+  Something silly like
+    (co$mm1) abc@däf.de (cö,mm,2)   ('c'o"m"m.3)
+  Should eventually become
+    co$mm1 cö,mm,2 'c'o"m"m.3 <abc@xn--df-via.de>
+  on the display, or, with IDNA decoding (and thus rather unlikely)
+    co$mm1 cö,mm,2 'c'o"m"m.3 <abc@däf.de>
+  It should NOT become this mutt(1)ism:
+    "co$mm1 cö,mm,2 'c'omm.3" <abc@däf.de>
+  Or?
+
+- Think about a name bypass hashmap cache, and whenever we have to skin or
+  nalloc() or whatever, look in there.  Maybe even an additional link for
+  non GFULL(/GSKIN) and fully skinned struct name objects.
+  The amount of duplicated work in this codebase is frustrating, but the
+  real healing would make necessary a complete rewrite of the name handling!
+  Such a cache would work without touching the current code flow ... or
+  allow a smooth transition to a new one anyway.
+
+- Check all Popen() calls, i've had the impressions that Popen() doesn't
+  close all resources on failure.  Also, Popen() callers often do a lot of
+  work in respect to signals.  Try to find a solution that all problems are
+  encapsulaten in Popen(), at least better than today.
+
+- is_myname() shows it, others too - there are variables which are
+  interpreted, and those should be interpreted once they are assigned, not
+  over and over again.  Even better: lazy evalution -- use a special lookup
+  method for those.  The mentioned method should indeed even go away?
+
+- mime.c:prefixwrite() tracks state internally instead of having a cookie
+  argument.  That doesn't really make sense.  Either it is capable to work
+  with multiple files concurrently and prefix-quotes them correctly in the
+  same fashion, or it doesn't track anything at all.  It even tracked those
+  calls that do not write a prefix at all before, just to make this
+  mechanism work ... Or not?  Well, if you track the last file and if there
+  was a newline last, and you switch files, then the last newline state is
+  lost, and you do write the prefix even if in the other file there was no
+  newline last.  I'm confused now.  Change this, please.
+
+- The current codebase assumes that in multibyte encodings plain ASCII
+  characters can be tested "as-is".  This assumption is wrong for some
+  encodings that use U+001B (escape) or another ASCII thing to introduce
+  shift states.  The only real solution to this problem would be to rewrite
+  the entire codebase and use wide characters (IMO) everywhere.
+  (Really.  For at least header content.)
+
+- It seems some IMAP functions return OKAY even on error.  The current
+  maintainer yet doesn't know what this is about, but surely wants to look
+  at that again later.
+
+- The current maintainer doesn't like longjmp()s.
+
+- The current maintainer doesn't like signals.
+  He suspects many signal related pitfalls in the codebase.
+
+- The current maintainer would like to see that compilation with a C++
+  compiler is possible, though that would be a long way and be especially
+  problematic due to the (C ish) way enums are used.  He never understood
+  why there is not "bitenum", btw.
+
+- The current maintainer worked with all-tabs for almost one and a half
+  decade and turned over to all-spaces afterwards.
+
+Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
+With a clean, conforming and efficient codebase, then.
+
+vim:set fenc=utf-8 syntax=txt ts=8 sts=2 sw=2 et tw=75:

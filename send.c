@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)send.c	2.86 (gritter) 2/4/08";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
@@ -83,16 +78,16 @@ static size_t out(char *buf, size_t len, FILE *fp,
 		char **restp, size_t *restsizep);
 static void addstats(off_t *stats, off_t lines, off_t bytes);
 static FILE *newfile(struct mimepart *ip, int *ispipe,
-		sighandler_type *oldpipe);
+		sighandler_type volatile*oldpipe);
 static char *getpipecmd(char *content);
 static FILE *getpipefile(char *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
 		char *prefix, size_t prefixlen, off_t *stats);
 static void statusput(const struct message *mp, FILE *obuf,
-		char *prefix, off_t *stats);
+		char *prefix, size_t prefixlen, off_t *stats);
 static void xstatusput(const struct message *mp, FILE *obuf,
-		char *prefix, off_t *stats);
-static void put_from_(FILE *fp, struct mimepart *ip);
+		char *prefix, size_t prefixlen, off_t *stats);
+static void put_from_(FILE *fp, struct mimepart *ip, off_t *stats);
 
 static sigjmp_buf	pipejmp;
 
@@ -100,6 +95,7 @@ static sigjmp_buf	pipejmp;
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -117,47 +113,38 @@ int
 send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		char *prefix, enum sendaction action, off_t *stats)
 {
-	size_t	count;
-	FILE	*ibuf;
-	size_t	prefixlen, sz;
-	int	c;
-	enum parseflags	pf;
-	struct mimepart	*ip;
-	char	*cp, *cp2;
+	size_t prefixlen, count, sz, i;
+	FILE *ibuf;
+	int c;
+	enum parseflags pf;
+	struct mimepart *ip;
 
 	if (mp == dot && action != SEND_TOSRCH && action != SEND_TOFLTR)
 		did_print_dot = 1;
 	if (stats)
 		stats[0] = stats[1] = 0;
-	/*
-	 * Compute the prefix string, without trailing whitespace
-	 */
-	if (prefix != NULL) {
-		cp2 = 0;
-		for (cp = prefix; *cp; cp++)
-			if (!blankchar(*cp & 0377))
-				cp2 = cp;
-		prefixlen = cp2 == 0 ? 0 : cp2 - prefix + 1;
-	} else
-		prefixlen = 0;
+	prefixlen = (prefix != NULL) ? strlen(prefix) : 0;
+
 	/*
 	 * First line is the From_ line, so no headers there to worry about.
 	 */
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-		return -1;
+		return (-1);
 	count = mp->m_size;
 	sz = 0;
 	if (mp->m_flag & MNOFROM) {
 		if (doign != allignore && doign != fwdignore &&
 				action != SEND_RFC822)
-			sz = fprintf(obuf, "%sFrom %s %s\n",
-					prefix ? prefix : "",
+			sz = fprintf(obuf, "%.*sFrom %s %s\n",
+					(int)prefixlen, prefixlen ? prefix :"",
 					fakefrom(mp), fakedate(mp->m_time));
 	} else {
-		if (prefix && doign != allignore && doign != fwdignore &&
+		if (prefixlen && doign != allignore && doign != fwdignore &&
 				action != SEND_RFC822) {
-			fputs(prefix, obuf);
-			sz += strlen(prefix);
+			i = fwrite(prefix, sizeof *prefix, prefixlen, obuf);
+			if (i != prefixlen)
+				return (-1);
+			sz += i;
 		}
 		while (count && (c = getc(ibuf)) != EOF) {
 			if (doign != allignore && doign != fwdignore &&
@@ -176,41 +163,26 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
 		pf |= PARSE_DECRYPT|PARSE_PARTS;
 	if ((ip = parsemsg(mp, pf)) == NULL)
-		return -1;
-	return sendpart(mp, ip, obuf, doign, prefix, prefixlen, action, stats,
-			0);
+		return (-1);
+	return (sendpart(mp, ip, obuf, doign, prefix, prefixlen, action, stats,
+			0));
 }
 
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
-		enum sendaction action, off_t *stats, int level)
+		enum sendaction action, off_t *volatile stats, int level)
 {
-	char	*line = NULL;
-	size_t	linesize = 0, linelen, count, len;
-	int	dostat, infld = 0, ignoring = 1, isenc;
-	char	*cp, *cp2, *start;
-	int	c;
+	char *line = NULL, *cp, *cp2, *start, *tcs, *pipecmd = NULL, *rest;
+	size_t linesize = 0, linelen, count, len, restsize;
+	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
 	struct mimepart	*np;
-	FILE	*ibuf = NULL, *pbuf = obuf, *qbuf = obuf, *origobuf = obuf;
-	char	*tcs, *pipecmd = NULL;
-	enum conversion	convert;
-	sighandler_type	oldpipe = SIG_DFL;
-	int	rt = 0;
-	long	lineno = 0;
-	int ispipe = 0;
-	char	*rest;
-	size_t	restsize;
-	int	eof;
+	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
+		*volatile qbuf = obuf, *origobuf = obuf;
+	enum conversion	volatile convert;
+	sighandler_type	volatile oldpipe = SIG_DFL;
+	long lineno = 0;
 
-	(void)&ibuf;
-	(void)&pbuf;
-	(void)&convert;
-	(void)&oldpipe;
-	(void)&rt;
-	(void)&obuf;
-	(void)&stats;
-	(void)&action;
 	if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
 			action != SEND_MBOX && action != SEND_RFC822 &&
 			action != SEND_SHOW)
@@ -241,6 +213,18 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
 			action == SEND_TOSRCH || action == SEND_TOFLTR ?
 		CONV_FROMHDR : CONV_NONE;
+
+	/*
+	 * Normally headers included in "Content-Type: message/rfc822" messages
+	 * will not show up in replies to the encapsulating envelope.
+	 * This is nail(1) specific and thus may be configured differently.
+	 */
+	if (ip->m_mimecontent == MIME_TEXT_PLAIN && ip->m_parent != NULL &&
+			ip->m_parent->m_mimecontent == MIME_822 &&
+			value("rfc822-show-all"))
+		goto skip;
+
+	/* Work the headers */
 	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
 		lineno++;
 		if (line[0] == '\n') {
@@ -251,9 +235,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 * fields
 			 */
 			if (dostat & 1)
-				statusput(zmp, obuf, prefix, stats);
+				statusput(zmp, obuf, prefix, prefixlen, stats);
 			if (dostat & 2)
-				xstatusput(zmp, obuf, prefix, stats);
+				xstatusput(zmp, obuf, prefix, prefixlen, stats);
 			if (doign != allignore)
 				out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
 						prefix, prefixlen, stats,
@@ -289,9 +273,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * there are no headers at all.
 				 */
 				if (dostat & 1)
-					statusput(zmp, obuf, prefix, stats);
+					statusput(zmp, obuf, prefix, prefixlen,
+						stats);
 				if (dostat & 2)
-					xstatusput(zmp, obuf, prefix, stats);
+					xstatusput(zmp, obuf, prefix,
+						prefixlen, stats);
 				if (doign != allignore)
 					out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
 						prefix, prefixlen, stats,
@@ -312,7 +298,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				  * and print the real Status: field
 				  */
 				if (dostat & 1) {
-					statusput(zmp, obuf, prefix, stats);
+					statusput(zmp, obuf, prefix, prefixlen,
+						stats);
 					dostat &= ~1;
 					ignoring = 1;
 				}
@@ -322,7 +309,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * and print the real Status: field
 				 */
 				if (dostat & 2) {
-					xstatusput(zmp, obuf, prefix, stats);
+					xstatusput(zmp, obuf, prefix,
+						prefixlen, stats);
 					dostat &= ~2;
 					ignoring = 1;
 				}
@@ -384,6 +372,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	}
 	free(line);
 	line = NULL;
+
 skip:	switch (ip->m_mimecontent) {
 	case MIME_822:
 		switch (action) {
@@ -394,14 +383,23 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			put_from_(obuf, ip->m_multipart);
+			if (! value("rfc822-no-body-from_")) {
+				if (prefixlen && value("rfc822-show-all")) {
+					size_t i = fwrite(prefix,
+						sizeof *prefix, prefixlen,
+						obuf);
+					if (i == prefixlen)
+						addstats(stats, 0, i);
+				}
+				put_from_(obuf, ip->m_multipart, stats);
+			}
 			/*FALLTHRU*/
 		case SEND_TOSRCH:
 		case SEND_DECRYPT:
 			goto multi;
 		case SEND_TOFILE:
 		case SEND_TOPIPE:
-			put_from_(obuf, ip->m_multipart);
+			put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_MBOX:
 		case SEND_RFC822:
@@ -513,7 +511,8 @@ skip:	switch (ip->m_mimecontent) {
 						break;
 					stats = NULL;
 					if ((obuf = newfile(np, &ispipe,
-							&oldpipe)) == NULL)
+								&oldpipe))
+							== NULL)
 						continue;
 					break;
 				case SEND_TODISP:
@@ -632,7 +631,7 @@ skip:	switch (ip->m_mimecontent) {
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
 			pipecmd != NULL) {
 		qbuf = obuf;
-		pbuf = getpipefile(pipecmd, &qbuf,
+		pbuf = getpipefile(pipecmd, (FILE**)&qbuf,
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {
@@ -724,7 +723,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 {
 	char	*cp;
 
-	ip->m_ct_type = hfield("content-type", (struct message *)ip);
+	ip->m_ct_type = hfield1("content-type", (struct message *)ip);
 	if (ip->m_ct_type != NULL) {
 		ip->m_ct_type_plain = savestr(ip->m_ct_type);
 		if ((cp = strchr(ip->m_ct_type_plain, ';')) != NULL)
@@ -733,16 +732,17 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		ip->m_ct_type_plain = "message/rfc822";
 	else
 		ip->m_ct_type_plain = "text/plain";
+
 	ip->m_mimecontent = mime_getcontent(ip->m_ct_type_plain);
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
 		ip->m_charset = us_ascii;
-	ip->m_ct_transfer_enc = hfield("content-transfer-encoding",
+	ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
 			(struct message *)ip);
 	ip->m_mimeenc = ip->m_ct_transfer_enc ?
 		mime_getenc(ip->m_ct_transfer_enc) : MIME_7B;
-	if ((cp = hfield("content-disposition", (struct message *)ip)) == 0 ||
+	if ((cp = hfield1("content-disposition", (struct message *)ip)) == 0 ||
 			(ip->m_filename = mime_getparam("filename", cp)) == 0)
 		if (ip->m_ct_type != NULL)
 			ip->m_filename = mime_getparam("name", ip->m_ct_type);
@@ -911,8 +911,10 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
 	ip->m_multipart = np;
-	substdate((struct message *)np);
-	np->m_from = fakefrom((struct message *)np);
+	if (! value("rfc822-no-body-from_")) {
+		substdate((struct message *)np);
+		np->m_from = fakefrom((struct message *)np);
+	}
 	parsepart(zmp, np, pf, level+1);
 }
 
@@ -925,8 +927,8 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	char	*to, *cc;
 
 	memcpy(&m, ip, sizeof m);
-	to = hfield("to", zmp);
-	cc = hfield("cc", zmp);
+	to = hfield1("to", zmp);
+	cc = hfield1("cc", zmp);
 	if ((xmp = smime_decrypt(&m, to, cc, 0)) != NULL) {
 		np = csalloc(1, sizeof *np);
 		np->m_flag = xmp->m_flag;
@@ -1005,11 +1007,11 @@ addstats(off_t *stats, off_t lines, off_t bytes)
  * Get a file for an attachment.
  */
 static FILE *
-newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
+newfile(struct mimepart *ip, int *ispipe, sighandler_type volatile*oldpipe)
 {
-	char	*f = ip->m_filename;
-	struct str	in, out;
-	FILE	*fp;
+	char *f = ip->m_filename;
+	struct str in, out;
+	FILE *fp;
 
 	*ispipe = 0;
 	if (f != NULL && f != (char *)-1) {
@@ -1020,12 +1022,24 @@ newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 		*(f + out.l) = '\0';
 		free(out.s);
 	}
+
 	if (value("interactive") != NULL) {
-		printf("Enter filename for part %s (%s)",
-				ip->m_partstring ? ip->m_partstring : "?",
-				ip->m_ct_type_plain);
-		f = readtty(catgets(catd, CATSET, 173, ": "),
-				f != (char *)-1 ? f : NULL);
+		char *f2, *f3;
+jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
+			ip->m_partstring ? ip->m_partstring : "?",
+			ip->m_ct_type_plain);
+		f2 = readtty(": ", f != (char *)-1 ? f : NULL);
+		if (f2 == NULL || *f2 == '\0') {
+			fprintf(stderr, tr(279, "... skipping this\n"));
+			return (NULL);
+		} else if (*f2 == '|')
+			/* Pipes are expanded by the shell */
+			f = f2;
+		else if ((f3 = file_expand(f2)) == NULL)
+			/* (Error message written by file_expand()) */
+			goto jgetname;
+		else
+			f = f3;
 	}
 	if (f == NULL || f == (char *)-1)
 		return NULL;
@@ -1035,7 +1049,7 @@ newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 		cp = value("SHELL");
 		if (cp == NULL)
 			cp = SHELL;
-		fp = Popen(f+1, "w", cp, 1);
+		fp = Popen(f + 1, "w", cp, 1);
 		if (fp == NULL) {
 			perror(f);
 			fp = stdout;
@@ -1045,9 +1059,9 @@ newfile(struct mimepart *ip, int *ispipe, sighandler_type *oldpipe)
 		}
 	} else {
 		if ((fp = Fopen(f, "w")) == NULL)
-			fprintf(stderr, "Cannot open %s\n", f);
+			fprintf(stderr, tr(176, "Cannot open %s\n"), f);
 	}
-	return fp;
+	return (fp);
 }
 
 static char *
@@ -1127,7 +1141,8 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
  * Output a reasonable looking status field.
  */
 static void
-statusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
+statusput(const struct message *mp, FILE *obuf, char *prefix, size_t prefixlen,
+	off_t *stats)
 {
 	char statout[3];
 	char *cp = statout;
@@ -1137,14 +1152,17 @@ statusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
 	if ((mp->m_flag & MNEW) == 0)
 		*cp++ = 'O';
 	*cp = 0;
-	if (statout[0])
-		fprintf(obuf, "%sStatus: %s\n",
-			prefix == NULL ? "" : prefix, statout);
-	addstats(stats, 1, (prefix ? strlen(prefix) : 0) + 9 + cp - statout);
+	if (statout[0]) {
+		int i = fprintf(obuf, "%.*sStatus: %s\n",
+			(int)prefixlen, (prefixlen ? prefix : ""), statout);
+		if (i > 0)
+			addstats(stats, 1, i);
+	}
 }
 
 static void
-xstatusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
+xstatusput(const struct message *mp, FILE *obuf, char *prefix,
+	size_t prefixlen, off_t *stats)
 {
 	char xstatout[4];
 	char *xp = xstatout;
@@ -1156,23 +1174,35 @@ xstatusput(const struct message *mp, FILE *obuf, char *prefix, off_t *stats)
 	if (mp->m_flag & MDRAFTED)
 		*xp++ = 'T';
 	*xp = 0;
-	if (xstatout[0])
-		fprintf(obuf, "%sX-Status: %s\n",
-			prefix == NULL ? "" : prefix, xstatout);
-	addstats(stats, 1, (prefix ? strlen(prefix) : 0) + 11 + xp - xstatout);
+	if (xstatout[0]) {
+		int i = fprintf(obuf, "%.*sX-Status: %s\n",
+			(int)prefixlen, (prefixlen ? prefix : ""), xstatout);
+		if (i > 0)
+			addstats(stats, 1, i);
+	}
 }
 
 static void
-put_from_(FILE *fp, struct mimepart *ip)
+put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 {
-	time_t	now;
+	time_t now;
+	char const *from, *date, *nl;
+	int i;
 
-	if (ip && ip->m_from)
-		fprintf(fp, "From %s %s\n", ip->m_from, fakedate(ip->m_time));
-	else {
+	if (ip && ip->m_from) {
+		from = ip->m_from;
+		date = fakedate(ip->m_time);
+		nl = "\n";
+	} else {
 		time(&now);
-		fprintf(fp, "From %s %s", myname, ctime(&now));
+		from = myname;
+		date = ctime(&now);
+		nl = "";
 	}
+
+	i = fprintf(fp, "From %s %s%s", from, date, nl);
+	if (i > 0)
+		addstats(stats, (*nl != '\0'), i);
 }
 
 /*

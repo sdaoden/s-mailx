@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -34,8 +35,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	Sccsid @(#)glob.h	2.27 (gritter) 6/16/07
  */
 
 /*
@@ -70,7 +69,10 @@ _E char	prevfile[PATHSIZE];		/* Name of previous file */
 _E char	*homedir;			/* Path name of home directory */
 _E char *progname;			/* our name */
 _E char	*myname;			/* My login name */
-extern const char *version;		/* version string */
+_E char		**smopts;		/* sendmail(1) options, command line */
+_E size_t	smopts_count;		/* Entries in smopts */
+_E char const *const uagent;		/* User agent */
+_E char const *const version;		/* The version string */
 _E off_t mailsize;			/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *prevdot;		/* Previous current message */

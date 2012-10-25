@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -36,12 +37,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
-
 #include "config.h"
 
 #include "rcv.h"
@@ -51,7 +46,9 @@ static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
 #include <unistd.h>
 #include <time.h>
 
-#include "md5.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
@@ -59,7 +56,7 @@ static char sccsid[] = "@(#)pop3.c	2.43 (gritter) 3/4/06";
  * POP3 client.
  */
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_POP3
 static int	verbose;
 
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
@@ -89,13 +86,15 @@ static void maincatch(int s);
 static enum okay pop3_noop1(struct mailbox *mp);
 static void pop3alarm(int s);
 static enum okay pop3_pass(struct mailbox *mp, const char *pass);
+#ifdef USE_MD5
 static char *pop3_find_timestamp(const char *bp);
 static enum okay pop3_apop(struct mailbox *mp, char *xuser, const char *pass,
 		const char *ts);
 static enum okay pop3_apop1(struct mailbox *mp,
 		const char *user, const char *xp);
-static int pop3_use_starttls(const char *uhp);
 static int pop3_use_apop(const char *uhp);
+#endif
+static int pop3_use_starttls(const char *uhp);
 static enum okay pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		const char *uhp, const char *xserver);
 static enum okay pop3_stat(struct mailbox *mp, off_t *size, int *count);
@@ -194,6 +193,7 @@ pop3catch(int s)
 static void
 maincatch(int s)
 {
+	(void)s;
 	if (interrupts++ == 0) {
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
 		return;
@@ -240,6 +240,7 @@ pop3alarm(int s)
 {
 	sighandler_type	saveint;
 	sighandler_type savepipe;
+	(void)s;
 
 	if (pop3lock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -275,6 +276,7 @@ pop3_pass(struct mailbox *mp, const char *pass)
 	return OKAY;
 }
 
+#ifdef USE_MD5
 static char *
 pop3_find_timestamp(const char *bp)
 {
@@ -343,6 +345,18 @@ pop3_apop1(struct mailbox *mp, const char *user, const char *xp)
 }
 
 static int 
+pop3_use_apop(const char *uhp)
+{
+	char	*var;
+
+	if (value("pop3-use-apop"))
+		return 1;
+	var = savecat("pop3-use-apop-", uhp);
+	return value(var) != NULL;
+}
+#endif /* USE_MD5 */
+
+static int 
 pop3_use_starttls(const char *uhp)
 {
 	char	*var;
@@ -353,31 +367,26 @@ pop3_use_starttls(const char *uhp)
 	return value(var) != NULL;
 }
 
-static int 
-pop3_use_apop(const char *uhp)
-{
-	char	*var;
-
-	if (value("pop3-use-apop"))
-		return 1;
-	var = savecat("pop3-use-apop-", uhp);
-	return value(var) != NULL;
-}
-
 static enum okay 
 pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		const char *uhp, const char *xserver)
 {
-	char o[LINESIZE], *user, *ts = NULL, *server, *cp;
+	char o[LINESIZE], *user, *server, *cp;
+#ifdef USE_MD5
+	char *ts = NULL;
+#endif
 
 	POP3_ANSWER()
+#ifdef USE_MD5
 	if (pop3_use_apop(uhp)) {
 		if ((ts = pop3_find_timestamp(pop3buf)) == NULL) {
-			fprintf(stderr, "Could not determine timestamp from "
-				"server greeting. Impossible to use APOP.\n");
+			fprintf(stderr, tr(276,
+				"Could not determine timestamp from "
+				"server greeting.  Can't use APOP.\n"));
 			return STOP;
 		}
 	}
+#endif
 	if ((cp = strchr(xserver, ':')) != NULL) {
 		server = salloc(cp - xserver + 1);
 		memcpy(server, xserver, cp - xserver);
@@ -397,8 +406,10 @@ pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		return STOP;
 	}
 #endif	/* !USE_SSL */
+#ifdef USE_MD5
 	if (ts != NULL)
 		return pop3_apop(mp, xuser, pass, ts);
+#endif
 retry:	if (xuser == NULL) {
 		if ((user = getuser()) == NULL)
 			return STOP;
@@ -479,7 +490,7 @@ pop3_init(struct mailbox *mp, int n)
 	m->m_block = 0;
 	m->m_offset = 0;
 	pop3_list(mp, m - message + 1, &m->m_xsize);
-	if ((cp = hfield("status", m)) != NULL) {
+	if ((cp = hfield1("status", m)) != NULL) {
 		while (*cp != '\0') {
 			if (*cp == 'R')
 				m->m_flag |= MREAD;
@@ -495,6 +506,7 @@ static void
 pop3_dates(struct mailbox *mp)
 {
 	int	i;
+	(void)mp;
 
 	for (i = 0; i < msgCount; i++)
 		substdate(&message[i]);
@@ -535,22 +547,19 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 	char *user;
-	const char *cp, *sp = server, *pass, *uhp;
+	const char *cp, *uhp, *volatile pass, *volatile sp = server;
 	int use_ssl = 0;
 
-	(void)&sp;
-	(void)&use_ssl;
-	(void)&user;
 	if (newmail)
 		return 1;
 	if (strncmp(sp, "pop3://", 7) == 0) {
 		sp = &sp[7];
 		use_ssl = 0;
-#ifdef	USE_SSL
+#ifdef USE_SSL
 	} else if (strncmp(sp, "pop3s://", 8) == 0) {
 		sp = &sp[8];
 		use_ssl = 1;
-#endif	/* USE_SSL */
+#endif
 	}
 	uhp = sp;
 	pass = pop3_have_password(uhp);
@@ -631,15 +640,13 @@ pop3_setfile(const char *server, int newmail, int isedit)
 }
 
 static enum okay 
-pop3_get(struct mailbox *mp, struct message *m, enum needspec need)
+pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 {
-	sighandler_type	saveint = SIG_IGN;
-	sighandler_type savepipe = SIG_IGN;
+	sighandler_type	volatile saveint = SIG_IGN, savepipe = SIG_IGN;
 	off_t offset;
 	char o[LINESIZE], *line = NULL, *lp;
 	size_t linesize = 0, linelen, size;
-	int number = m - message + 1;
-	int emptyline = 0, lines;
+	int number = m - message + 1, emptyline = 0, lines;
 
 	(void)&saveint;
 	(void)&savepipe;
@@ -833,8 +840,8 @@ pop3_update(struct mailbox *mp)
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char *id;
 
-			if ((id = hfield("message-id", m)) != NULL ||
-					(id = hfield("article-id", m)) != NULL)
+			if ((id = hfield1("message-id", m)) != NULL ||
+					(id = hfieldX("article-id", m)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 		if (edit) {
@@ -900,7 +907,7 @@ pop3_quit(void)
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;
 }
-#else	/* !HAVE_SOCKETS */
+#else	/* !USE_POP3 */
 static void 
 nopop3(void)
 {
@@ -911,6 +918,9 @@ nopop3(void)
 int 
 pop3_setfile(const char *server, int newmail, int isedit)
 {
+	(void)server;
+	(void)newmail;
+	(void)isedit;
 	nopop3();
 	return -1;
 }
@@ -918,6 +928,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 enum okay 
 pop3_header(struct message *mp)
 {
+	(void)mp;
 	nopop3();
 	return STOP;
 }
@@ -925,6 +936,7 @@ pop3_header(struct message *mp)
 enum okay 
 pop3_body(struct message *mp)
 {
+	(void)mp;
 	nopop3();
 	return STOP;
 }
@@ -941,4 +953,4 @@ pop3_noop(void)
 	nopop3();
 	return STOP;
 }
-#endif	/* HAVE_SOCKETS */
+#endif	/* USE_POP3 */

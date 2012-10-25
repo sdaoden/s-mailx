@@ -1,7 +1,9 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * All rights reserved.
  */
 /*-
  * Copyright (c) 1992, 1993
@@ -34,14 +36,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	Sccsid @(#)extern.h	2.162 (gritter) 10/1/08
  */
 
 /* aux.c */
-char *savestr(const char *str);
-char *save2str(const char *str, const char *old);
-char *savecat(const char *s1, const char *s2);
 void panic(const char *format, ...);
 void holdint(void);
 void relseint(void);
@@ -58,7 +55,7 @@ int source(void *v);
 int unstack(void);
 void alter(char *name);
 int blankline(char *linebuf);
-int anyof(char *s1, char *s2);
+int anyof(char const *s1, char const *s2);
 int is_prefix(const char *as1, const char *as2);
 char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
@@ -69,8 +66,10 @@ unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
 char *strdec(const char *cp);
+#ifdef USE_MD5
 char *md5tohex(const void *vp);
 char *cram_md5_string(const char *user, const char *pass, const char *b64);
+#endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 void transflags(struct message *omessage, long omsgCount, int transparent);
@@ -92,12 +91,14 @@ int putuc(int u, int c, FILE *fp);
 int asccasecmp(const char *s1, const char *s2);
 int ascncasecmp(const char *s1, const char *s2, size_t sz);
 char *asccasestr(const char *haystack, const char *xneedle);
+
 /* base64.c */
 char *strtob64(const char *p);
 char *memtob64(const void *vp, size_t isz);
 size_t mime_write_tob64(struct str *in, FILE *fo, int is_header);
 void mime_fromb64(struct str *in, struct str *out, int is_text);
 void mime_fromb64_b(struct str *in, struct str *out, int is_text, FILE *f);
+
 /* cache.c */
 enum okay getcache1(struct mailbox *mp, struct message *m,
 		enum needspec need, int setflags);
@@ -113,6 +114,7 @@ enum okay cache_rename(const char *old, const char *new);
 unsigned long cached_uidvalidity(struct mailbox *mp);
 FILE *cache_queue(struct mailbox *mp);
 enum okay cache_dequeue(struct mailbox *mp);
+
 /* cmd1.c */
 char *get_pager(void);
 int headers(void *v);
@@ -135,6 +137,7 @@ int top(void *v);
 int stouch(void *v);
 int mboxit(void *v);
 int folders(void *v);
+
 /* cmd2.c */
 int next(void *v);
 int save(void *v);
@@ -145,6 +148,8 @@ int cmove(void *v);
 int cMove(void *v);
 int cdecrypt(void *v);
 int cDecrypt(void *v);
+int clobber(void *v);
+int core(void *v);
 int cwrite(void *v);
 int delete(void *v);
 int deltype(void *v);
@@ -161,6 +166,7 @@ int unsaveignore(void *v);
 int unsaveretain(void *v);
 int unfwdignore(void *v);
 int unfwdretain(void *v);
+
 /* cmd3.c */
 int shell(void *v);
 int dosh(void *v);
@@ -211,24 +217,30 @@ int cscore(void *v);
 int cnoop(void *v);
 int cremove(void *v);
 int crename(void *v);
+
 /* cmdtab.c */
+
 /* collect.c */
 struct attachment *edit_attachments(struct attachment *attach);
-struct attachment *add_attachment(struct attachment *attach, const char *file);
+struct attachment *add_attachment(struct attachment *attach, char *file,
+		int expand_file);
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);
 void savedeadletter(FILE *fp);
+
 /* dotlock.c */
 int fcntl_lock(int fd, int type);
 int dot_lock(const char *fname, int fd, int pollinterval, FILE *fp,
 		const char *msg);
 void dot_unlock(const char *fname);
+
 /* edit.c */
 int editor(void *v);
 int visual(void *v);
 FILE *run_editor(FILE *fp, off_t size, int type, int readonly,
 		struct header *hp, struct message *mp, enum sendaction action,
 		sighandler_type oldint);
+
 /* fio.c */
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
@@ -240,7 +252,8 @@ int rm(char *name);
 void holdsigs(void);
 void relsesigs(void);
 off_t fsize(FILE *iob);
-char *expand(char *name);
+char *file_expand(char const *name);
+char *expand(char const *name);
 int getfold(char *name, int size);
 char *getdeadletter(void);
 char *fgetline(char **line, size_t *linesize, size_t *count,
@@ -253,22 +266,33 @@ enum okay swrite1(struct sock *sp, const char *data, int sz, int use_buffer);
 int sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp);
 enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose);
+
 /* getname.c */
 char *getname(int uid);
 int getuserid(char *name);
+
 /* getopt.c */
+#ifndef HAVE_GETOPT
 int getopt(int argc, char *const argv[], const char *optstring);
+#endif
+
 /* head.c */
 int is_head(char *linebuf, size_t linelen);
 void parse(char *line, size_t linelen, struct headline *hl, char *pbuf);
 void extract_header(FILE *fp, struct header *hp);
-#define	hfield(a, b)	hfield_mult(a, b, 1)
+#define	hfieldX(a, b)	hfield_mult(a, b, 1)
+#define	hfield1(a, b)	hfield_mult(a, b, 0)
 char *hfield_mult(char *field, struct message *mp, int mult);
 char *thisfield(const char *linebuf, const char *field);
 char *nameof(struct message *mp, int reptype);
-char *skip_comment(const char *cp);
+char const *skip_comment(char const *cp);
 char *routeaddr(const char *name);
+#define is_fileorpipe_addr(NP) \
+	(((NP)->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) != 0)
+int is_addr_invalid(struct name *np, int putmsg);
+char *skinned_name(struct name const*np);
 char *skin(char *name);
+int addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
 char *realname(char *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
@@ -276,14 +300,14 @@ int is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2]);
 int member(char *realfield, struct ignoretab *table);
 char *fakefrom(struct message *mp);
 char *fakedate(time_t t);
-char *nexttoken(char *cp);
-time_t unixtime(char *from);
-time_t rfctime(char *date);
+time_t unixtime(char const *from);
+time_t rfctime(char const *date);
 time_t combinetime(int year, int month, int day,
 		int hour, int minute, int second);
 void substdate(struct message *m);
 int check_from_and_sender(struct name *fromfield, struct name *senderfield);
 char *getsender(struct message *m);
+
 /* imap.c */
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
@@ -313,7 +337,9 @@ time_t imap_read_date(const char *cp);
 const char *imap_make_date_time(time_t t);
 char *imap_quotestr(const char *s);
 char *imap_unquotestr(const char *s);
+
 /* imap_gssapi.c */
+
 /* imap_search.c */
 enum okay imap_search(const char *spec, int f);
 /* junk.c */
@@ -323,6 +349,7 @@ int cungood(void *v);
 int cunjunk(void *v);
 int cclassify(void *v);
 int cprobability(void *v);
+
 /* lex.c */
 int setfile(char *name, int newmail);
 int newmailinfo(int omsgCount);
@@ -336,17 +363,20 @@ int getmdot(int newmail);
 int pversion(void *v);
 void load(char *name);
 void initbox(const char *name);
+
 /* list.c */
 int getmsglist(char *buf, int *vector, int flags);
 int getrawlist(const char *line, size_t linesize,
 		char **argv, int argc, int echolist);
 int first(int f, int m);
 void mark(int mesg, int f);
+
 /* lzw.c */
 int zwrite(void *cookie, const char *wbp, int num);
 int zfree(void *cookie);
 int zread(void *cookie, char *rbp, int num);
 void *zalloc(FILE *fp);
+
 /* macro.c */
 int cdefine(void *v);
 int define1(const char *name, int account);
@@ -357,21 +387,24 @@ int callhook(const char *name, int newmail);
 int listaccounts(FILE *fp);
 int cdefines(void *v);
 void delaccount(const char *name);
+
 /* maildir.c */
 int maildir_setfile(const char *name, int newmail, int isedit);
 void maildir_quit(void);
 enum okay maildir_append(const char *name, FILE *fp);
 enum okay maildir_remove(const char *name);
+
 /* main.c */
 int main(int argc, char *argv[]);
+
 /* mime.c */
-int mime_name_invalid(char *name, int putmsg);
-struct name *checkaddrs(struct name *np);
 char *gettcharset(void);
 char *need_hdrconv(struct header *hp, enum gfield w);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 iconv_t iconv_open_ft(const char *tocode, const char *fromcode);
-#endif	/* HAVE_ICONV */
+size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant);
+#endif
 enum mimeenc mime_getenc(char *h);
 int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
@@ -385,44 +418,53 @@ size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 		char *prefix, size_t prefixlen);
 size_t mime_write(void *ptr, size_t size, FILE *f,
 		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen,
-		char **rest, size_t *restsize);
-/* names.c */
-struct name *nalloc(char *str, enum gfield ntype);
-struct name *extract(char *line, enum gfield ntype);
-struct name *sextract(char *line, enum gfield ntype);
-char *detract(struct name *np, enum gfield ntype);
-struct name *outof(struct name *names, FILE *fo, struct header *hp);
-int is_fileaddr(char *name);
-struct name *usermap(struct name *names);
-struct name *cat(struct name *n1, struct name *n2);
-char **unpack(struct name *np);
-struct name *elide(struct name *names);
-int count(struct name *np);
-struct name *delete_alternates(struct name *np);
-int is_myname(char *name);
+		char *prefix, size_t prefixlen, char **rest, size_t *restsize);
+
+/*
+ * names.c
+ */
+struct name *	nalloc(char *str, enum gfield ntype);
+struct name *	ndup(struct name *np, enum gfield ntype);
+struct name *	cat(struct name *n1, struct name *n2);
+int		count(struct name const *np);
+
+struct name *	extract(char const *line, enum gfield ntype);
+struct name *	lextract(char const *line, enum gfield ntype);
+char *		detract(struct name *np, enum gfield ntype);
+
+struct name *	checkaddrs(struct name *np);
+struct name *	usermap(struct name *names);
+struct name *	elide(struct name *names);
+struct name *	delete_alternates(struct name *np);
+int		is_myname(char const *name);
+
+struct name *	outof(struct name *names, FILE *fo, struct header *hp);
+
 /* nss.c */
-#ifdef	USE_NSS
+#ifdef USE_NSS
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
 void nss_gen_err(const char *fmt, ...);
-#endif	/* USE_NSS */
+#endif
+
 /* openssl.c */
-#ifdef	USE_OPENSSL
+#ifdef USE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
 void ssl_gen_err(const char *fmt, ...);
-#endif	/* USE_OPENSSL */
+#endif
 int cverify(void *vp);
 FILE *smime_sign(FILE *ip, struct header *);
 FILE *smime_encrypt(FILE *ip, const char *certfile, const char *to);
 struct message *smime_decrypt(struct message *m, const char *to,
 		const char *cc, int signcall);
 enum okay smime_certsave(struct message *m, int n, FILE *op);
+
 /* pop3.c */
 enum okay pop3_noop(void);
 int pop3_setfile(const char *server, int newmail, int isedit);
 enum okay pop3_header(struct message *m);
 enum okay pop3_body(struct message *m);
 void pop3_quit(void);
+
 /* popen.c */
 sighandler_type safe_signal(int signum, sighandler_type handler);
 FILE *safe_fopen(const char *file, const char *mode, int *omode);
@@ -441,6 +483,7 @@ void prepare_child(sigset_t *nset, int infd, int outfd);
 void sigchild(int signo);
 void free_child(int pid);
 int wait_child(int pid);
+
 /* quit.c */
 int quitcmd(void *v);
 void quit(void);
@@ -448,17 +491,19 @@ int holdbits(void);
 enum okay makembox(void);
 int savequitflags(void);
 void restorequitflags(int);
+
 /* send.c */
 char *foldergets(char **s, size_t *size, size_t *count, size_t *llen,
 		FILE *stream);
-#undef	send
-#define	send(a, b, c, d, e, f)	xsend(a, b, c, d, e, f)
+#undef send
+#define send(a, b, c, d, e, f)  xsend(a, b, c, d, e, f)
 int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		char *prefix, enum sendaction action, off_t *stats);
+
 /* sendout.c */
 char *makeboundary(void);
 int mail(struct name *to, struct name *cc, struct name *bcc,
-		struct name *smopts, char *subject, struct attachment *attach,
+		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record, int tflag, int Eflag);
 int sendmail(void *v);
 int Sendmail(void *v);
@@ -470,6 +515,7 @@ int puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
 		char *contenttype, char *charset);
 enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
+
 /* smtp.c */
 char *nodename(int mayoverride);
 char *myaddrs(struct header *hp);
@@ -477,6 +523,7 @@ char *myorigin(struct header *hp);
 char *smtp_auth_var(const char *type, const char *addr);
 int smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
+
 /* ssl.c */
 void ssl_set_vrfy_level(const char *uhp);
 enum okay ssl_vrfy_decide(void);
@@ -487,15 +534,24 @@ FILE *smime_encrypt_assemble(FILE *hp, FILE *yp);
 struct message *smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp);
 int ccertsave(void *v);
 enum okay rfc2595_hostname_match(const char *host, const char *pattern);
+
 /* strings.c */
 void *salloc(size_t size);
 void *csalloc(size_t nmemb, size_t size);
 void sreset(void);
 void spreserve(void);
+char *savestr(const char *str);
+char *savestrbuf(const char *sbuf, size_t sbuf_len);
+char *save2str(const char *str, const char *old);
+char *savecat(const char *s1, const char *s2);
+
+struct str *str_concat_csvl(struct str *self, ...);
+
 /* temp.c */
 FILE *Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
 void Ftfree(char **fn);
 void tinit(void);
+
 /* thread.c */
 int thread(void *vp);
 int unthread(void *vp);
@@ -506,14 +562,17 @@ int sort(void *vp);
 int ccollapse(void *v);
 int cuncollapse(void *v);
 void uncollapse1(struct message *m, int always);
+
 /* tty.c */
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char *prefix, char *string);
 int yorn(char *msg);
+
 /* v7.local.c */
 void findmail(char *user, int force, char *buf, int size);
 void demail(void);
 char *username(void);
+
 /* vars.c */
 void assign(const char *name, const char *value);
 char *vcopy(const char *str);
@@ -523,4 +582,3 @@ void printgroup(char *name);
 int hash(const char *name);
 int unset_internal(const char *name);
 void remove_group(const char *name);
-/* version.c */

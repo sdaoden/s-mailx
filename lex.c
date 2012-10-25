@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)lex.c	2.86 (gritter) 12/25/06";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
@@ -87,7 +82,7 @@ setfile(char *name, int newmail)
 	isedit = *name != '%' && ((sh = get_shortcut(name)) == NULL ||
 			*sh->sh_long != '%');
 	if ((name = expand(name)) == NULL)
-		return -1;
+		return (-1);
 
 	switch (which_protocol(name)) {
 	case PROTO_FILE:
@@ -213,7 +208,7 @@ setfile(char *name, int newmail)
 			goto nonewmail;
 	}
 	mailsize = fsize(ibuf);
-	if (newmail && mailsize <= offset) {
+	if (newmail && (size_t)mailsize <= offset) {
 		relsesigs();
 		goto nonewmail;
 	}
@@ -720,7 +715,7 @@ stop(int s)
 static void 
 hangup(int s)
 {
-
+	(void)s;
 	/* nothing to do? */
 	exit(1);
 }
@@ -896,6 +891,7 @@ getmdot(int newmail)
 int 
 pversion(void *v)
 {
+	(void)v;
 	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
 	return(0);
 }
@@ -908,7 +904,7 @@ load(char *name)
 {
 	FILE *in, *oldin;
 
-	if ((in = Fopen(name, "r")) == NULL)
+	if (name == NULL || (in = Fopen(name, "r")) == NULL)
 		return;
 	oldin = input;
 	input = in;

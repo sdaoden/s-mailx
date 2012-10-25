@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)macro.c	1.13 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
 
 #include "config.h"
 
@@ -195,7 +190,7 @@ ccall(void *v)
 	char	**args = v;
 	struct macro	*mp;
 
-	if (args[0] == NULL || args[1] != NULL && args[2] != NULL) {
+	if (args[0] == NULL || (args[1] != NULL && args[2] != NULL)) {
 		fprintf(stderr, "Syntax is: call <name>\n");
 		return 1;
 	}
@@ -366,6 +361,7 @@ cdefines(void *v)
 	FILE	*fp;
 	char	*cp;
 	int	mc;
+	(void)v;
 
 	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
 		perror("tmpfile");

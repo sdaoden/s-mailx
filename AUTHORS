@@ -14,4 +14,7 @@ February 2000 and added especially the MIME code, network protocol
 support, and POSIX conformance improvements. In March 2006, the
 program has been integrated into the Heirloom project.
 
+In 2012 the stale Heirloom mailx(1) was adapted as S-nail(1) by
+Steffen Nurpmeso.
+
 See the ChangeLog for people who have contributed to mailx.

@@ -1,3 +1,44 @@
+W e l c o m e  t o  S - n a i l
+===============================
+
+S-nail(1) is a fork of Heirloom mailx(1), formerly known as nail(1).
+It was forked from Heirloom mailx 12.5 on 2012-05-08, though the current
+maintainer did not really look at the code before 2012-09-18, once he
+claimed on nail-devel@ that S-nail(1) will be made publically available.
+
+S-nail is only a git(1) repository on
+  git.code.sf.net/p/s-nail/code
+(or browse it at
+  http://sourceforge.net/p/s-nail/code/
+) and a release tarball to be downloaded from
+  http://sourceforge.net/projects/s-nail/files/s-nail.tar.gz/download.
+
+See the file INSTALL for installation notes and NEWS for release update
+information.  Mail contact is supposed to go through the normal
+nail-devel@lists.sourceforge.net list.
+
+The S-nail(1) git(1) repository consists of three branches:
+
+- master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
+  S-nail(1).
+
+- next: rooted on top of *master*, this consists of a furious mixture of
+  commits that eventually end up in *master*.
+
+- heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
+  repository.
+
+- heirloom-plus: rooted on top of *heirloom*, this branch contains
+  patches that i or others have send to nail-devel@ and that i've
+  integrated into the plain *heirloom* code.
+  Note that due to heavy diverging of code maintenance of this branch
+  will be restricted to really security critical bugs.
+
+The S-nail(1) heraldic animal snailmail.jpg has been found on
+http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg.
+
+[Heirloom file content follows]
+
 Welcome to Heirloom mailx!
 ==========================
 

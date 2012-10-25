@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -36,14 +37,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char copyright[]
-= "@(#) Copyright (c) 2000, 2002 Gunnar Ritter. All rights reserved.\n";
-static char sccsid[]  = "@(#)mime.c	2.71 (gritter) 7/5/10";
-#endif /* DOSCCS */
-#endif /* not lint */
-
 #include "rcv.h"
 #include "extern.h"
 #include <ctype.h>
@@ -75,8 +68,6 @@ static int has_highbit(register const char *s);
 #ifdef	HAVE_ICONV
 static void uppercopy(char *dest, const char *src);
 static void stripdash(char *p);
-static size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
-		char **outb, size_t *outbleft);
 static void invalid_seq(int c);
 #endif	/* HAVE_ICONV */
 static int is_this_enc(const char *line, const char *encoding);
@@ -151,100 +142,6 @@ delctrl(char *cp, size_t sz)
 	return y;
 }
 
-/*
- * Check if a name's address part contains invalid characters.
- */
-int 
-mime_name_invalid(char *name, int putmsg)
-{
-	char *addr, *p;
-	int in_quote = 0, in_domain = 0, err = 0, hadat = 0;
-
-	if (is_fileaddr(name))
-		return 0;
-	addr = skin(name);
-
-	if (addr == NULL || *addr == '\0')
-		return 1;
-	for (p = addr; *p != '\0'; p++) {
-		if (*p == '\"') {
-			in_quote = !in_quote;
-		} else if (*p < 040 || (*p & 0377) >= 0177) {
-			err = *p & 0377;
-			break;
-		} else if (in_domain == 2) {
-			if ((*p == ']' && p[1] != '\0') || *p == '\0'
-					|| *p == '\\' || whitechar(*p & 0377)) {
-				err = *p & 0377;
-				break;
-			}
-		} else if (in_quote && in_domain == 0) {
-			/*EMPTY*/;
-		} else if (*p == '\\' && p[1] != '\0') {
-			p++;
-		} else if (*p == '@') {
-			if (hadat++) {
-				if (putmsg) {
-					fprintf(stderr, catgets(catd, CATSET,
-								142,
-					"%s contains invalid @@ sequence\n"),
-						addr);
-					putmsg = 0;
-				}
-				err = *p;
-				break;
-			}
-			if (p[1] == '[')
-				in_domain = 2;
-			else
-				in_domain = 1;
-			continue;
-		} else if (*p == '(' || *p == ')' || *p == '<' || *p == '>'
-				|| *p == ',' || *p == ';' || *p == ':'
-				|| *p == '\\' || *p == '[' || *p == ']') {
-			err = *p & 0377;
-			break;
-		}
-		hadat = 0;
-	}
-	if (err && putmsg) {
-		fprintf(stderr, catgets(catd, CATSET, 143,
-				"%s contains invalid character '"), addr);
-#ifdef	HAVE_SETLOCALE
-		if (isprint(err))
-#else	/* !HAVE_SETLOCALE */
-		if (err >= 040 && err <= 0177)
-#endif	/* !HAVE_SETLOCALE */
-			putc(err, stderr);
-		else
-			fprintf(stderr, "\\%03o", err);
-		fprintf(stderr, catgets(catd, CATSET, 144, "'\n"));
-	}
-	return err;
-}
-
-/*
- * Check all addresses in np and delete invalid ones.
- */
-struct name *
-checkaddrs(struct name *np)
-{
-	struct name *n = np;
-
-	while (n != NULL) {
-		if (mime_name_invalid(n->n_name, 1)) {
-			if (n->n_blink)
-				n->n_blink->n_flink = n->n_flink;
-			if (n->n_flink)
-				n->n_flink->n_blink = n->n_blink;
-			if (n == np)
-				np = n->n_flink;
-		}
-		n = n->n_flink;
-	}
-	return np;
-}
-
 static char defcharset[] = "utf-8";
 
 /*
@@ -317,21 +214,25 @@ char *
 need_hdrconv(struct header *hp, enum gfield w)
 {
 	if (w & GIDENT) {
-		if (hp->h_from && name_highbit(hp->h_from))
+		if (hp->h_from) {
+			if (name_highbit(hp->h_from))
+				goto needs;
+		} else if (has_highbit(myaddrs(hp)))
 			goto needs;
-		else if (has_highbit(myaddrs(hp)))
+		if (hp->h_organization) {
+			if (has_highbit(hp->h_organization))
+				goto needs;
+		} else if (has_highbit(value("ORGANIZATION")))
 			goto needs;
-		if (hp->h_organization && has_highbit(hp->h_organization))
+		if (hp->h_replyto) {
+			if (name_highbit(hp->h_replyto))
+				goto needs;
+		} else if (has_highbit(value("replyto")))
 			goto needs;
-		else if (has_highbit(value("ORGANIZATION")))
-			goto needs;
-		if (hp->h_replyto && name_highbit(hp->h_replyto))
-			goto needs;
-		else if (has_highbit(value("replyto")))
-			goto needs;
-		if (hp->h_sender && name_highbit(hp->h_sender))
-			goto needs;
-		else if (has_highbit(value("sender")))
+		if (hp->h_sender) {
+			if (name_highbit(hp->h_sender))
+				goto needs;
+		} else if (has_highbit(value("sender")))
 			goto needs;
 	}
 	if (w & GTO && name_highbit(hp->h_to))
@@ -436,14 +337,30 @@ iconv_open_ft(const char *tocode, const char *fromcode)
 
 /*
  * Fault-tolerant iconv() function.
+ * (2012-09-24: export and use it exclusively to isolate prototype problems
+ * (*inb* is 'const char**' except in POSIX) in a single place.
+ * GNU libiconv even allows for configuration time const/non-const..
+ * In the end it's an ugly guess, but we can't do better since make(1) doesn't
+ * support compiler invocations which bail on error, so no -Werror.
  */
-static size_t
-iconv_ft(iconv_t cd, char **inb, size_t *inbleft, char **outb, size_t *outbleft)
-{
-	size_t sz = 0;
+/* Citrus project? */
+#if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
+# define __INBCAST	(const char**)
+#endif
+#ifndef __INBCAST
+# define __INBCAST
+#endif
 
-	while ((sz = iconv(cd, inb, inbleft, outb, outbleft)) == (size_t)-1
-			&& (errno == EILSEQ || errno == EINVAL)) {
+size_t
+iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant)
+{
+	size_t sz;
+
+	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft)) ==
+				(size_t)-1
+#undef __INBCAST
+			&& tolerant && (errno == EILSEQ || errno == EINVAL)) {
 		if (*inbleft > 0) {
 			(*inb)++;
 			(*inbleft)--;
@@ -469,6 +386,7 @@ iconv_ft(iconv_t cd, char **inb, size_t *inbleft, char **outb, size_t *outbleft)
 static void 
 invalid_seq(int c)
 {
+	(void)c;
 	/*fprintf(stderr, "iconv: cannot convert %c\n", c);*/
 }
 #endif	/* HAVE_ICONV */
@@ -679,7 +597,7 @@ mime_type(char *ext, char *filename)
 	size_t linesize = 0;
 	char *type = NULL;
 
-	if ((f = Fopen(filename, "r")) == NULL)
+	if (filename == NULL || (f = Fopen(filename, "r")) == NULL)
 		return NULL;
 	while (fgetline(&line, &linesize, NULL, NULL, f, 0)) {
 		if ((type = mime_tline(ext, line)) != NULL)
@@ -749,8 +667,8 @@ mime_isclean(FILE *f)
 	clearerr(f);
 	fseek(f, initial_pos, SEEK_SET);
 	if ((cp = value("maximum-unencoded-line-length")) != NULL)
-		limit = atoi(cp);
-	if (limit < 0 || limit > 950)
+		limit = (unsigned)atoi(cp);
+	if (limit > 950)
 		limit = 950;
 	if (maxlen > limit)
 		isclean |= MIME_LONGLINES;
@@ -768,18 +686,19 @@ gettextconversion(void)
 
 	if ((p = value("encoding")) == NULL)
 		return CONV_8BIT;
-	if (equal(p, "quoted-printable"))
+	if (strcmp(p, "quoted-printable") == 0)
 		convert = CONV_TOQP;
-	else if (equal(p, "8bit"))
+	else if (strcmp(p, "8bit") == 0)
 		convert = CONV_8BIT;
 	else {
-		fprintf(stderr, catgets(catd, CATSET, 177,
+		fprintf(stderr, tr(177,
 			"Warning: invalid encoding %s, using 8bit\n"), p);
 		convert = CONV_8BIT;
 	}
 	return convert;
 }
 
+/*TODO Dobson: be037047c, contenttype==NULL||"text"==NULL control flow! */
 int
 get_mime_convert(FILE *fp, char **contenttype, char **charset,
 		enum mimeclean *isclean, int dosign)
@@ -788,7 +707,8 @@ get_mime_convert(FILE *fp, char **contenttype, char **charset,
 
 	*isclean = mime_isclean(fp);
 	if (*isclean & MIME_HASNUL ||
-			*contenttype && ascncasecmp(*contenttype, "text/", 5)) {
+			(*contenttype &&
+			ascncasecmp(*contenttype, "text/", 5))) {
 		convert = CONV_TOB64;
 		if (*contenttype == NULL ||
 				ascncasecmp(*contenttype, "text/", 5) == 0)
@@ -855,14 +775,14 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 	sz = in->l;
 	upper = in->s + in->l;
 	for (p = in->s, l = 0; p < upper; p++) {
-		if (mustquote(*p&0377) ||
-				p < upper-1 && p[1] == '\n' &&
-					blankchar(p[0]&0377) ||
-				p < upper-4 && l == 0 &&
-					p[0] == 'F' && p[1] == 'r' &&
-					p[2] == 'o' && p[3] == 'm' ||
-				*p == '.' && l == 0 && p < upper-1 &&
-					p[1] == '\n') {
+		if (mustquote(*p) ||
+				(p < upper - 1 && p[1] == '\n' &&
+					blankchar(*p)) ||
+				(p < upper - 4 && l == 0 &&
+					*p == 'F' && p[1] == 'r' &&
+					p[2] == 'o' && p[3] == 'm') ||
+				(*p == '.' && l == 0 && p < upper - 1 &&
+					p[1] == '\n')) {
 			if (l >= 69) {
 				sz += 2;
 				fwrite("=\n", sizeof (char), 2, fo);
@@ -870,7 +790,7 @@ mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
 			}
 			sz += 2;
 			putc('=', fo);
-			h = ctohex(*p&0377, hex);
+			h = ctohex(*p, hex);
 			fwrite(h, sizeof *h, 2, fo);
 			l += 3;
 		} else {
@@ -902,8 +822,8 @@ mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
 	out->l = in->l;
 	upper = in->s + in->l;
 	for (p = in->s; p < upper; p++) {
-		if (mustquote(*p&0377) || p+1 < upper && *(p + 1) == '\n' &&
-				blankchar(*p & 0377)) {
+		if (mustquote(*p&0377) || (p+1 < upper && *(p + 1) == '\n' &&
+				blankchar(*p & 0377))) {
 			if (inhdr && *p == ' ') {
 				*q++ = '_';
 			} else {
@@ -1048,9 +968,10 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				uptr = nptr + outleft;
 				iptr = cout.s;
 				if (iconv_ft(fhicd, &iptr, &inleft,
-					&nptr, &outleft) == (size_t)-1 &&
+					&nptr, &outleft, 0) == (size_t)-1 &&
 						errno == E2BIG) {
-					iconv(fhicd, NULL, NULL, NULL, NULL);
+					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
+						0);
 					mime_fromhdr_inc(inleft);
 					goto again;
 				}
@@ -1060,8 +981,8 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				 * that states are restricted to
 				 * single encoded-word parts.
 				 */
-				while (iconv(fhicd, NULL, NULL,
-					&nptr, &outleft) == (size_t)-1 &&
+				while (iconv_ft(fhicd, NULL, NULL,
+					&nptr, &outleft, 0) == (size_t)-1 &&
 						errno == E2BIG)
 					mime_fromhdr_inc(16);
 				out->l += uptr - mptr - outleft;
@@ -1134,7 +1055,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
 			quoteany++;
 	}
-	if (2 * quoteany > in->l) {
+	if (2u * quoteany > in->l) {
 		/*
 		 * Print the entire field in base64.
 		 */
@@ -1202,8 +1123,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
 							wbeg == &upper[-1]))
 					mustquote++;
 			}
-			if (mustquote || broken || (wend - wbeg) >= 74 &&
-					quoteany) {
+			if (mustquote || broken ||
+					((wend - wbeg) >= 74 && quoteany)) {
 				for (;;) {
 					cin.s = lastwordend ? lastwordend :
 						wbeg;
@@ -1250,7 +1171,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
 				}
 				lastwordend = wend;
 			} else {
-				if (col && wend - wbeg > maxcol - col) {
+				if (col &&
+				    (size_t)(wend - wbeg) > maxcol - col) {
 					putc('\n', fo);
 					sz++;
 					col = 0;
@@ -1305,7 +1227,7 @@ convhdra(char *str, size_t len, FILE *fp)
 		isz = len;
 		op = cbuf;
 		osz = cbufsz;
-		if (iconv(iconvd, &ip, &isz, &op, &osz) == (size_t)-1) {
+		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
 			if (errno != E2BIG) {
 				ac_free(cbuf);
 				return 0;
@@ -1344,7 +1266,7 @@ mime_write_tohdr_a(struct str *in, FILE *f)
 		case '(':
 			sz += fwrite(lastcp, 1, cp - lastcp + 1, f);
 			lastcp = ++cp;
-			cp = skip_comment(cp);
+			cp = (char*)skip_comment(cp);
 			if (--cp > lastcp)
 				sz += convhdra(lastcp, cp - lastcp, f);
 			lastcp = cp;
@@ -1406,7 +1328,7 @@ mime_fromaddr(char *name)
 		case '(':
 			addstr(&res, &ressz, &rescur, lastcp, cp - lastcp + 1);
 			lastcp = ++cp;
-			cp = skip_comment(cp);
+			cp = (char*)skip_comment(cp);
 			if (--cp > lastcp)
 				addconv(&res, &ressz, &rescur, lastcp,
 						cp - lastcp);
@@ -1439,39 +1361,115 @@ prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 {
 	static FILE *lastf;
 	static char lastc = '\n';
-	size_t rsz, wsz = 0;
-	char *p = ptr;
+	size_t lpref, i, qfold = 0, lnlen = 0, rsz = size * nmemb, wsz = 0;
+	char *p, *maxp, c;
 
-	if (nmemb == 0)
+	if (rsz == 0)
 		return 0;
-	if (prefix == NULL) {
-		lastf = f;
-		lastc = ((char *)ptr)[size * nmemb - 1];
-		return fwrite(ptr, size, nmemb, f);
+
+	if (prefixlen == 0)
+		return fwrite(ptr, 1, rsz, f);
+
+	if ((p = value("quote-fold")) != NULL) {
+		qfold = (size_t)strtol(p, NULL, 10);
+		if (qfold < prefixlen + 4)
+			qfold = prefixlen + 4;
+		--qfold; /* The newline escape */
 	}
+
 	if (f != lastf || lastc == '\n') {
-		if (*p == '\n' || *p == '\0')
-			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-		else {
-			fputs(prefix, f);
-			wsz += strlen(prefix);
-		}
+		wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
+		lnlen = prefixlen;
 	}
 	lastf = f;
-	for (rsz = size * nmemb; rsz; rsz--, p++, wsz++) {
-		putc(*p, f);
-		if (*p != '\n' || rsz == 1) {
-			continue;
-		}
-		if (p[1] == '\n' || p[1] == '\0')
+
+	p = ptr;
+	maxp = p + rsz;
+
+	if (! qfold) {
+		for (;;) {
+			c = *p++;
+			putc(c, f);
+			wsz++;
+			if (p == maxp)
+				break;
+			if (c != '\n')
+				continue;
 			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-		else {
-			fputs(prefix, f);
-			wsz += strlen(prefix);
+		}
+	} else {
+		for (;;) {
+			/*
+			 * After writing a real newline followed by our prefix,
+			 * compress the quoted prefixes
+			 */
+			for (lpref = 0; p != maxp;) {
+				/* (c: keep cc happy) */
+				for (c = i = 0; p + i < maxp;) {
+					c = p[i++];
+					if (blankspacechar(c))
+						continue;
+					if (! ISQUOTE(c))
+						goto jquoteok;
+					break;
+				}
+				p += i;
+				++lpref;
+				putc(c, f);
+				++wsz;
+			}
+jquoteok:		lnlen += lpref;
+
+jsoftnl:		/*
+			 * Search forward until either *quote-fold* or NL.
+			 * In the former case try to break at whitespace,
+			 * but only if that lies in the 2nd half of the data
+			 */
+			for (c = rsz = i = 0; p + i < maxp;) {
+				c = p[i++];
+				if (c == '\n')
+					break;
+				if (spacechar(c))
+					rsz = i;
+				if (lnlen + i >= qfold) {
+					c = 0;
+					if (rsz > qfold >> 1)
+						i = rsz;
+					break;
+				}
+			}
+
+			if (i > 0) {
+				wsz += fwrite(p, sizeof *p, i, f);
+				p += i;
+			}
+			if (p >= maxp)
+				break;
+	
+			if (c != '\n') {
+				putc('\\', f);
+				putc('\n', f);
+				wsz += 2;
+			}
+
+			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
+			lnlen = prefixlen;
+			if (c == '\n')
+				continue;
+
+			if ((i = lpref)) {
+				for (; i > 0; ++wsz, ++lnlen, --i)
+					(void)putc('.', f);
+				(void)putc(' ', f);
+				++wsz;
+				++lnlen;
+			}
+			goto jsoftnl;
 		}
 	}
+
 	lastc = p[-1];
-	return wsz;
+	return (wsz);
 }
 
 /*
@@ -1499,10 +1497,10 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft) ==
+		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 0) ==
 					(size_t)-1 &&
 				errno == E2BIG) {
-			iconv(iconvd, NULL, NULL, NULL, NULL);
+			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
 			ac_free(mptr);
 			mptrsz += inleft;
 			mptr = ac_alloc(mptrsz + 1);
@@ -1566,8 +1564,8 @@ mime_write(void *ptr, size_t size, FILE *f,
 		outleft = sizeof mptr;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv(iconvd, &iptr, &inleft,
-				&nptr, &outleft) != (size_t)-1) {
+		if (iconv_ft(iconvd, &iptr, &inleft,
+				&nptr, &outleft, 0) != (size_t)-1) {
 			in.l = sizeof mptr - outleft;
 			in.s = mptr;
 		} else {

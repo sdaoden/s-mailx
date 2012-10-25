@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Changes Copyright (c) 2004
@@ -27,19 +28,13 @@
  * Communications Corporation.  Portions created by Netscape are 
  * Copyright (C) 1994-2000 Netscape Communications Corporation.  All
  * Rights Reserved.
- * 
- * Contributor(s):
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)nss.c	1.48 (gritter) 8/4/07";
-#endif
-#endif /* not lint */
 
 #include "config.h"
 
-#ifdef	USE_NSS
+#ifndef USE_NSS
+typedef int avoid_empty_file_compiler_warning;
+#else
 
 #include "rcv.h"
 
@@ -230,11 +225,11 @@ nss_init(void)
 
 	verbose = value("verbose") != NULL;
 	if (initialized == 0) {
-		if ((cp = value("nss-config-dir")) == NULL) {
+		if ((cp = value("nss-config-dir")) == NULL ||
+				(cp = file_expand(cp) == NULL)) {
 			fputs("Missing \"nss-config-dir\" variable.\n", stderr);
 			return STOP;
 		}
-		cp = expand(cp);
 		PR_Init(0, 0, 0);
 		PK11_SetPasswordFunc(password_cb);
 		if (NSS_Init(cp) == SECSuccess) {
@@ -261,15 +256,15 @@ nss_select_method(const char *uhp)
 	methods = SSL2|SSL3|TLS1;
 	cp = ssl_method_string(uhp);
 	if (cp != NULL) {
-		if (equal(cp, "ssl2"))
+		if (strcmp(cp, "ssl2") == 0)
 			methods = SSL2;
-		else if (equal(cp, "ssl3"))
+		else if (strcmp(cp, "ssl3") == 0)
 			methods = SSL3;
-		else if (equal(cp, "tls1"))
+		else if (strcmp(cp, "tls1") == 0)
 			methods = TLS1;
 		else {
-			fprintf(stderr, catgets(catd, CATSET, 244,
-					"Invalid SSL method \"%s\"\n"), cp);
+			fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"),
+				cp);
 		}
 	}
 	if (value("ssl-v2-allow") == NULL)
@@ -956,12 +951,12 @@ getsig(struct message *m, int n, NSSCMSMessage **msg)
 	int	inhdr, binary;
 	int	detached = 1;
 
-loop:	if ((ct = hfield("content-type", m)) == NULL)
+loop:	if ((ct = hfield1("content-type", m)) == NULL)
 		goto not;
 	if (strncmp(ct, "application/x-pkcs7-mime", 24) == 0 ||
 			strncmp(ct, "application/pkcs7-mime", 22) == 0) {
-		to = hfield("to", m);
-		cc = hfield("cc", m);
+		to = hfield1("to", m);
+		cc = hfield1("cc", m);
 		if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
 			return NULL;
 		if (x != (struct message *)-1) {
@@ -1053,7 +1048,7 @@ getdig(struct message *m, int n, SECItem ***digests,
 	NSSCMSDigestContext	*digctx;
 
 	*poolp = PORT_NewArena(1024);
-	if ((ct = hfield("content-type", m)) == NULL ||
+	if ((ct = hfield1("content-type", m)) == NULL ||
 			strncmp(ct, "multipart/signed", 16) ||
 			(pt = mime_getparam("protocol", ct)) == NULL ||
 			strcmp(pt, "application/x-pkcs7-signature") &&

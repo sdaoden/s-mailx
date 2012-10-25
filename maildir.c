@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)maildir.c	1.20 (gritter) 12/28/06";
-#endif
-#endif /* not lint */
 
 #include "config.h"
 
@@ -241,6 +236,7 @@ cleantmp(const char *name)
 	char	*fn = NULL;
 	size_t	fnsz = 0, ssz;
 	time_t	now;
+	(void)name;
 
 	if ((dirfd = opendir("tmp")) == NULL)
 		return;
@@ -277,6 +273,7 @@ append(const char *name, const char *sub, const char *fn)
 	enum mflag	f = MUSED|MNOFROM|MNEWEST;
 	const char	*cp;
 	char	*xp;
+	(void)name;
 
 	if (fn && sub) {
 		if (strcmp(sub, "new") == 0)
@@ -336,7 +333,8 @@ readin(const char *name, struct message *m)
 
 	if ((fp = Fopen(m->m_maildir_file, "r")) == NULL) {
 		fprintf(stderr, "Cannot read \"%s/%s\" for message %d\n",
-				name, m->m_maildir_file, m - &message[0] + 1);
+				name, m->m_maildir_file,
+				(int)(m - &message[0] + 1));
 		m->m_flag |= MHIDDEN;
 		return;
 	}
@@ -429,8 +427,8 @@ maildir_update(void)
 	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
 		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
 			char	*id;
-			if ((id = hfield("message-id", m)) != NULL ||
-					(id = hfield("article-id", m)) != NULL)
+			if ((id = hfield1("message-id", m)) != NULL ||
+					(id = hfieldX("article-id", m)) != NULL)
 				fprintf(readstat, "%s\n", id);
 		}
 		if (edit)
@@ -443,7 +441,7 @@ maildir_update(void)
 				fprintf(stderr, "Cannot delete file \"%s/%s\" "
 						"for message %d.\n",
 						mailname, m->m_maildir_file,
-						m - &message[0] + 1);
+						(int)(m - &message[0] + 1));
 			else
 				gotcha++;
 		} else {
@@ -492,7 +490,7 @@ move(struct message *m)
 				"message %d not touched.\n",
 				mailname, m->m_maildir_file,
 				mailname, new,
-				m - &message[0] + 1);
+				(int)(m - &message[0] + 1));
 		return;
 	}
 	if (unlink(m->m_maildir_file) < 0)
@@ -682,9 +680,9 @@ maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 	}
 	fseek(fp, off1, SEEK_SET);
 	while (size > 0) {
-		z = size > sizeof buf ? sizeof buf : size;
+		z = size > (long)sizeof buf ? (long)sizeof buf : size;
 		if ((n = fread(buf, 1, z, fp)) != z ||
-				fwrite(buf, 1, n, op) != n) {
+				(size_t)n != fwrite(buf, 1, n, op)) {
 			fprintf(stderr, "Error writing to \"%s\".\n", tmp);
 			Fclose(op);
 			unlink(tmp);
@@ -763,8 +761,8 @@ mdlook(const char *name, struct message *data)
 			break;
 		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
 		n++;
-		while (c >= mdprime)
-			c -= mdprime;
+		while (c >= (unsigned)mdprime)
+			c -= (unsigned)mdprime;
 		md = &mdtable[c];
 	}
 	if (data != NULL && md->md_data == NULL)

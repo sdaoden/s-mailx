@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -36,15 +37,11 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)ssl.c	1.39 (gritter) 6/12/06";
-#endif
-#endif /* not lint */
-
 #include "config.h"
 
-#ifdef	USE_SSL
+#ifndef USE_SSL
+typedef int avoid_empty_file_compiler_warning;
+#else
 
 #include "rcv.h"
 #include "extern.h"
@@ -63,18 +60,17 @@ ssl_set_vrfy_level(const char *uhp)
 		cp = value("ssl-verify");
 	ac_free(vrvar);
 	if (cp != NULL) {
-		if (equal(cp, "strict"))
+		if (strcmp(cp, "strict") == 0)
 			ssl_vrfy_level = VRFY_STRICT;
-		else if (equal(cp, "ask"))
+		else if (strcmp(cp, "ask") == 0)
 			ssl_vrfy_level = VRFY_ASK;
-		else if (equal(cp, "warn"))
+		else if (strcmp(cp, "warn") == 0)
 			ssl_vrfy_level = VRFY_WARN;
-		else if (equal(cp, "ignore"))
+		else if (strcmp(cp, "ignore") == 0)
 			ssl_vrfy_level = VRFY_IGNORE;
 		else
-			fprintf(stderr, catgets(catd, CATSET, 265,
-					"invalid value of ssl-verify: %s\n"),
-					cp);
+			fprintf(stderr, tr(265,
+				"invalid value of ssl-verify: %s\n"), cp);
 	}
 }
 

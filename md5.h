@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Derived from RFC 1321:
@@ -31,7 +32,7 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-/*	Sccsid @(#)md5.h	1.8 (gritter) 3/4/06	*/
+#ifdef USE_MD5
 
 /*
  * This version of MD5 has been changed such that any unsigned type with
@@ -51,3 +52,5 @@ void	MD5Update(MD5_CTX *, unsigned char *, unsigned int);
 void	MD5Final(unsigned char[16], MD5_CTX *);
 
 void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
+
+#endif /* USE_MD5 */

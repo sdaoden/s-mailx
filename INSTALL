@@ -1,3 +1,70 @@
+I n s t a l l i n g  S - n a i l
+================================
+
+Quick start
+-----------
+
+Read user.conf and maybe adjust some feature settings according to your
+needs.  You may also want to look into the Makefile, e.g., to change the
+PREFIX, or to adjust whatever else before the >8 scissor line.  Then run
+
+  $ [make &&] make install # (Or only make install)
+  $ make uninstall         # (Will not remove the example configuration)
+  $ make distclean         # *Completely* cleanup working directory
+
+Instead of actually *editing* the Makefile it is probably much easier to
+override variables from within the command line instead, e.g., to change
+the installation directory:
+
+  $ make PREFIX=/some/nasty/prefix STRIP='/usr/bin/strip -s' install
+
+And instead of editing user.conf you may also choose predefined CONFIG
+sets from the command line:
+
+  CONFIG=MINIMAL  little is left but some air to breathe.
+  CONFIG=NETLESS  all settings from user.conf relating internet connect-
+                  ivity are off.
+  CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
+                  identical to MINIMAL.
+
+When this CONFIG-set approach is used, the following additional switches
+may be used on the command line:
+
+  WANT_IDNA=0     Do not (try to) support internationalized domain names.
+
+E.g.:
+
+  $ make CONFIG=MINIMAL WANT_IDNA=0 DESTDIR=xtest SID=mini- install
+
+would create a "mini-nail" binary and install a "mini-nail" manual etc.
+under the prefix /usr/local but rooted under [./]xtest, i.e., the binary
+would be installed as "[./]xtest/usr/local/bin/mini-nail".  Note that
+for "make uninstall" the *exact* command line should be repeated.
+
+Notes for S-nail(1) v13
+-----------------------
+
+- Mac OS X Snow Leopard.  Tested with all features (except IPv6) with
+  the default CC=clang(1) and CC=gcc(1), -O2 and -O3, the WARNs
+  including -fstrict-overflow+.
+- FreeBSD 9.0.  Tested with all features except IPv6, iconv() and IDNA
+  with the default CC=clang(1) and CC=gcc(1), -O2, and the WARNs
+  including -fstrict-overflow.
+- NetBSD 5.1 and 6.0.  Tested with all features except IPv6 and IDNA
+  with the default compiler, -O2 and -O3.
+  Note that on 6.0 you should not enable -fstrict-overflow, as it
+  produces much more warnings than i saw before when testing with all
+  the other combinations shown here, and i had yet no time to look over
+  all those.
+- Lightly tested on a default OpenBSD 5.1 with -O2.
+- Compiled and lightly tested on TinyCoreLinux 4.4 with default compiler
+  environment available at that time with -O2.
+
+The current maintainer has not yet looked at the following for real:
+IPv6, IMAP+, POP3+, NSS, Bayesian filter.
+
+[Heirloom file content follows]
+
 How to configure and install mailx
 ==================================
 

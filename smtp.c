@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -36,28 +37,25 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
-#endif
-#endif /* not lint */
-
 #include "rcv.h"
 
 #include <sys/utsname.h>
-#ifdef	HAVE_SOCKETS
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
-#endif	/* HAVE_SOCKETS */
+#ifdef HAVE_SOCKETS
+# include <sys/socket.h>
+# include <netdb.h>
+# include <netinet/in.h>
+# ifdef HAVE_ARPA_INET_H
+#  include <arpa/inet.h>
+# endif
+#endif
 #include <unistd.h>
 #include <setjmp.h>
 
 #include "extern.h"
-#include "md5.h"
+
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
@@ -65,7 +63,7 @@ static char sccsid[] = "@(#)smtp.c	2.43 (gritter) 8/4/07";
  * SMTP client and other internet related functions.
  */
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_SMTP
 static int verbose;
 static int _debug;
 #endif
@@ -79,13 +77,13 @@ nodename(int mayoverride)
 	static char *hostname;
 	char *hn;
         struct utsname ut;
-#ifdef	HAVE_SOCKETS
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
 	struct addrinfo hints, *res;
-#else	/* !HAVE_IPv6_FUNCS */
+# else
         struct hostent *hent;
-#endif	/* !HAVE_IPv6_FUNCS */
-#endif	/* HAVE_SOCKETS */
+# endif
+#endif
 
 	if (mayoverride && (hn = value("hostname")) != NULL && *hn) {
 		free(hostname);
@@ -94,8 +92,8 @@ nodename(int mayoverride)
 	if (hostname == NULL) {
 		uname(&ut);
 		hn = ut.nodename;
-#ifdef	HAVE_SOCKETS
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
 		memset(&hints, 0, sizeof hints);
 		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
 		hints.ai_flags = AI_CANONNAME;
@@ -106,13 +104,13 @@ nodename(int mayoverride)
 			}
 			freeaddrinfo(res);
 		}
-#else	/* !HAVE_IPv6_FUNCS */
+# else
 		hent = gethostbyname(hn);
 		if (hent != NULL) {
 			hn = hent->h_name;
 		}
-#endif	/* !HAVE_IPv6_FUNCS */
-#endif	/* HAVE_SOCKETS */
+# endif
+#endif
 		hostname = smalloc(strlen(hn) + 1);
 		strcpy(hostname, hn);
 	}
@@ -159,12 +157,12 @@ myorigin(struct header *hp)
 	struct name	*np;
 
 	if ((cp = myaddrs(hp)) == NULL ||
-			(np = sextract(cp, GEXTRA|GFULL)) == NULL)
+			(np = lextract(cp, GEXTRA|GFULL)) == NULL)
 		return NULL;
 	return np->n_flink != NULL ? value("sender") : cp;
 }
 
-#ifdef	HAVE_SOCKETS
+#ifdef USE_SMTP
 
 static int read_smtp(struct sock *sp, int value, int ign_eof);
 static int talk_smtp(struct name *to, FILE *fi, struct sock *sp,
@@ -260,6 +258,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	char	*b64, *authstr, *cp;
 	enum	{ AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 	int	inhdr = 1, inbcc = 0;
+	(void)hp;
 
 	if ((authstr = smtp_auth_var("", skinned)) == NULL)
 		auth = user && password ? AUTH_LOGIN : AUTH_NONE;
@@ -267,16 +266,22 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		auth = AUTH_PLAIN;
 	else if (strcmp(authstr, "login") == 0)
 		auth = AUTH_LOGIN;
-	else if (strcmp(authstr, "cram-md5") == 0)
+	else if (strcmp(authstr, "cram-md5") == 0) {
+#ifdef USE_MD5
 		auth = AUTH_CRAM_MD5;
-	else {
-		fprintf(stderr, "Unknown SMTP authentication "
-				"method: \"%s\"\n", authstr);
+#else
+		fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+		return (1);
+#endif
+	} else {
+		fprintf(stderr, tr(274,
+			"Unknown SMTP authentication method: %s\n"), authstr);
 		return 1;
 	}
 	if (auth != AUTH_NONE && (user == NULL || password == NULL)) {
-		fprintf(stderr, "User and password are necessary "
-				"for SMTP authentication.\n");
+		fprintf(stderr, tr(275,
+			"User and password are necessary "
+			"for SMTP authentication.\n"));
 		return 1;
 	}
 	SMTP_ANSWER(2);
@@ -300,7 +305,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	}
 #else	/* !USE_SSL */
 	if (value("smtp-use-starttls") || value("smtp-use-tls")) {
-		fprintf(stderr, "No SSL support compiled in.\n");
+		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		return 1;
 	}
 #endif	/* !USE_SSL */
@@ -334,6 +339,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			SMTP_OUT(o);
 			SMTP_ANSWER(2);
 			break;
+#ifdef USE_MD5
 		case AUTH_CRAM_MD5:
 			SMTP_OUT("AUTH CRAM-MD5\r\n");
 			SMTP_ANSWER(3);
@@ -343,6 +349,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			SMTP_OUT(cp);
 			SMTP_ANSWER(2);
 			break;
+#endif
 		}
 	} else {
 		snprintf(o, sizeof o, "HELO %s\r\n", nodename(1));
@@ -355,7 +362,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	for (n = to; n != NULL; n = n->n_flink) {
 		if ((n->n_type & GDEL) == 0) {
 			snprintf(o, sizeof o, "RCPT TO:<%s>\r\n",
-					skin(n->n_name));
+				skinned_name(n));
 			SMTP_OUT(o);
 			SMTP_ANSWER(2);
 		}
@@ -410,6 +417,7 @@ static sigjmp_buf	smtpjmp;
 static void
 onterm(int signo)
 {
+	(void)signo;
 	siglongjmp(smtpjmp, 1);
 }
 
@@ -417,8 +425,9 @@ onterm(int signo)
  * Connect to a SMTP server.
  */
 int
-smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
-		const char *user, const char *password, const char *skinned)
+smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
+		struct header *hp, const char *user, const char *password,
+		const char *skinned)
 {
 	struct sock	so;
 	int	use_ssl, ret;
@@ -462,13 +471,20 @@ smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 	safe_signal(SIGTERM, saveterm);
 	return ret;
 }
-#else	/* !HAVE_SOCKETS */
+#else	/* !USE_SMTP */
 int
 smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned)
 {
+	(void)server;
+	(void)to;
+	(void)fi;
+	(void)hp;
+	(void)user;
+	(void)password;
+	(void)skinned;
 	fputs(catgets(catd, CATSET, 194,
 			"No SMTP support compiled in.\n"), stderr);
 	return 1;
 }
-#endif	/* !HAVE_SOCKETS */
+#endif	/* USE_SMTP */

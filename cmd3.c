@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd3.c	2.87 (gritter) 10/1/08";
-#endif
-#endif /* not lint */
 
 #include <math.h>
 #include <float.h>
@@ -107,6 +102,7 @@ dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *shell;
+	(void)v;
 
 	if ((shell = value("SHELL")) == NULL)
 		shell = SHELL;
@@ -173,32 +169,37 @@ bangexp(char **str, size_t *size)
 int 
 help(void *v)
 {
-	const char *helptext =
-"               %s commands\n\
-type <message list>             type messages\n\
-next                            goto and type next message\n\
-from <message list>             give head lines of messages\n\
-headers                         print out active message headers\n\
-delete <message list>           delete messages\n\
-undelete <message list>         undelete messages\n\
-save <message list> folder      append messages to folder and mark as saved\n\
-copy <message list> folder      append messages to folder without marking them\n\
-write <message list> file       append message texts to file, save attachments\n\
-preserve <message list>         keep incoming messages in mailbox even if saved\n\
-Reply <message list>            reply to message senders\n\
-reply <message list>            reply to message senders and all recipients\n\
-mail addresses                  mail to specific recipients\n\
-file folder                     change to another folder\n\
-quit                            quit and apply changes to folder\n\
-xit                             quit and discard changes made to folder\n\
-!                               shell escape\n\
-cd <directory>                  chdir to directory or home if none given\n\
-list                            list names of all available commands\n\
-\n\
-A <message list> consists of integers, ranges of same, or other criteria\n\
-separated by spaces.  If omitted, %s uses the last message typed.\n";
-
-	fprintf(stdout, helptext, progname, progname);
+	(void)v;
+	/* Very ugly, but take care for compiler supported string lengths :( */
+	fprintf(stdout,
+"%s commands:\n",
+		progname);
+	puts(
+"type <message list>         type messages\n"
+"next                        goto and type next message\n"
+"from <message list>         give head lines of messages\n"
+"headers                     print out active message headers\n"
+"delete <message list>       delete messages\n"
+"undelete <message list>     undelete messages\n");
+	puts(
+"save <message list> folder  append messages to folder and mark as saved\n"
+"copy <message list> folder  append messages to folder without marking them\n"
+"write <message list> file   append message texts to file, save attachments\n"
+"preserve <message list>     keep incoming messages in mailbox even if saved\n"
+"Reply <message list>        reply to message senders\n"
+"reply <message list>        reply to message senders and all recipients\n");
+	puts(
+"mail addresses              mail to specific recipients\n"
+"file folder                 change to another folder\n"
+"quit                        quit and apply changes to folder\n"
+"xit                         quit and discard changes made to folder\n"
+"!                           shell escape\n"
+"cd <directory>              chdir to directory or home if none given\n"
+"list                        list names of all available commands\n");
+	fprintf(stdout,
+"\nA <message list> consists of integers, ranges of same, or other criteria\n"
+"separated by spaces.  If omitted, %s uses the last message typed.\n",
+		progname);
 	return(0);
 }
 
@@ -214,7 +215,7 @@ schdir(void *v)
 	if (*arglist == NULL)
 		cp = homedir;
 	else
-		if ((cp = expand(*arglist)) == NULL)
+		if ((cp = file_expand(*arglist)) == NULL)
 			return(1);
 	if (chdir(cp) < 0) {
 		perror(cp);
@@ -231,8 +232,8 @@ make_ref_and_cs(struct message *mp, struct header *head)
 	unsigned i;
 	struct name *n;
 
-	oldref = hfield("references", mp);
-	oldmsgid = hfield("message-id", mp);
+	oldref = hfield1("references", mp);
+	oldmsgid = hfield1("message-id", mp);
 	if (oldmsgid == NULL || *oldmsgid == '\0') {
 		head->h_ref = NULL;
 		return;
@@ -267,7 +268,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
 	n->n_blink = NULL;
 	head->h_ref = n;
 	if (value("reply-in-same-charset") != NULL &&
-			(cp = hfield("content-type", mp)) != NULL)
+			(cp = hfield1("content-type", mp)) != NULL)
 		head->h_charset = mime_getparam("charset", cp);
 }
 
@@ -340,13 +341,13 @@ respond_internal(int *msgvec, int recipient_record)
 	mp = &message[msgvec[0] - 1];
 	touch(mp);
 	setdot(mp);
-	if ((rcv = hfield("reply-to", mp)) == NULL)
-		if ((rcv = hfield("from", mp)) == NULL)
+	if ((rcv = hfield1("reply-to", mp)) == NULL)
+		if ((rcv = hfield1("from", mp)) == NULL)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
-		np = sextract(rcv, GTO|gf);
-	if ((cp = hfield("to", mp)) != NULL)
-		np = cat(np, sextract(cp, GTO|gf));
+		np = lextract(rcv, GTO|gf);
+	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+		np = cat(np, lextract(cp, GTO|gf));
 	np = elide(np);
 	/*
 	 * Delete my name from the reply list,
@@ -354,16 +355,18 @@ respond_internal(int *msgvec, int recipient_record)
 	 */
 	np = delete_alternates(np);
 	if (np == NULL)
-		np = sextract(rcv, GTO|gf);
+		np = lextract(rcv, GTO|gf);
 	head.h_to = np;
-	if ((head.h_subject = hfield("subject", mp)) == NULL)
-		head.h_subject = hfield("subj", mp);
+	head.h_subject = hfield1("subject", mp);
 	head.h_subject = reedit(head.h_subject);
-	if ((cp = hfield("cc", mp)) != NULL) {
-		np = elide(sextract(cp, GCC|gf));
-		np = delete_alternates(np);
-		head.h_cc = np;
-	}
+	/* Cc: */
+	np = NULL;
+	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+		np = lextract(cp, GCC|gf);
+	if ((cp = hfield1("cc", mp)) != NULL)
+		np = cat(np, lextract(cp, GCC|gf));
+	if (np != NULL)
+		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
 	Eflag = value("skipemptybody") != NULL;
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
@@ -439,7 +442,7 @@ forward1(char *str, int recipient_record)
 		return 1;
 	}
 	memset(&head, 0, sizeof head);
-	if ((head.h_to = sextract(recipient,
+	if ((head.h_to = lextract(recipient,
 			GTO | (value("fullnames") ? GFULL : GSKIN))) == NULL)
 		return 1;
 	mp = &message[*msgvec - 1];
@@ -450,8 +453,7 @@ forward1(char *str, int recipient_record)
 		touch(mp);
 		setdot(mp);
 	}
-	if ((head.h_subject = hfield("subject", mp)) == NULL)
-		head.h_subject = hfield("subj", mp);
+	head.h_subject = hfield1("subject", mp);
 	head.h_subject = fwdedit(head.h_subject);
 	Eflag = value("skipemptybody") != NULL;
 	mail1(&head, 1, forward_as_attachment ? NULL : mp,
@@ -599,6 +601,7 @@ messize(void *v)
 int 
 rexit(void *v)
 {
+	(void)v;
 	if (sourcing)
 		return(1);
 	exit(0);
@@ -611,6 +614,7 @@ static sigjmp_buf	pipejmp;
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -626,13 +630,10 @@ set(void *v)
 	char *cp, *cp2;
 	char **ap, **p;
 	int errs, h, s;
-	FILE *obuf = stdout;
-	int bsdset = value("bsdcompat") != NULL || value("bsdset") != NULL;
+	FILE *volatile obuf = stdout;
+	int volatile bsdset = (value("bsdcompat") != NULL ||
+				value("bsdset") != NULL);
 
-	(void)&cp;
-	(void)&ap;
-	(void)&obuf;
-	(void)&bsdset;
 	if (*arglist == NULL) {
 		for (h = 0, s = 1; h < HSHSIZE; h++)
 			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
@@ -689,9 +690,8 @@ endpipe:
 			cp = "";
 		else
 			cp++;
-		if (equal(varbuf, "")) {
-			printf(catgets(catd, CATSET, 41,
-					"Non-null variable name required\n"));
+		if (strcmp(varbuf, "") == 0) {
+			printf(tr(41, "Non-null variable name required\n"));
 			errs++;
 			ac_free(varbuf);
 			continue;
@@ -829,14 +829,16 @@ diction(const void *a, const void *b)
 int 
 cfile(void *v)
 {
-	char **argv = v;
+	char **argv = v, *exp;
 
 	if (argv[0] == NULL) {
 		newfileinfo();
-		return 0;
+		return (0);
 	}
-	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
-	return file1(*argv);
+	if ((exp = expand("&")) == NULL)
+		return (0);
+	strncpy(mboxname, exp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
+	return (file1(*argv));
 }
 
 static int 
@@ -969,16 +971,15 @@ Respond_internal(int *msgvec, int recipient_record)
 		mp = &message[*ap - 1];
 		touch(mp);
 		setdot(mp);
-		if ((cp = hfield("reply-to", mp)) == NULL)
-			if ((cp = hfield("from", mp)) == NULL)
+		if ((cp = hfield1("reply-to", mp)) == NULL)
+			if ((cp = hfield1("from", mp)) == NULL)
 				cp = nameof(mp, 2);
-		head.h_to = cat(head.h_to, sextract(cp, GTO|gf));
+		head.h_to = cat(head.h_to, lextract(cp, GTO|gf));
 	}
 	if (head.h_to == NULL)
 		return 0;
 	mp = &message[msgvec[0] - 1];
-	if ((head.h_subject = hfield("subject", mp)) == NULL)
-		head.h_subject = hfield("subj", mp);
+	head.h_subject = hfield1("subject", mp);
 	head.h_subject = reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 	Eflag = value("skipemptybody") != NULL;
@@ -1033,6 +1034,7 @@ ifcmd(void *v)
 int 
 elsecmd(void *v)
 {
+	(void)v;
 
 	switch (cond) {
 	case CANY:
@@ -1068,6 +1070,7 @@ elsecmd(void *v)
 int 
 endifcmd(void *v)
 {
+	(void)v;
 
 	if (cond == CANY) {
 		printf(catgets(catd, CATSET, 46,
@@ -1182,6 +1185,7 @@ int
 newmail(void *v)
 {
 	int val = 1, mdot;
+	(void)v;
 
 	if ((mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 			(val = setfile(mailname, 1)) == 0) {
@@ -1344,7 +1348,11 @@ account(void *v)
 			a->ac_name = NULL;
 		return define1(args[0], 1);
 	}
-	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
+
+	if ((cp = expand("&")) == NULL)
+		return (1);
+	strncpy(mboxname, cp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
+
 	oqf = savequitflags();
 	if ((a = get_oldaccount(args[0])) == NULL) {
 		if (args[1]) {
@@ -1598,6 +1606,8 @@ cscore(void *v)
 int 
 cnoop(void *v)
 {
+	(void)v;
+
 	switch (mb.mb_type) {
 	case MB_IMAP:
 		imap_noop();
@@ -1620,20 +1630,21 @@ cremove(void *v)
 	int	ec = 0;
 
 	if (*args == NULL) {
-		fprintf(stderr, "Syntax is: remove mailbox ...\n");
-		return 1;
+		fprintf(stderr, tr(290, "Syntax is: remove mailbox ...\n"));
+		return (1);
 	}
 	do {
 		if ((name = expand(*args)) == NULL)
 			continue;
 		if (strcmp(name, mailname) == 0) {
-			fprintf(stderr,
-				"Cannot remove current mailbox \"%s\".\n",
+			fprintf(stderr, tr(286,
+				"Cannot remove current mailbox \"%s\".\n"),
 				name);
 			ec |= 1;
 			continue;
 		}
-		snprintf(vb, sizeof vb, "Remove \"%s\" (y/n) ? ", name);
+		snprintf(vb, sizeof vb, tr(287, "Remove \"%s\" (y/n) ? "),
+			name);
 		if (yorn(vb) == 0)
 			continue;
 		switch (which_protocol(name)) {
@@ -1644,7 +1655,8 @@ cremove(void *v)
 			}
 			break;
 		case PROTO_POP3:
-			fprintf(stderr, "Cannot remove POP3 mailbox \"%s\".\n",
+			fprintf(stderr, tr(288,
+				"Cannot remove POP3 mailbox \"%s\".\n"),
 					name);
 			ec |= 1;
 			break;
@@ -1657,8 +1669,8 @@ cremove(void *v)
 				ec |= 1;
 			break;
 		case PROTO_UNKNOWN:
-			fprintf(stderr,
-				"Unknown protocol in \"%s\". Not removed.\n",
+			fprintf(stderr, tr(289,
+				"Unknown protocol in \"%s\". Not removed.\n"),
 				name);
 			ec |= 1;
 		}
@@ -1675,18 +1687,24 @@ crename(void *v)
 
 	if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
 		fprintf(stderr, "Syntax: rename old new\n");
-		return 1;
+		return (1);
 	}
-	old = expand(args[0]);
+
+	if ((old = expand(args[0])) == NULL)
+		return (1);
 	oldp = which_protocol(old);
-	new = expand(args[1]);
+	if ((new = expand(args[1])) == NULL)
+		return (1);
 	newp = which_protocol(new);
+
 	if (strcmp(old, mailname) == 0 || strcmp(new, mailname) == 0) {
-		fprintf(stderr, "Cannot rename current mailbox \"%s\".\n", old);
+		fprintf(stderr, tr(291,
+		"Cannot rename current mailbox \"%s\".\n"), old);
 		return 1;
 	}
 	if ((oldp == PROTO_IMAP || newp == PROTO_IMAP) && oldp != newp) {
-		fprintf(stderr, "Can only rename folders of same type.\n");
+		fprintf(stderr, tr(292,
+			"Can only rename folders of same type.\n"));
 		return 1;
 	}
 	if (newp == PROTO_POP3)
@@ -1719,7 +1737,7 @@ crename(void *v)
 		}
 		break;
 	case PROTO_POP3:
-	nopop3:	fprintf(stderr, "Cannot rename POP3 mailboxes.\n");
+	nopop3:	fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
 		ec |= 1;
 		break;
 	case PROTO_IMAP:
@@ -1727,8 +1745,9 @@ crename(void *v)
 			ec |= 1;
 		break;
 	case PROTO_UNKNOWN:
-		fprintf(stderr, "Unknown protocol in \"%s\" and \"%s\". "
-				"Not renamed.\n", old, new);
+		fprintf(stderr, tr(294,
+			"Unknown protocol in \"%s\" and \"%s\".  "
+			"Not renamed.\n"), old, new);
 		ec |= 1;
 	}
 	return ec;

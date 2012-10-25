@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,12 +37,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd2.c	2.47 (gritter) 5/9/10";
-#endif
-#endif /* not lint */
-
 #include "rcv.h"
 #include "extern.h"
 #include <sys/wait.h>
@@ -54,15 +49,18 @@ static char sccsid[] = "@(#)cmd2.c	2.47 (gritter) 5/9/10";
  * More user commands.
  */
 
-static int save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
-		int convert, int sender_record, int domove);
-static char *snarf(char *linebuf, int *flag, int usembox);
-static int delm(int *msgvec);
-static int ignore1(char **list, struct ignoretab *tab, char *which);
-static int igshow(struct ignoretab *tab, char *which);
-static int igcomp(const void *l, const void *r);
-static void unignore_one(const char *name, struct ignoretab *tab);
-static int unignore1(char **list, struct ignoretab *tab, char *which);
+static int	save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
+			int convert, int sender_record, int domove);
+static char *	snarf(char *linebuf, int *flag, int usembox);
+static int	delm(int *msgvec);
+#ifdef HAVE_ASSERTS
+static void	clob1(int n);
+#endif
+static int	ignore1(char **list, struct ignoretab *tab, char *which);
+static int	igshow(struct ignoretab *tab, char *which);
+static int	igcomp(const void *l, const void *r);
+static void	unignore_one(const char *name, struct ignoretab *tab);
+static int	unignore1(char **list, struct ignoretab *tab, char *which);
 
 /*
  * If any arguments were given, go to the next applicable argument
@@ -309,7 +307,7 @@ save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
 			file = cp;
 	}
 	if ((file = expand(file)) == NULL)
-		return(1);
+		return (1);
 	prot = which_protocol(file);
 	if (prot != PROTO_IMAP) {
 		if (access(file, 0) >= 0) {
@@ -437,7 +435,9 @@ cwrite(void *v)
 {
 	char *str = v;
 
-	return save1(str, 0, "write", allignore, SEND_TOFILE, 0, 0);
+	if (str == NULL || *str == '\0')
+		str = savestr("/dev/null");
+	return (save1(str, 0, "write", allignore, SEND_TOFILE, 0, 0));
 }
 
 /*
@@ -448,7 +448,6 @@ cwrite(void *v)
  * unless the file name is the only thing on the line, in
  * which case, return 0 in the reference flag variable.
  */
-
 static char *
 snarf(char *linebuf, int *flag, int usembox)
 {
@@ -458,14 +457,11 @@ snarf(char *linebuf, int *flag, int usembox)
 	if ((cp = laststring(linebuf, flag, 0)) == NULL) {
 		if (usembox) {
 			*flag = 0;
-			return expand("&");
-		} else {
-			printf(catgets(catd, CATSET, 28,
-						"No file specified.\n"));
-			return NULL;
-		}
+			cp = expand("&");
+		} else
+			fprintf(stderr, tr(28, "No file specified.\n"));
 	}
-	return(cp);
+	return (cp);
 }
 
 /*
@@ -567,7 +563,7 @@ undeletecmd(void *v)
 	return 0;
 }
 
-#ifdef	DEBUG_COMMANDS
+#ifdef HAVE_ASSERTS
 /*
  * Interactively dump core on "core"
  */
@@ -576,28 +572,41 @@ int
 core(void *v)
 {
 	int pid;
-#ifdef	WCOREDUMP
+# ifdef	WCOREDUMP
 	extern int wait_status;
-#endif
+# endif
+	(void)v;
 
 	switch (pid = fork()) {
 	case -1:
 		perror("fork");
-		return(1);
+		return (1);
 	case 0:
 		abort();
 		_exit(1);
 	}
-	printf(catgets(catd, CATSET, 31, "Okie dokie"));
-	fflush(stdout);
-	wait_child(pid);
-#ifdef	WCOREDUMP
+	(void)printf(tr(31, "Okie dokie"));
+	(void)fflush(stdout);
+	(void)wait_child(pid);
+# ifdef	WCOREDUMP
 	if (WCOREDUMP(wait_status))
-		printf(catgets(catd, CATSET, 32, " -- Core dumped.\n"));
+		(void)printf(tr(32, " -- Core dumped.\n"));
 	else
-		printf(catgets(catd, CATSET, 33, " -- Can't dump core.\n"));
-#endif
-	return 0;
+		(void)printf(tr(33, " -- Can't dump core.\n"));
+# endif
+	return (0);
+}
+
+static void
+clob1(int n)
+{
+	char buf[512], *cp;
+
+	if (n <= 0)
+		return;
+	for (cp = buf; cp < &buf[512]; *cp++ = (char)0xFF)
+		;
+	clob1(n - 1);
 }
 
 /*
@@ -614,25 +623,9 @@ clobber(void *v)
 	else
 		times = (atoi(argv[0]) + 511) / 512;
 	clob1(times);
-	return 0;
+	return (0);
 }
-
-/*
- * Clobber the stack.
- */
-static void 
-clob1(int n)
-{
-	char buf[512];
-	char *cp;
-
-	if (n <= 0)
-		return;
-	for (cp = buf; cp < &buf[512]; *cp++ = (char)0xFF)
-		;
-	clob1(n - 1);
-}
-#endif	/* DEBUG_COMMANDS */
+#endif /* HAVE_ASSERTS */
 
 /*
  * Add the given header fields to the retained list.

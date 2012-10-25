@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -34,8 +35,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	Sccsid @(#)def.h	2.104 (gritter) 3/4/06
  */
 
 /*
@@ -51,6 +50,9 @@
 
 #define	APPEND				/* New mail goes to end of mailbox */
 
+/* Is *C* a quoting character (for *quote-fold* compression) */
+#define ISQUOTE(C)	((C) == '>' || (C) == '|')
+
 #define	ESCAPE		'~'		/* Default escape for sending */
 #ifndef	MAXPATHLEN
 #ifdef	PATH_MAX
@@ -63,18 +65,23 @@
 #define	PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
 #endif
 #define	HSHSIZE		59		/* Hash size for aliases and vars */
-#define	LINESIZE	2560		/* max readable line width */
+#if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
+# define LINESIZE	BUFSIZ		/* max readable line width */
+#else
+# define LINESIZE	2560
+#endif
 #define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
 #define	MAXARGC		1024		/* Maximum list of raw strings */
 #define	MAXEXP		25		/* Maximum expansion of aliases */
 
-#define	equal(a, b)	(strcmp(a,b)==0)/* A nice function to string compare */
-
-#ifdef	HAVE_CATGETS
-#define	CATSET	1
-#else	/* !HAVE_CATGETS */
-#define	catgets(a, b, c, d)	(d)
-#endif	/* !HAVE_CATGETS */
+#undef tr
+#ifdef HAVE_CATGETS
+# define CATSET			1
+# define tr(c, d)		catgets(catd, CATSET, c, d)
+#else
+# define catgets(a, b, c, d)	(d)
+# define tr(c, d)		(d)
+#endif
 
 typedef void (*sighandler_type)(int);
 
@@ -405,27 +412,24 @@ enum gfield {
 
 #define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
 
-#define	visible(mp)	(((mp)->m_flag&(MDELETED|MHIDDEN|MKILL))==0|| \
-				dot==(mp) && (mp)->m_flag&MKILL)
+#define	visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 || \
+				(dot == (mp) && (mp)->m_flag & MKILL))
 
 /*
- * Structure used to pass about the current
- * state of the user-typed message header.
+ * Structure used to pass about the current state of a message (header).
  */
-
 struct header {
-	struct name *h_to;		/* Dynamic "To:" string */
-	char *h_subject;		/* Subject string */
-	struct name *h_cc;		/* Carbon copies string */
-	struct name *h_bcc;		/* Blind carbon copies */
-	struct name *h_ref;		/* References */
-	struct name *h_smopts;		/* Sendmail options */
+	struct name	*h_to;		/* Dynamic "To:" string */
+	char		*h_subject;	/* Subject string */
+	struct name	*h_cc;		/* Carbon copies string */
+	struct name	*h_bcc;		/* Blind carbon copies */
+	struct name	*h_ref;		/* References */
 	struct attachment *h_attach;	/* MIME attachments */
-	char	*h_charset;		/* preferred charset */
-	struct name *h_from;		/* overridden "From:" field */
-	struct name *h_replyto;		/* overridden "Reply-To:" field */
-	struct name *h_sender;		/* overridden "Sender:" field */
-	char *h_organization;		/* overridden "Organization:" field */
+	char		*h_charset;	/* preferred charset */
+	struct name	*h_from;	/* overridden "From:" field */
+	struct name	*h_replyto;	/* overridden "Reply-To:" field */
+	struct name	*h_sender;	/* overridden "Sender:" field */
+	char		*h_organization; /* overridden "Organization:" field */
 };
 
 /*
@@ -434,12 +438,55 @@ struct header {
  * kind of stuff.
  */
 
+enum nameflags {
+	NAME_NAME_SALLOC	= 1<< 0,	/* .n_name is doped */
+	NAME_FULLNAME_SALLOC	= 1<< 1,	/* .n_fullname is doped */
+	NAME_SKINNED		= 1<< 2,	/* Is actually skin()ned */
+	NAME_IDNA		= 1<< 3,	/* IDNA was applied */
+	NAME_ADDRSPEC_CHECKED	= 1<< 4,	/* Address has been .. and */
+	NAME_ADDRSPEC_ISFILE	= 1<< 5,	/* ..is a file path */
+	NAME_ADDRSPEC_ISPIPE	= 1<< 6,	/* ..is a command for piping */
+	NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE |
+					NAME_ADDRSPEC_ISPIPE,
+	NAME_ADDRSPEC_ERR_EMPTY	= 1<< 7,	/* An empty string (or NULL) */
+	NAME_ADDRSPEC_ERR_ATSEQ	= 1<< 8,	/* Weird @ sequence */
+	NAME_ADDRSPEC_ERR_CHAR	= 1<< 9,	/* Invalid character */
+	NAME_ADDRSPEC_ERR_IDNA	= 1<<10,	/* IDNA convertion failed */
+	NAME_ADDRSPEC_INVALID	= NAME_ADDRSPEC_ERR_EMPTY |
+					NAME_ADDRSPEC_ERR_ATSEQ |
+					NAME_ADDRSPEC_ERR_CHAR |
+					NAME_ADDRSPEC_ERR_IDNA,
+	_NAME_SHIFTWC = 11,
+	_NAME_MAXWC = 0xFFFFF,
+	_NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
+};
+
+/* In the !_ERR_EMPTY case, the failing character can be queried */
+#define NAME_ADDRSPEC_ERR_GETWC(F)	\
+	((((unsigned int)(F) & _NAME_MASKWC) >> _NAME_SHIFTWC) & _NAME_MAXWC)
+#define NAME_ADDRSPEC_ERR_SET(F, E, WC)	\
+do	(F) = ((F) & ~(NAME_ADDRSPEC_INVALID | _NAME_MASKWC)) | \
+		(E) | (((unsigned int)(WC) & _NAME_MAXWC) << _NAME_SHIFTWC); \
+while (0)
+
 struct name {
 	struct	name *n_flink;		/* Forward link in list. */
 	struct	name *n_blink;		/* Backward list link */
 	enum gfield	n_type;		/* From which list it came */
+	enum nameflags	n_flags;	/* enum nameflags */
 	char	*n_name;		/* This fella's name */
 	char	*n_fullname;		/* Sometimes, name including comment */
+};
+
+struct addrguts {
+	char const 	*ag_input;	/* Input string as given */
+	size_t		ag_ilen;	/* strlen() of input */
+	size_t		ag_iaddr_start;	/* Start of *addr-spec* in .ag_input */
+	size_t		ag_iaddr_aend;	/* ..and one past its end */
+	char		*ag_skinned;	/* Output (alloced if !=.ag_input) */
+	size_t		ag_slen;	/* strlen() of .ag_skinned */
+	size_t		ag_sdom_start;	/* Start of domain in .ag_skinned, */
+	enum nameflags	ag_n_flags;	/* enum nameflags of .ag_skinned */
 };
 
 /*
@@ -559,24 +606,27 @@ enum {
 	C_LOWER	= 0200
 };
 
-extern const unsigned char	class_char[];
+extern unsigned char const 	class_char[];
 
-#define	asciichar(c) ((unsigned)(c) <= 0177)
-#define	alnumchar(c) (asciichar(c)&&(class_char[c]&\
-			(C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)))
-#define	alphachar(c) (asciichar(c)&&(class_char[c]&(C_UPPER|C_LOWER)))
-#define	blankchar(c) (asciichar(c)&&(class_char[c]&(C_BLANK)))
-#define	cntrlchar(c) (asciichar(c)&&(class_char[c]==C_CNTRL))
-#define	digitchar(c) (asciichar(c)&&(class_char[c]&(C_DIGIT|C_OCTAL)))
-#define	lowerchar(c) (asciichar(c)&&(class_char[c]&(C_LOWER)))
-#define	punctchar(c) (asciichar(c)&&(class_char[c]&(C_PUNCT)))
-#define	spacechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_SPACE|C_WHITE)))
-#define	upperchar(c) (asciichar(c)&&(class_char[c]&(C_UPPER)))
-#define	whitechar(c) (asciichar(c)&&(class_char[c]&(C_BLANK|C_WHITE)))
-#define	octalchar(c) (asciichar(c)&&(class_char[c]&(C_OCTAL)))
+#define __ischarof(C, FLAGS)	\
+	(asciichar(C) && (class_char[(unsigned char)(C)] & (FLAGS)) != 0)
 
-#define	upperconv(c) (lowerchar(c) ? (c)-'a'+'A' : (c))
-#define	lowerconv(c) (upperchar(c) ? (c)-'A'+'a' : (c))
+#define	asciichar(c) ((unsigned char)(c) <= 0177)
+#define	alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
+#define	alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
+#define	blankchar(c) __ischarof(c, C_BLANK)
+#define	blankspacechar(c) __ischarof(c, C_BLANK|C_SPACE)
+#define	cntrlchar(c) __ischarof(c, C_CNTRL)
+#define	digitchar(c) __ischarof(c, C_DIGIT|C_OCTAL)
+#define	lowerchar(c) __ischarof(c, C_LOWER)
+#define	punctchar(c) __ischarof(c, C_PUNCT)
+#define	spacechar(c) __ischarof(c, C_BLANK|C_SPACE|C_WHITE)
+#define	upperchar(c) __ischarof(c, C_UPPER)
+#define	whitechar(c) __ischarof(c, C_BLANK|C_WHITE)
+#define	octalchar(c) __ischarof(c, C_OCTAL)
+
+#define	upperconv(c) (lowerchar(c) ? (char)((unsigned char)(c)-'a'+'A') : (c))
+#define	lowerconv(c) (upperchar(c) ? (char)((unsigned char)(c)-'A'+'a') : (c))
 /*	RFC 822, 3.2.	*/
 #define	fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
 
@@ -591,30 +641,28 @@ extern const unsigned char	class_char[];
 }
 
 /*
- * Use either alloca() or smalloc()/free(). ac_alloc can be used to
- * allocate space within a function. ac_free must be called when the
- * space is no longer needed, but expands to nothing if using alloca().
+ * Try to use alloca() for some function-local buffers and data,
+ * fall back to smalloc()/free() if not available.
  */
-#ifdef	HAVE_ALLOCA
-#define	ac_alloc(n)	alloca(n)
-#define	ac_free(n)
-#else	/* !HAVE_ALLOCA */
-#define	ac_alloc(n)	smalloc(n)
-#define	ac_free(n)	free(n)
-#endif	/* !HAVE_ALLOCA */
+#ifdef HAVE_ALLOCA
+# define ac_alloc(n)	HAVE_ALLOCA(n)
+# define ac_free(n)	do {} while (0)
+#else
+# define ac_alloc(n)	smalloc(n)
+# define ac_free(n)	free(n)
+#endif
 
 /*
- * glibc uses the slow thread-safe getc() even if _REENTRANT is not
- * defined. Work around it.
+ * Single-threaded, use unlocked I/O.
  */
-#ifdef	__GLIBC__
-#undef	getc
-#define	getc(c)		getc_unlocked(c)
-#undef	putc
-#define	putc(c, f)	putc_unlocked(c, f)
-#undef	putchar
-#define	putchar(c)	putc_unlocked((c), stdout)
-#endif	/* __GLIBC__ */
+#ifdef HAVE_PUTC_UNLOCKED
+# undef	getc
+# define getc(c)	getc_unlocked(c)
+# undef	putc
+# define putc(c, f)	putc_unlocked(c, f)
+# undef	putchar
+# define putchar(c)	putc_unlocked((c), stdout)
+#endif
 
 #define	CBAD		(-15555)
 

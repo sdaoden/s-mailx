@@ -1,8 +1,9 @@
-'\" t
 .\" Copyright (c) 1980, 1990, 1993
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
 .\"     Gunnar Ritter.  All rights reserved.
+.\" Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+.\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -34,31 +35,46 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     Sccsid: @(#)mailx.1	2.329 (gritter) 10/9/10
+.\"--MKMAN-START--
+.ds UU S-NAIL
+.ds uu S-nail
+.ds UA \\fIS-nail\\fR
+.ds ua \\fIs-nail\\fR
+.ds ba \\fBs-nail\\fR
+.ds UR s-nail.rc
+.\"--MKMAN-END--
+.\" If not ~/.mailrc, it breaks POSIX compatibility.  And adjust main.c.
+.ds ur ~/.mailrc
 .\"
-.TH MAILX 1 "10/9/10" "Heirloom mailx 12.5" "User Commands"
+.\" ##  --  >8  --  8<  --  ##
+.\"
+.TH "\*(UU" 1 "2012-10-25" "\*(uu" "User Commands"
 .SH NAME
-mailx \- send and receive Internet mail
+\*(UA \- send and receive Internet mail
 .SH SYNOPSIS
 .PD 0
 .HP
 .ad l
-\fBmailx\fR [\fB\-BDdEFintv~\fR]
-[\fB\-s\fI\ subject\fR] [\fB\-a\fI\ attachment\fR ]
-[\fB\-c\fI\ cc-addr\fR] [\fB\-b\fI\ bcc-addr\fR] [\fB\-r\fI\ from-addr\fR]
-[\fB\-h\fI\ hops\fR]
+\*(ba [\fB\-BDdEFintv~\fR]
 [\fB\-A\fI\ account\fR]
+[\fB\-a\fI\ attachment\fR]
+[\fB\-b\fI\ bcc-addr\fR] [\fB\-c\fI\ cc-addr\fR]
+[\fB\-O\fI\ mta-option [\fB\-O\fI mta-option-argument]\fR]
+[\fB\-q\fI\ quote-file\fR]
+[\fB\-r\fI\ from-addr\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
+[\fB\-s\fI\ subject\fR]
 \fIto-addr\fR .\ .\ .
 .HP
 .ad l
-\fBmailx\fR [\fB\-BDdeEHiInNRv~\fR] [\fB\-T\fI\ name\fR]
+\*(ba [\fB\-BDdEeHIiNnRv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
-\fB\-f\fR [\fIname\fR]
+[\fB\-T\fI\ name\fR]
+\fB\-f\fR [\fIfile\fR]
 .HP
 .ad l
-\fBmailx\fR [\fB\-BDdeEinNRv~\fR]
+\*(ba [\fB\-BDdEeiNnRv~\fR]
 [\fB\-A\fI\ account\fR]
 [\fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]]
 [\fB\-u\fI\ user\fR]
@@ -66,30 +82,29 @@ mailx \- send and receive Internet mail
 .PD
 .ad b
 .SH DESCRIPTION
-\fIMailx\fR is an intelligent mail processing system, which has
-a command syntax reminiscent of
+\*(UA is an intelligent mail processing system, which has a command syntax
+reminiscent of
 .IR ed (1)
 with lines replaced by messages.
-It is based on Berkeley Mail 8.1,
+It is based on Heirloom mailx, that is based on Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 .B mailx
 command,
-and offers extensions
-for MIME, IMAP, POP3, SMTP, and S/MIME.
-.I Mailx
-provides enhanced
-features for interactive use, such as caching and disconnected
-operation for IMAP, message threading, scoring, and filtering.
-It is also usable as a mail batch language, both for sending
-and receiving mail.
+and offers extensions for IDNA, MIME, IMAP, POP3, SMTP, and S/MIME.
+\*(UA provides enhanced features for interactive use, such as caching
+and disconnected operation for IMAP, message threading, scoring, and
+filtering.
+It is also usable as a mail batch language, both for sending and
+receiving mail.
 .PP
 The following options are accepted:
+.\"
 .TP
 .BI \-A \ name
 Executes an 
 .I account
-command (see below)
-for \fIname\fR after the startup files have been read.
+command (see below) for \fIname\fR after the startup files have been
+read.
 .TP
 .BI \-a \ file
 Attach the given file to the message.
@@ -98,12 +113,11 @@ Attach the given file to the message.
 Make standard input and standard output line-buffered.
 .TP
 .BI \-b \ address
-Send blind carbon copies to list.
-List should be a comma-separated
-list of names.
+Send blind carbon copies to the given list of addresses.
+\fISending mail\fR below goes into more detail on that.
 .TP
 .BI \-c \ address
-Send carbon copies to list of users.
+Send carbon copies to the given list of addresses.
 .TP
 .B \-D
 Start in
@@ -116,191 +130,169 @@ variable option.
 Enables debugging messages and disables the actual delivery of messages.
 Unlike
 .IR \-v ,
-this option is intended for
-.I mailx
-development only.
-.TP
-.B \-e
-Just check if mail is present in the system mailbox.
-If yes, return an exit status of zero,
-else, a non-zero value.
+this option is intended for \*(UA development only.
 .TP
 .B \-E
-If an outgoing message does not contain any text
-in its first or only message part,
-do not send it but discard it silently,
+If an outgoing message does not contain any text in its first or only
+message part, do not send but discard it silently,
 effectively setting the
 .I skipemptybody
 variable at program startup.
-This is useful for sending messages
-from scripts started by
+This is useful for sending messages from scripts started by
 .IR cron (8).
 .TP
-\fB\-f\fR [\fIfile\fR]
-Read in the contents of the user's mbox
-(or the specified file)
-for processing;
-when
-.I mailx
-is quit, it writes
-undeleted messages back
-to this file.
-The string \fIfile\fR is handled
-as described for the
-.I folder
-command below.
+.B \-e
+Just check if mail is present in the system mailbox.
+If yes, return an exit status of zero, a non-zero value otherwise.
 .TP
 .B \-F
-Save the message to send
-in a file named after the local part
-of the first recipient's address.
+Save the message to send in a file named after the local part of the
+first recipient's address.
+.TP
+\fB\-f\fR [\fIfile\fR]
+Read in the contents of the user's mbox (or the specified file)
+for processing;
+when \*(UA is quit, it writes undeleted messages back to this file.
+The string \fIfile\fR is handled as described for the
+.I folder
+command below.
+Note that \fIfile\fR is not a direct argument to the \fB-f\fR option,
+but instead taken from the command line after option processing has been
+completed.
 .TP
 .B \-H
 Print header summaries for all messages and exit.
 .TP
-\fB\-h\fI hops\fR
-Invoke sendmail with the specified hop count.
-This option has no effect when SMTP is used for sending mail.
-.TP
-.B \-i
-Ignore tty interrupt signals.
-This is
-particularly useful when using
-\fImailx\fR on noisy phone lines.
-.TP
 .B \-I
-Shows the `Newsgroup:' or `Article-Id:' fields
-in the header summary.
+Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
 Only applicable in combination with
 .IR \-f .
 .TP
-.B \-n
-Inhibits reading /etc/nail.rc upon startup.
-This option should be activated for
-.I mailx
-scripts that are invoked on more than one machine,
-because the contents of that file may differ between them.
+.B \-i
+Ignore tty interrupt signals.
+This is particularly useful when using \*(UA on noisy phone lines.
 .TP
 .B \-N
 Inhibits the initial display of message headers when reading mail
 or editing a mail folder.
 .TP
+.B \-n
+Inhibits reading \*(UR upon startup.
+This option should be activated for \*(UA scripts that are invoked on
+more than one machine, because the contents of that file may differ
+between them.
+.TP
+.BI \-O \ option
+Pass the given option through to the mail-transfer-agent (MTA).
+This option has no effect when SMTP is used for sending mail.
+E.g., to specify the hop count to an old \fIsendmail(1)\fR, use
+`\fI-O-h -Onumber\fR', which will be passed as `\fI-h number\fR'.
+Options set like that persist for a complete (interactive) session,
+i.e., will be used for all interactions with the MTA.
+.TP
 .BI \-q \ file
 Start the message with the contents of the specified file.
 May be given in send mode only.
 .TP
-.BI \-r \ address
-Sets the
-.I From
-address. Overrides any
-.I from
-variable specified in environment or startup files.
-Tilde escapes are disabled.
-The \fI\-r\fI address\fR options are passed to the mail transfer agent
-unless SMTP is used.
-This option exists for compatibility only;
-it is recommended to set the 
-.I from
-variable directly instead.
-.TP
 .B \-R
 Opens any folders read-only.
 .TP
-.BI \-s \ subject
-Specify subject on command line (only the first argument after the
-.I \-s
-flag is used as a subject; be careful to quote subjects
-containing spaces).
+.BI \-r \ address
+Sets the \fIFrom\fR address.
+Overrides any \fIfrom\fR variable specified in environment, in startup
+files or via \fI\-S\fR option processing.
+Tilde escapes are disabled.
+The \fI\-r\fI address\fR option is passed through to the MTA
+(mail-transfer-agent) unless SMTP is used,
+and persists for a complete (interactive) session,
+i.e., will be used for all interactions with the MTA.
 .TP
 \fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]
 Sets the internal option
 .I variable
-and, in case of a string option,
-assigns
-.I value
-to it.
+and, in case of a string option, assigns \fIvalue\fR to it.
+These assignments become active immediately,
+but also cannot be overwritten by resource file content.
+.TP
+.BI \-s \ subject
+Specify subject on command line (only the first argument after the
+.I \-s
+flag is used as a subject; be careful to quote subjects containing spaces).
 .TP
 .BI \-T \ name
-Writes the `Message-Id:' and `Article-Id:' header fields
-of each message read in the file
+Writes the `Message-Id:' and `Article-Id:' header fields of each message
+read in the file
 .IR name .
 Implies
 .IR \-I .
-Compressed files are handled as described for the
-.I folder
-command below.
+Compressed files are handled as described for the \fIfolder\fR command
+below.
 .TP
 .B \-t
-The message to be sent is expected to contain a message header
-with `To:', `Cc:', or `Bcc:' fields giving its recipients.
-Recipients specified on the command line are ignored.
+The message to be sent is expected to contain a message header with
+`To:', `Cc:', or `Bcc:' fields giving its recipients and `Subject:'
+giving the subject of the message.
+Recipients and subject specified on the command line are ignored.
 .TP
 .BI \-u \ user
 Reads the mailbox of the given user name.
 .TP
+.B \-V
+Print \*(UA's version and exit.
+.TP
 .B \-v
 Verbose mode.
-The details of
-delivery are displayed on the user's terminal.
-.TP
-.B \-V
-Print \fImailx\fR's version and exit.
+The details of delivery are displayed on the user's terminal.
 .TP
 .B \-~
 Enable tilde escapes even if not in interactive mode.
+.\"
 .SS "Sending mail"
-To send a message to one or more people,
-\fImailx\fR can be invoked with arguments
-which are the names of people
-to whom the mail will be sent.
-The user is then expected to type in his message,
-followed by an `control-D' at the beginning of a line.
-The section below Replying to
-or originating mail,
-describes some features of \fImailx\fR
-available to help when composing letters.
+To send a message to one or more people, \*(UA can be invoked with
+arguments which are the names of people to whom the mail will be sent.
+These names may be \fIalias\fRes, plain addresses or full address
+specifications including user names and comments, in which case care
+for proper quoting may be necessary.
+If this manual refers to a \fIlist of addresses\fR,
+then \*(UA expects a comma-separated list of such names.
+The section \fIRecipient address specifications\fR below explains the
+interpretation of names in more detail.
+The user is then expected to type in his message, followed by an
+`control-D' at the beginning of a line.
+The section \fIReplying to or originating mail\fI, describes some
+features of \*(UA available to help when composing letters.
 .SS "Reading mail"
-In normal usage \fImailx\fR is given no arguments
-and checks the user's mail out of the post office,
-then prints out a one line header
-of each message found.
-The current message is initially
-the first message (numbered 1)
-and can be printed using the print command
-which can be abbreviated `p').
-The user can move among the messages
-much as he moves between lines in
+In normal usage \*(UA is given no arguments and checks the user's mail
+out of the post office, then prints out a one line header of each
+message found.
+The current message is initially the first message (numbered 1) and can
+be printed using the print command which can be abbreviated `p').
+The user can move among the messages much as he moves between lines in
 .IR ed (1),
 with the commands `+' and `\-' moving backwards and forwards,
 and simple numbers.
 .SS "Disposing of mail"
-After examining a message
-the user can delete `d') the message
-or reply `r') to it.
-Deletion causes the \fImailx\fR program
-to forget about the message.
+After examining a message the user can delete `d') the message or reply
+`r') to it.
+Deletion causes the \*(UA program to forget about the message.
 This is not irreversible;
-the message can be undeleted `u')
-by giving its number,
-or the \fImailx\fR session can be aborted
-by giving the exit `x') command.
-Deleted messages will, however,
-usually disappear never to be seen again.
+the message can be undeleted `u') by giving its number,
+or the \*(UA session can be aborted by giving the exit `x') command.
+Deleted messages will, however, usually disappear never to be seen
+again.
 .SS "Specifying messages"
-Commands such as print and delete
-can be given a list of message numbers
+Commands such as print and delete can be given a list of message numbers
 as arguments to apply to a number of messages at once.
-Thus `\fIdelete 1 2\fR' deletes messages 1 and 2,
-while `\fIdelete 1-5\fR' deletes messages 1 through 5.
+Thus `\fIdelete 1 2\fR' deletes messages 1 and 2, while
+`\fIdelete 1-5\fR' deletes messages 1 through 5.
 In sorted or threaded mode (see the
 .I sort
 and
 .I thread
 commands),
-`\fIdelete 1-5\fR' deletes the messages
-that are located between (and including) messages 1 through 5
-in the sorted/threaded order,
-as shown in the header summary.
+`\fIdelete 1-5\fR' deletes the messages that are located between (and
+including) messages 1 through 5 in the sorted/threaded order, as shown
+in the header summary.
 The following special message names exist:
 .TP
 .B :n
@@ -440,8 +432,7 @@ All messages that satisfy the given IMAP-style SEARCH
 This addressing mode is available with all types of folders;
 for folders not located on IMAP servers,
 or for servers unable to execute the SEARCH command,
-.I mailx
-will perform the search locally.
+\*(UA will perform the search locally.
 Strings must be enclosed by double quotes `"' in their entirety
 if they contain white space or parentheses;
 within the quotes,
@@ -602,7 +593,7 @@ Text the user types in then,
 up to an end-of-file,
 defines the contents of the message.
 While the user is composing a message,
-\fImailx\fR treats lines beginning with the character `~' specially.
+\*(UA treats lines beginning with the character `~' specially.
 For instance, typing `~m' (alone on a line)
 will place a copy of the current message into the response
 right shifting it by a tabstop
@@ -617,7 +608,7 @@ to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
 .SS "Ending a mail processing session"
-The user can end a \fImailx\fR session
+The user can end a \*(UA session
 with the quit (`q') command.
 Messages which have been examined
 go to the user's mbox file
@@ -638,23 +629,17 @@ Such lists can be defined by placing a line like
         \fBalias\fI cohorts bill ozalp jkf mark kridle@ucbcory\fR
 
 .fi
-in the file .mailrc in the user's home directory.
-The current list of such aliases
-can be displayed with the alias command in \fImailx\fR.
-System wide distribution lists can be created
-by editing /etc/aliases, see
-.IR aliases (5)
-and
-.IR sendmail (8);
-these are kept in a different syntax.
-In mail the user sends,
-personal aliases will be expanded
-in mail sent to others so that
-they will be able to reply to the recipients.
+in the file \*(ur in the user's home directory.
+The currently defined list of such aliases can be displayed with the alias
+command in \*(UA.
+System wide distribution lists can be created by editing /etc/aliases, see
+\fIaliases(5)\fR and \fIsendmail(1)\fR;
+these are kept in a different syntax and are used by the MTA, not \*(UA.
+In mail the user sends, personal aliases will be expanded in mail sent to
+others so that they will be able to reply to the recipients.
 System wide aliases are not expanded when the mail is sent,
-but any reply returned to the machine
-will have the system wide alias expanded
-as all mail goes through sendmail.
+but any reply returned to the machine will have the system wide alias
+expanded as all mail goes through \fIsendmail(1)\fR.
 .SS "Recipient address specifications"
 When an address is used to name a recipient
 (in any of To, Cc, or Bcc),
@@ -665,8 +650,8 @@ the message text is then written to them.
 The rules are: Any name which starts with a
 .RB ` | '
 character specifies a pipe,
-the command string following the `|'
-is executed and the message is sent to its standard input;
+the command string following the `|' is executed
+and the message is sent to its standard input;
 any other name which contains a
 .RB ` @ '
 character is treated as a mail address;
@@ -689,14 +674,13 @@ command below.
 See
 .IR mailaddr (7)
 for a description of network addresses.
-\fIMailx\fR has a number of options
-which can be set in the .mailrc file
+\*(UA has a number of options which can be set in the \*(ur file
 to alter its behavior;
 thus `\fIset askcc\fR' enables the askcc feature.
 (These options are summarized below).
 .SS "MIME types"
 For any outgoing attachment,
-\fImailx\fR tries to determine the content type.
+\*(UA tries to determine the content type.
 It does this by reading MIME type files
 whose lines have the following syntax:
 .nf
@@ -707,7 +691,7 @@ whose lines have the following syntax:
 where type/subtype are strings describing the file contents,
 and extension is the part of a filename starting after the last dot.
 Any line not immediately beginning with an ASCII alphabetical character is
-ignored by \fImailx\fR.
+ignored by \*(UA.
 If there is a match with the extension of the file to attach,
 the given type/subtype pair is used.
 Otherwise, or if the filename has no extension,
@@ -716,8 +700,7 @@ the first for text or international text files,
 the second for any file that contains formatting characters
 other than newlines and horizontal tabulators.
 .SS "Character sets"
-.I Mailx
-normally detects the character set of the terminal
+\*(UA normally detects the character set of the terminal
 using the LC_CTYPE locale setting.
 If the locale cannot be used appropriately,
 the \fIttycharset\fR variable should be set
@@ -740,8 +723,7 @@ must be declared within its header.
 Permissible values can be declared
 using the \fIsendcharsets\fR variable,
 separated by commas;
-.I mailx
-tries each of the values in order
+\*(UA tries each of the values in order
 and uses the first appropriate one.
 If the message contains characters that cannot be represented
 in any of the given character sets,
@@ -759,9 +741,7 @@ tilde escape will ask for the character sets for individual attachments
 if it is invoked without arguments.
 .PP
 Best results are usually achieved
-when
-.I mailx
-is run in a UTF-8 locale
+when \*(UA is run in a UTF-8 locale
 on a UTF-8 capable terminal.
 In this setup,
 characters from various countries can be displayed,
@@ -780,7 +760,7 @@ the command's requirements is used.
 If there are no messages forward of the current message,
 the search proceeds backwards,
 and if there are no good messages at all,
-\fImailx\fR types `\fIapplicable messages\fR' and aborts the command.
+\*(UA types `\fIapplicable messages\fR' and aborts the command.
 If the command begins with a \fI#\fR sign,
 the line is ignored.
 .PP
@@ -884,10 +864,10 @@ creates a new alias or changes an old one.
 .B alternates
 (alt) The alternates command is useful
 if the user has accounts on several machines.
-It can be used to inform \fImailx\fR
+It can be used to inform \*(UA
 that the listed addresses all belong to the invoking user.
 When he replies to messages,
-\fImailx\fR will not send a copy of the message
+\*(UA will not send a copy of the message
 to any of the addresses
 listed on the alternates list.
 If the alternates command is given
@@ -1032,7 +1012,7 @@ available for disconnected use.
 Deletes the current message
 and prints the next message.
 If there is no next message,
-\fImailx\fR says `\fIat EOF\fR'.
+\*(UA says `\fIat EOF\fR'.
 .TP
 .B draft
 Takes a message list and marks each message
@@ -1171,7 +1151,7 @@ The optional
 part applies to IMAP only;
 if it is omitted,
 the default `INBOX' is used.
-If \fImailx\fR is connected to an IMAP server,
+If \*(UA is connected to an IMAP server,
 a name of the form \fB@\fImailbox\fR
 refers to the \fImailbox\fR on that server.
 If the `folder' variable refers to an IMAP account,
@@ -1278,33 +1258,32 @@ and marks each message therein to be saved
 in the user's system mailbox
 instead of in mbox.
 Does not override the delete command.
-.I mailx
-deviates from the POSIX standard with this command,
+\*(UA deviates from the POSIX standard with this command,
 as a `next' command issued after `hold'
 will display the following message,
 not the current one.
 .TP
 .B if
-Commands in \fImailx\fR's startup files
+Commands in \*(UA's startup files
 can be executed conditionally
 depending on whether the user is sending
 or receiving mail with the if command.
 For example:
 .nf
 
-        \fBif \fIreceive\fR
-                \fIcommands .\ .\ .\fR
-        \fBendif\fR
+    \fBif \fIreceive\fR
+        \fIcommands .\ .\ .\fR
+    \fBendif\fR
 
 .fi
 An else form is also available:
 .nf
 
-        \fBif \fIreceive\fR
-                \fIcommands .\ .\ .\fR
-        \fBelse\fR
-                \fIcommands .\ .\ .\fR
-        \fBendif\fR
+    \fBif \fIreceive\fR
+        \fIcommands .\ .\ .\fR
+    \fBelse\fR
+        \fIcommands .\ .\ .\fR
+    \fBendif\fR
 
 .fi
 Note that the only allowed conditions are
@@ -1328,7 +1307,7 @@ it lists the current set of ignored fields.
 .TP
 .B imap
 Sends command strings directly to the current IMAP server.
-\fIMailx\fR operates always in IMAP \fIselected state\fR
+\*(UA operates always in IMAP \fIselected state\fR
 on the current mailbox;
 commands that change this
 will produce undesirable results
@@ -1394,21 +1373,19 @@ but saves the message in a file
 named after the local part of the first recipient's address.
 .TP
 .B mail
-(m) Takes as argument login names
-and distribution group names
-and sends mail to those people.
+(m) Takes as arguments the usual recipient addresses,
+or asks on standard input if none were given;
+then collects remain mail content and sends it out.
 .TP
 .B mbox
 Indicate that a list of messages be sent
 to mbox in the user's home directory when
-.I mailx
-is quit.
+\*(UA is quit.
 This is the default action for messages
 if unless the
 .I hold
 option is set.
-.I mailx
-deviates from the POSIX standard with this command,
+\*(UA deviates from the POSIX standard with this command,
 as a `next' command issued after `mbox'
 will display the following message,
 not the current one.
@@ -1797,8 +1774,7 @@ Takes a message list
 and marks the messages for saving in the
 .I mbox
 file.
-.I mailx
-deviates from the POSIX standard with this command,
+\*(UA deviates from the POSIX standard with this command,
 as a `next' command issued after `mbox'
 will display the following message,
 not the current one.
@@ -1938,37 +1914,34 @@ unless the
 variable is set.
 .TP
 .B write
-(w) For conventional messages,
-the body without all headers is written.
-The output is decrypted and converted
-to its native format, if necessary.
-If the output file exists,
-the text is appended.\(emIf a message is in MIME multipart format,
-its first part is written to the specified file
-as for conventional messages,
-and the user is asked for a filename
-to save each other part;
-if the contents of the first part are not to be saved,
-`write /dev/null' can be used.
-For the second and subsequent parts,
-if the filename given starts with a `|' character,
-the part is piped through the remainder of the filename
-interpreted as a shell command.
+(w) For conventional messages the body without all headers is written.
+The output is decrypted and converted to its native format as necessary.
+If the output file exists, the text is appended.
+If a message is in MIME multipart format its first part is written to
+the specified file as for conventional messages,
+and the user is asked for a filename to save each other part.
+For convience saving of each part may be skipped by giving an empty value;
+the same result can also be achieved by writing it to '/dev/null'.
+For the second and subsequent parts a leading '|' character causes the
+part to be piped to the remainder of the user input interpreted as
+a shell command;
+otherwise the user input is expanded as usually for folders,
+e.g., tilde expansion is performed.
 In non-interactive mode, only the parts of the multipart message
 that have a filename given in the part header are written,
-the other are discarded.
-The original message is never marked for deletion
-in the originating mail folder.
+the others are discarded.
+The original message is never marked for deletion in the originating
+mail folder.
 For attachments,
-the contents of the destination file are overwritten
-if the file previously existed.
+the contents of the destination file are overwritten if the file
+previously existed.
 No special handling of compressed files is performed.
 .TP
 .B xit
 (x) A synonym for exit.
 .TP
 .B z
-\fIMailx\fR presents message headers in windowfuls
+\*(UA presents message headers in windowfuls
 as described under the headers command.
 The z command scrolls to the next window of messages.
 If an argument is given,
@@ -1978,7 +1951,7 @@ that the window is calculated in relation
 to the current position.
 A number without a prefix specifies an
 absolute window number,
-and a `$' lets \fImailx\fR scroll
+and a `$' lets \*(UA scroll
 to the last window of messages.
 .TP
 .B Z
@@ -2016,8 +1989,7 @@ First, the user can edit all existing attachment data.
 If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
-.I mailx
-will ask for further attachments,
+\*(UA will ask for further attachments,
 until an empty file name is given.
 If \fIfilename\fP arguments are specified,
 all of them are appended to the end of the attachment list.
@@ -2168,11 +2140,11 @@ The command
 is often used
 as command to rejustify the message.
 .TP
-.BI ~: mailx-command
-Execute the given \fImailx\fR command.
+.BI ~: \*(ua-command
+Execute the given \*(UA command.
 Not all commands, however, are allowed.
 .TP
-.BI ~_ mailx-command
+.BI ~_ \*(ua-command
 Identical to ~:.
 .TP
 .BI ~~ string
@@ -2185,7 +2157,7 @@ in order to send it at the beginning of a line.
 Options are controlled via set and unset commands,
 see their entries for a syntax description.
 An option is also set
-if it is passed to \fImailx\fR
+if it is passed to \*(UA
 as part of the environment
 (this is not restricted to specific variables as in the POSIX standard).
 A value given in a startup file overrides
@@ -2198,6 +2170,12 @@ or string, in which case the actual value is of interest.
 .PP
 The binary options include the following:
 .TP
+.B add-file-recipients
+When file or pipe recipients have been specified,
+mention them in the corresponding address fields of the message instead of
+silently stripping them from their recipient list.
+By default such addressees are not mentioned.
+.TP
 .B allnet
 Causes only the local part to be evaluated
 when comparing addresses.
@@ -2208,7 +2186,7 @@ rather than prepended.
 This should always be set.
 .TP
 .BR ask \ or \ asksub
-Causes \fImailx\fR to prompt for the subject
+Causes \*(UA to prompt for the subject
 of each message sent.
 If the user responds with simply a newline,
 no subject field will be sent.
@@ -2218,7 +2196,7 @@ Causes the prompts for `Cc:' and `Bcc:' lists
 to appear after the message has been edited.
 .TP
 .B askattach
-If set, \fImailx\fR asks for files to attach at the end of each message.
+If set, \*(UA asks for files to attach at the end of each message.
 Responding with a newline indicates not to include an attachment.
 .TP
 .B askcc
@@ -2335,9 +2313,7 @@ converted to local time.
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
 .IR verbose ,
-this option is intended for
-.I mailx
-development only.
+this option is intended for \*(UA development only.
 .TP
 .B disconnected
 When an IMAP mailbox is selected and this variable is set,
@@ -2367,7 +2343,7 @@ variable above,
 but other accounts are not affected.
 .TP
 .B dot
-The binary option dot causes \fImailx\fR to interpret
+The binary option dot causes \*(UA to interpret
 a period alone on a line
 as the terminator of a message the user is sending.
 .TP
@@ -2386,10 +2362,10 @@ when using a common folder directory.
 .TP
 .B emptystart
 If the mailbox is empty,
-\fImailx\fR normally prints \fI`No mail for user'\fR
+\*(UA normally prints \fI`No mail for user'\fR
 and exits immediately.
 If this option is set,
-\fImailx\fR starts even with an empty mailbox.
+\*(UA starts even with an empty mailbox.
 .TP
 .B flipr
 Exchanges the
@@ -2418,7 +2394,7 @@ option is set.
 .TP
 .B fullnames
 When replying to a message,
-\fImailx\fR normally removes the comment parts of email addresses,
+\*(UA normally removes the comment parts of email addresses,
 which by convention contain the full names of the recipients.
 If this variable is set,
 such stripping is not performed,
@@ -2434,20 +2410,38 @@ enabled by default.
 This option is used to hold messages
 in the system mailbox by default.
 .TP
+.B idna-disable
+Unless this is set domain names that fail to pass their content test are
+handed over to the IDNA (internationalized domain names for applications)
+converter, and, in case the encoding succeeds,
+are replaced with the converted version.
+Because the domain names are expected to be in locale encoding,
+a locale which uses the UTF-8 charset is required to represent all
+possible international domain names.
+(Note that the \fIttycharset\fR option does not affect IDNA encoding.)
+.TP
+.B idna-strict-checks
+If this is set (and \fIidna-disable\fR is not),
+then the IDNA-conversion is enforced to apply stricter error checking in
+respect to the content of domain names.
+Also, a successfully encoded (and thus normalized) domain name is
+converted back to the locale version, so that special TLD (top-level
+domain) checks can be performed on it;
+e.g., the \fI.no\fR TLD does not allow the Euro currency symbol,
+but only this strict check will catch this error.
+.TP
 .B ignore
 Causes interrupt signals from the terminal
 to be ignored and echoed as @'s.
 .TP
 .B ignoreeof
 An option related to dot is ignoreeof
-which makes \fImailx\fR refuse to
+which makes \*(UA refuse to
 accept a control-d as the end of a message.
-Ignoreeof also applies to \fImailx\fR command mode.
+Ignoreeof also applies to \*(UA command mode.
 .TP
 .B imap-use-starttls
-Causes
-.I mailx
-to issue a STARTTLS command
+Causes \*(UA to issue a STARTTLS command
 to make an unencrypted IMAP session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
@@ -2458,7 +2452,7 @@ Activates
 for a specific account.
 .TP
 .B keep
-This option causes \fImailx\fR to truncate the user's system mailbox
+This option causes \*(UA to truncate the user's system mailbox
 instead of deleting it when it is empty.
 This should always be set,
 since it prevents malicious users
@@ -2469,9 +2463,7 @@ in a world-writable spool directory.
 When a message is saved,
 it is usually discarded
 from the originating folder
-when
-.I mailx
-is quit.
+when \*(UA is quit.
 Setting this option
 causes all saved message to be retained.
 .TP
@@ -2561,9 +2553,7 @@ Enables
 for a specific account.
 .TP
 .B pop3-use-starttls
-Causes
-.I mailx
-to issue a STLS command
+Causes \*(UA to issue a STLS command
 to make an unencrypted POP3 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the POP3S method.
@@ -2596,6 +2586,11 @@ just as if the surrounding part was of type
 .B quiet
 Suppresses the printing of the version when first invoked.
 .TP
+.B recipients-in-cc
+On group replies, specify only the sender of the original mail
+in \fI`To:'\fR and mention it's other recipients in the secondary
+\fI`Cc:'\fR.
+.TP
 .B record-resent
 If both this variable and the
 .I record
@@ -2610,8 +2605,7 @@ folder as it is normally only done for newly composed messages.
 .TP
 .B reply-in-same-charset
 If this variable is set,
-.I mailx
-first tries to use the same character set
+\*(UA first tries to use the same character set
 of the original message for replies.
 If this fails,
 the
@@ -2621,10 +2615,26 @@ variable is evaluated as usual.
 .B Replyall
 Reverses the sense of reply and Reply commands.
 .TP
+.B rfc822-no-body-from_
+By default \*(UA shows a so-called "From " line when a message contains
+another message via the message/rfc822 MIME mechanism.
+This may be misleading since it intransparently adds content on the
+one hand,
+and also silently maps any missing information from the envelope mail
+onto the embedded one on the other.
+If this value is set then no "From " line is shown for embedded
+message/rfc822 mail messages.
+.TP
+.B rfc822-show-all
+Messages or MIME message parts that embed complete mail messages via the
+message/rfc822 MIME mechanism do not print/show/quote headers of the
+embedded message but after filtering them through the normal mechanism.
+If this value is set then an embedded mail is treated as a unity.
+.TP
 .B save
 When the user aborts a message
 with two RUBOUT (interrupt characters)
-\fImailx\fR copies the partial letter
+\*(UA copies the partial letter
 to the file `dead.letter' in the home directory.
 This option is set by default.
 .TP
@@ -2637,18 +2647,17 @@ The string search is case insensitive.
 .TP
 .B sendwait
 When sending a message,
-wait until the mail transfer agent exits
+wait until the mail-transfer-agent exits
 before accepting further commands.
-If the mail transfer agent returns a non-zero exit status,
-the exit status of mailx will also be non-zero.
+If the mail-transfer-agent returns a non-zero exit status,
+the exit status of \*(ua will also be non-zero.
 .TP
 .B showlast
-Setting this option causes \fImailx\fR to start at the
+Setting this option causes \*(UA to start at the
 last message instead of the first one when opening a mail folder.
 .TP
 .B showname
-Causes
-.I mailx
+Causes \*(UA
 to use the sender's real name instead of the plain address
 in the header field summary and in message specifications.
 .TP
@@ -2665,8 +2674,7 @@ do not send it but discard it silently
 option).
 .TP
 .B smime-force-encryption
-Causes
-.I mailx
+Causes \*(UA
 to refuse sending unencrypted messages.
 .TP
 .B smime-sign
@@ -2686,7 +2694,7 @@ when verifying S/MIME signed messages.
 Only applicable if S/MIME support is built using OpenSSL.
 .TP
 .B smtp-use-starttls
-Causes \fImailx\fR to issue a STARTTLS command
+Causes \*(UA to issue a STARTTLS command
 to make an SMTP session SSL/TLS encrypted.
 Not all servers support this command;
 because of common implementation defects,
@@ -2703,26 +2711,16 @@ Accept SSLv2 connections.
 These are normally not allowed
 because this protocol version is insecure.
 .TP
-.B stealthmua
-Inhibits the generation of
-the \fI`Message-Id:'\fR and \fI`User-Agent:'\fR
-header fields that include obvious references to \fImailx\fR.
-There are two pitfalls associated with this:
-First, the message id of outgoing messages is not known anymore.
-Second, an expert may still use the remaining information in the header
-to track down the originating mail user agent.
-.TP
 .B verbose
 Setting the option verbose is the same
 as using the \-v flag on the command line.
-When \fImailx\fR runs in verbose mode,
+When \*(UA runs in verbose mode,
 details of the actual message delivery
 and protocol conversations for IMAP, POP3, and SMTP,
 as well as of other internal processes,
 are displayed on the user's terminal,
 This is sometimes useful to debug problems.
-.I Mailx
-prints all data that is sent to remote servers in clear texts,
+\*(UA prints all data that is sent to remote servers in clear texts,
 including passwords,
 so care should be taken that no unauthorized option
 can view the screen if this option is enabled.
@@ -2833,7 +2831,7 @@ for storing folders of messages.
 All folder names that begin with `+'
 refer to files below that directory.
 If the directory name begins with a `/',
-\fImailx\fR considers it to be an absolute pathname;
+\*(UA considers it to be an absolute pathname;
 otherwise, the folder directory is found
 relative to the user's home directory.
 .IP
@@ -2906,8 +2904,9 @@ If the machine's hostname is not valid at the Internet
 (for example at a dialup machine),
 either this variable or
 .I hostname
-have to be set
-to get correct Message-ID header fields.
+have to be set or \*(UA will not generate Message-ID header fields
+but leave that task up to a (obviously present) local Mail Transfer
+Agent (MTA).
 If
 .I from
 contains more than one address,
@@ -2967,11 +2966,12 @@ is set.
 .TP
 .B hostname
 Use this string as hostname
-when expanding local addresses
-instead of the value obtained from
+when expanding local addresses instead of the value obtained from
 .IR uname (2)
 and
 .IR getaddrinfo (3).
+Note that this must be set explicitly to become used for the
+generation of Message-ID fields.
 .TP
 .B imap-auth
 Sets the IMAP authentication method.
@@ -2987,10 +2987,8 @@ Sets the IMAP authentication method for a specific account.
 .B imap-cache
 Enables caching of IMAP mailboxes.
 The value of this variable must point to a directory
-that is either existent or can be created by
-.IR mailx .
-All contents of the cache can be deleted by
-.I mailx
+that is either existent or can be created by \*(UA.
+All contents of the cache can be deleted by \*(UA
 at any time;
 it is not safe to make assumptions about them.
 .TP
@@ -3040,8 +3038,7 @@ format for saving space.
 If processing time is considered more important,
 .IR uncompress (1)
 can be used to store them in plain form.
-.I Mailx
-will then work using the uncompressed files.
+\*(UA will then work using the uncompressed files.
 .TP
 .B LISTER
 Pathname of the directory lister
@@ -3060,12 +3057,25 @@ string (see the
 .I folder
 command for more information).
 .TP
-.B MAILX_HEAD
+.B MBOX
+The name of the mbox file.
+It can be the name of a folder.
+The default is `\fImbox\fR' in the user's home directory.
+.TP
+.B NAIL_EXTRA_RC
+The name of an optional startup file to be read after \*(ur.
+This variable is ignored if it is imported from the environment;
+it has an effect only if it is set in \*(UR or \*(ur to allow bypassing the
+configuration with e. g. `MAILRC=/dev/null'.
+Use this file for commands that are not understood by other \*(UA
+implementations.
+.TP
+.B NAIL_HEAD
 A string to put at the beginning of each new message.
 The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
 are understood.
 .TP
-.B MAILX_TAIL
+.B NAIL_TAIL
 A string to put at the end of each new message.
 The escape sequences `\fB\et\fR' (tabulator) and `\fB\en\fR' (newline)
 are understood.
@@ -3079,21 +3089,6 @@ If set to 0,
 all ASCII text messages are encoded in quoted-printable.
 S/MIME signed messages are always encoded
 in quoted-printable regardless of the value of this variable.
-.TP
-.B MBOX
-The name of the mbox file.
-It can be the name of a folder.
-The default is `\fImbox\fR'
-in the user's home directory.
-.TP
-.B NAIL_EXTRA_RC
-The name of an optional startup file
-to be read after ~/.mailrc.
-This variable is ignored if it is imported from the environment;
-it has an effect only if it is set in /etc/nail.rc or ~/.mailrc
-to allow bypassing the configuration with e. g. `MAILRC=/dev/null'.
-Use this file for commands
-that are not understood by other mailx implementations.
 .TP
 .B newfolders
 If this variable has the value
@@ -3115,18 +3110,13 @@ is a digit.
 These are usually taken from Mozilla installations,
 so an appropriate value might be
 `~/.mozilla/firefox/default.clm'.
-.I Mailx
-opens these files read-only
+\*(UA opens these files read-only
 and does not modify them.
 However, if the files are modified by Mozilla
-while
-.I mailx
-is running,
+while \*(UA is running,
 it will print a `Bad database' message.
 It may be necessary to create copies of these files
-that are exclusively used by
-.I mailx
-then.
+that are exclusively used by \*(UA then.
 Only applicable if S/MIME and SSL/TLS support is built using
 Network Security Services (NSS).
 .TP
@@ -3168,9 +3158,7 @@ if messages of type
 .I application/x-sh
 were filtered through the shell, for example,
 a message sender could easily execute arbitrary code
-on the system
-.I mailx
-is running on.
+on the system \*(UA is running on.
 .TP
 .B pop3-keepalive
 POP3 servers may close the connection
@@ -3192,8 +3180,8 @@ or to `\fB&\ \fR' if the
 variable is set.
 .TP
 .B quote
-If set, \fImailx\fR starts a replying message with the original message prefixed
-by the value of the variable \fIindentprefix\fR.
+If set, \*(UA starts a replying message with the original message
+prefixed by the value of the variable \fIindentprefix\fR.
 Normally, a heading consisting of `Fromheaderfield wrote:' is printed
 before the quotation.
 If the string \fInoheading\fR is assigned to the \fIquote\fR variable,
@@ -3206,6 +3194,19 @@ If the string \fIallheaders\fR is assigned,
 all headers are printed above the message body,
 and all MIME parts are included,
 thus \fIquote\fR acts like an automatic ~M command then.
+.TP
+.B quote-fold
+If set in addition to \fIindentprefix\fR, \*(UA interprets this
+number as the maximum line length of the quotation when replying to a
+message.
+Setting this turns on a more fancy quotation algorithm in that leading
+quotation characters are compressed and overlong lines are folded to
+\fIquote-fold\fR characters each, breaking at whitespace as necessary
+and starting the follow lines with fillers to pad up to the last
+quotation markers width.
+The value of \fIquote-fold\fR can't be smaller than the length of
+\fIindentprefix\fR plus some additional pad.  It is automatically
+adjusted to the minimum as necessary.
 .TP
 .B record
 If defined, gives the pathname of the folder
@@ -3223,7 +3224,7 @@ If replying to a message, such addresses are handled
 as if they were in the alternates list.
 .TP
 .B screen
-When \fImailx\fR initially prints the message headers,
+When \*(UA initially prints the message headers,
 it determines the number to print
 by looking at the speed of the terminal.
 The faster the terminal, the more it prints.
@@ -3238,8 +3239,7 @@ A comma-separated list of character set names
 that can be used in Internet mail.
 When a message that contains characters not representable in US-ASCII
 is prepared for sending,
-.I mailx
-tries to convert its text
+\*(UA tries to convert its text
 to each of the given character sets in order
 and uses the first appropriate one.
 The default is `utf-8'.
@@ -3272,16 +3272,13 @@ list.
 .TP
 .B sendmail
 To use an alternate mail delivery system,
-set this option to the full pathname
-of the program to use.
-This should be used with care.
+set this option to the full pathname of the program to use.
 .TP
 .B SHELL
 Pathname of the shell to use
 in the ! command and the ~! escape.
 A default shell is used
 if this option is not defined.
-.TP
 .TP
 .B Sign
 A string for use with the
@@ -3402,12 +3399,28 @@ the specific file is used.
 When decrypting messages,
 their recipient fields (To: and Cc:) are searched for addresses
 for which such a variable is set.
-.I Mailx
-always uses the first address that matches,
+\*(UA always uses the first address that matches,
 so if the same message is sent to more than one
 of the user's addresses using different encryption keys,
 decryption might fail.
 Only applicable if S/MIME support is built using OpenSSL.
+.TP
+.B smime-sign-include-certs
+If used, this must be set to a comma-separated list of files,
+each of which containing a single certificate in PEM format
+to be included in the S/MIME message in addition to the
+.IR smime-sign-cert
+certificate.
+This is most useful for long certificate chains if it is
+desired to aid the receiving party's verification process.
+Only applicable if S/MIME support is built using OpenSSL.
+.TP
+\fBsmime-sign-include-certs-\fIuser@host\fR
+Overrides
+.I smime-sign-include-certs
+for the specific addresses.
+Refer to the discussion of \fBsmime-sign-cert-\fIuser@host\fR
+for more on this topic.
 .TP
 .B smime-sign-nickname
 Specifies that the named certificate be used for signing mail.
@@ -3425,12 +3438,9 @@ for a specific address.
 Only applicable if S/MIME support is built using NSS.
 .TP
 .B smtp
-Normally, \fImailx\fR invokes
-.IR sendmail (8)
-directly to transfer messages.
-If the \fIsmtp\fR variable is set, a SMTP connection to
-the server specified by the value of this variable
-is used instead.
+Normally, \*(UA invokes \fIsendmail(1)\fR directly to transfer messages.
+If the \fIsmtp\fR variable is set, a SMTP connection to the server
+specified by the value of this variable is used instead.
 If the SMTP server does not use the standard port,
 a value of \fIserver:port\fR can be given,
 with \fIport\fR as a name or as a number.
@@ -3501,8 +3511,7 @@ If this variable is set but neither
 or a matching
 .I smtp-auth-password-user@host
 can be found,
-.I mailx
-will as for a password on the user's terminal.
+\*(UA will as for a password on the user's terminal.
 .TP
 \fBsmtp-auth-user-\fIuser\fB@\fIhost\fR
 Overrides
@@ -3612,6 +3621,17 @@ Overrides
 .I ssl-verify
 for a specific account.
 .TP
+.B stealthmua
+If only set without a value assigned, then this option inhibits the
+generation of the \fI`Message-Id:'\fR and \fI`User-Agent:'\fR
+header fields that include obvious references to \*(UA.
+There are two pitfalls associated with this:
+First, the message id of outgoing messages is not known anymore.
+Second, an expert may still use the remaining information in the header
+to track down the originating mail user agent.
+If set to the value `noagent', then the mentioned \fI`Message-Id:'\fR
+suppression doesn't occur.
+.TP
 .B toplines
 If defined, gives the number of lines
 of a message to be printed out
@@ -3620,9 +3640,9 @@ normally, the first five
 lines are printed.
 .TP
 .B ttycharset
-The character set of the terminal \fImailx\fR operates on.
+The character set of the terminal \*(UA operates on.
 There is normally no need to set this variable
-since \fImailx\fR can determine this automatically
+since \*(UA can determine this automatically
 by looking at the LC_CTYPE locale setting;
 if this succeeds, the value is assigned at startup
 and will be displayed by the \fIset\fP command.
@@ -3633,7 +3653,7 @@ that can be used in Internet messages.
 Pathname of the text editor to use
 in the visual command and ~v escape.
 .SH ENVIRONMENT VARIABLES
-Besides the variables described above, \fImailx\fR uses
+Besides the variables described above, \*(UA uses
 the following environment strings:
 .TP
 .B HOME
@@ -3644,12 +3664,10 @@ See
 .IR locale (7).
 .TP
 .B MAILRC
-Is used as startup file instead of ~/.mailrc if set.
-When
-.I mailx
-scripts are invoked on behalf of other users,
-this variable should be set to `/dev/null'
-to avoid side-effects from reading their configuration files.
+Is used as a startup file instead of \*(ur if set.
+When \*(UA scripts are invoked on behalf of other users,
+this variable should be set to `/dev/null' to avoid side-effects from
+reading their configuration files.
 .TP
 .B NAILRC
 If this variable is set and
@@ -3664,10 +3682,10 @@ Changes the letters printed in the first column of a header summary.
 Used as directory for temporary files instead of /tmp, if set.
 .SH FILES
 .TP
-~/.mailrc
+\*(ur
 File giving initial commands.
 .TP
-/etc/nail.rc
+\*(UR
 System wide initialization file.
 .TP
 ~/.mime.types
@@ -3677,8 +3695,7 @@ Personal MIME types.
 System wide MIME types.
 .SH EXAMPLES
 .SS "Getting started"
-The
-.I mailx
+The \*(UA
 command has two distinct usages, according to whether one
 wants to send or receive mail.
 Sending mail is simple: to send a
@@ -3688,29 +3705,25 @@ use the shell
 command:
 .nf
 .sp
-    $ \fBmailx\fI bill@host.example\fR
+    $ \*(ba\fI bill@host.example\fR
 .sp
 .fi
 then type your message.
-.I Mailx
-will prompt you for a message
+\*(UA will prompt you for a message
 .I subject 
 first;
 after that, lines typed by you form the body of the message.
 When you reach the end of the message, type
 an EOT (control\-d) at the beginning of a line, which will cause
-.I mailx
-to echo `EOT' and return you to the shell.
+\*(UA to echo `EOT' and return you to the shell.
 .PP
 If, while you are composing the message
 you decide that you do not wish to send it after all, you can
 abort the letter with a \s-2RUBOUT\s0.  Typing a single \s-2RUBOUT\s0
-causes
-.I mailx
+causes \*(UA
 to print `(Interrupt -- one more to kill letter)'.
 Typing a second
-\s-2RUBOUT\s0 causes
-.I mailx
+\s-2RUBOUT\s0 causes \*(UA
 to save your partial letter on the file `dead.letter'
 in your home directory and abort the letter.
 Once you have
@@ -3722,7 +3735,7 @@ you can list their email addresses on the command line.
 Thus,
 .nf
 .sp
-    $ \fBmailx\fI sam@workstation.example bob@server.example\fR
+    $ \*(ba\fI sam@workstation.example bob@server.example\fR
     Subject: Fees
     Tuition fees are due next Friday.  Don't forget!
     <Control\-d>
@@ -3737,17 +3750,16 @@ and
 To read your mail, simply type
 .nf
 .sp
-    $ \fBmailx\fR
+    $ \*(ba
 .sp
 .fi
-.I Mailx
+\*(UA
 will respond by typing its version number and date and then listing
 the messages you have waiting.
 Then it will type a prompt and await your command.
 The messages are assigned numbers starting with 1\(emyou
 refer to the messages with these numbers.
-.I Mailx
-keeps track of which messages are
+\*(UA keeps track of which messages are
 .I new
 (have been sent since you last read your mail) and
 .I read
@@ -3757,16 +3769,14 @@ next to them in the header listing and old, but unread messages have
 a
 .B U
 next to them.
-.I Mailx
-keeps track of new/old and read/unread messages by putting a
+\*(UA keeps track of new/old and read/unread messages by putting a
 header field called
 .I Status
 into your messages.
 .PP
 To look at a specific message, use the
 .I type
-command, which may be abbreviated to simply
-.I t .
+command, which may be abbreviated to simply \fIt\fR.
 For example, if you had the following messages:
 .nf
 .sp
@@ -3780,9 +3790,7 @@ you could examine the first message by giving the command:
     \fBtype\fR 1
 .sp
 .fi
-which might cause
-.B mailx
-to respond with, for example:
+which might cause \*(UA to respond with, for example:
 .nf
 .sp
     Message  1:
@@ -3794,15 +3802,13 @@ to respond with, for example:
 .sp
 .fi
 .PP
-Many
-.I mailx
+Many \*(UA
 commands that operate on messages take a message number as an
 argument like the
 .I type
 command.
 For these commands, there is a notion of a current message.
-When you enter the
-.I mailx
+When you enter the \*(UA
 program, the current message is initially the first
 (or the first recent) one.
 Thus, you can often omit the message number and use, for example,
@@ -3824,12 +3830,10 @@ would type the first message.
 .PP
 Frequently, it is useful to read the messages in your mailbox in order,
 one after another.
-You can read the next message in
-.I mailx
+You can read the next message in \*(UA
 by simply typing a newline.
 As a special case, you can type a newline as your first command to
-.I mailx
-to type the first message.
+\*(UA to type the first message.
 .PP
 If, after typing a message, you wish to immediately send a reply,
 you can do so with the
@@ -3839,13 +3843,12 @@ This command,
 like
 .IR type ,
 takes a message number as an argument.
-.I mailx
+\*(UA
 then begins a message addressed to the user who sent you the message.
 You may then type in your letter in reply, followed by a <control-d>
 at the beginning of a line, as before.
 .PP
-Note that
-.I mailx
+Note that \*(UA
 copies the subject header from the original message.
 This is useful in that correspondence
 about a particular matter will tend to retain the same subject heading,
@@ -3880,14 +3883,11 @@ you can use the
 .I delete
 command.
 In addition to not saving deleted messages,
-.I mailx
-will not let you type them, either.
+\*(UA will not let you type them, either.
 The effect is to make the message disappear
 altogether, along with its number.
 .PP
-Many features of
-.I mailx
-can be tailored to your liking with the
+Many features of \*(UA can be tailored to your liking with the
 .I set
 command.
 The
@@ -3899,8 +3899,7 @@ option or a
 option.
 Binary options are either on or off.  For example, the
 .I askcc
-option informs
-.I mailx
+option informs \*(UA
 that each time you send a message, you want it to prompt you for
 a `Cc:' header,
 to be included in the message.
@@ -3912,13 +3911,10 @@ option, you would type
     \fBset\fR askcc
 .fi
 .PP
-Valued options are values which
-.I mailx
-uses to adapt to your tastes.
+Valued options are values which \*(UA uses to adapt to your tastes.
 For example, the
 .I record
-option tells
-.I mailx
+option tells \*(UA
 where to save messages sent by you,
 and is specified by
 .nf
@@ -3927,34 +3923,26 @@ and is specified by
 .sp
 .fi
 for example.
-Note that no spaces are allowed in
-.I "set record=Sent".
+Note that no spaces are allowed in \fI"set record=Sent"\fR.
 .PP
-.I Mailx
-includes a simple facility for maintaining groups of messages together
-in folders.
-To use the folder facility, you must tell
-.I mailx
+\*(UA includes a simple facility for maintaining groups of messages
+together in folders.
+To use the folder facility, you must tell \*(UA
 where you wish to keep your folders.
 Each folder of messages will be a single file.
 For convenience, all of your folders are kept in
 a single directory of your choosing.
-To tell
-.I mailx
-where your folder directory is, put a line of the form
+To tell \*(UA where your folder directory is, put a line of the form
 .nf
 .sp
     \fBset folder=\fIletters\fR
 .sp
 .fi
-in your
-.I .mailrc
-file.
+in your \*(ur file.
 If, as in the example above,
 your folder directory does not begin with a `/',
-.I mailx
-will assume that your folder directory is to be found starting from
-your home directory.
+\*(UA will assume that your folder directory is to be found starting
+from your home directory.
 .PP
 Anywhere a file name is expected, you can use a folder name, preceded
 with `+'.
@@ -3986,18 +3974,14 @@ command.
 The
 .I folder
 command
-can be used to direct
-.I mailx
-to the contents of a different folder.
+can be used to direct \*(UA to the contents of a different folder.
 For example,
 .nf
 .sp
     \fBfolder +\fIclasswork\fR
 .sp
 .fi
-directs
-.I mailx
-to read the contents of the
+directs \*(UA to read the contents of the
 .I classwork
 folder.
 All of the commands that you can use on your system
@@ -4019,16 +4003,13 @@ command.
 Finally, the
 .I help
 command is available to print out a brief summary of the most important
-.I mailx
-commands.
+\*(UA commands.
 .PP
 While typing in a message to be sent to others, it is often
 useful to be able to invoke the text editor on the partial message,
 print the message, execute a shell command, or do some other
 auxiliary function. 
-.I Mailx
-provides these capabilities through
-.I "tilde escapes" ,
+\*(UA provides these capabilities through \fI"tilde escapes"\fR,
 which consist of a tilde (~) at the beginning of a line, followed by
 a single character which indicates the function to be performed.
 For example, to print the text of the message so far, use:
@@ -4102,39 +4083,31 @@ every time you want to connect:
 You might want to put this string into a startup file.
 As the
 .I shortcut
-command is specific to this implementation of
-.I mailx
-and will confuse other implementations,
-it should not be used in
-.IR ~/.mailrc ,
-instead, put
+command is specific to this implementation of \*(UA and will confuse other
+implementations, it should not be used in \*(ur, instead, put
 .nf
 
-    \fBset NAIL_EXTRA_RC=\fI~/.nailrc\fR
+    \fBset NAIL_EXTRA_RC=.\*(uarc
 
 .fi
-in
-.I ~/.mailrc
-and create a file
-.I ~/.nailrc
-containing the
+in \*(ur and create a file ~/.\*(uarc containing the
 .I shortcut
 command above.
 You can then access your remote mailbox by invoking
-`mailx \-f \fImyisp\fR' on the command line,
-or by executing `fi \fImyisp\fR' within mailx.
+`\*(ua \-f \fImyisp\fR' on the command line,
+or by executing `fi \fImyisp\fR' within \*(UA.
 .PP
 If you want to use more than one IMAP mailbox on a server,
 or if you want to use the IMAP server for mail storage too,
 the
 .I account
 command
-(which is also \fImailx-\fRspecific)
+(which is also \*(UA-\fRspecific)
 is more appropriate than the
 .I shortcut
 command.
 You can put the following in
-.IR ~/.nailrc :
+.IR ~/.\*(uarc :
 .sp
 .nf
     \fBaccount \fImyisp \fB{\fR
@@ -4144,8 +4117,8 @@ You can put the following in
 .fi
 .sp
 and can then access incoming mail for this account by invoking
-`mailx \-A \fImyisp\fR' on the command line,
-or by executing `ac \fImyisp\fR' within mailx.
+`\*(ua \-A \fImyisp\fR' on the command line,
+or by executing `ac \fImyisp\fR' within \*(UA.
 After that,
 a command like `copy \fI1\fR +\fIotherfolder\fR'
 will refer to \fIotherfolder\fR on the IMAP server.
@@ -4157,8 +4130,7 @@ and
 `fi +Sent' will show your recorded sent mail,
 with both folders located on the IMAP server.
 .PP
-.I Mailx
-will ask you for a password string
+\*(UA will ask you for a password string
 each time you connect to a remote account.
 If you can reasonably trust the security
 of your workstation,
@@ -4171,8 +4143,7 @@ you can give this password in the startup file as
 You should change the permissions of this file to 0600, see
 .IR chmod (1).
 .PP
-.I Mailx
-supports different authentication methods for both IMAP and POP3.
+\*(UA supports different authentication methods for both IMAP and POP3.
 If Kerberos is used at your location,
 you can try to activate GSSAPI-based authentication by
 .nf
@@ -4181,8 +4152,7 @@ you can try to activate GSSAPI-based authentication by
 
 .fi
 The advantage of this method is that
-.I mailx
-does not need to know your password at all,
+\*(UA does not need to know your password at all,
 nor needs to send sensitive data over the network.
 Otherwise, the options
 .nf
@@ -4200,9 +4170,8 @@ conventional user/password based authentication must be used.
 It is sometimes helpful to set the
 .I verbose
 option when authentication problems occur.
-.I Mailx
-will display all data sent to the server in clear text on the screen
-with this option,
+\*(UA will display all data sent to the server in clear text on the
+screen with this option,
 including passwords.
 You should thus take care that no unauthorized person
 can look at your terminal when this option is set.
@@ -4223,14 +4192,14 @@ select a local directory name and put
 .fi
 in the startup file.
 All files within that directory
-can be overwritten or deleted by \fImailx\fR at any time,
+can be overwritten or deleted by \*(UA at any time,
 so you should not use the directory to store other information.
 .PP
 Once the cache contains some messages,
 it is not strictly necessary anymore
 to open a connection to the IMAP server
 to access them.
-When \fImailx\fR is invoked with the \fI\-D\fR option,
+When \*(UA is invoked with the \fI\-D\fR option,
 or when the
 .I disconnected
 variable is set,
@@ -4287,7 +4256,7 @@ fetch its CA certificate by executing the shell command
 .nf
 
     $ \fBopenssl s_client </dev/null \-showcerts \-connect \e
-           \fIserver.myisp.example\fB:\fIimaps\fB 2>&1 | tee \fIlog\fR
+        \fIserver.myisp.example\fB:\fIimaps\fB 2>&1 | tee \fIlog\fR
 
 .fi
 (see
@@ -4297,18 +4266,14 @@ and put it into the file specified with
 The data you need is located at the end of the certificate chain
 within (and including) the `BEGIN CERTIFICATE'
 and `END CERTIFICATE' lines.
-(Note that it is possible to fetch
-a forged certificate by this method.
-You can only completely rely
-on the authenticity of the CA certificate
-if you fetch it in a way that is trusted by other means,
-such as by personally receiving the certificate on storage media.)
+Note that the example above is \fIinsecure\fR!
+One should use the `-verify' and `-CAfile' options of
+.IR s_client (1)
+to be "on the safe side" regarding the fetched certificates.
 .SS "Creating a score file or message filter"
 The scoring commands are best separated
 from other configuration for clarity,
-and are mostly
-.I mailx
-specific.
+and are mostly \*(UA specific.
 It is thus recommended to put them in a separate file
 that is sourced from your NAIL_EXTRA_RC as follows:
 .nf
@@ -4437,8 +4402,7 @@ If you set the
 option before running the
 .I classify
 command,
-.I mailx
-prints the words it uses for calculating the junk status
+\*(UA prints the words it uses for calculating the junk status
 along with their statistical probabilities.
 This can help you to find out
 why some messages are not classified
@@ -4491,8 +4455,8 @@ Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file, as with
 .nf
 .sp
-    \fBset pipe-application/pdf=\fR"cat >/tmp/mailx$$.pdf; \e
-           acroread /tmp/mailx$$.pdf; rm /tmp/mailx$$.pdf"
+    \fBset pipe-application/pdf=\fR"cat >/tmp/\*(ua$$.pdf; \e
+        acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
 .sp
 .fi
 Note that security defects are discovered in PDF viewers
@@ -4515,9 +4479,10 @@ Signing a message does not change its regular text;
 it can be read regardless of whether the recipient's software
 is able to handle S/MIME.
 It is thus usually possible to sign all outgoing messages
-if so desired.\(emEncryption, in contrast,
-makes the message text invisible for all people
-except those who have access to the secret decryption key.
+if so desired.
+Encryption, in contrast,
+makes the message text invisible for all people except those who have
+access to the secret decryption key.
 To encrypt a message,
 the specific recipient's public encryption key must be known.
 It is thus not possible to send encrypted mail to people
@@ -4563,8 +4528,7 @@ from one of the major CAs on the Internet using your WWW browser.
 You will usually receive
 a combined certificate and private key
 in PKCS#12 format which
-.I mailx
-does not directly accept
+\*(UA does not directly accept
 if S/MIME support is built using OpenSSL.
 To convert it to PEM format,
 use the following shell command:
@@ -4580,8 +4544,7 @@ parameter,
 you can specifiy an additional
 .I "PEM pass phrase"
 for protecting the private key.
-.I Mailx
-will then ask you for that pass phrase
+\*(UA will then ask you for that pass phrase
 each time it signs or decrypts a message.
 You can then use
 .nf
@@ -4589,8 +4552,7 @@ You can then use
     \fBset smime-sign-cert-\fImyname@myisp.example\fB=\fIcert.pem\fR
 .sp
 .fi
-to make this private key and certificate known to
-.IR mailx .
+to make this private key and certificate known to \*(UA.
 .PP
 If S/MIME support is built using NSS,
 the PKCS#12 file must be installed using Mozilla
@@ -4625,8 +4587,7 @@ First use the
 command to check the validity of the certificate.
 After that,
 retrieve the certificate and tell
-.I mailx
-that it should use it for encryption:
+\*(UA that it should use it for encryption:
 .nf
 .sp
     \fBcertsave\fI filename\fR
@@ -4682,14 +4643,12 @@ To seriously use S/MIME or SSL/TLS verification,
 an up-to-date CRL is required for each trusted CA.
 There is otherwise no method
 to distinguish between valid and invalidated certificates.
-.I Mailx
-currently offers no mechanism to fetch CRLs,
+\*(UA currently offers no mechanism to fetch CRLs,
 or to access them on the Internet,
 so you have to retrieve them by some external mechanism.
 .PP
 If S/MIME and SSL/TLS support are built using OpenSSL,
-.I mailx
-accepts CRLs in PEM format only;
+\*(UA accepts CRLs in PEM format only;
 CRLs in DER format must be converted,
 e.\|g. with the shell command
 .nf
@@ -4697,9 +4656,7 @@ e.\|g. with the shell command
     $ \fBopenssl crl \-inform DER \-in \fIcrl.der\fB \-out \fIcrl.pem\fR
 .sp
 .fi
-To tell
-.I mailx
-about the CRLs,
+To tell \*(UA about the CRLs,
 a directory
 that contains all CRL files
 (and no other files)
@@ -4711,8 +4668,7 @@ or
 variables, respectively,
 must then be set to point to that directory.
 After that,
-.I mailx
-requires a CRL to be present
+\*(UA requires a CRL to be present
 for each CA that is used
 to verify a certificate.
 .PP
@@ -4724,21 +4680,16 @@ is set appropriately).
 .SS "Sending mail from scripts"
 If you want to send mail from scripts,
 you must be aware that
-.I mailx
-reads the user's configuration files by default.
+\*(UA reads the user's configuration files by default.
 So unless your script is only intended for your own personal use
 (as e.g. a cron job),
-you need to circumvent this by invoking
-.I mailx
-like
+you need to circumvent this by invoking \*(UA like
 .nf
 .sp
-    \fBMAILRC=/dev/null mailx \-n\fR
+    \fBMAILRC=/dev/null \*(ua \-n\fR
 .sp
 .fi
-You then need to create a configuration for
-.I mailx
-for your script.
+You then need to create a configuration for \*(UA for your script.
 This can be done by either pointing the
 .I MAILRC
 variable to a custom configuration file,
@@ -4750,34 +4701,31 @@ An invocation could thus look like
 .nf
 .sp
     \fBenv MAILRC=/dev/null\fR from=\fIscriptreply@domain\fR smtp=\fIhost\fR \e
-          smtp-auth-user=\fIlogin\fR smtp-auth-password=\fIsecret\fR \e
-          smtp-auth=\fIlogin\fR \fBmailx \-n\fR \-s "\fIsubject\fR" \e
-          \-a \fIattachment_file\fR \fIrecipient@domain\fR <\fIcontent_file\fR
+        smtp-auth-user=\fIlogin\fR smtp-auth-password=\fIsecret\fR \e
+        smtp-auth=\fIlogin\fR \*(ba\fB \-n\fR \-s "\fIsubject\fR" \e
+        \-a \fIattachment_file\fR \fIrecipient@domain\fR <\fIcontent_file\fR
 .SH "SEE ALSO"
 fmt(1),
+more(1),
 newaliases(1),
 openssl(1),
 pg(1),
-more(1),
+sendmail(1)
 vacation(1),
 ssl(3),
 aliases(5),
 locale(7),
-mailaddr(7),
-sendmail(8)
+mailaddr(7)
 .SH NOTES
 .PP
-Variables in the environment passed to
-.I mailx
-cannot be unset.
+Variables in the environment passed to \*(UA cannot be unset.
 .PP
 The character set conversion relies
 on the
 .IR iconv (3)
 function.
 Its functionality differs widely
-between the various system environments
-\fImailx\fR runs on.
+between the various system environments \*(UA runs on.
 If the message `Cannot convert from \fIa\fR to \fIb\fR' appears,
 either some characters within the message header or text
 are not appropriate for the currently selected terminal character set,
@@ -4801,7 +4749,7 @@ the value assigned to
 .I sendcharsets
 must match the character set that is used on the terminal.
 .PP
-Mailx expects input text to be in Unix format,
+\*(UA expects input text to be in Unix format,
 with lines separated by 
 .I newline
 (^J, \en) characters only.
@@ -4810,9 +4758,8 @@ Non-Unix text files that use
 (^M, \er)
 characters in addition will be treated as binary data;
 to send such files as text, strip these characters e.\ g. by
-.RS
 .sp
-tr \-d '\e015' <input | mailx .\ .\ .
+    $ tr \-d '\e015' <input | \*(ua .\ .\ .
 .sp
 .RE
 or fix the tools that generate them.
@@ -4846,10 +4793,10 @@ and new messages will appear as unread
 when it is selected for viewing later.
 The `flagged', `answered', and `draft' attributes are usually permanent,
 but some IMAP servers are known to drop them without notification.
-.\" This is why mailx does not even check if storing them succeeds.
+.\" This is why \*(UA does not even check if storing them succeeds.
 Message numbers may change with IMAP
 every time before the prompt is printed
-if \fImailx\fR is notified by the server
+if \*(UA is notified by the server
 that messages have been deleted
 by some other client or process.
 In this case, `Expunged \fIn\fR messages' is printed,
@@ -4873,26 +4820,23 @@ It is not possible to rename or to remove POP3 mailboxes.
 If a
 .SM RUBOUT
 (interrupt) is typed while an IMAP or POP3 operation is in progress,
-.I mailx
-will wait until the operation can be safely aborted,
+\*(UA will wait until the operation can be safely aborted,
 and will then return to the command loop
 and print the prompt again.
 When a second
 .I RUBOUT
-is typed while
-.I mailx
-is waiting for the operation to complete,
-the operation itself will be canceled.
+is typed while \*(UA is waiting for the operation to complete,
+the operation itself will be cancelled.
 In this case,
 data that has not been fetched yet
 will have to be fetched
 before the next command can be performed.
-If the canceled operation
+If the cancelled operation
 was using an SSL/TLS encrypted channel,
 an error in the SSL transport will very likely result,
 and the connection is no longer usable.
 .PP
-As \fImailx\fR is a mail user agent,
+As \*(UA is a mail user agent,
 it provides only basic SMTP services.
 If it fails to contact its upstream SMTP server,
 it will not make further attempts to transfer the message
@@ -4902,20 +4846,19 @@ than an error message on the terminal
 and a `dead.letter' file.
 This is usually not a problem if the SMTP server
 is located in the same local network
-as the computer on which \fImailx\fR is run.
+as the computer on which \*(UA is run.
 However, care should be taken when using a remote server of an ISP;
 it might be better to set up a local SMTP server then
 which just acts as a proxy.
 .PP
-\fIMailx\fR immediately contacts the SMTP server (or
-.IR \%/usr/lib/sendmail )
+\*(UA immediately contacts the SMTP server (or \fIsendmail(1)\fR)
 even when operating in
 .I disconnected
 mode.
-It would not make much sense for \fImailx\fR to defer outgoing mail
+It would not make much sense for \*(UA to defer outgoing mail
 since SMTP servers usually provide
 much more elaborated delay handling
-than \fImailx\fR could perform as a client.
+than \*(UA could perform as a client.
 Thus the recommended setup for sending mail in
 .I disconnected
 mode is to configure a local SMTP server
@@ -4942,6 +4885,8 @@ from The Mail Reference Manual
 originally written by Kurt Shoens.
 \fIHeirloom Mailx\fR enhancements are maintained and documented
 by Gunnar Ritter.
+\fIS-nail\fR enhancements are maintained and documented
+by Steffen "Daode" Nurpmeso.
 .PP
 Portions of this text are reprinted and reproduced in electronic form
 from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology
@@ -4951,6 +4896,6 @@ Electrical and Electronics Engineers, Inc and The Open Group. In the
 event of any discrepancy between this version and the original IEEE and
 The Open Group Standard, the original IEEE and The Open Group Standard
 is the referee document. The original Standard can be obtained online at
-\%http://www.opengroup.org/unix/online.html\ .
+\%<http://www.opengroup.org/unix/online.html>.
 Redistribution of this material is permitted so long as this notice remains
 intact.

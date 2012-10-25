@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -36,15 +37,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)junk.c	1.75 (gritter) 9/14/08";
-#endif
-#endif /* not lint */
-
 #include "config.h"
 #include "rcv.h"
 
+#ifdef USE_JUNK
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -318,7 +314,7 @@ skip:	if ((n = getn(&super[OF_super_size])) == 0) {
 		if ((compressed ? zread(zp, nodes, n * SIZEOF_node)
 				!= n * SIZEOF_node :
 				fread(nodes, 1, n * SIZEOF_node, nfp)
-				!= n * SIZEOF_node) ||
+				!= (unsigned long)n * SIZEOF_node) ||
 				ferror(nfp)) {
 			fprintf(stderr, "Error reading junk mail database.\n");
 			memset(nodes, 0, n * SIZEOF_node);
@@ -345,11 +341,11 @@ putdb(void)
 	void	*zp;
 	int	scomp, ncomp;
 
-	if (!super_mmapped && (sfp = dbfp(SUPER, O_WRONLY, &scomp, &sname))
-			== NULL || sfp == (FILE *)-1)
+	if ((! super_mmapped && (sfp = dbfp(SUPER, O_WRONLY, &scomp, &sname))
+			== NULL) || sfp == (FILE *)-1)
 		return;
-	if (!nodes_mmapped && (nfp = dbfp(NODES, O_WRONLY, &ncomp, &nname))
-			== NULL || nfp == (FILE *)-1)
+	if ((! nodes_mmapped && (nfp = dbfp(NODES, O_WRONLY, &ncomp, &nname))
+			== NULL) || nfp == (FILE *)-1)
 		return;
 	if (super_mmapped == 0 || nodes_mmapped == 0)
 		holdint();
@@ -421,12 +417,12 @@ dbfp(enum db db, int rw, int *compressed, char **fn)
 	char **zf;
 	int	n;
 
-	if ((dir = value("junkdb")) == NULL) {
+	if ((dir = value("junkdb")) == NULL ||
+			(dir = file_expand(dir)) == NULL) {
 		fprintf(stderr, "No junk mail database specified. "
 				"Set the junkdb variable.\n");
 		return (FILE *)-1;
 	}
-	dir = expand(dir);
 	if (makedir(dir) == STOP) {
 		fprintf(stderr, "Cannot create directory \"%s\"\n.", dir);
 		return (FILE *)-1;
@@ -639,7 +635,8 @@ loop:	*stop = 0;
 				sp->html = HTML_TEXT;
 				continue;
 			} else {
-				if (sp->tagp - sp->tag < sizeof sp->tag - 1)
+				if ((size_t)(sp->tagp - sp->tag) <
+						sizeof sp->tag - 1)
 					*sp->tagp++ = c;
 				continue;
 			}
@@ -654,7 +651,7 @@ loop:	*stop = 0;
 		if (sp->loc == HEADER && sp->lastc == '\n') {
 			if (!spacechar(c)) {
 				k = 0;
-				while (k < sizeof sp->field - 3) {
+				while (k < (int)sizeof sp->field - 3) {
 					sp->field[k++] = c;
 					if (*count <= 0 ||
 							(c = getc(fp)) == EOF)
@@ -696,8 +693,8 @@ loop:	*stop = 0;
 			}
 			SAVE(c)
 		} else if (constituent(c, *buf, i+j, sp->price, sp->hadamp) ||
-				sp->loc == HEADER && c == '.' &&
-				asccasecmp(sp->field, "subject*")) {
+				(sp->loc == HEADER && c == '.' &&
+				asccasecmp(sp->field, "subject*"))) {
 			if (c == '&')
 				sp->hadamp = 1;
 			SAVE(c)
@@ -775,16 +772,16 @@ out:	if (i > 0) {
 				 ascncasecmp(sp->field, "x-spam", 6) == 0 ||
 				 ascncasecmp(sp->field, "x-pstn", 6) == 0 ||
 				 ascncasecmp(sp->field, "x-scanned", 9) == 0 ||
-				 asccasecmp(sp->field, "received*") == 0 &&
-				 	((2*c > i) || i < 4 ||
-					asccasestr(*buf, "localhost") != NULL)))
+				 (asccasecmp(sp->field, "received*") == 0 &&
+					(((2*c > i) || i < 4 ||
+					asccasestr(*buf, "localhost")!=NULL)))))
 			goto loop;
 		return *buf;
 	}
 	return NULL;
 }
 
-#define	JOINCHECK	if (i >= *bufsize) \
+#define	JOINCHECK	if ((size_t)i >= *bufsize) \
 				*buf = srealloc(*buf, *bufsize += 32)
 static void
 join(char **buf, size_t *bufsize, const char *s1, const char *s2)
@@ -810,20 +807,23 @@ add(const char *word, enum entry entry, struct lexstat *sp, int incr)
 	unsigned	c;
 	unsigned long	h1, h2;
 	char	*n;
+	(void)sp;
 
 	dbhash(word, &h1, &h2);
 	if ((n = lookup(h1, h2, 1)) != NULL) {
 		switch (entry) {
 		case GOOD:
 			c = get(&n[OF_node_good]);
-			if (incr>0 && c<MAX3-incr || incr<0 && c>=-incr) {
+			if ((incr > 0 && c < (unsigned)MAX3 - incr) ||
+					(incr < 0 && c >= (unsigned)-incr)) {
 				c += incr;
 				put(&n[OF_node_good], c);
 			}
 			break;
 		case BAD:
 			c = get(&n[OF_node_bad]);
-			if (incr>0 && c<MAX3-incr || incr<0 && c>=-incr) {
+			if ((incr > 0 && c < (unsigned)MAX3 - incr) ||
+					(incr < 0 && c >= (unsigned)-incr)) {
 				c += incr;
 				put(&n[OF_node_bad], c);
 			}
@@ -953,12 +953,12 @@ insert(int *msgvec, enum entry entry, int incr)
 		if (incr > 0 && u == MAX4-incr+1) {
 			fprintf(stderr, "Junk mail database overflow.\n");
 			break;
-		} else if (incr < 0 && -incr > u) {
+		} else if (incr < 0 && (unsigned long)-incr > u) {
 			fprintf(stderr, "Junk mail database underflow.\n");
 			break;
 		}
 		u += incr;
-		if (entry == GOOD && incr > 0 || entry == BAD && incr < 0)
+		if ((entry == GOOD && incr > 0) || (entry == BAD && incr < 0))
 			message[*ip-1].m_flag &= ~MJUNK;
 		else
 			message[*ip-1].m_flag |= MJUNK;
@@ -1037,7 +1037,8 @@ clsf(struct message *m)
 	float	a = 1, b = 1, r;
 
 	if (verbose)
-		fprintf(stderr, "Examining message %d\n", m - &message[0] + 1);
+		fprintf(stderr, "Examining message %d\n",
+				(int)(m - &message[0] + 1));
 	for (i = 0; i < BEST; i++) {
 		best[i].dist = 0;
 		best[i].prob = -1;
@@ -1065,7 +1066,7 @@ clsf(struct message *m)
 	r = a+b > 0 ? a / (a+b) : 0;
 	if (verbose)
 		fprintf(stderr, "Junk probability of message %d: %g\n",
-				m - &message[0] + 1, r);
+				(int)(m - &message[0] + 1), r);
 	if (r > THR)
 		m->m_flag |= MJUNK;
 	else
@@ -1080,6 +1081,8 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 	unsigned long	h1, h2;
 	float	p, d;
 	int	i, j;
+	(void)entry;
+	(void)unused;
 
 	dbhash(word, &h1, &h2);
 	if ((n = lookup(h1, h2, 0)) != NULL) {
@@ -1109,10 +1112,10 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 			 * gives the most interesting verbose output.
 			 */
 			if (d > best[i].dist ||
-					d == best[i].dist &&
-						p < best[i].prob ||
-					best[i].loc == HEADER &&
-						d == best[i].dist) {
+					d == (best[i].dist &&
+						p < best[i].prob) ||
+					(best[i].loc == HEADER &&
+						d == best[i].dist)) {
 				for (j = BEST-2; j >= i; j--)
 					best[j+1] = best[j];
 				best[i].dist = d;
@@ -1214,3 +1217,57 @@ cprobability(void *v)
 	relsedb();
 	return 0;
 }
+
+#else /* !USE_JUNK */
+
+static int
+nojunk(void)
+{
+	fputs(catgets(catd, CATSET, 270, "No JUNK support compiled in.\n"),
+		stderr);
+	return (1);
+}
+
+int
+cgood(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cjunk(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cungood(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cunjunk(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cclassify(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+int
+cprobability(void *v)
+{
+	(void)v;
+	return nojunk();
+}
+
+#endif /* USE_JUNK */

@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)tty.c	2.29 (gritter) 3/9/07";
-#endif
-#endif /* not lint */
 
 /*
  * Mail -- a mail program
@@ -92,6 +87,7 @@ ttystop(int s)
 static void 
 ttyint(int s)
 {
+	(void)s;
 	siglongjmp(intjmp, 1);
 }
 
@@ -217,9 +213,7 @@ redo:
 	}
 	*cp2 = '\0';
 #endif
-	if (equal("", canonb))
-		return(NULL);
-	return(savestr(canonb));
+	return ((*canonb == '\0') ? NULL : savestr(canonb));
 }
 
 /*
@@ -247,9 +241,9 @@ grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
 
 	TTYSET_CHECK(np);
 	loop:
-		np = sextract(rtty_internal(field, detract(np, comma)), gflags);
+		np = lextract(rtty_internal(field, detract(np, comma)), gflags);
 		for (nq = np; nq != NULL; nq = nq->n_flink)
-			if (mime_name_invalid(nq->n_name, 1))
+			if (is_addr_invalid(nq, 1))
 				goto loop;
 	return np;
 }
@@ -257,18 +251,13 @@ grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
 int 
 grabh(struct header *hp, enum gfield gflags, int subjfirst)
 {
-	sighandler_type saveint;
+	sighandler_type saveint, savetstp, savettou, savettin;
 #ifndef TIOCSTI
 	sighandler_type savequit;
 #endif
-	sighandler_type savetstp;
-	sighandler_type savettou;
-	sighandler_type savettin;
 	int errs;
-	int comma;
+	int volatile comma;
 
-	(void) &comma;
-	(void) &saveint;
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
@@ -319,16 +308,16 @@ grabh(struct header *hp, enum gfield gflags, int subjfirst)
 		hp->h_bcc = grabaddrs("Bcc: ", hp->h_bcc, comma, GBCC|GFULL);
 	if (gflags & GEXTRA) {
 		if (hp->h_from == NULL)
-			hp->h_from = sextract(myaddrs(hp), GEXTRA|GFULL);
+			hp->h_from = lextract(myaddrs(hp), GEXTRA|GFULL);
 		hp->h_from = grabaddrs("From: ", hp->h_from, comma,
 				GEXTRA|GFULL);
 		if (hp->h_replyto == NULL)
-			hp->h_replyto = sextract(value("replyto"),
+			hp->h_replyto = lextract(value("replyto"),
 					GEXTRA|GFULL);
 		hp->h_replyto = grabaddrs("Reply-To: ", hp->h_replyto, comma,
 				GEXTRA|GFULL);
 		if (hp->h_sender == NULL)
-			hp->h_sender = sextract(value("sender"),
+			hp->h_sender = extract(value("sender"),
 					GEXTRA|GFULL);
 		hp->h_sender = grabaddrs("Sender: ", hp->h_sender, comma,
 				GEXTRA|GFULL);
@@ -427,10 +416,9 @@ yorn(char *msg)
 	char	*cp;
 
 	if (value("interactive") == NULL)
-		return 1;
-	do
-		cp = readtty(msg, NULL);
-	while (cp == NULL ||
-		*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
-	return *cp == 'y' || *cp == 'Y';
+		return (1);
+	do if ((cp = readtty(msg, NULL)) == NULL)
+		return (0);
+	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
+	return (*cp == 'y' || *cp == 'Y');
 }

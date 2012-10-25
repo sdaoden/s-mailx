@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,25 +37,20 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)aux.c	2.83 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
-
 #include "rcv.h"
 #include "extern.h"
+
 #include <sys/stat.h>
 #include <utime.h>
 #include <time.h>
 #include <termios.h>
 #include <ctype.h>
 #ifdef	HAVE_WCTYPE_H
-#include <wctype.h>
-#endif	/* HAVE_WCTYPE_H */
+# include <wctype.h>
+#endif
 #ifdef	HAVE_WCWIDTH
-#include <wchar.h>
-#endif	/* HAVE_WCWIDTH */
+# include <wchar.h>
+#endif
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -62,8 +58,11 @@ static char sccsid[] = "@(#)aux.c	2.83 (gritter) 3/4/06";
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdarg.h>
 
-#include "md5.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
@@ -72,60 +71,9 @@ static char sccsid[] = "@(#)aux.c	2.83 (gritter) 3/4/06";
  */
 
 /*
- * Return a pointer to a dynamic copy of the argument.
- */
-char *
-savestr(const char *str)
-{
-	char *new;
-	int size = strlen(str) + 1;
-
-	if ((new = salloc(size)) != NULL)
-		memcpy(new, str, size);
-	return new;
-}
-
-/*
- * Make a copy of new argument incorporating old one.
- */
-char *
-save2str(const char *str, const char *old)
-{
-	char *new;
-	int newsize = strlen(str) + 1;
-	int oldsize = old ? strlen(old) + 1 : 0;
-
-	if ((new = salloc(newsize + oldsize)) != NULL) {
-		if (oldsize) {
-			memcpy(new, old, oldsize);
-			new[oldsize - 1] = ' ';
-		}
-		memcpy(new + oldsize, str, newsize);
-	}
-	return new;
-}
-
-char *
-savecat(const char *s1, const char *s2)
-{
-	const char	*cp;
-	char	*ns, *np;
-
-	np = ns = salloc(strlen(s1) + strlen(s2) + 1);
-	for (cp = s1; *cp; cp++)
-		*np++ = *cp;
-	for (cp = s2; *cp; cp++)
-		*np++ = *cp;
-	*np = '\0';
-	return ns;
-}
-
-#include <stdarg.h>
-
-#ifndef	HAVE_SNPRINTF
-/*
  * Lazy vsprintf wrapper.
  */
+#ifndef HAVE_SNPRINTF
 int
 snprintf(char *str, size_t size, const char *format, ...)
 {
@@ -137,7 +85,7 @@ snprintf(char *str, size_t size, const char *format, ...)
 	va_end(ap);
 	return ret;
 }
-#endif	/* !HAVE_SNPRINTF */
+#endif
 
 /*
  * Announce a fatal error and die.
@@ -417,17 +365,16 @@ source(void *v)
 	FILE *fi;
 	char *cp;
 
-	if ((cp = expand(*arglist)) == NULL)
-		return(1);
+	if ((cp = file_expand(*arglist)) == NULL)
+		return (1);
 	if ((fi = Fopen(cp, "r")) == NULL) {
 		perror(cp);
-		return(1);
+		return (1);
 	}
 	if (ssp >= SSTACK - 1) {
-		printf(catgets(catd, CATSET, 3,
-					"Too much \"sourcing\" going on.\n"));
+		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
 		Fclose(fi);
-		return(1);
+		return (1);
 	}
 	sstack[ssp].s_file = input;
 	sstack[ssp].s_cond = cond;
@@ -501,7 +448,7 @@ blankline(char *linebuf)
  * Are any of the characters in the two strings the same?
  */
 int 
-anyof(char *s1, char *s2)
+anyof(char const*s1, char const*s2)
 {
 
 	while (*s1)
@@ -555,7 +502,12 @@ which_protocol(const char *name)
 			goto file;
 	if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
 		if (strncmp(name, "pop3://", 7) == 0)
+#ifdef USE_POP3
 			return PROTO_POP3;
+#else
+			fprintf(stderr, catgets(catd, CATSET, 216,
+					"No POP3 support compiled in.\n"));
+#endif
 		if (strncmp(name, "pop3s://", 8) == 0)
 #ifdef	USE_SSL
 			return PROTO_POP3;
@@ -564,7 +516,12 @@ which_protocol(const char *name)
 					"No SSL support compiled in.\n"));
 #endif	/* !USE_SSL */
 		if (strncmp(name, "imap://", 7) == 0)
+#ifdef USE_IMAP
 			return PROTO_IMAP;
+#else
+			fprintf(stderr, catgets(catd, CATSET, 269,
+					"No IMAP support compiled in.\n"));
+#endif
 		if (strncmp(name, "imaps://", 8) == 0)
 #ifdef	USE_SSL
 			return PROTO_IMAP;
@@ -697,7 +654,7 @@ nextprime(long n)
 			268435399, 536870909, 1073741789, 2147483647
 		};
 	long	mprime = 7;
-	int	i;
+	size_t	i;
 
 	for (i = 0; i < sizeof primes / sizeof *primes; i++)
 		if ((mprime = primes[i]) >= (n < 65536 ? n*4 :
@@ -751,6 +708,7 @@ strdec(const char *cp)
 	return n;
 }
 
+#ifdef USE_MD5
 char *
 md5tohex(const void *vp)
 {
@@ -791,6 +749,7 @@ cram_md5_string(const char *user, const char *pass, const char *b64)
 	free(cp);
 	return rp;
 }
+#endif /* USE_MD5 */
 
 char *
 getuser(void)
@@ -884,25 +843,40 @@ getrandstring(size_t length)
 {
 	static unsigned char	nodedigest[16];
 	static pid_t	pid;
-	int	i, fd = -1;
+	int	fd = -1;
 	char	*data;
 	char	*cp, *rp;
+	size_t	i;
+#ifdef USE_MD5
 	MD5_CTX	ctx;
+#else
+	size_t j;
+#endif
 
 	data = salloc(length);
 	if ((fd = open("/dev/urandom", O_RDONLY)) < 0 ||
-			read(fd, data, length) != length) {
+			length != (size_t)read(fd, data, length)) {
 		if (pid == 0) {
 			pid = getpid();
 			srand(pid);
 			cp = nodename(0);
+#ifdef USE_MD5
 			MD5Init(&ctx);
 			MD5Update(&ctx, (unsigned char *)cp, strlen(cp));
 			MD5Final(nodedigest, &ctx);
+#else
+			/* In that case it's only used for boundaries and
+			 * Message-Id:s so that srand(3) should suffice */
+			j = strlen(cp) + 1;
+			for (i = 0; i < sizeof(nodedigest); ++i)
+				nodedigest[i] = (unsigned char)(
+					cp[i % j] ^ rand());
+#endif
 		}
 		for (i = 0; i < length; i++)
-			data[i] = (int)(255 * (rand() / (RAND_MAX + 1.0))) ^
-				nodedigest[i % sizeof nodedigest];
+			data[i] = (char)
+			    ((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
+				nodedigest[i % sizeof nodedigest]);
 	}
 	if (fd > 0)
 		close(fd);

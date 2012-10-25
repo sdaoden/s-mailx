@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -66,12 +67,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)imap_gssapi.c	1.10 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
 
 /*
  * Implementation of IMAP GSSAPI authentication according to RFC 1731.
@@ -262,7 +257,7 @@ imap_gss(struct mailbox *mp, char *user)
 	 */
 	o[0] = 1;
 	o[1] = 0;
-	o[2] = o[3] = 0377;
+	o[2] = o[3] = (char)0377;
 	snprintf(&o[4], sizeof o - 4, "%s", user);
 	send_tok.value = o;
 	send_tok.length = strlen(&o[4]) + 5;

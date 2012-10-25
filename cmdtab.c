@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)cmdtab.c	2.51 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
@@ -205,9 +200,9 @@ const struct cmd cmdtab[] = {
 	{ "unfwdignore", unfwdignore,	M|RAWLIST,	0,	1000 },
 	{ "unfwdretain", unfwdretain,	M|RAWLIST,	0,	1000 },
 /*	{ "Header",	Header,		STRLIST,	0,	1000 },	*/
-#ifdef	DEBUG_COMMANDS
+#ifdef HAVE_ASSERTS
 	{ "core",	core,		M|NOLIST,	0,	0 },
 	{ "clobber",	clobber,	M|RAWLIST,	0,	1 },
-#endif	/* DEBUG_COMMANDS */
+#endif
 	{ 0,		0,		0,		0,	0 }
 };

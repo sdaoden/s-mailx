@@ -1,70 +1,46 @@
-#
-# Makefile for mailx
-#
+#@ Makefile for S-nail.
+#@ See the file INSTALL if you need help.
 
-#
-# See the file INSTALL if you need help.
-#
-
+# General prefix
 PREFIX		= /usr/local
+
 BINDIR		= $(PREFIX)/bin
-MANDIR		= $(PREFIX)/share/man
-SYSCONFDIR	= /etc
+MANDIR		= $(PREFIX)/man
+SYSCONFDIR	= $(PREFIX)/etc
 
-MAILRC		= $(SYSCONFDIR)/nail.rc
-MAILSPOOL	= /var/mail
-SENDMAIL	= /usr/lib/sendmail
-
+# Prepended to all paths at installation time (for e.g. package building)
 DESTDIR		=
+# (For those who want to install S-nail(1) as nail(1), use an empty *SID*)
+SID		= s-
 
-UCBINSTALL	= /usr/ucb/install
-
-# Define compiler, preprocessor, and linker flags here.
-# Note that some Linux/glibc versions need -D_GNU_SOURCE in CPPFLAGS, or
-# wcwidth() will not be available and multibyte characters will not be
-# displayed correctly.
-#CFLAGS		=
-#CPPFLAGS	=
-#LDFLAGS		=
-#WARN		= -Wall -Wno-parentheses -Werror
-
-# Some RedHat versions need INCLUDES = -I/usr/kerberos/include to compile
-# with OpenSSL, or to compile with GSSAPI authentication included. In the
-# latter case, they also need LDFLAGS = -L/usr/kerberos/lib.
-#INCLUDES	= -I/usr/kerberos/include
-#LDFLAGS	= -L/usr/kerberos/lib
-
-# If you want to include SSL support using Mozilla NSS instead of OpenSSL,
-# set something like the following paths. (You might also need to set LDFLAGS).
-#MOZINC		= /usr/include/mozilla-seamonkey-1.0.5
-#INCLUDES	= -I$(MOZINC)/nspr -I$(MOZINC)/nss
-# These paths are suitable to activate NSS support on Solaris, provided that
-# the packages SUNWmoznss, SUNWmoznss-devel, SUNWmoznspr, and SUNWmoznspr-devel
-# are installed.
-#MOZINC		= /usr/sfw/include/mozilla
-#MOZLIB		= /usr/sfw/lib/mozilla
-#INCLUDES	= -I$(MOZINC)/nspr -I$(MOZINC)/nss
-#LDFLAGS	= -L$(MOZLIB) -R$(MOZLIB)
-
+MAILSPOOL	= /var/mail
+SENDMAIL	= /usr/sbin/sendmail
 SHELL		= /bin/sh
+STRIP		= strip
+INSTALL		= /usr/bin/install
 
-# If you know that the IPv6 functions work on your machine, you can enable
-# them here.
-#IPv6		= -DHAVE_IPv6_FUNCS
+#CFLAGS		= -std=c89 -O2
+#WARN		= -g -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
+#		-Winit-self
+# Warnings that are not handled very well (yet)
+#		-Wshadow -Wcast-qual -Wwrite-strings
+# The gcc(1) from NetBSD 6 produces a lot of errors with -fstrict-overflow,
+# so that this needs to be revisited; it was enabled on OS X 6 and FreeBSD 9,
+# and seemed to be good for gcc(1) and clang(1)
+#		-fstrict-overflow -Wstrict-overflow=5
+#LDFLAGS		=
 
-#
-# Binaries are stripped with this command after installation.
-#
-STRIP = strip
+##  --  >8  --  8<  --  ##
 
-###########################################################################
-###########################################################################
-# You should really know what you do if you change anything below this line
-###########################################################################
-###########################################################################
+# To ease the life of forkers and packagers one may even adjust the "nail"
+# of nail(1).  Note that $(SID)$(NAIL) must be longer than two characters.
+# There you go.  Two lines for a completely clean fork.
+NAIL		= nail
+SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 
-FEATURES	= -DMAILRC='"$(MAILRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
-			-DSENDMAIL='"$(SENDMAIL)"' $(IPv6)
+# Binaries builtin paths
+PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
+			-DSENDMAIL='"$(SENDMAIL)"'
 
 OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o fio.o getname.o getopt.o head.o hmac.o \
@@ -75,58 +51,88 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	v7.local.o vars.o \
 	version.o
 
-.SUFFIXES: .o .c .x
+.SUFFIXES: .o .c .y
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) -c $<
+	$(CC) $(CFLAGS) $(WARN) $(PATHDEFS) `cat INCS` -c $<
 
-.c.x:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) -E $< >$@
+.c .y: ;
 
-.c:
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(FEATURES) $(INCLUDES) $(WARN) \
-		$(LDFLAGS) $< `grep '^[^#]' LIBS` $(LIBS) -o $@
+all: $(SID)$(NAIL)
 
-all: mailx
-
-mailx: $(OBJ) LIBS
-	$(CC) $(LDFLAGS) $(OBJ) `grep '^[^#]' LIBS` $(LIBS) -o mailx
+$(SID)$(NAIL): $(OBJ)
+	$(CC) $(LDFLAGS) $(OBJ) `cat LIBS` -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
 md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
 nss.o: nsserr.c
 
-config.h LIBS: makeconfig
+config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
 
-install: all
+mkman.1: nail.1
+	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
+	< nail.1 > $@ awk 'BEGIN {written = 0} \
+	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ { \
+		if (written == 1) \
+			next; \
+		written = 1; \
+		OFS = ""; \
+		unail = toupper(ENVIRON["_NAIL"]); \
+		lnail = tolower(unail); \
+		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2); \
+		print ".ds UU ", unail; \
+		print ".ds uu ", cnail; \
+		print ".ds UA \\\\fI", cnail, "\\\\fR"; \
+		print ".ds ua \\\\fI", lnail, "\\\\fR"; \
+		print ".ds ba \\\\fB", lnail, "\\\\fR"; \
+		print ".ds UR ", ENVIRON["_SYSCONFRC"]; \
+		OFS = " "; \
+		next \
+	} \
+	{print} \
+	'
+
+mkrc.rc: nail.rc
+	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
+	< nail.rc > $@ awk 'BEGIN {written = 0} \
+	/#--MKRC-START--/, /#--MKRC-END--/ { \
+		if (written == 1) \
+			next; \
+		written = 1; \
+		OFS = ""; \
+		lnail = tolower(ENVIRON["_NAIL"]); \
+		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2); \
+		print "# ", ENVIRON["_SYSCONFRC"]; \
+		print "# Configuration file for ", cnail, "(1), a fork of"; \
+		OFS = " "; \
+		next \
+	} \
+	{print} \
+	'
+
+install: all mkman.1 mkrc.rc
 	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
-	$(UCBINSTALL) -c mailx $(DESTDIR)$(BINDIR)/mailx
-	$(STRIP) $(DESTDIR)$(BINDIR)/mailx
+	$(INSTALL) -c $(SID)$(NAIL) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
+	$(STRIP) $(DESTDIR)$(BINDIR)/$(SID)$(NAIL)
 	test -d $(DESTDIR)$(MANDIR)/man1 || mkdir -p $(DESTDIR)$(MANDIR)/man1
-	$(UCBINSTALL) -c -m 644 mailx.1 $(DESTDIR)$(MANDIR)/man1/mailx.1
+	$(INSTALL) -c -m 644 mkman.1 $(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 	test -d $(DESTDIR)$(SYSCONFDIR) || mkdir -p $(DESTDIR)$(SYSCONFDIR)
-	test -f $(DESTDIR)$(MAILRC) || \
-		$(UCBINSTALL) -c -m 644 nail.rc $(DESTDIR)$(MAILRC)
+	test -f $(DESTDIR)$(SYSCONFRC) || \
+		$(INSTALL) -c -m 644 mkrc.rc $(DESTDIR)$(SYSCONFRC)
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(SID)$(NAIL) \
+		$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 
 clean:
-	rm -f $(OBJ) mailx *~ core log
+	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 mkrc.rc *~ core log
 
-mrproper: clean
-	rm -f config.h config.log LIBS
+distclean: clean
+	rm -f config.h config.log LIBS INCS
 
-PKGROOT = /var/tmp/mailx
-PKGTEMP = /var/tmp
-PKGPROTO = pkgproto
-
-mailx.pkg: all
-	rm -rf $(PKGROOT)
-	mkdir -p $(PKGROOT)
-	$(MAKE) DESTDIR=$(PKGROOT) install
-	rm -f $(PKGPROTO)
-	echo 'i pkginfo' >$(PKGPROTO)
-	(cd $(PKGROOT) && find . -print | pkgproto) | >>$(PKGPROTO) sed 's:^\([df] [^ ]* [^ ]* [^ ]*\) .*:\1 root root:; s:^f\( [^ ]* etc/\):v \1:; s:^f\( [^ ]* var/\):v \1:; s:^\(s [^ ]* [^ ]*=\)\([^/]\):\1./\2:'
-	rm -rf $(PKGTEMP)/$@
-	pkgmk -a `uname -m` -d $(PKGTEMP) -r $(PKGROOT) -f $(PKGPROTO) $@
-	pkgtrans -o -s $(PKGTEMP) `pwd`/$@ $@
-	rm -rf $(PKGROOT) $(PKGPROTO) $(PKGTEMP)/$@
+update-version:
+	[ -z "$${VERSION}" ] && eval VERSION="`git describe --tags`"; \
+	echo > version.c \
+	"char const *const uagent = \"$(SID)$(NAIL)\", \
+	*const version = \"$${VERSION:-huih buh}\";"

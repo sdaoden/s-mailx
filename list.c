@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)list.c	2.62 (gritter) 12/11/08";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include <ctype.h>
@@ -291,8 +286,9 @@ number:
 					markall_ret(-1)
 				}
 			} while (message[i-1].m_flag == MHIDDEN ||
-					(message[i-1].m_flag & MDELETED) != f ||
-					message[i-1].m_flag & MKILL);
+				(message[i-1].m_flag & MDELETED) !=
+					(unsigned)f ||
+				(message[i-1].m_flag & MKILL));
 			mark(i, f);
 			break;
 
@@ -312,10 +308,10 @@ number:
 						"Referencing before 1\n"));
 						markall_ret(-1)
 					}
-				} while (message[i-1].m_flag & MHIDDEN ||
+				} while ((message[i-1].m_flag & MHIDDEN) ||
 						(message[i-1].m_flag & MDELETED)
-							!= f ||
-						message[i-1].m_flag & MKILL);
+							!= (unsigned)f ||
+						(message[i-1].m_flag & MKILL));
 				mark(i, f);
 			}
 			break;
@@ -360,9 +356,9 @@ number:
 		case TBACK:
 			tback = 1;
 			for (i = 1; i <= msgCount; i++) {
-				if (message[i-1].m_flag&MHIDDEN ||
+				if ((message[i-1].m_flag & MHIDDEN) ||
 						(message[i-1].m_flag&MDELETED)
-							!= f)
+							!= (unsigned)f)
 					continue;
 				if (message[i-1].m_flag&MOLDMARK)
 					mark(i, f);
@@ -381,12 +377,12 @@ number:
 		case TCOMMA:
 			if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 				imap_getheaders(1, msgCount);
-			if (id == NULL && (cp = hfield("in-reply-to", dot))
+			if (id == NULL && (cp = hfield1("in-reply-to", dot))
 					!= NULL) {
 				id = savestr(cp);
 				idfield = ID_IN_REPLY_TO;
 			}
-			if (id == NULL && (cp = hfield("references", dot))
+			if (id == NULL && (cp = hfield1("references", dot))
 					!= NULL) {
 				struct name	*np;
 				if ((np = extract(cp, GREF)) != NULL) {
@@ -416,7 +412,8 @@ number:
 	if (star) {
 		for (i = 0; i < msgCount; i++) {
 			if (!(message[i].m_flag & MHIDDEN) &&
-					(message[i].m_flag & MDELETED) == f) {
+					(message[i].m_flag & MDELETED) ==
+						(unsigned)f) {
 				mark(i+1, f);
 				mc++;
 			}
@@ -452,7 +449,8 @@ number:
 	if ((np > namelist || colmod != 0 || id) && mc == 0)
 		for (i = 1; i <= msgCount; i++) {
 			if (!(message[i-1].m_flag & MHIDDEN) &&
-					(message[i-1].m_flag & MDELETED) == f)
+					(message[i-1].m_flag & MDELETED) ==
+						(unsigned)f)
 				mark(i, f);
 		}
 
@@ -531,7 +529,7 @@ number:
 			for (colp = &coltab[0]; colp->co_char; colp++)
 				if (colp->co_bit & colmod)
 					if ((mp->m_flag & colp->co_mask)
-					    != colp->co_equal)
+					    != (unsigned)colp->co_equal)
 						unmark(i);
 			
 		}
@@ -884,7 +882,7 @@ scan(char **sp)
 		}
 		if (quotec == 0 && blankchar(c))
 			break;
-		if (cp2 - lexstring < STRINGLEN-1)
+		if ((size_t)(cp2 - lexstring) < (size_t)STRINGLEN - 1)
 			*cp2++ = c;
 		c = *cp++;
 	}
@@ -937,7 +935,7 @@ first(int f, int m)
 	m &= MDELETED;
 	for (mp = dot; mb.mb_threaded ? mp != NULL : mp < &message[msgCount];
 			mb.mb_threaded ? mp = next_in_thread(mp) : mp++) {
-		if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == f)
+		if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (unsigned)f)
 			return mp - message + 1;
 	}
 	if (dot > &message[0]) {
@@ -945,7 +943,8 @@ first(int f, int m)
 					mp != NULL : mp >= &message[0];
 				mb.mb_threaded ?
 					mp = prev_in_thread(mp) : mp--) {
-			if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == f)
+			if (! (mp->m_flag & MHIDDEN) &&
+					(mp->m_flag & m) == (unsigned)f)
 				return mp - message + 1;
 		}
 	}
@@ -981,7 +980,7 @@ matchmid(char *id, enum idfield idfield, int mesg)
 	struct name	*np;
 	char *cp;
 
-	if ((cp = hfield("message-id", &message[mesg - 1])) != NULL) {
+	if ((cp = hfield1("message-id", &message[mesg - 1])) != NULL) {
 		switch (idfield) {
 		case ID_REFERENCES:
 			return msgidcmp(id, cp) == 0;
@@ -1030,12 +1029,12 @@ matchsubj(char *str, int mesg)
 
 	if (value("searchheaders") && (cp = strchr(str, ':'))) {
 		*cp++ = '\0';
-		cp2 = hfield(str, mp);
+		cp2 = hfieldX(str, mp);
 		cp[-1] = ':';
 		str = cp;
 	} else {
 		cp = str;
-		cp2 = hfield("subject", mp);
+		cp2 = hfield1("subject", mp);
 	}
 	if (cp2 == NULL)
 		return(0);
@@ -1108,7 +1107,7 @@ metamess(int meta, int f)
 		mp = mb.mb_threaded ? threadroot : &message[0];
 		while (mp < &message[msgCount]) {
 			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
-					(mp->m_flag & MDELETED) == f)
+					(mp->m_flag & MDELETED) == (unsigned)f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {
 				mp = next_in_thread(mp);
@@ -1130,7 +1129,7 @@ metamess(int meta, int f)
 			&message[msgCount-1];
 		while (mp >= &message[0]) {
 			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
-					(mp->m_flag & MDELETED) == f)
+					(mp->m_flag & MDELETED) == (unsigned)f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {
 				mp = prev_in_thread(mp);
@@ -1149,7 +1148,8 @@ metamess(int meta, int f)
 		 * Current message.
 		 */
 		m = dot - &message[0] + 1;
-		if (dot->m_flag & MHIDDEN || (dot->m_flag & MDELETED) != f) {
+		if ((dot->m_flag & MHIDDEN) ||
+				(dot->m_flag & MDELETED) != (unsigned)f) {
 			printf(catgets(catd, CATSET, 133,
 				"%d: Inappropriate message\n"), m);
 			return(-1);
@@ -1166,7 +1166,8 @@ metamess(int meta, int f)
 			return(-1);
 		}
 		m = prevdot - &message[0] + 1;
-		if (prevdot->m_flag&MHIDDEN || (prevdot->m_flag&MDELETED)!=f) {
+		if ((prevdot->m_flag & MHIDDEN) ||
+				(prevdot->m_flag & MDELETED) != (unsigned)f) {
 			printf(catgets(catd, CATSET, 133,
 				"%d: Inappropriate message\n"), m);
 			return(-1);

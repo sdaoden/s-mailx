@@ -1,9 +1,10 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
-/*-
+/*
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)cmd1.c	2.97 (gritter) 6/16/07";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include "extern.h"
@@ -111,14 +106,16 @@ headers(void *v)
 					lastg = g;
 					lastmq = mq;
 				}
-				if (n>0 && mp==&message[n-1] ||
-						n==0 && g==k ||
-						n==-2 && g==k+size && lastmq ||
-						n<0 && g>=k && mp->m_flag&fl)
+				if ((n > 0 && mp == &message[n-1]) ||
+						(n == 0 && g == k) ||
+						(n == -2 && g == k + size &&
+						 lastmq) ||
+						(n < 0 && g >= k &&
+						 (mp->m_flag & fl) != 0))
 					break;
 				g++;
 			}
-		if (lastmq && (n==-2 || n==-1 && mp==&message[msgCount])) {
+		if (lastmq && (n==-2 || (n==-1 && mp == &message[msgCount]))) {
 			g = lastg;
 			mq = lastmq;
 		}
@@ -154,14 +151,16 @@ headers(void *v)
 					lastg = g;
 					lastmq = mq;
 				}
-				if (n>0 && mp==&message[n-1] ||
-						n==0 && g==k ||
-						n==-2 && g==k+size && lastmq ||
-						n<0 && g>=k && mp->m_flag&fl)
+				if ((n > 0 && mp == &message[n-1]) ||
+						(n == 0 && g == k) ||
+						(n == -2 && g == k + size &&
+						 lastmq) ||
+						(n < 0 && g >= k &&
+						 (mp->m_flag & fl) != 0))
 					break;
 				g++;
 			}
-		if (lastmq && (n==-2 || n==-1 && mp==&message[msgCount])) {
+		if (lastmq && (n==-2 || (n==-1 && mp==&message[msgCount]))) {
 			g = lastg;
 			mq = lastmq;
 		}
@@ -281,6 +280,7 @@ static sigjmp_buf	pipejmp;
 static void 
 onpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipejmp, 1);
 }
 
@@ -291,23 +291,21 @@ onpipe(int signo)
 int 
 from(void *v)
 {
-	int *msgvec = v;
-	int *ip, n;
-	FILE *obuf = stdout;
-	char *cp;
+	int *msgvec = v, *ip, n;
+	FILE *volatile obuf = stdout;
+	char volatile *cp;
 
-	(void)&obuf;
-	(void)&cp;
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
-		if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
+		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
 			cp = get_pager();
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
-			if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
-				perror(cp);
+			if ((obuf = Popen((char*)cp, "w", NULL, 1)) == NULL) {
+				perror((char*)cp);
 				obuf = stdout;
+				cp=NULL;
 			} else
 				safe_signal(SIGPIPE, onpipe);
 		}
@@ -384,9 +382,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		if ((headlen = readline(ibuf, &headline, &headsize)) < 0)
 			return;
 	}
-	if ((subjline = hfield("subject", mp)) == NULL)
-		subjline = hfield("subj", mp);
-	if (subjline == NULL) {
+	if ((subjline = hfield1("subject", mp)) == NULL) {
 		out.s = NULL;
 		out.l = 0;
 	} else {
@@ -403,25 +399,25 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		hl.l_tty = NULL;
 		hl.l_date = fakedate(mp->m_time);
 	}
-	if (value("datefield") && (cp = hfield("date", mp)) != NULL)
+	if (value("datefield") && (cp = hfield1("date", mp)) != NULL)
 		hl.l_date = fakedate(rfctime(cp));
 	if (Iflag) {
-		if ((name = hfield("newsgroups", mp)) == NULL)
-			if ((name = hfield("article-id", mp)) == NULL)
+		if ((name = hfieldX("newsgroups", mp)) == NULL)
+			if ((name = hfieldX("article-id", mp)) == NULL)
 				name = "<>";
 		name = prstr(name);
 	} else if (value("show-rcpt") == NULL) {
 		name = name1(mp, 0);
 		isaddr = 1;
 		if (value("showto") && name && is_myname(skin(name))) {
-			if ((cp = hfield("to", mp)) != NULL) {
+			if ((cp = hfield1("to", mp)) != NULL) {
 				name = cp;
 				isto = 1;
 			}
 		}
 	} else {
 		isaddr = 1;
-		if ((name = hfield("to", mp)) != NULL)
+		if ((name = hfield1("to", mp)) != NULL)
 			isto = 1;
 	}
 	if (name == NULL) {
@@ -616,7 +612,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 	cs = ac_alloc(mp->m_level);
 	us = ac_alloc(mp->m_level * sizeof *us);
 	i = mp->m_level - 1;
-	if (mp->m_younger && mp->m_younger->m_level == i + 1) {
+	if (mp->m_younger && (unsigned)i + 1 == mp->m_younger->m_level) {
 		if (mp->m_parent && mp->m_parent->m_flag & important)
 			us[i] = mp->m_flag & important ? 0x2523 : 0x2520;
 		else
@@ -632,7 +628,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 	mq = mp->m_parent;
 	for (i = mp->m_level - 2; i >= 0; i--) {
 		if (mq) {
-			if (i > mq->m_level - 1) {
+			if ((unsigned)i > mq->m_level - 1) {
 				us[i] = cs[i] = ' ';
 				continue;
 			}
@@ -649,7 +645,8 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 		} else
 			us[i] = cs[i] = ' ';
 	}
-	for (indent = 0; indent < mp->m_level && indent < maxwidth; indent++) {
+	for (indent = 0; (unsigned)indent < mp->m_level && indent < maxwidth;
+			++indent) {
 		if (indent < maxwidth - 1)
 			putuc(us[indent], cs[indent] & 0377, fp);
 		else
@@ -675,8 +672,8 @@ printhead(int mesg, FILE *f, int threaded)
 	strcpy(attrlist, bsdflags ? "NU  *HMFATK+-J" : "NUROSPMFATK+-J");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
-		if (sz > sizeof attrlist - 1)
-			sz = sizeof attrlist - 1;
+		if (sz > (int)sizeof attrlist - 1)
+			sz = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, sz);
 	}
 	bsdheadline = value("bsdcompat") != NULL ||
@@ -695,6 +692,7 @@ printhead(int mesg, FILE *f, int threaded)
 int 
 pdot(void *v)
 {
+	(void)v;
 	printf(catgets(catd, CATSET, 13, "%d\n"),
 			(int)(dot - &message[0] + 1));
 	return(0);
@@ -710,6 +708,7 @@ pcmdlist(void *v)
 	extern const struct cmd cmdtab[];
 	const struct cmd *cp;
 	int cc;
+	(void)v;
 
 	printf(catgets(catd, CATSET, 14, "Commands are:\n"));
 	for (cc = 0, cp = cmdtab; cp->c_name != NULL; cp++) {
@@ -1018,6 +1017,7 @@ Pipecmd(void *v)
 void
 brokpipe(int signo)
 {
+	(void)signo;
 	siglongjmp(pipestop, 1);
 }
 
@@ -1122,18 +1122,16 @@ mboxit(void *v)
 int 
 folders(void *v)
 {
-	char	**argv = v;
-	char dirname[PATHSIZE];
-	char *cmd, *name;
+	char dirname[PATHSIZE], *name, *cmd, **argv = v;
 
-	if (*argv)
-		name = expand(*argv);
+	if (*argv && (name = expand(*argv)) == NULL)
+		return (1);
 	else if (getfold(dirname, sizeof dirname) < 0) {
-		printf(catgets(catd, CATSET, 20,
-				"No value set for \"folder\"\n"));
-		return 1;
+		fprintf(stderr, tr(20, "No value set for \"folder\"\n"));
+		return (1);
 	} else
 		name = dirname;
+
 	if (which_protocol(name) == PROTO_IMAP)
 		imap_folders(name, *argv == NULL);
 	else {
@@ -1141,5 +1139,5 @@ folders(void *v)
 			cmd = "ls";
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
-	return 0;
+	return (0);
 }

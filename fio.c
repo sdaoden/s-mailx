@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)fio.c	2.76 (gritter) 9/16/09";
-#endif
-#endif /* not lint */
 
 #include "rcv.h"
 #include <sys/stat.h>
@@ -79,13 +74,228 @@ static char sccsid[] = "@(#)fio.c	2.76 (gritter) 9/16/09";
  * File I/O.
  */
 
+/*
+ * Evaluate the string given as a new mailbox name.
+ * Supported meta characters:
+ *	%	for my system mail box
+ *	%user	for user's system mail box
+ *	#	for previous file
+ *	&	invoker's mbox file
+ *	+file	file in folder directory
+ *	any shell meta character
+ * Return the file name as a dynamic string.
+ */
+static char *	_expand(char const *name, int only_local);
+/* Perform shell meta character expansion */
+static char *	_globname(char const *name);
+
 static void makemessage(void);
 static void append(struct message *mp);
-static char *globname(char *name);
 static size_t length_of_line(const char *line, size_t linesize);
 static char *fgetline_byone(char **line, size_t *linesize, size_t *llen,
 		FILE *fp, int appendnl, size_t n);
 static enum okay get_header(struct message *mp);
+
+static char *
+_expand(char const *name, int only_local)
+{
+	char cbuf[PATHSIZE], *res;
+	struct str s;
+	struct shortcut *sh;
+	int dyn;
+
+	/*
+	 * The order of evaluation is "%" and "#" expand into constants.
+	 * "&" can expand into "+".  "+" can expand into shell meta characters.
+	 * Shell meta characters expand into constants.
+	 * This way, we make no recursive expansion.
+	 */
+	res = (char*)name;
+	if ((sh = get_shortcut(res)) != NULL)
+		res = sh->sh_long;
+
+next:	dyn = 0;
+	switch (*res) {
+	case '%':
+		if (res[1] == ':' && res[2]) {
+			res = &res[2];
+			goto next;
+		}
+		findmail((res[1] ? res + 1 : myname),
+			(res[1] != '\0' || uflag), cbuf, sizeof cbuf);
+		res = cbuf;
+		goto jleave;
+	case '#':
+		if (res[1] != 0)
+			break;
+		if (prevfile[0] == 0) {
+			fprintf(stderr, tr(80, "No previous file\n"));
+			res = NULL;
+		} else
+			res = prevfile;
+		goto jleave;
+	case '&':
+		if (res[1] == 0 && (res = value("MBOX")) == NULL)
+			res = "~/mbox";
+		break;
+	}
+
+	if (res[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
+		res = str_concat_csvl(&s,
+			protbase(mailname), "/", res + 1, NULL)->s;
+		dyn = 1;
+	}
+
+	if (res[0] == '+' && getfold(cbuf, sizeof cbuf) >= 0) {
+		res = str_concat_csvl(&s,
+			cbuf, ((which_protocol(cbuf) == PROTO_IMAP &&
+					strcmp(cbuf, protbase(cbuf))) /* XXX */
+				? "" : "/"),
+			res + 1, NULL)->s;
+		dyn = 1;
+		if (cbuf[0] == '%' && cbuf[1] == ':')
+			goto next;
+	}
+
+	/* Catch the most common shell meta character */
+	if (res[0] == '~' && (res[1] == '/' || res[1] == '\0')) {
+		res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
+		dyn = 1;
+	}
+
+	if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
+			which_protocol(res) == PROTO_FILE) {
+		res = _globname(res);
+		dyn = 1;
+		goto jleave;
+	}
+
+	if (only_local)
+		switch (which_protocol(res)) {
+		case PROTO_FILE:
+		case PROTO_MAILDIR:	/* XXX Really? ok MAILDIR for local? */
+			break;
+		default:
+			fprintf(stderr, tr(280,
+				"\"%s\": only a local file or directory may "
+				"be used\n"), name);
+			res = NULL;
+			break;
+		}
+
+jleave:
+	if (res && ! dyn)
+		res = savestr(res);
+	return (res);
+}
+
+static char *
+_globname(char const *name)
+{
+#ifdef HAVE_WORDEXP
+	wordexp_t we;
+	char *cp;
+	sigset_t nset;
+	int i;
+
+	/*
+	 * Some systems (notably Open UNIX 8.0.0) fork a shell for
+	 * wordexp() and wait for it; waiting will fail if our SIGCHLD
+	 * handler is active.
+	 */
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &nset, NULL);
+	i = wordexp(name, &we, 0);
+	sigprocmask(SIG_UNBLOCK, &nset, NULL);
+
+	switch (i) {
+	case 0:
+		break;
+	case WRDE_NOSPACE:
+		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
+			name);
+		return NULL;
+	case WRDE_BADCHAR:
+	case WRDE_SYNTAX:
+	default:
+		fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"), name);
+		return NULL;
+	}
+
+	switch (we.we_wordc) {
+	case 1:
+		cp = savestr(we.we_wordv[0]);
+		break;
+	case 0:
+		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
+		cp = NULL;
+		break;
+	default:
+		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
+		cp = NULL;
+	}
+
+	wordfree(&we);
+	return cp;
+
+#else /* !HAVE_WORDEXP */
+	char xname[PATHSIZE];
+	char cmdbuf[PATHSIZE];		/* also used for file names */
+	int pid, l;
+	char *cp, *shell;
+	int pivec[2];
+	extern int wait_status;
+	struct stat sbuf;
+
+	if (pipe(pivec) < 0) {
+		perror("pipe");
+		return name;
+	}
+	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
+	if ((shell = value("SHELL")) == NULL)
+		shell = SHELL;
+	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
+	if (pid < 0) {
+		close(pivec[0]);
+		close(pivec[1]);
+		return NULL;
+	}
+	close(pivec[1]);
+again:
+	l = read(pivec[0], xname, sizeof xname);
+	if (l < 0) {
+		if (errno == EINTR)
+			goto again;
+		perror("read");
+		close(pivec[0]);
+		return NULL;
+	}
+	close(pivec[0]);
+	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
+		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
+		return NULL;
+	}
+	if (l == 0) {
+		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
+		return NULL;
+	}
+	if (l == sizeof xname) {
+		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
+			name);
+		return NULL;
+	}
+	xname[l] = 0;
+	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
+		;
+	cp[1] = '\0';
+	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
+		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
+		return NULL;
+	}
+	return savestr(xname);
+#endif /* !HAVE_WORDEXP */
+}
 
 /*
  * Set up the input pointers while copying the mail file into /tmp.
@@ -100,7 +310,6 @@ setptr(FILE *ibuf, off_t offset)
 	int maybe, inhead, thiscnt;
 	char *linebuf = NULL;
 	size_t linesize = 0, filesize;
-	int broken_mbox = value("broken-mbox") != NULL;
 
 	maybe = 1;
 	inhead = 0;
@@ -185,8 +394,7 @@ setptr(FILE *ibuf, off_t offset)
 		offset += count;
 		this.m_size += count;
 		this.m_lines++;
-		if (!broken_mbox)
-			maybe = linebuf[0] == 0;
+		maybe = linebuf[0] == 0;
 	}
 	/*NOTREACHED*/
 }
@@ -382,7 +590,6 @@ holdsigs(void)
 void
 relsesigs(void)
 {
-
 	if (--sigdepth == 0)
 		sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 }
@@ -402,6 +609,15 @@ fsize(FILE *iob)
 }
 
 /*
+ * Just like expand(), but expanded file must be FILE or DIR
+ */
+char *
+file_expand(char const *name)
+{
+	return (_expand(name, 1));
+}
+
+/*
  * Evaluate the string given as a new mailbox name.
  * Supported meta characters:
  *	%	for my system mail box
@@ -413,179 +629,9 @@ fsize(FILE *iob)
  * Return the file name as a dynamic string.
  */
 char *
-expand(char *name)
+expand(char const *name)
 {
-	char xname[PATHSIZE];
-	char foldbuf[PATHSIZE];
-	struct shortcut *sh;
-
-	/*
-	 * The order of evaluation is "%" and "#" expand into constants.
-	 * "&" can expand into "+".  "+" can expand into shell meta characters.
-	 * Shell meta characters expand into constants.
-	 * This way, we make no recursive expansion.
-	 */
-	if ((sh = get_shortcut(name)) != NULL)
-		name = sh->sh_long;
-next:
-	switch (*name) {
-	case '%':
-		if (name[1] == ':' && name[2]) {
-			name = &name[2];
-			goto next;
-		}
-		findmail(name[1] ? name + 1 : myname, name[1] != '\0' || uflag,
-				xname, sizeof xname);
-		return savestr(xname);
-	case '#':
-		if (name[1] != 0)
-			break;
-		if (prevfile[0] == 0) {
-			printf(catgets(catd, CATSET, 80, "No previous file\n"));
-			return NULL;
-		}
-		return savestr(prevfile);
-	case '&':
-		if (name[1] == 0 && (name = value("MBOX")) == NULL)
-			name = "~/mbox";
-		/* fall through */
-	}
-	if (name[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
-		snprintf(xname, sizeof xname, "%s/%s", protbase(mailname),
-				&name[1]);
-		name = savestr(xname);
-	}
-	if (name[0] == '+' && getfold(foldbuf, sizeof foldbuf) >= 0) {
-		if (which_protocol(foldbuf) == PROTO_IMAP &&
-				strcmp(foldbuf, protbase(foldbuf)))
-		snprintf(xname, sizeof xname, "%s%s", foldbuf, name+1);
-		else
-			snprintf(xname, sizeof xname, "%s/%s", foldbuf, name+1);
-		name = savestr(xname);
-		if (foldbuf[0] == '%' && foldbuf[1] == ':')
-			goto next;
-	}
-	/* catch the most common shell meta character */
-	if (name[0] == '~' && (name[1] == '/' || name[1] == '\0')) {
-		snprintf(xname, sizeof xname, "%s%s", homedir, name + 1);
-		name = savestr(xname);
-	}
-	if (!anyof(name, "|&;<>~{}()[]*?$`'\"\\"))
-		return name;
-	if (which_protocol(name) == PROTO_FILE)
-		return globname(name);
-	else
-		return name;
-}
-
-static char *
-globname(char *name)
-{
-#ifdef	HAVE_WORDEXP
-	wordexp_t we;
-	char *cp;
-	sigset_t nset;
-	int i;
-
-	/*
-	 * Some systems (notably Open UNIX 8.0.0) fork a shell for
-	 * wordexp() and wait for it; waiting will fail if our SIGCHLD
-	 * handler is active.
-	 */
-	sigemptyset(&nset);
-	sigaddset(&nset, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &nset, NULL);
-	i = wordexp(name, &we, 0);
-	sigprocmask(SIG_UNBLOCK, &nset, NULL);
-	switch (i) {
-	case 0:
-		break;
-	case WRDE_NOSPACE:
-		fprintf(stderr, catgets(catd, CATSET, 83,
-				"\"%s\": Expansion buffer overflow.\n"), name);
-		return NULL;
-	case WRDE_BADCHAR:
-	case WRDE_SYNTAX:
-	default:
-		fprintf(stderr, catgets(catd, CATSET, 242,
-				"Syntax error in \"%s\"\n"), name);
-		return NULL;
-	}
-	switch (we.we_wordc) {
-	case 1:
-		cp = savestr(we.we_wordv[0]);
-		break;
-	case 0:
-		fprintf(stderr, catgets(catd, CATSET, 82,
-					"\"%s\": No match.\n"), name);
-		cp = NULL;
-		break;
-	default:
-		fprintf(stderr, catgets(catd, CATSET, 84,
-				"\"%s\": Ambiguous.\n"), name);
-		cp = NULL;
-	}
-	wordfree(&we);
-	return cp;
-#else	/* !HAVE_WORDEXP */
-	char xname[PATHSIZE];
-	char cmdbuf[PATHSIZE];		/* also used for file names */
-	int pid, l;
-	char *cp, *shell;
-	int pivec[2];
-	extern int wait_status;
-	struct stat sbuf;
-
-	if (pipe(pivec) < 0) {
-		perror("pipe");
-		return name;
-	}
-	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
-	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
-	if (pid < 0) {
-		close(pivec[0]);
-		close(pivec[1]);
-		return NULL;
-	}
-	close(pivec[1]);
-again:
-	l = read(pivec[0], xname, sizeof xname);
-	if (l < 0) {
-		if (errno == EINTR)
-			goto again;
-		perror("read");
-		close(pivec[0]);
-		return NULL;
-	}
-	close(pivec[0]);
-	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
-		fprintf(stderr, catgets(catd, CATSET, 81,
-				"\"%s\": Expansion failed.\n"), name);
-		return NULL;
-	}
-	if (l == 0) {
-		fprintf(stderr, catgets(catd, CATSET, 82,
-					"\"%s\": No match.\n"), name);
-		return NULL;
-	}
-	if (l == sizeof xname) {
-		fprintf(stderr, catgets(catd, CATSET, 83,
-				"\"%s\": Expansion buffer overflow.\n"), name);
-		return NULL;
-	}
-	xname[l] = 0;
-	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
-		;
-	cp[1] = '\0';
-	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
-		fprintf(stderr, catgets(catd, CATSET, 84,
-				"\"%s\": Ambiguous.\n"), name);
-		return NULL;
-	}
-	return savestr(xname);
-#endif	/* !HAVE_WORDEXP */
+	return (_expand(name, 0));
 }
 
 /*
@@ -599,8 +645,8 @@ getfold(char *name, int size)
 
 	if ((folder = value("folder")) == NULL)
 		return (-1);
-	if (*folder == '/' || (p = which_protocol(folder)) != PROTO_FILE &&
-			p != PROTO_MAILDIR) {
+	if (*folder == '/' || ((p = which_protocol(folder)) != PROTO_FILE &&
+			p != PROTO_MAILDIR)) {
 		strncpy(name, folder, size);
 		name[size-1]='\0';
 	} else {
@@ -617,19 +663,19 @@ getdeadletter(void)
 {
 	char *cp;
 
-	if ((cp = value("DEAD")) == NULL || (cp = expand(cp)) == NULL)
-		cp = expand("~/dead.letter");
+	if ((cp = value("DEAD")) == NULL || (cp = file_expand(cp)) == NULL)
+		cp = file_expand("~/dead.letter");
 	else if (*cp != '/') {
-		char *buf;
-		size_t sz;
+		size_t sz = strlen(cp) + 3;
+		char *buf = ac_alloc(sz);
 
-		buf = ac_alloc(sz = strlen(cp) + 3);
 		snprintf(buf, sz, "~/%s", cp);
-		snprintf(buf, sz, "~/%s", cp);
-		cp = expand(buf);
+		cp = file_expand(buf);
 		ac_free(buf);
 	}
-	return cp;
+	if (cp == NULL)
+		cp = "dead.letter";
+	return (cp);
 }
 
 /*
@@ -665,7 +711,7 @@ char *
 fgetline(char **line, size_t *linesize, size_t *count, size_t *llen,
 		FILE *fp, int appendnl)
 {
-	long i_llen, sz;
+	size_t i_llen, sz;
 
 	if (count == NULL)
 		/*
@@ -785,7 +831,8 @@ static long xwrite(int fd, const char *data, size_t sz);
 static long
 xwrite(int fd, const char *data, size_t sz)
 {
-	long wo, wt = 0;
+	long wo;
+	size_t wt = 0;
 
 	do {
 		if ((wo = write(fd, data + wt, sz - wt)) < 0) {
@@ -1009,30 +1056,32 @@ enum okay
 sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose)
 {
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef USE_IPV6
 	char	hbuf[NI_MAXHOST];
 	struct addrinfo	hints, *res0, *res;
-#else	/* !HAVE_IPv6_FUNCS */
+#else
 	struct sockaddr_in	servaddr;
 	struct in_addr	**pptr;
 	struct hostent	*hp;
 	struct servent	*ep;
 	unsigned short	port = 0;
-#endif	/* !HAVE_IPv6_FUNCS */
+#endif
 	int	sockfd;
 	char	*cp;
 	char	*server = (char *)xserver;
+	(void)use_ssl;
+	(void)uhp;
 
 	if ((cp = strchr(server, ':')) != NULL) {
 		portstr = &cp[1];
-#ifndef	HAVE_IPv6_FUNCS
+#ifndef USE_IPV6
 		port = strtol(portstr, NULL, 10);
-#endif	/* HAVE_IPv6_FUNCS */
+#endif
 		server = salloc(cp - xserver + 1);
 		memcpy(server, xserver, cp - xserver);
 		server[cp - xserver] = '\0';
 	}
-#ifdef	HAVE_IPv6_FUNCS
+#ifdef USE_IPV6
 	memset(&hints, 0, sizeof hints);
 	hints.ai_socktype = SOCK_STREAM;
 	if (verbose)
@@ -1068,25 +1117,25 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		return STOP;
 	}
 	freeaddrinfo(res0);
-#else	/* !HAVE_IPv6_FUNCS */
+#else /* USE_IPV6 */
 	if (port == 0) {
-		if (equal(portstr, "smtp"))
+		if (strcmp(portstr, "smtp") == 0)
 			port = htons(25);
-		else if (equal(portstr, "smtps"))
+		else if (strcmp(portstr, "smtps") == 0)
 			port = htons(465);
-		else if (equal(portstr, "imap"))
+		else if (strcmp(portstr, "imap") == 0)
 			port = htons(143);
-		else if (equal(portstr, "imaps"))
+		else if (strcmp(portstr, "imaps") == 0)
 			port = htons(993);
-		else if (equal(portstr, "pop3"))
+		else if (strcmp(portstr, "pop3") == 0)
 			port = htons(110);
-		else if (equal(portstr, "pop3s"))
+		else if (strcmp(portstr, "pop3s") == 0)
 			port = htons(995);
 		else if ((ep = getservbyname((char *)portstr, "tcp")) != NULL)
 			port = ep->s_port;
 		else {
-			fprintf(stderr, catgets(catd, CATSET, 251,
-				"Unknown service: %s\n"), portstr);
+			fprintf(stderr, tr(251, "Unknown service: %s\n"),
+				portstr);
 			return STOP;
 		}
 	} else
@@ -1117,12 +1166,12 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		perror(catgets(catd, CATSET, 254, "could not connect"));
 		return STOP;
 	}
-#endif	/* !HAVE_IPv6_FUNCS */
+#endif /* USE_IPV6 */
 	if (verbose)
 		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
 	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
-#if defined (USE_SSL)
+#ifdef USE_SSL
 	if (use_ssl) {
 		enum okay ok;
 
@@ -1130,7 +1179,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 			sclose(sp);
 		return ok;
 	}
-#endif	/* USE_SSL */
+#endif
 	return OKAY;
 }
 #endif	/* HAVE_SOCKETS */

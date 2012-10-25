@@ -1,7 +1,8 @@
 /*
- * Heirloom mailx - a mail user agent derived from Berkeley Mail.
+ * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
+ * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -35,12 +36,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef lint
-#ifdef	DOSCCS
-static char sccsid[] = "@(#)imap_search.c	1.29 (gritter) 3/4/06";
-#endif
-#endif /* not lint */
 
 #include "config.h"
 
@@ -490,7 +485,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITSENTON:
 	case ITSENTSINCE:
 		if (m->m_date == 0)
-			if ((cp = hfield("date", m)) != NULL)
+			if ((cp = hfield1("date", m)) != NULL)
 				m->m_date = rfctime(cp);
 		break;
 	default:
@@ -505,7 +500,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 		return itexecute(mp, m, c, n->n_x) &
 			itexecute(mp, m, c, n->n_y);
 	case ITSET:
-		return c == n->n_n;
+		return (unsigned long)c == n->n_n;
 	case ITALL:
 		return 1;
 	case ITANSWERED:
@@ -513,7 +508,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITBCC:
 		return matchenvelope(m, "bcc", n->n_v);
 	case ITBEFORE:
-		return m->m_time < n->n_n;
+		return (unsigned long)m->m_time < n->n_n;
 	case ITBODY:
 		return matchmsg(m, n->n_v, 0);
 	case ITCC:
@@ -539,7 +534,8 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITOLD:
 		return (m->m_flag&MNEW) == 0;
 	case ITON:
-		return m->m_time >= n->n_n && m->m_time < n->n_n + 86400;
+		return ((unsigned long)m->m_time >= n->n_n &&
+			(unsigned long)m->m_time < n->n_n + 86400);
 	case ITOR:
 		return itexecute(mp, m, c, n->n_x) |
 			itexecute(mp, m, c, n->n_y);
@@ -548,15 +544,16 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITSEEN:
 		return (m->m_flag&MREAD) != 0;
 	case ITSENTBEFORE:
-		return m->m_date < n->n_n;
+		return (unsigned long)m->m_date < n->n_n;
 	case ITSENTON:
-		return m->m_date >= n->n_n && m->m_date < n->n_n + 86400;
+		return ((unsigned long)m->m_date >= n->n_n &&
+			(unsigned long)m->m_date < n->n_n + 86400);
 	case ITSENTSINCE:
-		return m->m_date >= n->n_n;
+		return (unsigned long)m->m_date >= n->n_n;
 	case ITSINCE:
-		return m->m_time >= n->n_n;
+		return (unsigned long)m->m_time >= n->n_n;
 	case ITSMALLER:
-		return m->m_xsize < n->n_n;
+		return (unsigned long)m->m_xsize < n->n_n;
 	case ITSUBJECT:
 		return matchfield(m, "subject", n->n_v);
 	case ITTEXT:
@@ -584,7 +581,7 @@ matchfield(struct message *m, const char *field, const char *what)
 	struct str	in, out;
 	int	i;
 
-	if ((in.s = hfield(imap_unquotestr(field), m)) == NULL)
+	if ((in.s = hfieldX(imap_unquotestr(field), m)) == NULL)
 		return 0;
 	in.l = strlen(in.s);
 	mime_fromhdr(&in, &out, TD_ICONV);
@@ -600,10 +597,10 @@ matchenvelope(struct message *m, const char *field, const char *what)
 	struct name	*np;
 	char	*cp;
 
-	if ((cp = hfield(imap_unquotestr(field), m)) == NULL)
+	if ((cp = hfieldX(imap_unquotestr(field), m)) == NULL)
 		return 0;
 	what = imap_unquotestr(what);
-	np = sextract(cp, GFULL);
+	np = lextract(cp, GFULL);
 	while (np) {
 		if (substr(np->n_name, what))
 			return 1;
@@ -735,7 +732,7 @@ around(const char *cp)
 
 	for (i = 0; i < SURROUNDING && cp > begin; i++)
 		cp--;
-	for (i = 0; i < sizeof ab - 1; i++)
+	for (i = 0; i < (int)sizeof ab - 1; i++)
 		ab[i] = *cp++;
 	ab[i] = '\0';
 	return ab;
