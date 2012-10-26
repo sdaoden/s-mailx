@@ -114,26 +114,27 @@ _expand(char const *name, int only_local)
 	if ((sh = get_shortcut(res)) != NULL)
 		res = sh->sh_long;
 
-next:	dyn = 0;
+jnext:	dyn = 0;
 	switch (*res) {
 	case '%':
 		if (res[1] == ':' && res[2]) {
 			res = &res[2];
-			goto next;
+			goto jnext;
 		}
 		findmail((res[1] ? res + 1 : myname),
 			(res[1] != '\0' || uflag), cbuf, sizeof cbuf);
 		res = cbuf;
-		goto jleave;
+		goto jislocal;
 	case '#':
 		if (res[1] != 0)
 			break;
 		if (prevfile[0] == 0) {
 			fprintf(stderr, tr(80, "No previous file\n"));
 			res = NULL;
-		} else
-			res = prevfile;
-		goto jleave;
+			goto jleave;
+		}
+		res = prevfile;
+		goto jislocal;
 	case '&':
 		if (res[1] == 0 && (res = value("MBOX")) == NULL)
 			res = "~/mbox";
@@ -154,7 +155,7 @@ next:	dyn = 0;
 			res + 1, NULL)->s;
 		dyn = 1;
 		if (cbuf[0] == '%' && cbuf[1] == ':')
-			goto next;
+			goto jnext;
 	}
 
 	/* Catch the most common shell meta character */
@@ -170,6 +171,7 @@ next:	dyn = 0;
 		goto jleave;
 	}
 
+jislocal:
 	if (only_local)
 		switch (which_protocol(res)) {
 		case PROTO_FILE:
