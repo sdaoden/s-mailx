@@ -51,6 +51,13 @@
 
 #include "extern.h"
 
+#define	NSPACE	25			/* Total number of string spaces */
+static struct strings {
+	char	*s_topFree;		/* Beginning of this area */
+	char	*s_nextFree;		/* Next alloctable place here */
+	unsigned s_nleft;		/* Number of bytes left here */
+} stringdope[NSPACE];
+
 /*
  * Allocate size more bytes of space and return the address of the
  * first byte to the caller.  An even number of bytes are always
