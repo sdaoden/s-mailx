@@ -96,9 +96,10 @@ csalloc(size_t nmemb, size_t size)
 {
 	void *vp;
 
-	vp = salloc(nmemb * size);
-	memset(vp, 0, nmemb * size);
-	return vp;
+	size *= nmemb;
+	vp = salloc(size);
+	memset(vp, 0, size);
+	return (vp);
 }
 
 /*
@@ -143,11 +144,9 @@ spreserve(void)
 char *
 savestr(const char *str)
 {
-	char *news;
-	int size = strlen(str) + 1;
-
-	if ((news = salloc(size)) != NULL)
-		memcpy(news, str, size);
+	size_t size = strlen(str) + 1;
+	char *news = salloc(size);
+	memcpy(news, str, size);
 	return (news);
 }
 
@@ -157,12 +156,9 @@ savestr(const char *str)
 char *
 savestrbuf(const char *sbuf, size_t sbuf_len)
 {
-	char *news;
-
-	if ((news = salloc(sbuf_len + 1)) != NULL) {
-		memcpy(news, sbuf, sbuf_len);
-		news[sbuf_len] = 0;
-	}
+	char *news = salloc(sbuf_len + 1);
+	memcpy(news, sbuf, sbuf_len);
+	news[sbuf_len] = 0;
 	return (news);
 }
 
@@ -172,41 +168,33 @@ savestrbuf(const char *sbuf, size_t sbuf_len)
 char *
 save2str(const char *str, const char *old)
 {
-	char *news;
-	int newsize = strlen(str) + 1;
-	int oldsize = old ? strlen(old) + 1 : 0;
-
-	if ((news = salloc(newsize + oldsize)) != NULL) {
-		if (oldsize) {
-			memcpy(news, old, oldsize);
-			news[oldsize - 1] = ' ';
-		}
-		memcpy(news + oldsize, str, newsize);
+	int newsize = strlen(str) + 1, oldsize = old ? strlen(old) + 1 : 0;
+	char *news = salloc(newsize + oldsize);
+	if (oldsize) {
+		memcpy(news, old, oldsize);
+		news[oldsize - 1] = ' ';
 	}
+	memcpy(news + oldsize, str, newsize);
 	return (news);
 }
 
 char *
-savecat(const char *s1, const char *s2)
+savecat(char const *s1, char const *s2)
 {
-	const char *cp;
-	char *ns, *np;
-
-	np = ns = salloc(strlen(s1) + strlen(s2) + 1);
-	for (cp = s1; *cp; cp++)
-		*np++ = *cp;
-	for (cp = s2; *cp; cp++)
-		*np++ = *cp;
-	*np = '\0';
-	return ns;
+	size_t l1 = strlen(s1), l2 = strlen(s2);
+	char *news = salloc(l1 + l2 + 1);
+	memcpy(news + 0, s1, l1);
+	memcpy(news + l1, s2, l2);
+	news[l1 + l2] = '\0';
+	return (news);
 }
 
 struct str *
-str_concat_csvl(struct str *self, ...)
+str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
 	va_list vl;
 	size_t l;
-	char const*cs;
+	char const *cs;
 
 	va_start(vl, self);
 	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
