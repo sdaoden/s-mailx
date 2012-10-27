@@ -309,7 +309,7 @@ struct mimepart {
 	char	*m_ct_type;		/* content-type */
 	char	*m_ct_type_plain;	/* content-type without specs */
 	enum mimecontent	m_mimecontent;	/* same in enum */
-	char	*m_charset;		/* charset */
+	char const *m_charset;		/* charset */
 	char	*m_ct_transfer_enc;	/* content-transfer-encoding */
 	enum mimeenc	m_mimeenc;	/* same in enum */
 	char	*m_partstring;		/* part level string */

@@ -118,8 +118,10 @@ _E int		imap_created_mailbox;	/* hack to get feedback from imap */
 _E char		*wantcharset;		/* overrides the "charset" variable */
 
 /* These are initialized strings */
-_E char	const	*us_ascii;		/* "us-ascii" */
-_E char const	*month_names[];
+_E char	const	defcharset[];		/* "utf8" */
+_E char	const	us_ascii[];		/* "us-ascii" */
+_E char const	*const month_names[12 + 1];
+_E char const	*const weekday_names[7 + 1];
 
 #ifdef USE_SSL
 _E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */

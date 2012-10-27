@@ -73,8 +73,17 @@
 
 static sigjmp_buf	hdrjmp;
 
-char		*progname;
-sighandler_type	dflpipe = SIG_DFL;
+char const		defcharset[] = "utf-8";
+char const		us_ascii[] = "us-ascii";
+char const *const	weekday_names[7 + 1] = {
+	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
+};
+char const *const	month_names[12 + 1] = {
+	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
+};
+
+sighandler_type		dflpipe = SIG_DFL;
 
 /* Add an option for sendmail(1) */
 static void	add_smopt(int argc_left, char *arg);

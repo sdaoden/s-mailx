@@ -200,7 +200,8 @@ static int
 attach_file1(struct attachment *ap, FILE *fo, int dosign)
 {
 	FILE *fi;
-	char *charset = NULL, *contenttype = NULL, *basename;
+	char const *charset = NULL;
+	char *contenttype = NULL, *basename;
 	enum conversion convert = CONV_TOB64;
 	int err = 0;
 	enum mimeclean isclean;
@@ -208,8 +209,8 @@ attach_file1(struct attachment *ap, FILE *fo, int dosign)
 	char *buf;
 	size_t bufsize, count;
 	int	lastc = EOF;
-#ifdef	HAVE_ICONV
-	char	*tcs;
+#ifdef HAVE_ICONV
+	char const *tcs;
 #endif
 
 	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
@@ -451,12 +452,13 @@ infix(struct header *hp, FILE *fi, int dosign)
 {
 	FILE *nfo, *nfi;
 	char *tempMail;
-#ifdef	HAVE_ICONV
-	char *tcs, *convhdr = NULL;
+#ifdef HAVE_ICONV
+	char const *tcs, *convhdr = NULL;
 #endif
 	enum mimeclean isclean;
 	enum conversion convert;
-	char *charset = NULL, *contenttype = NULL;
+	char const *charset = NULL;
+	char *contenttype = NULL;
 	int	lastc = EOF;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
@@ -472,7 +474,7 @@ infix(struct header *hp, FILE *fi, int dosign)
 	Ftfree(&tempMail);
 	convert = get_mime_convert(fi, &contenttype, &charset,
 			&isclean, dosign);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	tcs = gettcharset();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
 		if (iconvd != (iconv_t)-1)
@@ -1169,15 +1171,6 @@ message_id(FILE *fo, struct header *hp)
 		getrandstring(rl), (rl == 16 ? '%' : '@'), h);
 }
 
-static const char *weekday_names[] = {
-	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-};
-
-const char *month_names[] = {
-	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
-};
-
 /*
  * Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone,
@@ -1249,7 +1242,7 @@ putname(char *line, enum gfield w, enum sendaction action, int *gotcha,
 int
 puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
-		char *contenttype, char *charset)
+		char const *contenttype, char const *charset)
 {
 	int gotcha;
 	char *addr/*, *cp*/;
