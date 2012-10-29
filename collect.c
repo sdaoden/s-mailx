@@ -979,8 +979,11 @@ static void
 mesedit(int c, struct header *hp)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	FILE *nf = run_editor(collf, (off_t)-1, c, 0, hp, NULL, SEND_MBOX,
-			sigint);
+	char *saved = value("add-file-recipients");
+	FILE *nf;
+
+	assign("add-file-recipients", "");
+	nf = run_editor(collf, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
 		if (hp) {
@@ -992,6 +995,8 @@ mesedit(int c, struct header *hp)
 			collf = nf;
 		}
 	}
+
+	assign("add-file-recipients", saved);
 	safe_signal(SIGINT, sigint);
 }
 
