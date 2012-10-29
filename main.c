@@ -294,7 +294,6 @@ jIflag:		case 'I':
 				add_smopt(-1, fa->n_name);
 				/* ..and fa goes even though it is ready :/ */
 			}
-			tildeflag = -1;
 			break;
 		case 'S':
 			/* Set variable (do so later, after RC loading..) */
@@ -344,8 +343,7 @@ jIflag:		case 'I':
 			break;
 		case '~':
 			/* Enable tilde escapes even in non-interactive mode */
-			if (tildeflag == 0)
-				tildeflag = 1;
+			tildeflag = 1;
 			break;
 		case '?':
 usage:			fprintf(stderr, tr(135, usagestr),
