@@ -51,7 +51,13 @@
 
 #include "extern.h"
 
-#define	NSPACE	25			/* Total number of string spaces */
+/*
+ * STRINGSIZE is the minimum size of a chunk we smalloc(), and we have NSPACE
+ * chunks each of which shifts the size by 1 (so take care for 32 bit overflow)
+ */
+#define STRINGSIZE	((unsigned) 4096)
+#define NSPACE		19
+
 static struct strings {
 	char	*s_topFree;		/* Beginning of this area */
 	char	*s_nextFree;		/* Next alloctable place here */

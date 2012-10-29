@@ -71,8 +71,6 @@
 # define LINESIZE	2560
 #endif
 
-#define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
-
 #define MAXARGC		1024		/* Maximum list of raw strings */
 #define MAXEXP		25		/* Maximum expansion of aliases */
 #define HSHSIZE		59		/* Hash size for aliases and vars */
