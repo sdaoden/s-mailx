@@ -704,6 +704,11 @@ jcont:
 				++cp;
 			hp->h_subject = savestr(cp);
 			break;
+#ifdef HAVE_ASSERTS
+		case 'S':
+			sstats(NULL);
+			break;
+#endif
 		case '@':
 			/* Edit the attachment list */
 			if (linebuf[2] != '\0')
