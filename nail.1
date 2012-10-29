@@ -3273,6 +3273,17 @@ list.
 .B sendmail
 To use an alternate mail delivery system,
 set this option to the full pathname of the program to use.
+It may be necessary to set \fIsendmail\-progname\fR in addition.
+.TP
+.B sendmail-progname
+Many systems use a so-called mailwrapper(8) environment to ensure
+compatibility with sendmail(1).
+This works by inspecting the name that was used to invoke the mail
+delivery system.
+If this variable is set then the mailwrapper (the program that is
+actually executed when calling \fIsendmail\fR) will treat \fIits\fR
+contents as that name.
+The default is "sendmail".
 .TP
 .B SHELL
 Pathname of the shell to use
@@ -4715,7 +4726,8 @@ vacation(1),
 ssl(3),
 aliases(5),
 locale(7),
-mailaddr(7)
+mailaddr(7),
+mailwrapper(8)
 .SH NOTES
 .PP
 Variables in the environment passed to \*(UA cannot be unset.

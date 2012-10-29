@@ -811,7 +811,9 @@ prepare_mta_args(struct name *to)
 	size_t j, i = 4 + smopts_count + count(to) + 1;
 	char **args = salloc(i * sizeof(char*));
 
-	args[0] = "send-mail";
+	args[0] = value("sendmail-progname");
+	if (args[0] == NULL || *args[0] == '\0')
+		args[0] = "sendmail";
 	args[1] = "-i";
 	i = 2;
 	if (value("metoo"))
