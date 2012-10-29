@@ -58,6 +58,12 @@ static struct strings {
 	unsigned s_nleft;		/* Number of bytes left here */
 } stringdope[NSPACE];
 
+#ifdef HAVE_ASSERTS
+size_t	_all_cnt, _all_cycnt, _all_cycnt_max,
+	_all_size, _all_cysize, _all_cysize_max,
+	_all_min, _all_max, _all_resetreqs, _all_resets;
+#endif
+
 /*
  * Allocate size more bytes of space and return the address of the
  * first byte to the caller.  An even number of bytes are always
@@ -76,6 +82,17 @@ salloc(size_t size)
 	s = size;
 	s += (sizeof (char *) - 1);
 	s &= ~(sizeof (char *) - 1);
+#ifdef HAVE_ASSERTS
+	++_all_cnt;
+	++_all_cycnt;
+	_all_cycnt_max = smax(_all_cycnt_max, _all_cycnt);
+	_all_size += size;
+	_all_cysize += size;
+	_all_cysize_max = smax(_all_cysize_max, _all_cysize);
+	_all_min = _all_max == 0 ? size : smin(_all_min, size);
+	_all_max = smax(_all_max, size);
+#endif
+
 	string_index = 0;
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
 		if (sp->s_topFree == NULL && (STRINGSIZE << string_index) >= s)
@@ -120,8 +137,15 @@ sreset(void)
 	struct strings *sp;
 	int string_index;
 
+#ifdef HAVE_ASSERTS
+	_all_cycnt = _all_cysize = 0;
+	++_all_resetreqs;
+#endif
 	if (noreset)
 		return;
+#ifdef HAVE_ASSERTS
+	++_all_resets;
+#endif
 	string_index = 0;
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
 		if (sp->s_topFree == NULL)
@@ -144,6 +168,36 @@ spreserve(void)
 	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++)
 		sp->s_topFree = NULL;
 }
+
+#ifdef HAVE_ASSERTS
+int
+sstats(void *v)
+{
+	struct strings *sp;
+	(void)v;
+
+	printf("String usage statistics:\n"
+		"  Count/Bytes overall: %lu/%lu\n"
+		"  Bytes min/max      : %lu/%lu\n"
+		"  Cycle cnt/bytes max: %lu/%lu\n"
+		"  sreset() requests  : %lu (%lu performed)\n"
+		"  Slot overview:\n",
+		(unsigned long)_all_cnt, (unsigned long)_all_size,
+		(unsigned long)_all_min, (unsigned long)_all_max,
+		(unsigned long)_all_cycnt_max, (unsigned long)_all_cysize_max,
+		(unsigned long)_all_resetreqs, (unsigned long)_all_resets);
+
+	for (sp = &stringdope[0]; sp < &stringdope[NSPACE]; sp++) {
+		unsigned int i = (unsigned int)(sp - stringdope);
+		if (sp->s_nextFree == NULL)
+			continue;
+		printf("    %2d: buf=%p caster=%p size=%u free=%u\n",
+			i + 1, sp->s_topFree, sp->s_nextFree, STRINGSIZE << i,
+			sp->s_nleft);
+	}
+	return (0);
+}
+#endif /* HAVE_ASSERTS */
 
 /*
  * Return a pointer to a dynamic copy of the argument.

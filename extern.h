@@ -545,6 +545,9 @@ void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
 void		sreset(void);
 void		spreserve(void);
+#ifdef HAVE_ASSERTS
+int		sstats(void *v);
+#endif
 char *		savestr(char const *str);
 char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);

@@ -203,6 +203,7 @@ const struct cmd cmdtab[] = {
 #ifdef HAVE_ASSERTS
 	{ "core",	core,		M|NOLIST,	0,	0 },
 	{ "clobber",	clobber,	M|RAWLIST,	0,	1 },
+	{ "sstats",	sstats,		M|NOLIST,	0,	0 },
 #endif
 	{ 0,		0,		0,		0,	0 }
 };
