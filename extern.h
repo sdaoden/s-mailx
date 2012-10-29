@@ -521,8 +521,10 @@ char *nodename(int mayoverride);
 char *myaddrs(struct header *hp);
 char *myorigin(struct header *hp);
 char *smtp_auth_var(const char *type, const char *addr);
-int smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
+#ifdef USE_SMTP
+int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
+#endif
 
 /* ssl.c */
 void ssl_set_vrfy_level(const char *uhp);

@@ -837,12 +837,13 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 #ifdef USE_SMTP
 	struct termios otio;
 	int reset_tio;
+	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
-	char **args = NULL, *user = NULL, *password = NULL, *skinned = NULL,
-		**t, *smtp, *mta;
+	char **args = NULL, **t, *smtp, *mta;
 	enum okay ok = STOP;
 	pid_t pid;
 	sigset_t nset;
+	(void)hp;
 
 	if ((smtp = value("smtp")) == NULL) {
 		if ((mta = value("sendmail")) != NULL) {
@@ -857,18 +858,23 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 			for (t = args; *t != NULL; t++)
 				printf(" \"%s\"", *t);
 			printf("\n");
-			return (OKAY);
+			ok = OKAY;
+			goto jleave;
 		}
-	}
-#ifdef USE_SMTP
-	else {
+	} else {
+		mta = NULL; /* Silence cc */
+#ifndef USE_SMTP
+		fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
+		goto jstop;
+#else
 		skinned = skin(myorigin(hp));
 		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
 				(password = smtp_auth_var("-password",
 					skinned)) == NULL)
 			password = getpassword(&otio, &reset_tio, NULL);
-	}
 #endif
+	}
+
 	/*
 	 * Fork, set up the temporary mail file as standard
 	 * input for "mail", and exec with the user list we generated
@@ -878,7 +884,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		perror("fork");
 jstop:		savedeadletter(input);
 		senderr++;
-		return STOP;
+		goto jleave;
 	}
 	if (pid == 0) {
 		sigemptyset(&nset);
@@ -889,16 +895,20 @@ jstop:		savedeadletter(input);
 		sigaddset(&nset, SIGTTIN);
 		sigaddset(&nset, SIGTTOU);
 		freopen("/dev/null", "r", stdin);
+#ifdef USE_SMTP
 		if (smtp != NULL) {
 			prepare_child(&nset, 0, 1);
 			if (smtp_mta(smtp, to, input, hp,
 					user, password, skinned) == 0)
 				_exit(0);
 		} else {
+#endif
 			prepare_child(&nset, fileno(input), -1);
 			execv(mta, args);
 			perror(mta);
+#ifdef USE_SMTP
 		}
+#endif
 		savedeadletter(input);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
@@ -913,6 +923,7 @@ jstop:		savedeadletter(input);
 		ok = OKAY;
 		free_child(pid);
 	}
+jleave:
 	return (ok);
 }
 
