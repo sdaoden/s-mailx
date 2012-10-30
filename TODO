@@ -4,6 +4,25 @@ subscribe to the development mailing list at
 <https://lists.sourceforge.net/lists/listinfo/nail-devel>
 to coordinate your efforts with the maintainer and other people.
 
+VIP
+---
+
+- When a MBOX mailbox is removed while it is opened then changing the
+  folder is not possible.  (At least when the only mail that was present
+  therein has been "move"d off that MBOX.)  While trying this i got
+  a deallocation abort trap in lex.c:commands():385:
+	if (linebuf)
+		free(linebuf);
+  Note that Berkeley Mail (NetBSD mail(1) that is) seems to have the same
+  problem in respect to not allowing a hard-change, but only allows an exit
+  (not a quit thus).  The error may still exist even there, it maybe that
+  it simply doesn't show up because a stack buffer is used ...
+
+- In general, when a MBOX is modified while S-nail(1) has an open instance
+  to it, it may hard overwrite the modified content.
+  But how to solve that problem?  At least something like vim(1), i.e.,
+  "modified since, reopen()/write()/blabla".
+
 Backward-compatibility breakers
 -------------------------------
 
@@ -52,6 +71,14 @@ Backward-compatibility breakers
   attachments, IDNA settings for addresses etc.  Until then -Svariable sets
   its argument after loading of the RC files as documented, *and* directly
   once parsed.
+  Note that this two-pass will also allow situation-dependent buffers sizes
+  for the string allocator.
+
+- Conditionalize commands upon actual feature set.
+  Sofar commands like, e.g., "noop" are compiled into the binary even if
+  the functionality behind is not.  This is in spirit to the entire
+  Heirloom nail source, which used function stubs for this purpose.  But it
+  would be better if the command would simply not exist.
 
 Non-breakers
 ------------
@@ -85,6 +112,9 @@ Non-breakers
   default.  If i only see PART X.Y .. it may be just about anything, and
   i don't want to "P" all the header stuff just to see that.  One should
   see at a glance what content the part contains.
+  By the way, the "print" command documents a different behaviour that
+  sounds desirable..  And then the authors rfc822* variables seem almost
+  superfluous.
 
 - I want to have a ~R tilde command that works like ~r except it performs
   quoting of the input just as ~m does.  Also see -q above.
@@ -125,6 +155,15 @@ Non-breakers
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
   Meaning, also the possibility to postpone a message.  In general.
+
+- It is terrible that there is almost no feedback in the UI.  When
+  i temporarily implemented a sorted cmdtab i've often used wrong commands,
+  but got no feedback at all!  E.g., wanted to "undelete 14", first did "u
+  14", then "und 14" and then realized my fault and did "undelete 14".
+  *Nothing*.
+
+- POP3 doesn't support "newmail" for real.  If implemented, should it sync?
+  Look at POP3 impl. in general..
 
 Low-Level
 ---------
