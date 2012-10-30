@@ -522,7 +522,7 @@ usermap(struct name *names)
 	np = names;
 	metoo = (value("metoo") != NULL);
 	while (np != NULL) {
-		assert((np->n_type & GDEL) == 0);
+		assert((np->n_type & GDEL) == 0); /* TODO legacy */
 		if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {
 			cp = np->n_flink;
 			new = put(new, np);

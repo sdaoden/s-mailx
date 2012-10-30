@@ -348,12 +348,11 @@ respond_internal(int *msgvec, int recipient_record)
 		np = lextract(rcv, GTO|gf);
 	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
 		np = cat(np, lextract(cp, GTO|gf));
-	np = elide(np);
 	/*
 	 * Delete my name from the reply list,
 	 * and with it, all my alternate names.
 	 */
-	np = delete_alternates(np);
+	np = elide(delete_alternates(np));
 	if (np == NULL)
 		np = lextract(rcv, GTO|gf);
 	head.h_to = np;

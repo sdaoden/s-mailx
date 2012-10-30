@@ -119,6 +119,8 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 {
 	struct name *np;
 
+	tolist = elide(tolist);
+
 	hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
 		if (np->n_type & GDEL) {
@@ -1049,8 +1051,22 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 * processing.
 	 */
 	senderr = 0;
-	if ((to = usermap(cat(hp->h_bcc, cat(hp->h_to, hp->h_cc)))) == NULL) {
-		printf(catgets(catd, CATSET, 186, "No recipients specified\n"));
+	/*
+	 * TODO what happens now is that all recipients are merged into
+	 * TODO a duplicated list with expanded aliases, then this list is
+	 * TODO splitted again into the three individual recipient lists (with
+	 * TODO duplicates removed).
+	 * TODO later on we use the merged list for outof() pipe/file saving,
+	 * TODO then we eliminate duplicates (again) and then we use that one
+	 * TODO for mightrecord() and transfer(), and again.  ... Please ...
+	 */
+	/*
+	 * NOTE: Due to elide() in fixhead(), ENSURE to,cc,bcc order of to!,
+	 * because otherwise the recipients will be "degraded" if they occur
+	 * multiple times
+	 */
+	if ((to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)))) == NULL) {
+		fprintf(stderr, tr(186, "No recipients specified\n"));
 		senderr++;
 	}
 	to = fixhead(hp, to);
@@ -1109,7 +1125,7 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 	to = outof(to, mtf, hp);
 	if (senderr)
 		savedeadletter(mtf);
-	to = elide(to);
+	to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
 	if (count(to) == 0) {
 		if (senderr == 0)
 			ok = OKAY;
@@ -1548,7 +1564,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	to = outof(to, nfi, &head);
 	if (senderr)
 		savedeadletter(nfi);
-	to = elide(to);
+	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
 		if (value("record-resent") == NULL ||
 				mightrecord(nfi, to, 0) == OKAY)

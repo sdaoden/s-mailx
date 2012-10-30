@@ -15,10 +15,6 @@ Backward-compatibility breakers
   changed.  Also see ~R below.
   [Note: i think i go for the latter.  Please complain.]
 
-- NetBSD mailx(1) removes all recipients in up Cc: and To: that are also
-  specified in Bcc.  I think some kind of "yet-exists stack" as in
-  Cc:->To:->Bcc would be a win.
-
 - At least optionally disallow silent discarding of invalid addresses,
   i.e., cause sending to be aborted if not all recipient addresses pass the
   validity test.
