@@ -76,6 +76,17 @@
 #define HSHSIZE		59		/* Hash size for aliases and vars */
 
 /*
+ * Auto-reclaimed string storage as defined in strings.c.
+ */
+
+/* In non-interactive, i.e., one-shot mode we can use much smaller buffers */
+#define SBUFFER_SIZE	0x18000u
+#define SBUFFER_NISIZE	0x4000u
+
+/* Huge allocation if GT; those are never cached but will be auto freed */
+#define SHUGE_CUTLIMIT	LINESIZE
+
+/*
  * Translation TODO convert all catgets() that remain to tr()
  */
 #undef tr
