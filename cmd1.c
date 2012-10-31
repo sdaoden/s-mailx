@@ -74,7 +74,7 @@ get_pager(void)
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
 		cp = value("bsdcompat") ? "more" : "pg";
-	return cp;
+	return (cp);
 }
 
 int 
@@ -292,18 +292,19 @@ int
 from(void *v)
 {
 	int *msgvec = v, *ip, n;
+	char *cp;
 	FILE *volatile obuf = stdout;
-	char volatile *cp;
 
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
-			cp = get_pager();
+			char *p;
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
-			if ((obuf = Popen((char*)cp, "w", NULL, 1)) == NULL) {
-				perror((char*)cp);
+			p = get_pager();
+			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
+				perror(p);
 				obuf = stdout;
 				cp=NULL;
 			} else
@@ -743,12 +744,6 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 	 * Must be static to become excluded from sigsetjmp().
 	 */
 	static FILE *obuf;
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &cp;
-	(void) &cmd;
-	(void) &obuf;
-#endif
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
@@ -778,10 +773,10 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 			}
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			cp = get_pager();
-			obuf = Popen(cp, "w", NULL, 1);
+			char *p = get_pager();
+			obuf = Popen(p, "w", NULL, 1);
 			if (obuf == NULL) {
-				perror(cp);
+				perror(p);
 				obuf = stdout;
 			} else
 				safe_signal(SIGPIPE, brokpipe);
