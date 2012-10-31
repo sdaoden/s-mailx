@@ -45,9 +45,11 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#include <unistd.h>
+
 #include <sys/stat.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Read a message from standard output and return a read file to it

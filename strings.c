@@ -46,9 +46,10 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
 
 #include <stdarg.h>
+
+#include "extern.h"
 
 /*
  * Allocate size more bytes of space and return the address of the

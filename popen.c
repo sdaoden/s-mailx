@@ -38,19 +38,21 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
+
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 #ifndef	NSIG
-#define	NSIG	32
+# define NSIG	32
 #endif
 
-#define READ 0
-#define WRITE 1
+#define READ	0
+#define WRITE	1
 
 struct fp {
 	FILE *fp;

@@ -72,17 +72,17 @@
  * Implementation of IMAP GSSAPI authentication according to RFC 1731.
  */
 
-#ifdef	USE_GSSAPI
+#ifdef USE_GSSAPI
 
-#ifndef	GSSAPI_REG_INCLUDE
-#include <gssapi/gssapi.h>
-#ifdef	GSSAPI_OLD_STYLE
-#include <gssapi/gssapi_generic.h>
-#define	GSS_C_NT_HOSTBASED_SERVICE	gss_nt_service_name
-#endif	/* GSSAPI_OLD_STYLE */
-#else	/* GSSAPI_REG_INCLUDE */
-#include <gssapi.h>
-#endif	/* GSSAPI_REG_INCLUDE */
+#ifndef GSSAPI_REG_INCLUDE
+# include <gssapi/gssapi.h>
+# ifdef GSSAPI_OLD_STYLE
+#  include <gssapi/gssapi_generic.h>
+#  define GSS_C_NT_HOSTBASED_SERVICE	gss_nt_service_name
+# endif
+#else
+# include <gssapi.h>
+#endif
 
 static void imap_gss_error1(const char *s, OM_uint32 code, int type);
 static void imap_gss_error(const char *s, OM_uint32 maj_stat,
@@ -278,4 +278,4 @@ imap_gss(struct mailbox *mp, char *user)
 	return ok;
 }
 
-#endif	/* USE_GSSAPI */
+#endif /* USE_GSSAPI */

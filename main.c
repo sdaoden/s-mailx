@@ -47,22 +47,23 @@
  *       Werner Fink, <werner@suse.de>
  */
 
-
 #include "config.h"
-#ifdef	HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
-#define _MAIL_GLOBS_
-#include "rcv.h"
-#include "extern.h"
-#include <sys/stat.h>
+
+#include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
-#include <fcntl.h>
+#ifdef HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
 #ifdef HAVE_SETLOCALE
 # include <locale.h>
 #endif
+
+#define _MAIL_GLOBS_
+#include "rcv.h"
+#include "extern.h"
 
 /*
  * Mail -- a mail program

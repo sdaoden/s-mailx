@@ -39,20 +39,19 @@
 
 #include "rcv.h"
 
+#include <setjmp.h>
 #include <sys/utsname.h>
+#include <unistd.h>
 #ifdef HAVE_SOCKETS
-# include <sys/socket.h>
 # include <netdb.h>
 # include <netinet/in.h>
+# include <sys/socket.h>
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
 #endif
-#include <unistd.h>
-#include <setjmp.h>
 
 #include "extern.h"
-
 #ifdef USE_MD5
 # include "md5.h"
 #endif

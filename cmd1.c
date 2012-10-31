@@ -38,10 +38,12 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#ifdef	HAVE_WCWIDTH
-#include <wchar.h>
+
+#ifdef HAVE_WCWIDTH
+# include <wchar.h>
 #endif
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

@@ -38,12 +38,14 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
 #include <ctype.h>
 #include <errno.h>
-#ifdef	HAVE_WCTYPE_H
-#include <wctype.h>
-#endif	/* HAVE_WCTYPE_H */
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

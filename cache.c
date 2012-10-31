@@ -42,17 +42,17 @@
 #ifndef USE_IMAP
 typedef int avoid_empty_file_compiler_warning;
 #else
-
 #include "rcv.h"
-#include "extern.h"
+
 #include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <time.h>
 #include <dirent.h>
 #include <fcntl.h>
-
+#include <sys/stat.h>
 #include <termios.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

@@ -38,9 +38,11 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
