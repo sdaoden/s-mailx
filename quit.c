@@ -106,7 +106,7 @@ writeback(FILE *res, FILE *obuf)
 			putc(c, obuf);
 #endif
 	fflush(obuf);
-	trunc(obuf);
+	ftrunc(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
 		fseek(obuf, 0L, SEEK_SET);
@@ -296,7 +296,7 @@ cream:
 		while ((c = getc(rbuf)) != EOF)
 			putc(c, abuf);
 		Fclose(rbuf);
-		trunc(abuf);
+		ftrunc(abuf);
 		alter(mailname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -445,7 +445,7 @@ makembox(void)
 		Fclose(ibuf);
 		fflush(obuf);
 	}
-	trunc(obuf);
+	ftrunc(obuf);
 	if (ferror(obuf)) {
 		perror(mbox);
 		Fclose(obuf);
@@ -542,7 +542,7 @@ edstop(void)
 		relsesigs();
 		reset(0);
 	}
-	trunc(obuf);
+	ftrunc(obuf);
 	c = 0;
 	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if ((mp->m_flag & MDELETED) != 0)

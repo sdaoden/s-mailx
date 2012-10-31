@@ -359,7 +359,7 @@ putdb(void)
 		zp = zalloc(sfp);
 		zwrite(zp, super, SIZEOF_super);
 		zfree(zp);
-		trunc(sfp);
+		ftrunc(sfp);
 	} else
 		fwrite(super, 1, SIZEOF_super, sfp);
 	if (nodes_mmapped)
@@ -368,7 +368,7 @@ putdb(void)
 		zp = zalloc(nfp);
 		zwrite(zp, nodes, getn(&super[OF_super_size]) * SIZEOF_node);
 		zfree(zp);
-		trunc(nfp);
+		ftrunc(nfp);
 	} else
 		fwrite(nodes, 1,
 			getn(&super[OF_super_size]) * SIZEOF_node, nfp);

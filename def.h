@@ -635,9 +635,9 @@ extern unsigned char const 	class_char[];
  * useful just before closing an old file that was opened
  * for read/write.
  */
-#define trunc(stream) {							\
-	fflush(stream); 						\
-	ftruncate(fileno(stream), (off_t)ftell(stream));		\
+#define ftrunc(stream) {					\
+	fflush(stream);						\
+	ftruncate(fileno(stream), (off_t)ftell(stream));	\
 }
 
 /*
