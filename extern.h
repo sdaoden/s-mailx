@@ -212,9 +212,15 @@ int canswered(void *v);
 int cunanswered(void *v);
 int cdraft(void *v);
 int cundraft(void *v);
+#ifdef USE_SCORE
 int ckill(void *v);
 int cunkill(void *v);
 int cscore(void *v);
+#else
+# define ckill		ccmdnotsupp
+# define cunkill	ccmdnotsupp
+# define cscore		ccmdnotsupp
+#endif
 int cnoop(void *v);
 int cremove(void *v);
 int crename(void *v);

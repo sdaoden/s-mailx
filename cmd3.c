@@ -40,9 +40,11 @@
 #include "rcv.h"
 
 #include <errno.h>
-#include <float.h>
 #include <math.h>
 #include <unistd.h>
+#ifdef USE_SCORE
+# include <float.h>
+#endif
 
 #include "extern.h"
 
@@ -52,22 +54,24 @@
  * Still more user commands.
  */
 
-static int bangexp(char **str, size_t *size);
-static void make_ref_and_cs(struct message *mp, struct header *head);
-static int (*respond_or_Respond(int c))(int *, int);
-static int respond_internal(int *msgvec, int recipient_record);
-static char *reedit(char *subj);
-static char *fwdedit(char *subj);
-static void onpipe(int signo);
-static void asort(char **list);
-static int diction(const void *a, const void *b);
-static int file1(char *name);
-static int shellecho(const char *cp);
-static int Respond_internal(int *msgvec, int recipient_record);
-static int resend1(void *v, int add_resent);
-static void list_shortcuts(void);
+static int	bangexp(char **str, size_t *size);
+static void	make_ref_and_cs(struct message *mp, struct header *head);
+static int (*	respond_or_Respond(int c))(int *, int);
+static int	respond_internal(int *msgvec, int recipient_record);
+static char *	reedit(char *subj);
+static char *	fwdedit(char *subj);
+static void	onpipe(int signo);
+static void	asort(char **list);
+static int	diction(const void *a, const void *b);
+static int	file1(char *name);
+static int	shellecho(const char *cp);
+static int	Respond_internal(int *msgvec, int recipient_record);
+static int	resend1(void *v, int add_resent);
+static void	list_shortcuts(void);
 static enum okay delete_shortcut(const char *str);
-static float huge(void);
+#ifdef USE_SCORE
+static float	huge(void);
+#endif
 
 /*
  * Process a shell escape by saving signals, ignoring signals,
@@ -1491,31 +1495,29 @@ cundraft(void *v)
 	return 0;
 }
 
+#ifdef USE_SCORE
 static float 
 huge(void)
 {
-#if defined (_CRAY)
+# ifdef _CRAY
 	/*
 	 * This is not perfect, but correct for machines with a 32-bit
 	 * IEEE float and a 32-bit unsigned long, and does at least not
 	 * produce SIGFPE on the Cray Y-MP.
 	 */
-	union {
-		float	f;
-		unsigned long	l;
-	} u;
+	union {float f; unsigned long l;} u;
 
 	u.l = 0xff800000; /* -inf */
 	return u.f;
-#elif defined (INFINITY)
+# elif defined INFINITY
 	return -INFINITY;
-#elif defined (HUGE_VALF)
+# elif defined HUGE_VALF
 	return -HUGE_VALF;
-#elif defined (FLT_MAX)
+# elif defined FLT_MAX
 	return -FLT_MAX;
-#else
+# else
 	return -1e10;
-#endif
+# endif
 }
 
 int 
@@ -1602,6 +1604,7 @@ cscore(void *v)
 	}
 	return 0;
 }
+#endif /* USE_SCORE */
 
 /*ARGSUSED*/
 int 
