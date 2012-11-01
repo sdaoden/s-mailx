@@ -74,7 +74,9 @@ static void adopt(struct message *parent, struct message *child, int dist);
 static struct message *interlink(struct message *m, long count, int newmail);
 static void finalize(struct message *mp);
 static int mlonglt(const void *a, const void *b);
+#ifdef USE_SCORE
 static int mfloatlt(const void *a, const void *b);
+#endif
 static int mcharlt(const void *a, const void *b);
 static void lookup(struct message *m, struct mitem *mi, int mprime);
 static void makethreads(struct message *m, long count, int newmail);
@@ -289,6 +291,7 @@ mlonglt(const void *a, const void *b)
 	return i;
 }
 
+#ifdef USE_SCORE
 static int 
 mfloatlt(const void *a, const void *b)
 {
@@ -300,6 +303,7 @@ mfloatlt(const void *a, const void *b)
 		i = ((struct msort *)a)->ms_n - ((struct msort *)b)->ms_n;
 	return i > 0 ? 1 : i < 0 ? -1 : 0;
 }
+#endif
 
 static int 
 mcharlt(const void *a, const void *b)
@@ -497,7 +501,9 @@ sort(void *vp)
 		SORT_SIZE,
 		SORT_FROM,
 		SORT_TO,
+#ifdef USE_SCORE
 		SORT_SCORE,
+#endif
 		SORT_THREAD
 	} method;
 	struct {
@@ -511,7 +517,9 @@ sort(void *vp)
 		{ "subject",	SORT_SUBJECT,	mcharlt },
 		{ "size",	SORT_SIZE,	mlonglt },
 		{ "status",	SORT_STATUS,	mlonglt },
+#ifdef USE_SCORE
 		{ "score",	SORT_SCORE,	mfloatlt },
+#endif
 		{ "thread",	SORT_THREAD,	NULL },
 		{ NULL,		-1,		NULL }
 	};
@@ -588,9 +596,11 @@ sort(void *vp)
 			case SORT_SIZE:
 				ms[n].ms_u.ms_long = mp->m_xsize;
 				break;
+#ifdef USE_SCORE
 			case SORT_SCORE:
 				ms[n].ms_u.ms_float = mp->m_score;
 				break;
+#endif
 			case SORT_FROM:
 			case SORT_TO:
 				if ((cp = hfield1(method == SORT_FROM ?
