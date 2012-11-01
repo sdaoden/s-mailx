@@ -361,3 +361,122 @@ $ ~? output is splitted due to compiler limits
 302 ~!command      Invoke the shell\n\
 ~:command      Execute a regular command\n\
 -----------------------------------------------------------\n
+
+
+$ It follows the "help command" one line help block, alpha-sorted (see nail.1)
+303 Creates, selects or lists an email account
+304 Show all or the specified alias(es), or (re)define one
+305 Show or define an alternate list for the invoking user
+306 Mark the given <message list> as "answered"
+307 Read specified <message list> into the IMAP cache
+308 Call a macro
+309 Change CWD to the specified/the login directory
+310 Save S/MIME certificates of <message-list> to <file>
+311 Classify <message-list> with the Bayesian filter
+312 Collapse thread views for <message-list>
+313 If disconnected, connect to IMAP mailbox
+314 Copy <message-list>, but don't mark them for deletion
+315 Like "copy", but derive filename from first sender
+316 Like "copy", but decrypt first, if encrypted
+317 Like "decrypt", but derive filename from first sender
+318 Define a macro
+319 Show all defined macros including their content
+320 Delete <message-list>
+321 Add header fields to ignored list, or show that list
+322 If connected, disconnect from IMAP mailbox
+323 Delete the current message, then print the next
+324 Mark <message-list> as draft
+325 Echo given arguments
+326 Edit <message-list>
+327 Part of the if .. then .. endif statement
+328 Immediate return to the shell without saving
+329 Switch to new or show the current mail file or folder
+330 (Un)Flag <message-list> (for special attention)
+331 List folders (below given folder)
+332 Like "Respond", but derive filename from first sender
+333 Like "respond", but derive filename from first sender
+334 Like "followup", but always respond to all recipients
+335 Like "Followup", but always respond to the sender only
+336 Forward <message> to <address>
+337 Like "forward", but derive filename from <address>
+338 Show message headers of <message-list>
+339 Which header fields are to be ignored with "forward"
+340 Which header fields have to be retained with "forward"
+341 Mark <message-list> as not being junk
+342 Show the current(/last/next) 18-message group of headers
+343 Show command help (for the given one)
+344 Save <message-list> in system mailbox instead of *mbox*
+345 Send command strings directly to the IMAP server
+346 Check for new mail in current folder
+347 Mark <message-list> as junk
+348 Mark <message-list> as killed
+349 List all available commands
+350 Like "mail", but derive filename from first recipient
+351 Compose mail; recipients may be given as arguments
+352 Indicate that <message-list> is to be stored in *mbox*
+353 Like "copy", but mark messages for deletion
+354 Like "move", but derive filename from first sender
+355 Goes to the next message (-list) and prints it
+356 Mark <message-list> as not being read
+357 NOOP command if IMAP or POP folder; else noop
+358 Like "pipe", but pipes all headers and parts
+359 Pipe <message-list> to <command>
+360 Like "print", but prints all headers and parts
+361 Type each message of <message-list> on the terminal
+362 Show junk database entry for each argument word
+363 Terminate session, saving messages as necessary
+364 Resend <message-list> to <user>, add Resent-* headers
+365 Like "resend", but don't add Resent-* headers
+366 Remove the named folders
+367 Rename <existing-folder> to <new-folder>
+368 Reply to originator, exclusively
+369 Reply to originators and recipients of <message-list>
+370 Add header fields to retained list, or show that list
+371 Append <message-list> to <file>
+372 Like "save", but derive filename from first sender
+373 Is to "save" what "ignore" is to "type"/"print"
+374 Is to "save" what "retain" is to "type"/"print"
+375 Score <message-list> with <floating-point-score>
+376 Print all variables, or set variables to argument(s)
+377 Mark <message-list> as seen
+378 Invoke an interactive shell
+379 Define a <shortcut> and <expansion>, or list shortcuts
+380 Like "print", but show raw message content
+381 Show size in characters for <message-list>
+382 Change sorting criteria (and addressing modes)
+383 Read commands from <file>
+384 Create threaded view of current "folder"
+385 Print top few lines of <message-list>
+386 Mark <message-list> for saving in *mbox*
+387 Un"alias" <message-list>
+388 Un"answered" <message-list>
+389 Un"draft" <message-list>
+390 Uncollapse <message-list> if in threaded view
+391 Un"define" all <macros>
+392 Un"delete" <message-list>
+393 Un"fwdignore" <header-fields>
+394 Un"fwdretain" <header-fields>
+395 Un"good" <message-list>
+396 Un"ignore" <header-fields>
+397 Un"junk" <message-list>
+398 Un"kill" <message-list>
+399 Un"retain" <header-fields>
+400 Un"saveignore" <header-fields>
+401 Un"saveretain" <header-fields>
+402 Unset <option-list>
+403 Delete <shortcut-list>
+404 Disable sorted or threaded mode
+405 Verify <message-list>
+406 Write (append) to <file>
+407 Scroll to next/previous window of headers
+408 Like "z", but continues to the next flagged message
+409 Show current message number
+410 Like "type"/"print", put print formfeeds between messages
+411 Like "Type"/"Print", put print formfeeds between messages
+412 Execute <shell-command>
+413 Print the MUA version
+414 Produce a core dump (ouch!)
+415 Globber <number> 512 byte blocks on the stack
+416 Print statistics about the auto-reclaimed string store
+
+

@@ -391,11 +391,15 @@ enum argtype {
  * in lex.c
  */
 struct cmd {
-	char	*c_name;		/* Name of command */
-	int	(*c_func)(void *);	/* Implementor of the command */
-	enum argtype	c_argtype;	/* Type of arglist (see below) */
-	short	c_msgflag;		/* Required flags of messages */
-	short	c_msgmask;		/* Relevant flags of messages */
+	char		*c_name;		/* Name of command */
+	int		(*c_func)(void *);	/* Implementor of command */
+	enum argtype	c_argtype;		/* Arglist type (see below) */
+	short		c_msgflag;		/* Required flags of msgs*/
+	short		c_msgmask;		/* Relevant flags of msgs */
+#ifdef USE_DOCSTRINGS
+	int		c_docid;		/* Translation id of .c_doc */
+	char const	*c_doc;			/* One line doc for command */
+#endif
 };
 
 /* Yechh, can't initialize unions */

@@ -806,6 +806,9 @@ goes to the n'th previous message and prints it.
 .TP
 .B ?
 Prints a brief summary of commands.
+(Optional)
+Given an argument a synopsis for the command in question is printed
+instead.
 .TP
 .B !
 Executes the shell (see
@@ -818,8 +821,7 @@ command which follows.
 A synonym for the \fIpipe\fR command.
 .TP
 .B account
-(ac) Creates, selects or lists
-an email account.
+(ac) Creates, selects or lists an email account.
 An account is formed by a group of commands,
 primarily of those to set variables.
 With two arguments,
@@ -827,15 +829,11 @@ of which the second is a `{',
 the first argument gives an account name,
 and the following lines create a group of commands for that account
 until a line containing a single `}' appears.
-With one argument,
-the previously created group of commands
-for the account name is executed,
-and a
-.I folder
-command is executed for the system mailbox or inbox
+With one argument the previously created group of commands for the
+account name is executed,
+and a \fIfolder\fR command is executed for the system mailbox or inbox
 of that account.
-Without arguments,
-the list of accounts and their contents are printed.
+Without arguments the list of accounts and their contents are printed.
 As an example,
 .sp
 .nf
@@ -851,112 +849,90 @@ creates an account named `myisp'
 which can later be selected by specifying `account myisp'.
 .TP
 .B alias
-(a) With no arguments,
-prints out all currently-defined aliases.
+(a) With no arguments, prints out all currently-defined aliases.
 With one argument, prints out that alias.
 With more than one argument,
 creates a new alias or changes an old one.
 .TP
 .B alternates
-(alt) The alternates command is useful
-if the user has accounts on several machines.
-It can be used to inform \*(UA
-that the listed addresses all belong to the invoking user.
-When he replies to messages,
-\*(UA will not send a copy of the message
-to any of the addresses
-listed on the alternates list.
-If the alternates command is given
-with no argument,
+(alt) The alternates command is useful if the user has accounts on
+several machines.
+It can be used to inform \*(UA that the listed addresses all belong to
+the invoking user.
+When replying to messages \*(UA will not send a copy of the message
+to any of the addresses listed on the alternates list.
+If the alternates command is given with no argument,
 the current set of alternate names is displayed.
 .TP
 .B answered
-(ans) Takes a message list and marks each message
-as a having been answered.
+(ans) Takes a message list and marks each message as having been answered.
 This mark has no technical meaning in the mail system;
 it just causes messages to be marked in the header summary,
 and makes them specially addressable.
 .TP
 .B cache
-Only applicable to cached IMAP mailboxes;
-takes a message list and reads the specified messages
-into the IMAP cache.
+(Optional) Only applicable to cached IMAP mailboxes;
+takes a message list and reads the specified messages into the IMAP cache.
 .TP
 .B call
-Calls a macro (see the
-.I define
-command).
+Calls a macro (see the \fIdefine\fR command).
 .TP
 .B cd
 Same as chdir.
 .TP
 .B certsave
-Only applicable to S/MIME signed messages.
-Takes a message list and a file name
-and saves the certificates contained within the message signatures
-to the named file in both human-readable and PEM format.
-The certificates can later be used to send encrypted messages
-to the messages' originators by setting the
-.I smime-encrypt-user@host
-variable.
+(Optional) Only applicable to S/MIME signed messages.
+Takes a message list and a file name and saves the certificates
+contained within the message signatures to the named file in both
+human-readable and PEM format.
+The certificates can later be used to send encrypted messages to the
+respective message senders by setting \fIsmime-encrypt-user@host\fR
+variables.
 .TP
 .B chdir
-(ch) Changes the user's working directory to that specified,
-if given.
-If no directory is given,
-then changes to the user's login directory.
+(ch) Changes the user's working directory to the specified one,
+or to the user's login directory, if none was given.
 .TP
 .B classify
-(cl) Takes a list of messages and
-examines their contents for characteristics of junk mail
-using Bayesian filtering.
+(Optional; cl) Takes a list of messages and examines their contents for
+characteristics of junk mail using Bayesian filtering.
 Messages considered to be junk are then marked as such.
 The junk mail database is not changed.
 .TP
 .B collapse
 (coll)
 Only applicable to threaded mode.
-Takes a message list
-and makes all replies to these messages invisible
+Takes a message list and makes all replies to these messages invisible
 in header summaries,
 unless they are in state `new'.
 .TP
 .B connect
-(conn) If operating in disconnected mode on an IMAP mailbox,
-switch to online mode and connect to the mail server
-while retaining the mailbox status.
-See the description of the
-.I disconnected
-variable for more information.
+(Optional; conn) If operating in disconnected mode on an IMAP mailbox,
+switch to online mode and connect to the mail server while retaining the
+mailbox status.
+See the description of the \fIdisconnected\fR variable for more information.
 .TP
 .B copy
-(c) The copy command does the same thing that
-.I save
-does,
-except that it does not mark the messages
-it is used on for deletion when the user quits.
+(c) The copy command does the same thing that \fIsave\fR does,
+except that it does not mark the given messages for deletion when the
+user quits.
 Compressed files and IMAP mailboxes are handled as described for the
-.I folder
-command.
+\fIfolder\fR command.
 .TP
 .B Copy
-(C) Similar to
-.IR copy ,
-but saves the messages in a file named after the local part
-of the sender address of the first message.
+(C) Similar to \fIcopy\fR,
+but saves the messages in a file named after the local part of the
+sender address of the first message.
 .TP
 .B decrypt
-(dec) For unencrypted messages,
-this command is identical to
-.IR copy .
-Encrypted messages are first decrypted, if possible,
-and then copied.
+(Optional; dec) For unencrypted messages,
+this command is identical to \fIcopy\fR.
+Encrypted messages are first decrypted, if possible, and then copied.
 .TP
 .B Decrypt
-(Dec) Similar to
-.IR decrypt ,
-but saves the messages in a file named after the local part
-of the sender address of the first message.
+(Optional; Dec) Similar to \fIdecrypt\fR,
+but saves the messages in a file named after the local part of the
+sender address of the first message.
 .TP
 .B define
 (def) Defines a macro.
@@ -971,56 +947,43 @@ A macro definition is a sequence of commands in the following form:
     \fB}\fR
 .fi
 .sp
-Once defined, a macro can be explicitly invoked using the
-.I call
-command,
-or can be implicitly invoked by setting the
-.I folder-hook
-or
-.I folder-hook-fullname
-variables.
+A defined macro can be explicitly invoked using the \fIcall\fR command,
+or can be implicitly invoked by setting the \fIfolder-hook\fR or
+\fIfolder-hook-fullname\fR variables.
 .TP
 .B defines
 Prints the currently defined macros including their contents.
 .TP
 .B delete
-(d) Takes a list of messages as argument
-and marks them all as deleted.
+(d) Takes a list of messages as argument and marks them all as deleted.
 Deleted messages will not be saved in mbox,
 nor will they be available for most other commands.
 .TP
 .B discard
-Same as ignore.
+Same as \fIignore\fR.
 .TP
 .B disconnect
-(disco) If operating in online mode on an IMAP mailbox,
+(Optional; disco) If operating in online mode on an IMAP mailbox,
 switch to disconnected mode while retaining the mailbox status.
-See the description of the
-.I disconnected
-variable for more information.
+See the description of the \fIdisconnected\fR variable for more.
 A list of messages may optionally be given as argument;
-the respective messages are then read into the cache
-before the connection is closed.
-Thus `disco *' makes the entire current mailbox
-available for disconnected use.
+the respective messages are then read into the cache before the
+connection is closed.
+Thus `disco *' makes the entire mailbox available for disconnected use.
 .TP
 .BR dp \ or \ dt
-Deletes the current message
-and prints the next message.
-If there is no next message,
-\*(UA says `\fIat EOF\fR'.
+Deletes the current message and prints the next message.
+If there is no next message, \*(UA says `\fIat EOF\fR'.
 .TP
 .B draft
-Takes a message list and marks each message
-as a draft.
+Takes a message list and marks each given message as a draft.
 This mark has no technical meaning in the mail system;
 it just causes messages to be marked in the header summary,
 and makes them specially addressable.
 .TP
 .B echo
 Echoes its arguments,
-resolving special names
-as documented for the folder command.
+resolving special names as documented for the folder command.
 The escape sequences
 `\fB\ea\fR',
 `\fB\eb\fR',
@@ -1032,35 +995,24 @@ The escape sequences
 `\fB\ev\fR',
 `\fB\e\e\fR', and
 `\fB\e0\fInum\fR'
-are interpreted
-as with the
-.IR echo (1)
-command.
+are interpreted as with the \fIecho(1)\fR command.
 .TP
 .B edit
-(e) Takes a list of messages
-and points the text editor
-at each one in turn.
-Modified contents are discarded
-unless the
-.I writebackedited
+(e) Point the text editor at each message from the given list in turn.
+Modified contents are discarded unless the \fIwritebackedited\fR
 variable is set.
 .TP
 .B else
-Marks the end of the then-part
-of an if statement
-and the beginning of the part
-to take effect if the condition
-of the if statement is false.
+Marks the end of the then-part of an if statement
+and the beginning of the part to take effect if the condition of the if
+statement is false.
 .TP
 .B endif
 Marks the end of an if statement.
 .TP
 .B exit
-(ex or x) Effects an immediate return to the Shell
-without modifying the user's system mailbox,
-his mbox file,
-or his edit file in \-f.
+(ex or x) Effects an immediate return to the Shell without modifying the
+user's system mailbox, his mbox file, or his edit file in \-f.
 .TP
 .B file
 (fi) The same as folder.
@@ -1073,26 +1025,18 @@ it just causes messages to be highlighted in the header summary,
 and makes them specially addressable.
 .TP
 .B folders
-With no arguments,
-list the names of the folders in the folder directory.
+With no arguments, list the names of the folders in the folder directory.
 With an existing folder as an argument,
 lists then names of folders below the named folder;
-e.\|g. the command `folders @'
-lists the folders on the base level of the current IMAP server.
-See also the
-.I imap-list-depth
-variable.
+e.\|g. the command `folders @' lists the folders on the base level of
+the current IMAP server.
+See also the \fIimap-list-depth\fR variable.
 .TP
 .B folder
-(fold) The folder command switches
-to a new mail file or folder.
-With no arguments, it tells the user
-which file he is currently reading.
-If an argument is given,
-it will write out changes
-(such as deletions) the user has made
-in the current file and read in
-the new file.
+(fold) The folder command switches to a new mail file or folder.
+With no arguments, it tells the user which file he is currently reading.
+If an argument is given, it will write out changes (such as deletions)
+the user has made in the current file and read in the new file.
 Some special conventions are recognized for the name.
 \fB#\fR means the previous file,
 \fB%\fR means the invoking user's system mailbox,
@@ -1100,26 +1044,20 @@ Some special conventions are recognized for the name.
 \fB&\fR means the invoking user's mbox file,
 and \fB+\fIfile\fI means a \fIfile\fR in the folder directory.
 \fB%:\fIfilespec\fR expands to the same value as \fIfilespec\fR,
-but the file is handled as a system mailbox
-e.\ g. by the mbox and save commands.
-If the name matches one of the strings defined with the
-.I shortcut
+but the file is handled as a system mailbox e.\ g. by the mbox and save
+commands.
+If the name matches one of the strings defined with the \fIshortcut\fR
 command,
 it is replaced by its long form and expanded.
 If the name ends with \fB.gz\fR or \fB.bz2\fR,
-it is treated as compressed with
-.IR gzip (1)
-or
-.IR bzip2 (1),
+it is treated as compressed with \fIgzip(1)\fR or \fIbzip2(1)\fR,
 respectively.
 Likewise, if \fIname\fR does not exist,
 but either \fIname\fB.gz\fR or \fIname\fB.bz2\fR exists,
 the compressed file is used.
-If \fIname\fR refers to a directory
-with the subdirectories `tmp', `new', and `cur',
-it is treated as a folder in
-.I maildir
-format.
+If \fIname\fR refers to a directory with the subdirectories `tmp',
+`new', and `cur',
+it is treated as a folder in \fImaildir\fR format.
 A name of the form
 .nf
 
@@ -1127,143 +1065,99 @@ A name of the form
 
 .fi
 is taken as an Internet mailbox specification.
-The supported protocols are currently
-.B imap
-(IMAP v4r1),
-.B imaps
-(IMAP with SSL/TLS encryption),
-.B pop3
-(POP3),
-and
-.B pop3s
-(POP3 with SSL/TLS encryption).
-If
-.I user
-contains special characters, in particular `/' or `%',
-they must be escaped in URL notation,
-as `%2F' or `%25'.
-The optional
-.I file
-part applies to IMAP only;
-if it is omitted,
-the default `INBOX' is used.
+The supported protocols are currently \fBimap\fR (IMAP v4r1),
+\fBimaps\fR (IMAP with SSL/TLS encryption),
+\fBpop3\fR (POP3),
+and \fBpop3s\fR (POP3 with SSL/TLS encryption).
+If \fIuser\fR contains special characters, in particular `/' or `%',
+they must be escaped in URL notation, as `%2F' or `%25'.
+The optional \fIfile\fR part applies to IMAP only;
+if it is omitted, the default `INBOX' is used.
 If \*(UA is connected to an IMAP server,
-a name of the form \fB@\fImailbox\fR
-refers to the \fImailbox\fR on that server.
+a name of the form \fB@\fImailbox\fR refers to the \fImailbox\fR on that
+server.
 If the `folder' variable refers to an IMAP account,
 the special name `%' selects the `INBOX' on that account.
 .TP
 .B Followup
-(F) Similar to
-.IR Respond ,
-but saves the message in a file
-named after the local part of the first recipient's address.
+(F) Similar to \fIRespond\fR,
+but saves the message in a file named after the local part of the first
+recipient's address.
 .TP
 .B followup
-(fo) Similar to
-.IR respond ,
-but saves the message in a file
-named after the local part of the first recipient's address.
+(fo) Similar to \fIrespond\fR,
+but saves the message in a file named after the local part of the first
+recipient's address.
 .TP
 .B followupall
-Similar to
-.IR followup ,
-but responds to all recipients regardless of the
-.I flipr
-and
-.I Replyall
-variables.
+Similar to \fIfollowup\fR,
+but responds to all recipients regardless of the \fIflipr\fR and
+\fIReplyall\fR variables.
 .TP
 .B followupsender
-Similar to
-.IR Followup ,
-but responds to the sender only regardless of the
-.I flipr
-and
-.I Replyall
-variables.
+Similar to \fIFollowup\fR,
+but responds to the sender only regardless of the \fIflipr\fR and
+\fIReplyall\fR variables.
 .TP
 .B forward
-(fwd)
-Takes a message and the address of a recipient
+(fwd) Takes a message and the address of a recipient
 and forwards the message to him.
 The text of the original message is included in the new one,
-with the value of the
-.I fwdheading
-variable printed before.
-The
-.I fwdignore
-and
-.I fwdretain
-commands specify which header fields are included in the new message.
+with the value of the \fIfwdheading\fR variable printed before.
+The \fIfwdignore\fR and \fIfwdretain\fR commands specify which header
+fields are included in the new message.
 Only the first part of a multipart message is included unless the
-.I forward-as-attachment
-option is set.
+\fIforward-as-attachment\fR option is set.
 .TP
 .B Forward
-(Fwd)
-Similar to
-.IR forward ,
-but saves the message in a file named after
-the local part of the recipient's address.
+(Fwd) Similar to \fIforward\fR,
+but saves the message in a file named after the local part of the
+recipient's address.
 .TP
 .B from
-(f) Takes a list of messages
-and prints their message headers,
+(f) Takes a list of messages and prints their message headers,
 piped through the pager if the output does not fit on the screen.
 .TP
 .B fwdignore
-Specifies which header fields are to be ignored with the
-.I forward
+Specifies which header fields are to be ignored with the \fIforward\fR
 command.
-This command has no effect when the
-.I forward-as-attachment
-option is set.
+This command has no effect when the \fIforward-as-attachment\fR option
+is set.
 .TP
 .B fwdretain
-Specifies which header fields are to be retained with the
-.I forward
+Specifies which header fields are to be retained with the \fIforward\fR
 command.
-.I fwdretain
-overrides
-.IR fwdignore .
-This command has no effect when the
-.I forward-as-attachment
-option is set.
+\fIfwdretain\fR overrides \fIfwdignore\fR.
+This command has no effect when the \fIforward-as-attachment\fR option
+is set.
 .TP
 .B good
-(go) Takes a list of messages
-and marks all of them as not being junk mail.
-Data from these messages is then inserted
-into the junk mail database for future classification.
+(Optional; go) Takes a list of messages and marks all of them as not
+being junk mail.
+Data from these messages is then inserted into the junk mail database
+for future classification.
 .TP
 .B headers
 (h) Lists the current range of headers,
 which is an 18-message group.
-If a `+' argument is given,
-then the next 18-message group is printed,
-and if a `\-' argument is given,
-the previous 18-message group is printed.
+If a `+' argument is given the next 18-message group is printed,
+likewise the previous is printed if the argument was `\-'.
 .TP
 .B help
 A synonym for ?.
 .TP
 .B hold
-(ho, also preserve) Takes a message list
-and marks each message therein to be saved
-in the user's system mailbox
-instead of in mbox.
+(ho, also preserve) Takes a message list and marks each message therein
+to be saved in the user's system mailbox instead of in mbox.
 Does not override the delete command.
 \*(UA deviates from the POSIX standard with this command,
-as a `next' command issued after `hold'
-will display the following message,
-not the current one.
+as a \fInext\fR command issued after \fIhold\fR will display the
+following message, not the current one.
 .TP
 .B if
-Commands in \*(UA's startup files
-can be executed conditionally
-depending on whether the user is sending
-or receiving mail with the if command.
+Commands in \*(UA's startup files can be executed conditionally
+depending on whether the user is sending or receiving mail with the if
+command.
 For example:
 .nf
 
@@ -1291,29 +1185,24 @@ and
 .TP
 .B ignore
 Add the list of header fields named to the ignored list.
-Header fields in the ignore list are not printed
-on the terminal when a message is printed.
-This command is very handy for suppression
-of certain machine-generated header fields.
-The Type and Print commands can be used
-to print a message in its entirety,
-including ignored fields.
-If ignore is executed with no arguments,
-it lists the current set of ignored fields.
+Header fields in the ignore list are not printed on the terminal when
+a message is printed.
+This command is very handy for suppression of certain machine-generated
+header fields.
+The \fIType\fR and \fIPrint\fR commands can be used to print a message
+in its entirety, including ignored fields.
+It lists the current set of ignored fields if no arguments were given.
 .TP
 .B imap
-Sends command strings directly to the current IMAP server.
-\*(UA operates always in IMAP \fIselected state\fR
-on the current mailbox;
-commands that change this
-will produce undesirable results
-and should be avoided.
+(Optional) Sends command strings directly to the current IMAP server.
+\*(UA operates always in IMAP \fIselected state\fR on the current mailbox;
+commands that change this will produce undesirable results and should be
+avoided.
 Useful IMAP commands are:
 .RS
 .TP
 .B create
-Takes the name of an IMAP mailbox as an argument
-and creates it.
+Takes the name of an IMAP mailbox as an argument and creates it.
 .TP
 .B getquotaroot
 .\" RFC 2087
@@ -1335,27 +1224,20 @@ Not all IMAP servers support this command.
 .RE
 .TP
 .B inc
-Same as
-.IR newmail .
+Same as \fInewmail\fR.
 .TP
 .B junk
-(j) Takes a list of messages
-and marks all of them as junk mail.
-Data from these messages is then inserted
-into the junk mail database for future classification.
+(Optional; j) Takes a list of messages and marks them as junk mail.
+Data from these messages is then inserted into the junk mail database
+for future classification.
 .TP
 .B kill
-(k) Takes a list of messages and `kills' them.
+(Optional; k) Takes a list of messages and `kills' them.
 Killed messages are not printed in header summaries,
-and are ignored by the
-.I next
-command.
-The
-.I kill
-command also sets the score of the messages to negative infinity,
-so that subsequent
-.I score
-commands will not unkill them again.
+and are ignored by the \fInext\fR command.
+The \fIkill\fR command also sets the score of the messages to negative
+infinity, so that subsequent \fIscore\fR commands will not unkill them
+again.
 Killing is only effective for the current session on a folder;
 when it is quit, all messages are automatically unkilled.
 .TP
@@ -1363,66 +1245,51 @@ when it is quit, all messages are automatically unkilled.
 Prints the names of all available commands.
 .TP
 .B Mail
-(M) Similar to
-.IR mail ,
-but saves the message in a file
-named after the local part of the first recipient's address.
+(M) Similar to \fImail\fR,
+but saves the message in a file named after the local part of the first
+recipient's address.
 .TP
 .B mail
-(m) Takes as arguments the usual recipient addresses,
+(m) Takes the usual recipient addresses as arguments,
 or asks on standard input if none were given;
-then collects remain mail content and sends it out.
+then collects the remaining mail content and sends it out.
 .TP
 .B mbox
-Indicate that a list of messages be sent
-to mbox in the user's home directory when
-\*(UA is quit.
-This is the default action for messages
-if unless the
-.I hold
-option is set.
+The given message list is to be sent to \fImbox\fR when \*(UA is quit.
+This is the default action unless the \fIhold\fR option is set.
 \*(UA deviates from the POSIX standard with this command,
-as a `next' command issued after `mbox'
-will display the following message,
-not the current one.
+as a \fInext\fR command issued after \fImbox\fR will display the
+following message, not the current one.
 .TP
 .B move
-(mv) Acts like
-.IR copy ,
-but marks the messages for deletion
-if they were transferred successfully.
+(mv) Acts like \fIcopy\fR but marks the messages for deletion if they
+were transferred successfully.
 .TP
 .B Move
-(Mv) Similar to
-.IR move ,
-but moves the messages to a file named after the local part
-of the sender address of the first message.
+(Mv) Similar to \fImove\fR,
+but moves the messages to a file named after the local part of the
+sender address of the first message.
 .TP
 .B newmail
-Checks for new mail in the current folder
-without committing any changes before.
+Checks for new mail in the current folder without committing any changes
+before.
 If new mail is present, a message is printed.
-If the
-.I header
-variable is set,
+If the \fIheader\fR variable is set,
 the headers of each new message are also printed.
 .TP
 .B next
-(n) like + or CR) Goes to the next message
-in sequence and types it.
+(n) (like \fI+\fR or ENTER) Goes to the next message in sequence and
+types it.
 With an argument list, types the next matching message.
 .TP
 .B New
-Same as
-.IR unread .
+Same as \fIunread\fR.
 .TP
 .B new
-Same as
-.IR unread .
+Same as \fIunread\fR.
 .TP
 .B online
-Same as
-.IR connect .
+Same as \fIconnect\fR.
 .TP
 .B noop
 If the current folder is located on an IMAP or POP3 server,
@@ -1430,44 +1297,28 @@ a NOOP command is sent.
 Otherwise, no operation is performed.
 .TP
 .B Pipe
-(Pi) Like
-.I pipe
-but also
-pipes ignored header fields
-and all parts of MIME
-.I multipart/alternative
-messages.
+(Pi) Like \fIpipe\fR but also pipes ignored header fields and all parts
+of MIME \fImultipart/alternative\fR messages.
 .TP
 .B pipe
 (pi) Takes a message list and a shell command
 and pipes the messages through the command.
-Without an argument,
-the current message is piped
-through the command given by the \fIcmd\fR variable.
+Without an argument the current message is piped through the command
+given by the \fIcmd\fR variable.
 If the \fI page\fR variable is set,
 every message is followed by a formfeed character.
 .TP
 .B preserve
-(pre) A synonym for
-.IR hold .
+(pre) A synonym for \fIhold\fR.
 .TP
 .B Print
-(P) Like
-.I print
-but also
-prints out ignored header fields
-and all parts of MIME
-.I multipart/alternative
-messages.
-See also
-.IR print ,
-.IR ignore ,
-and
-.IR retain .
+(P) Like \fIprint\fR but also prints out ignored header fields and all
+parts of MIME \fImultipart/alternative\fR messages.
+See also \fIprint\fR, \fIignore\fR, and \fIretain\fR.
 .TP
 .B print
-(p) Takes a message list and types out each message
-on the user's terminal.
+(p) Takes a message list and types out each message on the user's
+terminal.
 If the message is a MIME multipart message,
 all parts with a content type of `text' or `message' are shown,
 the other are hidden except for their headers.
@@ -1475,14 +1326,13 @@ Messages are decrypted and converted to the terminal character set
 if necessary.
 .TP
 .B probability
-(prob) For each word given as argument,
+(Optional; prob) For each word given as argument,
 the contents of its junk mail database entry are printed.
 .TP
 .B quit
-(q) Terminates the session, saving all undeleted,
-unsaved messages in the user's mbox file in his login directory,
-preserving all messages marked with hold or preserve
-or never referenced in his system mailbox,
+(q) Terminates the session, saving all undeleted, unsaved messages in
+the current \fImbox\fR, preserving all messages marked with \fIhold\fR
+or \fIpreserve\fR or never referenced in his system mailbox,
 and removing all other messages from his system mailbox.
 If new mail has arrived during the session,
 the message `\fIYou have new mail\fR' is given.
@@ -1490,21 +1340,17 @@ If given while editing a mailbox file with the \-f flag,
 then the edit file is rewritten.
 A return to the Shell is effected,
 unless the rewrite of edit file fails,
-in which case the user can escape
-with the exit command.
+in which case the user can escape with the exit command.
 .TP
 .B redirect
-(red) Same as
-.IR resend .
+(red) Same as \fIresend\fR.
 .TP
 .B Redirect
-(Red) Same as
-.IR Resend .
+(Red) Same as \fIResend\fR.
 .TP
 .B remove
 (rem) Removes the named folders.
-The user is asked for confirmation
-in interactive mode.
+The user is asked for confirmation in interactive mode.
 .TP
 .B rename
 (ren) Takes the name of an existing folder
@@ -1515,130 +1361,99 @@ and must be located on the current server for IMAP.
 .TP
 .B Reply
 (R) Reply to originator.
-Does not reply to other recipients
-of the original message.
+Does not reply to other recipients of the original message.
 .TP
 .BR reply
-(r) Takes a message list and sends mail
-to the sender and all recipients of the specified message.
+(r) Takes a message list and sends mail to the sender and all recipients
+of the specified message.
 The default message must not be deleted.
 .TP
 .B replyall
-Similar to
-.IR reply ,
-but responds to all recipients regardless of the
-.I flipr
-and
-.I Replyall
-variables.
+Similar to \fIreply\fR,
+but responds to all recipients regardless of the \fIflipr\fR and
+\fIReplyall\fR variables.
 .TP
 .B replysender
-Similar to
-.IR Reply ,
-but responds to the sender only regardless of the
-.I flipr
-and
-.I Replyall
-variables.
+Similar to \fIReply\fR,
+but responds to the sender only regardless of the \fIflipr\fR and
+\fIReplyall\fR variables.
 .TP
 .B Resend
-Like
-.IR resend ,
+Like \fIresend\fR,
 but does not add any header lines.
 This is not a way to hide the sender's identity,
-but useful for sending a message again
-to the same recipients.
+but useful for sending a message again to the same recipients.
 .TP
 .B resend
 Takes a list of messages and a user name
 and sends each message to the named user.
-`Resent-From:' and related header fields are prepended
-to the new copy of the message.
+`Resent-From:' and related header fields are prepended to the new copy
+of the message.
 .TP
 .B Respond
-Same as
-.IR Reply .
+Same as \fIReply\fR.
 .TP
 .B respond
-Same as
-.IR reply .
+Same as \fIreply\fR.
 .TP
 .B respondall
-Same as
-.IR replyall .
+Same as \fIreplyall\fR.
 .TP
 .B respondsender
-Same as
-.IR replysender .
+Same as \fIreplysender\fR.
 .TP
 .B retain
 Add the list of header fields named to the retained list.
-Only the header fields in the retain list are shown
-on the terminal when a message is printed.
-All other header fields are suppressed.
-The Type and Print commands can be used
-to print a message in its entirety.
-If retain is executed with no arguments,
-it lists the current set of retained fields.
+Only the header fields in the retain list are shown on the terminal when
+a message is printed, all other header fields are suppressed.
+The \fIType\fR and \fIPrint\fR commands can be used to print a message
+in its entirety.
+The current set of retained fields is shown if \fIretain\fR is used
+without arguments.
 .TP
 .B Save
-(S)
-Similar to
-.IR save ,
-but saves the messages
-in a file named after the local part
-of the sender of the first message
-instead of taking a filename argument.
+(S) Similar to \fIsave\fR,
+but saves the messages in a file named after the local part of the
+sender of the first message instead of taking a filename argument.
 .TP
 .B save
-(s) Takes a message list and a filename
-and appends each message
-in turn to the end of the file.
-If no filename is given,
-the mbox file is used.
-The filename in quotes,
-followed by the line count and character count
+(s) Takes a message list and a filename and appends each message in turn
+to the end of the file.
+If no filename is given, the \fImbox\fR file is used.
+The filename in quotes, followed by the line count and character count
 is echoed on the user's terminal.
-If editing a system mailbox,
-the messages are marked for deletion.
+If editing a system mailbox the messages are marked for deletion.
 Compressed files and IMAP mailboxes are handled as described for the
-.I \-f
-command line option above.
+\fI\-f\fR command line option above.
 .TP
 .B savediscard
-Same as saveignore.
+Same as \fIsaveignore\fR.
 .TP
 .B saveignore
-Saveignore is to save what ignore is to print and type.
-Header fields thus marked are filtered out
-when saving a message by save
-or when automatically saving to mbox.
-This command should only be applied to header fields
-that do not contain information needed to decode the message,
+Is to \fIsave\fR what \fIignore\fR is to \fIprint\fR and \fItype\fR.
+Header fields thus marked are filtered out when saving a message by
+\fIsave\fR or when automatically saving to \fImbox\fR.
+This command should only be applied to header fields that do not contain
+information needed to decode the message,
 as MIME content fields do.
-If saving messages on an IMAP account,
-ignoring fields makes it impossible
-to copy the data directly on the server,
+If saving messages on an IMAP account ignoring fields makes it
+impossible to copy the data directly on the server,
 thus operation usually becomes much slower.
 .TP
 .B saveretain
-Saveretain is to save what retain is to print and type.
-Header fields thus marked are the only ones
-saved with a message when saving by save
-or when automatically saving to mbox.
-Saveretain overrides saveignore.
-The use of this command is strongly discouraged
-since it may strip header fields
-that are needed to decode the message correctly.
+Is to \fIsave\fR what \fIretain\fR is to \fIprint\fR and \fItype\fR.
+Header fields thus marked are the only ones saved with a message when
+saving by \fIsave\fR or when automatically saving to \fImbox\fR.
+\fIsaveretain\fR overrides \fIsaveignore\fR.
+The use of this command is strongly discouraged since it may strip
+header fields that are needed to decode the message correctly.
 .TP
 .B score
-(sc) Takes a message list and a floating point number
+(Optional; sc) Takes a message list and a floating point number
 and adds the number to the score of each given message.
 All messages start at score 0 when a folder is opened.
-When the score of a message becomes negative, it is `killed'
-with the effects described for the
-.I kill
-command;
+When the score of a message becomes negative, it is `killed' with the
+effects described for the \fIkill\fR command;
 otherwise if it was negative before and becomes positive,
 it is `unkilled'.
 Scores only refer to the currently opened instance of a folder.
@@ -1647,19 +1462,15 @@ Scores only refer to the currently opened instance of a folder.
 (se) With no arguments, prints all variable values,
 piped through the pager if the output does not fit on the screen.
 Otherwise, sets option.
-Arguments are of the form option=value
-(no space before or after =)
-or option.
-Quotation marks may be placed around any part of the
-assignment statement to quote blanks
-or tabs, i.\|e. `\fIset indentprefix="\->"\fR'.
-If an argument begins with
-.BR no ,
+Arguments are of the form `option=value' (no space before or after =),
+or plain `option' if there is no value.
+Quotation marks may be placed around any part of the assignment
+statement to quote blanks or tabs, i.\|e.
+`\fIset indentprefix="\->"\fR'.
+If an argument begins with \fBno\fR,
 as in `\fBset no\fIsave\fR',
-the effect is the same as invoking the
-.I unset
-command with the remaining part of the variable
-(`\fIunset \fIsave\fR').
+the effect is the same as invoking the \fIunset\fR command with the
+remaining part of the variable (`\fIunset \fIsave\fR').
 .TP
 .B seen
 Takes a message list and marks all messages as having been read.
@@ -1669,32 +1480,23 @@ Takes a message list and marks all messages as having been read.
 .TP
 .B shortcut
 Defines a shortcut name and its string for expansion,
-as described for the
-.I folder
-command.
-With no arguments,
-a list of defined shortcuts is printed.
+as described for the \fIfolder\fR command.
+If used without arguments the currently defined shortcuts are printed.
 .TP
 .B show
-(Sh) Like
-.IR print ,
-but performs neither MIME decoding nor decryption
-so that the raw message text is shown.
+(Sh) Like \fIprint\fR,
+but performs neither MIME decoding nor decryption so that the raw
+message text is shown.
 .TP
 .B size
-Takes a message list and prints out
-the size in characters of each message.
+Print the size in characters of each message of the given message-list.
 .TP
 .B sort
 Create a sorted representation of the current folder,
-and change the
-.I next
-command and the addressing modes
-such that they refer to messages in the sorted order.
+and change the \fInext\fR command and the addressing modes such that
+they refer to messages in the sorted order.
 Message numbers are the same as in regular mode.
-If the
-.I header
-variable is set,
+If the \fIheader\fR variable is set,
 a header summary in the new order is also printed.
 Possible sorting criteria are:
 .RS
@@ -1706,36 +1508,29 @@ that is by the time they were sent.
 .B from
 Sort messages by the value of their `From:' field,
 that is by the address of the sender.
-If the
-.I showname
-variable is set,
+If the \fIshowname\fR variable is set,
 the sender's real name (if any) is used.
 .TP
 .B size
 Sort the messages by their size.
 .TP
 .B score
-Sort the messages by their score.
+(Optional) Sort the messages by their score.
 .TP
 .B status
-Sort the messages by their message status
-(new, read, old, etc.).
+Sort the messages by their message status (new, read, old, etc.).
 .TP
 .B subject
 Sort the messages by their subject.
 .TP
 .B thread
 Create a threaded order,
-as with the
-.I thread
-command.
+as with the \fIthread\fR command.
 .TP
 .B to
 Sort messages by the value of their `To:' field,
 that is by the address of the recipient.
-If the
-.I showname
-variable is set,
+If the \fIshowname\fR variable is set,
 the recipient's real name (if any) is used.
 .RE
 .IP
@@ -1747,39 +1542,32 @@ The source command reads commands from a file.
 .TP
 .B thread
 (th) Create a threaded representation of the current folder,
-i.\|e. indent messages that are replies to other messages
-in the header display,
-and change the
-.I next
-command and the addressing modes
-such that they refer to messages in the threaded order.
+i.\|e. indent messages that are replies to other messages in the header
+display,
+and change the \fInext\fR command
+and the addressing modes such that they refer to messages in the
+threaded order.
 Message numbers are the same as in unthreaded mode.
-If the
-.I header
-variable is set,
+If the \fIheader\fR variable is set,
 a header summary in threaded order is also printed.
 .TP
 .B top
 Takes a message list and prints the top few lines of each.
-The number of lines printed is controlled
-by the variable toplines
+The number of lines printed is controlled by the variable \fItoplines\fR
 and defaults to five.
 .TP
 .B touch
 Takes a message list
-and marks the messages for saving in the
-.I mbox
-file.
+and marks the messages for saving in the \fImbox\fR file.
 \*(UA deviates from the POSIX standard with this command,
-as a `next' command issued after `mbox'
-will display the following message,
-not the current one.
+as a \fInext\fR command issued after \fImbox\fR will display the
+following message instead of the current one.
 .TP
 .B Type
-(T) Identical to the Print command.
+(T) Identical to the \fIPrint\fR command.
 .TP
 .B type
-(t) A synonym for print.
+(t) A synonym for \fIprint\fR.
 .TP
 .B unalias
 Takes a list of names defined by alias commands
@@ -1787,14 +1575,11 @@ and discards the remembered groups of users.
 The group names no longer have any significance.
 .TP
 .B unanswered
-Takes a message list and marks each message
-as not having been answered.
+Takes a message list and marks each message as not having been answered.
 .TP
 .B uncollapse
-(unc)
-Only applicable to threaded mode.
-Takes a message list
-and makes the message and all replies to it visible
+(unc) Only applicable to threaded mode.
+Takes a message list and makes the message and all replies to it visible
 in header summaries again.
 When a message becomes the current message,
 it is automatically made visible.
@@ -1810,103 +1595,81 @@ one of the currently defined macros.
 (u) Takes a message list and marks each message as not being deleted.
 .TP
 .B undraft
-Takes a message list and marks each message
-as a draft.
+Takes a message list and un\fIdraft\fRs each message.
 .TP
 .B unflag
-Takes a message list and marks each message as not being `flagged'.
+Takes a message list and marks each message as not being \fIflag\fRged.
 .TP
 .B unfwdignore
-Removes the header field names
-from the list of ignored fields for the
-.I forward
-command.
+Removes the header field names from the list of ignored fields for the
+\fIforward\fR command.
 .TP
 .B unfwdretain
-Removes the header field names
-from the list of retained fields for the
-.I forward
-command.
+Removes the header field names from the list of retained fields for the
+\fIforward\fR command.
 .TP
 .B ungood
-Takes a message list and undoes the effect of a
-.I good
+(Optional) Takes a message list and undoes the effect of a \fIgood\fR
 command that was previously applied on exactly these messages.
 .TP
 .B unignore
-Removes the header field names
-from the list of ignored fields.
+Removes the header field names from the list of ignored fields.
 .TP
 .B unjunk
-Takes a message list and undoes the effect of a
-.I junk
+(Optional) Takes a message list and undoes the effect of a \fIjunk\fR
 command that was previously applied on exactly these messages.
 .TP
 .B unkill
-Takes a message list and `unkills' each message.
+(Optional) Takes a message list and `unkills' each message.
 Also sets the score of the messages to 0.
 .TP
 .B Unread
-Same as
-.IR unread .
+Same as \fIunread\fR.
 .TP
 .B unread
-(U) Takes a message list and marks each message
-as not having been read.
+(U) Takes a message list and marks each message as not having been read.
 .TP
 .B unretain
-Removes the header field names
-from the list of retained fields.
+Removes the header field names from the list of retained fields.
 .TP
 .B unsaveignore
-Removes the header field names
-from the list of ignored fields for saving.
+Removes the header field names from the list of ignored fields for
+saving.
 .TP
 .B unsaveretain
-Removes the header field names
-from the list of retained fields for saving.
+Removes the header field names from the list of retained fields for
+saving.
 .TP
 .B unset
-Takes a list of option names and discards their remembered
-values;
-the inverse of set.
+Takes a list of option names and discards their remembered values;
+the inverse of \fIset\fR.
 .TP
 .B unshortcut
 Deletes the shortcut names given as arguments.
 .TP
 .B unsort
-Disable sorted or threaded mode (see the
-.I sort
-and
-.I thread
-commands), return to normal message order
-and,
-if the
-.I header
-variable is set,
+Disable sorted or threaded mode
+(see the \fIsort\fR and \fIthread\fR commands),
+return to normal message order and,
+if the \fIheader\fR variable is set,
 print a header summary.
 .TP
 .B unthread
-(unth) Same as
-.IR unsort .
+(unth) Same as \fIunsort\fR.
 .TP
 .B verify
-(verif)
-Takes a message list and verifies each message.
+(Optional; verif) Takes a message list and verifies each message.
 If a message is not an S/MIME signed message,
 verification will fail for it.
-The verification process checks
-if the message was signed using a valid certificate,
-if the message sender's email address matches
-one of those contained within the certificate,
+The verification process checks if the message was signed using a valid
+certificate,
+if the message sender's email address matches one of those contained
+within the certificate,
 and if the message content has been altered.
 .TP
 .B visual
-(v) Takes a message list and invokes the display editor
-on each message.
-Modified contents are discarded
-unless the
-.I writebackedited
+(v) Takes a message list and invokes the display editor on each message.
+Modified contents are discarded unless the \fIwritebackedited\fR
 variable is set.
 .TP
 .B write
@@ -1937,22 +1700,18 @@ No special handling of compressed files is performed.
 (x) A synonym for exit.
 .TP
 .B z
-\*(UA presents message headers in windowfuls
-as described under the headers command.
-The z command scrolls to the next window of messages.
+\*(UA presents message headers in windowfuls as described under the
+\fIheaders\fR command.
+The \fIz\fR command scrolls to the next window of messages.
 If an argument is given,
 it specifies the window to use.
 A number prefixed by `+' or `\-' indicates
-that the window is calculated in relation
-to the current position.
-A number without a prefix specifies an
-absolute window number,
-and a `$' lets \*(UA scroll
-to the last window of messages.
+that the window is calculated in relation to the current position.
+A number without a prefix specifies an absolute window number,
+and a `$' lets \*(UA scroll to the last window of messages.
 .TP
 .B Z
-Similar to
-.IR z ,
+Similar to \fIz\fR,
 but scrolls to the next or previous window
 that contains at least one new or `flagged' message.
 .SS "Tilde escapes"

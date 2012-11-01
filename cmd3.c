@@ -175,9 +175,32 @@ bangexp(char **str, size_t *size)
 int 
 help(void *v)
 {
-	(void)v;
+	int ret = 0;
+	char *arg = *(char**)v;
+
+	if (arg != NULL) {
+#ifdef USE_DOCSTRINGS
+		extern struct cmd const cmdtab[];
+		struct cmd const *cp;
+		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
+			if (cp->c_func == &ccmdnotsupp)
+				continue;
+			if (strcmp(cp->c_name, arg) == 0) {
+				printf("%s: %s\n", arg,
+					tr(cp->c_docid, cp->c_doc));
+				goto jleave;
+			}
+		}
+		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), arg);
+		ret = 1;
+#else
+		ret = ccmdnotsupp(NULL);
+#endif
+		goto jleave;
+	}
+
 	/* Very ugly, but take care for compiler supported string lengths :( */
-	fprintf(stdout, tr(295,"%s commands:\n"), progname);
+	printf(tr(295, "%s commands:\n"), progname);
 	puts(tr(296,
 "type <message list>         type messages\n"
 "next                        goto and type next message\n"
@@ -204,7 +227,9 @@ help(void *v)
 "\nA <message list> consists of integers, ranges of same, or other criteria\n"
 "separated by spaces.  If omitted, %s uses the last message typed.\n"),
 		progname);
-	return(0);
+
+jleave:
+	return (ret);
 }
 
 /*
