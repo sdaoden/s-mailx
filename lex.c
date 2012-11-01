@@ -445,10 +445,13 @@ execute(char *linebuf, int contxt, size_t linesize)
 		ac_free(word);
 		return(0);
 	}
+
 	com = lex(word);
-	if (com == NULL) {
-		printf(catgets(catd, CATSET, 91,
-				"Unknown command: \"%s\"\n"), word);
+	if (com == NULL || com->c_func == &ccmdnotsupp) {
+		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), word);
+		if (com != NULL)
+			fprintf(stderr, tr(10,
+				"The requested feature is not compiled in\n"));
 		goto out;
 	}
 

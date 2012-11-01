@@ -10,7 +10,7 @@ $set 1
 7 On last screenful of messages\n
 8 On first screenful of messages\n
 9 Unrecognized scrolling command "%s"\n
-10 --- DELETED ---
+10 The requested feature is not compiled in\n
 11 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 12 $%c%c%3d %s%-*.*s  %16.16s %s %.*s\n$
 13 %d\n

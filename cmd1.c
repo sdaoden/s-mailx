@@ -66,6 +66,14 @@ static int type1(int *msgvec, int doign, int page, int pipe, int decode,
 static int pipe1(char *str, int doign);
 void brokpipe(int signo);
 
+int
+ccmdnotsupp(void *v)
+{
+	(void)v;
+	fprintf(stderr, tr(10, "The requested feature is not compiled in\n"));
+	return (1);
+}
+
 char *
 get_pager(void)
 {

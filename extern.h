@@ -116,6 +116,7 @@ FILE *cache_queue(struct mailbox *mp);
 enum okay cache_dequeue(struct mailbox *mp);
 
 /* cmd1.c */
+int ccmdnotsupp(void *v);
 char *get_pager(void);
 int headers(void *v);
 int scroll(void *v);
