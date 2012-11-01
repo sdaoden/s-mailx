@@ -157,6 +157,7 @@ The following ~ escapes are defined:\n\
 132 No applicable messages\n
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
+
 135 Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n\
 \t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n\
 \t\t[-q file] [-r from-addr] [-S var[=value]]\n\
@@ -164,6 +165,7 @@ The following ~ escapes are defined:\n\
 \t%s [-BDdEeHIiNnRv~] [-A acct]\n\
 \t\t[-S var[=value]] [-T name] -f [file]\n\
 \t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
+
 136 --- DELETED ---
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n
@@ -323,3 +325,33 @@ The following ~ escapes are defined:\n\
 292 Can only rename folders of same type.\n
 293 Cannot rename POP3 mailboxes.\n
 294 Unknown protocol in "%s" and "%s".  Not renamed.\n
+
+
+$ "help" output is splitted due to compiler limits
+295 %s commands:\n
+
+296 type <message list>         type messages\n\
+next                        goto and type next message\n\
+from <message list>         give head lines of messages\n\
+headers                     print out active message headers\n\
+delete <message list>       delete messages\n\
+undelete <message list>     undelete messages\n
+
+297 save <message list> folder  append messages to folder and mark as saved\n\
+copy <message list> folder  append messages to folder without marking them\n\
+write <message list> file   append message texts to file, save attachments\n\
+preserve <message list>     keep incoming messages in mailbox even if saved\n\
+Reply <message list>        reply to message senders\n\
+reply <message list>        reply to message senders and all recipients\n
+
+298 mail addresses              mail to specific recipients\n\
+file folder                 change to another folder\n\
+quit                        quit and apply changes to folder\n\
+xit                         quit and discard changes made to folder\n\
+!                           shell escape\n\
+cd <directory>              chdir to directory or home if none given\n\
+list                        list names of all available commands\n
+
+299 \n\
+A <message list> consists of integers, ranges of same, or other criteria\n\
+separated by spaces.  If omitted, %s uses the last message typed.\n
