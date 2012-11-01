@@ -1,6 +1,7 @@
 #!/bin/sh
 
 [ -z "${WANT_ASSERTS}" ] && WANT_ASSERTS=0
+
 if [ -z "${CONFIG}" ]; then
 	[ -f user.conf ] && . user.conf
 else
@@ -38,8 +39,6 @@ if nwantfeat SOCKET; then
 fi
 if nwantfeat IMAP && nwantfeat POP3 && nwantfeat SMTP; then
 	WANT_SOCKET=0 WANT_IPV6=0 WANT_SSL=0
-else
-	WANT_SOCKET=1
 fi
 if nwantfeat IMAP; then
 	WANT_GSSAPI=0
@@ -51,6 +50,8 @@ if nwantfeat SOCKET && nwantfeat JUNK; then
 elif wantfeat JUNK; then
 	WANT_MD5=1
 fi
+
+##  --  >8  --  8<  --  ##
 
 tmp=___build$$
 tmp2=___tmp1$$
@@ -622,6 +623,12 @@ if wantfeat SCORE; then
 	echo "#define USE_SCORE" >> $out
 else
 	echo "/* #define USE_SCORE */" >> $out
+fi
+
+if wantfeat DOCSTRINGS; then
+	echo "#define USE_DOCSTRINGS" >> $out
+else
+	echo "/* #define USE_DOCSTRINGS */" >> $out
 fi
 
 if wantfeat MD5; then
