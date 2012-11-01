@@ -589,9 +589,14 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				subjlen -= n;
 				break;
 			case 'c':
+#ifdef USE_SCORE
 				if (n == 0)
 					n = 6;
 				subjlen -= fprintf(f, "%*g", n, mp->m_score);
+#else
+				putc('?', f);
+				subjlen--;
+#endif
 				break;
 			}
 		} else
