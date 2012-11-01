@@ -46,7 +46,7 @@
  * Define all of the command names and bindings.
  */
 
-const struct cmd cmdtab[] = {
+struct cmd const cmdtab[] = {
 	{ "next",	next,		A|NDMLIST,	0,	MMNDEL },
 	{ "alias",	group,		M|RAWLIST,	0,	1000 },
 	{ "print",	type,		A|MSGLIST,	0,	MMNDEL },
