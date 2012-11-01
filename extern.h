@@ -478,11 +478,13 @@ enum okay smime_certsave(struct message *m, int n, FILE *op);
 #endif
 
 /* pop3.c */
+#ifdef USE_POP3
 enum okay pop3_noop(void);
 int pop3_setfile(const char *server, int newmail, int isedit);
 enum okay pop3_header(struct message *m);
 enum okay pop3_body(struct message *m);
 void pop3_quit(void);
+#endif
 
 /* popen.c */
 sighandler_type safe_signal(int signum, sighandler_type handler);

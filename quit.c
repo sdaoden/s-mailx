@@ -156,14 +156,17 @@ quit(void)
 	case MB_MAILDIR:
 		maildir_quit();
 		return;
+#ifdef USE_POP3
 	case MB_POP3:
 		pop3_quit();
 		return;
+#endif
 	case MB_IMAP:
 	case MB_CACHE:
 		imap_quit();
 		return;
 	case MB_VOID:
+	default:
 		return;
 	}
 	/*

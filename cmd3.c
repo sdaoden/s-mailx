@@ -1617,8 +1617,12 @@ cnoop(void *v)
 		imap_noop();
 		break;
 	case MB_POP3:
+#ifdef USE_POP3
 		pop3_noop();
 		break;
+#else
+		return (ccmdnotsupp(NULL));
+#endif
 	default:
 		break;
 	}
