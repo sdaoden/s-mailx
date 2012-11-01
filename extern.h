@@ -349,13 +349,23 @@ char *imap_unquotestr(const char *s);
 
 /* imap_search.c */
 enum okay imap_search(const char *spec, int f);
+
 /* junk.c */
+#ifdef USE_JUNK
 int cgood(void *v);
 int cjunk(void *v);
 int cungood(void *v);
 int cunjunk(void *v);
 int cclassify(void *v);
 int cprobability(void *v);
+#else
+# define cgood		ccmdnotsupp
+# define cjunk		ccmdnotsupp
+# define cungood	ccmdnotsupp
+# define cunjunk	ccmdnotsupp
+# define cclassify	ccmdnotsupp
+# define cprobability	ccmdnotsupp
+#endif
 
 /* lex.c */
 int setfile(char *name, int newmail);
