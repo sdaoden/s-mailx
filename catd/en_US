@@ -297,7 +297,7 @@ The following ~ escapes are defined:\n\
 266 Ignoring header field "%s"\n
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
-269 No IMAP support compiled in.\n
+269 --- DELETED ---
 270 --- DELETED ---
 271 Invalid address argument with -r\n
 272 No GSSAPI support compiled in.\n

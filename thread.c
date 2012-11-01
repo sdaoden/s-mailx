@@ -403,8 +403,10 @@ int
 thread(void *vp)
 {
 	if (mb.mb_threaded != 1 || vp == NULL || vp == (void *)-1) {
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
+#endif
 		makethreads(message, msgCount, vp == (void *)-1);
 		free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
@@ -561,8 +563,10 @@ sort(void *vp)
 	case SORT_DATE:
 	case SORT_FROM:
 	case SORT_TO:
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
+#endif
 		break;
 	default:
 		break;

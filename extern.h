@@ -61,7 +61,9 @@ char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
 const char *protfile(const char *xcp);
 char *protbase(const char *cp);
+#ifdef USE_IMAP
 int disconnected(const char *file);
+#endif
 unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
@@ -316,6 +318,7 @@ int check_from_and_sender(struct name *fromfield, struct name *senderfield);
 char *getsender(struct message *m);
 
 /* imap.c */
+#ifdef USE_IMAP
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
 		const char *mbx);
@@ -339,6 +342,13 @@ enum okay imap_dequeue(struct mailbox *mp, FILE *fp);
 int cconnect(void *vp);
 int cdisconnect(void *vp);
 int ccache(void *vp);
+#else
+# define imap_imap	ccmdnotsupp
+# define cconnect	ccmdnotsupp
+# define cdisconnect	ccmdnotsupp
+# define ccache		ccmdnotsupp
+#endif
+
 time_t imap_read_date_time(const char *cp);
 time_t imap_read_date(const char *cp);
 const char *imap_make_date_time(time_t t);

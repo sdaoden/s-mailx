@@ -383,9 +383,11 @@ compress(struct fp *fpp)
 	fflush(fpp->fp);
 	clearerr(fpp->fp);
 	fseek(fpp->fp, fpp->offset, SEEK_SET);
+#ifdef USE_IMAP
 	if ((fpp->compressed&FP_MASK) == FP_IMAP) {
 		return imap_append(fpp->realfile, fpp->fp);
 	}
+#endif
 	if ((fpp->compressed&FP_MASK) == FP_MAILDIR) {
 		return maildir_append(fpp->realfile, fpp->fp);
 	}

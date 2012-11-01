@@ -792,6 +792,7 @@ fgetline_byone(char **line, size_t *linesize, size_t *llen,
 static enum okay
 get_header(struct message *mp)
 {
+	(void)mp;
 	switch (mb.mb_type) {
 	case MB_FILE:
 	case MB_MAILDIR:
@@ -800,9 +801,11 @@ get_header(struct message *mp)
 	case MB_POP3:
 		return (pop3_header(mp));
 #endif
+#ifdef USE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		return imap_header(mp);
+#endif
 	case MB_VOID:
 	default:
 		return (STOP);
@@ -812,6 +815,7 @@ get_header(struct message *mp)
 enum okay
 get_body(struct message *mp)
 {
+	(void)mp;
 	switch (mb.mb_type) {
 	case MB_FILE:
 	case MB_MAILDIR:
@@ -820,9 +824,11 @@ get_body(struct message *mp)
 	case MB_POP3:
 		return (pop3_body(mp));
 #endif
+#ifdef USE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		return imap_body(mp);
+#endif
 	case MB_VOID:
 	default:
 		return (STOP);
@@ -1127,10 +1133,12 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 			port = htons(25);
 		else if (strcmp(portstr, "smtps") == 0)
 			port = htons(465);
+# ifdef USE_IMAP
 		else if (strcmp(portstr, "imap") == 0)
 			port = htons(143);
 		else if (strcmp(portstr, "imaps") == 0)
 			port = htons(993);
+# endif
 # ifdef USE_POP3
 		else if (strcmp(portstr, "pop3") == 0)
 			port = htons(110);

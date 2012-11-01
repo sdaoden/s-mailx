@@ -603,6 +603,7 @@ protbase(const char *cp)
 	return n;
 }
 
+#ifdef USE_IMAP
 int 
 disconnected(const char *file)
 {
@@ -626,6 +627,7 @@ disconnected(const char *file)
 	ac_free(vp);
 	return r;
 }
+#endif
 
 unsigned 
 pjw(const char *cp)

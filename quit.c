@@ -161,10 +161,12 @@ quit(void)
 		pop3_quit();
 		return;
 #endif
+#ifdef USE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		imap_quit();
 		return;
+#endif
 	case MB_VOID:
 	default:
 		return;
@@ -417,9 +419,14 @@ makembox(void)
 			mcount++;
 			if (prot == PROTO_IMAP &&
 					saveignore[0].i_count == 0 &&
-					saveignore[1].i_count == 0 &&
-					imap_thisaccount(mbox)) {
+					saveignore[1].i_count == 0
+#ifdef USE_IMAP /* TODO revisit */
+					&& imap_thisaccount(mbox)
+#endif
+			) {
+#ifdef USE_IMAP
 				if (imap_copy(mp, mp-message+1, mbox) == STOP)
+#endif
 					goto err;
 			} else if (send(mp, obuf, saveignore,
 						NULL, SEND_MBOX, NULL) < 0) {
