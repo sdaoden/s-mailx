@@ -770,26 +770,36 @@ Sendmail(void *v)
 static enum okay
 transfer(struct name *to, FILE *input, struct header *hp)
 {
-	char	o[LINESIZE], *cp;
-	struct name	*np, *nt;
-	int	cnt = 0;
-	FILE	*ef;
-	enum okay	ok = OKAY;
+	char o[LINESIZE], *cp;
+	struct name *np;
+	int cnt = 0;
+	enum okay ok = OKAY;
 
 	np = to;
 	while (np) {
 		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
 		if ((cp = value(o)) != NULL) {
+#ifdef USE_SSL
+			struct name *nt;
+			FILE *ef;
 			if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
 				nt = ndup(np, np->n_type & ~(GFULL|GSKIN));
 				if (start_mta(nt, ef, hp) != OKAY)
 					ok = STOP;
 				Fclose(ef);
 			} else {
-				fprintf(stderr, "Message not sent to <%s>\n",
-						np->n_name);
+#else
+				fprintf(stderr, tr(225,
+					"No SSL support compiled in.\n"));
+				ok = STOP;
+#endif
+				fprintf(stderr, tr(38,
+					"Message not sent to <%s>\n"),
+					np->n_name);
 				senderr++;
+#ifdef USE_SSL
 			}
+#endif
 			rewind(input);
 			if (np->n_flink)
 				np->n_flink->n_blink = np->n_blink;
@@ -993,9 +1003,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 {
 	struct name *to;
 	FILE *mtf, *nmtf;
-	enum okay	ok = STOP;
-	int	dosign = -1;
-	char	*charsets, *ncs = NULL, *cp;
+	enum okay ok = STOP;
+	int dosign = -1;
+	char *charsets, *ncs = NULL, *cp;
 
 #ifdef	notdef
 	if ((hp->h_to = checkaddrs(hp->h_to)) == NULL) {
@@ -1027,9 +1037,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 			if (value("askattach") != NULL)
 				hp->h_attach = edit_attachments(hp->h_attach);
 			if (value("asksign") != NULL)
-				dosign = yorn("Sign this message (y/n)? ");
+				dosign = yorn(tr(35,
+					"Sign this message (y/n)? "));
 		} else {
-			printf(catgets(catd, CATSET, 183, "EOT\n"));
+			printf(tr(183, "EOT\n"));
 			fflush(stdout);
 		}
 	}
@@ -1043,12 +1054,17 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 			printf(catgets(catd, CATSET, 185,
 				"Null message body; hope that's ok\n"));
 	}
-	if (dosign < 0) {
-		if (value("smime-sign") != NULL)
-			dosign = 1;
-		else
-			dosign = 0;
+
+	if (dosign < 0)
+		dosign = (value("smime-sign") != NULL);
+#ifndef USE_SSL
+	if (dosign) {
+		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+		ok = STOP;
+		goto out;
 	}
+#endif
+
 	/*
 	 * Now, take the user names from the combined
 	 * to and cc lists and do all the alias
@@ -1108,20 +1124,27 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 		}
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
 		perror("");
-	fail:	senderr++;
+#ifdef USE_SSL
+jfail:
+#endif
+		senderr++;
 		rewind(mtf);
 		savedeadletter(mtf);
 		fputs(catgets(catd, CATSET, 187,
 				". . . message not sent.\n"), stderr);
 		return STOP;
 	}
+
 	mtf = nmtf;
+#ifdef USE_SSL
 	if (dosign) {
 		if ((nmtf = smime_sign(mtf, hp)) == NULL)
-			goto fail;
+			goto jfail;
 		Fclose(mtf);
 		mtf = nmtf;
 	}
+#endif
+
 	/*
 	 * Look through the recipient list for names with /'s
 	 * in them which we write to as files directly.

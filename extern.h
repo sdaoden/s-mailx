@@ -467,13 +467,15 @@ void nss_gen_err(const char *fmt, ...);
 #ifdef USE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
 void ssl_gen_err(const char *fmt, ...);
-#endif
 int cverify(void *vp);
 FILE *smime_sign(FILE *ip, struct header *);
 FILE *smime_encrypt(FILE *ip, const char *certfile, const char *to);
 struct message *smime_decrypt(struct message *m, const char *to,
 		const char *cc, int signcall);
 enum okay smime_certsave(struct message *m, int n, FILE *op);
+#else
+# define cverify	ccmdnotsupp
+#endif
 
 /* pop3.c */
 enum okay pop3_noop(void);
@@ -544,6 +546,7 @@ int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 #endif
 
 /* ssl.c */
+#ifdef USE_SSL
 void ssl_set_vrfy_level(const char *uhp);
 enum okay ssl_vrfy_decide(void);
 char *ssl_method_string(const char *uhp);
@@ -553,6 +556,9 @@ FILE *smime_encrypt_assemble(FILE *hp, FILE *yp);
 struct message *smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp);
 int ccertsave(void *v);
 enum okay rfc2595_hostname_match(const char *host, const char *pattern);
+#else
+# define ccertsave	ccmdnotsupp
+#endif
 
 /*
  * strings.c

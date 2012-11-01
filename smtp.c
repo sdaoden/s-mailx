@@ -258,6 +258,8 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	enum	{ AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 	int	inhdr = 1, inbcc = 0;
 	(void)hp;
+	(void)xserver;
+	(void)uhp;
 
 	if ((authstr = smtp_auth_var("", skinned)) == NULL)
 		auth = user && password ? AUTH_LOGIN : AUTH_NONE;
