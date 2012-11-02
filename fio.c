@@ -252,7 +252,7 @@ _globname(char const *name)
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
-		return name;
+		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
