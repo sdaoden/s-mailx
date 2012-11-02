@@ -2,8 +2,7 @@
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
 .\"     Gunnar Ritter.  All rights reserved.
-.\" Copyright (c) 2012 Steffen "Daode" Nurpmeso.
-.\" All rights reserved.
+.\" Copyright (c) 2012 Steffen "Daode" Nurpmeso.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -48,7 +47,7 @@
 .\"
 .\" ##  --  >8  --  8<  --  ##
 .\"
-.TH "\*(UU" 1 "2012-10-25" "\*(uu" "User Commands"
+.TH "\*(UU" 1 "2012-11-03" "\*(uu" "User Commands"
 .SH NAME
 \*(UA \- send and receive Internet mail
 .SH SYNOPSIS
@@ -86,14 +85,12 @@
 reminiscent of
 .IR ed (1)
 with lines replaced by messages.
-It is based on Heirloom mailx, that is based on Berkeley Mail 8.1,
-is intended to provide the functionality of the POSIX
-.B mailx
+It is based on Heirloom mailx that is based upon Berkeley Mail 8.1,
+is intended to provide the functionality of the POSIX \fBmailx\fR
 command,
-and offers extensions for IDNA, MIME, IMAP, POP3, SMTP, and S/MIME.
-\*(UA provides enhanced features for interactive use, such as caching
-and disconnected operation for IMAP, message threading, scoring, and
-filtering.
+and offers extensions for MIME, IDNA, IMAP, POP3, SMTP, and S/MIME,
+most of which being compile-time options.
+\*(UA provides enhanced features for interactive use.
 It is also usable as a mail batch language, both for sending and
 receiving mail.
 .PP
@@ -120,23 +117,17 @@ Send blind carbon copies to the given list of addresses.
 Send carbon copies to the given list of addresses.
 .TP
 .B \-D
-(Optional) Start in \fIdisconnected\fR mode;
-see the description for the \fIdisconnected\fR variable option.
+(Optional) Set the \fIdisconnected\fR variable option immediately.
 .TP
 .B \-d
 Enables debugging messages and disables the actual delivery of messages.
-Unlike
-.IR \-v ,
-this option is intended for \*(UA development only.
+Unlike \fI\-v\fR this option is intended for \*(UA development only.
 .TP
 .B \-E
 If an outgoing message does not contain any text in its first or only
 message part, do not send but discard it silently,
-effectively setting the
-.I skipemptybody
-variable at program startup.
-This is useful for sending messages from scripts started by
-.IR cron (8).
+effectively setting the \fIskipemptybody\fR variable at program startup.
+This is useful for sending messages from scripts.
 .TP
 .B \-e
 Just check if mail is present in the system mailbox.
@@ -162,8 +153,7 @@ Print header summaries for all messages and exit.
 .TP
 .B \-I
 Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
-Only applicable in combination with
-.IR \-f .
+Only applicable in combination with \fI\-f\fR.
 .TP
 .B \-i
 Ignore tty interrupt signals.
@@ -204,23 +194,20 @@ and persists for a complete (interactive) session,
 i.e., will be used for all interactions with the MTA.
 .TP
 \fB\-S\fI\ variable\fR[\fB=\fIvalue\fR]
-Sets the internal option
-.I variable
+Sets the internal option \fIvariable\fR
 and, in case of a string option, assigns \fIvalue\fR to it.
 These assignments become active immediately,
-but also cannot be overwritten by resource file content.
+and will be reestablished after the resource files have been loaded.
 .TP
 .BI \-s \ subject
 Specify subject on command line (only the first argument after the
-.I \-s
-flag is used as a subject; be careful to quote subjects containing spaces).
+\fI\-s\fR flag is used as a subject;
+be careful to quote subjects containing spaces).
 .TP
 .BI \-T \ name
 Writes the `Message-Id:' and `Article-Id:' header fields of each message
-read in the file
-.IR name .
-Implies
-.IR \-I .
+read in the file \fIname\fR.
+Implies \fI\-I\fR.
 Compressed files are handled as described for the \fIfolder\fR command
 below.
 .TP
@@ -255,25 +242,25 @@ The section \fIRecipient address specifications\fR below explains the
 interpretation of names in more detail.
 The user is then expected to type in his message, followed by an
 `control-D' at the beginning of a line.
-The section \fIReplying to or originating mail\fI, describes some
+The section \fIReplying to or originating mail\fR, describes some
 features of \*(UA available to help when composing letters.
 .SS "Reading mail"
 In normal usage \*(UA is given no arguments and checks the user's mail
 out of the post office, then prints out a one line header of each
 message found.
 The current message is initially the first message (numbered 1) and can
-be printed using the print command which can be abbreviated `p').
+be printed using the \fIprint\fR command which can be abbreviated `p'.
 The user can move among the messages much as he moves between lines in
 .IR ed (1),
 with the commands `+' and `\-' moving backwards and forwards,
 and simple numbers.
 .SS "Disposing of mail"
-After examining a message the user can delete `d') the message or reply
-`r') to it.
+After examining a message the user can \fIdelete\fR (`d') the message
+or \fIreply\fR (`r') to it.
 Deletion causes the \*(UA program to forget about the message.
 This is not irreversible;
-the message can be undeleted `u') by giving its number,
-or the \*(UA session can be aborted by giving the exit `x') command.
+the message can be \fIundelete\fRd (`u') by giving its number,
+or the \*(UA session can be ended by giving the \fIexit\fR (`x') command.
 Deleted messages will, however, usually disappear never to be seen
 again.
 .SS "Specifying messages"
@@ -542,7 +529,7 @@ must be in the form
 where \fId\fR[\fId\fR] is the day of the month
 as one or two digits,
 .I mon
-is the name of the month\(emone of
+is the name of the month \(en one of
 `Jan', `Feb', `Mar',
 `Apr', `May', `Jun',
 `Jul', `Aug', `Sep',
@@ -580,45 +567,33 @@ command with the search criteria first
 to check for appropriate messages,
 and to read each single message then by typing `\fB`\fR' repeatedly.
 .SS "Replying to or originating mail"
-The
-.I reply
-command can be used
-to set up a response to a message,
+The \fIreply\fR command can be used to set up a response to a message,
 sending it back to the person who it was from.
-Text the user types in then,
+Text the user types in,
 up to an end-of-file,
 defines the contents of the message.
-While the user is composing a message,
-\*(UA treats lines beginning with the character `~' specially.
-For instance, typing `~m' (alone on a line)
-will place a copy of the current message into the response
-right shifting it by a tabstop
-(see
-.I indentprefix
-variable, below).
+While the user is composing a message \*(UA treats lines beginning with
+the character `~' specially.
+For instance, typing `~m' (alone on a line) will place a copy of the
+current message into the response right shifting it by a tabstop
+(read about the \fIindentprefix\fR variable below).
 Other escapes will set up subject fields,
 add and delete recipients to the message,
 attach files to it
-and allow the user to escape to an editor
-to revise the message
+and allow the user to escape to an editor to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
 .SS "Ending a mail processing session"
-The user can end a \*(UA session
-with the quit (`q') command.
-Messages which have been examined
-go to the user's mbox file
-unless they have been deleted
+The user can end a \*(UA session with the \fIquit\fR (`q') command.
+Messages which have been examined go to the user's mbox file unless they
+have been deleted,
 in which case they are discarded.
-Unexamined messages go back
-to the post office.
+Unexamined messages go back to the post office.
 (See the \-f option above).
 .SS "Personal and systemwide distribution lists"
-It is also possible to create
-a personal distribution lists so that,
-for instance, the user can send mail
-to `\fIcohorts\fR' and have it go
-to a group of people.
+It is also possible to create a personal distribution lists so that,
+for instance, the user can send mail to `\fIcohorts\fR'
+and have it go to a group of people.
 Such lists can be defined by placing a line like
 .nf
 
@@ -626,46 +601,33 @@ Such lists can be defined by placing a line like
 
 .fi
 in the file \*(ur in the user's home directory.
-The currently defined list of such aliases can be displayed with the alias
-command in \*(UA.
+The currently defined list of such aliases can be displayed with the
+\*(UA \fIalias\fR command.
 System wide distribution lists can be created by editing /etc/aliases, see
 \fIaliases(5)\fR and \fIsendmail(1)\fR;
-these are kept in a different syntax and are used by the MTA, not \*(UA.
+these are kept in a different syntax
+and are used by the MTA, rather than \*(UA.
 In mail the user sends, personal aliases will be expanded in mail sent to
 others so that they will be able to reply to the recipients.
 System wide aliases are not expanded when the mail is sent,
 but any reply returned to the machine will have the system wide alias
 expanded as all mail goes through \fIsendmail(1)\fR.
 .SS "Recipient address specifications"
-When an address is used to name a recipient
-(in any of To, Cc, or Bcc),
-names of local mail folders
-and pipes to external commands
-can also be specified;
-the message text is then written to them.
-The rules are: Any name which starts with a
-.RB ` | '
-character specifies a pipe,
-the command string following the `|' is executed
+When an address is used to name a recipient (in `To:', `Cc:', or `Bcc:'),
+names of local mail folders and pipes to external commands may also be
+specified \(en the message text is then written to them.
+The rules are: Any name which starts with a `\fB|\fR' character
+specifies a pipe,
+the command string following the `\fB|\fR' is executed
 and the message is sent to its standard input;
-any other name which contains a
-.RB ` @ '
-character is treated as a mail address;
-any other name which starts with a
-.RB ` + '
-character specifies a folder name;
-any other name which contains a
-.RB ` / '
-character
-but no
-.RB ` ! '
-or
-.RB ` % '
-character before also specifies a folder name;
+any other name which contains a `\fB@\fR' character is treated as
+a mail address;
+any other name which starts with a `\fB+\fR' character specifies
+a folder name;
+any other name which contains a `\fB/\fR' character but no `\fB!\fR'
+or `\fB%\fR' character before also specifies a folder name;
 what remains is treated as a mail address.
-Compressed folders are handled as described for the
-.I folder
-command below.
+Compressed folders are handled as described for the \fIfolder\fR command.
 .SS "Network mail (Internet / ARPA, UUCP, Berknet)"
 See
 .IR mailaddr (7)
@@ -1012,7 +974,7 @@ Marks the end of an if statement.
 .TP
 .B exit
 (ex or x) Effects an immediate return to the Shell without modifying the
-user's system mailbox, his mbox file, or his edit file in \-f.
+user's system mailbox, his \fImbox\fR file, or his edit file in \-f.
 .TP
 .B file
 (fi) The same as folder.
@@ -1040,15 +1002,14 @@ the user has made in the current file and read in the new file.
 Some special conventions are recognized for the name.
 \fB#\fR means the previous file,
 \fB%\fR means the invoking user's system mailbox,
-\fB%\fIuser\fR means \fIuser's\fR system mailbox,
-\fB&\fR means the invoking user's mbox file,
+\fB%\fIuser\fR means \fIuser\fR's system mailbox,
+\fB&\fR means the invoking user's \fImbox\fR file,
 and \fB+\fIfile\fI means a \fIfile\fR in the folder directory.
 \fB%:\fIfilespec\fR expands to the same value as \fIfilespec\fR,
-but the file is handled as a system mailbox e.\ g. by the mbox and save
-commands.
+but the file is handled as a system mailbox e.\ g. by the \fImbox\fR
+and \fIsave\fR commands.
 If the name matches one of the strings defined with the \fIshortcut\fR
-command,
-it is replaced by its long form and expanded.
+command it is replaced by its long form and expanded.
 If the name ends with \fB.gz\fR or \fB.bz2\fR,
 it is treated as compressed with \fIgzip(1)\fR or \fIbzip2(1)\fR,
 respectively.
@@ -1065,10 +1026,10 @@ A name of the form
 
 .fi
 is taken as an Internet mailbox specification.
-The supported protocols are currently \fBimap\fR (IMAP v4r1),
-\fBimaps\fR (IMAP with SSL/TLS encryption),
-\fBpop3\fR (POP3),
-and \fBpop3s\fR (POP3 with SSL/TLS encryption).
+The supported protocols are currently \fBimap\fR (IMAP v4r1; optional),
+\fBimaps\fR (IMAP with SSL/TLS encryption; optional),
+\fBpop3\fR (POP3; optional),
+and \fBpop3s\fR (POP3 with SSL/TLS encryption; optional).
 If \fIuser\fR contains special characters, in particular `/' or `%',
 they must be escaped in URL notation, as `%2F' or `%25'.
 The optional \fIfile\fR part applies to IMAP only;
@@ -1076,7 +1037,7 @@ if it is omitted, the default `INBOX' is used.
 If \*(UA is connected to an IMAP server,
 a name of the form \fB@\fImailbox\fR refers to the \fImailbox\fR on that
 server.
-If the `folder' variable refers to an IMAP account,
+If the \fIfolder\fR variable refers to an IMAP account,
 the special name `%' selects the `INBOX' on that account.
 .TP
 .B Followup
@@ -1242,7 +1203,7 @@ Killing is only effective for the current session on a folder;
 when it is quit, all messages are automatically unkilled.
 .TP
 .B list
-Prints the names of all available commands.
+Prints the names of all available commands, alphabetically sorted.
 .TP
 .B Mail
 (M) Similar to \fImail\fR,
@@ -1278,7 +1239,7 @@ If the \fIheader\fR variable is set,
 the headers of each new message are also printed.
 .TP
 .B next
-(n) (like \fI+\fR or ENTER) Goes to the next message in sequence and
+(n) (like \fI\+\fR or ENTER) Goes to the next message in sequence and
 types it.
 With an argument list, types the next matching message.
 .TP
@@ -1462,7 +1423,7 @@ Scores only refer to the currently opened instance of a folder.
 (se) With no arguments, prints all variable values,
 piped through the pager if the output does not fit on the screen.
 Otherwise, sets option.
-Arguments are of the form `option=value' (no space before or after =),
+Arguments are of the form `option=value' (no space before or after `='),
 or plain `option' if there is no value.
 Quotation marks may be placed around any part of the assignment
 statement to quote blanks or tabs, i.\|e.
@@ -1620,8 +1581,8 @@ Removes the header field names from the list of ignored fields.
 command that was previously applied on exactly these messages.
 .TP
 .B unkill
-(Optional) Takes a message list and `unkills' each message.
-Also sets the score of the messages to 0.
+(Optional) Takes a message list and un\fIkill\fRs each message.
+Also sets the \fIscore\fR of the given messages to 0.
 .TP
 .B Unread
 Same as \fIunread\fR.
@@ -1680,8 +1641,8 @@ If a message is in MIME multipart format its first part is written to
 the specified file as for conventional messages,
 and the user is asked for a filename to save each other part.
 For convience saving of each part may be skipped by giving an empty value;
-the same result can also be achieved by writing it to '/dev/null'.
-For the second and subsequent parts a leading '|' character causes the
+the same result can also be achieved by writing it to `/dev/null'.
+For the second and subsequent parts a leading `|' character causes the
 part to be piped to the remainder of the user input interpreted as
 a shell command;
 otherwise the user input is expanded as usually for folders,
@@ -1712,17 +1673,14 @@ and a `$' lets \*(UA scroll to the last window of messages.
 .TP
 .B Z
 Similar to \fIz\fR,
-but scrolls to the next or previous window
-that contains at least one new or `flagged' message.
+but scrolls to the next or previous window that contains at least one
+new or `flagged' message.
 .SS "Tilde escapes"
 Here is a summary of the tilde escapes,
-which are used when composing
-messages to perform special functions.
-Tilde escapes are only recognized
-at the beginning of lines.
-The name `\fItilde escape\fR' is somewhat of a misnomer
-since the actual escape character can be set
-by the option escape.
+which are used when composing messages to perform special functions.
+Tilde escapes are only recognized at the beginning of lines.
+The name `\fItilde escape\fR' is somewhat of a misnomer since the actual
+escape character can be set by the option \fIescape\fR.
 .TP
 .BI ~! command
 Execute the indicated shell command,
@@ -3523,7 +3481,7 @@ To read your mail, simply type
 will respond by typing its version number and date and then listing
 the messages you have waiting.
 Then it will type a prompt and await your command.
-The messages are assigned numbers starting with 1\(emyou
+The messages are assigned numbers starting with 1 \(en you
 refer to the messages with these numbers.
 \*(UA keeps track of which messages are
 .I new
@@ -4657,7 +4615,7 @@ by Steffen "Daode" Nurpmeso.
 .PP
 Portions of this text are reprinted and reproduced in electronic form
 from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology
-\(em Operating System Interface (POSIX), The Open Group Base
+\(en Operating System Interface (POSIX), The Open Group Base
 Specifications Issue 6, Copyright \(co 2001-2003 by the Institute of
 Electrical and Electronics Engineers, Inc and The Open Group. In the
 event of any discrepancy between this version and the original IEEE and
