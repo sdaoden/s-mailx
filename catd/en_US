@@ -49,29 +49,7 @@ $set 1
 46 "Endif" without matching "if"\n
 47 No recipient specified.
 48 No applicable messages.
-49 $-----------------------------------------------------------\n\
-The following ~ escapes are defined:\n\
-~~              Quote a single tilde\n\
-~@ [file ...]   Edit attachment list\n\
-~b users        Add users to "blind" cc list\n\
-~c users        Add users to cc list\n\
-~d              Read in dead.letter\n\
-~e              Edit the message buffer\n\
-~f messages     Read in messages\n\
-~F messages     Same as ~f, but keep all header lines\n\
-~h              Prompt for to list, subject and cc list\n\
-~r file         Read a file into the message buffer\n\
-~p              Print the message buffer\n\
-~m messages     Read in messages, right shifted by a tab\n\
-~M messages     Same as ~m, but keep all header lines\n\
-~s subject      Set subject\n\
-~t users        Add users to to list\n\
-~v              Invoke display editor on message\n\
-~w file         Write message onto file.\n\
-~?              Print this message\n\
-~!command       Invoke the shell\n\
-~|command       Pipe the message through the command\n\
------------------------------------------------------------\n$
+49 --- DELETED ---
 50 $#%u\tfilename: $
 51 temporary mail file
 52 $ wrote:\n\n$
@@ -355,3 +333,31 @@ list                        list names of all available commands\n
 299 \n\
 A <message list> consists of integers, ranges of same, or other criteria\n\
 separated by spaces.  If omitted, %s uses the last message typed.\n
+
+
+$ ~? output is splitted due to compiler limits
+300 -------------------- ~ ESCAPES ----------------------------\n\
+~~             Quote a single tilde\n\
+~@ [file ...]  Edit attachment list\n\
+~b users       Add users to "blind" cc list\n\
+~c users       Add users to cc list\n\
+~d             Read in dead.letter\n\
+~e             Edit the message buffer\n\
+~f messages    Read in messages without indenting lines\n\
+~F messages    Same as ~f, but keep all header lines\n\
+~h             Prompt for to list, subject, cc, and "blind" cc list\n
+
+301 ~r file        Read a file into the message buffer\n\
+~p             Print the message buffer\n\
+~q             Abort message composition and save text to dead.letter\n\
+~m messages    Read in messages with each line indented\n\
+~M messages    Same as ~m, but keep all header lines\n\
+~s subject     Set subject\n\
+~t users       Add users to to list\n\
+~v             Invoke display editor on message\n\
+~w file        Write message onto file\n\
+~x             Abort message composition and discard text written so far\n
+
+302 ~!command      Invoke the shell\n\
+~:command      Execute a regular command\n\
+-----------------------------------------------------------\n
