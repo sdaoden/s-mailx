@@ -101,7 +101,7 @@ add_smopt(int argc_left, char *arg)
 int 
 main(int argc, char *argv[])
 {
-	const char optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
+	char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
 		usagestr[] =
 		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
 		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
@@ -154,7 +154,7 @@ main(int argc, char *argv[])
 	}
 	assign("header", "");
 	assign("save", "");
-#ifdef	HAVE_SETLOCALE
+#ifdef HAVE_SETLOCALE
 	setlocale(LC_ALL, "");
 	mb_cur_max = MB_CUR_MAX;
 # if defined HAVE_NL_LANGINFO && defined CODESET
