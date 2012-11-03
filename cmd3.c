@@ -37,12 +37,14 @@
  * SUCH DAMAGE.
  */
 
-#include <math.h>
-#include <float.h>
 #include "rcv.h"
-#include "extern.h"
-#include <unistd.h>
+
 #include <errno.h>
+#include <float.h>
+#include <math.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

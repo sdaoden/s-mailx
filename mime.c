@@ -38,12 +38,14 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
 #include <ctype.h>
 #include <errno.h>
-#ifdef	HAVE_WCTYPE_H
-#include <wctype.h>
-#endif	/* HAVE_WCTYPE_H */
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -55,15 +57,14 @@
  * You won't guess what these are for.
  */
 static const char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char *mimetypes_world = "/etc/mime.types";
-static char *mimetypes_user = "~/.mime.types";
-char *us_ascii = "us-ascii";
+static char const *mimetypes_world = "/etc/mime.types";
+static char const *mimetypes_user = "~/.mime.types";
 
 static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
 static int mustquote_inhdrq(int c);
 static size_t	delctrl(char *cp, size_t sz);
-static char *getcharset(int isclean);
+static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
 #ifdef	HAVE_ICONV
 static void uppercopy(char *dest, const char *src);
@@ -72,7 +73,7 @@ static void invalid_seq(int c);
 #endif	/* HAVE_ICONV */
 static int is_this_enc(const char *line, const char *encoding);
 static char *mime_tline(char *x, char *l);
-static char *mime_type(char *ext, char *filename);
+static char *mime_type(char *ext, char const *filename);
 static enum mimeclean mime_isclean(FILE *f);
 static enum conversion gettextconversion(void);
 static char *ctohex(unsigned char c, char *hex);
@@ -142,24 +143,21 @@ delctrl(char *cp, size_t sz)
 	return y;
 }
 
-static char defcharset[] = "utf-8";
-
 /*
  * Get the character set dependant on the conversion.
  */
-static char *
+static char const *
 getcharset(int isclean)
 {
-	char *charset;
+	char const *charset;
 
 	if (isclean & (MIME_CTRLCHAR|MIME_HASNUL))
 		charset = NULL;
 	else if (isclean & MIME_HIGHBIT) {
 		charset = (wantcharset && wantcharset != (char *)-1) ?
 			wantcharset : value("charset");
-		if (charset == NULL) {
+		if (charset == NULL)
 			charset = defcharset;
-		}
 	} else {
 		/*
 		 * This variable shall remain undocumented because
@@ -170,21 +168,21 @@ getcharset(int isclean)
 			charset = us_ascii;
 		}
 	}
-	return charset;
+	return (charset);
 }
 
 /*
  * Get the setting of the terminal's character set.
  */
-char *
+char const *
 gettcharset(void)
 {
-	char *t;
+	char const *t;
 
 	if ((t = value("ttycharset")) == NULL)
 		if ((t = value("charset")) == NULL)
 			t = defcharset;
-	return t;
+	return (t);
 }
 
 static int 
@@ -210,7 +208,7 @@ name_highbit(struct name *np)
 	return 0;
 }
 
-char *
+char const *
 need_hdrconv(struct header *hp, enum gfield w)
 {
 	if (w & GIDENT) {
@@ -590,7 +588,7 @@ mime_tline(char *x, char *l)
  * Check the given MIME type file for extension ext.
  */
 static char *
-mime_type(char *ext, char *filename)
+mime_type(char *ext, char const *filename)
 {
 	FILE *f;
 	char *line = NULL;
@@ -700,7 +698,7 @@ gettextconversion(void)
 
 /*TODO Dobson: be037047c, contenttype==NULL||"text"==NULL control flow! */
 int
-get_mime_convert(FILE *fp, char **contenttype, char **charset,
+get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign)
 {
 	int convert;
@@ -890,7 +888,8 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
 void 
 mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 {
-	char *p, *q, *op, *upper, *cs, *cbeg, *tcs, *lastwordend = NULL;
+	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
+	char const *tcs;
 	struct str cin, cout;
 	int convert;
 	size_t maxstor, lastoutl = 0;
@@ -1035,8 +1034,8 @@ fromhdr_end:
 static size_t
 mime_write_tohdr(struct str *in, FILE *fo)
 {
-	char *upper, *wbeg, *wend, *charset, *lastwordend = NULL, *lastspc, b,
-		*charset7;
+	char *upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
+	char const *charset, *charset7;
 	struct str cin, cout;
 	size_t sz = 0, col = 0, wr, charsetlen, charset7len;
 	int quoteany, mustquote, broken,

@@ -35,19 +35,12 @@
 #ifndef USE_NSS
 typedef int avoid_empty_file_compiler_warning;
 #else
-
 #include "rcv.h"
 
 #include <setjmp.h>
-#include <termios.h>
-#include <stdio.h>
-
-static int	verbose;
-static int	reset_tio;
-static struct termios	otio;
-static sigjmp_buf	nssjmp;
-
 #include <stdarg.h>
+#include <stdio.h>
+#include <termios.h>
 
 #include <nss.h>
 #include <ssl.h>
@@ -60,10 +53,10 @@ static sigjmp_buf	nssjmp;
 #include <smime.h>
 #include <ciferfam.h>
 #ifdef HAVE_XCONST_H
-#include <xconst.h>
+# include <xconst.h>
 #endif
 #ifdef HAVE_GENNAME_H
-#include <genname.h>
+# include <genname.h>
 #endif
 #include <private/pprio.h>
 
@@ -80,6 +73,11 @@ typedef struct CERTAltNameEncodedContextStr {
 #endif	/* !HAVE_CERTAltNameEncodedContext */
 
 #include "nsserr.c"
+
+static int	verbose;
+static int	reset_tio;
+static struct termios	otio;
+static sigjmp_buf	nssjmp;
 
 static char *password_cb(PK11SlotInfo *slot, PRBool retry, void *arg);
 static SECStatus bad_cert_cb(void *arg, PRFileDesc *fd);

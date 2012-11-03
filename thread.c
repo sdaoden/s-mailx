@@ -37,11 +37,11 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "rcv.h"
-#include "extern.h"
+
 #include <time.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

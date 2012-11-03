@@ -46,10 +46,12 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#include <sys/stat.h>
+
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Locate the user's mailbox file (ie, the place where new, unread

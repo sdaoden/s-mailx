@@ -37,15 +37,14 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "rcv.h"
-#include "extern.h"
+
 #include <errno.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
+#include "extern.h"
 #ifdef USE_MD5
 # include "md5.h"
 #endif

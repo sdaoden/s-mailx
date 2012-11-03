@@ -38,10 +38,12 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/stat.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -173,7 +175,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
 		enum sendaction action, off_t *volatile stats, int level)
 {
-	char *line = NULL, *cp, *cp2, *start, *tcs, *pipecmd = NULL, *rest;
+	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL, *rest;
+	char const *tcs;
 	size_t linesize = 0, linelen, count, len, restsize;
 	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
 	struct mimepart	*np;

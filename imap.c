@@ -37,33 +37,31 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "rcv.h"
+
+#include <errno.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
+#ifdef USE_IMAP
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#ifdef HAVE_ARPA_INET_H
+# include <arpa/inet.h>
+#endif
+
+#include "extern.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
  *
  * IMAP v4r1 client following RFC 2060.
  */
-
-#include "rcv.h"
-#include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <time.h>
-
-#ifdef USE_IMAP
-# ifdef USE_MD5
-#  include "md5.h"
-# endif
-
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef  HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif  /* HAVE_ARPA_INET_H */
-
-#include "extern.h"
 
 static int	verbose;
 

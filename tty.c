@@ -44,11 +44,13 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
 #include <errno.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+
+#include "extern.h"
 
 static	cc_t		c_erase;	/* Current erase char */
 static	cc_t		c_kill;		/* Current kill char */

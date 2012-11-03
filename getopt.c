@@ -9,12 +9,11 @@
 #ifdef HAVE_GETOPT
 typedef int avoid_empty_file_compiler_warning;
 #else
+#include "rcv.h"
 
-# include "rcv.h"
-
-# ifndef HAVE_SSIZE_T
+#ifndef HAVE_SSIZE_T
 typedef	long	ssize_t;
-# endif
+#endif
 
 /*
  * One should not think that re-implementing this is necessary, but

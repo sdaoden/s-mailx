@@ -42,7 +42,6 @@
 #ifndef USE_SSL
 typedef int avoid_empty_file_compiler_warning;
 #else
-
 #include "rcv.h"
 #include "extern.h"
 

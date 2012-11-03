@@ -38,15 +38,15 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
 
 #include <time.h>
-
 #ifdef USE_IDNA
 # include <idna.h>
 # include <stringprep.h>
 # include <tld.h>
 #endif
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

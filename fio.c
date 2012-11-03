@@ -38,34 +38,34 @@
  */
 
 #include "rcv.h"
+
+#include <errno.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/wait.h>
-#ifdef	HAVE_WORDEXP
-#include <wordexp.h>
-#endif	/* HAVE_WORDEXP */
 #include <unistd.h>
+#ifdef HAVE_SOCKETS
+# include <netdb.h>
+# include <netinet/in.h>
+# include <sys/socket.h>
+# ifdef HAVE_ARPA_INET_H
+#  include <arpa/inet.h>
+# endif
+#endif
+#ifdef USE_NSS
+# include <nss.h>
+# include <ssl.h>
+#elif defined USE_OPENSSL
+# include <openssl/ssl.h>
+# include <openssl/err.h>
+# include <openssl/x509v3.h>
+# include <openssl/x509.h>
+# include <openssl/rand.h>
+#endif
+#ifdef HAVE_WORDEXP
+# include <wordexp.h>
+#endif
 
-#if defined (USE_NSS)
-#include <nss.h>
-#include <ssl.h>
-#elif defined (USE_OPENSSL)
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509.h>
-#include <openssl/rand.h>
-#endif	/* USE_SSL */
-#ifdef	HAVE_SOCKETS
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
-#endif	/* HAVE_SOCKETS */
-
-#include <errno.h>
 #include "extern.h"
 
 /*

@@ -43,47 +43,63 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#if !defined (NI_MAXHOST) || (NI_MAXHOST) < 1025
-#undef	NI_MAXHOST
-#define	NI_MAXHOST	1025
+#if ! defined NI_MAXHOST || NI_MAXHOST < 1025
+# undef NI_MAXHOST
+# define NI_MAXHOST	1025
 #endif
 
-#define	APPEND				/* New mail goes to end of mailbox */
+#define APPEND				/* New mail goes to end of mailbox */
 
 /* Is *C* a quoting character (for *quote-fold* compression) */
-#define ISQUOTE(C)	((C) == '>' || (C) == '|')
+#define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
 
-#define	ESCAPE		'~'		/* Default escape for sending */
-#ifndef	MAXPATHLEN
-#ifdef	PATH_MAX
-#define	MAXPATHLEN	PATH_MAX
-#else
-#define	MAXPATHLEN	1024
+#define ESCAPE		'~'		/* Default escape for sending */
+
+#ifndef MAXPATHLEN
+# ifdef PATH_MAX
+#  define MAXPATHLEN	PATH_MAX
+# else
+#  define MAXPATHLEN	1024
+# endif
 #endif
+#ifndef PATHSIZE
+# define PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
 #endif
-#ifndef	PATHSIZE
-#define	PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
-#endif
-#define	HSHSIZE		59		/* Hash size for aliases and vars */
 #if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
 # define LINESIZE	BUFSIZ		/* max readable line width */
 #else
 # define LINESIZE	2560
 #endif
-#define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
-#define	MAXARGC		1024		/* Maximum list of raw strings */
-#define	MAXEXP		25		/* Maximum expansion of aliases */
 
+#define	STRINGSIZE	((unsigned) 128)/* Dynamic allocation units */
+
+#define MAXARGC		1024		/* Maximum list of raw strings */
+#define MAXEXP		25		/* Maximum expansion of aliases */
+#define HSHSIZE		59		/* Hash size for aliases and vars */
+
+/*
+ * Translation TODO convert all catgets() that remain to tr()
+ */
 #undef tr
 #ifdef HAVE_CATGETS
-# define CATSET			1
-# define tr(c, d)		catgets(catd, CATSET, c, d)
+# define CATSET		1
+# define tr(c,d)	catgets(catd, CATSET, c, d)
 #else
-# define catgets(a, b, c, d)	(d)
-# define tr(c, d)		(d)
+# define catgets(a,b,c,d) (d)
+# define tr(c,d)	(d)
 #endif
 
-typedef void (*sighandler_type)(int);
+typedef unsigned long	ul_it;
+typedef unsigned int	ui_it;
+typedef unsigned short	us_it;
+typedef unsigned char	uc_it;
+
+typedef signed long	sl_it;
+typedef signed int	si_it;
+typedef signed short	ss_it;
+typedef signed char	sc_it;
+
+typedef void (		*sighandler_type)(int);
 
 enum okay {
 	STOP = 0,
@@ -174,15 +190,15 @@ enum protocol {
 
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
-#ifdef	USE_SSL
+#ifdef USE_SSL
 	int	s_use_ssl;		/* SSL is used */
-#if defined (USE_NSS)
+# ifdef USE_NSS
 	void	*s_prfd;		/* NSPR file descriptor */
-#elif defined (USE_OPENSSL)
+# elif defined USE_OPENSSL
 	void	*s_ssl;			/* SSL object */
 	void	*s_ctx;			/* SSL context object */
-#endif	/* SSL library specific */
-#endif	/* USE_SSL */
+# endif
+#endif
 	char	*s_wbuf;		/* for buffered writes */
 	int	s_wbufsize;		/* allocated size of s_buf */
 	int	s_wbufpos;		/* position of first empty data byte */
@@ -293,7 +309,7 @@ struct mimepart {
 	char	*m_ct_type;		/* content-type */
 	char	*m_ct_type_plain;	/* content-type without specs */
 	enum mimecontent	m_mimecontent;	/* same in enum */
-	char	*m_charset;		/* charset */
+	char const *m_charset;		/* charset */
 	char	*m_ct_transfer_enc;	/* content-transfer-encoding */
 	enum mimeenc	m_mimeenc;	/* same in enum */
 	char	*m_partstring;		/* part level string */
@@ -355,9 +371,8 @@ enum argtype {
 /*
  * Oft-used mask values
  */
-
-#define	MMNORM		(MDELETED|MSAVED|MHIDDEN)/* Look at both save and delete bits */
-#define	MMNDEL		(MDELETED|MHIDDEN)	/* Look only at deleted bit */
+#define MMNORM	(MDELETED|MSAVED|MHIDDEN) /* Look at save *and* delete bits */
+#define MMNDEL		(MDELETED|MHIDDEN)	/* Look only at deleted bit */
 
 /*
  * Format of the command description table.
@@ -374,14 +389,13 @@ struct cmd {
 
 /* Yechh, can't initialize unions */
 
-#define	c_minargs c_msgflag		/* Minimum argcount for RAWLIST */
-#define	c_maxargs c_msgmask		/* Max argcount for RAWLIST */
+#define c_minargs	c_msgflag	/* Minimum argcount for RAWLIST */
+#define c_maxargs	c_msgmask	/* Max argcount for RAWLIST */
 
 /*
  * Structure used to return a break down of a head
  * line (hats off to Bill Joy!)
  */
-
 struct headline {
 	char	*l_from;	/* The name of the sender */
 	char	*l_tty;		/* His tty string (if any) */
@@ -410,9 +424,9 @@ enum gfield {
 	GFILES	= 131072	/* include filename addresses */
 };
 
-#define	GMASK	(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
+#define GMASK		(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
 
-#define	visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 || \
+#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 || \
 				(dot == (mp) && (mp)->m_flag & MKILL))
 
 /*
@@ -437,7 +451,6 @@ struct header {
  * the recipients of mail and aliases and all that
  * kind of stuff.
  */
-
 enum nameflags {
 	NAME_NAME_SALLOC	= 1<< 0,	/* .n_name is doped */
 	NAME_FULLNAME_SALLOC	= 1<< 1,	/* .n_fullname is doped */
@@ -492,7 +505,6 @@ struct addrguts {
 /*
  * Structure of a MIME attachment.
  */
-
 struct attachment {
 	struct attachment *a_flink;	/* Forward link in list. */
 	struct attachment *a_blink;	/* Backward list link */
@@ -510,7 +522,6 @@ struct attachment {
  * kept on a singly-linked list of these, rooted by
  * "variables"
  */
-
 struct var {
 	struct	var *v_link;		/* Forward link to next variable */
 	char	*v_name;		/* The variable's name */
@@ -561,7 +572,7 @@ enum ltoken {
 	TBACK	= 14			/* A '`' */
 };
 
-#define	REGDEP	2			/* Maximum regret depth. */
+#define REGDEP	2			/* Maximum regret depth. */
 
 /*
  * Constants for conditional commands.  These describe whether
@@ -587,9 +598,8 @@ struct shortcut {
 /*
  * Kludges to handle the change from setexit / reset to setjmp / longjmp
  */
-
-#define	setexit()	sigsetjmp(srbuf, 1)
-#define	reset(x)	siglongjmp(srbuf, x)
+#define setexit()	sigsetjmp(srbuf, 1)
+#define reset(x)	siglongjmp(srbuf, x)
 
 /*
  * Locale-independent character classes.
@@ -611,24 +621,24 @@ extern unsigned char const 	class_char[];
 #define __ischarof(C, FLAGS)	\
 	(asciichar(C) && (class_char[(unsigned char)(C)] & (FLAGS)) != 0)
 
-#define	asciichar(c) ((unsigned char)(c) <= 0177)
-#define	alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
-#define	alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
-#define	blankchar(c) __ischarof(c, C_BLANK)
-#define	blankspacechar(c) __ischarof(c, C_BLANK|C_SPACE)
-#define	cntrlchar(c) __ischarof(c, C_CNTRL)
-#define	digitchar(c) __ischarof(c, C_DIGIT|C_OCTAL)
-#define	lowerchar(c) __ischarof(c, C_LOWER)
-#define	punctchar(c) __ischarof(c, C_PUNCT)
-#define	spacechar(c) __ischarof(c, C_BLANK|C_SPACE|C_WHITE)
-#define	upperchar(c) __ischarof(c, C_UPPER)
-#define	whitechar(c) __ischarof(c, C_BLANK|C_WHITE)
-#define	octalchar(c) __ischarof(c, C_OCTAL)
+#define asciichar(c) ((unsigned char)(c) <= 0177)
+#define alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
+#define alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
+#define blankchar(c) __ischarof(c, C_BLANK)
+#define blankspacechar(c) __ischarof(c, C_BLANK|C_SPACE)
+#define cntrlchar(c) __ischarof(c, C_CNTRL)
+#define digitchar(c) __ischarof(c, C_DIGIT|C_OCTAL)
+#define lowerchar(c) __ischarof(c, C_LOWER)
+#define punctchar(c) __ischarof(c, C_PUNCT)
+#define spacechar(c) __ischarof(c, C_BLANK|C_SPACE|C_WHITE)
+#define upperchar(c) __ischarof(c, C_UPPER)
+#define whitechar(c) __ischarof(c, C_BLANK|C_WHITE)
+#define octalchar(c) __ischarof(c, C_OCTAL)
 
-#define	upperconv(c) (lowerchar(c) ? (char)((unsigned char)(c)-'a'+'A') : (c))
-#define	lowerconv(c) (upperchar(c) ? (char)((unsigned char)(c)-'A'+'a') : (c))
+#define upperconv(c) (lowerchar(c) ? (char)((unsigned char)(c)-'a'+'A') : (c))
+#define lowerconv(c) (upperchar(c) ? (char)((unsigned char)(c)-'A'+'a') : (c))
 /*	RFC 822, 3.2.	*/
-#define	fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
+#define fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
 
 /*
  * Truncate a file to the last character written. This is
@@ -656,37 +666,35 @@ extern unsigned char const 	class_char[];
  * Single-threaded, use unlocked I/O.
  */
 #ifdef HAVE_PUTC_UNLOCKED
-# undef	getc
+# undef getc
 # define getc(c)	getc_unlocked(c)
-# undef	putc
+# undef putc
 # define putc(c, f)	putc_unlocked(c, f)
-# undef	putchar
+# undef putchar
 # define putchar(c)	putc_unlocked((c), stdout)
 #endif
 
-#define	CBAD		(-15555)
+#define CBAD		(-15555)
 
-#define	smin(a, b)	((a) < (b) ? (a) : (b))
-#define	smax(a, b)	((a) < (b) ? (b) : (a))
+#define smin(a, b)	((a) < (b) ? (a) : (b))
+#define smax(a, b)	((a) < (b) ? (b) : (a))
 
 /*
  * For saving the current directory and later returning.
  */
-#ifdef	HAVE_FCHDIR
-struct	cw {
+struct cw {
+#ifdef HAVE_FCHDIR
 	int	cw_fd;
-};
-#else	/* !HAVE_FCHDIR */
-struct	cw {
+#else
 	char	cw_wd[PATHSIZE];
+#endif
 };
-#endif	/* !HAVE_FCHDIR */
 
-#ifdef	USE_SSL
+#ifdef USE_SSL
 enum ssl_vrfy_level {
 	VRFY_IGNORE,
 	VRFY_WARN,
 	VRFY_ASK,
 	VRFY_STRICT
 };
-#endif	/* USE_SSL */
+#endif

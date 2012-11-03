@@ -399,8 +399,8 @@ enum okay maildir_remove(const char *name);
 int main(int argc, char *argv[]);
 
 /* mime.c */
-char *gettcharset(void);
-char *need_hdrconv(struct header *hp, enum gfield w);
+char const *gettcharset(void);
+char const *need_hdrconv(struct header *hp, enum gfield w);
 #ifdef HAVE_ICONV
 iconv_t iconv_open_ft(const char *tocode, const char *fromcode);
 size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
@@ -411,7 +411,7 @@ int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
 char *mime_getboundary(char *h);
 char *mime_filecontent(char *name);
-int get_mime_convert(FILE *fp, char **contenttype, char **charset,
+int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign);
 void mime_fromhdr(struct str *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char *name);
@@ -514,7 +514,7 @@ enum okay mail1(struct header *hp, int printheaders, struct message *quote,
 int mkdate(FILE *fo, const char *field);
 int puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
-		char *contenttype, char *charset);
+		char const *contenttype, char const *charset);
 enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
 
 /* smtp.c */
