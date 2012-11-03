@@ -847,7 +847,7 @@ jcont:
 			 * (Very ugly, but take care for compiler supported
 			 * string lengths :()
 			 */
-			(void)puts(
+			(void)puts(tr(300,
 "-------------------- ~ ESCAPES ----------------------------\n"
 "~~             Quote a single tilde\n"
 "~@ [file ...]  Edit attachment list\n"
@@ -857,8 +857,8 @@ jcont:
 "~e             Edit the message buffer\n"
 "~f messages    Read in messages without indenting lines\n"
 "~F messages    Same as ~f, but keep all header lines\n"
-"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n");
-			(void)puts(
+"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n"));
+			(void)puts(tr(301,
 "~r file        Read a file into the message buffer\n"
 "~p             Print the message buffer\n"
 "~q             Abort message composition and save text to dead.letter\n"
@@ -868,11 +868,11 @@ jcont:
 "~t users       Add users to to list\n"
 "~v             Invoke display editor on message\n"
 "~w file        Write message onto file\n"
-"~x             Abort message composition and discard text written so far\n");
-			(void)puts(
+"~x             Abort message composition and discard text written so far\n"));
+			(void)puts(tr(302,
 "~!command      Invoke the shell\n"
 "~:command      Execute a regular command\n"
-"-----------------------------------------------------------\n");
+"-----------------------------------------------------------\n"));
 			break;
 
 		}

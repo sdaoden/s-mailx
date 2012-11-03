@@ -175,38 +175,61 @@ bangexp(char **str, size_t *size)
 int 
 help(void *v)
 {
-	(void)v;
+	int ret = 0;
+	char *arg = *(char**)v;
+
+	if (arg != NULL) {
+#ifdef USE_DOCSTRINGS
+		extern struct cmd const cmdtab[];
+		struct cmd const *cp;
+		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
+			if (cp->c_func == &ccmdnotsupp)
+				continue;
+			if (strcmp(cp->c_name, arg) == 0) {
+				printf("%s: %s\n", arg,
+					tr(cp->c_docid, cp->c_doc));
+				goto jleave;
+			}
+		}
+		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), arg);
+		ret = 1;
+#else
+		ret = ccmdnotsupp(NULL);
+#endif
+		goto jleave;
+	}
+
 	/* Very ugly, but take care for compiler supported string lengths :( */
-	fprintf(stdout,
-"%s commands:\n",
-		progname);
-	puts(
+	printf(tr(295, "%s commands:\n"), progname);
+	puts(tr(296,
 "type <message list>         type messages\n"
 "next                        goto and type next message\n"
 "from <message list>         give head lines of messages\n"
 "headers                     print out active message headers\n"
 "delete <message list>       delete messages\n"
-"undelete <message list>     undelete messages\n");
-	puts(
+"undelete <message list>     undelete messages\n"));
+	puts(tr(297,
 "save <message list> folder  append messages to folder and mark as saved\n"
 "copy <message list> folder  append messages to folder without marking them\n"
 "write <message list> file   append message texts to file, save attachments\n"
 "preserve <message list>     keep incoming messages in mailbox even if saved\n"
 "Reply <message list>        reply to message senders\n"
-"reply <message list>        reply to message senders and all recipients\n");
-	puts(
+"reply <message list>        reply to message senders and all recipients\n"));
+	puts(tr(298,
 "mail addresses              mail to specific recipients\n"
 "file folder                 change to another folder\n"
 "quit                        quit and apply changes to folder\n"
 "xit                         quit and discard changes made to folder\n"
 "!                           shell escape\n"
 "cd <directory>              chdir to directory or home if none given\n"
-"list                        list names of all available commands\n");
-	fprintf(stdout,
+"list                        list names of all available commands\n"));
+	fprintf(stdout, tr(299,
 "\nA <message list> consists of integers, ranges of same, or other criteria\n"
-"separated by spaces.  If omitted, %s uses the last message typed.\n",
+"separated by spaces.  If omitted, %s uses the last message typed.\n"),
 		progname);
-	return(0);
+
+jleave:
+	return (ret);
 }
 
 /*

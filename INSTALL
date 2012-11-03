@@ -36,6 +36,8 @@ may be given on the command line, the actually chosen CONFIG may however
 overwrite some of the settings again -- except CONFIG=CUSTOM by concept):
 
   WANT_IDNA=0     Do not (try to) support internationalized domain names.
+  WANT_DOCSTRINGS=0
+                  Don't include command synopsis strings for "help".
 
 E.g.:
 
