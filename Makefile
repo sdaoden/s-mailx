@@ -34,7 +34,7 @@ INSTALL		= /usr/bin/install
 
 # To ease the life of forkers and packagers one may even adjust the "nail"
 # of nail(1).  Note that $(SID)$(NAIL) must be longer than two characters.
-# There you go.  Two lines for a completely clean fork.
+# Two lines for a completely clean fork.  Ok, three with update-release:
 NAIL		= nail
 SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 
@@ -136,3 +136,24 @@ update-version:
 	echo > version.c \
 	"char const *const uagent = \"$(SID)$(NAIL)\", \
 	*const version = \"$${VERSION:-huih buh}\";"
+
+update-release:
+	echo 'Name of release tag:'; \
+	read REL; echo "Is <$${REL}> correct?  ENTER continues"; read i; \
+	git tag -f "$(SID)$(NAIL)$${REL}" && $(MAKE) update-version && \
+	git add version.c && git commit --amend && \
+		git tag -f "$(SID)$(NAIL)$${REL}" && \
+	git archive --prefix="$(SID)$(NAIL)$${REL}/" \
+		-o "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" HEAD && \
+	openssl md5 "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
+		> "$(TMPDIR)/$(SID)$(NAIL)$${REL}.cksum" 2>&1 && \
+	openssl sha1 "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
+		>> "$(TMPDIR)/$(SID)$(NAIL)$${REL}.cksum" 2>&1 && \
+	openssl sha256 "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
+		>> "$(TMPDIR)/$(SID)$(NAIL)$${REL}.cksum" 2>&1 && \
+	printf "%s\n%s\n%s\n" \
+		"-put $(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
+		"-rm $(SID)$(NAIL).tar.gz" \
+		"-symlink $(SID)$(NAIL)$${REL}.tar.gz $(SID)$(NAIL).tar.gz" | \
+	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail && \
+	echo 'All seems fine'
