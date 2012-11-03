@@ -344,7 +344,9 @@ struct message {
 	struct message	*m_parent;	/* parent of this message */
 	unsigned	m_level;	/* thread level of message */
 	long		m_threadpos;	/* position in threaded display */
+#ifdef USE_SCORE
 	float		m_score;	/* score of message */
+#endif
 	char	*m_maildir_file;	/* original maildir file of msg */
 	unsigned	m_maildir_hash;	/* hash of file name in maildir sub */
 	int	m_collapsed;		/* collapsed thread information */
