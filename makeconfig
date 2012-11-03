@@ -14,9 +14,11 @@ else
 	NETSEND)
 		WANT_JUNK=0 WANT_SCORE=0 WANT_IMAP=0 WANT_POP3=0
 		;;
+	CUSTOM)
+		;;
 	*)
 		echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-		echo >&2 'Possible values: MINIMAL, NETLESS, NETSEND'
+		echo >&2 'Possible values: MINIMAL, NETLESS, NETSEND, CUSTOM'
 		exit 1
 	esac
 fi
