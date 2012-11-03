@@ -142,20 +142,6 @@ _E int		interrupts;
 _E sighandler_type handlerstacktop;
 #define	handlerpush(f)	(savedtop = handlerstacktop, handlerstacktop = (f))
 #define	handlerpop()	(handlerstacktop = savedtop)
-extern sighandler_type	dflpipe;
-
-/*
- * The pointers for the string allocation routines,
- * there are NSPACE independent areas.
- * The first holds STRINGSIZE bytes, the next
- * twice as much, and so on.
- */
-
-#define	NSPACE	25			/* Total number of string spaces */
-_E struct strings {
-	char	*s_topFree;		/* Beginning of this area */
-	char	*s_nextFree;		/* Next alloctable place here */
-	unsigned s_nleft;		/* Number of bytes left here */
-} stringdope[NSPACE];
+_E sighandler_type dflpipe;
 
 #undef _E

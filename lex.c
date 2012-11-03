@@ -301,6 +301,7 @@ commands(void)
 	oldpipe = safe_signal(SIGPIPE, SIG_IGN);
 	safe_signal(SIGPIPE, oldpipe);
 	setexit();
+
 	for (;;) {
 		interrupts = 0;
 		handlerstacktop = NULL;
@@ -343,7 +344,8 @@ commands(void)
 			printf("%s", prompt);
 		}
 		fflush(stdout);
-		sreset();
+		if (! sourcing)
+			sreset();
 		/*
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
@@ -380,8 +382,11 @@ commands(void)
 		if (execute(linebuf, 0, n))
 			break;
 	}
+
 	if (linebuf)
 		free(linebuf);
+	if (sourcing)
+		sreset();
 }
 
 /*

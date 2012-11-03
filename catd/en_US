@@ -245,7 +245,7 @@ The following ~ escapes are defined:\n\
 192 Connecting to %s . . .
 193 $ connected.\n$
 194 No SMTP support compiled in.\n
-195 String too large
+195 --- DELETED ---
 196 --- DELETED ---
 197 --- DELETED ---
 198 "%s" is not a user of this system\n

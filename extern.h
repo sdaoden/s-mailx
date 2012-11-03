@@ -538,17 +538,22 @@ struct message *smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp);
 int ccertsave(void *v);
 enum okay rfc2595_hostname_match(const char *host, const char *pattern);
 
-/* strings.c */
-void *salloc(size_t size);
-void *csalloc(size_t nmemb, size_t size);
-void sreset(void);
-void spreserve(void);
-char *savestr(const char *str);
-char *savestrbuf(const char *sbuf, size_t sbuf_len);
-char *save2str(const char *str, const char *old);
-char *savecat(const char *s1, const char *s2);
+/*
+ * strings.c
+ */
+void *		salloc(size_t size);
+void *		csalloc(size_t nmemb, size_t size);
+void		sreset(void);
+void		spreserve(void);
+#ifdef HAVE_ASSERTS
+int		sstats(void *v);
+#endif
+char *		savestr(char const *str);
+char *		savestrbuf(char const *sbuf, size_t sbuf_len);
+char *		save2str(char const *str, char const *old);
+char *		savecat(char const *s1, char const *s2);
 
-struct str *str_concat_csvl(struct str *self, ...);
+struct str *	str_concat_csvl(struct str *self, ...);
 
 /* temp.c */
 FILE *Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
