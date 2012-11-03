@@ -1,6 +1,50 @@
 S - n a i l  N e w s
 ====================
 
+v13.2, 2012-11-03
+-----------------
+
+The problem was that i really wanted to release on a 25th.
+But i have been able to improve S-nail(1) some more, so that this is
+possibly the first real release of it.  So i'll add only things that
+have changed since v13 -- please see below for the complete picture.
+
+- A new CONFIG=CUSTOM make directive was added, and the new user.conf
+  variables WANT_SCORE and WANT_DOCSTRINGS have been added.  It is
+  possible to create a floating-point free S-nail(1) now.
+  Please see INSTALL.
+
+- If a feature is disabled not even functions stubs should remain now.
+
+- Many places which will work only with local filenames do now actually
+  check that the target is a local filename.
+
+- Space-separated lists should work again, at a few places at least.
+
+- Tilde commands will be possible, even with -r.
+
+- The *sendmail-progname* has been added after NetBSD 6 dropped the
+  send-mail entry in mailer.conf(5), which broke S-nail(1).  Now users
+  have an option.
+
+- When editing messages via ~e or ~v file and pipe addressees will no
+  longer be lost.
+
+- If recipients occur multiple times spread over lists, i.e., To:, Cc:,
+  Bcc:, then only one occurrence remains, and in the "highest-order"
+  list.
+
+- The "list" command prints the list alphabetically sorted (somewhat).
+
+- The "help" and "?" commands take an optional argument that shows
+  a synopsis string for the given command (unless WANT_DOCSTRINGS was
+  false).
+
+- String allocations are now more efficient.  The situation can still be
+  improved.  However, for the first time Berkeley Mail(1) integrates
+  harmonically into the system allocator, which may madvise(2) unused
+  memory to the operating system as necessary and/or possible!
+
 v13.1, 2012-10-25
 -----------------
 
