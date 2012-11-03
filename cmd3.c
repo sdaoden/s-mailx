@@ -549,8 +549,10 @@ unread(void *v)
 		setdot(&message[*ip-1]);
 		dot->m_flag &= ~(MREAD|MTOUCH);
 		dot->m_flag |= MSTATUS;
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
-			imap_unread(&message[*ip-1], *ip);
+			imap_unread(&message[*ip-1], *ip); /* TODO return? */
+#endif
 		/*
 		 * The "unread" command is not part of POSIX mailx.
 		 */
@@ -1192,8 +1194,11 @@ newmail(void *v)
 	int val = 1, mdot;
 	(void)v;
 
-	if ((mb.mb_type != MB_IMAP || imap_newmail(1)) &&
-			(val = setfile(mailname, 1)) == 0) {
+	if (
+#ifdef USE_IMAP
+	    (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
+#endif
+	    (val = setfile(mailname, 1)) == 0) {
 		mdot = getmdot(1);
 		setdot(&message[mdot - 1]);
 	}
@@ -1614,11 +1619,19 @@ cnoop(void *v)
 
 	switch (mb.mb_type) {
 	case MB_IMAP:
+#ifdef USE_IMAP
 		imap_noop();
 		break;
+#else
+		return (ccmdnotsupp(NULL));
+#endif
 	case MB_POP3:
+#ifdef USE_POP3
 		pop3_noop();
 		break;
+#else
+		return (ccmdnotsupp(NULL));
+#endif
 	default:
 		break;
 	}
@@ -1665,7 +1678,9 @@ cremove(void *v)
 			ec |= 1;
 			break;
 		case PROTO_IMAP:
+#ifdef USE_IMAP
 			if (imap_remove(name) != OKAY)
+#endif
 				ec |= 1;
 			break;
 		case PROTO_MAILDIR:
@@ -1744,11 +1759,14 @@ crename(void *v)
 	nopop3:	fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
 		ec |= 1;
 		break;
+#ifdef USE_IMAP
 	case PROTO_IMAP:
 		if (imap_rename(old, new) != OKAY)
 			ec |= 1;
 		break;
+#endif
 	case PROTO_UNKNOWN:
+	default:
 		fprintf(stderr, tr(294,
 			"Unknown protocol in \"%s\" and \"%s\".  "
 			"Not renamed.\n"), old, new);

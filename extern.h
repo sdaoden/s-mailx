@@ -61,7 +61,9 @@ char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
 const char *protfile(const char *xcp);
 char *protbase(const char *cp);
+#ifdef USE_IMAP
 int disconnected(const char *file);
+#endif
 unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
@@ -316,6 +318,7 @@ int check_from_and_sender(struct name *fromfield, struct name *senderfield);
 char *getsender(struct message *m);
 
 /* imap.c */
+#ifdef USE_IMAP
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
 		const char *mbx);
@@ -339,6 +342,13 @@ enum okay imap_dequeue(struct mailbox *mp, FILE *fp);
 int cconnect(void *vp);
 int cdisconnect(void *vp);
 int ccache(void *vp);
+#else
+# define imap_imap	ccmdnotsupp
+# define cconnect	ccmdnotsupp
+# define cdisconnect	ccmdnotsupp
+# define ccache		ccmdnotsupp
+#endif
+
 time_t imap_read_date_time(const char *cp);
 time_t imap_read_date(const char *cp);
 const char *imap_make_date_time(time_t t);
@@ -349,13 +359,23 @@ char *imap_unquotestr(const char *s);
 
 /* imap_search.c */
 enum okay imap_search(const char *spec, int f);
+
 /* junk.c */
+#ifdef USE_JUNK
 int cgood(void *v);
 int cjunk(void *v);
 int cungood(void *v);
 int cunjunk(void *v);
 int cclassify(void *v);
 int cprobability(void *v);
+#else
+# define cgood		ccmdnotsupp
+# define cjunk		ccmdnotsupp
+# define cungood	ccmdnotsupp
+# define cunjunk	ccmdnotsupp
+# define cclassify	ccmdnotsupp
+# define cprobability	ccmdnotsupp
+#endif
 
 /* lex.c */
 int setfile(char *name, int newmail);
@@ -457,20 +477,24 @@ void nss_gen_err(const char *fmt, ...);
 #ifdef USE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
 void ssl_gen_err(const char *fmt, ...);
-#endif
 int cverify(void *vp);
 FILE *smime_sign(FILE *ip, struct header *);
 FILE *smime_encrypt(FILE *ip, const char *certfile, const char *to);
 struct message *smime_decrypt(struct message *m, const char *to,
 		const char *cc, int signcall);
 enum okay smime_certsave(struct message *m, int n, FILE *op);
+#else
+# define cverify	ccmdnotsupp
+#endif
 
 /* pop3.c */
+#ifdef USE_POP3
 enum okay pop3_noop(void);
 int pop3_setfile(const char *server, int newmail, int isedit);
 enum okay pop3_header(struct message *m);
 enum okay pop3_body(struct message *m);
 void pop3_quit(void);
+#endif
 
 /* popen.c */
 sighandler_type safe_signal(int signum, sighandler_type handler);
@@ -534,6 +558,7 @@ int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 #endif
 
 /* ssl.c */
+#ifdef USE_SSL
 void ssl_set_vrfy_level(const char *uhp);
 enum okay ssl_vrfy_decide(void);
 char *ssl_method_string(const char *uhp);
@@ -543,6 +568,9 @@ FILE *smime_encrypt_assemble(FILE *hp, FILE *yp);
 struct message *smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp);
 int ccertsave(void *v);
 enum okay rfc2595_hostname_match(const char *host, const char *pattern);
+#else
+# define ccertsave	ccmdnotsupp
+#endif
 
 /*
  * strings.c

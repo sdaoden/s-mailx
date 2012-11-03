@@ -35,32 +35,10 @@ $set 1
 32 $ -- Core dumped.\n$
 33 $  -- Can't dump core.\n$
 34 No fields currently being %s.\n
-35 --- DELETED ---
-36 $    Nail   Commands\n\
-t <message list>                type messages\n\
-n                               goto and type next message\n\
-e <message list>                edit messages\n\
-f <message list>                give head lines of messages\n\
-d <message list>                delete messages\n\
-s <message list> file           append messages to file\n\
-u <message list>                undelete messages\n\
-R <message list>                reply to message senders\n\
-r <message list>                reply to message senders and all recipients\n\
-pre <message list>              make messages go back to /var/mail\n\
-m <user list>                   mail to specific users\n\
-q                               quit, saving unresolved messages in mbox\n\
-x                               quit, do not remove system mailbox\n\
-h                               print out active message headers\n\
-!                               shell escape\n\
-cd [directory]                  chdir to directory or home if none given\n\
-\n\
-A <message list> consists of integers, ranges of same, or user names separated\n\
-by spaces.  If omitted, Nail uses the last message typed.\n\
-\n\
-A <user list> consists of user names or aliases separated by spaces.\n\
-Aliases are defined in .mailrc in your home directory.\n$
+35 $Sign this message (y/n)? $
+36 MIME content too deeply nested\n
 37 Sorry, can't reply to multiple messages at once\n
-38 --- DELETED ---
+38 Message not sent to <%s>\n
 39 Cannot "preserve" in edit mode\n
 40 %d: %d/%u\n
 41 Non-null variable name required\n
@@ -266,7 +244,7 @@ The following ~ escapes are defined:\n\
 213 <Unknown date>
 214 Loaded 1 new message\n
 215 Loaded %d new messages\n
-216 No POP3 support compiled in.\n
+216 --- DELETED ---
 217 Cannot handle protocol: %s\n
 218 POP3 error: %s
 219 POP3 connection already closed.\n
@@ -319,8 +297,8 @@ The following ~ escapes are defined:\n\
 266 Ignoring header field "%s"\n
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
-269 No IMAP support compiled in.\n
-270 No JUNK support compiled in.\n
+269 --- DELETED ---
+270 --- DELETED ---
 271 Invalid address argument with -r\n
 272 No GSSAPI support compiled in.\n
 273 Unknown IMAP authentication method: %s\n

@@ -90,10 +90,13 @@ setfile(char *name, int newmail)
 	case PROTO_FILE:
 		break;
 	case PROTO_MAILDIR:
-		return maildir_setfile(name, newmail, isedit);
+		return (maildir_setfile(name, newmail, isedit));
+#ifdef USE_POP3
 	case PROTO_POP3:
 		shudclob = 1;
-		return pop3_setfile(name, newmail, isedit);
+		return (pop3_setfile(name, newmail, isedit));
+#endif
+#ifdef USE_IMAP
 	case PROTO_IMAP:
 		shudclob = 1;
 		if (newmail) {
@@ -102,11 +105,12 @@ setfile(char *name, int newmail)
 			omsgCount = msgCount;
 		}
 		return imap_setfile(name, newmail, isedit);
-	case PROTO_UNKNOWN:
-		fprintf(stderr, catgets(catd, CATSET, 217,
-				"Cannot handle protocol: %s\n"), name);
-		return -1;
+#endif
+	default:
+		fprintf(stderr, tr(217, "Cannot handle protocol: %s\n"), name);
+		return (-1);
 	}
+
 	if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
 		if ((!isedit && errno == ENOENT) || newmail) {
 			if (newmail)
@@ -264,8 +268,10 @@ newmailinfo(int omsgCount)
 	callhook(mailname, 1);
 	mdot = getmdot(1);
 	if (value("header")) {
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(omsgCount+1, msgCount);
+#endif
 		while (++omsgCount <= msgCount)
 			if (visible(&message[omsgCount-1]))
 				printhead(omsgCount, stdout, 0);
@@ -324,8 +330,10 @@ commands(void)
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
+#ifdef USE_IMAP
 						(mb.mb_type == MB_IMAP &&
 						imap_newmail(n) > x) ||
+#endif
 						(mb.mb_type == MB_MAILDIR &&
 						n != 0)) {
 					int odot = dot - &message[0];

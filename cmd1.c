@@ -139,8 +139,10 @@ headers(void *v)
 					break;
 				}
 		}
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(mesg+1, mesg + size);
+#endif
 		for (; mp < &message[msgCount]; mp++) {
 			mesg++;
 			if (!visible(mp))
@@ -195,7 +197,7 @@ headers(void *v)
 		}
 	}
 	if (flag == 0) {
-		printf(catgets(catd, CATSET, 6, "No more mail.\n"));
+		printf(tr(6, "No more mail.\n"));
 		return(1);
 	}
 	return(0);
@@ -1142,9 +1144,13 @@ folders(void *v)
 	} else
 		name = dirname;
 
-	if (which_protocol(name) == PROTO_IMAP)
+	if (which_protocol(name) == PROTO_IMAP) {
+#ifdef USE_IMAP
 		imap_folders(name, *argv == NULL);
-	else {
+#else
+		return (ccmdnotsupp(NULL));
+#endif
+	} else {
 		if ((cmd = value("LISTER")) == NULL)
 			cmd = "ls";
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);

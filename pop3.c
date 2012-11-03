@@ -37,6 +37,11 @@
  * SUCH DAMAGE.
  */
 
+#include "config.h"
+
+#ifndef USE_POP3
+typedef int avoid_empty_file_compiler_warning;
+#else
 #include "rcv.h"
 
 #include <errno.h>
@@ -55,7 +60,6 @@
  * POP3 client.
  */
 
-#ifdef USE_POP3
 static int	verbose;
 
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
@@ -906,50 +910,4 @@ pop3_quit(void)
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;
 }
-#else	/* !USE_POP3 */
-static void 
-nopop3(void)
-{
-	fprintf(stderr, catgets(catd, CATSET, 216,
-				"No POP3 support compiled in.\n"));
-}
-
-int 
-pop3_setfile(const char *server, int newmail, int isedit)
-{
-	(void)server;
-	(void)newmail;
-	(void)isedit;
-	nopop3();
-	return -1;
-}
-
-enum okay 
-pop3_header(struct message *mp)
-{
-	(void)mp;
-	nopop3();
-	return STOP;
-}
-
-enum okay 
-pop3_body(struct message *mp)
-{
-	(void)mp;
-	nopop3();
-	return STOP;
-}
-
-void 
-pop3_quit(void)
-{
-	nopop3();
-}
-
-enum okay 
-pop3_noop(void)
-{
-	nopop3();
-	return STOP;
-}
-#endif	/* USE_POP3 */
+#endif /* USE_POP3 */

@@ -231,7 +231,9 @@ main(int argc, char *argv[])
 			sendflag = 1;
 			break;
 		case 'D':
+#ifdef USE_IMAP
 			assign("disconnected", "");
+#endif
 			break;
 		case 'd':
 			++debug;
@@ -475,8 +477,10 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (existonly)
 		exit(i);
 	if (headersonly) {
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
+#endif
 		for (i = 1; i <= msgCount; i++)
 			printhead(i, stdout, 0);
 		exit(exit_status);
