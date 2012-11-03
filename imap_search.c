@@ -37,11 +37,11 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "rcv.h"
-#include "extern.h"
+
 #include <time.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -181,15 +181,19 @@ imap_search(const char *spec, int f)
 	} else
 		spec = lastspec;
 	begin = spec;
+#ifdef USE_IMAP
 	if (imap_search1(spec, f) == OKAY)
 		return OKAY;
 	needheaders = 0;
+#endif
 	if (itparse(spec, &xp, 0) == STOP)
 		return STOP;
 	if (ittree == NULL)
 		return OKAY;
+#ifdef USE_IMAP
 	if (mb.mb_type == MB_IMAP && needheaders)
 		imap_getheaders(1, msgCount);
+#endif
 	for (i = 0; i < msgCount; i++) {
 		if (message[i].m_flag&MHIDDEN)
 			continue;

@@ -38,10 +38,12 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#include <sys/wait.h>
+
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -312,10 +314,10 @@ save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
 	if (prot != PROTO_IMAP) {
 		if (access(file, 0) >= 0) {
 			newfile = 0;
-			disp = catgets(catd, CATSET, 25, "[Appended]");
+			disp = tr(25, "[Appended]");
 		} else {
 			newfile = 1;
-			disp = catgets(catd, CATSET, 26, "[New file]");
+			disp = tr(26, "[New file]");
 		}
 	}
 	if ((obuf = convert == SEND_TOFILE ? Fopen(file, "a+") :
@@ -367,9 +369,14 @@ save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
 		mp = &message[*ip - 1];
 		if (prot == PROTO_IMAP &&
 				ignore[0].i_count == 0 &&
-				ignore[1].i_count == 0 &&
-				imap_thisaccount(file)) {
+				ignore[1].i_count == 0
+#ifdef USE_IMAP /* TODO revisit */
+				&& imap_thisaccount(file)
+#endif
+		) {
+#ifdef USE_IMAP
 			if (imap_copy(mp, *ip, file) == STOP)
+#endif
 				goto ferr;
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
@@ -396,15 +403,20 @@ save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
 	if (Fclose(obuf) != 0)
 		success = 0;
 	if (success) {
-		if (prot == PROTO_IMAP || prot == PROTO_MAILDIR)
-			disp = prot == PROTO_IMAP && disconnected(file) ?
-				"[Queued]" : imap_created_mailbox ?
-					"[New file]" : "[Appended]";
+		if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {
+			disp = (
+#ifdef USE_IMAP
+				((prot == PROTO_IMAP) && disconnected(file))
+				? "[Queued]" :
+#endif
+				(imap_created_mailbox ? "[New file]"
+					: "[Appended]"));
+		}
 		printf("\"%s\" %s ", file, disp);
 		if (tstats[0] >= 0)
 			printf("%lu", (long)tstats[0]);
 		else
-			printf(catgets(catd, CATSET, 27, "binary"));
+			printf(tr(27, "binary"));
 		printf("/%lu\n", (long)tstats[1]);
 	} else if (mark) {
 		for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
@@ -557,8 +569,10 @@ undeletecmd(void *v)
 			mp->m_flag &= ~(MDELETED|MSAVED);
 		else
 			mp->m_flag &= ~MDELETED;
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 			imap_undelete(mp, *ip);
+#endif
 	}
 	return 0;
 }

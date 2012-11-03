@@ -45,9 +45,11 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#include <unistd.h>
+
 #include <sys/stat.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Read a message from standard output and return a read file to it
@@ -574,7 +576,7 @@ jcont:
 	/*
 	 * No tilde escapes, interrupts not expected.  Simply copy STDIN
 	 */
-	if ((val & val_INTERACT) == 0 && tildeflag <= 0 && ! tflag) {
+	if ((val & val_INTERACT) == 0 && ! tildeflag && ! tflag) {
 		linebuf = srealloc(linebuf, linesize = LINESIZE);
 		while ((count = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
@@ -619,8 +621,7 @@ jcont:
 					value("ignoreeof") != NULL))
 			break;
 		if (linebuf[0] != escape ||
-				((val & val_INTERACT) == 0 && tildeflag == 0) ||
-				tildeflag < 0) {
+				(! (val & val_INTERACT) && tildeflag == 0)) {
 			if (putline(collf, linebuf, count) < 0)
 				goto jerr;
 			continue;
@@ -703,6 +704,11 @@ jcont:
 				++cp;
 			hp->h_subject = savestr(cp);
 			break;
+#ifdef HAVE_ASSERTS
+		case 'S':
+			sstats(NULL);
+			break;
+#endif
 		case '@':
 			/* Edit the attachment list */
 			if (linebuf[2] != '\0')
@@ -841,7 +847,7 @@ jcont:
 			 * (Very ugly, but take care for compiler supported
 			 * string lengths :()
 			 */
-			(void)puts(
+			(void)puts(tr(300,
 "-------------------- ~ ESCAPES ----------------------------\n"
 "~~             Quote a single tilde\n"
 "~@ [file ...]  Edit attachment list\n"
@@ -851,8 +857,8 @@ jcont:
 "~e             Edit the message buffer\n"
 "~f messages    Read in messages without indenting lines\n"
 "~F messages    Same as ~f, but keep all header lines\n"
-"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n");
-			(void)puts(
+"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n"));
+			(void)puts(tr(301,
 "~r file        Read a file into the message buffer\n"
 "~p             Print the message buffer\n"
 "~q             Abort message composition and save text to dead.letter\n"
@@ -862,11 +868,11 @@ jcont:
 "~t users       Add users to to list\n"
 "~v             Invoke display editor on message\n"
 "~w file        Write message onto file\n"
-"~x             Abort message composition and discard text written so far\n");
-			(void)puts(
+"~x             Abort message composition and discard text written so far\n"));
+			(void)puts(tr(302,
 "~!command      Invoke the shell\n"
 "~:command      Execute a regular command\n"
-"-----------------------------------------------------------\n");
+"-----------------------------------------------------------\n"));
 			break;
 
 		}
@@ -980,8 +986,11 @@ static void
 mesedit(int c, struct header *hp)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	FILE *nf = run_editor(collf, (off_t)-1, c, 0, hp, NULL, SEND_MBOX,
-			sigint);
+	char *saved = value("add-file-recipients");
+	FILE *nf;
+
+	assign("add-file-recipients", "");
+	nf = run_editor(collf, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
 		if (hp) {
@@ -993,6 +1002,8 @@ mesedit(int c, struct header *hp)
 			collf = nf;
 		}
 	}
+
+	assign("add-file-recipients", saved);
 	safe_signal(SIGINT, sigint);
 }
 

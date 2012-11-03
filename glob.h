@@ -42,113 +42,106 @@
  * def.h must be included first.
  */
 
-#if defined(_MAIL_GLOBS_)
-#  undef  _E
-#  define _E
+#ifdef _MAIL_GLOBS_
+# undef _E
+# define _E
 #else
-#  define _E	extern
+# define _E	extern
 #endif
 
-_E int	msgCount;			/* Count of messages read in */
-_E int	rcvmode;			/* True if receiving mail */
-_E int	sawcom;				/* Set after first command */
-_E int	Iflag;				/* -I show Newsgroups: field */
-_E char	*Tflag;				/* -T temp file for netnews */
-_E int	senderr;			/* An error while checking */
-_E int	edit;				/* Indicates editing a file */
-_E int	noreset;			/* String resets suspended */
-_E int	sourcing;			/* Currently reading variant file */
-_E int	loading;			/* Loading user definitions */
-_E enum condition	cond;		/* Current state of conditional exc. */
-_E struct mailbox mb;			/* Current mailbox */
-_E int	image;				/* File descriptor for image of msg */
-_E FILE	*input;				/* Current command input file */
-_E char	mailname[PATHSIZE];		/* Name of current file */
-_E char	mboxname[PATHSIZE];		/* Name of mbox */
-_E char	prevfile[PATHSIZE];		/* Name of previous file */
-_E char	*homedir;			/* Path name of home directory */
-_E char *progname;			/* our name */
-_E char	*myname;			/* My login name */
-_E char		**smopts;		/* sendmail(1) options, command line */
-_E size_t	smopts_count;		/* Entries in smopts */
 _E char const *const uagent;		/* User agent */
 _E char const *const version;		/* The version string */
-_E off_t mailsize;			/* Size of system mailbox */
+
+_E gid_t	effectivegid;		/* Saved from when we started up */
+_E gid_t	realgid;		/* Saved from when we started up */
+
+_E int		is_a_tty[2];		/* isatty(0), isatty(1) */
+_E int		mb_cur_max;		/* value of MB_CUR_MAX */
+_E int		realscreenheight;	/* the real screen height */
+_E int		scrnwidth;		/* Screen width, or best guess */
+_E int		scrnheight;		/* Screen height, or best guess,
+					 *  for "header" command */
+_E int		utf8;			/* UTF-8 encoding in use for locale */
+
+_E char		**altnames;		/* List of alternate names for user */
+_E char		*homedir;		/* Path name of home directory */
+_E char		*myname;		/* My login name */
+_E char		*progname;		/* Our name */
+
+_E int		exit_status;		/* Exit status */
+_E int		debug;			/* Debug flag set */
+_E int		Iflag;			/* -I show Newsgroups: field */
+_E int		Rflag;			/* open all folders read-only */
+_E int		rcvmode;		/* True if receiving mail */
+_E char		**smopts;		/* sendmail(1) options, command line */
+_E size_t	smopts_count;		/* Entries in smopts */
+_E char		*Tflag;			/* -T temp file for netnews */
+_E int		tildeflag;		/* enable tilde escapes */
+_E char		*uflag;			/* name given with -u option */
+
+_E int		did_print_dot;		/* current message has been printed */
+_E int		edit;			/* Indicates editing a file */
+_E int		inhook;			/* currently executing a hook */
+_E int		loading;		/* Loading user definitions */
+_E int		noreset;		/* String resets suspended */
+_E int		sawcom;			/* Set after first command */
+_E int		senderr;		/* An error while checking */
+_E int		sourcing;		/* Currently reading variant file */
+_E int		starting;		/* still in startup code */
+_E int		unset_allow_undefined;	/* allow to unset undefined variables */
+
+/* XXX stylish sorting */
+_E int		msgCount;		/* Count of messages read in */
+_E enum condition cond;			/* Current state of conditional exc. */
+_E struct mailbox mb;			/* Current mailbox */
+_E int		image;			/* File descriptor for image of msg */
+_E FILE		*input;			/* Current command input file */
+_E char		mailname[PATHSIZE];	/* Name of current file */
+_E char		mboxname[PATHSIZE];	/* Name of mbox */
+_E char		prevfile[PATHSIZE];	/* Name of previous file */
+_E off_t	mailsize;		/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *prevdot;		/* Previous current message */
 _E struct message *message;		/* The actual message structure */
 _E struct message *threadroot;		/* first threaded message */
-_E int msgspace;			/* Number of allocated struct m */
-_E struct var *variables[HSHSIZE];	/* Pointer to active var list */
+_E int		msgspace;		/* Number of allocated struct m */
+_E struct var	*variables[HSHSIZE];	/* Pointer to active var list */
 _E struct grouphead *groups[HSHSIZE];	/* Pointer to active groups */
 _E struct ignoretab ignore[2];		/* ignored and retained fields
-					   0 is ignore, 1 is retain */
+					 * 0 is ignore, 1 is retain */
 _E struct ignoretab saveignore[2];	/* ignored and retained fields
-					   on save to folder */
+					 * on save to folder */
 _E struct ignoretab allignore[2];	/* special, ignore all headers */
 _E struct ignoretab fwdignore[2];	/* fields to ignore for forwarding */
-_E char	**altnames;			/* List of alternate names for user */
-_E int	debug;				/* Debug flag set */
-_E int	scrnwidth;			/* Screen width, or best guess */
-_E int	scrnheight;			/* Screen height, or best guess,
-					   for "header" command */
-_E int	realscreenheight;		/* the real screen height */
-_E gid_t	effectivegid;		/* Saved from when we started up */
-_E gid_t	realgid;		/* Saved from when we started up */
-_E int	exit_status;			/* Exit status */
-_E int	is_a_tty[2];			/* isatty(0), isatty(1) */
-_E int	did_print_dot;			/* current message has been printed */
-_E int	tildeflag;			/* enable tilde escapes */
-_E char	*uflag;				/* name given with -u option */
-_E struct shortcut	*shortcuts;	/* list of shortcuts */
-_E int	mb_cur_max;			/* value of MB_CUR_MAX */
-_E int	imap_created_mailbox;		/* hack to get feedback from imap */
-_E int	unset_allow_undefined;		/* allow to unset undefined variables */
-_E int	inhook;				/* currently executing a hook */
-_E int	starting;			/* still in startup code */
-_E char *wantcharset;			/* overrides the "charset" variable */
-_E int	utf8;				/* UTF-8 encoding in use for locale */
-_E int	Rflag;				/* open all folders read-only */
+_E struct shortcut *shortcuts;		/* list of shortcuts */
+_E int		imap_created_mailbox;	/* hack to get feedback from imap */
+_E char		*wantcharset;		/* overrides the "charset" variable */
 
-#ifdef	USE_SSL
-_E enum ssl_vrfy_level	ssl_vrfy_level;	/* SSL verification level */
+/* These are initialized strings */
+_E char	const	defcharset[];		/* "utf8" */
+_E char	const	us_ascii[];		/* "us-ascii" */
+_E char const	*const month_names[12 + 1];
+_E char const	*const weekday_names[7 + 1];
+
+#ifdef USE_SSL
+_E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */
 #endif
 
-#ifdef	HAVE_ICONV
-_E iconv_t iconvd;
+#ifdef HAVE_ICONV
+_E iconv_t	iconvd;
 #endif
 
-#ifdef	HAVE_CATGETS
+#ifdef HAVE_CATGETS
 _E nl_catd	catd;
 #endif
-
-/*
- * These are initialized strings.
- */
-extern char *us_ascii;			/* "us-ascii" */
-extern const char *month_names[];
 
 #include <setjmp.h>
 
 _E sigjmp_buf	srbuf;
 _E int		interrupts;
-_E sighandler_type	handlerstacktop;
+_E sighandler_type handlerstacktop;
 #define	handlerpush(f)	(savedtop = handlerstacktop, handlerstacktop = (f))
 #define	handlerpop()	(handlerstacktop = savedtop)
-extern sighandler_type	dflpipe;
+_E sighandler_type dflpipe;
 
-/*
- * The pointers for the string allocation routines,
- * there are NSPACE independent areas.
- * The first holds STRINGSIZE bytes, the next
- * twice as much, and so on.
- */
-
-#define	NSPACE	25			/* Total number of string spaces */
-_E struct strings {
-	char	*s_topFree;		/* Beginning of this area */
-	char	*s_nextFree;		/* Next alloctable place here */
-	unsigned s_nleft;		/* Number of bytes left here */
-} stringdope[NSPACE];
-
-#undef  _E
+#undef _E

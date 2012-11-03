@@ -39,20 +39,19 @@
 
 #include "rcv.h"
 
+#include <setjmp.h>
 #include <sys/utsname.h>
+#include <unistd.h>
 #ifdef HAVE_SOCKETS
-# include <sys/socket.h>
 # include <netdb.h>
 # include <netinet/in.h>
+# include <sys/socket.h>
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
 #endif
-#include <unistd.h>
-#include <setjmp.h>
 
 #include "extern.h"
-
 #ifdef USE_MD5
 # include "md5.h"
 #endif
@@ -259,6 +258,8 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	enum	{ AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 	int	inhdr = 1, inbcc = 0;
 	(void)hp;
+	(void)xserver;
+	(void)uhp;
 
 	if ((authstr = smtp_auth_var("", skinned)) == NULL)
 		auth = user && password ? AUTH_LOGIN : AUTH_NONE;
@@ -446,11 +447,11 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	if (strncmp(server, "smtp://", 7) == 0) {
 		use_ssl = 0;
 		server += 7;
-#ifdef	USE_SSL
+# ifdef USE_SSL
 	} else if (strncmp(server, "smtps://", 8) == 0) {
 		use_ssl = 1;
 		server += 8;
-#endif
+# endif
 	} else
 		use_ssl = 0;
 	if (!debug && !_debug && sopen(server, &so, use_ssl, server,
@@ -471,20 +472,4 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	safe_signal(SIGTERM, saveterm);
 	return ret;
 }
-#else	/* !USE_SMTP */
-int
-smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
-		const char *user, const char *password, const char *skinned)
-{
-	(void)server;
-	(void)to;
-	(void)fi;
-	(void)hp;
-	(void)user;
-	(void)password;
-	(void)skinned;
-	fputs(catgets(catd, CATSET, 194,
-			"No SMTP support compiled in.\n"), stderr);
-	return 1;
-}
-#endif	/* USE_SMTP */
+#endif /* USE_SMTP */

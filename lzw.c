@@ -67,11 +67,11 @@
 #if ! defined USE_IMAP && ! defined USE_JUNK
 typedef int avoid_empty_file_compiler_warning;
 #else
-
 #include "rcv.h"
-#include "extern.h"
 
 #include <stdio.h>
+
+#include "extern.h"
 
 /* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */
 #undef u_int

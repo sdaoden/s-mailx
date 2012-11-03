@@ -37,33 +37,33 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "rcv.h"
+
+#include <errno.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
+#ifndef USE_IMAP
+# include "extern.h"
+#else
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#ifdef HAVE_ARPA_INET_H
+# include <arpa/inet.h>
+#endif
+
+#include "extern.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Mail -- a mail program
  *
  * IMAP v4r1 client following RFC 2060.
  */
-
-#include "rcv.h"
-#include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <time.h>
-
-#ifdef USE_IMAP
-# ifdef USE_MD5
-#  include "md5.h"
-# endif
-
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef  HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif  /* HAVE_ARPA_INET_H */
-
-#include "extern.h"
 
 static int	verbose;
 
@@ -931,8 +931,8 @@ retry:	if (xuser == NULL) {
 }
 
 #ifdef	USE_GSSAPI
-#include "imap_gssapi.c"
-#endif	/* USE_GSSAPI */
+# include "imap_gssapi.c"
+#endif
 
 enum okay
 imap_select(struct mailbox *mp, off_t *size, int *count, const char *mbx)
@@ -3284,188 +3284,7 @@ ccache(void *vp)
 	}
 	return 0;
 }
-#else	/* !USE_IMAP */
 
-#include "extern.h"
-
-static void 
-noimap(void)
-{
-	fprintf(stderr, catgets(catd, CATSET, 269,
-				"No IMAP support compiled in.\n"));
-}
-
-int 
-imap_setfile(const char *server, int newmail, int isedit)
-{
-	(void)server;
-	(void)newmail;
-	(void)isedit;
-	noimap();
-	return -1;
-}
-
-enum okay 
-imap_header(struct message *mp)
-{
-	(void)mp;
-	noimap();
-	return STOP;
-}
-
-enum okay 
-imap_body(struct message *mp)
-{
-	(void)mp;
-	noimap();
-	return STOP;
-}
-
-void 
-imap_getheaders(int bot, int top)
-{
-	(void)bot;
-	(void)top;
-}
-
-void 
-imap_quit(void)
-{
-	noimap();
-}
-
-/*ARGSUSED*/
-int 
-imap_imap(void *vp)
-{
-	(void)vp;
-	noimap();
-	return 1;
-}
-
-/*ARGSUSED*/
-int 
-imap_newmail(int dummy)
-{
-	(void)dummy;
-	return 0;
-}
-
-/*ARGSUSED*/
-enum okay 
-imap_undelete(struct message *m, int n)
-{
-	(void)m;
-	(void)n;
-	return STOP;
-}
-
-/*ARGSUSED*/
-enum okay 
-imap_unread(struct message *m, int n)
-{
-	(void)m;
-	(void)n;
-	return STOP;
-}
-
-/*ARGSUSED*/
-enum okay
-imap_append(const char *server, FILE *fp)
-{
-	(void)server;
-	(void)fp;
-	noimap();
-	return STOP;
-}
-
-/*ARGSUSED*/
-void 
-imap_folders(const char *name, int strip)
-{
-	(void)name;
-	(void)strip;
-	noimap();
-}
-
-/*ARGSUSED*/
-enum okay 
-imap_remove(const char *name)
-{
-	(void)name;
-	noimap();
-	return STOP;
-}
-
-/*ARGSUSED*/
-enum okay 
-imap_rename(const char *old, const char *new)
-{
-	(void)old;
-	(void)new;
-	noimap();
-	return STOP;
-}
-
-enum okay 
-imap_copy(struct message *m, int n, const char *name)
-{
-	(void)m;
-	(void)n;
-	(void)name;
-	noimap();
-	return STOP;
-}
-
-/*ARGSUSED*/
-enum okay 
-imap_search1(const char *spec, int f)
-{
-	(void)spec;
-	(void)f;
-	return STOP;
-}
-
-int 
-imap_thisaccount(const char *cp)
-{
-	(void)cp;
-	return 0;
-}
-
-enum okay 
-imap_noop(void)
-{
-	noimap();
-	return STOP;
-}
-
-/*ARGSUSED*/
-int 
-cconnect(void *vp)
-{
-	(void)vp;
-	noimap();
-	return 1;
-}
-
-/*ARGSUSED*/
-int 
-cdisconnect(void *vp)
-{
-	(void)vp;
-	noimap();
-	return 1;
-}
-
-/*ARGSUSED*/
-int 
-ccache(void *vp)
-{
-	(void)vp;
-	noimap();
-	return 1;
-}
 #endif	/* USE_IMAP */
 
 time_t

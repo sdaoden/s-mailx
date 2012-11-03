@@ -42,7 +42,6 @@
 #ifndef USE_SSL
 typedef int avoid_empty_file_compiler_warning;
 #else
-
 #include "rcv.h"
 #include "extern.h"
 
@@ -382,6 +381,7 @@ ccertsave(void *v)
 		printf("Certificate(s) saved.\n");
 	return val;
 }
+
 enum okay
 rfc2595_hostname_match(const char *host, const char *pattern)
 {

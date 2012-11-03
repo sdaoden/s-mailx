@@ -37,15 +37,15 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "rcv.h"
-#include "extern.h"
-#include <time.h>
-#include <dirent.h>
-#include <unistd.h>
-#include <sys/stat.h>
+
 #include <errno.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program

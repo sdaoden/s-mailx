@@ -37,7 +37,7 @@ documentation and/or software.
 #ifndef USE_MD5
 typedef int avoid_empty_file_compiler_warning;
 #else
-# include "md5.h"
+#include "md5.h"
 
 #define UINT4B_MAX	0xFFFFFFFFul
 

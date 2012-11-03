@@ -34,17 +34,18 @@
  */
 
 #include "rcv.h"
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <time.h>
-#include <sys/utsname.h>
+
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/utsname.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "extern.h"
 
 #ifndef O_SYNC
-#define O_SYNC	0
+# define O_SYNC	0
 #endif
 
 static int maildir_access(const char *fname);

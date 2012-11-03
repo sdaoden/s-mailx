@@ -38,13 +38,15 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#include <stdio.h>
+
 #include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <fcntl.h>
+
+#include "extern.h"
 
 /*
  * Rcv -- receive mail rationally.
@@ -106,7 +108,7 @@ writeback(FILE *res, FILE *obuf)
 			putc(c, obuf);
 #endif
 	fflush(obuf);
-	trunc(obuf);
+	ftrunc(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
 		fseek(obuf, 0L, SEEK_SET);
@@ -154,14 +156,19 @@ quit(void)
 	case MB_MAILDIR:
 		maildir_quit();
 		return;
+#ifdef USE_POP3
 	case MB_POP3:
 		pop3_quit();
 		return;
+#endif
+#ifdef USE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		imap_quit();
 		return;
+#endif
 	case MB_VOID:
+	default:
 		return;
 	}
 	/*
@@ -296,7 +303,7 @@ cream:
 		while ((c = getc(rbuf)) != EOF)
 			putc(c, abuf);
 		Fclose(rbuf);
-		trunc(abuf);
+		ftrunc(abuf);
 		alter(mailname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -412,9 +419,14 @@ makembox(void)
 			mcount++;
 			if (prot == PROTO_IMAP &&
 					saveignore[0].i_count == 0 &&
-					saveignore[1].i_count == 0 &&
-					imap_thisaccount(mbox)) {
+					saveignore[1].i_count == 0
+#ifdef USE_IMAP /* TODO revisit */
+					&& imap_thisaccount(mbox)
+#endif
+			) {
+#ifdef USE_IMAP
 				if (imap_copy(mp, mp-message+1, mbox) == STOP)
+#endif
 					goto err;
 			} else if (send(mp, obuf, saveignore,
 						NULL, SEND_MBOX, NULL) < 0) {
@@ -445,7 +457,7 @@ makembox(void)
 		Fclose(ibuf);
 		fflush(obuf);
 	}
-	trunc(obuf);
+	ftrunc(obuf);
 	if (ferror(obuf)) {
 		perror(mbox);
 		Fclose(obuf);
@@ -542,7 +554,7 @@ edstop(void)
 		relsesigs();
 		reset(0);
 	}
-	trunc(obuf);
+	ftrunc(obuf);
 	c = 0;
 	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if ((mp->m_flag & MDELETED) != 0)

@@ -37,33 +37,34 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "rcv.h"
 
-#ifdef USE_JUNK
-#include <sys/stat.h>
+#ifndef USE_JUNK
+typedef int avoid_empty_file_compiler_warning;
+#else
 #include <fcntl.h>
 #include <limits.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 #include <utime.h>
-
-#ifdef	HAVE_MMAP
-#include <sys/mman.h>
-#else	/* !HAVE_MMAP */
-#define	mmap(a, b, c, d, e, f)	MAP_FAILED
-#define	munmap(a, b)
-#endif	/* !HAVE_MMAP */
-#ifndef	HAVE_MREMAP
-#define	mremap(a, b, c, d)	MAP_FAILED
-#endif	/* !HAVE_MREMAP */
-
-#ifndef	MAP_FAILED
-#define	MAP_FAILED	((void *)-1)
-#endif	/* !MAP_FAILED */
+#ifdef HAVE_MMAP
+# include <sys/mman.h>
+#endif
 
 #include "extern.h"
 #include "md5.h"
+
+#ifndef HAVE_MMAP
+# define mmap(a,b,c,d,e,f)	MAP_FAILED
+# define munmap(a, b)
+#endif
+#ifndef HAVE_MREMAP
+# define mremap(a,b,c,d)	MAP_FAILED
+#endif
+#ifndef MAP_FAILED
+# define MAP_FAILED		((void *)-1)
+#endif
 
 /*
  * Mail -- a mail program
@@ -359,7 +360,7 @@ putdb(void)
 		zp = zalloc(sfp);
 		zwrite(zp, super, SIZEOF_super);
 		zfree(zp);
-		trunc(sfp);
+		ftrunc(sfp);
 	} else
 		fwrite(super, 1, SIZEOF_super, sfp);
 	if (nodes_mmapped)
@@ -368,7 +369,7 @@ putdb(void)
 		zp = zalloc(nfp);
 		zwrite(zp, nodes, getn(&super[OF_super_size]) * SIZEOF_node);
 		zfree(zp);
-		trunc(nfp);
+		ftrunc(nfp);
 	} else
 		fwrite(nodes, 1,
 			getn(&super[OF_super_size]) * SIZEOF_node, nfp);
@@ -1216,58 +1217,6 @@ cprobability(void *v)
 	} while (*++args);
 	relsedb();
 	return 0;
-}
-
-#else /* !USE_JUNK */
-
-static int
-nojunk(void)
-{
-	fputs(catgets(catd, CATSET, 270, "No JUNK support compiled in.\n"),
-		stderr);
-	return (1);
-}
-
-int
-cgood(void *v)
-{
-	(void)v;
-	return nojunk();
-}
-
-int
-cjunk(void *v)
-{
-	(void)v;
-	return nojunk();
-}
-
-int
-cungood(void *v)
-{
-	(void)v;
-	return nojunk();
-}
-
-int
-cunjunk(void *v)
-{
-	(void)v;
-	return nojunk();
-}
-
-int
-cclassify(void *v)
-{
-	(void)v;
-	return nojunk();
-}
-
-int
-cprobability(void *v)
-{
-	(void)v;
-	return nojunk();
 }
 
 #endif /* USE_JUNK */

@@ -38,10 +38,12 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/stat.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -70,8 +72,10 @@ static void newpart(struct mimepart *ip, struct mimepart **np, off_t offs,
 static void endpart(struct mimepart **np, off_t xoffs, long lines);
 static void parse822(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
+#ifdef USE_SSL
 static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
+#endif
 static size_t out(char *buf, size_t len, FILE *fp,
 		enum conversion convert, enum sendaction action,
 		char *prefix, size_t prefixlen, off_t *stats,
@@ -173,7 +177,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
 		enum sendaction action, off_t *volatile stats, int level)
 {
-	char *line = NULL, *cp, *cp2, *start, *tcs, *pipecmd = NULL, *rest;
+	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL, *rest;
+	char const *tcs;
 	size_t linesize = 0, linelen, count, len, restsize;
 	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
 	struct mimepart	*np;
@@ -748,14 +753,21 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 			ip->m_filename = mime_getparam("name", ip->m_ct_type);
 	if (pf & PARSE_PARTS) {
 		if (level > 9999) {
-			fprintf(stderr, "MIME content too deeply nested.\n");
+			fprintf(stderr, tr(36,
+				"MIME content too deeply nested\n"));
 			return STOP;
 		}
 		switch (ip->m_mimecontent) {
 		case MIME_PKCS7:
 			if (pf & PARSE_DECRYPT) {
+#ifdef USE_SSL
 				parsepkcs7(zmp, ip, pf, level);
 				break;
+#else
+				fprintf(stderr, tr(225,
+					"No SSL support compiled in.\n"));
+				return STOP;
+#endif
 			}
 			/*FALLTHRU*/
 		default:
@@ -918,6 +930,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	parsepart(zmp, np, pf, level+1);
 }
 
+#ifdef USE_SSL
 static void
 parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		int level)
@@ -946,6 +959,7 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		}
 	}
 }
+#endif
 
 static size_t
 out(char *buf, size_t len, FILE *fp,

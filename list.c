@@ -38,11 +38,13 @@
  */
 
 #include "rcv.h"
+
 #include <ctype.h>
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+
 #include "extern.h"
-#ifdef	HAVE_WCTYPE_H
-#include <wctype.h>
-#endif	/* HAVE_WCTYPE_H */
 
 /*
  * Mail -- a mail program
@@ -375,8 +377,10 @@ number:
 			break;
 
 		case TCOMMA:
+#ifdef USE_IMAP
 			if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 				imap_getheaders(1, msgCount);
+#endif
 			if (id == NULL && (cp = hfield1("in-reply-to", dot))
 					!= NULL) {
 				id = savestr(cp);
@@ -462,8 +466,10 @@ number:
 	if (np > namelist || id) {
 		int	allnet = value("allnet") != NULL;
 
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 			imap_getheaders(1, msgCount);
+#endif
 		for (i = 1; i <= msgCount; i++) {
 			mc = 0;
 			if (np > namelist) {

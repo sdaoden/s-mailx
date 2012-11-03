@@ -38,10 +38,12 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
-#ifdef	HAVE_WCWIDTH
-#include <wchar.h>
+
+#ifdef HAVE_WCWIDTH
+# include <wchar.h>
 #endif
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -66,6 +68,14 @@ static int type1(int *msgvec, int doign, int page, int pipe, int decode,
 static int pipe1(char *str, int doign);
 void brokpipe(int signo);
 
+int
+ccmdnotsupp(void *v)
+{
+	(void)v;
+	fprintf(stderr, tr(10, "The requested feature is not compiled in\n"));
+	return (1);
+}
+
 char *
 get_pager(void)
 {
@@ -74,7 +84,7 @@ get_pager(void)
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
 		cp = value("bsdcompat") ? "more" : "pg";
-	return cp;
+	return (cp);
 }
 
 int 
@@ -129,8 +139,10 @@ headers(void *v)
 					break;
 				}
 		}
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(mesg+1, mesg + size);
+#endif
 		for (; mp < &message[msgCount]; mp++) {
 			mesg++;
 			if (!visible(mp))
@@ -185,7 +197,7 @@ headers(void *v)
 		}
 	}
 	if (flag == 0) {
-		printf(catgets(catd, CATSET, 6, "No more mail.\n"));
+		printf(tr(6, "No more mail.\n"));
 		return(1);
 	}
 	return(0);
@@ -292,18 +304,19 @@ int
 from(void *v)
 {
 	int *msgvec = v, *ip, n;
+	char *cp;
 	FILE *volatile obuf = stdout;
-	char volatile *cp;
 
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
-			cp = get_pager();
+			char *p;
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
-			if ((obuf = Popen((char*)cp, "w", NULL, 1)) == NULL) {
-				perror((char*)cp);
+			p = get_pager();
+			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
+				perror(p);
 				obuf = stdout;
 				cp=NULL;
 			} else
@@ -578,9 +591,14 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				subjlen -= n;
 				break;
 			case 'c':
+#ifdef USE_SCORE
 				if (n == 0)
 					n = 6;
 				subjlen -= fprintf(f, "%*g", n, mp->m_score);
+#else
+				putc('?', f);
+				subjlen--;
+#endif
 				break;
 			}
 		} else
@@ -701,28 +719,49 @@ pdot(void *v)
 /*
  * Print out all the possible commands.
  */
+
+static int
+_pcmd_cmp(void const *s1, void const *s2)
+{
+	struct cmd const *const*c1 = s1, *const*c2 = s2;
+	return (strcmp((*c1)->c_name, (*c2)->c_name));
+}
+
 /*ARGSUSED*/
 int 
 pcmdlist(void *v)
 {
-	extern const struct cmd cmdtab[];
-	const struct cmd *cp;
-	int cc;
+	extern struct cmd const cmdtab[];
+	struct cmd const **cpa, *cp, **cursor;
+	size_t i;
 	(void)v;
 
-	printf(catgets(catd, CATSET, 14, "Commands are:\n"));
-	for (cc = 0, cp = cmdtab; cp->c_name != NULL; cp++) {
-		cc += strlen(cp->c_name) + 2;
-		if (cc > 72) {
+	for (i = 0; cmdtab[i].c_name != NULL; ++i)
+		;
+	++i;
+	cpa = ac_alloc(sizeof(cp) * i);
+
+	for (i = 0; (cp = cmdtab + i)->c_name != NULL; ++i)
+		cpa[i] = cp;
+	cpa[i] = NULL;
+
+	qsort(cpa, i, sizeof(cp), &_pcmd_cmp);
+
+	printf(tr(14, "Commands are:\n"));
+	for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
+		size_t j;
+		if (cp->c_func == &ccmdnotsupp)
+			continue;
+		j = strlen(cp->c_name) + 2;
+		if ((i += j) > 72) {
+			i = j;
 			printf("\n");
-			cc = strlen(cp->c_name) + 2;
 		}
-		if ((cp+1)->c_name != NULL)
-			printf(catgets(catd, CATSET, 15, "%s, "), cp->c_name);
-		else
-			printf("%s\n", cp->c_name);
+		printf((*cursor != NULL ? "%s, " : "%s\n"), cp->c_name);
 	}
-	return(0);
+
+	ac_free(cpa);
+	return (0);
 }
 
 /*
@@ -743,12 +782,6 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 	 * Must be static to become excluded from sigsetjmp().
 	 */
 	static FILE *obuf;
-#ifdef __GNUC__
-	/* Avoid longjmp clobbering */
-	(void) &cp;
-	(void) &cmd;
-	(void) &obuf;
-#endif
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
@@ -778,10 +811,10 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 			}
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			cp = get_pager();
-			obuf = Popen(cp, "w", NULL, 1);
+			char *p = get_pager();
+			obuf = Popen(p, "w", NULL, 1);
 			if (obuf == NULL) {
-				perror(cp);
+				perror(p);
 				obuf = stdout;
 			} else
 				safe_signal(SIGPIPE, brokpipe);
@@ -1132,9 +1165,13 @@ folders(void *v)
 	} else
 		name = dirname;
 
-	if (which_protocol(name) == PROTO_IMAP)
+	if (which_protocol(name) == PROTO_IMAP) {
+#ifdef USE_IMAP
 		imap_folders(name, *argv == NULL);
-	else {
+#else
+		return (ccmdnotsupp(NULL));
+#endif
+	} else {
 		if ((cmd = value("LISTER")) == NULL)
 			cmd = "ls";
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);

@@ -47,22 +47,23 @@
  *       Werner Fink, <werner@suse.de>
  */
 
-
 #include "config.h"
-#ifdef	HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
-#define _MAIL_GLOBS_
-#include "rcv.h"
-#include "extern.h"
-#include <sys/stat.h>
+
+#include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
-#include <fcntl.h>
+#ifdef HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
 #ifdef HAVE_SETLOCALE
 # include <locale.h>
 #endif
+
+#define _MAIL_GLOBS_
+#include "rcv.h"
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -72,8 +73,17 @@
 
 static sigjmp_buf	hdrjmp;
 
-char		*progname;
-sighandler_type	dflpipe = SIG_DFL;
+char const		defcharset[] = "utf-8";
+char const		us_ascii[] = "us-ascii";
+char const *const	weekday_names[7 + 1] = {
+	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
+};
+char const *const	month_names[12 + 1] = {
+	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
+};
+
+sighandler_type		dflpipe = SIG_DFL;
 
 /* Add an option for sendmail(1) */
 static void	add_smopt(int argc_left, char *arg);
@@ -91,7 +101,7 @@ add_smopt(int argc_left, char *arg)
 int 
 main(int argc, char *argv[])
 {
-	const char optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
+	char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
 		usagestr[] =
 		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
 		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
@@ -144,7 +154,7 @@ main(int argc, char *argv[])
 	}
 	assign("header", "");
 	assign("save", "");
-#ifdef	HAVE_SETLOCALE
+#ifdef HAVE_SETLOCALE
 	setlocale(LC_ALL, "");
 	mb_cur_max = MB_CUR_MAX;
 # if defined HAVE_NL_LANGINFO && defined CODESET
@@ -221,7 +231,9 @@ main(int argc, char *argv[])
 			sendflag = 1;
 			break;
 		case 'D':
+#ifdef USE_IMAP
 			assign("disconnected", "");
+#endif
 			break;
 		case 'd':
 			++debug;
@@ -294,7 +306,6 @@ jIflag:		case 'I':
 				add_smopt(-1, fa->n_name);
 				/* ..and fa goes even though it is ready :/ */
 			}
-			tildeflag = -1;
 			break;
 		case 'S':
 			/* Set variable (do so later, after RC loading..) */
@@ -344,8 +355,7 @@ jIflag:		case 'I':
 			break;
 		case '~':
 			/* Enable tilde escapes even in non-interactive mode */
-			if (tildeflag == 0)
-				tildeflag = 1;
+			tildeflag = 1;
 			break;
 		case '?':
 usage:			fprintf(stderr, tr(135, usagestr),
@@ -467,8 +477,10 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (existonly)
 		exit(i);
 	if (headersonly) {
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
+#endif
 		for (i = 1; i <= msgCount; i++)
 			printhead(i, stdout, 0);
 		exit(exit_status);

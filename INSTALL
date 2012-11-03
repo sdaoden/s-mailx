@@ -26,11 +26,18 @@ sets from the command line:
                   ivity are off.
   CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
                   identical to MINIMAL.
+  CONFIG=CUSTOM   don't touch anything, i.e., enable all features.
+                  To disable specific features, add FEATURE=0 command
+                  line arguments when running make [install].
 
 When this CONFIG-set approach is used, the following additional switches
-may be used on the command line:
+may be used on the command line (in fact any single entry of user.conf
+may be given on the command line, the actually chosen CONFIG may however
+overwrite some of the settings again -- except CONFIG=CUSTOM by concept):
 
   WANT_IDNA=0     Do not (try to) support internationalized domain names.
+  WANT_DOCSTRINGS=0
+                  Don't include command synopsis strings for "help".
 
 E.g.:
 
@@ -41,7 +48,7 @@ under the prefix /usr/local but rooted under [./]xtest, i.e., the binary
 would be installed as "[./]xtest/usr/local/bin/mini-nail".  Note that
 for "make uninstall" the *exact* command line should be repeated.
 
-Notes for S-nail(1) v13.1
+Notes for S-nail(1) v13.*
 -------------------------
 
 - Mac OS X Snow Leopard.  Tested with all features (except IPv6) with
@@ -56,7 +63,7 @@ Notes for S-nail(1) v13.1
   produces much more warnings than i saw before when testing with all
   the other combinations shown here, and i had yet no time to look over
   all those.
-- Lightly tested on a default OpenBSD 5.1 with -O2.
+- Lightly tested on a default OpenBSD 5.1 and just as-default 5.2.
 - Compiled and lightly tested on TinyCoreLinux 4.4 with default compiler
   environment available at that time with -O2.
 

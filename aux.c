@@ -38,28 +38,27 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
 
-#include <sys/stat.h>
-#include <utime.h>
-#include <time.h>
-#include <termios.h>
 #include <ctype.h>
-#ifdef	HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-#ifdef	HAVE_WCWIDTH
-# include <wchar.h>
-#endif
 #include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <time.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <termios.h>
+#include <time.h>
+#include <unistd.h>
+#include <utime.h>
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+#ifdef HAVE_WCWIDTH
+# include <wchar.h>
+#endif
 
+#include "extern.h"
 #ifdef USE_MD5
 # include "md5.h"
 #endif
@@ -604,6 +603,7 @@ protbase(const char *cp)
 	return n;
 }
 
+#ifdef USE_IMAP
 int 
 disconnected(const char *file)
 {
@@ -627,6 +627,7 @@ disconnected(const char *file)
 	ac_free(vp);
 	return r;
 }
+#endif
 
 unsigned 
 pjw(const char *cp)

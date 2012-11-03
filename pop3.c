@@ -39,13 +39,17 @@
 
 #include "config.h"
 
+#ifndef USE_POP3
+typedef int avoid_empty_file_compiler_warning;
+#else
 #include "rcv.h"
-#include "extern.h"
+
 #include <errno.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
+#include "extern.h"
 #ifdef USE_MD5
 # include "md5.h"
 #endif
@@ -56,7 +60,6 @@
  * POP3 client.
  */
 
-#ifdef USE_POP3
 static int	verbose;
 
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
@@ -546,7 +549,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
-	char *user;
+	char *user; /* TODO longjmp globber, reorder fun! */
 	const char *cp, *uhp, *volatile pass, *volatile sp = server;
 	int use_ssl = 0;
 
@@ -907,50 +910,4 @@ pop3_quit(void)
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;
 }
-#else	/* !USE_POP3 */
-static void 
-nopop3(void)
-{
-	fprintf(stderr, catgets(catd, CATSET, 216,
-				"No POP3 support compiled in.\n"));
-}
-
-int 
-pop3_setfile(const char *server, int newmail, int isedit)
-{
-	(void)server;
-	(void)newmail;
-	(void)isedit;
-	nopop3();
-	return -1;
-}
-
-enum okay 
-pop3_header(struct message *mp)
-{
-	(void)mp;
-	nopop3();
-	return STOP;
-}
-
-enum okay 
-pop3_body(struct message *mp)
-{
-	(void)mp;
-	nopop3();
-	return STOP;
-}
-
-void 
-pop3_quit(void)
-{
-	nopop3();
-}
-
-enum okay 
-pop3_noop(void)
-{
-	nopop3();
-	return STOP;
-}
-#endif	/* USE_POP3 */
+#endif /* USE_POP3 */

@@ -38,12 +38,14 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
 #include <errno.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -118,6 +120,8 @@ static struct name *
 fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 {
 	struct name *np;
+
+	tolist = elide(tolist);
 
 	hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
@@ -196,7 +200,8 @@ static int
 attach_file1(struct attachment *ap, FILE *fo, int dosign)
 {
 	FILE *fi;
-	char *charset = NULL, *contenttype = NULL, *basename;
+	char const *charset = NULL;
+	char *contenttype = NULL, *basename;
 	enum conversion convert = CONV_TOB64;
 	int err = 0;
 	enum mimeclean isclean;
@@ -204,8 +209,8 @@ attach_file1(struct attachment *ap, FILE *fo, int dosign)
 	char *buf;
 	size_t bufsize, count;
 	int	lastc = EOF;
-#ifdef	HAVE_ICONV
-	char	*tcs;
+#ifdef HAVE_ICONV
+	char const *tcs;
 #endif
 
 	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
@@ -447,12 +452,13 @@ infix(struct header *hp, FILE *fi, int dosign)
 {
 	FILE *nfo, *nfi;
 	char *tempMail;
-#ifdef	HAVE_ICONV
-	char *tcs, *convhdr = NULL;
+#ifdef HAVE_ICONV
+	char const *tcs, *convhdr = NULL;
 #endif
 	enum mimeclean isclean;
 	enum conversion convert;
-	char *charset = NULL, *contenttype = NULL;
+	char const *charset = NULL;
+	char *contenttype = NULL;
 	int	lastc = EOF;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
@@ -468,7 +474,7 @@ infix(struct header *hp, FILE *fi, int dosign)
 	Ftfree(&tempMail);
 	convert = get_mime_convert(fi, &contenttype, &charset,
 			&isclean, dosign);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	tcs = gettcharset();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
 		if (iconvd != (iconv_t)-1)
@@ -764,26 +770,36 @@ Sendmail(void *v)
 static enum okay
 transfer(struct name *to, FILE *input, struct header *hp)
 {
-	char	o[LINESIZE], *cp;
-	struct name	*np, *nt;
-	int	cnt = 0;
-	FILE	*ef;
-	enum okay	ok = OKAY;
+	char o[LINESIZE], *cp;
+	struct name *np;
+	int cnt = 0;
+	enum okay ok = OKAY;
 
 	np = to;
 	while (np) {
 		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
 		if ((cp = value(o)) != NULL) {
+#ifdef USE_SSL
+			struct name *nt;
+			FILE *ef;
 			if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
 				nt = ndup(np, np->n_type & ~(GFULL|GSKIN));
 				if (start_mta(nt, ef, hp) != OKAY)
 					ok = STOP;
 				Fclose(ef);
 			} else {
-				fprintf(stderr, "Message not sent to <%s>\n",
-						np->n_name);
+#else
+				fprintf(stderr, tr(225,
+					"No SSL support compiled in.\n"));
+				ok = STOP;
+#endif
+				fprintf(stderr, tr(38,
+					"Message not sent to <%s>\n"),
+					np->n_name);
 				senderr++;
+#ifdef USE_SSL
 			}
+#endif
 			rewind(input);
 			if (np->n_flink)
 				np->n_flink->n_blink = np->n_blink;
@@ -811,7 +827,9 @@ prepare_mta_args(struct name *to)
 	size_t j, i = 4 + smopts_count + count(to) + 1;
 	char **args = salloc(i * sizeof(char*));
 
-	args[0] = "send-mail";
+	args[0] = value("sendmail-progname");
+	if (args[0] == NULL || *args[0] == '\0')
+		args[0] = "sendmail";
 	args[1] = "-i";
 	i = 2;
 	if (value("metoo"))
@@ -837,12 +855,13 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 #ifdef USE_SMTP
 	struct termios otio;
 	int reset_tio;
+	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
-	char **args = NULL, *user = NULL, *password = NULL, *skinned = NULL,
-		**t, *smtp, *mta;
+	char **args = NULL, **t, *smtp, *mta;
 	enum okay ok = STOP;
 	pid_t pid;
 	sigset_t nset;
+	(void)hp;
 
 	if ((smtp = value("smtp")) == NULL) {
 		if ((mta = value("sendmail")) != NULL) {
@@ -857,18 +876,23 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 			for (t = args; *t != NULL; t++)
 				printf(" \"%s\"", *t);
 			printf("\n");
-			return (OKAY);
+			ok = OKAY;
+			goto jleave;
 		}
-	}
-#ifdef USE_SMTP
-	else {
+	} else {
+		mta = NULL; /* Silence cc */
+#ifndef USE_SMTP
+		fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
+		goto jstop;
+#else
 		skinned = skin(myorigin(hp));
 		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
 				(password = smtp_auth_var("-password",
 					skinned)) == NULL)
 			password = getpassword(&otio, &reset_tio, NULL);
-	}
 #endif
+	}
+
 	/*
 	 * Fork, set up the temporary mail file as standard
 	 * input for "mail", and exec with the user list we generated
@@ -878,7 +902,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		perror("fork");
 jstop:		savedeadletter(input);
 		senderr++;
-		return STOP;
+		goto jleave;
 	}
 	if (pid == 0) {
 		sigemptyset(&nset);
@@ -889,16 +913,20 @@ jstop:		savedeadletter(input);
 		sigaddset(&nset, SIGTTIN);
 		sigaddset(&nset, SIGTTOU);
 		freopen("/dev/null", "r", stdin);
+#ifdef USE_SMTP
 		if (smtp != NULL) {
 			prepare_child(&nset, 0, 1);
 			if (smtp_mta(smtp, to, input, hp,
 					user, password, skinned) == 0)
 				_exit(0);
 		} else {
+#endif
 			prepare_child(&nset, fileno(input), -1);
 			execv(mta, args);
 			perror(mta);
+#ifdef USE_SMTP
 		}
+#endif
 		savedeadletter(input);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
@@ -913,6 +941,7 @@ jstop:		savedeadletter(input);
 		ok = OKAY;
 		free_child(pid);
 	}
+jleave:
 	return (ok);
 }
 
@@ -974,9 +1003,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 {
 	struct name *to;
 	FILE *mtf, *nmtf;
-	enum okay	ok = STOP;
-	int	dosign = -1;
-	char	*charsets, *ncs = NULL, *cp;
+	enum okay ok = STOP;
+	int dosign = -1;
+	char *charsets, *ncs = NULL, *cp;
 
 #ifdef	notdef
 	if ((hp->h_to = checkaddrs(hp->h_to)) == NULL) {
@@ -1008,9 +1037,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 			if (value("askattach") != NULL)
 				hp->h_attach = edit_attachments(hp->h_attach);
 			if (value("asksign") != NULL)
-				dosign = yorn("Sign this message (y/n)? ");
+				dosign = yorn(tr(35,
+					"Sign this message (y/n)? "));
 		} else {
-			printf(catgets(catd, CATSET, 183, "EOT\n"));
+			printf(tr(183, "EOT\n"));
 			fflush(stdout);
 		}
 	}
@@ -1024,20 +1054,39 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 			printf(catgets(catd, CATSET, 185,
 				"Null message body; hope that's ok\n"));
 	}
-	if (dosign < 0) {
-		if (value("smime-sign") != NULL)
-			dosign = 1;
-		else
-			dosign = 0;
+
+	if (dosign < 0)
+		dosign = (value("smime-sign") != NULL);
+#ifndef USE_SSL
+	if (dosign) {
+		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+		ok = STOP;
+		goto out;
 	}
+#endif
+
 	/*
 	 * Now, take the user names from the combined
 	 * to and cc lists and do all the alias
 	 * processing.
 	 */
 	senderr = 0;
-	if ((to = usermap(cat(hp->h_bcc, cat(hp->h_to, hp->h_cc)))) == NULL) {
-		printf(catgets(catd, CATSET, 186, "No recipients specified\n"));
+	/*
+	 * TODO what happens now is that all recipients are merged into
+	 * TODO a duplicated list with expanded aliases, then this list is
+	 * TODO splitted again into the three individual recipient lists (with
+	 * TODO duplicates removed).
+	 * TODO later on we use the merged list for outof() pipe/file saving,
+	 * TODO then we eliminate duplicates (again) and then we use that one
+	 * TODO for mightrecord() and transfer(), and again.  ... Please ...
+	 */
+	/*
+	 * NOTE: Due to elide() in fixhead(), ENSURE to,cc,bcc order of to!,
+	 * because otherwise the recipients will be "degraded" if they occur
+	 * multiple times
+	 */
+	if ((to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)))) == NULL) {
+		fprintf(stderr, tr(186, "No recipients specified\n"));
 		senderr++;
 	}
 	to = fixhead(hp, to);
@@ -1075,20 +1124,27 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 		}
 		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
 		perror("");
-	fail:	senderr++;
+#ifdef USE_SSL
+jfail:
+#endif
+		senderr++;
 		rewind(mtf);
 		savedeadletter(mtf);
 		fputs(catgets(catd, CATSET, 187,
 				". . . message not sent.\n"), stderr);
 		return STOP;
 	}
+
 	mtf = nmtf;
+#ifdef USE_SSL
 	if (dosign) {
 		if ((nmtf = smime_sign(mtf, hp)) == NULL)
-			goto fail;
+			goto jfail;
 		Fclose(mtf);
 		mtf = nmtf;
 	}
+#endif
+
 	/*
 	 * Look through the recipient list for names with /'s
 	 * in them which we write to as files directly.
@@ -1096,7 +1152,7 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 	to = outof(to, mtf, hp);
 	if (senderr)
 		savedeadletter(mtf);
-	to = elide(to);
+	to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
 	if (count(to) == 0) {
 		if (senderr == 0)
 			ok = OKAY;
@@ -1137,15 +1193,6 @@ message_id(FILE *fo, struct header *hp)
 			tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
 		getrandstring(rl), (rl == 16 ? '%' : '@'), h);
 }
-
-static const char *weekday_names[] = {
-	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-};
-
-const char *month_names[] = {
-	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
-};
 
 /*
  * Create a Date: header field.
@@ -1218,7 +1265,7 @@ putname(char *line, enum gfield w, enum sendaction action, int *gotcha,
 int
 puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
-		char *contenttype, char *charset)
+		char const *contenttype, char const *charset)
 {
 	int gotcha;
 	char *addr/*, *cp*/;
@@ -1535,7 +1582,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	to = outof(to, nfi, &head);
 	if (senderr)
 		savedeadletter(nfi);
-	to = elide(to);
+	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
 		if (value("record-resent") == NULL ||
 				mightrecord(nfi, to, 0) == OKAY)

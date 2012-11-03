@@ -37,12 +37,16 @@
  * SUCH DAMAGE.
  */
 
-#include <math.h>
-#include <float.h>
 #include "rcv.h"
-#include "extern.h"
-#include <unistd.h>
+
 #include <errno.h>
+#include <math.h>
+#include <unistd.h>
+#ifdef USE_SCORE
+# include <float.h>
+#endif
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -50,22 +54,24 @@
  * Still more user commands.
  */
 
-static int bangexp(char **str, size_t *size);
-static void make_ref_and_cs(struct message *mp, struct header *head);
-static int (*respond_or_Respond(int c))(int *, int);
-static int respond_internal(int *msgvec, int recipient_record);
-static char *reedit(char *subj);
-static char *fwdedit(char *subj);
-static void onpipe(int signo);
-static void asort(char **list);
-static int diction(const void *a, const void *b);
-static int file1(char *name);
-static int shellecho(const char *cp);
-static int Respond_internal(int *msgvec, int recipient_record);
-static int resend1(void *v, int add_resent);
-static void list_shortcuts(void);
+static int	bangexp(char **str, size_t *size);
+static void	make_ref_and_cs(struct message *mp, struct header *head);
+static int (*	respond_or_Respond(int c))(int *, int);
+static int	respond_internal(int *msgvec, int recipient_record);
+static char *	reedit(char *subj);
+static char *	fwdedit(char *subj);
+static void	onpipe(int signo);
+static void	asort(char **list);
+static int	diction(const void *a, const void *b);
+static int	file1(char *name);
+static int	shellecho(const char *cp);
+static int	Respond_internal(int *msgvec, int recipient_record);
+static int	resend1(void *v, int add_resent);
+static void	list_shortcuts(void);
 static enum okay delete_shortcut(const char *str);
-static float huge(void);
+#ifdef USE_SCORE
+static float	huge(void);
+#endif
 
 /*
  * Process a shell escape by saving signals, ignoring signals,
@@ -169,38 +175,61 @@ bangexp(char **str, size_t *size)
 int 
 help(void *v)
 {
-	(void)v;
+	int ret = 0;
+	char *arg = *(char**)v;
+
+	if (arg != NULL) {
+#ifdef USE_DOCSTRINGS
+		extern struct cmd const cmdtab[];
+		struct cmd const *cp;
+		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
+			if (cp->c_func == &ccmdnotsupp)
+				continue;
+			if (strcmp(cp->c_name, arg) == 0) {
+				printf("%s: %s\n", arg,
+					tr(cp->c_docid, cp->c_doc));
+				goto jleave;
+			}
+		}
+		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), arg);
+		ret = 1;
+#else
+		ret = ccmdnotsupp(NULL);
+#endif
+		goto jleave;
+	}
+
 	/* Very ugly, but take care for compiler supported string lengths :( */
-	fprintf(stdout,
-"%s commands:\n",
-		progname);
-	puts(
+	printf(tr(295, "%s commands:\n"), progname);
+	puts(tr(296,
 "type <message list>         type messages\n"
 "next                        goto and type next message\n"
 "from <message list>         give head lines of messages\n"
 "headers                     print out active message headers\n"
 "delete <message list>       delete messages\n"
-"undelete <message list>     undelete messages\n");
-	puts(
+"undelete <message list>     undelete messages\n"));
+	puts(tr(297,
 "save <message list> folder  append messages to folder and mark as saved\n"
 "copy <message list> folder  append messages to folder without marking them\n"
 "write <message list> file   append message texts to file, save attachments\n"
 "preserve <message list>     keep incoming messages in mailbox even if saved\n"
 "Reply <message list>        reply to message senders\n"
-"reply <message list>        reply to message senders and all recipients\n");
-	puts(
+"reply <message list>        reply to message senders and all recipients\n"));
+	puts(tr(298,
 "mail addresses              mail to specific recipients\n"
 "file folder                 change to another folder\n"
 "quit                        quit and apply changes to folder\n"
 "xit                         quit and discard changes made to folder\n"
 "!                           shell escape\n"
 "cd <directory>              chdir to directory or home if none given\n"
-"list                        list names of all available commands\n");
-	fprintf(stdout,
+"list                        list names of all available commands\n"));
+	fprintf(stdout, tr(299,
 "\nA <message list> consists of integers, ranges of same, or other criteria\n"
-"separated by spaces.  If omitted, %s uses the last message typed.\n",
+"separated by spaces.  If omitted, %s uses the last message typed.\n"),
 		progname);
-	return(0);
+
+jleave:
+	return (ret);
 }
 
 /*
@@ -348,12 +377,11 @@ respond_internal(int *msgvec, int recipient_record)
 		np = lextract(rcv, GTO|gf);
 	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
 		np = cat(np, lextract(cp, GTO|gf));
-	np = elide(np);
 	/*
 	 * Delete my name from the reply list,
 	 * and with it, all my alternate names.
 	 */
-	np = delete_alternates(np);
+	np = elide(delete_alternates(np));
 	if (np == NULL)
 		np = lextract(rcv, GTO|gf);
 	head.h_to = np;
@@ -544,8 +572,10 @@ unread(void *v)
 		setdot(&message[*ip-1]);
 		dot->m_flag &= ~(MREAD|MTOUCH);
 		dot->m_flag |= MSTATUS;
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
-			imap_unread(&message[*ip-1], *ip);
+			imap_unread(&message[*ip-1], *ip); /* TODO return? */
+#endif
 		/*
 		 * The "unread" command is not part of POSIX mailx.
 		 */
@@ -1187,8 +1217,11 @@ newmail(void *v)
 	int val = 1, mdot;
 	(void)v;
 
-	if ((mb.mb_type != MB_IMAP || imap_newmail(1)) &&
-			(val = setfile(mailname, 1)) == 0) {
+	if (
+#ifdef USE_IMAP
+	    (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
+#endif
+	    (val = setfile(mailname, 1)) == 0) {
 		mdot = getmdot(1);
 		setdot(&message[mdot - 1]);
 	}
@@ -1490,31 +1523,29 @@ cundraft(void *v)
 	return 0;
 }
 
+#ifdef USE_SCORE
 static float 
 huge(void)
 {
-#if defined (_CRAY)
+# ifdef _CRAY
 	/*
 	 * This is not perfect, but correct for machines with a 32-bit
 	 * IEEE float and a 32-bit unsigned long, and does at least not
 	 * produce SIGFPE on the Cray Y-MP.
 	 */
-	union {
-		float	f;
-		unsigned long	l;
-	} u;
+	union {float f; unsigned long l;} u;
 
 	u.l = 0xff800000; /* -inf */
 	return u.f;
-#elif defined (INFINITY)
+# elif defined INFINITY
 	return -INFINITY;
-#elif defined (HUGE_VALF)
+# elif defined HUGE_VALF
 	return -HUGE_VALF;
-#elif defined (FLT_MAX)
+# elif defined FLT_MAX
 	return -FLT_MAX;
-#else
+# else
 	return -1e10;
-#endif
+# endif
 }
 
 int 
@@ -1601,6 +1632,7 @@ cscore(void *v)
 	}
 	return 0;
 }
+#endif /* USE_SCORE */
 
 /*ARGSUSED*/
 int 
@@ -1610,11 +1642,19 @@ cnoop(void *v)
 
 	switch (mb.mb_type) {
 	case MB_IMAP:
+#ifdef USE_IMAP
 		imap_noop();
 		break;
+#else
+		return (ccmdnotsupp(NULL));
+#endif
 	case MB_POP3:
+#ifdef USE_POP3
 		pop3_noop();
 		break;
+#else
+		return (ccmdnotsupp(NULL));
+#endif
 	default:
 		break;
 	}
@@ -1661,7 +1701,9 @@ cremove(void *v)
 			ec |= 1;
 			break;
 		case PROTO_IMAP:
+#ifdef USE_IMAP
 			if (imap_remove(name) != OKAY)
+#endif
 				ec |= 1;
 			break;
 		case PROTO_MAILDIR:
@@ -1740,11 +1782,14 @@ crename(void *v)
 	nopop3:	fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
 		ec |= 1;
 		break;
+#ifdef USE_IMAP
 	case PROTO_IMAP:
 		if (imap_rename(old, new) != OKAY)
 			ec |= 1;
 		break;
+#endif
 	case PROTO_UNKNOWN:
+	default:
 		fprintf(stderr, tr(294,
 			"Unknown protocol in \"%s\" and \"%s\".  "
 			"Not renamed.\n"), old, new);

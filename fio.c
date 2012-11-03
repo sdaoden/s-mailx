@@ -38,34 +38,34 @@
  */
 
 #include "rcv.h"
+
+#include <errno.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/wait.h>
-#ifdef	HAVE_WORDEXP
-#include <wordexp.h>
-#endif	/* HAVE_WORDEXP */
 #include <unistd.h>
+#ifdef HAVE_SOCKETS
+# include <netdb.h>
+# include <netinet/in.h>
+# include <sys/socket.h>
+# ifdef HAVE_ARPA_INET_H
+#  include <arpa/inet.h>
+# endif
+#endif
+#ifdef USE_NSS
+# include <nss.h>
+# include <ssl.h>
+#elif defined USE_OPENSSL
+# include <openssl/ssl.h>
+# include <openssl/err.h>
+# include <openssl/x509v3.h>
+# include <openssl/x509.h>
+# include <openssl/rand.h>
+#endif
+#ifdef HAVE_WORDEXP
+# include <wordexp.h>
+#endif
 
-#if defined (USE_NSS)
-#include <nss.h>
-#include <ssl.h>
-#elif defined (USE_OPENSSL)
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509.h>
-#include <openssl/rand.h>
-#endif	/* USE_SSL */
-#ifdef	HAVE_SOCKETS
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
-#endif	/* HAVE_SOCKETS */
-
-#include <errno.h>
 #include "extern.h"
 
 /*
@@ -114,26 +114,27 @@ _expand(char const *name, int only_local)
 	if ((sh = get_shortcut(res)) != NULL)
 		res = sh->sh_long;
 
-next:	dyn = 0;
+jnext:	dyn = 0;
 	switch (*res) {
 	case '%':
 		if (res[1] == ':' && res[2]) {
 			res = &res[2];
-			goto next;
+			goto jnext;
 		}
 		findmail((res[1] ? res + 1 : myname),
 			(res[1] != '\0' || uflag), cbuf, sizeof cbuf);
 		res = cbuf;
-		goto jleave;
+		goto jislocal;
 	case '#':
 		if (res[1] != 0)
 			break;
 		if (prevfile[0] == 0) {
 			fprintf(stderr, tr(80, "No previous file\n"));
 			res = NULL;
-		} else
-			res = prevfile;
-		goto jleave;
+			goto jleave;
+		}
+		res = prevfile;
+		goto jislocal;
 	case '&':
 		if (res[1] == 0 && (res = value("MBOX")) == NULL)
 			res = "~/mbox";
@@ -154,7 +155,7 @@ next:	dyn = 0;
 			res + 1, NULL)->s;
 		dyn = 1;
 		if (cbuf[0] == '%' && cbuf[1] == ':')
-			goto next;
+			goto jnext;
 	}
 
 	/* Catch the most common shell meta character */
@@ -170,6 +171,7 @@ next:	dyn = 0;
 		goto jleave;
 	}
 
+jislocal:
 	if (only_local)
 		switch (which_protocol(res)) {
 		case PROTO_FILE:
@@ -250,7 +252,7 @@ _globname(char const *name)
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
-		return name;
+		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
@@ -790,39 +792,47 @@ fgetline_byone(char **line, size_t *linesize, size_t *llen,
 static enum okay
 get_header(struct message *mp)
 {
+	(void)mp;
 	switch (mb.mb_type) {
 	case MB_FILE:
 	case MB_MAILDIR:
-		return OKAY;
+		return (OKAY);
+#ifdef USE_POP3
 	case MB_POP3:
-		return pop3_header(mp);
+		return (pop3_header(mp));
+#endif
+#ifdef USE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		return imap_header(mp);
+#endif
 	case MB_VOID:
-		return STOP;
+	default:
+		return (STOP);
 	}
-	/*NOTREACHED*/
-	return STOP;
 }
 
 enum okay
 get_body(struct message *mp)
 {
+	(void)mp;
 	switch (mb.mb_type) {
 	case MB_FILE:
 	case MB_MAILDIR:
-		return OKAY;
+		return (OKAY);
+#ifdef USE_POP3
 	case MB_POP3:
-		return pop3_body(mp);
+		return (pop3_body(mp));
+#endif
+#ifdef USE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		return imap_body(mp);
+#endif
 	case MB_VOID:
-		return STOP;
+	default:
+		return (STOP);
 	}
-	/*NOTREACHED*/
-	return STOP;
 }
 
 #ifdef	HAVE_SOCKETS
@@ -1123,20 +1133,24 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 			port = htons(25);
 		else if (strcmp(portstr, "smtps") == 0)
 			port = htons(465);
+# ifdef USE_IMAP
 		else if (strcmp(portstr, "imap") == 0)
 			port = htons(143);
 		else if (strcmp(portstr, "imaps") == 0)
 			port = htons(993);
+# endif
+# ifdef USE_POP3
 		else if (strcmp(portstr, "pop3") == 0)
 			port = htons(110);
 		else if (strcmp(portstr, "pop3s") == 0)
 			port = htons(995);
+# endif
 		else if ((ep = getservbyname((char *)portstr, "tcp")) != NULL)
 			port = ep->s_port;
 		else {
 			fprintf(stderr, tr(251, "Unknown service: %s\n"),
 				portstr);
-			return STOP;
+			return (STOP);
 		}
 	} else
 		port = htons(port);

@@ -44,13 +44,14 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/stat.h>
+
+#include "extern.h"
 
 /* Same name, taking care for *allnet*? */
 static int		same_name(char const *n1, char const *n2);
@@ -432,7 +433,8 @@ extract(char const *line, enum gfield ntype)
 struct name *
 lextract(char const *line, enum gfield ntype)
 {
-	return (extract1(line, ntype, ",", 1));
+	return ((line && strpbrk(line, ",\"\\(<|")) ?
+		extract1(line, ntype, ",", 1) : extract(line, ntype));
 }
 
 /*
@@ -521,7 +523,8 @@ usermap(struct name *names)
 	np = names;
 	metoo = (value("metoo") != NULL);
 	while (np != NULL) {
-		if (np->n_name[0] == '\\') {
+		assert((np->n_type & GDEL) == 0); /* TODO legacy */
+		if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {
 			cp = np->n_flink;
 			new = put(new, np);
 			np = cp;

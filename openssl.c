@@ -39,19 +39,15 @@
 
 #include "config.h"
 
-#ifdef USE_NSS
+#if defined USE_NSS || ! defined USE_OPENSSL
 typedef int avoid_empty_file_compiler_warning;
 #elif defined USE_OPENSSL
+#include "rcv.h"
 
-#include <setjmp.h>
-#include <termios.h>
-#include <stdio.h>
-
-static int	verbose;
-static int	reset_tio;
-static struct termios	otio;
-static sigjmp_buf	ssljmp;
-
+#include <dirent.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <openssl/crypto.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -59,21 +55,16 @@ static sigjmp_buf	ssljmp;
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-
-#include "rcv.h"
-#include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <time.h>
-
+#include <stdio.h>
+#include <setjmp.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef	HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif	/* HAVE_ARPA_INET_H */
-
-#include <dirent.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <time.h>
+#include <unistd.h>
+#ifdef HAVE_ARPA_INET_H
+# include <arpa/inet.h>
+#endif
 
 #include "extern.h"
 
@@ -87,6 +78,11 @@ static sigjmp_buf	ssljmp;
  * OpenSSL client implementation according to: John Viega, Matt Messier,
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
+
+static int	verbose;
+static int	reset_tio;
+static struct termios	otio;
+static sigjmp_buf	ssljmp;
 
 static int	initialized;
 static int	rand_init;
@@ -1243,65 +1239,5 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 				X509_V_FLAG_CRL_CHECK_ALL);
 #endif	/* old OpenSSL */
 	return OKAY;
-}
-
-#else	/* !NSS && !USE_OPENSSL */
-
-#include <stdio.h>
-
-static void
-nosmime(void)
-{
-	fprintf(stderr, "No S/MIME support compiled in.\n");
-}
-
-/*ARGSUSED*/
-FILE *
-smime_sign(FILE *fp)
-{
-	(void)fp;
-	nosmime();
-	return NULL;
-}
-
-/*ARGSUSED*/
-int 
-cverify(void *vp)
-{
-	(void)vp;
-	nosmime();
-	return 1;
-}
-
-/*ARGSUSED*/
-FILE *
-smime_encrypt(FILE *fp, const char *certfile, const char *to)
-{
-	(void)fp;
-	(void)certfile;
-	(void)to;
-	nosmime();
-	return NULL;
-}
-
-/*ARGSUSED*/
-struct message *
-smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
-{
-	(void)m;
-	(void)to;
-	(void)cc;
-	(void)signcall;
-	nosmime();
-	return NULL;
-}
-
-/*ARGSUSED*/
-int 
-ccertsave(void *v)
-{
-	(void)v;
-	nosmime();
-	return 1;
 }
 #endif	/* !USE_NSS && !USE_OPENSSL */

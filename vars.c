@@ -80,6 +80,14 @@ assign(const char *name, const char *value)
 	struct var *vp;
 	int h;
 
+	if (value == NULL) {
+		h = unset_allow_undefined;
+		unset_allow_undefined = 1;
+		unset_internal(name);
+		unset_allow_undefined = h;
+		goto jleave;
+	}
+
 	name = canonify(name);
 	h = hash(name);
 
@@ -93,6 +101,7 @@ assign(const char *name, const char *value)
 	else
 		vfree(vp->v_value);
 	vp->v_value = vcopy(value);
+jleave:	;
 }
 
 /*

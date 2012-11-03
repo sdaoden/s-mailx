@@ -38,11 +38,13 @@
  */
 
 #include "rcv.h"
-#include "extern.h"
+
 #include <errno.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
+
+#include "extern.h"
 
 /*
  * Mail -- a mail program
@@ -88,10 +90,13 @@ setfile(char *name, int newmail)
 	case PROTO_FILE:
 		break;
 	case PROTO_MAILDIR:
-		return maildir_setfile(name, newmail, isedit);
+		return (maildir_setfile(name, newmail, isedit));
+#ifdef USE_POP3
 	case PROTO_POP3:
 		shudclob = 1;
-		return pop3_setfile(name, newmail, isedit);
+		return (pop3_setfile(name, newmail, isedit));
+#endif
+#ifdef USE_IMAP
 	case PROTO_IMAP:
 		shudclob = 1;
 		if (newmail) {
@@ -100,11 +105,12 @@ setfile(char *name, int newmail)
 			omsgCount = msgCount;
 		}
 		return imap_setfile(name, newmail, isedit);
-	case PROTO_UNKNOWN:
-		fprintf(stderr, catgets(catd, CATSET, 217,
-				"Cannot handle protocol: %s\n"), name);
-		return -1;
+#endif
+	default:
+		fprintf(stderr, tr(217, "Cannot handle protocol: %s\n"), name);
+		return (-1);
 	}
+
 	if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
 		if ((!isedit && errno == ENOENT) || newmail) {
 			if (newmail)
@@ -262,8 +268,10 @@ newmailinfo(int omsgCount)
 	callhook(mailname, 1);
 	mdot = getmdot(1);
 	if (value("header")) {
+#ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(omsgCount+1, msgCount);
+#endif
 		while (++omsgCount <= msgCount)
 			if (visible(&message[omsgCount-1]))
 				printhead(omsgCount, stdout, 0);
@@ -299,6 +307,7 @@ commands(void)
 	oldpipe = safe_signal(SIGPIPE, SIG_IGN);
 	safe_signal(SIGPIPE, oldpipe);
 	setexit();
+
 	for (;;) {
 		interrupts = 0;
 		handlerstacktop = NULL;
@@ -321,8 +330,10 @@ commands(void)
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
+#ifdef USE_IMAP
 						(mb.mb_type == MB_IMAP &&
 						imap_newmail(n) > x) ||
+#endif
 						(mb.mb_type == MB_MAILDIR &&
 						n != 0)) {
 					int odot = dot - &message[0];
@@ -341,7 +352,8 @@ commands(void)
 			printf("%s", prompt);
 		}
 		fflush(stdout);
-		sreset();
+		if (! sourcing)
+			sreset();
 		/*
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
@@ -378,8 +390,11 @@ commands(void)
 		if (execute(linebuf, 0, n))
 			break;
 	}
+
 	if (linebuf)
 		free(linebuf);
+	if (sourcing)
+		sreset();
 }
 
 /*
@@ -445,10 +460,13 @@ execute(char *linebuf, int contxt, size_t linesize)
 		ac_free(word);
 		return(0);
 	}
+
 	com = lex(word);
-	if (com == NULL) {
-		printf(catgets(catd, CATSET, 91,
-				"Unknown command: \"%s\"\n"), word);
+	if (com == NULL || com->c_func == &ccmdnotsupp) {
+		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), word);
+		if (com != NULL)
+			fprintf(stderr, tr(10,
+				"The requested feature is not compiled in\n"));
 		goto out;
 	}
 
