@@ -66,11 +66,11 @@ static int mustquote_inhdrq(int c);
 static size_t	delctrl(char *cp, size_t sz);
 static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 static void uppercopy(char *dest, const char *src);
 static void stripdash(char *p);
 static void invalid_seq(int c);
-#endif	/* HAVE_ICONV */
+#endif
 static int is_this_enc(const char *line, const char *encoding);
 static char *mime_tline(char *x, char *l);
 static char *mime_type(char *ext, char const *filename);
@@ -245,7 +245,7 @@ need_hdrconv(struct header *hp, enum gfield w)
 needs:	return getcharset(MIME_HIGHBIT);
 }
 
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 /*
  * Convert a string, upper-casing the characters.
  */
@@ -343,7 +343,12 @@ iconv_open_ft(const char *tocode, const char *fromcode)
  */
 /* Citrus project? */
 #if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
-# define __INBCAST	(const char**)
+  /* DragonFly 3.2.1 is special */
+# ifdef __DragonFly__
+#  define __INBCAST	(char ** __restrict__)
+# else
+#  define __INBCAST	(char const **)
+# endif
 #endif
 #ifndef __INBCAST
 # define __INBCAST
