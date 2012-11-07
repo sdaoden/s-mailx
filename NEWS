@@ -12,6 +12,34 @@ S - n a i l  N e w s
 
   Deepest apologies to tortured users from the current maintainer!
 
+- RFC 4155 compatible MBOX file handling has been introduced, and so
+  S-nail is now on par with (at least) NetBSD Mail in respect to this.
+  It can be turned off with the new *posix-mbox* variable, which you may
+  need to use since not all MUAs are capable to dig those MBOX files.
+  E.g., less cutting-edge (.-) MUAs fail for this:
+
+   |From - Thu May 10 20:40:54 2012
+   |Date: Wed, 07 Nov 2012 11:48:30 +0100
+   |To: super@duper.com
+   |Subject: super1
+   |
+   |From me.
+   |
+   |From - Thu May 10 20:40:54 2012
+   |Date: Wed, 07 Nov 2012 11:48:30 +0100
+   |To: super@duper.com
+   |Subject: super2
+   |
+   |>From - Thu May 10 20:40:54 2012
+   |From - Thu May 10 20:40:54 2012
+
+  I'm not completely happy since S-nail *does* still quote those lines,
+  how rare they may be -- it *does* modify message content.  mutt(1)
+  implements something more clever and that is quoted-printable encoding
+  of the "F" from "From", when seen at the beginning of a line.
+  This, when applied to just *any* "^From", will be a non-modifying and
+  all-compatible solution.
+
 - SEND_MBOX handling has been changed to discard any Content-Length: and
   Lines: headers when it rewrites a message by default.
   I know that mutt(1) generates them (why, after
