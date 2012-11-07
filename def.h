@@ -244,6 +244,7 @@ struct mailbox {
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
 	int mb_threaded;		/* mailbox has been threaded */
+#ifdef USE_IMAP
 	enum mbflags {
 		MB_NOFLAGS	= 000,
 		MB_UIDPLUS	= 001	/* supports IMAP UIDPLUS */
@@ -252,6 +253,7 @@ struct mailbox {
 	char	*mb_imap_account;	/* name of current IMAP account */
 	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
 	char	*mb_cache_directory;	/* name of cache directory */
+#endif
 };
 
 enum needspec {

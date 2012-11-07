@@ -378,8 +378,10 @@ save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
 			if (imap_copy(mp, *ip, file) == STOP)
 #endif
 				goto ferr;
+#ifdef USE_IMAP
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
+#endif
 		} else if (send(mp, obuf, ignore, NULL,
 					convert, mstats) < 0) {
 			perror(file);

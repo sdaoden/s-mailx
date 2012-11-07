@@ -971,7 +971,9 @@ initbox(const char *name)
 	mb.mb_threaded = 0;
 	free(mb.mb_sorted);
 	mb.mb_sorted = NULL;
+#ifdef USE_IMAP
 	mb.mb_flags = MB_NOFLAGS;
+#endif
 	prevdot = NULL;
 	dot = NULL;
 	did_print_dot = 0;
