@@ -12,6 +12,15 @@ S - n a i l  N e w s
 
   Deepest apologies to tortured users from the current maintainer!
 
+- SEND_MBOX handling has been changed to discard any Content-Length: and
+  Lines: headers when it rewrites a message by default.
+  I know that mutt(1) generates them (why, after
+  http://www.jwz.org/doc/content-length.html?).
+  Anyway, S-nail does neither use nor manage them, so that any
+  modification renders those fields invalid, and then it seems best to
+  discard them anyway.
+  You may turn the new behaviour off with *keep-content-length*.
+
 v13.2, 2012-11-03
 -----------------
 

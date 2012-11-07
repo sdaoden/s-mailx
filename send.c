@@ -250,14 +250,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			break;
 		}
 		isenc &= ~1;
-		if (infld && blankchar(line[0]&0377)) {
+		if (infld && blankchar(line[0])) {
 			/*
 			 * If this line is a continuation (via space or tab)
 			 * of a previous header field, determine if the start
 			 * of the line is a MIME encoded word.
 			 */
 			if (isenc & 2) {
-				for (cp = line; blankchar(*cp&0377); cp++);
+				for (cp = line; blankchar(*cp); cp++);
 				if (cp > line && linelen - (cp - line) > 8 &&
 						cp[0] == '=' && cp[1] == '?')
 					isenc |= 1;
@@ -267,9 +267,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 * Pick up the header field if we have one.
 			 */
 			for (cp = line; (c = *cp&0377) && c != ':' &&
-					!spacechar(c); cp++);
+					! spacechar(c); cp++);
 			cp2 = cp;
-			while (spacechar(*cp&0377))
+			while (spacechar(*cp))
 				cp++;
 			if (cp[0] != ':' && level == 0 && lineno == 1) {
 				/*
@@ -295,7 +295,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 */
 			c = *cp2;
 			*cp2 = 0;	/* temporarily null terminate */
-			if (doign && is_ign(line, cp2 - line, doign))
+			if ((doign && is_ign(line, cp2 - line, doign)) ||
+					(action == SEND_MBOX &&
+					 ! value("keep-content-length") &&
+					 (asccasecmp(line, "content-length")==0
+					 || asccasecmp(line, "lines") == 0)))
 				ignoring = 1;
 			else if (asccasecmp(line, "status") == 0) {
 				 /*
@@ -330,11 +334,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		isenc &= ~2;
 		if (count && (c = getc(ibuf)) != EOF) {
 			if (blankchar(c)) {
-				if (linelen > 0 && line[linelen-1] == '\n')
-					cp = &line[linelen-2];
+				if (linelen > 0 && line[linelen - 1] == '\n')
+					cp = &line[linelen - 2];
 				else
-					cp = &line[linelen-1];
-				while (cp >= line && whitechar(*cp&0377))
+					cp = &line[linelen - 1];
+				while (cp >= line && whitechar(*cp))
 					cp++;
 				if (cp - line > 8 && cp[0] == '=' &&
 						cp[-1] == '?')
@@ -342,7 +346,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			}
 			ungetc(c, ibuf);
 		}
-		if (!ignoring) {
+		if (! ignoring) {
 			start = line;
 			len = linelen;
 			if (action == SEND_TODISP ||
@@ -356,14 +360,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * words follow on continuing lines.
 				 */
 				if (isenc & 1)
-					while (len>0&&blankchar(*start&0377)) {
+					while (len > 0&& blankchar(*start)) {
 						start++;
 						len--;
 					}
 				if (isenc & 2)
-					if (len > 0 && start[len-1] == '\n')
+					if (len > 0 && start[len - 1] == '\n')
 						len--;
-				while (len > 0 && blankchar(start[len-1]&0377))
+				while (len > 0 && blankchar(start[len - 1]))
 					len--;
 			}
 			out(start, len, obuf, convert,
