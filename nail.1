@@ -2276,6 +2276,14 @@ Activates
 .I pop3-use-starttls
 for a specific account.
 .TP
+.B posix-mbox
+The POSIX standard defines a rather laxe MBOX mailbox file content,
+RFC 4155 is more strict on which kind of "From " line has to be quoted
+and which not.
+\*(UA defaults to a RFC-compliant method,
+but by setting this option the older so-called mboxrd-alike behaviour
+can be turned on.
+.TP
 .B print-all-chars
 This option causes all characters to be considered printable.
 It is only effective if given in a startup file.
@@ -2453,10 +2461,13 @@ can view the screen if this option is enabled.
 .B writebackedited
 If this variable is set,
 messages modified using the \fIedit\fR or \fIvisual\fR commands are
-written back to the current folder when it is quit.
-This is only possible for writable folders in \fImbox\fR format.
-Setting this variable also disables MIME decoding and decryption for the
-editing commands.
+written back to the current folder when it is quit;
+it is only honoured for writable folders in \fImbox\fR format, though.
+Note that the editor will be pointed to the raw message content in that
+case, i.e., neither MIME decoding nor decryption will have been
+performed,
+and proper RFC 4155 "From " quoting of newly added or edited content is
+also left as an excercise to the user.
 .SS "String Options"
 .PP
 The string options include the following:

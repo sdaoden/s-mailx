@@ -976,18 +976,28 @@ out(char *buf, size_t len, FILE *fp,
 	long	lines;
 
 	sz = 0;
-	if (action == SEND_MBOX || action == SEND_DECRYPT) {
-		cp = buf;
-		n = len;
-		while (n && cp[0] == '>')
-			cp++, n--;
+	if (action != SEND_MBOX && action != SEND_DECRYPT)
+		goto jmw;
+
+	cp = buf;
+	n = len;
+	while (n && cp[0] == '>')
+		++cp, --n;
+
+	/* Primitive, rather POSIX-compliant From_ quoting? */
+	if (value("posix-mbox")) {
 		if (n >= 5 && cp[0] == 'F' && cp[1] == 'r' && cp[2] == 'o' &&
-				cp[3] == 'm' && cp[4] == ' ') {
-			putc('>', fp);
-			sz++;
-		}
+				cp[3] == 'm' && cp[4] == ' ')
+			goto jquote;
 	}
-	sz += mime_write(buf, len, fp,
+	/* We however *have* to perform RFC 4155 compliant From_ quoting, or
+	 * we end up like Mutt 1.5.21 (2010-09-15) */
+	else if (cp != buf && is_head(cp, n)) {
+jquote:		putc('>', fp);
+		sz++;
+	}
+
+jmw:	sz += mime_write(buf, len, fp,
 			action == SEND_MBOX ? CONV_NONE : convert,
 			action == SEND_TODISP || action == SEND_TODISP_ALL ||
 					action == SEND_QUOTE ||
@@ -1229,22 +1239,26 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 char *
 foldergets(char **s, size_t *size, size_t *count, size_t *llen, FILE *stream)
 {
-	char *p, *top;
+	char *p;
 
 	if ((p = fgetline(s, size, count, llen, stream, 0)) == NULL)
-		return NULL;
-	if (*p == '>') {
-		p++;
-		while (*p == '>') p++;
-		if (strncmp(p, "From ", 5) == 0) {
-			/* we got a masked From line */
-			top = &(*s)[*llen];
-			p = *s;
-			do
-				p[0] = p[1];
-			while (++p < top);
-			(*llen)--;
-		}
+		return (NULL);
+	if (*p != '>')
+		goto jleave;
+
+	while (*++p == '>')
+		;
+	if (value("posix-mbox")) {
+		if (strncmp(p, "From ", 5) != 0)
+			goto jleave;
 	}
-	return *s;
+	/* Since we actually *have* to perform RFC 4155 compliant From_ quoting
+	 * we should of course undo that */
+	else if (p == *s || ! is_head(p, *llen - (p - *s)))
+		goto jleave;
+
+	/* We got a masked From line */
+	memmove(*s, *s + 1, --*llen);
+jleave:
+	return (*s);
 }

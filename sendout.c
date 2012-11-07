@@ -634,8 +634,7 @@ savemail(char *name, FILE *fi)
 	size_t bufsize, buflen, count;
 	char *p;
 	time_t now;
-	int prependnl = 0;
-	int error = 0;
+	int posix, prependnl = 0, error = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
 	time(&now);
@@ -672,21 +671,24 @@ savemail(char *name, FILE *fi)
 			}
 		}
 	}
+
 	fprintf(fo, "From %s %s", myname, ctime(&now));
 	buflen = 0;
 	fflush(fi);
 	rewind(fi);
+	posix = value("posix-mbox") != NULL;
 	count = fsize(fi);
 	while (fgetline(&buf, &bufsize, &count, &buflen, fi, 0) != NULL) {
-		if (*buf == '>') {
-			p = buf + 1;
-			while (*p == '>')
-				p++;
-			if (strncmp(p, "From ", 5) == 0)
-				/* we got a masked From line */
+		/* We actually *have* to perform RFC 4155 compliant From_
+		 * quoting, or we end up like Mutt 1.5.21 (2010-09-15).
+		 * So anyway check if we have a masked From_ line */
+		if (posix && *(p = buf) == '>') {
+			while (*++p == '>')
+				;
+			if (! posix ? is_head(p, buflen - (p - buf))
+					: (strncmp(p, "From ", 5) == 0))
 				putc('>', fo);
-		} else if (strncmp(buf, "From ", 5) == 0)
-			putc('>', fo);
+		}
 		fwrite(buf, sizeof *buf, buflen, fo);
 	}
 	if (buflen && *(buf + buflen - 1) != '\n')
@@ -1515,7 +1517,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 		if ((cp = foldergets(&buf, &bufsize, &count, &c, fi)) == NULL)
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
-				&& strncmp("From ", buf, 5) != 0) {
+		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
 			fwrite(buf, sizeof *buf, c, fo);
 		}
 		if (count > 0 && *buf == '\n')
