@@ -217,6 +217,23 @@ Low-Level
   mime.c:get_mime_convert() (that calls mime.c:mime_isclean()) ...
   It is terribly inefficient and can be improved a lot.
 
+- While at MIME.
+  send.c:sendpart(): the
+		while (convert == CONV_FROMQP && linelen >= 2 &&
+				line[linelen - 2] == '=') {
+  loop is actually entered for base64 encoded messages.  If in a "type"
+  command that handles multiple messages it thus happens that the "Message
+  XY:" message continues the last line of the message in question.
+  Likewise problems for quoted-printable encoded parts if the last line
+  ends in a = line-continuation request, but that only suppresses the
+  separating newline in between messages, "Message XY:" does appear on
+  a line of its own at least.  Berkeley Mail has the general problem that
+  the separating newline in between messages is counted and (thus) handled
+  as part of the message.  It seems that nail did not address this problem
+  when it was extended.  The (*writebackedited* hack.., 2012-10-06) (and
+  it's tweak on the same day) handles this for editing, but it seems more
+  work is needed to get this done all through the system.
+
 - Think about a name bypass hashmap cache, and whenever we have to skin or
   nalloc() or whatever, look in there.  Maybe even an additional link for
   non GFULL(/GSKIN) and fully skinned struct name objects.
@@ -243,7 +260,11 @@ Low-Level
   mechanism work ... Or not?  Well, if you track the last file and if there
   was a newline last, and you switch files, then the last newline state is
   lost, and you do write the prefix even if in the other file there was no
-  newline last.  I'm confused now.  Change this, please.
+  newline last.
+
+  In fact we should introduce carrier structs for these execution paths.
+  This would also allow to gracefully detect MIME-escaped final newlines,
+  reduce work that is done over and over again etc.
 
 - The current codebase assumes that in multibyte encodings plain ASCII
   characters can be tested "as-is".  This assumption is wrong for some

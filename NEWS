@@ -1,6 +1,9 @@
 S - n a i l  N e w s
 ====================
 
+v13.3, 2012-11-11
+-----------------
+
 - Configuration on UnixWare 7.1.4 will succeed (shell issue fixed).
 
 - Even on DragonFly BSD the IMAP GSSAPI is now found
