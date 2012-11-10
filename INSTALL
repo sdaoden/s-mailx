@@ -82,6 +82,7 @@ Notes for S-nail(1) v13.*
 - FreeBSD 9.0.  Tested with all features except IPv6, iconv() and IDNA
   with the default CC=clang(1) and CC=gcc(1), -O2, and the WARNs
   including -fstrict-overflow.
+- UnixWare 7.1.4.  Tested with all features except IPv6, GSSAPI and IDNA.
 - Lightly tested on a default OpenBSD 5.1 and just as-default 5.2.
 - Compiled and lightly tested on TinyCoreLinux 4.4 with default compiler
   environment available at that time with -O2.
