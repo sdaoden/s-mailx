@@ -1,6 +1,10 @@
 S - n a i l  N e w s
 ====================
 
+- Support for pkgsrc(7) systems and automatic integration of
+  C_INCLUDE_PATH and LD_LIBRARY_PATH path configurations.
+  Please see INSTALL.
+
 - Fixes a mortally embarassing regression that the current maintainer
   introduced before i really knew what i was doing, in (If *record* is
   set, avoid writing dead content twice.., 2012-09-14).
