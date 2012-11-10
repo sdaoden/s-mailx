@@ -1,6 +1,17 @@
 S - n a i l  N e w s
 ====================
 
+- Fixes a mortally embarassing regression that the current maintainer
+  introduced before i really knew what i was doing, in (If *record* is
+  set, avoid writing dead content twice.., 2012-09-14).
+  It hit users that send through a MTA and have *record* set; in this
+  combination data would not have reached the MTA.
+  Interested parties may read the comment in savedeadletter() (part of
+  the changeset) or the (Fix MTA/*record* descriptor clash..,
+  2012-11-10) commit log.
+
+  Deepest apologies to tortured users from the current maintainer!
+
 v13.2, 2012-11-03
 -----------------
 

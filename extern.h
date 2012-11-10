@@ -235,7 +235,8 @@ struct attachment *add_attachment(struct attachment *attach, char *file,
 		int expand_file);
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);
-void savedeadletter(FILE *fp);
+
+void	savedeadletter(FILE *fp, int fflush_rewind_first);
 
 /* dotlock.c */
 int fcntl_lock(int fd, int type);

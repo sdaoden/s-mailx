@@ -900,7 +900,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	 */
 	if ((pid = fork()) == -1) {
 		perror("fork");
-jstop:		savedeadletter(input);
+jstop:		savedeadletter(input, 0);
 		senderr++;
 		goto jleave;
 	}
@@ -922,12 +922,18 @@ jstop:		savedeadletter(input);
 		} else {
 #endif
 			prepare_child(&nset, fileno(input), -1);
+			/* If *record* is set then savemail() will move the
+			 * file position; it'll call rewind(), but that may
+			 * optimize away the systemcall if possible, and since
+			 * dup2() shares the position with the original FD the
+			 * MTA may end up reading nothing */
+			lseek(0, 0, SEEK_SET);
 			execv(mta, args);
 			perror(mta);
 #ifdef USE_SMTP
 		}
 #endif
-		savedeadletter(input);
+		savedeadletter(input, 1);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
@@ -973,7 +979,7 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 			cq[0] = '+';
 			strcpy(&cq[1], cp);
 			cp = cq;
-			ep = expand(cp);
+			ep = expand(cp); /* TODO file_expand() possible? */
 			if (ep == NULL) {
 				ep = "NULL";
 				goto jbail;
@@ -983,9 +989,8 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 jbail:			fprintf(stderr, tr(285,
 				"Failed to save message in %s - "
 				"message not sent\n"), ep);
-			rewind(fp);
 			exit_status |= 1;
-			savedeadletter(fp);
+			savedeadletter(fp, 1);
 			return STOP;
 		}
 	}
@@ -1128,10 +1133,8 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 jfail:
 #endif
 		senderr++;
-		rewind(mtf);
-		savedeadletter(mtf);
-		fputs(catgets(catd, CATSET, 187,
-				". . . message not sent.\n"), stderr);
+		savedeadletter(mtf, 1);
+		fputs(tr(187, ". . . message not sent.\n"), stderr);
 		return STOP;
 	}
 
@@ -1151,7 +1154,7 @@ jfail:
 	 */
 	to = outof(to, mtf, hp);
 	if (senderr)
-		savedeadletter(mtf);
+		savedeadletter(mtf, 0);
 	to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
 	if (count(to) == 0) {
 		if (senderr == 0)
@@ -1568,20 +1571,17 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;
-		rewind(nfo);
-		savedeadletter(nfi);
-		fputs(catgets(catd, CATSET, 190,
-				". . . message not sent.\n"), stderr);
+		savedeadletter(nfi, 1);
+		fputs(tr(190, ". . . message not sent.\n"), stderr);
 		Fclose(nfo);
 		Fclose(nfi);
 		return STOP;
 	}
-	fflush(nfo);
-	rewind(nfo);
 	Fclose(nfo);
+	rewind(nfi);
 	to = outof(to, nfi, &head);
 	if (senderr)
-		savedeadletter(nfi);
+		savedeadletter(nfi, 0);
 	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
 		if (value("record-resent") == NULL ||
