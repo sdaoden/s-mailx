@@ -585,25 +585,34 @@ int main(void)
 	return 0;
 }
 !
-
 	sed -e '1s/gssapi\///' < $tmp2.c > $tmp3.c
 
-	<$tmp2.c link_check gssapi 'for GSSAPI in libgss' \
-			'#define USE_GSSAPI' '-lgss' ||
+	<$tmp3.c link_check gssapi 'for GSSAPI in libgssapi' \
+			'#define USE_GSSAPI
+			#define	GSSAPI_REG_INCLUDE' \
+			'-lgssapi' || \
+		<$tmp3.c link_check gssapi \
+			'for GSSAPI in libgssapi, DragonFly BSD-style' \
+			'#define USE_GSSAPI
+			#define	GSSAPI_REG_INCLUDE' \
+			'-lgssapi' \
+			'-I/usr/pkg/include/krb5' || \
 		<$tmp2.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
-			'#define USE_GSSAPI' '-lgssapi_krb5' ||
-		link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
-			'#define USE_GSSAPI
-			#define GSSAPI_OLD_STYLE' '-lgssapi_krb5' <<\! || \
-		<$tmp3.c link_check gssapi 'for GSSAPI in libgssapi' \
-			'#define USE_GSSAPI
-			#define	GSSAPI_REG_INCLUDE' '-lgssapi' || \
+			'#define USE_GSSAPI' \
+			'-lgssapi_krb5' || \
 		<$tmp3.c link_check gssapi \
 			'for GSSAPI in libgssapi, OpenBSD-style' \
 			'#define USE_GSSAPI
 			#define	GSSAPI_REG_INCLUDE' \
-			'-lgssapi -lkrb5 -lcrypto' '-I/usr/include/kerberosV'
-
+			'-lgssapi -lkrb5 -lcrypto' \
+			'-I/usr/include/kerberosV' || \
+		<$tmp2.c link_check gssapi 'for GSSAPI in libgss' \
+			'#define USE_GSSAPI' \
+			'-lgss' || \
+		link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
+			'#define USE_GSSAPI
+			#define GSSAPI_OLD_STYLE' \
+			'-lgssapi_krb5' << \!
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
 

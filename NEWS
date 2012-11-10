@@ -1,6 +1,9 @@
 S - n a i l  N e w s
 ====================
 
+- Even on DragonFly BSD the IMAP GSSAPI is now found
+  (in /usr/pkg/include/krb5/gssapi/gssapi.h).
+
 - Support for pkgsrc(7) systems and automatic integration of
   C_INCLUDE_PATH and LD_LIBRARY_PATH path configurations.
   Please see INSTALL.
