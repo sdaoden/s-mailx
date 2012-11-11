@@ -103,7 +103,8 @@ edit1(int *msgvec, int type)
 			fflush(stdout);
 			if (readline(stdin, &line, &linesize) < 0)
 				break;
-			for (p = line; blankchar(*p & 0377); p++);
+			for (p = line; blankchar(*p); p++)
+				;
 			if (*p == 'q')
 				break;
 			if (*p == 'n')
@@ -112,13 +113,14 @@ edit1(int *msgvec, int type)
 		setdot(mp = &message[msgvec[i] - 1]);
 		did_print_dot = 1;
 		touch(mp);
+
 		sigint = safe_signal(SIGINT, SIG_IGN);
-		--mp->m_size; /* XXX[edithack] strip final NL */
+		--mp->m_size; /* Strip final NL.. */
 		fp = run_editor(fp, -1/*mp->m_size*/, type,
-				(mb.mb_perm & MB_EDIT) == 0 || !wb,
+				(mb.mb_perm & MB_EDIT) == 0 || ! wb,
 				NULL, mp, wb ? SEND_MBOX : SEND_TODISP_ALL,
 				sigint);
-		++mp->m_size; /* XXX[edithack] */
+		++mp->m_size; /* And readd it */
 		if (fp != NULL) {
 			fseek(mb.mb_otf, 0L, SEEK_END);
 			size = ftell(mb.mb_otf);
@@ -136,12 +138,11 @@ edit1(int *msgvec, int type)
 					break;
 				++size;
 			}
-			/* MBOX finalize XXX[edithack] is this always MBOX? */
 			if (! lastnl && putc('\n', mb.mb_otf) != EOF)
 				++size;
 			if (putc('\n', mb.mb_otf) != EOF)
 				++size;
-			mp->m_size = (size_t)size;/*XXX[edithack] inc.MBOX?!? */
+			mp->m_size = (size_t)size;
 			if (ferror(mb.mb_otf))
 				perror("/tmp");
 			Fclose(fp);

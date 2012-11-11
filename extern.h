@@ -235,7 +235,8 @@ struct attachment *add_attachment(struct attachment *attach, char *file,
 		int expand_file);
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);
-void savedeadletter(FILE *fp);
+
+void	savedeadletter(FILE *fp, int fflush_rewind_first);
 
 /* dotlock.c */
 int fcntl_lock(int fd, int type);
@@ -286,8 +287,9 @@ int getopt(int argc, char *const argv[], const char *optstring);
 #endif
 
 /* head.c */
-int is_head(char *linebuf, size_t linelen);
-void parse(char *line, size_t linelen, struct headline *hl, char *pbuf);
+int	is_head(char const *linebuf, size_t linelen);
+int	extract_date_from_from_(char const *line, size_t linelen,
+		char datebuf[FROM_DATEBUF]);
 void extract_header(FILE *fp, struct header *hp);
 #define	hfieldX(a, b)	hfield_mult(a, b, 1)
 #define	hfield1(a, b)	hfield_mult(a, b, 0)

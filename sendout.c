@@ -634,8 +634,7 @@ savemail(char *name, FILE *fi)
 	size_t bufsize, buflen, count;
 	char *p;
 	time_t now;
-	int prependnl = 0;
-	int error = 0;
+	int posix, prependnl = 0, error = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
 	time(&now);
@@ -672,21 +671,24 @@ savemail(char *name, FILE *fi)
 			}
 		}
 	}
+
 	fprintf(fo, "From %s %s", myname, ctime(&now));
 	buflen = 0;
 	fflush(fi);
 	rewind(fi);
+	posix = value("posix-mbox") != NULL;
 	count = fsize(fi);
 	while (fgetline(&buf, &bufsize, &count, &buflen, fi, 0) != NULL) {
-		if (*buf == '>') {
-			p = buf + 1;
-			while (*p == '>')
-				p++;
-			if (strncmp(p, "From ", 5) == 0)
-				/* we got a masked From line */
+		/* We actually *have* to perform RFC 4155 compliant From_
+		 * quoting, or we end up like Mutt 1.5.21 (2010-09-15).
+		 * So anyway check if we have a masked From_ line */
+		if (posix && *(p = buf) == '>') {
+			while (*++p == '>')
+				;
+			if (! posix ? is_head(p, buflen - (p - buf))
+					: (strncmp(p, "From ", 5) == 0))
 				putc('>', fo);
-		} else if (strncmp(buf, "From ", 5) == 0)
-			putc('>', fo);
+		}
 		fwrite(buf, sizeof *buf, buflen, fo);
 	}
 	if (buflen && *(buf + buflen - 1) != '\n')
@@ -900,7 +902,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	 */
 	if ((pid = fork()) == -1) {
 		perror("fork");
-jstop:		savedeadletter(input);
+jstop:		savedeadletter(input, 0);
 		senderr++;
 		goto jleave;
 	}
@@ -922,12 +924,18 @@ jstop:		savedeadletter(input);
 		} else {
 #endif
 			prepare_child(&nset, fileno(input), -1);
+			/* If *record* is set then savemail() will move the
+			 * file position; it'll call rewind(), but that may
+			 * optimize away the systemcall if possible, and since
+			 * dup2() shares the position with the original FD the
+			 * MTA may end up reading nothing */
+			lseek(0, 0, SEEK_SET);
 			execv(mta, args);
 			perror(mta);
 #ifdef USE_SMTP
 		}
 #endif
-		savedeadletter(input);
+		savedeadletter(input, 1);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
@@ -973,7 +981,7 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 			cq[0] = '+';
 			strcpy(&cq[1], cp);
 			cp = cq;
-			ep = expand(cp);
+			ep = expand(cp); /* TODO file_expand() possible? */
 			if (ep == NULL) {
 				ep = "NULL";
 				goto jbail;
@@ -983,9 +991,8 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 jbail:			fprintf(stderr, tr(285,
 				"Failed to save message in %s - "
 				"message not sent\n"), ep);
-			rewind(fp);
 			exit_status |= 1;
-			savedeadletter(fp);
+			savedeadletter(fp, 1);
 			return STOP;
 		}
 	}
@@ -1128,10 +1135,8 @@ try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
 jfail:
 #endif
 		senderr++;
-		rewind(mtf);
-		savedeadletter(mtf);
-		fputs(catgets(catd, CATSET, 187,
-				". . . message not sent.\n"), stderr);
+		savedeadletter(mtf, 1);
+		fputs(tr(187, ". . . message not sent.\n"), stderr);
 		return STOP;
 	}
 
@@ -1151,7 +1156,7 @@ jfail:
 	 */
 	to = outof(to, mtf, hp);
 	if (senderr)
-		savedeadletter(mtf);
+		savedeadletter(mtf, 0);
 	to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
 	if (count(to) == 0) {
 		if (senderr == 0)
@@ -1512,7 +1517,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 		if ((cp = foldergets(&buf, &bufsize, &count, &c, fi)) == NULL)
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
-				&& strncmp("From ", buf, 5) != 0) {
+		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
 			fwrite(buf, sizeof *buf, c, fo);
 		}
 		if (count > 0 && *buf == '\n')
@@ -1568,20 +1573,17 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;
-		rewind(nfo);
-		savedeadletter(nfi);
-		fputs(catgets(catd, CATSET, 190,
-				". . . message not sent.\n"), stderr);
+		savedeadletter(nfi, 1);
+		fputs(tr(190, ". . . message not sent.\n"), stderr);
 		Fclose(nfo);
 		Fclose(nfi);
 		return STOP;
 	}
-	fflush(nfo);
-	rewind(nfo);
 	Fclose(nfo);
+	rewind(nfi);
 	to = outof(to, nfi, &head);
 	if (senderr)
-		savedeadletter(nfi);
+		savedeadletter(nfi, 0);
 	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
 		if (value("record-resent") == NULL ||

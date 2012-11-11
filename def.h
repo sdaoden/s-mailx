@@ -75,6 +75,8 @@
 #define MAXEXP		25		/* Maximum expansion of aliases */
 #define HSHSIZE		59		/* Hash size for aliases and vars */
 
+#define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
+
 /*
  * Auto-reclaimed string storage as defined in strings.c.
  */
@@ -244,6 +246,7 @@ struct mailbox {
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
 	int mb_threaded;		/* mailbox has been threaded */
+#ifdef USE_IMAP
 	enum mbflags {
 		MB_NOFLAGS	= 000,
 		MB_UIDPLUS	= 001	/* supports IMAP UIDPLUS */
@@ -252,6 +255,7 @@ struct mailbox {
 	char	*mb_imap_account;	/* name of current IMAP account */
 	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
 	char	*mb_cache_directory;	/* name of cache directory */
+#endif
 };
 
 enum needspec {
@@ -406,16 +410,6 @@ struct cmd {
 
 #define c_minargs	c_msgflag	/* Minimum argcount for RAWLIST */
 #define c_maxargs	c_msgmask	/* Max argcount for RAWLIST */
-
-/*
- * Structure used to return a break down of a head
- * line (hats off to Bill Joy!)
- */
-struct headline {
-	char	*l_from;	/* The name of the sender */
-	char	*l_tty;		/* His tty string (if any) */
-	char	*l_date;	/* The entire date string */
-};
 
 enum gfield {
 	GTO	= 1,		/* Grab To: line */

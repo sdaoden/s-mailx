@@ -1153,9 +1153,9 @@ collint(int s)
 		siglongjmp(colljmp, 1);
 	}
 	exit_status |= 04;
-	rewind(collf);
 	if (value("save") != NULL && s != 0)
-		savedeadletter(collf);
+		savedeadletter(collf, 1);
+	/* Aborting message, no need to fflush() .. */
 	siglongjmp(collabort, 1);
 }
 
@@ -1164,8 +1164,7 @@ static void
 collhup(int s)
 {
 	(void)s;
-	rewind(collf);
-	savedeadletter(collf);
+	savedeadletter(collf, 1);
 	/*
 	 * Let's pretend nobody else wants to clean up,
 	 * a true statement at this time.
@@ -1174,30 +1173,52 @@ collhup(int s)
 }
 
 void
-savedeadletter(FILE *fp)
+savedeadletter(FILE *fp, int fflush_rewind_first)
 {
-	FILE *dbuf;
-	int c, lines = 0, bytes = 0;
 	char *cp;
+	int c;
+	FILE *dbuf;
+	ul_it lines, bytes;
 
+	if (fflush_rewind_first) {
+		(void)fflush(fp);
+		rewind(fp);
+	}
 	if (fsize(fp) == 0)
-		return;
+		goto jleave;
+
 	cp = getdeadletter();
 	c = umask(077);
 	dbuf = Fopen(cp, "a");
 	umask(c);
 	if (dbuf == NULL)
-		return;
-	printf("\"%s\" ", cp);
-	while ((c = getc(fp)) != EOF) {
-		putc(c, dbuf);
-		bytes++;
-		if (c == '\n')
-			lines++;
-	}
-	Fclose(dbuf);
-	printf("%d/%d\n", lines, bytes);
+		goto jleave;
+
+	/*
+	 * There are problems with dup()ing of file-descriptors for child
+	 * processes.  As long as those are not fixed in equal spirit to
+	 * (outof(): FIX and recode.., 2012-10-04), and to avoid reviving of
+	 * bugs like (If *record* is set, avoid writing dead content twice..,
+	 * 2012-09-14), we have to somehow accomplish that the FILE* fp
+	 * makes itself comfortable with the *real* offset of the underlaying
+	 * file descriptor.  Unfortunately Standard I/O and POSIX don't
+	 * describe a way for that -- fflush();rewind(); won't do it.
+	 * This fseek(END),rewind() pair works around the problem on *BSD.
+	 */
+	(void)fseek(fp, 0, SEEK_END);
 	rewind(fp);
+
+	printf("\"%s\" ", cp);
+	for (lines = bytes = 0; (c = getc(fp)) != EOF; ++bytes) {
+		putc(c, dbuf);
+		if (c == '\n')
+			++lines;
+	}
+	printf("%lu/%lu\n", lines, bytes);
+
+	Fclose(dbuf);
+	rewind(fp);
+jleave:	;
 }
 
 static int

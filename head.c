@@ -54,237 +54,366 @@
  * Routines for processing and detecting headlines.
  */
 
-static char *	copyin(char *src, char **space);
-static char *	nextword(char *wp, char *wbuf);
-static int	gethfield(FILE *f, char **linebuf, size_t *linesize, int rem,
-			char **colon);
-#ifdef USE_IDNA
-static struct addrguts * idna_apply(struct addrguts *agp);
-#endif
-static int	addrspec_check(int doskin, struct addrguts *agp);
-static int	msgidnextc(const char **cp, int *status);
-static int	charcount(char *str, int c);
+/* Skip over "word" as found in From_ line */
+static char const *	from__skipword(char const *wp);
 
-/*
- * See if the passed line buffer is a mail header.
- * Return true if yes.  POSIX.2 leaves the content
- * following 'From ' unspecified, so don't care about
- * it.
- */
-/*ARGSUSED 2*/
-int
-is_head(char *linebuf, size_t linelen)
-{
-	char *cp;
-	(void)linelen;
-
-	cp = linebuf;
-	if (*cp++ != 'F' || *cp++ != 'r' || *cp++ != 'o' || *cp++ != 'm' ||
-	    *cp++ != ' ')
-		return (0);
-	return(1);
-}
-
-/*
- * Split a headline into its useful components.
- * Copy the line into dynamic string space, then set
- * pointers into the copied line in the passed headline
- * structure.  Actually, it scans.
- */
-void
-parse(char *line, size_t linelen, struct headline *hl, char *pbuf)
-{
-	char *cp;
-	char *sp;
-	char *word;
-
-	hl->l_from = NULL;
-	hl->l_tty = NULL;
-	hl->l_date = NULL;
-	cp = line;
-	sp = pbuf;
-	word = ac_alloc(linelen + 1);
-	/*
-	 * Skip over "From" first.
-	 */
-	cp = nextword(cp, word);
-	cp = nextword(cp, word);
-	if (*word)
-		hl->l_from = copyin(word, &sp);
-	if (cp != NULL && cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
-		cp = nextword(cp, word);
-		hl->l_tty = copyin(word, &sp);
-	}
-	if (cp != NULL)
-		hl->l_date = copyin(cp, &sp);
-	else
-		hl->l_date = catgets(catd, CATSET, 213, "<Unknown date>");
-	ac_free(word);
-}
-
-/*
- * Copy the string on the left into the string on the right
- * and bump the right (reference) string pointer by the length.
- * Thus, dynamically allocate space in the right string, copying
- * the left string into it.
- */
-static char *
-copyin(char *src, char **space)
-{
-	char *cp;
-	char *top;
-
-	top = cp = *space;
-	while ((*cp++ = *src++) != '\0')
-		;
-	*space = cp;
-	return (top);
-}
-
-#ifdef	notdef
-static int	cmatch(char *, char *);
-/*
- * Test to see if the passed string is a ctime(3) generated
- * date string as documented in the manual.  The template
- * below is used as the criterion of correctness.
- * Also, we check for a possible trailing time zone using
- * the tmztype template.
- */
-
-/*
+/* Match the date string against the date template (tp), return if match.
+ * Template characters:
  * 'A'	An upper case char
  * 'a'	A lower case char
  * ' '	A space
  * '0'	A digit
  * 'O'	An optional digit or space
- * ':'	A colon
- * '+'	A sign
- * 'N'	A new line
- */
-static char  *tmztype[] = {
-	"Aaa Aaa O0 00:00:00 0000",
-	"Aaa Aaa O0 00:00 0000",
-	"Aaa Aaa O0 00:00:00 AAA 0000",
-	"Aaa Aaa O0 00:00 AAA 0000",
-	/*
-	 * Sommer time, e.g. MET DST
-	 */
-	"Aaa Aaa O0 00:00:00 AAA AAA 0000",
-	"Aaa Aaa O0 00:00 AAA AAA 0000",
-	/*
-	 * time zone offset, e.g.
-	 * +0200 or +0200 MET or +0200 MET DST
-	 */
-	"Aaa Aaa O0 00:00:00 +0000 0000",
-	"Aaa Aaa O0 00:00 +0000 0000",
-	"Aaa Aaa O0 00:00:00 +0000 AAA 0000",
-	"Aaa Aaa O0 00:00 +0000 AAA 0000",
-	"Aaa Aaa O0 00:00:00 +0000 AAA AAA 0000",
-	"Aaa Aaa O0 00:00 +0000 AAA AAA 0000",
-	/*
-	 * time zone offset without time zone specification (pine)
-	 */
-	"Aaa Aaa O0 00:00:00 0000 +0000",
-	NULL,
-};
+ * ':'	A colon */
+static int		cmatch(size_t len, char const *date, char const *tp);
 
-static int 
-is_date(char *date)
+/* Check wether date is a valid 'From_' date.
+ * (Rather ctime(3) generated dates, according to RFC 4155) */
+static int		is_date(char const *date);
+
+/* Convert the domain part of a skinned address to IDNA.
+ * If an error occurs before Unicode information is available, revert the IDNA
+ * error to a normal CHAR one so that the error message doesn't talk Unicode */
+#ifdef USE_IDNA
+static struct addrguts * idna_apply(struct addrguts *agp);
+#endif
+
+/* Classify and check a (possibly skinned) header body according to RFC
+ * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
+ * also a file or a pipe command, so check that first, then.
+ * Otherwise perform content checking and isolate the domain part (for IDNA) */
+static int		addrspec_check(int doskin, struct addrguts *agp);
+
+static int	gethfield(FILE *f, char **linebuf, size_t *linesize, int rem,
+			char **colon);
+static int	msgidnextc(const char **cp, int *status);
+static int	charcount(char *str, int c);
+
+static char const *
+from__skipword(char const *wp)
 {
-	int ret = 0, form = 0;
+	char c = 0;
 
-	while (tmztype[form]) {
-		if ( (ret = cmatch(date, tmztype[form])) == 1 )
-			break;
-		form++;
+	if (wp != NULL) {
+		while ((c = *wp++) != '\0' && ! blankchar(c)) {
+			if (c == '"') {
+				while ((c = *wp++) != '\0' && c != '"')
+					;
+				if (c != '"')
+					--wp;
+			}
+		}
+		for (; blankchar(c); c = *wp++)
+			;
 	}
-
-	return ret;
+	return (c == 0 ? NULL : wp - 1);
 }
 
-/*
- * Match the given string (cp) against the given template (tp).
- * Return 1 if they match, 0 if they don't
- */
-static int 
-cmatch(char *cp, char *tp)
+static int
+cmatch(size_t len, char const *date, char const *tp)
 {
-	int c;
+	int ret = 0;
 
-	while (*cp && *tp)
-		switch (*tp++) {
+	while (len--) {
+		char c = date[len];
+		switch (tp[len]) {
 		case 'a':
-			if (c = *cp++, !lowerchar(c))
-				return 0;
+			if (! lowerchar(c))
+				goto jleave;
 			break;
 		case 'A':
-			if (c = *cp++, !upperchar(c))
-				return 0;
+			if (! upperchar(c))
+				goto jleave;
 			break;
 		case ' ':
-			if (*cp++ != ' ')
-				return 0;
+			if (c != ' ')
+				goto jleave;
 			break;
 		case '0':
-			if (c = *cp++, !digitchar(c))
-				return 0;
+			if (! digitchar(c))
+				goto jleave;
 			break;
 		case 'O':
-			if (c = *cp, c != ' ' && !digitchar(c))
-				return 0;
-			cp++;
+			if (c != ' ' && ! digitchar(c))
+				goto jleave;
 			break;
 		case ':':
-			if (*cp++ != ':')
-				return 0;
-			break;
-		case '+':
-			if (*cp != '+' && *cp != '-')
-				return 0;
-			cp++;
-			break;
-		case 'N':
-			if (*cp++ != '\n')
-				return 0;
+			if (c != ':')
+				goto jleave;
 			break;
 		}
-	if (*cp || *tp)
-		return 0;
-	return (1);
+	}
+	ret = 1;
+jleave:
+	return (ret);
 }
-#endif	/* notdef */
+
+static int
+is_date(char const *date)
+{
+	switch (strlen(date)) {
+	case (24):	/* ctype */
+		return (cmatch(24, date, "Aaa Aaa O0 00:00:00 0000"));
+	case (28):	/* tmztype */
+		return (cmatch(28, date, "Aaa Aaa O0 00:00:00 AAA 0000"));	
+	case (25):	/* SysV_tm.. */
+		return (cmatch(25, date, "Aaa Aaa O0 00:00 AAA 0000"));
+	case (21):	/* SysV_ct.. */
+		return (cmatch(21, date, "Aaa Aaa O0 00:00 0000"));
+	default:
+		return (0);
+	}
+}
+
+#ifdef USE_IDNA
+static struct addrguts *
+idna_apply(struct addrguts *agp)
+{
+	char *idna_utf8, *idna_ascii, *cs;
+	uint32_t *idna_uni;
+	size_t sz, i;
+	int strict = (value("idna-strict-checks") != NULL);
+
+	sz = agp->ag_slen - agp->ag_sdom_start;
+	assert(sz > 0);
+	idna_utf8 = ac_alloc(sz + 1);
+	memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
+	idna_utf8[sz] = '\0';
+
+	if (! utf8) {
+		char *tmp = stringprep_locale_to_utf8(idna_utf8);
+		ac_free(idna_utf8);
+		idna_utf8 = tmp;
+		if (idna_utf8 == NULL) {
+			agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
+					NAME_ADDRSPEC_ERR_CHAR;
+			goto jleave;
+		}
+	}
+
+	if (idna_to_ascii_8z(idna_utf8, &idna_ascii,
+			strict ? IDNA_USE_STD3_ASCII_RULES : 0)
+			!= IDNA_SUCCESS) {
+		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
+				NAME_ADDRSPEC_ERR_CHAR;
+		goto jleave1;
+	}
+
+	idna_uni = NULL;
+	if (! strict)
+		goto jset;
+
+	/*
+	 * Due to normalization that may have occurred we must convert back to
+	 * be able to check for top level domain issues
+	 */
+	if (idna_to_unicode_8z4z(idna_ascii, &idna_uni, 0) != IDNA_SUCCESS) {
+		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
+				NAME_ADDRSPEC_ERR_CHAR;
+		goto jleave2;
+	}
+
+	i = (size_t)tld_check_4z(idna_uni, &sz, NULL);
+	free(idna_uni);
+	if (i != TLD_SUCCESS) {
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
+			idna_uni[sz]);
+		goto jleave2;
+	}
+
+jset:	/* Replace the domain part of .ag_skinned with IDNA version */
+	sz = strlen(idna_ascii);
+	i = agp->ag_sdom_start;
+	cs = salloc(agp->ag_slen - i + sz + 1);
+	memcpy(cs, agp->ag_skinned, i);
+	memcpy(cs + i, idna_ascii, sz);
+	i += sz;
+	cs[i] = '\0';
+
+	agp->ag_skinned = cs;
+	agp->ag_slen = i;
+	NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+		NAME_NAME_SALLOC|NAME_SKINNED|NAME_IDNA, 0);
+
+jleave2:
+	free(idna_ascii);
+jleave1:
+	if (utf8)
+		ac_free(idna_utf8);
+	else
+		free(idna_utf8);
+jleave:
+	return (agp);
+}
+#endif 
+
+static int
+addrspec_check(int skinned, struct addrguts *agp)
+{
+	char *addr, *p, in_quote, in_domain, hadat;
+	union {char c; unsigned char u;} c;
+#ifdef USE_IDNA
+	char use_idna = (value("idna-disable") == NULL);
+#endif
+
+	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
+	addr = agp->ag_skinned;
+
+	if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
+			0);
+		goto jleave;
+	}
+
+	/* If the field is not a recipient, it cannot be a file or a pipe */
+	if (! skinned)
+		goto jaddr_check;
+
+	/*
+	 * Excerpt from nail.1:
+	 *
+	 * Recipient address specifications
+	 * The rules are: Any name which starts with a `|' character specifies
+	 * a pipe,  the  command  string  following  the `|' is executed and
+	 * the message is sent to its standard input; any other name which
+	 * contains a  `@' character  is treated as a mail address; any other
+	 * name which starts with a `+' character specifies a folder name; any
+	 * other name  which  contains  a  `/' character  but  no `!'  or `%'
+	 * character before also specifies a folder name; what remains is
+	 * treated as a mail  address.
+	 */
+	if (*addr == '|') {
+		agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
+		goto jleave;
+	}
+	if (memchr(addr, '@', agp->ag_slen) == NULL) {
+		if (*addr == '+')
+			goto jisfile;
+		for (p = addr; (c.c = *p); ++p) {
+			if (c.c == '!' || c.c == '%')
+				break;
+			if (c.c == '/') {
+jisfile:			agp->ag_n_flags |= NAME_ADDRSPEC_ISFILE;
+				goto jleave;
+			}
+		}
+	}
+
+jaddr_check:
+	in_quote = in_domain = hadat = 0;
+
+	for (p = addr; (c.c = *p++) != '\0';) {
+		if (c.c == '"') {
+			in_quote = ! in_quote;
+		} else if (c.u < 040 || c.u >= 0177) {
+#ifdef USE_IDNA
+			if (in_domain && use_idna) {
+				if (use_idna == 1)
+					NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+						NAME_ADDRSPEC_ERR_IDNA, c.u);
+				use_idna = 2;
+			} else
+#endif
+				break;
+		} else if (in_domain == 2) {
+			if ((c.c == ']' && *p != '\0') || c.c == '\\' ||
+					whitechar(c.c))
+				break;
+		} else if (in_quote && in_domain == 0) {
+			/*EMPTY*/;
+		} else if (c.c == '\\' && *p != '\0') {
+			++p;
+		} else if (c.c == '@') {
+			if (hadat++) {
+				NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+					NAME_ADDRSPEC_ERR_ATSEQ, c.u);
+				goto jleave;
+			}
+			agp->ag_sdom_start = (size_t)(p - addr);
+			in_domain = (*p == '[') ? 2 : 1;
+			continue;
+		} else if (c.c == '(' || c.c == ')' ||
+				c.c == '<' || c.c == '>' ||
+				c.c == ',' || c.c == ';' || c.c == ':' ||
+				c.c == '\\' || c.c == '[' || c.c == ']')
+			break;
+		hadat = 0;
+	}
+
+	if (c.c != '\0') {
+		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR,
+			c.u);
+		goto jleave;
+	}
+
+#ifdef USE_IDNA
+	if (use_idna == 2)
+		agp = idna_apply(agp);
+#endif
+
+jleave:
+	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
+}
 
 /*
- * Collect a liberal (space, tab delimited) word into the word buffer
- * passed.  Also, return a pointer to the next word following that,
- * or NULL if none follow.
+ * See if the passed line buffer is a mail header according to RFC 4155.
+ * Return true if yes.
  */
-static char *
-nextword(char *wp, char *wbuf)
+int
+is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 {
-	int c;
+	char date[FROM_DATEBUF];
 
-	if (wp == NULL) {
-		*wbuf = 0;
-		return (NULL);
+	if (linelen <= 5 || memcmp(linebuf, "From ", 5) != 0)
+		return (0);
+
+	if (! extract_date_from_from_(linebuf, linelen, date) ||
+			! is_date(date)) {
+		return (0);
 	}
-	while ((c = *wp++) != '\0' && !blankchar(c)) {
-		*wbuf++ = c;
-		if (c == '"') {
- 			while ((c = *wp++) != '\0' && c != '"')
- 				*wbuf++ = c;
- 			if (c == '"')
- 				*wbuf++ = c;
-			else
-				wp--;
- 		}
+	return(1);
+}
+
+/*
+ * Savage extract date field from From_ line.
+ * linelen is convenience as line must be terminated.
+ * Return wether the From_ line was parsed successfully.
+ */
+int
+extract_date_from_from_(char const *line, size_t linelen,
+	char datebuf[FROM_DATEBUF])
+{
+	int ret = 0;
+	char const *cp = line;
+
+	/* "From " */
+	cp = from__skipword(cp);
+	if (cp == NULL)
+		goto jerr;
+	/* "addr-spec " */
+	cp = from__skipword(cp);
+	if (cp == NULL)
+		goto jerr;
+	if (cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
+		cp = from__skipword(cp);
+		if (cp == NULL)
+			goto jerr;
 	}
-	*wbuf = '\0';
-	for (; blankchar(c); c = *wp++)
-		;
-	if (c == 0)
-		return (NULL);
-	return (wp - 1);
+
+	linelen -= (size_t)(cp - line);
+	if (linelen >= FROM_DATEBUF)
+		goto jerr;
+
+	ret = 1;
+jleave: memcpy(datebuf, cp, linelen);
+	datebuf[linelen] = '\0';
+	return (ret);
+
+jerr:	cp = tr(213, "<Unknown date>");
+	linelen = strlen(cp);
+	if (linelen >= FROM_DATEBUF)
+		linelen = FROM_DATEBUF;
+	goto jleave;
 }
 
 void
@@ -661,207 +790,6 @@ skin(char *name)
 	if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
 		name = savestrbuf(name, ag.ag_slen);
 	return (name);
-}
-
-/*
- * Convert the domain part of a skinned address to IDNA.
- * If an error occurs before Unicode information is available, revert the IDNA
- * error to a normal CHAR one so that the error message doesn't talk Unicode.
- */
-#ifdef USE_IDNA
-static struct addrguts *
-idna_apply(struct addrguts *agp)
-{
-	char *idna_utf8, *idna_ascii, *cs;
-	uint32_t *idna_uni;
-	size_t sz, i;
-	int strict = (value("idna-strict-checks") != NULL);
-
-	sz = agp->ag_slen - agp->ag_sdom_start;
-	assert(sz > 0);
-	idna_utf8 = ac_alloc(sz + 1);
-	memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
-	idna_utf8[sz] = '\0';
-
-	if (! utf8) {
-		char *tmp = stringprep_locale_to_utf8(idna_utf8);
-		ac_free(idna_utf8);
-		idna_utf8 = tmp;
-		if (idna_utf8 == NULL) {
-			agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
-					NAME_ADDRSPEC_ERR_CHAR;
-			goto jleave;
-		}
-	}
-
-	if (idna_to_ascii_8z(idna_utf8, &idna_ascii,
-			strict ? IDNA_USE_STD3_ASCII_RULES : 0)
-			!= IDNA_SUCCESS) {
-		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
-				NAME_ADDRSPEC_ERR_CHAR;
-		goto jleave1;
-	}
-
-	idna_uni = NULL;
-	if (! strict)
-		goto jset;
-
-	/*
-	 * Due to normalization that may have occurred we must convert back to
-	 * be able to check for top level domain issues
-	 */
-	if (idna_to_unicode_8z4z(idna_ascii, &idna_uni, 0) != IDNA_SUCCESS) {
-		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
-				NAME_ADDRSPEC_ERR_CHAR;
-		goto jleave2;
-	}
-
-	i = (size_t)tld_check_4z(idna_uni, &sz, NULL);
-	free(idna_uni);
-	if (i != TLD_SUCCESS) {
-		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
-			idna_uni[sz]);
-		goto jleave2;
-	}
-
-jset:	/* Replace the domain part of .ag_skinned with IDNA version */
-	sz = strlen(idna_ascii);
-	i = agp->ag_sdom_start;
-	cs = salloc(agp->ag_slen - i + sz + 1);
-	memcpy(cs, agp->ag_skinned, i);
-	memcpy(cs + i, idna_ascii, sz);
-	i += sz;
-	cs[i] = '\0';
-
-	agp->ag_skinned = cs;
-	agp->ag_slen = i;
-	NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
-		NAME_NAME_SALLOC|NAME_SKINNED|NAME_IDNA, 0);
-
-jleave2:
-	free(idna_ascii);
-jleave1:
-	if (utf8)
-		ac_free(idna_utf8);
-	else
-		free(idna_utf8);
-jleave:
-	return (agp);
-}
-#endif 
-
-/*
- * Classify and check a (possibly skinned) header body according to RFC
- * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
- * also a file or a pipe command, so check that first, then.
- * Otherwise perform content checking and isolate the domain part (for IDNA).
- */
-static int
-addrspec_check(int skinned, struct addrguts *agp)
-{
-	char *addr, *p, in_quote, in_domain, hadat;
-	union {char c; unsigned char u;} c;
-#ifdef USE_IDNA
-	char use_idna = (value("idna-disable") == NULL);
-#endif
-
-	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
-	addr = agp->ag_skinned;
-
-	if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
-		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
-			0);
-		goto jleave;
-	}
-
-	/* If the field is not a recipient, it cannot be a file or a pipe */
-	if (! skinned)
-		goto jaddr_check;
-
-	/*
-	 * Excerpt from nail.1:
-	 *
-	 * Recipient address specifications
-	 * The rules are: Any name which starts with a `|' character specifies
-	 * a pipe,  the  command  string  following  the `|' is executed and
-	 * the message is sent to its standard input; any other name which
-	 * contains a  `@' character  is treated as a mail address; any other
-	 * name which starts with a `+' character specifies a folder name; any
-	 * other name  which  contains  a  `/' character  but  no `!'  or `%'
-	 * character before also specifies a folder name; what remains is
-	 * treated as a mail  address.
-	 */
-	if (*addr == '|') {
-		agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
-		goto jleave;
-	}
-	if (memchr(addr, '@', agp->ag_slen) == NULL) {
-		if (*addr == '+')
-			goto jisfile;
-		for (p = addr; (c.c = *p); ++p) {
-			if (c.c == '!' || c.c == '%')
-				break;
-			if (c.c == '/') {
-jisfile:			agp->ag_n_flags |= NAME_ADDRSPEC_ISFILE;
-				goto jleave;
-			}
-		}
-	}
-
-jaddr_check:
-	in_quote = in_domain = hadat = 0;
-
-	for (p = addr; (c.c = *p++) != '\0';) {
-		if (c.c == '"') {
-			in_quote = ! in_quote;
-		} else if (c.u < 040 || c.u >= 0177) {
-#ifdef USE_IDNA
-			if (in_domain && use_idna) {
-				if (use_idna == 1)
-					NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
-						NAME_ADDRSPEC_ERR_IDNA, c.u);
-				use_idna = 2;
-			} else
-#endif
-				break;
-		} else if (in_domain == 2) {
-			if ((c.c == ']' && *p != '\0') || c.c == '\\' ||
-					whitechar(c.c))
-				break;
-		} else if (in_quote && in_domain == 0) {
-			/*EMPTY*/;
-		} else if (c.c == '\\' && *p != '\0') {
-			++p;
-		} else if (c.c == '@') {
-			if (hadat++) {
-				NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
-					NAME_ADDRSPEC_ERR_ATSEQ, c.u);
-				goto jleave;
-			}
-			agp->ag_sdom_start = (size_t)(p - addr);
-			in_domain = (*p == '[') ? 2 : 1;
-			continue;
-		} else if (c.c == '(' || c.c == ')' ||
-				c.c == '<' || c.c == '>' ||
-				c.c == ',' || c.c == ';' || c.c == ':' ||
-				c.c == '\\' || c.c == '[' || c.c == ']')
-			break;
-		hadat = 0;
-	}
-
-	if (c.c != '\0') {
-		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR,
-			c.u);
-		goto jleave;
-	}
-
-#ifdef USE_IDNA
-	if (use_idna == 2)
-		agp = idna_apply(agp);
-#endif
-
-jleave:
-	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
 }
 
 /*
@@ -1332,7 +1260,12 @@ fakefrom(struct message *mp)
 				*name == '\0' ) &&
 			((name = skin(hfield1("from", mp))) == NULL ||
 				*name == '\0'))
-		name = "-";
+		/*
+		 * XXX MAILER-DAEMON is what an old MBOX manual page says.
+		 * RFC 4155 however requires a RFC 5322 (2822) conforming
+		 * "addr-spec", but we simply can't provide that
+		 */
+		name = "MAILER-DAEMON";
 	return name;
 }
 

@@ -2276,6 +2276,14 @@ Activates
 .I pop3-use-starttls
 for a specific account.
 .TP
+.B posix-mbox
+The POSIX standard defines a rather laxe MBOX mailbox file content,
+RFC 4155 is more strict on which kind of "From " line has to be quoted
+and which not.
+\*(UA defaults to a RFC-compliant method,
+but by setting this option the older so-called mboxrd-alike behaviour
+can be turned on.
+.TP
 .B print-all-chars
 This option causes all characters to be considered printable.
 It is only effective if given in a startup file.
@@ -2424,6 +2432,18 @@ Accept SSLv2 connections.
 These are normally not allowed
 because this protocol version is insecure.
 .TP
+.B keep-content-length
+When (editing messages and) writing MBOX mailbox files \*(UA can be told
+to keep the \fIContent-Length:\fR and \fILines:\fR header fields that
+some mail-user-agents generate by setting this variable.
+Since \*(UA does neither use nor update these non-standardized header
+fields (which in itself shows one of their conceptual problems),
+stripping them should increase interoperability in between MUAs that
+work with with same mailbox files.
+Note that, if this is not set but \fIwritebackedited\fR, as below, is,
+a possibly performed automatic stripping of these header fields already
+marks the message as being modified.
+.TP
 .B verbose
 Setting the option verbose is the same
 as using the \-v flag on the command line.
@@ -2440,16 +2460,14 @@ can view the screen if this option is enabled.
 .TP
 .B writebackedited
 If this variable is set,
-messages modified using the
-.I edit
-or
-.I visual
-commands are written back to the current folder when it is quit.
-This is only possible for writable folders in
-.I mbox
-format.
-Setting this variable also disables
-MIME decoding and decryption for the editing commands.
+messages modified using the \fIedit\fR or \fIvisual\fR commands are
+written back to the current folder when it is quit;
+it is only honoured for writable folders in \fImbox\fR format, though.
+Note that the editor will be pointed to the raw message content in that
+case, i.e., neither MIME decoding nor decryption will have been
+performed,
+and proper RFC 4155 "From " quoting of newly added or edited content is
+also left as an excercise to the user.
 .SS "String Options"
 .PP
 The string options include the following:

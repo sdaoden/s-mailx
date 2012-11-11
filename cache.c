@@ -794,7 +794,7 @@ dequeue1(struct mailbox *mp)
 				"Cannot commit IMAP commands.\n",
 				mp->mb_imap_mailbox);
 		save:	fputs("Saving IMAP commands to dead.letter\n", stderr);
-			savedeadletter(fp);
+			savedeadletter(fp, 0);
 			ftruncate(fileno(fp), 0);
 			Fclose(fp);
 			if (uvfp)
