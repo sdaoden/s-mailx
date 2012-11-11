@@ -12,6 +12,21 @@ PREFIX, or to adjust whatever else before the >8 scissor line.  Then run
   $ make uninstall         # (Will not remove the example configuration)
   $ make distclean         # *Completely* cleanup working directory
 
+If some libraries miss that you know are installed on your system, or if
+other errors occur due to missing files but which you know exist, please
+ensure that the environment variable C_INCLUDE_PATH includes the
+necessary include/ paths and LD_LIBRARY_PATH includes the necessary
+lib/rary paths.  The S-nail make system will inspect these two and
+*automatically* convert them to cc(1) (c99(1)) -I and -L options (since
+these environment variables are not standardized by POSIX).  pkgsrc(7)
+paths will be automatically appended to these two, if found.  E.g., in
+a Bourne/Korn/POSIX compatible shell:
+
+  $ C_INCLUDE_PATH=${C_INCLUDE_PATH}:/usr/local/include
+  $ LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+  $ export C_INCLUDE_PATH LD_LIBRARY_PATH
+  $ make install
+
 Instead of actually *editing* the Makefile it is probably much easier to
 override variables from within the command line instead, e.g., to change
 the installation directory:
@@ -51,18 +66,22 @@ for "make uninstall" the *exact* command line should be repeated.
 Notes for S-nail(1) v13.*
 -------------------------
 
-- Mac OS X Snow Leopard.  Tested with all features (except IPv6) with
-  the default CC=clang(1) and CC=gcc(1), -O2 and -O3, the WARNs
-  including -fstrict-overflow+.
-- FreeBSD 9.0.  Tested with all features except IPv6, iconv() and IDNA
-  with the default CC=clang(1) and CC=gcc(1), -O2, and the WARNs
-  including -fstrict-overflow.
 - NetBSD 5.1 and 6.0.  Tested with all features except IPv6 and IDNA
   with the default compiler, -O2 and -O3.
   Note that on 6.0 you should not enable -fstrict-overflow, as it
   produces much more warnings than i saw before when testing with all
   the other combinations shown here, and i had yet no time to look over
   all those.
+- DragonFly BSD v3.2.1.9-g80b03f-RELEASE.  Compiled and lightly tested
+  with all features (except IPv6; possible in a default install).
+- Mac OS X Snow Leopard.  Tested with all features (except IPv6) with
+  the default CC=clang(1) and CC=gcc(1), -O2 and -O3, the WARNs
+  including -fstrict-overflow+.
+  Note that it may be necessary to adjust the paths as above if clang(1)
+  is used as the compiler, since that may not find all paths otherwise.
+- FreeBSD 9.0.  Tested with all features except IPv6, iconv() and IDNA
+  with the default CC=clang(1) and CC=gcc(1), -O2, and the WARNs
+  including -fstrict-overflow.
 - Lightly tested on a default OpenBSD 5.1 and just as-default 5.2.
 - Compiled and lightly tested on TinyCoreLinux 4.4 with default compiler
   environment available at that time with -O2.
