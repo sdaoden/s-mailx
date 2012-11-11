@@ -3,7 +3,7 @@
 [ -z "${WANT_ASSERTS}" ] && WANT_ASSERTS=0
 
 if [ -z "${CONFIG}" ]; then
-	[ -f user.conf ] && . user.conf
+	[ -f ./user.conf ] && . ./user.conf
 else
 	case ${CONFIG} in
 	MINIMAL)

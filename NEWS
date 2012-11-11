@@ -1,6 +1,8 @@
 S - n a i l  N e w s
 ====================
 
+- Configuration on UnixWare 7.1.4 will succeed (shell issue fixed).
+
 - Even on DragonFly BSD the IMAP GSSAPI is now found
   (in /usr/pkg/include/krb5/gssapi/gssapi.h).
 
