@@ -75,6 +75,8 @@
 #define MAXEXP		25		/* Maximum expansion of aliases */
 #define HSHSIZE		59		/* Hash size for aliases and vars */
 
+#define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
+
 /*
  * Auto-reclaimed string storage as defined in strings.c.
  */
@@ -408,16 +410,6 @@ struct cmd {
 
 #define c_minargs	c_msgflag	/* Minimum argcount for RAWLIST */
 #define c_maxargs	c_msgmask	/* Max argcount for RAWLIST */
-
-/*
- * Structure used to return a break down of a head
- * line (hats off to Bill Joy!)
- */
-struct headline {
-	char	*l_from;	/* The name of the sender */
-	char	*l_tty;		/* His tty string (if any) */
-	char	*l_date;	/* The entire date string */
-};
 
 enum gfield {
 	GTO	= 1,		/* Grab To: line */

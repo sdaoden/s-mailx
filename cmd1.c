@@ -60,6 +60,8 @@ static int screen;
 static void onpipe(int signo);
 static int dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
+
+static void	_parse_head(struct message *mp, char date[FROM_DATEBUF]);
 static void hprf(const char *fmt, int mesg, FILE *f, int threaded,
 		const char *attrlist);
 static int putindent(FILE *fp, struct message *mp, int maxwidth);
@@ -376,25 +378,42 @@ dispc(struct message *mp, const char *a)
 }
 
 static void
+_parse_head(struct message *mp, char date[FROM_DATEBUF])
+{
+	FILE *ibuf;
+	int hlen;
+	char *hline = NULL;
+	size_t hsize = 0;
+
+	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
+			(hlen = readline(ibuf, &hline, &hsize)) > 0) {
+		(void)extract_date_from_from_(hline, hlen, date);
+		free(hline);
+	}
+}
+
+static void
 hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 {
-	struct message	*mp = &message[mesg-1];
-	char	*headline = NULL, *subjline, *name, *cp, *pbuf = NULL;
-	struct headline	hl;
-	size_t	headsize = 0;
-	const char	*fp;
-	int	B, c, i, n, s;
-	int	headlen = 0;
-	struct str	in, out;
-	int	subjlen = scrnwidth, fromlen, isto = 0, isaddr = 0;
-	FILE	*ibuf;
+	struct str in, out;
+	char const *fp;
+	struct message *mp = &message[mesg - 1];
+	char *subjline, *name, *cp, *date, datebuf[FROM_DATEBUF];
+	int B, c, i, n, s, fromlen,
+		subjlen = scrnwidth, isto = 0, isaddr = 0;
 
-	if ((mp->m_flag & MNOFROM) == 0) {
-		if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
-			return;
-		if ((headlen = readline(ibuf, &headline, &headsize)) < 0)
-			return;
+	date = NULL;
+	if (value("datefield")) {
+		char *x = hfield1("date", mp);
+		if (x != NULL)
+			date = fakedate(rfctime(x));
+	} else if ((mp->m_flag & MNOFROM) == 0) {
+		_parse_head(mp, datebuf);
+		date = datebuf;
 	}
+	if (date == NULL)
+		date = fakedate(mp->m_time);
+
 	if ((subjline = hfield1("subject", mp)) == NULL) {
 		out.s = NULL;
 		out.l = 0;
@@ -404,16 +423,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
 		subjline = out.s;
 	}
-	if ((mp->m_flag & MNOFROM) == 0) {
-		pbuf = ac_alloc(headlen + 1);
-		parse(headline, headlen, &hl, pbuf);
-	} else {
-		hl.l_from = /*fakefrom(mp);*/NULL;
-		hl.l_tty = NULL;
-		hl.l_date = fakedate(mp->m_time);
-	}
-	if (value("datefield") && (cp = hfield1("date", mp)) != NULL)
-		hl.l_date = fakedate(rfctime(cp));
+
 	if (Iflag) {
 		if ((name = hfieldX("newsgroups", mp)) == NULL)
 			if ((name = hfieldX("article-id", mp)) == NULL)
@@ -530,7 +540,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 			case 'd':
 				if (n <= 0)
 					n = 16;
-				subjlen -= fprintf(f, "%*.*s", n, n, hl.l_date);
+				subjlen -= fprintf(f, "%*.*s", n, n, date);
 				break;
 			case 'l':
 				if (n == 0)
@@ -605,12 +615,9 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 			putc(*fp&0377, f);
 	}
 	putc('\n', f);
+
 	if (out.s)
 		free(out.s);
-	if (headline)
-		free(headline);
-	if (pbuf)
-		ac_free(pbuf);
 }
 
 /*

@@ -250,14 +250,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			break;
 		}
 		isenc &= ~1;
-		if (infld && blankchar(line[0]&0377)) {
+		if (infld && blankchar(line[0])) {
 			/*
 			 * If this line is a continuation (via space or tab)
 			 * of a previous header field, determine if the start
 			 * of the line is a MIME encoded word.
 			 */
 			if (isenc & 2) {
-				for (cp = line; blankchar(*cp&0377); cp++);
+				for (cp = line; blankchar(*cp); cp++);
 				if (cp > line && linelen - (cp - line) > 8 &&
 						cp[0] == '=' && cp[1] == '?')
 					isenc |= 1;
@@ -267,9 +267,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 * Pick up the header field if we have one.
 			 */
 			for (cp = line; (c = *cp&0377) && c != ':' &&
-					!spacechar(c); cp++);
+					! spacechar(c); cp++);
 			cp2 = cp;
-			while (spacechar(*cp&0377))
+			while (spacechar(*cp))
 				cp++;
 			if (cp[0] != ':' && level == 0 && lineno == 1) {
 				/*
@@ -295,7 +295,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 */
 			c = *cp2;
 			*cp2 = 0;	/* temporarily null terminate */
-			if (doign && is_ign(line, cp2 - line, doign))
+			if ((doign && is_ign(line, cp2 - line, doign)) ||
+					(action == SEND_MBOX &&
+					 ! value("keep-content-length") &&
+					 (asccasecmp(line, "content-length")==0
+					 || asccasecmp(line, "lines") == 0)))
 				ignoring = 1;
 			else if (asccasecmp(line, "status") == 0) {
 				 /*
@@ -330,11 +334,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		isenc &= ~2;
 		if (count && (c = getc(ibuf)) != EOF) {
 			if (blankchar(c)) {
-				if (linelen > 0 && line[linelen-1] == '\n')
-					cp = &line[linelen-2];
+				if (linelen > 0 && line[linelen - 1] == '\n')
+					cp = &line[linelen - 2];
 				else
-					cp = &line[linelen-1];
-				while (cp >= line && whitechar(*cp&0377))
+					cp = &line[linelen - 1];
+				while (cp >= line && whitechar(*cp))
 					cp++;
 				if (cp - line > 8 && cp[0] == '=' &&
 						cp[-1] == '?')
@@ -342,7 +346,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			}
 			ungetc(c, ibuf);
 		}
-		if (!ignoring) {
+		if (! ignoring) {
 			start = line;
 			len = linelen;
 			if (action == SEND_TODISP ||
@@ -356,14 +360,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * words follow on continuing lines.
 				 */
 				if (isenc & 1)
-					while (len>0&&blankchar(*start&0377)) {
+					while (len > 0&& blankchar(*start)) {
 						start++;
 						len--;
 					}
 				if (isenc & 2)
-					if (len > 0 && start[len-1] == '\n')
+					if (len > 0 && start[len - 1] == '\n')
 						len--;
-				while (len > 0 && blankchar(start[len-1]&0377))
+				while (len > 0 && blankchar(start[len - 1]))
 					len--;
 			}
 			out(start, len, obuf, convert,
@@ -972,18 +976,28 @@ out(char *buf, size_t len, FILE *fp,
 	long	lines;
 
 	sz = 0;
-	if (action == SEND_MBOX || action == SEND_DECRYPT) {
-		cp = buf;
-		n = len;
-		while (n && cp[0] == '>')
-			cp++, n--;
+	if (action != SEND_MBOX && action != SEND_DECRYPT)
+		goto jmw;
+
+	cp = buf;
+	n = len;
+	while (n && cp[0] == '>')
+		++cp, --n;
+
+	/* Primitive, rather POSIX-compliant From_ quoting? */
+	if (value("posix-mbox")) {
 		if (n >= 5 && cp[0] == 'F' && cp[1] == 'r' && cp[2] == 'o' &&
-				cp[3] == 'm' && cp[4] == ' ') {
-			putc('>', fp);
-			sz++;
-		}
+				cp[3] == 'm' && cp[4] == ' ')
+			goto jquote;
 	}
-	sz += mime_write(buf, len, fp,
+	/* We however *have* to perform RFC 4155 compliant From_ quoting, or
+	 * we end up like Mutt 1.5.21 (2010-09-15) */
+	else if (cp != buf && is_head(cp, n)) {
+jquote:		putc('>', fp);
+		sz++;
+	}
+
+jmw:	sz += mime_write(buf, len, fp,
 			action == SEND_MBOX ? CONV_NONE : convert,
 			action == SEND_TODISP || action == SEND_TODISP_ALL ||
 					action == SEND_QUOTE ||
@@ -1225,22 +1239,26 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 char *
 foldergets(char **s, size_t *size, size_t *count, size_t *llen, FILE *stream)
 {
-	char *p, *top;
+	char *p;
 
 	if ((p = fgetline(s, size, count, llen, stream, 0)) == NULL)
-		return NULL;
-	if (*p == '>') {
-		p++;
-		while (*p == '>') p++;
-		if (strncmp(p, "From ", 5) == 0) {
-			/* we got a masked From line */
-			top = &(*s)[*llen];
-			p = *s;
-			do
-				p[0] = p[1];
-			while (++p < top);
-			(*llen)--;
-		}
+		return (NULL);
+	if (*p != '>')
+		goto jleave;
+
+	while (*++p == '>')
+		;
+	if (value("posix-mbox")) {
+		if (strncmp(p, "From ", 5) != 0)
+			goto jleave;
 	}
-	return *s;
+	/* Since we actually *have* to perform RFC 4155 compliant From_ quoting
+	 * we should of course undo that */
+	else if (p == *s || ! is_head(p, *llen - (p - *s)))
+		goto jleave;
+
+	/* We got a masked From line */
+	memmove(*s, *s + 1, --*llen);
+jleave:
+	return (*s);
 }
