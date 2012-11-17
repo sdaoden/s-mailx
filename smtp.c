@@ -251,12 +251,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		char *xserver, char *uhp, struct header *hp,
 		const char *user, const char *password, const char *skinned)
 {
+	char o[LINESIZE], *authstr, *cp, *b = NULL;
+	struct str b64;
 	struct name *n;
-	char *b = NULL, o[LINESIZE];
-	size_t blen, bsize = 0, count;
-	char	*b64, *authstr, *cp;
-	enum	{ AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
-	int	inhdr = 1, inbcc = 0;
+	size_t blen, count, bsize = 0;
+	enum { AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
+	int inhdr = 1, inbcc = 0;
 	(void)hp;
 	(void)xserver;
 	(void)uhp;
@@ -319,33 +319,32 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		case AUTH_LOGIN:
 			SMTP_OUT("AUTH LOGIN\r\n");
 			SMTP_ANSWER(3);
-			b64 = strtob64(user);
-			snprintf(o, sizeof o, "%s\r\n", b64);
-			free(b64);
-			SMTP_OUT(o);
+			(void)b64_encode_cp(&b64, user, B64_SALLOC|B64_CRLF);
+			SMTP_OUT(b64.s);
 			SMTP_ANSWER(3);
-			b64 = strtob64(password);
-			snprintf(o, sizeof o, "%s\r\n", b64);
-			free(b64);
-			SMTP_OUT(o);
+			(void)b64_encode_cp(&b64, password,
+				B64_SALLOC|B64_CRLF);
+			SMTP_OUT(b64.s);
 			SMTP_ANSWER(2);
 			break;
 		case AUTH_PLAIN:
 			SMTP_OUT("AUTH PLAIN\r\n");
 			SMTP_ANSWER(3);
-			snprintf(o, sizeof o, "%c%s%c%s", '\0', user, '\0',
-							  password);
-			b64 = memtob64(o, strlen(user)+strlen(password)+2);
-			snprintf(o, sizeof o, "%s\r\n", b64);
-			SMTP_OUT(o);
+			(void)snprintf(o, sizeof o, "%c%s%c%s",
+				'\0', user, '\0', password);
+			(void)b64_encode_buf(&b64, o, strlen(user) +
+				strlen(password) + 2, B64_SALLOC|B64_CRLF);
+			SMTP_OUT(b64.s);
 			SMTP_ANSWER(2);
 			break;
 #ifdef USE_MD5
 		case AUTH_CRAM_MD5:
 			SMTP_OUT("AUTH CRAM-MD5\r\n");
 			SMTP_ANSWER(3);
-			for (cp = smtpbuf; digitchar(*cp&0377); cp++);
-			while (blankchar(*cp&0377)) cp++;
+			for (cp = smtpbuf; digitchar(*cp); ++cp)
+				;
+			while (blankchar(*cp))
+				++cp;
 			cp = cram_md5_string(user, password, cp);
 			SMTP_OUT(cp);
 			SMTP_ANSWER(2);
