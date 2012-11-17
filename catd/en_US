@@ -15,7 +15,7 @@ $set 1
 12 $%c%c%3d %s%-*.*s  %16.16s %s %.*s\n$
 13 %d\n
 14 Commands are:\n
-15 --- DELETED ---
+15 [Invalid Base64 encoding ignored]\n
 16 variable cmd not set\n
 17 Message %2d:\n
 18 No messages to pipe.
