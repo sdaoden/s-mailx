@@ -50,11 +50,6 @@
 
 #define APPEND				/* New mail goes to end of mailbox */
 
-/* Is *C* a quoting character (for *quote-fold* compression) */
-#define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
-
-#define ESCAPE		'~'		/* Default escape for sending */
-
 #ifndef MAXPATHLEN
 # ifdef PATH_MAX
 #  define MAXPATHLEN	PATH_MAX
@@ -77,6 +72,16 @@
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 
+#define ESCAPE		'~'		/* Default escape for sending */
+
+#define CBAD		(-15555)
+
+/* Is *C* a quoting character (for *quote-fold* compression) */
+#define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+
+#define smin(a, b)	((a) < (b) ? (a) : (b))
+#define smax(a, b)	((a) < (b) ? (b) : (a))
+
 /*
  * Auto-reclaimed string storage as defined in strings.c.
  */
@@ -91,6 +96,7 @@
 /*
  * Translation TODO convert all catgets() that remain to tr()
  */
+
 #undef tr
 #ifdef HAVE_CATGETS
 # define CATSET		1
@@ -99,6 +105,10 @@
 # define catgets(a,b,c,d) (d)
 # define tr(c,d)	(d)
 #endif
+
+/*
+ * POD typedefs
+ */
 
 typedef unsigned long	ul_it;
 typedef unsigned int	ui_it;
@@ -186,17 +196,26 @@ enum tdflags {
 	TD_DELCTRL	= 04	/* delete control characters */
 };
 
-struct str {
-	char *s;			/* the string's content */
-	size_t l;			/* the stings's length */
-};
-
 enum protocol {
 	PROTO_FILE,			/* refers to a local file */
 	PROTO_POP3,			/* is a pop3 server string */
 	PROTO_IMAP,			/* is an imap server string */
 	PROTO_MAILDIR,			/* refers to a maildir folder */
 	PROTO_UNKNOWN			/* unknown protocol */
+};
+
+#ifdef USE_SSL
+enum ssl_vrfy_level {
+	VRFY_IGNORE,
+	VRFY_WARN,
+	VRFY_ASK,
+	VRFY_STRICT
+};
+#endif
+
+struct str {
+	char	*s;			/* the string's content */
+	size_t	l;			/* the stings's length */
 };
 
 struct sock {				/* data associated with a socket */
@@ -456,10 +475,10 @@ struct header {
 };
 
 /*
- * Structure of namelist nodes used in processing
- * the recipients of mail and aliases and all that
- * kind of stuff.
+ * Handling of namelist nodes used in processing the recipients of mail and
+ * aliases, inspection of mail-addresses and all that kind of stuff.
  */
+
 enum nameflags {
 	NAME_NAME_SALLOC	= 1<< 0,	/* .n_name is doped */
 	NAME_FULLNAME_SALLOC	= 1<< 1,	/* .n_fullname is doped */
@@ -613,6 +632,7 @@ struct shortcut {
 /*
  * Locale-independent character classes.
  */
+
 enum {
 	C_CNTRL	= 0000,
 	C_BLANK	= 0001,
@@ -683,11 +703,6 @@ extern unsigned char const 	class_char[];
 # define putchar(c)	putc_unlocked((c), stdout)
 #endif
 
-#define CBAD		(-15555)
-
-#define smin(a, b)	((a) < (b) ? (a) : (b))
-#define smax(a, b)	((a) < (b) ? (b) : (a))
-
 /*
  * For saving the current directory and later returning.
  */
@@ -698,12 +713,3 @@ struct cw {
 	char	cw_wd[PATHSIZE];
 #endif
 };
-
-#ifdef USE_SSL
-enum ssl_vrfy_level {
-	VRFY_IGNORE,
-	VRFY_WARN,
-	VRFY_ASK,
-	VRFY_STRICT
-};
-#endif
