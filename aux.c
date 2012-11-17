@@ -746,44 +746,44 @@ strdec(const char *cp)
 
 #ifdef USE_MD5
 char *
-md5tohex(const void *vp)
+md5tohex(void const *vp)
 {
-	char	*hex;
-	const char	*cp = vp;
-	int	i;
+	char const *cp = vp;
+	char *hex;
+	int i;
 
 	hex = salloc(33);
 	for (i = 0; i < 16; i++) {
-		hex[2*i] = hexchar((cp[i]&0xf0) >> 4);
-		hex[2*i+1] = hexchar(cp[i]&0x0f);
+		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
+		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
 	}
 	hex[32] = '\0';
 	return hex;
 }
 
 char *
-cram_md5_string(const char *user, const char *pass, const char *b64)
+cram_md5_string(char const *user, char const *pass, char const *b64)
 {
-	struct str	in, out;
-	char	digest[16], *cp, *sp, *rp, *xp;
-	int	ss, rs;
+	struct str in, out;
+	char digest[16], *cp;
 
-	in.s = (char *)b64;
+	out.s = NULL;
+	in.s = (char*)b64;
 	in.l = strlen(in.s);
-	mime_fromb64(&in, &out, 0);
-	hmac_md5((unsigned char *)out.s, out.l,
-			(unsigned char *)pass, strlen(pass),
-			digest);
+	(void)b64_decode(&out, &in, 0, NULL);
+	assert(out.s != NULL);
+
+	hmac_md5((unsigned char*)out.s, out.l,
+		(unsigned char*)pass, strlen(pass), digest);
 	free(out.s);
-	xp = md5tohex(digest);
-	sp = ac_alloc(ss = strlen(user) + strlen(xp) + 2);
-	snprintf(sp, ss, "%s %s", user, xp);
-	cp = strtob64(sp);
-	ac_free(sp);
-	rp = salloc(rs = strlen(cp) + 3);
-	snprintf(rp, rs, "%s\r\n", cp);
-	free(cp);
-	return rp;
+	cp = md5tohex(digest);
+
+	in.l = strlen(user) + strlen(cp) + 2;
+	in.s = ac_alloc(in.l);
+	snprintf(in.s, in.l, "%s %s", user, cp);
+	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
+	ac_free(in.s);
+	return out.s;
 }
 #endif /* USE_MD5 */
 
@@ -877,19 +877,19 @@ transflags(struct message *omessage, long omsgCount, int transparent)
 char *
 getrandstring(size_t length)
 {
-	static unsigned char	nodedigest[16];
-	static pid_t	pid;
-	int	fd = -1;
-	char	*data;
-	char	*cp, *rp;
-	size_t	i;
+	static unsigned char nodedigest[16];
+	static pid_t pid;
+	struct str b64;
+	int fd = -1;
+	char *data, *cp;
+	size_t i;
 #ifdef USE_MD5
 	MD5_CTX	ctx;
 #else
 	size_t j;
 #endif
 
-	data = salloc(length);
+	data = ac_alloc(length);
 	if ((fd = open("/dev/urandom", O_RDONLY)) < 0 ||
 			length != (size_t)read(fd, data, length)) {
 		if (pid == 0) {
@@ -916,11 +916,12 @@ getrandstring(size_t length)
 	}
 	if (fd > 0)
 		close(fd);
-	cp = memtob64(data, length);
-	rp = salloc(length+1);
-	strncpy(rp, cp, length)[length] = '\0';
-	free(cp);
-	return rp;
+
+	(void)b64_encode_buf(&b64, data, length, B64_SALLOC);
+	ac_free(data);
+	assert(length < b64.l);
+	b64.s[length] = '\0';
+	return (b64.s);
 }
 
 static void
