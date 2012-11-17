@@ -1540,31 +1540,34 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 /*
  * fwrite performing the given MIME conversion.
  */
-size_t
+ssize_t
 mime_write(void *ptr, size_t size, FILE *f,
-		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen,
-		char **restp, size_t *restsizep)
+	enum conversion convert, enum tdflags dflags,
+	char *prefix, size_t prefixlen, struct str *rest)
 {
 	struct str in, out;
-	size_t sz, csize;
-	int is_text = 0;
-#ifdef	HAVE_ICONV
+	ssize_t sz;
+	int state;
+#ifdef HAVE_ICONV
 	char mptr[LINESIZE * 6];
 	char *iptr, *nptr;
 	size_t inleft, outleft;
 #endif
 
-	if (size == 0)
-		return 0;
-	csize = size;
-#ifdef	HAVE_ICONV
-	if (csize < sizeof mptr && (dflags & TD_ICONV)
-			&& iconvd != (iconv_t)-1
+	in.s = ptr;
+	in.l = size;
+	if ((sz = size) == 0) {
+		if (rest != NULL && rest->l != 0)
+			goto jconvert;
+		goto jleave;
+	}
+
+#ifdef HAVE_ICONV
+	if ((dflags & TD_ICONV) && size < sizeof mptr && iconvd != (iconv_t)-1
 			&& (convert == CONV_TOQP || convert == CONV_8BIT ||
 				convert == CONV_TOB64 ||
 				convert == CONV_TOHDR)) {
-		inleft = csize;
+		inleft = size;
 		outleft = sizeof mptr;
 		nptr = mptr;
 		iptr = ptr;
@@ -1575,15 +1578,15 @@ mime_write(void *ptr, size_t size, FILE *f,
 		} else {
 			if (errno == EILSEQ || errno == EINVAL)
 				invalid_seq(*iptr);
-			return 0;
+			sz = -1;
+			goto jleave;
 		}
-	} else {
-#endif
-		in.s = ptr;
-		in.l = csize;
-#ifdef	HAVE_ICONV
 	}
 #endif
+
+jconvert:
+	out.s = NULL;
+	out.l = 0;
 	switch (convert) {
 	case CONV_FROMQP:
 		mime_fromqp(&in, &out, 0);
@@ -1599,19 +1602,18 @@ mime_write(void *ptr, size_t size, FILE *f,
 				prefix, prefixlen);
 		break;
 	case CONV_FROMB64_T:
-		is_text = 1;
-		/*FALLTHROUGH*/
 	case CONV_FROMB64:
-		mime_fromb64_b(&in, &out, is_text, f);
-		if (is_text && out.s[out.l-1] != '\n' && restp && restsizep) {
-			*restp = ptr;
-			*restsizep = size;
-			sz = 0;
-		} else {
+		state = b64_decode(&out, &in, 0, rest);
+		if ((sz = out.l) != 0) {
+			if (state != OKAY)
+				prefix = NULL, prefixlen = 0;
 			sz = fwrite_td(out.s, sizeof *out.s, out.l, f, dflags,
 				prefix, prefixlen);
 		}
-		free(out.s);
+		if (out.s != NULL)
+			free(out.s);
+		if (state != OKAY)
+			sz = -1;
 		break;
 	case CONV_TOB64:
 		sz = mime_write_tob64(&in, f, 0);
@@ -1632,5 +1634,6 @@ mime_write(void *ptr, size_t size, FILE *f,
 		sz = fwrite_td(in.s, sizeof *in.s, in.l, f, dflags,
 				prefix, prefixlen);
 	}
+jleave:
 	return sz;
 }

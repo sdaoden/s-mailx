@@ -489,9 +489,9 @@ void mime_fromhdr(struct str *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char *name);
 size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 		char *prefix, size_t prefixlen);
-size_t mime_write(void *ptr, size_t size, FILE *f,
+ssize_t	 mime_write(void *ptr, size_t size, FILE *f,
 		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen, char **rest, size_t *restsize);
+		char *prefix, size_t prefixlen, struct str *rest);
 
 /*
  * names.c

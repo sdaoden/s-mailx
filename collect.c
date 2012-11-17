@@ -522,8 +522,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			if (cp != NULL && (count = (long)strlen(cp)) > 0) {
 				if (mime_write(cp, count,
 						collf, CONV_FROMHDR, TD_NONE,
-						NULL, (size_t) 0,
-						NULL, NULL) == 0)
+						NULL, (size_t) 0, NULL) < 0)
 					goto jerr;
 				if (fprintf(collf, tr(52, " wrote:\n\n")) < 0)
 					goto jerr;
