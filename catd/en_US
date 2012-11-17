@@ -224,7 +224,7 @@ $set 1
 213 <Unknown date>
 214 Loaded 1 new message\n
 215 Loaded %d new messages\n
-216 --- DELETED ---
+216 No POP3 support compiled in.\n
 217 Cannot handle protocol: %s\n
 218 POP3 error: %s
 219 POP3 connection already closed.\n
@@ -277,7 +277,7 @@ $set 1
 266 Ignoring header field "%s"\n
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
-269 --- DELETED ---
+269 No IMAP support compiled in.\n
 270 --- DELETED ---
 271 Invalid address argument with -r\n
 272 No GSSAPI support compiled in.\n

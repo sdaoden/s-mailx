@@ -539,30 +539,30 @@ which_protocol(const char *name)
 #ifdef USE_POP3
 			return PROTO_POP3;
 #else
-			fprintf(stderr, catgets(catd, CATSET, 216,
-					"No POP3 support compiled in.\n"));
+			fprintf(stderr,
+				tr(216, "No POP3 support compiled in.\n"));
 #endif
 		if (strncmp(name, "pop3s://", 8) == 0)
-#ifdef	USE_SSL
+#ifdef USE_SSL
 			return PROTO_POP3;
-#else	/* !USE_SSL */
-			fprintf(stderr, catgets(catd, CATSET, 225,
-					"No SSL support compiled in.\n"));
-#endif	/* !USE_SSL */
+#else
+			fprintf(stderr,
+				tr(225, "No SSL support compiled in.\n"));
+#endif
 		if (strncmp(name, "imap://", 7) == 0)
 #ifdef USE_IMAP
 			return PROTO_IMAP;
 #else
-			fprintf(stderr, catgets(catd, CATSET, 269,
-					"No IMAP support compiled in.\n"));
+			fprintf(stderr,
+				tr(269, "No IMAP support compiled in.\n"));
 #endif
 		if (strncmp(name, "imaps://", 8) == 0)
-#ifdef	USE_SSL
+#ifdef USE_SSL
 			return PROTO_IMAP;
-#else	/* !USE_SSL */
-			fprintf(stderr, catgets(catd, CATSET, 225,
-					"No SSL support compiled in.\n"));
-#endif	/* !USE_SSL */
+#else
+			fprintf(stderr,
+				tr(225, "No SSL support compiled in.\n"));
+#endif
 		return PROTO_UNKNOWN;
 	} else {
 	file:	p = PROTO_FILE;
