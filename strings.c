@@ -53,17 +53,18 @@
 
 /*
  * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
- * release all except the first in sreset(), because other allocations are
+ * release all except the first two in sreset(), because other allocations are
  * performed and the underlaying allocator should have the possibility to
  * reorder stuff and possibly even madvise(2), so that S-nail(1) integrates
  * neatly into the system.
+ * To relax stuff further, especially in non-interactive, i.e., send mode, do
+ * not even allocate the first buffer, but let that be a builtin DATA section
+ * one that is rather small, yet sufficient for send mode to *never* even
+ * perform a single dynamic allocation (from our stringdope point of view).
+ *
  * If allocations larger than SHUGE_CUTLIMIT come in, smalloc() them directly
  * instead and store them in an extra list that is released whenever sreset()
  * is called.
- * TODO the smaller SBUFFER_NISIZE for non-interactive mode is not yet used;
- * TODO i.e., with a two-pass argument parsing we can decide upon the actual
- * TODO program mode which memory strategy should be used; e.g., one-shot
- * TODO sending needs only a small portion of memory, interactive etc. more.
  */
 
 union __align__ {
@@ -73,22 +74,42 @@ union __align__ {
 };
 #define SALIGN		(sizeof(union __align__) - 1)
 
+CTA(ISPOW2(SALIGN + 1));
+
+struct b_base {
+	struct buffer	*_next;
+	char		*_bot;		/* For spreserve() */
+	char		*_max;		/* Max usable byte */
+	char		*_caster;	/* NULL if full */
+};
+
+/* Single instance builtin buffer, DATA */
+struct b_bltin {
+	struct b_base	b_base;
+	char		b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
+};
+#define SBLTIN_SIZE	SIZEOF_FIELD(struct b_bltin, b_buf)
+
+/* Dynamically allocated buffers */
+struct b_dyn {
+	struct b_base	b_base;
+	char		b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
+};
+#define SDYN_SIZE	SIZEOF_FIELD(struct b_dyn, b_buf)
+
 struct buffer {
-	struct buffer	*b_next;
-	char		*b_bot;		/* For spreserve() */
-	char		*b_max;		/* Max usable byte */
-	char		*b_caster;	/* NULL if full */
-	char		b_buf[SBUFFER_SIZE - 4*sizeof(union __align__)];
+	struct b_base	b;
+	char		b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
 struct huge {
 	struct huge	*h_prev;
-	char		h_buf[sizeof(char*)]; /* Variable size indeed */
+	char		h_buf[VFIELD_SIZE(SALIGN + 1)];
 };
-
 #define SHUGE_CALC_SIZE(S) \
-	((sizeof(struct huge) - sizeof(((struct huge*)NULL)->h_buf)) + (S))
+	((sizeof(struct huge) - VFIELD_SIZEOF(struct huge, h_buf)) + (S))
 
+static struct b_bltin	_builtin_buf;
 static struct buffer	*_buf_head, *_buf_list, *_buf_server;
 static struct huge	*_huge_list;
 
@@ -122,12 +143,12 @@ salloc(size_t size)
 #ifdef HAVE_ASSERTS
 	++_all_cnt;
 	++_all_cycnt;
-	_all_cycnt_max = smax(_all_cycnt_max, _all_cycnt);
+	_all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
 	_all_size += size;
 	_all_cysize += size;
-	_all_cysize_max = smax(_all_cysize_max, _all_cysize);
-	_all_min = _all_max == 0 ? size : smin(_all_min, size);
-	_all_max = smax(_all_max, size);
+	_all_cysize_max = MAX(_all_cysize_max, _all_cysize);
+	_all_min = _all_max == 0 ? size : MIN(_all_min, size);
+	_all_max = MAX(_all_max, size);
 	_all_wast += size - orig_size;
 #endif
 
@@ -137,44 +158,55 @@ salloc(size_t size)
 	if ((u.b = _buf_server) != NULL)
 		goto jumpin;
 jredo:
-	for (u.b = _buf_head; u.b != NULL; u.b = u.b->b_next) {
-jumpin:		x = u.b->b_caster;
+	for (u.b = _buf_head; u.b != NULL; u.b = u.b->b._next) {
+jumpin:		x = u.b->b._caster;
 		if (x == NULL) {
 			if (u.b == _buf_server) {
+				if (u.b == _buf_head &&
+						(u.b = _buf_head->b._next)
+						!= NULL) {
+					_buf_server = u.b;
+					goto jumpin;
+				}
 				_buf_server = NULL;
 				goto jredo;
 			}
 			continue;
 		}
 		y = x + size;
-		z = u.b->b_max;
+		z = u.b->b._max;
 		if (y <= z) {
 			/*
 			 * Alignment is the one thing, the other is what is
 			 * usually allocated, and here about 40 bytes seems to
 			 * be a good cut to avoid non-usable non-NULL casters
 			 */
-			u.b->b_caster = (y + 42+16 >= z) ? NULL : y;
+			u.b->b._caster = (y + 42+16 >= z) ? NULL : y;
 			u.cp = x;
 			goto jleave;
 		}
 	}
 
+	if (_buf_head == NULL) {
+		struct b_bltin *b = &_builtin_buf;
+		b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
+		_buf_head = (struct buffer*)b;
+		u.b = _buf_head;
+	} else {
 #ifdef HAVE_ASSERTS
-	++_all_bufcnt;
-	++_all_cybufcnt;
-	_all_cybufcnt_max = smax(_all_cybufcnt_max, _all_cybufcnt);
+		++_all_bufcnt;
+		++_all_cybufcnt;
+		_all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
 #endif
-	u.b = smalloc(sizeof(struct buffer));
-	if (_buf_head == NULL)
-		_buf_head = u.b;
+		u.b = (struct buffer*)smalloc(sizeof(struct b_dyn));
+		u.b->b._max = u.b->b_buf + SDYN_SIZE - 1;
+	}
 	if (_buf_list != NULL)
-		_buf_list->b_next = u.b;
+		_buf_list->b._next = u.b;
 	_buf_server = _buf_list = u.b;
-	u.b->b_next = NULL;
-	u.b->b_caster = (u.b->b_bot = u.b->b_buf) + size;
-	u.b->b_max = u.b->b_buf + sizeof(u.b->b_buf) - 1;
-	u.cp = u.b->b_bot;
+	u.b->b._next = NULL;
+	u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
+	u.cp = u.b->b._bot;
 jleave:
 	return (u.cp);
 
@@ -182,7 +214,7 @@ jhuge:
 #ifdef HAVE_ASSERTS
 	++_all_hugecnt;
 	++_all_cyhugecnt;
-	_all_cyhugecnt_max = smax(_all_cyhugecnt_max, _all_cyhugecnt);
+	_all_cyhugecnt_max = MAX(_all_cyhugecnt_max, _all_cyhugecnt);
 #endif
 	u.h = smalloc(SHUGE_CALC_SIZE(size));
 	u.h->h_prev = _huge_list;
@@ -219,7 +251,7 @@ sreset(void)
 
 #ifdef HAVE_ASSERTS
 	_all_cycnt = _all_cysize = _all_cyhugecnt = 0;
-	_all_cybufcnt = (_buf_head != NULL);
+	_all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
 	++_all_resets;
 #endif
 
@@ -231,16 +263,20 @@ sreset(void)
 	_huge_list = NULL;
 
 	if ((u.b = _buf_head) != NULL) {
-		u.b = u.b->b_next;
-		_buf_head->b_next = NULL;
-		while (u.b != NULL) {
-			struct buffer *tmp = u.b;
-			u.b = u.b->b_next;
-			free(tmp);
+		struct buffer *b = u.b;
+		b->b._caster = b->b._bot;
+		_buf_server = b;
+		if ((u.b = u.b->b._next) != NULL) {
+			b = u.b;
+			b->b._caster = b->b._bot;
+			for (u.b = u.b->b._next; u.b != NULL;) {
+				struct buffer *b2 = u.b->b._next;
+				free(u.b);
+				u.b = b2;
+			}
 		}
-		u.b = _buf_head;
-		u.b->b_caster = u.b->b_bot;
-		_buf_server = _buf_list = u.b;
+		_buf_list = b;
+		b->b._next = NULL;
 	}
 jleave:	;
 }
@@ -252,26 +288,27 @@ jleave:	;
 void 
 spreserve(void)
 {
-	if (_buf_head != NULL) {
-		/* Before spreserve() we cannot run into this - assert it */
-		assert(_buf_head->b_next == NULL);
-		_buf_head->b_bot = _buf_head->b_caster;
-	}
+	struct buffer *b;
+
+	for (b = _buf_head; b != NULL; b = b->b._next)
+		b->b._bot = b->b._caster;
 }
 
 #ifdef HAVE_ASSERTS
 int
 sstats(void *v)
 {
+	(void)v;
 	printf("String usage statistics (cycle means one sreset() cycle):\n"
-		"  Buffer allocs ever/max simultan. : %lu/%lu (size: %lu)\n"
+		"  Buffer allocs ever/max simultan. : %lu/%lu\n"
+		"  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
 		"  Overall alloc count/bytes        : %lu/%lu\n"
 		"  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
 		"  Hugealloc count overall/cycle    : %lu/%lu (cutlimit: %lu)\n"
 		"  sreset() cycles                  : %lu (%lu performed)\n"
 		"  Cycle maximums: alloc count/bytes: %lu/%lu\n",
 		(ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
-			(ul_it)sizeof(((struct buffer*)v)->b_buf),
+		(ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
 		(ul_it)_all_cnt, (ul_it)_all_size,
 		(ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
 		(ul_it)_all_hugecnt, (ul_it)_all_cyhugecnt_max,
