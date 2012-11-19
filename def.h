@@ -124,12 +124,12 @@
 #define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
 
 /*
- * Auto-reclaimed string storage as defined in strings.c.
+ * Auto-reclaimed string storage (strings.c)
  */
 
-/* In non-interactive, i.e., one-shot mode we can use much smaller buffers */
+/* Dynamic buffer size, and size of the single builtin one that's used first */
 #define SBUFFER_SIZE	0x18000u
-#define SBUFFER_NISIZE	0x4000u
+#define SBUFFER_BUILTIN	0x2000u
 
 /* Huge allocation if GT; those are never cached but will be auto freed */
 #define SHUGE_CUTLIMIT	LINESIZE
