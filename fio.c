@@ -52,10 +52,7 @@
 #  include <arpa/inet.h>
 # endif
 #endif
-#ifdef USE_NSS
-# include <nss.h>
-# include <ssl.h>
-#elif defined USE_OPENSSL
+#ifdef USE_OPENSSL
 # include <openssl/ssl.h>
 # include <openssl/err.h>
 # include <openssl/x509v3.h>
@@ -864,13 +861,7 @@ sclose(struct sock *sp)
 	if (sp->s_fd > 0) {
 		if (sp->s_onclose != NULL)
 			(*sp->s_onclose)();
-#if defined (USE_NSS)
-		if (sp->s_use_ssl) {
-			sp->s_use_ssl = 0;
-			i = PR_Close(sp->s_prfd) == PR_SUCCESS ? 0 : -1;
-			sp->s_prfd = NULL;
-		} else
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 		if (sp->s_use_ssl) {
 			sp->s_use_ssl = 0;
 			SSL_shutdown(sp->s_ssl);
@@ -879,7 +870,7 @@ sclose(struct sock *sp)
 			SSL_CTX_free(sp->s_ctx);
 			sp->s_ctx = NULL;
 		}
-#endif	/* USE_SSL */
+#endif
 		{
 			i = close(sp->s_fd);
 		}
@@ -943,11 +934,7 @@ swrite1(struct sock *sp, const char *data, int sz, int use_buffer)
 	}
 	if (sz == 0)
 		return OKAY;
-#if defined (USE_NSS)
-	if (sp->s_use_ssl) {
-		x = PR_Write(sp->s_prfd, data, sz);
-	} else
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 	if (sp->s_use_ssl) {
 ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 		if (x < 0) {
@@ -958,7 +945,7 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 			}
 		}
 	} else
-#endif	/* USE_SSL */
+#endif
 	{
 		x = xwrite(sp->s_fd, data, sz);
 	}
@@ -966,13 +953,11 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 		char	o[512];
 		snprintf(o, sizeof o, "%s write error",
 				sp->s_desc ? sp->s_desc : "socket");
-#if defined (USE_NSS)
-		sp->s_use_ssl ? nss_gen_err("%s", o) : perror(o);
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 		sp->s_use_ssl ? ssl_gen_err("%s", o) : perror(o);
-#else	/* !USE_SSL */
+#else
 		perror(o);
-#endif	/* !USE_SSL */
+#endif
 		if (x < 0)
 			sclose(sp);
 		return STOP;
@@ -997,23 +982,7 @@ sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp)
 		}
 		if (sp->s_rbufptr == NULL ||
 				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
-#if defined (USE_NSS)
-			if (sp->s_use_ssl) {
-				if ((sp->s_rsz = PR_Read(sp->s_prfd,
-						sp->s_rbuf,
-						sizeof sp->s_rbuf)) <= 0) {
-					if (sp->s_rsz < 0) {
-						char	o[512];
-						snprintf(o, sizeof o, "%s",
-							sp->s_desc ?
-								sp->s_desc :
-								"socket");
-						nss_gen_err("%s", o);
-					}
-					break;
-				}
-			} else
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 			if (sp->s_use_ssl) {
 		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
 						sp->s_rbuf,
@@ -1036,7 +1005,7 @@ sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp)
 					break;
 				}
 			} else
-#endif	/* USE_SSL */
+#endif
 			{
 			again:	if ((sp->s_rsz = read(sp->s_fd, sp->s_rbuf,
 						sizeof sp->s_rbuf)) <= 0) {
