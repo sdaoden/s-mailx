@@ -1,6 +1,17 @@
 S - n a i l  N e w s
 ====================
 
+- I finally got a glue and understood that Sourceforge does (a) not
+  support symbolic links and (b) doesn't like dots as regular parts of
+  filenames.  This means that all this time the promised s-nail.tar.gz
+  symbolic link did not work, and that s-nailv13.3.tar.gz wasn't
+  accessible either (via the web interface).
+  In the future S-nail(1) will not provide any more symbolic links (the
+  Sourceforge website offers a "download latest" thing which seems to
+  work), and use underscores in filenames -- s-nailv13.3.tar.gz has been
+  renamed to s-nailv13_3.tar.gz.  The tags continue to use dot notation.
+  Thanks.
+
 - The *heirloom-plus* support branch has been removed.
   The code bases diverged a lot and even more to come.
   It doesn't make sense to put any effort in that.
