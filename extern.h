@@ -101,13 +101,6 @@ char *asccasestr(const char *haystack, const char *xneedle);
  * Base64 encoding as defined in section 6.8 of RFC 2045.
  */
 
-char *strtob64(const char *p);
-char *memtob64(const void *vp, size_t isz);
-size_t mime_write_tob64(struct str *in, FILE *fo, int is_header);
-void mime_fromb64(struct str *in, struct str *out, int is_text);
-void mime_fromb64_b(struct str *in, struct str *out, int is_text, FILE *f);
-
-/* TODO throw away stuff above */
 /* How much output is necessary to encode *len* bytes in Base64.
  * This assumes B64_CRLF|B64_MULTILINE is set and that the result is to be
  * terminated */
