@@ -1,6 +1,13 @@
 S - n a i l  N e w s
 ====================
 
+- The string allocation strategy has been tweaked some more to, i think,
+  a final version (regarding algorithm).
+  In normal non-interactive send mode it should now no longer need any
+  dynamic memory at all (unless some dozen recipients are specified).
+  (Several other places still use normal dynamic memory, of course.)
+  (*dope-stringdope-again* topic branch.)
+
 - Support for NSS (Network Security Services) has been removed.
   I've never worked with it and are, regarding the complexity of
   network security, not willing to spend any time on it.
