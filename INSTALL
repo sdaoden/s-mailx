@@ -88,4 +88,4 @@ Notes for S-nail(1) v13.*
   environment available at that time with -O2.
 
 The current maintainer has not yet looked at the following for real:
-IPv6, IMAP+, POP3+, NSS, Bayesian filter.
+IPv6, SSL, IMAP+, POP3+, Bayesian filter.
