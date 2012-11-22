@@ -888,20 +888,22 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
 		q = &(out->s)[diff]; \
 	}
 /*
- * Convert header fields from RFC 1522 format
+ * Convert header fields from RFC 1522 format TODO no error handling at all
  */
 void 
 mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 {
+	struct str crest, cin, cout;
 	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
 	char const *tcs;
-	struct str cin, cout;
 	int convert;
 	size_t maxstor, lastoutl = 0;
 #ifdef	HAVE_ICONV
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
+	crest.s = NULL;
+	crest.l = 0;
 	tcs = gettcharset();
 	maxstor = in->l;
 	out->s = smalloc(maxstor + 1);
@@ -951,10 +953,16 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 			cin.l--;
 			switch (convert) {
 				case CONV_FROMB64:
-					mime_fromb64(&cin, &cout, 1);
+					crest.l = 0;
+					cout.s = NULL;
+					(void)b64_decode(&cout, &cin, 0,
+						&crest);
+					b64_decode_join(&cout, &crest);
 					break;
 				case CONV_FROMQP:
 					mime_fromqp(&cin, &cout, 1);
+					break;
+				default:
 					break;
 			}
 			if (lastwordend) {
@@ -1018,11 +1026,12 @@ notmime:
 	}
 fromhdr_end:
 	*q = '\0';
+	if (crest.s != NULL)
+		free(crest.s);
 	if (flags & TD_ISPR) {
-		struct str	new;
-		makeprint(out, &new);
+		makeprint(out, &crest);
 		free(out->s);
-		*out = new;
+		*out = crest;
 	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
