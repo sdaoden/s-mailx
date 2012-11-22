@@ -1048,26 +1048,29 @@ fromhdr_end:
 static size_t
 mime_write_tohdr(struct str *in, FILE *fo)
 {
-	char *upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
+	char buf[B64_LINESIZE],
+		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
 	char const *charset, *charset7;
 	struct str cin, cout;
 	size_t sz = 0, col = 0, wr, charsetlen, charset7len;
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
-	upper = in->s + in->l;
 	charset = getcharset(MIME_HIGHBIT);
 	if ((charset7 = value("charset7")) == NULL)
 		charset7 = us_ascii;
 	charsetlen = strlen(charset);
 	charset7len = strlen(charset7);
 	charsetlen = smax(charsetlen, charset7len);
+	upper = in->s + in->l;
+
 	b = 0;
-	for (wbeg = in->s, quoteany = 0; wbeg < upper; wbeg++) {
+	for (wbeg = in->s, quoteany = 0; wbeg < upper; ++wbeg) {
 		b |= *wbeg;
 		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
 			quoteany++;
 	}
+
 	if (2u * quoteany > in->l) {
 		/*
 		 * Print the entire field in base64.
@@ -1075,15 +1078,16 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			wend = upper;
 			cin.s = wbeg;
-			for (;;) {
+			for (;;) { /* TODO optimize the -=4 case (...) */
 				cin.l = wend - wbeg;
 				if (cin.l * 4/3 + 7 + charsetlen
 						< maxcol - col) {
-					fprintf(fo, "=?%s?B?",
-						b&0200 ? charset : charset7);
-					wr = mime_write_tob64(&cin, fo, 1);
-					fwrite("?=", sizeof (char), 2, fo);
-					wr += 7 + charsetlen;
+					cout.s = buf;
+					cout.l = sizeof buf;
+					wr = fprintf(fo, "=?%s?B?%s?=",
+						b&0200 ? charset : charset7,
+						b64_encode(&cout, &cin, B64_BUF
+							)->s);
 					sz += wr, col += wr;
 					if (wend < upper) {
 						fwrite("\n ", sizeof (char),
