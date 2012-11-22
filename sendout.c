@@ -151,7 +151,8 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 /*
  * Do not change, you get incorrect base64 encodings else!
  */
-#define	INFIX_BUF	972
+#define	INFIX_BUF	\
+	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
 /*
  * Put the signature file at fo.

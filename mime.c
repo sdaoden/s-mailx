@@ -1625,7 +1625,11 @@ jconvert:
 			sz = -1;
 		break;
 	case CONV_TOB64:
-		sz = mime_write_tob64(&in, f, 0);
+		(void)b64_encode(&out, &in, B64_LF|B64_MULTILINE);
+		sz = fwrite(out.s, sizeof *out.s, out.l, f);
+		if (sz != (ssize_t)out.l)
+			sz = -1;
+		free(out.s);
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
