@@ -75,8 +75,8 @@ $set 1
 72 $Edit message %d [ynq]? $
 73 temporary mail edit file
 74 cannot create tempfile\n
-75 --- DELETED ---
-76 --- DELETED ---
+75 Unterminated %s definition: "%s".\n
+76 A macro named "%s" already exists.\n
 77 temporary file seek
 78 --- DELETED ---
 79 --- DELETED ---

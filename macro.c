@@ -96,63 +96,73 @@ cdefine(void *v)
 int 
 define1(const char *name, int account)
 {
-	struct macro	*mp;
-	struct line	*lp, *lst = NULL, *lnd = NULL;
-	char	*linebuf = NULL;
-	size_t	linesize = 0;
-	int	n;
+	int ret = 1, n;
+	struct macro *mp;
+	struct line *lp, *lst = NULL, *lnd = NULL;
+	char *linebuf = NULL;
+	size_t linesize = 0;
+
 	mp = scalloc(1, sizeof *mp);
 	mp->ma_name = sstrdup(name);
 	if (account)
 		mp->ma_flags |= MA_ACCOUNT;
+
 	for (;;) {
 		n = 0;
 		for (;;) {
 			n = readline_restart(input, &linebuf, &linesize, n);
 			if (n < 0)
 				break;
-			if (n == 0 || linebuf[n-1] != '\\')
+			if (n == 0 || linebuf[n - 1] != '\\')
 				break;
-			linebuf[n-1] = '\n';
+			linebuf[n - 1] = '\n';
 		}
 		if (n < 0) {
-			fprintf(stderr, "Unterminated %s definition: \"%s\".\n",
-					account ? "account" : "macro",
-					mp->ma_name);
+			fprintf(stderr,
+				tr(75, "Unterminated %s definition: \"%s\".\n"),
+				account ? "account" : "macro", mp->ma_name);
 			if (sourcing)
 				unstack();
-			free(mp->ma_name);
-			free(mp);
-			return 1;
+			goto jerr;
 		}
 		if (closingangle(linebuf))
 			break;
 		lp = scalloc(1, sizeof *lp);
-		lp->l_linesize = n+1;
-		lp->l_line = smalloc(lp->l_linesize);
-		memcpy(lp->l_line, linebuf, lp->l_linesize);
-		lp->l_line[n] = '\0';
-		if (lst && lnd) {
+		lp->l_linesize = ++n;
+		lp->l_line = smalloc(n); /* TODO rewrite this file */
+		memcpy(lp->l_line, linebuf, n);
+		assert(lp->l_line[n - 1] == '\0');
+		if (lst != NULL && lnd != NULL) {
 			lnd->l_next = lp;
 			lnd = lp;
 		} else
 			lst = lnd = lp;
 	}
+
 	mp->ma_contents = lst;
 	if (malook(mp->ma_name, mp, account ? accounts : macros) != NULL) {
-		if (!account) {
+		if (! account) {
 			fprintf(stderr,
-				"A macro named \"%s\" already exists.\n",
+				tr(76,"A macro named \"%s\" already exists.\n"),
 				mp->ma_name);
-			freelines(mp->ma_contents);
-			free(mp->ma_name);
-			free(mp);
-			return 1;
+			lst = mp->ma_contents;
+			goto jerr;
 		}
 		undef1(mp->ma_name, accounts);
 		malook(mp->ma_name, mp, accounts);
 	}
-	return 0;
+
+	ret = 0;
+jleave:
+	if (linebuf != NULL)
+		free(linebuf);
+	return (ret);
+
+jerr:	if (lst != NULL)
+		freelines(lst);
+	free(mp->ma_name);
+	free(mp);
+	goto jleave;
 }
 
 int 
