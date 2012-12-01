@@ -478,5 +478,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 414 Produce a core dump (ouch!)
 415 Globber <number> 512 byte blocks on the stack
 416 Print statistics about the auto-reclaimed string store
-
+417 Trace current memory usage afap
 
