@@ -1546,7 +1546,8 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		csize = delctrl(mptr, csize);
 	sz = prefixwrite(mptr, sizeof *mptr, csize, f, prefix, prefixlen);
 	ac_free(xmptr);
-	free(mlptr);
+	if (mlptr != NULL)
+		free(mlptr);
 	return sz;
 }
 
