@@ -687,29 +687,30 @@ enum {
 	C_LOWER	= 0200
 };
 
-extern unsigned char const 	class_char[];
+extern uc_it const 	class_char[];
 
 #define __ischarof(C, FLAGS)	\
-	(asciichar(C) && (class_char[(unsigned char)(C)] & (FLAGS)) != 0)
+	(asciichar(C) && (class_char[(uc_it)(C)] & (FLAGS)) != 0)
 
-#define asciichar(c) ((unsigned char)(c) <= 0177)
-#define alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
-#define alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
-#define blankchar(c) __ischarof(c, C_BLANK)
+#define asciichar(c)	((uc_it)(c) <= 0177)
+#define alnumchar(c)	__ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
+#define alphachar(c)	__ischarof(c, C_UPPER|C_LOWER)
+#define blankchar(c)	__ischarof(c, C_BLANK)
 #define blankspacechar(c) __ischarof(c, C_BLANK|C_SPACE)
-#define cntrlchar(c) __ischarof(c, C_CNTRL)
-#define digitchar(c) __ischarof(c, C_DIGIT|C_OCTAL)
-#define lowerchar(c) __ischarof(c, C_LOWER)
-#define punctchar(c) __ischarof(c, C_PUNCT)
-#define spacechar(c) __ischarof(c, C_BLANK|C_SPACE|C_WHITE)
-#define upperchar(c) __ischarof(c, C_UPPER)
-#define whitechar(c) __ischarof(c, C_BLANK|C_WHITE)
-#define octalchar(c) __ischarof(c, C_OCTAL)
+#define cntrlchar(c)	__ischarof(c, C_CNTRL)
+#define digitchar(c)	__ischarof(c, C_DIGIT|C_OCTAL)
+#define lowerchar(c)	__ischarof(c, C_LOWER)
+#define punctchar(c)	__ischarof(c, C_PUNCT)
+#define spacechar(c)	__ischarof(c, C_BLANK|C_SPACE|C_WHITE)
+#define upperchar(c)	__ischarof(c, C_UPPER)
+#define whitechar(c)	__ischarof(c, C_BLANK|C_WHITE)
+#define octalchar(c)	__ischarof(c, C_OCTAL)
 
-#define upperconv(c) (lowerchar(c) ? (char)((unsigned char)(c)-'a'+'A') : (c))
-#define lowerconv(c) (upperchar(c) ? (char)((unsigned char)(c)-'A'+'a') : (c))
-/*	RFC 822, 3.2.	*/
-#define fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
+#define upperconv(c)	(lowerchar(c) ? (char)((uc_it)(c) - 'a' + 'A') : (c))
+#define lowerconv(c)	(upperchar(c) ? (char)((uc_it)(c) - 'A' + 'a') : (c))
+/* RFC 822, 3.2. */
+#define fieldnamechar(c) \
+	(asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
 /*
  * Try to use alloca() for some function-local buffers and data,
