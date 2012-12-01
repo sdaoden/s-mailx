@@ -76,7 +76,6 @@ char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 void transflags(struct message *omessage, long omsgCount, int transparent);
 char *getrandstring(size_t length);
-void out_of_memory(void);
 void *smalloc(size_t s);
 void *srealloc(void *v, size_t s);
 void *scalloc(size_t nmemb, size_t size);

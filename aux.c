@@ -923,7 +923,7 @@ getrandstring(size_t length)
 	return rp;
 }
 
-void 
+static void
 out_of_memory(void)
 {
 	panic("no memory");
