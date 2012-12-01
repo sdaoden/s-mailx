@@ -969,8 +969,10 @@ initbox(const char *name)
 		msgspace = 0;
 	}
 	mb.mb_threaded = 0;
-	free(mb.mb_sorted);
-	mb.mb_sorted = NULL;
+	if (mb.mb_sorted != NULL) {
+		free(mb.mb_sorted);
+		mb.mb_sorted = NULL;
+	}
 #ifdef USE_IMAP
 	mb.mb_flags = MB_NOFLAGS;
 #endif
