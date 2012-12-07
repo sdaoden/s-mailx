@@ -49,7 +49,7 @@ $set 1
 46 "Endif" without matching "if"\n
 47 No recipient specified.
 48 No applicable messages.
-49 --- DELETED ---
+49 Cannot call hook for folder "%s": Macro "%s" does not exist.\n
 50 $#%u\tfilename: $
 51 temporary mail file
 52 $ wrote:\n\n$

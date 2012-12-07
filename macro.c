@@ -222,23 +222,28 @@ callaccount(const char *name)
 int 
 callhook(const char *name, int newmail)
 {
-	struct macro	*mp;
-	char	*var, *cp;
-	int	len, r;
+	int len, r;
+	struct macro *mp;
+	char *var, *cp;
 
 	var = ac_alloc(len = strlen(name) + 13);
 	snprintf(var, len, "folder-hook-%s", name);
-	if ((cp = value(var)) == NULL && (cp = value("folder-hook")) == NULL)
-		return 0;
+	if ((cp = value(var)) == NULL && (cp = value("folder-hook")) == NULL) {
+		r = 0;
+		goto jleave;
+	}
 	if ((mp = malook(cp, NULL, macros)) == NULL) {
-		fprintf(stderr, "Cannot call hook for folder \"%s\": "
-				"Macro \"%s\" does not exist.\n",
-				name, cp);
-		return 1;
+		fprintf(stderr, tr(49, "Cannot call hook for folder \"%s\": "
+			"Macro \"%s\" does not exist.\n"),
+			name, cp);
+		r = 1;
+		goto jleave;
 	}
 	inhook = newmail ? 3 : 1;
 	r = maexec(mp);
 	inhook = 0;
+jleave:
+	ac_free(var);
 	return r;
 }
 
