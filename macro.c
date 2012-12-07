@@ -250,29 +250,29 @@ jleave:
 static int 
 maexec(struct macro *mp)
 {
-	struct line	*lp;
-	const char	*sp;
-	char	*copy, *cp;
-	int	r = 0;
+	int r = 0;
+	struct line *lp;
+	char const *sp, *smax;
+	char *copy, *cp;
 
 	unset_allow_undefined = 1;
 	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
 		sp = lp->l_line;
-		while (sp < &lp->l_line[lp->l_linesize] &&
-				(blankchar(*sp&0377) || *sp == '\n' ||
-				 *sp == '\0'))
-			sp++;
-		if (sp == &lp->l_line[lp->l_linesize])
+		smax = lp->l_line + lp->l_linesize;
+		while (sp < smax &&
+				(blankchar(*sp) || *sp == '\n' || *sp == '\0'))
+			++sp;
+		if (sp == smax)
 			continue;
-		cp = copy = smalloc(lp->l_linesize + (lp->l_line - sp));
+		cp = copy = ac_alloc(lp->l_linesize + (lp->l_line - sp));
 		do
 			*cp++ = *sp != '\n' ? *sp : ' ';
-		while (++sp < &lp->l_line[lp->l_linesize]);
-		r = execute(copy, 0, lp->l_linesize);
-		free(copy);
+		while (++sp < smax);
+		r = execute(copy, 0, (size_t)(cp - copy));
+		ac_free(copy);
 	}
 	unset_allow_undefined = 0;
-	return r;
+	return (r);
 }
 
 static int 
