@@ -1117,29 +1117,35 @@ endifcmd(void *v)
 int 
 alternates(void *v)
 {
-	char **namelist = v;
-	int c;
-	char **ap, **ap2, *cp;
+	size_t l;
+	char **namelist = v, **ap, **ap2, *cp;
 
-	c = argcount(namelist) + 1;
-	if (c == 1) {
-		if (altnames == 0)
-			return(0);
-		for (ap = altnames; *ap; ap++)
+	l = argcount(namelist) + 1;
+
+	if (l == 1) {
+		if (altnames == NULL)
+			goto jleave;
+		for (ap = altnames; *ap != NULL; ++ap)
 			printf("%s ", *ap);
 		printf("\n");
-		return(0);
+		goto jleave;
 	}
-	if (altnames != 0)
+
+	if (altnames != NULL) {
+		for (ap = altnames; *ap != NULL; ++ap)
+			free(*ap);
 		free(altnames);
-	altnames = scalloc(c, sizeof (char *));
-	for (ap = namelist, ap2 = altnames; *ap; ap++, ap2++) {
-		cp = scalloc(strlen(*ap) + 1, sizeof (char));
-		strcpy(cp, *ap);
+	}
+	altnames = smalloc(l * sizeof(char*));
+	for (ap = namelist, ap2 = altnames; *ap; ++ap, ++ap2) {
+		l = strlen(*ap) + 1;
+		cp = smalloc(l);
+		memcpy(cp, *ap, l);
 		*ap2 = cp;
 	}
-	*ap2 = 0;
-	return(0);
+	*ap2 = NULL;
+jleave:
+	return (0);
 }
 
 /*
