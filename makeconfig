@@ -1,6 +1,7 @@
 #!/bin/sh -
 
 [ -z "${WANT_ASSERTS}" ] && WANT_ASSERTS=0
+[ -z "${WANT_NOALLOCA}" ] && WANT_NOALLOCA=0
 
 if [ -z "${CONFIG}" ]; then
 	[ -f ./user.conf ] && . ./user.conf
@@ -217,18 +218,6 @@ int main(int argc, char *argv[])
 }
 !
 
-# Due to NetBSD PR lib/47120 it seems to be best to not use non-cc-builtin
-# versions of alloca(3) since modern compilers just can't be trusted not to
-# overoptimize and silently break some code
-link_check alloca 'for __builtin_alloca()' \
-	'#define HAVE_ALLOCA __builtin_alloca' << \!
-int main(void)
-{
-	__builtin_alloca(1);
-	return 0;
-}
-!
-
 compile_check ssize_t 'for ssize_t' '#define HAVE_SSIZE_T' << \!
 #include <sys/types.h>
 #include <unistd.h>
@@ -381,6 +370,20 @@ int main(void)
 
 if wantfeat ASSERTS; then
 	echo "#define HAVE_ASSERTS" >> ${out}
+fi
+
+if nwantfeat NOALLOCA; then
+	# Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
+	# versions of alloca(3) since modern compilers just can't be trusted
+	# not to overoptimize and silently break some code
+	link_check alloca 'for __builtin_alloca()' \
+		'#define HAVE_ALLOCA __builtin_alloca' << \!
+int main(void)
+{
+	void *vp = __builtin_alloca(1);
+	return (!! vp);
+}
+!
 fi
 
 ##
