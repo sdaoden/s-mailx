@@ -85,7 +85,8 @@ nodename(int mayoverride)
 #endif
 
 	if (mayoverride && (hn = value("hostname")) != NULL && *hn) {
-		free(hostname);
+		if (hostname != NULL)
+			free(hostname);
 		hostname = sstrdup(hn);
 	}
 	if (hostname == NULL) {
