@@ -1518,9 +1518,9 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 					(size_t)-1 &&
 				errno == E2BIG) {
 			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
-			ac_free(mptr);
+			ac_free(xmptr);
 			mptrsz += inleft;
-			mptr = ac_alloc(mptrsz + 1);
+			mptr = xmptr = ac_alloc(mptrsz + 1);
 			goto again;
 		}
 		nmemb = mptrsz - outleft;
