@@ -1096,8 +1096,10 @@ top(void *v)
 		if (mp->m_flag & MNOFROM)
 			printf("From %s %s\n", fakefrom(mp),
 					fakedate(mp->m_time));
-		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)	/* XXX could use TOP */
-			return 1;
+		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {	/* XXX could use TOP */
+			v = NULL;
+			break;
+		}
 		c = mp->m_lines;
 		if (!lineb)
 			printf("\n");
@@ -1108,9 +1110,10 @@ top(void *v)
 			lineb = blankline(linebuf);
 		}
 	}
-	if (linebuf)
+
+	if (linebuf != NULL)
 		free(linebuf);
-	return(0);
+	return (v != NULL);
 }
 
 /*
