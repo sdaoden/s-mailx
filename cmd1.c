@@ -386,10 +386,10 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 	size_t hsize = 0;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-			(hlen = readline(ibuf, &hline, &hsize)) > 0) {
+			(hlen = readline(ibuf, &hline, &hsize)) > 0)
 		(void)extract_date_from_from_(hline, hlen, date);
+	if (hline != NULL)
 		free(hline);
-	}
 }
 
 static void
