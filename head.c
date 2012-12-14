@@ -513,39 +513,32 @@ char *
 hfield_mult(char *field, struct message *mp, int mult)
 {
 	FILE *ibuf;
-	char *linebuf = NULL;
-	size_t linesize = 0;
 	int lc;
-	char *hfield;
-	char *colon, *oldhfield = NULL;
+	size_t linesize = 0;
+	char *linebuf = NULL, *hfield, *colon, *oldhfield = NULL;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		return NULL;
 	if ((lc = mp->m_lines - 1) < 0)
 		return NULL;
-	if ((mp->m_flag & MNOFROM) == 0) {
-		if (readline(ibuf, &linebuf, &linesize) < 0) {
-			if (linebuf)
-				free(linebuf);
-			return NULL;
-		}
-	}
+
+	if ((mp->m_flag & MNOFROM) == 0 &&
+			readline(ibuf, &linebuf, &linesize) < 0)
+		goto jleave;
 	while (lc > 0) {
-		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon))
-				< 0) {
-			if (linebuf)
-				free(linebuf);
-			return oldhfield;
-		}
+		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
+			break;
 		if ((hfield = thisfield(linebuf, field)) != NULL) {
 			oldhfield = save2str(hfield, oldhfield);
 			if (mult == 0)
 				break;
 		}
 	}
-	if (linebuf)
+
+jleave:
+	if (linebuf != NULL)
 		free(linebuf);
-	return oldhfield;
+	return (oldhfield);
 }
 
 /*
