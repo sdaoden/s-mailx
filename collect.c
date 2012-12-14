@@ -877,9 +877,9 @@ jcont:
 "~:command      Execute a regular command\n"
 "-----------------------------------------------------------\n"));
 			break;
-
 		}
 	}
+
 jout:
 	if (collf != NULL) {
 		if ((cp = value("NAIL_TAIL")) != NULL) {
@@ -890,6 +890,8 @@ jout:
 		}
 		rewind(collf);
 	}
+	if (linebuf != NULL)
+		free(linebuf);
 	handlerpop();
 	noreset--;
 	sigemptyset(&nset);
@@ -903,6 +905,7 @@ jout:
 	safe_signal(SIGTTIN, savettin);
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 	return (collf);
+
 jerr:
 	if (tempMail != NULL) {
 		rm(tempMail);
