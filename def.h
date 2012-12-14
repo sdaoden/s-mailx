@@ -712,16 +712,6 @@ extern unsigned char const 	class_char[];
 #define fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
 
 /*
- * Truncate a file to the last character written. This is
- * useful just before closing an old file that was opened
- * for read/write.
- */
-#define ftrunc(stream) {					\
-	fflush(stream);						\
-	ftruncate(fileno(stream), (off_t)ftell(stream));	\
-}
-
-/*
  * Try to use alloca() for some function-local buffers and data,
  * fall back to smalloc()/free() if not available.
  */
@@ -744,6 +734,24 @@ extern unsigned char const 	class_char[];
 # undef putchar
 # define putchar(c)	putc_unlocked((c), stdout)
 #endif
+
+/*
+ * Truncate a file to the last character written. This is
+ * useful just before closing an old file that was opened
+ * for read/write.
+ */
+#define ftrunc(stream) do {					\
+	fflush(stream);						\
+	ftruncate(fileno(stream), (off_t)ftell(stream));	\
+} while (0)
+
+/*
+ * fflush() and rewind()
+ */
+#define fflush_rewind(stream) do {	\
+	fflush(stream);			\
+	rewind(stream);			\
+} while (0)
 
 /*
  * For saving the current directory and later returning.
