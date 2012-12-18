@@ -483,6 +483,16 @@ i_strcpy(char *dest, const char *src, size_t size)
 			}
 }
 
+int
+is_prefix(char const *as1, char const *as2)
+{
+	char c;
+	for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
+		if ((c = *as2) == '\0')
+			break;
+	return (c == '\0');
+}
+
 #ifndef HAVE_SNPRINTF
 int
 snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */

@@ -51,7 +51,6 @@ char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
 int source(void *v);
 int unstack(void);
-int is_prefix(const char *as1, const char *as2);
 char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
 const char *protfile(const char *xcp);
@@ -685,6 +684,9 @@ int		anyof(char const *s1, char const *s2);
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
 void		i_strcpy(char *dest, char const *src, size_t size);
+
+/* Is *as1* a valid prefix of *as2*? */
+int		is_prefix(char const *as1, char const *as2);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF

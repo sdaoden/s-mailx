@@ -371,23 +371,6 @@ unstack(void)
 	return(0);
 }
 
-/*
- * Determine if as1 is a valid prefix of as2.
- * Return true if yep.
- */
-int 
-is_prefix(const char *as1, const char *as2)
-{
-	const char *s1, *s2;
-
-	s1 = as1;
-	s2 = as2;
-	while (*s1++ == *s2)
-		if (*s2++ == '\0')
-			return(1);
-	return(*--s1 == '\0');
-}
-
 char *
 last_at_before_slash(const char *sp)
 {
