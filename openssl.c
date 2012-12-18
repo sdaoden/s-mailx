@@ -107,7 +107,7 @@ static int smime_verify(struct message *m, int n, STACK *chain,
 static EVP_CIPHER *smime_cipher(const char *name);
 static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
 static FILE *smime_sign_cert(const char *xname, const char *xname2, int warn);
-static char *smime_sign_include_certs(char *name);
+static char *smime_sign_include_certs(char const *name);
 #ifdef HAVE_STACK_OF
 static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
 #else
@@ -435,7 +435,8 @@ FILE *
 smime_sign(FILE *ip, struct header *headp)
 {
 	FILE	*sp, *fp, *bp, *hp;
-	char	*cp, *addr;
+	char	*cp;
+	char const *addr;
 	X509	*cert;
 #ifdef HAVE_STACK_OF
 	STACK_OF(X509)	*chain = NULL;
@@ -1004,7 +1005,7 @@ open:	vn = cp;
 }
 
 static char *
-smime_sign_include_certs(char *name)
+smime_sign_include_certs(char const *name)
 {
 	char *ret;
 	/* See comments in smime_sign_cert() for algorithm pitfalls */

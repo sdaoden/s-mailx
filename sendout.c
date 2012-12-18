@@ -1202,7 +1202,7 @@ message_id(FILE *fo, struct header *hp)
 {
 	time_t	now;
 	struct tm *tmp;
-	char *h;
+	char const *h;
 	size_t rl;
 
 	time(&now);
@@ -1277,10 +1277,10 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		char const *contenttype, char const *charset)
 {
 	int gotcha;
-	char *addr/*, *cp*/;
+	char const *addr;
 	int stealthmua;
+	size_t l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
-
 
 	if ((addr = value("stealthmua")) != NULL) {
 		stealthmua = (strcmp(addr, "noagent") == 0) ? -1 : 1;
@@ -1302,10 +1302,10 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 						&fromfield))
 				return 1;
 		if (((addr = hp->h_organization) != NULL ||
-				(addr = value("ORGANIZATION")) != NULL)
-				&& strlen(addr) > 0) {
+				(addr = value("ORGANIZATION")) != NULL) &&
+				(l = strlen(addr)) > 0) {
 			fwrite("Organization: ", sizeof (char), 14, fo);
-			if (mime_write(addr, strlen(addr), fo,
+			if (mime_write(addr, l, fo,
 					action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
@@ -1475,10 +1475,10 @@ static int
 infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 		int add_resent)
 {
-	size_t count;
-	char *buf = NULL, *cp/*, *cp2*/;
-	size_t c, bufsize = 0;
-	struct name	*fromfield = NULL, *senderfield = NULL;
+	size_t count, c, bufsize = 0;
+	char *buf = NULL;
+	char const *cp;
+	struct name *fromfield = NULL, *senderfield = NULL;
 
 	count = mp->m_size;
 	/*

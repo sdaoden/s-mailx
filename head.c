@@ -976,7 +976,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
  * Fetch the real name from an internet mail address field.
  */
 char *
-realname(char *name)
+realname(char const *name)
 {
 	char const *cp, *cq, *cstart = NULL, *cend = NULL;
 	char *rname, *rp;

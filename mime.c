@@ -84,8 +84,10 @@ static void mime_fromqp(struct str *in, struct str *out, int ishdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
 static size_t convhdra(char *str, size_t len, FILE *fp);
 static size_t mime_write_tohdr_a(struct str *in, FILE *f);
-static void addstr(char **buf, size_t *sz, size_t *pos, char *str, size_t len);
-static void addconv(char **buf, size_t *sz, size_t *pos, char *str, size_t len);
+static void addstr(char **buf, size_t *sz, size_t *pos,
+		char const *str, size_t len);
+static void addconv(char **buf, size_t *sz, size_t *pos,
+		char const *str, size_t len);
 static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
 		enum tdflags flags, char *prefix, size_t prefixlen);
 
@@ -891,7 +893,7 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
  * Convert header fields from RFC 1522 format TODO no error handling at all
  */
 void 
-mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
+mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
 	struct str crest, cin, cout;
 	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
@@ -1305,7 +1307,7 @@ mime_write_tohdr_a(struct str *in, FILE *f)
 }
 
 static void
-addstr(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
+addstr(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
 	*buf = srealloc(*buf, *sz += len);
 	memcpy(&(*buf)[*pos], str, len);
@@ -1313,11 +1315,11 @@ addstr(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
 }
 
 static void
-addconv(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
+addconv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
-	struct str	in, out;
+	struct str in, out;
 
-	in.s = str;
+	in.s = (char*)str;
 	in.l = len;
 	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 	addstr(buf, sz, pos, out.s, out.l);
@@ -1328,14 +1330,16 @@ addconv(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
  * Interpret MIME strings in parts of an address field.
  */
 char *
-mime_fromaddr(char *name)
+mime_fromaddr(char const *name)
 {
-	char	*cp, *lastcp;
-	char	*res = NULL;
-	size_t	ressz = 1, rescur = 0;
+	char const *cp, *lastcp;
+	char *res = NULL;
+	size_t ressz = 1, rescur = 0;
 
-	if (name == NULL || *name == '\0')
-		return name;
+	if (name == NULL)
+		return (res);
+	if (*name == '\0')
+		return savestr(name);
 	if ((cp = routeaddr(name)) != NULL && cp > name) {
 		addconv(&res, &ressz, &rescur, name, cp - name);
 		lastcp = cp;
@@ -1365,9 +1369,11 @@ mime_fromaddr(char *name)
 	if (cp > lastcp)
 		addstr(&res, &ressz, &rescur, lastcp, cp - lastcp);
 	res[rescur] = '\0';
-	cp = savestr(res);
-	free(res);
-	return cp;
+	{	char *x = res;
+		res = savestr(res);
+		free(x);
+	}
+	return (res);
 }
 
 /*
@@ -1565,7 +1571,7 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
  * fwrite performing the given MIME conversion.
  */
 ssize_t
-mime_write(void *ptr, size_t size, FILE *f,
+mime_write(void const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
 	char *prefix, size_t prefixlen, struct str *rest)
 {
@@ -1578,7 +1584,7 @@ mime_write(void *ptr, size_t size, FILE *f,
 	size_t inleft, outleft;
 #endif
 
-	in.s = ptr;
+	in.s = (char*)ptr;
 	in.l = size;
 	if ((sz = size) == 0) {
 		if (rest != NULL && rest->l != 0)
@@ -1587,17 +1593,17 @@ mime_write(void *ptr, size_t size, FILE *f,
 	}
 
 #ifdef HAVE_ICONV
-	if ((dflags & TD_ICONV) && size < sizeof mptr && iconvd != (iconv_t)-1
+	if ((dflags & TD_ICONV) && size < sizeof(mptr) && iconvd != (iconv_t)-1
 			&& (convert == CONV_TOQP || convert == CONV_8BIT ||
 				convert == CONV_TOB64 ||
 				convert == CONV_TOHDR)) {
 		inleft = size;
 		outleft = sizeof mptr;
 		nptr = mptr;
-		iptr = ptr;
+		iptr = (char*)ptr;
 		if (iconv_ft(iconvd, &iptr, &inleft,
 				&nptr, &outleft, 0) != (size_t)-1) {
-			in.l = sizeof mptr - outleft;
+			in.l = sizeof(mptr) - outleft;
 			in.s = mptr;
 		} else {
 			if (errno == EILSEQ || errno == EINVAL)

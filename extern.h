@@ -374,7 +374,7 @@ int is_addr_invalid(struct name *np, int putmsg);
 char *skinned_name(struct name const*np);
 char *skin(char const *name);
 int addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
-char *realname(char *name);
+char *realname(char const *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
 int is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2]);
@@ -511,11 +511,11 @@ char *mime_getboundary(char *h);
 char *mime_filecontent(char *name);
 int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign);
-void mime_fromhdr(struct str *in, struct str *out, enum tdflags flags);
-char *mime_fromaddr(char *name);
+void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
+char *mime_fromaddr(char const *name);
 size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 		char *prefix, size_t prefixlen);
-ssize_t	 mime_write(void *ptr, size_t size, FILE *f,
+ssize_t	 mime_write(void const *ptr, size_t size, FILE *f,
 		enum conversion convert, enum tdflags dflags,
 		char *prefix, size_t prefixlen, struct str *rest);
 
