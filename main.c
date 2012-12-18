@@ -87,8 +87,20 @@ sighandler_type		dflpipe = SIG_DFL;
 
 /* Add an option for sendmail(1) */
 static void	add_smopt(int argc_left, char *arg);
-static void	hdrstop(int signo);
+
+/* Initialize *tempdir* and *myname* */
+static void	setup_vars(void);
+
+/* Compute what the screen size for printing headers should be.
+ * We use the following algorithm for the height:
+ *	If baud rate < 1200, use  9
+ *	If baud rate = 1200, use 14
+ *	If baud rate > 1200, use 24 or ws_row
+ * Width is either 80 or ws_col */
 static void	setscreensize(int dummy);
+
+/* Interrupt printing of the headers */
+static void	hdrstop(int signo);
 
 static void
 add_smopt(int argc_left, char *arg)
@@ -96,6 +108,68 @@ add_smopt(int argc_left, char *arg)
 	if (smopts == NULL)
 		smopts = salloc((argc_left + 1) * sizeof(char*));
 	smopts[smopts_count++] = arg;
+}
+
+static void
+setup_vars(void)
+{
+	char *cp;
+
+	tempdir = ((cp = getenv("TMPDIR")) != NULL) ? sstrdup(cp) : "/tmp";
+
+	myname = sstrdup(username());
+
+	if ((cp = getenv("HOME")) == NULL)
+		cp = ".";
+	homedir = sstrdup(cp);
+}
+
+static void
+setscreensize(int dummy)
+{
+	struct termios tbuf;
+#ifdef TIOCGWINSZ
+	struct winsize ws;
+#endif
+	speed_t ospeed;
+	(void)dummy;
+
+#ifdef TIOCGWINSZ
+	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
+		ws.ws_col = ws.ws_row = 0;
+#endif
+	if (tcgetattr(1, &tbuf) < 0)
+		ospeed = B9600;
+	else
+		ospeed = cfgetospeed(&tbuf);
+	if (ospeed < B1200)
+		scrnheight = 9;
+	else if (ospeed == B1200)
+		scrnheight = 14;
+#ifdef TIOCGWINSZ
+	else if (ws.ws_row != 0)
+		scrnheight = ws.ws_row;
+#endif
+	else
+		scrnheight = 24;
+#ifdef TIOCGWINSZ
+	if ((realscreenheight = ws.ws_row) == 0)
+		realscreenheight = 24;
+#endif
+#ifdef TIOCGWINSZ
+	if ((scrnwidth = ws.ws_col) == 0)
+#endif
+		scrnwidth = 80;
+}
+
+static void
+hdrstop(int signo)
+{
+	(void)signo;
+
+	fflush(stdout);
+	fprintf(stderr, tr(141, "\nInterrupt\n"));
+	siglongjmp(hdrjmp, 1);
 }
 
 int 
@@ -398,7 +472,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		goto usage;
 	}
 
-	tinit();
+	setup_vars();
 	setscreensize(0);
 #ifdef SIGWINCH
 	if (value("interactive"))
@@ -446,6 +520,10 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (fromaddr)
 		assign("from", fromaddr);
 
+	debug += (value("debug") != NULL);
+	if (debug)
+		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
+			myname, homedir);
 	starting = 0;
 
 	if (!rcvmode) {
@@ -511,65 +589,4 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
 	quit();
 	return exit_status;
-}
-
-/*
- * Interrupt printing of the headers.
- */
-/*ARGSUSED*/
-static void 
-hdrstop(int signo)
-{
-	(void)signo;
-
-	fflush(stdout);
-	fprintf(stderr, tr(141, "\nInterrupt\n"));
-	siglongjmp(hdrjmp, 1);
-}
-
-/*
- * Compute what the screen size for printing headers should be.
- * We use the following algorithm for the height:
- *	If baud rate < 1200, use  9
- *	If baud rate = 1200, use 14
- *	If baud rate > 1200, use 24 or ws_row
- * Width is either 80 or ws_col;
- */
-/*ARGSUSED*/
-static void 
-setscreensize(int dummy)
-{
-	struct termios tbuf;
-#ifdef	TIOCGWINSZ
-	struct winsize ws;
-#endif
-	speed_t ospeed;
-	(void)dummy;
-
-#ifdef	TIOCGWINSZ
-	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
-		ws.ws_col = ws.ws_row = 0;
-#endif
-	if (tcgetattr(1, &tbuf) < 0)
-		ospeed = B9600;
-	else
-		ospeed = cfgetospeed(&tbuf);
-	if (ospeed < B1200)
-		scrnheight = 9;
-	else if (ospeed == B1200)
-		scrnheight = 14;
-#ifdef	TIOCGWINSZ
-	else if (ws.ws_row != 0)
-		scrnheight = ws.ws_row;
-#endif
-	else
-		scrnheight = 24;
-#ifdef	TIOCGWINSZ
-	if ((realscreenheight = ws.ws_row) == 0)
-		realscreenheight = 24;
-#endif
-#ifdef	TIOCGWINSZ
-	if ((scrnwidth = ws.ws_col) == 0)
-#endif
-		scrnwidth = 80;
 }

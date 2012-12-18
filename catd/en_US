@@ -206,7 +206,7 @@ $set 1
 195 --- DELETED ---
 196 --- DELETED ---
 197 --- DELETED ---
-198 "%s" is not a user of this system\n
+198 --- DELETED ---
 199 user = %s, homedir = %s\n
 200 too long to edit\n
 201 Cannot associate a name with uid %d\n

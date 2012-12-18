@@ -676,9 +676,6 @@ char *		savecat(char const *s1, char const *s2);
 
 struct str *	str_concat_csvl(struct str *self, ...);
 
-/* temp.c */
-void tinit(void);
-
 /* thread.c */
 int thread(void *vp);
 int unthread(void *vp);
