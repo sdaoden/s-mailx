@@ -37,10 +37,14 @@
  * SUCH DAMAGE.
  */
 
+#include "config.h"
+
+#ifndef USE_SMTP
+typedef int avoid_empty_file_compiler_warning;
+#else
 #include "rcv.h"
 
 #include <setjmp.h>
-#include <sys/utsname.h>
 #include <unistd.h>
 #ifdef HAVE_SOCKETS
 # include <netdb.h>
@@ -62,89 +66,25 @@
  * SMTP client and other internet related functions.
  */
 
-#ifdef USE_SMTP
-static int verbose;
-static int _debug;
-#endif
+static int		verbose;
+static int		_debug;
+static char		*smtpbuf;
+static size_t		smtpbufsize;
+static sigjmp_buf	smtpjmp;
 
-/*
- * Return our hostname.
- */
-char *
-nodename(int mayoverride)
+static void	onterm(int signo);
+static int	read_smtp(struct sock *sp, int value, int ign_eof);
+static int	talk_smtp(struct name *to, FILE *fi, struct sock *sp,
+			char *server, char *uhp, struct header *hp,
+			const char *user, const char *password,
+			const char *skinned);
+
+static void
+onterm(int signo)
 {
-	static char *hostname;
-	char *hn;
-        struct utsname ut;
-#ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
-	struct addrinfo hints, *res;
-# else
-        struct hostent *hent;
-# endif
-#endif
-
-	if (mayoverride && (hn = value("hostname")) != NULL && *hn) {
-		if (hostname != NULL)
-			free(hostname);
-		hostname = sstrdup(hn);
-	}
-	if (hostname == NULL) {
-		uname(&ut);
-		hn = ut.nodename;
-#ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
-		memset(&hints, 0, sizeof hints);
-		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
-		hints.ai_flags = AI_CANONNAME;
-		if (getaddrinfo(hn, "0", &hints, &res) == 0) {
-			if (res->ai_canonname) {
-				hn = salloc(strlen(res->ai_canonname) + 1);
-				strcpy(hn, res->ai_canonname);
-			}
-			freeaddrinfo(res);
-		}
-# else
-		hent = gethostbyname(hn);
-		if (hent != NULL) {
-			hn = hent->h_name;
-		}
-# endif
-#endif
-		hostname = smalloc(strlen(hn) + 1);
-		strcpy(hostname, hn);
-	}
-	return hostname;
+	(void)signo;
+	siglongjmp(smtpjmp, 1);
 }
-
-#ifdef USE_SMTP
-
-static int read_smtp(struct sock *sp, int value, int ign_eof);
-static int talk_smtp(struct name *to, FILE *fi, struct sock *sp,
-		char *server, char *uhp, struct header *hp,
-		const char *user, const char *password, const char *skinned);
-
-char *
-smtp_auth_var(const char *type, const char *addr)
-{
-	char	*var, *cp;
-	int	len;
-
-	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
-	snprintf(var, len, "smtp-auth%s-%s", type, addr);
-	if ((cp = value(var)) != NULL)
-		cp = savestr(cp);
-	else {
-		snprintf(var, len, "smtp-auth%s", type);
-		if ((cp = value(var)) != NULL)
-			cp = savestr(cp);
-	}
-	ac_free(var);
-	return cp;
-}
-
-static char	*smtpbuf;
-static size_t	smtpbufsize;
 
 /*
  * Get the SMTP server's answer, expecting value.
@@ -368,13 +308,23 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	return 0;
 }
 
-static sigjmp_buf	smtpjmp;
-
-static void
-onterm(int signo)
+char *
+smtp_auth_var(const char *type, const char *addr)
 {
-	(void)signo;
-	siglongjmp(smtpjmp, 1);
+	char	*var, *cp;
+	int	len;
+
+	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
+	snprintf(var, len, "smtp-auth%s-%s", type, addr);
+	if ((cp = value(var)) != NULL)
+		cp = savestr(cp);
+	else {
+		snprintf(var, len, "smtp-auth%s", type);
+		if ((cp = value(var)) != NULL)
+			cp = savestr(cp);
+	}
+	ac_free(var);
+	return cp;
 }
 
 /*

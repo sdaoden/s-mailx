@@ -76,6 +76,8 @@ char *cram_md5_string(char const *user, char const *pass, char const *b64);
 #endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
+/* Return our hostname */
+char *	nodename(int mayoverride);
 void transflags(struct message *omessage, long omsgCount, int transparent);
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
@@ -611,10 +613,12 @@ int puthead(struct header *hp, FILE *fo, enum gfield w,
 		char const *contenttype, char const *charset);
 enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
 
-/* smtp.c */
-char *nodename(int mayoverride);
-char *smtp_auth_var(const char *type, const char *addr);
+/*
+ * smtp.c
+ */
+
 #ifdef USE_SMTP
+char *	smtp_auth_var(const char *type, const char *addr);
 int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
 #endif

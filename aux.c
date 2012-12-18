@@ -46,6 +46,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #include <time.h>
 #include <termios.h>
 #include <time.h>
@@ -56,6 +57,12 @@
 #endif
 #ifdef HAVE_WCWIDTH
 # include <wchar.h>
+#endif
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
+#  include <sys/socket.h>
+# endif
+# include <netdb.h>
 #endif
 
 #include "extern.h"
@@ -838,6 +845,57 @@ getpassword(struct termios *otio, int *reset_tio, const char *query)
 	pass = savestr(line);
 	free(line);
 	return pass;
+}
+
+char *
+nodename(int mayoverride)
+{
+	static char *hostname;
+	struct utsname ut;
+	char *hn;
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
+	struct addrinfo hints, *res;
+# else
+	struct hostent *hent;
+# endif
+#endif
+
+	if (mayoverride && (hn = value("hostname")) != NULL && *hn != '\0') {
+		if (hostname != NULL)
+			free(hostname);
+		hostname = sstrdup(hn);
+	} else if (hostname == NULL) {
+		uname(&ut);
+		hn = ut.nodename;
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
+		memset(&hints, 0, sizeof hints);
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
+		hints.ai_flags = AI_CANONNAME;
+		if (getaddrinfo(hn, "0", &hints, &res) == 0) {
+			if (res->ai_canonname != NULL) {
+				size_t l = strlen(res->ai_canonname);
+				hn = ac_alloc(l + 1);
+				memcpy(hn, res->ai_canonname, l + 1);
+			}
+			freeaddrinfo(res);
+		}
+# else
+		hent = gethostbyname(hn);
+		if (hent != NULL) {
+			hn = hent->h_name;
+		}
+# endif
+#endif
+		hostname = sstrdup(hn);
+#if defined HAVE_SOCKETS && defined USE_IPV6
+		if (hn != ut.nodename)
+			ac_free(hn);
+#endif
+	}
+	return (hostname);
 }
 
 void 
