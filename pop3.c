@@ -571,7 +571,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 		memcpy(user, sp, cp - sp);
 		user[cp - sp] = '\0';
 		sp = &cp[1];
-		user = strdec(user);
+		user = urlxdec(user);
 	} else
 		user = NULL;
 	verbose = value("verbose") != NULL;

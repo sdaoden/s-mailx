@@ -1153,7 +1153,7 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 		memcpy(*user, *uhp, *cp - *uhp);
 		(*user)[*cp - *uhp] = '\0';
 		*sp = &(*cp)[1];
-		*user = strdec(*user);
+		*user = urlxdec(*user);
 	} else {
 		*user = NULL;
 		*sp = *uhp;

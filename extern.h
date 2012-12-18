@@ -54,8 +54,6 @@ int unstack(void);
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
-char *strenc(const char *cp);
-char *strdec(const char *cp);
 #ifdef USE_MD5
 /* Returns salloc()ed buffer */
 char *md5tohex(void const *vp);
@@ -674,6 +672,10 @@ char *		i_strdup(char const *src);
 
 /* Extract the protocol base and return a duplicate */
 char *		protbase(char const *cp);
+
+/* URL en- and decoding (RFC 1738, but not really) */
+char *		urlxenc(char const *cp);
+char *		urlxdec(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
 

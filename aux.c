@@ -486,49 +486,6 @@ nextprime(long n)
 	return mprime;
 }
 
-#define	Hexchar(n)	((n)>9 ? (n)-10+'A' : (n)+'0')
-#define	hexchar(n)	((n)>9 ? (n)-10+'a' : (n)+'0')
-
-char *
-strenc(const char *cp)
-{
-	char	*n, *np;
-
-	np = n = salloc(strlen(cp) * 3 + 1);
-	while (*cp) {
-		if (alnumchar(*cp&0377) || *cp == '_' || *cp == '@' ||
-				(np > n && (*cp == '.' || *cp == '-' ||
-					    *cp == ':')))
-			*np++ = *cp;
-		else {
-			*np++ = '%';
-			*np++ = Hexchar((*cp&0xf0) >> 4);
-			*np++ = Hexchar(*cp&0x0f);
-		}
-		cp++;
-	}
-	*np = '\0';
-	return n;
-}
-
-char *
-strdec(const char *cp)
-{
-	char	*n, *np;
-
-	np = n = salloc(strlen(cp) + 1);
-	while (*cp) {
-		if (cp[0] == '%' && cp[1] && cp[2]) {
-			*np = (int)(cp[1]>'9'?cp[1]-'A'+10:cp[1]-'0') << 4;
-			*np++ |= cp[2]>'9'?cp[2]-'A'+10:cp[2]-'0';
-			cp += 3;
-		} else
-			*np++ = *cp++;
-	}
-	*np = '\0';
-	return n;
-}
-
 #ifdef USE_MD5
 char *
 md5tohex(void const *vp)
