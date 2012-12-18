@@ -567,13 +567,29 @@ enum okay pop3_body(struct message *m);
 void pop3_quit(void);
 #endif
 
-/* popen.c */
+/*
+ * popen.c
+ * Subprocesses, popen, but also file handling with registering
+ */
+
 sighandler_type safe_signal(int signum, sighandler_type handler);
 FILE *safe_fopen(const char *file, const char *mode, int *omode);
 FILE *Fopen(const char *file, const char *mode);
 FILE *Fdopen(int fd, const char *mode);
 int Fclose(FILE *fp);
 FILE *Zopen(const char *file, const char *mode, int *compression);
+
+/* Create a temporary file in tempdir, use prefix for its name, store the
+ * unique name in fn, and return a stdio FILE pointer with access mode.
+ * *bits* specifies the access mode of the newly created temporary file */
+FILE *	Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
+
+/* Free the resources associated with the given filename.  To be called after
+ * unlink().  Since this function can be called after receiving a signal, the
+ * variable must be made NULL first and then free()d, to avoid more than one
+ * free() call in all circumstances */
+void	Ftfree(char **fn);
+
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
 int Pclose(FILE *ptr);
 void close_all_files(void);
@@ -661,8 +677,6 @@ char *		savecat(char const *s1, char const *s2);
 struct str *	str_concat_csvl(struct str *self, ...);
 
 /* temp.c */
-FILE *Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
-void Ftfree(char **fn);
 void tinit(void);
 
 /* thread.c */
