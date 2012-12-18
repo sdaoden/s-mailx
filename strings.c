@@ -52,6 +52,9 @@
 #include <stdarg.h>
 
 #include "extern.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
@@ -391,6 +394,33 @@ savecat(char const *s1, char const *s2)
 #define	Hexchar(n)	((n)>9 ? (n)-10+'A' : (n)+'0')
 #define	hexchar(n)	((n)>9 ? (n)-10+'a' : (n)+'0')
 
+#ifdef USE_MD5
+char *
+cram_md5_string(char const *user, char const *pass, char const *b64)
+{
+	struct str in, out;
+	char digest[16], *cp;
+
+	out.s = NULL;
+	in.s = (char*)b64;
+	in.l = strlen(in.s);
+	(void)b64_decode(&out, &in, 0, NULL);
+	assert(out.s != NULL);
+
+	hmac_md5((unsigned char*)out.s, out.l,
+		(unsigned char*)pass, strlen(pass), digest);
+	free(out.s);
+	cp = md5tohex(digest);
+
+	in.l = strlen(user) + strlen(cp) + 2;
+	in.s = ac_alloc(in.l);
+	snprintf(in.s, in.l, "%s %s", user, cp);
+	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
+	ac_free(in.s);
+	return out.s;
+}
+#endif /* USE_MD5 */
+
 char *
 i_strdup(char const *src)
 {
@@ -402,6 +432,24 @@ i_strdup(char const *src)
 	i_strcpy(dest, src, sz);
 	return (dest);
 }
+
+#ifdef USE_MD5
+char *
+md5tohex(void const *vp)
+{
+	char const *cp = vp;
+	char *hex;
+	int i;
+
+	hex = salloc(33);
+	for (i = 0; i < 16; i++) {
+		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
+		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
+	}
+	hex[32] = '\0';
+	return hex;
+}
+#endif /* USE_MD5 */
 
 char *
 protbase(char const *cp)

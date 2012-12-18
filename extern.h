@@ -54,12 +54,6 @@ int unstack(void);
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
-#ifdef USE_MD5
-/* Returns salloc()ed buffer */
-char *md5tohex(void const *vp);
-/* Returns salloc()ed buffer */
-char *cram_md5_string(char const *user, char const *pass, char const *b64);
-#endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 
@@ -667,11 +661,21 @@ char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);
 char *		savecat(char const *s1, char const *s2);
 
+#ifdef USE_MD5
+char *		cram_md5_string(char const *user, char const *pass,
+			char const *b64);
+#endif
+
 /* Create duplicate, lowercasing all characters along the way */
 char *		i_strdup(char const *src);
 
 /* Extract the protocol base and return a duplicate */
 char *		protbase(char const *cp);
+
+#ifdef USE_MD5
+/* MD5 checksum as hexadecimal string */
+char *		md5tohex(void const *vp);
+#endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
 char *		urlxenc(char const *cp);
