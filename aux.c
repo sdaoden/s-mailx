@@ -44,6 +44,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pwd.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -845,6 +846,14 @@ getpassword(struct termios *otio, int *reset_tio, const char *query)
 	pass = savestr(line);
 	free(line);
 	return pass;
+}
+
+char *
+getname(int uid)
+{
+	struct passwd *pw = getpwuid(uid);
+
+	return pw == NULL ? NULL : pw->pw_name;
 }
 
 char *

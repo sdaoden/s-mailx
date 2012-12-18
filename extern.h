@@ -77,6 +77,8 @@ char *cram_md5_string(char const *user, char const *pass, char const *b64);
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 
+/* Search passwd file for a uid, return name on success, NULL on failure */
+char *	getname(int uid);
 /* Discover user login name */
 char *	username(void);
 /* Return our hostname */
@@ -350,7 +352,6 @@ enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose);
 
 /* getname.c */
-char *getname(int uid);
 int getuserid(char *name);
 
 /* getopt.c */

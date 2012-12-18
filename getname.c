@@ -46,19 +46,6 @@
 /* Getname / getuserid for those with hashed passwd data base). */
 
 /*
- * Search the passwd file for a uid.  Return name on success, NULL on failure
- */
-char *
-getname(int uid)
-{
-	struct passwd *pw;
-
-	if ((pw = getpwuid(uid)) == (struct passwd *)NULL)
-		return NULL;
-	return pw->pw_name;
-}
-
-/*
  * Convert the passed name to a user id and return it.  Return -1
  * on error.
  */
