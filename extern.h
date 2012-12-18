@@ -76,8 +76,12 @@ char *cram_md5_string(char const *user, char const *pass, char const *b64);
 #endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
+
+/* Discover user login name */
+char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
+
 void transflags(struct message *omessage, long omsgCount, int transparent);
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
@@ -679,7 +683,6 @@ int yorn(char *msg);
 /* v7.local.c */
 void findmail(char *user, int force, char *buf, int size);
 void demail(void);
-char *username(void);
 
 /* vars.c */
 void assign(const char *name, const char *value);

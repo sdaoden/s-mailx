@@ -84,21 +84,3 @@ demail(void)
 	if (value("keep") != NULL || rm(mailname) < 0)
 		close(creat(mailname, 0600));
 }
-
-/*
- * Discover user login name.
- */
-char *
-username(void)
-{
-	char *np;
-	uid_t uid;
-
-	if ((np = getenv("USER")) != NULL)
-		return np;
-	if ((np = getname(uid = getuid())) != NULL)
-		return np;
-	printf(catgets(catd, CATSET, 201,
-		"Cannot associate a name with uid %d\n"), (int)uid);
-	return NULL;
-}

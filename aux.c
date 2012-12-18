@@ -848,6 +848,21 @@ getpassword(struct termios *otio, int *reset_tio, const char *query)
 }
 
 char *
+username(void)
+{
+	char *np;
+	uid_t uid;
+
+	if ((np = getenv("USER")) != NULL)
+		goto jleave;
+	if ((np = getname(uid = getuid())) != NULL)
+		goto jleave;
+	panic(tr(201, "Cannot associate a name with uid %d\n"), (int)uid);
+jleave:
+	return (np);
+}
+
+char *
 nodename(int mayoverride)
 {
 	static char *hostname;
