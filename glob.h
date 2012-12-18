@@ -67,6 +67,7 @@ _E char		**altnames;		/* List of alternate names for user */
 _E char		*homedir;		/* Path name of home directory */
 _E char		*myname;		/* My login name */
 _E char		*progname;		/* Our name */
+_E char		*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
 _E int		debug;			/* Debug flag set */

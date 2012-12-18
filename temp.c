@@ -51,10 +51,8 @@
  * Temporary file handling.
  */
 
-static char	*tmpdir;
-
 /*
- * Create a temporary file in tmpdir, use prefix for its name,
+ * Create a temporary file in tempdir, use prefix for its name,
  * store the unique name in fn, and return a stdio FILE pointer
  * with access mode.
  * The permissions for the newly created file are given in bits.
@@ -65,8 +63,8 @@ Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file)
 	FILE *fp;
 	int fd;
 
-	*fn = smalloc(strlen(tmpdir) + strlen(prefix) + 8);
-	strcpy(*fn, tmpdir);
+	*fn = smalloc(strlen(tempdir) + strlen(prefix) + 8);
+	strcpy(*fn, tempdir);
 	strcat(*fn, "/");
 	strcat(*fn, prefix);
 	strcat(*fn, "XXXXXX");
@@ -115,10 +113,10 @@ tinit(void)
 	char *cp;
 
 	if ((cp = getenv("TMPDIR")) != NULL) {
-		tmpdir = smalloc(strlen(cp) + 1);
-		strcpy(tmpdir, cp);
+		tempdir = smalloc(strlen(cp) + 1);
+		strcpy(tempdir, cp);
 	} else {
-		tmpdir = "/tmp";
+		tempdir = "/tmp";
 	}
 	if (myname != NULL) {
 		if (getuserid(myname) < 0) {
