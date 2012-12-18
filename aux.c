@@ -372,19 +372,6 @@ unstack(void)
 }
 
 /*
- * Are any of the characters in the two strings the same?
- */
-int 
-anyof(char const*s1, char const*s2)
-{
-
-	while (*s1)
-		if (strchr(s2, *s1++))
-			return 1;
-	return 0;
-}
-
-/*
  * Determine if as1 is a valid prefix of as2.
  * Return true if yep.
  */

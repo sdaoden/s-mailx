@@ -461,6 +461,15 @@ uc_it const	class_char[] = {
 	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
 };
 
+int
+anyof(char const *s1, char const *s2)
+{
+	for (; *s1 != '\0'; ++s1)
+		if (strchr(s2, *s1))
+			break;
+	return (*s1 != '\0');
+}
+
 void
 i_strcpy(char *dest, const char *src, size_t size)
 {

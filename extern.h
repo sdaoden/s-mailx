@@ -51,7 +51,6 @@ char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
 int source(void *v);
 int unstack(void);
-int anyof(char const *s1, char const *s2);
 int is_prefix(const char *as1, const char *as2);
 char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
@@ -679,6 +678,9 @@ char *		i_strdup(char const *src);
 struct str *	str_concat_csvl(struct str *self, ...);
 
 /* The rest does not deal with auto-reclaimed storage */
+
+/* Are any of the characters in the two strings the same? */
+int		anyof(char const *s1, char const *s2);
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
