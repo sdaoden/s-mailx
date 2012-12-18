@@ -334,6 +334,8 @@ char *file_expand(char const *name);
 char *expand(char const *name);
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 void	findmail(char *user, int force, char *buf, int size);
+/* Get rid of queued mail */
+void	demail(void);
 int getfold(char *name, int size);
 char *getdeadletter(void);
 char *fgetline(char **line, size_t *linesize, size_t *count,
@@ -681,9 +683,6 @@ void uncollapse1(struct message *m, int always);
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char *prefix, char *string);
 int yorn(char *msg);
-
-/* v7.local.c */
-void demail(void);
 
 /* vars.c */
 void assign(const char *name, const char *value);

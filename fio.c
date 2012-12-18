@@ -649,6 +649,12 @@ findmail(char *user, int force, char *buf, int size)
 	}
 }
 
+void
+demail(void)
+{
+	if (value("keep") != NULL || rm(mailname) < 0)
+		close(creat(mailname, 0600));
+}
 
 /*
  * Determine the current folder directory name.

@@ -913,7 +913,7 @@ nodename(int mayoverride)
 	return (hostname);
 }
 
-void 
+void
 transflags(struct message *omessage, long omsgCount, int transparent)
 {
 	struct message	*omp, *nmp, *newdot, *newprevdot;

@@ -48,8 +48,7 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	macro.o maildir.o main.o md5.o mime.o names.o \
 	openssl.o pop3.o popen.o quit.o \
 	send.o sendout.o smtp.o ssl.o strings.o temp.o thread.o tty.o \
-	v7.local.o vars.o \
-	version.o
+	vars.o version.o
 
 .SUFFIXES: .o .c .y
 .c.o:
