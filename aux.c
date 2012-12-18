@@ -1052,6 +1052,7 @@ cwret(struct cw *cw)
 void 
 cwrelse(struct cw *cw)
 {
+	(void)cw;
 }
 #endif	/* !HAVE_FCHDIR */
 
