@@ -79,6 +79,8 @@ char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
+/* Convert passed name to uid and return it or -1 on error */
+int	getuserid(char const *name);
 /* Discover user login name */
 char *	username(void);
 /* Return our hostname */
@@ -350,9 +352,6 @@ enum okay swrite1(struct sock *sp, const char *data, int sz, int use_buffer);
 int sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp);
 enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose);
-
-/* getname.c */
-int getuserid(char *name);
 
 /* getopt.c */
 #ifndef HAVE_GETOPT
