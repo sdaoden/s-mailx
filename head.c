@@ -778,18 +778,18 @@ skinned_name(struct name const*np) /* TODO !HAVE_ASSERTS legacy */
  * of "host-phrase."
  */
 char *
-skin(char *name)
+skin(char const *name)
 {
 	struct addrguts ag;
+	char *ret = NULL;
 
-	if (name == NULL)
-		return (NULL);
-
-	(void)addrspec_with_guts(1, name, &ag);
-	name = ag.ag_skinned;
-	if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
-		name = savestrbuf(name, ag.ag_slen);
-	return (name);
+	if (name != NULL) {
+		(void)addrspec_with_guts(1, name, &ag);
+		ret = ag.ag_skinned;
+		if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
+			ret = savestrbuf(ret, ag.ag_slen);
+	}
+	return (ret);
 }
 
 /*
