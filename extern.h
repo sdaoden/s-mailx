@@ -53,7 +53,6 @@ char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
 int source(void *v);
 int unstack(void);
-void alter(char *name);
 int blankline(char *linebuf);
 int anyof(char const *s1, char const *s2);
 int is_prefix(const char *as1, const char *as2);

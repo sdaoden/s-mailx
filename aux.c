@@ -48,11 +48,8 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
-#include <time.h>
 #include <termios.h>
-#include <time.h>
 #include <unistd.h>
-#include <utime.h>
 #ifdef HAVE_WCTYPE_H
 # include <wctype.h>
 #endif
@@ -452,23 +449,6 @@ unstack(void)
 	if (ssp == 0)
 		sourcing = loading;
 	return(0);
-}
-
-/*
- * Touch the indicated file.
- * This is nifty for the shell.
- */
-void 
-alter(char *name)
-{
-	struct stat sb;
-	struct utimbuf utb;
-
-	if (stat(name, &sb))
-		return;
-	utb.actime = time((time_t *)0) + 1;
-	utb.modtime = sb.st_mtime;
-	utime(name, &utb);
 }
 
 /*
