@@ -452,21 +452,6 @@ unstack(void)
 }
 
 /*
- * Examine the passed line buffer and
- * return true if it is all blanks and tabs.
- */
-int 
-blankline(char *linebuf)
-{
-	char *cp;
-
-	for (cp = linebuf; *cp; cp++)
-		if (!blankchar(*cp & 0377))
-			return(0);
-	return(1);
-}
-
-/*
  * Are any of the characters in the two strings the same?
  */
 int 
