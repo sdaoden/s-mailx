@@ -3263,6 +3263,7 @@ cdisconnect(void *vp)
 	}
 	return 0;
 }
+
 int 
 ccache(void *vp)
 {
@@ -3285,6 +3286,29 @@ ccache(void *vp)
 	return 0;
 }
 
+int
+disconnected(const char *file)
+{
+	char	*cp, *cq, *vp;
+	int	vs, r;
+
+	if (value("disconnected"))
+		return 1;
+	cp = protbase(file);
+	if (strncmp(cp, "imap://", 7) == 0)
+		cp += 7;
+	else if (strncmp(cp, "imaps://", 8) == 0)
+		cp += 8;
+	else
+		return 0;
+	if ((cq = strchr(cp, ':')) != NULL)
+		*cq = '\0';
+	vp = ac_alloc(vs = strlen(cp) + 14);
+	snprintf(vp, vs, "disconnected-%s", cp);
+	r = value(vp) != NULL;
+	ac_free(vp);
+	return r;
+}
 #endif	/* USE_IMAP */
 
 time_t

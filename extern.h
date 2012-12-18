@@ -60,9 +60,6 @@ char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
 const char *protfile(const char *xcp);
 char *protbase(const char *cp);
-#ifdef USE_IMAP
-int disconnected(const char *file);
-#endif
 unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
@@ -421,6 +418,7 @@ enum okay imap_dequeue(struct mailbox *mp, FILE *fp);
 int cconnect(void *vp);
 int cdisconnect(void *vp);
 int ccache(void *vp);
+int disconnected(const char *file);
 #else
 # define imap_imap	ccmdnotsupp
 # define cconnect	ccmdnotsupp
