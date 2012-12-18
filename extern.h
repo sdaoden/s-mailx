@@ -51,7 +51,6 @@ char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
 int source(void *v);
 int unstack(void);
-char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
 const char *protfile(const char *xcp);
 char *protbase(const char *cp);
@@ -687,6 +686,9 @@ void		i_strcpy(char *dest, char const *src, size_t size);
 
 /* Is *as1* a valid prefix of *as2*? */
 int		is_prefix(char const *as1, char const *as2);
+
+/* Find the last AT @ before the first slash */
+char const *	last_at_before_slash(char const *sp);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF

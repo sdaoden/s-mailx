@@ -493,6 +493,20 @@ is_prefix(char const *as1, char const *as2)
 	return (c == '\0');
 }
 
+char const *
+last_at_before_slash(char const *sp)
+{
+	char const *cp;
+	char c;
+
+	for (cp = sp; (c = *cp) != '\0'; ++cp)
+		if (c == '/')
+			break;
+	while (cp > sp && *--cp != '@')
+		;
+	return (*cp == '@' ? cp : NULL);
+}
+
 #ifndef HAVE_SNPRINTF
 int
 snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */

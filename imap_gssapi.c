@@ -139,7 +139,7 @@ imap_gss(struct mailbox *mp, char *user)
 		server += 7;
 	else if (strncmp(server, "imaps://", 8) == 0)
 		server += 8;
-	if ((cp = last_at_before_slash(server)) != NULL)
+	if ((cp = (char*)last_at_before_slash(server)) != NULL)
 		server = &cp[1];
 	for (cp = server; *cp; cp++)
 		*cp = lowerconv(*cp&0377);

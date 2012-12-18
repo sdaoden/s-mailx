@@ -371,18 +371,6 @@ unstack(void)
 	return(0);
 }
 
-char *
-last_at_before_slash(const char *sp)
-{
-	const char	*cp;
-
-	for (cp = sp; *cp; cp++)
-		if (*cp == '/')
-			break;
-	while (cp > sp && *--cp != '@');
-	return *cp == '@' ? (char *)cp : NULL;
-}
-
 enum protocol 
 which_protocol(const char *name)
 {
