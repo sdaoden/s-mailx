@@ -53,7 +53,6 @@ int source(void *v);
 int unstack(void);
 enum protocol which_protocol(const char *name);
 const char *protfile(const char *xcp);
-char *protbase(const char *cp);
 unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
@@ -672,6 +671,9 @@ char *		savecat(char const *s1, char const *s2);
 
 /* Create duplicate, lowercasing all characters along the way */
 char *		i_strdup(char const *src);
+
+/* Extract the protocol base and return a duplicate */
+char *		protbase(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
 

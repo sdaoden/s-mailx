@@ -396,6 +396,25 @@ i_strdup(char const *src)
 	return (dest);
 }
 
+char *
+protbase(char const *cp)
+{
+	char *n = salloc(strlen(cp) + 1), *np = n;
+
+	while (*cp) {
+		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+			*np++ = *cp++;
+			*np++ = *cp++;
+			*np++ = *cp++;
+		} else if (cp[0] == '/')
+			break;
+		else
+			*np++ = *cp++;
+	}
+	*np = '\0';
+	return (n);
+}
+
 struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {

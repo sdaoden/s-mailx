@@ -469,26 +469,6 @@ protfile(const char *xcp)
 	return cp;
 }
 
-char *
-protbase(const char *cp)
-{
-	char	*n = salloc(strlen(cp) + 1);
-	char	*np = n;
-
-	while (*cp) {
-		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-			*np++ = *cp++;
-			*np++ = *cp++;
-			*np++ = *cp++;
-		} else if (cp[0] == '/')
-			break;
-		else
-			*np++ = *cp++;
-	}
-	*np = '\0';
-	return n;
-}
-
 unsigned 
 pjw(const char *cp)
 {
