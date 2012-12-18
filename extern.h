@@ -75,8 +75,6 @@ char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
-/* Convert passed name to uid and return it or -1 on error */
-int	getuserid(char const *name);
 /* Discover user login name */
 char *	username(void);
 /* Return our hostname */

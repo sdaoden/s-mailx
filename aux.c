@@ -810,14 +810,6 @@ getname(int uid)
 	return pw == NULL ? NULL : pw->pw_name;
 }
 
-int
-getuserid(char const *name)
-{
-	struct passwd *pw = getpwnam(name);
-
-	return pw == NULL ? -1 : (int)pw->pw_uid;
-}
-
 char *
 username(void)
 {
