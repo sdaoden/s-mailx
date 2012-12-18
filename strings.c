@@ -747,3 +747,66 @@ char *
 	}
 	return (dp);
 }
+
+int
+asccasecmp(char const *s1, char const *s2)
+{
+	int cmp;
+
+	for (;;) {
+		char c1 = *s1++, c2 = *s2++;
+		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+			break;
+	}
+	return (cmp);
+}
+
+int
+ascncasecmp(char const *s1, char const *s2, size_t sz)
+{
+	int cmp = 0;
+
+	while (sz-- > 0) {
+		char c1 = *s1++, c2 = *s2++;
+		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+			break;
+	}
+	return (cmp);
+}
+
+char const *
+asccasestr(char const *haystack, char const *xneedle)
+{
+	char *needle = NULL, *NEEDLE;
+	size_t i, sz;
+
+	sz = strlen(xneedle);
+	if (sz == 0)
+		goto jleave;
+
+	needle = ac_alloc(sz);
+	NEEDLE = ac_alloc(sz);
+	for (i = 0; i < sz; i++) {
+		needle[i] = lowerconv(xneedle[i]);
+		NEEDLE[i] = upperconv(xneedle[i]);
+	}
+
+	while (*haystack) {
+		if (*haystack == *needle || *haystack == *NEEDLE) {
+			for (i = 1; i < sz; i++)
+				if (haystack[i] != needle[i] &&
+						haystack[i] != NEEDLE[i])
+					break;
+			if (i == sz)
+				goto jleave;
+		}
+		haystack++;
+	}
+	haystack = NULL;
+jleave:
+	if (needle != NULL) {
+		ac_free(NEEDLE);
+		ac_free(needle);
+	}
+	return (haystack);
+}

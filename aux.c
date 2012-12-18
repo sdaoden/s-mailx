@@ -773,65 +773,6 @@ putuc(int u, int c, FILE *fp)
 		return putc(c, fp) != EOF;
 }
 
-/*
- * Locale-independent character class functions.
- */
-int 
-asccasecmp(const char *s1, const char *s2)
-{
-	register int cmp;
-
-	do
-		if ((cmp = lowerconv(*s1 & 0377) - lowerconv(*s2 & 0377)) != 0)
-			return cmp;
-	while (*s1++ != '\0' && *s2++ != '\0');
-	return 0;
-}
-
-int
-ascncasecmp(const char *s1, const char *s2, size_t sz)
-{
-	register int cmp;
-	size_t i = 1;
-
-	if (sz == 0)
-		return 0;
-	do
-		if ((cmp = lowerconv(*s1 & 0377) - lowerconv(*s2 & 0377)) != 0)
-			return cmp;
-	while (i++ < sz && *s1++ != '\0' && *s2++ != '\0');
-	return 0;
-}
-
-char *
-asccasestr(const char *haystack, const char *xneedle)
-{
-	char	*needle, *NEEDLE;
-	int	i, sz;
-
-	sz = strlen(xneedle);
-	if (sz == 0)
-		return (char *)haystack;
-	needle = ac_alloc(sz);
-	NEEDLE = ac_alloc(sz);
-	for (i = 0; i < sz; i++) {
-		needle[i] = lowerconv(xneedle[i]&0377);
-		NEEDLE[i] = upperconv(xneedle[i]&0377);
-	}
-	while (*haystack) {
-		if (*haystack == *needle || *haystack == *NEEDLE) {
-			for (i = 1; i < sz; i++)
-				if (haystack[i] != needle[i] &&
-						haystack[i] != NEEDLE[i])
-					break;
-			if (i == sz)
-				return (char *)haystack;
-		}
-		haystack++;
-	}
-	return NULL;
-}
-
 static void
 out_of_memory(void)
 {

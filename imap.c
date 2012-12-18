@@ -958,7 +958,7 @@ enum okay
 imap_select(struct mailbox *mp, off_t *size, int *count, const char *mbx)
 {
 	enum okay ok = OKAY;
-	char	*cp;
+	char const*cp;
 	char o[LINESIZE];
 	FILE	*queuefp = NULL;
 	(void)size;
@@ -986,7 +986,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
 {
 	char o[LINESIZE];
 	FILE	*queuefp = NULL;
-	char	*cp;
+	char const *cp;
 	struct message *m;
 	unsigned 	x = X, y = Y, n;
 
@@ -1007,8 +1007,11 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
 			cp += 5;
 			while (*cp == ' ')
 				cp++;
-			if (*cp == '(')
-				imap_getflags(cp, &cp, &m->m_flag);
+			if (*cp == '(') {
+				char *x;
+				imap_getflags(cp, &x, &m->m_flag);
+				cp = x; /* XXX */
+			}
 		}
 		if ((cp = asccasestr(responded_other_text, "UID ")) != NULL)
 			m->m_uid = strtoul(&cp[4], NULL, 10);
@@ -1441,9 +1444,10 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
 	struct message mt;
 	sighandler_type	saveint = SIG_IGN, savepipe = SIG_IGN;
-	char o[LINESIZE], *cp = NULL, *loc = NULL,
+	char o[LINESIZE],
 		*volatile item = NULL, *volatile resp = NULL,
 		*volatile head = NULL;
+	char const *cp = NULL, *loc = NULL;
 	size_t expected;
 	size_t volatile headsize = 0;
 	int number = m - message + 1;
@@ -1625,7 +1629,8 @@ imap_fetchheaders (
     int top	/* bot > top */
 )
 {
-	char	o[LINESIZE], *cp;
+	char	o[LINESIZE];
+	char const *cp;
 	struct message	mt;
 	size_t	expected;
 	enum okay	ok;

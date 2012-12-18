@@ -73,9 +73,6 @@ void makeprint(struct str *in, struct str *out);
 char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
-int asccasecmp(const char *s1, const char *s2);
-int ascncasecmp(const char *s1, const char *s2, size_t sz);
-char *asccasestr(const char *haystack, const char *xneedle);
 
 /* Memory allocation routines */
 #ifdef HAVE_ASSERTS
@@ -710,6 +707,11 @@ char *		sstrdup(const char *cp SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_ASSERTS
 # define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
 #endif
+
+/* Locale-independent character class functions */
+int		asccasecmp(char const *s1, char const *s2);
+int		ascncasecmp(char const *s1, char const *s2, size_t sz);
+char const *	asccasestr(char const *haystack, char const *xneedle);
 
 /* thread.c */
 int thread(void *vp);
