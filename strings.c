@@ -448,3 +448,19 @@ uc_it const	class_char[] = {
 /*	170  x 	171  y 	172  z 	173  { 	174  | 	175  } 	176  ~ 	177 del	*/
 	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
 };
+
+#ifndef HAVE_SNPRINTF
+int
+snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vsprintf(str, format, ap);
+	va_end(ap);
+	if (ret < 0)
+		ret = strlen(str);
+	return ret;
+}
+#endif

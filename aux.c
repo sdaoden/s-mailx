@@ -75,23 +75,6 @@
  */
 
 /*
- * Lazy vsprintf wrapper.
- */
-#ifndef HAVE_SNPRINTF
-int
-snprintf(char *str, size_t size, const char *format, ...)
-{
-	va_list ap;
-	int ret;
-
-	va_start(ap, format);
-	ret = vsprintf(str, format, ap);
-	va_end(ap);
-	return ret;
-}
-#endif
-
-/*
  * Announce a fatal error and die.
  */
 void

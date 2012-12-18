@@ -658,7 +658,11 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
 
 /*
  * strings.c
+ * Two series: the first uses an auto-reclaimed string storage that resets the
+ * memory at command loop ticks, the second is about plain support functions
+ * which use unspecified or heap memory
  */
+
 void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
 void		sreset(void);
@@ -672,6 +676,13 @@ char *		save2str(char const *str, char const *old);
 char *		savecat(char const *s1, char const *s2);
 
 struct str *	str_concat_csvl(struct str *self, ...);
+
+/* The rest does not deal with auto-reclaimed storage */
+
+/* Lazy vsprintf wrapper */
+#ifndef HAVE_SNPRINTF
+int		snprintf(char *str, size_t size, const char *format, ...);
+#endif
 
 /* thread.c */
 int thread(void *vp);
