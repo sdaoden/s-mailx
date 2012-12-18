@@ -384,6 +384,18 @@ savecat(char const *s1, char const *s2)
 	return (news);
 }
 
+char *
+i_strdup(char const *src)
+{
+	size_t sz;
+	char *dest;
+
+	sz = strlen(src) + 1;
+	dest = salloc(sz);
+	i_strcpy(dest, src, sz);
+	return (dest);
+}
+
 struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
@@ -448,6 +460,19 @@ uc_it const	class_char[] = {
 /*	170  x 	171  y 	172  z 	173  { 	174  | 	175  } 	176  ~ 	177 del	*/
 	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
 };
+
+void
+i_strcpy(char *dest, const char *src, size_t size)
+{
+	if (size)
+		for (;; ++dest, ++src)
+			if ((*dest = lowerconv(*src)) == '\0')
+				break;
+			else if (--size == 0) {
+				*dest = '\0';
+				break;
+			}
+}
 
 #ifndef HAVE_SNPRINTF
 int

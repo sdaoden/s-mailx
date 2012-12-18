@@ -45,8 +45,6 @@ void relseint(void);
 void touch(struct message *mp);
 int is_dir(char *name);
 int argcount(char **argv);
-void i_strcpy(char *dest, const char *src, int size);
-char *i_strdup(const char *src);
 void makelow(char *cp);
 int substr(const char *str, const char *sub);
 char *colalign(const char *cp, int col, int fill);
@@ -675,9 +673,16 @@ char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);
 char *		savecat(char const *s1, char const *s2);
 
+/* Create duplicate, lowercasing all characters along the way */
+char *		i_strdup(char const *src);
+
 struct str *	str_concat_csvl(struct str *self, ...);
 
 /* The rest does not deal with auto-reclaimed storage */
+
+/* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
+ * *dest* will always be terminated unless *size* is 0 */
+void		i_strcpy(char *dest, char const *src, size_t size);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF

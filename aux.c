@@ -153,34 +153,6 @@ argcount(char **argv)
 }
 
 /*
- * Copy a string, lowercasing it as we go.
- */
-void 
-i_strcpy(char *dest, const char *src, int size)
-{
-	char *max;
-
-	max=dest+size-1;
-	while (dest<=max) {
-		*dest++ = lowerconv(*src & 0377);
-		if (*src++ == '\0')
-			break;
-	}
-}
-
-char *
-i_strdup(const char *src)
-{
-	int	sz;
-	char	*dest;
-
-	sz = strlen(src) + 1;
-	dest = salloc(sz);
-	i_strcpy(dest, src, sz);
-	return dest;
-}
-
-/*
  * Convert a string to lowercase, in-place and with multibyte-aware.
  */
 void 
