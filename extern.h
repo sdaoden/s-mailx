@@ -349,6 +349,12 @@ int getopt(int argc, char *const argv[], const char *optstring);
 #endif
 
 /* head.c */
+
+/* Return the user's From: address(es) */
+char const *	myaddrs(struct header *hp);
+/* Boil the user's From: addresses down to a single one, or use *sender* */
+char const *	myorigin(struct header *hp);
+
 int	is_head(char const *linebuf, size_t linelen);
 int	extract_date_from_from_(char const *line, size_t linelen,
 		char datebuf[FROM_DATEBUF]);
@@ -607,8 +613,6 @@ enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
 
 /* smtp.c */
 char *nodename(int mayoverride);
-char *myaddrs(struct header *hp);
-char *myorigin(struct header *hp);
 char *smtp_auth_var(const char *type, const char *addr);
 #ifdef USE_SMTP
 int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,

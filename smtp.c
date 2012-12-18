@@ -117,51 +117,6 @@ nodename(int mayoverride)
 	return hostname;
 }
 
-/*
- * Return the user's From: address(es).
- */
-char *
-myaddrs(struct header *hp)
-{
-	char *cp, *hn;
-	static char *addr;
-	size_t sz;
-
-	if (hp != NULL && hp->h_from != NULL) {
-		if (hp->h_from->n_fullname)
-			return savestr(hp->h_from->n_fullname);
-		if (hp->h_from->n_name)
-			return savestr(hp->h_from->n_name);
-	}
-	if ((cp = value("from")) != NULL)
-		return cp;
-	/*
-	 * When invoking sendmail directly, it's its task
-	 * to generate a From: address.
-	 */
-	if (value("smtp") == NULL)
-		return NULL;
-	if (addr == NULL) {
-		hn = nodename(1);
-		sz = strlen(myname) + strlen(hn) + 2;
-		addr = smalloc(sz);
-		snprintf(addr, sz, "%s@%s", myname, hn);
-	}
-	return addr;
-}
-
-char *
-myorigin(struct header *hp)
-{
-	char	*cp;
-	struct name	*np;
-
-	if ((cp = myaddrs(hp)) == NULL ||
-			(np = lextract(cp, GEXTRA|GFULL)) == NULL)
-		return NULL;
-	return np->n_flink != NULL ? value("sender") : cp;
-}
-
 #ifdef USE_SMTP
 
 static int read_smtp(struct sock *sp, int value, int ign_eof);
