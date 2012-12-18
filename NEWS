@@ -1,6 +1,13 @@
 S - n a i l  N e w s
 ====================
 
+- A couple of long standing, even pre-Heirloom mailx(1) memory leaks and
+  segmentation violations, most of them related to configurations
+  without alloca(3) support, as well as one leak that i have introduced
+  when i implemented RFC 4155 MBOX handling, have been fixed.
+  But S-nail should now survive non-alloca(3) configurations.
+  (*memtracer* topic branch.)
+
 - The Base64 MIME handling has been rewritten completely.
   This was an urgent topic, because the old implementation (a) read in
   all lines of a base64 encoded text part, repeatedly resizing a string
