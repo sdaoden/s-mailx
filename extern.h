@@ -65,8 +65,6 @@ char *	nodename(int mayoverride);
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
 
-char *sstpcpy(char *dst, const char *src);
-char *sstrdup(const char *cp);
 enum okay makedir(const char *name);
 enum okay cwget(struct cw *cw);
 enum okay cwret(struct cw *cw);
@@ -705,6 +703,12 @@ int		substr(const char *str, const char *sub);
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF
 int		snprintf(char *str, size_t size, const char *format, ...);
+#endif
+
+char *		sstpcpy(char *dst, const char *src);
+char *		sstrdup(const char *cp SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
 #endif
 
 /* thread.c */

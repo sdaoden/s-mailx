@@ -578,27 +578,6 @@ getrandstring(size_t length)
 	return (b64.s);
 }
 
-char *
-sstpcpy(char *dst, const char *src)
-{
-	while ((*dst = *src++) != '\0')
-		dst++;
-	return dst;
-}
-
-char *
-sstrdup(const char *cp)
-{
-	char	*dp;
-	
-	if (cp) {
-		dp = smalloc(strlen(cp) + 1);
-		strcpy(dp, cp);
-		return dp;
-	} else
-		return NULL;
-}
-
 enum okay 
 makedir(const char *name)
 {

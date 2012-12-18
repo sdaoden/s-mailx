@@ -726,3 +726,24 @@ snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
 	return ret;
 }
 #endif
+
+char *
+sstpcpy(char *dst, char const *src)
+{
+	while ((*dst = *src++) != '\0')
+		dst++;
+	return (dst);
+}
+
+char *
+(sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
+{
+	char *dp = NULL;
+
+	if (cp) {
+		size_t l = strlen(cp) + 1;
+		dp = (smalloc)(l SMALLOC_DEBUG_ARGSCALL);
+		memcpy(dp, cp, l);
+	}
+	return (dp);
+}
