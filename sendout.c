@@ -55,6 +55,10 @@
 
 static char	*send_boundary;
 
+static enum okay	putname(char const *line, enum gfield w,
+				enum sendaction action, int *gotcha,
+				char *prefix, FILE *fo, struct name **xp);
+
 static char *getencoding(enum conversion convert);
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
@@ -74,6 +78,26 @@ static int fmt(char *str, struct name *np, FILE *fo, int comma,
 		int dropinvalid, int domime);
 static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
+
+static enum okay
+putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
+	char *prefix, FILE *fo, struct name **xp)
+{
+	enum okay ret = STOP;
+	struct name *np;
+
+	np = lextract(line, GEXTRA|GFULL);
+	if (xp)
+		*xp = np;
+	if (np == NULL)
+		;
+	else if (fmt(prefix, np, fo, w & (GCOMMA|GFILES), 0,
+			action != SEND_TODISP))
+		ret = OKAY;
+	else if (gotcha)
+		++(*gotcha);
+	return (ret);
+}
 
 /*
  * Generate a boundary for MIME multipart messages.
@@ -1225,24 +1249,6 @@ mkdate(FILE *fo, const char *field)
 			tmptr->tm_year + 1900, tmptr->tm_hour,
 			tmptr->tm_min, tmptr->tm_sec,
 			tzdiff_hour * 100 + tzdiff_min);
-}
-
-static enum okay
-putname(char *line, enum gfield w, enum sendaction action, int *gotcha,
-		char *prefix, FILE *fo, struct name **xp)
-{
-	struct name	*np;
-
-	np = lextract(line, GEXTRA|GFULL);
-	if (xp)
-		*xp = np;
-	if (np == NULL)
-		return 0;
-	if (fmt(prefix, np, fo, w&(GCOMMA|GFILES), 0, action != SEND_TODISP))
-		return 1;
-	if (gotcha)
-		(*gotcha)++;
-	return 0;
 }
 
 #define	FMT_CC_AND_BCC	{ \
