@@ -54,27 +54,6 @@
 #include "extern.h"
 
 /*
- * Locate the user's mailbox file (ie, the place where new, unread
- * mail is queued).
- */
-void
-findmail(char *user, int force, char *buf, int size)
-{
-	char *mbox, *cp;
-
-	if (strcmp(user, myname) == 0 && !force &&
-			(cp = value("folder")) != NULL &&
-			which_protocol(cp) == PROTO_IMAP) {
-		snprintf(buf, size, "%s/INBOX", protbase(cp));
-	} else if (force || (mbox = value("MAIL")) == NULL) {
-		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
-	} else {
-		strncpy(buf, mbox, size);
-		buf[size-1]='\0';
-	}
-}
-
-/*
  * Get rid of the queued mail.
  */
 void 

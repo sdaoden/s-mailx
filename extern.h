@@ -81,8 +81,8 @@ char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
+void	transflags(struct message *omessage, long omsgCount, int transparent);
 
-void transflags(struct message *omessage, long omsgCount, int transparent);
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
 
@@ -332,6 +332,8 @@ void relsesigs(void);
 off_t fsize(FILE *iob);
 char *file_expand(char const *name);
 char *expand(char const *name);
+/* Locate the user's mailbox file (where new, unread mail is queued) */
+void	findmail(char *user, int force, char *buf, int size);
 int getfold(char *name, int size);
 char *getdeadletter(void);
 char *fgetline(char **line, size_t *linesize, size_t *count,
@@ -681,7 +683,6 @@ char *readtty(char *prefix, char *string);
 int yorn(char *msg);
 
 /* v7.local.c */
-void findmail(char *user, int force, char *buf, int size);
 void demail(void);
 
 /* vars.c */
