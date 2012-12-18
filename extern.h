@@ -52,7 +52,6 @@ void try_pager(FILE *fp);
 int source(void *v);
 int unstack(void);
 enum protocol which_protocol(const char *name);
-const char *protfile(const char *xcp);
 unsigned pjw(const char *cp);
 long nextprime(long n);
 char *strenc(const char *cp);
@@ -385,6 +384,7 @@ char *getsender(struct message *m);
 
 /* imap.c */
 #ifdef USE_IMAP
+char const *	imap_fileof(char const *xcp);
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
 		const char *mbx);

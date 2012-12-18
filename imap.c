@@ -587,6 +587,26 @@ imap_noop1(struct mailbox *mp)
 	return OKAY;
 }
 
+char const *
+imap_fileof(char const *xcp)
+{
+	char const *cp = xcp;
+	int state = 0;
+
+	while (*cp) {
+		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+			cp += 3;
+			state = 1;
+		}
+		if (cp[0] == '/' && state == 1)
+			return (cp + 1);
+		if (cp[0] == '/')
+			return (xcp);
+		++cp;
+	}
+	return (cp);
+}
+
 enum okay 
 imap_noop(void)
 {
@@ -2476,7 +2496,7 @@ imap_folders(const char *name, int strip)
 				"Try \"folders @\".\n", sp);
 		return;
 	}
-	fold = protfile(name);
+	fold = imap_fileof(name);
 	if (columnize) {
 		if ((fp = Ftemp(&tempfn, "Ri", "w+", 0600, 1)) == NULL) {
 			perror("tmpfile");
@@ -2570,7 +2590,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
 			return STOP;
 		ok = OKAY;
 	}
-	qname = imap_quotestr(name = protfile(name));
+	qname = imap_quotestr(name = imap_fileof(name));
 	/*
 	 * Since it is not possible to set flags on the copy, recently
 	 * set flags must be set on the original to include it in the copy.
@@ -2969,7 +2989,7 @@ imap_remove(const char *name)
 	if (sigsetjmp(imapjmp, 1) == 0) {
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
-		ok = imap_remove1(&mb, protfile(name));
+		ok = imap_remove1(&mb, imap_fileof(name));
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
@@ -3026,7 +3046,7 @@ imap_rename(const char *old, const char *new)
 	if (sigsetjmp(imapjmp, 1) == 0) {
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
-		ok = imap_rename1(&mb, protfile(old), protfile(new));
+		ok = imap_rename1(&mb, imap_fileof(old), imap_fileof(new));
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);

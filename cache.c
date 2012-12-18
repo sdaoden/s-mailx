@@ -643,7 +643,7 @@ cache_remove(const char *name)
 	int	pathsize, pathend, n;
 	char	*dir;
 
-	if ((dir = encname(&mb, "", 0, protfile(name))) == NULL)
+	if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
 		return OKAY;
 	pathend = strlen(dir);
 	path = smalloc(pathsize = pathend + 30);
@@ -685,8 +685,8 @@ cache_rename(const char *old, const char *new)
 {
 	char	*olddir, *newdir;
 
-	if ((olddir = encname(&mb, "", 0, protfile(old))) == NULL ||
-			(newdir = encname(&mb, "", 0, protfile(new))) == NULL)
+	if ((olddir = encname(&mb, "", 0, imap_fileof(old))) == NULL ||
+			(newdir = encname(&mb, "",0, imap_fileof(new))) == NULL)
 		return OKAY;
 	if (rename(olddir, newdir) < 0) {
 		perror(olddir);

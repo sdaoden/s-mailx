@@ -449,26 +449,6 @@ which_protocol(const char *name)
 	}
 }
 
-const char *
-protfile(const char *xcp)
-{
-	const char	*cp = xcp;
-	int	state = 0;
-
-	while (*cp) {
-		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-			cp += 3;
-			state = 1;
-		}
-		if (cp[0] == '/' && state == 1)
-			return &cp[1];
-		if (cp[0] == '/')
-			return xcp;
-		cp++;
-	}
-	return cp;
-}
-
 unsigned 
 pjw(const char *cp)
 {
