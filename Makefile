@@ -43,7 +43,7 @@ PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"'
 
 OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
-	dotlock.o edit.o fio.o getopt.o head.o \
+	dotlock.o edit.o fio.o head.o \
 	imap.o imap_search.o junk.o lex.o list.o lzw.o \
 	macro.o maildir.o main.o md5.o mime.o names.o \
 	openssl.o pop3.o popen.o quit.o \

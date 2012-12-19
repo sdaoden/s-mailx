@@ -74,6 +74,19 @@ char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
 
+#ifndef HAVE_GETOPT
+/* getopt(3) fallback implementation */
+char	*my_optarg;
+int	my_optind, /*my_opterr,*/ my_optopt;
+
+int	my_getopt(int argc, char *const argv[], const char *optstring);
+# define getopt		my_getopt
+# define optarg		my_optarg
+# define optind		my_optind
+/*# define opterr		my_opterr*/
+# define optopt		my_optopt
+#endif
+
 /* Memory allocation routines */
 #ifdef HAVE_ASSERTS
 # define SMALLOC_DEBUG_ARGS	, char const *mdbg_file, int mdbg_line
@@ -322,11 +335,6 @@ enum okay swrite1(struct sock *sp, const char *data, int sz, int use_buffer);
 int sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp);
 enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose);
-
-/* getopt.c */
-#ifndef HAVE_GETOPT
-int getopt(int argc, char *const argv[], const char *optstring);
-#endif
 
 /* head.c */
 

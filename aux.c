@@ -773,6 +773,78 @@ putuc(int u, int c, FILE *fp)
 		return putc(c, fp) != EOF;
 }
 
+#ifndef HAVE_GETOPT
+char	*my_optarg;
+int	my_optind = 1, /*my_opterr = 1,*/ my_optopt;
+
+int
+my_getopt(int argc, char *const argv[], char const *optstring) /* XXX */
+{
+	static char const *lastp;
+	int colon;
+	char const *curp;
+
+	if (optstring[0] == ':') {
+		colon = 1;
+		optstring++;
+	} else
+		colon = 0;
+	if (lastp) {
+		curp = lastp;
+		lastp = 0;
+	} else {
+		if (optind >= argc || argv[optind] == 0 ||
+				argv[optind][0] != '-' ||
+				argv[optind][1] == '\0')
+			return -1;
+		if (argv[optind][1] == '-' && argv[optind][2] == '\0') {
+			optind++;
+			return -1;
+		}
+		curp = &argv[optind][1];
+	}
+	optopt = curp[0];
+	while (optstring[0]) {
+		if (optstring[0] == ':' || optstring[0] != optopt) {
+			optstring++;
+			continue;
+		}
+		if (optstring[1] == ':') {
+			if (curp[1] != '\0') {
+				optarg = (char *)&curp[1];
+				optind++;
+			} else {
+				if ((optind += 2) > argc) {
+					if (!colon /*&& opterr*/) {
+						fprintf(stderr, tr(79,
+				"%s: option requires an argument -- %c\n"),
+							argv[0], (char)optopt);
+					}
+					return colon ? ':' : '?';
+				}
+				optarg = argv[optind - 1];
+			}
+		} else {
+			if (curp[1] != '\0')
+				lastp = &curp[1];
+			else
+				optind++;
+			optarg = 0;
+		}
+		return optopt;
+	}
+	if (!colon /*&& opterr*/)
+		fprintf(stderr, tr(78, "%s: illegal option -- %c\n"),
+			argv[0], optopt);
+	if (curp[1] != '\0')
+		lastp = &curp[1];
+	else
+		optind++;
+	optarg = 0;
+	return '?';
+}
+#endif /* HAVE_GETOPT */
+
 static void
 out_of_memory(void)
 {
