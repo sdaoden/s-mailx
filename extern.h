@@ -47,8 +47,6 @@ int is_dir(char *name);
 int argcount(char **argv);
 char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
-int source(void *v);
-int unstack(void);
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
@@ -325,6 +323,16 @@ void	findmail(char *user, int force, char *buf, int size);
 void	demail(void);
 int getfold(char *name, int size);
 char *getdeadletter(void);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * *sourcing* so that others will realize that they are no longer reading from
+ * a tty (in all probability) */
+int		source(void *v);
+
+/* Pop the current input back to the previous level.  Update the *sourcing*
+ * flag as appropriate */
+int		unstack(void);
+
 char *fgetline(char **line, size_t *linesize, size_t *count,
 		size_t *llen, FILE *fp, int appendnl);
 void newline_appended(void);
