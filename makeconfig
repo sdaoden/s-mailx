@@ -2,6 +2,7 @@
 
 [ -z "${WANT_ASSERTS}" ] && WANT_ASSERTS=0
 [ -z "${WANT_NOALLOCA}" ] && WANT_NOALLOCA=0
+[ -z "${WANT_NOGETOPT}" ] && WANT_NOGETOPT=0
 
 if [ -z "${CONFIG}" ]; then
 	[ -f ./user.conf ] && . ./user.conf
@@ -369,7 +370,7 @@ int main(void)
 ##
 
 if wantfeat ASSERTS; then
-	echo "#define HAVE_ASSERTS" >> ${out}
+	echo '#define HAVE_ASSERTS' >> ${out}
 fi
 
 if nwantfeat NOALLOCA; then
@@ -382,6 +383,21 @@ int main(void)
 {
 	void *vp = __builtin_alloca(1);
 	return (!! vp);
+}
+!
+fi
+
+if nwantfeat NOGETOPT; then
+	link_check getopt 'for getopt()' '#define HAVE_GETOPT' << \!
+#include <unistd.h>
+int main(int argc, char **argv)
+{
+#if defined __GLIBC__ || defined __linux__
+	Argument and option reordering is not a desired feature.
+#else
+	getopt(argc, argv, "oPt");
+#endif
+	return (((long)optarg + optind) & 0x7F);
 }
 !
 fi
