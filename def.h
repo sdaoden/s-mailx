@@ -274,15 +274,14 @@ struct sock {				/* data associated with a socket */
 	char	*s_wbuf;		/* for buffered writes */
 	int	s_wbufsize;		/* allocated size of s_buf */
 	int	s_wbufpos;		/* position of first empty data byte */
-	char	s_rbuf[LINESIZE+1];	/* for buffered reads */
 	char	*s_rbufptr;		/* read pointer to s_rbuf */
 	int	s_rsz;			/* size of last read in s_rbuf */
 	char	*s_desc;		/* description of error messages */
 	void	(*s_onclose)(void);	/* execute on close */
+	char	s_rbuf[LINESIZE+1];	/* for buffered reads */
 };
 
 struct mailbox {
-	struct sock	mb_sock;	/* socket structure */
 	enum {
 		MB_NONE		= 000,	/* no reply expected */
 		MB_COMD		= 001,	/* command reply expected */
@@ -317,6 +316,7 @@ struct mailbox {
 	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
 	char	*mb_cache_directory;	/* name of cache directory */
 #endif
+	struct sock	mb_sock;	/* socket structure */
 };
 
 enum needspec {
