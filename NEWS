@@ -1,6 +1,10 @@
 S - n a i l  N e w s
 ====================
 
+- MIME boundaries in multipart messages are now handled better in that
+  no boundary string should get through to the display.
+ (Tweak MIME boundary detection.., 2012-12-20)
+
 - A couple of long standing, even pre-Heirloom mailx(1) memory leaks and
   segmentation violations, most of them related to configurations
   without alloca(3) support, as well as one leak that i have introduced

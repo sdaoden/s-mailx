@@ -57,15 +57,17 @@ enum parseflags {
 	PARSE_PARTS	= 02
 };
 
-static void onpipe(int signo);
 extern void brokpipe(int signo);
+static void onpipe(int signo);
+
+static void	_parsemultipart(struct message *zmp, struct mimepart *ip,
+			enum parseflags pf, int level);
+
 static int sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
 		enum sendaction action, off_t *stats, int level);
 static struct mimepart *parsemsg(struct message *mp, enum parseflags pf);
 static enum okay parsepart(struct message *zmp, struct mimepart *ip,
-		enum parseflags pf, int level);
-static void parsemultipart(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 static void newpart(struct mimepart *ip, struct mimepart **np, off_t offs,
 		int *part);
@@ -101,6 +103,77 @@ onpipe(int signo)
 {
 	(void)signo;
 	siglongjmp(pipejmp, 1);
+}
+
+static void
+_parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
+	int level)
+{
+	struct mimepart	*np = NULL;
+	char *boundary, *line = NULL;
+	size_t linesize = 0, linelen, count, boundlen;
+	FILE *ibuf;
+	off_t offs;
+	int part = 0;
+	long lines = 0;
+
+	if ((boundary = mime_get_boundary(ip->m_ct_type, &linelen)) == NULL)
+		return;
+	boundlen = linelen;
+	if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
+		return;
+	count = ip->m_size;
+	while (foldergets(&line, &linesize, &count, &linelen, ibuf))
+		if (line[0] == '\n')
+			break;
+	offs = ftell(ibuf);
+	newpart(ip, &np, offs, NULL);
+	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
+		if ((lines == 0 || part > 0) && (linelen <= boundlen ||
+				strncmp(line, boundary, boundlen) != 0)) {
+			++lines;
+			continue;
+		}
+		/* Subpart boundary? */
+		if (line[boundlen] == '\n') {
+			offs = ftell(ibuf);
+			if (part != 0) {
+				endpart(&np, offs - boundlen - 2, lines);
+				newpart(ip, &np, offs - boundlen - 2, NULL);
+			}
+			endpart(&np, offs, 2);
+			newpart(ip, &np, offs, &part);
+			lines = 0;
+			continue;
+		}
+		/*
+		 * Final boundary?  Be aware of cases where there is no
+		 * separating newline in between boundaries, as has been seen
+		 * in a message with "Content-Type: multipart/appledouble;"
+		 */
+		if (linelen < boundlen + 2)
+			continue;
+		linelen -= boundlen + 2;
+		if (line[boundlen] != '-' || line[boundlen + 1] != '-' ||
+				(linelen > 0 && line[boundlen + 2] != '\n'))
+			/* XXX This is a mysterious message - ??? */
+			continue;
+		offs = ftell(ibuf);
+		if (part != 0) {
+			endpart(&np, offs - boundlen - 4, lines);
+			newpart(ip, &np, offs - boundlen - 4, NULL);
+		}
+		endpart(&np, offs + count, 2);
+		break;
+	}
+	if (np) {
+		offs = ftell(ibuf);
+		endpart(&np, offs, lines);
+	}
+	for (np = ip->m_multipart; np; np = np->m_nextpart)
+		if (np->m_mimecontent != MIME_DISCARD)
+			parsepart(zmp, np, pf, level + 1);
+	free(line);
 }
 
 /*
@@ -780,7 +853,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		case MIME_MULTI:
 		case MIME_ALTERNATIVE:
 		case MIME_DIGEST:
-			parsemultipart(zmp, ip, pf, level);
+			_parsemultipart(zmp, ip, pf, level);
 			break;
 		case MIME_822:
 			parse822(zmp, ip, pf, level);
@@ -788,67 +861,6 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		}
 	}
 	return OKAY;
-}
-
-static void
-parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
-		int level)
-{
-	char	*boundary;
-	char	*line = NULL;
-	size_t	linesize = 0, linelen, count, boundlen;
-	FILE	*ibuf;
-	struct mimepart	*np = NULL;
-	off_t	offs;
-	int	part = 0;
-	long	lines = 0;
-
-	if ((boundary = mime_getboundary(ip->m_ct_type)) == NULL)
-		return;
-	boundlen = strlen(boundary);
-	if ((ibuf = setinput(&mb, (struct message *)ip, NEED_BODY)) == NULL)
-		return;
-	count = ip->m_size;
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf))
-		if (line[0] == '\n')
-			break;
-	offs = ftell(ibuf);
-	newpart(ip, &np, offs, NULL);
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
-		if ((lines > 0 || part == 0) && linelen >= boundlen + 1 &&
-				strncmp(line, boundary, boundlen) == 0) {
-			if (line[boundlen] == '\n') {
-				offs = ftell(ibuf);
-				if (part != 0) {
-					endpart(&np, offs-boundlen-2, lines);
-					newpart(ip, &np, offs-boundlen-2, NULL);
-				}
-				endpart(&np, offs, 2);
-				newpart(ip, &np, offs, &part);
-				lines = 0;
-			} else if (line[boundlen] == '-' &&
-					line[boundlen+1] == '-' &&
-					line[boundlen+2] == '\n') {
-				offs = ftell(ibuf);
-				if (part != 0) {
-					endpart(&np, offs-boundlen-4, lines);
-					newpart(ip, &np, offs-boundlen-4, NULL);
-				}
-				endpart(&np, offs+count, 2);
-				break;
-			} else
-				lines++;
-		} else
-			lines++;
-	}
-	if (np) {
-		offs = ftell(ibuf);
-		endpart(&np, offs, lines);
-	}
-	for (np = ip->m_multipart; np; np = np->m_nextpart)
-		if (np->m_mimecontent != MIME_DISCARD)
-			parsepart(zmp, np, pf, level+1);
-	free(line);
 }
 
 static void

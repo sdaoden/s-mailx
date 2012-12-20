@@ -377,23 +377,22 @@ mime_getparam(char *param, char *h)
 	return r;
 }
 
-/*
- * Get the boundary out of a Content-Type: multipart/xyz header field.
- */
 char *
-mime_getboundary(char *h)
+mime_get_boundary(char *h, size_t *len)
 {
-	char *p, *q;
+	char *q = NULL, *p;
 	size_t sz;
 
-	if ((p = mime_getparam("boundary", h)) == NULL)
-		return NULL;
-	sz = strlen(p);
-	q = salloc(sz + 3);
-	memcpy(q, "--", 2);
-	memcpy(q + 2, p, sz);
-	*(q + sz + 2) = '\0';
-	return q;
+	if ((p = mime_getparam("boundary", h)) != NULL) {
+		sz = strlen(p);
+		if (len != NULL)
+			*len = sz + 2;
+		q = salloc(sz + 3);
+		q[0] = q[1] = '-';
+		memcpy(q + 2, p, sz);
+		*(q + sz + 2) = '\0';
+	}
+	return (q);
 }
 
 /*

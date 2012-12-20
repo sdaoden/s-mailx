@@ -543,7 +543,11 @@ char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
 int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
-char *mime_getboundary(char *h);
+
+/* Get the boundary out of a Content-Type: multipart/xyz header field, return
+ * salloc()ed copy of it; store strlen() in *len if set */
+char *		mime_get_boundary(char *h, size_t *len);
+
 char *mime_filecontent(char *name);
 int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign);
