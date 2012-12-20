@@ -81,7 +81,6 @@ int	getuserid(char const *name);
 char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
-void	transflags(struct message *omessage, long omsgCount, int transparent);
 
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
@@ -418,7 +417,8 @@ enum okay imap_dequeue(struct mailbox *mp, FILE *fp);
 int cconnect(void *vp);
 int cdisconnect(void *vp);
 int ccache(void *vp);
-int disconnected(const char *file);
+int	disconnected(const char *file);
+void	transflags(struct message *omessage, long omsgCount, int transparent);
 #else
 # define imap_imap	ccmdnotsupp
 # define cconnect	ccmdnotsupp

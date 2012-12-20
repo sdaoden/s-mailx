@@ -884,40 +884,6 @@ nodename(int mayoverride)
 	return (hostname);
 }
 
-void
-transflags(struct message *omessage, long omsgCount, int transparent)
-{
-	struct message	*omp, *nmp, *newdot, *newprevdot;
-	int	hf;
-
-	omp = omessage;
-	nmp = message;
-	newdot = message;
-	newprevdot = NULL;
-	while (omp < &omessage[omsgCount] &&
-			nmp < &message[msgCount]) {
-		if (dot && nmp->m_uid == dot->m_uid)
-			newdot = nmp;
-		if (prevdot && nmp->m_uid == prevdot->m_uid)
-			newprevdot = nmp;
-		if (omp->m_uid == nmp->m_uid) {
-			hf = nmp->m_flag & MHIDDEN;
-			if (transparent && mb.mb_type == MB_IMAP)
-				omp->m_flag &= ~MHIDDEN;
-			*nmp++ = *omp++;
-			if (transparent && mb.mb_type == MB_CACHE)
-				nmp[-1].m_flag |= hf;
-		} else if (omp->m_uid < nmp->m_uid)
-			omp++;
-		else
-			nmp++;
-	}
-	dot = newdot;
-	setdot(newdot);
-	prevdot = newprevdot;
-	free(omessage);
-}
-
 char *
 getrandstring(size_t length)
 {
