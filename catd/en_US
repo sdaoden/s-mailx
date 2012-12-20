@@ -182,7 +182,7 @@ $set 1
 171 $Enter filename for part $
 172 $: $
 173 tmpfile
-174 $\nPart $
+174 --- DELETED ---
 175 :\n
 176 Cannot open %s\n
 177 Warning: invalid encoding %s, using 8bit\n

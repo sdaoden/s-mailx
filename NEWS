@@ -1,6 +1,15 @@
 S - n a i l  N e w s
 ====================
 
+- When displaying multipart messages the "Part X:" introductional string
+  has been changed; if the Content-type: header is not *retain*ed, then
+  this string will include the part's type and size.  Ditto for
+  Content-disposition: and a mentioned attachment filename.
+  This is a first step only, for the final version the MIME and send
+  layers will have to be adjusted.  But the string will be matchable via
+  a "^[-- #.* --]$" regular expression from now on.
+  (Change "Part X:" display message.., 2012-12-20)
+
 - MIME boundaries in multipart messages are now handled better in that
   no boundary string should get through to the display.
  (Tweak MIME boundary detection.., 2012-12-20)

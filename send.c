@@ -63,6 +63,10 @@ static void onpipe(int signo);
 static void	_parsemultipart(struct message *zmp, struct mimepart *ip,
 			enum parseflags pf, int level);
 
+/* Going for user display, print Part: info string */
+static void	_print_part_info(struct str *out, struct mimepart *mip,
+			struct ignoretab *doign, int level);
+
 static int sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
 		enum sendaction action, off_t *stats, int level);
@@ -174,6 +178,60 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		if (np->m_mimecontent != MIME_DISCARD)
 			parsepart(zmp, np, pf, level + 1);
 	free(line);
+}
+
+static void
+_print_part_info(struct str *out, struct mimepart *mip,
+	struct ignoretab *doign, int level)
+{
+	struct str ct = {NULL, 0}, cd = {NULL, 0};
+	char const *ps;
+
+	/* Max. 24 */
+	if (is_ign("content-type", 12, doign)) {
+		out->s = mip->m_ct_type_plain;
+		out->l = strlen(out->s) + 1;
+		ct.s = ac_alloc(2 + out->l);
+		ct.s[0] = ',';
+		ct.s[1] = ' ';
+		ct.l = 2;
+		if (is_prefix("application/", out->s)) {
+			memcpy(ct.s + 2, "appl../", 7);
+			ct.l += 7;
+			out->l -= 12;
+			out->s += 12;
+			out->l = smin(out->l, 17);
+		} else
+			out->l = smin(out->l, 24);
+		memcpy(ct.s + ct.l, out->s, out->l);
+		ct.l += out->l;
+		ct.s[ct.l] = 0;
+	}
+
+	/* Max. 27 */
+	if (is_ign("content-disposition", 19, doign) &&
+			mip->m_filename != NULL) {
+		cd.s = ac_alloc(2 + 25 + 1);
+		cd.l = snprintf(cd.s, 2 + 25 + 1, ", %.25s", mip->m_filename);
+	}
+
+	/* Take care of "99.99", i.e., 5 */
+	if ((ps = mip->m_partstring) == NULL || ps[0] == '\0')
+		ps = "?";
+
+#define __msg	"%s[-- #%s : %lu/%lu%s%s --]\n"
+	out->l = sizeof(__msg) + strlen(ps) + ct.l + cd.l + 1;
+	out->s = salloc(out->l);
+	out->l = snprintf(out->s, out->l, __msg,
+			(level || (ps[0] != '1' && ps[1] == '\0')) ? "\n" : "",
+			ps, (ul_it)mip->m_lines, (ul_it)mip->m_size,
+			(ct.s != NULL ? ct.s : ""), (cd.s != NULL ? cd.s : ""));
+#undef __msg
+
+	if (cd.s != NULL)
+		ac_free(cd.s);
+	if (ct.s != NULL)
+		ac_free(ct.s);
 }
 
 /*
@@ -541,8 +599,17 @@ skip:	switch (ip->m_mimecontent) {
 		break;
 	case MIME_ALTERNATIVE:
 		if ((action == SEND_TODISP || action == SEND_QUOTE) &&
-				value("print-alternatives") == NULL)
-			for (np = ip->m_multipart; np; np = np->m_nextpart)
+				value("print-alternatives") == NULL) {
+			for (np = ip->m_multipart; np; np = np->m_nextpart) {
+				if (np->m_ct_type_plain != NULL && /* XXX */
+						action != SEND_QUOTE) {
+					_print_part_info(&rest, np, doign,
+						level);
+					out(rest.s, rest.l, obuf,
+						CONV_NONE, SEND_MBOX,
+						prefix, prefixlen,
+						stats, NULL);
+				}
 				if (np->m_mimecontent == MIME_TEXT_PLAIN) {
 					if (sendpart(zmp, np, obuf,
 							doign, prefix,
@@ -550,8 +617,10 @@ skip:	switch (ip->m_mimecontent) {
 							action, stats,
 							level+1) < 0)
 						return -1;
-					return rt;
 				}
+			}
+			return rt;
+		}
 		/*FALLTHRU*/
 	case MIME_MULTI:
 	case MIME_DIGEST:
@@ -596,27 +665,18 @@ skip:	switch (ip->m_mimecontent) {
 				case SEND_TODISP:
 				case SEND_TODISP_ALL:
 				case SEND_QUOTE_ALL:
-					if ((ip->m_mimecontent == MIME_MULTI ||
-							ip->m_mimecontent ==
-							MIME_ALTERNATIVE ||
-							ip->m_mimecontent ==
-							MIME_DIGEST) &&
-							np->m_partstring) {
-						len = strlen(np->m_partstring) +
-							40;
-						cp = ac_alloc(len);
-						snprintf(cp, len,
-							"%sPart %s:\n", level ||
-							strcmp(np->m_partstring,
-								"1") ?
-							"\n" : "",
-							np->m_partstring);
-						out(cp, strlen(cp), obuf,
-							CONV_NONE, SEND_MBOX,
-							prefix, prefixlen,
-							stats, NULL);
-						ac_free(cp);
-					}
+					if (ip->m_mimecontent != MIME_MULTI &&
+							ip->m_mimecontent !=
+							MIME_ALTERNATIVE &&
+							ip->m_mimecontent !=
+							MIME_DIGEST)
+						break;
+					_print_part_info(&rest, np, doign,
+						level);
+					out(rest.s, rest.l, obuf,
+						CONV_NONE, SEND_MBOX,
+						prefix, prefixlen,
+						stats, NULL);
 					break;
 				case SEND_TOFLTR:
 					putc('\0', obuf);
