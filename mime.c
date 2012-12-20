@@ -1224,43 +1224,44 @@ static size_t
 convhdra(char *str, size_t len, FILE *fp)
 {
 #ifdef	HAVE_ICONV
-	char	*ip, *op;
-	size_t	isz, osz;
+	char *cbuf = NULL;
 #endif
-	struct str	cin;
-	size_t	cbufsz;
-	char	*cbuf;
-	size_t	sz;
+	struct str cin;
+	size_t ret = 0;
 
-	cbuf = ac_alloc(cbufsz = 1);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	if (iconvd == (iconv_t)-1) {
 #endif
 		cin.s = str;
 		cin.l = len;
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	} else {
-	again:	ip = str;
+		char *op, *ip;
+		size_t osz, isz, cbufsz = (len << 1) - (len >> 2);
+
+jagain:		osz = cbufsz;
+		op = cbuf = ac_alloc(cbufsz);
+		ip = str;
 		isz = len;
-		op = cbuf;
-		osz = cbufsz;
 		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
-			if (errno != E2BIG) {
-				ac_free(cbuf);
-				return 0;
-			}
-			cbuf = ac_alloc(cbufsz += isz);
-			goto again;
+			ac_free(cbuf);
+			if (errno != E2BIG)
+				goto jleave;
+			cbufsz += isz;
+			goto jagain;
 		}
 		cin.s = cbuf;
 		cin.l = cbufsz - osz;
 	}
-#endif	/* HAVE_ICONV */
-	sz = mime_write_tohdr(&cin, fp);
-	ac_free(cbuf);
-	return sz;
+#endif
+	ret = mime_write_tohdr(&cin, fp);
+#ifdef HAVE_ICONV
+	if (cbuf != NULL)
+		ac_free(cbuf);
+jleave:
+#endif
+	return (ret);
 }
-
 
 /*
  * Write an address to a header field.
