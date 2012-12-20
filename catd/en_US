@@ -17,9 +17,9 @@ $set 1
 14 Commands are:\n
 15 [Invalid Base64 encoding ignored]\n
 16 variable cmd not set\n
-17 Message %2d:\n
+17 [-- Message #%2d -- %lu lines, %lu bytes --]:\n
 18 No messages to pipe.
-19 Message %2d:\n
+19 --- DELETED ---
 20 No value set for "folder"\n
 21 No messages applicable\n
 22 At EOF\n

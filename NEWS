@@ -1,6 +1,12 @@
 S - n a i l  N e w s
 ====================
 
+- The "Message X:" display leader has been changed and will henceforth
+  appear like "[Message -- X lines, Y bytes]:".
+  These lines can no longer be suppressed by setting the *quiet*
+  option (which was yet possible for print and top, though undocumented).
+  (Change "Message X:" display message.., 2012-12-20)
+
 - When displaying multipart messages the "Part X:" introductional string
   has been changed; if the Content-type: header is not *retain*ed, then
   this string will include the part's type and size.  Ditto for

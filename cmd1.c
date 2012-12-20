@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -57,6 +57,10 @@
  */
 
 static int screen;
+
+/* Prepare and print "[Message: xy]:" intro */
+static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
+
 static void onpipe(int signo);
 static int dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
@@ -69,6 +73,13 @@ static int type1(int *msgvec, int doign, int page, int pipe, int decode,
 		char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
 void brokpipe(int signo);
+
+static void
+_show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
+{
+	fprintf(obuf, tr(17, "[-- Message %2d -- %lu lines, %lu bytes --]:\n"),
+		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
+}
 
 int
 ccmdnotsupp(void *v)
@@ -832,9 +843,9 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		touch(mp);
 		setdot(mp);
 		uncollapse1(mp, 1);
-		if (value("quiet") == NULL)
-			fprintf(obuf, catgets(catd, CATSET, 17,
-				"Message %2d:\n"), *ip);
+		if (! pipe && ip != msgvec)
+			fprintf(obuf, "\n");
+		_show_msg_overview(mp, *ip, obuf);
 		send(mp, obuf, doign ? ignore : 0, NULL,
 			pipe && value("piperaw") ? SEND_MBOX :
 				decode ? SEND_SHOW :
@@ -1090,12 +1101,10 @@ top(void *v)
 		did_print_dot = 1;
 		if (! empty_last)
 			printf("\n");
-		if (value("quiet") == NULL)
-			printf(catgets(catd, CATSET, 19,
-					"Message %2d:\n"), *ip);
+		_show_msg_overview(mp, *ip, stdout);
 		if (mp->m_flag & MNOFROM)
 			printf("From %s %s\n", fakefrom(mp),
-					fakedate(mp->m_time));
+				fakedate(mp->m_time));
 		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {	/* XXX could use TOP */
 			v = NULL;
 			break;
