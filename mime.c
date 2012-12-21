@@ -53,12 +53,19 @@
  * MIME support functions.
  */
 
-/*
- * You won't guess what these are for.
- */
-static const char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char const *mimetypes_world = "/etc/mime.types";
-static char const *mimetypes_user = "~/.mime.types";
+static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+			_mt_usr[] = MIME_TYPES_USR,
+			_mt_sys[] = MIME_TYPES_SYS,
+			*const _mt_bltin[] = {
+#include "mime_types.h"
+		NULL
+	};
+
+/* Get a mime.types(5) alike line and look for xtension, return duplicate */
+static char *		_mt_match_line(char const *x, char const *l);
+
+/* Check the given MIME type file for xtension */
+static char *		_classify_mt(char const *x, char const *file);
 
 static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
@@ -67,8 +74,6 @@ static size_t	delctrl(char *cp, size_t sz);
 static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
-static char *mime_tline(char *x, char *l);
-static char *mime_type(char *ext, char const *filename);
 static enum mimeclean mime_isclean(FILE *f);
 static enum conversion gettextconversion(void);
 static char *ctohex(unsigned char c, char *hex);
@@ -85,6 +90,68 @@ static void addconv(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
 static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
 		enum tdflags flags, char *prefix, size_t prefixlen);
+
+static char *
+_mt_match_line(char const *x, char const *l)
+{
+	int match = 0;
+	char *n = NULL;
+	char const *type;
+	size_t tlen;
+
+	if ((*l & 0x80) || alphachar(*l) == 0)
+		goto jleave;
+
+	type = l;
+	while (blankchar(*l) == 0 && *l != '\0')
+		l++;
+	if (*l == '\0')
+		goto jleave;
+	tlen = (size_t)(l - type);
+
+	while (blankchar(*l) != 0 && *l != '\0')
+		++l;
+	if (*l == '\0')
+		goto jleave;
+
+	while (*l != '\0') {
+		char const *lext = l;
+		while (whitechar(*l) == 0 && *l != '\0')
+			++l;
+		/* Better to do case-insensitive comparison on extension, since
+		 * the RFC doesn't specify case of attribute values? */
+		if (ascncasecmp(x, lext, (size_t)(l - lext)) == 0) {
+			match = 1;
+			break;
+		}
+		while (whitechar(*l) != 0 && *l != '\0')
+			++l;
+	}
+
+	n = match ? savestrbuf(type, tlen) : NULL;
+jleave:
+	return (n);
+}
+
+static char *
+_classify_mt(char const *x, char const *file)
+{
+	FILE *f;
+	char *line = NULL, *type = NULL;
+	size_t linesize = 0;
+
+	if (file == NULL || (f = Fopen(file, "r")) == NULL)
+		goto jleave;
+	while (fgetline(&line, &linesize, NULL, NULL, f, 0)) {
+		if ((type = _mt_match_line(x, line)) != NULL)
+			break;
+	}
+	Fclose(f);
+	if (line != NULL)
+		free(line);
+jleave:
+	return (type);
+}
 
 /*
  * Check if c must be quoted inside a message's body.
@@ -386,87 +453,6 @@ mime_get_boundary(char *h, size_t *len)
 	return (q);
 }
 
-/*
- * Get a line like "text/html html" and look if x matches the extension.
- */
-static char *
-mime_tline(char *x, char *l)
-{
-	char *type, *n;
-	int match = 0;
-
-	if ((*l & 0200) || alphachar(*l & 0377) == 0)
-		return NULL;
-	type = l;
-	while (blankchar(*l & 0377) == 0 && *l != '\0')
-		l++;
-	if (*l == '\0')
-		return NULL;
-	*l++ = '\0';
-	while (blankchar(*l & 0377) != 0 && *l != '\0')
-		l++;
-	if (*l == '\0')
-		return NULL;
-	while (*l != '\0') {
-		n = l;
-		while (whitechar(*l & 0377) == 0 && *l != '\0')
-			l++;
-		if (*l != '\0')
-			*l++ = '\0';
-		if (strcmp(x, n) == 0) {
-			match = 1;
-			break;
-		}
-		while (whitechar(*l & 0377) != 0 && *l != '\0')
-			l++;
-	}
-	if (match != 0) {
-		n = salloc(strlen(type) + 1);
-		strcpy(n, type);
-		return n;
-	}
-	return NULL;
-}
-
-/*
- * Check the given MIME type file for extension ext.
- */
-static char *
-mime_type(char *ext, char const *filename)
-{
-	FILE *f;
-	char *line = NULL;
-	size_t linesize = 0;
-	char *type = NULL;
-
-	if (filename == NULL || (f = Fopen(filename, "r")) == NULL)
-		return NULL;
-	while (fgetline(&line, &linesize, NULL, NULL, f, 0)) {
-		if ((type = mime_tline(ext, line)) != NULL)
-			break;
-	}
-	Fclose(f);
-	if (line)
-		free(line);
-	return type;
-}
-
-/*
- * Return the Content-Type matching the extension of name.
- */
-char *
-mime_filecontent(char *name)
-{
-	char *ext, *content;
-
-	if ((ext = strrchr(name, '.')) == NULL || *++ext == '\0')
-		return NULL;
-	if ((content = mime_type(ext, expand(mimetypes_user))) != NULL)
-		return content;
-	if ((content = mime_type(ext, mimetypes_world)) != NULL)
-		return content;
-	return NULL;
-}
 
 /*
  * Check file contents.
@@ -583,6 +569,25 @@ get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 			*contenttype = "text/plain";
 	}
 	return convert;
+}
+
+char *
+mime_classify_content_type_by_fileext(char const *name)
+{
+	char *content = NULL, *ext;
+	char const *const*bltin_mts;
+
+	if ((ext = strrchr(name, '.')) == NULL || *++ext == '\0')
+		goto jleave;
+	if ((content = _classify_mt(ext, expand(_mt_usr))) != NULL)
+		goto jleave;
+	if ((content = _classify_mt(ext, _mt_sys)) != NULL)
+		goto jleave;
+	for (bltin_mts = _mt_bltin; *bltin_mts != NULL; ++bltin_mts)
+		if ((content = _mt_match_line(ext, *bltin_mts)) != NULL)
+			goto jleave;
+jleave:
+	return (content);
 }
 
 /*

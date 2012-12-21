@@ -248,8 +248,8 @@ attach_file1(struct attachment *ap, FILE *fo, int dosign)
 	if (ap->a_content_type)
 		contenttype = ap->a_content_type;
 	else
-		contenttype = mime_filecontent(basename);
-	if (ap->a_charset)
+		contenttype = mime_classify_content_type_by_fileext(basename);
+	if (ap->a_charset != NULL)
 		charset = ap->a_charset;
 	convert = get_mime_convert(fi, &contenttype, &charset, &isclean,
 			dosign);

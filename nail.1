@@ -639,8 +639,8 @@ thus `\fIset askcc\fR' enables the askcc feature.
 .SS "MIME types"
 For any outgoing attachment,
 \*(UA tries to determine the content type.
-It does this by reading MIME type files
-whose lines have the following syntax:
+It does this by reading MIME type files whose lines have the following
+syntax:
 .nf
 
         \fItype\fB/\fIsubtype      extension \fR[\fIextension \fR.\ .\ .]\fR
@@ -650,6 +650,8 @@ where type/subtype are strings describing the file contents,
 and extension is the part of a filename starting after the last dot.
 Any line not immediately beginning with an ASCII alphabetical character is
 ignored by \*(UA.
+If \*(UA cannot find any MIME type files,
+it will use a restricted set of builtin mappings.
 If there is a match with the extension of the file to attach,
 the given type/subtype pair is used.
 Otherwise, or if the filename has no extension,

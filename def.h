@@ -120,8 +120,16 @@
 #define _CTA_2(TEST,L)	\
 	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
 
+/*
+ * MIME (mime.c)
+ */
+
 /* Is *C* a quoting character (for *quote-fold* compression) */
 #define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+
+/* Locations of mime.types(5) */
+#define MIME_TYPES_USR	"~/.mime.types"
+#define MIME_TYPES_SYS	"/etc/mime.types"
 
 /*
  * Auto-reclaimed string storage (strings.c)

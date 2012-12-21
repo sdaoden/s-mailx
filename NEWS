@@ -1,6 +1,14 @@
 S - n a i l  N e w s
 ====================
 
+- A small set of MIME types (template: ./mime.types) will now become
+  compiled into S-nail(1), and be used as a fallback if there are no
+  ~/.mime.types and/or no /etc/mime.types, or those didn't contain
+  a matching type.  E.g., NetBSD 6 doesn't ship a default database.
+  Also, file extensions will be matched case-insensitively (case of
+  attribute values is not specified afaik?).
+  (Introduce compiled-in mime.types(5).., 2012-12-21)
+
 - The undocumented *charset7* variable was removed.
 
 - The "Message X:" display leader has been changed and will henceforth
