@@ -2879,16 +2879,15 @@ imap_search2(struct mailbox *mp, struct message *m, int count,
 		c |= *cp;
 	if (c & 0200) {
 		cp = gettcharset();
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 		if (asccasecmp(cp, "utf-8")) {
 			iconv_t	it;
-			char	*sp, *nsp, *nspec;
+			char	*nsp, *nspec;
 			size_t	sz, nsz;
 			if ((it = iconv_open_ft("utf-8", cp)) != (iconv_t)-1) {
 				sz = strlen(spec) + 1;
 				nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
-				sp = (char *)spec;
-				if (iconv_ft(it, &sp, &sz, &nsp, &nsz, 0)
+				if (iconv_ft(it, &spec, &sz, &nsp, &nsz, 0)
 						!= (size_t)-1 && sz == 0) {
 					spec = nspec;
 					cp = "utf-8";

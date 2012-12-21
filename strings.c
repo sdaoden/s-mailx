@@ -810,3 +810,133 @@ jleave:
 	}
 	return (haystack);
 }
+
+#ifdef HAVE_ICONV
+static void _ic_toupper(char *dest, char const *src);
+static void _ic_stripdash(char *p);
+
+static void
+_ic_toupper(char *dest, const char *src)
+{
+	do
+		*dest++ = upperconv(*src);
+	while (*src++);
+}
+
+static void
+_ic_stripdash(char *p)
+{
+	char *q = p;
+
+	do
+		if (*(q = p) != '-')
+			q++;
+	while (*p++);
+}
+
+iconv_t
+iconv_open_ft(char const *tocode, char const *fromcode)
+{
+	iconv_t id;
+	char *t, *f;
+
+	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
+		return id;
+
+	/*
+	 * Remove the "iso-" prefixes for Solaris.
+	 */
+	if (ascncasecmp(tocode, "iso-", 4) == 0)
+		tocode += 4;
+	else if (ascncasecmp(tocode, "iso", 3) == 0)
+		tocode += 3;
+	if (ascncasecmp(fromcode, "iso-", 4) == 0)
+		fromcode += 4;
+	else if (ascncasecmp(fromcode, "iso", 3) == 0)
+		fromcode += 3;
+	if (*tocode == '\0' || *fromcode == '\0')
+		return (iconv_t) -1;
+	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
+		return id;
+	/*
+	 * Solaris prefers upper-case charset names. Don't ask...
+	 */
+	t = salloc(strlen(tocode) + 1);
+	_ic_toupper(t, tocode);
+	f = salloc(strlen(fromcode) + 1);
+	_ic_toupper(f, fromcode);
+	if ((id = iconv_open(t, f)) != (iconv_t)-1)
+		return id;
+	/*
+	 * Strip dashes for UnixWare.
+	 */
+	_ic_stripdash(t);
+	_ic_stripdash(f);
+	if ((id = iconv_open(t, f)) != (iconv_t)-1)
+		return id;
+	/*
+	 * Add your vendor's sillynesses here.
+	 */
+
+	/*
+	 * If the encoding names are equal at this point, they
+	 * are just not understood by iconv(), and we cannot
+	 * sensibly use it in any way. We do not perform this
+	 * as an optimization above since iconv() can otherwise
+	 * be used to check the validity of the input even with
+	 * identical encoding names.
+	 */
+	if (strcmp(t, f) == 0)
+		errno = 0;
+	return (iconv_t)-1;
+}
+
+/*
+ * Fault-tolerant iconv() function.
+ * (2012-09-24: export and use it exclusively to isolate prototype problems
+ * (*inb* is 'char const **' except in POSIX) in a single place.
+ * GNU libiconv even allows for configuration time const/non-const..
+ * In the end it's an ugly guess, but we can't do better since make(1) doesn't
+ * support compiler invocations which bail on error, so no -Werror.
+ */
+/* Citrus project? */
+# if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
+  /* DragonFly 3.2.1 is special */
+#  ifdef __DragonFly__
+#   define __INBCAST	(char ** __restrict__)
+#  else
+#   define __INBCAST	(char const **)
+#  endif
+# endif
+# ifndef __INBCAST
+#  define __INBCAST	(char **)
+# endif
+
+size_t
+iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant)
+{
+	size_t sz;
+
+	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft)) ==
+				(size_t)-1 &&
+# undef __INBCAST
+			tolerant && (errno == EILSEQ || errno == EINVAL)) {
+		if (*inbleft > 0) {
+			(*inb)++;
+			(*inbleft)--;
+		} else {
+			**outb = '\0';
+			break;
+		}
+		if (*outbleft > 0) {
+			*(*outb)++ = '?';
+			(*outbleft)--;
+		} else {
+			**outb = '\0';
+			break;
+		}
+	}
+	return (sz);
+}
+#endif /* HAVE_ICONV */

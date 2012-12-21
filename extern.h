@@ -480,11 +480,6 @@ int main(int argc, char *argv[]);
 /* mime.c */
 char const *gettcharset(void);
 char const *need_hdrconv(struct header *hp, enum gfield w);
-#ifdef HAVE_ICONV
-iconv_t iconv_open_ft(const char *tocode, const char *fromcode);
-size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
-		char **outb, size_t *outbleft, int tolerant);
-#endif
 enum mimeenc mime_getenc(char *h);
 int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
@@ -712,6 +707,13 @@ char *		sstrdup(const char *cp SMALLOC_DEBUG_ARGS);
 int		asccasecmp(char const *s1, char const *s2);
 int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
+
+#ifdef HAVE_ICONV
+/* Our iconv(3) wrappers */
+iconv_t iconv_open_ft(char const *tocode, char const *fromcode);
+size_t iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant);
+#endif
 
 /* thread.c */
 int thread(void *vp);
