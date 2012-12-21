@@ -74,7 +74,7 @@
 static sigjmp_buf	hdrjmp;
 
 char const		defcharset[] = "utf-8";
-char const		us_ascii[] = "us-ascii";
+char const		charset7[] = CHARSET7;
 char const *const	weekday_names[7 + 1] = {
 	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
 };

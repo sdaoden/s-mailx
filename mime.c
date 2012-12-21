@@ -146,7 +146,7 @@ delctrl(char *cp, size_t sz)
 static char const *
 getcharset(int isclean)
 {
-	char const *charset;
+	char const *charset = charset7;
 
 	if (isclean & (MIME_CTRLCHAR|MIME_HASNUL))
 		charset = NULL;
@@ -155,15 +155,6 @@ getcharset(int isclean)
 			wantcharset : value("charset");
 		if (charset == NULL)
 			charset = defcharset;
-	} else {
-		/*
-		 * This variable shall remain undocumented because
-		 * only experts should change it.
-		 */
-		charset = value("charset7");
-		if (charset == NULL) {
-			charset = us_ascii;
-		}
 	}
 	return (charset);
 }
@@ -898,18 +889,15 @@ mime_write_tohdr(struct str *in, FILE *fo)
 {
 	char buf[B64_LINESIZE],
 		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
-	char const *charset, *charset7;
+	char const *charset;
 	struct str cin, cout;
-	size_t sz = 0, col = 0, wr, charsetlen, charset7len;
+	size_t sz = 0, col = 0, wr, charsetlen;
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
 	charset = getcharset(MIME_HIGHBIT);
-	if ((charset7 = value("charset7")) == NULL)
-		charset7 = us_ascii;
 	charsetlen = strlen(charset);
-	charset7len = strlen(charset7);
-	charsetlen = smax(charsetlen, charset7len);
+	charsetlen = smax(charsetlen, sizeof(CHARSET7) - 1);
 	upper = in->s + in->l;
 
 	b = 0;

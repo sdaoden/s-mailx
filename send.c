@@ -758,7 +758,7 @@ skip:	switch (ip->m_mimecontent) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if (asccasecmp(tcs, ip->m_charset) &&
-				asccasecmp(us_ascii, ip->m_charset))
+				asccasecmp(CHARSET7, ip->m_charset))
 			iconvd = iconv_open_ft(tcs, ip->m_charset);
 		else
 			iconvd = (iconv_t)-1;
@@ -880,7 +880,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
-		ip->m_charset = us_ascii;
+		ip->m_charset = CHARSET7;
 	ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
 			(struct message *)ip);
 	ip->m_mimeenc = ip->m_ct_transfer_enc ?

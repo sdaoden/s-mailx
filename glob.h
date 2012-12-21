@@ -121,7 +121,9 @@ _E char		*wantcharset;		/* overrides the "charset" variable */
 
 /* These are initialized strings */
 _E char	const	defcharset[];		/* "utf8" */
-_E char	const	us_ascii[];		/* "us-ascii" */
+_E char	const	charset7[];		/* "us-ascii" */
+#undef CHARSET7
+#define CHARSET7	"us-ascii"
 _E char const	*const month_names[12 + 1];
 _E char const	*const weekday_names[7 + 1];
 

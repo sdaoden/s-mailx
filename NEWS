@@ -1,6 +1,8 @@
 S - n a i l  N e w s
 ====================
 
+- The undocumented *charset7* variable was removed.
+
 - The "Message X:" display leader has been changed and will henceforth
   appear like "[Message -- X lines, Y bytes]:".
   These lines can no longer be suppressed by setting the *quiet*
