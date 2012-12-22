@@ -180,10 +180,9 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		return 1;
 	}
 	SMTP_ANSWER(2);
-#ifdef	USE_SSL
-	if (value("smtp-use-starttls") ||
-			value("smtp-use-tls") /* v11.0 compatibility */) {
-		char	*server;
+#ifdef USE_SSL
+	if (! sp->s_use_ssl && value("smtp-use-starttls")) {
+		char *server;
 		if ((cp = strchr(xserver, ':')) != NULL) {
 			server = salloc(cp - xserver + 1);
 			memcpy(server, xserver, cp - xserver);
@@ -198,12 +197,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		if (! debug && ssl_open(server, sp, uhp) != OKAY)
 			return 1;
 	}
-#else	/* !USE_SSL */
-	if (value("smtp-use-starttls") || value("smtp-use-tls")) {
+#else
+	if (value("smtp-use-starttls")) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		return 1;
 	}
-#endif	/* !USE_SSL */
+#endif
 	if (auth != AUTH_NONE) {
 		snprintf(o, sizeof o, "EHLO %s\r\n", nodename(1));
 		SMTP_OUT(o);
