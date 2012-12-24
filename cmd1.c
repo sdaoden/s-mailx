@@ -1088,6 +1088,8 @@ top(void *v)
 		touch(mp);
 		setdot(mp);
 		did_print_dot = 1;
+		if (! empty_last)
+			printf("\n");
 		if (value("quiet") == NULL)
 			printf(catgets(catd, CATSET, 19,
 					"Message %2d:\n"), *ip);
@@ -1099,8 +1101,6 @@ top(void *v)
 			break;
 		}
 		c = mp->m_lines;
-		if (! empty_last)
-			printf("\n");
 		for (lines = 0; lines < c && lines <= topl; lines++) {
 			if (readline(ibuf, &linebuf, &linesize) < 0)
 				break;
