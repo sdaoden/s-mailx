@@ -310,6 +310,7 @@ main(int argc, char *argv[])
 #endif
 			break;
 		case 'd':
+			assign("debug", "");
 			++debug;
 			break;
 		case 'E':
@@ -426,6 +427,7 @@ jIflag:		case 'I':
 		case 'v':
 			/* Be verbose */
 			assign("verbose", "");
+			++verbose;
 			break;
 		case '~':
 			/* Enable tilde escapes even in non-interactive mode */
@@ -524,6 +526,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (debug)
 		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
 			myname, homedir);
+	verbose += (value("verbose") != NULL) + debug;
 	starting = 0;
 
 	if (!rcvmode) {

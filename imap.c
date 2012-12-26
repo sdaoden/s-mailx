@@ -65,8 +65,6 @@
  * IMAP v4r1 client following RFC 2060.
  */
 
-static int	verbose;
-
 #define	IMAP_ANSWER()	{ \
 				if (mp->mb_type != MB_CACHE) { \
 					enum okay ok = OKAY; \
@@ -618,7 +616,6 @@ imap_noop(void)
 	(void)&ok;
 	if (mb.mb_type != MB_IMAP)
 		return STOP;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -1186,7 +1183,6 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	(void)&saveint;
 	(void)&savepipe;
 	server = savestr((char *)xserver);
-	verbose = value("verbose") != NULL;
 	if (newmail) {
 		saveint = safe_signal(SIGINT, SIG_IGN);
 		savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -1457,7 +1453,6 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 	long n = -1;
 	unsigned long	u = 0;
 
-	verbose = value("verbose") != NULL;
 	if (getcache(mp, m, need) == OKAY)
 		return OKAY;
 	if (mp->mb_type == MB_CACHE) {
@@ -1712,7 +1707,6 @@ imap_getheaders(int volatile bot, int top)
 	enum okay ok = STOP;
 	int i, chunk = 256;
 
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type == MB_CACHE)
 		return;
 	if (bot < 1)
@@ -1762,7 +1756,6 @@ imap_exit(struct mailbox *mp)
 	char	o[LINESIZE];
 	FILE	*queuefp = NULL;
 
-	verbose = value("verbose") != NULL;
 	mp->mb_active |= MB_BYE;
 	snprintf(o, sizeof o, "%s LOGOUT\r\n", tag(1));
 	IMAP_OUT(o, MB_COMD, return STOP)
@@ -1798,7 +1791,6 @@ imap_update(struct mailbox *mp)
 	struct message *m;
 	int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
 
-	verbose = value("verbose") != NULL;
 	if (Tflag != NULL) {
 		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
 			Tflag = NULL;
@@ -1929,7 +1921,6 @@ imap_quit(void)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type == MB_CACHE) {
 		imap_update(&mb);
 		return;
@@ -2012,7 +2003,6 @@ imap_unstore(struct message *m, int n, const char *flag)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2054,7 +2044,6 @@ imap_imap(void *vp)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	if (mp->mb_type != MB_IMAP) {
 		printf("Not operating on an IMAP mailbox.\n");
 		return 1;
@@ -2085,7 +2074,6 @@ int
 imap_newmail(int autoinc)
 {
 	if (autoinc && had_exists < 0 && had_expunge < 0) {
-		verbose = value("verbose") != NULL;
 		imaplock = 1;
 		imap_noop();
 		imaplock = 0;
@@ -2342,7 +2330,6 @@ imap_append(const char *xserver, FILE *fp)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	server = savestr((char *)xserver);
 	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &mbx, &pass, &user);
 	imaplock = 1;
@@ -2443,7 +2430,6 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	char	*cp;
 	int	depth;
 
-	verbose = value("verbose") != NULL;
 	depth = (cp = value("imap-list-depth")) != NULL ? atoi(cp) : 2;
 	if (imap_list1(mp, base, &list, &lend, 0) == STOP)
 		return STOP;
@@ -2690,7 +2676,6 @@ imap_copy(struct message *m, int n, const char *name)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2937,7 +2922,6 @@ imap_search1(const char *spec, int f)
 	(void)&ok;
 	if (mb.mb_type != MB_IMAP)
 		return STOP;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2975,7 +2959,6 @@ imap_remove(const char *name)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type != MB_IMAP) {
 		fprintf(stderr, "Refusing to remove \"%s\" "
 				"in disconnected mode.\n", name);
@@ -3031,7 +3014,6 @@ imap_rename(const char *old, const char *new)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type != MB_IMAP) {
 		fprintf(stderr, "Refusing to rename mailboxes "
 				"in disconnected mode.\n");

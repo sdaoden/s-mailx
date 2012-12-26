@@ -71,6 +71,7 @@ _E char		*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
 _E int		debug;			/* Debug flag set */
+_E int		verbose;		/* Verbose flag (implied by *debug*) */
 _E int		Iflag;			/* -I show Newsgroups: field */
 _E int		Rflag;			/* open all folders read-only */
 _E int		rcvmode;		/* True if receiving mail */

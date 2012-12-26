@@ -217,8 +217,6 @@ some space, but leads to higher processor usage when the database is read\n\
 or updated. You can use uncompress(1) on these files if you prefer to store\n\
 them in flat form.\n";
 
-static int	verbose;
-static int	_debug;
 static FILE	*sfp, *nfp;
 static char	*sname, *nname;
 
@@ -938,7 +936,6 @@ insert(int *msgvec, enum entry entry, int incr)
 	int	*ip;
 	unsigned long	u = 0;
 
-	verbose = value("verbose") != NULL;
 	if (getdb(O_RDWR) != OKAY)
 		return 1;
 	switch (entry) {
@@ -1009,8 +1006,6 @@ cclassify(void *v)
 {
 	int	*msgvec = v, *ip;
 
-	verbose = value("verbose") != NULL;
-	_debug = debug || value("debug") != NULL;
 	if (getdb(O_RDONLY) != OKAY)
 		return 1;
 	for (ip = msgvec; *ip; ip++) {
@@ -1090,7 +1085,7 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 		p = getprob(n);
 	} else
 		p = DFL;
-	if (_debug)
+	if (debug)
 		fprintf(stderr, "h=%lu:%lu g=%u b=%u p=%.4g %s\n", h1, h2,
 				n ? get(&n[OF_node_good]) : 0,
 				n ? get(&n[OF_node_bad]) : 0,

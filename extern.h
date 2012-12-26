@@ -748,11 +748,15 @@ char *readtty(char *prefix, char *string);
 int yorn(char *msg);
 
 /* vars.c */
-void assign(const char *name, const char *value);
+
+/* Assign a value to a variable */
+void	assign(char const *name, char const *value);
+
+int	unset_internal(char const *name);
+
 char *vcopy(const char *str);
 char *value(const char *name);
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
 int hash(const char *name);
-int unset_internal(const char *name);
 void remove_group(const char *name);

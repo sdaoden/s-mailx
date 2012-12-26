@@ -79,7 +79,6 @@ typedef int avoid_empty_file_compiler_warning;
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-static int	verbose;
 static int	reset_tio;
 static struct termios	otio;
 static sigjmp_buf	ssljmp;
@@ -168,7 +167,6 @@ ssl_rand_init(void)
 static void 
 ssl_init(void)
 {
-	verbose = value("verbose") != NULL;
 	if (initialized == 0) {
 		SSL_library_init();
 		initialized = 1;

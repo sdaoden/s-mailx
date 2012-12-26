@@ -66,8 +66,6 @@ typedef int avoid_empty_file_compiler_warning;
  * SMTP client and other internet related functions.
  */
 
-static int		verbose;
-static int		_debug;
 static char		*smtpbuf;
 static size_t		smtpbufsize;
 static sigjmp_buf	smtpjmp;
@@ -102,7 +100,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 					"Unexpected EOF on SMTP connection\n"));
 			return -1;
 		}
-		if (verbose || debug || _debug)
+		if (verbose)
 			fputs(smtpbuf, stderr);
 		switch (*smtpbuf) {
 		case '1': ret = 1; break;
@@ -122,7 +120,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
  * Macros for talk_smtp.
  */
 #define	_SMTP_ANSWER(x, ign_eof)	\
-			if (!debug && !_debug) { \
+			if (! debug) { \
 				int	y; \
 				if ((y = read_smtp(sp, x, ign_eof)) != (x) && \
 					(!(ign_eof) || y != -1)) { \
@@ -134,9 +132,9 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 
 #define	SMTP_ANSWER(x)	_SMTP_ANSWER(x, 0)
 
-#define	SMTP_OUT(x)	if (verbose || debug || _debug) \
+#define	SMTP_OUT(x)	if (verbose) \
 				fprintf(stderr, ">>> %s", x); \
-			if (!debug && !_debug) \
+			if (! debug) \
 				swrite(sp, x);
 
 /*
@@ -197,7 +195,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_ANSWER(2);
 		SMTP_OUT("STARTTLS\r\n");
 		SMTP_ANSWER(2);
-		if (!debug && !_debug && ssl_open(server, sp, uhp) != OKAY)
+		if (! debug && ssl_open(server, sp, uhp) != OKAY)
 			return 1;
 	}
 #else	/* !USE_SSL */
@@ -286,12 +284,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 				inbcc = 0;
 		}
 		if (*b == '.') {
-			if (debug || _debug)
+			if (debug)
 				putc('.', stderr);
 			else
 				swrite1(sp, ".", 1, 1);
 		}
-		if (debug || _debug) {
+		if (debug) {
 			fprintf(stderr, ">>> %s", b);
 			continue;
 		}
@@ -340,8 +338,6 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	sighandler_type	saveterm;
 
 	memset(&so, 0, sizeof so);
-	verbose = value("verbose") != NULL;
-	_debug = value("debug") != NULL;
 	saveterm = safe_signal(SIGTERM, SIG_IGN);
 	if (sigsetjmp(smtpjmp, 1)) {
 		safe_signal(SIGTERM, saveterm);
@@ -359,15 +355,15 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 # endif
 	} else
 		use_ssl = 0;
-	if (!debug && !_debug && sopen(server, &so, use_ssl, server,
-				use_ssl ? "smtps" : "smtp", verbose) != OKAY) {
+	if (! debug && sopen(server, &so, use_ssl, server,
+			use_ssl ? "smtps" : "smtp", verbose) != OKAY) {
 		safe_signal(SIGTERM, saveterm);
 		return 1;
 	}
 	so.s_desc = "SMTP";
 	ret = talk_smtp(to, fi, &so, server, server, hp,
 			user, password, skinned);
-	if (!debug && !_debug)
+	if (! debug)
 		sclose(&so);
 	if (smtpbuf) {
 		free(smtpbuf);

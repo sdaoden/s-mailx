@@ -60,8 +60,6 @@ typedef int avoid_empty_file_compiler_warning;
  * POP3 client.
  */
 
-static int	verbose;
-
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
 				return STOP;
 #define	POP3_OUT(x, y)	if (pop3_finish(mp) == STOP) \
@@ -221,7 +219,6 @@ pop3_noop(void)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	pop3lock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -574,7 +571,6 @@ pop3_setfile(const char *server, int newmail, int isedit)
 		user = urlxdec(user);
 	} else
 		user = NULL;
-	verbose = value("verbose") != NULL;
 	if (sopen(sp, &so, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
 				verbose) != OKAY) {
 		return -1;
@@ -656,7 +652,6 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 	(void)&number;
 	(void)&emptyline;
 	(void)&need;
-	verbose = value("verbose") != NULL;
 	if (mp->mb_sock.s_fd < 0) {
 		fprintf(stderr, catgets(catd, CATSET, 219,
 				"POP3 connection already closed.\n"));
@@ -884,7 +879,6 @@ pop3_quit(void)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 
-	verbose = value("verbose") != NULL;
 	if (mb.mb_sock.s_fd < 0) {
 		fprintf(stderr, catgets(catd, CATSET, 219,
 				"POP3 connection already closed.\n"));
