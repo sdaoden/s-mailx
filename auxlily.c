@@ -192,21 +192,33 @@ colalign(const char *cp, int col, int fill)
 	return nb;
 }
 
-void
-try_pager(FILE *fp)
+size_t
+paging_seems_sensible(void)
 {
-	long	lines = 0;
-	int	c;
-	char	*cp;
+	size_t ret = 0;
+	char const *cp;
 
-	fflush(fp);
-	rewind(fp);
-	while ((c = getc(fp)) != EOF)
-		if (c == '\n')
-			lines++;
-	rewind(fp);
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL &&
-			lines > (*cp ? atol(cp) : scrnheight))
+	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL)
+		ret = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
+	return (ret);
+}
+
+void
+page_or_print(FILE *fp, size_t lines)
+{
+	size_t rows;
+	int c;
+
+	fflush_rewind(fp);
+
+	if ((rows = paging_seems_sensible()) != 0 && lines == 0) {
+		while ((c = getc(fp)) != EOF)
+			if (c == '\n')
+				++lines;
+		rewind(fp);
+	}
+
+	if (rows != 0 && lines > rows)
 		run_command(get_pager(), 0, fileno(fp), -1, NULL, NULL, NULL);
 	else
 		while ((c = getc(fp)) != EOF)
@@ -986,6 +998,7 @@ int
 	FILE *fp;
 	char *cp;
 	union ptr p;
+	size_t lines = 0;
 
 	v = (void*)0x1;
 	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
@@ -996,19 +1009,19 @@ int
 	Ftfree(&cp);
 
 	fprintf(fp, "Currently allocated memory chunks:\n");
-	for (p.c = _mlist; p.c != NULL; p.c = p.c->next)
+	for (p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next)
 		fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
 			(void*)(p.c + 1), p.c->size, p.c->file, p.c->line);
 
 	if (debug) {
 		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
-		for (p.c = _mfree; p.c != NULL; p.c = p.c->next)
+		for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next)
 			fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
 				(void*)(p.c + 1), p.c->size, p.c->file,
 				p.c->line);
 	}
 
-	try_pager(fp);
+	page_or_print(fp, lines);
 	Fclose(fp);
 	v = NULL;
 jleave:

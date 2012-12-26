@@ -46,7 +46,15 @@ void touch(struct message *mp);
 int is_dir(char *name);
 int argcount(char **argv);
 char *colalign(const char *cp, int col, int fill);
-void try_pager(FILE *fp);
+
+/* Check wether using a pager is possible/makes sense and is desired by user
+ * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
+size_t	paging_seems_sensible(void);
+
+/* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
+void	page_or_print(FILE *fp, size_t lines);
+#define try_pager(FP)	page_or_print(FP, 0) /* TODO obsolete */
+
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
