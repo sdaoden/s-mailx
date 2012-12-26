@@ -247,7 +247,8 @@ int unread(void *v);
 int seen(void *v);
 int messize(void *v);
 int rexit(void *v);
-int set(void *v);
+/* Set or display a variable value.  Syntax is similar to that of sh */
+int	set(void *v);
 int unset(void *v);
 int group(void *v);
 int ungroup(void *v);

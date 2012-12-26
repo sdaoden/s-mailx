@@ -57,12 +57,14 @@
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);
 
+/* "set" command: show all option settings */
+static int	_set_show_all(void);
+
 static int	bangexp(char **str, size_t *size);
 static void	make_ref_and_cs(struct message *mp, struct header *head);
 static int (*	respond_or_Respond(int c))(int *, int);
 static int	respond_internal(int *msgvec, int recipient_record);
 static char *	fwdedit(char *subj);
-static void	onpipe(int signo);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
 static int	file1(char *name);
@@ -100,6 +102,53 @@ jleave:
 	free(out.s);
 j_leave:
 	return (newsubj);
+}
+
+static int
+_set_show_all(void)
+{
+	int ret = 1;
+	FILE *fp;
+	char *cp, **vacp, **p;
+	struct var *vp;
+	size_t i;
+	union {size_t j; char const *fmt;} u;
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+	for (i = u.j = 0; i < HSHSIZE; ++i)
+		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
+			++u.j;
+	vacp = (char**)salloc(u.j * sizeof(*vacp));
+	for (i = 0, p = vacp; i < HSHSIZE; ++i)
+		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
+			*p++ = vp->v_name;
+	*p = NULL;
+
+	asort(vacp);
+
+	i = (value("bsdcompat") != NULL || value("bsdset") != NULL);
+	u.fmt = i ? "%s\t%s\n" : "%s=\"%s\"\n";
+	for (p = vacp; *p != NULL; ++p) {
+		cp = value(*p);
+		if (cp == NULL)
+			cp = "";
+		if (i || *cp)
+			fprintf(fp, u.fmt, *p, cp);
+		else
+			fprintf(fp, "%s\n", *p);
+	}
+
+	page_or_print(fp, (size_t)(p - vacp));
+	Fclose(fp);
+	ret = 0;
+jleave:
+	return (ret);
 }
 
 /*
@@ -642,101 +691,41 @@ rexit(void *v)
 	/*NOTREACHED*/
 }
 
-static sigjmp_buf	pipejmp;
-
-/*ARGSUSED*/
-static void 
-onpipe(int signo)
-{
-	(void)signo;
-	siglongjmp(pipejmp, 1);
-}
-
-/*
- * Set or display a variable value.  Syntax is similar to that
- * of sh.
- */
 int 
 set(void *v)
 {
-	char **arglist = v;
-	struct var *vp;
-	char *cp, *cp2;
-	char **ap, **p;
-	int errs, h, s;
-	FILE *volatile obuf = stdout;
-	int volatile bsdset = (value("bsdcompat") != NULL ||
-				value("bsdset") != NULL);
+	char **ap = v, *cp, *cp2, *varbuf, c;
+	int errs = 0;
 
-	if (*arglist == NULL) {
-		for (h = 0, s = 1; h < HSHSIZE; h++)
-			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
-				s++;
-		/*LINTED*/
-		ap = (char **)salloc(s * sizeof *ap);
-		for (h = 0, p = ap; h < HSHSIZE; h++)
-			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
-				*p++ = vp->v_name;
-		*p = NULL;
-		asort(ap);
-		if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
-			if (s > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
-				cp = get_pager();
-				if (sigsetjmp(pipejmp, 1))
-					goto endpipe;
-				if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
-					perror(cp);
-					obuf = stdout;
-				} else
-					safe_signal(SIGPIPE, onpipe);
-			}
-		}
-		for (p = ap; *p != NULL; p++) {
-			if (bsdset)
-				fprintf(obuf, "%s\t%s\n", *p, value(*p));
-			else {
-				if ((cp = value(*p)) != NULL && *cp)
-					fprintf(obuf, "%s=\"%s\"\n",
-							*p, value(*p));
-				else
-					fprintf(obuf, "%s\n", *p);
-			}
-		}
-endpipe:
-		if (obuf != stdout) {
-			safe_signal(SIGPIPE, SIG_IGN);
-			Pclose(obuf);
-			safe_signal(SIGPIPE, dflpipe);
-		}
-		return(0);
+	if (*ap == NULL) {
+		_set_show_all();
+		goto jleave;
 	}
-	errs = 0;
-	for (ap = arglist; *ap != NULL; ap++) {
-		char *varbuf;
 
-		varbuf = ac_alloc(strlen(*ap) + 1);
+	for (; *ap != NULL; ++ap) {
 		cp = *ap;
-		cp2 = varbuf;
-		while (*cp != '=' && *cp != '\0')
-			*cp2++ = *cp++;
+		cp2 = varbuf = ac_alloc(strlen(cp) + 1);
+		for (; (c = *cp) != '=' && c != '\0'; ++cp)
+			*cp2++ = c;
 		*cp2 = '\0';
-		if (*cp == '\0')
+		if (c == '\0')
 			cp = "";
 		else
-			cp++;
-		if (strcmp(varbuf, "") == 0) {
-			printf(tr(41, "Non-null variable name required\n"));
-			errs++;
-			ac_free(varbuf);
-			continue;
+			++cp;
+		if (varbuf == cp2) {
+			fprintf(stderr,
+				tr(41, "Non-null variable name required\n"));
+			++errs;
+			goto jnext;
 		}
 		if (varbuf[0] == 'n' && varbuf[1] == 'o')
 			errs += unset_internal(&varbuf[2]);
 		else
 			assign(varbuf, cp);
-		ac_free(varbuf);
+jnext:		ac_free(varbuf);
 	}
-	return(errs);
+jleave:
+	return (errs);
 }
 
 /*
