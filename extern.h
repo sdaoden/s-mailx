@@ -554,6 +554,9 @@ int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 /* Return the Content-Type matching the extension of name */
 char *		mime_classify_content_type_by_fileext(char const *name);
 
+/* "mimetypes" command */
+int		cmimetypes(void *v);
+
 void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char const *name);
 size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,

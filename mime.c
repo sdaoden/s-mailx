@@ -627,6 +627,60 @@ jleave:
 	return (content);
 }
 
+int
+cmimetypes(void *v)
+{
+	char **argv = v;
+	struct mtnode *mtn;
+
+	if (*argv == NULL)
+		goto jlist;
+	if (argv[1] != NULL)
+		goto jerr;
+	if (asccasecmp(*argv, "show") == 0)
+		goto jlist;
+	if (asccasecmp(*argv, "clear") == 0)
+		goto jclear;
+jerr:
+	fprintf(stderr, "Synopsis: mimetypes: %s\n", tr(418,
+		"Either <show> (default) or <clear> the mime.types cache"));
+	v = NULL;
+jleave:
+	return (v == NULL ? STOP : OKAY);
+
+jlist:	{
+	FILE *fp;
+	char *cp;
+	size_t l;
+
+	if (_mt_list == NULL)
+		_mt_init();
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		v = NULL;
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+	for (l = 0, mtn = _mt_list; mtn != NULL; ++l, mtn = mtn->mt_next)
+		fprintf(fp, "%s\t%s\n", mtn->mt_line,
+			mtn->mt_line + mtn->mt_mtlen + 1);
+
+	page_or_print(fp, l);
+	Fclose(fp);
+	}
+	goto jleave;
+
+jclear:
+	while ((mtn = _mt_list) != NULL) {
+		_mt_list = mtn->mt_next;
+		free(mtn);
+	}
+	goto jleave;
+}
+
 /*
  * Convert c to a hexadecimal character string and store it in hex.
  */
