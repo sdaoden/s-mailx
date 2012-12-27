@@ -557,6 +557,8 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
 			pipecmd = getpipecmd(ip->m_ct_type_plain);
+			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd))
+				pipecmd = NULL;
 			/*FALLTHRU*/
 		default:
 			break;
@@ -577,10 +579,15 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if ((pipecmd = getpipecmd(ip->m_ct_type_plain)) != NULL)
+			pipecmd = getpipecmd(ip->m_ct_type_plain);
+			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd)) {
+				pipecmd = NULL;
+				goto jcopyout; /* break; break; :*/
+			}
+			if (pipecmd != NULL)
 				break;
 			if (level == 0 && count) {
-				cp = "[Binary content]\n\n";
+				cp = tr(210, "[Binary content]\n\n");
 				out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX,
 					prefix, prefixlen, stats, NULL);
 			}
@@ -713,9 +720,11 @@ skip:	switch (ip->m_mimecontent) {
 			break;
 		}
 	}
+
 	/*
 	 * Copy out message body
 	 */
+jcopyout:
 	if (doign == allignore && level == 0)	/* skip final blank line */
 		count--;
 	switch (ip->m_mimeenc) {

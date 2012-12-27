@@ -1,6 +1,12 @@
 S - n a i l  N e w s
 ====================
 
+- The special "pipe-" command "@" can be used to force treatment of
+  a MIME message part as plain text (e.g.,
+  'set pipe-application/pgp-signature=@' will henceforth print those
+  signatures inline and as plain text).
+  (Introduce the special "@" "pipe-" command, 2012-12-27)
+
 - The MIME types (as from mime.types(5)) will now be cached.  Before
   all possible sources would have been opened, read and parsed for each
   and every message part that required detection of the MIME

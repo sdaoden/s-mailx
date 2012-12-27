@@ -2859,18 +2859,19 @@ the file should be readable
 by the invoking user only.
 .TP
 .BI pipe- content/subcontent
-When a MIME message part of
-.I content/subcontent
-type is displayed or it is replied to,
-its text is filtered through the value of this variable
-interpreted as a shell command.
-Special care must be taken when using such commands
-as mail viruses may be distributed by this method;
-if messages of type
-.I application/x-sh
-were filtered through the shell, for example,
-a message sender could easily execute arbitrary code
-on the system \*(UA is running on.
+When a MIME message part of \fIcontent/subcontent\fR type is displayed
+or it is replied to,
+its text is filtered through the value of this variable interpreted as
+a shell command.
+The special value \fI@\fR can be used to force interpretation of the
+message part as plain text.
+.IP
+Special care must be taken when using such commands as mail viruses may
+be distributed by this method;
+if messages of type \fIapplication/x-sh\fR were filtered through the
+shell, for example,
+a message sender could easily execute arbitrary code on the system \*(UA
+is running on.
 .TP
 .B pop3-keepalive
 POP3 servers may close the connection

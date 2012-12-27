@@ -396,6 +396,10 @@ struct mimepart {
 	char	*m_filename;		/* attachment filename */
 };
 
+/* For "pipe-" handlers (based on .m_ct_type_plain) */
+#define MIME_CONTENT_PIPECMD_FORCE_TEXT(CMD)	\
+	((CMD) != NULL && (CMD)[0] == '@' && (CMD)[1] == '\0')
+
 struct message {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the message */
