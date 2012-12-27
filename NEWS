@@ -1,6 +1,12 @@
 S - n a i l  N e w s
 ====================
 
+- The MIME types (as from mime.types(5)) will now be cached.  Before
+  all possible sources would have been opened, read and parsed for each
+  and every message part that required detection of the MIME
+  Content-Type:.
+  (Add mime.types(5) cache.., 2012-12-27)
+
 - A small set of MIME types (template: ./mime.types) will now become
   compiled into S-nail(1), and be used as a fallback if there are no
   ~/.mime.types and/or no /etc/mime.types, or those didn't contain

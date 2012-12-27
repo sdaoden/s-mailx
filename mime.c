@@ -53,19 +53,26 @@
  * MIME support functions.
  */
 
+struct mtnode {
+	struct mtnode	*mt_next;
+	size_t		mt_mtlen;	/* Length of MIME type string */
+	char		mt_line[VFIELD_SIZE(8)];
+};
+
 static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-			_mt_usr[] = MIME_TYPES_USR,
-			_mt_sys[] = MIME_TYPES_SYS,
+			*const _mt_sources[] = {
+		MIME_TYPES_USR, MIME_TYPES_SYS, NULL
+	},
 			*const _mt_bltin[] = {
 #include "mime_types.h"
 		NULL
 	};
 
-/* Get a mime.types(5) alike line and look for xtension, return duplicate */
-static char *		_mt_match_line(char const *x, char const *l);
+struct mtnode	*_mt_list;
 
-/* Check the given MIME type file for xtension */
-static char *		_classify_mt(char const *x, char const *file);
+/* Initialize MIME type list */
+static void		_mt_init(void);
+static void		__mt_add_line(char const *line, struct mtnode **tail);
 
 static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
@@ -91,66 +98,77 @@ static void addconv(char **buf, size_t *sz, size_t *pos,
 static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
 		enum tdflags flags, char *prefix, size_t prefixlen);
 
-static char *
-_mt_match_line(char const *x, char const *l)
+static void
+_mt_init(void)
 {
-	int match = 0;
-	char *n = NULL;
-	char const *type;
-	size_t tlen;
-
-	if ((*l & 0x80) || alphachar(*l) == 0)
-		goto jleave;
-
-	type = l;
-	while (blankchar(*l) == 0 && *l != '\0')
-		l++;
-	if (*l == '\0')
-		goto jleave;
-	tlen = (size_t)(l - type);
-
-	while (blankchar(*l) != 0 && *l != '\0')
-		++l;
-	if (*l == '\0')
-		goto jleave;
-
-	while (*l != '\0') {
-		char const *lext = l;
-		while (whitechar(*l) == 0 && *l != '\0')
-			++l;
-		/* Better to do case-insensitive comparison on extension, since
-		 * the RFC doesn't specify case of attribute values? */
-		if (ascncasecmp(x, lext, (size_t)(l - lext)) == 0) {
-			match = 1;
-			break;
-		}
-		while (whitechar(*l) != 0 && *l != '\0')
-			++l;
-	}
-
-	n = match ? savestrbuf(type, tlen) : NULL;
-jleave:
-	return (n);
-}
-
-static char *
-_classify_mt(char const *x, char const *file)
-{
-	FILE *f;
-	char *line = NULL, *type = NULL;
+	struct mtnode *tail = NULL;
+	char *line = NULL;
 	size_t linesize = 0;
+	char const *const*srcs;
+	FILE *fp;
 
-	if (file == NULL || (f = Fopen(file, "r")) == NULL)
-		goto jleave;
-	while (fgetline(&line, &linesize, NULL, NULL, f, 0)) {
-		if ((type = _mt_match_line(x, line)) != NULL)
-			break;
+	for (srcs = _mt_sources; *srcs != NULL; ++srcs) {
+		char const *fn = file_expand(*srcs);
+		if (fn == NULL)
+			continue;
+		if ((fp = Fopen(fn, "r")) == NULL) {
+			/*fprintf(stderr, tr(176, "Cannot open %s\n"), fn);*/
+			continue;
+		}
+		while (fgetline(&line, &linesize, NULL, NULL, fp, 0))
+			__mt_add_line(line, &tail);
+		Fclose(fp);
 	}
-	Fclose(f);
 	if (line != NULL)
 		free(line);
-jleave:
-	return (type);
+
+	for (srcs = _mt_bltin; *srcs != NULL; ++srcs)
+		__mt_add_line(*srcs, &tail);
+}
+
+static void
+__mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
+{
+	char const *type;
+	size_t tlen, elen;
+	struct mtnode *mtn;
+
+	if (! alphachar(*line))
+		goto jleave;
+
+	type = line;
+	while (blankchar(*line) == 0 && *line != '\0')
+		++line;
+	if (*line == '\0')
+		goto jleave;
+	tlen = (size_t)(line - type);
+
+	while (blankchar(*line) != 0 && *line != '\0')
+		++line;
+	if (*line == '\0')
+		goto jleave;
+
+	elen = strlen(line);
+	if (line[elen - 1] == '\n' && line[--elen] == '\0')
+		goto jleave;
+
+	mtn = smalloc(sizeof(struct mtnode) +
+			VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 +
+			elen + 1);
+	if (*tail != NULL)
+		(*tail)->mt_next = mtn;
+	else
+		_mt_list = mtn;
+	*tail = mtn;
+	mtn->mt_next = NULL;
+	mtn->mt_mtlen = tlen;
+	memcpy(mtn->mt_line, type, tlen);
+	mtn->mt_line[tlen] = '\0';
+	++tlen;
+	memcpy(mtn->mt_line + tlen, line, elen);
+	tlen += elen;
+	mtn->mt_line[tlen] = '\0';
+jleave:	;
 }
 
 /*
@@ -574,18 +592,37 @@ get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 char *
 mime_classify_content_type_by_fileext(char const *name)
 {
-	char *content = NULL, *ext;
-	char const *const*bltin_mts;
+	char *content = NULL;
+	struct mtnode *mtn;
+	size_t nlen;
 
-	if ((ext = strrchr(name, '.')) == NULL || *++ext == '\0')
+	if ((name = strrchr(name, '.')) == NULL || *++name == '\0')
 		goto jleave;
-	if ((content = _classify_mt(ext, expand(_mt_usr))) != NULL)
-		goto jleave;
-	if ((content = _classify_mt(ext, _mt_sys)) != NULL)
-		goto jleave;
-	for (bltin_mts = _mt_bltin; *bltin_mts != NULL; ++bltin_mts)
-		if ((content = _mt_match_line(ext, *bltin_mts)) != NULL)
-			goto jleave;
+
+	if (_mt_list == NULL)
+		_mt_init();
+
+	nlen = strlen(name);
+	for (mtn = _mt_list; mtn != NULL; mtn = mtn->mt_next) {
+		char const *ext = mtn->mt_line + mtn->mt_mtlen + 1,
+			*cp = ext;
+		do {
+			while (! whitechar(*cp) && *cp != '\0')
+				++cp;
+			/* Better to do case-insensitive comparison on
+			 * extension, since the RFC doesn't specify case of
+			 * attribute values? */
+			if (nlen == (size_t)(cp - ext) &&
+					ascncasecmp(name, ext, nlen) == 0) {
+				content = savestrbuf(mtn->mt_line,
+						mtn->mt_mtlen);
+				goto jleave;
+			}
+			while (whitechar(*cp) && *cp != '\0')
+				++cp;
+			ext = cp;
+		} while (*ext != '\0');
+	}
 jleave:
 	return (content);
 }
