@@ -76,11 +76,52 @@
 
 #define CBAD		(-15555)
 
+/*
+ * Funs, CC support etc.
+ */
+
+#undef ISPOW2
+#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
+#undef MIN
+#define MIN(A, B)	((A) < (B) ? (A) : (B))
+#undef MAX
+#define MAX(A, B)	((A) < (B) ? (B) : (A))
+#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
+#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
+
+/* Members in constant array */
+#define ARRAY_COUNT(A)	(sizeof(A) / sizeof(A[0]))
+
+/* sizeof() for member fields */
+#define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
+
+/* Casts-away (*NOT* cast-away) */
+#define UNCONST(P)	((void*)(unsigned long)(const void*)(P))
+#define UNVOLATILE(P)	((void*)(unsigned long)(volatile void*)(P))
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+  /* Variable size arrays and structure fields */
+# define VFIELD_SIZE(X)
+# define VFIELD_SIZEOF(T,F)	(0)
+  /* Inline functions */
+# define HAVE_INLINE
+# define INLINE			inline
+# define SINLINE		static inline
+#else
+# define VFIELD_SIZE(X)		(X)
+# define VFIELD_SIZEOF(T,F)	SIZEOF_FIELD(T, F)
+# define INLINE
+# define SINLINE		static
+#endif
+
+/* Compile-Time-Assert */
+#define CTA(TEST)	_CTA_1(TEST, __LINE__)
+#define _CTA_1(TEST,L)  _CTA_2(TEST, L)
+#define _CTA_2(TEST,L)	\
+	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
+
 /* Is *C* a quoting character (for *quote-fold* compression) */
 #define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
-
-#define smin(a, b)	((a) < (b) ? (a) : (b))
-#define smax(a, b)	((a) < (b) ? (b) : (a))
 
 /*
  * Auto-reclaimed string storage as defined in strings.c.
@@ -94,9 +135,8 @@
 #define SHUGE_CUTLIMIT	LINESIZE
 
 /*
- * Translation TODO convert all catgets() that remain to tr()
+ * Translation (init in main.c) TODO convert all catgets() that remain to tr()
  */
-
 #undef tr
 #ifdef HAVE_CATGETS
 # define CATSET		1
@@ -107,7 +147,7 @@
 #endif
 
 /*
- * POD typedefs
+ * Types
  */
 
 typedef unsigned long	ul_it;
@@ -119,6 +159,8 @@ typedef signed long	sl_it;
 typedef signed int	si_it;
 typedef signed short	ss_it;
 typedef signed char	sc_it;
+
+typedef enum {FAL0, TRU1} bool_t;
 
 typedef void (		*sighandler_type)(int);
 
