@@ -295,9 +295,14 @@ int crename(void *v);
 /* cmdtab.c */
 
 /* collect.c */
+
+/* Try to add an attachment for *file*, file_expand()ing it first if *expand*
+ * is set, and return the new head of list *aphead*, or NULL.  The newly
+ * created attachment will be stored in **newap*, if given */
+struct attachment *	add_attachment(struct attachment *aphead, char *file,
+				int expand, struct attachment **newap);
+
 struct attachment *edit_attachments(struct attachment *attach);
-struct attachment *add_attachment(struct attachment *attach, char *file,
-		int expand_file);
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);
 

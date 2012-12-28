@@ -292,7 +292,7 @@ main(int argc, char *argv[])
 			break;
 		case 'a':
 			/* Get attachment filenames */
-			attach = add_attachment(attach, optarg, 0);
+			attach = add_attachment(attach, optarg, 0, NULL);
 			if (attach == NULL) {
 				perror(optarg);
 				exit(1);

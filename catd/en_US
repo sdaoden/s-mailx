@@ -19,7 +19,7 @@ $set 1
 16 variable cmd not set\n
 17 [-- Message #%2d -- %lu lines, %lu bytes --]:\n
 18 No messages to pipe.
-19 --- DELETED ---
+19 ~@: added attachment "%s"\n
 20 No value set for "folder"\n
 21 No messages applicable\n
 22 At EOF\n

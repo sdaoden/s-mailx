@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -52,11 +52,6 @@
 #include "extern.h"
 
 /*
- * Read a message from standard output and return a read file to it
- * or NULL on error.
- */
-
-/*
  * The following hokiness with global variables is so that on
  * receipt of an interrupt signal, the partial message can be salted
  * away on dead.letter.
@@ -80,13 +75,15 @@ static	sigjmp_buf pipejmp;		/* On broken pipe */
 static int	_include_file(FILE *fbuf, char *name, int *linecount,
 			int *charcount, int echo);
 
+/* Append comma-separated list of file names to the end of attachment list */
+static struct attachment * _append_attachments(struct attachment *aphead,
+				char *names);
+
 static void onpipe(int signo);
 static void insertcommand(FILE *fp, char *cmd);
 static void print_collf(FILE *collf, struct header *hp);
 static struct attachment *read_attachment_data(struct attachment *ap,
 		unsigned number);
-static struct attachment *append_attachments(struct attachment *attach,
-		char *names);
 static int exwrite(char *name, FILE *fp, int f);
 static enum okay makeheader(FILE *fp, struct header *hp);
 static void mesedit(int c, struct header *hp);
@@ -135,6 +132,24 @@ jleave:
 	if (fbuf != NULL)
 		Fclose(fbuf);
 	return (ret);
+}
+
+static struct attachment *
+_append_attachments(struct attachment *aphead, char *names)
+{
+	char *cp;
+	struct attachment *xaph, *nap;
+
+	while ((cp = strcomma(&names, 1)) != NULL) {
+		if ((xaph = add_attachment(aphead, cp, 1, &nap)) != NULL) {
+			aphead = xaph;
+			if (value("interactive"))
+				printf(tr(19, "~@: added attachment \"%s\"\n"),
+					nap->a_name);
+		} else
+			perror(cp);
+	}
+	return (aphead);
 }
 
 /*ARGSUSED*/
@@ -255,6 +270,39 @@ endpipe:
 		free(lbuf);
 }
 
+struct attachment *
+add_attachment(struct attachment *aphead, char *file, int expand,
+	struct attachment **newap)
+{
+	struct attachment *nap = NULL, *ap;
+
+	if (expand) {
+		if ((file = file_expand(file)) == NULL)
+			goto jleave;
+	} else
+		file = savestr(file);
+	if (access(file, R_OK) != 0)
+		goto jleave;
+
+	nap = csalloc(1, sizeof *nap);
+	nap->a_name = file;
+	if (aphead != NULL) {
+		for (ap = aphead; ap->a_flink != NULL; ap = ap->a_flink)
+			;
+		ap->a_flink = nap;
+		nap->a_blink = ap;
+	} else {
+		nap->a_blink = NULL;
+		aphead = nap;
+	}
+
+	if (newap != NULL)
+		*newap = nap;
+	nap = aphead;
+jleave:
+	return (nap);
+}
+
 /*
  * Ask the user to edit file names and other data for the given
  * attachment. NULL is returned if no file name is given.
@@ -351,69 +399,6 @@ edit_attachments(struct attachment *attach)
 		if (attach == NULL)
 			attach = nap;
 		attno++;
-	}
-	return attach;
-}
-
-/*
- * Put the given file to the end of the attachment list.
- */
-struct attachment *
-add_attachment(struct attachment *attach, char *file, int expand_file)
-{
-	struct attachment *ap, *nap;
-
-	if (expand_file) {
-		if ((file = file_expand(file)) == NULL)
-			return (NULL);
-	} else
-		file = savestr(file);
-	if (access(file, R_OK) != 0)
-		return NULL;
-	/*LINTED*/
-	nap = csalloc(1, sizeof *nap);
-	nap->a_name = file;
-	if (attach != NULL) {
-		for (ap = attach; ap->a_flink != NULL; ap = ap->a_flink);
-		ap->a_flink = nap;
-		nap->a_blink = ap;
-	} else {
-		nap->a_blink = NULL;
-		attach = nap;
-	}
-	return attach;
-}
-
-/*
- * Append the whitespace-separated file names to the end of
- * the attachment list.
- */
-static struct attachment *
-append_attachments(struct attachment *attach, char *names)
-{
-	char *cp;
-	int c;
-	struct attachment *ap;
-
-	cp = names;
-	while (*cp != '\0' && blankchar(*cp & 0377))
-		cp++;
-	while (*cp != '\0') {
-		names = cp;
-		while (*cp != '\0' && !blankchar(*cp & 0377))
-			cp++;
-		c = *cp;
-		*cp++ = '\0';
-		if (*names != '\0') {
-			if ((ap = add_attachment(attach, names, 1)) == NULL)
-				perror(names);
-			else
-				attach = ap;
-		}
-		if (c == '\0')
-			break;
-		while (*cp != '\0' && blankchar(*cp & 0377))
-			cp++;
 	}
 	return attach;
 }
@@ -717,7 +702,7 @@ jcont:
 		case '@':
 			/* Edit the attachment list */
 			if (linebuf[2] != '\0')
-				hp->h_attach = append_attachments(hp->h_attach,
+				hp->h_attach = _append_attachments(hp->h_attach,
 						&linebuf[2]);
 			else
 				hp->h_attach = edit_attachments(hp->h_attach);
