@@ -83,12 +83,10 @@ mkman.1: nail.1
 		unail = toupper(ENVIRON["_NAIL"]); \
 		lnail = tolower(unail); \
 		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2); \
-		print ".ds UU ", unail; \
-		print ".ds uu ", cnail; \
-		print ".ds UA \\\\fI", cnail, "\\\\fR"; \
-		print ".ds ua \\\\fI", lnail, "\\\\fR"; \
-		print ".ds ba \\\\fB", lnail, "\\\\fR"; \
-		print ".ds UR ", ENVIRON["_SYSCONFRC"]; \
+		print ".ds UU \\\\%", unail; \
+		print ".ds UA \\\\%", cnail; \
+		print ".ds ua \\\\%", lnail; \
+		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"]; \
 		OFS = " "; \
 		next \
 	} \

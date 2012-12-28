@@ -79,9 +79,6 @@ Backward-compatibility breakers
 Non-breakers
 ------------
 
-- [v13:started] Reformat the manual.
-  roff style is fine, but lines should be ~70 characters, not only ~25.
-
 - IDNA decoding.  It may be that this will never be supported.  But
   wouldn't it be nice for at least viewing messages?
 
