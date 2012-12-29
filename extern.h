@@ -541,7 +541,6 @@ int main(int argc, char *argv[]);
 char const *gettcharset(void);
 char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
-int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
@@ -550,6 +549,9 @@ char *		mime_get_boundary(char *h, size_t *len);
 
 int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign);
+
+/* */
+enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
 
 /* Return the Content-Type matching the extension of name */
 char *		mime_classify_content_type_by_fileext(char const *name);

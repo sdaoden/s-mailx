@@ -885,7 +885,6 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	else
 		ip->m_ct_type_plain = "text/plain";
 
-	ip->m_mimecontent = mime_getcontent(ip->m_ct_type_plain);
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
@@ -898,6 +897,8 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 			(ip->m_filename = mime_getparam("filename", cp)) == 0)
 		if (ip->m_ct_type != NULL)
 			ip->m_filename = mime_getparam("name", ip->m_ct_type);
+	ip->m_mimecontent = mime_classify_content_of_part(ip);
+
 	if (pf & PARSE_PARTS) {
 		if (level > 9999) {
 			fprintf(stderr, tr(36,

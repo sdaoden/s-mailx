@@ -2201,34 +2201,16 @@ the sender is removed from the expansion.
 Setting this option causes
 the sender to be included in the group.
 .TP
-.B newmail
-Checks for new mail in the current folder
-each time the prompt is printed.
-For IMAP mailboxes,
-the server is then polled for new mail,
-which may result in delayed operation
-if the connection to the server is slow.
-A
-.I maildir
-folder must be re-scanned to determine
-if new mail has arrived.
-.IP
-If this variable is set to the special value
-.BR nopoll ,
-an IMAP server is not actively asked for new mail,
-but new mail may still be detected and announced
-with any other IMAP command that is sent to the server.
-A
-.I maildir
-folder is not scanned then.
-.IP
-In any case,
-the IMAP server may send notifications about messages
-that have been deleted on the server
-by another process or client.
-In this case, `Expunged \fIn\fR messages' is printed
-regardless of this variable,
-and message numbers may have changed.
+.B mime-counter-evidence
+Normally the `Content-Type:' field is used to decide how to treat
+a messages MIME part.
+Some MUAs however don't use
+.Xr mime.types 5
+or a similar mechanism to correctly classify content,
+but simply specify `application/octet-stream',
+even for plain text attachments like `text/diff'.
+If this variable is set then \*(UA will use the file extension of
+attachments to classify such MIME message parts, if possible.
 .TP
 .B noheader
 Setting the option noheader is the same

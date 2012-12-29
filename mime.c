@@ -356,37 +356,6 @@ mime_getenc(char *p)
 }
 
 /*
- * Get the mime content from a Content-Type header field, other parameters
- * already stripped.
- */
-int 
-mime_getcontent(char *s)
-{
-	if (strchr(s, '/') == NULL)	/* for compatibility with non-MIME */
-		return MIME_TEXT;
-	if (asccasecmp(s, "text/plain") == 0)
-		return MIME_TEXT_PLAIN;
-	if (asccasecmp(s, "text/html") == 0)
-		return MIME_TEXT_HTML;
-	if (ascncasecmp(s, "text/", 5) == 0)
-		return MIME_TEXT;
-	if (asccasecmp(s, "message/rfc822") == 0)
-		return MIME_822;
-	if (ascncasecmp(s, "message/", 8) == 0)
-		return MIME_MESSAGE;
-	if (asccasecmp(s, "multipart/alternative") == 0)
-		return MIME_ALTERNATIVE;
-	if (asccasecmp(s, "multipart/digest") == 0)
-		return MIME_DIGEST;
-	if (ascncasecmp(s, "multipart/", 10) == 0)
-		return MIME_MULTI;
-	if (asccasecmp(s, "application/x-pkcs7-mime") == 0 ||
-				asccasecmp(s, "application/pkcs7-mime") == 0)
-		return MIME_PKCS7;
-	return MIME_UNKNOWN;
-}
-
-/*
  * Get a mime style parameter from a header line.
  */
 char *
@@ -587,6 +556,49 @@ get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 			*contenttype = "text/plain";
 	}
 	return convert;
+}
+
+enum mimecontent
+mime_classify_content_of_part(struct mimepart const *mip)
+{
+	enum mimecontent mc = MIME_UNKNOWN;
+	char const *ct = mip->m_ct_type_plain;
+
+	if (asccasecmp(ct, "application/octet-stream") == 0 &&
+			mip->m_filename != NULL &&
+			value("mime-counter-evidence")) {
+		ct = mime_classify_content_type_by_fileext(mip->m_filename);
+		if (ct == NULL)
+			/* TODO how about let *mime-counter-evidence* have
+			 * TODO a value, and if set, saving the attachment in
+			 * TODO a temporary file that mime_classify_file() can
+			 * TODO examine, and using MIME_TEXT if that gives us
+			 * TODO something that seems to be human readable?! */
+			goto jleave;
+	}
+	if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
+		mc = MIME_TEXT;
+	else if (asccasecmp(ct, "text/plain") == 0)
+		mc = MIME_TEXT_PLAIN;
+	else if (asccasecmp(ct, "text/html") == 0)
+		mc = MIME_TEXT_HTML;
+	else if (ascncasecmp(ct, "text/", 5) == 0)
+		mc = MIME_TEXT;
+	else if (asccasecmp(ct, "message/rfc822") == 0)
+		mc = MIME_822;
+	else if (ascncasecmp(ct, "message/", 8) == 0)
+		mc = MIME_MESSAGE;
+	else if (asccasecmp(ct, "multipart/alternative") == 0)
+		mc = MIME_ALTERNATIVE;
+	else if (asccasecmp(ct, "multipart/digest") == 0)
+		mc = MIME_DIGEST;
+	else if (ascncasecmp(ct, "multipart/", 10) == 0)
+		mc = MIME_MULTI;
+	else if (asccasecmp(ct, "application/x-pkcs7-mime") == 0 ||
+			asccasecmp(ct, "application/pkcs7-mime") == 0)
+		mc = MIME_PKCS7;
+jleave:
+	return (mc);
 }
 
 char *
