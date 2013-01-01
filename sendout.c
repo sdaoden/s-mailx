@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -53,16 +53,24 @@
  * Mail to others.
  */
 
+#define	INFIX_BUF	\
+	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
+
 static char	*send_boundary;
 
-static enum okay	putname(char const *line, enum gfield w,
+static enum okay	_putname(char const *line, enum gfield w,
 				enum sendaction action, int *gotcha,
 				char *prefix, FILE *fo, struct name **xp);
 
-static char *getencoding(enum conversion convert);
+/* Get an encoding flag based on the given string */
+static char const *	_get_encoding(const enum conversion convert);
+
+/* Write an attachment to the file buffer, converting to MIME */
+static int		_attach_file1(struct attachment *ap, FILE *fo,
+				int dosign);
+
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
-static int attach_file1(struct attachment *ap, FILE *fo, int dosign);
 static int attach_file(struct attachment *ap, FILE *fo, int dosign);
 static int attach_message(struct attachment *ap, FILE *fo, int dosign);
 static int make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
@@ -80,7 +88,7 @@ static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
 
 static enum okay
-putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
+_putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
 	char *prefix, FILE *fo, struct name **xp)
 {
 	enum okay ret = STOP;
@@ -99,6 +107,134 @@ putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
 	return (ret);
 }
 
+static char const *
+_get_encoding(enum conversion const convert)
+{
+	char const *ret;
+	switch (convert) {
+	case CONV_7BIT:		ret = "7bit";			break;
+	case CONV_8BIT:		ret = "8bit";			break;
+	case CONV_TOQP:		ret = "quoted-printable";	break;
+	case CONV_TOB64:	ret = "base64";			break;
+	default:		ret = NULL;			break;
+	}
+	return (ret);
+}
+
+static int
+_attach_file1(struct attachment *ap, FILE *fo, int dosign)
+{
+#ifdef HAVE_ICONV
+	char const *tcs;
+#endif
+	char const *charset = NULL;
+	char *contenttype = NULL, *basename, *buf;
+	enum conversion convert = CONV_TOB64;
+	int lastc = EOF, err = 0;
+	FILE *fi;
+	enum mimeclean isclean;
+	size_t sz, bufsize, count;
+
+	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
+		perror(ap->a_name);
+		err = -1;
+		goto jleave;
+	}
+	if ((basename = strrchr(ap->a_name, '/')) == NULL)
+		basename = ap->a_name;
+	else
+		++basename;
+
+	if (ap->a_content_type != NULL)
+		contenttype = ap->a_content_type;
+	else
+		contenttype = mime_classify_content_type_by_fileext(basename);
+	if (ap->a_charset != NULL)
+		charset = ap->a_charset;
+
+	convert = get_mime_convert(fi, &contenttype, &charset, &isclean,
+			dosign);
+
+	fprintf(fo, "\n--%s\nContent-Type: %s", send_boundary, contenttype);
+	if (charset == NULL)
+		putc('\n', fo);
+	else
+		fprintf(fo, ";\n charset=%s\n", charset);
+	if (ap->a_content_disposition == NULL)
+		ap->a_content_disposition = "attachment";
+	fprintf(fo, "Content-Transfer-Encoding: %s\n"
+		"Content-Disposition: %s;\n filename=\"",
+		_get_encoding(convert), ap->a_content_disposition);
+	mime_write(basename, strlen(basename), fo,
+		CONV_TOHDR, TD_NONE, NULL, (size_t)0, NULL);
+	fwrite("\"\n", sizeof (char), 2, fo);
+	if (ap->a_content_id)
+		fprintf(fo, "Content-ID: %s\n", ap->a_content_id);
+	if (ap->a_content_description)
+		fprintf(fo, "Content-Description: %s\n",
+			ap->a_content_description);
+	putc('\n', fo);
+
+#ifdef HAVE_ICONV
+	if (iconvd != (iconv_t)-1) {
+		iconv_close(iconvd);
+		iconvd = (iconv_t)-1;
+	}
+	tcs = gettcharset();
+	if ((isclean & (MIME_HASNUL|MIME_CTRLCHAR|MIME_HIGHBIT)) ==
+			MIME_HIGHBIT && charset != NULL &&
+			ascncasecmp(contenttype, "text/", 5) == 0) {
+		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1 &&
+				errno != 0) {
+			if (errno == EINVAL)
+				fprintf(stderr, tr(179,
+					"Cannot convert from %s to %s\n"),
+					tcs, charset);
+			else
+				perror("iconv_open");
+			Fclose(fi);
+			err = -1;
+			goto jleave;
+		}
+	}
+#endif /* HAVE_ICONV */
+	buf = smalloc(bufsize = INFIX_BUF);
+	if (convert == CONV_TOQP
+#ifdef HAVE_ICONV
+			|| iconvd != (iconv_t)-1
+#endif
+			) {
+		fflush(fi);
+		count = fsize(fi);
+	}
+	for (;;) {
+		if (convert == CONV_TOQP
+#ifdef HAVE_ICONV
+				|| iconvd != (iconv_t)-1
+#endif
+				) {
+			if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
+					== NULL)
+				break;
+		} else {
+			if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
+				break;
+		}
+		lastc = buf[sz-1];
+		if (mime_write(buf, sz, fo, convert, TD_ICONV,
+				NULL, (size_t)0, NULL) < 0)
+			err = -1;
+	}
+	if (convert == CONV_TOQP && lastc != '\n')
+		fwrite("=\n", 1, 2, fo);
+	if (ferror(fi))
+		err = -1;
+	Fclose(fi);
+	free(buf);
+jleave:
+	return (err);
+}
+
 /*
  * Generate a boundary for MIME multipart messages.
  */
@@ -112,28 +248,6 @@ makeboundary(void)
 	snprintf(bound, sizeof bound, "=_%lx.%s", (long)now, getrandstring(48));
 	send_boundary = bound;
 	return send_boundary;
-}
-
-/*
- * Get an encoding flag based on the given string.
- */
-static char *
-getencoding(enum conversion convert)
-{
-	switch (convert) {
-	case CONV_7BIT:
-		return "7bit";
-	case CONV_8BIT:
-		return "8bit";
-	case CONV_TOQP:
-		return "quoted-printable";
-	case CONV_TOB64:
-		return "base64";
-	default:
-		break;
-	}
-	/*NOTREACHED*/
-	return NULL;
 }
 
 /*
@@ -170,13 +284,6 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 		}
 	return (tolist);
 }
-
-
-/*
- * Do not change, you get incorrect base64 encodings else!
- */
-#define	INFIX_BUF	\
-	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
 /*
  * Put the signature file at fo.
@@ -218,124 +325,6 @@ put_signature(FILE *fo, int convert)
 }
 
 /*
- * Write an attachment to the file buffer, converting to MIME.
- */
-static int
-attach_file1(struct attachment *ap, FILE *fo, int dosign)
-{
-	FILE *fi;
-	char const *charset = NULL;
-	char *contenttype = NULL, *basename;
-	enum conversion convert = CONV_TOB64;
-	int err = 0;
-	enum mimeclean isclean;
-	size_t sz;
-	char *buf;
-	size_t bufsize, count;
-	int	lastc = EOF;
-#ifdef HAVE_ICONV
-	char const *tcs;
-#endif
-
-	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
-		perror(ap->a_name);
-		return -1;
-	}
-	if ((basename = strrchr(ap->a_name, '/')) == NULL)
-		basename = ap->a_name;
-	else
-		basename++;
-	if (ap->a_content_type)
-		contenttype = ap->a_content_type;
-	else
-		contenttype = mime_classify_content_type_by_fileext(basename);
-	if (ap->a_charset != NULL)
-		charset = ap->a_charset;
-	convert = get_mime_convert(fi, &contenttype, &charset, &isclean,
-			dosign);
-	fprintf(fo,
-		"\n--%s\n"
-		"Content-Type: %s",
-		send_boundary, contenttype);
-	if (charset == NULL)
-		putc('\n', fo);
-	else
-		fprintf(fo, ";\n charset=%s\n", charset);
-	if (ap->a_content_disposition == NULL)
-		ap->a_content_disposition = "attachment";
-	fprintf(fo, "Content-Transfer-Encoding: %s\n"
-		"Content-Disposition: %s;\n"
-		" filename=\"",
-		getencoding(convert),
-		ap->a_content_disposition);
-	mime_write(basename, strlen(basename), fo,
-			CONV_TOHDR, TD_NONE, NULL, (size_t)0, NULL);
-	fwrite("\"\n", sizeof (char), 2, fo);
-	if (ap->a_content_id)
-		fprintf(fo, "Content-ID: %s\n", ap->a_content_id);
-	if (ap->a_content_description)
-		fprintf(fo, "Content-Description: %s\n",
-				ap->a_content_description);
-	putc('\n', fo);
-#ifdef	HAVE_ICONV
-	if (iconvd != (iconv_t)-1) {
-		iconv_close(iconvd);
-		iconvd = (iconv_t)-1;
-	}
-	tcs = gettcharset();
-	if ((isclean & (MIME_HASNUL|MIME_CTRLCHAR)) == 0 &&
-			ascncasecmp(contenttype, "text/", 5) == 0 &&
-			isclean & MIME_HIGHBIT &&
-			charset != NULL) {
-		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1 &&
-				errno != 0) {
-			if (errno == EINVAL)
-				fprintf(stderr, catgets(catd, CATSET, 179,
-			"Cannot convert from %s to %s\n"), tcs, charset);
-			else
-				perror("iconv_open");
-			Fclose(fi);
-			return -1;
-		}
-	}
-#endif	/* HAVE_ICONV */
-	buf = smalloc(bufsize = INFIX_BUF);
-	if (convert == CONV_TOQP
-#ifdef	HAVE_ICONV
-			|| iconvd != (iconv_t)-1
-#endif
-			) {
-		fflush(fi);
-		count = fsize(fi);
-	}
-	for (;;) {
-		if (convert == CONV_TOQP
-#ifdef	HAVE_ICONV
-				|| iconvd != (iconv_t)-1
-#endif
-				) {
-			if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
-					== NULL)
-				break;
-		} else {
-			if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
-				break;
-		}
-		lastc = buf[sz-1];
-		if (mime_write(buf, sz, fo, convert, TD_ICONV,
-				NULL, (size_t)0, NULL) < 0)
-			err = -1;
-	}
-	if (convert == CONV_TOQP && lastc != '\n')
-		fwrite("=\n", 1, 2, fo);
-	if (ferror(fi))
-		err = -1;
-	Fclose(fi);
-	free(buf);
-	return err;
-}
-
-/*
  * Try out different character set conversions to attach a file.
  */
 static int
@@ -345,12 +334,12 @@ attach_file(struct attachment *ap, FILE *fo, int dosign)
 	size_t	offs = ftell(fo);
 
 	if (ap->a_charset || (charsets = value("sendcharsets")) == NULL)
-		return attach_file1(ap, fo, dosign);
+		return _attach_file1(ap, fo, dosign);
 	_wantcharset = wantcharset;
 	wantcharset = savestr(charsets);
 loop:	if ((ncs = strchr(wantcharset, ',')) != NULL)
 		*ncs++ = '\0';
-try:	if (attach_file1(ap, fo, dosign) != 0) {
+try:	if (_attach_file1(ap, fo, dosign) != 0) {
 		if (errno == EILSEQ || errno == EINVAL) {
 			if (ncs && *ncs) {
 				wantcharset = ncs;
@@ -413,7 +402,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 			fprintf(fo, "; charset=%s", charset);
 		fprintf(fo, "\nContent-Transfer-Encoding: %s\n"
 				"Content-Disposition: inline\n\n",
-				getencoding(convert));
+				_get_encoding(convert));
 		buf = smalloc(bufsize = INFIX_BUF);
 		if (convert == CONV_TOQP
 #ifdef	HAVE_ICONV
@@ -495,8 +484,8 @@ infix(struct header *hp, FILE *fi, int dosign)
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
-	convert = get_mime_convert(fi, &contenttype, &charset,
-			&isclean, dosign);
+	convert = get_mime_convert(fi, &contenttype, &charset, &isclean,
+			dosign);
 #ifdef HAVE_ICONV
 	tcs = gettcharset();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
@@ -1297,7 +1286,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			gotcha++;
 			fromfield = hp->h_from;
 		} else if ((addr = myaddrs(hp)) != NULL)
-			if (putname(addr, w, action, &gotcha, "From:", fo,
+			if (_putname(addr, w, action, &gotcha, "From:", fo,
 						&fromfield))
 				return 1;
 		if (((addr = hp->h_organization) != NULL ||
@@ -1321,7 +1310,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				return 1;
 			gotcha++;
 		} else if ((addr = value("replyto")) != NULL)
-			if (putname(addr, w, action, &gotcha, "Reply-To:", fo,
+			if (_putname(addr, w, action, &gotcha, "Reply-To:", fo,
 						NULL))
 				return 1;
 		if (hp->h_sender != NULL) {
@@ -1332,7 +1321,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			gotcha++;
 			senderfield = hp->h_sender;
 		} else if ((addr = value("sender")) != NULL)
-			if (putname(addr, w, action, &gotcha, "Sender:", fo,
+			if (_putname(addr, w, action, &gotcha, "Sender:", fo,
 						&senderfield))
 				return 1;
 		if (check_from_and_sender(fromfield, senderfield))
@@ -1399,7 +1388,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			if (charset)
 				fprintf(fo, "; charset=%s", charset);
 			fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
-					getencoding(convert));
+					_get_encoding(convert));
 		}
 	}
 	if (gotcha && w & GNL)
@@ -1487,12 +1476,12 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 		fputs("Resent-", fo);
 		mkdate(fo, "Date");
 		if ((cp = myaddrs(NULL)) != NULL) {
-			if (putname(cp, GCOMMA, SEND_MBOX, NULL,
+			if (_putname(cp, GCOMMA, SEND_MBOX, NULL,
 					"Resent-From:", fo, &fromfield))
 				return 1;
 		}
 		if ((cp = value("sender")) != NULL) {
-			if (putname(cp, GCOMMA, SEND_MBOX, NULL,
+			if (_putname(cp, GCOMMA, SEND_MBOX, NULL,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
