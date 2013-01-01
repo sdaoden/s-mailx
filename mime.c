@@ -284,38 +284,39 @@ name_highbit(struct name *np)
 char const *
 need_hdrconv(struct header *hp, enum gfield w)
 {
+	char const *ret = NULL;
+
 	if (w & GIDENT) {
-		if (hp->h_from) {
+		if (hp->h_from != NULL) {
 			if (name_highbit(hp->h_from))
-				goto needs;
-		} else if (has_highbit(myaddrs(hp)))
-			goto needs;
+				goto jneeds;
+		} else if (has_highbit(myaddrs(NULL)))
+			goto jneeds;
 		if (hp->h_organization) {
 			if (has_highbit(hp->h_organization))
-				goto needs;
+				goto jneeds;
 		} else if (has_highbit(value("ORGANIZATION")))
-			goto needs;
+			goto jneeds;
 		if (hp->h_replyto) {
 			if (name_highbit(hp->h_replyto))
-				goto needs;
+				goto jneeds;
 		} else if (has_highbit(value("replyto")))
-			goto needs;
+			goto jneeds;
 		if (hp->h_sender) {
 			if (name_highbit(hp->h_sender))
-				goto needs;
+				goto jneeds;
 		} else if (has_highbit(value("sender")))
-			goto needs;
+			goto jneeds;
 	}
 	if (w & GTO && name_highbit(hp->h_to))
-		goto needs;
+		goto jneeds;
 	if (w & GCC && name_highbit(hp->h_cc))
-		goto needs;
+		goto jneeds;
 	if (w & GBCC && name_highbit(hp->h_bcc))
-		goto needs;
+		goto jneeds;
 	if (w & GSUBJECT && has_highbit(hp->h_subject))
-		goto needs;
-	return NULL;
-needs:	return getcharset(MIME_HIGHBIT);
+jneeds:		ret = getcharset(MIME_HIGHBIT);
+	return (ret);
 }
 
 
