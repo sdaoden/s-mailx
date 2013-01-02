@@ -1,6 +1,23 @@
 S - n a i l  N e w s
 ====================
 
+- An attempt was made to improve MIME Content-XY: detection.
+  It should be more RFC compliant, and just overall better :);
+  a simple one-pass classifier cannot match libmagic(3), of course.
+
+  This changeset removes support of the long obsoleted (4fee1ef,
+  2005-01-06) *charset* variable, as well as for the
+  *maximum-unencoded-line-length* variable that has been introduced in
+  (48a652bd, 2005-07-26).
+
+  For S-nail v14.0 it'll be no longer necessary to do
+
+    $ tr -d '\015' < input | s-nail ...
+
+  to transport files which use the $-DOS (terminal) newline (sequence).
+  We still depend upon *sendcharsets* for a while, though.
+  (Rewrite file-content classification.., 2013-01-02)
+
 - The new *mime-counter-evidence* variable can be used to force
   a classification of non-text MIME parts (attachments) by their
   filename, i.e., a "reverse-classification" just as would be performed

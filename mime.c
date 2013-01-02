@@ -53,6 +53,9 @@
  * MIME support functions.
  */
 
+#define _CHARSET()	\
+	((wantcharset && wantcharset != (char *)-1) ? wantcharset : defcharset)
+
 struct mtnode {
 	struct mtnode	*mt_next;
 	size_t		mt_mtlen;	/* Length of MIME type string */
@@ -81,10 +84,8 @@ static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
 static int mustquote_inhdrq(int c);
 static size_t	delctrl(char *cp, size_t sz);
-static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
-static enum mimeclean mime_isclean(FILE *f);
 static char *ctohex(unsigned char c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
@@ -201,6 +202,8 @@ _conversion_by_encoding(void)
 static int 
 mustquote_body(int c)
 {
+	/* FIXME use lookup table, this encodes too much, possibly worse */
+	/* FIXME encodes \t, does NOT encode \x0D\n as \x0D\x0A[=] */
 	if (c != '\n' && (c < 040 || c == '=' || c >= 0177))
 		return 1;
 	return 0;
@@ -250,25 +253,6 @@ delctrl(char *cp, size_t sz)
 }
 
 /*
- * Get the character set dependant on the conversion.
- */
-static char const *
-getcharset(int isclean)
-{
-	char const *charset = charset7;
-
-	if (isclean & (MIME_CTRLCHAR|MIME_HASNUL))
-		charset = NULL;
-	else if (isclean & MIME_HIGHBIT) {
-		charset = (wantcharset && wantcharset != (char *)-1) ?
-			wantcharset : value("charset");
-		if (charset == NULL)
-			charset = defcharset;
-	}
-	return (charset);
-}
-
-/*
  * Get the setting of the terminal's character set.
  */
 char const *
@@ -277,8 +261,7 @@ gettcharset(void)
 	char const *t;
 
 	if ((t = value("ttycharset")) == NULL)
-		if ((t = value("charset")) == NULL)
-			t = defcharset;
+		t = defcharset;
 	return (t);
 }
 
@@ -339,7 +322,7 @@ need_hdrconv(struct header *hp, enum gfield w)
 	if (w & GBCC && name_highbit(hp->h_bcc))
 		goto jneeds;
 	if (w & GSUBJECT && has_highbit(hp->h_subject))
-jneeds:		ret = getcharset(MIME_HIGHBIT);
+jneeds:		ret = _CHARSET();
 	return (ret);
 }
 
@@ -464,103 +447,168 @@ mime_get_boundary(char *h, size_t *len)
 	return (q);
 }
 
-/*
- * Check file contents.
- */
-static enum mimeclean
-mime_isclean(FILE *f)
-{
-	long initial_pos;
-	unsigned curlen = 1, maxlen = 0, limit = 950;
-	enum mimeclean isclean = 0;
-	char	*cp;
-	int c = EOF, lastc;
-
-	initial_pos = ftell(f);
-	do {
-		lastc = c;
-		c = getc(f);
-		curlen++;
-		if (c == '\n' || c == EOF) {
-			/*
-			 * RFC 821 imposes a maximum line length of 1000
-			 * characters including the terminating CRLF
-			 * sequence. The configurable limit must not
-			 * exceed that including a safety zone.
-			 */
-			if (curlen > maxlen)
-				maxlen = curlen;
-			curlen = 1;
-		} else if (c & 0200) {
-			isclean |= MIME_HIGHBIT;
-		} else if (c == '\0') {
-			isclean |= MIME_HASNUL;
-			break;
-		} else if ((c < 040 && (c != '\t' && c != '\f')) || c == 0177) {
-			isclean |= MIME_CTRLCHAR;
-		}
-	} while (c != EOF);
-	if (lastc != '\n')
-		isclean |= MIME_NOTERMNL;
-	clearerr(f);
-	fseek(f, initial_pos, SEEK_SET);
-	if ((cp = value("maximum-unencoded-line-length")) != NULL)
-		limit = (unsigned)atoi(cp);
-	if (limit > 950)
-		limit = 950;
-	if (maxlen > limit)
-		isclean |= MIME_LONGLINES;
-	return isclean;
-}
-
-/*TODO Dobson: be037047c, contenttype==NULL||"text"==NULL control flow! */
 int
-mime_classify_file(FILE *fp, char **contenttype, char const **charset,
-		enum mimeclean *isclean, int dosign)
+mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
+	int *do_iconv)
 {
-	enum conversion convert = _conversion_by_encoding();
+	/* TODO In the future the handling of charsets is likely to change.
+	 * TODO If no *sendcharsets* are set then for text parts LC_ALL /
+	 * TODO *ttycharset* is simply passed through (ditto attachments unless
+	 * TODO specific charsets have been set in per-attachment level), i.e.,
+	 * TODO no conversion at all.
+	 * TODO If *sendcharsets* is set, then the input is converted to the
+	 * TODO desired sendcharset, and once the charset that can handle the
+	 * TODO input has been found the MIME classification takes place *on
+	 * TODO that converted data* and once.
+	 * TODO Until then the MIME classification takes place on the input
+	 * TODO data, i.e., before actual charset conversion, though the MIME
+	 * TODO classifier may adjust the output character set, though on false
+	 * TODO assumptions that may not always work for the desired output
+	 * TODO charset (???).
+	 * TODO The new approach sounds more sane to me whatsoever.
+	 * TODO It has the side effect that iconv() is applied to the text even
+	 * TODO if that is 7bit clean US-ASCII/compatible, however, *iff*
+	 * TODO *sendcharsets* is set.
+	 * TODO drop *charset* and *do_iconv* parameters, then; need to report
+	 * TODO a "classify as binary charset", though.
+	 * TODO And note that even the new approach will not allow RFC 2045
+	 * TODO compatible base64 \n -> \r\n conversion even if we would make
+	 * TODO a difference for _ISTXT, because who knows wether we deal with
+	 * TODO multibyte encoded data?  We would need to be multibyte-aware!!
+	 * TODO BTW., after the MIME/send layer rewrite we could use a MIME
+	 * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
+	 * TODO and report that state to the outer world */
+#define F_		"From "
+#define F_SIZEOF	(sizeof(F_) - 1)
 
-	*isclean = _classify_mimeclean(fp, convert, *contenttype == NULL);
+	char f_buf[F_SIZEOF], *f_p = f_buf;
+	enum {	_CLEAN		= 0,	/* Plain RFC 2822 message */
+		_NCTT		= 1<<0,	/* *contenttype == NULL */
+		_ISTXT		= 1<<1,	/* *contenttype =~ text/ */
+		_HIGHBIT	= 1<<2,	/* Not 7bit clean */
+		_LONGLINES	= 1<<3,	/* MIME_LINELEN_LIMIT exceed. */
+		_CTRLCHAR	= 1<<4,	/* Control characters seen */
+		_HASNUL		= 1<<5,	/* Contains \0 characters */
+		_NOTERMNL	= 1<<6,	/* Lacks a final newline */
+		_TRAILWS	= 1<<7,	/* Blanks before NL */
+		_FROM_		= 1<<8	/* ^From_ seen */
+	} ctt = _CLEAN;
+	enum conversion convert;
+	sl_it curlen;
+	int c, lastc;
 
+	assert(ftell(fp) == 0x0l);
 
-	if ((*isclean & MIME_HASNUL) ||
-			(*contenttype &&
-			ascncasecmp(*contenttype, "text/", 5))) {
-		convert = CONV_TOB64;
-		if (*contenttype == NULL ||
-				ascncasecmp(*contenttype, "text/", 5) == 0)
-			*contenttype = "application/octet-stream";
-		*charset = NULL;
-	} else if (*isclean & (MIME_LONGLINES|MIME_CTRLCHAR|MIME_NOTERMNL) ||
-			dosign)
-		convert = CONV_TOQP;
-	else if (*isclean & MIME_HIGHBIT)
-		convert = _conversion_by_encoding();
-	else
-		convert = CONV_7BIT;
+	*do_iconv = 0;
 
-	if (*contenttype == NULL ||
-			ascncasecmp(*contenttype, "text/", 5) == 0) {
-		*charset = getcharset(*isclean);
-		if (wantcharset == (char *)-1) {
-			*contenttype = "application/octet-stream";
-			*charset = NULL;
+	if (*contenttype == NULL)
+		ctt = _NCTT;
+	else if (ascncasecmp(*contenttype, "text/", 5) == 0)
+		ctt = _ISTXT;
+	convert = _conversion_by_encoding();
+
+	if (fsize(fp) == 0)
+		goto j7bit;
+
+	/* We have to inspect the file content */
+	for (curlen = 0, c = EOF;; ++curlen) {
+		lastc = c;
+		c = getc(fp);
+
+		if (c == '\0') {
+			ctt |= _HASNUL;
+			break;
 		}
-		if (*isclean & MIME_CTRLCHAR) {
-			convert = CONV_TOB64;
+		if (c == '\n' || c == EOF) {
+			if (curlen >= MIME_LINELEN_LIMIT)
+				ctt |= _LONGLINES;
+			if (c == EOF)
+				break;
+			if (blankchar(lastc))
+				ctt |= _TRAILWS;
+			f_p = f_buf;
+			curlen = -1;
+			continue;
+		}
+		/*
+		 * A bit hairy is handling of \r=\x0D=CR.
+		 * RFC 2045, 6.7: Control characters other than TAB, or
+		 * CR and LF as parts of CRLF pairs, must not appear.
+		 * \r alone does not force _CTRLCHAR below since we cannot peek
+		 * the next character.
+		 * Thus right here, inspect the last seen character for if its
+		 * \r and set _CTRLCHAR in a delayed fashion
+		 */
+		/*else*/ if (lastc == '\r')
+			ctt |= _CTRLCHAR;
+
+		/* Control character? */
+		if (c < 0x20 || c == 0x7F) {
+			/* RFC 2045, 6.7, as above ... */
+			if (c != '\t' && c != '\r')
+				ctt |= _CTRLCHAR;
 			/*
-			 * RFC 2046 forbids control characters other than
-			 * ^I or ^L in text/plain bodies. However, some
-			 * obscure character sets actually contain these
-			 * characters, so the content type can be set.
+			 * If there is a escape sequence in backslash notation
+			 * defined for this in ANSI X3.159-1989 (ANSI C89),
+			 * don't treat it as a control for real.
+			 * I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.
+			 * Don't follow libmagic(1) in respect to \v=\x0B=VT.
+			 * \f=\x0C=NP; do ignore \e=\x1B=ESC.
 			 */
-			if ((*contenttype = value("contenttype-cntrl")) == NULL)
-				*contenttype = "application/octet-stream";
-		} else if (*contenttype == NULL)
-			*contenttype = "text/plain";
+			if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
+				continue;
+			ctt |= _HASNUL; /* Force base64 */
+			break;
+		} else if (c & 0x80) {
+			ctt |= _HIGHBIT;
+			/* TODO count chars with HIGHBIT? libmagic?
+			 * TODO try encode part - base64 if bails? */
+			if ((ctt & (_NCTT|_ISTXT)) == 0) { /* TODO _NCTT?? */
+				ctt |= _HASNUL; /* Force base64 */
+				break;
+			}
+		} else if ((ctt & _FROM_) == 0 && curlen < (sl_it)F_SIZEOF) {
+			*f_p++ = (char)c;
+			if (curlen == (sl_it)(F_SIZEOF - 1) &&
+					(size_t)(f_p - f_buf) == F_SIZEOF &&
+					memcmp(f_buf, F_, F_SIZEOF) == 0)
+				ctt |= _FROM_;
+		}
+	}
+	if (lastc != '\n')
+		ctt |= _NOTERMNL;
+	rewind(fp);
+
+	if (ctt & _HASNUL) {
+		convert = CONV_TOB64;
+		if (ctt & (_NCTT|_ISTXT))
+			*contenttype = "application/octet-stream";
+		/* XXX Set *charset=binary only if not yet set as not to loose
+		 * XXX UTF-16 etc. character set information?? */
+		if (*charset == NULL)
+			*charset = "binary";
+		goto jleave;
 	}
 
-	return convert;
+	if (ctt & (_LONGLINES|_CTRLCHAR|_NOTERMNL|_TRAILWS|_FROM_)) {
+		convert = CONV_TOQP;
+		goto jstepi;
+	}
+	if (ctt & _HIGHBIT) {
+jstepi:		if (ctt & (_NCTT|_ISTXT))
+			*do_iconv = (ctt & _HIGHBIT) != 0;
+	} else
+j7bit:		convert = CONV_7BIT;
+	if (ctt & _NCTT)
+		*contenttype = "text/plain";
+
+	/* Not an attachment with specified charset? */
+	if (*charset == NULL)
+		*charset = (ctt & _HIGHBIT) ? _CHARSET() : charset7;
+jleave:
+	return (convert);
+#undef F_
+#undef F_SIZEOF
 }
 
 enum mimecontent
@@ -1008,7 +1056,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
-	charset = getcharset(MIME_HIGHBIT);
+	charset = _CHARSET();
 	charsetlen = strlen(charset);
 	charsetlen = smax(charsetlen, sizeof(CHARSET7) - 1);
 	upper = in->s + in->l;

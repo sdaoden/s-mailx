@@ -547,8 +547,10 @@ char *mime_getparam(char *param, char *h);
  * salloc()ed copy of it; store strlen() in *len if set */
 char *		mime_get_boundary(char *h, size_t *len);
 
-int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
-		enum mimeclean *isclean, int dosign);
+/* Classify content of *fp* as necessary and fill in arguments; **charset* is
+ * left alone unless it's non-NULL */
+int		mime_classify_file(FILE *fp, char const **contenttype,
+			char const **charset, int *do_iconv);
 
 /* */
 enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);

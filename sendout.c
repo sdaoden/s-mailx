@@ -66,17 +66,15 @@ static enum okay	_putname(char const *line, enum gfield w,
 static char const *	_get_encoding(const enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
-static int		_attach_file(struct attachment *ap, FILE *fo,
-				int dosign);
-static int		__attach_file(struct attachment *ap, FILE *fo,
-				int dosign);
+static int		_attach_file(struct attachment *ap, FILE *fo);
+static int		__attach_file(struct attachment *ap, FILE *fo);
 
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
-static int attach_message(struct attachment *ap, FILE *fo, int dosign);
+static int attach_message(struct attachment *ap, FILE *fo);
 static int make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
-		const char *contenttype, const char *charset, int dosign);
-static FILE *infix(struct header *hp, FILE *fi, int dosign);
+		const char *contenttype, const char *charset);
+static FILE *infix(struct header *hp, FILE *fi);
 static int savemail(char *name, FILE *fi);
 static int sendmail_internal(void *v, int recipient_record);
 static enum okay transfer(struct name *to, FILE *input, struct header *hp);
@@ -123,7 +121,7 @@ _get_encoding(enum conversion const convert)
 }
 
 static int
-_attach_file(struct attachment *ap, FILE *fo, int dosign)
+_attach_file(struct attachment *ap, FILE *fo)
 {
 	int err = 0;
 	char *wantcharset_orig, *charsets;
@@ -131,7 +129,7 @@ _attach_file(struct attachment *ap, FILE *fo, int dosign)
 
 	if (ap->a_charset != NULL ||
 			(charsets = value("sendcharsets")) == NULL) {
-		err = __attach_file(ap, fo, dosign);
+		err = __attach_file(ap, fo);
 		goto jleave;
 	}
 
@@ -142,7 +140,7 @@ _attach_file(struct attachment *ap, FILE *fo, int dosign)
 	/* TODO of course, the MIME classification needs to performed once
 	 * only, not for each and every charset anew ... ;-// */
 	while ((wantcharset = strcomma(&charsets, 1)) != NULL) {
-jtryit:		err = __attach_file(ap, fo, dosign);
+jtryit:		err = __attach_file(ap, fo);
 		if (err == 0 || (err != EILSEQ && err != EINVAL)) /* XXX */
 			break;
 
@@ -160,7 +158,7 @@ jleave:
 }
 
 static int
-__attach_file(struct attachment *ap, FILE *fo, int dosign) /* XXX linelength */
+__attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 {
 #ifdef HAVE_ICONV
 	char const *tcs;
@@ -168,9 +166,8 @@ __attach_file(struct attachment *ap, FILE *fo, int dosign) /* XXX linelength */
 	char const *charset = NULL;
 	char *contenttype = NULL, *basename, *buf;
 	enum conversion convert = CONV_TOB64;
-	int lastc = EOF, err = 0;
+	int do_iconv = 0, lastc = EOF, err = 0;
 	FILE *fi;
-	enum mimeclean isclean;
 	size_t sz, bufsize, count;
 
 	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
@@ -190,8 +187,8 @@ __attach_file(struct attachment *ap, FILE *fo, int dosign) /* XXX linelength */
 	if (ap->a_charset != NULL)
 		charset = ap->a_charset;
 
-	convert = get_mime_convert(fi, &contenttype, &charset, &isclean,
-			dosign);
+	convert = mime_classify_file(fi, (char const**)&contenttype, &charset,
+			&do_iconv);
 
 	fprintf(fo, "\n--%s\nContent-Type: %s", send_boundary, contenttype);
 	if (charset == NULL)
@@ -219,9 +216,7 @@ __attach_file(struct attachment *ap, FILE *fo, int dosign) /* XXX linelength */
 		iconvd = (iconv_t)-1;
 	}
 	tcs = gettcharset();
-	if ((isclean & (MIME_HASNUL|MIME_CTRLCHAR|MIME_HIGHBIT)) ==
-			MIME_HIGHBIT && charset != NULL &&
-			ascncasecmp(contenttype, "text/", 5) == 0) {
+	if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
 		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1 &&
 				(err = errno) != 0) {
 			if (err == EINVAL)
@@ -368,10 +363,9 @@ put_signature(FILE *fo, int convert)
  * Attach a message to the file buffer.
  */
 static int
-attach_message(struct attachment *ap, FILE *fo, int dosign)
+attach_message(struct attachment *ap, FILE *fo)
 {
 	struct message	*mp;
-	(void)dosign;
 
 	fprintf(fo, "\n--%s\n"
 		    "Content-Type: message/rfc822\n"
@@ -388,7 +382,7 @@ attach_message(struct attachment *ap, FILE *fo, int dosign)
  */
 static int
 make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
-		const char *contenttype, const char *charset, int dosign)
+		const char *contenttype, const char *charset)
 {
 	struct attachment *att;
 
@@ -444,10 +438,10 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 	}
 	for (att = hp->h_attach; att != NULL; att = att->a_flink) {
 		if (att->a_msgno) {
-			if (attach_message(att, fo, dosign) != 0)
+			if (attach_message(att, fo) != 0)
 				return -1;
 		} else {
-			if (_attach_file(att, fo, dosign) != 0)
+			if (_attach_file(att, fo) != 0)
 				return -1;
 		}
 	}
@@ -461,18 +455,17 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
  * and return the new file.
  */
 static FILE *
-infix(struct header *hp, FILE *fi, int dosign)
+infix(struct header *hp, FILE *fi)
 {
 	FILE *nfo, *nfi;
 	char *tempMail;
 #ifdef HAVE_ICONV
 	char const *tcs, *convhdr = NULL;
 #endif
-	enum mimeclean isclean;
 	enum conversion convert;
+	char *contenttype;
 	char const *charset = NULL;
-	char *contenttype = NULL;
-	int	lastc = EOF;
+	int do_iconv = 0, lastc = EOF;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 178, "temporary mail file"));
@@ -485,8 +478,11 @@ infix(struct header *hp, FILE *fi, int dosign)
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
-	convert = get_mime_convert(fi, &contenttype, &charset, &isclean,
-			dosign);
+
+	contenttype = "text/plain"; /* XXX mail body - always text/plain */
+	convert = mime_classify_file(fi, (char const**)&contenttype, &charset,
+			&do_iconv);
+
 #ifdef HAVE_ICONV
 	tcs = gettcharset();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
@@ -503,14 +499,14 @@ infix(struct header *hp, FILE *fi, int dosign)
 			return NULL;
 		}
 	}
-#endif	/* HAVE_ICONV */
+#endif /* HAVE_ICONV */
 	if (puthead(hp, nfo,
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
 		   |GMSGID|GIDENT|GREF|GDATE,
 		   SEND_MBOX, convert, contenttype, charset)) {
 		Fclose(nfo);
 		Fclose(nfi);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 		if (iconvd != (iconv_t)-1) {
 			iconv_close(iconvd);
 			iconvd = (iconv_t)-1;
@@ -518,32 +514,30 @@ infix(struct header *hp, FILE *fi, int dosign)
 #endif
 		return NULL;
 	}
-#ifdef	HAVE_ICONV
-	if (convhdr && iconvd != (iconv_t)-1) {
+#ifdef HAVE_ICONV
+	if (iconvd != (iconv_t)-1) {
 		iconv_close(iconvd);
 		iconvd = (iconv_t)-1;
 	}
-	if ((isclean & (MIME_HASNUL|MIME_CTRLCHAR)) == 0 &&
-			ascncasecmp(contenttype, "text/", 5) == 0 &&
-			isclean & MIME_HIGHBIT &&
-			charset != NULL) {
-		if (iconvd != (iconv_t)-1)
-			iconv_close(iconvd);
-		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1
-				&& errno != 0) {
-			if (errno == EINVAL)
-				fprintf(stderr, catgets(catd, CATSET, 179,
-			"Cannot convert from %s to %s\n"), tcs, charset);
+	if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
+		int err;
+		if (asccasecmp(charset, tcs) != 0 &&
+				(iconvd = iconv_open_ft(charset, tcs))
+				== (iconv_t)-1 && (err = errno) != 0) {
+			if (err == EINVAL)
+				fprintf(stderr, tr(179,
+					"Cannot convert from %s to %s\n"),
+					tcs, charset);
 			else
 				perror("iconv_open");
 			Fclose(nfo);
-			return NULL;
+			return (NULL);
 		}
 	}
 #endif
 	if (hp->h_attach != NULL) {
-		if (make_multipart(hp, convert, fi, nfo,
-					contenttype, charset, dosign) != 0) {
+		if (make_multipart(hp, convert, fi, nfo, contenttype, charset)
+				!= 0) {
 			Fclose(nfo);
 			Fclose(nfi);
 #ifdef	HAVE_ICONV
@@ -1118,7 +1112,7 @@ hloop:	wantcharset = NULL;
 	loop:	if ((ncs = strchr(wantcharset, ',')) != NULL)
 			*ncs++ = '\0';
 	}
-try:	if ((nmtf = infix(hp, mtf, dosign)) == NULL) {
+try:	if ((nmtf = infix(hp, mtf)) == NULL) {
 		if (hp->h_charset && (errno == EILSEQ || errno == EINVAL)) {
 			rewind(mtf);
 			hp->h_charset = NULL;

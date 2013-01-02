@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -134,6 +134,11 @@
 /* Default *encoding* as enum conversion below */
 #define MIME_DEFAULT_ENCODING	CONV_TOQP
 
+/* Maximum allowed line length in a mail before QP folding is necessary), and
+ * the real limit we go for */
+#define MIME_LINELEN_MAX	1000
+#define MIME_LINELEN_LIMIT	(MIME_LINELEN_MAX - 50)
+
 /*
  * Auto-reclaimed string storage (strings.c)
  */
@@ -231,15 +236,6 @@ enum mimecontent {
 	MIME_MULTI,			/* other multipart/ content */
 	MIME_PKCS7,			/* PKCS7 content */
 	MIME_DISCARD			/* content is discarded */
-};
-
-enum mimeclean {
-	MIME_CLEAN	= 000,		/* plain RFC 2822 message */
-	MIME_HIGHBIT	= 001,		/* characters >= 0200 */
-	MIME_LONGLINES	= 002,		/* has lines too long for RFC 2822 */
-	MIME_CTRLCHAR	= 004,		/* contains control characters */
-	MIME_HASNUL	= 010,		/* contains \0 characters */
-	MIME_NOTERMNL	= 020		/* lacks a terminating newline */
 };
 
 enum tdflags {

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -117,7 +117,7 @@ _E struct ignoretab allignore[2];	/* special, ignore all headers */
 _E struct ignoretab fwdignore[2];	/* fields to ignore for forwarding */
 _E struct shortcut *shortcuts;		/* list of shortcuts */
 _E int		imap_created_mailbox;	/* hack to get feedback from imap */
-_E char		*wantcharset;		/* overrides the "charset" variable */
+_E char		*wantcharset;		/* (currently "tried" *sendcharset*) */
 
 /* These are initialized strings */
 _E char	const	defcharset[];		/* "utf8" */
