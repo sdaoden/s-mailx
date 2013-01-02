@@ -592,6 +592,30 @@ anyof(char const *s1, char const *s2)
 	return (*s1 != '\0');
 }
 
+char *
+strcomma(char **iolist, int ignore_empty)
+{
+	char *base, *cp;
+
+	for (base = *iolist; base != NULL; base = *iolist) {
+		while (*base != '\0' && blankspacechar(*base))
+			++base;
+		cp = strchr(base, ',');
+		if (cp != NULL)
+			*iolist = cp + 1;
+		else {
+			*iolist = NULL;
+			cp = base + strlen(base);
+		}
+		while (cp > base && blankspacechar(cp[-1]))
+			--cp;
+		*cp = '\0';
+		if (*base != '\0' || ! ignore_empty)
+			break;
+	}
+	return (base);
+}
+
 void
 i_strcpy(char *dest, const char *src, size_t size)
 {

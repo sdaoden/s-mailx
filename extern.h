@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  * All rights reserved.
  */
 /*-
@@ -726,6 +726,12 @@ struct str *	str_concat_csvl(struct str *self, ...);
 
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
+
+/* Treat **iolist* as a comma separated list of strings; find and return the
+ * next entry, trimming surrounding whitespace, and point **iolist* to the next
+ * entry or to NULL if no more entries are contained.  If *ignore_empty* is not
+ * set empty entries are started over.  Return NULL or an entry */
+char *		strcomma(char **iolist, int ignore_empty);
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
