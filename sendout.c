@@ -66,12 +66,13 @@ static enum okay	_putname(char const *line, enum gfield w,
 static char const *	_get_encoding(const enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
-static int		_attach_file1(struct attachment *ap, FILE *fo,
+static int		_attach_file(struct attachment *ap, FILE *fo,
+				int dosign);
+static int		__attach_file(struct attachment *ap, FILE *fo,
 				int dosign);
 
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
-static int attach_file(struct attachment *ap, FILE *fo, int dosign);
 static int attach_message(struct attachment *ap, FILE *fo, int dosign);
 static int make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 		const char *contenttype, const char *charset, int dosign);
@@ -122,7 +123,44 @@ _get_encoding(enum conversion const convert)
 }
 
 static int
-_attach_file1(struct attachment *ap, FILE *fo, int dosign)
+_attach_file(struct attachment *ap, FILE *fo, int dosign)
+{
+	int err = 0;
+	char *wantcharset_orig, *charsets;
+	long offs;
+
+	if (ap->a_charset != NULL ||
+			(charsets = value("sendcharsets")) == NULL) {
+		err = __attach_file(ap, fo, dosign);
+		goto jleave;
+	}
+
+	wantcharset_orig = wantcharset;
+	charsets = savestr(charsets);
+	offs = ftell(fo);
+
+	/* TODO of course, the MIME classification needs to performed once
+	 * only, not for each and every charset anew ... ;-// */
+	while ((wantcharset = strcomma(&charsets, 1)) != NULL) {
+jtryit:		err = __attach_file(ap, fo, dosign);
+		if (err == 0 || (err != EILSEQ && err != EINVAL)) /* XXX */
+			break;
+
+		clearerr(fo);
+		fseek(fo, offs, SEEK_SET);
+		if (charsets == NULL && wantcharset != (char*)-1) { /* XXX */
+			wantcharset = (char*)-1;
+			goto jtryit;
+		}
+	}
+
+	wantcharset = wantcharset_orig;
+jleave:
+	return (err);
+}
+
+static int
+__attach_file(struct attachment *ap, FILE *fo, int dosign) /* XXX linelength */
 {
 #ifdef HAVE_ICONV
 	char const *tcs;
@@ -136,8 +174,8 @@ _attach_file1(struct attachment *ap, FILE *fo, int dosign)
 	size_t sz, bufsize, count;
 
 	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
+		err = errno;
 		perror(ap->a_name);
-		err = -1;
 		goto jleave;
 	}
 	if ((basename = strrchr(ap->a_name, '/')) == NULL)
@@ -159,7 +197,7 @@ _attach_file1(struct attachment *ap, FILE *fo, int dosign)
 	if (charset == NULL)
 		putc('\n', fo);
 	else
-		fprintf(fo, ";\n charset=%s\n", charset);
+		fprintf(fo, "; charset=%s\n", charset);
 	if (ap->a_content_disposition == NULL)
 		ap->a_content_disposition = "attachment";
 	fprintf(fo, "Content-Transfer-Encoding: %s\n"
@@ -185,15 +223,14 @@ _attach_file1(struct attachment *ap, FILE *fo, int dosign)
 			MIME_HIGHBIT && charset != NULL &&
 			ascncasecmp(contenttype, "text/", 5) == 0) {
 		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1 &&
-				errno != 0) {
-			if (errno == EINVAL)
+				(err = errno) != 0) {
+			if (err == EINVAL)
 				fprintf(stderr, tr(179,
 					"Cannot convert from %s to %s\n"),
 					tcs, charset);
 			else
 				perror("iconv_open");
 			Fclose(fi);
-			err = -1;
 			goto jleave;
 		}
 	}
@@ -222,13 +259,16 @@ _attach_file1(struct attachment *ap, FILE *fo, int dosign)
 		}
 		lastc = buf[sz-1];
 		if (mime_write(buf, sz, fo, convert, TD_ICONV,
-				NULL, (size_t)0, NULL) < 0)
-			err = -1;
+				NULL, (size_t)0, NULL) < 0) {
+			err = errno;
+			goto jbail;
+		}
 	}
 	if (convert == CONV_TOQP && lastc != '\n')
 		fwrite("=\n", 1, 2, fo);
 	if (ferror(fi))
-		err = -1;
+		err = EDOM;
+jbail:
 	Fclose(fi);
 	free(buf);
 jleave:
@@ -325,45 +365,6 @@ put_signature(FILE *fo, int convert)
 }
 
 /*
- * Try out different character set conversions to attach a file.
- */
-static int
-attach_file(struct attachment *ap, FILE *fo, int dosign)
-{
-	char	*_wantcharset, *charsets, *ncs;
-	size_t	offs = ftell(fo);
-
-	if (ap->a_charset || (charsets = value("sendcharsets")) == NULL)
-		return _attach_file1(ap, fo, dosign);
-	_wantcharset = wantcharset;
-	wantcharset = savestr(charsets);
-loop:	if ((ncs = strchr(wantcharset, ',')) != NULL)
-		*ncs++ = '\0';
-try:	if (_attach_file1(ap, fo, dosign) != 0) {
-		if (errno == EILSEQ || errno == EINVAL) {
-			if (ncs && *ncs) {
-				wantcharset = ncs;
-				clearerr(fo);
-				fseek(fo, offs, SEEK_SET);
-				goto loop;
-			}
-			if (wantcharset) {
-				if (wantcharset == (char *)-1)
-					wantcharset = NULL;
-				else {
-					wantcharset = (char *)-1;
-					clearerr(fo);
-					fseek(fo, offs, SEEK_SET);
-					goto try;
-				}
-			}
-		}
-	}
-	wantcharset = _wantcharset;
-	return 0;
-}
-
-/*
  * Attach a message to the file buffer.
  */
 static int
@@ -439,14 +440,14 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 		if (c != '\n')
 			putc('\n', fo);
 		if (charset != NULL)
-			put_signature(fo, convert);
+			put_signature(fo, convert); /* XXX if (text/) !! */
 	}
 	for (att = hp->h_attach; att != NULL; att = att->a_flink) {
 		if (att->a_msgno) {
 			if (attach_message(att, fo, dosign) != 0)
 				return -1;
 		} else {
-			if (attach_file(att, fo, dosign) != 0)
+			if (_attach_file(att, fo, dosign) != 0)
 				return -1;
 		}
 	}
@@ -610,7 +611,7 @@ infix(struct header *hp, FILE *fi, int dosign)
 			return NULL;
 		}
 		if (charset != NULL)
-			put_signature(nfo, convert);
+			put_signature(nfo, convert); /* XXX if (text/) !! */
 	}
 #ifdef	HAVE_ICONV
 	if (iconvd != (iconv_t)-1) {

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -74,6 +74,9 @@ struct mtnode	*_mt_list;
 static void		_mt_init(void);
 static void		__mt_add_line(char const *line, struct mtnode **tail);
 
+/* Get the conversion that matches *encoding* */
+static enum conversion	_conversion_by_encoding(void);
+
 static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
 static int mustquote_inhdrq(int c);
@@ -82,7 +85,6 @@ static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
 static enum mimeclean mime_isclean(FILE *f);
-static enum conversion gettextconversion(void);
 static char *ctohex(unsigned char c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
@@ -169,6 +171,28 @@ __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
 	tlen += elen;
 	mtn->mt_line[tlen] = '\0';
 jleave:	;
+}
+
+static enum conversion
+_conversion_by_encoding(void)
+{
+	char const *cp;
+	enum conversion ret;
+
+	if ((cp = value("encoding")) == NULL)
+		ret = MIME_DEFAULT_ENCODING;
+	else if (strcmp(cp, "quoted-printable") == 0)
+		ret = CONV_TOQP;
+	else if (strcmp(cp, "8bit") == 0)
+		ret = CONV_8BIT;
+	else if (strcmp(cp, "base64") == 0)
+		ret = CONV_TOB64;
+	else {
+		fprintf(stderr, tr(177,
+			"Warning: invalid encoding %s, using base64\n"), cp);
+		ret = CONV_TOB64;
+	}
+	return (ret);
 }
 
 /*
@@ -319,7 +343,6 @@ jneeds:		ret = getcharset(MIME_HIGHBIT);
 	return (ret);
 }
 
-
 static int
 is_this_enc(const char *line, const char *encoding)
 {
@@ -441,7 +464,6 @@ mime_get_boundary(char *h, size_t *len)
 	return (q);
 }
 
-
 /*
  * Check file contents.
  */
@@ -491,38 +513,17 @@ mime_isclean(FILE *f)
 	return isclean;
 }
 
-/*
- * Get the conversion that matches the encoding specified in the environment.
- */
-static enum conversion
-gettextconversion(void)
-{
-	char *p;
-	int convert;
-
-	if ((p = value("encoding")) == NULL)
-		return CONV_8BIT;
-	if (strcmp(p, "quoted-printable") == 0)
-		convert = CONV_TOQP;
-	else if (strcmp(p, "8bit") == 0)
-		convert = CONV_8BIT;
-	else {
-		fprintf(stderr, tr(177,
-			"Warning: invalid encoding %s, using 8bit\n"), p);
-		convert = CONV_8BIT;
-	}
-	return convert;
-}
-
 /*TODO Dobson: be037047c, contenttype==NULL||"text"==NULL control flow! */
 int
-get_mime_convert(FILE *fp, char **contenttype, char const **charset,
+mime_classify_file(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign)
 {
-	int convert;
+	enum conversion convert = _conversion_by_encoding();
 
-	*isclean = mime_isclean(fp);
-	if (*isclean & MIME_HASNUL ||
+	*isclean = _classify_mimeclean(fp, convert, *contenttype == NULL);
+
+
+	if ((*isclean & MIME_HASNUL) ||
 			(*contenttype &&
 			ascncasecmp(*contenttype, "text/", 5))) {
 		convert = CONV_TOB64;
@@ -534,16 +535,18 @@ get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 			dosign)
 		convert = CONV_TOQP;
 	else if (*isclean & MIME_HIGHBIT)
-		convert = gettextconversion();
+		convert = _conversion_by_encoding();
 	else
 		convert = CONV_7BIT;
+
 	if (*contenttype == NULL ||
 			ascncasecmp(*contenttype, "text/", 5) == 0) {
 		*charset = getcharset(*isclean);
 		if (wantcharset == (char *)-1) {
 			*contenttype = "application/octet-stream";
 			*charset = NULL;
-		} if (*isclean & MIME_CTRLCHAR) {
+		}
+		if (*isclean & MIME_CTRLCHAR) {
 			convert = CONV_TOB64;
 			/*
 			 * RFC 2046 forbids control characters other than
@@ -556,6 +559,7 @@ get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		} else if (*contenttype == NULL)
 			*contenttype = "text/plain";
 	}
+
 	return convert;
 }
 

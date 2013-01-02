@@ -131,6 +131,9 @@
 #define MIME_TYPES_USR	"~/.mime.types"
 #define MIME_TYPES_SYS	"/etc/mime.types"
 
+/* Default *encoding* as enum conversion below */
+#define MIME_DEFAULT_ENCODING	CONV_TOQP
+
 /*
  * Auto-reclaimed string storage (strings.c)
  */

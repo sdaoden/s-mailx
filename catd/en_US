@@ -185,7 +185,7 @@ $set 1
 174 --- DELETED ---
 175 :\n
 176 Cannot open %s\n
-177 Warning: invalid encoding %s, using 8bit\n
+177 Warning: invalid encoding %s, using base64\n
 178 temporary mail file
 179 Cannot convert from %s to %s\n
 180 temporary mail file
