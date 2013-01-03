@@ -38,7 +38,7 @@
  * SUCH DAMAGE.
  */
 
-/* aux.c */
+/* auxlily.c */
 void panic(const char *format, ...);
 void holdint(void);
 void relseint(void);
