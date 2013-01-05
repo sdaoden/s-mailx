@@ -4,27 +4,25 @@ subscribe to the development mailing list at
 <https://lists.sourceforge.net/lists/listinfo/nail-devel>
 to coordinate your efforts with the maintainer and other people.
 
-VIP
----
-
-- When a MBOX mailbox is removed while it is opened then changing the
-  folder is not possible.  (At least when the only mail that was present
-  therein has been "move"d off that MBOX.)  While trying this i got
-  a deallocation abort trap in lex.c:commands():385:
-	if (linebuf)
-		free(linebuf);
-  Note that Berkeley Mail (NetBSD mail(1) that is) seems to have the same
-  problem in respect to not allowing a hard-change, but only allows an exit
-  (not a quit thus).  The error may still exist even there, it maybe that
-  it simply doesn't show up because a stack buffer is used ...
-
-- In general, when a MBOX is modified while S-nail(1) has an open instance
-  to it, it may hard overwrite the modified content.
-  But how to solve that problem?  At least something like vim(1), i.e.,
-  "modified since, reopen()/write()/blabla".
-
 Backward-compatibility breakers
 -------------------------------
+
+- In the future the handling of charsets is likely to change.
+  The input should be converted to the desired charset as necessary and/or
+  possible, and the MIME classification should take place *on that
+  converted data*, and *once only*.
+
+  The new approach sounds more sane to me whatsoever.
+  It however has the side effect that iconv() is applied to the text even
+  if that is 7bit clean US-ASCII/compatible?!??
+
+  Then, add a way to specify the input character set for -a arguments;
+  either a new option that takes CHARSET=FILE, or an option that sets the
+  charset for all upcoming -a arguments.
+
+  Anyway, there are *input* charsets, and *output* charsets.
+  And then, there is a terminal character set.
+  The behaviour should feel somehow natural. :)
 
 - Recipients specified on the command line should be added to those
   specified in the message when the -t option is set.
@@ -41,11 +39,23 @@ Backward-compatibility breakers
 - Ditto if a resource file can't be found that has been explicitly set via
   environment variables there should be some feedback.
 
+- I.e., it is fine to be silent unless an error occurs, but then please
+  report errors and offer (in interactive mode) the possibility to act at
+  a glance.
+
+-- While there.  There should be some kind of "verbose" switch that - in
+   interactive mode - also gives *positive* feedback, as in "added
+   attachment X, charset Y", but without giving details about protocol
+   delivery etc.
+
+   [It is terrible that there is almost no feedback in the UI.  When
+   i temporarily implemented a sorted cmdtab i've often used wrong commands,
+   but got no feedback at all!  E.g., wanted to "undelete 14", first did "u
+   14", then "und 14" and then realized my fault and did "undelete 14".
+   *Nothing*.]
+
 - [v13:started] IIRC some error messages go to STDOUT, some to STDERR.
   Only latter.
-
-- IIRC i saw invocations that returned with a 0 exit status and that
-  surprised me, then.  Errors should truly be reported.
 
 - POSIX says that, when written to DEAD: "If the file exists, the message
   shall be written to replace the contents of the file".  This is mentioned
@@ -57,27 +67,49 @@ Backward-compatibility breakers
   but i have not thought about that for real.  Maybe this should be at
   least configurable.
 
-- The current maintainer hates the way the command line arguments are
-  processed.  Because, many things that come in from the command line may
-  depend on what the configuration files say.
-  It would be much better to collect the command line once, then load all
-  the configuration files that are desired, then process the command line
-  again (that way most likely faster than creating dynamic storage for all
-  the command line arguments).  This will enable +PATH expansions for
-  attachments, IDNA settings for addresses etc.  Until then -Svariable sets
-  its argument after loading of the RC files as documented, *and* directly
-  once parsed.
-  Note that this two-pass will also allow situation-dependent buffers sizes
-  for the string allocator.
+- POP3 APOP availability is promoted by servers which support it.
+  The *pop3-use-apop* and *pop3-use-apop-user@host* variables should thus
+  be dropped.  To support broken servers XY-no-apop-XY may be offered
+  instead.
 
-- Conditionalize commands upon actual feature set.
-  Sofar commands like, e.g., "noop" are compiled into the binary even if
-  the functionality behind is not.  This is in spirit to the entire
-  Heirloom nail source, which used function stubs for this purpose.  But it
-  would be better if the command would simply not exist.
+- Maybe we should not use pipes to pagers at all.
+  This would also (beside getting rid of longjumps that cross allocations
+  afaik etc.) make it possible to honour the *crt* variable in respect
+  to what really is displayed, not in respect to message size.
+  It irritates me that a message with 5 visible lines but 115 header lines
+  goes through the pager, even if i have *crt=*.
 
 Non-breakers
 ------------
+
+- We need a "void" box that can be jumped to, i.e., a state in which no box
+  at all is active.
+
+- (schdir(): realpath() local files before leaving CWD.., 2013-01-08)
+  did a first step to avoid "getting stuck" when the current folder becomes
+  unaccessible.
+  That is however only a command-specific workaround for a deeper design
+  problem.
+
+-- When a MBOX mailbox is removed while it is opened then changing the
+  folder is not possible.  (At least when the only mail that was present
+  therein has been "move"d off that MBOX.)  While trying this i got
+  a deallocation abort trap in lex.c:commands():385:
+	if (linebuf)
+		free(linebuf);
+  Note that Berkeley Mail (NetBSD mail(1) that is) seems to have the same
+  problem in respect to not allowing a hard-change, but only allows an exit
+  (not a quit thus).  The error may still exist even there, it maybe that
+  it simply doesn't show up because a stack buffer is used ...
+
+  In interactive mode, dump the temporary file to the TMPDIR and inform the
+  user; it's up to him to decide what should happen.
+
+  Otherwise it must be possible to switch the folder (to the *void* one)
+  forcefully.
+
+-- Also, when the folder is modified concurrently we should bail, or, in an
+  interactive session, prompt the user what to do.
 
 - IDNA decoding.  It may be that this will never be supported.  But
   wouldn't it be nice for at least viewing messages?
@@ -90,24 +122,19 @@ Non-breakers
   be possible to reply to the very message in respect to its header fields,
   but (optionally?) keep the original Cc:'d.  (Parts by Martin Neitzel)
 
-- Yet the first part is used for forwarding and replying etc..  In MIME
-  multipart messages it is however possible to make the HTML version the
-  first, etc., so in case the normal "pick first part" algorithm is used
-  that should maybe do "pick first plain text part if present, else first"
-  insteadl.
+-- In general i like the possibility of mutt(1) to toggle in between header
+   and header-ignore mode with a simple switch (h), and that *this toggle
+   is used when replying*.  Yes i know mutt(1) sucks beside that in respect
+   to base64, MBOX, QP for CRLF files etc.
+
+-- Also, mutt(1) quotes all text parts of a message, not only the first
+   one!  This should at least be optionally available.
 
 - If pipes fail for part viewers then at least the usual PART X.Y should be
   shown, maybe even including some error message.
   I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
   does not have lynx(1), and i thought i've found a S-nail(1) bug.
   And so it was.
-  In general it would be nice if not everything would be suppressed by
-  default.  If i only see PART X.Y .. it may be just about anything, and
-  i don't want to "P" all the header stuff just to see that.  One should
-  see at a glance what content the part contains.
-  By the way, the "print" command documents a different behaviour that
-  sounds desirable..  And then the authors rfc822* variables seem almost
-  superfluous.
 
 = Update: (Change "Part X:" display message.., 2012-12-20) did one step,
   but we need to rewrite the entire layers to handle that the separating
@@ -124,20 +151,36 @@ Non-breakers
 
 - It would be nice if it would be possible to define a format string for
   *quote*, like 'set quote="format=some formats"'.
+  In general the current approach is somewhat messy IMO.  I.e., it would
+  make more sense to act rather like mutt(1) and as written elsewhere in
+  this document, i.e., have some toggles that act on the display and use it
+  for multiple modes (show/reply/forward etc.)
+  Otherwise introduce commands which include all the headers plus, e.g.,
+  "hreply" or "freply", and then the ditto series, i.e., "hReply" ...
+
+-- This would also mean that interactive message editing would work
+  accordingly.  PleasE!
 
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
 
+-- mutt(1) seems to do a better job when creating thread display.
+   I have test a MBOX (NetBSD discussion on "fixing libpthread noload,
+   another approach") where it displays the correct thread relationship,
+   whereas S-nail (Heirloom mailx(1)) and NetBSD Mail(1) all show three
+   separate threads.
+
 - On the long run -- try to add command line editing.
+
+-- Note that the TTY is sick.  If ^C on input it simply jumps to next
+   input, instead of saying "Interrupted, one more to die hard" or
+   something (talking about ~@ charset selection prompts in particular).
 
 - For those who use S-nail(1) only with a MTA it may be desirable to have
   some "smopts" expansion mechanism in equal spirit to NetBSD mailx(1).
 
 - While talking about NetBSD mailx(1), the author can imagine that being
   able to use the optional -H:xy stuff is sometimes nice.
-
-- Add the possibility to simply place whatever header in the editor (and
-  in the mail read in due to the -t command line option, and...).
 
 - Check against RFC 5322.
   Rework all the header parsing code.  Actually understand the content,
@@ -153,32 +196,44 @@ Non-breakers
   What i want is a *real* resend, best if possible from command line.
   Meaning, also the possibility to postpone a message.  In general.
 
-- It is terrible that there is almost no feedback in the UI.  When
-  i temporarily implemented a sorted cmdtab i've often used wrong commands,
-  but got no feedback at all!  E.g., wanted to "undelete 14", first did "u
-  14", then "und 14" and then realized my fault and did "undelete 14".
-  *Nothing*.
-
 - POP3 doesn't support "newmail" for real.  If implemented, should it sync?
   Look at POP3 impl. in general..
+
+- Having a newsreader would be a really cool thing.
+
+- There should be a way to ignore the From_ line, as opposed to the From:
+  line, i.e., distinctively.
+
+- There should be a variable that controls wether leading and trailing
+  empty lines of parts and/or messages as such should be printed or not.
+
+- RFC 2387: multipart/related.
+
+- Rewrite the make system again.  makeconfig -> configure.  Write the
+  Makefile anew, so that it doesn't contain any variables no more, i.e.,
+  fixate the first command line, so that a later 'make' recompiles
+  everything the very identical way.  Also the manual, the resource file
+  etc., all that should be created by the first run.
 
 Low-Level
 ---------
 
 - Revise the code:
-  + Add C99-likeish typedefs for integers and use them everywhere.
-  + Don't use magic constants/values.
+  + [v13:messed up] Use NetBSD KNF in respect to parens for return+.
+  + [v13:started] Add C99-likeish typedefs and use them everywhere.
+  + [v13:started] Don't use magic constants/values.
   + [v13:started] Use const arguments whenever possible.  Yet started, but
     with ugly casts at some places because this is a can of worms.
   + Inline functions?  [Restrict pointers?]
-  + Document the functions in the interface declarators.
+  + [v13:started] Document the functions in the interface declarators.
   + [v13:started] Resort the functions and where they are implemented.
-    It's really terrible.  Just think about outof(), savedeadletter(),
-    savemail() etc..
   + Make more use of struct str, and offer more support functions for it.
   + Make more use of value carriers in the call stack.  There are functions
     with an incredible amount of arguments, needlessly.
-  + makeconfig: link_check/compile_check.  More of the latter suffice.
+  ++ E.g., use a struct readlinectx.
+  + Ftemp(): offer an operation mode enum that includes "do-unlink".
+    In general: now there is O_CLOEXEC etc. ...
+  + Lazy install sigchild handler etc.
 
 - [v13:started] Improve name extraction rules.  And field parsing.  There
   are structured and unstructured fields.  There are quoted pairs and
@@ -211,6 +266,8 @@ Low-Level
   Such a cache would work without touching the current code flow ... or
   allow a smooth transition to a new one anyway.
 
+- Think about a value() cache.
+
 - Check all Popen() calls, i've had the impressions that Popen() doesn't
   close all resources on failure.  Also, Popen() callers often do a lot of
   work in respect to signals.  Try to find a solution that all problems are
@@ -221,20 +278,6 @@ Low-Level
   over and over again.  Even better: lazy evalution -- use a special lookup
   method for those.  The mentioned method should indeed even go away?
 
-- mime.c:prefixwrite() tracks state internally instead of having a cookie
-  argument.  That doesn't really make sense.  Either it is capable to work
-  with multiple files concurrently and prefix-quotes them correctly in the
-  same fashion, or it doesn't track anything at all.  It even tracked those
-  calls that do not write a prefix at all before, just to make this
-  mechanism work ... Or not?  Well, if you track the last file and if there
-  was a newline last, and you switch files, then the last newline state is
-  lost, and you do write the prefix even if in the other file there was no
-  newline last.
-
-  In fact we should introduce carrier structs for these execution paths.
-  This would also allow to gracefully detect MIME-escaped final newlines,
-  reduce work that is done over and over again etc.
-
 - The current codebase assumes that in multibyte encodings plain ASCII
   characters can be tested "as-is".  This assumption is wrong for some
   encodings that use U+001B (escape) or another ASCII thing to introduce
@@ -242,22 +285,22 @@ Low-Level
   the entire codebase and use wide characters (IMO) everywhere.
   (Really.  For at least header content.)
 
-- It seems some IMAP functions return OKAY even on error.  The current
-  maintainer yet doesn't know what this is about, but surely wants to look
-  at that again later.
+- The char classification stuff can be improved; currently each character
+  has exactly one classification bit set, even if multiple would apply
+  (e.g., HT=\t == CNTRL|SPACE|ASCII|BLANK).  This would allow better
+  testing using our own classification functions in quite some places.
 
-- The current maintainer doesn't like longjmp()s.
+- I want a clean PTF interface for the actual layers.  There should be no
+  switch() statements around that test for the type of BOX that is
+  currently open.  Especially important for possible NEWS support, but the
+  code is a mess in general...
 
-- The current maintainer doesn't like signals.
-  He suspects many signal related pitfalls in the codebase.
+- I hate longjmp()s and signals.  I suspect some pitfalls in the codebase.
+  All that stuff should at least be collected in a single place.
 
-- The current maintainer would like to see that compilation with a C++
-  compiler is possible, though that would be a long way and be especially
-  problematic due to the (C ish) way enums are used.  He never understood
-  why there is not "bitenum", btw.
-
-- The current maintainer worked with all-tabs for almost one and a half
-  decade and turned over to all-spaces afterwards.
+  I would like to see that compilation with a C++ compiler is possible,
+  though that would be a long way and be especially problematic due to the
+  (C ish) way enums are used.
 
 Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
 With a clean, conforming and efficient codebase, then.
