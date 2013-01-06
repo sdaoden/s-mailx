@@ -6,20 +6,31 @@ Quick start
 
 Read user.conf and maybe adjust some feature settings according to your
 needs.  You may also want to look into the Makefile, e.g., to change the
-PREFIX, or to adjust whatever else before the >8 scissor line.  Then run
+PREFIX, or to adjust whatever else before the >8 scissor line -- all of
+those can however also be specified on the command line, as shown below.
+Then run:
 
-  $ [make &&] make install # (Or only make install)
+  $ [make &&] make install # ("make install" alone is also sufficient)
   $ make uninstall         # (Will not remove the example configuration)
   $ make distclean         # *Completely* cleanup working directory
 
-If some libraries miss that you know are installed on your system, or if
-other errors occur due to missing files but which you know exist, please
-ensure that the environment variable C_INCLUDE_PATH includes the
-necessary include/ paths and LD_LIBRARY_PATH includes the necessary
-lib/rary paths.  The S-nail make system will inspect these two and
+If some libraries are missing that you know are installed on your
+system, or if other errors occur due to missing files but which you know
+exist, please ensure that the environment variable C_INCLUDE_PATH
+includes the necessary include/ paths and the environment variable
+LD_LIBRARY_PATH includes the necessary lib/rary paths.
+
+The S-nail make system will inspect these two environment variables and
 *automatically* convert them to cc(1) (c99(1)) -I and -L options (since
-these environment variables are not standardized by POSIX).  pkgsrc(7)
-paths will be automatically appended to these two, if found.  E.g., in
+these environment variables are, different to the command line options,
+not part of the POSIX standard).
+
+The S-nail make system will also automatically integrate pkgsrc(7) paths
+into this mechanism.  pkgsrc is used to handle building (compiling),
+installing and removing of software packages on a lot of operating
+systems, including all BSD systems, Linux, Solaris ...
+
+To set these environment variables, the following can be done in
 a Bourne/Korn/POSIX compatible shell:
 
   $ C_INCLUDE_PATH=${C_INCLUDE_PATH}:/usr/local/include
@@ -28,10 +39,10 @@ a Bourne/Korn/POSIX compatible shell:
   $ make install
 
 Instead of actually *editing* the Makefile it is probably much easier to
-override variables from within the command line instead, e.g., to change
-the installation directory:
+override variables on the command line instead, e.g., to change the
+installation directory:
 
-  $ make PREFIX=/some/nasty/prefix STRIP='/usr/bin/strip -s' install
+  $ make PREFIX=/some/nasty/prefix install
 
 And instead of editing user.conf you may also choose predefined CONFIG
 sets from the command line:
@@ -48,7 +59,7 @@ sets from the command line:
 When this CONFIG-set approach is used, the following additional switches
 may be used on the command line (in fact any single entry of user.conf
 may be given on the command line, the actually chosen CONFIG may however
-overwrite some of the settings again -- except CONFIG=CUSTOM by concept):
+overwrite some of the settings again, except CONFIG=CUSTOM by definition):
 
   WANT_IDNA=0     Do not (try to) support internationalized domain names.
   WANT_DOCSTRINGS=0
@@ -63,29 +74,37 @@ under the prefix /usr/local but rooted under [./]xtest, i.e., the binary
 would be installed as "[./]xtest/usr/local/bin/mini-nail".  Note that
 for "make uninstall" the *exact* command line should be repeated.
 
-Notes for S-nail(1) v13.*
+Notes for S-nail(1) v14.*
 -------------------------
 
-- NetBSD 5.1 and 6.0.  Tested with all features except IPv6 and IDNA
-  with the default compiler, -O2 and -O3.
-  Note that on 6.0 you should not enable -fstrict-overflow, as it
-  produces much more warnings than i saw before when testing with all
-  the other combinations shown here, and i had yet no time to look over
-  all those.
-- DragonFly BSD v3.2.1.9-g80b03f-RELEASE.  Compiled and lightly tested
-  with all features (except IPv6; possible in a default install).
-- Mac OS X Snow Leopard.  Tested with all features (except IPv6) with
-  the default CC=clang(1) and CC=gcc(1), -O2 and -O3, the WARNs
-  including -fstrict-overflow+.
-  Note that it may be necessary to adjust the paths as above if clang(1)
-  is used as the compiler, since that may not find all paths otherwise.
-- FreeBSD 9.0.  Tested with all features except IPv6, iconv() and IDNA
-  with the default CC=clang(1) and CC=gcc(1), -O2, and the WARNs
-  including -fstrict-overflow.
-- UnixWare 7.1.4.  Tested with all features except IPv6, GSSAPI and IDNA.
-- Lightly tested on a default OpenBSD 5.1 and just as-default 5.2.
-- Compiled and lightly tested on TinyCoreLinux 4.4 with default compiler
-  environment available at that time with -O2.
+S-nail(1) was developed and tested under Mac OS X Snow Leopard (clang(1)
+and gcc(1)) as well as NetBSD 6.0 (gcc(1)).
+S-nail(1) is known to correctly execute the ./cc-test.sh shell script,
+with and without uncommented compiler WARN= flags, on the following
+operating systems:
 
-The current maintainer has not yet looked at the following for real:
-IPv6, SSL, IMAP+, POP3+, Bayesian filter.
+- NetBSD 6.0.
+  Note that you should not enable -fstrict-overflow (yet).
+- DragonFly BSD v3.2.1.9-g80b03f-RELEASE.
+  (*All* optional dependencies turn to green on this one!)
+- FreeBSD 9.0.
+  Tested with CC=clang(1) and CC=gcc(1), -O2, and the WARNs including
+  -fstrict-overflow.
+- UnixWare 7.1.4.
+  (The -v compiler option gives some harmless warnings.)
+- OpenBSD 5.2.
+- TinyCoreLinux 4.4 with gcc 4.6.1.
+
+Program features yet to be overhauled
+-------------------------------------
+
+Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
+2012-09-18 i make my way through the codebase, but have not yet taken
+a look (rather: at all) into the following modules/parts:
+
+  IPv6, List view/threading, SSL, IMAP+, POP3+, SMTP+, Bayesian filter
+
+These will remain features of S-nail(1) and they will be looked at, and
+of course i will fix bugs when i notice them, but they are not yet part
+of the overhauled "S-nail core" (though SMTP is in daily use).
+You may also want to have a look at the file TODO.
