@@ -1337,7 +1337,7 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
 			excess = linelen - expected;
 			linelen = expected;
 		}
-		/*
+		/* TODO >>
 		 * Need to mask 'From ' lines. This cannot be done properly
 		 * since some servers pass them as 'From ' and others as
 		 * '>From '. Although one could identify the first kind of
@@ -1349,14 +1349,19 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
 		 * If the line is the first line of the message header, it
 		 * is likely a real 'From ' line. In this case, it is just
 		 * ignored since it violates all standards.
+		 * TODO can the latter *really* happen??
+		 * TODO <<
 		 */
-		if (lp[0] == 'F' && lp[1] == 'r' && lp[2] == 'o' &&
-				lp[3] == 'm' && lp[4] == ' ') {
-			if (lines + headlines != 0) {
-				fputc('>', mp->mb_otf);
-				size++;
-			} else
+		/*
+		 * Since we simply copy over data without doing any transfer
+		 * encoding reclassification/adjustment we *have* to perform
+		 * RFC 4155 compliant From_ quoting here
+		 */
+		if (is_head(lp, linelen)) {
+			if (lines + headlines == 0)
 				goto skip;
+			fputc('>', mp->mb_otf);
+			++size;
 		}
 		if (lp[linelen-1] == '\n' && (linelen == 1 ||
 					lp[linelen-2] == '\r')) {

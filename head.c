@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -54,22 +54,50 @@
  * Routines for processing and detecting headlines.
  */
 
-/* Skip over "word" as found in From_ line */
-static char const *	from__skipword(char const *wp);
+struct cmatch_data {
+	size_t		tlen;	/* Length of .tdata */
+	char const	*tdata;	/* Template date - see _cmatch_data[] */
+};
 
-/* Match the date string against the date template (tp), return if match.
- * Template characters:
+/*
+ * Template characters for cmatch_data.tdata:
  * 'A'	An upper case char
  * 'a'	A lower case char
  * ' '	A space
  * '0'	A digit
  * 'O'	An optional digit or space
- * ':'	A colon */
-static int		cmatch(size_t len, char const *date, char const *tp);
+ * ':'	A colon
+ * '+'  Either a plus or a minus sign
+ */
+static struct cmatch_data const	_cmatch_data[] = {
+	{ 24, "Aaa Aaa O0 00:00:00 0000" },		/* BSD ctime */
+	{ 28, "Aaa Aaa O0 00:00:00 AAA 0000" },		/* BSD tmz */
+	{ 21, "Aaa Aaa O0 00:00 0000" },		/* SysV ctime */
+	{ 25, "Aaa Aaa O0 00:00 AAA 0000" },		/* SysV tmz */
+	/*
+	 * RFC 822-alike From_ lines do not conform to RFC 4155, but seem to
+	 * be used in the wild by UW-imap (MBX format plus)
+	 */
+	{ 30, "Aaa Aaa O0 00:00:00 0000 +0000" },
+	/* RFC 822 with zone spec; 1. military, 2. UT, 3. north america time
+	 * zone strings; note that 1. is strictly speaking not correct as some
+	 * letters are not used, and 2. is not because only "UT" is defined */
+#define __reuse		"Aaa Aaa O0 00:00:00 0000 AAA"
+	{ 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
+	{ 0, NULL }
+};
+#define _DATE_MINLEN	21
+
+/* Skip over "word" as found in From_ line */
+static char const *	_from__skipword(char const *wp);
+
+/* Match the date string against the date template (tp), return if match.
+ * See _cmatch_data[] for template character description */
+static int		_cmatch(size_t len, char const *date, char const *tp);
 
 /* Check wether date is a valid 'From_' date.
  * (Rather ctime(3) generated dates, according to RFC 4155) */
-static int		is_date(char const *date);
+static int		_is_date(char const *date);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
@@ -90,7 +118,7 @@ static int	msgidnextc(const char **cp, int *status);
 static int	charcount(char *str, int c);
 
 static char const *
-from__skipword(char const *wp)
+_from__skipword(char const *wp)
 {
 	char c = 0;
 
@@ -110,7 +138,7 @@ from__skipword(char const *wp)
 }
 
 static int
-cmatch(size_t len, char const *date, char const *tp)
+_cmatch(size_t len, char const *date, char const *tp)
 {
 	int ret = 0;
 
@@ -141,6 +169,10 @@ cmatch(size_t len, char const *date, char const *tp)
 			if (c != ':')
 				goto jleave;
 			break;
+		case '+':
+			if (c != '+' && c != '-')
+				goto jleave;
+			break;
 		}
 	}
 	ret = 1;
@@ -149,20 +181,18 @@ jleave:
 }
 
 static int
-is_date(char const *date)
+_is_date(char const *date)
 {
-	switch (strlen(date)) {
-	case (24):	/* ctype */
-		return (cmatch(24, date, "Aaa Aaa O0 00:00:00 0000"));
-	case (28):	/* tmztype */
-		return (cmatch(28, date, "Aaa Aaa O0 00:00:00 AAA 0000"));	
-	case (25):	/* SysV_tm.. */
-		return (cmatch(25, date, "Aaa Aaa O0 00:00 AAA 0000"));
-	case (21):	/* SysV_ct.. */
-		return (cmatch(21, date, "Aaa Aaa O0 00:00 0000"));
-	default:
-		return (0);
-	}
+	struct cmatch_data const *cmdp;
+	size_t dl = strlen(date);
+	int ret = 0;
+
+	if (dl >= _DATE_MINLEN)
+		for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
+			if (dl == cmdp->tlen &&
+					(ret = _cmatch(dl, date, cmdp->tdata)))
+				break;
+	return (ret);
 }
 
 #ifdef USE_IDNA
@@ -398,30 +428,16 @@ myorigin(struct header *hp)
 	return (ret);
 }
 
-/*
- * See if the passed line buffer is a mail header according to RFC 4155.
- * Return true if yes.
- */
 int
 is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 {
 	char date[FROM_DATEBUF];
 
-	if (linelen <= 5 || memcmp(linebuf, "From ", 5) != 0)
-		return (0);
-
-	if (! extract_date_from_from_(linebuf, linelen, date) ||
-			! is_date(date)) {
-		return (0);
-	}
-	return(1);
+	return ((linelen <= 5 || memcmp(linebuf, "From ", 5) != 0 ||
+			! extract_date_from_from_(linebuf, linelen, date) ||
+			! _is_date(date)) ? 0 : 1);
 }
 
-/*
- * Savage extract date field from From_ line.
- * linelen is convenience as line must be terminated.
- * Return wether the From_ line was parsed successfully.
- */
 int
 extract_date_from_from_(char const *line, size_t linelen,
 	char datebuf[FROM_DATEBUF])
@@ -430,20 +446,30 @@ extract_date_from_from_(char const *line, size_t linelen,
 	char const *cp = line;
 
 	/* "From " */
-	cp = from__skipword(cp);
+	cp = _from__skipword(cp);
 	if (cp == NULL)
 		goto jerr;
 	/* "addr-spec " */
-	cp = from__skipword(cp);
+	cp = _from__skipword(cp);
 	if (cp == NULL)
 		goto jerr;
 	if (cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
-		cp = from__skipword(cp);
+		cp = _from__skipword(cp);
 		if (cp == NULL)
 			goto jerr;
 	}
 
 	linelen -= (size_t)(cp - line);
+	if (linelen < _DATE_MINLEN)
+		goto jerr;
+	if (cp[linelen - 1] == '\n') {
+		--linelen;
+		/* (Rather IMAP/POP3 only) */
+		if (cp[linelen - 1] == '\r')
+			--linelen;
+		if (linelen < _DATE_MINLEN)
+			goto jerr;
+	}
 	if (linelen >= FROM_DATEBUF)
 		goto jerr;
 

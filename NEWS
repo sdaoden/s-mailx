@@ -1,6 +1,33 @@
 S - n a i l  N e w s
 ====================
 
+- The RFC 4155 compliant MBOX quoting is now exclusively used, the
+  shitty *posix-mbox* variable has been removed again.
+  (Shitty because i've implemented RFC 4155 compliant MBOX quoting and
+  tested it, then added *posix-mbox* for those who liked the old
+  behaviour and did not re-test -- the final code path was buggy.)
+
+  In mails newly created and saved by S-nail(1) no From_ quoting at all
+  will be used no more, but instead the rewritten MIME file classifier
+  will detect unquoted From_ lines and enforce quoted-printable encoding.
+  (This is an approach that is S/MIME compatible all through the way as
+  the file data is not modified at all, but only encoded, so that the
+  data checksum is not changed.)
+
+  In yet existent mails that S-nail copies or moves around without
+  reclassification an RFC 4155 compliant From_ line detector will apply
+  MBOXO quoting (prepend a single '>') as necessary.
+  Different to the old MBOXRD behaviour S-nail will neither quote yet
+  quoted From_ lines ('>>From xy' -> '>>>From xy') nor will it unquote
+  one quote level when reading etc. mails ('>> From xy' -> '>From xy').
+  As a result the code could be simplified.
+
+  This changeset also incorporates a fix for NetBSD PR bin/47453, as
+  reported by Martin Brandenburg.  I.e., some mailers, noticeably
+  UW-imap (with MBX format only?), use non-compliant From_ lines with
+  RFC 822 date specifications.  Be aware of 'em.
+  (RFC 4155 MBOX, and drop *posix-mbox* and foldergets().., 2013-01-06)
+
 - *rfc822-show-all* has been removed.
   It didn't work properly for more complex MIME structures, like
   message/rfc822 messages with attachments etc., just as i've seen today

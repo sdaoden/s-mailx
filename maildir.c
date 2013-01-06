@@ -315,7 +315,7 @@ append(const char *name, const char *sub, const char *fn)
 static void 
 readin(const char *name, struct message *m)
 {
-	char	*buf, *bp;
+	char	*buf;
 	size_t	bufsize, buflen, count;
 	long	size = 0, lines = 0;
 	off_t	offset;
@@ -335,15 +335,18 @@ readin(const char *name, struct message *m)
 	fseek(mb.mb_otf, 0L, SEEK_END);
 	offset = ftell(mb.mb_otf);
 	while (fgetline(&buf, &bufsize, &count, &buflen, fp, 1) != NULL) {
-		bp = buf;
-		if (buf[0] == 'F' && buf[1] == 'r' && buf[2] == 'o' &&
-				buf[3] == 'm' && buf[4] == ' ') {
+		/*
+		 * Since we simply copy over data without doing any transfer
+		 * encoding reclassification/adjustment we *have* to perform
+		 * RFC 4155 compliant From_ quoting here
+		 */
+		if (is_head(buf, buflen)) {
 			putc('>', mb.mb_otf);
-			size++;
+			++size;
 		}
-		lines++;
-		size += fwrite(bp, 1, buflen, mb.mb_otf);
-		emptyline = *bp == '\n';
+		size += fwrite(buf, 1, buflen, mb.mb_otf);/*XXX err hdling*/
+		emptyline = (*buf == '\n');
+		++lines;
 	}
 	if (!emptyline) {
 		putc('\n', mb.mb_otf);

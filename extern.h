@@ -398,9 +398,16 @@ char const *	myaddrs(struct header *hp);
 /* Boil the user's From: addresses down to a single one, or use *sender* */
 char const *	myorigin(struct header *hp);
 
+/* See if the passed line buffer, which may include trailing newline (sequence)
+ * is a mail From_ header line according to RFC 4155 */
 int	is_head(char const *linebuf, size_t linelen);
+
+/* Savage extract date field from From_ line.  *linelen* is convenience as line
+ * must be terminated (but it may end in a newline [sequence]).
+ * Return wether the From_ line was parsed successfully */
 int	extract_date_from_from_(char const *line, size_t linelen,
 		char datebuf[FROM_DATEBUF]);
+
 void extract_header(FILE *fp, struct header *hp);
 #define	hfieldX(a, b)	hfield_mult(a, b, 1)
 #define	hfield1(a, b)	hfield_mult(a, b, 0)
@@ -680,8 +687,6 @@ int savequitflags(void);
 void restorequitflags(int);
 
 /* send.c */
-char *foldergets(char **s, size_t *size, size_t *count, size_t *llen,
-		FILE *stream);
 #undef send
 #define send(a, b, c, d, e, f)  xsend(a, b, c, d, e, f)
 int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
