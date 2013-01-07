@@ -547,6 +547,11 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			if (_include_file(NULL, quotefile, &lc, &cc, 1) != 0)
 				goto jerr;
 		}
+		if ((val & val_INTERACT) && value("editalong")) {
+			rewind(collf);
+			mesedit('e', hp);
+			goto jcont;
+		}
 	} else {
 		/*
 		 * Come here for printing the after-signal message.

@@ -1,6 +1,10 @@
 S - n a i l  N e w s
 ====================
 
+- The new *editalong* variable will automatically spawn an editor when
+  composing a mail in interactive mode, just as if `~e' was given.
+  (Add new *editalong* variable, 2012-01-07)
+
 - The manual has been converted to mdoc.
   (The manual has been converted to mdoc, 2012-12-28)
 

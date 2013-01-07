@@ -2057,6 +2057,13 @@ but other accounts are not affected.
 .It Va dot
 The binary option dot causes \*(UA to interpret a period alone on a line
 as the terminator of a message the user is sending.
+.It Va editalong
+If this variable is set then the editor is started automatically when
+composing a message in an interactive session,
+as if the `~e' tilde command had been specified.
+The
+.Va editheaders
+variable is implied for this automatically spawned editor session.
 .It Va editheaders
 When a message is edited while being composed,
 its header is included in the editable text.
