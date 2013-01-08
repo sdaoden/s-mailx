@@ -343,6 +343,15 @@ int main(void)
 }
 !
 
+run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
+#include <stdlib.h>
+int main(void)
+{
+	char *x = realpath(".", NULL);
+	return (x != NULL ? 0 : 1);
+}
+!
+
 link_check wordexp 'for wordexp()' '#define HAVE_WORDEXP' << \!
 #include <wordexp.h>
 int main(void)
