@@ -820,25 +820,6 @@ jleave:
 	return ((f & NAME_ADDRSPEC_INVALID) != 0);
 }
 
-/*
- * Returned the skinned n_name, use the cached value if available.
- * Note well that it may *not* create a duplicate.
- */
-char *
-skinned_name(struct name const*np) /* TODO !HAVE_ASSERTS legacy */
-{
-#ifdef HAVE_ASSERTS
-	assert(np->n_flags & NAME_SKINNED);
-	return (np->n_name);
-#else
-	return ((np->n_flags & NAME_SKINNED) ? np->n_name : skin(np->n_name));
-#endif
-}
-
-/*
- * Skin an arpa net address according to the RFC 822 interpretation
- * of "host-phrase."
- */
 char *
 skin(char const *name)
 {
@@ -854,13 +835,7 @@ skin(char const *name)
 	return (ret);
 }
 
-/*
- * Skin *name* and extract the *addr-spec* according to RFC 5322. TODO 822:5322
- * Store the result in .ag_skinned and also fill in those .ag_ fields that have
- * actually been seen.
- * Return 0 if something good has been parsed, 1 if fun didn't exactly know how
- * to deal with the input, or if that was plain invalid.
- */
+/* TODO addrspec_with_guts: RFC 5322 */
 int
 addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
@@ -883,7 +858,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	if (! doskin || ! anyof(name, "(< ")) {
 		/*agp->ag_iaddr_start = 0;*/
 		agp->ag_iaddr_aend = agp->ag_ilen;
-		agp->ag_skinned = (char*)name; /* XXX (NAME_SALLOC not set) */
+		agp->ag_skinned = UNCONST(name); /* (NAME_SALLOC not set) */
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
 		return (addrspec_check(doskin, agp));

@@ -421,12 +421,27 @@ char *thisfield(const char *linebuf, const char *field);
 char *nameof(struct message *mp, int reptype);
 char const *skip_comment(char const *cp);
 char *routeaddr(const char *name);
+int is_addr_invalid(struct name *np, int putmsg);
+
+/* Does *NP* point to a file or pipe addressee? */
 #define is_fileorpipe_addr(NP) \
 	(((NP)->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) != 0)
-int is_addr_invalid(struct name *np, int putmsg);
-char *skinned_name(struct name const*np);
-char *skin(char const *name);
-int addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
+
+/* Return skinned version of *NP*s name */
+#define skinned_name(NP) \
+	(assert((NP)->n_flags & NAME_SKINNED), \
+	((struct name const*)NP)->n_name)
+
+/* Skin an address according to the RFC 822 interpretation of "host-phrase" */
+char *	skin(char const *name);
+
+/* Skin *name* and extract the *addr-spec* according to RFC 5322.
+ * Store the result in .ag_skinned and also fill in those .ag_ fields that have
+ * actually been seen.
+ * Return 0 if something good has been parsed, 1 if fun didn't exactly know how
+ * to deal with the input, or if that was plain invalid */
+int	addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
+
 char *realname(char const *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
