@@ -316,19 +316,40 @@ jleave:
 int 
 schdir(void *v)
 {
-	char **arglist = v;
-	char *cp;
+	char **arglist = v, *cp;
 
+#ifdef HAVE_REALPATH
+	/* TODO Avoid locked-up situation with relative paths when chdir(2)ing
+	 * TODO away; intermediate in that the current box's temporary
+	 * TODO representation should be saved to TMPDIR and the current BOX
+	 * TODO should be set to a-to-be-invented "void" box?  Or the user
+	 * TODO should be prompted if interactive?  It SHOULD be encapsulated
+	 * TODO in the box type driver!!  Thus - maybe add an is_absolute()
+	 * TODO flag to the (not yet existent) drivers, and forbid changing
+	 * TODO the path if that returns false (for whatever reason) */
+	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
+		cp = realpath(mailname, NULL);
+		if (cp != NULL) {
+			sstpcpy(mailname, cp);
+			(free)(cp);
+		} else {
+			fprintf(stderr, tr(86, "Won't \"chdir\": "
+				"\"%s\" would become inaccessible"),
+				mailname);
+			goto jleave;
+		}
+	}
+#endif
 	if (*arglist == NULL)
 		cp = homedir;
-	else
-		if ((cp = file_expand(*arglist)) == NULL)
-			return(1);
+	else if ((cp = file_expand(*arglist)) == NULL)
+		goto jleave;
 	if (chdir(cp) < 0) {
 		perror(cp);
-		return(1);
+		cp = NULL;
 	}
-	return 0;
+jleave:
+	return (cp != NULL);
 }
 
 static void 

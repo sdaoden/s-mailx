@@ -86,7 +86,7 @@ $set 1
 83 "%s": Expansion buffer overflow.\n
 84 "%s": Ambiguous.\n
 85 --- DELETED ---
-86 --- DELETED ---
+86 Won't "chdir": "%s" would become inaccessible
 87 temporary mail message file
 88 No mail for %s\n
 89 Use "quit" to quit.\n
