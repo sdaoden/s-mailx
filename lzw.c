@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*-
  * Copyright (c) 1985, 1986, 1992, 1993
@@ -42,8 +42,7 @@
  *	1.5.6.1 2002/07/16 00:52:08 tjr Exp */
 /*	from FreeBSD: git://git.freebsd.org/freebsd,
  *	master:usr.bin/compress/zopen.c,
- *	(Fix handling of corrupt compress(1)ed data. [11:04], 2011-09-28),
- *	2902cb5e28a1e38bce859ef1ae14e9d22fe50214. */
+ *	(Fix handling of corrupt compress(1)ed data. [11:04], 2011-09-28) */
 
 /*-
  * lzw.c - File compression ala IEEE Computer, June 1984.
