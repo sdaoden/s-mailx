@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -71,24 +71,13 @@
  * Startup -- interface with user.
  */
 
+
 static sigjmp_buf	hdrjmp;
-
-char const		defcharset[] = "utf-8";
-char const		charset7[] = CHARSET7;
-char const *const	weekday_names[7 + 1] = {
-	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
-};
-char const *const	month_names[12 + 1] = {
-	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
-};
-
-sighandler_type		dflpipe = SIG_DFL;
 
 /* Add an option for sendmail(1) */
 static void	add_smopt(int argc_left, char *arg);
 
-/* Initialize *tempdir* and *myname* */
+/* Initialize *tempdir*, *myname*, *homedir* */
 static void	setup_vars(void);
 
 /* Compute what the screen size for printing headers should be.
@@ -105,6 +94,7 @@ static void	hdrstop(int signo);
 static void
 add_smopt(int argc_left, char *arg)
 {
+	/* Before spreserve(): use our string pool instead of LibC heap */
 	if (smopts == NULL)
 		smopts = salloc((argc_left + 1) * sizeof(char*));
 	smopts[smopts_count++] = arg;
@@ -113,15 +103,16 @@ add_smopt(int argc_left, char *arg)
 static void
 setup_vars(void)
 {
+	/* Before spreserve(): use our string pool instead of LibC heap */
 	char *cp;
 
-	tempdir = ((cp = getenv("TMPDIR")) != NULL) ? sstrdup(cp) : "/tmp";
+	tempdir = ((cp = getenv("TMPDIR")) != NULL) ? savestr(cp) : "/tmp";
 
-	myname = sstrdup(username());
+	myname = savestr(username());
 
 	if ((cp = getenv("HOME")) == NULL)
 		cp = ".";
-	homedir = sstrdup(cp);
+	homedir = savestr(cp);
 }
 
 static void
@@ -185,7 +176,7 @@ sighandler_type		dflpipe = SIG_DFL;
 int 
 main(int argc, char *argv[])
 {
-	char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
+	static char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
 		usagestr[] =
 		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
 		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
@@ -195,12 +186,22 @@ main(int argc, char *argv[])
 		"\t\t[-S var[=value]] [-T name] -f [file]\n"
 		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
-	int scnt, i;
-	struct name *to, *cc, *bcc;
-	struct attachment *attach;
-	char *cp, *subject, *ef, *qf, *fromaddr, *Aflag;
-	char existonly, headersonly, sendflag, nosrc, Eflag, Fflag, tflag;
-	char volatile Nflag;
+	enum {
+		OPT_NONE	= 0,
+		OPT_EXISTONLY	= 1<<0,
+		OPT_HEADERSONLY	= 1<<1,
+		OPT_SENDFLAG	= 1<<2,
+		OPT_NOSRC	= 1<<3,
+		OPT_E_FLAG	= 1<<4,
+		OPT_F_FLAG	= 1<<5,
+		OPT_N_FLAG	= 1<<6,
+		OPT_t_FLAG	= 1<<7
+	} opt_flags = 0;
+	int scnt = 0, i;
+	struct name *to = NULL, *cc = NULL, *bcc = NULL;
+	struct attachment *attach = NULL;
+	char *cp = NULL, *subject = NULL, *ef = NULL, *qf = NULL,
+		*fromaddr = NULL, *Aflag = NULL;
 	sighandler_type prevint;
 
 	/*
@@ -259,30 +260,19 @@ main(int argc, char *argv[])
 #endif
 #ifdef HAVE_CATGETS
 # ifdef NL_CAT_LOCALE
-	i = NL_CAT_LOCALE;
+	catd = catopen(CATNAME, NL_CAT_LOCALE);
 # else
-	i = 0;
+	catd = catopen(CATNAME, 0);
 # endif
-	catd = catopen(CATNAME, i);
 #endif
 #ifdef HAVE_ICONV
-	iconvd = (iconv_t) -1;
+	iconvd = (iconv_t)-1;
 #endif
 	image = -1;
+
 	/*
-	 * Now, determine how we are being used.
-	 * We successively pick off - flags.
-	 * If there is anything left, it is the base of the list
-	 * of users to mail to.  Argp will be set to point to the
-	 * first of these users.
+	 * Command line options
 	 */
-	scnt = 0;
-	to = cc = bcc = NULL;
-	attach = NULL;
-	subject = ef = qf = fromaddr = Aflag = NULL;
-	existonly = headersonly = sendflag = nosrc =
-	Eflag = Fflag = tflag = 0;
-	Nflag = 0;
 
 	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
@@ -297,7 +287,7 @@ main(int argc, char *argv[])
 				perror(optarg);
 				exit(1);
 			}
-			sendflag = 1;
+			opt_flags |= OPT_SENDFLAG;
 			break;
 		case 'B':
 			/* Make 0/1 line buffered */
@@ -307,12 +297,12 @@ main(int argc, char *argv[])
 		case 'b':
 			/* Get Blind Carbon Copy Recipient list */
 			bcc = cat(bcc, checkaddrs(lextract(optarg,GBCC|GFULL)));
-			sendflag = 1;
+			opt_flags |= OPT_SENDFLAG;
 			break;
 		case 'c':
 			/* Get Carbon Copy Recipient list */
 			cc = cat(cc, checkaddrs(lextract(optarg, GCC|GFULL)));
-			sendflag = 1;
+			opt_flags |= OPT_SENDFLAG;
 			break;
 		case 'D':
 #ifdef USE_IMAP
@@ -324,14 +314,13 @@ main(int argc, char *argv[])
 			++debug;
 			break;
 		case 'E':
-			Eflag = 1;
+			opt_flags |= OPT_E_FLAG;
 			break;
 		case 'e':
-			existonly = 1;
+			opt_flags |= OPT_EXISTONLY;
 			break;
 		case 'F':
-			Fflag = 1;
-			sendflag = 1;
+			opt_flags |= OPT_F_FLAG | OPT_SENDFLAG;
 			break;
 		case 'f':
 			/*
@@ -343,7 +332,7 @@ main(int argc, char *argv[])
 			ef = "&";
 			break;
 		case 'H':
-			headersonly = 1;
+			opt_flags |= OPT_HEADERSONLY;
 			break;
 jIflag:		case 'I':
 			/* Show Newsgroups: field in header summary */
@@ -355,12 +344,12 @@ jIflag:		case 'I':
 			break;
 		case 'N':
 			/* Avoid initial header printing */
-			Nflag = 1;
 			unset_internal("header");
+			opt_flags |= OPT_N_FLAG;
 			break;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
-			nosrc = 1;
+			opt_flags |= OPT_NOSRC;
 			break;
 		case 'O':
 			/* Additional options to pass-through to MTA */
@@ -370,7 +359,7 @@ jIflag:		case 'I':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
 			if (*optarg != '-')
 				qf = optarg;
-			sendflag = 1;
+			opt_flags |= OPT_SENDFLAG;
 			break;
 		case 'R':
 			/* Open folders read-only */
@@ -393,9 +382,13 @@ jIflag:		case 'I':
 			}
 			break;
 		case 'S':
-			/* Set variable (do so later, after RC loading..) */
+			/*
+			 * Set variable.  We need to do this twice, since the
+			 * user surely wants the setting to take effect
+			 * immediately, but also doesn't want it to be
+			 * overwritten from within resource files
+			 */
 			argv[scnt++] = optarg;
-			/* TODO Also set -S directly (see TODO) */
 			{	char *a[2];
 				a[0] = optarg;
 				a[1] = NULL;
@@ -407,7 +400,7 @@ jIflag:		case 'I':
 		case 's':
 			/* Subject: */
 			subject = optarg;
-			sendflag = 1;
+			opt_flags |= OPT_SENDFLAG;
 			break;
 		case 'T':
 			/*
@@ -423,8 +416,7 @@ jIflag:		case 'I':
 			goto jIflag;
 		case 't':
 			/* Read defined set of headers from mail to be send */
-			sendflag = 1;
-			tflag = 1;
+			opt_flags |= OPT_SENDFLAG | OPT_t_FLAG;
 			break;
 		case 'u':
 			/* Set user name to pretend to be  */
@@ -433,7 +425,7 @@ jIflag:		case 'I':
 		case 'V':
 			puts(version);
 			exit(0);
-			/*NOTREACHED*/
+			/* NOTREACHED */
 		case 'v':
 			/* Be verbose */
 			assign("verbose", "");
@@ -470,7 +462,8 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
-	if (sendflag && ! tflag && to == NULL) {
+	if ((opt_flags & (OPT_SENDFLAG|OPT_t_FLAG)) == OPT_SENDFLAG &&
+			to == NULL) {
 		fprintf(stderr, tr(138,
 			"Send options without primary recipient specified.\n"));
 		goto usage;
@@ -492,10 +485,12 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			safe_signal(SIGWINCH, setscreensize);
 #endif
 	input = stdin;
-	rcvmode = !to && !tflag;
+	rcvmode = (to == NULL && (opt_flags & OPT_t_FLAG) == 0);
+
+	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();
 
-	if (! nosrc)
+	if ((opt_flags & OPT_NOSRC) == 0)
 		load(SYSCONFRC);
 	/*
 	 * Expand returns a savestr, but load only uses the file name
@@ -512,14 +507,14 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		load(file_expand(cp));
 
 	/* Now we can set the account */
-	if (Aflag) {
+	if (Aflag != NULL) {
 		char *a[2];
 		a[0] = Aflag;
 		a[1] = NULL;
 		account(a);
 	}
 	/* Override 'skipemptybody' if '-E' flag was given */
-	if (Eflag)
+	if (opt_flags & OPT_E_FLAG)
 		assign("skipemptybody", "");
 	/* -S arguments override rc files */
 	for (i = 0; i < scnt; ++i) {
@@ -529,7 +524,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		set(a);
 	}
 	/* From address from command line overrides rc files */
-	if (fromaddr)
+	if (fromaddr != NULL)
 		assign("from", fromaddr);
 
 	debug += (value("debug") != NULL);
@@ -537,15 +532,21 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
 			myname, homedir);
 	verbose += (value("verbose") != NULL) + debug;
+
+	/*
+	 * We are actually ready to go, finally
+	 */
+
 	starting = 0;
 
-	if (!rcvmode) {
-		mail(to, cc, bcc, subject, attach, qf, Fflag, tflag, Eflag);
-		/*
-		 * why wait?
-		 */
+	if (! rcvmode) {
+		mail(to, cc, bcc, subject, attach, qf,
+			((opt_flags & OPT_F_FLAG) != 0),
+			((opt_flags & OPT_t_FLAG) != 0),
+			((opt_flags & OPT_E_FLAG) != 0));
 		exit(senderr ? 1 : 0);
 	}
+
 	/*
 	 * Ok, we are reading mail.
 	 * Decide whether we are editing a mailbox or reading
@@ -565,9 +566,9 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	i = setfile(ef, 0);
 	if (i < 0)
 		exit(1);		/* error already reported */
-	if (existonly)
+	if (opt_flags & OPT_EXISTONLY)
 		exit(i);
-	if (headersonly) {
+	if (opt_flags & OPT_HEADERSONLY) {
 #ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
@@ -576,14 +577,15 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			printhead(i, stdout, 0);
 		exit(exit_status);
 	}
+
 	callhook(mailname, 0);
 	if (i > 0 && value("emptystart") == NULL)
 		exit(1);
 	if (sigsetjmp(hdrjmp, 1) == 0) {
 		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			safe_signal(SIGINT, hdrstop);
-		if (Nflag == 0) {
-			if (value("quiet") == NULL)
+		if ((opt_flags & OPT_N_FLAG) == 0) {
+			if (! value("quiet"))
 				printf(tr(140,
 					"%s version %s.  Type ? for help.\n"),
 					value("bsdcompat") ? "Mail" : uagent,
@@ -601,5 +603,5 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	}
 	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
 	quit();
-	return exit_status;
+	return (exit_status);
 }
