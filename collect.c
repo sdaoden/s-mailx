@@ -141,7 +141,7 @@ _append_attachments(struct attachment *aphead, char *names)
 	struct attachment *xaph, *nap;
 
 	while ((cp = strcomma(&names, 1)) != NULL) {
-		if ((xaph = add_attachment(aphead, cp, 1, &nap)) != NULL) {
+		if ((xaph = add_attachment(aphead, cp, &nap)) != NULL) {
 			aphead = xaph;
 			if (value("interactive"))
 				printf(tr(19, "~@: added attachment \"%s\"\n"),
@@ -271,16 +271,12 @@ endpipe:
 }
 
 struct attachment *
-add_attachment(struct attachment *aphead, char *file, int expand,
-	struct attachment **newap)
+add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 {
 	struct attachment *nap = NULL, *ap;
 
-	if (expand) {
-		if ((file = file_expand(file)) == NULL)
-			goto jleave;
-	} else
-		file = savestr(file);
+	if ((file = file_expand(file)) == NULL)
+		goto jleave;
 	if (access(file, R_OK) != 0)
 		goto jleave;
 

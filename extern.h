@@ -296,11 +296,11 @@ int crename(void *v);
 
 /* collect.c */
 
-/* Try to add an attachment for *file*, file_expand()ing it first if *expand*
- * is set, and return the new head of list *aphead*, or NULL.  The newly
- * created attachment will be stored in **newap*, if given */
+/* Try to add an attachment for *file*, file_expand()ed.
+ * Return the new head of list *aphead*, or NULL.
+ * The newly created attachment will be stored in **newap*, if given */
 struct attachment *	add_attachment(struct attachment *aphead, char *file,
-				int expand, struct attachment **newap);
+				struct attachment **newap);
 
 struct attachment *edit_attachments(struct attachment *attach);
 FILE *collect(struct header *hp, int printheaders, struct message *mp,

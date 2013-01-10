@@ -538,7 +538,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 
 	/* We have delayed attachments until full file expansion is possible */
 	while (a_head != NULL) {
-		attach = add_attachment(attach, a_head->aa_file, 1, NULL);
+		attach = add_attachment(attach, a_head->aa_file, NULL);
 		if (attach != NULL) {
 			a_curr = a_head;
 			a_head = a_head->aa_next;
