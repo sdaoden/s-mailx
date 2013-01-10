@@ -71,6 +71,10 @@
  * Startup -- interface with user.
  */
 
+struct a_arg {
+	struct a_arg	*aa_next;
+	char		*aa_file;
+};
 
 static sigjmp_buf	hdrjmp;
 
@@ -197,6 +201,7 @@ main(int argc, char *argv[])
 		OPT_N_FLAG	= 1<<6,
 		OPT_t_FLAG	= 1<<7
 	} opt_flags = 0;
+	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
 	int scnt = 0, i;
 	struct name *to = NULL, *cc = NULL, *bcc = NULL;
 	struct attachment *attach = NULL;
@@ -281,11 +286,15 @@ main(int argc, char *argv[])
 			Aflag = optarg;
 			break;
 		case 'a':
-			/* Get attachment filenames */
-			attach = add_attachment(attach, optarg, 0, NULL);
-			if (attach == NULL) {
-				perror(optarg);
-				exit(1);
+			{	struct a_arg *nap = ac_alloc(
+						sizeof(struct a_arg));
+				if (a_head == NULL)
+					a_head = nap;
+				else
+					a_curr->aa_next = nap;
+				nap->aa_next = NULL;
+				nap->aa_file = optarg;
+				a_curr = nap;
 			}
 			opt_flags |= OPT_SENDFLAG;
 			break;
@@ -532,6 +541,19 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
 			myname, homedir);
 	verbose += (value("verbose") != NULL) + debug;
+
+	/* We have delayed attachments until full file expansion is possible */
+	while (a_head != NULL) {
+		attach = add_attachment(attach, a_head->aa_file, 1, NULL);
+		if (attach != NULL) {
+			a_curr = a_head;
+			a_head = a_head->aa_next;
+			ac_free(a_curr);
+		} else {
+			perror(a_head->aa_file);
+			exit(1);
+		}
+	}
 
 	/*
 	 * We are actually ready to go, finally
