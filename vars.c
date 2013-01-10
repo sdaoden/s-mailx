@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -66,10 +66,19 @@ static void remove_grouplist(struct grouphead *gh);
 static void
 _check_special_vars(char const *name, int enable)
 {
+	int flag = 0;
+
 	if (strcmp(name, "debug") == 0)
-		debug = enable;
+		flag = OPT_DEBUG;
 	else if (strcmp(name, "verbose") == 0)
-		verbose = enable;
+		flag = OPT_VERBOSE;
+
+	if (flag) {
+		if (enable)
+			options |= flag;
+		else
+			options &= ~flag;
+	}
 }
 
 static char *

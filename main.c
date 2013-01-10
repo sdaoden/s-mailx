@@ -190,17 +190,6 @@ main(int argc, char *argv[])
 		"\t\t[-S var[=value]] [-T name] -f [file]\n"
 		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
-	enum {
-		OPT_NONE	= 0,
-		OPT_EXISTONLY	= 1<<0,
-		OPT_HEADERSONLY	= 1<<1,
-		OPT_SENDFLAG	= 1<<2,
-		OPT_NOSRC	= 1<<3,
-		OPT_E_FLAG	= 1<<4,
-		OPT_F_FLAG	= 1<<5,
-		OPT_N_FLAG	= 1<<6,
-		OPT_t_FLAG	= 1<<7
-	} opt_flags = 0;
 	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
 	int scnt = 0, i;
 	struct name *to = NULL, *cc = NULL, *bcc = NULL;
@@ -296,7 +285,7 @@ main(int argc, char *argv[])
 				nap->aa_file = optarg;
 				a_curr = nap;
 			}
-			opt_flags |= OPT_SENDFLAG;
+			options |= OPT_SENDFLAG;
 			break;
 		case 'B':
 			/* Make 0/1 line buffered */
@@ -306,12 +295,12 @@ main(int argc, char *argv[])
 		case 'b':
 			/* Get Blind Carbon Copy Recipient list */
 			bcc = cat(bcc, checkaddrs(lextract(optarg,GBCC|GFULL)));
-			opt_flags |= OPT_SENDFLAG;
+			options |= OPT_SENDFLAG;
 			break;
 		case 'c':
 			/* Get Carbon Copy Recipient list */
 			cc = cat(cc, checkaddrs(lextract(optarg, GCC|GFULL)));
-			opt_flags |= OPT_SENDFLAG;
+			options |= OPT_SENDFLAG;
 			break;
 		case 'D':
 #ifdef USE_IMAP
@@ -320,16 +309,16 @@ main(int argc, char *argv[])
 			break;
 		case 'd':
 			assign("debug", "");
-			++debug;
+			options |= OPT_DEBUG;
 			break;
 		case 'E':
-			opt_flags |= OPT_E_FLAG;
+			options |= OPT_E_FLAG;
 			break;
 		case 'e':
-			opt_flags |= OPT_EXISTONLY;
+			options |= OPT_EXISTONLY;
 			break;
 		case 'F':
-			opt_flags |= OPT_F_FLAG | OPT_SENDFLAG;
+			options |= OPT_F_FLAG | OPT_SENDFLAG;
 			break;
 		case 'f':
 			/*
@@ -341,11 +330,11 @@ main(int argc, char *argv[])
 			ef = "&";
 			break;
 		case 'H':
-			opt_flags |= OPT_HEADERSONLY;
+			options |= OPT_HEADERSONLY;
 			break;
 jIflag:		case 'I':
 			/* Show Newsgroups: field in header summary */
-			Iflag = 1;
+			options |= OPT_I_FLAG;
 			break;
 		case 'i':
 			/* Ignore interrupts */
@@ -354,11 +343,11 @@ jIflag:		case 'I':
 		case 'N':
 			/* Avoid initial header printing */
 			unset_internal("header");
-			opt_flags |= OPT_N_FLAG;
+			options |= OPT_N_FLAG;
 			break;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
-			opt_flags |= OPT_NOSRC;
+			options |= OPT_NOSRC;
 			break;
 		case 'O':
 			/* Additional options to pass-through to MTA */
@@ -368,11 +357,11 @@ jIflag:		case 'I':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
 			if (*optarg != '-')
 				qf = optarg;
-			opt_flags |= OPT_SENDFLAG;
+			options |= OPT_SENDFLAG;
 			break;
 		case 'R':
 			/* Open folders read-only */
-			Rflag = 1;
+			options |= OPT_R_FLAG;
 			break;
 		case 'r':
 			/* Set From address. */
@@ -409,7 +398,7 @@ jIflag:		case 'I':
 		case 's':
 			/* Subject: */
 			subject = optarg;
-			opt_flags |= OPT_SENDFLAG;
+			options |= OPT_SENDFLAG;
 			break;
 		case 'T':
 			/*
@@ -425,7 +414,7 @@ jIflag:		case 'I':
 			goto jIflag;
 		case 't':
 			/* Read defined set of headers from mail to be send */
-			opt_flags |= OPT_SENDFLAG | OPT_t_FLAG;
+			options |= OPT_SENDFLAG | OPT_t_FLAG;
 			break;
 		case 'u':
 			/* Set user name to pretend to be  */
@@ -438,11 +427,11 @@ jIflag:		case 'I':
 		case 'v':
 			/* Be verbose */
 			assign("verbose", "");
-			++verbose;
+			options |= OPT_VERBOSE;
 			break;
 		case '~':
 			/* Enable tilde escapes even in non-interactive mode */
-			tildeflag = 1;
+			options |= OPT_TILDE_FLAG;
 			break;
 		case '?':
 usage:			fprintf(stderr, tr(135, usagestr),
@@ -471,17 +460,17 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
-	if ((opt_flags & (OPT_SENDFLAG|OPT_t_FLAG)) == OPT_SENDFLAG &&
+	if ((options & (OPT_SENDFLAG|OPT_t_FLAG)) == OPT_SENDFLAG &&
 			to == NULL) {
 		fprintf(stderr, tr(138,
 			"Send options without primary recipient specified.\n"));
 		goto usage;
 	}
-	if (Rflag && to != NULL) {
+	if ((options & OPT_R_FLAG) && to != NULL) {
 		fprintf(stderr, "The -R option is meaningless in send mode.\n");
 		goto usage;
 	}
-	if (Iflag && ef == NULL) {
+	if ((options & OPT_I_FLAG) && ef == NULL) {
 		fprintf(stderr, tr(204, "Need -f with -I.\n"));
 		goto usage;
 	}
@@ -494,12 +483,13 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			safe_signal(SIGWINCH, setscreensize);
 #endif
 	input = stdin;
-	rcvmode = (to == NULL && (opt_flags & OPT_t_FLAG) == 0);
+	if (to == NULL && (options & OPT_t_FLAG) == 0)
+		options |= OPT_RCVMODE;
 
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();
 
-	if ((opt_flags & OPT_NOSRC) == 0)
+	if ((options & OPT_NOSRC) == 0)
 		load(SYSCONFRC);
 	/*
 	 * Expand returns a savestr, but load only uses the file name
@@ -523,7 +513,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		account(a);
 	}
 	/* Override 'skipemptybody' if '-E' flag was given */
-	if (opt_flags & OPT_E_FLAG)
+	if (options & OPT_E_FLAG)
 		assign("skipemptybody", "");
 	/* -S arguments override rc files */
 	for (i = 0; i < scnt; ++i) {
@@ -536,11 +526,15 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (fromaddr != NULL)
 		assign("from", fromaddr);
 
-	debug += (value("debug") != NULL);
-	if (debug)
+	if (value("debug"))
+		options |= OPT_DEBUG;
+	if (options & OPT_DEBUG) {
+		options |= OPT_VERBOSE;
 		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
 			myname, homedir);
-	verbose += (value("verbose") != NULL) + debug;
+	}
+	if (value("verbose"))
+		options |= OPT_VERBOSE;
 
 	/* We have delayed attachments until full file expansion is possible */
 	while (a_head != NULL) {
@@ -561,11 +555,11 @@ usage:			fprintf(stderr, tr(135, usagestr),
 
 	starting = 0;
 
-	if (! rcvmode) {
+	if ((options & OPT_RCVMODE) == 0) {
 		mail(to, cc, bcc, subject, attach, qf,
-			((opt_flags & OPT_F_FLAG) != 0),
-			((opt_flags & OPT_t_FLAG) != 0),
-			((opt_flags & OPT_E_FLAG) != 0));
+			((options & OPT_F_FLAG) != 0),
+			((options & OPT_t_FLAG) != 0),
+			((options & OPT_E_FLAG) != 0));
 		exit(senderr ? 1 : 0);
 	}
 
@@ -588,9 +582,9 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	i = setfile(ef, 0);
 	if (i < 0)
 		exit(1);		/* error already reported */
-	if (opt_flags & OPT_EXISTONLY)
+	if (options & OPT_EXISTONLY)
 		exit(i);
-	if (opt_flags & OPT_HEADERSONLY) {
+	if (options & OPT_HEADERSONLY) {
 #ifdef USE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
@@ -606,7 +600,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (sigsetjmp(hdrjmp, 1) == 0) {
 		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			safe_signal(SIGINT, hdrstop);
-		if ((opt_flags & OPT_N_FLAG) == 0) {
+		if ((options & OPT_N_FLAG) == 0) {
 			if (! value("quiet"))
 				printf(tr(140,
 					"%s version %s.  Type ? for help.\n"),

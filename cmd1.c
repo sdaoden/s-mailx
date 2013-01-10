@@ -434,7 +434,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		subjline = out.s;
 	}
 
-	if (Iflag) {
+	if (options & OPT_I_FLAG) {
 		if ((name = hfieldX("newsgroups", mp)) == NULL)
 			if ((name = hfieldX("article-id", mp)) == NULL)
 				name = "<>";

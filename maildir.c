@@ -188,7 +188,7 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 
 	if (!newmail)
 		cleantmp();
-	mb.mb_perm = Rflag ? 0 : MB_DELE;
+	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
 	if ((i = subdir(name, "new", newmail)) != 0)

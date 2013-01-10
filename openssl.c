@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -338,7 +338,7 @@ ssl_check_host(const char *server, struct sock *sp)
 		for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
 			gen = sk_GENERAL_NAME_value(gens, i);
 			if (gen->type == GEN_DNS) {
-				if (verbose)
+				if (options & OPT_VERBOSE)
 					fprintf(stderr,
 						"Comparing DNS name: \"%s\"\n",
 						gen->d.ia5->data);
@@ -353,7 +353,7 @@ ssl_check_host(const char *server, struct sock *sp)
 			X509_NAME_get_text_by_NID(subj, NID_commonName,
 				data, sizeof data) > 0) {
 		data[sizeof data - 1] = 0;
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fprintf(stderr, "Comparing common name: \"%s\"\n",
 					data);
 		if (rfc2595_hostname_match(server, data) == OKAY)
@@ -627,7 +627,7 @@ loop:	sender = getsender(m);
 			for (j = 0; j < sk_GENERAL_NAME_num(gens); j++) {
 				gen = sk_GENERAL_NAME_value(gens, j);
 				if (gen->type == GEN_EMAIL) {
-					if (verbose)
+					if (options & OPT_VERBOSE)
 						fprintf(stderr,
 							"Comparing alt. "
 							"address: %s\"\n",
@@ -644,7 +644,7 @@ loop:	sender = getsender(m);
 					NID_pkcs9_emailAddress,
 					data, sizeof data) > 0) {
 			data[sizeof data - 1] = 0;
-			if (verbose)
+			if (options & OPT_VERBOSE)
 				fprintf(stderr, "Comparing address: \"%s\"\n",
 						data);
 			if (asccasecmp(data, sender) == 0)
@@ -1161,7 +1161,7 @@ load_crl1(X509_STORE *store, const char *name)
 {
 	X509_LOOKUP	*lookup;
 
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		printf("Loading CRL from \"%s\".\n", name);
 	if ((lookup = X509_STORE_add_lookup(store,
 					X509_LOOKUP_file())) == NULL) {

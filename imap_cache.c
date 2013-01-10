@@ -592,7 +592,7 @@ cache_setptr(int transparent)
 	ok = OKAY;
 	if (ok == OKAY) {
 		mb.mb_type = MB_CACHE;
-		mb.mb_perm = Rflag ? 0 : MB_DELE;
+		mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 		if (transparent)
 			transflags(omessage, omsgCount, 1);
 		else

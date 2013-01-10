@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -1032,7 +1032,7 @@ clsf(struct message *m)
 	int	i;
 	float	a = 1, b = 1, r;
 
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		fprintf(stderr, "Examining message %d\n",
 				(int)(m - &message[0] + 1));
 	for (i = 0; i < BEST; i++) {
@@ -1042,7 +1042,7 @@ clsf(struct message *m)
 	if (scan(m, -1, rate, 0) != OKAY)
 		return;
 	if (best[0].prob == -1) {
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fprintf(stderr, "No information found.\n");
 		m->m_flag &= ~MJUNK;
 		return;
@@ -1050,7 +1050,7 @@ clsf(struct message *m)
 	for (i = 0; i < BEST; i++) {
 		if (best[i].prob == -1)
 			break;
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fprintf(stderr, "Probe %2d: \"%s\", hash=%lu:%lu "
 				"prob=%.4g dist=%.4g\n",
 				i+1, prstr(best[i].word),
@@ -1060,7 +1060,7 @@ clsf(struct message *m)
 		b *= 1 - best[i].prob;
 	}
 	r = a+b > 0 ? a / (a+b) : 0;
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		fprintf(stderr, "Junk probability of message %d: %g\n",
 				(int)(m - &message[0] + 1), r);
 	if (r > THR)
@@ -1085,7 +1085,7 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 		p = getprob(n);
 	} else
 		p = DFL;
-	if (debug)
+	if (options & OPT_DEBUG)
 		fprintf(stderr, "h=%lu:%lu g=%u b=%u p=%.4g %s\n", h1, h2,
 				n ? get(&n[OF_node_good]) : 0,
 				n ? get(&n[OF_node_bad]) : 0,

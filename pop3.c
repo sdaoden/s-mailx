@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -64,7 +64,7 @@ typedef int avoid_empty_file_compiler_warning;
 				return STOP;
 #define	POP3_OUT(x, y)	if (pop3_finish(mp) == STOP) \
 				return STOP; \
-			if (verbose) \
+			if (options & OPT_VERBOSE) \
 				fprintf(stderr, ">>> %s", x); \
 			mp->mb_active |= (y); \
 			if (swrite(&mp->mb_sock, x) == STOP) \
@@ -128,7 +128,7 @@ pop3_answer(struct mailbox *mp)
 retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->mb_sock)) > 0) {
 		if ((mp->mb_active & (MB_COMD|MB_MULT)) == MB_MULT)
 			goto multiline;
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fputs(pop3buf, stderr);
 		switch (*pop3buf) {
 		case '+':
@@ -572,7 +572,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	} else
 		user = NULL;
 	if (sopen(sp, &so, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
-				verbose) != OKAY) {
+				(options & OPT_VERBOSE) != 0) != OKAY) {
 		return -1;
 	}
 	quit();
@@ -622,7 +622,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 		return 1;
 	}
 	mb.mb_type = MB_POP3;
-	mb.mb_perm = Rflag ? 0 : MB_DELE;
+	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	pop3_setptr(&mb);
 	setmsize(msgCount);
 	sawcom = 0;
