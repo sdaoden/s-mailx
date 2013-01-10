@@ -405,9 +405,9 @@ jIflag:		case 'I':
 			 * Next argument is temp file to write which
 			 * articles have been read/deleted for netnews.
 			 */
-			Tflag = optarg;
-			if ((i = creat(Tflag, 0600)) < 0) {
-				perror(Tflag);
+			option_T_arg = optarg;
+			if ((i = creat(option_T_arg, 0600)) < 0) {
+				perror(option_T_arg);
 				exit(1);
 			}
 			close(i);
@@ -418,7 +418,7 @@ jIflag:		case 'I':
 			break;
 		case 'u':
 			/* Set user name to pretend to be  */
-			uflag = myname = optarg;
+			option_u_arg = myname = optarg;
 			break;
 		case 'V':
 			puts(version);

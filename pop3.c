@@ -826,9 +826,9 @@ pop3_update(struct mailbox *mp)
 	struct message *m;
 	int dodel, c, gotcha, held;
 
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit) {
 		holdbits();

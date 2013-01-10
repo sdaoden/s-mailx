@@ -404,9 +404,9 @@ maildir_update(void)
 
 	if (mb.mb_perm == 0)
 		goto free;
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit) {
 		holdbits();

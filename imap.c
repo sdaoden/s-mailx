@@ -1797,9 +1797,9 @@ imap_update(struct mailbox *mp)
 	struct message *m;
 	int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
 
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit && mp->mb_perm != 0) {
 		holdbits();
