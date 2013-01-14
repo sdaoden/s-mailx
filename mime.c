@@ -1540,6 +1540,15 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		in.s = mptr;
 		in.l = csize;
 		makeprint(&in, &out);
+		/* TODO well if we get a broken pipe here, and it happens to
+		 * TODO happen pretty easy when sleeping in a full pipe buffer,
+		 * TODO then the current codebase performs longjump away;
+		 * TODO this leaves memory leaks behind ('think up to 3 per,
+		 * TODO dep. upon alloca availability).  For this to be fixed
+		 * TODO we either need to get rid of the longjmp()s (tm) or
+		 * TODO the storage must come from the outside or be tracked
+		 * TODO in a carrier struct.  Best both.  But storage reuse
+		 * TODO would be a bigbig win besides */
 		mptr = mlptr = out.s;
 		csize = out.l;
 	}
