@@ -149,62 +149,82 @@ _attach_file(struct attachment *ap, FILE *fo)
 static int
 __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 {
-#ifdef HAVE_ICONV
-	char const *tcs;
-#endif
-	char const *charset = NULL;
-	char *contenttype = NULL, *basename, *buf;
-	enum conversion convert = CONV_TOB64;
-	int do_iconv = 0, lastc = EOF, err = 0;
+	int err = 0, lastc;
 	FILE *fi;
-	size_t sz, bufsize, count;
+	char const *charset;
+	enum conversion convert;
+	char *buf;
+	size_t bufsize, lncnt, inlen;
 
-	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
+	/* Either charset-converted temporary file, or plain path */
+	if ((fi = ap->a_tmpf) != NULL) {
+		assert(ftell(fi) == 0x0l);
+	} else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
 		err = errno;
 		perror(ap->a_name);
 		goto jleave;
 	}
-	if ((basename = strrchr(ap->a_name, '/')) == NULL)
-		basename = ap->a_name;
-	else
-		++basename;
 
-	if (ap->a_content_type != NULL)
-		contenttype = ap->a_content_type;
-	else
-		contenttype = mime_classify_content_type_by_fileext(basename);
-	if (ap->a_charset != NULL)
+	/* MIME part header for attachment */
+	{	char *bn = ap->a_name, *ct;
+		int do_iconv;
+
+		if ((ct = strrchr(bn, '/')) != NULL)
+			bn = ++ct;
+		if ((ct = ap->a_content_type) == NULL)
+			ct = mime_classify_content_type_by_fileext(bn);
 		charset = ap->a_charset;
 
-	convert = mime_classify_file(fi, (char const**)&contenttype, &charset,
-			&do_iconv);
+		convert = mime_classify_file(fi, (char const**)&ct, &charset,
+				&do_iconv);
 
-	fprintf(fo, "\n--%s\nContent-Type: %s", send_boundary, contenttype);
-	if (charset == NULL)
-		putc('\n', fo);
-	else
-		fprintf(fo, "; charset=%s\n", charset);
-	if (ap->a_content_disposition == NULL)
-		ap->a_content_disposition = "attachment";
-	fprintf(fo, "Content-Transfer-Encoding: %s\n"
-		"Content-Disposition: %s;\n filename=\"",
-		_get_encoding(convert), ap->a_content_disposition);
-	mime_write(basename, strlen(basename), fo,
-		CONV_TOHDR, TD_NONE, NULL, (size_t)0, NULL);
-	fwrite("\"\n", sizeof (char), 2, fo);
-	if (ap->a_content_id)
-		fprintf(fo, "Content-ID: %s\n", ap->a_content_id);
-	if (ap->a_content_description)
-		fprintf(fo, "Content-Description: %s\n",
-			ap->a_content_description);
-	putc('\n', fo);
+		if (fprintf(fo, "\n--%s\nContent-Type: %s", send_boundary, ct)
+				< 0)
+			goto jerr_header;
+
+		if (charset == NULL) {
+			if (putc('\n', fo) == EOF)
+				goto jerr_header;
+		} else if (fprintf(fo, "; charset=%s\n", charset) < 0)
+			goto jerr_header;
+
+		if (ap->a_charset != NULL || ! do_iconv)
+			charset = NULL;
+
+		if (ap->a_content_disposition == NULL)
+			ap->a_content_disposition = "attachment";
+		if (fprintf(fo, "Content-Transfer-Encoding: %s\n"
+				"Content-Disposition: %s;\n filename=\"",
+				_get_encoding(convert),
+				ap->a_content_disposition) < 0)
+			goto jerr_header;
+		if (mime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE, NULL,
+				(size_t)0, NULL) < 0)
+			goto jerr_header;
+		if (fwrite("\"\n", sizeof(char), 2, fo) != 2 * sizeof(char))
+			goto jerr_header;
+
+		if (ap->a_content_id != NULL && fprintf(fo, "Content-ID: %s\n",
+				ap->a_content_id) < 0)
+			goto jerr_header;
+
+		if (ap->a_content_description != NULL && fprintf(fo,
+				"Content-Description: %s\n",
+				ap->a_content_description) < 0)
+			goto jerr_header;
+
+		if (putc('\n', fo) == EOF) {
+jerr_header:		err = errno;
+			goto jerr_fclose;
+		}
+	}
 
 #ifdef HAVE_ICONV
 	if (iconvd != (iconv_t)-1) {
 		iconv_close(iconvd);
 		iconvd = (iconv_t)-1;
 	}
-	if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
+	if (charset != NULL) {
 		char const *tcs = charset_get_lc();
 		if (asccasecmp(charset, tcs) != 0 &&
 				(iconvd = iconv_open_ft(charset, tcs))
@@ -215,47 +235,53 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 					tcs, charset);
 			else
 				perror("iconv_open");
-			Fclose(fi);
-			goto jleave;
+			goto jerr_fclose;
 		}
 	}
-#endif /* HAVE_ICONV */
-	buf = smalloc(bufsize = INFIX_BUF);
+#endif
+
+	bufsize = INFIX_BUF;
+	buf = smalloc(bufsize);
 	if (convert == CONV_TOQP
 #ifdef HAVE_ICONV
 			|| iconvd != (iconv_t)-1
 #endif
-			) {
-		fflush(fi);
-		count = fsize(fi);
-	}
-	for (;;) {
+			)
+		lncnt = fsize(fi);
+	for (lastc = EOF;;) {
 		if (convert == CONV_TOQP
 #ifdef HAVE_ICONV
 				|| iconvd != (iconv_t)-1
 #endif
 				) {
-			if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
+			if (fgetline(&buf, &bufsize, &lncnt, &inlen, fi, 0)
 					== NULL)
 				break;
-		} else {
-			if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
-				break;
-		}
-		lastc = buf[sz-1];
-		if (mime_write(buf, sz, fo, convert, TD_ICONV,
-				NULL, (size_t)0, NULL) < 0) {
+		} else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
+			break;
+		lastc = buf[inlen - 1];
+		if (mime_write(buf, inlen, fo, convert, TD_ICONV, NULL, 0, NULL)
+				< 0) {
 			err = errno;
-			goto jbail;
+			goto jerr;
 		}
 	}
+	/* XXX really suppress a missing final NL via QP = for attachments?? */
 	if (convert == CONV_TOQP && lastc != '\n')
-		fwrite("=\n", 1, 2, fo);
+		if (fwrite("=\n", sizeof(char), 2, fo) != 2 * sizeof(char)) {
+			err = errno;
+			goto jerr;
+		}
+
 	if (ferror(fi))
 		err = EDOM;
-jbail:
-	Fclose(fi);
+jerr:
 	free(buf);
+jerr_fclose:
+	if (ap->a_tmpf != NULL)
+		rewind(fi);
+	else
+		Fclose(fi);
 jleave:
 	return (err);
 }
