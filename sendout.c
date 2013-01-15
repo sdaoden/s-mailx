@@ -1014,29 +1014,25 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		char *quotefile, int recipient_record, int doprefix, int tflag,
 		int Eflag)
 {
+	enum okay ok = STOP;
 	struct name *to;
 	FILE *mtf, *nmtf;
-	enum okay ok = STOP;
-	int dosign = -1;
-	char *charsets, *ncs = NULL, *cp;
+	int dosign = -1, err;
+	char *cp;
 
-#ifdef	notdef
-	if ((hp->h_to = checkaddrs(hp->h_to)) == NULL) {
-		senderr++;
-		return STOP;
-	}
-#endif
 	if ((cp = value("autocc")) != NULL && *cp)
 		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC|GFULL)));
 	if ((cp = value("autobcc")) != NULL && *cp)
 		hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp,GBCC|GFULL)));
+
 	/*
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
 	if ((mtf = collect(hp, printheaders, quote, quotefile, doprefix,
-					tflag)) == NULL)
-		return STOP;
+			tflag)) == NULL)
+		goto j_leave;
+
 	if (value("interactive") != NULL) {
 		if (((value("bsdcompat") || value("askatend"))
 					&& (value("askcc") != NULL ||
@@ -1057,15 +1053,15 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 			fflush(stdout);
 		}
 	}
+
 	if (fsize(mtf) == 0) {
 		if (Eflag)
-			goto out;
+			goto jleave;
 		if (hp->h_subject == NULL)
-			printf(catgets(catd, CATSET, 184,
+			printf(tr(184,
 				"No message, no subject; hope that's ok\n"));
 		else if (value("bsdcompat") || value("bsdmsgs"))
-			printf(catgets(catd, CATSET, 185,
-				"Null message body; hope that's ok\n"));
+			printf(tr(185, "Null message body; hope that's ok\n"));
 	}
 
 	if (dosign < 0)
@@ -1073,15 +1069,13 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 #ifndef USE_SSL
 	if (dosign) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
-		ok = STOP;
-		goto out;
+		goto jleave;
 	}
 #endif
 
 	/*
-	 * Now, take the user names from the combined
-	 * to and cc lists and do all the alias
-	 * processing.
+	 * Now, take the user names from the combined to and cc lists and do
+	 * all the alias processing.
 	 */
 	senderr = 0;
 	/*
@@ -1100,57 +1094,40 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 */
 	if ((to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)))) == NULL) {
 		fprintf(stderr, tr(186, "No recipients specified\n"));
-		senderr++;
+		++senderr;
 	}
 	to = fixhead(hp, to);
-	if (hp->h_charset) {
-		wantcharset = hp->h_charset;
-		goto try;
-	}
-hloop:	wantcharset = NULL;
-	if ((charsets = value("sendcharsets")) != NULL) {
-		wantcharset = savestr(charsets);
-	loop:	if ((ncs = strchr(wantcharset, ',')) != NULL)
-			*ncs++ = '\0';
-	}
-try:	if ((nmtf = infix(hp, mtf)) == NULL) {
-		if (hp->h_charset && (errno == EILSEQ || errno == EINVAL)) {
+
+	/*
+	 * 'Bit ugly kind of control flow until we find a charset that does it.
+	 * XXX Can maybe be done nicer once we have a carrier struct instead
+	 * XXX of globals
+	 */
+	for (charset_iter_reset(hp->h_charset);;) {
+		if (charset_iter_next() == NULL)
+			;
+		else if ((nmtf = infix(hp, mtf)) != NULL)
+			break;
+		else if ((err = errno) == EILSEQ || err == EINVAL) {
 			rewind(mtf);
-			hp->h_charset = NULL;
-			goto hloop;
+			continue;
 		}
-		if (errno == EILSEQ || errno == EINVAL) {
-			if (ncs && *ncs) {
-				rewind(mtf);
-				wantcharset = ncs;
-				goto loop;
-			}
-			if (wantcharset && value("interactive") == NULL) {
-				if (wantcharset == (char *)-1)
-					wantcharset = NULL;
-				else {
-					rewind(mtf);
-					wantcharset = (char *)-1;
-					goto try;
-				}
-			}
-		}
-		/* fprintf(stderr, ". . . message lost, sorry.\n"); */
+
 		perror("");
 #ifdef USE_SSL
-jfail:
+jfail_dead:
 #endif
-		senderr++;
+		++senderr;
 		savedeadletter(mtf, 1);
 		fputs(tr(187, ". . . message not sent.\n"), stderr);
-		return STOP;
+		goto jleave;
 	}
 
 	mtf = nmtf;
 #ifdef USE_SSL
 	if (dosign) {
 		if ((nmtf = smime_sign(mtf, hp)) == NULL)
-			goto jfail;
+			goto jfail_dead;
 		Fclose(mtf);
 		mtf = nmtf;
 	}
@@ -1167,14 +1144,17 @@ jfail:
 	if (count(to) == 0) {
 		if (senderr == 0)
 			ok = OKAY;
-		goto out;
+		goto jleave;
 	}
+
 	if (mightrecord(mtf, to, recipient_record) != OKAY)
-		goto out;
+		goto jleave;
 	ok = transfer(to, mtf, hp);
-out:
+
+jleave:
 	Fclose(mtf);
-	return ok;
+j_leave:
+	return (ok);
 }
 
 /*
