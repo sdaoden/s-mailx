@@ -856,8 +856,8 @@ void uncollapse1(struct message *m, int always);
 
 /* tty.c */
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
-char *readtty(char *prefix, char *string);
-int yorn(char *msg);
+char *readtty(char const *prefix, char const *string);
+int yorn(char const *msg);
 
 /* vars.c */
 
