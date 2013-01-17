@@ -53,14 +53,14 @@ OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 
 .SUFFIXES: .o .c .y
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(PATHDEFS) `cat INCS` -c $<
+	$(CC) $(CFLAGS) $(WARN) $(PATHDEFS) `cat config.inc` -c $<
 
 .c .y: ;
 
 all: $(SID)$(NAIL)
 
 $(SID)$(NAIL): $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) `cat LIBS` -o $@
+	$(CC) $(LDFLAGS) $(OBJ) `cat config.lib` -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
@@ -129,7 +129,7 @@ clean:
 	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 mkrc.rc *~ core log
 
 distclean: clean
-	rm -f config.h config.log LIBS INCS
+	rm -f config.h config.log config.lib config.inc
 
 update-version:
 	[ -z "$${VERSION}" ] && eval VERSION="`git describe --tags`"; \

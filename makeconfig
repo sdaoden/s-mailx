@@ -58,8 +58,8 @@ tmp2=___tmp1$$
 tmp3=___tmp2$$
 out=config.h
 log=config.log
-lib=LIBS
-inc=INCS
+lib=config.lib
+inc=config.inc
 makefile=config.mk
 
 make="${MAKE-make}"
