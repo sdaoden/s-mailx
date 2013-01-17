@@ -1,1 +1,5 @@
 mime_types.h
+config.*
+mkman.1
+mkrc.rc
+s-nail
