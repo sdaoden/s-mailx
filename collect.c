@@ -512,39 +512,44 @@ jleave:
 	return (nap);
 }
 
-/*
- * Interactively edit the attachment list.
- */
 struct attachment *
-edit_attachments(struct attachment *attach)
+edit_attachments(struct attachment *aphead)
 {
 	struct attachment *ap, *nap;
-	unsigned attno = 1;
+	ui_it attno = 1;
 
-	for (ap = attach; ap; ap = ap->a_flink) {
-		if ((nap = _read_attachment_data(ap, attno)) == NULL) {
-			if (ap->a_blink)
-				ap->a_blink->a_flink = ap->a_flink;
-			else
-				attach = ap->a_flink;
-			if (ap->a_flink)
-				ap->a_flink->a_blink = ap->a_blink;
-			else
-				return attach;
-		} else
-			attno++;
+	/* Modify already present ones? */
+	for (ap = aphead; ap != NULL; ap = ap->a_flink) {
+		if (_read_attachment_data(ap, attno) != NULL) {
+			++attno;
+			continue;
+		}
+		nap = ap->a_flink;
+		if (ap->a_blink != NULL)
+			ap->a_blink->a_flink = nap;
+		else
+			aphead = nap;
+		if (nap != NULL)
+			nap->a_blink = ap->a_blink;
+		else
+			goto jleave;
 	}
+
+	/* Add some more? */
 	while ((nap = _read_attachment_data(NULL, attno)) != NULL) {
-		for (ap = attach; ap && ap->a_flink; ap = ap->a_flink);
-		if (ap)
+		if ((ap = aphead) != NULL) {
+			while (ap->a_flink != NULL)
+				ap = ap->a_flink;
 			ap->a_flink = nap;
+		}
 		nap->a_blink = ap;
 		nap->a_flink = NULL;
-		if (attach == NULL)
-			attach = nap;
-		attno++;
+		if (aphead == NULL)
+			aphead = nap;
+		++attno;
 	}
-	return attach;
+jleave:
+	return (aphead);
 }
 
 FILE *

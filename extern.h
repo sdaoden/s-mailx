@@ -302,7 +302,9 @@ int crename(void *v);
 struct attachment *	add_attachment(struct attachment *aphead, char *file,
 				struct attachment **newap);
 
-struct attachment *edit_attachments(struct attachment *attach);
+/* Interactively edit the attachment list, return the new list head */
+struct attachment *	edit_attachments(struct attachment *aphead);
+
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);
 
