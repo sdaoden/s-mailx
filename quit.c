@@ -391,8 +391,7 @@ makembox(void)
 	mcount = 0;
 	if (value("append") == NULL) {
 		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
-			perror(catgets(catd, CATSET, 162,
-					"temporary mail quit file"));
+			perror(tr(163, "temporary mail quit file"));
 			return STOP;
 		}
 		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
@@ -410,8 +409,7 @@ makembox(void)
 			Fclose(abuf);
 		}
 		if (ferror(obuf)) {
-			perror(catgets(catd, CATSET, 163,
-					"temporary mail quit file"));
+			perror(tr(163, "temporary mail quit file"));
 			Fclose(ibuf);
 			Fclose(obuf);
 			return STOP;
