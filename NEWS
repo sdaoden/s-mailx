@@ -1,6 +1,11 @@
 S - n a i l  N e w s
 ====================
 
+- The IDNA conversion now assumes domain names are specified in
+  *ttycharset*, rather than in the LC_CTYPE locale charset.
+  I.e., it integrates into the usual character set specifications.
+  (IDNA: honour *ttycharset* for domain names, 2013-01-18)
+
 - The new *editalong* variable will automatically spawn an editor when
   composing a mail in interactive mode, just as if `~e' was given.
   (Add new *editalong* variable, 2012-01-07)

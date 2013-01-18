@@ -41,6 +41,7 @@
 
 #include <time.h>
 #ifdef USE_IDNA
+# include <errno.h>
 # include <idna.h>
 # include <stringprep.h>
 # include <tld.h>
@@ -210,11 +211,20 @@ idna_apply(struct addrguts *agp)
 	memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
 	idna_utf8[sz] = '\0';
 
+	/* GNU Libidn settles on top of iconv(3) without having any fallback,
+	 * so let's just let it perform the charset conversion, if any should
+	 * be necessary */
 	if (! utf8) {
-		char *tmp = stringprep_locale_to_utf8(idna_utf8);
-		ac_free(idna_utf8);
-		idna_utf8 = tmp;
+		char const *tcs = charset_get_lc();
+		idna_ascii = idna_utf8;
+		idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", tcs);
+		i = (idna_utf8 == NULL && errno == EINVAL);
+		ac_free(idna_ascii);
 		if (idna_utf8 == NULL) {
+			if (i)
+				fprintf(stderr, tr(179,
+					"Cannot convert from %s to %s\n"),
+					tcs, "UTF-8");
 			agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
 					NAME_ADDRSPEC_ERR_CHAR;
 			goto jleave;

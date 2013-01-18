@@ -621,16 +621,24 @@ command.
 See
 .Xr mailaddr 7
 for a description of network addresses.
+If support for IDNA (internationalized domain names for applications)
+has been compiled into \*(UA,
+then the domain name part of network addresses will be converted via
+IDNA mechanisms as necessary, effectively treating it as a name in the
+.Va ttycharset
+character set; see
+.Sx "Character sets"
+for the complete picture about character sets.
+.Pp
 \*(UA has a number of options which can be set in the \*(ur file
-to alter its behavior;
-e.g.,
-.Pp
-.Dl set askcc
-.Pp
+to alter its behavior; e.g.,
+.Ic "set askcc"
 enables the
 .Va askcc
-feature.
-(These options are summarized below).
+feature, and
+.Ic "set idna-disable"
+will disable the mentioned IDNA conversion even if support is available.
+(These options are summarized below.)
 .\" --  >8  --  8<  --
 .Ss "MIME types"
 For any outgoing attachment \*(UA tries to determine the content type.
@@ -2114,12 +2122,10 @@ This option is used to hold messages in the system mailbox by default.
 \*(OP Can be used to turn off the automatic conversion of domain names
 according to the rules of IDNA (internationalized domain names for
 applications).
-Note that domain names are expected to be in locale (`LC_CTYPE') encoding,
-so that a locale which uses the UTF-8 charset is required to represent
-all possible international domain names (before conversion, that is).
-(By now the option
+Since the IDNA code assumes domain names are specified with the
 .Va ttycharset
-is ignored by the IDNA converter.)
+character set, a UTF-8 locale charset is required to represent
+all possible international domain names (before conversion, that is).
 .It Va idna-strict-checks
 \*(OP If this is set (and
 .Va idna-disable
@@ -2129,7 +2135,8 @@ respect to the content of domain names.
 This means that TLD (top-level domain) specific checks are performed,
 e.g., the `.no' (Norway) TLD does not allow the Euro currency symbol,
 but only this strict check will catch the error.
-This is an expensive check.
+(Note that this check is expensive and that the IDNA library doesn't
+contain many tests.)
 .It Va ignore
 Causes interrupt signals from the terminal to be ignored
 and echoed as `@'s.
