@@ -215,10 +215,11 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 		iconv_close(iconvd);
 		iconvd = (iconv_t)-1;
 	}
-	tcs = gettcharset();
 	if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
-		if ((iconvd = iconv_open_ft(charset, tcs)) == (iconv_t)-1 &&
-				(err = errno) != 0) {
+		char const *tcs = charset_get_lc();
+		if (asccasecmp(charset, tcs) != 0 &&
+				(iconvd = iconv_open_ft(charset, tcs))
+				== (iconv_t)-1 && (err = errno) != 0) {
 			if (err == EINVAL)
 				fprintf(stderr, tr(179,
 					"Cannot convert from %s to %s\n"),
@@ -484,7 +485,7 @@ infix(struct header *hp, FILE *fi)
 			&do_iconv);
 
 #ifdef HAVE_ICONV
-	tcs = gettcharset();
+	tcs = charset_get_lc();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);

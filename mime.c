@@ -54,7 +54,8 @@
  */
 
 #define _CHARSET()	\
-	((wantcharset && wantcharset != (char *)-1) ? wantcharset : defcharset)
+	((wantcharset && wantcharset != (char *)-1) \
+	? wantcharset : charset_get_8bit())
 
 struct mtnode {
 	struct mtnode	*mt_next;
@@ -252,19 +253,6 @@ delctrl(char *cp, size_t sz)
 	return y;
 }
 
-/*
- * Get the setting of the terminal's character set.
- */
-char const *
-gettcharset(void)
-{
-	char const *t;
-
-	if ((t = value("ttycharset")) == NULL)
-		t = defcharset;
-	return (t);
-}
-
 static int 
 has_highbit(const char *s)
 {
@@ -286,6 +274,36 @@ name_highbit(struct name *np)
 		np = np->n_flink;
 	}
 	return 0;
+}
+
+char const *
+charset_get_7bit(void)
+{
+	char const *t;
+
+	if ((t = value("charset-7bit")) == NULL)
+		t = CHARSET_7BIT;
+	return (t);
+}
+
+char const *
+charset_get_8bit(void)
+{
+	char const *t;
+
+	if ((t = value(CHARSET_8BIT_VAR)) == NULL)
+		t = CHARSET_8BIT;
+	return (t);
+}
+
+char const *
+charset_get_lc(void)
+{
+	char const *t;
+
+	if ((t = value("ttycharset")) == NULL)
+		t = CHARSET_8BIT;
+	return (t);
 }
 
 char const *
@@ -467,8 +485,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	 * TODO charset (???).
 	 * TODO The new approach sounds more sane to me whatsoever.
 	 * TODO It has the side effect that iconv() is applied to the text even
-	 * TODO if that is 7bit clean US-ASCII/compatible, however, *iff*
-	 * TODO *sendcharsets* is set.
+	 * TODO if that is 7bit clean, however, *iff* *sendcharsets* is set.
 	 * TODO drop *charset* and *do_iconv* parameters, then; need to report
 	 * TODO a "classify as binary charset", though.
 	 * TODO And note that even the new approach will not allow RFC 2045
@@ -604,7 +621,7 @@ j7bit:		convert = CONV_7BIT;
 
 	/* Not an attachment with specified charset? */
 	if (*charset == NULL)
-		*charset = (ctt & _HIGHBIT) ? _CHARSET() : charset7;
+		*charset = (ctt & _HIGHBIT) ? _CHARSET() : charset_get_7bit();
 jleave:
 	return (convert);
 #undef F_
@@ -904,7 +921,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
 	crest.s = NULL;
 	crest.l = 0;
-	tcs = gettcharset();
+	tcs = charset_get_lc();
 	maxstor = in->l;
 	out->s = smalloc(maxstor + 1);
 	out->l = 0;
@@ -1050,15 +1067,17 @@ mime_write_tohdr(struct str *in, FILE *fo)
 {
 	char buf[B64_LINESIZE],
 		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
-	char const *charset;
+	char const *charset7, *charset;
 	struct str cin, cout;
 	size_t sz = 0, col = 0, wr, charsetlen;
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
+	charset7 = charset_get_7bit();
 	charset = _CHARSET();
+	wr = strlen(charset7);
 	charsetlen = strlen(charset);
-	charsetlen = smax(charsetlen, sizeof(CHARSET7) - 1);
+	charsetlen = MAX(charsetlen, wr);
 	upper = in->s + in->l;
 
 	b = 0;

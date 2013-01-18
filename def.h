@@ -139,6 +139,16 @@
 #define MIME_LINELEN_MAX	1000
 #define MIME_LINELEN_LIMIT	(MIME_LINELEN_MAX - 50)
 
+/* Fallback charsets, if *charset-7bit* and *charset-8bit* or not set, resp. */
+#define CHARSET_7BIT		"US-ASCII"
+#ifdef HAVE_ICONV
+# define CHARSET_8BIT		"UTF-8"
+# define CHARSET_8BIT_VAR	"charset-8bit"
+#else
+# define CHARSET_8BIT		"ISO-8859-1"
+# define CHARSET_8BIT_VAR	"ttycharset"
+#endif
+
 /*
  * Auto-reclaimed string storage (strings.c)
  */

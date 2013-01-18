@@ -538,7 +538,16 @@ enum okay maildir_remove(const char *name);
 int main(int argc, char *argv[]);
 
 /* mime.c */
-char const *gettcharset(void);
+
+/* *charset-7bit*, else CHARSET_7BIT */
+char const *	charset_get_7bit(void);
+
+/* *charset-8bit*, else CHARSET_8BIT */
+char const *	charset_get_8bit(void);
+
+/* LC_CTYPE:CODESET / *ttycharset*, else *charset-8bit*, else CHARSET_8BIT */
+char const *	charset_get_lc(void);
+
 char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
 char *mime_getparam(char *param, char *h);

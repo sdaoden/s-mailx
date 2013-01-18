@@ -120,10 +120,6 @@ _E int		imap_created_mailbox;	/* hack to get feedback from imap */
 _E char		*wantcharset;		/* (currently "tried" *sendcharset*) */
 
 /* These are initialized strings */
-_E char	const	defcharset[];		/* "utf8" */
-_E char	const	charset7[];		/* "us-ascii" */
-#undef CHARSET7
-#define CHARSET7	"us-ascii"
 _E char const	*const month_names[12 + 1];
 _E char const	*const weekday_names[7 + 1];
 

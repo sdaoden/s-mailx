@@ -756,7 +756,7 @@ jcopyout:
 	if (action == SEND_DECRYPT || action == SEND_MBOX ||
 			action == SEND_RFC822 || action == SEND_SHOW)
 		convert = CONV_NONE;
-	tcs = gettcharset();
+	tcs = charset_get_lc();
 #ifdef	HAVE_ICONV
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
@@ -767,7 +767,7 @@ jcopyout:
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if (asccasecmp(tcs, ip->m_charset) &&
-				asccasecmp(CHARSET7, ip->m_charset))
+				asccasecmp(charset_get_7bit(), ip->m_charset))
 			iconvd = iconv_open_ft(tcs, ip->m_charset);
 		else
 			iconvd = (iconv_t)-1;
@@ -888,7 +888,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
-		ip->m_charset = CHARSET7;
+		ip->m_charset = charset_get_7bit();
 	ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
 			(struct message *)ip);
 	ip->m_mimeenc = ip->m_ct_transfer_enc ?
