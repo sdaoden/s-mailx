@@ -123,37 +123,27 @@ _get_encoding(enum conversion const convert)
 static int
 _attach_file(struct attachment *ap, FILE *fo)
 {
-	int err = 0;
-	char *wantcharset_orig, *charsets;
-	long offs;
-
-	if (ap->a_charset != NULL ||
-			(charsets = value("sendcharsets")) == NULL) {
-		err = __attach_file(ap, fo);
-		goto jleave;
-	}
-
-	wantcharset_orig = wantcharset;
-	charsets = savestr(charsets);
-	offs = ftell(fo);
-
 	/* TODO of course, the MIME classification needs to performed once
 	 * only, not for each and every charset anew ... ;-// */
-	while ((wantcharset = strcomma(&charsets, 1)) != NULL) {
-jtryit:		err = __attach_file(ap, fo);
+	int err = 0;
+	char *charset_iter_orig[2];
+	long offs;
+
+	charset_iter_recurse(charset_iter_orig);
+	offs = ftell(fo);
+	charset_iter_reset(ap->a_charset);
+
+	while (charset_iter_next() != NULL) {
+		err = __attach_file(ap, fo);
 		if (err == 0 || (err != EILSEQ && err != EINVAL)) /* XXX */
 			break;
 
+		ap->a_charset = NULL; /* FIXME */
 		clearerr(fo);
 		fseek(fo, offs, SEEK_SET);
-		if (charsets == NULL && wantcharset != (char*)-1) { /* XXX */
-			wantcharset = (char*)-1;
-			goto jtryit;
-		}
 	}
 
-	wantcharset = wantcharset_orig;
-jleave:
+	charset_iter_restore(charset_iter_orig);
 	return (err);
 }
 
