@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -265,10 +265,18 @@ sreset(void)
 	if ((u.b = _buf_head) != NULL) {
 		struct buffer *b = u.b;
 		b->b._caster = b->b._bot;
+#ifdef HAVE_ASSERTS
+		memset(b->b._caster, 0377,
+			(size_t)(b->b._max - b->b._caster));
+#endif
 		_buf_server = b;
 		if ((u.b = u.b->b._next) != NULL) {
 			b = u.b;
 			b->b._caster = b->b._bot;
+#ifdef HAVE_ASSERTS
+			memset(b->b._caster, 0377,
+				(size_t)(b->b._max - b->b._caster));
+#endif
 			for (u.b = u.b->b._next; u.b != NULL;) {
 				struct buffer *b2 = u.b->b._next;
 				free(u.b);
