@@ -73,6 +73,7 @@ static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 	};
 
 struct mtnode	*_mt_list;
+char		*_cs_iter_base, *_cs_iter;
 
 /* Initialize MIME type list */
 static void		_mt_init(void);
@@ -304,6 +305,77 @@ charset_get_lc(void)
 	if ((t = value("ttycharset")) == NULL)
 		t = CHARSET_8BIT;
 	return (t);
+}
+
+void
+charset_iter_reset(char const *a_charset_to_try_first)
+{
+	char const *sarr[3];
+	size_t sarrl[3], len;
+	char *cp;
+
+	sarr[0] = a_charset_to_try_first;
+#ifdef HAVE_ICONV
+	sarr[1] = value("sendcharsets");
+#endif
+	sarr[2] = charset_get_8bit();
+
+	sarrl[2] = len = strlen(sarr[2]);
+#ifdef HAVE_ICONV
+	if ((cp = UNCONST(sarr[1])) != NULL)
+		len += (sarrl[1] = strlen(cp));
+	else
+		sarrl[1] = 0;
+	if ((cp = UNCONST(sarr[0])) != NULL)
+		len += (sarrl[0] = strlen(cp));
+	else
+		sarrl[0] = 0;
+#endif
+
+	_cs_iter_base = cp = salloc(len + 1);
+
+#ifdef HAVE_ICONV
+	if ((len = sarrl[0]) != 0) {
+		memcpy(cp, sarr[0], len);
+		cp[len] = ',';
+		cp += ++len;
+	}
+	if ((len = sarrl[1]) != 0) {
+		memcpy(cp, sarr[1], len);
+		cp[len] = ',';
+		cp += ++len;
+	}
+#endif
+	len = sarrl[2];
+	memcpy(cp, sarr[2], len);
+	cp[len] = '\0';
+	_cs_iter = NULL;
+}
+
+char const *
+charset_iter_next(void)
+{
+	return (_cs_iter = strcomma(&_cs_iter_base, 1));
+}
+
+char const *
+charset_iter_current(void)
+{
+	return _cs_iter;
+}
+
+void
+charset_iter_recurse(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
+{
+	outer_storage[0] = _cs_iter_base;
+	outer_storage[1] = _cs_iter;
+}
+
+void
+charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
+{
+	_cs_iter_base = outer_storage[0];
+	_cs_iter = outer_storage[1];
 }
 
 char const *

@@ -548,6 +548,15 @@ char const *	charset_get_8bit(void);
 /* LC_CTYPE:CODESET / *ttycharset*, else *charset-8bit*, else CHARSET_8BIT */
 char const *	charset_get_lc(void);
 
+/* *sendcharsets* / *charset-8bit* iterator.
+ * *a_charset_to_try_first* may be used to prepend a charset (as for
+ * *reply-in-same-charset*);  works correct for !HAVE_ICONV */
+void		charset_iter_reset(char const *a_charset_to_try_first);
+char const *	charset_iter_next(void);
+char const *	charset_iter_current(void);
+void charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY FUN, REMOVE */
+void charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY FUN, REMOVE */
+
 char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
 char *mime_getparam(char *param, char *h);
