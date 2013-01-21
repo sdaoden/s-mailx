@@ -117,7 +117,6 @@ _E struct ignoretab allignore[2];	/* special, ignore all headers */
 _E struct ignoretab fwdignore[2];	/* fields to ignore for forwarding */
 _E struct shortcut *shortcuts;		/* list of shortcuts */
 _E int		imap_created_mailbox;	/* hack to get feedback from imap */
-_E char		*wantcharset;		/* (currently "tried" *sendcharset*) */
 
 /* These are initialized strings */
 _E char const	*const month_names[12 + 1];

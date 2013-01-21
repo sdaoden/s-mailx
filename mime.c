@@ -53,10 +53,7 @@
  * MIME support functions.
  */
 
-#define _CHARSET()     \
-	((_cs_iter != NULL) ? _cs_iter \
-	: (wantcharset && wantcharset != (char *)-1) \
-	? wantcharset : charset_get_8bit())
+#define _CHARSET()	((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
 
 struct mtnode {
 	struct mtnode	*mt_next;
