@@ -278,21 +278,6 @@ int main(void)
 }
 !
 
-cat > ${tmp2}.c << \!
-#include <iconv.h>
-int main(void)
-{
-	iconv_t	id;
-
-	id = iconv_open("foo", "bar");
-	return 0;
-}
-!
-
-< ${tmp2}.c link_check iconv 'for iconv functionality' '#define HAVE_ICONV' ||
-	< ${tmp2}.c link_check iconv 'for iconv functionality in libiconv' \
-		'#define HAVE_ICONV' '-liconv'
-
 link_check wctype 'for wctype functionality' '#define HAVE_WCTYPE_H' << \!
 #include <wctype.h>
 int main(void)
@@ -403,6 +388,26 @@ int main(int argc, char **argv)
 fi
 
 ##
+
+if wantfeat ICONV; then
+	cat > ${tmp2}.c << \!
+#include <iconv.h>
+int main(void)
+{
+	iconv_t	id;
+
+	id = iconv_open("foo", "bar");
+	return 0;
+}
+!
+	< ${tmp2}.c link_check iconv 'for iconv functionality' \
+			'#define HAVE_ICONV' ||
+		< ${tmp2}.c link_check iconv \
+			'for iconv functionality in libiconv' \
+			'#define HAVE_ICONV' '-liconv'
+else
+	echo '/* WANT_ICONV=0 */' >> ${out}
+fi # wantfeat ICONV
 
 if wantfeat SOCKETS; then
 	compile_check arpa_inet_h 'for <arpa/inet.h>' \
