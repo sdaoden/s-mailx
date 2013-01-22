@@ -65,7 +65,5 @@
 # include <iconv.h>
 #endif
 
-#define	SHELL		"/bin/sh"
-
 #include "def.h"
 #include "glob.h"

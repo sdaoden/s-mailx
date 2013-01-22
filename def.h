@@ -76,6 +76,8 @@
 
 #define CBAD		(-15555)
 
+#define SHELL		"/bin/sh"
+
 /*
  * Funs, CC support etc.
  */
