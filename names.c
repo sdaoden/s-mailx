@@ -48,7 +48,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -727,9 +726,8 @@ struct name *
 outof(struct name *names, FILE *fo, struct header *hp)
 {
 	int pipecnt, xcnt, *fda, i;
-	char *shell, *date;
+	char *shell;
 	struct name *np;
-	time_t now;
 	FILE *fin = NULL, *fout;
 	(void)hp;
 
@@ -769,9 +767,6 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			shell = SHELL;
 	}
 
-	time(&now);
-	date = ctime(&now);
-
 	for (np = names; np != NULL;) {
 		if ((np->n_flags & (NAME_ADDRSPEC_ISFILE|NAME_ADDRSPEC_ISPIPE))
 				== 0) {
@@ -787,6 +782,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			int c;
 			char *tempEdit;
 
+			/* XXX tempEdit unlink racy - block signals, at least */
 			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600, 1))
 					== NULL) {
 				perror(tr(146, "Creation of temporary image"));
@@ -817,7 +813,8 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			}
 			fcntl(image, F_SETFD, FD_CLOEXEC);
 
-			fprintf(fout, "From %s %s", myname, date);
+			fprintf(fout, "From %s %s",
+				myname, time_current.tc_ctime);
 			c = EOF;
 			while (i = c, (c = getc(fo)) != EOF)
 				putc(c, fout);
