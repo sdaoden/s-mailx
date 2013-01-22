@@ -941,11 +941,11 @@ iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
 		char **outb, size_t *outbleft, int tolerant)
 {
 	size_t sz;
+	int err;
 
-	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft)) ==
-				(size_t)-1 &&
-# undef __INBCAST
-			tolerant && (errno == EILSEQ || errno == EINVAL)) {
+	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft))
+			== (size_t)-1 && tolerant &&
+			((err = errno) == EILSEQ || err == EINVAL)) {
 		if (*inbleft > 0) {
 			(*inb)++;
 			(*inbleft)--;
@@ -962,5 +962,38 @@ iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
 		}
 	}
 	return (sz);
+}
+# undef __INBCAST
+
+int
+str_iconv(iconv_t icp, struct str *out, struct str const *in, bool_t tolerant)
+{
+	int err = 0;
+	char *obb = out->s, *ob;
+	char const *ib;
+	size_t olb = out->l, ol, il;
+
+	ol = in->l;
+	ol = (ol << 1) - (ol >> 4);
+	if (olb < ol) {
+		olb = ol;
+		goto jrealloc;
+	}
+	for (;;) {
+		ib = in->s;
+		il = in->l;
+		ob = obb;
+		ol = olb;
+		if (iconv_ft(icp, &ib, &il, &ob, &ol, tolerant) != (size_t)-1)
+			break;
+		if ((err = errno) != E2BIG)
+			break;
+		err = 0;
+		olb += in->l;
+jrealloc:	obb = srealloc(obb, olb);
+	}
+	out->s = obb;
+	out->l = olb - ol;
+	return err;
 }
 #endif /* HAVE_ICONV */

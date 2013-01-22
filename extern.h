@@ -836,11 +836,18 @@ int		asccasecmp(char const *s1, char const *s2);
 int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
 
+/*
+ * Our (fault-tolerant) iconv(3) wrappers
+ */
 #ifdef HAVE_ICONV
-/* Our iconv(3) wrappers */
 iconv_t iconv_open_ft(char const *tocode, char const *fromcode);
 size_t iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
 		char **outb, size_t *outbleft, int tolerant);
+
+/* Convert *in* to *out*, return an error code; with *tolerant*, be more so.
+ * *out* is srealloc()ed as necessary! */
+int		str_iconv(iconv_t icp, struct str *out, struct str const *in,
+			bool_t tolerant);
 #endif
 
 /* thread.c */
