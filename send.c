@@ -40,7 +40,6 @@
 #include "rcv.h"
 
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -1287,7 +1286,6 @@ xstatusput(const struct message *mp, FILE *obuf, char *prefix,
 static void
 put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 {
-	time_t now;
 	char const *from, *date, *nl;
 	int i;
 
@@ -1296,9 +1294,8 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 		date = fakedate(ip->m_time);
 		nl = "\n";
 	} else {
-		time(&now);
 		from = myname;
-		date = ctime(&now);
+		date = time_current.tc_ctime;
 		nl = "";
 	}
 
