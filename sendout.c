@@ -128,28 +128,43 @@ _attach_file(struct attachment *ap, FILE *fo)
 	char *charset_iter_orig[2];
 	long offs;
 
+	/* Is this already in target charset? */
+	if (ap->a_conv == AC_TMPFILE) {
+		err = __attach_file(ap, fo);
+		Fclose(ap->a_tmpf);
+		goto jleave;
+	}
+
+	/* We "consume" *ap*, so directly adjust it as we need it */
+	if (ap->a_conv == AC_FIX_INCS)
+		ap->a_charset = ap->a_input_charset;
+
 	charset_iter_recurse(charset_iter_orig);
 	offs = ftell(fo);
-	charset_iter_reset(ap->a_charset);
+	charset_iter_reset(NULL);
 
 	while (charset_iter_next() != NULL) {
 		err = __attach_file(ap, fo);
-		if (err == 0 || (err != EILSEQ && err != EINVAL)) /* XXX */
+		if (err == 0 || (err != EILSEQ && err != EINVAL))
 			break;
-
-		ap->a_charset = NULL; /* FIXME */
 		clearerr(fo);
 		fseek(fo, offs, SEEK_SET);
+		if (ap->a_conv != AC_DEFAULT) {
+			err = EILSEQ;
+			break;
+		}
+		ap->a_charset = NULL;
 	}
 
 	charset_iter_restore(charset_iter_orig);
+jleave:
 	return (err);
 }
 
 static int
 __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 {
-	int err = 0, lastc;
+	int err = 0, do_iconv, lastc;
 	FILE *fi;
 	char const *charset;
 	enum conversion convert;
@@ -157,7 +172,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 	size_t bufsize, lncnt, inlen;
 
 	/* Either charset-converted temporary file, or plain path */
-	if ((fi = ap->a_tmpf) != NULL) {
+	if (ap->a_conv == AC_TMPFILE) {
+		fi = ap->a_tmpf;
 		assert(ftell(fi) == 0x0l);
 	} else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
 		err = errno;
@@ -166,8 +182,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 	}
 
 	/* MIME part header for attachment */
-	{	char *bn = ap->a_name, *ct;
-		int do_iconv;
+	{	char const *bn = ap->a_name, *ct;
 
 		if ((ct = strrchr(bn, '/')) != NULL)
 			bn = ++ct;
@@ -177,6 +192,9 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 
 		convert = mime_classify_file(fi, (char const**)&ct, &charset,
 				&do_iconv);
+		if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
+				ap->a_conv == AC_TMPFILE)
+			do_iconv = 0;
 
 		if (fprintf(fo, "\n--%s\nContent-Type: %s", send_boundary, ct)
 				< 0)
@@ -187,9 +205,6 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 				goto jerr_header;
 		} else if (fprintf(fo, "; charset=%s\n", charset) < 0)
 			goto jerr_header;
-
-		if (ap->a_charset != NULL || ! do_iconv)
-			charset = NULL;
 
 		if (ap->a_content_disposition == NULL)
 			ap->a_content_disposition = "attachment";
@@ -224,7 +239,7 @@ jerr_header:		err = errno;
 		iconv_close(iconvd);
 		iconvd = (iconv_t)-1;
 	}
-	if (charset != NULL) {
+	if (do_iconv) {
 		char const *tcs = charset_get_lc();
 		if (asccasecmp(charset, tcs) != 0 &&
 				(iconvd = iconv_open_ft(charset, tcs))
@@ -278,9 +293,7 @@ jerr_header:		err = errno;
 jerr:
 	free(buf);
 jerr_fclose:
-	if (ap->a_tmpf != NULL)
-		rewind(fi);
-	else
+	if (ap->a_conv != AC_TMPFILE)
 		Fclose(fi);
 jleave:
 	return (err);
