@@ -80,8 +80,11 @@ char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
 
-#ifndef HAVE_GETOPT
+/* Update *tc* to now */
+void	time_current_update(struct time_current *tc);
+
 /* getopt(3) fallback implementation */
+#ifndef HAVE_GETOPT
 char	*my_optarg;
 int	my_optind, /*my_opterr,*/ my_optopt;
 

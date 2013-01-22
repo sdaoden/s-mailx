@@ -277,6 +277,13 @@ struct str {
 	size_t	l;			/* the stings's length */
 };
 
+struct time_current {
+	time_t		tc_time;
+	struct tm	tc_gm;
+	struct tm	tc_local;
+	char		tc_ctime[32];
+};
+
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
 #ifdef USE_SSL
