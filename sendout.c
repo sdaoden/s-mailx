@@ -262,21 +262,6 @@ jleave:
 }
 
 /*
- * Generate a boundary for MIME multipart messages.
- */
-char *
-makeboundary(void)
-{
-	static char bound[70];
-	time_t	now;
-
-	time(&now);
-	snprintf(bound, sizeof bound, "=_%lx.%s", (long)now, getrandstring(48));
-	send_boundary = bound;
-	return send_boundary;
-}
-
-/*
  * Fix the header by glopping all of the expanded names from
  * the distribution list into the appropriate fields.
  */
@@ -1346,7 +1331,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 	if (w & GMIME) {
 		fputs("MIME-Version: 1.0\n", fo), gotcha++;
 		if (hp->h_attach != NULL) {
-			makeboundary();
+			send_boundary = mime_create_boundary();/*TODO carrier*/
 			fprintf(fo, "Content-Type: multipart/mixed;\n"
 				" boundary=\"%s\"\n", send_boundary);
 		} else {

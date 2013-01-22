@@ -565,6 +565,9 @@ char *mime_getparam(char *param, char *h);
  * salloc()ed copy of it; store strlen() in *len if set */
 char *		mime_get_boundary(char *h, size_t *len);
 
+/* Create a salloc()ed MIME boundary */
+char *		mime_create_boundary(void);
+
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
  * left alone unless it's non-NULL */
 int		mime_classify_file(FILE *fp, char const **contenttype,
@@ -682,7 +685,6 @@ int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		char *prefix, enum sendaction action, off_t *stats);
 
 /* sendout.c */
-char *makeboundary(void);
 int mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record, int tflag, int Eflag);
