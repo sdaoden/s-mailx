@@ -535,7 +535,7 @@ edstop(void)
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
 		char *tempname;
 
-		if ((obuf = Ftemp(&tempname, "mbox.", "w", 0600, 1)) == NULL) {
+		if ((obuf = Ftemp(&tempname, "edstop", "w", 0600, 1)) == NULL) {
 			perror(catgets(catd, CATSET, 167, "tmpfile"));
 			relsesigs();
 			reset(0);
