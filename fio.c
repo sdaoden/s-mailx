@@ -496,6 +496,11 @@ setptr(FILE *ibuf, off_t offset)
 		if (linebuf[0] == '\0')
 			linebuf[0] = '.';
 #endif
+		/* XXX Convert CRLF to LF; this should be rethought in that
+		 * XXX CRLF input should possibly end as CRLF output? */
+		if (count >= 2 && linebuf[count - 1] == '\n' &&
+				linebuf[count - 2] == '\r')
+			linebuf[--count - 1] = '\n';
 		fwrite(linebuf, sizeof *linebuf, count, mb.mb_otf);
 		if (ferror(mb.mb_otf)) {
 			perror("/tmp");
