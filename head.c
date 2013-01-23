@@ -1520,7 +1520,6 @@ void
 substdate(struct message *m)
 {
 	char const *cp;
-	time_t now;
 
 	/*
 	 * Determine the date to print in faked 'From ' lines. This is
@@ -1528,7 +1527,6 @@ substdate(struct message *m)
 	 * file. Try to determine this using RFC message header fields,
 	 * or fall back to current time.
 	 */
-	time(&now);
 	if ((cp = hfield1("received", m)) != NULL) {
 		while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
 			do
@@ -1538,11 +1536,12 @@ substdate(struct message *m)
 		if (cp && *++cp)
 			m->m_time = rfctime(cp);
 	}
-	if (m->m_time == 0 || m->m_time > now)
+	if (m->m_time == 0 || m->m_time > time_current.tc_time) {
 		if ((cp = hfield1("date", m)) != NULL)
 			m->m_time = rfctime(cp);
-	if (m->m_time == 0 || m->m_time > now)
-		m->m_time = now;
+	}
+	if (m->m_time == 0 || m->m_time > time_current.tc_time)
+		m->m_time = time_current.tc_time;
 }
 
 int
