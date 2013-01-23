@@ -279,13 +279,20 @@ FILE *
 Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file)
 {
 	FILE *fp;
+	char *cp;
 	int fd;
 
-	*fn = smalloc(strlen(tempdir) + strlen(prefix) + 8);
-	strcpy(*fn, tempdir);
-	strcat(*fn, "/");
-	strcat(*fn, prefix);
-	strcat(*fn, "XXXXXX");
+	*fn =
+	cp = smalloc(strlen(tempdir) + 1 + sizeof("mail") + strlen(prefix) +
+			+ 7 + 1);
+	cp = sstpcpy(cp, tempdir);
+	*cp++ = '/';
+	cp = sstpcpy(cp, "mail");
+	if (*prefix) {
+		*cp++ = '-';
+		cp = sstpcpy(cp, prefix);
+	}
+	cp = sstpcpy(cp, ".XXXXXX");
 #ifdef HAVE_MKSTEMP
 	if ((fd = mkstemp(*fn)) < 0)
 		goto Ftemperr;
