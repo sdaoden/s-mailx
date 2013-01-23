@@ -167,10 +167,10 @@ $set 1
 156 Held %d messages in %s\n
 157 Unable to lock mailbox
 158 New mail has arrived.\n
-159 --- DELETED ---
-160 --- DELETED ---
-161 --- DELETED ---
-162 --- DELETED ---
+159 #%u\tmessage %u\n
+160 $#%u\tinput charset: $
+161 $#%u\toutput (send) charset: $
+162 $Filename doesn't indicate text content - want to edit charsets? $
 163 temporary mail quit file
 164 Saved 1 message in mbox\n
 165 Saved %d messages in mbox\n
@@ -203,9 +203,9 @@ $set 1
 192 Connecting to %s . . .
 193 $ connected.\n$
 194 No SMTP support compiled in.\n
-195 --- DELETED ---
-196 --- DELETED ---
-197 --- DELETED ---
+195 I/O read error occurred
+196 I/O write error occurred
+197 Trying conversion from %s to %s\n
 198 --- DELETED ---
 199 user = %s, homedir = %s\n
 200 too long to edit\n
