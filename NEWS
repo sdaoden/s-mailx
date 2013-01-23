@@ -1,6 +1,12 @@
 S - n a i l  N e w s
 ====================
 
+- *rfc822-no-body-from_* has been renamed to *rfc822-body-from_*.
+  It thus must be set explicitly.
+  On the other hand it now catches all cases...
+  (*rfc822-no-body-from_* -> *rfc822-body-from_*, 2013-01-23)
+  [The manual will be adjusted in a different commit.]
+
 - The new *charset-7bit* (defaults to US-ASCII) and *charset-8bit*
   (defaults to UTF-8) have been introduced.
   These are used if seven bit clean data is to be sent, and no

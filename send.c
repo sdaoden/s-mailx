@@ -521,8 +521,8 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if (! value("rfc822-no-body-from_")) {
-				if (prefixlen && value("rfc822-show-all")) {
+			if (value("rfc822-body-from_")) {
+				if (prefixlen > 0) {
 					size_t i = fwrite(prefix,
 						sizeof *prefix, prefixlen,
 						obuf);
@@ -537,7 +537,8 @@ skip:	switch (ip->m_mimecontent) {
 			goto multi;
 		case SEND_TOFILE:
 		case SEND_TOPIPE:
-			put_from_(obuf, ip->m_multipart, stats);
+			if (value("rfc822-body-from_"))
+				put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_MBOX:
 		case SEND_RFC822:
@@ -1010,7 +1011,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
 	ip->m_multipart = np;
-	if (! value("rfc822-no-body-from_")) {
+	if (value("rfc822-body-from_")) {
 		substdate((struct message *)np);
 		np->m_from = fakefrom((struct message *)np);
 	}
