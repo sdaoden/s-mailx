@@ -44,6 +44,11 @@ S - n a i l  N e w s
   arguments as a comma-separated instead of a whitespace-separated list.
   (collect: change separator of ~@ tilde escape.., 2012-12-28)
 
+  The interactive mode of ~@ has also been changed, rather massively.
+  Please do reread what the manual says.
+  ((collect: support multiple attachment charsets.., 2013-01-23), as
+  part of the *attach* topic branch.)
+
 - Thanks to Gianluca Ramunno (ramunno DOT gianluca AT gmail DOT com)
   S-Nail will no longer try to issue a STARTTLS command when it is about
   to establish a SMTPS connection, a task that logically fails since the
