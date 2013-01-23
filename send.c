@@ -351,16 +351,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			action == SEND_TOSRCH || action == SEND_TOFLTR ?
 		CONV_FROMHDR : CONV_NONE;
 
-	/*
-	 * Normally headers included in "Content-Type: message/rfc822" messages
-	 * will not show up in replies to the encapsulating envelope.
-	 * This is nail(1) specific and thus may be configured differently.
-	 */
-	if (ip->m_mimecontent == MIME_TEXT_PLAIN && ip->m_parent != NULL &&
-			ip->m_parent->m_mimecontent == MIME_822 &&
-			value("rfc822-show-all"))
-		goto skip;
-
 	/* Work the headers */
 	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
 		lineno++;
