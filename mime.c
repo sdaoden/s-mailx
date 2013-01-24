@@ -315,7 +315,9 @@ charset_iter_reset(char const *a_charset_to_try_first)
 
 	sarr[0] = a_charset_to_try_first;
 #ifdef HAVE_ICONV
-	sarr[1] = value("sendcharsets");
+	if ((sarr[1] = value("sendcharsets")) == NULL &&
+			value("sendcharsets-else-ttycharset"))
+		sarr[1] = charset_get_lc();
 #endif
 	sarr[2] = charset_get_8bit();
 
