@@ -363,6 +363,17 @@ readtty(char const *prefix, char const *string)
 	sighandler_type savettou;
 	sighandler_type savettin;
 
+	/* If STDIN is not a terminal, simply read from it */
+	if (! is_a_tty[0]) {
+		char *line = NULL;
+		size_t linesize = 0;
+		if (readline(stdin, &line, &linesize) != 0)
+			ret = savestr(line);
+		if (line != NULL)
+			free(line);
+		goto jleave;
+	}
+
 	(void) &saveint;
 	(void) &ret;
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
@@ -409,6 +420,7 @@ out2:
 	safe_signal(SIGQUIT, savequit);
 #endif
 	safe_signal(SIGINT, saveint);
+jleave:
 	return ret;
 }
 
