@@ -1,6 +1,14 @@
 S - n a i l  N e w s
 ====================
 
+- Fixed a name quoting regression that i've introduced in
+  (Rewrite *extract().., 2012-10-20), that would have caused
+  "x \"y\" z" to become "x"y" z" instead of "x "y" z".
+  (S-nail still does not really have RFC compliant parsers, just as
+  NetBSD Mail(1) has, i.e., there are structured and unstructured fields
+  etc...  I hope i can provide them in v15.0.)
+  (names.c:yankname(): fix quote regression.., 2013-01-29)
+
 - The IDNA conversion now assumes domain names are specified in
   *ttycharset*, rather than in the LC_CTYPE locale charset.
   I.e., it integrates into the usual character set specifications.

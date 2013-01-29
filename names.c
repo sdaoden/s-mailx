@@ -162,8 +162,10 @@ yankname(char const *ap, char *wbuf, char const *separators, int keepcomms)
 		if (c == '"') {
 			if (lc != '\\')
 				inquote = ! inquote;
+#if 0 /* TODO when doing real RFC 5322 parsers - why have i done this? */
 			else
 				--wp;
+#endif
 			goto jwpwc;
 		}
 		if (inquote || lc == '\\') {
