@@ -56,7 +56,6 @@ enum parseflags {
 	PARSE_PARTS	= 02
 };
 
-extern void brokpipe(int signo);
 static void onpipe(int signo);
 
 static void	_parsemultipart(struct message *zmp, struct mimepart *ip,
@@ -90,8 +89,7 @@ static void parse822(struct message *zmp, struct mimepart *ip,
 static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 #endif
-static FILE *newfile(struct mimepart *ip, int *ispipe,
-		sighandler_type volatile*oldpipe);
+static FILE *newfile(struct mimepart *ip, int *ispipe);
 static char *getpipecmd(char *content);
 static FILE *getpipefile(char *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
@@ -374,14 +372,15 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
-		struct ignoretab *doign, char *prefix, size_t prefixlen,
-		enum sendaction action, off_t *volatile stats, int level)
+	struct ignoretab *doign, char *prefix, size_t prefixlen,
+	enum sendaction volatile action, off_t *volatile stats, int level)
 {
+	int volatile rt = 0;
 	struct str rest;
 	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL;
 	char const *tcs;
 	size_t linesize = 0, linelen, count, len;
-	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
+	int dostat, infld = 0, ignoring = 1, isenc, c, eof, ispipe = 0;
 	struct mimepart	*np;
 	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
 		*volatile qbuf = obuf, *origobuf = obuf;
@@ -724,10 +723,16 @@ skip:	switch (ip->m_mimecontent) {
 								"1") == 0)
 						break;
 					stats = NULL;
-					if ((obuf = newfile(np, &ispipe,
-								&oldpipe))
+					if ((obuf = newfile(np, &ispipe))
 							== NULL)
 						continue;
+					if (! ispipe)
+						break;
+					if (sigsetjmp(pipejmp, 1)) {
+						rt = -1;
+						goto jpipe_close;
+					}
+					oldpipe = safe_signal(SIGPIPE, onpipe);
 					break;
 				case SEND_TODISP:
 				case SEND_TODISP_ALL:
@@ -767,7 +772,7 @@ skip:	switch (ip->m_mimecontent) {
 					if (ispipe == 0)
 						Fclose(obuf);
 					else {
-						safe_signal(SIGPIPE, SIG_IGN);
+jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
 						Pclose(obuf);
 						safe_signal(SIGPIPE, oldpipe);
 					}
@@ -1112,7 +1117,7 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
  * Get a file for an attachment.
  */
 static FILE *
-newfile(struct mimepart *ip, int *ispipe, sighandler_type volatile*oldpipe)
+newfile(struct mimepart *ip, int *ispipe)
 {
 	char *f = ip->m_filename;
 	struct str in, out;
@@ -1155,13 +1160,8 @@ jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 		if (cp == NULL)
 			cp = SHELL;
 		fp = Popen(f + 1, "w", cp, 1);
-		if (fp == NULL) {
+		if (! (*ispipe = (fp != NULL)))
 			perror(f);
-			fp = stdout;
-		} else {
-			*oldpipe = safe_signal(SIGPIPE, brokpipe);
-			*ispipe = 1;
-		}
 	} else {
 		if ((fp = Fopen(f, "w")) == NULL)
 			fprintf(stderr, tr(176, "Cannot open %s\n"), f);

@@ -1,6 +1,19 @@
 S - n a i l  N e w s
 ====================
 
+- (d38c5bd, When the write command asks.., 2004-11-23) added support
+  for pipes when saving attachments during a "write" command.
+  It however used the wrong SIGPIPE signal handler; e.g.:
+
+    Enter filename for part 2 (application/x-gzip): |exit
+    Segmentation fault
+
+  Of course, it still performs a jump and that most likely leaves memory
+  chunks behind, thus causing some memory leaks.  This will be
+  a long-term problem (you may want to read [mime.c:fwrite_td(): TODO
+  notes on unfixable leaks, 2013-01-14] for more).
+  (send.c:sendpart(): fix longjmp() SIGSEGV.., 2013-01-29)
+
 - Fixed a name quoting regression that i've introduced in
   (Rewrite *extract().., 2012-10-20), that would have caused
   "x \"y\" z" to become "x"y" z" instead of "x "y" z".

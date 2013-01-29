@@ -72,7 +72,6 @@ static int putindent(FILE *fp, struct message *mp, int maxwidth);
 static int type1(int *msgvec, int doign, int page, int pipe, int decode,
 		char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
-void brokpipe(int signo);
 
 static void
 _show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
@@ -787,6 +786,14 @@ pcmdlist(void *v)
  */
 static sigjmp_buf	pipestop;
 
+/*ARGSUSED*/
+static void
+brokpipe(int signo)
+{
+	(void)signo;
+	siglongjmp(pipestop, 1);
+}
+
 static int
 type1(int *msgvec, int doign, int page, int pipe, int decode,
 		char *cmd, off_t *tstats)
@@ -796,10 +803,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 	char *cp;
 	int nlines;
 	off_t mstats[2];
-	/*
-	 * Must be static to become excluded from sigsetjmp().
-	 */
-	static FILE *obuf;
+	FILE *volatile obuf;
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
@@ -1058,18 +1062,6 @@ Pipecmd(void *v)
 {
 	char *str = v;
 	return(pipe1(str, 0));
-}
-
-/*
- * Respond to a broken pipe signal --
- * probably caused by quitting more.
- */
-/*ARGSUSED*/
-void
-brokpipe(int signo)
-{
-	(void)signo;
-	siglongjmp(pipestop, 1);
 }
 
 /*
