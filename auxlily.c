@@ -665,7 +665,7 @@ prstr(const char *s)
 	struct str	in, out;
 	char	*rp;
 
-	in.s = (char *)s;
+	in.s = UNCONST(s);
 	in.l = strlen(s);
 	makeprint(&in, &out);
 	rp = salloc(out.l + 1);
@@ -681,7 +681,7 @@ prout(const char *s, size_t sz, FILE *fp)
 	struct str	in, out;
 	int	n;
 
-	in.s = (char *)s;
+	in.s = UNCONST(s);
 	in.l = sz;
 	makeprint(&in, &out);
 	n = fwrite(out.s, 1, out.l, fp);
@@ -759,7 +759,7 @@ my_getopt(int argc, char *const argv[], char const *optstring) /* XXX */
 		}
 		if (optstring[1] == ':') {
 			if (curp[1] != '\0') {
-				optarg = (char *)&curp[1];
+				optarg = UNCONST(&curp[1]);
 				optind++;
 			} else {
 				if ((optind += 2) > argc) {
