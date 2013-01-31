@@ -616,11 +616,15 @@ int		cmimetypes(void *v);
 
 void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char const *name);
-size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
-		char *prefix, size_t prefixlen);
-ssize_t	 mime_write(void const *ptr, size_t size, FILE *f,
-		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen, struct str *rest);
+
+/* fwrite(3) whilst adding *prefix*, if set, taking care of *quote-fold* */
+size_t		prefixwrite(char const *ptr, size_t size, FILE *f,
+			char const *prefix, size_t prefixlen);
+
+/* fwrite(3) performing the given MIME conversion */
+ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
+			enum conversion convert, enum tdflags dflags,
+			char const *prefix, size_t prefixlen, struct str *rest);
 
 /*
  * names.c
@@ -713,7 +717,7 @@ void restorequitflags(int);
 #undef send
 #define send(a, b, c, d, e, f)  xsend(a, b, c, d, e, f)
 int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
-		char *prefix, enum sendaction action, off_t *stats);
+		char const *prefix, enum sendaction action, off_t *stats);
 
 /* sendout.c */
 int mail(struct name *to, struct name *cc, struct name *bcc,

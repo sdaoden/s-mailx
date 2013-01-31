@@ -59,7 +59,7 @@ static char	*send_boundary;
 
 static enum okay	_putname(char const *line, enum gfield w,
 				enum sendaction action, int *gotcha,
-				char *prefix, FILE *fo, struct name **xp);
+				char const *prefix, FILE *fo, struct name **xp);
 
 /* Get an encoding flag based on the given string */
 static char const *	_get_encoding(const enum conversion convert);
@@ -80,14 +80,14 @@ static enum okay transfer(struct name *to, FILE *input, struct header *hp);
 static char ** prepare_mta_args(struct name *to);
 static enum okay start_mta(struct name *to, FILE *input, struct header *hp);
 static void message_id(FILE *fo, struct header *hp);
-static int fmt(char *str, struct name *np, FILE *fo, int comma,
+static int fmt(char const *str, struct name *np, FILE *fo, int comma,
 		int dropinvalid, int domime);
 static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
 
 static enum okay
 _putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
-	char *prefix, FILE *fo, struct name **xp)
+	char const *prefix, FILE *fo, struct name **xp)
 {
 	enum okay ret = STOP;
 	struct name *np;
@@ -1381,8 +1381,8 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
  * Format the given header line to not exceed 72 characters.
  */
 static int
-fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
-		int domime)
+fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
+	int domime)
 {
 	enum {
 		m_INIT	= 1<<0,

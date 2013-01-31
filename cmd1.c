@@ -705,7 +705,8 @@ void
 printhead(int mesg, FILE *f, int threaded)
 {
 	int bsdflags, bsdheadline, sz;
-	char	*fmt, attrlist[30], *cp;
+	char attrlist[30], *cp;
+	char const *fmt;
 
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
 		getenv("SYSV3") != NULL;
@@ -805,7 +806,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 {
 	int *ip;
 	struct message *mp;
-	char *cp;
+	char const *cp;
 	int nlines;
 	off_t mstats[2];
 	FILE *volatile obuf;
