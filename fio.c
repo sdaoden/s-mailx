@@ -141,7 +141,7 @@ jnext:	dyn = 0;
 		goto jislocal;
 	case '&':
 		if (res[1] == 0 && (res = value("MBOX")) == NULL)
-			res = "~/mbox";
+			res = UNCONST("~/mbox");
 		break;
 	}
 
@@ -465,12 +465,11 @@ void
 setptr(FILE *ibuf, off_t offset)
 {
 	int c;
-	size_t count;
-	char *cp, *cp2;
+	char *cp, *linebuf = NULL;
+	char const *cp2;
 	struct message this;
 	int maybe, inhead, thiscnt;
-	char *linebuf = NULL;
-	size_t linesize = 0, filesize;
+	size_t linesize = 0, filesize, count;
 
 	maybe = 1;
 	inhead = 0;
