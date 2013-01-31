@@ -76,7 +76,7 @@ static	sigjmp_buf	collabort;	/* To end collection with error */
 static	sigjmp_buf pipejmp;		/* On broken pipe */
 
 /* If *interactive* is set and *echo* is, too, also dump to *stdout* */
-static int	_include_file(FILE *fbuf, char *name, int *linecount,
+static int	_include_file(FILE *fbuf, char const *name, int *linecount,
 			int *charcount, int echo);
 
 /* Append comma-separated list of file names to the end of attachment list */
@@ -93,7 +93,7 @@ static int	__attach_iconv(struct attachment *ap);
 static void onpipe(int signo);
 static void insertcommand(FILE *fp, char const *cmd);
 static void print_collf(FILE *collf, struct header *hp);
-static int exwrite(char *name, FILE *fp, int f);
+static int exwrite(char const *name, FILE *fp, int f);
 static enum okay makeheader(FILE *fp, struct header *hp);
 static void mesedit(int c, struct header *hp);
 static void mespipe(char *cmd);
@@ -104,7 +104,8 @@ static void collhup(int s);
 static int putesc(const char *s, FILE *stream);
 
 static int
-_include_file(FILE *fbuf, char *name, int *linecount, int *charcount, int echo)
+_include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
+	int echo)
 {
 	int ret = -1;
 	char *interactive, *linebuf = NULL;
@@ -403,9 +404,9 @@ print_collf(FILE *collf, struct header *hp)
 	char *lbuf = NULL;
 	FILE *volatile obuf = stdout;
 	struct attachment *ap;
-	char *cp;
-	enum gfield	gf;
-	size_t	linecnt, maxlines, linesize = 0, linelen, count, count2;
+	char const *cp;
+	enum gfield gf;
+	size_t linecnt, maxlines, linesize = 0, linelen, count, count2;
 
 	(void)&obuf;
 	(void)&cp;
@@ -557,7 +558,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	struct ignoretab *quoteig;
 	int lc, cc, eofcount, val, c, t;
 	int volatile escape, getfields;
-	char *linebuf = NULL, *cp, *quote = NULL, *tempMail = NULL;
+	char *linebuf = NULL, *quote = NULL, *tempMail = NULL;
+	char const *cp;
 	size_t linesize;
 	long count;
 	enum sendaction	action;
@@ -1058,7 +1060,7 @@ jerr:
  * Write a file, ex-like if f set.
  */
 static int
-exwrite(char *name, FILE *fp, int f)
+exwrite(char const *name, FILE *fp, int f)
 {
 	FILE *of;
 	int c;
@@ -1210,7 +1212,7 @@ forward(char *ms, FILE *fp, int f)
 {
 	int *msgvec;
 	struct ignoretab *ig;
-	char *tabst;
+	char const *tabst;
 	enum sendaction	action;
 
 	/*LINTED*/
