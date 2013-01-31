@@ -788,10 +788,10 @@ getfold(char *name, int size)
 /*
  * Return the name of the dead.letter file.
  */
-char *
+char const *
 getdeadletter(void)
 {
-	char *cp;
+	char const *cp;
 
 	if ((cp = value("DEAD")) == NULL || (cp = file_expand(cp)) == NULL)
 		cp = file_expand("~/dead.letter");

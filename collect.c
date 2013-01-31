@@ -1319,7 +1319,7 @@ collhup(int s)
 void
 savedeadletter(FILE *fp, int fflush_rewind_first)
 {
-	char *cp;
+	char const *cp;
 	int c;
 	FILE *dbuf;
 	ul_it lines, bytes;

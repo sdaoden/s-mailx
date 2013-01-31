@@ -372,7 +372,7 @@ void	findmail(char *user, int force, char *buf, int size);
 /* Get rid of queued mail */
 void	demail(void);
 int getfold(char *name, int size);
-char *getdeadletter(void);
+char const *getdeadletter(void);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * *sourcing* so that others will realize that they are no longer reading from
