@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -69,7 +69,7 @@ static void purge(struct mailbox *mp, struct message *m, long mc,
 		struct cw *cw, const char *name);
 static int longlt(const void *a, const void *b);
 static void remve(unsigned long n);
-static FILE *cache_queue1(struct mailbox *mp, char *mode, char **xname);
+static FILE *cache_queue1(struct mailbox *mp, char const *mode, char **xname);
 static enum okay dequeue1(struct mailbox *mp);
 
 static const char	infofmt[] = "%c %lu %d %lu %ld";
@@ -105,8 +105,9 @@ For more information about mailx(1), visit\n\
 static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)
 {
-	char	*cachedir, *eaccount, *emailbox, *ename, *res;
-	int	resz;
+	char *cachedir, *eaccount, *ename, *res;
+	char const *emailbox;
+	int resz;
 
 	ename = urlxenc(name);
 	if (mp->mb_cache_directory && same && box == NULL) {
@@ -406,11 +407,12 @@ purgecache(struct mailbox *mp, struct message *m, long mc)
 static FILE *
 clean(struct mailbox *mp, struct cw *cw)
 {
-	char	*cachedir, *eaccount, *emailbox, *buf;
-	int	bufsz;
-	DIR	*dirfd;
-	struct dirent	*dp;
-	FILE	*fp = NULL;
+	char *cachedir, *eaccount, *buf;
+	char const *emailbox;
+	int bufsz;
+	DIR *dirfd;
+	struct dirent *dp;
+	FILE *fp = NULL;
 
 	if ((cachedir = value("imap-cache")) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
@@ -713,7 +715,7 @@ cached_uidvalidity(struct mailbox *mp)
 }
 
 static FILE *
-cache_queue1(struct mailbox *mp, char *mode, char **xname)
+cache_queue1(struct mailbox *mp, char const *mode, char **xname)
 {
 	char	*name;
 	FILE	*fp;
