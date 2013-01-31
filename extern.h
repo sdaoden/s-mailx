@@ -368,7 +368,7 @@ off_t fsize(FILE *iob);
 char *file_expand(char const *name);
 char *expand(char const *name);
 /* Locate the user's mailbox file (where new, unread mail is queued) */
-void	findmail(char *user, int force, char *buf, int size);
+void	findmail(char const *user, int force, char *buf, int size);
 /* Get rid of queued mail */
 void	demail(void);
 int getfold(char *name, int size);

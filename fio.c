@@ -740,7 +740,7 @@ expand(char const *name)
 }
 
 void
-findmail(char *user, int force, char *buf, int size)
+findmail(char const *user, int force, char *buf, int size)
 {
 	char *mbox, *cp;
 
