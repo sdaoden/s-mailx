@@ -278,7 +278,7 @@ struct message *
 smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 {
 	int	binary = 0, lastnl = 0;
-	char	*buf = NULL, *cp;
+	char	*buf = NULL;
 	size_t	bufsize = 0, buflen, count;
 	long	lines = 0, octets = 0;
 	struct message	*x;
@@ -291,6 +291,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 	offset = ftell(mb.mb_otf);
 	count = fsize(hp);
 	while (fgetline(&buf, &bufsize, &count, &buflen, hp, 0) != NULL) {
+		char const *cp;
 		if (buf[0] == '\n')
 			break;
 		if ((cp = thisfield(buf, "content-transfer-encoding")) != NULL)
