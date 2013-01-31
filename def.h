@@ -418,7 +418,7 @@ struct mimepart {
 	long	m_lines;		/* Lines in the message */
 	long	m_xlines;		/* Lines in the full message */
 	time_t	m_time;			/* time the message was sent */
-	char	*m_from;		/* message sender */
+	char const *m_from;		/* message sender */
 	struct mimepart	*m_nextpart;	/* next part at same level */
 	struct mimepart	*m_multipart;	/* parts of multipart */
 	struct mimepart	*m_parent;	/* enclosing multipart part */
