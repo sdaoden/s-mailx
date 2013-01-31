@@ -404,16 +404,15 @@ dbfp(enum db db, int rw, int *compressed, char **fn)
 	FILE	*fp, *rp;
 	char	*dir;
 	struct flock	flp;
-	char *sfx[][2] = {
+	char const *const sfx[][2] = {
 		{ "super",	"nodes" },
 		{ "super1",	"nodes1" }
 	};
-	char **sf;
-	char *zfx[][2] = {
+	char const *const zfx[][2] = {
 		{ "super.Z",	"nodes.Z" },
 		{ "super1.Z",	"nodes1.Z" }
 	};
-	char **zf;
+	char const *const*sf, *const*zf;
 	int	n;
 
 	if ((dir = value("junkdb")) == NULL ||
@@ -559,8 +558,9 @@ static char *
 nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 		struct lexstat *sp, int *stop)
 {
-	int	c, i, j, k;
-	char	*cp, *cq;
+	int c, i, j, k;
+	char *cp;
+	char const *cq;
 
 loop:	*stop = 0;
 	sp->hadamp = 0;
