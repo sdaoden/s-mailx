@@ -67,7 +67,7 @@ static int	respond_internal(int *msgvec, int recipient_record);
 static char *	fwdedit(char *subj);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
-static int	file1(char *name);
+static int	file1(char const *name);
 static int	shellecho(const char *cp);
 static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
@@ -135,11 +135,11 @@ _set_show_all(void)
 	i = (value("bsdcompat") != NULL || value("bsdset") != NULL);
 	u.fmt = i ? "%s\t%s\n" : "%s=\"%s\"\n";
 	for (p = vacp; *p != NULL; ++p) {
-		cp = value(*p);
-		if (cp == NULL)
-			cp = "";
-		if (i || *cp)
-			fprintf(fp, u.fmt, *p, cp);
+		char const *x = value(*p);
+		if (x == NULL)
+			x = "";
+		if (i || *x)
+			fprintf(fp, u.fmt, *p, x);
 		else
 			fprintf(fp, "%s\n", *p);
 	}
@@ -885,7 +885,7 @@ cfile(void *v)
 }
 
 static int 
-file1(char *name)
+file1(char const *name)
 {
 	int	i;
 

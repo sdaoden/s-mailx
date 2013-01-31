@@ -523,7 +523,7 @@ int cprobability(void *v);
 #endif
 
 /* lex.c */
-int setfile(char *name, int newmail);
+int setfile(char const *name, int newmail);
 int newmailinfo(int omsgCount);
 void commands(void);
 int execute(char *linebuf, int contxt, size_t linesize);
