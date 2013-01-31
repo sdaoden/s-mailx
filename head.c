@@ -998,7 +998,7 @@ realname(char const *name)
 
 	if (name == NULL)
 		return NULL;
-	for (cp = (char*)name; *cp; cp++) {
+	for (cp = UNCONST(name); *cp; cp++) {
 		switch (*cp) {
 		case '(':
 			if (cstart)
