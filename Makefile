@@ -21,9 +21,9 @@ INSTALL		= /usr/bin/install
 
 #CFLAGS		= -std=c89 -O2
 #WARN		= -g -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
-#		-Winit-self
+#		-Winit-self -Wwrite-strings -fstrict-aliasing
 # Warnings that are not handled very well (yet)
-#		-Wshadow -Wcast-qual -Wwrite-strings
+#		-Wshadow -Wcast-qual
 # The gcc(1) from NetBSD 6 produces a lot of errors with -fstrict-overflow,
 # so that this needs to be revisited; it was enabled on OS X 6 and FreeBSD 9,
 # and seemed to be good for gcc(1) and clang(1)
