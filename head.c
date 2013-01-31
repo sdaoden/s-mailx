@@ -498,16 +498,15 @@ jerr:	cp = tr(213, "<Unknown date>");
 void
 extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 {
-	char *linebuf = NULL;
+	struct header nh, *hq = &nh;
+	char *linebuf = NULL, *colon;
 	size_t linesize = 0;
-	int seenfields = 0;
-	char *colon, *cp, *value;
-	struct header nh;
-	struct header *hq = &nh;
-	int lc, c;
+	int seenfields = 0, lc, c;
+	char const *value, *cp;
 
 	memset(hq, 0, sizeof *hq);
-	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++);
+	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++)
+		;
 	rewind(fp);
 	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
 		if ((value = thisfield(linebuf, "to")) != NULL) {
@@ -537,14 +536,16 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 		} else if ((value = thisfield(linebuf,
 						"organization")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp & 0377); cp++);
+			for (cp = value; blankchar(*cp); cp++)
+				;
 			hq->h_organization = hq->h_organization ?
 				save2str(hq->h_organization, cp) :
 				savestr(cp);
 		} else if ((value = thisfield(linebuf, "subject")) != NULL ||
 				(value = thisfield(linebuf, "subj")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp & 0377); cp++);
+			for (cp = value; blankchar(*cp); cp++)
+				;
 			hq->h_subject = hq->h_subject ?
 				save2str(hq->h_subject, cp) :
 				savestr(cp);
@@ -594,7 +595,8 @@ hfield_mult(char const *field, struct message *mp, int mult)
 	FILE *ibuf;
 	int lc;
 	size_t linesize = 0;
-	char *linebuf = NULL, *hfield, *colon, *oldhfield = NULL;
+	char *linebuf = NULL, *colon, *oldhfield = NULL;
+	char const *hfield;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		return NULL;
@@ -697,22 +699,22 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
  * Check whether the passed line is a header line of
  * the desired breed.  Return the field body, or 0.
  */
-char *
-thisfield(const char *linebuf, const char *field)
+char const *
+thisfield(char const *linebuf, char const *field)
 {
-	while (lowerconv(*linebuf&0377) == lowerconv(*field&0377)) {
-		linebuf++;
-		field++;
+	while (lowerconv(*linebuf) == lowerconv(*field)) {
+		++linebuf;
+		++field;
 	}
 	if (*field != '\0')
 		return NULL;
-	while (blankchar(*linebuf&0377))
-		linebuf++;
+	while (blankchar(*linebuf))
+		++linebuf;
 	if (*linebuf++ != ':')
 		return NULL;
-	while (blankchar(*linebuf&0377))
-		linebuf++;
-	return (char *)linebuf;
+	while (blankchar(*linebuf))
+		++linebuf;
+	return linebuf;
 }
 
 /*
