@@ -1161,7 +1161,7 @@ mespipe(char *cmd)
 	FILE *nf;
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *tempEdit;
-	char *shell;
+	char const *shell;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));

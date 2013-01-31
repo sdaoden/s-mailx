@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -168,7 +168,7 @@ run_editor(FILE *fp, off_t size, int type, int readonly,
 	FILE *nf = NULL;
 	int t;
 	time_t modtime;
-	char *edit;
+	char const *edit;
 	struct stat statb;
 	char *tempEdit;
 	sigset_t	set;

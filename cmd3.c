@@ -158,11 +158,10 @@ jleave:
 int 
 shell(void *v)
 {
-	char *str = v;
-	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *shell;
-	char *cmd;
+	char *str = v, *cmd;
+	char const *shell;
 	size_t cmdsize;
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 
 	cmd = smalloc(cmdsize = strlen(str) + 1);
 	strcpy(cmd, str);
@@ -185,7 +184,7 @@ int
 dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *shell;
+	char const *shell;
 	(void)v;
 
 	if ((shell = value("SHELL")) == NULL)
@@ -730,7 +729,7 @@ set(void *v)
 			*cp2++ = c;
 		*cp2 = '\0';
 		if (c == '\0')
-			cp = "";
+			cp = UNCONST("");
 		else
 			++cp;
 		if (varbuf == cp2) {

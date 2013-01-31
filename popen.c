@@ -426,7 +426,7 @@ static enum okay
 compress(struct fp *fpp)
 {
 	int	output;
-	char	*command[2];
+	char const *command[2];
 	enum okay	ok;
 
 	if (fpp->omode == O_RDONLY)
@@ -471,7 +471,7 @@ compress(struct fp *fpp)
 static int
 decompress(int compression, int input, int output)
 {
-	char	*command[2];
+	char const *command[2];
 
 	/*
 	 * Note that it is not possible to handle 'pack' or 'compress'
@@ -527,8 +527,8 @@ file_pid(FILE *fp)
  */
 /*VARARGS4*/
 int
-run_command(char *cmd, sigset_t *mask, int infd, int outfd,
-		char *a0, char *a1, char *a2)
+run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+		char const *a0, char const *a1, char const *a2)
 {
 	int pid;
 

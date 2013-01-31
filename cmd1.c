@@ -1172,7 +1172,8 @@ mboxit(void *v)
 int 
 folders(void *v)
 {
-	char dirname[PATHSIZE], *name, *cmd, **argv = v;
+	char dirname[PATHSIZE], *name, **argv = v;
+	char const *cmd;
 
 	if (*argv && (name = expand(*argv)) == NULL)
 		return (1);

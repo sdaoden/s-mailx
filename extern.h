@@ -692,8 +692,8 @@ void	Ftfree(char **fn);
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
 int Pclose(FILE *ptr);
 void close_all_files(void);
-int run_command(char *cmd, sigset_t *mask, int infd, int outfd,
-		char *a0, char *a1, char *a2);
+int run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+		char const *a0, char const *a1, char const *a2);
 int start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 		const char *a0, const char *a1, const char *a2);
 void prepare_child(sigset_t *nset, int infd, int outfd);
