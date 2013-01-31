@@ -57,7 +57,7 @@ static void	_check_special_vars(char const *name, int enable);
  * Following the standard, only the part following the last '@' should
  * be lower-cased, but practice has established otherwise here.
  */
-static char *	canonify(const char *vn);
+static char const *	canonify(char const *vn);
 
 static void vfree(char *cp);
 static struct var *lookup(const char *name, int h);
@@ -81,16 +81,16 @@ _check_special_vars(char const *name, int enable)
 	}
 }
 
-static char *
-canonify(const char *vn)
+static char const *
+canonify(char const *vn)
 {
-	const char *vp;
+	char const *vp;
 
 	if (upperchar(*vn))
-		return ((char*)vn);
+		return vn;
 	for (vp = vn; *vp && *vp != '@'; vp++)
 		;
-	return ((*vp == '@') ? i_strdup(vn) : (char*)vn);
+	return (*vp == '@') ? i_strdup(vn) : vn;
 }
 
 void
