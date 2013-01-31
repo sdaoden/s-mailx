@@ -410,13 +410,13 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 	char digest[16], *cp;
 
 	out.s = NULL;
-	in.s = (char*)b64;
+	in.s = UNCONST(b64);
 	in.l = strlen(in.s);
 	(void)b64_decode(&out, &in, 0, NULL);
 	assert(out.s != NULL);
 
 	hmac_md5((unsigned char*)out.s, out.l,
-		(unsigned char*)pass, strlen(pass), digest);
+		UNCONST(pass), strlen(pass), digest);
 	free(out.s);
 	cp = md5tohex(digest);
 
@@ -939,13 +939,13 @@ iconv_open_ft(char const *tocode, char const *fromcode)
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special */
 #  ifdef __DragonFly__
-#   define __INBCAST	(char ** __restrict__)
+#   define __INBCAST(S)	(char ** __restrict__)UNCONST(S)
 #  else
-#   define __INBCAST	(char const **)
+#   define __INBCAST(S)	(char const **)UNCONST(S)
 #  endif
 # endif
 # ifndef __INBCAST
-#  define __INBCAST	(char **)
+#  define __INBCAST(S)	(char **)UNCONST(S)
 # endif
 
 size_t
@@ -955,7 +955,7 @@ iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
 	size_t sz;
 	int err;
 
-	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft))
+	while ((sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft))
 			== (size_t)-1 && tolerant &&
 			((err = errno) == EILSEQ || err == EINVAL)) {
 		if (*inbleft > 0) {
