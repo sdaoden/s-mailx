@@ -728,7 +728,7 @@ struct name *
 outof(struct name *names, FILE *fo, struct header *hp)
 {
 	int pipecnt, xcnt, *fda, i;
-	char *shell;
+	char const *shell;
 	struct name *np;
 	FILE *fin = NULL, *fout;
 	(void)hp;
