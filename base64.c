@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /* _decode() and b64_encode() are adapted from NetBSDs mailx(1): */
 /*	$NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $	*/
@@ -97,8 +97,8 @@ _decode(struct str *out, struct str *in)
 	ret = (size_t)((char*)p - out->s);
 	out->l = (size_t)ret;
 jleave:
-	in->l -= (size_t)((char*)q - in->s);
-	in->s = (char*)q;
+	in->l -= (size_t)((char*)UNCONST(q) - in->s);
+	in->s = UNCONST(q);
 	return ret;
 }
 
@@ -188,7 +188,7 @@ struct str *
 b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
 {
 	struct str in;
-	in.s = (char*)cp;
+	in.s = UNCONST(cp);
 	in.l = strlen(cp);
 	return b64_encode(out, &in, flags);
 }
@@ -198,7 +198,7 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 	enum b64flags flags)
 {
 	struct str in;
-	in.s = (char*)vp;
+	in.s = UNCONST(vp);
 	in.l = vp_len;
 	return b64_encode(out, &in, flags);
 }
