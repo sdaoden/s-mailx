@@ -857,7 +857,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 
 	if ((agp->ag_input = name) == NULL || /* XXX ever? */
 			(agp->ag_ilen = strlen(name)) == 0) {
-		agp->ag_skinned = ""; /* NAME_SALLOC not set */
+		agp->ag_skinned = UNCONST(""); /* ok: NAME_SALLOC is not set */
 		agp->ag_slen = 0;
 		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
@@ -1260,7 +1260,7 @@ charcount(char *str, int c)
  * See if the given header field is supposed to be ignored.
  */
 int
-is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2])
+is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2])
 {
 	char *realfld;
 	int ret;
@@ -1284,7 +1284,7 @@ is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2])
 }
 
 int 
-member(char *realfield, struct ignoretab *table)
+member(char const *realfield, struct ignoretab *table)
 {
 	struct ignore *igp;
 
@@ -1298,10 +1298,10 @@ member(char *realfield, struct ignoretab *table)
 /*
  * Fake Sender for From_ lines if missing, e. g. with POP3.
  */
-char *
+char const *
 fakefrom(struct message *mp)
 {
-	char *name;
+	char const *name;
 
 	if (((name = skin(hfield1("return-path", mp))) == NULL ||
 				*name == '\0' ) &&
@@ -1316,7 +1316,7 @@ fakefrom(struct message *mp)
 	return name;
 }
 
-char *
+char const *
 fakedate(time_t t)
 {
 	char *cp, *cq;

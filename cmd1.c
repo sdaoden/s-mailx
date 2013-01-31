@@ -408,7 +408,8 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 	struct str in, out;
 	char const *fp;
 	struct message *mp = &message[mesg - 1];
-	char *subjline, *name, *cp, *date, datebuf[FROM_DATEBUF];
+	char *subjline, *cp, datebuf[FROM_DATEBUF];
+	char const *name, *date;
 	int B, c, i, n, s, fromlen,
 		subjlen = scrnwidth, isto = 0, isaddr = 0;
 

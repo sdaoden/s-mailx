@@ -447,10 +447,10 @@ int	addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
 char *realname(char const *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
-int is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2]);
-int member(char *realfield, struct ignoretab *table);
-char *fakefrom(struct message *mp);
-char *fakedate(time_t t);
+int is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2]);
+int member(char const *realfield, struct ignoretab *table);
+char const *fakefrom(struct message *mp);
+char const *fakedate(time_t t);
 time_t unixtime(char const *from);
 time_t rfctime(char const *date);
 time_t combinetime(int year, int month, int day,
