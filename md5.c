@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * The MD5_CTX algorithm is derived from RFC 1321:
@@ -139,6 +139,8 @@ static unsigned char PADDING[64] = {
 	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
+static void * (	*volatile _volatile_memset)(void*, int, size_t) = &(memset);
+
 static void Encode(unsigned char *output, md5_type *input, unsigned int len);
 static void Decode(md5_type *output, unsigned char *input, unsigned int len);
 static void MD5Transform(md5_type state[], unsigned char block[]);
@@ -265,7 +267,7 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 	/*
 	 * Zeroize sensitive information.
 	 */
-	memset((md5_type*)(volatile md5_type*)x, 0, sizeof x); /* XXX */
+	(*_volatile_memset)(x, 0, sizeof x);
 }
 
 /*
@@ -361,7 +363,7 @@ MD5Final (
 	/*
 	 * Zeroize sensitive information.
 	 */
-	memset(context, 0, sizeof *context);
+	(*_volatile_memset)(context, 0, sizeof *context);
 }
 
 void
