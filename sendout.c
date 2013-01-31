@@ -76,7 +76,7 @@ static int attach_message(struct attachment *ap, FILE *fo);
 static int make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 		const char *contenttype, const char *charset);
 static FILE *infix(struct header *hp, FILE *fi);
-static int savemail(char *name, FILE *fi);
+static int savemail(char const *name, FILE *fi);
 static int sendmail_internal(void *v, int recipient_record);
 static enum okay transfer(struct name *to, FILE *input, struct header *hp);
 static enum okay start_mta(struct name *to, FILE *input, struct header *hp);
@@ -502,8 +502,7 @@ infix(struct header *hp, FILE *fi)
 	char const *tcs, *convhdr = NULL;
 #endif
 	enum conversion convert;
-	char *contenttype;
-	char const *charset = NULL;
+	char const *contenttype, *charset = NULL;
 	int do_iconv = 0, lastc = EOF;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
@@ -519,8 +518,7 @@ infix(struct header *hp, FILE *fi)
 	Ftfree(&tempMail);
 
 	contenttype = "text/plain"; /* XXX mail body - always text/plain */
-	convert = mime_classify_file(fi, (char const**)&contenttype, &charset,
-			&do_iconv);
+	convert = mime_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
 	tcs = charset_get_lc();
@@ -672,7 +670,7 @@ infix(struct header *hp, FILE *fi)
 
 /*ARGSUSED*/
 static int
-savemail(char *name, FILE *fi)
+savemail(char const *name, FILE *fi)
 {
 	FILE *fo;
 	char *buf;
@@ -972,7 +970,8 @@ jleave:
 static enum okay
 mightrecord(FILE *fp, struct name *to, int recipient_record)
 {
-	char	*cp, *cq, *ep;
+	char *cp, *cq;
+	char const *ep;
 
 	if (recipient_record) {
 		cq = skinned_name(to);
