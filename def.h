@@ -318,9 +318,9 @@ struct sock {				/* data associated with a socket */
 	int	s_wbufpos;		/* position of first empty data byte */
 	char	*s_rbufptr;		/* read pointer to s_rbuf */
 	int	s_rsz;			/* size of last read in s_rbuf */
-	char	*s_desc;		/* description of error messages */
+	char const *s_desc;		/* description of error messages */
 	void	(*s_onclose)(void);	/* execute on close */
-	char	s_rbuf[LINESIZE+1];	/* for buffered reads */
+	char	s_rbuf[LINESIZE + 1];	/* for buffered reads */
 };
 
 struct mailbox {
