@@ -918,7 +918,7 @@ pversion(void *v)
  * Load a file of user definitions.
  */
 void 
-load(char *name)
+load(char const *name)
 {
 	FILE *in, *oldin;
 

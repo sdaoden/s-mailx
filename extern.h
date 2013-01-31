@@ -533,7 +533,7 @@ void announce(int printheaders);
 int newfileinfo(void);
 int getmdot(int newmail);
 int pversion(void *v);
-void load(char *name);
+void load(char const *name);
 void initbox(const char *name);
 
 /* list.c */
