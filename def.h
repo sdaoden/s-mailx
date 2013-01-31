@@ -504,7 +504,7 @@ enum argtype {
  * in lex.c
  */
 struct cmd {
-	char		*c_name;		/* Name of command */
+	char const	*c_name;		/* Name of command */
 	int		(*c_func)(void *);	/* Implementor of command */
 	enum argtype	c_argtype;		/* Arglist type (see below) */
 	short		c_msgflag;		/* Required flags of msgs*/
