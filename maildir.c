@@ -220,10 +220,10 @@ mdcmp(const void *a, const void *b)
 {
 	long	i;
 
-	if ((i = ((struct message *)a)->m_time -
-				((struct message *)b)->m_time) == 0)
-		i = strcmp(&((struct message *)a)->m_maildir_file[4],
-				&((struct message *)b)->m_maildir_file[4]);
+	if ((i = ((struct message const*)a)->m_time -
+				((struct message const*)b)->m_time) == 0)
+		i = strcmp(&((struct message const*)a)->m_maildir_file[4],
+				&((struct message const*)b)->m_maildir_file[4]);
 	return i;
 }
 
