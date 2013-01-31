@@ -68,6 +68,8 @@ static char const *	_get_encoding(const enum conversion convert);
 static int		_attach_file(struct attachment *ap, FILE *fo);
 static int		__attach_file(struct attachment *ap, FILE *fo);
 
+static char const **	_prepare_mta_args(struct name *to);
+
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
 static int attach_message(struct attachment *ap, FILE *fo);
@@ -77,7 +79,6 @@ static FILE *infix(struct header *hp, FILE *fi);
 static int savemail(char *name, FILE *fi);
 static int sendmail_internal(void *v, int recipient_record);
 static enum okay transfer(struct name *to, FILE *input, struct header *hp);
-static char ** prepare_mta_args(struct name *to);
 static enum okay start_mta(struct name *to, FILE *input, struct header *hp);
 static void message_id(FILE *fo, struct header *hp);
 static int fmt(char const *str, struct name *np, FILE *fo, int comma,
@@ -297,6 +298,30 @@ jerr_fclose:
 		Fclose(fi);
 jleave:
 	return (err);
+}
+
+static char const **
+_prepare_mta_args(struct name *to)
+{
+	size_t j, i = 4 + smopts_count + count(to) + 1;
+	char const **args = salloc(i * sizeof(char*));
+
+	args[0] = value("sendmail-progname");
+	if (args[0] == NULL || *args[0] == '\0')
+		args[0] = "sendmail";
+	args[1] = "-i";
+	i = 2;
+	if (value("metoo"))
+		args[i++] = "-m";
+	if (options & OPT_VERBOSE)
+		args[i++] = "-v";
+	for (j = 0; j < smopts_count; ++j, ++i)
+		args[i] = smopts[j];
+	for (; to != NULL; to = to->n_flink)
+		if ((to->n_type & GDEL) == 0)
+			args[i++] = to->n_name;
+	args[i] = NULL;
+	return args;
 }
 
 /*
@@ -835,30 +860,6 @@ transfer(struct name *to, FILE *input, struct header *hp)
 	return ok;
 }
 
-static char **
-prepare_mta_args(struct name *to)
-{
-	size_t j, i = 4 + smopts_count + count(to) + 1;
-	char **args = salloc(i * sizeof(char*));
-
-	args[0] = value("sendmail-progname");
-	if (args[0] == NULL || *args[0] == '\0')
-		args[0] = "sendmail";
-	args[1] = "-i";
-	i = 2;
-	if (value("metoo"))
-		args[i++] = "-m";
-	if (options & OPT_VERBOSE)
-		args[i++] = "-v";
-	for (j = 0; j < smopts_count; ++j, ++i)
-		args[i] = smopts[j];
-	for (; to != NULL; to = to->n_flink)
-		if ((to->n_type & GDEL) == 0)
-			args[i++] = to->n_name;
-	args[i] = NULL;
-	return (args);
-}
-
 /*
  * Start the Mail Transfer Agent
  * mailing to namelist and stdin redirected to input.
@@ -871,7 +872,8 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	int reset_tio;
 	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
-	char **args = NULL, **t, *smtp, *mta;
+	char const **args = NULL, **t, *mta;
+	char *smtp;
 	enum okay ok = STOP;
 	pid_t pid;
 	sigset_t nset;
@@ -884,7 +886,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		} else
 			mta = SENDMAIL;
 
-		args = prepare_mta_args(to);
+		args = _prepare_mta_args(to);
 		if (options & OPT_DEBUG) {
 			printf(tr(181, "Sendmail arguments:"));
 			for (t = args; *t != NULL; t++)
@@ -942,7 +944,7 @@ jstop:		savedeadletter(input, 0);
 			 * dup2() shares the position with the original FD the
 			 * MTA may end up reading nothing */
 			lseek(0, 0, SEEK_SET);
-			execv(mta, args);
+			execv(mta, UNCONST(args));
 			perror(mta);
 #ifdef USE_SMTP
 		}

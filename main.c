@@ -79,7 +79,7 @@ struct a_arg {
 static sigjmp_buf	hdrjmp;
 
 /* Add an option for sendmail(1) */
-static void	add_smopt(int argc_left, char *arg);
+static void	add_smopt(int argc_left, char const *arg);
 
 /* Initialize *tempdir*, *myname*, *homedir* */
 static void	setup_vars(void);
@@ -96,7 +96,7 @@ static void	setscreensize(int dummy);
 static void	hdrstop(int signo);
 
 static void
-add_smopt(int argc_left, char *arg)
+add_smopt(int argc_left, char const *arg)
 {
 	/* Before spreserve(): use our string pool instead of LibC heap */
 	if (smopts == NULL)
@@ -108,7 +108,7 @@ static void
 setup_vars(void)
 {
 	/* Before spreserve(): use our string pool instead of LibC heap */
-	char *cp;
+	char const *cp;
 
 	tempdir = ((cp = getenv("TMPDIR")) != NULL) ? savestr(cp) : "/tmp";
 
@@ -194,8 +194,9 @@ main(int argc, char *argv[])
 	int scnt = 0, i;
 	struct name *to = NULL, *cc = NULL, *bcc = NULL;
 	struct attachment *attach = NULL;
-	char *cp = NULL, *subject = NULL, *ef = NULL, *qf = NULL,
+	char *cp = NULL, *subject = NULL, *qf = NULL,
 		*fromaddr = NULL, *Aflag = NULL;
+	char const *ef = NULL;
 	sighandler_type prevint;
 
 	/*
@@ -418,7 +419,7 @@ jIflag:		case 'I':
 			break;
 		case 'u':
 			/* Set user name to pretend to be  */
-			option_u_arg = myname = optarg;
+			myname = option_u_arg = optarg;
 			break;
 		case 'V':
 			puts(version);

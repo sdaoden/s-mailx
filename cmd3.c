@@ -315,7 +315,8 @@ jleave:
 int 
 schdir(void *v)
 {
-	char **arglist = v, *cp;
+	char **arglist = v;
+	char const *cp;
 
 #ifdef HAVE_REALPATH
 	/* TODO Avoid locked-up situation with relative paths when chdir(2)ing
@@ -330,7 +331,7 @@ schdir(void *v)
 		cp = realpath(mailname, NULL);
 		if (cp != NULL) {
 			sstpcpy(mailname, cp);
-			(free)(cp);
+			(free)(UNCONST(cp));
 		} else {
 			fprintf(stderr, tr(86, "Won't \"chdir\": "
 				"\"%s\" would become inaccessible"),
