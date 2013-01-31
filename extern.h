@@ -422,7 +422,7 @@ char *hfield_mult(char const *field, struct message *mp, int mult);
 char const *thisfield(char const *linebuf, char const *field);
 char *nameof(struct message *mp, int reptype);
 char const *skip_comment(char const *cp);
-char *routeaddr(const char *name);
+char const *routeaddr(char const *name);
 int is_addr_invalid(struct name *np, int putmsg);
 
 /* Does *NP* point to a file or pipe addressee? */

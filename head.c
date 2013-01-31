@@ -769,10 +769,10 @@ skip_comment(char const *cp)
  * Return the start of a route-addr (address in angle brackets),
  * if present.
  */
-char *
-routeaddr(const char *name)
+char const *
+routeaddr(char const *name)
 {
-	const char	*np, *rp = NULL;
+	char const *np, *rp = NULL;
 
 	for (np = name; *np; np++) {
 		switch (*np) {
@@ -791,7 +791,7 @@ routeaddr(const char *name)
 			rp = np;
 			break;
 		case '>':
-			return (char *)rp;
+			return rp;
 		}
 	}
 	return NULL;
