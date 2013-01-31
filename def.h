@@ -636,10 +636,10 @@ struct attachment {
 	struct attachment *a_flink;	/* Forward link in list. */
 	struct attachment *a_blink;	/* Backward list link */
 	char const *a_name;		/* file name */
-	char	*a_content_type;	/* content type */
-	char	*a_content_disposition;	/* content disposition */
-	char	*a_content_id;		/* content id */
-	char	*a_content_description;	/* content description */
+	char const *a_content_type;	/* content type */
+	char const *a_content_disposition; /* content disposition */
+	char const *a_content_id;	/* content id */
+	char const *a_content_description; /* content description */
 	char const *a_input_charset;	/* Interpretation depends on .a_conv */
 	char const *a_charset;		/* ... */
 	FILE	*a_tmpf;		/* If AC_TMPFILE */
