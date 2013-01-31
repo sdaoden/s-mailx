@@ -88,10 +88,10 @@ ccmdnotsupp(void *v)
 	return (1);
 }
 
-char *
+char const *
 get_pager(void)
 {
-	char *cp;
+	char const *cp;
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
@@ -323,7 +323,7 @@ from(void *v)
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
-			char *p;
+			char const *p;
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
 			p = get_pager();
@@ -838,7 +838,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 			}
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			char *p = get_pager();
+			char const *p = get_pager();
 			obuf = Popen(p, "w", NULL, 1);
 			if (obuf == NULL) {
 				perror(p);

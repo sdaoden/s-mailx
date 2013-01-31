@@ -183,7 +183,7 @@ enum okay cache_dequeue(struct mailbox *mp);
 
 /* cmd1.c */
 int ccmdnotsupp(void *v);
-char *get_pager(void);
+char const *get_pager(void);
 int headers(void *v);
 int scroll(void *v);
 int Scroll(void *v);
