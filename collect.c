@@ -91,7 +91,7 @@ static int	__attach_iconv(struct attachment *ap);
 #endif
 
 static void onpipe(int signo);
-static void insertcommand(FILE *fp, char *cmd);
+static void insertcommand(FILE *fp, char const *cmd);
 static void print_collf(FILE *collf, struct header *hp);
 static int exwrite(char *name, FILE *fp, int f);
 static enum okay makeheader(FILE *fp, struct header *hp);
@@ -377,28 +377,21 @@ onpipe(int signo)
  * Execute cmd and insert its standard output into fp.
  */
 static void
-insertcommand(FILE *fp, char *cmd)
+insertcommand(FILE *fp, char const *cmd)
 {
-	FILE *obuf = NULL;
-	char *volatile cp;
+	FILE *ibuf = NULL;
+	char const *cp;
 	int c;
 
 	cp = value("SHELL");
-	if (sigsetjmp(pipejmp, 1))
-		goto endpipe;
 	if (cp == NULL)
 		cp = SHELL;
-	if ((obuf = Popen(cmd, "r", cp, 0)) == NULL) {
+	if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
+		while ((c = getc(ibuf)) != EOF)
+			putc(c, fp);
+		Pclose(ibuf);
+	} else
 		perror(cmd);
-		return;
-	}
-	safe_signal(SIGPIPE, onpipe);
-	while ((c = getc(obuf)) != EOF)
-		putc(c, fp);
-endpipe:
-	safe_signal(SIGPIPE, SIG_IGN);
-	Pclose(obuf);
-	safe_signal(SIGPIPE, dflpipe);
 }
 
 /*
