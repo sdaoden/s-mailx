@@ -114,7 +114,7 @@ _expand(char const *name, int only_local)
 	 * Shell meta characters expand into constants.
 	 * This way, we make no recursive expansion.
 	 */
-	res = (char*)name;
+	res = UNCONST(name);
 	if ((sh = get_shortcut(res)) != NULL)
 		res = sh->sh_long;
 
@@ -1065,7 +1065,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 #endif
 	int	sockfd;
 	char	*cp;
-	char	*server = (char *)xserver;
+	char	*server = UNCONST(xserver);
 	(void)use_ssl;
 	(void)uhp;
 
@@ -1132,7 +1132,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		else if (strcmp(portstr, "pop3s") == 0)
 			port = htons(995);
 # endif
-		else if ((ep = getservbyname((char *)portstr, "tcp")) != NULL)
+		else if ((ep = getservbyname(UNCONST(portstr), "tcp")) != NULL)
 			port = ep->s_port;
 		else {
 			fprintf(stderr, tr(251, "Unknown service: %s\n"),
