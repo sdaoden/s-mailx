@@ -58,7 +58,7 @@
 # include <assert.h>
 #else
 # undef assert
-# define assert(X)	do {} while (0)
+# define assert(X)	((void)0)
 #endif
 
 #ifdef HAVE_ICONV
