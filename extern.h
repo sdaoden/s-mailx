@@ -591,7 +591,7 @@ void charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY FUN, REMOVE */
 
 char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
-char *mime_getparam(char *param, char *h);
+char *mime_getparam(char const *param, char *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * salloc()ed copy of it; store strlen() in *len if set */

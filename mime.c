@@ -456,7 +456,7 @@ mime_getenc(char *p)
  * Get a mime style parameter from a header line.
  */
 char *
-mime_getparam(char *param, char *h)
+mime_getparam(char const *param, char *h)
 {
 	char *p = h, *q, *r;
 	int c;
