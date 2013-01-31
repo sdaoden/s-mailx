@@ -589,7 +589,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
  * field only, the content of all matching header fields else.
  */
 char *
-hfield_mult(char *field, struct message *mp, int mult)
+hfield_mult(char const *field, struct message *mp, int mult)
 {
 	FILE *ibuf;
 	int lc;

@@ -418,7 +418,7 @@ int	extract_date_from_from_(char const *line, size_t linelen,
 void extract_header(FILE *fp, struct header *hp);
 #define	hfieldX(a, b)	hfield_mult(a, b, 1)
 #define	hfield1(a, b)	hfield_mult(a, b, 0)
-char *hfield_mult(char *field, struct message *mp, int mult);
+char *hfield_mult(char const *field, struct message *mp, int mult);
 char *thisfield(const char *linebuf, const char *field);
 char *nameof(struct message *mp, int reptype);
 char const *skip_comment(char const *cp);
