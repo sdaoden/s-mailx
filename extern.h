@@ -43,7 +43,7 @@ void panic(const char *format, ...);
 void holdint(void);
 void relseint(void);
 void touch(struct message *mp);
-int is_dir(char *name);
+int is_dir(char const *name);
 int argcount(char **argv);
 char *colalign(const char *cp, int col, int fill);
 
