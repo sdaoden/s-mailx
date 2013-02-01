@@ -49,7 +49,15 @@
 
 #include "rcv.h"
 
+#include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+#ifdef HAVE_WCWIDTH
+# include <wchar.h>
+#endif
 
 #include "extern.h"
 #ifdef USE_MD5
@@ -619,6 +627,88 @@ last_at_before_slash(char const *sp)
 	while (cp > sp && *--cp != '@')
 		;
 	return (*cp == '@' ? cp : NULL);
+}
+
+void
+makelow(char *cp) /* TODO isn't that crap? --> */
+{
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+	if (mb_cur_max > 1) {
+		char *tp = cp;
+		wchar_t wc;
+		int len;
+
+		while (*cp) {
+			len = mbtowc(&wc, cp, mb_cur_max);
+			if (len < 0)
+				*tp++ = *cp++;
+			else {
+				wc = towlower(wc);
+				if (wctomb(tp, wc) == len)
+					tp += len, cp += len;
+				else
+					*tp++ = *cp++; /* <-- at least here */
+			}
+		}
+	} else
+#endif
+	{
+		do
+			*cp = tolower((uc_it)*cp);
+		while (*cp++);
+	}
+}
+
+int
+substr(char const *str, char const *sub)
+{
+	char const *cp, *backup;
+
+	cp = sub;
+	backup = str;
+	while (*str && *cp) {
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+		if (mb_cur_max > 1) {
+			wchar_t c, c2;
+			int sz;
+
+			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
+				goto singlebyte;
+			cp += sz;
+			if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
+				goto singlebyte;
+			str += sz;
+			c = towupper(c);
+			c2 = towupper(c2);
+			if (c != c2) {
+				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
+					backup += sz;
+					str = backup;
+				} else
+					str = ++backup;
+				cp = sub;
+			}
+		} else
+#endif
+		{
+			int c, c2;
+
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+	singlebyte:
+#endif
+			c = *cp++ & 0377;
+			if (islower(c))
+				c = toupper(c);
+			c2 = *str++ & 0377;
+			if (islower(c2))
+				c2 = toupper(c2);
+			if (c != c2) {
+				str = ++backup;
+				cp = sub;
+			}
+		}
+	}
+	return *cp == '\0';
 }
 
 #ifndef HAVE_SNPRINTF

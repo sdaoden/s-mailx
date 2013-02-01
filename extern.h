@@ -45,8 +45,6 @@ void relseint(void);
 void touch(struct message *mp);
 int is_dir(char *name);
 int argcount(char **argv);
-void makelow(char *cp);
-int substr(const char *str, const char *sub);
 char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
 int source(void *v);
@@ -697,6 +695,12 @@ int		is_prefix(char const *as1, char const *as2);
 
 /* Find the last AT @ before the first slash */
 char const *	last_at_before_slash(char const *sp);
+
+/* Convert a string to lowercase, in-place and with multibyte-aware */
+void		makelow(char *cp);
+
+/* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
+int		substr(const char *str, const char *sub);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF
