@@ -40,7 +40,7 @@
  */
 ==========================================================================
 
-base64.c:
+mime_cte.c: QP quoting idea, _b64_decode(), b64_encode():
 /*
  * Copyright (c) 2006 The NetBSD Foundation, Inc.
  * All rights reserved.

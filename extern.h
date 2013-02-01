@@ -123,48 +123,6 @@ int	smemtrace(void *v);
 # define smemtrace		do {} while (0)
 #endif
 
-/*
- * base64.c
- * Base64 encoding as defined in section 6.8 of RFC 2045.
- */
-
-/* How much output is necessary to encode *len* bytes in Base64.
- * This assumes B64_CRLF|B64_MULTILINE is set and that the result is to be
- * terminated */
-size_t		b64_encode_calc_size(size_t len);
-
-/* Note these simply convert all the input (if possible), including the
- * insertion of NL sequences if B64_CRLF or B64_LF is set (and multiple thereof
- * if B64_MULTILINE is set).
- * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
-struct str *	b64_encode(struct str *out, struct str const *in,
-			enum b64flags flags);
-struct str *	b64_encode_cp(struct str *out, char const *cp,
-			enum b64flags flags);
-struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
-			enum b64flags flags);
-
-/* Trim WS and make *work* point to the decodable range of *in*.
- * Return the amount of bytes a b64_decode operation on that buffer requires */
-size_t		b64_decode_prepare(struct str *work, struct str const *in);
-
-/* If *rest* is set then decoding will assume text input (strip CRs from CRLF
- * sequences, only create output when complete lines have been read),
- * otherwise binary input is assumed and each round will produce output.
- * The buffers of *out* and possibly *rest* will be managed via srealloc().
- * If *len* was 0 on input, b64_decode_prepare() will be called to init it and
- * "adjust *in*", but otherwise it is assumed that this yet happened.
- * Returns OKAY or STOP on error (in which case *out* * is set to an error
- * message); caller is responsible to free buffers.
- */
-int		b64_decode(struct str *out, struct str const *in, size_t len,
-			struct str *rest);
-
-/* b64_decode() always resets the length of *out* on entry, it doesn't append.
- * Call this to join any *rest* onto *out*. (if non-empty).
- * Simply swaps buffers if possible; frees dangling *rest*; returns *out* */
-struct str *	b64_decode_join(struct str *out, struct str *rest);
-
 /* cache.c */
 enum okay getcache1(struct mailbox *mp, struct message *m,
 		enum needspec need, int setflags);
@@ -625,6 +583,50 @@ size_t		prefixwrite(char const *ptr, size_t size, FILE *f,
 ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
 			enum conversion convert, enum tdflags dflags,
 			char const *prefix, size_t prefixlen, struct str *rest);
+
+/*
+ * mime_cte.c
+ * Content-Transfer-Encodings as defined in RFC 2045:
+ * Quoted-Printable, section 6.7
+ * Base64, section 6.8
+ */
+
+/* How much output is necessary to encode *len* bytes in Base64.
+ * This assumes B64_CRLF|B64_MULTILINE is set and that the result is to be
+ * terminated */
+size_t		b64_encode_calc_size(size_t len);
+
+/* Note these simply convert all the input (if possible), including the
+ * insertion of NL sequences if B64_CRLF or B64_LF is set (and multiple thereof
+ * if B64_MULTILINE is set).
+ * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
+struct str *	b64_encode(struct str *out, struct str const *in,
+			enum b64flags flags);
+struct str *	b64_encode_cp(struct str *out, char const *cp,
+			enum b64flags flags);
+struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
+			enum b64flags flags);
+
+/* Trim WS and make *work* point to the decodable range of *in*.
+ * Return the amount of bytes a b64_decode operation on that buffer requires */
+size_t		b64_decode_prepare(struct str *work, struct str const *in);
+
+/* If *rest* is set then decoding will assume text input (strip CRs from CRLF
+ * sequences, only create output when complete lines have been read),
+ * otherwise binary input is assumed and each round will produce output.
+ * The buffers of *out* and possibly *rest* will be managed via srealloc().
+ * If *len* was 0 on input, b64_decode_prepare() will be called to init it and
+ * "adjust *in*", but otherwise it is assumed that this yet happened.
+ * Returns OKAY or STOP on error (in which case *out* * is set to an error
+ * message); caller is responsible to free buffers.
+ */
+int		b64_decode(struct str *out, struct str const *in, size_t len,
+			struct str *rest);
+
+/* b64_decode() always resets the length of *out* on entry, it doesn't append.
+ * Call this to join any *rest* onto *out*. (if non-empty).
+ * Simply swaps buffers if possible; frees dangling *rest*; returns *out* */
+struct str *	b64_decode_join(struct str *out, struct str *rest);
 
 /*
  * names.c
