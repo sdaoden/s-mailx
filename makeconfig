@@ -562,7 +562,12 @@ int main(void)
 !
 	sed -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
 
-	< ${tmp3}.c link_check gssapi 'for GSSAPI in libgssapi' \
+	< ${tmp2}.c link_check gssapi \
+			'for GSSAPI in gssapi/gssapi.h, libgssapi' \
+			'#define USE_GSSAPI' \
+			'-lgssapi' || \
+		< ${tmp3}.c link_check gssapi \
+			'for GSSAPI in gssapi.h, libgssapi' \
 			'#define USE_GSSAPI
 			#define	GSSAPI_REG_INCLUDE' \
 			'-lgssapi' || \
