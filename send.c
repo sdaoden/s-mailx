@@ -858,6 +858,15 @@ jcopyout:
 	eof = 0;
 	rest.s = NULL;
 	rest.l = 0;
+	/* TODO B64_ISTEXT doesn't work with the Heirloom mailx(1) send/MIME
+	 * TODO design because a complete input line may not necessarily be a
+	 * TODO complete output line, which results in faulty iconv() results.
+	 * TODO it is still a HUGE improvement to redirect all the decoded data
+	 * TODO into this temporary buffer and iconv that at the very end.
+	 * TODO overcome this crap with the send/MIME layer rewrite, PLEASE! */
+	if (convert == CONV_FROMB64_T)
+		rest.s = smalloc(ip->m_xsize);
+
 	while (! eof && fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
 		++lineno;
 

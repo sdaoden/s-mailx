@@ -591,9 +591,8 @@ ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
  * Base64, section 6.8
  */
 
-/* How much output is necessary to encode *len* bytes in Base64.
- * This assumes B64_CRLF|B64_MULTILINE is set and that the result is to be
- * terminated */
+/* How much space is necessary to encode *len* bytes in Base64, worst case.
+ * Includes room for terminator */
 size_t		b64_encode_calc_size(size_t len);
 
 /* Note these simply convert all the input (if possible), including the
@@ -611,22 +610,19 @@ struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
  * Return the amount of bytes a b64_decode operation on that buffer requires */
 size_t		b64_decode_prepare(struct str *work, struct str const *in);
 
+/* TODO B64_ISTEXT: b64_decode() docu is wrong, and will be even more later!
+ * TODO and *rest* should be joined just as for qp_decode(), if at all */
 /* If *rest* is set then decoding will assume text input (strip CRs from CRLF
  * sequences, only create output when complete lines have been read),
  * otherwise binary input is assumed and each round will produce output.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
  * If *len* was 0 on input, b64_decode_prepare() will be called to init it and
  * "adjust *in*", but otherwise it is assumed that this yet happened.
- * Returns OKAY or STOP on error (in which case *out* * is set to an error
+ * Returns OKAY or STOP on error (in which case *out* is set to an error
  * message); caller is responsible to free buffers.
  */
 int		b64_decode(struct str *out, struct str const *in, size_t len,
 			struct str *rest);
-
-/* b64_decode() always resets the length of *out* on entry, it doesn't append.
- * Call this to join any *rest* onto *out*. (if non-empty).
- * Simply swaps buffers if possible; frees dangling *rest*; returns *out* */
-struct str *	b64_decode_join(struct str *out, struct str *rest);
 
 /*
  * names.c

@@ -4,7 +4,7 @@
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
-/* _decode() and b64_encode() are adapted from NetBSDs mailx(1): */
+/* _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
 /*	$NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $	*/
 /*
  * Copyright (c) 2006 The NetBSD Foundation, Inc.
@@ -47,10 +47,10 @@
 
 /* Perform b64_decode on sufficiently spaced & multiple-of-4 base *in*put.
  * Return number of useful bytes in *out* or -1 on error */
-static ssize_t	_decode(struct str *out, struct str *in);
+static ssize_t		_b64_decode(struct str *out, struct str *in);
 
 static ssize_t
-_decode(struct str *out, struct str *in)
+_b64_decode(struct str *out, struct str *in)
 {
 	static signed char const b64index[] = {
 		-1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
@@ -76,7 +76,7 @@ _decode(struct str *out, struct str *in)
 		ui_it a = uchar64(q[0]), b = uchar64(q[1]), c = uchar64(q[2]),
 			d = uchar64(q[3]);
 
-		if (a > 64 || b > 64 || c == BAD || d == BAD)
+		if (a >= EQU || b >= EQU || c == BAD || d == BAD)
 			goto jleave;
 
 		*p++ = ((a << 2) | ((b & 0x30) >> 4));
@@ -106,18 +106,31 @@ size_t
 b64_encode_calc_size(size_t len)
 {
 	len = (len * 4) / 3;
-	len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3) + 1;
+	len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
+#if 0 /* TODO B64_ISTEXT */
+	if (flags & B64_ISTEXT)
+		len += 3;
+#endif /* TODO B64_ISTEXT */
+	++len;
 	return len;
 }
 
 struct str *
 b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 {
+	/*
+	 * TODO b64_encode() does not yet handle B64_ISTEXT.
+	 * TODO That is ok since this flag is yet unused because the MIME
+	 * TODO classifier doesn't differentiate in between base64 for text
+	 * TODO and binary (i.e., if we decide base64 is needed its binary).
+	 * TODO This means that the RFC 2045-enforced \n->\r\n conversion is
+	 * TODO NOT performed.
+	 */
 	static char const b64table[] =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	uc_it const *p = (uc_it const*)in->s;
+	ssize_t i = b64_encode_calc_size(in->l), lnlen;
 	char *b64;
-	ssize_t lnlen, i = b64_encode_calc_size(in->l);
 
 	if (flags & B64_BUF) {
 		if (i > (ssize_t)out->l) {
@@ -132,16 +145,16 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 
 	if (! (flags & (B64_CRLF|B64_LF)))
 		flags &= ~B64_MULTILINE;
-	lnlen = 0;
 
-	for (i = (ssize_t)in->l; i > 0; p += 3, i -= 3) {
+	for (lnlen = 0, i = (ssize_t)in->l; i > 0; p += 3, i -= 3) {
 		ui_it a = p[0], b, c;
 
 		b64[0] = b64table[a >> 2];
 		switch (i) {
 		case 1:
 			b64[1] = b64table[((a & 0x3) << 4)];
-			b64[2] = b64[3] = '=';
+			b64[2] =
+			b64[3] = '=';
 			break;
 		case 2:
 			b = p[1];
@@ -164,6 +177,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 		lnlen += 4;
 		if (lnlen < B64_LINESIZE - 1)
 			continue;
+
 		lnlen = 0;
 		if (flags & B64_CRLF)
 			*b64++ = '\r';
@@ -229,7 +243,7 @@ int
 b64_decode(struct str *out, struct str const *in, size_t len, struct str *rest)
 {
 	struct str work;
-	char *xins, *x, *xtop, *xnl;
+	char *x /* TODO B64_ISTEXT *xins, *xtop, *xnl */;
 	int ret = STOP;
 
 	if (len == 0)
@@ -244,18 +258,27 @@ b64_decode(struct str *out, struct str const *in, size_t len, struct str *rest)
 		out->s = srealloc(out->s, len);
 		ret = OKAY;
 	}
-	if (ret != OKAY || (ssize_t)(len = _decode(out, &work)) < 0)
+	if (ret != OKAY || (ssize_t)(len = _b64_decode(out, &work)) < 0)
 		goto jerr;
+	/* Done for binary content */
 	if (rest == NULL)
 		goto jleave;
 
-	/* Strip CRs, detect NLs */
+#if 0 /* TODO B64_ISTEXT */
+	/* TODO Strip CRs, detect NLs
+	 * TODO B64_ISTEXT - this will not work for multibyte encodings, and
+	 * TODO also is simple minded in that RFC 2045 enforces \n->\r\n
+	 * TODO conversion but does not give any hint on the original line
+	 * TODO ending; i.e., this code may modify the original data!
+	 * TODO anyway: if we do CONV_FROMB64_T, b64_decode() the *entire* part
+	 * TODO into a temporary file, then iconv that file.
+	 * TODO stripping the CRLF->LF is left as an excercise ;) */
 	xnl = NULL;
 	for (xins = out->s, x = xins, xtop = x + out->l; x < xtop;
 			*xins++ = *x++)
 		switch (*x) {
 		case '\r':
-			ret = STOP;
+			ret = STOP; /* TODO what about a trailing FINAL CR?? */
 			break;
 		case '\n':
 			if (ret != OKAY)
@@ -270,10 +293,14 @@ b64_decode(struct str *out, struct str const *in, size_t len, struct str *rest)
 	out->l = (ssize_t)(xins - out->s);
 
 	if (xnl == NULL) {
-		rest->s = srealloc(rest->s, rest->l + out->l);
+#endif
+		/* TODO B64_ISTEXT: send.c:sendpart() resized this on entry
+		 * TODO to be of sufficient size
+		 * rest->s = srealloc(rest->s, rest->l + out->l); */
 		memcpy(rest->s + rest->l, out->s, out->l);
 		rest->l += out->l;
 		out->l = 0;
+#if 0 /* TODO B64_ISTEXT */
 	} else {
 		work.l = (size_t)(xins - xnl);
 		if (work.l) {
@@ -298,6 +325,7 @@ b64_decode(struct str *out, struct str const *in, size_t len, struct str *rest)
 			ac_free(work.s);
 		}
 	}
+#endif
 
 jleave:
 	return ret;
@@ -329,25 +357,4 @@ jerr:	{
 	ret = STOP;
 	goto jleave;
 	}
-}
-
-struct str *
-b64_decode_join(struct str *out, struct str *rest)
-{
-	if (rest->l > 0) {
-		if (out->s == NULL) {
-			*out = *rest;
-			rest->s = NULL;
-		} else {
-			out->s = srealloc(out->s, out->l + rest->l);
-			memcpy(out->s + out->l, rest->s, rest->l);
-			out->l += rest->l;
-		}
-		rest->l = 0;
-	}
-	if (rest->s != NULL) {
-		free(rest->s);
-		rest->s = NULL;
-	}
-	return out;
 }

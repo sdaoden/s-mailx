@@ -993,7 +993,7 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
 void 
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
-	struct str crest, cin, cout;
+	struct str cin, cout;
 	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
 	char const *tcs;
 	int convert;
@@ -1002,8 +1002,6 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
-	crest.s = NULL;
-	crest.l = 0;
 	tcs = charset_get_lc();
 	maxstor = in->l;
 	out->s = smalloc(maxstor + 1);
@@ -1051,13 +1049,12 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				cin.l++;
 			}
 			cin.l--;
+
+			cout.s = NULL;
+			cout.l = 0;
 			switch (convert) {
 				case CONV_FROMB64:
-					crest.l = 0;
-					cout.s = NULL;
-					(void)b64_decode(&cout, &cin, 0,
-						&crest);
-					b64_decode_join(&cout, &crest);
+					(void)b64_decode(&cout, &cin, 0, NULL);
 					break;
 				case CONV_FROMQP:
 					mime_fromqp(&cin, &cout, 1);
@@ -1127,12 +1124,10 @@ notmime:
 	}
 fromhdr_end:
 	*q = '\0';
-	if (crest.s != NULL)
-		free(crest.s);
 	if (flags & TD_ISPR) {
-		makeprint(out, &crest);
+		makeprint(out, &cout);
 		free(out->s);
-		*out = crest;
+		*out = cout;
 	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
@@ -1619,6 +1614,10 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
+		/* TODO leftover data (incomplete multibyte sequences) not
+		 * TODO handled, leads to many skipped over data
+		 * TODO send/MIME rewrite: don't assume complete input line is
+		 * TODO a complete output line, PLUS */
 		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 1)
 				== (size_t)-1 && errno == E2BIG) {
 			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
@@ -1725,8 +1724,9 @@ jconvert:
 	case CONV_8BIT:
 		sz = prefixwrite(in.s, in.l, f, prefix, prefixlen);
 		break;
-	case CONV_FROMB64_T:
 	case CONV_FROMB64:
+		rest = NULL;
+	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, 0, rest);
 		if ((sz = out.l) != 0) {
 			if (state != OKAY)
