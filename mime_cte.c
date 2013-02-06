@@ -132,16 +132,9 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 	ssize_t i = b64_encode_calc_size(in->l), lnlen;
 	char *b64;
 
-	if (flags & B64_BUF) {
-		if (i > (ssize_t)out->l) {
-			assert(out->l != 0);
-			out->l = 0;
-			goto jleave;
-		}
-		b64 = out->s;
-	} else
-		out->s = b64 = (flags & B64_SALLOC) ? salloc(i)
-				: srealloc(out->s, i);
+	if ((flags & B64_BUF) == 0)
+		out->s = (flags & B64_SALLOC) ? salloc(i) : srealloc(out->s, i);
+	b64 = out->s;
 
 	if (! (flags & (B64_CRLF|B64_LF)))
 		flags &= ~B64_MULTILINE;
@@ -193,7 +186,6 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 			*b64++ = '\n';
 	}
 	out->l = (size_t)(b64 - out->s);
-jleave:
 	out->s[out->l] = '\0';
 	return out;
 }
