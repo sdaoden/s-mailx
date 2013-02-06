@@ -94,7 +94,6 @@ static char *ctohex(unsigned char c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
 		int (*mustquote)(int), int inhdr);
-static void mime_fromqp(struct str *in, struct str *out, int ishdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
 static size_t convhdra(char const *str, size_t len, FILE *fp);
 static size_t mime_write_tohdr_a(struct str *in, FILE *f);
@@ -1007,46 +1006,6 @@ mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
 	*q = '\0';
 }
 
-/*
- * Write to a stringstruct converting from quoted-printable.
- */
-static void 
-mime_fromqp(struct str *in, struct str *out, int ishdr)
-{
-	char *p, *q, *upper;
-	char quote[4];
-
-	out->l = in->l;
-	out->s = smalloc(out->l + 1);
-	upper = in->s + in->l;
-	for (p = in->s, q = out->s; p < upper; p++) {
-		if (*p == '=') {
-			do {
-				p++;
-				out->l--;
-			} while (blankchar(*p & 0377) && p < upper);
-			if (p == upper)
-				break;
-			if (*p == '\n') {
-				out->l--;
-				continue;
-			}
-			if (p + 1 >= upper)
-				break;
-			quote[0] = *p++;
-			quote[1] = *p;
-			quote[2] = '\0';
-			*q = (char)strtol(quote, NULL, 16);
-			q++;
-			out->l--;
-		} else if (ishdr && *p == '_')
-			*q++ = ' ';
-		else
-			*q++ = *p;
-	}
-	return;
-}
-
 #define	mime_fromhdr_inc(inc) { \
 		size_t diff = q - out->s; \
 		out->s = srealloc(out->s, (maxstor += inc) + 1); \
@@ -1122,7 +1081,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 					(void)b64_decode(&cout, &cin, 0, NULL);
 					break;
 				case CONV_FROMQP:
-					mime_fromqp(&cin, &cout, 1);
+					(void)qp_decode(&cout, &cin, NULL);
 					break;
 				default:
 					break;
@@ -1704,10 +1663,8 @@ jconvert:
 	out.l = 0;
 	switch (convert) {
 	case CONV_FROMQP:
-		mime_fromqp(&in, &out, 0);
-		sz = _fwrite_td(out.s, out.l, f, dflags, prefix, prefixlen);
-		free(out.s);
-		break;
+		state = qp_decode(&out, &in, rest);
+		goto jqpb64_step;
 	case CONV_TOQP:
 		sz = mime_write_toqp(&in, f, mustquote_body);
 		break;
@@ -1718,14 +1675,12 @@ jconvert:
 		rest = NULL;
 	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, 0, rest);
-		if ((sz = out.l) != 0) {
+jqpb64_step:	if ((sz = out.l) != 0) {
 			if (state != OKAY)
 				prefix = NULL, prefixlen = 0;
 			sz = _fwrite_td(out.s, out.l, f, dflags & ~_TD_BUFCOPY,
 				prefix, prefixlen);
 		}
-		if (out.s != NULL)
-			free(out.s);
 		if (state != OKAY)
 			sz = -1;
 		break;
@@ -1734,13 +1689,11 @@ jconvert:
 		sz = fwrite(out.s, sizeof *out.s, out.l, f);
 		if (sz != (ssize_t)out.l)
 			sz = -1;
-		free(out.s);
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 		sz = _fwrite_td(out.s, out.l, f, dflags & TD_DELCTRL,
 			prefix, prefixlen);
-		free(out.s);
 		break;
 	case CONV_TOHDR:
 		sz = mime_write_tohdr(&in, f);
@@ -1751,6 +1704,8 @@ jconvert:
 	default:
 		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
 	}
+	if (out.s != NULL)
+		free(out.s);
 jleave:
 	return sz;
 }
