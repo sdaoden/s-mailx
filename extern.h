@@ -587,9 +587,36 @@ ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
 /*
  * mime_cte.c
  * Content-Transfer-Encodings as defined in RFC 2045:
- * Quoted-Printable, section 6.7
- * Base64, section 6.8
+ * - Quoted-Printable, section 6.7
+ * - Base64, section 6.8
  */
+
+/* How much space is necessary to encode *len* bytes in QP, worst case.
+ * Includes room for terminator */
+size_t		qp_encode_calc_size(size_t len);
+
+/* If *flags* includes QP_ISHEAD these assume "word" input and use special
+ * quoting rules in addition; soft line breaks are not generated.
+ * Otherwise complete input lines are assumed and soft line breaks are
+ * generated as necessary */
+struct str *	qp_encode(struct str *out, struct str const *in,
+			enum qpflags flags);
+struct str *	qp_encode_cp(struct str *out, char const *cp,
+			enum qpflags flags);
+struct str *	qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
+			enum qpflags flags);
+
+/* If *rest* is set then decoding will assume body text input (assumes input
+ * represents lines, only create output when input didn't end with soft line
+ * break [except it finalizes an encoded CRLF pair]), otherwise it is assumed
+ * to decode a header strings and (1) uses special decoding rules and (b)
+ * directly produces output.
+ * The buffers of *out* and possibly *rest* will be managed via srealloc().
+ * Returns OKAY. XXX or STOP on error (in which case *out* is set to an error
+ * XXX message); caller is responsible to free buffers.
+ */
+int		qp_decode(struct str *out, struct str const *in,
+			struct str *rest);
 
 /* How much space is necessary to encode *len* bytes in Base64, worst case.
  * Includes room for terminator */

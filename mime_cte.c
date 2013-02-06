@@ -4,7 +4,7 @@
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
-/* _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
+/* QP quoting idea, _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
 /*	$NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $	*/
 /*
  * Copyright (c) 2006 The NetBSD Foundation, Inc.
@@ -38,16 +38,166 @@
 /*
  * Mail -- a mail program
  *
- * Base64 functions
- * Defined in section 6.8 of RFC 2045.
+ * Content-Transfer-Encodings as defined in RFC 2045:
+ * - Quoted-Printable, section 6.7
+ * - Base64, section 6.8
  */
 
 #include "rcv.h"
 #include "extern.h"
 
+enum _qact {
+	 N =   0,	/* Do not quote */
+	 Q =   1,	/* Must quote */
+	SP =   2,	/* sp */
+	XF =   3,	/* Special character 'F' - maybe quoted */
+	XD =   4,	/* Special character '.' - maybe quoted */
+	US = '_',	/* In header, special character ' ' quoted as '_' */
+	QM = '?',	/* In header, special character ? not always quoted */
+	EQ =   Q,	/* '=' must be quoted */
+	TB =  SP,	/* Treat '\t' as a space */
+	NL =   N,	/* Don't quote '\n' (NL) */
+	CR =   Q	/* Always quote a '\r' (CR) */
+};
+
+/* Lookup tables to decide wether a character must be encoded or not.
+ * Email header differences according to RFC 2047, section 4.2:
+ * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
+ * - don't care about the special ^F[rom] and ^.$ */
+static uc_it const	_qtab_body[] = {
+		 Q, Q, Q, Q,  Q, Q, Q, Q,  Q,TB,NL, Q,  Q,CR, Q, Q,
+		 Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+		SP, N, N, N,  N, N, N, N,  N, N, N, N,  N, N,XD, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N, N,
+
+		 N, N, N, N,  N, N,XF, N,  N, N, N, N,  N, N, N, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+	},
+			_qtab_head[] = {
+		 Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+		 Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+		US, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N,QM,
+
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+		 N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+	};
+
+/* Check wether **s* must be quoted according to *ishead*, else body rules;
+ * *sol* indicates wether we are at the first character of a line/field */
+SINLINE enum _qact	_mustquote(char const *s, char const *e, bool_t sol,
+				bool_t ishead);
+
+/* Convert c to/from a hexadecimal character string */
+SINLINE char *		_qp_ctohex(char *store, char c);
+SINLINE si_it		_qp_cfromhex(char const *hex);
 /* Perform b64_decode on sufficiently spaced & multiple-of-4 base *in*put.
  * Return number of useful bytes in *out* or -1 on error */
 static ssize_t		_b64_decode(struct str *out, struct str *in);
+
+SINLINE enum _qact
+_mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
+{
+	uc_it const *qtab = ishead ? _qtab_head : _qtab_body;
+	enum _qact a = ((uc_it)*s > 0x7F) ? Q : qtab[(uc_it)*s], r;
+
+	if ((r = a) == N || (r = a) == Q)
+		goto jleave;
+	r = Q;
+
+	/* Special header fields */
+	if (ishead) {
+		/* ' ' -> '_' */
+		if (a == US) {
+			r = US;
+			goto jleave;
+		}
+		/* Treat '?' only special if part of '=?' and '?=' (still to
+		 * much quoting since it's '=?CHARSET?CTE?stuff?=', and
+		 * especially the trailing ?= should be hard too match ,) */
+		if (a == QM && ((! sol && s[-1] == '=') ||
+				(s < e && s[1] == '=')))
+			goto jleave;
+		goto jnquote;
+	}
+
+	/* Body-only */
+
+	if (a == SP) {
+		/* WS only if trailing white space */
+		if (s + 1 == e || s[1] == '\n')
+			goto jleave;
+		goto jnquote;
+	}
+
+	/* Rest are special begin-of-line cases */
+	if (! sol)
+		goto jnquote;
+
+	/* ^From */
+	if (a == XF) {
+		if (s + 4 < e && s[1] == 'r' && s[2] == 'o' && s[3] == 'm')
+			goto jleave;
+		goto jnquote;
+	}
+	/* ^.$ */
+	if (a == XD && (s + 1 == e || s[1] == '\n'))
+		goto jleave;
+jnquote:
+	r = N;
+jleave:
+	return r;
+}
+
+SINLINE char *
+_qp_ctohex(char *store, char c)
+{
+	static char const hexmap[] = "0123456789ABCDEF";
+	uc_it i1 = (uc_it)c, i2;
+
+	store[2] = '\0';
+	i2 = (uc_it)i1 & 15;
+	store[1] = hexmap[i2];
+	if (i1 > i2) {
+		i1 -= i2;
+		i1 >>= 4;
+	} else
+		i1 ^= i1;
+	store[0] = hexmap[i1];
+	return store;
+}
+
+SINLINE si_it
+_qp_cfromhex(char const *hex)
+{
+	static uc_it const atoi16[] = {
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF
+	};
+	uc_it i1, i2;
+	si_it r;
+
+	if ((i1 = (uc_it)hex[0] - '0') >= ARRAY_COUNT(atoi16) ||
+			(i2 = (uc_it)hex[1] - '0') >= ARRAY_COUNT(atoi16))
+		goto jerr;
+	i1 = atoi16[i1];
+	i2 = atoi16[i2];
+	if ((i1 | i2) & 0xF0)
+		goto jerr;
+	r = i1;
+	r <<= 4;
+	r += i2;
+jleave:
+	return r;
+jerr:
+	r = -1;
+	goto jleave;
+}
 
 static ssize_t
 _b64_decode(struct str *out, struct str *in)
@@ -99,6 +249,242 @@ _b64_decode(struct str *out, struct str *in)
 jleave:
 	in->l -= (size_t)((char*)UNCONST(q) - in->s);
 	in->s = UNCONST(q);
+	return ret;
+}
+
+size_t
+qp_encode_calc_size(size_t len)
+{
+	/* Worst case: 'CRLF' -> '=0D=0A=' */
+	len = len * 3 + (len >> 1) + 1;
+	return len;
+}
+
+struct str *
+qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
+{
+	struct str in;
+	in.s = UNCONST(cp);
+	in.l = strlen(cp);
+	return qp_encode(out, &in, flags);
+}
+
+struct str *
+qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
+	enum qpflags flags)
+{
+	struct str in;
+	in.s = UNCONST(vp);
+	in.l = vp_len;
+	return qp_encode(out, &in, flags);
+}
+
+struct str *
+qp_encode(struct str *out, struct str const *in, enum qpflags flags)
+{
+	bool_t sol = (flags & QP_ISHEAD ? FAL0 : TRU1), seenx;
+	ssize_t i = qp_encode_calc_size(in->l), lnlen;
+	char *qp;
+	char const *is, *ie;
+
+	if ((flags & QP_BUF) == 0)
+		out->s = (flags & QP_SALLOC) ? salloc(i) : srealloc(out->s, i);
+	qp = out->s;
+	is = in->s;
+	ie = is + in->l;
+
+	/* QP_ISHEAD? */
+	if (! sol) {
+		for (seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp) {
+			enum _qact mq = _mustquote(is, ie, sol, TRU1);
+			char c = *is++;
+
+			if (mq == N) {
+				/* We convert into a single *encoded-word*,
+				 * that'll end up in =?C?Q??=; quote '?' from
+				 * the moment when we're inside there on */
+				if (seenx && c == '?')
+					goto jheadq;
+				*qp = c;
+			} else if (mq == US)
+				*qp = US;
+			else {
+				seenx = TRU1;
+jheadq:
+				*qp++ = '=';
+				qp = _qp_ctohex(qp, c) + 1;
+			}
+		}
+		goto jleave;
+	}
+
+	/* The body needs to take care for soft line breaks etc. */
+	for (lnlen = 0, seenx = FAL0; is < ie; sol = FAL0) {
+		enum _qact mq = _mustquote(is, ie, sol, FAL0);
+		char c = *is++;
+
+		if (mq == N && (c != '\n' || ! seenx)) {
+			*qp++ = c;
+			if (++lnlen < QP_LINESIZE - 1 -1)
+				continue;
+jsoftnl:
+			qp[0] = '=';
+			qp[1] = '\n';
+			qp += 2;
+			lnlen = 0;
+			continue;
+		}
+
+		if (lnlen >= QP_LINESIZE - 3 - 1 -1) {
+			qp[0] = '=';
+			qp[1] = '\n';
+			qp += 2;
+			lnlen = 0;
+		}
+		*qp++ = '=';
+		qp = _qp_ctohex(qp, c);
+		qp += 2;
+		lnlen += 3;
+		if (c != '\n' || ! seenx)
+			seenx = (c == '\r');
+		else {
+			seenx = FAL0;
+			goto jsoftnl;
+		}
+	}
+
+	/* Lines that don't end with [CR]LF need an escaped [CR]LF */
+	if (in->l > 0 && *--is != '\n') {
+		qp[0] = '=';
+		qp[1] = '\n';
+		qp += 2;
+	}
+jleave:
+	out->l = (size_t)(qp - out->s);
+	out->s[out->l] = '\0';
+	return out;
+}
+
+int
+qp_decode(struct str *out, struct str const *in, struct str *rest)
+{
+	int ret = STOP;
+	char *os, *oc;
+	char const *is, *ie;
+
+	if (rest != NULL && rest->l != 0) {
+		if (out->s != NULL)
+			free(out->s);
+		out->s = rest->s;
+		out->l = rest->l;
+		rest->s = NULL;
+		rest->l = 0;
+	}
+
+	oc = os =
+	out->s = srealloc(out->s, out->l + in->l + 3);
+	oc += out->l;
+	is = in->s;
+	ie = is + in->l;
+
+	/* Decoding encoded-word (RFC 2049) in a header field? */
+	if (rest == NULL) {
+		while (is < ie) {
+			si_it c = *is++;
+			if (c == '=') {
+				if (is + 1 >= ie) {
+					++is;
+					goto jehead;
+				}
+				c = _qp_cfromhex(is);
+				is += 2;
+				if (c >= 0)
+					*oc++ = (char)c;
+				else {
+					/* Illegal according to RFC 2045,
+					 * section 6.7.  Almost follow it */
+jehead:
+					oc[0] = '['; oc[1] = '?'; oc[2] = ']';
+					oc += 3;
+				}
+			} else
+				*oc++ = (c == '_') ? ' ' : (char)c;
+		}
+		goto jleave; /* XXX QP decode, header: errors not reported */
+	}
+
+	/* Decoding a complete message/mimepart body line */
+	while (is < ie) {
+		si_it c = *is++;
+		if (c != '=') {
+			*oc++ = (char)c;
+			continue;
+		}
+
+		/*
+		 * RFC 2045, 6.7:
+		 *   Therefore, when decoding a Quoted-Printable body, any
+		 *   trailing white space on a line must be deleted, as it will
+		 *   necessarily have been added by intermediate transport
+		 *   agents.
+		 */
+		for (; is < ie && blankchar(*is); ++is)
+			;
+		if (is + 1 >= ie) {
+			/* Soft line break? */
+			if (*is == '\n')
+				goto jsoftnl;
+			++is;
+			goto jebody;
+		}
+
+		/* Not a soft line break? */
+		if (*is != '\n') {
+			c = _qp_cfromhex(is);
+			is += 2;
+			if (c >= 0)
+				*oc++ = (char)c;
+			else {
+				/* Illegal according to RFC 2045, section 6.7.
+				 * Rather follow it and include the = and the
+				 * follow char */
+jebody:
+				oc[0] = '['; oc[1] = '?'; oc[2] = ']';
+				oc += 3;
+			}
+			continue;
+		}
+
+		/* CRLF line endings are encoded as QP, followed by a soft line
+		 * break, so check for this special case, and simply forget we
+		 * have seen one, so as not to end up with the entire DOS file
+		 * in a contiguous buffer */
+jsoftnl:
+		if (oc > os && oc[-1] == '\n') {
+#if 0			/* TODO qp_decode() we do not normalize CRLF
+			 * TODO to LF because for that we would need
+			 * TODO to know if we are about to write to
+			 * TODO the display or do save the file!
+			 * TODO 'hope the MIME/send layer rewrite will
+			 * TODO offer the possibility to DTRT */
+			if (oc - 1 > os && oc[-2] == '\r') {
+				--oc;
+				oc[-1] = '\n';
+			}
+#endif
+			break;
+		}
+		out->l = (size_t)(oc - os);
+		rest->s = srealloc(rest->s, rest->l + out->l);
+		memcpy(rest->s + rest->l, out->s, out->l);
+		rest->l += out->l;
+		oc = os;
+		break;
+	}
+	/* XXX RFC: QP decode should check no trailing WS on line */
+jleave:
+	out->l = (size_t)(oc - os);
+	ret = OKAY;
 	return ret;
 }
 
