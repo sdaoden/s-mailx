@@ -569,9 +569,10 @@ enum nameflags {
 					NAME_ADDRSPEC_ERR_ATSEQ |
 					NAME_ADDRSPEC_ERR_CHAR |
 					NAME_ADDRSPEC_ERR_IDNA,
-	_NAME_SHIFTWC = 11,
-	_NAME_MAXWC = 0xFFFFF,
-	_NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
+
+	_NAME_SHIFTWC		= 11,
+	_NAME_MAXWC		= 0xFFFFF,
+	_NAME_MASKWC		= _NAME_MAXWC << _NAME_SHIFTWC
 };
 
 /* In the !_ERR_EMPTY case, the failing character can be queried */
