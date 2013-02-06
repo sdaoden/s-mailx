@@ -764,12 +764,12 @@ char *
 {
 	char *dp = NULL;
 
-	if (cp) {
+	if (cp != NULL) {
 		size_t l = strlen(cp) + 1;
 		dp = (smalloc)(l SMALLOC_DEBUG_ARGSCALL);
 		memcpy(dp, cp, l);
 	}
-	return (dp);
+	return dp;
 }
 
 int
@@ -782,7 +782,7 @@ asccasecmp(char const *s1, char const *s2)
 		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
 			break;
 	}
-	return (cmp);
+	return cmp;
 }
 
 int
@@ -795,7 +795,7 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
 		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
 			break;
 	}
-	return (cmp);
+	return cmp;
 }
 
 char const *
@@ -832,7 +832,19 @@ jleave:
 		ac_free(NEEDLE);
 		ac_free(needle);
 	}
-	return (haystack);
+	return haystack;
+}
+
+struct str *
+(str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
+{
+	if (t != NULL && t->l > 0) {
+		self->l = t->l;
+		self->s = (srealloc)(self->s, t->l SMALLOC_DEBUG_ARGSCALL);
+		memcpy(self->s, t->s, t->l);
+	} else
+		self->l = 0;
+	return self;
 }
 
 #ifdef HAVE_ICONV

@@ -754,9 +754,15 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
 
 /*
  * strings.c
- * Two series: the first uses an auto-reclaimed string storage that resets the
- * memory at command loop ticks, the second is about plain support functions
- * which use unspecified or heap memory
+ * This bundles several different string related support facilities:
+ * - auto-reclaimed string storage (memory goes away on command loop ticks)
+ * - plain char* support functions which use unspecified or smalloc() memory
+ * - struct str related support funs
+ * - our iconv(3) wrapper
+ */
+
+/*
+ * Auto-reclaimed string storage
  */
 
 void *		salloc(size_t size);
@@ -793,7 +799,9 @@ char *		urlxdec(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
 
-/* The rest does not deal with auto-reclaimed storage */
+/*
+ * Plain char* support, not auto-reclaimed
+ */
 
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
@@ -826,7 +834,7 @@ int		snprintf(char *str, size_t size, const char *format, ...);
 #endif
 
 char *		sstpcpy(char *dst, const char *src);
-char *		sstrdup(const char *cp SMALLOC_DEBUG_ARGS);
+char *		sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_ASSERTS
 # define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
 #endif
@@ -837,8 +845,20 @@ int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
 
 /*
+ * struct str related support funs
+ */
+
+/* *self* is srealloc()ed */
+struct str *	str_dup(struct str *self, struct str const *t
+			SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define str_dup(S,T)	str_dup(S, T, __FILE__, __LINE__)
+#endif
+
+/*
  * Our (fault-tolerant) iconv(3) wrappers
  */
+
 #ifdef HAVE_ICONV
 iconv_t iconv_open_ft(char const *tocode, char const *fromcode);
 size_t iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
