@@ -1574,9 +1574,8 @@ jsoftnl:		/*
 				continue;
 
 			if ((i = lpref)) {
-				for (; i > 0; ++wsz, ++lnlen, --i)
-					(void)putc('.', f);
-				(void)putc(' ', f);
+				for (++i; i--;)
+					(void)putc(' ', f);
 				++wsz;
 				++lnlen;
 			}
