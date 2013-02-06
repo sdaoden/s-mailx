@@ -74,11 +74,15 @@ struct mtnode	*_mt_list;
 char		*_cs_iter_base, *_cs_iter;
 
 /* Initialize MIME type list */
-static void		_mt_init(void);
-static void		__mt_add_line(char const *line, struct mtnode **tail);
+static void	_mt_init(void);
+static void	__mt_add_line(char const *line, struct mtnode **tail);
 
 /* Get the conversion that matches *encoding* */
-static enum conversion	_conversion_by_encoding(void);
+static enum conversion _conversion_by_encoding(void);
+
+/* fwrite(3) while checking for displayability */
+static size_t	_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
+			char const *prefix, size_t prefixlen);
 
 static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
@@ -98,8 +102,6 @@ static void addstr(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
 static void addconv(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
-static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
-		enum tdflags flags, char const *prefix, size_t prefixlen);
 
 static void
 _mt_init(void)
@@ -194,6 +196,69 @@ _conversion_by_encoding(void)
 		ret = CONV_TOB64;
 	}
 	return (ret);
+}
+
+static size_t
+_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
+	char const *prefix, size_t prefixlen)
+{
+	/* TODO note: after send/MIME layer rewrite we will have a string pool
+	 * TODO so that memory allocation count drops down massively; for now,
+	 * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
+	/* TODO well if we get a broken pipe here, and it happens to
+	 * TODO happen pretty easy when sleeping in a full pipe buffer,
+	 * TODO then the current codebase performs longjump away;
+	 * TODO this leaves memory leaks behind ('think up to 3 per,
+	 * TODO dep. upon alloca availability).  For this to be fixed
+	 * TODO we either need to get rid of the longjmp()s (tm) or
+	 * TODO the storage must come from the outside or be tracked
+	 * TODO in a carrier struct.  Best both.  But storage reuse
+	 * TODO would be a bigbig win besides */
+	struct str in, out;
+
+	in.s = ptr;
+	in.l = size;
+	out.s = NULL;
+	out.l = 0;
+
+	if (! (
+#ifdef HAVE_ICONV
+		((flags & TD_ICONV) && iconvd != (iconv_t)-1) ||
+#endif
+			(flags & (TD_ISPR|TD_DELCTRL|_TD_BUFCOPY))
+			== (TD_DELCTRL|_TD_BUFCOPY)))
+		flags &= ~(TD_ICONV|_TD_BUFCOPY);
+
+#ifdef HAVE_ICONV
+	if (flags & TD_ICONV) {
+		/* TODO leftover data (incomplete multibyte sequences) not
+		 * TODO handled, leads to many skipped over data
+		 * TODO send/MIME rewrite: don't assume complete input line is
+		 * TODO a complete output line, PLUS */
+		(void)str_iconv(iconvd, &out, &in, TRU1); /* XXX ERRORS?! */
+		in = out;
+	} else
+#endif
+	if (flags & _TD_BUFCOPY) {
+		str_dup(&out, &in);
+		in = out;
+	}
+
+	if (flags & TD_ISPR)
+		makeprint(&in, &out);
+	else {
+		out.s = in.s;
+		out.l = in.l;
+	}
+	if (flags & TD_DELCTRL)
+		out.l = delctrl(out.s, out.l);
+	size = prefixwrite(out.s, out.l, f, prefix, prefixlen);
+
+	if (out.s != in.s)
+		free(out.s);
+	if (in.s != ptr)
+		free(in.s);
+	return size;
 }
 
 /*
@@ -1587,81 +1652,6 @@ jsoftnl:		/*
 	return (wsz);
 }
 
-/*
- * fwrite while checking for displayability.
- */
-static size_t
-fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
-	char const *prefix, size_t prefixlen)
-{
-	char *upper;
-	size_t sz, csize;
-#ifdef	HAVE_ICONV
-	char const *iptr;
-	char *nptr;
-	size_t inleft, outleft;
-#endif
-	char *mptr, *xmptr, *mlptr = NULL;
-	size_t mptrsz;
-
-	csize = size * nmemb;
-	mptrsz = csize;
-	mptr = xmptr = ac_alloc(mptrsz + 1);
-#ifdef	HAVE_ICONV
-	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
-	again:	inleft = csize;
-		outleft = mptrsz;
-		nptr = mptr;
-		iptr = ptr;
-		/* TODO leftover data (incomplete multibyte sequences) not
-		 * TODO handled, leads to many skipped over data
-		 * TODO send/MIME rewrite: don't assume complete input line is
-		 * TODO a complete output line, PLUS */
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 1)
-				== (size_t)-1 && errno == E2BIG) {
-			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
-			ac_free(xmptr);
-			mptrsz += inleft;
-			mptr = xmptr = ac_alloc(mptrsz + 1);
-			goto again;
-		}
-		nmemb = mptrsz - outleft;
-		size = sizeof (char);
-		ptr = mptr;
-		csize = size * nmemb;
-	} else
-#endif
-	{
-		memcpy(mptr, ptr, csize);
-	}
-	upper = mptr + csize;
-	*upper = '\0';
-	if (flags & TD_ISPR) {
-		struct str	in, out;
-		in.s = mptr;
-		in.l = csize;
-		makeprint(&in, &out);
-		/* TODO well if we get a broken pipe here, and it happens to
-		 * TODO happen pretty easy when sleeping in a full pipe buffer,
-		 * TODO then the current codebase performs longjump away;
-		 * TODO this leaves memory leaks behind ('think up to 3 per,
-		 * TODO dep. upon alloca availability).  For this to be fixed
-		 * TODO we either need to get rid of the longjmp()s (tm) or
-		 * TODO the storage must come from the outside or be tracked
-		 * TODO in a carrier struct.  Best both.  But storage reuse
-		 * TODO would be a bigbig win besides */
-		mptr = mlptr = out.s;
-		csize = out.l;
-	}
-	if (flags & TD_DELCTRL)
-		csize = delctrl(mptr, csize);
-	sz = prefixwrite(mptr, csize, f, prefix, prefixlen);
-	ac_free(xmptr);
-	if (mlptr != NULL)
-		free(mlptr);
-	return sz;
-}
-
 ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
@@ -1676,6 +1666,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	size_t inleft, outleft;
 #endif
 
+	dflags |= _TD_BUFCOPY;
 	in.s = UNCONST(ptr);
 	in.l = size;
 	if ((sz = size) == 0) {
@@ -1704,6 +1695,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
 			sz = -1;
 			goto jleave;
 		}
+		dflags &= ~_TD_BUFCOPY;
 	}
 #endif
 
@@ -1713,8 +1705,7 @@ jconvert:
 	switch (convert) {
 	case CONV_FROMQP:
 		mime_fromqp(&in, &out, 0);
-		sz = fwrite_td(out.s, sizeof *out.s, out.l, f, dflags,
-				prefix, prefixlen);
+		sz = _fwrite_td(out.s, out.l, f, dflags, prefix, prefixlen);
 		free(out.s);
 		break;
 	case CONV_TOQP:
@@ -1730,7 +1721,7 @@ jconvert:
 		if ((sz = out.l) != 0) {
 			if (state != OKAY)
 				prefix = NULL, prefixlen = 0;
-			sz = fwrite_td(out.s, sizeof *out.s, out.l, f, dflags,
+			sz = _fwrite_td(out.s, out.l, f, dflags & ~_TD_BUFCOPY,
 				prefix, prefixlen);
 		}
 		if (out.s != NULL)
@@ -1747,8 +1738,8 @@ jconvert:
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-		sz = fwrite_td(out.s, sizeof *out.s, out.l, f,
-				dflags&TD_DELCTRL, prefix, prefixlen);
+		sz = _fwrite_td(out.s, out.l, f, dflags & TD_DELCTRL,
+			prefix, prefixlen);
 		free(out.s);
 		break;
 	case CONV_TOHDR:
@@ -1758,8 +1749,7 @@ jconvert:
 		sz = mime_write_tohdr_a(&in, f);
 		break;
 	default:
-		sz = fwrite_td(in.s, sizeof *in.s, in.l, f, dflags,
-				prefix, prefixlen);
+		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
 	}
 jleave:
 	return sz;

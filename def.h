@@ -272,7 +272,9 @@ enum tdflags {
 	TD_NONE		= 0,	/* no display conversion */
 	TD_ISPR		= 01,	/* use isprint() checks */
 	TD_ICONV	= 02,	/* use iconv() */
-	TD_DELCTRL	= 04	/* delete control characters */
+	TD_DELCTRL	= 04,	/* delete control characters */
+
+	_TD_BUFCOPY	= 010	/* Buffer may be constant, copy it */
 };
 
 enum protocol {
