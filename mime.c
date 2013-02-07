@@ -84,16 +84,10 @@ static enum conversion _conversion_by_encoding(void);
 static size_t	_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 			char const *prefix, size_t prefixlen);
 
-static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
-static int mustquote_inhdrq(int c);
 static size_t	delctrl(char *cp, size_t sz);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
-static char *ctohex(unsigned char c, char *hex);
-static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
-static void mime_str_toqp(struct str *in, struct str *out,
-		int (*mustquote)(int), int inhdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
 static size_t convhdra(char const *str, size_t len, FILE *fp);
 static size_t mime_write_tohdr_a(struct str *in, FILE *f);
@@ -261,19 +255,6 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 }
 
 /*
- * Check if c must be quoted inside a message's body.
- */
-static int 
-mustquote_body(int c)
-{
-	/* FIXME use lookup table, this encodes too much, possibly worse */
-	/* FIXME encodes \t, does NOT encode \x0D\n as \x0D\x0A[=] */
-	if (c != '\n' && (c < 040 || c == '=' || c >= 0177))
-		return 1;
-	return 0;
-}
-
-/*
  * Check if c must be quoted inside a message's header.
  */
 static int 
@@ -287,18 +268,6 @@ mustquote_hdr(const char *cp, int wordstart, int wordend)
 		return 1;
 	if (cp[0] == '?' && cp[1] == '=' &&
 			(wordend || cp[2] == '\0' || whitechar(cp[2]&0377)))
-		return 1;
-	return 0;
-}
-
-/*
- * Check if c must be quoted inside a quoting in a message's header.
- */
-static int 
-mustquote_inhdrq(int c)
-{
-	if (c != '\n'
-		&& (c <= 040 || c == '=' || c == '?' || c == '_' || c >= 0177))
 		return 1;
 	return 0;
 }
@@ -910,102 +879,6 @@ jclear:
 	goto jleave;
 }
 
-/*
- * Convert c to a hexadecimal character string and store it in hex.
- */
-static char *
-ctohex(unsigned char c, char *hex)
-{
-	unsigned char d;
-
-	hex[2] = '\0';
-	d = c % 16;
-	hex[1] = basetable[d];
-	if (c > d)
-		hex[0] = basetable[(c - d) / 16];
-	else
-		hex[0] = basetable[0];
-	return hex;
-}
-
-/*
- * Write to a file converting to quoted-printable.
- * The mustquote function determines whether a character must be quoted.
- */
-static size_t
-mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
-{
-	char *p, *upper, *h, hex[3];
-	int l;
-	size_t sz;
-
-	sz = in->l;
-	upper = in->s + in->l;
-	for (p = in->s, l = 0; p < upper; p++) {
-		if (mustquote(*p) ||
-				(p < upper - 1 && p[1] == '\n' &&
-					blankchar(*p)) ||
-				(p < upper - 4 && l == 0 &&
-					*p == 'F' && p[1] == 'r' &&
-					p[2] == 'o' && p[3] == 'm') ||
-				(*p == '.' && l == 0 && p < upper - 1 &&
-					p[1] == '\n')) {
-			if (l >= 69) {
-				sz += 2;
-				fwrite("=\n", sizeof (char), 2, fo);
-				l = 0;
-			}
-			sz += 2;
-			putc('=', fo);
-			h = ctohex((unsigned char)*p, hex);
-			fwrite(h, sizeof *h, 2, fo);
-			l += 3;
-		} else {
-			if (*p == '\n')
-				l = 0;
-			else if (l >= 71) {
-				sz += 2;
-				fwrite("=\n", sizeof (char), 2, fo);
-				l = 0;
-			}
-			putc(*p, fo);
-			l++;
-		}
-	}
-	return sz;
-}
-
-/*
- * Write to a stringstruct converting to quoted-printable.
- * The mustquote function determines whether a character must be quoted.
- */
-static void 
-mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
-{
-	char *p, *q, *upper;
-
-	out->s = smalloc(in->l * 3 + 1);
-	q = out->s;
-	out->l = in->l;
-	upper = in->s + in->l;
-	for (p = in->s; p < upper; p++) {
-		if (mustquote(*p&0377) || (p+1 < upper && *(p + 1) == '\n' &&
-				blankchar(*p & 0377))) {
-			if (inhdr && *p == ' ') {
-				*q++ = '_';
-			} else {
-				out->l += 2;
-				*q++ = '=';
-				ctohex((unsigned char)*p, q);
-				q += 2;
-			}
-		} else {
-			*q++ = *p;
-		}
-	}
-	*q = '\0';
-}
-
 #define	mime_fromhdr_inc(inc) { \
 		size_t diff = q - out->s; \
 		out->s = srealloc(out->s, (maxstor += inc) + 1); \
@@ -1261,12 +1134,11 @@ mime_write_tohdr(struct str *in, FILE *fo)
 			}
 			if (mustquote || broken ||
 					((wend - wbeg) >= 74 && quoteany)) {
-				for (;;) {
+				for (cout.s = NULL;;) {
 					cin.s = lastwordend ? lastwordend :
 						wbeg;
 					cin.l = wend - cin.s;
-					mime_str_toqp(&cin, &cout,
-							mustquote_inhdrq, 1);
+					(void)qp_encode(&cout, &cin, QP_ISHEAD);
 					if ((wr = cout.l + charsetlen + 7)
 							< maxcol - col) {
 						if (lastspc)
@@ -1283,7 +1155,6 @@ mime_write_tohdr(struct str *in, FILE *fo)
 								cout.l, fo);
 						fwrite("?=", 1, 2, fo);
 						sz += wr, col += wr;
-						free(cout.s);
 						break;
 					} else {
 						broken = 1;
@@ -1302,9 +1173,10 @@ mime_write_tohdr(struct str *in, FILE *fo)
 						} else {
 							wend -= 4;
 						}
-						free(cout.s);
 					}
 				}
+				if (cout.s != NULL)
+					free(cout.s);
 				lastwordend = wend;
 			} else {
 				if (col &&
@@ -1664,9 +1536,10 @@ jconvert:
 	switch (convert) {
 	case CONV_FROMQP:
 		state = qp_decode(&out, &in, rest);
-		goto jqpb64_step;
+		goto jqpb64_dec;
 	case CONV_TOQP:
-		sz = mime_write_toqp(&in, f, mustquote_body);
+		(void)qp_encode(&out, &in, QP_NONE);
+		goto jqpb64_enc;
 		break;
 	case CONV_8BIT:
 		sz = prefixwrite(in.s, in.l, f, prefix, prefixlen);
@@ -1675,7 +1548,8 @@ jconvert:
 		rest = NULL;
 	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, 0, rest);
-jqpb64_step:	if ((sz = out.l) != 0) {
+jqpb64_dec:
+		if ((sz = out.l) != 0) {
 			if (state != OKAY)
 				prefix = NULL, prefixlen = 0;
 			sz = _fwrite_td(out.s, out.l, f, dflags & ~_TD_BUFCOPY,
@@ -1686,6 +1560,7 @@ jqpb64_step:	if ((sz = out.l) != 0) {
 		break;
 	case CONV_TOB64:
 		(void)b64_encode(&out, &in, B64_LF|B64_MULTILINE);
+jqpb64_enc:
 		sz = fwrite(out.s, sizeof *out.s, out.l, f);
 		if (sz != (ssize_t)out.l)
 			sz = -1;
