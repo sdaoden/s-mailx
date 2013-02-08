@@ -1,6 +1,21 @@
 S - n a i l  N e w s
 ====================
 
+- The Quoted-Printable MIME handling has been rewritten completely.
+  We now correctly encode files with the MS-DOS newline sequence (CRLF).
+  (Part of the *mime-cte* topic branch.)
+
+  S-nail(1) continues to be able to handle text messages and text
+  attachments without a trailing newline, but because these
+  Content-Transfer-Encoding related things are now handled by the C-T-E
+  layer instead of by sendout.c a text message body that comes in as
+  part of a complete message via the -t command line option will loose
+  the missing final newline (i.e., it'll gain one).
+  This problem does *not* occur when *only* the message body comes in
+  via STDIN, as in 'cat FILE | s-nail', but *only* when the -t option is
+  used.
+  (sendout.c: does no(t/ longer) know about CTE internals!, 2013-02-09)
+
 - Filename arguments for -a are now processed *after* all the resource
   files have been loaded etc., so that the usual "folder" specifics can
   be used (provided that proper care for shell quoting was taken).
