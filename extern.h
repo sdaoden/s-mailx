@@ -591,6 +591,9 @@ ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
  * - Base64, section 6.8
  */
 
+/* How many characters of (the complete body) *ln* need to be quoted */
+size_t		mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead);
+
 /* How much space is necessary to encode *len* bytes in QP, worst case.
  * Includes room for terminator */
 size_t		qp_encode_calc_size(size_t len);

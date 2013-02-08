@@ -253,6 +253,17 @@ jleave:
 }
 
 size_t
+mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
+{
+	size_t ret;
+	bool_t sol;
+
+	for (ret = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
+		ret += (_mustquote(ln, ln + lnlen, sol, ishead) != N);
+	return ret;
+}
+
+size_t
 qp_encode_calc_size(size_t len)
 {
 	/* Worst case: 'CRLF' -> '=0D=0A=' */
