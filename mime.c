@@ -84,7 +84,6 @@ static enum conversion _conversion_by_encoding(void);
 static size_t	_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 			char const *prefix, size_t prefixlen);
 
-static int mustquote_hdr(const char *cp, int wordstart, int wordend);
 static size_t	delctrl(char *cp, size_t sz);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
@@ -252,24 +251,6 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 	if (in.s != ptr)
 		free(in.s);
 	return size;
-}
-
-/*
- * Check if c must be quoted inside a message's header.
- */
-static int 
-mustquote_hdr(const char *cp, int wordstart, int wordend)
-{
-	int	c = *cp & 0377;
-
-	if (c != '\n' && (c < 040 || c >= 0177))
-		return 1;
-	if (wordstart && cp[0] == '=' && cp[1] == '?')
-		return 1;
-	if (cp[0] == '?' && cp[1] == '=' &&
-			(wordend || cp[2] == '\0' || whitechar(cp[2]&0377)))
-		return 1;
-	return 0;
 }
 
 static size_t
@@ -1039,15 +1020,15 @@ fromhdr_end:
  * Convert header fields to RFC 1522 format and write to the file fo.
  */
 static size_t
-mime_write_tohdr(struct str *in, FILE *fo)
+mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
 {
-	char buf[B64_LINESIZE],
-		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
-	char const *charset7, *charset;
 	struct str cin, cout;
-	size_t sz = 0, col = 0, wr, charsetlen;
-	int quoteany, mustquote, broken,
+	char buf[B64_LINESIZE];
+	char const *charset7, *charset, *upper, *wbeg, *wend, *lastspc,
+		*lastwordend = NULL;
+	size_t sz = 0, col = 0, quoteany, wr, charsetlen,
 		maxcol = 65 /* there is the header field's name, too */;
+	bool_t highbit, mustquote, broken;
 
 	charset7 = charset_get_7bit();
 	charset = _CHARSET();
@@ -1056,28 +1037,31 @@ mime_write_tohdr(struct str *in, FILE *fo)
 	charsetlen = MAX(charsetlen, wr);
 	upper = in->s + in->l;
 
-	b = 0;
-	for (wbeg = in->s, quoteany = 0; wbeg < upper; ++wbeg) {
-		b |= *wbeg;
-		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
-			quoteany++;
-	}
+	/* xxx note this results in too much hits since =/? force quoting even
+	 * xxx if they don't form =? etc. */
+	quoteany = mime_cte_mustquote(in->s, in->l, TRU1);
 
-	if (2u * quoteany > in->l) {
+	highbit = FAL0;
+	if (quoteany != 0)
+		for (wbeg = in->s; wbeg < upper; ++wbeg)
+			if ((uc_it)*wbeg & 0x80)
+				highbit = TRU1;
+
+	if (quoteany << 1 > in->l) {
 		/*
 		 * Print the entire field in base64.
 		 */
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			wend = upper;
-			cin.s = wbeg;
-			for (;;) { /* TODO optimize the -=4 case (...) */
+			cin.s = UNCONST(wbeg);
+			for (;;) {
 				cin.l = wend - wbeg;
 				if (cin.l * 4/3 + 7 + charsetlen
 						< maxcol - col) {
 					cout.s = buf;
 					cout.l = sizeof buf;
 					wr = fprintf(fo, "=?%s?B?%s?=",
-						b&0200 ? charset : charset7,
+						highbit ? charset : charset7,
 						b64_encode(&cout, &cin, B64_BUF
 							)->s);
 					sz += wr, col += wr;
@@ -1104,14 +1088,14 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		/*
 		 * Print the field word-wise in quoted-printable.
 		 */
-		broken = 0;
+		broken = FAL0;
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			lastspc = NULL;
-			while (wbeg < upper && whitechar(*wbeg & 0377)) {
+			while (wbeg < upper && whitechar(*wbeg)) {
 				lastspc = lastspc ? lastspc : wbeg;
 				wbeg++;
 				col++;
-				broken = 0;
+				broken = FAL0;
 			}
 			if (wbeg == upper) {
 				if (lastspc)
@@ -1122,56 +1106,72 @@ mime_write_tohdr(struct str *in, FILE *fo)
 						}
 				break;
 			}
-			mustquote = 0;
-			b = 0;
-			for (wend = wbeg;
-				wend < upper && !whitechar(*wend & 0377);
-					wend++) {
-				b |= *wend;
-				if (mustquote_hdr(wend, wend == wbeg,
-							wbeg == &upper[-1]))
-					mustquote++;
-			}
+
+			if (lastspc != NULL)
+				broken = FAL0;
+			highbit = FAL0;
+			for (wend = wbeg; wend < upper && ! whitechar(*wend);
+					++wend)
+				if ((uc_it)*wend & 0x80)
+					highbit = TRU1;
+			mustquote = (mime_cte_mustquote(wbeg,
+					(size_t)(wend - wbeg), TRU1) != 0);
+
 			if (mustquote || broken ||
-					((wend - wbeg) >= 74 && quoteany)) {
+					((wend - wbeg) >= 76-5 && quoteany)) {
 				for (cout.s = NULL;;) {
-					cin.s = lastwordend ? lastwordend :
-						wbeg;
+					cin.s = UNCONST(lastwordend ?
+							lastwordend : wbeg);
 					cin.l = wend - cin.s;
 					(void)qp_encode(&cout, &cin, QP_ISHEAD);
-					if ((wr = cout.l + charsetlen + 7)
-							< maxcol - col) {
-						if (lastspc)
-							while (lastspc < wbeg) {
-								putc(*lastspc
-									&0377,
-									fo);
-								lastspc++,
-								sz++;
-							}
-						fprintf(fo, "=?%s?Q?", b&0200 ?
-							charset : charset7);
-						fwrite(cout.s, sizeof *cout.s,
-								cout.l, fo);
-						fwrite("?=", 1, 2, fo);
+					wr = cout.l + charsetlen + 7;
+jqp_retest:
+					if (col <= maxcol &&
+							wr <= maxcol - col) {
+						if (lastspc) {
+							/* TODO because we inc-
+							 * TODO luded the WS in
+							 * TODO the encoded str,
+							 * TODO put SP only??
+							 * TODO RFC: "any
+							 * 'linear-white-space'
+							 * that separates
+							 * a pair of adjacent
+							 * 'encoded-word's is
+							 * ignored" */
+							putc(' ', fo);
+							++sz;
+							++col;
+						}
+						fprintf(fo, "=?%s?Q?%.*s?=",
+							highbit ? charset
+							: charset7,
+							(int)cout.l, cout.s);
 						sz += wr, col += wr;
 						break;
-					} else {
-						broken = 1;
-						if (col) {
+					} else if (col > 1) {
+						/* TODO assuming SP separator,
+						 * TODO ignore *lastspc* !?? */
+						broken = TRU1;
+						if (lastspc != NULL) {
 							putc('\n', fo);
-							sz++;
+							++sz;
 							col = 0;
-							maxcol = 76;
-							if (lastspc == NULL) {
-								putc(' ', fo);
-								sz++;
-								maxcol--;
-							} else
-								maxcol -= wbeg -
-									lastspc;
 						} else {
+							fputs("\n ",
+								fo);
+							sz += 2;
+							col = 1;
+						}
+						maxcol = 76;
+						goto jqp_retest;
+					} else {
+						for (;;) { /* XXX */
 							wend -= 4;
+							assert(wend > wbeg);
+							if (wr - 4 < maxcol)
+								break;
+							wr -= 4;
 						}
 					}
 				}
