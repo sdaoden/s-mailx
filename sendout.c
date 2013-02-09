@@ -747,7 +747,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 	if (subject != NULL) {
 		in.s = subject;
 		in.l = strlen(subject);
-		mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+		mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
 		head.h_subject = out.s;
 	}
 	if (tflag == 0) {
