@@ -589,9 +589,14 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				}
 				break;
 			case 'U':
+#ifdef USE_IMAP
 				if (n == 0)
 					n = 9;
 				subjlen -= fprintf(f, "%*lu", n, mp->m_uid);
+#else
+				putc('?', f);
+				--subjlen;
+#endif
 				break;
 			case 'e':
 				if (n == 0)
@@ -617,7 +622,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				subjlen -= fprintf(f, "%*g", n, mp->m_score);
 #else
 				putc('?', f);
-				subjlen--;
+				--subjlen;
 #endif
 				break;
 			}
