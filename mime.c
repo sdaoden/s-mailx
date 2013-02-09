@@ -1488,18 +1488,19 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
 	char const *prefix, size_t prefixlen, struct str *rest)
 {
+	/* TODO note: after send/MIME layer rewrite we will have a string pool
+	 * TODO so that memory allocation count drops down massively; for now,
+	 * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
 	struct str in, out;
 	ssize_t sz;
 	int state;
-#ifdef HAVE_ICONV
-	char mptr[LINESIZE * 6], *nptr;
-	char const *iptr;
-	size_t inleft, outleft;
-#endif
 
-	dflags |= _TD_BUFCOPY;
 	in.s = UNCONST(ptr);
 	in.l = size;
+	out.s = NULL;
+	out.l = 0;
+
+	dflags |= _TD_BUFCOPY;
 	if ((sz = size) == 0) {
 		if (rest != NULL && rest->l != 0)
 			goto jconvert;
@@ -1507,32 +1508,21 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	}
 
 #ifdef HAVE_ICONV
-	if ((dflags & TD_ICONV) && size < sizeof(mptr) && iconvd != (iconv_t)-1
-			&& (convert == CONV_TOQP || convert == CONV_8BIT ||
-				convert == CONV_TOB64 ||
-				convert == CONV_TOHDR)) {
-		inleft = size;
-		outleft = sizeof mptr;
-		nptr = mptr;
-		iptr = UNCONST(ptr);
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 0)
-				!= (size_t)-1) {
-			in.l = sizeof(mptr) - outleft;
-			in.s = mptr;
-		} else {
-			if (errno == EILSEQ || errno == EINVAL) {
-				/* xxx report convertion error? */;
-			}
+	if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
+			(convert == CONV_TOQP || convert == CONV_8BIT ||
+			convert == CONV_TOB64 || convert == CONV_TOHDR)) {
+		if (str_iconv(iconvd, &out, &in, FAL0) != 0) {
+			/* XXX report conversion error? */;
 			sz = -1;
 			goto jleave;
 		}
+		in = out;
+		out.s = NULL;
 		dflags &= ~_TD_BUFCOPY;
 	}
 #endif
 
 jconvert:
-	out.s = NULL;
-	out.l = 0;
 	switch (convert) {
 	case CONV_FROMQP:
 		state = qp_decode(&out, &in, rest);
@@ -1540,7 +1530,6 @@ jconvert:
 	case CONV_TOQP:
 		(void)qp_encode(&out, &in, QP_NONE);
 		goto jqpb64_enc;
-		break;
 	case CONV_8BIT:
 		sz = prefixwrite(in.s, in.l, f, prefix, prefixlen);
 		break;
@@ -1582,5 +1571,7 @@ jqpb64_enc:
 	if (out.s != NULL)
 		free(out.s);
 jleave:
+	if (in.s != ptr)
+		free(in.s);
 	return sz;
 }
