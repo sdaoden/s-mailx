@@ -1,6 +1,36 @@
 S - n a i l  N e w s
 ====================
 
+  +-----------------------------------------------------------------------+
+  | No minor but bugfix releases (if any) are to be expected after v14.0, |
+  | unless the ENTIRE MIME and send layers have been rewritten.           |
+  | The cumulated result will end up as v15.0, but not before 2014.       |
+  +-----------------------------------------------------------------------+
+
+v14.0, 2013-02-10
+-----------------
+
+Random notes
+^^^^^^^^^^^^
+
+- Encoding defaults to *quoted-printable* not *8bit*.
+  This has no technical background except that i think it's the better
+  default.
+
+- Small progress for the "getting stuck due to the current folder
+  becomes inaccessible due to whatever reasons"  problem.
+  (schdir(): realpath() local files before leaving CWD.., 2013-01-08)
+
+- The names of temporary files have changed.  Whereas not all uses of
+  temporary files already use really meaningful names, it has yet become
+  possible to use the pattern "*mail-*"; or, to be compatible with
+  NetBSD Mail(1) in one go, "*mail*".  (E.g., in my ~/.vimrc you'd read:
+    :au   BufRead,BufNewFile *mutt*,*mail* setl fenc= | setf mail
+  [the *mutt* is a leftover from times when i've used MUAs that suck].)
+
+ChangeLog
+^^^^^^^^^
+
 - The Quoted-Printable MIME handling has been rewritten completely.
   We now correctly encode files with the MS-DOS newline sequence (CRLF).
   (Part of the *mime-cte* topic branch.)
@@ -129,13 +159,31 @@ S - n a i l  N e w s
   (Introduce *charset-8bit* and *charset-7bit* variables.., 2013-01-18)
   [The manual will be adjusted in a different commit.]
 
-  In addition the new *sendcharsets-else-ttycharset* variable can now be
-  used to automatically use *ttycharset* as a *sendcharset(s)*,
+  In addition the new *sendcharsets-else-ttycharset* variable can now
+  be used to automatically use *ttycharset* as a *sendcharset(s)*,
   regardless of the new *charset-8bit* variable.
   (Add *sendcharsets-else-ttycharset* variable, 2013-01-24)
   [The manual will be adjusted in a different commit.]
 
-  Please reread the manual section "Character sets".
+  NOTE: before we apply charset conversion we now perform a string
+  comparison to see wether character sets are identical.  If the strings
+  match (case-insensitively), then *no* conversion is performed.
+  This means that code like
+
+    $ printf "LATIN1: \0376" | s-nail -Ssendcharsets= -s boom ./out.txt
+
+  *succeeds* in an UTF-8 environment now, whereas older versions would
+  fail with an "illegal byte sequence" error (unless the iconv(3)
+  library of the system would not perform any conversion that seems
+  superflous, of course).
+
+  I thought about making this optional, but, in fact, if this would be
+  done in an environment without iconv(3) support then the result would
+  be equally corrupt.  And the way it is now we save the expensive and
+  superflous conversions.  (See TODO for more.)
+
+  Please *do* reread the manual section "Character sets".
+  +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - An attempt was made to improve MIME Content-XY: detection.
   It should be more RFC compliant, and just overall better :);
@@ -191,7 +239,7 @@ S - n a i l  N e w s
 - The undocumented *charset7* variable was removed.
 
 - The "Message X:" display leader has been changed and will henceforth
-  appear like "[Message -- X lines, Y bytes]:".
+  be matchable via "^[-- Message \d+ -- \d+ lines, \d+ bytes --]:$".
   These lines can no longer be suppressed by setting the *quiet*
   option (which was yet possible for print and top, though undocumented).
   (Change "Message X:" display message.., 2012-12-20)
