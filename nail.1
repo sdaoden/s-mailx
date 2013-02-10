@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 08, 2013
+.Dd February 10, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -596,7 +596,7 @@ and
 ),
 which are kept in a different syntax and will be used by the MTA
 (mail-transfer-agent) rather than by \*(UA.
-Personal aliases will be expanded by \*(UA right before it is send out.
+Personal aliases will be expanded by \*(UA before the message is sent.
 System wide aliases are not expanded when the mail is sent by \*(UA,
 but any reply returned to the machine will have the system wide alias
 expanded as all mail goes through the MTA.
@@ -691,6 +691,9 @@ locale environment of the system,
 and that stays unaffected by the content of an overwritten
 .Va ttycharset
 variable.
+(Note that this mostly matters for interactive usage of \*(UA, though.
+It is actually possible to send mail in a completely "faked" locale
+environment.)
 .Pp
 If no character set conversion capabilities have been compiled into
 \*(UA (i.e., no
@@ -740,9 +743,8 @@ some characters are not appropriate for the currently selected
 (terminal) character set,
 or the needed conversion is not supported by the system.
 In the first case, it is necessary to set an appropriate `LC_CTYPE'
-locale, e.g., `en_US', or maybe (though unlikely) the
-.Va ttycharset
-variable.
+locale and/or the variable
+.Va ttycharset .
 .Pp
 The best results are usually achieved when \*(UA is run in a UTF-8
 locale on a UTF-8 capable terminal,
@@ -2892,7 +2894,7 @@ list.
 To use an alternate mail delivery system,
 set this option to the full pathname of the program to use.
 It may be necessary to set
-.Va Isendmail-progname
+.Va sendmail-progname
 in addition.
 .It Va sendmail-progname
 Many systems use a so-called
