@@ -272,7 +272,9 @@ enum tdflags {
 	TD_NONE		= 0,	/* no display conversion */
 	TD_ISPR		= 01,	/* use isprint() checks */
 	TD_ICONV	= 02,	/* use iconv() */
-	TD_DELCTRL	= 04	/* delete control characters */
+	TD_DELCTRL	= 04,	/* delete control characters */
+
+	_TD_BUFCOPY	= 010	/* Buffer may be constant, copy it */
 };
 
 enum protocol {
@@ -732,22 +734,45 @@ struct shortcut {
 #define reset(x)	siglongjmp(srbuf, x)
 
 /*
- * Base64 convertion as defined in section 6.8 of RFC 2045.
+ * Content-Transfer-Encodings as defined in RFC 2045:
+ * - Quoted-Printable, section 6.7
+ * - Base64, section 6.8
  */
 
-#define B64_LINESIZE	(4 * 19 + 1)	/* Maximum compliant Base64 linesize */
+#define QP_LINESIZE	(4 * 19  +1)	/* Max. compliant QP linesize (+1) */
+
+#define B64_LINESIZE	(4 * 19  +1)	/* Max. compl. Base64 linesize (+1) */
 #define B64_ENCODE_INPUT_PER_LINE 57	/* Max. input for Base64 encode/line */
 
-enum b64flags {
-	B64_NONE,
-	B64_SALLOC	= 1<<0,		/* Use salloc(), not srealloc().. */
-	B64_BUF		= 1<<1,		/* ..result .s,.l point to user buffer
-					 * of B64_LINESIZE+ bytes instead */
-	B64_CRLF	= 1<<2,		/* (encode) Append "\r\n" to result */
-	B64_LF		= 1<<3,		/* (encode) Append "\n" to result */
-	/* (encode) If one of _CRLF/_LF is set, honour B64_LINESIZE and
+/* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
+enum __mimecte_flags {
+	MIMECTE_NONE,
+	MIMECTE_SALLOC	= 1<<0,		/* Use salloc(), not srealloc().. */
+	/* ..result .s,.l point to user buffer of *_LINESIZE+ bytes instead */
+	MIMECTE_BUF	= 1<<1,
+	MIMECTE_CRLF	= 1<<2,		/* (encode) Append "\r\n" to lines */
+	MIMECTE_LF	= 1<<3,		/* (encode) Append "\n" to lines */
+	/* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE and
 	 * inject the desired line-ending whenever a linewrap is desired */
-	B64_MULTILINE	= 1<<4
+	MIMECTE_MULTILINE = 1<<4,
+	/* (encode) Quote with header rules, do not generate soft NL breaks? */
+	MIMECTE_ISHEAD	= 1<<5
+};
+
+enum qpflags {
+	QP_NONE		= MIMECTE_NONE,
+	QP_SALLOC	= MIMECTE_SALLOC,
+	QP_BUF		= MIMECTE_BUF,
+	QP_ISHEAD	= MIMECTE_ISHEAD
+};
+
+enum b64flags {
+	B64_NONE	= MIMECTE_NONE,
+	B64_SALLOC	= MIMECTE_SALLOC,
+	B64_BUF		= MIMECTE_BUF,
+	B64_CRLF	= MIMECTE_CRLF,
+	B64_LF		= MIMECTE_LF,
+	B64_MULTILINE	= MIMECTE_MULTILINE
 };
 
 /*

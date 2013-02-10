@@ -404,6 +404,8 @@ int
 (readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
 	SMALLOC_DEBUG_ARGS)
 {
+	/* TODO readline_restart(): always *appends* LF just to strip it again;
+	 * TODO should be configurable just as for fgetline(); ..or whatevr.. */
 	long sz;
 
 	clearerr(ibuf);

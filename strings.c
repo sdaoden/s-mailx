@@ -958,6 +958,10 @@ iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
 	while ((sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft))
 			== (size_t)-1 && tolerant &&
 			((err = errno) == EILSEQ || err == EINVAL)) {
+		/* TODO send/MIME rewrite: this should not >0 but >MB_CUR_MAX
+		 * TODO (better: 4 or 6), at least optionally, and in ILSEQ
+		 * TODO case, i.e., incomplete sequence !!
+		 * TODO that is: handling ILSEQ like this is totally grazy. */
 		if (*inbleft > 0) {
 			(*inb)++;
 			(*inbleft)--;

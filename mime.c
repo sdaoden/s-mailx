@@ -74,23 +74,19 @@ struct mtnode	*_mt_list;
 char		*_cs_iter_base, *_cs_iter;
 
 /* Initialize MIME type list */
-static void		_mt_init(void);
-static void		__mt_add_line(char const *line, struct mtnode **tail);
+static void	_mt_init(void);
+static void	__mt_add_line(char const *line, struct mtnode **tail);
 
 /* Get the conversion that matches *encoding* */
-static enum conversion	_conversion_by_encoding(void);
+static enum conversion _conversion_by_encoding(void);
 
-static int mustquote_body(int c);
-static int mustquote_hdr(const char *cp, int wordstart, int wordend);
-static int mustquote_inhdrq(int c);
+/* fwrite(3) while checking for displayability */
+static size_t	_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
+			char const *prefix, size_t prefixlen);
+
 static size_t	delctrl(char *cp, size_t sz);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
-static char *ctohex(unsigned char c, char *hex);
-static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
-static void mime_str_toqp(struct str *in, struct str *out,
-		int (*mustquote)(int), int inhdr);
-static void mime_fromqp(struct str *in, struct str *out, int ishdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
 static size_t convhdra(char const *str, size_t len, FILE *fp);
 static size_t mime_write_tohdr_a(struct str *in, FILE *f);
@@ -98,8 +94,6 @@ static void addstr(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
 static void addconv(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
-static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
-		enum tdflags flags, char const *prefix, size_t prefixlen);
 
 static void
 _mt_init(void)
@@ -196,47 +190,67 @@ _conversion_by_encoding(void)
 	return (ret);
 }
 
-/*
- * Check if c must be quoted inside a message's body.
- */
-static int 
-mustquote_body(int c)
+static size_t
+_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
+	char const *prefix, size_t prefixlen)
 {
-	/* FIXME use lookup table, this encodes too much, possibly worse */
-	/* FIXME encodes \t, does NOT encode \x0D\n as \x0D\x0A[=] */
-	if (c != '\n' && (c < 040 || c == '=' || c >= 0177))
-		return 1;
-	return 0;
-}
+	/* TODO note: after send/MIME layer rewrite we will have a string pool
+	 * TODO so that memory allocation count drops down massively; for now,
+	 * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
+	/* TODO well if we get a broken pipe here, and it happens to
+	 * TODO happen pretty easy when sleeping in a full pipe buffer,
+	 * TODO then the current codebase performs longjump away;
+	 * TODO this leaves memory leaks behind ('think up to 3 per,
+	 * TODO dep. upon alloca availability).  For this to be fixed
+	 * TODO we either need to get rid of the longjmp()s (tm) or
+	 * TODO the storage must come from the outside or be tracked
+	 * TODO in a carrier struct.  Best both.  But storage reuse
+	 * TODO would be a bigbig win besides */
+	struct str in, out;
 
-/*
- * Check if c must be quoted inside a message's header.
- */
-static int 
-mustquote_hdr(const char *cp, int wordstart, int wordend)
-{
-	int	c = *cp & 0377;
+	in.s = ptr;
+	in.l = size;
+	out.s = NULL;
+	out.l = 0;
 
-	if (c != '\n' && (c < 040 || c >= 0177))
-		return 1;
-	if (wordstart && cp[0] == '=' && cp[1] == '?')
-		return 1;
-	if (cp[0] == '?' && cp[1] == '=' &&
-			(wordend || cp[2] == '\0' || whitechar(cp[2]&0377)))
-		return 1;
-	return 0;
-}
+	if (! (
+#ifdef HAVE_ICONV
+		((flags & TD_ICONV) && iconvd != (iconv_t)-1) ||
+#endif
+			(flags & (TD_ISPR|TD_DELCTRL|_TD_BUFCOPY))
+			== (TD_DELCTRL|_TD_BUFCOPY)))
+		flags &= ~(TD_ICONV|_TD_BUFCOPY);
 
-/*
- * Check if c must be quoted inside a quoting in a message's header.
- */
-static int 
-mustquote_inhdrq(int c)
-{
-	if (c != '\n'
-		&& (c <= 040 || c == '=' || c == '?' || c == '_' || c >= 0177))
-		return 1;
-	return 0;
+#ifdef HAVE_ICONV
+	if (flags & TD_ICONV) {
+		/* TODO leftover data (incomplete multibyte sequences) not
+		 * TODO handled, leads to many skipped over data
+		 * TODO send/MIME rewrite: don't assume complete input line is
+		 * TODO a complete output line, PLUS */
+		(void)str_iconv(iconvd, &out, &in, TRU1); /* XXX ERRORS?! */
+		in = out;
+	} else
+#endif
+	if (flags & _TD_BUFCOPY) {
+		str_dup(&out, &in);
+		in = out;
+	}
+
+	if (flags & TD_ISPR)
+		makeprint(&in, &out);
+	else {
+		out.s = in.s;
+		out.l = in.l;
+	}
+	if (flags & TD_DELCTRL)
+		out.l = delctrl(out.s, out.l);
+	size = prefixwrite(out.s, out.l, f, prefix, prefixlen);
+
+	if (out.s != in.s)
+		free(out.s);
+	if (in.s != ptr)
+		free(in.s);
+	return size;
 }
 
 static size_t
@@ -846,142 +860,6 @@ jclear:
 	goto jleave;
 }
 
-/*
- * Convert c to a hexadecimal character string and store it in hex.
- */
-static char *
-ctohex(unsigned char c, char *hex)
-{
-	unsigned char d;
-
-	hex[2] = '\0';
-	d = c % 16;
-	hex[1] = basetable[d];
-	if (c > d)
-		hex[0] = basetable[(c - d) / 16];
-	else
-		hex[0] = basetable[0];
-	return hex;
-}
-
-/*
- * Write to a file converting to quoted-printable.
- * The mustquote function determines whether a character must be quoted.
- */
-static size_t
-mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int))
-{
-	char *p, *upper, *h, hex[3];
-	int l;
-	size_t sz;
-
-	sz = in->l;
-	upper = in->s + in->l;
-	for (p = in->s, l = 0; p < upper; p++) {
-		if (mustquote(*p) ||
-				(p < upper - 1 && p[1] == '\n' &&
-					blankchar(*p)) ||
-				(p < upper - 4 && l == 0 &&
-					*p == 'F' && p[1] == 'r' &&
-					p[2] == 'o' && p[3] == 'm') ||
-				(*p == '.' && l == 0 && p < upper - 1 &&
-					p[1] == '\n')) {
-			if (l >= 69) {
-				sz += 2;
-				fwrite("=\n", sizeof (char), 2, fo);
-				l = 0;
-			}
-			sz += 2;
-			putc('=', fo);
-			h = ctohex((unsigned char)*p, hex);
-			fwrite(h, sizeof *h, 2, fo);
-			l += 3;
-		} else {
-			if (*p == '\n')
-				l = 0;
-			else if (l >= 71) {
-				sz += 2;
-				fwrite("=\n", sizeof (char), 2, fo);
-				l = 0;
-			}
-			putc(*p, fo);
-			l++;
-		}
-	}
-	return sz;
-}
-
-/*
- * Write to a stringstruct converting to quoted-printable.
- * The mustquote function determines whether a character must be quoted.
- */
-static void 
-mime_str_toqp(struct str *in, struct str *out, int (*mustquote)(int), int inhdr)
-{
-	char *p, *q, *upper;
-
-	out->s = smalloc(in->l * 3 + 1);
-	q = out->s;
-	out->l = in->l;
-	upper = in->s + in->l;
-	for (p = in->s; p < upper; p++) {
-		if (mustquote(*p&0377) || (p+1 < upper && *(p + 1) == '\n' &&
-				blankchar(*p & 0377))) {
-			if (inhdr && *p == ' ') {
-				*q++ = '_';
-			} else {
-				out->l += 2;
-				*q++ = '=';
-				ctohex((unsigned char)*p, q);
-				q += 2;
-			}
-		} else {
-			*q++ = *p;
-		}
-	}
-	*q = '\0';
-}
-
-/*
- * Write to a stringstruct converting from quoted-printable.
- */
-static void 
-mime_fromqp(struct str *in, struct str *out, int ishdr)
-{
-	char *p, *q, *upper;
-	char quote[4];
-
-	out->l = in->l;
-	out->s = smalloc(out->l + 1);
-	upper = in->s + in->l;
-	for (p = in->s, q = out->s; p < upper; p++) {
-		if (*p == '=') {
-			do {
-				p++;
-				out->l--;
-			} while (blankchar(*p & 0377) && p < upper);
-			if (p == upper)
-				break;
-			if (*p == '\n') {
-				out->l--;
-				continue;
-			}
-			if (p + 1 >= upper)
-				break;
-			quote[0] = *p++;
-			quote[1] = *p;
-			quote[2] = '\0';
-			*q = (char)strtol(quote, NULL, 16);
-			q++;
-			out->l--;
-		} else if (ishdr && *p == '_')
-			*q++ = ' ';
-		else
-			*q++ = *p;
-	}
-	return;
-}
-
 #define	mime_fromhdr_inc(inc) { \
 		size_t diff = q - out->s; \
 		out->s = srealloc(out->s, (maxstor += inc) + 1); \
@@ -993,7 +871,7 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
 void 
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
-	struct str crest, cin, cout;
+	struct str cin, cout;
 	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
 	char const *tcs;
 	int convert;
@@ -1002,8 +880,6 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
-	crest.s = NULL;
-	crest.l = 0;
 	tcs = charset_get_lc();
 	maxstor = in->l;
 	out->s = smalloc(maxstor + 1);
@@ -1051,16 +927,15 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				cin.l++;
 			}
 			cin.l--;
+
+			cout.s = NULL;
+			cout.l = 0;
 			switch (convert) {
 				case CONV_FROMB64:
-					crest.l = 0;
-					cout.s = NULL;
-					(void)b64_decode(&cout, &cin, 0,
-						&crest);
-					b64_decode_join(&cout, &crest);
+					(void)b64_decode(&cout, &cin, 0, NULL);
 					break;
 				case CONV_FROMQP:
-					mime_fromqp(&cin, &cout, 1);
+					(void)qp_decode(&cout, &cin, NULL);
 					break;
 				default:
 					break;
@@ -1127,12 +1002,10 @@ notmime:
 	}
 fromhdr_end:
 	*q = '\0';
-	if (crest.s != NULL)
-		free(crest.s);
 	if (flags & TD_ISPR) {
-		makeprint(out, &crest);
+		makeprint(out, &cout);
 		free(out->s);
-		*out = crest;
+		*out = cout;
 	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
@@ -1147,15 +1020,15 @@ fromhdr_end:
  * Convert header fields to RFC 1522 format and write to the file fo.
  */
 static size_t
-mime_write_tohdr(struct str *in, FILE *fo)
+mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
 {
-	char buf[B64_LINESIZE],
-		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
-	char const *charset7, *charset;
 	struct str cin, cout;
-	size_t sz = 0, col = 0, wr, charsetlen;
-	int quoteany, mustquote, broken,
+	char buf[B64_LINESIZE];
+	char const *charset7, *charset, *upper, *wbeg, *wend, *lastspc,
+		*lastwordend = NULL;
+	size_t sz = 0, col = 0, quoteany, wr, charsetlen,
 		maxcol = 65 /* there is the header field's name, too */;
+	bool_t highbit, mustquote, broken;
 
 	charset7 = charset_get_7bit();
 	charset = _CHARSET();
@@ -1164,28 +1037,31 @@ mime_write_tohdr(struct str *in, FILE *fo)
 	charsetlen = MAX(charsetlen, wr);
 	upper = in->s + in->l;
 
-	b = 0;
-	for (wbeg = in->s, quoteany = 0; wbeg < upper; ++wbeg) {
-		b |= *wbeg;
-		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
-			quoteany++;
-	}
+	/* xxx note this results in too much hits since =/? force quoting even
+	 * xxx if they don't form =? etc. */
+	quoteany = mime_cte_mustquote(in->s, in->l, TRU1);
 
-	if (2u * quoteany > in->l) {
+	highbit = FAL0;
+	if (quoteany != 0)
+		for (wbeg = in->s; wbeg < upper; ++wbeg)
+			if ((uc_it)*wbeg & 0x80)
+				highbit = TRU1;
+
+	if (quoteany << 1 > in->l) {
 		/*
 		 * Print the entire field in base64.
 		 */
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			wend = upper;
-			cin.s = wbeg;
-			for (;;) { /* TODO optimize the -=4 case (...) */
+			cin.s = UNCONST(wbeg);
+			for (;;) {
 				cin.l = wend - wbeg;
 				if (cin.l * 4/3 + 7 + charsetlen
 						< maxcol - col) {
 					cout.s = buf;
 					cout.l = sizeof buf;
 					wr = fprintf(fo, "=?%s?B?%s?=",
-						b&0200 ? charset : charset7,
+						highbit ? charset : charset7,
 						b64_encode(&cout, &cin, B64_BUF
 							)->s);
 					sz += wr, col += wr;
@@ -1212,14 +1088,14 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		/*
 		 * Print the field word-wise in quoted-printable.
 		 */
-		broken = 0;
+		broken = FAL0;
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			lastspc = NULL;
-			while (wbeg < upper && whitechar(*wbeg & 0377)) {
+			while (wbeg < upper && whitechar(*wbeg)) {
 				lastspc = lastspc ? lastspc : wbeg;
 				wbeg++;
 				col++;
-				broken = 0;
+				broken = FAL0;
 			}
 			if (wbeg == upper) {
 				if (lastspc)
@@ -1230,62 +1106,77 @@ mime_write_tohdr(struct str *in, FILE *fo)
 						}
 				break;
 			}
-			mustquote = 0;
-			b = 0;
-			for (wend = wbeg;
-				wend < upper && !whitechar(*wend & 0377);
-					wend++) {
-				b |= *wend;
-				if (mustquote_hdr(wend, wend == wbeg,
-							wbeg == &upper[-1]))
-					mustquote++;
-			}
+
+			if (lastspc != NULL)
+				broken = FAL0;
+			highbit = FAL0;
+			for (wend = wbeg; wend < upper && ! whitechar(*wend);
+					++wend)
+				if ((uc_it)*wend & 0x80)
+					highbit = TRU1;
+			mustquote = (mime_cte_mustquote(wbeg,
+					(size_t)(wend - wbeg), TRU1) != 0);
+
 			if (mustquote || broken ||
-					((wend - wbeg) >= 74 && quoteany)) {
-				for (;;) {
-					cin.s = lastwordend ? lastwordend :
-						wbeg;
+					((wend - wbeg) >= 76-5 && quoteany)) {
+				for (cout.s = NULL;;) {
+					cin.s = UNCONST(lastwordend ?
+							lastwordend : wbeg);
 					cin.l = wend - cin.s;
-					mime_str_toqp(&cin, &cout,
-							mustquote_inhdrq, 1);
-					if ((wr = cout.l + charsetlen + 7)
-							< maxcol - col) {
-						if (lastspc)
-							while (lastspc < wbeg) {
-								putc(*lastspc
-									&0377,
-									fo);
-								lastspc++,
-								sz++;
-							}
-						fprintf(fo, "=?%s?Q?", b&0200 ?
-							charset : charset7);
-						fwrite(cout.s, sizeof *cout.s,
-								cout.l, fo);
-						fwrite("?=", 1, 2, fo);
-						sz += wr, col += wr;
-						free(cout.s);
-						break;
-					} else {
-						broken = 1;
-						if (col) {
-							putc('\n', fo);
-							sz++;
-							col = 0;
-							maxcol = 76;
-							if (lastspc == NULL) {
-								putc(' ', fo);
-								sz++;
-								maxcol--;
-							} else
-								maxcol -= wbeg -
-									lastspc;
-						} else {
-							wend -= 4;
+					(void)qp_encode(&cout, &cin, QP_ISHEAD);
+					wr = cout.l + charsetlen + 7;
+jqp_retest:
+					if (col <= maxcol &&
+							wr <= maxcol - col) {
+						if (lastspc) {
+							/* TODO because we inc-
+							 * TODO luded the WS in
+							 * TODO the encoded str,
+							 * TODO put SP only??
+							 * TODO RFC: "any
+							 * 'linear-white-space'
+							 * that separates
+							 * a pair of adjacent
+							 * 'encoded-word's is
+							 * ignored" */
+							putc(' ', fo);
+							++sz;
+							++col;
 						}
-						free(cout.s);
+						fprintf(fo, "=?%s?Q?%.*s?=",
+							highbit ? charset
+							: charset7,
+							(int)cout.l, cout.s);
+						sz += wr, col += wr;
+						break;
+					} else if (col > 1) {
+						/* TODO assuming SP separator,
+						 * TODO ignore *lastspc* !?? */
+						broken = TRU1;
+						if (lastspc != NULL) {
+							putc('\n', fo);
+							++sz;
+							col = 0;
+						} else {
+							fputs("\n ",
+								fo);
+							sz += 2;
+							col = 1;
+						}
+						maxcol = 76;
+						goto jqp_retest;
+					} else {
+						for (;;) { /* XXX */
+							wend -= 4;
+							assert(wend > wbeg);
+							if (wr - 4 < maxcol)
+								break;
+							wr -= 4;
+						}
 					}
 				}
+				if (cout.s != NULL)
+					free(cout.s);
 				lastwordend = wend;
 			} else {
 				if (col &&
@@ -1579,9 +1470,8 @@ jsoftnl:		/*
 				continue;
 
 			if ((i = lpref)) {
-				for (; i > 0; ++wsz, ++lnlen, --i)
-					(void)putc('.', f);
-				(void)putc(' ', f);
+				for (++i; i--;)
+					(void)putc(' ', f);
 				++wsz;
 				++lnlen;
 			}
@@ -1593,93 +1483,24 @@ jsoftnl:		/*
 	return (wsz);
 }
 
-/*
- * fwrite while checking for displayability.
- */
-static size_t
-fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
-	char const *prefix, size_t prefixlen)
-{
-	char *upper;
-	size_t sz, csize;
-#ifdef	HAVE_ICONV
-	char const *iptr;
-	char *nptr;
-	size_t inleft, outleft;
-#endif
-	char *mptr, *xmptr, *mlptr = NULL;
-	size_t mptrsz;
-
-	csize = size * nmemb;
-	mptrsz = csize;
-	mptr = xmptr = ac_alloc(mptrsz + 1);
-#ifdef	HAVE_ICONV
-	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
-	again:	inleft = csize;
-		outleft = mptrsz;
-		nptr = mptr;
-		iptr = ptr;
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 1)
-				== (size_t)-1 && errno == E2BIG) {
-			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
-			ac_free(xmptr);
-			mptrsz += inleft;
-			mptr = xmptr = ac_alloc(mptrsz + 1);
-			goto again;
-		}
-		nmemb = mptrsz - outleft;
-		size = sizeof (char);
-		ptr = mptr;
-		csize = size * nmemb;
-	} else
-#endif
-	{
-		memcpy(mptr, ptr, csize);
-	}
-	upper = mptr + csize;
-	*upper = '\0';
-	if (flags & TD_ISPR) {
-		struct str	in, out;
-		in.s = mptr;
-		in.l = csize;
-		makeprint(&in, &out);
-		/* TODO well if we get a broken pipe here, and it happens to
-		 * TODO happen pretty easy when sleeping in a full pipe buffer,
-		 * TODO then the current codebase performs longjump away;
-		 * TODO this leaves memory leaks behind ('think up to 3 per,
-		 * TODO dep. upon alloca availability).  For this to be fixed
-		 * TODO we either need to get rid of the longjmp()s (tm) or
-		 * TODO the storage must come from the outside or be tracked
-		 * TODO in a carrier struct.  Best both.  But storage reuse
-		 * TODO would be a bigbig win besides */
-		mptr = mlptr = out.s;
-		csize = out.l;
-	}
-	if (flags & TD_DELCTRL)
-		csize = delctrl(mptr, csize);
-	sz = prefixwrite(mptr, csize, f, prefix, prefixlen);
-	ac_free(xmptr);
-	if (mlptr != NULL)
-		free(mlptr);
-	return sz;
-}
-
 ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
 	char const *prefix, size_t prefixlen, struct str *rest)
 {
+	/* TODO note: after send/MIME layer rewrite we will have a string pool
+	 * TODO so that memory allocation count drops down massively; for now,
+	 * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
 	struct str in, out;
 	ssize_t sz;
 	int state;
-#ifdef HAVE_ICONV
-	char mptr[LINESIZE * 6], *nptr;
-	char const *iptr;
-	size_t inleft, outleft;
-#endif
 
 	in.s = UNCONST(ptr);
 	in.l = size;
+	out.s = NULL;
+	out.l = 0;
+
+	dflags |= _TD_BUFCOPY;
 	if ((sz = size) == 0) {
 		if (rest != NULL && rest->l != 0)
 			goto jconvert;
@@ -1687,70 +1508,56 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	}
 
 #ifdef HAVE_ICONV
-	if ((dflags & TD_ICONV) && size < sizeof(mptr) && iconvd != (iconv_t)-1
-			&& (convert == CONV_TOQP || convert == CONV_8BIT ||
-				convert == CONV_TOB64 ||
-				convert == CONV_TOHDR)) {
-		inleft = size;
-		outleft = sizeof mptr;
-		nptr = mptr;
-		iptr = UNCONST(ptr);
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 0)
-				!= (size_t)-1) {
-			in.l = sizeof(mptr) - outleft;
-			in.s = mptr;
-		} else {
-			if (errno == EILSEQ || errno == EINVAL) {
-				/* xxx report convertion error? */;
-			}
+	if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
+			(convert == CONV_TOQP || convert == CONV_8BIT ||
+			convert == CONV_TOB64 || convert == CONV_TOHDR)) {
+		if (str_iconv(iconvd, &out, &in, FAL0) != 0) {
+			/* XXX report conversion error? */;
 			sz = -1;
 			goto jleave;
 		}
+		in = out;
+		out.s = NULL;
+		dflags &= ~_TD_BUFCOPY;
 	}
 #endif
 
 jconvert:
-	out.s = NULL;
-	out.l = 0;
 	switch (convert) {
 	case CONV_FROMQP:
-		mime_fromqp(&in, &out, 0);
-		sz = fwrite_td(out.s, sizeof *out.s, out.l, f, dflags,
-				prefix, prefixlen);
-		free(out.s);
-		break;
+		state = qp_decode(&out, &in, rest);
+		goto jqpb64_dec;
 	case CONV_TOQP:
-		sz = mime_write_toqp(&in, f, mustquote_body);
-		break;
+		(void)qp_encode(&out, &in, QP_NONE);
+		goto jqpb64_enc;
 	case CONV_8BIT:
 		sz = prefixwrite(in.s, in.l, f, prefix, prefixlen);
 		break;
-	case CONV_FROMB64_T:
 	case CONV_FROMB64:
+		rest = NULL;
+	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, 0, rest);
+jqpb64_dec:
 		if ((sz = out.l) != 0) {
 			if (state != OKAY)
 				prefix = NULL, prefixlen = 0;
-			sz = fwrite_td(out.s, sizeof *out.s, out.l, f, dflags,
+			sz = _fwrite_td(out.s, out.l, f, dflags & ~_TD_BUFCOPY,
 				prefix, prefixlen);
 		}
-		if (out.s != NULL)
-			free(out.s);
 		if (state != OKAY)
 			sz = -1;
 		break;
 	case CONV_TOB64:
 		(void)b64_encode(&out, &in, B64_LF|B64_MULTILINE);
+jqpb64_enc:
 		sz = fwrite(out.s, sizeof *out.s, out.l, f);
 		if (sz != (ssize_t)out.l)
 			sz = -1;
-		free(out.s);
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-		sz = fwrite_td(out.s, sizeof *out.s, out.l, f,
-				dflags&TD_DELCTRL, prefix, prefixlen);
-		free(out.s);
+		sz = _fwrite_td(out.s, out.l, f, dflags & TD_DELCTRL,
+			prefix, prefixlen);
 		break;
 	case CONV_TOHDR:
 		sz = mime_write_tohdr(&in, f);
@@ -1759,9 +1566,12 @@ jconvert:
 		sz = mime_write_tohdr_a(&in, f);
 		break;
 	default:
-		sz = fwrite_td(in.s, sizeof *in.s, in.l, f, dflags,
-				prefix, prefixlen);
+		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
 	}
+	if (out.s != NULL)
+		free(out.s);
 jleave:
+	if (in.s != ptr)
+		free(in.s);
 	return sz;
 }

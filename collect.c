@@ -763,6 +763,9 @@ jcont:
 		if (linebuf[0] != escape ||
 				(! (val & val_INTERACT) &&
 				(options & OPT_TILDE_FLAG) == 0)) {
+			/* TODO calls putline(), which *always* appends LF;
+			 * TODO thus, STDIN with -t will ALWAYS end with LF,
+			 * TODO even if no trailing LF and QP CTE */
 			if (putline(collf, linebuf, count) < 0)
 				goto jerr;
 			continue;

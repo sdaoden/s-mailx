@@ -165,7 +165,7 @@ jleave:
 static int
 __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 {
-	int err = 0, do_iconv, lastc;
+	int err = 0, do_iconv;
 	FILE *fi;
 	char const *charset;
 	enum conversion convert;
@@ -264,7 +264,7 @@ jerr_header:		err = errno;
 #endif
 			)
 		lncnt = fsize(fi);
-	for (lastc = EOF;;) {
+	for (;;) {
 		if (convert == CONV_TOQP
 #ifdef HAVE_ICONV
 				|| iconvd != (iconv_t)-1
@@ -275,20 +275,12 @@ jerr_header:		err = errno;
 				break;
 		} else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
 			break;
-		lastc = buf[inlen - 1];
 		if (mime_write(buf, inlen, fo, convert, TD_ICONV, NULL, 0, NULL)
 				< 0) {
 			err = errno;
 			goto jerr;
 		}
 	}
-	/* XXX really suppress a missing final NL via QP = for attachments?? */
-	if (convert == CONV_TOQP && lastc != '\n')
-		if (fwrite("=\n", sizeof(char), 2, fo) != 2 * sizeof(char)) {
-			err = errno;
-			goto jerr;
-		}
-
 	if (ferror(fi))
 		err = EDOM;
 jerr:
@@ -360,7 +352,7 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 }
 
 /*
- * Put the signature file at fo.
+ * Put the signature file at fo. TODO send layer rewrite: *integrate in body*!!
  */
 static int
 put_signature(FILE *fo, int convert)
@@ -427,7 +419,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 
 	fputs("This is a multi-part message in MIME format.\n", fo);
 	if (fsize(fi) != 0) {
-		char *buf, c = '\n';
+		char *buf;
 		size_t sz, bufsize, count;
 
 		fprintf(fo, "\n--%s\n", send_boundary);
@@ -446,6 +438,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 			fflush(fi);
 			count = fsize(fi);
 		}
+
 		for (;;) {
 			if (convert == CONV_TOQP
 #ifdef	HAVE_ICONV
@@ -460,7 +453,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 				if (sz == 0)
 					break;
 			}
-			c = buf[sz - 1];
+
 			if (mime_write(buf, sz, fo, convert,
 					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
 				free(buf);
@@ -470,10 +463,8 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 		free(buf);
 		if (ferror(fi))
 			return -1;
-		if (c != '\n')
-			putc('\n', fo);
 		if (charset != NULL)
-			put_signature(fo, convert); /* XXX if (text/) !! */
+			put_signature(fo, convert);
 	}
 	for (att = hp->h_attach; att != NULL; att = att->a_flink) {
 		if (att->a_msgno) {
@@ -503,7 +494,7 @@ infix(struct header *hp, FILE *fi)
 #endif
 	enum conversion convert;
 	char const *contenttype, *charset = NULL;
-	int do_iconv = 0, lastc = EOF;
+	int do_iconv = 0;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 178, "temporary mail file"));
@@ -612,7 +603,6 @@ infix(struct header *hp, FILE *fi)
 				if (sz == 0)
 					break;
 			}
-			lastc = buf[sz - 1];
 			if (mime_write(buf, sz, nfo, convert,
 					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
 				Fclose(nfo);
@@ -627,8 +617,6 @@ infix(struct header *hp, FILE *fi)
 				return NULL;
 			}
 		}
-		if (convert == CONV_TOQP && lastc != '\n')
-			fwrite("=\n", 1, 2, nfo);
 		free(buf);
 		if (ferror(fi)) {
 			Fclose(nfo);
@@ -759,7 +747,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 	if (subject != NULL) {
 		in.s = subject;
 		in.l = strlen(subject);
-		mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+		mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
 		head.h_subject = out.s;
 	}
 	if (tflag == 0) {
