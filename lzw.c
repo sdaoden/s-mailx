@@ -88,8 +88,7 @@ typedef long code_int;
 typedef long count_int;
 
 typedef u_char char_type;
-static char_type magic_header[] =
-	{'\037', '\235'};		/* 1F 9D */
+static char_type magic_header[] = {0x1F, 0x9D}; /* \037, \235 */
 
 #define	BIT_MASK	0x1f		/* Defines for third byte of header. */
 #define	BLOCK_MASK	0x80
