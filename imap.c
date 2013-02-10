@@ -2863,7 +2863,7 @@ imap_search2(struct mailbox *mp, struct message *m, int count,
 	for (cp = spec; *cp; cp++)
 		c |= *cp;
 	if (c & 0200) {
-		cp = gettcharset();
+		cp = charset_get_lc();
 #ifdef HAVE_ICONV
 		if (asccasecmp(cp, "utf-8")) {
 			iconv_t	it;

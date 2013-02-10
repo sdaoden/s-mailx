@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -120,8 +120,34 @@
 #define _CTA_2(TEST,L)	\
 	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
 
+/*
+ * MIME (mime.c)
+ */
+
 /* Is *C* a quoting character (for *quote-fold* compression) */
 #define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+
+/* Locations of mime.types(5) */
+#define MIME_TYPES_USR	"~/.mime.types"
+#define MIME_TYPES_SYS	"/etc/mime.types"
+
+/* Default *encoding* as enum conversion below */
+#define MIME_DEFAULT_ENCODING	CONV_TOQP
+
+/* Maximum allowed line length in a mail before QP folding is necessary), and
+ * the real limit we go for */
+#define MIME_LINELEN_MAX	1000
+#define MIME_LINELEN_LIMIT	(MIME_LINELEN_MAX - 50)
+
+/* Fallback charsets, if *charset-7bit* and *charset-8bit* or not set, resp. */
+#define CHARSET_7BIT		"US-ASCII"
+#ifdef HAVE_ICONV
+# define CHARSET_8BIT		"UTF-8"
+# define CHARSET_8BIT_VAR	"charset-8bit"
+#else
+# define CHARSET_8BIT		"ISO-8859-1"
+# define CHARSET_8BIT_VAR	"ttycharset"
+#endif
 
 /*
  * Auto-reclaimed string storage (strings.c)
@@ -220,15 +246,6 @@ enum mimecontent {
 	MIME_MULTI,			/* other multipart/ content */
 	MIME_PKCS7,			/* PKCS7 content */
 	MIME_DISCARD			/* content is discarded */
-};
-
-enum mimeclean {
-	MIME_CLEAN	= 000,		/* plain RFC 2822 message */
-	MIME_HIGHBIT	= 001,		/* characters >= 0200 */
-	MIME_LONGLINES	= 002,		/* has lines too long for RFC 2822 */
-	MIME_CTRLCHAR	= 004,		/* contains control characters */
-	MIME_HASNUL	= 010,		/* contains \0 characters */
-	MIME_NOTERMNL	= 020		/* lacks a terminating newline */
 };
 
 enum tdflags {
@@ -387,6 +404,10 @@ struct mimepart {
 	char	*m_partstring;		/* part level string */
 	char	*m_filename;		/* attachment filename */
 };
+
+/* For "pipe-" handlers (based on .m_ct_type_plain) */
+#define MIME_CONTENT_PIPECMD_FORCE_TEXT(CMD)	\
+	((CMD) != NULL && (CMD)[0] == '@' && (CMD)[1] == '\0')
 
 struct message {
 	enum mflag	m_flag;		/* flags */

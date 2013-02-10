@@ -64,9 +64,13 @@ $(SID)$(NAIL): $(OBJ)
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
 md5.o imap.o smtp.o auxlily.o pop3.o junk.o: md5.h
+mime.o: mime_types.h
 
 config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
+
+mime_types.h: mime.types
+	< mime.types > $@ sed '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 mkman.1: nail.1
 	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
@@ -124,7 +128,7 @@ uninstall:
 		$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 
 clean:
-	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 mkrc.rc *~ core log
+	rm -f $(OBJ) $(SID)$(NAIL) mime_types.h mkman.1 mkrc.rc *~ core log
 
 distclean: clean
 	rm -f config.h config.log config.lib config.inc

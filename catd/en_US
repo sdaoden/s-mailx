@@ -17,9 +17,9 @@ $set 1
 14 Commands are:\n
 15 [Invalid Base64 encoding ignored]\n
 16 variable cmd not set\n
-17 Message %2d:\n
+17 [-- Message #%2d -- %lu lines, %lu bytes --]:\n
 18 No messages to pipe.
-19 Message %2d:\n
+19 --- DELETED ---
 20 No value set for "folder"\n
 21 No messages applicable\n
 22 At EOF\n
@@ -182,10 +182,10 @@ $set 1
 171 $Enter filename for part $
 172 $: $
 173 tmpfile
-174 $\nPart $
+174 --- DELETED ---
 175 :\n
 176 Cannot open %s\n
-177 Warning: invalid encoding %s, using 8bit\n
+177 Warning: invalid encoding %s, using base64\n
 178 temporary mail file
 179 Cannot convert from %s to %s\n
 180 temporary mail file
@@ -479,4 +479,6 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 415 Globber <number> 512 byte blocks on the stack
 416 Print statistics about the auto-reclaimed string store
 417 Trace current memory usage afap
+418 Either <show> (default) or <clear> the mime.types cache
+
 

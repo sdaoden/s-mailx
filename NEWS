@@ -1,6 +1,114 @@
 S - n a i l  N e w s
 ====================
 
+- *rfc822-show-all* has been removed.
+  It didn't work properly for more complex MIME structures, like
+  message/rfc822 messages with attachments etc., just as i've seen today
+  on the file(1) mailing list.
+  So, instead of hacking it now i've dropped it and will come back with
+  a better solution when the MIME and send layers have been overhauled.
+  I.e., the real intent was to be able to specify that an embedded
+  message/rfc822 is treated as a *unity*, and that's the goal.
+  (Drop *rfc822-show-all*, 2013-01-23)
+  [The manual will be adjusted in a different commit.]
+
+- *rfc822-no-body-from_* has been renamed to *rfc822-body-from_*.
+  It thus must be set explicitly.
+  On the other hand it now catches all cases...
+  (*rfc822-no-body-from_* -> *rfc822-body-from_*, 2013-01-23)
+  [The manual will be adjusted in a different commit.]
+
+- The new *charset-7bit* (defaults to US-ASCII) and *charset-8bit*
+  (defaults to UTF-8) have been introduced.
+  These are used if seven bit clean data is to be sent, and no
+  *sendcharsets* are set or the convertion of all of them failed,
+  respectively:
+
+  - There is no functional change unless there is iconv(3) support.
+  - There is no functional change unless you set them.
+  (Introduce *charset-8bit* and *charset-7bit* variables.., 2013-01-18)
+  [The manual will be adjusted in a different commit.]
+
+  In addition the new *sendcharsets-else-ttycharset* variable can now be
+  used to automatically use *ttycharset* as a *sendcharset(s)*,
+  regardless of the new *charset-8bit* variable.
+  (Add *sendcharsets-else-ttycharset* variable, 2013-01-24)
+  [The manual will be adjusted in a different commit.]
+
+  Please reread the manual section "Character sets".
+
+- An attempt was made to improve MIME Content-XY: detection.
+  It should be more RFC compliant, and just overall better :);
+  a simple one-pass classifier cannot match libmagic(3), of course.
+
+  This changeset removes support of the long obsoleted (4fee1ef,
+  2005-01-06) *charset* variable, as well as for the
+  *maximum-unencoded-line-length* variable that has been introduced in
+  (48a652bd, 2005-07-26).
+
+  For S-nail v14.0 it'll be no longer necessary to do
+
+    $ tr -d '\015' < input | s-nail ...
+
+  to transport files which use the $-DOS (terminal) newline (sequence).
+  We still depend upon *sendcharsets* for a while, though.
+  (Rewrite file-content classification.., 2013-01-02)
+
+- The new *mime-counter-evidence* variable can be used to force
+  a classification of non-text MIME parts (attachments) by their
+  filename, i.e., a "reverse-classification" just as would be performed
+  if S-nail(1) would itself *send* the file(name).  This can help
+  against some stupid MUAs (Apple Mail?) that send .diff etc. files as
+  `application/octet-stream' parts etc.
+
+  At a later time this may become a valued option, causing a temporary
+  save of unnamed attachments followed by a MIME classification of the
+  file contents, followed by forced treatment as plain text if it seems
+  to be human readable.  But not yet.  Just to warn you.
+  (Add *mime-counter-evidence* variable.., 2012-12-29)
+
+- The special "pipe-" command "@" can be used to force treatment of
+  a MIME message part as plain text (e.g.,
+  'set pipe-application/pgp-signature=@' will henceforth print those
+  signatures inline and as plain text).
+  (Introduce the special "@" "pipe-" command, 2012-12-27)
+
+- The MIME types (as from mime.types(5)) will now be cached.  Before
+  all possible sources would have been opened, read and parsed for each
+  and every message part that required detection of the MIME
+  Content-Type:.
+  The new "mimetypes" command can be used to show or clear that cache.
+  (Add mime.types(5) cache.., 2012-12-27)
+
+- A small set of MIME types (template: ./mime.types) will now become
+  compiled into S-nail(1), and be used as a fallback if there are no
+  ~/.mime.types and/or no /etc/mime.types, or those didn't contain
+  a matching type.  E.g., NetBSD 6 doesn't ship a default database.
+  Also, file extensions will be matched case-insensitively (case of
+  attribute values is not specified afaik?).
+  (Introduce compiled-in mime.types(5).., 2012-12-21)
+
+- The undocumented *charset7* variable was removed.
+
+- The "Message X:" display leader has been changed and will henceforth
+  appear like "[Message -- X lines, Y bytes]:".
+  These lines can no longer be suppressed by setting the *quiet*
+  option (which was yet possible for print and top, though undocumented).
+  (Change "Message X:" display message.., 2012-12-20)
+
+- When displaying multipart messages the "Part X:" introductional string
+  has been changed; if the Content-type: header is not *retain*ed, then
+  this string will include the part's type and size.  Ditto for
+  Content-disposition: and a mentioned attachment filename.
+  This is a first step only, for the final version the MIME and send
+  layers will have to be adjusted.  But the string will be matchable via
+  a "^[-- #.* --]$" regular expression from now on.
+  (Change "Part X:" display message.., 2012-12-20)
+
+- MIME boundaries in multipart messages are now handled better in that
+  no boundary string should get through to the display.
+ (Tweak MIME boundary detection.., 2012-12-20)
+
 - A couple of long standing, even pre-Heirloom mailx(1) memory leaks and
   segmentation violations, most of them related to configurations
   without alloca(3) support, as well as one leak that i have introduced

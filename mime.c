@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -41,6 +41,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <time.h>
 #ifdef HAVE_WCTYPE_H
 # include <wctype.h>
 #endif
@@ -53,24 +54,39 @@
  * MIME support functions.
  */
 
-/*
- * You won't guess what these are for.
- */
-static const char basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char const *mimetypes_world = "/etc/mime.types";
-static char const *mimetypes_user = "~/.mime.types";
+#define _CHARSET()	((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
+
+struct mtnode {
+	struct mtnode	*mt_next;
+	size_t		mt_mtlen;	/* Length of MIME type string */
+	char		mt_line[VFIELD_SIZE(8)];
+};
+
+static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+			*const _mt_sources[] = {
+		MIME_TYPES_USR, MIME_TYPES_SYS, NULL
+	},
+			*const _mt_bltin[] = {
+#include "mime_types.h"
+		NULL
+	};
+
+struct mtnode	*_mt_list;
+char		*_cs_iter_base, *_cs_iter;
+
+/* Initialize MIME type list */
+static void		_mt_init(void);
+static void		__mt_add_line(char const *line, struct mtnode **tail);
+
+/* Get the conversion that matches *encoding* */
+static enum conversion	_conversion_by_encoding(void);
 
 static int mustquote_body(int c);
 static int mustquote_hdr(const char *cp, int wordstart, int wordend);
 static int mustquote_inhdrq(int c);
 static size_t	delctrl(char *cp, size_t sz);
-static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
 static int is_this_enc(const char *line, const char *encoding);
-static char *mime_tline(char *x, char *l);
-static char *mime_type(char *ext, char const *filename);
-static enum mimeclean mime_isclean(FILE *f);
-static enum conversion gettextconversion(void);
 static char *ctohex(unsigned char c, char *hex);
 static size_t mime_write_toqp(struct str *in, FILE *fo, int (*mustquote)(int));
 static void mime_str_toqp(struct str *in, struct str *out,
@@ -86,12 +102,109 @@ static void addconv(char **buf, size_t *sz, size_t *pos,
 static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
 		enum tdflags flags, char *prefix, size_t prefixlen);
 
+static void
+_mt_init(void)
+{
+	struct mtnode *tail = NULL;
+	char *line = NULL;
+	size_t linesize = 0;
+	char const *const*srcs;
+	FILE *fp;
+
+	for (srcs = _mt_sources; *srcs != NULL; ++srcs) {
+		char const *fn = file_expand(*srcs);
+		if (fn == NULL)
+			continue;
+		if ((fp = Fopen(fn, "r")) == NULL) {
+			/*fprintf(stderr, tr(176, "Cannot open %s\n"), fn);*/
+			continue;
+		}
+		while (fgetline(&line, &linesize, NULL, NULL, fp, 0))
+			__mt_add_line(line, &tail);
+		Fclose(fp);
+	}
+	if (line != NULL)
+		free(line);
+
+	for (srcs = _mt_bltin; *srcs != NULL; ++srcs)
+		__mt_add_line(*srcs, &tail);
+}
+
+static void
+__mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
+{
+	char const *type;
+	size_t tlen, elen;
+	struct mtnode *mtn;
+
+	if (! alphachar(*line))
+		goto jleave;
+
+	type = line;
+	while (blankchar(*line) == 0 && *line != '\0')
+		++line;
+	if (*line == '\0')
+		goto jleave;
+	tlen = (size_t)(line - type);
+
+	while (blankchar(*line) != 0 && *line != '\0')
+		++line;
+	if (*line == '\0')
+		goto jleave;
+
+	elen = strlen(line);
+	if (line[elen - 1] == '\n' && line[--elen] == '\0')
+		goto jleave;
+
+	mtn = smalloc(sizeof(struct mtnode) +
+			VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 +
+			elen + 1);
+	if (*tail != NULL)
+		(*tail)->mt_next = mtn;
+	else
+		_mt_list = mtn;
+	*tail = mtn;
+	mtn->mt_next = NULL;
+	mtn->mt_mtlen = tlen;
+	memcpy(mtn->mt_line, type, tlen);
+	mtn->mt_line[tlen] = '\0';
+	++tlen;
+	memcpy(mtn->mt_line + tlen, line, elen);
+	tlen += elen;
+	mtn->mt_line[tlen] = '\0';
+jleave:	;
+}
+
+static enum conversion
+_conversion_by_encoding(void)
+{
+	char const *cp;
+	enum conversion ret;
+
+	if ((cp = value("encoding")) == NULL)
+		ret = MIME_DEFAULT_ENCODING;
+	else if (strcmp(cp, "quoted-printable") == 0)
+		ret = CONV_TOQP;
+	else if (strcmp(cp, "8bit") == 0)
+		ret = CONV_8BIT;
+	else if (strcmp(cp, "base64") == 0)
+		ret = CONV_TOB64;
+	else {
+		fprintf(stderr, tr(177,
+			"Warning: invalid encoding %s, using base64\n"), cp);
+		ret = CONV_TOB64;
+	}
+	return (ret);
+}
+
 /*
  * Check if c must be quoted inside a message's body.
  */
 static int 
 mustquote_body(int c)
 {
+	/* FIXME use lookup table, this encodes too much, possibly worse */
+	/* FIXME encodes \t, does NOT encode \x0D\n as \x0D\x0A[=] */
 	if (c != '\n' && (c < 040 || c == '=' || c >= 0177))
 		return 1;
 	return 0;
@@ -140,48 +253,6 @@ delctrl(char *cp, size_t sz)
 	return y;
 }
 
-/*
- * Get the character set dependant on the conversion.
- */
-static char const *
-getcharset(int isclean)
-{
-	char const *charset;
-
-	if (isclean & (MIME_CTRLCHAR|MIME_HASNUL))
-		charset = NULL;
-	else if (isclean & MIME_HIGHBIT) {
-		charset = (wantcharset && wantcharset != (char *)-1) ?
-			wantcharset : value("charset");
-		if (charset == NULL)
-			charset = defcharset;
-	} else {
-		/*
-		 * This variable shall remain undocumented because
-		 * only experts should change it.
-		 */
-		charset = value("charset7");
-		if (charset == NULL) {
-			charset = us_ascii;
-		}
-	}
-	return (charset);
-}
-
-/*
- * Get the setting of the terminal's character set.
- */
-char const *
-gettcharset(void)
-{
-	char const *t;
-
-	if ((t = value("ttycharset")) == NULL)
-		if ((t = value("charset")) == NULL)
-			t = defcharset;
-	return (t);
-}
-
 static int 
 has_highbit(const char *s)
 {
@@ -206,42 +277,145 @@ name_highbit(struct name *np)
 }
 
 char const *
-need_hdrconv(struct header *hp, enum gfield w)
+charset_get_7bit(void)
 {
-	if (w & GIDENT) {
-		if (hp->h_from) {
-			if (name_highbit(hp->h_from))
-				goto needs;
-		} else if (has_highbit(myaddrs(hp)))
-			goto needs;
-		if (hp->h_organization) {
-			if (has_highbit(hp->h_organization))
-				goto needs;
-		} else if (has_highbit(value("ORGANIZATION")))
-			goto needs;
-		if (hp->h_replyto) {
-			if (name_highbit(hp->h_replyto))
-				goto needs;
-		} else if (has_highbit(value("replyto")))
-			goto needs;
-		if (hp->h_sender) {
-			if (name_highbit(hp->h_sender))
-				goto needs;
-		} else if (has_highbit(value("sender")))
-			goto needs;
-	}
-	if (w & GTO && name_highbit(hp->h_to))
-		goto needs;
-	if (w & GCC && name_highbit(hp->h_cc))
-		goto needs;
-	if (w & GBCC && name_highbit(hp->h_bcc))
-		goto needs;
-	if (w & GSUBJECT && has_highbit(hp->h_subject))
-		goto needs;
-	return NULL;
-needs:	return getcharset(MIME_HIGHBIT);
+	char const *t;
+
+	if ((t = value("charset-7bit")) == NULL)
+		t = CHARSET_7BIT;
+	return (t);
 }
 
+char const *
+charset_get_8bit(void)
+{
+	char const *t;
+
+	if ((t = value(CHARSET_8BIT_VAR)) == NULL)
+		t = CHARSET_8BIT;
+	return (t);
+}
+
+char const *
+charset_get_lc(void)
+{
+	char const *t;
+
+	if ((t = value("ttycharset")) == NULL)
+		t = CHARSET_8BIT;
+	return (t);
+}
+
+void
+charset_iter_reset(char const *a_charset_to_try_first)
+{
+	char const *sarr[3];
+	size_t sarrl[3], len;
+	char *cp;
+
+	sarr[0] = a_charset_to_try_first;
+#ifdef HAVE_ICONV
+	if ((sarr[1] = value("sendcharsets")) == NULL &&
+			value("sendcharsets-else-ttycharset"))
+		sarr[1] = charset_get_lc();
+#endif
+	sarr[2] = charset_get_8bit();
+
+	sarrl[2] = len = strlen(sarr[2]);
+#ifdef HAVE_ICONV
+	if ((cp = UNCONST(sarr[1])) != NULL)
+		len += (sarrl[1] = strlen(cp));
+	else
+		sarrl[1] = 0;
+	if ((cp = UNCONST(sarr[0])) != NULL)
+		len += (sarrl[0] = strlen(cp));
+	else
+		sarrl[0] = 0;
+#endif
+
+	_cs_iter_base = cp = salloc(len + 1);
+
+#ifdef HAVE_ICONV
+	if ((len = sarrl[0]) != 0) {
+		memcpy(cp, sarr[0], len);
+		cp[len] = ',';
+		cp += ++len;
+	}
+	if ((len = sarrl[1]) != 0) {
+		memcpy(cp, sarr[1], len);
+		cp[len] = ',';
+		cp += ++len;
+	}
+#endif
+	len = sarrl[2];
+	memcpy(cp, sarr[2], len);
+	cp[len] = '\0';
+	_cs_iter = NULL;
+}
+
+char const *
+charset_iter_next(void)
+{
+	return (_cs_iter = strcomma(&_cs_iter_base, 1));
+}
+
+char const *
+charset_iter_current(void)
+{
+	return _cs_iter;
+}
+
+void
+charset_iter_recurse(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
+{
+	outer_storage[0] = _cs_iter_base;
+	outer_storage[1] = _cs_iter;
+}
+
+void
+charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
+{
+	_cs_iter_base = outer_storage[0];
+	_cs_iter = outer_storage[1];
+}
+
+char const *
+need_hdrconv(struct header *hp, enum gfield w)
+{
+	char const *ret = NULL;
+
+	if (w & GIDENT) {
+		if (hp->h_from != NULL) {
+			if (name_highbit(hp->h_from))
+				goto jneeds;
+		} else if (has_highbit(myaddrs(NULL)))
+			goto jneeds;
+		if (hp->h_organization) {
+			if (has_highbit(hp->h_organization))
+				goto jneeds;
+		} else if (has_highbit(value("ORGANIZATION")))
+			goto jneeds;
+		if (hp->h_replyto) {
+			if (name_highbit(hp->h_replyto))
+				goto jneeds;
+		} else if (has_highbit(value("replyto")))
+			goto jneeds;
+		if (hp->h_sender) {
+			if (name_highbit(hp->h_sender))
+				goto jneeds;
+		} else if (has_highbit(value("sender")))
+			goto jneeds;
+	}
+	if (w & GTO && name_highbit(hp->h_to))
+		goto jneeds;
+	if (w & GCC && name_highbit(hp->h_cc))
+		goto jneeds;
+	if (w & GBCC && name_highbit(hp->h_bcc))
+		goto jneeds;
+	if (w & GSUBJECT && has_highbit(hp->h_subject))
+jneeds:		ret = _CHARSET();
+	return (ret);
+}
 
 static int
 is_this_enc(const char *line, const char *encoding)
@@ -277,37 +451,6 @@ mime_getenc(char *p)
 	if (is_this_enc(p, "quoted-printable"))
 		return MIME_QP;
 	return MIME_NONE;
-}
-
-/*
- * Get the mime content from a Content-Type header field, other parameters
- * already stripped.
- */
-int 
-mime_getcontent(char *s)
-{
-	if (strchr(s, '/') == NULL)	/* for compatibility with non-MIME */
-		return MIME_TEXT;
-	if (asccasecmp(s, "text/plain") == 0)
-		return MIME_TEXT_PLAIN;
-	if (asccasecmp(s, "text/html") == 0)
-		return MIME_TEXT_HTML;
-	if (ascncasecmp(s, "text/", 5) == 0)
-		return MIME_TEXT;
-	if (asccasecmp(s, "message/rfc822") == 0)
-		return MIME_822;
-	if (ascncasecmp(s, "message/", 8) == 0)
-		return MIME_MESSAGE;
-	if (asccasecmp(s, "multipart/alternative") == 0)
-		return MIME_ALTERNATIVE;
-	if (asccasecmp(s, "multipart/digest") == 0)
-		return MIME_DIGEST;
-	if (ascncasecmp(s, "multipart/", 10) == 0)
-		return MIME_MULTI;
-	if (asccasecmp(s, "application/x-pkcs7-mime") == 0 ||
-				asccasecmp(s, "application/pkcs7-mime") == 0)
-		return MIME_PKCS7;
-	return MIME_UNKNOWN;
 }
 
 /*
@@ -377,222 +520,332 @@ mime_getparam(char *param, char *h)
 	return r;
 }
 
-/*
- * Get the boundary out of a Content-Type: multipart/xyz header field.
- */
 char *
-mime_getboundary(char *h)
+mime_get_boundary(char *h, size_t *len)
 {
-	char *p, *q;
+	char *q = NULL, *p;
 	size_t sz;
 
-	if ((p = mime_getparam("boundary", h)) == NULL)
-		return NULL;
-	sz = strlen(p);
-	q = salloc(sz + 3);
-	memcpy(q, "--", 2);
-	memcpy(q + 2, p, sz);
-	*(q + sz + 2) = '\0';
-	return q;
+	if ((p = mime_getparam("boundary", h)) != NULL) {
+		sz = strlen(p);
+		if (len != NULL)
+			*len = sz + 2;
+		q = salloc(sz + 3);
+		q[0] = q[1] = '-';
+		memcpy(q + 2, p, sz);
+		*(q + sz + 2) = '\0';
+	}
+	return (q);
 }
 
-/*
- * Get a line like "text/html html" and look if x matches the extension.
- */
-static char *
-mime_tline(char *x, char *l)
-{
-	char *type, *n;
-	int match = 0;
-
-	if ((*l & 0200) || alphachar(*l & 0377) == 0)
-		return NULL;
-	type = l;
-	while (blankchar(*l & 0377) == 0 && *l != '\0')
-		l++;
-	if (*l == '\0')
-		return NULL;
-	*l++ = '\0';
-	while (blankchar(*l & 0377) != 0 && *l != '\0')
-		l++;
-	if (*l == '\0')
-		return NULL;
-	while (*l != '\0') {
-		n = l;
-		while (whitechar(*l & 0377) == 0 && *l != '\0')
-			l++;
-		if (*l != '\0')
-			*l++ = '\0';
-		if (strcmp(x, n) == 0) {
-			match = 1;
-			break;
-		}
-		while (whitechar(*l & 0377) != 0 && *l != '\0')
-			l++;
-	}
-	if (match != 0) {
-		n = salloc(strlen(type) + 1);
-		strcpy(n, type);
-		return n;
-	}
-	return NULL;
-}
-
-/*
- * Check the given MIME type file for extension ext.
- */
-static char *
-mime_type(char *ext, char const *filename)
-{
-	FILE *f;
-	char *line = NULL;
-	size_t linesize = 0;
-	char *type = NULL;
-
-	if (filename == NULL || (f = Fopen(filename, "r")) == NULL)
-		return NULL;
-	while (fgetline(&line, &linesize, NULL, NULL, f, 0)) {
-		if ((type = mime_tline(ext, line)) != NULL)
-			break;
-	}
-	Fclose(f);
-	if (line)
-		free(line);
-	return type;
-}
-
-/*
- * Return the Content-Type matching the extension of name.
- */
 char *
-mime_filecontent(char *name)
+mime_create_boundary(void)
 {
-	char *ext, *content;
+	time_t now;
+	char *bp;
 
-	if ((ext = strrchr(name, '.')) == NULL || *++ext == '\0')
-		return NULL;
-	if ((content = mime_type(ext, expand(mimetypes_user))) != NULL)
-		return content;
-	if ((content = mime_type(ext, mimetypes_world)) != NULL)
-		return content;
-	return NULL;
+	time(&now);
+	bp = salloc(48);
+	snprintf(bp, 48, "=_%011ld-%s=_", (long)now, getrandstring(47 - 16));
+	return bp;
 }
 
-/*
- * Check file contents.
- */
-static enum mimeclean
-mime_isclean(FILE *f)
-{
-	long initial_pos;
-	unsigned curlen = 1, maxlen = 0, limit = 950;
-	enum mimeclean isclean = 0;
-	char	*cp;
-	int c = EOF, lastc;
-
-	initial_pos = ftell(f);
-	do {
-		lastc = c;
-		c = getc(f);
-		curlen++;
-		if (c == '\n' || c == EOF) {
-			/*
-			 * RFC 821 imposes a maximum line length of 1000
-			 * characters including the terminating CRLF
-			 * sequence. The configurable limit must not
-			 * exceed that including a safety zone.
-			 */
-			if (curlen > maxlen)
-				maxlen = curlen;
-			curlen = 1;
-		} else if (c & 0200) {
-			isclean |= MIME_HIGHBIT;
-		} else if (c == '\0') {
-			isclean |= MIME_HASNUL;
-			break;
-		} else if ((c < 040 && (c != '\t' && c != '\f')) || c == 0177) {
-			isclean |= MIME_CTRLCHAR;
-		}
-	} while (c != EOF);
-	if (lastc != '\n')
-		isclean |= MIME_NOTERMNL;
-	clearerr(f);
-	fseek(f, initial_pos, SEEK_SET);
-	if ((cp = value("maximum-unencoded-line-length")) != NULL)
-		limit = (unsigned)atoi(cp);
-	if (limit > 950)
-		limit = 950;
-	if (maxlen > limit)
-		isclean |= MIME_LONGLINES;
-	return isclean;
-}
-
-/*
- * Get the conversion that matches the encoding specified in the environment.
- */
-static enum conversion
-gettextconversion(void)
-{
-	char *p;
-	int convert;
-
-	if ((p = value("encoding")) == NULL)
-		return CONV_8BIT;
-	if (strcmp(p, "quoted-printable") == 0)
-		convert = CONV_TOQP;
-	else if (strcmp(p, "8bit") == 0)
-		convert = CONV_8BIT;
-	else {
-		fprintf(stderr, tr(177,
-			"Warning: invalid encoding %s, using 8bit\n"), p);
-		convert = CONV_8BIT;
-	}
-	return convert;
-}
-
-/*TODO Dobson: be037047c, contenttype==NULL||"text"==NULL control flow! */
 int
-get_mime_convert(FILE *fp, char **contenttype, char const **charset,
-		enum mimeclean *isclean, int dosign)
+mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
+	int *do_iconv)
 {
-	int convert;
+	/* TODO In the future the handling of charsets is likely to change.
+	 * TODO If no *sendcharsets* are set then for text parts LC_ALL /
+	 * TODO *ttycharset* is simply passed through (ditto attachments unless
+	 * TODO specific charsets have been set in per-attachment level), i.e.,
+	 * TODO no conversion at all.
+	 * TODO If *sendcharsets* is set, then the input is converted to the
+	 * TODO desired sendcharset, and once the charset that can handle the
+	 * TODO input has been found the MIME classification takes place *on
+	 * TODO that converted data* and once.
+	 * TODO Until then the MIME classification takes place on the input
+	 * TODO data, i.e., before actual charset conversion, though the MIME
+	 * TODO classifier may adjust the output character set, though on false
+	 * TODO assumptions that may not always work for the desired output
+	 * TODO charset (???).
+	 * TODO The new approach sounds more sane to me whatsoever.
+	 * TODO It has the side effect that iconv() is applied to the text even
+	 * TODO if that is 7bit clean, however, *iff* *sendcharsets* is set.
+	 * TODO drop *charset* and *do_iconv* parameters, then; need to report
+	 * TODO a "classify as binary charset", though.
+	 * TODO And note that even the new approach will not allow RFC 2045
+	 * TODO compatible base64 \n -> \r\n conversion even if we would make
+	 * TODO a difference for _ISTXT, because who knows wether we deal with
+	 * TODO multibyte encoded data?  We would need to be multibyte-aware!!
+	 * TODO BTW., after the MIME/send layer rewrite we could use a MIME
+	 * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
+	 * TODO and report that state to the outer world */
+#define F_		"From "
+#define F_SIZEOF	(sizeof(F_) - 1)
 
-	*isclean = mime_isclean(fp);
-	if (*isclean & MIME_HASNUL ||
-			(*contenttype &&
-			ascncasecmp(*contenttype, "text/", 5))) {
-		convert = CONV_TOB64;
-		if (*contenttype == NULL ||
-				ascncasecmp(*contenttype, "text/", 5) == 0)
-			*contenttype = "application/octet-stream";
-		*charset = NULL;
-	} else if (*isclean & (MIME_LONGLINES|MIME_CTRLCHAR|MIME_NOTERMNL) ||
-			dosign)
-		convert = CONV_TOQP;
-	else if (*isclean & MIME_HIGHBIT)
-		convert = gettextconversion();
-	else
-		convert = CONV_7BIT;
-	if (*contenttype == NULL ||
-			ascncasecmp(*contenttype, "text/", 5) == 0) {
-		*charset = getcharset(*isclean);
-		if (wantcharset == (char *)-1) {
-			*contenttype = "application/octet-stream";
-			*charset = NULL;
-		} if (*isclean & MIME_CTRLCHAR) {
-			convert = CONV_TOB64;
+	char f_buf[F_SIZEOF], *f_p = f_buf;
+	enum {	_CLEAN		= 0,	/* Plain RFC 2822 message */
+		_NCTT		= 1<<0,	/* *contenttype == NULL */
+		_ISTXT		= 1<<1,	/* *contenttype =~ text/ */
+		_HIGHBIT	= 1<<2,	/* Not 7bit clean */
+		_LONGLINES	= 1<<3,	/* MIME_LINELEN_LIMIT exceed. */
+		_CTRLCHAR	= 1<<4,	/* Control characters seen */
+		_HASNUL		= 1<<5,	/* Contains \0 characters */
+		_NOTERMNL	= 1<<6,	/* Lacks a final newline */
+		_TRAILWS	= 1<<7,	/* Blanks before NL */
+		_FROM_		= 1<<8	/* ^From_ seen */
+	} ctt = _CLEAN;
+	enum conversion convert;
+	sl_it curlen;
+	int c, lastc;
+
+	assert(ftell(fp) == 0x0l);
+
+	*do_iconv = 0;
+
+	if (*contenttype == NULL)
+		ctt = _NCTT;
+	else if (ascncasecmp(*contenttype, "text/", 5) == 0)
+		ctt = _ISTXT;
+	convert = _conversion_by_encoding();
+
+	if (fsize(fp) == 0)
+		goto j7bit;
+
+	/* We have to inspect the file content */
+	for (curlen = 0, c = EOF;; ++curlen) {
+		lastc = c;
+		c = getc(fp);
+
+		if (c == '\0') {
+			ctt |= _HASNUL;
+			break;
+		}
+		if (c == '\n' || c == EOF) {
+			if (curlen >= MIME_LINELEN_LIMIT)
+				ctt |= _LONGLINES;
+			if (c == EOF)
+				break;
+			if (blankchar(lastc))
+				ctt |= _TRAILWS;
+			f_p = f_buf;
+			curlen = -1;
+			continue;
+		}
+		/*
+		 * A bit hairy is handling of \r=\x0D=CR.
+		 * RFC 2045, 6.7: Control characters other than TAB, or
+		 * CR and LF as parts of CRLF pairs, must not appear.
+		 * \r alone does not force _CTRLCHAR below since we cannot peek
+		 * the next character.
+		 * Thus right here, inspect the last seen character for if its
+		 * \r and set _CTRLCHAR in a delayed fashion
+		 */
+		/*else*/ if (lastc == '\r')
+			ctt |= _CTRLCHAR;
+
+		/* Control character? */
+		if (c < 0x20 || c == 0x7F) {
+			/* RFC 2045, 6.7, as above ... */
+			if (c != '\t' && c != '\r')
+				ctt |= _CTRLCHAR;
 			/*
-			 * RFC 2046 forbids control characters other than
-			 * ^I or ^L in text/plain bodies. However, some
-			 * obscure character sets actually contain these
-			 * characters, so the content type can be set.
+			 * If there is a escape sequence in backslash notation
+			 * defined for this in ANSI X3.159-1989 (ANSI C89),
+			 * don't treat it as a control for real.
+			 * I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.
+			 * Don't follow libmagic(1) in respect to \v=\x0B=VT.
+			 * \f=\x0C=NP; do ignore \e=\x1B=ESC.
 			 */
-			if ((*contenttype = value("contenttype-cntrl")) == NULL)
-				*contenttype = "application/octet-stream";
-		} else if (*contenttype == NULL)
-			*contenttype = "text/plain";
+			if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
+				continue;
+			ctt |= _HASNUL; /* Force base64 */
+			break;
+		} else if (c & 0x80) {
+			ctt |= _HIGHBIT;
+			/* TODO count chars with HIGHBIT? libmagic?
+			 * TODO try encode part - base64 if bails? */
+			if ((ctt & (_NCTT|_ISTXT)) == 0) { /* TODO _NCTT?? */
+				ctt |= _HASNUL; /* Force base64 */
+				break;
+			}
+		} else if ((ctt & _FROM_) == 0 && curlen < (sl_it)F_SIZEOF) {
+			*f_p++ = (char)c;
+			if (curlen == (sl_it)(F_SIZEOF - 1) &&
+					(size_t)(f_p - f_buf) == F_SIZEOF &&
+					memcmp(f_buf, F_, F_SIZEOF) == 0)
+				ctt |= _FROM_;
+		}
 	}
-	return convert;
+	if (lastc != '\n')
+		ctt |= _NOTERMNL;
+	rewind(fp);
+
+	if (ctt & _HASNUL) {
+		convert = CONV_TOB64;
+		if (ctt & (_NCTT|_ISTXT))
+			*contenttype = "application/octet-stream";
+		/* XXX Set *charset=binary only if not yet set as not to loose
+		 * XXX UTF-16 etc. character set information?? */
+		if (*charset == NULL)
+			*charset = "binary";
+		goto jleave;
+	}
+
+	if (ctt & (_LONGLINES|_CTRLCHAR|_NOTERMNL|_TRAILWS|_FROM_)) {
+		convert = CONV_TOQP;
+		goto jstepi;
+	}
+	if (ctt & _HIGHBIT) {
+jstepi:		if (ctt & (_NCTT|_ISTXT))
+			*do_iconv = (ctt & _HIGHBIT) != 0;
+	} else
+j7bit:		convert = CONV_7BIT;
+	if (ctt & _NCTT)
+		*contenttype = "text/plain";
+
+	/* Not an attachment with specified charset? */
+	if (*charset == NULL)
+		*charset = (ctt & _HIGHBIT) ? _CHARSET() : charset_get_7bit();
+jleave:
+	return (convert);
+#undef F_
+#undef F_SIZEOF
+}
+
+enum mimecontent
+mime_classify_content_of_part(struct mimepart const *mip)
+{
+	enum mimecontent mc = MIME_UNKNOWN;
+	char const *ct = mip->m_ct_type_plain;
+
+	if (asccasecmp(ct, "application/octet-stream") == 0 &&
+			mip->m_filename != NULL &&
+			value("mime-counter-evidence")) {
+		ct = mime_classify_content_type_by_fileext(mip->m_filename);
+		if (ct == NULL)
+			/* TODO how about let *mime-counter-evidence* have
+			 * TODO a value, and if set, saving the attachment in
+			 * TODO a temporary file that mime_classify_file() can
+			 * TODO examine, and using MIME_TEXT if that gives us
+			 * TODO something that seems to be human readable?! */
+			goto jleave;
+	}
+	if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
+		mc = MIME_TEXT;
+	else if (asccasecmp(ct, "text/plain") == 0)
+		mc = MIME_TEXT_PLAIN;
+	else if (asccasecmp(ct, "text/html") == 0)
+		mc = MIME_TEXT_HTML;
+	else if (ascncasecmp(ct, "text/", 5) == 0)
+		mc = MIME_TEXT;
+	else if (asccasecmp(ct, "message/rfc822") == 0)
+		mc = MIME_822;
+	else if (ascncasecmp(ct, "message/", 8) == 0)
+		mc = MIME_MESSAGE;
+	else if (asccasecmp(ct, "multipart/alternative") == 0)
+		mc = MIME_ALTERNATIVE;
+	else if (asccasecmp(ct, "multipart/digest") == 0)
+		mc = MIME_DIGEST;
+	else if (ascncasecmp(ct, "multipart/", 10) == 0)
+		mc = MIME_MULTI;
+	else if (asccasecmp(ct, "application/x-pkcs7-mime") == 0 ||
+			asccasecmp(ct, "application/pkcs7-mime") == 0)
+		mc = MIME_PKCS7;
+jleave:
+	return (mc);
+}
+
+char *
+mime_classify_content_type_by_fileext(char const *name)
+{
+	char *content = NULL;
+	struct mtnode *mtn;
+	size_t nlen;
+
+	if ((name = strrchr(name, '.')) == NULL || *++name == '\0')
+		goto jleave;
+
+	if (_mt_list == NULL)
+		_mt_init();
+
+	nlen = strlen(name);
+	for (mtn = _mt_list; mtn != NULL; mtn = mtn->mt_next) {
+		char const *ext = mtn->mt_line + mtn->mt_mtlen + 1,
+			*cp = ext;
+		do {
+			while (! whitechar(*cp) && *cp != '\0')
+				++cp;
+			/* Better to do case-insensitive comparison on
+			 * extension, since the RFC doesn't specify case of
+			 * attribute values? */
+			if (nlen == (size_t)(cp - ext) &&
+					ascncasecmp(name, ext, nlen) == 0) {
+				content = savestrbuf(mtn->mt_line,
+						mtn->mt_mtlen);
+				goto jleave;
+			}
+			while (whitechar(*cp) && *cp != '\0')
+				++cp;
+			ext = cp;
+		} while (*ext != '\0');
+	}
+jleave:
+	return (content);
+}
+
+int
+cmimetypes(void *v)
+{
+	char **argv = v;
+	struct mtnode *mtn;
+
+	if (*argv == NULL)
+		goto jlist;
+	if (argv[1] != NULL)
+		goto jerr;
+	if (asccasecmp(*argv, "show") == 0)
+		goto jlist;
+	if (asccasecmp(*argv, "clear") == 0)
+		goto jclear;
+jerr:
+	fprintf(stderr, "Synopsis: mimetypes: %s\n", tr(418,
+		"Either <show> (default) or <clear> the mime.types cache"));
+	v = NULL;
+jleave:
+	return (v == NULL ? STOP : OKAY);
+
+jlist:	{
+	FILE *fp;
+	char *cp;
+	size_t l;
+
+	if (_mt_list == NULL)
+		_mt_init();
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		v = NULL;
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+	for (l = 0, mtn = _mt_list; mtn != NULL; ++l, mtn = mtn->mt_next)
+		fprintf(fp, "%s\t%s\n", mtn->mt_line,
+			mtn->mt_line + mtn->mt_mtlen + 1);
+
+	page_or_print(fp, l);
+	Fclose(fp);
+	}
+	goto jleave;
+
+jclear:
+	while ((mtn = _mt_list) != NULL) {
+		_mt_list = mtn->mt_next;
+		free(mtn);
+	}
+	goto jleave;
 }
 
 /*
@@ -753,7 +1006,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
 	crest.s = NULL;
 	crest.l = 0;
-	tcs = gettcharset();
+	tcs = charset_get_lc();
 	maxstor = in->l;
 	out->s = smalloc(maxstor + 1);
 	out->l = 0;
@@ -899,18 +1152,17 @@ mime_write_tohdr(struct str *in, FILE *fo)
 {
 	char buf[B64_LINESIZE],
 		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
-	char const *charset, *charset7;
+	char const *charset7, *charset;
 	struct str cin, cout;
-	size_t sz = 0, col = 0, wr, charsetlen, charset7len;
+	size_t sz = 0, col = 0, wr, charsetlen;
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
-	charset = getcharset(MIME_HIGHBIT);
-	if ((charset7 = value("charset7")) == NULL)
-		charset7 = us_ascii;
+	charset7 = charset_get_7bit();
+	charset = _CHARSET();
+	wr = strlen(charset7);
 	charsetlen = strlen(charset);
-	charset7len = strlen(charset7);
-	charsetlen = smax(charsetlen, charset7len);
+	charsetlen = MAX(charsetlen, wr);
 	upper = in->s + in->l;
 
 	b = 0;

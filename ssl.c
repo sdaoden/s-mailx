@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -190,7 +190,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 	}
 	rm(cp);
 	Ftfree(&cp);
-	boundary = makeboundary();
+	boundary = mime_create_boundary();
 	while ((c = getc(hp)) != EOF) {
 		if (c == '\n' && lastc == '\n')
 			break;

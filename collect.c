@@ -295,7 +295,9 @@ read_attachment_data(struct attachment *ap, unsigned number)
 	 */
 	if (ap->a_name && value("attachment-ask-content-type")) {
 		if (ap->a_content_type == NULL)
-			ap->a_content_type = mime_filecontent(ap->a_name);
+			ap->a_content_type =
+				mime_classify_content_type_by_fileext(
+					ap->a_name);
 		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
 		ap->a_content_type = readtty(prefix, ap->a_content_type);
 	}

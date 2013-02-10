@@ -74,7 +74,7 @@
 static sigjmp_buf	hdrjmp;
 
 char const		defcharset[] = "utf-8";
-char const		us_ascii[] = "us-ascii";
+char const		charset7[] = CHARSET7;
 char const *const	weekday_names[7 + 1] = {
 	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
 };
@@ -171,6 +171,16 @@ hdrstop(int signo)
 	fprintf(stderr, tr(141, "\nInterrupt\n"));
 	siglongjmp(hdrjmp, 1);
 }
+
+char const *const	weekday_names[7 + 1] = {
+	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
+};
+char const *const	month_names[12 + 1] = {
+	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
+};
+
+sighandler_type		dflpipe = SIG_DFL;
 
 int 
 main(int argc, char *argv[])

@@ -538,15 +538,50 @@ enum okay maildir_remove(const char *name);
 int main(int argc, char *argv[]);
 
 /* mime.c */
-char const *gettcharset(void);
+
+/* *charset-7bit*, else CHARSET_7BIT */
+char const *	charset_get_7bit(void);
+
+/* *charset-8bit*, else CHARSET_8BIT */
+char const *	charset_get_8bit(void);
+
+/* LC_CTYPE:CODESET / *ttycharset*, else *charset-8bit*, else CHARSET_8BIT */
+char const *	charset_get_lc(void);
+
+/* *sendcharsets* / *charset-8bit* iterator.
+ * *a_charset_to_try_first* may be used to prepend a charset (as for
+ * *reply-in-same-charset*);  works correct for !HAVE_ICONV */
+void		charset_iter_reset(char const *a_charset_to_try_first);
+char const *	charset_iter_next(void);
+char const *	charset_iter_current(void);
+void charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY FUN, REMOVE */
+void charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY FUN, REMOVE */
+
 char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
-int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
-char *mime_getboundary(char *h);
-char *mime_filecontent(char *name);
-int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
-		enum mimeclean *isclean, int dosign);
+
+/* Get the boundary out of a Content-Type: multipart/xyz header field, return
+ * salloc()ed copy of it; store strlen() in *len if set */
+char *		mime_get_boundary(char *h, size_t *len);
+
+/* Create a salloc()ed MIME boundary */
+char *		mime_create_boundary(void);
+
+/* Classify content of *fp* as necessary and fill in arguments; **charset* is
+ * left alone unless it's non-NULL */
+int		mime_classify_file(FILE *fp, char const **contenttype,
+			char const **charset, int *do_iconv);
+
+/* */
+enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
+
+/* Return the Content-Type matching the extension of name */
+char *		mime_classify_content_type_by_fileext(char const *name);
+
+/* "mimetypes" command */
+int		cmimetypes(void *v);
+
 void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char const *name);
 size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
@@ -650,7 +685,6 @@ int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		char *prefix, enum sendaction action, off_t *stats);
 
 /* sendout.c */
-char *makeboundary(void);
 int mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record, int tflag, int Eflag);

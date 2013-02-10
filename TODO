@@ -112,6 +112,10 @@ Non-breakers
   sounds desirable..  And then the authors rfc822* variables seem almost
   superfluous.
 
+= Update: (Change "Part X:" display message.., 2012-12-20) did one step,
+  but we need to rewrite the entire layers to handle that the separating
+  newline in between messages is considered to be part of it.
+
 - I want to have a ~R tilde command that works like ~r except it performs
   quoting of the input just as ~m does.  Also see -q above.
 

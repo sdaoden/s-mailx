@@ -57,15 +57,21 @@ enum parseflags {
 	PARSE_PARTS	= 02
 };
 
-static void onpipe(int signo);
 extern void brokpipe(int signo);
+static void onpipe(int signo);
+
+static void	_parsemultipart(struct message *zmp, struct mimepart *ip,
+			enum parseflags pf, int level);
+
+/* Going for user display, print Part: info string */
+static void	_print_part_info(struct str *out, struct mimepart *mip,
+			struct ignoretab *doign, int level);
+
 static int sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
 		enum sendaction action, off_t *stats, int level);
 static struct mimepart *parsemsg(struct message *mp, enum parseflags pf);
 static enum okay parsepart(struct message *zmp, struct mimepart *ip,
-		enum parseflags pf, int level);
-static void parsemultipart(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 static void newpart(struct mimepart *ip, struct mimepart **np, off_t offs,
 		int *part);
@@ -101,6 +107,131 @@ onpipe(int signo)
 {
 	(void)signo;
 	siglongjmp(pipejmp, 1);
+}
+
+static void
+_parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
+	int level)
+{
+	struct mimepart	*np = NULL;
+	char *boundary, *line = NULL;
+	size_t linesize = 0, linelen, count, boundlen;
+	FILE *ibuf;
+	off_t offs;
+	int part = 0;
+	long lines = 0;
+
+	if ((boundary = mime_get_boundary(ip->m_ct_type, &linelen)) == NULL)
+		return;
+	boundlen = linelen;
+	if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
+		return;
+	count = ip->m_size;
+	while (foldergets(&line, &linesize, &count, &linelen, ibuf))
+		if (line[0] == '\n')
+			break;
+	offs = ftell(ibuf);
+	newpart(ip, &np, offs, NULL);
+	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
+		if ((lines == 0 || part > 0) && (linelen <= boundlen ||
+				strncmp(line, boundary, boundlen) != 0)) {
+			++lines;
+			continue;
+		}
+		/* Subpart boundary? */
+		if (line[boundlen] == '\n') {
+			offs = ftell(ibuf);
+			if (part != 0) {
+				endpart(&np, offs - boundlen - 2, lines);
+				newpart(ip, &np, offs - boundlen - 2, NULL);
+			}
+			endpart(&np, offs, 2);
+			newpart(ip, &np, offs, &part);
+			lines = 0;
+			continue;
+		}
+		/*
+		 * Final boundary?  Be aware of cases where there is no
+		 * separating newline in between boundaries, as has been seen
+		 * in a message with "Content-Type: multipart/appledouble;"
+		 */
+		if (linelen < boundlen + 2)
+			continue;
+		linelen -= boundlen + 2;
+		if (line[boundlen] != '-' || line[boundlen + 1] != '-' ||
+				(linelen > 0 && line[boundlen + 2] != '\n'))
+			/* XXX This is a mysterious message - ??? */
+			continue;
+		offs = ftell(ibuf);
+		if (part != 0) {
+			endpart(&np, offs - boundlen - 4, lines);
+			newpart(ip, &np, offs - boundlen - 4, NULL);
+		}
+		endpart(&np, offs + count, 2);
+		break;
+	}
+	if (np) {
+		offs = ftell(ibuf);
+		endpart(&np, offs, lines);
+	}
+	for (np = ip->m_multipart; np; np = np->m_nextpart)
+		if (np->m_mimecontent != MIME_DISCARD)
+			parsepart(zmp, np, pf, level + 1);
+	free(line);
+}
+
+static void
+_print_part_info(struct str *out, struct mimepart *mip,
+	struct ignoretab *doign, int level)
+{
+	struct str ct = {NULL, 0}, cd = {NULL, 0};
+	char const *ps;
+
+	/* Max. 24 */
+	if (is_ign("content-type", 12, doign)) {
+		out->s = mip->m_ct_type_plain;
+		out->l = strlen(out->s) + 1;
+		ct.s = ac_alloc(2 + out->l);
+		ct.s[0] = ',';
+		ct.s[1] = ' ';
+		ct.l = 2;
+		if (is_prefix("application/", out->s)) {
+			memcpy(ct.s + 2, "appl../", 7);
+			ct.l += 7;
+			out->l -= 12;
+			out->s += 12;
+			out->l = smin(out->l, 17);
+		} else
+			out->l = smin(out->l, 24);
+		memcpy(ct.s + ct.l, out->s, out->l);
+		ct.l += out->l;
+		ct.s[ct.l] = 0;
+	}
+
+	/* Max. 27 */
+	if (is_ign("content-disposition", 19, doign) &&
+			mip->m_filename != NULL) {
+		cd.s = ac_alloc(2 + 25 + 1);
+		cd.l = snprintf(cd.s, 2 + 25 + 1, ", %.25s", mip->m_filename);
+	}
+
+	/* Take care of "99.99", i.e., 5 */
+	if ((ps = mip->m_partstring) == NULL || ps[0] == '\0')
+		ps = "?";
+
+#define __msg	"%s[-- #%s : %lu/%lu%s%s --]\n"
+	out->l = sizeof(__msg) + strlen(ps) + ct.l + cd.l + 1;
+	out->s = salloc(out->l);
+	out->l = snprintf(out->s, out->l, __msg,
+			(level || (ps[0] != '1' && ps[1] == '\0')) ? "\n" : "",
+			ps, (ul_it)mip->m_lines, (ul_it)mip->m_size,
+			(ct.s != NULL ? ct.s : ""), (cd.s != NULL ? cd.s : ""));
+#undef __msg
+
+	if (cd.s != NULL)
+		ac_free(cd.s);
+	if (ct.s != NULL)
+		ac_free(ct.s);
 }
 
 /*
@@ -219,16 +350,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
 			action == SEND_TOSRCH || action == SEND_TOFLTR ?
 		CONV_FROMHDR : CONV_NONE;
-
-	/*
-	 * Normally headers included in "Content-Type: message/rfc822" messages
-	 * will not show up in replies to the encapsulating envelope.
-	 * This is nail(1) specific and thus may be configured differently.
-	 */
-	if (ip->m_mimecontent == MIME_TEXT_PLAIN && ip->m_parent != NULL &&
-			ip->m_parent->m_mimecontent == MIME_822 &&
-			value("rfc822-show-all"))
-		goto skip;
 
 	/* Work the headers */
 	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
@@ -390,8 +511,8 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if (! value("rfc822-no-body-from_")) {
-				if (prefixlen && value("rfc822-show-all")) {
+			if (value("rfc822-body-from_")) {
+				if (prefixlen > 0) {
 					size_t i = fwrite(prefix,
 						sizeof *prefix, prefixlen,
 						obuf);
@@ -406,7 +527,8 @@ skip:	switch (ip->m_mimecontent) {
 			goto multi;
 		case SEND_TOFILE:
 		case SEND_TOPIPE:
-			put_from_(obuf, ip->m_multipart, stats);
+			if (value("rfc822-body-from_"))
+				put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_MBOX:
 		case SEND_RFC822:
@@ -426,6 +548,8 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
 			pipecmd = getpipecmd(ip->m_ct_type_plain);
+			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd))
+				pipecmd = NULL;
 			/*FALLTHRU*/
 		default:
 			break;
@@ -446,10 +570,15 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if ((pipecmd = getpipecmd(ip->m_ct_type_plain)) != NULL)
+			pipecmd = getpipecmd(ip->m_ct_type_plain);
+			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd)) {
+				pipecmd = NULL;
+				goto jcopyout; /* break; break; :*/
+			}
+			if (pipecmd != NULL)
 				break;
 			if (level == 0 && count) {
-				cp = "[Binary content]\n\n";
+				cp = tr(210, "[Binary content]\n\n");
 				out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX,
 					prefix, prefixlen, stats, NULL);
 			}
@@ -468,8 +597,17 @@ skip:	switch (ip->m_mimecontent) {
 		break;
 	case MIME_ALTERNATIVE:
 		if ((action == SEND_TODISP || action == SEND_QUOTE) &&
-				value("print-alternatives") == NULL)
-			for (np = ip->m_multipart; np; np = np->m_nextpart)
+				value("print-alternatives") == NULL) {
+			for (np = ip->m_multipart; np; np = np->m_nextpart) {
+				if (np->m_ct_type_plain != NULL && /* XXX */
+						action != SEND_QUOTE) {
+					_print_part_info(&rest, np, doign,
+						level);
+					out(rest.s, rest.l, obuf,
+						CONV_NONE, SEND_MBOX,
+						prefix, prefixlen,
+						stats, NULL);
+				}
 				if (np->m_mimecontent == MIME_TEXT_PLAIN) {
 					if (sendpart(zmp, np, obuf,
 							doign, prefix,
@@ -477,8 +615,10 @@ skip:	switch (ip->m_mimecontent) {
 							action, stats,
 							level+1) < 0)
 						return -1;
-					return rt;
 				}
+			}
+			return rt;
+		}
 		/*FALLTHRU*/
 	case MIME_MULTI:
 	case MIME_DIGEST:
@@ -523,27 +663,18 @@ skip:	switch (ip->m_mimecontent) {
 				case SEND_TODISP:
 				case SEND_TODISP_ALL:
 				case SEND_QUOTE_ALL:
-					if ((ip->m_mimecontent == MIME_MULTI ||
-							ip->m_mimecontent ==
-							MIME_ALTERNATIVE ||
-							ip->m_mimecontent ==
-							MIME_DIGEST) &&
-							np->m_partstring) {
-						len = strlen(np->m_partstring) +
-							40;
-						cp = ac_alloc(len);
-						snprintf(cp, len,
-							"%sPart %s:\n", level ||
-							strcmp(np->m_partstring,
-								"1") ?
-							"\n" : "",
-							np->m_partstring);
-						out(cp, strlen(cp), obuf,
-							CONV_NONE, SEND_MBOX,
-							prefix, prefixlen,
-							stats, NULL);
-						ac_free(cp);
-					}
+					if (ip->m_mimecontent != MIME_MULTI &&
+							ip->m_mimecontent !=
+							MIME_ALTERNATIVE &&
+							ip->m_mimecontent !=
+							MIME_DIGEST)
+						break;
+					_print_part_info(&rest, np, doign,
+						level);
+					out(rest.s, rest.l, obuf,
+						CONV_NONE, SEND_MBOX,
+						prefix, prefixlen,
+						stats, NULL);
 					break;
 				case SEND_TOFLTR:
 					putc('\0', obuf);
@@ -580,9 +711,11 @@ skip:	switch (ip->m_mimecontent) {
 			break;
 		}
 	}
+
 	/*
 	 * Copy out message body
 	 */
+jcopyout:
 	if (doign == allignore && level == 0)	/* skip final blank line */
 		count--;
 	switch (ip->m_mimeenc) {
@@ -614,7 +747,7 @@ skip:	switch (ip->m_mimecontent) {
 	if (action == SEND_DECRYPT || action == SEND_MBOX ||
 			action == SEND_RFC822 || action == SEND_SHOW)
 		convert = CONV_NONE;
-	tcs = gettcharset();
+	tcs = charset_get_lc();
 #ifdef	HAVE_ICONV
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
@@ -625,7 +758,7 @@ skip:	switch (ip->m_mimecontent) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if (asccasecmp(tcs, ip->m_charset) &&
-				asccasecmp(us_ascii, ip->m_charset))
+				asccasecmp(charset_get_7bit(), ip->m_charset))
 			iconvd = iconv_open_ft(tcs, ip->m_charset);
 		else
 			iconvd = (iconv_t)-1;
@@ -743,11 +876,10 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	else
 		ip->m_ct_type_plain = "text/plain";
 
-	ip->m_mimecontent = mime_getcontent(ip->m_ct_type_plain);
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
-		ip->m_charset = us_ascii;
+		ip->m_charset = charset_get_7bit();
 	ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
 			(struct message *)ip);
 	ip->m_mimeenc = ip->m_ct_transfer_enc ?
@@ -756,6 +888,8 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 			(ip->m_filename = mime_getparam("filename", cp)) == 0)
 		if (ip->m_ct_type != NULL)
 			ip->m_filename = mime_getparam("name", ip->m_ct_type);
+	ip->m_mimecontent = mime_classify_content_of_part(ip);
+
 	if (pf & PARSE_PARTS) {
 		if (level > 9999) {
 			fprintf(stderr, tr(36,
@@ -780,7 +914,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		case MIME_MULTI:
 		case MIME_ALTERNATIVE:
 		case MIME_DIGEST:
-			parsemultipart(zmp, ip, pf, level);
+			_parsemultipart(zmp, ip, pf, level);
 			break;
 		case MIME_822:
 			parse822(zmp, ip, pf, level);
@@ -788,67 +922,6 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		}
 	}
 	return OKAY;
-}
-
-static void
-parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
-		int level)
-{
-	char	*boundary;
-	char	*line = NULL;
-	size_t	linesize = 0, linelen, count, boundlen;
-	FILE	*ibuf;
-	struct mimepart	*np = NULL;
-	off_t	offs;
-	int	part = 0;
-	long	lines = 0;
-
-	if ((boundary = mime_getboundary(ip->m_ct_type)) == NULL)
-		return;
-	boundlen = strlen(boundary);
-	if ((ibuf = setinput(&mb, (struct message *)ip, NEED_BODY)) == NULL)
-		return;
-	count = ip->m_size;
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf))
-		if (line[0] == '\n')
-			break;
-	offs = ftell(ibuf);
-	newpart(ip, &np, offs, NULL);
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
-		if ((lines > 0 || part == 0) && linelen >= boundlen + 1 &&
-				strncmp(line, boundary, boundlen) == 0) {
-			if (line[boundlen] == '\n') {
-				offs = ftell(ibuf);
-				if (part != 0) {
-					endpart(&np, offs-boundlen-2, lines);
-					newpart(ip, &np, offs-boundlen-2, NULL);
-				}
-				endpart(&np, offs, 2);
-				newpart(ip, &np, offs, &part);
-				lines = 0;
-			} else if (line[boundlen] == '-' &&
-					line[boundlen+1] == '-' &&
-					line[boundlen+2] == '\n') {
-				offs = ftell(ibuf);
-				if (part != 0) {
-					endpart(&np, offs-boundlen-4, lines);
-					newpart(ip, &np, offs-boundlen-4, NULL);
-				}
-				endpart(&np, offs+count, 2);
-				break;
-			} else
-				lines++;
-		} else
-			lines++;
-	}
-	if (np) {
-		offs = ftell(ibuf);
-		endpart(&np, offs, lines);
-	}
-	for (np = ip->m_multipart; np; np = np->m_nextpart)
-		if (np->m_mimecontent != MIME_DISCARD)
-			parsepart(zmp, np, pf, level+1);
-	free(line);
 }
 
 static void
@@ -928,7 +1001,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
 	ip->m_multipart = np;
-	if (! value("rfc822-no-body-from_")) {
+	if (value("rfc822-body-from_")) {
 		substdate((struct message *)np);
 		np->m_from = fakefrom((struct message *)np);
 	}
