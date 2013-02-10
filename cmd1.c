@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -57,6 +57,10 @@
  */
 
 static int screen;
+
+/* Prepare and print "[Message: xy]:" intro */
+static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
+
 static void onpipe(int signo);
 static int dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
@@ -68,7 +72,13 @@ static int putindent(FILE *fp, struct message *mp, int maxwidth);
 static int type1(int *msgvec, int doign, int page, int pipe, int decode,
 		char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
-void brokpipe(int signo);
+
+static void
+_show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
+{
+	fprintf(obuf, tr(17, "[-- Message %2d -- %lu lines, %lu bytes --]:\n"),
+		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
+}
 
 int
 ccmdnotsupp(void *v)
@@ -78,10 +88,10 @@ ccmdnotsupp(void *v)
 	return (1);
 }
 
-char *
+char const *
 get_pager(void)
 {
-	char *cp;
+	char const *cp;
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
@@ -313,7 +323,7 @@ from(void *v)
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
-			char *p;
+			char const *p;
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
 			p = get_pager();
@@ -386,10 +396,10 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 	size_t hsize = 0;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-			(hlen = readline(ibuf, &hline, &hsize)) > 0) {
+			(hlen = readline(ibuf, &hline, &hsize)) > 0)
 		(void)extract_date_from_from_(hline, hlen, date);
+	if (hline != NULL)
 		free(hline);
-	}
 }
 
 static void
@@ -398,7 +408,8 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 	struct str in, out;
 	char const *fp;
 	struct message *mp = &message[mesg - 1];
-	char *subjline, *name, *cp, *date, datebuf[FROM_DATEBUF];
+	char *subjline, *cp, datebuf[FROM_DATEBUF];
+	char const *name, *date;
 	int B, c, i, n, s, fromlen,
 		subjlen = scrnwidth, isto = 0, isaddr = 0;
 
@@ -424,7 +435,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		subjline = out.s;
 	}
 
-	if (Iflag) {
+	if (options & OPT_I_FLAG) {
 		if ((name = hfieldX("newsgroups", mp)) == NULL)
 			if ((name = hfieldX("article-id", mp)) == NULL)
 				name = "<>";
@@ -579,9 +590,14 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				}
 				break;
 			case 'U':
+#ifdef USE_IMAP
 				if (n == 0)
 					n = 9;
 				subjlen -= fprintf(f, "%*lu", n, mp->m_uid);
+#else
+				putc('?', f);
+				--subjlen;
+#endif
 				break;
 			case 'e':
 				if (n == 0)
@@ -607,7 +623,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				subjlen -= fprintf(f, "%*g", n, mp->m_score);
 #else
 				putc('?', f);
-				subjlen--;
+				--subjlen;
 #endif
 				break;
 			}
@@ -690,7 +706,8 @@ void
 printhead(int mesg, FILE *f, int threaded)
 {
 	int bsdflags, bsdheadline, sz;
-	char	*fmt, attrlist[30], *cp;
+	char attrlist[30], *cp;
+	char const *fmt;
 
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
 		getenv("SYSV3") != NULL;
@@ -776,19 +793,24 @@ pcmdlist(void *v)
  */
 static sigjmp_buf	pipestop;
 
+/*ARGSUSED*/
+static void
+brokpipe(int signo)
+{
+	(void)signo;
+	siglongjmp(pipestop, 1);
+}
+
 static int
 type1(int *msgvec, int doign, int page, int pipe, int decode,
 		char *cmd, off_t *tstats)
 {
 	int *ip;
 	struct message *mp;
-	char *cp;
+	char const *cp;
 	int nlines;
 	off_t mstats[2];
-	/*
-	 * Must be static to become excluded from sigsetjmp().
-	 */
-	static FILE *obuf;
+	FILE *volatile obuf;
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
@@ -818,7 +840,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 			}
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			char *p = get_pager();
+			char const *p = get_pager();
 			obuf = Popen(p, "w", NULL, 1);
 			if (obuf == NULL) {
 				perror(p);
@@ -832,9 +854,9 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		touch(mp);
 		setdot(mp);
 		uncollapse1(mp, 1);
-		if (value("quiet") == NULL)
-			fprintf(obuf, catgets(catd, CATSET, 17,
-				"Message %2d:\n"), *ip);
+		if (! pipe && ip != msgvec)
+			fprintf(obuf, "\n");
+		_show_msg_overview(mp, *ip, obuf);
 		send(mp, obuf, doign ? ignore : 0, NULL,
 			pipe && value("piperaw") ? SEND_MBOX :
 				decode ? SEND_SHOW :
@@ -1050,18 +1072,6 @@ Pipecmd(void *v)
 }
 
 /*
- * Respond to a broken pipe signal --
- * probably caused by quitting more.
- */
-/*ARGSUSED*/
-void
-brokpipe(int signo)
-{
-	(void)signo;
-	siglongjmp(pipestop, 1);
-}
-
-/*
  * Print the top so many lines of each desired message.
  * The number of lines is taken from the variable "toplines"
  * and defaults to 5.
@@ -1069,48 +1079,50 @@ brokpipe(int signo)
 int 
 top(void *v)
 {
-	int *msgvec = v;
-	int *ip;
+	int *msgvec = v, *ip, c, topl, lines, empty_last;
 	struct message *mp;
-	int c, topl, lines, lineb;
-	char *valtop, *linebuf = NULL;
+	char *cp, *linebuf = NULL;
 	size_t linesize;
 	FILE *ibuf;
 
 	topl = 5;
-	valtop = value("toplines");
-	if (valtop != NULL) {
-		topl = atoi(valtop);
+	cp = value("toplines");
+	if (cp != NULL) {
+		topl = atoi(cp);
 		if (topl < 0 || topl > 10000)
 			topl = 5;
 	}
-	lineb = 1;
+	empty_last = 1;
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
 		did_print_dot = 1;
-		if (value("quiet") == NULL)
-			printf(catgets(catd, CATSET, 19,
-					"Message %2d:\n"), *ip);
+		if (! empty_last)
+			printf("\n");
+		_show_msg_overview(mp, *ip, stdout);
 		if (mp->m_flag & MNOFROM)
 			printf("From %s %s\n", fakefrom(mp),
-					fakedate(mp->m_time));
-		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)	/* XXX could use TOP */
-			return 1;
+				fakedate(mp->m_time));
+		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {	/* XXX could use TOP */
+			v = NULL;
+			break;
+		}
 		c = mp->m_lines;
-		if (!lineb)
-			printf("\n");
 		for (lines = 0; lines < c && lines <= topl; lines++) {
 			if (readline(ibuf, &linebuf, &linesize) < 0)
 				break;
 			puts(linebuf);
-			lineb = blankline(linebuf);
+
+			for (cp = linebuf; *cp && blankchar(*cp); ++cp)
+				;
+			empty_last = (*cp == '\0');
 		}
 	}
-	if (linebuf)
+
+	if (linebuf != NULL)
 		free(linebuf);
-	return(0);
+	return (v != NULL);
 }
 
 /*
@@ -1162,7 +1174,8 @@ mboxit(void *v)
 int 
 folders(void *v)
 {
-	char dirname[PATHSIZE], *name, *cmd, **argv = v;
+	char dirname[PATHSIZE], *name, **argv = v;
+	char const *cmd;
 
 	if (*argv && (name = expand(*argv)) == NULL)
 		return (1);

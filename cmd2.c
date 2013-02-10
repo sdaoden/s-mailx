@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -51,18 +51,20 @@
  * More user commands.
  */
 
-static int	save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
-			int convert, int sender_record, int domove);
+static int	save1(char *str, int mark, char const *cmd,
+			struct ignoretab *ignore, int convert,
+			int sender_record, int domove);
 static char *	snarf(char *linebuf, int *flag, int usembox);
 static int	delm(int *msgvec);
 #ifdef HAVE_ASSERTS
 static void	clob1(int n);
 #endif
-static int	ignore1(char **list, struct ignoretab *tab, char *which);
-static int	igshow(struct ignoretab *tab, char *which);
+static int	ignore1(char **list, struct ignoretab *tab, char const *which);
+static int	igshow(struct ignoretab *tab, char const *which);
 static int	igcomp(const void *l, const void *r);
 static void	unignore_one(const char *name, struct ignoretab *tab);
-static int	unignore1(char **list, struct ignoretab *tab, char *which);
+static int	unignore1(char **list, struct ignoretab *tab,
+			char const *which);
 
 /*
  * If any arguments were given, go to the next applicable argument
@@ -247,22 +249,18 @@ cDecrypt(void *v)
  * Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved."
  */
-static int 
-save1(char *str, int mark, char *cmd, struct ignoretab *ignore,
-		int convert, int sender_record, int domove)
+static int
+save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
+	int convert, int sender_record, int domove)
 {
-	struct stat	st;
-	int *ip;
-	struct message *mp;
-	char *file = NULL, *disp = "";
-	int f, *msgvec;
-	FILE *obuf;
-	int newfile = 0;
-	char *cp, *cq;
 	off_t mstats[2], tstats[2];
-	int compressed = 0;
+	struct stat st;
+	int newfile = 0, compressed = 0, success = 1, last = 0, f, *msgvec, *ip;
+	struct message *mp;
+	char *file = NULL, *cp, *cq;
+	char const *disp = "";
+	FILE *obuf;
 	enum protocol prot;
-	int success = 1, last = 0;
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
@@ -700,7 +698,7 @@ fwdigfield(void *v)
 }
 
 static int 
-ignore1(char **list, struct ignoretab *tab, char *which)
+ignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	int h;
 	struct ignore *igp;
@@ -736,7 +734,7 @@ ignore1(char **list, struct ignoretab *tab, char *which)
  * Print out all currently retained fields.
  */
 static int 
-igshow(struct ignoretab *tab, char *which)
+igshow(struct ignoretab *tab, char const *which)
 {
 	int h;
 	struct ignore *igp;
@@ -766,7 +764,7 @@ igshow(struct ignoretab *tab, char *which)
 static int 
 igcomp(const void *l, const void *r)
 {
-	return (strcmp(*(char **)l, *(char **)r));
+	return (strcmp(*(char**)UNCONST(l), *(char**)UNCONST(r)));
 }
 
 int 
@@ -827,7 +825,7 @@ unignore_one(const char *name, struct ignoretab *tab)
 }
 
 static int 
-unignore1(char **list, struct ignoretab *tab, char *which)
+unignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	if (tab->i_count == 0) {
 		printf(catgets(catd, CATSET, 34,

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -64,20 +64,17 @@ _E int		scrnheight;		/* Screen height, or best guess,
 _E int		utf8;			/* UTF-8 encoding in use for locale */
 
 _E char		**altnames;		/* List of alternate names for user */
-_E char		*homedir;		/* Path name of home directory */
-_E char		*myname;		/* My login name */
-_E char		*progname;		/* Our name */
+_E char const	*homedir;		/* Path name of home directory */
+_E char const	*myname;		/* My login name */
+_E char const	*progname;		/* Our name */
+_E char const	*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
-_E int		debug;			/* Debug flag set */
-_E int		Iflag;			/* -I show Newsgroups: field */
-_E int		Rflag;			/* open all folders read-only */
-_E int		rcvmode;		/* True if receiving mail */
-_E char		**smopts;		/* sendmail(1) options, command line */
+_E int		options;		/* Bits of enum user_options */
+_E char		*option_T_arg;		/* -T temp file for netnews */
+_E char		*option_u_arg;		/* name given with -u option */
+_E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
-_E char		*Tflag;			/* -T temp file for netnews */
-_E int		tildeflag;		/* enable tilde escapes */
-_E char		*uflag;			/* name given with -u option */
 
 _E int		did_print_dot;		/* current message has been printed */
 _E int		edit;			/* Indicates editing a file */
@@ -115,11 +112,10 @@ _E struct ignoretab allignore[2];	/* special, ignore all headers */
 _E struct ignoretab fwdignore[2];	/* fields to ignore for forwarding */
 _E struct shortcut *shortcuts;		/* list of shortcuts */
 _E int		imap_created_mailbox;	/* hack to get feedback from imap */
-_E char		*wantcharset;		/* overrides the "charset" variable */
+
+_E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
 
 /* These are initialized strings */
-_E char	const	defcharset[];		/* "utf8" */
-_E char	const	us_ascii[];		/* "us-ascii" */
 _E char const	*const month_names[12 + 1];
 _E char const	*const weekday_names[7 + 1];
 

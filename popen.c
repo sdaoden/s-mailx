@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -276,6 +276,57 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 }
 
 FILE *
+Ftemp(char **fn, char const *prefix, char const *mode, int bits,
+	int register_file)
+{
+	FILE *fp;
+	char *cp;
+	int fd;
+
+	*fn =
+	cp = smalloc(strlen(tempdir) + 1 + sizeof("mail") + strlen(prefix) +
+			+ 7 + 1);
+	cp = sstpcpy(cp, tempdir);
+	*cp++ = '/';
+	cp = sstpcpy(cp, "mail");
+	if (*prefix) {
+		*cp++ = '-';
+		cp = sstpcpy(cp, prefix);
+	}
+	cp = sstpcpy(cp, ".XXXXXX");
+#ifdef HAVE_MKSTEMP
+	if ((fd = mkstemp(*fn)) < 0)
+		goto Ftemperr;
+	if (fchmod(fd, bits) < 0)
+		goto Ftemperr;
+#else
+	if (mktemp(*fn) == NULL)
+		goto Ftemperr;
+	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR, bits)) < 0)
+		goto Ftemperr;
+#endif
+	if (register_file)
+		fp = Fdopen(fd, mode);
+	else {
+		fp = fdopen(fd, mode);
+		fcntl(fd, F_SETFD, FD_CLOEXEC);
+	}
+	return fp;
+Ftemperr:
+	Ftfree(fn);
+	return NULL;
+}
+
+void
+Ftfree(char **fn)
+{
+	char *cp = *fn;
+
+	*fn = NULL;
+	free(cp);
+}
+
+FILE *
 Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 {
 	int p[2];
@@ -375,7 +426,7 @@ static enum okay
 compress(struct fp *fpp)
 {
 	int	output;
-	char	*command[2];
+	char const *command[2];
 	enum okay	ok;
 
 	if (fpp->omode == O_RDONLY)
@@ -420,7 +471,7 @@ compress(struct fp *fpp)
 static int
 decompress(int compression, int input, int output)
 {
-	char	*command[2];
+	char const *command[2];
 
 	/*
 	 * Note that it is not possible to handle 'pack' or 'compress'
@@ -476,8 +527,8 @@ file_pid(FILE *fp)
  */
 /*VARARGS4*/
 int
-run_command(char *cmd, sigset_t *mask, int infd, int outfd,
-		char *a0, char *a1, char *a2)
+run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+		char const *a0, char const *a1, char const *a2)
 {
 	int pid;
 
@@ -502,9 +553,9 @@ start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 		int i = getrawlist(cmd, strlen(cmd),
 				argv, sizeof argv / sizeof *argv, 0);
 
-		if ((argv[i++] = (char *)a0) != NULL &&
-		    (argv[i++] = (char *)a1) != NULL &&
-		    (argv[i++] = (char *)a2) != NULL)
+		if ((argv[i++] = UNCONST(a0)) != NULL &&
+		    (argv[i++] = UNCONST(a1)) != NULL &&
+		    (argv[i++] = UNCONST(a2)) != NULL)
 			argv[i] = NULL;
 		prepare_child(mask, infd, outfd);
 		execvp(argv[0], argv);

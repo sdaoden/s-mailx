@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -48,7 +48,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -163,8 +162,10 @@ yankname(char const *ap, char *wbuf, char const *separators, int keepcomms)
 		if (c == '"') {
 			if (lc != '\\')
 				inquote = ! inquote;
+#if 0 /* TODO when doing real RFC 5322 parsers - why have i done this? */
 			else
 				--wp;
+#endif
 			goto jwpwc;
 		}
 		if (inquote || lc == '\\') {
@@ -454,7 +455,7 @@ detract(struct name *np, enum gfield ntype)
 	comma = ntype & GCOMMA;
 	ntype &= ~GCOMMA;
 	s = 0;
-	if ((debug || value("debug")) && comma)
+	if ((options & OPT_DEBUG) && comma)
 		fprintf(stderr, tr(145, "detract asked to insert commas\n"));
 	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
@@ -727,9 +728,8 @@ struct name *
 outof(struct name *names, FILE *fo, struct header *hp)
 {
 	int pipecnt, xcnt, *fda, i;
-	char *shell, *date;
+	char const *shell;
 	struct name *np;
-	time_t now;
 	FILE *fin = NULL, *fout;
 	(void)hp;
 
@@ -769,9 +769,6 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			shell = SHELL;
 	}
 
-	time(&now);
-	date = ctime(&now);
-
 	for (np = names; np != NULL;) {
 		if ((np->n_flags & (NAME_ADDRSPEC_ISFILE|NAME_ADDRSPEC_ISPIPE))
 				== 0) {
@@ -787,6 +784,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			int c;
 			char *tempEdit;
 
+			/* XXX tempEdit unlink racy - block signals, at least */
 			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600, 1))
 					== NULL) {
 				perror(tr(146, "Creation of temporary image"));
@@ -817,7 +815,8 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			}
 			fcntl(image, F_SETFD, FD_CLOEXEC);
 
-			fprintf(fout, "From %s %s", myname, date);
+			fprintf(fout, "From %s %s",
+				myname, time_current.tc_ctime);
 			c = EOF;
 			while (i = c, (c = getc(fo)) != EOF)
 				putc(c, fout);

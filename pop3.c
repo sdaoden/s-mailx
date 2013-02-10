@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -60,13 +60,11 @@ typedef int avoid_empty_file_compiler_warning;
  * POP3 client.
  */
 
-static int	verbose;
-
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
 				return STOP;
 #define	POP3_OUT(x, y)	if (pop3_finish(mp) == STOP) \
 				return STOP; \
-			if (verbose) \
+			if (options & OPT_VERBOSE) \
 				fprintf(stderr, ">>> %s", x); \
 			mp->mb_active |= (y); \
 			if (swrite(&mp->mb_sock, x) == STOP) \
@@ -130,7 +128,7 @@ pop3_answer(struct mailbox *mp)
 retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->mb_sock)) > 0) {
 		if ((mp->mb_active & (MB_COMD|MB_MULT)) == MB_MULT)
 			goto multiline;
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fputs(pop3buf, stderr);
 		switch (*pop3buf) {
 		case '+':
@@ -221,7 +219,6 @@ pop3_noop(void)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	pop3lock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -374,7 +371,7 @@ static enum okay
 pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		const char *uhp, const char *xserver)
 {
-	char o[LINESIZE], *user, *server, *cp;
+	char o[LINESIZE], *user, *cp;
 #ifdef USE_MD5
 	char *ts = NULL;
 #endif
@@ -391,16 +388,16 @@ pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 	}
 #endif
 	if ((cp = strchr(xserver, ':')) != NULL) {
-		server = salloc(cp - xserver + 1);
-		memcpy(server, xserver, cp - xserver);
-		server[cp - xserver] = '\0';
-	} else
-		server = (char *)xserver;
+		char *x = salloc(cp - xserver + 1);
+		memcpy(x, xserver, cp - xserver);
+		x[cp - xserver] = '\0';
+		xserver = x;
+	}
 #ifdef	USE_SSL
 	if (mp->mb_sock.s_use_ssl == 0 && pop3_use_starttls(uhp)) {
 		POP3_OUT("STLS\r\n", MB_COMD)
 		POP3_ANSWER()
-		if (ssl_open(server, &mp->mb_sock, uhp) != OKAY)
+		if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
 	}
 #else	/* !USE_SSL */
@@ -549,7 +546,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
-	char *user; /* TODO longjmp globber, reorder fun! */
+	char *volatile user;
 	const char *cp, *uhp, *volatile pass, *volatile sp = server;
 	int use_ssl = 0;
 
@@ -571,12 +568,11 @@ pop3_setfile(const char *server, int newmail, int isedit)
 		memcpy(user, sp, cp - sp);
 		user[cp - sp] = '\0';
 		sp = &cp[1];
-		user = strdec(user);
+		user = urlxdec(user);
 	} else
 		user = NULL;
-	verbose = value("verbose") != NULL;
 	if (sopen(sp, &so, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
-				verbose) != OKAY) {
+				(options & OPT_VERBOSE) != 0) != OKAY) {
 		return -1;
 	}
 	quit();
@@ -626,7 +622,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 		return 1;
 	}
 	mb.mb_type = MB_POP3;
-	mb.mb_perm = Rflag ? 0 : MB_DELE;
+	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	pop3_setptr(&mb);
 	setmsize(msgCount);
 	sawcom = 0;
@@ -656,7 +652,6 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 	(void)&number;
 	(void)&emptyline;
 	(void)&need;
-	verbose = value("verbose") != NULL;
 	if (mp->mb_sock.s_fd < 0) {
 		fprintf(stderr, catgets(catd, CATSET, 219,
 				"POP3 connection already closed.\n"));
@@ -714,7 +709,7 @@ retry:	switch (need) {
 			linelen--;
 		} else
 			lp = line;
-		/*
+		/* TODO >>
 		 * Need to mask 'From ' lines. This cannot be done properly
 		 * since some servers pass them as 'From ' and others as
 		 * '>From '. Although one could identify the first kind of
@@ -726,14 +721,19 @@ retry:	switch (need) {
 		 * If the line is the first line of the message header, it
 		 * is likely a real 'From ' line. In this case, it is just
 		 * ignored since it violates all standards.
+		 * TODO i have *never* seen the latter?!?!?
+		 * TODO <<
 		 */
-		if (lp[0] == 'F' && lp[1] == 'r' && lp[2] == 'o' &&
-				lp[3] == 'm' && lp[4] == ' ') {
-			if (lines != 0) {
-				fputc('>', mp->mb_otf);
-				size++;
-			} else
+		/*
+		 * Since we simply copy over data without doing any transfer
+		 * encoding reclassification/adjustment we *have* to perform
+		 * RFC 4155 compliant From_ quoting here
+		 */
+		if (is_head(lp, linelen)) {
+			if (lines == 0)
 				continue;
+			fputc('>', mp->mb_otf);
+			++size;
 		}
 		lines++;
 		if (lp[linelen-1] == '\n' && (linelen == 1 ||
@@ -826,9 +826,9 @@ pop3_update(struct mailbox *mp)
 	struct message *m;
 	int dodel, c, gotcha, held;
 
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit) {
 		holdbits();
@@ -884,7 +884,6 @@ pop3_quit(void)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 
-	verbose = value("verbose") != NULL;
 	if (mb.mb_sock.s_fd < 0) {
 		fprintf(stderr, catgets(catd, CATSET, 219,
 				"POP3 connection already closed.\n"));

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -50,11 +50,6 @@
 
 #define APPEND				/* New mail goes to end of mailbox */
 
-/* Is *C* a quoting character (for *quote-fold* compression) */
-#define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
-
-#define ESCAPE		'~'		/* Default escape for sending */
-
 #ifndef MAXPATHLEN
 # ifdef PATH_MAX
 #  define MAXPATHLEN	PATH_MAX
@@ -77,19 +72,98 @@
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 
+#define ESCAPE		'~'		/* Default escape for sending */
+
+#define CBAD		(-15555)
+
+#define SHELL		"/bin/sh"
+
 /*
- * Auto-reclaimed string storage as defined in strings.c.
+ * Funs, CC support etc.
  */
 
-/* In non-interactive, i.e., one-shot mode we can use much smaller buffers */
+#undef ISPOW2
+#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
+#undef MIN
+#define MIN(A, B)	((A) < (B) ? (A) : (B))
+#undef MAX
+#define MAX(A, B)	((A) < (B) ? (B) : (A))
+#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
+#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
+
+/* Members in constant array */
+#define ARRAY_COUNT(A)	(sizeof(A) / sizeof(A[0]))
+
+/* sizeof() for member fields */
+#define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
+
+/* Casts-away (*NOT* cast-away) */
+#define UNCONST(P)	((void*)(unsigned long)(const void*)(P))
+#define UNVOLATILE(P)	((void*)(unsigned long)(volatile void*)(P))
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+  /* Variable size arrays and structure fields */
+# define VFIELD_SIZE(X)
+# define VFIELD_SIZEOF(T,F)	(0)
+  /* Inline functions */
+# define HAVE_INLINE
+# define INLINE			inline
+# define SINLINE		static inline
+#else
+# define VFIELD_SIZE(X)		(X)
+# define VFIELD_SIZEOF(T,F)	SIZEOF_FIELD(T, F)
+# define INLINE
+# define SINLINE		static
+#endif
+
+/* Compile-Time-Assert */
+#define CTA(TEST)	_CTA_1(TEST, __LINE__)
+#define _CTA_1(TEST,L)  _CTA_2(TEST, L)
+#define _CTA_2(TEST,L)	\
+	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
+
+/*
+ * MIME (mime.c)
+ */
+
+/* Is *C* a quoting character (for *quote-fold* compression) */
+#define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+
+/* Locations of mime.types(5) */
+#define MIME_TYPES_USR	"~/.mime.types"
+#define MIME_TYPES_SYS	"/etc/mime.types"
+
+/* Default *encoding* as enum conversion below */
+#define MIME_DEFAULT_ENCODING	CONV_TOQP
+
+/* Maximum allowed line length in a mail before QP folding is necessary), and
+ * the real limit we go for */
+#define MIME_LINELEN_MAX	1000
+#define MIME_LINELEN_LIMIT	(MIME_LINELEN_MAX - 50)
+
+/* Fallback charsets, if *charset-7bit* and *charset-8bit* or not set, resp. */
+#define CHARSET_7BIT		"US-ASCII"
+#ifdef HAVE_ICONV
+# define CHARSET_8BIT		"UTF-8"
+# define CHARSET_8BIT_VAR	"charset-8bit"
+#else
+# define CHARSET_8BIT		"ISO-8859-1"
+# define CHARSET_8BIT_VAR	"ttycharset"
+#endif
+
+/*
+ * Auto-reclaimed string storage (strings.c)
+ */
+
+/* Dynamic buffer size, and size of the single builtin one that's used first */
 #define SBUFFER_SIZE	0x18000u
-#define SBUFFER_NISIZE	0x4000u
+#define SBUFFER_BUILTIN	0x2000u
 
 /* Huge allocation if GT; those are never cached but will be auto freed */
 #define SHUGE_CUTLIMIT	LINESIZE
 
 /*
- * Translation TODO convert all catgets() that remain to tr()
+ * Translation (init in main.c) TODO convert all catgets() that remain to tr()
  */
 #undef tr
 #ifdef HAVE_CATGETS
@@ -99,6 +173,10 @@
 # define catgets(a,b,c,d) (d)
 # define tr(c,d)	(d)
 #endif
+
+/*
+ * Types
+ */
 
 typedef unsigned long	ul_it;
 typedef unsigned int	ui_it;
@@ -110,7 +188,27 @@ typedef signed int	si_it;
 typedef signed short	ss_it;
 typedef signed char	sc_it;
 
+typedef enum {FAL0, TRU1} bool_t;
+
 typedef void (		*sighandler_type)(int);
+
+enum user_options {
+	OPT_NONE	= 0,
+	OPT_DEBUG	= 1<< 0,	/* Debug flag set */
+	OPT_VERBOSE	= 1<< 1,	/* Verbose flag (implied by *debug*) */
+	OPT_RCVMODE	= 1<< 2,	/* True if receiving mail */
+	OPT_EXISTONLY	= 1<< 3,
+	OPT_HEADERSONLY	= 1<< 4,
+	OPT_SENDFLAG	= 1<< 5,
+	OPT_NOSRC	= 1<< 6,
+	OPT_E_FLAG	= 1<< 7,
+	OPT_F_FLAG	= 1<< 8,
+	OPT_I_FLAG	= 1<< 9,
+	OPT_N_FLAG	= 1<<10,
+	OPT_R_FLAG	= 1<<11,
+	OPT_t_FLAG	= 1<<12,
+	OPT_TILDE_FLAG	= 1<<13		/* -~ */
+};
 
 enum okay {
 	STOP = 0,
@@ -170,25 +268,13 @@ enum mimecontent {
 	MIME_DISCARD			/* content is discarded */
 };
 
-enum mimeclean {
-	MIME_CLEAN	= 000,		/* plain RFC 2822 message */
-	MIME_HIGHBIT	= 001,		/* characters >= 0200 */
-	MIME_LONGLINES	= 002,		/* has lines too long for RFC 2822 */
-	MIME_CTRLCHAR	= 004,		/* contains control characters */
-	MIME_HASNUL	= 010,		/* contains \0 characters */
-	MIME_NOTERMNL	= 020		/* lacks a terminating newline */
-};
-
 enum tdflags {
 	TD_NONE		= 0,	/* no display conversion */
 	TD_ISPR		= 01,	/* use isprint() checks */
 	TD_ICONV	= 02,	/* use iconv() */
-	TD_DELCTRL	= 04	/* delete control characters */
-};
+	TD_DELCTRL	= 04,	/* delete control characters */
 
-struct str {
-	char *s;			/* the string's content */
-	size_t l;			/* the stings's length */
+	_TD_BUFCOPY	= 010	/* Buffer may be constant, copy it */
 };
 
 enum protocol {
@@ -199,13 +285,32 @@ enum protocol {
 	PROTO_UNKNOWN			/* unknown protocol */
 };
 
+#ifdef USE_SSL
+enum ssl_vrfy_level {
+	VRFY_IGNORE,
+	VRFY_WARN,
+	VRFY_ASK,
+	VRFY_STRICT
+};
+#endif
+
+struct str {
+	char	*s;			/* the string's content */
+	size_t	l;			/* the stings's length */
+};
+
+struct time_current {
+	time_t		tc_time;
+	struct tm	tc_gm;
+	struct tm	tc_local;
+	char		tc_ctime[32];
+};
+
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
 #ifdef USE_SSL
 	int	s_use_ssl;		/* SSL is used */
-# ifdef USE_NSS
-	void	*s_prfd;		/* NSPR file descriptor */
-# elif defined USE_OPENSSL
+# ifdef USE_OPENSSL
 	void	*s_ssl;			/* SSL object */
 	void	*s_ctx;			/* SSL context object */
 # endif
@@ -213,15 +318,14 @@ struct sock {				/* data associated with a socket */
 	char	*s_wbuf;		/* for buffered writes */
 	int	s_wbufsize;		/* allocated size of s_buf */
 	int	s_wbufpos;		/* position of first empty data byte */
-	char	s_rbuf[LINESIZE+1];	/* for buffered reads */
 	char	*s_rbufptr;		/* read pointer to s_rbuf */
 	int	s_rsz;			/* size of last read in s_rbuf */
-	char	*s_desc;		/* description of error messages */
+	char const *s_desc;		/* description of error messages */
 	void	(*s_onclose)(void);	/* execute on close */
+	char	s_rbuf[LINESIZE + 1];	/* for buffered reads */
 };
 
 struct mailbox {
-	struct sock	mb_sock;	/* socket structure */
 	enum {
 		MB_NONE		= 000,	/* no reply expected */
 		MB_COMD		= 001,	/* command reply expected */
@@ -256,6 +360,7 @@ struct mailbox {
 	char	*mb_imap_mailbox;	/* name of current IMAP mailbox */
 	char	*mb_cache_directory;	/* name of cache directory */
 #endif
+	struct sock	mb_sock;	/* socket structure */
 };
 
 enum needspec {
@@ -315,7 +420,7 @@ struct mimepart {
 	long	m_lines;		/* Lines in the message */
 	long	m_xlines;		/* Lines in the full message */
 	time_t	m_time;			/* time the message was sent */
-	char	*m_from;		/* message sender */
+	char const *m_from;		/* message sender */
 	struct mimepart	*m_nextpart;	/* next part at same level */
 	struct mimepart	*m_multipart;	/* parts of multipart */
 	struct mimepart	*m_parent;	/* enclosing multipart part */
@@ -329,6 +434,10 @@ struct mimepart {
 	char	*m_filename;		/* attachment filename */
 };
 
+/* For "pipe-" handlers (based on .m_ct_type_plain) */
+#define MIME_CONTENT_PIPECMD_FORCE_TEXT(CMD)	\
+	((CMD) != NULL && (CMD)[0] == '@' && (CMD)[1] == '\0')
+
 struct message {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the message */
@@ -341,7 +450,6 @@ struct message {
 	time_t	m_time;			/* time the message was sent */
 	time_t	m_date;			/* time in the 'Date' field */
 	unsigned	m_idhash;	/* hash on Message-ID for threads */
-	unsigned long	m_uid;		/* IMAP unique identifier */
 	struct message	*m_child;	/* first child of this message */
 	struct message	*m_younger;	/* younger brother of this message */
 	struct message	*m_elder;	/* elder brother of this message */
@@ -350,6 +458,9 @@ struct message {
 	long		m_threadpos;	/* position in threaded display */
 #ifdef USE_SCORE
 	float		m_score;	/* score of message */
+#endif
+#ifdef USE_IMAP
+	unsigned long	m_uid;		/* IMAP unique identifier */
 #endif
 	char	*m_maildir_file;	/* original maildir file of msg */
 	unsigned	m_maildir_hash;	/* hash of file name in maildir sub */
@@ -395,7 +506,7 @@ enum argtype {
  * in lex.c
  */
 struct cmd {
-	char		*c_name;		/* Name of command */
+	char const	*c_name;		/* Name of command */
 	int		(*c_func)(void *);	/* Implementor of command */
 	enum argtype	c_argtype;		/* Arglist type (see below) */
 	short		c_msgflag;		/* Required flags of msgs*/
@@ -456,10 +567,10 @@ struct header {
 };
 
 /*
- * Structure of namelist nodes used in processing
- * the recipients of mail and aliases and all that
- * kind of stuff.
+ * Handling of namelist nodes used in processing the recipients of mail and
+ * aliases, inspection of mail-addresses and all that kind of stuff.
  */
+
 enum nameflags {
 	NAME_NAME_SALLOC	= 1<< 0,	/* .n_name is doped */
 	NAME_FULLNAME_SALLOC	= 1<< 1,	/* .n_fullname is doped */
@@ -478,9 +589,10 @@ enum nameflags {
 					NAME_ADDRSPEC_ERR_ATSEQ |
 					NAME_ADDRSPEC_ERR_CHAR |
 					NAME_ADDRSPEC_ERR_IDNA,
-	_NAME_SHIFTWC = 11,
-	_NAME_MAXWC = 0xFFFFF,
-	_NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
+
+	_NAME_SHIFTWC		= 11,
+	_NAME_MAXWC		= 0xFFFFF,
+	_NAME_MASKWC		= _NAME_MAXWC << _NAME_SHIFTWC
 };
 
 /* In the !_ERR_EMPTY case, the failing character can be queried */
@@ -512,17 +624,28 @@ struct addrguts {
 };
 
 /*
- * Structure of a MIME attachment.
+ * MIME attachments.
  */
+
+enum attach_conv {
+	AC_DEFAULT,			/* _get_lc() -> _iter_*() */
+	AC_FIX_OUTCS,			/* _get_lc() -> "charset=" .a_charset */
+	AC_FIX_INCS,			/* "charset=".a_input_charset (nocnv) */
+	AC_TMPFILE			/* attachment.a_tmpf is converted */
+};
+
 struct attachment {
 	struct attachment *a_flink;	/* Forward link in list. */
 	struct attachment *a_blink;	/* Backward list link */
-	char	*a_name;		/* file name */
-	char	*a_content_type;	/* content type */
-	char	*a_content_disposition;	/* content disposition */
-	char	*a_content_id;		/* content id */
-	char	*a_content_description;	/* content description */
-	char	*a_charset;		/* character set */
+	char const *a_name;		/* file name */
+	char const *a_content_type;	/* content type */
+	char const *a_content_disposition; /* content disposition */
+	char const *a_content_id;	/* content id */
+	char const *a_content_description; /* content description */
+	char const *a_input_charset;	/* Interpretation depends on .a_conv */
+	char const *a_charset;		/* ... */
+	FILE	*a_tmpf;		/* If AC_TMPFILE */
+	enum attach_conv a_conv;	/* User chosen conversion */
 	int	a_msgno;		/* message number */
 };
 
@@ -611,8 +734,51 @@ struct shortcut {
 #define reset(x)	siglongjmp(srbuf, x)
 
 /*
+ * Content-Transfer-Encodings as defined in RFC 2045:
+ * - Quoted-Printable, section 6.7
+ * - Base64, section 6.8
+ */
+
+#define QP_LINESIZE	(4 * 19  +1)	/* Max. compliant QP linesize (+1) */
+
+#define B64_LINESIZE	(4 * 19  +1)	/* Max. compl. Base64 linesize (+1) */
+#define B64_ENCODE_INPUT_PER_LINE 57	/* Max. input for Base64 encode/line */
+
+/* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
+enum __mimecte_flags {
+	MIMECTE_NONE,
+	MIMECTE_SALLOC	= 1<<0,		/* Use salloc(), not srealloc().. */
+	/* ..result .s,.l point to user buffer of *_LINESIZE+ bytes instead */
+	MIMECTE_BUF	= 1<<1,
+	MIMECTE_CRLF	= 1<<2,		/* (encode) Append "\r\n" to lines */
+	MIMECTE_LF	= 1<<3,		/* (encode) Append "\n" to lines */
+	/* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE and
+	 * inject the desired line-ending whenever a linewrap is desired */
+	MIMECTE_MULTILINE = 1<<4,
+	/* (encode) Quote with header rules, do not generate soft NL breaks? */
+	MIMECTE_ISHEAD	= 1<<5
+};
+
+enum qpflags {
+	QP_NONE		= MIMECTE_NONE,
+	QP_SALLOC	= MIMECTE_SALLOC,
+	QP_BUF		= MIMECTE_BUF,
+	QP_ISHEAD	= MIMECTE_ISHEAD
+};
+
+enum b64flags {
+	B64_NONE	= MIMECTE_NONE,
+	B64_SALLOC	= MIMECTE_SALLOC,
+	B64_BUF		= MIMECTE_BUF,
+	B64_CRLF	= MIMECTE_CRLF,
+	B64_LF		= MIMECTE_LF,
+	B64_MULTILINE	= MIMECTE_MULTILINE
+};
+
+/*
  * Locale-independent character classes.
  */
+
 enum {
 	C_CNTRL	= 0000,
 	C_BLANK	= 0001,
@@ -625,39 +791,30 @@ enum {
 	C_LOWER	= 0200
 };
 
-extern unsigned char const 	class_char[];
+extern uc_it const 	class_char[];
 
 #define __ischarof(C, FLAGS)	\
-	(asciichar(C) && (class_char[(unsigned char)(C)] & (FLAGS)) != 0)
+	(asciichar(C) && (class_char[(uc_it)(C)] & (FLAGS)) != 0)
 
-#define asciichar(c) ((unsigned char)(c) <= 0177)
-#define alnumchar(c) __ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
-#define alphachar(c) __ischarof(c, C_UPPER|C_LOWER)
-#define blankchar(c) __ischarof(c, C_BLANK)
+#define asciichar(c)	((uc_it)(c) <= 0177)
+#define alnumchar(c)	__ischarof(c, C_DIGIT|C_OCTAL|C_UPPER|C_LOWER)
+#define alphachar(c)	__ischarof(c, C_UPPER|C_LOWER)
+#define blankchar(c)	__ischarof(c, C_BLANK)
 #define blankspacechar(c) __ischarof(c, C_BLANK|C_SPACE)
-#define cntrlchar(c) __ischarof(c, C_CNTRL)
-#define digitchar(c) __ischarof(c, C_DIGIT|C_OCTAL)
-#define lowerchar(c) __ischarof(c, C_LOWER)
-#define punctchar(c) __ischarof(c, C_PUNCT)
-#define spacechar(c) __ischarof(c, C_BLANK|C_SPACE|C_WHITE)
-#define upperchar(c) __ischarof(c, C_UPPER)
-#define whitechar(c) __ischarof(c, C_BLANK|C_WHITE)
-#define octalchar(c) __ischarof(c, C_OCTAL)
+#define cntrlchar(c)	__ischarof(c, C_CNTRL)
+#define digitchar(c)	__ischarof(c, C_DIGIT|C_OCTAL)
+#define lowerchar(c)	__ischarof(c, C_LOWER)
+#define punctchar(c)	__ischarof(c, C_PUNCT)
+#define spacechar(c)	__ischarof(c, C_BLANK|C_SPACE|C_WHITE)
+#define upperchar(c)	__ischarof(c, C_UPPER)
+#define whitechar(c)	__ischarof(c, C_BLANK|C_WHITE)
+#define octalchar(c)	__ischarof(c, C_OCTAL)
 
-#define upperconv(c) (lowerchar(c) ? (char)((unsigned char)(c)-'a'+'A') : (c))
-#define lowerconv(c) (upperchar(c) ? (char)((unsigned char)(c)-'A'+'a') : (c))
-/*	RFC 822, 3.2.	*/
-#define fieldnamechar(c) (asciichar(c)&&(c)>040&&(c)!=0177&&(c)!=':')
-
-/*
- * Truncate a file to the last character written. This is
- * useful just before closing an old file that was opened
- * for read/write.
- */
-#define ftrunc(stream) {					\
-	fflush(stream);						\
-	ftruncate(fileno(stream), (off_t)ftell(stream));	\
-}
+#define upperconv(c)	(lowerchar(c) ? (char)((uc_it)(c) - 'a' + 'A') : (c))
+#define lowerconv(c)	(upperchar(c) ? (char)((uc_it)(c) - 'A' + 'a') : (c))
+/* RFC 822, 3.2. */
+#define fieldnamechar(c) \
+	(asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
 /*
  * Try to use alloca() for some function-local buffers and data,
@@ -683,10 +840,23 @@ extern unsigned char const 	class_char[];
 # define putchar(c)	putc_unlocked((c), stdout)
 #endif
 
-#define CBAD		(-15555)
+/*
+ * Truncate a file to the last character written. This is
+ * useful just before closing an old file that was opened
+ * for read/write.
+ */
+#define ftrunc(stream) do {					\
+	fflush(stream);						\
+	ftruncate(fileno(stream), (off_t)ftell(stream));	\
+} while (0)
 
-#define smin(a, b)	((a) < (b) ? (a) : (b))
-#define smax(a, b)	((a) < (b) ? (b) : (a))
+/*
+ * fflush() and rewind()
+ */
+#define fflush_rewind(stream) do {	\
+	fflush(stream);			\
+	rewind(stream);			\
+} while (0)
 
 /*
  * For saving the current directory and later returning.
@@ -698,12 +868,3 @@ struct cw {
 	char	cw_wd[PATHSIZE];
 #endif
 };
-
-#ifdef USE_SSL
-enum ssl_vrfy_level {
-	VRFY_IGNORE,
-	VRFY_WARN,
-	VRFY_ASK,
-	VRFY_STRICT
-};
-#endif

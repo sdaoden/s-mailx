@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -37,10 +37,14 @@
  * SUCH DAMAGE.
  */
 
+#include "config.h"
+
+#ifndef USE_SMTP
+typedef int avoid_empty_file_compiler_warning;
+#else
 #include "rcv.h"
 
 #include <setjmp.h>
-#include <sys/utsname.h>
 #include <unistd.h>
 #ifdef HAVE_SOCKETS
 # include <netdb.h>
@@ -62,133 +66,23 @@
  * SMTP client and other internet related functions.
  */
 
-#ifdef USE_SMTP
-static int verbose;
-static int _debug;
-#endif
+static char		*smtpbuf;
+static size_t		smtpbufsize;
+static sigjmp_buf	smtpjmp;
 
-/*
- * Return our hostname.
- */
-char *
-nodename(int mayoverride)
+static void	onterm(int signo);
+static int	read_smtp(struct sock *sp, int value, int ign_eof);
+static int	talk_smtp(struct name *to, FILE *fi, struct sock *sp,
+			char *server, char *uhp, struct header *hp,
+			const char *user, const char *password,
+			const char *skinned);
+
+static void
+onterm(int signo)
 {
-	static char *hostname;
-	char *hn;
-        struct utsname ut;
-#ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
-	struct addrinfo hints, *res;
-# else
-        struct hostent *hent;
-# endif
-#endif
-
-	if (mayoverride && (hn = value("hostname")) != NULL && *hn) {
-		free(hostname);
-		hostname = sstrdup(hn);
-	}
-	if (hostname == NULL) {
-		uname(&ut);
-		hn = ut.nodename;
-#ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
-		memset(&hints, 0, sizeof hints);
-		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
-		hints.ai_flags = AI_CANONNAME;
-		if (getaddrinfo(hn, "0", &hints, &res) == 0) {
-			if (res->ai_canonname) {
-				hn = salloc(strlen(res->ai_canonname) + 1);
-				strcpy(hn, res->ai_canonname);
-			}
-			freeaddrinfo(res);
-		}
-# else
-		hent = gethostbyname(hn);
-		if (hent != NULL) {
-			hn = hent->h_name;
-		}
-# endif
-#endif
-		hostname = smalloc(strlen(hn) + 1);
-		strcpy(hostname, hn);
-	}
-	return hostname;
+	(void)signo;
+	siglongjmp(smtpjmp, 1);
 }
-
-/*
- * Return the user's From: address(es).
- */
-char *
-myaddrs(struct header *hp)
-{
-	char *cp, *hn;
-	static char *addr;
-	size_t sz;
-
-	if (hp != NULL && hp->h_from != NULL) {
-		if (hp->h_from->n_fullname)
-			return savestr(hp->h_from->n_fullname);
-		if (hp->h_from->n_name)
-			return savestr(hp->h_from->n_name);
-	}
-	if ((cp = value("from")) != NULL)
-		return cp;
-	/*
-	 * When invoking sendmail directly, it's its task
-	 * to generate a From: address.
-	 */
-	if (value("smtp") == NULL)
-		return NULL;
-	if (addr == NULL) {
-		hn = nodename(1);
-		sz = strlen(myname) + strlen(hn) + 2;
-		addr = smalloc(sz);
-		snprintf(addr, sz, "%s@%s", myname, hn);
-	}
-	return addr;
-}
-
-char *
-myorigin(struct header *hp)
-{
-	char	*cp;
-	struct name	*np;
-
-	if ((cp = myaddrs(hp)) == NULL ||
-			(np = lextract(cp, GEXTRA|GFULL)) == NULL)
-		return NULL;
-	return np->n_flink != NULL ? value("sender") : cp;
-}
-
-#ifdef USE_SMTP
-
-static int read_smtp(struct sock *sp, int value, int ign_eof);
-static int talk_smtp(struct name *to, FILE *fi, struct sock *sp,
-		char *server, char *uhp, struct header *hp,
-		const char *user, const char *password, const char *skinned);
-
-char *
-smtp_auth_var(const char *type, const char *addr)
-{
-	char	*var, *cp;
-	int	len;
-
-	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
-	snprintf(var, len, "smtp-auth%s-%s", type, addr);
-	if ((cp = value(var)) != NULL)
-		cp = savestr(cp);
-	else {
-		snprintf(var, len, "smtp-auth%s", type);
-		if ((cp = value(var)) != NULL)
-			cp = savestr(cp);
-	}
-	ac_free(var);
-	return cp;
-}
-
-static char	*smtpbuf;
-static size_t	smtpbufsize;
 
 /*
  * Get the SMTP server's answer, expecting value.
@@ -206,7 +100,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 					"Unexpected EOF on SMTP connection\n"));
 			return -1;
 		}
-		if (verbose || debug || _debug)
+		if (options & OPT_VERBOSE)
 			fputs(smtpbuf, stderr);
 		switch (*smtpbuf) {
 		case '1': ret = 1; break;
@@ -226,7 +120,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
  * Macros for talk_smtp.
  */
 #define	_SMTP_ANSWER(x, ign_eof)	\
-			if (!debug && !_debug) { \
+			if ((options & OPT_DEBUG) == 0) { \
 				int	y; \
 				if ((y = read_smtp(sp, x, ign_eof)) != (x) && \
 					(!(ign_eof) || y != -1)) { \
@@ -238,9 +132,9 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 
 #define	SMTP_ANSWER(x)	_SMTP_ANSWER(x, 0)
 
-#define	SMTP_OUT(x)	if (verbose || debug || _debug) \
+#define	SMTP_OUT(x)	if (options & OPT_VERBOSE) \
 				fprintf(stderr, ">>> %s", x); \
-			if (!debug && !_debug) \
+			if ((options & OPT_DEBUG) == 0) \
 				swrite(sp, x);
 
 /*
@@ -251,12 +145,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		char *xserver, char *uhp, struct header *hp,
 		const char *user, const char *password, const char *skinned)
 {
+	char o[LINESIZE], *authstr, *cp, *b = NULL;
+	struct str b64;
 	struct name *n;
-	char *b = NULL, o[LINESIZE];
-	size_t blen, bsize = 0, count;
-	char	*b64, *authstr, *cp;
-	enum	{ AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
-	int	inhdr = 1, inbcc = 0;
+	size_t blen, count, bsize = 0;
+	enum { AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
+	int inhdr = 1, inbcc = 0;
 	(void)hp;
 	(void)xserver;
 	(void)uhp;
@@ -286,10 +180,9 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		return 1;
 	}
 	SMTP_ANSWER(2);
-#ifdef	USE_SSL
-	if (value("smtp-use-starttls") ||
-			value("smtp-use-tls") /* v11.0 compatibility */) {
-		char	*server;
+#ifdef USE_SSL
+	if (! sp->s_use_ssl && value("smtp-use-starttls")) {
+		char *server;
 		if ((cp = strchr(xserver, ':')) != NULL) {
 			server = salloc(cp - xserver + 1);
 			memcpy(server, xserver, cp - xserver);
@@ -301,15 +194,16 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_ANSWER(2);
 		SMTP_OUT("STARTTLS\r\n");
 		SMTP_ANSWER(2);
-		if (!debug && !_debug && ssl_open(server, sp, uhp) != OKAY)
+		if ((options & OPT_DEBUG) == 0 &&
+				ssl_open(server, sp, uhp) != OKAY)
 			return 1;
 	}
-#else	/* !USE_SSL */
-	if (value("smtp-use-starttls") || value("smtp-use-tls")) {
+#else
+	if (value("smtp-use-starttls")) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		return 1;
 	}
-#endif	/* !USE_SSL */
+#endif
 	if (auth != AUTH_NONE) {
 		snprintf(o, sizeof o, "EHLO %s\r\n", nodename(1));
 		SMTP_OUT(o);
@@ -319,33 +213,32 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		case AUTH_LOGIN:
 			SMTP_OUT("AUTH LOGIN\r\n");
 			SMTP_ANSWER(3);
-			b64 = strtob64(user);
-			snprintf(o, sizeof o, "%s\r\n", b64);
-			free(b64);
-			SMTP_OUT(o);
+			(void)b64_encode_cp(&b64, user, B64_SALLOC|B64_CRLF);
+			SMTP_OUT(b64.s);
 			SMTP_ANSWER(3);
-			b64 = strtob64(password);
-			snprintf(o, sizeof o, "%s\r\n", b64);
-			free(b64);
-			SMTP_OUT(o);
+			(void)b64_encode_cp(&b64, password,
+				B64_SALLOC|B64_CRLF);
+			SMTP_OUT(b64.s);
 			SMTP_ANSWER(2);
 			break;
 		case AUTH_PLAIN:
 			SMTP_OUT("AUTH PLAIN\r\n");
 			SMTP_ANSWER(3);
-			snprintf(o, sizeof o, "%c%s%c%s", '\0', user, '\0',
-							  password);
-			b64 = memtob64(o, strlen(user)+strlen(password)+2);
-			snprintf(o, sizeof o, "%s\r\n", b64);
-			SMTP_OUT(o);
+			(void)snprintf(o, sizeof o, "%c%s%c%s",
+				'\0', user, '\0', password);
+			(void)b64_encode_buf(&b64, o, strlen(user) +
+				strlen(password) + 2, B64_SALLOC|B64_CRLF);
+			SMTP_OUT(b64.s);
 			SMTP_ANSWER(2);
 			break;
 #ifdef USE_MD5
 		case AUTH_CRAM_MD5:
 			SMTP_OUT("AUTH CRAM-MD5\r\n");
 			SMTP_ANSWER(3);
-			for (cp = smtpbuf; digitchar(*cp&0377); cp++);
-			while (blankchar(*cp&0377)) cp++;
+			for (cp = smtpbuf; digitchar(*cp); ++cp)
+				;
+			while (blankchar(*cp))
+				++cp;
 			cp = cram_md5_string(user, password, cp);
 			SMTP_OUT(cp);
 			SMTP_ANSWER(2);
@@ -391,12 +284,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 				inbcc = 0;
 		}
 		if (*b == '.') {
-			if (debug || _debug)
+			if (options & OPT_DEBUG)
 				putc('.', stderr);
 			else
 				swrite1(sp, ".", 1, 1);
 		}
-		if (debug || _debug) {
+		if (options & OPT_DEBUG) {
 			fprintf(stderr, ">>> %s", b);
 			continue;
 		}
@@ -413,13 +306,23 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	return 0;
 }
 
-static sigjmp_buf	smtpjmp;
-
-static void
-onterm(int signo)
+char *
+smtp_auth_var(const char *type, const char *addr)
 {
-	(void)signo;
-	siglongjmp(smtpjmp, 1);
+	char	*var, *cp;
+	int	len;
+
+	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
+	snprintf(var, len, "smtp-auth%s-%s", type, addr);
+	if ((cp = value(var)) != NULL)
+		cp = savestr(cp);
+	else {
+		snprintf(var, len, "smtp-auth%s", type);
+		if ((cp = value(var)) != NULL)
+			cp = savestr(cp);
+	}
+	ac_free(var);
+	return cp;
 }
 
 /*
@@ -435,8 +338,6 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	sighandler_type	saveterm;
 
 	memset(&so, 0, sizeof so);
-	verbose = value("verbose") != NULL;
-	_debug = value("debug") != NULL;
 	saveterm = safe_signal(SIGTERM, SIG_IGN);
 	if (sigsetjmp(smtpjmp, 1)) {
 		safe_signal(SIGTERM, saveterm);
@@ -454,15 +355,16 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 # endif
 	} else
 		use_ssl = 0;
-	if (!debug && !_debug && sopen(server, &so, use_ssl, server,
-				use_ssl ? "smtps" : "smtp", verbose) != OKAY) {
+	if ((options & OPT_DEBUG) == 0 && sopen(server, &so, use_ssl, server,
+			use_ssl ? "smtps" : "smtp",
+			(options & OPT_VERBOSE) != 0) != OKAY) {
 		safe_signal(SIGTERM, saveterm);
 		return 1;
 	}
 	so.s_desc = "SMTP";
 	ret = talk_smtp(to, fi, &so, server, server, hp,
 			user, password, skinned);
-	if (!debug && !_debug)
+	if ((options & OPT_DEBUG) == 0)
 		sclose(&so);
 	if (smtpbuf) {
 		free(smtpbuf);

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -40,10 +40,14 @@
 #include "rcv.h"
 
 #include <errno.h>
-#include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#ifdef HAVE_WORDEXP
+# include <wordexp.h>
+#endif
+
 #ifdef HAVE_SOCKETS
 # include <netdb.h>
 # include <netinet/in.h>
@@ -52,18 +56,13 @@
 #  include <arpa/inet.h>
 # endif
 #endif
-#ifdef USE_NSS
-# include <nss.h>
-# include <ssl.h>
-#elif defined USE_OPENSSL
-# include <openssl/ssl.h>
+
+#ifdef USE_OPENSSL
 # include <openssl/err.h>
+# include <openssl/rand.h>
+# include <openssl/ssl.h>
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
-# include <openssl/rand.h>
-#endif
-#ifdef HAVE_WORDEXP
-# include <wordexp.h>
 #endif
 
 #include "extern.h"
@@ -89,11 +88,16 @@ static char *	_expand(char const *name, int only_local);
 /* Perform shell meta character expansion */
 static char *	_globname(char const *name);
 
+/* *line* is a buffer with the result of fgets().
+ * Returns the first newline or the last character read */
+static size_t	_length_of_line(const char *line, size_t linesize);
+
+/* Read a line, one character at a time */
+static char *	_fgetline_byone(char **line, size_t *linesize, size_t *llen,
+			FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
+
 static void makemessage(void);
 static void append(struct message *mp);
-static size_t length_of_line(const char *line, size_t linesize);
-static char *fgetline_byone(char **line, size_t *linesize, size_t *llen,
-		FILE *fp, int appendnl, size_t n);
 static enum okay get_header(struct message *mp);
 
 static char *
@@ -110,7 +114,7 @@ _expand(char const *name, int only_local)
 	 * Shell meta characters expand into constants.
 	 * This way, we make no recursive expansion.
 	 */
-	res = (char*)name;
+	res = UNCONST(name);
 	if ((sh = get_shortcut(res)) != NULL)
 		res = sh->sh_long;
 
@@ -122,7 +126,7 @@ jnext:	dyn = 0;
 			goto jnext;
 		}
 		findmail((res[1] ? res + 1 : myname),
-			(res[1] != '\0' || uflag), cbuf, sizeof cbuf);
+			(res[1] != '\0' || option_u_arg), cbuf, sizeof cbuf);
 		res = cbuf;
 		goto jislocal;
 	case '#':
@@ -137,7 +141,7 @@ jnext:	dyn = 0;
 		goto jislocal;
 	case '&':
 		if (res[1] == 0 && (res = value("MBOX")) == NULL)
-			res = "~/mbox";
+			res = UNCONST("~/mbox");
 		break;
 	}
 
@@ -196,7 +200,7 @@ _globname(char const *name)
 {
 #ifdef HAVE_WORDEXP
 	wordexp_t we;
-	char *cp;
+	char *cp = NULL;
 	sigset_t nset;
 	int i;
 
@@ -217,12 +221,12 @@ _globname(char const *name)
 	case WRDE_NOSPACE:
 		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
 			name);
-		return NULL;
+		goto jleave;
 	case WRDE_BADCHAR:
 	case WRDE_SYNTAX:
 	default:
 		fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"), name);
-		return NULL;
+		goto jleave;
 	}
 
 	switch (we.we_wordc) {
@@ -231,28 +235,26 @@ _globname(char const *name)
 		break;
 	case 0:
 		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
-		cp = NULL;
 		break;
 	default:
 		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
-		cp = NULL;
+		break;
 	}
-
+jleave:
 	wordfree(&we);
-	return cp;
+	return (cp);
 
 #else /* !HAVE_WORDEXP */
-	char xname[PATHSIZE];
-	char cmdbuf[PATHSIZE];		/* also used for file names */
-	int pid, l;
-	char *cp, *shell;
-	int pivec[2];
 	extern int wait_status;
+
 	struct stat sbuf;
+	char xname[PATHSIZE], cmdbuf[PATHSIZE], /* also used for file names */
+		*cp, *shell;
+	int pid, l, pivec[2];
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
-		return NULL;
+		return (NULL);
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
@@ -261,9 +263,10 @@ _globname(char const *name)
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);
-		return NULL;
+		return (NULL);
 	}
 	close(pivec[1]);
+
 again:
 	l = read(pivec[0], xname, sizeof xname);
 	if (l < 0) {
@@ -271,21 +274,21 @@ again:
 			goto again;
 		perror("read");
 		close(pivec[0]);
-		return NULL;
+		return (NULL);
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
-		return NULL;
+		return (NULL);
 	}
 	if (l == 0) {
 		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
-		return NULL;
+		return (NULL);
 	}
 	if (l == sizeof xname) {
 		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
 			name);
-		return NULL;
+		return (NULL);
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
@@ -295,8 +298,166 @@ again:
 		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
-	return savestr(xname);
+	return (savestr(xname));
 #endif /* !HAVE_WORDEXP */
+}
+
+/*
+ * line is a buffer with the result of fgets(). Returns the first
+ * newline or the last character read.
+ */
+static size_t
+_length_of_line(const char *line, size_t linesize)
+{
+	size_t i;
+
+	/* Last character is always '\0' and was added by fgets() */
+	for (--linesize, i = 0; i < linesize; i++)
+		if (line[i] == '\n')
+			break;
+	return (i < linesize) ? i + 1 : linesize;
+}
+
+static char *
+_fgetline_byone(char **line, size_t *linesize, size_t *llen,
+	FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS)
+{
+	int c;
+
+	if (*line == NULL || *linesize < LINESIZE + n + 1)
+		*line = (srealloc)(*line, *linesize = LINESIZE + n + 1
+				SMALLOC_DEBUG_ARGSCALL);
+	for (;;) {
+		if (n >= *linesize - 128)
+			*line = (srealloc)(*line, *linesize += 256
+					SMALLOC_DEBUG_ARGSCALL);
+		c = getc(fp);
+		if (c != EOF) {
+			(*line)[n++] = c;
+			(*line)[n] = '\0';
+			if (c == '\n')
+				break;
+		} else {
+			if (n > 0) {
+				if (appendnl) {
+					(*line)[n++] = '\n';
+					(*line)[n] = '\0';
+				}
+				break;
+			} else
+				return NULL;
+		}
+	}
+	if (llen)
+		*llen = n;
+	return *line;
+}
+
+char *
+(fgetline)(char **line, size_t *linesize, size_t *count, size_t *llen,
+	FILE *fp, int appendnl SMALLOC_DEBUG_ARGS)
+{
+	size_t i_llen, sz;
+
+	if (count == NULL)
+		/*
+		 * If we have no count, we cannot determine where the
+		 * characters returned by fgets() end if there was no
+		 * newline. We have to read one character at one.
+		 */
+		return _fgetline_byone(line, linesize, llen, fp, appendnl, 0
+			SMALLOC_DEBUG_ARGSCALL);
+	if (*line == NULL || *linesize < LINESIZE)
+		*line = (srealloc)(*line, *linesize = LINESIZE
+				SMALLOC_DEBUG_ARGSCALL);
+	sz = *linesize <= *count ? *linesize : *count + 1;
+	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
+		/*
+		 * Leave llen untouched; it is used to determine whether
+		 * the last line was \n-terminated in some callers.
+		 */
+		return NULL;
+	i_llen = _length_of_line(*line, sz);
+	*count -= i_llen;
+	while ((*line)[i_llen - 1] != '\n') {
+		*line = (srealloc)(*line, *linesize += 256
+				SMALLOC_DEBUG_ARGSCALL);
+		sz = *linesize - i_llen;
+		sz = (sz <= *count ? sz : *count + 1);
+		if (sz <= 1 || fgets(&(*line)[i_llen], sz, fp) == NULL) {
+			if (appendnl) {
+				(*line)[i_llen++] = '\n';
+				(*line)[i_llen] = '\0';
+			}
+			break;
+		}
+		sz = _length_of_line(&(*line)[i_llen], sz);
+		i_llen += sz;
+		*count -= sz;
+	}
+	if (llen)
+		*llen = i_llen;
+	return *line;
+}
+
+int
+(readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
+	SMALLOC_DEBUG_ARGS)
+{
+	/* TODO readline_restart(): always *appends* LF just to strip it again;
+	 * TODO should be configurable just as for fgetline(); ..or whatevr.. */
+	long sz;
+
+	clearerr(ibuf);
+	/*
+	 * Interrupts will cause trouble if we are inside a stdio call. As
+	 * this is only relevant if input comes from a terminal, we can simply
+	 * bypass it by read() then.
+	 */
+	if (fileno(ibuf) == 0 && is_a_tty[0]) {
+		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
+			*linebuf = (srealloc)(*linebuf,
+					*linesize = LINESIZE + n + 1
+					SMALLOC_DEBUG_ARGSCALL);
+		for (;;) {
+			if (n >= *linesize - 128)
+				*linebuf = (srealloc)(*linebuf,
+						*linesize += 256
+						SMALLOC_DEBUG_ARGSCALL);
+again:
+			sz = read(0, *linebuf + n, *linesize - n - 1);
+			if (sz > 0) {
+				n += sz;
+				(*linebuf)[n] = '\0';
+				if (n > 0 && (*linebuf)[n - 1] == '\n')
+					break;
+			} else {
+				if (sz < 0 && errno == EINTR)
+					goto again;
+				if (n > 0) {
+					if ((*linebuf)[n - 1] != '\n') {
+						(*linebuf)[n++] = '\n';
+						(*linebuf)[n] = '\0';
+					}
+					break;
+				} else
+					return -1;
+			}
+		}
+	} else {
+		/*
+		 * Not reading from standard input or standard input not
+		 * a terminal. We read one char at a time as it is the
+		 * only way to get lines with embedded NUL characters in
+		 * standard stdio.
+		 */
+		if (_fgetline_byone(linebuf, linesize, &n, ibuf, 1, n
+				SMALLOC_DEBUG_ARGSCALL) == NULL)
+			return -1;
+	}
+	if (n > 0 && (*linebuf)[n - 1] == '\n')
+		(*linebuf)[--n] = '\0';
+	return n;
 }
 
 /*
@@ -306,12 +467,11 @@ void
 setptr(FILE *ibuf, off_t offset)
 {
 	int c;
-	size_t count;
-	char *cp, *cp2;
+	char *cp, *linebuf = NULL;
+	char const *cp2;
 	struct message this;
 	int maybe, inhead, thiscnt;
-	char *linebuf = NULL;
-	size_t linesize = 0, filesize;
+	size_t linesize = 0, filesize, count;
 
 	maybe = 1;
 	inhead = 0;
@@ -337,6 +497,11 @@ setptr(FILE *ibuf, off_t offset)
 		if (linebuf[0] == '\0')
 			linebuf[0] = '.';
 #endif
+		/* XXX Convert CRLF to LF; this should be rethought in that
+		 * XXX CRLF input should possibly end as CRLF output? */
+		if (count >= 2 && linebuf[count - 1] == '\n' &&
+				linebuf[count - 2] == '\r')
+			linebuf[--count - 1] = '\n';
 		fwrite(linebuf, sizeof *linebuf, count, mb.mb_otf);
 		if (ferror(mb.mb_otf)) {
 			perror("/tmp");
@@ -414,66 +579,6 @@ putline(FILE *obuf, char *linebuf, size_t count)
 	if (ferror(obuf))
 		return (-1);
 	return (count + 1);
-}
-
-/*
- * Read up a line from the specified input into the line
- * buffer.  Return the number of characters read.  Do not
- * include the newline at the end.
- *
- * n is the number of characters already read.
- */
-int
-readline_restart(FILE *ibuf, char **linebuf, size_t *linesize, size_t n)
-{
-	long sz;
-
-	clearerr(ibuf);
-	/*
-	 * Interrupts will cause trouble if we are inside a stdio call. As
-	 * this is only relevant if input comes from a terminal, we can simply
-	 * bypass it by read() then.
-	 */
-	if (fileno(ibuf) == 0 && is_a_tty[0]) {
-		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
-			*linebuf = srealloc(*linebuf,
-					*linesize = LINESIZE + n + 1);
-		for (;;) {
-			if (n >= *linesize - 128)
-				*linebuf = srealloc(*linebuf, *linesize += 256);
-again:
-			sz = read(0, *linebuf + n, *linesize - n - 1);
-			if (sz > 0) {
-				n += sz;
-				(*linebuf)[n] = '\0';
-				if (n > 0 && (*linebuf)[n - 1] == '\n')
-					break;
-			} else {
-				if (sz < 0 && errno == EINTR)
-					goto again;
-				if (n > 0) {
-					if ((*linebuf)[n - 1] != '\n') {
-						(*linebuf)[n++] = '\n';
-						(*linebuf)[n] = '\0';
-					}
-					break;
-				} else
-					return -1;
-			}
-		}
-	} else {
-		/*
-		 * Not reading from standard input or standard input not
-		 * a terminal. We read one char at a time as it is the
-		 * only way to get lines with embedded NUL characters in
-		 * standard stdio.
-		 */
-		if (fgetline_byone(linebuf, linesize, &n, ibuf, 1, n) == NULL)
-			return -1;
-	}
-	if (n > 0 && (*linebuf)[n - 1] == '\n')
-		(*linebuf)[--n] = '\0';
-	return n;
 }
 
 /*
@@ -636,6 +741,30 @@ expand(char const *name)
 	return (_expand(name, 0));
 }
 
+void
+findmail(char const *user, int force, char *buf, int size)
+{
+	char *mbox, *cp;
+
+	if (strcmp(user, myname) == 0 && !force &&
+			(cp = value("folder")) != NULL &&
+			which_protocol(cp) == PROTO_IMAP) {
+		snprintf(buf, size, "%s/INBOX", protbase(cp));
+	} else if (force || (mbox = value("MAIL")) == NULL) {
+		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
+	} else {
+		strncpy(buf, mbox, size);
+		buf[size-1]='\0';
+	}
+}
+
+void
+demail(void)
+{
+	if (value("keep") != NULL || rm(mailname) < 0)
+		close(creat(mailname, 0600));
+}
+
 /*
  * Determine the current folder directory name.
  */
@@ -660,10 +789,10 @@ getfold(char *name, int size)
 /*
  * Return the name of the dead.letter file.
  */
-char *
+char const *
 getdeadletter(void)
 {
-	char *cp;
+	char const *cp;
 
 	if ((cp = value("DEAD")) == NULL || (cp = file_expand(cp)) == NULL)
 		cp = file_expand("~/dead.letter");
@@ -681,112 +810,66 @@ getdeadletter(void)
 }
 
 /*
- * line is a buffer with the result of fgets(). Returns the first
- * newline or the last character read.
+ * The following code deals with input stacking to do source
+ * commands.  All but the current file pointer are saved on
+ * the stack.
  */
-static size_t
-length_of_line(const char *line, size_t linesize)
-{
-	register size_t i;
 
-	/*
-	 * Last character is always '\0' and was added by fgets.
-	 */
-	linesize--;
-	for (i = 0; i < linesize; i++)
-		if (line[i] == '\n')
-			break;
-	return i < linesize ? i + 1 : linesize;
+static int	ssp;			/* Top of file stack */
+struct {
+	FILE		*s_file;	/* File we were in. */
+	enum condition	s_cond;		/* Saved state of conditionals */
+	int		s_loading;	/* Loading .mailrc, etc. */
+#define	SSTACK	20
+} sstack[SSTACK];
+
+int
+source(void *v)
+{
+	char **arglist = v;
+	FILE *fi;
+	char *cp;
+
+	if ((cp = file_expand(*arglist)) == NULL)
+		return (1);
+	if ((fi = Fopen(cp, "r")) == NULL) {
+		perror(cp);
+		return (1);
+	}
+	if (ssp >= SSTACK - 1) {
+		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
+		Fclose(fi);
+		return (1);
+	}
+	sstack[ssp].s_file = input;
+	sstack[ssp].s_cond = cond;
+	sstack[ssp].s_loading = loading;
+	ssp++;
+	loading = 0;
+	cond = CANY;
+	input = fi;
+	sourcing++;
+	return(0);
 }
 
-/*
- * fgets replacement to handle lines of arbitrary size and with
- * embedded \0 characters.
- * line - line buffer. *line be NULL.
- * linesize - allocated size of line buffer.
- * count - maximum characters to read. May be NULL.
- * llen - length_of_line(*line).
- * fp - input FILE.
- * appendnl - always terminate line with \n, append if necessary.
- */
-char *
-fgetline(char **line, size_t *linesize, size_t *count, size_t *llen,
-		FILE *fp, int appendnl)
+int
+unstack(void)
 {
-	size_t i_llen, sz;
-
-	if (count == NULL)
-		/*
-		 * If we have no count, we cannot determine where the
-		 * characters returned by fgets() end if there was no
-		 * newline. We have to read one character at one.
-		 */
-		return fgetline_byone(line, linesize, llen, fp, appendnl, 0);
-	if (*line == NULL || *linesize < LINESIZE)
-		*line = srealloc(*line, *linesize = LINESIZE);
-	sz = *linesize <= *count ? *linesize : *count + 1;
-	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
-		/*
-		 * Leave llen untouched; it is used to determine whether
-		 * the last line was \n-terminated in some callers.
-		 */
-		return NULL;
-	i_llen = length_of_line(*line, sz);
-	*count -= i_llen;
-	while ((*line)[i_llen - 1] != '\n') {
-		*line = srealloc(*line, *linesize += 256);
-		sz = *linesize - i_llen;
-		sz = (sz <= *count ? sz : *count + 1);
-		if (sz <= 1 || fgets(&(*line)[i_llen], sz, fp) == NULL) {
-			if (appendnl) {
-				(*line)[i_llen++] = '\n';
-				(*line)[i_llen] = '\0';
-			}
-			break;
-		}
-		sz = length_of_line(&(*line)[i_llen], sz);
-		i_llen += sz;
-		*count -= sz;
+	if (ssp <= 0) {
+		fprintf(stderr, tr(4, "\"Source\" stack over-pop.\n"));
+		sourcing = 0;
+		return(1);
 	}
-	if (llen)
-		*llen = i_llen;
-	return *line;
-}
-
-/*
- * Read a line, one character at once.
- */
-static char *
-fgetline_byone(char **line, size_t *linesize, size_t *llen,
-		FILE *fp, int appendnl, size_t n)
-{
-	int c;
-
-	if (*line == NULL || *linesize < LINESIZE + n + 1)
-		*line = srealloc(*line, *linesize = LINESIZE + n + 1);
-	for (;;) {
-		if (n >= *linesize - 128)
-			*line = srealloc(*line, *linesize += 256);
-		c = getc(fp);
-		if (c != EOF) {
-			(*line)[n++] = c;
-			(*line)[n] = '\0';
-			if (c == '\n')
-				break;
-		} else {
-			if (n > 0) {
-				if (appendnl) {
-					(*line)[n++] = '\n';
-					(*line)[n] = '\0';
-				}
-				break;
-			} else
-				return NULL;
-		}
-	}
-	if (llen)
-		*llen = n;
-	return *line;
+	Fclose(input);
+	if (cond != CANY)
+		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
+	ssp--;
+	cond = sstack[ssp].s_cond;
+	loading = sstack[ssp].s_loading;
+	input = sstack[ssp].s_file;
+	if (ssp == 0)
+		sourcing = loading;
+	return(0);
 }
 
 static enum okay
@@ -864,13 +947,7 @@ sclose(struct sock *sp)
 	if (sp->s_fd > 0) {
 		if (sp->s_onclose != NULL)
 			(*sp->s_onclose)();
-#if defined (USE_NSS)
-		if (sp->s_use_ssl) {
-			sp->s_use_ssl = 0;
-			i = PR_Close(sp->s_prfd) == PR_SUCCESS ? 0 : -1;
-			sp->s_prfd = NULL;
-		} else
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 		if (sp->s_use_ssl) {
 			sp->s_use_ssl = 0;
 			SSL_shutdown(sp->s_ssl);
@@ -879,7 +956,7 @@ sclose(struct sock *sp)
 			SSL_CTX_free(sp->s_ctx);
 			sp->s_ctx = NULL;
 		}
-#endif	/* USE_SSL */
+#endif
 		{
 			i = close(sp->s_fd);
 		}
@@ -943,11 +1020,7 @@ swrite1(struct sock *sp, const char *data, int sz, int use_buffer)
 	}
 	if (sz == 0)
 		return OKAY;
-#if defined (USE_NSS)
-	if (sp->s_use_ssl) {
-		x = PR_Write(sp->s_prfd, data, sz);
-	} else
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 	if (sp->s_use_ssl) {
 ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 		if (x < 0) {
@@ -958,7 +1031,7 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 			}
 		}
 	} else
-#endif	/* USE_SSL */
+#endif
 	{
 		x = xwrite(sp->s_fd, data, sz);
 	}
@@ -966,100 +1039,16 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 		char	o[512];
 		snprintf(o, sizeof o, "%s write error",
 				sp->s_desc ? sp->s_desc : "socket");
-#if defined (USE_NSS)
-		sp->s_use_ssl ? nss_gen_err("%s", o) : perror(o);
-#elif defined (USE_OPENSSL)
+#ifdef USE_OPENSSL
 		sp->s_use_ssl ? ssl_gen_err("%s", o) : perror(o);
-#else	/* !USE_SSL */
+#else
 		perror(o);
-#endif	/* !USE_SSL */
+#endif
 		if (x < 0)
 			sclose(sp);
 		return STOP;
 	}
 	return OKAY;
-}
-
-int
-sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp)
-{
-	char	*lp = *line;
-
-	if (sp->s_rsz < 0) {
-		sclose(sp);
-		return sp->s_rsz;
-	}
-	do {
-		if (*line == NULL || lp > &(*line)[*linesize - 128]) {
-			size_t diff = lp - *line;
-			*line = srealloc(*line, *linesize += 256);
-			lp = &(*line)[diff];
-		}
-		if (sp->s_rbufptr == NULL ||
-				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
-#if defined (USE_NSS)
-			if (sp->s_use_ssl) {
-				if ((sp->s_rsz = PR_Read(sp->s_prfd,
-						sp->s_rbuf,
-						sizeof sp->s_rbuf)) <= 0) {
-					if (sp->s_rsz < 0) {
-						char	o[512];
-						snprintf(o, sizeof o, "%s",
-							sp->s_desc ?
-								sp->s_desc :
-								"socket");
-						nss_gen_err("%s", o);
-					}
-					break;
-				}
-			} else
-#elif defined (USE_OPENSSL)
-			if (sp->s_use_ssl) {
-		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
-						sp->s_rbuf,
-						sizeof sp->s_rbuf)) <= 0) {
-					if (sp->s_rsz < 0) {
-						char	o[512];
-						switch(SSL_get_error(sp->s_ssl,
-							sp->s_rsz)) {
-						case SSL_ERROR_WANT_READ:
-						case SSL_ERROR_WANT_WRITE:
-							goto ssl_retry;
-						}
-						snprintf(o, sizeof o, "%s",
-							sp->s_desc ?
-								sp->s_desc :
-								"socket");
-						ssl_gen_err("%s", o);
-
-					}
-					break;
-				}
-			} else
-#endif	/* USE_SSL */
-			{
-			again:	if ((sp->s_rsz = read(sp->s_fd, sp->s_rbuf,
-						sizeof sp->s_rbuf)) <= 0) {
-					if (sp->s_rsz < 0) {
-						char	o[512];
-						if (errno == EINTR)
-							goto again;
-						snprintf(o, sizeof o, "%s",
-							sp->s_desc ?
-								sp->s_desc :
-								"socket");
-						perror(o);
-					}
-					break;
-				}
-			}
-			sp->s_rbufptr = sp->s_rbuf;
-		}
-	} while ((*lp++ = *sp->s_rbufptr++) != '\n');
-	*lp = '\0';
-	if (linelen)
-		*linelen = lp - *line;
-	return lp - *line;
 }
 
 enum okay
@@ -1078,7 +1067,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 #endif
 	int	sockfd;
 	char	*cp;
-	char	*server = (char *)xserver;
+	char	*server = UNCONST(xserver);
 	(void)use_ssl;
 	(void)uhp;
 
@@ -1145,7 +1134,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		else if (strcmp(portstr, "pop3s") == 0)
 			port = htons(995);
 # endif
-		else if ((ep = getservbyname((char *)portstr, "tcp")) != NULL)
+		else if ((ep = getservbyname(UNCONST(portstr), "tcp")) != NULL)
 			port = ep->s_port;
 		else {
 			fprintf(stderr, tr(251, "Unknown service: %s\n"),
@@ -1196,4 +1185,72 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 #endif
 	return OKAY;
 }
-#endif	/* HAVE_SOCKETS */
+
+int
+(sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
+	SMALLOC_DEBUG_ARGS)
+{
+	char	*lp = *line;
+
+	if (sp->s_rsz < 0) {
+		sclose(sp);
+		return sp->s_rsz;
+	}
+	do {
+		if (*line == NULL || lp > &(*line)[*linesize - 128]) {
+			size_t diff = lp - *line;
+			*line = (srealloc)(*line, *linesize += 256
+					SMALLOC_DEBUG_ARGSCALL);
+			lp = &(*line)[diff];
+		}
+		if (sp->s_rbufptr == NULL ||
+				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
+#ifdef USE_OPENSSL
+			if (sp->s_use_ssl) {
+		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
+						sp->s_rbuf,
+						sizeof sp->s_rbuf)) <= 0) {
+					if (sp->s_rsz < 0) {
+						char	o[512];
+						switch(SSL_get_error(sp->s_ssl,
+							sp->s_rsz)) {
+						case SSL_ERROR_WANT_READ:
+						case SSL_ERROR_WANT_WRITE:
+							goto ssl_retry;
+						}
+						snprintf(o, sizeof o, "%s",
+							sp->s_desc ?
+								sp->s_desc :
+								"socket");
+						ssl_gen_err("%s", o);
+
+					}
+					break;
+				}
+			} else
+#endif
+			{
+			again:	if ((sp->s_rsz = read(sp->s_fd, sp->s_rbuf,
+						sizeof sp->s_rbuf)) <= 0) {
+					if (sp->s_rsz < 0) {
+						char	o[512];
+						if (errno == EINTR)
+							goto again;
+						snprintf(o, sizeof o, "%s",
+							sp->s_desc ?
+								sp->s_desc :
+								"socket");
+						perror(o);
+					}
+					break;
+				}
+			}
+			sp->s_rbufptr = sp->s_rbuf;
+		}
+	} while ((*lp++ = *sp->s_rbufptr++) != '\n');
+	*lp = '\0';
+	if (linelen)
+		*linelen = lp - *line;
+	return lp - *line;
+}
+#endif /* HAVE_SOCKETS */

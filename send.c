@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -40,7 +40,6 @@
 #include "rcv.h"
 
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -58,14 +57,28 @@ enum parseflags {
 };
 
 static void onpipe(int signo);
-extern void brokpipe(int signo);
+
+static void	_parsemultipart(struct message *zmp, struct mimepart *ip,
+			enum parseflags pf, int level);
+
+/* Going for user display, print Part: info string */
+static void	_print_part_info(struct str *out, struct mimepart *mip,
+			struct ignoretab *doign, int level);
+
+/* Adjust output statistics */
+SINLINE void	_addstats(off_t *stats, off_t lines, off_t bytes);
+
+/* Call mime_write() as approbiate and adjust statistics */
+SINLINE ssize_t	_out(char const *buf, size_t len, FILE *fp,
+			enum conversion convert, enum sendaction action,
+			char const *prefix, size_t prefixlen, off_t *stats,
+			struct str *rest);
+
 static int sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
-		struct ignoretab *doign, char *prefix, size_t prefixlen,
+		struct ignoretab *doign, char const *prefix, size_t prefixlen,
 		enum sendaction action, off_t *stats, int level);
 static struct mimepart *parsemsg(struct message *mp, enum parseflags pf);
 static enum okay parsepart(struct message *zmp, struct mimepart *ip,
-		enum parseflags pf, int level);
-static void parsemultipart(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 static void newpart(struct mimepart *ip, struct mimepart **np, off_t offs,
 		int *part);
@@ -76,21 +89,15 @@ static void parse822(struct message *zmp, struct mimepart *ip,
 static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 #endif
-static size_t out(char *buf, size_t len, FILE *fp,
-		enum conversion convert, enum sendaction action,
-		char *prefix, size_t prefixlen, off_t *stats,
-		char **restp, size_t *restsizep);
-static void addstats(off_t *stats, off_t lines, off_t bytes);
-static FILE *newfile(struct mimepart *ip, int *ispipe,
-		sighandler_type volatile*oldpipe);
+static FILE *newfile(struct mimepart *ip, int *ispipe);
 static char *getpipecmd(char *content);
-static FILE *getpipefile(char *cmd, FILE **qbuf, int quote);
+static FILE *getpipefile(char const *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
-		char *prefix, size_t prefixlen, off_t *stats);
+		char const *prefix, size_t prefixlen, off_t *stats);
 static void statusput(const struct message *mp, FILE *obuf,
-		char *prefix, size_t prefixlen, off_t *stats);
+		char const *prefix, size_t prefixlen, off_t *stats);
 static void xstatusput(const struct message *mp, FILE *obuf,
-		char *prefix, size_t prefixlen, off_t *stats);
+		char const *prefix, size_t prefixlen, off_t *stats);
 static void put_from_(FILE *fp, struct mimepart *ip, off_t *stats);
 
 static sigjmp_buf	pipejmp;
@@ -101,6 +108,197 @@ onpipe(int signo)
 {
 	(void)signo;
 	siglongjmp(pipejmp, 1);
+}
+
+static void
+_parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
+	int level)
+{
+	struct mimepart	*np = NULL;
+	char *boundary, *line = NULL;
+	size_t linesize = 0, linelen, count, boundlen;
+	FILE *ibuf;
+	off_t offs;
+	int part = 0;
+	long lines = 0;
+
+	if ((boundary = mime_get_boundary(ip->m_ct_type, &linelen)) == NULL)
+		return;
+	boundlen = linelen;
+	if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
+		return;
+	count = ip->m_size;
+	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0))
+		if (line[0] == '\n')
+			break;
+	offs = ftell(ibuf);
+	newpart(ip, &np, offs, NULL);
+	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
+		if ((lines == 0 || part > 0) && (linelen <= boundlen ||
+				strncmp(line, boundary, boundlen) != 0)) {
+			++lines;
+			continue;
+		}
+		/* Subpart boundary? */
+		if (line[boundlen] == '\n') {
+			offs = ftell(ibuf);
+			if (part != 0) {
+				endpart(&np, offs - boundlen - 2, lines);
+				newpart(ip, &np, offs - boundlen - 2, NULL);
+			}
+			endpart(&np, offs, 2);
+			newpart(ip, &np, offs, &part);
+			lines = 0;
+			continue;
+		}
+		/*
+		 * Final boundary?  Be aware of cases where there is no
+		 * separating newline in between boundaries, as has been seen
+		 * in a message with "Content-Type: multipart/appledouble;"
+		 */
+		if (linelen < boundlen + 2)
+			continue;
+		linelen -= boundlen + 2;
+		if (line[boundlen] != '-' || line[boundlen + 1] != '-' ||
+				(linelen > 0 && line[boundlen + 2] != '\n'))
+			/* XXX This is a mysterious message - ??? */
+			continue;
+		offs = ftell(ibuf);
+		if (part != 0) {
+			endpart(&np, offs - boundlen - 4, lines);
+			newpart(ip, &np, offs - boundlen - 4, NULL);
+		}
+		endpart(&np, offs + count, 2);
+		break;
+	}
+	if (np) {
+		offs = ftell(ibuf);
+		endpart(&np, offs, lines);
+	}
+	for (np = ip->m_multipart; np; np = np->m_nextpart)
+		if (np->m_mimecontent != MIME_DISCARD)
+			parsepart(zmp, np, pf, level + 1);
+	free(line);
+}
+
+static void
+_print_part_info(struct str *out, struct mimepart *mip,
+	struct ignoretab *doign, int level)
+{
+	struct str ct = {NULL, 0}, cd = {NULL, 0};
+	char const *ps;
+
+	/* Max. 24 */
+	if (is_ign("content-type", 12, doign)) {
+		out->s = mip->m_ct_type_plain;
+		out->l = strlen(out->s) + 1;
+		ct.s = ac_alloc(2 + out->l);
+		ct.s[0] = ',';
+		ct.s[1] = ' ';
+		ct.l = 2;
+		if (is_prefix("application/", out->s)) {
+			memcpy(ct.s + 2, "appl../", 7);
+			ct.l += 7;
+			out->l -= 12;
+			out->s += 12;
+			out->l = smin(out->l, 17);
+		} else
+			out->l = smin(out->l, 24);
+		memcpy(ct.s + ct.l, out->s, out->l);
+		ct.l += out->l;
+		ct.s[ct.l] = 0;
+	}
+
+	/* Max. 27 */
+	if (is_ign("content-disposition", 19, doign) &&
+			mip->m_filename != NULL) {
+		cd.s = ac_alloc(2 + 25 + 1);
+		cd.l = snprintf(cd.s, 2 + 25 + 1, ", %.25s", mip->m_filename);
+	}
+
+	/* Take care of "99.99", i.e., 5 */
+	if ((ps = mip->m_partstring) == NULL || ps[0] == '\0')
+		ps = "?";
+
+#define __msg	"%s[-- #%s : %lu/%lu%s%s --]\n"
+	out->l = sizeof(__msg) + strlen(ps) + ct.l + cd.l + 1;
+	out->s = salloc(out->l);
+	out->l = snprintf(out->s, out->l, __msg,
+			(level || (ps[0] != '1' && ps[1] == '\0')) ? "\n" : "",
+			ps, (ul_it)mip->m_lines, (ul_it)mip->m_size,
+			(ct.s != NULL ? ct.s : ""), (cd.s != NULL ? cd.s : ""));
+#undef __msg
+
+	if (cd.s != NULL)
+		ac_free(cd.s);
+	if (ct.s != NULL)
+		ac_free(ct.s);
+}
+
+SINLINE void
+_addstats(off_t *stats, off_t lines, off_t bytes)
+{
+	if (stats != NULL) {
+		if (stats[0] >= 0)
+			stats[0] += lines;
+		stats[1] += bytes;
+	}
+}
+
+SINLINE ssize_t
+_out(char const *buf, size_t len, FILE *fp,
+	enum conversion convert, enum sendaction action,
+	char const *prefix, size_t prefixlen, off_t *stats, struct str *rest)
+{
+	ssize_t sz = 0, n;
+	char const *cp;
+
+#if 0
+	Well ... it turns out to not work like that since of course a valid
+	RFC 4155 compliant parser, like S-nail, takes care for From_ lines only
+	after an empty line has been seen, which cannot be detected that easily
+	right here!
+ifdef HAVE_ASSERTS /* TODO assert legacy */
+	/* TODO if at all, this CAN only happen for SEND_DECRYPT, since all
+	 * TODO other input situations handle RFC 4155 OR, if newly generated,
+	 * TODO enforce quoted-printable if there is From_, as "required" by
+	 * TODO RFC 5751.  The SEND_DECRYPT case is not yet overhauled;
+	 * TODO if it may happen in this path, we should just treat decryption
+	 * TODO as we do for the other input paths; i.e., handle it in SSL!! */
+	if (action == SEND_MBOX || action == SEND_DECRYPT)
+		assert(! is_head(buf, len));
+#else
+	if ((/*action == SEND_MBOX ||*/ action == SEND_DECRYPT) &&
+			is_head(buf, len)) {
+		putc('>', fp);
+		++sz;
+	}
+#endif
+	n = mime_write(buf, len, fp,
+			action == SEND_MBOX ? CONV_NONE : convert,
+			action == SEND_TODISP || action == SEND_TODISP_ALL ||
+					action == SEND_QUOTE ||
+					action == SEND_QUOTE_ALL ?
+				TD_ISPR|TD_ICONV :
+				action == SEND_TOSRCH || action == SEND_TOPIPE ?
+					TD_ICONV :
+				action == SEND_TOFLTR ?
+					TD_DELCTRL :
+				action == SEND_SHOW ?
+					TD_ISPR : TD_NONE,
+			prefix, prefixlen, rest);
+	if (n < 0)
+		sz = n;
+	else if (n > 0) {
+		sz += n;
+		n = 0;
+		if (stats != NULL && stats[0] != -1)
+			for (cp = buf; cp < &buf[sz]; ++cp)
+				if (*cp == '\n')
+					++n;
+		_addstats(stats, n, sz);
+	}
+	return (sz);
 }
 
 /*
@@ -115,7 +313,7 @@ onpipe(int signo)
  */
 int
 send(struct message *mp, FILE *obuf, struct ignoretab *doign,
-		char *prefix, enum sendaction action, off_t *stats)
+	char const *prefix, enum sendaction action, off_t *stats)
 {
 	size_t prefixlen, count, sz, i;
 	FILE *ibuf;
@@ -162,7 +360,7 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		}
 	}
 	if (sz)
-		addstats(stats, 1, sz);
+		_addstats(stats, 1, sz);
 	pf = 0;
 	if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
 		pf |= PARSE_DECRYPT|PARSE_PARTS;
@@ -174,14 +372,16 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
-		struct ignoretab *doign, char *prefix, size_t prefixlen,
-		enum sendaction action, off_t *volatile stats, int level)
+	struct ignoretab *doign, char const *prefix, size_t prefixlen,
+	enum sendaction volatile action, off_t *volatile stats, int level)
 {
-	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL, *rest;
+	int volatile ispipe, rt = 0;
+	struct str rest;
+	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL;
 	char const *tcs;
-	size_t linesize = 0, linelen, count, len, restsize;
-	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
-	struct mimepart	*np;
+	size_t linesize = 0, linelen, count, len;
+	int dostat, infld = 0, ignoring = 1, isenc, c, eof;
+	struct mimepart	*volatile np;
 	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
 		*volatile qbuf = obuf, *origobuf = obuf;
 	enum conversion	volatile convert;
@@ -219,18 +419,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			action == SEND_TOSRCH || action == SEND_TOFLTR ?
 		CONV_FROMHDR : CONV_NONE;
 
-	/*
-	 * Normally headers included in "Content-Type: message/rfc822" messages
-	 * will not show up in replies to the encapsulating envelope.
-	 * This is nail(1) specific and thus may be configured differently.
-	 */
-	if (ip->m_mimecontent == MIME_TEXT_PLAIN && ip->m_parent != NULL &&
-			ip->m_parent->m_mimecontent == MIME_822 &&
-			value("rfc822-show-all"))
-		goto skip;
-
 	/* Work the headers */
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
+	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
 		lineno++;
 		if (line[0] == '\n') {
 			/*
@@ -244,9 +434,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			if (dostat & 2)
 				xstatusput(zmp, obuf, prefix, prefixlen, stats);
 			if (doign != allignore)
-				out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+				_out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
+					prefix, prefixlen, stats, NULL);
 			break;
 		}
 		isenc &= ~1;
@@ -284,9 +473,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 					xstatusput(zmp, obuf, prefix,
 						prefixlen, stats);
 				if (doign != allignore)
-					out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+					_out("\n", 1, obuf, CONV_NONE,SEND_MBOX,
+						prefix, prefixlen, stats, NULL);
 				break;
 			}
 			/*
@@ -370,9 +558,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				while (len > 0 && blankchar(start[len - 1]))
 					len--;
 			}
-			out(start, len, obuf, convert,
-					action, prefix, prefixlen, stats,
-					NULL, NULL);
+			_out(start, len, obuf, convert,
+				action, prefix, prefixlen, stats, NULL);
 			if (ferror(obuf)) {
 				free(line);
 				return -1;
@@ -392,13 +579,13 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if (! value("rfc822-no-body-from_")) {
-				if (prefixlen && value("rfc822-show-all")) {
+			if (value("rfc822-body-from_")) {
+				if (prefixlen > 0) {
 					size_t i = fwrite(prefix,
 						sizeof *prefix, prefixlen,
 						obuf);
 					if (i == prefixlen)
-						addstats(stats, 0, i);
+						_addstats(stats, 0, i);
 				}
 				put_from_(obuf, ip->m_multipart, stats);
 			}
@@ -408,7 +595,8 @@ skip:	switch (ip->m_mimecontent) {
 			goto multi;
 		case SEND_TOFILE:
 		case SEND_TOPIPE:
-			put_from_(obuf, ip->m_multipart, stats);
+			if (value("rfc822-body-from_"))
+				put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_MBOX:
 		case SEND_RFC822:
@@ -428,6 +616,8 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
 			pipecmd = getpipecmd(ip->m_ct_type_plain);
+			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd))
+				pipecmd = NULL;
 			/*FALLTHRU*/
 		default:
 			break;
@@ -448,13 +638,17 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if ((pipecmd = getpipecmd(ip->m_ct_type_plain)) != NULL)
+			pipecmd = getpipecmd(ip->m_ct_type_plain);
+			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd)) {
+				pipecmd = NULL;
+				goto jcopyout; /* break; break; :*/
+			}
+			if (pipecmd != NULL)
 				break;
 			if (level == 0 && count) {
-				cp = "[Binary content]\n\n";
-				out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+				char const *x = tr(210, "[Binary content]\n\n");
+				_out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX,
+					prefix, prefixlen, stats, NULL);
 			}
 			/*FALLTHRU*/
 		case SEND_TOFLTR:
@@ -471,8 +665,17 @@ skip:	switch (ip->m_mimecontent) {
 		break;
 	case MIME_ALTERNATIVE:
 		if ((action == SEND_TODISP || action == SEND_QUOTE) &&
-				value("print-alternatives") == NULL)
-			for (np = ip->m_multipart; np; np = np->m_nextpart)
+				value("print-alternatives") == NULL) {
+			for (np = ip->m_multipart; np; np = np->m_nextpart) {
+				if (np->m_ct_type_plain != NULL && /* XXX */
+						action != SEND_QUOTE) {
+					_print_part_info(&rest, np, doign,
+						level);
+					_out(rest.s, rest.l, obuf,
+						CONV_NONE, SEND_MBOX,
+						prefix, prefixlen,
+						stats, NULL);
+				}
 				if (np->m_mimecontent == MIME_TEXT_PLAIN) {
 					if (sendpart(zmp, np, obuf,
 							doign, prefix,
@@ -480,8 +683,10 @@ skip:	switch (ip->m_mimecontent) {
 							action, stats,
 							level+1) < 0)
 						return -1;
-					return rt;
 				}
+			}
+			return rt;
+		}
 		/*FALLTHRU*/
 	case MIME_MULTI:
 	case MIME_DIGEST:
@@ -501,12 +706,12 @@ skip:	switch (ip->m_mimecontent) {
 			    ip->m_multipart != NULL &&
 			    ip->m_multipart->m_mimecontent == MIME_DISCARD &&
 			    ip->m_multipart->m_nextpart == NULL) {
-				cp = "[Missing multipart boundary - "
-				     "use \"show\" to display "
-				     "the raw message]\n\n";
-				out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+				char const *x = tr(85,
+					"[Missing multipart boundary - "
+					"use \"show\" to display "
+					"the raw message]\n\n");
+				_out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX,
+					prefix, prefixlen, stats, NULL);
 			}
 			for (np = ip->m_multipart; np; np = np->m_nextpart) {
 				if (np->m_mimecontent == MIME_DISCARD &&
@@ -519,36 +724,33 @@ skip:	switch (ip->m_mimecontent) {
 								"1") == 0)
 						break;
 					stats = NULL;
-					if ((obuf = newfile(np, &ispipe,
-								&oldpipe))
+					if ((obuf = newfile(np,
+							UNVOLATILE(&ispipe)))
 							== NULL)
 						continue;
+					if (! ispipe)
+						break;
+					if (sigsetjmp(pipejmp, 1)) {
+						rt = -1;
+						goto jpipe_close;
+					}
+					oldpipe = safe_signal(SIGPIPE, onpipe);
 					break;
 				case SEND_TODISP:
 				case SEND_TODISP_ALL:
 				case SEND_QUOTE_ALL:
-					if ((ip->m_mimecontent == MIME_MULTI ||
-							ip->m_mimecontent ==
-							MIME_ALTERNATIVE ||
-							ip->m_mimecontent ==
-							MIME_DIGEST) &&
-							np->m_partstring) {
-						len = strlen(np->m_partstring) +
-							40;
-						cp = ac_alloc(len);
-						snprintf(cp, len,
-							"%sPart %s:\n", level ||
-							strcmp(np->m_partstring,
-								"1") ?
-							"\n" : "",
-							np->m_partstring);
-						out(cp, strlen(cp), obuf,
-							CONV_NONE, SEND_MBOX,
-							prefix, prefixlen,
-							stats,
-							NULL, NULL);
-						ac_free(cp);
-					}
+					if (ip->m_mimecontent != MIME_MULTI &&
+							ip->m_mimecontent !=
+							MIME_ALTERNATIVE &&
+							ip->m_mimecontent !=
+							MIME_DIGEST)
+						break;
+					_print_part_info(&rest, np, doign,
+						level);
+					_out(rest.s, rest.l, obuf,
+						CONV_NONE, SEND_MBOX,
+						prefix, prefixlen,
+						stats, NULL);
 					break;
 				case SEND_TOFLTR:
 					putc('\0', obuf);
@@ -572,7 +774,7 @@ skip:	switch (ip->m_mimecontent) {
 					if (ispipe == 0)
 						Fclose(obuf);
 					else {
-						safe_signal(SIGPIPE, SIG_IGN);
+jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
 						Pclose(obuf);
 						safe_signal(SIGPIPE, oldpipe);
 					}
@@ -585,9 +787,11 @@ skip:	switch (ip->m_mimecontent) {
 			break;
 		}
 	}
+
 	/*
 	 * Copy out message body
 	 */
+jcopyout:
 	if (doign == allignore && level == 0)	/* skip final blank line */
 		count--;
 	switch (ip->m_mimeenc) {
@@ -619,7 +823,7 @@ skip:	switch (ip->m_mimecontent) {
 	if (action == SEND_DECRYPT || action == SEND_MBOX ||
 			action == SEND_RFC822 || action == SEND_SHOW)
 		convert = CONV_NONE;
-	tcs = gettcharset();
+	tcs = charset_get_lc();
 #ifdef	HAVE_ICONV
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
@@ -630,7 +834,7 @@ skip:	switch (ip->m_mimecontent) {
 		if (iconvd != (iconv_t)-1)
 			iconv_close(iconvd);
 		if (asccasecmp(tcs, ip->m_charset) &&
-				asccasecmp(us_ascii, ip->m_charset))
+				asccasecmp(charset_get_7bit(), ip->m_charset))
 			iconvd = iconv_open_ft(tcs, ip->m_charset);
 		else
 			iconvd = (iconv_t)-1;
@@ -640,7 +844,7 @@ skip:	switch (ip->m_mimecontent) {
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
 			pipecmd != NULL) {
 		qbuf = obuf;
-		pbuf = getpipefile(pipecmd, (FILE**)&qbuf,
+		pbuf = getpipefile(pipecmd, UNVOLATILE(&qbuf),
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {
@@ -650,46 +854,40 @@ skip:	switch (ip->m_mimecontent) {
 		}
 	} else
 		pbuf = qbuf = obuf;
+
 	eof = 0;
-	while (!eof && foldergets(&line, &linesize, &count, &linelen, ibuf)) {
-		lineno++;
-		while (convert == CONV_FROMQP && linelen >= 2 &&
-				line[linelen-2] == '=') {
-			char	*line2;
-			size_t	linesize2, linelen2;
-		nextl:
-			line2 = NULL;
-			linesize2 = 0;
-			if (foldergets(&line2, &linesize2, &count, &linelen2,
-						ibuf) == NULL) {
-				eof = 1;
-				break;
-			}
-			if (linelen + linelen2 + 1 > linesize)
-				line = srealloc(line, linesize = linelen +
-						linelen2 + 1);
-			memcpy(&line[linelen], line2, linelen2+1);
-			linelen += linelen2;
-			free(line2);
-		}
-		rest = NULL;
-		restsize = 0;
-		out(line, linelen, pbuf, convert, action,
+	rest.s = NULL;
+	rest.l = 0;
+	/* TODO B64_ISTEXT doesn't work with the Heirloom mailx(1) send/MIME
+	 * TODO design because a complete input line may not necessarily be a
+	 * TODO complete output line, which results in faulty iconv() results.
+	 * TODO it is still a HUGE improvement to redirect all the decoded data
+	 * TODO into this temporary buffer and iconv that at the very end.
+	 * TODO overcome this crap with the send/MIME layer rewrite, PLEASE! */
+	if (convert == CONV_FROMB64_T)
+		rest.s = smalloc(ip->m_xsize);
+
+	while (! eof && fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
+		++lineno;
+joutln:
+		len = (size_t)_out(line, linelen, pbuf, convert, action,
 				pbuf == origobuf ? prefix : NULL,
 				pbuf == origobuf ? prefixlen : 0,
-				pbuf == origobuf ? stats : NULL,
-				eof ? NULL : &rest, eof ? NULL : &restsize);
-		if (ferror(pbuf)) {
+				pbuf == origobuf ? stats : NULL, &rest);
+		if ((ssize_t)len < 0 || (len == 0 && rest.l == 0) ||
+				ferror(pbuf)) {
 			rt = -1;
 			break;
 		}
-		if (restsize) {
-			if (line != rest)
-				memmove(line, rest, restsize);
-			linelen = restsize;
-			goto nextl;
-		}
 	}
+	if (rest.l != 0) {
+		linelen = 0;
+		eof = 1;
+		goto joutln;
+	}
+	if (rest.s != NULL)
+		free(rest.s);
+
 end:	free(line);
 	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
@@ -738,15 +936,14 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		if ((cp = strchr(ip->m_ct_type_plain, ';')) != NULL)
 			*cp = '\0';
 	} else if (ip->m_parent && ip->m_parent->m_mimecontent == MIME_DIGEST)
-		ip->m_ct_type_plain = "message/rfc822";
+		ip->m_ct_type_plain = UNCONST("message/rfc822");
 	else
-		ip->m_ct_type_plain = "text/plain";
+		ip->m_ct_type_plain = UNCONST("text/plain");
 
-	ip->m_mimecontent = mime_getcontent(ip->m_ct_type_plain);
 	if (ip->m_ct_type)
 		ip->m_charset = mime_getparam("charset", ip->m_ct_type);
 	if (ip->m_charset == NULL)
-		ip->m_charset = us_ascii;
+		ip->m_charset = charset_get_7bit();
 	ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
 			(struct message *)ip);
 	ip->m_mimeenc = ip->m_ct_transfer_enc ?
@@ -755,6 +952,8 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 			(ip->m_filename = mime_getparam("filename", cp)) == 0)
 		if (ip->m_ct_type != NULL)
 			ip->m_filename = mime_getparam("name", ip->m_ct_type);
+	ip->m_mimecontent = mime_classify_content_of_part(ip);
+
 	if (pf & PARSE_PARTS) {
 		if (level > 9999) {
 			fprintf(stderr, tr(36,
@@ -779,7 +978,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		case MIME_MULTI:
 		case MIME_ALTERNATIVE:
 		case MIME_DIGEST:
-			parsemultipart(zmp, ip, pf, level);
+			_parsemultipart(zmp, ip, pf, level);
 			break;
 		case MIME_822:
 			parse822(zmp, ip, pf, level);
@@ -787,67 +986,6 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		}
 	}
 	return OKAY;
-}
-
-static void
-parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
-		int level)
-{
-	char	*boundary;
-	char	*line = NULL;
-	size_t	linesize = 0, linelen, count, boundlen;
-	FILE	*ibuf;
-	struct mimepart	*np = NULL;
-	off_t	offs;
-	int	part = 0;
-	long	lines = 0;
-
-	if ((boundary = mime_getboundary(ip->m_ct_type)) == NULL)
-		return;
-	boundlen = strlen(boundary);
-	if ((ibuf = setinput(&mb, (struct message *)ip, NEED_BODY)) == NULL)
-		return;
-	count = ip->m_size;
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf))
-		if (line[0] == '\n')
-			break;
-	offs = ftell(ibuf);
-	newpart(ip, &np, offs, NULL);
-	while (foldergets(&line, &linesize, &count, &linelen, ibuf)) {
-		if ((lines > 0 || part == 0) && linelen >= boundlen + 1 &&
-				strncmp(line, boundary, boundlen) == 0) {
-			if (line[boundlen] == '\n') {
-				offs = ftell(ibuf);
-				if (part != 0) {
-					endpart(&np, offs-boundlen-2, lines);
-					newpart(ip, &np, offs-boundlen-2, NULL);
-				}
-				endpart(&np, offs, 2);
-				newpart(ip, &np, offs, &part);
-				lines = 0;
-			} else if (line[boundlen] == '-' &&
-					line[boundlen+1] == '-' &&
-					line[boundlen+2] == '\n') {
-				offs = ftell(ibuf);
-				if (part != 0) {
-					endpart(&np, offs-boundlen-4, lines);
-					newpart(ip, &np, offs-boundlen-4, NULL);
-				}
-				endpart(&np, offs+count, 2);
-				break;
-			} else
-				lines++;
-		} else
-			lines++;
-	}
-	if (np) {
-		offs = ftell(ibuf);
-		endpart(&np, offs, lines);
-	}
-	for (np = ip->m_multipart; np; np = np->m_nextpart)
-		if (np->m_mimecontent != MIME_DISCARD)
-			parsepart(zmp, np, pf, level+1);
-	free(line);
 }
 
 static void
@@ -927,7 +1065,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
 	ip->m_multipart = np;
-	if (! value("rfc822-no-body-from_")) {
+	if (value("rfc822-body-from_")) {
 		substdate((struct message *)np);
 		np->m_from = fakefrom((struct message *)np);
 	}
@@ -965,77 +1103,11 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 }
 #endif
 
-static size_t
-out(char *buf, size_t len, FILE *fp,
-		enum conversion convert, enum sendaction action,
-		char *prefix, size_t prefixlen, off_t *stats,
-		char **restp, size_t *restsizep)
-{
-	size_t	sz, n;
-	char	*cp;
-	long	lines;
-
-	sz = 0;
-	if (action != SEND_MBOX && action != SEND_DECRYPT)
-		goto jmw;
-
-	cp = buf;
-	n = len;
-	while (n && cp[0] == '>')
-		++cp, --n;
-
-	/* Primitive, rather POSIX-compliant From_ quoting? */
-	if (value("posix-mbox")) {
-		if (n >= 5 && cp[0] == 'F' && cp[1] == 'r' && cp[2] == 'o' &&
-				cp[3] == 'm' && cp[4] == ' ')
-			goto jquote;
-	}
-	/* We however *have* to perform RFC 4155 compliant From_ quoting, or
-	 * we end up like Mutt 1.5.21 (2010-09-15) */
-	else if (cp != buf && is_head(cp, n)) {
-jquote:		putc('>', fp);
-		sz++;
-	}
-
-jmw:	sz += mime_write(buf, len, fp,
-			action == SEND_MBOX ? CONV_NONE : convert,
-			action == SEND_TODISP || action == SEND_TODISP_ALL ||
-					action == SEND_QUOTE ||
-					action == SEND_QUOTE_ALL ?
-				TD_ISPR|TD_ICONV :
-				action == SEND_TOSRCH || action == SEND_TOPIPE ?
-					TD_ICONV :
-				action == SEND_TOFLTR ?
-					TD_DELCTRL :
-				action == SEND_SHOW ?
-					TD_ISPR : TD_NONE,
-			prefix, prefixlen,
-			restp, restsizep);
-	lines = 0;
-	if (stats && stats[0] != -1) {
-		for (cp = buf; cp < &buf[sz]; cp++)
-			if (*cp == '\n')
-				lines++;
-	}
-	addstats(stats, lines, sz);
-	return sz;
-}
-
-static void
-addstats(off_t *stats, off_t lines, off_t bytes)
-{
-	if (stats) {
-		if (stats[0] >= 0)
-			stats[0] += lines;
-		stats[1] += bytes;
-	}
-}
-
 /*
  * Get a file for an attachment.
  */
 static FILE *
-newfile(struct mimepart *ip, int *ispipe, sighandler_type volatile*oldpipe)
+newfile(struct mimepart *ip, int *ispipe)
 {
 	char *f = ip->m_filename;
 	struct str in, out;
@@ -1073,18 +1145,13 @@ jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 		return NULL;
 
 	if (*f == '|') {
-		char *cp;
+		char const *cp;
 		cp = value("SHELL");
 		if (cp == NULL)
 			cp = SHELL;
 		fp = Popen(f + 1, "w", cp, 1);
-		if (fp == NULL) {
+		if (! (*ispipe = (fp != NULL)))
 			perror(f);
-			fp = stdout;
-		} else {
-			*oldpipe = safe_signal(SIGPIPE, brokpipe);
-			*ispipe = 1;
-		}
 	} else {
 		if ((fp = Fopen(f, "w")) == NULL)
 			fprintf(stderr, tr(176, "Cannot open %s\n"), f);
@@ -1112,10 +1179,10 @@ getpipecmd(char *content)
 }
 
 static FILE *
-getpipefile(char *pipecmd, FILE **qbuf, int quote)
+getpipefile(char const *pipecmd, FILE **qbuf, int quote)
 {
-	char	*shell;
-	FILE	*rbuf = *qbuf;
+	char const *shell;
+	FILE *rbuf = *qbuf;
 
 	if (pipecmd != NULL) {
 		if (quote) {
@@ -1145,7 +1212,7 @@ getpipefile(char *pipecmd, FILE **qbuf, int quote)
 
 static void
 pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
-		char *prefix, size_t prefixlen, off_t *stats)
+	char const *prefix, size_t prefixlen, off_t *stats)
 {
 	char *line = NULL;
 	size_t linesize = 0, linelen, sz, count;
@@ -1155,10 +1222,9 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
 	count = fsize(pipebuf);
 	while (fgetline(&line, &linesize, &count, &linelen, pipebuf, 0)
 			!= NULL) {
-		sz = prefixwrite(line, sizeof *line, linelen, outbuf,
-			prefix, prefixlen);
+		sz = prefixwrite(line, linelen, outbuf, prefix, prefixlen);
 		if (outbuf == origobuf)
-			addstats(stats, 1, sz);
+			_addstats(stats, 1, sz);
 	}
 	if (line)
 		free(line);
@@ -1169,8 +1235,8 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
  * Output a reasonable looking status field.
  */
 static void
-statusput(const struct message *mp, FILE *obuf, char *prefix, size_t prefixlen,
-	off_t *stats)
+statusput(const struct message *mp, FILE *obuf, char const *prefix,
+	size_t prefixlen, off_t *stats)
 {
 	char statout[3];
 	char *cp = statout;
@@ -1184,12 +1250,12 @@ statusput(const struct message *mp, FILE *obuf, char *prefix, size_t prefixlen,
 		int i = fprintf(obuf, "%.*sStatus: %s\n",
 			(int)prefixlen, (prefixlen ? prefix : ""), statout);
 		if (i > 0)
-			addstats(stats, 1, i);
+			_addstats(stats, 1, i);
 	}
 }
 
 static void
-xstatusput(const struct message *mp, FILE *obuf, char *prefix,
+xstatusput(const struct message *mp, FILE *obuf, char const *prefix,
 	size_t prefixlen, off_t *stats)
 {
 	char xstatout[4];
@@ -1206,14 +1272,13 @@ xstatusput(const struct message *mp, FILE *obuf, char *prefix,
 		int i = fprintf(obuf, "%.*sX-Status: %s\n",
 			(int)prefixlen, (prefixlen ? prefix : ""), xstatout);
 		if (i > 0)
-			addstats(stats, 1, i);
+			_addstats(stats, 1, i);
 	}
 }
 
 static void
 put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 {
-	time_t now;
 	char const *from, *date, *nl;
 	int i;
 
@@ -1222,43 +1287,12 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 		date = fakedate(ip->m_time);
 		nl = "\n";
 	} else {
-		time(&now);
 		from = myname;
-		date = ctime(&now);
+		date = time_current.tc_ctime;
 		nl = "";
 	}
 
 	i = fprintf(fp, "From %s %s%s", from, date, nl);
 	if (i > 0)
-		addstats(stats, (*nl != '\0'), i);
-}
-
-/*
- * This is fgetline for mbox lines.
- */
-char *
-foldergets(char **s, size_t *size, size_t *count, size_t *llen, FILE *stream)
-{
-	char *p;
-
-	if ((p = fgetline(s, size, count, llen, stream, 0)) == NULL)
-		return (NULL);
-	if (*p != '>')
-		goto jleave;
-
-	while (*++p == '>')
-		;
-	if (value("posix-mbox")) {
-		if (strncmp(p, "From ", 5) != 0)
-			goto jleave;
-	}
-	/* Since we actually *have* to perform RFC 4155 compliant From_ quoting
-	 * we should of course undo that */
-	else if (p == *s || ! is_head(p, *llen - (p - *s)))
-		goto jleave;
-
-	/* We got a masked From line */
-	memmove(*s, *s + 1, --*llen);
-jleave:
-	return (*s);
+		_addstats(stats, (*nl != '\0'), i);
 }

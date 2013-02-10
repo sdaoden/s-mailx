@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2002
@@ -39,9 +39,9 @@
 
 #include "config.h"
 
-#if defined USE_NSS || ! defined USE_OPENSSL
+#ifndef USE_OPENSSL
 typedef int avoid_empty_file_compiler_warning;
-#elif defined USE_OPENSSL
+#else
 #include "rcv.h"
 
 #include <dirent.h>
@@ -79,7 +79,6 @@ typedef int avoid_empty_file_compiler_warning;
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-static int	verbose;
 static int	reset_tio;
 static struct termios	otio;
 static sigjmp_buf	ssljmp;
@@ -107,7 +106,7 @@ static int smime_verify(struct message *m, int n, STACK *chain,
 static EVP_CIPHER *smime_cipher(const char *name);
 static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
 static FILE *smime_sign_cert(const char *xname, const char *xname2, int warn);
-static char *smime_sign_include_certs(char *name);
+static char *smime_sign_include_certs(char const *name);
 #ifdef HAVE_STACK_OF
 static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
 #else
@@ -168,7 +167,6 @@ ssl_rand_init(void)
 static void 
 ssl_init(void)
 {
-	verbose = value("verbose") != NULL;
 	if (initialized == 0) {
 		SSL_library_init();
 		initialized = 1;
@@ -340,7 +338,7 @@ ssl_check_host(const char *server, struct sock *sp)
 		for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
 			gen = sk_GENERAL_NAME_value(gens, i);
 			if (gen->type == GEN_DNS) {
-				if (verbose)
+				if (options & OPT_VERBOSE)
 					fprintf(stderr,
 						"Comparing DNS name: \"%s\"\n",
 						gen->d.ia5->data);
@@ -355,7 +353,7 @@ ssl_check_host(const char *server, struct sock *sp)
 			X509_NAME_get_text_by_NID(subj, NID_commonName,
 				data, sizeof data) > 0) {
 		data[sizeof data - 1] = 0;
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fprintf(stderr, "Comparing common name: \"%s\"\n",
 					data);
 		if (rfc2595_hostname_match(server, data) == OKAY)
@@ -376,7 +374,8 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	ssl_init();
 	ssl_set_vrfy_level(uhp);
 	if ((sp->s_ctx =
-	     SSL_CTX_new((SSL_METHOD *)ssl_select_method(uhp))) == NULL) {
+	     SSL_CTX_new(UNCONST(ssl_select_method(uhp))))
+			== NULL) {
 		ssl_gen_err(catgets(catd, CATSET, 261, "SSL_CTX_new() failed"));
 		return STOP;
 	}
@@ -435,7 +434,8 @@ FILE *
 smime_sign(FILE *ip, struct header *headp)
 {
 	FILE	*sp, *fp, *bp, *hp;
-	char	*cp, *addr;
+	char	*cp;
+	char const *addr;
 	X509	*cert;
 #ifdef HAVE_STACK_OF
 	STACK_OF(X509)	*chain = NULL;
@@ -628,7 +628,7 @@ loop:	sender = getsender(m);
 			for (j = 0; j < sk_GENERAL_NAME_num(gens); j++) {
 				gen = sk_GENERAL_NAME_value(gens, j);
 				if (gen->type == GEN_EMAIL) {
-					if (verbose)
+					if (options & OPT_VERBOSE)
 						fprintf(stderr,
 							"Comparing alt. "
 							"address: %s\"\n",
@@ -645,7 +645,7 @@ loop:	sender = getsender(m);
 					NID_pkcs9_emailAddress,
 					data, sizeof data) > 0) {
 			data[sizeof data - 1] = 0;
-			if (verbose)
+			if (options & OPT_VERBOSE)
 				fprintf(stderr, "Comparing address: \"%s\"\n",
 						data);
 			if (asccasecmp(data, sender) == 0)
@@ -731,13 +731,13 @@ smime_cipher(const char *name)
 	} else
 		cipher = EVP_des_ede3_cbc();
 	ac_free(vn);
-	return (EVP_CIPHER *)cipher;
+	return UNCONST(cipher);
 }
 
 FILE *
 smime_encrypt(FILE *ip, const char *xcertfile, const char *to)
 {
-	char	*certfile = (char*)xcertfile, *cp;
+	char	*certfile = UNCONST(xcertfile), *cp;
 	FILE	*yp, *fp, *bp, *hp;
 	X509	*cert;
 	PKCS7	*pkcs7;
@@ -1004,8 +1004,9 @@ open:	vn = cp;
 }
 
 static char *
-smime_sign_include_certs(char *name)
+smime_sign_include_certs(char const *name)
 {
+	char *ret;
 	/* See comments in smime_sign_cert() for algorithm pitfalls */
 	if (name) {
 		struct name *np = lextract(name, GTO|GSKIN);
@@ -1014,8 +1015,10 @@ smime_sign_include_certs(char *name)
 			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-include-certs-%s",
 				np->n_name);
-			if ((name = value(vn)) != NULL)
-				return name;
+			ret = value(vn);
+			ac_free(vn);
+			if (ret != NULL)
+				return ret;
 			np = np->n_flink;
 		}
 	}
@@ -1159,7 +1162,7 @@ load_crl1(X509_STORE *store, const char *name)
 {
 	X509_LOOKUP	*lookup;
 
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		printf("Loading CRL from \"%s\".\n", name);
 	if ((lookup = X509_STORE_add_lookup(store,
 					X509_LOOKUP_file())) == NULL) {
@@ -1240,4 +1243,4 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 #endif	/* old OpenSSL */
 	return OKAY;
 }
-#endif	/* !USE_NSS && !USE_OPENSSL */
+#endif /* USE_OPENSSL */

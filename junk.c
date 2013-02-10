@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -217,8 +217,6 @@ some space, but leads to higher processor usage when the database is read\n\
 or updated. You can use uncompress(1) on these files if you prefer to store\n\
 them in flat form.\n";
 
-static int	verbose;
-static int	_debug;
 static FILE	*sfp, *nfp;
 static char	*sname, *nname;
 
@@ -406,16 +404,15 @@ dbfp(enum db db, int rw, int *compressed, char **fn)
 	FILE	*fp, *rp;
 	char	*dir;
 	struct flock	flp;
-	char *sfx[][2] = {
+	char const *const sfx[][2] = {
 		{ "super",	"nodes" },
 		{ "super1",	"nodes1" }
 	};
-	char **sf;
-	char *zfx[][2] = {
+	char const *const zfx[][2] = {
 		{ "super.Z",	"nodes.Z" },
 		{ "super1.Z",	"nodes1.Z" }
 	};
-	char **zf;
+	char const *const*sf, *const*zf;
 	int	n;
 
 	if ((dir = value("junkdb")) == NULL ||
@@ -561,8 +558,9 @@ static char *
 nextword(char **buf, size_t *bufsize, size_t *count, FILE *fp,
 		struct lexstat *sp, int *stop)
 {
-	int	c, i, j, k;
-	char	*cp, *cq;
+	int c, i, j, k;
+	char *cp;
+	char const *cq;
 
 loop:	*stop = 0;
 	sp->hadamp = 0;
@@ -938,7 +936,6 @@ insert(int *msgvec, enum entry entry, int incr)
 	int	*ip;
 	unsigned long	u = 0;
 
-	verbose = value("verbose") != NULL;
 	if (getdb(O_RDWR) != OKAY)
 		return 1;
 	switch (entry) {
@@ -1009,8 +1006,6 @@ cclassify(void *v)
 {
 	int	*msgvec = v, *ip;
 
-	verbose = value("verbose") != NULL;
-	_debug = debug || value("debug") != NULL;
 	if (getdb(O_RDONLY) != OKAY)
 		return 1;
 	for (ip = msgvec; *ip; ip++) {
@@ -1037,7 +1032,7 @@ clsf(struct message *m)
 	int	i;
 	float	a = 1, b = 1, r;
 
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		fprintf(stderr, "Examining message %d\n",
 				(int)(m - &message[0] + 1));
 	for (i = 0; i < BEST; i++) {
@@ -1047,7 +1042,7 @@ clsf(struct message *m)
 	if (scan(m, -1, rate, 0) != OKAY)
 		return;
 	if (best[0].prob == -1) {
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fprintf(stderr, "No information found.\n");
 		m->m_flag &= ~MJUNK;
 		return;
@@ -1055,7 +1050,7 @@ clsf(struct message *m)
 	for (i = 0; i < BEST; i++) {
 		if (best[i].prob == -1)
 			break;
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fprintf(stderr, "Probe %2d: \"%s\", hash=%lu:%lu "
 				"prob=%.4g dist=%.4g\n",
 				i+1, prstr(best[i].word),
@@ -1065,7 +1060,7 @@ clsf(struct message *m)
 		b *= 1 - best[i].prob;
 	}
 	r = a+b > 0 ? a / (a+b) : 0;
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		fprintf(stderr, "Junk probability of message %d: %g\n",
 				(int)(m - &message[0] + 1), r);
 	if (r > THR)
@@ -1090,7 +1085,7 @@ rate(const char *word, enum entry entry, struct lexstat *sp, int unused)
 		p = getprob(n);
 	} else
 		p = DFL;
-	if (_debug)
+	if (options & OPT_DEBUG)
 		fprintf(stderr, "h=%lu:%lu g=%u b=%u p=%.4g %s\n", h1, h2,
 				n ? get(&n[OF_node_good]) : 0,
 				n ? get(&n[OF_node_bad]) : 0,
@@ -1137,7 +1132,7 @@ dbhash(const char *word, unsigned long *h1, unsigned long *h2)
 	MD5_CTX	ctx;
 
 	MD5Init(&ctx);
-	MD5Update(&ctx, (unsigned char *)word, strlen(word));
+	MD5Update(&ctx, UNCONST(word), strlen(word));
 	if (table_version >= 1)
 		MD5Update(&ctx, (unsigned char *)&super[OF_super_mangle], 4);
 	MD5Final(digest, &ctx);

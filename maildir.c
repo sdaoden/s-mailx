@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -61,10 +61,12 @@ static long	mdprime;
 
 static sigjmp_buf	maildirjmp;
 
+/* Do some cleanup in the tmp/ subdir */
+static void	cleantmp(void);
+
 static int maildir_setfile1(const char *name, int newmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
 static int subdir(const char *name, const char *sub, int newmail);
-static void cleantmp(const char *name);
 static void append(const char *name, const char *sub, const char *fn);
 static void readin(const char *name, struct message *m);
 static void maildir_update(void);
@@ -78,6 +80,32 @@ static enum okay mkmaildir(const char *name);
 static struct message *mdlook(const char *name, struct message *data);
 static void mktable(void);
 static enum okay subdir_remove(const char *name, const char *sub);
+
+static void
+cleantmp(void)
+{
+	char dep[MAXPATHLEN];
+	struct stat st;
+	time_t now;
+	DIR *dirfd;
+	struct dirent *dp;
+
+	if ((dirfd = opendir("tmp")) == NULL)
+		goto jleave;
+
+	time(&now);
+	while ((dp = readdir(dirfd)) != NULL) {
+		if (dp->d_name[0] == '.')
+			continue;
+		sstpcpy(sstpcpy(dep, "tmp/"), dp->d_name);
+		if (stat(dep, &st) < 0)
+			continue;
+		if (st.st_atime + 36*3600 < now)
+			unlink(dep);
+	}
+	closedir(dirfd);
+jleave:	;
+}
 
 int 
 maildir_setfile(const char *name, int newmail, int isedit)
@@ -159,8 +187,8 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 	int	i;
 
 	if (!newmail)
-		cleantmp(name);
-	mb.mb_perm = Rflag ? 0 : MB_DELE;
+		cleantmp();
+	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
 	if ((i = subdir(name, "new", newmail)) != 0)
@@ -192,10 +220,10 @@ mdcmp(const void *a, const void *b)
 {
 	long	i;
 
-	if ((i = ((struct message *)a)->m_time -
-				((struct message *)b)->m_time) == 0)
-		i = strcmp(&((struct message *)a)->m_maildir_file[4],
-				&((struct message *)b)->m_maildir_file[4]);
+	if ((i = ((struct message const*)a)->m_time -
+				((struct message const*)b)->m_time) == 0)
+		i = strcmp(&((struct message const*)a)->m_maildir_file[4],
+				&((struct message const*)b)->m_maildir_file[4]);
 	return i;
 }
 
@@ -225,43 +253,6 @@ subdir(const char *name, const char *sub, int newmail)
 	}
 	closedir(dirfd);
 	return 0;
-}
-
-static void 
-cleantmp(const char *name)
-{
-	struct stat	st;
-	DIR	*dirfd;
-	struct dirent	*dp;
-	char	*fn = NULL;
-	size_t	fnsz = 0, ssz;
-	time_t	now;
-	(void)name;
-
-	if ((dirfd = opendir("tmp")) == NULL)
-		return;
-	time(&now);
-	while ((dp = readdir(dirfd)) != NULL) {
-		if (dp->d_name[0] == '.' &&
-				(dp->d_name[1] == '\0' ||
-				 (dp->d_name[1] == '.' &&
-				  dp->d_name[2] == '\0')))
-			continue;
-		if (dp->d_name[0] == '.')
-			continue;
-		if ((ssz = strlen(dp->d_name)) + 5 > fnsz) {
-			free(fn);
-			fn = smalloc(fnsz = ssz + 40);
-		}
-		strcpy(fn, "tmp/");
-		strcpy(&fn[4], dp->d_name);
-		if (stat(fn, &st) < 0)
-			continue;
-		if (st.st_atime + 36*3600 < now)
-			unlink(fn);
-	}
-	free(fn);
-	closedir(dirfd);
 }
 
 static void 
@@ -324,7 +315,7 @@ append(const char *name, const char *sub, const char *fn)
 static void 
 readin(const char *name, struct message *m)
 {
-	char	*buf, *bp;
+	char	*buf;
 	size_t	bufsize, buflen, count;
 	long	size = 0, lines = 0;
 	off_t	offset;
@@ -344,15 +335,18 @@ readin(const char *name, struct message *m)
 	fseek(mb.mb_otf, 0L, SEEK_END);
 	offset = ftell(mb.mb_otf);
 	while (fgetline(&buf, &bufsize, &count, &buflen, fp, 1) != NULL) {
-		bp = buf;
-		if (buf[0] == 'F' && buf[1] == 'r' && buf[2] == 'o' &&
-				buf[3] == 'm' && buf[4] == ' ') {
+		/*
+		 * Since we simply copy over data without doing any transfer
+		 * encoding reclassification/adjustment we *have* to perform
+		 * RFC 4155 compliant From_ quoting here
+		 */
+		if (is_head(buf, buflen)) {
 			putc('>', mb.mb_otf);
-			size++;
+			++size;
 		}
-		lines++;
-		size += fwrite(bp, 1, buflen, mb.mb_otf);
-		emptyline = *bp == '\n';
+		size += fwrite(buf, 1, buflen, mb.mb_otf);/*XXX err hdling*/
+		emptyline = (*buf == '\n');
+		++lines;
 	}
 	if (!emptyline) {
 		putc('\n', mb.mb_otf);
@@ -410,9 +404,9 @@ maildir_update(void)
 
 	if (mb.mb_perm == 0)
 		goto free;
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit) {
 		holdbits();

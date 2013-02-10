@@ -21,9 +21,9 @@ INSTALL		= /usr/bin/install
 
 #CFLAGS		= -std=c89 -O2
 #WARN		= -g -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
-#		-Winit-self
+#		-Winit-self -Wwrite-strings -Wcast-qual -fstrict-aliasing
 # Warnings that are not handled very well (yet)
-#		-Wshadow -Wcast-qual -Wwrite-strings
+#		-Wshadow
 # The gcc(1) from NetBSD 6 produces a lot of errors with -fstrict-overflow,
 # so that this needs to be revisited; it was enabled on OS X 6 and FreeBSD 9,
 # and seemed to be good for gcc(1) and clang(1)
@@ -42,33 +42,35 @@ SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"'
 
-OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
-	dotlock.o edit.o fio.o getname.o getopt.o head.o hmac.o \
-	imap.o imap_search.o junk.o lex.o list.o lzw.o \
-	macro.o maildir.o main.o md5.o mime.o names.o nss.o \
+OBJ = auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
+	dotlock.o edit.o fio.o head.o \
+	imap.o imap_cache.o imap_search.o junk.o lex.o list.o lzw.o \
+	macro.o maildir.o main.o md5.o mime.o mime_cte.o names.o \
 	openssl.o pop3.o popen.o quit.o \
-	send.o sendout.o smtp.o ssl.o strings.o temp.o thread.o tty.o \
-	v7.local.o vars.o \
-	version.o
+	send.o sendout.o smtp.o ssl.o strings.o thread.o tty.o \
+	vars.o version.o
 
 .SUFFIXES: .o .c .y
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(PATHDEFS) `cat INCS` -c $<
+	$(CC) $(CFLAGS) $(WARN) $(PATHDEFS) `cat config.inc` -c $<
 
 .c .y: ;
 
 all: $(SID)$(NAIL)
 
 $(SID)$(NAIL): $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) `cat LIBS` -o $@
+	$(CC) $(LDFLAGS) $(OBJ) `cat config.lib` -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
-md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
-nss.o: nsserr.c
+md5.o imap.o smtp.o auxlily.o pop3.o junk.o: md5.h
+mime.o: mime_types.h
 
 config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig
+
+mime_types.h: mime.types
+	< mime.types > $@ sed '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 mkman.1: nail.1
 	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
@@ -81,12 +83,10 @@ mkman.1: nail.1
 		unail = toupper(ENVIRON["_NAIL"]); \
 		lnail = tolower(unail); \
 		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2); \
-		print ".ds UU ", unail; \
-		print ".ds uu ", cnail; \
-		print ".ds UA \\\\fI", cnail, "\\\\fR"; \
-		print ".ds ua \\\\fI", lnail, "\\\\fR"; \
-		print ".ds ba \\\\fB", lnail, "\\\\fR"; \
-		print ".ds UR ", ENVIRON["_SYSCONFRC"]; \
+		print ".ds UU \\\\%", unail; \
+		print ".ds UA \\\\%", cnail; \
+		print ".ds ua \\\\%", lnail; \
+		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"]; \
 		OFS = " "; \
 		next \
 	} \
@@ -126,10 +126,10 @@ uninstall:
 		$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1
 
 clean:
-	rm -f $(OBJ) $(SID)$(NAIL) mkman.1 mkrc.rc *~ core log
+	rm -f $(OBJ) $(SID)$(NAIL) mime_types.h mkman.1 mkrc.rc *~ core log
 
 distclean: clean
-	rm -f config.h config.log LIBS INCS
+	rm -f config.h config.log config.lib config.inc
 
 update-version:
 	[ -z "$${VERSION}" ] && eval VERSION="`git describe --tags`"; \
@@ -139,21 +139,25 @@ update-version:
 
 update-release:
 	echo 'Name of release tag:'; \
-	read REL; echo "Is <$${REL}> correct?  ENTER continues"; read i; \
-	git tag -f "$(SID)$(NAIL)$${REL}" && $(MAKE) update-version && \
+	read REL; \
+	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues"; \
+	read i; \
+	FREL=`echo $${REL} | sed 's/\./_/g'` && \
+	$(MAKE) update-version && \
+	git add version.c && \
+	git commit -m "Bump $(SID)$(NAIL)-$${REL}" && \
+	git tag -f "$(SID)$(NAIL)-$${REL}" && \
+	$(MAKE) update-version && \
 	git add version.c && git commit --amend && \
-		git tag -f "$(SID)$(NAIL)$${REL}" && \
-	git archive --prefix="$(SID)$(NAIL)$${REL}/" \
-		-o "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" HEAD && \
-	openssl md5 "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
-		> "$(TMPDIR)/$(SID)$(NAIL)$${REL}.cksum" 2>&1 && \
-	openssl sha1 "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
-		>> "$(TMPDIR)/$(SID)$(NAIL)$${REL}.cksum" 2>&1 && \
-	openssl sha256 "$(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
-		>> "$(TMPDIR)/$(SID)$(NAIL)$${REL}.cksum" 2>&1 && \
-	printf "%s\n%s\n%s\n" \
-		"-put $(TMPDIR)/$(SID)$(NAIL)$${REL}.tar.gz" \
-		"-rm $(SID)$(NAIL).tar.gz" \
-		"-symlink $(SID)$(NAIL)$${REL}.tar.gz $(SID)$(NAIL).tar.gz" | \
+	git tag -f "$(SID)$(NAIL)-$${REL}" && \
+	git archive --prefix="$(SID)$(NAIL)-$${REL}/" \
+		-o "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" HEAD && \
+	openssl md5 "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" \
+		> "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 && \
+	openssl sha1 "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" \
+		>> "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 && \
+	openssl sha256 "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" \
+		>> "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 && \
+	echo "-put $(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail && \
 	echo 'All seems fine'

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -46,10 +46,8 @@
  * Variable handling stuff.
  */
 
-static char *canonify(const char *vn);
-static void vfree(char *cp);
-static struct var *lookup(const char *name, int h);
-static void remove_grouplist(struct grouphead *gh);
+/* Check for special housekeeping. */
+static void	_check_special_vars(char const *name, int enable);
 
 /*
  * If a variable name begins with a lowercase-character and contains at
@@ -59,23 +57,44 @@ static void remove_grouplist(struct grouphead *gh);
  * Following the standard, only the part following the last '@' should
  * be lower-cased, but practice has established otherwise here.
  */
-static char *
-canonify(const char *vn)
-{
-	const char *vp;
+static char const *	canonify(char const *vn);
 
-	if (upperchar(*vn))
-		return ((char*)vn);
-	for (vp = vn; *vp && *vp != '@'; vp++)
-		;
-	return ((*vp == '@') ? i_strdup(vn) : (char*)vn);
+static void vfree(char *cp);
+static struct var *lookup(const char *name, int h);
+static void remove_grouplist(struct grouphead *gh);
+
+static void
+_check_special_vars(char const *name, int enable)
+{
+	int flag = 0;
+
+	if (strcmp(name, "debug") == 0)
+		flag = OPT_DEBUG;
+	else if (strcmp(name, "verbose") == 0)
+		flag = OPT_VERBOSE;
+
+	if (flag) {
+		if (enable)
+			options |= flag;
+		else
+			options &= ~flag;
+	}
 }
 
-/*
- * Assign a value to a variable.
- */
-void 
-assign(const char *name, const char *value)
+static char const *
+canonify(char const *vn)
+{
+	char const *vp;
+
+	if (upperchar(*vn))
+		return vn;
+	for (vp = vn; *vp && *vp != '@'; vp++)
+		;
+	return (*vp == '@') ? i_strdup(vn) : vn;
+}
+
+void
+assign(char const *name, char const *value)
 {
 	struct var *vp;
 	int h;
@@ -101,7 +120,38 @@ assign(const char *name, const char *value)
 	else
 		vfree(vp->v_value);
 	vp->v_value = vcopy(value);
+
+	_check_special_vars(name, 1);
 jleave:	;
+}
+
+int
+unset_internal(char const *name)
+{
+	int ret = 1, h;
+	struct var *vp;
+
+	name = canonify(name);
+	h = hash(name);
+
+	if ((vp = lookup(name, h)) == NULL) {
+		if (! sourcing && ! unset_allow_undefined) {
+			fprintf(stderr,
+				tr(203, "\"%s\": undefined variable\n"), name);
+			goto jleave;
+		}
+	} else {
+		/* Always listhead after lookup() */
+		variables[h] = variables[h]->v_link;
+		vfree(vp->v_name);
+		vfree(vp->v_value);
+		free(vp);
+
+		_check_special_vars(name, 0);
+	}
+	ret = 0;
+jleave:
+	return (ret);
 }
 
 /*
@@ -128,7 +178,7 @@ vcopy(const char *str)
 	unsigned len;
 
 	if (*str == '\0')
-		return "";
+		return UNCONST("");
 	len = strlen(str) + 1;
 	news = smalloc(len);
 	memcpy(news, str, (int)len);
@@ -230,31 +280,6 @@ hash(const char *name)
 	if (h < 0 && (h = -h) < 0)
 		h = 0;
 	return (h % HSHSIZE);
-}
-
-int 
-unset_internal(const char *name)
-{
-	int h;
-	struct var *vp;
-
-	name = canonify(name);
-	h = hash(name);
-
-	if ((vp = lookup(name, h)) == NULL) {
-		if (! sourcing && ! unset_allow_undefined) {
-			printf(tr(203, "\"%s\": undefined variable\n"), name);
-			return (1);
-		}
-		return (0);
-	}
-
-	/* Always listhead after lookup() */
-	variables[h] = variables[h]->v_link;
-	vfree(vp->v_name);
-	vfree(vp->v_value);
-	free(vp);
-	return (0);
 }
 
 static void

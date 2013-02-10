@@ -96,63 +96,73 @@ cdefine(void *v)
 int 
 define1(const char *name, int account)
 {
-	struct macro	*mp;
-	struct line	*lp, *lst = NULL, *lnd = NULL;
-	char	*linebuf = NULL;
-	size_t	linesize = 0;
-	int	n;
+	int ret = 1, n;
+	struct macro *mp;
+	struct line *lp, *lst = NULL, *lnd = NULL;
+	char *linebuf = NULL;
+	size_t linesize = 0;
+
 	mp = scalloc(1, sizeof *mp);
 	mp->ma_name = sstrdup(name);
 	if (account)
 		mp->ma_flags |= MA_ACCOUNT;
+
 	for (;;) {
 		n = 0;
 		for (;;) {
 			n = readline_restart(input, &linebuf, &linesize, n);
 			if (n < 0)
 				break;
-			if (n == 0 || linebuf[n-1] != '\\')
+			if (n == 0 || linebuf[n - 1] != '\\')
 				break;
-			linebuf[n-1] = '\n';
+			linebuf[n - 1] = '\n';
 		}
 		if (n < 0) {
-			fprintf(stderr, "Unterminated %s definition: \"%s\".\n",
-					account ? "account" : "macro",
-					mp->ma_name);
+			fprintf(stderr,
+				tr(75, "Unterminated %s definition: \"%s\".\n"),
+				account ? "account" : "macro", mp->ma_name);
 			if (sourcing)
 				unstack();
-			free(mp->ma_name);
-			free(mp);
-			return 1;
+			goto jerr;
 		}
 		if (closingangle(linebuf))
 			break;
 		lp = scalloc(1, sizeof *lp);
-		lp->l_linesize = n+1;
-		lp->l_line = smalloc(lp->l_linesize);
-		memcpy(lp->l_line, linebuf, lp->l_linesize);
-		lp->l_line[n] = '\0';
-		if (lst && lnd) {
+		lp->l_linesize = ++n;
+		lp->l_line = smalloc(n); /* TODO rewrite this file */
+		memcpy(lp->l_line, linebuf, n);
+		assert(lp->l_line[n - 1] == '\0');
+		if (lst != NULL && lnd != NULL) {
 			lnd->l_next = lp;
 			lnd = lp;
 		} else
 			lst = lnd = lp;
 	}
+
 	mp->ma_contents = lst;
 	if (malook(mp->ma_name, mp, account ? accounts : macros) != NULL) {
-		if (!account) {
+		if (! account) {
 			fprintf(stderr,
-				"A macro named \"%s\" already exists.\n",
+				tr(76,"A macro named \"%s\" already exists.\n"),
 				mp->ma_name);
-			freelines(mp->ma_contents);
-			free(mp->ma_name);
-			free(mp);
-			return 1;
+			lst = mp->ma_contents;
+			goto jerr;
 		}
 		undef1(mp->ma_name, accounts);
 		malook(mp->ma_name, mp, accounts);
 	}
-	return 0;
+
+	ret = 0;
+jleave:
+	if (linebuf != NULL)
+		free(linebuf);
+	return (ret);
+
+jerr:	if (lst != NULL)
+		freelines(lst);
+	free(mp->ma_name);
+	free(mp);
+	goto jleave;
 }
 
 int 
@@ -212,52 +222,57 @@ callaccount(const char *name)
 int 
 callhook(const char *name, int newmail)
 {
-	struct macro	*mp;
-	char	*var, *cp;
-	int	len, r;
+	int len, r;
+	struct macro *mp;
+	char *var, *cp;
 
 	var = ac_alloc(len = strlen(name) + 13);
 	snprintf(var, len, "folder-hook-%s", name);
-	if ((cp = value(var)) == NULL && (cp = value("folder-hook")) == NULL)
-		return 0;
+	if ((cp = value(var)) == NULL && (cp = value("folder-hook")) == NULL) {
+		r = 0;
+		goto jleave;
+	}
 	if ((mp = malook(cp, NULL, macros)) == NULL) {
-		fprintf(stderr, "Cannot call hook for folder \"%s\": "
-				"Macro \"%s\" does not exist.\n",
-				name, cp);
-		return 1;
+		fprintf(stderr, tr(49, "Cannot call hook for folder \"%s\": "
+			"Macro \"%s\" does not exist.\n"),
+			name, cp);
+		r = 1;
+		goto jleave;
 	}
 	inhook = newmail ? 3 : 1;
 	r = maexec(mp);
 	inhook = 0;
+jleave:
+	ac_free(var);
 	return r;
 }
 
 static int 
 maexec(struct macro *mp)
 {
-	struct line	*lp;
-	const char	*sp;
-	char	*copy, *cp;
-	int	r = 0;
+	int r = 0;
+	struct line *lp;
+	char const *sp, *smax;
+	char *copy, *cp;
 
 	unset_allow_undefined = 1;
 	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
 		sp = lp->l_line;
-		while (sp < &lp->l_line[lp->l_linesize] &&
-				(blankchar(*sp&0377) || *sp == '\n' ||
-				 *sp == '\0'))
-			sp++;
-		if (sp == &lp->l_line[lp->l_linesize])
+		smax = lp->l_line + lp->l_linesize;
+		while (sp < smax &&
+				(blankchar(*sp) || *sp == '\n' || *sp == '\0'))
+			++sp;
+		if (sp == smax)
 			continue;
-		cp = copy = smalloc(lp->l_linesize + (lp->l_line - sp));
+		cp = copy = ac_alloc(lp->l_linesize + (lp->l_line - sp));
 		do
 			*cp++ = *sp != '\n' ? *sp : ' ';
-		while (++sp < &lp->l_line[lp->l_linesize]);
-		r = execute(copy, 0, lp->l_linesize);
-		free(copy);
+		while (++sp < smax);
+		r = execute(copy, 0, (size_t)(cp - copy));
+		ac_free(copy);
 	}
 	unset_allow_undefined = 0;
-	return r;
+	return (r);
 }
 
 static int 

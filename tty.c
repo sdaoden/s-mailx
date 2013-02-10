@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -65,7 +65,7 @@ static	long		vdis;		/* _POSIX_VDISABLE char */
 static void ttystop(int s);
 static void ttyint(int s);
 static int safe_getc(FILE *ibuf);
-static char *rtty_internal(const char *pr, char *src);
+static char *rtty_internal(char const *pr, char const *src);
 
 /*
  * Receipt continuation.
@@ -122,7 +122,7 @@ again:
  * be read.
  */
 static char *
-rtty_internal(const char *pr, char *src)
+rtty_internal(char const *pr, char const *src)
 {
 	char ch, canonb[LINESIZE];
 	int c;
@@ -134,7 +134,7 @@ rtty_internal(const char *pr, char *src)
 	fflush(stdout);
 	if (src != NULL && strlen(src) > sizeof canonb - 2) {
 		printf(catgets(catd, CATSET, 200, "too long to edit\n"));
-		return(src);
+		return(savestr(src));
 	}
 #ifndef TIOCSTI
 	if (src != NULL)
@@ -144,7 +144,7 @@ rtty_internal(const char *pr, char *src)
 	fputs(canonb, stdout);
 	fflush(stdout);
 #else
-	cp = src == NULL ? "" : src;
+	cp = UNCONST(src == NULL ? "" : src);
 	while ((c = *cp++) != '\0') {
 		if ((c_erase != vdis && c == c_erase) ||
 		    (c_kill != vdis && c == c_kill)) {
@@ -185,7 +185,7 @@ redo:
 	}
 #ifndef TIOCSTI
 	if (cp == NULL || *cp == '\0')
-		return(src);
+		return(savestr(src));
 	cp2 = cp;
 	if (!ttyset)
 		return(strlen(canonb) > 0 ? savestr(canonb) : NULL);
@@ -351,7 +351,7 @@ out:
  */
 
 char *
-readtty(char *prefix, char *string)
+readtty(char const *prefix, char const *string)
 {
 	char *ret = NULL;
 	struct termios ttybuf;
@@ -362,6 +362,17 @@ readtty(char *prefix, char *string)
 	sighandler_type savetstp;
 	sighandler_type savettou;
 	sighandler_type savettin;
+
+	/* If STDIN is not a terminal, simply read from it */
+	if (! is_a_tty[0]) {
+		char *line = NULL;
+		size_t linesize = 0;
+		if (readline(stdin, &line, &linesize) != 0)
+			ret = savestr(line);
+		if (line != NULL)
+			free(line);
+		goto jleave;
+	}
 
 	(void) &saveint;
 	(void) &ret;
@@ -409,11 +420,12 @@ out2:
 	safe_signal(SIGQUIT, savequit);
 #endif
 	safe_signal(SIGINT, saveint);
+jleave:
 	return ret;
 }
 
 int 
-yorn(char *msg)
+yorn(char const *msg)
 {
 	char	*cp;
 

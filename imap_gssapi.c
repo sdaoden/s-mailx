@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -139,7 +139,7 @@ imap_gss(struct mailbox *mp, char *user)
 		server += 7;
 	else if (strncmp(server, "imaps://", 8) == 0)
 		server += 8;
-	if ((cp = last_at_before_slash(server)) != NULL)
+	if ((cp = UNCONST(last_at_before_slash(server))) != NULL)
 		server = &cp[1];
 	for (cp = server; *cp; cp++)
 		*cp = lowerconv(*cp&0377);
@@ -183,17 +183,17 @@ imap_gss(struct mailbox *mp, char *user)
 		/*
 		 * Pass token obtained from first gss_init_sec_context() call.
 		 */
-		cp = memtob64(send_tok.value, send_tok.length);
+		(void)b64_encode_buf(&out, send_tok.value, send_tok.length,
+			B64_SALLOC|B64_CRLF);
 		gss_release_buffer(&min_stat, &send_tok);
-		snprintf(o, sizeof o, "%s\r\n", cp);
-		free(cp);
-		IMAP_OUT(o, 0, return STOP);
+		IMAP_OUT(out.s, 0, return STOP);
 		imap_answer(mp, 1);
 		if (response_type != RESPONSE_CONT)
 			return STOP;
+		out.s = NULL;
 		in.s = responded_text;
 		in.l = strlen(responded_text);
-		mime_fromb64(&in, &out, 0);
+		(void)b64_decode(&out, &in, 0, NULL);
 		recv_tok.value = out.s;
 		recv_tok.length = out.l;
 		token_ptr = &recv_tok;
@@ -223,11 +223,10 @@ imap_gss(struct mailbox *mp, char *user)
 	 * Pass token obtained from second gss_init_sec_context() call.
 	 */
 	gss_release_name(&min_stat, &target_name);
-	cp = memtob64(send_tok.value, send_tok.length);
+	(void)b64_encode_buf(&out, send_tok.value, send_tok.length,
+		B64_SALLOC|B64_CRLF);
 	gss_release_buffer(&min_stat, &send_tok);
-	snprintf(o, sizeof o, "%s\r\n", cp);
-	free(cp);
-	IMAP_OUT(o, 0, return STOP);
+	IMAP_OUT(out.s, 0, return STOP);
 	/*
 	 * First octet: bit-mask with protection mechanisms.
 	 * Second to fourth octet: maximum message size in network byte order.
@@ -237,18 +236,19 @@ imap_gss(struct mailbox *mp, char *user)
 	imap_answer(mp, 1);
 	if (response_type != RESPONSE_CONT)
 		return STOP;
+	out.s = NULL;
 	in.s = responded_text;
 	in.l = strlen(responded_text);
-	mime_fromb64(&in, &out, 0);
+	(void)b64_decode(&out, &in, 0, NULL);
 	recv_tok.value = out.s;
 	recv_tok.length = out.l;
 	maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok,
 			&send_tok, &conf_state, NULL);
+	free(out.s);
 	if (maj_stat != GSS_S_COMPLETE) {
 		imap_gss_error("unwrapping data", maj_stat, min_stat);
 		return STOP;
 	}
-	free(out.s);
 	/*
 	 * First octet: bit-mask with protection mechanisms (1 = no protection
 	 * 	mechanism).
@@ -267,10 +267,9 @@ imap_gss(struct mailbox *mp, char *user)
 		imap_gss_error("wrapping data", maj_stat, min_stat);
 		return STOP;
 	}
-	cp = memtob64(recv_tok.value, recv_tok.length);
-	snprintf(o, sizeof o, "%s\r\n", cp);
-	free(cp);
-	IMAP_OUT(o, MB_COMD, return STOP);
+	(void)b64_encode_buf(&out, recv_tok.value, recv_tok.length,
+		B64_SALLOC|B64_CRLF);
+	IMAP_OUT(out.s, MB_COMD, return STOP);
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	gss_delete_sec_context(&min_stat, &gss_context, &recv_tok);

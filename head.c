@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -41,6 +41,7 @@
 
 #include <time.h>
 #ifdef USE_IDNA
+# include <errno.h>
 # include <idna.h>
 # include <stringprep.h>
 # include <tld.h>
@@ -54,22 +55,50 @@
  * Routines for processing and detecting headlines.
  */
 
-/* Skip over "word" as found in From_ line */
-static char const *	from__skipword(char const *wp);
+struct cmatch_data {
+	size_t		tlen;	/* Length of .tdata */
+	char const	*tdata;	/* Template date - see _cmatch_data[] */
+};
 
-/* Match the date string against the date template (tp), return if match.
- * Template characters:
+/*
+ * Template characters for cmatch_data.tdata:
  * 'A'	An upper case char
  * 'a'	A lower case char
  * ' '	A space
  * '0'	A digit
  * 'O'	An optional digit or space
- * ':'	A colon */
-static int		cmatch(size_t len, char const *date, char const *tp);
+ * ':'	A colon
+ * '+'  Either a plus or a minus sign
+ */
+static struct cmatch_data const	_cmatch_data[] = {
+	{ 24, "Aaa Aaa O0 00:00:00 0000" },		/* BSD ctime */
+	{ 28, "Aaa Aaa O0 00:00:00 AAA 0000" },		/* BSD tmz */
+	{ 21, "Aaa Aaa O0 00:00 0000" },		/* SysV ctime */
+	{ 25, "Aaa Aaa O0 00:00 AAA 0000" },		/* SysV tmz */
+	/*
+	 * RFC 822-alike From_ lines do not conform to RFC 4155, but seem to
+	 * be used in the wild by UW-imap (MBX format plus)
+	 */
+	{ 30, "Aaa Aaa O0 00:00:00 0000 +0000" },
+	/* RFC 822 with zone spec; 1. military, 2. UT, 3. north america time
+	 * zone strings; note that 1. is strictly speaking not correct as some
+	 * letters are not used, and 2. is not because only "UT" is defined */
+#define __reuse		"Aaa Aaa O0 00:00:00 0000 AAA"
+	{ 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
+	{ 0, NULL }
+};
+#define _DATE_MINLEN	21
+
+/* Skip over "word" as found in From_ line */
+static char const *	_from__skipword(char const *wp);
+
+/* Match the date string against the date template (tp), return if match.
+ * See _cmatch_data[] for template character description */
+static int		_cmatch(size_t len, char const *date, char const *tp);
 
 /* Check wether date is a valid 'From_' date.
  * (Rather ctime(3) generated dates, according to RFC 4155) */
-static int		is_date(char const *date);
+static int		_is_date(char const *date);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
@@ -90,7 +119,7 @@ static int	msgidnextc(const char **cp, int *status);
 static int	charcount(char *str, int c);
 
 static char const *
-from__skipword(char const *wp)
+_from__skipword(char const *wp)
 {
 	char c = 0;
 
@@ -110,7 +139,7 @@ from__skipword(char const *wp)
 }
 
 static int
-cmatch(size_t len, char const *date, char const *tp)
+_cmatch(size_t len, char const *date, char const *tp)
 {
 	int ret = 0;
 
@@ -141,6 +170,10 @@ cmatch(size_t len, char const *date, char const *tp)
 			if (c != ':')
 				goto jleave;
 			break;
+		case '+':
+			if (c != '+' && c != '-')
+				goto jleave;
+			break;
 		}
 	}
 	ret = 1;
@@ -149,20 +182,18 @@ jleave:
 }
 
 static int
-is_date(char const *date)
+_is_date(char const *date)
 {
-	switch (strlen(date)) {
-	case (24):	/* ctype */
-		return (cmatch(24, date, "Aaa Aaa O0 00:00:00 0000"));
-	case (28):	/* tmztype */
-		return (cmatch(28, date, "Aaa Aaa O0 00:00:00 AAA 0000"));	
-	case (25):	/* SysV_tm.. */
-		return (cmatch(25, date, "Aaa Aaa O0 00:00 AAA 0000"));
-	case (21):	/* SysV_ct.. */
-		return (cmatch(21, date, "Aaa Aaa O0 00:00 0000"));
-	default:
-		return (0);
-	}
+	struct cmatch_data const *cmdp;
+	size_t dl = strlen(date);
+	int ret = 0;
+
+	if (dl >= _DATE_MINLEN)
+		for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
+			if (dl == cmdp->tlen &&
+					(ret = _cmatch(dl, date, cmdp->tdata)))
+				break;
+	return (ret);
 }
 
 #ifdef USE_IDNA
@@ -180,11 +211,20 @@ idna_apply(struct addrguts *agp)
 	memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
 	idna_utf8[sz] = '\0';
 
+	/* GNU Libidn settles on top of iconv(3) without having any fallback,
+	 * so let's just let it perform the charset conversion, if any should
+	 * be necessary */
 	if (! utf8) {
-		char *tmp = stringprep_locale_to_utf8(idna_utf8);
-		ac_free(idna_utf8);
-		idna_utf8 = tmp;
+		char const *tcs = charset_get_lc();
+		idna_ascii = idna_utf8;
+		idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", tcs);
+		i = (idna_utf8 == NULL && errno == EINVAL);
+		ac_free(idna_ascii);
 		if (idna_utf8 == NULL) {
+			if (i)
+				fprintf(stderr, tr(179,
+					"Cannot convert from %s to %s\n"),
+					tcs, "UTF-8");
 			agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
 					NAME_ADDRSPEC_ERR_CHAR;
 			goto jleave;
@@ -214,7 +254,7 @@ idna_apply(struct addrguts *agp)
 	}
 
 	i = (size_t)tld_check_4z(idna_uni, &sz, NULL);
-	free(idna_uni);
+	(free)(idna_uni);
 	if (i != TLD_SUCCESS) {
 		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
 			idna_uni[sz]);
@@ -236,12 +276,12 @@ jset:	/* Replace the domain part of .ag_skinned with IDNA version */
 		NAME_NAME_SALLOC|NAME_SKINNED|NAME_IDNA, 0);
 
 jleave2:
-	free(idna_ascii);
+	(free)(idna_ascii);
 jleave1:
 	if (utf8)
 		ac_free(idna_utf8);
 	else
-		free(idna_utf8);
+		(free)(idna_utf8);
 jleave:
 	return (agp);
 }
@@ -355,30 +395,59 @@ jleave:
 	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
 }
 
-/*
- * See if the passed line buffer is a mail header according to RFC 4155.
- * Return true if yes.
- */
+char const *
+myaddrs(struct header *hp)
+{
+	static char *addr;
+	struct name *np;
+	char const *ret = NULL;
+
+	if (hp != NULL && (np = hp->h_from) != NULL) {
+		if ((ret = np->n_fullname) != NULL)
+			goto jleave;
+		if ((ret = np->n_name) != NULL)
+			goto jleave;
+	}
+	if ((ret = value("from")) != NULL)
+		goto jleave;
+	/*
+	 * When invoking sendmail directly, it's its task
+	 * to generate an otherwise undeterminable From: address.
+	 */
+	if (value("smtp") == NULL)
+		goto jleave;
+	if (addr == NULL) {
+		char *hn = nodename(1);
+		size_t sz = strlen(myname) + strlen(hn) + 2;
+		ret = addr = smalloc(sz);
+		snprintf(addr, sz, "%s@%s", myname, hn);
+	}
+jleave:
+	return (ret);
+}
+
+char const *
+myorigin(struct header *hp)
+{
+	char const *ret = NULL, *ccp;
+	struct name *np;
+
+	if ((ccp = myaddrs(hp)) != NULL &&
+			(np = lextract(ccp, GEXTRA|GFULL)) != NULL)
+		ret = np->n_flink != NULL ? value("sender") : ccp;
+	return (ret);
+}
+
 int
 is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 {
 	char date[FROM_DATEBUF];
 
-	if (linelen <= 5 || memcmp(linebuf, "From ", 5) != 0)
-		return (0);
-
-	if (! extract_date_from_from_(linebuf, linelen, date) ||
-			! is_date(date)) {
-		return (0);
-	}
-	return(1);
+	return ((linelen <= 5 || memcmp(linebuf, "From ", 5) != 0 ||
+			! extract_date_from_from_(linebuf, linelen, date) ||
+			! _is_date(date)) ? 0 : 1);
 }
 
-/*
- * Savage extract date field from From_ line.
- * linelen is convenience as line must be terminated.
- * Return wether the From_ line was parsed successfully.
- */
 int
 extract_date_from_from_(char const *line, size_t linelen,
 	char datebuf[FROM_DATEBUF])
@@ -387,20 +456,30 @@ extract_date_from_from_(char const *line, size_t linelen,
 	char const *cp = line;
 
 	/* "From " */
-	cp = from__skipword(cp);
+	cp = _from__skipword(cp);
 	if (cp == NULL)
 		goto jerr;
 	/* "addr-spec " */
-	cp = from__skipword(cp);
+	cp = _from__skipword(cp);
 	if (cp == NULL)
 		goto jerr;
 	if (cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
-		cp = from__skipword(cp);
+		cp = _from__skipword(cp);
 		if (cp == NULL)
 			goto jerr;
 	}
 
 	linelen -= (size_t)(cp - line);
+	if (linelen < _DATE_MINLEN)
+		goto jerr;
+	if (cp[linelen - 1] == '\n') {
+		--linelen;
+		/* (Rather IMAP/POP3 only) */
+		if (cp[linelen - 1] == '\r')
+			--linelen;
+		if (linelen < _DATE_MINLEN)
+			goto jerr;
+	}
 	if (linelen >= FROM_DATEBUF)
 		goto jerr;
 
@@ -419,16 +498,15 @@ jerr:	cp = tr(213, "<Unknown date>");
 void
 extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 {
-	char *linebuf = NULL;
+	struct header nh, *hq = &nh;
+	char *linebuf = NULL, *colon;
 	size_t linesize = 0;
-	int seenfields = 0;
-	char *colon, *cp, *value;
-	struct header nh;
-	struct header *hq = &nh;
-	int lc, c;
+	int seenfields = 0, lc, c;
+	char const *value, *cp;
 
 	memset(hq, 0, sizeof *hq);
-	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++);
+	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++)
+		;
 	rewind(fp);
 	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
 		if ((value = thisfield(linebuf, "to")) != NULL) {
@@ -458,14 +536,16 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 		} else if ((value = thisfield(linebuf,
 						"organization")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp & 0377); cp++);
+			for (cp = value; blankchar(*cp); cp++)
+				;
 			hq->h_organization = hq->h_organization ?
 				save2str(hq->h_organization, cp) :
 				savestr(cp);
 		} else if ((value = thisfield(linebuf, "subject")) != NULL ||
 				(value = thisfield(linebuf, "subj")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp & 0377); cp++);
+			for (cp = value; blankchar(*cp); cp++)
+				;
 			hq->h_subject = hq->h_subject ?
 				save2str(hq->h_subject, cp) :
 				savestr(cp);
@@ -510,42 +590,36 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
  * field only, the content of all matching header fields else.
  */
 char *
-hfield_mult(char *field, struct message *mp, int mult)
+hfield_mult(char const *field, struct message *mp, int mult)
 {
 	FILE *ibuf;
-	char *linebuf = NULL;
-	size_t linesize = 0;
 	int lc;
-	char *hfield;
-	char *colon, *oldhfield = NULL;
+	size_t linesize = 0;
+	char *linebuf = NULL, *colon, *oldhfield = NULL;
+	char const *hfield;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		return NULL;
 	if ((lc = mp->m_lines - 1) < 0)
 		return NULL;
-	if ((mp->m_flag & MNOFROM) == 0) {
-		if (readline(ibuf, &linebuf, &linesize) < 0) {
-			if (linebuf)
-				free(linebuf);
-			return NULL;
-		}
-	}
+
+	if ((mp->m_flag & MNOFROM) == 0 &&
+			readline(ibuf, &linebuf, &linesize) < 0)
+		goto jleave;
 	while (lc > 0) {
-		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon))
-				< 0) {
-			if (linebuf)
-				free(linebuf);
-			return oldhfield;
-		}
+		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
+			break;
 		if ((hfield = thisfield(linebuf, field)) != NULL) {
 			oldhfield = save2str(hfield, oldhfield);
 			if (mult == 0)
 				break;
 		}
 	}
-	if (linebuf)
+
+jleave:
+	if (linebuf != NULL)
 		free(linebuf);
-	return oldhfield;
+	return (oldhfield);
 }
 
 /*
@@ -625,22 +699,22 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
  * Check whether the passed line is a header line of
  * the desired breed.  Return the field body, or 0.
  */
-char *
-thisfield(const char *linebuf, const char *field)
+char const *
+thisfield(char const *linebuf, char const *field)
 {
-	while (lowerconv(*linebuf&0377) == lowerconv(*field&0377)) {
-		linebuf++;
-		field++;
+	while (lowerconv(*linebuf) == lowerconv(*field)) {
+		++linebuf;
+		++field;
 	}
 	if (*field != '\0')
 		return NULL;
-	while (blankchar(*linebuf&0377))
-		linebuf++;
+	while (blankchar(*linebuf))
+		++linebuf;
 	if (*linebuf++ != ':')
 		return NULL;
-	while (blankchar(*linebuf&0377))
-		linebuf++;
-	return (char *)linebuf;
+	while (blankchar(*linebuf))
+		++linebuf;
+	return linebuf;
 }
 
 /*
@@ -695,10 +769,10 @@ skip_comment(char const *cp)
  * Return the start of a route-addr (address in angle brackets),
  * if present.
  */
-char *
-routeaddr(const char *name)
+char const *
+routeaddr(char const *name)
 {
-	const char	*np, *rp = NULL;
+	char const *np, *rp = NULL;
 
 	for (np = name; *np; np++) {
 		switch (*np) {
@@ -717,7 +791,7 @@ routeaddr(const char *name)
 			rp = np;
 			break;
 		case '>':
-			return (char *)rp;
+			return rp;
 		}
 	}
 	return NULL;
@@ -758,47 +832,22 @@ jleave:
 	return ((f & NAME_ADDRSPEC_INVALID) != 0);
 }
 
-/*
- * Returned the skinned n_name, use the cached value if available.
- * Note well that it may *not* create a duplicate.
- */
 char *
-skinned_name(struct name const*np) /* TODO !HAVE_ASSERTS legacy */
-{
-#ifdef HAVE_ASSERTS
-	assert(np->n_flags & NAME_SKINNED);
-	return (np->n_name);
-#else
-	return ((np->n_flags & NAME_SKINNED) ? np->n_name : skin(np->n_name));
-#endif
-}
-
-/*
- * Skin an arpa net address according to the RFC 822 interpretation
- * of "host-phrase."
- */
-char *
-skin(char *name)
+skin(char const *name)
 {
 	struct addrguts ag;
+	char *ret = NULL;
 
-	if (name == NULL)
-		return (NULL);
-
-	(void)addrspec_with_guts(1, name, &ag);
-	name = ag.ag_skinned;
-	if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
-		name = savestrbuf(name, ag.ag_slen);
-	return (name);
+	if (name != NULL) {
+		(void)addrspec_with_guts(1, name, &ag);
+		ret = ag.ag_skinned;
+		if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
+			ret = savestrbuf(ret, ag.ag_slen);
+	}
+	return (ret);
 }
 
-/*
- * Skin *name* and extract the *addr-spec* according to RFC 5322. TODO 822:5322
- * Store the result in .ag_skinned and also fill in those .ag_ fields that have
- * actually been seen.
- * Return 0 if something good has been parsed, 1 if fun didn't exactly know how
- * to deal with the input, or if that was plain invalid.
- */
+/* TODO addrspec_with_guts: RFC 5322 */
 int
 addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
@@ -810,7 +859,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 
 	if ((agp->ag_input = name) == NULL || /* XXX ever? */
 			(agp->ag_ilen = strlen(name)) == 0) {
-		agp->ag_skinned = ""; /* NAME_SALLOC not set */
+		agp->ag_skinned = UNCONST(""); /* ok: NAME_SALLOC is not set */
 		agp->ag_slen = 0;
 		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
@@ -821,7 +870,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	if (! doskin || ! anyof(name, "(< ")) {
 		/*agp->ag_iaddr_start = 0;*/
 		agp->ag_iaddr_aend = agp->ag_ilen;
-		agp->ag_skinned = (char*)name; /* XXX (NAME_SALLOC not set) */
+		agp->ag_skinned = UNCONST(name); /* (NAME_SALLOC not set) */
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
 		return (addrspec_check(doskin, agp));
@@ -940,7 +989,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
  * Fetch the real name from an internet mail address field.
  */
 char *
-realname(char *name)
+realname(char const *name)
 {
 	char const *cp, *cq, *cstart = NULL, *cend = NULL;
 	char *rname, *rp;
@@ -949,7 +998,7 @@ realname(char *name)
 
 	if (name == NULL)
 		return NULL;
-	for (cp = (char*)name; *cp; cp++) {
+	for (cp = UNCONST(name); *cp; cp++) {
 		switch (*cp) {
 		case '(':
 			if (cstart)
@@ -1213,7 +1262,7 @@ charcount(char *str, int c)
  * See if the given header field is supposed to be ignored.
  */
 int
-is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2])
+is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2])
 {
 	char *realfld;
 	int ret;
@@ -1237,7 +1286,7 @@ is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2])
 }
 
 int 
-member(char *realfield, struct ignoretab *table)
+member(char const *realfield, struct ignoretab *table)
 {
 	struct ignore *igp;
 
@@ -1251,10 +1300,10 @@ member(char *realfield, struct ignoretab *table)
 /*
  * Fake Sender for From_ lines if missing, e. g. with POP3.
  */
-char *
+char const *
 fakefrom(struct message *mp)
 {
-	char *name;
+	char const *name;
 
 	if (((name = skin(hfield1("return-path", mp))) == NULL ||
 				*name == '\0' ) &&
@@ -1269,7 +1318,7 @@ fakefrom(struct message *mp)
 	return name;
 }
 
-char *
+char const *
 fakedate(time_t t)
 {
 	char *cp, *cq;
@@ -1484,7 +1533,6 @@ void
 substdate(struct message *m)
 {
 	char const *cp;
-	time_t now;
 
 	/*
 	 * Determine the date to print in faked 'From ' lines. This is
@@ -1492,7 +1540,6 @@ substdate(struct message *m)
 	 * file. Try to determine this using RFC message header fields,
 	 * or fall back to current time.
 	 */
-	time(&now);
 	if ((cp = hfield1("received", m)) != NULL) {
 		while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
 			do
@@ -1502,11 +1549,12 @@ substdate(struct message *m)
 		if (cp && *++cp)
 			m->m_time = rfctime(cp);
 	}
-	if (m->m_time == 0 || m->m_time > now)
+	if (m->m_time == 0 || m->m_time > time_current.tc_time) {
 		if ((cp = hfield1("date", m)) != NULL)
 			m->m_time = rfctime(cp);
-	if (m->m_time == 0 || m->m_time > now)
-		m->m_time = now;
+	}
+	if (m->m_time == 0 || m->m_time > time_current.tc_time)
+		m->m_time = time_current.tc_time;
 }
 
 int

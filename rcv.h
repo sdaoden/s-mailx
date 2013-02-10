@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -47,22 +47,23 @@
 #include "config.h"
 
 #include <sys/types.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <string.h>
 #include <termios.h>
-#ifdef HAVE_ICONV
-# include <iconv.h>
-#endif
+#include <time.h>
+
 #ifdef HAVE_ASSERTS
 # include <assert.h>
 #else
 # undef assert
-# define assert(X)	do {} while (0)
+# define assert(X)	((void)0)
 #endif
 
-#define	SHELL		"/bin/sh"
+#ifdef HAVE_ICONV
+# include <iconv.h>
+#endif
 
 #include "def.h"
 #include "glob.h"

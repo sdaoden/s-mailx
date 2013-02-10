@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -54,16 +54,20 @@
  * Still more user commands.
  */
 
+/* Modify subject we reply to to begin with Re: if it does not already */
+static char *	_reedit(char *subj);
+
+/* "set" command: show all option settings */
+static int	_set_show_all(void);
+
 static int	bangexp(char **str, size_t *size);
 static void	make_ref_and_cs(struct message *mp, struct header *head);
 static int (*	respond_or_Respond(int c))(int *, int);
 static int	respond_internal(int *msgvec, int recipient_record);
-static char *	reedit(char *subj);
 static char *	fwdedit(char *subj);
-static void	onpipe(int signo);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
-static int	file1(char *name);
+static int	file1(char const *name);
 static int	shellecho(const char *cp);
 static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
@@ -73,6 +77,80 @@ static enum okay delete_shortcut(const char *str);
 static float	huge(void);
 #endif
 
+static char *
+_reedit(char *subj)
+{
+	struct str in, out;
+	char *newsubj = NULL;
+
+	if (subj == NULL || *subj == '\0')
+		goto j_leave;
+
+	in.s = subj;
+	in.l = strlen(subj);
+	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
+
+	if ((out.s[0] == 'r' || out.s[0] == 'R') &&
+			(out.s[1] == 'e' || out.s[1] == 'E') &&
+			out.s[2] == ':') {
+		newsubj = savestr(out.s);
+		goto jleave;
+	}
+	newsubj = salloc(out.l + 5);
+	sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
+jleave:
+	free(out.s);
+j_leave:
+	return (newsubj);
+}
+
+static int
+_set_show_all(void)
+{
+	int ret = 1;
+	FILE *fp;
+	char *cp, **vacp, **p;
+	struct var *vp;
+	size_t i;
+	union {size_t j; char const *fmt;} u;
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+	for (i = u.j = 0; i < HSHSIZE; ++i)
+		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
+			++u.j;
+	vacp = (char**)salloc(u.j * sizeof(*vacp));
+	for (i = 0, p = vacp; i < HSHSIZE; ++i)
+		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
+			*p++ = vp->v_name;
+	*p = NULL;
+
+	asort(vacp);
+
+	i = (value("bsdcompat") != NULL || value("bsdset") != NULL);
+	u.fmt = i ? "%s\t%s\n" : "%s=\"%s\"\n";
+	for (p = vacp; *p != NULL; ++p) {
+		char const *x = value(*p);
+		if (x == NULL)
+			x = "";
+		if (i || *x)
+			fprintf(fp, u.fmt, *p, x);
+		else
+			fprintf(fp, "%s\n", *p);
+	}
+
+	page_or_print(fp, (size_t)(p - vacp));
+	Fclose(fp);
+	ret = 0;
+jleave:
+	return (ret);
+}
+
 /*
  * Process a shell escape by saving signals, ignoring signals,
  * and forking a sh -c
@@ -80,11 +158,10 @@ static float	huge(void);
 int 
 shell(void *v)
 {
-	char *str = v;
-	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *shell;
-	char *cmd;
+	char *str = v, *cmd;
+	char const *shell;
 	size_t cmdsize;
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 
 	cmd = smalloc(cmdsize = strlen(str) + 1);
 	strcpy(cmd, str);
@@ -107,7 +184,7 @@ int
 dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *shell;
+	char const *shell;
 	(void)v;
 
 	if ((shell = value("SHELL")) == NULL)
@@ -239,18 +316,40 @@ int
 schdir(void *v)
 {
 	char **arglist = v;
-	char *cp;
+	char const *cp;
 
+#ifdef HAVE_REALPATH
+	/* TODO Avoid locked-up situation with relative paths when chdir(2)ing
+	 * TODO away; intermediate in that the current box's temporary
+	 * TODO representation should be saved to TMPDIR and the current BOX
+	 * TODO should be set to a-to-be-invented "void" box?  Or the user
+	 * TODO should be prompted if interactive?  It SHOULD be encapsulated
+	 * TODO in the box type driver!!  Thus - maybe add an is_absolute()
+	 * TODO flag to the (not yet existent) drivers, and forbid changing
+	 * TODO the path if that returns false (for whatever reason) */
+	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
+		cp = realpath(mailname, NULL);
+		if (cp != NULL) {
+			sstpcpy(mailname, cp);
+			(free)(UNCONST(cp));
+		} else {
+			fprintf(stderr, tr(86, "Won't \"chdir\": "
+				"\"%s\" would become inaccessible"),
+				mailname);
+			goto jleave;
+		}
+	}
+#endif
 	if (*arglist == NULL)
 		cp = homedir;
-	else
-		if ((cp = file_expand(*arglist)) == NULL)
-			return(1);
+	else if ((cp = file_expand(*arglist)) == NULL)
+		goto jleave;
 	if (chdir(cp) < 0) {
 		perror(cp);
-		return(1);
+		cp = NULL;
 	}
-	return 0;
+jleave:
+	return (cp != NULL);
 }
 
 static void 
@@ -386,7 +485,7 @@ respond_internal(int *msgvec, int recipient_record)
 		np = lextract(rcv, GTO|gf);
 	head.h_to = np;
 	head.h_subject = hfield1("subject", mp);
-	head.h_subject = reedit(head.h_subject);
+	head.h_subject = _reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
 	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
@@ -401,31 +500,6 @@ respond_internal(int *msgvec, int recipient_record)
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
-}
-
-/*
- * Modify the subject we are replying to to begin with Re: if
- * it does not already.
- */
-static char *
-reedit(char *subj)
-{
-	char *newsubj;
-	struct str in, out;
-
-	if (subj == NULL || *subj == '\0')
-		return NULL;
-	in.s = subj;
-	in.l = strlen(subj);
-	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-	if ((out.s[0] == 'r' || out.s[0] == 'R') &&
-	    (out.s[1] == 'e' || out.s[1] == 'E') &&
-	    out.s[2] == ':')
-		return out.s;
-	newsubj = salloc(out.l + 5);
-	strcpy(newsubj, "Re: ");
-	strcpy(newsubj + 4, out.s);
-	return newsubj;
 }
 
 /*
@@ -638,101 +712,41 @@ rexit(void *v)
 	/*NOTREACHED*/
 }
 
-static sigjmp_buf	pipejmp;
-
-/*ARGSUSED*/
-static void 
-onpipe(int signo)
-{
-	(void)signo;
-	siglongjmp(pipejmp, 1);
-}
-
-/*
- * Set or display a variable value.  Syntax is similar to that
- * of sh.
- */
 int 
 set(void *v)
 {
-	char **arglist = v;
-	struct var *vp;
-	char *cp, *cp2;
-	char **ap, **p;
-	int errs, h, s;
-	FILE *volatile obuf = stdout;
-	int volatile bsdset = (value("bsdcompat") != NULL ||
-				value("bsdset") != NULL);
+	char **ap = v, *cp, *cp2, *varbuf, c;
+	int errs = 0;
 
-	if (*arglist == NULL) {
-		for (h = 0, s = 1; h < HSHSIZE; h++)
-			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
-				s++;
-		/*LINTED*/
-		ap = (char **)salloc(s * sizeof *ap);
-		for (h = 0, p = ap; h < HSHSIZE; h++)
-			for (vp = variables[h]; vp != NULL; vp = vp->v_link)
-				*p++ = vp->v_name;
-		*p = NULL;
-		asort(ap);
-		if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
-			if (s > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
-				cp = get_pager();
-				if (sigsetjmp(pipejmp, 1))
-					goto endpipe;
-				if ((obuf = Popen(cp, "w", NULL, 1)) == NULL) {
-					perror(cp);
-					obuf = stdout;
-				} else
-					safe_signal(SIGPIPE, onpipe);
-			}
-		}
-		for (p = ap; *p != NULL; p++) {
-			if (bsdset)
-				fprintf(obuf, "%s\t%s\n", *p, value(*p));
-			else {
-				if ((cp = value(*p)) != NULL && *cp)
-					fprintf(obuf, "%s=\"%s\"\n",
-							*p, value(*p));
-				else
-					fprintf(obuf, "%s\n", *p);
-			}
-		}
-endpipe:
-		if (obuf != stdout) {
-			safe_signal(SIGPIPE, SIG_IGN);
-			Pclose(obuf);
-			safe_signal(SIGPIPE, dflpipe);
-		}
-		return(0);
+	if (*ap == NULL) {
+		_set_show_all();
+		goto jleave;
 	}
-	errs = 0;
-	for (ap = arglist; *ap != NULL; ap++) {
-		char *varbuf;
 
-		varbuf = ac_alloc(strlen(*ap) + 1);
+	for (; *ap != NULL; ++ap) {
 		cp = *ap;
-		cp2 = varbuf;
-		while (*cp != '=' && *cp != '\0')
-			*cp2++ = *cp++;
+		cp2 = varbuf = ac_alloc(strlen(cp) + 1);
+		for (; (c = *cp) != '=' && c != '\0'; ++cp)
+			*cp2++ = c;
 		*cp2 = '\0';
-		if (*cp == '\0')
-			cp = "";
+		if (c == '\0')
+			cp = UNCONST("");
 		else
-			cp++;
-		if (strcmp(varbuf, "") == 0) {
-			printf(tr(41, "Non-null variable name required\n"));
-			errs++;
-			ac_free(varbuf);
-			continue;
+			++cp;
+		if (varbuf == cp2) {
+			fprintf(stderr,
+				tr(41, "Non-null variable name required\n"));
+			++errs;
+			goto jnext;
 		}
 		if (varbuf[0] == 'n' && varbuf[1] == 'o')
 			errs += unset_internal(&varbuf[2]);
 		else
 			assign(varbuf, cp);
-		ac_free(varbuf);
+jnext:		ac_free(varbuf);
 	}
-	return(errs);
+jleave:
+	return (errs);
 }
 
 /*
@@ -849,7 +863,7 @@ asort(char **list)
 static int 
 diction(const void *a, const void *b)
 {
-	return(strcmp(*(char **)a, *(char **)b));
+	return(strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b)));
 }
 
 /*
@@ -872,7 +886,7 @@ cfile(void *v)
 }
 
 static int 
-file1(char *name)
+file1(char const *name)
 {
 	int	i;
 
@@ -1010,7 +1024,7 @@ Respond_internal(int *msgvec, int recipient_record)
 		return 0;
 	mp = &message[msgvec[0] - 1];
 	head.h_subject = hfield1("subject", mp);
-	head.h_subject = reedit(head.h_subject);
+	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 	Eflag = value("skipemptybody") != NULL;
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
@@ -1117,29 +1131,35 @@ endifcmd(void *v)
 int 
 alternates(void *v)
 {
-	char **namelist = v;
-	int c;
-	char **ap, **ap2, *cp;
+	size_t l;
+	char **namelist = v, **ap, **ap2, *cp;
 
-	c = argcount(namelist) + 1;
-	if (c == 1) {
-		if (altnames == 0)
-			return(0);
-		for (ap = altnames; *ap; ap++)
+	l = argcount(namelist) + 1;
+
+	if (l == 1) {
+		if (altnames == NULL)
+			goto jleave;
+		for (ap = altnames; *ap != NULL; ++ap)
 			printf("%s ", *ap);
 		printf("\n");
-		return(0);
+		goto jleave;
 	}
-	if (altnames != 0)
+
+	if (altnames != NULL) {
+		for (ap = altnames; *ap != NULL; ++ap)
+			free(*ap);
 		free(altnames);
-	altnames = scalloc(c, sizeof (char *));
-	for (ap = namelist, ap2 = altnames; *ap; ap++, ap2++) {
-		cp = scalloc(strlen(*ap) + 1, sizeof (char));
-		strcpy(cp, *ap);
+	}
+	altnames = smalloc(l * sizeof(char*));
+	for (ap = namelist, ap2 = altnames; *ap; ++ap, ++ap2) {
+		l = strlen(*ap) + 1;
+		cp = smalloc(l);
+		memcpy(cp, *ap, l);
 		*ap2 = cp;
 	}
-	*ap2 = 0;
-	return(0);
+	*ap2 = NULL;
+jleave:
+	return (0);
 }
 
 /*

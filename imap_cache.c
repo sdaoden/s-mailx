@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -69,7 +69,7 @@ static void purge(struct mailbox *mp, struct message *m, long mc,
 		struct cw *cw, const char *name);
 static int longlt(const void *a, const void *b);
 static void remve(unsigned long n);
-static FILE *cache_queue1(struct mailbox *mp, char *mode, char **xname);
+static FILE *cache_queue1(struct mailbox *mp, char const *mode, char **xname);
 static enum okay dequeue1(struct mailbox *mp);
 
 static const char	infofmt[] = "%c %lu %d %lu %ld";
@@ -105,10 +105,11 @@ For more information about mailx(1), visit\n\
 static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)
 {
-	char	*cachedir, *eaccount, *emailbox, *ename, *res;
-	int	resz;
+	char *cachedir, *eaccount, *ename, *res;
+	char const *emailbox;
+	int resz;
 
-	ename = strenc(name);
+	ename = urlxenc(name);
 	if (mp->mb_cache_directory && same && box == NULL) {
 		res = salloc(resz = strlen(mp->mb_cache_directory) +
 				strlen(ename) + 2);
@@ -118,11 +119,11 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 		if ((cachedir = value("imap-cache")) == NULL ||
 				(cachedir = file_expand(cachedir)) == NULL)
 			return NULL;
-		eaccount = strenc(mp->mb_imap_account);
+		eaccount = urlxenc(mp->mb_imap_account);
 		if (box)
-			emailbox = strenc(box);
+			emailbox = urlxenc(box);
 		else if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-			emailbox = strenc(mp->mb_imap_mailbox);
+			emailbox = urlxenc(mp->mb_imap_mailbox);
 		else
 			emailbox = "INBOX";
 		res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
@@ -406,18 +407,19 @@ purgecache(struct mailbox *mp, struct message *m, long mc)
 static FILE *
 clean(struct mailbox *mp, struct cw *cw)
 {
-	char	*cachedir, *eaccount, *emailbox, *buf;
-	int	bufsz;
-	DIR	*dirfd;
-	struct dirent	*dp;
-	FILE	*fp = NULL;
+	char *cachedir, *eaccount, *buf;
+	char const *emailbox;
+	int bufsz;
+	DIR *dirfd;
+	struct dirent *dp;
+	FILE *fp = NULL;
 
 	if ((cachedir = value("imap-cache")) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
 		return NULL;
-	eaccount = strenc(mp->mb_imap_account);
+	eaccount = urlxenc(mp->mb_imap_account);
 	if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-		emailbox = strenc(mp->mb_imap_mailbox);
+		emailbox = urlxenc(mp->mb_imap_mailbox);
 	else
 		emailbox = "INBOX";
 	buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
@@ -529,7 +531,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
 static int 
 longlt(const void *a, const void *b)
 {
-	return *(long *)a - *(long *)b;
+	return *(const long*)a - *(const long*)b;
 }
 
 static void 
@@ -592,7 +594,7 @@ cache_setptr(int transparent)
 	ok = OKAY;
 	if (ok == OKAY) {
 		mb.mb_type = MB_CACHE;
-		mb.mb_perm = Rflag ? 0 : MB_DELE;
+		mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 		if (transparent)
 			transflags(omessage, omsgCount, 1);
 		else
@@ -613,7 +615,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	if ((cachedir = value("imap-cache")) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
 		return STOP;
-	eaccount = strenc(mp->mb_imap_account);
+	eaccount = urlxenc(mp->mb_imap_account);
 	name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
 	snprintf(name, namesz, "%s/%s", cachedir, eaccount);
 	if ((dirfd = opendir(name)) == NULL)
@@ -621,7 +623,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	while ((dp = readdir(dirfd)) != NULL) {
 		if (dp->d_name[0] == '.')
 			continue;
-		cp = sp = strdec(dp->d_name);
+		cp = sp = urlxdec(dp->d_name);
 		for (bp = base; *bp && *bp == *sp; bp++)
 			sp++;
 		if (*bp)
@@ -643,7 +645,7 @@ cache_remove(const char *name)
 	int	pathsize, pathend, n;
 	char	*dir;
 
-	if ((dir = encname(&mb, "", 0, protfile(name))) == NULL)
+	if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
 		return OKAY;
 	pathend = strlen(dir);
 	path = smalloc(pathsize = pathend + 30);
@@ -685,8 +687,8 @@ cache_rename(const char *old, const char *new)
 {
 	char	*olddir, *newdir;
 
-	if ((olddir = encname(&mb, "", 0, protfile(old))) == NULL ||
-			(newdir = encname(&mb, "", 0, protfile(new))) == NULL)
+	if ((olddir = encname(&mb, "", 0, imap_fileof(old))) == NULL ||
+			(newdir = encname(&mb, "",0, imap_fileof(new))) == NULL)
 		return OKAY;
 	if (rename(olddir, newdir) < 0) {
 		perror(olddir);
@@ -713,7 +715,7 @@ cached_uidvalidity(struct mailbox *mp)
 }
 
 static FILE *
-cache_queue1(struct mailbox *mp, char *mode, char **xname)
+cache_queue1(struct mailbox *mp, char const *mode, char **xname)
 {
 	char	*name;
 	FILE	*fp;
@@ -750,7 +752,7 @@ cache_dequeue(struct mailbox *mp)
 	if ((cachedir = value("imap-cache")) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
 		return OKAY;
-	eaccount = strenc(mp->mb_imap_account);
+	eaccount = urlxenc(mp->mb_imap_account);
 	buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
 	snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
 	if ((dirfd = opendir(buf)) == NULL)
@@ -759,7 +761,7 @@ cache_dequeue(struct mailbox *mp)
 	while ((dp = readdir(dirfd)) != NULL) {
 		if (dp->d_name[0] == '.')
 			continue;
-		mp->mb_imap_mailbox = strdec(dp->d_name);
+		mp->mb_imap_mailbox = urlxdec(dp->d_name);
 		dequeue1(mp);
 	}
 	closedir(dirfd);

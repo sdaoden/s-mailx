@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -44,7 +44,9 @@
 #include <stdio.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
+#include <utime.h>
 
 #include "extern.h"
 
@@ -54,8 +56,24 @@
  * Termination processing.
  */
 
+/* Touch the indicated file */
+static void	alter(char const *name);
+
 static int writeback(FILE *res, FILE *obuf);
 static void edstop(void);
+
+static void
+alter(char const *name)
+{
+	struct stat sb;
+	struct utimbuf utb;
+
+	if (stat(name, &sb))
+		return;
+	utb.actime = time((time_t *)0) + 1;
+	utb.modtime = sb.st_mtime;
+	utime(name, &utb);
+}
 
 /*
  * The "quit" command.
@@ -232,9 +250,9 @@ nolock:
 
 	anystat = holdbits();
 	modify = 0;
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX)
@@ -373,8 +391,7 @@ makembox(void)
 	mcount = 0;
 	if (value("append") == NULL) {
 		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
-			perror(catgets(catd, CATSET, 162,
-					"temporary mail quit file"));
+			perror(tr(163, "temporary mail quit file"));
 			return STOP;
 		}
 		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
@@ -392,8 +409,7 @@ makembox(void)
 			Fclose(abuf);
 		}
 		if (ferror(obuf)) {
-			perror(catgets(catd, CATSET, 163,
-					"temporary mail quit file"));
+			perror(tr(163, "temporary mail quit file"));
 			Fclose(ibuf);
 			Fclose(obuf);
 			return STOP;
@@ -491,9 +507,9 @@ edstop(void)
 	if (mb.mb_perm == 0)
 		return;
 	holdsigs();
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
@@ -513,13 +529,13 @@ edstop(void)
 	}
 	if (readstat != NULL)
 		Fclose(readstat);
-	if (!gotcha || Tflag != NULL)
+	if (!gotcha || option_T_arg != NULL)
 		goto done;
 	ibuf = NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
 		char *tempname;
 
-		if ((obuf = Ftemp(&tempname, "mbox.", "w", 0600, 1)) == NULL) {
+		if ((obuf = Ftemp(&tempname, "edstop", "w", 0600, 1)) == NULL) {
 			perror(catgets(catd, CATSET, 167, "tmpfile"));
 			relsesigs();
 			reset(0);

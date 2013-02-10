@@ -1,6 +1,330 @@
 S - n a i l  N e w s
 ====================
 
+  +-----------------------------------------------------------------------+
+  | No minor but bugfix releases (if any) are to be expected after v14.0, |
+  | unless the ENTIRE MIME and send layers have been rewritten.           |
+  | The cumulated result will end up as v15.0, but not before 2014.       |
+  +-----------------------------------------------------------------------+
+
+v14.0, 2013-02-10
+-----------------
+
+Random notes
+^^^^^^^^^^^^
+
+- Encoding defaults to *quoted-printable* not *8bit*.
+  This has no technical background except that i think it's the better
+  default.
+
+- Small progress for the "getting stuck due to the current folder
+  becomes inaccessible due to whatever reasons"  problem.
+  (schdir(): realpath() local files before leaving CWD.., 2013-01-08)
+
+- The names of temporary files have changed.  Whereas not all uses of
+  temporary files already use really meaningful names, it has yet become
+  possible to use the pattern "*mail-*"; or, to be compatible with
+  NetBSD Mail(1) in one go, "*mail*".  (E.g., in my ~/.vimrc you'd read:
+    :au   BufRead,BufNewFile *mutt*,*mail* setl fenc= | setf mail
+  [the *mutt* is a leftover from times when i've used MUAs that suck].)
+
+ChangeLog
+^^^^^^^^^
+
+- The Quoted-Printable MIME handling has been rewritten completely.
+  We now correctly encode files with the MS-DOS newline sequence (CRLF).
+  (Part of the *mime-cte* topic branch.)
+
+  S-nail(1) continues to be able to handle text messages and text
+  attachments without a trailing newline, but because these
+  Content-Transfer-Encoding related things are now handled by the C-T-E
+  layer instead of by sendout.c a text message body that comes in as
+  part of a complete message via the -t command line option will loose
+  the missing final newline (i.e., it'll gain one).
+  This problem does *not* occur when *only* the message body comes in
+  via STDIN, as in 'cat FILE | s-nail', but *only* when the -t option is
+  used.
+  (sendout.c: does no(t/ longer) know about CTE internals!, 2013-02-09)
+
+- Filename arguments for -a are now processed *after* all the resource
+  files have been loaded etc., so that the usual "folder" specifics can
+  be used (provided that proper care for shell quoting was taken).
+  ((main(): delay -a processing.., 2013-01-10), as a part of the
+  *mainaflags* topic branch.)
+
+- (d38c5bd, When the write command asks.., 2004-11-23) added support
+  for pipes when saving attachments during a "write" command.
+  It however used the wrong SIGPIPE signal handler; e.g.:
+
+    Enter filename for part 2 (application/x-gzip): |exit
+    Segmentation fault
+
+  Of course, it still performs a jump and that most likely leaves memory
+  chunks behind, thus causing some memory leaks.  This will be
+  a long-term problem (you may want to read [mime.c:fwrite_td(): TODO
+  notes on unfixable leaks, 2013-01-14] for more).
+  (send.c:sendpart(): fix longjmp() SIGSEGV.., 2013-01-29)
+
+- Fixed a name quoting regression that i've introduced in
+  (Rewrite *extract().., 2012-10-20), that would have caused
+  "x \"y\" z" to become "x"y" z" instead of "x "y" z".
+  (S-nail still does not really have RFC compliant parsers, just as
+  NetBSD Mail(1) has, i.e., there are structured and unstructured fields
+  etc...  I hope i can provide them in v15.0.)
+  (names.c:yankname(): fix quote regression.., 2013-01-29)
+
+- The IDNA conversion now assumes domain names are specified in
+  *ttycharset*, rather than in the LC_CTYPE locale charset.
+  I.e., it integrates into the usual character set specifications.
+  (IDNA: honour *ttycharset* for domain names, 2013-01-18)
+
+- The new *editalong* variable will automatically spawn an editor when
+  composing a mail in interactive mode, just as if `~e' was given.
+  (Add new *editalong* variable, 2012-01-07)
+
+- The manual has been converted to mdoc.
+  (The manual has been converted to mdoc, 2012-12-28)
+
+- The ~@ tilde escape, when given filename arguments, will treat the
+  arguments as a comma-separated instead of a whitespace-separated list.
+  (collect: change separator of ~@ tilde escape.., 2012-12-28)
+
+  The interactive mode of ~@ has also been changed, rather massively.
+  Please do reread what the manual says.
+  ((collect: support multiple attachment charsets.., 2013-01-23), as
+  part of the *attach* topic branch.)
+
+- Thanks to Gianluca Ramunno (ramunno DOT gianluca AT gmail DOT com)
+  S-Nail will no longer try to issue a STARTTLS command when it is about
+  to establish a SMTPS connection, a task that logically fails since the
+  connection is already secured.
+  (Interestingly the nail codebase performs the necessary test for IMAP
+  and POP3 already.)
+  While here the undocumented nail v11.0 *smtp-use-tls* legacy option
+  has been removed.
+  (Fix SMPTS with a set *smtp-use-starttls*.., 2012-12-22)
+
+- The RFC 4155 compliant MBOX quoting is now exclusively used, the
+  shitty *posix-mbox* variable has been removed again.
+  (Shitty because i've implemented RFC 4155 compliant MBOX quoting and
+  tested it, then added *posix-mbox* for those who liked the old
+  behaviour and did not re-test -- the final code path was buggy.)
+
+  In mails newly created and saved by S-nail(1) no From_ quoting at all
+  will be used no more, but instead the rewritten MIME file classifier
+  will detect unquoted From_ lines and enforce quoted-printable encoding.
+  (This is an approach that is S/MIME compatible all through the way as
+  the file data is not modified at all, but only encoded, so that the
+  data checksum is not changed.)
+
+  In yet existent mails that S-nail copies or moves around without
+  reclassification an RFC 4155 compliant From_ line detector will apply
+  MBOXO quoting (prepend a single '>') as necessary.
+  Different to the old MBOXRD behaviour S-nail will neither quote yet
+  quoted From_ lines ('>>From xy' -> '>>>From xy') nor will it unquote
+  one quote level when reading etc. mails ('>> From xy' -> '>From xy').
+  As a result the code could be simplified.
+
+  This changeset also incorporates a fix for NetBSD PR bin/47453, as
+  reported by Martin Brandenburg.  I.e., some mailers, noticeably
+  UW-imap (with MBX format only?), use non-compliant From_ lines with
+  RFC 822 date specifications.  Be aware of 'em.
+  (RFC 4155 MBOX, and drop *posix-mbox* and foldergets().., 2013-01-06)
+
+- *rfc822-show-all* has been removed.
+  It didn't work properly for more complex MIME structures, like
+  message/rfc822 messages with attachments etc., just as i've seen today
+  on the file(1) mailing list.
+  So, instead of hacking it now i've dropped it and will come back with
+  a better solution when the MIME and send layers have been overhauled.
+  I.e., the real intent was to be able to specify that an embedded
+  message/rfc822 is treated as a *unity*, and that's the goal.
+  (Drop *rfc822-show-all*, 2013-01-23)
+  [The manual will be adjusted in a different commit.]
+
+- *rfc822-no-body-from_* has been renamed to *rfc822-body-from_*.
+  It thus must be set explicitly.
+  On the other hand it now catches all cases...
+  (*rfc822-no-body-from_* -> *rfc822-body-from_*, 2013-01-23)
+  [The manual will be adjusted in a different commit.]
+
+- The new *charset-7bit* (defaults to US-ASCII) and *charset-8bit*
+  (defaults to UTF-8) have been introduced.
+  These are used if seven bit clean data is to be sent, and no
+  *sendcharsets* are set or the convertion of all of them failed,
+  respectively:
+
+  - There is no functional change unless there is iconv(3) support.
+  - There is no functional change unless you set them.
+  (Introduce *charset-8bit* and *charset-7bit* variables.., 2013-01-18)
+  [The manual will be adjusted in a different commit.]
+
+  In addition the new *sendcharsets-else-ttycharset* variable can now
+  be used to automatically use *ttycharset* as a *sendcharset(s)*,
+  regardless of the new *charset-8bit* variable.
+  (Add *sendcharsets-else-ttycharset* variable, 2013-01-24)
+  [The manual will be adjusted in a different commit.]
+
+  NOTE: before we apply charset conversion we now perform a string
+  comparison to see wether character sets are identical.  If the strings
+  match (case-insensitively), then *no* conversion is performed.
+  This means that code like
+
+    $ printf "LATIN1: \0376" | s-nail -Ssendcharsets= -s boom ./out.txt
+
+  *succeeds* in an UTF-8 environment now, whereas older versions would
+  fail with an "illegal byte sequence" error (unless the iconv(3)
+  library of the system would not perform any conversion that seems
+  superflous, of course).
+
+  I thought about making this optional, but, in fact, if this would be
+  done in an environment without iconv(3) support then the result would
+  be equally corrupt.  And the way it is now we save the expensive and
+  superflous conversions.  (See TODO for more.)
+
+  Please *do* reread the manual section "Character sets".
+  +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- An attempt was made to improve MIME Content-XY: detection.
+  It should be more RFC compliant, and just overall better :);
+  a simple one-pass classifier cannot match libmagic(3), of course.
+
+  This changeset removes support of the long obsoleted (4fee1ef,
+  2005-01-06) *charset* variable, as well as for the
+  *maximum-unencoded-line-length* variable that has been introduced in
+  (48a652bd, 2005-07-26).
+
+  For S-nail v14.0 it'll be no longer necessary to do
+
+    $ tr -d '\015' < input | s-nail ...
+
+  to transport files which use the $-DOS (terminal) newline (sequence).
+  We still depend upon *sendcharsets* for a while, though.
+  (Rewrite file-content classification.., 2013-01-02)
+
+- The new *mime-counter-evidence* variable can be used to force
+  a classification of non-text MIME parts (attachments) by their
+  filename, i.e., a "reverse-classification" just as would be performed
+  if S-nail(1) would itself *send* the file(name).  This can help
+  against some stupid MUAs (Apple Mail?) that send .diff etc. files as
+  `application/octet-stream' parts etc.
+
+  At a later time this may become a valued option, causing a temporary
+  save of unnamed attachments followed by a MIME classification of the
+  file contents, followed by forced treatment as plain text if it seems
+  to be human readable.  But not yet.  Just to warn you.
+  (Add *mime-counter-evidence* variable.., 2012-12-29)
+
+- The special "pipe-" command "@" can be used to force treatment of
+  a MIME message part as plain text (e.g.,
+  'set pipe-application/pgp-signature=@' will henceforth print those
+  signatures inline and as plain text).
+  (Introduce the special "@" "pipe-" command, 2012-12-27)
+
+- The MIME types (as from mime.types(5)) will now be cached.  Before
+  all possible sources would have been opened, read and parsed for each
+  and every message part that required detection of the MIME
+  Content-Type:.
+  The new "mimetypes" command can be used to show or clear that cache.
+  (Add mime.types(5) cache.., 2012-12-27)
+
+- A small set of MIME types (template: ./mime.types) will now become
+  compiled into S-nail(1), and be used as a fallback if there are no
+  ~/.mime.types and/or no /etc/mime.types, or those didn't contain
+  a matching type.  E.g., NetBSD 6 doesn't ship a default database.
+  Also, file extensions will be matched case-insensitively (case of
+  attribute values is not specified afaik?).
+  (Introduce compiled-in mime.types(5).., 2012-12-21)
+
+- The undocumented *charset7* variable was removed.
+
+- The "Message X:" display leader has been changed and will henceforth
+  be matchable via "^[-- Message \d+ -- \d+ lines, \d+ bytes --]:$".
+  These lines can no longer be suppressed by setting the *quiet*
+  option (which was yet possible for print and top, though undocumented).
+  (Change "Message X:" display message.., 2012-12-20)
+
+- When displaying multipart messages the "Part X:" introductional string
+  has been changed; if the Content-type: header is not *retain*ed, then
+  this string will include the part's type and size.  Ditto for
+  Content-disposition: and a mentioned attachment filename.
+  This is a first step only, for the final version the MIME and send
+  layers will have to be adjusted.  But the string will be matchable via
+  a "^[-- #.* --]$" regular expression from now on.
+  (Change "Part X:" display message.., 2012-12-20)
+
+- MIME boundaries in multipart messages are now handled better in that
+  no boundary string should get through to the display.
+ (Tweak MIME boundary detection.., 2012-12-20)
+
+- A couple of long standing, even pre-Heirloom mailx(1) memory leaks and
+  segmentation violations, most of them related to configurations
+  without alloca(3) support, as well as one leak that i have introduced
+  when i implemented RFC 4155 MBOX handling, have been fixed.
+  But S-nail should now survive non-alloca(3) configurations.
+  (*memtracer* topic branch.)
+
+- The Base64 MIME handling has been rewritten completely.
+  This was an urgent topic, because the old implementation (a) read in
+  all lines of a base64 encoded text part, repeatedly resizing a string
+  storage and repeatedly decoding that string until all the lines have
+  been swallowed (i.e., or by accident the last decoded byte was
+  a newline character, and that in turn may of course have fucked up for
+  multi-octet encodings, dependent on the actual byte-order), (b) used
+  function local static data to keep state in between multiple
+  invocations, which messed up multi-byte/-octet encodings like this
+
+    �5��ɽ���Aɥ����́��٥��������[lots of data follows]
+
+  and (c) did not perform any error checking at all.
+  The new one does not run into the problem that (a) tried to circumvent
+  since leftover decoded data (as opposed to leftover *encoded* data) is
+  transported along the call-chain for later use.  It adds a minimal set
+  of error handling ('may now see "[Invalid Base64 encoding ignored]"),
+  with more to become possible in later S-nail versions when the entire
+  layers are reworked.  (Until then DOS newline sequences [CRLF]
+  embedded into base64 will no longer be decoded to Unix LF newlines.)
+  Base64 encoded lines will now be 76 characters long, as stated (as
+  a maximum value) in RFC 2045, not 72 as before.
+
+  The Base64 code core has been shamelessly stolen from NetBSD's
+  Mail(1), and i guess it was the second time that this happened :=).
+  (*base64-rewrite* topic branch; and reworked later on the *mime-cte*
+  topic branch.)
+
+- The string allocation strategy has been tweaked some more to, i think,
+  a final version (regarding algorithm).
+  In normal non-interactive send mode it should now no longer need any
+  dynamic memory at all (unless some dozen recipients are specified).
+  (Several other places still use normal dynamic memory, of course.)
+  (*dope-stringdope-again* topic branch.)
+
+- Support for NSS (Network Security Services) has been removed.
+  I've never worked with it and are, regarding the complexity of
+  network security, not willing to spend any time on it.
+  SSL is installed on all systems i'm using and/or testing on by
+  default, and so i've choosen to go this way.
+  (It may be that sometime in the future S-nail will add support for
+  libcurl(3) connectivity, and then it may happen that not only NSS
+  support is reintroduced again, but also GNU TLS.  All of that applies
+  to network connectivity only, however, not to S/MIME afaik.)
+  (*drop-nss-support* topic branch.)
+
+- I finally got a glue and understood that Sourceforge does (a) not
+  support symbolic links and (b) doesn't like dots as regular parts of
+  filenames.  This means that all this time the promised s-nail.tar.gz
+  symbolic link did not work, and that s-nailv13.3.tar.gz wasn't
+  accessible either (via the web interface).
+  In the future S-nail(1) will not provide any more symbolic links (the
+  Sourceforge website offers a "download latest" thing which seems to
+  work), and use underscores in filenames -- s-nailv13.3.tar.gz has been
+  renamed to s-nailv13_3.tar.gz.  The tags continue to use dot notation.
+  Thanks.
+
+- The *heirloom-plus* support branch has been removed.
+  The code bases diverged a lot and even more to come.
+  It doesn't make sense to put any effort in that.
+
 v13.3, 2012-11-11
 -----------------
 

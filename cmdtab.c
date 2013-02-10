@@ -358,6 +358,8 @@ struct cmd const cmdtab[] = {
 	{ "unfwdretain", unfwdretain,	M|RAWLIST,	0,	1000
 	  DS(394, "Un\"fwdretain\" <header-fields>") },
 /*	{ "Header",	Header,		STRLIST,	0,	1000	*/
+	{ "mimetypes",	cmimetypes,	M|RAWLIST,	0,	1000
+	  DS(418, "Either <show> (default) or <clear> the mime.types cache") },
 #ifdef HAVE_ASSERTS
 	{ "core",	core,		M|NOLIST,	0,	0
 	  DS(414, "Produce a core dump (ouch!)") },
@@ -365,6 +367,8 @@ struct cmd const cmdtab[] = {
 	  DS(415, "Globber <number> 512 byte blocks on the stack") },
 	{ "sstats",	sstats,		M|NOLIST,	0,	0
 	  DS(416, "Print statistics about the auto-reclaimed string store") },
+	{ "smemtrace",	smemtrace,	M|NOLIST,	0,	0
+	  DS(417, "Trace current memory usage afap") },
 #endif
 	{ NULL, NULL, 0, 0, 0 DS(0, "") }
 };
