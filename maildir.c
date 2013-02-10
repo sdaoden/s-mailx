@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -61,10 +61,12 @@ static long	mdprime;
 
 static sigjmp_buf	maildirjmp;
 
+/* Do some cleanup in the tmp/ subdir */
+static void	cleantmp(void);
+
 static int maildir_setfile1(const char *name, int newmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
 static int subdir(const char *name, const char *sub, int newmail);
-static void cleantmp(const char *name);
 static void append(const char *name, const char *sub, const char *fn);
 static void readin(const char *name, struct message *m);
 static void maildir_update(void);
@@ -78,6 +80,32 @@ static enum okay mkmaildir(const char *name);
 static struct message *mdlook(const char *name, struct message *data);
 static void mktable(void);
 static enum okay subdir_remove(const char *name, const char *sub);
+
+static void
+cleantmp(void)
+{
+	char dep[MAXPATHLEN];
+	struct stat st;
+	time_t now;
+	DIR *dirfd;
+	struct dirent *dp;
+
+	if ((dirfd = opendir("tmp")) == NULL)
+		goto jleave;
+
+	time(&now);
+	while ((dp = readdir(dirfd)) != NULL) {
+		if (dp->d_name[0] == '.')
+			continue;
+		sstpcpy(sstpcpy(dep, "tmp/"), dp->d_name);
+		if (stat(dep, &st) < 0)
+			continue;
+		if (st.st_atime + 36*3600 < now)
+			unlink(dep);
+	}
+	closedir(dirfd);
+jleave:	;
+}
 
 int 
 maildir_setfile(const char *name, int newmail, int isedit)
@@ -159,7 +187,7 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 	int	i;
 
 	if (!newmail)
-		cleantmp(name);
+		cleantmp();
 	mb.mb_perm = Rflag ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
@@ -225,43 +253,6 @@ subdir(const char *name, const char *sub, int newmail)
 	}
 	closedir(dirfd);
 	return 0;
-}
-
-static void 
-cleantmp(const char *name)
-{
-	struct stat	st;
-	DIR	*dirfd;
-	struct dirent	*dp;
-	char	*fn = NULL;
-	size_t	fnsz = 0, ssz;
-	time_t	now;
-	(void)name;
-
-	if ((dirfd = opendir("tmp")) == NULL)
-		return;
-	time(&now);
-	while ((dp = readdir(dirfd)) != NULL) {
-		if (dp->d_name[0] == '.' &&
-				(dp->d_name[1] == '\0' ||
-				 (dp->d_name[1] == '.' &&
-				  dp->d_name[2] == '\0')))
-			continue;
-		if (dp->d_name[0] == '.')
-			continue;
-		if ((ssz = strlen(dp->d_name)) + 5 > fnsz) {
-			free(fn);
-			fn = smalloc(fnsz = ssz + 40);
-		}
-		strcpy(fn, "tmp/");
-		strcpy(&fn[4], dp->d_name);
-		if (stat(fn, &st) < 0)
-			continue;
-		if (st.st_atime + 36*3600 < now)
-			unlink(fn);
-	}
-	free(fn);
-	closedir(dirfd);
 }
 
 static void 

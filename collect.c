@@ -76,11 +76,13 @@ static	sigjmp_buf	collabort;	/* To end collection with error */
 
 static	sigjmp_buf pipejmp;		/* On broken pipe */
 
+/* If *interactive* is set and *echo* is, too, also dump to *stdout* */
+static int	_include_file(FILE *fbuf, char *name, int *linecount,
+			int *charcount, int echo);
+
 static void onpipe(int signo);
 static void insertcommand(FILE *fp, char *cmd);
 static void print_collf(FILE *collf, struct header *hp);
-static int include_file(FILE *fbuf, char *name, int *linecount,
-		int *charcount, int echo);
 static struct attachment *read_attachment_data(struct attachment *ap,
 		unsigned number);
 static struct attachment *append_attachments(struct attachment *attach,
@@ -94,6 +96,46 @@ static void collstop(int s);
 static void collint(int s);
 static void collhup(int s);
 static int putesc(const char *s, FILE *stream);
+
+static int
+_include_file(FILE *fbuf, char *name, int *linecount, int *charcount, int echo)
+{
+	int ret = -1;
+	char *interactive, *linebuf = NULL;
+	size_t linesize = 0, linelen, count;
+
+	if (fbuf == NULL) {
+		if ((fbuf = Fopen(name, "r")) == NULL) {
+			perror(name);
+			goto jleave;
+		}
+	} else
+		fflush_rewind(fbuf);
+
+	interactive = value("interactive");
+	*linecount = *charcount = 0;
+	count = fsize(fbuf);
+	while (fgetline(&linebuf, &linesize, &count, &linelen, fbuf, 0)
+			!= NULL) {
+		if (fwrite(linebuf, sizeof *linebuf, linelen, collf)
+				!= linelen)
+			goto jleave;
+		if (interactive != NULL && echo)
+			fwrite(linebuf, sizeof *linebuf, linelen, stdout);
+		++(*linecount);
+		(*charcount) += linelen;
+	}
+	if (fflush(collf))
+		goto jleave;
+
+	ret = 0;
+jleave:
+	if (linebuf != NULL)
+		free(linebuf);
+	if (fbuf != NULL)
+		Fclose(fbuf);
+	return (ret);
+}
 
 /*ARGSUSED*/
 static void 
@@ -211,44 +253,6 @@ endpipe:
 	}
 	if (lbuf)
 		free(lbuf);
-}
-
-static int
-include_file(FILE *fbuf, char *name, int *linecount, int *charcount, int echo)
-{
-	char *interactive, *linebuf = NULL;
-	size_t linesize = 0, linelen, count;
-
-	if (fbuf == NULL)
-		fbuf = Fopen(name, "r");
-	if (fbuf == NULL) {
-		perror(name);
-		return (-1);
-	}
-	interactive = value("interactive");
-	*linecount = 0;
-	*charcount = 0;
-	fflush(fbuf);
-	rewind(fbuf);
-	count = fsize(fbuf);
-	while (fgetline(&linebuf, &linesize, &count, &linelen, fbuf, 0)
-			!= NULL) {
-		if (fwrite(linebuf, sizeof *linebuf, linelen, collf)
-				!= linelen) {
-			Fclose(fbuf);
-			return (-1);
-		}
-		if (interactive != NULL && echo)
-			fwrite(linebuf, sizeof *linebuf, linelen, stdout);
-		(*linecount)++;
-		(*charcount) += linelen;
-	}
-	if (linebuf)
-		free(linebuf);
-	Fclose(fbuf);
-	if (fflush(collf))
-		return (-1);
-	return (0);
 }
 
 /*
@@ -553,7 +557,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		if (getfields)
 			grabh(hp, getfields, 1);
 		if (quotefile != NULL) {
-			if (include_file(NULL, quotefile, &lc, &cc, 1) != 0)
+			if (_include_file(NULL, quotefile, &lc, &cc, 1) != 0)
 				goto jerr;
 		}
 	} else {
@@ -761,7 +765,7 @@ jcont:
 			}
 			printf(tr(59, "\"%s\" "), cp);
 			fflush(stdout);
-			if (include_file(fbuf, cp, &lc, &cc, 0) != 0)
+			if (_include_file(fbuf, cp, &lc, &cc, 0) != 0)
 				goto jerr;
 			printf(tr(60, "%d/%d\n"), lc, cc);
 			break;
@@ -873,9 +877,9 @@ jcont:
 "~:command      Execute a regular command\n"
 "-----------------------------------------------------------\n"));
 			break;
-
 		}
 	}
+
 jout:
 	if (collf != NULL) {
 		if ((cp = value("NAIL_TAIL")) != NULL) {
@@ -886,6 +890,8 @@ jout:
 		}
 		rewind(collf);
 	}
+	if (linebuf != NULL)
+		free(linebuf);
 	handlerpop();
 	noreset--;
 	sigemptyset(&nset);
@@ -899,6 +905,7 @@ jout:
 	safe_signal(SIGTTIN, savettin);
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 	return (collf);
+
 jerr:
 	if (tempMail != NULL) {
 		rm(tempMail);

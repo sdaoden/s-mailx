@@ -365,6 +365,8 @@ struct cmd const cmdtab[] = {
 	  DS(415, "Globber <number> 512 byte blocks on the stack") },
 	{ "sstats",	sstats,		M|NOLIST,	0,	0
 	  DS(416, "Print statistics about the auto-reclaimed string store") },
+	{ "smemtrace",	smemtrace,	M|NOLIST,	0,	0
+	  DS(417, "Trace current memory usage afap") },
 #endif
 	{ NULL, NULL, 0, 0, 0 DS(0, "") }
 };

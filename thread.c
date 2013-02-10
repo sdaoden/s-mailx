@@ -408,7 +408,8 @@ thread(void *vp)
 			imap_getheaders(1, msgCount);
 #endif
 		makethreads(message, msgCount, vp == (void *)-1);
-		free(mb.mb_sorted);
+		if (mb.mb_sorted != NULL)
+			free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
 	}
 	if (vp && vp != (void *)-1 && !inhook && value("header"))

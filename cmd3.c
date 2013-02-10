@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -54,11 +54,13 @@
  * Still more user commands.
  */
 
+/* Modify subject we reply to to begin with Re: if it does not already */
+static char *	_reedit(char *subj);
+
 static int	bangexp(char **str, size_t *size);
 static void	make_ref_and_cs(struct message *mp, struct header *head);
 static int (*	respond_or_Respond(int c))(int *, int);
 static int	respond_internal(int *msgvec, int recipient_record);
-static char *	reedit(char *subj);
 static char *	fwdedit(char *subj);
 static void	onpipe(int signo);
 static void	asort(char **list);
@@ -72,6 +74,33 @@ static enum okay delete_shortcut(const char *str);
 #ifdef USE_SCORE
 static float	huge(void);
 #endif
+
+static char *
+_reedit(char *subj)
+{
+	struct str in, out;
+	char *newsubj = NULL;
+
+	if (subj == NULL || *subj == '\0')
+		goto j_leave;
+
+	in.s = subj;
+	in.l = strlen(subj);
+	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
+
+	if ((out.s[0] == 'r' || out.s[0] == 'R') &&
+			(out.s[1] == 'e' || out.s[1] == 'E') &&
+			out.s[2] == ':') {
+		newsubj = savestr(out.s);
+		goto jleave;
+	}
+	newsubj = salloc(out.l + 5);
+	sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
+jleave:
+	free(out.s);
+j_leave:
+	return (newsubj);
+}
 
 /*
  * Process a shell escape by saving signals, ignoring signals,
@@ -386,7 +415,7 @@ respond_internal(int *msgvec, int recipient_record)
 		np = lextract(rcv, GTO|gf);
 	head.h_to = np;
 	head.h_subject = hfield1("subject", mp);
-	head.h_subject = reedit(head.h_subject);
+	head.h_subject = _reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
 	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
@@ -401,31 +430,6 @@ respond_internal(int *msgvec, int recipient_record)
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
-}
-
-/*
- * Modify the subject we are replying to to begin with Re: if
- * it does not already.
- */
-static char *
-reedit(char *subj)
-{
-	char *newsubj;
-	struct str in, out;
-
-	if (subj == NULL || *subj == '\0')
-		return NULL;
-	in.s = subj;
-	in.l = strlen(subj);
-	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-	if ((out.s[0] == 'r' || out.s[0] == 'R') &&
-	    (out.s[1] == 'e' || out.s[1] == 'E') &&
-	    out.s[2] == ':')
-		return out.s;
-	newsubj = salloc(out.l + 5);
-	strcpy(newsubj, "Re: ");
-	strcpy(newsubj + 4, out.s);
-	return newsubj;
 }
 
 /*
@@ -1010,7 +1014,7 @@ Respond_internal(int *msgvec, int recipient_record)
 		return 0;
 	mp = &message[msgvec[0] - 1];
 	head.h_subject = hfield1("subject", mp);
-	head.h_subject = reedit(head.h_subject);
+	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 	Eflag = value("skipemptybody") != NULL;
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
@@ -1117,29 +1121,35 @@ endifcmd(void *v)
 int 
 alternates(void *v)
 {
-	char **namelist = v;
-	int c;
-	char **ap, **ap2, *cp;
+	size_t l;
+	char **namelist = v, **ap, **ap2, *cp;
 
-	c = argcount(namelist) + 1;
-	if (c == 1) {
-		if (altnames == 0)
-			return(0);
-		for (ap = altnames; *ap; ap++)
+	l = argcount(namelist) + 1;
+
+	if (l == 1) {
+		if (altnames == NULL)
+			goto jleave;
+		for (ap = altnames; *ap != NULL; ++ap)
 			printf("%s ", *ap);
 		printf("\n");
-		return(0);
+		goto jleave;
 	}
-	if (altnames != 0)
+
+	if (altnames != NULL) {
+		for (ap = altnames; *ap != NULL; ++ap)
+			free(*ap);
 		free(altnames);
-	altnames = scalloc(c, sizeof (char *));
-	for (ap = namelist, ap2 = altnames; *ap; ap++, ap2++) {
-		cp = scalloc(strlen(*ap) + 1, sizeof (char));
-		strcpy(cp, *ap);
+	}
+	altnames = smalloc(l * sizeof(char*));
+	for (ap = namelist, ap2 = altnames; *ap; ++ap, ++ap2) {
+		l = strlen(*ap) + 1;
+		cp = smalloc(l);
+		memcpy(cp, *ap, l);
 		*ap2 = cp;
 	}
-	*ap2 = 0;
-	return(0);
+	*ap2 = NULL;
+jleave:
+	return (0);
 }
 
 /*

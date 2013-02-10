@@ -386,10 +386,10 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 	size_t hsize = 0;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-			(hlen = readline(ibuf, &hline, &hsize)) > 0) {
+			(hlen = readline(ibuf, &hline, &hsize)) > 0)
 		(void)extract_date_from_from_(hline, hlen, date);
+	if (hline != NULL)
 		free(hline);
-	}
 }
 
 static void
@@ -1096,8 +1096,10 @@ top(void *v)
 		if (mp->m_flag & MNOFROM)
 			printf("From %s %s\n", fakefrom(mp),
 					fakedate(mp->m_time));
-		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)	/* XXX could use TOP */
-			return 1;
+		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {	/* XXX could use TOP */
+			v = NULL;
+			break;
+		}
 		c = mp->m_lines;
 		if (!lineb)
 			printf("\n");
@@ -1108,9 +1110,10 @@ top(void *v)
 			lineb = blankline(linebuf);
 		}
 	}
-	if (linebuf)
+
+	if (linebuf != NULL)
 		free(linebuf);
-	return(0);
+	return (v != NULL);
 }
 
 /*

@@ -193,7 +193,7 @@ _globname(char const *name)
 {
 #ifdef HAVE_WORDEXP
 	wordexp_t we;
-	char *cp;
+	char *cp = NULL;
 	sigset_t nset;
 	int i;
 
@@ -214,12 +214,12 @@ _globname(char const *name)
 	case WRDE_NOSPACE:
 		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
 			name);
-		return NULL;
+		goto jleave;
 	case WRDE_BADCHAR:
 	case WRDE_SYNTAX:
 	default:
 		fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"), name);
-		return NULL;
+		goto jleave;
 	}
 
 	switch (we.we_wordc) {
@@ -228,28 +228,26 @@ _globname(char const *name)
 		break;
 	case 0:
 		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
-		cp = NULL;
 		break;
 	default:
 		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
-		cp = NULL;
+		break;
 	}
-
+jleave:
 	wordfree(&we);
-	return cp;
+	return (cp);
 
 #else /* !HAVE_WORDEXP */
-	char xname[PATHSIZE];
-	char cmdbuf[PATHSIZE];		/* also used for file names */
-	int pid, l;
-	char *cp, *shell;
-	int pivec[2];
 	extern int wait_status;
+
 	struct stat sbuf;
+	char xname[PATHSIZE], cmdbuf[PATHSIZE], /* also used for file names */
+		*cp, *shell;
+	int pid, l, pivec[2];
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
-		return NULL;
+		return (NULL);
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
@@ -258,9 +256,10 @@ _globname(char const *name)
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);
-		return NULL;
+		return (NULL);
 	}
 	close(pivec[1]);
+
 again:
 	l = read(pivec[0], xname, sizeof xname);
 	if (l < 0) {
@@ -268,21 +267,21 @@ again:
 			goto again;
 		perror("read");
 		close(pivec[0]);
-		return NULL;
+		return (NULL);
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
-		return NULL;
+		return (NULL);
 	}
 	if (l == 0) {
 		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
-		return NULL;
+		return (NULL);
 	}
 	if (l == sizeof xname) {
 		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
 			name);
-		return NULL;
+		return (NULL);
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
@@ -292,7 +291,7 @@ again:
 		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
-	return savestr(xname);
+	return (savestr(xname));
 #endif /* !HAVE_WORDEXP */
 }
 

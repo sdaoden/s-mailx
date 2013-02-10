@@ -49,7 +49,7 @@ $set 1
 46 "Endif" without matching "if"\n
 47 No recipient specified.
 48 No applicable messages.
-49 --- DELETED ---
+49 Cannot call hook for folder "%s": Macro "%s" does not exist.\n
 50 $#%u\tfilename: $
 51 temporary mail file
 52 $ wrote:\n\n$
@@ -75,8 +75,8 @@ $set 1
 72 $Edit message %d [ynq]? $
 73 temporary mail edit file
 74 cannot create tempfile\n
-75 --- DELETED ---
-76 --- DELETED ---
+75 Unterminated %s definition: "%s".\n
+76 A macro named "%s" already exists.\n
 77 temporary file seek
 78 --- DELETED ---
 79 --- DELETED ---
@@ -478,5 +478,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 414 Produce a core dump (ouch!)
 415 Globber <number> 512 byte blocks on the stack
 416 Print statistics about the auto-reclaimed string store
-
+417 Trace current memory usage afap
 

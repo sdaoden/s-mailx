@@ -924,50 +924,6 @@ getrandstring(size_t length)
 	return (b64.s);
 }
 
-static void
-out_of_memory(void)
-{
-	panic("no memory");
-}
-
-void *
-smalloc(size_t s)
-{
-	void *p;
-
-	if (s == 0)
-		s = 1;
-	if ((p = malloc(s)) == NULL)
-		out_of_memory();
-	return p;
-}
-
-void *
-srealloc(void *v, size_t s)
-{
-	void *r;
-
-	if (s == 0)
-		s = 1;
-	if (v == NULL)
-		return smalloc(s);
-	if ((r = realloc(v, s)) == NULL)
-		out_of_memory();
-	return r;
-}
-
-void *
-scalloc(size_t nmemb, size_t size)
-{
-	void *vp;
-
-	if (size == 0)
-		size = 1;
-	if ((vp = calloc(nmemb, size)) == NULL)
-		out_of_memory();
-	return vp;
-}
-
 char *
 sstpcpy(char *dst, const char *src)
 {
@@ -1243,3 +1199,246 @@ asccasestr(const char *haystack, const char *xneedle)
 	return NULL;
 }
 
+static void
+out_of_memory(void)
+{
+	panic("no memory");
+}
+
+#ifndef HAVE_ASSERTS
+void *
+smalloc(size_t s SMALLOC_DEBUG_ARGS)
+{
+	void *p;
+
+	if (s == 0)
+		s = 1;
+	if ((p = malloc(s)) == NULL)
+		out_of_memory();
+	return p;
+}
+
+void *
+srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
+{
+	void *r;
+
+	if (s == 0)
+		s = 1;
+	if (v == NULL)
+		return smalloc(s);
+	if ((r = realloc(v, s)) == NULL)
+		out_of_memory();
+	return r;
+}
+
+void *
+scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
+{
+	void *vp;
+
+	if (size == 0)
+		size = 1;
+	if ((vp = calloc(nmemb, size)) == NULL)
+		out_of_memory();
+	return vp;
+}
+
+#else /* !HAVE_ASSERTS */
+struct chunk {
+	struct chunk	*prev;
+	struct chunk	*next;
+	char const	*file;
+	us_it		line;
+	uc_it		isfree;
+	sc_it		__dummy;
+	ui_it		size;
+};
+
+union ptr {
+	struct chunk	*c;
+	void		*p;
+};
+
+struct chunk	*_mlist, *_mfree;
+
+void *
+(smalloc)(size_t s SMALLOC_DEBUG_ARGS)
+{
+	union ptr p;
+
+	if (s == 0)
+		s = 1;
+	s += sizeof(struct chunk);
+
+	if ((p.p = malloc(s)) == NULL)
+		out_of_memory();
+	p.c->prev = NULL;
+	if ((p.c->next = _mlist) != NULL)
+		_mlist->prev = p.c;
+	p.c->file = mdbg_file;
+	p.c->line = (us_it)mdbg_line;
+	p.c->isfree = 0;
+	p.c->size = (ui_it)s;
+	_mlist = p.c++;
+	return (p.p);
+}
+
+void *
+(srealloc)(void *v, size_t s SMALLOC_DEBUG_ARGS)
+{
+	union ptr p;
+
+	if ((p.p = v) == NULL) {
+		p.p = (smalloc)(s, mdbg_file, mdbg_line);
+		goto jleave;
+	}
+
+	--p.c;
+	if (p.c->isfree) {
+		fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
+			"\tLast seen: %s, line %d\n",
+			mdbg_file, mdbg_line, p.c->file, p.c->line);
+		goto jforce;
+	}
+
+	if (p.c == _mlist)
+		_mlist = p.c->next;
+	else
+		p.c->prev->next = p.c->next;
+	if (p.c->next != NULL)
+		p.c->next->prev = p.c->prev;
+
+jforce:
+	if (s == 0)
+		s = 1;
+	s += sizeof(struct chunk);
+
+	if ((p.p = realloc(p.c, s)) == NULL)
+		out_of_memory();
+	p.c->prev = NULL;
+	if ((p.c->next = _mlist) != NULL)
+		_mlist->prev = p.c;
+	p.c->file = mdbg_file;
+	p.c->line = (us_it)mdbg_line;
+	p.c->isfree = 0;
+	p.c->size = (ui_it)s;
+	_mlist = p.c++;
+jleave:
+	return (p.p);
+}
+
+void *
+(scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
+{
+	union ptr p;
+
+	if (size == 0)
+		size = 1;
+	size *= nmemb;
+	size += sizeof(struct chunk);
+
+	if ((p.p = malloc(size)) == NULL)
+		out_of_memory();
+	memset(p.p, 0, size);
+	p.c->prev = NULL;
+	if ((p.c->next = _mlist) != NULL)
+		_mlist->prev = p.c;
+	p.c->file = mdbg_file;
+	p.c->line = (us_it)mdbg_line;
+	p.c->isfree = 0;
+	p.c->size = (ui_it)size;
+	_mlist = p.c++;
+	return (p.p);
+}
+
+void
+(sfree)(void *v SMALLOC_DEBUG_ARGS)
+{
+	union ptr p;
+
+	if ((p.p = v) == NULL) {
+		fprintf(stderr, "sfree(NULL) from %s, line %d\n",
+			mdbg_file, mdbg_line);
+		goto jleave;
+	}
+
+	--p.c;
+	if (p.c->isfree) {
+		fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
+			"\tLast seen: %s, line %d\n",
+			mdbg_file, mdbg_line, p.c->file, p.c->line);
+		goto jleave;
+	}
+
+	if (p.c == _mlist)
+		_mlist = p.c->next;
+	else
+		p.c->prev->next = p.c->next;
+	if (p.c->next != NULL)
+		p.c->next->prev = p.c->prev;
+	p.c->isfree = 1;
+
+	if (debug) {
+		p.c->next = _mfree;
+		_mfree = p.c;
+	} else
+		(free)(p.c);
+jleave:	;
+}
+
+void
+smemreset(void)
+{
+	union ptr p;
+	ul_it c = 0, s = 0;
+
+	for (p.c = _mfree; p.c != NULL;) {
+		void *vp = p.c;
+		++c;
+		s += p.c->size;
+		p.c = p.c->next;
+		(free)(vp);
+	}
+	_mfree = NULL;
+
+	if (debug)
+		fprintf(stderr, "smemreset(): freed %lu regions/%lu bytes\n",
+			c, s);
+}
+
+int
+(smemtrace)(void *v)
+{
+	FILE *fp;
+	char *cp;
+	union ptr p;
+
+	v = (void*)0x1;
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+	fprintf(fp, "Currently allocated memory chunks:\n");
+	for (p.c = _mlist; p.c != NULL; p.c = p.c->next)
+		fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
+			(void*)(p.c + 1), p.c->size, p.c->file, p.c->line);
+
+	if (debug) {
+		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
+		for (p.c = _mfree; p.c != NULL; p.c = p.c->next)
+			fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
+				(void*)(p.c + 1), p.c->size, p.c->file,
+				p.c->line);
+	}
+
+	try_pager(fp);
+	Fclose(fp);
+	v = NULL;
+jleave:
+	return (v != NULL);
+}
+#endif /* HAVE_ASSERTS */

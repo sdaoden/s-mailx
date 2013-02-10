@@ -1224,43 +1224,44 @@ static size_t
 convhdra(char *str, size_t len, FILE *fp)
 {
 #ifdef	HAVE_ICONV
-	char	*ip, *op;
-	size_t	isz, osz;
+	char *cbuf = NULL;
 #endif
-	struct str	cin;
-	size_t	cbufsz;
-	char	*cbuf;
-	size_t	sz;
+	struct str cin;
+	size_t ret = 0;
 
-	cbuf = ac_alloc(cbufsz = 1);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	if (iconvd == (iconv_t)-1) {
 #endif
 		cin.s = str;
 		cin.l = len;
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	} else {
-	again:	ip = str;
+		char *op, *ip;
+		size_t osz, isz, cbufsz = (len << 1) - (len >> 2);
+
+jagain:		osz = cbufsz;
+		op = cbuf = ac_alloc(cbufsz);
+		ip = str;
 		isz = len;
-		op = cbuf;
-		osz = cbufsz;
 		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
-			if (errno != E2BIG) {
-				ac_free(cbuf);
-				return 0;
-			}
-			cbuf = ac_alloc(cbufsz += isz);
-			goto again;
+			ac_free(cbuf);
+			if (errno != E2BIG)
+				goto jleave;
+			cbufsz += isz;
+			goto jagain;
 		}
 		cin.s = cbuf;
 		cin.l = cbufsz - osz;
 	}
-#endif	/* HAVE_ICONV */
-	sz = mime_write_tohdr(&cin, fp);
-	ac_free(cbuf);
-	return sz;
+#endif
+	ret = mime_write_tohdr(&cin, fp);
+#ifdef HAVE_ICONV
+	if (cbuf != NULL)
+		ac_free(cbuf);
+jleave:
+#endif
+	return (ret);
 }
-
 
 /*
  * Write an address to a header field.
@@ -1518,9 +1519,9 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 					(size_t)-1 &&
 				errno == E2BIG) {
 			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
-			ac_free(mptr);
+			ac_free(xmptr);
 			mptrsz += inleft;
-			mptr = ac_alloc(mptrsz + 1);
+			mptr = xmptr = ac_alloc(mptrsz + 1);
 			goto again;
 		}
 		nmemb = mptrsz - outleft;
@@ -1539,6 +1540,15 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		in.s = mptr;
 		in.l = csize;
 		makeprint(&in, &out);
+		/* TODO well if we get a broken pipe here, and it happens to
+		 * TODO happen pretty easy when sleeping in a full pipe buffer,
+		 * TODO then the current codebase performs longjump away;
+		 * TODO this leaves memory leaks behind ('think up to 3 per,
+		 * TODO dep. upon alloca availability).  For this to be fixed
+		 * TODO we either need to get rid of the longjmp()s (tm) or
+		 * TODO the storage must come from the outside or be tracked
+		 * TODO in a carrier struct.  Best both.  But storage reuse
+		 * TODO would be a bigbig win besides */
 		mptr = mlptr = out.s;
 		csize = out.l;
 	}
@@ -1546,7 +1556,8 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		csize = delctrl(mptr, csize);
 	sz = prefixwrite(mptr, sizeof *mptr, csize, f, prefix, prefixlen);
 	ac_free(xmptr);
-	free(mlptr);
+	if (mlptr != NULL)
+		free(mlptr);
 	return sz;
 }
 

@@ -286,6 +286,10 @@ sreset(void)
 		_buf_list = b;
 		b->b._next = NULL;
 	}
+
+#ifdef HAVE_ASSERTS
+	smemreset();
+#endif
 jleave:	;
 }
 

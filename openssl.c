@@ -1006,6 +1006,7 @@ open:	vn = cp;
 static char *
 smime_sign_include_certs(char *name)
 {
+	char *ret;
 	/* See comments in smime_sign_cert() for algorithm pitfalls */
 	if (name) {
 		struct name *np = lextract(name, GTO|GSKIN);
@@ -1014,8 +1015,10 @@ smime_sign_include_certs(char *name)
 			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-include-certs-%s",
 				np->n_name);
-			if ((name = value(vn)) != NULL)
-				return name;
+			ret = value(vn);
+			ac_free(vn);
+			if (ret != NULL)
+				return ret;
 			np = np->n_flink;
 		}
 	}

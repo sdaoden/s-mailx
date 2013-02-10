@@ -79,9 +79,7 @@ char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 void transflags(struct message *omessage, long omsgCount, int transparent);
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
-void *smalloc(size_t s);
-void *srealloc(void *v, size_t s);
-void *scalloc(size_t nmemb, size_t size);
+
 char *sstpcpy(char *dst, const char *src);
 char *sstrdup(const char *cp);
 enum okay makedir(const char *name);
@@ -95,6 +93,33 @@ int putuc(int u, int c, FILE *fp);
 int asccasecmp(const char *s1, const char *s2);
 int ascncasecmp(const char *s1, const char *s2, size_t sz);
 char *asccasestr(const char *haystack, const char *xneedle);
+
+/* Memory allocation routines */
+#ifdef HAVE_ASSERTS
+# define SMALLOC_DEBUG_ARGS	, char const *mdbg_file, int mdbg_line
+# define SMALLOC_DEBUG_ARGSCALL	, mdbg_file, mdbg_line
+#else
+# define SMALLOC_DEBUG_ARGS
+# define SMALLOC_DEBUG_ARGSCALL
+#endif
+
+void *	smalloc(size_t s SMALLOC_DEBUG_ARGS);
+void *	srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
+void *	scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
+
+#ifdef HAVE_ASSERTS
+void	sfree(void *v SMALLOC_DEBUG_ARGS);
+/* Called by sreset(), then */
+void	smemreset(void);
+/* The *smemtrace* command */
+int	smemtrace(void *v);
+# define smalloc(SZ)		smalloc(SZ, __FILE__, __LINE__)
+# define srealloc(P,SZ)		srealloc(P, SZ, __FILE__, __LINE__)
+# define scalloc(N,SZ)		scalloc(N, SZ, __FILE__, __LINE__)
+# define free(P)		sfree(P, __FILE__, __LINE__)
+#else
+# define smemtrace		do {} while (0)
+#endif
 
 /*
  * base64.c
