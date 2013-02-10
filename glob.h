@@ -64,16 +64,16 @@ _E int		scrnheight;		/* Screen height, or best guess,
 _E int		utf8;			/* UTF-8 encoding in use for locale */
 
 _E char		**altnames;		/* List of alternate names for user */
-_E char		*homedir;		/* Path name of home directory */
-_E char		*myname;		/* My login name */
-_E char		*progname;		/* Our name */
-_E char		*tempdir;		/* The temporary directory */
+_E char const	*homedir;		/* Path name of home directory */
+_E char const	*myname;		/* My login name */
+_E char const	*progname;		/* Our name */
+_E char const	*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
 _E int		options;		/* Bits of enum user_options */
 _E char		*option_T_arg;		/* -T temp file for netnews */
 _E char		*option_u_arg;		/* name given with -u option */
-_E char		**smopts;		/* sendmail(1) options, command line */
+_E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 
 _E int		did_print_dot;		/* current message has been printed */

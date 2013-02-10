@@ -88,10 +88,10 @@ ccmdnotsupp(void *v)
 	return (1);
 }
 
-char *
+char const *
 get_pager(void)
 {
-	char *cp;
+	char const *cp;
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
@@ -323,7 +323,7 @@ from(void *v)
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
-			char *p;
+			char const *p;
 			if (sigsetjmp(pipejmp, 1))
 				goto endpipe;
 			p = get_pager();
@@ -408,7 +408,8 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 	struct str in, out;
 	char const *fp;
 	struct message *mp = &message[mesg - 1];
-	char *subjline, *name, *cp, *date, datebuf[FROM_DATEBUF];
+	char *subjline, *cp, datebuf[FROM_DATEBUF];
+	char const *name, *date;
 	int B, c, i, n, s, fromlen,
 		subjlen = scrnwidth, isto = 0, isaddr = 0;
 
@@ -705,7 +706,8 @@ void
 printhead(int mesg, FILE *f, int threaded)
 {
 	int bsdflags, bsdheadline, sz;
-	char	*fmt, attrlist[30], *cp;
+	char attrlist[30], *cp;
+	char const *fmt;
 
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
 		getenv("SYSV3") != NULL;
@@ -805,7 +807,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 {
 	int *ip;
 	struct message *mp;
-	char *cp;
+	char const *cp;
 	int nlines;
 	off_t mstats[2];
 	FILE *volatile obuf;
@@ -838,7 +840,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 			}
 		}
 		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			char *p = get_pager();
+			char const *p = get_pager();
 			obuf = Popen(p, "w", NULL, 1);
 			if (obuf == NULL) {
 				perror(p);
@@ -1172,7 +1174,8 @@ mboxit(void *v)
 int 
 folders(void *v)
 {
-	char dirname[PATHSIZE], *name, *cmd, **argv = v;
+	char dirname[PATHSIZE], *name, **argv = v;
+	char const *cmd;
 
 	if (*argv && (name = expand(*argv)) == NULL)
 		return (1);

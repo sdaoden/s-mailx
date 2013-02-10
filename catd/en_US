@@ -85,7 +85,7 @@ $set 1
 82 "%s": No match.\n
 83 "%s": Expansion buffer overflow.\n
 84 "%s": Ambiguous.\n
-85 --- DELETED ---
+85 [Missing multipart boundary - use "show" to display the raw message]\n\n
 86 Won't "chdir": "%s" would become inaccessible
 87 temporary mail message file
 88 No mail for %s\n

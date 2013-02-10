@@ -178,7 +178,7 @@ vcopy(const char *str)
 	unsigned len;
 
 	if (*str == '\0')
-		return "";
+		return UNCONST("");
 	len = strlen(str) + 1;
 	news = smalloc(len);
 	memcpy(news, str, (int)len);

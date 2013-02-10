@@ -99,7 +99,7 @@ static void addstr(char **buf, size_t *sz, size_t *pos,
 static void addconv(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
 static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
-		enum tdflags flags, char *prefix, size_t prefixlen);
+		enum tdflags flags, char const *prefix, size_t prefixlen);
 
 static void
 _mt_init(void)
@@ -456,7 +456,7 @@ mime_getenc(char *p)
  * Get a mime style parameter from a header line.
  */
 char *
-mime_getparam(char *param, char *h)
+mime_getparam(char const *param, char *h)
 {
 	char *p = h, *q, *r;
 	int c;
@@ -1474,17 +1474,15 @@ mime_fromaddr(char const *name)
 	return (res);
 }
 
-/*
- * fwrite whilst adding prefix, if present.
- */
 size_t
-prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
-		char *prefix, size_t prefixlen)
+prefixwrite(char const *ptr, size_t size, FILE *f,
+	char const *prefix, size_t prefixlen)
 {
-	static FILE *lastf;
-	static char lastc = '\n';
-	size_t lpref, i, qfold = 0, lnlen = 0, rsz = size * nmemb, wsz = 0;
-	char *p, *maxp, c;
+	static FILE *lastf;		/* TODO NO STATIC COOKIES */
+	static char lastc = '\n';	/* TODO PLEASE PLEASE PLEASE! */
+	size_t lpref, i, qfold = 0, lnlen = 0, rsz = size, wsz = 0;
+	char const *p, *maxp;
+	char c;
 
 	if (rsz == 0)
 		return 0;
@@ -1599,7 +1597,7 @@ jsoftnl:		/*
  */
 static size_t
 fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
-		char *prefix, size_t prefixlen)
+	char const *prefix, size_t prefixlen)
 {
 	char *upper;
 	size_t sz, csize;
@@ -1658,20 +1656,17 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 	}
 	if (flags & TD_DELCTRL)
 		csize = delctrl(mptr, csize);
-	sz = prefixwrite(mptr, sizeof *mptr, csize, f, prefix, prefixlen);
+	sz = prefixwrite(mptr, csize, f, prefix, prefixlen);
 	ac_free(xmptr);
 	if (mlptr != NULL)
 		free(mlptr);
 	return sz;
 }
 
-/*
- * fwrite performing the given MIME conversion.
- */
 ssize_t
-mime_write(void const *ptr, size_t size, FILE *f,
+mime_write(char const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
-	char *prefix, size_t prefixlen, struct str *rest)
+	char const *prefix, size_t prefixlen, struct str *rest)
 {
 	struct str in, out;
 	ssize_t sz;
@@ -1727,8 +1722,7 @@ jconvert:
 		sz = mime_write_toqp(&in, f, mustquote_body);
 		break;
 	case CONV_8BIT:
-		sz = prefixwrite(in.s, sizeof *in.s, in.l, f,
-				prefix, prefixlen);
+		sz = prefixwrite(in.s, in.l, f, prefix, prefixlen);
 		break;
 	case CONV_FROMB64_T:
 	case CONV_FROMB64:

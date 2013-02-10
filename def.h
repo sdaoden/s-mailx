@@ -318,9 +318,9 @@ struct sock {				/* data associated with a socket */
 	int	s_wbufpos;		/* position of first empty data byte */
 	char	*s_rbufptr;		/* read pointer to s_rbuf */
 	int	s_rsz;			/* size of last read in s_rbuf */
-	char	*s_desc;		/* description of error messages */
+	char const *s_desc;		/* description of error messages */
 	void	(*s_onclose)(void);	/* execute on close */
-	char	s_rbuf[LINESIZE+1];	/* for buffered reads */
+	char	s_rbuf[LINESIZE + 1];	/* for buffered reads */
 };
 
 struct mailbox {
@@ -418,7 +418,7 @@ struct mimepart {
 	long	m_lines;		/* Lines in the message */
 	long	m_xlines;		/* Lines in the full message */
 	time_t	m_time;			/* time the message was sent */
-	char	*m_from;		/* message sender */
+	char const *m_from;		/* message sender */
 	struct mimepart	*m_nextpart;	/* next part at same level */
 	struct mimepart	*m_multipart;	/* parts of multipart */
 	struct mimepart	*m_parent;	/* enclosing multipart part */
@@ -504,7 +504,7 @@ enum argtype {
  * in lex.c
  */
 struct cmd {
-	char		*c_name;		/* Name of command */
+	char const	*c_name;		/* Name of command */
 	int		(*c_func)(void *);	/* Implementor of command */
 	enum argtype	c_argtype;		/* Arglist type (see below) */
 	short		c_msgflag;		/* Required flags of msgs*/
@@ -636,10 +636,10 @@ struct attachment {
 	struct attachment *a_flink;	/* Forward link in list. */
 	struct attachment *a_blink;	/* Backward list link */
 	char const *a_name;		/* file name */
-	char	*a_content_type;	/* content type */
-	char	*a_content_disposition;	/* content disposition */
-	char	*a_content_id;		/* content id */
-	char	*a_content_description;	/* content description */
+	char const *a_content_type;	/* content type */
+	char const *a_content_disposition; /* content disposition */
+	char const *a_content_id;	/* content id */
+	char const *a_content_description; /* content description */
 	char const *a_input_charset;	/* Interpretation depends on .a_conv */
 	char const *a_charset;		/* ... */
 	FILE	*a_tmpf;		/* If AC_TMPFILE */

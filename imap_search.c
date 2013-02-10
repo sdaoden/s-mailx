@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -152,10 +152,10 @@ static struct itnode {
 
 static const char	*begin;
 
-static enum okay itparse(const char *spec, char **xp, int sub);
-static enum okay itscan(const char *spec, char **xp);
-static enum okay itsplit(const char *spec, char **xp);
-static enum okay itstring(void **tp, const char *spec, char **xp);
+static enum okay itparse(char const *spec, char const **xp, int sub);
+static enum okay itscan(char const *spec, char const **xp);
+static enum okay itsplit(char const *spec, char const **xp);
+static enum okay itstring(void **tp, char const *spec, char const **xp);
 static int itexecute(struct mailbox *mp, struct message *m,
 		int c, struct itnode *n);
 static int matchfield(struct message *m, const char *field, const char *what);
@@ -168,9 +168,9 @@ static const char *around(const char *cp);
 enum okay 
 imap_search(const char *spec, int f)
 {
-	static char	*lastspec;
-	char	*xp;
-	int	i;
+	static char *lastspec;
+	char const *xp;
+	int i;
 
 	if (strcmp(spec, "()")) {
 		free(lastspec);
@@ -205,7 +205,7 @@ imap_search(const char *spec, int f)
 }
 
 static enum okay 
-itparse(const char *spec, char **xp, int sub)
+itparse(char const *spec, char const **xp, int sub)
 {
 	int	level = 0;
 	struct itnode	n, *z, *_ittree;
@@ -295,23 +295,23 @@ itparse(const char *spec, char **xp, int sub)
 }
 
 static enum okay 
-itscan(const char *spec, char **xp)
+itscan(char const *spec, char const **xp)
 {
 	int	i, n;
 
-	while (spacechar(*spec&0377))
+	while (spacechar(*spec))
 		spec++;
 	if (*spec == '(') {
-		*xp = (char *)&spec[1];
+		*xp = &spec[1];
 		itoken = ITBOL;
 		return OKAY;
 	}
 	if (*spec == ')') {
-		*xp = (char *)&spec[1];
+		*xp = &spec[1];
 		itoken = ITEOL;
 		return OKAY;
 	}
-	while (spacechar(*spec&0377))
+	while (spacechar(*spec))
 		spec++;
 	if (*spec == '\0') {
 		itoken = ITEOD;
@@ -329,16 +329,16 @@ itscan(const char *spec, char **xp)
 			return itsplit(spec, xp);
 		}
 	}
-	if (digitchar(*spec&0377)) {
-		inumber = strtoul(spec, xp, 10);
-		if (spacechar(**xp&0377) || **xp == '\0' ||
+	if (digitchar(*spec)) {
+		inumber = strtoul(spec, UNCONST(xp), 10);
+		if (spacechar(**xp) || **xp == '\0' ||
 				**xp == '(' || **xp == ')') {
 			itoken = ITSET;
 			return OKAY;
 		}
 	}
 	fprintf(stderr, "Bad SEARCH criterion \"");
-	while (*spec && !spacechar(*spec&0377) &&
+	while (*spec && !spacechar(*spec) &&
 			*spec != '(' && *spec != ')') {
 		putc(*spec&0377, stderr);
 		spec++;
@@ -349,7 +349,7 @@ itscan(const char *spec, char **xp)
 }
 
 static enum okay 
-itsplit(const char *spec, char **xp)
+itsplit(char const *spec, char const **xp)
 {
 	char	*cp;
 	time_t	t;
@@ -428,13 +428,13 @@ itsplit(const char *spec, char **xp)
 			around(*xp));
 		return STOP;
 	default:
-		*xp = (char *)spec;
+		*xp = spec;
 		return OKAY;
 	}
 }
 
 static enum okay 
-itstring(void **tp, const char *spec, char **xp)
+itstring(void **tp, char const *spec, char const **xp)
 {
 	int	inquote = 0;
 	char	*ap;
@@ -447,7 +447,7 @@ itstring(void **tp, const char *spec, char **xp)
 		return STOP;
 	}
 	ap = *tp = salloc(strlen(spec) + 1);
-	*xp = (char *)spec;
+	*xp = spec;
 	 do {
 		if (inquote && **xp == '\\')
 			*ap++ = *(*xp)++;

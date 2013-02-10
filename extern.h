@@ -43,7 +43,7 @@ void panic(const char *format, ...);
 void holdint(void);
 void relseint(void);
 void touch(struct message *mp);
-int is_dir(char *name);
+int is_dir(char const *name);
 int argcount(char **argv);
 char *colalign(const char *cp, int col, int fill);
 
@@ -183,7 +183,7 @@ enum okay cache_dequeue(struct mailbox *mp);
 
 /* cmd1.c */
 int ccmdnotsupp(void *v);
-char *get_pager(void);
+char const *get_pager(void);
 int headers(void *v);
 int scroll(void *v);
 int Scroll(void *v);
@@ -368,11 +368,11 @@ off_t fsize(FILE *iob);
 char *file_expand(char const *name);
 char *expand(char const *name);
 /* Locate the user's mailbox file (where new, unread mail is queued) */
-void	findmail(char *user, int force, char *buf, int size);
+void	findmail(char const *user, int force, char *buf, int size);
 /* Get rid of queued mail */
 void	demail(void);
 int getfold(char *name, int size);
-char *getdeadletter(void);
+char const *getdeadletter(void);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * *sourcing* so that others will realize that they are no longer reading from
@@ -418,11 +418,11 @@ int	extract_date_from_from_(char const *line, size_t linelen,
 void extract_header(FILE *fp, struct header *hp);
 #define	hfieldX(a, b)	hfield_mult(a, b, 1)
 #define	hfield1(a, b)	hfield_mult(a, b, 0)
-char *hfield_mult(char *field, struct message *mp, int mult);
-char *thisfield(const char *linebuf, const char *field);
+char *hfield_mult(char const *field, struct message *mp, int mult);
+char const *thisfield(char const *linebuf, char const *field);
 char *nameof(struct message *mp, int reptype);
 char const *skip_comment(char const *cp);
-char *routeaddr(const char *name);
+char const *routeaddr(char const *name);
 int is_addr_invalid(struct name *np, int putmsg);
 
 /* Does *NP* point to a file or pipe addressee? */
@@ -447,10 +447,10 @@ int	addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
 char *realname(char const *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
-int is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2]);
-int member(char *realfield, struct ignoretab *table);
-char *fakefrom(struct message *mp);
-char *fakedate(time_t t);
+int is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2]);
+int member(char const *realfield, struct ignoretab *table);
+char const *fakefrom(struct message *mp);
+char const *fakedate(time_t t);
 time_t unixtime(char const *from);
 time_t rfctime(char const *date);
 time_t combinetime(int year, int month, int day,
@@ -523,7 +523,7 @@ int cprobability(void *v);
 #endif
 
 /* lex.c */
-int setfile(char *name, int newmail);
+int setfile(char const *name, int newmail);
 int newmailinfo(int omsgCount);
 void commands(void);
 int execute(char *linebuf, int contxt, size_t linesize);
@@ -533,7 +533,7 @@ void announce(int printheaders);
 int newfileinfo(void);
 int getmdot(int newmail);
 int pversion(void *v);
-void load(char *name);
+void load(char const *name);
 void initbox(const char *name);
 
 /* list.c */
@@ -591,7 +591,7 @@ void charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY FUN, REMOVE */
 
 char const *need_hdrconv(struct header *hp, enum gfield w);
 enum mimeenc mime_getenc(char *h);
-char *mime_getparam(char *param, char *h);
+char *mime_getparam(char const *param, char *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * salloc()ed copy of it; store strlen() in *len if set */
@@ -616,11 +616,15 @@ int		cmimetypes(void *v);
 
 void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char const *name);
-size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
-		char *prefix, size_t prefixlen);
-ssize_t	 mime_write(void const *ptr, size_t size, FILE *f,
-		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen, struct str *rest);
+
+/* fwrite(3) whilst adding *prefix*, if set, taking care of *quote-fold* */
+size_t		prefixwrite(char const *ptr, size_t size, FILE *f,
+			char const *prefix, size_t prefixlen);
+
+/* fwrite(3) performing the given MIME conversion */
+ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
+			enum conversion convert, enum tdflags dflags,
+			char const *prefix, size_t prefixlen, struct str *rest);
 
 /*
  * names.c
@@ -680,7 +684,8 @@ FILE *Zopen(const char *file, const char *mode, int *compression);
 /* Create a temporary file in tempdir, use prefix for its name, store the
  * unique name in fn, and return a stdio FILE pointer with access mode.
  * *bits* specifies the access mode of the newly created temporary file */
-FILE *	Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
+FILE *	Ftemp(char **fn, char const *prefix, char const *mode,
+		int bits, int register_file);
 
 /* Free the resources associated with the given filename.  To be called after
  * unlink().  Since this function can be called after receiving a signal, the
@@ -691,8 +696,8 @@ void	Ftfree(char **fn);
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
 int Pclose(FILE *ptr);
 void close_all_files(void);
-int run_command(char *cmd, sigset_t *mask, int infd, int outfd,
-		char *a0, char *a1, char *a2);
+int run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+		char const *a0, char const *a1, char const *a2);
 int start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 		const char *a0, const char *a1, const char *a2);
 void prepare_child(sigset_t *nset, int infd, int outfd);
@@ -712,7 +717,7 @@ void restorequitflags(int);
 #undef send
 #define send(a, b, c, d, e, f)  xsend(a, b, c, d, e, f)
 int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
-		char *prefix, enum sendaction action, off_t *stats);
+		char const *prefix, enum sendaction action, off_t *stats);
 
 /* sendout.c */
 int mail(struct name *to, struct name *cc, struct name *bcc,

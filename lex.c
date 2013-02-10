@@ -52,7 +52,7 @@
  * Lexical processing of commands.
  */
 
-static char	*prompt;
+static char const	*prompt;
 static sighandler_type	oldpipe;
 
 static const struct cmd *lex(char *Word);
@@ -68,13 +68,13 @@ static void hangup(int s);
  * newmail: Check for new mail in the current folder only.
  */
 int
-setfile(char *name, int newmail)
+setfile(char const *name, int newmail)
 {
 	FILE *ibuf;
 	int i, compressed = 0;
 	struct stat stb;
 	char isedit;
-	char *who = name[1] ? name + 1 : myname;
+	char const *who = name[1] ? name + 1 : myname;
 	static int shudclob;
 	size_t offset;
 	int omsgCount = 0;
@@ -918,7 +918,7 @@ pversion(void *v)
  * Load a file of user definitions.
  */
 void 
-load(char *name)
+load(char const *name)
 {
 	FILE *in, *oldin;
 

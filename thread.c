@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -614,7 +614,7 @@ sort(void *vp)
 						realname(cp) : skin(cp);
 					makelow(ms[n].ms_u.ms_char);
 				} else
-					ms[n].ms_u.ms_char = "";
+					ms[n].ms_u.ms_char = UNCONST("");
 				break;
 			default:
 			case SORT_SUBJECT:
@@ -627,7 +627,7 @@ sort(void *vp)
 					free(out.s);
 					makelow(ms[n].ms_u.ms_char);
 				} else
-					ms[n].ms_u.ms_char = "";
+					ms[n].ms_u.ms_char = UNCONST("");
 				break;
 			}
 			ms[n++].ms_n = i;

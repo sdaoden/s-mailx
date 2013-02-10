@@ -67,7 +67,7 @@ static int	respond_internal(int *msgvec, int recipient_record);
 static char *	fwdedit(char *subj);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
-static int	file1(char *name);
+static int	file1(char const *name);
 static int	shellecho(const char *cp);
 static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
@@ -135,11 +135,11 @@ _set_show_all(void)
 	i = (value("bsdcompat") != NULL || value("bsdset") != NULL);
 	u.fmt = i ? "%s\t%s\n" : "%s=\"%s\"\n";
 	for (p = vacp; *p != NULL; ++p) {
-		cp = value(*p);
-		if (cp == NULL)
-			cp = "";
-		if (i || *cp)
-			fprintf(fp, u.fmt, *p, cp);
+		char const *x = value(*p);
+		if (x == NULL)
+			x = "";
+		if (i || *x)
+			fprintf(fp, u.fmt, *p, x);
 		else
 			fprintf(fp, "%s\n", *p);
 	}
@@ -158,11 +158,10 @@ jleave:
 int 
 shell(void *v)
 {
-	char *str = v;
-	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *shell;
-	char *cmd;
+	char *str = v, *cmd;
+	char const *shell;
 	size_t cmdsize;
+	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 
 	cmd = smalloc(cmdsize = strlen(str) + 1);
 	strcpy(cmd, str);
@@ -185,7 +184,7 @@ int
 dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *shell;
+	char const *shell;
 	(void)v;
 
 	if ((shell = value("SHELL")) == NULL)
@@ -316,7 +315,8 @@ jleave:
 int 
 schdir(void *v)
 {
-	char **arglist = v, *cp;
+	char **arglist = v;
+	char const *cp;
 
 #ifdef HAVE_REALPATH
 	/* TODO Avoid locked-up situation with relative paths when chdir(2)ing
@@ -331,7 +331,7 @@ schdir(void *v)
 		cp = realpath(mailname, NULL);
 		if (cp != NULL) {
 			sstpcpy(mailname, cp);
-			(free)(cp);
+			(free)(UNCONST(cp));
 		} else {
 			fprintf(stderr, tr(86, "Won't \"chdir\": "
 				"\"%s\" would become inaccessible"),
@@ -730,7 +730,7 @@ set(void *v)
 			*cp2++ = c;
 		*cp2 = '\0';
 		if (c == '\0')
-			cp = "";
+			cp = UNCONST("");
 		else
 			++cp;
 		if (varbuf == cp2) {
@@ -886,7 +886,7 @@ cfile(void *v)
 }
 
 static int 
-file1(char *name)
+file1(char const *name)
 {
 	int	i;
 

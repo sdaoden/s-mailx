@@ -130,7 +130,7 @@ touch(struct message *mp)
  * Return true if it is.
  */
 int 
-is_dir(char *name)
+is_dir(char const *name)
 {
 	struct stat sbuf;
 

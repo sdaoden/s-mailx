@@ -498,16 +498,15 @@ jerr:	cp = tr(213, "<Unknown date>");
 void
 extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 {
-	char *linebuf = NULL;
+	struct header nh, *hq = &nh;
+	char *linebuf = NULL, *colon;
 	size_t linesize = 0;
-	int seenfields = 0;
-	char *colon, *cp, *value;
-	struct header nh;
-	struct header *hq = &nh;
-	int lc, c;
+	int seenfields = 0, lc, c;
+	char const *value, *cp;
 
 	memset(hq, 0, sizeof *hq);
-	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++);
+	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++)
+		;
 	rewind(fp);
 	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
 		if ((value = thisfield(linebuf, "to")) != NULL) {
@@ -537,14 +536,16 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 		} else if ((value = thisfield(linebuf,
 						"organization")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp & 0377); cp++);
+			for (cp = value; blankchar(*cp); cp++)
+				;
 			hq->h_organization = hq->h_organization ?
 				save2str(hq->h_organization, cp) :
 				savestr(cp);
 		} else if ((value = thisfield(linebuf, "subject")) != NULL ||
 				(value = thisfield(linebuf, "subj")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp & 0377); cp++);
+			for (cp = value; blankchar(*cp); cp++)
+				;
 			hq->h_subject = hq->h_subject ?
 				save2str(hq->h_subject, cp) :
 				savestr(cp);
@@ -589,12 +590,13 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
  * field only, the content of all matching header fields else.
  */
 char *
-hfield_mult(char *field, struct message *mp, int mult)
+hfield_mult(char const *field, struct message *mp, int mult)
 {
 	FILE *ibuf;
 	int lc;
 	size_t linesize = 0;
-	char *linebuf = NULL, *hfield, *colon, *oldhfield = NULL;
+	char *linebuf = NULL, *colon, *oldhfield = NULL;
+	char const *hfield;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		return NULL;
@@ -697,22 +699,22 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
  * Check whether the passed line is a header line of
  * the desired breed.  Return the field body, or 0.
  */
-char *
-thisfield(const char *linebuf, const char *field)
+char const *
+thisfield(char const *linebuf, char const *field)
 {
-	while (lowerconv(*linebuf&0377) == lowerconv(*field&0377)) {
-		linebuf++;
-		field++;
+	while (lowerconv(*linebuf) == lowerconv(*field)) {
+		++linebuf;
+		++field;
 	}
 	if (*field != '\0')
 		return NULL;
-	while (blankchar(*linebuf&0377))
-		linebuf++;
+	while (blankchar(*linebuf))
+		++linebuf;
 	if (*linebuf++ != ':')
 		return NULL;
-	while (blankchar(*linebuf&0377))
-		linebuf++;
-	return (char *)linebuf;
+	while (blankchar(*linebuf))
+		++linebuf;
+	return linebuf;
 }
 
 /*
@@ -767,10 +769,10 @@ skip_comment(char const *cp)
  * Return the start of a route-addr (address in angle brackets),
  * if present.
  */
-char *
-routeaddr(const char *name)
+char const *
+routeaddr(char const *name)
 {
-	const char	*np, *rp = NULL;
+	char const *np, *rp = NULL;
 
 	for (np = name; *np; np++) {
 		switch (*np) {
@@ -789,7 +791,7 @@ routeaddr(const char *name)
 			rp = np;
 			break;
 		case '>':
-			return (char *)rp;
+			return rp;
 		}
 	}
 	return NULL;
@@ -857,7 +859,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 
 	if ((agp->ag_input = name) == NULL || /* XXX ever? */
 			(agp->ag_ilen = strlen(name)) == 0) {
-		agp->ag_skinned = ""; /* NAME_SALLOC not set */
+		agp->ag_skinned = UNCONST(""); /* ok: NAME_SALLOC is not set */
 		agp->ag_slen = 0;
 		agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY,
@@ -1260,7 +1262,7 @@ charcount(char *str, int c)
  * See if the given header field is supposed to be ignored.
  */
 int
-is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2])
+is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2])
 {
 	char *realfld;
 	int ret;
@@ -1284,7 +1286,7 @@ is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2])
 }
 
 int 
-member(char *realfield, struct ignoretab *table)
+member(char const *realfield, struct ignoretab *table)
 {
 	struct ignore *igp;
 
@@ -1298,10 +1300,10 @@ member(char *realfield, struct ignoretab *table)
 /*
  * Fake Sender for From_ lines if missing, e. g. with POP3.
  */
-char *
+char const *
 fakefrom(struct message *mp)
 {
-	char *name;
+	char const *name;
 
 	if (((name = skin(hfield1("return-path", mp))) == NULL ||
 				*name == '\0' ) &&
@@ -1316,7 +1318,7 @@ fakefrom(struct message *mp)
 	return name;
 }
 
-char *
+char const *
 fakedate(time_t t)
 {
 	char *cp, *cq;
