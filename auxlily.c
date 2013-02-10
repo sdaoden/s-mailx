@@ -712,6 +712,15 @@ putuc(int u, int c, FILE *fp)
 		return putc(c, fp) != EOF;
 }
 
+void
+time_current_update(struct time_current *tc)
+{
+	tc->tc_time = time(NULL);
+	memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
+	memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_gm);
+	sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+}
+
 #ifndef HAVE_GETOPT
 char	*my_optarg;
 int	my_optind = 1, /*my_opterr = 1,*/ my_optopt;

@@ -42,7 +42,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -615,11 +614,9 @@ savemail(char *name, FILE *fi)
 	char *buf;
 	size_t bufsize, buflen, count;
 	char *p;
-	time_t now;
 	int posix, prependnl = 0, error = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
-	time(&now);
 	if ((fo = Zopen(name, "a+", NULL)) == NULL) {
 		if ((fo = Zopen(name, "wx", NULL)) == NULL) {
 			perror(name);
@@ -654,7 +651,7 @@ savemail(char *name, FILE *fi)
 		}
 	}
 
-	fprintf(fo, "From %s %s", myname, ctime(&now));
+	fprintf(fo, "From %s %s", myname, time_current.tc_ctime);
 	buflen = 0;
 	fflush(fi);
 	rewind(fi);
@@ -995,6 +992,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	int dosign = -1, err;
 	char *cp;
 
+	/* Update some globals we likely need first */
+	time_current_update(&time_current);
+
+	/*  */
 	if ((cp = value("autocc")) != NULL && *cp)
 		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC|GFULL)));
 	if ((cp = value("autobcc")) != NULL && *cp)
@@ -1139,13 +1140,10 @@ j_leave:
 static void
 message_id(FILE *fo, struct header *hp)
 {
-	time_t	now;
-	struct tm *tmp;
 	char const *h;
 	size_t rl;
+	struct tm *tmp;
 
-	time(&now);
-	tmp = gmtime(&now);
 	if ((h = value("hostname")) != NULL)
 		rl = 24;
 	else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
@@ -1154,6 +1152,7 @@ message_id(FILE *fo, struct header *hp)
 		/* Delivery seems to dependent on a MTA -- it's up to it */
 		return;
 
+	tmp = &time_current.tc_gm;
 	fprintf(fo, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>\n",
 		tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
 			tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
@@ -1169,16 +1168,14 @@ message_id(FILE *fo, struct header *hp)
 int
 mkdate(FILE *fo, const char *field)
 {
-	time_t t;
 	struct tm *tmptr;
 	int tzdiff, tzdiff_hour, tzdiff_min;
 
-	time(&t);
-	tzdiff = t - mktime(gmtime(&t));
+	tzdiff = time_current.tc_time - mktime(&time_current.tc_gm);
 	tzdiff_hour = (int)(tzdiff / 60);
 	tzdiff_min = tzdiff_hour % 60;
 	tzdiff_hour /= 60;
-	tmptr = localtime(&t);
+	tmptr = &time_current.tc_local;
 	if (tmptr->tm_isdst > 0)
 		tzdiff_hour++;
 	return fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
@@ -1488,6 +1485,9 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	char *tempMail;
 	struct header head;
 	enum okay	ok = STOP;
+
+	/* Update some globals we likely need first */
+	time_current_update(&time_current);
 
 	memset(&head, 0, sizeof head);
 	if ((to = checkaddrs(to)) == NULL) {

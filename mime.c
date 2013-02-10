@@ -41,7 +41,6 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <time.h>
 #ifdef HAVE_WCTYPE_H
 # include <wctype.h>
 #endif
@@ -541,12 +540,11 @@ mime_get_boundary(char *h, size_t *len)
 char *
 mime_create_boundary(void)
 {
-	time_t now;
 	char *bp;
 
-	time(&now);
 	bp = salloc(48);
-	snprintf(bp, 48, "=_%011ld-%s=_", (long)now, getrandstring(47 - 16));
+	snprintf(bp, 48, "=_%011lu=-%s=_",
+		(ul_it)time_current.tc_time, getrandstring(47 - (11 + 6)));
 	return bp;
 }
 
