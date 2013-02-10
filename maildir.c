@@ -188,7 +188,7 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 
 	if (!newmail)
 		cleantmp();
-	mb.mb_perm = Rflag ? 0 : MB_DELE;
+	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
 	if ((i = subdir(name, "new", newmail)) != 0)
@@ -404,9 +404,9 @@ maildir_update(void)
 
 	if (mb.mb_perm == 0)
 		goto free;
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit) {
 		holdbits();

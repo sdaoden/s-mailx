@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2000
@@ -100,7 +100,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 					"Unexpected EOF on SMTP connection\n"));
 			return -1;
 		}
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fputs(smtpbuf, stderr);
 		switch (*smtpbuf) {
 		case '1': ret = 1; break;
@@ -120,7 +120,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
  * Macros for talk_smtp.
  */
 #define	_SMTP_ANSWER(x, ign_eof)	\
-			if (! debug) { \
+			if ((options & OPT_DEBUG) == 0) { \
 				int	y; \
 				if ((y = read_smtp(sp, x, ign_eof)) != (x) && \
 					(!(ign_eof) || y != -1)) { \
@@ -132,9 +132,9 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 
 #define	SMTP_ANSWER(x)	_SMTP_ANSWER(x, 0)
 
-#define	SMTP_OUT(x)	if (verbose) \
+#define	SMTP_OUT(x)	if (options & OPT_VERBOSE) \
 				fprintf(stderr, ">>> %s", x); \
-			if (! debug) \
+			if ((options & OPT_DEBUG) == 0) \
 				swrite(sp, x);
 
 /*
@@ -194,7 +194,8 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_ANSWER(2);
 		SMTP_OUT("STARTTLS\r\n");
 		SMTP_ANSWER(2);
-		if (! debug && ssl_open(server, sp, uhp) != OKAY)
+		if ((options & OPT_DEBUG) == 0 &&
+				ssl_open(server, sp, uhp) != OKAY)
 			return 1;
 	}
 #else
@@ -283,12 +284,12 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 				inbcc = 0;
 		}
 		if (*b == '.') {
-			if (debug)
+			if (options & OPT_DEBUG)
 				putc('.', stderr);
 			else
 				swrite1(sp, ".", 1, 1);
 		}
-		if (debug) {
+		if (options & OPT_DEBUG) {
 			fprintf(stderr, ">>> %s", b);
 			continue;
 		}
@@ -354,15 +355,16 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 # endif
 	} else
 		use_ssl = 0;
-	if (! debug && sopen(server, &so, use_ssl, server,
-			use_ssl ? "smtps" : "smtp", verbose) != OKAY) {
+	if ((options & OPT_DEBUG) == 0 && sopen(server, &so, use_ssl, server,
+			use_ssl ? "smtps" : "smtp",
+			(options & OPT_VERBOSE) != 0) != OKAY) {
 		safe_signal(SIGTERM, saveterm);
 		return 1;
 	}
 	so.s_desc = "SMTP";
 	ret = talk_smtp(to, fi, &so, server, server, hp,
 			user, password, skinned);
-	if (! debug)
+	if ((options & OPT_DEBUG) == 0)
 		sclose(&so);
 	if (smtpbuf) {
 		free(smtpbuf);

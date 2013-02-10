@@ -571,7 +571,8 @@ jcont:
 	/*
 	 * No tilde escapes, interrupts not expected.  Simply copy STDIN
 	 */
-	if ((val & val_INTERACT) == 0 && ! tildeflag && ! tflag) {
+	if ((val & val_INTERACT) == 0 &&
+			(options & (OPT_t_FLAG|OPT_TILDE_FLAG)) == 0) {
 		linebuf = srealloc(linebuf, linesize = LINESIZE);
 		while ((count = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
@@ -616,7 +617,8 @@ jcont:
 					value("ignoreeof") != NULL))
 			break;
 		if (linebuf[0] != escape ||
-				(! (val & val_INTERACT) && tildeflag == 0)) {
+				(! (val & val_INTERACT) &&
+				(options & OPT_TILDE_FLAG) == 0)) {
 			if (putline(collf, linebuf, count) < 0)
 				goto jerr;
 			continue;

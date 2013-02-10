@@ -1,6 +1,12 @@
 S - n a i l  N e w s
 ====================
 
+- Filename arguments for -a are now processed *after* all the resource
+  files have been loaded etc., so that the usual "folder" specifics can
+  be used (provided that proper care for shell quoting was taken).
+  ((main(): delay -a processing.., 2013-01-10), as a part of the
+  *mainaflags* topic branch.)
+
 - (d38c5bd, When the write command asks.., 2004-11-23) added support
   for pipes when saving attachments during a "write" command.
   It however used the wrong SIGPIPE signal handler; e.g.:

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -79,7 +79,7 @@
 				if (mp->mb_type != MB_CACHE) { \
 					if (imap_finish(mp) == STOP) \
 						return STOP; \
-					if (verbose) \
+					if (options & OPT_VERBOSE) \
 						fprintf(stderr, ">>> %s", x); \
 					mp->mb_active |= (y); \
 					if (swrite(&mp->mb_sock, x) == STOP) \
@@ -405,7 +405,7 @@ imap_answer(struct mailbox *mp, int errprnt)
 	if (mp->mb_type == MB_CACHE)
 		return OKAY;
 again:	if (sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-		if (verbose)
+		if (options & OPT_VERBOSE)
 			fputs(imapbuf, stderr);
 		imap_response_parse();
 		if (response_type == RESPONSE_ILLEGAL)
@@ -1208,7 +1208,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	if (!same_imap_account) {
 		if (!disconnected(account) &&
 				sopen(sp, &so, use_ssl, uhp,
-				use_ssl ? "imaps" : "imap", verbose) != OKAY)
+					use_ssl ? "imaps" : "imap",
+					(options & OPT_VERBOSE) != 0) != OKAY)
 		return -1;
 	} else
 		so = mb.mb_sock;
@@ -1279,7 +1280,7 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		}
 	} else	/* same account */
 		mb.mb_flags |= same_flags;
-	mb.mb_perm = Rflag ? 0 : MB_DELE;
+	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	mb.mb_type = MB_IMAP;
 	cache_dequeue(&mb);
 	if (imap_select(&mb, &mailsize, &msgCount, mbx) != OKAY) {
@@ -1566,7 +1567,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 		}
 		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
 						&mp->mb_sock) > 0) {
-			if (verbose)
+			if (options & OPT_VERBOSE)
 				fputs(imapbuf, stderr);
 			if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
 				u = atol(&cp[4]);
@@ -1687,7 +1688,7 @@ imap_fetchheaders (
 			commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
 		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
 					&mp->mb_sock) > 0) {
-			if (verbose)
+			if (options & OPT_VERBOSE)
 				fputs(imapbuf, stderr);
 			if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
 				u = atoi(&cp[4]);
@@ -1796,9 +1797,9 @@ imap_update(struct mailbox *mp)
 	struct message *m;
 	int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
 
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	if (!edit && mp->mb_perm != 0) {
 		holdbits();
@@ -2357,7 +2358,7 @@ imap_append(const char *xserver, FILE *fp)
 		if (disconnected(server) == 0) {
 			if (sopen(sp, &mx.mb_sock, use_ssl, uhp,
 					use_ssl ? "imaps" : "imap",
-					verbose) != OKAY)
+					(options & OPT_VERBOSE) != 0) != OKAY)
 				goto fail;
 			mx.mb_sock.s_desc = "IMAP";
 			mx.mb_type = MB_IMAP;

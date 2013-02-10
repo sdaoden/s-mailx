@@ -809,7 +809,7 @@ prepare_mta_args(struct name *to)
 	i = 2;
 	if (value("metoo"))
 		args[i++] = "-m";
-	if (verbose)
+	if (options & OPT_VERBOSE)
 		args[i++] = "-v";
 	for (j = 0; j < smopts_count; ++j, ++i)
 		args[i] = smopts[j];
@@ -846,7 +846,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 			mta = SENDMAIL;
 
 		args = prepare_mta_args(to);
-		if (debug) {
+		if (options & OPT_DEBUG) {
 			printf(tr(181, "Sendmail arguments:"));
 			for (t = args; *t != NULL; t++)
 				printf(" \"%s\"", *t);
@@ -912,7 +912,7 @@ jstop:		savedeadletter(input, 0);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if (verbose || debug || value("sendwait")) {
+	if ((options & (OPT_DEBUG|OPT_VERBOSE)) || value("sendwait")) {
 		if (wait_child(pid) == 0)
 			ok = OKAY;
 		else

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -173,7 +173,7 @@ setfile(char *name, int newmail)
 	flp.l_whence = SEEK_SET;
 	if (!newmail) {
 		mb.mb_type = MB_FILE;
-		mb.mb_perm = Rflag ? 0 : MB_DELE|MB_EDIT;
+		mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE|MB_EDIT;
 		mb.mb_compressed = compressed;
 		if (compressed) {
 			if (compressed & 0200)
@@ -476,8 +476,8 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 */
 
 	if ((com->c_argtype & F) == 0) {
-		if ((cond == CRCV && !rcvmode) ||
-				(cond == CSEND && rcvmode) ||
+		if ((cond == CRCV && (options & OPT_RCVMODE) == 0) ||
+				(cond == CSEND && (options & OPT_RCVMODE)) ||
 				(cond == CTERM && !is_a_tty[0]) ||
 				(cond == CNONTERM && is_a_tty[0])) {
 			ac_free(word);
@@ -492,7 +492,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * an error.
 	 */
 
-	if (!rcvmode && (com->c_argtype & M) == 0) {
+	if ((options & OPT_RCVMODE) == 0 && (com->c_argtype & M) == 0) {
 		printf(catgets(catd, CATSET, 92,
 			"May not execute \"%s\" while sending\n"), com->c_name);
 		goto out;

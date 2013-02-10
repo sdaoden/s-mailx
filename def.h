@@ -192,6 +192,24 @@ typedef enum {FAL0, TRU1} bool_t;
 
 typedef void (		*sighandler_type)(int);
 
+enum user_options {
+	OPT_NONE	= 0,
+	OPT_DEBUG	= 1<< 0,	/* Debug flag set */
+	OPT_VERBOSE	= 1<< 1,	/* Verbose flag (implied by *debug*) */
+	OPT_RCVMODE	= 1<< 2,	/* True if receiving mail */
+	OPT_EXISTONLY	= 1<< 3,
+	OPT_HEADERSONLY	= 1<< 4,
+	OPT_SENDFLAG	= 1<< 5,
+	OPT_NOSRC	= 1<< 6,
+	OPT_E_FLAG	= 1<< 7,
+	OPT_F_FLAG	= 1<< 8,
+	OPT_I_FLAG	= 1<< 9,
+	OPT_N_FLAG	= 1<<10,
+	OPT_R_FLAG	= 1<<11,
+	OPT_t_FLAG	= 1<<12,
+	OPT_TILDE_FLAG	= 1<<13		/* -~ */
+};
+
 enum okay {
 	STOP = 0,
 	OKAY = 1

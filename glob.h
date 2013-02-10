@@ -70,16 +70,11 @@ _E char		*progname;		/* Our name */
 _E char		*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
-_E int		debug;			/* Debug flag set */
-_E int		verbose;		/* Verbose flag (implied by *debug*) */
-_E int		Iflag;			/* -I show Newsgroups: field */
-_E int		Rflag;			/* open all folders read-only */
-_E int		rcvmode;		/* True if receiving mail */
+_E int		options;		/* Bits of enum user_options */
+_E char		*option_T_arg;		/* -T temp file for netnews */
+_E char		*option_u_arg;		/* name given with -u option */
 _E char		**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
-_E char		*Tflag;			/* -T temp file for netnews */
-_E int		tildeflag;		/* enable tilde escapes */
-_E char		*uflag;			/* name given with -u option */
 
 _E int		did_print_dot;		/* current message has been printed */
 _E int		edit;			/* Indicates editing a file */

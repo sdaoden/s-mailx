@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -973,7 +973,7 @@ void
 		p.c->next->prev = p.c->prev;
 	p.c->isfree = 1;
 
-	if (debug) {
+	if (options & OPT_DEBUG) {
 		p.c->next = _mfree;
 		_mfree = p.c;
 	} else
@@ -996,7 +996,7 @@ smemreset(void)
 	}
 	_mfree = NULL;
 
-	if (debug)
+	if (options & OPT_DEBUG)
 		fprintf(stderr, "smemreset(): freed %lu regions/%lu bytes\n",
 			c, s);
 }
@@ -1022,7 +1022,7 @@ int
 		fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
 			(void*)(p.c + 1), p.c->size, p.c->file, p.c->line);
 
-	if (debug) {
+	if (options & OPT_DEBUG) {
 		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
 		for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next)
 			fprintf(fp, "%p (%6u bytes): %s, line %hu\n",

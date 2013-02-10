@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -250,9 +250,9 @@ nolock:
 
 	anystat = holdbits();
 	modify = 0;
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX)
@@ -507,9 +507,9 @@ edstop(void)
 	if (mb.mb_perm == 0)
 		return;
 	holdsigs();
-	if (Tflag != NULL) {
-		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
-			Tflag = NULL;
+	if (option_T_arg != NULL) {
+		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
+			option_T_arg = NULL;
 	}
 	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
@@ -529,7 +529,7 @@ edstop(void)
 	}
 	if (readstat != NULL)
 		Fclose(readstat);
-	if (!gotcha || Tflag != NULL)
+	if (!gotcha || option_T_arg != NULL)
 		goto done;
 	ibuf = NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
