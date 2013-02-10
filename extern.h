@@ -468,12 +468,6 @@ int		is_myname(char const *name);
 
 struct name *	outof(struct name *names, FILE *fo, struct header *hp);
 
-/* nss.c */
-#ifdef USE_NSS
-enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
-void nss_gen_err(const char *fmt, ...);
-#endif
-
 /* openssl.c */
 #ifdef USE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);

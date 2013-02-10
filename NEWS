@@ -1,6 +1,17 @@
 S - n a i l  N e w s
 ====================
 
+- Support for NSS (Network Security Services) has been removed.
+  I've never worked with it and are, regarding the complexity of
+  network security, not willing to spend any time on it.
+  SSL is installed on all systems i'm using and/or testing on by
+  default, and so i've choosen to go this way.
+  (It may be that sometime in the future S-nail will add support for
+  libcurl(3) connectivity, and then it may happen that not only NSS
+  support is reintroduced again, but also GNU TLS.  All of that applies
+  to network connectivity only, however, not to S/MIME afaik.)
+  (*drop-nss-support* topic branch.)
+
 - I finally got a glue and understood that Sourceforge does (a) not
   support symbolic links and (b) doesn't like dots as regular parts of
   filenames.  This means that all this time the promised s-nail.tar.gz

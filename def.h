@@ -264,9 +264,7 @@ struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
 #ifdef USE_SSL
 	int	s_use_ssl;		/* SSL is used */
-# ifdef USE_NSS
-	void	*s_prfd;		/* NSPR file descriptor */
-# elif defined USE_OPENSSL
+# ifdef USE_OPENSSL
 	void	*s_ssl;			/* SSL object */
 	void	*s_ctx;			/* SSL context object */
 # endif

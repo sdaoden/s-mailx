@@ -88,7 +88,7 @@ with lines replaced by messages.
 It is based on Heirloom mailx that is based upon Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX \fBmailx\fR
 command,
-and offers extensions for MIME, IDNA, IMAP, POP3, SMTP, and S/MIME,
+and offers extensions for MIME, IDNA, IMAP, POP3, SMTP and S/MIME,
 most of which being compile-time options.
 \*(UA provides enhanced features for interactive use.
 It is also usable as a mail batch language, both for sending and
@@ -2412,7 +2412,6 @@ and people will be able to read the message as usual.
 .B smime-no-default-ca
 Do not load the default CA locations
 when verifying S/MIME signed messages.
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 .B smtp-use-starttls
 Causes \*(UA to issue a STARTTLS command
@@ -2425,7 +2424,6 @@ whether a server supports it or not.
 .B ssl-no-default-ca
 Do not load the default CA locations
 to verify SSL/TLS server certificates.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-v2-allow
 Accept SSLv2 connections.
@@ -2828,29 +2826,6 @@ newly created local folders will be in
 .I maildir
 format.
 .TP
-.B nss-config-dir
-A directory that contains the files
-.RI cert N .db
-to retrieve certificates,
-.RI key N .db
-to retrieve private keys,
-and secmod.db,
-where
-.I N
-is a digit.
-These are usually taken from Mozilla installations,
-so an appropriate value might be
-`~/.mozilla/firefox/default.clm'.
-\*(UA opens these files read-only
-and does not modify them.
-However, if the files are modified by Mozilla
-while \*(UA is running,
-it will print a `Bad database' message.
-It may be necessary to create copies of these files
-that are exclusively used by \*(UA then.
-Only applicable if S/MIME and SSL/TLS support is built using
-Network Security Services (NSS).
-.TP
 .B ORGANIZATION
 The value to put into the \fI`Organization:'\fR field of the message header.
 .TP
@@ -3044,14 +3019,12 @@ Specifies a directory with CA certificates for verification
 of S/MIME signed messages.
 The format is the same as described in
 .IR SSL_CTX_load_verify_locations (3).
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 .B smime-ca-file
 Specifies a file with CA certificates for verification
 of S/MIME signed messages.
 The format is the same as described in
 .IR SSL_CTX_load_verify_locations (3).
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 \fBsmime-cipher-\fIuser@host\fR
 Specifies a cipher to use when generating S/MIME encrypted messages
@@ -3076,31 +3049,18 @@ but even so, the recipient should upgrade his software in preference.
 .B smime-crl-file
 Specifies a file that contains a CRL in PEM format
 to use when verifying S/MIME messages.
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 .B smime-crl-dir
 Specifies a directory that contains files with CRLs in PEM format
 to use when verifying S/MIME messages.
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 \fBsmime-encrypt-\fIuser@host\fR
 If this variable is set,
 messages to
 .I user@host
 are encrypted before sending.
-If S/MIME support is built using OpenSSL,
-the value of the variable must be set to the name of a file
+The value of the variable must be set to the name of a file
 that contains a certificate in PEM format.
-If S/MIME support is built using NSS,
-the value of this variable is ignored,
-but if multiple certificates for
-.I user@host
-are available, the
-.I smime-nickname-user@host
-variable should be set.
-Otherwise a certificate for the recipient
-is automatically retrieved from the certificate database,
-if possible.
 .IP
 If a message is sent to multiple recipients,
 each of them for whom a corresponding variable is set
@@ -3114,19 +3074,12 @@ i.\|e. to also set the
 .I smime-sign
 variable.
 .TP
-\fBsmime-nickname-\fIuser@host\fR
-Specifies the nickname of a certificate
-to be used when encrypting messages for
-.I user@host .
-Only applicable if S/MIME support is built using NSS.
-.TP
 .B smime-sign-cert
 Points to a file in PEM format
 that contains the user's private key
 as well as his certificate.
 Both are used with S/MIME
 for signing and decrypting messages.
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 \fBsmime-sign-cert-\fIuser@host\fR
 Overrides
@@ -3145,7 +3098,6 @@ for which such a variable is set.
 so if the same message is sent to more than one
 of the user's addresses using different encryption keys,
 decryption might fail.
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 .B smime-sign-include-certs
 If used, this must be set to a comma-separated list of files,
@@ -3155,7 +3107,6 @@ to be included in the S/MIME message in addition to the
 certificate.
 This is most useful for long certificate chains if it is
 desired to aid the receiving party's verification process.
-Only applicable if S/MIME support is built using OpenSSL.
 .TP
 \fBsmime-sign-include-certs-\fIuser@host\fR
 Overrides
@@ -3163,21 +3114,6 @@ Overrides
 for the specific addresses.
 Refer to the discussion of \fBsmime-sign-cert-\fIuser@host\fR
 for more on this topic.
-.TP
-.B smime-sign-nickname
-Specifies that the named certificate be used for signing mail.
-If this variable is not set,
-but a single certificate matching the current
-.I from
-address is found in the database,
-that one is used automatically.
-Only applicable if S/MIME support is built using NSS.
-.TP
-\fBsmime-sign-nickname-\fIuser@host\fR
-Overrides
-.I smime-sign-nickname
-for a specific address.
-Only applicable if S/MIME support is built using NSS.
 .TP
 .B smtp
 Normally, \*(UA invokes \fIsendmail(1)\fR directly to transfer messages.
@@ -3269,7 +3205,6 @@ of SSL/TLS server certificates.
 See
 .IR SSL_CTX_load_verify_locations (3)
 for more information.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-ca-file
 Specifies a file with CA certificates for verification
@@ -3277,13 +3212,11 @@ of SSL/TLS server certificates.
 See
 .IR SSL_CTX_load_verify_locations (3)
 for more information.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-cert
 Sets the file name 
 for a SSL/TLS client certificate
 required by some servers.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 \fBssl-cert-\fIuser\fB@\fIhost\fR
 Sets an account-specific file name
@@ -3292,29 +3225,24 @@ required by some servers.
 Overrides
 .I ssl-cert
 for the specified account.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-cipher-list
 Specifies a list of ciphers for SSL/TLS connections.
 See ciphers(1) for more information.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-crl-file
 Specifies a file that contains a CRL in PEM format
 to use when verifying SSL/TLS server certificates.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-crl-dir
 Specifies a directory that contains files with CRLs in PEM format
 to use when verifying SSL/TLS server certificates.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-key
 Sets the file name
 for the private key of a SSL/TLS client certificate.
 If unset, the name of the certificate file is used.
 The file is expected to be in PEM format.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 \fBssl-key-\fIuser\fB@\fIhost\fR
 Sets an account-specific file name
@@ -3322,7 +3250,6 @@ for the private key of a SSL/TLS client certificate.
 Overrides
 .I ssl-key
 for the specified account.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-method
 Selects a SSL/TLS protocol version;
@@ -3346,7 +3273,6 @@ see
 .IR RAND_load_file (3).
 If the file is a regular file writable by the invoking user,
 new data is written to it after it has been loaded.
-Only applicable if SSL/TLS support is built using OpenSSL.
 .TP
 .B ssl-verify
 Sets the action to be performed if an error occurs
@@ -3783,10 +3709,6 @@ command line option with
 (This string is not necessarily the same as your Internet mail address.)
 You can replace `imaps://' with `imap://'
 if the server does not support SSL/TLS.
-(If SSL/TLS support is built using NSS, the
-.I nss-config-dir
-variable must be set before a connection can be initiated,
-see above).
 Use `pop3s://' or `pop3://' if the server does not offer IMAP.
 You should use IMAP if you can, though;
 first because it requires fewer network operations than POP3
@@ -4267,11 +4189,8 @@ For personal use,
 it is recommended that you get a S/MIME certificate
 from one of the major CAs on the Internet using your WWW browser.
 (Many CAs offer such certificates for free.)
-You will usually receive
-a combined certificate and private key
-in PKCS#12 format which
-\*(UA does not directly accept
-if S/MIME support is built using OpenSSL.
+You will usually receive a combined certificate and private key
+in PKCS#12 format which \*(UA does not directly accept.
 To convert it to PEM format,
 use the following shell command:
 .nf
@@ -4295,20 +4214,6 @@ You can then use
 .sp
 .fi
 to make this private key and certificate known to \*(UA.
-.PP
-If S/MIME support is built using NSS,
-the PKCS#12 file must be installed using Mozilla
-(provided that
-.I nss-config-dir
-is set appropriately,
-see above),
-and no further action is necessary
-unless multiple user certificates
-for the same email address are installed.
-In this case,
-the
-.I smime-sign-nickname
-variable has to be set appropriately.
 .PP
 You can now sign outgoing messages.
 Just use
@@ -4336,16 +4241,6 @@ retrieve the certificate and tell
     \fBset smime-encrypt-\fIuser@host\fB=\fIfilename\fR
 .sp
 .fi
-If S/MIME support is built using NSS,
-the saved certificate must be installed using Mozilla.
-The value of the
-.I smime-encrypt-user@host
-is ignored then,
-but if multiple certificates for the recipient are available,
-the
-.I smime-nickname-user@host
-variable must be set.
-.PP
 You should carefully consider
 if you prefer to store encrypted messages in decrypted form.
 If you do, anybody who has access to your mail folders can read them,
@@ -4389,7 +4284,6 @@ to distinguish between valid and invalidated certificates.
 or to access them on the Internet,
 so you have to retrieve them by some external mechanism.
 .PP
-If S/MIME and SSL/TLS support are built using OpenSSL,
 \*(UA accepts CRLs in PEM format only;
 CRLs in DER format must be converted,
 e.\|g. with the shell command
@@ -4399,10 +4293,8 @@ e.\|g. with the shell command
 .sp
 .fi
 To tell \*(UA about the CRLs,
-a directory
-that contains all CRL files
-(and no other files)
-must be created.
+a directory that contains all CRL files (and no other files) must be
+created.
 The
 .I smime-crl-dir
 or
@@ -4413,12 +4305,6 @@ After that,
 \*(UA requires a CRL to be present
 for each CA that is used
 to verify a certificate.
-.PP
-If S/MIME and SSL/TLS support are built using NSS,
-CRLs can be imported in Mozilla applications
-(provided that
-.I nss-config-dir
-is set appropriately).
 .SS "Sending mail from scripts"
 If you want to send mail from scripts,
 you must be aware that
