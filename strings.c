@@ -40,16 +40,29 @@
 /*
  * Mail -- a mail program
  *
- * String allocation routines and support routines that build on top of them.
- * Strings handed out here are reclaimed at the top of the command
+ * Auto-reclaimed string allocation and support routines that build on top of
+ * them.  Strings handed out by those are reclaimed at the top of the command
  * loop each time, so they need not be freed.
+ * And below this series we do collect all other plain string support routines
+ * in here, including those which use normal heap memory.
  */
 
 #include "rcv.h"
 
+#include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+#ifdef HAVE_WCWIDTH
+# include <wchar.h>
+#endif
 
 #include "extern.h"
+#ifdef USE_MD5
+# include "md5.h"
+#endif
 
 /*
  * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
@@ -382,6 +395,129 @@ savecat(char const *s1, char const *s2)
 	return (news);
 }
 
+/*
+ * Support routines, auto-reclaimed storage
+ */
+
+#define	Hexchar(n)	((n)>9 ? (n)-10+'A' : (n)+'0')
+#define	hexchar(n)	((n)>9 ? (n)-10+'a' : (n)+'0')
+
+#ifdef USE_MD5
+char *
+cram_md5_string(char const *user, char const *pass, char const *b64)
+{
+	struct str in, out;
+	char digest[16], *cp;
+
+	out.s = NULL;
+	in.s = (char*)b64;
+	in.l = strlen(in.s);
+	(void)b64_decode(&out, &in, 0, NULL);
+	assert(out.s != NULL);
+
+	hmac_md5((unsigned char*)out.s, out.l,
+		(unsigned char*)pass, strlen(pass), digest);
+	free(out.s);
+	cp = md5tohex(digest);
+
+	in.l = strlen(user) + strlen(cp) + 2;
+	in.s = ac_alloc(in.l);
+	snprintf(in.s, in.l, "%s %s", user, cp);
+	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
+	ac_free(in.s);
+	return out.s;
+}
+#endif /* USE_MD5 */
+
+char *
+i_strdup(char const *src)
+{
+	size_t sz;
+	char *dest;
+
+	sz = strlen(src) + 1;
+	dest = salloc(sz);
+	i_strcpy(dest, src, sz);
+	return (dest);
+}
+
+#ifdef USE_MD5
+char *
+md5tohex(void const *vp)
+{
+	char const *cp = vp;
+	char *hex;
+	int i;
+
+	hex = salloc(33);
+	for (i = 0; i < 16; i++) {
+		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
+		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
+	}
+	hex[32] = '\0';
+	return hex;
+}
+#endif /* USE_MD5 */
+
+char *
+protbase(char const *cp)
+{
+	char *n = salloc(strlen(cp) + 1), *np = n;
+
+	while (*cp) {
+		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+			*np++ = *cp++;
+			*np++ = *cp++;
+			*np++ = *cp++;
+		} else if (cp[0] == '/')
+			break;
+		else
+			*np++ = *cp++;
+	}
+	*np = '\0';
+	return (n);
+}
+
+char *
+urlxenc(char const *cp) /* XXX */
+{
+	char	*n, *np;
+
+	np = n = salloc(strlen(cp) * 3 + 1);
+	while (*cp) {
+		if (alnumchar(*cp) || *cp == '_' || *cp == '@' ||
+				(np > n && (*cp == '.' || *cp == '-' ||
+						*cp == ':')))
+			*np++ = *cp;
+		else {
+			*np++ = '%';
+			*np++ = Hexchar((*cp&0xf0) >> 4);
+			*np++ = Hexchar(*cp&0x0f);
+		}
+		cp++;
+	}
+	*np = '\0';
+	return n;
+}
+
+char *
+urlxdec(char const *cp) /* XXX */
+{
+	char *n, *np;
+
+	np = n = salloc(strlen(cp) + 1);
+	while (*cp) {
+		if (cp[0] == '%' && cp[1] && cp[2]) {
+			*np = (int)(cp[1]>'9'?cp[1]-'A'+10:cp[1]-'0') << 4;
+			*np++ |= cp[2]>'9'?cp[2]-'A'+10:cp[2]-'0';
+			cp += 3;
+		} else
+			*np++ = *cp++;
+	}
+	*np = '\0';
+	return (n);
+}
+
 struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
@@ -407,3 +543,400 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 	va_end(vl);
 	return (self);
 }
+
+/*
+ * Routines that are not related to auto-reclaimed storage follow.
+ */
+
+uc_it const	class_char[] = {
+/*	000 nul	001 soh	002 stx	003 etx	004 eot	005 enq	006 ack	007 bel	*/
+	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
+/*	010 bs 	011 ht 	012 nl 	013 vt 	014 np 	015 cr 	016 so 	017 si 	*/
+	C_CNTRL,C_BLANK,C_WHITE,C_SPACE,C_SPACE,C_SPACE,C_CNTRL,C_CNTRL,
+/*	020 dle	021 dc1	022 dc2	023 dc3	024 dc4	025 nak	026 syn	027 etb	*/
+	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
+/*	030 can	031 em 	032 sub	033 esc	034 fs 	035 gs 	036 rs 	037 us 	*/
+	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
+/*	040 sp 	041  ! 	042  " 	043  # 	044  $ 	045  % 	046  & 	047  ' 	*/
+	C_BLANK,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	050  ( 	051  ) 	052  * 	053  + 	054  , 	055  - 	056  . 	057  / 	*/
+	C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	060  0 	061  1 	062  2 	063  3 	064  4 	065  5 	066  6 	067  7 	*/
+	C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,
+/*	070  8 	071  9 	072  : 	073  ; 	074  < 	075  = 	076  > 	077  ? 	*/
+	C_DIGIT,C_DIGIT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	100  @ 	101  A 	102  B 	103  C 	104  D 	105  E 	106  F 	107  G 	*/
+	C_PUNCT,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
+/*	110  H 	111  I 	112  J 	113  K 	114  L 	115  M 	116  N 	117  O 	*/
+	C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
+/*	120  P 	121  Q 	122  R 	123  S 	124  T 	125  U 	126  V 	127  W 	*/
+	C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
+/*	130  X 	131  Y 	132  Z 	133  [ 	134  \ 	135  ] 	136  ^ 	137  _ 	*/
+	C_UPPER,C_UPPER,C_UPPER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
+/*	140  ` 	141  a 	142  b 	143  c 	144  d 	145  e 	146  f 	147  g 	*/
+	C_PUNCT,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
+/*	150  h 	151  i 	152  j 	153  k 	154  l 	155  m 	156  n 	157  o 	*/
+	C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
+/*	160  p 	161  q 	162  r 	163  s 	164  t 	165  u 	166  v 	167  w 	*/
+	C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
+/*	170  x 	171  y 	172  z 	173  { 	174  | 	175  } 	176  ~ 	177 del	*/
+	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
+};
+
+int
+anyof(char const *s1, char const *s2)
+{
+	for (; *s1 != '\0'; ++s1)
+		if (strchr(s2, *s1))
+			break;
+	return (*s1 != '\0');
+}
+
+void
+i_strcpy(char *dest, const char *src, size_t size)
+{
+	if (size)
+		for (;; ++dest, ++src)
+			if ((*dest = lowerconv(*src)) == '\0')
+				break;
+			else if (--size == 0) {
+				*dest = '\0';
+				break;
+			}
+}
+
+int
+is_prefix(char const *as1, char const *as2)
+{
+	char c;
+	for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
+		if ((c = *as2) == '\0')
+			break;
+	return (c == '\0');
+}
+
+char const *
+last_at_before_slash(char const *sp)
+{
+	char const *cp;
+	char c;
+
+	for (cp = sp; (c = *cp) != '\0'; ++cp)
+		if (c == '/')
+			break;
+	while (cp > sp && *--cp != '@')
+		;
+	return (*cp == '@' ? cp : NULL);
+}
+
+void
+makelow(char *cp) /* TODO isn't that crap? --> */
+{
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+	if (mb_cur_max > 1) {
+		char *tp = cp;
+		wchar_t wc;
+		int len;
+
+		while (*cp) {
+			len = mbtowc(&wc, cp, mb_cur_max);
+			if (len < 0)
+				*tp++ = *cp++;
+			else {
+				wc = towlower(wc);
+				if (wctomb(tp, wc) == len)
+					tp += len, cp += len;
+				else
+					*tp++ = *cp++; /* <-- at least here */
+			}
+		}
+	} else
+#endif
+	{
+		do
+			*cp = tolower((uc_it)*cp);
+		while (*cp++);
+	}
+}
+
+int
+substr(char const *str, char const *sub)
+{
+	char const *cp, *backup;
+
+	cp = sub;
+	backup = str;
+	while (*str && *cp) {
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+		if (mb_cur_max > 1) {
+			wchar_t c, c2;
+			int sz;
+
+			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
+				goto singlebyte;
+			cp += sz;
+			if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
+				goto singlebyte;
+			str += sz;
+			c = towupper(c);
+			c2 = towupper(c2);
+			if (c != c2) {
+				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
+					backup += sz;
+					str = backup;
+				} else
+					str = ++backup;
+				cp = sub;
+			}
+		} else
+#endif
+		{
+			int c, c2;
+
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+	singlebyte:
+#endif
+			c = *cp++ & 0377;
+			if (islower(c))
+				c = toupper(c);
+			c2 = *str++ & 0377;
+			if (islower(c2))
+				c2 = toupper(c2);
+			if (c != c2) {
+				str = ++backup;
+				cp = sub;
+			}
+		}
+	}
+	return *cp == '\0';
+}
+
+#ifndef HAVE_SNPRINTF
+int
+snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vsprintf(str, format, ap);
+	va_end(ap);
+	if (ret < 0)
+		ret = strlen(str);
+	return ret;
+}
+#endif
+
+char *
+sstpcpy(char *dst, char const *src)
+{
+	while ((*dst = *src++) != '\0')
+		dst++;
+	return (dst);
+}
+
+char *
+(sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
+{
+	char *dp = NULL;
+
+	if (cp) {
+		size_t l = strlen(cp) + 1;
+		dp = (smalloc)(l SMALLOC_DEBUG_ARGSCALL);
+		memcpy(dp, cp, l);
+	}
+	return (dp);
+}
+
+int
+asccasecmp(char const *s1, char const *s2)
+{
+	int cmp;
+
+	for (;;) {
+		char c1 = *s1++, c2 = *s2++;
+		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+			break;
+	}
+	return (cmp);
+}
+
+int
+ascncasecmp(char const *s1, char const *s2, size_t sz)
+{
+	int cmp = 0;
+
+	while (sz-- > 0) {
+		char c1 = *s1++, c2 = *s2++;
+		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+			break;
+	}
+	return (cmp);
+}
+
+char const *
+asccasestr(char const *haystack, char const *xneedle)
+{
+	char *needle = NULL, *NEEDLE;
+	size_t i, sz;
+
+	sz = strlen(xneedle);
+	if (sz == 0)
+		goto jleave;
+
+	needle = ac_alloc(sz);
+	NEEDLE = ac_alloc(sz);
+	for (i = 0; i < sz; i++) {
+		needle[i] = lowerconv(xneedle[i]);
+		NEEDLE[i] = upperconv(xneedle[i]);
+	}
+
+	while (*haystack) {
+		if (*haystack == *needle || *haystack == *NEEDLE) {
+			for (i = 1; i < sz; i++)
+				if (haystack[i] != needle[i] &&
+						haystack[i] != NEEDLE[i])
+					break;
+			if (i == sz)
+				goto jleave;
+		}
+		haystack++;
+	}
+	haystack = NULL;
+jleave:
+	if (needle != NULL) {
+		ac_free(NEEDLE);
+		ac_free(needle);
+	}
+	return (haystack);
+}
+
+#ifdef HAVE_ICONV
+static void _ic_toupper(char *dest, char const *src);
+static void _ic_stripdash(char *p);
+
+static void
+_ic_toupper(char *dest, const char *src)
+{
+	do
+		*dest++ = upperconv(*src);
+	while (*src++);
+}
+
+static void
+_ic_stripdash(char *p)
+{
+	char *q = p;
+
+	do
+		if (*(q = p) != '-')
+			q++;
+	while (*p++);
+}
+
+iconv_t
+iconv_open_ft(char const *tocode, char const *fromcode)
+{
+	iconv_t id;
+	char *t, *f;
+
+	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
+		return id;
+
+	/*
+	 * Remove the "iso-" prefixes for Solaris.
+	 */
+	if (ascncasecmp(tocode, "iso-", 4) == 0)
+		tocode += 4;
+	else if (ascncasecmp(tocode, "iso", 3) == 0)
+		tocode += 3;
+	if (ascncasecmp(fromcode, "iso-", 4) == 0)
+		fromcode += 4;
+	else if (ascncasecmp(fromcode, "iso", 3) == 0)
+		fromcode += 3;
+	if (*tocode == '\0' || *fromcode == '\0')
+		return (iconv_t) -1;
+	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
+		return id;
+	/*
+	 * Solaris prefers upper-case charset names. Don't ask...
+	 */
+	t = salloc(strlen(tocode) + 1);
+	_ic_toupper(t, tocode);
+	f = salloc(strlen(fromcode) + 1);
+	_ic_toupper(f, fromcode);
+	if ((id = iconv_open(t, f)) != (iconv_t)-1)
+		return id;
+	/*
+	 * Strip dashes for UnixWare.
+	 */
+	_ic_stripdash(t);
+	_ic_stripdash(f);
+	if ((id = iconv_open(t, f)) != (iconv_t)-1)
+		return id;
+	/*
+	 * Add your vendor's sillynesses here.
+	 */
+
+	/*
+	 * If the encoding names are equal at this point, they
+	 * are just not understood by iconv(), and we cannot
+	 * sensibly use it in any way. We do not perform this
+	 * as an optimization above since iconv() can otherwise
+	 * be used to check the validity of the input even with
+	 * identical encoding names.
+	 */
+	if (strcmp(t, f) == 0)
+		errno = 0;
+	return (iconv_t)-1;
+}
+
+/*
+ * Fault-tolerant iconv() function.
+ * (2012-09-24: export and use it exclusively to isolate prototype problems
+ * (*inb* is 'char const **' except in POSIX) in a single place.
+ * GNU libiconv even allows for configuration time const/non-const..
+ * In the end it's an ugly guess, but we can't do better since make(1) doesn't
+ * support compiler invocations which bail on error, so no -Werror.
+ */
+/* Citrus project? */
+# if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
+  /* DragonFly 3.2.1 is special */
+#  ifdef __DragonFly__
+#   define __INBCAST	(char ** __restrict__)
+#  else
+#   define __INBCAST	(char const **)
+#  endif
+# endif
+# ifndef __INBCAST
+#  define __INBCAST	(char **)
+# endif
+
+size_t
+iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant)
+{
+	size_t sz;
+
+	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft)) ==
+				(size_t)-1 &&
+# undef __INBCAST
+			tolerant && (errno == EILSEQ || errno == EINVAL)) {
+		if (*inbleft > 0) {
+			(*inb)++;
+			(*inbleft)--;
+		} else {
+			**outb = '\0';
+			break;
+		}
+		if (*outbleft > 0) {
+			*(*outb)++ = '?';
+			(*outbleft)--;
+		} else {
+			**outb = '\0';
+			break;
+		}
+	}
+	return (sz);
+}
+#endif /* HAVE_ICONV */

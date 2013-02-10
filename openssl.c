@@ -79,7 +79,6 @@ typedef int avoid_empty_file_compiler_warning;
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-static int	verbose;
 static int	reset_tio;
 static struct termios	otio;
 static sigjmp_buf	ssljmp;
@@ -107,7 +106,7 @@ static int smime_verify(struct message *m, int n, STACK *chain,
 static EVP_CIPHER *smime_cipher(const char *name);
 static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
 static FILE *smime_sign_cert(const char *xname, const char *xname2, int warn);
-static char *smime_sign_include_certs(char *name);
+static char *smime_sign_include_certs(char const *name);
 #ifdef HAVE_STACK_OF
 static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
 #else
@@ -168,7 +167,6 @@ ssl_rand_init(void)
 static void 
 ssl_init(void)
 {
-	verbose = value("verbose") != NULL;
 	if (initialized == 0) {
 		SSL_library_init();
 		initialized = 1;
@@ -435,7 +433,8 @@ FILE *
 smime_sign(FILE *ip, struct header *headp)
 {
 	FILE	*sp, *fp, *bp, *hp;
-	char	*cp, *addr;
+	char	*cp;
+	char const *addr;
 	X509	*cert;
 #ifdef HAVE_STACK_OF
 	STACK_OF(X509)	*chain = NULL;
@@ -1004,7 +1003,7 @@ open:	vn = cp;
 }
 
 static char *
-smime_sign_include_certs(char *name)
+smime_sign_include_certs(char const *name)
 {
 	char *ret;
 	/* See comments in smime_sign_cert() for algorithm pitfalls */

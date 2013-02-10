@@ -46,10 +46,8 @@
  * Variable handling stuff.
  */
 
-static char *canonify(const char *vn);
-static void vfree(char *cp);
-static struct var *lookup(const char *name, int h);
-static void remove_grouplist(struct grouphead *gh);
+/* Check for special housekeeping. */
+static void	_check_special_vars(char const *name, int enable);
 
 /*
  * If a variable name begins with a lowercase-character and contains at
@@ -59,6 +57,21 @@ static void remove_grouplist(struct grouphead *gh);
  * Following the standard, only the part following the last '@' should
  * be lower-cased, but practice has established otherwise here.
  */
+static char *	canonify(const char *vn);
+
+static void vfree(char *cp);
+static struct var *lookup(const char *name, int h);
+static void remove_grouplist(struct grouphead *gh);
+
+static void
+_check_special_vars(char const *name, int enable)
+{
+	if (strcmp(name, "debug") == 0)
+		debug = enable;
+	else if (strcmp(name, "verbose") == 0)
+		verbose = enable;
+}
+
 static char *
 canonify(const char *vn)
 {
@@ -71,11 +84,8 @@ canonify(const char *vn)
 	return ((*vp == '@') ? i_strdup(vn) : (char*)vn);
 }
 
-/*
- * Assign a value to a variable.
- */
-void 
-assign(const char *name, const char *value)
+void
+assign(char const *name, char const *value)
 {
 	struct var *vp;
 	int h;
@@ -101,7 +111,38 @@ assign(const char *name, const char *value)
 	else
 		vfree(vp->v_value);
 	vp->v_value = vcopy(value);
+
+	_check_special_vars(name, 1);
 jleave:	;
+}
+
+int
+unset_internal(char const *name)
+{
+	int ret = 1, h;
+	struct var *vp;
+
+	name = canonify(name);
+	h = hash(name);
+
+	if ((vp = lookup(name, h)) == NULL) {
+		if (! sourcing && ! unset_allow_undefined) {
+			fprintf(stderr,
+				tr(203, "\"%s\": undefined variable\n"), name);
+			goto jleave;
+		}
+	} else {
+		/* Always listhead after lookup() */
+		variables[h] = variables[h]->v_link;
+		vfree(vp->v_name);
+		vfree(vp->v_value);
+		free(vp);
+
+		_check_special_vars(name, 0);
+	}
+	ret = 0;
+jleave:
+	return (ret);
 }
 
 /*
@@ -230,31 +271,6 @@ hash(const char *name)
 	if (h < 0 && (h = -h) < 0)
 		h = 0;
 	return (h % HSHSIZE);
-}
-
-int 
-unset_internal(const char *name)
-{
-	int h;
-	struct var *vp;
-
-	name = canonify(name);
-	h = hash(name);
-
-	if ((vp = lookup(name, h)) == NULL) {
-		if (! sourcing && ! unset_allow_undefined) {
-			printf(tr(203, "\"%s\": undefined variable\n"), name);
-			return (1);
-		}
-		return (0);
-	}
-
-	/* Always listhead after lookup() */
-	variables[h] = variables[h]->v_link;
-	vfree(vp->v_name);
-	vfree(vp->v_value);
-	free(vp);
-	return (0);
 }
 
 static void

@@ -5,11 +5,10 @@
  * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
  */
 /*
- * Derived from RFC 1321:
+ * The MD5_CTX algorithm is derived from RFC 1321:
  */
 /* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
  */
-
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
 
@@ -31,6 +30,32 @@ without express or implied warranty of any kind.
 These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
+
+/* hmac_md5() is derived from:
+
+Network Working Group					    H. Krawczyk
+Request for Comments: 2104					    IBM
+Category: Informational					     M. Bellare
+								   UCSD
+							     R. Canetti
+								    IBM
+							  February 1997
+
+
+	     HMAC: Keyed-Hashing for Message Authentication
+
+Status of This Memo
+
+   This memo provides information for the Internet community.  This memo
+   does not specify an Internet standard of any kind.  Distribution of
+   this memo is unlimited.
+
+Appendix -- Sample Code
+
+   For the sake of illustration we provide the following sample code for
+   the implementation of HMAC-MD5 as well as some corresponding test
+   vectors (the code is based on MD5 code as described in [MD5]).
+*/
 
 #include "rcv.h"
 
@@ -60,10 +85,6 @@ typedef int avoid_empty_file_compiler_warning;
 #define S42 10
 #define S43 15
 #define S44 21
-
-static void MD5Transform(md5_type state[], unsigned char block[]);
-static void Encode(unsigned char *output, md5_type *input, unsigned int len);
-static void Decode(md5_type *output, unsigned char *input, unsigned int len);
 
 static unsigned char PADDING[64] = {
   0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -118,109 +139,49 @@ static unsigned char PADDING[64] = {
 	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
+static void Encode(unsigned char *output, md5_type *input, unsigned int len);
+static void Decode(md5_type *output, unsigned char *input, unsigned int len);
+static void MD5Transform(md5_type state[], unsigned char block[]);
+
 /*
- * MD5 initialization. Begins an MD5 operation, writing a new context.
+ * Encodes input (md5_type) into output (unsigned char). Assumes len is
+ * a multiple of 4.
  */
-void 
-MD5Init (
-    MD5_CTX *context	/* context */
-)
+static void
+Encode(unsigned char *output, md5_type *input, unsigned int len)
 {
-	context->count[0] = context->count[1] = 0;
-	/*
-	 * Load magic initialization constants.
-	 */
-	context->state[0] = 0x67452301;
-	context->state[1] = 0xefcdab89;
-	context->state[2] = 0x98badcfe;
-	context->state[3] = 0x10325476;
+	unsigned int i, j;
+
+	for (i = 0, j = 0; j < len; i++, j += 4) {
+		output[j] = input[i] & 0xff;
+		output[j+1] = (input[i] >> 8) & 0xff;
+		output[j+2] = (input[i] >> 16) & 0xff;
+		output[j+3] = (input[i] >> 24) & 0xff;
+	}
 }
 
 /*
- * MD5 block update operation. Continues an MD5 message-digest
- * operation, processing another message block, and updating the
- * context.
+ * Decodes input (unsigned char) into output (md5_type). Assumes len is
+ * a multiple of 4.
  */
-void 
-MD5Update (
-    MD5_CTX *context,		/* context */
-    unsigned char *input,		/* input block */
-    unsigned int inputLen		/* length of input block */
-)
+static void
+Decode(md5_type *output, unsigned char *input, unsigned int len)
 {
-	unsigned int i, index, partLen;
+	unsigned int	i, j;
 
-	/* Compute number of bytes mod 64 */
-	index = context->count[0]>>3 & 0x3F;
-
-	/* Update number of bits */
-	if ((context->count[0] = (context->count[0] + (inputLen<<3)) &
-					UINT4B_MAX)
-			< ((inputLen << 3) & UINT4B_MAX))
-	context->count[1] = (context->count[1] + 1) & UINT4B_MAX;
-	context->count[1] = (context->count[1] + (inputLen >> 29)) & UINT4B_MAX;
-
-	partLen = 64 - index;
-
-	/*
-	 * Transform as many times as possible.
-	 */
-	if (inputLen >= partLen) {
-		memcpy(&context->buffer[index], input, partLen);
-		MD5Transform(context->state, context->buffer);
-
-		for (i = partLen; i + 63 < inputLen; i += 64)
-			MD5Transform(context->state, &input[i]);
-
-		index = 0;
-	} else
-		i = 0;
-
-	/* Buffer remaining input */
-	memcpy(&context->buffer[index], &input[i], inputLen-i);
+	for (i = 0, j = 0; j < len; i++, j += 4)
+		output[i] = ((md5_type)input[j] |
+			(md5_type)input[j+1] << 8 |
+			(md5_type)input[j+2] << 16 |
+			(md5_type)input[j+3] << 24) & UINT4B_MAX;
 }
 
-/*
- * MD5 finalization. Ends an MD5 message-digest	operation, writing the
- * the message digest and zeroizing the context.
- */
-void 
-MD5Final (
-    unsigned char digest[16],	/* message digest */
-    MD5_CTX *context		/* context */
-)
-{
-	unsigned char	bits[8];
-	unsigned int	index, padLen;
-
-	/* Save number of bits */
-	Encode(bits, context->count, 8);
-
-	/*
-	 * Pad out to 56 mod 64.
-	 */
-	index = context->count[0]>>3 & 0x3f;
-	padLen = index < 56 ? 56 - index : 120 - index;
-	MD5Update(context, PADDING, padLen);
-
-	/* Append length (before padding) */
-	MD5Update(context, bits, 8);
-	/* Store state in digest */
-	Encode(digest, context->state, 16);
-
-	/*
-	 * Zeroize sensitive information.
-	 */
-	memset(context, 0, sizeof *context);
-}
-
-/* MD5 basic transformation. Transforms	state based on block.
- */
-static void 
+/* MD5 basic transformation. Transforms	state based on block. */
+static void
 MD5Transform(md5_type state[4], unsigned char block[64])
 {
-	md5_type	a = state[0], b	= state[1], c = state[2], d = state[3],
-				x[16];
+	md5_type a = state[0], b = state[1], c = state[2], d = state[3],
+		x[16];
 
 	Decode(x, block, 64);
 
@@ -304,39 +265,174 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 	/*
 	 * Zeroize sensitive information.
 	 */
-	memset(x, 0, sizeof x);
+	memset((md5_type*)(volatile md5_type*)x, 0, sizeof x); /* XXX */
 }
 
 /*
- * Encodes input (md5_type) into output (unsigned char). Assumes len is
- * a multiple of 4.
+ * MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-static void 
-Encode(unsigned char *output, md5_type *input, unsigned int len)
+void
+MD5Init (
+    MD5_CTX *context	/* context */
+)
 {
-	unsigned int i, j;
+	context->count[0] = context->count[1] = 0;
+	/*
+	 * Load magic initialization constants.
+	 */
+	context->state[0] = 0x67452301;
+	context->state[1] = 0xefcdab89;
+	context->state[2] = 0x98badcfe;
+	context->state[3] = 0x10325476;
+}
 
-	for (i = 0, j = 0; j < len; i++, j += 4) {
-		output[j] = input[i] & 0xff;
-		output[j+1] = (input[i] >> 8) & 0xff;
-		output[j+2] = (input[i] >> 16) & 0xff;
-		output[j+3] = (input[i] >> 24) & 0xff;
+/*
+ * MD5 block update operation. Continues an MD5 message-digest
+ * operation, processing another message block, and updating the
+ * context.
+ */
+void
+MD5Update (
+    MD5_CTX *context,		/* context */
+    unsigned char *input,		/* input block */
+    unsigned int inputLen		/* length of input block */
+)
+{
+	unsigned int i, index, partLen;
+
+	/* Compute number of bytes mod 64 */
+	index = context->count[0]>>3 & 0x3F;
+
+	/* Update number of bits */
+	if ((context->count[0] = (context->count[0] + (inputLen<<3)) &
+					UINT4B_MAX)
+			< ((inputLen << 3) & UINT4B_MAX))
+	context->count[1] = (context->count[1] + 1) & UINT4B_MAX;
+	context->count[1] = (context->count[1] + (inputLen >> 29)) & UINT4B_MAX;
+
+	partLen = 64 - index;
+
+	/*
+	 * Transform as many times as possible.
+	 */
+	if (inputLen >= partLen) {
+		memcpy(&context->buffer[index], input, partLen);
+		MD5Transform(context->state, context->buffer);
+
+		for (i = partLen; i + 63 < inputLen; i += 64)
+			MD5Transform(context->state, &input[i]);
+
+		index = 0;
+	} else
+		i = 0;
+
+	/* Buffer remaining input */
+	memcpy(&context->buffer[index], &input[i], inputLen-i);
+}
+
+/*
+ * MD5 finalization. Ends an MD5 message-digest	operation, writing the
+ * the message digest and zeroizing the context.
+ */
+void
+MD5Final (
+    unsigned char digest[16],	/* message digest */
+    MD5_CTX *context		/* context */
+)
+{
+	unsigned char	bits[8];
+	unsigned int	index, padLen;
+
+	/* Save number of bits */
+	Encode(bits, context->count, 8);
+
+	/*
+	 * Pad out to 56 mod 64.
+	 */
+	index = context->count[0]>>3 & 0x3f;
+	padLen = index < 56 ? 56 - index : 120 - index;
+	MD5Update(context, PADDING, padLen);
+
+	/* Append length (before padding) */
+	MD5Update(context, bits, 8);
+	/* Store state in digest */
+	Encode(digest, context->state, 16);
+
+	/*
+	 * Zeroize sensitive information.
+	 */
+	memset(context, 0, sizeof *context);
+}
+
+void
+hmac_md5 (
+    unsigned char *text,	/* pointer to data stream */
+    int text_len,		/* length of data stream */
+    unsigned char *key,		/* pointer to authentication key */
+    int key_len,		/* length of authentication key */
+    void *digest		/* caller digest to be filled in */
+)
+{
+	MD5_CTX context;
+	unsigned char k_ipad[65];    /* inner padding -
+				      * key XORd with ipad
+				      */
+	unsigned char k_opad[65];    /* outer padding -
+				      * key XORd with opad
+				      */
+	unsigned char tk[16];
+	int i;
+	/* if key is longer than 64 bytes reset it to key=MD5(key) */
+	if (key_len > 64) {
+
+		MD5_CTX	     tctx;
+
+		MD5Init(&tctx);
+		MD5Update(&tctx, key, key_len);
+		MD5Final(tk, &tctx);
+
+		key = tk;
+		key_len = 16;
 	}
-}
 
-/*
- * Decodes input (unsigned char) into output (md5_type). Assumes len is
- * a multiple of 4.
- */
-static void 
-Decode(md5_type *output, unsigned char *input, unsigned int len)
-{
-	unsigned int	i, j;
+	/*
+	 * the HMAC_MD5 transform looks like:
+	 *
+	 * MD5(K XOR opad, MD5(K XOR ipad, text))
+	 *
+	 * where K is an n byte key
+	 * ipad is the byte 0x36 repeated 64 times
+	 * opad is the byte 0x5c repeated 64 times
+	 * and text is the data being protected
+	 */
 
-	for (i = 0, j = 0; j < len; i++, j += 4)
- 		output[i] = ((md5_type)input[j] |
-			(md5_type)input[j+1] << 8 |
-			(md5_type)input[j+2] << 16 |
-			(md5_type)input[j+3] << 24) & UINT4B_MAX;
+	/* start out by storing key in pads */
+	memset(k_ipad, 0, sizeof k_ipad);
+	memset(k_opad, 0, sizeof k_opad);
+	memcpy(k_ipad, key, key_len);
+	memcpy(k_opad, key, key_len);
+
+	/* XOR key with ipad and opad values */
+	for (i=0; i<64; i++) {
+		k_ipad[i] ^= 0x36;
+		k_opad[i] ^= 0x5c;
+	}
+	/*
+	 * perform inner MD5
+	 */
+	MD5Init(&context);		     /* init context for 1st
+					      * pass */
+	MD5Update(&context, k_ipad, 64);	     /* start with inner pad */
+	MD5Update(&context, text, text_len); /* then text of datagram */
+	MD5Final(digest, &context);	     /* finish up 1st pass */
+	/*
+	 * perform outer MD5
+	 */
+	MD5Init(&context);		     /* init context for 2nd
+					      * pass */
+	MD5Update(&context, k_opad, 64);     /* start with outer pad */
+	MD5Update(&context, digest, 16);     /* then results of 1st
+					      * hash */
+	MD5Final(digest, &context);	     /* finish up 2nd pass */
 }
 #endif /* USE_MD5 */

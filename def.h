@@ -400,7 +400,6 @@ struct message {
 	time_t	m_time;			/* time the message was sent */
 	time_t	m_date;			/* time in the 'Date' field */
 	unsigned	m_idhash;	/* hash on Message-ID for threads */
-	unsigned long	m_uid;		/* IMAP unique identifier */
 	struct message	*m_child;	/* first child of this message */
 	struct message	*m_younger;	/* younger brother of this message */
 	struct message	*m_elder;	/* elder brother of this message */
@@ -409,6 +408,9 @@ struct message {
 	long		m_threadpos;	/* position in threaded display */
 #ifdef USE_SCORE
 	float		m_score;	/* score of message */
+#endif
+#ifdef USE_IMAP
+	unsigned long	m_uid;		/* IMAP unique identifier */
 #endif
 	char	*m_maildir_file;	/* original maildir file of msg */
 	unsigned	m_maildir_hash;	/* hash of file name in maildir sub */

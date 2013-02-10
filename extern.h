@@ -38,50 +38,31 @@
  * SUCH DAMAGE.
  */
 
-/* aux.c */
+/* auxlily.c */
 void panic(const char *format, ...);
 void holdint(void);
 void relseint(void);
 void touch(struct message *mp);
 int is_dir(char *name);
 int argcount(char **argv);
-void i_strcpy(char *dest, const char *src, int size);
-char *i_strdup(const char *src);
-void makelow(char *cp);
-int substr(const char *str, const char *sub);
 char *colalign(const char *cp, int col, int fill);
 void try_pager(FILE *fp);
-int source(void *v);
-int unstack(void);
-void alter(char *name);
-int blankline(char *linebuf);
-int anyof(char const *s1, char const *s2);
-int is_prefix(const char *as1, const char *as2);
-char *last_at_before_slash(const char *sp);
 enum protocol which_protocol(const char *name);
-const char *protfile(const char *xcp);
-char *protbase(const char *cp);
-#ifdef USE_IMAP
-int disconnected(const char *file);
-#endif
 unsigned pjw(const char *cp);
 long nextprime(long n);
-char *strenc(const char *cp);
-char *strdec(const char *cp);
-#ifdef USE_MD5
-/* Returns salloc()ed buffer */
-char *md5tohex(void const *vp);
-/* Returns salloc()ed buffer */
-char *cram_md5_string(char const *user, char const *pass, char const *b64);
-#endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
-void transflags(struct message *omessage, long omsgCount, int transparent);
+
+/* Search passwd file for a uid, return name on success, NULL on failure */
+char *	getname(int uid);
+/* Discover user login name */
+char *	username(void);
+/* Return our hostname */
+char *	nodename(int mayoverride);
+
 /* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
 
-char *sstpcpy(char *dst, const char *src);
-char *sstrdup(const char *cp);
 enum okay makedir(const char *name);
 enum okay cwget(struct cw *cw);
 enum okay cwret(struct cw *cw);
@@ -90,9 +71,19 @@ void makeprint(struct str *in, struct str *out);
 char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
-int asccasecmp(const char *s1, const char *s2);
-int ascncasecmp(const char *s1, const char *s2, size_t sz);
-char *asccasestr(const char *haystack, const char *xneedle);
+
+#ifndef HAVE_GETOPT
+/* getopt(3) fallback implementation */
+char	*my_optarg;
+int	my_optind, /*my_opterr,*/ my_optopt;
+
+int	my_getopt(int argc, char *const argv[], const char *optstring);
+# define getopt		my_getopt
+# define optarg		my_optarg
+# define optind		my_optind
+/*# define opterr		my_opterr*/
+# define optopt		my_optopt
+#endif
 
 /* Memory allocation routines */
 #ifdef HAVE_ASSERTS
@@ -326,8 +317,22 @@ void relsesigs(void);
 off_t fsize(FILE *iob);
 char *file_expand(char const *name);
 char *expand(char const *name);
+/* Locate the user's mailbox file (where new, unread mail is queued) */
+void	findmail(char *user, int force, char *buf, int size);
+/* Get rid of queued mail */
+void	demail(void);
 int getfold(char *name, int size);
 char *getdeadletter(void);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * *sourcing* so that others will realize that they are no longer reading from
+ * a tty (in all probability) */
+int		source(void *v);
+
+/* Pop the current input back to the previous level.  Update the *sourcing*
+ * flag as appropriate */
+int		unstack(void);
+
 char *fgetline(char **line, size_t *linesize, size_t *count,
 		size_t *llen, FILE *fp, int appendnl);
 void newline_appended(void);
@@ -339,16 +344,13 @@ int sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp);
 enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose);
 
-/* getname.c */
-char *getname(int uid);
-int getuserid(char *name);
-
-/* getopt.c */
-#ifndef HAVE_GETOPT
-int getopt(int argc, char *const argv[], const char *optstring);
-#endif
-
 /* head.c */
+
+/* Return the user's From: address(es) */
+char const *	myaddrs(struct header *hp);
+/* Boil the user's From: addresses down to a single one, or use *sender* */
+char const *	myorigin(struct header *hp);
+
 int	is_head(char const *linebuf, size_t linelen);
 int	extract_date_from_from_(char const *line, size_t linelen,
 		char datebuf[FROM_DATEBUF]);
@@ -366,7 +368,7 @@ int is_addr_invalid(struct name *np, int putmsg);
 char *skinned_name(struct name const*np);
 char *skin(char const *name);
 int addrspec_with_guts(int doskin, char const *name, struct addrguts *agp);
-char *realname(char *name);
+char *realname(char const *name);
 char *name1(struct message *mp, int reptype);
 int msgidcmp(const char *s1, const char *s2);
 int is_ign(char *field, size_t fieldlen, struct ignoretab ignore[2]);
@@ -383,6 +385,7 @@ char *getsender(struct message *m);
 
 /* imap.c */
 #ifdef USE_IMAP
+char const *	imap_fileof(char const *xcp);
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
 		const char *mbx);
@@ -406,6 +409,8 @@ enum okay imap_dequeue(struct mailbox *mp, FILE *fp);
 int cconnect(void *vp);
 int cdisconnect(void *vp);
 int ccache(void *vp);
+int	disconnected(const char *file);
+void	transflags(struct message *omessage, long omsgCount, int transparent);
 #else
 # define imap_imap	ccmdnotsupp
 # define cconnect	ccmdnotsupp
@@ -491,11 +496,6 @@ int main(int argc, char *argv[]);
 /* mime.c */
 char const *gettcharset(void);
 char const *need_hdrconv(struct header *hp, enum gfield w);
-#ifdef HAVE_ICONV
-iconv_t iconv_open_ft(const char *tocode, const char *fromcode);
-size_t iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
-		char **outb, size_t *outbleft, int tolerant);
-#endif
 enum mimeenc mime_getenc(char *h);
 int mime_getcontent(char *h);
 char *mime_getparam(char *param, char *h);
@@ -503,11 +503,11 @@ char *mime_getboundary(char *h);
 char *mime_filecontent(char *name);
 int get_mime_convert(FILE *fp, char **contenttype, char const **charset,
 		enum mimeclean *isclean, int dosign);
-void mime_fromhdr(struct str *in, struct str *out, enum tdflags flags);
-char *mime_fromaddr(char *name);
+void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
+char *mime_fromaddr(char const *name);
 size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 		char *prefix, size_t prefixlen);
-ssize_t	 mime_write(void *ptr, size_t size, FILE *f,
+ssize_t	 mime_write(void const *ptr, size_t size, FILE *f,
 		enum conversion convert, enum tdflags dflags,
 		char *prefix, size_t prefixlen, struct str *rest);
 
@@ -554,13 +554,29 @@ enum okay pop3_body(struct message *m);
 void pop3_quit(void);
 #endif
 
-/* popen.c */
+/*
+ * popen.c
+ * Subprocesses, popen, but also file handling with registering
+ */
+
 sighandler_type safe_signal(int signum, sighandler_type handler);
 FILE *safe_fopen(const char *file, const char *mode, int *omode);
 FILE *Fopen(const char *file, const char *mode);
 FILE *Fdopen(int fd, const char *mode);
 int Fclose(FILE *fp);
 FILE *Zopen(const char *file, const char *mode, int *compression);
+
+/* Create a temporary file in tempdir, use prefix for its name, store the
+ * unique name in fn, and return a stdio FILE pointer with access mode.
+ * *bits* specifies the access mode of the newly created temporary file */
+FILE *	Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
+
+/* Free the resources associated with the given filename.  To be called after
+ * unlink().  Since this function can be called after receiving a signal, the
+ * variable must be made NULL first and then free()d, to avoid more than one
+ * free() call in all circumstances */
+void	Ftfree(char **fn);
+
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
 int Pclose(FILE *ptr);
 void close_all_files(void);
@@ -605,12 +621,12 @@ int puthead(struct header *hp, FILE *fo, enum gfield w,
 		char const *contenttype, char const *charset);
 enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
 
-/* smtp.c */
-char *nodename(int mayoverride);
-char *myaddrs(struct header *hp);
-char *myorigin(struct header *hp);
-char *smtp_auth_var(const char *type, const char *addr);
+/*
+ * smtp.c
+ */
+
 #ifdef USE_SMTP
+char *	smtp_auth_var(const char *type, const char *addr);
 int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
 #endif
@@ -632,7 +648,11 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
 
 /*
  * strings.c
+ * Two series: the first uses an auto-reclaimed string storage that resets the
+ * memory at command loop ticks, the second is about plain support functions
+ * which use unspecified or heap memory
  */
+
 void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
 void		sreset(void);
@@ -645,12 +665,71 @@ char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);
 char *		savecat(char const *s1, char const *s2);
 
+#ifdef USE_MD5
+char *		cram_md5_string(char const *user, char const *pass,
+			char const *b64);
+#endif
+
+/* Create duplicate, lowercasing all characters along the way */
+char *		i_strdup(char const *src);
+
+/* Extract the protocol base and return a duplicate */
+char *		protbase(char const *cp);
+
+#ifdef USE_MD5
+/* MD5 checksum as hexadecimal string */
+char *		md5tohex(void const *vp);
+#endif
+
+/* URL en- and decoding (RFC 1738, but not really) */
+char *		urlxenc(char const *cp);
+char *		urlxdec(char const *cp);
+
 struct str *	str_concat_csvl(struct str *self, ...);
 
-/* temp.c */
-FILE *Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file);
-void Ftfree(char **fn);
-void tinit(void);
+/* The rest does not deal with auto-reclaimed storage */
+
+/* Are any of the characters in the two strings the same? */
+int		anyof(char const *s1, char const *s2);
+
+/* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
+ * *dest* will always be terminated unless *size* is 0 */
+void		i_strcpy(char *dest, char const *src, size_t size);
+
+/* Is *as1* a valid prefix of *as2*? */
+int		is_prefix(char const *as1, char const *as2);
+
+/* Find the last AT @ before the first slash */
+char const *	last_at_before_slash(char const *sp);
+
+/* Convert a string to lowercase, in-place and with multibyte-aware */
+void		makelow(char *cp);
+
+/* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
+int		substr(const char *str, const char *sub);
+
+/* Lazy vsprintf wrapper */
+#ifndef HAVE_SNPRINTF
+int		snprintf(char *str, size_t size, const char *format, ...);
+#endif
+
+char *		sstpcpy(char *dst, const char *src);
+char *		sstrdup(const char *cp SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
+#endif
+
+/* Locale-independent character class functions */
+int		asccasecmp(char const *s1, char const *s2);
+int		ascncasecmp(char const *s1, char const *s2, size_t sz);
+char const *	asccasestr(char const *haystack, char const *xneedle);
+
+#ifdef HAVE_ICONV
+/* Our iconv(3) wrappers */
+iconv_t iconv_open_ft(char const *tocode, char const *fromcode);
+size_t iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
+		char **outb, size_t *outbleft, int tolerant);
+#endif
 
 /* thread.c */
 int thread(void *vp);
@@ -668,17 +747,16 @@ int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char *prefix, char *string);
 int yorn(char *msg);
 
-/* v7.local.c */
-void findmail(char *user, int force, char *buf, int size);
-void demail(void);
-char *username(void);
-
 /* vars.c */
-void assign(const char *name, const char *value);
+
+/* Assign a value to a variable */
+void	assign(char const *name, char const *value);
+
+int	unset_internal(char const *name);
+
 char *vcopy(const char *str);
 char *value(const char *name);
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
 int hash(const char *name);
-int unset_internal(const char *name);
 void remove_group(const char *name);

@@ -355,6 +355,49 @@ jleave:
 	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
 }
 
+char const *
+myaddrs(struct header *hp)
+{
+	static char *addr;
+	struct name *np;
+	char const *ret = NULL;
+
+	if (hp != NULL && (np = hp->h_from) != NULL) {
+		if ((ret = np->n_fullname) != NULL)
+			goto jleave;
+		if ((ret = np->n_name) != NULL)
+			goto jleave;
+	}
+	if ((ret = value("from")) != NULL)
+		goto jleave;
+	/*
+	 * When invoking sendmail directly, it's its task
+	 * to generate an otherwise undeterminable From: address.
+	 */
+	if (value("smtp") == NULL)
+		goto jleave;
+	if (addr == NULL) {
+		char *hn = nodename(1);
+		size_t sz = strlen(myname) + strlen(hn) + 2;
+		ret = addr = smalloc(sz);
+		snprintf(addr, sz, "%s@%s", myname, hn);
+	}
+jleave:
+	return (ret);
+}
+
+char const *
+myorigin(struct header *hp)
+{
+	char const *ret = NULL, *ccp;
+	struct name *np;
+
+	if ((ccp = myaddrs(hp)) != NULL &&
+			(np = lextract(ccp, GEXTRA|GFULL)) != NULL)
+		ret = np->n_flink != NULL ? value("sender") : ccp;
+	return (ret);
+}
+
 /*
  * See if the passed line buffer is a mail header according to RFC 4155.
  * Return true if yes.
@@ -933,7 +976,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
  * Fetch the real name from an internet mail address field.
  */
 char *
-realname(char *name)
+realname(char const *name)
 {
 	char const *cp, *cq, *cstart = NULL, *cend = NULL;
 	char *rname, *rp;

@@ -65,8 +65,6 @@
  * IMAP v4r1 client following RFC 2060.
  */
 
-static int	verbose;
-
 #define	IMAP_ANSWER()	{ \
 				if (mp->mb_type != MB_CACHE) { \
 					enum okay ok = OKAY; \
@@ -587,6 +585,26 @@ imap_noop1(struct mailbox *mp)
 	return OKAY;
 }
 
+char const *
+imap_fileof(char const *xcp)
+{
+	char const *cp = xcp;
+	int state = 0;
+
+	while (*cp) {
+		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+			cp += 3;
+			state = 1;
+		}
+		if (cp[0] == '/' && state == 1)
+			return (cp + 1);
+		if (cp[0] == '/')
+			return (xcp);
+		++cp;
+	}
+	return (cp);
+}
+
 enum okay 
 imap_noop(void)
 {
@@ -598,7 +616,6 @@ imap_noop(void)
 	(void)&ok;
 	if (mb.mb_type != MB_IMAP)
 		return STOP;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -938,7 +955,7 @@ enum okay
 imap_select(struct mailbox *mp, off_t *size, int *count, const char *mbx)
 {
 	enum okay ok = OKAY;
-	char	*cp;
+	char const*cp;
 	char o[LINESIZE];
 	FILE	*queuefp = NULL;
 	(void)size;
@@ -966,7 +983,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
 {
 	char o[LINESIZE];
 	FILE	*queuefp = NULL;
-	char	*cp;
+	char const *cp;
 	struct message *m;
 	unsigned 	x = X, y = Y, n;
 
@@ -987,8 +1004,11 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
 			cp += 5;
 			while (*cp == ' ')
 				cp++;
-			if (*cp == '(')
-				imap_getflags(cp, &cp, &m->m_flag);
+			if (*cp == '(') {
+				char *x;
+				imap_getflags(cp, &x, &m->m_flag);
+				cp = x; /* XXX */
+			}
 		}
 		if ((cp = asccasestr(responded_other_text, "UID ")) != NULL)
 			m->m_uid = strtoul(&cp[4], NULL, 10);
@@ -1133,7 +1153,7 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 		memcpy(*user, *uhp, *cp - *uhp);
 		(*user)[*cp - *uhp] = '\0';
 		*sp = &(*cp)[1];
-		*user = strdec(*user);
+		*user = urlxdec(*user);
 	} else {
 		*user = NULL;
 		*sp = *uhp;
@@ -1163,7 +1183,6 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	(void)&saveint;
 	(void)&savepipe;
 	server = savestr((char *)xserver);
-	verbose = value("verbose") != NULL;
 	if (newmail) {
 		saveint = safe_signal(SIGINT, SIG_IGN);
 		savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -1421,9 +1440,10 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
 	struct message mt;
 	sighandler_type	saveint = SIG_IGN, savepipe = SIG_IGN;
-	char o[LINESIZE], *cp = NULL, *loc = NULL,
+	char o[LINESIZE],
 		*volatile item = NULL, *volatile resp = NULL,
 		*volatile head = NULL;
+	char const *cp = NULL, *loc = NULL;
 	size_t expected;
 	size_t volatile headsize = 0;
 	int number = m - message + 1;
@@ -1433,7 +1453,6 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 	long n = -1;
 	unsigned long	u = 0;
 
-	verbose = value("verbose") != NULL;
 	if (getcache(mp, m, need) == OKAY)
 		return OKAY;
 	if (mp->mb_type == MB_CACHE) {
@@ -1605,7 +1624,8 @@ imap_fetchheaders (
     int top	/* bot > top */
 )
 {
-	char	o[LINESIZE], *cp;
+	char	o[LINESIZE];
+	char const *cp;
 	struct message	mt;
 	size_t	expected;
 	enum okay	ok;
@@ -1687,7 +1707,6 @@ imap_getheaders(int volatile bot, int top)
 	enum okay ok = STOP;
 	int i, chunk = 256;
 
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type == MB_CACHE)
 		return;
 	if (bot < 1)
@@ -1737,7 +1756,6 @@ imap_exit(struct mailbox *mp)
 	char	o[LINESIZE];
 	FILE	*queuefp = NULL;
 
-	verbose = value("verbose") != NULL;
 	mp->mb_active |= MB_BYE;
 	snprintf(o, sizeof o, "%s LOGOUT\r\n", tag(1));
 	IMAP_OUT(o, MB_COMD, return STOP)
@@ -1773,7 +1791,6 @@ imap_update(struct mailbox *mp)
 	struct message *m;
 	int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
 
-	verbose = value("verbose") != NULL;
 	if (Tflag != NULL) {
 		if ((readstat = Zopen(Tflag, "w", NULL)) == NULL)
 			Tflag = NULL;
@@ -1904,7 +1921,6 @@ imap_quit(void)
 	sighandler_type	saveint;
 	sighandler_type savepipe;
 
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type == MB_CACHE) {
 		imap_update(&mb);
 		return;
@@ -1987,7 +2003,6 @@ imap_unstore(struct message *m, int n, const char *flag)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2029,7 +2044,6 @@ imap_imap(void *vp)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	if (mp->mb_type != MB_IMAP) {
 		printf("Not operating on an IMAP mailbox.\n");
 		return 1;
@@ -2060,7 +2074,6 @@ int
 imap_newmail(int autoinc)
 {
 	if (autoinc && had_exists < 0 && had_expunge < 0) {
-		verbose = value("verbose") != NULL;
 		imaplock = 1;
 		imap_noop();
 		imaplock = 0;
@@ -2317,7 +2330,6 @@ imap_append(const char *xserver, FILE *fp)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	server = savestr((char *)xserver);
 	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &mbx, &pass, &user);
 	imaplock = 1;
@@ -2418,7 +2430,6 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	char	*cp;
 	int	depth;
 
-	verbose = value("verbose") != NULL;
 	depth = (cp = value("imap-list-depth")) != NULL ? atoi(cp) : 2;
 	if (imap_list1(mp, base, &list, &lend, 0) == STOP)
 		return STOP;
@@ -2476,7 +2487,7 @@ imap_folders(const char *name, int strip)
 				"Try \"folders @\".\n", sp);
 		return;
 	}
-	fold = protfile(name);
+	fold = imap_fileof(name);
 	if (columnize) {
 		if ((fp = Ftemp(&tempfn, "Ri", "w+", 0600, 1)) == NULL) {
 			perror("tmpfile");
@@ -2570,7 +2581,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
 			return STOP;
 		ok = OKAY;
 	}
-	qname = imap_quotestr(name = protfile(name));
+	qname = imap_quotestr(name = imap_fileof(name));
 	/*
 	 * Since it is not possible to set flags on the copy, recently
 	 * set flags must be set on the original to include it in the copy.
@@ -2665,7 +2676,6 @@ imap_copy(struct message *m, int n, const char *name)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2854,16 +2864,15 @@ imap_search2(struct mailbox *mp, struct message *m, int count,
 		c |= *cp;
 	if (c & 0200) {
 		cp = gettcharset();
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 		if (asccasecmp(cp, "utf-8")) {
 			iconv_t	it;
-			char	*sp, *nsp, *nspec;
+			char	*nsp, *nspec;
 			size_t	sz, nsz;
 			if ((it = iconv_open_ft("utf-8", cp)) != (iconv_t)-1) {
 				sz = strlen(spec) + 1;
 				nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
-				sp = (char *)spec;
-				if (iconv_ft(it, &sp, &sz, &nsp, &nsz, 0)
+				if (iconv_ft(it, &spec, &sz, &nsp, &nsz, 0)
 						!= (size_t)-1 && sz == 0) {
 					spec = nspec;
 					cp = "utf-8";
@@ -2913,7 +2922,6 @@ imap_search1(const char *spec, int f)
 	(void)&ok;
 	if (mb.mb_type != MB_IMAP)
 		return STOP;
-	verbose = value("verbose") != NULL;
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, maincatch);
@@ -2951,7 +2959,6 @@ imap_remove(const char *name)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type != MB_IMAP) {
 		fprintf(stderr, "Refusing to remove \"%s\" "
 				"in disconnected mode.\n", name);
@@ -2969,7 +2976,7 @@ imap_remove(const char *name)
 	if (sigsetjmp(imapjmp, 1) == 0) {
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
-		ok = imap_remove1(&mb, protfile(name));
+		ok = imap_remove1(&mb, imap_fileof(name));
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
@@ -3007,7 +3014,6 @@ imap_rename(const char *old, const char *new)
 	(void)&saveint;
 	(void)&savepipe;
 	(void)&ok;
-	verbose = value("verbose") != NULL;
 	if (mb.mb_type != MB_IMAP) {
 		fprintf(stderr, "Refusing to rename mailboxes "
 				"in disconnected mode.\n");
@@ -3026,7 +3032,7 @@ imap_rename(const char *old, const char *new)
 	if (sigsetjmp(imapjmp, 1) == 0) {
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
-		ok = imap_rename1(&mb, protfile(old), protfile(new));
+		ok = imap_rename1(&mb, imap_fileof(old), imap_fileof(new));
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
@@ -3263,6 +3269,7 @@ cdisconnect(void *vp)
 	}
 	return 0;
 }
+
 int 
 ccache(void *vp)
 {
@@ -3285,6 +3292,63 @@ ccache(void *vp)
 	return 0;
 }
 
+int
+disconnected(const char *file)
+{
+	char	*cp, *cq, *vp;
+	int	vs, r;
+
+	if (value("disconnected"))
+		return 1;
+	cp = protbase(file);
+	if (strncmp(cp, "imap://", 7) == 0)
+		cp += 7;
+	else if (strncmp(cp, "imaps://", 8) == 0)
+		cp += 8;
+	else
+		return 0;
+	if ((cq = strchr(cp, ':')) != NULL)
+		*cq = '\0';
+	vp = ac_alloc(vs = strlen(cp) + 14);
+	snprintf(vp, vs, "disconnected-%s", cp);
+	r = value(vp) != NULL;
+	ac_free(vp);
+	return r;
+}
+
+void
+transflags(struct message *omessage, long omsgCount, int transparent)
+{
+	struct message	*omp, *nmp, *newdot, *newprevdot;
+	int	hf;
+
+	omp = omessage;
+	nmp = message;
+	newdot = message;
+	newprevdot = NULL;
+	while (omp < &omessage[omsgCount] &&
+			nmp < &message[msgCount]) {
+		if (dot && nmp->m_uid == dot->m_uid)
+			newdot = nmp;
+		if (prevdot && nmp->m_uid == prevdot->m_uid)
+			newprevdot = nmp;
+		if (omp->m_uid == nmp->m_uid) {
+			hf = nmp->m_flag & MHIDDEN;
+			if (transparent && mb.mb_type == MB_IMAP)
+				omp->m_flag &= ~MHIDDEN;
+			*nmp++ = *omp++;
+			if (transparent && mb.mb_type == MB_CACHE)
+				nmp[-1].m_flag |= hf;
+		} else if (omp->m_uid < nmp->m_uid)
+			omp++;
+		else
+			nmp++;
+	}
+	dot = newdot;
+	setdot(newdot);
+	prevdot = newprevdot;
+	free(omessage);
+}
 #endif	/* USE_IMAP */
 
 time_t

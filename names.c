@@ -454,7 +454,7 @@ detract(struct name *np, enum gfield ntype)
 	comma = ntype & GCOMMA;
 	ntype &= ~GCOMMA;
 	s = 0;
-	if ((debug || value("debug")) && comma)
+	if (debug && comma)
 		fprintf(stderr, tr(145, "detract asked to insert commas\n"));
 	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)

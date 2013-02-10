@@ -78,8 +78,8 @@ $set 1
 75 Unterminated %s definition: "%s".\n
 76 A macro named "%s" already exists.\n
 77 temporary file seek
-78 --- DELETED ---
-79 --- DELETED ---
+78 %s: illegal option -- %c\n
+79 %s: option requires an argument -- %c\n
 80 No previous file\n
 81 "%s": Expansion failed.\n
 82 "%s": No match.\n
@@ -206,7 +206,7 @@ $set 1
 195 --- DELETED ---
 196 --- DELETED ---
 197 --- DELETED ---
-198 "%s" is not a user of this system\n
+198 --- DELETED ---
 199 user = %s, homedir = %s\n
 200 too long to edit\n
 201 Cannot associate a name with uid %d\n

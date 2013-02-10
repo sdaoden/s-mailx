@@ -42,14 +42,13 @@ SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 			-DSENDMAIL='"$(SENDMAIL)"'
 
-OBJ = aux.o base64.o cache.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
-	dotlock.o edit.o fio.o getname.o getopt.o head.o hmac.o \
-	imap.o imap_search.o junk.o lex.o list.o lzw.o \
+OBJ = auxlily.o base64.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
+	dotlock.o edit.o fio.o head.o \
+	imap.o imap_cache.o imap_search.o junk.o lex.o list.o lzw.o \
 	macro.o maildir.o main.o md5.o mime.o names.o \
 	openssl.o pop3.o popen.o quit.o \
-	send.o sendout.o smtp.o ssl.o strings.o temp.o thread.o tty.o \
-	v7.local.o vars.o \
-	version.o
+	send.o sendout.o smtp.o ssl.o strings.o thread.o tty.o \
+	vars.o version.o
 
 .SUFFIXES: .o .c .y
 .c.o:
@@ -64,7 +63,7 @@ $(SID)$(NAIL): $(OBJ)
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
-md5.o imap.o hmac.o smtp.o aux.o pop3.o junk.o: md5.h
+md5.o imap.o smtp.o auxlily.o pop3.o junk.o: md5.h
 
 config.h: user.conf makeconfig Makefile
 	$(SHELL) ./makeconfig

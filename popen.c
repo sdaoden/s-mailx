@@ -276,6 +276,49 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 }
 
 FILE *
+Ftemp(char **fn, char *prefix, char *mode, int bits, int register_file)
+{
+	FILE *fp;
+	int fd;
+
+	*fn = smalloc(strlen(tempdir) + strlen(prefix) + 8);
+	strcpy(*fn, tempdir);
+	strcat(*fn, "/");
+	strcat(*fn, prefix);
+	strcat(*fn, "XXXXXX");
+#ifdef HAVE_MKSTEMP
+	if ((fd = mkstemp(*fn)) < 0)
+		goto Ftemperr;
+	if (fchmod(fd, bits) < 0)
+		goto Ftemperr;
+#else
+	if (mktemp(*fn) == NULL)
+		goto Ftemperr;
+	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR, bits)) < 0)
+		goto Ftemperr;
+#endif
+	if (register_file)
+		fp = Fdopen(fd, mode);
+	else {
+		fp = fdopen(fd, mode);
+		fcntl(fd, F_SETFD, FD_CLOEXEC);
+	}
+	return fp;
+Ftemperr:
+	Ftfree(fn);
+	return NULL;
+}
+
+void
+Ftfree(char **fn)
+{
+	char *cp = *fn;
+
+	*fn = NULL;
+	free(cp);
+}
+
+FILE *
 Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 {
 	int p[2];

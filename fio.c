@@ -632,6 +632,30 @@ expand(char const *name)
 	return (_expand(name, 0));
 }
 
+void
+findmail(char *user, int force, char *buf, int size)
+{
+	char *mbox, *cp;
+
+	if (strcmp(user, myname) == 0 && !force &&
+			(cp = value("folder")) != NULL &&
+			which_protocol(cp) == PROTO_IMAP) {
+		snprintf(buf, size, "%s/INBOX", protbase(cp));
+	} else if (force || (mbox = value("MAIL")) == NULL) {
+		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
+	} else {
+		strncpy(buf, mbox, size);
+		buf[size-1]='\0';
+	}
+}
+
+void
+demail(void)
+{
+	if (value("keep") != NULL || rm(mailname) < 0)
+		close(creat(mailname, 0600));
+}
+
 /*
  * Determine the current folder directory name.
  */
@@ -674,6 +698,69 @@ getdeadletter(void)
 	if (cp == NULL)
 		cp = "dead.letter";
 	return (cp);
+}
+
+/*
+ * The following code deals with input stacking to do source
+ * commands.  All but the current file pointer are saved on
+ * the stack.
+ */
+
+static int	ssp;			/* Top of file stack */
+struct {
+	FILE		*s_file;	/* File we were in. */
+	enum condition	s_cond;		/* Saved state of conditionals */
+	int		s_loading;	/* Loading .mailrc, etc. */
+#define	SSTACK	20
+} sstack[SSTACK];
+
+int
+source(void *v)
+{
+	char **arglist = v;
+	FILE *fi;
+	char *cp;
+
+	if ((cp = file_expand(*arglist)) == NULL)
+		return (1);
+	if ((fi = Fopen(cp, "r")) == NULL) {
+		perror(cp);
+		return (1);
+	}
+	if (ssp >= SSTACK - 1) {
+		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
+		Fclose(fi);
+		return (1);
+	}
+	sstack[ssp].s_file = input;
+	sstack[ssp].s_cond = cond;
+	sstack[ssp].s_loading = loading;
+	ssp++;
+	loading = 0;
+	cond = CANY;
+	input = fi;
+	sourcing++;
+	return(0);
+}
+
+int
+unstack(void)
+{
+	if (ssp <= 0) {
+		fprintf(stderr, tr(4, "\"Source\" stack over-pop.\n"));
+		sourcing = 0;
+		return(1);
+	}
+	Fclose(input);
+	if (cond != CANY)
+		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
+	ssp--;
+	cond = sstack[ssp].s_cond;
+	loading = sstack[ssp].s_loading;
+	input = sstack[ssp].s_file;
+	if (ssp == 0)
+		sourcing = loading;
+	return(0);
 }
 
 /*

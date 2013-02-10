@@ -66,11 +66,6 @@ static int mustquote_inhdrq(int c);
 static size_t	delctrl(char *cp, size_t sz);
 static char const	*getcharset(int isclean);
 static int has_highbit(register const char *s);
-#ifdef HAVE_ICONV
-static void uppercopy(char *dest, const char *src);
-static void stripdash(char *p);
-static void invalid_seq(int c);
-#endif
 static int is_this_enc(const char *line, const char *encoding);
 static char *mime_tline(char *x, char *l);
 static char *mime_type(char *ext, char const *filename);
@@ -84,8 +79,10 @@ static void mime_fromqp(struct str *in, struct str *out, int ishdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
 static size_t convhdra(char *str, size_t len, FILE *fp);
 static size_t mime_write_tohdr_a(struct str *in, FILE *f);
-static void addstr(char **buf, size_t *sz, size_t *pos, char *str, size_t len);
-static void addconv(char **buf, size_t *sz, size_t *pos, char *str, size_t len);
+static void addstr(char **buf, size_t *sz, size_t *pos,
+		char const *str, size_t len);
+static void addconv(char **buf, size_t *sz, size_t *pos,
+		char const *str, size_t len);
 static size_t fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f,
 		enum tdflags flags, char *prefix, size_t prefixlen);
 
@@ -245,154 +242,6 @@ need_hdrconv(struct header *hp, enum gfield w)
 needs:	return getcharset(MIME_HIGHBIT);
 }
 
-#ifdef HAVE_ICONV
-/*
- * Convert a string, upper-casing the characters.
- */
-static void 
-uppercopy(char *dest, const char *src)
-{
-	do
-		*dest++ = upperconv(*src & 0377);
-	while (*src++);
-}
-
-/*
- * Strip dashes.
- */
-static void 
-stripdash(char *p)
-{
-	char *q = p;
-
-	do
-		if (*(q = p) != '-')
-			q++;
-	while (*p++);
-}
-
-/*
- * An iconv_open wrapper that tries to convert between character set
- * naming conventions.
- */
-iconv_t
-iconv_open_ft(const char *tocode, const char *fromcode)
-{
-	iconv_t id;
-	char *t, *f;
-
-	/*
-	 * On Linux systems, this call may succeed.
-	 */
-	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Remove the "iso-" prefixes for Solaris.
-	 */
-	if (ascncasecmp(tocode, "iso-", 4) == 0)
-		tocode += 4;
-	else if (ascncasecmp(tocode, "iso", 3) == 0)
-		tocode += 3;
-	if (ascncasecmp(fromcode, "iso-", 4) == 0)
-		fromcode += 4;
-	else if (ascncasecmp(fromcode, "iso", 3) == 0)
-		fromcode += 3;
-	if (*tocode == '\0' || *fromcode == '\0')
-		return (iconv_t) -1;
-	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Solaris prefers upper-case charset names. Don't ask...
-	 */
-	t = salloc(strlen(tocode) + 1);
-	uppercopy(t, tocode);
-	f = salloc(strlen(fromcode) + 1);
-	uppercopy(f, fromcode);
-	if ((id = iconv_open(t, f)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Strip dashes for UnixWare.
-	 */
-	stripdash(t);
-	stripdash(f);
-	if ((id = iconv_open(t, f)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Add your vendor's sillynesses here.
-	 */
-	/*
-	 * If the encoding names are equal at this point, they
-	 * are just not understood by iconv(), and we cannot
-	 * sensibly use it in any way. We do not perform this
-	 * as an optimization above since iconv() can otherwise
-	 * be used to check the validity of the input even with
-	 * identical encoding names.
-	 */
-	if (strcmp(t, f) == 0)
-		errno = 0;
-	return (iconv_t)-1;
-}
-
-/*
- * Fault-tolerant iconv() function.
- * (2012-09-24: export and use it exclusively to isolate prototype problems
- * (*inb* is 'const char**' except in POSIX) in a single place.
- * GNU libiconv even allows for configuration time const/non-const..
- * In the end it's an ugly guess, but we can't do better since make(1) doesn't
- * support compiler invocations which bail on error, so no -Werror.
- */
-/* Citrus project? */
-#if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
-  /* DragonFly 3.2.1 is special */
-# ifdef __DragonFly__
-#  define __INBCAST	(char ** __restrict__)
-# else
-#  define __INBCAST	(char const **)
-# endif
-#endif
-#ifndef __INBCAST
-# define __INBCAST
-#endif
-
-size_t
-iconv_ft(iconv_t cd, char **inb, size_t *inbleft,
-		char **outb, size_t *outbleft, int tolerant)
-{
-	size_t sz;
-
-	while ((sz = iconv(cd, __INBCAST inb, inbleft, outb, outbleft)) ==
-				(size_t)-1
-#undef __INBCAST
-			&& tolerant && (errno == EILSEQ || errno == EINVAL)) {
-		if (*inbleft > 0) {
-			(*inb)++;
-			(*inbleft)--;
-		} else {
-			**outb = '\0';
-			break;
-		}
-		if (*outbleft > 0) {
-			*(*outb)++ = '?';
-			(*outbleft)--;
-		} else {
-			**outb = '\0';
-			break;
-		}
-	}
-	return sz;
-}
-
-/*
- * Print an error because of an invalid character sequence.
- */
-/*ARGSUSED*/
-static void 
-invalid_seq(int c)
-{
-	(void)c;
-	/*fprintf(stderr, "iconv: cannot convert %c\n", c);*/
-}
-#endif	/* HAVE_ICONV */
 
 static int
 is_this_enc(const char *line, const char *encoding)
@@ -891,7 +740,7 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
  * Convert header fields from RFC 1522 format TODO no error handling at all
  */
 void 
-mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
+mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
 	struct str crest, cin, cout;
 	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
@@ -979,7 +828,7 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 				mptr = nptr = q;
 				uptr = nptr + outleft;
 				iptr = cout.s;
-				if (iconv_ft(fhicd, &iptr, &inleft,
+				if (iconv_ft(fhicd, (char const**)&iptr,&inleft,
 					&nptr, &outleft, 1) == (size_t)-1 &&
 						errno == E2BIG) {
 					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
@@ -1243,7 +1092,8 @@ jagain:		osz = cbufsz;
 		op = cbuf = ac_alloc(cbufsz);
 		ip = str;
 		isz = len;
-		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
+		if (iconv_ft(iconvd, (char const**)&ip, &isz, &op, &osz, 0)
+				== (size_t)-1) {
 			ac_free(cbuf);
 			if (errno != E2BIG)
 				goto jleave;
@@ -1305,7 +1155,7 @@ mime_write_tohdr_a(struct str *in, FILE *f)
 }
 
 static void
-addstr(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
+addstr(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
 	*buf = srealloc(*buf, *sz += len);
 	memcpy(&(*buf)[*pos], str, len);
@@ -1313,11 +1163,11 @@ addstr(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
 }
 
 static void
-addconv(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
+addconv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
-	struct str	in, out;
+	struct str in, out;
 
-	in.s = str;
+	in.s = (char*)str;
 	in.l = len;
 	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 	addstr(buf, sz, pos, out.s, out.l);
@@ -1328,14 +1178,16 @@ addconv(char **buf, size_t *sz, size_t *pos, char *str, size_t len)
  * Interpret MIME strings in parts of an address field.
  */
 char *
-mime_fromaddr(char *name)
+mime_fromaddr(char const *name)
 {
-	char	*cp, *lastcp;
-	char	*res = NULL;
-	size_t	ressz = 1, rescur = 0;
+	char const *cp, *lastcp;
+	char *res = NULL;
+	size_t ressz = 1, rescur = 0;
 
-	if (name == NULL || *name == '\0')
-		return name;
+	if (name == NULL)
+		return (res);
+	if (*name == '\0')
+		return savestr(name);
 	if ((cp = routeaddr(name)) != NULL && cp > name) {
 		addconv(&res, &ressz, &rescur, name, cp - name);
 		lastcp = cp;
@@ -1365,9 +1217,11 @@ mime_fromaddr(char *name)
 	if (cp > lastcp)
 		addstr(&res, &ressz, &rescur, lastcp, cp - lastcp);
 	res[rescur] = '\0';
-	cp = savestr(res);
-	free(res);
-	return cp;
+	{	char *x = res;
+		res = savestr(res);
+		free(x);
+	}
+	return (res);
 }
 
 /*
@@ -1515,8 +1369,8 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 1) ==
-					(size_t)-1 &&
+		if (iconv_ft(iconvd, (char const **)&iptr, &inleft,
+				&nptr, &outleft, 1) == (size_t)-1 &&
 				errno == E2BIG) {
 			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
 			ac_free(xmptr);
@@ -1565,7 +1419,7 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
  * fwrite performing the given MIME conversion.
  */
 ssize_t
-mime_write(void *ptr, size_t size, FILE *f,
+mime_write(void const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
 	char *prefix, size_t prefixlen, struct str *rest)
 {
@@ -1578,7 +1432,7 @@ mime_write(void *ptr, size_t size, FILE *f,
 	size_t inleft, outleft;
 #endif
 
-	in.s = ptr;
+	in.s = (char*)ptr;
 	in.l = size;
 	if ((sz = size) == 0) {
 		if (rest != NULL && rest->l != 0)
@@ -1587,21 +1441,22 @@ mime_write(void *ptr, size_t size, FILE *f,
 	}
 
 #ifdef HAVE_ICONV
-	if ((dflags & TD_ICONV) && size < sizeof mptr && iconvd != (iconv_t)-1
+	if ((dflags & TD_ICONV) && size < sizeof(mptr) && iconvd != (iconv_t)-1
 			&& (convert == CONV_TOQP || convert == CONV_8BIT ||
 				convert == CONV_TOB64 ||
 				convert == CONV_TOHDR)) {
 		inleft = size;
 		outleft = sizeof mptr;
 		nptr = mptr;
-		iptr = ptr;
-		if (iconv_ft(iconvd, &iptr, &inleft,
+		iptr = (char*)ptr;
+		if (iconv_ft(iconvd, (char const **)&iptr, &inleft,
 				&nptr, &outleft, 0) != (size_t)-1) {
-			in.l = sizeof mptr - outleft;
+			in.l = sizeof(mptr) - outleft;
 			in.s = mptr;
 		} else {
-			if (errno == EILSEQ || errno == EINVAL)
-				invalid_seq(*iptr);
+			if (errno == EILSEQ || errno == EINVAL) {
+				/* xxx report convertion error? */;
+			}
 			sz = -1;
 			goto jleave;
 		}

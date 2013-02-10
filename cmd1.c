@@ -1069,22 +1069,20 @@ brokpipe(int signo)
 int 
 top(void *v)
 {
-	int *msgvec = v;
-	int *ip;
+	int *msgvec = v, *ip, c, topl, lines, empty_last;
 	struct message *mp;
-	int c, topl, lines, lineb;
-	char *valtop, *linebuf = NULL;
+	char *cp, *linebuf = NULL;
 	size_t linesize;
 	FILE *ibuf;
 
 	topl = 5;
-	valtop = value("toplines");
-	if (valtop != NULL) {
-		topl = atoi(valtop);
+	cp = value("toplines");
+	if (cp != NULL) {
+		topl = atoi(cp);
 		if (topl < 0 || topl > 10000)
 			topl = 5;
 	}
-	lineb = 1;
+	empty_last = 1;
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
@@ -1101,13 +1099,16 @@ top(void *v)
 			break;
 		}
 		c = mp->m_lines;
-		if (!lineb)
+		if (! empty_last)
 			printf("\n");
 		for (lines = 0; lines < c && lines <= topl; lines++) {
 			if (readline(ibuf, &linebuf, &linesize) < 0)
 				break;
 			puts(linebuf);
-			lineb = blankline(linebuf);
+
+			for (cp = linebuf; *cp && blankchar(*cp); ++cp)
+				;
+			empty_last = (*cp == '\0');
 		}
 	}
 

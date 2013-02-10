@@ -44,7 +44,9 @@
 #include <stdio.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
+#include <utime.h>
 
 #include "extern.h"
 
@@ -54,8 +56,24 @@
  * Termination processing.
  */
 
+/* Touch the indicated file */
+static void	alter(char const *name);
+
 static int writeback(FILE *res, FILE *obuf);
 static void edstop(void);
+
+static void
+alter(char const *name)
+{
+	struct stat sb;
+	struct utimbuf utb;
+
+	if (stat(name, &sb))
+		return;
+	utb.actime = time((time_t *)0) + 1;
+	utb.modtime = sb.st_mtime;
+	utime(name, &utb);
+}
 
 /*
  * The "quit" command.

@@ -55,6 +55,10 @@
 
 static char	*send_boundary;
 
+static enum okay	putname(char const *line, enum gfield w,
+				enum sendaction action, int *gotcha,
+				char *prefix, FILE *fo, struct name **xp);
+
 static char *getencoding(enum conversion convert);
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
@@ -74,6 +78,26 @@ static int fmt(char *str, struct name *np, FILE *fo, int comma,
 		int dropinvalid, int domime);
 static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
+
+static enum okay
+putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
+	char *prefix, FILE *fo, struct name **xp)
+{
+	enum okay ret = STOP;
+	struct name *np;
+
+	np = lextract(line, GEXTRA|GFULL);
+	if (xp)
+		*xp = np;
+	if (np == NULL)
+		;
+	else if (fmt(prefix, np, fo, w & (GCOMMA|GFILES), 0,
+			action != SEND_TODISP))
+		ret = OKAY;
+	else if (gotcha)
+		++(*gotcha);
+	return (ret);
+}
 
 /*
  * Generate a boundary for MIME multipart messages.
@@ -834,7 +858,7 @@ prepare_mta_args(struct name *to)
 	i = 2;
 	if (value("metoo"))
 		args[i++] = "-m";
-	if (value("verbose"))
+	if (verbose)
 		args[i++] = "-v";
 	for (j = 0; j < smopts_count; ++j, ++i)
 		args[i] = smopts[j];
@@ -871,7 +895,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 			mta = SENDMAIL;
 
 		args = prepare_mta_args(to);
-		if (debug || value("debug")) {
+		if (debug) {
 			printf(tr(181, "Sendmail arguments:"));
 			for (t = args; *t != NULL; t++)
 				printf(" \"%s\"", *t);
@@ -937,8 +961,7 @@ jstop:		savedeadletter(input, 0);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if (value("verbose") != NULL || value("sendwait") || debug
-			|| value("debug")) {
+	if (verbose || debug || value("sendwait")) {
 		if (wait_child(pid) == 0)
 			ok = OKAY;
 		else
@@ -1178,7 +1201,7 @@ message_id(FILE *fo, struct header *hp)
 {
 	time_t	now;
 	struct tm *tmp;
-	char *h;
+	char const *h;
 	size_t rl;
 
 	time(&now);
@@ -1227,24 +1250,6 @@ mkdate(FILE *fo, const char *field)
 			tzdiff_hour * 100 + tzdiff_min);
 }
 
-static enum okay
-putname(char *line, enum gfield w, enum sendaction action, int *gotcha,
-		char *prefix, FILE *fo, struct name **xp)
-{
-	struct name	*np;
-
-	np = lextract(line, GEXTRA|GFULL);
-	if (xp)
-		*xp = np;
-	if (np == NULL)
-		return 0;
-	if (fmt(prefix, np, fo, w&(GCOMMA|GFILES), 0, action != SEND_TODISP))
-		return 1;
-	if (gotcha)
-		(*gotcha)++;
-	return 0;
-}
-
 #define	FMT_CC_AND_BCC	{ \
 				if (hp->h_cc != NULL && w & GCC) { \
 					if (fmt("Cc:", hp->h_cc, fo, \
@@ -1271,10 +1276,10 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		char const *contenttype, char const *charset)
 {
 	int gotcha;
-	char *addr/*, *cp*/;
+	char const *addr;
 	int stealthmua;
+	size_t l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
-
 
 	if ((addr = value("stealthmua")) != NULL) {
 		stealthmua = (strcmp(addr, "noagent") == 0) ? -1 : 1;
@@ -1296,10 +1301,10 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 						&fromfield))
 				return 1;
 		if (((addr = hp->h_organization) != NULL ||
-				(addr = value("ORGANIZATION")) != NULL)
-				&& strlen(addr) > 0) {
+				(addr = value("ORGANIZATION")) != NULL) &&
+				(l = strlen(addr)) > 0) {
 			fwrite("Organization: ", sizeof (char), 14, fo);
-			if (mime_write(addr, strlen(addr), fo,
+			if (mime_write(addr, l, fo,
 					action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
@@ -1469,10 +1474,10 @@ static int
 infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 		int add_resent)
 {
-	size_t count;
-	char *buf = NULL, *cp/*, *cp2*/;
-	size_t c, bufsize = 0;
-	struct name	*fromfield = NULL, *senderfield = NULL;
+	size_t count, c, bufsize = 0;
+	char *buf = NULL;
+	char const *cp;
+	struct name *fromfield = NULL, *senderfield = NULL;
 
 	count = mp->m_size;
 	/*

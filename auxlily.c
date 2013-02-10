@@ -44,18 +44,23 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pwd.h>
 #include <stdarg.h>
 #include <sys/stat.h>
-#include <time.h>
+#include <sys/utsname.h>
 #include <termios.h>
-#include <time.h>
 #include <unistd.h>
-#include <utime.h>
 #ifdef HAVE_WCTYPE_H
 # include <wctype.h>
 #endif
 #ifdef HAVE_WCWIDTH
 # include <wchar.h>
+#endif
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
+#  include <sys/socket.h>
+# endif
+# include <netdb.h>
 #endif
 
 #include "extern.h"
@@ -68,58 +73,6 @@
  *
  * Auxiliary functions.
  */
-
-uc_it const	class_char[] = {
-/*	000 nul	001 soh	002 stx	003 etx	004 eot	005 enq	006 ack	007 bel	*/
-	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
-/*	010 bs 	011 ht 	012 nl 	013 vt 	014 np 	015 cr 	016 so 	017 si 	*/
-	C_CNTRL,C_BLANK,C_WHITE,C_SPACE,C_SPACE,C_SPACE,C_CNTRL,C_CNTRL,
-/*	020 dle	021 dc1	022 dc2	023 dc3	024 dc4	025 nak	026 syn	027 etb	*/
-	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
-/*	030 can	031 em 	032 sub	033 esc	034 fs 	035 gs 	036 rs 	037 us 	*/
-	C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,C_CNTRL,
-/*	040 sp 	041  ! 	042  " 	043  # 	044  $ 	045  % 	046  & 	047  ' 	*/
-	C_BLANK,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
-/*	050  ( 	051  ) 	052  * 	053  + 	054  , 	055  - 	056  . 	057  / 	*/
-	C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
-/*	060  0 	061  1 	062  2 	063  3 	064  4 	065  5 	066  6 	067  7 	*/
-	C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,C_OCTAL,
-/*	070  8 	071  9 	072  : 	073  ; 	074  < 	075  = 	076  > 	077  ? 	*/
-	C_DIGIT,C_DIGIT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
-/*	100  @ 	101  A 	102  B 	103  C 	104  D 	105  E 	106  F 	107  G 	*/
-	C_PUNCT,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
-/*	110  H 	111  I 	112  J 	113  K 	114  L 	115  M 	116  N 	117  O 	*/
-	C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
-/*	120  P 	121  Q 	122  R 	123  S 	124  T 	125  U 	126  V 	127  W 	*/
-	C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,C_UPPER,
-/*	130  X 	131  Y 	132  Z 	133  [ 	134  \ 	135  ] 	136  ^ 	137  _ 	*/
-	C_UPPER,C_UPPER,C_UPPER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,
-/*	140  ` 	141  a 	142  b 	143  c 	144  d 	145  e 	146  f 	147  g 	*/
-	C_PUNCT,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
-/*	150  h 	151  i 	152  j 	153  k 	154  l 	155  m 	156  n 	157  o 	*/
-	C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
-/*	160  p 	161  q 	162  r 	163  s 	164  t 	165  u 	166  v 	167  w 	*/
-	C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,C_LOWER,
-/*	170  x 	171  y 	172  z 	173  { 	174  | 	175  } 	176  ~ 	177 del	*/
-	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
-};
-
-/*
- * Lazy vsprintf wrapper.
- */
-#ifndef HAVE_SNPRINTF
-int
-snprintf(char *str, size_t size, const char *format, ...)
-{
-	va_list ap;
-	int ret;
-
-	va_start(ap, format);
-	ret = vsprintf(str, format, ap);
-	va_end(ap);
-	return ret;
-}
-#endif
 
 /*
  * Announce a fatal error and die.
@@ -199,119 +152,6 @@ argcount(char **argv)
 	return ap - argv - 1;
 }
 
-/*
- * Copy a string, lowercasing it as we go.
- */
-void 
-i_strcpy(char *dest, const char *src, int size)
-{
-	char *max;
-
-	max=dest+size-1;
-	while (dest<=max) {
-		*dest++ = lowerconv(*src & 0377);
-		if (*src++ == '\0')
-			break;
-	}
-}
-
-char *
-i_strdup(const char *src)
-{
-	int	sz;
-	char	*dest;
-
-	sz = strlen(src) + 1;
-	dest = salloc(sz);
-	i_strcpy(dest, src, sz);
-	return dest;
-}
-
-/*
- * Convert a string to lowercase, in-place and with multibyte-aware.
- */
-void 
-makelow(char *cp)
-{
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-	if (mb_cur_max > 1) {
-		char	*tp = cp;
-		wchar_t	wc;
-		int	len;
-
-		while (*cp) {
-			len = mbtowc(&wc, cp, mb_cur_max);
-			if (len < 0)
-				*tp++ = *cp++;
-			else {
-				wc = towlower(wc);
-				if (wctomb(tp, wc) == len)
-					tp += len, cp += len;
-				else
-					*tp++ = *cp++;
-			}
-		}
-	} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-	{
-		do
-			*cp = tolower(*cp & 0377);
-		while (*cp++);
-	}
-}
-
-int 
-substr(const char *str, const char *sub)
-{
-	const char	*cp, *backup;
-
-	cp = sub;
-	backup = str;
-	while (*str && *cp) {
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-		if (mb_cur_max > 1) {
-			wchar_t c, c2;
-			int sz;
-
-			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
-				goto singlebyte;
-			cp += sz;
-			if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
-				goto singlebyte;
-			str += sz;
-			c = towupper(c);
-			c2 = towupper(c2);
-			if (c != c2) {
-				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
-					backup += sz;
-					str = backup;
-				} else
-					str = ++backup;
-				cp = sub;
-			}
-		} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-		{
-			int c, c2;
-
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
-	singlebyte:
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-			c = *cp++ & 0377;
-			if (islower(c))
-				c = toupper(c);
-			c2 = *str++ & 0377;
-			if (islower(c2))
-				c2 = toupper(c2);
-			if (c != c2) {
-				str = ++backup;
-				cp = sub;
-			}
-		}
-	}
-	return *cp == '\0';
-}
-
 char *
 colalign(const char *cp, int col, int fill)
 {
@@ -371,153 +211,6 @@ try_pager(FILE *fp)
 	else
 		while ((c = getc(fp)) != EOF)
 			putchar(c);
-}
-
-/*
- * The following code deals with input stacking to do source
- * commands.  All but the current file pointer are saved on
- * the stack.
- */
-
-static	int	ssp;			/* Top of file stack */
-struct sstack {
-	FILE	*s_file;		/* File we were in. */
-	enum condition	s_cond;		/* Saved state of conditionals */
-	int	s_loading;		/* Loading .mailrc, etc. */
-#define	SSTACK	20
-} sstack[SSTACK];
-
-/*
- * Pushdown current input file and switch to a new one.
- * Set the global flag "sourcing" so that others will realize
- * that they are no longer reading from a tty (in all probability).
- */
-int 
-source(void *v)
-{
-	char **arglist = v;
-	FILE *fi;
-	char *cp;
-
-	if ((cp = file_expand(*arglist)) == NULL)
-		return (1);
-	if ((fi = Fopen(cp, "r")) == NULL) {
-		perror(cp);
-		return (1);
-	}
-	if (ssp >= SSTACK - 1) {
-		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
-		Fclose(fi);
-		return (1);
-	}
-	sstack[ssp].s_file = input;
-	sstack[ssp].s_cond = cond;
-	sstack[ssp].s_loading = loading;
-	ssp++;
-	loading = 0;
-	cond = CANY;
-	input = fi;
-	sourcing++;
-	return(0);
-}
-
-/*
- * Pop the current input back to the previous level.
- * Update the "sourcing" flag as appropriate.
- */
-int 
-unstack(void)
-{
-	if (ssp <= 0) {
-		printf(catgets(catd, CATSET, 4,
-					"\"Source\" stack over-pop.\n"));
-		sourcing = 0;
-		return(1);
-	}
-	Fclose(input);
-	if (cond != CANY)
-		printf(catgets(catd, CATSET, 5, "Unmatched \"if\"\n"));
-	ssp--;
-	cond = sstack[ssp].s_cond;
-	loading = sstack[ssp].s_loading;
-	input = sstack[ssp].s_file;
-	if (ssp == 0)
-		sourcing = loading;
-	return(0);
-}
-
-/*
- * Touch the indicated file.
- * This is nifty for the shell.
- */
-void 
-alter(char *name)
-{
-	struct stat sb;
-	struct utimbuf utb;
-
-	if (stat(name, &sb))
-		return;
-	utb.actime = time((time_t *)0) + 1;
-	utb.modtime = sb.st_mtime;
-	utime(name, &utb);
-}
-
-/*
- * Examine the passed line buffer and
- * return true if it is all blanks and tabs.
- */
-int 
-blankline(char *linebuf)
-{
-	char *cp;
-
-	for (cp = linebuf; *cp; cp++)
-		if (!blankchar(*cp & 0377))
-			return(0);
-	return(1);
-}
-
-/*
- * Are any of the characters in the two strings the same?
- */
-int 
-anyof(char const*s1, char const*s2)
-{
-
-	while (*s1)
-		if (strchr(s2, *s1++))
-			return 1;
-	return 0;
-}
-
-/*
- * Determine if as1 is a valid prefix of as2.
- * Return true if yep.
- */
-int 
-is_prefix(const char *as1, const char *as2)
-{
-	const char *s1, *s2;
-
-	s1 = as1;
-	s2 = as2;
-	while (*s1++ == *s2)
-		if (*s2++ == '\0')
-			return(1);
-	return(*--s1 == '\0');
-}
-
-char *
-last_at_before_slash(const char *sp)
-{
-	const char	*cp;
-
-	for (cp = sp; *cp; cp++)
-		if (*cp == '/')
-			break;
-	while (cp > sp && *--cp != '@');
-	return *cp == '@' ? (char *)cp : NULL;
 }
 
 enum protocol 
@@ -598,72 +291,6 @@ which_protocol(const char *name)
 	}
 }
 
-const char *
-protfile(const char *xcp)
-{
-	const char	*cp = xcp;
-	int	state = 0;
-
-	while (*cp) {
-		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-			cp += 3;
-			state = 1;
-		}
-		if (cp[0] == '/' && state == 1)
-			return &cp[1];
-		if (cp[0] == '/')
-			return xcp;
-		cp++;
-	}
-	return cp;
-}
-
-char *
-protbase(const char *cp)
-{
-	char	*n = salloc(strlen(cp) + 1);
-	char	*np = n;
-
-	while (*cp) {
-		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-			*np++ = *cp++;
-			*np++ = *cp++;
-			*np++ = *cp++;
-		} else if (cp[0] == '/')
-			break;
-		else
-			*np++ = *cp++;
-	}
-	*np = '\0';
-	return n;
-}
-
-#ifdef USE_IMAP
-int 
-disconnected(const char *file)
-{
-	char	*cp, *cq, *vp;
-	int	vs, r;
-
-	if (value("disconnected"))
-		return 1;
-	cp = protbase(file);
-	if (strncmp(cp, "imap://", 7) == 0)
-		cp += 7;
-	else if (strncmp(cp, "imaps://", 8) == 0)
-		cp += 8;
-	else
-		return 0;
-	if ((cq = strchr(cp, ':')) != NULL)
-		*cq = '\0';
-	vp = ac_alloc(vs = strlen(cp) + 14);
-	snprintf(vp, vs, "disconnected-%s", cp);
-	r = value(vp) != NULL;
-	ac_free(vp);
-	return r;
-}
-#endif
-
 unsigned 
 pjw(const char *cp)
 {
@@ -700,92 +327,6 @@ nextprime(long n)
 		mprime = n;	/* not so prime, but better than failure */
 	return mprime;
 }
-
-#define	Hexchar(n)	((n)>9 ? (n)-10+'A' : (n)+'0')
-#define	hexchar(n)	((n)>9 ? (n)-10+'a' : (n)+'0')
-
-char *
-strenc(const char *cp)
-{
-	char	*n, *np;
-
-	np = n = salloc(strlen(cp) * 3 + 1);
-	while (*cp) {
-		if (alnumchar(*cp&0377) || *cp == '_' || *cp == '@' ||
-				(np > n && (*cp == '.' || *cp == '-' ||
-					    *cp == ':')))
-			*np++ = *cp;
-		else {
-			*np++ = '%';
-			*np++ = Hexchar((*cp&0xf0) >> 4);
-			*np++ = Hexchar(*cp&0x0f);
-		}
-		cp++;
-	}
-	*np = '\0';
-	return n;
-}
-
-char *
-strdec(const char *cp)
-{
-	char	*n, *np;
-
-	np = n = salloc(strlen(cp) + 1);
-	while (*cp) {
-		if (cp[0] == '%' && cp[1] && cp[2]) {
-			*np = (int)(cp[1]>'9'?cp[1]-'A'+10:cp[1]-'0') << 4;
-			*np++ |= cp[2]>'9'?cp[2]-'A'+10:cp[2]-'0';
-			cp += 3;
-		} else
-			*np++ = *cp++;
-	}
-	*np = '\0';
-	return n;
-}
-
-#ifdef USE_MD5
-char *
-md5tohex(void const *vp)
-{
-	char const *cp = vp;
-	char *hex;
-	int i;
-
-	hex = salloc(33);
-	for (i = 0; i < 16; i++) {
-		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
-		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
-	}
-	hex[32] = '\0';
-	return hex;
-}
-
-char *
-cram_md5_string(char const *user, char const *pass, char const *b64)
-{
-	struct str in, out;
-	char digest[16], *cp;
-
-	out.s = NULL;
-	in.s = (char*)b64;
-	in.l = strlen(in.s);
-	(void)b64_decode(&out, &in, 0, NULL);
-	assert(out.s != NULL);
-
-	hmac_md5((unsigned char*)out.s, out.l,
-		(unsigned char*)pass, strlen(pass), digest);
-	free(out.s);
-	cp = md5tohex(digest);
-
-	in.l = strlen(user) + strlen(cp) + 2;
-	in.s = ac_alloc(in.l);
-	snprintf(in.s, in.l, "%s %s", user, cp);
-	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
-	ac_free(in.s);
-	return out.s;
-}
-#endif /* USE_MD5 */
 
 char *
 getuser(void)
@@ -840,38 +381,78 @@ getpassword(struct termios *otio, int *reset_tio, const char *query)
 	return pass;
 }
 
-void 
-transflags(struct message *omessage, long omsgCount, int transparent)
+char *
+getname(int uid)
 {
-	struct message	*omp, *nmp, *newdot, *newprevdot;
-	int	hf;
+	struct passwd *pw = getpwuid(uid);
 
-	omp = omessage;
-	nmp = message;
-	newdot = message;
-	newprevdot = NULL;
-	while (omp < &omessage[omsgCount] &&
-			nmp < &message[msgCount]) {
-		if (dot && nmp->m_uid == dot->m_uid)
-			newdot = nmp;
-		if (prevdot && nmp->m_uid == prevdot->m_uid)
-			newprevdot = nmp;
-		if (omp->m_uid == nmp->m_uid) {
-			hf = nmp->m_flag & MHIDDEN;
-			if (transparent && mb.mb_type == MB_IMAP)
-				omp->m_flag &= ~MHIDDEN;
-			*nmp++ = *omp++;
-			if (transparent && mb.mb_type == MB_CACHE)
-				nmp[-1].m_flag |= hf;
-		} else if (omp->m_uid < nmp->m_uid)
-			omp++;
-		else
-			nmp++;
+	return pw == NULL ? NULL : pw->pw_name;
+}
+
+char *
+username(void)
+{
+	char *np;
+	uid_t uid;
+
+	if ((np = getenv("USER")) != NULL)
+		goto jleave;
+	if ((np = getname(uid = getuid())) != NULL)
+		goto jleave;
+	panic(tr(201, "Cannot associate a name with uid %d\n"), (int)uid);
+jleave:
+	return (np);
+}
+
+char *
+nodename(int mayoverride)
+{
+	static char *hostname;
+	struct utsname ut;
+	char *hn;
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
+	struct addrinfo hints, *res;
+# else
+	struct hostent *hent;
+# endif
+#endif
+
+	if (mayoverride && (hn = value("hostname")) != NULL && *hn != '\0') {
+		if (hostname != NULL)
+			free(hostname);
+		hostname = sstrdup(hn);
+	} else if (hostname == NULL) {
+		uname(&ut);
+		hn = ut.nodename;
+#ifdef HAVE_SOCKETS
+# ifdef USE_IPV6
+		memset(&hints, 0, sizeof hints);
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
+		hints.ai_flags = AI_CANONNAME;
+		if (getaddrinfo(hn, "0", &hints, &res) == 0) {
+			if (res->ai_canonname != NULL) {
+				size_t l = strlen(res->ai_canonname);
+				hn = ac_alloc(l + 1);
+				memcpy(hn, res->ai_canonname, l + 1);
+			}
+			freeaddrinfo(res);
+		}
+# else
+		hent = gethostbyname(hn);
+		if (hent != NULL) {
+			hn = hent->h_name;
+		}
+# endif
+#endif
+		hostname = sstrdup(hn);
+#if defined HAVE_SOCKETS && defined USE_IPV6
+		if (hn != ut.nodename)
+			ac_free(hn);
+#endif
 	}
-	dot = newdot;
-	setdot(newdot);
-	prevdot = newprevdot;
-	free(omessage);
+	return (hostname);
 }
 
 char *
@@ -922,27 +503,6 @@ getrandstring(size_t length)
 	assert(length < b64.l);
 	b64.s[length] = '\0';
 	return (b64.s);
-}
-
-char *
-sstpcpy(char *dst, const char *src)
-{
-	while ((*dst = *src++) != '\0')
-		dst++;
-	return dst;
-}
-
-char *
-sstrdup(const char *cp)
-{
-	char	*dp;
-	
-	if (cp) {
-		dp = smalloc(strlen(cp) + 1);
-		strcpy(dp, cp);
-		return dp;
-	} else
-		return NULL;
 }
 
 enum okay 
@@ -1140,64 +700,77 @@ putuc(int u, int c, FILE *fp)
 		return putc(c, fp) != EOF;
 }
 
-/*
- * Locale-independent character class functions.
- */
-int 
-asccasecmp(const char *s1, const char *s2)
-{
-	register int cmp;
-
-	do
-		if ((cmp = lowerconv(*s1 & 0377) - lowerconv(*s2 & 0377)) != 0)
-			return cmp;
-	while (*s1++ != '\0' && *s2++ != '\0');
-	return 0;
-}
+#ifndef HAVE_GETOPT
+char	*my_optarg;
+int	my_optind = 1, /*my_opterr = 1,*/ my_optopt;
 
 int
-ascncasecmp(const char *s1, const char *s2, size_t sz)
+my_getopt(int argc, char *const argv[], char const *optstring) /* XXX */
 {
-	register int cmp;
-	size_t i = 1;
+	static char const *lastp;
+	int colon;
+	char const *curp;
 
-	if (sz == 0)
-		return 0;
-	do
-		if ((cmp = lowerconv(*s1 & 0377) - lowerconv(*s2 & 0377)) != 0)
-			return cmp;
-	while (i++ < sz && *s1++ != '\0' && *s2++ != '\0');
-	return 0;
-}
-
-char *
-asccasestr(const char *haystack, const char *xneedle)
-{
-	char	*needle, *NEEDLE;
-	int	i, sz;
-
-	sz = strlen(xneedle);
-	if (sz == 0)
-		return (char *)haystack;
-	needle = ac_alloc(sz);
-	NEEDLE = ac_alloc(sz);
-	for (i = 0; i < sz; i++) {
-		needle[i] = lowerconv(xneedle[i]&0377);
-		NEEDLE[i] = upperconv(xneedle[i]&0377);
-	}
-	while (*haystack) {
-		if (*haystack == *needle || *haystack == *NEEDLE) {
-			for (i = 1; i < sz; i++)
-				if (haystack[i] != needle[i] &&
-						haystack[i] != NEEDLE[i])
-					break;
-			if (i == sz)
-				return (char *)haystack;
+	if (optstring[0] == ':') {
+		colon = 1;
+		optstring++;
+	} else
+		colon = 0;
+	if (lastp) {
+		curp = lastp;
+		lastp = 0;
+	} else {
+		if (optind >= argc || argv[optind] == 0 ||
+				argv[optind][0] != '-' ||
+				argv[optind][1] == '\0')
+			return -1;
+		if (argv[optind][1] == '-' && argv[optind][2] == '\0') {
+			optind++;
+			return -1;
 		}
-		haystack++;
+		curp = &argv[optind][1];
 	}
-	return NULL;
+	optopt = curp[0];
+	while (optstring[0]) {
+		if (optstring[0] == ':' || optstring[0] != optopt) {
+			optstring++;
+			continue;
+		}
+		if (optstring[1] == ':') {
+			if (curp[1] != '\0') {
+				optarg = (char *)&curp[1];
+				optind++;
+			} else {
+				if ((optind += 2) > argc) {
+					if (!colon /*&& opterr*/) {
+						fprintf(stderr, tr(79,
+				"%s: option requires an argument -- %c\n"),
+							argv[0], (char)optopt);
+					}
+					return colon ? ':' : '?';
+				}
+				optarg = argv[optind - 1];
+			}
+		} else {
+			if (curp[1] != '\0')
+				lastp = &curp[1];
+			else
+				optind++;
+			optarg = 0;
+		}
+		return optopt;
+	}
+	if (!colon /*&& opterr*/)
+		fprintf(stderr, tr(78, "%s: illegal option -- %c\n"),
+			argv[0], optopt);
+	if (curp[1] != '\0')
+		lastp = &curp[1];
+	else
+		optind++;
+	optarg = 0;
+	return '?';
 }
+#endif /* HAVE_GETOPT */
 
 static void
 out_of_memory(void)
