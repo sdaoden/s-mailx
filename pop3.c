@@ -371,7 +371,7 @@ static enum okay
 pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 		const char *uhp, const char *xserver)
 {
-	char o[LINESIZE], *user, *server, *cp;
+	char o[LINESIZE], *user, *cp;
 #ifdef USE_MD5
 	char *ts = NULL;
 #endif
@@ -388,16 +388,16 @@ pop3_user(struct mailbox *mp, char *xuser, const char *pass,
 	}
 #endif
 	if ((cp = strchr(xserver, ':')) != NULL) {
-		server = salloc(cp - xserver + 1);
-		memcpy(server, xserver, cp - xserver);
-		server[cp - xserver] = '\0';
-	} else
-		server = (char *)xserver;
+		char *x = salloc(cp - xserver + 1);
+		memcpy(x, xserver, cp - xserver);
+		x[cp - xserver] = '\0';
+		xserver = x;
+	}
 #ifdef	USE_SSL
 	if (mp->mb_sock.s_use_ssl == 0 && pop3_use_starttls(uhp)) {
 		POP3_OUT("STLS\r\n", MB_COMD)
 		POP3_ANSWER()
-		if (ssl_open(server, &mp->mb_sock, uhp) != OKAY)
+		if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
 	}
 #else	/* !USE_SSL */

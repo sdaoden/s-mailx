@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 2004
@@ -139,7 +139,7 @@ imap_gss(struct mailbox *mp, char *user)
 		server += 7;
 	else if (strncmp(server, "imaps://", 8) == 0)
 		server += 8;
-	if ((cp = (char*)last_at_before_slash(server)) != NULL)
+	if ((cp = UNCONST(last_at_before_slash(server))) != NULL)
 		server = &cp[1];
 	for (cp = server; *cp; cp++)
 		*cp = lowerconv(*cp&0377);

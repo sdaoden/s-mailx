@@ -80,7 +80,7 @@ static int mfloatlt(const void *a, const void *b);
 static int mcharlt(const void *a, const void *b);
 static void lookup(struct message *m, struct mitem *mi, int mprime);
 static void makethreads(struct message *m, long count, int newmail);
-static char *skipre(const char *cp);
+static char const *skipre(char const *cp);
 static int colpt(int *msgvec, int cl);
 static void colps(struct message *b, int cl);
 static void colpm(struct message *m, int cl, int *cc, int *uc);
@@ -284,10 +284,11 @@ mlonglt(const void *a, const void *b)
 {
 	int	i;
 
-	i = ((struct msort *)a)->ms_u.ms_long -
-		((struct msort *)b)->ms_u.ms_long;
+	i = ((struct msort const *)a)->ms_u.ms_long -
+		((struct msort const *)b)->ms_u.ms_long;
 	if (i == 0)
-		i = ((struct msort *)a)->ms_n - ((struct msort *)b)->ms_n;
+		i = ((struct msort const *)a)->ms_n -
+			((struct msort const *)b)->ms_n;
 	return i;
 }
 
@@ -297,10 +298,11 @@ mfloatlt(const void *a, const void *b)
 {
 	float	i;
 
-	i = ((struct msort *)a)->ms_u.ms_float -
-		((struct msort *)b)->ms_u.ms_float;
+	i = ((struct msort const *)a)->ms_u.ms_float -
+		((struct msort const *)b)->ms_u.ms_float;
 	if (i == 0)
-		i = ((struct msort *)a)->ms_n - ((struct msort *)b)->ms_n;
+		i = ((struct msort const *)a)->ms_n -
+			((struct msort const *)b)->ms_n;
 	return i > 0 ? 1 : i < 0 ? -1 : 0;
 }
 #endif
@@ -310,10 +312,11 @@ mcharlt(const void *a, const void *b)
 {
 	int	i;
 
-	i = strcoll(((struct msort *)a)->ms_u.ms_char,
-			((struct msort *)b)->ms_u.ms_char);
+	i = strcoll(((struct msort const *)a)->ms_u.ms_char,
+			((struct msort const *)b)->ms_u.ms_char);
 	if (i == 0)
-		i = ((struct msort *)a)->ms_n - ((struct msort *)b)->ms_n;
+		i = ((struct msort const *)a)->ms_n -
+			((struct msort const *)b)->ms_n;
 	return i;
 }
 
@@ -652,8 +655,8 @@ sort(void *vp)
 		value("header") ? headers(msgvec) : 0;
 }
 
-static char *
-skipre(const char *cp)
+static char const *
+skipre(char const *cp)
 {
 	if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' &&
 			cp[2] == ':' && spacechar(cp[3])) {
@@ -661,7 +664,7 @@ skipre(const char *cp)
 		while (spacechar(*cp))
 			cp++;
 	}
-	return (char *)cp;
+	return cp;
 }
 
 int 

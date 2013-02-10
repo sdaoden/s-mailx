@@ -553,9 +553,9 @@ start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 		int i = getrawlist(cmd, strlen(cmd),
 				argv, sizeof argv / sizeof *argv, 0);
 
-		if ((argv[i++] = (char *)a0) != NULL &&
-		    (argv[i++] = (char *)a1) != NULL &&
-		    (argv[i++] = (char *)a2) != NULL)
+		if ((argv[i++] = UNCONST(a0)) != NULL &&
+		    (argv[i++] = UNCONST(a1)) != NULL &&
+		    (argv[i++] = UNCONST(a2)) != NULL)
 			argv[i] = NULL;
 		prepare_child(mask, infd, outfd);
 		execvp(argv[0], argv);

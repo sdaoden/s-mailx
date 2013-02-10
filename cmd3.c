@@ -863,7 +863,7 @@ asort(char **list)
 static int 
 diction(const void *a, const void *b)
 {
-	return(strcmp(*(char **)a, *(char **)b));
+	return(strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b)));
 }
 
 /*

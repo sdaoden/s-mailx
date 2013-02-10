@@ -778,16 +778,16 @@ imap_use_starttls(const char *uhp)
 static enum okay 
 imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
 {
-	char	*server, *cp;
+	char *cp;
 
 	mp->mb_active |= MB_PREAUTH;
 	imap_answer(mp, 1);
 	if ((cp = strchr(xserver, ':')) != NULL) {
-		server = salloc(cp - xserver + 1);
-		memcpy(server, xserver, cp - xserver);
-		server[cp - xserver] = '\0';
-	} else
-		server = (char *)xserver;
+		char *x = salloc(cp - xserver + 1);
+		memcpy(x, xserver, cp - xserver);
+		x[cp - xserver] = '\0';
+		xserver = x;
+	}
 #ifdef	USE_SSL
 	if (mp->mb_sock.s_use_ssl == 0 && imap_use_starttls(uhp)) {
 		FILE	*queuefp = NULL;
@@ -796,7 +796,7 @@ imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
 		snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
 		IMAP_OUT(o, MB_COMD, return STOP);
 		IMAP_ANSWER()
-		if (ssl_open(server, &mp->mb_sock, uhp) != OKAY)
+		if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
 	}
 #else	/* !USE_SSL */
@@ -2914,7 +2914,7 @@ out:	ac_free(o);
 }
 
 enum okay 
-imap_search1(const char *spec, int f)
+imap_search1(const char *volatile spec, int f)
 {
 	sighandler_type	saveint, savepipe;
 	enum okay	ok = STOP;

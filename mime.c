@@ -92,7 +92,7 @@ static void mime_str_toqp(struct str *in, struct str *out,
 		int (*mustquote)(int), int inhdr);
 static void mime_fromqp(struct str *in, struct str *out, int ishdr);
 static size_t mime_write_tohdr(struct str *in, FILE *fo);
-static size_t convhdra(char *str, size_t len, FILE *fp);
+static size_t convhdra(char const *str, size_t len, FILE *fp);
 static size_t mime_write_tohdr_a(struct str *in, FILE *f);
 static void addstr(char **buf, size_t *sz, size_t *pos,
 		char const *str, size_t len);
@@ -1071,7 +1071,8 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 			}
 #ifdef	HAVE_ICONV
 			if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
-				char *iptr, *mptr, *nptr, *uptr;
+				char const *iptr;
+				char *mptr, *nptr, *uptr;
 				size_t inleft, outleft;
 
 			again:	inleft = cout.l;
@@ -1079,7 +1080,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				mptr = nptr = q;
 				uptr = nptr + outleft;
 				iptr = cout.s;
-				if (iconv_ft(fhicd, (char const**)&iptr,&inleft,
+				if (iconv_ft(fhicd, &iptr,&inleft,
 					&nptr, &outleft, 1) == (size_t)-1 &&
 						errno == E2BIG) {
 					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
@@ -1320,7 +1321,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
  * doing charset and header conversion.
  */
 static size_t
-convhdra(char *str, size_t len, FILE *fp)
+convhdra(char const *str, size_t len, FILE *fp)
 {
 #ifdef	HAVE_ICONV
 	char *cbuf = NULL;
@@ -1331,19 +1332,19 @@ convhdra(char *str, size_t len, FILE *fp)
 #ifdef HAVE_ICONV
 	if (iconvd == (iconv_t)-1) {
 #endif
-		cin.s = str;
+		cin.s = UNCONST(str);
 		cin.l = len;
 #ifdef HAVE_ICONV
 	} else {
-		char *op, *ip;
+		char *op;
+		char const *ip;
 		size_t osz, isz, cbufsz = (len << 1) - (len >> 2);
 
 jagain:		osz = cbufsz;
 		op = cbuf = ac_alloc(cbufsz);
 		ip = str;
 		isz = len;
-		if (iconv_ft(iconvd, (char const**)&ip, &isz, &op, &osz, 0)
-				== (size_t)-1) {
+		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
 			ac_free(cbuf);
 			if (errno != E2BIG)
 				goto jleave;
@@ -1369,8 +1370,8 @@ jleave:
 static size_t
 mime_write_tohdr_a(struct str *in, FILE *f)
 {
-	char	*cp, *lastcp;
-	size_t	sz = 0;
+	char const *cp, *lastcp;
+	size_t sz = 0;
 
 	in->s[in->l] = '\0';
 	lastcp = in->s;
@@ -1384,7 +1385,7 @@ mime_write_tohdr_a(struct str *in, FILE *f)
 		case '(':
 			sz += fwrite(lastcp, 1, cp - lastcp + 1, f);
 			lastcp = ++cp;
-			cp = (char*)skip_comment(cp);
+			cp = skip_comment(cp);
 			if (--cp > lastcp)
 				sz += convhdra(lastcp, cp - lastcp, f);
 			lastcp = cp;
@@ -1417,7 +1418,7 @@ addconv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
 	struct str in, out;
 
-	in.s = (char*)str;
+	in.s = UNCONST(str);
 	in.l = len;
 	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 	addstr(buf, sz, pos, out.s, out.l);
@@ -1448,7 +1449,7 @@ mime_fromaddr(char const *name)
 		case '(':
 			addstr(&res, &ressz, &rescur, lastcp, cp - lastcp + 1);
 			lastcp = ++cp;
-			cp = (char*)skip_comment(cp);
+			cp = skip_comment(cp);
 			if (--cp > lastcp)
 				addconv(&res, &ressz, &rescur, lastcp,
 						cp - lastcp);
@@ -1602,7 +1603,8 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 	char *upper;
 	size_t sz, csize;
 #ifdef	HAVE_ICONV
-	char *iptr, *nptr;
+	char const *iptr;
+	char *nptr;
 	size_t inleft, outleft;
 #endif
 	char *mptr, *xmptr, *mlptr = NULL;
@@ -1617,9 +1619,8 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 		outleft = mptrsz;
 		nptr = mptr;
 		iptr = ptr;
-		if (iconv_ft(iconvd, (char const **)&iptr, &inleft,
-				&nptr, &outleft, 1) == (size_t)-1 &&
-				errno == E2BIG) {
+		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 1)
+				== (size_t)-1 && errno == E2BIG) {
 			iconv_ft(iconvd, NULL, NULL, NULL, NULL, 0);
 			ac_free(xmptr);
 			mptrsz += inleft;
@@ -1672,12 +1673,12 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	ssize_t sz;
 	int state;
 #ifdef HAVE_ICONV
-	char mptr[LINESIZE * 6];
-	char *iptr, *nptr;
+	char mptr[LINESIZE * 6], *nptr;
+	char const *iptr;
 	size_t inleft, outleft;
 #endif
 
-	in.s = (char*)ptr;
+	in.s = UNCONST(ptr);
 	in.l = size;
 	if ((sz = size) == 0) {
 		if (rest != NULL && rest->l != 0)
@@ -1693,9 +1694,9 @@ mime_write(char const *ptr, size_t size, FILE *f,
 		inleft = size;
 		outleft = sizeof mptr;
 		nptr = mptr;
-		iptr = (char*)ptr;
-		if (iconv_ft(iconvd, (char const **)&iptr, &inleft,
-				&nptr, &outleft, 0) != (size_t)-1) {
+		iptr = UNCONST(ptr);
+		if (iconv_ft(iconvd, &iptr, &inleft, &nptr, &outleft, 0)
+				!= (size_t)-1) {
 			in.l = sizeof(mptr) - outleft;
 			in.s = mptr;
 		} else {

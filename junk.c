@@ -1132,7 +1132,7 @@ dbhash(const char *word, unsigned long *h1, unsigned long *h2)
 	MD5_CTX	ctx;
 
 	MD5Init(&ctx);
-	MD5Update(&ctx, (unsigned char *)word, strlen(word));
+	MD5Update(&ctx, UNCONST(word), strlen(word));
 	if (table_version >= 1)
 		MD5Update(&ctx, (unsigned char *)&super[OF_super_mangle], 4);
 	MD5Final(digest, &ctx);

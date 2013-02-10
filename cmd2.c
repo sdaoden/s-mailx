@@ -764,7 +764,7 @@ igshow(struct ignoretab *tab, char const *which)
 static int 
 igcomp(const void *l, const void *r)
 {
-	return (strcmp(*(char **)l, *(char **)r));
+	return (strcmp(*(char**)UNCONST(l), *(char**)UNCONST(r)));
 }
 
 int 

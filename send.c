@@ -91,7 +91,7 @@ static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 #endif
 static FILE *newfile(struct mimepart *ip, int *ispipe);
 static char *getpipecmd(char *content);
-static FILE *getpipefile(char *cmd, FILE **qbuf, int quote);
+static FILE *getpipefile(char const *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
 		char const *prefix, size_t prefixlen, off_t *stats);
 static void statusput(const struct message *mp, FILE *obuf,
@@ -844,7 +844,7 @@ jcopyout:
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
 			pipecmd != NULL) {
 		qbuf = obuf;
-		pbuf = getpipefile(pipecmd, (FILE**)&qbuf,
+		pbuf = getpipefile(pipecmd, UNVOLATILE(&qbuf),
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {
@@ -1191,7 +1191,7 @@ getpipecmd(char *content)
 }
 
 static FILE *
-getpipefile(char *pipecmd, FILE **qbuf, int quote)
+getpipefile(char const *pipecmd, FILE **qbuf, int quote)
 {
 	char const *shell;
 	FILE *rbuf = *qbuf;

@@ -374,7 +374,8 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	ssl_init();
 	ssl_set_vrfy_level(uhp);
 	if ((sp->s_ctx =
-	     SSL_CTX_new((SSL_METHOD *)ssl_select_method(uhp))) == NULL) {
+	     SSL_CTX_new(UNCONST(ssl_select_method(uhp))))
+			== NULL) {
 		ssl_gen_err(catgets(catd, CATSET, 261, "SSL_CTX_new() failed"));
 		return STOP;
 	}
@@ -730,13 +731,13 @@ smime_cipher(const char *name)
 	} else
 		cipher = EVP_des_ede3_cbc();
 	ac_free(vn);
-	return (EVP_CIPHER *)cipher;
+	return UNCONST(cipher);
 }
 
 FILE *
 smime_encrypt(FILE *ip, const char *xcertfile, const char *to)
 {
-	char	*certfile = (char*)xcertfile, *cp;
+	char	*certfile = UNCONST(xcertfile), *cp;
 	FILE	*yp, *fp, *bp, *hp;
 	X509	*cert;
 	PKCS7	*pkcs7;

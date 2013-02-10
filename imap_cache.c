@@ -531,7 +531,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
 static int 
 longlt(const void *a, const void *b)
 {
-	return *(long *)a - *(long *)b;
+	return *(const long*)a - *(const long*)b;
 }
 
 static void 
