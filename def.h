@@ -622,17 +622,28 @@ struct addrguts {
 };
 
 /*
- * Structure of a MIME attachment.
+ * MIME attachments.
  */
+
+enum attach_conv {
+	AC_DEFAULT,			/* _get_lc() -> _iter_*() */
+	AC_FIX_OUTCS,			/* _get_lc() -> "charset=" .a_charset */
+	AC_FIX_INCS,			/* "charset=".a_input_charset (nocnv) */
+	AC_TMPFILE			/* attachment.a_tmpf is converted */
+};
+
 struct attachment {
 	struct attachment *a_flink;	/* Forward link in list. */
 	struct attachment *a_blink;	/* Backward list link */
-	char	*a_name;		/* file name */
+	char const *a_name;		/* file name */
 	char	*a_content_type;	/* content type */
 	char	*a_content_disposition;	/* content disposition */
 	char	*a_content_id;		/* content id */
 	char	*a_content_description;	/* content description */
-	char	*a_charset;		/* character set */
+	char const *a_input_charset;	/* Interpretation depends on .a_conv */
+	char const *a_charset;		/* ... */
+	FILE	*a_tmpf;		/* If AC_TMPFILE */
+	enum attach_conv a_conv;	/* User chosen conversion */
 	int	a_msgno;		/* message number */
 };
 

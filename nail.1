@@ -1789,13 +1789,60 @@ Identical to
 .Ar command
 is executed using the shell.
 Its standard output is inserted into the message.
-.It Ic ~@ Op Ar filename ...
-With no arguments, edit the attachment list.
-In this mode the user can edit all existing attachment data.
+.It Ic ~@ Op Ar filename...
+With no arguments, edit the attachment list interactively.
 If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
 \*(UA will ask for further attachments until an empty name is given.
+.Pp
+If character set conversion has been compiled into \*(UA, then this mode
+gives the user the option to specify input and output character sets,
+unless the file extension indicates binary content, in which case \*(UA
+asks wether this step shall be skipped for the attachment in question.
+If not skipped, then the charset that succeeds to represent the
+attachment data will be used in the `charset=' MIME parameter of the
+mail message.
+.Bl -bullet
+.It
+If input and output character sets are specified, then the conversion is
+performed on the fly.
+The user will be asked repeatedly until the desired conversion succeeds.
+.It
+If only an output character set is specified, then the input is assumed
+to be in the
+.Va ttycharset
+charset and will be converted to the given output charset on the fly.
+The user will be asked repeatedly until the desired conversion succeeds.
+.It
+If no character sets are specified at all then the algorithm that is
+documented in the section
+.Sx "Character sets"
+is applied, but directly and on the fly.
+The user will be asked repeatedly until the desired conversion succeeds.
+.It
+Finally, if an input-, but no output character set is specified, then no
+conversion is ever performed, but the `charset=' MIME parameter will
+still be set to the user input.
+.El
+.Pp
+Without character set conversion support, \*(UA will ask for the input
+character set only, and it'll set the `charset=' MIME parameter to the
+given input, if any;
+if no user input is seen then the
+.Va ttycharset
+character set will be used for the `charset=' parameter instead.
+Note that the file extension check isn't performed in this mode, since
+no conversion will take place anyway.
+.Pp
+Note that in non-interactive mode, for reproduceabilities sake, there
+will always be two questions for each attachment, regardless of wether
+character set conversion is available and what the file extension is.
+The first asks for the filename, and the second asks for the input
+character set to be passed through to the `charset=' MIME parameter;
+no conversion will be tried if there is input to the latter question,
+otherwise the usual conversion algorithm, as above, is applied.
+.Pp
 If
 .Ar filename
 arguments are specified,
@@ -1803,6 +1850,10 @@ they are treated as a comma separated list of files,
 which are all expanded and appended to the end of the attachment list.
 (Filenames with commas, or with leading or trailing whitespace can only
 be added via the command line or the first method.)
+In this mode the (text) attachments are assumed to be in
+.Va ttycharset
+encoding, and will be evaluated as documented in the section
+.Sx "Character sets" .
 .It Ic ~A
 Inserts the string contained in the
 .Va Sign

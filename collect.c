@@ -47,9 +47,13 @@
 #include "rcv.h"
 
 #include <sys/stat.h>
+#include <errno.h>
 #include <unistd.h>
 
 #include "extern.h"
+
+/* We use calloc() for struct attachment */
+CTA(AC_DEFAULT == 0);
 
 /*
  * The following hokiness with global variables is so that on
@@ -79,11 +83,16 @@ static int	_include_file(FILE *fbuf, char *name, int *linecount,
 static struct attachment * _append_attachments(struct attachment *aphead,
 				char *names);
 
+/* Ask the user to edit file names and other data for the given attachment */
+static struct attachment * _read_attachment_data(struct attachment *ap,
+				ui_it number);
+#ifdef HAVE_ICONV
+static int	__attach_iconv(struct attachment *ap);
+#endif
+
 static void onpipe(int signo);
-static void insertcommand(FILE *fp, char *cmd);
+static void insertcommand(FILE *fp, char const *cmd);
 static void print_collf(FILE *collf, struct header *hp);
-static struct attachment *read_attachment_data(struct attachment *ap,
-		unsigned number);
 static int exwrite(char *name, FILE *fp, int f);
 static enum okay makeheader(FILE *fp, struct header *hp);
 static void mesedit(int c, struct header *hp);
@@ -141,7 +150,7 @@ _append_attachments(struct attachment *aphead, char *names)
 	struct attachment *xaph, *nap;
 
 	while ((cp = strcomma(&names, 1)) != NULL) {
-		if ((xaph = add_attachment(aphead, cp, 1, &nap)) != NULL) {
+		if ((xaph = add_attachment(aphead, cp, &nap)) != NULL) {
 			aphead = xaph;
 			if (value("interactive"))
 				printf(tr(19, "~@: added attachment \"%s\"\n"),
@@ -151,6 +160,210 @@ _append_attachments(struct attachment *aphead, char *names)
 	}
 	return (aphead);
 }
+
+static struct attachment *
+_read_attachment_data(struct attachment *ap, ui_it number)
+{
+	char prefix[80 * 2];
+	char const *cslc, *cp, *defcs;
+#ifdef HAVE_ICONV
+	int isia = (value("interactive") != NULL);
+#endif
+
+	if (ap == NULL)
+		ap = csalloc(1, sizeof *ap);
+	else if (ap->a_msgno) {
+		printf(tr(159, "#%u\tmessage %u\n"), number, ap->a_msgno);
+		goto jleave;
+	}
+
+	if (ap->a_conv == AC_TMPFILE) {
+		Fclose(ap->a_tmpf);
+		ap->a_conv = AC_DEFAULT;
+	}
+
+	snprintf(prefix, sizeof prefix, tr(50, "#%u\tfilename: "), number);
+	for (;;) {
+		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL) {
+			ap = NULL;
+			goto jleave;
+		}
+		if ((cp = file_expand(ap->a_name)) == NULL)
+			continue;
+		ap->a_name = cp;
+		if (access(cp, R_OK) == 0)
+			break;
+		perror(cp);
+	}
+
+	/*
+	 * Character set of attachments: enum attach_conv
+	 */
+	cslc = charset_get_lc();
+#ifdef HAVE_ICONV
+	if (! isia)
+		goto jcs;
+	cp = mime_classify_content_type_by_fileext(cp);
+	if (cp != NULL && ascncasecmp(cp, "text/", 5) != 0 &&
+			! yorn(tr(162, "Filename doesn't indicate text "
+			"content - want to edit charsets? "))) {
+		ap->a_conv = AC_DEFAULT;
+		goto jcs_ok;
+	}
+
+	charset_iter_reset(NULL);
+jcs:
+#endif
+	snprintf(prefix, sizeof prefix, tr(160, "#%u\tinput charset: "),
+		number);
+	if ((defcs = ap->a_input_charset) == NULL)
+		defcs = cslc;
+	cp = ap->a_input_charset = readtty(prefix, defcs);
+#ifdef HAVE_ICONV
+	if (! isia) {
+#endif
+		ap->a_conv = (cp != NULL) ? AC_FIX_INCS : AC_DEFAULT;
+#ifdef HAVE_ICONV
+		goto jcs_ok;
+	}
+
+	snprintf(prefix, sizeof prefix, tr(161, "#%u\toutput (send) charset: "),
+		number);
+	if ((defcs = ap->a_charset) == NULL)
+		defcs = charset_iter_next();
+	defcs = ap->a_charset = readtty(prefix, defcs);
+
+	if (cp != NULL && defcs == NULL) {
+		ap->a_conv = AC_FIX_INCS;
+		goto jcs_ok;
+	}
+	if (cp == NULL && defcs == NULL) {
+		ap->a_conv = AC_DEFAULT;
+		ap->a_input_charset = cslc;
+		ap->a_charset = charset_iter_current();
+	} else if (cp == NULL && defcs != NULL) {
+		ap->a_conv = AC_FIX_OUTCS;
+		ap->a_input_charset = cslc;
+	} else
+		ap->a_conv = AC_TMPFILE;
+
+	printf(tr(197, "Trying conversion from %s to %s\n"),
+		ap->a_input_charset, ap->a_charset);
+	if (__attach_iconv(ap))
+		ap->a_conv = AC_TMPFILE;
+	else {
+		ap->a_input_charset = cp;
+		ap->a_charset = defcs;
+		goto jcs;
+	}
+jcs_ok:
+#endif
+
+	/*
+	 * XXX The "attachment-ask-content-*" variables are left undocumented
+	 * since they are for RFC connoisseurs only.
+	 */
+
+	if (value("attachment-ask-content-type")) {
+		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
+		if ((cp = ap->a_content_type) == NULL)
+			cp = mime_classify_content_type_by_fileext(ap->a_name);
+		ap->a_content_type = readtty(prefix, cp);
+	}
+
+	if (value("attachment-ask-content-disposition")) {
+		snprintf(prefix, sizeof prefix,
+			"#%u\tContent-Disposition: ", number);
+		ap->a_content_disposition = readtty(prefix,
+				ap->a_content_disposition);
+	}
+
+	if (value("attachment-ask-content-id")) {
+		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
+		ap->a_content_id = readtty(prefix, ap->a_content_id);
+	}
+
+	if (value("attachment-ask-content-description")) {
+		snprintf(prefix, sizeof prefix,
+			"#%u\tContent-Description: ", number);
+		ap->a_content_description = readtty(prefix,
+				ap->a_content_description);
+	}
+jleave:
+	return (ap);
+}
+
+#ifdef HAVE_ICONV
+static int
+__attach_iconv(struct attachment *ap)
+{
+	struct str oul = {NULL, 0}, inl = {NULL, 0};
+	FILE *fo = NULL, *fi = NULL;
+	size_t count, lbsize;
+	iconv_t icp;
+
+	if ((icp = iconv_open_ft(ap->a_charset, ap->a_input_charset))
+			== (iconv_t)-1) {
+		if (errno == EINVAL)
+			goto jeconv;
+		else
+			perror("iconv_open");
+		goto jerr;
+	}
+
+	if ((fi = Fopen(ap->a_name, "r")) == NULL) {
+		perror(ap->a_name);
+		goto jerr;
+	}
+	count = fsize(fi);
+
+	inl.s = NULL;
+	if ((fo = Ftemp(&inl.s, "aiconv", "w+", 0600, 1)) == NULL) {
+		perror(tr(51, "temporary mail file"));
+		inl.s = NULL;
+		goto jerr;
+	}
+	unlink(inl.s);
+	Ftfree(&inl.s);
+
+	for (inl.s = NULL, lbsize = 0;;) {
+		if (fgetline(&inl.s, &lbsize, &count, &inl.l, fi, 0) == NULL) {
+			if (! count)
+				break;
+			perror(tr(195, "I/O read error occurred"));
+			goto jerr;
+		}
+
+		if (str_iconv(icp, &oul, &inl, FAL0) != 0)
+			goto jeconv;
+		if ((inl.l=fwrite(oul.s, sizeof *oul.s, oul.l, fo)) != oul.l) {
+			perror(tr(196, "I/O write error occurred"));
+			goto jerr;
+		}
+	}
+	fflush_rewind(fo);
+
+	ap->a_tmpf = fo;
+jleave:
+	if (inl.s != NULL)
+		free(inl.s);
+	if (oul.s != NULL)
+		free(oul.s);
+	if (fi != NULL)
+		Fclose(fi);
+	if (icp != (iconv_t)-1)
+		iconv_close(icp);
+	return (fo != NULL);
+jeconv:
+	fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
+		ap->a_input_charset, ap->a_charset);
+jerr:
+	if (fo != NULL)
+		Fclose(fo);
+	fo = NULL;
+	goto jleave;
+}
+#endif /* HAVE_ICONV */
 
 /*ARGSUSED*/
 static void 
@@ -164,28 +377,21 @@ onpipe(int signo)
  * Execute cmd and insert its standard output into fp.
  */
 static void
-insertcommand(FILE *fp, char *cmd)
+insertcommand(FILE *fp, char const *cmd)
 {
-	FILE *obuf = NULL;
-	char *volatile cp;
+	FILE *ibuf = NULL;
+	char const *cp;
 	int c;
 
 	cp = value("SHELL");
-	if (sigsetjmp(pipejmp, 1))
-		goto endpipe;
 	if (cp == NULL)
 		cp = SHELL;
-	if ((obuf = Popen(cmd, "r", cp, 0)) == NULL) {
+	if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
+		while ((c = getc(ibuf)) != EOF)
+			putc(c, fp);
+		Pclose(ibuf);
+	} else
 		perror(cmd);
-		return;
-	}
-	safe_signal(SIGPIPE, onpipe);
-	while ((c = getc(obuf)) != EOF)
-		putc(c, fp);
-endpipe:
-	safe_signal(SIGPIPE, SIG_IGN);
-	Pclose(obuf);
-	safe_signal(SIGPIPE, dflpipe);
 }
 
 /*
@@ -271,16 +477,12 @@ endpipe:
 }
 
 struct attachment *
-add_attachment(struct attachment *aphead, char *file, int expand,
-	struct attachment **newap)
+add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 {
 	struct attachment *nap = NULL, *ap;
 
-	if (expand) {
-		if ((file = file_expand(file)) == NULL)
-			goto jleave;
-	} else
-		file = savestr(file);
+	if ((file = file_expand(file)) == NULL)
+		goto jleave;
 	if (access(file, R_OK) != 0)
 		goto jleave;
 
@@ -303,104 +505,44 @@ jleave:
 	return (nap);
 }
 
-/*
- * Ask the user to edit file names and other data for the given
- * attachment. NULL is returned if no file name is given.
- */
-static struct attachment *
-read_attachment_data(struct attachment *ap, unsigned number)
-{
-	char prefix[80], *cp;
-
-	if (ap == NULL)
-		ap = csalloc(1, sizeof *ap);
-	if (ap->a_msgno) {
-		printf("#%u\tmessage %u\n", number, ap->a_msgno);
-		return ap;
-	}
-	snprintf(prefix, sizeof prefix, catgets(catd, CATSET, 50,
-			"#%u\tfilename: "), number);
-	for (;;) {
-		char *exf;
-		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL)
-			break;
-		if ((exf = file_expand(ap->a_name)) == NULL)
-			continue;
-		ap->a_name = exf;
-		if (access(ap->a_name, R_OK) == 0)
-			break;
-		perror(ap->a_name);
-	}
-	if ((ap->a_name && (value("attachment-ask-charset"))) ||
-			((cp = value("sendcharsets")) != NULL &&
-			 strchr(cp, ',') != NULL)) {
-		snprintf(prefix, sizeof prefix, "#%u\tcharset: ", number);
-		ap->a_charset = readtty(prefix, ap->a_charset);
-	}
-	/*
-	 * The "attachment-ask-content-*" variables are left undocumented
-	 * since they are for RFC connoisseurs only.
-	 */
-	if (ap->a_name && value("attachment-ask-content-type")) {
-		if (ap->a_content_type == NULL)
-			ap->a_content_type =
-				mime_classify_content_type_by_fileext(
-					ap->a_name);
-		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
-		ap->a_content_type = readtty(prefix, ap->a_content_type);
-	}
-	if (ap->a_name && value("attachment-ask-content-disposition")) {
-		snprintf(prefix, sizeof prefix,
-				"#%u\tContent-Disposition: ", number);
-		ap->a_content_disposition = readtty(prefix,
-				ap->a_content_disposition);
-	}
-	if (ap->a_name && value("attachment-ask-content-id")) {
-		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
-		ap->a_content_id = readtty(prefix, ap->a_content_id);
-	}
-	if (ap->a_name && value("attachment-ask-content-description")) {
-		snprintf(prefix, sizeof prefix,
-				"#%u\tContent-Description: ", number);
-		ap->a_content_description = readtty(prefix,
-				ap->a_content_description);
-	}
-	return ap->a_name ? ap : NULL;
-}
-
-/*
- * Interactively edit the attachment list.
- */
 struct attachment *
-edit_attachments(struct attachment *attach)
+edit_attachments(struct attachment *aphead)
 {
 	struct attachment *ap, *nap;
-	unsigned attno = 1;
+	ui_it attno = 1;
 
-	for (ap = attach; ap; ap = ap->a_flink) {
-		if ((nap = read_attachment_data(ap, attno)) == NULL) {
-			if (ap->a_blink)
-				ap->a_blink->a_flink = ap->a_flink;
-			else
-				attach = ap->a_flink;
-			if (ap->a_flink)
-				ap->a_flink->a_blink = ap->a_blink;
-			else
-				return attach;
-		} else
-			attno++;
+	/* Modify already present ones? */
+	for (ap = aphead; ap != NULL; ap = ap->a_flink) {
+		if (_read_attachment_data(ap, attno) != NULL) {
+			++attno;
+			continue;
+		}
+		nap = ap->a_flink;
+		if (ap->a_blink != NULL)
+			ap->a_blink->a_flink = nap;
+		else
+			aphead = nap;
+		if (nap != NULL)
+			nap->a_blink = ap->a_blink;
+		else
+			goto jleave;
 	}
-	while ((nap = read_attachment_data(NULL, attno)) != NULL) {
-		for (ap = attach; ap && ap->a_flink; ap = ap->a_flink);
-		if (ap)
+
+	/* Add some more? */
+	while ((nap = _read_attachment_data(NULL, attno)) != NULL) {
+		if ((ap = aphead) != NULL) {
+			while (ap->a_flink != NULL)
+				ap = ap->a_flink;
 			ap->a_flink = nap;
+		}
 		nap->a_blink = ap;
 		nap->a_flink = NULL;
-		if (attach == NULL)
-			attach = nap;
-		attno++;
+		if (aphead == NULL)
+			aphead = nap;
+		++attno;
 	}
-	return attach;
+jleave:
+	return (aphead);
 }
 
 FILE *
