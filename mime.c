@@ -888,20 +888,22 @@ mime_fromqp(struct str *in, struct str *out, int ishdr)
 		q = &(out->s)[diff]; \
 	}
 /*
- * Convert header fields from RFC 1522 format
+ * Convert header fields from RFC 1522 format TODO no error handling at all
  */
 void 
 mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 {
+	struct str crest, cin, cout;
 	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
 	char const *tcs;
-	struct str cin, cout;
 	int convert;
 	size_t maxstor, lastoutl = 0;
 #ifdef	HAVE_ICONV
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
+	crest.s = NULL;
+	crest.l = 0;
 	tcs = gettcharset();
 	maxstor = in->l;
 	out->s = smalloc(maxstor + 1);
@@ -951,10 +953,16 @@ mime_fromhdr(struct str *in, struct str *out, enum tdflags flags)
 			cin.l--;
 			switch (convert) {
 				case CONV_FROMB64:
-					mime_fromb64(&cin, &cout, 1);
+					crest.l = 0;
+					cout.s = NULL;
+					(void)b64_decode(&cout, &cin, 0,
+						&crest);
+					b64_decode_join(&cout, &crest);
 					break;
 				case CONV_FROMQP:
 					mime_fromqp(&cin, &cout, 1);
+					break;
+				default:
 					break;
 			}
 			if (lastwordend) {
@@ -1018,11 +1026,12 @@ notmime:
 	}
 fromhdr_end:
 	*q = '\0';
+	if (crest.s != NULL)
+		free(crest.s);
 	if (flags & TD_ISPR) {
-		struct str	new;
-		makeprint(out, &new);
+		makeprint(out, &crest);
 		free(out->s);
-		*out = new;
+		*out = crest;
 	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
@@ -1039,26 +1048,29 @@ fromhdr_end:
 static size_t
 mime_write_tohdr(struct str *in, FILE *fo)
 {
-	char *upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
+	char buf[B64_LINESIZE],
+		*upper, *wbeg, *wend, *lastwordend = NULL, *lastspc, b;
 	char const *charset, *charset7;
 	struct str cin, cout;
 	size_t sz = 0, col = 0, wr, charsetlen, charset7len;
 	int quoteany, mustquote, broken,
 		maxcol = 65 /* there is the header field's name, too */;
 
-	upper = in->s + in->l;
 	charset = getcharset(MIME_HIGHBIT);
 	if ((charset7 = value("charset7")) == NULL)
 		charset7 = us_ascii;
 	charsetlen = strlen(charset);
 	charset7len = strlen(charset7);
 	charsetlen = smax(charsetlen, charset7len);
+	upper = in->s + in->l;
+
 	b = 0;
-	for (wbeg = in->s, quoteany = 0; wbeg < upper; wbeg++) {
+	for (wbeg = in->s, quoteany = 0; wbeg < upper; ++wbeg) {
 		b |= *wbeg;
 		if (mustquote_hdr(wbeg, wbeg == in->s, wbeg == &upper[-1]))
 			quoteany++;
 	}
+
 	if (2u * quoteany > in->l) {
 		/*
 		 * Print the entire field in base64.
@@ -1066,15 +1078,16 @@ mime_write_tohdr(struct str *in, FILE *fo)
 		for (wbeg = in->s; wbeg < upper; wbeg = wend) {
 			wend = upper;
 			cin.s = wbeg;
-			for (;;) {
+			for (;;) { /* TODO optimize the -=4 case (...) */
 				cin.l = wend - wbeg;
 				if (cin.l * 4/3 + 7 + charsetlen
 						< maxcol - col) {
-					fprintf(fo, "=?%s?B?",
-						b&0200 ? charset : charset7);
-					wr = mime_write_tob64(&cin, fo, 1);
-					fwrite("?=", sizeof (char), 2, fo);
-					wr += 7 + charsetlen;
+					cout.s = buf;
+					cout.l = sizeof buf;
+					wr = fprintf(fo, "=?%s?B?%s?=",
+						b&0200 ? charset : charset7,
+						b64_encode(&cout, &cin, B64_BUF
+							)->s);
 					sz += wr, col += wr;
 					if (wend < upper) {
 						fwrite("\n ", sizeof (char),
@@ -1540,31 +1553,34 @@ fwrite_td(void *ptr, size_t size, size_t nmemb, FILE *f, enum tdflags flags,
 /*
  * fwrite performing the given MIME conversion.
  */
-size_t
+ssize_t
 mime_write(void *ptr, size_t size, FILE *f,
-		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen,
-		char **restp, size_t *restsizep)
+	enum conversion convert, enum tdflags dflags,
+	char *prefix, size_t prefixlen, struct str *rest)
 {
 	struct str in, out;
-	size_t sz, csize;
-	int is_text = 0;
-#ifdef	HAVE_ICONV
+	ssize_t sz;
+	int state;
+#ifdef HAVE_ICONV
 	char mptr[LINESIZE * 6];
 	char *iptr, *nptr;
 	size_t inleft, outleft;
 #endif
 
-	if (size == 0)
-		return 0;
-	csize = size;
-#ifdef	HAVE_ICONV
-	if (csize < sizeof mptr && (dflags & TD_ICONV)
-			&& iconvd != (iconv_t)-1
+	in.s = ptr;
+	in.l = size;
+	if ((sz = size) == 0) {
+		if (rest != NULL && rest->l != 0)
+			goto jconvert;
+		goto jleave;
+	}
+
+#ifdef HAVE_ICONV
+	if ((dflags & TD_ICONV) && size < sizeof mptr && iconvd != (iconv_t)-1
 			&& (convert == CONV_TOQP || convert == CONV_8BIT ||
 				convert == CONV_TOB64 ||
 				convert == CONV_TOHDR)) {
-		inleft = csize;
+		inleft = size;
 		outleft = sizeof mptr;
 		nptr = mptr;
 		iptr = ptr;
@@ -1575,15 +1591,15 @@ mime_write(void *ptr, size_t size, FILE *f,
 		} else {
 			if (errno == EILSEQ || errno == EINVAL)
 				invalid_seq(*iptr);
-			return 0;
+			sz = -1;
+			goto jleave;
 		}
-	} else {
-#endif
-		in.s = ptr;
-		in.l = csize;
-#ifdef	HAVE_ICONV
 	}
 #endif
+
+jconvert:
+	out.s = NULL;
+	out.l = 0;
 	switch (convert) {
 	case CONV_FROMQP:
 		mime_fromqp(&in, &out, 0);
@@ -1599,22 +1615,25 @@ mime_write(void *ptr, size_t size, FILE *f,
 				prefix, prefixlen);
 		break;
 	case CONV_FROMB64_T:
-		is_text = 1;
-		/*FALLTHROUGH*/
 	case CONV_FROMB64:
-		mime_fromb64_b(&in, &out, is_text, f);
-		if (is_text && out.s[out.l-1] != '\n' && restp && restsizep) {
-			*restp = ptr;
-			*restsizep = size;
-			sz = 0;
-		} else {
+		state = b64_decode(&out, &in, 0, rest);
+		if ((sz = out.l) != 0) {
+			if (state != OKAY)
+				prefix = NULL, prefixlen = 0;
 			sz = fwrite_td(out.s, sizeof *out.s, out.l, f, dflags,
 				prefix, prefixlen);
 		}
-		free(out.s);
+		if (out.s != NULL)
+			free(out.s);
+		if (state != OKAY)
+			sz = -1;
 		break;
 	case CONV_TOB64:
-		sz = mime_write_tob64(&in, f, 0);
+		(void)b64_encode(&out, &in, B64_LF|B64_MULTILINE);
+		sz = fwrite(out.s, sizeof *out.s, out.l, f);
+		if (sz != (ssize_t)out.l)
+			sz = -1;
+		free(out.s);
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
@@ -1632,5 +1651,6 @@ mime_write(void *ptr, size_t size, FILE *f,
 		sz = fwrite_td(in.s, sizeof *in.s, in.l, f, dflags,
 				prefix, prefixlen);
 	}
+jleave:
 	return sz;
 }

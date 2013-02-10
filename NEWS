@@ -1,6 +1,28 @@
 S - n a i l  N e w s
 ====================
 
+- The Base64 MIME handling has been rewritten completely.
+  This was an urgent topic, because the old implementation (a) read in
+  all lines of a base64 encoded text part, repeatedly resizing a string
+  storage until all the lines have been swallowed, (b) used function
+  local static data to keep state in between multiple invocations, which
+  messed up multibyte encodings like this
+
+    �5��ɽ���Aɥ����́��٥��������[lots of data follows]
+
+  and (c) did not perform any error checking at all.
+  The new one does not run into the problem that (a) tried to circumvent
+  since leftover decoded data (as opposed to leftover *encoded* data) is
+  transported along the call-chain for later use.  It adds a minimal set
+  of error handling ('may now see "[Invalid Base64 encoding ignored]"),
+  with more to become possible in later S-nail versions when the entire
+  layers are reworked.  Base64 encoded lines will now be 76 characters
+  long, as stated in RFC 2045, not 72 as before.
+
+  The Base64 code core has been shamelessly stolen from NetBSD's
+  Mail(1), and i guess it was the second time that this happened :=).
+  (*base64-rewrite* topic branch.)
+
 - The string allocation strategy has been tweaked some more to, i think,
   a final version (regarding algorithm).
   In normal non-interactive send mode it should now no longer need any

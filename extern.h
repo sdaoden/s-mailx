@@ -69,12 +69,15 @@ long nextprime(long n);
 char *strenc(const char *cp);
 char *strdec(const char *cp);
 #ifdef USE_MD5
-char *md5tohex(const void *vp);
-char *cram_md5_string(const char *user, const char *pass, const char *b64);
+/* Returns salloc()ed buffer */
+char *md5tohex(void const *vp);
+/* Returns salloc()ed buffer */
+char *cram_md5_string(char const *user, char const *pass, char const *b64);
 #endif
 char *getuser(void);
 char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 void transflags(struct message *omessage, long omsgCount, int transparent);
+/* Returns salloc()ed buffer */
 char *getrandstring(size_t length);
 void *smalloc(size_t s);
 void *srealloc(void *v, size_t s);
@@ -93,12 +96,47 @@ int asccasecmp(const char *s1, const char *s2);
 int ascncasecmp(const char *s1, const char *s2, size_t sz);
 char *asccasestr(const char *haystack, const char *xneedle);
 
-/* base64.c */
-char *strtob64(const char *p);
-char *memtob64(const void *vp, size_t isz);
-size_t mime_write_tob64(struct str *in, FILE *fo, int is_header);
-void mime_fromb64(struct str *in, struct str *out, int is_text);
-void mime_fromb64_b(struct str *in, struct str *out, int is_text, FILE *f);
+/*
+ * base64.c
+ * Base64 encoding as defined in section 6.8 of RFC 2045.
+ */
+
+/* How much output is necessary to encode *len* bytes in Base64.
+ * This assumes B64_CRLF|B64_MULTILINE is set and that the result is to be
+ * terminated */
+size_t		b64_encode_calc_size(size_t len);
+
+/* Note these simply convert all the input (if possible), including the
+ * insertion of NL sequences if B64_CRLF or B64_LF is set (and multiple thereof
+ * if B64_MULTILINE is set).
+ * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
+struct str *	b64_encode(struct str *out, struct str const *in,
+			enum b64flags flags);
+struct str *	b64_encode_cp(struct str *out, char const *cp,
+			enum b64flags flags);
+struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
+			enum b64flags flags);
+
+/* Trim WS and make *work* point to the decodable range of *in*.
+ * Return the amount of bytes a b64_decode operation on that buffer requires */
+size_t		b64_decode_prepare(struct str *work, struct str const *in);
+
+/* If *rest* is set then decoding will assume text input (strip CRs from CRLF
+ * sequences, only create output when complete lines have been read),
+ * otherwise binary input is assumed and each round will produce output.
+ * The buffers of *out* and possibly *rest* will be managed via srealloc().
+ * If *len* was 0 on input, b64_decode_prepare() will be called to init it and
+ * "adjust *in*", but otherwise it is assumed that this yet happened.
+ * Returns OKAY or STOP on error (in which case *out* * is set to an error
+ * message); caller is responsible to free buffers.
+ */
+int		b64_decode(struct str *out, struct str const *in, size_t len,
+			struct str *rest);
+
+/* b64_decode() always resets the length of *out* on entry, it doesn't append.
+ * Call this to join any *rest* onto *out*. (if non-empty).
+ * Simply swaps buffers if possible; frees dangling *rest*; returns *out* */
+struct str *	b64_decode_join(struct str *out, struct str *rest);
 
 /* cache.c */
 enum okay getcache1(struct mailbox *mp, struct message *m,
@@ -444,9 +482,9 @@ void mime_fromhdr(struct str *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char *name);
 size_t prefixwrite(void *ptr, size_t size, size_t nmemb, FILE *f,
 		char *prefix, size_t prefixlen);
-size_t mime_write(void *ptr, size_t size, FILE *f,
+ssize_t	 mime_write(void *ptr, size_t size, FILE *f,
 		enum conversion convert, enum tdflags dflags,
-		char *prefix, size_t prefixlen, char **rest, size_t *restsize);
+		char *prefix, size_t prefixlen, struct str *rest);
 
 /*
  * names.c

@@ -151,7 +151,8 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 /*
  * Do not change, you get incorrect base64 encodings else!
  */
-#define	INFIX_BUF	972
+#define	INFIX_BUF	\
+	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
 /*
  * Put the signature file at fo.
@@ -174,9 +175,8 @@ put_signature(FILE *fo, int convert)
 	}
 	while ((sz = fread(buf, sizeof *buf, INFIX_BUF, fsig)) != 0) {
 		c = buf[sz - 1];
-		if (mime_write(buf, sz, fo, convert, TD_NONE,
-					NULL, (size_t)0, NULL, NULL)
-				== 0) {
+		if (mime_write(buf, sz, fo, convert, TD_NONE, NULL, (size_t)0,
+				NULL) < 0) {
 			perror(sig);
 			Fclose(fsig);
 			return -1;
@@ -245,7 +245,7 @@ attach_file1(struct attachment *ap, FILE *fo, int dosign)
 		getencoding(convert),
 		ap->a_content_disposition);
 	mime_write(basename, strlen(basename), fo,
-			CONV_TOHDR, TD_NONE, NULL, (size_t)0, NULL, NULL);
+			CONV_TOHDR, TD_NONE, NULL, (size_t)0, NULL);
 	fwrite("\"\n", sizeof (char), 2, fo);
 	if (ap->a_content_id)
 		fprintf(fo, "Content-ID: %s\n", ap->a_content_id);
@@ -299,7 +299,7 @@ attach_file1(struct attachment *ap, FILE *fo, int dosign)
 		}
 		lastc = buf[sz-1];
 		if (mime_write(buf, sz, fo, convert, TD_ICONV,
-					NULL, (size_t)0, NULL, NULL) == 0)
+				NULL, (size_t)0, NULL) < 0)
 			err = -1;
 	}
 	if (convert == CONV_TOQP && lastc != '\n')
@@ -415,8 +415,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 			}
 			c = buf[sz - 1];
 			if (mime_write(buf, sz, fo, convert,
-					TD_ICONV, NULL, (size_t)0,
-					NULL, NULL) == 0) {
+					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
 				free(buf);
 				return -1;
 			}
@@ -570,8 +569,7 @@ infix(struct header *hp, FILE *fi, int dosign)
 			}
 			lastc = buf[sz - 1];
 			if (mime_write(buf, sz, nfo, convert,
-					TD_ICONV, NULL, (size_t)0,
-					NULL, NULL) == 0) {
+					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
 				Fclose(nfo);
 				Fclose(nfi);
 #ifdef	HAVE_ICONV
@@ -1303,11 +1301,10 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			fwrite("Organization: ", sizeof (char), 14, fo);
 			if (mime_write(addr, strlen(addr), fo,
 					action == SEND_TODISP ?
-					CONV_NONE:CONV_TOHDR,
+						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0,
-					NULL, NULL) == 0)
+						TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t)0, NULL) < 0)
 				return 1;
 			gotcha++;
 			putc('\n', fo);
@@ -1350,23 +1347,20 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			fwrite("Re: ", sizeof (char), 4, fo);
 			if (strlen(hp->h_subject + 4) > 0 &&
 				mime_write(hp->h_subject + 4,
-					strlen(hp->h_subject + 4),
-					fo, action == SEND_TODISP ?
-					CONV_NONE:CONV_TOHDR,
+					strlen(hp->h_subject + 4), fo,
 					action == SEND_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0,
-					NULL, NULL) == 0)
+						CONV_NONE:CONV_TOHDR,
+					action == SEND_TODISP ?
+						TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t)0, NULL) < 0)
 				return 1;
 		} else if (*hp->h_subject) {
-			if (mime_write(hp->h_subject,
-					strlen(hp->h_subject),
+			if (mime_write(hp->h_subject, strlen(hp->h_subject),
 					fo, action == SEND_TODISP ?
-					CONV_NONE:CONV_TOHDR,
+						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
-					TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0,
-					NULL, NULL) == 0)
+						TD_ISPR|TD_ICONV:TD_ICONV,
+					NULL, (size_t)0, NULL) < 0)
 				return 1;
 		}
 		gotcha++;
@@ -1421,7 +1415,7 @@ fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 		m_NOPF	= 1<<2,
 		m_CSEEN	= 1<<3
 	} m = (flags & GCOMMA) ? m_COMMA : 0;
-	int col, len;
+	ssize_t col, len;
 
 	col = strlen(str);
 	if (col) {
@@ -1457,11 +1451,11 @@ fmt(char *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 		} else
 			putc(' ', fo);
 		m = (m & ~m_CSEEN) | m_INIT;
-		len = mime_write(np->n_fullname,
-				len, fo,
+		len = mime_write(np->n_fullname, len, fo,
 				domime?CONV_TOHDR_A:CONV_NONE,
-				TD_ICONV, NULL, (size_t)0,
-				NULL, NULL);
+				TD_ICONV, NULL, (size_t)0, NULL);
+		if (len < 0)
+			return (1);
 		col += len;
 	}
 	putc('\n', fo);

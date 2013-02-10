@@ -76,10 +76,10 @@ static void parse822(struct message *zmp, struct mimepart *ip,
 static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 #endif
-static size_t out(char *buf, size_t len, FILE *fp,
-		enum conversion convert, enum sendaction action,
-		char *prefix, size_t prefixlen, off_t *stats,
-		char **restp, size_t *restsizep);
+static ssize_t	out(char *buf, size_t len, FILE *fp,
+			enum conversion convert, enum sendaction action,
+			char *prefix, size_t prefixlen, off_t *stats,
+			struct str *rest);
 static void addstats(off_t *stats, off_t lines, off_t bytes);
 static FILE *newfile(struct mimepart *ip, int *ispipe,
 		sighandler_type volatile*oldpipe);
@@ -177,9 +177,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char *prefix, size_t prefixlen,
 		enum sendaction action, off_t *volatile stats, int level)
 {
-	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL, *rest;
+	struct str rest;
+	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL;
 	char const *tcs;
-	size_t linesize = 0, linelen, count, len, restsize;
+	size_t linesize = 0, linelen, count, len;
 	int dostat, infld = 0, ignoring = 1, isenc, c, rt = 0, eof, ispipe = 0;
 	struct mimepart	*np;
 	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
@@ -245,8 +246,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				xstatusput(zmp, obuf, prefix, prefixlen, stats);
 			if (doign != allignore)
 				out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+					prefix, prefixlen, stats, NULL);
 			break;
 		}
 		isenc &= ~1;
@@ -285,8 +285,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 						prefixlen, stats);
 				if (doign != allignore)
 					out("\n", 1, obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+						prefix, prefixlen, stats, NULL);
 				break;
 			}
 			/*
@@ -371,8 +370,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 					len--;
 			}
 			out(start, len, obuf, convert,
-					action, prefix, prefixlen, stats,
-					NULL, NULL);
+				action, prefix, prefixlen, stats, NULL);
 			if (ferror(obuf)) {
 				free(line);
 				return -1;
@@ -453,8 +451,7 @@ skip:	switch (ip->m_mimecontent) {
 			if (level == 0 && count) {
 				cp = "[Binary content]\n\n";
 				out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+					prefix, prefixlen, stats, NULL);
 			}
 			/*FALLTHRU*/
 		case SEND_TOFLTR:
@@ -505,8 +502,7 @@ skip:	switch (ip->m_mimecontent) {
 				     "use \"show\" to display "
 				     "the raw message]\n\n";
 				out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX,
-						prefix, prefixlen, stats,
-						NULL, NULL);
+					prefix, prefixlen, stats, NULL);
 			}
 			for (np = ip->m_multipart; np; np = np->m_nextpart) {
 				if (np->m_mimecontent == MIME_DISCARD &&
@@ -545,8 +541,7 @@ skip:	switch (ip->m_mimecontent) {
 						out(cp, strlen(cp), obuf,
 							CONV_NONE, SEND_MBOX,
 							prefix, prefixlen,
-							stats,
-							NULL, NULL);
+							stats, NULL);
 						ac_free(cp);
 					}
 					break;
@@ -650,14 +645,17 @@ skip:	switch (ip->m_mimecontent) {
 		}
 	} else
 		pbuf = qbuf = obuf;
+
 	eof = 0;
-	while (!eof && foldergets(&line, &linesize, &count, &linelen, ibuf)) {
-		lineno++;
+	rest.s = NULL;
+	rest.l = 0;
+	while (! eof && foldergets(&line, &linesize, &count, &linelen, ibuf)) {
+		++lineno;
+
 		while (convert == CONV_FROMQP && linelen >= 2 &&
 				line[linelen-2] == '=') {
 			char	*line2;
 			size_t	linesize2, linelen2;
-		nextl:
 			line2 = NULL;
 			linesize2 = 0;
 			if (foldergets(&line2, &linesize2, &count, &linelen2,
@@ -672,24 +670,25 @@ skip:	switch (ip->m_mimecontent) {
 			linelen += linelen2;
 			free(line2);
 		}
-		rest = NULL;
-		restsize = 0;
-		out(line, linelen, pbuf, convert, action,
+joutln:
+		len = (size_t)out(line, linelen, pbuf, convert, action,
 				pbuf == origobuf ? prefix : NULL,
 				pbuf == origobuf ? prefixlen : 0,
-				pbuf == origobuf ? stats : NULL,
-				eof ? NULL : &rest, eof ? NULL : &restsize);
-		if (ferror(pbuf)) {
+				pbuf == origobuf ? stats : NULL, &rest);
+		if ((ssize_t)len < 0 || (len == 0 && rest.l == 0) ||
+				ferror(pbuf)) {
 			rt = -1;
 			break;
 		}
-		if (restsize) {
-			if (line != rest)
-				memmove(line, rest, restsize);
-			linelen = restsize;
-			goto nextl;
-		}
 	}
+	if (rest.l != 0) {
+		linelen = 0;
+		eof = 1;
+		goto joutln;
+	}
+	if (rest.s != NULL)
+		free(rest.s);
+
 end:	free(line);
 	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
@@ -965,17 +964,14 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 }
 #endif
 
-static size_t
+static ssize_t
 out(char *buf, size_t len, FILE *fp,
-		enum conversion convert, enum sendaction action,
-		char *prefix, size_t prefixlen, off_t *stats,
-		char **restp, size_t *restsizep)
+	enum conversion convert, enum sendaction action,
+	char *prefix, size_t prefixlen, off_t *stats, struct str *rest)
 {
-	size_t	sz, n;
-	char	*cp;
-	long	lines;
+	ssize_t sz = 0, n;
+	char *cp;
 
-	sz = 0;
 	if (action != SEND_MBOX && action != SEND_DECRYPT)
 		goto jmw;
 
@@ -983,7 +979,6 @@ out(char *buf, size_t len, FILE *fp,
 	n = len;
 	while (n && cp[0] == '>')
 		++cp, --n;
-
 	/* Primitive, rather POSIX-compliant From_ quoting? */
 	if (value("posix-mbox")) {
 		if (n >= 5 && cp[0] == 'F' && cp[1] == 'r' && cp[2] == 'o' &&
@@ -992,12 +987,12 @@ out(char *buf, size_t len, FILE *fp,
 	}
 	/* We however *have* to perform RFC 4155 compliant From_ quoting, or
 	 * we end up like Mutt 1.5.21 (2010-09-15) */
-	else if (cp != buf && is_head(cp, n)) {
+	else if (cp != buf && is_head(cp, n)) { /* TODO recheck: cp==buf only */
 jquote:		putc('>', fp);
-		sz++;
+		++sz;
 	}
 
-jmw:	sz += mime_write(buf, len, fp,
+jmw:	n = mime_write(buf, len, fp,
 			action == SEND_MBOX ? CONV_NONE : convert,
 			action == SEND_TODISP || action == SEND_TODISP_ALL ||
 					action == SEND_QUOTE ||
@@ -1009,15 +1004,19 @@ jmw:	sz += mime_write(buf, len, fp,
 					TD_DELCTRL :
 				action == SEND_SHOW ?
 					TD_ISPR : TD_NONE,
-			prefix, prefixlen,
-			restp, restsizep);
-	lines = 0;
-	if (stats && stats[0] != -1) {
-		for (cp = buf; cp < &buf[sz]; cp++)
-			if (*cp == '\n')
-				lines++;
+			prefix, prefixlen, rest);
+	if (n < 0)
+		sz = n;
+	else if (n > 0) {
+		sz += n;
+		n = 0;
+		if (stats && stats[0] != -1) {
+			for (cp = buf; cp < &buf[sz]; cp++)
+				if (*cp == '\n')
+					++n;
+		}
+		addstats(stats, n, sz);
 	}
-	addstats(stats, lines, sz);
 	return sz;
 }
 

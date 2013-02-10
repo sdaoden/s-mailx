@@ -670,6 +670,25 @@ struct shortcut {
 #define reset(x)	siglongjmp(srbuf, x)
 
 /*
+ * Base64 convertion as defined in section 6.8 of RFC 2045.
+ */
+
+#define B64_LINESIZE	(4 * 19 + 1)	/* Maximum compliant Base64 linesize */
+#define B64_ENCODE_INPUT_PER_LINE 57	/* Max. input for Base64 encode/line */
+
+enum b64flags {
+	B64_NONE,
+	B64_SALLOC	= 1<<0,		/* Use salloc(), not srealloc().. */
+	B64_BUF		= 1<<1,		/* ..result .s,.l point to user buffer
+					 * of B64_LINESIZE+ bytes instead */
+	B64_CRLF	= 1<<2,		/* (encode) Append "\r\n" to result */
+	B64_LF		= 1<<3,		/* (encode) Append "\n" to result */
+	/* (encode) If one of _CRLF/_LF is set, honour B64_LINESIZE and
+	 * inject the desired line-ending whenever a linewrap is desired */
+	B64_MULTILINE	= 1<<4
+};
+
+/*
  * Locale-independent character classes.
  */
 
