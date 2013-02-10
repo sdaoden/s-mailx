@@ -40,10 +40,14 @@
 #include "rcv.h"
 
 #include <errno.h>
-#include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#ifdef HAVE_WORDEXP
+# include <wordexp.h>
+#endif
+
 #ifdef HAVE_SOCKETS
 # include <netdb.h>
 # include <netinet/in.h>
@@ -52,15 +56,13 @@
 #  include <arpa/inet.h>
 # endif
 #endif
+
 #ifdef USE_OPENSSL
-# include <openssl/ssl.h>
 # include <openssl/err.h>
+# include <openssl/rand.h>
+# include <openssl/ssl.h>
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
-# include <openssl/rand.h>
-#endif
-#ifdef HAVE_WORDEXP
-# include <wordexp.h>
 #endif
 
 #include "extern.h"
@@ -86,11 +88,16 @@ static char *	_expand(char const *name, int only_local);
 /* Perform shell meta character expansion */
 static char *	_globname(char const *name);
 
+/* *line* is a buffer with the result of fgets().
+ * Returns the first newline or the last character read */
+static size_t	_length_of_line(const char *line, size_t linesize);
+
+/* Read a line, one character at a time */
+static char *	_fgetline_byone(char **line, size_t *linesize, size_t *llen,
+			FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
+
 static void makemessage(void);
 static void append(struct message *mp);
-static size_t length_of_line(const char *line, size_t linesize);
-static char *fgetline_byone(char **line, size_t *linesize, size_t *llen,
-		FILE *fp, int appendnl, size_t n);
 static enum okay get_header(struct message *mp);
 
 static char *
@@ -296,6 +303,162 @@ again:
 }
 
 /*
+ * line is a buffer with the result of fgets(). Returns the first
+ * newline or the last character read.
+ */
+static size_t
+_length_of_line(const char *line, size_t linesize)
+{
+	size_t i;
+
+	/* Last character is always '\0' and was added by fgets() */
+	for (--linesize, i = 0; i < linesize; i++)
+		if (line[i] == '\n')
+			break;
+	return (i < linesize) ? i + 1 : linesize;
+}
+
+static char *
+_fgetline_byone(char **line, size_t *linesize, size_t *llen,
+	FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS)
+{
+	int c;
+
+	if (*line == NULL || *linesize < LINESIZE + n + 1)
+		*line = (srealloc)(*line, *linesize = LINESIZE + n + 1
+				SMALLOC_DEBUG_ARGSCALL);
+	for (;;) {
+		if (n >= *linesize - 128)
+			*line = (srealloc)(*line, *linesize += 256
+					SMALLOC_DEBUG_ARGSCALL);
+		c = getc(fp);
+		if (c != EOF) {
+			(*line)[n++] = c;
+			(*line)[n] = '\0';
+			if (c == '\n')
+				break;
+		} else {
+			if (n > 0) {
+				if (appendnl) {
+					(*line)[n++] = '\n';
+					(*line)[n] = '\0';
+				}
+				break;
+			} else
+				return NULL;
+		}
+	}
+	if (llen)
+		*llen = n;
+	return *line;
+}
+
+char *
+(fgetline)(char **line, size_t *linesize, size_t *count, size_t *llen,
+	FILE *fp, int appendnl SMALLOC_DEBUG_ARGS)
+{
+	size_t i_llen, sz;
+
+	if (count == NULL)
+		/*
+		 * If we have no count, we cannot determine where the
+		 * characters returned by fgets() end if there was no
+		 * newline. We have to read one character at one.
+		 */
+		return _fgetline_byone(line, linesize, llen, fp, appendnl, 0
+			SMALLOC_DEBUG_ARGSCALL);
+	if (*line == NULL || *linesize < LINESIZE)
+		*line = (srealloc)(*line, *linesize = LINESIZE
+				SMALLOC_DEBUG_ARGSCALL);
+	sz = *linesize <= *count ? *linesize : *count + 1;
+	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
+		/*
+		 * Leave llen untouched; it is used to determine whether
+		 * the last line was \n-terminated in some callers.
+		 */
+		return NULL;
+	i_llen = _length_of_line(*line, sz);
+	*count -= i_llen;
+	while ((*line)[i_llen - 1] != '\n') {
+		*line = (srealloc)(*line, *linesize += 256
+				SMALLOC_DEBUG_ARGSCALL);
+		sz = *linesize - i_llen;
+		sz = (sz <= *count ? sz : *count + 1);
+		if (sz <= 1 || fgets(&(*line)[i_llen], sz, fp) == NULL) {
+			if (appendnl) {
+				(*line)[i_llen++] = '\n';
+				(*line)[i_llen] = '\0';
+			}
+			break;
+		}
+		sz = _length_of_line(&(*line)[i_llen], sz);
+		i_llen += sz;
+		*count -= sz;
+	}
+	if (llen)
+		*llen = i_llen;
+	return *line;
+}
+
+int
+(readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
+	SMALLOC_DEBUG_ARGS)
+{
+	long sz;
+
+	clearerr(ibuf);
+	/*
+	 * Interrupts will cause trouble if we are inside a stdio call. As
+	 * this is only relevant if input comes from a terminal, we can simply
+	 * bypass it by read() then.
+	 */
+	if (fileno(ibuf) == 0 && is_a_tty[0]) {
+		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
+			*linebuf = (srealloc)(*linebuf,
+					*linesize = LINESIZE + n + 1
+					SMALLOC_DEBUG_ARGSCALL);
+		for (;;) {
+			if (n >= *linesize - 128)
+				*linebuf = (srealloc)(*linebuf,
+						*linesize += 256
+						SMALLOC_DEBUG_ARGSCALL);
+again:
+			sz = read(0, *linebuf + n, *linesize - n - 1);
+			if (sz > 0) {
+				n += sz;
+				(*linebuf)[n] = '\0';
+				if (n > 0 && (*linebuf)[n - 1] == '\n')
+					break;
+			} else {
+				if (sz < 0 && errno == EINTR)
+					goto again;
+				if (n > 0) {
+					if ((*linebuf)[n - 1] != '\n') {
+						(*linebuf)[n++] = '\n';
+						(*linebuf)[n] = '\0';
+					}
+					break;
+				} else
+					return -1;
+			}
+		}
+	} else {
+		/*
+		 * Not reading from standard input or standard input not
+		 * a terminal. We read one char at a time as it is the
+		 * only way to get lines with embedded NUL characters in
+		 * standard stdio.
+		 */
+		if (_fgetline_byone(linebuf, linesize, &n, ibuf, 1, n
+				SMALLOC_DEBUG_ARGSCALL) == NULL)
+			return -1;
+	}
+	if (n > 0 && (*linebuf)[n - 1] == '\n')
+		(*linebuf)[--n] = '\0';
+	return n;
+}
+
+/*
  * Set up the input pointers while copying the mail file into /tmp.
  */
 void
@@ -410,66 +573,6 @@ putline(FILE *obuf, char *linebuf, size_t count)
 	if (ferror(obuf))
 		return (-1);
 	return (count + 1);
-}
-
-/*
- * Read up a line from the specified input into the line
- * buffer.  Return the number of characters read.  Do not
- * include the newline at the end.
- *
- * n is the number of characters already read.
- */
-int
-readline_restart(FILE *ibuf, char **linebuf, size_t *linesize, size_t n)
-{
-	long sz;
-
-	clearerr(ibuf);
-	/*
-	 * Interrupts will cause trouble if we are inside a stdio call. As
-	 * this is only relevant if input comes from a terminal, we can simply
-	 * bypass it by read() then.
-	 */
-	if (fileno(ibuf) == 0 && is_a_tty[0]) {
-		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
-			*linebuf = srealloc(*linebuf,
-					*linesize = LINESIZE + n + 1);
-		for (;;) {
-			if (n >= *linesize - 128)
-				*linebuf = srealloc(*linebuf, *linesize += 256);
-again:
-			sz = read(0, *linebuf + n, *linesize - n - 1);
-			if (sz > 0) {
-				n += sz;
-				(*linebuf)[n] = '\0';
-				if (n > 0 && (*linebuf)[n - 1] == '\n')
-					break;
-			} else {
-				if (sz < 0 && errno == EINTR)
-					goto again;
-				if (n > 0) {
-					if ((*linebuf)[n - 1] != '\n') {
-						(*linebuf)[n++] = '\n';
-						(*linebuf)[n] = '\0';
-					}
-					break;
-				} else
-					return -1;
-			}
-		}
-	} else {
-		/*
-		 * Not reading from standard input or standard input not
-		 * a terminal. We read one char at a time as it is the
-		 * only way to get lines with embedded NUL characters in
-		 * standard stdio.
-		 */
-		if (fgetline_byone(linebuf, linesize, &n, ibuf, 1, n) == NULL)
-			return -1;
-	}
-	if (n > 0 && (*linebuf)[n - 1] == '\n')
-		(*linebuf)[--n] = '\0';
-	return n;
 }
 
 /*
@@ -763,115 +866,6 @@ unstack(void)
 	return(0);
 }
 
-/*
- * line is a buffer with the result of fgets(). Returns the first
- * newline or the last character read.
- */
-static size_t
-length_of_line(const char *line, size_t linesize)
-{
-	register size_t i;
-
-	/*
-	 * Last character is always '\0' and was added by fgets.
-	 */
-	linesize--;
-	for (i = 0; i < linesize; i++)
-		if (line[i] == '\n')
-			break;
-	return i < linesize ? i + 1 : linesize;
-}
-
-/*
- * fgets replacement to handle lines of arbitrary size and with
- * embedded \0 characters.
- * line - line buffer. *line be NULL.
- * linesize - allocated size of line buffer.
- * count - maximum characters to read. May be NULL.
- * llen - length_of_line(*line).
- * fp - input FILE.
- * appendnl - always terminate line with \n, append if necessary.
- */
-char *
-fgetline(char **line, size_t *linesize, size_t *count, size_t *llen,
-		FILE *fp, int appendnl)
-{
-	size_t i_llen, sz;
-
-	if (count == NULL)
-		/*
-		 * If we have no count, we cannot determine where the
-		 * characters returned by fgets() end if there was no
-		 * newline. We have to read one character at one.
-		 */
-		return fgetline_byone(line, linesize, llen, fp, appendnl, 0);
-	if (*line == NULL || *linesize < LINESIZE)
-		*line = srealloc(*line, *linesize = LINESIZE);
-	sz = *linesize <= *count ? *linesize : *count + 1;
-	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
-		/*
-		 * Leave llen untouched; it is used to determine whether
-		 * the last line was \n-terminated in some callers.
-		 */
-		return NULL;
-	i_llen = length_of_line(*line, sz);
-	*count -= i_llen;
-	while ((*line)[i_llen - 1] != '\n') {
-		*line = srealloc(*line, *linesize += 256);
-		sz = *linesize - i_llen;
-		sz = (sz <= *count ? sz : *count + 1);
-		if (sz <= 1 || fgets(&(*line)[i_llen], sz, fp) == NULL) {
-			if (appendnl) {
-				(*line)[i_llen++] = '\n';
-				(*line)[i_llen] = '\0';
-			}
-			break;
-		}
-		sz = length_of_line(&(*line)[i_llen], sz);
-		i_llen += sz;
-		*count -= sz;
-	}
-	if (llen)
-		*llen = i_llen;
-	return *line;
-}
-
-/*
- * Read a line, one character at once.
- */
-static char *
-fgetline_byone(char **line, size_t *linesize, size_t *llen,
-		FILE *fp, int appendnl, size_t n)
-{
-	int c;
-
-	if (*line == NULL || *linesize < LINESIZE + n + 1)
-		*line = srealloc(*line, *linesize = LINESIZE + n + 1);
-	for (;;) {
-		if (n >= *linesize - 128)
-			*line = srealloc(*line, *linesize += 256);
-		c = getc(fp);
-		if (c != EOF) {
-			(*line)[n++] = c;
-			(*line)[n] = '\0';
-			if (c == '\n')
-				break;
-		} else {
-			if (n > 0) {
-				if (appendnl) {
-					(*line)[n++] = '\n';
-					(*line)[n] = '\0';
-				}
-				break;
-			} else
-				return NULL;
-		}
-	}
-	if (llen)
-		*llen = n;
-	return *line;
-}
-
 static enum okay
 get_header(struct message *mp)
 {
@@ -1051,72 +1045,6 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 	return OKAY;
 }
 
-int
-sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp)
-{
-	char	*lp = *line;
-
-	if (sp->s_rsz < 0) {
-		sclose(sp);
-		return sp->s_rsz;
-	}
-	do {
-		if (*line == NULL || lp > &(*line)[*linesize - 128]) {
-			size_t diff = lp - *line;
-			*line = srealloc(*line, *linesize += 256);
-			lp = &(*line)[diff];
-		}
-		if (sp->s_rbufptr == NULL ||
-				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
-#ifdef USE_OPENSSL
-			if (sp->s_use_ssl) {
-		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
-						sp->s_rbuf,
-						sizeof sp->s_rbuf)) <= 0) {
-					if (sp->s_rsz < 0) {
-						char	o[512];
-						switch(SSL_get_error(sp->s_ssl,
-							sp->s_rsz)) {
-						case SSL_ERROR_WANT_READ:
-						case SSL_ERROR_WANT_WRITE:
-							goto ssl_retry;
-						}
-						snprintf(o, sizeof o, "%s",
-							sp->s_desc ?
-								sp->s_desc :
-								"socket");
-						ssl_gen_err("%s", o);
-
-					}
-					break;
-				}
-			} else
-#endif
-			{
-			again:	if ((sp->s_rsz = read(sp->s_fd, sp->s_rbuf,
-						sizeof sp->s_rbuf)) <= 0) {
-					if (sp->s_rsz < 0) {
-						char	o[512];
-						if (errno == EINTR)
-							goto again;
-						snprintf(o, sizeof o, "%s",
-							sp->s_desc ?
-								sp->s_desc :
-								"socket");
-						perror(o);
-					}
-					break;
-				}
-			}
-			sp->s_rbufptr = sp->s_rbuf;
-		}
-	} while ((*lp++ = *sp->s_rbufptr++) != '\n');
-	*lp = '\0';
-	if (linelen)
-		*linelen = lp - *line;
-	return lp - *line;
-}
-
 enum okay
 sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose)
@@ -1251,4 +1179,72 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 #endif
 	return OKAY;
 }
-#endif	/* HAVE_SOCKETS */
+
+int
+(sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
+	SMALLOC_DEBUG_ARGS)
+{
+	char	*lp = *line;
+
+	if (sp->s_rsz < 0) {
+		sclose(sp);
+		return sp->s_rsz;
+	}
+	do {
+		if (*line == NULL || lp > &(*line)[*linesize - 128]) {
+			size_t diff = lp - *line;
+			*line = (srealloc)(*line, *linesize += 256
+					SMALLOC_DEBUG_ARGSCALL);
+			lp = &(*line)[diff];
+		}
+		if (sp->s_rbufptr == NULL ||
+				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
+#ifdef USE_OPENSSL
+			if (sp->s_use_ssl) {
+		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
+						sp->s_rbuf,
+						sizeof sp->s_rbuf)) <= 0) {
+					if (sp->s_rsz < 0) {
+						char	o[512];
+						switch(SSL_get_error(sp->s_ssl,
+							sp->s_rsz)) {
+						case SSL_ERROR_WANT_READ:
+						case SSL_ERROR_WANT_WRITE:
+							goto ssl_retry;
+						}
+						snprintf(o, sizeof o, "%s",
+							sp->s_desc ?
+								sp->s_desc :
+								"socket");
+						ssl_gen_err("%s", o);
+
+					}
+					break;
+				}
+			} else
+#endif
+			{
+			again:	if ((sp->s_rsz = read(sp->s_fd, sp->s_rbuf,
+						sizeof sp->s_rbuf)) <= 0) {
+					if (sp->s_rsz < 0) {
+						char	o[512];
+						if (errno == EINTR)
+							goto again;
+						snprintf(o, sizeof o, "%s",
+							sp->s_desc ?
+								sp->s_desc :
+								"socket");
+						perror(o);
+					}
+					break;
+				}
+			}
+			sp->s_rbufptr = sp->s_rbuf;
+		}
+	} while ((*lp++ = *sp->s_rbufptr++) != '\n');
+	*lp = '\0';
+	if (linelen)
+		*linelen = lp - *line;
+	return lp - *line;
+}
+#endif /* HAVE_SOCKETS */

@@ -660,6 +660,8 @@ skip:	switch (ip->m_mimecontent) {
 			linesize2 = 0;
 			if (foldergets(&line2, &linesize2, &count, &linelen2,
 						ibuf) == NULL) {
+				if (line2 != NULL)
+					free(line2);
 				eof = 1;
 				break;
 			}

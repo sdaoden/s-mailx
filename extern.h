@@ -305,10 +305,41 @@ FILE *run_editor(FILE *fp, off_t size, int type, int readonly,
 		sighandler_type oldint);
 
 /* fio.c */
+
+/* fgets() replacement to handle lines of arbitrary size and with embedded \0
+ * characters.
+ * *line* - line buffer. *line be NULL.
+ * *linesize* - allocated size of line buffer.
+ * *count* - maximum characters to read. May be NULL.
+ * *llen* - length_of_line(*line).
+ * *fp* - input FILE.
+ * *appendnl* - always terminate line with \n, append if necessary.
+ */
+char *		fgetline(char **line, size_t *linesize, size_t *count,
+			size_t *llen, FILE *fp, int appendnl
+			SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define fgetline(A,B,C,D,E,F)	\
+	fgetline(A, B, C, D, E, F, __FILE__, __LINE__)
+#endif
+
+/* Read up a line from the specified input into the linebuffer.
+ * Return the number of characters read.  Do not include the newline at EOL.
+ * *n* is the number of characters already read.
+ */
+int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
+			size_t n SMALLOC_DEBUG_ARGS);
+#ifndef HAVE_ASSERTS
+# define readline(A,B,C)	readline_restart(A, B, C, 0)
+#else
+# define readline_restart(A,B,C,D)	\
+	readline_restart(A, B, C, D, __FILE__, __LINE__)
+# define readline(A,B,C)		\
+	(readline_restart)(A, B, C, 0, __FILE__, __LINE__)
+#endif
+
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
-#define	readline(a, b, c)	readline_restart(a, b, c, 0)
-int readline_restart(FILE *ibuf, char **linebuf, size_t *linesize, size_t n);
 FILE *setinput(struct mailbox *mp, struct message *m, enum needspec need);
 struct message *setdot(struct message *mp);
 int rm(char *name);
@@ -333,16 +364,20 @@ int		source(void *v);
  * flag as appropriate */
 int		unstack(void);
 
-char *fgetline(char **line, size_t *linesize, size_t *count,
-		size_t *llen, FILE *fp, int appendnl);
 void newline_appended(void);
 enum okay get_body(struct message *mp);
 int sclose(struct sock *sp);
 enum okay swrite(struct sock *sp, const char *data);
 enum okay swrite1(struct sock *sp, const char *data, int sz, int use_buffer);
-int sgetline(char **line, size_t *linesize, size_t *linelen, struct sock *sp);
 enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose);
+
+/*  */
+int		sgetline(char **line, size_t *linesize, size_t *linelen,
+			struct sock *sp SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
+#endif
 
 /* head.c */
 
