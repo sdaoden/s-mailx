@@ -288,12 +288,15 @@ struct str *
 qp_encode(struct str *out, struct str const *in, enum qpflags flags)
 {
 	bool_t sol = (flags & QP_ISHEAD ? FAL0 : TRU1), seenx;
-	ssize_t i = qp_encode_calc_size(in->l), lnlen;
+	ssize_t lnlen;
 	char *qp;
 	char const *is, *ie;
 
-	if ((flags & QP_BUF) == 0)
-		out->s = (flags & QP_SALLOC) ? salloc(i) : srealloc(out->s, i);
+	if ((flags & QP_BUF) == 0) {
+		lnlen = qp_encode_calc_size(in->l);
+		out->s = (flags & QP_SALLOC) ? salloc(lnlen)
+				: srealloc(out->s, lnlen);
+	}
 	qp = out->s;
 	is = in->s;
 	ie = is + in->l;
