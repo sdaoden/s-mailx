@@ -157,17 +157,11 @@ SINLINE char *
 _qp_ctohex(char *store, char c)
 {
 	static char const hexmap[] = "0123456789ABCDEF";
-	uc_it i1 = (uc_it)c, i2;
 
 	store[2] = '\0';
-	i2 = (uc_it)i1 & 15;
-	store[1] = hexmap[i2];
-	if (i1 > i2) {
-		i1 -= i2;
-		i1 >>= 4;
-	} else
-		i1 ^= i1;
-	store[0] = hexmap[i1];
+	store[1] = hexmap[(uc_it)c & 0x0F];
+	c = ((uc_it)c >> 4) & 0x0F;
+	store[0] = hexmap[(uc_it)c];
 	return store;
 }
 
