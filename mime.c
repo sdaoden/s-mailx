@@ -213,16 +213,10 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 	out.s = NULL;
 	out.l = 0;
 
-	if (! (
+	/* *in* _may_ point to non-modifyable buffer; but even then it only
+	 * needs to be dup'ed away if we have to transform the content */
 #ifdef HAVE_ICONV
-		((flags & TD_ICONV) && iconvd != (iconv_t)-1) ||
-#endif
-			(flags & (TD_ISPR|TD_DELCTRL|_TD_BUFCOPY))
-			== (TD_DELCTRL|_TD_BUFCOPY)))
-		flags &= ~(TD_ICONV|_TD_BUFCOPY);
-
-#ifdef HAVE_ICONV
-	if (flags & TD_ICONV) {
+	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
 		/* TODO leftover data (incomplete multibyte sequences) not
 		 * TODO handled, leads to many skipped over data
 		 * TODO send/MIME rewrite: don't assume complete input line is
@@ -231,7 +225,8 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 		in = out;
 	} else
 #endif
-	if (flags & _TD_BUFCOPY) {
+	if ((flags & _TD_BUFCOPY) ||
+			(flags & (TD_ISPR|TD_DELCTRL)) == TD_DELCTRL) {
 		str_dup(&out, &in);
 		in = out;
 	}
