@@ -1550,9 +1550,9 @@ jqpb64_enc:
 			sz = -1;
 		break;
 	case CONV_FROMHDR:
-		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-		sz = _fwrite_td(out.s, out.l, f, dflags & TD_DELCTRL,
-			prefix, prefixlen);
+		mime_fromhdr(&in, &out,
+			TD_ISPR|TD_ICONV | (dflags & TD_DELCTRL));
+		sz = prefixwrite(out.s, out.l, f, prefix, prefixlen);
 		break;
 	case CONV_TOHDR:
 		sz = mime_write_tohdr(&in, f);
@@ -1562,6 +1562,7 @@ jqpb64_enc:
 		break;
 	default:
 		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
+		break;
 	}
 	if (out.s != NULL)
 		free(out.s);
