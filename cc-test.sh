@@ -57,8 +57,8 @@ test_mail() {
 		cat "${BODY}"
 	) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
 
-	cksum_test "${MBOX1}" '3520698923 4771'
-	cksum_test "${MBOX2}" '1870415345 4770'
+	cksum_test "${MBOX1}" '2606934084 5649'
+	cksum_test "${MBOX2}" '799758423 5648'
 }
 
 printf \
@@ -75,12 +75,6 @@ printf \
 "Ich bin eine DÖS-Datäi mit langen Zeilen und auch sonst 1234567\r\n"\
 "Ich bin eine DÖS-Datäi mit langen Zeilen und auch sonst 12345678\r\n"\
 "Ich bin eine DÖS-Datäi mit langen Zeilen und auch sonst 123456789\r\n"\
-"bin\r\n"\
-"eine\r\n"\
-"DOS-Datei\r\n"\
-"ohne\r\n"\
-"vertikalem\r\n"\
-"Tabulator.\r\n"\
 "Unn ausserdem habe ich trailing SP/HT/SP/HT whitespace 	 	\r\n"\
 "Unn ausserdem habe ich trailing HT/SP/HT/SP whitespace	 	 \r\n"\
 "auf den zeilen vorher.\r\n"\
@@ -102,6 +96,16 @@ printf \
 "Unn ausseerdem habe ich trailing HT/SP/HT/SP whitespace	 	 \n"\
 "auf den zeilen vorher.\n"\
 "ditto.\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.123\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234"\
+"\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234"\
+"5\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234"\
+"56\n"\
 "=VIER = EQUAL SIGNS=ON A LINE=\n"\
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
@@ -127,6 +131,7 @@ cc_all_configs
 test_mail
 
 if [ ${ESTAT} -eq 0 ]; then
+	echo 'Everything seems to be fine around here' >> "${OUT}" 2>> "${ERR}"
 	"${MAKE}" distclean >> "${OUT}" 2>> "${ERR}"
 	rm -f "${BODY}" "${MBOX1}" "${MBOX2}" >> "${OUT}" 2>> "${ERR}"
 fi

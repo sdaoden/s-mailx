@@ -335,6 +335,14 @@ jheadq:
 			*qp++ = c;
 			if (++lnlen < QP_LINESIZE - 1 -1)
 				continue;
+			/* Don't write a soft line break when we're in the last
+			 * possible column and either an LF has been written or
+			 * only an LF follows, as that'll end the line anyway */
+			/* XXX but - ensure is+1>=ie, then??
+			 * xxx and/or - what about resetting lnlen; that contra
+			 * xxx dicts input==1 input line assertion, though */
+			if (c == '\n' || is == ie || *is == '\n')
+				continue;
 jsoftnl:
 			qp[0] = '=';
 			qp[1] = '\n';
@@ -343,7 +351,7 @@ jsoftnl:
 			continue;
 		}
 
-		if (lnlen >= QP_LINESIZE - 3 - 1 -1) {
+		if (lnlen > QP_LINESIZE - 3 - 1 -1) {
 			qp[0] = '=';
 			qp[1] = '\n';
 			qp += 2;
@@ -361,7 +369,7 @@ jsoftnl:
 		}
 	}
 
-	/* Lines that don't end with [CR]LF need an escaped [CR]LF */
+	/* Enforce soft line break if we haven't seen LF */
 	if (in->l > 0 && *--is != '\n') {
 		qp[0] = '=';
 		qp[1] = '\n';
