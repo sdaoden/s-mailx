@@ -63,6 +63,7 @@ struct mtnode {
 
 static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 			*const _mt_sources[] = {
+		/* XXX Order fixed due to *mimetypes-load-control* handling! */
 		MIME_TYPES_USR, MIME_TYPES_SYS, NULL
 	},
 			*const _mt_bltin[] = {
@@ -101,14 +102,31 @@ _mt_init(void)
 	struct mtnode *tail = NULL;
 	char *line = NULL;
 	size_t linesize = 0;
-	char const *const*srcs;
+	ui_it idx, idx_ok;
+	char const *ccp, *const*srcs;
 	FILE *fp;
 
-	for (srcs = _mt_sources; *srcs != NULL; ++srcs) {
-		char const *fn = file_expand(*srcs);
-		if (fn == NULL)
+	if ((ccp = value("mimetypes-load-control")) == NULL)
+		idx_ok = (ui_it)-1;
+	else for (idx_ok = 0; *ccp != '\0'; ++ccp)
+		switch (*ccp) {
+		case 'S':
+		case 's':
+			idx_ok |= 1 << 1;
+			break;
+		case 'U':
+		case 'u':
+			idx_ok |= 1 << 0;
+			break;
+		default:
+			/* XXX bad *mimetypes-load-control*; log error? */
+			break;
+		}
+
+	for (idx = 1, srcs = _mt_sources; *srcs != NULL; idx <<= 1, ++srcs) {
+		if ((idx & idx_ok) == 0 || (ccp = file_expand(*srcs)) == NULL)
 			continue;
-		if ((fp = Fopen(fn, "r")) == NULL) {
+		if ((fp = Fopen(ccp, "r")) == NULL) {
 			/*fprintf(stderr, tr(176, "Cannot open %s\n"), fn);*/
 			continue;
 		}
