@@ -98,8 +98,7 @@ _putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
 		*xp = np;
 	if (np == NULL)
 		;
-	else if (fmt(prefix, np, fo, w & (GCOMMA|GFILES), 0,
-			action != SEND_TODISP))
+	else if (fmt(prefix, np, fo, w & GCOMMA, 0, action != SEND_TODISP))
 		ret = OKAY;
 	else if (gotcha)
 		++(*gotcha);
@@ -1012,7 +1011,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	struct name *to;
 	FILE *mtf, *nmtf;
 	int dosign = -1, err;
-	char *cp;
+	char const *cp;
 
 	/* Update some globals we likely need first */
 	time_current_update(&time_current);
@@ -1071,11 +1070,34 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	}
 #endif
 
-	/*
-	 * Now, take the user names from the combined to and cc lists and do
-	 * all the alias processing.
-	 */
 	senderr = 0;
+
+	/* TODO hrmpf; the MIME/send layer rewrite MUST address the init crap:
+	 * TODO setup the header ONCE; note this affects edit.c, collect.c ...,
+	 * TODO but: offer a hook that rebuilds/expands/checks/fixates all
+	 * TODO header fields ONCE, call that ONCE after user editing etc. has
+	 * TODO completed (one edit cycle) */
+
+	/*
+	 * Take the user names from the combined to and cc lists and do all the
+	 * alias processing.  The POSIX standard says:
+	 *   The names shall be substituted when alias is used as a recipient
+	 *   address specified by the user in an outgoing message (that is,
+	 *   other recipients addressed indirectly through the reply command
+	 *   shall not be substituted in this manner).
+	 * S-nail thus violates POSIX, as has been pointed out correctly by
+	 * Martin Neitzel, but logic, usability und intellectual penetration of
+	 * POSIX standards is disputable anyway.  Go for user friendliness.
+	 */
+
+	/* Do alias expansion on Reply-To: members, too (Martin Neitzel) */
+	/* TODO puthead() YET (!!! see ONCE note above) expands the value, but
+	 * TODO doesn't perform alias expansion; encapsulate in the ONCE-o */
+	if (hp->h_replyto == NULL && (cp = value("replyto")) != NULL)
+		hp->h_replyto = checkaddrs(lextract(cp, GEXTRA|GFULL));
+	if (hp->h_replyto != NULL)
+		hp->h_replyto = elide(usermap(hp->h_replyto, TRU1));
+
 	/*
 	 * TODO what happens now is that all recipients are merged into
 	 * TODO a duplicated list with expanded aliases, then this list is
@@ -1274,9 +1296,11 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			gotcha++;
 			putc('\n', fo);
 		}
+		/* TODO see the ONCE TODO note somewhere around this file;
+		 * TODO but anyway, do NOT perform alias expansion UNLESS
+		 * TODO we are actually sending out! */
 		if (hp->h_replyto != NULL) {
-			if (fmt("Reply-To:", hp->h_replyto, fo,
-					w&(GCOMMA|GFILES), 0,
+			if (fmt("Reply-To:", hp->h_replyto, fo, w & GCOMMA, 0,
 					action!=SEND_TODISP))
 				return 1;
 			gotcha++;
@@ -1285,8 +1309,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 						NULL))
 				return 1;
 		if (hp->h_sender != NULL) {
-			if (fmt("Sender:", hp->h_sender, fo,
-					w&(GCOMMA|GFILES), 0,
+			if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0,
 					action!=SEND_TODISP))
 				return 1;
 			gotcha++;
@@ -1385,14 +1408,23 @@ fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 	col = strlen(str);
 	if (col) {
 		fwrite(str, sizeof *str, col, fo);
-		if ((flags&GFILES) == 0 && ! value("add-file-recipients") &&
-				((col == 3 && ((asccasecmp(str, "to:") == 0) ||
+		if (flags & GFILES)
+			goto jstep;
+		if (col == 9 && asccasecmp(str, "reply-to:") == 0) {
+			m |= m_NOPF;
+			goto jstep;
+		}
+		if (value("add-file-recipients"))
+			goto jstep;
+		if ((col == 3 && ((asccasecmp(str, "to:") == 0) ||
 					asccasecmp(str, "cc:") == 0)) ||
 				(col == 4 && asccasecmp(str, "bcc:") == 0) ||
 				(col == 10 &&
-					asccasecmp(str, "Resent-To:") == 0)))
+					asccasecmp(str, "Resent-To:") == 0))
 			m |= m_NOPF;
 	}
+
+jstep:
 	for (; np != NULL; np = np->n_flink) {
 		if ((m & m_NOPF) && is_fileorpipe_addr(np))
 			continue;
