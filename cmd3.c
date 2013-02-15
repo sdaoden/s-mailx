@@ -1200,7 +1200,7 @@ resend1(void *v, int add_resent)
 		return 1;
 	}
 	sn = nalloc(name, GTO);
-	to = usermap(sn);
+	to = usermap(sn, FAL0);
 	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
 		if (resend_msg(&message[*ip - 1], to, add_resent) != OKAY)
 			return 1;

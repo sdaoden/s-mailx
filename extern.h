@@ -667,7 +667,7 @@ struct name *	lextract(char const *line, enum gfield ntype);
 char *		detract(struct name *np, enum gfield ntype);
 
 struct name *	checkaddrs(struct name *np);
-struct name *	usermap(struct name *names);
+struct name *	usermap(struct name *names, bool_t force_metoo);
 struct name *	elide(struct name *names);
 struct name *	delete_alternates(struct name *np);
 int		is_myname(char const *name);

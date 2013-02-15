@@ -1090,7 +1090,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 * because otherwise the recipients will be "degraded" if they occur
 	 * multiple times
 	 */
-	if ((to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)))) == NULL) {
+	to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), FAL0);
+	if (to == NULL) {
 		fprintf(stderr, tr(186, "No recipients specified\n"));
 		++senderr;
 	}
