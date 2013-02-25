@@ -74,6 +74,9 @@
 #define CBAD		(-15555)
 
 #define SHELL		"/bin/sh"
+#define LISTER		"ls"
+#define PAGER_BSD	"more"
+#define PAGER_SYSV	"pg"
 
 /*
  * Funs, CC support etc.

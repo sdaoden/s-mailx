@@ -95,8 +95,8 @@ get_pager(void)
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
-		cp = value("bsdcompat") ? "more" : "pg";
-	return (cp);
+		cp = value("bsdcompat") ? PAGER_BSD : PAGER_SYSV;
+	return cp;
 }
 
 int 
@@ -1193,7 +1193,7 @@ folders(void *v)
 #endif
 	} else {
 		if ((cmd = value("LISTER")) == NULL)
-			cmd = "ls";
+			cmd = LISTER;
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
 	return (0);
