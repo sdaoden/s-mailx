@@ -308,6 +308,14 @@ int main(void)
 }
 !
 
+link_check mblen 'for mblen()' '#define HAVE_MBLEN' << \!
+#include <stdlib.h>
+int main(void)
+{
+	return mblen("\0", 1) == 0;
+}
+!
+
 link_check setlocale 'for setlocale()' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)

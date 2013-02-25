@@ -765,25 +765,69 @@ demail(void)
 		close(creat(mailname, 0600));
 }
 
+void
+var_folder_updated(char **name)
+{
+	char *unres = NULL, *res = NULL, *folder;
+
+	if (name == NULL)
+		goto jleave;
+	folder = *name;
+
+	switch (which_protocol(folder)) {
+	case PROTO_FILE:
+	case PROTO_MAILDIR:
+		break;
+	default:
+		goto jleave;
+	}
+
+	/* All non-absolute paths are relative to our home directory */
+	if (*folder != '/') {
+		size_t l1 = strlen(homedir), l2 = strlen(folder);
+		unres = ac_alloc(l1 + l2 + 2);
+		memcpy(unres, homedir, l1);
+		unres[l1] = '/';
+		memcpy(unres + l1 + 1, folder, l2);
+		unres[l1 + 1 + l2] = '\0';
+		folder = unres;
+	}
+
+	/* Since lex.c:_update_mailname() uses realpath(3) if available to
+	 * avoid that we loose track of our currently open folder in case we
+	 * chdir away, but still checks the leading path portion against
+	 * getfold() to be able to abbreviate to the +FOLDER syntax if
+	 * possible, we need to realpath(3) the folder, too */
+#ifdef HAVE_REALPATH
+	res = ac_alloc(MAXPATHLEN);
+	if (realpath(folder, res) == NULL)
+		fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), folder);
+	else
+		folder = res;
+#endif
+
+	{	char *x = *name;
+		*name = vcopy(folder);
+		vfree(x);
+	}
+
+	if (res != NULL)
+		ac_free(res);
+	if (unres != NULL)
+		ac_free(unres);
+jleave:	;
+}
+
 /*
  * Determine the current folder directory name.
  */
 int
 getfold(char *name, int size)
 {
-	char *folder;
-	enum protocol	p;
-
-	if ((folder = value("folder")) == NULL)
-		return (-1);
-	if (*folder == '/' || ((p = which_protocol(folder)) != PROTO_FILE &&
-			p != PROTO_MAILDIR)) {
-		strncpy(name, folder, size);
-		name[size-1]='\0';
-	} else {
-		snprintf(name, size, "%s/%s", homedir, folder);
-	}
-	return (0);
+	char const *folder;
+	if ((folder = value("folder")) != NULL)
+		(void)n_strlcpy(name, folder, size);
+	return (folder != NULL) ? 0 : -1;
 }
 
 /*

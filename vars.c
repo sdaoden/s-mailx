@@ -72,6 +72,8 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 		flag = OPT_DEBUG;
 	else if (strcmp(name, "verbose") == 0)
 		flag = OPT_VERBOSE;
+	else if (strcmp(name, "folder") == 0)
+		var_folder_updated(value);
 
 	if (flag) {
 		if (enable)

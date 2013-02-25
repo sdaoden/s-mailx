@@ -1897,17 +1897,16 @@ bypass:	if (readstat != NULL)
 			modflags++;
 		}
 	if ((gotcha || modflags) && edit) {
-		printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
+		printf(tr(168, "\"%s\" "), displayname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 170, "complete\n") :
 				catgets(catd, CATSET, 212, "updated.\n"));
 	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
-			printf(catgets(catd, CATSET, 155,
-				"Held 1 message in %s\n"), mailname);
+			printf(tr(155, "Held 1 message in %s\n"), displayname);
 		else if (held > 1)
-			printf(catgets(catd, CATSET, 156,
-				"Held %d messages in %s\n"), held, mailname);
+			printf(tr(156, "Held %d messages in %s\n"), held,
+				displayname);
 	}
 	fflush(stdout);
 	return OKAY;

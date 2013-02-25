@@ -335,6 +335,10 @@ char *expand(char const *name);
 void	findmail(char const *user, int force, char *buf, int size);
 /* Get rid of queued mail */
 void	demail(void);
+
+/* vars.c hook: *folder* variable has been updated */
+void	var_folder_updated(char **name);
+
 int getfold(char *name, int size);
 char const *getdeadletter(void);
 

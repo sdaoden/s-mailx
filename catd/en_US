@@ -86,7 +86,7 @@ $set 1
 83 "%s": Expansion buffer overflow.\n
 84 "%s": Ambiguous.\n
 85 [Missing multipart boundary - use "show" to display the raw message]\n\n
-86 Won't "chdir": "%s" would become inaccessible
+86 --- DELETED ---
 87 temporary mail message file
 88 No mail for %s\n
 89 Use "quit" to quit.\n
@@ -144,22 +144,22 @@ $set 1
 \t\t[-S var[=value]] [-T name] -f [file]\n\
 \t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
 
-136 --- DELETED ---
+136 $ %d moved$
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n
-139 --- DELETED ---
+139 $ %d hidden$
 140 %s version %s.  Type ? for help.\n
 141 \nInterrupt\n
 142 "%s" contains invalid %s sequence\n
 143 "%s" contains invalid character %s\n
-144 --- DELETED ---
+144 $ %d killed$
 145 detract asked to insert commas\n
 146 Creation of temporary image
 147 Creating descriptor duplicate of temporary image
 148 Finalizing write of temporary image
 149 Failed to open a duplicate of the temporary image
 150 Expanding alias to depth larger than %d\n
-151 --- DELETED ---
+151 Can't canonicalize `%s'\n
 152 Internal error: bad stdio open mode %s\n
 153 Invalid file pointer
 154 Fatal error in process.\n
