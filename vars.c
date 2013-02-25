@@ -47,7 +47,8 @@
  */
 
 /* Check for special housekeeping. */
-static void	_check_special_vars(char const *name, int enable);
+static void	_check_special_vars(char const *name, bool_t enable,
+			char **value);
 
 /*
  * If a variable name begins with a lowercase-character and contains at
@@ -59,12 +60,11 @@ static void	_check_special_vars(char const *name, int enable);
  */
 static char const *	canonify(char const *vn);
 
-static void vfree(char *cp);
 static struct var *lookup(const char *name, int h);
 static void remove_grouplist(struct grouphead *gh);
 
 static void
-_check_special_vars(char const *name, int enable)
+_check_special_vars(char const *name, bool_t enable, char **value)
 {
 	int flag = 0;
 
@@ -121,7 +121,7 @@ assign(char const *name, char const *value)
 		vfree(vp->v_value);
 	vp->v_value = vcopy(value);
 
-	_check_special_vars(name, 1);
+	_check_special_vars(name, 1, &vp->v_value);
 jleave:	;
 }
 
@@ -147,42 +147,34 @@ unset_internal(char const *name)
 		vfree(vp->v_value);
 		free(vp);
 
-		_check_special_vars(name, 0);
+		_check_special_vars(name, 0, NULL);
 	}
 	ret = 0;
 jleave:
 	return (ret);
 }
 
-/*
- * Free up a variable string.  We do not bother to allocate
- * strings whose value is "" since they are expected to be frequent.
- * Thus, we cannot free same!
- */
-static void 
+char *
+vcopy(char const *str)
+{
+	char *news;
+	size_t len;
+
+	if (*str == '\0')
+		news = UNCONST("");
+	else {
+		len = strlen(str) + 1;
+		news = smalloc(len);
+		memcpy(news, str, len);
+	}
+	return news;
+}
+
+void
 vfree(char *cp)
 {
 	if (*cp)
 		free(cp);
-}
-
-/*
- * Copy a variable value into permanent (ie, not collected after each
- * command) space.  Do not bother to alloc space for ""
- */
-
-char *
-vcopy(const char *str)
-{
-	char *news;
-	unsigned len;
-
-	if (*str == '\0')
-		return UNCONST("");
-	len = strlen(str) + 1;
-	news = smalloc(len);
-	memcpy(news, str, (int)len);
-	return (news);
 }
 
 /*

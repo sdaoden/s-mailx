@@ -934,7 +934,10 @@ void	assign(char const *name, char const *value);
 
 int	unset_internal(char const *name);
 
-char *vcopy(const char *str);
+/* Copy a variable string into heap memory, and free such allocated space */
+char *	vcopy(char const *str);
+void	vfree(char *vstr);
+
 char *value(const char *name);
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
