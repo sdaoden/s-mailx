@@ -57,9 +57,6 @@
 #  define MAXPATHLEN	1024
 # endif
 #endif
-#ifndef PATHSIZE
-# define PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
-#endif
 #if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
 # define LINESIZE	BUFSIZ		/* max readable line width */
 #else

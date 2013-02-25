@@ -103,7 +103,7 @@ static enum okay get_header(struct message *mp);
 static char *
 _expand(char const *name, int only_local)
 {
-	char cbuf[PATHSIZE], *res;
+	char cbuf[MAXPATHLEN], *res;
 	struct str s;
 	struct shortcut *sh;
 	int dyn;
@@ -248,7 +248,7 @@ jleave:
 	extern int wait_status;
 
 	struct stat sbuf;
-	char xname[PATHSIZE], cmdbuf[PATHSIZE], /* also used for file names */
+	char xname[MAXPATHLEN], cmdbuf[MAXPATHLEN], /* also used for files */
 		*cp, *shell;
 	int pid, l, pivec[2];
 

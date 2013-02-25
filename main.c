@@ -578,7 +578,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		 */
 		if ((cp = value("folder")) != NULL &&
 				which_protocol(cp) == PROTO_IMAP)
-			strncpy(mailname, cp, PATHSIZE)[PATHSIZE-1] = '\0';
+			(void)n_strlcpy(mailname, cp, MAXPATHLEN);
 	}
 	i = setfile(ef, 0);
 	if (i < 0)
