@@ -362,7 +362,8 @@ initcache(struct mailbox *mp)
 	unsigned long	uv;
 	struct cw	cw;
 
-	free(mp->mb_cache_directory);
+	if (mp->mb_cache_directory != NULL)
+		free(mp->mb_cache_directory);
 	mp->mb_cache_directory = NULL;
 	if ((name = encname(mp, "", 1, NULL)) == NULL)
 		return;

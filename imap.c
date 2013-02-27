@@ -158,7 +158,7 @@ struct list_item {
 	int	l_has_children;
 };
 
-static char	*imapbuf;
+static char	*imapbuf;	/* TODO not static, use pool */
 static size_t	imapbufsize;
 static sigjmp_buf	imapjmp;
 static sighandler_type savealrm;
@@ -723,13 +723,13 @@ rec_dequeue(void)
 static void 
 rec_rmqueue(void)
 {
-	struct record	*rp, *rq = NULL;
+	struct record *rp;
 
-	for (rp = record; rp; rp = rp->rec_next) {
-		free(rq);
-		rq = rp;
+	for (rp = record; rp != NULL;) {
+		struct record *tmp = rp;
+		rp = rp->rec_next;
+		free(tmp);
 	}
-	free(rq);
 	record = recend = NULL;
 }
 
@@ -1208,7 +1208,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	if (!transparent)
 		quit();
 	edit = isedit;
-	free(mb.mb_imap_account);
+	if (mb.mb_imap_account != NULL)
+		free(mb.mb_imap_account);
 	mb.mb_imap_account = account;
 	if (!same_imap_account) {
 		if (mb.mb_sock.s_fd >= 0)
@@ -1224,7 +1225,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 			fclose(mb.mb_otf);
 			mb.mb_otf = NULL;
 		}
-		free(mb.mb_imap_mailbox);
+		if (mb.mb_imap_mailbox != NULL)
+			free(mb.mb_imap_mailbox);
 		mb.mb_imap_mailbox = sstrdup(mbx);
 		initbox(server);
 	}
@@ -1749,7 +1751,7 @@ imap_getheaders(int volatile bot, int top)
 }
 
 static enum okay 
-imap_exit(struct mailbox *mp)
+__imap_exit(struct mailbox *mp)
 {
 	char	o[LINESIZE];
 	FILE	*queuefp = NULL;
@@ -1762,6 +1764,29 @@ imap_exit(struct mailbox *mp)
 }
 
 static enum okay 
+imap_exit(struct mailbox *mp)
+{
+	enum okay ret = __imap_exit(mp);
+#if 0 /* TODO the option today: memory leak(s) and halfway reuse or nottin */
+	free(mp->mb_imap_account);
+	free(mp->mb_imap_mailbox);
+	if (mp->mb_cache_directory != NULL)
+		free(mp->mb_cache_directory);
+#ifndef HAVE_ASSERTS /* TODO ASSERT LEGACY */
+	mp->mb_imap_account =
+	mp->mb_imap_mailbox =
+	mp->mb_cache_directory = "";
+#else
+	mp->mb_imap_account = NULL; /* for assert legacy time.. */
+	mp->mb_imap_mailbox = NULL;
+	mp->mb_cache_directory = NULL;
+#endif
+#endif
+	sclose(&mp->mb_sock);
+	return ret;
+}
+
+static enum okay
 imap_delete(struct mailbox *mp, int n, struct message *m, int needstat)
 {
 	imap_store(mp, m, n, '+', "\\Deleted", needstat);
@@ -1942,7 +1967,6 @@ imap_quit(void)
 	imap_update(&mb);
 	if (!same_imap_account) {
 		imap_exit(&mb);
-		sclose(&mb.mb_sock);
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
@@ -2365,7 +2389,6 @@ imap_append(const char *xserver, FILE *fp)
 			}
 			ok = imap_append0(&mx, mbx, fp);
 			imap_exit(&mx);
-			sclose(&mx.mb_sock);
 		} else {
 			mx.mb_imap_account = (char *)protbase(server);
 			mx.mb_imap_mailbox = sstrdup(mbx); /* TODO as above */
