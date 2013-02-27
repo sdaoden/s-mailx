@@ -278,7 +278,7 @@ $set 1
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
 269 No IMAP support compiled in.\n
-270 --- DELETED ---
+270 IMAP error: %s
 271 Invalid address argument with -r\n
 272 No GSSAPI support compiled in.\n
 273 Unknown IMAP authentication method: %s\n

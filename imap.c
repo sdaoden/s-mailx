@@ -446,8 +446,8 @@ again:	if (sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
 		stop:	ok = STOP;
 			complete |= 2;
 			if (errprnt)
-				fprintf(stderr, catgets(catd, CATSET, 218,
-					"IMAP error: %s"), responded_text);
+				fprintf(stderr, tr(270, "IMAP error: %s"),
+					responded_text);
 			break;
 		case RESPONSE_UNKNOWN:	/* does not happen */
 		case RESPONSE_BYE:
@@ -2251,7 +2251,8 @@ again:	size = xsize;
 			imap_created_mailbox++;
 			goto again;
 		} else if (ok != OKAY)
-			fprintf(stderr, "IMAP error: %s", responded_text);
+			fprintf(stderr, tr(270, "IMAP error: %s"),
+				responded_text);
 		else if (response_status == RESPONSE_OK &&
 				mp->mb_flags & MB_UIDPLUS)
 			imap_appenduid(mp, fp, t, off1, xsize, ysize, lines,
