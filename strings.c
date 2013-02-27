@@ -408,6 +408,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 {
 	struct str in, out;
 	char digest[16], *cp;
+	size_t lh, lu;
 
 	out.s = NULL;
 	in.s = UNCONST(b64);
@@ -415,14 +416,18 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 	(void)b64_decode(&out, &in, 0, NULL);
 	assert(out.s != NULL);
 
-	hmac_md5((unsigned char*)out.s, out.l,
-		UNCONST(pass), strlen(pass), digest);
+	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),
+		digest);
 	free(out.s);
 	cp = md5tohex(digest);
 
-	in.l = strlen(user) + strlen(cp) + 2;
-	in.s = ac_alloc(in.l);
-	snprintf(in.s, in.l, "%s %s", user, cp);
+	lh = strlen(cp);
+	lu = strlen(user);
+	in.l = lh + 1 + lu;
+	in.s = ac_alloc(lh + lu + 1 + 1);
+	memcpy(in.s, user, lu);
+	in.s[lu] = ' ';
+	memcpy(in.s + lu + 1, cp, lh);
 	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
 	ac_free(in.s);
 	return out.s;
