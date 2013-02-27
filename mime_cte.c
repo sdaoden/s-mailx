@@ -622,13 +622,13 @@ b64_decode_prepare(struct str *work, struct str const *in)
 	char *cp = in->s;
 	size_t cp_len = in->l;
 
-	while (cp_len > 0 && whitechar(*cp))
+	while (cp_len > 0 && spacechar(*cp))
 		++cp, --cp_len;
 	work->s = cp;
 
 	for (cp += cp_len; cp_len > 0; --cp_len) {
 		char c = *--cp;
-		if (! whitechar(c))
+		if (! spacechar(c))
 			break;
 	}
 	work->l = cp_len;
