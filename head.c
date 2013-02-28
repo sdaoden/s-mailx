@@ -1444,7 +1444,21 @@ rfctime(char const *date)
 	month = i + 1;
 	if ((cp = nexttoken(&cp[3])) == NULL)
 		goto invalid;
-	year = strtol(cp, &x, 10);
+	/*
+	 * RFC 5322, 4.3:
+	 *  Where a two or three digit year occurs in a date, the year is to be
+	 *  interpreted as follows: If a two digit year is encountered whose
+	 *  value is between 00 and 49, the year is interpreted by adding 2000,
+	 *  ending up with a value between 2000 and 2049.  If a two digit year
+	 *  is encountered with a value between 50 and 99, or any three digit
+	 *  year is encountered, the year is interpreted by adding 1900.
+	 */
+	year = strtol(cp, &x, 10); /* XXX strtol */
+	i = (int)(x - cp);
+	if (i == 2 && year >= 0 && year <= 49)
+		year += 2000;
+	else if (i == 3 || (i == 2 && year >= 50 && year <= 99))
+		year += 1900;
 	if ((cp = nexttoken(x)) == NULL)
 		goto invalid;
 	hour = strtol(cp, &x, 10); /* XXX strtol */
@@ -1503,10 +1517,6 @@ combinetime(int year, int month, int day, int hour, int minute, int second)
 	if (second < 0 || minute < 0 || hour < 0 || day < 1)
 		return -1;
 	t = second + minute * 60 + hour * 3600 + (day - 1) * 86400;
-	if (year < 70)
-		year += 2000;
-	else if (year < 1900)
-		year += 1900;
 	if (month > 1)
 		t += 86400 * 31;
 	if (month > 2)
