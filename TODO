@@ -302,6 +302,15 @@ Low-Level
   though that would be a long way and be especially problematic due to the
   (C ish) way enums are used.
 
+- I never used anything but the *datefield* option, and it would really be
+  nice if the date strings would be parsed off into some 16 byte or what
+  storage when about to producing the summary, so that it would be directly
+  available and there would be no need to reread the mail.  Moreover, or
+  even more than that - the m_date field exists and should possibly simply
+  be init, at least in these cases.  (P.S.: this doesn't contradict the
+  statement somewhere else in this file that the structure should be
+  slacked; simply use multiple thereof or so)
+
 Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
 With a clean, conforming and efficient codebase, then.
 

@@ -153,7 +153,11 @@ int scroll(void *v);
 int Scroll(void *v);
 int screensize(void);
 int from(void *v);
+
+/* Print out the header of a specific message.
+ * Note: ensure to call time_current_update() before first use in cycle! */
 void printhead(int mesg, FILE *f, int threaded);
+
 int pdot(void *v);
 int pcmdlist(void *v);
 char *laststring(char *linebuf, int *flag, int strip);

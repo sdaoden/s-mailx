@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 14, 2013
+.Dd February 28, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2087,6 +2087,15 @@ The date in a header summary is normally the date of the mailbox `From\ '
 line of the message.
 If this variable is set the date as given in the `Date:' field is used,
 converted to local time.
+.It Va datefield-markout-older
+This option, when set in addition to
+.Va datefield ,
+modifies the display of messages that are not really current in a way
+that is rather comparable to the
+.Fl l
+option of the POSIX
+.Xr ls 1
+command.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2492,7 +2501,7 @@ The value that should appear in the `charset=' parameter of
 `Content-Type:' MIME header fields when no character set conversion of
 the message data was performed.
 This defaults to `US-ASCII', and the chosen character set should be
-`US_ASCII' compatible.
+`US-ASCII' compatible.
 .It Va charset-8bit
 \*(OP The default 8 bit character set that is used if
 .Va sendcharsets

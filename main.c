@@ -590,6 +590,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
 #endif
+		time_current_update(&time_current, FAL0);
 		for (i = 1; i <= msgCount; i++)
 			printhead(i, stdout, 0);
 		exit(exit_status);

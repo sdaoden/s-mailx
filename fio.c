@@ -510,6 +510,11 @@ setptr(FILE *ibuf, off_t offset)
 		if (linebuf[count - 1] == '\n')
 			linebuf[count - 1] = '\0';
 		if (maybe && linebuf[0] == 'F' && is_head(linebuf, count)) {
+			/* TODO
+			 * TODO char date[FROM_DATEBUF];
+			 * TODO extract_date_from_from_(linebuf, count, date);
+			 * TODO this.m_time = 10000;
+			 */
 			this.m_xsize = this.m_size;
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;

@@ -108,6 +108,8 @@ headers(void *v)
 	int size;
 	enum mflag	fl = MNEW|MFLAGGED;
 
+	time_current_update(&time_current, FAL0);
+
 	size = screensize();
 	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
 	if (screen < 0)
@@ -319,6 +321,9 @@ from(void *v)
 	char *cp;
 	FILE *volatile obuf = stdout;
 
+	time_current_update(&time_current, FAL0);
+
+	/* TODO unfixable memory leaks still */
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
@@ -405,25 +410,44 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 static void
 hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 {
+	char datebuf[FROM_DATEBUF], *subjline, *cp;
 	struct str in, out;
-	char const *fp;
 	struct message *mp = &message[mesg - 1];
-	char *subjline, *cp, datebuf[FROM_DATEBUF];
-	char const *name, *date;
+	char const *date, *name, *fp;
 	int B, c, i, n, s, fromlen,
 		subjlen = scrnwidth, isto = 0, isaddr = 0;
+	time_t datet = mp->m_time;
 
 	date = NULL;
 	if (value("datefield")) {
-		char *x = hfield1("date", mp);
-		if (x != NULL)
-			date = fakedate(rfctime(x));
-	} else if ((mp->m_flag & MNOFROM) == 0) {
+		char *x = hfield1("date", mp);/* TODO use m_date field! */
+		if (x != NULL) {
+			datet = rfctime(x);
+			date = fakedate(datet);
+			/* Markout non-current? */
+			if (value("datefield-markout-older") &&
+					(datet > time_current.tc_time ||
+#define _6M	((DATE_DAYSYEAR / 2) * DATE_SECSDAY)
+					(datet + _6M < time_current.tc_time))) {
+#undef _6M
+				memset(datebuf, ' ', FROM_DATEBUF); /* xxx Manual unroll */
+				memcpy(datebuf + 4, date + 4, 7);
+				datebuf[4 + 7] = ' ';
+				memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
+				datebuf[4 + 7 + 1 + 4] = '\0';
+				date = datebuf;
+			}
+		}
+	} else if (datet == (time_t)0 && (mp->m_flag & MNOFROM) == 0) {
+		/* TODO eliminate this path, query the FROM_ date in setptr(),
+		 * TODO all other codepaths do so by themselves ALREADY ?????
+		 * TODO assert(mp->m_time != 0);, then
+		 * TODO ALSO changes behaviour of markout-non-current */
 		_parse_head(mp, datebuf);
 		date = datebuf;
 	}
 	if (date == NULL)
-		date = fakedate(mp->m_time);
+		date = fakedate(datet);
 
 	if ((subjline = hfield1("subject", mp)) == NULL) {
 		out.s = NULL;
@@ -465,6 +489,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 			name = prstr(skin(name));
 		}
 	}
+
 	for (fp = fmt; *fp; fp++) {
 		if (*fp == '%') {
 			if (*++fp == '-') {
@@ -505,10 +530,10 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				fp++;
 			} else if (*fp == '+')
 				fp++;
-			if (digitchar(*fp&0377)) {
+			if (digitchar(*fp)) {
 				do
 					n = 10*n + *fp - '0';
-				while (fp++, digitchar(*fp&0377));
+				while (fp++, digitchar(*fp));
 			}
 			if (*fp == '\0')
 				break;
@@ -698,10 +723,6 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 	return indent;
 }
 
-/*
- * Print out the header of a specific message.
- * This is a slight improvement to the standard one.
- */
 void
 printhead(int mesg, FILE *f, int threaded)
 {

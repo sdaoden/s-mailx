@@ -389,6 +389,7 @@ newmailinfo(int omsgCount)
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(omsgCount+1, msgCount);
 #endif
+		time_current_update(&time_current, FAL0);
 		while (++omsgCount <= msgCount)
 			if (visible(&message[omsgCount-1]))
 				printhead(omsgCount, stdout, 0);

@@ -68,6 +68,11 @@
 #define HSHSIZE		59		/* Hash size for aliases and vars */
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
+#define DATE_DAYSYEAR	365L
+#define DATE_SECSMIN	60L
+#define DATE_MINSHOUR	60L
+#define DATE_HOURSDAY	24L
+#define DATE_SECSDAY	(DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
 #define ESCAPE		'~'		/* Default escape for sending */
 
