@@ -71,13 +71,13 @@ struct cmatch_data {
  * '+'  Either a plus or a minus sign
  */
 static struct cmatch_data const	_cmatch_data[] = {
-	{ 24, "Aaa Aaa O0 00:00:00 0000" },		/* BSD ctime */
+	{ 24, "Aaa Aaa O0 00:00:00 0000" },		/* BSD/ISO C90 ctime */
 	{ 28, "Aaa Aaa O0 00:00:00 AAA 0000" },		/* BSD tmz */
 	{ 21, "Aaa Aaa O0 00:00 0000" },		/* SysV ctime */
 	{ 25, "Aaa Aaa O0 00:00 AAA 0000" },		/* SysV tmz */
 	/*
 	 * RFC 822-alike From_ lines do not conform to RFC 4155, but seem to
-	 * be used in the wild by UW-imap (MBX format plus)
+	 * be used in the wild by UW-imap
 	 */
 	{ 30, "Aaa Aaa O0 00:00:00 0000 +0000" },
 	/* RFC 822 with zone spec; 1. military, 2. UT, 3. north america time
@@ -1324,7 +1324,8 @@ fakedate(time_t t)
 	char *cp, *cq;
 
 	cp = ctime(&t);
-	for (cq = cp; *cq && *cq != '\n'; cq++);
+	for (cq = cp; *cq && *cq != '\n'; ++cq)
+		;
 	*cq = '\0';
 	return savestr(cp);
 }
@@ -1350,7 +1351,7 @@ nexttoken(char const *cp)
 				if (nesting <= 0)
 					break;
 			}
-		} else if (blankchar(*cp & 0377) || *cp == ',')
+		} else if (blankchar(*cp) || *cp == ',')
 			cp++;
 		else
 			break;
@@ -1426,12 +1427,12 @@ rfctime(char const *date)
 
 	if ((cp = nexttoken(cp)) == NULL)
 		goto invalid;
-	if (alphachar(cp[0] & 0377) && alphachar(cp[1] & 0377) &&
-				alphachar(cp[2] & 0377) && cp[3] == ',') {
+	if (alphachar(cp[0]) && alphachar(cp[1]) && alphachar(cp[2]) &&
+			cp[3] == ',') {
 		if ((cp = nexttoken(&cp[4])) == NULL)
 			goto invalid;
 	}
-	day = strtol(cp, &x, 10);
+	day = strtol(cp, &x, 10); /* XXX strtol */
 	if ((cp = nexttoken(x)) == NULL)
 		goto invalid;
 	for (i = 0; month_names[i]; i++) {
@@ -1446,7 +1447,7 @@ rfctime(char const *date)
 	year = strtol(cp, &x, 10);
 	if ((cp = nexttoken(x)) == NULL)
 		goto invalid;
-	hour = strtol(cp, &x, 10);
+	hour = strtol(cp, &x, 10); /* XXX strtol */
 	if (*x != ':')
 		goto invalid;
 	cp = &x[1];
@@ -1470,24 +1471,29 @@ rfctime(char const *date)
 		case '+':
 			cp++;
 		}
-		if (digitchar(cp[0] & 0377) && digitchar(cp[1] & 0377) &&
-				digitchar(cp[2] & 0377) &&
-				digitchar(cp[3] & 0377)) {
+		if (digitchar(cp[0]) && digitchar(cp[1]) && digitchar(cp[2]) &&
+				digitchar(cp[3])) {
 			buf[2] = '\0';
 			buf[0] = cp[0];
 			buf[1] = cp[1];
-			t += strtol(buf, NULL, 10) * sign * 3600;
+			t += strtol(buf, NULL, 10) * sign * 3600;/*XXX strtrol*/
 			buf[0] = cp[2];
 			buf[1] = cp[3];
-			t += strtol(buf, NULL, 10) * sign * 60;
+			t += strtol(buf, NULL, 10) * sign * 60; /* XXX strtol*/
 		}
+		/* TODO WE DO NOT YET PARSE (OBSOLETE) ZONE NAMES
+		 * TODO once again, Christos Zoulas and NetBSD Mail have done
+		 * TODO a really good job already, but using strptime(3), which
+		 * TODO is not portable.  Nonetheless, WE must improve, not
+		 * TODO at last because we simply ignore obsolete timezones!!
+		 * TODO See RFC 5322, 4.3! */
 	}
 	return t;
 invalid:
 	return 0;
 }
 
-#define	leapyear(year)	((year % 100 ? year : year / 100) % 4 == 0)
+#define is_leapyear(Y)  ((((Y) % 100 ? (Y) : (Y) / 100) & 3) == 0)
 
 time_t
 combinetime(int year, int month, int day, int hour, int minute, int second)
@@ -1504,7 +1510,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second)
 	if (month > 1)
 		t += 86400 * 31;
 	if (month > 2)
-		t += 86400 * (leapyear(year) ? 29 : 28);
+		t += 86400 * (is_leapyear(year) ? 29 : 28);
 	if (month > 3)
 		t += 86400 * 31;
 	if (month > 4)
@@ -1544,7 +1550,7 @@ substdate(struct message *m)
 		while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
 			do
 				cp++;
-			while (alnumchar(*cp & 0377));
+			while (alnumchar(*cp));
 		}
 		if (cp && *++cp)
 			m->m_time = rfctime(cp);
