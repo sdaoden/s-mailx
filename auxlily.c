@@ -713,12 +713,15 @@ putuc(int u, int c, FILE *fp)
 }
 
 void
-time_current_update(struct time_current *tc)
+time_current_update(struct time_current *tc, bool_t full_update)
 {
 	tc->tc_time = time(NULL);
-	memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
-	memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_gm);
-	sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+	if (full_update) {
+		memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
+		memcpy(&tc->tc_local, localtime(&tc->tc_time),
+			sizeof tc->tc_local);
+		sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+	}
 }
 
 #ifndef HAVE_GETOPT

@@ -86,8 +86,8 @@ char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
 
-/* Update *tc* to now */
-void	time_current_update(struct time_current *tc);
+/* Update *tc* to now; only .tc_time updated unless *full_update* is true */
+void	time_current_update(struct time_current *tc, bool_t full_update);
 
 /* getopt(3) fallback implementation */
 #ifndef HAVE_GETOPT

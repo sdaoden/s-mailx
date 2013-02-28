@@ -1014,7 +1014,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	char const *cp;
 
 	/* Update some globals we likely need first */
-	time_current_update(&time_current);
+	time_current_update(&time_current, TRU1);
 
 	/*  */
 	if ((cp = value("autocc")) != NULL && *cp)
@@ -1542,7 +1542,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	enum okay	ok = STOP;
 
 	/* Update some globals we likely need first */
-	time_current_update(&time_current);
+	time_current_update(&time_current, TRU1);
 
 	memset(&head, 0, sizeof head);
 	if ((to = checkaddrs(to)) == NULL) {
