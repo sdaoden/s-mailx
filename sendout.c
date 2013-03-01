@@ -513,13 +513,17 @@ infix(struct header *hp, FILE *fi)
 #ifdef HAVE_ICONV
 	tcs = charset_get_lc();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
-		if (iconvd != (iconv_t)-1)
+		if (iconvd != (iconv_t)-1) {
 			iconv_close(iconvd);
-		if ((iconvd = iconv_open_ft(convhdr, tcs)) == (iconv_t)-1
-				&& errno != 0) {
+			iconvd = (iconv_t)-1;
+		}
+		if (asccasecmp(convhdr, tcs) != 0 &&
+				(iconvd = iconv_open_ft(convhdr, tcs))
+				== (iconv_t)-1 && errno != 0) {
 			if (errno == EINVAL)
-				fprintf(stderr, catgets(catd, CATSET, 179,
-			"Cannot convert from %s to %s\n"), tcs, convhdr);
+				fprintf(stderr, tr(179,
+					"Cannot convert from %s to %s\n"),
+					tcs, convhdr);
 			else
 				perror("iconv_open");
 			Fclose(nfo);
