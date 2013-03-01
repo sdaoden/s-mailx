@@ -19,9 +19,15 @@ SHELL		= /bin/sh
 STRIP		= strip
 INSTALL		= /usr/bin/install
 
-#CFLAGS		= -std=c89 -O2
-#WARN		= -g -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
-#		-Winit-self -Wwrite-strings -Wcast-qual -fstrict-aliasing
+# Note: this is an old codebase that originates in the 70s, when all those
+# fancy compiler features, like constant data, restricted pointers, type
+# aliasing etc., did not yet exist.  Until the codebase has been overhauled
+# (and the overhauling has itself been debugged :) you may read INSTALL for
+# hints but are otherwise on your own if you turn on fancy compiler features!
+CFLAGS		= -O1
+#CFLAGS		= -std=c89 -O2 -g -fstrict-aliasing
+#WARN		= -Wall -Wextra -pedantic -Wbad-function-cast -Wcast-align \
+#		-Winit-self -Wwrite-strings -Wcast-qual -Wunused
 # Warnings that are not handled very well (yet)
 #		-Wshadow
 # The gcc(1) from NetBSD 6 produces a lot of errors with -fstrict-overflow,
