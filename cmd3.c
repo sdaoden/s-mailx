@@ -121,11 +121,11 @@ _set_show_all(void)
 	rm(cp);
 	Ftfree(&cp);
 
-	for (i = u.j = 0; i < HSHSIZE; ++i)
+	for (u.j = 1, i = 0; i < HSHSIZE; ++i)
 		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
 			++u.j;
 	vacp = (char**)salloc(u.j * sizeof(*vacp));
-	for (i = 0, p = vacp; i < HSHSIZE; ++i)
+	for (p = vacp, i = 0; i < HSHSIZE; ++i)
 		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
 			*p++ = vp->v_name;
 	*p = NULL;
