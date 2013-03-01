@@ -204,6 +204,12 @@ echo "${LIBS}" >> ${lib}
 
 ##
 
+# Better set _GNU_SOURCE (if we are on Linux only?)
+# Fixes compilation on Slackware 14 + (with at least clang(1)).
+# Since i've always defined this on GNU/Linux, i'm even surprised it works
+# without!!  Didn't check this yet (and TinyCore uses different environment).
+echo '#define _GNU_SOURCE' >> ${out}
+
 link_check hello 'if a hello world program can be built' <<\! || { \
 	echo >&5 'This oooops is most certainly not related to me.'; \
 	echo >&5 "Read the file ${log} and check your compiler environment."; \
