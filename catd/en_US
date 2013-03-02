@@ -182,7 +182,7 @@ $set 1
 171 $Enter filename for part $
 172 $: $
 173 tmpfile
-174 --- DELETED ---
+174 Ignored date format, it excesses the target buffer (%lu bytes)\n
 175 :\n
 176 Cannot open %s\n
 177 Warning: invalid encoding %s, using base64\n

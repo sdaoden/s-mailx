@@ -215,6 +215,14 @@ Non-breakers
   everything the very identical way.  Also the manual, the resource file
   etc., all that should be created by the first run.
 
+- rfc2384.txt etc.  I.e., Much better URL support.
+
+- printhead()/hprf(): support %n newline format (%t tab?).
+  Make it possible to use the *datefield* algorithm for plain From_ derived
+  dates (needs a From_ parser, i.e., strptime()-alike).
+  Once we have that, rename *datefield-markout-older* to
+  *date-markout-older* ??
+
 Low-Level
 ---------
 

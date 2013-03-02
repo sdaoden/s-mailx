@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 28, 2013
+.Dd March 02, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2082,20 +2082,6 @@ If this option is set adjacent words are combined to pairs,
 which are then used as additional tokens.
 This usually improves the accuracy of the filter,
 but also increases the junk mail database five- to tenfold.
-.It Va datefield
-The date in a header summary is normally the date of the mailbox `From\ '
-line of the message.
-If this variable is set the date as given in the `Date:' field is used,
-converted to local time.
-.It Va datefield-markout-older
-This option, when set in addition to
-.Va datefield ,
-modifies the display of messages that are not really current in a way
-that is rather comparable to the
-.Fl l
-option of the POSIX
-.Xr ls 1
-command.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2532,6 +2518,31 @@ the system is used to compute the threshold (see
 .It Va DEAD
 The name of the file to use for saving aborted messages.
 This defaults to `dead.letter' in the user's home directory.
+.It Va datefield
+The date in a header summary is normally the date of the mailbox `From\ '
+line of the message.
+If this variable is set, then the date as given in the `Date:' field is
+used, converted to local time.
+It is possible to control the display of the date by assigning a value,
+in which case the
+.Xr strftime 3
+function will be used to format the date accordingly.
+Please read your system manual for the available formats.
+Note that the `%n' format should not be used, because \*(UA doesn't
+take embedded newlines into account when calculating how many lines fit
+onto the screen.
+.It Va datefield-markout-older
+This option, when set in addition to
+.Va datefield ,
+modifies the display of messages that are not really current in a way
+that is rather comparable to the
+.Fl l
+option of the POSIX
+.Xr ls 1
+command.
+The interpretation of the value is identical to what has been described
+for
+.Va datefield .
 .It Va EDITOR
 Pathname of the text editor to use in the
 .Ic edit

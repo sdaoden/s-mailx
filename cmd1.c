@@ -412,32 +412,42 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 {
 	char datebuf[FROM_DATEBUF], *subjline, *cp;
 	struct str in, out;
+	char const *datefmt, *date, *name, *fp;
+	int B, c, i, n, s, fromlen, subjlen = scrnwidth, isto = 0, isaddr = 0;
 	struct message *mp = &message[mesg - 1];
-	char const *date, *name, *fp;
-	int B, c, i, n, s, fromlen,
-		subjlen = scrnwidth, isto = 0, isaddr = 0;
 	time_t datet = mp->m_time;
 
 	date = NULL;
-	if (value("datefield")) {
-		char *x = hfield1("date", mp);/* TODO use m_date field! */
-		if (x != NULL) {
-			datet = rfctime(x);
-			date = fakedate(datet);
-			/* Markout non-current? */
-			if (value("datefield-markout-older") &&
-					(datet > time_current.tc_time ||
+	if ((datefmt = value("datefield")) != NULL) {
+		fp = hfield1("date", mp);/* TODO use m_date field! */
+		if (fp == NULL) {
+			datefmt = NULL;
+			goto jdate_set;
+		}
+		datet = rfctime(fp);
+		date = fakedate(datet);
+		fp = value("datefield-markout-older");
+		i = (*datefmt != '\0');
+		if (fp != NULL)
+			i |= (*fp != '\0') ? 2 | 4 : 2;
+		/* May we strftime(3)? */
+		if (i & (1 | 4))
+			memcpy(&time_current.tc_local, localtime(&datet),
+				sizeof time_current.tc_local);
+		if ((i & 2) && (datet > time_current.tc_time ||
 #define _6M	((DATE_DAYSYEAR / 2) * DATE_SECSDAY)
-					(datet + _6M < time_current.tc_time))) {
+				(datet + _6M < time_current.tc_time))) {
 #undef _6M
-				memset(datebuf, ' ', FROM_DATEBUF); /* xxx Manual unroll */
+			if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
+				memset(datebuf, ' ', FROM_DATEBUF); /* xxx ur */
 				memcpy(datebuf + 4, date + 4, 7);
 				datebuf[4 + 7] = ' ';
 				memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
 				datebuf[4 + 7 + 1 + 4] = '\0';
 				date = datebuf;
 			}
-		}
+		} else if ((i & 1) == 0)
+			datefmt = NULL;
 	} else if (datet == (time_t)0 && (mp->m_flag & MNOFROM) == 0) {
 		/* TODO eliminate this path, query the FROM_ date in setptr(),
 		 * TODO all other codepaths do so by themselves ALREADY ?????
@@ -445,9 +455,10 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		 * TODO ALSO changes behaviour of markout-non-current */
 		_parse_head(mp, datebuf);
 		date = datebuf;
-	}
-	if (date == NULL)
+	} else {
+jdate_set:
 		date = fakedate(datet);
+	}
 
 	if ((subjline = hfield1("subject", mp)) == NULL) {
 		out.s = NULL;
@@ -496,7 +507,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				fp++;
 			} else if (*fp == '+')
 				fp++;
-			while (digitchar(*fp&0377))
+			while (digitchar(*fp))
 				fp++;
 			if (*fp == '\0')
 				break;
@@ -545,7 +556,7 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				break;
 			case '>':
 			case '<':
-				c = dot == mp ? *fp&0377 : ' ';
+				c = (dot == mp) ? *fp&0377 : ' ';
 				putc(c, f);
 				subjlen--;
 				break;
@@ -574,7 +585,22 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				subjlen -= n;
 				break;
 			case 'd':
-				if (n <= 0)
+				if (datefmt != NULL) {
+					i = strftime(datebuf, sizeof datebuf,
+						datefmt,
+						&time_current.tc_local);
+					if (i != 0)
+						date = datebuf;
+					else
+						fprintf(stderr, tr(174,
+							"Ignored date format, "
+							"it excesses the "
+							"target buffer "
+							"(%lu bytes)\n"),
+							(ul_it)sizeof datebuf);
+					datefmt = NULL;
+				}
+				if (n == 0)
 					n = 16;
 				subjlen -= fprintf(f, "%*.*s", n, n, date);
 				break;
