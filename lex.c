@@ -360,8 +360,7 @@ nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
 	return(0);
 }
 
-
-int 
+int
 newmailinfo(int omsgCount)
 {
 	int	mdot;
@@ -372,16 +371,14 @@ newmailinfo(int omsgCount)
 	if (msgCount > omsgCount) {
 		for (i = omsgCount; i < msgCount; i++)
 			message[i].m_flag |= MNEWEST;
-		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		printf(tr(158, "New mail has arrived.\n"));
 		if (msgCount - omsgCount == 1)
-			printf(catgets(catd, CATSET, 214,
-				"Loaded 1 new message\n"));
+			printf(tr(214, "Loaded 1 new message.\n"));
 		else
-			printf(catgets(catd, CATSET, 215,
-				"Loaded %d new messages\n"),
+			printf(tr(215, "Loaded %d new messages.\n"),
 				msgCount - omsgCount);
 	} else
-		printf("Loaded %d messages\n", msgCount);
+		printf(tr(224, "Loaded %d messages.\n"), msgCount);
 	callhook(mailname, 1);
 	mdot = getmdot(1);
 	if (value("header")) {

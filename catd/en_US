@@ -222,8 +222,8 @@ $set 1
 211 removed.\n
 212 updated.\n
 213 <Unknown date>
-214 Loaded 1 new message\n
-215 Loaded %d new messages\n
+214 Loaded 1 new message.\n
+215 Loaded %d new messages.\n
 216 No POP3 support compiled in.\n
 217 Cannot handle protocol: %s\n
 218 POP3 error: %s
@@ -232,7 +232,7 @@ $set 1
 221 too many arguments\n
 222 need shortcut names to remove\n
 223 %s: no such shortcut\n
-224 --- DELETED ---
+224 Loaded %d messages.\n
 225 No SSL support compiled in.\n
 226 Cannot determine parent Message-ID of the current message\n
 227 Parent message not found\n
