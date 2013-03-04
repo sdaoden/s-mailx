@@ -239,7 +239,7 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 		 * TODO handled, leads to many skipped over data
 		 * TODO send/MIME rewrite: don't assume complete input line is
 		 * TODO a complete output line, PLUS */
-		(void)str_iconv(iconvd, &out, &in, TRU1); /* XXX ERRORS?! */
+		(void)n_iconv_str(iconvd, &out, &in, NULL, TRU1); /* XXX ERRORS?! */
 		in = out;
 	} else
 #endif
@@ -889,7 +889,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	char const *tcs;
 	int convert;
 	size_t maxstor, lastoutl = 0;
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
@@ -910,11 +910,11 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 			cs = salloc(++p - cbeg);
 			memcpy(cs, cbeg, p - cbeg - 1);
 			cs[p - cbeg - 1] = '\0';
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 			if (fhicd != (iconv_t)-1)
-				iconv_close(fhicd);
-			if (strcmp(cs, tcs))
-				fhicd = iconv_open_ft(tcs, cs);
+				n_iconv_close(fhicd);
+			if (asccasecmp(cs, tcs) != 0)
+				fhicd = n_iconv_open(tcs, cs);
 			else
 				fhicd = (iconv_t)-1;
 #endif
@@ -957,7 +957,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				q = lastwordend;
 				out->l = lastoutl;
 			}
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 			if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
 				char const *iptr;
 				char *mptr, *nptr, *uptr;
@@ -968,11 +968,9 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				mptr = nptr = q;
 				uptr = nptr + outleft;
 				iptr = cout.s;
-				if (iconv_ft(fhicd, &iptr,&inleft,
-					&nptr, &outleft, 1) == (size_t)-1 &&
-						errno == E2BIG) {
-					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
-						0);
+				if (n_iconv_buf(fhicd, &iptr, &inleft, &nptr,
+						&outleft, TRU1) == E2BIG) {
+					n_iconv_reset(fhicd);
 					mime_fromhdr_inc(inleft);
 					goto again;
 				}
@@ -982,21 +980,20 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				 * that states are restricted to
 				 * single encoded-word parts.
 				 */
-				while (iconv_ft(fhicd, NULL, NULL,
-					&nptr, &outleft, 0) == (size_t)-1 &&
-						errno == E2BIG)
+				while (n_iconv_buf(fhicd, NULL, NULL,
+						&nptr, &outleft, FAL0) == E2BIG)
 					mime_fromhdr_inc(16);
 				out->l += uptr - mptr - outleft;
 				q += uptr - mptr - outleft;
 			} else {
-#endif
+#endif /* HAVE_ICONV */
 				while (cout.l > maxstor - out->l)
 					mime_fromhdr_inc(cout.l -
 							(maxstor - out->l));
 				memcpy(q, cout.s, cout.l);
 				q += cout.l;
 				out->l += cout.l;
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 			}
 #endif
 			free(cout.s);
@@ -1022,9 +1019,9 @@ fromhdr_end:
 	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	if (fhicd != (iconv_t)-1)
-		iconv_close(fhicd);
+		n_iconv_close(fhicd);
 #endif
 	return;
 }
@@ -1227,45 +1224,30 @@ jqp_retest:
 static size_t
 convhdra(char const *str, size_t len, FILE *fp)
 {
-#ifdef	HAVE_ICONV
-	char *cbuf = NULL;
+#ifdef HAVE_ICONV
+	struct str ciconv;
 #endif
 	struct str cin;
 	size_t ret = 0;
 
+	cin.s = UNCONST(str);
+	cin.l = len;
 #ifdef HAVE_ICONV
-	if (iconvd == (iconv_t)-1) {
-#endif
-		cin.s = UNCONST(str);
-		cin.l = len;
-#ifdef HAVE_ICONV
-	} else {
-		char *op;
-		char const *ip;
-		size_t osz, isz, cbufsz = (len << 1) - (len >> 2);
-
-jagain:		osz = cbufsz;
-		op = cbuf = ac_alloc(cbufsz);
-		ip = str;
-		isz = len;
-		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
-			ac_free(cbuf);
-			if (errno != E2BIG)
-				goto jleave;
-			cbufsz += isz;
-			goto jagain;
-		}
-		cin.s = cbuf;
-		cin.l = cbufsz - osz;
+	ciconv.s = NULL;
+	if (iconvd != (iconv_t)-1) {
+		ciconv.l = 0;
+		if (n_iconv_str(iconvd, &ciconv, &cin, NULL, FAL0) != 0)
+			goto jleave;
+		cin = ciconv;
 	}
 #endif
 	ret = mime_write_tohdr(&cin, fp);
 #ifdef HAVE_ICONV
-	if (cbuf != NULL)
-		ac_free(cbuf);
 jleave:
+	if (ciconv.s != NULL)
+		free(ciconv.s);
 #endif
-	return (ret);
+	return ret;
 }
 
 /*
@@ -1524,7 +1506,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
 			(convert == CONV_TOQP || convert == CONV_8BIT ||
 			convert == CONV_TOB64 || convert == CONV_TOHDR)) {
-		if (str_iconv(iconvd, &out, &in, FAL0) != 0) {
+		if (n_iconv_str(iconvd, &out, &in, NULL, FAL0) != 0) {
 			/* XXX report conversion error? */;
 			sz = -1;
 			goto jleave;
@@ -1582,9 +1564,9 @@ jqpb64_enc:
 		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
 		break;
 	}
+jleave:
 	if (out.s != NULL)
 		free(out.s);
-jleave:
 	if (in.s != ptr)
 		free(in.s);
 	return sz;

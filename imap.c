@@ -2892,20 +2892,20 @@ imap_search2(struct mailbox *mp, struct message *m, int count,
 #ifdef HAVE_ICONV
 		if (asccasecmp(cp, "utf-8")) {
 			iconv_t	it;
-			char	*nsp, *nspec;
-			size_t	sz, nsz;
-			if ((it = iconv_open_ft("utf-8", cp)) != (iconv_t)-1) {
+			char *nsp, *nspec;
+			size_t sz, nsz;
+			if ((it = n_iconv_open("utf-8", cp)) != (iconv_t)-1) {
 				sz = strlen(spec) + 1;
 				nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
-				if (iconv_ft(it, &spec, &sz, &nsp, &nsz, 0)
-						!= (size_t)-1 && sz == 0) {
+				if (n_iconv_buf(it, &spec, &sz, &nsp, &nsz,
+						FAL0) == 0 && sz == 0) {
 					spec = nspec;
 					cp = "utf-8";
 				}
-				iconv_close(it);
+				n_iconv_close(it);
 			}
 		}
-#endif	/* HAVE_ICONV */
+#endif
 		cp = imap_quotestr(cp);
 		cs = salloc(n = strlen(cp) + 10);
 		snprintf(cs, n, "CHARSET %s ", cp);

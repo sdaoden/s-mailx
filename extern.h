@@ -905,18 +905,26 @@ struct str *	str_dup(struct str *self, struct str const *t
 #endif
 
 /*
- * Our (fault-tolerant) iconv(3) wrappers
+ * Our iconv(3) wrappers
  */
 
 #ifdef HAVE_ICONV
-iconv_t iconv_open_ft(char const *tocode, char const *fromcode);
-size_t iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
-		char **outb, size_t *outbleft, int tolerant);
+iconv_t		n_iconv_open(char const *tocode, char const *fromcode);
+/* If *cd* == *iconvd*, assigns -1 to the latter */
+void		n_iconv_close(iconv_t cd);
 
-/* Convert *in* to *out*, return an error code; with *tolerant*, be more so.
- * *out* is srealloc()ed as necessary! */
-int		str_iconv(iconv_t icp, struct str *out, struct str const *in,
-			bool_t tolerant);
+/* Reset encoding state */
+void		n_iconv_reset(iconv_t cd);
+
+/* iconv(3), but return *errno* or 0; *skipilseq* forces step over illegal byte
+ * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*
+ * and *in_rest_or_null* may be the same object.
+ * Note: EINVAL (incomplete sequence at end of input) is NOT handled, so the
+ * replacement character must be added manually if that happens at EOF! */
+int		n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,
+			char **outb, size_t *outbleft, bool_t skipilseq);
+int		n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
+			struct str *in_rest_or_null, bool_t skipilseq);
 #endif
 
 /* thread.c */

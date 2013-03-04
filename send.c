@@ -824,7 +824,7 @@ jcopyout:
 			action == SEND_RFC822 || action == SEND_SHOW)
 		convert = CONV_NONE;
 	tcs = charset_get_lc();
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
 			action == SEND_TOSRCH) &&
@@ -832,14 +832,12 @@ jcopyout:
 			 ip->m_mimecontent == MIME_TEXT_HTML ||
 			 ip->m_mimecontent == MIME_TEXT)) {
 		if (iconvd != (iconv_t)-1)
-			iconv_close(iconvd);
+			n_iconv_close(iconvd);
 		if (asccasecmp(tcs, ip->m_charset) &&
 				asccasecmp(charset_get_7bit(), ip->m_charset))
-			iconvd = iconv_open_ft(tcs, ip->m_charset);
-		else
-			iconvd = (iconv_t)-1;
+			iconvd = n_iconv_open(tcs, ip->m_charset);
 	}
-#endif	/* HAVE_ICONV */
+#endif
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
 			pipecmd != NULL) {
@@ -896,11 +894,9 @@ end:	free(line);
 		if (qbuf != obuf)
 			pipecpy(qbuf, obuf, origobuf, prefix, prefixlen, stats);
 	}
-#ifdef	HAVE_ICONV
-	if (iconvd != (iconv_t)-1) {
-		iconv_close(iconvd);
-		iconvd = (iconv_t)-1;
-	}
+#ifdef HAVE_ICONV
+	if (iconvd != (iconv_t)-1)
+		n_iconv_close(iconvd);
 #endif
 	return rt;
 }

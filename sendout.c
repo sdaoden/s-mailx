@@ -235,14 +235,12 @@ jerr_header:		err = errno;
 	}
 
 #ifdef HAVE_ICONV
-	if (iconvd != (iconv_t)-1) {
-		iconv_close(iconvd);
-		iconvd = (iconv_t)-1;
-	}
+	if (iconvd != (iconv_t)-1)
+		n_iconv_close(iconvd);
 	if (do_iconv) {
 		char const *tcs = charset_get_lc();
 		if (asccasecmp(charset, tcs) != 0 &&
-				(iconvd = iconv_open_ft(charset, tcs))
+				(iconvd = n_iconv_open(charset, tcs))
 				== (iconv_t)-1 && (err = errno) != 0) {
 			if (err == EINVAL)
 				fprintf(stderr, tr(179,
@@ -430,9 +428,9 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 				_get_encoding(convert));
 		buf = smalloc(bufsize = INFIX_BUF);
 		if (convert == CONV_TOQP
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 				|| iconvd != (iconv_t)-1
-#endif	/* HAVE_ICONV */
+#endif
 				) {
 			fflush(fi);
 			count = fsize(fi);
@@ -440,9 +438,9 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 
 		for (;;) {
 			if (convert == CONV_TOQP
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 					|| iconvd != (iconv_t)-1
-#endif	/* HAVE_ICONV */
+#endif
 					) {
 				if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
 						== NULL)
@@ -513,12 +511,10 @@ infix(struct header *hp, FILE *fi)
 #ifdef HAVE_ICONV
 	tcs = charset_get_lc();
 	if ((convhdr = need_hdrconv(hp, GTO|GSUBJECT|GCC|GBCC|GIDENT)) != 0) {
-		if (iconvd != (iconv_t)-1) {
-			iconv_close(iconvd);
-			iconvd = (iconv_t)-1;
-		}
+		if (iconvd != (iconv_t)-1)
+			n_iconv_close(iconvd);
 		if (asccasecmp(convhdr, tcs) != 0 &&
-				(iconvd = iconv_open_ft(convhdr, tcs))
+				(iconvd = n_iconv_open(convhdr, tcs))
 				== (iconv_t)-1 && errno != 0) {
 			if (errno == EINVAL)
 				fprintf(stderr, tr(179,
@@ -530,7 +526,7 @@ infix(struct header *hp, FILE *fi)
 			return NULL;
 		}
 	}
-#endif /* HAVE_ICONV */
+#endif
 	if (puthead(hp, nfo,
 		   GTO|GSUBJECT|GCC|GBCC|GNL|GCOMMA|GUA|GMIME
 		   |GMSGID|GIDENT|GREF|GDATE,
@@ -538,22 +534,18 @@ infix(struct header *hp, FILE *fi)
 		Fclose(nfo);
 		Fclose(nfi);
 #ifdef HAVE_ICONV
-		if (iconvd != (iconv_t)-1) {
-			iconv_close(iconvd);
-			iconvd = (iconv_t)-1;
-		}
+		if (iconvd != (iconv_t)-1)
+			n_iconv_close(iconvd);
 #endif
 		return NULL;
 	}
 #ifdef HAVE_ICONV
-	if (iconvd != (iconv_t)-1) {
-		iconv_close(iconvd);
-		iconvd = (iconv_t)-1;
-	}
+	if (iconvd != (iconv_t)-1)
+		n_iconv_close(iconvd);
 	if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
 		int err;
 		if (asccasecmp(charset, tcs) != 0 &&
-				(iconvd = iconv_open_ft(charset, tcs))
+				(iconvd = n_iconv_open(charset, tcs))
 				== (iconv_t)-1 && (err = errno) != 0) {
 			if (err == EINVAL)
 				fprintf(stderr, tr(179,
@@ -571,11 +563,9 @@ infix(struct header *hp, FILE *fi)
 				!= 0) {
 			Fclose(nfo);
 			Fclose(nfi);
-#ifdef	HAVE_ICONV
-			if (iconvd != (iconv_t)-1) {
-				iconv_close(iconvd);
-				iconvd = (iconv_t)-1;
-			}
+#ifdef HAVE_ICONV
+			if (iconvd != (iconv_t)-1)
+				n_iconv_close(iconvd);
 #endif
 			return NULL;
 		}
@@ -584,9 +574,9 @@ infix(struct header *hp, FILE *fi)
 		char *buf;
 
 		if (convert == CONV_TOQP
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 				|| iconvd != (iconv_t)-1
-#endif	/* HAVE_ICONV */
+#endif
 				) {
 			fflush(fi);
 			count = fsize(fi);
@@ -594,9 +584,9 @@ infix(struct header *hp, FILE *fi)
 		buf = smalloc(bufsize = INFIX_BUF);
 		for (;;) {
 			if (convert == CONV_TOQP
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 					|| iconvd != (iconv_t)-1
-#endif	/* HAVE_ICONV */
+#endif
 					) {
 				if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
 						== NULL)
@@ -610,11 +600,9 @@ infix(struct header *hp, FILE *fi)
 					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
 				Fclose(nfo);
 				Fclose(nfi);
-#ifdef	HAVE_ICONV
-				if (iconvd != (iconv_t)-1) {
-					iconv_close(iconvd);
-					iconvd = (iconv_t)-1;
-				}
+#ifdef HAVE_ICONV
+				if (iconvd != (iconv_t)-1)
+					n_iconv_close(iconvd);
 #endif
 				free(buf);
 				return NULL;
@@ -624,22 +612,18 @@ infix(struct header *hp, FILE *fi)
 		if (ferror(fi)) {
 			Fclose(nfo);
 			Fclose(nfi);
-#ifdef	HAVE_ICONV
-			if (iconvd != (iconv_t)-1) {
-				iconv_close(iconvd);
-				iconvd = (iconv_t)-1;
-			}
+#ifdef HAVE_ICONV
+			if (iconvd != (iconv_t)-1)
+				n_iconv_close(iconvd);
 #endif
 			return NULL;
 		}
 		if (charset != NULL)
 			put_signature(nfo, convert); /* XXX if (text/) !! */
 	}
-#ifdef	HAVE_ICONV
-	if (iconvd != (iconv_t)-1) {
-		iconv_close(iconvd);
-		iconvd = (iconv_t)-1;
-	}
+#ifdef HAVE_ICONV
+	if (iconvd != (iconv_t)-1)
+		n_iconv_close(iconvd);
 #endif
 	fflush(nfo);
 	if (ferror(nfo)) {
