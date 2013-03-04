@@ -897,11 +897,19 @@ char const *	asccasestr(char const *haystack, char const *xneedle);
  * struct str related support funs
  */
 
-/* *self* is srealloc()ed */
-struct str *	str_dup(struct str *self, struct str const *t
+/* *self->s* is srealloc()ed */
+struct str *	n_str_dup(struct str *self, struct str const *t
 			SMALLOC_DEBUG_ARGS);
+
+/* *self->s* is srealloc()ed, *self->l* incremented */
+struct str *	n_str_add_buf(struct str *self, char const *buf, size_t buflen
+			SMALLOC_DEBUG_ARGS);
+#define n_str_add(S, T)		n_str_add_buf(S, (T)->s, (T)->l)
+#define n_str_add_cp(S, CP)	n_str_add_buf(S, CP, (CP) ? strlen(CP) : 0)
+
 #ifdef HAVE_ASSERTS
-# define str_dup(S,T)	str_dup(S, T, __FILE__, __LINE__)
+# define n_str_dup(S,T)		n_str_dup(S, T, __FILE__, __LINE__)
+# define n_str_add_buf(S,B,BL)	n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
 /*

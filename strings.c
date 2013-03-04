@@ -841,14 +841,27 @@ jleave:
 }
 
 struct str *
-(str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
+(n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
 {
 	if (t != NULL && t->l > 0) {
 		self->l = t->l;
-		self->s = (srealloc)(self->s, t->l SMALLOC_DEBUG_ARGSCALL);
+		self->s = (srealloc)(self->s, t->l + 1 SMALLOC_DEBUG_ARGSCALL);
 		memcpy(self->s, t->s, t->l);
 	} else
 		self->l = 0;
+	return self;
+}
+
+struct str *
+(n_str_add_buf)(struct str *self, char const *buf, size_t buflen
+	SMALLOC_DEBUG_ARGS)
+{
+	if (buflen != 0) {
+		size_t sl = self->l;
+		self->l = sl + buflen;
+		self->s = (srealloc)(self->s, self->l+1 SMALLOC_DEBUG_ARGSCALL);
+		memcpy(self->s + sl, buf, buflen);
+	}
 	return self;
 }
 

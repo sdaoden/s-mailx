@@ -245,7 +245,7 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 #endif
 	if ((flags & _TD_BUFCOPY) ||
 			(flags & (TD_ISPR|TD_DELCTRL)) == TD_DELCTRL) {
-		str_dup(&out, &in);
+		n_str_dup(&out, &in);
 		in = out;
 	}
 
