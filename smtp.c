@@ -307,20 +307,25 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 }
 
 char *
-smtp_auth_var(const char *type, const char *addr)
+smtp_auth_var(char const *type, char const *addr)
 {
-	char	*var, *cp;
-	int	len;
+	size_t tl, al, len;
+	char *var, *cp;
 
-	var = ac_alloc(len = strlen(type) + strlen(addr) + 7);
-	snprintf(var, len, "smtp-auth%s-%s", type, addr);
-	if ((cp = value(var)) != NULL)
-		cp = savestr(cp);
-	else {
+	tl = strlen(type);
+	al = strlen(addr);
+	len = tl + al + 10 + 1;
+	var = ac_alloc(len);
+
+	/* Try a 'user@host', i.e., address specific version first */
+	(void)snprintf(var, len, "smtp-auth%s-%s", type, addr);
+	if ((cp = value(var)) == NULL) {
 		snprintf(var, len, "smtp-auth%s", type);
-		if ((cp = value(var)) != NULL)
-			cp = savestr(cp);
+		cp = value(var);
 	}
+	if (cp != NULL)
+		cp = savestr(cp);
+
 	ac_free(var);
 	return cp;
 }
