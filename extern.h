@@ -650,22 +650,12 @@ struct str *	b64_encode_cp(struct str *out, char const *cp,
 struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 			enum b64flags flags);
 
-/* Trim WS and make *work* point to the decodable range of *in*.
- * Return the amount of bytes a b64_decode operation on that buffer requires */
-size_t		b64_decode_prepare(struct str *work, struct str const *in);
-
-/* TODO B64_ISTEXT: b64_decode() docu is wrong, and will be even more later!
- * TODO and *rest* should be joined just as for qp_decode(), if at all */
-/* If *rest* is set then decoding will assume text input (strip CRs from CRLF
- * sequences, only create output when complete lines have been read),
- * otherwise binary input is assumed and each round will produce output.
+/* If *rest* is set then decoding will assume text input.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
- * If *len* was 0 on input, b64_decode_prepare() will be called to init it and
- * "adjust *in*", but otherwise it is assumed that this yet happened.
  * Returns OKAY or STOP on error (in which case *out* is set to an error
  * message); caller is responsible to free buffers.
  */
-int		b64_decode(struct str *out, struct str const *in, size_t len,
+int		b64_decode(struct str *out, struct str const *in,
 			struct str *rest);
 
 /*

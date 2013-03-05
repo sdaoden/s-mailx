@@ -413,7 +413,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 	out.s = NULL;
 	in.s = UNCONST(b64);
 	in.l = strlen(in.s);
-	(void)b64_decode(&out, &in, 0, NULL);
+	(void)b64_decode(&out, &in, NULL);
 	assert(out.s != NULL);
 
 	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),

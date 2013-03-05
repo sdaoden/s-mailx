@@ -82,8 +82,8 @@ static void	__mt_add_line(char const *line, struct mtnode **tail);
 static enum conversion _conversion_by_encoding(void);
 
 /* fwrite(3) while checking for displayability */
-static size_t	_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
-			char const *prefix, size_t prefixlen);
+static size_t	_fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
+			struct str *rest, char const *prefix, size_t prefixlen);
 
 static size_t	delctrl(char *cp, size_t sz);
 static int has_highbit(register const char *s);
@@ -209,12 +209,12 @@ _conversion_by_encoding(void)
 }
 
 static size_t
-_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
-	char const *prefix, size_t prefixlen)
+_fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
+	struct str *rest, char const *prefix, size_t prefixlen)
 {
 	/* TODO note: after send/MIME layer rewrite we will have a string pool
 	 * TODO so that memory allocation count drops down massively; for now,
-	 * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
+	 * TODO v14.* that is, we pay a lot & heavily depend on the allocator */
 	/* TODO well if we get a broken pipe here, and it happens to
 	 * TODO happen pretty easy when sleeping in a full pipe buffer,
 	 * TODO then the current codebase performs longjump away;
@@ -224,46 +224,62 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 	 * TODO the storage must come from the outside or be tracked
 	 * TODO in a carrier struct.  Best both.  But storage reuse
 	 * TODO would be a bigbig win besides */
+	/* *input* _may_ point to non-modifyable buffer; but even then it only
+	 * needs to be dup'ed away if we have to transform the content */
 	struct str in, out;
 
-	in.s = ptr;
-	in.l = size;
+	in = *input;
 	out.s = NULL;
 	out.l = 0;
 
-	/* *in* _may_ point to non-modifyable buffer; but even then it only
-	 * needs to be dup'ed away if we have to transform the content */
 #ifdef HAVE_ICONV
 	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
-		/* TODO leftover data (incomplete multibyte sequences) not
-		 * TODO handled, leads to many skipped over data
-		 * TODO send/MIME rewrite: don't assume complete input line is
-		 * TODO a complete output line, PLUS */
-		(void)n_iconv_str(iconvd, &out, &in, NULL, TRU1); /* XXX ERRORS?! */
+		char *buf = NULL;
+
+		if (rest != NULL && rest->l > 0) {
+			in.l = rest->l + input->l;
+			in.s = buf = smalloc(in.l + 1);
+			memcpy(in.s, rest->s, rest->l);
+			memcpy(in.s + rest->l, input->s, input->l);
+			rest->l = 0;
+
+		}
+		if (n_iconv_str(iconvd, &out, &in, &in, TRU1) != 0 &&
+				rest != NULL && in.l > 0) {
+			/* Incomplete multibyte at EOF is special */
+			if (flags & TD_EOF) {
+				out.s = srealloc(out.s, out.l + 4);
+				out.s[out.l++] = '[';
+				out.s[out.l++] = '?'; /* TODO 0xFFFD !!! */
+				out.s[out.l++] = ']';
+			} else
+				(void)n_str_add(rest, &in);
+		}
 		in = out;
-	} else
-#endif
-	if ((flags & _TD_BUFCOPY) ||
-			(flags & (TD_ISPR|TD_DELCTRL)) == TD_DELCTRL) {
-		n_str_dup(&out, &in);
-		in = out;
+		out.s = NULL;
+		flags &= ~_TD_BUFCOPY;
+
+		if (buf != NULL)
+			free(buf);
 	}
+#endif
 
 	if (flags & TD_ISPR)
 		makeprint(&in, &out);
-	else {
-		out.s = in.s;
-		out.l = in.l;
-	}
+	else if (flags & _TD_BUFCOPY)
+		n_str_dup(&out, &in);
+	else
+		out = in;
 	if (flags & TD_DELCTRL)
 		out.l = delctrl(out.s, out.l);
-	size = prefixwrite(out.s, out.l, f, prefix, prefixlen);
+
+	out.l = prefixwrite(out.s, out.l, f, prefix, prefixlen);
 
 	if (out.s != in.s)
 		free(out.s);
-	if (in.s != ptr)
+	if (in.s != input->s)
 		free(in.s);
-	return size;
+	return out.l;
 }
 
 static size_t
@@ -945,7 +961,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 			cout.l = 0;
 			switch (convert) {
 				case CONV_FROMB64:
-					(void)b64_decode(&cout, &cin, 0, NULL);
+					(void)b64_decode(&cout, &cin, NULL);
 					break;
 				case CONV_FROMQP:
 					(void)qp_decode(&cout, &cin, NULL);
@@ -1531,13 +1547,13 @@ jconvert:
 	case CONV_FROMB64:
 		rest = NULL;
 	case CONV_FROMB64_T:
-		state = b64_decode(&out, &in, 0, rest);
+		state = b64_decode(&out, &in, rest);
 jqpb64_dec:
 		if ((sz = out.l) != 0) {
 			if (state != OKAY)
 				prefix = NULL, prefixlen = 0;
-			sz = _fwrite_td(out.s, out.l, f, dflags & ~_TD_BUFCOPY,
-				prefix, prefixlen);
+			sz = _fwrite_td(&out, f, dflags & ~_TD_BUFCOPY,
+				rest, prefix, prefixlen);
 		}
 		if (state != OKAY)
 			sz = -1;
@@ -1561,7 +1577,7 @@ jqpb64_enc:
 		sz = mime_write_tohdr_a(&in, f);
 		break;
 	default:
-		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
+		sz = _fwrite_td(&in, f, dflags, NULL, prefix, prefixlen);
 		break;
 	}
 jleave:

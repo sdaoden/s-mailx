@@ -39,8 +39,9 @@
 
 #include "rcv.h"
 
-#include <sys/stat.h>
+#include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "extern.h"
 
@@ -251,6 +252,7 @@ _out(char const *buf, size_t len, FILE *fp,
 	char const *prefix, size_t prefixlen, off_t *stats, struct str *rest)
 {
 	ssize_t sz = 0, n;
+	int flags;
 	char const *cp;
 
 #if 0
@@ -274,9 +276,12 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 		++sz;
 	}
 #endif
+	flags = ((int)action & TD_EOF);
+	action &= ~TD_EOF;
 	n = mime_write(buf, len, fp,
 			action == SEND_MBOX ? CONV_NONE : convert,
-			action == SEND_TODISP || action == SEND_TODISP_ALL ||
+			flags |
+			(action == SEND_TODISP || action == SEND_TODISP_ALL ||
 					action == SEND_QUOTE ||
 					action == SEND_QUOTE_ALL ?
 				TD_ISPR|TD_ICONV :
@@ -285,7 +290,7 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 				action == SEND_TOFLTR ?
 					TD_DELCTRL :
 				action == SEND_SHOW ?
-					TD_ISPR : TD_NONE,
+					TD_ISPR : TD_NONE),
 			prefix, prefixlen, rest);
 	if (n < 0)
 		sz = n;
@@ -833,9 +838,37 @@ jcopyout:
 			 ip->m_mimecontent == MIME_TEXT)) {
 		if (iconvd != (iconv_t)-1)
 			n_iconv_close(iconvd);
-		if (asccasecmp(tcs, ip->m_charset) &&
-				asccasecmp(charset_get_7bit(), ip->m_charset))
+		/* TODO Since Base64 has an odd 4:3 relation in between input
+		 * TODO and output an input line may end with a partial
+		 * TODO multibyte character; this is no problem at all unless
+		 * TODO we send to the display or whatever, i.e., ensure
+		 * TODO makeprint() or something; to avoid this trap, *force*
+		 * TODO iconv(), in which case this layer will handle leftovers
+		 * TODO correctly */
+		if (convert == CONV_FROMB64_T ||
+				(asccasecmp(tcs, ip->m_charset) &&
+				asccasecmp(charset_get_7bit(),
+				ip->m_charset))) {
 			iconvd = n_iconv_open(tcs, ip->m_charset);
+			/* XXX Don't bail out if we cannot iconv(3) here;
+			 * XXX alternatively we could avoid trying to open
+			 * XXX if ip->m_charset is "unknown-8bit", which was
+			 * XXX the one that has bitten me?? */
+			/*
+			 * TODO errors should DEFINETELY not be scrolled away!
+			 * TODO what about an error buffer (think old shsp(1)),
+			 * TODO re-dump errors since last snapshot when the
+			 * TODO command loop enters again?  i.e., at least print
+			 * TODO "There were errors ?" before the next prompt,
+			 * TODO so that the user can look at the error buffer?
+			 */
+			if (iconvd == (iconv_t)-1 && errno == EINVAL) {
+				fprintf(stderr, tr(179,
+					"Cannot convert from %s to %s\n"),
+					ip->m_charset, tcs);
+				/*return -1;*/
+			}
+		}
 	}
 #endif
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
@@ -856,15 +889,6 @@ jcopyout:
 	eof = 0;
 	rest.s = NULL;
 	rest.l = 0;
-	/* TODO B64_ISTEXT doesn't work with the Heirloom mailx(1) send/MIME
-	 * TODO design because a complete input line may not necessarily be a
-	 * TODO complete output line, which results in faulty iconv() results.
-	 * TODO it is still a HUGE improvement to redirect all the decoded data
-	 * TODO into this temporary buffer and iconv that at the very end.
-	 * TODO overcome this crap with the send/MIME layer rewrite, PLEASE! */
-	if (convert == CONV_FROMB64_T)
-		rest.s = smalloc(ip->m_xsize);
-
 	while (! eof && fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
 		++lineno;
 joutln:
@@ -878,9 +902,10 @@ joutln:
 			break;
 		}
 	}
-	if (rest.l != 0) {
+	if (! eof && rest.l != 0) {
 		linelen = 0;
 		eof = 1;
+		action |= TD_EOF;
 		goto joutln;
 	}
 	if (rest.s != NULL)

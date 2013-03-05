@@ -278,11 +278,12 @@ enum mimecontent {
 
 enum tdflags {
 	TD_NONE		= 0,	/* no display conversion */
-	TD_ISPR		= 01,	/* use isprint() checks */
-	TD_ICONV	= 02,	/* use iconv() */
-	TD_DELCTRL	= 04,	/* delete control characters */
+	TD_ISPR		= 1<<0,	/* use isprint() checks */
+	TD_ICONV	= 1<<1,	/* use iconv() */
+	TD_DELCTRL	= 1<<2,	/* delete control characters */
+	TD_EOF		= 1<<3,	/* EOF seen, last round! */
 
-	_TD_BUFCOPY	= 010	/* Buffer may be constant, copy it */
+	_TD_BUFCOPY	= 1<<4	/* Buffer may be constant, copy it */
 };
 
 enum protocol {

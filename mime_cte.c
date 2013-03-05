@@ -95,6 +95,12 @@ SINLINE enum _qact	_mustquote(char const *s, char const *e, bool_t sol,
 /* Convert c to/from a hexadecimal character string */
 SINLINE char *		_qp_ctohex(char *store, char c);
 SINLINE si_it		_qp_cfromhex(char const *hex);
+
+/* Trim WS and make *work* point to the decodable range of *in*.
+ * Return the amount of bytes a b64_decode operation on that buffer requires */
+static size_t		_b64_decode_prepare(struct str *work,
+				struct str const *in);
+
 /* Perform b64_decode on sufficiently spaced & multiple-of-4 base *in*put.
  * Return number of useful bytes in *out* or -1 on error */
 static ssize_t		_b64_decode(struct str *out, struct str *in);
@@ -196,6 +202,28 @@ jleave:
 jerr:
 	r = -1;
 	goto jleave;
+}
+
+static size_t
+_b64_decode_prepare(struct str *work, struct str const *in)
+{
+	char *cp = in->s;
+	size_t cp_len = in->l;
+
+	while (cp_len > 0 && spacechar(*cp))
+		++cp, --cp_len;
+	work->s = cp;
+
+	for (cp += cp_len; cp_len > 0; --cp_len) {
+		char c = *--cp;
+		if (! spacechar(c))
+			break;
+	}
+	work->l = cp_len;
+
+	if (cp_len > 16)
+		cp_len = ((cp_len * 3) >> 2) + (cp_len >> 3);
+	return cp_len;
 }
 
 static ssize_t
@@ -394,11 +422,9 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
 	char const *is, *ie;
 
 	if (rest != NULL && rest->l != 0) {
-		if (out->s != NULL)
-			free(out->s);
-		out->s = rest->s;
-		out->l = rest->l;
-		rest->s = NULL;
+		os = out->s;
+		*out = *rest;
+		rest->s = os;
 		rest->l = 0;
 	}
 
@@ -514,10 +540,6 @@ b64_encode_calc_size(size_t len)
 {
 	len = (len * 4) / 3;
 	len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
-#if 0 /* TODO B64_ISTEXT */
-	if (flags & B64_ISTEXT)
-		len += 3;
-#endif /* TODO B64_ISTEXT */
 	++len;
 	return len;
 }
@@ -525,14 +547,6 @@ b64_encode_calc_size(size_t len)
 struct str *
 b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 {
-	/*
-	 * TODO b64_encode() does not yet handle B64_ISTEXT.
-	 * TODO That is ok since this flag is yet unused because the MIME
-	 * TODO classifier doesn't differentiate in between base64 for text
-	 * TODO and binary (i.e., if we decide base64 is needed its binary).
-	 * TODO This means that the RFC 2045-enforced \n->\r\n conversion is
-	 * TODO NOT performed.
-	 */
 	static char const b64table[] =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	uc_it const *p = (uc_it const*)in->s;
@@ -616,130 +630,40 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 	return b64_encode(out, &in, flags);
 }
 
-size_t
-b64_decode_prepare(struct str *work, struct str const *in)
-{
-	char *cp = in->s;
-	size_t cp_len = in->l;
-
-	while (cp_len > 0 && spacechar(*cp))
-		++cp, --cp_len;
-	work->s = cp;
-
-	for (cp += cp_len; cp_len > 0; --cp_len) {
-		char c = *--cp;
-		if (! spacechar(c))
-			break;
-	}
-	work->l = cp_len;
-
-	if (cp_len > 16)
-		cp_len = ((cp_len * 3) >> 2) + (cp_len >> 3);
-	return cp_len;
-}
-
 int
-b64_decode(struct str *out, struct str const *in, size_t len, struct str *rest)
+b64_decode(struct str *out, struct str const *in, struct str *rest)
 {
 	struct str work;
-	char *x /* TODO B64_ISTEXT *xins, *xtop, *xnl */;
+	char *x;
 	int ret = STOP;
-
-	if (len == 0)
-		len = b64_decode_prepare(&work, in);
-	else
-		work = *in;
+	size_t len = _b64_decode_prepare(&work, in);
 
 	/* Ignore an empty input, as may happen for an empty final line */
-	if (work.l == 0)
-		goto jempty;
+	if (work.l == 0) {
+		/* In B64_T cases there may be leftover decoded data for
+		 * iconv(3) though, even if that means it's incomplete
+		 * multibyte character we have to copy over */
+		/* XXX strictly speaking this should not be handled in here,
+		 * XXX since its leftover decoded data from an iconv(3);
+		 * XXX like this we shared the prototype with QP, though?? */
+		if (rest != NULL && rest->l > 0) {
+			x = out->s;
+			*out = *rest;
+			rest->s = x;
+			rest->l = 0;
+		} else
+			out->l = 0;
+		ret = OKAY;
+		goto jleave;
+	}
 	if (work.l >= 4 && (work.l & 3) == 0) {
 		out->s = srealloc(out->s, len);
 		ret = OKAY;
 	}
 	if (ret != OKAY || (ssize_t)(len = _b64_decode(out, &work)) < 0)
 		goto jerr;
-	/* Done for binary content */
-	if (rest == NULL)
-		goto jleave;
-
-#if 0 /* TODO B64_ISTEXT */
-	/* TODO Strip CRs, detect NLs
-	 * TODO B64_ISTEXT - this will not work for multibyte encodings, and
-	 * TODO also is simple minded in that RFC 2045 enforces \n->\r\n
-	 * TODO conversion but does not give any hint on the original line
-	 * TODO ending; i.e., this code may modify the original data!
-	 * TODO anyway: if we do CONV_FROMB64_T, b64_decode() the *entire* part
-	 * TODO into a temporary file, then iconv that file.
-	 * TODO stripping the CRLF->LF is left as an excercise ;) */
-	xnl = NULL;
-	for (xins = out->s, x = xins, xtop = x + out->l; x < xtop;
-			*xins++ = *x++)
-		switch (*x) {
-		case '\r':
-			ret = STOP; /* TODO what about a trailing FINAL CR?? */
-			break;
-		case '\n':
-			if (ret != OKAY)
-				--xins;
-			xnl = xins;
-			/* FALLTHRU */
-		default:
-			ret = OKAY;
-			break;
-		}
-	ret = OKAY;
-	out->l = (ssize_t)(xins - out->s);
-
-	if (xnl == NULL) {
-#endif
-		/* TODO B64_ISTEXT: send.c:sendpart() resized this on entry
-		 * TODO to be of sufficient size
-		 * rest->s = srealloc(rest->s, rest->l + out->l); */
-		memcpy(rest->s + rest->l, out->s, out->l);
-		rest->l += out->l;
-		out->l = 0;
-#if 0 /* TODO B64_ISTEXT */
-	} else {
-		work.l = (size_t)(xins - xnl);
-		if (work.l) {
-			work.s = ac_alloc(work.l);
-			len = (size_t)(xnl - out->s);
-			memcpy(work.s, out->s + len, work.l);
-			out->l = len;
-		}
-		if (rest->l) {
-			rest->s = srealloc(rest->s, rest->l + out->l);
-			memcpy(rest->s + rest->l, out->s, out->l);
-			x = out->s;
-			out->s = rest->s;
-			rest->s = x;
-			out->l += rest->l;
-			rest->l = 0;
-		}
-		if (work.l) {
-			rest->s = srealloc(rest->s, work.l);
-			memcpy(rest->s, work.s, work.l);
-			rest->l = work.l;
-			ac_free(work.s);
-		}
-	}
-#endif
-
 jleave:
 	return ret;
-
-jempty: out->l = 0;
-	if (rest != NULL && rest->l != 0) {
-		if (out->s != NULL)
-			free(out->s);
-		out->s = rest->s;
-		out->l = rest->l;
-		rest->s = NULL;
-		rest->l = 0;
-	}
-	ret = OKAY;
-	goto jleave;
 
 jerr:	{
 	char const *err = tr(15, "[Invalid Base64 encoding ignored]\n");
