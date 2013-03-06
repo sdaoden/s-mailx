@@ -2229,6 +2229,27 @@ and makes them specially addressable.
 Usually, when a group is expanded that contains the sender,
 the sender is removed from the expansion.
 Setting this option causes the sender to be included in the group.
+.It Va mime-allow-text-controls
+When sending messages, each part of the message is MIME-inspected in
+order to classify the `Content-Type:' and `Content-Transfer-Encoding:'
+that is required to send this part over mail transport, i.e.,
+a computation rather similar to what the
+.Xr file 1
+command produces when used with the
+.Fl -mime
+option.
+.Pp
+This classification however treats text files which are encoded in
+UTF-16 (often found for HTML files) and similar character sets as binary
+octet-streams, forcefully changing any `text/plain' or `text/html'
+specification to `application/octet-stream';
+if that actually happens, then a yet unset charset MIME parameter is set
+to `binary', effectively making it impossible for the receiving MUA to
+automatically interpret the contents of the part.
+.Pp
+If this option is set, and the data was unambiguously identified as text
+data at first glance (by a `.txt' or `.html' file extension), then the
+original `Content-Type:' will not be overwritten.
 .It Va mime-counter-evidence
 Normally the `Content-Type:' field is used to decide how to treat
 a messages MIME part.
@@ -4010,6 +4031,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .\" --  >8  --  8<  --
 .\"
 .Sh "SEE ALSO"
+.Xr file 1 ,
 .Xr fmt 1 ,
 .Xr more 1 ,
 .Xr newaliases 1 ,
@@ -4017,6 +4039,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr pg 1 ,
 .Xr sendmail 1 ,
 .Xr vacation 1 ,
+.Xr iconv 3 ,
 .Xr setlocale 3 ,
 .Xr ssl 3 ,
 .Xr aliases 5 ,

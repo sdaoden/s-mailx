@@ -595,30 +595,8 @@ int
 mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	int *do_iconv)
 {
-	/* TODO In the future the handling of charsets is likely to change.
-	 * TODO If no *sendcharsets* are set then for text parts LC_ALL /
-	 * TODO *ttycharset* is simply passed through (ditto attachments unless
-	 * TODO specific charsets have been set in per-attachment level), i.e.,
-	 * TODO no conversion at all.
-	 * TODO If *sendcharsets* is set, then the input is converted to the
-	 * TODO desired sendcharset, and once the charset that can handle the
-	 * TODO input has been found the MIME classification takes place *on
-	 * TODO that converted data* and once.
-	 * TODO Until then the MIME classification takes place on the input
-	 * TODO data, i.e., before actual charset conversion, though the MIME
-	 * TODO classifier may adjust the output character set, though on false
-	 * TODO assumptions that may not always work for the desired output
-	 * TODO charset (???).
-	 * TODO The new approach sounds more sane to me whatsoever.
-	 * TODO It has the side effect that iconv() is applied to the text even
-	 * TODO if that is 7bit clean, however, *iff* *sendcharsets* is set.
-	 * TODO drop *charset* and *do_iconv* parameters, then; need to report
-	 * TODO a "classify as binary charset", though.
-	 * TODO And note that even the new approach will not allow RFC 2045
-	 * TODO compatible base64 \n -> \r\n conversion even if we would make
-	 * TODO a difference for _ISTXT, because who knows wether we deal with
-	 * TODO multibyte encoded data?  We would need to be multibyte-aware!!
-	 * TODO BTW., after the MIME/send layer rewrite we could use a MIME
+	/* TODO classify once only PLEASE PLEASE PLEASE */
+	/* TODO BTW., after the MIME/send layer rewrite we could use a MIME
 	 * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
 	 * TODO and report that state to the outer world */
 #define F_		"From "
@@ -628,13 +606,14 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	enum {	_CLEAN		= 0,	/* Plain RFC 2822 message */
 		_NCTT		= 1<<0,	/* *contenttype == NULL */
 		_ISTXT		= 1<<1,	/* *contenttype =~ text/ */
-		_HIGHBIT	= 1<<2,	/* Not 7bit clean */
-		_LONGLINES	= 1<<3,	/* MIME_LINELEN_LIMIT exceed. */
-		_CTRLCHAR	= 1<<4,	/* Control characters seen */
-		_HASNUL		= 1<<5,	/* Contains \0 characters */
-		_NOTERMNL	= 1<<6,	/* Lacks a final newline */
-		_TRAILWS	= 1<<7,	/* Blanks before NL */
-		_FROM_		= 1<<8	/* ^From_ seen */
+		_ISTXTCOK	= 1<<2,	/* _ISTXT+*mime-allow-text-controls* */
+		_HIGHBIT	= 1<<3,	/* Not 7bit clean */
+		_LONGLINES	= 1<<4,	/* MIME_LINELEN_LIMIT exceed. */
+		_CTRLCHAR	= 1<<5,	/* Control characters seen */
+		_HASNUL		= 1<<6,	/* Contains \0 characters */
+		_NOTERMNL	= 1<<7,	/* Lacks a final newline */
+		_TRAILWS	= 1<<8,	/* Blanks before NL */
+		_FROM_		= 1<<9	/* ^From_ seen */
 	} ctt = _CLEAN;
 	enum conversion convert;
 	sl_it curlen;
@@ -647,7 +626,8 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	if (*contenttype == NULL)
 		ctt = _NCTT;
 	else if (ascncasecmp(*contenttype, "text/", 5) == 0)
-		ctt = _ISTXT;
+		ctt = value("mime-allow-text-controls")
+			? _ISTXT | _ISTXTCOK : _ISTXT;
 	convert = _conversion_by_encoding();
 
 	if (fsize(fp) == 0)
@@ -660,7 +640,9 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
 		if (c == '\0') {
 			ctt |= _HASNUL;
-			break;
+			if ((ctt & _ISTXTCOK) == 0)
+				break;
+			continue;
 		}
 		if (c == '\n' || c == EOF) {
 			if (curlen >= MIME_LINELEN_LIMIT)
@@ -701,7 +683,8 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 			if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
 				continue;
 			ctt |= _HASNUL; /* Force base64 */
-			break;
+			if ((ctt & _ISTXTCOK) == 0)
+				break;
 		} else if (c & 0x80) {
 			ctt |= _HIGHBIT;
 			/* TODO count chars with HIGHBIT? libmagic?
@@ -724,10 +707,13 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
 	if (ctt & _HASNUL) {
 		convert = CONV_TOB64;
+		/* Don't overwrite a text content-type to allow UTF-16 and
+		 * such, but only on request;
+		 * Otherwise enforce what file(1)/libmagic(3) would suggest */
+		if (ctt & _ISTXTCOK)
+			goto jcharset;
 		if (ctt & (_NCTT|_ISTXT))
 			*contenttype = "application/octet-stream";
-		/* XXX Set *charset=binary only if not yet set as not to loose
-		 * XXX UTF-16 etc. character set information?? */
 		if (*charset == NULL)
 			*charset = "binary";
 		goto jleave;
@@ -746,6 +732,7 @@ j7bit:		convert = CONV_7BIT;
 		*contenttype = "text/plain";
 
 	/* Not an attachment with specified charset? */
+jcharset:
 	if (*charset == NULL)
 		*charset = (ctt & _HIGHBIT) ? _CHARSET() : charset_get_7bit();
 jleave:
