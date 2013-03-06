@@ -81,7 +81,7 @@ enum okay makedir(const char *name);
 enum okay cwget(struct cw *cw);
 enum okay cwret(struct cw *cw);
 void cwrelse(struct cw *cw);
-void makeprint(struct str *in, struct str *out);
+void makeprint(struct str const *in, struct str *out);
 char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
