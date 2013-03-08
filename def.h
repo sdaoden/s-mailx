@@ -93,6 +93,9 @@
 #define MIN(A, B)	((A) < (B) ? (A) : (B))
 #undef MAX
 #define MAX(A, B)	((A) < (B) ? (B) : (A))
+#undef ABS
+#define ABS(A)		((A) < 0 ? -(A) : (A))
+
 #define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
 #define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
 
