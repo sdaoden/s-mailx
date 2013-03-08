@@ -153,7 +153,7 @@ argcount(char **argv)
 }
 
 char *
-colalign(const char *cp, int col, int fill)
+colalign(const char *cp, int col, int fill) /* XXX improve filling+! */
 {
 	int	n, sz;
 	char	*nb, *np;
@@ -178,16 +178,23 @@ colalign(const char *cp, int col, int fill)
 		if (n > col)
 			break;
 		col -= n;
-		if (sz == 1 && spacechar(*cp&0377)) {
+		if (sz == 1 && spacechar(*cp)) {
 			*np++ = ' ';
 			cp++;
 		} else
 			while (sz--)
 				*np++ = *cp++;
 	}
-	if (fill)
-		while (col-- > 0)
-			*np++ = ' ';
+
+	if (fill && col != 0) {
+		if (fill > 0) {
+			memmove(nb + col, nb, (size_t)(np - nb));
+			memset(nb, ' ', col);
+		} else
+			memset(np, ' ', col);
+		np += col;
+	}
+
 	*np = '\0';
 	return nb;
 }
