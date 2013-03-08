@@ -1229,11 +1229,13 @@ folders(void *v)
 	char dirname[MAXPATHLEN], *name, **argv = v;
 	char const *cmd;
 
-	if (*argv && (name = expand(*argv)) == NULL)
-		return (1);
-	else if (getfold(dirname, sizeof dirname) < 0) {
+	if (*argv) {
+		name = expand(*argv);
+		if (name == NULL)
+			return 1;
+	} else if (getfold(dirname, sizeof dirname) < 0) {
 		fprintf(stderr, tr(20, "No value set for \"folder\"\n"));
-		return (1);
+		return 1;
 	} else
 		name = dirname;
 
@@ -1241,12 +1243,12 @@ folders(void *v)
 #ifdef USE_IMAP
 		imap_folders(name, *argv == NULL);
 #else
-		return (ccmdnotsupp(NULL));
+		return ccmdnotsupp(NULL);
 #endif
 	} else {
 		if ((cmd = value("LISTER")) == NULL)
 			cmd = LISTER;
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
-	return (0);
+	return 0;
 }
