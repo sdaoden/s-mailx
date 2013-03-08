@@ -1018,7 +1018,7 @@ and makes them specially addressable.
 .It Ic folders
 With no arguments, list the names of the folders in the folder directory.
 With an existing folder as an argument,
-lists then names of folders below the named folder;
+lists the names of folders below the named folder;
 e.\|g. the command `folders @' lists the folders on the base level of
 the current IMAP server.
 See also the variable
@@ -2586,9 +2586,10 @@ gives the character to use in place of `~' to denote tilde escapes.
 .It Va folder
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
-If
+Shell word expansions are applied to
 .Va folder
-begins with a `/' then \*(UA considers it to be an absolute pathname;
+first; if the resulting name begins with a `/' then \*(UA considers it
+to be an absolute pathname;
 otherwise the folder directory is found relative to the user's home
 directory.
 .Pp
@@ -4038,6 +4039,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr openssl 1 ,
 .Xr pg 1 ,
 .Xr sendmail 1 ,
+.Xr sh 1,
 .Xr vacation 1 ,
 .Xr iconv 3 ,
 .Xr setlocale 3 ,

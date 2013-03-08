@@ -792,6 +792,11 @@ var_folder_updated(char **name)
 		goto jleave;
 	}
 
+	/* Expand the *folder* *//* XXX This *only* works because we do NOT
+	 * XXX update environment variables via the "set" mechanism */
+	if ((folder = _expand(folder, EXP_SHELL)) == NULL)
+		goto jleave;
+
 	/* All non-absolute paths are relative to our home directory */
 	if (*folder != '/') {
 		size_t l1 = strlen(homedir), l2 = strlen(folder);
