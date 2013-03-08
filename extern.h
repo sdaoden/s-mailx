@@ -333,8 +333,21 @@ int rm(char *name);
 void holdsigs(void);
 void relsesigs(void);
 off_t fsize(FILE *iob);
-char *file_expand(char const *name);
-char *expand(char const *name);
+
+/* Evaluate the string given as a new mailbox name. Supported meta characters:
+ *	%	for my system mail box
+ *	%user	for user's system mail box
+ *	#	for previous file
+ *	&	invoker's mbox file
+ *	+file	file in folder directory
+ *	any shell meta character
+ * file_expand() requires the expansion to be a local file/directory, and
+ * shell_expand() doesn't interpret the meta characters except for shell ones.
+ * Return the file name as a dynamic string */
+char *	expand(char const *name);
+char *	file_expand(char const *name);
+char *	shell_expand(char const *name);
+
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 void	findmail(char const *user, int force, char *buf, int size);
 /* Get rid of queued mail */

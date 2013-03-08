@@ -73,6 +73,12 @@
  * File I/O.
  */
 
+enum expmode {
+	EXP_FULL,
+	EXP_LOCAL = 1<<0,
+	EXP_SHELL = 1<<1
+};
+
 /*
  * Evaluate the string given as a new mailbox name.
  * Supported meta characters:
@@ -84,7 +90,8 @@
  *	any shell meta character
  * Return the file name as a dynamic string.
  */
-static char *	_expand(char const *name, int only_local);
+static char *	_expand(char const *name, enum expmode expmode);
+
 /* Perform shell meta character expansion */
 static char *	_globname(char const *name);
 
@@ -101,7 +108,7 @@ static void append(struct message *mp);
 static enum okay get_header(struct message *mp);
 
 static char *
-_expand(char const *name, int only_local)
+_expand(char const *name, enum expmode expmode)
 {
 	char cbuf[MAXPATHLEN], *res;
 	struct str s;
@@ -117,6 +124,11 @@ _expand(char const *name, int only_local)
 	res = UNCONST(name);
 	if ((sh = get_shortcut(res)) != NULL)
 		res = sh->sh_long;
+
+	if (expmode & EXP_SHELL) {
+		dyn = 0;
+		goto jshell;
+	}
 
 jnext:	dyn = 0;
 	switch (*res) {
@@ -163,6 +175,7 @@ jnext:	dyn = 0;
 	}
 
 	/* Catch the most common shell meta character */
+jshell:
 	if (res[0] == '~' && (res[1] == '/' || res[1] == '\0')) {
 		res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
 		dyn = 1;
@@ -176,7 +189,7 @@ jnext:	dyn = 0;
 	}
 
 jislocal:
-	if (only_local)
+	if (expmode & EXP_LOCAL)
 		switch (which_protocol(res)) {
 		case PROTO_FILE:
 		case PROTO_MAILDIR:	/* XXX Really? ok MAILDIR for local? */
@@ -192,7 +205,7 @@ jislocal:
 jleave:
 	if (res && ! dyn)
 		res = savestr(res);
-	return (res);
+	return res;
 }
 
 static char *
@@ -720,30 +733,22 @@ fsize(FILE *iob)
 	return sbuf.st_size;
 }
 
-/*
- * Just like expand(), but expanded file must be FILE or DIR
- */
-char *
-file_expand(char const *name)
-{
-	return (_expand(name, 1));
-}
-
-/*
- * Evaluate the string given as a new mailbox name.
- * Supported meta characters:
- *	%	for my system mail box
- *	%user	for user's system mail box
- *	#	for previous file
- *	&	invoker's mbox file
- *	+file	file in folder directory
- *	any shell meta character
- * Return the file name as a dynamic string.
- */
 char *
 expand(char const *name)
 {
-	return (_expand(name, 0));
+	return _expand(name, 0);
+}
+
+char *
+file_expand(char const *name)
+{
+	return _expand(name, EXP_LOCAL);
+}
+
+char *
+shell_expand(char const *name)
+{
+	return _expand(name, EXP_SHELL);
 }
 
 void
