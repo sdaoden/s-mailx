@@ -853,19 +853,20 @@ getdeadletter(void)
 {
 	char const *cp;
 
-	if ((cp = value("DEAD")) == NULL || (cp = file_expand(cp)) == NULL)
-		cp = file_expand("~/dead.letter");
+	if ((cp = value("DEAD")) == NULL ||
+			(cp = _expand(cp, EXP_LOCAL)) == NULL)
+		cp = _expand("~/dead.letter", EXP_LOCAL|EXP_SHELL);
 	else if (*cp != '/') {
 		size_t sz = strlen(cp) + 3;
 		char *buf = ac_alloc(sz);
 
 		snprintf(buf, sz, "~/%s", cp);
-		cp = file_expand(buf);
+		cp = _expand(buf, EXP_LOCAL|EXP_SHELL);
 		ac_free(buf);
 	}
 	if (cp == NULL)
 		cp = "dead.letter";
-	return (cp);
+	return cp;
 }
 
 /*
