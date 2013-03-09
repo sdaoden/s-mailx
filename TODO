@@ -298,6 +298,15 @@ Low-Level
   (e.g., HT=\t == CNTRL|SPACE|ASCII|BLANK).  This would allow better
   testing using our own classification functions in quite some places.
 
+- The quoted-printable Content-Transfer-Encoding: supports soft linebreaks;
+  it happens that some stupid mailers (Apple Mail?) create HTML parts which
+  solely consist of a single line, created via soft linebreaks.
+  To handle such mess we need to be able to break out of the input-line ==
+  output line relationship that is still fixated in the codebase.
+  I.e., it is not even sufficient to convert "rest" into an array, but best
+  would be if we would be able to sequentially work what we have, and
+  detect when it is safe to "dump that out".
+
 - I want a clean PTF interface for the actual layers.  There should be no
   switch() statements around that test for the type of BOX that is
   currently open.  Especially important for possible NEWS support, but the

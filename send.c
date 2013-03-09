@@ -294,7 +294,7 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 			prefix, prefixlen, rest);
 	if (n < 0)
 		sz = n;
-	else if (n > 0) {
+	else if (n >= 0) {
 		sz += n;
 		n = 0;
 		if (stats != NULL && stats[0] != -1)
@@ -303,7 +303,7 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 					++n;
 		_addstats(stats, n, sz);
 	}
-	return (sz);
+	return sz;
 }
 
 /*
@@ -896,8 +896,7 @@ joutln:
 				pbuf == origobuf ? prefix : NULL,
 				pbuf == origobuf ? prefixlen : 0,
 				pbuf == origobuf ? stats : NULL, &rest);
-		if ((ssize_t)len < 0 || (len == 0 && rest.l == 0) ||
-				ferror(pbuf)) {
+		if ((ssize_t)len < 0 || ferror(pbuf)) {
 			rt = -1;
 			break;
 		}
