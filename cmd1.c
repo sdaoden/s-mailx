@@ -531,8 +531,9 @@ jdate_set:
 				fp++;
 		}
 	}
+
 	for (fp = fmt; *fp; fp++) {
-		if (*fp == '%') {
+		if ((c = *fp & 0xFF) == '%') {
 			B = 0;
 			n = 0;
 			s = 1;
@@ -549,21 +550,20 @@ jdate_set:
 			if (*fp == '\0')
 				break;
 			n *= s;
-			switch (*fp) {
+			switch ((c = *fp & 0xFF)) {
 			case '%':
-				putc('%', f);
-				subjlen--;
-				break;
+				goto jputc;
 			case '>':
 			case '<':
-				c = (dot == mp) ? *fp&0377 : ' ';
-				putc(c, f);
-				subjlen--;
-				break;
+				if (dot != mp)
+					c = ' ';
+				goto jputc;
 			case 'a':
 				c = dispc(mp, attrlist);
-				putc(c, f);
-				subjlen--;
+jputc:
+				n = fprintf(f, "%*c", n, c);
+				if (n >= 0)
+					subjlen -= n;
 				break;
 			case 'm':
 				if (n == 0) {
@@ -575,14 +575,17 @@ jdate_set:
 				subjlen -= fprintf(f, "%*d", n, mesg);
 				break;
 			case 'f':
-				if (n <= 0)
+				if (n == 0) {
 					n = 18;
-				fromlen = n;
-				if (isto)
+					if (s < 0)
+						n = -n;
+				}
+				fromlen = ABS(n);
+				if (isto) /* XXX tr()! */
 					fromlen -= 3;
 				fprintf(f, "%s%s", isto ? "To " : "",
-						colalign(name, fromlen, 1));
-				subjlen -= n;
+						colalign(name, fromlen, n));
+				subjlen -= ABS(n);
 				break;
 			case 'd':
 				if (datefmt != NULL) {
@@ -631,13 +634,15 @@ jdate_set:
 				B = 1;
 				/*FALLTHRU*/
 			case 's':
-				n = n>0 ? n : subjlen - 2;
+				n = (n != 0) ? n : subjlen - 2;
+				if (n > 0 && s < 0)
+					n = -n;
 				if (B)
 					n -= 2;
-				if (subjline != NULL && n >= 0) {
+				if (subjline != NULL && n != 0) {
 					/* pretty pathetic */
 					fprintf(f, B ? "\"%s\"" : "%s",
-						colalign(subjline, n, 0));
+						colalign(subjline, ABS(n), n));
 				}
 				break;
 			case 'U':
@@ -645,11 +650,11 @@ jdate_set:
 				if (n == 0)
 					n = 9;
 				subjlen -= fprintf(f, "%*lu", n, mp->m_uid);
-#else
-				putc('?', f);
-				--subjlen;
-#endif
 				break;
+#else
+				c = '?';
+				goto jputc;
+#endif
 			case 'e':
 				if (n == 0)
 					n = 2;
@@ -672,14 +677,14 @@ jdate_set:
 				if (n == 0)
 					n = 6;
 				subjlen -= fprintf(f, "%*g", n, mp->m_score);
-#else
-				putc('?', f);
-				--subjlen;
-#endif
 				break;
+#else
+				c = '?';
+				goto jputc;
+#endif
 			}
 		} else
-			putc(*fp&0377, f);
+			putc(c, f);
 	}
 	putc('\n', f);
 
@@ -769,8 +774,8 @@ printhead(int mesg, FILE *f, int threaded)
 		value("bsdheadline") != NULL;
 	if ((fmt = value("headline")) == NULL)
 		fmt = bsdheadline ?
-			"%>%a%m %20f  %16d %3l/%-5o %i%S" :
-			"%>%a%m %18f %16d %4l/%-5o %i%s";
+			"%>%a%m %-20f  %16d %3l/%-5o %i%-S" :
+			"%>%a%m %-18f %16d %4l/%-5o %i%-s";
 	hprf(fmt, mesg, f, threaded, attrlist);
 }
 

@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 02, 2013
+.Dd March 09, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2652,8 +2652,8 @@ similar to
 formats.
 A `%' character introduces a format specifier.
 It may be followed by a number indicating the field width.
-If the field is a number the width may be negative,
-which indicates that it is to be left-aligned.
+If the (possibly implicitly implied) field width is negative, the field
+is to be left-aligned.
 Valid format specifiers are:
 .Bl -tag -offset indent -width "%%"
 .It %a
@@ -2668,6 +2668,7 @@ The indenting level in threaded mode.
 The address of the message sender.
 .It %i
 The message thread structure.
+(Note that this format doesn't support a field width.)
 .It %l
 The number of lines of the message.
 .It %m
@@ -2688,8 +2689,8 @@ A `<' for the current message, otherwise ` '.
 A `%' character.
 .El
 .Pp
-The default is `%>\&%a\&%m\ %18f\ %16d\ %4l/%\-5o\ %i%s',
-or `%>\&%a\&%m\ %20f\ \ %16d\ %3l/%\-5o\ %i%S' if
+The default is `%>\&%a\&%m\ %-18f\ %16d\ %4l/%\-5o\ %i%-s',
+or `%>\&%a\&%m\ %20-f\ \ %16d\ %3l/%\-5o\ %i%-S' if
 .Va bsdcompat
 is set.
 .It Va hostname
