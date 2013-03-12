@@ -7,23 +7,6 @@ to coordinate your efforts with the maintainer and other people.
 Backward-compatibility breakers
 -------------------------------
 
-- In the future the handling of charsets is likely to change.
-  The input should be converted to the desired charset as necessary and/or
-  possible, and the MIME classification should take place *on that
-  converted data*, and *once only*.
-
-  The new approach sounds more sane to me whatsoever.
-  It however has the side effect that iconv() is applied to the text even
-  if that is 7bit clean US-ASCII/compatible?!??
-
-  Then, add a way to specify the input character set for -a arguments;
-  either a new option that takes CHARSET=FILE, or an option that sets the
-  charset for all upcoming -a arguments.
-
-  Anyway, there are *input* charsets, and *output* charsets.
-  And then, there is a terminal character set.
-  The behaviour should feel somehow natural. :)
-
 - Recipients specified on the command line should be added to those
   specified in the message when the -t option is set.
 
@@ -78,6 +61,7 @@ Backward-compatibility breakers
   to what really is displayed, not in respect to message size.
   It irritates me that a message with 5 visible lines but 115 header lines
   goes through the pager, even if i have *crt=*.
+  P.S.: we could simply count the headers in addition?
 
 Non-breakers
 ------------
@@ -147,7 +131,7 @@ Non-breakers
   full certificates, in equal spirit to the current maintainers S-Postman
   and Mercurial.  S-nail(1) could simply offer something in equal spirit to
   the formers --fingerprint, so that no other tool is necessary for
-  certificate management (for secure transport at least).
+  certificate management (for at least secure transport).
 
 - It would be nice if it would be possible to define a format string for
   *quote*, like 'set quote="format=some formats"'.
@@ -164,11 +148,17 @@ Non-breakers
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
 
--- mutt(1) seems to do a better job when creating thread display.
-   I have test a MBOX (NetBSD discussion on "fixing libpthread noload,
-   another approach") where it displays the correct thread relationship,
-   whereas S-nail (Heirloom mailx(1)) and NetBSD Mail(1) all show three
-   separate threads.
+-- Also the thread sort doesn't get
+
+    [A is deleted]
+    B answers A
+      C answers B
+      D answers B
+    E is unrelated
+    F answers A
+
+  The current sort fails to recognize that F and the thread starting at
+  B are related, which results in a mess.
 
 - On the long run -- try to add command line editing.
 
@@ -222,6 +212,10 @@ Non-breakers
   dates (needs a From_ parser, i.e., strptime()-alike).
   Once we have that, rename *datefield-markout-older* to
   *date-markout-older* ??
+
+- The "top" command should honour ignoretab, or there should be a very
+  special "top" ignoretab.  It simply doesn't make sense to "top" 5 lines
+  when all that you get are Received: lines...
 
 Low-Level
 ---------
@@ -290,8 +284,8 @@ Low-Level
   characters can be tested "as-is".  This assumption is wrong for some
   encodings that use U+001B (escape) or another ASCII thing to introduce
   shift states.  The only real solution to this problem would be to rewrite
-  the entire codebase and use wide characters (IMO) everywhere.
-  (Really.  For at least header content.)
+  the entire codebase and use UTF-8 everywhere.
+  Unfortunately there is no standard way to do that.
 
 - The char classification stuff can be improved; currently each character
   has exactly one classification bit set, even if multiple would apply
@@ -328,7 +322,19 @@ Low-Level
   statement somewhere else in this file that the structure should be
   slacked; simply use multiple thereof or so)
 
+- All error messages should not go to stderr but instead we should add our
+  own n_warn() family and use that.  In the background we should have
+  a ring of error messages (oldest fall off), and a command that is capable
+  to display the ring.  The command loop should recognize whenever an error
+  happened during the last command, and print something like "XY errors
+  occurred", followed by a (truncated as necessary) error report.
+  It simply doesn't make any sense to print errors on stderr if normal
+  output goes to stdout and scrolls it off the screen.
+
+- Dramatically pimp the cc-test.sh script, and recognize and report
+  compilation errors, too.
+
 Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
 With a clean, conforming and efficient codebase, then.
 
-vim:set fenc=utf-8 syntax=txt ts=8 sts=2 sw=2 et tw=75:
+vim:set fenc=utf-8 syntax=txt ts=2 sts=0 sw=2 et tw=75:
