@@ -252,6 +252,11 @@ gexpand(struct name *nlist, struct grouphead *gh, int metoo, int ntype)
 		if (strcmp(cp, gh->g_name) == 0)
 			goto quote;
 		if ((ngh = findgroup(cp)) != NULL) {
+			/* For S-nail(1), the "group" may *be* the sender in
+			 * that a name maps to a full address specification */
+			if (! metoo && ngh->g_list->ge_link == NULL &&
+					same_name(cp, myname))
+				continue;
 			nlist = gexpand(nlist, ngh, metoo, ntype);
 			continue;
 		}
@@ -514,7 +519,7 @@ checkaddrs(struct name *np)
  * expand names (2/14/80).
  */
 struct name *
-usermap(struct name *names)
+usermap(struct name *names, bool_t force_metoo)
 {
 	struct name *new, *np, *cp;
 	struct grouphead *gh;
@@ -522,7 +527,7 @@ usermap(struct name *names)
 
 	new = NULL;
 	np = names;
-	metoo = (value("metoo") != NULL);
+	metoo = (force_metoo || value("metoo") != NULL);
 	while (np != NULL) {
 		assert((np->n_type & GDEL) == 0); /* TODO legacy */
 		if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {
@@ -539,7 +544,7 @@ usermap(struct name *names)
 			new = put(new, np);
 		np = cp;
 	}
-	return(new);
+	return new;
 }
 
 /*

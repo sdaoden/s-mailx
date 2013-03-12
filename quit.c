@@ -137,11 +137,9 @@ writeback(FILE *res, FILE *obuf)
 	fseek(obuf, 0L, SEEK_SET);
 	alter(mailname);
 	if (p == 1)
-		printf(catgets(catd, CATSET, 155,
-				"Held 1 message in %s\n"), mailname);
+		printf(tr(155, "Held 1 message in %s\n"), displayname);
 	else
-		printf(catgets(catd, CATSET, 156,
-				"Held %d messages in %s\n"), p, mailname);
+		printf(tr(156, "Held %d messages in %s\n"), p, displayname);
 	return(0);
 }
 
@@ -273,11 +271,10 @@ nolock:
 		Fclose(readstat);
 	if (p == msgCount && !modify && !anystat) {
 		if (p == 1)
-			printf(catgets(catd, CATSET, 155,
-				"Held 1 message in %s\n"), mailname);
+			printf(tr(155, "Held 1 message in %s\n"), displayname);
 		else if (p > 1)
-			printf(catgets(catd, CATSET, 156,
-				"Held %d messages in %s\n"), p, mailname);
+			printf(tr(156, "Held %d messages in %s\n"),
+				p, displayname);
 		Fclose(fbuf);
 		dot_unlock(mailname);
 		return;
@@ -563,7 +560,7 @@ edstop(void)
 		rm(tempname);
 		Ftfree(&tempname);
 	}
-	printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
+	printf(tr(168, "\"%s\" "), displayname);
 	fflush(stdout);
 	if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
 		perror(mailname);

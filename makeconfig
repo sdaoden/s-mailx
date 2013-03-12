@@ -1,4 +1,5 @@
 #!/bin/sh -
+#@ Configure S-nail(1) -- normally called from ./Makefile
 
 [ -z "${WANT_ASSERTS}" ] && WANT_ASSERTS=0
 [ -z "${WANT_NOALLOCA}" ] && WANT_NOALLOCA=0
@@ -203,6 +204,12 @@ echo "${LIBS}" >> ${lib}
 
 ##
 
+# Better set _GNU_SOURCE (if we are on Linux only?)
+# Fixes compilation on Slackware 14 + (with at least clang(1)).
+# Since i've always defined this on GNU/Linux, i'm even surprised it works
+# without!!  Didn't check this yet (and TinyCore uses different environment).
+echo '#define _GNU_SOURCE' >> ${out}
+
 link_check hello 'if a hello world program can be built' <<\! || { \
 	echo >&5 'This oooops is most certainly not related to me.'; \
 	echo >&5 "Read the file ${log} and check your compiler environment."; \
@@ -307,6 +314,14 @@ int main(void)
 }
 !
 
+link_check mblen 'for mblen()' '#define HAVE_MBLEN' << \!
+#include <stdlib.h>
+int main(void)
+{
+	return mblen("\0", 1) == 0;
+}
+!
+
 link_check setlocale 'for setlocale()' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)
@@ -347,8 +362,8 @@ run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void)
 {
-	char *x = realpath(".", NULL);
-	return (x != NULL ? 0 : 1);
+	char *x = realpath(".", NULL), *y = realpath("/", NULL);
+	return (x != NULL && y != NULL) ? 0 : 1;
 }
 !
 

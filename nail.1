@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 10, 2013
+.Dd March 09, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -1018,7 +1018,7 @@ and makes them specially addressable.
 .It Ic folders
 With no arguments, list the names of the folders in the folder directory.
 With an existing folder as an argument,
-lists then names of folders below the named folder;
+lists the names of folders below the named folder;
 e.\|g. the command `folders @' lists the folders on the base level of
 the current IMAP server.
 See also the variable
@@ -1277,6 +1277,9 @@ the
 .Xr mime.types 5
 cache.
 In the former case all sources are loaded first as necessary.
+The
+.Va mimetypes-load-control
+option can be used to fine-tune loading of the sources.
 .It Ic move
 (mv) Acts like
 .Ic copy
@@ -2079,11 +2082,6 @@ If this option is set adjacent words are combined to pairs,
 which are then used as additional tokens.
 This usually improves the accuracy of the filter,
 but also increases the junk mail database five- to tenfold.
-.It Va datefield
-The date in a header summary is normally the date of the mailbox `From\ '
-line of the message.
-If this variable is set the date as given in the `Date:' field is used,
-converted to local time.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2231,6 +2229,27 @@ and makes them specially addressable.
 Usually, when a group is expanded that contains the sender,
 the sender is removed from the expansion.
 Setting this option causes the sender to be included in the group.
+.It Va mime-allow-text-controls
+When sending messages, each part of the message is MIME-inspected in
+order to classify the `Content-Type:' and `Content-Transfer-Encoding:'
+that is required to send this part over mail transport, i.e.,
+a computation rather similar to what the
+.Xr file 1
+command produces when used with the
+.Fl -mime
+option.
+.Pp
+This classification however treats text files which are encoded in
+UTF-16 (often found for HTML files) and similar character sets as binary
+octet-streams, forcefully changing any `text/plain' or `text/html'
+specification to `application/octet-stream';
+if that actually happens, then a yet unset charset MIME parameter is set
+to `binary', effectively making it impossible for the receiving MUA to
+automatically interpret the contents of the part.
+.Pp
+If this option is set, and the data was unambiguously identified as text
+data at first glance (by a `.txt' or `.html' file extension), then the
+original `Content-Type:' will not be overwritten.
 .It Va mime-counter-evidence
 Normally the `Content-Type:' field is used to decide how to treat
 a messages MIME part.
@@ -2489,7 +2508,7 @@ The value that should appear in the `charset=' parameter of
 `Content-Type:' MIME header fields when no character set conversion of
 the message data was performed.
 This defaults to `US-ASCII', and the chosen character set should be
-`US_ASCII' compatible.
+`US-ASCII' compatible.
 .It Va charset-8bit
 \*(OP The default 8 bit character set that is used if
 .Va sendcharsets
@@ -2520,6 +2539,31 @@ the system is used to compute the threshold (see
 .It Va DEAD
 The name of the file to use for saving aborted messages.
 This defaults to `dead.letter' in the user's home directory.
+.It Va datefield
+The date in a header summary is normally the date of the mailbox `From\ '
+line of the message.
+If this variable is set, then the date as given in the `Date:' field is
+used, converted to local time.
+It is possible to control the display of the date by assigning a value,
+in which case the
+.Xr strftime 3
+function will be used to format the date accordingly.
+Please read your system manual for the available formats.
+Note that the `%n' format should not be used, because \*(UA doesn't
+take embedded newlines into account when calculating how many lines fit
+onto the screen.
+.It Va datefield-markout-older
+This option, when set in addition to
+.Va datefield ,
+modifies the display of messages that are not really current in a way
+that is rather comparable to the
+.Fl l
+option of the POSIX
+.Xr ls 1
+command.
+The interpretation of the value is identical to what has been described
+for
+.Va datefield .
 .It Va EDITOR
 Pathname of the text editor to use in the
 .Ic edit
@@ -2542,9 +2586,10 @@ gives the character to use in place of `~' to denote tilde escapes.
 .It Va folder
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
-If
+Shell word expansions are applied to
 .Va folder
-begins with a `/' then \*(UA considers it to be an absolute pathname;
+first; if the resulting name begins with a `/' then \*(UA considers it
+to be an absolute pathname;
 otherwise the folder directory is found relative to the user's home
 directory.
 .Pp
@@ -2629,8 +2674,8 @@ similar to
 formats.
 A `%' character introduces a format specifier.
 It may be followed by a number indicating the field width.
-If the field is a number the width may be negative,
-which indicates that it is to be left-aligned.
+If the (possibly implicitly implied) field width is negative, the field
+is to be left-aligned.
 Valid format specifiers are:
 .Bl -tag -offset indent -width "%%"
 .It %a
@@ -2645,6 +2690,7 @@ The indenting level in threaded mode.
 The address of the message sender.
 .It %i
 The message thread structure.
+(Note that this format doesn't support a field width.)
 .It %l
 The number of lines of the message.
 .It %m
@@ -2665,8 +2711,8 @@ A `<' for the current message, otherwise ` '.
 A `%' character.
 .El
 .Pp
-The default is `%>\&%a\&%m\ %18f\ %16d\ %4l/%\-5o\ %i%s',
-or `%>\&%a\&%m\ %20f\ \ %16d\ %3l/%\-5o\ %i%S' if
+The default is `%>\&%a\&%m\ %-18f\ %16d\ %4l/%\-5o\ %i%-s',
+or `%>\&%a\&%m\ %20-f\ \ %16d\ %3l/%\-5o\ %i%-S' if
 .Va bsdcompat
 is set.
 .It Va hostname
@@ -2746,6 +2792,19 @@ command for more information).
 The name of the mbox file.
 It can be the name of a folder.
 The default is `mbox' in the user's home directory.
+.It Va mimetypes-load-control
+This option can be used to control which of the
+.Xr mime.types 5
+MIME type databases are loaded by \*(UA.
+If the letter `u' (or `U') is part of this options value, then the
+user's personal
+.Pa ~/.mime.types
+file will be loaded (if it exists);
+likewise the letter `s' (or `S') controls loading of the system wide
+.Pa /etc/mime.types .
+If this option is not set \*(UA will try to load both files instead.
+Incorporation of the MIME types that are compiled into \*(UA cannot be
+suppressed.
 .It Va NAIL_EXTRA_RC
 The name of an optional startup file to be read after \*(ur.
 This variable is ignored if it is imported from the environment;
@@ -3052,7 +3111,7 @@ If this variable is set but neither
 nor a matching
 .Va smtp-auth-password-user@host
 can be found,
-\*(UA will as for a password on the user's terminal.
+\*(UA will ask for a password on the user's terminal.
 .It Va smtp-auth-user-user@host
 Overrides
 .Va smtp-auth-user
@@ -3973,13 +4032,16 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .\" --  >8  --  8<  --
 .\"
 .Sh "SEE ALSO"
+.Xr file 1 ,
 .Xr fmt 1 ,
 .Xr more 1 ,
 .Xr newaliases 1 ,
 .Xr openssl 1 ,
 .Xr pg 1 ,
 .Xr sendmail 1 ,
+.Xr sh 1,
 .Xr vacation 1 ,
+.Xr iconv 3 ,
 .Xr setlocale 3 ,
 .Xr ssl 3 ,
 .Xr aliases 5 ,

@@ -367,7 +367,7 @@ readtty(char const *prefix, char const *string)
 	if (! is_a_tty[0]) {
 		char *line = NULL;
 		size_t linesize = 0;
-		if (readline(stdin, &line, &linesize) != 0)
+		if (readline(stdin, &line, &linesize) > 0)
 			ret = savestr(line);
 		if (line != NULL)
 			free(line);

@@ -408,21 +408,26 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 {
 	struct str in, out;
 	char digest[16], *cp;
+	size_t lh, lu;
 
 	out.s = NULL;
 	in.s = UNCONST(b64);
 	in.l = strlen(in.s);
-	(void)b64_decode(&out, &in, 0, NULL);
+	(void)b64_decode(&out, &in, NULL);
 	assert(out.s != NULL);
 
-	hmac_md5((unsigned char*)out.s, out.l,
-		UNCONST(pass), strlen(pass), digest);
+	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),
+		digest);
 	free(out.s);
 	cp = md5tohex(digest);
 
-	in.l = strlen(user) + strlen(cp) + 2;
-	in.s = ac_alloc(in.l);
-	snprintf(in.s, in.l, "%s %s", user, cp);
+	lh = strlen(cp);
+	lu = strlen(user);
+	in.l = lh + 1 + lu;
+	in.s = ac_alloc(lh + lu + 1 + 1);
+	memcpy(in.s, user, lu);
+	in.s[lu] = ' ';
+	memcpy(in.s + lu + 1, cp, lh);
 	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
 	ac_free(in.s);
 	return out.s;
@@ -836,14 +841,27 @@ jleave:
 }
 
 struct str *
-(str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
+(n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
 {
 	if (t != NULL && t->l > 0) {
 		self->l = t->l;
-		self->s = (srealloc)(self->s, t->l SMALLOC_DEBUG_ARGSCALL);
+		self->s = (srealloc)(self->s, t->l + 1 SMALLOC_DEBUG_ARGSCALL);
 		memcpy(self->s, t->s, t->l);
 	} else
 		self->l = 0;
+	return self;
+}
+
+struct str *
+(n_str_add_buf)(struct str *self, char const *buf, size_t buflen
+	SMALLOC_DEBUG_ARGS)
+{
+	if (buflen != 0) {
+		size_t sl = self->l;
+		self->l = sl + buflen;
+		self->s = (srealloc)(self->s, self->l+1 SMALLOC_DEBUG_ARGSCALL);
+		memcpy(self->s + sl, buf, buflen);
+	}
 	return self;
 }
 
@@ -871,7 +889,7 @@ _ic_stripdash(char *p)
 }
 
 iconv_t
-iconv_open_ft(char const *tocode, char const *fromcode)
+n_iconv_open(char const *tocode, char const *fromcode)
 {
 	iconv_t id;
 	char *t, *f;
@@ -927,8 +945,21 @@ iconv_open_ft(char const *tocode, char const *fromcode)
 	return (iconv_t)-1;
 }
 
+void
+n_iconv_close(iconv_t cd)
+{
+	iconv_close(cd);
+	if (cd == iconvd)
+		iconvd = (iconv_t)-1;
+}
+
+void
+n_iconv_reset(iconv_t cd)
+{
+	(void)iconv(cd, NULL, NULL, NULL, NULL);
+}
+
 /*
- * Fault-tolerant iconv() function.
  * (2012-09-24: export and use it exclusively to isolate prototype problems
  * (*inb* is 'char const **' except in POSIX) in a single place.
  * GNU libiconv even allows for configuration time const/non-const..
@@ -948,41 +979,45 @@ iconv_open_ft(char const *tocode, char const *fromcode)
 #  define __INBCAST(S)	(char **)UNCONST(S)
 # endif
 
-size_t
-iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
-		char **outb, size_t *outbleft, int tolerant)
+int
+n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
+	char **outb, size_t *outbleft, bool_t skipilseq)
 {
-	size_t sz;
-	int err;
+	int err = 0;
 
-	while ((sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft))
-			== (size_t)-1 && tolerant &&
-			((err = errno) == EILSEQ || err == EINVAL)) {
-		/* TODO send/MIME rewrite: this should not >0 but >MB_CUR_MAX
-		 * TODO (better: 4 or 6), at least optionally, and in ILSEQ
-		 * TODO case, i.e., incomplete sequence !!
-		 * TODO that is: handling ILSEQ like this is totally grazy. */
+	for (;;) {
+		size_t sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
+		if (sz != (size_t)-1)
+			break;
+		err = errno;
+		if (! skipilseq || err != EILSEQ)
+			break;
 		if (*inbleft > 0) {
 			(*inb)++;
 			(*inbleft)--;
-		} else {
+		} else if (*outbleft > 0) {
 			**outb = '\0';
 			break;
 		}
-		if (*outbleft > 0) {
-			*(*outb)++ = '?';
-			(*outbleft)--;
+		if (*outbleft > 2) {
+			(*outb)[0] = '[';
+			(*outb)[1] = '?';
+			(*outb)[2] = ']';
+			(*outb) += 3;
+			(*outbleft) -= 3;
 		} else {
-			**outb = '\0';
+			err = E2BIG;
 			break;
 		}
+		err = 0;
 	}
-	return (sz);
+	return err;
 }
 # undef __INBCAST
 
 int
-str_iconv(iconv_t icp, struct str *out, struct str const *in, bool_t tolerant)
+n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
+	struct str *in_rest_or_null, bool_t skipilseq)
 {
 	int err = 0;
 	char *obb = out->s, *ob;
@@ -995,18 +1030,23 @@ str_iconv(iconv_t icp, struct str *out, struct str const *in, bool_t tolerant)
 		olb = ol;
 		goto jrealloc;
 	}
+
 	for (;;) {
 		ib = in->s;
 		il = in->l;
 		ob = obb;
 		ol = olb;
-		if (iconv_ft(icp, &ib, &il, &ob, &ol, tolerant) != (size_t)-1)
-			break;
-		if ((err = errno) != E2BIG)
+		err = n_iconv_buf(cd, &ib, &il, &ob, &ol, skipilseq);
+		if (err == 0 || err != E2BIG)
 			break;
 		err = 0;
 		olb += in->l;
 jrealloc:	obb = srealloc(obb, olb);
+	}
+
+	if (in_rest_or_null != NULL) {
+		in_rest_or_null->s = UNCONST(ib);
+		in_rest_or_null->l = il;
 	}
 	out->s = obb;
 	out->l = olb - ol;

@@ -18,27 +18,38 @@ application/x-bzip2	bz2 boz
 application/x-cpio	cpio
 application/x-dvi	dvi
 application/x-gzip	gz
+application/x-latex	latex
+application/x-perl	pl pm perl
 application/x-sh	sh
 application/x-shar	shar
 application/x-tar	tar
 application/x-tex	tex
 application/x-texinfo	texinfo texi
+application/x-xfig	fig
 application/xhtml+xml	xhtml xht
 application/xml	xml xsl
 application/xml-dtd	dtd
 application/xslt+xml	xslt
+application/zip		zip
+audio/mp4	mp4a
 audio/ogg	oga ogg spx
 image/gif	gif
 image/jp2	jp2
 image/jpeg	jpeg jpg jpe
 image/png	png
 image/svg+xml	svg svgz
+image/tiff	tiff tif
+image/x-xbitmap	xbm
+image/x-xpixmap	xpm
+image/x-xwindowdump	xwd
 text/css	css
 text/diff	diff
 text/html	html htm
 text/patch	patch
 text/plain	txt text conf def list log in
 text/sgml	sgml sgm
+text/troff	t tr roff man me ms
 text/x-asm	s asm
 text/x-c	c cc cxx cpp h hh dic
+text/x-java	java
 text/x-uuencode	uu

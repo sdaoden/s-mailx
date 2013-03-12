@@ -73,6 +73,12 @@
  * File I/O.
  */
 
+enum expmode {
+	EXP_FULL,
+	EXP_LOCAL = 1<<0,
+	EXP_SHELL = 1<<1
+};
+
 /*
  * Evaluate the string given as a new mailbox name.
  * Supported meta characters:
@@ -84,7 +90,8 @@
  *	any shell meta character
  * Return the file name as a dynamic string.
  */
-static char *	_expand(char const *name, int only_local);
+static char *	_expand(char const *name, enum expmode expmode);
+
 /* Perform shell meta character expansion */
 static char *	_globname(char const *name);
 
@@ -101,9 +108,9 @@ static void append(struct message *mp);
 static enum okay get_header(struct message *mp);
 
 static char *
-_expand(char const *name, int only_local)
+_expand(char const *name, enum expmode expmode)
 {
-	char cbuf[PATHSIZE], *res;
+	char cbuf[MAXPATHLEN], *res;
 	struct str s;
 	struct shortcut *sh;
 	int dyn;
@@ -117,6 +124,11 @@ _expand(char const *name, int only_local)
 	res = UNCONST(name);
 	if ((sh = get_shortcut(res)) != NULL)
 		res = sh->sh_long;
+
+	if (expmode & EXP_SHELL) {
+		dyn = 0;
+		goto jshell;
+	}
 
 jnext:	dyn = 0;
 	switch (*res) {
@@ -163,6 +175,7 @@ jnext:	dyn = 0;
 	}
 
 	/* Catch the most common shell meta character */
+jshell:
 	if (res[0] == '~' && (res[1] == '/' || res[1] == '\0')) {
 		res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
 		dyn = 1;
@@ -176,7 +189,7 @@ jnext:	dyn = 0;
 	}
 
 jislocal:
-	if (only_local)
+	if (expmode & EXP_LOCAL)
 		switch (which_protocol(res)) {
 		case PROTO_FILE:
 		case PROTO_MAILDIR:	/* XXX Really? ok MAILDIR for local? */
@@ -192,7 +205,7 @@ jislocal:
 jleave:
 	if (res && ! dyn)
 		res = savestr(res);
-	return (res);
+	return res;
 }
 
 static char *
@@ -248,7 +261,7 @@ jleave:
 	extern int wait_status;
 
 	struct stat sbuf;
-	char xname[PATHSIZE], cmdbuf[PATHSIZE], /* also used for file names */
+	char xname[MAXPATHLEN], cmdbuf[MAXPATHLEN], /* also used for files */
 		*cp, *shell;
 	int pid, l, pivec[2];
 
@@ -510,6 +523,11 @@ setptr(FILE *ibuf, off_t offset)
 		if (linebuf[count - 1] == '\n')
 			linebuf[count - 1] = '\0';
 		if (maybe && linebuf[0] == 'F' && is_head(linebuf, count)) {
+			/* TODO
+			 * TODO char date[FROM_DATEBUF];
+			 * TODO extract_date_from_from_(linebuf, count, date);
+			 * TODO this.m_time = 10000;
+			 */
 			this.m_xsize = this.m_size;
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
@@ -715,30 +733,22 @@ fsize(FILE *iob)
 	return sbuf.st_size;
 }
 
-/*
- * Just like expand(), but expanded file must be FILE or DIR
- */
-char *
-file_expand(char const *name)
-{
-	return (_expand(name, 1));
-}
-
-/*
- * Evaluate the string given as a new mailbox name.
- * Supported meta characters:
- *	%	for my system mail box
- *	%user	for user's system mail box
- *	#	for previous file
- *	&	invoker's mbox file
- *	+file	file in folder directory
- *	any shell meta character
- * Return the file name as a dynamic string.
- */
 char *
 expand(char const *name)
 {
-	return (_expand(name, 0));
+	return _expand(name, 0);
+}
+
+char *
+file_expand(char const *name)
+{
+	return _expand(name, EXP_LOCAL);
+}
+
+char *
+shell_expand(char const *name)
+{
+	return _expand(name, EXP_SHELL);
 }
 
 void
@@ -765,25 +775,74 @@ demail(void)
 		close(creat(mailname, 0600));
 }
 
+void
+var_folder_updated(char **name)
+{
+	char *unres = NULL, *res = NULL, *folder;
+
+	if (name == NULL)
+		goto jleave;
+	folder = *name;
+
+	switch (which_protocol(folder)) {
+	case PROTO_FILE:
+	case PROTO_MAILDIR:
+		break;
+	default:
+		goto jleave;
+	}
+
+	/* Expand the *folder* *//* XXX This *only* works because we do NOT
+	 * XXX update environment variables via the "set" mechanism */
+	if ((folder = _expand(folder, EXP_SHELL)) == NULL)
+		goto jleave;
+
+	/* All non-absolute paths are relative to our home directory */
+	if (*folder != '/') {
+		size_t l1 = strlen(homedir), l2 = strlen(folder);
+		unres = ac_alloc(l1 + l2 + 2);
+		memcpy(unres, homedir, l1);
+		unres[l1] = '/';
+		memcpy(unres + l1 + 1, folder, l2);
+		unres[l1 + 1 + l2] = '\0';
+		folder = unres;
+	}
+
+	/* Since lex.c:_update_mailname() uses realpath(3) if available to
+	 * avoid that we loose track of our currently open folder in case we
+	 * chdir away, but still checks the leading path portion against
+	 * getfold() to be able to abbreviate to the +FOLDER syntax if
+	 * possible, we need to realpath(3) the folder, too */
+#ifdef HAVE_REALPATH
+	res = ac_alloc(MAXPATHLEN);
+	if (realpath(folder, res) == NULL)
+		fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), folder);
+	else
+		folder = res;
+#endif
+
+	{	char *x = *name;
+		*name = vcopy(folder);
+		vfree(x);
+	}
+
+	if (res != NULL)
+		ac_free(res);
+	if (unres != NULL)
+		ac_free(unres);
+jleave:	;
+}
+
 /*
  * Determine the current folder directory name.
  */
 int
 getfold(char *name, int size)
 {
-	char *folder;
-	enum protocol	p;
-
-	if ((folder = value("folder")) == NULL)
-		return (-1);
-	if (*folder == '/' || ((p = which_protocol(folder)) != PROTO_FILE &&
-			p != PROTO_MAILDIR)) {
-		strncpy(name, folder, size);
-		name[size-1]='\0';
-	} else {
-		snprintf(name, size, "%s/%s", homedir, folder);
-	}
-	return (0);
+	char const *folder;
+	if ((folder = value("folder")) != NULL)
+		(void)n_strlcpy(name, folder, size);
+	return (folder != NULL) ? 0 : -1;
 }
 
 /*
@@ -794,19 +853,20 @@ getdeadletter(void)
 {
 	char const *cp;
 
-	if ((cp = value("DEAD")) == NULL || (cp = file_expand(cp)) == NULL)
-		cp = file_expand("~/dead.letter");
+	if ((cp = value("DEAD")) == NULL ||
+			(cp = _expand(cp, EXP_LOCAL)) == NULL)
+		cp = _expand("~/dead.letter", EXP_LOCAL|EXP_SHELL);
 	else if (*cp != '/') {
 		size_t sz = strlen(cp) + 3;
 		char *buf = ac_alloc(sz);
 
 		snprintf(buf, sz, "~/%s", cp);
-		cp = file_expand(buf);
+		cp = _expand(buf, EXP_LOCAL|EXP_SHELL);
 		ac_free(buf);
 	}
 	if (cp == NULL)
 		cp = "dead.letter";
-	return (cp);
+	return cp;
 }
 
 /*

@@ -42,15 +42,16 @@
  * def.h must be included first.
  */
 
+/* These two come from version.c */
+extern char const *const uagent;	/* User agent */
+extern char const *const version;	/* The version string */
+
 #ifdef _MAIL_GLOBS_
 # undef _E
 # define _E
 #else
 # define _E	extern
 #endif
-
-_E char const *const uagent;		/* User agent */
-_E char const *const version;		/* The version string */
 
 _E gid_t	effectivegid;		/* Saved from when we started up */
 _E gid_t	realgid;		/* Saved from when we started up */
@@ -93,9 +94,10 @@ _E enum condition cond;			/* Current state of conditional exc. */
 _E struct mailbox mb;			/* Current mailbox */
 _E int		image;			/* File descriptor for image of msg */
 _E FILE		*input;			/* Current command input file */
-_E char		mailname[PATHSIZE];	/* Name of current file */
-_E char		mboxname[PATHSIZE];	/* Name of mbox */
-_E char		prevfile[PATHSIZE];	/* Name of previous file */
+_E char		mailname[MAXPATHLEN];	/* Name of current file */
+_E char		displayname[80 - 40];	/* Prettyfied for display */
+_E char		prevfile[MAXPATHLEN];	/* Name of previous file */
+_E char		mboxname[MAXPATHLEN];	/* Name of mbox */
 _E off_t	mailsize;		/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *prevdot;		/* Previous current message */

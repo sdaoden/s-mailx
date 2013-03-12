@@ -86,7 +86,7 @@ $set 1
 83 "%s": Expansion buffer overflow.\n
 84 "%s": Ambiguous.\n
 85 [Missing multipart boundary - use "show" to display the raw message]\n\n
-86 Won't "chdir": "%s" would become inaccessible
+86 --- DELETED ---
 87 temporary mail message file
 88 No mail for %s\n
 89 Use "quit" to quit.\n
@@ -144,22 +144,22 @@ $set 1
 \t\t[-S var[=value]] [-T name] -f [file]\n\
 \t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
 
-136 --- DELETED ---
+136 $ %d moved$
 137 Cannot give -f and people to send to.\n
 138 Send options without primary recipient specified.\n
-139 --- DELETED ---
+139 $ %d hidden$
 140 %s version %s.  Type ? for help.\n
 141 \nInterrupt\n
 142 "%s" contains invalid %s sequence\n
 143 "%s" contains invalid character %s\n
-144 --- DELETED ---
+144 $ %d killed$
 145 detract asked to insert commas\n
 146 Creation of temporary image
 147 Creating descriptor duplicate of temporary image
 148 Finalizing write of temporary image
 149 Failed to open a duplicate of the temporary image
 150 Expanding alias to depth larger than %d\n
-151 --- DELETED ---
+151 Can't canonicalize `%s'\n
 152 Internal error: bad stdio open mode %s\n
 153 Invalid file pointer
 154 Fatal error in process.\n
@@ -182,7 +182,7 @@ $set 1
 171 $Enter filename for part $
 172 $: $
 173 tmpfile
-174 --- DELETED ---
+174 Ignored date format, it excesses the target buffer (%lu bytes)\n
 175 :\n
 176 Cannot open %s\n
 177 Warning: invalid encoding %s, using base64\n
@@ -222,8 +222,8 @@ $set 1
 211 removed.\n
 212 updated.\n
 213 <Unknown date>
-214 Loaded 1 new message\n
-215 Loaded %d new messages\n
+214 Loaded 1 new message.\n
+215 Loaded %d new messages.\n
 216 No POP3 support compiled in.\n
 217 Cannot handle protocol: %s\n
 218 POP3 error: %s
@@ -232,7 +232,7 @@ $set 1
 221 too many arguments\n
 222 need shortcut names to remove\n
 223 %s: no such shortcut\n
-224 --- DELETED ---
+224 Loaded %d messages.\n
 225 No SSL support compiled in.\n
 226 Cannot determine parent Message-ID of the current message\n
 227 Parent message not found\n
@@ -278,7 +278,7 @@ $set 1
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n
 269 No IMAP support compiled in.\n
-270 --- DELETED ---
+270 IMAP error: %s
 271 Invalid address argument with -r\n
 272 No GSSAPI support compiled in.\n
 273 Unknown IMAP authentication method: %s\n

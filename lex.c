@@ -55,9 +55,126 @@
 static char const	*prompt;
 static sighandler_type	oldpipe;
 
+/* Update mailname (if *name* != NULL) and displayname */
+static void	_update_mailname(char const *name);
+#ifdef HAVE_MBLEN
+SINLINE size_t	__narrow_prefix(char const *cp, size_t maxl);
+SINLINE size_t	__narrow_suffix(char const *cp, size_t cpl, size_t maxl);
+#endif
+
 static const struct cmd *lex(char *Word);
 static void stop(int s);
 static void hangup(int s);
+
+#ifdef HAVE_MBLEN
+SINLINE size_t
+__narrow_prefix(char const *cp, size_t maxl)
+{
+	int err;
+	size_t i, ok;
+
+	for (err = ok = i = 0; i < maxl;) {
+		int ml = mblen(cp, maxl - i);
+		if (ml < 0) { /* XXX _narrow_prefix(): mblen() error; action? */
+			(void)mblen(NULL, 0);
+			err = 1;
+			ml = 1;
+		} else {
+			if (! err)
+				ok = i;
+			err = 0;
+			if (ml == 0)
+				break;
+		}
+		cp += ml;
+		i += ml;
+	}
+	return ok;
+}
+
+SINLINE size_t
+__narrow_suffix(char const *cp, size_t cpl, size_t maxl)
+{
+	int err;
+	size_t i, ok;
+
+	for (err = ok = i = 0; cpl > maxl || err;) {
+		int ml = mblen(cp, cpl);
+		if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
+			(void)mblen(NULL, 0);
+			err = 1;
+			ml = 1;
+		} else {
+			if (! err)
+				ok = i;
+			err = 0;
+			if (ml == 0)
+				break;
+		}
+		cp += ml;
+		i += ml;
+		cpl -= ml;
+	}
+	return ok;
+}
+#endif /* HAVE_MBLEN */
+
+static void
+_update_mailname(char const *name)
+{
+	char tbuf[MAXPATHLEN], *mailp, *dispp;
+	size_t i, j;
+
+	/* Don't realpath(3) if it's only an update request */
+	if (name != NULL) {
+#ifdef HAVE_REALPATH
+		enum protocol p = which_protocol(name);
+		if (p == PROTO_FILE || p == PROTO_MAILDIR) {
+			if (realpath(name, mailname) == NULL) {
+				fprintf(stderr, tr(151,
+					"Can't canonicalize `%s'\n"), name);
+				goto jleave;
+			}
+		} else
+#endif
+			(void)n_strlcpy(mailname, name, MAXPATHLEN);
+	}
+
+	mailp = mailname;
+	dispp = displayname;
+
+	/* Don't display an absolute path but "+FOLDER" if under *folder* */
+	if (getfold(tbuf, sizeof(tbuf)) >= 0) {
+		i = strlen(tbuf);
+		if (i < sizeof(tbuf) - 1)
+			tbuf[i++] = '/';
+		if (strncmp(tbuf, mailp, i) == 0) {
+			mailp += i;
+			*dispp++ = '+';
+		}
+	}
+
+	/* We want to see the name of the folder .. on the screen */
+	i = strlen(mailp);
+	if (i < sizeof(displayname) - 1)
+		memcpy(dispp, mailp, i + 1);
+	else {
+		/* Avoid disrupting multibyte sequences (if possible) */
+#ifndef HAVE_MBLEN
+		j = sizeof(displayname) / 3 - 1;
+		i -= sizeof(displayname) - (1/* + */ + 3) - j;
+#else
+		j = __narrow_prefix(mailp, sizeof(displayname) / 3);
+		i = j + __narrow_suffix(mailp + j, i - j,
+			sizeof(displayname) - (1/* + */ + 3 + 1) - j);
+#endif
+		(void)snprintf(dispp, sizeof(displayname), "%.*s...%s",
+			(int)j, mailp, mailp + i);
+	}
+#ifdef HAVE_REALPATH
+jleave:	;
+#endif
+}
 
 /*
  * Set up editing on the given file name.
@@ -243,8 +360,7 @@ nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
 	return(0);
 }
 
-
-int 
+int
 newmailinfo(int omsgCount)
 {
 	int	mdot;
@@ -255,16 +371,14 @@ newmailinfo(int omsgCount)
 	if (msgCount > omsgCount) {
 		for (i = omsgCount; i < msgCount; i++)
 			message[i].m_flag |= MNEWEST;
-		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		printf(tr(158, "New mail has arrived.\n"));
 		if (msgCount - omsgCount == 1)
-			printf(catgets(catd, CATSET, 214,
-				"Loaded 1 new message\n"));
+			printf(tr(214, "Loaded 1 new message.\n"));
 		else
-			printf(catgets(catd, CATSET, 215,
-				"Loaded %d new messages\n"),
+			printf(tr(215, "Loaded %d new messages.\n"),
 				msgCount - omsgCount);
 	} else
-		printf("Loaded %d messages\n", msgCount);
+		printf(tr(224, "Loaded %d messages.\n"), msgCount);
 	callhook(mailname, 1);
 	mdot = getmdot(1);
 	if (value("header")) {
@@ -272,6 +386,7 @@ newmailinfo(int omsgCount)
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(omsgCount+1, msgCount);
 #endif
+		time_current_update(&time_current, FAL0);
 		while (++omsgCount <= msgCount)
 			if (visible(&message[omsgCount-1]))
 				printhead(omsgCount, stdout, 0);
@@ -289,10 +404,12 @@ static int	reset_on_stop;			/* do a reset() if stopped */
 void 
 commands(void)
 {
-	int eofloop = 0;
-	int n, x;
+	int eofloop = 0, n;
 	char *linebuf = NULL, *av, *nv;
 	size_t linesize = 0;
+#ifdef USE_IMAP
+	int x;
+#endif
 
 	(void)&eofloop;
 	if (!sourcing) {
@@ -326,7 +443,9 @@ commands(void)
 						strcmp(av, "nopoll")) |
 					(nv && strcmp(nv, "noimap") &&
 					 	strcmp(nv, "nopoll"));
+#ifdef USE_IMAP
 				x = !(av || nv);
+#endif
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
@@ -767,7 +886,6 @@ newfileinfo(void)
 {
 	struct message *mp;
 	int u, n, mdot, d, s, hidden, killed, moved;
-	char fname[PATHSIZE], zname[PATHSIZE], *ename;
 
 	if (mb.mb_type == MB_VOID)
 		return 1;
@@ -789,39 +907,30 @@ newfileinfo(void)
 		if (mp->m_flag & MKILL)
 			killed++;
 	}
-	ename = mailname;
-	if (getfold(fname, sizeof fname - 1) >= 0) {
-		strcat(fname, "/");
-		if (which_protocol(fname) != PROTO_IMAP &&
-				strncmp(fname, mailname, strlen(fname)) == 0) {
-			snprintf(zname, sizeof zname, "+%s",
-					mailname + strlen(fname));
-			ename = zname;
-		}
-	}
-	printf(catgets(catd, CATSET, 103, "\"%s\": "), ename);
+	_update_mailname(NULL);
+	printf(tr(103, "\"%s\": "), displayname);
 	if (msgCount == 1)
-		printf(catgets(catd, CATSET, 104, "1 message"));
+		printf(tr(104, "1 message"));
 	else
-		printf(catgets(catd, CATSET, 105, "%d messages"), msgCount);
+		printf(tr(105, "%d messages"), msgCount);
 	if (n > 0)
-		printf(catgets(catd, CATSET, 106, " %d new"), n);
+		printf(tr(106, " %d new"), n);
 	if (u-n > 0)
-		printf(catgets(catd, CATSET, 107, " %d unread"), u);
+		printf(tr(107, " %d unread"), u);
 	if (d > 0)
-		printf(catgets(catd, CATSET, 108, " %d deleted"), d);
+		printf(tr(108, " %d deleted"), d);
 	if (s > 0)
-		printf(catgets(catd, CATSET, 109, " %d saved"), s);
+		printf(tr(109, " %d saved"), s);
 	if (moved > 0)
-		printf(catgets(catd, CATSET, 109, " %d moved"), moved);
+		printf(tr(136, " %d moved"), moved);
 	if (hidden > 0)
-		printf(catgets(catd, CATSET, 109, " %d hidden"), hidden);
+		printf(tr(139, " %d hidden"), hidden);
 	if (killed > 0)
-		printf(catgets(catd, CATSET, 109, " %d killed"), killed);
+		printf(tr(144, " %d killed"), killed);
 	if (mb.mb_type == MB_CACHE)
 		printf(" [Disconnected]");
 	else if (mb.mb_perm == 0)
-		printf(catgets(catd, CATSET, 110, " [Read only]"));
+		printf(tr(110, " [Read only]"));
 	printf("\n");
 	return(mdot);
 }
@@ -941,22 +1050,16 @@ initbox(const char *name)
 	char *tempMesg;
 	int dummy;
 
-	if (mb.mb_type != MB_VOID) {
-		strncpy(prevfile, mailname, PATHSIZE);
-		prevfile[PATHSIZE-1]='\0';
-	}
-	if (name != mailname) {
-		strncpy(mailname, name, PATHSIZE);
-		mailname[PATHSIZE-1]='\0';
-	}
-	if ((mb.mb_otf = Ftemp(&tempMesg, "Rx", "w", 0600, 0)) == NULL) {
-		perror(catgets(catd, CATSET, 87,
-					"temporary mail message file"));
+	if (mb.mb_type != MB_VOID)
+		(void)n_strlcpy(prevfile, mailname, MAXPATHLEN);
+	_update_mailname(name != mailname ? name : NULL);
+	if ((mb.mb_otf = Ftemp(&tempMesg, "tmpbox", "w", 0600, 0)) == NULL) {
+		perror(tr(87, "temporary mail message file"));
 		exit(1);
 	}
 	fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
 	if ((mb.mb_itf = safe_fopen(tempMesg, "r", &dummy)) == NULL) {
-		perror(tempMesg);
+		perror(tr(87, "temporary mail message file"));
 		exit(1);
 	}
 	fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);

@@ -158,7 +158,7 @@ struct list_item {
 	int	l_has_children;
 };
 
-static char	*imapbuf;
+static char	*imapbuf;	/* TODO not static, use pool */
 static size_t	imapbufsize;
 static sigjmp_buf	imapjmp;
 static sighandler_type savealrm;
@@ -446,8 +446,8 @@ again:	if (sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
 		stop:	ok = STOP;
 			complete |= 2;
 			if (errprnt)
-				fprintf(stderr, catgets(catd, CATSET, 218,
-					"IMAP error: %s"), responded_text);
+				fprintf(stderr, tr(270, "IMAP error: %s"),
+					responded_text);
 			break;
 		case RESPONSE_UNKNOWN:	/* does not happen */
 		case RESPONSE_BYE:
@@ -723,13 +723,13 @@ rec_dequeue(void)
 static void 
 rec_rmqueue(void)
 {
-	struct record	*rp, *rq = NULL;
+	struct record *rp;
 
-	for (rp = record; rp; rp = rp->rec_next) {
-		free(rq);
-		rq = rp;
+	for (rp = record; rp != NULL;) {
+		struct record *tmp = rp;
+		rp = rp->rec_next;
+		free(tmp);
 	}
-	free(rq);
 	record = recend = NULL;
 }
 
@@ -1208,7 +1208,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	if (!transparent)
 		quit();
 	edit = isedit;
-	free(mb.mb_imap_account);
+	if (mb.mb_imap_account != NULL)
+		free(mb.mb_imap_account);
 	mb.mb_imap_account = account;
 	if (!same_imap_account) {
 		if (mb.mb_sock.s_fd >= 0)
@@ -1224,7 +1225,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 			fclose(mb.mb_otf);
 			mb.mb_otf = NULL;
 		}
-		free(mb.mb_imap_mailbox);
+		if (mb.mb_imap_mailbox != NULL)
+			free(mb.mb_imap_mailbox);
 		mb.mb_imap_mailbox = sstrdup(mbx);
 		initbox(server);
 	}
@@ -1702,7 +1704,7 @@ void
 imap_getheaders(int volatile bot, int top)
 {
 	sighandler_type	saveint, savepipe;
-	enum okay ok = STOP;
+	/* XXX enum okay ok = STOP;*/
 	int i, chunk = 256;
 
 	if (mb.mb_type == MB_CACHE)
@@ -1737,7 +1739,7 @@ imap_getheaders(int volatile bot, int top)
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
 		for (i = bot; i <= top; i += chunk) {
-			ok = imap_fetchheaders(&mb, message, i,
+			/*ok = */imap_fetchheaders(&mb, message, i,
 					i+chunk-1 < top ? i+chunk-1 : top);
 			if (interrupts)
 				onintr(0);
@@ -1749,7 +1751,7 @@ imap_getheaders(int volatile bot, int top)
 }
 
 static enum okay 
-imap_exit(struct mailbox *mp)
+__imap_exit(struct mailbox *mp)
 {
 	char	o[LINESIZE];
 	FILE	*queuefp = NULL;
@@ -1762,6 +1764,29 @@ imap_exit(struct mailbox *mp)
 }
 
 static enum okay 
+imap_exit(struct mailbox *mp)
+{
+	enum okay ret = __imap_exit(mp);
+#if 0 /* TODO the option today: memory leak(s) and halfway reuse or nottin */
+	free(mp->mb_imap_account);
+	free(mp->mb_imap_mailbox);
+	if (mp->mb_cache_directory != NULL)
+		free(mp->mb_cache_directory);
+#ifndef HAVE_ASSERTS /* TODO ASSERT LEGACY */
+	mp->mb_imap_account =
+	mp->mb_imap_mailbox =
+	mp->mb_cache_directory = "";
+#else
+	mp->mb_imap_account = NULL; /* for assert legacy time.. */
+	mp->mb_imap_mailbox = NULL;
+	mp->mb_cache_directory = NULL;
+#endif
+#endif
+	sclose(&mp->mb_sock);
+	return ret;
+}
+
+static enum okay
 imap_delete(struct mailbox *mp, int n, struct message *m, int needstat)
 {
 	imap_store(mp, m, n, '+', "\\Deleted", needstat);
@@ -1897,17 +1922,16 @@ bypass:	if (readstat != NULL)
 			modflags++;
 		}
 	if ((gotcha || modflags) && edit) {
-		printf(catgets(catd, CATSET, 168, "\"%s\" "), mailname);
+		printf(tr(168, "\"%s\" "), displayname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?
 				catgets(catd, CATSET, 170, "complete\n") :
 				catgets(catd, CATSET, 212, "updated.\n"));
 	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
-			printf(catgets(catd, CATSET, 155,
-				"Held 1 message in %s\n"), mailname);
+			printf(tr(155, "Held 1 message in %s\n"), displayname);
 		else if (held > 1)
-			printf(catgets(catd, CATSET, 156,
-				"Held %d messages in %s\n"), held, mailname);
+			printf(tr(156, "Held %d messages in %s\n"), held,
+				displayname);
 	}
 	fflush(stdout);
 	return OKAY;
@@ -1943,7 +1967,6 @@ imap_quit(void)
 	imap_update(&mb);
 	if (!same_imap_account) {
 		imap_exit(&mb);
-		sclose(&mb.mb_sock);
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
@@ -2228,7 +2251,8 @@ again:	size = xsize;
 			imap_created_mailbox++;
 			goto again;
 		} else if (ok != OKAY)
-			fprintf(stderr, "IMAP error: %s", responded_text);
+			fprintf(stderr, tr(270, "IMAP error: %s"),
+				responded_text);
 		else if (response_status == RESPONSE_OK &&
 				mp->mb_flags & MB_UIDPLUS)
 			imap_appenduid(mp, fp, t, off1, xsize, ysize, lines,
@@ -2366,7 +2390,6 @@ imap_append(const char *xserver, FILE *fp)
 			}
 			ok = imap_append0(&mx, mbx, fp);
 			imap_exit(&mx);
-			sclose(&mx.mb_sock);
 		} else {
 			mx.mb_imap_account = (char *)protbase(server);
 			mx.mb_imap_mailbox = sstrdup(mbx); /* TODO as above */
@@ -2869,20 +2892,20 @@ imap_search2(struct mailbox *mp, struct message *m, int count,
 #ifdef HAVE_ICONV
 		if (asccasecmp(cp, "utf-8")) {
 			iconv_t	it;
-			char	*nsp, *nspec;
-			size_t	sz, nsz;
-			if ((it = iconv_open_ft("utf-8", cp)) != (iconv_t)-1) {
+			char *nsp, *nspec;
+			size_t sz, nsz;
+			if ((it = n_iconv_open("utf-8", cp)) != (iconv_t)-1) {
 				sz = strlen(spec) + 1;
 				nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
-				if (iconv_ft(it, &spec, &sz, &nsp, &nsz, 0)
-						!= (size_t)-1 && sz == 0) {
+				if (n_iconv_buf(it, &spec, &sz, &nsp, &nsz,
+						FAL0) == 0 && sz == 0) {
 					spec = nspec;
 					cp = "utf-8";
 				}
-				iconv_close(it);
+				n_iconv_close(it);
 			}
 		}
-#endif	/* HAVE_ICONV */
+#endif
 		cp = imap_quotestr(cp);
 		cs = salloc(n = strlen(cp) + 10);
 		snprintf(cs, n, "CHARSET %s ", cp);

@@ -153,7 +153,7 @@ argcount(char **argv)
 }
 
 char *
-colalign(const char *cp, int col, int fill)
+colalign(const char *cp, int col, int fill) /* XXX improve filling+! */
 {
 	int	n, sz;
 	char	*nb, *np;
@@ -178,16 +178,23 @@ colalign(const char *cp, int col, int fill)
 		if (n > col)
 			break;
 		col -= n;
-		if (sz == 1 && spacechar(*cp&0377)) {
+		if (sz == 1 && spacechar(*cp)) {
 			*np++ = ' ';
 			cp++;
 		} else
 			while (sz--)
 				*np++ = *cp++;
 	}
-	if (fill)
-		while (col-- > 0)
-			*np++ = ' ';
+
+	if (fill && col != 0) {
+		if (fill > 0) {
+			memmove(nb + col, nb, (size_t)(np - nb));
+			memset(nb, ' ', col);
+		} else
+			memset(np, ' ', col);
+		np += col;
+	}
+
 	*np = '\0';
 	return nb;
 }
@@ -586,32 +593,36 @@ cwrelse(struct cw *cw)
 #endif	/* !HAVE_FCHDIR */
 
 void
-makeprint(struct str *in, struct str *out)
+makeprint(struct str const *in, struct str *out)
 {
-	static int	print_all_chars = -1;
-	char	*inp, *outp;
-	size_t	msz, dist;
+	static int print_all_chars = -1;
+	char const *inp, *maxp;
+	char *outp;
+	size_t msz, dist;
 
-	out->s = smalloc(msz = in->l + 1);
 	if (print_all_chars == -1)
-		print_all_chars = value("print-all-chars") != NULL;
-	if (print_all_chars) {
-		memcpy(out->s, in->s, in->l);
-		out->l = in->l;
-		out->s[out->l] = '\0';
-		return;
-	}
+		print_all_chars = (value("print-all-chars") != NULL);
+
+	msz = in->l + 1;
+	out->s = outp = smalloc(msz);
 	inp = in->s;
-	outp = out->s;
+	maxp = inp + in->l;
+
+	if (print_all_chars) {
+		out->l = in->l;
+		memcpy(outp, inp, out->l);
+		goto jleave;
+	}
+
 #if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 	if (mb_cur_max > 1) {
-		wchar_t	wc;
-		char	mb[MB_LEN_MAX+1];
-		int	i, n;
+		char mb[MB_LEN_MAX + 1];
+		wchar_t wc;
+		int i, n;
 		out->l = 0;
-		while (inp < &in->s[in->l]) {
+		while (inp < maxp) {
 			if (*inp & 0200)
-				n = mbtowc(&wc, inp, &in->s[in->l] - inp);
+				n = mbtowc(&wc, inp, maxp - inp);
 			else {
 				wc = *inp;
 				n = 1;
@@ -646,8 +657,8 @@ makeprint(struct str *in, struct str *out)
 	} else
 #endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
 	{
-		int	c;
-		while (inp < &in->s[in->l]) {
+		int c;
+		while (inp < maxp) {
 			c = *inp++ & 0377;
 			if (!isprint(c) && c != '\n' && c != '\r' &&
 					c != '\b' && c != '\t')
@@ -656,6 +667,7 @@ makeprint(struct str *in, struct str *out)
 		}
 		out->l = in->l;
 	}
+jleave:
 	out->s[out->l] = '\0';
 }
 
@@ -713,12 +725,15 @@ putuc(int u, int c, FILE *fp)
 }
 
 void
-time_current_update(struct time_current *tc)
+time_current_update(struct time_current *tc, bool_t full_update)
 {
 	tc->tc_time = time(NULL);
-	memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
-	memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_gm);
-	sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+	if (full_update) {
+		memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
+		memcpy(&tc->tc_local, localtime(&tc->tc_time),
+			sizeof tc->tc_local);
+		sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+	}
 }
 
 #ifndef HAVE_GETOPT

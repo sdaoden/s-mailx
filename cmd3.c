@@ -121,11 +121,11 @@ _set_show_all(void)
 	rm(cp);
 	Ftfree(&cp);
 
-	for (i = u.j = 0; i < HSHSIZE; ++i)
+	for (u.j = 1, i = 0; i < HSHSIZE; ++i)
 		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
 			++u.j;
 	vacp = (char**)salloc(u.j * sizeof(*vacp));
-	for (i = 0, p = vacp; i < HSHSIZE; ++i)
+	for (p = vacp, i = 0; i < HSHSIZE; ++i)
 		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
 			*p++ = vp->v_name;
 	*p = NULL;
@@ -318,28 +318,6 @@ schdir(void *v)
 	char **arglist = v;
 	char const *cp;
 
-#ifdef HAVE_REALPATH
-	/* TODO Avoid locked-up situation with relative paths when chdir(2)ing
-	 * TODO away; intermediate in that the current box's temporary
-	 * TODO representation should be saved to TMPDIR and the current BOX
-	 * TODO should be set to a-to-be-invented "void" box?  Or the user
-	 * TODO should be prompted if interactive?  It SHOULD be encapsulated
-	 * TODO in the box type driver!!  Thus - maybe add an is_absolute()
-	 * TODO flag to the (not yet existent) drivers, and forbid changing
-	 * TODO the path if that returns false (for whatever reason) */
-	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
-		cp = realpath(mailname, NULL);
-		if (cp != NULL) {
-			sstpcpy(mailname, cp);
-			(free)(UNCONST(cp));
-		} else {
-			fprintf(stderr, tr(86, "Won't \"chdir\": "
-				"\"%s\" would become inaccessible"),
-				mailname);
-			goto jleave;
-		}
-	}
-#endif
 	if (*arglist == NULL)
 		cp = homedir;
 	else if ((cp = file_expand(*arglist)) == NULL)
@@ -1200,7 +1178,7 @@ resend1(void *v, int add_resent)
 		return 1;
 	}
 	sn = nalloc(name, GTO);
-	to = usermap(sn);
+	to = usermap(sn, FAL0);
 	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
 		if (resend_msg(&message[*ip - 1], to, add_resent) != OKAY)
 			return 1;

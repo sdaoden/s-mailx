@@ -26,8 +26,8 @@ these environment variables are, different to the command line options,
 not part of the POSIX standard).
 
 The S-nail make system will also automatically integrate pkgsrc(7) paths
-into this mechanism.  pkgsrc is used to handle building (compiling),
-installing and removing of software packages on a lot of operating
+into this mechanism.  pkgsrc is used to handle building (compilation),
+installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
 
 To set these environment variables, the following can be done in
@@ -78,20 +78,23 @@ Notes for S-nail(1) v14.*
 -------------------------
 
 S-nail(1) was developed and tested under Mac OS X Snow Leopard (clang(1)
-and gcc(1)) as well as NetBSD 6.0 (gcc(1)).
+and gcc(1)) as well as NetBSD 6.99.17 (gcc(1)).
 S-nail(1) is known to correctly execute the ./cc-test.sh shell script,
-with and without uncommented compiler WARN= flags, on the following
-operating systems:
+with and without uncommented compiler CFLAGS= and WARN= variables in the
+Makefile, on all operating systems as listed below.
 
-- NetBSD 6.0.
-  Note that you should not enable -fstrict-overflow (yet).
+*Note* however that we talk about a codebase that originates in the 70s,
+when all those fancy compiler features, like constant data, restricted
+pointers, type aliasing etc., did not yet exist!  Until the codebase has
+been overhauled completely the Makefile will overwrite your preferred
+compiler flags with a simple (and POSIX-compliant) -O1.
+
+- NetBSD 6.0 and 6.99.17.
+- Slackware 14.0 with clang 3.0.
 - DragonFly BSD v3.2.1.9-g80b03f-RELEASE.
   (*All* optional dependencies turn to green on this one!)
-- FreeBSD 9.0.
-  Tested with CC=clang(1) and CC=gcc(1), -O2, and the WARNs including
-  -fstrict-overflow.
-- UnixWare 7.1.4.
-  (The -v compiler option gives some harmless warnings.)
+- FreeBSD 9.0 with CC=clang(1) and CC=gcc(1).
+- UnixWare 7.1.4 (the -v compiler option gives some harmless warnings).
 - OpenBSD 5.2.
 - TinyCoreLinux 4.4 with gcc 4.6.1.
 
@@ -102,9 +105,10 @@ Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
 2012-09-18 i make my way through the codebase, but have not yet taken
 a look (rather: at all) into the following modules/parts:
 
-  IPv6, List view/threading, SSL, IMAP+, POP3+, SMTP+, Bayesian filter
+  List view/threading, SSL, IMAP+, POP3+, SMTP+, Bayesian filter
 
 These will remain features of S-nail(1) and they will be looked at, and
 of course i will fix bugs when i notice them, but they are not yet part
-of the overhauled "S-nail core" (though SMTP is in daily use).
+of the overhauled "S-nail core" (though SMTP is in daily use, and there
+now is a test-bed for IMAP and POP3).
 You may also want to have a look at the file TODO.

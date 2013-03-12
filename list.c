@@ -196,12 +196,15 @@ static int
 markall(char *buf, int f)
 {
 	char **np, **nq;
-	int i, retval, gotheaders;
+	int i, retval;
 	struct message *mp, *mx;
 	char **namelist, *bufp, *id = NULL, *cp;
 	int tok, beg, mc, star, other, valdot, colmod, colresult, topen, tback;
 	size_t nmlsize;
 	enum idfield	idfield = ID_REFERENCES;
+#ifdef USE_IMAP
+	int gotheaders;
+#endif
 
 	lexstring = ac_alloc(STRINGLEN = 2 * strlen(buf) + 1);
 	valdot = dot - &message[0] + 1;
@@ -223,7 +226,10 @@ markall(char *buf, int f)
 	beg = 0;
 	topen = 0;
 	tback = 0;
+#ifdef USE_IMAP
 	gotheaders = 0;
+#endif
+
 	while (tok != TEOL) {
 		switch (tok) {
 		case TNUMBER:

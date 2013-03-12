@@ -578,7 +578,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		 */
 		if ((cp = value("folder")) != NULL &&
 				which_protocol(cp) == PROTO_IMAP)
-			strncpy(mailname, cp, PATHSIZE)[PATHSIZE-1] = '\0';
+			(void)n_strlcpy(mailname, cp, MAXPATHLEN);
 	}
 	i = setfile(ef, 0);
 	if (i < 0)
@@ -590,6 +590,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
 #endif
+		time_current_update(&time_current, FAL0);
 		for (i = 1; i <= msgCount; i++)
 			printhead(i, stdout, 0);
 		exit(exit_status);

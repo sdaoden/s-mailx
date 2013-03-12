@@ -193,7 +193,7 @@ imap_gss(struct mailbox *mp, char *user)
 		out.s = NULL;
 		in.s = responded_text;
 		in.l = strlen(responded_text);
-		(void)b64_decode(&out, &in, 0, NULL);
+		(void)b64_decode(&out, &in, NULL);
 		recv_tok.value = out.s;
 		recv_tok.length = out.l;
 		token_ptr = &recv_tok;
@@ -239,7 +239,7 @@ imap_gss(struct mailbox *mp, char *user)
 	out.s = NULL;
 	in.s = responded_text;
 	in.l = strlen(responded_text);
-	(void)b64_decode(&out, &in, 0, NULL);
+	(void)b64_decode(&out, &in, NULL);
 	recv_tok.value = out.s;
 	recv_tok.length = out.l;
 	maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok,

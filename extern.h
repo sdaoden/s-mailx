@@ -38,6 +38,12 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * TODO Convert optional utility+ functions to n_*(); ditto
+ * TODO else use generic module-specific prefixes: str_(), am[em]_, sm[em]_, ..
+ */
+#define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[c - 1] = '\0')
+
 /* auxlily.c */
 void panic(const char *format, ...);
 void holdint(void);
@@ -75,13 +81,13 @@ enum okay makedir(const char *name);
 enum okay cwget(struct cw *cw);
 enum okay cwret(struct cw *cw);
 void cwrelse(struct cw *cw);
-void makeprint(struct str *in, struct str *out);
+void makeprint(struct str const *in, struct str *out);
 char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
 int putuc(int u, int c, FILE *fp);
 
-/* Update *tc* to now */
-void	time_current_update(struct time_current *tc);
+/* Update *tc* to now; only .tc_time updated unless *full_update* is true */
+void	time_current_update(struct time_current *tc, bool_t full_update);
 
 /* getopt(3) fallback implementation */
 #ifndef HAVE_GETOPT
@@ -147,7 +153,11 @@ int scroll(void *v);
 int Scroll(void *v);
 int screensize(void);
 int from(void *v);
+
+/* Print out the header of a specific message.
+ * Note: ensure to call time_current_update() before first use in cycle! */
 void printhead(int mesg, FILE *f, int threaded);
+
 int pdot(void *v);
 int pcmdlist(void *v);
 char *laststring(char *linebuf, int *flag, int strip);
@@ -323,12 +333,29 @@ int rm(char *name);
 void holdsigs(void);
 void relsesigs(void);
 off_t fsize(FILE *iob);
-char *file_expand(char const *name);
-char *expand(char const *name);
+
+/* Evaluate the string given as a new mailbox name. Supported meta characters:
+ *	%	for my system mail box
+ *	%user	for user's system mail box
+ *	#	for previous file
+ *	&	invoker's mbox file
+ *	+file	file in folder directory
+ *	any shell meta character
+ * file_expand() requires the expansion to be a local file/directory, and
+ * shell_expand() doesn't interpret the meta characters except for shell ones.
+ * Return the file name as a dynamic string */
+char *	expand(char const *name);
+char *	file_expand(char const *name);
+char *	shell_expand(char const *name);
+
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 void	findmail(char const *user, int force, char *buf, int size);
 /* Get rid of queued mail */
 void	demail(void);
+
+/* vars.c hook: *folder* variable has been updated */
+void	var_folder_updated(char **name);
+
 int getfold(char *name, int size);
 char const *getdeadletter(void);
 
@@ -636,22 +663,12 @@ struct str *	b64_encode_cp(struct str *out, char const *cp,
 struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 			enum b64flags flags);
 
-/* Trim WS and make *work* point to the decodable range of *in*.
- * Return the amount of bytes a b64_decode operation on that buffer requires */
-size_t		b64_decode_prepare(struct str *work, struct str const *in);
-
-/* TODO B64_ISTEXT: b64_decode() docu is wrong, and will be even more later!
- * TODO and *rest* should be joined just as for qp_decode(), if at all */
-/* If *rest* is set then decoding will assume text input (strip CRs from CRLF
- * sequences, only create output when complete lines have been read),
- * otherwise binary input is assumed and each round will produce output.
+/* If *rest* is set then decoding will assume text input.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
- * If *len* was 0 on input, b64_decode_prepare() will be called to init it and
- * "adjust *in*", but otherwise it is assumed that this yet happened.
  * Returns OKAY or STOP on error (in which case *out* is set to an error
  * message); caller is responsible to free buffers.
  */
-int		b64_decode(struct str *out, struct str const *in, size_t len,
+int		b64_decode(struct str *out, struct str const *in,
 			struct str *rest);
 
 /*
@@ -667,7 +684,7 @@ struct name *	lextract(char const *line, enum gfield ntype);
 char *		detract(struct name *np, enum gfield ntype);
 
 struct name *	checkaddrs(struct name *np);
-struct name *	usermap(struct name *names);
+struct name *	usermap(struct name *names, bool_t force_metoo);
 struct name *	elide(struct name *names);
 struct name *	delete_alternates(struct name *np);
 int		is_myname(char const *name);
@@ -883,26 +900,42 @@ char const *	asccasestr(char const *haystack, char const *xneedle);
  * struct str related support funs
  */
 
-/* *self* is srealloc()ed */
-struct str *	str_dup(struct str *self, struct str const *t
+/* *self->s* is srealloc()ed */
+struct str *	n_str_dup(struct str *self, struct str const *t
 			SMALLOC_DEBUG_ARGS);
+
+/* *self->s* is srealloc()ed, *self->l* incremented */
+struct str *	n_str_add_buf(struct str *self, char const *buf, size_t buflen
+			SMALLOC_DEBUG_ARGS);
+#define n_str_add(S, T)		n_str_add_buf(S, (T)->s, (T)->l)
+#define n_str_add_cp(S, CP)	n_str_add_buf(S, CP, (CP) ? strlen(CP) : 0)
+
 #ifdef HAVE_ASSERTS
-# define str_dup(S,T)	str_dup(S, T, __FILE__, __LINE__)
+# define n_str_dup(S,T)		n_str_dup(S, T, __FILE__, __LINE__)
+# define n_str_add_buf(S,B,BL)	n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
 /*
- * Our (fault-tolerant) iconv(3) wrappers
+ * Our iconv(3) wrappers
  */
 
 #ifdef HAVE_ICONV
-iconv_t iconv_open_ft(char const *tocode, char const *fromcode);
-size_t iconv_ft(iconv_t cd, char const **inb, size_t *inbleft,
-		char **outb, size_t *outbleft, int tolerant);
+iconv_t		n_iconv_open(char const *tocode, char const *fromcode);
+/* If *cd* == *iconvd*, assigns -1 to the latter */
+void		n_iconv_close(iconv_t cd);
 
-/* Convert *in* to *out*, return an error code; with *tolerant*, be more so.
- * *out* is srealloc()ed as necessary! */
-int		str_iconv(iconv_t icp, struct str *out, struct str const *in,
-			bool_t tolerant);
+/* Reset encoding state */
+void		n_iconv_reset(iconv_t cd);
+
+/* iconv(3), but return *errno* or 0; *skipilseq* forces step over illegal byte
+ * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*
+ * and *in_rest_or_null* may be the same object.
+ * Note: EINVAL (incomplete sequence at end of input) is NOT handled, so the
+ * replacement character must be added manually if that happens at EOF! */
+int		n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,
+			char **outb, size_t *outbleft, bool_t skipilseq);
+int		n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
+			struct str *in_rest_or_null, bool_t skipilseq);
 #endif
 
 /* thread.c */
@@ -928,7 +961,10 @@ void	assign(char const *name, char const *value);
 
 int	unset_internal(char const *name);
 
-char *vcopy(const char *str);
+/* Copy a variable string into heap memory, and free such allocated space */
+char *	vcopy(char const *str);
+void	vfree(char *vstr);
+
 char *value(const char *name);
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);

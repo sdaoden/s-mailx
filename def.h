@@ -57,9 +57,6 @@
 #  define MAXPATHLEN	1024
 # endif
 #endif
-#ifndef PATHSIZE
-# define PATHSIZE	MAXPATHLEN	/* Size of pathnames throughout */
-#endif
 #if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
 # define LINESIZE	BUFSIZ		/* max readable line width */
 #else
@@ -71,12 +68,20 @@
 #define HSHSIZE		59		/* Hash size for aliases and vars */
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
+#define DATE_DAYSYEAR	365L
+#define DATE_SECSMIN	60L
+#define DATE_MINSHOUR	60L
+#define DATE_HOURSDAY	24L
+#define DATE_SECSDAY	(DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
 #define ESCAPE		'~'		/* Default escape for sending */
 
 #define CBAD		(-15555)
 
 #define SHELL		"/bin/sh"
+#define LISTER		"ls"
+#define PAGER_BSD	"more"
+#define PAGER_SYSV	"pg"
 
 /*
  * Funs, CC support etc.
@@ -88,6 +93,9 @@
 #define MIN(A, B)	((A) < (B) ? (A) : (B))
 #undef MAX
 #define MAX(A, B)	((A) < (B) ? (B) : (A))
+#undef ABS
+#define ABS(A)		((A) < 0 ? -(A) : (A))
+
 #define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
 #define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
 
@@ -270,11 +278,12 @@ enum mimecontent {
 
 enum tdflags {
 	TD_NONE		= 0,	/* no display conversion */
-	TD_ISPR		= 01,	/* use isprint() checks */
-	TD_ICONV	= 02,	/* use iconv() */
-	TD_DELCTRL	= 04,	/* delete control characters */
+	TD_ISPR		= 1<<0,	/* use isprint() checks */
+	TD_ICONV	= 1<<1,	/* use iconv() */
+	TD_DELCTRL	= 1<<2,	/* delete control characters */
+	TD_EOF		= 1<<3,	/* EOF seen, last round! */
 
-	_TD_BUFCOPY	= 010	/* Buffer may be constant, copy it */
+	_TD_BUFCOPY	= 1<<4	/* Buffer may be constant, copy it */
 };
 
 enum protocol {

@@ -95,8 +95,8 @@ get_pager(void)
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
-		cp = value("bsdcompat") ? "more" : "pg";
-	return (cp);
+		cp = value("bsdcompat") ? PAGER_BSD : PAGER_SYSV;
+	return cp;
 }
 
 int 
@@ -107,6 +107,8 @@ headers(void *v)
 	struct message *mp, *mq, *lastmq = NULL;
 	int size;
 	enum mflag	fl = MNEW|MFLAGGED;
+
+	time_current_update(&time_current, FAL0);
 
 	size = screensize();
 	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
@@ -319,6 +321,9 @@ from(void *v)
 	char *cp;
 	FILE *volatile obuf = stdout;
 
+	time_current_update(&time_current, FAL0);
+
+	/* TODO unfixable memory leaks still */
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
@@ -405,25 +410,55 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 static void
 hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 {
+	char datebuf[FROM_DATEBUF], *subjline, *cp;
 	struct str in, out;
-	char const *fp;
+	char const *datefmt, *date, *name, *fp;
+	int B, c, i, n, s, fromlen, subjlen = scrnwidth, isto = 0, isaddr = 0;
 	struct message *mp = &message[mesg - 1];
-	char *subjline, *cp, datebuf[FROM_DATEBUF];
-	char const *name, *date;
-	int B, c, i, n, s, fromlen,
-		subjlen = scrnwidth, isto = 0, isaddr = 0;
+	time_t datet = mp->m_time;
 
 	date = NULL;
-	if (value("datefield")) {
-		char *x = hfield1("date", mp);
-		if (x != NULL)
-			date = fakedate(rfctime(x));
-	} else if ((mp->m_flag & MNOFROM) == 0) {
+	if ((datefmt = value("datefield")) != NULL) {
+		fp = hfield1("date", mp);/* TODO use m_date field! */
+		if (fp == NULL) {
+			datefmt = NULL;
+			goto jdate_set;
+		}
+		datet = rfctime(fp);
+		date = fakedate(datet);
+		fp = value("datefield-markout-older");
+		i = (*datefmt != '\0');
+		if (fp != NULL)
+			i |= (*fp != '\0') ? 2 | 4 : 2;
+		/* May we strftime(3)? */
+		if (i & (1 | 4))
+			memcpy(&time_current.tc_local, localtime(&datet),
+				sizeof time_current.tc_local);
+		if ((i & 2) && (datet > time_current.tc_time ||
+#define _6M	((DATE_DAYSYEAR / 2) * DATE_SECSDAY)
+				(datet + _6M < time_current.tc_time))) {
+#undef _6M
+			if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
+				memset(datebuf, ' ', FROM_DATEBUF); /* xxx ur */
+				memcpy(datebuf + 4, date + 4, 7);
+				datebuf[4 + 7] = ' ';
+				memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
+				datebuf[4 + 7 + 1 + 4] = '\0';
+				date = datebuf;
+			}
+		} else if ((i & 1) == 0)
+			datefmt = NULL;
+	} else if (datet == (time_t)0 && (mp->m_flag & MNOFROM) == 0) {
+		/* TODO eliminate this path, query the FROM_ date in setptr(),
+		 * TODO all other codepaths do so by themselves ALREADY ?????
+		 * TODO assert(mp->m_time != 0);, then
+		 * TODO ALSO changes behaviour of markout-non-current */
 		_parse_head(mp, datebuf);
 		date = datebuf;
+	} else {
+jdate_set:
+		date = fakedate(datet);
 	}
-	if (date == NULL)
-		date = fakedate(mp->m_time);
 
 	if ((subjline = hfield1("subject", mp)) == NULL) {
 		out.s = NULL;
@@ -465,13 +500,14 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 			name = prstr(skin(name));
 		}
 	}
+
 	for (fp = fmt; *fp; fp++) {
 		if (*fp == '%') {
 			if (*++fp == '-') {
 				fp++;
 			} else if (*fp == '+')
 				fp++;
-			while (digitchar(*fp&0377))
+			while (digitchar(*fp))
 				fp++;
 			if (*fp == '\0')
 				break;
@@ -495,8 +531,9 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				fp++;
 		}
 	}
+
 	for (fp = fmt; *fp; fp++) {
-		if (*fp == '%') {
+		if ((c = *fp & 0xFF) == '%') {
 			B = 0;
 			n = 0;
 			s = 1;
@@ -505,29 +542,28 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				fp++;
 			} else if (*fp == '+')
 				fp++;
-			if (digitchar(*fp&0377)) {
+			if (digitchar(*fp)) {
 				do
 					n = 10*n + *fp - '0';
-				while (fp++, digitchar(*fp&0377));
+				while (fp++, digitchar(*fp));
 			}
 			if (*fp == '\0')
 				break;
 			n *= s;
-			switch (*fp) {
+			switch ((c = *fp & 0xFF)) {
 			case '%':
-				putc('%', f);
-				subjlen--;
-				break;
+				goto jputc;
 			case '>':
 			case '<':
-				c = dot == mp ? *fp&0377 : ' ';
-				putc(c, f);
-				subjlen--;
-				break;
+				if (dot != mp)
+					c = ' ';
+				goto jputc;
 			case 'a':
 				c = dispc(mp, attrlist);
-				putc(c, f);
-				subjlen--;
+jputc:
+				n = fprintf(f, "%*c", n, c);
+				if (n >= 0)
+					subjlen -= n;
 				break;
 			case 'm':
 				if (n == 0) {
@@ -539,17 +575,35 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				subjlen -= fprintf(f, "%*d", n, mesg);
 				break;
 			case 'f':
-				if (n <= 0)
+				if (n == 0) {
 					n = 18;
-				fromlen = n;
-				if (isto)
+					if (s < 0)
+						n = -n;
+				}
+				fromlen = ABS(n);
+				if (isto) /* XXX tr()! */
 					fromlen -= 3;
 				fprintf(f, "%s%s", isto ? "To " : "",
-						colalign(name, fromlen, 1));
-				subjlen -= n;
+						colalign(name, fromlen, n));
+				subjlen -= ABS(n);
 				break;
 			case 'd':
-				if (n <= 0)
+				if (datefmt != NULL) {
+					i = strftime(datebuf, sizeof datebuf,
+						datefmt,
+						&time_current.tc_local);
+					if (i != 0)
+						date = datebuf;
+					else
+						fprintf(stderr, tr(174,
+							"Ignored date format, "
+							"it excesses the "
+							"target buffer "
+							"(%lu bytes)\n"),
+							(ul_it)sizeof datebuf);
+					datefmt = NULL;
+				}
+				if (n == 0)
 					n = 16;
 				subjlen -= fprintf(f, "%*.*s", n, n, date);
 				break;
@@ -580,13 +634,15 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				B = 1;
 				/*FALLTHRU*/
 			case 's':
-				n = n>0 ? n : subjlen - 2;
+				n = (n != 0) ? n : subjlen - 2;
+				if (n > 0 && s < 0)
+					n = -n;
 				if (B)
 					n -= 2;
-				if (subjline != NULL && n >= 0) {
+				if (subjline != NULL && n != 0) {
 					/* pretty pathetic */
 					fprintf(f, B ? "\"%s\"" : "%s",
-						colalign(subjline, n, 0));
+						colalign(subjline, ABS(n), n));
 				}
 				break;
 			case 'U':
@@ -594,11 +650,11 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				if (n == 0)
 					n = 9;
 				subjlen -= fprintf(f, "%*lu", n, mp->m_uid);
-#else
-				putc('?', f);
-				--subjlen;
-#endif
 				break;
+#else
+				c = '?';
+				goto jputc;
+#endif
 			case 'e':
 				if (n == 0)
 					n = 2;
@@ -621,14 +677,14 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 				if (n == 0)
 					n = 6;
 				subjlen -= fprintf(f, "%*g", n, mp->m_score);
-#else
-				putc('?', f);
-				--subjlen;
-#endif
 				break;
+#else
+				c = '?';
+				goto jputc;
+#endif
 			}
 		} else
-			putc(*fp&0377, f);
+			putc(c, f);
 	}
 	putc('\n', f);
 
@@ -698,10 +754,6 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 	return indent;
 }
 
-/*
- * Print out the header of a specific message.
- * This is a slight improvement to the standard one.
- */
 void
 printhead(int mesg, FILE *f, int threaded)
 {
@@ -722,8 +774,8 @@ printhead(int mesg, FILE *f, int threaded)
 		value("bsdheadline") != NULL;
 	if ((fmt = value("headline")) == NULL)
 		fmt = bsdheadline ?
-			"%>%a%m %20f  %16d %3l/%-5o %i%S" :
-			"%>%a%m %18f %16d %4l/%-5o %i%s";
+			"%>%a%m %-20f  %16d %3l/%-5o %i%-S" :
+			"%>%a%m %-18f %16d %4l/%-5o %i%-s";
 	hprf(fmt, mesg, f, threaded, attrlist);
 }
 
@@ -1174,14 +1226,16 @@ mboxit(void *v)
 int 
 folders(void *v)
 {
-	char dirname[PATHSIZE], *name, **argv = v;
+	char dirname[MAXPATHLEN], *name, **argv = v;
 	char const *cmd;
 
-	if (*argv && (name = expand(*argv)) == NULL)
-		return (1);
-	else if (getfold(dirname, sizeof dirname) < 0) {
+	if (*argv) {
+		name = expand(*argv);
+		if (name == NULL)
+			return 1;
+	} else if (getfold(dirname, sizeof dirname) < 0) {
 		fprintf(stderr, tr(20, "No value set for \"folder\"\n"));
-		return (1);
+		return 1;
 	} else
 		name = dirname;
 
@@ -1189,12 +1243,12 @@ folders(void *v)
 #ifdef USE_IMAP
 		imap_folders(name, *argv == NULL);
 #else
-		return (ccmdnotsupp(NULL));
+		return ccmdnotsupp(NULL);
 #endif
 	} else {
 		if ((cmd = value("LISTER")) == NULL)
-			cmd = "ls";
+			cmd = LISTER;
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
-	return (0);
+	return 0;
 }

@@ -63,6 +63,7 @@ struct mtnode {
 
 static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 			*const _mt_sources[] = {
+		/* XXX Order fixed due to *mimetypes-load-control* handling! */
 		MIME_TYPES_USR, MIME_TYPES_SYS, NULL
 	},
 			*const _mt_bltin[] = {
@@ -81,8 +82,8 @@ static void	__mt_add_line(char const *line, struct mtnode **tail);
 static enum conversion _conversion_by_encoding(void);
 
 /* fwrite(3) while checking for displayability */
-static size_t	_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
-			char const *prefix, size_t prefixlen);
+static size_t	_fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
+			struct str *rest, char const *prefix, size_t prefixlen);
 
 static size_t	delctrl(char *cp, size_t sz);
 static int has_highbit(register const char *s);
@@ -101,14 +102,31 @@ _mt_init(void)
 	struct mtnode *tail = NULL;
 	char *line = NULL;
 	size_t linesize = 0;
-	char const *const*srcs;
+	ui_it idx, idx_ok;
+	char const *ccp, *const*srcs;
 	FILE *fp;
 
-	for (srcs = _mt_sources; *srcs != NULL; ++srcs) {
-		char const *fn = file_expand(*srcs);
-		if (fn == NULL)
+	if ((ccp = value("mimetypes-load-control")) == NULL)
+		idx_ok = (ui_it)-1;
+	else for (idx_ok = 0; *ccp != '\0'; ++ccp)
+		switch (*ccp) {
+		case 'S':
+		case 's':
+			idx_ok |= 1 << 1;
+			break;
+		case 'U':
+		case 'u':
+			idx_ok |= 1 << 0;
+			break;
+		default:
+			/* XXX bad *mimetypes-load-control*; log error? */
+			break;
+		}
+
+	for (idx = 1, srcs = _mt_sources; *srcs != NULL; idx <<= 1, ++srcs) {
+		if ((idx & idx_ok) == 0 || (ccp = file_expand(*srcs)) == NULL)
 			continue;
-		if ((fp = Fopen(fn, "r")) == NULL) {
+		if ((fp = Fopen(ccp, "r")) == NULL) {
 			/*fprintf(stderr, tr(176, "Cannot open %s\n"), fn);*/
 			continue;
 		}
@@ -191,12 +209,12 @@ _conversion_by_encoding(void)
 }
 
 static size_t
-_fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
-	char const *prefix, size_t prefixlen)
+_fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
+	struct str *rest, char const *prefix, size_t prefixlen)
 {
 	/* TODO note: after send/MIME layer rewrite we will have a string pool
 	 * TODO so that memory allocation count drops down massively; for now,
-	 * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
+	 * TODO v14.* that is, we pay a lot & heavily depend on the allocator */
 	/* TODO well if we get a broken pipe here, and it happens to
 	 * TODO happen pretty easy when sleeping in a full pipe buffer,
 	 * TODO then the current codebase performs longjump away;
@@ -206,51 +224,62 @@ _fwrite_td(char *ptr, size_t size, FILE *f, enum tdflags flags,
 	 * TODO the storage must come from the outside or be tracked
 	 * TODO in a carrier struct.  Best both.  But storage reuse
 	 * TODO would be a bigbig win besides */
+	/* *input* _may_ point to non-modifyable buffer; but even then it only
+	 * needs to be dup'ed away if we have to transform the content */
 	struct str in, out;
 
-	in.s = ptr;
-	in.l = size;
+	in = *input;
 	out.s = NULL;
 	out.l = 0;
 
-	if (! (
 #ifdef HAVE_ICONV
-		((flags & TD_ICONV) && iconvd != (iconv_t)-1) ||
-#endif
-			(flags & (TD_ISPR|TD_DELCTRL|_TD_BUFCOPY))
-			== (TD_DELCTRL|_TD_BUFCOPY)))
-		flags &= ~(TD_ICONV|_TD_BUFCOPY);
+	if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
+		char *buf = NULL;
 
-#ifdef HAVE_ICONV
-	if (flags & TD_ICONV) {
-		/* TODO leftover data (incomplete multibyte sequences) not
-		 * TODO handled, leads to many skipped over data
-		 * TODO send/MIME rewrite: don't assume complete input line is
-		 * TODO a complete output line, PLUS */
-		(void)str_iconv(iconvd, &out, &in, TRU1); /* XXX ERRORS?! */
+		if (rest != NULL && rest->l > 0) {
+			in.l = rest->l + input->l;
+			in.s = buf = smalloc(in.l + 1);
+			memcpy(in.s, rest->s, rest->l);
+			memcpy(in.s + rest->l, input->s, input->l);
+			rest->l = 0;
+
+		}
+		if (n_iconv_str(iconvd, &out, &in, &in, TRU1) != 0 &&
+				rest != NULL && in.l > 0) {
+			/* Incomplete multibyte at EOF is special */
+			if (flags & TD_EOF) {
+				out.s = srealloc(out.s, out.l + 4);
+				out.s[out.l++] = '[';
+				out.s[out.l++] = '?'; /* TODO 0xFFFD !!! */
+				out.s[out.l++] = ']';
+			} else
+				(void)n_str_add(rest, &in);
+		}
 		in = out;
-	} else
-#endif
-	if (flags & _TD_BUFCOPY) {
-		str_dup(&out, &in);
-		in = out;
+		out.s = NULL;
+		flags &= ~_TD_BUFCOPY;
+
+		if (buf != NULL)
+			free(buf);
 	}
+#endif
 
 	if (flags & TD_ISPR)
 		makeprint(&in, &out);
-	else {
-		out.s = in.s;
-		out.l = in.l;
-	}
+	else if (flags & _TD_BUFCOPY)
+		n_str_dup(&out, &in);
+	else
+		out = in;
 	if (flags & TD_DELCTRL)
 		out.l = delctrl(out.s, out.l);
-	size = prefixwrite(out.s, out.l, f, prefix, prefixlen);
+
+	out.l = prefixwrite(out.s, out.l, f, prefix, prefixlen);
 
 	if (out.s != in.s)
 		free(out.s);
-	if (in.s != ptr)
+	if (in.s != input->s)
 		free(in.s);
-	return size;
+	return out.l;
 }
 
 static size_t
@@ -566,30 +595,8 @@ int
 mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	int *do_iconv)
 {
-	/* TODO In the future the handling of charsets is likely to change.
-	 * TODO If no *sendcharsets* are set then for text parts LC_ALL /
-	 * TODO *ttycharset* is simply passed through (ditto attachments unless
-	 * TODO specific charsets have been set in per-attachment level), i.e.,
-	 * TODO no conversion at all.
-	 * TODO If *sendcharsets* is set, then the input is converted to the
-	 * TODO desired sendcharset, and once the charset that can handle the
-	 * TODO input has been found the MIME classification takes place *on
-	 * TODO that converted data* and once.
-	 * TODO Until then the MIME classification takes place on the input
-	 * TODO data, i.e., before actual charset conversion, though the MIME
-	 * TODO classifier may adjust the output character set, though on false
-	 * TODO assumptions that may not always work for the desired output
-	 * TODO charset (???).
-	 * TODO The new approach sounds more sane to me whatsoever.
-	 * TODO It has the side effect that iconv() is applied to the text even
-	 * TODO if that is 7bit clean, however, *iff* *sendcharsets* is set.
-	 * TODO drop *charset* and *do_iconv* parameters, then; need to report
-	 * TODO a "classify as binary charset", though.
-	 * TODO And note that even the new approach will not allow RFC 2045
-	 * TODO compatible base64 \n -> \r\n conversion even if we would make
-	 * TODO a difference for _ISTXT, because who knows wether we deal with
-	 * TODO multibyte encoded data?  We would need to be multibyte-aware!!
-	 * TODO BTW., after the MIME/send layer rewrite we could use a MIME
+	/* TODO classify once only PLEASE PLEASE PLEASE */
+	/* TODO BTW., after the MIME/send layer rewrite we could use a MIME
 	 * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
 	 * TODO and report that state to the outer world */
 #define F_		"From "
@@ -599,13 +606,14 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	enum {	_CLEAN		= 0,	/* Plain RFC 2822 message */
 		_NCTT		= 1<<0,	/* *contenttype == NULL */
 		_ISTXT		= 1<<1,	/* *contenttype =~ text/ */
-		_HIGHBIT	= 1<<2,	/* Not 7bit clean */
-		_LONGLINES	= 1<<3,	/* MIME_LINELEN_LIMIT exceed. */
-		_CTRLCHAR	= 1<<4,	/* Control characters seen */
-		_HASNUL		= 1<<5,	/* Contains \0 characters */
-		_NOTERMNL	= 1<<6,	/* Lacks a final newline */
-		_TRAILWS	= 1<<7,	/* Blanks before NL */
-		_FROM_		= 1<<8	/* ^From_ seen */
+		_ISTXTCOK	= 1<<2,	/* _ISTXT+*mime-allow-text-controls* */
+		_HIGHBIT	= 1<<3,	/* Not 7bit clean */
+		_LONGLINES	= 1<<4,	/* MIME_LINELEN_LIMIT exceed. */
+		_CTRLCHAR	= 1<<5,	/* Control characters seen */
+		_HASNUL		= 1<<6,	/* Contains \0 characters */
+		_NOTERMNL	= 1<<7,	/* Lacks a final newline */
+		_TRAILWS	= 1<<8,	/* Blanks before NL */
+		_FROM_		= 1<<9	/* ^From_ seen */
 	} ctt = _CLEAN;
 	enum conversion convert;
 	sl_it curlen;
@@ -618,7 +626,8 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	if (*contenttype == NULL)
 		ctt = _NCTT;
 	else if (ascncasecmp(*contenttype, "text/", 5) == 0)
-		ctt = _ISTXT;
+		ctt = value("mime-allow-text-controls")
+			? _ISTXT | _ISTXTCOK : _ISTXT;
 	convert = _conversion_by_encoding();
 
 	if (fsize(fp) == 0)
@@ -631,7 +640,9 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
 		if (c == '\0') {
 			ctt |= _HASNUL;
-			break;
+			if ((ctt & _ISTXTCOK) == 0)
+				break;
+			continue;
 		}
 		if (c == '\n' || c == EOF) {
 			if (curlen >= MIME_LINELEN_LIMIT)
@@ -672,7 +683,8 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 			if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
 				continue;
 			ctt |= _HASNUL; /* Force base64 */
-			break;
+			if ((ctt & _ISTXTCOK) == 0)
+				break;
 		} else if (c & 0x80) {
 			ctt |= _HIGHBIT;
 			/* TODO count chars with HIGHBIT? libmagic?
@@ -695,10 +707,13 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
 	if (ctt & _HASNUL) {
 		convert = CONV_TOB64;
+		/* Don't overwrite a text content-type to allow UTF-16 and
+		 * such, but only on request;
+		 * Otherwise enforce what file(1)/libmagic(3) would suggest */
+		if (ctt & _ISTXTCOK)
+			goto jcharset;
 		if (ctt & (_NCTT|_ISTXT))
 			*contenttype = "application/octet-stream";
-		/* XXX Set *charset=binary only if not yet set as not to loose
-		 * XXX UTF-16 etc. character set information?? */
 		if (*charset == NULL)
 			*charset = "binary";
 		goto jleave;
@@ -717,6 +732,7 @@ j7bit:		convert = CONV_7BIT;
 		*contenttype = "text/plain";
 
 	/* Not an attachment with specified charset? */
+jcharset:
 	if (*charset == NULL)
 		*charset = (ctt & _HIGHBIT) ? _CHARSET() : charset_get_7bit();
 jleave:
@@ -860,32 +876,27 @@ jclear:
 	goto jleave;
 }
 
-#define	mime_fromhdr_inc(inc) { \
-		size_t diff = q - out->s; \
-		out->s = srealloc(out->s, (maxstor += inc) + 1); \
-		q = &(out->s)[diff]; \
-	}
 /*
- * Convert header fields from RFC 1522 format TODO no error handling at all
+ * Convert header fields from RFC 1522 format
+ * TODO mime_fromhdr(): NO error handling, fat; REWRITE **ASAP**
  */
 void 
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
 	struct str cin, cout;
-	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
+	char *p, *op, *upper, *cs, *cbeg;
 	char const *tcs;
 	int convert;
-	size_t maxstor, lastoutl = 0;
-#ifdef	HAVE_ICONV
+	size_t lastoutl = (size_t)-1;
+#ifdef HAVE_ICONV
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
 	tcs = charset_get_lc();
-	maxstor = in->l;
-	out->s = smalloc(maxstor + 1);
+	out->s = NULL;
 	out->l = 0;
 	upper = in->s + in->l;
-	for (p = in->s, q = out->s; p < upper; p++) {
+	for (p = in->s; p < upper;) {
 		op = p;
 		if (*p == '=' && *(p + 1) == '?') {
 			p += 2;
@@ -897,11 +908,11 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 			cs = salloc(++p - cbeg);
 			memcpy(cs, cbeg, p - cbeg - 1);
 			cs[p - cbeg - 1] = '\0';
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 			if (fhicd != (iconv_t)-1)
-				iconv_close(fhicd);
-			if (strcmp(cs, tcs))
-				fhicd = iconv_open_ft(tcs, cs);
+				n_iconv_close(fhicd);
+			if (asccasecmp(cs, tcs) != 0)
+				fhicd = n_iconv_open(tcs, cs);
 			else
 				fhicd = (iconv_t)-1;
 #endif
@@ -926,13 +937,14 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 					break;
 				cin.l++;
 			}
+			++p;
 			cin.l--;
 
 			cout.s = NULL;
 			cout.l = 0;
 			switch (convert) {
 				case CONV_FROMB64:
-					(void)b64_decode(&cout, &cin, 0, NULL);
+					(void)b64_decode(&cout, &cin, NULL);
 					break;
 				case CONV_FROMQP:
 					(void)qp_decode(&cout, &cin, NULL);
@@ -940,68 +952,41 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				default:
 					break;
 			}
-			if (lastwordend) {
-				q = lastwordend;
+			if (lastoutl != (size_t)-1)
 				out->l = lastoutl;
-			}
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 			if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
-				char const *iptr;
-				char *mptr, *nptr, *uptr;
-				size_t inleft, outleft;
-
-			again:	inleft = cout.l;
-				outleft = maxstor - out->l;
-				mptr = nptr = q;
-				uptr = nptr + outleft;
-				iptr = cout.s;
-				if (iconv_ft(fhicd, &iptr,&inleft,
-					&nptr, &outleft, 1) == (size_t)-1 &&
-						errno == E2BIG) {
-					iconv_ft(fhicd, NULL, NULL, NULL, NULL,
-						0);
-					mime_fromhdr_inc(inleft);
-					goto again;
-				}
-				/*
-				 * For state-dependent encodings,
-				 * reset the state here, assuming
-				 * that states are restricted to
-				 * single encoded-word parts.
-				 */
-				while (iconv_ft(fhicd, NULL, NULL,
-					&nptr, &outleft, 0) == (size_t)-1 &&
-						errno == E2BIG)
-					mime_fromhdr_inc(16);
-				out->l += uptr - mptr - outleft;
-				q += uptr - mptr - outleft;
+				cin.s = NULL, cin.l = 0; /* XXX string pool ! */
+				convert = n_iconv_str(fhicd, &cin, &cout,
+						NULL, TRU1);
+				out = n_str_add(out, &cin);
+				if (convert) /* EINVAL at EOS */
+					out = n_str_add_buf(out, "[?]", 3);
+				free(cin.s);
 			} else {
 #endif
-				while (cout.l > maxstor - out->l)
-					mime_fromhdr_inc(cout.l -
-							(maxstor - out->l));
-				memcpy(q, cout.s, cout.l);
-				q += cout.l;
-				out->l += cout.l;
-#ifdef	HAVE_ICONV
+				out = n_str_add(out, &cout);
+#ifdef HAVE_ICONV
 			}
 #endif
-			free(cout.s);
-			lastwordend = q;
 			lastoutl = out->l;
+			free(cout.s);
 		} else {
 notmime:
 			p = op;
-			while (out->l >= maxstor)
-				mime_fromhdr_inc(16);
-			*q++ = *p;
-			out->l++;
-			if (!blankchar(*p&0377))
-				lastwordend = NULL;
+			convert = 1;
+			while ((op = p + convert) < upper &&
+					(op[0] != '=' || op[1] != '?'))
+				++convert;
+			out = n_str_add_buf(out, p, convert);
+			p += convert;
+			if (! blankchar(p[-1]))
+				lastoutl = (size_t)-1;
 		}
 	}
+
 fromhdr_end:
-	*q = '\0';
+	out->s[out->l] = '\0';
 	if (flags & TD_ISPR) {
 		makeprint(out, &cout);
 		free(out->s);
@@ -1009,9 +994,9 @@ fromhdr_end:
 	}
 	if (flags & TD_DELCTRL)
 		out->l = delctrl(out->s, out->l);
-#ifdef	HAVE_ICONV
+#ifdef HAVE_ICONV
 	if (fhicd != (iconv_t)-1)
-		iconv_close(fhicd);
+		n_iconv_close(fhicd);
 #endif
 	return;
 }
@@ -1214,45 +1199,30 @@ jqp_retest:
 static size_t
 convhdra(char const *str, size_t len, FILE *fp)
 {
-#ifdef	HAVE_ICONV
-	char *cbuf = NULL;
+#ifdef HAVE_ICONV
+	struct str ciconv;
 #endif
 	struct str cin;
 	size_t ret = 0;
 
+	cin.s = UNCONST(str);
+	cin.l = len;
 #ifdef HAVE_ICONV
-	if (iconvd == (iconv_t)-1) {
-#endif
-		cin.s = UNCONST(str);
-		cin.l = len;
-#ifdef HAVE_ICONV
-	} else {
-		char *op;
-		char const *ip;
-		size_t osz, isz, cbufsz = (len << 1) - (len >> 2);
-
-jagain:		osz = cbufsz;
-		op = cbuf = ac_alloc(cbufsz);
-		ip = str;
-		isz = len;
-		if (iconv_ft(iconvd, &ip, &isz, &op, &osz, 0) == (size_t)-1) {
-			ac_free(cbuf);
-			if (errno != E2BIG)
-				goto jleave;
-			cbufsz += isz;
-			goto jagain;
-		}
-		cin.s = cbuf;
-		cin.l = cbufsz - osz;
+	ciconv.s = NULL;
+	if (iconvd != (iconv_t)-1) {
+		ciconv.l = 0;
+		if (n_iconv_str(iconvd, &ciconv, &cin, NULL, FAL0) != 0)
+			goto jleave;
+		cin = ciconv;
 	}
 #endif
 	ret = mime_write_tohdr(&cin, fp);
 #ifdef HAVE_ICONV
-	if (cbuf != NULL)
-		ac_free(cbuf);
 jleave:
+	if (ciconv.s != NULL)
+		free(ciconv.s);
 #endif
-	return (ret);
+	return ret;
 }
 
 /*
@@ -1511,7 +1481,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
 	if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
 			(convert == CONV_TOQP || convert == CONV_8BIT ||
 			convert == CONV_TOB64 || convert == CONV_TOHDR)) {
-		if (str_iconv(iconvd, &out, &in, FAL0) != 0) {
+		if (n_iconv_str(iconvd, &out, &in, NULL, FAL0) != 0) {
 			/* XXX report conversion error? */;
 			sz = -1;
 			goto jleave;
@@ -1536,13 +1506,13 @@ jconvert:
 	case CONV_FROMB64:
 		rest = NULL;
 	case CONV_FROMB64_T:
-		state = b64_decode(&out, &in, 0, rest);
+		state = b64_decode(&out, &in, rest);
 jqpb64_dec:
 		if ((sz = out.l) != 0) {
 			if (state != OKAY)
 				prefix = NULL, prefixlen = 0;
-			sz = _fwrite_td(out.s, out.l, f, dflags & ~_TD_BUFCOPY,
-				prefix, prefixlen);
+			sz = _fwrite_td(&out, f, dflags & ~_TD_BUFCOPY,
+				rest, prefix, prefixlen);
 		}
 		if (state != OKAY)
 			sz = -1;
@@ -1555,9 +1525,9 @@ jqpb64_enc:
 			sz = -1;
 		break;
 	case CONV_FROMHDR:
-		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-		sz = _fwrite_td(out.s, out.l, f, dflags & TD_DELCTRL,
-			prefix, prefixlen);
+		mime_fromhdr(&in, &out,
+			TD_ISPR|TD_ICONV | (dflags & TD_DELCTRL));
+		sz = prefixwrite(out.s, out.l, f, prefix, prefixlen);
 		break;
 	case CONV_TOHDR:
 		sz = mime_write_tohdr(&in, f);
@@ -1566,11 +1536,12 @@ jqpb64_enc:
 		sz = mime_write_tohdr_a(&in, f);
 		break;
 	default:
-		sz = _fwrite_td(in.s, in.l, f, dflags, prefix, prefixlen);
+		sz = _fwrite_td(&in, f, dflags, NULL, prefix, prefixlen);
+		break;
 	}
+jleave:
 	if (out.s != NULL)
 		free(out.s);
-jleave:
 	if (in.s != ptr)
 		free(in.s);
 	return sz;

@@ -303,7 +303,7 @@ __attach_iconv(struct attachment *ap)
 	size_t count, lbsize;
 	iconv_t icp;
 
-	if ((icp = iconv_open_ft(ap->a_charset, ap->a_input_charset))
+	if ((icp = n_iconv_open(ap->a_charset, ap->a_input_charset))
 			== (iconv_t)-1) {
 		if (errno == EINVAL)
 			goto jeconv;
@@ -335,7 +335,7 @@ __attach_iconv(struct attachment *ap)
 			goto jerr;
 		}
 
-		if (str_iconv(icp, &oul, &inl, FAL0) != 0)
+		if (n_iconv_str(icp, &oul, &inl, NULL, FAL0) != 0)
 			goto jeconv;
 		if ((inl.l=fwrite(oul.s, sizeof *oul.s, oul.l, fo)) != oul.l) {
 			perror(tr(196, "I/O write error occurred"));
@@ -353,7 +353,7 @@ jleave:
 	if (fi != NULL)
 		Fclose(fi);
 	if (icp != (iconv_t)-1)
-		iconv_close(icp);
+		n_iconv_close(icp);
 	return (fo != NULL);
 jeconv:
 	fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
