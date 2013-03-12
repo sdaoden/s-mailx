@@ -1704,7 +1704,7 @@ void
 imap_getheaders(int volatile bot, int top)
 {
 	sighandler_type	saveint, savepipe;
-	enum okay ok = STOP;
+	/* XXX enum okay ok = STOP;*/
 	int i, chunk = 256;
 
 	if (mb.mb_type == MB_CACHE)
@@ -1739,7 +1739,7 @@ imap_getheaders(int volatile bot, int top)
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
 		for (i = bot; i <= top; i += chunk) {
-			ok = imap_fetchheaders(&mb, message, i,
+			/*ok = */imap_fetchheaders(&mb, message, i,
 					i+chunk-1 < top ? i+chunk-1 : top);
 			if (interrupts)
 				onintr(0);

@@ -404,10 +404,12 @@ static int	reset_on_stop;			/* do a reset() if stopped */
 void 
 commands(void)
 {
-	int eofloop = 0;
-	int n, x;
+	int eofloop = 0, n;
 	char *linebuf = NULL, *av, *nv;
 	size_t linesize = 0;
+#ifdef USE_IMAP
+	int x;
+#endif
 
 	(void)&eofloop;
 	if (!sourcing) {
@@ -441,7 +443,9 @@ commands(void)
 						strcmp(av, "nopoll")) |
 					(nv && strcmp(nv, "noimap") &&
 					 	strcmp(nv, "nopoll"));
+#ifdef USE_IMAP
 				x = !(av || nv);
+#endif
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
