@@ -1,14 +1,126 @@
 S - n a i l  N e w s
 ====================
 
-  +-----------------------------------------------------------------------+
-  | No minor but bugfix releases (if any) are to be expected after v14.0, |
-  | unless the ENTIRE MIME and send layers have been rewritten.           |
-  | The cumulated result will end up as v15.0, but not before 2014.       |
-  +-----------------------------------------------------------------------+
+  The big big MIME and send layer rewrite will come and cumulate in
+  v15.0, most likely mid to late 2014.
+  Until then there is one more minor version to be expected, one that
+  fixes thread sorting, thread selection, adds a %n format for
+  *headline* and other minor stuff that springs into existence in the
+  meanwhile.  Then long time nothing.
+
+v14.1, 2013-03-12
+-----------------
+
+I want to give prominence to the following people that helped to
+improve S-nail(1) during this development cycle, in order of
+appearance: Martin Neitzel, Christos Zoulas, Stephen Isard, jgw@txo.org
+and Gavin Troy.
+
+Thank you very much, and best from Germany!
+
+- A fix for the quoted-printable codec: "message truncation" occurred
+  when a mail maliciously used a soft linebreak to escape the linebreak
+  of a completely empty line.
+  (That resulted in 0 written and 0 leftover bytes, a condition that was
+  declared erroneous back in november 2012 when i started handling I/O
+  errors.)
+
+- The "folders" command will work again when given an argument.
+  A fault of mine introduced in (cmd1.c: expand() may fail, 2012-10-23).
+
+- The Base64 codec has been touched again, and we are finally capable to
+  perform sequential decoding; this was targeted for the MIME/send layer
+  rewrite, but it actually was possible today.
+  The result as seen in ps(1), running on the Base64 encoded HTML5
+  standard (4622545 bytes HTML, with a NUL appended to force Base64
+  encoding, resulting in a 6244793 bytes email):
+
+   7420 s006  S+    2:22pm 0:10.65 plain-nail -f HTML5
+   1440 s006  S+    2:23pm 0:00.36 ./s-nail -f HTML5
+
+  (So the only thing that is left for a good throughput is sequential
+  decoding of quoted-printable encoded parts that maliciously use soft
+  linebreaks to convert an entire part to a single line.  And i've seen
+  that from Apple Mail.)
+
+- New option: *mime-allow-text-controls* (rather long manual entry).
+
+- *smtp-auth-password-user@host* and *smtp-auth-user-user@host* will
+  finally work!
+  (Reported by jgw@txo.org in November 2011, fixed by Gavin Troy in
+  January 2012.)
+
+- Most *headline* formats now do support the '-' left-alignment flag.
+  Note that you most likely have to change your *headline* accordingly.
+  (The still missing %n format is one reason why there will be v14.2.)
+
+- *datefield* and *datefield-markout-older* can now be set to
+  strftime(3) format strings (except %n).
+  (From Stephen Isard's wishlist.)
+
+- A possible SEGV has been found and also fixed by Stephen Isard.
+  (The "legendary" cross-world stereo fix!)
+
+- Wow!  S-nail will finally compile on GNU based Linux systems like
+  Slackware 14 etc.  (Found while hunting bug reported by
+  Stephen Isard.)
+
+- New option: *datefield-markout-older* can be used to choose
+  a different date display for mails that are older than six months,
+  in equal spirit to what POSIX describes for the -l option of the ls(1)
+  command (Stephen Isard).
+
+- (Exotic) Years are (would) now (be) interpreted correctly according to
+  RFC 5322, 4.3.
+
+- CRAM-MD5 usage has been fixed.
+
+- *folder* updates are now tracked when set, and we will show the
+  realpath(3) name of it, showing PREFIX..SUFFIX if that wouldn't fit on
+  the display.
+  Tracking updates made it also possible to perform other more expensive
+  tasks when setting *folder*, so that it is now possible to do
+  something like:
+
+    :set folder=$HOME
+    :set folder=~
+
+  et cetera (both ideas by Christos Zoulas).
+
+- Bugfix for the ~@ tilde-escape in non-interactive mode.
+  (readtty(): quick shot: work in pipelines (on non-TTY).., 2013-01-25)
+  introduced the possibility to "read data from the terminal" (STDIN
+  that is) in non-interactive mode.
+  The manual documents that attachment input must be terminated with an
+  empty line, but if that had been omitted, as in the example below, we
+  would have yet entered an endless loop.
+
+     $ cat <<_EOT | /s-nail -~ -s boom ./OUT
+    ~@
+    test.c
+    charset
+    _EOT
+
+- Alias expansion will now be performed for members of Reply-To: fields
+  (Martin Neitzel).
+
+- Decoding quoted-printable will now be more relaxed.
+  (Even though the standard says that users should be given a hint when
+  input is not absolutely clean; a possible warning will be added later,
+  when we have an error message ring.)
+
+- New option: *mimetypes-load-control* can be used to control which of
+  the mime.types resources will be loaded.
+
+- The builtin default mime.types have been extended a bit.
 
 v14.0, 2013-02-10
 -----------------
+
+I want to give prominence to the following people that helped to
+improve S-nail(1) during this development cycle, in order of
+appearance: John Dodson, Gianluca Ramunno, and Anon Ymous from the
+NetBSD project.
 
 Random notes
 ^^^^^^^^^^^^
