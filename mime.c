@@ -876,32 +876,27 @@ jclear:
 	goto jleave;
 }
 
-#define	mime_fromhdr_inc(inc) { \
-		size_t diff = q - out->s; \
-		out->s = srealloc(out->s, (maxstor += inc) + 1); \
-		q = &(out->s)[diff]; \
-	}
 /*
- * Convert header fields from RFC 1522 format TODO no error handling at all
+ * Convert header fields from RFC 1522 format
+ * TODO mime_fromhdr(): NO error handling, fat; REWRITE **ASAP**
  */
 void 
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
 	struct str cin, cout;
-	char *p, *q, *op, *upper, *cs, *cbeg, *lastwordend = NULL;
+	char *p, *op, *upper, *cs, *cbeg;
 	char const *tcs;
 	int convert;
-	size_t maxstor, lastoutl = 0;
+	size_t lastoutl = (size_t)-1;
 #ifdef HAVE_ICONV
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
 	tcs = charset_get_lc();
-	maxstor = in->l;
-	out->s = smalloc(maxstor + 1);
+	out->s = NULL;
 	out->l = 0;
 	upper = in->s + in->l;
-	for (p = in->s, q = out->s; p < upper; p++) {
+	for (p = in->s; p < upper;) {
 		op = p;
 		if (*p == '=' && *(p + 1) == '?') {
 			p += 2;
@@ -942,6 +937,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 					break;
 				cin.l++;
 			}
+			++p;
 			cin.l--;
 
 			cout.s = NULL;
@@ -956,65 +952,41 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				default:
 					break;
 			}
-			if (lastwordend) {
-				q = lastwordend;
+			if (lastoutl != (size_t)-1)
 				out->l = lastoutl;
-			}
 #ifdef HAVE_ICONV
 			if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
-				char const *iptr;
-				char *mptr, *nptr, *uptr;
-				size_t inleft, outleft;
-
-			again:	inleft = cout.l;
-				outleft = maxstor - out->l;
-				mptr = nptr = q;
-				uptr = nptr + outleft;
-				iptr = cout.s;
-				if (n_iconv_buf(fhicd, &iptr, &inleft, &nptr,
-						&outleft, TRU1) == E2BIG) {
-					n_iconv_reset(fhicd);
-					mime_fromhdr_inc(inleft);
-					goto again;
-				}
-				/*
-				 * For state-dependent encodings,
-				 * reset the state here, assuming
-				 * that states are restricted to
-				 * single encoded-word parts.
-				 */
-				while (n_iconv_buf(fhicd, NULL, NULL,
-						&nptr, &outleft, FAL0) == E2BIG)
-					mime_fromhdr_inc(16);
-				out->l += uptr - mptr - outleft;
-				q += uptr - mptr - outleft;
+				cin.s = NULL, cin.l = 0; /* XXX string pool ! */
+				convert = n_iconv_str(fhicd, &cin, &cout,
+						NULL, TRU1);
+				out = n_str_add(out, &cin);
+				if (convert) /* EINVAL at EOS */
+					out = n_str_add_buf(out, "[?]", 3);
+				free(cin.s);
 			} else {
-#endif /* HAVE_ICONV */
-				while (cout.l > maxstor - out->l)
-					mime_fromhdr_inc(cout.l -
-							(maxstor - out->l));
-				memcpy(q, cout.s, cout.l);
-				q += cout.l;
-				out->l += cout.l;
+#endif
+				out = n_str_add(out, &cout);
 #ifdef HAVE_ICONV
 			}
 #endif
-			free(cout.s);
-			lastwordend = q;
 			lastoutl = out->l;
+			free(cout.s);
 		} else {
 notmime:
 			p = op;
-			while (out->l >= maxstor)
-				mime_fromhdr_inc(16);
-			*q++ = *p;
-			out->l++;
-			if (!blankchar(*p&0377))
-				lastwordend = NULL;
+			convert = 1;
+			while ((op = p + convert) < upper &&
+					(op[0] != '=' || op[1] != '?'))
+				++convert;
+			out = n_str_add_buf(out, p, convert);
+			p += convert;
+			if (! blankchar(p[-1]))
+				lastoutl = (size_t)-1;
 		}
 	}
+
 fromhdr_end:
-	*q = '\0';
+	out->s[out->l] = '\0';
 	if (flags & TD_ISPR) {
 		makeprint(out, &cout);
 		free(out->s);
