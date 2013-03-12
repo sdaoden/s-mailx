@@ -42,15 +42,16 @@
  * def.h must be included first.
  */
 
+/* These two come from version.c */
+extern char const *const uagent;	/* User agent */
+extern char const *const version;	/* The version string */
+
 #ifdef _MAIL_GLOBS_
 # undef _E
 # define _E
 #else
 # define _E	extern
 #endif
-
-_E char const *const uagent;		/* User agent */
-_E char const *const version;		/* The version string */
 
 _E gid_t	effectivegid;		/* Saved from when we started up */
 _E gid_t	realgid;		/* Saved from when we started up */
