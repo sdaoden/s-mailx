@@ -883,6 +883,9 @@ jclear:
 void 
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
+	/* TODO mime_fromhdr(): is called with strings that contain newlines;
+	 * TODO this is the usual newline problem all around the codebase;
+	 * TODO i.e., if we strip it, then the display misses it ;} */
 	struct str cin, cout;
 	char *p, *op, *upper, *cs, *cbeg;
 	char const *tcs;
@@ -892,11 +895,18 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
-	tcs = charset_get_lc();
-	out->s = NULL;
 	out->l = 0;
-	upper = in->s + in->l;
-	for (p = in->s; p < upper;) {
+	if (in->l == 0) {
+		*(out->s = smalloc(1)) = '\0';
+		goto jleave;
+	}
+	out->s = NULL;
+
+	tcs = charset_get_lc();
+	p = in->s;
+	upper = p + in->l;
+
+	while (p < upper) {
 		op = p;
 		if (*p == '=' && *(p + 1) == '?') {
 			p += 2;
@@ -904,7 +914,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 			while (p < upper && *p != '?')
 				p++;	/* strip charset */
 			if (p >= upper)
-				goto notmime;
+				goto jnotmime;
 			cs = salloc(++p - cbeg);
 			memcpy(cs, cbeg, p - cbeg - 1);
 			cs[p - cbeg - 1] = '\0';
@@ -924,15 +934,15 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 				convert = CONV_FROMQP;
 				break;
 			default:	/* invalid, ignore */
-				goto notmime;
+				goto jnotmime;
 			}
 			if (*++p != '?')
-				goto notmime;
+				goto jnotmime;
 			cin.s = ++p;
 			cin.l = 1;
 			for (;;) {
-				if (p == upper)
-					goto fromhdr_end;
+				if (p + 1 >= upper)
+					goto jnotmime;
 				if (*p++ == '?' && *p == '=')
 					break;
 				cin.l++;
@@ -942,16 +952,14 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
 			cout.s = NULL;
 			cout.l = 0;
-			switch (convert) {
-				case CONV_FROMB64:
-					(void)b64_decode(&cout, &cin, NULL);
-					break;
-				case CONV_FROMQP:
-					(void)qp_decode(&cout, &cin, NULL);
-					break;
-				default:
-					break;
-			}
+			if (convert == CONV_FROMB64) {
+				/* XXX Take care for, and strip LF from
+				 * XXX [Invalid Base64 encoding ignored] */
+				if (b64_decode(&cout, &cin, NULL) == STOP &&
+						cout.s[cout.l - 1] == '\n')
+					--cout.l;
+			} else
+				(void)qp_decode(&cout, &cin, NULL);
 			if (lastoutl != (size_t)-1)
 				out->l = lastoutl;
 #ifdef HAVE_ICONV
@@ -972,7 +980,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 			lastoutl = out->l;
 			free(cout.s);
 		} else {
-notmime:
+jnotmime:
 			p = op;
 			convert = 1;
 			while ((op = p + convert) < upper &&
@@ -984,9 +992,8 @@ notmime:
 				lastoutl = (size_t)-1;
 		}
 	}
-
-fromhdr_end:
 	out->s[out->l] = '\0';
+
 	if (flags & TD_ISPR) {
 		makeprint(out, &cout);
 		free(out->s);
@@ -998,6 +1005,7 @@ fromhdr_end:
 	if (fhicd != (iconv_t)-1)
 		n_iconv_close(fhicd);
 #endif
+jleave:
 	return;
 }
 
