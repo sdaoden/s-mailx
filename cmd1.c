@@ -460,10 +460,9 @@ jdate_set:
 		date = fakedate(datet);
 	}
 
-	if ((subjline = hfield1("subject", mp)) == NULL) {
-		out.s = NULL;
-		out.l = 0;
-	} else {
+	out.s = NULL;
+	out.l = 0;
+	if ((subjline = hfield1("subject", mp)) != NULL) {
 		in.s = subjline;
 		in.l = strlen(subjline);
 		mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);

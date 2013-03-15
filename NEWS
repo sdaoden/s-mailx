@@ -8,8 +8,8 @@ S - n a i l  N e w s
   *headline* and other minor stuff that springs into existence in the
   meanwhile.  Then long time nothing.
 
-v14.1, 2013-03-12
------------------
+v14.2, 2013-03-15 [v14.1, 2013-03-12]
+-------------------------------------
 
 I want to give prominence to the following people that helped to
 improve S-nail(1) during this development cycle, in order of
@@ -17,6 +17,12 @@ appearance: Martin Neitzel, Christos Zoulas, Stephen Isard, jgw@txo.org
 and Gavin Troy.
 
 Thank you very much, and best from Germany!
+
++ v14.2 differs from v14.1 only by one commit, one that fixes
+  (mime_fromhdr(): partial rewrite using n_iconv_str(), 2013-03-12),
+  which i hastily implemented just hours before the release of v14.1,
+  and simply shouldn't have made it (into there).
+  The v14.1 tarball has been removed from the server.
 
 - A fix for the quoted-printable codec: "message truncation" occurred
   when a mail maliciously used a soft linebreak to escape the linebreak
