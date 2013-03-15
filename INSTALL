@@ -90,7 +90,7 @@ been overhauled completely the Makefile will overwrite your preferred
 compiler flags with a simple (and POSIX-compliant) -O1.
 
 - NetBSD 6.0 and 6.99.17.
-- Slackware 14.0 with clang 3.0.
+- Slackware 14.0 with clang 3.0 and gcc(1).
 - DragonFly BSD v3.2.1.9-g80b03f-RELEASE.
   (*All* optional dependencies turn to green on this one!)
 - FreeBSD 9.0 with CC=clang(1) and CC=gcc(1).
