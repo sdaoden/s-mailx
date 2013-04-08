@@ -974,7 +974,9 @@ loop:	if (name) {
 			 */
 			vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
-			if ((cp = value(vn)) != NULL)
+			cp = value(vn);
+			ac_free(vn);
+			if (cp != NULL)
 				goto open;
 			np = np->n_flink;
 		}
@@ -993,7 +995,7 @@ loop:	if (name) {
 		fputc('\n', stderr);
 	}
 	return NULL;
-open:	vn = cp;
+open:
 	if ((cp = file_expand(cp)) == NULL)
 		return (NULL);
 	if ((fp = Fopen(cp, "r")) == NULL) {

@@ -1347,9 +1347,9 @@ account(void *v)
 	struct oldaccount	*a;
 	char	*cp;
 	int	i, mc, oqf, nqf;
-	FILE	*fp = stdout;
 
 	if (args[0] == NULL) {
+		FILE *fp;
 		if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
 			perror("tmpfile");
 			return 1;

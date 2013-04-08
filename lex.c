@@ -219,7 +219,6 @@ setfile(char const *name, int newmail)
 		if (newmail) {
 			if (mb.mb_type == MB_CACHE)
 				return 1;
-			omsgCount = msgCount;
 		}
 		return imap_setfile(name, newmail, isedit);
 #endif

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -136,7 +136,7 @@ create_exclusive(const char *fname)
 	for (ntries = 0; ntries < 5; ntries++) {
 		perhaps_setgid(path, effectivegid);
 		fd = open(path, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL|O_SYNC, 0);
-		setgid(realgid);
+		(void)setgid(realgid); /* XXX */
 		if (fd != -1) {
 			snprintf(apid, APID_SZ, "%d", (int)getpid());
 			write(fd, apid, strlen(apid));
@@ -153,7 +153,7 @@ create_exclusive(const char *fname)
 	 */
 	perhaps_setgid(fname, effectivegid);
 	cc = link(path, fname);
-	setgid(realgid);
+	(void)setgid(realgid); /* XXX */
    
 	if (cc == -1)
 		goto bad;
@@ -167,7 +167,7 @@ create_exclusive(const char *fname)
 
 	perhaps_setgid(fname, effectivegid);
 	unlink(path);
-	setgid(realgid);
+	(void)setgid(realgid); /* XXX */
 
 	/*
 	 * If the number of links was two (one for the unique file and one
@@ -270,5 +270,5 @@ dot_unlock(const char *fname)
 	snprintf(path, sizeof(path), "%s.lock", fname);
 	perhaps_setgid(path, effectivegid);
 	unlink(path);
-	setgid(realgid);
+	(void)setgid(realgid); /* XXX */
 }

@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -186,15 +186,10 @@ add_to_namelist(char ***namelist, size_t *nmlsize, char **np, char *string)
 	return np;
 }
 
-#define	markall_ret(i)		{ \
-					retval = i; \
-					ac_free(lexstring); \
-					goto out; \
-				}
-
 static int 
 markall(char *buf, int f)
 {
+#define	markall_ret(i) do { retval = i; goto out; } while (0);
 	char **np, **nq;
 	int i, retval;
 	struct message *mp, *mx;
@@ -565,7 +560,9 @@ number:
 	markall_ret(0)
 out:
 	free(namelist);
+	ac_free(lexstring);
 	return retval;
+#undef markall_ret
 }
 
 /*
@@ -1043,7 +1040,6 @@ matchsubj(char *str, int mesg)
 		*cp++ = '\0';
 		cp2 = hfieldX(str, mp);
 		cp[-1] = ':';
-		str = cp;
 	} else {
 		cp = str;
 		cp2 = hfield1("subject", mp);
