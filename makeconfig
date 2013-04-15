@@ -65,7 +65,7 @@ lib=config.lib
 inc=config.inc
 makefile=config.mk
 
-make="${MAKE-make}"
+make="${MAKE:-make}"
 
 exec 5>&2 > ${log} 2>&1
 
