@@ -87,18 +87,6 @@
  * Funs, CC support etc.
  */
 
-#undef ISPOW2
-#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
-#undef MIN
-#define MIN(A, B)	((A) < (B) ? (A) : (B))
-#undef MAX
-#define MAX(A, B)	((A) < (B) ? (B) : (A))
-#undef ABS
-#define ABS(A)		((A) < 0 ? -(A) : (A))
-
-#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
-#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
-
 /* Members in constant array */
 #define ARRAY_COUNT(A)	(sizeof(A) / sizeof(A[0]))
 
@@ -106,8 +94,20 @@
 #define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
 
 /* Casts-away (*NOT* cast-away) */
-#define UNCONST(P)	((void*)(unsigned long)(const void*)(P))
-#define UNVOLATILE(P)	((void*)(unsigned long)(volatile void*)(P))
+#define UNCONST(P)	((void*)(unsigned long)(void const*)(P))
+#define UNVOLATILE(P)	((void*)(unsigned long)(void volatile*)(P))
+
+/* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
+#if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
+# define STRING(X)	#X
+# define XSTRING(X)	STRING(X)
+# define CONCAT(S1,S2)	_CONCAT(S1, S2)
+# define _CONCAT(S1,S2)	S1 ## S2
+#else
+# define STRING(X)	"X"
+# define XSTRING	STRING
+# define CONCAT(S1,S2)	S1/**/S2
+#endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
   /* Variable size arrays and structure fields */
@@ -123,6 +123,18 @@
 # define INLINE
 # define SINLINE		static
 #endif
+
+#undef ISPOW2
+#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
+#undef MIN
+#define MIN(A, B)	((A) < (B) ? (A) : (B))
+#undef MAX
+#define MAX(A, B)	((A) < (B) ? (B) : (A))
+#undef ABS
+#define ABS(A)		((A) < 0 ? -(A) : (A))
+
+#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
+#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
 
 /* Compile-Time-Assert */
 #define CTA(TEST)	_CTA_1(TEST, __LINE__)
