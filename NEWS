@@ -8,6 +8,35 @@ S - n a i l  N e w s
   *headline* and other minor stuff that springs into existence in the
   meanwhile.  Then long time nothing.
 
+v14.2.1, 2013-04-30
+-------------------
+
+An unplanned (minor) bugfix release after i've found two bugs today and
+heard from Jérémie Courrèges-Anglas (jca+nail AT wxcvbn DOT org) that
+there exists a S-nail OpenBSD package.
+
+I want to give prominence to the following people that helped to
+improve S-nail(1) during this development cycle, in order of
+appearance: Dirk Peters (peters AT schwertfisch DOT de).
+
+Thank you very much, and best from Germany!
+
+- Some warnings of newer clang(1) versions were silenced, including yet
+  another alloca(3) problem (see *memtracer* topic branch in v14.0
+  series).  [6f846efe]
+
+- Tweaking the MIME boundary detection left a little hole that could
+  cause boundaries not to be detected, as has been shown by a Microsoft
+  Word generated mail on the ICU list.  [11e5fb5b]
+
+- A format string could overflow bounds if unrealistic
+  (18446744073709551615) line numbers or message sizes would have been
+  produced.  [faa65c40]
+
+- An algorithmic error could cause overlong lines which wrapped around
+  to the next display line.  [ade52660] 
+  (Dirk Peters.)
+
 v14.2, 2013-03-15 [v14.1, 2013-03-12]
 -------------------------------------
 

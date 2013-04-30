@@ -545,7 +545,6 @@ mime_getparam(char const *param, char *h)
 	while (whitechar(*p & 0377))
 		p++;
 	q = p;
-	c = '\0';
 	if (*p == '"') {
 		p++;
 		if ((q = strchr(p, '"')) == NULL)
