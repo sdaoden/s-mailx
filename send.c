@@ -221,13 +221,20 @@ _print_part_info(struct str *out, struct mimepart *mip,
 	if ((ps = mip->m_partstring) == NULL || ps[0] == '\0')
 		ps = "?";
 
+	/*
+	 * Assume maximum possible sizes for 64 bit integers here to avoid any
+	 * buffer overflows just in case we have a bug somewhere and / or the
+	 * snprintf() is our internal version that doesn't really provide hard
+	 * buffer cuts
+	 */
 #define __msg	"%s[-- #%s : %lu/%lu%s%s --]\n"
-	out->l = sizeof(__msg) + strlen(ps) + ct.l + cd.l + 1;
+	out->l = sizeof(__msg) + strlen(ps) + 2*21 + ct.l + cd.l + 1;
 	out->s = salloc(out->l);
 	out->l = snprintf(out->s, out->l, __msg,
 			(level || (ps[0] != '1' && ps[1] == '\0')) ? "\n" : "",
 			ps, (ul_it)mip->m_lines, (ul_it)mip->m_size,
 			(ct.s != NULL ? ct.s : ""), (cd.s != NULL ? cd.s : ""));
+	out->s[out->l] = '\0';
 #undef __msg
 
 	if (cd.s != NULL)
