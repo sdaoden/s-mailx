@@ -47,9 +47,8 @@ installation directory:
 And instead of editing user.conf you may also choose predefined CONFIG
 sets from the command line:
 
-  CONFIG=MINIMAL  little is left but some air to breathe.
-  CONFIG=NETLESS  all settings from user.conf relating internet connect-
-                  ivity are off.
+  CONFIG=MINIMAL  little is left but some air to breathe; no internet
+                  connectivity.
   CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
                   identical to MINIMAL.
   CONFIG=CUSTOM   don't touch anything, i.e., enable all features.

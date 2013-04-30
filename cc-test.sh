@@ -24,7 +24,7 @@ rm -f "${OUT}" "${ERR}" "${BODY}" "${MBOX1}" "${MBOX2}" 2>> "${ERR}"
 
 # Test all configs
 cc_all_configs() {
-	for c in MINIMAL NETLESS NETSEND CUSTOM \
+	for c in MINIMAL NETSEND CUSTOM \
 			'CUSTOM WANT_ASSERTS=1' \
 			'CUSTOM WANT_ASSERTS=1 WANT_NOALLOCA=1' \
 			'CUSTOM WANT_ASSERTS=1 WANT_NOALLOCA=1 WANT_NOGETOPT=1'
