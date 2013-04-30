@@ -115,6 +115,13 @@ static void
 _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	int level)
 {
+	/*
+	 * TODO Instead of the recursive multiple run parse we have today,
+	 * TODO the send/MIME layer rewrite must create a "tree" of parts with
+	 * TODO a single-pass parse, then address each part directly as
+	 * TODO necessary; since boundaries start with -- and the content
+	 * TODO rather forms a stack this is pretty cheap indeed!
+	 */
 	struct mimepart	*np = NULL;
 	char *boundary, *line = NULL;
 	size_t linesize = 0, linelen, count, boundlen;
@@ -135,15 +142,16 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	offs = ftell(ibuf);
 	newpart(ip, &np, offs, NULL);
 	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
-		if ((lines == 0 || part > 0) && (linelen <= boundlen ||
-				strncmp(line, boundary, boundlen) != 0)) {
+		/* XXX linelen includes LF */
+		if (! ((lines > 0 || part == 0) && linelen > boundlen &&
+				memcmp(line, boundary, boundlen) == 0)) {
 			++lines;
 			continue;
 		}
 		/* Subpart boundary? */
 		if (line[boundlen] == '\n') {
 			offs = ftell(ibuf);
-			if (part != 0) {
+			if (part > 0) {
 				endpart(&np, offs - boundlen - 2, lines);
 				newpart(ip, &np, offs - boundlen - 2, NULL);
 			}
@@ -162,7 +170,6 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		linelen -= boundlen + 2;
 		if (line[boundlen] != '-' || line[boundlen + 1] != '-' ||
 				(linelen > 0 && line[boundlen + 2] != '\n'))
-			/* XXX This is a mysterious message - ??? */
 			continue;
 		offs = ftell(ibuf);
 		if (part != 0) {
