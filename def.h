@@ -281,9 +281,13 @@ enum tdflags {
 	TD_ISPR		= 1<<0,	/* use isprint() checks */
 	TD_ICONV	= 1<<1,	/* use iconv() */
 	TD_DELCTRL	= 1<<2,	/* delete control characters */
-	TD_EOF		= 1<<3,	/* EOF seen, last round! */
 
-	_TD_BUFCOPY	= 1<<4	/* Buffer may be constant, copy it */
+	/*
+	 * NOTE: _TD_EOF and _TD_BUFCOPY may be ORd with enum conversion and
+	 * enum sendaction, and may thus NOT clash with their bit range!
+	 */
+	_TD_EOF		= 1<<30,/* EOF seen, last round! */
+	_TD_BUFCOPY	= 1<<31	/* Buffer may be constant, copy it */
 };
 
 enum protocol {
