@@ -290,8 +290,8 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 		++sz;
 	}
 #endif
-	flags = ((int)action & TD_EOF);
-	action &= ~TD_EOF;
+	flags = ((int)action & _TD_EOF);
+	action &= ~_TD_EOF;
 	n = mime_write(buf, len, fp,
 			action == SEND_MBOX ? CONV_NONE : convert,
 			flags |
@@ -918,7 +918,7 @@ joutln:
 	if (! eof && rest.l != 0) {
 		linelen = 0;
 		eof = 1;
-		action |= TD_EOF;
+		action |= _TD_EOF;
 		goto joutln;
 	}
 	if (rest.s != NULL)

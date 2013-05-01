@@ -247,7 +247,7 @@ _fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
 		if (n_iconv_str(iconvd, &out, &in, &in, TRU1) != 0 &&
 				rest != NULL && in.l > 0) {
 			/* Incomplete multibyte at EOF is special */
-			if (flags & TD_EOF) {
+			if (flags & _TD_EOF) {
 				out.s = srealloc(out.s, out.l + 4);
 				out.s[out.l++] = '[';
 				out.s[out.l++] = '?'; /* TODO 0xFFFD !!! */
