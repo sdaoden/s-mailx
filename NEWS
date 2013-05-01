@@ -8,6 +8,17 @@ S - n a i l  N e w s
   *headline* and other minor stuff that springs into existence in the
   meanwhile.  Then long time nothing.
 
+v14.2.2, 2013-05-01
+-------------------
+
+Another unplanned (minor) bugfix release after Gavin Troy (gavtroy AT
+gmail DOT com) pointed out that MIME CTE decoding was broken, who
+i therefore want to give a lot of prominence right here.
+
+- Fix MIME content decoding which has been broken by [01c0e135].
+  [882caedd]
+  (Gavin Troy.)
+
 v14.2.1, 2013-04-30
 -------------------
 
