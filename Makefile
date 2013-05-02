@@ -166,4 +166,8 @@ update-release:
 		>> "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 && \
 	echo "-put $(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail && \
-	echo 'All seems fine'
+	echo 'All seems fine' && \
+	make distclean && \
+	make WANT_ASSERTS=1 &&
+	./s-nail -s "Announcing S-nail $${REL}" -c nail-cc nail && \
+	echo 'Uff.'
