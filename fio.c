@@ -271,7 +271,7 @@ jleave:
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
+		shell = UNCONST(SHELL);
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);

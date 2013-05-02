@@ -227,6 +227,7 @@ _fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
 	/* *input* _may_ point to non-modifyable buffer; but even then it only
 	 * needs to be dup'ed away if we have to transform the content */
 	struct str in, out;
+	(void)rest;
 
 	in = *input;
 	out.s = NULL;
