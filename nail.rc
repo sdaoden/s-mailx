@@ -71,3 +71,20 @@ ignore mime-version content-transfer-encoding
 
 # Only include selected header fields when forwarding messages.
 fwdretain subject date from to
+
+# The special pipe command @ will force treatment as plain text.
+# Add some rather useful of those.
+set pipe-application/javascript=@
+set pipe-application/json=@
+set pipe-application/x-latex=@
+set pipe-application/x-perl=@
+set pipe-application/x-sh=@
+set pipe-application/x-shar=@
+set pipe-application/x-tex=@
+set pipe-application/x-texinfo=@
+set pipe-application/x-xfig=@
+set pipe-application/xhtml+xml=@
+set pipe-application/xml=@
+set pipe-application/xml-dtd=@
+set pipe-application/xslt+xml=@
+
