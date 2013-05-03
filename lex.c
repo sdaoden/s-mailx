@@ -505,6 +505,7 @@ commands(void)
 		}
 		eofloop = 0;
 		inhook = 0;
+		msglist_is_single = FAL0;
 		if (execute(linebuf, 0, n))
 			break;
 	}
@@ -652,10 +653,12 @@ execute(char *linebuf, int contxt, size_t linesize)
 		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
 			break;
 		if (c == 0) {
+			msglist_is_single = TRU1;
 			if ((*msgvec = first(com->c_msgflag, com->c_msgmask))
 					!= 0)
 				msgvec[1] = 0;
-		}
+		} else
+			msglist_is_single = (c == 1);
 		if (*msgvec == 0) {
 			if (!inhook)
 				printf(catgets(catd, CATSET, 97,
@@ -675,8 +678,9 @@ execute(char *linebuf, int contxt, size_t linesize)
 				"Illegal use of \"message list\"\n"));
 			break;
 		}
-		if (getmsglist(cp, msgvec, com->c_msgflag) < 0)
+		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
 			break;
+		msglist_is_single = (c == 1);
 		e = (*com->c_func)(msgvec);
 		break;
 

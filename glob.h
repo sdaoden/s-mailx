@@ -80,6 +80,7 @@ _E size_t	smopts_count;		/* Entries in smopts */
 _E int		inhook;			/* currently executing a hook */
 _E bool_t	edit;			/* Indicates editing a file */
 _E bool_t	did_print_dot;		/* current message has been printed */
+_E bool_t	msglist_is_single;	/* Last NDMLIST/MSGLIST matched 1 msg */
 _E bool_t	loading;		/* Loading user definitions */
 _E bool_t	sourcing;		/* Currently reading variant file */
 _E bool_t	sawcom;			/* Set after first command */
