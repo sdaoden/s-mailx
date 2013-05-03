@@ -130,7 +130,7 @@ maildir_setfile(const char *name, int newmail, int isedit)
 		return -1;
 	}
 	if (!newmail) {
-		edit = isedit;
+		edit = (isedit != 0);
 		if (mb.mb_itf) {
 			fclose(mb.mb_itf);
 			mb.mb_itf = NULL;
@@ -170,7 +170,7 @@ maildir_setfile(const char *name, int newmail, int isedit)
 		sort((void *)-1);
 	}
 	if (!newmail)
-		sawcom = 0;
+		sawcom = FAL0;
 	if (!newmail && !edit && msgCount == 0) {
 		if (mb.mb_type == MB_MAILDIR && value("emptystart") == NULL)
 			fprintf(stderr, "No mail at %s\n", name);

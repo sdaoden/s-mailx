@@ -102,10 +102,10 @@ assign(char const *name, char const *value)
 	int h;
 
 	if (value == NULL) {
-		h = unset_allow_undefined;
-		unset_allow_undefined = 1;
+		bool_t save = unset_allow_undefined;
+		unset_allow_undefined = TRU1;
 		unset_internal(name);
-		unset_allow_undefined = h;
+		unset_allow_undefined = save;
 		goto jleave;
 	}
 

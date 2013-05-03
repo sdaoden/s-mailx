@@ -576,7 +576,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 		return -1;
 	}
 	quit();
-	edit = isedit;
+	edit = (isedit != 0);
 	if (mb.mb_sock.s_fd >= 0)
 		sclose(&mb.mb_sock);
 	if (mb.mb_itf) {
@@ -625,7 +625,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	pop3_setptr(&mb);
 	setmsize(msgCount);
-	sawcom = 0;
+	sawcom = FAL0;
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;

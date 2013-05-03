@@ -190,7 +190,7 @@ setfile(char const *name, int newmail)
 	FILE *ibuf;
 	int i, compressed = 0;
 	struct stat stb;
-	char isedit;
+	bool_t isedit;
 	char const *who = name[1] ? name + 1 : myname;
 	static int shudclob;
 	size_t offset;
@@ -198,8 +198,8 @@ setfile(char const *name, int newmail)
 	struct shortcut *sh;
 	struct flock	flp;
 
-	isedit = *name != '%' && ((sh = get_shortcut(name)) == NULL ||
-			*sh->sh_long != '%');
+	isedit = (*name != '%' && ((sh = get_shortcut(name)) == NULL ||
+			*sh->sh_long != '%'));
 	if ((name = expand(name)) == NULL)
 		return (-1);
 
@@ -343,7 +343,7 @@ setfile(char const *name, int newmail)
 	Fclose(ibuf);
 	relsesigs();
 	if (!newmail)
-		sawcom = 0;
+		sawcom = FAL0;
 	if ((!edit || newmail) && msgCount == 0) {
 nonewmail:
 		if (!newmail) {
@@ -455,7 +455,7 @@ commands(void)
 						(mb.mb_type == MB_MAILDIR &&
 						n != 0)) {
 					int odot = dot - &message[0];
-					int odid = did_print_dot;
+					bool_t odid = did_print_dot;
 
 					setfile(mailname, 1);
 					if (mb.mb_type != MB_IMAP) {
@@ -751,7 +751,7 @@ out:
 			type(muvec);
 		}
 	if (!sourcing && !inhook && (com->c_argtype & T) == 0)
-		sawcom = 1;
+		sawcom = TRU1;
 	return(0);
 }
 
@@ -806,7 +806,7 @@ onintr(int s)
 	safe_signal(SIGINT, onintr);
 	noreset = 0;
 	if (!inithdr)
-		sawcom++;
+		sawcom = TRU1;
 	inithdr = 0;
 	while (sourcing)
 		unstack();
@@ -1034,11 +1034,11 @@ load(char const *name)
 		return;
 	oldin = input;
 	input = in;
-	loading = 1;
-	sourcing = 1;
+	loading = TRU1;
+	sourcing = TRU1;
 	commands();
-	loading = 0;
-	sourcing = 0;
+	loading = FAL0;
+	sourcing = FAL0;
 	input = oldin;
 	Fclose(in);
 }
@@ -1080,5 +1080,5 @@ initbox(const char *name)
 #endif
 	prevdot = NULL;
 	dot = NULL;
-	did_print_dot = 0;
+	did_print_dot = FAL0;
 }

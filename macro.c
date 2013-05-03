@@ -255,7 +255,7 @@ maexec(struct macro *mp)
 	char const *sp, *smax;
 	char *copy, *cp;
 
-	unset_allow_undefined = 1;
+	unset_allow_undefined = TRU1;
 	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
 		sp = lp->l_line;
 		smax = lp->l_line + lp->l_linesize;
@@ -271,7 +271,7 @@ maexec(struct macro *mp)
 		r = execute(copy, 0, (size_t)(cp - copy));
 		ac_free(copy);
 	}
-	unset_allow_undefined = 0;
+	unset_allow_undefined = FAL0;
 	return (r);
 }
 

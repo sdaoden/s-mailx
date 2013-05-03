@@ -1207,7 +1207,7 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		so = mb.mb_sock;
 	if (!transparent)
 		quit();
-	edit = isedit;
+	edit = (isedit != 0);
 	if (mb.mb_imap_account != NULL)
 		free(mb.mb_imap_account);
 	mb.mb_imap_account = account;
@@ -1290,7 +1290,7 @@ newmail:
 	imap_setptr(&mb, newmail, transparent, &prevcount);
 done:	setmsize(msgCount);
 	if (!newmail && !transparent)
-		sawcom = 0;
+		sawcom = FAL0;
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
 	imaplock = 0;
@@ -3252,7 +3252,7 @@ cconnect(void *vp)
 		fprintf(stderr, "Already connected.\n");
 		return 1;
 	}
-	unset_allow_undefined = 1;
+	unset_allow_undefined = TRU1;
 	unset_internal("disconnected");
 	cp = protbase(mailname);
 	if (strncmp(cp, "imap://", 7) == 0)
@@ -3262,7 +3262,7 @@ cconnect(void *vp)
 	if ((cq = strchr(cp, ':')) != NULL)
 		*cq = '\0';
 	unset_internal(savecat("disconnected-", cp));
-	unset_allow_undefined = 0;
+	unset_allow_undefined = FAL0;
 	if (mb.mb_type == MB_CACHE) {
 		imap_setfile1(mailname, 0, edit, 1);
 		if (msgCount > omsgCount)

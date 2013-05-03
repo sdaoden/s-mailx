@@ -1148,7 +1148,7 @@ top(void *v)
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 		if (! empty_last)
 			printf("\n");
 		_show_msg_overview(mp, *ip, stdout);
@@ -1193,7 +1193,7 @@ stouch(void *v)
 		/*
 		 * POSIX interpretation necessary.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }
@@ -1214,7 +1214,7 @@ mboxit(void *v)
 		/*
 		 * POSIX interpretation necessary.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }

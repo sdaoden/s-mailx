@@ -641,7 +641,7 @@ setdot(struct message *mp)
 {
 	if (dot != mp) {
 		prevdot = dot;
-		did_print_dot = 0;
+		did_print_dot = FAL0;
 	}
 	dot = mp;
 	uncollapse1(dot, 0);
@@ -908,7 +908,7 @@ source(void *v)
 	loading = 0;
 	cond = CANY;
 	input = fi;
-	sourcing++;
+	sourcing = TRU1;
 	return(0);
 }
 

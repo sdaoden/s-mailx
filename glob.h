@@ -77,16 +77,16 @@ _E char		*option_u_arg;		/* name given with -u option */
 _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 
-_E int		did_print_dot;		/* current message has been printed */
-_E int		edit;			/* Indicates editing a file */
 _E int		inhook;			/* currently executing a hook */
-_E int		loading;		/* Loading user definitions */
+_E bool_t	edit;			/* Indicates editing a file */
+_E bool_t	did_print_dot;		/* current message has been printed */
+_E bool_t	loading;		/* Loading user definitions */
+_E bool_t	sourcing;		/* Currently reading variant file */
+_E bool_t	sawcom;			/* Set after first command */
+_E bool_t	starting;		/* still in startup code */
+_E bool_t	unset_allow_undefined;	/* allow to unset undefined variables */
 _E int		noreset;		/* String resets suspended */
-_E int		sawcom;			/* Set after first command */
 _E int		senderr;		/* An error while checking */
-_E int		sourcing;		/* Currently reading variant file */
-_E int		starting;		/* still in startup code */
-_E int		unset_allow_undefined;	/* allow to unset undefined variables */
 
 /* XXX stylish sorting */
 _E int		msgCount;		/* Count of messages read in */

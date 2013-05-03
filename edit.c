@@ -111,7 +111,7 @@ edit1(int *msgvec, int type)
 				continue;
 		}
 		setdot(mp = &message[msgvec[i] - 1]);
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 		touch(mp);
 
 		sigint = safe_signal(SIGINT, SIG_IGN);
@@ -168,7 +168,7 @@ run_editor(FILE *fp, off_t size, int type, int readonly,
 	FILE *nf = NULL;
 	int t;
 	time_t modtime;
-	char const *edit;
+	char const *editor;
 	struct stat statb;
 	char *tempEdit;
 	sigset_t	set;
@@ -216,10 +216,10 @@ run_editor(FILE *fp, off_t size, int type, int readonly,
 		goto out;
 	}
 	nf = NULL;
-	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
-		edit = type == 'e' ? "ed" : "vi";
+	if ((editor = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
+		editor = (type == 'e') ? "ed" : "vi";
 	sigemptyset(&set);
-	if (run_command(edit, oldint != SIG_IGN ? &set : NULL, -1, -1,
+	if (run_command(editor, oldint != SIG_IGN ? &set : NULL, -1, -1,
 				tempEdit, NULL, NULL) < 0) {
 		unlink(tempEdit);
 		Ftfree(&tempEdit);

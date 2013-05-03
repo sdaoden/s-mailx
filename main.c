@@ -213,7 +213,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	starting = 1;
+	starting = TRU1;
 	progname = strrchr(argv[0], '/');
 	if (progname != NULL)
 		progname++;
@@ -391,9 +391,9 @@ jIflag:		case 'I':
 			{	char *a[2];
 				a[0] = optarg;
 				a[1] = NULL;
-				unset_allow_undefined = 1;
+				unset_allow_undefined = TRU1;
 				set(a);
-				unset_allow_undefined = 0;
+				unset_allow_undefined = FAL0;
 			}
 			break;
 		case 's':
@@ -553,8 +553,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	/*
 	 * We are actually ready to go, finally
 	 */
-
-	starting = 0;
+	starting = FAL0;
 
 	if ((options & OPT_RCVMODE) == 0) {
 		mail(to, cc, bcc, subject, attach, qf,

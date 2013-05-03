@@ -606,7 +606,7 @@ preserve(void *v)
 		/*
 		 * This is now Austin Group Request XCU #20.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }
@@ -631,7 +631,7 @@ unread(void *v)
 		/*
 		 * The "unread" command is not part of POSIX mailx.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }
@@ -1405,9 +1405,9 @@ account(void *v)
 		for (i = 0; args[i+1]; i++)
 			a->ac_vars[i] = sstrdup(args[i+1]);
 	} else {
-		unset_allow_undefined = 1;
+		unset_allow_undefined = TRU1;
 		set(a->ac_vars);
-		unset_allow_undefined = 0;
+		unset_allow_undefined = FAL0;
 	setf:	if (!starting) {
 			nqf = savequitflags();
 			restorequitflags(oqf);
