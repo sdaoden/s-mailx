@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 09, 2013
+.Dd May 03, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2839,13 +2839,25 @@ the user will be asked for a password on standard input.
 Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
 .It Va pipe-content/subcontent
-When a MIME message part of `content/subcontent' type is displayed or it
+When a MIME message part of `content/subcontent' type is displayed or
 is replied to,
 its text is filtered through the value of this variable interpreted as
 a shell command.
+.Pp
 The special value `@' can be used to force interpretation of the message
 part as plain text, e.g., `set pipe-application/pgp-signature=@' will
 henceforth treat signatures as plain text and display them ``as is''.
+.Pp
+Also, if a normal shell command is prefixed with `@', then the command
+will only be used to prepare the MIME message part if the message is
+displayed by itself, but not when multiple messages are displayed at
+once.
+.Pp
+Finally, if a normal shell command is prefixed with `@&', then, in
+addition to what has been described for the plain `@' shell command
+prefix, the command will be run asynchronously, i.e., without blocking
+\*(UA, which may be a handy way to display a, e.g., PDF file while also
+continuing to read the mail message.
 .Pp
 Special care must be taken when using such commands as mail viruses may
 be distributed by this method;
@@ -3856,7 +3868,7 @@ will cause HTML message parts to be converted into a more friendly form.
 Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file first:
 .Pp
-.Dl set pipe-application/pdf="cat >/tmp/\*(ua$$.pdf; \e
+.Dl set pipe-application/pdf="@&cat >/tmp/\*(ua$$.pdf; \e
 .Dl \ \ \ \ \ \ acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
 .Pp
 Note that security defects are discovered in PDF viewers from time to

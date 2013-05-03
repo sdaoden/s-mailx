@@ -85,8 +85,8 @@ $set 1
 82 "%s": No match.\n
 83 "%s": Expansion buffer overflow.\n
 84 "%s": Ambiguous.\n
-85 [Missing multipart boundary - use "show" to display the raw message]\n\n
-86 --- DELETED ---
+85 [Missing multipart boundary - use "show" to display the raw message]\n
+86 [Directly address message only to display this]\n
 87 temporary mail message file
 88 No mail for %s\n
 89 Use "quit" to quit.\n
@@ -218,7 +218,7 @@ $set 1
 207 $%c%c%3d %s%-*.*s  %16.16s %s "%.*s"\n$
 208 warning: incomplete line - newline appended\n
 209 Must specify alias or group to remove\n
-210 [Binary content]\n\n
+210 [Binary content]\n
 211 removed.\n
 212 updated.\n
 213 <Unknown date>
