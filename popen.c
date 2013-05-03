@@ -374,32 +374,34 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 }
 
 int
-Pclose(FILE *ptr)
+Pclose(FILE *ptr, bool_t wait)
 {
-	int i;
+	int pid;
 	sigset_t nset, oset;
 
-	i = file_pid(ptr);
-	if (i < 0)
+	pid = file_pid(ptr);
+	if (pid < 0)
 		return 0;
 	unregister_file(ptr);
 	fclose(ptr);
-	sigemptyset(&nset);
-	sigaddset(&nset, SIGINT);
-	sigaddset(&nset, SIGHUP);
-	sigprocmask(SIG_BLOCK, &nset, &oset);
-	i = wait_child(i);
-	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
-	return i;
+	if (wait) {
+		sigemptyset(&nset);
+		sigaddset(&nset, SIGINT);
+		sigaddset(&nset, SIGHUP);
+		sigprocmask(SIG_BLOCK, &nset, &oset);
+		pid = wait_child(pid);
+		sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
+	} else
+		free_child(pid);
+	return pid;
 }
 
 void 
 close_all_files(void)
 {
-
 	while (fp_head)
 		if (fp_head->pipe)
-			Pclose(fp_head->fp);
+			Pclose(fp_head->fp, TRU1);
 		else
 			Fclose(fp_head->fp);
 }
@@ -707,12 +709,12 @@ wait_child(int pid)
 	pid_t term;
 	struct child *cp;
 	struct sigaction nact, oact;
-	
+
 	nact.sa_handler = SIG_DFL;
 	sigemptyset(&nact.sa_mask);
 	nact.sa_flags = SA_NOCLDSTOP;
 	sigaction(SIGCHLD, &nact, &oact);
-	
+
 	cp = findchild(pid);
 	if (!cp->done) {
 		do {
@@ -733,13 +735,13 @@ wait_child(int pid)
 		wait_status = cp->status;
 		delchild(cp);
 	}
-	
+
 	sigaction(SIGCHLD, &oact, NULL);
 	/*
 	 * Make sure no zombies are left.
 	 */
 	sigchild(SIGCHLD);
-	
+
 	if (WIFEXITED(wait_status) && (WEXITSTATUS(wait_status) == 0))
 		return 0;
 	return -1;

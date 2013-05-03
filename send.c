@@ -794,7 +794,7 @@ skip:	switch (ip->m_mimecontent) {
 						Fclose(obuf);
 					else {
 jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
-						Pclose(obuf);
+						Pclose(obuf, TRU1);
 						safe_signal(SIGPIPE, oldpipe);
 					}
 				}
@@ -927,7 +927,7 @@ joutln:
 end:	free(line);
 	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(pbuf);
+		Pclose(pbuf, TRU1);
 		safe_signal(SIGPIPE, oldpipe);
 		if (qbuf != obuf)
 			pipecpy(qbuf, obuf, origobuf, prefix, prefixlen, stats);

@@ -347,7 +347,7 @@ from(void *v)
 endpipe:
 	if (obuf != stdout) {
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(obuf);
+		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
 	return(0);
@@ -927,7 +927,7 @@ close_pipe:
 		 * Ignore SIGPIPE so it can't cause a duplicate close.
 		 */
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(obuf);
+		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
 	return(0);

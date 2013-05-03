@@ -739,7 +739,7 @@ FILE *	Ftemp(char **fn, char const *prefix, char const *mode,
 void	Ftfree(char **fn);
 
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
-int Pclose(FILE *ptr);
+int Pclose(FILE *ptr, bool_t dowait);
 void close_all_files(void);
 int run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 		char const *a0, char const *a1, char const *a2);

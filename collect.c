@@ -390,7 +390,7 @@ insertcommand(FILE *fp, char const *cmd)
 	if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
 		while ((c = getc(ibuf)) != EOF)
 			putc(c, fp);
-		Pclose(ibuf);
+		Pclose(ibuf, TRU1);
 	} else
 		perror(cmd);
 }
@@ -470,7 +470,7 @@ print_collf(FILE *collf, struct header *hp)
 endpipe:
 	if (obuf != stdout) {
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(obuf);
+		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
 	if (lbuf)
