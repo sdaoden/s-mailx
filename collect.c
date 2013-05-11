@@ -164,11 +164,10 @@ print_collf(FILE *collf, struct header *hp)
 	enum gfield gf;
 	size_t linecnt, maxlines, linesize = 0, linelen, count, count2;
 
-	(void)&obuf;
-	(void)&cp;
 	fflush(collf);
 	rewind(collf);
 	count = count2 = fsize(collf);
+
 	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
 		for (linecnt = 0;
 			fgetline(&lbuf, &linesize, &count2, NULL, collf, 0);
@@ -203,8 +202,8 @@ print_collf(FILE *collf, struct header *hp)
 				safe_signal(SIGPIPE, onpipe);
 		}
 	}
-	fprintf(obuf, catgets(catd, CATSET, 62,
-				"-------\nMessage contains:\n"));
+
+	fprintf(obuf, tr(62, "-------\nMessage contains:\n"));
 	gf = GIDENT|GTO|GSUBJECT|GCC|GBCC|GNL|GFILES;
 	if (value("fullnames"))
 		gf |= GCOMMA;
@@ -212,16 +211,30 @@ print_collf(FILE *collf, struct header *hp)
 	while (fgetline(&lbuf, &linesize, &count, &linelen, collf, 1))
 		prout(lbuf, linelen, obuf);
 	if (hp->h_attach != NULL) {
-		fputs(catgets(catd, CATSET, 63, "Attachments:"), obuf);
+		fputs(tr(63, "-------\nAttachments:\n"), obuf);
 		for (ap = hp->h_attach; ap != NULL; ap = ap->a_flink) {
 			if (ap->a_msgno)
-				fprintf(obuf, " message %u", ap->a_msgno);
-			else
-				fprintf(obuf, " %s", ap->a_name);
-			if (ap->a_flink)
-				putc(',', obuf);
+				fprintf(obuf, " - message %u\n", ap->a_msgno);
+			else {
+				/* TODO after MIME/send layer rewrite we *know*
+				 * TODO the details of the attachment here,
+				 * TODO so adjust this again, then */
+				char const *cs, *csi = "-> ";
+
+				if ((cs = ap->a_charset) == NULL &&
+						(csi = "<- ",
+						cs = ap->a_input_charset)
+						== NULL)
+					cs = charset_get_lc();
+				if ((cp = ap->a_content_type) == NULL)
+					cp = "?";
+				else if (ascncasecmp(cp, "text/", 5) != 0)
+					csi = "";
+
+				fprintf(obuf, " - [%s, %s%s] %s\n",
+					cp, csi, cs, ap->a_name);
+			}
 		}
-		putc('\n', obuf);
 	}
 endpipe:
 	if (obuf != stdout) {
