@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ File I/O.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,19 +39,19 @@
 
 #include "rcv.h"
 
-#include <errno.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <errno.h>
 #include <unistd.h>
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>
 #endif
 
 #ifdef HAVE_SOCKETS
+# include <sys/socket.h>
 # include <netdb.h>
 # include <netinet/in.h>
-# include <sys/socket.h>
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
@@ -66,12 +66,6 @@
 #endif
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * File I/O.
- */
 
 enum expmode {
 	EXP_FULL,

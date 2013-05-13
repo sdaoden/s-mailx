@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Startup -- interface with user.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -49,9 +49,9 @@
 
 #include "config.h"
 
-#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 #ifdef HAVE_NL_LANGINFO
@@ -64,12 +64,6 @@
 #define _MAIL_GLOBS_
 #include "rcv.h"
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Startup -- interface with user.
- */
 
 struct a_arg {
 	struct a_arg	*aa_next;

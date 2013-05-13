@@ -1,8 +1,12 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Auto-reclaimed string allocation and support routines that build on top of
+ *@ them.  Strings handed out by those are reclaimed at the top of the command
+ *@ loop each time, so they need not be freed.
+ *@ And below this series we do collect all other plain string support routines
+ *@ in here, including those which use normal heap memory.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,16 +39,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-
-/*
- * Mail -- a mail program
- *
- * Auto-reclaimed string allocation and support routines that build on top of
- * them.  Strings handed out by those are reclaimed at the top of the command
- * loop each time, so they need not be freed.
- * And below this series we do collect all other plain string support routines
- * in here, including those which use normal heap memory.
  */
 
 #include "rcv.h"

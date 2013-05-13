@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Generally useful tty stuff.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,16 +37,10 @@
  * SUCH DAMAGE.
  */
 
-/*
- * Mail -- a mail program
- *
- * Generally useful tty stuff.
- */
-
 #include "rcv.h"
 
-#include <errno.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 #include <termios.h>
 #include <unistd.h>
 

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ A cache for IMAP.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -44,21 +44,15 @@ typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * A cache for IMAP.
- */
 
 static char *encname(struct mailbox *mp, const char *name, int same,
 		const char *box);
@@ -78,7 +72,7 @@ static const char	infofmt[] = "%c %lu %d %lu %ld";
 	((f) & (MSAVED|MDELETED|MREAD|MBOXED|MNEW|MFLAGGED|MANSWERED|MDRAFTED))
 
 static const char	README1[] = "\
-This is a cache directory maintained by mailx(1). You should not change any\n\
+This is a cache directory maintained by s-nail(1). You should not change any\n\
 files within. Nevertheless, the structure is as follows: Each subdirectory\n\
 of the current directory represents an IMAP account, and each subdirectory\n\
 below that represents a mailbox. Each mailbox directory contains a file\n\
@@ -99,8 +93,8 @@ write new cache entries if configured in this way. If you do not wish to use\n\
 the cache anymore, delete the entire directory and unset the 'imap-cache'\n\
 variable in mailx(1).\n";
 static const char	README5[] = "\n\
-For more information about mailx(1), visit\n\
-<http://heirloom.sourceforge.net/mailx.html>.\n";
+For more information about s-nail(1), visit\n\
+<http://sdaoden.users.sourceforge.net/code.html>.\n";
 
 static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)

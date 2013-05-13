@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Auxiliary functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,6 +39,8 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
+#include <sys/utsname.h>
 #include <ctype.h>
 #include <errno.h>
 #include <dirent.h>
@@ -46,8 +48,6 @@
 #include <limits.h>
 #include <pwd.h>
 #include <stdarg.h>
-#include <sys/stat.h>
-#include <sys/utsname.h>
 #include <termios.h>
 #include <unistd.h>
 #ifdef HAVE_WCTYPE_H
@@ -56,6 +56,7 @@
 #ifdef HAVE_WCWIDTH
 # include <wchar.h>
 #endif
+
 #ifdef HAVE_SOCKETS
 # ifdef USE_IPV6
 #  include <sys/socket.h>
@@ -67,12 +68,6 @@
 #ifdef USE_MD5
 # include "md5.h"
 #endif
-
-/*
- * Mail -- a mail program
- *
- * Auxiliary functions.
- */
 
 /*
  * Announce a fatal error and die.

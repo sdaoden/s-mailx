@@ -1,8 +1,10 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Client-side implementation of the IMAP SEARCH command. This is used
+ *@ for folders not located on IMAP servers, or for IMAP servers that do
+ *@ not implement the SEARCH command.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -42,14 +44,6 @@
 #include <time.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Client-side implementation of the IMAP SEARCH command. This is used
- * for folders not located on IMAP servers, or for IMAP servers that do
- * not implement the SEARCH command.
- */
 
 static enum itoken {
 	ITBAD,

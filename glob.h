@@ -1,8 +1,9 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ A bunch of global variable declarations lie herein.
+ *@ def.h must be included first.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,15 +38,11 @@
  * SUCH DAMAGE.
  */
 
-/*
- * A bunch of global variable declarations lie herein.
- * def.h must be included first.
- */
-
 /* These two come from version.c */
 extern char const *const uagent;	/* User agent */
 extern char const *const version;	/* The version string */
 
+/* The rest will end up in main.o */
 #ifdef _MAIL_GLOBS_
 # undef _E
 # define _E

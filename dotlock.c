@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Mailbox file locking.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -35,10 +35,10 @@
 
 #include "rcv.h"
 
-#include <errno.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 

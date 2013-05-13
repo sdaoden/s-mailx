@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ POP3 client.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -44,8 +44,8 @@ typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
 
-#include <errno.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -53,12 +53,6 @@ typedef int avoid_empty_file_compiler_warning;
 #ifdef USE_MD5
 # include "md5.h"
 #endif
-
-/*
- * Mail -- a mail program
- *
- * POP3 client.
- */
 
 #define	POP3_ANSWER()	if (pop3_answer(mp) == STOP) \
 				return STOP;

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Still more user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -47,12 +47,6 @@
 #endif
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Still more user commands.
- */
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);

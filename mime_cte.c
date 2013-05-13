@@ -1,8 +1,10 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Content-Transfer-Encodings as defined in RFC 2045:
+ *@ - Quoted-Printable, section 6.7
+ *@ - Base64, section 6.8
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /* QP quoting idea, _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
 /*	$NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $	*/
@@ -33,14 +35,6 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
- * Mail -- a mail program
- *
- * Content-Transfer-Encodings as defined in RFC 2045:
- * - Quoted-Printable, section 6.7
- * - Base64, section 6.8
  */
 
 #include "rcv.h"

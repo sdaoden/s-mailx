@@ -1,5 +1,5 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Mail to others.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
@@ -39,18 +39,12 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Mail to others.
- */
 
 #define	INFIX_BUF	\
 	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)

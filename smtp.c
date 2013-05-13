@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ SMTP client and other internet related functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2000
@@ -47,9 +47,9 @@ typedef int avoid_empty_file_compiler_warning;
 #include <setjmp.h>
 #include <unistd.h>
 #ifdef HAVE_SOCKETS
+# include <sys/socket.h>
 # include <netdb.h>
 # include <netinet/in.h>
-# include <sys/socket.h>
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
@@ -59,12 +59,6 @@ typedef int avoid_empty_file_compiler_warning;
 #ifdef USE_MD5
 # include "md5.h"
 #endif
-
-/*
- * Mail -- a mail program
- *
- * SMTP client and other internet related functions.
- */
 
 static char		*smtpbuf;
 static size_t		smtpbufsize;

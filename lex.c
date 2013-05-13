@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Lexical processing of commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,18 +39,12 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Lexical processing of commands.
- */
 
 static char const	*prompt;
 static sighandler_type	oldpipe;

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Gunnar Ritter's junk classification.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -42,15 +42,15 @@
 #ifndef USE_JUNK
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include <fcntl.h>
-#include <limits.h>
 #include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
-#include <utime.h>
 #ifdef HAVE_MMAP
 # include <sys/mman.h>
 #endif
+#include <fcntl.h>
+#include <limits.h>
+#include <time.h>
+#include <unistd.h>
+#include <utime.h>
 
 #include "extern.h"
 #include "md5.h"

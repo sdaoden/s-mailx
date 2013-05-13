@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Termination processing.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,22 +39,16 @@
 
 #include "rcv.h"
 
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/file.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 #include <utime.h>
 
 #include "extern.h"
-
-/*
- * Rcv -- receive mail rationally.
- *
- * Termination processing.
- */
 
 /* Touch the indicated file */
 static void	alter(char const *name);

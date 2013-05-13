@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ IMAP v4r1 client following RFC 2060.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -39,8 +39,8 @@
 
 #include "rcv.h"
 
-#include <errno.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -58,12 +58,6 @@
 #ifdef USE_MD5
 # include "md5.h"
 #endif
-
-/*
- * Mail -- a mail program
- *
- * IMAP v4r1 client following RFC 2060.
- */
 
 #define	IMAP_ANSWER()	{ \
 				if (mp->mb_type != MB_CACHE) { \

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ OpenSSL functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -44,6 +44,8 @@ typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
 
+#include <sys/socket.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
 #include <netdb.h>
@@ -57,8 +59,6 @@ typedef int avoid_empty_file_compiler_warning;
 #include <openssl/rand.h>
 #include <stdio.h>
 #include <setjmp.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
@@ -67,12 +67,6 @@ typedef int avoid_empty_file_compiler_warning;
 #endif
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * SSL functions
- */
 
 /*
  * OpenSSL client implementation according to: John Viega, Matt Messier,
