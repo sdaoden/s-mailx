@@ -2,7 +2,7 @@
  * S-nail - a mail user agent derived from Berkeley Mail.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -1020,21 +1020,20 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		goto j_leave;
 
 	if (value("interactive") != NULL) {
-		if (((value("bsdcompat") || value("askatend"))
-					&& (value("askcc") != NULL ||
-					value("askbcc") != NULL)) ||
-				value("askattach") != NULL ||
-				value("asksign") != NULL) {
-			if (value("askcc") != NULL)
-				grabh(hp, GCC, 1);
-			if (value("askbcc") != NULL)
-				grabh(hp, GBCC, 1);
-			if (value("askattach") != NULL)
-				hp->h_attach = edit_attachments(hp->h_attach);
-			if (value("asksign") != NULL)
-				dosign = yorn(tr(35,
-					"Sign this message (y/n)? "));
-		} else {
+		err = (value("bsdcompat") || value("askatend"));
+		if (err == 0)
+			goto jaskeot;
+		if (value("askcc"))
+			++err, grabh(hp, GCC, 1);
+		if (value("askbcc"))
+			++err, grabh(hp, GBCC, 1);
+		if (value("askattach"))
+			++err, hp->h_attach = edit_attachments(hp->h_attach);
+		if (value("asksign"))
+			++err, dosign = yorn(tr(35,
+				"Sign this message (y/n)? "));
+		if (err == 1) {
+jaskeot:
 			printf(tr(183, "EOT\n"));
 			fflush(stdout);
 		}
