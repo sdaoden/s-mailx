@@ -176,13 +176,15 @@ main(int argc, char *argv[])
 {
 	static char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
 		usagestr[] =
-		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
-		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
-		"\t\t[-q file] [-r from-addr] [-S var[=value]]\n"
-		"\t\t[-s subject] to-addr...\n"
-		"\t%s [-BDdEeHIiNnRv~] [-A acct]\n"
-		"\t\t[-S var[=value]] [-T name] -f [file]\n"
-		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
+		"Synopsis:\n"
+		"  %s [-BDdEFintv~] [-A acc] [-a attachment] "
+			"[-b bcc-addr] [-c cc-addr]\n"
+		"\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
+			"[-S var[=value]]\n"
+		"\t  [-s subject] to-addr...\n"
+		"  %s [-BDdEeHIiNnRv~] [-A acct] "
+			"[-S var[=value]] [-T name] -f [file]\n"
+		"  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
 	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
 	int scnt = 0, i;
