@@ -180,10 +180,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 
 		if ((ct = strrchr(bn, '/')) != NULL)
 			bn = ++ct;
-		if ((ct = ap->a_content_type) == NULL)
-			ct = mime_classify_content_type_by_fileext(bn);
+		ct = ap->a_content_type;
 		charset = ap->a_charset;
-
 		convert = mime_classify_file(fi, (char const**)&ct, &charset,
 				&do_iconv);
 		if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
@@ -200,8 +198,6 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 		} else if (fprintf(fo, "; charset=%s\n", charset) < 0)
 			goto jerr_header;
 
-		if (ap->a_content_disposition == NULL)
-			ap->a_content_disposition = "attachment";
 		if (fprintf(fo, "Content-Transfer-Encoding: %s\n"
 				"Content-Disposition: %s;\n filename=\"",
 				_get_encoding(convert),

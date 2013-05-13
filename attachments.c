@@ -47,6 +47,10 @@
 /* We use calloc() for struct attachment */
 CTA(AC_DEFAULT == 0);
 
+/* Fill in some attachment fields; don't be interactive if number==0n */
+static struct attachment *	_fill_in(struct attachment *ap,
+					char const *file, ui_it number);
+
 /* Ask the user to edit file names and other data for the given attachment */
 static struct attachment *	_read_attachment_data(struct attachment *ap,
 					ui_it number);
@@ -55,6 +59,50 @@ static struct attachment *	_read_attachment_data(struct attachment *ap,
 #ifdef HAVE_ICONV
 static int			_attach_iconv(struct attachment *ap);
 #endif
+
+static struct attachment *
+_fill_in(struct attachment *ap, char const *file, ui_it number)
+{
+	/*
+	 * XXX The "attachment-ask-content-*" variables are left undocumented
+	 * since they are for RFC connoisseurs only.
+	 */
+	char prefix[80 * 2];
+
+	ap->a_name = file;
+	if ((file = strrchr(file, '/')) != NULL)
+		++file;
+	else
+		file = ap->a_name;
+
+	ap->a_content_type = mime_classify_content_type_by_fileext(file);
+	if (number > 0 && value("attachment-ask-content-type")) {
+		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
+		ap->a_content_type = readtty(prefix, ap->a_content_type);
+	}
+
+	if (number > 0 && value("attachment-ask-content-disposition")) {
+		snprintf(prefix, sizeof prefix,
+			"#%u\tContent-Disposition: ", number);
+		ap->a_content_disposition = readtty(prefix,
+				ap->a_content_disposition);
+	}
+	if (ap->a_content_disposition == NULL)
+		ap->a_content_disposition = "attachment";
+
+	if (number > 0 && value("attachment-ask-content-id")) {
+		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
+		ap->a_content_id = readtty(prefix, ap->a_content_id);
+	}
+
+	if (number > 0 && value("attachment-ask-content-description")) {
+		snprintf(prefix, sizeof prefix,
+			"#%u\tContent-Description: ", number);
+		ap->a_content_description = readtty(prefix,
+				ap->a_content_description);
+	}
+	return ap;
+}
 
 static struct attachment *
 _read_attachment_data(struct attachment *ap, ui_it number)
@@ -89,6 +137,8 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 		perror(cp);
 	}
 
+	ap = _fill_in(ap, cp, number);
+
 	/*
 	 * Character set of attachments: enum attach_conv
 	 */
@@ -96,12 +146,12 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 #ifdef HAVE_ICONV
 	if (! isia)
 		goto jcs;
-	cp = mime_classify_content_type_by_fileext(cp);
-	if (cp != NULL && ascncasecmp(cp, "text/", 5) != 0 &&
+	if ((cp = ap->a_content_type) != NULL &&
+			ascncasecmp(cp, "text/", 5) != 0 &&
 			! yorn(tr(162, "Filename doesn't indicate text "
 			"content - want to edit charsets? "))) {
 		ap->a_conv = AC_DEFAULT;
-		goto jcs_ok;
+		goto jleave;
 	}
 
 	charset_iter_reset(NULL);
@@ -117,7 +167,7 @@ jcs:
 #endif
 		ap->a_conv = (cp != NULL) ? AC_FIX_INCS : AC_DEFAULT;
 #ifdef HAVE_ICONV
-		goto jcs_ok;
+		goto jleave;
 	}
 
 	snprintf(prefix, sizeof prefix, tr(161, "#%u\toutput (send) charset: "),
@@ -128,7 +178,7 @@ jcs:
 
 	if (cp != NULL && defcs == NULL) {
 		ap->a_conv = AC_FIX_INCS;
-		goto jcs_ok;
+		goto jleave;
 	}
 	if (cp == NULL && defcs == NULL) {
 		ap->a_conv = AC_DEFAULT;
@@ -149,41 +199,9 @@ jcs:
 		ap->a_charset = defcs;
 		goto jcs;
 	}
-jcs_ok:
 #endif
-
-	/*
-	 * XXX The "attachment-ask-content-*" variables are left undocumented
-	 * since they are for RFC connoisseurs only.
-	 */
-
-	if (value("attachment-ask-content-type")) {
-		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
-		if ((cp = ap->a_content_type) == NULL)
-			cp = mime_classify_content_type_by_fileext(ap->a_name);
-		ap->a_content_type = readtty(prefix, cp);
-	}
-
-	if (value("attachment-ask-content-disposition")) {
-		snprintf(prefix, sizeof prefix,
-			"#%u\tContent-Disposition: ", number);
-		ap->a_content_disposition = readtty(prefix,
-				ap->a_content_disposition);
-	}
-
-	if (value("attachment-ask-content-id")) {
-		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
-		ap->a_content_id = readtty(prefix, ap->a_content_id);
-	}
-
-	if (value("attachment-ask-content-description")) {
-		snprintf(prefix, sizeof prefix,
-			"#%u\tContent-Description: ", number);
-		ap->a_content_description = readtty(prefix,
-				ap->a_content_description);
-	}
 jleave:
-	return (ap);
+	return ap;
 }
 
 #ifdef HAVE_ICONV
@@ -268,8 +286,9 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 	if (access(file, R_OK) != 0)
 		goto jleave;
 
-	nap = csalloc(1, sizeof *nap);
-	nap->a_name = file;
+	nap = _fill_in(csalloc(1, sizeof *nap), file, 0);
+	if (newap != NULL)
+		*newap = nap;
 	if (aphead != NULL) {
 		for (ap = aphead; ap->a_flink != NULL; ap = ap->a_flink)
 			;
@@ -279,9 +298,6 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 		nap->a_blink = NULL;
 		aphead = nap;
 	}
-
-	if (newap != NULL)
-		*newap = nap;
 	nap = aphead;
 jleave:
 	return nap;
