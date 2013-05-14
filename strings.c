@@ -618,14 +618,15 @@ strcomma(char **iolist, int ignore_empty)
 void
 i_strcpy(char *dest, const char *src, size_t size)
 {
-	if (size)
+	if (size > 0) {
 		for (;; ++dest, ++src)
-			if ((*dest = lowerconv(*src)) == '\0')
+			if ((*dest = lowerconv(*src)) == '\0') {
 				break;
-			else if (--size == 0) {
+			} else if (--size == 0) {
 				*dest = '\0';
 				break;
 			}
+	}
 }
 
 int
