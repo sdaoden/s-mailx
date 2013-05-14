@@ -55,8 +55,7 @@ struct mtnode {
 	char		mt_line[VFIELD_SIZE(8)];
 };
 
-static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-			*const _mt_sources[] = {
+static char const	*const _mt_sources[] = {
 		/* XXX Order fixed due to *mimetypes-load-control* handling! */
 		MIME_TYPES_USR, MIME_TYPES_SYS, NULL
 	},
