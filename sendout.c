@@ -1512,7 +1512,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 }
 
 enum okay 
-resend_msg(struct message *mp, struct name *to, int add_resent)
+resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
 	FILE *ibuf, *nfo, *nfi;
 	char *tempMail;
@@ -1523,32 +1523,38 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	time_current_update(&time_current, TRU1);
 
 	memset(&head, 0, sizeof head);
+
 	if ((to = checkaddrs(to)) == NULL) {
 		senderr++;
 		return STOP;
 	}
+
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		senderr++;
 		perror(catgets(catd, CATSET, 189, "temporary mail file"));
 		return STOP;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
-		senderr++;
+		++senderr;
 		perror(tempMail);
-		return STOP;
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
+	if (nfi == NULL)
+		goto jerr_o;
+
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-		return STOP;
+		goto jerr_all;
 	head.h_to = to;
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;
 		savedeadletter(nfi, 1);
 		fputs(tr(190, ". . . message not sent.\n"), stderr);
-		Fclose(nfo);
+jerr_all:
 		Fclose(nfi);
+jerr_o:
+		Fclose(nfo);
 		return STOP;
 	}
 	Fclose(nfo);
