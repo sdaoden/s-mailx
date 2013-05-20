@@ -505,18 +505,18 @@ getrandstring(size_t length)
 #endif
 		}
 		for (i = 0; i < length; i++)
-			data[i] = (char)
-			    ((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
+			data[i] = (char)(
+				(int)(255 * (rand() / (RAND_MAX + 1.0))) ^
 				nodedigest[i % sizeof nodedigest]);
 	}
-	if (fd > 0)
+	if (fd >= 0)
 		close(fd);
 
 	(void)b64_encode_buf(&b64, data, length, B64_SALLOC);
 	ac_free(data);
 	assert(length < b64.l);
 	b64.s[length] = '\0';
-	return (b64.s);
+	return b64.s;
 }
 
 enum okay 
