@@ -213,7 +213,7 @@ static void imap_putstr(struct mailbox *mp, struct message *m,
 static enum okay imap_get(struct mailbox *mp, struct message *m,
 		enum needspec need);
 static void commitmsg(struct mailbox *mp, struct message *to,
-		struct message from, enum havespec have);
+		struct message *from, enum havespec have);
 static enum okay imap_fetchheaders(struct mailbox *mp, struct message *m,
 		int bot, int top);
 static enum okay imap_exit(struct mailbox *mp);
@@ -1552,7 +1552,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 		imap_fetchdata(mp, &mt, expected, need,
 				head, headsize, headlines);
 		if (n >= 0) {
-			commitmsg(mp, m, mt, mt.m_have);
+			commitmsg(mp, m, &mt, mt.m_have);
 			break;
 		}
 		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
@@ -1562,7 +1562,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 			if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
 				u = atol(&cp[4]);
 				if (u == m->m_uid) {
-					commitmsg(mp, m, mt, mt.m_have);
+					commitmsg(mp, m, &mt, mt.m_have);
 					break;
 				}
 			}
@@ -1597,17 +1597,17 @@ imap_body(struct message *m)
 }
 
 static void 
-commitmsg(struct mailbox *mp, struct message *to,
-		struct message from, enum havespec have)
+commitmsg(struct mailbox *mp, struct message *to, struct message *from,
+	enum havespec have)
 {
-	to->m_size = from.m_size;
-	to->m_lines = from.m_lines;
-	to->m_block = from.m_block;
-	to->m_offset = from.m_offset;
+	to->m_size = from->m_size;
+	to->m_lines = from->m_lines;
+	to->m_block = from->m_block;
+	to->m_offset = from->m_offset;
 	to->m_have = have;
 	if (have & HAVE_BODY) {
-		to->m_xlines = from.m_lines;
-		to->m_xsize = from.m_size;
+		to->m_xlines = from->m_lines;
+		to->m_xsize = from->m_size;
 	}
 	putcache(mp, to);
 }
@@ -1675,7 +1675,7 @@ imap_fetchheaders (
 		}
 		imap_fetchdata(mp, &mt, expected, NEED_HEADER, NULL, 0, 0);
 		if (n >= 0 && !(m[n-1].m_have & HAVE_HEADER))
-			commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
+			commitmsg(mp, &m[n-1], &mt, HAVE_HEADER);
 		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
 					&mp->mb_sock) > 0) {
 			if (options & OPT_VERBOSE)
@@ -1686,7 +1686,7 @@ imap_fetchheaders (
 					if ((unsigned long)u == m[n-1].m_uid)
 						break;
 				if (n <= top && !(m[n-1].m_have & HAVE_HEADER))
-					commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
+					commitmsg(mp, &m[n-1], &mt,HAVE_HEADER);
 				n = 0;
 			}
 		}
