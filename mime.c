@@ -1506,6 +1506,7 @@ jconvert:
 		break;
 	case CONV_FROMB64:
 		rest = NULL;
+		/* FALLTHRU */
 	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, rest);
 jqpb64_dec:
