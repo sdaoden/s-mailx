@@ -1483,7 +1483,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	 * Write the original headers.
 	 */
 	while (count > 0) {
-		if ((cp = fgetline(&buf, &bufsize, &count, &c, fi, 0)) == NULL)
+		if (fgetline(&buf, &bufsize, &count, &c, fi, 0) == NULL)
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
 		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
