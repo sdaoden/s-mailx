@@ -160,8 +160,8 @@ Fopen(const char *file, const char *mode)
 	int omode;
 
 	if ((fp = safe_fopen(file, mode, &omode)) != NULL) {
+		(void)fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
-		fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -174,8 +174,8 @@ Fdopen(int fd, const char *mode)
 
 	scan_mode(mode, &omode);
 	if ((fp = fdopen(fd, mode)) != NULL) {
+		(void)fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
-		fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -329,7 +329,7 @@ Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 	if (register_file)
 		fp = Fdopen(fd, mode);
 	else {
-		fcntl(fd, F_SETFD, FD_CLOEXEC);
+		(void)fcntl(fd, F_SETFD, FD_CLOEXEC);
 		fp = fdopen(fd, mode);
 	}
 jleave:
@@ -360,8 +360,8 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 
 	if (pipe(p) < 0)
 		return NULL;
-	fcntl(p[READ], F_SETFD, FD_CLOEXEC);
-	fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
+	(void)fcntl(p[READ], F_SETFD, FD_CLOEXEC);
+	(void)fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
 	if (*mode == 'r') {
 		myside = p[READ];
 		fd0 = -1;
