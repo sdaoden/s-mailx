@@ -123,22 +123,19 @@ sslcatch(int s)
 static int 
 ssl_rand_init(void)
 {
-	char *cp;
+	char *cp, *x;
 	int state = 0;
 
 	if ((cp = value("ssl-rand-egd")) != NULL) {
-		if ((cp = file_expand(cp)) == NULL)
-			;
-		else if (RAND_egd(cp) == -1)
+		if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
 			fprintf(stderr, tr(245,
 				"entropy daemon at \"%s\" not available\n"),
-					cp);
+				cp);
 		else
 			state = 1;
 	} else if ((cp = value("ssl-rand-file")) != NULL) {
-		if ((cp = file_expand(cp)) == NULL)
-			;
-		else if (RAND_load_file(cp, 1024) == -1)
+		if ((x = file_expand(cp)) == NULL ||
+				RAND_load_file(cp = x, 1024) == -1)
 			fprintf(stderr, tr(246,
 				"entropy file at \"%s\" not available\n"), cp);
 		else {
@@ -239,7 +236,7 @@ ssl_load_verifications(struct sock *sp)
 		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("ssl-ca-file")) != NULL)
 		ca_file = file_expand(ca_file);
-	if (ca_dir || ca_file) {
+	if (ca_dir != NULL || ca_file != NULL) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
 					ca_file, ca_dir) != 1) {
 			fprintf(stderr, catgets(catd, CATSET, 233,
@@ -678,7 +675,7 @@ cverify(void *vp)
 		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("smime-ca-file")) != NULL)
 		ca_file = file_expand(ca_file);
-	if (ca_dir || ca_file) {
+	if (ca_dir != NULL || ca_file != NULL) {
 		if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
 			ssl_gen_err("Error loading %s",
 					ca_file ? ca_file : ca_dir);
@@ -1035,16 +1032,15 @@ smime_sign_include_chain_creat(
 	for (;;) {
 		X509 *tmp;
 		FILE *fp;
-		char *ncf = strchr(cfiles, ',');
+		char *x, *ncf = strchr(cfiles, ',');
 		if (ncf)
 			*ncf++ = '\0';
 		/* This fails for '=,file' constructs, but those are sick */
 		if (! *cfiles)
 			break;
 
-		if ((cfiles = file_expand(cfiles)) != NULL)
-			goto jerr;
-		if ((fp = Fopen(cfiles, "r")) == NULL) {
+		if ((x = file_expand(cfiles)) == NULL ||
+				(fp = Fopen(cfiles = x, "r")) == NULL) {
 			perror(cfiles);
 			goto jerr;
 		}
