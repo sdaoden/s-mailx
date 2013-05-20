@@ -293,7 +293,7 @@ Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 		*cp++ = '-';
 		cp = sstpcpy(cp, prefix);
 	}
-	cp = sstpcpy(cp, ".XXXXXX");
+	(void)sstpcpy(cp, ".XXXXXX");
 #ifdef HAVE_MKSTEMP
 	if ((fd = mkstemp(*fn)) < 0)
 		goto Ftemperr;
