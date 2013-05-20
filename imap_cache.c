@@ -277,9 +277,9 @@ putcache(struct mailbox *mp, struct message *m)
 	if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
 		if ((obuf = Fopen(name, "w")) == NULL)
 			return; 
-		fcntl_lock(fileno(obuf), F_WRLCK);
+		(void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
 	} else {
-		fcntl_lock(fileno(obuf), F_WRLCK);
+		(void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
 		if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
 				(unsigned long*)&otime, &olines) >= 4 &&
 				ob != '\0' && (ob == 'B' ||
@@ -346,7 +346,7 @@ out:	if (Fclose(obuf) != 0) {
 		m->m_flag &= ~MFULLYCACHED;
 		unlink(name);
 	}
-	fseek(mp->mb_itf, oldoffset, SEEK_SET);
+	(void)fseek(mp->mb_itf, oldoffset, SEEK_SET);
 }
 
 void 
