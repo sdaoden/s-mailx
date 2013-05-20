@@ -272,7 +272,8 @@ putcache(struct mailbox *mp, struct message *m)
 		c = 'N';
 	else
 		return;
-	oldoffset = ftell(mp->mb_itf);
+	if ((oldoffset = ftell(mp->mb_itf)) < 0) /* XXX weird err hdling */
+		oldoffset = 0;
 	if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
 		if ((obuf = Fopen(name, "w")) == NULL)
 			return; 
