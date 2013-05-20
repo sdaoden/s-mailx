@@ -637,34 +637,35 @@ static enum okay
 maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 		enum mflag flag)
 {
-	const int	attempts = 43200;
-	struct stat	st;
-	char	buf[4096];
-	char	*fn, *tmp, *new;
-	FILE	*op;
-	long	n, z;
-	int	i;
-	time_t	now;
+	int const attempts = 43200;
+	char buf[4096], *fn, *tmp, *new;
+	struct stat st;
+	FILE *op;
+	long n, z;
+	int i;
+	time_t now;
 
-	for (i = 0; i < attempts; i++) {
+	/* Create a unique temporary file */
+	for (i = 0;; sleep(1), ++i) {
+		if (i >= attempts) {
+			fprintf(stderr, tr(198,
+				"Can't create an unique file name in "
+				"\"%s/tmp\".\n"), name);
+			return STOP;
+		}
+
 		time(&now);
 		fn = mkname(now, flag, NULL);
 		tmp = salloc(n = strlen(name) + strlen(fn) + 6);
 		snprintf(tmp, n, "%s/tmp/%s", name, fn);
-		if (stat(tmp, &st) < 0 && errno == ENOENT)
+		if (stat(tmp, &st) >= 0 || errno != ENOENT)
+			continue;
+
+		/* Use "wx" for O_EXCL */
+		if ((op = Fopen(tmp, "wx")) != NULL)
 			break;
-		sleep(2);
 	}
-	if (i >= attempts) {
-		fprintf(stderr,
-			"Cannot create unique file name in \"%s/tmp\".\n",
-			name);
-		return STOP;
-	}
-	if ((op = Fopen(tmp, "w")) == NULL) {
-		fprintf(stderr, "Cannot write to \"%s\".\n", tmp);
-		return STOP;
-	}
+
 	fseek(fp, off1, SEEK_SET);
 	while (size > 0) {
 		z = size > (long)sizeof buf ? (long)sizeof buf : size;
@@ -678,6 +679,7 @@ maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 		size -= n;
 	}
 	Fclose(op);
+
 	new = salloc(n = strlen(name) + strlen(fn) + 6);
 	snprintf(new, n, "%s/new/%s", name, fn);
 	if (link(tmp, new) < 0) {
