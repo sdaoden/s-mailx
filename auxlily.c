@@ -623,7 +623,7 @@ makeprint(struct str const *in, struct str *out)
 				n = 1;
 			}
 			if (n < 0) {
-				mbtowc(&wc, NULL, mb_cur_max);
+				(void)mbtowc(&wc, NULL, mb_cur_max);
 				wc = utf8 ? 0xFFFD : '?';
 				n = 1;
 			} else if (n == 0)
