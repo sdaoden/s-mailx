@@ -133,26 +133,30 @@ _attach_file(struct attachment *ap, FILE *fo)
 	if (ap->a_conv == AC_FIX_INCS)
 		ap->a_charset = ap->a_input_charset;
 
-	charset_iter_recurse(charset_iter_orig);
-	offs = ftell(fo);
-	charset_iter_reset(NULL);
+	if ((offs = ftell(fo)) < 0) {
+		err = EIO;
+		goto jleave;
+	}
 
-	while (charset_iter_next() != NULL) {
+	charset_iter_recurse(charset_iter_orig);
+	for (charset_iter_reset(NULL); charset_iter_next() != NULL;) {
 		err = __attach_file(ap, fo);
 		if (err == 0 || (err != EILSEQ && err != EINVAL))
 			break;
 		clearerr(fo);
-		fseek(fo, offs, SEEK_SET);
+		if (fseek(fo, offs, SEEK_SET) < 0) {
+			err = EIO;
+			break;
+		}
 		if (ap->a_conv != AC_DEFAULT) {
 			err = EILSEQ;
 			break;
 		}
 		ap->a_charset = NULL;
 	}
-
 	charset_iter_restore(charset_iter_orig);
 jleave:
-	return (err);
+	return err;
 }
 
 static int
