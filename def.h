@@ -751,7 +751,7 @@ struct shortcut {
 /*
  * Kludges to handle the change from setexit / reset to setjmp / longjmp
  */
-#define setexit()	sigsetjmp(srbuf, 1)
+#define setexit()	(void)sigsetjmp(srbuf, 1)
 #define reset(x)	siglongjmp(srbuf, x)
 
 /*
