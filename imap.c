@@ -2682,7 +2682,7 @@ out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS)) {
 	}
 	if (stored) {
 		mp->mb_active |= MB_COMD;
-		imap_finish(mp);
+		(void)imap_finish(mp);
 	}
 	return ok;
 }
