@@ -805,14 +805,12 @@ makeheader(FILE *fp, struct header *hp)
 	int c;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == NULL) {
-		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));
-		Fclose(nf);
-		unlink(tempEdit);
-		Ftfree(&tempEdit);
+		perror(tr(66, "temporary mail edit file"));
 		return STOP;
 	}
 	unlink(tempEdit);
 	Ftfree(&tempEdit);
+
 	extract_header(fp, hp);
 	while ((c = getc(fp)) != EOF)
 		putc(c, nf);
