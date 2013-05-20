@@ -866,9 +866,12 @@ extern uc_it const 	class_char[];
  * useful just before closing an old file that was opened
  * for read/write.
  */
-#define ftrunc(stream) do {					\
-	fflush(stream);						\
-	ftruncate(fileno(stream), (off_t)ftell(stream));	\
+#define ftrunc(stream) do {\
+	off_t off;\
+	fflush(stream);\
+	off = ftell(stream);\
+	if (off >= 0)\
+		ftruncate(fileno(stream), off);\
 } while (0)
 
 /*
