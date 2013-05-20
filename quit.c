@@ -99,7 +99,8 @@ writeback(FILE *res, FILE *obuf)
 	int p, c;
 
 	p = 0;
-	fseek(obuf, 0L, SEEK_SET);
+	if (fseek(obuf, 0L, SEEK_SET) < 0)
+		return -1;
 #ifndef APPEND
 	if (res != NULL)
 		while ((c = getc(res)) != EOF)
@@ -110,7 +111,7 @@ writeback(FILE *res, FILE *obuf)
 			p++;
 			if (send(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 				perror(mailname);
-				fseek(obuf, 0L, SEEK_SET);
+				(void)fseek(obuf, 0L, SEEK_SET);
 				return(-1);
 			}
 		}
@@ -123,18 +124,19 @@ writeback(FILE *res, FILE *obuf)
 	ftrunc(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
-		fseek(obuf, 0L, SEEK_SET);
+		(void)fseek(obuf, 0L, SEEK_SET);
 		return(-1);
 	}
 	if (res != NULL)
 		Fclose(res);
-	fseek(obuf, 0L, SEEK_SET);
+	if (fseek(obuf, 0L, SEEK_SET) < 0)
+		return -1;
 	alter(mailname);
 	if (p == 1)
 		printf(tr(155, "Held 1 message in %s\n"), displayname);
 	else
 		printf(tr(156, "Held %d messages in %s\n"), p, displayname);
-	return(0);
+	return 0;
 }
 
 /*
