@@ -473,7 +473,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
  * and return the new file.
  */
 static FILE *
-infix(struct header *hp, FILE *fi)
+infix(struct header *hp, FILE *fi) /* TODO check */
 {
 	FILE *nfo, *nfi;
 	char *tempMail;
@@ -491,10 +491,11 @@ infix(struct header *hp, FILE *fi)
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
 		perror(tempMail);
 		Fclose(nfo);
-		return(NULL);
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
+	if (nfi == NULL)
+		return NULL;
 
 	contenttype = "text/plain"; /* XXX mail body - always text/plain */
 	convert = mime_classify_file(fi, &contenttype, &charset, &do_iconv);
