@@ -192,7 +192,13 @@ Fclose(FILE *fp)
 }
 
 FILE *
-Zopen(const char *file, const char *mode, int *compression)
+Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
+	* TODO maybe we shouldn't be simple and run commands but instead
+	* TODO links against any of available zlib.h, bzlib.h, lzma.h!
+	* TODO even libzip?  Much faster, not that much more work, and we're
+	* TODO *so* fixed anyway!!
+	* TODO *or*: make it all hookable via BOXEXTENSION/DECOMPRESS etc.
+	* TODO by the user;  but not like this, Coverity went grazy about it */
 {
 	int	input;
 	FILE	*output;
@@ -225,6 +231,7 @@ Zopen(const char *file, const char *mode, int *compression)
 		if (strcmp(extension, ".bz2") == 0)
 			goto bz2;
 	}
+
 	if (access(file, F_OK) == 0) {
 		*compression = FP_UNCOMPRESSED;
 		return Fopen(file, mode);
@@ -238,19 +245,24 @@ Zopen(const char *file, const char *mode, int *compression)
 	}
 	if (access(rp, W_OK) < 0)
 		*compression |= FP_READONLY;
+
 	if ((input = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
 			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
 		return NULL;
 open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 		perror(catgets(catd, CATSET, 167, "tmpfile"));
-		close(input);
+		if (input >= 0)
+			close(input);
 		return NULL;
 	}
 	unlink(tempfn);
+	Ftfree(&tempfn);
+
 	if (input >= 0 || (*compression&FP_MASK) == FP_IMAP ||
 			(*compression&FP_MASK) == FP_MAILDIR) {
 		if (decompress(*compression, input, fileno(output)) < 0) {
-			close(input);
+			if (input >= 0)
+				close(input);
 			Fclose(output);
 			return NULL;
 		}
@@ -260,18 +272,24 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 			return NULL;
 		}
 	}
-	close(input);
+	if (input >= 0)
+		close(input);
 	fflush(output);
+
 	if (omode & O_APPEND) {
 		int	flags;
 
-		if ((flags = fcntl(fileno(output), F_GETFL)) != -1)
-			fcntl(fileno(output), F_SETFL, flags | O_APPEND);
-		offset = ftell(output);
+		if ((flags = fcntl(fileno(output), F_GETFL)) < 0 ||
+				fcntl(fileno(output), F_SETFL, flags|O_APPEND)
+				< 0 || (offset = ftell(output)) < 0) {
+			Fclose(output);
+			return NULL;
+		}
 	} else {
 		rewind(output);
 		offset = 0;
 	}
+
 	register_file(output, omode, 0, 0, *compression, rp, offset);
 	return output;
 }
