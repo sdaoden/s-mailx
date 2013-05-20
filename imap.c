@@ -68,21 +68,30 @@
 						return STOP; \
 				} \
 			}
-#define	IMAP_OUT(x, y, action)	\
-			{ \
-				if (mp->mb_type != MB_CACHE) { \
-					if (imap_finish(mp) == STOP) \
-						return STOP; \
-					if (options & OPT_VERBOSE) \
-						fprintf(stderr, ">>> %s", x); \
-					mp->mb_active |= (y); \
-					if (swrite(&mp->mb_sock, x) == STOP) \
-						action; \
-				} else { \
-					if (queuefp != NULL) \
-						fputs(x, queuefp); \
-				} \
-			}
+/* TODO IMAP_OUT() simply returns instead of doing "actioN" if imap_finish()
+ * TODO fails, which leaves behind leaks in, e.g., imap_append1()!
+ * TODO IMAP_XOUT() was added due to this, but (1) needs to be used everywhere
+ * TODO and (2) doesn't handle all I/O errors itself, yet, too.
+ * TODO I.e., that should be a function, not a macro ... or so.
+ * TODO This entire module needs MASSIVE work! */
+#define IMAP_OUT(X,Y,ACTION)	IMAP_XOUT(X, Y, ACTION, return STOP)
+#define	IMAP_XOUT(X,Y,ACTIONERR,ACTIONBAIL)\
+do {\
+	if (mp->mb_type != MB_CACHE) {\
+		if (imap_finish(mp) == STOP) {\
+			ACTIONBAIL;\
+		}\
+		if (options & OPT_VERBOSE)\
+			fprintf(stderr, ">>> %s", X);\
+		mp->mb_active |= Y;\
+		if (swrite(&mp->mb_sock, X) == STOP) {\
+			ACTIONERR;\
+		}\
+	} else {\
+		if (queuefp != NULL)\
+			fputs(X, queuefp);\
+	}\
+} while (0);
 
 static struct	record {
 	struct record	*rec_next;
@@ -788,7 +797,7 @@ imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
 		char	o[LINESIZE];
 
 		snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
-		IMAP_OUT(o, MB_COMD, return STOP);
+		IMAP_OUT(o, MB_COMD, return STOP)
 		IMAP_ANSWER()
 		if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
@@ -2192,13 +2201,16 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp,
 	buflen = 0;
 again:	size = xsize;
 	count = fsize(fp);
-	fseek(fp, off1, SEEK_SET);
+	if (fseek(fp, off1, SEEK_SET) < 0) {
+		ok = STOP;
+		goto out;
+	}
 	snprintf(o, sizeof o, "%s APPEND %s %s%s {%ld}\r\n",
 			tag(1), imap_quotestr(name),
 			imap_putflags(flag),
 			imap_make_date_time(t),
 			size);
-	IMAP_OUT(o, MB_COMD, goto out)
+	IMAP_XOUT(o, MB_COMD, goto out, ok = STOP;goto out)
 	while (mp->mb_active & MB_COMD) {
 		ok = imap_answer(mp, twice);
 		if (response_type == RESPONSE_CONT)
@@ -2239,7 +2251,7 @@ again:	size = xsize;
 			snprintf(o, sizeof o, "%s CREATE %s\r\n",
 					tag(1),
 					imap_quotestr(name));
-			IMAP_OUT(o, MB_COMD, goto out);
+			IMAP_XOUT(o, MB_COMD, goto out, ok = STOP;goto out)
 			while (mp->mb_active & MB_COMD)
 				ok = imap_answer(mp, 1);
 			if (ok == STOP)
@@ -2416,7 +2428,7 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
 	*list = *lend = NULL;
 	snprintf(o, sizeof o, "%s LIST %s %%\r\n",
 			tag(1), imap_quotestr(base));
-	IMAP_OUT(o, MB_COMD, return STOP);
+	IMAP_OUT(o, MB_COMD, return STOP)
 	while (mp->mb_active & MB_COMD) {
 		ok = imap_answer(mp, 1);
 		if (response_status == RESPONSE_OTHER &&
