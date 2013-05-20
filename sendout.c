@@ -1471,11 +1471,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
-		if (fmt("Resent-To:", to, fo, 1, 1, 0)) {
-			if (buf)
-				free(buf);
+		if (fmt("Resent-To:", to, fo, 1, 1, 0))
 			return 1;
-		}
 		if ((cp = value("stealthmua")) == NULL ||
 				strcmp(cp, "noagent") == 0) {
 			fputs("Resent-", fo);
