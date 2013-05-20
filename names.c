@@ -812,7 +812,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 				Fclose(fout);
 				goto jcant;
 			}
-			fcntl(image, F_SETFD, FD_CLOEXEC);
+			(void)fcntl(image, F_SETFD, FD_CLOEXEC);
 
 			fprintf(fout, "From %s %s",
 				myname, time_current.tc_ctime);
