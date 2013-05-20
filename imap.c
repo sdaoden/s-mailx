@@ -3097,14 +3097,15 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 	buf = smalloc(bufsize = LINESIZE);
 	buflen = 0;
 	count = fsize(fp);
-	while (offs1 = ftell(fp),
+	while ((offs1 = ftell(fp)) >= 0 &&
 			fgetline(&buf, &bufsize, &count, &buflen, fp, 0)
 			!= NULL) {
 		for (bp = buf; *bp != ' '; bp++);	/* strip old tag */
 		while (*bp == ' ')
 			bp++;
 		twice = 0;
-		offs = ftell(fp);
+		if ((offs = ftell(fp)) < 0)
+			goto fail;
 	again:	snprintf(o, sizeof o, "%s %s", tag(1), bp);
 		if (ascncasecmp(bp, "UID COPY ", 9) == 0) {
 			cp = &bp[9];
@@ -3145,10 +3146,9 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 					break;
 			}
 			if (ok == STOP) {
-				if (twice++ == 0) {
-					fseek(fp, offs, SEEK_SET);
+				if (twice++ == 0 &&
+						fseek(fp, offs, SEEK_SET) >= 0)
 					goto trycreate;
-				}
 				goto fail;
 			}
 			while (octets > 0) {
@@ -3164,16 +3164,18 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 				ok = imap_answer(mp, 0);
 				if (response_status == RESPONSE_NO &&
 						twice++ == 0) {
-					fseek(fp, offs, SEEK_SET);
+					if (fseek(fp, offs, SEEK_SET) < 0)
+						goto fail;
 					goto trycreate;
 				}
 			}
 			if (response_status == RESPONSE_OK &&
 					mp->mb_flags & MB_UIDPLUS) {
-				offs2 = ftell(fp);
+				if ((offs2 = ftell(fp)) < 0)
+					goto fail;
 				fseek(fp, offs1, SEEK_SET);
 				if (imap_appenduid_cached(mp, fp) == STOP) {
-					fseek(fp, offs2, SEEK_SET);
+					(void)fseek(fp, offs2, SEEK_SET);
 					goto fail;
 				}
 			}
