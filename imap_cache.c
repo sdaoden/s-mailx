@@ -706,7 +706,8 @@ cached_uidvalidity(struct mailbox *mp)
 			(fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
 			fscanf(uvfp, "%lu", &uv) != 1)
 		uv = 0;
-	Fclose(uvfp);
+	if (uvfp != NULL)
+		Fclose(uvfp);
 	return uv;
 }
 
