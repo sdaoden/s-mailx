@@ -40,6 +40,7 @@
 #include "rcv.h"
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -279,13 +280,13 @@ FILE *
 Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 	int register_file)
 {
-	FILE *fp;
+	FILE *fp = NULL;
 	char *cp;
 	int fd;
 
 	*fn =
 	cp = smalloc(strlen(tempdir) + 1 + sizeof("mail") + strlen(prefix) +
-			+ 7 + 1);
+		+ 7 + 1);
 	cp = sstpcpy(cp, tempdir);
 	*cp++ = '/';
 	cp = sstpcpy(cp, "mail");
@@ -293,28 +294,31 @@ Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 		*cp++ = '-';
 		cp = sstpcpy(cp, prefix);
 	}
-	(void)sstpcpy(cp, ".XXXXXX");
+	sstpcpy(cp, ".XXXXXX");
+
 #ifdef HAVE_MKSTEMP
 	if ((fd = mkstemp(*fn)) < 0)
-		goto Ftemperr;
-	if (fchmod(fd, bits) < 0)
-		goto Ftemperr;
+		goto jtemperr;
+	if (bits != (S_IRUSR|S_IWUSR) && fchmod(fd, bits) < 0)
+		goto jtemperr;
 #else
 	if (mktemp(*fn) == NULL)
 		goto Ftemperr;
 	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR, bits)) < 0)
-		goto Ftemperr;
+		goto jtemperr;
 #endif
+
 	if (register_file)
 		fp = Fdopen(fd, mode);
 	else {
-		fp = fdopen(fd, mode);
 		fcntl(fd, F_SETFD, FD_CLOEXEC);
+		fp = fdopen(fd, mode);
 	}
+jleave:
 	return fp;
-Ftemperr:
+jtemperr:
 	Ftfree(fn);
-	return NULL;
+	goto jleave;
 }
 
 void
