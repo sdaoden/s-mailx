@@ -406,7 +406,9 @@ makembox(void)
 			return STOP;
 		}
 		Fclose(obuf);
-		close(creat(mbox, 0600));
+
+		if ((c = open(mbox, O_CREAT|O_TRUNC|O_WRONLY, 0600)) >= 0)
+			close(c);
 		if ((obuf = Zopen(mbox, "r+", NULL)) == NULL) {
 			perror(mbox);
 			Fclose(ibuf);
