@@ -387,13 +387,13 @@ makembox(void)
 		}
 		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
 			perror(tempQuit);
-			rm(tempQuit);
-			Ftfree(&tempQuit);
 			Fclose(obuf);
-			return STOP;
 		}
 		rm(tempQuit);
 		Ftfree(&tempQuit);
+		if (ibuf == NULL)
+			return STOP;
+
 		if ((abuf = Zopen(mbox, "r", NULL)) != NULL) {
 			while ((c = getc(abuf)) != EOF)
 				putc(c, obuf);
