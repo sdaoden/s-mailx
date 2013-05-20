@@ -584,7 +584,8 @@ maildir_append(const char *name, FILE *fp)
 						size, flag);
 				if (ok == STOP)
 					return STOP;
-				fseek(fp, offs+buflen, SEEK_SET);
+				if (fseek(fp, offs+buflen, SEEK_SET) < 0)
+					return STOP;
 			}
 			off1 = offs + buflen;
 			size = 0;
@@ -666,11 +667,13 @@ maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 			break;
 	}
 
-	fseek(fp, off1, SEEK_SET);
+	if (fseek(fp, off1, SEEK_SET) < 0)
+		goto jtmperr;
 	while (size > 0) {
 		z = size > (long)sizeof buf ? (long)sizeof buf : size;
 		if ((n = fread(buf, 1, z, fp)) != z ||
 				(size_t)n != fwrite(buf, 1, n, op)) {
+jtmperr:
 			fprintf(stderr, "Error writing to \"%s\".\n", tmp);
 			Fclose(op);
 			unlink(tmp);
