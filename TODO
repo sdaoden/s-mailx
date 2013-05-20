@@ -278,6 +278,9 @@ Low-Level
 
 - Think about a value() cache.
 
+- Think about replacing the IMAP cache with an SQLITE3 interface.
+  Or rewrite it.  Error handling etc. etc. is peculiar.
+
 - Check all Popen() calls, i've had the impressions that Popen() doesn't
   close all resources on failure.  Also, Popen() callers often do a lot of
   work in respect to signals.  Try to find a solution that all problems are
