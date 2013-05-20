@@ -56,7 +56,7 @@ static long	mdprime;
 static sigjmp_buf	maildirjmp;
 
 /* Do some cleanup in the tmp/ subdir */
-static void	cleantmp(void);
+static void		_cleantmp(void);
 
 static int maildir_setfile1(const char *name, int newmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
@@ -76,7 +76,7 @@ static void mktable(void);
 static enum okay subdir_remove(const char *name, const char *sub);
 
 static void
-cleantmp(void)
+_cleantmp(void)
 {
 	char dep[MAXPATHLEN];
 	struct stat st;
@@ -180,8 +180,8 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 {
 	int	i;
 
-	if (!newmail)
-		cleantmp();
+	if (! newmail)
+		_cleantmp();
 	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
