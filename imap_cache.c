@@ -155,7 +155,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 		return STOP;
 	if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
 		return STOP;
-	fcntl_lock(fileno(fp), F_RDLCK);
+	(void)fcntl_lock(fileno(fp), F_RDLCK);
 	if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
 			(unsigned long*)&xtime, &xlines) < 4)
 		goto fail;
@@ -176,9 +176,11 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 success:
 	if (b == 'N')
 		goto flags;
-	fseek(fp, INITSKIP, SEEK_SET);
+	if (fseek(fp, INITSKIP, SEEK_SET) < 0)
+		goto fail;
 	zp = zalloc(fp);
-	fseek(mp->mb_otf, 0L, SEEK_END);
+	if (fseek(mp->mb_otf, 0L, SEEK_END) < 0)
+		goto fail;
 	offset = ftell(mp->mb_otf);
 	while (inheader && (n = zread(zp, iob, sizeof iob)) > 0) {
 		size += n;
