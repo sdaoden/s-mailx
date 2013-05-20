@@ -1195,8 +1195,10 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		if (!disconnected(account) &&
 				sopen(sp, &so, use_ssl, uhp,
 					use_ssl ? "imaps" : "imap",
-					(options & OPT_VERBOSE) != 0) != OKAY)
-		return -1;
+					(options & OPT_VERBOSE) != 0) != OKAY) {
+			free(account);
+			return -1;
+		}
 	} else
 		so = mb.mb_sock;
 	if (!transparent)
