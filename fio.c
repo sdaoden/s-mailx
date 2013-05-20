@@ -672,17 +672,18 @@ append(struct message *mp)
  * Delete a file, but only if the file is a plain file.
  */
 int
-rm(char *name)
+rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 {
 	struct stat sb;
+	int ret = -1;
 
 	if (stat(name, &sb) < 0)
-		return(-1);
-	if (!S_ISREG(sb.st_mode)) {
+		;
+	else if (! S_ISREG(sb.st_mode))
 		errno = EISDIR;
-		return(-1);
-	}
-	return(unlink(name));
+	else
+		ret = unlink(name);
+	return ret;
 }
 
 static int sigdepth;		/* depth of holdsigs() */
