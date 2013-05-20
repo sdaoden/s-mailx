@@ -203,7 +203,10 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_OUT(o);
 		SMTP_ANSWER(2);
 		switch (auth) {
-		default:
+		case AUTH_NONE:
+			/* FALLTRHU
+			 * Won't happen, but gcc(1) and clang(1) whine without
+			 * and Coverity whines with; that's a hard one.. */
 		case AUTH_LOGIN:
 			SMTP_OUT("AUTH LOGIN\r\n");
 			SMTP_ANSWER(3);
