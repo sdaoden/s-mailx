@@ -849,16 +849,20 @@ diction(const void *a, const void *b)
 int 
 cfile(void *v)
 {
-	char **argv = v, *exp;
-
+	char **argv = v;
+#if 1 /* TODO this & expansion is completely redundant! */
+	char *exp;
+#endif
 	if (argv[0] == NULL) {
 		newfileinfo();
-		return (0);
+		return 0;
 	}
+#if 1
 	if ((exp = expand("&")) == NULL)
-		return (0);
+		return 0;
 	strncpy(mboxname, exp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
-	return (file1(*argv));
+#endif
+	return file1(*argv);
 }
 
 static int 

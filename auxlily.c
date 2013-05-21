@@ -272,6 +272,8 @@ which_protocol(const char *name)
 #endif
 		return PROTO_UNKNOWN;
 	} else {
+		/* TODO This is the de facto maildir code and thus belongs
+		 * TODO into maildir! */
 	file:	p = PROTO_FILE;
 		np = ac_alloc((sz = strlen(name)) + 5);
 		memcpy(np, name, sz);

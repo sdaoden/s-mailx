@@ -1162,7 +1162,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	(void)use_ssl;
 	(void)uhp;
 
-	if ((cp = strchr(server, ':')) != NULL) {
+	if ((cp = strchr(server, ':')) != NULL) { /* TODO URI parse! IPv6! */
 		portstr = &cp[1];
 #ifndef USE_IPV6
 		port = strtol(portstr, NULL, 10);
