@@ -3212,6 +3212,7 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 	ftruncate(fileno(fp), 0);
 	if (gotcha)
 		imap_close(mp);
+	free(buf);
 	return rok;
 }
 
