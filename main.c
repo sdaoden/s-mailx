@@ -73,6 +73,9 @@ struct a_arg {
 /* Add an option for sendmail(1) */
 static void	_add_smopt(int argc_left, char const *arg);
 
+/* Perform basic startup initialization */
+static void	_startup(void);
+
 /* Initialize *tempdir*, *myname*, *homedir* */
 static void	_setup_vars(void);
 
@@ -90,6 +93,76 @@ static int	_rcv_mode(char const *folder);
 
 /* Interrupt printing of the headers */
 static void	_hdrstop(int signo);
+
+static void
+_startup(void)
+{
+	char *cp;
+
+	/* Absolutely the first thing we do is save our egid
+	 * and set it to the rgid, so that we can safely run
+	 * setgid.  We use the sgid (saved set-gid) to allow ourselves
+	 * to revert to the egid if we want (temporarily) to become
+	 * privileged */
+	effectivegid = getegid();
+	realgid = getgid();
+	if (setgid(realgid) < 0) {
+		perror("setgid");
+		exit(1);
+	}
+
+	image = -1;
+
+	if ((cp = strrchr(progname, '/')) != NULL)
+		progname = ++cp;
+
+	/* Set up a reasonable environment.
+	 * Figure out whether we are being run interactively,
+	 * start the SIGCHLD catcher, and so forth */
+	safe_signal(SIGCHLD, sigchild);
+	is_a_tty[0] = isatty(0);
+	is_a_tty[1] = isatty(1);
+	if (is_a_tty[0]) {
+		assign("interactive", "");
+		if (is_a_tty[1])
+			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+	}
+	assign("header", "");
+	assign("save", "");
+
+#ifdef HAVE_SETLOCALE
+	setlocale(LC_ALL, "");
+	mb_cur_max = MB_CUR_MAX;
+# if defined HAVE_NL_LANGINFO && defined CODESET
+	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+		assign("ttycharset", cp);
+# endif
+
+# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+	if (mb_cur_max > 1) {
+		wchar_t	wc;
+		if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
+				mbtowc(&wc, "\342\202\254", 3) == 3 &&
+				wc == 0x20AC)
+			utf8 = 1;
+	}
+# endif
+#else
+	mb_cur_max = 1;
+#endif
+
+#ifdef HAVE_CATGETS
+# ifdef NL_CAT_LOCALE
+	catd = catopen(CATNAME, NL_CAT_LOCALE);
+# else
+	catd = catopen(CATNAME, 0);
+# endif
+#endif
+
+#ifdef HAVE_ICONV
+	iconvd = (iconv_t)-1;
+#endif
+}
 
 static void
 _add_smopt(int argc_left, char const *arg)
@@ -264,76 +337,15 @@ main(int argc, char *argv[])
 	char const *folder = NULL;
 
 	/*
-	 * Absolutely the first thing we do is save our egid
-	 * and set it to the rgid, so that we can safely run
-	 * setgid.  We use the sgid (saved set-gid) to allow ourselves
-	 * to revert to the egid if we want (temporarily) to become
-	 * priveliged.
+	 * Start our lengthy setup
 	 */
-	effectivegid = getegid();
-	realgid = getgid();
-	if (setgid(realgid) < 0) {
-		perror("setgid");
-		exit(1);
-	}
 
-	image = -1;
 	starting = TRU1;
-	if ((progname = strrchr(argv[0], '/')) != NULL)
-		++progname;
-	else
-		progname = argv[0];
 
-	/*
-	 * Set up a reasonable environment.
-	 * Figure out whether we are being run interactively,
-	 * start the SIGCHLD catcher, and so forth.
-	 */
-	safe_signal(SIGCHLD, sigchild);
-	is_a_tty[0] = isatty(0);
-	is_a_tty[1] = isatty(1);
-	if (is_a_tty[0]) {
-		assign("interactive", "");
-		if (is_a_tty[1])
-			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
-	}
-	assign("header", "");
-	assign("save", "");
+	progname = argv[0];
+	_startup();
 
-#ifdef HAVE_SETLOCALE
-	setlocale(LC_ALL, "");
-	mb_cur_max = MB_CUR_MAX;
-# if defined HAVE_NL_LANGINFO && defined CODESET
-	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
-		assign("ttycharset", cp);
-# endif
-# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
-	if (mb_cur_max > 1) {
-		wchar_t	wc;
-		if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-				mbtowc(&wc, "\342\202\254", 3) == 3 &&
-				wc == 0x20AC)
-			utf8 = 1;
-	}
-# endif
-#else
-	mb_cur_max = 1;
-#endif
-
-#ifdef HAVE_CATGETS
-# ifdef NL_CAT_LOCALE
-	catd = catopen(CATNAME, NL_CAT_LOCALE);
-# else
-	catd = catopen(CATNAME, 0);
-# endif
-#endif
-#ifdef HAVE_ICONV
-	iconvd = (iconv_t)-1;
-#endif
-
-	/*
-	 * Command line options
-	 */
+	/* Command line parsing */
 	while ((i = getopt(argc, argv, optstr)) != EOF) {
 		switch (i) {
 		case 'A':
@@ -541,6 +553,10 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		goto usage;
 	}
 
+	/*
+	 * Likely to go, perform more setup
+	 */
+
 	_setup_vars();
 	_setscreensize(0);
 #ifdef SIGWINCH
@@ -557,10 +573,8 @@ usage:			fprintf(stderr, tr(135, usagestr),
 
 	if ((options & OPT_NOSRC) == 0)
 		load(SYSCONFRC);
-	/*
-	 * Expand returns a savestr(), but load only uses the file name
-	 * for fopen(), so it's safe to do this.
-	 */
+	/* *expand() returns a savestr(), but load only uses the file name
+	 * for fopen(), so it's safe to do this */
 	if ((cp = getenv("MAILRC")) != NULL)
 		load(file_expand(cp));
 	else if ((cp = getenv("NAILRC")) != NULL)
@@ -603,8 +617,9 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		options |= OPT_VERBOSE;
 
 	/*
-	 * We are actually ready to go, finally
+	 * We're finally completely setup and ready to go
 	 */
+
 	starting = FAL0;
 
 	if (options & OPT_RCVMODE)
