@@ -459,6 +459,7 @@ commands(void)
 				}
 			}
 			reset_on_stop = 1;
+			exit_status = 0;
 			if ((prompt = value("prompt")) == NULL)
 				prompt = value("bsdcompat") ? "& " : "? ";
 			printf("%s", prompt);
