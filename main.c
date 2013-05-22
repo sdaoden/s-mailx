@@ -123,7 +123,7 @@ _startup(void)
 	is_a_tty[0] = isatty(0);
 	is_a_tty[1] = isatty(1);
 	if (is_a_tty[0]) {
-		assign("interactive", "");
+		options |= OPT_INTERACTIVE;
 		if (is_a_tty[1])
 			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 	}
@@ -558,12 +558,16 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	 */
 
 	_setup_vars();
-	_setscreensize(0);
+
+	if (options & OPT_INTERACTIVE) {
+		_setscreensize(0);
 #ifdef SIGWINCH
-	if (value("interactive"))
 		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGWINCH, _setscreensize);
 #endif
+	} else
+		scrnheight = realscreenheight = 24, scrnwidth = 80;
+
 	input = stdin;
 
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */

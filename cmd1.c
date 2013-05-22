@@ -871,8 +871,8 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		} else {
 			safe_signal(SIGPIPE, brokpipe);
 		}
-	} else if (value("interactive") != NULL &&
-	    (page || (cp = value("crt")) != NULL)) {
+	} else if ((options & OPT_INTERACTIVE) &&
+			(page || (cp = value("crt")) != NULL)) {
 		nlines = 0;
 		if (!page) {
 			for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {

@@ -109,9 +109,6 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 {
 	char prefix[80 * 2];
 	char const *cslc, *cp, *defcs;
-#ifdef HAVE_ICONV
-	int isia = (value("interactive") != NULL);
-#endif
 
 	if (ap == NULL)
 		ap = csalloc(1, sizeof *ap);
@@ -144,7 +141,7 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 	 */
 	cslc = charset_get_lc();
 #ifdef HAVE_ICONV
-	if (! isia)
+	if (! (options & OPT_INTERACTIVE))
 		goto jcs;
 	if ((cp = ap->a_content_type) != NULL &&
 			ascncasecmp(cp, "text/", 5) != 0 &&
@@ -163,7 +160,7 @@ jcs:
 		defcs = cslc;
 	cp = ap->a_input_charset = readtty(prefix, defcs);
 #ifdef HAVE_ICONV
-	if (! isia) {
+	if (! (options & OPT_INTERACTIVE)) {
 #endif
 		ap->a_conv = (cp != NULL) ? AC_FIX_INCS : AC_DEFAULT;
 #ifdef HAVE_ICONV
@@ -312,7 +309,7 @@ append_attachments(struct attachment *aphead, char *names)
 	while ((cp = strcomma(&names, 1)) != NULL) {
 		if ((xaph = add_attachment(aphead, cp, &nap)) != NULL) {
 			aphead = xaph;
-			if (value("interactive"))
+			if (options & OPT_INTERACTIVE)
 				printf(tr(19, "~@: added attachment \"%s\"\n"),
 					nap->a_name);
 		} else

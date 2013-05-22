@@ -425,7 +425,7 @@ commands(void)
 		 * Print the prompt, if needed.  Clear out
 		 * string space, and flush the output.
 		 */
-		if (!sourcing && value("interactive") != NULL) {
+		if (! sourcing && (options & OPT_INTERACTIVE)) {
 			av = (av = value("autoinc")) ? savestr(av) : NULL;
 			nv = (nv = value("newmail")) ? savestr(nv) : NULL;
 			if (is_a_tty[0] && (av != NULL || nv != NULL ||
@@ -488,11 +488,9 @@ commands(void)
 				unstack();
 				continue;
 			}
-			if (value("interactive") != NULL &&
-			    value("ignoreeof") != NULL &&
-			    ++eofloop < 25) {
-				printf(catgets(catd, CATSET, 89,
-						"Use \"quit\" to quit.\n"));
+			if ((options & OPT_INTERACTIVE) &&
+					value("ignoreeof") && ++eofloop < 25) {
+				printf(tr(89, "Use \"quit\" to quit.\n"));
 				continue;
 			}
 			break;

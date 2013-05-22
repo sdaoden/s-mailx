@@ -421,12 +421,12 @@ jleave:
 int 
 yorn(char const *msg)
 {
-	char	*cp;
+	char *cp;
 
-	if (value("interactive") == NULL)
-		return (1);
+	if (! (options & OPT_INTERACTIVE))
+		return 1;
 	do if ((cp = readtty(msg, NULL)) == NULL)
-		return (0);
+		return 0;
 	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
 	return (*cp == 'y' || *cp == 'Y');
 }

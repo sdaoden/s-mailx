@@ -1014,7 +1014,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 			tflag)) == NULL)
 		goto j_leave;
 
-	if (value("interactive") != NULL) {
+	if (options & OPT_INTERACTIVE) {
 		err = (value("bsdcompat") || value("askatend"));
 		if (err == 0)
 			goto jaskeot;
