@@ -363,7 +363,7 @@ main(int argc, char *argv[])
 				nap->aa_file = optarg;
 				a_curr = nap;
 			}
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'B':
 			/* Make 0/1 line buffered */
@@ -373,12 +373,12 @@ main(int argc, char *argv[])
 		case 'b':
 			/* Get Blind Carbon Copy Recipient list */
 			bcc = cat(bcc, checkaddrs(lextract(optarg,GBCC|GFULL)));
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'c':
 			/* Get Carbon Copy Recipient list */
 			cc = cat(cc, checkaddrs(lextract(optarg, GCC|GFULL)));
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'D':
 #ifdef USE_IMAP
@@ -396,7 +396,7 @@ main(int argc, char *argv[])
 			options |= OPT_EXISTONLY;
 			break;
 		case 'F':
-			options |= OPT_F_FLAG | OPT_SENDFLAG;
+			options |= OPT_F_FLAG | OPT_SENDMODE;
 			break;
 		case 'f':
 			/*
@@ -435,7 +435,7 @@ jIflag:		case 'I':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
 			if (*optarg != '-')
 				qf = optarg;
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'R':
 			/* Open folders read-only */
@@ -476,7 +476,7 @@ jIflag:		case 'I':
 		case 's':
 			/* Subject: */
 			subject = optarg;
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'T':
 			/*
@@ -492,7 +492,7 @@ jIflag:		case 'I':
 			goto jIflag;
 		case 't':
 			/* Read defined set of headers from mail to be send */
-			options |= OPT_SENDFLAG | OPT_t_FLAG;
+			options |= OPT_SENDMODE | OPT_t_FLAG;
 			break;
 		case 'u':
 			/* Set user name to pretend to be  */
@@ -538,7 +538,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
-	if ((options & (OPT_SENDFLAG|OPT_t_FLAG)) == OPT_SENDFLAG &&
+	if ((options & (OPT_SENDMODE|OPT_t_FLAG)) == OPT_SENDMODE &&
 			to == NULL) {
 		fprintf(stderr, tr(138,
 			"Send options without primary recipient specified.\n"));
@@ -565,8 +565,6 @@ usage:			fprintf(stderr, tr(135, usagestr),
 			safe_signal(SIGWINCH, _setscreensize);
 #endif
 	input = stdin;
-	if (to == NULL && (options & OPT_t_FLAG) == 0)
-		options |= OPT_RCVMODE;
 
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();
@@ -622,7 +620,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 
 	starting = FAL0;
 
-	if (options & OPT_RCVMODE)
+	if (! (options & OPT_SENDMODE))
 		return _rcv_mode(folder);
 
 	/* Now that full mailx(1)-style file expansion is possible handle the

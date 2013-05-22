@@ -214,20 +214,21 @@ typedef void (		*sighandler_type)(int);
 
 enum user_options {
 	OPT_NONE	= 0,
-	OPT_DEBUG	= 1<< 0,	/* Debug flag set */
-	OPT_VERBOSE	= 1<< 1,	/* Verbose flag (implied by *debug*) */
-	OPT_RCVMODE	= 1<< 2,	/* True if receiving mail */
-	OPT_EXISTONLY	= 1<< 3,
-	OPT_HEADERSONLY	= 1<< 4,
-	OPT_SENDFLAG	= 1<< 5,
-	OPT_NOSRC	= 1<< 6,
-	OPT_E_FLAG	= 1<< 7,
-	OPT_F_FLAG	= 1<< 8,
-	OPT_I_FLAG	= 1<< 9,
-	OPT_N_FLAG	= 1<<10,
-	OPT_R_FLAG	= 1<<11,
-	OPT_t_FLAG	= 1<<12,
-	OPT_TILDE_FLAG	= 1<<13		/* -~ */
+	OPT_DEBUG	= 1<< 0,	/* -d / *debug* */
+	OPT_VERBOSE	= 1<< 1,	/* -v / *verbose* */
+	OPT_EXISTONLY	= 1<< 2,	/* -e */
+	OPT_HEADERSONLY	= 1<< 3,	/* -H */
+	OPT_NOSRC	= 1<< 4,	/* -n */
+	OPT_E_FLAG	= 1<< 5,	/* -E / *skipemptybody* */
+	OPT_F_FLAG	= 1<< 6,	/* -F */
+	OPT_I_FLAG	= 1<< 7,	/* -I */
+	OPT_N_FLAG	= 1<< 8,	/* -N / *header* */
+	OPT_R_FLAG	= 1<< 9,	/* -R */
+	OPT_t_FLAG	= 1<<10,	/* -t */
+	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
+
+	OPT_SENDMODE	= 1<<16,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1<<17		/* isatty(0) / isatty(1) */
 };
 
 enum okay {

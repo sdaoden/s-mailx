@@ -589,8 +589,8 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 */
 
 	if ((com->c_argtype & F) == 0) {
-		if ((cond == CRCV && (options & OPT_RCVMODE) == 0) ||
-				(cond == CSEND && (options & OPT_RCVMODE)) ||
+		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
+				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
 				(cond == CTERM && !is_a_tty[0]) ||
 				(cond == CNONTERM && is_a_tty[0])) {
 			ac_free(word);
@@ -605,7 +605,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * an error.
 	 */
 
-	if ((options & OPT_RCVMODE) == 0 && (com->c_argtype & M) == 0) {
+	if ((options & OPT_SENDMODE) && (com->c_argtype & M) == 0) {
 		printf(catgets(catd, CATSET, 92,
 			"May not execute \"%s\" while sending\n"), com->c_name);
 		goto out;
