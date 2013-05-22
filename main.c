@@ -329,24 +329,24 @@ main(int argc, char *argv[])
 		"  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
 	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
-	int scnt = 0, i;
 	struct name *to = NULL, *cc = NULL, *bcc = NULL;
 	struct attachment *attach = NULL;
-	char *cp = NULL, *subject = NULL, *qf = NULL,
-		*fromaddr = NULL, *Aflag = NULL;
-	char const *folder = NULL;
+	char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
+	char const *okey, **oargs = NULL, *folder = NULL;
+	int oargs_size = 0, oargs_count = 0, i;
 
 	/*
 	 * Start our lengthy setup
 	 */
 
-	starting = TRU1;
+	starting =
+	unset_allow_undefined = TRU1;
 
 	progname = argv[0];
 	_startup();
 
 	/* Command line parsing */
-	while ((i = getopt(argc, argv, optstr)) != EOF) {
+	while ((i = getopt(argc, argv, optstr)) >= 0) {
 		switch (i) {
 		case 'A':
 			/* Execute an account command later on */
@@ -382,16 +382,20 @@ main(int argc, char *argv[])
 			break;
 		case 'D':
 #ifdef USE_IMAP
-			assign("disconnected", "");
+			okey = "disconnected";
+			goto joarg;
+#else
+			break;
 #endif
-			break;
 		case 'd':
-			assign("debug", "");
-			options |= OPT_DEBUG;
-			break;
+			okey = "debug";
+#ifdef WANT_ASSERTS
+			assign(okey, "");
+#endif
+			goto joarg;
 		case 'E':
-			options |= OPT_E_FLAG;
-			break;
+			okey = "skipemptybody";
+			goto joarg;
 		case 'e':
 			options |= OPT_EXISTONLY;
 			break;
@@ -399,12 +403,10 @@ main(int argc, char *argv[])
 			options |= OPT_F_FLAG | OPT_SENDMODE;
 			break;
 		case 'f':
-			/*
-			 * User is specifying file to "edit" with Mail,
+			/* User is specifying file to "edit" with Mail,
 			 * as opposed to reading system mailbox.
 			 * If no argument is given, we read his mbox file.
-			 * Check for remaining arguments later.
-			 */
+			 * Check for remaining arguments later */
 			folder = "&";
 			break;
 		case 'H':
@@ -416,13 +418,12 @@ jIflag:		case 'I':
 			break;
 		case 'i':
 			/* Ignore interrupts */
-			assign("ignore", "");
-			break;
+			okey = "ignore";
+			goto joarg;
 		case 'N':
 			/* Avoid initial header printing */
-			unset_internal("header");
-			options |= OPT_N_FLAG;
-			break;
+			okey = "header";
+			goto joarg;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
 			options |= OPT_NOSRC;
@@ -451,27 +452,36 @@ jIflag:		case 'I':
 						"with -r\n"));
 					goto usage;
 				}
-				fromaddr = fa->n_fullname;
 				_add_smopt(argc - optind, "-r");
 				_add_smopt(-1, fa->n_name);
+				/* TODO -r options is set in smopts, but may
+				 * TODO be overwritten by setting from= in
+				 * TODO an interactive session!
+				 * TODO Maybe disable setting of from?
+				 * TODO Warn user?  Update manual!! */
+				okey = savecat("from=", fa->n_fullname);
+				goto joarg;
 				/* ..and fa goes even though it is ready :/ */
 			}
-			break;
 		case 'S':
-			/*
-			 * Set variable.  We need to do this twice, since the
+			/* Set variable.  We need to do this twice, since the
 			 * user surely wants the setting to take effect
 			 * immediately, but also doesn't want it to be
-			 * overwritten from within resource files
-			 */
-			argv[scnt++] = optarg;
+			 * overwritten from within resource files */
 			{	char *a[2];
-				a[0] = optarg;
+				okey = a[0] = optarg;
 				a[1] = NULL;
-				unset_allow_undefined = TRU1;
 				set(a);
-				unset_allow_undefined = FAL0;
 			}
+joarg:			if (oargs_count == oargs_size) {
+				char const **newoargs = salloc(sizeof(char*) *
+					(oargs_size += 8));
+				if (oargs_count > 0)
+					memcpy(newoargs, oargs,
+						oargs_count * sizeof(char*));
+				oargs = newoargs;
+			}
+			oargs[oargs_count++] = okey;
 			break;
 		case 's':
 			/* Subject: */
@@ -479,10 +489,8 @@ jIflag:		case 'I':
 			options |= OPT_SENDMODE;
 			break;
 		case 'T':
-			/*
-			 * Next argument is temp file to write which
-			 * articles have been read/deleted for netnews.
-			 */
+			/* Next argument is temp file to write which
+			 * articles have been read/deleted for netnews */
 			option_T_arg = optarg;
 			if ((i = creat(option_T_arg, 0600)) < 0) {
 				perror(option_T_arg);
@@ -504,9 +512,11 @@ jIflag:		case 'I':
 			/* NOTREACHED */
 		case 'v':
 			/* Be verbose */
-			assign("verbose", "");
-			options |= OPT_VERBOSE;
-			break;
+			okey = "verbose";
+#ifdef WANT_ASSERTS
+			assign(okey, "");
+#endif
+			goto joarg;
 		case '~':
 			/* Enable tilde escapes even in non-interactive mode */
 			options |= OPT_TILDE_FLAG;
@@ -594,35 +604,26 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		a[1] = NULL;
 		account(a);
 	}
-	/* Override 'skipemptybody' if '-E' flag was given */
-	if (options & OPT_E_FLAG)
-		assign("skipemptybody", "");
-	/* -S arguments override rc files */
-	for (i = 0; i < scnt; ++i) {
-		char *a[2];
-		a[0] = argv[i];
+
+	/* Ensure the -S and other command line options take precedence over
+	 * anything that may have been placed in resource files */
+	for (i = 0; i < oargs_count; ++i) {
+		char const *a[2];
+		a[0] = oargs[i];
 		a[1] = NULL;
 		set(a);
 	}
-	/* From address from command line overrides rc files */
-	if (fromaddr != NULL)
-		assign("from", fromaddr);
-
-	if (value("debug"))
-		options |= OPT_DEBUG;
-	if (options & OPT_DEBUG) {
-		options |= OPT_VERBOSE;
-		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
-			myname, homedir);
-	}
-	if (value("verbose"))
-		options |= OPT_VERBOSE;
 
 	/*
 	 * We're finally completely setup and ready to go
 	 */
 
-	starting = FAL0;
+	starting =
+	unset_allow_undefined = FAL0;
+
+	if (options & OPT_DEBUG)
+		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
+			myname, homedir);
 
 	if (! (options & OPT_SENDMODE))
 		return _rcv_mode(folder);

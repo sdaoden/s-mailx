@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 20, 2013
+.Dd May 23, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -101,7 +101,18 @@ most of which being compile-time options.
 It is also usable as a mail batch language,
 both for sending and receiving mail.
 .Pp
-The following options are accepted:
+In the following list of supported command line options,
+.Fl D ,
+.Fl d ,
+.Fl E ,
+.Fl i ,
+.Fl N ,
+.Fl r
+and
+.Fl v
+are implemented by setting the corresponding variable via the
+.Fl S
+option.
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
@@ -126,18 +137,16 @@ Send carbon copies to the given list of addresses.
 .It Fl D
 \*(OP Set the
 .Va disconnected
-variable option immediately.
+variable.
 .It Fl d
-Enables debugging messages and disables the actual delivery of messages.
-Unlike the flag
-.Fl v
-this option is intended for \*(UA development only.
+Set the
+.Va debug
+variable, which enables debug messages and disables message delivery.
+Note that this is not a real `sandbox' mode.
 .It Fl E
-If an outgoing message does not contain any text in its first or only
-message part, do not send but discard it silently,
-effectively setting the
+Set the
 .Va skipemptybody
-variable at program startup.
+variable and thus discard messages with an empty message part body.
 This is useful for sending messages from scripts.
 .It Fl e
 Just check if mail is present in the system mailbox.
@@ -167,11 +176,14 @@ Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
 Only applicable in combination with
 .Fl f .
 .It Fl i
-Ignore tty interrupt signals.
-This is particularly useful when using \*(UA on noisy phone lines.
+Set the
+.Va ignore
+variable to ignore tty interrupt signals.
 .It Fl N
-Inhibits the initial display of message headers when reading mail
-or editing a mail folder.
+Unset the
+.Va header
+variable and thus inhibits the initial display of message headers when
+reading mail or editing a mail folder.
 .It Fl n
 Inhibits reading \*(UR upon startup.
 This option should be activated for \*(UA scripts that are invoked on
@@ -191,16 +203,18 @@ May be given in send mode only.
 .It Fl R
 Opens any folders read-only.
 .It Fl r Ar address
-Sets the \fIFrom\fR address.
-Overrides any
+Sets the
 .Va from
-variable specified in the environment, in startup files or via
-.Fl S
-option processing.
-The
-.Fl r Ar address
-option is passed through to the MTA unless SMTP is used,
-and persists for an entire (interactive) session.
+variable which is used to define the \fIFrom:\fR address when sending
+messages.
+\fBNote:\fR
+The value set via
+.Fl r
+is passed through to the MTA unless SMTP is used, and persists for an
+entire (interactive) session!
+This special step is \fBnot\fR performed when the
+.Va from
+variable is set in any other way!
 .It Fl S Ar variable Ns Op = Ns value
 Sets the internal option
 .Ar variable
@@ -221,9 +235,6 @@ read in the file
 .Ar name .
 Implies
 .Fl I .
-Compressed files are handled as described for the
-.Ic folder
-command below.
 .It Fl t
 The message to be sent is expected to contain a message header with
 `To:', `Cc:', or `Bcc:' fields giving its recipients and `Subject:'
@@ -234,8 +245,9 @@ Reads the mailbox of the given user name.
 .It Fl V
 Print \*(UA's version and exit.
 .It Fl v
-Verbose mode.
-The details of delivery are displayed on the user's terminal.
+Set the
+.Va verbose
+variable, which enables more verbose messages on the terminal.
 .It Fl ~
 Enable tilde escapes even if not in interactive mode.
 .El
