@@ -15,6 +15,7 @@ SID		= s-
 
 MAILSPOOL	= /var/mail
 SENDMAIL	= /usr/sbin/sendmail
+SENDMAIL_PROGNAME = sendmail
 SHELL		= /bin/sh
 STRIP		= strip
 INSTALL		= /usr/bin/install
@@ -46,7 +47,8 @@ SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 
 # Binaries builtin paths
 PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
-			-DSENDMAIL='"$(SENDMAIL)"'
+		-DSENDMAIL='"$(SENDMAIL)"' \
+		-DSENDMAIL_PROGNAME='"$(SENDMAIL_PROGNAME)"'
 
 OBJ = auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o fio.o head.o \
