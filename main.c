@@ -316,7 +316,7 @@ sighandler_type		dflpipe = SIG_DFL;
 int 
 main(int argc, char *argv[])
 {
-	static char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
+	static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~",
 		usagestr[] =
 		"Synopsis:\n"
 		"  %s [-BDdEFintv~] [-A acc] [-a attachment] "
@@ -324,8 +324,8 @@ main(int argc, char *argv[])
 		"\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
 			"[-S var[=value]]\n"
 		"\t  [-s subject] to-addr...\n"
-		"  %s [-BDdEeHIiNnRv~] [-A acct] "
-			"[-S var[=value]] [-T name] -f [file]\n"
+		"  %s [-BDdEeHiNnRv~] [-A acct] "
+			"[-S var[=value]] -f [file]\n"
 		"  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
 	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
@@ -412,10 +412,6 @@ main(int argc, char *argv[])
 		case 'H':
 			options |= OPT_HEADERSONLY;
 			break;
-jIflag:		case 'I':
-			/* Show Newsgroups: field in header summary */
-			options |= OPT_I_FLAG;
-			break;
 		case 'i':
 			/* Ignore interrupts */
 			okey = "ignore";
@@ -488,16 +484,6 @@ joarg:			if (oargs_count == oargs_size) {
 			subject = optarg;
 			options |= OPT_SENDMODE;
 			break;
-		case 'T':
-			/* Next argument is temp file to write which
-			 * articles have been read/deleted for netnews */
-			option_T_arg = optarg;
-			if ((i = creat(option_T_arg, 0600)) < 0) {
-				perror(option_T_arg);
-				exit(1);
-			}
-			close(i);
-			goto jIflag;
 		case 't':
 			/* Read defined set of headers from mail to be send */
 			options |= OPT_SENDMODE | OPT_t_FLAG;
@@ -556,10 +542,6 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	}
 	if ((options & OPT_R_FLAG) && to != NULL) {
 		fprintf(stderr, "The -R option is meaningless in send mode.\n");
-		goto usage;
-	}
-	if ((options & OPT_I_FLAG) && folder == NULL) {
-		fprintf(stderr, tr(204, "Need -f with -I.\n"));
 		goto usage;
 	}
 

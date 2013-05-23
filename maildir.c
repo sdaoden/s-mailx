@@ -392,16 +392,11 @@ maildir_quit(void)
 static void
 maildir_update(void)
 {
-	FILE	*readstat = NULL;
 	struct message	*m;
 	int	dodel, c, gotcha = 0, held = 0, modflags = 0;
 
 	if (mb.mb_perm == 0)
 		goto free;
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	if (!edit) {
 		holdbits();
 		for (m = &message[0], c = 0; m < &message[msgCount]; m++) {
@@ -413,12 +408,6 @@ maildir_update(void)
 				goto bypass;
 	}
 	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
-		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
-			char	*id;
-			if ((id = hfield1("message-id", m)) != NULL ||
-					(id = hfieldX("article-id", m)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 		if (edit)
 			dodel = m->m_flag & MDELETED;
 		else
@@ -444,8 +433,7 @@ maildir_update(void)
 			held++;
 		}
 	}
-bypass:	if (readstat != NULL)
-		Fclose(readstat);
+bypass:
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?

@@ -1815,14 +1815,9 @@ imap_close(struct mailbox *mp)
 static enum okay 
 imap_update(struct mailbox *mp)
 {
-	FILE *readstat = NULL;
 	struct message *m;
 	int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
 
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	if (!edit && mp->mb_perm != 0) {
 		holdbits();
 		for (m = &message[0], c = 0; m < &message[msgCount]; m++) {
@@ -1834,13 +1829,6 @@ imap_update(struct mailbox *mp)
 				goto bypass;
 	}
 	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
-		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
-			char *id;
-
-			if ((id = hfield1("message-id", m)) != NULL ||
-					(id = hfieldX("article-id", m)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 		if (mp->mb_perm == 0) {
 			dodel = 0;
 		} else if (edit) {
@@ -1914,8 +1902,7 @@ imap_update(struct mailbox *mp)
 			m->m_flag |= MSTATUS;
 		}
 	}
-bypass:	if (readstat != NULL)
-		Fclose(readstat);
+bypass:
 	if (gotcha)
 		imap_close(mp);
 	for (m = &message[0]; m < &message[msgCount]; m++)

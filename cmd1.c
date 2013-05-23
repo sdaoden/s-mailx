@@ -463,24 +463,13 @@ jdate_set:
 		subjline = out.s;
 	}
 
-	if (options & OPT_I_FLAG) {
-		if ((name = hfieldX("newsgroups", mp)) == NULL)
-			if ((name = hfieldX("article-id", mp)) == NULL)
-				name = "<>";
-		name = prstr(name);
-	} else if (value("show-rcpt") == NULL) {
-		name = name1(mp, 0);
-		isaddr = 1;
-		if (value("showto") && name && is_myname(skin(name))) {
-			if ((cp = hfield1("to", mp)) != NULL) {
-				name = cp;
-				isto = 1;
-			}
-		}
-	} else {
-		isaddr = 1;
-		if ((name = hfield1("to", mp)) != NULL)
+	isaddr = 1;
+	name = name1(mp, 0);
+	if (name != NULL && value("showto") && is_myname(skin(name))) {
+		if ((cp = hfield1("to", mp)) != NULL) {
+			name = cp;
 			isto = 1;
+		}
 	}
 	if (name == NULL) {
 		name = "";

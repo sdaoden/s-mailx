@@ -72,10 +72,9 @@
 .Ar to-addr ...
 .Ek
 .Nm \*(ua
-.Op Fl BDdEeHIiNnRv~
+.Op Fl BDdEeHiNnRv~
 .Op Fl A Ar account
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
-.Op Fl T Ar name
 .Bk
 .Fl f Op Ar file
 .Ek
@@ -171,10 +170,6 @@ but is instead taken from the command line after option processing has
 been completed.
 .It Fl H
 Print header summaries for all messages and exit.
-.It Fl I
-Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
-Only applicable in combination with
-.Fl f .
 .It Fl i
 Set the
 .Va ignore
@@ -229,12 +224,6 @@ been loaded.
 .It Fl s Ar subject
 Specify the subject on the command line
 (be careful to quote subjects containing spaces).
-.It Fl T Ar name
-Writes the `Message-Id:' and `Article-Id:' header fields of each message
-read in the file
-.Ar name .
-Implies
-.Fl I .
 .It Fl t
 The message to be sent is expected to contain a message header with
 `To:', `Cc:', or `Bcc:' fields giving its recipients and `Subject:'

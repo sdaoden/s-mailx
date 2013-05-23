@@ -816,14 +816,9 @@ pop3_delete(struct mailbox *mp, int n)
 static enum okay 
 pop3_update(struct mailbox *mp)
 {
-	FILE *readstat = NULL;
 	struct message *m;
 	int dodel, c, gotcha, held;
 
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	if (!edit) {
 		holdbits();
 		for (m = &message[0], c = 0; m < &message[msgCount]; m++) {
@@ -834,13 +829,6 @@ pop3_update(struct mailbox *mp)
 			makembox();
 	}
 	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
-		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
-			char *id;
-
-			if ((id = hfield1("message-id", m)) != NULL ||
-					(id = hfieldX("article-id", m)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 		if (edit) {
 			dodel = m->m_flag & MDELETED;
 		} else {
@@ -853,8 +841,6 @@ pop3_update(struct mailbox *mp)
 		} else
 			held++;
 	}
-	if (readstat != NULL)
-		Fclose(readstat);
 	if (gotcha && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?

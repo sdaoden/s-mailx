@@ -221,11 +221,10 @@ enum user_options {
 	OPT_NOSRC	= 1<< 4,	/* -n */
 	OPT_E_FLAG	= 1<< 5,	/* -E / *skipemptybody* */
 	OPT_F_FLAG	= 1<< 6,	/* -F */
-	OPT_I_FLAG	= 1<< 7,	/* -I */
-	OPT_N_FLAG	= 1<< 8,	/* -N / *header* */
-	OPT_R_FLAG	= 1<< 9,	/* -R */
-	OPT_t_FLAG	= 1<<10,	/* -t */
-	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
+	OPT_N_FLAG	= 1<< 7,	/* -N / *header* */
+	OPT_R_FLAG	= 1<< 8,	/* -R */
+	OPT_t_FLAG	= 1<< 9,	/* -t */
+	OPT_TILDE_FLAG	= 1<<10,	/* -~ */
 
 	OPT_SENDMODE	= 1<<16,	/* Usage case forces send mode */
 	OPT_INTERACTIVE	= 1<<17		/* isatty(0) / isatty(1) */
