@@ -644,9 +644,6 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		}
 	}
 
-	mail(to, cc, bcc, subject, attach, qf,
-		((options & OPT_F_FLAG) != 0),
-		((options & OPT_t_FLAG) != 0),
-		((options & OPT_E_FLAG) != 0));
+	mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
 	return senderr ? 1 : 0;
 }

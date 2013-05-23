@@ -247,7 +247,7 @@ endpipe:
 
 FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int doprefix, int volatile tflag)
+		char *quotefile, int doprefix)
 {
 	FILE *fbuf;
 	struct ignoretab *quoteig;
@@ -301,7 +301,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	 * the headers (since some people mind).
 	 */
 	getfields = 0;
-	if (! tflag) {
+	if (! (options & OPT_t_FLAG)) {
 		t = GTO|GSUBJECT|GCC|GNL;
 		if (value("fullnames"))
 			t |= GCOMMA;
@@ -435,12 +435,12 @@ jcont:
 			}
 			break;
 		}
-		if (tflag && count == 0) {
+		if ((options & OPT_t_FLAG) && count == 0) {
 			rewind(collf);
 			if (makeheader(collf, hp) != OKAY)
 				goto jerr;
 			rewind(collf);
-			tflag = 0;
+			options &= ~OPT_t_FLAG;
 			continue;
 		}
 		eofcount = 0;

@@ -425,7 +425,6 @@ followupsender(void *v)
 static int 
 respond_internal(int *msgvec, int recipient_record)
 {
-	int Eflag;
 	struct message *mp;
 	char *cp, *rcv;
 	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
@@ -467,8 +466,7 @@ respond_internal(int *msgvec, int recipient_record)
 	if (np != NULL)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
-	Eflag = value("skipemptybody") != NULL;
-	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
+	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
@@ -480,7 +478,6 @@ respond_internal(int *msgvec, int recipient_record)
 static int
 forward1(char *str, int recipient_record)
 {
-	int Eflag;
 	int	*msgvec, f;
 	char	*recipient;
 	struct message	*mp;
@@ -529,9 +526,8 @@ forward1(char *str, int recipient_record)
 	}
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = fwdedit(head.h_subject);
-	Eflag = value("skipemptybody") != NULL;
 	mail1(&head, 1, forward_as_attachment ? NULL : mp,
-			NULL, recipient_record, 1, 0, Eflag);
+		NULL, recipient_record, 1);
 	return 0;
 }
 
@@ -975,7 +971,6 @@ Followup(void *v)
 static int 
 Respond_internal(int *msgvec, int recipient_record)
 {
-	int Eflag;
 	struct header head;
 	struct message *mp;
 	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
@@ -998,8 +993,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
-	Eflag = value("skipemptybody") != NULL;
-	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
+	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return 0;

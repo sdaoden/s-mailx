@@ -720,7 +720,7 @@ savemail(char const *name, FILE *fi)
 int 
 mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
-		char *quotefile, int recipient_record, int tflag, int Eflag)
+		char *quotefile, int recipient_record)
 {
 	struct header head;
 	struct str in, out;
@@ -733,13 +733,13 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 		mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
 		head.h_subject = out.s;
 	}
-	if (tflag == 0) {
+	if (! (options & OPT_t_FLAG)) {
 		head.h_to = to;
 		head.h_cc = cc;
 		head.h_bcc = bcc;
 	}
 	head.h_attach = attach;
-	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag, Eflag);
+	mail1(&head, 0, NULL, quotefile, recipient_record, 0);
 	if (subject != NULL)
 		free(out.s);
 	return(0);
@@ -752,14 +752,12 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 static int 
 sendmail_internal(void *v, int recipient_record)
 {
-	int Eflag;
 	char *str = v;
 	struct header head;
 
 	memset(&head, 0, sizeof head);
 	head.h_to = lextract(str, GTO|GFULL);
-	Eflag = value("skipemptybody") != NULL;
-	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0, Eflag);
+	mail1(&head, 0, NULL, NULL, recipient_record, 0);
 	return(0);
 }
 
@@ -988,8 +986,7 @@ jbail:			fprintf(stderr, tr(285,
  */
 enum okay 
 mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int doprefix, int tflag,
-		int Eflag)
+	char *quotefile, int recipient_record, int doprefix)
 {
 	enum okay ok = STOP;
 	struct name *to;
@@ -1010,8 +1007,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders, quote, quotefile, doprefix,
-			tflag)) == NULL)
+	mtf = collect(hp, printheaders, quote, quotefile, doprefix);
+	if (mtf == NULL)
 		goto j_leave;
 
 	if (options & OPT_INTERACTIVE) {
@@ -1035,7 +1032,7 @@ jaskeot:
 	}
 
 	if (fsize(mtf) == 0) {
-		if (Eflag)
+		if (options & OPT_E_FLAG)
 			goto jleave;
 		if (hp->h_subject == NULL)
 			printf(tr(184,

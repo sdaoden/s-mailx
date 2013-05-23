@@ -281,7 +281,7 @@ int crename(void *v);
 /* collect.c */
 
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int doprefix, int tflag);
+		char *quotefile, int doprefix);
 
 void	savedeadletter(FILE *fp, int fflush_rewind_first);
 
@@ -774,12 +774,11 @@ int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 /* sendout.c */
 int mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
-		char *quotefile, int recipient_record, int tflag, int Eflag);
+		char *quotefile, int recipient_record);
 int sendmail(void *v);
 int Sendmail(void *v);
 enum okay mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int doprefix, int tflag,
-		int Eflag);
+		char *quotefile, int recipient_record, int doprefix);
 int mkdate(FILE *fo, const char *field);
 int puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
