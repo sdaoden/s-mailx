@@ -105,8 +105,7 @@ In the following list of supported command line options,
 .Fl d ,
 .Fl E ,
 .Fl i ,
-.Fl N ,
-.Fl r
+.Fl N
 and
 .Fl v
 are implemented by setting the corresponding variable via the
@@ -198,18 +197,22 @@ May be given in send mode only.
 .It Fl R
 Opens any folders read-only.
 .It Fl r Ar address
-Sets the
-.Va from
-variable which is used to define the \fIFrom:\fR address when sending
-messages.
-\fBNote:\fR
-The value set via
+Sets the envelope sender address by passing an
 .Fl r
-is passed through to the MTA unless SMTP is used, and persists for an
-entire (interactive) session!
-This special step is \fBnot\fR performed when the
+option to the MTA when a message is send.
+If a non-empty
+.Ar address
+argument is given it'll be checked for validity and then fixated to
+the given value, but otherwise the content of the variable
 .Va from
-variable is set in any other way!
+will be used for that purpose \(en i.e., it'll be passed through to
+the MTA via the
+.Fl r
+option whenever a message is send.
+A valid non-empty value will also be set as if an additional
+.Ns ` Ns Li "-Sfrom=VALUE" Ns '
+option had been used and therefore affect sending of messages via SMTP
+(as a consideration for `From:').
 .It Fl S Ar variable Ns Op = Ns value
 Sets the internal option
 .Ar variable

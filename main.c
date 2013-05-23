@@ -70,11 +70,11 @@ struct a_arg {
 	char		*aa_file;
 };
 
-/* Add an option for sendmail(1) */
-static void	_add_smopt(int argc_left, char const *arg);
-
 /* Perform basic startup initialization */
 static void	_startup(void);
+
+/* Grow a char** */
+static int	_grow_cpp(char const ***cpp, int size, int count);
 
 /* Initialize *tempdir*, *myname*, *homedir* */
 static void	_setup_vars(void);
@@ -164,13 +164,16 @@ _startup(void)
 #endif
 }
 
-static void
-_add_smopt(int argc_left, char const *arg)
+static int
+_grow_cpp(char const ***cpp, int size, int count)
 {
 	/* Before spreserve(): use our string pool instead of LibC heap */
-	if (smopts == NULL)
-		smopts = salloc((argc_left + 1) * sizeof(char*));
-	smopts[smopts_count++] = arg;
+	char const **newcpp = salloc(sizeof(char*) * (size += 8));
+
+	if (count > 0)
+		memcpy(newcpp, *cpp, count * sizeof(char*));
+	*cpp = newcpp;
+	return size;
 }
 
 static void
@@ -333,7 +336,7 @@ main(int argc, char *argv[])
 	struct attachment *attach = NULL;
 	char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
 	char const *okey, **oargs = NULL, *folder = NULL;
-	int oargs_size = 0, oargs_count = 0, i;
+	int oargs_size = 0, oargs_count = 0, smopts_size = 0, i;
 
 	/*
 	 * Start our lengthy setup
@@ -426,7 +429,10 @@ main(int argc, char *argv[])
 			break;
 		case 'O':
 			/* Additional options to pass-through to MTA */
-			_add_smopt(argc - optind, skin(optarg));
+			if (smopts_count == (size_t)smopts_size)
+				smopts_size = _grow_cpp(&smopts, smopts_size,
+						(int)smopts_count);
+			smopts[smopts_count++] = skin(optarg);
 			break;
 		case 'q':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
@@ -440,7 +446,10 @@ main(int argc, char *argv[])
 			break;
 		case 'r':
 			/* Set From address. */
-			{	struct name *fa = nalloc(optarg, GFULL);
+			options |= OPT_r_FLAG;
+			if ((option_r_arg = optarg)[0] != '\0') {
+				struct name *fa = nalloc(optarg, GFULL);
+
 				if (is_addr_invalid(fa, 1) ||
 						is_fileorpipe_addr(fa)) {
 					fprintf(stderr, tr(271,
@@ -448,8 +457,7 @@ main(int argc, char *argv[])
 						"with -r\n"));
 					goto usage;
 				}
-				_add_smopt(argc - optind, "-r");
-				_add_smopt(-1, fa->n_name);
+				option_r_arg = fa->n_name;
 				/* TODO -r options is set in smopts, but may
 				 * TODO be overwritten by setting from= in
 				 * TODO an interactive session!
@@ -459,6 +467,7 @@ main(int argc, char *argv[])
 				goto joarg;
 				/* ..and fa goes even though it is ready :/ */
 			}
+			break;
 		case 'S':
 			/* Set variable.  We need to do this twice, since the
 			 * user surely wants the setting to take effect
@@ -469,14 +478,10 @@ main(int argc, char *argv[])
 				a[1] = NULL;
 				set(a);
 			}
-joarg:			if (oargs_count == oargs_size) {
-				char const **newoargs = salloc(sizeof(char*) *
-					(oargs_size += 8));
-				if (oargs_count > 0)
-					memcpy(newoargs, oargs,
-						oargs_count * sizeof(char*));
-				oargs = newoargs;
-			}
+joarg:
+			if (oargs_count == oargs_size)
+				oargs_size = _grow_cpp(&oargs, oargs_size,
+						oargs_count);
 			oargs[oargs_count++] = okey;
 			break;
 		case 's':
