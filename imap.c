@@ -695,11 +695,13 @@ rec_dequeue(void)
 			 */
 			break;
 		}
-		free(rq);
+		if (rq != NULL)
+			free(rq);
 		rq = rp;
 		rp = rp->rec_next;
 	}
-	free(rq);
+	if (rq != NULL)
+		free(rq);
 	record = recend = NULL;
 	if (ok == OKAY && exists > (unsigned long)msgCount) {
 		message = srealloc(message,
