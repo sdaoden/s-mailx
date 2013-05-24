@@ -465,8 +465,16 @@ commands(void)
 			printf("%s", prompt);
 		}
 		fflush(stdout);
-		if (! sourcing)
+
+		if (! sourcing) {
 			sreset();
+			if ((nv = termios_state.ts_linebuf) != NULL) {
+				termios_state.ts_linebuf = NULL;
+				termios_state.ts_linesize = 0;
+				free(nv); /* TODO pool give-back */
+			}
+		}
+
 		/*
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.

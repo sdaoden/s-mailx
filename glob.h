@@ -114,6 +114,7 @@ _E struct shortcut *shortcuts;		/* list of shortcuts */
 _E int		imap_created_mailbox;	/* hack to get feedback from imap */
 
 _E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
+_E struct termios_state termios_state;	/* getpassword(); see commands().. */
 
 /* These are initialized strings */
 _E char const	*const month_names[12 + 1];

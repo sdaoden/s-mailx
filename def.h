@@ -332,6 +332,21 @@ struct time_current {
 	char		tc_ctime[32];
 };
 
+struct termios_state {
+	struct termios	ts_tios;
+	char		*ts_linebuf;
+	size_t		ts_linesize;
+	bool_t		ts_needs_reset;
+};
+
+#define termios_state_reset() \
+do {\
+	if (termios_state.ts_needs_reset) {\
+		tcsetattr(0, TCSADRAIN, &termios_state.ts_tios);\
+		termios_state.ts_needs_reset = FAL0;\
+	}\
+} while (0)
+
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
 #ifdef USE_SSL

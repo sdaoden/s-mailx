@@ -73,8 +73,6 @@ typedef int avoid_empty_file_compiler_warning;
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-static int	reset_tio;
-static struct termios	otio;
 static sigjmp_buf	ssljmp;
 
 static int	initialized;
@@ -115,8 +113,7 @@ static enum okay load_crls(X509_STORE *store, const char *vfile,
 static void 
 sslcatch(int s)
 {
-	if (reset_tio)
-		tcsetattr(0, TCSADRAIN, &otio);
+	termios_state_reset();
 	siglongjmp(ssljmp, s);
 }
 
@@ -933,7 +930,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 	if (sigsetjmp(ssljmp, 1) == 0) {
 		if (saveint != SIG_IGN)
 			safe_signal(SIGINT, sslcatch);
-		pass = getpassword(&otio, &reset_tio, "PEM pass phrase:");
+		pass = getpassword("PEM pass phrase:");
 	}
 	safe_signal(SIGINT, saveint);
 	if (pass == NULL)

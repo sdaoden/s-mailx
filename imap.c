@@ -165,8 +165,6 @@ static char	*imapbuf;	/* TODO not static, use pool */
 static size_t	imapbufsize;
 static sigjmp_buf	imapjmp;
 static sighandler_type savealrm;
-static int	reset_tio;
-static struct termios	otio;
 static int	imapkeepalive;
 static long	had_exists = -1;
 static long	had_expunge = -1;
@@ -552,8 +550,7 @@ imap_timer_off(void)
 static void 
 imapcatch(int s)
 {
-	if (reset_tio)
-		tcsetattr(0, TCSADRAIN, &otio);
+	termios_state_reset();
 	switch (s) {
 	case SIGINT:
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
@@ -899,7 +896,7 @@ retry:	if (xuser == NULL) {
 	} else
 		user = xuser;
 	if (xpass == NULL) {
-		if ((pass = getpassword(&otio, &reset_tio, NULL)) == NULL)
+		if ((pass = getpassword(NULL)) == NULL)
 			return STOP;
 	} else
 		pass = xpass;
@@ -934,7 +931,7 @@ retry:	if (xuser == NULL) {
 	} else
 		user = xuser;
 	if (xpass == NULL) {
-		if ((pass = getpassword(&otio, &reset_tio, NULL)) == NULL)
+		if ((pass = getpassword(NULL)) == NULL)
 			return STOP;
 	} else
 		pass = xpass;

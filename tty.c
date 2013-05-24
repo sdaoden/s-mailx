@@ -430,3 +430,30 @@ yorn(char const *msg)
 	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
 	return (*cp == 'y' || *cp == 'Y');
 }
+
+char *
+getpassword(char const *query)
+{
+	struct termios tios;
+	char *pass = NULL;
+
+	fputs((query != NULL) ? query : "Password: ", stdout);
+	fflush(stdout);
+
+	if (is_a_tty[0]) {
+		tcgetattr(0, &termios_state.ts_tios);
+		memcpy(&tios, &termios_state.ts_tios, sizeof tios);
+		termios_state.ts_needs_reset = TRU1;
+		tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+		tcsetattr(0, TCSAFLUSH, &tios);
+	}
+
+	if (readline(stdin, &termios_state.ts_linebuf,
+			&termios_state.ts_linesize) >= 0)
+		pass = termios_state.ts_linebuf;
+	termios_state_reset();
+
+	if (is_a_tty[0])
+		fputc('\n', stdout);
+	return pass;
+}

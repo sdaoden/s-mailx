@@ -68,8 +68,6 @@ static char	*pop3buf;
 static size_t	pop3bufsize;
 static sigjmp_buf	pop3jmp;
 static sighandler_type savealrm;
-static int	reset_tio;
-static struct termios	otio;
 static int	pop3keepalive;
 static volatile int	pop3lock;
 
@@ -172,8 +170,7 @@ pop3_finish(struct mailbox *mp)
 static void 
 pop3catch(int s)
 {
-	if (reset_tio)
-		tcsetattr(0, TCSADRAIN, &otio);
+	termios_state_reset();
 	switch (s) {
 	case SIGINT:
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
@@ -312,7 +309,7 @@ retry:	if (xuser == NULL) {
 	} else
 		user = xuser;
 	if (pass == NULL) {
-		if ((pass = getpassword(&otio, &reset_tio, NULL)) == NULL)
+		if ((pass = getpassword(NULL)) == NULL)
 			return STOP;
 	}
 	catp = savecat(ts, pass);
@@ -413,7 +410,7 @@ retry:	if (xuser == NULL) {
 	POP3_OUT(o, MB_COMD)
 	POP3_ANSWER()
 	if (pass == NULL) {
-		if ((pass = getpassword(&otio, &reset_tio, NULL)) == NULL)
+		if ((pass = getpassword(NULL)) == NULL)
 			return STOP;
 	}
 	if (pop3_pass(mp, pass) == STOP) {

@@ -855,8 +855,6 @@ static enum okay
 start_mta(struct name *to, FILE *input, struct header *hp)
 {
 #ifdef USE_SMTP
-	struct termios otio;
-	int reset_tio;
 	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
 	char const **args = NULL, **t, *mta;
@@ -892,7 +890,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
 				(password = smtp_auth_var("-password",
 					skinned)) == NULL)
-			password = getpassword(&otio, &reset_tio, NULL);
+			password = getpassword(NULL);
 #endif
 	}
 
