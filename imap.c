@@ -332,15 +332,13 @@ imap_response_get(const char **cp)
 static void 
 imap_response_parse(void)
 {
-	static char	*parsebuf;
+	static char	*parsebuf; /* TODO Use pool */
 	static size_t	parsebufsize;
 	const char	*ip = imapbuf;
 	char	*pp;
 
-	if (parsebufsize < imapbufsize) {
-		free(parsebuf);
-		parsebuf = smalloc(parsebufsize = imapbufsize);
-	}
+	if (parsebufsize < imapbufsize)
+		parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
 	strcpy(parsebuf, imapbuf);
 	pp = parsebuf;
 	switch (*ip) {
