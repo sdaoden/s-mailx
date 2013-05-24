@@ -545,6 +545,7 @@ imap_timer_off(void)
 	}
 }
 
+/* TODO OOH MY GOOOOOOOOD WE SIGLONGJMP() FROM WITHIN SIGNAL HANDLERS!!! */
 static void 
 imapcatch(int s)
 {
@@ -560,6 +561,7 @@ imapcatch(int s)
 	}
 }
 
+/* TODO OOOOOHH MYYYY GOOOOOD WE DO ALL SORTS OF UNSAFE STUFF IN SIGHDLSS! */
 static void
 maincatch(int s)
 {
@@ -1237,15 +1239,18 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		initbox(server);
 	}
 	mb.mb_type = MB_VOID;
-	mb.mb_active = MB_NONE;;
+	mb.mb_active = MB_NONE;
 	imaplock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
 	if (sigsetjmp(imapjmp, 1)) {
-		sclose(&so);
+		/* Not safe to use &so; save to use mb.mb_sock?? :-( TODO */
+		sclose(&mb.mb_sock);
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		imaplock = 0;
+		mb.mb_type = MB_VOID;
+		mb.mb_active = MB_NONE;
 		return -1;
 	}
 	if (saveint != SIG_IGN)
