@@ -75,7 +75,7 @@ size_t	paging_seems_sensible(void);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 void	page_or_print(FILE *fp, size_t lines);
-#define try_pager(FP)	page_or_print(FP, 0) /* TODO obsolete */
+#define try_pager(FP)		page_or_print(FP, 0) /* TODO obsolete */
 
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
@@ -88,8 +88,19 @@ char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
 
-/* Returns salloc()ed buffer */
-char *getrandstring(size_t length);
+/* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
+char *	getrandstring(size_t length);
+
+#define	Hexchar(n)		((n)>9 ? (n)-10+'A' : (n)+'0')
+#define	hexchar(n)		((n)>9 ? (n)-10+'a' : (n)+'0')
+
+#ifdef USE_MD5
+/* MD5 checksum as hexadecimal string */
+char *	md5tohex(void const *vp);
+
+/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
+char *	cram_md5_string(char const *user, char const *pass, char const *b64);
+#endif
 
 enum okay makedir(const char *name);
 enum okay cwget(struct cw *cw);
@@ -833,21 +844,11 @@ char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);
 char *		savecat(char const *s1, char const *s2);
 
-#ifdef USE_MD5
-char *		cram_md5_string(char const *user, char const *pass,
-			char const *b64);
-#endif
-
 /* Create duplicate, lowercasing all characters along the way */
 char *		i_strdup(char const *src);
 
 /* Extract the protocol base and return a duplicate */
 char *		protbase(char const *cp);
-
-#ifdef USE_MD5
-/* MD5 checksum as hexadecimal string */
-char *		md5tohex(void const *vp);
-#endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
 char *		urlxenc(char const *cp);

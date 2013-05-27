@@ -466,6 +466,54 @@ getrandstring(size_t length)
 	return b64.s;
 }
 
+#ifdef USE_MD5
+char *
+md5tohex(void const *vp)
+{
+	char const *cp = vp;
+	char *hex;
+	int i;
+
+	hex = salloc(33);
+	for (i = 0; i < 16; i++) {
+		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
+		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
+	}
+	hex[32] = '\0';
+	return hex;
+}
+
+char *
+cram_md5_string(char const *user, char const *pass, char const *b64)
+{
+	struct str in, out;
+	char digest[16], *cp;
+	size_t lh, lu;
+
+	out.s = NULL;
+	in.s = UNCONST(b64);
+	in.l = strlen(in.s);
+	(void)b64_decode(&out, &in, NULL);
+	assert(out.s != NULL);
+
+	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),
+		digest);
+	free(out.s);
+	cp = md5tohex(digest);
+
+	lh = strlen(cp);
+	lu = strlen(user);
+	in.l = lh + 1 + lu;
+	in.s = ac_alloc(lh + lu + 1 + 1);
+	memcpy(in.s, user, lu);
+	in.s[lu] = ' ';
+	memcpy(in.s + lu + 1, cp, lh);
+	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
+	ac_free(in.s);
+	return out.s;
+}
+#endif /* USE_MD5 */
+
 enum okay 
 makedir(const char *name)
 {
