@@ -215,8 +215,8 @@ page_or_print(FILE *fp, size_t lines)
 
 	if ((rows = paging_seems_sensible()) != 0 && lines == 0) {
 		while ((c = getc(fp)) != EOF)
-			if (c == '\n')
-				++lines;
+			if (c == '\n' && ++lines > rows)
+				break;
 		rewind(fp);
 	}
 
