@@ -127,8 +127,11 @@ imap_gss(struct mailbox *mp, char *user)
 	char	o[LINESIZE];
 	enum okay	ok = STOP;
 
-	if (user == NULL && (user = getuser()) == NULL)
-		return STOP;
+	if (user == NULL) {
+		if ((user = getuser(NULL)) == NULL)
+			return STOP;
+		user = savestr(user);
+	}
 	server = salloc(strlen(mp->mb_imap_account));
 	strcpy(server, mp->mb_imap_account);
 	if (strncmp(server, "imap://", 7) == 0)

@@ -306,6 +306,7 @@ pop3_apop(struct mailbox *mp, char *xuser, const char *pass, const char *ts)
 retry:	if (xuser == NULL) {
 		if ((user = getuser()) == NULL)
 			return STOP;
+		user = savestr(user);
 	} else
 		user = xuser;
 	if (pass == NULL) {

@@ -432,6 +432,21 @@ yorn(char const *msg)
 }
 
 char *
+getuser(char const *query)
+{
+	char *user = NULL;
+
+	fputs((query != NULL) ? query : "User: ", stdout);
+	fflush(stdout);
+
+	if (readline(stdin, &termios_state.ts_linebuf,
+			&termios_state.ts_linesize) >= 0)
+		user = termios_state.ts_linebuf;
+	termios_state_reset();
+	return user;
+}
+
+char *
 getpassword(char const *query)
 {
 	struct termios tios;

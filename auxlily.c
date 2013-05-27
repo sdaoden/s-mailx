@@ -343,26 +343,6 @@ nextprime(long n)
 }
 
 char *
-getuser(void)
-{
-	char *line = NULL, *user;
-	size_t linesize = 0;
-
-	if (is_a_tty[0]) {
-		fputs("User: ", stdout);
-		fflush(stdout);
-	}
-	if (readline(stdin, &line, &linesize) == 0) {
-		if (line)
-			free(line);
-		return NULL;
-	}
-	user = savestr(line);
-	free(line);
-	return user;
-}
-
-char *
 getname(int uid)
 {
 	struct passwd *pw = getpwuid(uid);

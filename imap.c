@@ -891,13 +891,15 @@ imap_cram_md5(struct mailbox *mp, char *xuser, const char *xpass)
 	enum okay	ok = STOP;
 
 retry:	if (xuser == NULL) {
-		if ((user = getuser()) == NULL)
+		if ((user = getuser(NULL)) == NULL)
 			return STOP;
+		user = savestr(user);
 	} else
 		user = xuser;
 	if (xpass == NULL) {
 		if ((pass = getpassword(NULL)) == NULL)
 			return STOP;
+		pass = savestr(pass);
 	} else
 		pass = xpass;
 	snprintf(o, sizeof o, "%s AUTHENTICATE CRAM-MD5\r\n", tag(1));
@@ -926,13 +928,15 @@ imap_login(struct mailbox *mp, char *xuser, const char *xpass)
 	enum okay	ok = STOP;
 
 retry:	if (xuser == NULL) {
-		if ((user = getuser()) == NULL)
+		if ((user = getuser(NULL)) == NULL)
 			return STOP;
+		user = savestr(user);
 	} else
 		user = xuser;
 	if (xpass == NULL) {
 		if ((pass = getpassword(NULL)) == NULL)
 			return STOP;
+		pass = savestr(pass);
 	} else
 		pass = xpass;
 	snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",

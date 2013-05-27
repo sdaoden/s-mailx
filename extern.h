@@ -80,7 +80,6 @@ void	page_or_print(FILE *fp, size_t lines);
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
-char *getuser(void);
 
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
@@ -958,6 +957,10 @@ void uncollapse1(struct message *m, int always);
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char const *prefix, char const *string);
 int yorn(char const *msg);
+
+/* Get a password the expected way, returning termios_state.ts_linebuf on
+ * success on NULL on error */
+char *	getuser(char const *query);
 
 /* Get a password the expected way, returning termios_state.ts_linebuf on
  * success on NULL on error.
