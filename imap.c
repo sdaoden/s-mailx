@@ -205,7 +205,6 @@ static enum okay imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void imap_init(struct mailbox *mp, int n);
 static void imap_setptr(struct mailbox *mp, int newmail, int transparent,
 		int *prevcount);
-static char *imap_have_password(const char *server);
 static void imap_split(char **server, const char **sp, int *use_ssl,
 		const char **cp, char const **uhp, char const **mbx,
 		char **pass, char **user);
@@ -1101,20 +1100,6 @@ imap_setptr(struct mailbox *mp, int newmail, int transparent, int *prevcount)
 		setdot(message);
 }
 
-static char *
-imap_have_password(const char *server)
-{
-	char *var, *cp;
-
-	var = ac_alloc(strlen(server) + 10);
-	strcpy(var, "password-");
-	strcpy(&var[9], server);
-	if ((cp = value(var)) != NULL)
-		cp = savestr(cp);
-	ac_free(var);
-	return cp;
-}
-
 static void
 imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 	char const **uhp, char const **mbx, char **pass, char **user)
@@ -1140,7 +1125,7 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 		*uhp = *sp;
 		*mbx = "INBOX";
 	}
-	*pass = imap_have_password(*uhp);
+	*pass = lookup_password_for_token(*uhp);
 	if ((*cp = last_at_before_slash(*uhp)) != NULL) {
 		*user = salloc(*cp - *uhp + 1);
 		memcpy(*user, *uhp, *cp - *uhp);

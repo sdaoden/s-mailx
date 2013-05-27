@@ -417,6 +417,25 @@ nodename(int mayoverride)
 }
 
 char *
+lookup_password_for_token(char const *token)
+{
+	size_t tl;
+	char *var, *cp;
+
+	tl = strlen(token);
+	var = ac_alloc(tl + 10);
+
+	memcpy(var, "password-", 9);
+	memcpy(var + 9, token, tl);
+	var[tl + 9] = '\0';
+
+	if ((cp = value(var)) != NULL)
+		cp = savestr(cp);
+	ac_free(var);
+	return cp;
+}
+
+char *
 getrandstring(size_t length)
 {
 	static unsigned char nodedigest[16];

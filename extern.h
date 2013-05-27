@@ -88,6 +88,10 @@ char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
 
+/* Try to lookup a variable named "password-*token*".
+ * Return NULL or salloc()ed buffer */
+char *	lookup_password_for_token(char const *token);
+
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 char *	getrandstring(size_t length);
 

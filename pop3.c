@@ -518,20 +518,6 @@ pop3_setptr(struct mailbox *mp)
 	pop3_dates(mp);
 }
 
-static char *
-pop3_have_password(const char *server)
-{
-	char *var, *cp;
-
-	var = ac_alloc(strlen(server) + 10);
-	strcpy(var, "password-");
-	strcpy(&var[9], server);
-	if ((cp = value(var)) != NULL)
-		cp = savestr(cp);
-	ac_free(var);
-	return cp;
-}
-
 int 
 pop3_setfile(const char *server, int newmail, int isedit)
 {
@@ -554,7 +540,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 #endif
 	}
 	uhp = sp;
-	pass = pop3_have_password(uhp);
+	pass = lookup_password_for_token(uhp);
 	if ((cp = last_at_before_slash(sp)) != NULL) {
 		user = salloc(cp - sp + 1);
 		memcpy(user, sp, cp - sp);
