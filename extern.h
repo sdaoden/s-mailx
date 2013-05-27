@@ -959,6 +959,13 @@ char *	getuser(char const *query);
  * termios_state_reset() (def.h) must be called anyway */
 char *	getpassword(char const *query);
 
+/* Get both, user and password in the expected way; simply reuses a value that
+ * is set, otherwise calls one of the above.
+ * Returns true only if we have a user and a password.
+ * *user* will be savestr()ed if neither it nor *pass* have default value
+ * (so that termios_state.ts_linebuf carries only one) */
+bool_t	getcredentials(char **user, char **pass);
+
 /* vars.c */
 
 /* Assign a value to a variable */

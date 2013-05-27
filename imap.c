@@ -192,12 +192,12 @@ static enum okay imap_preauth(struct mailbox *mp, const char *xserver,
 		const char *uhp);
 static enum okay imap_capability(struct mailbox *mp);
 static enum okay imap_auth(struct mailbox *mp, const char *uhp,
-		char *xuser, const char *pass);
+		char *xuser, char *pass);
 #ifdef USE_MD5
 static enum okay imap_cram_md5(struct mailbox *mp,
-			char *xuser, const char *xpass);
+			char *xuser, char *xpass);
 #endif
-static enum okay imap_login(struct mailbox *mp, char *xuser, const char *xpass);
+static enum okay imap_login(struct mailbox *mp, char *xuser, char *xpass);
 #ifdef	USE_GSSAPI
 static enum okay imap_gss(struct mailbox *mp, char *user);
 #endif	/* USE_GSSAPI */
@@ -208,7 +208,7 @@ static void imap_setptr(struct mailbox *mp, int newmail, int transparent,
 static char *imap_have_password(const char *server);
 static void imap_split(char **server, const char **sp, int *use_ssl,
 		const char **cp, char const **uhp, char const **mbx,
-		const char **pass, char **user);
+		char **pass, char **user);
 static int imap_setfile1(const char *xserver, int newmail, int isedit,
 		int transparent);
 static int imap_fetchdata(struct mailbox *mp, struct message *m,
@@ -842,7 +842,7 @@ imap_capability(struct mailbox *mp)
 }
 
 static enum okay 
-imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
+imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 {
 	char	*var;
 	char	*auth;
@@ -884,73 +884,62 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
  */
 #ifdef USE_MD5
 static enum okay 
-imap_cram_md5(struct mailbox *mp, char *xuser, const char *xpass)
+imap_cram_md5(struct mailbox *mp, char *xuser, char *xpass)
 {
-	char o[LINESIZE];
-	const char	*user, *pass;
-	char	*cp;
-	FILE	*queuefp = NULL;
-	enum okay	ok = STOP;
+	char o[LINESIZE], *user, *pass, *cp;
+	FILE *queuefp = NULL;
+	enum okay ok = STOP;
 
-retry:	if (xuser == NULL) {
-		if ((user = getuser(NULL)) == NULL)
-			return STOP;
-		user = savestr(user);
-	} else
-		user = xuser;
-	if (xpass == NULL) {
-		if ((pass = getpassword(NULL)) == NULL)
-			return STOP;
-		pass = savestr(pass);
-	} else
-		pass = xpass;
+jretry:
+	user = xuser;
+	pass = xpass;
+	if (! getcredentials(&user, &pass))
+		goto jleave;
+
 	snprintf(o, sizeof o, "%s AUTHENTICATE CRAM-MD5\r\n", tag(1));
-	IMAP_OUT(o, 0, return STOP)
+	IMAP_XOUT(o, 0, goto jleave, goto jleave);
 	imap_answer(mp, 1);
 	if (response_type != RESPONSE_CONT)
-		return STOP;
+		goto jleave;
+
 	cp = cram_md5_string(user, pass, responded_text);
-	IMAP_OUT(cp, MB_COMD, return STOP)
+	IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	if (ok == STOP) {
 		xpass = NULL;
-		goto retry;
+		goto jretry;
 	}
+jleave:
 	return ok;
 }
 #endif /* USE_MD5 */
 
 static enum okay 
-imap_login(struct mailbox *mp, char *xuser, const char *xpass)
+imap_login(struct mailbox *mp, char *xuser, char *xpass)
 {
 	char o[LINESIZE];
-	const char	*user, *pass;
-	FILE	*queuefp = NULL;
-	enum okay	ok = STOP;
+	char *user, *pass;
+	FILE *queuefp = NULL;
+	enum okay ok = STOP;
 
-retry:	if (xuser == NULL) {
-		if ((user = getuser(NULL)) == NULL)
-			return STOP;
-		user = savestr(user);
-	} else
-		user = xuser;
-	if (xpass == NULL) {
-		if ((pass = getpassword(NULL)) == NULL)
-			return STOP;
-		pass = savestr(pass);
-	} else
-		pass = xpass;
+jretry:
+	user = xuser;
+	pass = xpass;
+	if (! getcredentials(&user, &pass))
+		goto jleave;
+
 	snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
-			tag(1), imap_quotestr(user), imap_quotestr(pass));
-	IMAP_OUT(o, MB_COMD, return STOP)
+		tag(1), imap_quotestr(user), imap_quotestr(pass));
+	IMAP_XOUT(o, MB_COMD, goto jleave, goto jleave);
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	if (ok == STOP) {
 		xpass = NULL;
-		goto retry;
+		goto jretry;
 	}
-	return OKAY;
+jleave:
+	return ok;
 }
 
 #ifdef	USE_GSSAPI
@@ -1128,7 +1117,7 @@ imap_have_password(const char *server)
 
 static void
 imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
-	char const **uhp, char const **mbx, const char **pass, char **user)
+	char const **uhp, char const **mbx, char **pass, char **user)
 {
 	*sp = *server;
 	if (strncmp(*sp, "imap://", 7) == 0) {
@@ -1175,8 +1164,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 {
 	struct sock so;
 	sighandler_type volatile saveint, savepipe;
-	char *server, *user, *account;
-	char const *cp, *sp, *pass, *mbx, *uhp;
+	char *server, *user, *pass, *account;
+	char const *cp, *sp, *mbx, *uhp;
 	int use_ssl = 0, prevcount = 0;
 	enum mbflags same_flags;
 
@@ -2345,8 +2334,8 @@ enum okay
 imap_append(const char *xserver, FILE *fp)
 {
 	sighandler_type	saveint, savepipe;
-	char *server, *user;
-	char const *sp, *cp, *pass, *mbx, *uhp;
+	char *server, *user, *pass;
+	char const *sp, *cp, *mbx, *uhp;
 	int use_ssl;
 	enum okay ok = STOP;
 
