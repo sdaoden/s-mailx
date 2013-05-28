@@ -659,8 +659,7 @@ struct str *	qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
  * directly produces output.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
  * Returns OKAY. XXX or STOP on error (in which case *out* is set to an error
- * XXX message); caller is responsible to free buffers.
- */
+ * XXX message); caller is responsible to free buffers */
 int		qp_decode(struct str *out, struct str const *in,
 			struct str *rest);
 
@@ -682,14 +681,14 @@ struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 /* If *rest* is set then decoding will assume text input.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
  * Returns OKAY or STOP on error (in which case *out* is set to an error
- * message); caller is responsible to free buffers.
- */
+ * message); caller is responsible to free buffers */
 int		b64_decode(struct str *out, struct str const *in,
 			struct str *rest);
 
 /*
  * names.c
  */
+
 struct name *	nalloc(char *str, enum gfield ntype);
 struct name *	ndup(struct name *np, enum gfield ntype);
 struct name *	cat(struct name *n1, struct name *n2);
@@ -828,9 +827,7 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
  * - our iconv(3) wrapper
  */
 
-/*
- * Auto-reclaimed string storage
- */
+/* Auto-reclaimed string storage */
 
 void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
@@ -856,9 +853,7 @@ char *		urlxdec(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
 
-/*
- * Plain char* support, not auto-reclaimed
- */
+/* Plain char* support, not auto-reclaimed (unless noted) */
 
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
@@ -901,9 +896,7 @@ int		asccasecmp(char const *s1, char const *s2);
 int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
 
-/*
- * struct str related support funs
- */
+/* struct str related support funs */
 
 /* *self->s* is srealloc()ed */
 struct str *	n_str_dup(struct str *self, struct str const *t
@@ -920,9 +913,7 @@ struct str *	n_str_add_buf(struct str *self, char const *buf, size_t buflen
 # define n_str_add_buf(S,B,BL)	n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
-/*
- * Our iconv(3) wrappers
- */
+/* Our iconv(3) wrappers */
 
 #ifdef HAVE_ICONV
 iconv_t		n_iconv_open(char const *tocode, char const *fromcode);
@@ -980,6 +971,9 @@ char *	vcopy(char const *str);
 void	vfree(char *vstr);
 
 char *value(const char *name);
+#define boption(V)		(! ! value(V))
+#define soption(V)		value(V)
+
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
 int hash(const char *name);
