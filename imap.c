@@ -1168,7 +1168,7 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	same_flags = mb.mb_flags;
 	same_imap_account = 0;
 	sp = protbase(server);
-	if (mb.mb_imap_account) {
+	if (mb.mb_imap_account && mb.mb_type == MB_IMAP) {
 		if (mb.mb_sock.s_fd > 0 &&
 				strcmp(mb.mb_imap_account, sp) == 0 &&
 				disconnected(mb.mb_imap_account) == 0)
