@@ -199,7 +199,7 @@ $set 1
 189 temporary mail file
 190 . . . message not sent.\n
 191 smtp-server: %s
-192 Connecting to %s . . .
+192 %sConnecting to %s . . .
 193 $ connected.\n$
 194 No SMTP support compiled in.\n
 195 I/O read error occurred
@@ -259,9 +259,9 @@ $set 1
 249 host certificate does not match "%s"\n
 250 POP3 read failed
 251 unknown service: %s\n
-252 could not resolve host: %s\n
+252 $ lookup of `%s' failed.\n
 253 could not create socket
-254 could not connect
+254 $ could not connect
 255 SMTP read failed
 256 SMTP write error
 257 Cannot execute "%s" without active mailbox\n
@@ -480,3 +480,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 417 Trace current memory usage afap
 418 Either <show> (default) or <clear> the mime.types cache
 
+
+500 $ done.\n

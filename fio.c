@@ -1140,17 +1140,18 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		memcpy(server, xserver, cp - xserver);
 		server[cp - xserver] = '\0';
 	}
+
 #ifdef USE_IPV6
-	memset(&hints, 0, sizeof hints);
-	hints.ai_socktype = SOCK_STREAM;
 	if (verbose)
 		fprintf(stderr, "Resolving host %s . . .", server);
+	memset(&hints, 0, sizeof hints);
+	hints.ai_socktype = SOCK_STREAM;
 	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"Could not resolve host: %s\n"), server);
+		fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
 		return STOP;
 	} else if (verbose)
-		fprintf(stderr, " done.\n");
+		fprintf(stderr, tr(500, " done.\n"));
+
 	sockfd = -1;
 	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
 		if (verbose) {
@@ -1158,8 +1159,9 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 						hbuf, sizeof hbuf, NULL, 0,
 						NI_NUMERICHOST) != 0)
 				strcpy(hbuf, "unknown host");
-			fprintf(stderr, catgets(catd, CATSET, 192,
-					"Connecting to %s:%s . . ."),
+			fprintf(stderr, tr(192,
+					"%sConnecting to %s:%s . . ."),
+					(res == res0) ? "" : "\n",
 					hbuf, portstr);
 		}
 		if ((sockfd = socket(res->ai_family, res->ai_socktype,
@@ -1171,11 +1173,12 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		}
 	}
 	if (sockfd < 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
+		perror(tr(254, " could not connect"));
 		freeaddrinfo(res0);
 		return STOP;
 	}
 	freeaddrinfo(res0);
+
 #else /* USE_IPV6 */
 	if (port == 0) {
 		if (strcmp(portstr, "smtp") == 0)
@@ -1203,17 +1206,18 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		}
 	} else
 		port = htons(port);
+
 	if (verbose)
 		fprintf(stderr, "Resolving host %s . . .", server);
 	if ((hp = gethostbyname(server)) == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"Could not resolve host: %s\n"), server);
+		fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
 		return STOP;
 	} else if (verbose)
-		fprintf(stderr, " done.\n");
+		fprintf(stderr, tr(500, " done.\n"));
+
 	pptr = (struct in_addr **)hp->h_addr_list;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror(catgets(catd, CATSET, 253, "could not create socket"));
+		perror(tr(253, "could not create socket"));
 		return STOP;
 	}
 	memset(&servaddr, 0, sizeof servaddr);
@@ -1221,17 +1225,17 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	servaddr.sin_port = port;
 	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
 	if (verbose)
-		fprintf(stderr, catgets(catd, CATSET, 192,
-				"Connecting to %s:%d . . ."),
-				inet_ntoa(**pptr), ntohs(port));
+		fprintf(stderr, tr(192, "%sConnecting to %s:%d . . ."),
+				"", inet_ntoa(**pptr), ntohs(port));
 	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
 			!= 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
+		perror(tr(254, " could not connect"));
 		return STOP;
 	}
 #endif /* USE_IPV6 */
 	if (verbose)
-		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
+		fputs(tr(193, " connected.\n"), stderr);
+
 	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
 #ifdef USE_SSL
