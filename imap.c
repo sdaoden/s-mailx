@@ -1566,7 +1566,8 @@ out:	while (mp->mb_active & MB_COMD)
 	imaplock--;
 	if (ok == OKAY)
 		putcache(mp, m);
-	free(head);
+	if (head != NULL)
+		free(head);
 	if (interrupts)
 		onintr(0);
 	return ok;
