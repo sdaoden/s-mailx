@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 23, 2013
+.Dd May 29, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2468,7 +2468,7 @@ and proper RFC 4155 `From ' quoting of newly added or edited content is
 also left as an excercise to the user.
 .El
 .\" --  >8  --  8<  --
-.Ss "String Options"
+.Ss "String options"
 The string options include the following:
 .Bl -tag -width ".Va autoprint"
 .It Va attrlist
@@ -3701,148 +3701,6 @@ Note that the example above is \fBinsecure\fR!
 One should use the `-verify' and `-CAfile' options of
 .Xr s_client 1
 to be ``on the safe side'' regarding the fetched certificates.
-.\" --  >8  --  8<  --
-.Ss "Creating a score file or message filter"
-The scoring commands are best separated from other configuration for
-clarity, and are mostly \*(UA specific.
-It is thus recommended to put them in a separate file that is sourced
-from your `NAIL_EXTRA_RC' as follows:
-.Pp
-.Dl source ~/.scores
-.Pp
-The `.scores' file could then look as follows:
-.Bd -literal -offset indent
-define list {
-   score (subject "important discussion") +10
-   score (subject "annoying discussion") \-10
-   score (from "nicefellow@goodnet") +15
-   score (from "badguy@poornet") \-5
-   move (header x-spam-flag "+++++") +junk
-}
-set folder-hook-imap://user@host/public.list=list
-.Ed
-.Pp
-In this scheme, you would see any mail from `nicefellow@goodnet',
-even if the surrounding discussion is annoying;
-but you normally would not see mail from `badguy@poornet',
-unless he participates in the important discussion.
-Messages that are marked with five or more plus characters in their
-`X-Spam-Flag' field (inserted by some server-side filtering software)
-are moved to the folder `junk' in the
-.Ic folder
-directory.
-.Pp
-Be aware that all criteria in (\|) lead to substring matches,
-so you would also score messages from e.\|g. `notsobadguy@poornetmakers'
-negative here.
-It is possible to select addresses exactly using `address' message
-specifications,
-but these cannot be executed remotely  and will thus cause all headers
-to be downloaded from IMAP servers while looking for matches.
-.Pp
-When searching messages on an IMAP server,
-best performance is usually achieved by sending as many criteria as
-possible in one large (\|) specification,
-because each single such specification will result in a separate network
-operation.
-.\" --  >8  --  8<  --
-.Ss "Activating the Bayesian filter"
-The Bayesian junk mail filter works by examining the words contained in
-messages.
-You decide yourself what a good and what a bad message is.
-Thus the resulting filter is your very personal one;
-once it is correctly set up,
-it will filter only messages similar to those previously specified by
-you.
-.Pp
-To use the Bayesian filter,
-a location for the junk mail database must be defined first:
-.Pp
-.Dl set junkdb=~/.junkdb
-.Pp
-The junk mail database does not contain actual words extracted from
-messages, but hashed representations of them.
-A foreign person who can read the database could only examine the
-frequency of previously known words in your mail.
-.Pp
-If you have sufficient disk space (several 10\ MB) available,
-it is recommended that you set the
-.Va chained-junk-tokens
-option, which allows the filter to also consider two-word tokens,
-improving its accuracy.
-.Pp
-A set of good messages and junk messages must now be available;
-it is also possible to use the incoming new messages for this purpose,
-although it will of course take some time until the filter becomes
-useful then.
-Do not underestimate the amount of statistical data needed;
-some hundred messages are typically necessary to get satisfactory
-results, and many thousand messages for best operation.
-You have to pass the good messages to the
-.Ic good
-command, and the junk messages to the
-.Ic junk
-command.
-If you ever accidentally mark a good message as junk or vice-versa,
-call the
-.Ic ungood
-or
-.Ic unjunk
-command to correct this.
-.Pp
-Once a reasonable amount of statistics has been collected,
-new messages can be classified automatically.
-The
-.Ic classify
-command marks all messages that the filter considers to be junk,
-but it does not perform any action on them by default.
-It is recommended that you move these messages into a separate
-folder just for the case that false positives occur,
-or to pass them to the
-.Ic junk
-command later again to further improve the junk mail database.
-To automatically move incoming junk messages every time the inbox is
-opened, put lines like the following into your
-.Pa .scores
-file (or whatever name you gave to the file in the last example):
-.Bd -literal -offset indent
-define junkfilter {
-   classify (smaller 20000) :n
-   move :j +junk
-}
-set folder-hook-imap://user@host/INBOX=junkfilter
-.Ed
-.Pp
-If you set the
-.Va verbose
-option before running the
-.Ic classify
-command,
-\*(UA prints the words it uses for calculating the junk status along
-with their statistical probabilities.
-This can help you to find out why some messages are not classified as
-you would like them to be.
-To see the statistical probability of a given word, use the
-.Ic probability
-command.
-.Pp
-If a junk message was not recognized as such, use the
-.Ic junk
-command to correct this.
-Also if you encounter a false positive (a good message that was wrongly
-classified as junk),
-pass it to the
-.Ic good
-command.
-.Pp
-Since the
-.Ic classify
-command must examine the entire text of all new messages in the
-respective folder,
-this will also cause all of them to be downloaded from the IMAP server.
-You should thus restrict the size of messages for automatic filtering.
-If server-based filtering is also available,
-you might try if that works for you first.
 .\" --  >8  --  8<  --
 .Ss "Reading HTML mail"
 You need either the
