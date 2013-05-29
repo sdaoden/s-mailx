@@ -99,8 +99,9 @@ char *	getrandstring(size_t length);
 #define	hexchar(n)		((n)>9 ? (n)-10+'a' : (n)+'0')
 
 #ifdef USE_MD5
-/* MD5 checksum as hexadecimal string */
-char *	md5tohex(void const *vp);
+/* MD5 checksum as hexadecimal string, to be stored in *hex* */
+#define MD5TOHEX_SIZE		32
+char *	md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
 /* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
 char *	cram_md5_string(char const *user, char const *pass, char const *b64);

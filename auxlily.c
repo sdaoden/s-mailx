@@ -487,18 +487,17 @@ getrandstring(size_t length)
 
 #ifdef USE_MD5
 char *
-md5tohex(void const *vp)
+md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
 	char const *cp = vp;
-	char *hex;
-	int i;
+	size_t i, j;
 
-	hex = salloc(33);
-	for (i = 0; i < 16; i++) {
-		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
-		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
+	for (i = 0; i < MD5TOHEX_SIZE / 2; i++) {
+		j = i << 1;
+		hex[j] = hexchar((cp[i] & 0xf0) >> 4);
+		hex[++j] = hexchar(cp[i] & 0x0f);
 	}
-	hex[32] = '\0';
+	hex[MD5TOHEX_SIZE] = '\0';
 	return hex;
 }
 
@@ -507,7 +506,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 {
 	struct str in, out;
 	char digest[16], *cp;
-	size_t lh, lu;
+	size_t lu;
 
 	out.s = NULL;
 	in.s = UNCONST(b64);
@@ -518,15 +517,14 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),
 		digest);
 	free(out.s);
-	cp = md5tohex(digest);
+	cp = md5tohex(salloc(MD5TOHEX_SIZE + 1), digest);
 
-	lh = strlen(cp);
 	lu = strlen(user);
-	in.l = lh + 1 + lu;
-	in.s = ac_alloc(lh + lu + 1 + 1);
+	in.l = lu + MD5TOHEX_SIZE +1;
+	in.s = ac_alloc(lu + 1 + MD5TOHEX_SIZE +1);
 	memcpy(in.s, user, lu);
 	in.s[lu] = ' ';
-	memcpy(in.s + lu + 1, cp, lh);
+	memcpy(in.s + lu + 1, cp, MD5TOHEX_SIZE);
 	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
 	ac_free(in.s);
 	return out.s;
