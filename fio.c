@@ -220,6 +220,11 @@ _globname(char const *name)
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, NULL);
+	/* Mac OS X Snow Leopard doesn't init fields on error, causing SIGSEGV
+	 * in wordfree(3) */
+#ifdef __APPLE__
+	memset(&we, 0, sizeof we);
+#endif
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
@@ -250,7 +255,7 @@ _globname(char const *name)
 	}
 jleave:
 	wordfree(&we);
-	return (cp);
+	return cp;
 
 #else /* !HAVE_WORDEXP */
 	extern int wait_status;
@@ -262,7 +267,7 @@ jleave:
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
-		return (NULL);
+		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
@@ -271,7 +276,7 @@ jleave:
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);
-		return (NULL);
+		return NULL;
 	}
 	close(pivec[1]);
 
@@ -282,21 +287,21 @@ again:
 			goto again;
 		perror("read");
 		close(pivec[0]);
-		return (NULL);
+		return NULL;
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
-		return (NULL);
+		return NULL;
 	}
 	if (l == 0) {
 		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
-		return (NULL);
+		return NULL;
 	}
 	if (l == sizeof xname) {
 		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
 			name);
-		return (NULL);
+		return NULL;
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
@@ -306,7 +311,7 @@ again:
 		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
-	return (savestr(xname));
+	return savestr(xname);
 #endif /* !HAVE_WORDEXP */
 }
 
