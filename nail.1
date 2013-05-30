@@ -234,6 +234,10 @@ giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
 .It Fl u Ar user
 Reads the mailbox of the given user name.
+Note that using this option changes the expansion of `%' so that
+dynamical changes of the
+.Va folder
+variables etc. are not reflected.
 .It Fl V
 Print \*(UA's version and exit.
 .It Fl v
@@ -1039,11 +1043,19 @@ argument:
 .It Ar #
 (number sign) means the previous file,
 .It Ar %
-(percent sign) means the invoking user's system mailbox,
+(percent sign) means the invoking user's system mailbox
+(or the value of
+.Va folder
+for IMAP folders),
 .It Ar %user
-means the system mailbox of `user',
+means the system mailbox of `user'
+(and never the value of
+.Va folder ,
+regardless of its actual setting),
 .It Ar &
-(ampersand) means the invoking user's `mbox' file and
+(ampersand) means the invoking user's `mbox' file (see
+.Va MBOX Ns
+) and
 .It Ar +file
 means a `file' in the
 .Va folder

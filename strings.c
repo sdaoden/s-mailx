@@ -407,6 +407,10 @@ protbase(char const *cp)
 {
 	char *n = salloc(strlen(cp) + 1), *np = n;
 
+	/* Just ignore the `is-system-mailbox' prefix XXX */
+	if (cp[0] == '%' && cp[1] == ':')
+		cp += 2;
+
 	while (*cp) {
 		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
 			*np++ = *cp++;
@@ -418,7 +422,7 @@ protbase(char const *cp)
 			*np++ = *cp++;
 	}
 	*np = '\0';
-	return (n);
+	return n;
 }
 
 char *

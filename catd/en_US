@@ -287,7 +287,7 @@ $set 1
 277 No CRAM-MD5 support compiled in.\n
 278 Enter filename for part %s (%s)
 279 ... skipping this\n
-280 "%s": only a local file or directory may be used\n
+280 `%s': only a local file or directory may be used\n
 281 Message piping to <%s> failed\n
 282 Message writing to <%s> failed: %s\n
 283 write error
@@ -482,3 +482,4 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 
 
 500 $ done.\n
+501 `folder' cannot be set to a flat, readonly POP3 account\n

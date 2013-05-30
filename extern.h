@@ -370,7 +370,7 @@ void	findmail(char const *user, int force, char *buf, int size);
 void	demail(void);
 
 /* vars.c hook: *folder* variable has been updated */
-void	var_folder_updated(char **name);
+bool_t	var_folder_updated(char **name);
 
 int getfold(char *name, int size);
 char const *getdeadletter(void);

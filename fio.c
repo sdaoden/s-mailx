@@ -135,7 +135,7 @@ jnext:	dyn = 0;
 		findmail((res[1] ? res + 1 : myname),
 			(res[1] != '\0' || option_u_arg), cbuf, sizeof cbuf);
 		res = cbuf;
-		goto jislocal;
+		goto jnext;/*jislocal; XXX */
 	case '#':
 		if (res[1] != 0)
 			break;
@@ -159,11 +159,12 @@ jnext:	dyn = 0;
 	}
 
 	if (res[0] == '+' && getfold(cbuf, sizeof cbuf) >= 0) {
-		res = str_concat_csvl(&s,
-			cbuf, ((which_protocol(cbuf) == PROTO_IMAP &&
-					strcmp(cbuf, protbase(cbuf))) /* XXX */
-				? "" : "/"),
-			res + 1, NULL)->s;
+		char const *cp = "/";
+
+		if (which_protocol(cbuf) == PROTO_IMAP &&
+				strcmp(cbuf, protbase(cbuf)))
+			cp = "";
+		res = str_concat_csvl(&s, cbuf, cp, res + 1, NULL)->s;
 		dyn = 1;
 		if (cbuf[0] == '%' && cbuf[1] == ':')
 			goto jnext;
@@ -191,7 +192,7 @@ jislocal:
 			break;
 		default:
 			fprintf(stderr, tr(280,
-				"\"%s\": only a local file or directory may "
+				"`%s': only a local file or directory may "
 				"be used\n"), name);
 			res = NULL;
 			break;
@@ -757,16 +758,27 @@ findmail(char const *user, int force, char *buf, int size)
 {
 	char *mbox, *cp;
 
-	if (strcmp(user, myname) == 0 && !force &&
-			(cp = value("folder")) != NULL &&
-			which_protocol(cp) == PROTO_IMAP) {
-		snprintf(buf, size, "%s/INBOX", protbase(cp));
-	} else if (force || (mbox = value("MAIL")) == NULL) {
+	if (strcmp(user, myname) == 0 && ! force &&
+			(cp = value("folder")) != NULL) {
+		mbox = UNCONST("");
+		switch (which_protocol(cp)) {
+		case PROTO_IMAP:
+			mbox = UNCONST("/INBOX");
+			/* FALLTRHU */
+		case PROTO_POP3:
+			snprintf(buf, size, "%s%s", protbase(cp), mbox);
+			goto jleave;
+		default:
+			break;
+		}
+	}
+	if (force || (mbox = value("MAIL")) == NULL)
 		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
-	} else {
+	else {
 		strncpy(buf, mbox, size);
 		buf[size-1]='\0';
 	}
+jleave:	;
 }
 
 void
@@ -780,27 +792,40 @@ demail(void)
 	}
 }
 
-void
+bool_t
 var_folder_updated(char **name)
 {
+	char rv = TRU1;
 	char *unres = NULL, *res = NULL, *folder;
 
 	if (name == NULL)
 		goto jleave;
 	folder = *name;
 
-	switch (which_protocol(folder)) {
-	case PROTO_FILE:
-	case PROTO_MAILDIR:
-		break;
-	default:
-		goto jleave;
-	}
-
-	/* Expand the *folder* *//* XXX This *only* works because we do NOT
+	/* Expand the *folder*; skip `%:' prefix for simplicity of use */
+	/* XXX This *only* works because we do NOT
 	 * XXX update environment variables via the "set" mechanism */
+	if (folder[0] == '%' && folder[1] == ':')
+		folder += 2;
 	if ((folder = _expand(folder, EXP_SHELL)) == NULL)
 		goto jleave;
+
+	switch (which_protocol(folder)) {
+	case PROTO_POP3:
+		/* Ooops.  This won't work */
+		fprintf(stderr, tr(501, "`folder' cannot be set to a flat, "
+			"readonly POP3 account\n"));
+		rv = FAL0;
+		goto jleave;
+	case PROTO_IMAP:
+		/* Simply assign what we have, even including `%:' prefix */
+		if (folder != *name)
+			goto jvcopy;
+		goto jleave;
+	default:
+		/* Further expansion desired */
+		break;
+	}
 
 	/* All non-absolute paths are relative to our home directory */
 	if (*folder != '/') {
@@ -826,7 +851,7 @@ var_folder_updated(char **name)
 		folder = res;
 #endif
 
-	{	char *x = *name;
+jvcopy:	{	char *x = *name;
 		*name = vcopy(folder);
 		vfree(x);
 	}
@@ -835,7 +860,8 @@ var_folder_updated(char **name)
 		ac_free(res);
 	if (unres != NULL)
 		ac_free(unres);
-jleave:	;
+jleave:
+	return rv;
 }
 
 /*
