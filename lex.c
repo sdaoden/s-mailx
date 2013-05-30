@@ -53,7 +53,7 @@ static sighandler_type	_oldpipe;
 
 /* Update mailname (if *name* != NULL) and displayname */
 static void	_update_mailname(char const *name);
-#ifdef HAVE_MBLEN
+#ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
 SINLINE size_t	__narrow_prefix(char const *cp, size_t maxl);
 SINLINE size_t	__narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
@@ -403,7 +403,6 @@ commands(void)
 	int x;
 #endif
 
-	(void)&eofloop;
 	if (!sourcing) {
 		if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGINT, onintr);
@@ -498,7 +497,7 @@ commands(void)
 			}
 			if ((options & OPT_INTERACTIVE) &&
 					value("ignoreeof") && ++eofloop < 25) {
-				printf(tr(89, "Use \"quit\" to quit.\n"));
+				printf(tr(89, "Use `quit' to quit.\n"));
 				continue;
 			}
 			break;
@@ -543,7 +542,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 		;
 	if (*cp == '!') {
 		if (sourcing) {
-			fprintf(stderr, tr(90, "Can't \"!\" while sourcing\n"));
+			fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
 			goto jleave;
 		}
 		shell(cp + 1);
@@ -577,7 +576,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 
 	com = lex(word);
 	if (com == NULL || com->c_func == &ccmdnotsupp) {
-		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), word);
+		fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
 		if (com != NULL) {
 			ccmdnotsupp(NULL);
 			com = NULL;
@@ -607,30 +606,30 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 */
 	if ((options & OPT_SENDMODE) && (com->c_argtype & M) == 0) {
 		fprintf(stderr, tr(92,
-			"May not execute \"%s\" while sending\n"),
+			"May not execute `%s' while sending\n"),
 			com->c_name);
 		goto jleave;
 	}
 	if (sourcing && com->c_argtype & I) {
 		fprintf(stderr, tr(93,
-			"May not execute \"%s\" while sourcing\n"),
+			"May not execute `%s' while sourcing\n"),
 			com->c_name);
 		goto jleave;
 	}
 	if ((mb.mb_perm & MB_DELE) == 0 && com->c_argtype & W) {
-		fprintf(stderr, tr(94, "May not execute \"%s\" -- "
+		fprintf(stderr, tr(94, "May not execute `%s' -- "
 			"message file is read only\n"),
 			com->c_name);
 		goto jleave;
 	}
 	if (contxt && com->c_argtype & R) {
 		fprintf(stderr, tr(95,
-			"Cannot recursively invoke \"%s\"\n"), com->c_name);
+			"Cannot recursively invoke `%s'\n"), com->c_name);
 		goto jleave;
 	}
 	if (mb.mb_type == MB_VOID && com->c_argtype & A) {
 		fprintf(stderr, tr(257,
-			"Cannot execute \"%s\" without active mailbox\n"),
+			"Cannot execute `%s' without active mailbox\n"),
 			com->c_name);
 		goto jleave;
 	}
@@ -662,7 +661,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 		if (_msgvec == 0) {
 je96:
 			fprintf(stderr, tr(96,
-				"Illegal use of \"message list\"\n"));
+				"Illegal use of `message list'\n"));
 			break;
 		}
 		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
@@ -688,13 +687,13 @@ je96:
 			break;
 		if (c < com->c_minargs) {
 			fprintf(stderr, tr(99,
-				"%s requires at least %d arg(s)\n"),
+				"`%s' requires at least %d arg(s)\n"),
 				com->c_name, com->c_minargs);
 			break;
 		}
 		if (c > com->c_maxargs) {
 			fprintf(stderr, tr(100,
-				"%s takes no more than %d arg(s)\n"),
+				"`%s' takes no more than %d arg(s)\n"),
 				com->c_name, com->c_maxargs);
 			break;
 		}
@@ -707,7 +706,7 @@ je96:
 		break;
 
 	default:
-		panic(tr(101, "Unknown argtype"));
+		panic(tr(101, "Unknown argument type"));
 	}
 
 jleave:
