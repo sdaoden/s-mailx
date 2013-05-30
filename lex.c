@@ -46,8 +46,10 @@
 
 #include "extern.h"
 
-static char const	*prompt;
-static sighandler_type	oldpipe;
+static int		*_msgvec;
+static int		_reset_on_stop;	/* do a reset() if stopped */
+static char const	*_prompt;
+static sighandler_type	_oldpipe;
 
 /* Update mailname (if *name* != NULL) and displayname */
 static void	_update_mailname(char const *name);
@@ -387,9 +389,6 @@ newmailinfo(int omsgCount)
 	return mdot;
 }
 
-static int	*msgvec;
-static int	reset_on_stop;			/* do a reset() if stopped */
-
 /*
  * Interpret user commands one by one.  If standard input is not a tty,
  * print no prompt.
@@ -414,8 +413,8 @@ commands(void)
 		safe_signal(SIGTTOU, stop);
 		safe_signal(SIGTTIN, stop);
 	}
-	oldpipe = safe_signal(SIGPIPE, SIG_IGN);
-	safe_signal(SIGPIPE, oldpipe);
+	_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
+	safe_signal(SIGPIPE, _oldpipe);
 	setexit();
 
 	for (;;) {
@@ -458,11 +457,11 @@ commands(void)
 					}
 				}
 			}
-			reset_on_stop = 1;
+			_reset_on_stop = 1;
 			exit_status = 0;
-			if ((prompt = value("prompt")) == NULL)
-				prompt = value("bsdcompat") ? "& " : "? ";
-			printf("%s", prompt);
+			if ((_prompt = value("prompt")) == NULL)
+				_prompt = value("bsdcompat") ? "& " : "? ";
+			printf("%s", _prompt);
 		}
 		fflush(stdout);
 
@@ -488,7 +487,7 @@ commands(void)
 				break;
 			linebuf[n - 1] = ' ';
 		}
-		reset_on_stop = 0;
+		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */
 			if (loading)
@@ -639,37 +638,37 @@ execute(char *linebuf, int contxt, size_t linesize)
 	switch (com->c_argtype & ~(F|P|I|M|T|W|R|A)) {
 	case MSGLIST:
 		/* Message list defaulting to nearest forward legal message */
-		if (msgvec == 0)
+		if (_msgvec == 0)
 			goto je96;
-		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
+		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
 			break;
 		if (c == 0) {
 			msglist_is_single = TRU1;
-			*msgvec = first(com->c_msgflag, com->c_msgmask);
-			if (*msgvec != 0)
-				msgvec[1] = 0;
+			*_msgvec = first(com->c_msgflag, com->c_msgmask);
+			if (*_msgvec != 0)
+				_msgvec[1] = 0;
 		} else
 			msglist_is_single = (c == 1);
-		if (*msgvec == 0) {
+		if (*_msgvec == 0) {
 			if (! inhook)
 				printf(tr(97, "No applicable messages\n"));
 			break;
 		}
-		e = (*com->c_func)(msgvec);
+		e = (*com->c_func)(_msgvec);
 		break;
 
 	case NDMLIST:
 		/* Message list with no defaults, but no error if none exist */
-		if (msgvec == 0) {
+		if (_msgvec == 0) {
 je96:
 			fprintf(stderr, tr(96,
 				"Illegal use of \"message list\"\n"));
 			break;
 		}
-		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
+		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
 			break;
 		msglist_is_single = (c == 1);
-		e = (*com->c_func)(msgvec);
+		e = (*com->c_func)(_msgvec);
 		break;
 
 	case STRLIST:
@@ -745,9 +744,9 @@ void
 setmsize(int sz)
 {
 
-	if (msgvec != 0)
-		free(msgvec);
-	msgvec = (int *)scalloc((sz + 1), sizeof *msgvec);
+	if (_msgvec != 0)
+		free(_msgvec);
+	_msgvec = (int*)scalloc(sz + 1, sizeof *_msgvec);
 }
 
 /*
@@ -801,7 +800,7 @@ onintr(int s)
 	}
 	if (interrupts != 1)
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
-	safe_signal(SIGPIPE, oldpipe);
+	safe_signal(SIGPIPE, _oldpipe);
 	reset(0);
 }
 
@@ -820,8 +819,8 @@ stop(int s)
 	kill(0, s);
 	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
 	safe_signal(s, old_action);
-	if (reset_on_stop) {
-		reset_on_stop = 0;
+	if (_reset_on_stop) {
+		_reset_on_stop = 0;
 		reset(0);
 	}
 }
