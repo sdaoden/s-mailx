@@ -88,10 +88,13 @@ getmsglist(char *buf, int *vector, int flags)
 	struct message *mp;
 	int	mc;
 
+	msglist_is_single = FAL0;
 	if (msgCount == 0) {
 		*vector = 0;
 		return 0;
 	}
+
+	msglist_is_single = TRU1;
 	if (markall(buf, flags) < 0)
 		return(-1);
 	ip = vector;
@@ -117,6 +120,8 @@ getmsglist(char *buf, int *vector, int flags)
 				*ip++ = mp - &message[0] + 1;
 	}
 	*ip = 0;
+	if ((size_t)(ip - vector) != 1)
+		msglist_is_single = FAL0;
 	return(ip - vector);
 }
 
@@ -265,6 +270,7 @@ number:
 			break;
 
 		case TPLUS:
+			msglist_is_single = FAL0;
 			if (beg != 0) {
 				printf(catgets(catd, CATSET, 113,
 					"Non-numeric second argument\n"));
@@ -290,6 +296,7 @@ number:
 			break;
 
 		case TDASH:
+			msglist_is_single = FAL0;
 			if (beg == 0) {
 				i = valdot;
 				do {
@@ -314,6 +321,7 @@ number:
 			break;
 
 		case TSTRING:
+			msglist_is_single = FAL0;
 			if (beg != 0) {
 				printf(catgets(catd, CATSET, 116,
 					"Non-numeric second argument\n"));
@@ -336,6 +344,7 @@ number:
 			break;
 
 		case TOPEN:
+			msglist_is_single = FAL0;
 			if (imap_search(lexstring, f) == STOP)
 				markall_ret(-1)
 			topen++;
@@ -345,12 +354,14 @@ number:
 		case TUP:
 		case TDOT:
 		case TSEMI:
+			msglist_is_single = FAL0;
 			lexnumber = metamess(lexstring[0], f);
 			if (lexnumber == -1)
 				markall_ret(-1)
 			goto number;
 
 		case TBACK:
+			msglist_is_single = FAL0;
 			tback = 1;
 			for (i = 1; i <= msgCount; i++) {
 				if ((message[i-1].m_flag & MHIDDEN) ||
@@ -363,6 +374,7 @@ number:
 			break;
 
 		case TSTAR:
+			msglist_is_single = FAL0;
 			if (other) {
 				printf(catgets(catd, CATSET, 118,
 					"Can't mix \"*\" with anything\n"));
@@ -372,6 +384,7 @@ number:
 			break;
 
 		case TCOMMA:
+			msglist_is_single = FAL0;
 #ifdef USE_IMAP
 			if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 				imap_getheaders(1, msgCount);
@@ -399,6 +412,7 @@ number:
 			break;
 
 		case TERROR:
+			msglist_is_single = FAL0;
 			markall_ret(-1)
 		}
 		threadflag = 0;

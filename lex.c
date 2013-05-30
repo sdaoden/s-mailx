@@ -504,7 +504,6 @@ commands(void)
 		}
 		eofloop = 0;
 		inhook = 0;
-		msglist_is_single = FAL0;
 		if (execute(linebuf, 0, n))
 			break;
 	}
@@ -645,12 +644,10 @@ execute(char *linebuf, int contxt, size_t linesize)
 		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
 			break;
 		if (c == 0) {
-			msglist_is_single = TRU1;
 			*_msgvec = first(com->c_msgflag, com->c_msgmask);
 			if (*_msgvec != 0)
 				_msgvec[1] = 0;
-		} else
-			msglist_is_single = (c == 1);
+		}
 		if (*_msgvec == 0) {
 			if (! inhook)
 				printf(tr(97, "No applicable messages\n"));
@@ -669,7 +666,6 @@ je96:
 		}
 		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
 			break;
-		msglist_is_single = (c == 1);
 		e = (*com->c_func)(_msgvec);
 		break;
 
