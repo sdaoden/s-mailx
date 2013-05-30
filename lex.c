@@ -527,13 +527,9 @@ commands(void)
 int
 execute(char *linebuf, int contxt, size_t linesize)
 {
-	char *word;
-	char *arglist[MAXARGC];
-	const struct cmd *com = (struct cmd *)NULL;
-	char *cp, *cp2;
-	int c;
-	int muvec[2];
-	int e = 1;
+	char *arglist[MAXARGC], *word, *cp, *cp2;
+	struct cmd const *com = (struct cmd*)NULL;
+	int muvec[2], c, e = 1;
 
 	/*
 	 * Strip the white space away from the beginning
@@ -544,16 +540,16 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * lexical conventions.
 	 */
 	word = ac_alloc(linesize + 1);
-	for (cp = linebuf; whitechar(*cp & 0377); cp++);
+	for (cp = linebuf; whitechar(*cp); cp++)
+		;
 	if (*cp == '!') {
 		if (sourcing) {
-			printf(catgets(catd, CATSET, 90,
-					"Can't \"!\" while sourcing\n"));
-			goto out;
+			fprintf(stderr, tr(90, "Can't \"!\" while sourcing\n"));
+			goto jleave;
 		}
-		shell(cp+1);
+		shell(cp + 1);
 		ac_free(word);
-		return(0);
+		return 0;
 	}
 	if (*cp == '#') {
 		ac_free(word);
@@ -575,33 +571,32 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * however, we ignore blank lines to eliminate
 	 * confusion.
 	 */
-
 	if (sourcing && *word == '\0') {
 		ac_free(word);
-		return(0);
+		return 0;
 	}
 
 	com = lex(word);
 	if (com == NULL || com->c_func == &ccmdnotsupp) {
 		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), word);
-		if (com != NULL)
-			fprintf(stderr, tr(10,
-				"The requested feature is not compiled in\n"));
-		goto out;
+		if (com != NULL) {
+			ccmdnotsupp(NULL);
+			com = NULL;
+		}
+		goto jleave;
 	}
 
 	/*
 	 * See if we should execute the command -- if a conditional
 	 * we always execute it, otherwise, check the state of cond.
 	 */
-
 	if ((com->c_argtype & F) == 0) {
 		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
-				(cond == CTERM && !is_a_tty[0]) ||
+				(cond == CTERM && ! is_a_tty[0]) ||
 				(cond == CNONTERM && is_a_tty[0])) {
 			ac_free(word);
-			return(0);
+			return 0;
 		}
 	}
 
@@ -611,71 +606,63 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * If we are sourcing an interactive command, it's
 	 * an error.
 	 */
-
 	if ((options & OPT_SENDMODE) && (com->c_argtype & M) == 0) {
-		printf(catgets(catd, CATSET, 92,
-			"May not execute \"%s\" while sending\n"), com->c_name);
-		goto out;
+		fprintf(stderr, tr(92,
+			"May not execute \"%s\" while sending\n"),
+			com->c_name);
+		goto jleave;
 	}
 	if (sourcing && com->c_argtype & I) {
-		printf(catgets(catd, CATSET, 93,
+		fprintf(stderr, tr(93,
 			"May not execute \"%s\" while sourcing\n"),
-				com->c_name);
-		goto out;
+			com->c_name);
+		goto jleave;
 	}
 	if ((mb.mb_perm & MB_DELE) == 0 && com->c_argtype & W) {
-		printf(catgets(catd, CATSET, 94,
-		"May not execute \"%s\" -- message file is read only\n"),
-		   com->c_name);
-		goto out;
+		fprintf(stderr, tr(94, "May not execute \"%s\" -- "
+			"message file is read only\n"),
+			com->c_name);
+		goto jleave;
 	}
 	if (contxt && com->c_argtype & R) {
-		printf(catgets(catd, CATSET, 95,
+		fprintf(stderr, tr(95,
 			"Cannot recursively invoke \"%s\"\n"), com->c_name);
-		goto out;
+		goto jleave;
 	}
 	if (mb.mb_type == MB_VOID && com->c_argtype & A) {
-		printf(catgets(catd, CATSET, 257,
+		fprintf(stderr, tr(257,
 			"Cannot execute \"%s\" without active mailbox\n"),
-				com->c_name);
-		goto out;
+			com->c_name);
+		goto jleave;
 	}
+
 	switch (com->c_argtype & ~(F|P|I|M|T|W|R|A)) {
 	case MSGLIST:
-		/*
-		 * A message list defaulting to nearest forward
-		 * legal message.
-		 */
-		if (msgvec == 0) {
-			printf(catgets(catd, CATSET, 96,
-				"Illegal use of \"message list\"\n"));
-			break;
-		}
+		/* Message list defaulting to nearest forward legal message */
+		if (msgvec == 0)
+			goto je96;
 		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
 			break;
 		if (c == 0) {
 			msglist_is_single = TRU1;
-			if ((*msgvec = first(com->c_msgflag, com->c_msgmask))
-					!= 0)
+			*msgvec = first(com->c_msgflag, com->c_msgmask);
+			if (*msgvec != 0)
 				msgvec[1] = 0;
 		} else
 			msglist_is_single = (c == 1);
 		if (*msgvec == 0) {
-			if (!inhook)
-				printf(catgets(catd, CATSET, 97,
-					"No applicable messages\n"));
+			if (! inhook)
+				printf(tr(97, "No applicable messages\n"));
 			break;
 		}
 		e = (*com->c_func)(msgvec);
 		break;
 
 	case NDMLIST:
-		/*
-		 * A message list with no defaults, but no error
-		 * if none exist.
-		 */
+		/* Message list with no defaults, but no error if none exist */
 		if (msgvec == 0) {
-			printf(catgets(catd, CATSET, 98,
+je96:
+			fprintf(stderr, tr(96,
 				"Illegal use of \"message list\"\n"));
 			break;
 		}
@@ -686,33 +673,28 @@ execute(char *linebuf, int contxt, size_t linesize)
 		break;
 
 	case STRLIST:
-		/*
-		 * Just the straight string, with
-		 * leading blanks removed.
-		 */
-		while (whitechar(*cp & 0377))
+		/* Just the straight string, with leading blanks removed */
+		while (whitechar(*cp))
 			cp++;
 		e = (*com->c_func)(cp);
 		break;
 
 	case RAWLIST:
 	case ECHOLIST:
-		/*
-		 * A vector of strings, in shell style.
-		 */
+		/* A vector of strings, in shell style */
 		if ((c = getrawlist(cp, linesize, arglist,
 				sizeof arglist / sizeof *arglist,
-				(com->c_argtype&~(F|P|I|M|T|W|R|A))==ECHOLIST))
-					< 0)
+				(com->c_argtype&~(F|P|I|M|T|W|R|A)) == ECHOLIST)
+				) < 0)
 			break;
 		if (c < com->c_minargs) {
-			printf(catgets(catd, CATSET, 99,
+			fprintf(stderr, tr(99,
 				"%s requires at least %d arg(s)\n"),
 				com->c_name, com->c_minargs);
 			break;
 		}
 		if (c > com->c_maxargs) {
-			printf(catgets(catd, CATSET, 100,
+			fprintf(stderr, tr(100,
 				"%s takes no more than %d arg(s)\n"),
 				com->c_name, com->c_maxargs);
 			break;
@@ -721,23 +703,18 @@ execute(char *linebuf, int contxt, size_t linesize)
 		break;
 
 	case NOLIST:
-		/*
-		 * Just the constant zero, for exiting,
-		 * eg.
-		 */
+		/* Just the constant zero, for exiting, eg. */
 		e = (*com->c_func)(0);
 		break;
 
 	default:
-		panic(catgets(catd, CATSET, 101, "Unknown argtype"));
+		panic(tr(101, "Unknown argtype"));
 	}
 
-out:
+jleave:
 	ac_free(word);
-	/*
-	 * Exit the current source file on
-	 * error.
-	 */
+
+	/* Exit the current source file on error */
 	if (e) {
 		if (e < 0)
 			return 1;
@@ -747,17 +724,17 @@ out:
 			unstack();
 		return 0;
 	}
-	if (com == (struct cmd *)NULL)
-		return(0);
-	if (value("autoprint") != NULL && com->c_argtype & P)
+	if (com == (struct cmd*)NULL )
+		return 0;
+	if (boption("autoprint") && com->c_argtype & P)
 		if (visible(dot)) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
 		}
-	if (!sourcing && !inhook && (com->c_argtype & T) == 0)
+	if (! sourcing && ! inhook && (com->c_argtype & T) == 0)
 		sawcom = TRU1;
-	return(0);
+	return 0;
 }
 
 /*

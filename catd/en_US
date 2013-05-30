@@ -98,7 +98,7 @@ $set 1
 95 Cannot recursively invoke "%s"\n
 96 Illegal use of "message list"\n
 97 No applicable messages\n
-98 Illegal use of "message list"\n
+98 -- DELETED --
 99 %s requires at least %d arg(s)\n
 100 %s takes no more than %d arg(s)\n
 101 Unknown argtype
