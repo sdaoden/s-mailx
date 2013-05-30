@@ -525,9 +525,12 @@ commands(void)
 int
 execute(char *linebuf, int contxt, size_t linesize)
 {
-	char *arglist[MAXARGC], *word, *cp, *cp2;
+	char *arglist[MAXARGC], *word, *cp;
 	struct cmd const *com = (struct cmd*)NULL;
 	int muvec[2], c, e = 1;
+
+	/* '~X' -> 'call X' */
+	word = ac_alloc(MAX(sizeof("call"), linesize) + 1);
 
 	/*
 	 * Strip the white space away from the beginning
@@ -537,7 +540,6 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * Handle ! escapes differently to get the correct
 	 * lexical conventions.
 	 */
-	word = ac_alloc(linesize + 1);
 	for (cp = linebuf; whitechar(*cp); cp++)
 		;
 	if (*cp == '!') {
@@ -546,21 +548,26 @@ execute(char *linebuf, int contxt, size_t linesize)
 			goto jleave;
 		}
 		shell(cp + 1);
-		ac_free(word);
-		return 0;
+		goto jfree_ret0;
 	}
-	if (*cp == '#') {
-		ac_free(word);
-		return 0;
-	}
-	cp2 = word;
-	if (*cp != '|') {
-		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`", *cp)
-				== NULL)
+
+	if (*cp == '#')
+		goto jfree_ret0;
+
+	if (*cp == '~') {
+		++cp;
+		memcpy(word, "call", 5);
+	} else {
+		char *cp2 = word;
+
+		if (*cp != '|') {
+			while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
+					*cp) == NULL)
+				*cp2++ = *cp++;
+		} else
 			*cp2++ = *cp++;
-	} else
-		*cp2++ = *cp++;
-	*cp2 = '\0';
+		*cp2 = '\0';
+	}
 
 	/*
 	 * Look up the command; if not found, bitch.
@@ -569,10 +576,8 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * however, we ignore blank lines to eliminate
 	 * confusion.
 	 */
-	if (sourcing && *word == '\0') {
-		ac_free(word);
-		return 0;
-	}
+	if (sourcing && *word == '\0')
+		goto jfree_ret0;
 
 	com = lex(word);
 	if (com == NULL || com->c_func == &ccmdnotsupp) {
@@ -592,10 +597,8 @@ execute(char *linebuf, int contxt, size_t linesize)
 		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
 				(cond == CTERM && ! is_a_tty[0]) ||
-				(cond == CNONTERM && is_a_tty[0])) {
-			ac_free(word);
-			return 0;
-		}
+				(cond == CNONTERM && is_a_tty[0]))
+			goto jfree_ret0;
 	}
 
 	/*
@@ -732,6 +735,10 @@ jleave:
 		}
 	if (! sourcing && ! inhook && (com->c_argtype & T) == 0)
 		sawcom = TRU1;
+	return 0;
+
+jfree_ret0:
+	ac_free(word);
 	return 0;
 }
 
