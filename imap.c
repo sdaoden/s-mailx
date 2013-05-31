@@ -2481,10 +2481,12 @@ imap_folders(const char *name, int strip)
 
 	cp = protbase(name);
 	sp = mb.mb_imap_account;
-	if (strcmp(cp, sp)) {
-		fprintf(stderr, "Cannot list folders on other than the "
-				"current IMAP account,\n\"%s\". "
-				"Try \"folders @\".\n", sp);
+	if (sp == NULL || strcmp(cp, sp)) {
+		fprintf(stderr, tr(502,
+			"Cannot perform `folders' but when on the very IMAP "
+			"account; the current one is\n  `%s' -- "
+			"try `folders @'.\n"),
+			(sp != NULL) ? sp : tr(503, "[NONE]"));
 		return;
 	}
 	fold = imap_fileof(name);
