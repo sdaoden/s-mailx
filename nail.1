@@ -817,6 +817,14 @@ command is expecting one file, an error results.
 .Pp
 The following commands are provided:
 .Bl -tag -width ".Ic account"
+.It Ic ~
+Interprets the remainder of the word as a macro name and passes it
+through to the
+.Ic call
+command; e.g.,
+.Ns ` Ns Ic ~ Ns Ar mymacro Ns '
+is a shorter synonym for
+.Ns ` Ns Ic call Ar mymacro Ns ' .
 .It Ic -
 Print out the preceding message.
 If given a numeric argument n,
@@ -958,7 +966,9 @@ A macro definition is a sequence of commands in the following form:
 .Ed
 .Pp
 A defined macro can be explicitly invoked using
-.Ic call ,
+.Ic call
+or
+.Ic ~ ,
 or it can be implicitly invoked by setting the
 .Va folder-hook
 or

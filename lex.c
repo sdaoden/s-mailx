@@ -46,12 +46,14 @@
 
 #include "extern.h"
 
-static char const	*prompt;
-static sighandler_type	oldpipe;
+static int		*_msgvec;
+static int		_reset_on_stop;	/* do a reset() if stopped */
+static char const	*_prompt;
+static sighandler_type	_oldpipe;
 
 /* Update mailname (if *name* != NULL) and displayname */
 static void	_update_mailname(char const *name);
-#ifdef HAVE_MBLEN
+#ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
 SINLINE size_t	__narrow_prefix(char const *cp, size_t maxl);
 SINLINE size_t	__narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
@@ -387,9 +389,6 @@ newmailinfo(int omsgCount)
 	return mdot;
 }
 
-static int	*msgvec;
-static int	reset_on_stop;			/* do a reset() if stopped */
-
 /*
  * Interpret user commands one by one.  If standard input is not a tty,
  * print no prompt.
@@ -404,7 +403,6 @@ commands(void)
 	int x;
 #endif
 
-	(void)&eofloop;
 	if (!sourcing) {
 		if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGINT, onintr);
@@ -414,8 +412,8 @@ commands(void)
 		safe_signal(SIGTTOU, stop);
 		safe_signal(SIGTTIN, stop);
 	}
-	oldpipe = safe_signal(SIGPIPE, SIG_IGN);
-	safe_signal(SIGPIPE, oldpipe);
+	_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
+	safe_signal(SIGPIPE, _oldpipe);
 	setexit();
 
 	for (;;) {
@@ -458,11 +456,11 @@ commands(void)
 					}
 				}
 			}
-			reset_on_stop = 1;
+			_reset_on_stop = 1;
 			exit_status = 0;
-			if ((prompt = value("prompt")) == NULL)
-				prompt = value("bsdcompat") ? "& " : "? ";
-			printf("%s", prompt);
+			if ((_prompt = value("prompt")) == NULL)
+				_prompt = value("bsdcompat") ? "& " : "? ";
+			printf("%s", _prompt);
 		}
 		fflush(stdout);
 
@@ -488,7 +486,7 @@ commands(void)
 				break;
 			linebuf[n - 1] = ' ';
 		}
-		reset_on_stop = 0;
+		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */
 			if (loading)
@@ -499,14 +497,13 @@ commands(void)
 			}
 			if ((options & OPT_INTERACTIVE) &&
 					value("ignoreeof") && ++eofloop < 25) {
-				printf(tr(89, "Use \"quit\" to quit.\n"));
+				printf(tr(89, "Use `quit' to quit.\n"));
 				continue;
 			}
 			break;
 		}
 		eofloop = 0;
 		inhook = 0;
-		msglist_is_single = FAL0;
 		if (execute(linebuf, 0, n))
 			break;
 	}
@@ -527,13 +524,12 @@ commands(void)
 int
 execute(char *linebuf, int contxt, size_t linesize)
 {
-	char *word;
-	char *arglist[MAXARGC];
-	const struct cmd *com = (struct cmd *)NULL;
-	char *cp, *cp2;
-	int c;
-	int muvec[2];
-	int e = 1;
+	char *arglist[MAXARGC], *word, *cp;
+	struct cmd const *com = (struct cmd*)NULL;
+	int muvec[2], c, e = 1;
+
+	/* '~X' -> 'call X' */
+	word = ac_alloc(MAX(sizeof("call"), linesize) + 1);
 
 	/*
 	 * Strip the white space away from the beginning
@@ -543,30 +539,34 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * Handle ! escapes differently to get the correct
 	 * lexical conventions.
 	 */
-	word = ac_alloc(linesize + 1);
-	for (cp = linebuf; whitechar(*cp & 0377); cp++);
+	for (cp = linebuf; whitechar(*cp); cp++)
+		;
 	if (*cp == '!') {
 		if (sourcing) {
-			printf(catgets(catd, CATSET, 90,
-					"Can't \"!\" while sourcing\n"));
-			goto out;
+			fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
+			goto jleave;
 		}
-		shell(cp+1);
-		ac_free(word);
-		return(0);
+		shell(cp + 1);
+		goto jfree_ret0;
 	}
-	if (*cp == '#') {
-		ac_free(word);
-		return 0;
-	}
-	cp2 = word;
-	if (*cp != '|') {
-		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`", *cp)
-				== NULL)
+
+	if (*cp == '#')
+		goto jfree_ret0;
+
+	if (*cp == '~') {
+		++cp;
+		memcpy(word, "call", 5);
+	} else {
+		char *cp2 = word;
+
+		if (*cp != '|') {
+			while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
+					*cp) == NULL)
+				*cp2++ = *cp++;
+		} else
 			*cp2++ = *cp++;
-	} else
-		*cp2++ = *cp++;
-	*cp2 = '\0';
+		*cp2 = '\0';
+	}
 
 	/*
 	 * Look up the command; if not found, bitch.
@@ -575,34 +575,29 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * however, we ignore blank lines to eliminate
 	 * confusion.
 	 */
-
-	if (sourcing && *word == '\0') {
-		ac_free(word);
-		return(0);
-	}
+	if (sourcing && *word == '\0')
+		goto jfree_ret0;
 
 	com = lex(word);
 	if (com == NULL || com->c_func == &ccmdnotsupp) {
-		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), word);
-		if (com != NULL)
-			fprintf(stderr, tr(10,
-				"The requested feature is not compiled in\n"));
-		goto out;
+		fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
+		if (com != NULL) {
+			ccmdnotsupp(NULL);
+			com = NULL;
+		}
+		goto jleave;
 	}
 
 	/*
 	 * See if we should execute the command -- if a conditional
 	 * we always execute it, otherwise, check the state of cond.
 	 */
-
 	if ((com->c_argtype & F) == 0) {
 		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
-				(cond == CTERM && !is_a_tty[0]) ||
-				(cond == CNONTERM && is_a_tty[0])) {
-			ac_free(word);
-			return(0);
-		}
+				(cond == CTERM && ! is_a_tty[0]) ||
+				(cond == CNONTERM && is_a_tty[0]))
+			goto jfree_ret0;
 	}
 
 	/*
@@ -611,109 +606,93 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * If we are sourcing an interactive command, it's
 	 * an error.
 	 */
-
 	if ((options & OPT_SENDMODE) && (com->c_argtype & M) == 0) {
-		printf(catgets(catd, CATSET, 92,
-			"May not execute \"%s\" while sending\n"), com->c_name);
-		goto out;
+		fprintf(stderr, tr(92,
+			"May not execute `%s' while sending\n"),
+			com->c_name);
+		goto jleave;
 	}
 	if (sourcing && com->c_argtype & I) {
-		printf(catgets(catd, CATSET, 93,
-			"May not execute \"%s\" while sourcing\n"),
-				com->c_name);
-		goto out;
+		fprintf(stderr, tr(93,
+			"May not execute `%s' while sourcing\n"),
+			com->c_name);
+		goto jleave;
 	}
 	if ((mb.mb_perm & MB_DELE) == 0 && com->c_argtype & W) {
-		printf(catgets(catd, CATSET, 94,
-		"May not execute \"%s\" -- message file is read only\n"),
-		   com->c_name);
-		goto out;
+		fprintf(stderr, tr(94, "May not execute `%s' -- "
+			"message file is read only\n"),
+			com->c_name);
+		goto jleave;
 	}
 	if (contxt && com->c_argtype & R) {
-		printf(catgets(catd, CATSET, 95,
-			"Cannot recursively invoke \"%s\"\n"), com->c_name);
-		goto out;
+		fprintf(stderr, tr(95,
+			"Cannot recursively invoke `%s'\n"), com->c_name);
+		goto jleave;
 	}
 	if (mb.mb_type == MB_VOID && com->c_argtype & A) {
-		printf(catgets(catd, CATSET, 257,
-			"Cannot execute \"%s\" without active mailbox\n"),
-				com->c_name);
-		goto out;
+		fprintf(stderr, tr(257,
+			"Cannot execute `%s' without active mailbox\n"),
+			com->c_name);
+		goto jleave;
 	}
+
 	switch (com->c_argtype & ~(F|P|I|M|T|W|R|A)) {
 	case MSGLIST:
-		/*
-		 * A message list defaulting to nearest forward
-		 * legal message.
-		 */
-		if (msgvec == 0) {
-			printf(catgets(catd, CATSET, 96,
-				"Illegal use of \"message list\"\n"));
-			break;
-		}
-		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
+		/* Message list defaulting to nearest forward legal message */
+		if (_msgvec == 0)
+			goto je96;
+		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
 			break;
 		if (c == 0) {
-			msglist_is_single = TRU1;
-			if ((*msgvec = first(com->c_msgflag, com->c_msgmask))
-					!= 0)
-				msgvec[1] = 0;
-		} else
-			msglist_is_single = (c == 1);
-		if (*msgvec == 0) {
-			if (!inhook)
-				printf(catgets(catd, CATSET, 97,
-					"No applicable messages\n"));
+			*_msgvec = first(com->c_msgflag, com->c_msgmask);
+			if (*_msgvec != 0)
+				_msgvec[1] = 0;
+		}
+		if (*_msgvec == 0) {
+			if (! inhook)
+				printf(tr(97, "No applicable messages\n"));
 			break;
 		}
-		e = (*com->c_func)(msgvec);
+		e = (*com->c_func)(_msgvec);
 		break;
 
 	case NDMLIST:
-		/*
-		 * A message list with no defaults, but no error
-		 * if none exist.
-		 */
-		if (msgvec == 0) {
-			printf(catgets(catd, CATSET, 98,
-				"Illegal use of \"message list\"\n"));
+		/* Message list with no defaults, but no error if none exist */
+		if (_msgvec == 0) {
+je96:
+			fprintf(stderr, tr(96,
+				"Illegal use of `message list'\n"));
 			break;
 		}
-		if ((c = getmsglist(cp, msgvec, com->c_msgflag)) < 0)
+		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
 			break;
-		msglist_is_single = (c == 1);
-		e = (*com->c_func)(msgvec);
+		e = (*com->c_func)(_msgvec);
 		break;
 
 	case STRLIST:
-		/*
-		 * Just the straight string, with
-		 * leading blanks removed.
-		 */
-		while (whitechar(*cp & 0377))
+		/* Just the straight string, with leading blanks removed */
+		while (whitechar(*cp))
 			cp++;
 		e = (*com->c_func)(cp);
 		break;
 
 	case RAWLIST:
 	case ECHOLIST:
-		/*
-		 * A vector of strings, in shell style.
-		 */
+		/* A vector of strings, in shell style */
 		if ((c = getrawlist(cp, linesize, arglist,
 				sizeof arglist / sizeof *arglist,
-				(com->c_argtype&~(F|P|I|M|T|W|R|A))==ECHOLIST))
-					< 0)
+				(com->c_argtype&~(F|P|I|M|T|W|R|A)) == ECHOLIST)
+				) < 0)
 			break;
 		if (c < com->c_minargs) {
-			printf(catgets(catd, CATSET, 99,
-				"%s requires at least %d arg(s)\n"),
+			fprintf(stderr, tr(99,
+				"`%s' requires at least %d arg(s)\n"),
 				com->c_name, com->c_minargs);
 			break;
 		}
 		if (c > com->c_maxargs) {
-			printf(catgets(catd, CATSET, 100,
-				"%s takes no more than %d arg(s)\n"),
+			fprintf(stderr, tr(100,
+				"`%s' takes no more than %d arg(s)\n"),
 				com->c_name, com->c_maxargs);
 			break;
 		}
@@ -721,23 +700,18 @@ execute(char *linebuf, int contxt, size_t linesize)
 		break;
 
 	case NOLIST:
-		/*
-		 * Just the constant zero, for exiting,
-		 * eg.
-		 */
+		/* Just the constant zero, for exiting, eg. */
 		e = (*com->c_func)(0);
 		break;
 
 	default:
-		panic(catgets(catd, CATSET, 101, "Unknown argtype"));
+		panic(tr(101, "Unknown argument type"));
 	}
 
-out:
+jleave:
 	ac_free(word);
-	/*
-	 * Exit the current source file on
-	 * error.
-	 */
+
+	/* Exit the current source file on error */
 	if (e) {
 		if (e < 0)
 			return 1;
@@ -747,17 +721,21 @@ out:
 			unstack();
 		return 0;
 	}
-	if (com == (struct cmd *)NULL)
-		return(0);
-	if (value("autoprint") != NULL && com->c_argtype & P)
+	if (com == (struct cmd*)NULL )
+		return 0;
+	if (boption("autoprint") && com->c_argtype & P)
 		if (visible(dot)) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
 		}
-	if (!sourcing && !inhook && (com->c_argtype & T) == 0)
+	if (! sourcing && ! inhook && (com->c_argtype & T) == 0)
 		sawcom = TRU1;
-	return(0);
+	return 0;
+
+jfree_ret0:
+	ac_free(word);
+	return 0;
 }
 
 /*
@@ -768,9 +746,9 @@ void
 setmsize(int sz)
 {
 
-	if (msgvec != 0)
-		free(msgvec);
-	msgvec = (int *)scalloc((sz + 1), sizeof *msgvec);
+	if (_msgvec != 0)
+		free(_msgvec);
+	_msgvec = (int*)scalloc(sz + 1, sizeof *_msgvec);
 }
 
 /*
@@ -824,7 +802,7 @@ onintr(int s)
 	}
 	if (interrupts != 1)
 		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
-	safe_signal(SIGPIPE, oldpipe);
+	safe_signal(SIGPIPE, _oldpipe);
 	reset(0);
 }
 
@@ -843,8 +821,8 @@ stop(int s)
 	kill(0, s);
 	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
 	safe_signal(s, old_action);
-	if (reset_on_stop) {
-		reset_on_stop = 0;
+	if (_reset_on_stop) {
+		_reset_on_stop = 0;
 		reset(0);
 	}
 }
