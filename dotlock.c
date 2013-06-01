@@ -60,13 +60,16 @@ maildir_access(const char *fname)
 	char *p;
 	int i;
 
-	path = ac_alloc(strlen(fname) + 2);
-	strcpy(path, fname);
+	i = (int)strlen(fname);
+	path = ac_alloc(i + 2);
+	memcpy(path, fname, i + 1);
 	p = strrchr(path, '/');
 	if (p != NULL)
 		*p = '\0';
-	if (p == NULL || *path == '\0')
-		strcpy(path, ".");
+	if (p == NULL || *path == '\0') {
+		path[0] = '.';
+		path[1] = '\0';
+	}
 	i = access(path, R_OK|W_OK|X_OK);
 	ac_free(path);
 	return i;

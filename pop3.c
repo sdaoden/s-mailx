@@ -597,7 +597,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
-	char *user, *pass;
+	char *volatile user, *pass;
 	const char *cp, *uhp, *volatile sp = server;
 	int use_ssl = 0;
 

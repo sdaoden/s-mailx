@@ -274,7 +274,7 @@ which_protocol(const char *name)
 	} else {
 	file:	p = PROTO_FILE;
 		np = ac_alloc((sz = strlen(name)) + 5);
-		strcpy(np, name);
+		memcpy(np, name, sz);
 		if (stat(name, &st) == 0) {
 			if (S_ISDIR(st.st_mode)) {
 				strcpy(&np[sz], "/tmp");

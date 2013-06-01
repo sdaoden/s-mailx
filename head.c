@@ -1139,8 +1139,8 @@ newname:
 				cp2=strrchr(namebuf, '!')+1;
 				strncpy(cp2, cp, (namebuf+namesize)-cp2);
 			}
-			namebuf[namesize-2]='\0';
-			strcat(namebuf, "!");
+			namebuf[namesize - 2] = '!';
+			namebuf[namesize - 1] = '\0';
 			goto newname;
 		}
 		cp++;

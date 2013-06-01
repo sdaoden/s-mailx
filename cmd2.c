@@ -294,9 +294,10 @@ save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
 		for (cq = cp; *cq && *cq != '@'; cq++);
 		*cq = '\0';
 		if (value("outfolder")) {
-			file = salloc(strlen(cp) + 2);
+			size_t sz = strlen(cp) + 1;
+			file = salloc(sz + 1);
 			file[0] = '+';
-			strcpy(&file[1], cp);
+			memcpy(file + 1, cp, sz);
 		} else
 			file = cp;
 	}
@@ -714,8 +715,9 @@ ignore1(char **list, struct ignoretab *tab, char const *which)
 		}
 		h = hash(field);
 		igp = (struct ignore *)scalloc(1, sizeof (struct ignore));
-		igp->i_field = smalloc(strlen(field) + 1);
-		strcpy(igp->i_field, field);
+		sz = strlen(field) + 1;
+		igp->i_field = smalloc(sz);
+		memcpy(igp->i_field, field, sz);
 		igp->i_link = tab->i_head[h];
 		tab->i_head[h] = igp;
 		tab->i_count++;

@@ -48,13 +48,15 @@ typedef int avoid_empty_file_compiler_warning;
 void 
 ssl_set_vrfy_level(const char *uhp)
 {
-	char *cp;
-	char *vrvar;
+	size_t l;
+	char *cp, *vrvar;
 
 	ssl_vrfy_level = VRFY_ASK;
-	vrvar = ac_alloc(strlen(uhp) + 12);
-	strcpy(vrvar, "ssl-verify-");
-	strcpy(&vrvar[11], uhp);
+	l = strlen(uhp);
+	vrvar = ac_alloc(l + 12);
+	memcpy(vrvar, "ssl-verify-", 11);
+	memcpy(vrvar + 11, uhp, l + 1);
+
 	if ((cp = value(vrvar)) == NULL)
 		cp = value("ssl-verify");
 	ac_free(vrvar);
@@ -108,11 +110,13 @@ ssl_vrfy_decide(void)
 char *
 ssl_method_string(const char *uhp)
 {
+	size_t l;
 	char *cp, *mtvar;
 
-	mtvar = ac_alloc(strlen(uhp) + 12);
-	strcpy(mtvar, "ssl-method-");
-	strcpy(&mtvar[11], uhp);
+	l = strlen(uhp);
+	mtvar = ac_alloc(l + 12);
+	memcpy(mtvar, "ssl-method-", 11);
+	memcpy(mtvar + 11, uhp, l + 1);
 	if ((cp = value(mtvar)) == NULL)
 		cp = value("ssl-method");
 	ac_free(mtvar);
@@ -159,7 +163,8 @@ jetmp:
 			for (;;) {
 				savedsize += buflen;
 				savedfields = srealloc(savedfields, savedsize);
-				strcat(savedfields, buf);/* TODO memcpy()!!! */
+				memcpy(savedfields + strlen(savedfields),
+					buf, strlen(buf));
 				if (keep)
 					fwrite(buf, sizeof *buf, buflen, *hp);
 				c = getc(ip);

@@ -158,7 +158,7 @@ shell(void *v)
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 
 	cmd = smalloc(cmdsize = strlen(str) + 1);
-	strcpy(cmd, str);
+	memcpy(cmd, str, cmdsize);
 	if (bangexp(&cmd, &cmdsize) < 0)
 		return 1;
 	if ((shell = value("SHELL")) == NULL)
@@ -213,7 +213,7 @@ bangexp(char **str, size_t *size)
 				sz = strlen(lastbang);
 				bangbuf = srealloc(bangbuf, bangbufsize += sz);
 				changed++;
-				strcpy(&bangbuf[j], lastbang);
+				memcpy(&bangbuf[j], lastbang, sz);
 				j += sz;
 				i++;
 				continue;
@@ -234,10 +234,10 @@ bangexp(char **str, size_t *size)
 	sz = j;
 	if (sz >= *size)
 		*str = srealloc(*str, *size = sz + 1);
-	strcpy(*str, bangbuf);
+	memcpy(*str, bangbuf, sz + 1);
 	if (sz >= lastbangsize)
 		lastbang = srealloc(lastbang, lastbangsize = sz + 1);
-	strcpy(lastbang, bangbuf);
+	memcpy(lastbang, bangbuf, sz + 1);
 	free(bangbuf);
 	return(0);
 }
@@ -328,7 +328,7 @@ static void
 make_ref_and_cs(struct message *mp, struct header *head)
 {
 	char *oldref, *oldmsgid, *newref, *cp;
-	size_t reflen;
+	size_t oldreflen = 0, oldmsgidlen = 0, reflen;
 	unsigned i;
 	struct name *n;
 
@@ -339,21 +339,28 @@ make_ref_and_cs(struct message *mp, struct header *head)
 		return;
 	}
 	reflen = 1;
-	if (oldref)
-		reflen += strlen(oldref) + 2;
-	if (oldmsgid)
-		reflen += strlen(oldmsgid);
-	newref = ac_alloc(reflen);
 	if (oldref) {
-		strcpy(newref, oldref);
-		if (oldmsgid) {
-			strcat(newref, ", ");
-			strcat(newref, oldmsgid);
+		oldreflen = strlen(oldref);
+		reflen += oldreflen + 2;
+	}
+	if (oldmsgid) {
+		oldmsgidlen = strlen(oldmsgid);
+		reflen += oldmsgidlen;
+	}
+
+	newref = ac_alloc(reflen);
+	if (oldref != NULL) {
+		memcpy(newref, oldref, oldreflen + 1);
+		if (oldmsgid != NULL) {
+			newref[oldreflen++] = ',';
+			newref[oldreflen++] = ' ';
+			memcpy(newref + oldreflen, oldmsgid, oldmsgidlen + 1);
 		}
 	} else if (oldmsgid)
-		strcpy(newref, oldmsgid);
+		memcpy(newref, oldmsgid, oldmsgidlen + 1);
 	n = extract(newref, GREF);
 	ac_free(newref);
+
 	/*
 	 * Limit the references to 21 entries.
 	 */
@@ -537,17 +544,18 @@ forward1(char *str, int recipient_record)
 static char *
 fwdedit(char *subj)
 {
+	struct str in, out;
 	char *newsubj;
-	struct str	in, out;
 
 	if (subj == NULL || *subj == '\0')
 		return NULL;
 	in.s = subj;
 	in.l = strlen(subj);
 	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-	newsubj = salloc(strlen(out.s) + 6);
-	strcpy(newsubj, "Fwd: ");
-	strcpy(&newsubj[5], out.s);
+
+	newsubj = salloc(out.l + 6);
+	memcpy(newsubj, "Fwd: ", 5);
+	memcpy(newsubj + 5, out.s, out.l + 1);
 	free(out.s);
 	return newsubj;
 }

@@ -649,7 +649,7 @@ cache_remove(const char *name)
 		return OKAY;
 	pathend = strlen(dir);
 	path = smalloc(pathsize = pathend + 30);
-	strcpy(path, dir);
+	memcpy(path, dir, pathend);
 	path[pathend++] = '/';
 	path[pathend] = '\0';
 	if ((dirfd = opendir(path)) == NULL) {
@@ -665,7 +665,7 @@ cache_remove(const char *name)
 		n = strlen(dp->d_name);
 		if (pathend + n + 1 > pathsize)
 			path = srealloc(path, pathsize = pathend + n + 30);
-		strcpy(&path[pathend], dp->d_name);
+		memcpy(path + pathend, dp->d_name, n);
 		if (stat(path, &st) < 0 || (st.st_mode&S_IFMT) != S_IFREG)
 			continue;
 		if (unlink(path) < 0) {

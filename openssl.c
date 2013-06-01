@@ -266,11 +266,13 @@ ssl_load_verifications(struct sock *sp)
 static void 
 ssl_certificate(struct sock *sp, const char *uhp)
 {
+	size_t i;
 	char *certvar, *keyvar, *cert, *key, *x;
 
-	certvar = ac_alloc(strlen(uhp) + 10);
-	strcpy(certvar, "ssl-cert-");
-	strcpy(&certvar[9], uhp);
+	i = strlen(uhp);
+	certvar = ac_alloc(i + 9 + 1);
+	memcpy(certvar, "ssl-cert-", 9);
+	memcpy(certvar + 9, uhp, i + 1);
 	if ((cert = value(certvar)) != NULL ||
 			(cert = value("ssl-cert")) != NULL) {
 		x = cert;
@@ -1198,7 +1200,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 		}
 		ds = strlen(crl_dir);
 		fn = smalloc(fs = ds + 20);
-		strcpy(fn, crl_dir);
+		memcpy(fn, crl_dir, ds);
 		fn[ds] = '/';
 		while ((dp = readdir(dirfd)) != NULL) {
 			if (dp->d_name[0] == '.' &&
@@ -1210,7 +1212,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 				continue;
 			if (ds + (es = strlen(dp->d_name)) + 2 < fs)
 				fn = srealloc(fn, fs = ds + es + 20);
-			strcpy(&fn[ds+1], dp->d_name);
+			memcpy(fn + ds + 1, dp->d_name, es + 1);
 			if (load_crl1(store, fn) != OKAY) {
 				closedir(dirfd);
 				free(fn);

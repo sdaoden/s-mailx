@@ -961,10 +961,11 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 	char const *ep;
 
 	if (recipient_record) {
-		cq = skinned_name(to);
-		cp = salloc(strlen(cq) + 1);
-		strcpy(cp, cq);
-		for (cq = cp; *cq && *cq != '@'; cq++);
+		size_t i = strlen(cq = skinned_name(to)) + 1;
+		cp = salloc(i);
+		memcpy(cp, cq, i);
+		for (cq = cp; *cq && *cq != '@'; cq++)
+			;
 		*cq = '\0';
 	} else
 		cp = value("record");
@@ -976,9 +977,10 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 		}
 		if (value("outfolder") && *ep != '/' && *ep != '+' &&
 				which_protocol(ep) == PROTO_FILE) {
-			cq = salloc(strlen(cp) + 2);
+			size_t i = strlen(cp);
+			cq = salloc(i + 2);
 			cq[0] = '+';
-			strcpy(&cq[1], cp);
+			memcpy(cq + 1, cp, i + 1);
 			cp = cq;
 			ep = expand(cp); /* TODO file_expand() possible? */
 			if (ep == NULL) {

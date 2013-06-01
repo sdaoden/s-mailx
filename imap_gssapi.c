@@ -132,8 +132,10 @@ imap_gss(struct mailbox *mp, char *user)
 			return STOP;
 		user = savestr(user);
 	}
-	server = salloc(strlen(mp->mb_imap_account));
-	strcpy(server, mp->mb_imap_account);
+	{	size_t i = strlen(mp->mb_imap_account) + 1;
+		server = salloc(i);
+		memcpy(server, mp->mb_imap_account, i);
+	}
 	if (strncmp(server, "imap://", 7) == 0)
 		server += 7;
 	else if (strncmp(server, "imaps://", 8) == 0)
@@ -141,7 +143,7 @@ imap_gss(struct mailbox *mp, char *user)
 	if ((cp = UNCONST(last_at_before_slash(server))) != NULL)
 		server = &cp[1];
 	for (cp = server; *cp; cp++)
-		*cp = lowerconv(*cp&0377);
+		*cp = lowerconv(*cp);
 	send_tok.value = salloc(send_tok.length = strlen(server) + 6);
 	snprintf(send_tok.value, send_tok.length, "imap@%s", server);
 	maj_stat = gss_import_name(&min_stat, &send_tok,

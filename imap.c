@@ -338,7 +338,7 @@ imap_response_parse(void)
 
 	if (parsebufsize < imapbufsize)
 		parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
-	strcpy(parsebuf, imapbuf);
+	memcpy(parsebuf, imapbuf, strlen(imapbuf) + 1);
 	pp = parsebuf;
 	switch (*ip) {
 	case '+':
@@ -849,9 +849,10 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 	if (!(mp->mb_active & MB_PREAUTH))
 		return OKAY;
 	if ((auth = value("imap-auth")) == NULL) {
-		var = ac_alloc(strlen(uhp) + 11);
-		strcpy(var, "imap-auth-");
-		strcpy(&var[10], uhp);
+		size_t i = strlen(uhp);
+		var = ac_alloc(i + 11);
+		memcpy(var, "imap-auth-", 10);
+		memcpy(var + 10, uhp, i);
 		auth = value(var);
 		ac_free(var);
 	}
@@ -2440,7 +2441,7 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 				lp->l_level < depth &&
 				(lp->l_attr&LIST_NOINFERIORS) == 0) {
 			cp = salloc((n = strlen(lp->l_name)) + 2);
-			strcpy(cp, lp->l_name);
+			memcpy(cp, lp->l_name, n);
 			cp[n] = lp->l_delim;
 			cp[n+1] = '\0';
 			if (imap_list1(mp, cp, &lx, &ly, lp->l_level) == OKAY &&

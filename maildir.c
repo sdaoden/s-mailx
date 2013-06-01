@@ -253,7 +253,7 @@ static void
 append(const char *name, const char *sub, const char *fn)
 {
 	struct message	*m;
-	size_t	sz;
+	size_t	sz, i;
 	time_t	t = 0;
 	enum mflag	f = MUSED|MNOFROM|MNEWEST;
 	const char	*cp;
@@ -296,10 +296,11 @@ append(const char *name, const char *sub, const char *fn)
 	if (fn == NULL || sub == NULL)
 		return;
 	m = &message[msgCount++];
-	m->m_maildir_file = smalloc((sz = strlen(sub)) + strlen(fn) + 2);
-	strcpy(m->m_maildir_file, sub);
+	i = strlen(fn);
+	m->m_maildir_file = smalloc((sz = strlen(sub)) + i + 2);
+	memcpy(m->m_maildir_file, sub, sz);
 	m->m_maildir_file[sz] = '/';
-	strcpy(&m->m_maildir_file[sz+1], fn);
+	memcpy(m->m_maildir_file + sz + 1, fn, i + 1);
 	m->m_time = t;
 	m->m_flag = f;
 	m->m_maildir_hash = ~pjw(fn);
@@ -513,7 +514,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 	} else {
 		size = (n = strlen(pref)) + 13;
 		cp = salloc(size);
-		strcpy(cp, pref);
+		memcpy(cp, pref, n + 1);
 		for (i = n; i > 3; i--)
 			if (cp[i-1] == ',' && cp[i-2] == '2' &&
 					cp[i-3] == ':') {
@@ -521,7 +522,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 				break;
 			}
 		if (i <= 3) {
-			strcpy(&cp[n], ":2,");
+			memcpy(cp + n, ":2,", 4);
 			n += 3;
 		}
 	}
@@ -709,8 +710,8 @@ mkmaildir(const char *name)
 
 	if (trycreate(name) == OKAY) {
 		np = ac_alloc((sz = strlen(name)) + 5);
-		strcpy(np, name);
-		strcpy(&np[sz], "/tmp");
+		memcpy(np, name, sz);
+		memcpy(np + sz, "/tmp", 5);
 		if (trycreate(np) == OKAY) {
 			strcpy(&np[sz], "/new");
 			if (trycreate(np) == OKAY) {
@@ -772,9 +773,9 @@ subdir_remove(const char *name, const char *sub)
 	namelen = strlen(name);
 	sublen = strlen(sub);
 	path = smalloc(pathsize = namelen + sublen + 30);
-	strcpy(path, name);
+	memcpy(path, name, namelen);
 	path[namelen] = '/';
-	strcpy(&path[namelen+1], sub);
+	memcpy(path + namelen + 1, sub, sublen);
 	path[namelen+sublen+1] = '/';
 	path[pathend = namelen + sublen + 2] = '\0';
 	if ((dirfd = opendir(path)) == NULL) {
@@ -793,7 +794,7 @@ subdir_remove(const char *name, const char *sub)
 		n = strlen(dp->d_name);
 		if (pathend + n + 1 > pathsize)
 			path = srealloc(path, pathsize = pathend + n + 30);
-		strcpy(&path[pathend], dp->d_name);
+		memcpy(path + pathend, dp->d_name, n + 1);
 		if (unlink(path) < 0) {
 			perror(path);
 			closedir(dirfd);
