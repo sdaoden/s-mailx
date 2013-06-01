@@ -299,8 +299,8 @@ enum tdflags {
 	 * NOTE: _TD_EOF and _TD_BUFCOPY may be ORd with enum conversion and
 	 * enum sendaction, and may thus NOT clash with their bit range!
 	 */
-	_TD_EOF		= 1<<30,/* EOF seen, last round! */
-	_TD_BUFCOPY	= 1<<31	/* Buffer may be constant, copy it */
+	_TD_EOF		= 1<<14,/* EOF seen, last round! */
+	_TD_BUFCOPY	= 1<<15	/* Buffer may be constant, copy it */
 };
 
 enum protocol {
