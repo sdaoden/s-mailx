@@ -841,7 +841,8 @@ retry:	switch (need) {
 enum okay
 pop3_header(struct message *m)
 {
-	return pop3_get(&mb, m, NEED_HEADER);
+	return pop3_get(&mb, m,
+		boption("pop3-bulk-load") ? NEED_BODY : NEED_HEADER);
 }
 
 enum okay
