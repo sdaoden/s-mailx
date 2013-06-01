@@ -179,8 +179,10 @@ success:
 	if (fseek(fp, INITSKIP, SEEK_SET) < 0)
 		goto fail;
 	zp = zalloc(fp);
-	if (fseek(mp->mb_otf, 0L, SEEK_END) < 0)
+	if (fseek(mp->mb_otf, 0L, SEEK_END) < 0) {
+		(void)zfree(zp);
 		goto fail;
+	}
 	offset = ftell(mp->mb_otf);
 	while (inheader && (n = zread(zp, iob, sizeof iob)) > 0) {
 		size += n;
