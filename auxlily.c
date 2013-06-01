@@ -505,18 +505,18 @@ getrandstring(size_t length)
 #endif
 		}
 		for (i = 0; i < length; i++)
-			data[i] = (char)
-			    ((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
+			data[i] = (char)(
+				(int)(255 * (rand() / (RAND_MAX + 1.0))) ^
 				nodedigest[i % sizeof nodedigest]);
 	}
-	if (fd > 0)
+	if (fd >= 0)
 		close(fd);
 
 	(void)b64_encode_buf(&b64, data, length, B64_SALLOC);
 	ac_free(data);
 	assert(length < b64.l);
 	b64.s[length] = '\0';
-	return (b64.s);
+	return b64.s;
 }
 
 enum okay 
@@ -623,7 +623,7 @@ makeprint(struct str const *in, struct str *out)
 				n = 1;
 			}
 			if (n < 0) {
-				mbtowc(&wc, NULL, mb_cur_max);
+				(void)mbtowc(&wc, NULL, mb_cur_max);
 				wc = utf8 ? 0xFFFD : '?';
 				n = 1;
 			} else if (n == 0)

@@ -44,7 +44,6 @@
 # include <errno.h>
 # include <idna.h>
 # include <stringprep.h>
-# include <tld.h>
 #endif
 
 #include "extern.h"
@@ -98,7 +97,7 @@ static int		_is_date(char const *date);
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
 #ifdef USE_IDNA
-static struct addrguts * idna_apply(struct addrguts *agp);
+static struct addrguts * _idna_apply(struct addrguts *agp);
 #endif
 
 /* Classify and check a (possibly skinned) header body according to RFC
@@ -192,10 +191,9 @@ _is_date(char const *date)
 
 #ifdef USE_IDNA
 static struct addrguts *
-idna_apply(struct addrguts *agp)
+_idna_apply(struct addrguts *agp)
 {
 	char *idna_utf8, *idna_ascii, *cs;
-	uint32_t *idna_uni;
 	size_t sz, i;
 	int strict = (value("idna-strict-checks") != NULL);
 
@@ -233,29 +231,7 @@ idna_apply(struct addrguts *agp)
 		goto jleave1;
 	}
 
-	idna_uni = NULL;
-	if (! strict)
-		goto jset;
-
-	/*
-	 * Due to normalization that may have occurred we must convert back to
-	 * be able to check for top level domain issues
-	 */
-	if (idna_to_unicode_8z4z(idna_ascii, &idna_uni, 0) != IDNA_SUCCESS) {
-		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
-				NAME_ADDRSPEC_ERR_CHAR;
-		goto jleave2;
-	}
-
-	i = (size_t)tld_check_4z(idna_uni, &sz, NULL);
-	(free)(idna_uni);
-	if (i != TLD_SUCCESS) {
-		NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
-			idna_uni[sz]);
-		goto jleave2;
-	}
-
-jset:	/* Replace the domain part of .ag_skinned with IDNA version */
+	/* Replace the domain part of .ag_skinned with IDNA version */
 	sz = strlen(idna_ascii);
 	i = agp->ag_sdom_start;
 	cs = salloc(agp->ag_slen - i + sz + 1);
@@ -269,7 +245,6 @@ jset:	/* Replace the domain part of .ag_skinned with IDNA version */
 	NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
 		NAME_NAME_SALLOC|NAME_SKINNED|NAME_IDNA, 0);
 
-jleave2:
 	(free)(idna_ascii);
 jleave1:
 	if (utf8)
@@ -382,7 +357,7 @@ jaddr_check:
 
 #ifdef USE_IDNA
 	if (use_idna == 2)
-		agp = idna_apply(agp);
+		agp = _idna_apply(agp);
 #endif
 
 jleave:

@@ -187,7 +187,7 @@ bad:
 }
 
 int 
-fcntl_lock(int fd, int type)
+fcntl_lock(int fd, int type) /* TODO check callees for EINTR etc.!!! */
 {
 	struct flock flp;
 
@@ -252,7 +252,7 @@ dot_lock(const char *fname, int fd, int pollinterval, FILE *fp, const char *msg)
 			}
 			sleep(pollinterval);
 		}
-		fcntl_lock(fd, F_WRLCK);
+		(void)fcntl_lock(fd, F_WRLCK);
 	}
         fprintf(stderr, catgets(catd, CATSET, 71,
 		"%s seems a stale lock? Need to be removed by hand?\n"), path);

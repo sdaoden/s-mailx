@@ -206,7 +206,7 @@ $set 1
 195 I/O read error occurred
 196 I/O write error occurred
 197 Trying conversion from %s to %s\n
-198 --- DELETED ---
+198 Can't create an unique file name in "%s/tmp".\n
 199 user = %s, homedir = %s\n
 200 too long to edit\n
 201 Cannot associate a name with uid %d\n

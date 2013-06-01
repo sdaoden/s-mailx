@@ -133,26 +133,30 @@ _attach_file(struct attachment *ap, FILE *fo)
 	if (ap->a_conv == AC_FIX_INCS)
 		ap->a_charset = ap->a_input_charset;
 
-	charset_iter_recurse(charset_iter_orig);
-	offs = ftell(fo);
-	charset_iter_reset(NULL);
+	if ((offs = ftell(fo)) < 0) {
+		err = EIO;
+		goto jleave;
+	}
 
-	while (charset_iter_next() != NULL) {
+	charset_iter_recurse(charset_iter_orig);
+	for (charset_iter_reset(NULL); charset_iter_next() != NULL;) {
 		err = __attach_file(ap, fo);
 		if (err == 0 || (err != EILSEQ && err != EINVAL))
 			break;
 		clearerr(fo);
-		fseek(fo, offs, SEEK_SET);
+		if (fseek(fo, offs, SEEK_SET) < 0) {
+			err = EIO;
+			break;
+		}
 		if (ap->a_conv != AC_DEFAULT) {
 			err = EILSEQ;
 			break;
 		}
 		ap->a_charset = NULL;
 	}
-
 	charset_iter_restore(charset_iter_orig);
 jleave:
-	return (err);
+	return err;
 }
 
 static int
@@ -473,7 +477,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
  * and return the new file.
  */
 static FILE *
-infix(struct header *hp, FILE *fi)
+infix(struct header *hp, FILE *fi) /* TODO check */
 {
 	FILE *nfo, *nfi;
 	char *tempMail;
@@ -491,10 +495,11 @@ infix(struct header *hp, FILE *fi)
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
 		perror(tempMail);
 		Fclose(nfo);
-		return(NULL);
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
+	if (nfi == NULL)
+		return NULL;
 
 	contenttype = "text/plain"; /* XXX mail body - always text/plain */
 	convert = mime_classify_file(fi, &contenttype, &charset, &do_iconv);
@@ -1466,11 +1471,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
-		if (fmt("Resent-To:", to, fo, 1, 1, 0)) {
-			if (buf)
-				free(buf);
+		if (fmt("Resent-To:", to, fo, 1, 1, 0))
 			return 1;
-		}
 		if ((cp = value("stealthmua")) == NULL ||
 				strcmp(cp, "noagent") == 0) {
 			fputs("Resent-", fo);
@@ -1483,7 +1485,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	 * Write the original headers.
 	 */
 	while (count > 0) {
-		if ((cp = fgetline(&buf, &bufsize, &count, &c, fi, 0)) == NULL)
+		if (fgetline(&buf, &bufsize, &count, &c, fi, 0) == NULL)
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
 		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
@@ -1512,7 +1514,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 }
 
 enum okay 
-resend_msg(struct message *mp, struct name *to, int add_resent)
+resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
 	FILE *ibuf, *nfo, *nfi;
 	char *tempMail;
@@ -1523,32 +1525,38 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	time_current_update(&time_current, TRU1);
 
 	memset(&head, 0, sizeof head);
+
 	if ((to = checkaddrs(to)) == NULL) {
 		senderr++;
 		return STOP;
 	}
+
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		senderr++;
 		perror(catgets(catd, CATSET, 189, "temporary mail file"));
 		return STOP;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
-		senderr++;
+		++senderr;
 		perror(tempMail);
-		return STOP;
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
+	if (nfi == NULL)
+		goto jerr_o;
+
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-		return STOP;
+		goto jerr_all;
 	head.h_to = to;
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;
 		savedeadletter(nfi, 1);
 		fputs(tr(190, ". . . message not sent.\n"), stderr);
-		Fclose(nfo);
+jerr_all:
 		Fclose(nfi);
+jerr_o:
+		Fclose(nfo);
 		return STOP;
 	}
 	Fclose(nfo);

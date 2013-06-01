@@ -155,7 +155,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 		return STOP;
 	if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
 		return STOP;
-	fcntl_lock(fileno(fp), F_RDLCK);
+	(void)fcntl_lock(fileno(fp), F_RDLCK);
 	if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
 			(unsigned long*)&xtime, &xlines) < 4)
 		goto fail;
@@ -176,9 +176,11 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 success:
 	if (b == 'N')
 		goto flags;
-	fseek(fp, INITSKIP, SEEK_SET);
+	if (fseek(fp, INITSKIP, SEEK_SET) < 0)
+		goto fail;
 	zp = zalloc(fp);
-	fseek(mp->mb_otf, 0L, SEEK_END);
+	if (fseek(mp->mb_otf, 0L, SEEK_END) < 0)
+		goto fail;
 	offset = ftell(mp->mb_otf);
 	while (inheader && (n = zread(zp, iob, sizeof iob)) > 0) {
 		size += n;
@@ -272,13 +274,14 @@ putcache(struct mailbox *mp, struct message *m)
 		c = 'N';
 	else
 		return;
-	oldoffset = ftell(mp->mb_itf);
+	if ((oldoffset = ftell(mp->mb_itf)) < 0) /* XXX weird err hdling */
+		oldoffset = 0;
 	if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
 		if ((obuf = Fopen(name, "w")) == NULL)
 			return; 
-		fcntl_lock(fileno(obuf), F_WRLCK);
+		(void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
 	} else {
-		fcntl_lock(fileno(obuf), F_WRLCK);
+		(void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
 		if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
 				(unsigned long*)&otime, &olines) >= 4 &&
 				ob != '\0' && (ob == 'B' ||
@@ -345,7 +348,7 @@ out:	if (Fclose(obuf) != 0) {
 		m->m_flag &= ~MFULLYCACHED;
 		unlink(name);
 	}
-	fseek(mp->mb_itf, oldoffset, SEEK_SET);
+	(void)fseek(mp->mb_itf, oldoffset, SEEK_SET);
 }
 
 void 
@@ -705,7 +708,8 @@ cached_uidvalidity(struct mailbox *mp)
 			(fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
 			fscanf(uvfp, "%lu", &uv) != 1)
 		uv = 0;
-	Fclose(uvfp);
+	if (uvfp != NULL)
+		Fclose(uvfp);
 	return uv;
 }
 

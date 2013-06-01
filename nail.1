@@ -35,7 +35,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 03, 2013
+.Dd May 20, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2178,19 +2178,8 @@ according to the rules of IDNA (internationalized domain names for
 applications).
 Since the IDNA code assumes domain names are specified with the
 .Va ttycharset
-character set, a UTF-8 locale charset is required to represent
+character set, an UTF-8 locale charset is required to represent
 all possible international domain names (before conversion, that is).
-.It Va idna-strict-checks
-\*(OP If this is set (and
-.Va idna-disable
-is not),
-then the IDNA conversion is enforced to apply stricter error checking in
-respect to the content of domain names.
-This means that TLD (top-level domain) specific checks are performed,
-e.g., the `.no' (Norway) TLD does not allow the Euro currency symbol,
-but only this strict check will catch the error.
-(Note that this check is expensive and that the IDNA library doesn't
-contain many tests.)
 .It Va ignore
 Causes interrupt signals from the terminal to be ignored
 and echoed as `@'s.

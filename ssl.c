@@ -122,20 +122,27 @@ ssl_method_string(const char *uhp)
 enum okay
 smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
+	/* TODO like i said quite often now, the entire SSL stuff really needs
+	 * TODO a review ASAP; also in respect to correct resource release, and
+	 * TODO especially in case of errors; S-nail is a program that REALLY
+	 * TODO may run for a week or longer!!! */
 	char	*buf, *hn, *bn;
 	char	*savedfields = NULL;
 	size_t	bufsize, buflen, count, savedsize = 0;
 	int	c;
 
-	if ((*hp = Ftemp(&hn, "Rh", "w+", 0600, 1)) == NULL ||
-			(*bp = Ftemp(&bn, "Rb", "w+", 0600, 1)) == NULL) {
+	if ((*hp = Ftemp(&hn, "Rh", "w+", 0600, 1)) == NULL)
+		goto jetmp;
+	rm(hn);
+	Ftfree(&hn);
+	if ((*bp = Ftemp(&bn, "Rb", "w+", 0600, 1)) == NULL) {
+jetmp:
 		perror("tempfile");
 		return STOP;
 	}
-	rm(hn);
 	rm(bn);
-	Ftfree(&hn);
 	Ftfree(&bn);
+
 	buf = smalloc(bufsize = LINESIZE);
 	savedfields = smalloc(savedsize = 1);
 	*savedfields = '\0';
@@ -143,6 +150,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 		count = fsize(ip);
 	else
 		count = xcount;
+
 	while (fgetline(&buf, &bufsize, &count, &buflen, ip, 0) != NULL &&
 			*buf != '\n') {
 		if (ascncasecmp(buf, "content-", 8) == 0) {
@@ -151,7 +159,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 			for (;;) {
 				savedsize += buflen;
 				savedfields = srealloc(savedfields, savedsize);
-				strcat(savedfields, buf);
+				strcat(savedfields, buf);/* TODO memcpy()!!! */
 				if (keep)
 					fwrite(buf, sizeof *buf, buflen, *hp);
 				c = getc(ip);
@@ -167,12 +175,15 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 	}
 	fflush(*hp);
 	rewind(*hp);
+
 	fputs(savedfields, *bp);
 	putc('\n', *bp);
 	while (fgetline(&buf, &bufsize, &count, &buflen, ip, 0) != NULL)
 		fwrite(buf, sizeof *buf, buflen, *bp);
 	fflush(*bp);
 	rewind(*bp);
+
+	free(savedfields);
 	free(buf);
 	return OKAY;
 }

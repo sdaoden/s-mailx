@@ -56,7 +56,7 @@ static long	mdprime;
 static sigjmp_buf	maildirjmp;
 
 /* Do some cleanup in the tmp/ subdir */
-static void	cleantmp(void);
+static void		_cleantmp(void);
 
 static int maildir_setfile1(const char *name, int newmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
@@ -76,7 +76,7 @@ static void mktable(void);
 static enum okay subdir_remove(const char *name, const char *sub);
 
 static void
-cleantmp(void)
+_cleantmp(void)
 {
 	char dep[MAXPATHLEN];
 	struct stat st;
@@ -180,8 +180,8 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 {
 	int	i;
 
-	if (!newmail)
-		cleantmp();
+	if (! newmail)
+		_cleantmp();
 	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
@@ -584,7 +584,8 @@ maildir_append(const char *name, FILE *fp)
 						size, flag);
 				if (ok == STOP)
 					return STOP;
-				fseek(fp, offs+buflen, SEEK_SET);
+				if (fseek(fp, offs+buflen, SEEK_SET) < 0)
+					return STOP;
 			}
 			off1 = offs + buflen;
 			size = 0;
@@ -637,39 +638,42 @@ static enum okay
 maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 		enum mflag flag)
 {
-	const int	attempts = 43200;
-	struct stat	st;
-	char	buf[4096];
-	char	*fn, *tmp, *new;
-	FILE	*op;
-	long	n, z;
-	int	i;
-	time_t	now;
+	int const attempts = 43200;
+	char buf[4096], *fn, *tmp, *new;
+	struct stat st;
+	FILE *op;
+	long n, z;
+	int i;
+	time_t now;
 
-	for (i = 0; i < attempts; i++) {
+	/* Create a unique temporary file */
+	for (i = 0;; sleep(1), ++i) {
+		if (i >= attempts) {
+			fprintf(stderr, tr(198,
+				"Can't create an unique file name in "
+				"\"%s/tmp\".\n"), name);
+			return STOP;
+		}
+
 		time(&now);
 		fn = mkname(now, flag, NULL);
 		tmp = salloc(n = strlen(name) + strlen(fn) + 6);
 		snprintf(tmp, n, "%s/tmp/%s", name, fn);
-		if (stat(tmp, &st) < 0 && errno == ENOENT)
+		if (stat(tmp, &st) >= 0 || errno != ENOENT)
+			continue;
+
+		/* Use "wx" for O_EXCL */
+		if ((op = Fopen(tmp, "wx")) != NULL)
 			break;
-		sleep(2);
 	}
-	if (i >= attempts) {
-		fprintf(stderr,
-			"Cannot create unique file name in \"%s/tmp\".\n",
-			name);
-		return STOP;
-	}
-	if ((op = Fopen(tmp, "w")) == NULL) {
-		fprintf(stderr, "Cannot write to \"%s\".\n", tmp);
-		return STOP;
-	}
-	fseek(fp, off1, SEEK_SET);
+
+	if (fseek(fp, off1, SEEK_SET) < 0)
+		goto jtmperr;
 	while (size > 0) {
 		z = size > (long)sizeof buf ? (long)sizeof buf : size;
 		if ((n = fread(buf, 1, z, fp)) != z ||
 				(size_t)n != fwrite(buf, 1, n, op)) {
+jtmperr:
 			fprintf(stderr, "Error writing to \"%s\".\n", tmp);
 			Fclose(op);
 			unlink(tmp);
@@ -678,6 +682,7 @@ maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 		size -= n;
 	}
 	Fclose(op);
+
 	new = salloc(n = strlen(name) + strlen(fn) + 6);
 	snprintf(new, n, "%s/new/%s", name, fn);
 	if (link(tmp, new) < 0) {

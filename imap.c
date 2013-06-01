@@ -68,21 +68,30 @@
 						return STOP; \
 				} \
 			}
-#define	IMAP_OUT(x, y, action)	\
-			{ \
-				if (mp->mb_type != MB_CACHE) { \
-					if (imap_finish(mp) == STOP) \
-						return STOP; \
-					if (options & OPT_VERBOSE) \
-						fprintf(stderr, ">>> %s", x); \
-					mp->mb_active |= (y); \
-					if (swrite(&mp->mb_sock, x) == STOP) \
-						action; \
-				} else { \
-					if (queuefp != NULL) \
-						fputs(x, queuefp); \
-				} \
-			}
+/* TODO IMAP_OUT() simply returns instead of doing "actioN" if imap_finish()
+ * TODO fails, which leaves behind leaks in, e.g., imap_append1()!
+ * TODO IMAP_XOUT() was added due to this, but (1) needs to be used everywhere
+ * TODO and (2) doesn't handle all I/O errors itself, yet, too.
+ * TODO I.e., that should be a function, not a macro ... or so.
+ * TODO This entire module needs MASSIVE work! */
+#define IMAP_OUT(X,Y,ACTION)	IMAP_XOUT(X, Y, ACTION, return STOP)
+#define	IMAP_XOUT(X,Y,ACTIONERR,ACTIONBAIL)\
+do {\
+	if (mp->mb_type != MB_CACHE) {\
+		if (imap_finish(mp) == STOP) {\
+			ACTIONBAIL;\
+		}\
+		if (options & OPT_VERBOSE)\
+			fprintf(stderr, ">>> %s", X);\
+		mp->mb_active |= Y;\
+		if (swrite(&mp->mb_sock, X) == STOP) {\
+			ACTIONERR;\
+		}\
+	} else {\
+		if (queuefp != NULL)\
+			fputs(X, queuefp);\
+	}\
+} while (0);
 
 static struct	record {
 	struct record	*rec_next;
@@ -213,7 +222,7 @@ static void imap_putstr(struct mailbox *mp, struct message *m,
 static enum okay imap_get(struct mailbox *mp, struct message *m,
 		enum needspec need);
 static void commitmsg(struct mailbox *mp, struct message *to,
-		struct message from, enum havespec have);
+		struct message *from, enum havespec have);
 static enum okay imap_fetchheaders(struct mailbox *mp, struct message *m,
 		int bot, int top);
 static enum okay imap_exit(struct mailbox *mp);
@@ -788,7 +797,7 @@ imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
 		char	o[LINESIZE];
 
 		snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
-		IMAP_OUT(o, MB_COMD, return STOP);
+		IMAP_OUT(o, MB_COMD, return STOP)
 		IMAP_ANSWER()
 		if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
@@ -1195,8 +1204,10 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		if (!disconnected(account) &&
 				sopen(sp, &so, use_ssl, uhp,
 					use_ssl ? "imaps" : "imap",
-					(options & OPT_VERBOSE) != 0) != OKAY)
-		return -1;
+					(options & OPT_VERBOSE) != 0) != OKAY) {
+			free(account);
+			return -1;
+		}
 	} else
 		so = mb.mb_sock;
 	if (!transparent)
@@ -1550,7 +1561,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 		imap_fetchdata(mp, &mt, expected, need,
 				head, headsize, headlines);
 		if (n >= 0) {
-			commitmsg(mp, m, mt, mt.m_have);
+			commitmsg(mp, m, &mt, mt.m_have);
 			break;
 		}
 		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
@@ -1560,7 +1571,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 			if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
 				u = atol(&cp[4]);
 				if (u == m->m_uid) {
-					commitmsg(mp, m, mt, mt.m_have);
+					commitmsg(mp, m, &mt, mt.m_have);
 					break;
 				}
 			}
@@ -1595,17 +1606,17 @@ imap_body(struct message *m)
 }
 
 static void 
-commitmsg(struct mailbox *mp, struct message *to,
-		struct message from, enum havespec have)
+commitmsg(struct mailbox *mp, struct message *to, struct message *from,
+	enum havespec have)
 {
-	to->m_size = from.m_size;
-	to->m_lines = from.m_lines;
-	to->m_block = from.m_block;
-	to->m_offset = from.m_offset;
+	to->m_size = from->m_size;
+	to->m_lines = from->m_lines;
+	to->m_block = from->m_block;
+	to->m_offset = from->m_offset;
 	to->m_have = have;
 	if (have & HAVE_BODY) {
-		to->m_xlines = from.m_lines;
-		to->m_xsize = from.m_size;
+		to->m_xlines = from->m_lines;
+		to->m_xsize = from->m_size;
 	}
 	putcache(mp, to);
 }
@@ -1673,7 +1684,7 @@ imap_fetchheaders (
 		}
 		imap_fetchdata(mp, &mt, expected, NEED_HEADER, NULL, 0, 0);
 		if (n >= 0 && !(m[n-1].m_have & HAVE_HEADER))
-			commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
+			commitmsg(mp, &m[n-1], &mt, HAVE_HEADER);
 		if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL,
 					&mp->mb_sock) > 0) {
 			if (options & OPT_VERBOSE)
@@ -1684,7 +1695,7 @@ imap_fetchheaders (
 					if ((unsigned long)u == m[n-1].m_uid)
 						break;
 				if (n <= top && !(m[n-1].m_have & HAVE_HEADER))
-					commitmsg(mp, &m[n-1], mt, HAVE_HEADER);
+					commitmsg(mp, &m[n-1], &mt,HAVE_HEADER);
 				n = 0;
 			}
 		}
@@ -2190,13 +2201,16 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp,
 	buflen = 0;
 again:	size = xsize;
 	count = fsize(fp);
-	fseek(fp, off1, SEEK_SET);
+	if (fseek(fp, off1, SEEK_SET) < 0) {
+		ok = STOP;
+		goto out;
+	}
 	snprintf(o, sizeof o, "%s APPEND %s %s%s {%ld}\r\n",
 			tag(1), imap_quotestr(name),
 			imap_putflags(flag),
 			imap_make_date_time(t),
 			size);
-	IMAP_OUT(o, MB_COMD, goto out)
+	IMAP_XOUT(o, MB_COMD, goto out, ok = STOP;goto out)
 	while (mp->mb_active & MB_COMD) {
 		ok = imap_answer(mp, twice);
 		if (response_type == RESPONSE_CONT)
@@ -2237,7 +2251,7 @@ again:	size = xsize;
 			snprintf(o, sizeof o, "%s CREATE %s\r\n",
 					tag(1),
 					imap_quotestr(name));
-			IMAP_OUT(o, MB_COMD, goto out);
+			IMAP_XOUT(o, MB_COMD, goto out, ok = STOP;goto out)
 			while (mp->mb_active & MB_COMD)
 				ok = imap_answer(mp, 1);
 			if (ok == STOP)
@@ -2414,7 +2428,7 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
 	*list = *lend = NULL;
 	snprintf(o, sizeof o, "%s LIST %s %%\r\n",
 			tag(1), imap_quotestr(base));
-	IMAP_OUT(o, MB_COMD, return STOP);
+	IMAP_OUT(o, MB_COMD, return STOP)
 	while (mp->mb_active & MB_COMD) {
 		ok = imap_answer(mp, 1);
 		if (response_status == RESPONSE_OTHER &&
@@ -2680,7 +2694,7 @@ out:	if ((m->m_flag&(MREAD|MSTATUS)) == (MREAD|MSTATUS)) {
 	}
 	if (stored) {
 		mp->mb_active |= MB_COMD;
-		imap_finish(mp);
+		(void)imap_finish(mp);
 	}
 	return ok;
 }
@@ -3095,14 +3109,15 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 	buf = smalloc(bufsize = LINESIZE);
 	buflen = 0;
 	count = fsize(fp);
-	while (offs1 = ftell(fp),
+	while ((offs1 = ftell(fp)) >= 0 &&
 			fgetline(&buf, &bufsize, &count, &buflen, fp, 0)
 			!= NULL) {
 		for (bp = buf; *bp != ' '; bp++);	/* strip old tag */
 		while (*bp == ' ')
 			bp++;
 		twice = 0;
-		offs = ftell(fp);
+		if ((offs = ftell(fp)) < 0)
+			goto fail;
 	again:	snprintf(o, sizeof o, "%s %s", tag(1), bp);
 		if (ascncasecmp(bp, "UID COPY ", 9) == 0) {
 			cp = &bp[9];
@@ -3143,10 +3158,9 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 					break;
 			}
 			if (ok == STOP) {
-				if (twice++ == 0) {
-					fseek(fp, offs, SEEK_SET);
+				if (twice++ == 0 &&
+						fseek(fp, offs, SEEK_SET) >= 0)
 					goto trycreate;
-				}
 				goto fail;
 			}
 			while (octets > 0) {
@@ -3162,16 +3176,18 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
 				ok = imap_answer(mp, 0);
 				if (response_status == RESPONSE_NO &&
 						twice++ == 0) {
-					fseek(fp, offs, SEEK_SET);
+					if (fseek(fp, offs, SEEK_SET) < 0)
+						goto fail;
 					goto trycreate;
 				}
 			}
 			if (response_status == RESPONSE_OK &&
 					mp->mb_flags & MB_UIDPLUS) {
-				offs2 = ftell(fp);
+				if ((offs2 = ftell(fp)) < 0)
+					goto fail;
 				fseek(fp, offs1, SEEK_SET);
 				if (imap_appenduid_cached(mp, fp) == STOP) {
-					fseek(fp, offs2, SEEK_SET);
+					(void)fseek(fp, offs2, SEEK_SET);
 					goto fail;
 				}
 			}

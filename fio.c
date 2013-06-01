@@ -43,6 +43,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>
@@ -672,17 +673,18 @@ append(struct message *mp)
  * Delete a file, but only if the file is a plain file.
  */
 int
-rm(char *name)
+rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 {
 	struct stat sb;
+	int ret = -1;
 
 	if (stat(name, &sb) < 0)
-		return(-1);
-	if (!S_ISREG(sb.st_mode)) {
+		;
+	else if (! S_ISREG(sb.st_mode))
 		errno = EISDIR;
-		return(-1);
-	}
-	return(unlink(name));
+	else
+		ret = unlink(name);
+	return ret;
 }
 
 static int sigdepth;		/* depth of holdsigs() */
@@ -765,8 +767,12 @@ findmail(char const *user, int force, char *buf, int size)
 void
 demail(void)
 {
-	if (value("keep") != NULL || rm(mailname) < 0)
-		close(creat(mailname, 0600));
+
+	if (value("keep") != NULL || rm(mailname) < 0) {
+		int fd = open(mailname, O_WRONLY|O_CREAT|O_TRUNC, 0600);
+		if (fd >= 0)
+			close(fd);
+	}
 }
 
 void

@@ -165,7 +165,7 @@ static enum okay
 pop3_finish(struct mailbox *mp)
 {
 	while (mp->mb_sock.s_fd > 0 && mp->mb_active != MB_NONE)
-		pop3_answer(mp);
+		(void)pop3_answer(mp);
 	return OKAY;
 }
 

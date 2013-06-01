@@ -1329,7 +1329,11 @@ mime_fromaddr(char const *name)
 	}
 	if (cp > lastcp)
 		addstr(&res, &ressz, &rescur, lastcp, cp - lastcp);
-	res[rescur] = '\0';
+	/* TODO rescur==0: inserted to silence Coverity ...; check that */
+	if (rescur == 0)
+		res = UNCONST("");
+	else
+		res[rescur] = '\0';
 	{	char *x = res;
 		res = savestr(res);
 		free(x);
@@ -1506,6 +1510,7 @@ jconvert:
 		break;
 	case CONV_FROMB64:
 		rest = NULL;
+		/* FALLTHRU */
 	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, rest);
 jqpb64_dec:

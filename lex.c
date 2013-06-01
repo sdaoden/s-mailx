@@ -1054,12 +1054,12 @@ initbox(const char *name)
 		perror(tr(87, "temporary mail message file"));
 		exit(1);
 	}
-	fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
+	(void)fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
 	if ((mb.mb_itf = safe_fopen(tempMesg, "r", &dummy)) == NULL) {
 		perror(tr(87, "temporary mail message file"));
 		exit(1);
 	}
-	fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
+	(void)fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
 	rm(tempMesg);
 	Ftfree(&tempMesg);
 	msgCount = 0;

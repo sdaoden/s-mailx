@@ -631,9 +631,9 @@ elide(struct name *names)
 	while (np != NULL) {
 		t = np;
 		while (t->n_flink != NULL &&
-		       asccasecmp(np->n_name, t->n_flink->n_name) == 0)
+				asccasecmp(np->n_name, t->n_flink->n_name) == 0)
 			t = t->n_flink;
-		if (t == np || t == NULL) {
+		if (t == np) {
 			np = np->n_flink;
 			continue;
 		}
@@ -812,7 +812,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 				Fclose(fout);
 				goto jcant;
 			}
-			fcntl(image, F_SETFD, FD_CLOEXEC);
+			(void)fcntl(image, F_SETFD, FD_CLOEXEC);
 
 			fprintf(fout, "From %s %s",
 				myname, time_current.tc_ctime);
