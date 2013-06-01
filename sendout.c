@@ -1068,6 +1068,14 @@ jaskeot:
 	}
 #endif
 
+	/* XXX Update time_current again; once collect() offers editing of more
+	 * XXX headers, including Date:, this must only happen if Date: is the
+	 * XXX same that it was before collect() (e.g., postponing etc.).
+	 * XXX But *do* update otherwise because the mail seems to be backdated
+	 * XXX if the user edited some time, which looks odd and it happened
+	 * XXX to me that i got mis-dated response mails due to that... */
+	time_current_update(&time_current, TRU1);
+
 	senderr = 0;
 
 	/* TODO hrmpf; the MIME/send layer rewrite MUST address the init crap:
