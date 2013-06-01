@@ -43,6 +43,23 @@
  */
 #define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[c - 1] = '\0')
 
+/*
+ * attachments.c
+ */
+
+/* Try to add an attachment for *file*, file_expand()ed.
+ * Return the new head of list *aphead*, or NULL.
+ * The newly created attachment will be stored in **newap*, if given */
+struct attachment *	add_attachment(struct attachment *aphead, char *file,
+				struct attachment **newap);
+
+/* Append comma-separated list of file names to the end of attachment list */
+struct attachment *	append_attachments(struct attachment *aphead,
+				char *names);
+
+/* Interactively edit the attachment list, return the new list head */
+struct attachment *	edit_attachments(struct attachment *aphead);
+
 /* auxlily.c */
 void panic(const char *format, ...);
 void holdint(void);
@@ -262,15 +279,6 @@ int crename(void *v);
 /* cmdtab.c */
 
 /* collect.c */
-
-/* Try to add an attachment for *file*, file_expand()ed.
- * Return the new head of list *aphead*, or NULL.
- * The newly created attachment will be stored in **newap*, if given */
-struct attachment *	add_attachment(struct attachment *aphead, char *file,
-				struct attachment **newap);
-
-/* Interactively edit the attachment list, return the new list head */
-struct attachment *	edit_attachments(struct attachment *aphead);
 
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix, int tflag);

@@ -50,7 +50,7 @@ PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 		-DSENDMAIL='"$(SENDMAIL)"' \
 		-DSENDMAIL_PROGNAME='"$(SENDMAIL_PROGNAME)"'
 
-OBJ = auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
+OBJ = attachments.o auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o fio.o head.o \
 	imap.o imap_cache.o imap_search.o junk.o lex.o list.o lzw.o \
 	macro.o maildir.o main.o md5.o mime.o mime_cte.o names.o \
