@@ -425,7 +425,7 @@ commands(void)
 		 * Print the prompt, if needed.  Clear out
 		 * string space, and flush the output.
 		 */
-		if (!sourcing && value("interactive") != NULL) {
+		if (! sourcing && (options & OPT_INTERACTIVE)) {
 			av = (av = value("autoinc")) ? savestr(av) : NULL;
 			nv = (nv = value("newmail")) ? savestr(nv) : NULL;
 			if (is_a_tty[0] && (av != NULL || nv != NULL ||
@@ -459,6 +459,7 @@ commands(void)
 				}
 			}
 			reset_on_stop = 1;
+			exit_status = 0;
 			if ((prompt = value("prompt")) == NULL)
 				prompt = value("bsdcompat") ? "& " : "? ";
 			printf("%s", prompt);
@@ -488,11 +489,9 @@ commands(void)
 				unstack();
 				continue;
 			}
-			if (value("interactive") != NULL &&
-			    value("ignoreeof") != NULL &&
-			    ++eofloop < 25) {
-				printf(catgets(catd, CATSET, 89,
-						"Use \"quit\" to quit.\n"));
+			if ((options & OPT_INTERACTIVE) &&
+					value("ignoreeof") && ++eofloop < 25) {
+				printf(tr(89, "Use \"quit\" to quit.\n"));
 				continue;
 			}
 			break;
@@ -589,8 +588,8 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 */
 
 	if ((com->c_argtype & F) == 0) {
-		if ((cond == CRCV && (options & OPT_RCVMODE) == 0) ||
-				(cond == CSEND && (options & OPT_RCVMODE)) ||
+		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
+				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
 				(cond == CTERM && !is_a_tty[0]) ||
 				(cond == CNONTERM && is_a_tty[0])) {
 			ac_free(word);
@@ -605,7 +604,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * an error.
 	 */
 
-	if ((options & OPT_RCVMODE) == 0 && (com->c_argtype & M) == 0) {
+	if ((options & OPT_SENDMODE) && (com->c_argtype & M) == 0) {
 		printf(catgets(catd, CATSET, 92,
 			"May not execute \"%s\" while sending\n"), com->c_name);
 		goto out;

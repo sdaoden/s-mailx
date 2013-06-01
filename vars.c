@@ -60,10 +60,15 @@ static void remove_grouplist(struct grouphead *gh);
 static void
 _check_special_vars(char const *name, bool_t enable, char **value)
 {
+	/* TODO _check_special_vars --> value cache */
 	int flag = 0;
 
 	if (strcmp(name, "debug") == 0)
 		flag = OPT_DEBUG;
+	else if (strcmp(name, "header") == 0)
+		flag = OPT_N_FLAG, enable = ! enable;
+	else if (strcmp(name, "skipemptybody") == 0)
+		flag = OPT_E_FLAG;
 	else if (strcmp(name, "verbose") == 0)
 		flag = OPT_VERBOSE;
 	else if (strcmp(name, "folder") == 0)

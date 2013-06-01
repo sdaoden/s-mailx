@@ -86,7 +86,7 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
 	int echo)
 {
 	int ret = -1;
-	char *interactive, *linebuf = NULL;
+	char *linebuf = NULL;
 	size_t linesize = 0, linelen, count;
 
 	if (fbuf == NULL) {
@@ -97,7 +97,6 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
 	} else
 		fflush_rewind(fbuf);
 
-	interactive = value("interactive");
 	*linecount = *charcount = 0;
 	count = fsize(fbuf);
 	while (fgetline(&linebuf, &linesize, &count, &linelen, fbuf, 0)
@@ -105,7 +104,7 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
 		if (fwrite(linebuf, sizeof *linebuf, linelen, collf)
 				!= linelen)
 			goto jleave;
-		if (interactive != NULL && echo)
+		if ((options & OPT_INTERACTIVE) && echo)
 			fwrite(linebuf, sizeof *linebuf, linelen, stdout);
 		++(*linecount);
 		(*charcount) += linelen;
@@ -248,15 +247,11 @@ endpipe:
 
 FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int doprefix, int volatile tflag)
+		char *quotefile, int doprefix)
 {
-	enum {
-		val_INTERACT	= 1
-	};
-
 	FILE *fbuf;
 	struct ignoretab *quoteig;
-	int lc, cc, eofcount, val, c, t;
+	int lc, cc, eofcount, c, t;
 	int volatile escape, getfields;
 	char *linebuf = NULL, *quote = NULL, *tempMail = NULL;
 	char const *cp;
@@ -265,10 +260,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	enum sendaction	action;
 	sigset_t oset, nset;
 	sighandler_type	savedtop;
-
-	val = 0;
-	if (value("interactive") != NULL)
-		val |= val_INTERACT;
 
 	collf = NULL;
 	/*
@@ -310,17 +301,17 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	 * the headers (since some people mind).
 	 */
 	getfields = 0;
-	if (! tflag) {
+	if (! (options & OPT_t_FLAG)) {
 		t = GTO|GSUBJECT|GCC|GNL;
 		if (value("fullnames"))
 			t |= GCOMMA;
-		if (hp->h_subject == NULL && (val & val_INTERACT) &&
+		if (hp->h_subject == NULL && (options & OPT_INTERACTIVE) &&
 			    (value("ask") != NULL || value("asksub") != NULL))
 			t &= ~GNL, getfields |= GSUBJECT;
-		if (hp->h_to == NULL && (val & val_INTERACT))
+		if (hp->h_to == NULL && (options & OPT_INTERACTIVE))
 			t &= ~GNL, getfields |= GTO;
 		if (value("bsdcompat") == NULL && value("askatend") == NULL &&
-				(val & val_INTERACT)) {
+				(options & OPT_INTERACTIVE)) {
 			if (hp->h_bcc == NULL && value("askbcc"))
 				t &= ~GNL, getfields |= GBCC;
 			if (hp->h_cc == NULL && value("askcc"))
@@ -391,7 +382,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			if (_include_file(NULL, quotefile, &lc, &cc, 1) != 0)
 				goto jerr;
 		}
-		if ((val & val_INTERACT) && value("editalong")) {
+		if ((options & OPT_INTERACTIVE) && value("editalong")) {
 			rewind(collf);
 			mesedit('e', hp);
 			goto jcont;
@@ -415,8 +406,7 @@ jcont:
 	/*
 	 * No tilde escapes, interrupts not expected.  Simply copy STDIN
 	 */
-	if ((val & val_INTERACT) == 0 &&
-			(options & (OPT_t_FLAG|OPT_TILDE_FLAG)) == 0) {
+	if (! (options & (OPT_INTERACTIVE | OPT_t_FLAG|OPT_TILDE_FLAG))) {
 		linebuf = srealloc(linebuf, linesize = LINESIZE);
 		while ((count = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
@@ -437,7 +427,7 @@ jcont:
 		count = readline(stdin, &linebuf, &linesize);
 		colljmp_p = 0;
 		if (count < 0) {
-			if ((val & val_INTERACT) &&
+			if ((options & OPT_INTERACTIVE) &&
 			    value("ignoreeof") != NULL && ++eofcount < 25) {
 				printf(tr(55,
 					"Use \".\" to terminate letter\n"));
@@ -445,24 +435,23 @@ jcont:
 			}
 			break;
 		}
-		if (tflag && count == 0) {
+		if ((options & OPT_t_FLAG) && count == 0) {
 			rewind(collf);
 			if (makeheader(collf, hp) != OKAY)
 				goto jerr;
 			rewind(collf);
-			tflag = 0;
+			options &= ~OPT_t_FLAG;
 			continue;
 		}
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-				(val & val_INTERACT) &&
+				(options & OPT_INTERACTIVE) &&
 				(value("dot") != NULL ||
 					value("ignoreeof") != NULL))
 			break;
-		if (linebuf[0] != escape ||
-				(! (val & val_INTERACT) &&
-				(options & OPT_TILDE_FLAG) == 0)) {
+		if (linebuf[0] != escape || ! (options &
+				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
 			/* TODO calls putline(), which *always* appends LF;
 			 * TODO thus, STDIN with -t will ALWAYS end with LF,
 			 * TODO even if no trailing LF and QP CTE */
@@ -619,7 +608,8 @@ jcont:
 				break;
 			if (putesc(cp, collf) < 0)
 				goto jerr;
-			if ((val & val_INTERACT) && putesc(cp, stdout) < 0)
+			if ((options & OPT_INTERACTIVE) &&
+					putesc(cp, stdout) < 0)
 				goto jerr;
 			break;
 		case 'a':
@@ -629,7 +619,7 @@ jcont:
 					*cp != '\0') {
 				if (putesc(cp, collf) < 0)
 					goto jerr;
-				if ((val & val_INTERACT) &&
+				if ((options & OPT_INTERACTIVE) &&
 						putesc(cp, stdout) < 0)
 					goto jerr;
 			}
@@ -726,7 +716,8 @@ jout:
 		if ((cp = value("NAIL_TAIL")) != NULL) {
 			if (putesc(cp, collf) < 0)
 				goto jerr;
-			if ((val & val_INTERACT) && putesc(cp, stdout) < 0)
+			if ((options & OPT_INTERACTIVE) &&
+					putesc(cp, stdout) < 0)
 				goto jerr;
 		}
 		rewind(collf);

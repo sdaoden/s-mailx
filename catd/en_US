@@ -136,13 +136,12 @@ $set 1
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
 
-135 Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n\
-\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n\
-\t\t[-q file] [-r from-addr] [-S var[=value]]\n\
-\t\t[-s subject] to-addr...\n\
-\t%s [-BDdEeHIiNnRv~] [-A acct]\n\
-\t\t[-S var[=value]] [-T name] -f [file]\n\
-\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
+135 Synopsis:\n\
+  %s [-BDdEFintv~] [-A acc] [-a attachment] [-b bcc-addr] [-c cc-addr]\n\
+\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] [-S var[=value]]\n\
+\t  [-s subject] to-addr...\n\
+  %s [-BDdEeHiNnRv~] [-A acct] [-S var[=value]] -f [file]\n\
+  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
 
 136 $ %d moved$
 137 Cannot give -f and people to send to.\n
@@ -212,7 +211,7 @@ $set 1
 201 Cannot associate a name with uid %d\n
 202 "%s": not a group\n
 203 "%s": undefined variable\n
-204 Need -f with -I.\n
+204 --- DELETED ---
 205 More than one file given with -f\n
 206 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 207 $%c%c%3d %s%-*.*s  %16.16s %s "%.*s"\n$

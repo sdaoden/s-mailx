@@ -62,7 +62,7 @@ static char const *	_get_encoding(const enum conversion convert);
 static int		_attach_file(struct attachment *ap, FILE *fo);
 static int		__attach_file(struct attachment *ap, FILE *fo);
 
-static char const **	_prepare_mta_args(struct name *to);
+static char const **	_prepare_mta_args(struct name *to, struct header *hp);
 
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
@@ -284,9 +284,9 @@ jleave:
 }
 
 static char const **
-_prepare_mta_args(struct name *to)
+_prepare_mta_args(struct name *to, struct header *hp)
 {
-	size_t j, i = 4 + smopts_count + count(to) + 1;
+	size_t j, i = 4 + smopts_count + 2 + count(to) + 1;
 	char const **args = salloc(i * sizeof(char*));
 
 	args[0] = value("sendmail-progname");
@@ -299,8 +299,28 @@ _prepare_mta_args(struct name *to)
 		args[i++] = "-m";
 	if (options & OPT_VERBOSE)
 		args[i++] = "-v";
+
 	for (j = 0; j < smopts_count; ++j, ++i)
 		args[i] = smopts[j];
+
+	/* -r option?  We may only pass skinned addresses, which is why we do
+	 * not simply call myorigin() (TODO myorigin shouldn't fullname!) */
+	if (options & OPT_r_FLAG) {
+		char const *from;
+
+		if (option_r_arg[0] != '\0')
+			from = option_r_arg;
+		else if (hp->h_from != NULL)
+			from = hp->h_from->n_name;
+		else
+			from = myorigin(hp);
+		if (from != NULL) {
+			args[i++] = "-r";
+			args[i++] = from;
+		}
+	}
+
+	/* Receivers follow */
 	for (; to != NULL; to = to->n_flink)
 		if ((to->n_type & GDEL) == 0)
 			args[i++] = to->n_name;
@@ -720,7 +740,7 @@ savemail(char const *name, FILE *fi)
 int 
 mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
-		char *quotefile, int recipient_record, int tflag, int Eflag)
+		char *quotefile, int recipient_record)
 {
 	struct header head;
 	struct str in, out;
@@ -733,13 +753,13 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 		mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
 		head.h_subject = out.s;
 	}
-	if (tflag == 0) {
+	if (! (options & OPT_t_FLAG)) {
 		head.h_to = to;
 		head.h_cc = cc;
 		head.h_bcc = bcc;
 	}
 	head.h_attach = attach;
-	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag, Eflag);
+	mail1(&head, 0, NULL, quotefile, recipient_record, 0);
 	if (subject != NULL)
 		free(out.s);
 	return(0);
@@ -752,14 +772,12 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 static int 
 sendmail_internal(void *v, int recipient_record)
 {
-	int Eflag;
 	char *str = v;
 	struct header head;
 
 	memset(&head, 0, sizeof head);
 	head.h_to = lextract(str, GTO|GFULL);
-	Eflag = value("skipemptybody") != NULL;
-	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0, Eflag);
+	mail1(&head, 0, NULL, NULL, recipient_record, 0);
 	return(0);
 }
 
@@ -855,7 +873,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		} else
 			mta = SENDMAIL;
 
-		args = _prepare_mta_args(to);
+		args = _prepare_mta_args(to, hp);
 		if (options & OPT_DEBUG) {
 			printf(tr(181, "Sendmail arguments:"));
 			for (t = args; *t != NULL; t++)
@@ -988,8 +1006,7 @@ jbail:			fprintf(stderr, tr(285,
  */
 enum okay 
 mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int doprefix, int tflag,
-		int Eflag)
+	char *quotefile, int recipient_record, int doprefix)
 {
 	enum okay ok = STOP;
 	struct name *to;
@@ -1010,11 +1027,11 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders, quote, quotefile, doprefix,
-			tflag)) == NULL)
+	mtf = collect(hp, printheaders, quote, quotefile, doprefix);
+	if (mtf == NULL)
 		goto j_leave;
 
-	if (value("interactive") != NULL) {
+	if (options & OPT_INTERACTIVE) {
 		err = (value("bsdcompat") || value("askatend"));
 		if (err == 0)
 			goto jaskeot;
@@ -1035,7 +1052,7 @@ jaskeot:
 	}
 
 	if (fsize(mtf) == 0) {
-		if (Eflag)
+		if (options & OPT_E_FLAG)
 			goto jleave;
 		if (hp->h_subject == NULL)
 			printf(tr(184,
@@ -1261,10 +1278,12 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				return 1;
 			gotcha++;
 			fromfield = hp->h_from;
-		} else if ((addr = myaddrs(hp)) != NULL)
+		} else if ((addr = myaddrs(hp)) != NULL) {
 			if (_putname(addr, w, action, &gotcha, "From:", fo,
 						&fromfield))
 				return 1;
+			hp->h_from = fromfield;
+		}
 		if (((addr = hp->h_organization) != NULL ||
 				(addr = value("ORGANIZATION")) != NULL) &&
 				(l = strlen(addr)) > 0) {

@@ -1291,7 +1291,7 @@ newfile(struct mimepart *ip, int *ispipe)
 		free(out.s);
 	}
 
-	if (value("interactive") != NULL) {
+	if (options & OPT_INTERACTIVE) {
 		char *f2, *f3;
 jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 			ip->m_partstring ? ip->m_partstring : "?",

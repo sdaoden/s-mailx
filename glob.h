@@ -69,8 +69,8 @@ _E char const	*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
 _E int		options;		/* Bits of enum user_options */
-_E char		*option_T_arg;		/* -T temp file for netnews */
 _E char		*option_u_arg;		/* name given with -u option */
+_E char 	*option_r_arg;		/* argument to -r option */
 _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 

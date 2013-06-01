@@ -70,13 +70,14 @@ struct a_arg {
 	char		*aa_file;
 };
 
-static sigjmp_buf	hdrjmp;
+/* Perform basic startup initialization */
+static void	_startup(void);
 
-/* Add an option for sendmail(1) */
-static void	add_smopt(int argc_left, char const *arg);
+/* Grow a char** */
+static int	_grow_cpp(char const ***cpp, int size, int count);
 
 /* Initialize *tempdir*, *myname*, *homedir* */
-static void	setup_vars(void);
+static void	_setup_vars(void);
 
 /* Compute what the screen size for printing headers should be.
  * We use the following algorithm for the height:
@@ -84,22 +85,99 @@ static void	setup_vars(void);
  *	If baud rate = 1200, use 14
  *	If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col */
-static void	setscreensize(int dummy);
+static void	_setscreensize(int dummy);
+
+/* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
+ * the system mailbox, and open up the right stuff */
+static int	_rcv_mode(char const *folder);
 
 /* Interrupt printing of the headers */
-static void	hdrstop(int signo);
+static void	_hdrstop(int signo);
 
 static void
-add_smopt(int argc_left, char const *arg)
+_startup(void)
+{
+	char *cp;
+
+	/* Absolutely the first thing we do is save our egid
+	 * and set it to the rgid, so that we can safely run
+	 * setgid.  We use the sgid (saved set-gid) to allow ourselves
+	 * to revert to the egid if we want (temporarily) to become
+	 * privileged */
+	effectivegid = getegid();
+	realgid = getgid();
+	if (setgid(realgid) < 0) {
+		perror("setgid");
+		exit(1);
+	}
+
+	image = -1;
+
+	if ((cp = strrchr(progname, '/')) != NULL)
+		progname = ++cp;
+
+	/* Set up a reasonable environment.
+	 * Figure out whether we are being run interactively,
+	 * start the SIGCHLD catcher, and so forth */
+	safe_signal(SIGCHLD, sigchild);
+	is_a_tty[0] = isatty(0);
+	is_a_tty[1] = isatty(1);
+	if (is_a_tty[0]) {
+		options |= OPT_INTERACTIVE;
+		if (is_a_tty[1])
+			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+	}
+	assign("header", "");
+	assign("save", "");
+
+#ifdef HAVE_SETLOCALE
+	setlocale(LC_ALL, "");
+	mb_cur_max = MB_CUR_MAX;
+# if defined HAVE_NL_LANGINFO && defined CODESET
+	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+		assign("ttycharset", cp);
+# endif
+
+# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+	if (mb_cur_max > 1) {
+		wchar_t	wc;
+		if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
+				mbtowc(&wc, "\342\202\254", 3) == 3 &&
+				wc == 0x20AC)
+			utf8 = 1;
+	}
+# endif
+#else
+	mb_cur_max = 1;
+#endif
+
+#ifdef HAVE_CATGETS
+# ifdef NL_CAT_LOCALE
+	catd = catopen(CATNAME, NL_CAT_LOCALE);
+# else
+	catd = catopen(CATNAME, 0);
+# endif
+#endif
+
+#ifdef HAVE_ICONV
+	iconvd = (iconv_t)-1;
+#endif
+}
+
+static int
+_grow_cpp(char const ***cpp, int size, int count)
 {
 	/* Before spreserve(): use our string pool instead of LibC heap */
-	if (smopts == NULL)
-		smopts = salloc((argc_left + 1) * sizeof(char*));
-	smopts[smopts_count++] = arg;
+	char const **newcpp = salloc(sizeof(char*) * (size += 8));
+
+	if (count > 0)
+		memcpy(newcpp, *cpp, count * sizeof(char*));
+	*cpp = newcpp;
+	return size;
 }
 
 static void
-setup_vars(void)
+_setup_vars(void)
 {
 	/* Before spreserve(): use our string pool instead of LibC heap */
 	char const *cp;
@@ -114,7 +192,7 @@ setup_vars(void)
 }
 
 static void
-setscreensize(int dummy)
+_setscreensize(int dummy)
 {
 	struct termios tbuf;
 #ifdef TIOCGWINSZ
@@ -151,14 +229,81 @@ setscreensize(int dummy)
 		scrnwidth = 80;
 }
 
+static sigjmp_buf	__hdrjmp; /* XXX */
+
+static int
+_rcv_mode(char const *folder)
+{
+	char *cp;
+	int i;
+	sighandler_type prevint;
+
+	if (folder == NULL)
+		folder = "%";
+	else if (*folder == '@') {
+		/* This must be treated specially to make invocation like
+		 * -A imap -f @mailbox work */
+		if ((cp = value("folder")) != NULL &&
+				which_protocol(cp) == PROTO_IMAP)
+			(void)n_strlcpy(mailname, cp, MAXPATHLEN);
+	}
+
+	i = setfile(folder, 0);
+	if (i < 0)
+		exit(1);		/* error already reported */
+	if (options & OPT_EXISTONLY)
+		exit(i);
+
+	if (options & OPT_HEADERSONLY) {
+#ifdef USE_IMAP
+		if (mb.mb_type == MB_IMAP)
+			imap_getheaders(1, msgCount);
+#endif
+		time_current_update(&time_current, FAL0);
+		for (i = 1; i <= msgCount; i++)
+			printhead(i, stdout, 0);
+		exit(exit_status);
+	}
+
+	callhook(mailname, 0);
+	if (i > 0 && value("emptystart") == NULL)
+		exit(1);
+
+	if (sigsetjmp(__hdrjmp, 1) == 0) {
+		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+			safe_signal(SIGINT, _hdrstop);
+		if ((options & OPT_N_FLAG) == 0) {
+			if (! value("quiet"))
+				printf(tr(140,
+					"%s version %s.  Type ? for help.\n"),
+					value("bsdcompat") ? "Mail" : uagent,
+					version);
+			announce(1);
+			fflush(stdout);
+		}
+		safe_signal(SIGINT, prevint);
+	}
+
+	/* Enter the command loop */
+	commands();
+	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
+		safe_signal(SIGHUP, SIG_IGN);
+		safe_signal(SIGINT, SIG_IGN);
+		safe_signal(SIGQUIT, SIG_IGN);
+	}
+	n_strlcpy(mboxname, expand("&"), sizeof(mboxname));
+	quit();
+	return exit_status;
+}
+
 static void
-hdrstop(int signo)
+_hdrstop(int signo)
 {
 	(void)signo;
 
 	fflush(stdout);
 	fprintf(stderr, tr(141, "\nInterrupt\n"));
-	siglongjmp(hdrjmp, 1);
+	siglongjmp(__hdrjmp, 1);
 }
 
 char const *const	weekday_names[7 + 1] = {
@@ -174,96 +319,37 @@ sighandler_type		dflpipe = SIG_DFL;
 int 
 main(int argc, char *argv[])
 {
-	static char const optstr[] = "A:a:Bb:c:DdEeFfHIiNnO:q:Rr:S:s:T:tu:Vv~",
+	static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~",
 		usagestr[] =
-		"Usage:\t%s [-BDdEFintv~] [-A acc] [-a attachment]\n"
-		"\t\t[-b bcc-addr] [-c cc-addr] [-O mtaopt [-O mtaopt-arg]]\n"
-		"\t\t[-q file] [-r from-addr] [-S var[=value]]\n"
-		"\t\t[-s subject] to-addr...\n"
-		"\t%s [-BDdEeHIiNnRv~] [-A acct]\n"
-		"\t\t[-S var[=value]] [-T name] -f [file]\n"
-		"\t%s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
+		"Synopsis:\n"
+		"  %s [-BDdEFintv~] [-A acc] [-a attachment] "
+			"[-b bcc-addr] [-c cc-addr]\n"
+		"\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
+			"[-S var[=value]]\n"
+		"\t  [-s subject] to-addr...\n"
+		"  %s [-BDdEeHiNnRv~] [-A acct] "
+			"[-S var[=value]] -f [file]\n"
+		"  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
 
 	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
-	int scnt = 0, i;
 	struct name *to = NULL, *cc = NULL, *bcc = NULL;
 	struct attachment *attach = NULL;
-	char *cp = NULL, *subject = NULL, *qf = NULL,
-		*fromaddr = NULL, *Aflag = NULL;
-	char const *ef = NULL;
-	sighandler_type prevint;
+	char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
+	char const *okey, **oargs = NULL, *folder = NULL;
+	int oargs_size = 0, oargs_count = 0, smopts_size = 0, i;
 
 	/*
-	 * Absolutely the first thing we do is save our egid
-	 * and set it to the rgid, so that we can safely run
-	 * setgid.  We use the sgid (saved set-gid) to allow ourselves
-	 * to revert to the egid if we want (temporarily) to become
-	 * priveliged.
-	 */
-	effectivegid = getegid();
-	realgid = getgid();
-	if (setgid(realgid) < 0) {
-		perror("setgid");
-		exit(1);
-	}
-
-	starting = TRU1;
-	progname = strrchr(argv[0], '/');
-	if (progname != NULL)
-		progname++;
-	else
-		progname = argv[0];
-	/*
-	 * Set up a reasonable environment.
-	 * Figure out whether we are being run interactively,
-	 * start the SIGCHLD catcher, and so forth.
-	 */
-	safe_signal(SIGCHLD, sigchild);
-	is_a_tty[0] = isatty(0);
-	is_a_tty[1] = isatty(1);
-	if (is_a_tty[0]) {
-		assign("interactive", "");
-		if (is_a_tty[1])
-			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
-	}
-	assign("header", "");
-	assign("save", "");
-#ifdef HAVE_SETLOCALE
-	setlocale(LC_ALL, "");
-	mb_cur_max = MB_CUR_MAX;
-# if defined HAVE_NL_LANGINFO && defined CODESET
-	if (value("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
-		assign("ttycharset", cp);
-# endif
-# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
-	if (mb_cur_max > 1) {
-		wchar_t	wc;
-		if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-				mbtowc(&wc, "\342\202\254", 3) == 3 &&
-				wc == 0x20AC)
-			utf8 = 1;
-	}
-# endif
-#else
-	mb_cur_max = 1;
-#endif
-#ifdef HAVE_CATGETS
-# ifdef NL_CAT_LOCALE
-	catd = catopen(CATNAME, NL_CAT_LOCALE);
-# else
-	catd = catopen(CATNAME, 0);
-# endif
-#endif
-#ifdef HAVE_ICONV
-	iconvd = (iconv_t)-1;
-#endif
-	image = -1;
-
-	/*
-	 * Command line options
+	 * Start our lengthy setup
 	 */
 
-	while ((i = getopt(argc, argv, optstr)) != EOF) {
+	starting =
+	unset_allow_undefined = TRU1;
+
+	progname = argv[0];
+	_startup();
+
+	/* Command line parsing */
+	while ((i = getopt(argc, argv, optstr)) >= 0) {
 		switch (i) {
 		case 'A':
 			/* Execute an account command later on */
@@ -280,7 +366,7 @@ main(int argc, char *argv[])
 				nap->aa_file = optarg;
 				a_curr = nap;
 			}
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'B':
 			/* Make 0/1 line buffered */
@@ -290,69 +376,69 @@ main(int argc, char *argv[])
 		case 'b':
 			/* Get Blind Carbon Copy Recipient list */
 			bcc = cat(bcc, checkaddrs(lextract(optarg,GBCC|GFULL)));
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'c':
 			/* Get Carbon Copy Recipient list */
 			cc = cat(cc, checkaddrs(lextract(optarg, GCC|GFULL)));
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'D':
 #ifdef USE_IMAP
-			assign("disconnected", "");
+			okey = "disconnected";
+			goto joarg;
+#else
+			break;
 #endif
-			break;
 		case 'd':
-			assign("debug", "");
-			options |= OPT_DEBUG;
-			break;
+			okey = "debug";
+#ifdef WANT_ASSERTS
+			assign(okey, "");
+#endif
+			goto joarg;
 		case 'E':
-			options |= OPT_E_FLAG;
-			break;
+			okey = "skipemptybody";
+			goto joarg;
 		case 'e':
 			options |= OPT_EXISTONLY;
 			break;
 		case 'F':
-			options |= OPT_F_FLAG | OPT_SENDFLAG;
+			options |= OPT_F_FLAG | OPT_SENDMODE;
 			break;
 		case 'f':
-			/*
-			 * User is specifying file to "edit" with Mail,
+			/* User is specifying file to "edit" with Mail,
 			 * as opposed to reading system mailbox.
 			 * If no argument is given, we read his mbox file.
-			 * Check for remaining arguments later.
-			 */
-			ef = "&";
+			 * Check for remaining arguments later */
+			folder = "&";
 			break;
 		case 'H':
 			options |= OPT_HEADERSONLY;
 			break;
-jIflag:		case 'I':
-			/* Show Newsgroups: field in header summary */
-			options |= OPT_I_FLAG;
-			break;
 		case 'i':
 			/* Ignore interrupts */
-			assign("ignore", "");
-			break;
+			okey = "ignore";
+			goto joarg;
 		case 'N':
 			/* Avoid initial header printing */
-			unset_internal("header");
-			options |= OPT_N_FLAG;
-			break;
+			okey = "header";
+			goto joarg;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
 			options |= OPT_NOSRC;
 			break;
 		case 'O':
 			/* Additional options to pass-through to MTA */
-			add_smopt(argc - optind, skin(optarg));
+			if (smopts_count == (size_t)smopts_size)
+				smopts_size = _grow_cpp(&smopts, smopts_size,
+						(int)smopts_count);
+			smopts[smopts_count++] = skin(optarg);
 			break;
 		case 'q':
 			/* Quote file TODO drop? -Q with real quote?? what ? */
 			if (*optarg != '-')
 				qf = optarg;
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
 		case 'R':
 			/* Open folders read-only */
@@ -360,7 +446,10 @@ jIflag:		case 'I':
 			break;
 		case 'r':
 			/* Set From address. */
-			{	struct name *fa = nalloc(optarg, GFULL);
+			options |= OPT_r_FLAG;
+			if ((option_r_arg = optarg)[0] != '\0') {
+				struct name *fa = nalloc(optarg, GFULL);
+
 				if (is_addr_invalid(fa, 1) ||
 						is_fileorpipe_addr(fa)) {
 					fprintf(stderr, tr(271,
@@ -368,48 +457,41 @@ jIflag:		case 'I':
 						"with -r\n"));
 					goto usage;
 				}
-				fromaddr = fa->n_fullname;
-				add_smopt(argc - optind, "-r");
-				add_smopt(-1, fa->n_name);
+				option_r_arg = fa->n_name;
+				/* TODO -r options is set in smopts, but may
+				 * TODO be overwritten by setting from= in
+				 * TODO an interactive session!
+				 * TODO Maybe disable setting of from?
+				 * TODO Warn user?  Update manual!! */
+				okey = savecat("from=", fa->n_fullname);
+				goto joarg;
 				/* ..and fa goes even though it is ready :/ */
 			}
 			break;
 		case 'S':
-			/*
-			 * Set variable.  We need to do this twice, since the
+			/* Set variable.  We need to do this twice, since the
 			 * user surely wants the setting to take effect
 			 * immediately, but also doesn't want it to be
-			 * overwritten from within resource files
-			 */
-			argv[scnt++] = optarg;
+			 * overwritten from within resource files */
 			{	char *a[2];
-				a[0] = optarg;
+				okey = a[0] = optarg;
 				a[1] = NULL;
-				unset_allow_undefined = TRU1;
 				set(a);
-				unset_allow_undefined = FAL0;
 			}
+joarg:
+			if (oargs_count == oargs_size)
+				oargs_size = _grow_cpp(&oargs, oargs_size,
+						oargs_count);
+			oargs[oargs_count++] = okey;
 			break;
 		case 's':
 			/* Subject: */
 			subject = optarg;
-			options |= OPT_SENDFLAG;
+			options |= OPT_SENDMODE;
 			break;
-		case 'T':
-			/*
-			 * Next argument is temp file to write which
-			 * articles have been read/deleted for netnews.
-			 */
-			option_T_arg = optarg;
-			if ((i = creat(option_T_arg, 0600)) < 0) {
-				perror(option_T_arg);
-				exit(1);
-			}
-			close(i);
-			goto jIflag;
 		case 't':
 			/* Read defined set of headers from mail to be send */
-			options |= OPT_SENDFLAG | OPT_t_FLAG;
+			options |= OPT_SENDMODE | OPT_t_FLAG;
 			break;
 		case 'u':
 			/* Set user name to pretend to be  */
@@ -421,9 +503,11 @@ jIflag:		case 'I':
 			/* NOTREACHED */
 		case 'v':
 			/* Be verbose */
-			assign("verbose", "");
-			options |= OPT_VERBOSE;
-			break;
+			okey = "verbose";
+#ifdef WANT_ASSERTS
+			assign(okey, "");
+#endif
+			goto joarg;
 		case '~':
 			/* Enable tilde escapes even in non-interactive mode */
 			options |= OPT_TILDE_FLAG;
@@ -435,14 +519,14 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		}
 	}
 
-	if (ef != NULL) {
+	if (folder != NULL) {
 		if (optind < argc) {
 			if (optind + 1 < argc) {
 				fprintf(stderr, tr(205,
 					"More than one file given with -f\n"));
 				goto usage;
 			}
-			ef = argv[optind];
+			folder = argv[optind];
 		}
 	} else {
 		for (i = optind; argv[i]; i++)
@@ -450,12 +534,12 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	}
 
 	/* Check for inconsistent arguments */
-	if (ef != NULL && to != NULL) {
+	if (folder != NULL && to != NULL) {
 		fprintf(stderr, tr(137,
 			"Cannot give -f and people to send to.\n"));
 		goto usage;
 	}
-	if ((options & (OPT_SENDFLAG|OPT_t_FLAG)) == OPT_SENDFLAG &&
+	if ((options & (OPT_SENDMODE|OPT_t_FLAG)) == OPT_SENDMODE &&
 			to == NULL) {
 		fprintf(stderr, tr(138,
 			"Send options without primary recipient specified.\n"));
@@ -465,31 +549,31 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		fprintf(stderr, "The -R option is meaningless in send mode.\n");
 		goto usage;
 	}
-	if ((options & OPT_I_FLAG) && ef == NULL) {
-		fprintf(stderr, tr(204, "Need -f with -I.\n"));
-		goto usage;
-	}
 
-	setup_vars();
-	setscreensize(0);
+	/*
+	 * Likely to go, perform more setup
+	 */
+
+	_setup_vars();
+
+	if (options & OPT_INTERACTIVE) {
+		_setscreensize(0);
 #ifdef SIGWINCH
-	if (value("interactive"))
 		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
-			safe_signal(SIGWINCH, setscreensize);
+			safe_signal(SIGWINCH, _setscreensize);
 #endif
+	} else
+		scrnheight = realscreenheight = 24, scrnwidth = 80;
+
 	input = stdin;
-	if (to == NULL && (options & OPT_t_FLAG) == 0)
-		options |= OPT_RCVMODE;
 
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();
 
 	if ((options & OPT_NOSRC) == 0)
 		load(SYSCONFRC);
-	/*
-	 * Expand returns a savestr, but load only uses the file name
-	 * for fopen, so it's safe to do this.
-	 */
+	/* *expand() returns a savestr(), but load only uses the file name
+	 * for fopen(), so it's safe to do this */
 	if ((cp = getenv("MAILRC")) != NULL)
 		load(file_expand(cp));
 	else if ((cp = getenv("NAILRC")) != NULL)
@@ -507,31 +591,34 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		a[1] = NULL;
 		account(a);
 	}
-	/* Override 'skipemptybody' if '-E' flag was given */
-	if (options & OPT_E_FLAG)
-		assign("skipemptybody", "");
-	/* -S arguments override rc files */
-	for (i = 0; i < scnt; ++i) {
-		char *a[2];
-		a[0] = argv[i];
+
+	/* Ensure the -S and other command line options take precedence over
+	 * anything that may have been placed in resource files */
+	for (i = 0; i < oargs_count; ++i) {
+		char const *a[2];
+		a[0] = oargs[i];
 		a[1] = NULL;
 		set(a);
 	}
-	/* From address from command line overrides rc files */
-	if (fromaddr != NULL)
-		assign("from", fromaddr);
 
-	if (value("debug"))
-		options |= OPT_DEBUG;
-	if (options & OPT_DEBUG) {
-		options |= OPT_VERBOSE;
+	/*
+	 * We're finally completely setup and ready to go
+	 */
+
+	starting =
+	unset_allow_undefined = FAL0;
+
+	if (options & OPT_DEBUG)
 		fprintf(stderr, tr(199, "user = %s, homedir = %s\n"),
 			myname, homedir);
-	}
-	if (value("verbose"))
-		options |= OPT_VERBOSE;
 
-	/* We have delayed attachments until full file expansion is possible */
+	if (! (options & OPT_SENDMODE))
+		return _rcv_mode(folder);
+
+	/* Now that full mailx(1)-style file expansion is possible handle the
+	 * attachments which we had delayed due to this.
+	 * This may use savestr(), but since we won't enter the command loop we
+	 * don't need to care about that */
 	while (a_head != NULL) {
 		attach = add_attachment(attach, a_head->aa_file, NULL);
 		if (attach != NULL) {
@@ -544,75 +631,6 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		}
 	}
 
-	/*
-	 * We are actually ready to go, finally
-	 */
-	starting = FAL0;
-
-	if ((options & OPT_RCVMODE) == 0) {
-		mail(to, cc, bcc, subject, attach, qf,
-			((options & OPT_F_FLAG) != 0),
-			((options & OPT_t_FLAG) != 0),
-			((options & OPT_E_FLAG) != 0));
-		exit(senderr ? 1 : 0);
-	}
-
-	/*
-	 * Ok, we are reading mail.
-	 * Decide whether we are editing a mailbox or reading
-	 * the system mailbox, and open up the right stuff.
-	 */
-	if (ef == NULL)
-		ef = "%";
-	else if (*ef == '@') {
-		/*
-		 * This must be treated specially to make invocation like
-		 * -A imap -f @mailbox work.
-		 */
-		if ((cp = value("folder")) != NULL &&
-				which_protocol(cp) == PROTO_IMAP)
-			(void)n_strlcpy(mailname, cp, MAXPATHLEN);
-	}
-	i = setfile(ef, 0);
-	if (i < 0)
-		exit(1);		/* error already reported */
-	if (options & OPT_EXISTONLY)
-		exit(i);
-	if (options & OPT_HEADERSONLY) {
-#ifdef USE_IMAP
-		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(1, msgCount);
-#endif
-		time_current_update(&time_current, FAL0);
-		for (i = 1; i <= msgCount; i++)
-			printhead(i, stdout, 0);
-		exit(exit_status);
-	}
-
-	callhook(mailname, 0);
-	if (i > 0 && value("emptystart") == NULL)
-		exit(1);
-	if (sigsetjmp(hdrjmp, 1) == 0) {
-		if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-			safe_signal(SIGINT, hdrstop);
-		if ((options & OPT_N_FLAG) == 0) {
-			if (! value("quiet"))
-				printf(tr(140,
-					"%s version %s.  Type ? for help.\n"),
-					value("bsdcompat") ? "Mail" : uagent,
-					version);
-			announce(1);
-			fflush(stdout);
-		}
-		safe_signal(SIGINT, prevint);
-	}
-	commands();
-	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
-		safe_signal(SIGHUP, SIG_IGN);
-		safe_signal(SIGINT, SIG_IGN);
-		safe_signal(SIGQUIT, SIG_IGN);
-	}
-	strncpy(mboxname, expand("&"), sizeof mboxname)[sizeof mboxname-1]='\0';
-	quit();
-	return (exit_status);
+	mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+	return senderr ? 1 : 0;
 }

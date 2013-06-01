@@ -148,7 +148,7 @@ void
 quit(void)
 {
 	int p, modify, anystat;
-	FILE *fbuf, *rbuf, *readstat = NULL, *abuf;
+	FILE *fbuf, *rbuf, *abuf;
 	struct message *mp;
 	int c;
 	char *tempResid;
@@ -244,10 +244,6 @@ nolock:
 
 	anystat = holdbits();
 	modify = 0;
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX)
 			c++;
@@ -255,16 +251,7 @@ nolock:
 			p++;
 		if (mp->m_flag & MODIFY)
 			modify++;
-		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
-			char *id;
-
-			if ((id = hfield1("message-id", mp)) != NULL ||
-					(id = hfield1("article-id",mp)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 	}
-	if (readstat != NULL)
-		Fclose(readstat);
 	if (p == msgCount && !modify && !anystat) {
 		if (p == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
@@ -496,16 +483,12 @@ edstop(void)
 {
 	int gotcha, c;
 	struct message *mp;
-	FILE *obuf, *ibuf = NULL, *readstat = NULL;
+	FILE *obuf, *ibuf = NULL;
 	struct stat statb;
 
 	if (mb.mb_perm == 0)
 		return;
 	holdsigs();
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
@@ -514,17 +497,8 @@ edstop(void)
 		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS|MFLAG|MUNFLAG|
 					MANSWER|MUNANSWER|MDRAFT|MUNDRAFT))
 			gotcha++;
-		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
-			char *id;
-
-			if ((id = hfield1("message-id", mp)) != NULL ||
-					(id = hfield1("article-id",mp)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 	}
-	if (readstat != NULL)
-		Fclose(readstat);
-	if (!gotcha || option_T_arg != NULL)
+	if (!gotcha)
 		goto done;
 	ibuf = NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
