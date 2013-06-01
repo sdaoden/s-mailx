@@ -24,12 +24,6 @@ The S-nail make system will inspect these two environment variables and
 *automatically* convert them to cc(1) (c99(1)) -I and -L options (since
 these environment variables are, different to the command line options,
 not part of the POSIX standard).
-
-The S-nail make system will also automatically integrate pkgsrc(7) paths
-into this mechanism.  pkgsrc is used to handle building (compilation),
-installation and removal of software packages on a lot of operating
-systems, including all BSD systems, Linux, Solaris ...
-
 To set these environment variables, the following can be done in
 a Bourne/Korn/POSIX compatible shell:
 
@@ -37,6 +31,11 @@ a Bourne/Korn/POSIX compatible shell:
   $ LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
   $ make install
+
+The S-nail make system will also automatically integrate pkgsrc(7) paths
+into this mechanism.  pkgsrc is used to handle building (compilation),
+installation and removal of software packages on a lot of operating
+systems, including all BSD systems, Linux, Solaris ...
 
 Instead of actually *editing* the Makefile it is probably much easier to
 override variables on the command line instead, e.g., to change the
@@ -47,11 +46,13 @@ installation directory:
 And instead of editing user.conf you may also choose predefined CONFIG
 sets from the command line:
 
-  CONFIG=MINIMAL  little is left but some air to breathe; no internet
+o CONFIG=MINIMAL  little is left but some air to breathe; no internet
                   connectivity.
-  CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
+
+o CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
                   identical to MINIMAL.
-  CONFIG=CUSTOM   don't touch anything, i.e., enable all features.
+
+o CONFIG=CUSTOM   don't touch anything, i.e., enable all features.
                   To disable specific features, add FEATURE=0 command
                   line arguments when running make [install].
 
@@ -60,8 +61,9 @@ may be used on the command line (in fact any single entry of user.conf
 may be given on the command line, the actually chosen CONFIG may however
 overwrite some of the settings again, except CONFIG=CUSTOM by definition):
 
-  WANT_IDNA=0     Do not (try to) support internationalized domain names.
-  WANT_DOCSTRINGS=0
+o WANT_IDNA=0     Do not (try to) support internationalized domain names.
+
+o WANT_DOCSTRINGS=0
                   Don't include command synopsis strings for "help".
 
 E.g.:
@@ -76,26 +78,32 @@ for "make uninstall" the *exact* command line should be repeated.
 Notes for S-nail(1) v14.*
 -------------------------
 
-S-nail(1) was developed and tested under Mac OS X Snow Leopard (clang(1)
-and gcc(1)) as well as NetBSD 6.99.17 (gcc(1)).
-S-nail(1) is known to correctly execute the ./cc-test.sh shell script,
-with and without uncommented compiler CFLAGS= and WARN= variables in the
-Makefile, on all operating systems as listed below.
+S-nail(1) is known to be driven withouth errors by the ./cc-test.sh
+shell script, with the extended CFLAGS and WARN variables uncommented in
+the Makefile, on the following operating systems:
 
-*Note* however that we talk about a codebase that originates in the 70s,
-when all those fancy compiler features, like constant data, restricted
-pointers, type aliasing etc., did not yet exist!  Until the codebase has
-been overhauled completely the Makefile will overwrite your preferred
-compiler flags with a simple (and POSIX-compliant) -O1.
+o Mac OS X Snow Leopard (x86_64).
+  gcc(1) and clang(1).
 
-- NetBSD 6.0 and 6.99.19.
-- Slackware 14.0 with clang 3.0 and gcc(1).
-- DragonFly BSD v3.2.1.9-g80b03f-RELEASE.
-  (*All* optional dependencies turn to green on this one!)
-- FreeBSD 9.0 with CC=clang(1) and CC=gcc(1), FreeBSD 10.0 with clang(1).
-- UnixWare 7.1.4 (the -v compiler option gives some harmless warnings).
-- OpenBSD 5.2.
-- TinyCoreLinux 4.4 with gcc 4.6.1.
+o DragonFly BSD v3.4.1-RELEASE.
+  gcc 4.7.2 [DragonFly] Release/2012-09-2.
+  (*All* optional features turn to green on this one by default.)
+
+o FreeBSD 10.0 (amd64).
+  clang version 3.3 (trunk 178860) 20130405.
+
+o NetBSD 6.99.19 (amd64).
+  gcc (NetBSD nb1 20120916) 4.5.4.
+
+o OpenBSD 5.3 (i386).
+
+o Slackware 14 3.2.29-smp (i386).
+  gcc (GCC) 4.7.1.
+  clang version 3.0 (tags/RELEASE_30/final).
+
+o UnixWare 7.1.4.
+  You need to pass CFLAGS='-v -O' to the make(1) run.
+  (The -v compiler option gives some harmless warnings.)
 
 Program features yet to be overhauled
 -------------------------------------
@@ -104,10 +112,10 @@ Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
 2012-09-18 i make my way through the codebase, but have not yet taken
 a look (rather: at all) into the following modules/parts:
 
-  List view/threading, SSL, IMAP+, POP3+, SMTP+, Junk+Bayesian filter
+  List view/threading, Maildir, SSL, IMAP, POP3, SMTP, GSSAPI, Caching
 
 These will remain features of S-nail(1) and they will be looked at, and
 of course i will fix bugs when i notice them, but they are not yet part
-of the overhauled "S-nail core" (though SMTP is in daily use, and there
-now is a test-bed for IMAP and POP3).
+of the overhauled "S-nail core" (though SMTP and POP are in daily use,
+and IMAP is slowly coming along).  All that'll take *years*, though.
 You may also want to have a look at the file TODO.
