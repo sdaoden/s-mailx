@@ -192,12 +192,12 @@ static enum okay imap_preauth(struct mailbox *mp, const char *xserver,
 		const char *uhp);
 static enum okay imap_capability(struct mailbox *mp);
 static enum okay imap_auth(struct mailbox *mp, const char *uhp,
-		char *xuser, const char *pass);
+		char *xuser, char *pass);
 #ifdef USE_MD5
 static enum okay imap_cram_md5(struct mailbox *mp,
-			char *xuser, const char *xpass);
+			char *xuser, char *xpass);
 #endif
-static enum okay imap_login(struct mailbox *mp, char *xuser, const char *xpass);
+static enum okay imap_login(struct mailbox *mp, char *xuser, char *xpass);
 #ifdef	USE_GSSAPI
 static enum okay imap_gss(struct mailbox *mp, char *user);
 #endif	/* USE_GSSAPI */
@@ -205,10 +205,9 @@ static enum okay imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void imap_init(struct mailbox *mp, int n);
 static void imap_setptr(struct mailbox *mp, int newmail, int transparent,
 		int *prevcount);
-static char *imap_have_password(const char *server);
 static void imap_split(char **server, const char **sp, int *use_ssl,
 		const char **cp, char const **uhp, char const **mbx,
-		const char **pass, char **user);
+		char **pass, char **user);
 static int imap_setfile1(const char *xserver, int newmail, int isedit,
 		int transparent);
 static int imap_fetchdata(struct mailbox *mp, struct message *m,
@@ -332,15 +331,13 @@ imap_response_get(const char **cp)
 static void 
 imap_response_parse(void)
 {
-	static char	*parsebuf;
+	static char	*parsebuf; /* TODO Use pool */
 	static size_t	parsebufsize;
 	const char	*ip = imapbuf;
 	char	*pp;
 
-	if (parsebufsize < imapbufsize) {
-		free(parsebuf);
-		parsebuf = smalloc(parsebufsize = imapbufsize);
-	}
+	if (parsebufsize < imapbufsize)
+		parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
 	strcpy(parsebuf, imapbuf);
 	pp = parsebuf;
 	switch (*ip) {
@@ -547,6 +544,7 @@ imap_timer_off(void)
 	}
 }
 
+/* TODO OOH MY GOOOOOOOOD WE SIGLONGJMP() FROM WITHIN SIGNAL HANDLERS!!! */
 static void 
 imapcatch(int s)
 {
@@ -562,6 +560,7 @@ imapcatch(int s)
 	}
 }
 
+/* TODO OOOOOHH MYYYY GOOOOOD WE DO ALL SORTS OF UNSAFE STUFF IN SIGHDLSS! */
 static void
 maincatch(int s)
 {
@@ -697,11 +696,13 @@ rec_dequeue(void)
 			 */
 			break;
 		}
-		free(rq);
+		if (rq != NULL)
+			free(rq);
 		rq = rp;
 		rp = rp->rec_next;
 	}
-	free(rq);
+	if (rq != NULL)
+		free(rq);
 	record = recend = NULL;
 	if (ok == OKAY && exists > (unsigned long)msgCount) {
 		message = srealloc(message,
@@ -840,7 +841,7 @@ imap_capability(struct mailbox *mp)
 }
 
 static enum okay 
-imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
+imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 {
 	char	*var;
 	char	*auth;
@@ -882,73 +883,62 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, const char *pass)
  */
 #ifdef USE_MD5
 static enum okay 
-imap_cram_md5(struct mailbox *mp, char *xuser, const char *xpass)
+imap_cram_md5(struct mailbox *mp, char *xuser, char *xpass)
 {
-	char o[LINESIZE];
-	const char	*user, *pass;
-	char	*cp;
-	FILE	*queuefp = NULL;
-	enum okay	ok = STOP;
+	char o[LINESIZE], *user, *pass, *cp;
+	FILE *queuefp = NULL;
+	enum okay ok = STOP;
 
-retry:	if (xuser == NULL) {
-		if ((user = getuser(NULL)) == NULL)
-			return STOP;
-		user = savestr(user);
-	} else
-		user = xuser;
-	if (xpass == NULL) {
-		if ((pass = getpassword(NULL)) == NULL)
-			return STOP;
-		pass = savestr(pass);
-	} else
-		pass = xpass;
+jretry:
+	user = xuser;
+	pass = xpass;
+	if (! getcredentials(&user, &pass))
+		goto jleave;
+
 	snprintf(o, sizeof o, "%s AUTHENTICATE CRAM-MD5\r\n", tag(1));
-	IMAP_OUT(o, 0, return STOP)
+	IMAP_XOUT(o, 0, goto jleave, goto jleave);
 	imap_answer(mp, 1);
 	if (response_type != RESPONSE_CONT)
-		return STOP;
+		goto jleave;
+
 	cp = cram_md5_string(user, pass, responded_text);
-	IMAP_OUT(cp, MB_COMD, return STOP)
+	IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	if (ok == STOP) {
 		xpass = NULL;
-		goto retry;
+		goto jretry;
 	}
+jleave:
 	return ok;
 }
 #endif /* USE_MD5 */
 
 static enum okay 
-imap_login(struct mailbox *mp, char *xuser, const char *xpass)
+imap_login(struct mailbox *mp, char *xuser, char *xpass)
 {
 	char o[LINESIZE];
-	const char	*user, *pass;
-	FILE	*queuefp = NULL;
-	enum okay	ok = STOP;
+	char *user, *pass;
+	FILE *queuefp = NULL;
+	enum okay ok = STOP;
 
-retry:	if (xuser == NULL) {
-		if ((user = getuser(NULL)) == NULL)
-			return STOP;
-		user = savestr(user);
-	} else
-		user = xuser;
-	if (xpass == NULL) {
-		if ((pass = getpassword(NULL)) == NULL)
-			return STOP;
-		pass = savestr(pass);
-	} else
-		pass = xpass;
+jretry:
+	user = xuser;
+	pass = xpass;
+	if (! getcredentials(&user, &pass))
+		goto jleave;
+
 	snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
-			tag(1), imap_quotestr(user), imap_quotestr(pass));
-	IMAP_OUT(o, MB_COMD, return STOP)
+		tag(1), imap_quotestr(user), imap_quotestr(pass));
+	IMAP_XOUT(o, MB_COMD, goto jleave, goto jleave);
 	while (mp->mb_active & MB_COMD)
 		ok = imap_answer(mp, 1);
 	if (ok == STOP) {
 		xpass = NULL;
-		goto retry;
+		goto jretry;
 	}
-	return OKAY;
+jleave:
+	return ok;
 }
 
 #ifdef	USE_GSSAPI
@@ -1110,23 +1100,9 @@ imap_setptr(struct mailbox *mp, int newmail, int transparent, int *prevcount)
 		setdot(message);
 }
 
-static char *
-imap_have_password(const char *server)
-{
-	char *var, *cp;
-
-	var = ac_alloc(strlen(server) + 10);
-	strcpy(var, "password-");
-	strcpy(&var[9], server);
-	if ((cp = value(var)) != NULL)
-		cp = savestr(cp);
-	ac_free(var);
-	return cp;
-}
-
 static void
 imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
-	char const **uhp, char const **mbx, const char **pass, char **user)
+	char const **uhp, char const **mbx, char **pass, char **user)
 {
 	*sp = *server;
 	if (strncmp(*sp, "imap://", 7) == 0) {
@@ -1149,7 +1125,7 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 		*uhp = *sp;
 		*mbx = "INBOX";
 	}
-	*pass = imap_have_password(*uhp);
+	*pass = lookup_password_for_token(*uhp);
 	if ((*cp = last_at_before_slash(*uhp)) != NULL) {
 		*user = salloc(*cp - *uhp + 1);
 		memcpy(*user, *uhp, *cp - *uhp);
@@ -1173,8 +1149,8 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 {
 	struct sock so;
 	sighandler_type volatile saveint, savepipe;
-	char *server, *user, *account;
-	char const *cp, *sp, *pass, *mbx, *uhp;
+	char *server, *user, *pass, *account;
+	char const *cp, *sp, *mbx, *uhp;
 	int use_ssl = 0, prevcount = 0;
 	enum mbflags same_flags;
 
@@ -1192,7 +1168,7 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 	same_flags = mb.mb_flags;
 	same_imap_account = 0;
 	sp = protbase(server);
-	if (mb.mb_imap_account) {
+	if (mb.mb_imap_account && mb.mb_type == MB_IMAP) {
 		if (mb.mb_sock.s_fd > 0 &&
 				strcmp(mb.mb_imap_account, sp) == 0 &&
 				disconnected(mb.mb_imap_account) == 0)
@@ -1237,15 +1213,18 @@ imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
 		initbox(server);
 	}
 	mb.mb_type = MB_VOID;
-	mb.mb_active = MB_NONE;;
+	mb.mb_active = MB_NONE;
 	imaplock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
 	if (sigsetjmp(imapjmp, 1)) {
-		sclose(&so);
+		/* Not safe to use &so; save to use mb.mb_sock?? :-( TODO */
+		sclose(&mb.mb_sock);
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 		imaplock = 0;
+		mb.mb_type = MB_VOID;
+		mb.mb_active = MB_NONE;
 		return -1;
 	}
 	if (saveint != SIG_IGN)
@@ -1587,7 +1566,8 @@ out:	while (mp->mb_active & MB_COMD)
 	imaplock--;
 	if (ok == OKAY)
 		putcache(mp, m);
-	free(head);
+	if (head != NULL)
+		free(head);
 	if (interrupts)
 		onintr(0);
 	return ok;
@@ -2340,8 +2320,8 @@ enum okay
 imap_append(const char *xserver, FILE *fp)
 {
 	sighandler_type	saveint, savepipe;
-	char *server, *user;
-	char const *sp, *cp, *pass, *mbx, *uhp;
+	char *server, *user, *pass;
+	char const *sp, *cp, *mbx, *uhp;
 	int use_ssl;
 	enum okay ok = STOP;
 
@@ -2501,10 +2481,12 @@ imap_folders(const char *name, int strip)
 
 	cp = protbase(name);
 	sp = mb.mb_imap_account;
-	if (strcmp(cp, sp)) {
-		fprintf(stderr, "Cannot list folders on other than the "
-				"current IMAP account,\n\"%s\". "
-				"Try \"folders @\".\n", sp);
+	if (sp == NULL || strcmp(cp, sp)) {
+		fprintf(stderr, tr(502,
+			"Cannot perform `folders' but when on the very IMAP "
+			"account; the current one is\n  `%s' -- "
+			"try `folders @'.\n"),
+			(sp != NULL) ? sp : tr(503, "[NONE]"));
 		return;
 	}
 	fold = imap_fileof(name);

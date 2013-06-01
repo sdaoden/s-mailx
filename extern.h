@@ -88,6 +88,10 @@ char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
 
+/* Try to lookup a variable named "password-*token*".
+ * Return NULL or salloc()ed buffer */
+char *	lookup_password_for_token(char const *token);
+
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 char *	getrandstring(size_t length);
 
@@ -95,8 +99,9 @@ char *	getrandstring(size_t length);
 #define	hexchar(n)		((n)>9 ? (n)-10+'a' : (n)+'0')
 
 #ifdef USE_MD5
-/* MD5 checksum as hexadecimal string */
-char *	md5tohex(void const *vp);
+/* MD5 checksum as hexadecimal string, to be stored in *hex* */
+#define MD5TOHEX_SIZE		32
+char *	md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
 /* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
 char *	cram_md5_string(char const *user, char const *pass, char const *b64);
@@ -958,6 +963,13 @@ char *	getuser(char const *query);
  * success on NULL on error.
  * termios_state_reset() (def.h) must be called anyway */
 char *	getpassword(char const *query);
+
+/* Get both, user and password in the expected way; simply reuses a value that
+ * is set, otherwise calls one of the above.
+ * Returns true only if we have a user and a password.
+ * *user* will be savestr()ed if neither it nor *pass* have default value
+ * (so that termios_state.ts_linebuf carries only one) */
+bool_t	getcredentials(char **user, char **pass);
 
 /* vars.c */
 

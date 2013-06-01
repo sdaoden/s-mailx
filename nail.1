@@ -2,8 +2,7 @@
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
 .\"     Gunnar Ritter.  All rights reserved.
-.\" Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
-.\" All rights reserved.
+.\" Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -35,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 29, 2013
+.Dd Jun 01, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2308,15 +2307,27 @@ command prints out is followed by a formfeed character.
 Send messages to the
 .Ic pipe
 command without performing MIME and character set conversions.
-.It Va pop3-use-apop
-\*(OP If this variable is set the `APOP' authentication method is used
-when a connection to a POP3 server is initiated.
-The advantage of this method over the usual `USER/PASS' authentication
-is that the password is not sent over the network in clear text.
-The connection fails if the server does not support the `APOP' command.
-.It Va pop3-use-apop-user@host
-Enables
-.Va pop3-use-apop
+.It Va pop3-bulk-load
+\*(OP When accessing a POP3 server \*(UA loads the headers of the
+messages, and only requests the message bodies on user request.
+For the POP3 protocol this means that the message headers will be
+downloaded twice.
+If this option is set then \*(UA will download only complete messages
+from POP3 servers instead.
+It may be useful to
+.Ic define
+a macro that temporarily sets this option, then accesses a POP3 account
+that is known to only get small text messages, and then unsets this
+variable again.
+.It Va pop3-no-apop
+\*(OP Unless this variable is set the `APOP' authentication method
+will be used when connecting to a POP3 server that advertises support.
+The advantage of APOP over `USER/PASS' authentication is that the
+password is not sent in clear text over the wire and that only a single
+packet is sent for the user/password tuple.
+.It Va pop3-no-apop-user@host
+Disables usage of the `APOP' authentication method (see
+.Va pop3-no-apop )
 for a specific account.
 .It Va pop3-use-starttls
 \*(OP Causes \*(UA to issue a `STLS' command to make an unencrypted POP3
@@ -3610,29 +3621,29 @@ You should change the permissions of this file to 0600, see
 .Pp
 \*(UA supports different authentication methods for both IMAP and POP3.
 If Kerberos is used at your location,
-you can try to activate GSSAPI-based authentication by
+you can try to activate (the optional) GSSAPI-based authentication via
 .Pp
 .Dl set imap-auth=gssapi
 .Pp
-The advantage of this method is that \*(UA does not need to know your
-password at all, nor needs to send sensitive data over the network.
-Otherwise, the options
+The advantage of this method is that \*(UA doesn't need to know your
+password at all, nor does it have to send sensitive data over the network.
+If that isn't possible, try to use authentication methods that at least
+avoid sending the password in clear over the wire, which is especially
+important if SSL/TLS cannot be used, e.g.,
 .Pp
 .Dl set imap-auth=cram-md5
-.Dl set pop3-use-apop
 .Pp
-for IMAP and POP3, respectively, offer authentication methods that avoid
-to send the password in clear text over the network,
-which is especially important if SSL/TLS cannot be used.
-If the server does not offer any of these authentication methods,
+For POP3 \*(UA will try to use the `APOP' mechanism automatically unless
+explicitly disabled.
+If the server does not offer any such authentication methods,
 conventional user/password based authentication must be used.
-It is sometimes helpful to set the
+It is sometimes helpful, especially when setting up an account or when
+there are authentification problems, to enable verbosity by setting the
 .Va verbose
-option when authentication problems occur.
-\*(UA will display all data sent to the server in clear text on the
-screen with this option, including passwords.
-You should thus take care that no unauthorized person can look at your
-terminal when this option is set.
+option \(en \*(UA will display all data sent to the server in clear text
+on the screen when this option is set.
+(Because this may also include passwords you should take care that no
+unauthorized person can look at your terminal when this option is set.)
 .Pp
 If you regularly use the same workstation to access IMAP accounts,
 you can greatly enhance performance by enabling local caching of IMAP

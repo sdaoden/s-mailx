@@ -472,3 +472,25 @@ getpassword(char const *query)
 		fputc('\n', stdout);
 	return pass;
 }
+
+bool_t
+getcredentials(char **user, char **pass)
+{
+	bool_t rv = TRU1;
+	char *u = *user, *p = *pass;
+
+	if (u == NULL) {
+		if ((u = getuser(NULL)) == NULL)
+			rv = FAL0;
+		else if (p == NULL)
+			u = savestr(u);
+		*user = u;
+	}
+
+	if (p == NULL) {
+		if ((p = getpassword(NULL)) == NULL)
+			rv = FAL0;
+		*pass = p;
+	}
+	return rv;
+}

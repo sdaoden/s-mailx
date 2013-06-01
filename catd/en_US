@@ -211,7 +211,7 @@ $set 1
 201 Cannot associate a name with uid %d\n
 202 "%s": not a group\n
 203 "%s": undefined variable\n
-204 --- DELETED ---
+204 No POP3 `APOP' support available, sending password in clear text\n
 205 More than one file given with -f\n
 206 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 207 $%c%c%3d %s%-*.*s  %16.16s %s "%.*s"\n$
@@ -283,7 +283,7 @@ $set 1
 273 Unknown IMAP authentication method: %s\n
 274 Unknown SMTP authentication method: %s\n
 275 User and password are necessary for SMTP authentication.\n
-276 Could not determine timestamp from server greeting.  Can't use APOP.\n
+276 POP3 `APOP' authentication failed, maybe try setting *pop3-no-apop*\n
 277 No CRAM-MD5 support compiled in.\n
 278 Enter filename for part %s (%s)
 279 ... skipping this\n
@@ -483,3 +483,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 
 500 $ done.\n
 501 `folder' cannot be set to a flat, readonly POP3 account\n
+502 Cannot perform `folders' but when on the very IMAP account;\
+ the current one is\n\
+  `%s' -- try `folders @'.\n
+503 [NONE]
