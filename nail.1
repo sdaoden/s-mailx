@@ -92,12 +92,9 @@ with lines replaced by messages.
 It is based on Heirloom mailx that is based upon Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 .Xr mailx 1
-command,
-and offers extensions for MIME, IDNA, IMAP, POP3, SMTP and S/MIME,
-most of which being compile-time options.
-\*(UA provides enhanced features for interactive use.
-It is also usable as a mail batch language,
-both for sending and receiving mail.
+command and offers (mostly optional) extensions for IDNA, MIME, S/MIME,
+SMTP, POP3 and IMAP.
+It is usable as a mail batch language.
 .Pp
 In the following list of supported command line options,
 .Fl D ,
@@ -107,9 +104,8 @@ In the following list of supported command line options,
 .Fl N
 and
 .Fl v
-are implemented by setting the corresponding variable via the
-.Fl S
-option.
+are implemented by means of setting the respective option, as via
+.Fl S .
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
@@ -184,7 +180,7 @@ more than one machine, because the contents of that file may differ
 between them.
 .It Fl O Ar mta-option
 Pass the given option through to the mail-transfer-agent (MTA).
-This option has no effect when SMTP is used for sending mail.
+This option has no effect when mail is send via SMTP.
 E.g., use
 .Ns ` Ns Li "-O-h -Onumber" Ns '
 to specify the hop count for an old
@@ -240,9 +236,9 @@ variables etc. are not reflected.
 .It Fl V
 Print \*(UA's version and exit.
 .It Fl v
-Set the
+Sets the
 .Va verbose
-variable, which enables more verbose messages on the terminal.
+option, which enables more verbose messages.
 .It Fl ~
 Enable tilde escapes even if not in interactive mode.
 .El
@@ -276,11 +272,10 @@ then prints out a one line header of each message found.
 The current message is initially the first message (numbered 1) and can
 be printed using the
 .Ic print
-command which can be abbreviated `p'.
-The user can move among the messages much as he moves between lines in
-.Xr ed 1,
-with the commands `+' and `\-' moving backwards and forwards,
-and simple numbers.
+command, which can be abbreviated `p'.
+The commands `p+' and `p\-' move forward to the next and backward to the
+previous message, respectively, and messages can be addressed directly
+by specifying their message number, as in `p 1'.
 .\" --  >8  --  8<  --
 .Ss "Disposing of mail"
 After examining a message the user can
@@ -698,7 +693,7 @@ locale environment of the system,
 and that stays unaffected by the content of an overwritten
 .Va ttycharset
 variable.
-(Note that this mostly matters for interactive usage of \*(UA, though.
+(This is mostly an issue when interactively using \*(UA, though.
 It is actually possible to send mail in a completely "faked" locale
 environment.)
 .Pp
