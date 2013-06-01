@@ -1146,7 +1146,8 @@ imap_setfile(const char *xserver, int newmail, int isedit)
 }
 
 static int 
-imap_setfile1(const char *xserver, int newmail, int isedit, int transparent)
+imap_setfile1(const char *xserver, int newmail, int isedit,
+	int volatile transparent)
 {
 	struct sock so;
 	sighandler_type volatile saveint, savepipe;
