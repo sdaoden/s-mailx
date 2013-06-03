@@ -662,8 +662,8 @@ cache_remove(const char *name)
 				 (dp->d_name[1] == '.' &&
 				  dp->d_name[2] == '\0')))
 			continue;
-		n = strlen(dp->d_name);
-		if (pathend + n + 1 > pathsize)
+		n = strlen(dp->d_name) + 1;
+		if (pathend + n > pathsize)
 			path = srealloc(path, pathsize = pathend + n + 30);
 		memcpy(path + pathend, dp->d_name, n);
 		if (stat(path, &st) < 0 || (st.st_mode&S_IFMT) != S_IFREG)

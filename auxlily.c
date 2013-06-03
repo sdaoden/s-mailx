@@ -276,7 +276,7 @@ which_protocol(const char *name)
 		 * TODO into maildir! */
 	file:	p = PROTO_FILE;
 		np = ac_alloc((sz = strlen(name)) + 5);
-		memcpy(np, name, sz);
+		memcpy(np, name, sz + 1);
 		if (stat(name, &st) == 0) {
 			if (S_ISDIR(st.st_mode)) {
 				strcpy(&np[sz], "/tmp");
