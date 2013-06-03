@@ -213,7 +213,7 @@ bangexp(char **str, size_t *size)
 				sz = strlen(lastbang);
 				bangbuf = srealloc(bangbuf, bangbufsize += sz);
 				changed++;
-				memcpy(&bangbuf[j], lastbang, sz);
+				memcpy(bangbuf + j, lastbang, sz + 1);
 				j += sz;
 				i++;
 				continue;
@@ -231,15 +231,15 @@ bangexp(char **str, size_t *size)
 		printf("!%s\n", bangbuf);
 		fflush(stdout);
 	}
-	sz = j;
-	if (sz >= *size)
-		*str = srealloc(*str, *size = sz + 1);
-	memcpy(*str, bangbuf, sz + 1);
-	if (sz >= lastbangsize)
-		lastbang = srealloc(lastbang, lastbangsize = sz + 1);
-	memcpy(lastbang, bangbuf, sz + 1);
+	sz = j + 1;
+	if (sz > *size)
+		*str = srealloc(*str, *size = sz);
+	memcpy(*str, bangbuf, sz);
+	if (sz > lastbangsize)
+		lastbang = srealloc(lastbang, lastbangsize = sz);
+	memcpy(lastbang, bangbuf, sz);
 	free(bangbuf);
-	return(0);
+	return 0;
 }
 
 /*ARGSUSED*/

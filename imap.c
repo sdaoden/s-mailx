@@ -849,8 +849,8 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 	if (!(mp->mb_active & MB_PREAUTH))
 		return OKAY;
 	if ((auth = value("imap-auth")) == NULL) {
-		size_t i = strlen(uhp);
-		var = ac_alloc(i + 11);
+		size_t i = strlen(uhp) + 1;
+		var = ac_alloc(i + 10);
 		memcpy(var, "imap-auth-", 10);
 		memcpy(var + 10, uhp, i);
 		auth = value(var);

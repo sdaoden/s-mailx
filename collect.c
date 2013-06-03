@@ -446,12 +446,11 @@ jcont:
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-				(options & OPT_INTERACTIVE) &&
-				(value("dot") != NULL ||
-					value("ignoreeof") != NULL))
+				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
+				(boption("dot") || boption("ignoreeof")))
 			break;
 		if (linebuf[0] != escape || ! (options &
-				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
+				(OPT_INTERACTIVE|OPT_TILDE_FLAG))) {
 			/* TODO calls putline(), which *always* appends LF;
 			 * TODO thus, STDIN with -t will ALWAYS end with LF,
 			 * TODO even if no trailing LF and QP CTE */
