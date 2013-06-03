@@ -146,10 +146,10 @@ update-version:
 	*const version = \"$${VERSION:-huih buh}\";"
 
 update-release:
-	echo 'Name of release tag:'; \
-	read REL; \
-	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues"; \
-	read i; \
+	echo 'Name of release tag:';\
+	read REL;\
+	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues";\
+	read i;\
 	FREL=`echo $${REL} | sed 's/\./_/g'` && \
 	$(MAKE) update-version && \
 	git add version.c && \
@@ -170,6 +170,6 @@ update-release:
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail && \
 	echo 'All seems fine' && \
 	make distclean && \
-	make WANT_ASSERTS=1 &&
+	make WANT_ASSERTS=1 && \
 	./s-nail -s "Announcing S-nail $${REL}" -c nail-cc nail && \
 	echo 'Uff.'
