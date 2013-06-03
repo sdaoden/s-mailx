@@ -2,11 +2,190 @@ S - n a i l  N e w s
 ====================
 
   The big big MIME and send layer rewrite will come and cumulate in
-  v15.0, most likely mid to late 2014.
+  v15.0, most likely late (maybe christman ,) 2014.
   Until then there is one more minor version to be expected, one that
   fixes thread sorting, thread selection, adds a %n format for
   *headline* and other minor stuff that springs into existence in the
-  meanwhile.  Then long time nothing.
+  meanwhile.  v14.4 will be released this year, but it may come late.
+
+v14.3, 2013-06-03
+-----------------
+
+Thanks to Gavin Troy (gavtroy AT gmail DOT com) who inspired the @ and
+@& pipe-command prefixes.
+
+Random notes
+^^^^^^^^^^^^
+
+- S-nail has been registered at Coverity Scan, and the third build
+  (after topic branches *coverity-444* and *coverity-444.2*) produced no
+  more errors.  (<http://scan2.coverity.com/projects/444>.)
+  (Then i used POP3 and IMAP and fixed some SIGSEGV. ;)  Still didn't
+  look at S/MIME, Maildir, caches etc... o()
+
+- S-nail v14.3 doesn't produce any spurious linker warnings on
+  OpenBSD 5.3; all (correct!) use cases of strcpy() and strcat() have
+  been replaced.  [7bdf330, 2c8d7cb]
+
+- This is the first release with a (though very short) review -- i'm
+  slowly getting comfortable with the code.  (But i'm too stupid to
+  perform reviews on patches, 'always did reviews on C++/Perl/xy
+  classes.  Aaah, how beautiful ... objects.)
+
+ChangeLog
+^^^^^^^^^
+
+- It is now possible to "call" macros without using the `call' command
+  by prefixing them with a tilde, as in
+
+    ? define au {
+      echo auau
+    }
+    ? ~au
+    auau
+  [93ea8acd]
+
+- Added the *pop3-bulk-load* option.
+  Yes, there are mailing lists etc. which use plain text email, and,
+  there, headers are often more data than the body, so it doesn't make
+  sense to download the headers twice (unfortunately POP3 doesn't
+  support a BODY command; if only it would support a RETRDELE command..)
+  [978e13a7]
+
+  And yep, from this changeset on i personally use S-nail even over the
+  network, no longer my stale and incomplete S-Postman.  And i can tell
+  you, this damn thing is so silent, i always set *verbose* not to go
+  grazy ... but .. i hate to say it .. the healing will take time.
+
+- POP3 will now try to use APOP authentication automatically; thus the
+  *use-apop* stuff has been replaced by *pop3-no-apop* options (just in
+  case there are POP3 servers which advertise they support APOP but in
+  fact fail to do so; anyone?)  [6c3c5575]
+
+- Some IMAP segmentation violations have been fixed:
+
+    ? fi imaps://user1@localhost
+    Password:Interrupt            <- CNTRL-C
+    ? set imap-auth=cram-md5      <- hey, 'forgot to set correct auth
+    ? fi imaps://user1@localhost
+    IMAP write error: error:140D00CF:SSL routines:SSL_write:protocol is shutdown
+    Segmentation fault
+
+  And also, when *folder* was set to an IMAP account but hasn't been
+  opened yet, and no IMAP account ever has been opened, a string
+  comparison against a NULL pointer yet caused a SIGSEGV, too.
+  [417c01f, 413c23d9]
+
+- `set folder=' now tolerates `%:' and expands PROTOs stuff etc.:
+
+    ? short xp %:imaps://user1@localhost
+    ? set folder=xp
+
+  Pure convenience so that it doesn't need to be typed twice (still no
+  completion in sight...).  Note that setting *folder* to a POP3 box
+  will now be actively rejected.  [b12b17f5]
+
+  NOTE: while implementing this i've detected another dead-end
+  miscondition in S-nail -- you really should ensure that your target
+  folder/box is connected before you leave your current POP3/network
+  based folder, if there is data to be moved to the target (i.e.,
+  mbox).  This problem will persist for a long time due to the way the
+  entire codebase functions; i hope i can find a short/mid-term
+  solution, but the real healing will take years.  The mentioned
+  solution would at least make S-nail interruptable, currently we get
+  stuck and interrupts are blocked...
+
+- If you're using S-nail on Mac OS X and have seen some segmentation
+  faults when expanding shell stuff then you may be pleased to hear that
+  S-nail now works around an Apple bug.  [63273772]
+
+- The builtin mime.types have been corrected and a lot of new ones have
+  been added.  New data from
+  <http://svn.apache.org/viewvc/tika/trunk/tika-core/src/main/resources/\
+  org/apache/tika/mime/tika-mimetypes.xml>, thanks!  [8072fcb6]
+
+- BEWARE: handling of command line arguments has changed a bit!
+
+  1. The -D, -d, -E, -i, -N and -v command line options are now
+  implemented by means of setting the respective option, as via -S.
+  (This means that from now on resource files can only *temporarily*
+  overwrite command line arguments.)
+
+  2. The -I and -T command line arguments have been dropped.
+  It seems Gunnar Ritter stopped developing nail/Heirloom mailx once he
+  started implementing Newsreader functionality.  It'll take a long time
+  until we get there, so for now drop all the Newsreader stuff.
+
+  3. Handling of -r has been changed.  E.g.:
+
+    s-nail -A test -Snoeditalong -r 'La mort est <fem@me>' -d
+    ? set from=bummer@m1.com
+    ? m t1
+    Subject: s1
+    .
+    Sendmail arguments: "sendmail" "-i" "-r" "fem@me" "t1"
+    ? set from=bummer@m2.com
+    ? m t2
+    Subject: s2
+    Sendmail arguments: "sendmail" "-i" "-r" "fem@me" "t2"
+
+  ...
+
+    s-nail -A test -Snoeditalong -r '' -d
+    ? set from=bummer@m1.com
+    ? m t1
+    Subject: s1
+    .
+    Sendmail arguments: "sendmail" "-i" "-r" "bummer@m1.com" "t1"
+    ? set from=bummer@m2.com
+    ? m t2
+    Subject: s2
+    Sendmail arguments: "sendmail" "-i" "-r" "bummer@m2.com" "t2"
+
+  [*main-fun-cleanup* topic branch]
+
+- *smime-sign-include-certs-** stuff works again, oops..  [9a8597c6]
+
+- A whole lot of smallest and small fixes due to registration at
+  Coverity Scan, as project 444.  Error handling in S-nail is ridiculous.
+  [*coverity-444* and *coverity-444.2* topic branches.  The sheer number
+  of fixes was the reason to sit down and go for unplanned S-nail v14.3]
+
+- *idna-strict-checks* has been dropped.  It's silly to have in a MUA,
+  especially given that GNU LibIDN doesn't ship with a lot of rules.
+  We were able to drop quite some code (and a use-after-free, too :().
+  [c81fd41d]
+
+- The ~p tilde command displays attachments more verbose.
+  Until the big big MIME and send layer rewrite :) this is intermediate
+  since until then we do not really know neither MIME type nor charset
+  of an attachment at the time this is displayed (for sure).  Yet
+  i think it's nicer to show what we have than keep it the way it was.
+  [60e70463]
+
+- @ and @& shell command prefixes have been added for the pipe-MIMETYPE
+  mechanism.  The former suppresses filters if multiple messages are
+  displayed at once, the latter adds asynchronous program execution on
+  top of that.  E.g., to display PDF documents, but only if you
+  *explicitly* address the message *alone and by itself*, and without
+  blocking S-nail and the $PAGER, do:
+
+    set pipe-application/pdf="@&cat >"${TMPDIR}"/s-nail${$}.pdf;\
+      mupdf "${TMPDIR}"/s-nail${$}.pdf; rm "${TMPDIR}"/s-nail${$}.pdf"
+
+  (Inspired by Gavin Troy.)  [a8d724b3]
+
+  Note: most of that had been posted to nail-devel@ already, but it was
+  tweaked ([251b636]) so that you now *really* have to say `p MSGNO' to
+  get there.
+
+- The NETLESS CONFIG= has been removed; it is almost identical to
+  MINIMAL now (i.e., without WANT_JUNK and WANT_SCORE).
+
+- WANT_JUNK and WANT_SCORE have been disabled by default.
+  They don't seem to be too useful; i hope i can implement
+  a SpamAssassin hook for (downloaded) mail messages for v14.4.
+  If so, expect these two "modules" to become removed completely.
 
 v14.2.2, 2013-05-01
 -------------------
