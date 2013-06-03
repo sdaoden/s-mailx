@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Macros.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -39,12 +39,6 @@
 
 #include "rcv.h"
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Macros.
- */
 
 #define	MAPRIME		29
 
@@ -255,7 +249,7 @@ maexec(struct macro *mp)
 	char const *sp, *smax;
 	char *copy, *cp;
 
-	unset_allow_undefined = 1;
+	unset_allow_undefined = TRU1;
 	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
 		sp = lp->l_line;
 		smax = lp->l_line + lp->l_linesize;
@@ -271,7 +265,7 @@ maexec(struct macro *mp)
 		r = execute(copy, 0, (size_t)(cp - copy));
 		ac_free(copy);
 	}
-	unset_allow_undefined = 0;
+	unset_allow_undefined = FAL0;
 	return (r);
 }
 

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Constants, types etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -87,18 +87,6 @@
  * Funs, CC support etc.
  */
 
-#undef ISPOW2
-#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
-#undef MIN
-#define MIN(A, B)	((A) < (B) ? (A) : (B))
-#undef MAX
-#define MAX(A, B)	((A) < (B) ? (B) : (A))
-#undef ABS
-#define ABS(A)		((A) < 0 ? -(A) : (A))
-
-#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
-#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
-
 /* Members in constant array */
 #define ARRAY_COUNT(A)	(sizeof(A) / sizeof(A[0]))
 
@@ -106,8 +94,20 @@
 #define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
 
 /* Casts-away (*NOT* cast-away) */
-#define UNCONST(P)	((void*)(unsigned long)(const void*)(P))
-#define UNVOLATILE(P)	((void*)(unsigned long)(volatile void*)(P))
+#define UNCONST(P)	((void*)(unsigned long)(void const*)(P))
+#define UNVOLATILE(P)	((void*)(unsigned long)(void volatile*)(P))
+
+/* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
+#if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
+# define STRING(X)	#X
+# define XSTRING(X)	STRING(X)
+# define CONCAT(S1,S2)	_CONCAT(S1, S2)
+# define _CONCAT(S1,S2)	S1 ## S2
+#else
+# define STRING(X)	"X"
+# define XSTRING	STRING
+# define CONCAT(S1,S2)	S1/**/S2
+#endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
   /* Variable size arrays and structure fields */
@@ -123,6 +123,18 @@
 # define INLINE
 # define SINLINE		static
 #endif
+
+#undef ISPOW2
+#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
+#undef MIN
+#define MIN(A, B)	((A) < (B) ? (A) : (B))
+#undef MAX
+#define MAX(A, B)	((A) < (B) ? (B) : (A))
+#undef ABS
+#define ABS(A)		((A) < 0 ? -(A) : (A))
+
+#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
+#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
 
 /* Compile-Time-Assert */
 #define CTA(TEST)	_CTA_1(TEST, __LINE__)
@@ -202,20 +214,21 @@ typedef void (		*sighandler_type)(int);
 
 enum user_options {
 	OPT_NONE	= 0,
-	OPT_DEBUG	= 1<< 0,	/* Debug flag set */
-	OPT_VERBOSE	= 1<< 1,	/* Verbose flag (implied by *debug*) */
-	OPT_RCVMODE	= 1<< 2,	/* True if receiving mail */
-	OPT_EXISTONLY	= 1<< 3,
-	OPT_HEADERSONLY	= 1<< 4,
-	OPT_SENDFLAG	= 1<< 5,
-	OPT_NOSRC	= 1<< 6,
-	OPT_E_FLAG	= 1<< 7,
-	OPT_F_FLAG	= 1<< 8,
-	OPT_I_FLAG	= 1<< 9,
-	OPT_N_FLAG	= 1<<10,
-	OPT_R_FLAG	= 1<<11,
-	OPT_t_FLAG	= 1<<12,
-	OPT_TILDE_FLAG	= 1<<13		/* -~ */
+	OPT_DEBUG	= 1<< 0,	/* -d / *debug* */
+	OPT_VERBOSE	= 1<< 1,	/* -v / *verbose* */
+	OPT_EXISTONLY	= 1<< 2,	/* -e */
+	OPT_HEADERSONLY	= 1<< 3,	/* -H */
+	OPT_NOSRC	= 1<< 4,	/* -n */
+	OPT_E_FLAG	= 1<< 5,	/* -E / *skipemptybody* */
+	OPT_F_FLAG	= 1<< 6,	/* -F */
+	OPT_N_FLAG	= 1<< 7,	/* -N / *header* */
+	OPT_R_FLAG	= 1<< 8,	/* -R */
+	OPT_r_FLAG	= 1<< 9,	/* -r (plus option_r_arg) */
+	OPT_t_FLAG	= 1<<10,	/* -t */
+	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
+
+	OPT_SENDMODE	= 1<<16,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1<<17		/* isatty(0) / isatty(1) */
 };
 
 enum okay {
@@ -286,8 +299,8 @@ enum tdflags {
 	 * NOTE: _TD_EOF and _TD_BUFCOPY may be ORd with enum conversion and
 	 * enum sendaction, and may thus NOT clash with their bit range!
 	 */
-	_TD_EOF		= 1<<30,/* EOF seen, last round! */
-	_TD_BUFCOPY	= 1<<31	/* Buffer may be constant, copy it */
+	_TD_EOF		= 1<<14,/* EOF seen, last round! */
+	_TD_BUFCOPY	= 1<<15	/* Buffer may be constant, copy it */
 };
 
 enum protocol {
@@ -318,6 +331,21 @@ struct time_current {
 	struct tm	tc_local;
 	char		tc_ctime[32];
 };
+
+struct termios_state {
+	struct termios	ts_tios;
+	char		*ts_linebuf;
+	size_t		ts_linesize;
+	bool_t		ts_needs_reset;
+};
+
+#define termios_state_reset() \
+do {\
+	if (termios_state.ts_needs_reset) {\
+		tcsetattr(0, TCSADRAIN, &termios_state.ts_tios);\
+		termios_state.ts_needs_reset = FAL0;\
+	}\
+} while (0)
 
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
@@ -446,10 +474,6 @@ struct mimepart {
 	char	*m_partstring;		/* part level string */
 	char	*m_filename;		/* attachment filename */
 };
-
-/* For "pipe-" handlers (based on .m_ct_type_plain) */
-#define MIME_CONTENT_PIPECMD_FORCE_TEXT(CMD)	\
-	((CMD) != NULL && (CMD)[0] == '@' && (CMD)[1] == '\0')
 
 struct message {
 	enum mflag	m_flag;		/* flags */
@@ -743,7 +767,7 @@ struct shortcut {
 /*
  * Kludges to handle the change from setexit / reset to setjmp / longjmp
  */
-#define setexit()	sigsetjmp(srbuf, 1)
+#define setexit()	(void)sigsetjmp(srbuf, 1)
 #define reset(x)	siglongjmp(srbuf, x)
 
 /*
@@ -858,9 +882,12 @@ extern uc_it const 	class_char[];
  * useful just before closing an old file that was opened
  * for read/write.
  */
-#define ftrunc(stream) do {					\
-	fflush(stream);						\
-	ftruncate(fileno(stream), (off_t)ftell(stream));	\
+#define ftrunc(stream) do {\
+	off_t off;\
+	fflush(stream);\
+	off = ftell(stream);\
+	if (off >= 0)\
+		ftruncate(fileno(stream), off);\
 } while (0)
 
 /*

@@ -15,6 +15,7 @@ SID		= s-
 
 MAILSPOOL	= /var/mail
 SENDMAIL	= /usr/sbin/sendmail
+SENDMAIL_PROGNAME = sendmail
 SHELL		= /bin/sh
 STRIP		= strip
 INSTALL		= /usr/bin/install
@@ -46,9 +47,10 @@ SYSCONFRC	= $(SYSCONFDIR)/$(SID)$(NAIL).rc
 
 # Binaries builtin paths
 PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
-			-DSENDMAIL='"$(SENDMAIL)"'
+		-DSENDMAIL='"$(SENDMAIL)"' \
+		-DSENDMAIL_PROGNAME='"$(SENDMAIL_PROGNAME)"'
 
-OBJ = auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
+OBJ = attachments.o auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o fio.o head.o \
 	imap.o imap_cache.o imap_search.o junk.o lex.o list.o lzw.o \
 	macro.o maildir.o main.o md5.o mime.o mime_cte.o names.o \
@@ -144,10 +146,10 @@ update-version:
 	*const version = \"$${VERSION:-huih buh}\";"
 
 update-release:
-	echo 'Name of release tag:'; \
-	read REL; \
-	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues"; \
-	read i; \
+	echo 'Name of release tag:';\
+	read REL;\
+	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues";\
+	read i;\
 	FREL=`echo $${REL} | sed 's/\./_/g'` && \
 	$(MAKE) update-version && \
 	git add version.c && \
@@ -166,4 +168,8 @@ update-release:
 		>> "$(TMPDIR)/$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 && \
 	echo "-put $(TMPDIR)/$(SID)$(NAIL)-$${FREL}.tar.gz" | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail && \
-	echo 'All seems fine'
+	echo 'All seems fine' && \
+	make distclean && \
+	make WANT_ASSERTS=1 && \
+	./s-nail -s "Announcing S-nail $${REL}" -c nail-cc nail && \
+	echo 'Uff.'

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Generally useful tty stuff.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,16 +37,10 @@
  * SUCH DAMAGE.
  */
 
-/*
- * Mail -- a mail program
- *
- * Generally useful tty stuff.
- */
-
 #include "rcv.h"
 
-#include <errno.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -427,12 +421,76 @@ jleave:
 int 
 yorn(char const *msg)
 {
-	char	*cp;
+	char *cp;
 
-	if (value("interactive") == NULL)
-		return (1);
+	if (! (options & OPT_INTERACTIVE))
+		return 1;
 	do if ((cp = readtty(msg, NULL)) == NULL)
-		return (0);
+		return 0;
 	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
 	return (*cp == 'y' || *cp == 'Y');
+}
+
+char *
+getuser(char const *query)
+{
+	char *user = NULL;
+
+	fputs((query != NULL) ? query : "User: ", stdout);
+	fflush(stdout);
+
+	if (readline(stdin, &termios_state.ts_linebuf,
+			&termios_state.ts_linesize) >= 0)
+		user = termios_state.ts_linebuf;
+	termios_state_reset();
+	return user;
+}
+
+char *
+getpassword(char const *query)
+{
+	struct termios tios;
+	char *pass = NULL;
+
+	fputs((query != NULL) ? query : "Password: ", stdout);
+	fflush(stdout);
+
+	if (is_a_tty[0]) {
+		tcgetattr(0, &termios_state.ts_tios);
+		memcpy(&tios, &termios_state.ts_tios, sizeof tios);
+		termios_state.ts_needs_reset = TRU1;
+		tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+		tcsetattr(0, TCSAFLUSH, &tios);
+	}
+
+	if (readline(stdin, &termios_state.ts_linebuf,
+			&termios_state.ts_linesize) >= 0)
+		pass = termios_state.ts_linebuf;
+	termios_state_reset();
+
+	if (is_a_tty[0])
+		fputc('\n', stdout);
+	return pass;
+}
+
+bool_t
+getcredentials(char **user, char **pass)
+{
+	bool_t rv = TRU1;
+	char *u = *user, *p = *pass;
+
+	if (u == NULL) {
+		if ((u = getuser(NULL)) == NULL)
+			rv = FAL0;
+		else if (p == NULL)
+			u = savestr(u);
+		*user = u;
+	}
+
+	if (p == NULL) {
+		if ((p = getpassword(NULL)) == NULL)
+			rv = FAL0;
+		*pass = p;
+	}
+	return rv;
 }

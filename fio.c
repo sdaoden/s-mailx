@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ File I/O.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,19 +39,20 @@
 
 #include "rcv.h"
 
-#include <errno.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>
 #endif
 
 #ifdef HAVE_SOCKETS
+# include <sys/socket.h>
 # include <netdb.h>
 # include <netinet/in.h>
-# include <sys/socket.h>
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
@@ -66,12 +67,6 @@
 #endif
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * File I/O.
- */
 
 enum expmode {
 	EXP_FULL,
@@ -140,7 +135,7 @@ jnext:	dyn = 0;
 		findmail((res[1] ? res + 1 : myname),
 			(res[1] != '\0' || option_u_arg), cbuf, sizeof cbuf);
 		res = cbuf;
-		goto jislocal;
+		goto jnext;/*jislocal; XXX */
 	case '#':
 		if (res[1] != 0)
 			break;
@@ -164,11 +159,12 @@ jnext:	dyn = 0;
 	}
 
 	if (res[0] == '+' && getfold(cbuf, sizeof cbuf) >= 0) {
-		res = str_concat_csvl(&s,
-			cbuf, ((which_protocol(cbuf) == PROTO_IMAP &&
-					strcmp(cbuf, protbase(cbuf))) /* XXX */
-				? "" : "/"),
-			res + 1, NULL)->s;
+		char const *cp = "/";
+
+		if (which_protocol(cbuf) == PROTO_IMAP &&
+				strcmp(cbuf, protbase(cbuf)))
+			cp = "";
+		res = str_concat_csvl(&s, cbuf, cp, res + 1, NULL)->s;
 		dyn = 1;
 		if (cbuf[0] == '%' && cbuf[1] == ':')
 			goto jnext;
@@ -196,7 +192,7 @@ jislocal:
 			break;
 		default:
 			fprintf(stderr, tr(280,
-				"\"%s\": only a local file or directory may "
+				"`%s': only a local file or directory may "
 				"be used\n"), name);
 			res = NULL;
 			break;
@@ -225,6 +221,11 @@ _globname(char const *name)
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, NULL);
+	/* Mac OS X Snow Leopard doesn't init fields on error, causing SIGSEGV
+	 * in wordfree(3) */
+#ifdef __APPLE__
+	memset(&we, 0, sizeof we);
+#endif
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
@@ -255,7 +256,7 @@ _globname(char const *name)
 	}
 jleave:
 	wordfree(&we);
-	return (cp);
+	return cp;
 
 #else /* !HAVE_WORDEXP */
 	extern int wait_status;
@@ -267,16 +268,16 @@ jleave:
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
-		return (NULL);
+		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
 	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
+		shell = UNCONST(SHELL);
 	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);
-		return (NULL);
+		return NULL;
 	}
 	close(pivec[1]);
 
@@ -287,21 +288,21 @@ again:
 			goto again;
 		perror("read");
 		close(pivec[0]);
-		return (NULL);
+		return NULL;
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
 		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
-		return (NULL);
+		return NULL;
 	}
 	if (l == 0) {
 		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
-		return (NULL);
+		return NULL;
 	}
 	if (l == sizeof xname) {
 		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
 			name);
-		return (NULL);
+		return NULL;
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
@@ -311,7 +312,7 @@ again:
 		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
-	return (savestr(xname));
+	return savestr(xname);
 #endif /* !HAVE_WORDEXP */
 }
 
@@ -641,7 +642,7 @@ setdot(struct message *mp)
 {
 	if (dot != mp) {
 		prevdot = dot;
-		did_print_dot = 0;
+		did_print_dot = FAL0;
 	}
 	dot = mp;
 	uncollapse1(dot, 0);
@@ -678,17 +679,18 @@ append(struct message *mp)
  * Delete a file, but only if the file is a plain file.
  */
 int
-rm(char *name)
+rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 {
 	struct stat sb;
+	int ret = -1;
 
 	if (stat(name, &sb) < 0)
-		return(-1);
-	if (!S_ISREG(sb.st_mode)) {
+		;
+	else if (! S_ISREG(sb.st_mode))
 		errno = EISDIR;
-		return(-1);
-	}
-	return(unlink(name));
+	else
+		ret = unlink(name);
+	return ret;
 }
 
 static int sigdepth;		/* depth of holdsigs() */
@@ -756,46 +758,74 @@ findmail(char const *user, int force, char *buf, int size)
 {
 	char *mbox, *cp;
 
-	if (strcmp(user, myname) == 0 && !force &&
-			(cp = value("folder")) != NULL &&
-			which_protocol(cp) == PROTO_IMAP) {
-		snprintf(buf, size, "%s/INBOX", protbase(cp));
-	} else if (force || (mbox = value("MAIL")) == NULL) {
+	if (strcmp(user, myname) == 0 && ! force &&
+			(cp = value("folder")) != NULL) {
+		mbox = UNCONST("");
+		switch (which_protocol(cp)) {
+		case PROTO_IMAP:
+			mbox = UNCONST("/INBOX");
+			/* FALLTRHU */
+		case PROTO_POP3:
+			snprintf(buf, size, "%s%s", protbase(cp), mbox);
+			goto jleave;
+		default:
+			break;
+		}
+	}
+	if (force || (mbox = value("MAIL")) == NULL)
 		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
-	} else {
+	else {
 		strncpy(buf, mbox, size);
 		buf[size-1]='\0';
 	}
+jleave:	;
 }
 
 void
 demail(void)
 {
-	if (value("keep") != NULL || rm(mailname) < 0)
-		close(creat(mailname, 0600));
+
+	if (value("keep") != NULL || rm(mailname) < 0) {
+		int fd = open(mailname, O_WRONLY|O_CREAT|O_TRUNC, 0600);
+		if (fd >= 0)
+			close(fd);
+	}
 }
 
-void
+bool_t
 var_folder_updated(char **name)
 {
+	char rv = TRU1;
 	char *unres = NULL, *res = NULL, *folder;
 
 	if (name == NULL)
 		goto jleave;
 	folder = *name;
 
-	switch (which_protocol(folder)) {
-	case PROTO_FILE:
-	case PROTO_MAILDIR:
-		break;
-	default:
-		goto jleave;
-	}
-
-	/* Expand the *folder* *//* XXX This *only* works because we do NOT
+	/* Expand the *folder*; skip `%:' prefix for simplicity of use */
+	/* XXX This *only* works because we do NOT
 	 * XXX update environment variables via the "set" mechanism */
+	if (folder[0] == '%' && folder[1] == ':')
+		folder += 2;
 	if ((folder = _expand(folder, EXP_SHELL)) == NULL)
 		goto jleave;
+
+	switch (which_protocol(folder)) {
+	case PROTO_POP3:
+		/* Ooops.  This won't work */
+		fprintf(stderr, tr(501, "`folder' cannot be set to a flat, "
+			"readonly POP3 account\n"));
+		rv = FAL0;
+		goto jleave;
+	case PROTO_IMAP:
+		/* Simply assign what we have, even including `%:' prefix */
+		if (folder != *name)
+			goto jvcopy;
+		goto jleave;
+	default:
+		/* Further expansion desired */
+		break;
+	}
 
 	/* All non-absolute paths are relative to our home directory */
 	if (*folder != '/') {
@@ -821,7 +851,7 @@ var_folder_updated(char **name)
 		folder = res;
 #endif
 
-	{	char *x = *name;
+jvcopy:	{	char *x = *name;
 		*name = vcopy(folder);
 		vfree(x);
 	}
@@ -830,7 +860,8 @@ var_folder_updated(char **name)
 		ac_free(res);
 	if (unres != NULL)
 		ac_free(unres);
-jleave:	;
+jleave:
+	return rv;
 }
 
 /*
@@ -908,7 +939,7 @@ source(void *v)
 	loading = 0;
 	cond = CANY;
 	input = fi;
-	sourcing++;
+	sourcing = TRU1;
 	return(0);
 }
 
@@ -1131,7 +1162,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	(void)use_ssl;
 	(void)uhp;
 
-	if ((cp = strchr(server, ':')) != NULL) {
+	if ((cp = strchr(server, ':')) != NULL) { /* TODO URI parse! IPv6! */
 		portstr = &cp[1];
 #ifndef USE_IPV6
 		port = strtol(portstr, NULL, 10);
@@ -1140,17 +1171,18 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		memcpy(server, xserver, cp - xserver);
 		server[cp - xserver] = '\0';
 	}
+
 #ifdef USE_IPV6
-	memset(&hints, 0, sizeof hints);
-	hints.ai_socktype = SOCK_STREAM;
 	if (verbose)
 		fprintf(stderr, "Resolving host %s . . .", server);
+	memset(&hints, 0, sizeof hints);
+	hints.ai_socktype = SOCK_STREAM;
 	if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"Could not resolve host: %s\n"), server);
+		fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
 		return STOP;
 	} else if (verbose)
-		fprintf(stderr, " done.\n");
+		fprintf(stderr, tr(500, " done.\n"));
+
 	sockfd = -1;
 	for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
 		if (verbose) {
@@ -1158,8 +1190,9 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 						hbuf, sizeof hbuf, NULL, 0,
 						NI_NUMERICHOST) != 0)
 				strcpy(hbuf, "unknown host");
-			fprintf(stderr, catgets(catd, CATSET, 192,
-					"Connecting to %s:%s . . ."),
+			fprintf(stderr, tr(192,
+					"%sConnecting to %s:%s . . ."),
+					(res == res0) ? "" : "\n",
 					hbuf, portstr);
 		}
 		if ((sockfd = socket(res->ai_family, res->ai_socktype,
@@ -1171,11 +1204,12 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		}
 	}
 	if (sockfd < 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
+		perror(tr(254, " could not connect"));
 		freeaddrinfo(res0);
 		return STOP;
 	}
 	freeaddrinfo(res0);
+
 #else /* USE_IPV6 */
 	if (port == 0) {
 		if (strcmp(portstr, "smtp") == 0)
@@ -1203,17 +1237,18 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		}
 	} else
 		port = htons(port);
+
 	if (verbose)
 		fprintf(stderr, "Resolving host %s . . .", server);
 	if ((hp = gethostbyname(server)) == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 252,
-				"Could not resolve host: %s\n"), server);
+		fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
 		return STOP;
 	} else if (verbose)
-		fprintf(stderr, " done.\n");
+		fprintf(stderr, tr(500, " done.\n"));
+
 	pptr = (struct in_addr **)hp->h_addr_list;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror(catgets(catd, CATSET, 253, "could not create socket"));
+		perror(tr(253, "could not create socket"));
 		return STOP;
 	}
 	memset(&servaddr, 0, sizeof servaddr);
@@ -1221,17 +1256,17 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	servaddr.sin_port = port;
 	memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
 	if (verbose)
-		fprintf(stderr, catgets(catd, CATSET, 192,
-				"Connecting to %s:%d . . ."),
-				inet_ntoa(**pptr), ntohs(port));
+		fprintf(stderr, tr(192, "%sConnecting to %s:%d . . ."),
+				"", inet_ntoa(**pptr), ntohs(port));
 	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
 			!= 0) {
-		perror(catgets(catd, CATSET, 254, "could not connect"));
+		perror(tr(254, " could not connect"));
 		return STOP;
 	}
 #endif /* USE_IPV6 */
 	if (verbose)
-		fputs(catgets(catd, CATSET, 193, " connected.\n"), stderr);
+		fputs(tr(193, " connected.\n"), stderr);
+
 	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
 #ifdef USE_SSL

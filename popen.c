@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Handling of pipes, child processes, temporary files, file enwrapping
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,10 +39,11 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -159,8 +160,8 @@ Fopen(const char *file, const char *mode)
 	int omode;
 
 	if ((fp = safe_fopen(file, mode, &omode)) != NULL) {
+		(void)fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
-		fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -173,8 +174,8 @@ Fdopen(int fd, const char *mode)
 
 	scan_mode(mode, &omode);
 	if ((fp = fdopen(fd, mode)) != NULL) {
+		(void)fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 		register_file(fp, omode, 0, 0, FP_UNCOMPRESSED, NULL, 0L);
-		fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
 	}
 	return fp;
 }
@@ -191,7 +192,13 @@ Fclose(FILE *fp)
 }
 
 FILE *
-Zopen(const char *file, const char *mode, int *compression)
+Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
+	* TODO maybe we shouldn't be simple and run commands but instead
+	* TODO links against any of available zlib.h, bzlib.h, lzma.h!
+	* TODO even libzip?  Much faster, not that much more work, and we're
+	* TODO *so* fixed anyway!!
+	* TODO *or*: make it all hookable via BOXEXTENSION/DECOMPRESS etc.
+	* TODO by the user;  but not like this, Coverity went grazy about it */
 {
 	int	input;
 	FILE	*output;
@@ -224,6 +231,7 @@ Zopen(const char *file, const char *mode, int *compression)
 		if (strcmp(extension, ".bz2") == 0)
 			goto bz2;
 	}
+
 	if (access(file, F_OK) == 0) {
 		*compression = FP_UNCOMPRESSED;
 		return Fopen(file, mode);
@@ -237,19 +245,24 @@ Zopen(const char *file, const char *mode, int *compression)
 	}
 	if (access(rp, W_OK) < 0)
 		*compression |= FP_READONLY;
+
 	if ((input = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
 			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
 		return NULL;
 open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 		perror(catgets(catd, CATSET, 167, "tmpfile"));
-		close(input);
+		if (input >= 0)
+			close(input);
 		return NULL;
 	}
 	unlink(tempfn);
+	Ftfree(&tempfn);
+
 	if (input >= 0 || (*compression&FP_MASK) == FP_IMAP ||
 			(*compression&FP_MASK) == FP_MAILDIR) {
 		if (decompress(*compression, input, fileno(output)) < 0) {
-			close(input);
+			if (input >= 0)
+				close(input);
 			Fclose(output);
 			return NULL;
 		}
@@ -259,18 +272,24 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 			return NULL;
 		}
 	}
-	close(input);
+	if (input >= 0)
+		close(input);
 	fflush(output);
+
 	if (omode & O_APPEND) {
 		int	flags;
 
-		if ((flags = fcntl(fileno(output), F_GETFL)) != -1)
-			fcntl(fileno(output), F_SETFL, flags | O_APPEND);
-		offset = ftell(output);
+		if ((flags = fcntl(fileno(output), F_GETFL)) < 0 ||
+				fcntl(fileno(output), F_SETFL, flags|O_APPEND)
+				< 0 || (offset = ftell(output)) < 0) {
+			Fclose(output);
+			return NULL;
+		}
 	} else {
 		rewind(output);
 		offset = 0;
 	}
+
 	register_file(output, omode, 0, 0, *compression, rp, offset);
 	return output;
 }
@@ -279,13 +298,13 @@ FILE *
 Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 	int register_file)
 {
-	FILE *fp;
+	FILE *fp = NULL;
 	char *cp;
 	int fd;
 
 	*fn =
 	cp = smalloc(strlen(tempdir) + 1 + sizeof("mail") + strlen(prefix) +
-			+ 7 + 1);
+		+ 7 + 1);
 	cp = sstpcpy(cp, tempdir);
 	*cp++ = '/';
 	cp = sstpcpy(cp, "mail");
@@ -293,28 +312,31 @@ Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 		*cp++ = '-';
 		cp = sstpcpy(cp, prefix);
 	}
-	cp = sstpcpy(cp, ".XXXXXX");
+	sstpcpy(cp, ".XXXXXX");
+
 #ifdef HAVE_MKSTEMP
 	if ((fd = mkstemp(*fn)) < 0)
-		goto Ftemperr;
-	if (fchmod(fd, bits) < 0)
-		goto Ftemperr;
+		goto jtemperr;
+	if (bits != (S_IRUSR|S_IWUSR) && fchmod(fd, bits) < 0)
+		goto jtemperr;
 #else
 	if (mktemp(*fn) == NULL)
 		goto Ftemperr;
 	if ((fd = open(*fn, O_CREAT|O_EXCL|O_RDWR, bits)) < 0)
-		goto Ftemperr;
+		goto jtemperr;
 #endif
+
 	if (register_file)
 		fp = Fdopen(fd, mode);
 	else {
+		(void)fcntl(fd, F_SETFD, FD_CLOEXEC);
 		fp = fdopen(fd, mode);
-		fcntl(fd, F_SETFD, FD_CLOEXEC);
 	}
+jleave:
 	return fp;
-Ftemperr:
+jtemperr:
 	Ftfree(fn);
-	return NULL;
+	goto jleave;
 }
 
 void
@@ -338,8 +360,8 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 
 	if (pipe(p) < 0)
 		return NULL;
-	fcntl(p[READ], F_SETFD, FD_CLOEXEC);
-	fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
+	(void)fcntl(p[READ], F_SETFD, FD_CLOEXEC);
+	(void)fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
 	if (*mode == 'r') {
 		myside = p[READ];
 		fd0 = -1;
@@ -374,32 +396,34 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 }
 
 int
-Pclose(FILE *ptr)
+Pclose(FILE *ptr, bool_t wait)
 {
-	int i;
+	int pid;
 	sigset_t nset, oset;
 
-	i = file_pid(ptr);
-	if (i < 0)
+	pid = file_pid(ptr);
+	if (pid < 0)
 		return 0;
 	unregister_file(ptr);
 	fclose(ptr);
-	sigemptyset(&nset);
-	sigaddset(&nset, SIGINT);
-	sigaddset(&nset, SIGHUP);
-	sigprocmask(SIG_BLOCK, &nset, &oset);
-	i = wait_child(i);
-	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
-	return i;
+	if (wait) {
+		sigemptyset(&nset);
+		sigaddset(&nset, SIGINT);
+		sigaddset(&nset, SIGHUP);
+		sigprocmask(SIG_BLOCK, &nset, &oset);
+		pid = wait_child(pid);
+		sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
+	} else
+		free_child(pid);
+	return pid;
 }
 
 void 
 close_all_files(void)
 {
-
 	while (fp_head)
 		if (fp_head->pipe)
-			Pclose(fp_head->fp);
+			Pclose(fp_head->fp, TRU1);
 		else
 			Fclose(fp_head->fp);
 }
@@ -433,7 +457,8 @@ compress(struct fp *fpp)
 		return OKAY;
 	fflush(fpp->fp);
 	clearerr(fpp->fp);
-	fseek(fpp->fp, fpp->offset, SEEK_SET);
+	if (fseek(fpp->fp, fpp->offset, SEEK_SET) < 0)
+		return STOP;
 #ifdef USE_IMAP
 	if ((fpp->compressed&FP_MASK) == FP_IMAP) {
 		return imap_append(fpp->realfile, fpp->fp);
@@ -707,12 +732,12 @@ wait_child(int pid)
 	pid_t term;
 	struct child *cp;
 	struct sigaction nact, oact;
-	
+
 	nact.sa_handler = SIG_DFL;
 	sigemptyset(&nact.sa_mask);
 	nact.sa_flags = SA_NOCLDSTOP;
 	sigaction(SIGCHLD, &nact, &oact);
-	
+
 	cp = findchild(pid);
 	if (!cp->done) {
 		do {
@@ -733,13 +758,13 @@ wait_child(int pid)
 		wait_status = cp->status;
 		delchild(cp);
 	}
-	
+
 	sigaction(SIGCHLD, &oact, NULL);
 	/*
 	 * Make sure no zombies are left.
 	 */
 	sigchild(SIGCHLD);
-	
+
 	if (WIFEXITED(wait_status) && (WEXITSTATUS(wait_status) == 0))
 		return 0;
 	return -1;

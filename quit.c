@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Termination processing.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,22 +39,16 @@
 
 #include "rcv.h"
 
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/file.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 #include <utime.h>
 
 #include "extern.h"
-
-/*
- * Rcv -- receive mail rationally.
- *
- * Termination processing.
- */
 
 /* Touch the indicated file */
 static void	alter(char const *name);
@@ -105,7 +99,8 @@ writeback(FILE *res, FILE *obuf)
 	int p, c;
 
 	p = 0;
-	fseek(obuf, 0L, SEEK_SET);
+	if (fseek(obuf, 0L, SEEK_SET) < 0)
+		return -1;
 #ifndef APPEND
 	if (res != NULL)
 		while ((c = getc(res)) != EOF)
@@ -116,7 +111,7 @@ writeback(FILE *res, FILE *obuf)
 			p++;
 			if (send(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 				perror(mailname);
-				fseek(obuf, 0L, SEEK_SET);
+				(void)fseek(obuf, 0L, SEEK_SET);
 				return(-1);
 			}
 		}
@@ -129,18 +124,19 @@ writeback(FILE *res, FILE *obuf)
 	ftrunc(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
-		fseek(obuf, 0L, SEEK_SET);
+		(void)fseek(obuf, 0L, SEEK_SET);
 		return(-1);
 	}
 	if (res != NULL)
 		Fclose(res);
-	fseek(obuf, 0L, SEEK_SET);
+	if (fseek(obuf, 0L, SEEK_SET) < 0)
+		return -1;
 	alter(mailname);
 	if (p == 1)
 		printf(tr(155, "Held 1 message in %s\n"), displayname);
 	else
 		printf(tr(156, "Held %d messages in %s\n"), p, displayname);
-	return(0);
+	return 0;
 }
 
 /*
@@ -152,7 +148,7 @@ void
 quit(void)
 {
 	int p, modify, anystat;
-	FILE *fbuf, *rbuf, *readstat = NULL, *abuf;
+	FILE *fbuf, *rbuf, *abuf;
 	struct message *mp;
 	int c;
 	char *tempResid;
@@ -248,10 +244,6 @@ nolock:
 
 	anystat = holdbits();
 	modify = 0;
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX)
 			c++;
@@ -259,16 +251,7 @@ nolock:
 			p++;
 		if (mp->m_flag & MODIFY)
 			modify++;
-		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
-			char *id;
-
-			if ((id = hfield1("message-id", mp)) != NULL ||
-					(id = hfield1("article-id",mp)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 	}
-	if (readstat != NULL)
-		Fclose(readstat);
 	if (p == msgCount && !modify && !anystat) {
 		if (p == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
@@ -393,13 +376,13 @@ makembox(void)
 		}
 		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
 			perror(tempQuit);
-			rm(tempQuit);
-			Ftfree(&tempQuit);
 			Fclose(obuf);
-			return STOP;
 		}
 		rm(tempQuit);
 		Ftfree(&tempQuit);
+		if (ibuf == NULL)
+			return STOP;
+
 		if ((abuf = Zopen(mbox, "r", NULL)) != NULL) {
 			while ((c = getc(abuf)) != EOF)
 				putc(c, obuf);
@@ -412,7 +395,9 @@ makembox(void)
 			return STOP;
 		}
 		Fclose(obuf);
-		close(creat(mbox, 0600));
+
+		if ((c = open(mbox, O_CREAT|O_TRUNC|O_WRONLY, 0600)) >= 0)
+			close(c);
 		if ((obuf = Zopen(mbox, "r+", NULL)) == NULL) {
 			perror(mbox);
 			Fclose(ibuf);
@@ -498,16 +483,12 @@ edstop(void)
 {
 	int gotcha, c;
 	struct message *mp;
-	FILE *obuf, *ibuf = NULL, *readstat = NULL;
+	FILE *obuf, *ibuf = NULL;
 	struct stat statb;
 
 	if (mb.mb_perm == 0)
 		return;
 	holdsigs();
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
@@ -516,17 +497,8 @@ edstop(void)
 		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS|MFLAG|MUNFLAG|
 					MANSWER|MUNANSWER|MDRAFT|MUNDRAFT))
 			gotcha++;
-		if (readstat != NULL && (mp->m_flag & (MREAD|MDELETED)) != 0) {
-			char *id;
-
-			if ((id = hfield1("message-id", mp)) != NULL ||
-					(id = hfield1("article-id",mp)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 	}
-	if (readstat != NULL)
-		Fclose(readstat);
-	if (!gotcha || option_T_arg != NULL)
+	if (!gotcha)
 		goto done;
 	ibuf = NULL;
 	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {

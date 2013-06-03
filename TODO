@@ -71,6 +71,22 @@ Backward-compatibility breakers
   into SpamAssassin or similar software, than sitting on top of a small
   locale, isolated closed-source database.
 
+- The IMAP cache is file-based, which is quite nice, since a filesystem
+  is a database.  On the other hand it may be better if we could hook
+  into sqlite3, which is available almost everywhere by default, with
+  a clearly documented DB content (so that users can use sqlite3(1) to
+  dig into it).  (And just in case S-nail will ever be able to read news
+  and/or have MTA functionality.)
+  One question would be wether compression should be applied.
+
+- We should possibly get away of using command line utilities for
+  compression.  (At least optionally?)  Instead we should link against
+  zlib(3), bz2lib(3) and lzma(3), if found.  Or we may use dlopen(3)
+  instead, if found, to avoid linking (though those libraries don't need
+  much linker work unless actually used afaik, 'should look in detail).
+  We should also drop lzw.c, it is used for the Junk DB and the IMAP
+  cache.
+
 Non-breakers
 ------------
 
@@ -220,10 +236,20 @@ Non-breakers
   dates (needs a From_ parser, i.e., strptime()-alike).
   Once we have that, rename *datefield-markout-older* to
   *date-markout-older* ??
+  Note that NetBSD's mail(1) has some other nice things.
+  Note also that our code is quite unflexible.
+
+-- NetBSD's mail(1) has nice *indentprefix* and *indentpostscript*
+   variables (though prefix and appendix or prefix and suffix, but..).
+   Note that our code is quite unflexible.
 
 - The "top" command should honour ignoretab, or there should be a very
   special "top" ignoretab.  It simply doesn't make sense to "top" 5 lines
   when all that you get are Received: lines...
+
+- In the very end it is not that hard to add (optional) MTA
+  functionality at a most simple level.
+  Use sqlite for aliases (and possibly cache), then.
 
 Low-Level
 ---------
@@ -276,7 +302,10 @@ Low-Level
   Such a cache would work without touching the current code flow ... or
   allow a smooth transition to a new one anyway.
 
-- Think about a value() cache.
+- Think about a value() cache.  (Yet added boption() and soption() stubs.)
+
+- Think about replacing the IMAP cache with an SQLITE3 interface.
+  Or rewrite it.  Error handling etc. etc. is peculiar.
 
 - Check all Popen() calls, i've had the impressions that Popen() doesn't
   close all resources on failure.  Also, Popen() callers often do a lot of
@@ -301,8 +330,9 @@ Low-Level
   testing using our own classification functions in quite some places.
 
 - The quoted-printable Content-Transfer-Encoding: supports soft linebreaks;
-  it happens that some stupid mailers (Apple Mail?) create HTML parts which
-  solely consist of a single line, created via soft linebreaks.
+  it happens that a lot of mailers (Apple Mail?, Microsoft Word, Yahoo!
+  Webmail) create HTML parts which solely consist of a single line,
+  created via soft linebreaks.
   To handle such mess we need to be able to break out of the input-line ==
   output line relationship that is still fixated in the codebase.
   I.e., it is not even sufficient to convert "rest" into an array, but best
@@ -341,6 +371,76 @@ Low-Level
 
 - Dramatically pimp the cc-test.sh script, and recognize and report
   compilation errors, too.
+  WE NEED MORE AUTOMATIZED TESTING!
+
+TODO S-nail 14.4:
+----------------
+
+- Drop the restriction that environment variables cannot be modified
+  from within interactive S-nail(1), check carefully what depends on
+  that (findmail() looks for MAIL, be aware of -u interaction etc.).
+  Drop tempdir, myname and homedir variables and always use functions to
+  look the values up (just make them function local variables where
+  used).
+  If necessary, add more hooks in vars.c:_check_special_vars() (or
+  finally implement the value cache for real).
+  Drop main.c:_setup_vars(), then.
+
+- If we do link against OpenSSL, try to compile a test program and use
+  the OpenSSL version of MD5 if possible.
+
+  I think this is the right time to change our config/make system so that
+  the Makefile is generated with only those files which are actually
+  needed.  Move the Makefile vars to user.conf.
+
+  (Possibly drop usage of compressions tools and link against the
+  compression libraries.  Maybe dlopen() them?  Otherwise leave that for
+  future version.)
+
+- Make *password* and *password-USER@HOST* global, introduce
+  *PROTOCOL-password* and *PROTOCOL-password-USER@HOST*.
+  Drop *smtp-auth-(user|pass...)*.
+  Then, drop smtp_auth_var(), and change lookup_password_for_token() to
+  work like (PROTOCOL, user,host|TOKEN) -- *password* is a global override,
+  only if that is not set lookup protocol specific.
+  Use that single function from everywhere.
+
+- Change **use-starttls* to the opposite.  I.e., CAPA or whatever, if TLS
+  is supported, use automatically.  *UNLESS* explicitly disabled.
+
+- Add a global *keepalive*, add *keepalive-USER@HOST*.  Add and use
+  a generic, single function to get the value for either protocol.
+
+- NOTE: we do not really support IPv6 sofar in that we are not prepared to
+  deal with IPv6 addresses.
+  Introduce an URI abstraction structure in 14.4, and start using it, i.e.,
+  _pop3_user() and, very important, sopen().
+  Note this shit software use a lot of places which mess around...
+  But be careful and test it, buddy.
+
+- The account command involves a lot of code but it's only difference to
+  define is that a "fi" is executed.  If we would have the possibility to
+  explicitly jump to VOID boxes, we could use QUIT->FOLDER instead of
+  FOLDER[OK? -> QUIT], and then it'd be up to the use to simply use a "fi"
+  at the end of a define.  Or so.
+
+-- If *folder* is set to an IMAP box, and we're about to "mbox" data to
+   there, and we're currently on a POP3 server, and the connection fails,
+   we're completely lost and cannot even interrupt...
+
+- mutt(1) dotlock ..., "mbox" command doesn'T work?
+
+- ARGH!  Should `folders' auto-login if *folder* is an IMAP account that is
+  not active?  Why does _expand() use *mailname* to expand `@', not
+  getfold() (care: res may point into cbuf, savestr() or so!).
+  Why does demail() etc. treat *mailname* as a file (more or less), why do
+  we need *mailname* at all;  we should have Folder objects, multiple of
+  which concurrently, one the active; a Folder may not become *folder*
+  unless it has write (store) capabilities).  Maybe then `mbox' works fine
+  if connected to a POP3 server with a *MBOX* on an IMAP account that yet
+  never was connected and needs to read a password on the terminal before
+  the login works ... note the latter situation yet kills us since i think
+  INT is blocked during all that ;-((
 
 Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
 With a clean, conforming and efficient codebase, then.

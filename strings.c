@@ -1,8 +1,12 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Auto-reclaimed string allocation and support routines that build on top of
+ *@ them.  Strings handed out by those are reclaimed at the top of the command
+ *@ loop each time, so they need not be freed.
+ *@ And below this series we do collect all other plain string support routines
+ *@ in here, including those which use normal heap memory.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,16 +41,6 @@
  * SUCH DAMAGE.
  */
 
-/*
- * Mail -- a mail program
- *
- * Auto-reclaimed string allocation and support routines that build on top of
- * them.  Strings handed out by those are reclaimed at the top of the command
- * loop each time, so they need not be freed.
- * And below this series we do collect all other plain string support routines
- * in here, including those which use normal heap memory.
- */
-
 #include "rcv.h"
 
 #include <ctype.h>
@@ -60,9 +54,6 @@
 #endif
 
 #include "extern.h"
-#ifdef USE_MD5
-# include "md5.h"
-#endif
 
 /*
  * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
@@ -399,41 +390,6 @@ savecat(char const *s1, char const *s2)
  * Support routines, auto-reclaimed storage
  */
 
-#define	Hexchar(n)	((n)>9 ? (n)-10+'A' : (n)+'0')
-#define	hexchar(n)	((n)>9 ? (n)-10+'a' : (n)+'0')
-
-#ifdef USE_MD5
-char *
-cram_md5_string(char const *user, char const *pass, char const *b64)
-{
-	struct str in, out;
-	char digest[16], *cp;
-	size_t lh, lu;
-
-	out.s = NULL;
-	in.s = UNCONST(b64);
-	in.l = strlen(in.s);
-	(void)b64_decode(&out, &in, NULL);
-	assert(out.s != NULL);
-
-	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),
-		digest);
-	free(out.s);
-	cp = md5tohex(digest);
-
-	lh = strlen(cp);
-	lu = strlen(user);
-	in.l = lh + 1 + lu;
-	in.s = ac_alloc(lh + lu + 1 + 1);
-	memcpy(in.s, user, lu);
-	in.s[lu] = ' ';
-	memcpy(in.s + lu + 1, cp, lh);
-	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
-	ac_free(in.s);
-	return out.s;
-}
-#endif /* USE_MD5 */
-
 char *
 i_strdup(char const *src)
 {
@@ -446,28 +402,14 @@ i_strdup(char const *src)
 	return (dest);
 }
 
-#ifdef USE_MD5
-char *
-md5tohex(void const *vp)
-{
-	char const *cp = vp;
-	char *hex;
-	int i;
-
-	hex = salloc(33);
-	for (i = 0; i < 16; i++) {
-		hex[2 * i] = hexchar((cp[i] & 0xf0) >> 4);
-		hex[2 * i + 1] = hexchar(cp[i] & 0x0f);
-	}
-	hex[32] = '\0';
-	return hex;
-}
-#endif /* USE_MD5 */
-
 char *
 protbase(char const *cp)
 {
 	char *n = salloc(strlen(cp) + 1), *np = n;
+
+	/* Just ignore the `is-system-mailbox' prefix XXX */
+	if (cp[0] == '%' && cp[1] == ':')
+		cp += 2;
 
 	while (*cp) {
 		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
@@ -480,7 +422,7 @@ protbase(char const *cp)
 			*np++ = *cp++;
 	}
 	*np = '\0';
-	return (n);
+	return n;
 }
 
 char *
@@ -624,14 +566,15 @@ strcomma(char **iolist, int ignore_empty)
 void
 i_strcpy(char *dest, const char *src, size_t size)
 {
-	if (size)
+	if (size > 0) {
 		for (;; ++dest, ++src)
-			if ((*dest = lowerconv(*src)) == '\0')
+			if ((*dest = lowerconv(*src)) == '\0') {
 				break;
-			else if (--size == 0) {
+			} else if (--size == 0) {
 				*dest = '\0';
 				break;
 			}
+	}
 }
 
 int

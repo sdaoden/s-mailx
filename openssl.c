@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ OpenSSL functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -44,6 +44,8 @@ typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
 
+#include <sys/socket.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
 #include <netdb.h>
@@ -57,8 +59,6 @@ typedef int avoid_empty_file_compiler_warning;
 #include <openssl/rand.h>
 #include <stdio.h>
 #include <setjmp.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
@@ -69,18 +69,10 @@ typedef int avoid_empty_file_compiler_warning;
 #include "extern.h"
 
 /*
- * Mail -- a mail program
- *
- * SSL functions
- */
-
-/*
  * OpenSSL client implementation according to: John Viega, Matt Messier,
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-static int	reset_tio;
-static struct termios	otio;
 static sigjmp_buf	ssljmp;
 
 static int	initialized;
@@ -121,30 +113,26 @@ static enum okay load_crls(X509_STORE *store, const char *vfile,
 static void 
 sslcatch(int s)
 {
-	if (reset_tio)
-		tcsetattr(0, TCSADRAIN, &otio);
+	termios_state_reset();
 	siglongjmp(ssljmp, s);
 }
 
 static int 
 ssl_rand_init(void)
 {
-	char *cp;
+	char *cp, *x;
 	int state = 0;
 
 	if ((cp = value("ssl-rand-egd")) != NULL) {
-		if ((cp = file_expand(cp)) == NULL)
-			;
-		else if (RAND_egd(cp) == -1)
+		if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
 			fprintf(stderr, tr(245,
 				"entropy daemon at \"%s\" not available\n"),
-					cp);
+				cp);
 		else
 			state = 1;
 	} else if ((cp = value("ssl-rand-file")) != NULL) {
-		if ((cp = file_expand(cp)) == NULL)
-			;
-		else if (RAND_load_file(cp, 1024) == -1)
+		if ((x = file_expand(cp)) == NULL ||
+				RAND_load_file(cp = x, 1024) == -1)
 			fprintf(stderr, tr(246,
 				"entropy file at \"%s\" not available\n"), cp);
 		else {
@@ -245,7 +233,7 @@ ssl_load_verifications(struct sock *sp)
 		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("ssl-ca-file")) != NULL)
 		ca_file = file_expand(ca_file);
-	if (ca_dir || ca_file) {
+	if (ca_dir != NULL || ca_file != NULL) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
 					ca_file, ca_dir) != 1) {
 			fprintf(stderr, catgets(catd, CATSET, 233,
@@ -278,11 +266,13 @@ ssl_load_verifications(struct sock *sp)
 static void 
 ssl_certificate(struct sock *sp, const char *uhp)
 {
+	size_t i;
 	char *certvar, *keyvar, *cert, *key, *x;
 
-	certvar = ac_alloc(strlen(uhp) + 10);
-	strcpy(certvar, "ssl-cert-");
-	strcpy(&certvar[9], uhp);
+	i = strlen(uhp);
+	certvar = ac_alloc(i + 9 + 1);
+	memcpy(certvar, "ssl-cert-", 9);
+	memcpy(certvar + 9, uhp, i + 1);
 	if ((cert = value(certvar)) != NULL ||
 			(cert = value("ssl-cert")) != NULL) {
 		x = cert;
@@ -684,7 +674,7 @@ cverify(void *vp)
 		ca_dir = file_expand(ca_dir);
 	if ((ca_file = value("smime-ca-file")) != NULL)
 		ca_file = file_expand(ca_file);
-	if (ca_dir || ca_file) {
+	if (ca_dir != NULL || ca_file != NULL) {
 		if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
 			ssl_gen_err("Error loading %s",
 					ca_file ? ca_file : ca_dir);
@@ -942,7 +932,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 	if (sigsetjmp(ssljmp, 1) == 0) {
 		if (saveint != SIG_IGN)
 			safe_signal(SIGINT, sslcatch);
-		pass = getpassword(&otio, &reset_tio, "PEM pass phrase:");
+		pass = getpassword("PEM pass phrase:");
 	}
 	safe_signal(SIGINT, saveint);
 	if (pass == NULL)
@@ -1041,16 +1031,15 @@ smime_sign_include_chain_creat(
 	for (;;) {
 		X509 *tmp;
 		FILE *fp;
-		char *ncf = strchr(cfiles, ',');
+		char *x, *ncf = strchr(cfiles, ',');
 		if (ncf)
 			*ncf++ = '\0';
 		/* This fails for '=,file' constructs, but those are sick */
 		if (! *cfiles)
 			break;
 
-		if ((cfiles = file_expand(cfiles)) != NULL)
-			goto jerr;
-		if ((fp = Fopen(cfiles, "r")) == NULL) {
+		if ((x = file_expand(cfiles)) == NULL ||
+				(fp = Fopen(cfiles = x, "r")) == NULL) {
 			perror(cfiles);
 			goto jerr;
 		}
@@ -1211,7 +1200,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 		}
 		ds = strlen(crl_dir);
 		fn = smalloc(fs = ds + 20);
-		strcpy(fn, crl_dir);
+		memcpy(fn, crl_dir, ds);
 		fn[ds] = '/';
 		while ((dp = readdir(dirfd)) != NULL) {
 			if (dp->d_name[0] == '.' &&
@@ -1223,7 +1212,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 				continue;
 			if (ds + (es = strlen(dp->d_name)) + 2 < fs)
 				fn = srealloc(fn, fs = ds + es + 20);
-			strcpy(&fn[ds+1], dp->d_name);
+			memcpy(fn + ds + 1, dp->d_name, es + 1);
 			if (load_crl1(store, fn) != OKAY) {
 				closedir(dirfd);
 				free(fn);

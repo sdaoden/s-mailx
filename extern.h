@@ -1,9 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Exported function prototypes.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
- * All rights reserved.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*-
  * Copyright (c) 1992, 1993
@@ -44,6 +43,23 @@
  */
 #define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[c - 1] = '\0')
 
+/*
+ * attachments.c
+ */
+
+/* Try to add an attachment for *file*, file_expand()ed.
+ * Return the new head of list *aphead*, or NULL.
+ * The newly created attachment will be stored in **newap*, if given */
+struct attachment *	add_attachment(struct attachment *aphead, char *file,
+				struct attachment **newap);
+
+/* Append comma-separated list of file names to the end of attachment list */
+struct attachment *	append_attachments(struct attachment *aphead,
+				char *names);
+
+/* Interactively edit the attachment list, return the new list head */
+struct attachment *	edit_attachments(struct attachment *aphead);
+
 /* auxlily.c */
 void panic(const char *format, ...);
 void holdint(void);
@@ -59,13 +75,11 @@ size_t	paging_seems_sensible(void);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 void	page_or_print(FILE *fp, size_t lines);
-#define try_pager(FP)	page_or_print(FP, 0) /* TODO obsolete */
+#define try_pager(FP)		page_or_print(FP, 0) /* TODO obsolete */
 
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
-char *getuser(void);
-char *getpassword(struct termios *otio, int *reset_tio, const char *query);
 
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
@@ -74,8 +88,24 @@ char *	username(void);
 /* Return our hostname */
 char *	nodename(int mayoverride);
 
-/* Returns salloc()ed buffer */
-char *getrandstring(size_t length);
+/* Try to lookup a variable named "password-*token*".
+ * Return NULL or salloc()ed buffer */
+char *	lookup_password_for_token(char const *token);
+
+/* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
+char *	getrandstring(size_t length);
+
+#define	Hexchar(n)		((n)>9 ? (n)-10+'A' : (n)+'0')
+#define	hexchar(n)		((n)>9 ? (n)-10+'a' : (n)+'0')
+
+#ifdef USE_MD5
+/* MD5 checksum as hexadecimal string, to be stored in *hex* */
+#define MD5TOHEX_SIZE		32
+char *	md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
+
+/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
+char *	cram_md5_string(char const *user, char const *pass, char const *b64);
+#endif
 
 enum okay makedir(const char *name);
 enum okay cwget(struct cw *cw);
@@ -264,17 +294,8 @@ int crename(void *v);
 
 /* collect.c */
 
-/* Try to add an attachment for *file*, file_expand()ed.
- * Return the new head of list *aphead*, or NULL.
- * The newly created attachment will be stored in **newap*, if given */
-struct attachment *	add_attachment(struct attachment *aphead, char *file,
-				struct attachment **newap);
-
-/* Interactively edit the attachment list, return the new list head */
-struct attachment *	edit_attachments(struct attachment *aphead);
-
 FILE *collect(struct header *hp, int printheaders, struct message *mp,
-		char *quotefile, int doprefix, int tflag);
+		char *quotefile, int doprefix);
 
 void	savedeadletter(FILE *fp, int fflush_rewind_first);
 
@@ -354,7 +375,7 @@ void	findmail(char const *user, int force, char *buf, int size);
 void	demail(void);
 
 /* vars.c hook: *folder* variable has been updated */
-void	var_folder_updated(char **name);
+bool_t	var_folder_updated(char **name);
 
 int getfold(char *name, int size);
 char const *getdeadletter(void);
@@ -643,8 +664,7 @@ struct str *	qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
  * directly produces output.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
  * Returns OKAY. XXX or STOP on error (in which case *out* is set to an error
- * XXX message); caller is responsible to free buffers.
- */
+ * XXX message); caller is responsible to free buffers */
 int		qp_decode(struct str *out, struct str const *in,
 			struct str *rest);
 
@@ -666,14 +686,14 @@ struct str *	b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 /* If *rest* is set then decoding will assume text input.
  * The buffers of *out* and possibly *rest* will be managed via srealloc().
  * Returns OKAY or STOP on error (in which case *out* is set to an error
- * message); caller is responsible to free buffers.
- */
+ * message); caller is responsible to free buffers */
 int		b64_decode(struct str *out, struct str const *in,
 			struct str *rest);
 
 /*
  * names.c
  */
+
 struct name *	nalloc(char *str, enum gfield ntype);
 struct name *	ndup(struct name *np, enum gfield ntype);
 struct name *	cat(struct name *n1, struct name *n2);
@@ -739,7 +759,7 @@ FILE *	Ftemp(char **fn, char const *prefix, char const *mode,
 void	Ftfree(char **fn);
 
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
-int Pclose(FILE *ptr);
+int Pclose(FILE *ptr, bool_t dowait);
 void close_all_files(void);
 int run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 		char const *a0, char const *a1, char const *a2);
@@ -767,12 +787,11 @@ int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 /* sendout.c */
 int mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
-		char *quotefile, int recipient_record, int tflag, int Eflag);
+		char *quotefile, int recipient_record);
 int sendmail(void *v);
 int Sendmail(void *v);
 enum okay mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int doprefix, int tflag,
-		int Eflag);
+		char *quotefile, int recipient_record, int doprefix);
 int mkdate(FILE *fo, const char *field);
 int puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
@@ -813,9 +832,7 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
  * - our iconv(3) wrapper
  */
 
-/*
- * Auto-reclaimed string storage
- */
+/* Auto-reclaimed string storage */
 
 void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
@@ -829,21 +846,11 @@ char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);
 char *		savecat(char const *s1, char const *s2);
 
-#ifdef USE_MD5
-char *		cram_md5_string(char const *user, char const *pass,
-			char const *b64);
-#endif
-
 /* Create duplicate, lowercasing all characters along the way */
 char *		i_strdup(char const *src);
 
 /* Extract the protocol base and return a duplicate */
 char *		protbase(char const *cp);
-
-#ifdef USE_MD5
-/* MD5 checksum as hexadecimal string */
-char *		md5tohex(void const *vp);
-#endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
 char *		urlxenc(char const *cp);
@@ -851,9 +858,7 @@ char *		urlxdec(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
 
-/*
- * Plain char* support, not auto-reclaimed
- */
+/* Plain char* support, not auto-reclaimed (unless noted) */
 
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
@@ -896,9 +901,7 @@ int		asccasecmp(char const *s1, char const *s2);
 int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
 
-/*
- * struct str related support funs
- */
+/* struct str related support funs */
 
 /* *self->s* is srealloc()ed */
 struct str *	n_str_dup(struct str *self, struct str const *t
@@ -915,9 +918,7 @@ struct str *	n_str_add_buf(struct str *self, char const *buf, size_t buflen
 # define n_str_add_buf(S,B,BL)	n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
-/*
- * Our iconv(3) wrappers
- */
+/* Our iconv(3) wrappers */
 
 #ifdef HAVE_ICONV
 iconv_t		n_iconv_open(char const *tocode, char const *fromcode);
@@ -954,6 +955,22 @@ int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char const *prefix, char const *string);
 int yorn(char const *msg);
 
+/* Get a password the expected way, returning termios_state.ts_linebuf on
+ * success on NULL on error */
+char *	getuser(char const *query);
+
+/* Get a password the expected way, returning termios_state.ts_linebuf on
+ * success on NULL on error.
+ * termios_state_reset() (def.h) must be called anyway */
+char *	getpassword(char const *query);
+
+/* Get both, user and password in the expected way; simply reuses a value that
+ * is set, otherwise calls one of the above.
+ * Returns true only if we have a user and a password.
+ * *user* will be savestr()ed if neither it nor *pass* have default value
+ * (so that termios_state.ts_linebuf carries only one) */
+bool_t	getcredentials(char **user, char **pass);
+
 /* vars.c */
 
 /* Assign a value to a variable */
@@ -966,6 +983,9 @@ char *	vcopy(char const *str);
 void	vfree(char *vstr);
 
 char *value(const char *name);
+#define boption(V)		(! ! value(V))
+#define soption(V)		value(V)
+
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
 int hash(const char *name);

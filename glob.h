@@ -1,8 +1,9 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ A bunch of global variable declarations lie herein.
+ *@ def.h must be included first.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,15 +38,11 @@
  * SUCH DAMAGE.
  */
 
-/*
- * A bunch of global variable declarations lie herein.
- * def.h must be included first.
- */
-
 /* These two come from version.c */
 extern char const *const uagent;	/* User agent */
 extern char const *const version;	/* The version string */
 
+/* The rest will end up in main.o */
 #ifdef _MAIL_GLOBS_
 # undef _E
 # define _E
@@ -72,21 +69,22 @@ _E char const	*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
 _E int		options;		/* Bits of enum user_options */
-_E char		*option_T_arg;		/* -T temp file for netnews */
 _E char		*option_u_arg;		/* name given with -u option */
+_E char 	*option_r_arg;		/* argument to -r option */
 _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 
-_E int		did_print_dot;		/* current message has been printed */
-_E int		edit;			/* Indicates editing a file */
 _E int		inhook;			/* currently executing a hook */
-_E int		loading;		/* Loading user definitions */
+_E bool_t	edit;			/* Indicates editing a file */
+_E bool_t	did_print_dot;		/* current message has been printed */
+_E bool_t	msglist_is_single;	/* Last NDMLIST/MSGLIST *chose* 1 msg */
+_E bool_t	loading;		/* Loading user definitions */
+_E bool_t	sourcing;		/* Currently reading variant file */
+_E bool_t	sawcom;			/* Set after first command */
+_E bool_t	starting;		/* still in startup code */
+_E bool_t	unset_allow_undefined;	/* allow to unset undefined variables */
 _E int		noreset;		/* String resets suspended */
-_E int		sawcom;			/* Set after first command */
 _E int		senderr;		/* An error while checking */
-_E int		sourcing;		/* Currently reading variant file */
-_E int		starting;		/* still in startup code */
-_E int		unset_allow_undefined;	/* allow to unset undefined variables */
 
 /* XXX stylish sorting */
 _E int		msgCount;		/* Count of messages read in */
@@ -116,6 +114,7 @@ _E struct shortcut *shortcuts;		/* list of shortcuts */
 _E int		imap_created_mailbox;	/* hack to get feedback from imap */
 
 _E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
+_E struct termios_state termios_state;	/* getpassword(); see commands().. */
 
 /* These are initialized strings */
 _E char const	*const month_names[12 + 1];

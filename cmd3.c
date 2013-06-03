@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Still more user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -47,12 +47,6 @@
 #endif
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Still more user commands.
- */
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);
@@ -164,7 +158,7 @@ shell(void *v)
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 
 	cmd = smalloc(cmdsize = strlen(str) + 1);
-	strcpy(cmd, str);
+	memcpy(cmd, str, cmdsize);
 	if (bangexp(&cmd, &cmdsize) < 0)
 		return 1;
 	if ((shell = value("SHELL")) == NULL)
@@ -219,7 +213,7 @@ bangexp(char **str, size_t *size)
 				sz = strlen(lastbang);
 				bangbuf = srealloc(bangbuf, bangbufsize += sz);
 				changed++;
-				strcpy(&bangbuf[j], lastbang);
+				memcpy(bangbuf + j, lastbang, sz + 1);
 				j += sz;
 				i++;
 				continue;
@@ -237,15 +231,15 @@ bangexp(char **str, size_t *size)
 		printf("!%s\n", bangbuf);
 		fflush(stdout);
 	}
-	sz = j;
-	if (sz >= *size)
-		*str = srealloc(*str, *size = sz + 1);
-	strcpy(*str, bangbuf);
-	if (sz >= lastbangsize)
-		lastbang = srealloc(lastbang, lastbangsize = sz + 1);
-	strcpy(lastbang, bangbuf);
+	sz = j + 1;
+	if (sz > *size)
+		*str = srealloc(*str, *size = sz);
+	memcpy(*str, bangbuf, sz);
+	if (sz > lastbangsize)
+		lastbang = srealloc(lastbang, lastbangsize = sz);
+	memcpy(lastbang, bangbuf, sz);
 	free(bangbuf);
-	return(0);
+	return 0;
 }
 
 /*ARGSUSED*/
@@ -334,7 +328,7 @@ static void
 make_ref_and_cs(struct message *mp, struct header *head)
 {
 	char *oldref, *oldmsgid, *newref, *cp;
-	size_t reflen;
+	size_t oldreflen = 0, oldmsgidlen = 0, reflen;
 	unsigned i;
 	struct name *n;
 
@@ -345,21 +339,28 @@ make_ref_and_cs(struct message *mp, struct header *head)
 		return;
 	}
 	reflen = 1;
-	if (oldref)
-		reflen += strlen(oldref) + 2;
-	if (oldmsgid)
-		reflen += strlen(oldmsgid);
-	newref = ac_alloc(reflen);
 	if (oldref) {
-		strcpy(newref, oldref);
-		if (oldmsgid) {
-			strcat(newref, ", ");
-			strcat(newref, oldmsgid);
+		oldreflen = strlen(oldref);
+		reflen += oldreflen + 2;
+	}
+	if (oldmsgid) {
+		oldmsgidlen = strlen(oldmsgid);
+		reflen += oldmsgidlen;
+	}
+
+	newref = ac_alloc(reflen);
+	if (oldref != NULL) {
+		memcpy(newref, oldref, oldreflen + 1);
+		if (oldmsgid != NULL) {
+			newref[oldreflen++] = ',';
+			newref[oldreflen++] = ' ';
+			memcpy(newref + oldreflen, oldmsgid, oldmsgidlen + 1);
 		}
 	} else if (oldmsgid)
-		strcpy(newref, oldmsgid);
+		memcpy(newref, oldmsgid, oldmsgidlen + 1);
 	n = extract(newref, GREF);
 	ac_free(newref);
+
 	/*
 	 * Limit the references to 21 entries.
 	 */
@@ -431,7 +432,6 @@ followupsender(void *v)
 static int 
 respond_internal(int *msgvec, int recipient_record)
 {
-	int Eflag;
 	struct message *mp;
 	char *cp, *rcv;
 	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
@@ -473,8 +473,7 @@ respond_internal(int *msgvec, int recipient_record)
 	if (np != NULL)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
-	Eflag = value("skipemptybody") != NULL;
-	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
+	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return(0);
@@ -486,7 +485,6 @@ respond_internal(int *msgvec, int recipient_record)
 static int
 forward1(char *str, int recipient_record)
 {
-	int Eflag;
 	int	*msgvec, f;
 	char	*recipient;
 	struct message	*mp;
@@ -535,9 +533,8 @@ forward1(char *str, int recipient_record)
 	}
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = fwdedit(head.h_subject);
-	Eflag = value("skipemptybody") != NULL;
 	mail1(&head, 1, forward_as_attachment ? NULL : mp,
-			NULL, recipient_record, 1, 0, Eflag);
+		NULL, recipient_record, 1);
 	return 0;
 }
 
@@ -547,17 +544,18 @@ forward1(char *str, int recipient_record)
 static char *
 fwdedit(char *subj)
 {
+	struct str in, out;
 	char *newsubj;
-	struct str	in, out;
 
 	if (subj == NULL || *subj == '\0')
 		return NULL;
 	in.s = subj;
 	in.l = strlen(subj);
 	mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
-	newsubj = salloc(strlen(out.s) + 6);
-	strcpy(newsubj, "Fwd: ");
-	strcpy(&newsubj[5], out.s);
+
+	newsubj = salloc(out.l + 6);
+	memcpy(newsubj, "Fwd: ", 5);
+	memcpy(newsubj + 5, out.s, out.l + 1);
 	free(out.s);
 	return newsubj;
 }
@@ -606,7 +604,7 @@ preserve(void *v)
 		/*
 		 * This is now Austin Group Request XCU #20.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }
@@ -631,7 +629,7 @@ unread(void *v)
 		/*
 		 * The "unread" command is not part of POSIX mailx.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }
@@ -851,16 +849,20 @@ diction(const void *a, const void *b)
 int 
 cfile(void *v)
 {
-	char **argv = v, *exp;
-
+	char **argv = v;
+#if 1 /* TODO this & expansion is completely redundant! */
+	char *exp;
+#endif
 	if (argv[0] == NULL) {
 		newfileinfo();
-		return (0);
+		return 0;
 	}
+#if 1
 	if ((exp = expand("&")) == NULL)
-		return (0);
+		return 0;
 	strncpy(mboxname, exp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
-	return (file1(*argv));
+#endif
+	return file1(*argv);
 }
 
 static int 
@@ -981,7 +983,6 @@ Followup(void *v)
 static int 
 Respond_internal(int *msgvec, int recipient_record)
 {
-	int Eflag;
 	struct header head;
 	struct message *mp;
 	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
@@ -1004,8 +1005,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
-	Eflag = value("skipemptybody") != NULL;
-	if (mail1(&head, 1, mp, NULL, recipient_record, 0, 0, Eflag) == OKAY &&
+	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER|MANSWERED;
 	return 0;
@@ -1405,9 +1405,9 @@ account(void *v)
 		for (i = 0; args[i+1]; i++)
 			a->ac_vars[i] = sstrdup(args[i+1]);
 	} else {
-		unset_allow_undefined = 1;
+		unset_allow_undefined = TRU1;
 		set(a->ac_vars);
-		unset_allow_undefined = 0;
+		unset_allow_undefined = FAL0;
 	setf:	if (!starting) {
 			nqf = savequitflags();
 			restorequitflags(oqf);

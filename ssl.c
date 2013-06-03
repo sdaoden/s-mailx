@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Generic SSL / SMIME commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -48,13 +48,15 @@ typedef int avoid_empty_file_compiler_warning;
 void 
 ssl_set_vrfy_level(const char *uhp)
 {
-	char *cp;
-	char *vrvar;
+	size_t l;
+	char *cp, *vrvar;
 
 	ssl_vrfy_level = VRFY_ASK;
-	vrvar = ac_alloc(strlen(uhp) + 12);
-	strcpy(vrvar, "ssl-verify-");
-	strcpy(&vrvar[11], uhp);
+	l = strlen(uhp);
+	vrvar = ac_alloc(l + 12);
+	memcpy(vrvar, "ssl-verify-", 11);
+	memcpy(vrvar + 11, uhp, l + 1);
+
 	if ((cp = value(vrvar)) == NULL)
 		cp = value("ssl-verify");
 	ac_free(vrvar);
@@ -108,11 +110,13 @@ ssl_vrfy_decide(void)
 char *
 ssl_method_string(const char *uhp)
 {
+	size_t l;
 	char *cp, *mtvar;
 
-	mtvar = ac_alloc(strlen(uhp) + 12);
-	strcpy(mtvar, "ssl-method-");
-	strcpy(&mtvar[11], uhp);
+	l = strlen(uhp);
+	mtvar = ac_alloc(l + 12);
+	memcpy(mtvar, "ssl-method-", 11);
+	memcpy(mtvar + 11, uhp, l + 1);
 	if ((cp = value(mtvar)) == NULL)
 		cp = value("ssl-method");
 	ac_free(mtvar);
@@ -122,20 +126,27 @@ ssl_method_string(const char *uhp)
 enum okay
 smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
+	/* TODO like i said quite often now, the entire SSL stuff really needs
+	 * TODO a review ASAP; also in respect to correct resource release, and
+	 * TODO especially in case of errors; S-nail is a program that REALLY
+	 * TODO may run for a week or longer!!! */
 	char	*buf, *hn, *bn;
 	char	*savedfields = NULL;
 	size_t	bufsize, buflen, count, savedsize = 0;
 	int	c;
 
-	if ((*hp = Ftemp(&hn, "Rh", "w+", 0600, 1)) == NULL ||
-			(*bp = Ftemp(&bn, "Rb", "w+", 0600, 1)) == NULL) {
+	if ((*hp = Ftemp(&hn, "Rh", "w+", 0600, 1)) == NULL)
+		goto jetmp;
+	rm(hn);
+	Ftfree(&hn);
+	if ((*bp = Ftemp(&bn, "Rb", "w+", 0600, 1)) == NULL) {
+jetmp:
 		perror("tempfile");
 		return STOP;
 	}
-	rm(hn);
 	rm(bn);
-	Ftfree(&hn);
 	Ftfree(&bn);
+
 	buf = smalloc(bufsize = LINESIZE);
 	savedfields = smalloc(savedsize = 1);
 	*savedfields = '\0';
@@ -143,6 +154,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 		count = fsize(ip);
 	else
 		count = xcount;
+
 	while (fgetline(&buf, &bufsize, &count, &buflen, ip, 0) != NULL &&
 			*buf != '\n') {
 		if (ascncasecmp(buf, "content-", 8) == 0) {
@@ -151,7 +163,8 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 			for (;;) {
 				savedsize += buflen;
 				savedfields = srealloc(savedfields, savedsize);
-				strcat(savedfields, buf);
+				memcpy(savedfields + strlen(savedfields),
+					buf, strlen(buf));
 				if (keep)
 					fwrite(buf, sizeof *buf, buflen, *hp);
 				c = getc(ip);
@@ -167,12 +180,15 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 	}
 	fflush(*hp);
 	rewind(*hp);
+
 	fputs(savedfields, *bp);
 	putc('\n', *bp);
 	while (fgetline(&buf, &bufsize, &count, &buflen, ip, 0) != NULL)
 		fwrite(buf, sizeof *buf, buflen, *bp);
 	fflush(*bp);
 	rewind(*bp);
+
+	free(savedfields);
 	free(buf);
 	return OKAY;
 }

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Mailbox file locking.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -35,10 +35,10 @@
 
 #include "rcv.h"
 
-#include <errno.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -60,13 +60,16 @@ maildir_access(const char *fname)
 	char *p;
 	int i;
 
-	path = ac_alloc(strlen(fname) + 2);
-	strcpy(path, fname);
+	i = (int)strlen(fname);
+	path = ac_alloc(i + 2);
+	memcpy(path, fname, i + 1);
 	p = strrchr(path, '/');
 	if (p != NULL)
 		*p = '\0';
-	if (p == NULL || *path == '\0')
-		strcpy(path, ".");
+	if (p == NULL || *path == '\0') {
+		path[0] = '.';
+		path[1] = '\0';
+	}
 	i = access(path, R_OK|W_OK|X_OK);
 	ac_free(path);
 	return i;
@@ -187,7 +190,7 @@ bad:
 }
 
 int 
-fcntl_lock(int fd, int type)
+fcntl_lock(int fd, int type) /* TODO check callees for EINTR etc.!!! */
 {
 	struct flock flp;
 
@@ -252,7 +255,7 @@ dot_lock(const char *fname, int fd, int pollinterval, FILE *fp, const char *msg)
 			}
 			sleep(pollinterval);
 		}
-		fcntl_lock(fd, F_WRLCK);
+		(void)fcntl_lock(fd, F_WRLCK);
 	}
         fprintf(stderr, catgets(catd, CATSET, 71,
 		"%s seems a stale lock? Need to be removed by hand?\n"), path);

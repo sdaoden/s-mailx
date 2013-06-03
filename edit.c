@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Perform message editing functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -43,12 +43,6 @@
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Perform message editing functions.
- */
 
 static int edit1(int *msgvec, int type);
 
@@ -111,7 +105,7 @@ edit1(int *msgvec, int type)
 				continue;
 		}
 		setdot(mp = &message[msgvec[i] - 1]);
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 		touch(mp);
 
 		sigint = safe_signal(SIGINT, SIG_IGN);
@@ -168,10 +162,10 @@ run_editor(FILE *fp, off_t size, int type, int readonly,
 	FILE *nf = NULL;
 	int t;
 	time_t modtime;
-	char const *edit;
+	char const *editor;
 	struct stat statb;
 	char *tempEdit;
-	sigset_t	set;
+	sigset_t set;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600, 1))
 			== NULL) {
@@ -203,54 +197,38 @@ run_editor(FILE *fp, off_t size, int type, int readonly,
 	if (ferror(nf)) {
 		Fclose(nf);
 		perror(tempEdit);
-		unlink(tempEdit);
-		Ftfree(&tempEdit);
 		nf = NULL;
 		goto out;
 	}
 	if (Fclose(nf) < 0) {
 		perror(tempEdit);
-		unlink(tempEdit);
-		Ftfree(&tempEdit);
 		nf = NULL;
 		goto out;
 	}
 	nf = NULL;
-	if ((edit = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
-		edit = type == 'e' ? "ed" : "vi";
+
+	if ((editor = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
+		editor = (type == 'e') ? "ed" : "vi";
 	sigemptyset(&set);
-	if (run_command(edit, oldint != SIG_IGN ? &set : NULL, -1, -1,
-				tempEdit, NULL, NULL) < 0) {
-		unlink(tempEdit);
-		Ftfree(&tempEdit);
+	if (run_command(editor, oldint != SIG_IGN ? &set : NULL, -1, -1,
+				tempEdit, NULL, NULL) < 0)
 		goto out;
-	}
+
 	/*
 	 * If in read only mode or file unchanged, just remove the editor
-	 * temporary and return.
+	 * temporary and return.  Otherwise switch to new file.
 	 */
-	if (readonly) {
-		unlink(tempEdit);
-		Ftfree(&tempEdit);
+	if (readonly)
 		goto out;
-	}
 	if (stat(tempEdit, &statb) < 0) {
 		perror(tempEdit);
 		Ftfree(&tempEdit);
 		goto out;
 	}
-	if (modtime == statb.st_mtime) {
-		unlink(tempEdit);
-		Ftfree(&tempEdit);
-		goto out;
-	}
-	/*
-	 * Now switch to new file.
-	 */
-	if ((nf = Fopen(tempEdit, "a+")) == NULL)
+	if (modtime != statb.st_mtime && (nf = Fopen(tempEdit, "a+")) == NULL)
 		perror(tempEdit);
 out:
-	if (tempEdit) {
+	if (tempEdit != NULL) {
 		unlink(tempEdit);
 		Ftfree(&tempEdit);
 	}

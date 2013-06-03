@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ MIME support functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2000
@@ -47,12 +47,6 @@
 
 #include "extern.h"
 
-/*
- * Mail -- a mail program
- *
- * MIME support functions.
- */
-
 #define _CHARSET()	((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
 
 struct mtnode {
@@ -61,8 +55,7 @@ struct mtnode {
 	char		mt_line[VFIELD_SIZE(8)];
 };
 
-static char const	basetable[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-			*const _mt_sources[] = {
+static char const	*const _mt_sources[] = {
 		/* XXX Order fixed due to *mimetypes-load-control* handling! */
 		MIME_TYPES_USR, MIME_TYPES_SYS, NULL
 	},
@@ -227,6 +220,7 @@ _fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
 	/* *input* _may_ point to non-modifyable buffer; but even then it only
 	 * needs to be dup'ed away if we have to transform the content */
 	struct str in, out;
+	(void)rest;
 
 	in = *input;
 	out.s = NULL;
@@ -1335,7 +1329,11 @@ mime_fromaddr(char const *name)
 	}
 	if (cp > lastcp)
 		addstr(&res, &ressz, &rescur, lastcp, cp - lastcp);
-	res[rescur] = '\0';
+	/* TODO rescur==0: inserted to silence Coverity ...; check that */
+	if (rescur == 0)
+		res = UNCONST("");
+	else
+		res[rescur] = '\0';
 	{	char *x = res;
 		res = savestr(res);
 		free(x);
@@ -1512,6 +1510,7 @@ jconvert:
 		break;
 	case CONV_FROMB64:
 		rest = NULL;
+		/* FALLTHRU */
 	case CONV_FROMB64_T:
 		state = b64_decode(&out, &in, rest);
 jqpb64_dec:

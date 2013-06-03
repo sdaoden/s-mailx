@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ A cache for IMAP.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -44,21 +44,15 @@ typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * A cache for IMAP.
- */
 
 static char *encname(struct mailbox *mp, const char *name, int same,
 		const char *box);
@@ -78,7 +72,7 @@ static const char	infofmt[] = "%c %lu %d %lu %ld";
 	((f) & (MSAVED|MDELETED|MREAD|MBOXED|MNEW|MFLAGGED|MANSWERED|MDRAFTED))
 
 static const char	README1[] = "\
-This is a cache directory maintained by mailx(1). You should not change any\n\
+This is a cache directory maintained by s-nail(1). You should not change any\n\
 files within. Nevertheless, the structure is as follows: Each subdirectory\n\
 of the current directory represents an IMAP account, and each subdirectory\n\
 below that represents a mailbox. Each mailbox directory contains a file\n\
@@ -99,8 +93,8 @@ write new cache entries if configured in this way. If you do not wish to use\n\
 the cache anymore, delete the entire directory and unset the 'imap-cache'\n\
 variable in mailx(1).\n";
 static const char	README5[] = "\n\
-For more information about mailx(1), visit\n\
-<http://heirloom.sourceforge.net/mailx.html>.\n";
+For more information about s-nail(1), visit\n\
+<http://sdaoden.users.sourceforge.net/code.html>.\n";
 
 static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)
@@ -161,7 +155,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 		return STOP;
 	if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
 		return STOP;
-	fcntl_lock(fileno(fp), F_RDLCK);
+	(void)fcntl_lock(fileno(fp), F_RDLCK);
 	if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
 			(unsigned long*)&xtime, &xlines) < 4)
 		goto fail;
@@ -182,9 +176,13 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
 success:
 	if (b == 'N')
 		goto flags;
-	fseek(fp, INITSKIP, SEEK_SET);
+	if (fseek(fp, INITSKIP, SEEK_SET) < 0)
+		goto fail;
 	zp = zalloc(fp);
-	fseek(mp->mb_otf, 0L, SEEK_END);
+	if (fseek(mp->mb_otf, 0L, SEEK_END) < 0) {
+		(void)zfree(zp);
+		goto fail;
+	}
 	offset = ftell(mp->mb_otf);
 	while (inheader && (n = zread(zp, iob, sizeof iob)) > 0) {
 		size += n;
@@ -278,13 +276,14 @@ putcache(struct mailbox *mp, struct message *m)
 		c = 'N';
 	else
 		return;
-	oldoffset = ftell(mp->mb_itf);
+	if ((oldoffset = ftell(mp->mb_itf)) < 0) /* XXX weird err hdling */
+		oldoffset = 0;
 	if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
 		if ((obuf = Fopen(name, "w")) == NULL)
 			return; 
-		fcntl_lock(fileno(obuf), F_WRLCK);
+		(void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
 	} else {
-		fcntl_lock(fileno(obuf), F_WRLCK);
+		(void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
 		if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
 				(unsigned long*)&otime, &olines) >= 4 &&
 				ob != '\0' && (ob == 'B' ||
@@ -351,7 +350,7 @@ out:	if (Fclose(obuf) != 0) {
 		m->m_flag &= ~MFULLYCACHED;
 		unlink(name);
 	}
-	fseek(mp->mb_itf, oldoffset, SEEK_SET);
+	(void)fseek(mp->mb_itf, oldoffset, SEEK_SET);
 }
 
 void 
@@ -650,7 +649,7 @@ cache_remove(const char *name)
 		return OKAY;
 	pathend = strlen(dir);
 	path = smalloc(pathsize = pathend + 30);
-	strcpy(path, dir);
+	memcpy(path, dir, pathend);
 	path[pathend++] = '/';
 	path[pathend] = '\0';
 	if ((dirfd = opendir(path)) == NULL) {
@@ -663,10 +662,10 @@ cache_remove(const char *name)
 				 (dp->d_name[1] == '.' &&
 				  dp->d_name[2] == '\0')))
 			continue;
-		n = strlen(dp->d_name);
-		if (pathend + n + 1 > pathsize)
+		n = strlen(dp->d_name) + 1;
+		if (pathend + n > pathsize)
 			path = srealloc(path, pathsize = pathend + n + 30);
-		strcpy(&path[pathend], dp->d_name);
+		memcpy(path + pathend, dp->d_name, n);
 		if (stat(path, &st) < 0 || (st.st_mode&S_IFMT) != S_IFREG)
 			continue;
 		if (unlink(path) < 0) {
@@ -711,7 +710,8 @@ cached_uidvalidity(struct mailbox *mp)
 			(fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
 			fscanf(uvfp, "%lu", &uv) != 1)
 		uv = 0;
-	Fclose(uvfp);
+	if (uvfp != NULL)
+		Fclose(uvfp);
 	return uv;
 }
 

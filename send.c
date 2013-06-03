@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Mail to mail folders and displays.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,17 +39,19 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
 #include "extern.h"
 
-/*
- * Mail -- a mail program
- *
- * Mail to mail folders and displays.
- */
+enum pipeflags {
+	PIPE_NULL,	/* No pipe- mimetype handler */
+	PIPE_COMM,	/* Normal command */
+	PIPE_ASYNC,	/* Normal command, run asynchronous */
+	PIPE_TEXT,	/* @ special command to force treatment as text */
+	PIPE_MSG	/* Display message (returned as command string) */
+};
 
 enum parseflags {
 	PARSE_DEFAULT	= 0,
@@ -75,6 +77,13 @@ SINLINE ssize_t	_out(char const *buf, size_t len, FILE *fp,
 			char const *prefix, size_t prefixlen, off_t *stats,
 			struct str *rest);
 
+/* Query possible pipe command for MIME type */
+static enum pipeflags _pipecmd(char **result, char const *content_type);
+
+/* Create a pipe */
+static FILE *	_pipefile(char const *pipecmd, FILE **qbuf, bool_t quote,
+			bool_t async);
+
 static int sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		struct ignoretab *doign, char const *prefix, size_t prefixlen,
 		enum sendaction action, off_t *stats, int level);
@@ -91,8 +100,6 @@ static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 #endif
 static FILE *newfile(struct mimepart *ip, int *ispipe);
-static char *getpipecmd(char *content);
-static FILE *getpipefile(char const *cmd, FILE **qbuf, int quote);
 static void pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
 		char const *prefix, size_t prefixlen, off_t *stats);
 static void statusput(const struct message *mp, FILE *obuf,
@@ -318,6 +325,108 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 		_addstats(stats, n, sz);
 	}
 	return sz;
+}
+
+static enum pipeflags
+_pipecmd(char **result, char const *content_type)
+{
+	enum pipeflags ret;
+	char *s, *cp;
+	char const *cq;
+
+	ret = PIPE_NULL;
+	*result = NULL;
+	if (content_type == NULL)
+		goto jleave;
+
+	/* First check wether there is a special pipe-MIMETYPE handler */
+	s = ac_alloc(strlen(content_type) + 6);
+	memcpy(s, "pipe-", 5);
+	cp = &s[5];
+	cq = content_type;
+	do
+		*cp++ = lowerconv(*cq);
+	while (*cq++ != '\0');
+	cp = value(s);
+	ac_free(s);
+
+	if (cp == NULL)
+		goto jleave;
+
+	/* User specified a command, inspect for special cases */
+	if (cp[0] != '@') {
+		/* Normal command line */
+		ret = PIPE_COMM;
+		*result = cp;
+	} else if (*++cp == '\0') {
+		/* Treat as plain text */
+		ret = PIPE_TEXT;
+	} else if (! msglist_is_single) {
+		/* Viewing multiple messages in one go, don't block system */
+		ret = PIPE_MSG;
+		*result = UNCONST(tr(86,
+			"[Directly address message only to display this]\n"));
+	} else {
+		/* Viewing a single message only */
+#if 0	/* TODO send/MIME layer rewrite: when we have a single-pass parser
+	 * TODO then the parsing phase and the send phase will be separated;
+	 * TODO that allows us to ask a user *before* we start the send, i.e.,
+	 * TODO *before* a pager pipe is setup (which is the problem with
+	 * TODO the '#if 0' code here) */
+		size_t l = strlen(content_type);
+		char const *x = tr(999, "Should i display a part `%s' (y/n)? ");
+		s = ac_alloc(l += strlen(x) + 1);
+		snprintf(s, l - 1, x, content_type);
+		l = yorn(s);
+			puts(""); /* .. we've hijacked a pipe 8-] ... */
+		ac_free(s);
+		if (! l) {
+			x = tr(210, "[User skipped diplay]\n");
+			ret = PIPE_MSG;
+			*result = UNCONST(x);
+		} else
+#endif
+		if (cp[0] == '&')
+			/* Asynchronous command, normal command line */
+			ret = PIPE_ASYNC, *result = ++cp;
+		else
+			ret = PIPE_COMM, *result = cp;
+	}
+jleave:
+	return ret;
+}
+
+static FILE *
+_pipefile(char const *pipecmd, FILE **qbuf, bool_t quote, bool_t async)
+{
+	char const *shell;
+	FILE *rbuf = *qbuf;
+
+	if (pipecmd != NULL) {
+		if (quote) {
+			char *tempPipe;
+
+			if ((*qbuf = Ftemp(&tempPipe, "Rp", "w+", 0600, 1))
+					== NULL) {
+				perror(catgets(catd, CATSET, 173, "tmpfile"));
+				*qbuf = rbuf;
+			}
+			unlink(tempPipe);
+			Ftfree(&tempPipe);
+			async = FAL0;
+		}
+		if ((shell = value("SHELL")) == NULL)
+			shell = SHELL;
+		if ((rbuf = Popen(pipecmd, "W", shell,
+				async ? -1 : fileno(*qbuf))) == NULL)
+			perror(pipecmd);
+		else {
+			fflush(*qbuf);
+			if (*qbuf != stdout)
+				fflush(stdout);
+		}
+	}
+	return rbuf;
 }
 
 /*
@@ -634,10 +743,21 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			pipecmd = getpipecmd(ip->m_ct_type_plain);
-			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd))
+			ispipe = TRU1;
+			switch (_pipecmd(&pipecmd, ip->m_ct_type_plain)) {
+			case PIPE_MSG:
+				_out(pipecmd, strlen(pipecmd), obuf, CONV_NONE,
+					SEND_MBOX, prefix, prefixlen, stats,
+					NULL);
 				pipecmd = NULL;
-			/*FALLTHRU*/
+				/* FALLTRHU */
+			case PIPE_TEXT:
+			case PIPE_COMM:
+			case PIPE_ASYNC:
+			case PIPE_NULL:
+				break;
+			}
+			/* FALLTRHU */
 		default:
 			break;
 		}
@@ -657,15 +777,27 @@ skip:	switch (ip->m_mimecontent) {
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			pipecmd = getpipecmd(ip->m_ct_type_plain);
-			if (MIME_CONTENT_PIPECMD_FORCE_TEXT(pipecmd)) {
+			ispipe = TRU1;
+			switch (_pipecmd(&pipecmd, ip->m_ct_type_plain)) {
+			case PIPE_MSG:
+				_out(pipecmd, strlen(pipecmd), obuf, CONV_NONE,
+					SEND_MBOX, prefix, prefixlen, stats,
+					NULL);
 				pipecmd = NULL;
-				goto jcopyout; /* break; break; :*/
+				break;
+			case PIPE_ASYNC:
+				ispipe = FAL0;
+				/* FALLTHRU */
+			case PIPE_COMM:
+			case PIPE_NULL:
+				break;
+			case PIPE_TEXT:
+				goto jcopyout; /* break; break; */
 			}
 			if (pipecmd != NULL)
 				break;
 			if (level == 0 && count) {
-				char const *x = tr(210, "[Binary content]\n\n");
+				char const *x = tr(210, "[Binary content]\n");
 				_out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX,
 					prefix, prefixlen, stats, NULL);
 			}
@@ -728,7 +860,7 @@ skip:	switch (ip->m_mimecontent) {
 				char const *x = tr(85,
 					"[Missing multipart boundary - "
 					"use \"show\" to display "
-					"the raw message]\n\n");
+					"the raw message]\n");
 				_out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX,
 					prefix, prefixlen, stats, NULL);
 			}
@@ -736,6 +868,7 @@ skip:	switch (ip->m_mimecontent) {
 				if (np->m_mimecontent == MIME_DISCARD &&
 						action != SEND_DECRYPT)
 					continue;
+				ispipe = FAL0;
 				switch (action) {
 				case SEND_TOFILE:
 					if (np->m_partstring &&
@@ -790,11 +923,11 @@ skip:	switch (ip->m_mimecontent) {
 				else if (action == SEND_QUOTE)
 					break;
 				if (action == SEND_TOFILE && obuf != origobuf) {
-					if (ispipe == 0)
+					if (! ispipe)
 						Fclose(obuf);
 					else {
 jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
-						Pclose(obuf);
+						Pclose(obuf, TRU1);
 						safe_signal(SIGPIPE, oldpipe);
 					}
 				}
@@ -885,12 +1018,13 @@ jcopyout:
 		}
 	}
 #endif
-	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
-			action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
-			pipecmd != NULL) {
+	if (pipecmd != NULL &&
+			(action == SEND_TODISP || action == SEND_TODISP_ALL ||
+			action == SEND_QUOTE || action == SEND_QUOTE_ALL)) {
 		qbuf = obuf;
-		pbuf = getpipefile(pipecmd, UNVOLATILE(&qbuf),
-			action == SEND_QUOTE || action == SEND_QUOTE_ALL);
+		pbuf = _pipefile(pipecmd, UNVOLATILE(&qbuf),
+			action == SEND_QUOTE || action == SEND_QUOTE_ALL,
+			! ispipe);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {
 			oldpipe = safe_signal(SIGPIPE, onpipe);
@@ -927,7 +1061,7 @@ joutln:
 end:	free(line);
 	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(pbuf);
+		Pclose(pbuf, qbuf != obuf);
 		safe_signal(SIGPIPE, oldpipe);
 		if (qbuf != obuf)
 			pipecpy(qbuf, obuf, origobuf, prefix, prefixlen, stats);
@@ -1157,7 +1291,7 @@ newfile(struct mimepart *ip, int *ispipe)
 		free(out.s);
 	}
 
-	if (value("interactive") != NULL) {
+	if (options & OPT_INTERACTIVE) {
 		char *f2, *f3;
 jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 			ip->m_partstring ? ip->m_partstring : "?",
@@ -1191,57 +1325,6 @@ jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 			fprintf(stderr, tr(176, "Cannot open %s\n"), f);
 	}
 	return (fp);
-}
-
-static char *
-getpipecmd(char *content)
-{
-	char	*penv, *cp, *cq, *pipecmd;
-
-	if (content == NULL)
-		return NULL;
-	penv = ac_alloc(strlen(content) + 6);
-	strcpy(penv, "pipe-");
-	cp = &penv[5];
-	cq = content;
-	do
-		*cp++ = lowerconv(*cq & 0377);
-	while (*cq++);
-	pipecmd = value(penv);
-	ac_free(penv);
-	return pipecmd;
-}
-
-static FILE *
-getpipefile(char const *pipecmd, FILE **qbuf, int quote)
-{
-	char const *shell;
-	FILE *rbuf = *qbuf;
-
-	if (pipecmd != NULL) {
-		if (quote) {
-			char *tempPipe;
-
-			if ((*qbuf = Ftemp(&tempPipe, "Rp", "w+", 0600, 1))
-					== NULL) {
-				perror(catgets(catd, CATSET, 173, "tmpfile"));
-				*qbuf = rbuf;
-			}
-			unlink(tempPipe);
-			Ftfree(&tempPipe);
-		}
-		if ((shell = value("SHELL")) == NULL)
-			shell = SHELL;
-		if ((rbuf = Popen(pipecmd, "W", shell, fileno(*qbuf)))
-				== NULL) {
-			perror(pipecmd);
-		} else {
-			fflush(*qbuf);
-			if (*qbuf != stdout)
-				fflush(stdout);
-		}
-	}
-	return rbuf;
 }
 
 static void

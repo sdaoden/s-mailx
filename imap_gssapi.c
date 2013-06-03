@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Implementation of IMAP GSSAPI authentication according to RFC 1731.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -68,10 +68,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Implementation of IMAP GSSAPI authentication according to RFC 1731.
- */
-
 #ifdef USE_GSSAPI
 
 #ifndef GSSAPI_REG_INCLUDE
@@ -131,10 +127,15 @@ imap_gss(struct mailbox *mp, char *user)
 	char	o[LINESIZE];
 	enum okay	ok = STOP;
 
-	if (user == NULL && (user = getuser()) == NULL)
-		return STOP;
-	server = salloc(strlen(mp->mb_imap_account));
-	strcpy(server, mp->mb_imap_account);
+	if (user == NULL) {
+		if ((user = getuser(NULL)) == NULL)
+			return STOP;
+		user = savestr(user);
+	}
+	{	size_t i = strlen(mp->mb_imap_account) + 1;
+		server = salloc(i);
+		memcpy(server, mp->mb_imap_account, i);
+	}
 	if (strncmp(server, "imap://", 7) == 0)
 		server += 7;
 	else if (strncmp(server, "imaps://", 8) == 0)
@@ -142,7 +143,7 @@ imap_gss(struct mailbox *mp, char *user)
 	if ((cp = UNCONST(last_at_before_slash(server))) != NULL)
 		server = &cp[1];
 	for (cp = server; *cp; cp++)
-		*cp = lowerconv(*cp&0377);
+		*cp = lowerconv(*cp);
 	send_tok.value = salloc(send_tok.length = strlen(server) + 6);
 	snprintf(send_tok.value, send_tok.length, "imap@%s", server);
 	maj_stat = gss_import_name(&min_stat, &send_tok,

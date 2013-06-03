@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Variable handling stuff.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -40,14 +40,8 @@
 #include "rcv.h"
 #include "extern.h"
 
-/*
- * Mail -- a mail program
- *
- * Variable handling stuff.
- */
-
 /* Check for special housekeeping. */
-static void	_check_special_vars(char const *name, bool_t enable,
+static bool_t	_check_special_vars(char const *name, bool_t enable,
 			char **value);
 
 /*
@@ -63,17 +57,23 @@ static char const *	canonify(char const *vn);
 static struct var *lookup(const char *name, int h);
 static void remove_grouplist(struct grouphead *gh);
 
-static void
+static bool_t
 _check_special_vars(char const *name, bool_t enable, char **value)
 {
+	/* TODO _check_special_vars --> value cache */
+	bool_t rv = TRU1;
 	int flag = 0;
 
 	if (strcmp(name, "debug") == 0)
 		flag = OPT_DEBUG;
+	else if (strcmp(name, "header") == 0)
+		flag = OPT_N_FLAG, enable = ! enable;
+	else if (strcmp(name, "skipemptybody") == 0)
+		flag = OPT_E_FLAG;
 	else if (strcmp(name, "verbose") == 0)
 		flag = OPT_VERBOSE;
 	else if (strcmp(name, "folder") == 0)
-		var_folder_updated(value);
+		rv = var_folder_updated(value);
 
 	if (flag) {
 		if (enable)
@@ -81,6 +81,7 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 		else
 			options &= ~flag;
 	}
+	return rv;
 }
 
 static char const *
@@ -100,12 +101,13 @@ assign(char const *name, char const *value)
 {
 	struct var *vp;
 	int h;
+	char *oval;
 
 	if (value == NULL) {
-		h = unset_allow_undefined;
-		unset_allow_undefined = 1;
+		bool_t save = unset_allow_undefined;
+		unset_allow_undefined = TRU1;
 		unset_internal(name);
-		unset_allow_undefined = h;
+		unset_allow_undefined = save;
 		goto jleave;
 	}
 
@@ -118,12 +120,19 @@ assign(char const *name, char const *value)
 		vp->v_name = vcopy(name);
 		vp->v_link = variables[h];
 		variables[h] = vp;
-	}
-	else
-		vfree(vp->v_value);
+		oval = UNCONST("");
+	} else
+		oval = vp->v_value;
 	vp->v_value = vcopy(value);
 
-	_check_special_vars(name, 1, &vp->v_value);
+	/* Check if update allowed XXX wasteful on error! */
+	if (! _check_special_vars(name, 1, &vp->v_value)) {
+		char *cp = vp->v_value;
+		vp->v_value = oval;
+		oval = cp;
+	}
+	if (*oval != '\0')
+		vfree(oval);
 jleave:	;
 }
 
@@ -153,7 +162,7 @@ unset_internal(char const *name)
 	}
 	ret = 0;
 jleave:
-	return (ret);
+	return ret;
 }
 
 char *

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ User commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -44,12 +44,6 @@
 #endif
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * User commands.
- */
 
 /*
  * Print the current active headings.
@@ -347,7 +341,7 @@ from(void *v)
 endpipe:
 	if (obuf != stdout) {
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(obuf);
+		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
 	return(0);
@@ -469,24 +463,13 @@ jdate_set:
 		subjline = out.s;
 	}
 
-	if (options & OPT_I_FLAG) {
-		if ((name = hfieldX("newsgroups", mp)) == NULL)
-			if ((name = hfieldX("article-id", mp)) == NULL)
-				name = "<>";
-		name = prstr(name);
-	} else if (value("show-rcpt") == NULL) {
-		name = name1(mp, 0);
-		isaddr = 1;
-		if (value("showto") && name && is_myname(skin(name))) {
-			if ((cp = hfield1("to", mp)) != NULL) {
-				name = cp;
-				isto = 1;
-			}
-		}
-	} else {
-		isaddr = 1;
-		if ((name = hfield1("to", mp)) != NULL)
+	isaddr = 1;
+	name = name1(mp, 0);
+	if (name != NULL && value("showto") && is_myname(skin(name))) {
+		if ((cp = hfield1("to", mp)) != NULL) {
+			name = cp;
 			isto = 1;
+		}
 	}
 	if (name == NULL) {
 		name = "";
@@ -877,8 +860,8 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		} else {
 			safe_signal(SIGPIPE, brokpipe);
 		}
-	} else if (value("interactive") != NULL &&
-	    (page || (cp = value("crt")) != NULL)) {
+	} else if ((options & OPT_INTERACTIVE) &&
+			(page || (cp = value("crt")) != NULL)) {
 		nlines = 0;
 		if (!page) {
 			for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
@@ -927,7 +910,7 @@ close_pipe:
 		 * Ignore SIGPIPE so it can't cause a duplicate close.
 		 */
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(obuf);
+		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
 	return(0);
@@ -1148,7 +1131,7 @@ top(void *v)
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 		if (! empty_last)
 			printf("\n");
 		_show_msg_overview(mp, *ip, stdout);
@@ -1193,7 +1176,7 @@ stouch(void *v)
 		/*
 		 * POSIX interpretation necessary.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }
@@ -1214,7 +1197,7 @@ mboxit(void *v)
 		/*
 		 * POSIX interpretation necessary.
 		 */
-		did_print_dot = 1;
+		did_print_dot = TRU1;
 	}
 	return(0);
 }

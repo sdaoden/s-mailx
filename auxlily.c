@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Auxiliary functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,6 +39,8 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
+#include <sys/utsname.h>
 #include <ctype.h>
 #include <errno.h>
 #include <dirent.h>
@@ -46,8 +48,6 @@
 #include <limits.h>
 #include <pwd.h>
 #include <stdarg.h>
-#include <sys/stat.h>
-#include <sys/utsname.h>
 #include <termios.h>
 #include <unistd.h>
 #ifdef HAVE_WCTYPE_H
@@ -56,6 +56,7 @@
 #ifdef HAVE_WCWIDTH
 # include <wchar.h>
 #endif
+
 #ifdef HAVE_SOCKETS
 # ifdef USE_IPV6
 #  include <sys/socket.h>
@@ -67,12 +68,6 @@
 #ifdef USE_MD5
 # include "md5.h"
 #endif
-
-/*
- * Mail -- a mail program
- *
- * Auxiliary functions.
- */
 
 /*
  * Announce a fatal error and die.
@@ -220,8 +215,8 @@ page_or_print(FILE *fp, size_t lines)
 
 	if ((rows = paging_seems_sensible()) != 0 && lines == 0) {
 		while ((c = getc(fp)) != EOF)
-			if (c == '\n')
-				++lines;
+			if (c == '\n' && ++lines > rows)
+				break;
 		rewind(fp);
 	}
 
@@ -277,9 +272,11 @@ which_protocol(const char *name)
 #endif
 		return PROTO_UNKNOWN;
 	} else {
+		/* TODO This is the de facto maildir code and thus belongs
+		 * TODO into maildir! */
 	file:	p = PROTO_FILE;
 		np = ac_alloc((sz = strlen(name)) + 5);
-		strcpy(np, name);
+		memcpy(np, name, sz + 1);
 		if (stat(name, &st) == 0) {
 			if (S_ISDIR(st.st_mode)) {
 				strcpy(&np[sz], "/tmp");
@@ -345,59 +342,6 @@ nextprime(long n)
 	if (i == sizeof primes / sizeof *primes)
 		mprime = n;	/* not so prime, but better than failure */
 	return mprime;
-}
-
-char *
-getuser(void)
-{
-	char *line = NULL, *user;
-	size_t linesize = 0;
-
-	if (is_a_tty[0]) {
-		fputs("User: ", stdout);
-		fflush(stdout);
-	}
-	if (readline(stdin, &line, &linesize) == 0) {
-		if (line)
-			free(line);
-		return NULL;
-	}
-	user = savestr(line);
-	free(line);
-	return user;
-}
-
-char *
-getpassword(struct termios *otio, int *reset_tio, const char *query)
-{
-	struct termios	tio;
-	char *line = NULL, *pass;
-	size_t linesize = 0;
-	int	i;
-
-	if (is_a_tty[0]) {
-		fputs(query ? query : "Password:", stdout);
-		fflush(stdout);
-		tcgetattr(0, &tio);
-		*otio = tio;
-		tio.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-		*reset_tio = 1;
-		tcsetattr(0, TCSAFLUSH, &tio);
-	}
-	i = readline(stdin, &line, &linesize);
-	if (is_a_tty[0]) {
-		fputc('\n', stdout);
-		tcsetattr(0, TCSADRAIN, otio);
-	}
-	*reset_tio = 0;
-	if (i < 0) {
-		if (line)
-			free(line);
-		return NULL;
-	}
-	pass = savestr(line);
-	free(line);
-	return pass;
 }
 
 char *
@@ -475,6 +419,25 @@ nodename(int mayoverride)
 }
 
 char *
+lookup_password_for_token(char const *token)
+{
+	size_t tl;
+	char *var, *cp;
+
+	tl = strlen(token);
+	var = ac_alloc(tl + 10);
+
+	memcpy(var, "password-", 9);
+	memcpy(var + 9, token, tl);
+	var[tl + 9] = '\0';
+
+	if ((cp = value(var)) != NULL)
+		cp = savestr(cp);
+	ac_free(var);
+	return cp;
+}
+
+char *
 getrandstring(size_t length)
 {
 	static unsigned char nodedigest[16];
@@ -510,19 +473,65 @@ getrandstring(size_t length)
 #endif
 		}
 		for (i = 0; i < length; i++)
-			data[i] = (char)
-			    ((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
+			data[i] = (char)(
+				(int)(255 * (rand() / (RAND_MAX + 1.0))) ^
 				nodedigest[i % sizeof nodedigest]);
 	}
-	if (fd > 0)
+	if (fd >= 0)
 		close(fd);
 
 	(void)b64_encode_buf(&b64, data, length, B64_SALLOC);
 	ac_free(data);
 	assert(length < b64.l);
 	b64.s[length] = '\0';
-	return (b64.s);
+	return b64.s;
 }
+
+#ifdef USE_MD5
+char *
+md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
+{
+	char const *cp = vp;
+	size_t i, j;
+
+	for (i = 0; i < MD5TOHEX_SIZE / 2; i++) {
+		j = i << 1;
+		hex[j] = hexchar((cp[i] & 0xf0) >> 4);
+		hex[++j] = hexchar(cp[i] & 0x0f);
+	}
+	hex[MD5TOHEX_SIZE] = '\0';
+	return hex;
+}
+
+char *
+cram_md5_string(char const *user, char const *pass, char const *b64)
+{
+	struct str in, out;
+	char digest[16], *cp;
+	size_t lu;
+
+	out.s = NULL;
+	in.s = UNCONST(b64);
+	in.l = strlen(in.s);
+	(void)b64_decode(&out, &in, NULL);
+	assert(out.s != NULL);
+
+	hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass),
+		digest);
+	free(out.s);
+	cp = md5tohex(salloc(MD5TOHEX_SIZE + 1), digest);
+
+	lu = strlen(user);
+	in.l = lu + MD5TOHEX_SIZE +1;
+	in.s = ac_alloc(lu + 1 + MD5TOHEX_SIZE +1);
+	memcpy(in.s, user, lu);
+	in.s[lu] = ' ';
+	memcpy(in.s + lu + 1, cp, MD5TOHEX_SIZE);
+	(void)b64_encode(&out, &in, B64_SALLOC|B64_CRLF);
+	ac_free(in.s);
+	return out.s;
+}
+#endif /* USE_MD5 */
 
 enum okay 
 makedir(const char *name)
@@ -628,7 +637,7 @@ makeprint(struct str const *in, struct str *out)
 				n = 1;
 			}
 			if (n < 0) {
-				mbtowc(&wc, NULL, mb_cur_max);
+				(void)mbtowc(&wc, NULL, mb_cur_max);
 				wc = utf8 ? 0xFFFD : '?';
 				n = 1;
 			} else if (n == 0)

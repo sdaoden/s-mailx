@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Mail to others.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,18 +39,12 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Mail to others.
- */
 
 #define	INFIX_BUF	\
 	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
@@ -68,7 +62,7 @@ static char const *	_get_encoding(const enum conversion convert);
 static int		_attach_file(struct attachment *ap, FILE *fo);
 static int		__attach_file(struct attachment *ap, FILE *fo);
 
-static char const **	_prepare_mta_args(struct name *to);
+static char const **	_prepare_mta_args(struct name *to, struct header *hp);
 
 static struct name *fixhead(struct header *hp, struct name *tolist);
 static int put_signature(FILE *fo, int convert);
@@ -139,26 +133,30 @@ _attach_file(struct attachment *ap, FILE *fo)
 	if (ap->a_conv == AC_FIX_INCS)
 		ap->a_charset = ap->a_input_charset;
 
-	charset_iter_recurse(charset_iter_orig);
-	offs = ftell(fo);
-	charset_iter_reset(NULL);
+	if ((offs = ftell(fo)) < 0) {
+		err = EIO;
+		goto jleave;
+	}
 
-	while (charset_iter_next() != NULL) {
+	charset_iter_recurse(charset_iter_orig);
+	for (charset_iter_reset(NULL); charset_iter_next() != NULL;) {
 		err = __attach_file(ap, fo);
 		if (err == 0 || (err != EILSEQ && err != EINVAL))
 			break;
 		clearerr(fo);
-		fseek(fo, offs, SEEK_SET);
+		if (fseek(fo, offs, SEEK_SET) < 0) {
+			err = EIO;
+			break;
+		}
 		if (ap->a_conv != AC_DEFAULT) {
 			err = EILSEQ;
 			break;
 		}
 		ap->a_charset = NULL;
 	}
-
 	charset_iter_restore(charset_iter_orig);
 jleave:
-	return (err);
+	return err;
 }
 
 static int
@@ -186,10 +184,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 
 		if ((ct = strrchr(bn, '/')) != NULL)
 			bn = ++ct;
-		if ((ct = ap->a_content_type) == NULL)
-			ct = mime_classify_content_type_by_fileext(bn);
+		ct = ap->a_content_type;
 		charset = ap->a_charset;
-
 		convert = mime_classify_file(fi, (char const**)&ct, &charset,
 				&do_iconv);
 		if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
@@ -206,8 +202,6 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 		} else if (fprintf(fo, "; charset=%s\n", charset) < 0)
 			goto jerr_header;
 
-		if (ap->a_content_disposition == NULL)
-			ap->a_content_disposition = "attachment";
 		if (fprintf(fo, "Content-Transfer-Encoding: %s\n"
 				"Content-Disposition: %s;\n filename=\"",
 				_get_encoding(convert),
@@ -290,22 +284,43 @@ jleave:
 }
 
 static char const **
-_prepare_mta_args(struct name *to)
+_prepare_mta_args(struct name *to, struct header *hp)
 {
-	size_t j, i = 4 + smopts_count + count(to) + 1;
+	size_t j, i = 4 + smopts_count + 2 + count(to) + 1;
 	char const **args = salloc(i * sizeof(char*));
 
 	args[0] = value("sendmail-progname");
 	if (args[0] == NULL || *args[0] == '\0')
-		args[0] = "sendmail";
+		args[0] = SENDMAIL_PROGNAME;
+
 	args[1] = "-i";
 	i = 2;
 	if (value("metoo"))
 		args[i++] = "-m";
 	if (options & OPT_VERBOSE)
 		args[i++] = "-v";
+
 	for (j = 0; j < smopts_count; ++j, ++i)
 		args[i] = smopts[j];
+
+	/* -r option?  We may only pass skinned addresses, which is why we do
+	 * not simply call myorigin() (TODO myorigin shouldn't fullname!) */
+	if (options & OPT_r_FLAG) {
+		char const *from;
+
+		if (option_r_arg[0] != '\0')
+			from = option_r_arg;
+		else if (hp->h_from != NULL)
+			from = hp->h_from->n_name;
+		else
+			from = myorigin(hp);
+		if (from != NULL) {
+			args[i++] = "-r";
+			args[i++] = from;
+		}
+	}
+
+	/* Receivers follow */
 	for (; to != NULL; to = to->n_flink)
 		if ((to->n_type & GDEL) == 0)
 			args[i++] = to->n_name;
@@ -482,7 +497,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
  * and return the new file.
  */
 static FILE *
-infix(struct header *hp, FILE *fi)
+infix(struct header *hp, FILE *fi) /* TODO check */
 {
 	FILE *nfo, *nfi;
 	char *tempMail;
@@ -500,10 +515,11 @@ infix(struct header *hp, FILE *fi)
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
 		perror(tempMail);
 		Fclose(nfo);
-		return(NULL);
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
+	if (nfi == NULL)
+		return NULL;
 
 	contenttype = "text/plain"; /* XXX mail body - always text/plain */
 	convert = mime_classify_file(fi, &contenttype, &charset, &do_iconv);
@@ -724,7 +740,7 @@ savemail(char const *name, FILE *fi)
 int 
 mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
-		char *quotefile, int recipient_record, int tflag, int Eflag)
+		char *quotefile, int recipient_record)
 {
 	struct header head;
 	struct str in, out;
@@ -737,13 +753,13 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 		mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
 		head.h_subject = out.s;
 	}
-	if (tflag == 0) {
+	if (! (options & OPT_t_FLAG)) {
 		head.h_to = to;
 		head.h_cc = cc;
 		head.h_bcc = bcc;
 	}
 	head.h_attach = attach;
-	mail1(&head, 0, NULL, quotefile, recipient_record, 0, tflag, Eflag);
+	mail1(&head, 0, NULL, quotefile, recipient_record, 0);
 	if (subject != NULL)
 		free(out.s);
 	return(0);
@@ -756,14 +772,12 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 static int 
 sendmail_internal(void *v, int recipient_record)
 {
-	int Eflag;
 	char *str = v;
 	struct header head;
 
 	memset(&head, 0, sizeof head);
 	head.h_to = lextract(str, GTO|GFULL);
-	Eflag = value("skipemptybody") != NULL;
-	mail1(&head, 0, NULL, NULL, recipient_record, 0, 0, Eflag);
+	mail1(&head, 0, NULL, NULL, recipient_record, 0);
 	return(0);
 }
 
@@ -841,8 +855,6 @@ static enum okay
 start_mta(struct name *to, FILE *input, struct header *hp)
 {
 #ifdef USE_SMTP
-	struct termios otio;
-	int reset_tio;
 	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
 	char const **args = NULL, **t, *mta;
@@ -859,7 +871,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		} else
 			mta = SENDMAIL;
 
-		args = _prepare_mta_args(to);
+		args = _prepare_mta_args(to, hp);
 		if (options & OPT_DEBUG) {
 			printf(tr(181, "Sendmail arguments:"));
 			for (t = args; *t != NULL; t++)
@@ -878,7 +890,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		if ((user = smtp_auth_var("-user", skinned)) != NULL &&
 				(password = smtp_auth_var("-password",
 					skinned)) == NULL)
-			password = getpassword(&otio, &reset_tio, NULL);
+			password = getpassword(NULL);
 #endif
 	}
 
@@ -949,10 +961,11 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 	char const *ep;
 
 	if (recipient_record) {
-		cq = skinned_name(to);
-		cp = salloc(strlen(cq) + 1);
-		strcpy(cp, cq);
-		for (cq = cp; *cq && *cq != '@'; cq++);
+		size_t i = strlen(cq = skinned_name(to)) + 1;
+		cp = salloc(i);
+		memcpy(cp, cq, i);
+		for (cq = cp; *cq && *cq != '@'; cq++)
+			;
 		*cq = '\0';
 	} else
 		cp = value("record");
@@ -964,9 +977,10 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 		}
 		if (value("outfolder") && *ep != '/' && *ep != '+' &&
 				which_protocol(ep) == PROTO_FILE) {
-			cq = salloc(strlen(cp) + 2);
+			size_t i = strlen(cp);
+			cq = salloc(i + 2);
 			cq[0] = '+';
-			strcpy(&cq[1], cp);
+			memcpy(cq + 1, cp, i + 1);
 			cp = cq;
 			ep = expand(cp); /* TODO file_expand() possible? */
 			if (ep == NULL) {
@@ -992,8 +1006,7 @@ jbail:			fprintf(stderr, tr(285,
  */
 enum okay 
 mail1(struct header *hp, int printheaders, struct message *quote,
-		char *quotefile, int recipient_record, int doprefix, int tflag,
-		int Eflag)
+	char *quotefile, int recipient_record, int doprefix)
 {
 	enum okay ok = STOP;
 	struct name *to;
@@ -1014,33 +1027,32 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	 * Collect user's mail from standard input.
 	 * Get the result as mtf.
 	 */
-	if ((mtf = collect(hp, printheaders, quote, quotefile, doprefix,
-			tflag)) == NULL)
+	mtf = collect(hp, printheaders, quote, quotefile, doprefix);
+	if (mtf == NULL)
 		goto j_leave;
 
-	if (value("interactive") != NULL) {
-		if (((value("bsdcompat") || value("askatend"))
-					&& (value("askcc") != NULL ||
-					value("askbcc") != NULL)) ||
-				value("askattach") != NULL ||
-				value("asksign") != NULL) {
-			if (value("askcc") != NULL)
-				grabh(hp, GCC, 1);
-			if (value("askbcc") != NULL)
-				grabh(hp, GBCC, 1);
-			if (value("askattach") != NULL)
-				hp->h_attach = edit_attachments(hp->h_attach);
-			if (value("asksign") != NULL)
-				dosign = yorn(tr(35,
-					"Sign this message (y/n)? "));
-		} else {
+	if (options & OPT_INTERACTIVE) {
+		err = (value("bsdcompat") || value("askatend"));
+		if (err == 0)
+			goto jaskeot;
+		if (value("askcc"))
+			++err, grabh(hp, GCC, 1);
+		if (value("askbcc"))
+			++err, grabh(hp, GBCC, 1);
+		if (value("askattach"))
+			++err, hp->h_attach = edit_attachments(hp->h_attach);
+		if (value("asksign"))
+			++err, dosign = yorn(tr(35,
+				"Sign this message (y/n)? "));
+		if (err == 1) {
+jaskeot:
 			printf(tr(183, "EOT\n"));
 			fflush(stdout);
 		}
 	}
 
 	if (fsize(mtf) == 0) {
-		if (Eflag)
+		if (options & OPT_E_FLAG)
 			goto jleave;
 		if (hp->h_subject == NULL)
 			printf(tr(184,
@@ -1057,6 +1069,14 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		goto jleave;
 	}
 #endif
+
+	/* XXX Update time_current again; once collect() offers editing of more
+	 * XXX headers, including Date:, this must only happen if Date: is the
+	 * XXX same that it was before collect() (e.g., postponing etc.).
+	 * XXX But *do* update otherwise because the mail seems to be backdated
+	 * XXX if the user edited some time, which looks odd and it happened
+	 * XXX to me that i got mis-dated response mails due to that... */
+	time_current_update(&time_current, TRU1);
 
 	senderr = 0;
 
@@ -1266,10 +1286,12 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				return 1;
 			gotcha++;
 			fromfield = hp->h_from;
-		} else if ((addr = myaddrs(hp)) != NULL)
+		} else if ((addr = myaddrs(hp)) != NULL) {
 			if (_putname(addr, w, action, &gotcha, "From:", fo,
 						&fromfield))
 				return 1;
+			hp->h_from = fromfield;
+		}
 		if (((addr = hp->h_organization) != NULL ||
 				(addr = value("ORGANIZATION")) != NULL) &&
 				(l = strlen(addr)) > 0) {
@@ -1476,11 +1498,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
-		if (fmt("Resent-To:", to, fo, 1, 1, 0)) {
-			if (buf)
-				free(buf);
+		if (fmt("Resent-To:", to, fo, 1, 1, 0))
 			return 1;
-		}
 		if ((cp = value("stealthmua")) == NULL ||
 				strcmp(cp, "noagent") == 0) {
 			fputs("Resent-", fo);
@@ -1493,7 +1512,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	 * Write the original headers.
 	 */
 	while (count > 0) {
-		if ((cp = fgetline(&buf, &bufsize, &count, &c, fi, 0)) == NULL)
+		if (fgetline(&buf, &bufsize, &count, &c, fi, 0) == NULL)
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
 		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
@@ -1522,7 +1541,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 }
 
 enum okay 
-resend_msg(struct message *mp, struct name *to, int add_resent)
+resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
 	FILE *ibuf, *nfo, *nfi;
 	char *tempMail;
@@ -1533,32 +1552,38 @@ resend_msg(struct message *mp, struct name *to, int add_resent)
 	time_current_update(&time_current, TRU1);
 
 	memset(&head, 0, sizeof head);
+
 	if ((to = checkaddrs(to)) == NULL) {
 		senderr++;
 		return STOP;
 	}
+
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
 		senderr++;
 		perror(catgets(catd, CATSET, 189, "temporary mail file"));
 		return STOP;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
-		senderr++;
+		++senderr;
 		perror(tempMail);
-		return STOP;
 	}
 	rm(tempMail);
 	Ftfree(&tempMail);
+	if (nfi == NULL)
+		goto jerr_o;
+
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-		return STOP;
+		goto jerr_all;
 	head.h_to = to;
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
 		senderr++;
 		savedeadletter(nfi, 1);
 		fputs(tr(190, ". . . message not sent.\n"), stderr);
-		Fclose(nfo);
+jerr_all:
 		Fclose(nfi);
+jerr_o:
+		Fclose(nfo);
 		return STOP;
 	}
 	Fclose(nfo);

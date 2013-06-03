@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Maildir folder support.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -39,19 +39,13 @@
 
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "extern.h"
-
-/*
- * Mail -- a mail program
- *
- * Maildir folder support.
- */
 
 static struct mditem {
 	struct message	*md_data;
@@ -62,7 +56,7 @@ static long	mdprime;
 static sigjmp_buf	maildirjmp;
 
 /* Do some cleanup in the tmp/ subdir */
-static void	cleantmp(void);
+static void		_cleantmp(void);
 
 static int maildir_setfile1(const char *name, int newmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
@@ -82,7 +76,7 @@ static void mktable(void);
 static enum okay subdir_remove(const char *name, const char *sub);
 
 static void
-cleantmp(void)
+_cleantmp(void)
 {
 	char dep[MAXPATHLEN];
 	struct stat st;
@@ -130,7 +124,7 @@ maildir_setfile(const char *name, int newmail, int isedit)
 		return -1;
 	}
 	if (!newmail) {
-		edit = isedit;
+		edit = (isedit != 0);
 		if (mb.mb_itf) {
 			fclose(mb.mb_itf);
 			mb.mb_itf = NULL;
@@ -170,7 +164,7 @@ maildir_setfile(const char *name, int newmail, int isedit)
 		sort((void *)-1);
 	}
 	if (!newmail)
-		sawcom = 0;
+		sawcom = FAL0;
 	if (!newmail && !edit && msgCount == 0) {
 		if (mb.mb_type == MB_MAILDIR && value("emptystart") == NULL)
 			fprintf(stderr, "No mail at %s\n", name);
@@ -186,8 +180,8 @@ maildir_setfile1(const char *name, int newmail, int omsgCount)
 {
 	int	i;
 
-	if (!newmail)
-		cleantmp();
+	if (! newmail)
+		_cleantmp();
 	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
 	if ((i = subdir(name, "cur", newmail)) != 0)
 		return i;
@@ -259,7 +253,7 @@ static void
 append(const char *name, const char *sub, const char *fn)
 {
 	struct message	*m;
-	size_t	sz;
+	size_t	sz, i;
 	time_t	t = 0;
 	enum mflag	f = MUSED|MNOFROM|MNEWEST;
 	const char	*cp;
@@ -302,10 +296,11 @@ append(const char *name, const char *sub, const char *fn)
 	if (fn == NULL || sub == NULL)
 		return;
 	m = &message[msgCount++];
-	m->m_maildir_file = smalloc((sz = strlen(sub)) + strlen(fn) + 2);
-	strcpy(m->m_maildir_file, sub);
+	i = strlen(fn);
+	m->m_maildir_file = smalloc((sz = strlen(sub)) + i + 2);
+	memcpy(m->m_maildir_file, sub, sz);
 	m->m_maildir_file[sz] = '/';
-	strcpy(&m->m_maildir_file[sz+1], fn);
+	memcpy(m->m_maildir_file + sz + 1, fn, i + 1);
 	m->m_time = t;
 	m->m_flag = f;
 	m->m_maildir_hash = ~pjw(fn);
@@ -398,16 +393,11 @@ maildir_quit(void)
 static void
 maildir_update(void)
 {
-	FILE	*readstat = NULL;
 	struct message	*m;
 	int	dodel, c, gotcha = 0, held = 0, modflags = 0;
 
 	if (mb.mb_perm == 0)
 		goto free;
-	if (option_T_arg != NULL) {
-		if ((readstat = Zopen(option_T_arg, "w", NULL)) == NULL)
-			option_T_arg = NULL;
-	}
 	if (!edit) {
 		holdbits();
 		for (m = &message[0], c = 0; m < &message[msgCount]; m++) {
@@ -419,12 +409,6 @@ maildir_update(void)
 				goto bypass;
 	}
 	for (m = &message[0], gotcha=0, held=0; m < &message[msgCount]; m++) {
-		if (readstat != NULL && (m->m_flag & (MREAD|MDELETED)) != 0) {
-			char	*id;
-			if ((id = hfield1("message-id", m)) != NULL ||
-					(id = hfieldX("article-id", m)) != NULL)
-				fprintf(readstat, "%s\n", id);
-		}
 		if (edit)
 			dodel = m->m_flag & MDELETED;
 		else
@@ -450,8 +434,7 @@ maildir_update(void)
 			held++;
 		}
 	}
-bypass:	if (readstat != NULL)
-		Fclose(readstat);
+bypass:
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
 		printf(value("bsdcompat") || value("bsdmsgs") ?
@@ -531,7 +514,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 	} else {
 		size = (n = strlen(pref)) + 13;
 		cp = salloc(size);
-		strcpy(cp, pref);
+		memcpy(cp, pref, n + 1);
 		for (i = n; i > 3; i--)
 			if (cp[i-1] == ',' && cp[i-2] == '2' &&
 					cp[i-3] == ':') {
@@ -539,7 +522,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 				break;
 			}
 		if (i <= 3) {
-			strcpy(&cp[n], ":2,");
+			memcpy(cp + n, ":2,", 4);
 			n += 3;
 		}
 	}
@@ -590,7 +573,8 @@ maildir_append(const char *name, FILE *fp)
 						size, flag);
 				if (ok == STOP)
 					return STOP;
-				fseek(fp, offs+buflen, SEEK_SET);
+				if (fseek(fp, offs+buflen, SEEK_SET) < 0)
+					return STOP;
 			}
 			off1 = offs + buflen;
 			size = 0;
@@ -643,39 +627,42 @@ static enum okay
 maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 		enum mflag flag)
 {
-	const int	attempts = 43200;
-	struct stat	st;
-	char	buf[4096];
-	char	*fn, *tmp, *new;
-	FILE	*op;
-	long	n, z;
-	int	i;
-	time_t	now;
+	int const attempts = 43200;
+	char buf[4096], *fn, *tmp, *new;
+	struct stat st;
+	FILE *op;
+	long n, z;
+	int i;
+	time_t now;
 
-	for (i = 0; i < attempts; i++) {
+	/* Create a unique temporary file */
+	for (i = 0;; sleep(1), ++i) {
+		if (i >= attempts) {
+			fprintf(stderr, tr(198,
+				"Can't create an unique file name in "
+				"\"%s/tmp\".\n"), name);
+			return STOP;
+		}
+
 		time(&now);
 		fn = mkname(now, flag, NULL);
 		tmp = salloc(n = strlen(name) + strlen(fn) + 6);
 		snprintf(tmp, n, "%s/tmp/%s", name, fn);
-		if (stat(tmp, &st) < 0 && errno == ENOENT)
+		if (stat(tmp, &st) >= 0 || errno != ENOENT)
+			continue;
+
+		/* Use "wx" for O_EXCL */
+		if ((op = Fopen(tmp, "wx")) != NULL)
 			break;
-		sleep(2);
 	}
-	if (i >= attempts) {
-		fprintf(stderr,
-			"Cannot create unique file name in \"%s/tmp\".\n",
-			name);
-		return STOP;
-	}
-	if ((op = Fopen(tmp, "w")) == NULL) {
-		fprintf(stderr, "Cannot write to \"%s\".\n", tmp);
-		return STOP;
-	}
-	fseek(fp, off1, SEEK_SET);
+
+	if (fseek(fp, off1, SEEK_SET) < 0)
+		goto jtmperr;
 	while (size > 0) {
 		z = size > (long)sizeof buf ? (long)sizeof buf : size;
 		if ((n = fread(buf, 1, z, fp)) != z ||
 				(size_t)n != fwrite(buf, 1, n, op)) {
+jtmperr:
 			fprintf(stderr, "Error writing to \"%s\".\n", tmp);
 			Fclose(op);
 			unlink(tmp);
@@ -684,6 +671,7 @@ maildir_append1(const char *name, FILE *fp, off_t off1, long size,
 		size -= n;
 	}
 	Fclose(op);
+
 	new = salloc(n = strlen(name) + strlen(fn) + 6);
 	snprintf(new, n, "%s/new/%s", name, fn);
 	if (link(tmp, new) < 0) {
@@ -722,8 +710,8 @@ mkmaildir(const char *name)
 
 	if (trycreate(name) == OKAY) {
 		np = ac_alloc((sz = strlen(name)) + 5);
-		strcpy(np, name);
-		strcpy(&np[sz], "/tmp");
+		memcpy(np, name, sz);
+		memcpy(np + sz, "/tmp", 5);
 		if (trycreate(np) == OKAY) {
 			strcpy(&np[sz], "/new");
 			if (trycreate(np) == OKAY) {
@@ -785,9 +773,9 @@ subdir_remove(const char *name, const char *sub)
 	namelen = strlen(name);
 	sublen = strlen(sub);
 	path = smalloc(pathsize = namelen + sublen + 30);
-	strcpy(path, name);
+	memcpy(path, name, namelen);
 	path[namelen] = '/';
-	strcpy(&path[namelen+1], sub);
+	memcpy(path + namelen + 1, sub, sublen);
 	path[namelen+sublen+1] = '/';
 	path[pathend = namelen + sublen + 2] = '\0';
 	if ((dirfd = opendir(path)) == NULL) {
@@ -806,7 +794,7 @@ subdir_remove(const char *name, const char *sub)
 		n = strlen(dp->d_name);
 		if (pathend + n + 1 > pathsize)
 			path = srealloc(path, pathsize = pathend + n + 30);
-		strcpy(&path[pathend], dp->d_name);
+		memcpy(path + pathend, dp->d_name, n + 1);
 		if (unlink(path) < 0) {
 			perror(path);
 			closedir(dirfd);

@@ -2,8 +2,7 @@
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
 .\"     Gunnar Ritter.  All rights reserved.
-.\" Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
-.\" All rights reserved.
+.\" Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -35,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 09, 2013
+.Dd Jun 01, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -72,10 +71,9 @@
 .Ar to-addr ...
 .Ek
 .Nm \*(ua
-.Op Fl BDdEeHIiNnRv~
+.Op Fl BDdEeHiNnRv~
 .Op Fl A Ar account
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
-.Op Fl T Ar name
 .Bk
 .Fl f Op Ar file
 .Ek
@@ -94,14 +92,20 @@ with lines replaced by messages.
 It is based on Heirloom mailx that is based upon Berkeley Mail 8.1,
 is intended to provide the functionality of the POSIX
 .Xr mailx 1
-command,
-and offers extensions for MIME, IDNA, IMAP, POP3, SMTP and S/MIME,
-most of which being compile-time options.
-\*(UA provides enhanced features for interactive use.
-It is also usable as a mail batch language,
-both for sending and receiving mail.
+command and offers (mostly optional) extensions for IDNA, MIME, S/MIME,
+SMTP, POP3 and IMAP.
+It is usable as a mail batch language.
 .Pp
-The following options are accepted:
+In the following list of supported command line options,
+.Fl D ,
+.Fl d ,
+.Fl E ,
+.Fl i ,
+.Fl N
+and
+.Fl v
+are implemented by means of setting the respective option, as via
+.Fl S .
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
@@ -126,18 +130,16 @@ Send carbon copies to the given list of addresses.
 .It Fl D
 \*(OP Set the
 .Va disconnected
-variable option immediately.
+variable.
 .It Fl d
-Enables debugging messages and disables the actual delivery of messages.
-Unlike the flag
-.Fl v
-this option is intended for \*(UA development only.
+Set the
+.Va debug
+variable, which enables debug messages and disables message delivery.
+Note that this is not a real `sandbox' mode.
 .It Fl E
-If an outgoing message does not contain any text in its first or only
-message part, do not send but discard it silently,
-effectively setting the
+Set the
 .Va skipemptybody
-variable at program startup.
+variable and thus discard messages with an empty message part body.
 This is useful for sending messages from scripts.
 .It Fl e
 Just check if mail is present in the system mailbox.
@@ -162,16 +164,15 @@ but is instead taken from the command line after option processing has
 been completed.
 .It Fl H
 Print header summaries for all messages and exit.
-.It Fl I
-Shows the `Newsgroup:' or `Article-Id:' fields in the header summary.
-Only applicable in combination with
-.Fl f .
 .It Fl i
-Ignore tty interrupt signals.
-This is particularly useful when using \*(UA on noisy phone lines.
+Set the
+.Va ignore
+variable to ignore tty interrupt signals.
 .It Fl N
-Inhibits the initial display of message headers when reading mail
-or editing a mail folder.
+Unset the
+.Va header
+variable and thus inhibits the initial display of message headers when
+reading mail or editing a mail folder.
 .It Fl n
 Inhibits reading \*(UR upon startup.
 This option should be activated for \*(UA scripts that are invoked on
@@ -179,7 +180,7 @@ more than one machine, because the contents of that file may differ
 between them.
 .It Fl O Ar mta-option
 Pass the given option through to the mail-transfer-agent (MTA).
-This option has no effect when SMTP is used for sending mail.
+This option has no effect when mail is send via SMTP.
 E.g., use
 .Ns ` Ns Li "-O-h -Onumber" Ns '
 to specify the hop count for an old
@@ -191,16 +192,22 @@ May be given in send mode only.
 .It Fl R
 Opens any folders read-only.
 .It Fl r Ar address
-Sets the \fIFrom\fR address.
-Overrides any
+Sets the envelope sender address by passing an
+.Fl r
+option to the MTA when a message is send.
+If a non-empty
+.Ar address
+argument is given it'll be checked for validity and then fixated to
+the given value, but otherwise the content of the variable
 .Va from
-variable specified in the environment, in startup files or via
-.Fl S
-option processing.
-The
-.Fl r Ar address
-option is passed through to the MTA unless SMTP is used,
-and persists for an entire (interactive) session.
+will be used for that purpose \(en i.e., it'll be passed through to
+the MTA via the
+.Fl r
+option whenever a message is send.
+A valid non-empty value will also be set as if an additional
+.Ns ` Ns Li "-Sfrom=VALUE" Ns '
+option had been used and therefore affect sending of messages via SMTP
+(as a consideration for `From:').
 .It Fl S Ar variable Ns Op = Ns value
 Sets the internal option
 .Ar variable
@@ -215,15 +222,6 @@ been loaded.
 .It Fl s Ar subject
 Specify the subject on the command line
 (be careful to quote subjects containing spaces).
-.It Fl T Ar name
-Writes the `Message-Id:' and `Article-Id:' header fields of each message
-read in the file
-.Ar name .
-Implies
-.Fl I .
-Compressed files are handled as described for the
-.Ic folder
-command below.
 .It Fl t
 The message to be sent is expected to contain a message header with
 `To:', `Cc:', or `Bcc:' fields giving its recipients and `Subject:'
@@ -231,11 +229,16 @@ giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
 .It Fl u Ar user
 Reads the mailbox of the given user name.
+Note that using this option changes the expansion of `%' so that
+dynamical changes of the
+.Va folder
+variables etc. are not reflected.
 .It Fl V
 Print \*(UA's version and exit.
 .It Fl v
-Verbose mode.
-The details of delivery are displayed on the user's terminal.
+Sets the
+.Va verbose
+option, which enables more verbose messages.
 .It Fl ~
 Enable tilde escapes even if not in interactive mode.
 .El
@@ -269,11 +272,10 @@ then prints out a one line header of each message found.
 The current message is initially the first message (numbered 1) and can
 be printed using the
 .Ic print
-command which can be abbreviated `p'.
-The user can move among the messages much as he moves between lines in
-.Xr ed 1,
-with the commands `+' and `\-' moving backwards and forwards,
-and simple numbers.
+command, which can be abbreviated `p'.
+The commands `p+' and `p\-' move forward to the next and backward to the
+previous message, respectively, and messages can be addressed directly
+by specifying their message number, as in `p 1'.
 .\" --  >8  --  8<  --
 .Ss "Disposing of mail"
 After examining a message the user can
@@ -691,7 +693,7 @@ locale environment of the system,
 and that stays unaffected by the content of an overwritten
 .Va ttycharset
 variable.
-(Note that this mostly matters for interactive usage of \*(UA, though.
+(This is mostly an issue when interactively using \*(UA, though.
 It is actually possible to send mail in a completely "faked" locale
 environment.)
 .Pp
@@ -810,6 +812,14 @@ command is expecting one file, an error results.
 .Pp
 The following commands are provided:
 .Bl -tag -width ".Ic account"
+.It Ic ~
+Interprets the remainder of the word as a macro name and passes it
+through to the
+.Ic call
+command; e.g.,
+.Ns ` Ns Ic ~ Ns Ar mymacro Ns '
+is a shorter synonym for
+.Ns ` Ns Ic call Ar mymacro Ns ' .
 .It Ic -
 Print out the preceding message.
 If given a numeric argument n,
@@ -951,7 +961,9 @@ A macro definition is a sequence of commands in the following form:
 .Ed
 .Pp
 A defined macro can be explicitly invoked using
-.Ic call ,
+.Ic call
+or
+.Ic ~ ,
 or it can be implicitly invoked by setting the
 .Va folder-hook
 or
@@ -1035,11 +1047,19 @@ argument:
 .It Ar #
 (number sign) means the previous file,
 .It Ar %
-(percent sign) means the invoking user's system mailbox,
+(percent sign) means the invoking user's system mailbox
+(or the value of
+.Va folder
+for IMAP folders),
 .It Ar %user
-means the system mailbox of `user',
+means the system mailbox of `user'
+(and never the value of
+.Va folder ,
+regardless of its actual setting),
 .It Ar &
-(ampersand) means the invoking user's `mbox' file and
+(ampersand) means the invoking user's `mbox' file (see
+.Va MBOX Ns
+) and
 .It Ar +file
 means a `file' in the
 .Va folder
@@ -2178,19 +2198,8 @@ according to the rules of IDNA (internationalized domain names for
 applications).
 Since the IDNA code assumes domain names are specified with the
 .Va ttycharset
-character set, a UTF-8 locale charset is required to represent
+character set, an UTF-8 locale charset is required to represent
 all possible international domain names (before conversion, that is).
-.It Va idna-strict-checks
-\*(OP If this is set (and
-.Va idna-disable
-is not),
-then the IDNA conversion is enforced to apply stricter error checking in
-respect to the content of domain names.
-This means that TLD (top-level domain) specific checks are performed,
-e.g., the `.no' (Norway) TLD does not allow the Euro currency symbol,
-but only this strict check will catch the error.
-(Note that this check is expensive and that the IDNA library doesn't
-contain many tests.)
 .It Va ignore
 Causes interrupt signals from the terminal to be ignored
 and echoed as `@'s.
@@ -2303,15 +2312,27 @@ command prints out is followed by a formfeed character.
 Send messages to the
 .Ic pipe
 command without performing MIME and character set conversions.
-.It Va pop3-use-apop
-\*(OP If this variable is set the `APOP' authentication method is used
-when a connection to a POP3 server is initiated.
-The advantage of this method over the usual `USER/PASS' authentication
-is that the password is not sent over the network in clear text.
-The connection fails if the server does not support the `APOP' command.
-.It Va pop3-use-apop-user@host
-Enables
-.Va pop3-use-apop
+.It Va pop3-bulk-load
+\*(OP When accessing a POP3 server \*(UA loads the headers of the
+messages, and only requests the message bodies on user request.
+For the POP3 protocol this means that the message headers will be
+downloaded twice.
+If this option is set then \*(UA will download only complete messages
+from POP3 servers instead.
+It may be useful to
+.Ic define
+a macro that temporarily sets this option, then accesses a POP3 account
+that is known to only get small text messages, and then unsets this
+variable again.
+.It Va pop3-no-apop
+\*(OP Unless this variable is set the `APOP' authentication method
+will be used when connecting to a POP3 server that advertises support.
+The advantage of APOP over `USER/PASS' authentication is that the
+password is not sent in clear text over the wire and that only a single
+packet is sent for the user/password tuple.
+.It Va pop3-no-apop-user@host
+Disables usage of the `APOP' authentication method (see
+.Va pop3-no-apop )
 for a specific account.
 .It Va pop3-use-starttls
 \*(OP Causes \*(UA to issue a `STLS' command to make an unencrypted POP3
@@ -2475,7 +2496,7 @@ and proper RFC 4155 `From ' quoting of newly added or edited content is
 also left as an excercise to the user.
 .El
 .\" --  >8  --  8<  --
-.Ss "String Options"
+.Ss "String options"
 The string options include the following:
 .Bl -tag -width ".Va autoprint"
 .It Va attrlist
@@ -2839,13 +2860,25 @@ the user will be asked for a password on standard input.
 Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
 .It Va pipe-content/subcontent
-When a MIME message part of `content/subcontent' type is displayed or it
+When a MIME message part of `content/subcontent' type is displayed or
 is replied to,
 its text is filtered through the value of this variable interpreted as
 a shell command.
+.Pp
 The special value `@' can be used to force interpretation of the message
 part as plain text, e.g., `set pipe-application/pgp-signature=@' will
 henceforth treat signatures as plain text and display them ``as is''.
+.Pp
+Also, if a normal shell command is prefixed with `@', then the command
+will only be used to prepare the MIME message part if the message is
+displayed by itself, but not when multiple messages are displayed at
+once.
+.Pp
+Finally, if a normal shell command is prefixed with `@&', then, in
+addition to what has been described for the plain `@' shell command
+prefix, the command will be run asynchronously, i.e., without blocking
+\*(UA, which may be a handy way to display a, e.g., PDF file while also
+continuing to read the mail message.
 .Pp
 Special care must be taken when using such commands as mail viruses may
 be distributed by this method;
@@ -3593,29 +3626,29 @@ You should change the permissions of this file to 0600, see
 .Pp
 \*(UA supports different authentication methods for both IMAP and POP3.
 If Kerberos is used at your location,
-you can try to activate GSSAPI-based authentication by
+you can try to activate (the optional) GSSAPI-based authentication via
 .Pp
 .Dl set imap-auth=gssapi
 .Pp
-The advantage of this method is that \*(UA does not need to know your
-password at all, nor needs to send sensitive data over the network.
-Otherwise, the options
+The advantage of this method is that \*(UA doesn't need to know your
+password at all, nor does it have to send sensitive data over the network.
+If that isn't possible, try to use authentication methods that at least
+avoid sending the password in clear over the wire, which is especially
+important if SSL/TLS cannot be used, e.g.,
 .Pp
 .Dl set imap-auth=cram-md5
-.Dl set pop3-use-apop
 .Pp
-for IMAP and POP3, respectively, offer authentication methods that avoid
-to send the password in clear text over the network,
-which is especially important if SSL/TLS cannot be used.
-If the server does not offer any of these authentication methods,
+For POP3 \*(UA will try to use the `APOP' mechanism automatically unless
+explicitly disabled.
+If the server does not offer any such authentication methods,
 conventional user/password based authentication must be used.
-It is sometimes helpful to set the
+It is sometimes helpful, especially when setting up an account or when
+there are authentification problems, to enable verbosity by setting the
 .Va verbose
-option when authentication problems occur.
-\*(UA will display all data sent to the server in clear text on the
-screen with this option, including passwords.
-You should thus take care that no unauthorized person can look at your
-terminal when this option is set.
+option \(en \*(UA will display all data sent to the server in clear text
+on the screen when this option is set.
+(Because this may also include passwords you should take care that no
+unauthorized person can look at your terminal when this option is set.)
 .Pp
 If you regularly use the same workstation to access IMAP accounts,
 you can greatly enhance performance by enabling local caching of IMAP
@@ -3697,148 +3730,6 @@ One should use the `-verify' and `-CAfile' options of
 .Xr s_client 1
 to be ``on the safe side'' regarding the fetched certificates.
 .\" --  >8  --  8<  --
-.Ss "Creating a score file or message filter"
-The scoring commands are best separated from other configuration for
-clarity, and are mostly \*(UA specific.
-It is thus recommended to put them in a separate file that is sourced
-from your `NAIL_EXTRA_RC' as follows:
-.Pp
-.Dl source ~/.scores
-.Pp
-The `.scores' file could then look as follows:
-.Bd -literal -offset indent
-define list {
-   score (subject "important discussion") +10
-   score (subject "annoying discussion") \-10
-   score (from "nicefellow@goodnet") +15
-   score (from "badguy@poornet") \-5
-   move (header x-spam-flag "+++++") +junk
-}
-set folder-hook-imap://user@host/public.list=list
-.Ed
-.Pp
-In this scheme, you would see any mail from `nicefellow@goodnet',
-even if the surrounding discussion is annoying;
-but you normally would not see mail from `badguy@poornet',
-unless he participates in the important discussion.
-Messages that are marked with five or more plus characters in their
-`X-Spam-Flag' field (inserted by some server-side filtering software)
-are moved to the folder `junk' in the
-.Ic folder
-directory.
-.Pp
-Be aware that all criteria in (\|) lead to substring matches,
-so you would also score messages from e.\|g. `notsobadguy@poornetmakers'
-negative here.
-It is possible to select addresses exactly using `address' message
-specifications,
-but these cannot be executed remotely  and will thus cause all headers
-to be downloaded from IMAP servers while looking for matches.
-.Pp
-When searching messages on an IMAP server,
-best performance is usually achieved by sending as many criteria as
-possible in one large (\|) specification,
-because each single such specification will result in a separate network
-operation.
-.\" --  >8  --  8<  --
-.Ss "Activating the Bayesian filter"
-The Bayesian junk mail filter works by examining the words contained in
-messages.
-You decide yourself what a good and what a bad message is.
-Thus the resulting filter is your very personal one;
-once it is correctly set up,
-it will filter only messages similar to those previously specified by
-you.
-.Pp
-To use the Bayesian filter,
-a location for the junk mail database must be defined first:
-.Pp
-.Dl set junkdb=~/.junkdb
-.Pp
-The junk mail database does not contain actual words extracted from
-messages, but hashed representations of them.
-A foreign person who can read the database could only examine the
-frequency of previously known words in your mail.
-.Pp
-If you have sufficient disk space (several 10\ MB) available,
-it is recommended that you set the
-.Va chained-junk-tokens
-option, which allows the filter to also consider two-word tokens,
-improving its accuracy.
-.Pp
-A set of good messages and junk messages must now be available;
-it is also possible to use the incoming new messages for this purpose,
-although it will of course take some time until the filter becomes
-useful then.
-Do not underestimate the amount of statistical data needed;
-some hundred messages are typically necessary to get satisfactory
-results, and many thousand messages for best operation.
-You have to pass the good messages to the
-.Ic good
-command, and the junk messages to the
-.Ic junk
-command.
-If you ever accidentally mark a good message as junk or vice-versa,
-call the
-.Ic ungood
-or
-.Ic unjunk
-command to correct this.
-.Pp
-Once a reasonable amount of statistics has been collected,
-new messages can be classified automatically.
-The
-.Ic classify
-command marks all messages that the filter considers to be junk,
-but it does not perform any action on them by default.
-It is recommended that you move these messages into a separate
-folder just for the case that false positives occur,
-or to pass them to the
-.Ic junk
-command later again to further improve the junk mail database.
-To automatically move incoming junk messages every time the inbox is
-opened, put lines like the following into your
-.Pa .scores
-file (or whatever name you gave to the file in the last example):
-.Bd -literal -offset indent
-define junkfilter {
-   classify (smaller 20000) :n
-   move :j +junk
-}
-set folder-hook-imap://user@host/INBOX=junkfilter
-.Ed
-.Pp
-If you set the
-.Va verbose
-option before running the
-.Ic classify
-command,
-\*(UA prints the words it uses for calculating the junk status along
-with their statistical probabilities.
-This can help you to find out why some messages are not classified as
-you would like them to be.
-To see the statistical probability of a given word, use the
-.Ic probability
-command.
-.Pp
-If a junk message was not recognized as such, use the
-.Ic junk
-command to correct this.
-Also if you encounter a false positive (a good message that was wrongly
-classified as junk),
-pass it to the
-.Ic good
-command.
-.Pp
-Since the
-.Ic classify
-command must examine the entire text of all new messages in the
-respective folder,
-this will also cause all of them to be downloaded from the IMAP server.
-You should thus restrict the size of messages for automatic filtering.
-If server-based filtering is also available,
-you might try if that works for you first.
-.\" --  >8  --  8<  --
 .Ss "Reading HTML mail"
 You need either the
 .Xr elinks 1
@@ -3856,7 +3747,7 @@ will cause HTML message parts to be converted into a more friendly form.
 Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file first:
 .Pp
-.Dl set pipe-application/pdf="cat >/tmp/\*(ua$$.pdf; \e
+.Dl set pipe-application/pdf="@&cat >/tmp/\*(ua$$.pdf; \e
 .Dl \ \ \ \ \ \ acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
 .Pp
 Note that security defects are discovered in PDF viewers from time to

@@ -1,8 +1,8 @@
-/*
- * S-nail - a mail user agent derived from Berkeley Mail.
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Handle name lists, alias expansion, outof(): serve file / pipe addresses
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012, 2013 Steffen "Daode" Nurpmeso.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,17 +37,11 @@
  * SUCH DAMAGE.
  */
 
-/*
- * Mail -- a mail program
- *
- * Handle name lists.
- */
-
 #include "rcv.h"
 
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "extern.h"
@@ -637,9 +631,9 @@ elide(struct name *names)
 	while (np != NULL) {
 		t = np;
 		while (t->n_flink != NULL &&
-		       asccasecmp(np->n_name, t->n_flink->n_name) == 0)
+				asccasecmp(np->n_name, t->n_flink->n_name) == 0)
 			t = t->n_flink;
-		if (t == np || t == NULL) {
+		if (t == np) {
 			np = np->n_flink;
 			continue;
 		}
@@ -818,7 +812,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 				Fclose(fout);
 				goto jcant;
 			}
-			fcntl(image, F_SETFD, FD_CLOEXEC);
+			(void)fcntl(image, F_SETFD, FD_CLOEXEC);
 
 			fprintf(fout, "From %s %s",
 				myname, time_current.tc_ctime);
