@@ -531,6 +531,8 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	} else {
 		for (i = optind; argv[i]; i++)
 			to = cat(to, checkaddrs(lextract(argv[i], GTO|GFULL)));
+		if (to != NULL)
+			options |= OPT_SENDMODE;
 	}
 
 	/* Check for inconsistent arguments */
