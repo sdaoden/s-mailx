@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jun 01, 2013
+.Dd Jun 05, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -1099,12 +1099,10 @@ If `user' contains special characters, in particular `/' or `%',
 they must be escaped in URL notation, as `%2F' or `%25'.
 The optional `file' part applies to IMAP only;
 if it is omitted, the default `INBOX' is used.
+.Pp
 If \*(UA is connected to an IMAP server,
-a name of the form `@mailbox' refers to the `mailbox' on that server.
-If the
-.Va folder
-variable refers to an IMAP account,
-the special name `%' selects the `INBOX' on that account.
+a name of the form `@mailbox' refers to the `mailbox' on that server,
+but otherwise a `@' prefix has no special meaning.
 .It Ic Followup
 (F) Similar to
 .Ic Respond ,
@@ -2607,29 +2605,19 @@ gives the character to use in place of `~' to denote tilde escapes.
 .It Va folder
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
-Shell word expansions are applied to
-.Va folder
-first; if the resulting name begins with a `/' then \*(UA considers it
-to be an absolute pathname;
-otherwise the folder directory is found relative to the user's home
-directory.
-.Pp
-The directory name may also refer to an IMAP account;
-all names that begin with `+' refer to IMAP mailboxes on that account,
-then.
-An IMAP folder is normally given in the form
-.Pp
-.Dl imaps://mylogin@imap.myisp.example
-.Pp
-In this case the `+' and `@' prefixes for folder names have the same
-effect (see the
+The same special conventions as documented for the
 .Ic folder
-command).
+command may be used when specifying a new value for
+.Va folder ,
+but be aware that the expansion is fully performed immediately.
+E.g., if the expanded name refers to an IMAP account, all names that
+begin with `+' refer to IMAP mailboxes below the
+.Va folder
+target box.
 .Pp
-Some IMAP servers do not accept the creation of mailboxes in the
-hierarchy base,
-but require that they are created as subfolders of `INBOX'.
-With such servers a folder name of the form
+Note: some IMAP servers do not accept the creation of mailboxes in
+the hierarchy base, but require that they are created as subfolders of
+`INBOX' \(en with such servers a folder name of the form
 .Pp
 .Dl imaps://mylogin@imap.myisp.example/INBOX.
 .Pp
@@ -2806,13 +2794,21 @@ Default is
 .It Va MAIL
 Is used as the user's mailbox, if set.
 Otherwise, a system-dependent default is used.
-Can be a `protocol://' string (see the
+Supports a logical subset of the special conventions that are documented
+for the
 .Ic folder
-command for more information).
+command and the
+.Va folder
+option.
 .It Va MBOX
 The name of the mbox file.
-It can be the name of a folder.
-The default is `mbox' in the user's home directory.
+Supports a logical subset of the special conventions that are documented
+for the
+.Ic folder
+command and the
+.Va folder
+option.
+The fallback default is `mbox' in the user's home directory.
 .It Va mimetypes-load-control
 This option can be used to control which of the
 .Xr mime.types 5
