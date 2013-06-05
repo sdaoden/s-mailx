@@ -140,8 +140,8 @@ $set 1
   %s [-BDdEFintv~] [-A acc] [-a attachment] [-b bcc-addr] [-c cc-addr]\n\
 \t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] [-S var[=value]]\n\
 \t  [-s subject] to-addr...\n\
-  %s [-BDdEeHiNnRv~] [-A acct] [-S var[=value]] -f [file]\n\
-  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n
+  %s [-BDdEeHiNnRv~#] [-A acct] [-S var[=value]] -f [file]\n\
+  %s [-BDdEeiNnRv~#] [-A acc] [-S var[=value]] [-u user]\n
 
 136 $ %d moved$
 137 Cannot give -f and people to send to.\n

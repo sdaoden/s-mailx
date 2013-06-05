@@ -938,17 +938,18 @@ jstop:		savedeadletter(input, 0);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if ((options & (OPT_DEBUG|OPT_VERBOSE)) || value("sendwait")) {
+	if ((options & (OPT_DEBUG|OPT_VERBOSE|OPT_BATCH_FLAG)) ||
+			value("sendwait")) {
 		if (wait_child(pid) == 0)
 			ok = OKAY;
 		else
-			senderr++;
+			_senderror = TRU1;
 	} else {
 		ok = OKAY;
 		free_child(pid);
 	}
 jleave:
-	return (ok);
+	return ok;
 }
 
 /*

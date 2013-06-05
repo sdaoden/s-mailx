@@ -226,9 +226,10 @@ enum user_options {
 	OPT_r_FLAG	= 1<< 9,	/* -r (plus option_r_arg) */
 	OPT_t_FLAG	= 1<<10,	/* -t */
 	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
+	OPT_BATCH_FLAG	= 1<<12,	/* -# */
 
-	OPT_SENDMODE	= 1<<16,	/* Usage case forces send mode */
-	OPT_INTERACTIVE	= 1<<17		/* isatty(0) / isatty(1) */
+	OPT_SENDMODE	= 1<<14,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1<<15		/* isatty(0) / isatty(1) */
 };
 
 enum okay {
