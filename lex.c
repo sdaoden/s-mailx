@@ -140,7 +140,7 @@ _update_mailname(char const *name)
 	dispp = displayname;
 
 	/* Don't display an absolute path but "+FOLDER" if under *folder* */
-	if (getfold(tbuf, sizeof(tbuf)) >= 0) {
+	if (getfold(tbuf, sizeof tbuf)) {
 		i = strlen(tbuf);
 		if (i < sizeof(tbuf) - 1)
 			tbuf[i++] = '/';

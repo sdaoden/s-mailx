@@ -377,7 +377,9 @@ void	demail(void);
 /* vars.c hook: *folder* variable has been updated */
 bool_t	var_folder_updated(char **name);
 
-int getfold(char *name, int size);
+/* Determine the current *folder* name */
+bool_t	getfold(char *name, int size);
+
 char const *getdeadletter(void);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag

@@ -158,7 +158,7 @@ jnext:	dyn = 0;
 		dyn = 1;
 	}
 
-	if (res[0] == '+' && getfold(cbuf, sizeof cbuf) >= 0) {
+	if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
 		char const *cp = "/";
 
 		if (which_protocol(cbuf) == PROTO_IMAP &&
@@ -864,16 +864,14 @@ jleave:
 	return rv;
 }
 
-/*
- * Determine the current folder directory name.
- */
-int
-getfold(char *name, int size)
+bool_t
+getfold(char *name, size_t size)
 {
 	char const *folder;
+
 	if ((folder = value("folder")) != NULL)
 		(void)n_strlcpy(name, folder, size);
-	return (folder != NULL) ? 0 : -1;
+	return (folder != NULL);
 }
 
 /*
