@@ -421,7 +421,7 @@ main(int argc, char *argv[])
 			goto joarg;
 		case 'N':
 			/* Avoid initial header printing */
-			okey = "header";
+			okey = "noheader";
 			goto joarg;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
