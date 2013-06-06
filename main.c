@@ -645,6 +645,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		}
 	}
 
+	/* xxx exit_status = EXIT_OK; */
 	mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
-	return senderr ? 1 : 0;
+	return exit_status;
 }

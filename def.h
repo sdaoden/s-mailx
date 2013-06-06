@@ -232,6 +232,13 @@ enum user_options {
 	OPT_INTERACTIVE	= 1<<15		/* isatty(0) / isatty(1) */
 };
 
+enum exit_status {
+	EXIT_OK		= EXIT_SUCCESS,
+	EXIT_ERR	= EXIT_FAILURE,
+	EXIT_COLL_ABORT	= 1<<1,		/* Message collection was aborted */
+	EXIT_SEND_ERROR	= 1<<2		/* Unspecified send error occurred */
+};
+
 enum okay {
 	STOP = 0,
 	OKAY = 1

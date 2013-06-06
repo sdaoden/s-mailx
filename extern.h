@@ -707,7 +707,9 @@ struct name *	elide(struct name *names);
 struct name *	delete_alternates(struct name *np);
 int		is_myname(char const *name);
 
-struct name *	outof(struct name *names, FILE *fo, struct header *hp);
+/* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
+struct name *	outof(struct name *names, FILE *fo, struct header *hp,
+			bool_t *senderror);
 
 /* openssl.c */
 #ifdef USE_OPENSSL
