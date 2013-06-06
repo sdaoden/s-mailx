@@ -211,7 +211,7 @@ option had been used and therefore affect sending of messages via SMTP
 .It Fl S Ar variable Ns Op = Ns value
 Sets the internal option
 .Ar variable
-and, in case of a string option, assigns
+and, in case of a value option, assigns
 .Ar value
 to it.
 Even though options set via
@@ -2079,6 +2079,12 @@ command) to be entered automatically when a folder is opened.
 .It Va bang
 Enables the substitution of `!' by the contents of the last command line
 in shell escapes.
+.It Va batch-exit-on-error
+If the batch mode has been enabled via the
+.Fl #
+command line option, then this variable will be consulted whenever \*(UA
+completes one operation (returns to the command prompt); if it is set
+then \*(UA will terminate if the last operation generated an error.
 .It Va bsdannounce
 Causes automatic display of a header summary after executing a
 .Ic folder
@@ -2506,8 +2512,8 @@ and proper RFC 4155 `From ' quoting of newly added or edited content is
 also left as an excercise to the user.
 .El
 .\" --  >8  --  8<  --
-.Ss "String options"
-The string options include the following:
+.Ss "Value options"
+The value options include the following:
 .Bl -tag -width ".Va autoprint"
 .It Va attrlist
 A sequence of characters to print in the `attribute' column of a header

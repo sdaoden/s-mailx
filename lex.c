@@ -502,9 +502,13 @@ commands(void)
 			}
 			break;
 		}
+
 		eofloop = 0;
 		inhook = 0;
 		if (execute(linebuf, 0, n))
+			break;
+		if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
+				boption("batch-exit-on-error"))
 			break;
 	}
 
