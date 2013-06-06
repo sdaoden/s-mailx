@@ -38,8 +38,9 @@ cc_all_configs() {
 # Test a UTF-8 mail as a whole via -t, and in pieces (without -t ;)
 cksum_test() {
 	f=$1 s=$2 tno=$3
-	[ "`sed -e 1,2d -e '/ boundary=/d' -e /--=_/d < \"${f}\" | cksum`" != \
-			"${s}" ] && {
+	[ "`sed -e '/^From /d' -e '/^Date: /d' \
+			-e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
+			cksum`" != "${s}" ] && {
 		ESTAT=1
 		echo "Checksum mismatch test ${tno}: ${f}" 2>> "${ERR}"
 	}
@@ -50,6 +51,7 @@ test_mail() {
 	printf "\n\n########################################\n\n" >> "${ERR}"
 	"${MAKE}" >> "${OUT}" 2>> "${ERR}"
 
+	# Two tests for MIME-CTE and (a bit) content classification
 	rm -f "${MBOX}"
 	< "${BODY}" MAILRC=/dev/null \
 	"${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
@@ -65,6 +67,15 @@ test_mail() {
 	rm -f "${MBOX}"
 	echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
 	cksum_test "${MBOX}" '506144051 104' 3
+
+	# Sending of multiple mails in a single invocation
+	rm -f "${MBOX}"
+	(
+		printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
+		printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+		echo x
+	) | MAILRC=/dev/null "${NAIL}" -N -n -# -Sstealthmua
+	cksum_test "${MBOX}" '2028749685 277' 4
 }
 
 printf \
