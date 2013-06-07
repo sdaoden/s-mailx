@@ -1013,6 +1013,8 @@ void *
 
 	if (size == 0)
 		size = 1;
+	if (nmemb == 0)
+		nmemb = 1;
 	size *= nmemb;
 	size += sizeof(struct chunk);
 
@@ -1103,15 +1105,18 @@ int
 
 	fprintf(fp, "Currently allocated memory chunks:\n");
 	for (p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next)
-		fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
-			(void*)(p.c + 1), p.c->size, p.c->file, p.c->line);
+		fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
+			(void*)(p.c + 1),
+			(ui_it)(p.c->size - sizeof(struct chunk)),
+			p.c->file, p.c->line);
 
 	if (options & OPT_DEBUG) {
 		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
 		for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next)
-			fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
-				(void*)(p.c + 1), p.c->size, p.c->file,
-				p.c->line);
+			fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
+				(void*)(p.c + 1),
+				(ui_it)(p.c->size - sizeof(struct chunk)),
+				p.c->file, p.c->line);
 	}
 
 	page_or_print(fp, lines);
