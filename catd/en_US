@@ -209,14 +209,14 @@ $set 1
 199 user = %s, homedir = %s\n
 200 too long to edit\n
 201 Cannot associate a name with uid %d\n
-202 "%s": not a group\n
+202 "%s": no such alias\n
 203 "%s": undefined variable\n
 204 No POP3 `APOP' support available, sending password in clear text\n
 205 More than one file given with -f\n
 206 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 207 $%c%c%3d %s%-*.*s  %16.16s %s "%.*s"\n$
 208 warning: incomplete line - newline appended\n
-209 Must specify alias or group to remove\n
+209 Must specify alias to remove\n
 210 [Binary content]\n
 211 removed.\n
 212 updated.\n
@@ -447,7 +447,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 384 Create threaded view of current "folder"
 385 Print top few lines of <message-list>
 386 Mark <message-list> for saving in *mbox*
-387 Un"alias" <message-list>
+387 Un"alias" <name-list>
 388 Un"answered" <message-list>
 389 Un"draft" <message-list>
 390 Uncollapse <message-list> if in threaded view

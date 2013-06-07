@@ -960,8 +960,7 @@ printgroup(char *name)
 	struct group *gp;
 
 	if ((gh = findgroup(name)) == NULL) {
-		printf(catgets(catd, CATSET, 202, "\"%s\": not a group\n"),
-				name);
+		fprintf(stderr, tr(202, "\"%s\": no such alias\n"), name);
 		return;
 	}
 	printf("%s\t", gh->g_name);

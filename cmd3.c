@@ -805,8 +805,7 @@ ungroup(void *v)
 	char **argv = v;
 
 	if (*argv == NULL) {
-		printf(catgets(catd, CATSET, 209,
-				"Must specify alias or group to remove\n"));
+		fprintf(stderr, tr(209, "Must specify alias to remove\n"));
 		return 1;
 	}
 	do
