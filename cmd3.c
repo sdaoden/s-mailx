@@ -62,7 +62,6 @@ static char *	fwdedit(char *subj);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
 static int	file1(char const *name);
-static int	shellecho(const char *cp);
 static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
 static void	list_shortcuts(void);
@@ -884,60 +883,6 @@ file1(char const *name)
 	return 0;
 }
 
-static int
-shellecho(const char *cp)
-{
-	int	cflag = 0, n;
-	char	c;
-
-	while (*cp) {
-		if (*cp == '\\') {
-			switch (*++cp) {
-			case '\0':
-				return cflag;
-			case 'a':
-				putchar('\a');
-				break;
-			case 'b':
-				putchar('\b');
-				break;
-			case 'c':
-				cflag = 1;
-				break;
-			case 'f':
-				putchar('\f');
-				break;
-			case 'n':
-				putchar('\n');
-				break;
-			case 'r':
-				putchar('\r');
-				break;
-			case 't':
-				putchar('\t');
-				break;
-			case 'v':
-				putchar('\v');
-				break;
-			default:
-				putchar(*cp&0377);
-				break;
-			case '0':
-				c = 0;
-				n = 3;
-				while (n-- && octalchar(cp[1]&0377)) {
-					c <<= 3;
-					c |= cp[1] - '0';
-					cp++;
-				}
-				putchar(c);
-			}
-		} else
-			putchar(*cp & 0377);
-		cp++;
-	}
-	return cflag;
-}
 
 /*
  * Expand file names like echo
@@ -945,21 +890,24 @@ shellecho(const char *cp)
 int 
 echo(void *v)
 {
-	char **argv = v;
-	char **ap;
-	char *cp;
-	int cflag = 0;
+	char const **argv = v, **ap, *cp;
+	int c;
 
-	for (ap = argv; *ap != NULL; ap++) {
+	for (ap = argv; *ap != NULL; ++ap) {
 		cp = *ap;
-		if ((cp = expand(cp)) != NULL) {
+		if ((cp = fexpand(cp, FEXP_NSHORTCUT)) != NULL) {
 			if (ap != argv)
 				putchar(' ');
-			cflag |= shellecho(cp);
+			while (*cp != '\0' &&
+					(c = expand_shell_escape(&cp)) > 0)
+				putchar(c);
+			/* \c ends overall processing */
+			if (c < 0)
+				goto jleave;
 		}
 	}
-	if (!cflag)
-		putchar('\n');
+	putchar('\n');
+jleave:
 	return 0;
 }
 
