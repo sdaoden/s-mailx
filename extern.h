@@ -565,17 +565,6 @@ int zfree(void *cookie);
 int zread(void *cookie, char *rbp, int num);
 void *zalloc(FILE *fp);
 
-/* macro.c */
-int cdefine(void *v);
-int define1(const char *name, int account);
-int cundef(void *v);
-int ccall(void *v);
-int callaccount(const char *name);
-int callhook(const char *name, int newmail);
-int listaccounts(FILE *fp);
-int cdefines(void *v);
-void delaccount(const char *name);
-
 /* maildir.c */
 int maildir_setfile(const char *name, int newmail, int isedit);
 void maildir_quit(void);
@@ -1000,9 +989,19 @@ void	vfree(char *vstr);
 
 char *value(const char *name);
 #define boption(V)		(! ! value(V))
-#define soption(V)		value(V)
+#define voption(V)		value(V)
 
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
 int hash(const char *name);
 void remove_group(const char *name);
+
+int cdefine(void *v);
+int define1(const char *name, int account);
+int cundef(void *v);
+int ccall(void *v);
+int callaccount(const char *name);
+int callhook(const char *name, int newmail);
+int listaccounts(FILE *fp);
+int cdefines(void *v);
+void delaccount(const char *name);
