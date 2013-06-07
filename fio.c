@@ -766,21 +766,20 @@ demail(void)
 }
 
 bool_t
-var_folder_updated(char **name)
+var_folder_updated(char const *name, char **store)
 {
 	char rv = TRU1;
-	char *unres = NULL, *res = NULL, *folder;
+	char *folder, *unres = NULL, *res = NULL;
 
-	if (name == NULL)
+	if ((folder = UNCONST(name)) == NULL)
 		goto jleave;
-	folder = *name;
 
 	/* Expand the *folder*; skip `%:' prefix for simplicity of use */
 	/* XXX This *only* works because we do NOT
 	 * XXX update environment variables via the "set" mechanism */
 	if (folder[0] == '%' && folder[1] == ':')
 		folder += 2;
-	if ((folder = fexpand(folder, FEXP_FULL)) == NULL)
+	if ((folder = fexpand(folder, FEXP_FULL)) == NULL) /* XXX error? */
 		goto jleave;
 
 	switch (which_protocol(folder)) {
@@ -792,7 +791,7 @@ var_folder_updated(char **name)
 		goto jleave;
 	case PROTO_IMAP:
 		/* Simply assign what we have, even including `%:' prefix */
-		if (folder != *name)
+		if (folder != name)
 			goto jvcopy;
 		goto jleave;
 	default:
@@ -824,10 +823,8 @@ var_folder_updated(char **name)
 		folder = res;
 #endif
 
-jvcopy:	{	char *x = *name;
-		*name = vcopy(folder);
-		vfree(x);
-	}
+jvcopy:
+	*store = sstrdup(folder);
 
 	if (res != NULL)
 		ac_free(res);

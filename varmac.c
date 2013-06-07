@@ -62,6 +62,10 @@ struct line {
 
 static struct macro	*_macros[HSHSIZE];
 
+/* Special cased value string allocation */
+static char *		_vcopy(char const *str);
+static void		_vfree(char *cp);
+
 /* Check for special housekeeping. */
 static bool_t	_check_special_vars(char const *name, bool_t enable,
 			char **value);
@@ -93,10 +97,34 @@ static void		_list_line(FILE *fp, struct line *lp);
 static void		_undef1(const char *name, enum mac_flags macfl);
 static void		_freelines(struct line *lp);
 
+static char *
+_vcopy(char const *str)
+{
+	char *news;
+	size_t len;
+
+	if (*str == '\0')
+		news = UNCONST("");
+	else {
+		len = strlen(str) + 1;
+		news = smalloc(len);
+		memcpy(news, str, len);
+	}
+	return news;
+}
+
+static void
+_vfree(char *cp)
+{
+	if (*cp)
+		free(cp);
+}
+
 static bool_t
 _check_special_vars(char const *name, bool_t enable, char **value)
 {
 	/* TODO _check_special_vars --> value cache */
+	char *cp = NULL;
 	bool_t rv = TRU1;
 	int flag = 0;
 
@@ -108,8 +136,18 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 		flag = OPT_E_FLAG;
 	else if (strcmp(name, "verbose") == 0)
 		flag = OPT_VERBOSE;
-	else if (strcmp(name, "folder") == 0)
-		rv = var_folder_updated(value);
+	else if (strcmp(name, "folder") == 0) {
+		rv = var_folder_updated(*value, &cp);
+		if (rv && cp != NULL) {
+			_vfree(*value);
+			/* It's smalloc()ed, but ensure we don't leak */
+			if (*cp == '\0') {
+				*value = UNCONST("");
+				free(cp);
+			} else
+				*value = cp;
+		}
+	}
 
 	if (flag) {
 		if (enable)
@@ -323,13 +361,13 @@ assign(char const *name, char const *value)
 	vp = _lookup(name, h, TRU1);
 	if (vp == NULL) {
 		vp = (struct var*)scalloc(1, sizeof *vp);
-		vp->v_name = vcopy(name);
+		vp->v_name = _vcopy(name);
 		vp->v_link = variables[h];
 		variables[h] = vp;
 		oval = UNCONST("");
 	} else
 		oval = vp->v_value;
-	vp->v_value = vcopy(value);
+	vp->v_value = _vcopy(value);
 
 	/* Check if update allowed XXX wasteful on error! */
 	if (! _check_special_vars(name, TRU1, &vp->v_value)) {
@@ -338,7 +376,7 @@ assign(char const *name, char const *value)
 		oval = cp;
 	}
 	if (*oval != '\0')
-		vfree(oval);
+		_vfree(oval);
 jleave:	;
 }
 
@@ -361,8 +399,8 @@ unset_internal(char const *name)
 	} else {
 		/* Always listhead after _lookup() */
 		variables[h] = variables[h]->v_link;
-		vfree(vp->v_name);
-		vfree(vp->v_value);
+		_vfree(vp->v_name);
+		_vfree(vp->v_value);
 		free(vp);
 
 		_check_special_vars(name, FAL0, NULL);
@@ -370,29 +408,6 @@ unset_internal(char const *name)
 	ret = 0;
 jleave:
 	return ret;
-}
-
-char *
-vcopy(char const *str)
-{
-	char *news;
-	size_t len;
-
-	if (*str == '\0')
-		news = UNCONST("");
-	else {
-		len = strlen(str) + 1;
-		news = smalloc(len);
-		memcpy(news, str, len);
-	}
-	return news;
-}
-
-void
-vfree(char *cp)
-{
-	if (*cp)
-		free(cp);
 }
 
 char *

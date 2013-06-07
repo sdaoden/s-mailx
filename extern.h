@@ -379,8 +379,10 @@ char *	fexpand(char const *name, enum fexp_mode fexpm);
 /* Get rid of queued mail */
 void	demail(void);
 
-/* vars.c hook: *folder* variable has been updated */
-bool_t	var_folder_updated(char **name);
+/* vars.c hook: *folder* variable has been updated; if *folder* shouldn't be
+ * replaced by something else, leave *store* alone, otherwise smalloc() the
+ * desired value (ownership will be taken) */
+bool_t	var_folder_updated(char const *folder, char **store);
 
 /* Determine the current *folder* name, store it in *name* */
 bool_t	getfold(char *name, size_t size);
@@ -998,10 +1000,6 @@ ui_it	hash(char const *name);
 void	assign(char const *name, char const *value);
 
 int	unset_internal(char const *name);
-
-/* Copy a variable string into heap memory, and free such allocated space */
-char *	vcopy(char const *str);
-void	vfree(char *vstr);
 
 /* Get the value of an option and return it.
  * Look in the environment if its not available locally */
