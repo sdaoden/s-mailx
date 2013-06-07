@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jul 05, 2013
+.Dd Jun 07, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2093,9 +2093,9 @@ command.
 Sets some cosmetical features to traditional BSD style;
 has the same affect as setting
 .Va askatend
-and all other variables prefixed with `bsd',
-setting prompt to `&\ ', and changing the default pager to
-.Xr more 1 .
+and all other variables prefixed with `bsd' as well as setting
+.Va prompt
+to `&\ '.
 .It Va bsdflags
 Changes the letters printed in the first column of a header summary
 to traditional BSD style.
@@ -2862,11 +2862,8 @@ The value to put into the `Organization:' field of the message header.
 Pathname of the program to use in the more command or when the
 .Va crt
 variable is set.
-The default paginator
-.Xr pg 1
-or, in BSD compatibility mode,
-.Xr more 1
-is used if this option is not defined.
+The default paginator is
+.Xr more 1 .
 .It Va password-user@host
 Set the password for `user' when connecting to `host'.
 If no such variable is defined for a host,
@@ -3942,7 +3939,6 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr more 1 ,
 .Xr newaliases 1 ,
 .Xr openssl 1 ,
-.Xr pg 1 ,
 .Xr sendmail 1 ,
 .Xr sh 1,
 .Xr vacation 1 ,

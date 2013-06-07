@@ -89,7 +89,7 @@ get_pager(void)
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
-		cp = value("bsdcompat") ? PAGER_BSD : PAGER_SYSV;
+		cp = PAGER;
 	return cp;
 }
 

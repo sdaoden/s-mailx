@@ -80,8 +80,7 @@
 
 #define SHELL		"/bin/sh"
 #define LISTER		"ls"
-#define PAGER_BSD	"more"
-#define PAGER_SYSV	"pg"
+#define PAGER		"more"
 
 /*
  * Funs, CC support etc.
