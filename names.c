@@ -282,7 +282,7 @@ _remove_grouplist(struct grouphead *gh)
 	if ((gp = gh->g_list) != NULL) {
 		for (; gp; gp = gq) {
 			gq = gp->ge_link;
-			vfree(gp->ge_name);
+			free(gp->ge_name);
 			free(gp);
 		}
 	}
@@ -978,7 +978,7 @@ remove_group(const char *name)
 	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
 		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
 			_remove_grouplist(gh);
-			vfree(gh->g_name);
+			free(gh->g_name);
 			if (gp != NULL)
 				gp->g_link = gh->g_link;
 			else
