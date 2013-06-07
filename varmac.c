@@ -43,8 +43,8 @@
 enum mac_flags {
 	MAC_NONE	= 0,
 	MAC_ACCOUNT	= 1<<0,
-
-	MAC_TYPE_MASK	= MAC_ACCOUNT
+	MAC_TYPE_MASK	= MAC_ACCOUNT,
+	MAC_UNDEF	= 1<<1
 };
 
 struct macro {
@@ -56,8 +56,8 @@ struct macro {
 
 struct line {
 	struct line	*l_next;
-	char		*l_line;
 	size_t		l_linesize;
+	char		l_line[VFIELD_SIZE(sizeof(size_t))];
 };
 
 static struct macro	*_macros[HSHSIZE];
@@ -172,11 +172,11 @@ _canonify(char const *vn)
 }
 
 static struct var *
-_lookup(const char *name, ui_it h, bool_t hset)
+_lookup(const char *name, ui_it h, bool_t hisset)
 {
 	struct var **vap, *lvp, *vp;
 
-	if (! hset)
+	if (! hisset)
 		h = hash(name);
 	vap = variables + h;
 
@@ -213,22 +213,34 @@ jleave:
 static struct macro *
 _malook(const char *name, struct macro *data, enum mac_flags macfl)
 {
+	enum mac_flags save_mfl;
 	ui_it h;
-	struct macro *mp;
+	struct macro *lmp, *mp;
 
+	save_mfl = macfl;
 	macfl &= MAC_TYPE_MASK;
 	h = hash(name);
 
-	for (mp = _macros[h]; mp != NULL; mp = mp->ma_next)
+	for (lmp = NULL, mp = _macros[h]; mp != NULL;
+			lmp = mp, mp = mp->ma_next) {
 		if ((mp->ma_flags & MAC_TYPE_MASK) == macfl &&
-				mp->ma_name != NULL &&
-				strcmp(mp->ma_name, name) == 0)
-			break;
+				strcmp(mp->ma_name, name) == 0) {
+			if (save_mfl & MAC_UNDEF) {
+				if (lmp == NULL)
+					_macros[h] = mp->ma_next;
+				else
+					lmp->ma_next = mp->ma_next;
+			}
+			goto jleave;
+		}
+	}
 
-	if (data != NULL && mp == NULL) {
+	if (data != NULL) {
 		data->ma_next = _macros[h];
 		_macros[h] = data;
+		mp = NULL;
 	}
+jleave:
 	return mp;
 }
 
@@ -243,7 +255,7 @@ _maexec(struct macro *mp)
 	unset_allow_undefined = TRU1;
 	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
 		sp = lp->l_line;
-		smax = lp->l_line + lp->l_linesize;
+		smax = sp + lp->l_linesize;
 		while (sp < smax &&
 				(blankchar(*sp) || *sp == '\n' || *sp == '\0'))
 			++sp;
@@ -273,8 +285,7 @@ _list_macros(FILE *fp, enum mac_flags macfl)
 
 	for (ti = mc = 0; ti < HSHSIZE; ++ti)
 		for (mq = _macros[ti]; mq; mq = mq->ma_next)
-			if ((mq->ma_flags & MAC_TYPE_MASK) == macfl &&
-					mq->ma_name != NULL) {
+			if ((mq->ma_flags & MAC_TYPE_MASK) == macfl) {
 				if (++mc > 1)
 					fputc('\n', fp);
 				fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
@@ -306,10 +317,10 @@ _undef1(const char *name, enum mac_flags macfl)
 {
 	struct macro *mp;
 
-	if ((mp = _malook(name, NULL, macfl)) != NULL) {
+	if ((mp = _malook(name, NULL, macfl | MAC_UNDEF)) != NULL) {
 		_freelines(mp->ma_contents);
 		free(mp->ma_name);
-		mp->ma_name = NULL;
+		free(mp);
 	}
 }
 
@@ -319,13 +330,13 @@ _freelines(struct line *lp)
 	struct line *lq;
 
 	for (lq = NULL; lp != NULL; ) {
-		free(lp->l_line);
 		if (lq != NULL)
 			free(lq);
 		lq = lp;
 		lp = lp->l_next;
 	}
-	free(lq);
+	if (lq)
+		free(lq);
 }
 
 ui_it
@@ -459,8 +470,7 @@ define1(char const *name, int account) /* TODO make static (`account'...)! */
 
 	mp = scalloc(1, sizeof *mp);
 	mp->ma_name = sstrdup(name);
-	if (account)
-		mp->ma_flags |= MAC_ACCOUNT;
+	mp->ma_flags = account ? MAC_ACCOUNT : MAC_NONE;
 
 	for (;;) {
 		n = 0;
@@ -482,24 +492,25 @@ define1(char const *name, int account) /* TODO make static (`account'...)! */
 		}
 		if (_is_closing_angle(linebuf))
 			break;
-		lp = scalloc(1, sizeof *lp);
-		lp->l_linesize = ++n;
-		lp->l_line = smalloc(n); /* TODO rewrite this file */
+
+		++n;
+		lp = scalloc(1, sizeof(*lp) -
+			VFIELD_SIZEOF(struct line, l_line) + n);
+		lp->l_linesize = n;
 		memcpy(lp->l_line, linebuf, n);
 		assert(lp->l_line[n - 1] == '\0');
-		if (lst != NULL && lnd != NULL) {
+		if (lst != NULL) {
 			lnd->l_next = lp;
 			lnd = lp;
 		} else
 			lst = lnd = lp;
 	}
-
 	mp->ma_contents = lst;
-	if (_malook(mp->ma_name, mp, account ? MAC_ACCOUNT : MAC_NONE)
-			!= NULL) {
-		if (! account) {
-			fprintf(stderr,
-				tr(76,"A macro named \"%s\" already exists.\n"),
+
+	if (_malook(mp->ma_name, mp, mp->ma_flags) != NULL) {
+		if (! (mp->ma_flags & MAC_ACCOUNT)) {
+			fprintf(stderr, tr(76,
+				"A macro named \"%s\" already exists.\n"),
 				mp->ma_name);
 			lst = mp->ma_contents;
 			goto jerr;
