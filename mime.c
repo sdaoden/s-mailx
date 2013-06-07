@@ -160,9 +160,9 @@ __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
 	if (line[elen - 1] == '\n' && line[--elen] == '\0')
 		goto jleave;
 
-	mtn = smalloc(sizeof(struct mtnode) +
-			VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 +
-			elen + 1);
+	mtn = smalloc(sizeof(struct mtnode) -
+		VFIELD_SIZEOF(struct mtnode, mt_line) +
+		tlen + 1 + elen + 1);
 	if (*tail != NULL)
 		(*tail)->mt_next = mtn;
 	else
