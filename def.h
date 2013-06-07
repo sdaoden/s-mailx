@@ -239,6 +239,13 @@ enum exit_status {
 	EXIT_SEND_ERROR	= 1<<2		/* Unspecified send error occurred */
 };
 
+enum fexp_mode {
+	FEXP_FULL,			/* Full expansion */
+	FEXP_LOCAL 	= 1<<0,		/* Result must be local file/maildir */
+	FEXP_SHELL 	= 1<<1,		/* No folder %,#,&,+ stuff, yet sh(1) */
+	FEXP_NSHORTCUT	= 1<<2		/* Don't expand shortcuts */
+};
+
 enum okay {
 	STOP = 0,
 	OKAY = 1

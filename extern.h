@@ -362,10 +362,11 @@ off_t fsize(FILE *iob);
  *	&	invoker's mbox file
  *	+file	file in folder directory
  *	any shell meta character
- * file_expand() requires the expansion to be a local file/directory, and
- * Return the file name as a dynamic string */
-char *	expand(char const *name);
-char *	file_expand(char const *name);
+ * Returns the file name as an auto-reclaimed string */
+char *	fexpand(char const *name, enum fexp_mode fexpm);
+
+#define expand(N)	fexpand(N, FEXP_FULL)	/* XXX obsolete */
+#define file_expand(N)	fexpand(N, FEXP_LOCAL)	/* XXX obsolete */
 
 /* Get rid of queued mail */
 void	demail(void);

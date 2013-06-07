@@ -68,25 +68,6 @@
 
 #include "extern.h"
 
-enum expmode {
-	EXP_FULL,
-	EXP_LOCAL = 1<<0,
-	EXP_SHELL = 1<<1
-};
-
-/*
- * Evaluate the string given as a new mailbox name.
- * Supported meta characters:
- *	%	for my system mail box
- *	%user	for user's system mail box
- *	#	for previous file
- *	&	invoker's mbox file
- *	+file	file in folder directory
- *	any shell meta character
- * Return the file name as a dynamic string.
- */
-static char *	_expand(char const *name, enum expmode expmode);
-
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 static void	_findmail(char *buf, size_t bufsize, char const *user,
 			bool_t force);
@@ -105,115 +86,6 @@ static char *	_fgetline_byone(char **line, size_t *linesize, size_t *llen,
 static void makemessage(void);
 static void append(struct message *mp);
 static enum okay get_header(struct message *mp);
-
-static char *
-_expand(char const *name, enum expmode expmode)
-{
-	char cbuf[MAXPATHLEN], *res;
-	struct str s;
-	struct shortcut *sh;
-	bool_t dyn;
-
-	/*
-	 * The order of evaluation is "%" and "#" expand into constants.
-	 * "&" can expand into "+".  "+" can expand into shell meta characters.
-	 * Shell meta characters expand into constants.
-	 * This way, we make no recursive expansion.
-	 */
-	res = UNCONST(name);
-	if ((sh = get_shortcut(res)) != NULL)
-		res = sh->sh_long;
-
-	if (expmode & EXP_SHELL) {
-		dyn = FAL0;
-		goto jshell;
-	}
-jnext:
-	dyn = FAL0;
-	switch (*res) {
-	case '%':
-		if (res[1] == ':' && res[2] != '\0') {
-			res = &res[2];
-			goto jnext;
-		}
-		_findmail(cbuf, sizeof cbuf,
-			(res[1] != '\0') ? res + 1 : myname,
-			(res[1] != '\0' || option_u_arg != NULL));
-		res = cbuf;
-		goto jislocal;
-	case '#':
-		if (res[1] != '\0')
-			break;
-		if (prevfile[0] == '\0') {
-			fprintf(stderr, tr(80, "No previous file\n"));
-			res = NULL;
-			goto jleave;
-		}
-		res = prevfile;
-		goto jislocal;
-	case '&':
-		if (res[1] == '\0') {
-			if ((res = value("MBOX")) == NULL)
-				res = UNCONST("~/mbox");
-			else if (res[0] != '&' || res[1] != '\0')
-				goto jnext;
-		}
-		break;
-	}
-
-	if (res[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
-		res = str_concat_csvl(&s,
-			protbase(mailname), "/", res + 1, NULL)->s;
-		dyn = TRU1;
-	}
-
-	if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
-		size_t i = strlen(cbuf);
-
-		res = str_concat_csvl(&s, cbuf,
-			(i > 0 && cbuf[i - 1] == '/') ? "" : "/",
-			res + 1, NULL)->s;
-		dyn = TRU1;
-
-		if (res[0] == '%' && res[1] == ':') {
-			res += 2;
-			goto jnext;
-		}
-	}
-
-	/* Catch the most common shell meta character */
-jshell:
-	if (res[0] == '~' && (res[1] == '/' || res[1] == '\0')) {
-		res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
-		dyn = TRU1;
-	}
-
-	if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
-			which_protocol(res) == PROTO_FILE) {
-		res = _globname(res);
-		dyn = TRU1;
-		goto jleave;
-	}
-
-jislocal:
-	if (expmode & EXP_LOCAL)
-		switch (which_protocol(res)) {
-		case PROTO_FILE:
-		case PROTO_MAILDIR:	/* XXX Really? ok MAILDIR for local? */
-			break;
-		default:
-			fprintf(stderr, tr(280,
-				"`%s': only a local file or directory may "
-				"be used\n"), name);
-			res = NULL;
-			break;
-		}
-
-jleave:
-	if (res && ! dyn)
-		res = savestr(res);
-	return res;
-}
 
 static void
 _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
@@ -775,15 +647,111 @@ fsize(FILE *iob)
 }
 
 char *
-expand(char const *name)
+fexpand(char const *name, enum fexp_mode fexpm)
 {
-	return _expand(name, 0);
-}
+	char cbuf[MAXPATHLEN], *res;
+	struct str s;
+	struct shortcut *sh;
+	bool_t dyn;
 
-char *
-file_expand(char const *name)
-{
-	return _expand(name, EXP_LOCAL);
+	/*
+	 * The order of evaluation is "%" and "#" expand into constants.
+	 * "&" can expand into "+".  "+" can expand into shell meta characters.
+	 * Shell meta characters expand into constants.
+	 * This way, we make no recursive expansion.
+	 */
+	res = UNCONST(name);
+	if (! (fexpm & FEXP_NSHORTCUT) && (sh = get_shortcut(res)) != NULL)
+		res = sh->sh_long;
+
+	if (fexpm & FEXP_SHELL) {
+		dyn = FAL0;
+		goto jshell;
+	}
+jnext:
+	dyn = FAL0;
+	switch (*res) {
+	case '%':
+		if (res[1] == ':' && res[2] != '\0') {
+			res = &res[2];
+			goto jnext;
+		}
+		_findmail(cbuf, sizeof cbuf,
+			(res[1] != '\0') ? res + 1 : myname,
+			(res[1] != '\0' || option_u_arg != NULL));
+		res = cbuf;
+		goto jislocal;
+	case '#':
+		if (res[1] != '\0')
+			break;
+		if (prevfile[0] == '\0') {
+			fprintf(stderr, tr(80, "No previous file\n"));
+			res = NULL;
+			goto jleave;
+		}
+		res = prevfile;
+		goto jislocal;
+	case '&':
+		if (res[1] == '\0') {
+			if ((res = value("MBOX")) == NULL)
+				res = UNCONST("~/mbox");
+			else if (res[0] != '&' || res[1] != '\0')
+				goto jnext;
+		}
+		break;
+	}
+
+	if (res[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
+		res = str_concat_csvl(&s,
+			protbase(mailname), "/", res + 1, NULL)->s;
+		dyn = TRU1;
+	}
+
+	if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
+		size_t i = strlen(cbuf);
+
+		res = str_concat_csvl(&s, cbuf,
+			(i > 0 && cbuf[i - 1] == '/') ? "" : "/",
+			res + 1, NULL)->s;
+		dyn = TRU1;
+
+		if (res[0] == '%' && res[1] == ':') {
+			res += 2;
+			goto jnext;
+		}
+	}
+
+	/* Catch the most common shell meta character */
+jshell:
+	if (res[0] == '~' && (res[1] == '/' || res[1] == '\0')) {
+		res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
+		dyn = TRU1;
+	}
+
+	if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
+			which_protocol(res) == PROTO_FILE) {
+		res = _globname(res);
+		dyn = TRU1;
+		goto jleave;
+	}
+
+jislocal:
+	if (fexpm & FEXP_LOCAL)
+		switch (which_protocol(res)) {
+		case PROTO_FILE:
+		case PROTO_MAILDIR:	/* XXX Really? ok MAILDIR for local? */
+			break;
+		default:
+			fprintf(stderr, tr(280,
+				"`%s': only a local file or directory may "
+				"be used\n"), name);
+			res = NULL;
+			break;
+		}
+jleave:
+	if (res && ! dyn)
+		res = savestr(res);
+	return res;
 }
 
 void
@@ -812,7 +780,7 @@ var_folder_updated(char **name)
 	 * XXX update environment variables via the "set" mechanism */
 	if (folder[0] == '%' && folder[1] == ':')
 		folder += 2;
-	if ((folder = _expand(folder, EXP_FULL)) == NULL)
+	if ((folder = fexpand(folder, FEXP_FULL)) == NULL)
 		goto jleave;
 
 	switch (which_protocol(folder)) {
@@ -888,14 +856,14 @@ getdeadletter(void)
 	char const *cp;
 
 	if ((cp = value("DEAD")) == NULL ||
-			(cp = _expand(cp, EXP_LOCAL)) == NULL)
-		cp = _expand("~/dead.letter", EXP_LOCAL|EXP_SHELL);
+			(cp = fexpand(cp, FEXP_LOCAL)) == NULL)
+		cp = fexpand("~/dead.letter", FEXP_LOCAL|FEXP_SHELL);
 	else if (*cp != '/') {
 		size_t sz = strlen(cp) + 3;
 		char *buf = ac_alloc(sz);
 
 		snprintf(buf, sz, "~/%s", cp);
-		cp = _expand(buf, EXP_LOCAL|EXP_SHELL);
+		cp = fexpand(buf, FEXP_LOCAL|FEXP_SHELL);
 		ac_free(buf);
 	}
 	if (cp == NULL)
@@ -924,7 +892,7 @@ source(void *v)
 	FILE *fi;
 	char *cp;
 
-	if ((cp = file_expand(*arglist)) == NULL)
+	if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
 		return (1);
 	if ((fi = Fopen(cp, "r")) == NULL) {
 		perror(cp);
