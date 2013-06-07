@@ -77,8 +77,6 @@ static char const *	_canonify(char const *vn);
 /* Locate a variable and return its variable node */
 static struct var *	_lookup(const char *name, ui_it h, bool_t hisset);
 
-static void		_remove_grouplist(struct grouphead *gh);
-
 /* Line *cp* consists solely of WS and a } */
 static bool_t		_is_closing_angle(char const *cp);
 
@@ -157,20 +155,6 @@ _lookup(const char *name, ui_it h, bool_t hset)
 	vp = NULL;
 jleave:
 	return vp;
-}
-
-static void
-_remove_grouplist(struct grouphead *gh)
-{
-	struct group *gp, *gq;
-
-	if ((gp = gh->g_list) != NULL) {
-		for (; gp; gp = gq) {
-			gq = gp->ge_link;
-			vfree(gp->ge_name);
-			free(gp);
-		}
-	}
 }
 
 static bool_t
@@ -424,62 +408,6 @@ value(const char *name)
 		return (vs);
 	}
 	return (vp->v_value);
-}
-
-/*
- * Locate a group name and return it.
- */
-
-struct grouphead *
-findgroup(char *name)
-{
-	struct grouphead *gh;
-
-	for (gh = groups[hash(name)]; gh != NULL; gh = gh->g_link)
-		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0)
-			return(gh);
-	return(NULL);
-}
-
-/*
- * Print a group out on stdout
- */
-void
-printgroup(char *name)
-{
-	struct grouphead *gh;
-	struct group *gp;
-
-	if ((gh = findgroup(name)) == NULL) {
-		printf(catgets(catd, CATSET, 202, "\"%s\": not a group\n"),
-				name);
-		return;
-	}
-	printf("%s\t", gh->g_name);
-	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link)
-		printf(" %s", gp->ge_name);
-	putchar('\n');
-}
-
-void
-remove_group(const char *name)
-{
-	struct grouphead *gh, *gp = NULL;
-	int h = hash(name);
-
-	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
-		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
-			_remove_grouplist(gh);
-			vfree(gh->g_name);
-			if (gp != NULL)
-				gp->g_link = gh->g_link;
-			else
-				groups[h] = NULL;
-			free(gh);
-			break;
-		}
-		gp = gh;
-	}
 }
 
 int

@@ -712,6 +712,16 @@ int		is_myname(char const *name);
 struct name *	outof(struct name *names, FILE *fo, struct header *hp,
 			bool_t *senderror);
 
+/* Handling of alias groups */
+
+/* Locate a group name and return it */
+struct grouphead *findgroup(char *name);
+
+/* Print a group out on stdout */
+void		printgroup(char *name);
+
+void		remove_group(char const *name);
+
 /* openssl.c */
 #ifdef USE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
@@ -1009,7 +1019,3 @@ int	cdefines(void *v);
 int	callaccount(char const *name);
 int	listaccounts(FILE *fp);
 void	delaccount(char const *name);
-
-struct grouphead *findgroup(char *name);
-void printgroup(char *name);
-void remove_group(const char *name);
