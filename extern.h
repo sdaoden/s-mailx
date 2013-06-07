@@ -976,7 +976,13 @@ char *	getpassword(char const *query);
  * (so that termios_state.ts_linebuf carries only one) */
 bool_t	getcredentials(char **user, char **pass);
 
-/* vars.c */
+/*
+ * varmac.c
+ */
+
+/* Hash the passed string and return result % HSHSIZE.
+ * Uses Chris Torek's hash algorithm */
+ui_it	hash(char const *name);
 
 /* Assign a value to a variable */
 void	assign(char const *name, char const *value);
@@ -987,21 +993,23 @@ int	unset_internal(char const *name);
 char *	vcopy(char const *str);
 void	vfree(char *vstr);
 
-char *value(const char *name);
+/* Get the value of an option and return it.
+ * Look in the environment if its not available locally */
+char *	value(const char *name);
 #define boption(V)		(! ! value(V))
 #define voption(V)		value(V)
 
+int	cdefine(void *v);
+int	define1(const char *name, int account);
+int	cundef(void *v);
+int	ccall(void *v);
+int	callhook(char const *name, int newmail);
+int	cdefines(void *v);
+
+int	callaccount(char const *name);
+int	listaccounts(FILE *fp);
+void	delaccount(char const *name);
+
 struct grouphead *findgroup(char *name);
 void printgroup(char *name);
-int hash(const char *name);
 void remove_group(const char *name);
-
-int cdefine(void *v);
-int define1(const char *name, int account);
-int cundef(void *v);
-int ccall(void *v);
-int callaccount(const char *name);
-int callhook(const char *name, int newmail);
-int listaccounts(FILE *fp);
-int cdefines(void *v);
-void delaccount(const char *name);

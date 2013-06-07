@@ -40,7 +40,19 @@
 #include "rcv.h"
 #include "extern.h"
 
-#define	MAPRIME		29
+enum mac_flags {
+	MAC_NONE	= 0,
+	MAC_ACCOUNT	= 1<<0,
+
+	MAC_TYPE_MASK	= MAC_ACCOUNT
+};
+
+struct macro {
+	struct macro	*ma_next;
+	char		*ma_name;
+	struct line	*ma_contents;
+	enum mac_flags	ma_flags;
+};
 
 struct line {
 	struct line	*l_next;
@@ -48,45 +60,40 @@ struct line {
 	size_t		l_linesize;
 };
 
-struct macro {
-	struct macro	*ma_next;
-	char		*ma_name;
-	struct line	*ma_contents;
-	enum maflags {
-		MA_NOFLAGS,
-		MA_ACCOUNT
-	} ma_flags;
-};
-
-static struct macro	*_macros[MAPRIME];
-static struct macro	*_accounts[MAPRIME];
+static struct macro	*_macros[HSHSIZE];
 
 /* Check for special housekeeping. */
 static bool_t	_check_special_vars(char const *name, bool_t enable,
 			char **value);
 
-/*
- * If a variable name begins with a lowercase-character and contains at
+/* If a variable name begins with a lowercase-character and contains at
  * least one '@', it is converted to all-lowercase. This is necessary
  * for lookups of names based on email addresses.
  *
  * Following the standard, only the part following the last '@' should
- * be lower-cased, but practice has established otherwise here.
- */
-static char const *	canonify(char const *vn);
+ * be lower-cased, but practice has established otherwise here */
+static char const *	_canonify(char const *vn);
 
-static struct var *lookup(const char *name, int h);
-static void remove_grouplist(struct grouphead *gh);
+/* Locate a variable and return its variable node */
+static struct var *	_lookup(const char *name, ui_it h, bool_t hisset);
 
-#define	mahash(cp)	(pjw(cp) % MAPRIME)
-static void undef1(const char *name, struct macro **table);
-static int maexec(struct macro *mp);
-static int closingangle(const char *cp);
-static struct macro *malook(const char *name, struct macro *data,
-		struct macro **table);
-static void freelines(struct line *lp);
-static void list0(FILE *fp, struct line *lp);
-static int list1(FILE *fp, struct macro **table);
+static void		_remove_grouplist(struct grouphead *gh);
+
+/* Line *cp* consists solely of WS and a } */
+static bool_t		_is_closing_angle(char const *cp);
+
+/* Lookup for macros/accounts */
+static struct macro *	_malook(const char *name, struct macro *data,
+				enum mac_flags macfl);
+
+static int		_maexec(struct macro *mp);
+
+/* User display helpers */
+static size_t		_list_macros(FILE *fp, enum mac_flags macfl);
+static void		_list_line(FILE *fp, struct line *lp);
+
+static void		_undef1(const char *name, enum mac_flags macfl);
+static void		_freelines(struct line *lp);
 
 static bool_t
 _check_special_vars(char const *name, bool_t enable, char **value)
@@ -116,22 +123,206 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 }
 
 static char const *
-canonify(char const *vn)
+_canonify(char const *vn)
 {
-	char const *vp;
+	if (! upperchar(*vn)) {
+		char const *vp;
 
-	if (upperchar(*vn))
-		return vn;
-	for (vp = vn; *vp && *vp != '@'; vp++)
-		;
-	return (*vp == '@') ? i_strdup(vn) : vn;
+		for (vp = vn; *vp != '\0' && *vp != '@'; ++vp)
+			;
+		vn = (*vp == '@') ? i_strdup(vn) : vn;
+	}
+	return vn;
+}
+
+static struct var *
+_lookup(const char *name, ui_it h, bool_t hset)
+{
+	struct var **vap, *lvp, *vp;
+
+	if (! hset)
+		h = hash(name);
+	vap = variables + h;
+
+	for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
+		if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0) {
+			/* Relink as head, hope it "sorts on usage" over time */
+			if (lvp != NULL) {
+				lvp->v_link = vp->v_link;
+				vp->v_link = *vap;
+				*vap = vp;
+			}
+			goto jleave;
+		}
+	vp = NULL;
+jleave:
+	return vp;
+}
+
+static void
+_remove_grouplist(struct grouphead *gh)
+{
+	struct group *gp, *gq;
+
+	if ((gp = gh->g_list) != NULL) {
+		for (; gp; gp = gq) {
+			gq = gp->ge_link;
+			vfree(gp->ge_name);
+			free(gp);
+		}
+	}
+}
+
+static bool_t
+_is_closing_angle(char const *cp)
+{
+	bool_t rv = FAL0;
+	while (spacechar(*cp))
+		++cp;
+	if (*cp++ != '}')
+		goto jleave;
+	while (spacechar(*cp))
+		++cp;
+	rv = (*cp == '\0');
+jleave:
+	return rv;
+}
+
+static struct macro *
+_malook(const char *name, struct macro *data, enum mac_flags macfl)
+{
+	ui_it h;
+	struct macro *mp;
+
+	macfl &= MAC_TYPE_MASK;
+	h = hash(name);
+
+	for (mp = _macros[h]; mp != NULL; mp = mp->ma_next)
+		if ((mp->ma_flags & MAC_TYPE_MASK) == macfl &&
+				mp->ma_name != NULL &&
+				strcmp(mp->ma_name, name) == 0)
+			break;
+
+	if (data != NULL && mp == NULL) {
+		data->ma_next = _macros[h];
+		_macros[h] = data;
+	}
+	return mp;
+}
+
+static int
+_maexec(struct macro *mp)
+{
+	int rv = 0;
+	struct line *lp;
+	char const *sp, *smax;
+	char *copy, *cp;
+
+	unset_allow_undefined = TRU1;
+	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
+		sp = lp->l_line;
+		smax = lp->l_line + lp->l_linesize;
+		while (sp < smax &&
+				(blankchar(*sp) || *sp == '\n' || *sp == '\0'))
+			++sp;
+		if (sp == smax)
+			continue;
+		cp = copy = ac_alloc(lp->l_linesize + (lp->l_line - sp));
+		do
+			*cp++ = (*sp != '\n') ? *sp : ' ';
+		while (++sp < smax);
+		rv = execute(copy, 0, (size_t)(cp - copy));
+		ac_free(copy);
+	}
+	unset_allow_undefined = FAL0;
+	return rv;
+}
+
+static size_t
+_list_macros(FILE *fp, enum mac_flags macfl)
+{
+	struct macro *mq;
+	char const *typestr;
+	ui_it ti, mc;
+	struct line *lp;
+
+	macfl &= MAC_TYPE_MASK;
+	typestr = (macfl & MAC_ACCOUNT) ? "account" : "define";
+
+	for (ti = mc = 0; ti < HSHSIZE; ++ti)
+		for (mq = _macros[ti]; mq; mq = mq->ma_next)
+			if ((mq->ma_flags & MAC_TYPE_MASK) == macfl &&
+					mq->ma_name != NULL) {
+				if (++mc > 1)
+					fputc('\n', fp);
+				fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
+				for (lp = mq->ma_contents; lp; lp = lp->l_next)
+					_list_line(fp, lp);
+				fputs("}\n", fp);
+			}
+	return mc;
+}
+
+static void
+_list_line(FILE *fp, struct line *lp)
+{
+	char const *sp = lp->l_line, *spmax = sp + lp->l_linesize;
+	int c;
+
+	for (; sp < spmax; ++sp) {
+		if ((c = *sp & 0xFF) != '\0') {
+			if (c == '\n')
+				putc('\\', fp);
+			putc(c, fp);
+		}
+	}
+	putc('\n', fp);
+}
+
+static void
+_undef1(const char *name, enum mac_flags macfl)
+{
+	struct macro *mp;
+
+	if ((mp = _malook(name, NULL, macfl)) != NULL) {
+		_freelines(mp->ma_contents);
+		free(mp->ma_name);
+		mp->ma_name = NULL;
+	}
+}
+
+static void
+_freelines(struct line *lp)
+{
+	struct line *lq;
+
+	for (lq = NULL; lp != NULL; ) {
+		free(lp->l_line);
+		if (lq != NULL)
+			free(lq);
+		lq = lp;
+		lp = lp->l_next;
+	}
+	free(lq);
+}
+
+ui_it
+hash(char const *name)
+{
+	ui_it h = 0;
+
+	while (*name != '\0') {
+		h *= 33;
+		h += *name++;
+	}
+	return h % HSHSIZE;
 }
 
 void
 assign(char const *name, char const *value)
 {
 	struct var *vp;
-	int h;
+	ui_it h;
 	char *oval;
 
 	if (value == NULL) {
@@ -142,10 +333,10 @@ assign(char const *name, char const *value)
 		goto jleave;
 	}
 
-	name = canonify(name);
+	name = _canonify(name);
 	h = hash(name);
 
-	vp = lookup(name, h);
+	vp = _lookup(name, h, TRU1);
 	if (vp == NULL) {
 		vp = (struct var*)scalloc(1, sizeof *vp);
 		vp->v_name = vcopy(name);
@@ -157,7 +348,7 @@ assign(char const *name, char const *value)
 	vp->v_value = vcopy(value);
 
 	/* Check if update allowed XXX wasteful on error! */
-	if (! _check_special_vars(name, 1, &vp->v_value)) {
+	if (! _check_special_vars(name, TRU1, &vp->v_value)) {
 		char *cp = vp->v_value;
 		vp->v_value = oval;
 		oval = cp;
@@ -170,26 +361,27 @@ jleave:	;
 int
 unset_internal(char const *name)
 {
-	int ret = 1, h;
+	int ret = 1;
+	ui_it h;
 	struct var *vp;
 
-	name = canonify(name);
+	name = _canonify(name);
 	h = hash(name);
 
-	if ((vp = lookup(name, h)) == NULL) {
+	if ((vp = _lookup(name, h, TRU1)) == NULL) {
 		if (! sourcing && ! unset_allow_undefined) {
 			fprintf(stderr,
 				tr(203, "\"%s\": undefined variable\n"), name);
 			goto jleave;
 		}
 	} else {
-		/* Always listhead after lookup() */
+		/* Always listhead after _lookup() */
 		variables[h] = variables[h]->v_link;
 		vfree(vp->v_name);
 		vfree(vp->v_value);
 		free(vp);
 
-		_check_special_vars(name, 0, NULL);
+		_check_special_vars(name, FAL0, NULL);
 	}
 	ret = 0;
 jleave:
@@ -219,47 +411,19 @@ vfree(char *cp)
 		free(cp);
 }
 
-/*
- * Get the value of a variable and return it.
- * Look in the environment if its not available locally.
- */
-
 char *
 value(const char *name)
 {
 	struct var *vp;
 	char *vs;
 
-	name = canonify(name);
-	if ((vp = lookup(name, -1)) == NULL) {
+	name = _canonify(name);
+	if ((vp = _lookup(name, 0, FAL0)) == NULL) {
 		if ((vs = getenv(name)) != NULL && *vs)
 			vs = savestr(vs);
 		return (vs);
 	}
 	return (vp->v_value);
-}
-
-/*
- * Locate a variable and return its variable node.
- */
-static struct var *
-lookup(const char *name, int h)
-{
-	struct var **vap, *lvp, *vp;
-
-	vap = variables + ((h >= 0) ? h : hash(name));
-
-	for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
-		if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0) {
-			/* Relink as head, hope it "sorts on usage" over time */
-			if (lvp != NULL) {
-				lvp->v_link = vp->v_link;
-				vp->v_link = *vap;
-				*vap = vp;
-			}
-			return (vp);
-		}
-	return (NULL);
 }
 
 /*
@@ -280,7 +444,7 @@ findgroup(char *name)
 /*
  * Print a group out on stdout
  */
-void 
+void
 printgroup(char *name)
 {
 	struct grouphead *gh;
@@ -297,39 +461,6 @@ printgroup(char *name)
 	putchar('\n');
 }
 
-/*
- * Hash the passed string and return an index into
- * the variable or group hash table.
- * Use Chris Torek's hash algorithm.
- */
-int 
-hash(const char *name)
-{
-	int h = 0;
-
-	while (*name) {
-		h *= 33;
-		h += *name++;
-	}
-	if (h < 0 && (h = -h) < 0)
-		h = 0;
-	return (h % HSHSIZE);
-}
-
-static void
-remove_grouplist(struct grouphead *gh)
-{
-	struct group *gp, *gq;
-
-	if ((gp = gh->g_list) != NULL) {
-		for (; gp; gp = gq) {
-			gq = gp->ge_link;
-			vfree(gp->ge_name);
-			free(gp);
-		}
-	}
-}
-
 void
 remove_group(const char *name)
 {
@@ -338,7 +469,7 @@ remove_group(const char *name)
 
 	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
 		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
-			remove_grouplist(gh);
+			_remove_grouplist(gh);
 			vfree(gh->g_name);
 			if (gp != NULL)
 				gp->g_link = gh->g_link;
@@ -351,24 +482,31 @@ remove_group(const char *name)
 	}
 }
 
-int 
+int
 cdefine(void *v)
 {
-	char	**args = v;
+	int rv = 1;
+	char **args = v;
+	char const *errs;
 
 	if (args[0] == NULL) {
-		fprintf(stderr, "Missing macro name to define.\n");
-		return 1;
+		errs = tr(504, "Missing macro name to `define'");
+		goto jerr;
 	}
 	if (args[1] == NULL || strcmp(args[1], "{") || args[2] != NULL) {
-		fprintf(stderr, "Syntax is: define <name> {\n");
-		return 1;
+		errs = tr(505, "Syntax is: define <name> {");
+		goto jerr;
 	}
-	return define1(args[0], 0);
+	rv = define1(args[0], 0);
+jleave:
+	return rv;
+jerr:
+	fprintf(stderr, "%s\n", errs);
+	goto jleave;
 }
 
-int 
-define1(const char *name, int account)
+int
+define1(char const *name, int account) /* TODO make static (`account'...)! */
 {
 	int ret = 1, n;
 	struct macro *mp;
@@ -379,7 +517,7 @@ define1(const char *name, int account)
 	mp = scalloc(1, sizeof *mp);
 	mp->ma_name = sstrdup(name);
 	if (account)
-		mp->ma_flags |= MA_ACCOUNT;
+		mp->ma_flags |= MAC_ACCOUNT;
 
 	for (;;) {
 		n = 0;
@@ -399,7 +537,7 @@ define1(const char *name, int account)
 				unstack();
 			goto jerr;
 		}
-		if (closingangle(linebuf))
+		if (_is_closing_angle(linebuf))
 			break;
 		lp = scalloc(1, sizeof *lp);
 		lp->l_linesize = ++n;
@@ -414,7 +552,8 @@ define1(const char *name, int account)
 	}
 
 	mp->ma_contents = lst;
-	if (malook(mp->ma_name, mp, account ? _accounts : _macros) != NULL) {
+	if (_malook(mp->ma_name, mp, account ? MAC_ACCOUNT : MAC_NONE)
+			!= NULL) {
 		if (! account) {
 			fprintf(stderr,
 				tr(76,"A macro named \"%s\" already exists.\n"),
@@ -422,79 +561,69 @@ define1(const char *name, int account)
 			lst = mp->ma_contents;
 			goto jerr;
 		}
-		undef1(mp->ma_name, _accounts);
-		malook(mp->ma_name, mp, _accounts);
+		_undef1(mp->ma_name, MAC_ACCOUNT);
+		_malook(mp->ma_name, mp, MAC_ACCOUNT);
 	}
 
 	ret = 0;
 jleave:
 	if (linebuf != NULL)
 		free(linebuf);
-	return (ret);
-
-jerr:	if (lst != NULL)
-		freelines(lst);
+	return ret;
+jerr:
+	if (lst != NULL)
+		_freelines(lst);
 	free(mp->ma_name);
 	free(mp);
 	goto jleave;
 }
 
-int 
+int
 cundef(void *v)
 {
-	char	**args = v;
+	int rv = 1;
+	char **args = v;
 
 	if (*args == NULL) {
-		fprintf(stderr, "Missing macro name to undef.\n");
-		return 1;
+		fprintf(stderr, tr(506, "Missing macro name to `undef'\n"));
+		goto jleave;
 	}
 	do
-		undef1(*args, _macros);
+		_undef1(*args, MAC_NONE);
 	while (*++args);
-	return 0;
+	rv = 0;
+jleave:
+	return rv;
 }
 
-static void 
-undef1(const char *name, struct macro **table)
-{
-	struct macro	*mp;
-
-	if ((mp = malook(name, NULL, table)) != NULL) {
-		freelines(mp->ma_contents);
-		free(mp->ma_name);
-		mp->ma_name = NULL;
-	}
-}
-
-int 
+int
 ccall(void *v)
 {
-	char	**args = v;
-	struct macro	*mp;
+	int rv = 1;
+	char **args = v;
+	char const *errs, *name;
+	struct macro *mp;
 
 	if (args[0] == NULL || (args[1] != NULL && args[2] != NULL)) {
-		fprintf(stderr, "Syntax is: call <name>\n");
-		return 1;
+		errs = tr(507, "Syntax is: call <%s>\n");
+		name = "name";
+		goto jerr;
 	}
-	if ((mp = malook(*args, NULL, _macros)) == NULL) {
-		fprintf(stderr, "Undefined macro called: \"%s\"\n", *args);
-		return 1;
+	if ((mp = _malook(*args, NULL, MAC_NONE)) == NULL) {
+		errs = tr(508, "Undefined macro called: \"%s\"\n");
+		name = *args;
+		goto jerr;
 	}
-	return maexec(mp);
+	rv = _maexec(mp);
+jleave:
+	return rv;
+jerr:
+	fprintf(stderr, errs, name);
+	goto jleave;
 }
 
-int 
-callaccount(const char *name)
-{
-	struct macro	*mp;
-
-	if ((mp = malook(name, NULL, _accounts)) == NULL)
-		return CBAD;
-	return maexec(mp);
-}
-
-int 
-callhook(const char *name, int newmail)
+int
+callhook(char const *name, int newmail)
 {
 	int len, r;
 	struct macro *mp;
@@ -506,7 +635,7 @@ callhook(const char *name, int newmail)
 		r = 0;
 		goto jleave;
 	}
-	if ((mp = malook(cp, NULL, _macros)) == NULL) {
+	if ((mp = _malook(cp, NULL, MAC_NONE)) == NULL) {
 		fprintf(stderr, tr(49, "Cannot call hook for folder \"%s\": "
 			"Macro \"%s\" does not exist.\n"),
 			name, cp);
@@ -514,140 +643,18 @@ callhook(const char *name, int newmail)
 		goto jleave;
 	}
 	inhook = newmail ? 3 : 1;
-	r = maexec(mp);
+	r = _maexec(mp);
 	inhook = 0;
 jleave:
 	ac_free(var);
 	return r;
 }
 
-static int 
-maexec(struct macro *mp)
-{
-	int r = 0;
-	struct line *lp;
-	char const *sp, *smax;
-	char *copy, *cp;
-
-	unset_allow_undefined = TRU1;
-	for (lp = mp->ma_contents; lp; lp = lp->l_next) {
-		sp = lp->l_line;
-		smax = lp->l_line + lp->l_linesize;
-		while (sp < smax &&
-				(blankchar(*sp) || *sp == '\n' || *sp == '\0'))
-			++sp;
-		if (sp == smax)
-			continue;
-		cp = copy = ac_alloc(lp->l_linesize + (lp->l_line - sp));
-		do
-			*cp++ = *sp != '\n' ? *sp : ' ';
-		while (++sp < smax);
-		r = execute(copy, 0, (size_t)(cp - copy));
-		ac_free(copy);
-	}
-	unset_allow_undefined = FAL0;
-	return (r);
-}
-
-static int 
-closingangle(const char *cp)
-{
-	while (spacechar(*cp&0377))
-		cp++;
-	if (*cp++ != '}')
-		return 0;
-	while (spacechar(*cp&0377))
-		cp++;
-	return *cp == '\0';
-}
-
-static struct macro *
-malook(const char *name, struct macro *data, struct macro **table)
-{
-	struct macro	*mp;
-	unsigned	h;
-
-	mp = table[h = mahash(name)];
-	while (mp != NULL) {
-		if (mp->ma_name && strcmp(mp->ma_name, name) == 0)
-			break;
-		mp = mp->ma_next;
-	}
-	if (data) {
-		if (mp != NULL)
-			return mp;
-		data->ma_next = table[h];
-		table[h] = data;
-	}
-	return mp;
-}
-
-static void 
-freelines(struct line *lp)
-{
-	struct line	*lq = NULL;
-
-	while (lp) {
-		free(lp->l_line);
-		free(lq);
-		lq = lp;
-		lp = lp->l_next;
-	}
-	free(lq);
-}
-
 int
-listaccounts(FILE *fp)
-{
-	return list1(fp, _accounts);
-}
-
-static void
-list0(FILE *fp, struct line *lp)
-{
-	const char	*sp;
-	int	c;
-
-	for (sp = lp->l_line; sp < &lp->l_line[lp->l_linesize]; sp++) {
-		if ((c = *sp&0377) != '\0') {
-			if ((c = *sp&0377) == '\n')
-				putc('\\', fp);
-			putc(c, fp);
-		}
-	}
-	putc('\n', fp);
-}
-
-static int
-list1(FILE *fp, struct macro **table)
-{
-	struct macro	**mp, *mq;
-	struct line	*lp;
-	int	mc = 0;
-
-	for (mp = table; mp < &table[MAPRIME]; mp++)
-		for (mq = *mp; mq; mq = mq->ma_next)
-			if (mq->ma_name) {
-				if (mc++)
-					fputc('\n', fp);
-				fprintf(fp, "%s %s {\n",
-						table == _accounts ?
-							"account" : "define",
-						mq->ma_name);
-				for (lp = mq->ma_contents; lp; lp = lp->l_next)
-					list0(fp, lp);
-				fputs("}\n", fp);
-			}
-	return mc;
-}
-
-/*ARGSUSED*/
-int 
 cdefines(void *v)
 {
-	FILE	*fp;
-	char	*cp;
-	int	mc;
+	FILE *fp;
+	char *cp;
 	(void)v;
 
 	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
@@ -656,15 +663,30 @@ cdefines(void *v)
 	}
 	rm(cp);
 	Ftfree(&cp);
-	mc = list1(fp, _macros);
-	if (mc)
+
+	if (_list_macros(fp, MAC_NONE) > 0)
 		try_pager(fp);
 	Fclose(fp);
 	return 0;
 }
 
-void 
+int
+callaccount(char const *name)
+{
+	struct macro *mp;
+
+	mp = _malook(name, NULL, MAC_ACCOUNT);
+	return (mp == NULL) ? CBAD : _maexec(mp);
+}
+
+int
+listaccounts(FILE *fp)
+{
+	return (int)_list_macros(fp, MAC_ACCOUNT);
+}
+
+void
 delaccount(const char *name)
 {
-	undef1(name, _accounts);
+	_undef1(name, MAC_ACCOUNT);
 }
