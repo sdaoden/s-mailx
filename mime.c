@@ -544,7 +544,6 @@ mime_getparam(char const *param, char *h)
 		if ((q = strchr(p, '"')) == NULL)
 			return NULL;
 	} else {
-		q = p;
 		while (*q && !whitechar(*q & 0377) && *q != ';')
 			q++;
 	}
