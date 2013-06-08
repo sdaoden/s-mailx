@@ -1,12 +1,48 @@
 S - n a i l  N e w s
 ====================
 
-  The big big MIME and send layer rewrite will come and cumulate in
-  v15.0, most likely late (maybe christman ,) 2014.
-  Until then there is one more minor version to be expected, one that
-  fixes thread sorting, thread selection, adds a %n format for
-  *headline* and other minor stuff that springs into existence in the
-  meanwhile.  v14.4 will be released this year, but it may come late.
+v14.3.1, 2013-06-08
+-------------------
+
+I want to give prominence to Juergen Daubert (jue AT jue DOT li), who
+reported that i've broken plain-old unfancy send mode in 14.3.
+
++ Ok, i'll hope we're out of new errors for the v14.3 series with that.
+
+- New variable: *batch-exit-on-error*.
+  Only works if the new -# command line option has been given, and will
+  check the "current" exit status whenever one operation completes
+  (S-nail returns to the command prompt).
+  If the exit status implies error (e.g., sending the last message
+  failed) then we exit forcefully with that error status.  (The normal
+  behaviour is that the status is reset when the command loop ticks.)
+  [4cddd55]
+
+- While here again, i've added the new -# command line option.
+  This is the first step to implement a reliable batch mode;
+  unfortunately it still selects the users system mailbox on startup,
+  because we simply cannot go to "no" mailbox for quite some time -- at
+  some future time we will be able to go to some VOID thing, and then
+  this will end up as a rather efficient batch mode.
+  For now it sets *dot*, *emptystart*, *noheader* and *sendwait*, and
+  also implies the -~ command line option.  [7549569]
+
+    (
+      printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
+      printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+      echo x
+    ) | MAILRC=/dev/null "${NAIL}" -n -#
+
+- Also, -N set *header* instead of *noheader*.  [7b4a13f6]
+  (Juergen Daubert.)
+
+- Plain old unfancy invocations like
+
+    $ s-nail user@host
+    $ echo bla|s-nail ./FILE1
+
+  had been broken (by [522cb3ec]).  [260e19d]
+  (Juergen Daubert.)
 
 v14.3, 2013-06-03
 -----------------

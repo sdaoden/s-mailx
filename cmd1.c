@@ -1215,7 +1215,7 @@ folders(void *v)
 		name = expand(*argv);
 		if (name == NULL)
 			return 1;
-	} else if (getfold(dirname, sizeof dirname) < 0) {
+	} else if (! getfold(dirname, sizeof dirname)) {
 		fprintf(stderr, tr(20, "No value set for \"folder\"\n"));
 		return 1;
 	} else

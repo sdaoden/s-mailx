@@ -167,7 +167,8 @@ _startup(void)
 static int
 _grow_cpp(char const ***cpp, int size, int count)
 {
-	/* Before spreserve(): use our string pool instead of LibC heap */
+	/* Before spreserve(): use our string pool instead of LibC heap;
+	 * Increment *size* by at least 5! */
 	char const **newcpp = salloc(sizeof(char*) * (size += 8));
 
 	if (count > 0)
@@ -319,7 +320,7 @@ sighandler_type		dflpipe = SIG_DFL;
 int 
 main(int argc, char *argv[])
 {
-	static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~",
+	static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~#",
 		usagestr[] =
 		"Synopsis:\n"
 		"  %s [-BDdEFintv~] [-A acc] [-a attachment] "
@@ -327,9 +328,9 @@ main(int argc, char *argv[])
 		"\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
 			"[-S var[=value]]\n"
 		"\t  [-s subject] to-addr...\n"
-		"  %s [-BDdEeHiNnRv~] [-A acct] "
+		"  %s [-BDdEeHiNnRv~#] [-A acct] "
 			"[-S var[=value]] -f [file]\n"
-		"  %s [-BDdEeiNnRv~] [-A acc] [-S var[=value]] [-u user]\n";
+		"  %s [-BDdEeiNnRv~#] [-A acc] [-S var[=value]] [-u user]\n";
 
 	struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
 	struct name *to = NULL, *cc = NULL, *bcc = NULL;
@@ -421,7 +422,7 @@ main(int argc, char *argv[])
 			goto joarg;
 		case 'N':
 			/* Avoid initial header printing */
-			okey = "header";
+			okey = "noheader";
 			goto joarg;
 		case 'n':
 			/* Don't source "unspecified system start-up file" */
@@ -512,6 +513,17 @@ joarg:
 			/* Enable tilde escapes even in non-interactive mode */
 			options |= OPT_TILDE_FLAG;
 			break;
+		case '#':
+			/* Work in batch mode, even if non-interactive */
+			if (oargs_count + 3 >= oargs_size)
+				oargs_size = _grow_cpp(&oargs, oargs_size,
+						oargs_count);
+			oargs[oargs_count++] = "dot";
+			oargs[oargs_count++] = "emptystart";
+			oargs[oargs_count++] = "noheader";
+			oargs[oargs_count++] = "sendwait";
+			options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
+			break;
 		case '?':
 usage:			fprintf(stderr, tr(135, usagestr),
 				progname, progname, progname);
@@ -531,6 +543,8 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	} else {
 		for (i = optind; argv[i]; i++)
 			to = cat(to, checkaddrs(lextract(argv[i], GTO|GFULL)));
+		if (to != NULL)
+			options |= OPT_SENDMODE;
 	}
 
 	/* Check for inconsistent arguments */
@@ -631,6 +645,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		}
 	}
 
+	/* xxx exit_status = EXIT_OK; */
 	mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
-	return senderr ? 1 : 0;
+	return exit_status;
 }

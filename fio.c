@@ -87,6 +87,10 @@ enum expmode {
  */
 static char *	_expand(char const *name, enum expmode expmode);
 
+/* Locate the user's mailbox file (where new, unread mail is queued) */
+static void	_findmail(char *buf, size_t bufsize, char const *user,
+			bool_t force);
+
 /* Perform shell meta character expansion */
 static char *	_globname(char const *name);
 
@@ -108,7 +112,7 @@ _expand(char const *name, enum expmode expmode)
 	char cbuf[MAXPATHLEN], *res;
 	struct str s;
 	struct shortcut *sh;
-	int dyn;
+	bool_t dyn;
 
 	/*
 	 * The order of evaluation is "%" and "#" expand into constants.
@@ -121,25 +125,26 @@ _expand(char const *name, enum expmode expmode)
 		res = sh->sh_long;
 
 	if (expmode & EXP_SHELL) {
-		dyn = 0;
+		dyn = FAL0;
 		goto jshell;
 	}
-
-jnext:	dyn = 0;
+jnext:
+	dyn = FAL0;
 	switch (*res) {
 	case '%':
-		if (res[1] == ':' && res[2]) {
+		if (res[1] == ':' && res[2] != '\0') {
 			res = &res[2];
 			goto jnext;
 		}
-		findmail((res[1] ? res + 1 : myname),
-			(res[1] != '\0' || option_u_arg), cbuf, sizeof cbuf);
+		_findmail(cbuf, sizeof cbuf,
+			(res[1] != '\0') ? res + 1 : myname,
+			(res[1] != '\0' || option_u_arg != NULL));
 		res = cbuf;
-		goto jnext;/*jislocal; XXX */
+		goto jislocal;
 	case '#':
-		if (res[1] != 0)
+		if (res[1] != '\0')
 			break;
-		if (prevfile[0] == 0) {
+		if (prevfile[0] == '\0') {
 			fprintf(stderr, tr(80, "No previous file\n"));
 			res = NULL;
 			goto jleave;
@@ -147,40 +152,46 @@ jnext:	dyn = 0;
 		res = prevfile;
 		goto jislocal;
 	case '&':
-		if (res[1] == 0 && (res = value("MBOX")) == NULL)
-			res = UNCONST("~/mbox");
+		if (res[1] == '\0') {
+			if ((res = value("MBOX")) == NULL)
+				res = UNCONST("~/mbox");
+			else if (res[0] != '&' || res[1] != '\0')
+				goto jnext;
+		}
 		break;
 	}
 
 	if (res[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
 		res = str_concat_csvl(&s,
 			protbase(mailname), "/", res + 1, NULL)->s;
-		dyn = 1;
+		dyn = TRU1;
 	}
 
-	if (res[0] == '+' && getfold(cbuf, sizeof cbuf) >= 0) {
-		char const *cp = "/";
+	if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
+		size_t i = strlen(cbuf);
 
-		if (which_protocol(cbuf) == PROTO_IMAP &&
-				strcmp(cbuf, protbase(cbuf)))
-			cp = "";
-		res = str_concat_csvl(&s, cbuf, cp, res + 1, NULL)->s;
-		dyn = 1;
-		if (cbuf[0] == '%' && cbuf[1] == ':')
+		res = str_concat_csvl(&s, cbuf,
+			(i > 0 && cbuf[i - 1] == '/') ? "" : "/",
+			res + 1, NULL)->s;
+		dyn = TRU1;
+
+		if (res[0] == '%' && res[1] == ':') {
+			res += 2;
 			goto jnext;
+		}
 	}
 
 	/* Catch the most common shell meta character */
 jshell:
 	if (res[0] == '~' && (res[1] == '/' || res[1] == '\0')) {
 		res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
-		dyn = 1;
+		dyn = TRU1;
 	}
 
 	if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
 			which_protocol(res) == PROTO_FILE) {
 		res = _globname(res);
-		dyn = 1;
+		dyn = TRU1;
 		goto jleave;
 	}
 
@@ -202,6 +213,34 @@ jleave:
 	if (res && ! dyn)
 		res = savestr(res);
 	return res;
+}
+
+static void
+_findmail(char *buf, size_t bufsize, char const *user, bool_t force)
+{
+	char *cp;
+
+	if (strcmp(user, myname) == 0 && ! force &&
+			(cp = value("folder")) != NULL) {
+		switch (which_protocol(cp)) {
+		case PROTO_IMAP:
+			if (strcmp(cp, protbase(cp)) != 0)
+				goto jcopy;
+			snprintf(buf, bufsize, "%s/INBOX", cp);
+			goto jleave;
+		default:
+			break;
+		}
+	}
+
+	if (force || (cp = value("MAIL")) == NULL)
+		snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
+	else {
+jcopy:
+		n_strlcpy(buf, cp, bufsize);
+	}
+jleave:
+	;
 }
 
 static char *
@@ -747,40 +786,6 @@ file_expand(char const *name)
 	return _expand(name, EXP_LOCAL);
 }
 
-char *
-shell_expand(char const *name)
-{
-	return _expand(name, EXP_SHELL);
-}
-
-void
-findmail(char const *user, int force, char *buf, int size)
-{
-	char *mbox, *cp;
-
-	if (strcmp(user, myname) == 0 && ! force &&
-			(cp = value("folder")) != NULL) {
-		mbox = UNCONST("");
-		switch (which_protocol(cp)) {
-		case PROTO_IMAP:
-			mbox = UNCONST("/INBOX");
-			/* FALLTRHU */
-		case PROTO_POP3:
-			snprintf(buf, size, "%s%s", protbase(cp), mbox);
-			goto jleave;
-		default:
-			break;
-		}
-	}
-	if (force || (mbox = value("MAIL")) == NULL)
-		snprintf(buf, size, "%s/%s", MAILSPOOL, user);
-	else {
-		strncpy(buf, mbox, size);
-		buf[size-1]='\0';
-	}
-jleave:	;
-}
-
 void
 demail(void)
 {
@@ -807,7 +812,7 @@ var_folder_updated(char **name)
 	 * XXX update environment variables via the "set" mechanism */
 	if (folder[0] == '%' && folder[1] == ':')
 		folder += 2;
-	if ((folder = _expand(folder, EXP_SHELL)) == NULL)
+	if ((folder = _expand(folder, EXP_FULL)) == NULL)
 		goto jleave;
 
 	switch (which_protocol(folder)) {
@@ -864,16 +869,14 @@ jleave:
 	return rv;
 }
 
-/*
- * Determine the current folder directory name.
- */
-int
-getfold(char *name, int size)
+bool_t
+getfold(char *name, size_t size)
 {
 	char const *folder;
+
 	if ((folder = value("folder")) != NULL)
 		(void)n_strlcpy(name, folder, size);
-	return (folder != NULL) ? 0 : -1;
+	return (folder != NULL);
 }
 
 /*

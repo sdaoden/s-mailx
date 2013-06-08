@@ -50,6 +50,7 @@
 	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
 static char	*send_boundary;
+static bool_t	_senderror;
 
 static enum okay	_putname(char const *line, enum gfield w,
 				enum sendaction action, int *gotcha,
@@ -762,7 +763,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
 	mail1(&head, 0, NULL, quotefile, recipient_record, 0);
 	if (subject != NULL)
 		free(out.s);
-	return(0);
+	return 0;
 }
 
 /*
@@ -778,7 +779,7 @@ sendmail_internal(void *v, int recipient_record)
 	memset(&head, 0, sizeof head);
 	head.h_to = lextract(str, GTO|GFULL);
 	mail1(&head, 0, NULL, NULL, recipient_record, 0);
-	return(0);
+	return 0;
 }
 
 int 
@@ -822,7 +823,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 				fprintf(stderr, tr(38,
 					"Message not sent to <%s>\n"),
 					np->n_name);
-				senderr++;
+				_senderror = TRU1;
 #ifdef USE_SSL
 			}
 #endif
@@ -902,7 +903,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	if ((pid = fork()) == -1) {
 		perror("fork");
 jstop:		savedeadletter(input, 0);
-		senderr++;
+		_senderror = TRU1;
 		goto jleave;
 	}
 	if (pid == 0) {
@@ -938,17 +939,18 @@ jstop:		savedeadletter(input, 0);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if ((options & (OPT_DEBUG|OPT_VERBOSE)) || value("sendwait")) {
+	if ((options & (OPT_DEBUG|OPT_VERBOSE|OPT_BATCH_FLAG)) ||
+			value("sendwait")) {
 		if (wait_child(pid) == 0)
 			ok = OKAY;
 		else
-			senderr++;
+			_senderror = TRU1;
 	} else {
 		ok = OKAY;
 		free_child(pid);
 	}
 jleave:
-	return (ok);
+	return ok;
 }
 
 /*
@@ -1014,6 +1016,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	int dosign = -1, err;
 	char const *cp;
 
+	_senderror = FAL0;
+
 	/* Update some globals we likely need first */
 	time_current_update(&time_current, TRU1);
 
@@ -1078,8 +1082,6 @@ jaskeot:
 	 * XXX to me that i got mis-dated response mails due to that... */
 	time_current_update(&time_current, TRU1);
 
-	senderr = 0;
-
 	/* TODO hrmpf; the MIME/send layer rewrite MUST address the init crap:
 	 * TODO setup the header ONCE; note this affects edit.c, collect.c ...,
 	 * TODO but: offer a hook that rebuilds/expands/checks/fixates all
@@ -1123,7 +1125,7 @@ jaskeot:
 	to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), FAL0);
 	if (to == NULL) {
 		fprintf(stderr, tr(186, "No recipients specified\n"));
-		++senderr;
+		_senderror = TRU1;
 	}
 	to = fixhead(hp, to);
 
@@ -1146,7 +1148,7 @@ jaskeot:
 #ifdef USE_SSL
 jfail_dead:
 #endif
-		++senderr;
+		_senderror = TRU1;
 		savedeadletter(mtf, 1);
 		fputs(tr(187, ". . . message not sent.\n"), stderr);
 		goto jleave;
@@ -1166,12 +1168,12 @@ jfail_dead:
 	 * Look through the recipient list for names with /'s
 	 * in them which we write to as files directly.
 	 */
-	to = outof(to, mtf, hp);
-	if (senderr)
+	to = outof(to, mtf, hp, &_senderror);
+	if (_senderror)
 		savedeadletter(mtf, 0);
 	to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
 	if (count(to) == 0) {
-		if (senderr == 0)
+		if (! _senderror)
 			ok = OKAY;
 		goto jleave;
 	}
@@ -1183,7 +1185,9 @@ jfail_dead:
 jleave:
 	Fclose(mtf);
 j_leave:
-	return (ok);
+	if (_senderror)
+		exit_status |= EXIT_SEND_ERROR;
+	return ok;
 }
 
 /*
@@ -1543,10 +1547,12 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 enum okay 
 resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
+	enum okay ok = STOP;
 	FILE *ibuf, *nfo, *nfi;
 	char *tempMail;
 	struct header head;
-	enum okay	ok = STOP;
+
+	_senderror = FAL0;
 
 	/* Update some globals we likely need first */
 	time_current_update(&time_current, TRU1);
@@ -1554,17 +1560,17 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 	memset(&head, 0, sizeof head);
 
 	if ((to = checkaddrs(to)) == NULL) {
-		senderr++;
-		return STOP;
+		_senderror = TRU1;
+		goto jleave;
 	}
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
-		senderr++;
-		perror(catgets(catd, CATSET, 189, "temporary mail file"));
-		return STOP;
+		_senderror = TRU1;
+		perror(tr(189, "temporary mail file"));
+		goto jleave;
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
-		++senderr;
+		_senderror = TRU1;
 		perror(tempMail);
 	}
 	rm(tempMail);
@@ -1577,27 +1583,30 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 	head.h_to = to;
 	to = fixhead(&head, to);
 	if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
-		senderr++;
 		savedeadletter(nfi, 1);
 		fputs(tr(190, ". . . message not sent.\n"), stderr);
 jerr_all:
 		Fclose(nfi);
 jerr_o:
 		Fclose(nfo);
-		return STOP;
+		_senderror = TRU1;
+		goto jleave;
 	}
 	Fclose(nfo);
 	rewind(nfi);
-	to = outof(to, nfi, &head);
-	if (senderr)
+	to = outof(to, nfi, &head, &_senderror);
+	if (_senderror)
 		savedeadletter(nfi, 0);
 	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
 		if (value("record-resent") == NULL ||
 				mightrecord(nfi, to, 0) == OKAY)
 			ok = transfer(to, nfi, NULL);
-	} else if (senderr == 0)
+	} else if (! _senderror)
 		ok = OKAY;
 	Fclose(nfi);
+jleave:
+	if (_senderror)
+		exit_status |= EXIT_SEND_ERROR;
 	return ok;
 }

@@ -140,7 +140,7 @@ _update_mailname(char const *name)
 	dispp = displayname;
 
 	/* Don't display an absolute path but "+FOLDER" if under *folder* */
-	if (getfold(tbuf, sizeof(tbuf)) >= 0) {
+	if (getfold(tbuf, sizeof tbuf)) {
 		i = strlen(tbuf);
 		if (i < sizeof(tbuf) - 1)
 			tbuf[i++] = '/';
@@ -502,9 +502,13 @@ commands(void)
 			}
 			break;
 		}
+
 		eofloop = 0;
 		inhook = 0;
 		if (execute(linebuf, 0, n))
+			break;
+		if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
+				boption("batch-exit-on-error"))
 			break;
 	}
 

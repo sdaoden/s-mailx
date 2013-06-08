@@ -84,7 +84,6 @@ _E bool_t	sawcom;			/* Set after first command */
 _E bool_t	starting;		/* still in startup code */
 _E bool_t	unset_allow_undefined;	/* allow to unset undefined variables */
 _E int		noreset;		/* String resets suspended */
-_E int		senderr;		/* An error while checking */
 
 /* XXX stylish sorting */
 _E int		msgCount;		/* Count of messages read in */

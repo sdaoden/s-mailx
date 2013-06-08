@@ -226,9 +226,17 @@ enum user_options {
 	OPT_r_FLAG	= 1<< 9,	/* -r (plus option_r_arg) */
 	OPT_t_FLAG	= 1<<10,	/* -t */
 	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
+	OPT_BATCH_FLAG	= 1<<12,	/* -# */
 
-	OPT_SENDMODE	= 1<<16,	/* Usage case forces send mode */
-	OPT_INTERACTIVE	= 1<<17		/* isatty(0) / isatty(1) */
+	OPT_SENDMODE	= 1<<14,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1<<15		/* isatty(0) / isatty(1) */
+};
+
+enum exit_status {
+	EXIT_OK		= EXIT_SUCCESS,
+	EXIT_ERR	= EXIT_FAILURE,
+	EXIT_COLL_ABORT	= 1<<1,		/* Message collection was aborted */
+	EXIT_SEND_ERROR	= 1<<2		/* Unspecified send error occurred */
 };
 
 enum okay {

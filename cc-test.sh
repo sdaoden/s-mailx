@@ -16,11 +16,10 @@ NAIL=./s-nail
 OUT=./.cc-test.out
 ERR=./.cc-test.err
 BODY=./.cc-body.txt
-MBOX1=./.cc-t1.mbox
-MBOX2=./.cc-t2.mbox
+MBOX=./.cc-test.mbox
 ESTAT=0
 
-rm -f "${OUT}" "${ERR}" "${BODY}" "${MBOX1}" "${MBOX2}" 2>> "${ERR}"
+rm -f "${OUT}" "${ERR}" "${BODY}" "${MBOX}" 2>> "${ERR}"
 
 # Test all configs
 cc_all_configs() {
@@ -38,11 +37,12 @@ cc_all_configs() {
 
 # Test a UTF-8 mail as a whole via -t, and in pieces (without -t ;)
 cksum_test() {
-	f=$1 s=$2
-	[ "`sed -e 1,2d -e '/ boundary=/d' -e /--=_/d < \"${f}\" | cksum`" != \
-			"${s}" ] && {
+	f=$1 s=$2 tno=$3
+	[ "`sed -e '/^From /d' -e '/^Date: /d' \
+			-e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
+			cksum`" != "${s}" ] && {
 		ESTAT=1
-		echo "Checksum mismatch test: ${f}" 2>> "${ERR}"
+		echo "Checksum mismatch test ${tno}: ${f}" 2>> "${ERR}"
 	}
 }
 
@@ -51,14 +51,31 @@ test_mail() {
 	printf "\n\n########################################\n\n" >> "${ERR}"
 	"${MAKE}" >> "${OUT}" 2>> "${ERR}"
 
+	# Two tests for MIME-CTE and (a bit) content classification
+	rm -f "${MBOX}"
 	< "${BODY}" MAILRC=/dev/null \
-	"${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX1}"
-	(	echo "To: ${MBOX2}" && echo "Subject: ${SUB}" && echo &&
+	"${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
+	cksum_test "${MBOX}" '2606934084 5649' 1
+
+	rm -f "${MBOX}"
+	(	echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
 		cat "${BODY}"
 	) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
+	cksum_test "${MBOX}" '799758423 5648' 2
 
-	cksum_test "${MBOX1}" '2606934084 5649'
-	cksum_test "${MBOX2}" '799758423 5648'
+	# Test for [260e19d].  Juergen Daubert.
+	rm -f "${MBOX}"
+	echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
+	cksum_test "${MBOX}" '506144051 104' 3
+
+	# Sending of multiple mails in a single invocation
+	rm -f "${MBOX}"
+	(
+		printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
+		printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+		echo x
+	) | MAILRC=/dev/null "${NAIL}" -N -n -# -Sstealthmua
+	cksum_test "${MBOX}" '2028749685 277' 4
 }
 
 printf \
@@ -133,7 +150,7 @@ test_mail
 if [ ${ESTAT} -eq 0 ]; then
 	echo 'Everything seems to be fine around here' >> "${OUT}" 2>> "${ERR}"
 	"${MAKE}" distclean >> "${OUT}" 2>> "${ERR}"
-	rm -f "${BODY}" "${MBOX1}" "${MBOX2}" >> "${OUT}" 2>> "${ERR}"
+	rm -f "${BODY}" "${MBOX}" >> "${OUT}" 2>> "${ERR}"
 fi
 exit ${ESTAT}
 # vim:set fenc=utf8 syntax=sh ts=8 sts=8 sw=8 noet tw=79:

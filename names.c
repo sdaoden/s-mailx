@@ -724,7 +724,7 @@ jleave:
  * program and removed.
  */
 struct name *
-outof(struct name *names, FILE *fo, struct header *hp)
+outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 {
 	int pipecnt, xcnt, *fda, i;
 	char const *shell;
@@ -787,7 +787,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			if ((fout = Ftemp(&tempEdit, "Re", "w", 0600, 1))
 					== NULL) {
 				perror(tr(146, "Creation of temporary image"));
-				++senderr;
+				*senderror = TRU1;
 				goto jcant;
 			}
 			image = open(tempEdit, O_RDWR);
@@ -808,7 +808,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			if (image < 0) {
 				perror(tr(147, "Creating descriptor duplicate "
 					"of temporary image"));
-				++senderr;
+				*senderror = TRU1;
 				Fclose(fout);
 				goto jcant;
 			}
@@ -836,7 +836,7 @@ outof(struct name *names, FILE *fo, struct header *hp)
 			if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
 				perror(tr(149, "Failed to open a duplicate of "
 					"the temporary image"));
-jcantfout:			++senderr;
+jcantfout:			*senderror = TRU1;
 				(void)close(image);
 				image = -1;
 				goto jcant;
@@ -866,21 +866,21 @@ jcantfout:			++senderr;
 				fprintf(stderr, tr(281,
 					"Message piping to <%s> failed\n"),
 					np->n_name);
-				++senderr;
+				*senderror = TRU1;
 				goto jcant;
 			}
 			free_child(pid);
 		} else {
 			char *fname = file_expand(np->n_name);
 			if (fname == NULL) {
-				++senderr;
+				*senderror = TRU1;
 				goto jcant;
 			}
 			if ((fout = Zopen(fname, "a", NULL)) == NULL) {
 				fprintf(stderr, tr(282,
 					"Message writing to <%s> failed: %s\n"),
 					fname, strerror(errno));
-				++senderr;
+				*senderror = TRU1;
 				goto jcant;
 			}
 			rewind(fin);
@@ -890,7 +890,7 @@ jcantfout:			++senderr;
 				fprintf(stderr, tr(282,
 					"Message writing to <%s> failed: %s\n"),
 					fname, tr(283, "write error"));
-				++senderr;
+				*senderror = TRU1;
 			}
 			Fclose(fout);
 		}

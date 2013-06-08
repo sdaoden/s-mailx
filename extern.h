@@ -363,21 +363,19 @@ off_t fsize(FILE *iob);
  *	+file	file in folder directory
  *	any shell meta character
  * file_expand() requires the expansion to be a local file/directory, and
- * shell_expand() doesn't interpret the meta characters except for shell ones.
  * Return the file name as a dynamic string */
 char *	expand(char const *name);
 char *	file_expand(char const *name);
-char *	shell_expand(char const *name);
 
-/* Locate the user's mailbox file (where new, unread mail is queued) */
-void	findmail(char const *user, int force, char *buf, int size);
 /* Get rid of queued mail */
 void	demail(void);
 
 /* vars.c hook: *folder* variable has been updated */
 bool_t	var_folder_updated(char **name);
 
-int getfold(char *name, int size);
+/* Determine the current *folder* name, store it in *name* */
+bool_t	getfold(char *name, size_t size);
+
 char const *getdeadletter(void);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
@@ -709,7 +707,9 @@ struct name *	elide(struct name *names);
 struct name *	delete_alternates(struct name *np);
 int		is_myname(char const *name);
 
-struct name *	outof(struct name *names, FILE *fo, struct header *hp);
+/* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
+struct name *	outof(struct name *names, FILE *fo, struct header *hp,
+			bool_t *senderror);
 
 /* openssl.c */
 #ifdef USE_OPENSSL

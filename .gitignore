@@ -3,3 +3,4 @@ config.*
 mkman.1
 mkrc.rc
 s-nail
+.cc-*
