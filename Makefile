@@ -173,3 +173,7 @@ update-release:
 	make WANT_ASSERTS=1 && \
 	./s-nail -s "Announcing S-nail $${REL}" -c nail-cc nail && \
 	echo 'Uff.'
+
+_buh:
+	$(MAKE) CFLAGS="$${_CFLAGSDBG}" update-version;\
+	$(MAKE) CFLAGS="$${_CFLAGSDBG}" WANT_ASSERTS=1 WANT_NOALLOCA=1 all
