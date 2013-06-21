@@ -402,29 +402,26 @@ _pipefile(char const *pipecmd, FILE **qbuf, bool_t quote, bool_t async)
 	char const *shell;
 	FILE *rbuf = *qbuf;
 
-	if (pipecmd != NULL) {
-		if (quote) {
-			char *tempPipe;
+	if (quote) {
+		char *tempPipe;
 
-			if ((*qbuf = Ftemp(&tempPipe, "Rp", "w+", 0600, 1))
-					== NULL) {
-				perror(catgets(catd, CATSET, 173, "tmpfile"));
-				*qbuf = rbuf;
-			}
-			unlink(tempPipe);
-			Ftfree(&tempPipe);
-			async = FAL0;
+		if ((*qbuf = Ftemp(&tempPipe, "Rp", "w+", 0600, 1)) == NULL) {
+			perror(catgets(catd, CATSET, 173, "tmpfile"));
+			*qbuf = rbuf;
 		}
-		if ((shell = value("SHELL")) == NULL)
-			shell = SHELL;
-		if ((rbuf = Popen(pipecmd, "W", shell,
-				async ? -1 : fileno(*qbuf))) == NULL)
-			perror(pipecmd);
-		else {
-			fflush(*qbuf);
-			if (*qbuf != stdout)
-				fflush(stdout);
-		}
+		unlink(tempPipe);
+		Ftfree(&tempPipe);
+		async = FAL0;
+	}
+	if ((shell = value("SHELL")) == NULL)
+		shell = SHELL;
+	if ((rbuf = Popen(pipecmd, "W", shell,
+			async ? -1 : fileno(*qbuf))) == NULL)
+		perror(pipecmd);
+	else {
+		fflush(*qbuf);
+		if (*qbuf != stdout)
+			fflush(stdout);
 	}
 	return rbuf;
 }
