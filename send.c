@@ -1061,7 +1061,7 @@ joutln:
 end:	free(line);
 	if (pbuf != qbuf) {
 		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(pbuf, qbuf != obuf);
+		Pclose(pbuf, ispipe);
 		safe_signal(SIGPIPE, oldpipe);
 		if (qbuf != obuf)
 			pipecpy(qbuf, obuf, origobuf, prefix, prefixlen, stats);

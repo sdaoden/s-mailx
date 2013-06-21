@@ -1,6 +1,22 @@
 S - n a i l  N e w s
 ====================
 
+v14.3.2, 2013-06-21
+-------------------
+
+I should *maybe* should have and want to give prominence to
+Martin Neitzel for this, i maybe have misunderstood.
+
+- Bugfix *synchronous* *pipe-** execution..
+
+  Well, unfortunately yet another newly introduced bug slept in
+  S-nail v14.3[.1] -- [a8d724b3, Add @ and @& shell command prefixes
+  for pipe-MIMETYPE, 2013-05-03] falsely changed the waiting state
+  for subprocesses, as has shown up by a HTML-only mail on the
+  Unicode list today.
+  'Seems i'm collecting one line fixes in this codebase; this needs
+  to change in the future.
+
 v14.3.1, 2013-06-08
 -------------------
 
