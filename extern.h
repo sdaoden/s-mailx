@@ -873,6 +873,11 @@ struct str *	str_concat_csvl(struct str *self, ...);
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 
+/* Hash the passed string; uses Chris Torek's hash algorithm */
+ui_it		strhash(char const *name);
+
+#define hash(S)	(strhash(S) % HSHSIZE) /* xxx COMPAT (?) */
+
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
 
@@ -991,10 +996,6 @@ bool_t	getcredentials(char **user, char **pass);
 /*
  * varmac.c
  */
-
-/* Hash the passed string and return result % HSHSIZE.
- * Uses Chris Torek's hash algorithm */
-ui_it	hash(char const *name);
 
 /* Assign a value to a variable */
 void	assign(char const *name, char const *value);

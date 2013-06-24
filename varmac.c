@@ -339,18 +339,6 @@ _freelines(struct line *lp)
 		free(lq);
 }
 
-ui_it
-hash(char const *name)
-{
-	ui_it h = 0;
-
-	while (*name != '\0') {
-		h *= 33;
-		h += *name++;
-	}
-	return h % HSHSIZE;
-}
-
 void
 assign(char const *name, char const *value)
 {

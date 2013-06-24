@@ -539,6 +539,18 @@ anyof(char const *s1, char const *s2)
 	return (*s1 != '\0');
 }
 
+ui_it
+strhash(char const *name)
+{
+	ui_it h = 0;
+
+	while (*name != '\0') {
+		h *= 33;
+		h += *name++;
+	}
+	return h;
+}
+
 char *
 strcomma(char **iolist, int ignore_empty)
 {
