@@ -75,7 +75,7 @@
 
 #define MAXARGC		1024		/* Maximum list of raw strings */
 #define MAXEXP		25		/* Maximum expansion of aliases */
-#define HSHSIZE		59		/* Hash size aliases, vars, macros */
+#define HSHSIZE		23		/* Hash size aliases, vars, macros */
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
