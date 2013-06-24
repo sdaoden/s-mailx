@@ -40,6 +40,9 @@
 #include "rcv.h"
 #include "extern.h"
 
+#define MACPRIME	23
+#define MAC_HASH(S)	(strhash(S) % MACPRIME)
+
 enum mac_flags {
 	MAC_NONE	= 0,
 	MAC_ACCOUNT	= 1<<0,
@@ -60,7 +63,7 @@ struct line {
 	char		l_line[VFIELD_SIZE(sizeof(size_t))];
 };
 
-static struct macro	*_macros[HSHSIZE];
+static struct macro	*_macros[MACPRIME];
 
 /* Special cased value string allocation */
 static char *		_vcopy(char const *str);
@@ -177,7 +180,7 @@ _lookup(const char *name, ui_it h, bool_t hisset)
 	struct var **vap, *lvp, *vp;
 
 	if (! hisset)
-		h = hash(name);
+		h = MAC_HASH(name);
 	vap = variables + h;
 
 	for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
@@ -219,7 +222,7 @@ _malook(const char *name, struct macro *data, enum mac_flags macfl)
 
 	save_mfl = macfl;
 	macfl &= MAC_TYPE_MASK;
-	h = hash(name);
+	h = MAC_HASH(name);
 
 	for (lmp = NULL, mp = _macros[h]; mp != NULL;
 			lmp = mp, mp = mp->ma_next) {
@@ -283,7 +286,7 @@ _list_macros(FILE *fp, enum mac_flags macfl)
 	macfl &= MAC_TYPE_MASK;
 	typestr = (macfl & MAC_ACCOUNT) ? "account" : "define";
 
-	for (ti = mc = 0; ti < HSHSIZE; ++ti)
+	for (ti = mc = 0; ti < MACPRIME; ++ti)
 		for (mq = _macros[ti]; mq; mq = mq->ma_next)
 			if ((mq->ma_flags & MAC_TYPE_MASK) == macfl) {
 				if (++mc > 1)
@@ -355,7 +358,7 @@ assign(char const *name, char const *value)
 	}
 
 	name = _canonify(name);
-	h = hash(name);
+	h = MAC_HASH(name);
 
 	vp = _lookup(name, h, TRU1);
 	if (vp == NULL) {
@@ -387,7 +390,7 @@ unset_internal(char const *name)
 	struct var *vp;
 
 	name = _canonify(name);
-	h = hash(name);
+	h = MAC_HASH(name);
 
 	if ((vp = _lookup(name, h, TRU1)) == NULL) {
 		if (! sourcing && ! unset_allow_undefined) {
