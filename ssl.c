@@ -91,7 +91,7 @@ ssl_vrfy_decide(void)
 
 			fprintf(stderr, catgets(catd, CATSET, 264,
 					"Continue (y/n)? "));
-			if (readline(stdin, &line, &linesize) > 0 &&
+			if (readline_restart(stdin, &line, &linesize, 0) > 0 &&
 					*line == 'y')
 				ok = OKAY;
 			else

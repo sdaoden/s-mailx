@@ -474,7 +474,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 	char const *value, *cp;
 
 	memset(hq, 0, sizeof *hq);
-	for (lc = 0; readline(fp, &linebuf, &linesize) > 0; lc++)
+	for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; lc++)
 		;
 	rewind(fp);
 	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
@@ -573,7 +573,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
 		return NULL;
 
 	if ((mp->m_flag & MNOFROM) == 0 &&
-			readline(ibuf, &linebuf, &linesize) < 0)
+			readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 		goto jleave;
 	while (lc > 0) {
 		if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
@@ -611,7 +611,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
 	for (;;) {
 		if (--rem < 0)
 			return -1;
-		if ((c = readline(f, linebuf, linesize)) <= 0)
+		if ((c = readline_restart(f, linebuf, linesize, 0)) <= 0)
 			return -1;
 		for (cp = *linebuf; fieldnamechar(*cp & 0377); cp++);
 		if (cp > *linebuf)
@@ -636,7 +636,8 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
 			ungetc(c = getc(f), f);
 			if (!blankchar(c))
 				break;
-			if ((c = readline(f, &line2, &line2size)) < 0)
+			c = readline_restart(f, &line2, &line2size, 0);
+			if (c < 0)
 				break;
 			rem--;
 			for (cp2 = line2; blankchar(*cp2 & 0377); cp2++);
@@ -1103,7 +1104,7 @@ name1(struct message *mp, int reptype)
 		goto out;
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
 		goto out;
-	if (readline(ibuf, &linebuf, &linesize) < 0)
+	if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 		goto out;
 newname:
 	if (namesize <= linesize)
@@ -1115,7 +1116,7 @@ newname:
 	     *cp && !blankchar(*cp & 0377) && cp2 < namebuf + namesize - 1;)
 		*cp2++ = *cp++;
 	*cp2 = '\0';
-	if (readline(ibuf, &linebuf, &linesize) < 0)
+	if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 		goto out;
 	if ((cp = strchr(linebuf, 'F')) == NULL)
 		goto out;

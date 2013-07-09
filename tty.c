@@ -361,7 +361,7 @@ readtty(char const *prefix, char const *string)
 	if (! is_a_tty[0]) {
 		char *line = NULL;
 		size_t linesize = 0;
-		if (readline(stdin, &line, &linesize) > 0)
+		if (readline_restart(stdin, &line, &linesize, 0) > 0)
 			ret = savestr(line);
 		if (line != NULL)
 			free(line);
@@ -439,8 +439,8 @@ getuser(char const *query)
 	fputs((query != NULL) ? query : "User: ", stdout);
 	fflush(stdout);
 
-	if (readline(stdin, &termios_state.ts_linebuf,
-			&termios_state.ts_linesize) >= 0)
+	if (readline_restart(stdin, &termios_state.ts_linebuf,
+			&termios_state.ts_linesize, 0) >= 0)
 		user = termios_state.ts_linebuf;
 	termios_state_reset();
 	return user;
@@ -463,8 +463,8 @@ getpassword(char const *query)
 		tcsetattr(0, TCSAFLUSH, &tios);
 	}
 
-	if (readline(stdin, &termios_state.ts_linebuf,
-			&termios_state.ts_linesize) >= 0)
+	if (readline_restart(stdin, &termios_state.ts_linebuf,
+			&termios_state.ts_linesize, 0) >= 0)
 		pass = termios_state.ts_linebuf;
 	termios_state_reset();
 

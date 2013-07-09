@@ -345,13 +345,9 @@ char *		fgetline(char **line, size_t *linesize, size_t *count,
  */
 int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 			size_t n SMALLOC_DEBUG_ARGS);
-#ifndef HAVE_ASSERTS
-# define readline(A,B,C)	readline_restart(A, B, C, 0)
-#else
-# define readline_restart(A,B,C,D)	\
+#ifdef HAVE_ASSERTS
+# define readline_restart(A,B,C,D) \
 	readline_restart(A, B, C, D, __FILE__, __LINE__)
-# define readline(A,B,C)		\
-	(readline_restart)(A, B, C, 0, __FILE__, __LINE__)
 #endif
 
 void setptr(FILE *ibuf, off_t offset);

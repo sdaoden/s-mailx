@@ -424,7 +424,7 @@ jcont:
 	 */
 	for (;;) {
 		colljmp_p = 1;
-		count = readline(stdin, &linebuf, &linesize);
+		count = readline_restart(stdin, &linebuf, &linesize, 0);
 		colljmp_p = 0;
 		if (count < 0) {
 			if ((options & OPT_INTERACTIVE) &&

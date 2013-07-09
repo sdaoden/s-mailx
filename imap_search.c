@@ -474,7 +474,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITSINCE:
 		if (m->m_time == 0 && (m->m_flag&MNOFROM) == 0 &&
 				(ibuf = setinput(mp, m, NEED_HEADER)) != NULL) {
-			if (readline(ibuf, &line, &linesize) > 0)
+			if (readline_restart(ibuf, &line, &linesize, 0) > 0)
 				m->m_time = unixtime(line);
 			free(line);
 		}
