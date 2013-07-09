@@ -398,6 +398,8 @@ int		unstack(void);
 
 void newline_appended(void);
 enum okay get_body(struct message *mp);
+
+#ifdef HAVE_SOCKETS
 int sclose(struct sock *sp);
 enum okay swrite(struct sock *sp, const char *data);
 enum okay swrite1(struct sock *sp, const char *data, int sz, int use_buffer);
@@ -407,8 +409,9 @@ enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 /*  */
 int		sgetline(char **line, size_t *linesize, size_t *linelen,
 			struct sock *sp SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
-# define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
+# ifdef HAVE_ASSERTS
+#  define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
+# endif
 #endif
 
 /* head.c */
