@@ -385,15 +385,6 @@ bool_t	getfold(char *name, size_t size);
 
 char const *getdeadletter(void);
 
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * *sourcing* so that others will realize that they are no longer reading from
- * a tty (in all probability) */
-int		source(void *v);
-
-/* Pop the current input back to the previous level.  Update the *sourcing*
- * flag as appropriate */
-int		unstack(void);
-
 void newline_appended(void);
 enum okay get_body(struct message *mp);
 
@@ -411,6 +402,24 @@ int		sgetline(char **line, size_t *linesize, size_t *linelen,
 #  define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
 # endif
 #endif
+
+/* Deal with loading of resource files and dealing with a stack of files for
+ * the source command */
+
+/* Load a file of user definitions */
+void		load(char const *name);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * *sourcing* so that others will realize that they are no longer reading from
+ * a tty (in all probability) */
+int		csource(void *v);
+
+/* Pop the current input back to the previous level.  Update the *sourcing*
+ * flag as appropriate */
+int		unstack(void);
+
+/* Get the current input file */
+FILE *		get_input_file(void);
 
 /* head.c */
 
@@ -547,7 +556,6 @@ void announce(int printheaders);
 int newfileinfo(void);
 int getmdot(int newmail);
 int pversion(void *v);
-void load(char const *name);
 void initbox(const char *name);
 
 /* list.c */

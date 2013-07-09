@@ -89,7 +89,6 @@ _E int		msgCount;		/* Count of messages read in */
 _E enum condition cond;			/* Current state of conditional exc. */
 _E struct mailbox mb;			/* Current mailbox */
 _E int		image;			/* File descriptor for image of msg */
-_E FILE		*input;			/* Current command input file */
 _E char		mailname[MAXPATHLEN];	/* Name of current file */
 _E char		displayname[80 - 40];	/* Prettyfied for display */
 _E char		prevfile[MAXPATHLEN];	/* Name of previous file */

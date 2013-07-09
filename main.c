@@ -573,13 +573,13 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (options & OPT_INTERACTIVE) {
 		_setscreensize(0);
 #ifdef SIGWINCH
+# ifndef TTY_NEEDS_SIGWINCH
 		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
+# endif
 			safe_signal(SIGWINCH, _setscreensize);
 #endif
 	} else
 		scrnheight = realscreenheight = 24, scrnwidth = 80;
-
-	input = stdin;
 
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();

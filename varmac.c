@@ -458,15 +458,16 @@ define1(char const *name, int account) /* TODO make static (`account'...)! */
 	struct line *lp, *lst = NULL, *lnd = NULL;
 	char *linebuf = NULL;
 	size_t linesize = 0;
+	FILE *ifile;
 
 	mp = scalloc(1, sizeof *mp);
 	mp->ma_name = sstrdup(name);
 	mp->ma_flags = account ? MAC_ACCOUNT : MAC_NONE;
 
-	for (;;) {
+	for (ifile = get_input_file();;) { /* TODO readline_input()! */
 		n = 0;
 		for (;;) {
-			n = readline_restart(input, &linebuf, &linesize, n);
+			n = readline_restart(ifile, &linebuf, &linesize, n);
 			if (n < 0)
 				break;
 			if (n == 0 || linebuf[n - 1] != '\\')

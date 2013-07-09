@@ -113,7 +113,7 @@ struct cmd const cmdtab[] = {
 	  DS(371, "Append <message-list> to <file>") },
 	{ "Save",	Save,		A|STRLIST,	0,	0
 	  DS(372, "Like \"save\", but derive filename from first sender") },
-	{ "source",	source,		M|RAWLIST,	1,	1
+	{ "source",	csource,	M|RAWLIST,	1,	1
 	  DS(383, "Read commands from <file>") },
 	{ "set",	set,		M|RAWLIST,	0,	1000
 	  DS(376, "Print all variables, or set variables to argument(s)") },

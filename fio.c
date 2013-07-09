@@ -868,69 +868,6 @@ getdeadletter(void)
 	return cp;
 }
 
-/*
- * The following code deals with input stacking to do source
- * commands.  All but the current file pointer are saved on
- * the stack.
- */
-
-static int	ssp;			/* Top of file stack */
-struct {
-	FILE		*s_file;	/* File we were in. */
-	enum condition	s_cond;		/* Saved state of conditionals */
-	int		s_loading;	/* Loading .mailrc, etc. */
-#define	SSTACK	20
-} sstack[SSTACK];
-
-int
-source(void *v)
-{
-	char **arglist = v;
-	FILE *fi;
-	char *cp;
-
-	if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
-		return (1);
-	if ((fi = Fopen(cp, "r")) == NULL) {
-		perror(cp);
-		return (1);
-	}
-	if (ssp >= SSTACK - 1) {
-		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
-		Fclose(fi);
-		return (1);
-	}
-	sstack[ssp].s_file = input;
-	sstack[ssp].s_cond = cond;
-	sstack[ssp].s_loading = loading;
-	ssp++;
-	loading = 0;
-	cond = CANY;
-	input = fi;
-	sourcing = TRU1;
-	return(0);
-}
-
-int
-unstack(void)
-{
-	if (ssp <= 0) {
-		fprintf(stderr, tr(4, "\"Source\" stack over-pop.\n"));
-		sourcing = 0;
-		return(1);
-	}
-	Fclose(input);
-	if (cond != CANY)
-		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
-	ssp--;
-	cond = sstack[ssp].s_cond;
-	loading = sstack[ssp].s_loading;
-	input = sstack[ssp].s_file;
-	if (ssp == 0)
-		sourcing = loading;
-	return(0);
-}
-
 static enum okay
 get_header(struct message *mp)
 {
@@ -1317,3 +1254,100 @@ int
 	return lp - *line;
 }
 #endif /* HAVE_SOCKETS */
+
+/*
+ * The following code deals with input stacking to do source
+ * commands.  All but the current file pointer are saved on
+ * the stack.
+ */
+
+struct {
+	FILE		*s_file;	/* File we were in. */
+	enum condition	s_cond;		/* Saved state of conditionals */
+	int		s_loading;	/* Loading .mailrc, etc. */
+#define	SSTACK	20
+}		_sstack[SSTACK];
+static size_t	_ssp;			/* Top of file stack */
+static FILE *	_input;
+
+void
+load(char const *name)
+{
+	FILE *in, *oldin;
+
+	if (name == NULL || (in = Fopen(name, "r")) == NULL)
+		return;
+	oldin = _input;
+	_input = in;
+	loading = TRU1;
+	sourcing = TRU1;
+	commands();
+	loading = FAL0;
+	sourcing = FAL0;
+	_input = oldin;
+	Fclose(in);
+}
+
+int
+csource(void *v)
+{
+	int rv = 1;
+	char **arglist = v;
+	FILE *fi;
+	char *cp;
+
+	if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
+		goto jleave;
+	if ((fi = Fopen(cp, "r")) == NULL) {
+		perror(cp);
+		goto jleave;
+	}
+	if (_ssp >= SSTACK - 1) {
+		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
+		Fclose(fi);
+		goto jleave;
+	}
+
+	_sstack[_ssp].s_file = _input;
+	_sstack[_ssp].s_cond = cond;
+	_sstack[_ssp].s_loading = loading;
+	++_ssp;
+	loading = FAL0;
+	cond = CANY;
+	_input = fi;
+	sourcing = TRU1;
+	rv = 0;
+jleave:
+	return rv;
+}
+
+int
+unstack(void)
+{
+	int rv = 1;
+
+	if (_ssp <= 0) {
+		fprintf(stderr, tr(4, "\"Source\" stack over-pop.\n"));
+		sourcing = FAL0;
+		goto jleave;
+	}
+
+	Fclose(_input);
+	if (cond != CANY)
+		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
+	--_ssp;
+	cond = _sstack[_ssp].s_cond;
+	loading = _sstack[_ssp].s_loading;
+	_input = _sstack[_ssp].s_file;
+	if (_ssp == 0)
+		sourcing = loading;
+	rv = 0;
+jleave:
+	return rv;
+}
+
+FILE *
+get_input_file(void)
+{
+	return (_input != NULL) ? _input : stdin;
+}

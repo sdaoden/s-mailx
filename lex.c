@@ -477,7 +477,8 @@ commands(void)
 		 */
 		n = 0;
 		for (;;) {
-			n = readline_restart(input, &linebuf, &linesize, n);
+			n = readline_restart(get_input_file(), &linebuf,
+				&linesize, n);
 			if (n < 0)
 				break;
 			if (n == 0 || linebuf[n - 1] != '\\')
@@ -1005,27 +1006,6 @@ pversion(void *v)
 	(void)v;
 	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
 	return(0);
-}
-
-/*
- * Load a file of user definitions.
- */
-void 
-load(char const *name)
-{
-	FILE *in, *oldin;
-
-	if (name == NULL || (in = Fopen(name, "r")) == NULL)
-		return;
-	oldin = input;
-	input = in;
-	loading = TRU1;
-	sourcing = TRU1;
-	commands();
-	loading = FAL0;
-	sourcing = FAL0;
-	input = oldin;
-	Fclose(in);
 }
 
 void 
