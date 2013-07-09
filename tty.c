@@ -418,15 +418,15 @@ jleave:
 	return ret;
 }
 
-int 
+bool_t
 yorn(char const *msg)
 {
 	char *cp;
 
 	if (! (options & OPT_INTERACTIVE))
-		return 1;
+		return TRU1;
 	do if ((cp = readtty(msg, NULL)) == NULL)
-		return 0;
+		return FAL0;
 	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
 	return (*cp == 'y' || *cp == 'Y');
 }

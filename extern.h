@@ -962,21 +962,23 @@ void uncollapse1(struct message *m, int always);
 /* tty.c */
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char const *prefix, char const *string);
-int yorn(char const *msg);
 
-/* Get a password the expected way, returning termios_state.ts_linebuf on
- * success on NULL on error */
+/* [Yy]es or [Nn]o */
+bool_t	yorn(char const *msg);
+
+/* Get a password the expected way, return termios_state.ts_linebuf on
+ * success or NULL on error */
 char *	getuser(char const *query);
 
-/* Get a password the expected way, returning termios_state.ts_linebuf on
- * success on NULL on error.
+/* Get a password the expected way, return termios_state.ts_linebuf on
+ * success or NULL on error.
  * termios_state_reset() (def.h) must be called anyway */
 char *	getpassword(char const *query);
 
 /* Get both, user and password in the expected way; simply reuses a value that
  * is set, otherwise calls one of the above.
  * Returns true only if we have a user and a password.
- * *user* will be savestr()ed if neither it nor *pass* have default value
+ * *user* will be savestr()ed if neither it nor *pass* have a default value
  * (so that termios_state.ts_linebuf carries only one) */
 bool_t	getcredentials(char **user, char **pass);
 
