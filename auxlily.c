@@ -344,6 +344,42 @@ nextprime(long n)
 	return mprime;
 }
 
+int
+expand_shell_escape(char const **s)
+{
+	char const *xs = *s;
+	int c, n;
+
+	if ((c = *xs & 0xFF) == '\0')
+		goto jleave;
+	++xs;
+	if (c != '\\')
+		goto jleave;
+
+	switch ((c = *xs & 0xFF)) {
+	default:			break;
+	case '\0':			goto jleave;
+	case 'a':	c = '\a';	break;
+	case 'b':	c = '\b';	break;
+	case 'c':	c = -1;		break;
+	case 'f':	c = '\f';	break;
+	case 'n':	c = '\n';	break;
+	case 'r':	c = '\r';	break;
+	case 't':	c = '\t';	break;
+	case 'v':	c = '\v';	break;
+	case '0':
+		for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
+			c <<= 3;
+			c |= *xs - '0';
+		}
+		goto jleave;
+	}
+	++xs;
+jleave:
+	*s = xs;
+	return c;
+}
+
 char *
 getname(int uid)
 {

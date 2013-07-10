@@ -81,6 +81,11 @@ enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
 
+/* Check wether *s is an escape sequence, expand it as necessary.
+ * Returns the expanded sequence or 0 if **s is NUL or -1 if it is \c.
+ * *s is advanced to after the expanded sequence (as possible) */
+int	expand_shell_escape(char const **s);
+
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
 /* Discover user login name */
