@@ -92,6 +92,8 @@
 #define LISTER		"ls"
 #define PAGER		"more"
 
+#define HIST_SIZE	242
+
 /*
  * Funs, CC support etc.
  */
