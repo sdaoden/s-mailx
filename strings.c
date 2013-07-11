@@ -720,6 +720,18 @@ char *
 	return dp;
 }
 
+char *
+(sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
+{
+	char *dp = NULL;
+
+	dp = (smalloc)(len + 1 SMALLOC_DEBUG_ARGSCALL);
+	if (cp != NULL)
+		memcpy(dp, cp, len);
+	dp[len] = '\0';
+	return dp;
+}
+
 int
 asccasecmp(char const *s1, char const *s2)
 {

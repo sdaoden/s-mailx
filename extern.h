@@ -904,8 +904,10 @@ int		snprintf(char *str, size_t size, const char *format, ...);
 
 char *		sstpcpy(char *dst, const char *src);
 char *		sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
+char *		sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_ASSERTS
 # define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
+# define sbufdup(CP,L)	sbufdup(CP, L, __FILE__, __LINE__)
 #endif
 
 /* Locale-independent character class functions */
