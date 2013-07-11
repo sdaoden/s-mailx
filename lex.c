@@ -459,11 +459,14 @@ commands(void)
 			_reset_on_stop = 1;
 			exit_status = 0;
 			printf("%s", getprompt());
+			fflush(stdout);
 		}
-		fflush(stdout);
 
 		if (! sourcing) {
 			sreset();
+			/* TODO Note: this buffer may contain a password
+			 * TODO We should redefine the code flow which has
+			 * TODO to do that */
 			if ((nv = termios_state.ts_linebuf) != NULL) {
 				termios_state.ts_linebuf = NULL;
 				termios_state.ts_linesize = 0;
@@ -475,16 +478,7 @@ commands(void)
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
 		 */
-		n = 0;
-		for (;;) {
-			n = readline_restart(get_input_file(), &linebuf,
-				&linesize, n);
-			if (n < 0)
-				break;
-			if (n == 0 || linebuf[n - 1] != '\\')
-				break;
-			linebuf[n - 1] = ' ';
-		}
+		n = readline_input(&linebuf, &linesize);
 		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */
@@ -511,7 +505,7 @@ commands(void)
 			break;
 	}
 
-	if (linebuf)
+	if (linebuf != NULL)
 		free(linebuf);
 	if (sourcing)
 		sreset();

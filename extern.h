@@ -350,6 +350,14 @@ int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 	readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
+/* Read a complete line of input, handling \ escaped newlines along the way.
+ * Return number of octets or a value <0 on error */
+int		readline_input(char **linebuf, size_t *linesize
+			SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define readline_input(A,B)	readline_input(A, B, __FILE__, __LINE__)
+#endif
+
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
 FILE *setinput(struct mailbox *mp, struct message *m, enum needspec need);
@@ -417,9 +425,6 @@ int		csource(void *v);
 /* Pop the current input back to the previous level.  Update the *sourcing*
  * flag as appropriate */
 int		unstack(void);
-
-/* Get the current input file */
-FILE *		get_input_file(void);
 
 /* head.c */
 

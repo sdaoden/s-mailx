@@ -386,6 +386,12 @@ again:
 }
 
 /*
+ * Near EOF since it has to deal with input stack:
+ * char *		readline_input(char **linebuf, size_t *linesize
+ *			SMALLOC_DEBUG_ARGS);
+ */
+
+/*
  * Set up the input pointers while copying the mail file into /tmp.
  */
 void
@@ -1346,8 +1352,20 @@ jleave:
 	return rv;
 }
 
-FILE *
-get_input_file(void)
+int
+(readline_input)(char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS)
 {
-	return (_input != NULL) ? _input : stdin;
+	FILE *ifile = (_input != NULL) ? _input : stdin;
+	int n;
+
+	for (n = 0;;) {
+		n = (readline_restart)(ifile, linebuf, linesize, n
+			SMALLOC_DEBUG_ARGSCALL);
+		if (n < 0)
+			break;
+		if (n == 0 || (*linebuf)[n - 1] != '\\')
+			break;
+		(*linebuf)[n - 1] = ' ';
+	}
+	return n;
 }
