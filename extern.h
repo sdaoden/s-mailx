@@ -86,6 +86,9 @@ long nextprime(long n);
  * *s is advanced to after the expanded sequence (as possible) */
 int	expand_shell_escape(char const **s);
 
+/* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
+char *	getprompt(void);
+
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
 /* Discover user login name */

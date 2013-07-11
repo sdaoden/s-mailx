@@ -381,6 +381,30 @@ jleave:
 }
 
 char *
+getprompt(void)
+{
+	static char buf[64];
+	char const *ccp;
+
+	if ((ccp = value("prompt")) == NULL) {
+		buf[0] = value("bsdcompat") ? '&' : '?';
+		buf[1] = ' ';
+		buf[2] = '\0';
+	} else {
+		char *cp;
+
+		for (cp = buf; cp < buf + sizeof(buf) - 1; ++cp) {
+			int c = expand_shell_escape(&ccp);
+			if (c <= 0)
+				break;
+			*cp = (char)c;
+		}
+		*cp = '\0';
+	}
+	return buf;
+}
+
+char *
 getname(int uid)
 {
 	struct passwd *pw = getpwuid(uid);

@@ -48,7 +48,6 @@
 
 static int		*_msgvec;
 static int		_reset_on_stop;	/* do a reset() if stopped */
-static char const	*_prompt;
 static sighandler_type	_oldpipe;
 
 /* Update mailname (if *name* != NULL) and displayname */
@@ -458,9 +457,7 @@ commands(void)
 			}
 			_reset_on_stop = 1;
 			exit_status = 0;
-			if ((_prompt = value("prompt")) == NULL)
-				_prompt = value("bsdcompat") ? "& " : "? ";
-			printf("%s", _prompt);
+			printf("%s", getprompt());
 		}
 		fflush(stdout);
 
