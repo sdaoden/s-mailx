@@ -143,7 +143,7 @@ insertcommand(FILE *fp, char const *cmd)
 	if (cp == NULL)
 		cp = SHELL;
 	if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
-		while ((c = getc(ibuf)) != EOF)
+		while ((c = getc(ibuf)) != EOF) /* XXX bytewise, yuck! */
 			putc(c, fp);
 		Pclose(ibuf, TRU1);
 	} else
@@ -366,7 +366,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
 	/* Print what we have sofar also on the terminal */
 	(void)rewind(collf);
-	while ((c = getc(collf)) != EOF)
+	while ((c = getc(collf)) != EOF) /* XXX bytewise, yuck! */
 		(void)putc(c, stdout);
 	if (fseek(collf, 0, SEEK_END))
 		goto jerr;
@@ -802,7 +802,7 @@ makeheader(FILE *fp, struct header *hp)
 	Ftfree(&tempEdit);
 
 	extract_header(fp, hp);
-	while ((c = getc(fp)) != EOF)
+	while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
 		putc(c, nf);
 	if (fp != collf)
 		Fclose(collf);

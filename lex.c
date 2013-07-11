@@ -458,8 +458,10 @@ commands(void)
 			}
 			_reset_on_stop = 1;
 			exit_status = 0;
+#ifndef HAVE_CLEDIT
 			printf("%s", getprompt());
 			fflush(stdout);
+#endif
 		}
 
 		if (! sourcing) {

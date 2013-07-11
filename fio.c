@@ -1355,17 +1355,41 @@ jleave:
 int
 (readline_input)(char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS)
 {
+#ifdef HAVE_CLEDIT
+	char const *prompt = NULL;
+#endif
 	FILE *ifile = (_input != NULL) ? _input : stdin;
 	int n;
 
 	for (n = 0;;) {
-		n = (readline_restart)(ifile, linebuf, linesize, n
-			SMALLOC_DEBUG_ARGSCALL);
-		if (n < 0)
+#ifdef HAVE_CLEDIT
+		if (! sourcing && (options & OPT_INTERACTIVE)) {
+			assert(ifile == stdin);
+			if (prompt == NULL)
+				prompt = getprompt();
+			n = (tty_readline)(prompt, linebuf, linesize, n
+				SMALLOC_DEBUG_ARGSCALL);
+		} else
+#endif
+			n = (readline_restart)(ifile, linebuf, linesize, n
+				SMALLOC_DEBUG_ARGSCALL);
+		if (n <= 0)
 			break;
-		if (n == 0 || (*linebuf)[n - 1] != '\\')
-			break;
-		(*linebuf)[n - 1] = ' ';
+		/*
+		 * POSIX says:
+		 * An unquoted <backslash> at the end of a command line
+		 * shall be discarded and the next line shall continue the
+		 * command.
+		 */
+		if ((*linebuf)[n - 1] == '\\') {
+			(*linebuf)[--n] = '\0';
+			continue;
+		}
+#ifdef HAVE_CLEDIT
+		if (! sourcing && (options & OPT_INTERACTIVE))
+			tty_addhist(*linebuf);
+#endif
+		break;
 	}
 	return n;
 }

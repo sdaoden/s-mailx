@@ -39,32 +39,103 @@
 
 #include "rcv.h"
 
-#include <sys/ioctl.h>
 #include <errno.h>
-#include <termios.h>
 #include <unistd.h>
+
+#ifdef HAVE_READLINE
+# include <readline/history.h>
+# include <readline/readline.h>
+#elif defined HAVE_EDITLINE
+# include <histedit.h>
+#endif/*#else FIXME*/
+# include <sys/ioctl.h>
+# include <termios.h>
+/*#endif*/
 
 #include "extern.h"
 
-static	cc_t		c_erase;	/* Current erase char */
-static	cc_t		c_kill;		/* Current kill char */
 static	sigjmp_buf	rewrite;	/* Place to go when continued */
 static	sigjmp_buf	intjmp;		/* Place to go when interrupted */
-#ifndef TIOCSTI
-static	int		ttyset;		/* We must now do erase/kill */
+
+#ifdef HAVE_CLEDIT /* FIXME */
+static sighandler_type	_sigcont_save;
+static bool_t		_handle_cont;
 #endif
+#ifdef HAVE_READLINE
+static char *		_rl_buf;
+static int		_rl_buflen;
+#endif
+#ifdef HAVE_EDITLINE
+static EditLine *	_el_el;		/* editline(3) handle */
+static History *	_el_hcom;	/* History handle for commline */
+static char const *	_el_prompt;	/* Current prompt */
+#endif
+
+/*FIXME#ifndef HAVE_EDITLINE*/
+# ifndef TIOCSTI
+static	int		ttyset;		/* We must now do erase/kill */
+# endif
 static	struct termios	ttybuf;
 static	long		vdis;		/* _POSIX_VDISABLE char */
+static	cc_t		c_erase;	/* Current erase char */
+static	cc_t		c_kill;		/* Current kill char */
+/*FIXME#endif*/
+
+/* A couple of things for command line editing / history */
+#ifdef HAVE_CLEDIT
+static char *		_cl_histfile(void);
+#endif
+#ifdef HAVE_READLINE
+static int		_rl_pre_input(void);
+#endif
+#ifdef HAVE_EDITLINE
+static char const *	_el_getprompt(void);
+#endif
 
 static void ttystop(int s);
 static void ttyint(int s);
 static int safe_getc(FILE *ibuf);
 static char *rtty_internal(char const *pr, char const *src);
 
+#ifdef HAVE_CLEDIT
+static char *
+_cl_histfile(void)
+{
+	char *rv;
+
+	rv = voption("NAIL_HISTFILE");
+	if (rv != NULL)
+		rv = fexpand(rv, FEXP_LOCAL);
+	return rv;
+}
+#endif
+
+#ifdef HAVE_READLINE
+static int
+_rl_pre_input(void)
+{
+	/* Handle leftover data from \ escaped former line */
+	rl_extend_line_buffer(_rl_buflen + 10);
+	strcpy(rl_line_buffer, _rl_buf);
+	rl_point = rl_end = _rl_buflen;
+	rl_pre_input_hook = (rl_hook_func_t*)NULL;
+	rl_redisplay();
+	return 0;
+}
+#endif
+
+#ifdef HAVE_EDITLINE
+static char const *
+_el_getprompt(void)
+{
+	return _el_prompt;
+}
+#endif
+
 /*
  * Receipt continuation.
  */
-static void 
+static void
 ttystop(int s)
 {
 	sighandler_type old_action = safe_signal(s, SIG_DFL);
@@ -80,7 +151,7 @@ ttystop(int s)
 }
 
 /*ARGSUSED*/
-static void 
+static void
 ttyint(int s)
 {
 	(void)s;
@@ -122,22 +193,22 @@ rtty_internal(char const *pr, char const *src)
 	int c;
 	char *cp, *cp2;
 
-	(void) &c;
-	(void) &cp2;
 	fputs(pr, stdout);
 	fflush(stdout);
 	if (src != NULL && strlen(src) > sizeof canonb - 2) {
 		printf(catgets(catd, CATSET, 200, "too long to edit\n"));
 		return(savestr(src));
 	}
-#ifndef TIOCSTI
+
+/*FIXME#ifndef HAVE_EDITLINE*/
+# ifndef TIOCSTI
 	if (src != NULL)
 		cp = sstpcpy(canonb, src);
 	else
 		cp = sstpcpy(canonb, "");
 	fputs(canonb, stdout);
 	fflush(stdout);
-#else
+# else
 	cp = UNCONST(src == NULL ? "" : src);
 	while ((c = *cp++) != '\0') {
 		if ((c_erase != vdis && c == c_erase) ||
@@ -150,7 +221,9 @@ rtty_internal(char const *pr, char const *src)
 	}
 	cp = canonb;
 	*cp = 0;
-#endif
+# endif
+/*FIXME#endif*/
+
 	cp2 = cp;
 	while (cp2 < canonb + sizeof canonb)
 		*cp2++ = 0;
@@ -161,6 +234,8 @@ rtty_internal(char const *pr, char const *src)
 	safe_signal(SIGTTOU, ttystop);
 	safe_signal(SIGTTIN, ttystop);
 	clearerr(stdin);
+
+/*FIXME#ifndef HAVE_EDITLINE*/
 	while (cp2 < canonb + sizeof canonb - 1) {
 		c = safe_getc(stdin);
 		if (c == EOF || c == '\n')
@@ -168,15 +243,18 @@ rtty_internal(char const *pr, char const *src)
 		*cp2++ = c;
 	}
 	*cp2 = 0;
+/*FIXME#endif*/
 	safe_signal(SIGTSTP, SIG_DFL);
 	safe_signal(SIGTTOU, SIG_DFL);
 	safe_signal(SIGTTIN, SIG_DFL);
+
 	if (c == EOF && ferror(stdin)) {
 redo:
 		cp = strlen(canonb) > 0 ? canonb : NULL;
 		clearerr(stdin);
 		return(rtty_internal(pr, cp));
 	}
+
 #ifndef TIOCSTI
 	if (cp == NULL || *cp == '\0')
 		return(savestr(src));
@@ -209,7 +287,8 @@ redo:
 	}
 	*cp2 = '\0';
 #endif
-	return ((*canonb == '\0') ? NULL : savestr(canonb));
+
+	return (*canonb == '\0') ? NULL : savestr(canonb);
 }
 
 /*
@@ -244,7 +323,7 @@ grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
 	return np;
 }
 
-int 
+int
 grabh(struct header *hp, enum gfield gflags, int subjfirst)
 {
 	sighandler_type saveint, savetstp, savettou, savettin;
@@ -294,6 +373,7 @@ grabh(struct header *hp, enum gfield gflags, int subjfirst)
 	if (saveint != SIG_IGN)
 		safe_signal(SIGINT, ttyint);
 #endif	/* TIOCSTI */
+
 	if (gflags & GTO)
 		hp->h_to = grabaddrs("To: ", hp->h_to, comma, GTO|GFULL);
 	if (subjfirst)
@@ -325,6 +405,7 @@ grabh(struct header *hp, enum gfield gflags, int subjfirst)
 	}
 	if (!subjfirst)
 		GRAB_SUBJECT
+
 out:
 	safe_signal(SIGTSTP, savetstp);
 	safe_signal(SIGTTOU, savettou);
@@ -337,7 +418,8 @@ out:
 	safe_signal(SIGQUIT, savequit);
 #endif
 	safe_signal(SIGINT, saveint);
-	return(errs);
+
+	return errs;
 }
 
 /*
@@ -368,8 +450,6 @@ readtty(char const *prefix, char const *string)
 		goto jleave;
 	}
 
-	(void) &saveint;
-	(void) &ret;
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
 	savettin = safe_signal(SIGTTIN, SIG_DFL);
@@ -418,6 +498,214 @@ jleave:
 	return ret;
 }
 
+#ifdef HAVE_READLINE
+void
+tty_init(void)
+{
+	char *v;
+
+	rl_readline_name = UNCONST(uagent);
+	using_history();
+	stifle_history(HIST_SIZE);
+	rl_read_init_file(NULL);
+
+	if ((v = _cl_histfile()) != NULL)
+		read_history(v);
+
+	_sigcont_save = safe_signal(SIGCONT, &tty_signal);
+}
+
+void
+tty_destroy(void)
+{
+	char *v;
+
+# ifdef WANT_ASSERTS
+	safe_signal(SIGCONT, _sigcont_save);
+# endif
+	if ((v = _cl_histfile()) != NULL)
+		write_history(v);
+}
+
+void
+tty_signal(int sig)
+{
+	switch (sig) {
+	case SIGCONT:
+		if (_handle_cont)
+			rl_forced_update_display();
+		break;
+#ifdef SIGWINCH
+	case SIGWINCH:
+		break;
+#endif
+	default:
+		break;
+	}
+}
+
+int
+(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
+	SMALLOC_DEBUG_ARGS)
+{
+	int nn;
+	char *line;
+
+	if (n > 0) {
+		_rl_buf = *linebuf;
+		_rl_buflen = (int)n;
+		rl_pre_input_hook = &_rl_pre_input;
+	}
+	_handle_cont = TRU1;
+	line = readline(prompt);
+	_handle_cont = FAL0;
+	if (line == NULL) {
+		nn = -1;
+		goto jleave;
+	}
+	n = strlen(line);
+
+	if (n >= *linesize)
+		*linebuf = (srealloc)(*linebuf,
+				(*linesize = LINESIZE + n + 1)
+				SMALLOC_DEBUG_ARGSCALL);
+	memcpy(*linebuf, line, n);
+	(free)(line); /* Grrrr.. but readline(3) can't be helped */
+	(*linebuf)[n] = '\0';
+	nn = (int)n;
+jleave:
+	return nn;
+}
+
+void
+tty_addhist(char const *s)
+{
+	add_history(s);
+}
+
+#elif defined HAVE_EDITLINE /* HAVE_READLINE */
+void
+tty_init(void)
+{
+	HistEvent he;
+	char *v;
+
+	_el_hcom = history_init();
+	history(_el_hcom, &he, H_SETSIZE, HIST_SIZE);
+	history(_el_hcom, &he, H_SETUNIQUE, 1);
+
+	_el_el = el_init(uagent, stdin, stdout, stderr);
+	el_set(_el_el, EL_SIGNAL, 1);
+	el_set(_el_el, EL_TERMINAL, NULL);
+	/* Need to set HIST before EDITOR, otherwise it won't work automatic */
+	el_set(_el_el, EL_HIST, &history, _el_hcom);
+	el_set(_el_el, EL_EDITOR, "emacs");
+	el_set(_el_el, EL_PROMPT, &_el_getprompt);
+#if 0
+	el_set(_el_el, EL_ADDFN, "tab_complete",
+		"editline(3) internal completion function", &_el_file_cpl);
+	el_set(_el_el, EL_BIND, "^I", "tab_complete", NULL);
+#endif
+	el_set(_el_el, EL_BIND, "^R", "ed-search-prev-history", NULL);
+	el_source(_el_el, NULL); /* Source ~/.editrc */
+
+	if ((v = _cl_histfile()) != NULL)
+		history(_el_hcom, &he, H_LOAD, v);
+
+	_sigcont_save = safe_signal(SIGCONT, &tty_signal);
+}
+
+void
+tty_destroy(void)
+{
+	HistEvent he;
+	char *v;
+
+# ifdef WANT_ASSERTS
+	safe_signal(SIGCONT, _sigcont_save);
+# endif
+	el_end(_el_el);
+
+	if ((v = _cl_histfile()) != NULL)
+		history(_el_hcom, &he, H_SAVE, v);
+	history_end(_el_hcom);
+}
+
+void
+tty_signal(int sig)
+{
+	switch (sig) {
+	case SIGCONT:
+		if (_handle_cont)
+			el_set(_el_el, EL_REFRESH);
+		break;
+#ifdef SIGWINCH
+	case SIGWINCH:
+		el_resize(_el_el);
+		break;
+#endif
+	default:
+		break;
+	}
+}
+
+int
+(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
+	SMALLOC_DEBUG_ARGS)
+{
+	int nn;
+	char const *line;
+
+	_el_prompt = prompt;
+	if (n > 0)
+		el_push(_el_el, *linebuf);
+	_handle_cont = TRU1;
+	line = el_gets(_el_el, &nn);
+	_handle_cont = FAL0;
+	if (line == NULL) {
+		nn = -1;
+		goto jleave;
+	}
+	assert(nn >= 0);
+	n = (size_t)nn;
+	if (n > 0 && line[n - 1] == '\n')
+		nn = (int)--n;
+
+	if (n >= *linesize)
+		*linebuf = (srealloc)(*linebuf,
+				(*linesize = LINESIZE + n + 1)
+				SMALLOC_DEBUG_ARGSCALL);
+	memcpy(*linebuf, line, n);
+	(*linebuf)[n] = '\0';
+jleave:
+	return nn;
+}
+
+void
+tty_addhist(char const *s)
+{
+	/* Enlarge meaning of unique .. to something that rocks;
+	 * xxx unfortunately this is expensive to do with editline(3) */
+	HistEvent he;
+	int i;
+
+	if (history(_el_hcom, &he, H_GETUNIQUE) < 0 || he.num == 0)
+		goto jadd;
+
+	for (i = history(_el_hcom, &he, H_FIRST); i >= 0;
+			i = history(_el_hcom, &he, H_NEXT))
+		if (strcmp(he.str, s) == 0) {
+			history(_el_hcom, &he, H_DEL, he.num);
+			break;
+		}
+jadd:
+	history(_el_hcom, &he, H_ENTER, s);
+}
+
+#else /* HAVE_EDITLINE */
+/* TODO steal hetio stuff from NetBSD ash / dash */
+#endif /* ! HAVE_READLINE && ! HAVE_EDITLINE */
+
 bool_t
 yorn(char const *msg)
 {
@@ -439,15 +727,15 @@ getuser(char const *query)
 	fputs((query != NULL) ? query : "User: ", stdout);
 	fflush(stdout);
 
-	if (readline_restart(stdin, &termios_state.ts_linebuf,
-			&termios_state.ts_linesize, 0) >= 0)
+	if (readline_input(&termios_state.ts_linebuf,
+			&termios_state.ts_linesize) >= 0)
 		user = termios_state.ts_linebuf;
 	termios_state_reset();
 	return user;
 }
 
 char *
-getpassword(char const *query)
+getpassword(char const *query) /* FIXME not signal safe (tty mess!) */
 {
 	struct termios tios;
 	char *pass = NULL;

@@ -184,7 +184,8 @@ Non-breakers
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
 
-- On the long run -- try to add command line editing.
+- Command line editing should gain possibility of context sensitive tab
+  completion.
 
 -- Note that the TTY is sick.  If ^C on input it simply jumps to next
    input, instead of saying "Interrupted, one more to die hard" or

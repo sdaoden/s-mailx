@@ -983,6 +983,26 @@ void uncollapse1(struct message *m, int always);
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
 char *readtty(char const *prefix, char const *string);
 
+/* Overall interactive terminal life cycle for command line editor library */
+#if defined HAVE_EDITLINE || defined HAVE_READLINE
+# define TTY_WANTS_SIGWINCH
+void	tty_init(void);
+void	tty_destroy(void);
+void	tty_signal(int sig);
+int	tty_readline(char const *prompt, char **linebuf, size_t *linesize,
+		size_t n SMALLOC_DEBUG_ARGS);
+# ifdef HAVE_ASSERTS
+#  define tty_readline(A,B,C,D)	tty_readline(A, B, C, D, __FILE__, __LINE__)
+# endif
+void	tty_addhist(char const *s);
+#else
+# define tty_init()		do {} while (0)
+# define tty_destroy()		do {} while (0)
+# define tty_signal(S)		do {} while (0)
+# define tty_readline(A,B,C,D)	do {} while (0)
+# define tty_addhist(S)		do {} while (0)
+#endif
+
 /* [Yy]es or [Nn]o */
 bool_t	yorn(char const *msg);
 

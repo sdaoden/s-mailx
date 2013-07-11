@@ -79,13 +79,14 @@ static int	_grow_cpp(char const ***cpp, int size, int count);
 /* Initialize *tempdir*, *myname*, *homedir* */
 static void	_setup_vars(void);
 
-/* Compute what the screen size for printing headers should be.
+/* We're in an interactive session - compute what the screen size for printing
+ * headers etc. should be; notify tty upon resize if *is_sighdl* is not 0.
  * We use the following algorithm for the height:
  *	If baud rate < 1200, use  9
  *	If baud rate = 1200, use 14
  *	If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col */
-static void	_setscreensize(int dummy);
+static void	_setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
@@ -193,14 +194,14 @@ _setup_vars(void)
 }
 
 static void
-_setscreensize(int dummy)
+_setscreensize(int is_sighdl)
 {
 	struct termios tbuf;
 #ifdef TIOCGWINSZ
 	struct winsize ws;
 #endif
 	speed_t ospeed;
-	(void)dummy;
+	(void)is_sighdl;
 
 #ifdef TIOCGWINSZ
 	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
@@ -228,6 +229,11 @@ _setscreensize(int dummy)
 	if ((scrnwidth = ws.ws_col) == 0)
 #endif
 		scrnwidth = 80;
+
+#ifdef SIGWINCH
+	if (is_sighdl && (options & OPT_INTERACTIVE))
+		tty_signal(SIGWINCH);
+#endif
 }
 
 static sigjmp_buf	__hdrjmp; /* XXX */
@@ -286,7 +292,12 @@ _rcv_mode(char const *folder)
 	}
 
 	/* Enter the command loop */
+	if (options & OPT_INTERACTIVE)
+		tty_init();
 	commands();
+	if (options & OPT_INTERACTIVE)
+		tty_destroy();
+
 	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
 		safe_signal(SIGHUP, SIG_IGN);
 		safe_signal(SIGINT, SIG_IGN);
@@ -573,7 +584,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (options & OPT_INTERACTIVE) {
 		_setscreensize(0);
 #ifdef SIGWINCH
-# ifndef TTY_NEEDS_SIGWINCH
+# ifndef TTY_WANTS_SIGWINCH
 		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 # endif
 			safe_signal(SIGWINCH, _setscreensize);
@@ -646,6 +657,10 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	}
 
 	/* xxx exit_status = EXIT_OK; */
+	if (options & OPT_INTERACTIVE)
+		tty_init();
 	mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+	if (options & OPT_INTERACTIVE)
+		tty_destroy();
 	return exit_status;
 }
