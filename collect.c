@@ -64,6 +64,10 @@ static	sigjmp_buf	collabort;	/* To end collection with error */
 
 static	sigjmp_buf pipejmp;		/* On broken pipe */
 
+/* We want to selectively handle history additions and don't allow backslash
+ * escaping for newlines, so we can't use readline_input() directly */
+static long	_read_stdin(char **linebuf, size_t *linesize);
+
 /* If *interactive* is set and *echo* is, too, also dump to *stdout* */
 static int	_include_file(FILE *fbuf, char const *name, int *linecount,
 			int *charcount, int echo);
@@ -80,6 +84,22 @@ static void collstop(int s);
 static void collint(int s);
 static void collhup(int s);
 static int putesc(const char *s, FILE *stream);
+
+static long
+_read_stdin(char **linebuf, size_t *linesize)
+{
+	long rv;
+
+#ifdef HAVE_CLEDIT
+	if (! (options & OPT_INTERACTIVE)) {
+#endif
+		rv = readline_restart(stdin, linebuf, linesize, 0);
+#ifdef HAVE_CLEDIT
+	} else
+		rv = tty_readline("", linebuf, linesize, 0);
+#endif
+	return rv;
+}
 
 static int
 _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
@@ -255,7 +275,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	int volatile escape, getfields;
 	char *linebuf = NULL, *quote = NULL, *tempMail = NULL;
 	char const *cp;
-	size_t linesize;
+	size_t linesize = 0;
 	long count;
 	enum sendaction	action;
 	sigset_t oset, nset;
@@ -424,7 +444,7 @@ jcont:
 	 */
 	for (;;) {
 		colljmp_p = 1;
-		count = readline_restart(stdin, &linebuf, &linesize, 0);
+		count = _read_stdin(&linebuf, &linesize);
 		colljmp_p = 0;
 		if (count < 0) {
 			if ((options & OPT_INTERACTIVE) &&
@@ -458,6 +478,10 @@ jcont:
 				goto jerr;
 			continue;
 		}
+
+		/* Save tilde escapes in history */
+		if (options & OPT_INTERACTIVE)
+			tty_addhist(linebuf);
 
 		c = linebuf[1];
 		switch (c) {
