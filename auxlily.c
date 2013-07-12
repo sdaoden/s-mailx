@@ -220,7 +220,7 @@ page_or_print(FILE *fp, size_t lines)
 		rewind(fp);
 	}
 
-	if (rows != 0 && lines > rows)
+	if (rows != 0 && lines >= rows)
 		run_command(get_pager(), 0, fileno(fp), -1, NULL, NULL, NULL);
 	else
 		while ((c = getc(fp)) != EOF)
