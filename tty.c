@@ -724,10 +724,10 @@ getuser(char const *query)
 {
 	char *user = NULL;
 
-	fputs((query != NULL) ? query : "User: ", stdout);
-	fflush(stdout);
+	if (query == NULL)
+		query = tr(509, "User: ");
 
-	if (readline_input(&termios_state.ts_linebuf,
+	if (readline_input(query, &termios_state.ts_linebuf,
 			&termios_state.ts_linesize) >= 0)
 		user = termios_state.ts_linebuf;
 	termios_state_reset();
@@ -735,12 +735,14 @@ getuser(char const *query)
 }
 
 char *
-getpassword(char const *query) /* FIXME not signal safe (tty mess!) */
+getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 {
 	struct termios tios;
 	char *pass = NULL;
 
-	fputs((query != NULL) ? query : "Password: ", stdout);
+	if (query == NULL)
+		query = tr(510, "Password: ");
+	fputs(query, stdout);
 	fflush(stdout);
 
 	if (options & OPT_TTYIN) {

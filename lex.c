@@ -458,10 +458,6 @@ commands(void)
 			}
 			_reset_on_stop = 1;
 			exit_status = 0;
-#ifndef HAVE_CLEDIT
-			printf("%s", getprompt());
-			fflush(stdout);
-#endif
 		}
 
 		if (! sourcing) {
@@ -480,7 +476,7 @@ commands(void)
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
 		 */
-		n = readline_input(&linebuf, &linesize);
+		n = readline_input(NULL, &linebuf, &linesize);
 		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */

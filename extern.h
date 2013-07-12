@@ -351,11 +351,12 @@ int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 #endif
 
 /* Read a complete line of input, handling \ escaped newlines along the way.
+ * If *prompt* is NULL we'll call getprompt().
  * Return number of octets or a value <0 on error */
-int		readline_input(char **linebuf, size_t *linesize
-			SMALLOC_DEBUG_ARGS);
+int		readline_input(char const *prompt, char **linebuf,
+			size_t *linesize SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_ASSERTS
-# define readline_input(A,B)	readline_input(A, B, __FILE__, __LINE__)
+# define readline_input(A,B,C)	readline_input(A, B, C, __FILE__, __LINE__)
 #endif
 
 void setptr(FILE *ibuf, off_t offset);

@@ -464,7 +464,7 @@ define1(char const *name, int account) /* TODO make static (`account'...)! */
 	mp->ma_flags = account ? MAC_ACCOUNT : MAC_NONE;
 
 	for (;;) {
-		n = readline_input(&linebuf, &linesize);
+		n = readline_input("", &linebuf, &linesize);
 		if (n < 0) {
 			fprintf(stderr,
 				tr(75, "Unterminated %s definition: \"%s\".\n"),

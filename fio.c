@@ -387,8 +387,8 @@ again:
 
 /*
  * Near EOF since it has to deal with input stack:
- * char *		readline_input(char **linebuf, size_t *linesize
- *			SMALLOC_DEBUG_ARGS);
+ * char *		readline_input(char const *prompt, char **linebuf,
+ *				size_t *linesize SMALLOC_DEBUG_ARGS);
  */
 
 /*
@@ -1353,20 +1353,25 @@ jleave:
 }
 
 int
-(readline_input)(char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS)
+(readline_input)(char const *prompt, char **linebuf, size_t *linesize
+	SMALLOC_DEBUG_ARGS)
 {
-#ifdef HAVE_CLEDIT
-	char const *prompt = NULL;
-#endif
 	FILE *ifile = (_input != NULL) ? _input : stdin;
 	int n;
+
+	if (prompt == NULL)
+		prompt = getprompt();
+#ifndef HAVE_CLEDIT
+	if (! sourcing && (options & OPT_INTERACTIVE)) {
+		fputs(prompt, stdout);
+		fflush(stdout);
+	}
+#endif
 
 	for (n = 0;;) {
 #ifdef HAVE_CLEDIT
 		if (! sourcing && (options & OPT_INTERACTIVE)) {
 			assert(ifile == stdin);
-			if (prompt == NULL)
-				prompt = getprompt();
 			n = (tty_readline)(prompt, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
 		} else
@@ -1383,6 +1388,8 @@ int
 		 */
 		if ((*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
+			if (*prompt)
+				prompt = "> "; /* XXX PS2 .. */
 			continue;
 		}
 #ifdef HAVE_CLEDIT
