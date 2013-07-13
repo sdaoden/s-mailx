@@ -104,7 +104,7 @@ static struct addrguts * _idna_apply(struct addrguts *agp);
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
  * Otherwise perform content checking and isolate the domain part (for IDNA) */
-static int		addrspec_check(int doskin, struct addrguts *agp);
+static int		_addrspec_check(int doskin, struct addrguts *agp);
 
 static int	gethfield(FILE *f, char **linebuf, size_t *linesize, int rem,
 			char **colon);
@@ -257,7 +257,7 @@ jleave:
 #endif 
 
 static int
-addrspec_check(int skinned, struct addrguts *agp)
+_addrspec_check(int skinned, struct addrguts *agp)
 {
 	char *addr, *p, in_quote, in_domain, hadat;
 	union {char c; unsigned char u;} c;
@@ -843,7 +843,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 		agp->ag_skinned = UNCONST(name); /* (NAME_SALLOC not set) */
 		agp->ag_slen = agp->ag_ilen;
 		agp->ag_n_flags = NAME_SKINNED;
-		return (addrspec_check(doskin, agp));
+		return _addrspec_check(doskin, agp);
 	}
 
 	/* Something makes us think we have to perform the skin operation */
@@ -904,7 +904,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 			break;
 		case '>':
 			if (gotlt) {
-				/* (addrspec_check() verifies these later!) */
+				/* (_addrspec_check() verifies these later!) */
 				agp->ag_iaddr_aend = (size_t)(cp - name);
 				gotlt = 0;
 				while ((c = *cp) != '\0' && c != ',') {
@@ -952,7 +952,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 	agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
 	ac_free(nbuf);
 	agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
-	return (addrspec_check(doskin, agp));
+	return _addrspec_check(doskin, agp);
 }
 
 /*
@@ -1569,4 +1569,53 @@ getsender(struct message *mp)
 			(np = lextract(cp, GEXTRA|GSKIN)) == NULL)
 		return NULL;
 	return np->n_flink != NULL ? skin(hfield1("sender", mp)) : np->n_name;
+}
+
+int
+grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
+{
+	/* TODO grab_headers: again, check counts etc. against RFC;
+	 * TODO (now assumes check_from_and_sender() is called afterwards ++ */
+	int errs;
+	int volatile comma;
+
+	errs = 0;
+	comma = (value("bsdcompat") || value("bsdmsgs")) ? 0 : GCOMMA;
+
+	if (gflags & GTO)
+		hp->h_to = grab_names("To: ", hp->h_to, comma, GTO|GFULL);
+
+	if (subjfirst && (gflags & GSUBJECT))
+		hp->h_subject = readstr_input("Subject: ", hp->h_subject);
+
+	if (gflags & GCC)
+		hp->h_cc = grab_names("Cc: ", hp->h_cc, comma, GCC|GFULL);
+
+	if (gflags & GBCC)
+		hp->h_bcc = grab_names("Bcc: ", hp->h_bcc, comma, GBCC|GFULL);
+
+	if (gflags & GEXTRA) {
+		if (hp->h_from == NULL)
+			hp->h_from = lextract(myaddrs(hp), GEXTRA|GFULL);
+		hp->h_from = grab_names("From: ", hp->h_from, comma,
+				GEXTRA|GFULL);
+		if (hp->h_replyto == NULL)
+			hp->h_replyto = lextract(value("replyto"),
+					GEXTRA|GFULL);
+		hp->h_replyto = grab_names("Reply-To: ", hp->h_replyto, comma,
+				GEXTRA|GFULL);
+		if (hp->h_sender == NULL)
+			hp->h_sender = extract(value("sender"), GEXTRA|GFULL);
+		hp->h_sender = grab_names("Sender: ", hp->h_sender, comma,
+				GEXTRA|GFULL);
+		if (hp->h_organization == NULL)
+			hp->h_organization = value("ORGANIZATION");
+		hp->h_organization = readstr_input("Organization: ",
+				hp->h_organization);
+	}
+
+	if (! subjfirst && (gflags & GSUBJECT))
+		hp->h_subject = readstr_input("Subject: ", hp->h_subject);
+
+	return errs;
 }

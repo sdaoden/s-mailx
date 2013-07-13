@@ -437,6 +437,10 @@ int		unstack(void);
 
 /* head.c */
 
+/* Fill in / reedit the desired header fields */
+int		grab_headers(struct header *hp, enum gfield gflags,
+			int subjfirst);
+
 /* Return the user's From: address(es) */
 char const *	myaddrs(struct header *hp);
 /* Boil the user's From: addresses down to a single one, or use *sender* */
@@ -722,6 +726,10 @@ struct name *	extract(char const *line, enum gfield ntype);
 struct name *	lextract(char const *line, enum gfield ntype);
 char *		detract(struct name *np, enum gfield ntype);
 
+/* Get a lextract() list via readstr_input(), reassigning to *np* */
+struct name *	grab_names(const char *field, struct name *np, int comma,
+			enum gfield gflags);
+
 struct name *	checkaddrs(struct name *np);
 struct name *	usermap(struct name *names, bool_t force_metoo);
 struct name *	elide(struct name *names);
@@ -988,8 +996,9 @@ int ccollapse(void *v);
 int cuncollapse(void *v);
 void uncollapse1(struct message *m, int always);
 
-/* tty.c */
-int grabh(struct header *hp, enum gfield gflags, int subjfirst);
+/*
+ * tty.c
+ */
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE

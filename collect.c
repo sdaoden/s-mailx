@@ -397,7 +397,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
 	if (! sigsetjmp(colljmp, 1)) {
 		if (getfields)
-			grabh(hp, getfields, 1);
+			grab_headers(hp, getfields, 1);
 		if (quotefile != NULL) {
 			if (_include_file(NULL, quotefile, &lc, &cc, 1) != 0)
 				goto jerr;
@@ -535,15 +535,15 @@ jcont:
 		case 'h':
 			/* Grab a bunch of headers */
 			do
-				grabh(hp, GTO|GSUBJECT|GCC|GBCC,
-						value("bsdcompat") != NULL &&
-						value("bsdorder") != NULL);
+				grab_headers(hp, GTO|GSUBJECT|GCC|GBCC,
+						(value("bsdcompat") != NULL &&
+						value("bsdorder") != NULL));
 			while (hp->h_to == NULL);
 			goto jcont;
 		case 'H':
 			/* Grab extra headers */
 			do
-				grabh(hp, GEXTRA, 0);
+				grab_headers(hp, GEXTRA, 0);
 			while (check_from_and_sender(hp->h_from, hp->h_sender));
 			goto jcont;
 		case 't':

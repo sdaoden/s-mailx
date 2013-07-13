@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Generally useful tty stuff.
+ *@ TTY interaction.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
@@ -113,61 +113,6 @@ _el_getprompt(void)
 	return _el_prompt;
 }
 #endif
-
-static struct name *
-grabaddrs(const char *field, struct name *np, int comma, enum gfield gflags)
-{
-	struct name *nq;
-
-jloop:
-	np = lextract(readstr_input(field, detract(np, comma)), gflags);
-	for (nq = np; nq != NULL; nq = nq->n_flink)
-		if (is_addr_invalid(nq, 1))
-			goto jloop;
-	return np;
-}
-
-int
-grabh(struct header *hp, enum gfield gflags, int subjfirst)
-{
-	int errs;
-	int volatile comma;
-
-	errs = 0;
-	comma = value("bsdcompat") || value("bsdmsgs") ? 0 : GCOMMA;
-
-	if (gflags & GTO)
-		hp->h_to = grabaddrs("To: ", hp->h_to, comma, GTO|GFULL);
-	if (subjfirst && (gflags & GSUBJECT))
-		hp->h_subject = readstr_input("Subject: ", hp->h_subject);
-	if (gflags & GCC)
-		hp->h_cc = grabaddrs("Cc: ", hp->h_cc, comma, GCC|GFULL);
-	if (gflags & GBCC)
-		hp->h_bcc = grabaddrs("Bcc: ", hp->h_bcc, comma, GBCC|GFULL);
-	if (gflags & GEXTRA) {
-		if (hp->h_from == NULL)
-			hp->h_from = lextract(myaddrs(hp), GEXTRA|GFULL);
-		hp->h_from = grabaddrs("From: ", hp->h_from, comma,
-				GEXTRA|GFULL);
-		if (hp->h_replyto == NULL)
-			hp->h_replyto = lextract(value("replyto"),
-					GEXTRA|GFULL);
-		hp->h_replyto = grabaddrs("Reply-To: ", hp->h_replyto, comma,
-				GEXTRA|GFULL);
-		if (hp->h_sender == NULL)
-			hp->h_sender = extract(value("sender"), GEXTRA|GFULL);
-		hp->h_sender = grabaddrs("Sender: ", hp->h_sender, comma,
-				GEXTRA|GFULL);
-		if (hp->h_organization == NULL)
-			hp->h_organization = value("ORGANIZATION");
-		hp->h_organization = readstr_input("Organization: ",
-				hp->h_organization);
-	}
-	if (! subjfirst && (gflags & GSUBJECT))
-		hp->h_subject = readstr_input("Subject: ", hp->h_subject);
-
-	return errs;
-}
 
 #ifdef HAVE_READLINE
 void
