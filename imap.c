@@ -2479,7 +2479,6 @@ imap_folders(const char *name, int strip)
 	const char *fold, *cp, *sp;
 	char *tempfn;
 	FILE *volatile fp;
-	int columnize = is_a_tty[1];
 
 	cp = protbase(name);
 	sp = mb.mb_imap_account;
@@ -2492,7 +2491,7 @@ imap_folders(const char *name, int strip)
 		return;
 	}
 	fold = imap_fileof(name);
-	if (columnize) {
+	if (options & OPT_TTYOUT) {
 		if ((fp = Ftemp(&tempfn, "Ri", "w+", 0600, 1)) == NULL) {
 			perror("tmpfile");
 			return;
@@ -2515,12 +2514,12 @@ imap_folders(const char *name, int strip)
 		imap_list(&mb, fold, strip, fp);
 	imaplock = 0;
 	if (interrupts) {
-		if (columnize)
+		if (options & OPT_TTYOUT)
 			Fclose(fp);
 		onintr(0);
 	}
 	fflush(fp);
-	if (columnize) {
+	if (options & OPT_TTYOUT) {
 		rewind(fp);
 		if (fsize(fp) > 0)
 			dopr(fp);
@@ -2530,7 +2529,7 @@ imap_folders(const char *name, int strip)
 out:
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
-	if (columnize)
+	if (options & OPT_TTYOUT)
 		Fclose(fp);
 }
 

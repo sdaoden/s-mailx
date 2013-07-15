@@ -455,7 +455,7 @@ getpassword(char const *query)
 	fputs((query != NULL) ? query : "Password: ", stdout);
 	fflush(stdout);
 
-	if (is_a_tty[0]) {
+	if (options & OPT_TTYIN) {
 		tcgetattr(0, &termios_state.ts_tios);
 		memcpy(&tios, &termios_state.ts_tios, sizeof tios);
 		termios_state.ts_needs_reset = TRU1;
@@ -468,7 +468,7 @@ getpassword(char const *query)
 		pass = termios_state.ts_linebuf;
 	termios_state_reset();
 
-	if (is_a_tty[0])
+	if (options & OPT_TTYIN)
 		fputc('\n', stdout);
 	return pass;
 }

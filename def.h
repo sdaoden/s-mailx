@@ -227,9 +227,13 @@ enum user_options {
 	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
 	OPT_BATCH_FLAG	= 1<<12,	/* -# */
 
-	OPT_SENDMODE	= 1<<14,	/* Usage case forces send mode */
-	OPT_INTERACTIVE	= 1<<15		/* isatty(0) / isatty(1) */
+	OPT_SENDMODE	= 1<<13,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1<<14,	/* isatty(0) */
+	OPT_TTYIN	= OPT_INTERACTIVE,
+	OPT_TTYOUT	= 1<<15
 };
+#define IS_TTY_SESSION() \
+	((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
 
 enum exit_status {
 	EXIT_OK		= EXIT_SUCCESS,

@@ -53,7 +53,6 @@ extern char const *const version;	/* The version string */
 _E gid_t	effectivegid;		/* Saved from when we started up */
 _E gid_t	realgid;		/* Saved from when we started up */
 
-_E int		is_a_tty[2];		/* isatty(0), isatty(1) */
 _E int		mb_cur_max;		/* value of MB_CUR_MAX */
 _E int		realscreenheight;	/* the real screen height */
 _E int		scrnwidth;		/* Screen width, or best guess */

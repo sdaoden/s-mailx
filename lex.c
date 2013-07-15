@@ -425,7 +425,8 @@ commands(void)
 		if (! sourcing && (options & OPT_INTERACTIVE)) {
 			av = (av = value("autoinc")) ? savestr(av) : NULL;
 			nv = (nv = value("newmail")) ? savestr(nv) : NULL;
-			if (is_a_tty[0] && (av != NULL || nv != NULL ||
+			if ((options & OPT_TTYIN) &&
+					(av != NULL || nv != NULL ||
 					mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
@@ -596,8 +597,8 @@ execute(char *linebuf, int contxt, size_t linesize)
 	if ((com->c_argtype & F) == 0) {
 		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
-				(cond == CTERM && ! is_a_tty[0]) ||
-				(cond == CNONTERM && is_a_tty[0]))
+				(cond == CTERM && ! (options & OPT_TTYIN)) ||
+				(cond == CNONTERM && (options & OPT_TTYIN)))
 			goto jfree_ret0;
 	}
 

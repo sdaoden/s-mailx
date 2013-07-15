@@ -339,7 +339,7 @@ int
 	 * this is only relevant if input comes from a terminal, we can simply
 	 * bypass it by read() then.
 	 */
-	if (fileno(ibuf) == 0 && is_a_tty[0]) {
+	if (fileno(ibuf) == 0 && (options & OPT_TTYIN)) {
 		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
 			*linebuf = (srealloc)(*linebuf,
 					*linesize = LINESIZE + n + 1

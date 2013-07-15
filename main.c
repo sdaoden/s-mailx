@@ -120,13 +120,13 @@ _startup(void)
 	 * Figure out whether we are being run interactively,
 	 * start the SIGCHLD catcher, and so forth */
 	safe_signal(SIGCHLD, sigchild);
-	is_a_tty[0] = isatty(0);
-	is_a_tty[1] = isatty(1);
-	if (is_a_tty[0]) {
-		options |= OPT_INTERACTIVE;
-		if (is_a_tty[1])
-			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
-	}
+
+	if (isatty(0))
+		options |= OPT_TTYIN | OPT_INTERACTIVE;
+	if (isatty(1))
+		options |= OPT_TTYOUT;
+	if (IS_TTY_SESSION())
+		safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 	assign("header", "");
 	assign("save", "");
 

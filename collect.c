@@ -167,7 +167,7 @@ print_collf(FILE *collf, struct header *hp)
 	rewind(collf);
 	count = count2 = fsize(collf);
 
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL) {
 		for (linecnt = 0;
 			fgetline(&lbuf, &linesize, &count2, NULL, collf, 0);
 			linecnt++);

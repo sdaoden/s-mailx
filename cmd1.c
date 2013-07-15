@@ -318,7 +318,7 @@ from(void *v)
 	time_current_update(&time_current, FAL0);
 
 	/* TODO unfixable memory leaks still */
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
@@ -860,7 +860,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		} else {
 			safe_signal(SIGPIPE, brokpipe);
 		}
-	} else if ((options & OPT_INTERACTIVE) &&
+	} else if ((options & OPT_TTYOUT) &&
 			(page || (cp = value("crt")) != NULL)) {
 		nlines = 0;
 		if (!page) {

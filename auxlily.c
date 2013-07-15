@@ -200,9 +200,9 @@ paging_seems_sensible(void)
 	size_t ret = 0;
 	char const *cp;
 
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL)
+	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL)
 		ret = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
-	return (ret);
+	return ret;
 }
 
 void
