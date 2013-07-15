@@ -1398,6 +1398,14 @@ option can be used to fine-tune loading of the sources.
 .Ic copy
 but marks the messages for deletion if they were transferred
 successfully.
+.It Ic more
+Takes a message list and invokes the
+.Va PAGER
+on that list, printing a form-feed (`\\f') in between messages.
+.It Ic More
+Like
+.Ic more ,
+but also prints ignored header fields and all MIME parts.
 .It Ic Move
 (Mv) Similar to
 .Ic move ,
