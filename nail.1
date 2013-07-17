@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jul 16, 2013
+.Dd Jul 17, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2658,6 +2658,8 @@ If
 .Va crt
 is set without a value then the height of the terminal screen stored in
 the system is used to compute the threshold (see
+.Va LINES
+and
 .Xr stty 1 Ns
 ).
 .It Va DEAD
@@ -3385,11 +3387,17 @@ command and `~v' tilde escape.
 Besides the variables described above,
 \*(UA uses the following environment strings:
 .Bl -tag -width ".It Va MAILRC"
+.It Va COLUMNS
+The user's preferred width in column positions for the terminal screen
+or window (only used during startup).
 .It Va HOME
 The user's home directory.
 .It Va LANG , Va LC_ALL , Va LC_COLLATE , Va LC_CTYPE , Va LC_MESSAGES
 See
 .Xr locale  7 .
+.It Va LINES
+The user's preferred number of lines on a page or the vertical screen or
+window size in lines (only used during startup).
 .It Va MAILRC
 Is used as a startup file instead of \*(ur if set.
 When \*(UA scripts are invoked on behalf of other users,
