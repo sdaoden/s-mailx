@@ -204,6 +204,8 @@ _setscreensize(int is_sighdl)
 	struct termios tbuf;
 #ifdef TIOCGWINSZ
 	struct winsize ws;
+#elif defined TIOCGSIZE
+	struct ttysize ts;
 #endif
 	speed_t ospeed;
 	(void)is_sighdl;
@@ -211,11 +213,15 @@ _setscreensize(int is_sighdl)
 #ifdef TIOCGWINSZ
 	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
 		ws.ws_col = ws.ws_row = 0;
+#elif defined TIOCGSIZE
+	if (ioctl(1, TIOCGSIZE, &ws) < 0)
+		ts.ts_lines = ts.ts_cols = 0;
 #endif
 	if (tcgetattr(1, &tbuf) < 0)
 		ospeed = B9600;
 	else
 		ospeed = cfgetospeed(&tbuf);
+
 	if (ospeed < B1200)
 		scrnheight = 9;
 	else if (ospeed == B1200)
@@ -223,16 +229,31 @@ _setscreensize(int is_sighdl)
 #ifdef TIOCGWINSZ
 	else if (ws.ws_row != 0)
 		scrnheight = ws.ws_row;
+#elif defined TIOCGSIZE
+	else if (ts.ts_lines != 0)
+		scrnheight = ts.ts_lines;
 #endif
 	else
 		scrnheight = 24;
-#ifdef TIOCGWINSZ
-	if ((realscreenheight = ws.ws_row) == 0)
+
+#if defined TIOCGWINSZ || defined TIOCGSIZE
+	if (0 ==
+# ifdef TIOCGWINSZ
+			(realscreenheight = ws.ws_row)
+# else
+			(realscreenheight = ts.ts_lines)
+# endif
+	)
 		realscreenheight = 24;
 #endif
+
+	if (0 ==
 #ifdef TIOCGWINSZ
-	if ((scrnwidth = ws.ws_col) == 0)
+			(scrnwidth = ws.ws_col)
+#elif defined TIOCGSIZE
+			(scrnwidth = ts.ts_cols)
 #endif
+	)
 		scrnwidth = 80;
 
 #ifdef SIGWINCH
