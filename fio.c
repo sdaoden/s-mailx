@@ -399,27 +399,27 @@ int
 	SMALLOC_DEBUG_ARGS)
 {
 	FILE *ifile = (_input != NULL) ? _input : stdin;
+	bool_t doprompt, dotty;
 	int n;
 
 	if (prompt == NULL)
 		prompt = getprompt();
-#ifndef HAVE_CLEDIT
-	if (! sourcing && (options & OPT_INTERACTIVE)) {
-		fputs(prompt, stdout);
-		fflush(stdout);
-	}
-#endif
+	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && ! boption("line-editor-disable"));
 
 	for (n = 0;;) {
-#ifdef HAVE_CLEDIT
-		if (! sourcing && (options & OPT_INTERACTIVE)) {
+		if (dotty) {
 			assert(ifile == stdin);
 			n = (tty_readline)(prompt, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
-		} else
-#endif
+		} else {
+			if (doprompt && *prompt) {
+				fputs(prompt, stdout);
+				fflush(stdout);
+			}
 			n = (readline_restart)(ifile, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
+		}
 		if (n <= 0)
 			break;
 		/*
@@ -431,13 +431,11 @@ int
 		if ((*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
 			if (*prompt)
-				prompt = "> "; /* XXX PS2 .. */
+				prompt = ".. "; /* XXX PS2 .. */
 			continue;
 		}
-#ifdef HAVE_CLEDIT
-		if (! sourcing && (options & OPT_INTERACTIVE))
+		if (dotty)
 			tty_addhist(*linebuf);
-#endif
 		break;
 	}
 	return n;
@@ -449,40 +447,37 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 	/* TODO readstr_input(): linebuf pool */
 	size_t linesize = 0, slen;
 	char *linebuf = NULL, *rv = NULL;
+	bool_t doprompt, dotty;
 
 	if (prompt == NULL)
 		prompt = getprompt();
-
-	slen = (string != NULL) ? strlen(string) : 0;
-	linesize = slen + LINESIZE + 1;
-	linebuf = smalloc(linesize);
-	if (slen)
-		memcpy(linebuf, string, slen + 1);
+	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && ! boption("line-editor-disable"));
 
 	/* If STDIN is not a terminal, simply read from it */
-#ifdef HAVE_CLEDIT
-	if (! (options & OPT_INTERACTIVE)) {
-		slen = 0;
-#else
-		bool_t doff = FAL0;
-		if (*prompt)
-			fputs(prompt, stdout), doff = TRU1;
+	if (dotty) {
+		slen = (string != NULL) ? strlen(string) : 0;
 		if (slen) {
-			if (options & OPT_INTERACTIVE)
-				fputs(string, stdout), doff = TRU1;
-			else
-				slen = 0;
+			linesize = slen + LINESIZE + 1;
+			linebuf = smalloc(linesize);
+			if (slen)
+				memcpy(linebuf, string, slen + 1);
 		}
-		if (doff)
+		if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
+			rv = linebuf;
+	} else {
+		if (doprompt && *prompt) {
+			fputs(prompt, stdout);
 			fflush(stdout);
-#endif
+		}
+		linesize = slen = 0;
+		linebuf = NULL;
 		if (readline_restart(stdin, &linebuf, &linesize, slen) >= 0)
-			rv = savestr(linebuf);
-#ifdef HAVE_CLEDIT
-	} else if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
-		rv = savestr(linebuf);
-#endif
+			rv = linebuf;
+	}
 
+	if (rv)
+		rv = savestr(rv);
 	free(linebuf);
 	return rv;
 }

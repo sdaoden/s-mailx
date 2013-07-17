@@ -64,10 +64,6 @@ static	sigjmp_buf	collabort;	/* To end collection with error */
 
 static	sigjmp_buf pipejmp;		/* On broken pipe */
 
-/* We want to selectively handle history additions and don't allow backslash
- * escaping for newlines, so we can't use readline_input() directly */
-static long	_read_stdin(char **linebuf, size_t *linesize);
-
 /* If *interactive* is set and *echo* is, too, also dump to *stdout* */
 static int	_include_file(FILE *fbuf, char const *name, int *linecount,
 			int *charcount, int echo);
@@ -84,22 +80,6 @@ static void collstop(int s);
 static void collint(int s);
 static void collhup(int s);
 static int putesc(const char *s, FILE *stream);
-
-static long
-_read_stdin(char **linebuf, size_t *linesize)
-{
-	long rv;
-
-#ifdef HAVE_CLEDIT
-	if (! (options & OPT_INTERACTIVE)) {
-#endif
-		rv = readline_restart(stdin, linebuf, linesize, 0);
-#ifdef HAVE_CLEDIT
-	} else
-		rv = tty_readline("", linebuf, linesize, 0);
-#endif
-	return rv;
-}
 
 static int
 _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
@@ -445,9 +425,15 @@ jcont:
 	 * The interactive collect loop
 	 */
 	for (;;) {
+		bool_t dotty = ((options & OPT_INTERACTIVE) &&
+				! boption("line-editor-disable"));
 		colljmp_p = 1;
-		count = _read_stdin(&linebuf, &linesize);
+		if (dotty)
+			count = tty_readline("", &linebuf, &linesize, 0);
+		else
+			count = readline_restart(stdin, &linebuf, &linesize, 0);
 		colljmp_p = 0;
+
 		if (count < 0) {
 			if ((options & OPT_INTERACTIVE) &&
 			    value("ignoreeof") != NULL && ++eofcount < 25) {
@@ -465,6 +451,7 @@ jcont:
 			options &= ~OPT_t_FLAG;
 			continue;
 		}
+
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
@@ -482,7 +469,7 @@ jcont:
 		}
 
 		/* Save tilde escapes in history */
-		if (options & OPT_INTERACTIVE)
+		if (dotty)
 			tty_addhist(linebuf);
 
 		c = linebuf[1];
