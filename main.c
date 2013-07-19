@@ -146,6 +146,11 @@ _startup(void)
 				mbtowc(&wc, "\342\202\254", 3) == 3 &&
 				wc == 0x20AC)
 			utf8 = 1;
+		/* Reset state - it may have been messed up; luckily this also
+		 * gives us an indication wether the encoding has locking shift
+		 * state sequences */
+		/* TODO temporary - use option bits! */
+		enc_has_state = mbtowc(&wc, NULL, mb_cur_max);
 	}
 # endif
 #else

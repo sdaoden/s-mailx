@@ -59,6 +59,7 @@ _E int		scrnwidth;		/* Screen width, or best guess */
 _E int		scrnheight;		/* Screen height, or best guess,
 					 *  for "header" command */
 _E int		utf8;			/* UTF-8 encoding in use for locale */
+_E int		enc_has_state;		/* Encoding has shift states */
 
 _E char		**altnames;		/* List of alternate names for user */
 _E char const	*homedir;		/* Path name of home directory */
