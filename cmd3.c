@@ -255,11 +255,15 @@ help(void *v)
 		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
 			if (cp->c_func == &ccmdnotsupp)
 				continue;
-			if (strcmp(cp->c_name, arg) == 0) {
+			if (strcmp(arg, cp->c_name) == 0)
 				printf("%s: %s\n", arg,
 					tr(cp->c_docid, cp->c_doc));
-				goto jleave;
-			}
+			else if (is_prefix(arg, cp->c_name))
+				printf("%s (%s): %s\n", arg, cp->c_name,
+					tr(cp->c_docid, cp->c_doc));
+			else
+				continue;
+			goto jleave;
 		}
 		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), arg);
 		ret = 1;
