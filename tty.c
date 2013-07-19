@@ -54,10 +54,6 @@
 
 #include "extern.h"
 
-#ifdef HAVE_CLEDIT /* FIXME */
-static sighandler_type	_sigcont_save;
-static bool_t		_handle_cont;
-#endif
 #ifdef HAVE_READLINE
 static char *		_rl_buf;
 static int		_rl_buflen;
@@ -127,8 +123,6 @@ tty_init(void)
 
 	if ((v = _cl_histfile()) != NULL)
 		read_history(v);
-
-	_sigcont_save = safe_signal(SIGCONT, &tty_signal);
 }
 
 void
@@ -136,9 +130,6 @@ tty_destroy(void)
 {
 	char *v;
 
-# ifdef WANT_ASSERTS
-	safe_signal(SIGCONT, _sigcont_save);
-# endif
 	if ((v = _cl_histfile()) != NULL)
 		write_history(v);
 }
@@ -147,14 +138,10 @@ void
 tty_signal(int sig)
 {
 	switch (sig) {
-	case SIGCONT:
-		if (_handle_cont)
-			rl_forced_update_display();
-		break;
-#ifdef SIGWINCH
+# ifdef SIGWINCH
 	case SIGWINCH:
 		break;
-#endif
+# endif
 	default:
 		break;
 	}
@@ -172,9 +159,8 @@ int
 		_rl_buflen = (int)n;
 		rl_pre_input_hook = &_rl_pre_input;
 	}
-	_handle_cont = TRU1;
 	line = readline(prompt);
-	_handle_cont = FAL0;
+
 	if (line == NULL) {
 		nn = -1;
 		goto jleave;
@@ -227,8 +213,6 @@ tty_init(void)
 
 	if ((v = _cl_histfile()) != NULL)
 		history(_el_hcom, &he, H_LOAD, v);
-
-	_sigcont_save = safe_signal(SIGCONT, &tty_signal);
 }
 
 void
@@ -237,9 +221,6 @@ tty_destroy(void)
 	HistEvent he;
 	char *v;
 
-# ifdef WANT_ASSERTS
-	safe_signal(SIGCONT, _sigcont_save);
-# endif
 	el_end(_el_el);
 
 	if ((v = _cl_histfile()) != NULL)
@@ -251,15 +232,11 @@ void
 tty_signal(int sig)
 {
 	switch (sig) {
-	case SIGCONT:
-		if (_handle_cont)
-			el_set(_el_el, EL_REFRESH);
-		break;
-#ifdef SIGWINCH
+# ifdef SIGWINCH
 	case SIGWINCH:
 		el_resize(_el_el);
 		break;
-#endif
+# endif
 	default:
 		break;
 	}
@@ -275,9 +252,8 @@ int
 	_el_prompt = prompt;
 	if (n > 0)
 		el_push(_el_el, *linebuf);
-	_handle_cont = TRU1;
 	line = el_gets(_el_el, &nn);
-	_handle_cont = FAL0;
+
 	if (line == NULL) {
 		nn = -1;
 		goto jleave;
