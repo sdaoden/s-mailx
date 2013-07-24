@@ -13,7 +13,8 @@ also exists the possibility to browse the manual online [5].
 
   [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
   [2] <http://sourceforge.net/p/s-nail/code/>
-  [3] <https://sourceforge.net/projects/s-nail/files/latest/download?source=files>
+  [3] <https://sourceforge.net/projects/s-nail/files/latest/download?\
+      source=files>
   [4] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
   [5] <http://sdaoden.users.sourceforge.net/code-nail.html>
 
@@ -27,7 +28,13 @@ The S-nail(1) git(1) repository consists of three branches:
   S-nail(1).
 
 - next: rooted on top of *master*, this consists of a furious mixture of
-  commits that eventually end up in *master*.
+  commits that eventually end up in *master*; it is a snapshot of the
+  *crawl* branch, taken once that seemed to be quite stable.
+
+- crawl: because of my brain-damaged way of working this is what *next*
+  ought to be, but since people are using *next* i needed to isolate my
+  grazy-grazy-grazy fixup-cross-your-fingers-now-that committs somewhere
+  else.
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
