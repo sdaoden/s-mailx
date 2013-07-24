@@ -453,8 +453,8 @@ jcont:
 				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
 				(boption("dot") || boption("ignoreeof")))
 			break;
-		if (linebuf[0] != escape || ! (options &
-				(OPT_INTERACTIVE|OPT_TILDE_FLAG))) {
+		if (count == 0 || linebuf[0] != escape || ! (options &
+				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
 			/* TODO calls putline(), which *always* appends LF;
 			 * TODO thus, STDIN with -t will ALWAYS end with LF,
 			 * TODO even if no trailing LF and QP CTE */
