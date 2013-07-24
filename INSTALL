@@ -47,10 +47,11 @@ And instead of editing user.conf you may also choose predefined CONFIG
 sets from the command line:
 
 o CONFIG=MINIMAL  little is left but some air to breathe; no internet
-                  connectivity.
+                  connectivity, no command line editor.
 
-o CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled, otherwise
-                  identical to MINIMAL.
+o CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled and the
+                  builtin command line editor will be used if possible,
+                  otherwise identical to MINIMAL.
 
 o CONFIG=CUSTOM   don't touch anything, i.e., enable all features.
                   To disable specific features, add FEATURE=0 command
