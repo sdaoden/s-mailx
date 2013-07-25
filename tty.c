@@ -87,6 +87,19 @@ do {\
 		S = fexpand(S, FEXP_LOCAL);\
 } while (0)
 
+/* */
+#define _CL_CHECK_ADDHIST(S,NOACT) \
+do {\
+	switch (*(S)) {\
+	case '\0':\
+	case ' ':\
+		NOACT;\
+		/* FALLTHRU */
+	default:\
+		break;\
+	}\
+} while (0)
+
 /*
  * Because we have multiple identical implementations, change file layout a bit
  * and place the implementations one after the other below the other externals
@@ -266,7 +279,9 @@ jleave:
 void
 tty_addhist(char const *s)
 {
+	_CL_CHECK_ADDHIST(s, goto jleave);
 	add_history(s);
+jleave:	;
 }
 #endif /* HAVE_READLINE */
 
@@ -385,6 +400,8 @@ tty_addhist(char const *s)
 	HistEvent he;
 	int i;
 
+	_CL_CHECK_ADDHIST(s, goto jleave);
+
 	if (history(_el_hcom, &he, H_GETUNIQUE) < 0 || he.num == 0)
 		goto jadd;
 
@@ -396,6 +413,7 @@ tty_addhist(char const *s)
 		}
 jadd:
 	history(_el_hcom, &he, H_ENTER, s);
+jleave:	;
 }
 #endif /* HAVE_EDITLINE */
 
@@ -1114,6 +1132,8 @@ tty_addhist(char const *s)
 	size_t l = strlen(s);
 	struct hist *h, *o, *y;
 
+	_CL_CHECK_ADDHIST(s, goto j_leave);
+
 	/* Eliminating duplicates is expensive, but simply inacceptable so
 	 * during the load of a potentially large history file! */
 	if (! _ncl_hist_load)
@@ -1141,6 +1161,7 @@ jleave:
 		_ncl_hist->younger = h;
 	h->younger = NULL;
 	_ncl_hist = h;
+j_leave: ;
 }
 #endif /* __NCL */
 

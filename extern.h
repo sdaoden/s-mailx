@@ -1018,8 +1018,8 @@ int	tty_readline(char const *prompt, char **linebuf, size_t *linesize,
 # define tty_readline(A,B,C,D)	tty_readline(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Add a line (most likely as returned by tty_readline()) to the history;
- * caller should ensure `s' isn't the empty string */
+/* Add a line (most likely as returned by tty_readline()) to the history
+ * (only added for real if non-empty and doesn't begin with U+0020) */
 void	tty_addhist(char const *s);
 
 /* [Yy]es or [Nn]o */
