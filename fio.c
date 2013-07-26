@@ -82,7 +82,7 @@ static void	_findmail(char *buf, size_t bufsize, char const *user,
 			bool_t force);
 
 /* Perform shell meta character expansion */
-static char *	_globname(char const *name);
+static char *	_globname(char const *name, enum fexp_mode fexpm);
 
 /* *line* is a buffer with the result of fgets().
  * Returns the first newline or the last character read */
@@ -125,7 +125,7 @@ jleave:
 }
 
 static char *
-_globname(char const *name)
+_globname(char const *name, enum fexp_mode fexpm)
 {
 #ifdef HAVE_WORDEXP
 	wordexp_t we;
@@ -143,9 +143,9 @@ _globname(char const *name)
 	sigprocmask(SIG_BLOCK, &nset, NULL);
 	/* Mac OS X Snow Leopard doesn't init fields on error, causing SIGSEGV
 	 * in wordfree(3) */
-#ifdef __APPLE__
+# ifdef __APPLE__
 	memset(&we, 0, sizeof we);
-#endif
+# endif
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
@@ -153,13 +153,17 @@ _globname(char const *name)
 	case 0:
 		break;
 	case WRDE_NOSPACE:
-		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
-			name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr,
+				tr(83, "\"%s\": Expansion buffer overflow.\n"),
+				name);
 		goto jleave;
 	case WRDE_BADCHAR:
 	case WRDE_SYNTAX:
 	default:
-		fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"),
+				name);
 		goto jleave;
 	}
 
@@ -168,10 +172,26 @@ _globname(char const *name)
 		cp = savestr(we.we_wordv[0]);
 		break;
 	case 0:
-		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
 		break;
 	default:
-		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
+		if (fexpm & FEXP_MULTIOK) {
+			size_t j, l;
+
+			for (l = 0, j = 0; j < we.we_wordc; ++j)
+				l += strlen(we.we_wordv[j]) + 1;
+			++l;
+			cp = salloc(l);
+			for (l = 0, j = 0; j < we.we_wordc; ++j) {
+				size_t x = strlen(we.we_wordv[j]);
+				memcpy(cp + l, we.we_wordv[j], x);
+				l += x;
+				cp[l++] = ' ';
+			}
+			cp[l] = '\0';
+		} else if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		break;
 	}
 jleave:
@@ -212,24 +232,31 @@ again:
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
-		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"),
+				name);
 		return NULL;
 	}
 	if (l == 0) {
-		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
 		return NULL;
 	}
 	if (l == sizeof xname) {
-		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
-			name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr,
+				tr(83, "\"%s\": Expansion buffer overflow.\n"),
+				name);
 		return NULL;
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
 		;
 	cp[1] = '\0';
-	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
-		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
+	if (! (fexpm & FEXP_MULTIOK) && strchr(xname, ' ') &&
+			stat(xname, &sbuf) < 0) {
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
 	return savestr(xname);
@@ -826,7 +853,7 @@ jshell:
 
 	if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
 			which_protocol(res) == PROTO_FILE) {
-		res = _globname(res);
+		res = _globname(res, fexpm);
 		dyn = TRU1;
 		goto jleave;
 	}

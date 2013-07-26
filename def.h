@@ -258,7 +258,9 @@ enum fexp_mode {
 	FEXP_FULL,			/* Full expansion */
 	FEXP_LOCAL 	= 1<<0,		/* Result must be local file/maildir */
 	FEXP_SHELL 	= 1<<1,		/* No folder %,#,&,+ stuff, yet sh(1) */
-	FEXP_NSHORTCUT	= 1<<2		/* Don't expand shortcuts */
+	FEXP_NSHORTCUT	= 1<<2,		/* Don't expand shortcuts */
+	FEXP_SILENT	= 1<<3,		/* Don't print but only return errors */
+	FEXP_MULTIOK	= 1<<4		/* Expansion to many entries is ok */
 };
 
 enum okay {
