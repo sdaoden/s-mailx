@@ -468,9 +468,9 @@ jcont:
 			continue;
 		}
 
-		/* Save tilde escapes in history */
-		if (dotty)
-			tty_addhist(linebuf);
+		/* Save tilde escapes in history * xxx no, disabled!
+		 * if (dotty)
+		 *	tty_addhist(linebuf); */
 
 		c = linebuf[1];
 		switch (c) {
