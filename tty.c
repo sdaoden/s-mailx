@@ -967,14 +967,21 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
 	 * default content and / or default input to switch back to after some
 	 * history movement; let "len > 0" mean "have to display some data
 	 * buffer", and only otherwise read(2) it */
-	char cbuf_base[MB_LEN_MAX], *cbuf, *cbufp;
 	mbstate_t ps[2];
-	struct line l = {0, 0, {*buf},
-			{(len != 0 ? savestrbuf(*buf, len) : NULL), len},
-			{NULL, len},
-			NULL, prompt, buf, bufsize};
+	struct line l;
+	char cbuf_base[MB_LEN_MAX], *cbuf, *cbufp;
 	wchar_t wc;
 	ssize_t rv;
+
+	memset(&l, 0, sizeof l);
+	l.line.cbuf = *buf;
+	if (len != 0) {
+		l.defc.s = savestrbuf(*buf, len);
+		l.defc.l = len;
+	}
+	l.prompt = prompt;
+	l.x_buf = buf;
+	l.x_bufsize = bufsize;
 
 	if (*prompt) {
 		fputs(prompt, stdout);
