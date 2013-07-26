@@ -472,6 +472,13 @@ commands(void)
 				termios_state.ts_linesize = 0;
 				free(nv); /* TODO pool give-back */
 			}
+			/* TODO Due to expand-on-tab of our line editor the
+			 * TODO buffer may grow */
+			if (linesize > LINESIZE * 3) {
+				free(linebuf); /* TODO pool! but what? */
+				linebuf = NULL;
+				linesize = 0;
+			}
 		}
 
 		/*
