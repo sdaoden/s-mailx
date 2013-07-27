@@ -87,13 +87,27 @@ do {\
 } while (0)
 
 /* */
+#define _CL_HISTSIZE(V) \
+do {\
+	char const *__sv = voption("NAIL_HISTSIZE");\
+	long __rv;\
+	if (__sv == NULL || *__sv == '\0' ||\
+			(__rv = strtol(__sv, NULL, 10)) == 0)\
+		(V) = HIST_SIZE;\
+	else if (__rv < 0)\
+		(V) = 0;\
+	else\
+		(V) = __rv;\
+} while (0)
+
+/* */
 #define _CL_CHECK_ADDHIST(S,NOACT) \
 do {\
 	switch (*(S)) {\
 	case '\0':\
 	case ' ':\
 		NOACT;\
-		/* FALLTHRU */
+		/* FALLTHRU */\
 	default:\
 		break;\
 	}\
@@ -211,13 +225,19 @@ _rl_pre_input(void)
 void
 tty_init(void)
 {
+	long hs;
 	char *v;
+
+	_CL_HISTSIZE(hs);
 
 	rl_readline_name = UNCONST(uagent);
 	using_history();
-	stifle_history(HIST_SIZE);
+	stifle_history((int)hs);
 	rl_read_init_file(NULL);
 
+	/* Because rl_read_init_file() may have introduced yet a different
+	 * history size limit, simply load and incorporate the history, leave
+	 * it up to readline(3) to do the rest */
 	_CL_HISTFILE(v);
 	if (v != NULL)
 		read_history(v);
@@ -308,10 +328,13 @@ void
 tty_init(void)
 {
 	HistEvent he;
+	long hs;
 	char *v;
 
+	_CL_HISTSIZE(hs);
+
 	_el_hcom = history_init();
-	history(_el_hcom, &he, H_SETSIZE, HIST_SIZE);
+	history(_el_hcom, &he, H_SETSIZE, (int)hs);
 	history(_el_hcom, &he, H_SETUNIQUE, 1);
 
 	_el_el = el_init(uagent, stdin, stdout, stderr);
@@ -329,6 +352,9 @@ tty_init(void)
 	el_set(_el_el, EL_BIND, "^R", "ed-search-prev-history", NULL);
 	el_source(_el_el, NULL); /* Source ~/.editrc */
 
+	/* Because el_source() may have introduced yet a different history size
+	 * limit, simply load and incorporate the history, leave it up to
+	 * editline(3) to do the rest */
 	_CL_HISTFILE(v);
 	if (v != NULL)
 		history(_el_hcom, &he, H_LOAD, v);
@@ -1094,6 +1120,7 @@ jleave:
 void
 tty_init(void)
 {
+	long hs;
 	char *v, *lbuf;
 	FILE *f;
 	size_t lsize, count, llen;
@@ -1108,6 +1135,10 @@ tty_init(void)
 	_ncl_tios.tnew.c_cc[VTIME] = 0;
 	_ncl_tios.tnew.c_lflag &= ~ICANON;
 	_ncl_tios.tnew.c_lflag &= ~ECHO;
+
+	_CL_HISTSIZE(hs);
+	if (hs == 0)
+		goto jleave;
 
 	_CL_HISTFILE(v);
 	if (v == NULL)
@@ -1143,16 +1174,21 @@ jleave:	;
 void
 tty_destroy(void)
 {
+	long hs;
 	char *v;
 	struct hist *hp;
 	FILE *f;
+
+	_CL_HISTSIZE(hs);
+	if (hs == 0)
+		goto jleave;
 
 	_CL_HISTFILE(v);
 	if (v == NULL)
 		goto jleave;
 
 	if ((hp = _ncl_hist) != NULL)
-		while (hp->older != NULL)
+		while (hp->older != NULL && hs-- != 0)
 			hp = hp->older;
 
 	/* Much too Super-Heavy-Metal: block all sigs */
