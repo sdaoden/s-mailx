@@ -65,7 +65,6 @@
 # include <histedit.h>
 #elif defined HAVE_LINE_EDITOR
 # define __NCL
-# include <sys/ioctl.h>
 # include <sys/stat.h>
 # include <limits.h>
 # include <wchar.h>
@@ -99,6 +98,9 @@ do {\
 		break;\
 	}\
 } while (0)
+
+/* fexpand() flags for expand-on-tab */
+#define _CL_TAB_FEXP_FL	(FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
 
 /*
  * Because we have multiple identical implementations, change file layout a bit
@@ -499,6 +501,7 @@ static void	_ncl_kkill(struct line *l);
 static void	_ncl_kleft(struct line *l);
 static void	_ncl_kright(struct line *l);
 static void	_ncl_krefresh(struct line *l);
+static size_t	_ncl_kht(struct line *l);
 static size_t	__ncl_khist_shared(struct line *l, struct hist *hp);
 static size_t	_ncl_khist(struct line *l, bool_t backwd);
 static size_t	_ncl_krhist(struct line *l);
@@ -741,6 +744,87 @@ _ncl_krefresh(struct line *l)
 }
 
 static size_t
+_ncl_kht(struct line *l)
+{
+	struct str orig, bot, top, sub, exp;
+	bool_t set_savec = FAL0;
+	size_t rv = 0;
+
+	/* We cannot expand an empty line */
+	if (l->topins == 0)
+		goto jleave;
+
+	/* Get plain line data; if this is the first expansion/xy, update the
+	 * very original content so that ^G gets the origin back */
+	orig = l->savec;
+	_ncl_cell2save(l);
+	bot = l->savec;
+	if (orig.s != NULL)
+		l->savec = orig;
+	else
+		set_savec = TRU1;
+
+	/* Narrow down the sections of the line as necessary */
+	if (l->cursor != l->topins) {
+		struct cell *cap = l->line.cells;
+
+		for (top = bot, rv = l->cursor; rv != 0; ++cap, --rv) {
+			top.s += cap->count;
+			top.l -= cap->count;
+		}
+		bot.l -= top.l;
+	} else
+		top.s = NULL, top.l = 0;
+
+	/* We're not interested in the entire section, only in the last "word";
+	 * this means we're in trouble, since we'd need to convert to wide to
+	 * be able to perform proper classification!  However, be massively
+	 * simple-minded instead and look out for ASCII SP U+0020, which should
+	 * always work, too (otherwise the entire codebase won't work anyway) */
+	for (sub = bot, rv = sub.l; rv != 0; --rv) {
+		if (rv == 1)
+			--rv;
+		else if (sub.s[rv - 1] != ' ')
+			continue;
+		sub.s += rv;
+		sub.l -= rv;
+		bot.l -= sub.l;
+
+		/* TODO there is a TODO note upon fexpand() with multi-return;
+		 * TODO if that will change, the if() below can be simplified */
+		sub.s = savestrbuf(sub.s, sub.l);
+		hold_all_sigs();
+		exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
+		rele_all_sigs();
+		if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
+				(exp.l != sub.l || strcmp(exp.s, sub.s))) {
+			orig.l = bot.l + exp.l + top.l;
+			orig.s = salloc(orig.l + 1);
+			memcpy(orig.s, bot.s, (rv = bot.l));
+			memcpy(orig.s + rv, exp.s, exp.l);
+			rv += exp.l;
+			memcpy(orig.s + rv, top.s, top.l);
+			rv += top.l;
+			orig.s[rv] = '\0';
+
+			l->defc = orig;
+			_ncl_khome(l);
+			_ncl_kkill(l);
+			goto jleave;
+		}
+		break;
+	}
+
+	/* If we've provided a default content, but failed to expand, there is
+	 * nothing we can "revert to": drop that default again */
+	if (set_savec)
+		l->savec.s = NULL, l->savec.l = 0;
+	rv = 0;
+jleave:
+	return rv;
+}
+
+static size_t
 __ncl_khist_shared(struct line *l, struct hist *hp)
 {
 	size_t rv;
@@ -938,6 +1022,10 @@ jrestart:
 		case '\177':
 			_ncl_kbs(&l);
 			break;
+		case 'I' ^ 0x40: /* horizontal tab */
+			if ((len = _ncl_kht(&l)) > 0)
+				goto jrestart;
+			goto jbell;
 		case 'J' ^ 0x40: /* \n */
 			goto jdone;
 		case 'G' ^ 0x40: /* full reset */
