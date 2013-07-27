@@ -431,9 +431,6 @@ jleave:	;
  * us from the outside--to store anything we need, i.e., a `struct cell[]', and
  * convert that on-the-fly back to the plain char* result once we're done.
  * To simplify our live, use savestr() buffers for all other needed memory */
-/* TODO we need _sigs_up() / _sigs_down() because of the stacked signal
- * TODO handling in the nail codebase, that may JUMP away.  FIND A BETTER ONE */
-/* TODO addhistory() is not protected at all! */
 
 #ifdef __NCL
 union xsighdl {
@@ -793,6 +790,7 @@ _ncl_kht(struct line *l)
 		/* TODO there is a TODO note upon fexpand() with multi-return;
 		 * TODO if that will change, the if() below can be simplified */
 		sub.s = savestrbuf(sub.s, sub.l);
+		/* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
 		hold_all_sigs();
 		exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
 		rele_all_sigs();
@@ -1115,8 +1113,9 @@ tty_init(void)
 	if (v == NULL)
 		goto jleave;
 
-	holdsigs(); /* TODO SIGNALS DURING HISTFILE LOAD; use linebuf pool */
-	f = fopen(v, "r");
+	/* Much too Super-Heavy-Metal: block all sigs */
+	hold_all_sigs();
+	f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
 	if (f == NULL)
 		goto jdone;
 
@@ -1137,7 +1136,7 @@ tty_init(void)
 
 	fclose(f);
 jdone:
-	relsesigs();
+	rele_all_sigs();
 jleave:	;
 }
 
@@ -1156,7 +1155,8 @@ tty_destroy(void)
 		while (hp->older != NULL)
 			hp = hp->older;
 
-	holdsigs(); /* TODO SIGNALS DURING HISTFILE SAVE */
+	/* Much too Super-Heavy-Metal: block all sigs */
+	hold_all_sigs();
 	f = fopen(v, "w"); /* TODO temporary + rename?! */
 	if (f == NULL)
 		goto jdone;
@@ -1170,7 +1170,7 @@ tty_destroy(void)
 jclose:
 	fclose(f);
 jdone:
-	relsesigs();
+	rele_all_sigs();
 jleave:	;
 }
 
@@ -1217,6 +1217,7 @@ int
 void
 tty_addhist(char const *s)
 {
+	/* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
 	size_t l = strlen(s);
 	struct hist *h, *o, *y;
 
@@ -1227,6 +1228,7 @@ tty_addhist(char const *s)
 	if (! _ncl_hist_load)
 		for (h = _ncl_hist; h != NULL; h = h->older)
 			if (h->len == l && strcmp(h->dat, s) == 0) {
+				hold_all_sigs();
 				o = h->older;
 				y = h->younger;
 				if (o != NULL) {
@@ -1239,6 +1241,7 @@ tty_addhist(char const *s)
 					_ncl_hist = o;
 				goto jleave;
 			}
+	hold_all_sigs();
 
 	h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) +
 		l + 1);
@@ -1249,7 +1252,9 @@ jleave:
 		_ncl_hist->younger = h;
 	h->younger = NULL;
 	_ncl_hist = h;
-j_leave: ;
+
+	rele_all_sigs();
+j_leave:;
 }
 #endif /* __NCL */
 
