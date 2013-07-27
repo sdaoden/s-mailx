@@ -60,8 +60,17 @@ struct attachment *	append_attachments(struct attachment *aphead,
 /* Interactively edit the attachment list, return the new list head */
 struct attachment *	edit_attachments(struct attachment *aphead);
 
-/* auxlily.c */
-void panic(const char *format, ...);
+/*
+ * auxlily.c
+ */
+
+/* Announce a fatal error and die */
+void	panic(const char *format, ...);
+
+/* Hold *all* signals, and release that total block again */
+void	hold_all_sigs(void);
+void	rele_all_sigs(void);
+
 void holdint(void);
 void relseint(void);
 void touch(struct message *mp);
