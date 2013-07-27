@@ -295,6 +295,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		safe_signal(SIGINT, collint);
 	if ((savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGHUP, collhup);
+	/* TODO We do a lot of redundant signal handling, especially
+	 * TODO with the line editor(s); try to merge this */
 	savetstp = safe_signal(SIGTSTP, collstop);
 	savettou = safe_signal(SIGTTOU, collstop);
 	savettin = safe_signal(SIGTTIN, collstop);

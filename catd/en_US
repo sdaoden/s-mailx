@@ -494,3 +494,4 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 508 Undefined macro called: \"%s\"\n
 509 $User: $
 510 $Password: $
+511 ${former content: %.*s} $
