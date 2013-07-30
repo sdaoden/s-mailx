@@ -289,6 +289,8 @@ struct cmd const cmdtab[] = {
 	  DS(391, "Un\"define\" all <macros>") },
 	{ "call",	ccall,		M|RAWLIST,	0,	1
 	  DS(308, "Call a macro") },
+	{ "~",		ccall,		M|RAWLIST,	0,	1
+	  DS(308, "Call a macro") },
 	{ "move",	cmove,		A|M|STRLIST,	0,	0
 	  DS(353, "Like \"copy\", but mark messages for deletion") },
 	{ "mv",		cmove,		A|M|STRLIST,	0,	0

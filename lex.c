@@ -529,59 +529,58 @@ commands(void)
 int
 execute(char *linebuf, int contxt, size_t linesize)
 {
-	char *arglist[MAXARGC], *word, *cp;
+	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
 	struct cmd const *com = (struct cmd*)NULL;
 	int muvec[2], c, e = 1;
 
-	/* '~X' -> 'call X' */
-	word = ac_alloc(MAX(sizeof("call"), linesize) + 1);
-
-	/*
-	 * Strip the white space away from the beginning
-	 * of the command, then scan out a word, which
-	 * consists of anything except digits and white space.
-	 *
-	 * Handle ! escapes differently to get the correct
-	 * lexical conventions.
-	 */
-	for (cp = linebuf; whitechar(*cp); cp++)
+	/* Strip the white space away from the beginning of the command */
+	for (cp = linebuf; whitechar(*cp); ++cp)
 		;
+
+	/* Ignore comments */
+	if (*cp == '#')
+		goto jleave0;
+
+	/* Handle ! differently to get the correct lexical conventions */
 	if (*cp == '!') {
 		if (sourcing) {
 			fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
 			goto jleave;
 		}
-		shell(cp + 1);
-		goto jfree_ret0;
+		shell(++cp);
+		goto jleave0;
 	}
 
-	if (*cp == '#')
-		goto jfree_ret0;
-
-	if (*cp == '~') {
+	/* Isolate the actual command; since it may not necessarily be
+	 * separated from the arguments (as in `p1') we need to duplicate it to
+	 * be able to create a NUL terminated version.
+	 * We must be aware of special one letter commands here */
+	arglist[0] = cp;
+	switch (*cp) {
+	case '|':
+	case '~':
 		++cp;
-		memcpy(word, "call", 5);
-	} else {
-		char *cp2 = word;
-
-		if (*cp != '|') {
-			while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
-					*cp) == NULL)
-				*cp2++ = *cp++;
-		} else
-			*cp2++ = *cp++;
-		*cp2 = '\0';
+		/* FALLTHRU */
+	case '\0':
+		break;
+	default:
+		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
+				*cp) == NULL)
+			++cp;
+		break;
 	}
+	c = (int)(cp - arglist[0]);
+	linesize -= c;
+	word = (c <= 1) ? _wordbuf : salloc(c + 1);
+	memcpy(word, arglist[0], c);
+	word[c] = '\0';
 
-	/*
-	 * Look up the command; if not found, bitch.
-	 * Normally, a blank command would map to the
-	 * first command in the table; while sourcing,
-	 * however, we ignore blank lines to eliminate
-	 * confusion.
-	 */
+	/* Look up the command; if not found, bitch.
+	 * Normally, a blank command would map to the first command in the
+	 * table; while sourcing, however, we ignore blank lines to eliminate
+	 * confusion */
 	if (sourcing && *word == '\0')
-		goto jfree_ret0;
+		goto jleave0;
 
 	com = lex(word);
 	if (com == NULL || com->c_func == &ccmdnotsupp) {
@@ -602,7 +601,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
 				(cond == CTERM && ! (options & OPT_TTYIN)) ||
 				(cond == CNONTERM && (options & OPT_TTYIN)))
-			goto jfree_ret0;
+			goto jleave0;
 	}
 
 	/*
@@ -714,8 +713,6 @@ je96:
 	}
 
 jleave:
-	ac_free(word);
-
 	/* Exit the current source file on error */
 	if (e) {
 		if (e < 0)
@@ -736,10 +733,7 @@ jleave:
 		}
 	if (! sourcing && ! inhook && (com->c_argtype & T) == 0)
 		sawcom = TRU1;
-	return 0;
-
-jfree_ret0:
-	ac_free(word);
+jleave0:
 	return 0;
 }
 
