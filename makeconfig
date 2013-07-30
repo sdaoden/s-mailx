@@ -591,10 +591,19 @@ int main(void)
 !
 	sed -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
 
-	< ${tmp2}.c link_check gssapi \
-			'for GSSAPI in gssapi/gssapi.h, libgssapi' \
-			'#define USE_GSSAPI' \
-			'-lgssapi' || \
+	if command -v krb5-config >/dev/null 2>&1; then
+		i=`command -v krb5-config`
+		GSSAPI_LIBS=`${i} --libs gssapi`
+		GSSAPI_INCS=`${i} --cflags`
+		i='for GSSAPI via krb5-config(1)'
+	else
+		GSSAPI_LIBS='-lgssapi'
+		GSSAPI_INCS=
+		i='for GSSAPI in gssapi/gssapi.h, libgssapi'
+	fi
+	< ${tmp2}.c link_check gssapi\
+			"${i}" '#define USE_GSSAPI'\
+			"${GSSAPI_LIBS}" "${GSSAPI_INCS}" || \
 		< ${tmp3}.c link_check gssapi \
 			'for GSSAPI in gssapi.h, libgssapi' \
 			'#define USE_GSSAPI
@@ -610,7 +619,7 @@ int main(void)
 			'#define USE_GSSAPI' \
 			'-lgssapi_krb5' || \
 		< ${tmp3}.c link_check gssapi \
-			'for GSSAPI in libgssapi, OpenBSD-style' \
+			'for GSSAPI in libgssapi, OpenBSD-style (pre 5.3)' \
 			'#define USE_GSSAPI
 			#define	GSSAPI_REG_INCLUDE' \
 			'-lgssapi -lkrb5 -lcrypto' \
