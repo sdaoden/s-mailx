@@ -425,13 +425,8 @@ jcont:
 	 * The interactive collect loop
 	 */
 	for (;;) {
-		bool_t dotty = ((options & OPT_INTERACTIVE) &&
-				! boption("line-editor-disable"));
 		colljmp_p = 1;
-		if (dotty)
-			count = tty_readline("", &linebuf, &linesize, 0);
-		else
-			count = readline_restart(stdin, &linebuf, &linesize, 0);
+		count = readline_input(LNED_NONE, "", &linebuf, &linesize);
 		colljmp_p = 0;
 
 		if (count < 0) {
@@ -467,10 +462,6 @@ jcont:
 				goto jerr;
 			continue;
 		}
-
-		/* Save tilde escapes in history * xxx no, disabled!
-		 * if (dotty)
-		 *	tty_addhist(linebuf); */
 
 		c = linebuf[1];
 		switch (c) {

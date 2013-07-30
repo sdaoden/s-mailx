@@ -422,8 +422,8 @@ again:
 }
 
 int
-(readline_input)(char const *prompt, char **linebuf, size_t *linesize
-	SMALLOC_DEBUG_ARGS)
+(readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
+	size_t *linesize SMALLOC_DEBUG_ARGS)
 {
 	FILE *ifile = (_input != NULL) ? _input : stdin;
 	bool_t doprompt, dotty;
@@ -455,13 +455,13 @@ int
 		 * shall be discarded and the next line shall continue the
 		 * command.
 		 */
-		if ((*linebuf)[n - 1] == '\\') {
+		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
 			if (*prompt)
 				prompt = ".. "; /* XXX PS2 .. */
 			continue;
 		}
-		if (dotty)
+		if (dotty && (lned & LNED_HIST_ADD))
 			tty_addhist(*linebuf);
 		break;
 	}

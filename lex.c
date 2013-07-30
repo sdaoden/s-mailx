@@ -485,7 +485,8 @@ commands(void)
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
 		 */
-		n = readline_input(NULL, &linebuf, &linesize);
+		n = readline_input(LNED_LF_ESC | LNED_HIST_ADD, NULL,
+			&linebuf, &linesize);
 		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */
