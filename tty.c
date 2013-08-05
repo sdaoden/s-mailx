@@ -801,7 +801,8 @@ _ncl_krefresh(struct line *l)
 		fputs(l->prompt, stdout);
 	for (cap = l->line.cells, i = l->topins; i > 0; ++cap, --i)
 		fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
-	l->cursor = l->topins;
+	for (i = l->topins - l->cursor; i > 0; --i)
+		putchar('\b');
 }
 
 static size_t
