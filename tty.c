@@ -514,6 +514,7 @@ static void	_ncl_sigs_down(void);
 
 static void	_ncl_check_grow(struct line *l SMALLOC_DEBUG_ARGS);
 static void	_ncl_bs_eof_dvup(struct cell *cap, size_t i);
+static ssize_t 	_ncl_wboundary(struct line *l, ssize_t dir);
 static ssize_t	_ncl_cell2dat(struct line *l);
 static void	_ncl_cell2save(struct line *l);
 
@@ -521,6 +522,7 @@ static void	_ncl_khome(struct line *l);
 static void	_ncl_kend(struct line *l);
 static void	_ncl_kbs(struct line *l);
 static void	_ncl_kkill(struct line *l);
+static ssize_t	_ncl_keof(struct line *l);
 static void	_ncl_kleft(struct line *l);
 static void	_ncl_kright(struct line *l);
 static void	_ncl_krefresh(struct line *l);
@@ -528,8 +530,8 @@ static size_t	_ncl_kht(struct line *l);
 static size_t	__ncl_khist_shared(struct line *l, struct hist *hp);
 static size_t	_ncl_khist(struct line *l, bool_t backwd);
 static size_t	_ncl_krhist(struct line *l);
+static void	_ncl_kbwddelw(struct line *l);
 static void	_ncl_kother(struct line *l, wchar_t wc);
-static ssize_t	_ncl_keof(struct line *l);
 static ssize_t	_ncl_readline(char const *prompt, char **buf, size_t *bufsize,
 			size_t len SMALLOC_DEBUG_ARGS);
 
@@ -615,6 +617,42 @@ _ncl_bs_eof_dvup(struct cell *cap, size_t i)
 	fputs(" \b", stdout);
 	for (j = 0; j < i; ++j)
 		putchar('\b');
+}
+
+static ssize_t
+_ncl_wboundary(struct line *l, ssize_t dir)
+{
+	size_t c = l->cursor, t = l->topins;
+	ssize_t i;
+	struct cell *cap;
+	bool_t anynon;
+
+	i = -1;
+	if (dir < 0) {
+		if (c == 0)
+			goto jleave;
+	} else if (c == t)
+		goto jleave;
+	else
+		--t, --c; /* Unsigned wrapping may occur (twice), then */
+
+	for (i = 0, cap = l->line.cells, anynon = FAL0;;) {
+		wchar_t wc = cap[c + dir].wc;
+		if (iswblank(wc) || iswpunct(wc)) {
+			if (anynon)
+				break;
+		} else
+			anynon = TRU1;
+		++i;
+		c += dir;
+		if (dir < 0) {
+			if (c == 0)
+				break;
+		} else if (c == t)
+			break;
+	}
+jleave:
+	return i;
 }
 
 static ssize_t
@@ -916,6 +954,42 @@ jleave:
 }
 
 static void
+_ncl_kbwddelw(struct line *l)
+{
+	ssize_t i;
+	size_t c = l->cursor, t, j;
+	struct cell *cap;
+
+	i = _ncl_wboundary(l, -1);
+	if (i <= 0) {
+		if (i < 0)
+			putchar('\a');
+		goto jleave;
+	}
+
+	c = l->cursor - i;
+	t = l->topins;
+	l->topins = t - i;
+	l->cursor = c;
+	cap = l->line.cells + c;
+
+	if (t != l->cursor) {
+		j = t - c + i;
+		memmove(cap, cap + i, j * sizeof(*cap));
+	}
+
+	for (j = i; j > 0; --j)
+		putchar('\b');
+	for (j = l->topins - c; j > 0; ++cap, --j)
+		fwrite(cap[0].cbuf, sizeof *cap->cbuf, cap[0].count, stdout);
+	for (j = i; j > 0; --j)
+		putchar(' ');
+	for (j = t - c; j > 0; --j)
+		putchar('\b');
+jleave:	;
+}
+
+static void
 _ncl_kother(struct line *l, wchar_t wc)
 {
 	/* Append if at EOL, insert otherwise;
@@ -1035,6 +1109,7 @@ jrestart:
 				goto jrestart;
 			wc = 'G' ^ 0x40;
 			goto jreset;
+		/* 'C': interrupt (CTRL-C) */
 		case 'D' ^ 0x40: /* delete char forward if any, else EOF */
 			if ((rv = _ncl_keof(&l)) < 0)
 				goto jleave;
@@ -1049,6 +1124,7 @@ jrestart:
 				goto jrestart;
 			wc = 'G' ^ 0x40;
 			goto jreset;
+		/* 'G' below */
 		case 'H' ^ 0x40: /* backspace */
 		case '\177':
 			_ncl_kbs(&l);
@@ -1057,7 +1133,7 @@ jrestart:
 			if ((len = _ncl_kht(&l)) > 0)
 				goto jrestart;
 			goto jbell;
-		case 'J' ^ 0x40: /* \n */
+		case 'J' ^ 0x40: /* NL (\n) */
 			goto jdone;
 		case 'G' ^ 0x40: /* full reset */
 jreset:
@@ -1082,17 +1158,29 @@ jreset:
 		case 'L' ^ 0x40: /* repaint line */
 			_ncl_krefresh(&l);
 			break;
+		/* 'M': CR (\r) */
+		/* 'N' */
+		case 'O' ^ 0x40: /* cursor left */
+			_ncl_kleft(&l);
+			break;
+		case 'P' ^ 0x40: /* cursor right */
+			_ncl_kright(&l);
+			break;
+		/* 'Q': no code */
 		case 'R' ^ 0x40: /* reverse history search */
 			if ((len = _ncl_krhist(&l)) > 0)
 				goto jrestart;
 			wc = 'G' ^ 0x40;
 			goto jreset;
-		case 'W' ^ 0x40: /* cursor left */
-			_ncl_kleft(&l);
+		/* 'S': no code */
+		/* 'U' above */
+		/* 'V' */
+		case 'W' ^ 0x40: /* backward delete "word" */
+			_ncl_kbwddelw(&l);
 			break;
-		case 'X' ^ 0x40: /* cursor right */
-			_ncl_kright(&l);
-			break;
+		/* 'X' */
+		/* 'Y' */
+		/* 'Z': suspend (CTRL-Z) */
 		default:
 jprint:
 			if (iswprint(wc)) {
@@ -1140,8 +1228,7 @@ tty_init(void)
 	memcpy(&_ncl_tios.tnew, &_ncl_tios.told, sizeof _ncl_tios.tnew);
 	_ncl_tios.tnew.c_cc[VMIN] = 1;
 	_ncl_tios.tnew.c_cc[VTIME] = 0;
-	_ncl_tios.tnew.c_lflag &= ~ICANON;
-	_ncl_tios.tnew.c_lflag &= ~ECHO;
+	_ncl_tios.tnew.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 
 	_CL_HISTSIZE(hs);
 	if (hs == 0)
