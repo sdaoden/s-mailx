@@ -531,6 +531,7 @@ static size_t	__ncl_khist_shared(struct line *l, struct hist *hp);
 static size_t	_ncl_khist(struct line *l, bool_t backwd);
 static size_t	_ncl_krhist(struct line *l);
 static void	_ncl_kbwddelw(struct line *l);
+static void	_ncl_kgow(struct line *l, ssize_t dir);
 static void	_ncl_kother(struct line *l, wchar_t wc);
 static ssize_t	_ncl_readline(char const *prompt, char **buf, size_t *bufsize,
 			size_t len SMALLOC_DEBUG_ARGS);
@@ -991,6 +992,28 @@ jleave:	;
 }
 
 static void
+_ncl_kgow(struct line *l, ssize_t dir)
+{
+	ssize_t i = _ncl_wboundary(l, dir);
+	if (i <= 0) {
+		if (i < 0)
+			putchar('\a');
+		goto jleave;
+	}
+
+	if (dir < 0) {
+		l->cursor -= i;
+		while (i-- > 0)
+			putchar('\b');
+	} else {
+		l->cursor += i;
+		while (i-- > 0)
+			fputs("\033[C", stdout);
+	}
+jleave:	;
+}
+
+static void
 _ncl_kother(struct line *l, wchar_t wc)
 {
 	/* Append if at EOL, insert otherwise;
@@ -1179,8 +1202,12 @@ jreset:
 		case 'W' ^ 0x40: /* backward delete "word" */
 			_ncl_kbwddelw(&l);
 			break;
-		/* 'X' */
-		/* 'Y' */
+		case 'X' ^ 0x40: /* move cursor forward "word" */
+			_ncl_kgow(&l, +1);
+			break;
+		case 'Y' ^ 0x40: /* move cursor backward "word" */
+			_ncl_kgow(&l, -1);
+			break;
 		/* 'Z': suspend (CTRL-Z) */
 		default:
 jprint:
