@@ -1110,10 +1110,28 @@ jrestart:
 				goto jleave;
 			}
 			++cbufp;
+
 			/* Ach! the ISO C multibyte handling!  Take care not to
-			 * mess up our mbstate_t, it's undefined on error! */
+			 * mess up our mbstate_t, it's undefined on error!
+			 * Encodings with locking shift states cannot really be
+			 * helped, since it is impossible to only query the
+			 * shift state, as opposed to the entire shift state
+			 * + character pair (via ISO C functions), so, after
+			 * cursor movement, we cannot restore only the shift
+			 * state but have to keep on going with the last active
+			 * one.  XXX Maybe it would be better to simply force
+			 * XXX a complete mbstate_t reset after *any* error?
+			 * XXX Does anything else really make sense? */
 			rv = mbrtowc(&wc, cbuf, (size_t)(cbufp - cbuf), ps + 0);
 			if (rv <= 0) {
+				/* If it's a hard error, or if too many
+				 * redundant shift sequences overflow our
+				 * buffer, simply perform a reset.
+				 * It is anyway suboptimal, but in the worst
+				 * case the user could ^U */
+				if (rv == -1 || MB_LEN_MAX ==
+						(size_t)(cbufp - cbuf))
+					cbufp = cbuf;
 				ps[0] = ps[1];
 				continue;
 			}
@@ -1173,12 +1191,11 @@ jreset:
 				if ((len = l.savec.l) != 0) {
 					l.defc = l.savec;
 					l.savec.s = NULL, l.savec.l = 0;
-					goto jrestart;
-				}
-				if ((len = l.defc.l) > 0)
-					goto jrestart;
+				} else
+					len = l.defc.l;
 			}
-			break;
+			fflush(stdout);
+			goto jrestart;
 		case 'L' ^ 0x40: /* repaint line */
 			_ncl_krefresh(&l);
 			break;
@@ -1198,7 +1215,7 @@ jreset:
 			goto jreset;
 		/* 'S': no code */
 		/* 'U' above */
-		/* 'V' */
+		/*case 'V' ^ 0x40: TODO*/ /* forward delete "word" */
 		case 'W' ^ 0x40: /* backward delete "word" */
 			_ncl_kbwddelw(&l);
 			break;
