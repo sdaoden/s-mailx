@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jun 07, 2013
+.Dd Jul 16, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -243,7 +243,7 @@ option, which enables more verbose messages.
 Enable tilde escapes even if not in interactive mode.
 .It Fl #
 This sets multiple options to prepare \*(UA for working in batch mode
-(most likely for a non-interactive session):
+(most likely in non-interactive mode):
 .Va dot ,
 .Va emptystart ,
 .Va noheader ,
@@ -269,7 +269,7 @@ then \*(UA expects a comma-separated list of such names.
 The section
 .Sx "Recipient address specifications"
 below explains the interpretation of names in more detail.
-The user is then expected to type in his message, followed by an
+The user is then expected to type in his message, followed by a
 .Li `control-D'
 at the beginning of a line.
 The section
@@ -585,6 +585,89 @@ Unexamined messages go back to the post office.
 (Also see the
 .Fl f
 option above.)
+.\" --  >8  --  8<  --
+.Ss "Line editor"
+\*(OP \*(UA can be configured to support a command line editor and
+command history lists which are saved in between sessions.
+One may link against fully-fledged external editor libraries
+.Ns ( Ns Xr editline 3 ,
+.Xr readline 3 Ns
+), or use the builtin editor instead, which should work in all
+environments which comply to ISO C (ISO/IEC 9899:1990/Amendment 1:1995).
+(Note, however, that commands that are based upon rightwise movement may
+not work on every terminal.
+If you encounter that issue, use the
+.Va line-editor-cursor-right
+variable to enforce a different terminal control sequence.)
+.Pp
+The builtin editor supports the following operations;
+the notation `^-character' stands for the combination of the `control'
+key plus the mentioned character, e.g., `^A' means ``hold control key
+while adding an A key on top of it'':
+.Bl -tag -width "^M^"
+.It ^A
+Go to the start of the line.
+.It ^B
+History backward step.
+.It ^D
+Forward delete the character under the cursor;
+quits \*(UA if used on the empty line, unless the
+.Va ignoreeof
+option is set.
+.It ^E
+Go to the end of the line.
+.It ^F
+History forward step.
+.It ^G
+Cancel current operation, full reset.
+If there is an active history search or tabulator expansion then this
+command will first reset that, reverting to the former line content;
+thus a second reset is needed for a full reset in this case.
+.It ^H
+The same as `backspace': backward delete one character.
+.It ^I
+The same as `horizontal tabulator': try to expand the ``word'' before
+the cursor.
+Here ``expansion'' refers to the \*(UA expansion, as documented for
+the
+.Ic folder ,
+and thus includes shell word expansion (as a last step).
+(Note that this is a real ``expansion'', not what one expects from
+``completion''.)
+.It ^J
+The same as `RETURN': complete this line of input.
+.It ^K
+Delete all characters from the cursor to the end of the line.
+.It ^L
+Repaint the line.
+.It ^O
+Move the cursor left one character.
+.It ^P
+Move the cursor right one character.
+.It ^R
+Complete the current line from (the remaining older) history entries.
+.It ^U
+The same as `^A' followed by `^K'.
+.It ^W
+Delete the characters from the one preceding the cursor to the preceding
+word boundary.
+.It ^X
+Move the cursor forward one word boundary.
+.It ^Y
+Move the cursor backward one word boundary.
+.El
+.Pp
+Regardless of the actually present command line editor history entries
+will be created for lines entered in command mode only, and creation of
+such an entry can be forcefully suppressed by starting the line with
+a space character.
+Also refer to the documentation of
+.Va emptystart ,
+.Va line-editor-cursor-right ,
+.Va line-editor-disable ,
+.Va NAIL_HISTFILE
+and
+.Va NAIL_HISTSIZE .
 .\" --  >8  --  8<  --
 .Ss "Personal and systemwide distribution lists"
 It is also possible to create personal distribution lists so that,
@@ -2157,7 +2240,7 @@ The binary option dot causes \*(UA to interpret a period alone on a line
 as the terminator of a message the user is sending.
 .It Va editalong
 If this variable is set then the editor is started automatically when
-composing a message in an interactive session,
+composing a message in an interactive mode,
 as if the `~e' tilde command had been specified.
 The
 .Va editheaders
@@ -2244,6 +2327,10 @@ creating fake mail folders in a world-writable spool directory.
 When a message is saved it is usually discarded from the originating
 folder when \*(UA is quit.
 Setting this option causes all saved message to be retained.
+.It Va line-editor-disable
+Turn off any enhanced command line editing capabilities (see
+.Sx "Line editor"
+for more).
 .It Va markanswered
 When a message is replied to and this variable is set,
 it is marked as having been answered.
@@ -2809,6 +2896,16 @@ Pathname of the directory lister to use in the
 command when operating on local mailboxes.
 Default is
 .Pa /bin/ls .
+.It Va line-editor-cursor-right
+\*(OP If the builtin line editor is used, actions which are based on
+rightwise movement may not work on some terminals.
+If you encounter such problems, set this variable to the terminal
+control sequence that is necessary to move the cursor one column to the
+right.
+The default is `\\033[C', which should work for most terminals.
+Other useful options are `\\033OC' and `\\014'.
+Note that `ESCAPE' and other control character have to be written as
+shell-style escape sequences, e.g., `\\033' for `ESCAPE'.
 .It Va MAIL
 Is used as the user's mailbox, if set.
 Otherwise, a system-dependent default is used.
@@ -2850,6 +2947,22 @@ implementations.
 .It Va NAIL_HEAD
 A string to put at the beginning of each new message.
 The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
+.It Va NAIL_HISTFILE
+\*(OP If a command line editor is available then this can be set to
+name the (expandable) path of the location of a permanent history file.
+.It Va NAIL_HISTSIZE
+\*(OP If a command line editor is available this value restricts the
+amount of history entries that are saved into a set and valid
+.Va NAIL_HISTFILE .
+A value of less than 0 disables this feature;
+note that loading and incorporation of
+.Va NAIL_HISTFILE
+upon program startup can also be suppressed by doing this.
+An unset or invalid value, or 0, causes a default value to be used.
+Dependent on the available line editor this will also define the number
+of history entries in memory;
+it is also editor-specific wether runtime updates of this value will be
+honoured.
 .It Va NAIL_TAIL
 A string to put at the end of each new message.
 The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
@@ -2909,6 +3022,10 @@ The string printed when a command is accepted.
 Defaults to `?\ ', or to `&\ ' if the
 .Va bsdcompat
 variable is set.
+The same XSI escape sequences that are understood by the
+.Ic echo
+command may be used within
+.Va prompt .
 .It Va quote
 If set, \*(UA starts a replying message with the original message
 prefixed by the value of the variable
@@ -3943,7 +4060,9 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr sendmail 1 ,
 .Xr sh 1,
 .Xr vacation 1 ,
+.Xr editline 3 ,
 .Xr iconv 3 ,
+.Xr readline 3 ,
 .Xr setlocale 3 ,
 .Xr ssl 3 ,
 .Xr aliases 5 ,
@@ -4085,11 +4204,3 @@ remains intact.
 .\"
 .Sh BUGS
 Variables in the environment passed to \*(UA cannot be unset.
-.Pp
-There is currently no command line editing available.
-A good workaround for interactive sessions with history and optionally
-file expansion support etc. is to use \*(UA as a client of
-.Xr rlwrap 1 .
-The project page of
-.Xr rlwrap 1
-can be found at \&<http://utopia.knoware.nl/~hlub/uck/rlwrap/>.
