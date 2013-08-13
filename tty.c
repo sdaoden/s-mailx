@@ -494,6 +494,7 @@ struct line {
 	struct str	savec;		/* Saved default content */
 	struct hist *	hist;		/* History cursor */
 	char const *	prompt;
+	char const *	nd;		/* Cursor right */
 	char **		x_buf;		/* Caller pointers */
 	size_t *	x_bufsize;
 };
@@ -716,7 +717,7 @@ _ncl_kend(struct line *l) /* XXX optionally repl. esc-seq with full repaint?! */
 	if (i > 0) {
 		l->cursor = l->topins;
 		while (i-- != 0)
-			fputs("\033[C", stdout);
+			fputs(l->nd, stdout);
 	} else
 		putchar('\a');
 }
@@ -786,7 +787,7 @@ _ncl_kright(struct line *l)
 {
 	if (l->cursor < l->topins) {
 		++l->cursor;
-		fputs("\033[C", stdout);
+		fputs(l->nd, stdout);
 	} else
 		putchar('\a');
 }
@@ -1008,7 +1009,7 @@ _ncl_kgow(struct line *l, ssize_t dir)
 	} else {
 		l->cursor += i;
 		while (i-- > 0)
-			fputs("\033[C", stdout);
+			fputs(l->nd, stdout);
 	}
 jleave:	;
 }
@@ -1078,6 +1079,8 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
 		l.defc.l = len;
 	}
 	l.prompt = prompt;
+	if ((l.nd = voption("line-editor-cursor-right")) == NULL)
+		l.nd = "\033[C";
 	l.x_buf = buf;
 	l.x_bufsize = bufsize;
 

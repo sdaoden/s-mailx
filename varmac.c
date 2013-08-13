@@ -151,6 +151,20 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 				*value = cp;
 		}
 	}
+#if ! defined HAVE_READLINE && ! defined HAVE_EDITLINE &&\
+		defined HAVE_LINE_EDITOR
+	else if (strcmp(name, "line-editor-cursor-right") == 0) {
+		char const *x = cp = *value;
+		int c;
+		while (*x != '\0') {
+			c = expand_shell_escape(&x);
+			if (c < 0)
+				break;
+			*cp++ = (char)c;
+		}
+		*cp++ = '\0';
+	}
+#endif
 
 	if (flag) {
 		if (enable)
