@@ -302,7 +302,9 @@ void
 tty_addhist(char const *s)
 {
 	_CL_CHECK_ADDHIST(s, goto jleave);
-	add_history(s);
+	hold_all_sigs(); /* XXX too heavy */
+	add_history(s); /* XXX yet we jump away! */
+	rele_all_sigs(); /* XXX remove jumps */
 jleave:	;
 }
 #endif /* HAVE_READLINE */
@@ -430,6 +432,7 @@ tty_addhist(char const *s)
 
 	_CL_CHECK_ADDHIST(s, goto jleave);
 
+	hold_all_sigs(); /* XXX too heavy, yet we jump away! */
 	if (history(_el_hcom, &he, H_GETUNIQUE) < 0 || he.num == 0)
 		goto jadd;
 
@@ -441,6 +444,7 @@ tty_addhist(char const *s)
 		}
 jadd:
 	history(_el_hcom, &he, H_ENTER, s);
+	rele_all_sigs(); /* XXX remove jumps */
 jleave:	;
 }
 #endif /* HAVE_EDITLINE */
@@ -508,6 +512,8 @@ static union xsighdl	_ncl_ottin;
 static union xsighdl	_ncl_ottou;
 static struct xtios	_ncl_tios;
 static struct hist *	_ncl_hist;
+static size_t		_ncl_hist_size;
+static size_t		_ncl_hist_size_max;
 static bool_t		_ncl_hist_load;
 
 static void	_ncl_sigs_up(void);
@@ -1279,6 +1285,7 @@ tty_init(void)
 	_ncl_tios.tnew.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 
 	_CL_HISTSIZE(hs);
+	_ncl_hist_size_max = hs;
 	if (hs == 0)
 		goto jleave;
 
@@ -1286,8 +1293,7 @@ tty_init(void)
 	if (v == NULL)
 		goto jleave;
 
-	/* Much too Super-Heavy-Metal: block all sigs */
-	hold_all_sigs();
+	hold_all_sigs(); /* XXX too heavy, yet we may jump even here!? */
 	f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
 	if (f == NULL)
 		goto jdone;
@@ -1309,7 +1315,7 @@ tty_init(void)
 
 	fclose(f);
 jdone:
-	rele_all_sigs();
+	rele_all_sigs(); /* XXX remove jumps */
 jleave:	;
 }
 
@@ -1333,8 +1339,7 @@ tty_destroy(void)
 		while (hp->older != NULL && hs-- != 0)
 			hp = hp->older;
 
-	/* Much too Super-Heavy-Metal: block all sigs */
-	hold_all_sigs();
+	hold_all_sigs(); /* too heavy, yet we may jump even here!? */
 	f = fopen(v, "w"); /* TODO temporary + rename?! */
 	if (f == NULL)
 		goto jdone;
@@ -1348,7 +1353,7 @@ tty_destroy(void)
 jclose:
 	fclose(f);
 jdone:
-	rele_all_sigs();
+	rele_all_sigs(); /* XXX remove jumps */
 jleave:	;
 }
 
@@ -1420,6 +1425,13 @@ tty_addhist(char const *s)
 				goto jleave;
 			}
 	hold_all_sigs();
+
+	if (! _ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
+		(h = _ncl_hist->younger
+		)->older = NULL;
+		free(_ncl_hist);
+		_ncl_hist = h;
+	}
 
 	h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) +
 		l + 1);
