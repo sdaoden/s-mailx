@@ -262,7 +262,7 @@ _addrspec_check(int skinned, struct addrguts *agp)
 	char *addr, *p, in_quote, in_domain, hadat;
 	union {char c; unsigned char u;} c;
 #ifdef USE_IDNA
-	char use_idna = (value("idna-disable") == NULL);
+	uc_it use_idna = ! boption("idna-disable");
 #endif
 
 	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
