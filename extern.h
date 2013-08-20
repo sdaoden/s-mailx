@@ -368,7 +368,8 @@ int		readline_input(enum lned_mode lned, char const *prompt,
 # define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a line of input (with editing if possible) and return it savestr()d.
+/* Read a line of input (with editing if possible) and return it savestr()d,
+ * or NULL in case of errors or if an empty line would be returned.
  * This may only be called from toplevel (not during sourcing).
  * If *prompt* is NULL we'll call getprompt().
  * *string* is the default/initial content of the return value (this is

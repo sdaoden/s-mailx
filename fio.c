@@ -503,9 +503,10 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 			rv = linebuf;
 	}
 
-	if (rv)
-		rv = savestr(rv);
-	free(linebuf);
+	if (rv != NULL)
+		rv = (*rv == '\0') ? NULL : savestr(rv);
+	if (linebuf != NULL)
+		free(linebuf);
 	return rv;
 }
 /*
