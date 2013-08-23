@@ -818,6 +818,7 @@ static size_t
 _ncl_kht(struct line *l)
 {
 	struct str orig, bot, top, sub, exp;
+	struct cell *cword, *ctop, *cx;
 	bool_t set_savec = FAL0;
 	size_t rv = 0;
 
@@ -829,50 +830,53 @@ _ncl_kht(struct line *l)
 	 * very original content so that ^G gets the origin back */
 	orig = l->savec;
 	_ncl_cell2save(l);
-	bot = l->savec;
+	exp = l->savec;
 	if (orig.s != NULL)
 		l->savec = orig;
 	else
 		set_savec = TRU1;
+	orig = exp;
 
-	/* Narrow down the sections of the line as necessary */
-	if (l->cursor != l->topins) {
-		struct cell *cap = l->line.cells;
+	cword = l->line.cells;
+	ctop = cword + l->cursor;
 
-		for (top = bot, rv = l->cursor; rv != 0; ++cap, --rv) {
-			top.s += cap->count;
-			top.l -= cap->count;
-		}
-		bot.l -= top.l;
+	/* top: separate data right of cursor */
+	if ((cx = cword + l->topins) != ctop) {
+		for (rv = 0; cx > ctop; --cx)
+			rv += cx->count;
+		top.l = rv;
+		top.s = orig.s + orig.l - rv;
 	} else
 		top.s = NULL, top.l = 0;
 
-	/* We're not interested in the entire section, only in the last "word";
-	 * this means we're in trouble, since we'd need to convert to wide to
-	 * be able to perform proper classification!  However, be massively
-	 * simple-minded instead and look out for ASCII SP U+0020, which should
-	 * always work, too (otherwise the entire codebase won't work anyway) */
-	for (sub = bot, rv = sub.l; rv != 0; --rv) {
-		if (rv == 1)
-			--rv;
-		else if (sub.s[rv - 1] != ' ')
-			continue;
-		sub.s += rv;
-		sub.l -= rv;
-		bot.l -= sub.l;
+	/* bot, sub: we cannot expand the entire data left of cursor, but only
+	 * the last "word", so separate them */
+	while (cx > cword && ! iswspace(cx[-1].wc))
+		--cx;
+	for (rv = 0; cword < cx; ++cword)
+		rv += cword->count;
+	sub =
+	bot = orig;
+	bot.l = rv;
+	sub.s += rv;
+	sub.l -= rv;
+	sub.l -= top.l;
 
+	if (sub.l > 0) {
+		sub.s = savestrbuf(sub.s, sub.l);
 		/* TODO there is a TODO note upon fexpand() with multi-return;
 		 * TODO if that will change, the if() below can be simplified */
-		sub.s = savestrbuf(sub.s, sub.l);
 		/* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
 		hold_all_sigs();
 		exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
 		rele_all_sigs();
+
 		if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
 				(exp.l != sub.l || strcmp(exp.s, sub.s))) {
 			orig.l = bot.l + exp.l + top.l;
 			orig.s = salloc(orig.l + 1);
-			memcpy(orig.s, bot.s, (rv = bot.l));
+			rv = bot.l;
+			memcpy(orig.s, bot.s, rv);
 			memcpy(orig.s + rv, exp.s, exp.l);
 			rv += exp.l;
 			memcpy(orig.s + rv, top.s, top.l);
@@ -884,7 +888,6 @@ _ncl_kht(struct line *l)
 			_ncl_kkill(l);
 			goto jleave;
 		}
-		break;
 	}
 
 	/* If we've provided a default content, but failed to expand, there is
