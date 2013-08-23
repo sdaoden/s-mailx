@@ -1346,21 +1346,32 @@ prefixwrite(char const *ptr, size_t size, FILE *f,
 {
 	static FILE *lastf;		/* TODO NO STATIC COOKIES */
 	static char lastc = '\n';	/* TODO PLEASE PLEASE PLEASE! */
-	size_t lpref, i, qfold = 0, lnlen = 0, rsz = size, wsz = 0;
+	char zipb[80], c;
+	size_t zipl, j, i, qfold_min = 0, qfold_max = 0, lnlen = 0, wsz = 0;
 	char const *p, *maxp;
-	char c;
 
-	if (rsz == 0)
+	if (size == 0)
 		return 0;
 
 	if (prefixlen == 0)
-		return fwrite(ptr, 1, rsz, f);
+		return fwrite(ptr, 1, size, f);
 
-	if ((p = value("quote-fold")) != NULL) {
-		qfold = (size_t)strtol(p, NULL, 10);
-		if (qfold < prefixlen + 4)
-			qfold = prefixlen + 4;
-		--qfold; /* The newline escape */
+	/* Check wether the user wants the more fancy quoting algorithm */
+	if ((p = voption("quote-fold")) != NULL) {
+		qfold_max = (size_t)strtol(p, (char**)UNCONST(&maxp), 10);
+		if (qfold_max < prefixlen + 6)
+			qfold_max = prefixlen + 6;
+		--qfold_max; /* The newline escape */
+		if (p == maxp || *maxp == '\0')
+			qfold_min = (qfold_max >> 1) + (qfold_max >> 2) +
+				(qfold_max >> 5);
+		else {
+			qfold_min = (size_t)strtol(maxp + 1, NULL, 10);
+			if (qfold_min < qfold_max >> 1)
+				qfold_min = qfold_max >> 1;
+			else if (qfold_min > qfold_max - 2)
+				qfold_min = qfold_max - 2;
+		}
 	}
 
 	if (f != lastf || lastc == '\n') {
@@ -1370,9 +1381,9 @@ prefixwrite(char const *ptr, size_t size, FILE *f,
 	lastf = f;
 
 	p = ptr;
-	maxp = p + rsz;
+	maxp = p + size;
 
-	if (! qfold) {
+	if (qfold_max == 0) {
 		for (;;) {
 			c = *p++;
 			putc(c, f);
@@ -1384,77 +1395,95 @@ prefixwrite(char const *ptr, size_t size, FILE *f,
 			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
 		}
 	} else {
-		for (;;) {
-			/*
-			 * After writing a real newline followed by our prefix,
-			 * compress the quoted prefixes
-			 */
-			for (lpref = 0; p != maxp;) {
-				/* (c: keep cc happy) */
-				for (c = i = 0; p + i < maxp;) {
-					c = p[i++];
-					if (blankspacechar(c))
-						continue;
-					if (! ISQUOTE(c))
-						goto jquoteok;
-					break;
-				}
-				p += i;
-				++lpref;
-				putc(c, f);
-				++wsz;
-			}
-jquoteok:		lnlen += lpref;
-
-jsoftnl:		/*
-			 * Search forward until either *quote-fold* or NL.
-			 * In the former case try to break at whitespace,
-			 * but only if that lies in the 2nd half of the data
-			 */
-			for (c = rsz = i = 0; p + i < maxp;) {
-				c = p[i++];
-				if (c == '\n')
-					break;
-				if (spacechar(c))
-					rsz = i;
-				if (lnlen + i >= qfold) {
-					c = 0;
-					if (rsz > qfold >> 1)
-						i = rsz;
-					break;
-				}
-			}
-
-			if (i > 0) {
-				wsz += fwrite(p, sizeof *p, i, f);
-				p += i;
-			}
-			if (p >= maxp)
+		/* After writing a real newline followed by our prefix,
+		 * compress the quoted prefixes;
+		 * note that \n is only matched by spacechar(), not by
+		 * blankchar() or blankspacechar() */
+		for (zipl = i = 0; p + i < maxp; ++i) {
+			c = p[i];
+			if (blankspacechar(c))
+				continue;
+			if (! ISQUOTE(c))
 				break;
-	
-			if (c != '\n') {
-				putc('\\', f);
-				putc('\n', f);
-				wsz += 2;
+			if (zipl == sizeof(zipb) - 1) {
+				zipb[sizeof(zipb) - 2] = '.';
+				zipb[sizeof(zipb) - 3] = '.';
+				zipb[sizeof(zipb) - 4] = '.';
+				continue;
 			}
+			zipb[zipl++] = c;
+		}
+		zipb[zipl] = '\0';
+		p += i;
+jsoftnl:
+		if (zipl > 0) {
+			wsz += fwrite(zipb, sizeof *zipb, zipl, f);
+			lnlen += zipl;
+		}
+
+		/* Search forward until either *quote-fold* or NL.
+		 * In the former case try to break at whitespace,
+		 * but only if's located in the 2nd half of the data */
+		for (c = i = 0; p + i < maxp;) {
+			c = p[i++];
+			if (c == '\n')
+				break;
+			if (lnlen + i <= qfold_max)
+				continue;
+
+			/* We're excessing bounds -- but don't "continue"
+			 * trailing WS nor a continuation */
+			if (c == '\\' || spacechar(c)) {
+				char const *cp;
+
+				for (cp = p + i; cp < maxp; ++cp)
+					if (! spacechar(*cp))
+						break;
+				if (cp == maxp || (*cp == '\\' &&
+						cp[1] == '\n')) {
+					i = (size_t)(maxp - p);
+					c = 0;
+					break;
+				}
+			} else if (p + i < maxp && p[i] == '\n') {
+				++i;
+				c = 0;
+				break;
+			}
+
+			/* We have to fold this line */
+			assert(qfold_min >= lnlen);
+			j = qfold_min - lnlen;
+			i =
+			size = j + ((qfold_max - qfold_min) >> 1);
+			assert(p + i < maxp);
+			while (i > j && ! spacechar(p[i - 1]))
+				--i;
+			if (i == j)
+				i = size;
+			c = 0;
+			break;
+		}
+
+		if (i > 0) {
+			wsz += fwrite(p, sizeof *p, i, f);
+			p += i;
+		}
+
+		if (p < maxp) {
+			assert(c != '\n');
+			putc('\\', f);
+			putc('\n', f);
+			wsz += 2;
 
 			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
 			lnlen = prefixlen;
-			if (c == '\n')
-				continue;
-
-			if ((i = lpref)) {
-				for (++i; i--;)
-					(void)putc(' ', f);
-				++wsz;
-				++lnlen;
-			}
 			goto jsoftnl;
 		}
 	}
 
 	lastc = p[-1];
-	return (wsz);
+	return wsz;
 }
 
 ssize_t
