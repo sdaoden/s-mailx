@@ -519,7 +519,7 @@ static bool_t		_ncl_hist_load;
 static void	_ncl_sigs_up(void);
 static void	_ncl_sigs_down(void);
 
-static void	_ncl_check_grow(struct line *l SMALLOC_DEBUG_ARGS);
+static void	_ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS);
 static void	_ncl_bs_eof_dvup(struct cell *cap, size_t i);
 static ssize_t 	_ncl_wboundary(struct line *l, ssize_t dir);
 static ssize_t	_ncl_cell2dat(struct line *l);
@@ -599,11 +599,12 @@ _ncl_sigs_down(void)
 }
 
 static void
-_ncl_check_grow(struct line *l SMALLOC_DEBUG_ARGS)
+_ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
 {
-	size_t i = l->topins * sizeof(struct cell) + 2 * sizeof(struct cell);
+	size_t i = (l->topins + no) * sizeof(struct cell) +
+		2 * sizeof(struct cell);
 
-	if (i >= *l->x_bufsize) {
+	if (i > *l->x_bufsize) {
 		i <<= 1;
 		*l->x_bufsize = i;
 		l->line.cbuf =
@@ -1097,7 +1098,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
 jrestart:
 	memset(ps, 0, sizeof ps);
 	for (;;) {
-		_ncl_check_grow(&l SMALLOC_DEBUG_ARGSCALL);
+		_ncl_check_grow(&l, len SMALLOC_DEBUG_ARGSCALL);
 
 		/* Normal read(2)?  Else buffer-takeover */
 		if (len == 0)
