@@ -677,6 +677,10 @@ int main(void)
 	rl_point = rl_end = 10;
 	rl_pre_input_hook = (rl_hook_func_t*)NULL;
 	rl_forced_update_display();
+
+	rl_free_line_state();
+	rl_cleanup_after_signal();
+	rl_reset_after_signal();
 	return 0;
 }
 !

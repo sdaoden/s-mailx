@@ -205,8 +205,9 @@ getcredentials(char **user, char **pass)
  */
 
 #ifdef HAVE_READLINE
-static char *	_rl_buf;	/* for pre_input() hook: initial line */
-static int	_rl_buflen;	/* content, and its length */
+static sighandler_type	_rl_shup;
+static char *		_rl_buf;	/* pre_input() hook: initial line */
+static int		_rl_buflen;	/* content, and its length */
 
 static int	_rl_pre_input(void);
 
@@ -256,11 +257,28 @@ tty_destroy(void)
 void
 tty_signal(int sig)
 {
+	sigset_t nset, oset;
+
 	switch (sig) {
 # ifdef SIGWINCH
 	case SIGWINCH:
 		break;
 # endif
+	case SIGHUP:
+		/* readline(3) doesn't catch it :( */
+		rl_free_line_state();
+		rl_cleanup_after_signal();
+		safe_signal(SIGHUP, _rl_shup);
+		sigemptyset(&nset);
+		sigaddset(&nset, sig);
+		sigprocmask(SIG_UNBLOCK, &nset, &oset);
+		kill(0, sig);
+		/* XXX When we come here we'll continue editing, so reestablish
+		 * XXX cannot happen */
+		sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+		_rl_shup = safe_signal(SIGHUP, &tty_signal);
+		rl_reset_after_signal();
+		break;
 	default:
 		break;
 	}
@@ -278,7 +296,10 @@ int
 		_rl_buflen = (int)n;
 		rl_pre_input_hook = &_rl_pre_input;
 	}
+
+	_rl_shup = safe_signal(SIGHUP, &tty_signal);
 	line = readline(prompt);
+	safe_signal(SIGHUP, _rl_shup);
 
 	if (line == NULL) {
 		nn = -1;
@@ -1391,7 +1412,8 @@ int
 {
 	ssize_t nn;
 
-	/* Of course we have races here, but they cannot be avoided on POSIX */
+	/* Of course we have races here, but they cannot be avoided on POSIX
+	 * (except by even *more* actions) */
 	_ncl_sigs_up();
 	tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.tnew);
 	nn = _ncl_readline(prompt, linebuf, linesize, n SMALLOC_DEBUG_ARGSCALL);
