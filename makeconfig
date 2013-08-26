@@ -230,17 +230,6 @@ int main(int argc, char *argv[])
 }
 !
 
-compile_check ssize_t 'for ssize_t' '#define HAVE_SSIZE_T' << \!
-#include <sys/types.h>
-#include <unistd.h>
-int main(void)
-{
-	ssize_t	i = 3;
-	write(1, "foo", i);
-	return 0;
-}
-!
-
 link_check snprintf 'for snprintf()' '#define HAVE_SNPRINTF' << \!
 #include <stdio.h>
 int main(void)
@@ -363,15 +352,7 @@ int main(void)
 }
 !
 
-link_check fpathconf 'for fpathconf()' '#define HAVE_FPATHCONF' << \!
-#include <unistd.h>
-int main(void)
-{
-	fpathconf(0, _PC_PATH_MAX);
-	return 0;
-}
-!
-
+# Note: run_check, thus we also get only the desired implementation...
 run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void)
