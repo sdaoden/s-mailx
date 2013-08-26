@@ -1344,10 +1344,11 @@ size_t
 prefixwrite(char const *ptr, size_t size, FILE *f,
 	char const *prefix, size_t prefixlen)
 {
-	static FILE *lastf;		/* TODO NO STATIC COOKIES */
-	static char lastc = '\n';	/* TODO PLEASE PLEASE PLEASE! */
-	char zipb[80], c;
-	size_t zipl, j, i, qfold_min = 0, qfold_max = 0, lnlen = 0, wsz = 0;
+	static FILE *lastf;			/* TODO NO STATIC COOKIES */
+	static char zipb[80], lastc = '\n';	/* TODO PLEASE PLEASE PLEASE! */
+	static size_t zipl, lastlen;		/* TODO for base64! (4:3 */
+	char c;
+	size_t j, i, qfold_min = 0, qfold_max = 0, lnlen = 0, wsz = 0;
 	char const *p, *maxp;
 
 	if (size == 0)
@@ -1377,6 +1378,7 @@ prefixwrite(char const *ptr, size_t size, FILE *f,
 	if (f != lastf || lastc == '\n') {
 		wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
 		lnlen = prefixlen;
+		zipl = lastlen = 0;
 	}
 	lastf = f;
 
@@ -1399,6 +1401,29 @@ prefixwrite(char const *ptr, size_t size, FILE *f,
 		 * compress the quoted prefixes;
 		 * note that \n is only matched by spacechar(), not by
 		 * blankchar() or blankspacechar() */
+		/*
+		 * TODO the problem we have is again the odd 4:3 relation of
+		 * TODO base64 -- if we quote a mail that is in base64 then
+		 * TODO prefixwrite() doesn't get invoked with partial multi-
+		 * TODO byte characters (S-nail uses the `rest' mechanism to
+		 * TODO avoid that), but it may of course be invoked with a
+		 * TODO partial line, and even with multiple thereof.
+		 * TODO this has to be addressed in 15.0 with the MIME and send
+		 * TODO layer rewrite.  The solution is that `prefixwrite' has
+		 * TODO to be an object with state -- if a part is to be quoted
+		 * TODO you create it, and simply feed in data; once the part
+		 * TODO is done, you'll release it;  the object itself gobbles
+		 * TODO data unless a *hard* newline is seen.
+		 * TODO in fact we can then even implement paragraph-wise
+		 * TODO quoting! FIXME in fact that is the way: objects
+		 * TODO then, evaluate quote-fold when sending starts, ONCE!
+		 * FIXME NOTE: base64 (yet TODO for qp) may have CRLF line
+		 * FIXME endings, these need to be removed in a LOWER LAYER!!
+		 */
+		if ((lnlen = lastlen) != 0)
+			goto jcontb64;
+jhardnl:
+		lastlen = prefixlen;
 		for (zipl = i = 0; p + i < maxp; ++i) {
 			c = p[i];
 			if (blankspacechar(c))
@@ -1419,8 +1444,9 @@ jsoftnl:
 		if (zipl > 0) {
 			wsz += fwrite(zipb, sizeof *zipb, zipl, f);
 			lnlen += zipl;
+			lastlen = lnlen;
 		}
-
+jcontb64:
 		/* Search forward until either *quote-fold* or NL.
 		 * In the former case try to break at whitespace,
 		 * but only if's located in the 2nd half of the data */
@@ -1452,11 +1478,19 @@ jsoftnl:
 			}
 
 			/* We have to fold this line */
-			assert(qfold_min >= lnlen);
-			j = qfold_min - lnlen;
-			i =
-			size = j + ((qfold_max - qfold_min) >> 1);
-			assert(p + i < maxp);
+			if (qfold_min < lnlen) {
+				/* This is because of base64 and odd 4:3.
+				 * i.e., entered with some partial line yet
+				 * written..  This is weird, as we may have
+				 * written out `qfold_max' already.. */
+				j = 0;
+				size = --i;
+			} else {
+				j = qfold_min - lnlen;
+				i =
+				size = j + ((qfold_max - qfold_min) >> 1);
+				assert(p + i < maxp);
+			}
 			while (i > j && ! spacechar(p[i - 1]))
 				--i;
 			if (i == j)
@@ -1468,17 +1502,20 @@ jsoftnl:
 		if (i > 0) {
 			wsz += fwrite(p, sizeof *p, i, f);
 			p += i;
+			lastlen += i;
 		}
 
 		if (p < maxp) {
-			assert(c != '\n');
-			putc('\\', f);
-			putc('\n', f);
-			wsz += 2;
-
+			if (c != '\n') {
+				putc('\\', f);
+				putc('\n', f);
+				wsz += 2;
+			}
 			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
 			lnlen = prefixlen;
-			goto jsoftnl;
+			if (c != '\n')
+				goto jsoftnl;
+			goto jhardnl;
 		}
 	}
 
