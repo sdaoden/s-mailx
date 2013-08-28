@@ -429,57 +429,68 @@ followupsender(void *v)
 }
 
 /*
- * Reply to a list of messages.  Extract each name from the
+ * Reply to a single message.  Extract each name from the
  * message header and send them off to mail1()
  */
 static int 
 respond_internal(int *msgvec, int recipient_record)
 {
+	struct header head;
 	struct message *mp;
 	char *cp, *rcv;
-	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
 	struct name *np = NULL;
-	struct header head;
+	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
 
-	memset(&head, 0, sizeof head);
 	if (msgvec[1] != 0) {
-		printf(catgets(catd, CATSET, 37,
+		fprintf(stderr, tr(37,
 			"Sorry, can't reply to multiple messages at once\n"));
-		return(1);
+		return 1;
 	}
 	mp = &message[msgvec[0] - 1];
 	touch(mp);
 	setdot(mp);
+
 	if ((rcv = hfield1("reply-to", mp)) == NULL)
 		if ((rcv = hfield1("from", mp)) == NULL)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
 		np = lextract(rcv, GTO|gf);
-	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
-		np = cat(np, lextract(cp, GTO|gf));
+	if (! boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+		np = cat(np, lextract(cp, GTO | gf));
 	/*
 	 * Delete my name from the reply list,
 	 * and with it, all my alternate names.
 	 */
 	np = elide(delete_alternates(np));
 	if (np == NULL)
-		np = lextract(rcv, GTO|gf);
+		np = lextract(rcv, GTO | gf);
+
+	memset(&head, 0, sizeof head);
 	head.h_to = np;
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = _reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
-	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
-		np = lextract(cp, GCC|gf);
+	if (boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+		np = lextract(cp, GCC | gf);
 	if ((cp = hfield1("cc", mp)) != NULL)
-		np = cat(np, lextract(cp, GCC|gf));
+		np = cat(np, lextract(cp, GCC | gf));
 	if (np != NULL)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
+
+	if (boption("quote-as-attachment")) {
+		head.h_attach = csalloc(1, sizeof *head.h_attach);
+		head.h_attach->a_msgno = *msgvec;
+		head.h_attach->a_content_description = tr(512,
+			"Original message content");
+	}
+
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
-		mp->m_flag |= MANSWER|MANSWERED;
-	return(0);
+			boption("markanswered") &&
+			(mp->m_flag & MANSWERED) == 0)
+		mp->m_flag |= MANSWER | MANSWERED;
+	return 0;
 }
 
 /*
@@ -492,9 +503,9 @@ forward1(char *str, int recipient_record)
 	char	*recipient;
 	struct message	*mp;
 	struct header	head;
-	int	forward_as_attachment;
+	bool_t forward_as_attachment;
 
-	forward_as_attachment = value("forward-as-attachment") != NULL;
+	forward_as_attachment = boption("forward-as-attachment");
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 	if ((recipient = laststring(str, &f, 0)) == NULL) {
 		puts(catgets(catd, CATSET, 47, "No recipient specified."));
@@ -530,13 +541,14 @@ forward1(char *str, int recipient_record)
 	if (forward_as_attachment) {
 		head.h_attach = csalloc(1, sizeof *head.h_attach);
 		head.h_attach->a_msgno = *msgvec;
+		head.h_attach->a_content_description = "Forwarded message";
 	} else {
 		touch(mp);
 		setdot(mp);
 	}
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = fwdedit(head.h_subject);
-	mail1(&head, 1, forward_as_attachment ? NULL : mp,
+	mail1(&head, 1, (forward_as_attachment ? NULL : mp),
 		NULL, recipient_record, 1);
 	return 0;
 }
@@ -936,11 +948,12 @@ Respond_internal(int *msgvec, int recipient_record)
 {
 	struct header head;
 	struct message *mp;
-	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
 	int *ap;
 	char *cp;
+	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
 
 	memset(&head, 0, sizeof head);
+
 	for (ap = msgvec; *ap != 0; ap++) {
 		mp = &message[*ap - 1];
 		touch(mp);
@@ -948,17 +961,26 @@ Respond_internal(int *msgvec, int recipient_record)
 		if ((cp = hfield1("reply-to", mp)) == NULL)
 			if ((cp = hfield1("from", mp)) == NULL)
 				cp = nameof(mp, 2);
-		head.h_to = cat(head.h_to, lextract(cp, GTO|gf));
+		head.h_to = cat(head.h_to, lextract(cp, GTO | gf));
 	}
 	if (head.h_to == NULL)
 		return 0;
+
 	mp = &message[msgvec[0] - 1];
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
+
+	if (boption("quote-as-attachment")) {
+		head.h_attach = csalloc(1, sizeof *head.h_attach);
+		head.h_attach->a_msgno = *msgvec;
+		head.h_attach->a_content_description = tr(512,
+			"Original message content");
+	}
+
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
-		mp->m_flag |= MANSWER|MANSWERED;
+		mp->m_flag |= MANSWER | MANSWERED;
 	return 0;
 }
 

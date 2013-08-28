@@ -1512,7 +1512,7 @@ and must be located on the current server for IMAP.
 Does not reply to other recipients of the original message.
 .It Ic reply
 (r) Takes a message list and sends mail to the sender and all recipients
-of the specified message.
+of the specified messages.
 The default message must not be deleted.
 .It Ic replyall
 Similar to
@@ -2469,6 +2469,11 @@ Setting this variable causes all subparts to be displayed,
 just as if the surrounding part was of type `multipart/mixed'.
 .It Va quiet
 Suppresses the printing of the version when first invoked.
+.It Va quote-as-attachment
+If this is set, then the original message added in its entirety as
+a `message/rfc822' MIME attachment when replying to a message.
+Note this works regardless of the setting of
+.Va quote .
 .It Va recipients-in-cc
 On group replies, specify only the sender of the original mail in `To:'
 and mention it's other recipients in the secondary `Cc:'.
@@ -3056,6 +3061,8 @@ the message body and all MIME parts are included,
 making
 .Va quote
 act like an automatic `~M' command.
+Also see
+.Va quote-as-attachment .
 .It Va quote-fold
 If set in addition to
 .Va indentprefix ,
