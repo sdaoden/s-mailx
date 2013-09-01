@@ -68,6 +68,15 @@
 
 #include "extern.h"
 
+struct {
+	FILE		*s_file;	/* File we were in. */
+	enum condition	s_cond;		/* Saved state of conditionals */
+	int		s_loading;	/* Loading .mailrc, etc. */
+#define	SSTACK	20
+}		_sstack[SSTACK];
+static size_t	_ssp;			/* Top of file stack */
+static FILE *	_input;
+
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 static void	_findmail(char *buf, size_t bufsize, char const *user,
 			bool_t force);
@@ -385,12 +394,98 @@ again:
 	return n;
 }
 
-/*
- * Near EOF since it has to deal with input stack:
- * char *		readline_input(char const *prompt, char **linebuf,
- *				size_t *linesize SMALLOC_DEBUG_ARGS);
- */
+int
+(readline_input)(char const *prompt, char **linebuf, size_t *linesize
+	SMALLOC_DEBUG_ARGS)
+{
+	FILE *ifile = (_input != NULL) ? _input : stdin;
+	int n;
 
+	if (prompt == NULL)
+		prompt = getprompt();
+#ifndef HAVE_CLEDIT
+	if (! sourcing && (options & OPT_INTERACTIVE)) {
+		fputs(prompt, stdout);
+		fflush(stdout);
+	}
+#endif
+
+	for (n = 0;;) {
+#ifdef HAVE_CLEDIT
+		if (! sourcing && (options & OPT_INTERACTIVE)) {
+			assert(ifile == stdin);
+			n = (tty_readline)(prompt, linebuf, linesize, n
+				SMALLOC_DEBUG_ARGSCALL);
+		} else
+#endif
+			n = (readline_restart)(ifile, linebuf, linesize, n
+				SMALLOC_DEBUG_ARGSCALL);
+		if (n <= 0)
+			break;
+		/*
+		 * POSIX says:
+		 * An unquoted <backslash> at the end of a command line
+		 * shall be discarded and the next line shall continue the
+		 * command.
+		 */
+		if ((*linebuf)[n - 1] == '\\') {
+			(*linebuf)[--n] = '\0';
+			if (*prompt)
+				prompt = "> "; /* XXX PS2 .. */
+			continue;
+		}
+#ifdef HAVE_CLEDIT
+		if (! sourcing && (options & OPT_INTERACTIVE))
+			tty_addhist(*linebuf);
+#endif
+		break;
+	}
+	return n;
+}
+
+char *
+readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
+{
+	/* TODO readstr_input(): linebuf pool */
+	size_t linesize = 0, slen;
+	char *linebuf = NULL, *rv = NULL;
+
+	if (prompt == NULL)
+		prompt = getprompt();
+
+	slen = (string != NULL) ? strlen(string) : 0;
+	linesize = slen + LINESIZE + 1;
+	linebuf = smalloc(linesize);
+	if (slen)
+		memcpy(linebuf, string, slen + 1);
+
+	/* If STDIN is not a terminal, simply read from it */
+#ifdef HAVE_CLEDIT
+	if (! (options & OPT_INTERACTIVE)) {
+		slen = 0;
+#else
+		bool_t doff = FAL0;
+		if (*prompt)
+			fputs(prompt, stdout), doff = TRU1;
+		if (slen) {
+			if (options & OPT_INTERACTIVE)
+				fputs(string, stdout), doff = TRU1;
+			else
+				slen = 0;
+		}
+		if (doff)
+			fflush(stdout);
+#endif
+		if (readline_restart(stdin, &linebuf, &linesize, slen) >= 0)
+			rv = savestr(linebuf);
+#ifdef HAVE_CLEDIT
+	} else if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
+		rv = savestr(linebuf);
+#endif
+
+	free(linebuf);
+	return rv;
+}
 /*
  * Set up the input pointers while copying the mail file into /tmp.
  */
@@ -1261,21 +1356,6 @@ int
 }
 #endif /* HAVE_SOCKETS */
 
-/*
- * The following code deals with input stacking to do source
- * commands.  All but the current file pointer are saved on
- * the stack.
- */
-
-struct {
-	FILE		*s_file;	/* File we were in. */
-	enum condition	s_cond;		/* Saved state of conditionals */
-	int		s_loading;	/* Loading .mailrc, etc. */
-#define	SSTACK	20
-}		_sstack[SSTACK];
-static size_t	_ssp;			/* Top of file stack */
-static FILE *	_input;
-
 void
 load(char const *name)
 {
@@ -1350,53 +1430,4 @@ unstack(void)
 	rv = 0;
 jleave:
 	return rv;
-}
-
-int
-(readline_input)(char const *prompt, char **linebuf, size_t *linesize
-	SMALLOC_DEBUG_ARGS)
-{
-	FILE *ifile = (_input != NULL) ? _input : stdin;
-	int n;
-
-	if (prompt == NULL)
-		prompt = getprompt();
-#ifndef HAVE_CLEDIT
-	if (! sourcing && (options & OPT_INTERACTIVE)) {
-		fputs(prompt, stdout);
-		fflush(stdout);
-	}
-#endif
-
-	for (n = 0;;) {
-#ifdef HAVE_CLEDIT
-		if (! sourcing && (options & OPT_INTERACTIVE)) {
-			assert(ifile == stdin);
-			n = (tty_readline)(prompt, linebuf, linesize, n
-				SMALLOC_DEBUG_ARGSCALL);
-		} else
-#endif
-			n = (readline_restart)(ifile, linebuf, linesize, n
-				SMALLOC_DEBUG_ARGSCALL);
-		if (n <= 0)
-			break;
-		/*
-		 * POSIX says:
-		 * An unquoted <backslash> at the end of a command line
-		 * shall be discarded and the next line shall continue the
-		 * command.
-		 */
-		if ((*linebuf)[n - 1] == '\\') {
-			(*linebuf)[--n] = '\0';
-			if (*prompt)
-				prompt = "> "; /* XXX PS2 .. */
-			continue;
-		}
-#ifdef HAVE_CLEDIT
-		if (! sourcing && (options & OPT_INTERACTIVE))
-			tty_addhist(*linebuf);
-#endif
-		break;
-	}
-	return n;
 }

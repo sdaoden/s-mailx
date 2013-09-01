@@ -426,7 +426,7 @@ out:
  * Read a line from tty; to be called from elsewhere
  */
 
-char *
+static char *
 readtty(char const *prefix, char const *string)
 {
 	char *ret = NULL;
@@ -438,17 +438,6 @@ readtty(char const *prefix, char const *string)
 	sighandler_type savetstp;
 	sighandler_type savettou;
 	sighandler_type savettin;
-
-	/* If STDIN is not a terminal, simply read from it */
-	if (! is_a_tty[0]) {
-		char *line = NULL;
-		size_t linesize = 0;
-		if (readline_restart(stdin, &line, &linesize, 0) > 0)
-			ret = savestr(line);
-		if (line != NULL)
-			free(line);
-		goto jleave;
-	}
 
 	savetstp = safe_signal(SIGTSTP, SIG_DFL);
 	savettou = safe_signal(SIGTTOU, SIG_DFL);
@@ -713,7 +702,7 @@ yorn(char const *msg)
 
 	if (! (options & OPT_INTERACTIVE))
 		return TRU1;
-	do if ((cp = readtty(msg, NULL)) == NULL)
+	do if ((cp = readstr_input(msg, NULL)) == NULL)
 		return FAL0;
 	while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
 	return (*cp == 'y' || *cp == 'Y');

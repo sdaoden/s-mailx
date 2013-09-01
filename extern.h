@@ -350,7 +350,8 @@ int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 	readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a complete line of input, handling \ escaped newlines along the way.
+/* Read a complete line of input (with editing if possible).
+ * Handles \ escaped newlines along the way, restarts upon interruption.
  * If *prompt* is NULL we'll call getprompt().
  * Return number of octets or a value <0 on error */
 int		readline_input(char const *prompt, char **linebuf,
@@ -358,6 +359,13 @@ int		readline_input(char const *prompt, char **linebuf,
 #ifdef HAVE_ASSERTS
 # define readline_input(A,B,C)	readline_input(A, B, C, __FILE__, __LINE__)
 #endif
+
+/* Read a line of input (with editing if possible) and return it savestr()d.
+ * This may only be called from toplevel (not during sourcing).
+ * If *prompt* is NULL we'll call getprompt().
+ * *string* is the default/initial content of the return value (this is
+ * "almost" ignored in non-interactive mode for reproducability) */
+char *		readstr_input(char const *prompt, char const *string);
 
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
@@ -982,7 +990,6 @@ void uncollapse1(struct message *m, int always);
 
 /* tty.c */
 int grabh(struct header *hp, enum gfield gflags, int subjfirst);
-char *readtty(char const *prefix, char const *string);
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
@@ -1000,7 +1007,6 @@ void	tty_addhist(char const *s);
 # define tty_init()		do {} while (0)
 # define tty_destroy()		do {} while (0)
 # define tty_signal(S)		do {} while (0)
-# define tty_readline(A,B,C,D)	do {} while (0)
 # define tty_addhist(S)		do {} while (0)
 #endif
 

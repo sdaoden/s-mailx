@@ -697,6 +697,12 @@ makeprint(struct str const *in, struct str *out)
 				n = 1;
 			}
 			if (n < 0) {
+				/* FIXME Why mbtowc() resetting here?
+				 * FIXME what about ISO 2022-JP plus -- those
+				 * FIXME will loose shifts, then!
+				 * FIXME THUS - we'd need special "known points"
+				 * FIXME to do so - say, after a newline!!
+				 * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
 				(void)mbtowc(&wc, NULL, mb_cur_max);
 				wc = utf8 ? 0xFFFD : '?';
 				n = 1;
