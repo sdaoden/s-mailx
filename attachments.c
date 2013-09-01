@@ -113,7 +113,10 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 	if (ap == NULL)
 		ap = csalloc(1, sizeof *ap);
 	else if (ap->a_msgno) {
-		printf(tr(159, "#%u\tmessage %u\n"), number, ap->a_msgno);
+jisattach:
+		if (options & OPT_INTERACTIVE)
+			printf(tr(159, "#%u\tmessage %u\n"),
+				number, ap->a_msgno);
 		goto jleave;
 	} else if (ap->a_conv == AC_TMPFILE) {
 		Fclose(ap->a_tmpf);
@@ -126,11 +129,24 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 			ap = NULL;
 			goto jleave;
 		}
-		if ((cp = file_expand(ap->a_name)) == NULL)
-			continue;
-		ap->a_name = cp;
-		if (access(cp, R_OK) == 0)
+		/* May be a message number */
+		if (ap->a_name[0] == '#') {
+			char *ecp;
+			int msgno = (int)strtol(ap->a_name + 1, &ecp, 10);
+			if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
+				ap->a_msgno = msgno;
+				ap->a_content_description = tr(513,
+					"Attached message content");
+				if (! (options & OPT_INTERACTIVE))
+					goto jcs;
+				goto jisattach;
+			}
+		}
+		if ((cp = file_expand(ap->a_name)) != NULL &&
+				access(cp, R_OK) == 0) {
+			ap->a_name = cp;
 			break;
+		}
 		perror(cp);
 	}
 

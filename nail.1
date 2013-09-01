@@ -1921,6 +1921,9 @@ If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
 \*(UA will ask for further attachments until an empty name is given.
+If a given file name solely consists of the number sign `#' followed
+by a valid message number of the currently active mailbox, the given
+message is attached as a MIME `message/rfc822' attachment.
 .Pp
 If character set conversion has been compiled into \*(UA, then this mode
 gives the user the option to specify input and output character sets,
@@ -1968,6 +1971,8 @@ The first asks for the filename, and the second asks for the input
 character set to be passed through to the `charset=' MIME parameter;
 no conversion will be tried if there is input to the latter question,
 otherwise the usual conversion algorithm, as above, is applied.
+For message attachments, the answer to the second question is completely
+ignored.
 .Pp
 If
 .Ar filename
@@ -1975,7 +1980,10 @@ arguments are specified,
 they are treated as a comma separated list of files,
 which are all expanded and appended to the end of the attachment list.
 (Filenames with commas, or with leading or trailing whitespace can only
-be added via the command line or the first method.)
+be added via the command line or the first method.
+Message attachments can only be added via the first method;
+filenames which clash with message numbers can only be added via the
+command line or the second method.)
 In this mode the (text) attachments are assumed to be in
 .Va ttycharset
 encoding, and will be evaluated as documented in the section
