@@ -11,6 +11,7 @@ else
 	case ${CONFIG} in
 	MINIMAL)
 		WANT_JUNK=0 WANT_SCORE=0 WANT_SOCKETS=0 WANT_LINE_EDITOR=0
+		WANT_QUOTE_FOLD=0
 		;;
 	NETSEND)
 		WANT_JUNK=0 WANT_SCORE=0 WANT_IMAP=0 WANT_POP3=0
@@ -752,6 +753,13 @@ else
 	echo '/* WANT_{LINE_EDITOR,EDITLINE,EDITLINE_READLINE}=0 */' >> ${out}
 fi # wantfeat LINE_EDITOR+
 
+if wantfeat QUOTE_FOLD &&\
+		[ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then
+	echo "#define HAVE_QUOTE_FOLD" >> ${out}
+else
+	echo '/* WANT_QUOTE_FOLD=0 */' >> ${out}
+fi
+
 if wantfeat JUNK; then
 	echo "#define USE_JUNK" >> ${out}
 else
@@ -837,6 +845,9 @@ cat > ${tmp2}.c << \!
 #ifdef HAVE_LINE_EDITOR
 : + Command line editing and history
 #endif
+#ifdef HAVE_QUOTE_FOLD
+: + Extended *quote-fold*ing
+#endif
 #ifdef USE_JUNK
 : + Junk-mail management (Bayesian filtering)
 #endif
@@ -886,6 +897,9 @@ cat > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_LINE_EDITOR
 : - Command line editing and history
+#endif
+#ifndef HAVE_QUOTE_FOLD
+: - Extended *quote-fold*ing
 #endif
 #ifndef USE_JUNK
 : - Junk-mail management (Bayesian filtering)
