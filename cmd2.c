@@ -137,13 +137,13 @@ next(void *v)
 
 	if (mb.mb_threaded == 0) {
 		for (mp = dot + did_print_dot; mp < &message[msgCount]; mp++)
-			if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN|MKILL)) == 0)
+			if ((mp->m_flag & (MDELETED|MSAVED|MHIDDEN)) == 0)
 				break;
 	} else {
 		mp = dot;
 		if (did_print_dot)
 			mp = next_in_thread(mp);
-		while (mp && mp->m_flag & (MDELETED|MSAVED|MHIDDEN|MKILL))
+		while (mp && mp->m_flag & (MDELETED|MSAVED|MHIDDEN))
 			mp = next_in_thread(mp);
 	}
 	if (mp == NULL || mp >= &message[msgCount]) {

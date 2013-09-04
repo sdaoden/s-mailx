@@ -10,14 +10,17 @@ if [ -z "${CONFIG}" ]; then
 else
 	case ${CONFIG} in
 	MINIMAL)
-		WANT_JUNK=0 WANT_SCORE=0 WANT_SOCKETS=0 WANT_LINE_EDITOR=0
+		WANT_SOCKETS=0 WANT_LINE_EDITOR=0
 		WANT_QUOTE_FOLD=0
+		WANT_DOCSTRINGS=0
 		;;
 	NETSEND)
 		WANT_JUNK=0 WANT_SCORE=0 WANT_IMAP=0 WANT_POP3=0
 		WANT_EDITLINE=0
 		;;
 	CUSTOM)
+		WANT_QUOTE_FOLD=0
+		WANT_DOCSTRINGS=0
 		;;
 	*)
 		echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -47,10 +50,8 @@ if nwantfeat IMAP; then
 fi
 # If we don't need MD5 except for producing boundary and message-id strings,
 # leave it off, plain old srand(3) should be enough for that purpose.
-if nwantfeat SOCKETS && nwantfeat JUNK; then
+if nwantfeat SOCKETS; then
 	WANT_MD5=0
-elif wantfeat JUNK; then
-	WANT_MD5=1
 fi
 if nwantfeat LINE_EDITOR; then
 	WANT_EDITLINE=0 WANT_EDITLINE_READLINE=0
@@ -760,18 +761,6 @@ else
 	echo '/* WANT_QUOTE_FOLD=0 */' >> ${out}
 fi
 
-if wantfeat JUNK; then
-	echo "#define USE_JUNK" >> ${out}
-else
-	echo '/* WANT_JUNK=0 */' >> ${out}
-fi
-
-if wantfeat SCORE; then
-	echo "#define USE_SCORE" >> ${out}
-else
-	echo '/* WANT_SCORE=0 */' >> ${out}
-fi
-
 if wantfeat DOCSTRINGS; then
 	echo "#define USE_DOCSTRINGS" >> ${out}
 else
@@ -848,12 +837,6 @@ cat > ${tmp2}.c << \!
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
 #endif
-#ifdef USE_JUNK
-: + Junk-mail management (Bayesian filtering)
-#endif
-#ifdef USE_SCORE
-: + Message scoring (score/kill/unkill mechanism)
-#endif
 :
 :The following optional features are disabled:
 #ifndef	HAVE_ICONV
@@ -900,12 +883,6 @@ cat > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
-#endif
-#ifndef USE_JUNK
-: - Junk-mail management (Bayesian filtering)
-#endif
-#ifndef USE_SCORE
-: - Message scoring (score/kill/unkill mechanism)
 #endif
 :
 :Remarks:

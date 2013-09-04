@@ -151,7 +151,7 @@ $set 1
 141 \nInterrupt\n
 142 "%s" contains invalid %s sequence\n
 143 "%s" contains invalid character %s\n
-144 $ %d killed$
+144 --DELETED--
 145 detract asked to insert commas\n
 146 Creation of temporary image
 147 Creating descriptor duplicate of temporary image
@@ -408,7 +408,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 345 Send command strings directly to the IMAP server
 346 Check for new mail in current folder
 347 Mark <message-list> as junk
-348 Mark <message-list> as killed
+348 --DELETED--
 349 List all available commands
 350 Like "mail", but derive filename from first recipient
 351 Compose mail; recipients may be given as arguments
@@ -435,7 +435,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 372 Like "save", but derive filename from first sender
 373 Is to "save" what "ignore" is to "type"/"print"
 374 Is to "save" what "retain" is to "type"/"print"
-375 Score <message-list> with <floating-point-score>
+375 --DELETED--
 376 Print all variables, or set variables to argument(s)
 377 Mark <message-list> as seen
 378 Invoke an interactive shell
@@ -458,7 +458,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 395 Un"good" <message-list>
 396 Un"ignore" <header-fields>
 397 Un"junk" <message-list>
-398 Un"kill" <message-list>
+398 --DELETED--
 399 Un"retain" <header-fields>
 400 Un"saveignore" <header-fields>
 401 Un"saveretain" <header-fields>

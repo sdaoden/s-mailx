@@ -368,7 +368,7 @@ dispc(struct message *mp, const char *a)
 	if ((mp->m_flag & (MREAD|MNEW)) == 0)
 		dispc = a[1];
 	if (mp->m_flag & MJUNK)
-		dispc = a[13];
+		dispc = a[12];
 	if (mp->m_flag & MSAVED)
 		dispc = a[4];
 	if (mp->m_flag & MPRESERVE)
@@ -377,12 +377,10 @@ dispc(struct message *mp, const char *a)
 		dispc = a[6];
 	if (mp->m_flag & MFLAGGED)
 		dispc = a[7];
-	if (mp->m_flag & MKILL)
-		dispc = a[10];
 	if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
-		dispc = a[12];
-	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
 		dispc = a[11];
+	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
+		dispc = a[10];
 	return dispc;
 }
 
@@ -654,16 +652,6 @@ jputc:
 				subjlen -= fprintf(f, "%*ld", n, threaded ?
 						mp->m_threadpos : mesg);
 				break;
-			case 'c':
-#ifdef USE_SCORE
-				if (n == 0)
-					n = 6;
-				subjlen -= fprintf(f, "%*g", n, mp->m_score);
-				break;
-#else
-				c = '?';
-				goto jputc;
-#endif
 			}
 		} else
 			putc(c, f);
@@ -745,7 +733,7 @@ printhead(int mesg, FILE *f, int threaded)
 
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
 		getenv("SYSV3") != NULL;
-	strcpy(attrlist, bsdflags ? "NU  *HMFATK+-J" : "NUROSPMFATK+-J");
+	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-J" : "NUROSPMFAT+-J");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
 		if (sz > (int)sizeof attrlist - 1)

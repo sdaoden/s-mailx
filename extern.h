@@ -294,15 +294,6 @@ int canswered(void *v);
 int cunanswered(void *v);
 int cdraft(void *v);
 int cundraft(void *v);
-#ifdef USE_SCORE
-int ckill(void *v);
-int cunkill(void *v);
-int cscore(void *v);
-#else
-# define ckill		ccmdnotsupp
-# define cunkill	ccmdnotsupp
-# define cscore		ccmdnotsupp
-#endif
 int cnoop(void *v);
 int cremove(void *v);
 int crename(void *v);
@@ -566,23 +557,6 @@ char *imap_unquotestr(const char *s);
 
 /* imap_search.c */
 enum okay imap_search(const char *spec, int f);
-
-/* junk.c */
-#ifdef USE_JUNK
-int cgood(void *v);
-int cjunk(void *v);
-int cungood(void *v);
-int cunjunk(void *v);
-int cclassify(void *v);
-int cprobability(void *v);
-#else
-# define cgood		ccmdnotsupp
-# define cjunk		ccmdnotsupp
-# define cungood	ccmdnotsupp
-# define cunjunk	ccmdnotsupp
-# define cclassify	ccmdnotsupp
-# define cprobability	ccmdnotsupp
-#endif
 
 /* lex.c */
 int setfile(char const *name, int newmail);

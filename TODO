@@ -63,14 +63,6 @@ Backward-compatibility breakers
   goes through the pager, even if i have *crt=*.
   P.S.: we could simply count the headers in addition?
 
-- I'm in doubt wether the WANT_JUNK and WANT_SCORE features should
-  remain in the code.
-  From a glance (also see
-  <http://article.gmane.org/gmane.mail.nail.devel/1568>) it doesn't look
-  promising, and i think it would be better if we could hook ourselfs
-  into SpamAssassin or similar software, than sitting on top of a small
-  locale, isolated closed-source database.
-
 - The IMAP cache is file-based, which is quite nice, since a filesystem
   is a database.  On the other hand it may be better if we could hook
   into sqlite3, which is available almost everywhere by default, with
@@ -84,8 +76,7 @@ Backward-compatibility breakers
   zlib(3), bz2lib(3) and lzma(3), if found.  Or we may use dlopen(3)
   instead, if found, to avoid linking (though those libraries don't need
   much linker work unless actually used afaik, 'should look in detail).
-  We should also drop lzw.c, it is used for the Junk DB and the IMAP
-  cache.
+  We should also drop lzw.c, it is used for the IMAP cache.
 
 Non-breakers
 ------------

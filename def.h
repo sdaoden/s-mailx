@@ -515,9 +515,8 @@ enum mflag {
 	MDRAFT		= (1<<23),	/* message has been drafted recently */
 	MUNDRAFT	= (1<<24),	/* message has been undrafted */
 	MDRAFTED	= (1<<25),	/* message is marked as `draft' */
-	MKILL		= (1<<26),	/* message has been killed */
-	MOLDMARK	= (1<<27),	/* messages was marked previously */
-	MJUNK		= (1<<28)	/* message is classified as junk */
+	MOLDMARK	= (1<<26),	/* messages was marked previously */
+	MJUNK		= (1<<27)	/* message is classified as junk */
 };
 
 struct mimepart {
@@ -562,9 +561,6 @@ struct message {
 	struct message	*m_parent;	/* parent of this message */
 	unsigned	m_level;	/* thread level of message */
 	long		m_threadpos;	/* position in threaded display */
-#ifdef USE_SCORE
-	float		m_score;	/* score of message */
-#endif
 #ifdef USE_IMAP
 	unsigned long	m_uid;		/* IMAP unique identifier */
 #endif
@@ -652,8 +648,7 @@ enum gfield {
 
 #define GMASK		(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
 
-#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 || \
-				(dot == (mp) && (mp)->m_flag & MKILL))
+#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN)) == 0)
 
 /*
  * Structure used to pass about the current state of a message (header).

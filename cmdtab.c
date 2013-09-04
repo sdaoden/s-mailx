@@ -275,12 +275,6 @@ struct cmd const cmdtab[] = {
 	  DS(324, "Mark <message-list> as draft") },
 	{ "undraft",	cundraft,	A|M|MSGLIST,	0,	0
 	  DS(389, "Un\"draft\" <message-list>") },
-	{ "kill",	ckill,		A|M|MSGLIST,	0,	0
-	  DS(348, "Mark <message-list> as killed") },
-	{ "unkill",	cunkill,	A|M|MSGLIST,	0,	0
-	  DS(398, "Un\"kill\" <message-list>") },
-	{ "score",	cscore,		A|M|STRLIST,	0,	0
-	  DS(375, "Score <message-list> with <floating-point-score>") },
 	{ "define",	cdefine,	M|RAWLIST,	0,	2
 	  DS(319, "Define a macro") },
 	{ "defines",	cdefines,	M|RAWLIST,	0,	0
@@ -317,20 +311,6 @@ struct cmd const cmdtab[] = {
 	  DS(367, "Rename <existing-folder> to <new-folder>") },
 	{ "remove",	cremove,	M|RAWLIST,	0,	1000
 	  DS(366, "Remove the named folders") },
-	{ "classify",	cclassify,	A|M|MSGLIST,	0,	0
-	  DS(311, "Classify <message-list> with the Bayesian filter") },
-	{ "junk",	cjunk,		A|M|MSGLIST,	0,	0
-	  DS(347, "Mark <message-list> as junk") },
-	{ "bad",	cjunk,		A|M|MSGLIST,	0,	0
-	  DS(347, "Mark <message-list> as junk") },
-	{ "good",	cgood,		A|M|MSGLIST,	0,	0
-	  DS(341, "Mark <message-list> as not being junk") },
-	{ "unjunk",	cunjunk,	A|M|MSGLIST,	0,	0
-	  DS(397, "Un\"junk\" <message-list>") },
-	{ "ungood",	cungood,	A|M|MSGLIST,	0,	0
-	  DS(395, "Un\"good\" <message-list>") },
-	{ "probability",cprobability,	M|RAWLIST,	0,	1000
-	  DS(362, "Show junk database entry for each argument word") },
 	{ "show",	show,		A|MSGLIST,	0,	MMNDEL
 	  DS(380, "Like \"print\", but show raw message content") },
 	{ "Show",	show,		A|MSGLIST,	0,	MMNDEL

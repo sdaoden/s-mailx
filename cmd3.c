@@ -42,9 +42,6 @@
 #include <errno.h>
 #include <math.h>
 #include <unistd.h>
-#ifdef USE_SCORE
-# include <float.h>
-#endif
 
 #include "extern.h"
 
@@ -66,9 +63,6 @@ static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
 static void	list_shortcuts(void);
 static enum okay delete_shortcut(const char *str);
-#ifdef USE_SCORE
-static float	huge(void);
-#endif
 
 static char *
 _reedit(char *subj)
@@ -1493,117 +1487,6 @@ cundraft(void *v)
 	}
 	return 0;
 }
-
-#ifdef USE_SCORE
-static float 
-huge(void)
-{
-# ifdef _CRAY
-	/*
-	 * This is not perfect, but correct for machines with a 32-bit
-	 * IEEE float and a 32-bit unsigned long, and does at least not
-	 * produce SIGFPE on the Cray Y-MP.
-	 */
-	union {float f; unsigned long l;} u;
-
-	u.l = 0xff800000; /* -inf */
-	return u.f;
-# elif defined INFINITY
-	return -INFINITY;
-# elif defined HUGE_VALF
-	return -HUGE_VALF;
-# elif defined FLT_MAX
-	return -FLT_MAX;
-# else
-	return -1e10;
-# endif
-}
-
-int 
-ckill(void *v)
-{
-	struct message	*m;
-	int	*msgvec = v;
-	int	*ip;
-
-	for (ip = msgvec; *ip != 0; ip++) {
-		m = &message[*ip-1];
-		m->m_flag |= MKILL;
-		m->m_score = huge();
-	}
-	return 0;
-}
-
-int 
-cunkill(void *v)
-{
-	struct message	*m;
-	int	*msgvec = v;
-	int	*ip;
-
-	for (ip = msgvec; *ip != 0; ip++) {
-		m = &message[*ip-1];
-		m->m_flag &= ~MKILL;
-		m->m_score = 0;
-	}
-	return 0;
-}
-
-int 
-cscore(void *v)
-{
-	char	*str = v;
-	char	*sscore, *xp;
-	int	f, *msgvec, *ip;
-	double	nscore;
-	struct message	*m;
-
-	msgvec = salloc((msgCount+2) * sizeof *msgvec);
-	if ((sscore = laststring(str, &f, 0)) == NULL) {
-		fprintf(stderr, "No score given.\n");
-		return 1;
-	}
-	nscore = strtod(sscore, &xp);
-	if (*xp) {
-		fprintf(stderr, "Invalid score: \"%s\"\n", sscore);
-		return 1;
-	}
-	if (nscore > FLT_MAX)
-		nscore = FLT_MAX;
-	else if (nscore < -FLT_MAX)
-		nscore = -FLT_MAX;
-	if (!f) {
-		*msgvec = first(0, MMNORM);
-		if (*msgvec == 0) {
-			if (inhook)
-				return 0;
-			fprintf(stderr, "No messages to score.\n");
-			return 1;
-		}
-		msgvec[1] = 0;
-	} else if (getmsglist(str, msgvec, 0) < 0)
-		return 1;
-	if (*msgvec == 0) {
-		if (inhook)
-			return 0;
-		fprintf(stderr, "No applicable messages.\n");
-		return 1;
-	}
-	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
-		m = &message[*ip-1];
-		if (m->m_score != huge()) {
-			m->m_score += nscore;
-			if (m->m_score < 0)
-				m->m_flag |= MKILL;
-			else if (m->m_score > 0)
-				m->m_flag &= ~MKILL;
-			if (m->m_score >= 0)
-				setdot(m);
-		}
-	}
-	return 0;
-}
-#endif /* USE_SCORE */
 
 /*ARGSUSED*/
 int 

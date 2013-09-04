@@ -348,8 +348,6 @@ All answered messages
 variable).
 .It Ar :t
 All messages marked as draft.
-.It Ar :k
-All `killed' messages.
 .It Ar :j
 All messages classified as junk.
 .It Ar \&.
@@ -1002,11 +1000,6 @@ variables.
 .It Ic chdir
 (ch) Changes the user's working directory to the specified one,
 or to the user's login directory, if none was given.
-.It Ic classify
-\*(OP (cl) Takes a list of messages and examines their contents for
-characteristics of junk mail using Bayesian filtering.
-Messages considered to be junk are then marked as such.
-The junk mail database is not changed.
 .It Ic collapse
 (coll)
 Only applicable to threaded mode.
@@ -1262,11 +1255,6 @@ overrides
 This command has no effect when the
 .Va forward-as-attachment
 option is set.
-.It Ic good
-\*(OP (go) Takes a list of messages and marks all of them as not
-being junk mail.
-Data from these messages is then inserted into the junk mail database
-for future classification.
 .It Ic headers
 (h) Lists the current range of headers, which is an 18-message group.
 If a `+' argument is given the next 18-message group is printed,
@@ -1344,21 +1332,6 @@ Not all IMAP servers support this command.
 .It Ic inc
 Same as
 .Ic newmail .
-.It Ic junk
-\*(OP (j) Takes a list of messages and marks them as junk mail.
-Data from these messages is then inserted into the junk mail database
-for future classification.
-.It Ic kill
-\*(OP (k) Takes a list of messages and `kills' them.
-Killed messages are not printed in summaries and are ignored by the
-.Ic next
-command.
-This command also sets the score of the messages to negative infinity,
-so that subsequent
-.Ic score
-commands will not unkill them again.
-Killing is only effective for the current session on a folder;
-when it is quit, all messages are automatically unkilled.
 .It Ic list
 Prints the names of all available commands, alphabetically sorted.
 .It Ic Mail
@@ -1473,9 +1446,6 @@ all parts with a content type of `text' or `message' are shown,
 the other are hidden except for their headers.
 Messages are decrypted and converted to the terminal character set
 if necessary.
-.It Ic probability
-\*(OP (prob) For each word given as argument,
-the contents of its junk mail database entry are printed.
 .It Ic quit
 (q) Terminates the session, saving all undeleted, unsaved messages in
 the current `mbox', preserving all messages marked with
@@ -1619,17 +1589,6 @@ overrides
 .Ic saveignore .
 The use of this command is strongly discouraged since it may strip
 header fields that are needed to decode the message correctly.
-.It Ic score
-\*(OP (sc) Takes a message list and a floating point number
-and adds the number to the score of each given message.
-All messages start at score 0 when a folder is opened.
-When the score of a message becomes negative, it is `killed' with the
-effects described for the
-.Ic kill
-command;
-otherwise if it was negative before and becomes positive,
-it is `unkilled'.
-Scores only refer to the currently opened instance of a folder.
 .It Ic set
 (se) With no arguments, prints all variable values.
 Otherwise, sets an option.
@@ -1686,8 +1645,6 @@ variable is set,
 the sender's real name (if any) is used.
 .It size
 Sort the messages by their size.
-.It score
-\*(OP Sort the messages by their score.
 .It status
 Sort the messages by their message status (new, read, old, etc.).
 .It subject
@@ -1780,17 +1737,6 @@ command.
 command that was previously applied on exactly these messages.
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
-.It Ic unjunk
-\*(OP Takes a message list and undoes the effect of a
-.Ic junk
-command that was previously applied on exactly these messages.
-.It Ic unkill
-\*(OP Takes a message list and
-.Ns un Ns Ic kill Ns s
-each message.
-Also sets the
-.Ic score
-of the given messages to 0.
 .It Ic Unread
 Same as
 .Ic unread .
@@ -2210,13 +2156,6 @@ in message headers and with the `~h' tilde command.
 Changes the output format of the
 .Ic set
 command to traditional BSD style.
-.It Va chained-junk-tokens
-\*(OP Normally, the Bayesian junk mail filter bases its classifications
-on single word tokens extracted from messages.
-If this option is set adjacent words are combined to pairs,
-which are then used as additional tokens.
-This usually improves the accuracy of the filter,
-but also increases the junk mail database five- to tenfold.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2629,10 +2568,9 @@ summary,
 each for one type of messages in the following order:
 new (N), unread but old (U), new but read (R), read and old (O), saved
 (S), preserved (P), mboxed (M), flagged (F), answered (A), draft (T),
-killed (K), start of a collapsed thread (+), collapsed (\-), classified
-as junk (J).
-The default is `NUROSPMFATK+\-J',
-or `NU\ \ *HMFATK+\-J' if
+start of a collapsed thread (+), collapsed (\-), classified as spam (J).
+The default is `NUROSPMFAT+\-J',
+or `NU\ \ *HMFAT+\-J' if
 .Va bsdflags
 or the
 .Va SYSV3
@@ -2817,8 +2755,6 @@ Valid format specifiers are:
 .Bl -tag -offset indent -width "%%"
 .It %a
 Message attributes.
-.It %c
-The score of the message.
 .It %d
 The date when the message was received.
 .It %e
@@ -2899,20 +2835,6 @@ String used by the `~m' and `~M' tilde escapes and by the
 option for indenting messages,
 in place of the normal tab character (`^I').
 Be sure to quote the value if it contains spaces or tabs.
-.It Va junkdb
-\*(OP The location of the junk mail database.
-The string is treated like a folder name,
-as described for the
-.Ic folder
-command.
-.Pp
-The files in the junk mail database are normally stored in
-.Xr compress 1
-format for saving space.
-If processing time is considered more important,
-.Xr uncompress 1
-can be used to store them in plain form.
-\*(UA will then work using the uncompressed files.
 .It Va LISTER
 Pathname of the directory lister to use in the
 .Ic folders
@@ -4185,18 +4107,6 @@ Thus the recommended setup for sending mail in
 mode is to configure a local SMTP server such that it sends outgoing
 mail as soon as an external network connection is available again,
 i.e., to advise it to do that from a network startup script.
-.Pp
-The junk mail filter follows the concepts developed by
-Paul Graham
-in his articles,
-``A Plan for Spam'', August 2002,
-\%<http://www.paulgraham.com/spam.html>,
-and ``Better Bayesian Filtering'', January 2003,
-\%<http://www.paulgraham.com/better.html>.
-Chained tokens are due to a paper by
-Jonathan A. Zdziarski,
-``Advanced Language Classification using Chained Tokens'', February 2004,
-\%<http://www.nuclearelephant.com/papers/chained.html>.
 .\"
 .\" --  >8  --  8<  --
 .\"
