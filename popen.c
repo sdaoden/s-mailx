@@ -49,7 +49,7 @@
 #include "extern.h"
 
 #ifndef	NSIG
-# define NSIG	32
+# define NSIG	64
 #endif
 
 #define READ	0
@@ -348,6 +348,20 @@ Ftfree(char **fn)
 	free(cp);
 }
 
+bool_t
+pipe_cloexec(int fd[2])
+{
+	bool_t rv = FAL0;
+
+	if (pipe(fd) < 0)
+		goto jleave;
+	fcntl(fd[0], F_SETFD, FD_CLOEXEC);
+	fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+	rv = TRU1;
+jleave:
+	return rv;
+}
+
 FILE *
 Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 {
@@ -358,10 +372,9 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 	sigset_t nset;
 	FILE *fp;
 
-	if (pipe(p) < 0)
+	if (! pipe_cloexec(p))
 		return NULL;
-	(void)fcntl(p[READ], F_SETFD, FD_CLOEXEC);
-	(void)fcntl(p[WRITE], F_SETFD, FD_CLOEXEC);
+
 	if (*mode == 'r') {
 		myside = p[READ];
 		fd0 = -1;

@@ -817,6 +817,9 @@ FILE *	Ftemp(char **fn, char const *prefix, char const *mode,
  * free() call in all circumstances */
 void	Ftfree(char **fn);
 
+/* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
+bool_t	pipe_cloexec(int fd[2]);
+
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
 int Pclose(FILE *ptr, bool_t dowait);
 void close_all_files(void);
