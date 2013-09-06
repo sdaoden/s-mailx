@@ -63,6 +63,16 @@
 # define LINESIZE	2560
 #endif
 
+#ifndef STDIN_FILENO
+# define STDIN_FILENO	0
+#endif
+#ifndef STDOUT_FILENO
+# define STDOUT_FILENO	1
+#endif
+#ifndef STDERR_FILENO
+# define STDERR_FILENO	2
+#endif
+
 #define MAXARGC		1024		/* Maximum list of raw strings */
 #define MAXEXP		25		/* Maximum expansion of aliases */
 #define HSHSIZE		59		/* Hash size for aliases and vars */
