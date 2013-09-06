@@ -73,11 +73,6 @@
 
 #include "extern.h"
 
-/* Only used for OPT_INTERACTIVE, so simply use STDIN_FILENO */
-#ifndef STDIN_FILENO
-# define STDIN_FILENO   0
-#endif
-
 /* */
 #define _CL_HISTFILE(S) \
 do {\
@@ -475,6 +470,7 @@ jleave:
 /*
  * NCL: our homebrew version (inspired from NetBSD sh(1) / dash(1)s hetio.c).
  *
+ * Only used in interactive mode, simply use STDIN_FILENO as point of interest.
  * We do not handle character widths because the terminal must deal with that
  * anyway on the one hand, and also wcwidth(3) doesn't support zero-width
  * characters by definition on the other.  We're addicted.
