@@ -916,6 +916,8 @@ char *		urlxenc(char const *cp);
 char *		urlxdec(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
+struct str *	str_concat_cpa(struct str *self, char const *const*cpa,
+			char const *sep_o_null);
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 

@@ -488,7 +488,34 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 	}
 	self->s[l] = '\0';
 	va_end(vl);
-	return (self);
+	return self;
+}
+
+struct str *
+str_concat_cpa(struct str *self, char const *const*cpa, char const *sep_o_null)
+{
+	size_t sonl, l;
+	char const *const*xcpa;
+
+	sonl = (sep_o_null != NULL) ? strlen(sep_o_null) : 0;
+
+	for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa)
+		l += strlen(*xcpa) + sonl;
+
+	self->l = l;
+	self->s = salloc(l + 1);
+
+	for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
+		size_t i = strlen(*xcpa);
+		memcpy(self->s + l, *xcpa, i);
+		l += i;
+		if (sonl > 0) {
+			memcpy(self->s + l, sep_o_null, sonl);
+			l += sonl;
+		}
+	}
+	self->s[l] = '\0';
+	return self;
 }
 
 /*
