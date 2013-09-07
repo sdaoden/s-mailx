@@ -844,6 +844,21 @@ int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
 #endif
 
+/*
+ * spam.c
+ */
+
+#ifdef HAVE_SPAM
+int	cspam_rate(void *v);
+int	cspam_set(void *v);
+int	cspam_clear(void *v);
+
+#else
+# define cspam_rate	ccmdnotsupp
+# define cspam_set	ccmdnotsupp
+# define cspam_clear	ccmdnotsupp
+#endif
+
 /* ssl.c */
 #ifdef USE_SSL
 void ssl_set_vrfy_level(const char *uhp);

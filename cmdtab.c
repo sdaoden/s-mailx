@@ -332,6 +332,12 @@ struct cmd const cmdtab[] = {
 /*	{ "Header",	Header,		STRLIST,	0,	1000	*/
 	{ "mimetypes",	cmimetypes,	M|RAWLIST,	0,	1000
 	  DS(418, "Either <show> (default) or <clear> the mime.types cache") },
+	{ "spamrate",	cspam_rate,	A|M|R|MSGLIST,	0,	0
+	  DS(419, "Rate <message-list> via the configured spam identifier") },
+	{ "spamset",	cspam_set,	A|M|MSGLIST,	0,	0
+	  DS(420, "Mark <message-list> as being spam") },
+	{ "spamclear",	cspam_clear,	A|M|MSGLIST,	0,	0
+	  DS(421, "Mark <message-list> as not being spam") },
 #ifdef HAVE_ASSERTS
 	{ "core",	core,		M|NOLIST,	0,	0
 	  DS(414, "Produce a core dump (ouch!)") },

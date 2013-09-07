@@ -401,13 +401,13 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 338 Show message headers of <message-list>
 339 Which header fields are to be ignored with "forward"
 340 Which header fields have to be retained with "forward"
-341 Mark <message-list> as not being junk
+341 Mark <message-list> as not being spam
 342 Show the current(/last/next) 18-message group of headers
 343 Show command help (for the given one)
 344 Save <message-list> in system mailbox instead of *mbox*
 345 Send command strings directly to the IMAP server
 346 Check for new mail in current folder
-347 Mark <message-list> as junk
+347 Mark <message-list> as spam
 348 --DELETED--
 349 List all available commands
 350 Like "mail", but derive filename from first recipient
@@ -422,7 +422,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 359 Pipe <message-list> to <command>
 360 Like "print", but prints all headers and parts
 361 Type each message of <message-list> on the terminal
-362 Show junk database entry for each argument word
+362 --DELETED--
 363 Terminate session, saving messages as necessary
 364 Resend <message-list> to <user>, add Resent-* headers
 365 Like "resend", but don't add Resent-* headers
@@ -457,7 +457,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 394 Un"fwdretain" <header-fields>
 395 Un"good" <message-list>
 396 Un"ignore" <header-fields>
-397 Un"junk" <message-list>
+397 Un"spam" <message-list>
 398 --DELETED--
 399 Un"retain" <header-fields>
 400 Un"saveignore" <header-fields>
@@ -479,6 +479,9 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 416 Print statistics about the auto-reclaimed string store
 417 Trace current memory usage afap
 418 Either <show> (default) or <clear> the mime.types cache
+419 Rate <message-list> via the configured spam identifier
+420 Mark <message-list> as being spam
+421 Mark <message-list> as not being spam
 
 
 500 $ done.\n
@@ -497,3 +500,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 511 ${former content: %.*s} $
 512 Original message content
 513 Attached message content
+514 `spamrate': *spamrate-command* is not set\n
+515 `spamrate': message %lu exceeds maxsize (%lu > %lu), skip\n

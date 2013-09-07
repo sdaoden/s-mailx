@@ -62,6 +62,7 @@
 #else
 # define LINESIZE	2560
 #endif
+#define BUFFER_SIZE	(BUFSIZ >= (1 << 13) ? BUFSIZ : (1 << 14))
 
 #ifndef STDIN_FILENO
 # define STDIN_FILENO	0
@@ -200,6 +201,13 @@
 #endif
 
 /*
+ * Spam (spam.c)
+ */
+
+/* Maximum size of a message that is passed through to the spam system */
+#define SPAM_MAXSIZE	420000
+
+/*
  * Auto-reclaimed string storage (strings.c)
  */
 
@@ -321,7 +329,7 @@ enum sendaction {
 	SEND_TODISP_ALL,		/* same, include all MIME parts */
 	SEND_SHOW,			/* convert to 'show' command form */
 	SEND_TOSRCH,			/* convert for IMAP SEARCH */
-	SEND_TOFLTR,			/* convert for junk mail filtering */
+	SEND_TOFLTR,			/* convert for spam mail filtering */
 	SEND_TOFILE,			/* convert for saving body to a file */
 	SEND_TOPIPE,			/* convert for pipe-content/subc. */
 	SEND_QUOTE,			/* convert for quoting */
@@ -516,12 +524,15 @@ enum mflag {
 	MUNDRAFT	= (1<<24),	/* message has been undrafted */
 	MDRAFTED	= (1<<25),	/* message is marked as `draft' */
 	MOLDMARK	= (1<<26),	/* messages was marked previously */
-	MJUNK		= (1<<27)	/* message is classified as junk */
+	MSPAM		= (1<<27)	/* message is classified as spam */
 };
 
 struct mimepart {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the part */
+#ifdef HAVE_SPAM
+	ui_it	m_spamscore;		/* Spam score as int, 24:8 bits */
+#endif
 	int	m_block;		/* block number of this part */
 	size_t	m_offset;		/* offset in block of part */
 	size_t	m_size;			/* Bytes in the part */
@@ -546,6 +557,9 @@ struct mimepart {
 struct message {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the message */
+#ifdef HAVE_SPAM
+	ui_it	m_spamscore;		/* Spam score as int, 24:8 bits */
+#endif
 	int	m_block;		/* block number of this message */
 	size_t	m_offset;		/* offset in block of message */
 	size_t	m_size;			/* Bytes in the message */

@@ -54,9 +54,11 @@ struct	mitem {
 
 struct msort {
 	union {
+#ifdef HAVE_SPAM
+		ui_it	ms_ui;
+#endif
 		long	ms_long;
-		char	*ms_char;
-		float	ms_float;
+		char *	ms_char;
 	} ms_u;
 	int	ms_n;
 };
@@ -67,6 +69,9 @@ static struct mitem *mlook(char *id, struct mitem *mt, struct message *mdata,
 static void adopt(struct message *parent, struct message *child, int dist);
 static struct message *interlink(struct message *m, long count, int newmail);
 static void finalize(struct message *mp);
+#ifdef HAVE_SPAM
+static int muilt(void const *a, void const *b);
+#endif
 static int mlonglt(const void *a, const void *b);
 static int mcharlt(const void *a, const void *b);
 static void lookup(struct message *m, struct mitem *mi, int mprime);
@@ -270,32 +275,43 @@ finalize(struct message *mp)
 	}
 }
 
+#ifdef HAVE_SPAM
+static int
+muilt(void const *a, void const *b)
+{
+	struct msort const *xa = a, *xb = b;
+	int i;
+
+	i = (int)(xa->ms_u.ms_ui - xb->ms_u.ms_ui);
+	if (i == 0)
+		i = xa->ms_n - xb->ms_n;
+	return i;
+}
+#endif
+
 static int 
 mlonglt(const void *a, const void *b)
 {
-	int	i;
+	struct msort const *xa = a, *xb = b;
+	int i;
 
-	i = ((struct msort const *)a)->ms_u.ms_long -
-		((struct msort const *)b)->ms_u.ms_long;
+	i = (int)(xa->ms_u.ms_long - xb->ms_u.ms_long);
 	if (i == 0)
-		i = ((struct msort const *)a)->ms_n -
-			((struct msort const *)b)->ms_n;
+		i = xa->ms_n - xb->ms_n;
 	return i;
 }
 
 static int 
 mcharlt(const void *a, const void *b)
 {
-	int	i;
+	struct msort const *xa = a, *xb = b;
+	int i;
 
-	i = strcoll(((struct msort const *)a)->ms_u.ms_char,
-			((struct msort const *)b)->ms_u.ms_char);
+	i = strcoll(xa->ms_u.ms_char, xb->ms_u.ms_char);
 	if (i == 0)
-		i = ((struct msort const *)a)->ms_n -
-			((struct msort const *)b)->ms_n;
+		i = xa->ms_n - xb->ms_n;
 	return i;
 }
-
 
 static void 
 lookup(struct message *m, struct mitem *mi, int mprime)
@@ -483,6 +499,9 @@ sort(void *vp)
 		SORT_SIZE,
 		SORT_FROM,
 		SORT_TO,
+#ifdef HAVE_SPAM
+		SORT_SPAM,
+#endif
 		SORT_THREAD
 	} method;
 	struct {
@@ -495,6 +514,9 @@ sort(void *vp)
 		{ "to",		SORT_TO,	mcharlt },
 		{ "subject",	SORT_SUBJECT,	mcharlt },
 		{ "size",	SORT_SIZE,	mlonglt },
+#ifdef HAVE_SPAM
+		{ "spam",	SORT_SPAM,	muilt },
+#endif
 		{ "status",	SORT_STATUS,	mlonglt },
 		{ "thread",	SORT_THREAD,	NULL },
 		{ NULL,		-1,		NULL }
@@ -574,6 +596,11 @@ sort(void *vp)
 			case SORT_SIZE:
 				ms[n].ms_u.ms_long = mp->m_xsize;
 				break;
+#ifdef HAVE_SPAM
+			case SORT_SPAM:
+				ms[n].ms_u.ms_ui = mp->m_spamscore;
+				break;
+#endif
 			case SORT_FROM:
 			case SORT_TO:
 				if ((cp = hfield1(method == SORT_FROM ?

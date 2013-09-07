@@ -143,7 +143,7 @@ getmsglist(char *buf, int *vector, int flags)
 #define	CMFLAG		040		/* Flagged messages */
 #define	CMANSWER	0100		/* Answered messages */
 #define	CMDRAFT		0200		/* Draft messages */
-#define	CMJUNK		0400		/* Junk messages */
+#define	CMSPAM		0400		/* Spam messages */
 
 /*
  * The following table describes the letters which can follow
@@ -164,7 +164,7 @@ static struct coltab {
 	{ 'f',		CMFLAG,		MFLAGGED,	MFLAGGED },
 	{ 'a',		CMANSWER,	MANSWERED,	MANSWERED },
 	{ 't',		CMDRAFT,	MDRAFTED,	MDRAFTED },
-	{ 'j',		CMJUNK,		MJUNK,		MJUNK },
+	{ 's',		CMSPAM,		MSPAM,		MSPAM },
 	{ 0,		0,		0,		0 }
 };
 
