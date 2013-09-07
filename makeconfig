@@ -538,7 +538,7 @@ int main(void)
 !
 
 if wantfeat IPV6; then
-	link_check ipv6 'for IPv6 functionality' '#define USE_IPV6' << \!
+	link_check ipv6 'for IPv6 functionality' '#define HAVE_IPV6' << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -560,27 +560,27 @@ else
 fi # wantfeat IPV6
 
 if wantfeat IMAP; then
-	echo "#define USE_IMAP" >> ${out}
+	echo "#define HAVE_IMAP" >> ${out}
 else
 	echo '/* WANT_IMAP=0 */' >> ${out}
 fi
 
 if wantfeat POP3; then
-	echo "#define USE_POP3" >> ${out}
+	echo "#define HAVE_POP3" >> ${out}
 else
 	echo '/* WANT_POP3=0 */' >> ${out}
 fi
 
 if wantfeat SMTP; then
-	echo "#define USE_SMTP" >> ${out}
+	echo "#define HAVE_SMTP" >> ${out}
 else
 	echo '/* WANT_SMTP=0 */' >> ${out}
 fi
 
 if wantfeat SSL; then
 	link_check openssl 'for sufficiently recent OpenSSL' \
-		'#define USE_SSL
-		#define USE_OPENSSL' '-lssl -lcrypto' << \!
+		'#define HAVE_SSL
+		#define HAVE_OPENSSL' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -643,33 +643,27 @@ int main(void)
 		i='for GSSAPI in gssapi/gssapi.h, libgssapi'
 	fi
 	< ${tmp2}.c link_check gssapi\
-			"${i}" '#define USE_GSSAPI'\
+			"${i}" '#define HAVE_GSSAPI'\
 			"${GSSAPI_LIBS}" "${GSSAPI_INCS}" || \
 		< ${tmp3}.c link_check gssapi \
 			'for GSSAPI in gssapi.h, libgssapi' \
-			'#define USE_GSSAPI
+			'#define HAVE_GSSAPI
 			#define	GSSAPI_REG_INCLUDE' \
 			'-lgssapi' || \
-		< ${tmp3}.c link_check gssapi \
-			'for GSSAPI in libgssapi, DragonFly BSD-style' \
-			'#define USE_GSSAPI
-			#define	GSSAPI_REG_INCLUDE' \
-			'-lgssapi' \
-			'-I/usr/pkg/include/krb5' || \
 		< ${tmp2}.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
-			'#define USE_GSSAPI' \
+			'#define HAVE_GSSAPI' \
 			'-lgssapi_krb5' || \
 		< ${tmp3}.c link_check gssapi \
 			'for GSSAPI in libgssapi, OpenBSD-style (pre 5.3)' \
-			'#define USE_GSSAPI
+			'#define HAVE_GSSAPI
 			#define	GSSAPI_REG_INCLUDE' \
 			'-lgssapi -lkrb5 -lcrypto' \
 			'-I/usr/include/kerberosV' || \
 		< ${tmp2}.c link_check gssapi 'for GSSAPI in libgss' \
-			'#define USE_GSSAPI' \
+			'#define HAVE_GSSAPI' \
 			'-lgss' || \
 		link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
-			'#define USE_GSSAPI
+			'#define HAVE_GSSAPI
 			#define GSSAPI_OLD_STYLE' \
 			'-lgssapi_krb5' << \!
 #include <gssapi/gssapi.h>
@@ -687,7 +681,7 @@ else
 fi # wantfeat GSSAPI
 
 if wantfeat IDNA; then
-	link_check idna 'for GNU Libidn' '#define USE_IDNA' '-lidn' << \!
+	link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
 #include <idna.h>
 #include <stringprep.h>
 int main(void)
@@ -778,7 +772,7 @@ else
 fi
 
 if wantfeat DOCSTRINGS; then
-	echo "#define USE_DOCSTRINGS" >> ${out}
+	echo "#define HAVE_DOCSTRINGS" >> ${out}
 else
 	echo '/* WANT_DOCSTRINGS=0 */' >> ${out}
 fi
@@ -793,7 +787,7 @@ else
 fi
 
 if wantfeat MD5; then
-	echo "#define USE_MD5" >> ${out}
+	echo "#define HAVE_MD5" >> ${out}
 else
 	echo '/* WANT_MD5=0 */' >> ${out}
 fi
@@ -832,28 +826,28 @@ cat > ${tmp2}.c << \!
 #ifdef HAVE_SOCKETS
 : + Network support
 #endif
-#ifdef USE_IPV6
+#ifdef HAVE_IPV6
 : + Support for Internet Protocol v6 (IPv6)
 #endif
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS using OpenSSL
 #endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 : + IMAP protocol
 #endif
-#ifdef USE_GSSAPI
+#ifdef HAVE_GSSAPI
 : + IMAP GSSAPI authentication
 #endif
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 : + POP3 protocol
 #endif
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 : + SMTP protocol
 #endif
 #ifdef HAVE_SPAM
 : + Interaction with spam filters
 #endif
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
 #ifdef HAVE_LINE_EDITOR
@@ -879,28 +873,28 @@ cat > ${tmp2}.c << \!
 #ifndef	HAVE_SOCKETS
 : - Network support
 #endif
-#ifndef	USE_IPV6
+#ifndef	HAVE_IPV6
 : - Support for Internet Protocol v6 (IPv6)
 #endif
-#if ! defined USE_SSL
+#if ! defined HAVE_SSL
 : - SSL/TLS (network transport authentication and encryption)
 #endif
-#ifndef USE_IMAP
+#ifndef HAVE_IMAP
 : - IMAP protocol
 #endif
-#ifndef	USE_GSSAPI
+#ifndef	HAVE_GSSAPI
 : - IMAP GSSAPI authentication
 #endif
-#ifndef USE_POP3
+#ifndef HAVE_POP3
 : - POP3 protocol
 #endif
-#ifndef USE_SMTP
+#ifndef HAVE_SMTP
 : - SMTP protocol
 #endif
 #ifndef HAVE_SPAM
 : - Interaction with spam filters
 #endif
-#ifndef USE_IDNA
+#ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
 #endif
 #ifndef HAVE_LINE_EDITOR

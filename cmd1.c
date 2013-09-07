@@ -147,7 +147,7 @@ headers(void *v)
 					break;
 				}
 		}
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(mesg+1, mesg + size);
 #endif
@@ -627,7 +627,7 @@ jputc:
 				}
 				break;
 			case 'U':
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 				if (n == 0)
 					n = 9;
 				subjlen -= fprintf(f, "%*lu", n, mp->m_uid);
@@ -1225,7 +1225,7 @@ folders(void *v)
 		name = dirname;
 
 	if (which_protocol(name) == PROTO_IMAP) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		imap_folders(name, *argv == NULL);
 #else
 		return ccmdnotsupp(NULL);

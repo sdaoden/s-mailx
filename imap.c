@@ -44,7 +44,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifndef USE_IMAP
+#ifndef HAVE_IMAP
 # include "extern.h"
 #else
 #include <netdb.h>
@@ -55,7 +55,7 @@
 #endif
 
 #include "extern.h"
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 # include "md5.h"
 #endif
 
@@ -193,14 +193,14 @@ static enum okay imap_preauth(struct mailbox *mp, const char *xserver,
 static enum okay imap_capability(struct mailbox *mp);
 static enum okay imap_auth(struct mailbox *mp, const char *uhp,
 		char *xuser, char *pass);
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 static enum okay imap_cram_md5(struct mailbox *mp,
 			char *xuser, char *xpass);
 #endif
 static enum okay imap_login(struct mailbox *mp, char *xuser, char *xpass);
-#ifdef	USE_GSSAPI
+#ifdef HAVE_GSSAPI
 static enum okay imap_gss(struct mailbox *mp, char *user);
-#endif	/* USE_GSSAPI */
+#endif
 static enum okay imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void imap_init(struct mailbox *mp, int n);
 static void imap_setptr(struct mailbox *mp, int newmail, int transparent,
@@ -789,7 +789,7 @@ imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
 		x[cp - xserver] = '\0';
 		xserver = x;
 	}
-#ifdef	USE_SSL
+#ifdef HAVE_SSL
 	if (mp->mb_sock.s_use_ssl == 0 && imap_use_starttls(uhp)) {
 		FILE	*queuefp = NULL;
 		char	o[LINESIZE];
@@ -800,12 +800,12 @@ imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
 		if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
 			return STOP;
 	}
-#else	/* !USE_SSL */
+#else
 	if (imap_use_starttls(uhp)) {
 		fprintf(stderr, "No SSL support compiled in.\n");
 		return STOP;
 	}
-#endif	/* !USE_SSL */
+#endif
 	imap_capability(mp);
 	return OKAY;
 }
@@ -859,7 +859,7 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 	if (auth == NULL || strcmp(auth, "login") == 0)
 		return imap_login(mp, xuser, pass);
 	if (strcmp(auth, "cram-md5") == 0) {
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 		return imap_cram_md5(mp, xuser, pass);
 #else
 		fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
@@ -867,12 +867,12 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 #endif
 	}
 	if (strcmp(auth, "gssapi") == 0) {
-#ifdef	USE_GSSAPI
+#ifdef HAVE_GSSAPI
 		return imap_gss(mp, xuser);
-#else	/* !USE_GSSAPI */
+#else
 		fprintf(stderr, tr(272, "No GSSAPI support compiled in.\n"));
 		return STOP;
-#endif	/* !USE_GSSAPI */
+#endif
 	}
 	fprintf(stderr, tr(273, "Unknown IMAP authentication method: %s\n"),
 		auth);
@@ -882,7 +882,7 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 /*
  * Implementation of RFC 2194.
  */
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 static enum okay 
 imap_cram_md5(struct mailbox *mp, char *xuser, char *xpass)
 {
@@ -913,7 +913,7 @@ jretry:
 jleave:
 	return ok;
 }
-#endif /* USE_MD5 */
+#endif /* HAVE_MD5 */
 
 static enum okay 
 imap_login(struct mailbox *mp, char *xuser, char *xpass)
@@ -942,7 +942,7 @@ jleave:
 	return ok;
 }
 
-#ifdef	USE_GSSAPI
+#ifdef HAVE_GSSAPI
 # include "imap_gssapi.c"
 #endif
 
@@ -1109,11 +1109,11 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 	if (strncmp(*sp, "imap://", 7) == 0) {
 		*sp = &(*sp)[7];
 		*use_ssl = 0;
-#ifdef	USE_SSL
+#ifdef HAVE_SSL
 	} else if (strncmp(*sp, "imaps://", 8) == 0) {
 		*sp = &(*sp)[8];
 		*use_ssl = 1;
-#endif	/* USE_SSL */
+#endif
 	}
 	if ((*cp = strchr(*sp, '/')) != NULL && (*cp)[1] != '\0') {
 		char *x = savestr(*sp);
@@ -3356,7 +3356,7 @@ transflags(struct message *omessage, long omsgCount, int transparent)
 	prevdot = newprevdot;
 	free(omessage);
 }
-#endif	/* USE_IMAP */
+#endif	/* HAVE_IMAP */
 
 time_t
 imap_read_date_time(const char *cp)

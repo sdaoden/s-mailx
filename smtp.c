@@ -39,7 +39,7 @@
 
 #include "config.h"
 
-#ifndef USE_SMTP
+#ifndef HAVE_SMTP
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
@@ -56,7 +56,7 @@ typedef int avoid_empty_file_compiler_warning;
 #endif
 
 #include "extern.h"
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 # include "md5.h"
 #endif
 
@@ -156,7 +156,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	else if (strcmp(authstr, "login") == 0)
 		auth = AUTH_LOGIN;
 	else if (strcmp(authstr, "cram-md5") == 0) {
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 		auth = AUTH_CRAM_MD5;
 #else
 		fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
@@ -174,7 +174,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		return 1;
 	}
 	SMTP_ANSWER(2);
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	if (! sp->s_use_ssl && value("smtp-use-starttls")) {
 		char *server;
 		if ((cp = strchr(xserver, ':')) != NULL) {
@@ -228,7 +228,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			SMTP_OUT(b64.s);
 			SMTP_ANSWER(2);
 			break;
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 		case AUTH_CRAM_MD5:
 			SMTP_OUT("AUTH CRAM-MD5\r\n");
 			SMTP_ANSWER(3);
@@ -350,11 +350,11 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	if (strncmp(server, "smtp://", 7) == 0) {
 		use_ssl = 0;
 		server += 7;
-# ifdef USE_SSL
+#ifdef HAVE_SSL
 	} else if (strncmp(server, "smtps://", 8) == 0) {
 		use_ssl = 1;
 		server += 8;
-# endif
+#endif
 	} else
 		use_ssl = 0;
 	if ((options & OPT_DEBUG) == 0 && sopen(server, &so, use_ssl, server,
@@ -376,4 +376,4 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	safe_signal(SIGTERM, saveterm);
 	return ret;
 }
-#endif /* USE_SMTP */
+#endif /* HAVE_SMTP */

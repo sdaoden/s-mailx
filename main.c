@@ -308,7 +308,7 @@ _rcv_mode(char const *folder)
 		exit(i);
 
 	if (options & OPT_HEADERSONLY) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
 #endif
@@ -442,7 +442,7 @@ main(int argc, char *argv[])
 			options |= OPT_SENDMODE;
 			break;
 		case 'D':
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			okey = "disconnected";
 			goto joarg;
 #else

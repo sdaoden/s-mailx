@@ -40,7 +40,7 @@
 #include "rcv.h"
 
 #include <time.h>
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 # include <errno.h>
 # include <idna.h>
 # include <stringprep.h>
@@ -96,7 +96,7 @@ static int		_is_date(char const *date);
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 static struct addrguts * _idna_apply(struct addrguts *agp);
 #endif
 
@@ -189,7 +189,7 @@ _is_date(char const *date)
 	return (ret);
 }
 
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 static struct addrguts *
 _idna_apply(struct addrguts *agp)
 {
@@ -261,7 +261,7 @@ _addrspec_check(int skinned, struct addrguts *agp)
 {
 	char *addr, *p, in_quote, in_domain, hadat;
 	union {char c; unsigned char u;} c;
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 	uc_it use_idna = ! boption("idna-disable");
 #endif
 
@@ -315,7 +315,7 @@ jaddr_check:
 		if (c.c == '"') {
 			in_quote = ! in_quote;
 		} else if (c.u < 040 || c.u >= 0177) {
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 			if (in_domain && use_idna) {
 				if (use_idna == 1)
 					NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
@@ -355,7 +355,7 @@ jaddr_check:
 		goto jleave;
 	}
 
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 	if (use_idna == 2)
 		agp = _idna_apply(agp);
 #endif

@@ -203,12 +203,12 @@ setfile(char const *name, int newmail)
 		break;
 	case PROTO_MAILDIR:
 		return (maildir_setfile(name, newmail, isedit));
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 	case PROTO_POP3:
 		shudclob = 1;
 		return (pop3_setfile(name, newmail, isedit));
 #endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case PROTO_IMAP:
 		shudclob = 1;
 		if (newmail) {
@@ -376,7 +376,7 @@ newmailinfo(int omsgCount)
 	callhook(mailname, 1);
 	mdot = getmdot(1);
 	if (value("header")) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(omsgCount+1, msgCount);
 #endif
@@ -398,7 +398,7 @@ commands(void)
 	int eofloop = 0, n;
 	char *linebuf = NULL, *av, *nv;
 	size_t linesize = 0;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	int x;
 #endif
 
@@ -436,13 +436,13 @@ commands(void)
 						strcmp(av, "nopoll")) |
 					(nv && strcmp(nv, "noimap") &&
 					 	strcmp(nv, "nopoll"));
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 				x = !(av || nv);
 #endif
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 						(mb.mb_type == MB_IMAP &&
 						imap_newmail(n) > x) ||
 #endif
@@ -1032,7 +1032,7 @@ initbox(const char *name)
 		free(mb.mb_sorted);
 		mb.mb_sorted = NULL;
 	}
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	mb.mb_flags = MB_NOFLAGS;
 #endif
 	prevdot = NULL;

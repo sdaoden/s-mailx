@@ -115,7 +115,7 @@ char *	getrandstring(size_t length);
 #define	Hexchar(n)		((n)>9 ? (n)-10+'A' : (n)+'0')
 #define	hexchar(n)		((n)>9 ? (n)-10+'a' : (n)+'0')
 
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 /* MD5 checksum as hexadecimal string, to be stored in *hex* */
 #define MD5TOHEX_SIZE		32
 char *	md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
@@ -513,7 +513,7 @@ int check_from_and_sender(struct name *fromfield, struct name *senderfield);
 char *getsender(struct message *m);
 
 /* imap.c */
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 char const *	imap_fileof(char const *xcp);
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
@@ -745,7 +745,7 @@ void		printgroup(char *name);
 void		remove_group(char const *name);
 
 /* openssl.c */
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
 void ssl_gen_err(const char *fmt, ...);
 int cverify(void *vp);
@@ -759,7 +759,7 @@ enum okay smime_certsave(struct message *m, int n, FILE *op);
 #endif
 
 /* pop3.c */
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 enum okay pop3_noop(void);
 int pop3_setfile(const char *server, int newmail, int isedit);
 enum okay pop3_header(struct message *m);
@@ -838,7 +838,7 @@ enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
  * smtp.c
  */
 
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 char *	smtp_auth_var(const char *type, const char *addr);
 int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
@@ -865,7 +865,7 @@ int	cspam_spam(void *v);
 #endif
 
 /* ssl.c */
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 void ssl_set_vrfy_level(const char *uhp);
 enum okay ssl_vrfy_decide(void);
 char *ssl_method_string(const char *uhp);

@@ -804,7 +804,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 	while (np) {
 		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
 		if ((cp = value(o)) != NULL) {
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			struct name *nt;
 			FILE *ef;
 			if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
@@ -822,7 +822,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 					"Message not sent to <%s>\n"),
 					np->n_name);
 				_senderror = TRU1;
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			}
 #endif
 			rewind(input);
@@ -853,7 +853,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 static enum okay
 start_mta(struct name *to, FILE *input, struct header *hp)
 {
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
 	char const **args = NULL, **t, *mta;
@@ -881,7 +881,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		}
 	} else {
 		mta = NULL; /* Silence cc */
-#ifndef USE_SMTP
+#ifndef HAVE_SMTP
 		fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
 		goto jstop;
 #else
@@ -913,7 +913,7 @@ jstop:		savedeadletter(input, 0);
 		sigaddset(&nset, SIGTTIN);
 		sigaddset(&nset, SIGTTOU);
 		freopen("/dev/null", "r", stdin);
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 		if (smtp != NULL) {
 			prepare_child(&nset, 0, 1);
 			if (smtp_mta(smtp, to, input, hp,
@@ -930,7 +930,7 @@ jstop:		savedeadletter(input, 0);
 			lseek(0, 0, SEEK_SET);
 			execv(mta, UNCONST(args));
 			perror(mta);
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 		}
 #endif
 		savedeadletter(input, 1);
@@ -1065,7 +1065,7 @@ jaskeot:
 
 	if (dosign < 0)
 		dosign = (value("smime-sign") != NULL);
-#ifndef USE_SSL
+#ifndef HAVE_SSL
 	if (dosign) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		goto jleave;
@@ -1143,7 +1143,7 @@ jaskeot:
 		}
 
 		perror("");
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 jfail_dead:
 #endif
 		_senderror = TRU1;
@@ -1153,7 +1153,7 @@ jfail_dead:
 	}
 
 	mtf = nmtf;
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	if (dosign) {
 		if ((nmtf = smime_sign(mtf, hp)) == NULL)
 			goto jfail_dead;

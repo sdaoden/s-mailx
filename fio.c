@@ -58,7 +58,7 @@
 # endif
 #endif
 
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 # include <openssl/err.h>
 # include <openssl/rand.h>
 # include <openssl/ssl.h>
@@ -1000,11 +1000,11 @@ get_header(struct message *mp)
 	case MB_FILE:
 	case MB_MAILDIR:
 		return (OKAY);
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 	case MB_POP3:
 		return (pop3_header(mp));
 #endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		return imap_header(mp);
@@ -1023,11 +1023,11 @@ get_body(struct message *mp)
 	case MB_FILE:
 	case MB_MAILDIR:
 		return (OKAY);
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 	case MB_POP3:
 		return (pop3_body(mp));
 #endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		return imap_body(mp);
@@ -1067,7 +1067,7 @@ sclose(struct sock *sp)
 	if (sp->s_fd > 0) {
 		if (sp->s_onclose != NULL)
 			(*sp->s_onclose)();
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 		if (sp->s_use_ssl) {
 			sp->s_use_ssl = 0;
 			SSL_shutdown(sp->s_ssl);
@@ -1140,7 +1140,7 @@ swrite1(struct sock *sp, const char *data, int sz, int use_buffer)
 	}
 	if (sz == 0)
 		return OKAY;
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 	if (sp->s_use_ssl) {
 ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 		if (x < 0) {
@@ -1159,7 +1159,7 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 		char	o[512];
 		snprintf(o, sizeof o, "%s write error",
 				sp->s_desc ? sp->s_desc : "socket");
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 		sp->s_use_ssl ? ssl_gen_err("%s", o) : perror(o);
 #else
 		perror(o);
@@ -1181,7 +1181,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 #ifdef HAVE_SO_LINGER
 	struct linger li;
 #endif
-#ifdef USE_IPV6
+#ifdef HAVE_IPV6
 	char	hbuf[NI_MAXHOST];
 	struct addrinfo	hints, *res0, *res;
 #else
@@ -1199,7 +1199,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 
 	if ((cp = strchr(server, ':')) != NULL) { /* TODO URI parse! IPv6! */
 		portstr = &cp[1];
-#ifndef USE_IPV6
+#ifndef HAVE_IPV6
 		port = strtol(portstr, NULL, 10);
 #endif
 		server = salloc(cp - xserver + 1);
@@ -1213,7 +1213,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	tv.tv_usec = 0;
 #endif
 
-#ifdef USE_IPV6
+#ifdef HAVE_IPV6
 	if (verbose)
 		fprintf(stderr, "Resolving host %s . . .", server);
 	memset(&hints, 0, sizeof hints);
@@ -1255,19 +1255,19 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	}
 	freeaddrinfo(res0);
 
-#else /* USE_IPV6 */
+#else /* HAVE_IPV6 */
 	if (port == 0) {
 		if (strcmp(portstr, "smtp") == 0)
 			port = htons(25);
 		else if (strcmp(portstr, "smtps") == 0)
 			port = htons(465);
-# ifdef USE_IMAP
+# ifdef HAVE_IMAP
 		else if (strcmp(portstr, "imap") == 0)
 			port = htons(143);
 		else if (strcmp(portstr, "imaps") == 0)
 			port = htons(993);
 # endif
-# ifdef USE_POP3
+# ifdef HAVE_POP3
 		else if (strcmp(portstr, "pop3") == 0)
 			port = htons(110);
 		else if (strcmp(portstr, "pop3s") == 0)
@@ -1312,7 +1312,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		perror(tr(254, " could not connect"));
 		return STOP;
 	}
-#endif /* USE_IPV6 */
+#endif /* HAVE_IPV6 */
 	if (verbose)
 		fputs(tr(193, " connected.\n"), stderr);
 
@@ -1331,7 +1331,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 
 	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	if (use_ssl && ssl_open(server, sp, uhp) != OKAY) {
 		sclose(sp);
 		return STOP;
@@ -1359,7 +1359,7 @@ int
 		}
 		if (sp->s_rbufptr == NULL ||
 				sp->s_rbufptr >= &sp->s_rbuf[sp->s_rsz]) {
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 			if (sp->s_use_ssl) {
 		ssl_retry:	if ((sp->s_rsz = SSL_read(sp->s_ssl,
 						sp->s_rbuf,

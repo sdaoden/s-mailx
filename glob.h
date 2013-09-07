@@ -118,7 +118,7 @@ _E struct termios_state termios_state;	/* getpassword(); see commands().. */
 _E char const	*const month_names[12 + 1];
 _E char const	*const weekday_names[7 + 1];
 
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 _E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */
 #endif
 

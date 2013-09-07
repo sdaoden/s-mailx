@@ -94,7 +94,7 @@ static void newpart(struct mimepart *ip, struct mimepart **np, off_t offs,
 static void endpart(struct mimepart **np, off_t xoffs, long lines);
 static void parse822(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 static void parsepkcs7(struct message *zmp, struct mimepart *ip,
 		enum parseflags pf, int level);
 #endif
@@ -1146,7 +1146,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		switch (ip->m_mimecontent) {
 		case MIME_PKCS7:
 			if (pf & PARSE_DECRYPT) {
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 				parsepkcs7(zmp, ip, pf, level);
 				break;
 #else
@@ -1255,7 +1255,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	parsepart(zmp, np, pf, level+1);
 }
 
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 static void
 parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		int level)

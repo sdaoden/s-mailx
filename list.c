@@ -194,7 +194,7 @@ markall(char *buf, int f)
 	int tok, beg, mc, star, other, valdot, colmod, colresult, topen, tback;
 	size_t nmlsize;
 	enum idfield	idfield = ID_REFERENCES;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	int gotheaders;
 #endif
 
@@ -218,7 +218,7 @@ markall(char *buf, int f)
 	beg = 0;
 	topen = 0;
 	tback = 0;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	gotheaders = 0;
 #endif
 
@@ -381,7 +381,7 @@ number:
 
 		case TCOMMA:
 			msglist_is_single = FAL0;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 				imap_getheaders(1, msgCount);
 #endif
@@ -471,7 +471,7 @@ number:
 	if (np > namelist || id) {
 		int	allnet = value("allnet") != NULL;
 
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 			imap_getheaders(1, msgCount);
 #endif

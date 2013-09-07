@@ -40,7 +40,7 @@
 #include "rcv.h"
 #include "extern.h"
 
-#ifdef USE_DOCSTRINGS
+#ifdef HAVE_DOCSTRINGS
 # define DS(ID,S)	, ID, S
 #else
 # define DS(ID,S)
