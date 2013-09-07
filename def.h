@@ -97,7 +97,9 @@
  */
 
 /* Members in constant array */
-#define ARRAY_COUNT(A)	(sizeof(A) / sizeof(A[0]))
+#ifndef NELEM
+# define NELEM(A)	(sizeof(A) / sizeof(A[0]))
+#endif
 
 /* sizeof() for member fields */
 #define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)

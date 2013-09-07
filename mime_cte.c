@@ -181,8 +181,8 @@ _qp_cfromhex(char const *hex)
 	uc_it i1, i2;
 	si_it r;
 
-	if ((i1 = (uc_it)hex[0] - '0') >= ARRAY_COUNT(atoi16) ||
-			(i2 = (uc_it)hex[1] - '0') >= ARRAY_COUNT(atoi16))
+	if ((i1 = (uc_it)hex[0] - '0') >= NELEM(atoi16) ||
+			(i2 = (uc_it)hex[1] - '0') >= NELEM(atoi16))
 		goto jerr;
 	i1 = atoi16[i1];
 	i2 = atoi16[i2];
