@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Spam-checker related facilities.
+ *@ Spam related facilities.
  *
  * Copyright (c) 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -51,11 +51,19 @@ typedef int avoid_empty_file_compiler_warning;
  * TODO   it again.)
  */
 
+enum spam_action {
+   _SPAM_RATE,
+   _SPAM_HAM,
+   _SPAM_SPAM,
+   _SPAM_FORGET
+};
+
 struct spam_vc {
    struct message *  mp;
    size_t            mno;
+   int               action;
+   int               __dummy;
    char *            comm_s;
-   char const *      comm_a[10];
    char *            buffer;
    /* TODO This codebase jumps around and uses "stacks" of signal handling;
     * TODO until some later time we have to play the same game */
@@ -65,12 +73,124 @@ struct spam_vc {
    sighandler_type   ohup;
    sighandler_type   opipe;
    sighandler_type   oint;
+   char const *      comm_a[16];
 };
+
+/* Indices according to enum spam_action */
+static char const _spam_comms[][16] = {
+   "spamrate", "spamham", "spamspam", "spamforget"
+};
+
+/* Shared action setup */
+static bool_t  _spam_action(enum spam_action sa, int *ip);
 
 /* Convert a 2[.x]/whatever spam rate into message.m_spamscore */
 static void    _spam_rate2score(struct spam_vc *vc);
 
-static bool_t  _spam_rate(struct spam_vc *vc);
+/* Interact with spamc(1) */
+static bool_t  _spam_interact(struct spam_vc *vc);
+
+static bool_t
+_spam_action(enum spam_action sa, int *ip)
+{
+   struct spam_vc vc;
+   struct str str;
+   size_t maxsize;
+   char const *cp, **args;
+   bool_t ok = FAL0;
+
+   vc.action = sa;
+
+   if ((cp = voption("spam-command")) == NULL) {
+#ifdef SPAMC_PATH
+      cp = SPAMC_PATH;
+#else
+      fprintf(stderr, tr(514, "`%s': *spam-command* is not set\n"),
+         _spam_comms[sa]);
+      goto jleave;
+#endif
+   }
+
+   /* Prepare the spamc(1) command line */
+   args = vc.comm_a;
+   *args++ = cp;
+
+   switch (sa) {
+   case _SPAM_RATE:
+      *args = "-c";
+      break;
+   case _SPAM_HAM:
+      args[1] = "ham";
+      goto jlearn;
+   case _SPAM_SPAM:
+      args[1] = "spam";
+      goto jlearn;
+   case _SPAM_FORGET:
+      args[1] = "forget";
+jlearn:
+      *args = "-L";
+      ++args;
+      break;
+   }
+   ++args;
+
+   if ((cp = voption("spam-socket")) != NULL) {
+      *args++ = "-U";
+      *args++ = cp;
+   } else {
+      if ((cp = voption("spam-host")) != NULL) {
+         *args++ = "-d";
+         *args++ = cp;
+      }
+      if ((cp = voption("spam-port")) != NULL) {
+         *args++ = "-p";
+         *args++ = cp;
+      }
+   }
+
+   *args++ = "-l"; /* --log-to-stderr */
+
+   if ((cp = voption("spam-user")) != NULL) {
+      *args++ = "-u";
+      *args++ = cp;
+   }
+
+   *args = NULL;
+   vc.comm_s = str_concat_cpa(&str, vc.comm_a, " ")->s;
+   if (options & OPT_DEBUG)
+      fprintf(stderr, "spamc(1) via <%s>\n", vc.comm_s);
+
+   /* *spam-maxsize* we do handle ourselfs instead */
+   maxsize = 0;
+   if ((cp = voption("spam-maxsize")) != NULL)
+      maxsize = (size_t)strtol(cp, NULL, 10);
+   if (maxsize <= 0)
+      maxsize = SPAM_MAXSIZE;
+
+   /* Finally get an I/O buffer */
+   vc.buffer = salloc(BUFFER_SIZE);
+
+   for (ok = TRU1; *ip != 0; ++ip) {
+      vc.mno = (size_t)*ip - 1;
+      vc.mp = message + vc.mno;
+      if (sa == _SPAM_RATE)
+         vc.mp->m_spamscore = 0;
+      if (vc.mp->m_size > maxsize) {
+         if (options & OPT_VERBOSE)
+            fprintf(stderr, tr(515,
+               "`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
+               _spam_comms[sa], (ul_it)vc.mno + 1,
+               (ul_it)vc.mp->m_size, (ul_it)maxsize);
+         continue;
+      }
+      if ((ok = _spam_interact(&vc)) == FAL0)
+         break;
+   }
+#ifndef SPAMC_PATH
+jleave:
+#endif
+   return ! ok;
+}
 
 static void
 _spam_rate2score(struct spam_vc *vc)
@@ -106,7 +226,7 @@ __spam_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static bool_t
-_spam_rate(struct spam_vc *vc)
+_spam_interact(struct spam_vc *vc)
 {
    char *cp;
    int p2c[2], c2p[2];
@@ -172,7 +292,8 @@ _spam_rate(struct spam_vc *vc)
    state &= ~_P2C_0;
 
    /* Yes, we could send(SEND_MBOX), but the simply passing through the MBOX
-    * content does the same in effect, but is much more efficient */
+    * content does the same in effect, but is much more efficient
+    * NOTE: this may mean we pass a message without From_ line! */
    for (cp = vc->buffer, size = vc->mp->m_size; size > 0;) {
       size_t i = fread(vc->buffer, 1, MIN(size, BUFFER_SIZE), ibuf);
       if (i == 0) {
@@ -219,12 +340,12 @@ jleave:
     * XXX everything until EOF on input, then (2) work, then (3) output
     * XXX a single result line; otherwise we could deadlock here, but since
     * TODO this is rather intermediate, go with it */
-   if (! (state & (_JUMPED | _ERRORS))) {
+   if (vc->action == _SPAM_RATE && ! (state & (_JUMPED | _ERRORS))) {
       ssize_t i = read(c2p[0], vc->buffer, BUFFER_SIZE - 1);
       if (i > 0) {
          vc->buffer[i] = '\0';
          _spam_rate2score(vc);
-      } else
+      } else if (i != 0)
          state |= _ERRORS;
    }
 
@@ -233,14 +354,23 @@ jleave:
       close(c2p[0]);
    }
 
-   switch (state & (_JUMPED | _GOODRUN | _ERRORS)) {
-   case _GOODRUN:
-      vc->mp->m_flag &= ~MSPAM;
-      break;
-   case 0:
-      vc->mp->m_flag |= MSPAM;
-   default:
-      break;
+   if (vc->action == _SPAM_RATE) {
+      switch (state & (_JUMPED | _GOODRUN | _ERRORS)) {
+      case _GOODRUN:
+         vc->mp->m_flag &= ~MSPAM;
+         break;
+      case 0:
+         vc->mp->m_flag |= MSPAM;
+      default:
+         break;
+      }
+   } else {
+      if (state & (_JUMPED | _ERRORS))
+         /* xxx print message? */;
+      else if (vc->action == _SPAM_SPAM)
+         vc->mp->m_flag |= MSPAM;
+      else if (vc->action == _SPAM_HAM)
+         vc->mp->m_flag &= ~MSPAM;
    }
 
    safe_signal(SIGINT, vc->oint);
@@ -250,7 +380,8 @@ jleave:
    safe_signal(SIGTTIN, vc->ottin);
    safe_signal(SIGTTOU, vc->ottou);
 
-   /* Bounce jumps to the lex.c trampolines */
+   /* Bounce jumps to the lex.c trampolines
+    * (i'd have never believed i'd ever say or even do something like this) */
    if (state & _JUMPED) {
       sigemptyset(&cset);
       sigaddset(&cset, __spam_sig);
@@ -262,71 +393,13 @@ j_leave:
 }
 
 int
-cspam_rate(void *v)
+cspam_clear(void *v)
 {
-   struct spam_vc vc;
-   struct str str;
    int *ip;
-   size_t maxsize;
-   char const *cp, **args;
-   bool_t ok = FAL0;
 
-   if ((cp = voption("spamrate-command")) == NULL) {
-#ifdef SPAMC_PATH
-      cp = SPAMC_PATH;
-#else
-      fprintf(stderr, tr(514, "`spamrate': *spamrate-command* is not set\n"));
-      goto jleave;
-#endif
-   }
-
-   args = vc.comm_a;
-   args[0] = cp;
-   args[1] = "-c";
-   args[2] = "-l";
-   args += 3;
-
-   if ((cp = voption("spamrate-socket")) != NULL) {
-      *args++ = "-U";
-      *args++ = cp;
-   } else {
-      if ((cp = voption("spamrate-host")) != NULL) {
-         *args++ = "-d";
-         *args++ = cp;
-      }
-      if ((cp = voption("spamrate-port")) != NULL) {
-         *args++ = "-p";
-         *args++ = cp;
-      }
-   }
-   *args = NULL;
-   vc.comm_s = str_concat_cpa(&str, vc.comm_a, " ")->s;
-   vc.buffer = salloc(BUFFER_SIZE);
-
-   maxsize = 0;
-   if ((cp = voption("spamrate-maxsize")) != NULL)
-      maxsize = (size_t)strtol(cp, NULL, 10);
-   if (maxsize <= 0)
-      maxsize = SPAM_MAXSIZE;
-
-   for (ok = TRU1, ip = v; *ip != 0; ++ip) {
-      vc.mno = (size_t)*ip - 1;
-      vc.mp = message + vc.mno;
-      vc.mp->m_spamscore = 0;
-      if (vc.mp->m_size > maxsize) {
-         if (options & OPT_VERBOSE)
-            fprintf(stderr, tr(515,
-               "`spamrate': message %lu exceeds maxsize (%lu > %lu), skip\n"),
-               (ul_it)vc.mno + 1, (ul_it)vc.mp->m_size, (ul_it)maxsize);
-         continue;
-      }
-      if ((ok = _spam_rate(&vc)) == FAL0)
-         break;
-   }
-#ifndef SPAMC_PATH
-jleave:
-#endif
-   return (ok == FAL0) ? STOP : OKAY;
+   for (ip = v; *ip != 0; ++ip)
+      message[(size_t)*ip - 1].m_flag &= ~MSPAM;
+   return 0;
 }
 
 int
@@ -336,17 +409,31 @@ cspam_set(void *v)
 
    for (ip = v; *ip != 0; ++ip)
       message[(size_t)*ip - 1].m_flag |= MSPAM;
-   return OKAY;
+   return 0;
 }
 
 int
-cspam_clear(void *v)
+cspam_forget(void *v)
 {
-   int *ip;
+   return _spam_action(_SPAM_FORGET, (int*)v) ? OKAY : STOP;
+}
 
-   for (ip = v; *ip != 0; ++ip)
-      message[(size_t)*ip - 1].m_flag &= ~MSPAM;
-   return OKAY;
+int
+cspam_ham(void *v)
+{
+   return _spam_action(_SPAM_HAM, (int*)v) ? OKAY : STOP;
+}
+
+int
+cspam_rate(void *v)
+{
+   return _spam_action(_SPAM_RATE, (int*)v) ? OKAY : STOP;
+}
+
+int
+cspam_spam(void *v)
+{
+   return _spam_action(_SPAM_SPAM, (int*)v) ? OKAY : STOP;
 }
 #endif /* HAVE_SPAM */
 

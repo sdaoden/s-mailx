@@ -479,9 +479,12 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 416 Print statistics about the auto-reclaimed string store
 417 Trace current memory usage afap
 418 Either <show> (default) or <clear> the mime.types cache
-419 Rate <message-list> via the configured spam identifier
-420 Mark <message-list> as being spam
-421 Mark <message-list> as not being spam
+419 Rate <message-list> via the spam detector
+420 Teach the spam detector that <message-list> is ham
+421 Teach the spam detector that <message-list> is spam
+422 Force the spam detector to \"unlearn\" <message-list>
+423 Set the spam flag for each message in <message-list>
+424 Clear the spam flag for each message in <message-list>
 
 
 500 $ done.\n
@@ -500,5 +503,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 511 ${former content: %.*s} $
 512 Original message content
 513 Attached message content
-514 `spamrate': *spamrate-command* is not set\n
-515 `spamrate': message %lu exceeds maxsize (%lu > %lu), skip\n
+514 `%s': *spam-command* is not set\n
+515 `%s': message %lu exceeds maxsize (%lu > %lu), skip\n

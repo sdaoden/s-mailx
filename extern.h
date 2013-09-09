@@ -849,14 +849,19 @@ int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
  */
 
 #ifdef HAVE_SPAM
-int	cspam_rate(void *v);
-int	cspam_set(void *v);
 int	cspam_clear(void *v);
-
+int	cspam_set(void *v);
+int	cspam_forget(void *v);
+int	cspam_ham(void *v);
+int	cspam_rate(void *v);
+int	cspam_spam(void *v);
 #else
-# define cspam_rate	ccmdnotsupp
-# define cspam_set	ccmdnotsupp
 # define cspam_clear	ccmdnotsupp
+# define cspam_set	ccmdnotsupp
+# define cspam_forget	ccmdnotsupp
+# define cspam_ham	ccmdnotsupp
+# define cspam_rate	ccmdnotsupp
+# define cspam_spam	ccmdnotsupp
 #endif
 
 /* ssl.c */
