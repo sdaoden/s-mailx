@@ -13,6 +13,7 @@ else
 		WANT_SOCKETS=0 WANT_LINE_EDITOR=0
 		WANT_QUOTE_FOLD=0
 		WANT_DOCSTRINGS=0
+		WANT_SPAM=0
 		;;
 	NETSEND)
 		WANT_JUNK=0 WANT_SCORE=0 WANT_IMAP=0 WANT_POP3=0
@@ -21,6 +22,7 @@ else
 	CUSTOM)
 		WANT_QUOTE_FOLD=0
 		WANT_DOCSTRINGS=0
+		WANT_SPAM=0
 		;;
 	*)
 		echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -767,6 +769,15 @@ else
 	echo '/* WANT_DOCSTRINGS=0 */' >> ${out}
 fi
 
+if wantfeat SPAM; then
+	echo "#define HAVE_SPAM" >> ${out}
+	if command -v spamc >/dev/null 2>&1; then
+		echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${out}
+	fi
+else
+	echo '/* WANT_SPAM=0 */' >> ${out}
+fi
+
 if wantfeat MD5; then
 	echo "#define USE_MD5" >> ${out}
 else
@@ -828,6 +839,9 @@ cat > ${tmp2}.c << \!
 #ifdef USE_MD5
 : + The MD5 message digest
 #endif
+#ifdef HAVE_SPAM
+: + Interaction with spam filters
+#endif
 #ifdef USE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
@@ -874,6 +888,9 @@ cat > ${tmp2}.c << \!
 #endif
 #ifndef USE_MD5
 : - The MD5 message digest
+#endif
+#ifndef HAVE_SPAM
+: - Interaction with spam filters
 #endif
 #ifndef USE_IDNA
 : - IDNA (internationalized domain names for applications) support
