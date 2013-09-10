@@ -178,6 +178,9 @@ Inhibits reading \*(UR upon startup.
 This option should be activated for \*(UA scripts that are invoked on
 more than one machine, because the contents of that file may differ
 between them.
+(The same behaviour can be achieved by setting the
+.Ev NAIL_NO_SYSTEM_RC
+environment variable.)
 .It Fl O Ar mta-option
 Pass the given option through to the mail-transfer-agent (MTA).
 This option has no effect when mail is send via SMTP.
@@ -3417,7 +3420,7 @@ command and `~v' tilde escape.
 .\"
 .Sh ENVIRONMENT
 Besides the variables described above,
-\*(UA uses the following environment strings:
+\*(UA uses the following environment variables:
 .Bl -tag -width ".It Va MAILRC"
 .It Va COLUMNS
 The user's preferred width in column positions for the terminal screen
@@ -3440,6 +3443,11 @@ to avoid side-effects from reading their configuration files.
 If this variable is set and
 .Va MAILRC
 is not, it is treated as a startup configuration file and read.
+.It Va NAIL_NO_SYSTEM_RC
+If this variable is set then reading of \*(UR at startup is inhibited,
+i.e., the same effect is achieved as if \*(UA had been started up with
+the set option
+.Fl n .
 .It Va SYSV3
 Changes the letters printed in the first column of a header summary.
 .It Va TMPDIR

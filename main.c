@@ -645,7 +645,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();
 
-	if ((options & OPT_NOSRC) == 0)
+	if ((options & OPT_NOSRC) == 0 && getenv("NAIL_NO_SYSTEM_RC") == NULL)
 		load(SYSCONFRC);
 	/* *expand() returns a savestr(), but load only uses the file name
 	 * for fopen(), so it's safe to do this */
