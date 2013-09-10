@@ -907,8 +907,10 @@ echo(void *v)
 		if ((cp = fexpand(cp, FEXP_NSHORTCUT)) != NULL) {
 			if (ap != argv)
 				putchar(' ');
+			c = 0;
 			while (*cp != '\0' &&
-					(c = expand_shell_escape(&cp)) > 0)
+					(c = expand_shell_escape(&cp, FAL0))
+					> 0)
 				putchar(c);
 			/* \c ends overall processing */
 			if (c < 0)

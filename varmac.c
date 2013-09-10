@@ -157,7 +157,7 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 		char const *x = cp = *value;
 		int c;
 		while (*x != '\0') {
-			c = expand_shell_escape(&x);
+			c = expand_shell_escape(&x, FAL0);
 			if (c < 0)
 				break;
 			*cp++ = (char)c;

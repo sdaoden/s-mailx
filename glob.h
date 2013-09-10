@@ -71,6 +71,7 @@ _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 
 _E int		inhook;			/* currently executing a hook */
+_E bool_t	exec_last_comm_error;	/* Last execute() command failed */
 _E bool_t	edit;			/* Indicates editing a file */
 _E bool_t	did_print_dot;		/* current message has been printed */
 _E bool_t	msglist_is_single;	/* Last NDMLIST/MSGLIST *chose* 1 msg */

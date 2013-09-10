@@ -714,7 +714,7 @@ je96:
 
 jleave:
 	/* Exit the current source file on error */
-	if (e) {
+	if ((exec_last_comm_error = (e != 0))) {
 		if (e < 0)
 			return 1;
 		if (loading)

@@ -1102,9 +1102,9 @@ Echoes its arguments,
 resolving special names as documented for the command
 .Ic folder .
 The escape sequences `\ea', `\eb', `\ec', `\ef', `\en', `\er', `\et',
-`\ev', `\e\e', and `\e0octal-num\fR' are interpreted as with the
+`\ev', `\e\e', and `\e0octal-num\fR' are interpreted just as they are by
 .Xr printf 1
-command.
+(proper quoting provided).
 .It Ic edit
 (e) Point the text editor at each message from the given list in turn.
 Modified contents are discarded unless the
@@ -3019,6 +3019,8 @@ The same XSI escape sequences that are understood by the
 .Ic echo
 command may be used within
 .Va prompt .
+As a \*(UA specific addition, the escape sequence `\\?' will expand to
+`1' if the last command failed, and to `0' otherwise.
 .It Va quote
 If set, \*(UA starts a replying message with the original message
 prefixed by the value of the variable

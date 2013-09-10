@@ -369,7 +369,7 @@ nextprime(long n)
 }
 
 int
-expand_shell_escape(char const **s)
+expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
 	char const *xs = *s;
 	int c, n;
@@ -381,8 +381,7 @@ expand_shell_escape(char const **s)
 		goto jleave;
 
 	switch ((c = *xs & 0xFF)) {
-	default:			break;
-	case '\0':			goto jleave;
+	case '\\':			break;
 	case 'a':	c = '\a';	break;
 	case 'b':	c = '\b';	break;
 	case 'c':	c = -1;		break;
@@ -396,6 +395,19 @@ expand_shell_escape(char const **s)
 			c <<= 3;
 			c |= *xs - '0';
 		}
+		goto jleave;
+	/* S-nail extension for nice prompt support */
+	case '?':
+		if (use_nail_extensions) {
+			c = exec_last_comm_error ? '1' : '0';
+			break;
+		}
+		/* FALLTHRU */
+	case '\0':
+		/* A sole <backslash> at EOS is treated as-is! */
+		/* FALLTHRU */
+	default:
+		c = '\\';
 		goto jleave;
 	}
 	++xs;
@@ -418,7 +430,7 @@ getprompt(void)
 		char *cp;
 
 		for (cp = buf; cp < buf + sizeof(buf) - 1; ++cp) {
-			int c = expand_shell_escape(&ccp);
+			int c = expand_shell_escape(&ccp, TRU1);
 			if (c <= 0)
 				break;
 			*cp = (char)c;
