@@ -92,8 +92,6 @@
 #define LISTER		"ls"
 #define PAGER		"more"
 
-#define HIST_SIZE	242
-
 /*
  * Funs, CC support etc.
  */
@@ -152,6 +150,13 @@
 #define _CTA_1(TEST,L)  _CTA_2(TEST, L)
 #define _CTA_2(TEST,L)	\
 	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
+
+/*
+ * Line editor (tty.c)
+ */
+
+/* The default size in entries of the history list */
+#define HIST_SIZE	242
 
 /*
  * MIME (mime.c)
