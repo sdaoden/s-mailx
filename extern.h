@@ -71,8 +71,6 @@ void	panic(const char *format, ...);
 void	hold_all_sigs(void);
 void	rele_all_sigs(void);
 
-void holdint(void);
-void relseint(void);
 void touch(struct message *mp);
 int is_dir(char const *name);
 int argcount(char **argv);

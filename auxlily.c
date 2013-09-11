@@ -107,26 +107,6 @@ rele_all_sigs(void)
 		sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
 }
 
-void
-holdint(void)
-{
-	sigset_t	set;
-
-	sigemptyset(&set);
-	sigaddset(&set, SIGINT);
-	sigprocmask(SIG_BLOCK, &set, NULL);
-}
-
-void
-relseint(void)
-{
-	sigset_t	set;
-
-	sigemptyset(&set);
-	sigaddset(&set, SIGINT);
-	sigprocmask(SIG_UNBLOCK, &set, NULL);
-}
-
 /*
  * Touch the named message by setting its MTOUCH flag.
  * Touched messages have the effect of not being sent
