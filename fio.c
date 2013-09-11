@@ -1175,6 +1175,12 @@ enum okay
 sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose)
 {
+#ifdef HAVE_SO_SNDTIMEO
+	struct timeval tv;
+#endif
+#ifdef HAVE_SO_LINGER
+	struct linger li;
+#endif
 #ifdef USE_IPV6
 	char	hbuf[NI_MAXHOST];
 	struct addrinfo	hints, *res0, *res;
@@ -1201,6 +1207,12 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		server[cp - xserver] = '\0';
 	}
 
+	/* Connect timeouts after 30 seconds */
+#ifdef HAVE_SO_SNDTIMEO
+	tv.tv_sec = 30;
+	tv.tv_usec = 0;
+#endif
+
 #ifdef USE_IPV6
 	if (verbose)
 		fprintf(stderr, "Resolving host %s . . .", server);
@@ -1226,6 +1238,10 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 		}
 		if ((sockfd = socket(res->ai_family, res->ai_socktype,
 				res->ai_protocol)) >= 0) {
+# ifdef HAVE_SO_SNDTIMEO
+			setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO,
+				&tv, sizeof tv);
+# endif
 			if (connect(sockfd, res->ai_addr, res->ai_addrlen)!=0) {
 				close(sockfd);
 				sockfd = -1;
@@ -1287,6 +1303,10 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	if (verbose)
 		fprintf(stderr, tr(192, "%sConnecting to %s:%d . . ."),
 				"", inet_ntoa(**pptr), ntohs(port));
+
+# ifdef HAVE_SO_SNDTIMEO
+	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+# endif
 	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof servaddr)
 			!= 0) {
 		perror(tr(254, " could not connect"));
@@ -1296,15 +1316,25 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	if (verbose)
 		fputs(tr(193, " connected.\n"), stderr);
 
+	/* And the regular timeouts */
+#ifdef HAVE_SO_SNDTIMEO
+	tv.tv_sec = 42;
+	tv.tv_usec = 0;
+	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+#endif
+#ifdef HAVE_SO_LINGER
+	li.l_onoff = 1;
+	li.l_linger = 42;
+	setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
+#endif
+
 	memset(sp, 0, sizeof *sp);
 	sp->s_fd = sockfd;
 #ifdef USE_SSL
-	if (use_ssl) {
-		enum okay ok;
-
-		if ((ok = ssl_open(server, sp, uhp)) != OKAY)
-			sclose(sp);
-		return ok;
+	if (use_ssl && ssl_open(server, sp, uhp) != OKAY) {
+		sclose(sp);
+		return STOP;
 	}
 #endif
 	return OKAY;

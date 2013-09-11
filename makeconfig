@@ -459,7 +459,6 @@ int main(void)
 }
 !
 
-	WANT_SOCKETS=1
 	< ${tmp2}.c link_check sockets 'for sockets in libc' \
 			'#define HAVE_SOCKETS' ||
 		< ${tmp2}.c link_check sockets 'for sockets in libnsl' \
@@ -476,6 +475,49 @@ int main(void)
 else
 	echo '/* WANT_SOCKETS=0 */' >> ${out}
 fi # wantfeat SOCKETS
+
+wantfeat SOCKETS &&
+link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
+#include <sys/socket.h>
+#include <stdlib.h>
+int main(void)
+{
+	int sockfd = 3;
+	setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0);
+	return 0;
+}
+!
+
+wantfeat SOCKETS && [ -n "${have_setsockopt}" ] &&
+link_check so_sndtimeo 'for SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
+#include <sys/socket.h>
+#include <stdlib.h>
+int main(void)
+{
+	struct timeval tv;
+	int sockfd = 3;
+	tv.tv_sec = 42;
+	tv.tv_usec = 21;
+	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+	return 0;
+}
+!
+
+wantfeat SOCKETS && [ -n "${have_setsockopt}" ] &&
+link_check so_linger 'for SO_LINGER' '#define HAVE_SO_LINGER' << \!
+#include <sys/socket.h>
+#include <stdlib.h>
+int main(void)
+{
+	struct linger li;
+	int sockfd = 3;
+	li.l_onoff = 1;
+	li.l_linger = 42;
+	setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
+	return 0;
+}
+!
 
 if wantfeat IPV6; then
 	link_check ipv6 'for IPv6 functionality' '#define USE_IPV6' << \!
