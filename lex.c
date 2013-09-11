@@ -265,14 +265,13 @@ setfile(char const *name, int newmail)
 	 * the message[] data structure.
 	 */
 
-	holdsigs();
+	holdsigs(); /* TODO note on this one in quit.c:quit() */
 	if (shudclob && !newmail)
 		quit();
-
-#ifdef	HAVE_SOCKETS
+#ifdef HAVE_SOCKETS
 	if (!newmail && mb.mb_sock.s_fd >= 0)
 		sclose(&mb.mb_sock);
-#endif	/* HAVE_SOCKETS */
+#endif
 
 	/*
 	 * Copy the messages into /tmp

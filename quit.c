@@ -162,21 +162,31 @@ quit(void)
 	 */
 	if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
 		return;
+	/* TODO lex.c:setfile() has just called holdsigs(); before it called
+	 * TODO us, but this causes uninterruptible hangs due to blocked sigs
+	 * TODO anywhere except for MB_FILE (all others install their own
+	 * TODO handlers, as it seems, properly); marked YYY */
 	switch (mb.mb_type) {
 	case MB_FILE:
 		break;
 	case MB_MAILDIR:
+		relsesigs(); /* YYY */
 		maildir_quit();
+		holdsigs(); /* YYY */
 		return;
 #ifdef HAVE_POP3
 	case MB_POP3:
+		relsesigs(); /* YYY */
 		pop3_quit();
+		holdsigs(); /* YYY */
 		return;
 #endif
 #ifdef HAVE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
+		relsesigs(); /* YYY */
 		imap_quit();
+		holdsigs(); /* YYY */
 		return;
 #endif
 	case MB_VOID:
