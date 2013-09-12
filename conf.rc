@@ -37,8 +37,10 @@ WANT_SSL=1
 
 # Support for IMAP protocol?  (Reading of mails directly on the server)
 WANT_IMAP=1
-# Support for GSSAPI-based authentication for IMAP?
-WANT_GSSAPI=1
+# Support for GSSAPI-based authentication, i.e., Kerberos V5 for IMAP?
+# (This is disabled by default because it brings in a bunch of dependencies,
+# and most people don't need it.)
+WANT_GSSAPI=0
 
 # Support for POP3 protocol?  (Download of mails via POP over the network)
 WANT_POP3=1
