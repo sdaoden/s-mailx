@@ -38,10 +38,6 @@
  * SUCH DAMAGE.
  */
 
-/* These two come from version.c */
-extern char const *const uagent;	/* User agent */
-extern char const *const version;	/* The version string */
-
 /* The rest will end up in main.o */
 #ifdef _MAIL_GLOBS_
 # undef _E
@@ -115,10 +111,13 @@ _E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
 _E struct termios_state termios_state;	/* getpassword(); see commands().. */
 
 /* These are initialized strings */
-_E char const	*const month_names[12 + 1];
-_E char const	*const weekday_names[7 + 1];
+_E char const *const	month_names[12 + 1];
+_E char const *const	weekday_names[7 + 1];
 
-#ifdef USE_SSL
+_E char const *const	uagent;		/* User agent */
+_E char const *const	version;	/* The version string */
+
+#ifdef HAVE_SSL
 _E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */
 #endif
 

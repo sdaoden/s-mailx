@@ -64,6 +64,7 @@
 #define _MAIL_GLOBS_
 #include "rcv.h"
 #include "extern.h"
+#include "version.h"
 
 struct a_arg {
 	struct a_arg	*aa_next;
@@ -308,7 +309,7 @@ _rcv_mode(char const *folder)
 		exit(i);
 
 	if (options & OPT_HEADERSONLY) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
 #endif
@@ -371,6 +372,9 @@ char const *const	month_names[12 + 1] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
 };
+
+char const *const	uagent = UAGENT;
+char const *const	version = VERSION;
 
 sighandler_type		dflpipe = SIG_DFL;
 
@@ -442,7 +446,7 @@ main(int argc, char *argv[])
 			options |= OPT_SENDMODE;
 			break;
 		case 'D':
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			okey = "disconnected";
 			goto joarg;
 #else

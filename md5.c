@@ -59,7 +59,7 @@ Appendix -- Sample Code
 
 #include "rcv.h"
 
-#ifndef USE_MD5
+#ifndef HAVE_MD5
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "md5.h"
@@ -437,4 +437,4 @@ hmac_md5 (
 					      * hash */
 	MD5Final(digest, &context);	     /* finish up 2nd pass */
 }
-#endif /* USE_MD5 */
+#endif /* HAVE_MD5 */

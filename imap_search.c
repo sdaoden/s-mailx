@@ -175,7 +175,7 @@ imap_search(const char *spec, int f)
 	} else
 		spec = lastspec;
 	begin = spec;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	if (imap_search1(spec, f) == OKAY)
 		return OKAY;
 	needheaders = 0;
@@ -184,7 +184,7 @@ imap_search(const char *spec, int f)
 		return STOP;
 	if (ittree == NULL)
 		return OKAY;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	if (mb.mb_type == MB_IMAP && needheaders)
 		imap_getheaders(1, msgCount);
 #endif

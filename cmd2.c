@@ -363,15 +363,15 @@ save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
 		if (prot == PROTO_IMAP &&
 				ignore[0].i_count == 0 &&
 				ignore[1].i_count == 0
-#ifdef USE_IMAP /* TODO revisit */
+#ifdef HAVE_IMAP /* TODO revisit */
 				&& imap_thisaccount(file)
 #endif
 		) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			if (imap_copy(mp, *ip, file) == STOP)
 #endif
 				goto ferr;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
 #endif
@@ -400,7 +400,7 @@ save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
 	if (success) {
 		if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {
 			disp = (
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 				((prot == PROTO_IMAP) && disconnected(file))
 				? "[Queued]" :
 #endif
@@ -564,7 +564,7 @@ undeletecmd(void *v)
 			mp->m_flag &= ~(MDELETED|MSAVED);
 		else
 			mp->m_flag &= ~MDELETED;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 			imap_undelete(mp, *ip);
 #endif

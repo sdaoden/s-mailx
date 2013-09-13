@@ -472,7 +472,7 @@ compress(struct fp *fpp)
 	clearerr(fpp->fp);
 	if (fseek(fpp->fp, fpp->offset, SEEK_SET) < 0)
 		return STOP;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	if ((fpp->compressed&FP_MASK) == FP_IMAP) {
 		return imap_append(fpp->realfile, fpp->fp);
 	}

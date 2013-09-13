@@ -32,7 +32,7 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 
 /*
  * This version of MD5 has been changed such that any unsigned type with
@@ -53,4 +53,4 @@ void	MD5Final(unsigned char[16], MD5_CTX *);
 
 void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
 
-#endif /* USE_MD5 */
+#endif /* HAVE_MD5 */

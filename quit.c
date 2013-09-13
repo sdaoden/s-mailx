@@ -168,12 +168,12 @@ quit(void)
 	case MB_MAILDIR:
 		maildir_quit();
 		return;
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 	case MB_POP3:
 		pop3_quit();
 		return;
 #endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
 		imap_quit();
@@ -418,11 +418,11 @@ makembox(void)
 			if (prot == PROTO_IMAP &&
 					saveignore[0].i_count == 0 &&
 					saveignore[1].i_count == 0
-#ifdef USE_IMAP /* TODO revisit */
+#ifdef HAVE_IMAP /* TODO revisit */
 					&& imap_thisaccount(mbox)
 #endif
 			) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 				if (imap_copy(mp, mp-message+1, mbox) == STOP)
 #endif
 					goto err;

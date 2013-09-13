@@ -89,9 +89,16 @@
 
 #define CBAD		(-15555)
 
-#define SHELL		"/bin/sh"
-#define LISTER		"ls"
-#define PAGER		"more"
+/* These come from the configuration */
+#ifndef SHELL
+# define SHELL		"/bin/sh"
+#endif
+#ifndef LISTER
+# define LISTER		"ls"
+#endif
+#ifndef PAGER
+# define PAGER		"more"
+#endif
 
 /*
  * Funs, CC support etc.
@@ -374,7 +381,7 @@ enum protocol {
 	PROTO_UNKNOWN			/* unknown protocol */
 };
 
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 enum ssl_vrfy_level {
 	VRFY_IGNORE,
 	VRFY_WARN,
@@ -426,9 +433,9 @@ do {\
 
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	int	s_use_ssl;		/* SSL is used */
-# ifdef USE_OPENSSL
+# ifdef HAVE_OPENSSL
 	void	*s_ssl;			/* SSL object */
 	void	*s_ctx;			/* SSL context object */
 # endif
@@ -468,7 +475,7 @@ struct mailbox {
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
 	int mb_threaded;		/* mailbox has been threaded */
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	enum mbflags {
 		MB_NOFLAGS	= 000,
 		MB_UIDPLUS	= 001	/* supports IMAP UIDPLUS */
@@ -575,7 +582,7 @@ struct message {
 	struct message	*m_parent;	/* parent of this message */
 	unsigned	m_level;	/* thread level of message */
 	long		m_threadpos;	/* position in threaded display */
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	unsigned long	m_uid;		/* IMAP unique identifier */
 #endif
 	char	*m_maildir_file;	/* original maildir file of msg */
@@ -627,7 +634,7 @@ struct cmd {
 	enum argtype	c_argtype;		/* Arglist type (see below) */
 	short		c_msgflag;		/* Required flags of msgs*/
 	short		c_msgmask;		/* Relevant flags of msgs */
-#ifdef USE_DOCSTRINGS
+#ifdef HAVE_DOCSTRINGS
 	int		c_docid;		/* Translation id of .c_doc */
 	char const	*c_doc;			/* One line doc for command */
 #endif

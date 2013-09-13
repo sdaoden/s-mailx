@@ -315,19 +315,19 @@ nalloc(char *str, enum gfield ntype)
 
 	if (ntype & GFULL) {
 		if (ag.ag_ilen == ag.ag_slen
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 	                        && (ag.ag_n_flags & NAME_IDNA) == 0
 #endif
                 )
 			goto jleave;
 		if (ag.ag_n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
 			goto jleave;
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 		if ((ag.ag_n_flags & NAME_IDNA) == 0) {
 #endif
 			in.s = str;
 			in.l = ag.ag_ilen;
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 		} else {
 			/*
 			 * The domain name was IDNA and has been converted.
@@ -350,7 +350,7 @@ nalloc(char *str, enum gfield ntype)
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 		np->n_fullname = savestr(out.s);
 		free(out.s);
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 		if (ag.ag_n_flags & NAME_IDNA)
 			ac_free(in.s);
 #endif

@@ -58,14 +58,14 @@
 #endif
 
 #ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
+# ifdef HAVE_IPV6
 #  include <sys/socket.h>
 # endif
 # include <netdb.h>
 #endif
 
 #include "extern.h"
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 # include "md5.h"
 #endif
 
@@ -264,28 +264,28 @@ which_protocol(const char *name)
 			goto file;
 	if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
 		if (strncmp(name, "pop3://", 7) == 0)
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 			return PROTO_POP3;
 #else
 			fprintf(stderr,
 				tr(216, "No POP3 support compiled in.\n"));
 #endif
 		if (strncmp(name, "pop3s://", 8) == 0)
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			return PROTO_POP3;
 #else
 			fprintf(stderr,
 				tr(225, "No SSL support compiled in.\n"));
 #endif
 		if (strncmp(name, "imap://", 7) == 0)
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			return PROTO_IMAP;
 #else
 			fprintf(stderr,
 				tr(269, "No IMAP support compiled in.\n"));
 #endif
 		if (strncmp(name, "imaps://", 8) == 0)
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			return PROTO_IMAP;
 #else
 			fprintf(stderr,
@@ -455,7 +455,7 @@ nodename(int mayoverride)
 	struct utsname ut;
 	char *hn;
 #ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
+# ifdef HAVE_IPV6
 	struct addrinfo hints, *res;
 # else
 	struct hostent *hent;
@@ -470,7 +470,7 @@ nodename(int mayoverride)
 		uname(&ut);
 		hn = ut.nodename;
 #ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
+# ifdef HAVE_IPV6
 		memset(&hints, 0, sizeof hints);
 		hints.ai_family = AF_UNSPEC;
 		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
@@ -491,7 +491,7 @@ nodename(int mayoverride)
 # endif
 #endif
 		hostname = sstrdup(hn);
-#if defined HAVE_SOCKETS && defined USE_IPV6
+#if defined HAVE_SOCKETS && defined HAVE_IPV6
 		if (hn != ut.nodename)
 			ac_free(hn);
 #endif
@@ -527,7 +527,7 @@ getrandstring(size_t length)
 	int fd = -1;
 	char *data, *cp;
 	size_t i;
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 	MD5_CTX	ctx;
 #else
 	size_t j;
@@ -540,7 +540,7 @@ getrandstring(size_t length)
 			pid = getpid();
 			srand(pid);
 			cp = nodename(0);
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 			MD5Init(&ctx);
 			MD5Update(&ctx, (unsigned char *)cp, strlen(cp));
 			MD5Final(nodedigest, &ctx);
@@ -568,7 +568,7 @@ getrandstring(size_t length)
 	return b64.s;
 }
 
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
@@ -612,7 +612,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 	ac_free(in.s);
 	return out.s;
 }
-#endif /* USE_MD5 */
+#endif /* HAVE_MD5 */
 
 enum okay 
 makedir(const char *name)

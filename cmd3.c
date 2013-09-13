@@ -243,7 +243,7 @@ help(void *v)
 	char *arg = *(char**)v;
 
 	if (arg != NULL) {
-#ifdef USE_DOCSTRINGS
+#ifdef HAVE_DOCSTRINGS
 		extern struct cmd const cmdtab[];
 		struct cmd const *cp;
 		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
@@ -631,7 +631,7 @@ unread(void *v)
 		setdot(&message[*ip-1]);
 		dot->m_flag &= ~(MREAD|MTOUCH);
 		dot->m_flag |= MSTATUS;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 			imap_unread(&message[*ip-1], *ip); /* TODO return? */
 #endif
@@ -1183,7 +1183,7 @@ newmail(void *v)
 	(void)v;
 
 	if (
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	    (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 #endif
 	    (val = setfile(mailname, 1)) == 0) {
@@ -1496,14 +1496,14 @@ cnoop(void *v)
 
 	switch (mb.mb_type) {
 	case MB_IMAP:
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		imap_noop();
 		break;
 #else
 		return (ccmdnotsupp(NULL));
 #endif
 	case MB_POP3:
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 		pop3_noop();
 		break;
 #else
@@ -1555,7 +1555,7 @@ cremove(void *v)
 			ec |= 1;
 			break;
 		case PROTO_IMAP:
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			if (imap_remove(name) != OKAY)
 #endif
 				ec |= 1;
@@ -1636,7 +1636,7 @@ crename(void *v)
 	nopop3:	fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
 		ec |= 1;
 		break;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case PROTO_IMAP:
 		if (imap_rename(old, new) != OKAY)
 			ec |= 1;

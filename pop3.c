@@ -39,7 +39,7 @@
 
 #include "config.h"
 
-#ifndef USE_POP3
+#ifndef HAVE_POP3
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
@@ -50,7 +50,7 @@ typedef int avoid_empty_file_compiler_warning;
 #include <unistd.h>
 
 #include "extern.h"
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 # include "md5.h"
 #endif
 
@@ -88,7 +88,7 @@ static enum okay	_pop3_login(struct mailbox *mp, char *xuser, char *pass,
 				char const *uhp, char const *xserver);
 
 /* APOP: get greeting credential or NULL */
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 static char *		_pop3_lookup_apop_timestamp(char const *bp);
 #endif
 
@@ -100,7 +100,7 @@ static bool_t		_pop3_no_apop(char const *uhp);
 /* Several authentication methods */
 static enum okay	_pop3_auth_plain(struct mailbox *mp, char *xuser,
 				char *pass);
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 static enum okay	_pop3_auth_apop(struct mailbox *mp, char *xuser,
 				char *pass, char const *ts);
 #endif
@@ -127,7 +127,7 @@ static enum okay
 _pop3_login(struct mailbox *mp, char *xuser, char *pass, char const *uhp,
 	char const *xserver)
 {
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 	char *ts;
 #endif
 	char *cp;
@@ -135,7 +135,7 @@ _pop3_login(struct mailbox *mp, char *xuser, char *pass, char const *uhp,
 
 	/* Get the greeting, check wether APOP is advertised */
 	POP3_XANSWER(goto jleave);
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 	ts = _pop3_lookup_apop_timestamp(pop3buf);
 #endif
 
@@ -148,7 +148,7 @@ _pop3_login(struct mailbox *mp, char *xuser, char *pass, char const *uhp,
 	}
 
 	/* If not yet secured, can we upgrade to TLS? */
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	if (mp->mb_sock.s_use_ssl == 0 && _pop3_use_starttls(uhp)) {
 		POP3_XOUT("STLS\r\n", MB_COMD, goto jleave);
 		POP3_XANSWER(goto jleave);
@@ -164,7 +164,7 @@ _pop3_login(struct mailbox *mp, char *xuser, char *pass, char const *uhp,
 
 	/* Use the APOP single roundtrip? */
 	if (! _pop3_no_apop(uhp)) {
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 		if (ts != NULL) {
 			rv = _pop3_auth_apop(mp, xuser, pass, ts);
 			if (rv != OKAY)
@@ -257,7 +257,7 @@ _pop3_no_apop(char const *uhp)
 	return ret;
 }
 
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 static enum okay
 _pop3_auth_apop(struct mailbox *mp, char *xuser, char *pass, char const *ts)
 {
@@ -300,7 +300,7 @@ jcont:
 	}
 	return rv;
 }
-#endif /* USE_MD5 */
+#endif /* HAVE_MD5 */
 
 static enum okay
 _pop3_auth_plain(struct mailbox *mp, char *xuser, char *pass)
@@ -606,7 +606,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	if (strncmp(sp, "pop3://", 7) == 0) {
 		sp = &sp[7];
 		use_ssl = 0;
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	} else if (strncmp(sp, "pop3s://", 8) == 0) {
 		sp = &sp[8];
 		use_ssl = 1;
@@ -945,4 +945,4 @@ pop3_quit(void)
 	safe_signal(SIGPIPE, savepipe);
 	pop3lock = 0;
 }
-#endif /* USE_POP3 */
+#endif /* HAVE_POP3 */
