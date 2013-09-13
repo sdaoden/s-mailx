@@ -204,37 +204,78 @@ _setscreensize(int is_sighdl)
 	struct termios tbuf;
 #ifdef TIOCGWINSZ
 	struct winsize ws;
+#elif defined TIOCGSIZE
+	struct ttysize ts;
 #endif
-	speed_t ospeed;
-	(void)is_sighdl;
+
+	scrnheight = realscreenheight = scrnwidth = 0;
+
+	/* (Also) POSIX: LINES and COLUMNS always override.  Adjust this
+	 * a little bit to be able to honour resizes during our lifetime and
+	 * only honour it upon first run; abuse *is_sighdl* as an indicator */
+	if (is_sighdl == 0) {
+		char *cp;
+		long i;
+
+		if ((cp = getenv("LINES")) != NULL &&
+				(i = strtol(cp, NULL, 10)) > 0)
+			scrnheight = realscreenheight = (int)i;
+		if ((cp = getenv("COLUMNS")) != NULL &&
+				(i = strtol(cp, NULL, 10)) > 0)
+			scrnwidth = (int)i;
+
+		if (scrnwidth != 0 && scrnheight != 0)
+			goto jleave;
+	}
 
 #ifdef TIOCGWINSZ
 	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
 		ws.ws_col = ws.ws_row = 0;
+#elif defined TIOCGSIZE
+	if (ioctl(1, TIOCGSIZE, &ws) < 0)
+		ts.ts_lines = ts.ts_cols = 0;
 #endif
-	if (tcgetattr(1, &tbuf) < 0)
-		ospeed = B9600;
-	else
-		ospeed = cfgetospeed(&tbuf);
-	if (ospeed < B1200)
-		scrnheight = 9;
-	else if (ospeed == B1200)
-		scrnheight = 14;
+
+	if (scrnheight == 0) {
+		speed_t ospeed = (tcgetattr(1, &tbuf) < 0) ? B9600 :
+				cfgetospeed(&tbuf);
+
+		if (ospeed < B1200)
+			scrnheight = 9;
+		else if (ospeed == B1200)
+			scrnheight = 14;
 #ifdef TIOCGWINSZ
-	else if (ws.ws_row != 0)
-		scrnheight = ws.ws_row;
+		else if (ws.ws_row != 0)
+			scrnheight = ws.ws_row;
+#elif defined TIOCGSIZE
+		else if (ts.ts_lines != 0)
+			scrnheight = ts.ts_lines;
 #endif
-	else
-		scrnheight = 24;
+		else
+			scrnheight = 24;
+
+#if defined TIOCGWINSZ || defined TIOCGSIZE
+		if (0 ==
+# ifdef TIOCGWINSZ
+				(realscreenheight = ws.ws_row)
+# else
+				(realscreenheight = ts.ts_lines)
+# endif
+		)
+			realscreenheight = 24;
+#endif
+	}
+
+	if (scrnwidth == 0 && 0 ==
 #ifdef TIOCGWINSZ
-	if ((realscreenheight = ws.ws_row) == 0)
-		realscreenheight = 24;
+			(scrnwidth = ws.ws_col)
+#elif defined TIOCGSIZE
+			(scrnwidth = ts.ts_cols)
 #endif
-#ifdef TIOCGWINSZ
-	if ((scrnwidth = ws.ws_col) == 0)
-#endif
+	)
 		scrnwidth = 80;
 
+jleave:
 #ifdef SIGWINCH
 	if (is_sighdl && (options & OPT_INTERACTIVE))
 		tty_signal(SIGWINCH);
