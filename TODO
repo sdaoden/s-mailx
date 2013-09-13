@@ -1,8 +1,4 @@
 TODO reminder.
-Before you start making additions to (Heirloom mailx and) S-nail,
-subscribe to the development mailing list at
-<https://lists.sourceforge.net/lists/listinfo/nail-devel>
-to coordinate your efforts with the maintainer and other people.
 
 Backward-compatibility breakers
 -------------------------------
@@ -37,9 +33,6 @@ Backward-compatibility breakers
    14", then "und 14" and then realized my fault and did "undelete 14".
    *Nothing*.]
 
-- [v13:started] IIRC some error messages go to STDOUT, some to STDERR.
-  Only latter.
-
 - POSIX says that, when written to DEAD: "If the file exists, the message
   shall be written to replace the contents of the file".  This is mentioned
   for ASYNCHRONOUS EVENTS, but it's the only description of what should be
@@ -49,11 +42,6 @@ Backward-compatibility breakers
   files are appended.  I don't know if this is really desirable behaviour,
   but i have not thought about that for real.  Maybe this should be at
   least configurable.
-
-- POP3 APOP availability is promoted by servers which support it.
-  The *pop3-use-apop* and *pop3-use-apop-user@host* variables should thus
-  be dropped.  To support broken servers XY-no-apop-XY may be offered
-  instead.
 
 - Maybe we should not use pipes to pagers at all.
   This would also (beside getting rid of longjumps that cross allocations
@@ -78,13 +66,16 @@ Backward-compatibility breakers
   much linker work unless actually used afaik, 'should look in detail).
   We should also drop lzw.c, it is used for the IMAP cache.
 
+- We should maybe turn -~ into the meaning "force interactive".
+  We should extend cc-test.sh, then, to test some interactive things.
+
 Non-breakers
 ------------
 
 - We need a "void" box that can be jumped to, i.e., a state in which no box
   at all is active.
 
-- (schdir(): realpath() local files before leaving CWD.., 2013-01-08)
+  (schdir(): realpath() local files before leaving CWD.., 2013-01-08)
   did a first step to avoid "getting stuck" when the current folder becomes
   unaccessible.
   That is however only a command-specific workaround for a deeper design
@@ -160,21 +151,6 @@ Non-breakers
 -- This would also mean that interactive message editing would work
   accordingly.  PleasE!
 
-- Deal with faulty message selection that may occur when selecting threads
-  via & (when at least mixed with other selectors).
-
--- Also the thread sort doesn't get
-
-    [A is deleted]
-    B answers A
-      C answers B
-      D answers B
-    E is unrelated
-    F answers A
-
-  The current sort fails to recognize that F and the thread starting at
-  B are related, which results in a mess.
-
 - Command line editing should gain possibility of context sensitive tab
   completion.
 
@@ -215,12 +191,6 @@ Non-breakers
 
 - RFC 2387: multipart/related.
 
-- Rewrite the make system again.  makeconfig -> configure.  Write the
-  Makefile anew, so that it doesn't contain any variables no more, i.e.,
-  fixate the first command line, so that a later 'make' recompiles
-  everything the very identical way.  Also the manual, the resource file
-  etc., all that should be created by the first run.
-
 - rfc2384.txt etc.  I.e., Much better URL support.
 
 - printhead()/hprf(): support %n newline format (%t tab?).
@@ -242,6 +212,8 @@ Non-breakers
 - In the very end it is not that hard to add (optional) MTA
   functionality at a most simple level.
   Use sqlite for aliases (and possibly cache), then.
+
+- We should support IMAP compression over the wire.
 
 Low-Level
 ---------
@@ -299,23 +271,6 @@ Low-Level
 - Think about replacing the IMAP cache with an SQLITE3 interface.
   Or rewrite it.  Error handling etc. etc. is peculiar.
 
-- Check all Popen() calls, i've had the impressions that Popen() doesn't
-  close all resources on failure.  Also, Popen() callers often do a lot of
-  work in respect to signals.  Try to find a solution that all problems are
-  encapsulaten in Popen(), at least better than today.
-
-- is_myname() shows it, others too - there are variables which are
-  interpreted, and those should be interpreted once they are assigned, not
-  over and over again.  Even better: lazy evalution -- use a special lookup
-  method for those.  The mentioned method should indeed even go away?
-
-- The current codebase assumes that in multibyte encodings plain ASCII
-  characters can be tested "as-is".  This assumption is wrong for some
-  encodings that use U+001B (escape) or another ASCII thing to introduce
-  shift states.  The only real solution to this problem would be to rewrite
-  the entire codebase and use UTF-8 everywhere.
-  Unfortunately there is no standard way to do that.
-
 - The char classification stuff can be improved; currently each character
   has exactly one classification bit set, even if multiple would apply
   (e.g., HT=\t == CNTRL|SPACE|ASCII|BLANK).  This would allow better
@@ -330,6 +285,7 @@ Low-Level
   I.e., it is not even sufficient to convert "rest" into an array, but best
   would be if we would be able to sequentially work what we have, and
   detect when it is safe to "dump that out".
+  This MUST be part of the send/mime layer rewrite in 15.0.
 
 - I want a clean PTF interface for the actual layers.  There should be no
   switch() statements around that test for the type of BOX that is
@@ -338,6 +294,8 @@ Low-Level
 
 - I hate longjmp()s and signals.  I suspect some pitfalls in the codebase.
   All that stuff should at least be collected in a single place.
+  Just imagine how easy it could be done with a non-blocking select(2)
+  based event loop, ISIG off termios flags, etc.  ach!!
 
   I would like to see that compilation with a C++ compiler is possible,
   though that would be a long way and be especially problematic due to the
@@ -360,13 +318,57 @@ Low-Level
   occurred", followed by a (truncated as necessary) error report.
   It simply doesn't make any sense to print errors on stderr if normal
   output goes to stdout and scrolls it off the screen.
+  Note that yet some errors messages still go to stdout.
 
 - Dramatically pimp the cc-test.sh script, and recognize and report
   compilation errors, too.
   WE NEED MORE AUTOMATIZED TESTING!
 
-TODO S-nail 14.4:
-----------------
+- An `account' should imply an environment snapshot of all variables.
+  I.e., variables which become modified while an account is active would
+  gain their old / a different value (back) when switching off this
+  account.  We would need some "set-variable-global" or something, to
+  get around that?
+  There should be an implicit account ("global" or "*" or whatever) that
+  can be switched back to.
+
+-- It would be very nice if it would be possible to have
+   account-specific macros that will be lost when a user switches off
+   an account.
+
+--- It would also be very nice if we could define macros while defining
+    account, i.e., recursive definition of macros...
+    See below on account/define though.
+
+- At some later time extend the logic behind -# -- it should not have
+  a current folder, but start in VOID mode (...), and unless one is
+  explicitly chosen..  We need a reliable batch mode.
+
+- (Support for mailcap files?  As of RFC 1524?  Unlikely.  Though the
+  % expansions would be very helpful, especially once we can address
+  individuals parts as of v15.0!)
+
+TODO S-nail 14.5:
+-----------------
+
+- Perform a WS check, and fix it.
+  (For 15.0: reformat, add vim(1) modelines and use s-it-mode.
+  To do so, write a small script and ensure no functional change occurred.)
+
+- Deal with faulty message selection that may occur when selecting threads
+  via & (when at least mixed with other selectors).
+
+-- Also (?same problem?) the thread sort doesn't get
+
+    [A is deleted]
+    B answers A
+      C answers B
+      D answers B
+    E is unrelated
+    F answers A
+
+  The current sort fails to recognize that F and the thread starting at
+  B are related, which results in a mess.
 
 - Drop the restriction that environment variables cannot be modified
   from within interactive S-nail(1), check carefully what depends on
@@ -390,8 +392,7 @@ TODO S-nail 14.4:
   future version.)
 
 - Make *password* and *password-USER@HOST* global, introduce
-  *PROTOCOL-password* and *PROTOCOL-password-USER@HOST*.
-  Drop *smtp-auth-(user|pass...)*.
+  *PROTOCOL-auth-password* and *PROTOCOL-auth-password-USER@HOST*.
   Then, drop smtp_auth_var(), and change lookup_password_for_token() to
   work like (PROTOCOL, user,host|TOKEN) -- *password* is a global override,
   only if that is not set lookup protocol specific.
@@ -405,16 +406,16 @@ TODO S-nail 14.4:
 
 - NOTE: we do not really support IPv6 sofar in that we are not prepared to
   deal with IPv6 addresses.
-  Introduce an URI abstraction structure in 14.4, and start using it, i.e.,
+  Introduce an URI abstraction structure in 14.5, and start using it, i.e.,
   _pop3_user() and, very important, sopen().
   Note this shit software use a lot of places which mess around...
-  But be careful and test it, buddy.
 
 - The account command involves a lot of code but it's only difference to
   define is that a "fi" is executed.  If we would have the possibility to
   explicitly jump to VOID boxes, we could use QUIT->FOLDER instead of
   FOLDER[OK? -> QUIT], and then it'd be up to the use to simply use a "fi"
   at the end of a define.  Or so.
+  See above for more on account/define though.
 
 -- If *folder* is set to an IMAP box, and we're about to "mbox" data to
    there, and we're currently on a POP3 server, and the connection fails,
@@ -434,7 +435,165 @@ TODO S-nail 14.4:
   the login works ... note the latter situation yet kills us since i think
   INT is blocked during all that ;-((
 
+- I had a connection collapse during a POP3 download, and neither was
+  there a chance to get access to the 22 yet downloaded mails (after
+  five minutes of waiting followed by CNTRL-C), nor did the layer
+  recognize this very well (got myriads of `POP3 connection already
+  closed.' messages, btw., the thirty-something messages which were not
+  yet downloaded caused (after CNTRL-C) this:
+
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+     U 23                    Thu Jan  1 0    /    0
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+    POP3 connection already closed.
+     U 24                    Thu Jan  1 0    /    0
+
+  i had to switch off and back).  At least we didn't crash.
+  Thereafter, still very unstable connection, i tried to login again:
+
+    ? fi xpop
+    Resolving host pop.gmail.com . . . done.
+    Connecting to 173.194.70.109:pop3s . . . connected.
+    Comparing DNS name: "pop.gmail.com"
+    POP3 connection already closed.
+    +OK Gpop ready for requests from XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  [..nothing!..]
+    ^CInterrupt
+    ? fi %
+    "/private/var/mail/steffen": 0 messages
+    ? fi xpop
+    Resolving host pop.gmail.com . . . done.
+    Connecting to 173.194.70.109:pop3s . . . connected.
+    Comparing DNS name: "pop.gmail.com"
+    ? fi
+    ? fi
+    ? fi
+
+  Can of worms.
+
+- Add a value-duplication command, i.e.,
+    clone _x header
+    unset header
+    ...
+    clone header _x
+    unset _x
+
+- Some (configurable?) verbosity for certificate validation.
+  (Martin Neitzel)
+  Rework certificate handling to match RFC 6125!  14.4!
+
+- #include cleanup.  Much too much!
+
+- Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
+  global mbstate_t objects until the send / MIME layer rewrite is done and
+  has the carrier.  Use flip states and add aux funs with only update the
+  state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
+  HANDLED!!
+
+- Ensure that `.' and EOF on a line works with all TTY modes (*ignoreeof*
+  relationship, too)!  EOF conditions in general!
+
+-- NCL / current expand-on-tab: fexpand() should take additional size_t* to
+   store the number of the results OR should "return char** array", so that
+   individual results can be addressed.
+   Then we could simply print "\nALL-RESULTS\n" and NOT expand the current
+   line if the result is ambiguous, i.e., we have more than one possible
+   expansion.
+   However, we would then need something to print the results page-wise,
+   in case we have so many of them that they don't fit on the screen.
+   ...  Etc. ...
+
+- Add TODO notes for those RFCs:
+  RFC 5322 - The basic format of email messages. 
+  MIME (Multimeda) email extensions
+  RFC 2405 - The format of MIME message bodies. 
+  RFC 2406 - Common multimedia types. 
+  RFC 2017 - URL External-Body Access-Type 
+  RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
+    text (format=flowed). 
+  RFC 2407 - Encoding of non-ASCII text in message headers. 
+  RFC 2183 - The Content-Disposition Header 
+  RFC 2231 - Encoding of character set and language information in MIME
+    parameter values. 
+  SMTP (Simple Mail Transfer Protocol)
+  RFC 5321 - Simple Mail Transfer Protocol. 
+  RFC 6409 - Message Submission for Mail 
+  RFC 4954 - SMTP Authentication 
+  RFC 3207 - SMTP over TLS 
+  RFC 6152 - SMTP Service Extension for 8-bit MIME Transport 
+  Post Office Protocol (POP)
+  RFC 1939 - Post Office Protocol v3 
+  RFC 2449 - POP3 Extensions (including SASL) 
+  RFC 2595 - TLS for POP3 (among others) 
+  Security
+  RFC 4422 - Simple Authentication and Security layer (SASL) 
+  RFC 5246 - Transport Layer Security (TLS)
+
+- IMAP: if i `d' a message then this is a local change (in the meanwhile);
+  yet, when i `u' it, that will go through the server, needlessly.
+
+- I got an email in base64 that obviously used CRNL line endings, and once
+  i've replied the CR where quoted as *control* characters.
+  Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
+  time). (2013-08-06)
+
+- Yet another one:
+ 
+  :>>> T1026 NOOP
+  Received SIGPIPE during IMAP operation
+  IMAP write error: error:00000000:lib(0):func(0):reason(0)
+
+  [DOING STUFF]
+
+  ? newmail
+  >>> T1027 FETCH 51:52 (FLAGS UID)
+  IMAP write error: Bad file descriptor
+  >>> T1028 FETCH 51:52 (RFC822.HEADER)
+  IMAP write error: Bad file descriptor
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  New mail has arrived.
+  Loaded 2 new messages.
+  >>> T1029 FETCH 51:52 (RFC822.HEADER)
+  IMAP write error: Bad file descriptor
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+  IMAP connection closed.
+   U 51                    Thu Jan  1 0    /    0 
+   IMAP connection closed.
+   IMAP connection closed.
+   IMAP connection closed.
+   IMAP connection closed.
+   IMAP connection closed.
+
+- The codebase has a lot of problems with type mixing; int,off_t,size_t are
+  often used INTERCHANGEABLY to store the same size / value; especially
+  IMAP seems to be quite weird.  I've yet changed some off_t to size_t,
+  which is not a good idea for 32-bit and large files, but (a) it's
+  questionable wether we could handle those anyway and (b) all bets are off
+  since pieces of code also use int storage for them, iirc.
+  This will be a long-term problem.
+
+- edit.c doesn't do NEED_BODY (yeah, IMAP won't work anyway).
+
 Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
 With a clean, conforming and efficient codebase, then.
 
-vim:set fenc=utf-8 syntax=txt ts=2 sts=0 sw=2 et tw=75:
+vim:set fenc=utf-8:s-ts-mode
