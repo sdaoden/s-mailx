@@ -905,9 +905,7 @@ cat > ${tmp2}.c << \!
 #ifdef HAVE_LINE_EDITOR
 : + Command line editing and history
 #endif
-#if 0
-TODO disabled for v14.4, since not multibyte aware
-ifdef HAVE_QUOTE_FOLD
+#ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
 #endif
 :
@@ -954,9 +952,7 @@ ifdef HAVE_QUOTE_FOLD
 #ifndef HAVE_LINE_EDITOR
 : - Command line editing and history
 #endif
-#if 0
-TODO disabled for v14.4, since not multibyte aware
-ifndef HAVE_QUOTE_FOLD
+#ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
 #endif
 :

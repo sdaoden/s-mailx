@@ -3044,22 +3044,22 @@ making
 act like an automatic `~M' command.
 Also see
 .Va quote-as-attachment .
-.\".It Va quote-fold
-.\"\*(OP Can be set in addition to
-.\".Va indentprefix .
-.\"Setting this turns on a more fancy quotation algorithm in that leading
-.\"quotation characters are compressed and overlong lines are folded.
-.\".Va quote-fold
-.\"can be set to either one or two (space separated) numeric values,
-.\"which are interpreted as the maximum (goal) and the minimum line length,
-.\"respectively, in a spirit rather equal to the
-.\".Xr fmt 1
-.\"program, but line-, not paragraph-based.
-.\"If not set explicitly the minimum will reflect the goal algorithmically.
-.\"The goal can't be smaller than the length of
-.\".Va indentprefix
-.\"plus some additional pad.
-.\"Necessary adjustments take place silently.
+.It Va quote-fold
+\*(OP Can be set in addition to
+.Va indentprefix .
+Setting this turns on a more fancy quotation algorithm in that leading
+quotation characters are compressed and overlong lines are folded.
+.Va quote-fold
+can be set to either one or two (space separated) numeric values,
+which are interpreted as the maximum (goal) and the minimum line length,
+respectively, in a spirit rather equal to the
+.Xr fmt 1
+program, but line-, not paragraph-based.
+If not set explicitly the minimum will reflect the goal algorithmically.
+The goal can't be smaller than the length of
+.Va indentprefix
+plus some additional pad.
+Necessary adjustments take place silently.
 .It Va record
 If defined, gives the pathname of the folder used to record all outgoing
 mail.
