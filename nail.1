@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jul 17, 2013
+.Dd Sep 13, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -637,11 +637,10 @@ The same as `backspace': backward delete one character.
 The same as `horizontal tabulator': try to expand the ``word'' before
 the cursor.
 Here ``expansion'' refers to the \*(UA expansion, as documented for
-the
 .Ic folder ,
 and thus includes shell word expansion (as a last step).
 (Note that this is a real ``expansion'', not what one expects from
-``completion''.)
+``tab-completion''.)
 .It ^J
 The same as `RETURN': complete this line of input.
 .It ^K
@@ -4108,7 +4107,7 @@ a single
 .Li --socketpath
 option instead of the shown
 .Li --listen .
-In order to support training of the Bayesian classifier,
+In order to support training of the Bayesian classifier through \*(UA,
 .Xr spamd 1
 must have been started with the
 .Li --allow-tell
