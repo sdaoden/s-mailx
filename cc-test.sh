@@ -23,14 +23,17 @@ rm -f "${OUT}" "${ERR}" "${BODY}" "${MBOX}" 2>> "${ERR}"
 
 # Test all configs
 cc_all_configs() {
-	for c in MINIMAL NETSEND CUSTOM \
-			'CUSTOM WANT_ASSERTS=1' \
-			'CUSTOM WANT_ASSERTS=1 WANT_NOALLOCA=1' \
-			'CUSTOM WANT_ASSERTS=1 WANT_NOALLOCA=1 WANT_NOGETOPT=1'
+	for c in '' CONFIG=MINIMAL CONFIG=NETSEND \
+			'WANT_GSSAPI=1' \
+			'WANT_EDITLINE=1' \
+			'WANT_EDITLINE=1 WANT_EDITLINE_READLINE=1' \
+			'WANT_ASSERTS=1' \
+			'WANT_ASSERTS=1 WANT_NOALLOCA=1' \
+			'WANT_ASSERTS=1 WANT_NOALLOCA=1 WANT_NOGETOPT=1'
 	do
-		printf "\n\n##########\nCONFIG=$c\n"
-		printf "\n\n##########\nCONFIG=$c\n" >&2
-		sh -c "${MAKE} CONFIG=${c}"
+		printf "\n\n##########\n$c\n"
+		printf "\n\n##########\n$c\n" >&2
+		sh -c "${MAKE} ${c}"
 		${MAKE} distclean
 	done >> "${OUT}" 2>> "${ERR}"
 }
