@@ -137,16 +137,15 @@ exec 5>&2 > ${log} 2>&1
 cat > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) $(CFLAGS) $(INCS) -c $<
+	$(CC) $(XINCS) -c $<
 
 .c.x:
-	$(CC) $(CFLAGS) $(INCS) -E $< >$@
+	$(CC) $(XINCS) -E $< >$@
 
 .c:
-	$(CC) $(CFLAGS) $(INCS) $(LDFLAGS) $< $(LIBS) -o $@
+	$(CC) $(XINCS) -o $@ $< $(XLIBS)
 
 .y: ;
-
 !
 
 msg() {
@@ -177,7 +176,7 @@ compile_check() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   if ${make} -f ${makefile} INCS="${INCS}" ./${tmp}.o &&
+   if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
          [ -f ./${tmp}.o ]; then
       msg "okay\\n"
       echo "${define}" >> ${h}
@@ -196,16 +195,18 @@ _link_mayrun() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   if ${make} -f ${makefile} INCS="${INCS} ${incs}" \
-            LIBS="${LIBS} ${libs}" ./${tmp} &&
+   if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
+            XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
       msg "okay\\n"
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
       echo "${libs}" >> ${lib}
+      echo "$2: ${libs}"
       INCS="${INCS} ${incs}"
       echo "${incs}" >> ${inc}
+      echo "$2: ${incs}"
       eval have_${variable}=yes
       return 0
    else
@@ -664,34 +665,34 @@ int main(void)
 
    if command -v krb5-config >/dev/null 2>&1; then
       i=`command -v krb5-config`
-      GSSAPI_LIBS=`${i} --libs gssapi`
-      GSSAPI_INCS=`${i} --cflags`
+      GSSAPI_LIBS="`CFLAGS= ${i} --libs gssapi`"
+      GSSAPI_INCS="`CFLAGS= ${i} --cflags`"
       i='for GSSAPI via krb5-config(1)'
    else
       GSSAPI_LIBS='-lgssapi'
       GSSAPI_INCS=
       i='for GSSAPI in gssapi/gssapi.h, libgssapi'
    fi
-   < ${tmp2}.c link_check gssapi\
-         "${i}" '#define HAVE_GSSAPI'\
-         "${GSSAPI_LIBS}" "${GSSAPI_INCS}" || \
+   < ${tmp2}.c link_check gssapi \
+         "${i}" '#define HAVE_GSSAPI' \
+         "${GSSAPI_LIBS}" "${GSSAPI_INCS}" ||\
       < ${tmp3}.c link_check gssapi \
          'for GSSAPI in gssapi.h, libgssapi' \
          '#define HAVE_GSSAPI
          #define	GSSAPI_REG_INCLUDE' \
-         '-lgssapi' || \
+         '-lgssapi' ||\
       < ${tmp2}.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
          '#define HAVE_GSSAPI' \
-         '-lgssapi_krb5' || \
+         '-lgssapi_krb5' ||\
       < ${tmp3}.c link_check gssapi \
          'for GSSAPI in libgssapi, OpenBSD-style (pre 5.3)' \
          '#define HAVE_GSSAPI
          #define	GSSAPI_REG_INCLUDE' \
          '-lgssapi -lkrb5 -lcrypto' \
-         '-I/usr/include/kerberosV' || \
+         '-I/usr/include/kerberosV' ||\
       < ${tmp2}.c link_check gssapi 'for GSSAPI in libgss' \
          '#define HAVE_GSSAPI' \
-         '-lgss' || \
+         '-lgss' ||\
       link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
          '#define HAVE_GSSAPI
          #define GSSAPI_OLD_STYLE' \
@@ -951,22 +952,22 @@ cat > ${tmp2}.c << \!
 :
 :Remarks:
 #ifndef	HAVE_SNPRINTF
-: * The function snprintf() could not be found. mailx will be compiled to use
+: . The function snprintf() could not be found. mailx will be compiled to use
 : sprintf() instead. This might overflow buffers if input values are larger
 : than expected. Use the resulting binary with care or update your system
 : environment and start the configuration process again.
 #endif
 #ifndef	HAVE_FCHDIR
-: * The function fchdir() could not be found. mailx will be compiled to use
+: . The function fchdir() could not be found. mailx will be compiled to use
 : chdir() instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.
 #endif
 #ifndef HAVE_GETOPT
-: * A (usable) getopt() functionality could not be found.
+: . A (usable) getopt() functionality could not be found.
 : A builtin version is used instead.
 #endif
 #ifdef HAVE_ASSERTS
-: * WANT_ASSERTS is enabled, the program binary will contain code assertions.
+: . The binary will contain slow and huge debug code assertions.
 : There are also additional commands available, like "core".
 : Such a binary is not meant to be used by end-users, but only for
 : development purposes.  Thanks!
