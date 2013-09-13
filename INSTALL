@@ -4,12 +4,14 @@ I n s t a l l i n g  S - n a i l
 Compilation
 -----------
 
-Configurable compile-time options are defined, documented and adjustable
-in `user.conf'; the adjustment may also take place from the command line.
+System specific notes can be found in the next section.
+Any (optional) feature is adjustable and documented in `conf.rc'.
+Adjustments may also take place from the command line, overriding
+those made in `conf.rc' (if any).
 
-  $ [make &&] make install # ("make install" alone is also sufficient)
-  $ make uninstall         # (Will not remove the example configuration)
-  $ make distclean         # *Completely* cleanup working directory
+  $ [make &&] make install
+  $ make uninstall          # Won't remove the system wide startup file!
+  $ make distclean          # *Completely* cleanup working directory
 
 With adjustments:
 
@@ -17,32 +19,32 @@ With adjustments:
   $ make WANT_LINE_EDITOR=0 PREFIX=/some/nasty/prefix install
 
 There are also some predefined restricted configuration sets available,
-which overwrite the `user.conf' settings, if used:
+which take precedence over anything else:
 
-. CONFIG=MINIMAL  little is left but some air to breathe; no internet
-                  connectivity, no internationalized domain names,
-                  no command line editor, no documentation strings.
+. CONFIG=MINIMAL
+  little is left but some air to breathe; no internet connectivity, no
+  internationalized domain names, no command line editor, no
+  documentation strings.
 
-. CONFIG=NETSEND  WANT_SMTP and WANT_SSL settings are enabled,
-                  internationalized domain names will be supported if
-                  the necessary libraries are available, the builtin
-                  command line editor will be used if possible,
-                  otherwise identical to MINIMAL.
+. CONFIG=NETSEND
+  WANT_SMTP and WANT_SSL settings are enabled, internationalized domain
+  names will be supported if the necessary libraries are available, the
+  builtin command line editor will be used if possible, otherwise
+  identical to MINIMAL.
 
 E.g.:
 
-  $ make CONFIG=MINIMAL DESTDIR=xtest SID=mini- install
+  $ make CONFIG=MINIMAL DESTDIR=xtest install
 
-would create a `mini-nail' binary and install a `mini-nail' manual etc.
-under the prefix /usr/local but rooted under [./]xtest, i.e., the binary
-would be installed as `[./]xtest/usr/local/bin/mini-nail'.  Note that
-for `make uninstall' the *exact* command line should be repeated. XXX
+would create a `s-nail' binary and install a `s-nail' manual etc.
+under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
+binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
 
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
-exist, please ensure that the environment variable C_INCLUDE_PATH
-includes the necessary include/ paths and the environment variable
-LD_LIBRARY_PATH includes the necessary lib/rary paths.
+exist, please ensure that the environment variable `C_INCLUDE_PATH'
+includes the necessary `include/' paths and the environment variable
+`LD_LIBRARY_PATH' includes the necessary `lib/'rary paths.
 
 The S-nail make system will inspect these two environment variables and
 *automatically* convert them to cc(1) (c99(1)) -I and -L options (since
@@ -51,8 +53,8 @@ not part of the POSIX standard).
 To set these environment variables, the following can be done in
 a Bourne/Korn/POSIX compatible shell:
 
-  $ C_INCLUDE_PATH=${C_INCLUDE_PATH}:/usr/local/include
-  $ LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+  $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
+  $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
   $ make install
 
@@ -64,7 +66,7 @@ systems, including all BSD systems, Linux, Solaris ...
 Notes for S-nail(1) v14.*
 -------------------------
 
-S-nail(1) is known to be driven withouth errors by the `./cc-test.sh'
+S-nail(1) is known to be driven without errors by the `./cc-test.sh'
 shell script, with the extended CFLAGS and WARN variables uncommented in
 the Makefile, on the following operating systems:
 
@@ -81,7 +83,7 @@ o FreeBSD 10.0 (amd64).
 o NetBSD 6.99.19 (amd64).
   gcc (NetBSD nb1 20120916) 4.5.4.
 
-o OpenBSD 5.3 (i386).
+o OpenBSD 5.4 (i386).
 
 o Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
@@ -103,5 +105,9 @@ a look (rather: at all) into the following modules/parts:
 These will remain features of S-nail(1) and they will be looked at, and
 of course i will fix bugs when i notice them, but they are not yet part
 of the overhauled "S-nail core" (though SMTP and POP are in daily use,
-and IMAP is slowly coming along).  All that'll take *years*, though.
-You may also want to have a look at the file TODO.
+and IMAP is slowly coming along).
+
+I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
+anniversary of Mail, as a good one, then.  Also see `TODO'.
+
+vim:set fenc=utf-8:s-ts-mode

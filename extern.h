@@ -553,8 +553,6 @@ const char *imap_make_date_time(time_t t);
 char *imap_quotestr(const char *s);
 char *imap_unquotestr(const char *s);
 
-/* imap_gssapi.c */
-
 /* imap_search.c */
 enum okay imap_search(const char *spec, int f);
 

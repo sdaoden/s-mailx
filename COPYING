@@ -96,7 +96,7 @@ http://www.opengroup.org/unix/online.html .
 This notice shall appear on any product containing this material.
 
 ==========================================================================
-imap_gssapi.c:
+imap_gssapi.h:
 partially derived from sample code in:
 
 /*

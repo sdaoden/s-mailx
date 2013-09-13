@@ -89,9 +89,16 @@
 
 #define CBAD		(-15555)
 
-#define SHELL		"/bin/sh"
-#define LISTER		"ls"
-#define PAGER		"more"
+/* These come from the configuration */
+#ifndef SHELL
+# define SHELL		"/bin/sh"
+#endif
+#ifndef LISTER
+# define LISTER		"ls"
+#endif
+#ifndef PAGER
+# define PAGER		"more"
+#endif
 
 /*
  * Funs, CC support etc.

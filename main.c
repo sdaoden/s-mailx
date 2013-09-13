@@ -64,6 +64,7 @@
 #define _MAIL_GLOBS_
 #include "rcv.h"
 #include "extern.h"
+#include "version.h"
 
 struct a_arg {
 	struct a_arg	*aa_next;
@@ -371,6 +372,9 @@ char const *const	month_names[12 + 1] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
 };
+
+char const *const	uagent = UAGENT;
+char const *const	version = VERSION;
 
 sighandler_type		dflpipe = SIG_DFL;
 

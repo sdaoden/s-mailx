@@ -943,7 +943,7 @@ jleave:
 }
 
 #ifdef HAVE_GSSAPI
-# include "imap_gssapi.c"
+# include "imap_gssapi.h"
 #endif
 
 enum okay
