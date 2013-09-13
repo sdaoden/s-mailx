@@ -58,21 +58,20 @@ make="${MAKE:-make}"
 ## First of all, create new configuration and check wether it changed ##
 
 conf=./conf.rc
-lst=config.lst
-h=config.h
-mk=mk.mk
+lst=./config.lst
+h=./config.h
+mk=./mk.mk
 
-newlst=config.lst-new
-newmk=config.mk-new
-newh=config.h-new
+newlst=./config.lst-new
+newmk=./config.mk-new
+newh=./config.h-new
 tmp0=___tmp
-tmp=${tmp0}1$$
+tmp=./${tmp0}1$$
 
 # Only incorporate what wasn't overwritten from command line / CONFIG
-< ${conf} sed -E -e '/^[[:space:]]*#/d' -e '/^$/d'\
-   -e 's/[[:space:]]*$//' > ${tmp}
+< ${conf} sed -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' > ${tmp}
 while read line; do
-   i=`echo ${line} | sed -E -e 's/=.*$//'`
+   i=`echo ${line} | sed -e 's/=.*$//'`
    eval j=\$${i}
    [ -n "${j}" ] && continue
    eval ${line}
@@ -95,7 +94,7 @@ trap "rm -f ${tmp} ${newlst} ${newmk} ${newh}" 0
 rm -f ${newlst} ${newmk} ${newh}
 
 while read line; do
-   i=`echo ${line} | sed -E -e 's/=.*$//'`
+   i=`echo ${line} | sed -e 's/=.*$//'`
    eval j=\$${i}
    printf "${i}=\"${j}\"\n" >> ${newlst}
    if [ -z "${j}" ] || [ "${j}" = 0 ]; then
@@ -119,12 +118,12 @@ mv -f ${newmk} ${mk}
 
 ## Compile and link checking ##
 
-tmp2=${tmp0}2$$
-tmp3=${tmp0}3$$
-log=config.log
-lib=config.lib
-inc=config.inc
-makefile=config.mk
+tmp2=./${tmp0}2$$
+tmp3=./${tmp0}3$$
+log=./config.log
+lib=./config.lib
+inc=./config.inc
+makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "rm -f ${h} ${lib} ${inc} ${makefile}; exit" 1 2 15
@@ -976,6 +975,6 @@ cat > ${tmp2}.c << \!
 !
 
 ${make} -f ${makefile} ${tmp2}.x
-< ${tmp2}.x >&5 sed '/^[^:]/d; /^$/d; s/^://'
+< ${tmp2}.x >&5 sed -e '/^[^:]/d; /^$/d; s/^://'
 
 # vim:set fenc=utf-8:s-it-mode

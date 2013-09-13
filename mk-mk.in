@@ -36,7 +36,7 @@ md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
 mime.o: mime_types.h
 
 mime_types.h: mime.types
-	< mime.types > $@ sed '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
+	< mime.types > $@ sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 mkman.1: nail.1
 	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
@@ -114,7 +114,7 @@ _update-release:
 	read REL;\
 	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues";\
 	read i;\
-	FREL=`echo $${REL} | sed 's/\./_/g'` &&\
+	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h &&\
 	git commit -m "Bump $(SID)$(NAIL)-$${REL}" &&\
