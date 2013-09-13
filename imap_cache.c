@@ -39,7 +39,7 @@
 
 #include "config.h"
 
-#ifndef USE_IMAP
+#ifndef HAVE_IMAP
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
@@ -815,4 +815,4 @@ dequeue1(struct mailbox *mp)
 	}
 	return OKAY;
 }
-#endif	/* USE_IMAP */
+#endif	/* HAVE_IMAP */

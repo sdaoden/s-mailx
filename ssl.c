@@ -39,7 +39,7 @@
 
 #include "config.h"
 
-#ifndef USE_SSL
+#ifndef HAVE_SSL
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
@@ -91,7 +91,7 @@ ssl_vrfy_decide(void)
 
 			fprintf(stderr, catgets(catd, CATSET, 264,
 					"Continue (y/n)? "));
-			if (readline(stdin, &line, &linesize) > 0 &&
+			if (readline_restart(stdin, &line, &linesize, 0) > 0 &&
 					*line == 'y')
 				ok = OKAY;
 			else
@@ -409,4 +409,4 @@ rfc2595_hostname_match(const char *host, const char *pattern)
 	}
 	return asccasecmp(host, pattern) == 0 ? OKAY : STOP;
 }
-#endif	/* USE_SSL */
+#endif	/* HAVE_SSL */

@@ -59,7 +59,14 @@ static void onpipe(int signo);
 static int dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
 
-static void	_parse_head(struct message *mp, char date[FROM_DATEBUF]);
+/* ... And place the extracted date in `date' */
+static void	_parse_from_(struct message *mp, char date[FROM_DATEBUF]);
+
+/* Get the Subject:, but return NULL if in threaded mode and the message
+ * printed before was in the same thread and had the same subject */
+static char *	_get_subject(struct message *mp, bool_t threaded);
+static char *	__subject_trim(char *s);
+
 static void hprf(const char *fmt, int mesg, FILE *f, int threaded,
 		const char *attrlist);
 static int putindent(FILE *fp, struct message *mp, int maxwidth);
@@ -89,7 +96,7 @@ get_pager(void)
 
 	cp = value("PAGER");
 	if (cp == NULL || *cp == '\0')
-		cp = value("bsdcompat") ? PAGER_BSD : PAGER_SYSV;
+		cp = PAGER;
 	return cp;
 }
 
@@ -147,7 +154,7 @@ headers(void *v)
 					break;
 				}
 		}
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(mesg+1, mesg + size);
 #endif
@@ -318,7 +325,7 @@ from(void *v)
 	time_current_update(&time_current, FAL0);
 
 	/* TODO unfixable memory leaks still */
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = value("crt")) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
@@ -367,8 +374,8 @@ dispc(struct message *mp, const char *a)
 		dispc = a[0];
 	if ((mp->m_flag & (MREAD|MNEW)) == 0)
 		dispc = a[1];
-	if (mp->m_flag & MJUNK)
-		dispc = a[13];
+	if (mp->m_flag & MSPAM)
+		dispc = a[12];
 	if (mp->m_flag & MSAVED)
 		dispc = a[4];
 	if (mp->m_flag & MPRESERVE)
@@ -377,17 +384,15 @@ dispc(struct message *mp, const char *a)
 		dispc = a[6];
 	if (mp->m_flag & MFLAGGED)
 		dispc = a[7];
-	if (mp->m_flag & MKILL)
-		dispc = a[10];
 	if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
-		dispc = a[12];
-	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
 		dispc = a[11];
+	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
+		dispc = a[10];
 	return dispc;
 }
 
 static void
-_parse_head(struct message *mp, char date[FROM_DATEBUF])
+_parse_from_(struct message *mp, char date[FROM_DATEBUF])
 {
 	FILE *ibuf;
 	int hlen;
@@ -395,19 +400,76 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 	size_t hsize = 0;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-			(hlen = readline(ibuf, &hline, &hsize)) > 0)
+			(hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
 		(void)extract_date_from_from_(hline, hlen, date);
 	if (hline != NULL)
 		free(hline);
 }
 
+static char *
+__subject_trim(char *s)
+{
+	while (*s != '\0') {
+		while (spacechar(*s))
+			++s;
+		if (is_asccaseprefix("re:", s)) {
+			s += 3;
+			continue;
+		}
+		if (is_asccaseprefix("fwd:", s)) {
+			s += 4;
+			continue;
+		}
+		break;
+	}
+	return s;
+}
+
+static char *
+_get_subject(struct message *mp, bool_t threaded)
+{
+	struct str in, out;
+	char *rv = (char*)-1, *ms, *mso, *os;
+
+	if ((ms = hfield1("subject", mp)) == NULL)
+		goto jleave;
+
+	if (! threaded || mp->m_level == 0)
+		goto jconv;
+
+	/* In a display thread - check wether this message uses the same
+	 * Subject: as it's parent or elder neighbour, suppress printing it if
+	 * this is the case.  To extend this a bit, ignore any leading Re: or
+	 * Fwd: plus follow-up WS; XXX NOTE: because of efficiency reasons we
+	 * XXX simply ignore any encoded parts and use ASCII case-insensitive
+	 * XXX comparison */
+	mso = __subject_trim(ms);
+
+	if (mp->m_elder != NULL &&
+			(os = hfield1("subject", mp->m_elder)) != NULL &&
+			asccasecmp(mso, __subject_trim(os)) == 0)
+		goto jleave;
+
+	if (mp->m_parent != NULL &&
+			(os = hfield1("subject", mp->m_parent)) != NULL &&
+			asccasecmp(mso, __subject_trim(os)) == 0)
+		goto jleave;
+
+jconv:
+	in.s = ms;
+	in.l = strlen(ms);
+	mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
+	rv = out.s;
+jleave:
+	return rv;
+}
+
 static void
 hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 {
-	char datebuf[FROM_DATEBUF], *subjline, *cp;
-	struct str in, out;
+	char datebuf[FROM_DATEBUF], *cp, *subjline;
 	char const *datefmt, *date, *name, *fp;
-	int B, c, i, n, s, fromlen, subjlen = scrnwidth, isto = 0, isaddr = 0;
+	int B, c, i, n, s, wleft, subjlen, isto = 0, isaddr = 0;
 	struct message *mp = &message[mesg - 1];
 	time_t datet = mp->m_time;
 
@@ -447,20 +509,11 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		 * TODO all other codepaths do so by themselves ALREADY ?????
 		 * TODO assert(mp->m_time != 0);, then
 		 * TODO ALSO changes behaviour of markout-non-current */
-		_parse_head(mp, datebuf);
+		_parse_from_(mp, datebuf);
 		date = datebuf;
 	} else {
 jdate_set:
 		date = fakedate(datet);
-	}
-
-	out.s = NULL;
-	out.l = 0;
-	if ((subjline = hfield1("subject", mp)) != NULL) {
-		in.s = subjline;
-		in.l = strlen(subjline);
-		mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
-		subjline = out.s;
 	}
 
 	isaddr = 1;
@@ -483,54 +536,67 @@ jdate_set:
 		}
 	}
 
-	for (fp = fmt; *fp; fp++) {
+	subjline = NULL;
+
+	/* Detect the width of the non-format characters in *headline*;
+	 * like that we can simply use putc() in the next loop, since we have
+	 * already calculated their column widths (TODO it's sick) */
+	wleft =
+	subjlen = scrnwidth;
+
+	for (fp = fmt; *fp; ++fp) {
 		if (*fp == '%') {
 			if (*++fp == '-') {
-				fp++;
+				++fp;
 			} else if (*fp == '+')
-				fp++;
-			while (digitchar(*fp))
-				fp++;
+				++fp;
+			if (digitchar(*fp)) {
+				n = 0;
+				do
+					n = 10*n + *fp - '0';
+				while (++fp, digitchar(*fp));
+				subjlen -= n;
+			}
+
 			if (*fp == '\0')
 				break;
 		} else {
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCWIDTH)
+#if defined HAVE_MBTOWC && defined HAVE_WCWIDTH
 			if (mb_cur_max > 1) {
 				wchar_t	wc;
 				if ((s = mbtowc(&wc, fp, mb_cur_max)) < 0)
 					n = s = 1;
-				else {
-					if ((n = wcwidth(wc)) < 0)
-						n = 1;
-				}
+				else if ((n = wcwidth(wc)) < 0)
+					n = 1;
 			} else
-#endif  /* HAVE_MBTOWC && HAVE_WCWIDTH */
-			{
+#endif
 				n = s = 1;
-			}
 			subjlen -= n;
+			wleft -= n;
 			while (--s > 0)
-				fp++;
+				++fp;
 		}
 	}
 
-	for (fp = fmt; *fp; fp++) {
+	/* Walk *headline*, producing output */
+	for (fp = fmt; *fp; ++fp) {
 		if ((c = *fp & 0xFF) == '%') {
 			B = 0;
 			n = 0;
 			s = 1;
 			if (*++fp == '-') {
 				s = -1;
-				fp++;
+				++fp;
 			} else if (*fp == '+')
-				fp++;
+				++fp;
 			if (digitchar(*fp)) {
 				do
 					n = 10*n + *fp - '0';
-				while (fp++, digitchar(*fp));
+				while (++fp, digitchar(*fp));
 			}
 			if (*fp == '\0')
 				break;
+
 			n *= s;
 			switch ((c = *fp & 0xFF)) {
 			case '%':
@@ -543,9 +609,10 @@ jdate_set:
 			case 'a':
 				c = dispc(mp, attrlist);
 jputc:
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*c", n, c);
-				if (n >= 0)
-					subjlen -= n;
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case 'm':
 				if (n == 0) {
@@ -554,7 +621,10 @@ jputc:
 						for (i=msgCount; i>999; i/=10)
 							n++;
 				}
-				subjlen -= fprintf(f, "%*d", n, mesg);
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				n = fprintf(f, "%*d", n, mesg);
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case 'f':
 				if (n == 0) {
@@ -562,11 +632,19 @@ jputc:
 					if (s < 0)
 						n = -n;
 				}
-				fromlen = ABS(n);
+				i = ABS(n);
+				if (i > wleft) {
+					i = wleft;
+					n = (n < 0) ? -wleft : wleft;
+				}
 				if (isto) /* XXX tr()! */
-					fromlen -= 3;
-				subjlen -= fprintf(f, "%s%s", isto ? "To " : "",
-						colalign(name, fromlen, n));
+					i -= 3;
+				n = fprintf(f, "%s%s", (isto ? "To " : ""),
+					colalign(name, i, n, &wleft));
+				if (n < 0)
+					wleft = 0;
+				else if (isto)
+					wleft -= 3;
 				break;
 			case 'd':
 				if (datefmt != NULL) {
@@ -586,31 +664,40 @@ jputc:
 				}
 				if (n == 0)
 					n = 16;
-				subjlen -= fprintf(f, "%*.*s", n, n, date);
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				n = fprintf(f, "%*.*s", n, n, date);
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case 'l':
 				if (n == 0)
 					n = 4;
-				if (mp->m_xlines)
-					subjlen -= fprintf(f, "%*ld", n,
-							mp->m_xlines);
-				else {
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				if (mp->m_xlines) {
+					n = fprintf(f, "%*ld", n, mp->m_xlines);
+					wleft = (n >= 0) ? wleft - n : 0;
+				} else {
 					n = ABS(n);
-					subjlen -= n;
-					while (n--)
+					wleft -= n;
+					while (n-- != 0)
 						putc(' ', f);
 				}
 				break;
 			case 'o':
 				if (n == 0)
 					n = -5;
-				subjlen -= fprintf(f, "%*lu", n,
-						(long)mp->m_xsize);
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				n = fprintf(f, "%*lu", n, (long)mp->m_xsize);
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case 'i':
-				if (threaded)
-					subjlen -= putindent(f, mp,
-							scrnwidth - 60);
+				if (threaded) {
+					n = putindent(f, mp, MIN(wleft,
+						scrnwidth - 60));
+					wleft = (n >= 0) ? wleft - n : 0;
+				}
 				break;
 			case 'S':
 				B = 1;
@@ -620,19 +707,35 @@ jputc:
 					n = subjlen - 2;
 				if (n > 0 && s < 0)
 					n = -n;
+				if (subjlen > wleft)
+					subjlen = wleft;
+				if (ABS(n) > subjlen)
+					n = (n < 0) ? -subjlen : subjlen;
 				if (B)
 					n -= (n < 0) ? -2 : 2;
-				if (subjline != NULL && n != 0) {
-					/* pretty pathetic */
-					fprintf(f, B ? "\"%s\"" : "%s",
-						colalign(subjline, ABS(n), n));
+				if (n == 0)
+					break;
+				if (subjline == NULL)
+					subjline = _get_subject(mp, threaded);
+				if (subjline == (char*)-1) {
+					n = fprintf(f, "%*s", n, "");
+					wleft = (n >= 0) ? wleft-n : 0;
+				} else {
+					n = fprintf(f, (B ? "\"%s\"" : "%s"),
+						colalign(subjline, ABS(n), n,
+						&wleft));
+					if (n < 0)
+						wleft = 0;
 				}
 				break;
 			case 'U':
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 				if (n == 0)
 					n = 9;
-				subjlen -= fprintf(f, "%*lu", n, mp->m_uid);
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				n = fprintf(f, "%*lu", n, mp->m_uid);
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 #else
 				c = '?';
@@ -641,8 +744,11 @@ jputc:
 			case 'e':
 				if (n == 0)
 					n = 2;
-				subjlen -= fprintf(f, "%*u", n, threaded == 1 ?
-						mp->m_level : 0);
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				n = fprintf(f, "%*u", n,
+					threaded == 1 ? mp->m_level : 0);
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case 't':
 				if (n == 0) {
@@ -651,45 +757,57 @@ jputc:
 						for (i=msgCount; i>999; i/=10)
 							n++;
 				}
-				subjlen -= fprintf(f, "%*ld", n, threaded ?
-						mp->m_threadpos : mesg);
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				n = fprintf(f, "%*ld", n,
+					threaded ? mp->m_threadpos : mesg);
+				wleft = (n >= 0) ? wleft - n : 0;
 				break;
-			case 'c':
-#ifdef USE_SCORE
+			case '$':
+#ifdef HAVE_SPAM
 				if (n == 0)
-					n = 6;
-				subjlen -= fprintf(f, "%*g", n, mp->m_score);
-				break;
+					n = 4;
+				if (ABS(n) > wleft)
+					n = (n < 0) ? -wleft : wleft;
+				{	char buf[16];
+					snprintf(buf, sizeof buf, "%u.%u",
+						(mp->m_spamscore >> 8),
+						(mp->m_spamscore & 0xFF));
+					n = fprintf(f, "%*s", n, buf);
+					wleft = (n >= 0) ? wleft - n : 0;
+				}
 #else
 				c = '?';
 				goto jputc;
 #endif
 			}
+
+			if (wleft <= 0)
+				break;
 		} else
 			putc(c, f);
 	}
 	putc('\n', f);
 
-	if (out.s)
-		free(out.s);
+	if (subjline != NULL && subjline != (char*)-1)
+		free(subjline);
 }
 
 /*
  * Print out the indenting in threaded display.
  */
 static int
-putindent(FILE *fp, struct message *mp, int maxwidth)
+putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 {
-	struct message	*mq;
-	int	indent, i;
-	int	*us;
-	char	*cs;
-	int	important = MNEW|MFLAGGED;
+	struct message *mq;
+	int *us, indlvl, indw, i, important = MNEW|MFLAGGED;
+	char *cs;
 
-	if (mp->m_level == 0)
+	if (mp->m_level == 0 || maxwidth == 0)
 		return 0;
 	cs = ac_alloc(mp->m_level);
 	us = ac_alloc(mp->m_level * sizeof *us);
+
 	i = mp->m_level - 1;
 	if (mp->m_younger && (unsigned)i + 1 == mp->m_younger->m_level) {
 		if (mp->m_parent && mp->m_parent->m_flag & important)
@@ -704,6 +822,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 			us[i] = mp->m_flag & important ? 0x2515 : 0x2514;
 		cs[i] = '\\';
 	}
+
 	mq = mp->m_parent;
 	for (i = mp->m_level - 2; i >= 0; i--) {
 		if (mq) {
@@ -724,16 +843,20 @@ putindent(FILE *fp, struct message *mp, int maxwidth)
 		} else
 			us[i] = cs[i] = ' ';
 	}
-	for (indent = 0; (unsigned)indent < mp->m_level && indent < maxwidth;
-			++indent) {
-		if (indent < maxwidth - 1)
-			putuc(us[indent], cs[indent] & 0377, fp);
+
+	--maxwidth;
+	for (indlvl = indw = 0; (uc_it)indlvl < mp->m_level &&
+			indw < maxwidth; ++indlvl) {
+		if (indw < maxwidth - 1)
+			indw += (int)putuc(us[indlvl], cs[indlvl] & 0377, fp);
 		else
-			putuc(0x21B8, '^', fp);
+			indw += (int)putuc(0x21B8, '^', fp);
 	}
+	indw += /*putuc(0x261E, fp)*/putc('>', fp) != EOF;
+
 	ac_free(us);
 	ac_free(cs);
-	return indent;
+	return indw;
 }
 
 void
@@ -745,7 +868,7 @@ printhead(int mesg, FILE *f, int threaded)
 
 	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
 		getenv("SYSV3") != NULL;
-	strcpy(attrlist, bsdflags ? "NU  *HMFATK+-J" : "NUROSPMFATK+-J");
+	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-$" : "NUROSPMFAT+-$");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
 		if (sz > (int)sizeof attrlist - 1)
@@ -769,8 +892,7 @@ int
 pdot(void *v)
 {
 	(void)v;
-	printf(catgets(catd, CATSET, 13, "%d\n"),
-			(int)(dot - &message[0] + 1));
+	printf("%d\n", (int)(dot - &message[0] + 1));
 	return(0);
 }
 
@@ -860,7 +982,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		} else {
 			safe_signal(SIGPIPE, brokpipe);
 		}
-	} else if ((options & OPT_INTERACTIVE) &&
+	} else if ((options & OPT_TTYOUT) &&
 			(page || (cp = value("crt")) != NULL)) {
 		nlines = 0;
 		if (!page) {
@@ -1144,7 +1266,7 @@ top(void *v)
 		}
 		c = mp->m_lines;
 		for (lines = 0; lines < c && lines <= topl; lines++) {
-			if (readline(ibuf, &linebuf, &linesize) < 0)
+			if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 				break;
 			puts(linebuf);
 
@@ -1222,7 +1344,7 @@ folders(void *v)
 		name = dirname;
 
 	if (which_protocol(name) == PROTO_IMAP) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		imap_folders(name, *argv == NULL);
 #else
 		return ccmdnotsupp(NULL);

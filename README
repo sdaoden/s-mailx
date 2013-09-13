@@ -13,21 +13,31 @@ also exists the possibility to browse the manual online [5].
 
   [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
   [2] <http://sourceforge.net/p/s-nail/code/>
-  [3] <https://sourceforge.net/projects/s-nail/files/latest/download?source=files>
+  [3] <https://sourceforge.net/projects/s-nail/files/latest/download?\
+      source=files>
   [4] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
   [5] <http://sdaoden.users.sourceforge.net/code-nail.html>
 
 See the file INSTALL for installation notes and NEWS for release update
 information.  Mail contact is supposed to go through the normal
-nail-devel@lists.sourceforge.net list.
+<nail-devel@lists.sourceforge.net> list, but which needs to be subscribed
+to: I'll forward anything which reaches me under <sdaoden@users.sf.net>.
 
-The S-nail(1) git(1) repository consists of three branches:
+The S-nail(1) git(1) repository consists of four branches:
 
 - master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
-  S-nail(1).
+  S-nail(1).  This is the stable branch that a normal user should track.
+  It is updated once a release is made, and will otherwise only see
+  cherry-picked bugfixes.
 
 - next: rooted on top of *master*, this consists of a furious mixture of
-  commits that eventually end up in *master*.
+  commits that eventually end up in *master*; it is a snapshot of the
+  *crawl* branch, taken once that seemed to be quite stable.
+
+- crawl: because of my brain-damaged way of working this is what *next*
+  ought to be, but since people are using *next* i needed to isolate my
+  grazy-grazy-grazy fixup-cross-your-fingers-now-that commits somewhere
+  else.
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
@@ -57,3 +67,5 @@ program has been integrated into the Heirloom project.
 
 In 2012 the stale Heirloom mailx(1) was adapted as S-nail(1) by
 Steffen "Daode" Nurpmeso.
+
+vim:set fenc=utf-8:s-ts-mode

@@ -95,7 +95,7 @@ edit1(int *msgvec, int type)
 
 			printf(tr(72, "Edit message %d [ynq]? "), msgvec[i]);
 			fflush(stdout);
-			if (readline(stdin, &line, &linesize) < 0)
+			if (readline_restart(stdin, &line, &linesize, 0) < 0)
 				break;
 			for (p = line; blankchar(*p); p++)
 				;

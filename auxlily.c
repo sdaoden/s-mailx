@@ -58,52 +58,53 @@
 #endif
 
 #ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
+# ifdef HAVE_IPV6
 #  include <sys/socket.h>
 # endif
 # include <netdb.h>
 #endif
 
 #include "extern.h"
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 # include "md5.h"
 #endif
 
-/*
- * Announce a fatal error and die.
- */
+/* {hold,rele}_all_sigs() */
+static size_t		_alls_depth;
+static sigset_t		_alls_nset, _alls_oset;
+
 void
-panic(const char *format, ...)
+panic(char const *format, ...)
 {
 	va_list ap;
 
+	fprintf(stderr, tr(1, "Panic: "));
+
 	va_start(ap, format);
-	fprintf(stderr, catgets(catd, CATSET, 1, "panic: "));
 	vfprintf(stderr, format, ap);
 	va_end(ap);
-	fprintf(stderr, catgets(catd, CATSET, 2, "\n"));
+
+	fputs("\n", stderr);
 	fflush(stderr);
 	abort();
 }
 
 void
-holdint(void)
+hold_all_sigs(void)
 {
-	sigset_t	set;
-
-	sigemptyset(&set);
-	sigaddset(&set, SIGINT);
-	sigprocmask(SIG_BLOCK, &set, NULL);
+	if (_alls_depth++ == 0) {
+		sigfillset(&_alls_nset);
+		sigdelset(&_alls_nset, SIGKILL);
+		sigdelset(&_alls_nset, SIGSTOP);
+		sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
+	}
 }
 
 void
-relseint(void)
+rele_all_sigs(void)
 {
-	sigset_t	set;
-
-	sigemptyset(&set);
-	sigaddset(&set, SIGINT);
-	sigprocmask(SIG_UNBLOCK, &set, NULL);
+	if (--_alls_depth == 0)
+		sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
 }
 
 /*
@@ -148,10 +149,10 @@ argcount(char **argv)
 }
 
 char *
-colalign(const char *cp, int col, int fill) /* XXX improve filling+! */
+colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 {
-	int	n, sz;
-	char	*nb, *np;
+	int col_orig = col, n, sz;
+	char *nb, *np;
 
 	np = nb = salloc(mb_cur_max * strlen(cp) + col + 1);
 	while (*cp) {
@@ -188,9 +189,12 @@ colalign(const char *cp, int col, int fill) /* XXX improve filling+! */
 		} else
 			memset(np, ' ', col);
 		np += col;
+		col = 0;
 	}
 
 	*np = '\0';
+	if (cols_decr_used_or_null != NULL)
+		*cols_decr_used_or_null -= col_orig - col;
 	return nb;
 }
 
@@ -200,9 +204,9 @@ paging_seems_sensible(void)
 	size_t ret = 0;
 	char const *cp;
 
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL)
+	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL)
 		ret = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
-	return (ret);
+	return ret;
 }
 
 void
@@ -220,7 +224,7 @@ page_or_print(FILE *fp, size_t lines)
 		rewind(fp);
 	}
 
-	if (rows != 0 && lines > rows)
+	if (rows != 0 && lines >= rows)
 		run_command(get_pager(), 0, fileno(fp), -1, NULL, NULL, NULL);
 	else
 		while ((c = getc(fp)) != EOF)
@@ -243,28 +247,28 @@ which_protocol(const char *name)
 			goto file;
 	if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
 		if (strncmp(name, "pop3://", 7) == 0)
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 			return PROTO_POP3;
 #else
 			fprintf(stderr,
 				tr(216, "No POP3 support compiled in.\n"));
 #endif
 		if (strncmp(name, "pop3s://", 8) == 0)
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			return PROTO_POP3;
 #else
 			fprintf(stderr,
 				tr(225, "No SSL support compiled in.\n"));
 #endif
 		if (strncmp(name, "imap://", 7) == 0)
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			return PROTO_IMAP;
 #else
 			fprintf(stderr,
 				tr(269, "No IMAP support compiled in.\n"));
 #endif
 		if (strncmp(name, "imaps://", 8) == 0)
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			return PROTO_IMAP;
 #else
 			fprintf(stderr,
@@ -344,6 +348,78 @@ nextprime(long n)
 	return mprime;
 }
 
+int
+expand_shell_escape(char const **s, bool_t use_nail_extensions)
+{
+	char const *xs = *s;
+	int c, n;
+
+	if ((c = *xs & 0xFF) == '\0')
+		goto jleave;
+	++xs;
+	if (c != '\\')
+		goto jleave;
+
+	switch ((c = *xs & 0xFF)) {
+	case '\\':			break;
+	case 'a':	c = '\a';	break;
+	case 'b':	c = '\b';	break;
+	case 'c':	c = -1;		break;
+	case 'f':	c = '\f';	break;
+	case 'n':	c = '\n';	break;
+	case 'r':	c = '\r';	break;
+	case 't':	c = '\t';	break;
+	case 'v':	c = '\v';	break;
+	case '0':
+		for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
+			c <<= 3;
+			c |= *xs - '0';
+		}
+		goto jleave;
+	/* S-nail extension for nice prompt support */
+	case '?':
+		if (use_nail_extensions) {
+			c = exec_last_comm_error ? '1' : '0';
+			break;
+		}
+		/* FALLTHRU */
+	case '\0':
+		/* A sole <backslash> at EOS is treated as-is! */
+		/* FALLTHRU */
+	default:
+		c = '\\';
+		goto jleave;
+	}
+	++xs;
+jleave:
+	*s = xs;
+	return c;
+}
+
+char *
+getprompt(void)
+{
+	static char buf[64];
+	char const *ccp;
+
+	if ((ccp = value("prompt")) == NULL) {
+		buf[0] = value("bsdcompat") ? '&' : '?';
+		buf[1] = ' ';
+		buf[2] = '\0';
+	} else {
+		char *cp;
+
+		for (cp = buf; cp < buf + sizeof(buf) - 1; ++cp) {
+			int c = expand_shell_escape(&ccp, TRU1);
+			if (c <= 0)
+				break;
+			*cp = (char)c;
+		}
+		*cp = '\0';
+	}
+	return buf;
+}
+
 char *
 getname(int uid)
 {
@@ -374,7 +450,7 @@ nodename(int mayoverride)
 	struct utsname ut;
 	char *hn;
 #ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
+# ifdef HAVE_IPV6
 	struct addrinfo hints, *res;
 # else
 	struct hostent *hent;
@@ -389,7 +465,7 @@ nodename(int mayoverride)
 		uname(&ut);
 		hn = ut.nodename;
 #ifdef HAVE_SOCKETS
-# ifdef USE_IPV6
+# ifdef HAVE_IPV6
 		memset(&hints, 0, sizeof hints);
 		hints.ai_family = AF_UNSPEC;
 		hints.ai_socktype = SOCK_DGRAM;	/* dummy */
@@ -410,7 +486,7 @@ nodename(int mayoverride)
 # endif
 #endif
 		hostname = sstrdup(hn);
-#if defined HAVE_SOCKETS && defined USE_IPV6
+#if defined HAVE_SOCKETS && defined HAVE_IPV6
 		if (hn != ut.nodename)
 			ac_free(hn);
 #endif
@@ -446,7 +522,7 @@ getrandstring(size_t length)
 	int fd = -1;
 	char *data, *cp;
 	size_t i;
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 	MD5_CTX	ctx;
 #else
 	size_t j;
@@ -459,7 +535,7 @@ getrandstring(size_t length)
 			pid = getpid();
 			srand(pid);
 			cp = nodename(0);
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 			MD5Init(&ctx);
 			MD5Update(&ctx, (unsigned char *)cp, strlen(cp));
 			MD5Final(nodedigest, &ctx);
@@ -487,7 +563,7 @@ getrandstring(size_t length)
 	return b64.s;
 }
 
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
@@ -531,7 +607,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 	ac_free(in.s);
 	return out.s;
 }
-#endif /* USE_MD5 */
+#endif /* HAVE_MD5 */
 
 enum okay 
 makedir(const char *name)
@@ -637,6 +713,12 @@ makeprint(struct str const *in, struct str *out)
 				n = 1;
 			}
 			if (n < 0) {
+				/* FIXME Why mbtowc() resetting here?
+				 * FIXME what about ISO 2022-JP plus -- those
+				 * FIXME will loose shifts, then!
+				 * FIXME THUS - we'd need special "known points"
+				 * FIXME to do so - say, after a newline!!
+				 * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
 				(void)mbtowc(&wc, NULL, mb_cur_max);
 				wc = utf8 ? 0xFFFD : '?';
 				n = 1;
@@ -710,27 +792,30 @@ prout(const char *s, size_t sz, FILE *fp)
 	return n;
 }
 
-/*
- * Print out a Unicode character or a substitute for it.
- */
-int
+size_t
 putuc(int u, int c, FILE *fp)
 {
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+	size_t rv;
+
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
 	if (utf8 && u & ~(wchar_t)0177) {
-		char	mb[MB_LEN_MAX];
-		int	i, n, r = 0;
+		char mb[MB_LEN_MAX];
+		int i, n;
 		if ((n = wctomb(mb, u)) > 0) {
-			for (i = 0; i < n; i++)
-				r += putc(mb[i] & 0377, fp) != EOF;
-			return r;
+			rv = wcwidth(u);
+			for (i = 0; i < n; ++i)
+				if (putc(mb[i] & 0377, fp) == EOF) {
+					rv = 0;
+					break;
+				}
 		} else if (n == 0)
-			return putc('\0', fp) != EOF;
+			rv = (putc('\0', fp) != EOF);
 		else
-			return 0;
+			rv = 0;
 	} else
 #endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-		return putc(c, fp) != EOF;
+		rv = (putc(c, fp) != EOF);
+	return rv;
 }
 
 void
@@ -953,6 +1038,8 @@ void *
 
 	if (size == 0)
 		size = 1;
+	if (nmemb == 0)
+		nmemb = 1;
 	size *= nmemb;
 	size += sizeof(struct chunk);
 
@@ -1043,15 +1130,18 @@ int
 
 	fprintf(fp, "Currently allocated memory chunks:\n");
 	for (p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next)
-		fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
-			(void*)(p.c + 1), p.c->size, p.c->file, p.c->line);
+		fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
+			(void*)(p.c + 1),
+			(ui_it)(p.c->size - sizeof(struct chunk)),
+			p.c->file, p.c->line);
 
 	if (options & OPT_DEBUG) {
 		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
 		for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next)
-			fprintf(fp, "%p (%6u bytes): %s, line %hu\n",
-				(void*)(p.c + 1), p.c->size, p.c->file,
-				p.c->line);
+			fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
+				(void*)(p.c + 1),
+				(ui_it)(p.c->size - sizeof(struct chunk)),
+				p.c->file, p.c->line);
 	}
 
 	page_or_print(fp, lines);

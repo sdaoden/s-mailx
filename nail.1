@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jun 06, 2013
+.Dd Sep 13, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -109,7 +109,7 @@ are implemented by means of setting the respective option, as via
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
-Executes an 
+Executes an
 .Ic account
 command (see below) for
 .Ar account
@@ -178,6 +178,9 @@ Inhibits reading \*(UR upon startup.
 This option should be activated for \*(UA scripts that are invoked on
 more than one machine, because the contents of that file may differ
 between them.
+(The same behaviour can be achieved by setting the
+.Ev NAIL_NO_SYSTEM_RC
+environment variable.)
 .It Fl O Ar mta-option
 Pass the given option through to the mail-transfer-agent (MTA).
 This option has no effect when mail is send via SMTP.
@@ -243,7 +246,7 @@ option, which enables more verbose messages.
 Enable tilde escapes even if not in interactive mode.
 .It Fl #
 This sets multiple options to prepare \*(UA for working in batch mode
-(most likely for a non-interactive session):
+(most likely in non-interactive mode):
 .Va dot ,
 .Va emptystart ,
 .Va noheader ,
@@ -254,6 +257,7 @@ E.g., the following should send an email message to `alias'.
 .Dl printf 'm alias\en~s Subject\enBody\en.\enx\en' | \
    MAILRC=/dev/null s-nail -n -#
 .El
+.\"
 .\" --  >8  --  8<  --
 .Ss "Sending mail"
 To send a message to one or more people,
@@ -269,13 +273,14 @@ then \*(UA expects a comma-separated list of such names.
 The section
 .Sx "Recipient address specifications"
 below explains the interpretation of names in more detail.
-The user is then expected to type in his message, followed by an
+The user is then expected to type in his message, followed by a
 .Li `control-D'
 at the beginning of a line.
 The section
 .Sx "Replying to or originating mail"
 describes some features of \*(UA available to help when composing
 letters.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Reading mail"
 In normal usage \*(UA is given no arguments and checks the user's mail
@@ -288,6 +293,7 @@ command, which can be abbreviated `p'.
 The commands `p+' and `p\-' move forward to the next and backward to the
 previous message, respectively, and messages can be addressed directly
 by specifying their message number, as in `p 1'.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Disposing of mail"
 After examining a message the user can
@@ -305,6 +311,7 @@ or the \*(UA session can be ended by giving the
 (`x') command.
 Deleted messages will, however, usually disappear never to be seen
 again.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Specifying messages"
 Commands such as print and delete can be given a list of message numbers
@@ -348,10 +355,8 @@ All answered messages
 variable).
 .It Ar :t
 All messages marked as draft.
-.It Ar :k
-All `killed' messages.
-.It Ar :j
-All messages classified as junk.
+.It Ar :s
+\*(OP All messages classified as spam.
 .It Ar \&.
 The current message.
 .It Ar \&;
@@ -552,6 +557,7 @@ A practical method to read a set of messages is to issue a
 .Ic from
 command with the search criteria first to check for appropriate messages,
 and to read each single message then by typing ``' repeatedly.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Replying to or originating mail"
 The command
@@ -573,6 +579,7 @@ attach files to it
 and allow the user to escape to an editor to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
+.\"
 .\" --  >8  --  8<  --
 .Ss "Ending a mail processing session"
 The user can end a \*(UA session by issuing the
@@ -585,6 +592,90 @@ Unexamined messages go back to the post office.
 (Also see the
 .Fl f
 option above.)
+.\"
+.\" --  >8  --  8<  --
+.Ss "Line editor"
+\*(OP \*(UA can be configured to support a command line editor and
+command history lists which are saved in between sessions.
+One may link against fully-fledged external editor libraries
+.Ns ( Ns Xr editline 3 ,
+.Xr readline 3 Ns
+), or use the builtin editor instead, which should work in all
+environments which comply to ISO C (ISO/IEC 9899:1990/Amendment 1:1995).
+(Note, however, that commands that are based upon rightwise movement may
+not work on every terminal.
+If you encounter that issue, use the
+.Va line-editor-cursor-right
+variable to enforce a different terminal control sequence.)
+.Pp
+The builtin editor supports the following operations;
+the notation `^-character' stands for the combination of the `control'
+key plus the mentioned character, e.g., `^A' means ``hold control key
+while adding an A key on top of it'':
+.Bl -tag -width "^M^"
+.It ^A
+Go to the start of the line.
+.It ^B
+History backward step.
+.It ^D
+Forward delete the character under the cursor;
+quits \*(UA if used on the empty line, unless the
+.Va ignoreeof
+option is set.
+.It ^E
+Go to the end of the line.
+.It ^F
+History forward step.
+.It ^G
+Cancel current operation, full reset.
+If there is an active history search or tabulator expansion then this
+command will first reset that, reverting to the former line content;
+thus a second reset is needed for a full reset in this case.
+.It ^H
+The same as `backspace': backward delete one character.
+.It ^I
+The same as `horizontal tabulator': try to expand the ``word'' before
+the cursor.
+Here ``expansion'' refers to the \*(UA expansion, as documented for
+.Ic folder ,
+and thus includes shell word expansion (as a last step).
+(Note that this is a real ``expansion'', not what one expects from
+``tab-completion''.)
+.It ^J
+The same as `RETURN': complete this line of input.
+.It ^K
+Delete all characters from the cursor to the end of the line.
+.It ^L
+Repaint the line.
+.It ^O
+Move the cursor left one character.
+.It ^P
+Move the cursor right one character.
+.It ^R
+Complete the current line from (the remaining older) history entries.
+.It ^U
+The same as `^A' followed by `^K'.
+.It ^W
+Delete the characters from the one preceding the cursor to the preceding
+word boundary.
+.It ^X
+Move the cursor forward one word boundary.
+.It ^Y
+Move the cursor backward one word boundary.
+.El
+.Pp
+Regardless of the actually present command line editor history entries
+will be created for lines entered in command mode only, and creation of
+such an entry can be forcefully suppressed by starting the line with
+a space character.
+Also refer to the documentation of
+.Va emptystart ,
+.Va line-editor-cursor-right ,
+.Va line-editor-disable ,
+.Va NAIL_HISTFILE
+and
+.Va NAIL_HISTSIZE .
+.\"
 .\" --  >8  --  8<  --
 .Ss "Personal and systemwide distribution lists"
 It is also possible to create personal distribution lists so that,
@@ -614,6 +705,7 @@ Personal aliases will be expanded by \*(UA before the message is sent.
 System wide aliases are not expanded when the mail is sent by \*(UA,
 but any reply returned to the machine will have the system wide alias
 expanded as all mail goes through the MTA.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Recipient address specifications"
 When an address is used to name a recipient (in `To:', `Cc:', or `Bcc:'),
@@ -633,6 +725,7 @@ what remains is treated as a mail address.
 Compressed folders are handled as described for the
 .Ic folder
 command.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Network mail (Internet / ARPA, UUCP, Berknet)"
 See
@@ -656,6 +749,7 @@ feature, and
 .Ic "set idna-disable"
 will disable the mentioned IDNA conversion even if support is available.
 (These options are summarized below.)
+.\"
 .\" --  >8  --  8<  --
 .Ss "MIME types"
 For any outgoing attachment \*(UA tries to determine the content type.
@@ -678,6 +772,7 @@ the given `type/subtype' pair is used.
 Otherwise, or if the filename has no extension,
 the content types `text/plain' or `application/octet-stream' are used,
 dependent upon file content inspection.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Character sets"
 \*(UA normally detects the character set of the terminal by using
@@ -766,6 +861,7 @@ in which case the full Unicode spectrum of characters is available.
 In this setup characters from various countries can be displayed,
 while it is still possible to use more simple character sets for sending
 to retain maximum compatibility with older mail clients.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Commands"
 Each command is typed on a line by itself,
@@ -919,11 +1015,6 @@ variables.
 .It Ic chdir
 (ch) Changes the user's working directory to the specified one,
 or to the user's login directory, if none was given.
-.It Ic classify
-\*(OP (cl) Takes a list of messages and examines their contents for
-characteristics of junk mail using Bayesian filtering.
-Messages considered to be junk are then marked as such.
-The junk mail database is not changed.
 .It Ic collapse
 (coll)
 Only applicable to threaded mode.
@@ -1013,9 +1104,9 @@ Echoes its arguments,
 resolving special names as documented for the command
 .Ic folder .
 The escape sequences `\ea', `\eb', `\ec', `\ef', `\en', `\er', `\et',
-`\ev', `\e\e', and `\e0octal-num\fR' are interpreted as with the
-.Xr echo 1
-command.
+`\ev', `\e\e', and `\e0octal-num\fR' are interpreted just as they are by
+.Xr printf 1
+(proper quoting provided).
 .It Ic edit
 (e) Point the text editor at each message from the given list in turn.
 Modified contents are discarded unless the
@@ -1179,11 +1270,6 @@ overrides
 This command has no effect when the
 .Va forward-as-attachment
 option is set.
-.It Ic good
-\*(OP (go) Takes a list of messages and marks all of them as not
-being junk mail.
-Data from these messages is then inserted into the junk mail database
-for future classification.
 .It Ic headers
 (h) Lists the current range of headers, which is an 18-message group.
 If a `+' argument is given the next 18-message group is printed,
@@ -1197,7 +1283,7 @@ Does not override the
 .Ic delete
 command.
 \*(UA deviates from the POSIX standard with this command,
-as a 
+as a
 .Ic next
 command issued after
 .Ic hold
@@ -1261,21 +1347,6 @@ Not all IMAP servers support this command.
 .It Ic inc
 Same as
 .Ic newmail .
-.It Ic junk
-\*(OP (j) Takes a list of messages and marks them as junk mail.
-Data from these messages is then inserted into the junk mail database
-for future classification.
-.It Ic kill
-\*(OP (k) Takes a list of messages and `kills' them.
-Killed messages are not printed in summaries and are ignored by the
-.Ic next
-command.
-This command also sets the score of the messages to negative infinity,
-so that subsequent
-.Ic score
-commands will not unkill them again.
-Killing is only effective for the current session on a folder;
-when it is quit, all messages are automatically unkilled.
 .It Ic list
 Prints the names of all available commands, alphabetically sorted.
 .It Ic Mail
@@ -1315,6 +1386,14 @@ option can be used to fine-tune loading of the sources.
 .Ic copy
 but marks the messages for deletion if they were transferred
 successfully.
+.It Ic more
+Takes a message list and invokes the
+.Va PAGER
+on that list, printing a form-feed (`\\f') in between messages.
+.It Ic More
+Like
+.Ic more ,
+but also prints ignored header fields and all MIME parts.
 .It Ic Move
 (Mv) Similar to
 .Ic move ,
@@ -1382,9 +1461,6 @@ all parts with a content type of `text' or `message' are shown,
 the other are hidden except for their headers.
 Messages are decrypted and converted to the terminal character set
 if necessary.
-.It Ic probability
-\*(OP (prob) For each word given as argument,
-the contents of its junk mail database entry are printed.
 .It Ic quit
 (q) Terminates the session, saving all undeleted, unsaved messages in
 the current `mbox', preserving all messages marked with
@@ -1421,7 +1497,7 @@ and must be located on the current server for IMAP.
 Does not reply to other recipients of the original message.
 .It Ic reply
 (r) Takes a message list and sends mail to the sender and all recipients
-of the specified message.
+of the specified messages.
 The default message must not be deleted.
 .It Ic replyall
 Similar to
@@ -1515,7 +1591,7 @@ Is to
 .Ic save
 what
 .Ic retain
-is to 
+is to
 .Ic print
 and
 .Ic type .
@@ -1528,17 +1604,6 @@ overrides
 .Ic saveignore .
 The use of this command is strongly discouraged since it may strip
 header fields that are needed to decode the message correctly.
-.It Ic score
-\*(OP (sc) Takes a message list and a floating point number
-and adds the number to the score of each given message.
-All messages start at score 0 when a folder is opened.
-When the score of a message becomes negative, it is `killed' with the
-effects described for the
-.Ic kill
-command;
-otherwise if it was negative before and becomes positive,
-it is `unkilled'.
-Scores only refer to the currently opened instance of a folder.
 .It Ic set
 (se) With no arguments, prints all variable values.
 Otherwise, sets an option.
@@ -1595,8 +1660,10 @@ variable is set,
 the sender's real name (if any) is used.
 .It size
 Sort the messages by their size.
-.It score
-\*(OP Sort the messages by their score.
+.It spam
+\*(OP Sort the message by their spam score, as has been classified via
+the command
+.Ic spamrate .
 .It status
 Sort the messages by their message status (new, read, old, etc.).
 .It subject
@@ -1618,6 +1685,30 @@ If no argument is given,
 the current sorting criterion is printed.
 .It Ic source
 The source command reads commands from a file.
+.It Ic spamclear
+\*(OP Takes a list of messages and clears their ``is-spam'' flag.
+.It Ic spamforget
+\*(OP Takes a list of messages and forces the spam detector to forget it
+has ever used them to train its Bayesian filter, wether as `ham' or
+`spam'.
+.It Ic spamham
+\*(OP Takes a list of messages and teaches them to the spam detector as
+being `ham'.
+This also clears the ``is-spam'' flag of the messages in question.
+.It Ic spamrate
+\*(OP Takes a list of messages and rates them using the configured spam
+detector, setting their ``is-spam'' flag as appropriate.
+Note that the messages are not modified, and due to that the rating will
+get lost once the mailbox is left.
+Refer to the manual section
+.Sx "Handling spam"
+for the complete picture of spam handling in \*(UA.
+.It Ic spamset
+\*(OP Takes a list of messages and sets their ``is-spam'' flag.
+.It Ic spamspam
+\*(OP Takes a list of messages and teaches them to the spam detector as
+being `spam'.
+This also sets the ``is-spam'' flag of the messages in question.
 .It Ic thread
 (th) Create a threaded representation of the current folder,
 i.\|e. indent messages that are replies to other messages in the header
@@ -1689,17 +1780,6 @@ command.
 command that was previously applied on exactly these messages.
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
-.It Ic unjunk
-\*(OP Takes a message list and undoes the effect of a
-.Ic junk
-command that was previously applied on exactly these messages.
-.It Ic unkill
-\*(OP Takes a message list and
-.Ns un Ns Ic kill Ns s
-each message.
-Also sets the
-.Ic score
-of the given messages to 0.
 .It Ic Unread
 Same as
 .Ic unread .
@@ -1792,6 +1872,7 @@ Similar to
 but scrolls to the next or previous window that contains at least one
 new or `flagged' message.
 .El
+.\"
 .\" --  >8  --  8<  --
 .Ss "Tilde escapes"
 Here is a summary of the tilde escapes,
@@ -1830,6 +1911,9 @@ If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
 \*(UA will ask for further attachments until an empty name is given.
+If a given file name solely consists of the number sign `#' followed
+by a valid message number of the currently active mailbox, the given
+message is attached as a MIME `message/rfc822' attachment.
 .Pp
 If character set conversion has been compiled into \*(UA, then this mode
 gives the user the option to specify input and output character sets,
@@ -1877,6 +1961,8 @@ The first asks for the filename, and the second asks for the input
 character set to be passed through to the `charset=' MIME parameter;
 no conversion will be tried if there is input to the latter question,
 otherwise the usual conversion algorithm, as above, is applied.
+For message attachments, the answer to the second question is completely
+ignored.
 .Pp
 If
 .Ar filename
@@ -1884,7 +1970,10 @@ arguments are specified,
 they are treated as a comma separated list of files,
 which are all expanded and appended to the end of the attachment list.
 (Filenames with commas, or with leading or trailing whitespace can only
-be added via the command line or the first method.)
+be added via the command line or the first method.
+Message attachments can only be added via the first method;
+filenames which clash with message numbers can only be added via the
+command line or the second method.)
 In this mode the (text) attachments are assumed to be in
 .Va ttycharset
 encoding, and will be evaluated as documented in the section
@@ -1998,6 +2087,7 @@ E.g., the command
 .Xr fmt 1
 is often used as a rejustifying filter.
 .El
+.\"
 .\" --  >8  --  8<  --
 .Ss "Variable options"
 Options are controlled via
@@ -2013,6 +2103,7 @@ environment.
 Options may be either binary, in which case it is only significant to
 see whether they are set or not;
 or string, in which case the actual value is of interest.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Binary options"
 The binary options include the following:
@@ -2093,9 +2184,9 @@ command.
 Sets some cosmetical features to traditional BSD style;
 has the same affect as setting
 .Va askatend
-and all other variables prefixed with `bsd',
-setting prompt to `&\ ', and changing the default pager to
-.Xr more 1 .
+and all other variables prefixed with `bsd' as well as setting
+.Va prompt
+to `&\ '.
 .It Va bsdflags
 Changes the letters printed in the first column of a header summary
 to traditional BSD style.
@@ -2111,13 +2202,6 @@ in message headers and with the `~h' tilde command.
 Changes the output format of the
 .Ic set
 command to traditional BSD style.
-.It Va chained-junk-tokens
-\*(OP Normally, the Bayesian junk mail filter bases its classifications
-on single word tokens extracted from messages.
-If this option is set adjacent words are combined to pairs,
-which are then used as additional tokens.
-This usually improves the accuracy of the filter,
-but also increases the junk mail database five- to tenfold.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2157,7 +2241,7 @@ The binary option dot causes \*(UA to interpret a period alone on a line
 as the terminator of a message the user is sending.
 .It Va editalong
 If this variable is set then the editor is started automatically when
-composing a message in an interactive session,
+composing a message in an interactive mode,
 as if the `~e' tilde command had been specified.
 The
 .Va editheaders
@@ -2244,6 +2328,10 @@ creating fake mail folders in a world-writable spool directory.
 When a message is saved it is usually discarded from the originating
 folder when \*(UA is quit.
 Setting this option causes all saved message to be retained.
+.It Va line-editor-disable
+Turn off any enhanced command line editing capabilities (see
+.Sx "Line editor"
+for more).
 .It Va markanswered
 When a message is replied to and this variable is set,
 it is marked as having been answered.
@@ -2374,6 +2462,11 @@ Setting this variable causes all subparts to be displayed,
 just as if the surrounding part was of type `multipart/mixed'.
 .It Va quiet
 Suppresses the printing of the version when first invoked.
+.It Va quote-as-attachment
+If this is set, then the original message added in its entirety as
+a `message/rfc822' MIME attachment when replying to a message.
+Note this works regardless of the setting of
+.Va quote .
 .It Va recipients-in-cc
 On group replies, specify only the sender of the original mail in `To:'
 and mention it's other recipients in the secondary `Cc:'.
@@ -2511,6 +2604,7 @@ performed,
 and proper RFC 4155 `From ' quoting of newly added or edited content is
 also left as an excercise to the user.
 .El
+.\"
 .\" --  >8  --  8<  --
 .Ss "Value options"
 The value options include the following:
@@ -2521,10 +2615,9 @@ summary,
 each for one type of messages in the following order:
 new (N), unread but old (U), new but read (R), read and old (O), saved
 (S), preserved (P), mboxed (M), flagged (F), answered (A), draft (T),
-killed (K), start of a collapsed thread (+), collapsed (\-), classified
-as junk (J).
-The default is `NUROSPMFATK+\-J',
-or `NU\ \ *HMFATK+\-J' if
+start of a collapsed thread (+), collapsed (\-), classified as spam ($).
+The default is `NUROSPMFAT+\-$',
+or `NU\ \ *HMFAT+\-$' if
 .Va bsdflags
 or the
 .Va SYSV3
@@ -2571,6 +2664,8 @@ If
 .Va crt
 is set without a value then the height of the terminal screen stored in
 the system is used to compute the threshold (see
+.Va LINES
+and
 .Xr stty 1 Ns
 ).
 .It Va DEAD
@@ -2707,8 +2802,6 @@ Valid format specifiers are:
 .Bl -tag -offset indent -width "%%"
 .It %a
 Message attributes.
-.It %c
-The score of the message.
 .It %d
 The date when the message was received.
 .It %e
@@ -2734,6 +2827,9 @@ The position in threaded/sorted order.
 A `>' for the current message, otherwise ` '.
 .It %<
 A `<' for the current message, otherwise ` '.
+.It %$
+The spam score of the message, as has been classified via the command
+.Ic spamrate .
 .It %%
 A `%' character.
 .El
@@ -2789,26 +2885,22 @@ String used by the `~m' and `~M' tilde escapes and by the
 option for indenting messages,
 in place of the normal tab character (`^I').
 Be sure to quote the value if it contains spaces or tabs.
-.It Va junkdb
-\*(OP The location of the junk mail database.
-The string is treated like a folder name,
-as described for the
-.Ic folder
-command.
-.Pp
-The files in the junk mail database are normally stored in
-.Xr compress 1
-format for saving space.
-If processing time is considered more important,
-.Xr uncompress 1
-can be used to store them in plain form.
-\*(UA will then work using the uncompressed files.
 .It Va LISTER
 Pathname of the directory lister to use in the
 .Ic folders
 command when operating on local mailboxes.
 Default is
 .Pa /bin/ls .
+.It Va line-editor-cursor-right
+\*(OP If the builtin line editor is used, actions which are based on
+rightwise movement may not work on some terminals.
+If you encounter such problems, set this variable to the terminal
+control sequence that is necessary to move the cursor one column to the
+right.
+The default is `\\033[C', which should work for most terminals.
+Other useful options are `\\033OC' and `\\014'.
+Note that `ESCAPE' and other control character have to be written as
+shell-style escape sequences, e.g., `\\033' for `ESCAPE'.
 .It Va MAIL
 Is used as the user's mailbox, if set.
 Otherwise, a system-dependent default is used.
@@ -2850,6 +2942,22 @@ implementations.
 .It Va NAIL_HEAD
 A string to put at the beginning of each new message.
 The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
+.It Va NAIL_HISTFILE
+\*(OP If a command line editor is available then this can be set to
+name the (expandable) path of the location of a permanent history file.
+.It Va NAIL_HISTSIZE
+\*(OP If a command line editor is available this value restricts the
+amount of history entries that are saved into a set and valid
+.Va NAIL_HISTFILE .
+A value of less than 0 disables this feature;
+note that loading and incorporation of
+.Va NAIL_HISTFILE
+upon program startup can also be suppressed by doing this.
+An unset or invalid value, or 0, causes a default value to be used.
+Dependent on the available line editor this will also define the number
+of history entries in memory;
+it is also editor-specific wether runtime updates of this value will be
+honoured.
 .It Va NAIL_TAIL
 A string to put at the end of each new message.
 The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
@@ -2862,11 +2970,8 @@ The value to put into the `Organization:' field of the message header.
 Pathname of the program to use in the more command or when the
 .Va crt
 variable is set.
-The default paginator
-.Xr pg 1
-or, in BSD compatibility mode,
-.Xr more 1
-is used if this option is not defined.
+The default paginator is
+.Xr more 1 .
 .It Va password-user@host
 Set the password for `user' when connecting to `host'.
 If no such variable is defined for a host,
@@ -2912,6 +3017,12 @@ The string printed when a command is accepted.
 Defaults to `?\ ', or to `&\ ' if the
 .Va bsdcompat
 variable is set.
+The same XSI escape sequences that are understood by the
+.Ic echo
+command may be used within
+.Va prompt .
+As a \*(UA specific addition, the escape sequence `\\?' will expand to
+`1' if the last command failed, and to `0' otherwise.
 .It Va quote
 If set, \*(UA starts a replying message with the original message
 prefixed by the value of the variable
@@ -2932,22 +3043,24 @@ the message body and all MIME parts are included,
 making
 .Va quote
 act like an automatic `~M' command.
-.It Va quote-fold
-If set in addition to
-.Va indentprefix ,
-\*(UA interprets this number as the maximum line length of the quotation
-when replying to a message.
-Setting this turns on a more fancy quotation algorithm in that leading
-quotation characters are compressed and overlong lines are folded to
-.Va quote-fold
-characters each, breaking at whitespace as necessary and starting the
-follow lines with fillers to pad up to the last quotation markers width.
-The value of
-.Va quote-fold
-can't be smaller than the length of
-.Va indentprefix
-plus some additional pad.
-It is automatically adjusted to the minimum as necessary.
+Also see
+.Va quote-as-attachment .
+.\".It Va quote-fold
+.\"\*(OP Can be set in addition to
+.\".Va indentprefix .
+.\"Setting this turns on a more fancy quotation algorithm in that leading
+.\"quotation characters are compressed and overlong lines are folded.
+.\".Va quote-fold
+.\"can be set to either one or two (space separated) numeric values,
+.\"which are interpreted as the maximum (goal) and the minimum line length,
+.\"respectively, in a spirit rather equal to the
+.\".Xr fmt 1
+.\"program, but line-, not paragraph-based.
+.\"If not set explicitly the minimum will reflect the goal algorithmically.
+.\"The goal can't be smaller than the length of
+.\".Va indentprefix
+.\"plus some additional pad.
+.\"Necessary adjustments take place silently.
 .It Va record
 If defined, gives the pathname of the folder used to record all outgoing
 mail.
@@ -3164,6 +3277,43 @@ Overrides
 .Va smtp-auth-user
 for specific values of sender addresses, dependent upon the variable
 .Va from .
+.It Va spam-command
+\*(OP The full path to the
+.Xr spamc 1
+executable.
+A fallback path will have been compiled into the \*(UA binary if the
+.Xr spamc 1
+executable had been found during compilation.
+.It Va spam-host
+\*(OP Can be used to specify the host on which
+.Xr spamd 1
+listens for connections; if not set, defaults to `localhost'.
+.It Va spam-maxsize
+\*(OP The
+.Xr spamc 1
+program declines to (truly) work with messages which exceed a specific
+size; if this variable is set then \*(UA won't even try to invoke
+.Xr spamc 1
+if a message is larger than this size in bytes.
+The default is 420000 bytes.
+.It Va spam-port
+\*(OP Can be used to explicitly specify the port on which
+.Xr spamd 1
+listens for connections.
+.It Va spam-socket
+\*(OP If
+.Xr spamd 1
+listens on a path-based UNIX domain socket, then setting this variable
+to the fully qualified path will force the
+.Ic spamrate
+command to use this communication channel instead.
+.It Va spam-user
+\*(OP This can be used to have
+.Xr spamd 1
+have per-user configuration files.
+Note that \*(UA doesn't automatically set this to reflect a possibly set
+.Fl u
+option.
 .It Va ssl-ca-dir
 \*(OP Specifies a directory with CA certificates in PEM (Pricacy
 Enhanced Mail) for verification of of SSL/TLS server certificates.
@@ -3269,13 +3419,19 @@ command and `~v' tilde escape.
 .\"
 .Sh ENVIRONMENT
 Besides the variables described above,
-\*(UA uses the following environment strings:
+\*(UA uses the following environment variables:
 .Bl -tag -width ".It Va MAILRC"
+.It Va COLUMNS
+The user's preferred width in column positions for the terminal screen
+or window (only used during startup).
 .It Va HOME
 The user's home directory.
 .It Va LANG , Va LC_ALL , Va LC_COLLATE , Va LC_CTYPE , Va LC_MESSAGES
 See
 .Xr locale  7 .
+.It Va LINES
+The user's preferred number of lines on a page or the vertical screen or
+window size in lines (only used during startup).
 .It Va MAILRC
 Is used as a startup file instead of \*(ur if set.
 When \*(UA scripts are invoked on behalf of other users,
@@ -3286,6 +3442,11 @@ to avoid side-effects from reading their configuration files.
 If this variable is set and
 .Va MAILRC
 is not, it is treated as a startup configuration file and read.
+.It Va NAIL_NO_SYSTEM_RC
+If this variable is set then reading of \*(UR at startup is inhibited,
+i.e., the same effect is achieved as if \*(UA had been started up with
+the set option
+.Fl n .
 .It Va SYSV3
 Changes the letters printed in the first column of a header summary.
 .It Va TMPDIR
@@ -3311,6 +3472,7 @@ System wide MIME types.
 .\" --  >8  --  8<  --
 .\"
 .Sh EXAMPLES
+.\"
 .\" --  >8  --  8<  --
 .Ss "Getting started"
 The \*(UA command has two distinct usages, according to whether one
@@ -3547,6 +3709,7 @@ For example, to print the text of the message so far, use:
 which will print a line of dashes, the recipients of your message, and
 the text of the message so far.
 A list of the most important tilde escapes is available with `~?'.
+.\"
 .\" --  >8  --  8<  --
 .Ss "IMAP or POP3 client setup"
 First you need the following data from your ISP:
@@ -3743,6 +3906,7 @@ Note that the example above is \fBinsecure\fR!
 One should use the `-verify' and `-CAfile' options of
 .Xr s_client 1
 to be ``on the safe side'' regarding the fetched certificates.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Reading HTML mail"
 You need either the
@@ -3756,6 +3920,7 @@ standard output.
 .Dl set pipe-text/html="lynx -stdin -dump -force_html"
 .Pp
 will cause HTML message parts to be converted into a more friendly form.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Viewing PDF attachments"
 Most PDF viewers do not accept input directly from a pipe.
@@ -3769,6 +3934,7 @@ time.
 Automatical command execution like this can compromise your system
 security,
 in particular if you stay not always informed about such issues.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Signed and encrypted messages with S/MIME"
 S/MIME provides two central mechanisms:
@@ -3876,6 +4042,7 @@ and cannot be trusted even if the message content has been verified.
 When sending signed messages,
 it is recommended to repeat any important header information in the
 message text.
+.\"
 .\" --  >8  --  8<  --
 .Ss "Using CRLs with S/MIME or SSL/TLS"
 Certification authorities (CAs) issue certificate revocation lists
@@ -3907,6 +4074,96 @@ or
 variables, respectively, must then be set to point to that directory.
 After that, \*(UA requires a CRL to be present for each CA that is used
 to verify a certificate.
+.\"
+.\" --  >8  --  8<  --
+.Ss "Handling spam"
+\*(OP \*(UA can make use of spam detection and learning facilities \(en
+more precisely, SpamAssassin (\%<http://spamassassin.apache.org>).
+A very comprehensive documentation of
+.Xr spamassassin 1
+can be found at the O'Reilly Commons
+(\%<http://commons.oreilly.com/wiki/index.php/SpamAssassin>).
+.Pp
+Currently \*(UA supports interaction with
+.Xr spamassassin 1
+only via its daemonized
+.Xr spamd 1 /
+.Xr spamc 1
+server / client pair, which means that, in order to detect and work
+with spam through \*(UA, an instance of the
+.Xr spamd 1
+daemon must be running (the examples are equivalent):
+.Bd -literal -offset indent
+$ spamd -i localhost:2142 -i /tmp/.spamsock -d [-L] [-l]
+$ spamd --listen=localhost:2142 --listen=/tmp/.spamsock \\
+    --daemonize [--local] [--allow-tell]
+.Ed
+.Pp
+Note that if
+.Xr spamd 1
+should only listen on a local, path-based UNIX domain socket instead of
+offering its service over the network, it maybe necessary to use
+a single
+.Li --socketpath
+option instead of the shown
+.Li --listen .
+In order to support training of the Bayesian classifier through \*(UA,
+.Xr spamd 1
+must have been started with the
+.Li --allow-tell
+option.
+.Pp
+Once
+.Xr spamd 1
+is running \*(UA can classify messages by using the client side program,
+.Xr spamc 1 ,
+as in:
+.Bd -literal -offset indent
+$ \*(ua -Sspam-command=/usr/local/bin/spamc \\
+    -Sspam-socket=/tmp/.spamsock -Sspam-maxsize=500000
+.Ed
+.Pp
+The commands offered are
+.Ic spamclear
+and
+.Ic spamset ,
+which simply set an ``is-spam'' flag that can be used for, e.g., message
+selection,
+.Ic spamrate ,
+which passes messages through to the spam detector in order to gain
+a spam score and conditionally set the ``is-spam'' flag accordingly,
+as well as the Bayesian filter related
+.Ic spamforget ,
+.Ic spamham
+and
+.Ic spamspam .
+.Pp
+Because messages must exist on local storage in order to be scored (or
+used for Bayesian filter training), it is possibly a good idea to
+perform the local spam check last:
+.Bd -literal -offset indent
+define spamdelhook {
+	# Server side DCC
+	spamset (header x-dcc-brand-metrics "bulk")
+	# Server-side spamassassin(1)
+	spamset (header x-spam-flag "YES")
+	del :s # TODO we HAVE to be able to do `spamrate :u ! :s'
+	# And finally the local spamc(1)
+	spamrate :u
+	del :s
+}
+set folder-hook-FOLDER=spamdelhook
+.Ed
+.Pp
+See also the documentation for the variables
+.Va spam-command ,
+.Va spam-host ,
+.Va spam-port ,
+.Va spam-socket ,
+.Va spam-user
+and
+.Va spam-maxsize .
+.\"
 .\" --  >8  --  8<  --
 .Ss "Sending mail from scripts"
 If you want to send mail from scripts, you must be aware that \*(UA
@@ -3942,11 +4199,16 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr more 1 ,
 .Xr newaliases 1 ,
 .Xr openssl 1 ,
-.Xr pg 1 ,
+.Xr printf 1 ,
 .Xr sendmail 1 ,
 .Xr sh 1,
+.Xr spamassassin 1 ,
+.Xr spamc 1 ,
+.Xr spamd 1 ,
 .Xr vacation 1 ,
+.Xr editline 3 ,
 .Xr iconv 3 ,
+.Xr readline 3 ,
 .Xr setlocale 3 ,
 .Xr ssl 3 ,
 .Xr aliases 5 ,
@@ -3957,8 +4219,6 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .\" --  >8  --  8<  --
 .\"
 .Sh "IMPLEMENTATION NOTES"
-Variables in the environment passed to \*(UA cannot be unset.
-.Pp
 The character set conversion uses and relies upon the
 .Xr iconv 3
 function.
@@ -4040,18 +4300,6 @@ Thus the recommended setup for sending mail in
 mode is to configure a local SMTP server such that it sends outgoing
 mail as soon as an external network connection is available again,
 i.e., to advise it to do that from a network startup script.
-.Pp
-The junk mail filter follows the concepts developed by
-Paul Graham
-in his articles,
-``A Plan for Spam'', August 2002,
-\%<http://www.paulgraham.com/spam.html>,
-and ``Better Bayesian Filtering'', January 2003,
-\%<http://www.paulgraham.com/better.html>.
-Chained tokens are due to a paper by
-Jonathan A. Zdziarski,
-``Advanced Language Classification using Chained Tokens'', February 2004,
-\%<http://www.nuclearelephant.com/papers/chained.html>.
 .\"
 .\" --  >8  --  8<  --
 .\"
@@ -4077,3 +4325,16 @@ The original Standard can be obtained online at
 \%<http://www.opengroup.org/unix/online.html>.
 Redistribution of this material is permitted so long as this notice
 remains intact.
+.\"
+.\" --  >8  --  8<  --
+.\"
+.Sh AUTHORS
+.An "Kurt Shoens" ,
+.An "Christos Zoulas" ,
+.An "Gunnar Ritter" ,
+.An Steffen Qo Daode Qc Nurpmeso Aq sdaoden@users.sf.net
+.\"
+.\" --  >8  --  8<  --
+.\"
+.Sh BUGS
+Variables in the environment passed to \*(UA cannot be unset.

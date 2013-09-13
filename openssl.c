@@ -39,7 +39,7 @@
 
 #include "config.h"
 
-#ifndef USE_OPENSSL
+#ifndef HAVE_OPENSSL
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
@@ -1234,4 +1234,4 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 #endif	/* old OpenSSL */
 	return OKAY;
 }
-#endif /* USE_OPENSSL */
+#endif /* HAVE_OPENSSL */

@@ -42,9 +42,6 @@
 #include <errno.h>
 #include <math.h>
 #include <unistd.h>
-#ifdef USE_SCORE
-# include <float.h>
-#endif
 
 #include "extern.h"
 
@@ -62,14 +59,10 @@ static char *	fwdedit(char *subj);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
 static int	file1(char const *name);
-static int	shellecho(const char *cp);
 static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
 static void	list_shortcuts(void);
 static enum okay delete_shortcut(const char *str);
-#ifdef USE_SCORE
-static float	huge(void);
-#endif
 
 static char *
 _reedit(char *subj)
@@ -250,17 +243,21 @@ help(void *v)
 	char *arg = *(char**)v;
 
 	if (arg != NULL) {
-#ifdef USE_DOCSTRINGS
+#ifdef HAVE_DOCSTRINGS
 		extern struct cmd const cmdtab[];
 		struct cmd const *cp;
 		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
 			if (cp->c_func == &ccmdnotsupp)
 				continue;
-			if (strcmp(cp->c_name, arg) == 0) {
+			if (strcmp(arg, cp->c_name) == 0)
 				printf("%s: %s\n", arg,
 					tr(cp->c_docid, cp->c_doc));
-				goto jleave;
-			}
+			else if (is_prefix(arg, cp->c_name))
+				printf("%s (%s): %s\n", arg, cp->c_name,
+					tr(cp->c_docid, cp->c_doc));
+			else
+				continue;
+			goto jleave;
 		}
 		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), arg);
 		ret = 1;
@@ -426,57 +423,68 @@ followupsender(void *v)
 }
 
 /*
- * Reply to a list of messages.  Extract each name from the
+ * Reply to a single message.  Extract each name from the
  * message header and send them off to mail1()
  */
 static int 
 respond_internal(int *msgvec, int recipient_record)
 {
+	struct header head;
 	struct message *mp;
 	char *cp, *rcv;
-	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
 	struct name *np = NULL;
-	struct header head;
+	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
 
-	memset(&head, 0, sizeof head);
 	if (msgvec[1] != 0) {
-		printf(catgets(catd, CATSET, 37,
+		fprintf(stderr, tr(37,
 			"Sorry, can't reply to multiple messages at once\n"));
-		return(1);
+		return 1;
 	}
 	mp = &message[msgvec[0] - 1];
 	touch(mp);
 	setdot(mp);
+
 	if ((rcv = hfield1("reply-to", mp)) == NULL)
 		if ((rcv = hfield1("from", mp)) == NULL)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
 		np = lextract(rcv, GTO|gf);
-	if (! value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
-		np = cat(np, lextract(cp, GTO|gf));
+	if (! boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+		np = cat(np, lextract(cp, GTO | gf));
 	/*
 	 * Delete my name from the reply list,
 	 * and with it, all my alternate names.
 	 */
 	np = elide(delete_alternates(np));
 	if (np == NULL)
-		np = lextract(rcv, GTO|gf);
+		np = lextract(rcv, GTO | gf);
+
+	memset(&head, 0, sizeof head);
 	head.h_to = np;
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = _reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
-	if (value("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
-		np = lextract(cp, GCC|gf);
+	if (boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+		np = lextract(cp, GCC | gf);
 	if ((cp = hfield1("cc", mp)) != NULL)
-		np = cat(np, lextract(cp, GCC|gf));
+		np = cat(np, lextract(cp, GCC | gf));
 	if (np != NULL)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
+
+	if (boption("quote-as-attachment")) {
+		head.h_attach = csalloc(1, sizeof *head.h_attach);
+		head.h_attach->a_msgno = *msgvec;
+		head.h_attach->a_content_description = tr(512,
+			"Original message content");
+	}
+
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
-		mp->m_flag |= MANSWER|MANSWERED;
-	return(0);
+			boption("markanswered") &&
+			(mp->m_flag & MANSWERED) == 0)
+		mp->m_flag |= MANSWER | MANSWERED;
+	return 0;
 }
 
 /*
@@ -489,9 +497,9 @@ forward1(char *str, int recipient_record)
 	char	*recipient;
 	struct message	*mp;
 	struct header	head;
-	int	forward_as_attachment;
+	bool_t forward_as_attachment;
 
-	forward_as_attachment = value("forward-as-attachment") != NULL;
+	forward_as_attachment = boption("forward-as-attachment");
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 	if ((recipient = laststring(str, &f, 0)) == NULL) {
 		puts(catgets(catd, CATSET, 47, "No recipient specified."));
@@ -527,13 +535,14 @@ forward1(char *str, int recipient_record)
 	if (forward_as_attachment) {
 		head.h_attach = csalloc(1, sizeof *head.h_attach);
 		head.h_attach->a_msgno = *msgvec;
+		head.h_attach->a_content_description = "Forwarded message";
 	} else {
 		touch(mp);
 		setdot(mp);
 	}
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = fwdedit(head.h_subject);
-	mail1(&head, 1, forward_as_attachment ? NULL : mp,
+	mail1(&head, 1, (forward_as_attachment ? NULL : mp),
 		NULL, recipient_record, 1);
 	return 0;
 }
@@ -622,7 +631,7 @@ unread(void *v)
 		setdot(&message[*ip-1]);
 		dot->m_flag &= ~(MREAD|MTOUCH);
 		dot->m_flag |= MSTATUS;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
 			imap_unread(&message[*ip-1], *ip); /* TODO return? */
 #endif
@@ -776,7 +785,7 @@ group(void *v)
 	h = hash(gname);
 	if ((gh = findgroup(gname)) == NULL) {
 		gh = (struct grouphead *)scalloc(1, sizeof *gh);
-		gh->g_name = vcopy(gname);
+		gh->g_name = sstrdup(gname);
 		gh->g_list = NULL;
 		gh->g_link = groups[h];
 		groups[h] = gh;
@@ -790,7 +799,7 @@ group(void *v)
 
 	for (ap = argv+1; *ap != NULL; ap++) {
 		gp = (struct group *)scalloc(1, sizeof *gp);
-		gp->ge_name = vcopy(*ap);
+		gp->ge_name = sstrdup(*ap);
 		gp->ge_link = gh->g_list;
 		gh->g_list = gp;
 	}
@@ -806,8 +815,7 @@ ungroup(void *v)
 	char **argv = v;
 
 	if (*argv == NULL) {
-		printf(catgets(catd, CATSET, 209,
-				"Must specify alias or group to remove\n"));
+		fprintf(stderr, tr(209, "Must specify alias to remove\n"));
 		return 1;
 	}
 	do
@@ -884,60 +892,6 @@ file1(char const *name)
 	return 0;
 }
 
-static int
-shellecho(const char *cp)
-{
-	int	cflag = 0, n;
-	char	c;
-
-	while (*cp) {
-		if (*cp == '\\') {
-			switch (*++cp) {
-			case '\0':
-				return cflag;
-			case 'a':
-				putchar('\a');
-				break;
-			case 'b':
-				putchar('\b');
-				break;
-			case 'c':
-				cflag = 1;
-				break;
-			case 'f':
-				putchar('\f');
-				break;
-			case 'n':
-				putchar('\n');
-				break;
-			case 'r':
-				putchar('\r');
-				break;
-			case 't':
-				putchar('\t');
-				break;
-			case 'v':
-				putchar('\v');
-				break;
-			default:
-				putchar(*cp&0377);
-				break;
-			case '0':
-				c = 0;
-				n = 3;
-				while (n-- && octalchar(cp[1]&0377)) {
-					c <<= 3;
-					c |= cp[1] - '0';
-					cp++;
-				}
-				putchar(c);
-			}
-		} else
-			putchar(*cp & 0377);
-		cp++;
-	}
-	return cflag;
-}
 
 /*
  * Expand file names like echo
@@ -945,21 +899,26 @@ shellecho(const char *cp)
 int 
 echo(void *v)
 {
-	char **argv = v;
-	char **ap;
-	char *cp;
-	int cflag = 0;
+	char const **argv = v, **ap, *cp;
+	int c;
 
-	for (ap = argv; *ap != NULL; ap++) {
+	for (ap = argv; *ap != NULL; ++ap) {
 		cp = *ap;
-		if ((cp = expand(cp)) != NULL) {
+		if ((cp = fexpand(cp, FEXP_NSHORTCUT)) != NULL) {
 			if (ap != argv)
 				putchar(' ');
-			cflag |= shellecho(cp);
+			c = 0;
+			while (*cp != '\0' &&
+					(c = expand_shell_escape(&cp, FAL0))
+					> 0)
+				putchar(c);
+			/* \c ends overall processing */
+			if (c < 0)
+				goto jleave;
 		}
 	}
-	if (!cflag)
-		putchar('\n');
+	putchar('\n');
+jleave:
 	return 0;
 }
 
@@ -985,11 +944,12 @@ Respond_internal(int *msgvec, int recipient_record)
 {
 	struct header head;
 	struct message *mp;
-	enum gfield	gf = value("fullnames") ? GFULL : GSKIN;
 	int *ap;
 	char *cp;
+	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
 
 	memset(&head, 0, sizeof head);
+
 	for (ap = msgvec; *ap != 0; ap++) {
 		mp = &message[*ap - 1];
 		touch(mp);
@@ -997,17 +957,26 @@ Respond_internal(int *msgvec, int recipient_record)
 		if ((cp = hfield1("reply-to", mp)) == NULL)
 			if ((cp = hfield1("from", mp)) == NULL)
 				cp = nameof(mp, 2);
-		head.h_to = cat(head.h_to, lextract(cp, GTO|gf));
+		head.h_to = cat(head.h_to, lextract(cp, GTO | gf));
 	}
 	if (head.h_to == NULL)
 		return 0;
+
 	mp = &message[msgvec[0] - 1];
 	head.h_subject = hfield1("subject", mp);
 	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
+
+	if (boption("quote-as-attachment")) {
+		head.h_attach = csalloc(1, sizeof *head.h_attach);
+		head.h_attach->a_msgno = *msgvec;
+		head.h_attach->a_content_description = tr(512,
+			"Original message content");
+	}
+
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
 			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
-		mp->m_flag |= MANSWER|MANSWERED;
+		mp->m_flag |= MANSWER | MANSWERED;
 	return 0;
 }
 
@@ -1216,7 +1185,7 @@ newmail(void *v)
 	(void)v;
 
 	if (
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	    (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 #endif
 	    (val = setfile(mailname, 1)) == 0) {
@@ -1521,117 +1490,6 @@ cundraft(void *v)
 	return 0;
 }
 
-#ifdef USE_SCORE
-static float 
-huge(void)
-{
-# ifdef _CRAY
-	/*
-	 * This is not perfect, but correct for machines with a 32-bit
-	 * IEEE float and a 32-bit unsigned long, and does at least not
-	 * produce SIGFPE on the Cray Y-MP.
-	 */
-	union {float f; unsigned long l;} u;
-
-	u.l = 0xff800000; /* -inf */
-	return u.f;
-# elif defined INFINITY
-	return -INFINITY;
-# elif defined HUGE_VALF
-	return -HUGE_VALF;
-# elif defined FLT_MAX
-	return -FLT_MAX;
-# else
-	return -1e10;
-# endif
-}
-
-int 
-ckill(void *v)
-{
-	struct message	*m;
-	int	*msgvec = v;
-	int	*ip;
-
-	for (ip = msgvec; *ip != 0; ip++) {
-		m = &message[*ip-1];
-		m->m_flag |= MKILL;
-		m->m_score = huge();
-	}
-	return 0;
-}
-
-int 
-cunkill(void *v)
-{
-	struct message	*m;
-	int	*msgvec = v;
-	int	*ip;
-
-	for (ip = msgvec; *ip != 0; ip++) {
-		m = &message[*ip-1];
-		m->m_flag &= ~MKILL;
-		m->m_score = 0;
-	}
-	return 0;
-}
-
-int 
-cscore(void *v)
-{
-	char	*str = v;
-	char	*sscore, *xp;
-	int	f, *msgvec, *ip;
-	double	nscore;
-	struct message	*m;
-
-	msgvec = salloc((msgCount+2) * sizeof *msgvec);
-	if ((sscore = laststring(str, &f, 0)) == NULL) {
-		fprintf(stderr, "No score given.\n");
-		return 1;
-	}
-	nscore = strtod(sscore, &xp);
-	if (*xp) {
-		fprintf(stderr, "Invalid score: \"%s\"\n", sscore);
-		return 1;
-	}
-	if (nscore > FLT_MAX)
-		nscore = FLT_MAX;
-	else if (nscore < -FLT_MAX)
-		nscore = -FLT_MAX;
-	if (!f) {
-		*msgvec = first(0, MMNORM);
-		if (*msgvec == 0) {
-			if (inhook)
-				return 0;
-			fprintf(stderr, "No messages to score.\n");
-			return 1;
-		}
-		msgvec[1] = 0;
-	} else if (getmsglist(str, msgvec, 0) < 0)
-		return 1;
-	if (*msgvec == 0) {
-		if (inhook)
-			return 0;
-		fprintf(stderr, "No applicable messages.\n");
-		return 1;
-	}
-	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
-		m = &message[*ip-1];
-		if (m->m_score != huge()) {
-			m->m_score += nscore;
-			if (m->m_score < 0)
-				m->m_flag |= MKILL;
-			else if (m->m_score > 0)
-				m->m_flag &= ~MKILL;
-			if (m->m_score >= 0)
-				setdot(m);
-		}
-	}
-	return 0;
-}
-#endif /* USE_SCORE */
-
 /*ARGSUSED*/
 int 
 cnoop(void *v)
@@ -1640,14 +1498,14 @@ cnoop(void *v)
 
 	switch (mb.mb_type) {
 	case MB_IMAP:
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		imap_noop();
 		break;
 #else
 		return (ccmdnotsupp(NULL));
 #endif
 	case MB_POP3:
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 		pop3_noop();
 		break;
 #else
@@ -1699,7 +1557,7 @@ cremove(void *v)
 			ec |= 1;
 			break;
 		case PROTO_IMAP:
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			if (imap_remove(name) != OKAY)
 #endif
 				ec |= 1;
@@ -1780,7 +1638,7 @@ crename(void *v)
 	nopop3:	fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
 		ec |= 1;
 		break;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case PROTO_IMAP:
 		if (imap_rename(old, new) != OKAY)
 			ec |= 1;

@@ -488,7 +488,34 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 	}
 	self->s[l] = '\0';
 	va_end(vl);
-	return (self);
+	return self;
+}
+
+struct str *
+str_concat_cpa(struct str *self, char const *const*cpa, char const *sep_o_null)
+{
+	size_t sonl, l;
+	char const *const*xcpa;
+
+	sonl = (sep_o_null != NULL) ? strlen(sep_o_null) : 0;
+
+	for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa)
+		l += strlen(*xcpa) + sonl;
+
+	self->l = l;
+	self->s = salloc(l + 1);
+
+	for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
+		size_t i = strlen(*xcpa);
+		memcpy(self->s + l, *xcpa, i);
+		l += i;
+		if (sonl > 0) {
+			memcpy(self->s + l, sep_o_null, sonl);
+			l += sonl;
+		}
+	}
+	self->s[l] = '\0';
+	return self;
 }
 
 /*
@@ -537,6 +564,18 @@ anyof(char const *s1, char const *s2)
 		if (strchr(s2, *s1))
 			break;
 	return (*s1 != '\0');
+}
+
+ui_it
+strhash(char const *name)
+{
+	ui_it h = 0;
+
+	while (*name != '\0') {
+		h *= 33;
+		h += *name++;
+	}
+	return h;
 }
 
 char *
@@ -720,6 +759,18 @@ char *
 	return dp;
 }
 
+char *
+(sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
+{
+	char *dp = NULL;
+
+	dp = (smalloc)(len + 1 SMALLOC_DEBUG_ARGSCALL);
+	if (cp != NULL)
+		memcpy(dp, cp, len);
+	dp[len] = '\0';
+	return dp;
+}
+
 int
 asccasecmp(char const *s1, char const *s2)
 {
@@ -781,6 +832,21 @@ jleave:
 		ac_free(needle);
 	}
 	return haystack;
+}
+
+bool_t
+is_asccaseprefix(char const *as1, char const *as2)
+{
+	bool_t rv = FAL0;
+
+	for (;; ++as1, ++as2) {
+		char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
+		if ((rv = (c1 == '\0')))
+			break;
+		if (c1 != c2 || c2 == '\0')
+			break;
+	}
+	return rv;
 }
 
 struct str *

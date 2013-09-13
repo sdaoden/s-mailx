@@ -1,0 +1,191 @@
+#@ make.conf can be used adjust the set of desired features, paths, etc.
+#@ You should have read `INSTALL' first.
+#@ Notes:
+#@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
+#@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
+#@   that can be set in here
+#@ . Specifying settings on the command line will take precedence over the
+#@   variables in here (correctly triggering build updates as necessary)
+#@ . Using one of the predefined CONFIG= sets overrides anything else
+#@ . You may NOT comment out anything in here -- if you want to disable a
+#@   feature, simply set it to `0'.  (It won't work properly otherwise!)
+
+## FEATURE SET ##
+#
+# The variables in here can be used to adjust the feature set of S-nail.
+# Only if a variable is set to `1' it is treated as being `set'.
+# Only a `set' variable will cause the possibly necessary feature tests to be
+# performed, so as to detect wether the wanted feature really can be used
+
+# Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
+# related/dependent stuff (GSSAPI,SSL)
+WANT_SOCKETS=1
+
+# If WANT_SOCKETS, should the IPv6 family of functions be searched for and
+# compiled into the program if found?
+# TODO NOTE:
+# TODO S-nail does not yet support IPv6 address notation, as in, e.g.,
+# TODO imaps://user1@::1 (or @[::1]), but it will happily establish a
+# TODO connection to imaps://user1@host1 if host1 listens via IPv6
+WANT_IPV6=1
+
+# Support for SecureSocketLayer (TransportLayerSecurity, TLS), i.e.,
+# encrypted socket connections.
+# This needs OpenSSL libraries (<http://www.openssl.org>), though these should
+# be installed by default on practically all operating systems today
+WANT_SSL=1
+
+# Support for IMAP protocol?  (Reading of mails directly on the server)
+WANT_IMAP=1
+# Support for GSSAPI-based authentication, i.e., Kerberos V5 for IMAP?
+# (This is disabled by default because it brings in a bunch of dependencies,
+# and most people don't need it.)
+WANT_GSSAPI=0
+
+# Support for POP3 protocol?  (Download of mails via POP over the network)
+WANT_POP3=1
+
+# Support for SMTP protocol?  (Directly sending mails over the network)
+WANT_SMTP=1
+
+# Several facilities use the MD5 message digest, but for some of them it is
+# used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
+# authentification, SMTP: CRAM-MD5 authentification).
+# If you don't need those, you may exclude MD5 from S-nail.
+# Note that WANT_MD5 is automatically turned off if its exclusion will only
+# affect MIME boundary strings and Message-Id: fields
+WANT_MD5=1
+
+# Character set conversion enables reading and sending of mails in multiple
+# character sets through usage of the iconv(3) library.
+# Please read the manual section "Character sets" for the complete picture.
+# This should usually be enabled
+WANT_ICONV=1
+
+# IDNA (internationalized domain names for applications) offers users the
+# possibility to use domain names in their native language, i.e., to use
+# non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>, which the IDNA
+# algorithm would convert to <www.xn--rksmrgsa-0zap8p.example>.  :)
+# This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>)
+WANT_IDNA=1
+
+# Command line editing and -history.
+# S-nail actually supports three different line editors:
+# . WANT_LINE_EDITOR=1, WANT_EDITLINE=0, WANT_EDITLINE_READLINE=0
+#   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
+#   then our builtin NCL (Nail Command Line editor) version will be used.
+#   This one is documented in the manual section "Line editor" (`./nail.1').
+# The fully fledged external libraries may offer a slightly better user
+# experience at the cost of needing more memory and CPU time; also note that
+# the behaviour of S-nail in respect to signal handling may no longer be POSIX
+# compliant.
+# . WANT_LINE_EDITOR=1, WANT_EDITLINE=1, WANT_EDITLINE_READLINE=0
+#   Command line editing via BSD editline(3)
+# . WANT_LINE_EDITOR=1, WANT_EDITLINE=1, WANT_EDITLINE_READLINE=1
+#   The GNU readline(3) compatible interface
+WANT_LINE_EDITOR=1
+WANT_EDITLINE=0
+WANT_EDITLINE_READLINE=0
+
+# Interaction with a spam email filter is possible.
+# Refer to all commands with a `spam' prefix, and see the manual section
+# "Handling spam" (`./nail.1')
+WANT_SPAM=1
+
+# If given an optional argument the `help' command will print a help string
+# only for the mentioned command; those strings take up space and so one may
+# disable this feature.
+WANT_DOCSTRINGS=1
+
+# A simple line-based quoting mechanism can be made available via the
+# *quote-fold* mechanism.
+# This will be turned off automatically if the required character
+# classification is not available on the host.
+# TODO disabled for v14.4, since not multibyte aware WANT_QUOTE_FOLD=0
+
+## PATHS AND PROGRAMS ##
+
+# General prefix where S-nail should be installed
+PREFIX=/usr/local
+
+# Fine tune individual locations, normally under $PREFIX
+# . the place of the S-nail program
+BINDIR="${PREFIX}/bin"
+# . of the manual
+MANDIR="${PREFIX}/man"
+# . of the exemplary resource file
+SYSCONFDIR="${PREFIX}/etc"
+
+# This variable is prepended to all the paths from above at installation time;
+# this feature can be used for, e.g., package building: if $PREFIX is
+# `/usr/local', but $DESTDIR is set to, say, `here', then S-nail will still
+# think its $PREFIX is `/usr/local' whereis the build system will instead use
+# `here/usr/local'
+DESTDIR=
+
+# The directory where the local mail system stores user mail (mbox) files.
+# (Only of interest if the local mail system is used)
+MAILSPOOL=/var/mail
+
+# Path to the local MTA (Mail Transport Agent).
+# (Only of interest if the local mail system is used)
+SENDMAIL=/usr/sbin/sendmail
+
+# Today a lot of systems no longer use sendmail(1), but a different MTA.
+# To ensure compatibility with sendmail(1), a system called mailwrapper(8) is
+# used, which selects the required service by looking at the name by which the
+# program actually has been invoked.
+# This variable can be used to adjust this name as necessary
+# (Only of interest if the local mail system is used)
+SENDMAIL_PROGNAME=sendmail
+
+# Fallback sh(1) path.
+# Note that it is not guaranteed that *all* uses of the shell use this, but it
+# may actually happen that execlp(2) will need to fallback to its own one.
+SHELL=/bin/sh
+
+# The default *LISTER* (in the $PATH).
+LISTER=ls
+
+# The default *PAGER* (in the $PATH).
+PAGER=more
+
+# Build+Install: the cmp(1) command (in the $PATH)
+CMP=cmp
+
+# Build+Install: the strip(1) program (in the $PATH)
+STRIP=strip
+
+# Build+Install: the nonstandard install(1) program (in the $PATH)
+INSTALL=install
+
+##  --  >8  --  8<  --  ##
+
+## Normal users should not need to read any further
+
+## PATHS AND PROGRAMS, DEVELOPMENT ##
+
+# For those who want to install S-nail(1) as nail(1), use an empty *SID*
+SID=s-
+
+# To ease the life of forkers and packagers one may even adjust the "nail"
+# of nail(1).  Note that $SID$NAIL must be longer than two characters
+NAIL=nail
+
+# The location of the exemplary resource template.
+# Note it's not overwritten if it yet exists!
+SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
+
+## FEATURE SET, DEVELOPMENT ##
+
+# We ship with our own small and efficient getopt(3) implementation;
+# set this to always choose that one without even checking for another one
+WANT_NOGETOPT=0
+
+# A lot of use of alloca(3) -- use a slow and expensive heap approach instead?
+WANT_NOALLOCA=0
+
+# Enable debug-only code assertions
+WANT_ASSERTS=0
+
+# vim:set fenc=utf-8 syntax=conf:s-it-mode

@@ -143,8 +143,7 @@ getmsglist(char *buf, int *vector, int flags)
 #define	CMFLAG		040		/* Flagged messages */
 #define	CMANSWER	0100		/* Answered messages */
 #define	CMDRAFT		0200		/* Draft messages */
-#define	CMKILL		0400		/* Killed messages */
-#define	CMJUNK		01000		/* Junk messages */
+#define	CMSPAM		0400		/* Spam messages */
 
 /*
  * The following table describes the letters which can follow
@@ -165,8 +164,7 @@ static struct coltab {
 	{ 'f',		CMFLAG,		MFLAGGED,	MFLAGGED },
 	{ 'a',		CMANSWER,	MANSWERED,	MANSWERED },
 	{ 't',		CMDRAFT,	MDRAFTED,	MDRAFTED },
-	{ 'k',		CMKILL,		MKILL,		MKILL },
-	{ 'j',		CMJUNK,		MJUNK,		MJUNK },
+	{ 's',		CMSPAM,		MSPAM,		MSPAM },
 	{ 0,		0,		0,		0 }
 };
 
@@ -196,7 +194,7 @@ markall(char *buf, int f)
 	int tok, beg, mc, star, other, valdot, colmod, colresult, topen, tback;
 	size_t nmlsize;
 	enum idfield	idfield = ID_REFERENCES;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	int gotheaders;
 #endif
 
@@ -220,7 +218,7 @@ markall(char *buf, int f)
 	beg = 0;
 	topen = 0;
 	tback = 0;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	gotheaders = 0;
 #endif
 
@@ -290,8 +288,7 @@ number:
 				}
 			} while (message[i-1].m_flag == MHIDDEN ||
 				(message[i-1].m_flag & MDELETED) !=
-					(unsigned)f ||
-				(message[i-1].m_flag & MKILL));
+					(unsigned)f);
 			mark(i, f);
 			break;
 
@@ -314,8 +311,7 @@ number:
 					}
 				} while ((message[i-1].m_flag & MHIDDEN) ||
 						(message[i-1].m_flag & MDELETED)
-							!= (unsigned)f ||
-						(message[i-1].m_flag & MKILL));
+							!= (unsigned)f);
 				mark(i, f);
 			}
 			break;
@@ -385,7 +381,7 @@ number:
 
 		case TCOMMA:
 			msglist_is_single = FAL0;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 				imap_getheaders(1, msgCount);
 #endif
@@ -475,7 +471,7 @@ number:
 	if (np > namelist || id) {
 		int	allnet = value("allnet") != NULL;
 
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 			imap_getheaders(1, msgCount);
 #endif
@@ -539,14 +535,16 @@ number:
 	if (colmod != 0) {
 		for (i = 1; i <= msgCount; i++) {
 			struct coltab *colp;
+			bool_t bad = TRU1;
 
 			mp = &message[i - 1];
 			for (colp = &coltab[0]; colp->co_char; colp++)
-				if (colp->co_bit & colmod)
-					if ((mp->m_flag & colp->co_mask)
-					    != (unsigned)colp->co_equal)
-						unmark(i);
-			
+				if ((colp->co_bit & colmod) &&
+						((mp->m_flag & colp->co_mask)
+						== (unsigned)colp->co_equal))
+					bad = FAL0;
+			if (bad)
+				unmark(i);
 		}
 		for (mp = &message[0]; mp < &message[msgCount]; mp++)
 			if (mp->m_flag & MMARK)
@@ -555,8 +553,7 @@ number:
 			struct coltab *colp;
 
 			if (!inhook) {
-				printf(catgets(catd, CATSET, 123,
-						"No messages satisfy"));
+				printf(tr(123, "No messages satisfy"));
 				for (colp = &coltab[0]; colp->co_char; colp++)
 					if (colp->co_bit & colmod)
 						printf(" :%c", colp->co_char);
@@ -1122,7 +1119,7 @@ metamess(int meta, int f)
 		 */
 		mp = mb.mb_threaded ? threadroot : &message[0];
 		while (mp < &message[msgCount]) {
-			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
+			if (!(mp->m_flag & MHIDDEN) &&
 					(mp->m_flag & MDELETED) == (unsigned)f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {
@@ -1144,7 +1141,7 @@ metamess(int meta, int f)
 		mp = mb.mb_threaded ? this_in_thread(threadroot, -1) :
 			&message[msgCount-1];
 		while (mp >= &message[0]) {
-			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
+			if (!(mp->m_flag & MHIDDEN) &&
 					(mp->m_flag & MDELETED) == (unsigned)f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {

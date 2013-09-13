@@ -175,7 +175,7 @@ imap_search(const char *spec, int f)
 	} else
 		spec = lastspec;
 	begin = spec;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	if (imap_search1(spec, f) == OKAY)
 		return OKAY;
 	needheaders = 0;
@@ -184,7 +184,7 @@ imap_search(const char *spec, int f)
 		return STOP;
 	if (ittree == NULL)
 		return OKAY;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	if (mb.mb_type == MB_IMAP && needheaders)
 		imap_getheaders(1, msgCount);
 #endif
@@ -474,7 +474,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	case ITSINCE:
 		if (m->m_time == 0 && (m->m_flag&MNOFROM) == 0 &&
 				(ibuf = setinput(mp, m, NEED_HEADER)) != NULL) {
-			if (readline(ibuf, &line, &linesize) > 0)
+			if (readline_restart(ibuf, &line, &linesize, 0) > 0)
 				m->m_time = unixtime(line);
 			free(line);
 		}

@@ -38,10 +38,6 @@
  * SUCH DAMAGE.
  */
 
-/* These two come from version.c */
-extern char const *const uagent;	/* User agent */
-extern char const *const version;	/* The version string */
-
 /* The rest will end up in main.o */
 #ifdef _MAIL_GLOBS_
 # undef _E
@@ -53,13 +49,13 @@ extern char const *const version;	/* The version string */
 _E gid_t	effectivegid;		/* Saved from when we started up */
 _E gid_t	realgid;		/* Saved from when we started up */
 
-_E int		is_a_tty[2];		/* isatty(0), isatty(1) */
 _E int		mb_cur_max;		/* value of MB_CUR_MAX */
 _E int		realscreenheight;	/* the real screen height */
 _E int		scrnwidth;		/* Screen width, or best guess */
 _E int		scrnheight;		/* Screen height, or best guess,
 					 *  for "header" command */
 _E int		utf8;			/* UTF-8 encoding in use for locale */
+_E int		enc_has_state;		/* Encoding has shift states */
 
 _E char		**altnames;		/* List of alternate names for user */
 _E char const	*homedir;		/* Path name of home directory */
@@ -75,6 +71,7 @@ _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 
 _E int		inhook;			/* currently executing a hook */
+_E bool_t	exec_last_comm_error;	/* Last execute() command failed */
 _E bool_t	edit;			/* Indicates editing a file */
 _E bool_t	did_print_dot;		/* current message has been printed */
 _E bool_t	msglist_is_single;	/* Last NDMLIST/MSGLIST *chose* 1 msg */
@@ -90,7 +87,6 @@ _E int		msgCount;		/* Count of messages read in */
 _E enum condition cond;			/* Current state of conditional exc. */
 _E struct mailbox mb;			/* Current mailbox */
 _E int		image;			/* File descriptor for image of msg */
-_E FILE		*input;			/* Current command input file */
 _E char		mailname[MAXPATHLEN];	/* Name of current file */
 _E char		displayname[80 - 40];	/* Prettyfied for display */
 _E char		prevfile[MAXPATHLEN];	/* Name of previous file */
@@ -116,10 +112,13 @@ _E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
 _E struct termios_state termios_state;	/* getpassword(); see commands().. */
 
 /* These are initialized strings */
-_E char const	*const month_names[12 + 1];
-_E char const	*const weekday_names[7 + 1];
+_E char const *const	month_names[12 + 1];
+_E char const *const	weekday_names[7 + 1];
 
-#ifdef USE_SSL
+_E char const *const	uagent;		/* User agent */
+_E char const *const	version;	/* The version string */
+
+#ifdef HAVE_SSL
 _E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */
 #endif
 

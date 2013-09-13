@@ -208,8 +208,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 				_get_encoding(convert),
 				ap->a_content_disposition) < 0)
 			goto jerr_header;
-		if (mime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE, NULL,
-				(size_t)0, NULL) < 0)
+		if (xmime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE, NULL)
+				< 0)
 			goto jerr_header;
 		if (fwrite("\"\n", sizeof(char), 2, fo) != 2 * sizeof(char))
 			goto jerr_header;
@@ -267,8 +267,7 @@ jerr_header:		err = errno;
 				break;
 		} else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
 			break;
-		if (mime_write(buf, inlen, fo, convert, TD_ICONV, NULL, 0, NULL)
-				< 0) {
+		if (xmime_write(buf, inlen, fo, convert, TD_ICONV, NULL) < 0) {
 			err = errno;
 			goto jerr;
 		}
@@ -385,8 +384,7 @@ put_signature(FILE *fo, int convert)
 	}
 	while ((sz = fread(buf, sizeof *buf, INFIX_BUF, fsig)) != 0) {
 		c = buf[sz - 1];
-		if (mime_write(buf, sz, fo, convert, TD_NONE, NULL, (size_t)0,
-				NULL) < 0) {
+		if (xmime_write(buf, sz, fo, convert, TD_NONE, NULL) < 0) {
 			perror(sig);
 			Fclose(fsig);
 			return -1;
@@ -467,8 +465,8 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 					break;
 			}
 
-			if (mime_write(buf, sz, fo, convert,
-					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
+			if (xmime_write(buf, sz, fo, convert, TD_ICONV, NULL)
+					< 0) {
 				free(buf);
 				return -1;
 			}
@@ -613,8 +611,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 				if (sz == 0)
 					break;
 			}
-			if (mime_write(buf, sz, nfo, convert,
-					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
+			if (xmime_write(buf, sz, nfo, convert, TD_ICONV, NULL)
+					< 0) {
 				Fclose(nfo);
 				Fclose(nfi);
 #ifdef HAVE_ICONV
@@ -806,7 +804,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 	while (np) {
 		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
 		if ((cp = value(o)) != NULL) {
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			struct name *nt;
 			FILE *ef;
 			if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
@@ -824,7 +822,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 					"Message not sent to <%s>\n"),
 					np->n_name);
 				_senderror = TRU1;
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 			}
 #endif
 			rewind(input);
@@ -855,7 +853,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 static enum okay
 start_mta(struct name *to, FILE *input, struct header *hp)
 {
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 	char *user = NULL, *password = NULL, *skinned = NULL;
 #endif
 	char const **args = NULL, **t, *mta;
@@ -883,7 +881,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 		}
 	} else {
 		mta = NULL; /* Silence cc */
-#ifndef USE_SMTP
+#ifndef HAVE_SMTP
 		fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
 		goto jstop;
 #else
@@ -915,7 +913,7 @@ jstop:		savedeadletter(input, 0);
 		sigaddset(&nset, SIGTTIN);
 		sigaddset(&nset, SIGTTOU);
 		freopen("/dev/null", "r", stdin);
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 		if (smtp != NULL) {
 			prepare_child(&nset, 0, 1);
 			if (smtp_mta(smtp, to, input, hp,
@@ -932,7 +930,7 @@ jstop:		savedeadletter(input, 0);
 			lseek(0, 0, SEEK_SET);
 			execv(mta, UNCONST(args));
 			perror(mta);
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 		}
 #endif
 		savedeadletter(input, 1);
@@ -1040,9 +1038,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		if (err == 0)
 			goto jaskeot;
 		if (value("askcc"))
-			++err, grabh(hp, GCC, 1);
+			++err, grab_headers(hp, GCC, 1);
 		if (value("askbcc"))
-			++err, grabh(hp, GBCC, 1);
+			++err, grab_headers(hp, GBCC, 1);
 		if (value("askattach"))
 			++err, hp->h_attach = edit_attachments(hp->h_attach);
 		if (value("asksign"))
@@ -1067,7 +1065,7 @@ jaskeot:
 
 	if (dosign < 0)
 		dosign = (value("smime-sign") != NULL);
-#ifndef USE_SSL
+#ifndef HAVE_SSL
 	if (dosign) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		goto jleave;
@@ -1145,7 +1143,7 @@ jaskeot:
 		}
 
 		perror("");
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 jfail_dead:
 #endif
 		_senderror = TRU1;
@@ -1155,7 +1153,7 @@ jfail_dead:
 	}
 
 	mtf = nmtf;
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	if (dosign) {
 		if ((nmtf = smime_sign(mtf, hp)) == NULL)
 			goto jfail_dead;
@@ -1300,12 +1298,12 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				(addr = value("ORGANIZATION")) != NULL) &&
 				(l = strlen(addr)) > 0) {
 			fwrite("Organization: ", sizeof (char), 14, fo);
-			if (mime_write(addr, l, fo,
+			if (xmime_write(addr, l, fo,
 					action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
 						TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0, NULL) < 0)
+					NULL) < 0)
 				return 1;
 			gotcha++;
 			putc('\n', fo);
@@ -1348,21 +1346,21 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		if (ascncasecmp(hp->h_subject, "re: ", 4) == 0) {
 			fwrite("Re: ", sizeof (char), 4, fo);
 			if (strlen(hp->h_subject + 4) > 0 &&
-				mime_write(hp->h_subject + 4,
+				xmime_write(hp->h_subject + 4,
 					strlen(hp->h_subject + 4), fo,
 					action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
 						TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0, NULL) < 0)
+					NULL) < 0)
 				return 1;
 		} else if (*hp->h_subject) {
-			if (mime_write(hp->h_subject, strlen(hp->h_subject),
+			if (xmime_write(hp->h_subject, strlen(hp->h_subject),
 					fo, action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
 						TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0, NULL) < 0)
+					NULL) < 0)
 				return 1;
 		}
 		gotcha++;
@@ -1462,9 +1460,9 @@ jstep:
 		} else
 			putc(' ', fo);
 		m = (m & ~m_CSEEN) | m_INIT;
-		len = mime_write(np->n_fullname, len, fo,
+		len = xmime_write(np->n_fullname, len, fo,
 				domime?CONV_TOHDR_A:CONV_NONE,
-				TD_ICONV, NULL, (size_t)0, NULL);
+				TD_ICONV, NULL);
 		if (len < 0)
 			return (1);
 		col += len;

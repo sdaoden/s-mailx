@@ -64,6 +64,8 @@ static struct name *	extract1(char const *line, enum gfield ntype,
 static struct name *	gexpand(struct name *nlist, struct grouphead *gh,
 				int metoo, int ntype);
 
+static void		_remove_grouplist(struct grouphead *gh);
+
 static int
 same_name(char const *n1, char const *n2)
 {
@@ -272,6 +274,20 @@ jleave:
 	return (nlist);
 }
 
+static void
+_remove_grouplist(struct grouphead *gh)
+{
+	struct group *gp, *gq;
+
+	if ((gp = gh->g_list) != NULL) {
+		for (; gp; gp = gq) {
+			gq = gp->ge_link;
+			free(gp->ge_name);
+			free(gp);
+		}
+	}
+}
+
 /*
  * Allocate a single element of a name list, initialize its name field to the
  * passed name and return it.
@@ -299,19 +315,19 @@ nalloc(char *str, enum gfield ntype)
 
 	if (ntype & GFULL) {
 		if (ag.ag_ilen == ag.ag_slen
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 	                        && (ag.ag_n_flags & NAME_IDNA) == 0
 #endif
                 )
 			goto jleave;
 		if (ag.ag_n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
 			goto jleave;
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 		if ((ag.ag_n_flags & NAME_IDNA) == 0) {
 #endif
 			in.s = str;
 			in.l = ag.ag_ilen;
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 		} else {
 			/*
 			 * The domain name was IDNA and has been converted.
@@ -334,7 +350,7 @@ nalloc(char *str, enum gfield ntype)
 		mime_fromhdr(&in, &out, TD_ISPR|TD_ICONV);
 		np->n_fullname = savestr(out.s);
 		free(out.s);
-#ifdef USE_IDNA
+#ifdef HAVE_IDNA
 		if (ag.ag_n_flags & NAME_IDNA)
 			ac_free(in.s);
 #endif
@@ -482,6 +498,18 @@ detract(struct name *np, enum gfield ntype)
 		*cp = 0;
 jleave:
 	return (top);
+}
+
+struct name *
+grab_names(const char *field, struct name *np, int comma, enum gfield gflags)
+{
+	struct name *nq;
+jloop:
+	np = lextract(readstr_input(field, detract(np, comma)), gflags);
+	for (nq = np; nq != NULL; nq = nq->n_flink)
+		if (is_addr_invalid(nq, 1))
+			goto jloop;
+	return np;
 }
 
 /*
@@ -924,4 +952,52 @@ jdelall:
 		np = np->n_flink;
 	}
 	goto jleave;
+}
+
+struct grouphead *
+findgroup(char *name)
+{
+	struct grouphead *gh;
+
+	for (gh = groups[hash(name)]; gh != NULL; gh = gh->g_link)
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0)
+			return(gh);
+	return(NULL);
+}
+
+void
+printgroup(char *name)
+{
+	struct grouphead *gh;
+	struct group *gp;
+
+	if ((gh = findgroup(name)) == NULL) {
+		fprintf(stderr, tr(202, "\"%s\": no such alias\n"), name);
+		return;
+	}
+	printf("%s\t", gh->g_name);
+	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link)
+		printf(" %s", gp->ge_name);
+	putchar('\n');
+}
+
+void
+remove_group(const char *name)
+{
+	struct grouphead *gh, *gp = NULL;
+	int h = hash(name);
+
+	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
+			_remove_grouplist(gh);
+			free(gh->g_name);
+			if (gp != NULL)
+				gp->g_link = gh->g_link;
+			else
+				groups[h] = NULL;
+			free(gh);
+			break;
+		}
+		gp = gh;
+	}
 }

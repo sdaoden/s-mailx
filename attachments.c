@@ -78,13 +78,13 @@ _fill_in(struct attachment *ap, char const *file, ui_it number)
 	ap->a_content_type = mime_classify_content_type_by_fileext(file);
 	if (number > 0 && value("attachment-ask-content-type")) {
 		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
-		ap->a_content_type = readtty(prefix, ap->a_content_type);
+		ap->a_content_type = readstr_input(prefix, ap->a_content_type);
 	}
 
 	if (number > 0 && value("attachment-ask-content-disposition")) {
 		snprintf(prefix, sizeof prefix,
 			"#%u\tContent-Disposition: ", number);
-		ap->a_content_disposition = readtty(prefix,
+		ap->a_content_disposition = readstr_input(prefix,
 				ap->a_content_disposition);
 	}
 	if (ap->a_content_disposition == NULL)
@@ -92,13 +92,13 @@ _fill_in(struct attachment *ap, char const *file, ui_it number)
 
 	if (number > 0 && value("attachment-ask-content-id")) {
 		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
-		ap->a_content_id = readtty(prefix, ap->a_content_id);
+		ap->a_content_id = readstr_input(prefix, ap->a_content_id);
 	}
 
 	if (number > 0 && value("attachment-ask-content-description")) {
 		snprintf(prefix, sizeof prefix,
 			"#%u\tContent-Description: ", number);
-		ap->a_content_description = readtty(prefix,
+		ap->a_content_description = readstr_input(prefix,
 				ap->a_content_description);
 	}
 	return ap;
@@ -108,12 +108,15 @@ static struct attachment *
 _read_attachment_data(struct attachment *ap, ui_it number)
 {
 	char prefix[80 * 2];
-	char const *cslc, *cp, *defcs;
+	char const *cslc = NULL/*cc uninit?*/, *cp, *defcs;
 
 	if (ap == NULL)
 		ap = csalloc(1, sizeof *ap);
 	else if (ap->a_msgno) {
-		printf(tr(159, "#%u\tmessage %u\n"), number, ap->a_msgno);
+jisattach:
+		if (options & OPT_INTERACTIVE)
+			printf(tr(159, "#%u\tmessage %u\n"),
+				number, ap->a_msgno);
 		goto jleave;
 	} else if (ap->a_conv == AC_TMPFILE) {
 		Fclose(ap->a_tmpf);
@@ -122,15 +125,28 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 
 	snprintf(prefix, sizeof prefix, tr(50, "#%u\tfilename: "), number);
 	for (;;) {
-		if ((ap->a_name = readtty(prefix, ap->a_name)) == NULL) {
+		if ((ap->a_name = readstr_input(prefix, ap->a_name)) == NULL) {
 			ap = NULL;
 			goto jleave;
 		}
-		if ((cp = file_expand(ap->a_name)) == NULL)
-			continue;
-		ap->a_name = cp;
-		if (access(cp, R_OK) == 0)
+		/* May be a message number */
+		if (ap->a_name[0] == '#') {
+			char *ecp;
+			int msgno = (int)strtol(ap->a_name + 1, &ecp, 10);
+			if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
+				ap->a_msgno = msgno;
+				ap->a_content_description = tr(513,
+					"Attached message content");
+				if (! (options & OPT_INTERACTIVE))
+					goto jcs;
+				goto jisattach;
+			}
+		}
+		if ((cp = file_expand(ap->a_name)) != NULL &&
+				access(cp, R_OK) == 0) {
+			ap->a_name = cp;
 			break;
+		}
 		perror(cp);
 	}
 
@@ -158,7 +174,7 @@ jcs:
 		number);
 	if ((defcs = ap->a_input_charset) == NULL)
 		defcs = cslc;
-	cp = ap->a_input_charset = readtty(prefix, defcs);
+	cp = ap->a_input_charset = readstr_input(prefix, defcs);
 #ifdef HAVE_ICONV
 	if (! (options & OPT_INTERACTIVE)) {
 #endif
@@ -171,7 +187,7 @@ jcs:
 		number);
 	if ((defcs = ap->a_charset) == NULL)
 		defcs = charset_iter_next();
-	defcs = ap->a_charset = readtty(prefix, defcs);
+	defcs = ap->a_charset = readstr_input(prefix, defcs);
 
 	if (cp != NULL && defcs == NULL) {
 		ap->a_conv = AC_FIX_INCS;

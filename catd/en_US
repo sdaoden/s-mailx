@@ -1,8 +1,8 @@
 $quote $
 $ Messages for nail, a mail user agent TODO complete rebuild that, leave holes
 $set 1
-1 $panic: $
-2 \n
+1 $Panic: $
+2 -- DELETED --
 3 Too much "sourcing" going on.\n
 4 "Source" stack over-pop.\n
 5 Unmatched "if"\n
@@ -151,7 +151,7 @@ $set 1
 141 \nInterrupt\n
 142 "%s" contains invalid %s sequence\n
 143 "%s" contains invalid character %s\n
-144 $ %d killed$
+144 --DELETED--
 145 detract asked to insert commas\n
 146 Creation of temporary image
 147 Creating descriptor duplicate of temporary image
@@ -209,14 +209,14 @@ $set 1
 199 user = %s, homedir = %s\n
 200 too long to edit\n
 201 Cannot associate a name with uid %d\n
-202 "%s": not a group\n
+202 "%s": no such alias\n
 203 "%s": undefined variable\n
 204 No POP3 `APOP' support available, sending password in clear text\n
 205 More than one file given with -f\n
 206 $%c%c%3d %s%-*.*s  %16.16s %s\n$
 207 $%c%c%3d %s%-*.*s  %16.16s %s "%.*s"\n$
 208 warning: incomplete line - newline appended\n
-209 Must specify alias or group to remove\n
+209 Must specify alias to remove\n
 210 [Binary content]\n
 211 removed.\n
 212 updated.\n
@@ -401,14 +401,14 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 338 Show message headers of <message-list>
 339 Which header fields are to be ignored with "forward"
 340 Which header fields have to be retained with "forward"
-341 Mark <message-list> as not being junk
+341 Mark <message-list> as not being spam
 342 Show the current(/last/next) 18-message group of headers
 343 Show command help (for the given one)
 344 Save <message-list> in system mailbox instead of *mbox*
 345 Send command strings directly to the IMAP server
 346 Check for new mail in current folder
-347 Mark <message-list> as junk
-348 Mark <message-list> as killed
+347 Mark <message-list> as spam
+348 --DELETED--
 349 List all available commands
 350 Like "mail", but derive filename from first recipient
 351 Compose mail; recipients may be given as arguments
@@ -422,7 +422,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 359 Pipe <message-list> to <command>
 360 Like "print", but prints all headers and parts
 361 Type each message of <message-list> on the terminal
-362 Show junk database entry for each argument word
+362 --DELETED--
 363 Terminate session, saving messages as necessary
 364 Resend <message-list> to <user>, add Resent-* headers
 365 Like "resend", but don't add Resent-* headers
@@ -435,7 +435,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 372 Like "save", but derive filename from first sender
 373 Is to "save" what "ignore" is to "type"/"print"
 374 Is to "save" what "retain" is to "type"/"print"
-375 Score <message-list> with <floating-point-score>
+375 --DELETED--
 376 Print all variables, or set variables to argument(s)
 377 Mark <message-list> as seen
 378 Invoke an interactive shell
@@ -447,7 +447,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 384 Create threaded view of current "folder"
 385 Print top few lines of <message-list>
 386 Mark <message-list> for saving in *mbox*
-387 Un"alias" <message-list>
+387 Un"alias" <name-list>
 388 Un"answered" <message-list>
 389 Un"draft" <message-list>
 390 Uncollapse <message-list> if in threaded view
@@ -457,8 +457,8 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 394 Un"fwdretain" <header-fields>
 395 Un"good" <message-list>
 396 Un"ignore" <header-fields>
-397 Un"junk" <message-list>
-398 Un"kill" <message-list>
+397 Un"spam" <message-list>
+398 --DELETED--
 399 Un"retain" <header-fields>
 400 Un"saveignore" <header-fields>
 401 Un"saveretain" <header-fields>
@@ -479,6 +479,12 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 416 Print statistics about the auto-reclaimed string store
 417 Trace current memory usage afap
 418 Either <show> (default) or <clear> the mime.types cache
+419 Rate <message-list> via the spam detector
+420 Teach the spam detector that <message-list> is ham
+421 Teach the spam detector that <message-list> is spam
+422 Force the spam detector to \"unlearn\" <message-list>
+423 Set the spam flag for each message in <message-list>
+424 Clear the spam flag for each message in <message-list>
 
 
 500 $ done.\n
@@ -487,3 +493,15 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
  the current one is\n\
   `%s' -- try `folders @'.\n
 503 [NONE]
+504 Missing macro name to `define'
+505 Syntax is: define <name> {
+506 Missing macro name to `undef'\n
+507 Syntax is: call <%s>\n
+508 Undefined macro called: \"%s\"\n
+509 $User: $
+510 $Password: $
+511 ${former content: %.*s} $
+512 Original message content
+513 Attached message content
+514 `%s': *spam-command* is not set\n
+515 `%s': message %lu exceeds maxsize (%lu > %lu), skip\n

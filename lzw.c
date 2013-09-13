@@ -63,7 +63,7 @@
 
 #include "config.h"
 
-#if ! defined USE_IMAP && ! defined USE_JUNK
+#ifndef HAVE_IMAP
 typedef int avoid_empty_file_compiler_warning;
 #else
 #include "rcv.h"
@@ -710,4 +710,4 @@ zalloc(FILE *fp)
 	zs->zs_fp = fp;
 	return zs;
 }
-#endif /* ! defined USE_IMAP && ! defined USE_JUNK */
+#endif /* ndef HAVE_IMAP */

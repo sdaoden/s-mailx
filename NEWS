@@ -1,6 +1,126 @@
 S - n a i l  N e w s
 ====================
 
+v14.4, 2013-09-13
+-----------------
+
+Thanks to the entire vivid and virile S-nail(1) user community is
+proper, especially Stephen Isard, Gavin Troy, Martin Neitzel.
+Not to forget Ryan Kavanagh and Ayan George.
+
+Note this time the changes are in reverse order, i.e., oldest first.
+
+Topic Branches
+^^^^^^^^^^^^^^
+
+15fbe09 ^bf9173f 'topic/varmac-unite'
+  Simplification and unification of variable and macro handling
+40f6f58 ^15fbe09 'topic/cledit1'
+  Command line editor; new manual section `Line editor'
+ad28a32 ^40f6f58 'topic/termsize'
+  Honour POSIX mailx(1) and respect $COLUMNS and $LINES on startup
+dc3cd49 ^a446fd8 'topic/qf'
+  You don't wanna know
+b8738f7 ^0651fd0 'topic/spam1'
+  Interaction with SpamAssassin; new manual section `Handling spam'
+5419d6f ^b8738f7 'topic/make1'
+  Reworked build system; please read `INSTALL' and `conf.rc'
+9ab4d6b ^5419d6f 'topic/list1'
+  Slightly tweaked message thread display, fix `:u :r' to mean it
+
+ChangeLog
+^^^^^^^^^
+
+- The default PAGER is now more(1).  (But read on.)
+
+- The `echo' command is now compliant, and fully supports XSI.
+
+- The `group' and `ungroup' command aliases have been removed, they are
+  `alias' and `unalias'.
+
+- We now have the capability of line editing and history.
+  One may choose from not less than three different implementations:
+  a builtin editor as well as possible linkage against BSD editline(3)
+  and also a GNU readline(3) compatible layer.
+  Please read the new manual section `Line editor'.
+
+  Input is now compliant in that an interactive line may be continued
+  after escaping the newline character with a backslash.
+  [topic/cledit1]  (all of them)
+
+  The *prompt* variable may now contain shell escapes, just like the
+  `echo' command. [0938d8a]
+  As a special extension the new \? escape, when used within *prompt*,
+  will expand to the exit status of the last command. [41076d2]
+
+- The POSIX standard environment variables $COLUMNS and $LINES are now
+  honoured upon startup. [topic/termsize]
+
+- The `help' / `?' commands now support abbreviation, i.e.,
+  ``$ ? unc'' should now find `uncollapse'. [7b86195]
+
+- The `~' abbreviation that has been introduced as an alias for `call'
+  is now a real command, not a magic shortcut. [9987289]
+
+- The new variable *quote-as-attachment* can be used to additionally
+  embed the quoted message as a `message/rfc822' MIME attachment.
+  [topic/qf]
+
+- The compose-mode command `~@' will now attach messages from the
+  current mailbox if given a filename of the style `#NUMBER'.
+  Please read the corresponding manual section `Tilde escapes', though.
+
+- The `WANT_JUNK' and `WANT_SCORE', as well as Gunnar Ritters junk mail
+  management have been removed.
+
+  Instead S-nail(1) can now support interaction with SpamAssassin, but
+  sofar only via the spamc(1) / spamd(1) client / server pair of
+  programs that ships as part of SpamAssassin.  The new configuration
+  directive `WANT_SPAM' controls wether this feature is desired.
+
+  Please read the new manual section `Handling spam'.
+  [topic/spam1] (Martin Neitzel)
+
+  (S-nail(1) is now *definitely* floating-point free.)
+
+- The configuration and make system have been overhauled / reorganized.
+  The configuration is now in `conf.rc', also contains directives like
+  `PREFIX' etc, and is always read in.  However, only those directives
+  which are not yet set (via environment or command line overwrites) are
+  incorporated into the set of configuration options.  Therefore
+
+    $ make WANT_IMAP=0
+    $ make WANT_IMAP=1
+
+  will now build S-nail(1) twice, because of the changed configuration.
+
+  Note that `WANT_GSSAPI' is now by default disabled, which shrunk
+  a freshly started s-nail image by more than 30 percent.
+
+  We're not finished yet in that there is no dependency graph etc.
+  Please do read `INSTALL' and `conf.rc'.
+  [topic/make1]
+
+- Message selection has been slightly bugfixed in that `:u :r' really
+  means `:u' AND `:r'.  Compared to NetBSD Mail(1) it's still a shame.
+
+  Threaded message display has been slightly changed in that within
+  a thread identical Subject: lines are not repeated.  It may not be
+  perfect yet due to the general list / thread state. [topic/list1]
+
+- If, upon startup, the environment variable `NAIL_NO_SYSTEM_RC' is set,
+  then the system wide initialization file isn't read, just as if the
+  `-n' option had been given. [1b31535]
+
+- It is now possible to use CTRL-C during connection hangs.  (But in
+  general error recovery capabilities of the socket related
+  infrastructure is non-existent, practically speaking.) [45a9f36]
+
+- *quote-fold* has been temporarily disabled, as it is not multibyte
+  safe.
+
+No review for v14.4.  And today is Friday, the 13th.  Ouuuh!
+
 v14.3.2, 2013-06-21
 -------------------
 

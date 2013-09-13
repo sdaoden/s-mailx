@@ -64,6 +64,7 @@
 #define _MAIL_GLOBS_
 #include "rcv.h"
 #include "extern.h"
+#include "version.h"
 
 struct a_arg {
 	struct a_arg	*aa_next;
@@ -79,13 +80,14 @@ static int	_grow_cpp(char const ***cpp, int size, int count);
 /* Initialize *tempdir*, *myname*, *homedir* */
 static void	_setup_vars(void);
 
-/* Compute what the screen size for printing headers should be.
+/* We're in an interactive session - compute what the screen size for printing
+ * headers etc. should be; notify tty upon resize if *is_sighdl* is not 0.
  * We use the following algorithm for the height:
  *	If baud rate < 1200, use  9
  *	If baud rate = 1200, use 14
  *	If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col */
-static void	_setscreensize(int dummy);
+static void	_setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
@@ -120,13 +122,13 @@ _startup(void)
 	 * Figure out whether we are being run interactively,
 	 * start the SIGCHLD catcher, and so forth */
 	safe_signal(SIGCHLD, sigchild);
-	is_a_tty[0] = isatty(0);
-	is_a_tty[1] = isatty(1);
-	if (is_a_tty[0]) {
-		options |= OPT_INTERACTIVE;
-		if (is_a_tty[1])
-			safe_signal(SIGPIPE, dflpipe = SIG_IGN);
-	}
+
+	if (isatty(0))
+		options |= OPT_TTYIN | OPT_INTERACTIVE;
+	if (isatty(1))
+		options |= OPT_TTYOUT;
+	if (IS_TTY_SESSION())
+		safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 	assign("header", "");
 	assign("save", "");
 
@@ -145,6 +147,11 @@ _startup(void)
 				mbtowc(&wc, "\342\202\254", 3) == 3 &&
 				wc == 0x20AC)
 			utf8 = 1;
+		/* Reset state - it may have been messed up; luckily this also
+		 * gives us an indication wether the encoding has locking shift
+		 * state sequences */
+		/* TODO temporary - use option bits! */
+		enc_has_state = mbtowc(&wc, NULL, mb_cur_max);
 	}
 # endif
 #else
@@ -193,41 +200,87 @@ _setup_vars(void)
 }
 
 static void
-_setscreensize(int dummy)
+_setscreensize(int is_sighdl)
 {
 	struct termios tbuf;
 #ifdef TIOCGWINSZ
 	struct winsize ws;
+#elif defined TIOCGSIZE
+	struct ttysize ts;
 #endif
-	speed_t ospeed;
-	(void)dummy;
+
+	scrnheight = realscreenheight = scrnwidth = 0;
+
+	/* (Also) POSIX: LINES and COLUMNS always override.  Adjust this
+	 * a little bit to be able to honour resizes during our lifetime and
+	 * only honour it upon first run; abuse *is_sighdl* as an indicator */
+	if (is_sighdl == 0) {
+		char *cp;
+		long i;
+
+		if ((cp = getenv("LINES")) != NULL &&
+				(i = strtol(cp, NULL, 10)) > 0)
+			scrnheight = realscreenheight = (int)i;
+		if ((cp = getenv("COLUMNS")) != NULL &&
+				(i = strtol(cp, NULL, 10)) > 0)
+			scrnwidth = (int)i;
+
+		if (scrnwidth != 0 && scrnheight != 0)
+			goto jleave;
+	}
 
 #ifdef TIOCGWINSZ
 	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
 		ws.ws_col = ws.ws_row = 0;
+#elif defined TIOCGSIZE
+	if (ioctl(1, TIOCGSIZE, &ws) < 0)
+		ts.ts_lines = ts.ts_cols = 0;
 #endif
-	if (tcgetattr(1, &tbuf) < 0)
-		ospeed = B9600;
-	else
-		ospeed = cfgetospeed(&tbuf);
-	if (ospeed < B1200)
-		scrnheight = 9;
-	else if (ospeed == B1200)
-		scrnheight = 14;
+
+	if (scrnheight == 0) {
+		speed_t ospeed = (tcgetattr(1, &tbuf) < 0) ? B9600 :
+				cfgetospeed(&tbuf);
+
+		if (ospeed < B1200)
+			scrnheight = 9;
+		else if (ospeed == B1200)
+			scrnheight = 14;
 #ifdef TIOCGWINSZ
-	else if (ws.ws_row != 0)
-		scrnheight = ws.ws_row;
+		else if (ws.ws_row != 0)
+			scrnheight = ws.ws_row;
+#elif defined TIOCGSIZE
+		else if (ts.ts_lines != 0)
+			scrnheight = ts.ts_lines;
 #endif
-	else
-		scrnheight = 24;
+		else
+			scrnheight = 24;
+
+#if defined TIOCGWINSZ || defined TIOCGSIZE
+		if (0 ==
+# ifdef TIOCGWINSZ
+				(realscreenheight = ws.ws_row)
+# else
+				(realscreenheight = ts.ts_lines)
+# endif
+		)
+			realscreenheight = 24;
+#endif
+	}
+
+	if (scrnwidth == 0 && 0 ==
 #ifdef TIOCGWINSZ
-	if ((realscreenheight = ws.ws_row) == 0)
-		realscreenheight = 24;
+			(scrnwidth = ws.ws_col)
+#elif defined TIOCGSIZE
+			(scrnwidth = ts.ts_cols)
 #endif
-#ifdef TIOCGWINSZ
-	if ((scrnwidth = ws.ws_col) == 0)
-#endif
+	)
 		scrnwidth = 80;
+
+jleave:
+#ifdef SIGWINCH
+	if (is_sighdl && (options & OPT_INTERACTIVE))
+		tty_signal(SIGWINCH);
+#endif
 }
 
 static sigjmp_buf	__hdrjmp; /* XXX */
@@ -256,7 +309,7 @@ _rcv_mode(char const *folder)
 		exit(i);
 
 	if (options & OPT_HEADERSONLY) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(1, msgCount);
 #endif
@@ -286,7 +339,12 @@ _rcv_mode(char const *folder)
 	}
 
 	/* Enter the command loop */
+	if (options & OPT_INTERACTIVE)
+		tty_init();
 	commands();
+	if (options & OPT_INTERACTIVE)
+		tty_destroy();
+
 	if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
 		safe_signal(SIGHUP, SIG_IGN);
 		safe_signal(SIGINT, SIG_IGN);
@@ -314,6 +372,9 @@ char const *const	month_names[12 + 1] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
 };
+
+char const *const	uagent = UAGENT;
+char const *const	version = VERSION;
 
 sighandler_type		dflpipe = SIG_DFL;
 
@@ -385,7 +446,7 @@ main(int argc, char *argv[])
 			options |= OPT_SENDMODE;
 			break;
 		case 'D':
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 			okey = "disconnected";
 			goto joarg;
 #else
@@ -573,18 +634,18 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	if (options & OPT_INTERACTIVE) {
 		_setscreensize(0);
 #ifdef SIGWINCH
+# ifndef TTY_WANTS_SIGWINCH
 		if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
+# endif
 			safe_signal(SIGWINCH, _setscreensize);
 #endif
 	} else
 		scrnheight = realscreenheight = 24, scrnwidth = 80;
 
-	input = stdin;
-
 	/* Snapshot our string pools.  Memory is auto-reclaimed from now on */
 	spreserve();
 
-	if ((options & OPT_NOSRC) == 0)
+	if ((options & OPT_NOSRC) == 0 && getenv("NAIL_NO_SYSTEM_RC") == NULL)
 		load(SYSCONFRC);
 	/* *expand() returns a savestr(), but load only uses the file name
 	 * for fopen(), so it's safe to do this */
@@ -646,6 +707,10 @@ usage:			fprintf(stderr, tr(135, usagestr),
 	}
 
 	/* xxx exit_status = EXIT_OK; */
+	if (options & OPT_INTERACTIVE)
+		tty_init();
 	mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+	if (options & OPT_INTERACTIVE)
+		tty_destroy();
 	return exit_status;
 }

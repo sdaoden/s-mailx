@@ -48,7 +48,6 @@
 
 static int		*_msgvec;
 static int		_reset_on_stop;	/* do a reset() if stopped */
-static char const	*_prompt;
 static sighandler_type	_oldpipe;
 
 /* Update mailname (if *name* != NULL) and displayname */
@@ -204,12 +203,12 @@ setfile(char const *name, int newmail)
 		break;
 	case PROTO_MAILDIR:
 		return (maildir_setfile(name, newmail, isedit));
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 	case PROTO_POP3:
 		shudclob = 1;
 		return (pop3_setfile(name, newmail, isedit));
 #endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	case PROTO_IMAP:
 		shudclob = 1;
 		if (newmail) {
@@ -266,14 +265,13 @@ setfile(char const *name, int newmail)
 	 * the message[] data structure.
 	 */
 
-	holdsigs();
+	holdsigs(); /* TODO note on this one in quit.c:quit() */
 	if (shudclob && !newmail)
 		quit();
-
-#ifdef	HAVE_SOCKETS
+#ifdef HAVE_SOCKETS
 	if (!newmail && mb.mb_sock.s_fd >= 0)
 		sclose(&mb.mb_sock);
-#endif	/* HAVE_SOCKETS */
+#endif
 
 	/*
 	 * Copy the messages into /tmp
@@ -377,7 +375,7 @@ newmailinfo(int omsgCount)
 	callhook(mailname, 1);
 	mdot = getmdot(1);
 	if (value("header")) {
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(omsgCount+1, msgCount);
 #endif
@@ -399,7 +397,7 @@ commands(void)
 	int eofloop = 0, n;
 	char *linebuf = NULL, *av, *nv;
 	size_t linesize = 0;
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	int x;
 #endif
 
@@ -408,6 +406,8 @@ commands(void)
 			safe_signal(SIGINT, onintr);
 		if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGHUP, hangup);
+		/* TODO We do a lot of redundant signal handling, especially
+		 * TODO with the line editor(s); try to merge this */
 		safe_signal(SIGTSTP, stop);
 		safe_signal(SIGTTOU, stop);
 		safe_signal(SIGTTIN, stop);
@@ -426,7 +426,8 @@ commands(void)
 		if (! sourcing && (options & OPT_INTERACTIVE)) {
 			av = (av = value("autoinc")) ? savestr(av) : NULL;
 			nv = (nv = value("newmail")) ? savestr(nv) : NULL;
-			if (is_a_tty[0] && (av != NULL || nv != NULL ||
+			if ((options & OPT_TTYIN) &&
+					(av != NULL || nv != NULL ||
 					mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
@@ -434,13 +435,13 @@ commands(void)
 						strcmp(av, "nopoll")) |
 					(nv && strcmp(nv, "noimap") &&
 					 	strcmp(nv, "nopoll"));
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 				x = !(av || nv);
 #endif
 				if ((mb.mb_type == MB_FILE &&
 						stat(mailname, &st) == 0 &&
 						st.st_size > mailsize) ||
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 						(mb.mb_type == MB_IMAP &&
 						imap_newmail(n) > x) ||
 #endif
@@ -458,18 +459,24 @@ commands(void)
 			}
 			_reset_on_stop = 1;
 			exit_status = 0;
-			if ((_prompt = value("prompt")) == NULL)
-				_prompt = value("bsdcompat") ? "& " : "? ";
-			printf("%s", _prompt);
 		}
-		fflush(stdout);
 
 		if (! sourcing) {
 			sreset();
+			/* TODO Note: this buffer may contain a password
+			 * TODO We should redefine the code flow which has
+			 * TODO to do that */
 			if ((nv = termios_state.ts_linebuf) != NULL) {
 				termios_state.ts_linebuf = NULL;
 				termios_state.ts_linesize = 0;
 				free(nv); /* TODO pool give-back */
+			}
+			/* TODO Due to expand-on-tab of our line editor the
+			 * TODO buffer may grow */
+			if (linesize > LINESIZE * 3) {
+				free(linebuf); /* TODO pool! but what? */
+				linebuf = NULL;
+				linesize = 0;
 			}
 		}
 
@@ -477,15 +484,8 @@ commands(void)
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
 		 */
-		n = 0;
-		for (;;) {
-			n = readline_restart(input, &linebuf, &linesize, n);
-			if (n < 0)
-				break;
-			if (n == 0 || linebuf[n - 1] != '\\')
-				break;
-			linebuf[n - 1] = ' ';
-		}
+		n = readline_input(LNED_LF_ESC | LNED_HIST_ADD, NULL,
+			&linebuf, &linesize);
 		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */
@@ -512,7 +512,7 @@ commands(void)
 			break;
 	}
 
-	if (linebuf)
+	if (linebuf != NULL)
 		free(linebuf);
 	if (sourcing)
 		sreset();
@@ -528,59 +528,58 @@ commands(void)
 int
 execute(char *linebuf, int contxt, size_t linesize)
 {
-	char *arglist[MAXARGC], *word, *cp;
+	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
 	struct cmd const *com = (struct cmd*)NULL;
 	int muvec[2], c, e = 1;
 
-	/* '~X' -> 'call X' */
-	word = ac_alloc(MAX(sizeof("call"), linesize) + 1);
-
-	/*
-	 * Strip the white space away from the beginning
-	 * of the command, then scan out a word, which
-	 * consists of anything except digits and white space.
-	 *
-	 * Handle ! escapes differently to get the correct
-	 * lexical conventions.
-	 */
-	for (cp = linebuf; whitechar(*cp); cp++)
+	/* Strip the white space away from the beginning of the command */
+	for (cp = linebuf; whitechar(*cp); ++cp)
 		;
+
+	/* Ignore comments */
+	if (*cp == '#')
+		goto jleave0;
+
+	/* Handle ! differently to get the correct lexical conventions */
 	if (*cp == '!') {
 		if (sourcing) {
 			fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
 			goto jleave;
 		}
-		shell(cp + 1);
-		goto jfree_ret0;
+		shell(++cp);
+		goto jleave0;
 	}
 
-	if (*cp == '#')
-		goto jfree_ret0;
-
-	if (*cp == '~') {
+	/* Isolate the actual command; since it may not necessarily be
+	 * separated from the arguments (as in `p1') we need to duplicate it to
+	 * be able to create a NUL terminated version.
+	 * We must be aware of special one letter commands here */
+	arglist[0] = cp;
+	switch (*cp) {
+	case '|':
+	case '~':
 		++cp;
-		memcpy(word, "call", 5);
-	} else {
-		char *cp2 = word;
-
-		if (*cp != '|') {
-			while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
-					*cp) == NULL)
-				*cp2++ = *cp++;
-		} else
-			*cp2++ = *cp++;
-		*cp2 = '\0';
+		/* FALLTHRU */
+	case '\0':
+		break;
+	default:
+		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
+				*cp) == NULL)
+			++cp;
+		break;
 	}
+	c = (int)(cp - arglist[0]);
+	linesize -= c;
+	word = (c <= 1) ? _wordbuf : salloc(c + 1);
+	memcpy(word, arglist[0], c);
+	word[c] = '\0';
 
-	/*
-	 * Look up the command; if not found, bitch.
-	 * Normally, a blank command would map to the
-	 * first command in the table; while sourcing,
-	 * however, we ignore blank lines to eliminate
-	 * confusion.
-	 */
+	/* Look up the command; if not found, bitch.
+	 * Normally, a blank command would map to the first command in the
+	 * table; while sourcing, however, we ignore blank lines to eliminate
+	 * confusion */
 	if (sourcing && *word == '\0')
-		goto jfree_ret0;
+		goto jleave0;
 
 	com = lex(word);
 	if (com == NULL || com->c_func == &ccmdnotsupp) {
@@ -599,9 +598,9 @@ execute(char *linebuf, int contxt, size_t linesize)
 	if ((com->c_argtype & F) == 0) {
 		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
-				(cond == CTERM && ! is_a_tty[0]) ||
-				(cond == CNONTERM && is_a_tty[0]))
-			goto jfree_ret0;
+				(cond == CTERM && ! (options & OPT_TTYIN)) ||
+				(cond == CNONTERM && (options & OPT_TTYIN)))
+			goto jleave0;
 	}
 
 	/*
@@ -713,10 +712,8 @@ je96:
 	}
 
 jleave:
-	ac_free(word);
-
 	/* Exit the current source file on error */
-	if (e) {
+	if ((exec_last_comm_error = (e != 0))) {
 		if (e < 0)
 			return 1;
 		if (loading)
@@ -735,10 +732,7 @@ jleave:
 		}
 	if (! sourcing && ! inhook && (com->c_argtype & T) == 0)
 		sawcom = TRU1;
-	return 0;
-
-jfree_ret0:
-	ac_free(word);
+jleave0:
 	return 0;
 }
 
@@ -871,12 +865,12 @@ int
 newfileinfo(void)
 {
 	struct message *mp;
-	int u, n, mdot, d, s, hidden, killed, moved;
+	int u, n, mdot, d, s, hidden, moved;
 
 	if (mb.mb_type == MB_VOID)
 		return 1;
 	mdot = getmdot(0);
-	s = d = hidden = killed = moved =0;
+	s = d = hidden = moved =0;
 	for (mp = &message[0], n = 0, u = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW)
 			n++;
@@ -890,8 +884,6 @@ newfileinfo(void)
 			s++;
 		if (mp->m_flag & MHIDDEN)
 			hidden++;
-		if (mp->m_flag & MKILL)
-			killed++;
 	}
 	_update_mailname(NULL);
 	printf(tr(103, "\"%s\": "), displayname);
@@ -911,8 +903,6 @@ newfileinfo(void)
 		printf(tr(136, " %d moved"), moved);
 	if (hidden > 0)
 		printf(tr(139, " %d hidden"), hidden);
-	if (killed > 0)
-		printf(tr(144, " %d killed"), killed);
 	if (mb.mb_type == MB_CACHE)
 		printf(" [Disconnected]");
 	else if (mb.mb_perm == 0)
@@ -927,7 +917,7 @@ getmdot(int newmail)
 	struct message	*mp;
 	char	*cp;
 	int	mdot;
-	enum mflag	avoid = MHIDDEN|MKILL|MDELETED;
+	enum mflag	avoid = MHIDDEN|MDELETED;
 
 	if (!newmail) {
 		if (value("autothread"))
@@ -1009,27 +999,6 @@ pversion(void *v)
 	return(0);
 }
 
-/*
- * Load a file of user definitions.
- */
-void 
-load(char const *name)
-{
-	FILE *in, *oldin;
-
-	if (name == NULL || (in = Fopen(name, "r")) == NULL)
-		return;
-	oldin = input;
-	input = in;
-	loading = TRU1;
-	sourcing = TRU1;
-	commands();
-	loading = FAL0;
-	sourcing = FAL0;
-	input = oldin;
-	Fclose(in);
-}
-
 void 
 initbox(const char *name)
 {
@@ -1062,7 +1031,7 @@ initbox(const char *name)
 		free(mb.mb_sorted);
 		mb.mb_sorted = NULL;
 	}
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	mb.mb_flags = MB_NOFLAGS;
 #endif
 	prevdot = NULL;

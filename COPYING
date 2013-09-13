@@ -5,7 +5,7 @@
  *	Christos Zoulas.  All rights reserved.
  * Copyright (c) 2000
  *	Gunnar Ritter. All rights reserved.
- * Copyright (c) 2012 Steffen "Daode" Nurpmeso.  All rights reserved.
+ * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,9 +38,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-==========================================================================
 
-mime_cte.c: QP quoting idea, _b64_decode(), b64_encode():
+==========================================================================
+mime_cte.c:
+QP quoting idea, _b64_decode(), b64_encode():
+
 /*
  * Copyright (c) 2006 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -69,7 +71,9 @@ mime_cte.c: QP quoting idea, _b64_decode(), b64_encode():
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 ==========================================================================
+nail.1:
 
 The Institute of Electrical and Electronics Engineers and The Open Group,
 have given us permission to reprint portions of their documentation.
@@ -90,10 +94,12 @@ The original Standard can be obtained online at
 http://www.opengroup.org/unix/online.html .
 
 This notice shall appear on any product containing this material.
+
 ==========================================================================
+imap_gssapi.h:
+partially derived from sample code in:
 
 /*
- * imap_gssapi.c is partially derived from sample code in:
  * GSS-API Programming Guide
  * Part No: 816-1331-11
  * Sun Microsystems, Inc. 4150 Network Circle Santa Clara, CA 95054 U.S.A.
@@ -121,9 +127,10 @@ This notice shall appear on any product containing this material.
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-==========================================================================
 
-/* md5.h and md5.c are derived from RFC 1321:
+==========================================================================
+md5.h and md5.c:
+derived from RFC 1321:
 
 Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
@@ -145,10 +152,10 @@ without express or implied warranty of any kind.
 
 These notices must be retained in any copies of any part of this
 documentation and/or software.
-==========================================================================
 
-/*
- * hmac.c is derived from:
+==========================================================================
+hmac.c:
+derived from:
 
 Network Working Group					    H. Krawczyk
 Request for Comments: 2104					    IBM
@@ -168,4 +175,3 @@ Status of This Memo
    this memo is unlimited.
 
 Appendix -- Sample Code
-==========================================================================

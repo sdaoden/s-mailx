@@ -143,7 +143,7 @@ insertcommand(FILE *fp, char const *cmd)
 	if (cp == NULL)
 		cp = SHELL;
 	if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
-		while ((c = getc(ibuf)) != EOF)
+		while ((c = getc(ibuf)) != EOF) /* XXX bytewise, yuck! */
 			putc(c, fp);
 		Pclose(ibuf, TRU1);
 	} else
@@ -167,7 +167,7 @@ print_collf(FILE *collf, struct header *hp)
 	rewind(collf);
 	count = count2 = fsize(collf);
 
-	if (is_a_tty[0] && is_a_tty[1] && (cp = value("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL) {
 		for (linecnt = 0;
 			fgetline(&lbuf, &linesize, &count2, NULL, collf, 0);
 			linecnt++);
@@ -255,7 +255,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	int volatile escape, getfields;
 	char *linebuf = NULL, *quote = NULL, *tempMail = NULL;
 	char const *cp;
-	size_t linesize;
+	size_t linesize = 0;
 	long count;
 	enum sendaction	action;
 	sigset_t oset, nset;
@@ -275,6 +275,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		safe_signal(SIGINT, collint);
 	if ((savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGHUP, collhup);
+	/* TODO We do a lot of redundant signal handling, especially
+	 * TODO with the line editor(s); try to merge this */
 	savetstp = safe_signal(SIGTSTP, collstop);
 	savettou = safe_signal(SIGTTOU, collstop);
 	savettin = safe_signal(SIGTTIN, collstop);
@@ -346,9 +348,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		} else {
 			cp = hfield1("from", mp);
 			if (cp != NULL && (count = (long)strlen(cp)) > 0) {
-				if (mime_write(cp, count,
+				if (xmime_write(cp, count,
 						collf, CONV_FROMHDR, TD_NONE,
-						NULL, (size_t) 0, NULL) < 0)
+						NULL) < 0)
 					goto jerr;
 				if (fprintf(collf, tr(52, " wrote:\n\n")) < 0)
 					goto jerr;
@@ -366,7 +368,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
 	/* Print what we have sofar also on the terminal */
 	(void)rewind(collf);
-	while ((c = getc(collf)) != EOF)
+	while ((c = getc(collf)) != EOF) /* XXX bytewise, yuck! */
 		(void)putc(c, stdout);
 	if (fseek(collf, 0, SEEK_END))
 		goto jerr;
@@ -377,7 +379,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
 	if (! sigsetjmp(colljmp, 1)) {
 		if (getfields)
-			grabh(hp, getfields, 1);
+			grab_headers(hp, getfields, 1);
 		if (quotefile != NULL) {
 			if (_include_file(NULL, quotefile, &lc, &cc, 1) != 0)
 				goto jerr;
@@ -424,8 +426,9 @@ jcont:
 	 */
 	for (;;) {
 		colljmp_p = 1;
-		count = readline(stdin, &linebuf, &linesize);
+		count = readline_input(LNED_NONE, "", &linebuf, &linesize);
 		colljmp_p = 0;
+
 		if (count < 0) {
 			if ((options & OPT_INTERACTIVE) &&
 			    value("ignoreeof") != NULL && ++eofcount < 25) {
@@ -443,14 +446,15 @@ jcont:
 			options &= ~OPT_t_FLAG;
 			continue;
 		}
+
 		eofcount = 0;
 		hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
 				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
 				(boption("dot") || boption("ignoreeof")))
 			break;
-		if (linebuf[0] != escape || ! (options &
-				(OPT_INTERACTIVE|OPT_TILDE_FLAG))) {
+		if (count == 0 || linebuf[0] != escape || ! (options &
+				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
 			/* TODO calls putline(), which *always* appends LF;
 			 * TODO thus, STDIN with -t will ALWAYS end with LF,
 			 * TODO even if no trailing LF and QP CTE */
@@ -511,15 +515,15 @@ jcont:
 		case 'h':
 			/* Grab a bunch of headers */
 			do
-				grabh(hp, GTO|GSUBJECT|GCC|GBCC,
-						value("bsdcompat") != NULL &&
-						value("bsdorder") != NULL);
+				grab_headers(hp, GTO|GSUBJECT|GCC|GBCC,
+						(value("bsdcompat") != NULL &&
+						value("bsdorder") != NULL));
 			while (hp->h_to == NULL);
 			goto jcont;
 		case 'H':
 			/* Grab extra headers */
 			do
-				grabh(hp, GEXTRA, 0);
+				grab_headers(hp, GEXTRA, 0);
 			while (check_from_and_sender(hp->h_from, hp->h_sender));
 			goto jcont;
 		case 't':
@@ -802,7 +806,7 @@ makeheader(FILE *fp, struct header *hp)
 	Ftfree(&tempEdit);
 
 	extract_header(fp, hp);
-	while ((c = getc(fp)) != EOF)
+	while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
 		putc(c, nf);
 	if (fp != collf)
 		Fclose(collf);

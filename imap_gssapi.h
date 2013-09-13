@@ -68,7 +68,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef USE_GSSAPI
+#ifdef HAVE_GSSAPI
 
 #ifndef GSSAPI_REG_INCLUDE
 # include <gssapi/gssapi.h>
@@ -278,4 +278,4 @@ imap_gss(struct mailbox *mp, char *user)
 	return ok;
 }
 
-#endif /* USE_GSSAPI */
+#endif /* HAVE_GSSAPI */

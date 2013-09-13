@@ -1,10 +1,7 @@
 #--MKRC-START--
 # /etc/s-nail.rc
-# Configuration file for S-nail(1), a fork of
+# Configuration file for S-nail(1).
 #--MKRC-END--
-# Heirloom mailx (formerly known under the name "nail").
-# This file is not overwritten when 'make install' is run in
-# the mailx build process again.
 
 # Do not forward to mbox by default since this is likely to be
 # irritating for most users today.
@@ -36,8 +33,6 @@ set indentprefix="> "
 
 # Automatically quote the text of the message that is responded to.
 set quote
-# But don't let quoted lines get longer than 79 characters
-set quote-fold=79
 
 # On group replies, specify only the sender of the original mail in  To: and
 # mention it's other recipients in the secondary Cc: instead of placing them
@@ -88,3 +83,14 @@ set pipe-application/xml=@
 set pipe-application/xml-dtd=@
 set pipe-application/xslt+xml=@
 
+# A nice prompt for ISO 6429/ECMA-48 terminals
+set prompt="\033[31m?\?$ \033[0m"
+
+# Immediately start $EDITOR (/ $VISUAL) when composing a message
+set editalong
+
+# Try to circumvent false or missing content-type descriptions
+set mime-counter-evidence
+
+# Don't load any mime.types(5) file, only depend on builtin types
+set mimetypes-load-control

@@ -60,14 +60,21 @@ struct attachment *	append_attachments(struct attachment *aphead,
 /* Interactively edit the attachment list, return the new list head */
 struct attachment *	edit_attachments(struct attachment *aphead);
 
-/* auxlily.c */
-void panic(const char *format, ...);
-void holdint(void);
-void relseint(void);
+/*
+ * auxlily.c
+ */
+
+/* Announce a fatal error and die */
+void	panic(const char *format, ...);
+
+/* Hold *all* signals, and release that total block again */
+void	hold_all_sigs(void);
+void	rele_all_sigs(void);
+
 void touch(struct message *mp);
 int is_dir(char const *name);
 int argcount(char **argv);
-char *colalign(const char *cp, int col, int fill);
+char *colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
@@ -80,6 +87,14 @@ void	page_or_print(FILE *fp, size_t lines);
 enum protocol which_protocol(const char *name);
 unsigned pjw(const char *cp);
 long nextprime(long n);
+
+/* Check wether *s is an escape sequence, expand it as necessary.
+ * Returns the expanded sequence or 0 if **s is NUL or -1 if it is \c.
+ * *s is advanced to after the expanded sequence (as possible) */
+int	expand_shell_escape(char const **s, bool_t use_nail_extensions);
+
+/* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
+char *	getprompt(void);
 
 /* Search passwd file for a uid, return name on success, NULL on failure */
 char *	getname(int uid);
@@ -98,7 +113,7 @@ char *	getrandstring(size_t length);
 #define	Hexchar(n)		((n)>9 ? (n)-10+'A' : (n)+'0')
 #define	hexchar(n)		((n)>9 ? (n)-10+'a' : (n)+'0')
 
-#ifdef USE_MD5
+#ifdef HAVE_MD5
 /* MD5 checksum as hexadecimal string, to be stored in *hex* */
 #define MD5TOHEX_SIZE		32
 char *	md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
@@ -114,7 +129,10 @@ void cwrelse(struct cw *cw);
 void makeprint(struct str const *in, struct str *out);
 char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
-int putuc(int u, int c, FILE *fp);
+
+/* Print out a Unicode character or a substitute for it, return 0 on error or
+ * wcwidth() (or 1) on success */
+size_t	putuc(int u, int c, FILE *fp);
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 void	time_current_update(struct time_current *tc, bool_t full_update);
@@ -277,15 +295,6 @@ int canswered(void *v);
 int cunanswered(void *v);
 int cdraft(void *v);
 int cundraft(void *v);
-#ifdef USE_SCORE
-int ckill(void *v);
-int cunkill(void *v);
-int cscore(void *v);
-#else
-# define ckill		ccmdnotsupp
-# define cunkill	ccmdnotsupp
-# define cscore		ccmdnotsupp
-#endif
 int cnoop(void *v);
 int cremove(void *v);
 int crename(void *v);
@@ -312,6 +321,18 @@ FILE *run_editor(FILE *fp, off_t size, int type, int readonly,
 		struct header *hp, struct message *mp, enum sendaction action,
 		sighandler_type oldint);
 
+/*
+ * filter.c
+ */
+
+/* Quote filter */
+struct quoteflt *	quoteflt_dummy(void); /* TODO LEGACY */
+void	quoteflt_init(struct quoteflt *self, char const *prefix);
+void	quoteflt_destroy(struct quoteflt *self);
+void	quoteflt_reset(struct quoteflt *self, FILE *f);
+ssize_t	quoteflt_push(struct quoteflt *self, char const *dat, size_t len);
+ssize_t	quoteflt_flush(struct quoteflt *self);
+
 /* fio.c */
 
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0
@@ -337,14 +358,27 @@ char *		fgetline(char **line, size_t *linesize, size_t *count,
  */
 int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 			size_t n SMALLOC_DEBUG_ARGS);
-#ifndef HAVE_ASSERTS
-# define readline(A,B,C)	readline_restart(A, B, C, 0)
-#else
-# define readline_restart(A,B,C,D)	\
+#ifdef HAVE_ASSERTS
+# define readline_restart(A,B,C,D) \
 	readline_restart(A, B, C, D, __FILE__, __LINE__)
-# define readline(A,B,C)		\
-	(readline_restart)(A, B, C, 0, __FILE__, __LINE__)
 #endif
+
+/* Read a complete line of input (with editing if possible).
+ * If *prompt* is NULL we'll call getprompt() first.
+ * Return number of octets or a value <0 on error */
+int		readline_input(enum lned_mode lned, char const *prompt,
+			char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
+#endif
+
+/* Read a line of input (with editing if possible) and return it savestr()d,
+ * or NULL in case of errors or if an empty line would be returned.
+ * This may only be called from toplevel (not during sourcing).
+ * If *prompt* is NULL we'll call getprompt().
+ * *string* is the default/initial content of the return value (this is
+ * "almost" ignored in non-interactive mode for reproducability) */
+char *		readstr_input(char const *prompt, char const *string);
 
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
@@ -362,33 +396,29 @@ off_t fsize(FILE *iob);
  *	&	invoker's mbox file
  *	+file	file in folder directory
  *	any shell meta character
- * file_expand() requires the expansion to be a local file/directory, and
- * Return the file name as a dynamic string */
-char *	expand(char const *name);
-char *	file_expand(char const *name);
+ * Returns the file name as an auto-reclaimed string */
+char *	fexpand(char const *name, enum fexp_mode fexpm);
+
+#define expand(N)	fexpand(N, FEXP_FULL)	/* XXX obsolete */
+#define file_expand(N)	fexpand(N, FEXP_LOCAL)	/* XXX obsolete */
 
 /* Get rid of queued mail */
 void	demail(void);
 
-/* vars.c hook: *folder* variable has been updated */
-bool_t	var_folder_updated(char **name);
+/* vars.c hook: *folder* variable has been updated; if *folder* shouldn't be
+ * replaced by something else, leave *store* alone, otherwise smalloc() the
+ * desired value (ownership will be taken) */
+bool_t	var_folder_updated(char const *folder, char **store);
 
 /* Determine the current *folder* name, store it in *name* */
 bool_t	getfold(char *name, size_t size);
 
 char const *getdeadletter(void);
 
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * *sourcing* so that others will realize that they are no longer reading from
- * a tty (in all probability) */
-int		source(void *v);
-
-/* Pop the current input back to the previous level.  Update the *sourcing*
- * flag as appropriate */
-int		unstack(void);
-
 void newline_appended(void);
 enum okay get_body(struct message *mp);
+
+#ifdef HAVE_SOCKETS
 int sclose(struct sock *sp);
 enum okay swrite(struct sock *sp, const char *data);
 enum okay swrite1(struct sock *sp, const char *data, int sz, int use_buffer);
@@ -398,11 +428,31 @@ enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 /*  */
 int		sgetline(char **line, size_t *linesize, size_t *linelen,
 			struct sock *sp SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
-# define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
+# ifdef HAVE_ASSERTS
+#  define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
+# endif
 #endif
 
+/* Deal with loading of resource files and dealing with a stack of files for
+ * the source command */
+
+/* Load a file of user definitions */
+void		load(char const *name);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * *sourcing* so that others will realize that they are no longer reading from
+ * a tty (in all probability) */
+int		csource(void *v);
+
+/* Pop the current input back to the previous level.  Update the *sourcing*
+ * flag as appropriate */
+int		unstack(void);
+
 /* head.c */
+
+/* Fill in / reedit the desired header fields */
+int		grab_headers(struct header *hp, enum gfield gflags,
+			int subjfirst);
 
 /* Return the user's From: address(es) */
 char const *	myaddrs(struct header *hp);
@@ -464,7 +514,7 @@ int check_from_and_sender(struct name *fromfield, struct name *senderfield);
 char *getsender(struct message *m);
 
 /* imap.c */
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 char const *	imap_fileof(char const *xcp);
 enum okay imap_noop(void);
 enum okay imap_select(struct mailbox *mp, off_t *size, int *count,
@@ -504,27 +554,8 @@ const char *imap_make_date_time(time_t t);
 char *imap_quotestr(const char *s);
 char *imap_unquotestr(const char *s);
 
-/* imap_gssapi.c */
-
 /* imap_search.c */
 enum okay imap_search(const char *spec, int f);
-
-/* junk.c */
-#ifdef USE_JUNK
-int cgood(void *v);
-int cjunk(void *v);
-int cungood(void *v);
-int cunjunk(void *v);
-int cclassify(void *v);
-int cprobability(void *v);
-#else
-# define cgood		ccmdnotsupp
-# define cjunk		ccmdnotsupp
-# define cungood	ccmdnotsupp
-# define cunjunk	ccmdnotsupp
-# define cclassify	ccmdnotsupp
-# define cprobability	ccmdnotsupp
-#endif
 
 /* lex.c */
 int setfile(char const *name, int newmail);
@@ -537,7 +568,6 @@ void announce(int printheaders);
 int newfileinfo(void);
 int getmdot(int newmail);
 int pversion(void *v);
-void load(char const *name);
 void initbox(const char *name);
 
 /* list.c */
@@ -552,17 +582,6 @@ int zwrite(void *cookie, const char *wbp, int num);
 int zfree(void *cookie);
 int zread(void *cookie, char *rbp, int num);
 void *zalloc(FILE *fp);
-
-/* macro.c */
-int cdefine(void *v);
-int define1(const char *name, int account);
-int cundef(void *v);
-int ccall(void *v);
-int callaccount(const char *name);
-int callhook(const char *name, int newmail);
-int listaccounts(FILE *fp);
-int cdefines(void *v);
-void delaccount(const char *name);
 
 /* maildir.c */
 int maildir_setfile(const char *name, int newmail, int isedit);
@@ -621,14 +640,13 @@ int		cmimetypes(void *v);
 void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char const *name);
 
-/* fwrite(3) whilst adding *prefix*, if set, taking care of *quote-fold* */
-size_t		prefixwrite(char const *ptr, size_t size, FILE *f,
-			char const *prefix, size_t prefixlen);
-
 /* fwrite(3) performing the given MIME conversion */
 ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
 			enum conversion convert, enum tdflags dflags,
-			char const *prefix, size_t prefixlen, struct str *rest);
+			struct quoteflt *qf, struct str *rest);
+ssize_t		xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
+			FILE *f, enum conversion convert, enum tdflags dflags,
+			struct str *rest);
 
 /*
  * mime_cte.c
@@ -701,6 +719,10 @@ struct name *	extract(char const *line, enum gfield ntype);
 struct name *	lextract(char const *line, enum gfield ntype);
 char *		detract(struct name *np, enum gfield ntype);
 
+/* Get a lextract() list via readstr_input(), reassigning to *np* */
+struct name *	grab_names(const char *field, struct name *np, int comma,
+			enum gfield gflags);
+
 struct name *	checkaddrs(struct name *np);
 struct name *	usermap(struct name *names, bool_t force_metoo);
 struct name *	elide(struct name *names);
@@ -711,8 +733,18 @@ int		is_myname(char const *name);
 struct name *	outof(struct name *names, FILE *fo, struct header *hp,
 			bool_t *senderror);
 
+/* Handling of alias groups */
+
+/* Locate a group name and return it */
+struct grouphead *findgroup(char *name);
+
+/* Print a group out on stdout */
+void		printgroup(char *name);
+
+void		remove_group(char const *name);
+
 /* openssl.c */
-#ifdef USE_OPENSSL
+#ifdef HAVE_OPENSSL
 enum okay ssl_open(const char *server, struct sock *sp, const char *uhp);
 void ssl_gen_err(const char *fmt, ...);
 int cverify(void *vp);
@@ -726,7 +758,7 @@ enum okay smime_certsave(struct message *m, int n, FILE *op);
 #endif
 
 /* pop3.c */
-#ifdef USE_POP3
+#ifdef HAVE_POP3
 enum okay pop3_noop(void);
 int pop3_setfile(const char *server, int newmail, int isedit);
 enum okay pop3_header(struct message *m);
@@ -757,6 +789,9 @@ FILE *	Ftemp(char **fn, char const *prefix, char const *mode,
  * variable must be made NULL first and then free()d, to avoid more than one
  * free() call in all circumstances */
 void	Ftfree(char **fn);
+
+/* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
+bool_t	pipe_cloexec(int fd[2]);
 
 FILE *Popen(const char *cmd, const char *mode, const char *shell, int newfd1);
 int Pclose(FILE *ptr, bool_t dowait);
@@ -802,14 +837,34 @@ enum okay resend_msg(struct message *mp, struct name *to, int add_resent);
  * smtp.c
  */
 
-#ifdef USE_SMTP
+#ifdef HAVE_SMTP
 char *	smtp_auth_var(const char *type, const char *addr);
 int	smtp_mta(char *server, struct name *to, FILE *fi, struct header *hp,
 		const char *user, const char *password, const char *skinned);
 #endif
 
+/*
+ * spam.c
+ */
+
+#ifdef HAVE_SPAM
+int	cspam_clear(void *v);
+int	cspam_set(void *v);
+int	cspam_forget(void *v);
+int	cspam_ham(void *v);
+int	cspam_rate(void *v);
+int	cspam_spam(void *v);
+#else
+# define cspam_clear	ccmdnotsupp
+# define cspam_set	ccmdnotsupp
+# define cspam_forget	ccmdnotsupp
+# define cspam_ham	ccmdnotsupp
+# define cspam_rate	ccmdnotsupp
+# define cspam_spam	ccmdnotsupp
+#endif
+
 /* ssl.c */
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 void ssl_set_vrfy_level(const char *uhp);
 enum okay ssl_vrfy_decide(void);
 char *ssl_method_string(const char *uhp);
@@ -857,8 +912,15 @@ char *		urlxenc(char const *cp);
 char *		urlxdec(char const *cp);
 
 struct str *	str_concat_csvl(struct str *self, ...);
+struct str *	str_concat_cpa(struct str *self, char const *const*cpa,
+			char const *sep_o_null);
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
+
+/* Hash the passed string; uses Chris Torek's hash algorithm */
+ui_it		strhash(char const *name);
+
+#define hash(S)	(strhash(S) % HSHSIZE) /* xxx COMPAT (?) */
 
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
@@ -892,14 +954,17 @@ int		snprintf(char *str, size_t size, const char *format, ...);
 
 char *		sstpcpy(char *dst, const char *src);
 char *		sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
+char *		sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_ASSERTS
 # define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
+# define sbufdup(CP,L)	sbufdup(CP, L, __FILE__, __LINE__)
 #endif
 
 /* Locale-independent character class functions */
 int		asccasecmp(char const *s1, char const *s2);
 int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
+bool_t		is_asccaseprefix(char const *as1, char const *as2);
 
 /* struct str related support funs */
 
@@ -950,43 +1015,73 @@ int ccollapse(void *v);
 int cuncollapse(void *v);
 void uncollapse1(struct message *m, int always);
 
-/* tty.c */
-int grabh(struct header *hp, enum gfield gflags, int subjfirst);
-char *readtty(char const *prefix, char const *string);
-int yorn(char const *msg);
+/*
+ * tty.c
+ */
 
-/* Get a password the expected way, returning termios_state.ts_linebuf on
- * success on NULL on error */
+/* Overall interactive terminal life cycle for command line editor library */
+#if defined HAVE_EDITLINE || defined HAVE_READLINE
+# define TTY_WANTS_SIGWINCH
+#endif
+void	tty_init(void);
+void	tty_destroy(void);
+
+/* Rather for main.c / SIGWINCH interaction only */
+void	tty_signal(int sig);
+
+/* Read a line after printing `prompt', if set and non-empty.
+ * If `n' is not 0, assumes that `*linebuf' has `n' bytes of default content */
+int	tty_readline(char const *prompt, char **linebuf, size_t *linesize,
+		size_t n SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define tty_readline(A,B,C,D)	tty_readline(A, B, C, D, __FILE__, __LINE__)
+#endif
+
+/* Add a line (most likely as returned by tty_readline()) to the history
+ * (only added for real if non-empty and doesn't begin with U+0020) */
+void	tty_addhist(char const *s);
+
+/* [Yy]es or [Nn]o */
+bool_t	yorn(char const *msg);
+
+/* Get a password the expected way, return termios_state.ts_linebuf on
+ * success or NULL on error */
 char *	getuser(char const *query);
 
-/* Get a password the expected way, returning termios_state.ts_linebuf on
- * success on NULL on error.
+/* Get a password the expected way, return termios_state.ts_linebuf on
+ * success or NULL on error.
  * termios_state_reset() (def.h) must be called anyway */
 char *	getpassword(char const *query);
 
 /* Get both, user and password in the expected way; simply reuses a value that
  * is set, otherwise calls one of the above.
  * Returns true only if we have a user and a password.
- * *user* will be savestr()ed if neither it nor *pass* have default value
+ * *user* will be savestr()ed if neither it nor *pass* have a default value
  * (so that termios_state.ts_linebuf carries only one) */
 bool_t	getcredentials(char **user, char **pass);
 
-/* vars.c */
+/*
+ * varmac.c
+ */
 
 /* Assign a value to a variable */
 void	assign(char const *name, char const *value);
 
 int	unset_internal(char const *name);
 
-/* Copy a variable string into heap memory, and free such allocated space */
-char *	vcopy(char const *str);
-void	vfree(char *vstr);
-
-char *value(const char *name);
+/* Get the value of an option and return it.
+ * Look in the environment if its not available locally */
+char *	value(const char *name);
 #define boption(V)		(! ! value(V))
-#define soption(V)		value(V)
+#define voption(V)		value(V)
 
-struct grouphead *findgroup(char *name);
-void printgroup(char *name);
-int hash(const char *name);
-void remove_group(const char *name);
+int	cdefine(void *v);
+int	define1(const char *name, int account);
+int	cundef(void *v);
+int	ccall(void *v);
+int	callhook(char const *name, int newmail);
+int	cdefines(void *v);
+
+int	callaccount(char const *name);
+int	listaccounts(FILE *fp);
+void	delaccount(char const *name);

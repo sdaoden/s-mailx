@@ -62,10 +62,21 @@
 #else
 # define LINESIZE	2560
 #endif
+#define BUFFER_SIZE	(BUFSIZ >= (1 << 13) ? BUFSIZ : (1 << 14))
+
+#ifndef STDIN_FILENO
+# define STDIN_FILENO	0
+#endif
+#ifndef STDOUT_FILENO
+# define STDOUT_FILENO	1
+#endif
+#ifndef STDERR_FILENO
+# define STDERR_FILENO	2
+#endif
 
 #define MAXARGC		1024		/* Maximum list of raw strings */
 #define MAXEXP		25		/* Maximum expansion of aliases */
-#define HSHSIZE		59		/* Hash size for aliases and vars */
+#define HSHSIZE		23		/* Hash size aliases, vars, macros */
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
@@ -78,17 +89,25 @@
 
 #define CBAD		(-15555)
 
-#define SHELL		"/bin/sh"
-#define LISTER		"ls"
-#define PAGER_BSD	"more"
-#define PAGER_SYSV	"pg"
+/* These come from the configuration */
+#ifndef SHELL
+# define SHELL		"/bin/sh"
+#endif
+#ifndef LISTER
+# define LISTER		"ls"
+#endif
+#ifndef PAGER
+# define PAGER		"more"
+#endif
 
 /*
  * Funs, CC support etc.
  */
 
 /* Members in constant array */
-#define ARRAY_COUNT(A)	(sizeof(A) / sizeof(A[0]))
+#ifndef NELEM
+# define NELEM(A)	(sizeof(A) / sizeof(A[0]))
+#endif
 
 /* sizeof() for member fields */
 #define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
@@ -143,11 +162,28 @@
 	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
 
 /*
- * MIME (mime.c)
+ * Line editor (tty.c)
  */
 
-/* Is *C* a quoting character (for *quote-fold* compression) */
+/* The default size in entries of the history list */
+#define HIST_SIZE	242
+
+/*
+ * Filters (filter.c)
+ */
+
+/* Quote filter */
+
+/* Is *C* a quoting (ASCII only) character? */
 #define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+
+/* Maximum number of quote characters (not bytes!) that'll be used on
+ * follow lines when compressing leading quote characters */
+#define QUOTE_MAX	42
+
+/*
+ * MIME (mime.c)
+ */
 
 /* Locations of mime.types(5) */
 #define MIME_TYPES_USR	"~/.mime.types"
@@ -170,6 +206,13 @@
 # define CHARSET_8BIT		"ISO-8859-1"
 # define CHARSET_8BIT_VAR	"ttycharset"
 #endif
+
+/*
+ * Spam (spam.c)
+ */
+
+/* Maximum size of a message that is passed through to the spam system */
+#define SPAM_MAXSIZE	420000
 
 /*
  * Auto-reclaimed string storage (strings.c)
@@ -228,15 +271,34 @@ enum user_options {
 	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
 	OPT_BATCH_FLAG	= 1<<12,	/* -# */
 
-	OPT_SENDMODE	= 1<<14,	/* Usage case forces send mode */
-	OPT_INTERACTIVE	= 1<<15		/* isatty(0) / isatty(1) */
+	OPT_SENDMODE	= 1<<13,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1<<14,	/* isatty(0) */
+	OPT_TTYIN	= OPT_INTERACTIVE,
+	OPT_TTYOUT	= 1<<15
 };
+#define IS_TTY_SESSION() \
+	((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
 
 enum exit_status {
 	EXIT_OK		= EXIT_SUCCESS,
 	EXIT_ERR	= EXIT_FAILURE,
 	EXIT_COLL_ABORT	= 1<<1,		/* Message collection was aborted */
 	EXIT_SEND_ERROR	= 1<<2		/* Unspecified send error occurred */
+};
+
+enum fexp_mode {
+	FEXP_FULL,			/* Full expansion */
+	FEXP_LOCAL 	= 1<<0,		/* Result must be local file/maildir */
+	FEXP_SHELL 	= 1<<1,		/* No folder %,#,&,+ stuff, yet sh(1) */
+	FEXP_NSHORTCUT	= 1<<2,		/* Don't expand shortcuts */
+	FEXP_SILENT	= 1<<3,		/* Don't print but only return errors */
+	FEXP_MULTIOK	= 1<<4		/* Expansion to many entries is ok */
+};
+
+enum lned_mode {
+	LNED_NONE	= 0,
+	LNED_LF_ESC	= 1<<0,		/* LF can be backslash escaped */
+	LNED_HIST_ADD	= 1<<1		/* Add completed line to history */
 };
 
 enum okay {
@@ -274,7 +336,7 @@ enum sendaction {
 	SEND_TODISP_ALL,		/* same, include all MIME parts */
 	SEND_SHOW,			/* convert to 'show' command form */
 	SEND_TOSRCH,			/* convert for IMAP SEARCH */
-	SEND_TOFLTR,			/* convert for junk mail filtering */
+	SEND_TOFLTR,			/* convert for spam mail filtering */
 	SEND_TOFILE,			/* convert for saving body to a file */
 	SEND_TOPIPE,			/* convert for pipe-content/subc. */
 	SEND_QUOTE,			/* convert for quoting */
@@ -319,7 +381,7 @@ enum protocol {
 	PROTO_UNKNOWN			/* unknown protocol */
 };
 
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 enum ssl_vrfy_level {
 	VRFY_IGNORE,
 	VRFY_WARN,
@@ -340,9 +402,23 @@ struct time_current {
 	char		tc_ctime[32];
 };
 
+struct quoteflt {
+	FILE *		qf_os;		/* Output stream */
+	char const *	qf_pfix;
+	ui_it		qf_pfix_len;	/* Length of prefix: 0: bypass */
+	ui_it		qf_qfold_min;	/* Simple way: wrote prefix? */
+#ifdef HAVE_QUOTE_FMT
+	ui_it		qf_qfold_max;	/* Otherwise: line lengths */
+	ui_it		qf_state;	/* *quote-fold* state machine */
+	struct str	qf_dat;		/* Partial (visual output) line */
+	struct str	qf_currq;	/* Current quote, compressed */
+	mbstate_t	qf_mbps;
+#endif
+};
+
 struct termios_state {
 	struct termios	ts_tios;
-	char		*ts_linebuf;
+	char *		ts_linebuf;
 	size_t		ts_linesize;
 	bool_t		ts_needs_reset;
 };
@@ -357,9 +433,9 @@ do {\
 
 struct sock {				/* data associated with a socket */
 	int	s_fd;			/* file descriptor */
-#ifdef USE_SSL
+#ifdef HAVE_SSL
 	int	s_use_ssl;		/* SSL is used */
-# ifdef USE_OPENSSL
+# ifdef HAVE_OPENSSL
 	void	*s_ssl;			/* SSL object */
 	void	*s_ctx;			/* SSL context object */
 # endif
@@ -399,7 +475,7 @@ struct mailbox {
 	} mb_perm;
 	int mb_compressed;		/* is a compressed mbox file */
 	int mb_threaded;		/* mailbox has been threaded */
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	enum mbflags {
 		MB_NOFLAGS	= 000,
 		MB_UIDPLUS	= 001	/* supports IMAP UIDPLUS */
@@ -454,14 +530,16 @@ enum mflag {
 	MDRAFT		= (1<<23),	/* message has been drafted recently */
 	MUNDRAFT	= (1<<24),	/* message has been undrafted */
 	MDRAFTED	= (1<<25),	/* message is marked as `draft' */
-	MKILL		= (1<<26),	/* message has been killed */
-	MOLDMARK	= (1<<27),	/* messages was marked previously */
-	MJUNK		= (1<<28)	/* message is classified as junk */
+	MOLDMARK	= (1<<26),	/* messages was marked previously */
+	MSPAM		= (1<<27)	/* message is classified as spam */
 };
 
 struct mimepart {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the part */
+#ifdef HAVE_SPAM
+	ui_it	m_spamscore;		/* Spam score as int, 24:8 bits */
+#endif
 	int	m_block;		/* block number of this part */
 	size_t	m_offset;		/* offset in block of part */
 	size_t	m_size;			/* Bytes in the part */
@@ -486,6 +564,9 @@ struct mimepart {
 struct message {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the message */
+#ifdef HAVE_SPAM
+	ui_it	m_spamscore;		/* Spam score as int, 24:8 bits */
+#endif
 	int	m_block;		/* block number of this message */
 	size_t	m_offset;		/* offset in block of message */
 	size_t	m_size;			/* Bytes in the message */
@@ -501,10 +582,7 @@ struct message {
 	struct message	*m_parent;	/* parent of this message */
 	unsigned	m_level;	/* thread level of message */
 	long		m_threadpos;	/* position in threaded display */
-#ifdef USE_SCORE
-	float		m_score;	/* score of message */
-#endif
-#ifdef USE_IMAP
+#ifdef HAVE_IMAP
 	unsigned long	m_uid;		/* IMAP unique identifier */
 #endif
 	char	*m_maildir_file;	/* original maildir file of msg */
@@ -556,7 +634,7 @@ struct cmd {
 	enum argtype	c_argtype;		/* Arglist type (see below) */
 	short		c_msgflag;		/* Required flags of msgs*/
 	short		c_msgmask;		/* Relevant flags of msgs */
-#ifdef USE_DOCSTRINGS
+#ifdef HAVE_DOCSTRINGS
 	int		c_docid;		/* Translation id of .c_doc */
 	char const	*c_doc;			/* One line doc for command */
 #endif
@@ -591,8 +669,7 @@ enum gfield {
 
 #define GMASK		(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
 
-#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN|MKILL)) == 0 || \
-				(dot == (mp) && (mp)->m_flag & MKILL))
+#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN)) == 0)
 
 /*
  * Structure used to pass about the current state of a message (header).
