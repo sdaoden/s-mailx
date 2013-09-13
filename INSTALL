@@ -73,25 +73,32 @@ the Makefile, on the following operating systems:
 o Mac OS X Snow Leopard (x86_64).
   gcc(1) and clang(1).
 
+o FreeBSD 10.0 (amd64; 2013-06-23).
+  clang version 3.3 (tags/RELEASE_33/final 183502) 20130610.
+
+o NetBSD 6.99.23 (amd64).
+  gcc (NetBSD nb1 20120916) 4.5.4 (forgot to look: ID as of 6.99.19).
+
 o DragonFly BSD v3.4.1-RELEASE.
-  gcc 4.7.2 [DragonFly] Release/2012-09-2.
-  (*All* optional features turn to green on this one by default.)
+  gcc 4.7.2 [DragonFly] Release/2012-09-20.
 
-o FreeBSD 10.0 (amd64).
-  clang version 3.3 (trunk 178860) 20130405.
-
-o NetBSD 6.99.19 (amd64).
-  gcc (NetBSD nb1 20120916) 4.5.4.
-
-o OpenBSD 5.4 (i386).
+o OpenBSD 5.4 (5.4 GENERIC#36 i386).
+  gcc (GCC) 4.2.1 20070719.
 
 o Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
   clang version 3.0 (tags/RELEASE_30/final).
 
 o UnixWare 7.1.4.
-  You need to pass CFLAGS='-v -O' to the make(1) run.
-  (The -v compiler option gives some harmless warnings.)
+  You need to pass ``CFLAGS='-v -O''' to the make(1) run.
+  And `conf.rc' sets `MAILSPOOL=/var/mail' by default, whereas
+  UnixWare uses `/var/spool/mail', so you need to overwrite it (either
+  in `conf.rc', or from within the command line).
+  Note that the `-v' compiler option still gives some harmless warnings.
+
+OpenIndiana is targeted for v14.5.
+And i'm very interested in reports from other combinations.
+(It should work practically everywhere, generally speaking.)
 
 Program features yet to be overhauled
 -------------------------------------
@@ -100,7 +107,7 @@ Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
 2012-09-18 i make my way through the codebase, but have not yet taken
 a look (rather: at all) into the following modules/parts:
 
-  List view/threading, Maildir, SSL, IMAP, POP3, SMTP, GSSAPI, Caching
+  [List view/threading], Maildir, SSL, IMAP, POP3, SMTP, GSSAPI, Caching
 
 These will remain features of S-nail(1) and they will be looked at, and
 of course i will fix bugs when i notice them, but they are not yet part
