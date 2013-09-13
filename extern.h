@@ -329,6 +329,18 @@ FILE *run_editor(FILE *fp, off_t size, int type, int readonly,
 		struct header *hp, struct message *mp, enum sendaction action,
 		sighandler_type oldint);
 
+/*
+ * filter.c
+ */
+
+/* Quote filter */
+struct quoteflt *	quoteflt_dummy(void); /* TODO LEGACY */
+void	quoteflt_init(struct quoteflt *self, char const *prefix);
+void	quoteflt_destroy(struct quoteflt *self);
+void	quoteflt_reset(struct quoteflt *self, FILE *f);
+ssize_t	quoteflt_push(struct quoteflt *self, char const *dat, size_t len);
+ssize_t	quoteflt_flush(struct quoteflt *self);
+
 /* fio.c */
 
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0
@@ -655,14 +667,13 @@ int		cmimetypes(void *v);
 void mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags);
 char *mime_fromaddr(char const *name);
 
-/* fwrite(3) whilst adding *prefix*, if set, taking care of *quote-fold* */
-size_t		prefixwrite(char const *ptr, size_t size, FILE *f,
-			char const *prefix, size_t prefixlen);
-
 /* fwrite(3) performing the given MIME conversion */
 ssize_t		mime_write(char const *ptr, size_t size, FILE *f,
 			enum conversion convert, enum tdflags dflags,
-			char const *prefix, size_t prefixlen, struct str *rest);
+			struct quoteflt *qf, struct str *rest);
+ssize_t		xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
+			FILE *f, enum conversion convert, enum tdflags dflags,
+			struct str *rest);
 
 /*
  * mime_cte.c

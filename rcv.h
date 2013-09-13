@@ -47,8 +47,12 @@
 #include <string.h>
 #include <termios.h>
 #include <time.h>
+
 #ifdef HAVE_ICONV
 # include <iconv.h>
+#endif
+#ifdef HAVE_MBRTOWC
+# include <wchar.h>
 #endif
 
 #ifdef HAVE_ASSERTS

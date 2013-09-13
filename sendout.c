@@ -208,8 +208,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 				_get_encoding(convert),
 				ap->a_content_disposition) < 0)
 			goto jerr_header;
-		if (mime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE, NULL,
-				(size_t)0, NULL) < 0)
+		if (xmime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE, NULL)
+				< 0)
 			goto jerr_header;
 		if (fwrite("\"\n", sizeof(char), 2, fo) != 2 * sizeof(char))
 			goto jerr_header;
@@ -267,8 +267,7 @@ jerr_header:		err = errno;
 				break;
 		} else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
 			break;
-		if (mime_write(buf, inlen, fo, convert, TD_ICONV, NULL, 0, NULL)
-				< 0) {
+		if (xmime_write(buf, inlen, fo, convert, TD_ICONV, NULL) < 0) {
 			err = errno;
 			goto jerr;
 		}
@@ -385,8 +384,7 @@ put_signature(FILE *fo, int convert)
 	}
 	while ((sz = fread(buf, sizeof *buf, INFIX_BUF, fsig)) != 0) {
 		c = buf[sz - 1];
-		if (mime_write(buf, sz, fo, convert, TD_NONE, NULL, (size_t)0,
-				NULL) < 0) {
+		if (xmime_write(buf, sz, fo, convert, TD_NONE, NULL) < 0) {
 			perror(sig);
 			Fclose(fsig);
 			return -1;
@@ -467,8 +465,8 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 					break;
 			}
 
-			if (mime_write(buf, sz, fo, convert,
-					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
+			if (xmime_write(buf, sz, fo, convert, TD_ICONV, NULL)
+					< 0) {
 				free(buf);
 				return -1;
 			}
@@ -613,8 +611,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 				if (sz == 0)
 					break;
 			}
-			if (mime_write(buf, sz, nfo, convert,
-					TD_ICONV, NULL, (size_t)0, NULL) < 0) {
+			if (xmime_write(buf, sz, nfo, convert, TD_ICONV, NULL)
+					< 0) {
 				Fclose(nfo);
 				Fclose(nfi);
 #ifdef HAVE_ICONV
@@ -1300,12 +1298,12 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				(addr = value("ORGANIZATION")) != NULL) &&
 				(l = strlen(addr)) > 0) {
 			fwrite("Organization: ", sizeof (char), 14, fo);
-			if (mime_write(addr, l, fo,
+			if (xmime_write(addr, l, fo,
 					action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
 						TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0, NULL) < 0)
+					NULL) < 0)
 				return 1;
 			gotcha++;
 			putc('\n', fo);
@@ -1348,21 +1346,21 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		if (ascncasecmp(hp->h_subject, "re: ", 4) == 0) {
 			fwrite("Re: ", sizeof (char), 4, fo);
 			if (strlen(hp->h_subject + 4) > 0 &&
-				mime_write(hp->h_subject + 4,
+				xmime_write(hp->h_subject + 4,
 					strlen(hp->h_subject + 4), fo,
 					action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
 						TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0, NULL) < 0)
+					NULL) < 0)
 				return 1;
 		} else if (*hp->h_subject) {
-			if (mime_write(hp->h_subject, strlen(hp->h_subject),
+			if (xmime_write(hp->h_subject, strlen(hp->h_subject),
 					fo, action == SEND_TODISP ?
 						CONV_NONE:CONV_TOHDR,
 					action == SEND_TODISP ?
 						TD_ISPR|TD_ICONV:TD_ICONV,
-					NULL, (size_t)0, NULL) < 0)
+					NULL) < 0)
 				return 1;
 		}
 		gotcha++;
@@ -1462,9 +1460,9 @@ jstep:
 		} else
 			putc(' ', fo);
 		m = (m & ~m_CSEEN) | m_INIT;
-		len = mime_write(np->n_fullname, len, fo,
+		len = xmime_write(np->n_fullname, len, fo,
 				domime?CONV_TOHDR_A:CONV_NONE,
-				TD_ICONV, NULL, (size_t)0, NULL);
+				TD_ICONV, NULL);
 		if (len < 0)
 			return (1);
 		col += len;

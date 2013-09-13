@@ -75,8 +75,8 @@ static void	__mt_add_line(char const *line, struct mtnode **tail);
 static enum conversion _conversion_by_encoding(void);
 
 /* fwrite(3) while checking for displayability */
-static size_t	_fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
-			struct str *rest, char const *prefix, size_t prefixlen);
+static ssize_t	_fwrite_td(struct str const *input, enum tdflags flags,
+			struct str *rest, struct quoteflt *qf);
 
 static size_t	delctrl(char *cp, size_t sz);
 static int has_highbit(register const char *s);
@@ -201,9 +201,9 @@ _conversion_by_encoding(void)
 	return (ret);
 }
 
-static size_t
-_fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
-	struct str *rest, char const *prefix, size_t prefixlen)
+static ssize_t
+_fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
+	struct quoteflt *qf)
 {
 	/* TODO note: after send/MIME layer rewrite we will have a string pool
 	 * TODO so that memory allocation count drops down massively; for now,
@@ -220,6 +220,7 @@ _fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
 	/* *input* _may_ point to non-modifyable buffer; but even then it only
 	 * needs to be dup'ed away if we have to transform the content */
 	struct str in, out;
+	ssize_t rv;
 	(void)rest;
 
 	in = *input;
@@ -267,13 +268,13 @@ _fwrite_td(struct str const *input, FILE *f, enum tdflags flags,
 	if (flags & TD_DELCTRL)
 		out.l = delctrl(out.s, out.l);
 
-	out.l = prefixwrite(out.s, out.l, f, prefix, prefixlen);
+	rv = quoteflt_push(qf, out.s, out.l);
 
 	if (out.s != in.s)
 		free(out.s);
 	if (in.s != input->s)
 		free(in.s);
-	return out.l;
+	return rv;
 }
 
 static size_t
@@ -1340,193 +1341,23 @@ mime_fromaddr(char const *name)
 	return (res);
 }
 
-size_t
-prefixwrite(char const *ptr, size_t size, FILE *f,
-	char const *prefix, size_t prefixlen)
+ssize_t
+xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
+	enum tdflags dflags, struct str *rest)
 {
-	static FILE *lastf;			/* TODO NO STATIC COOKIES */
-	static char zipb[80], lastc = '\n';	/* TODO PLEASE PLEASE PLEASE! */
-	static size_t zipl, lastlen;		/* TODO for base64! (4:3 */
-	char c;
-	size_t j, i, qfold_min = 0, qfold_max = 0, lnlen = 0, wsz = 0;
-	char const *p, *maxp;
+	ssize_t rv;
+	struct quoteflt *qf;
 
-	if (size == 0)
-		return 0;
-
-	if (prefixlen == 0)
-		return fwrite(ptr, 1, size, f);
-
-	/* Check wether the user wants the more fancy quoting algorithm */
-	if ((p = voption("quote-fold")) != NULL) {
-		qfold_max = (size_t)strtol(p, (char**)UNCONST(&maxp), 10);
-		if (qfold_max < prefixlen + 6)
-			qfold_max = prefixlen + 6;
-		--qfold_max; /* The newline escape */
-		if (p == maxp || *maxp == '\0')
-			qfold_min = (qfold_max >> 1) + (qfold_max >> 2) +
-				(qfold_max >> 5);
-		else {
-			qfold_min = (size_t)strtol(maxp + 1, NULL, 10);
-			if (qfold_min < qfold_max >> 1)
-				qfold_min = qfold_max >> 1;
-			else if (qfold_min > qfold_max - 2)
-				qfold_min = qfold_max - 2;
-		}
-	}
-
-	if (f != lastf || lastc == '\n') {
-		wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-		lnlen = prefixlen;
-		zipl = lastlen = 0;
-	}
-	lastf = f;
-
-	p = ptr;
-	maxp = p + size;
-
-	if (qfold_max == 0) {
-		for (;;) {
-			c = *p++;
-			putc(c, f);
-			wsz++;
-			if (p == maxp)
-				break;
-			if (c != '\n')
-				continue;
-			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-		}
-	} else {
-		/* After writing a real newline followed by our prefix,
-		 * compress the quoted prefixes;
-		 * note that \n is only matched by spacechar(), not by
-		 * blankchar() or blankspacechar() */
-		/*
-		 * TODO the problem we have is again the odd 4:3 relation of
-		 * TODO base64 -- if we quote a mail that is in base64 then
-		 * TODO prefixwrite() doesn't get invoked with partial multi-
-		 * TODO byte characters (S-nail uses the `rest' mechanism to
-		 * TODO avoid that), but it may of course be invoked with a
-		 * TODO partial line, and even with multiple thereof.
-		 * TODO this has to be addressed in 15.0 with the MIME and send
-		 * TODO layer rewrite.  The solution is that `prefixwrite' has
-		 * TODO to be an object with state -- if a part is to be quoted
-		 * TODO you create it, and simply feed in data; once the part
-		 * TODO is done, you'll release it;  the object itself gobbles
-		 * TODO data unless a *hard* newline is seen.
-		 * TODO in fact we can then even implement paragraph-wise
-		 * TODO quoting! FIXME in fact that is the way: objects
-		 * TODO then, evaluate quote-fold when sending starts, ONCE!
-		 * FIXME NOTE: base64 (yet TODO for qp) may have CRLF line
-		 * FIXME endings, these need to be removed in a LOWER LAYER!!
-		 */
-		if ((lnlen = lastlen) != 0)
-			goto jcontb64;
-jhardnl:
-		lastlen = prefixlen;
-		for (zipl = i = 0; p + i < maxp; ++i) {
-			c = p[i];
-			if (blankspacechar(c))
-				continue;
-			if (! ISQUOTE(c))
-				break;
-			if (zipl == sizeof(zipb) - 1) {
-				zipb[sizeof(zipb) - 2] = '.';
-				zipb[sizeof(zipb) - 3] = '.';
-				zipb[sizeof(zipb) - 4] = '.';
-				continue;
-			}
-			zipb[zipl++] = c;
-		}
-		zipb[zipl] = '\0';
-		p += i;
-jsoftnl:
-		if (zipl > 0) {
-			wsz += fwrite(zipb, sizeof *zipb, zipl, f);
-			lnlen += zipl;
-			lastlen = lnlen;
-		}
-jcontb64:
-		/* Search forward until either *quote-fold* or NL.
-		 * In the former case try to break at whitespace,
-		 * but only if's located in the 2nd half of the data */
-		for (c = i = 0; p + i < maxp;) {
-			c = p[i++];
-			if (c == '\n')
-				break;
-			if (lnlen + i <= qfold_max)
-				continue;
-
-			/* We're excessing bounds -- but don't "continue"
-			 * trailing WS nor a continuation */
-			if (c == '\\' || spacechar(c)) {
-				char const *cp;
-
-				for (cp = p + i; cp < maxp; ++cp)
-					if (! spacechar(*cp))
-						break;
-				if (cp == maxp || (*cp == '\\' &&
-						cp[1] == '\n')) {
-					i = (size_t)(maxp - p);
-					c = 0;
-					break;
-				}
-			} else if (p + i < maxp && p[i] == '\n') {
-				++i;
-				c = 0;
-				break;
-			}
-
-			/* We have to fold this line */
-			if (qfold_min < lnlen) {
-				/* This is because of base64 and odd 4:3.
-				 * i.e., entered with some partial line yet
-				 * written..  This is weird, as we may have
-				 * written out `qfold_max' already.. */
-				j = 0;
-				size = --i;
-			} else {
-				j = qfold_min - lnlen;
-				i =
-				size = j + ((qfold_max - qfold_min) >> 1);
-				assert(p + i < maxp);
-			}
-			while (i > j && ! spacechar(p[i - 1]))
-				--i;
-			if (i == j)
-				i = size;
-			c = 0;
-			break;
-		}
-
-		if (i > 0) {
-			wsz += fwrite(p, sizeof *p, i, f);
-			p += i;
-			lastlen += i;
-		}
-
-		if (p < maxp) {
-			if (c != '\n') {
-				putc('\\', f);
-				putc('\n', f);
-				wsz += 2;
-			}
-			wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-			lnlen = prefixlen;
-			if (c != '\n')
-				goto jsoftnl;
-			goto jhardnl;
-		}
-	}
-
-	lastc = p[-1];
-	return wsz;
+	quoteflt_reset(qf = quoteflt_dummy(), f);
+	rv = mime_write(ptr, size, f, convert, dflags, qf, rest);
+	assert(quoteflt_flush(qf) == 0);
+	return rv;
 }
 
 ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
-	char const *prefix, size_t prefixlen, struct str *rest)
+	struct quoteflt *qf, struct str *rest)
 {
 	/* TODO note: after send/MIME layer rewrite we will have a string pool
 	 * TODO so that memory allocation count drops down massively; for now,
@@ -1571,7 +1402,7 @@ jconvert:
 		(void)qp_encode(&out, &in, QP_NONE);
 		goto jqpb64_enc;
 	case CONV_8BIT:
-		sz = prefixwrite(in.s, in.l, f, prefix, prefixlen);
+		sz = quoteflt_push(qf, in.s, in.l);
 		break;
 	case CONV_FROMB64:
 		rest = NULL;
@@ -1580,10 +1411,11 @@ jconvert:
 		state = b64_decode(&out, &in, rest);
 jqpb64_dec:
 		if ((sz = out.l) != 0) {
+			size_t opl = qf->qf_pfix_len;
 			if (state != OKAY)
-				prefix = NULL, prefixlen = 0;
-			sz = _fwrite_td(&out, f, dflags & ~_TD_BUFCOPY,
-				rest, prefix, prefixlen);
+				qf->qf_pfix_len = 0;
+			sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), rest,qf);
+			qf->qf_pfix_len = opl;
 		}
 		if (state != OKAY)
 			sz = -1;
@@ -1597,8 +1429,8 @@ jqpb64_enc:
 		break;
 	case CONV_FROMHDR:
 		mime_fromhdr(&in, &out,
-			TD_ISPR|TD_ICONV | (dflags & TD_DELCTRL));
-		sz = prefixwrite(out.s, out.l, f, prefix, prefixlen);
+			TD_ISPR | TD_ICONV | (dflags & TD_DELCTRL));
+		sz = quoteflt_push(qf, out.s, out.l);
 		break;
 	case CONV_TOHDR:
 		sz = mime_write_tohdr(&in, f);
@@ -1607,7 +1439,7 @@ jqpb64_enc:
 		sz = mime_write_tohdr_a(&in, f);
 		break;
 	default:
-		sz = _fwrite_td(&in, f, dflags, NULL, prefix, prefixlen);
+		sz = _fwrite_td(&in, dflags, NULL, qf);
 		break;
 	}
 jleave:
