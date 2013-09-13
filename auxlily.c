@@ -169,10 +169,10 @@ argcount(char **argv)
 }
 
 char *
-colalign(const char *cp, int col, int fill) /* XXX improve filling+! */
+colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 {
-	int	n, sz;
-	char	*nb, *np;
+	int col_orig = col, n, sz;
+	char *nb, *np;
 
 	np = nb = salloc(mb_cur_max * strlen(cp) + col + 1);
 	while (*cp) {
@@ -209,9 +209,12 @@ colalign(const char *cp, int col, int fill) /* XXX improve filling+! */
 		} else
 			memset(np, ' ', col);
 		np += col;
+		col = 0;
 	}
 
 	*np = '\0';
+	if (cols_decr_used_or_null != NULL)
+		*cols_decr_used_or_null -= col_orig - col;
 	return nb;
 }
 
@@ -797,27 +800,30 @@ prout(const char *s, size_t sz, FILE *fp)
 	return n;
 }
 
-/*
- * Print out a Unicode character or a substitute for it.
- */
-int
+size_t
 putuc(int u, int c, FILE *fp)
 {
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+	size_t rv;
+
+#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
 	if (utf8 && u & ~(wchar_t)0177) {
-		char	mb[MB_LEN_MAX];
-		int	i, n, r = 0;
+		char mb[MB_LEN_MAX];
+		int i, n;
 		if ((n = wctomb(mb, u)) > 0) {
-			for (i = 0; i < n; i++)
-				r += putc(mb[i] & 0377, fp) != EOF;
-			return r;
+			rv = wcwidth(u);
+			for (i = 0; i < n; ++i)
+				if (putc(mb[i] & 0377, fp) == EOF) {
+					rv = 0;
+					break;
+				}
 		} else if (n == 0)
-			return putc('\0', fp) != EOF;
+			rv = (putc('\0', fp) != EOF);
 		else
-			return 0;
+			rv = 0;
 	} else
 #endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
-		return putc(c, fp) != EOF;
+		rv = (putc(c, fp) != EOF);
+	return rv;
 }
 
 void

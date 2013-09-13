@@ -535,14 +535,16 @@ number:
 	if (colmod != 0) {
 		for (i = 1; i <= msgCount; i++) {
 			struct coltab *colp;
+			bool_t bad = TRU1;
 
 			mp = &message[i - 1];
 			for (colp = &coltab[0]; colp->co_char; colp++)
-				if (colp->co_bit & colmod)
-					if ((mp->m_flag & colp->co_mask)
-					    != (unsigned)colp->co_equal)
-						unmark(i);
-			
+				if ((colp->co_bit & colmod) &&
+						((mp->m_flag & colp->co_mask)
+						== (unsigned)colp->co_equal))
+					bad = FAL0;
+			if (bad)
+				unmark(i);
 		}
 		for (mp = &message[0]; mp < &message[msgCount]; mp++)
 			if (mp->m_flag & MMARK)
