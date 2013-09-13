@@ -152,6 +152,13 @@
 	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
 
 /*
+ * Line editor (tty.c)
+ */
+
+/* The default size in entries of the history list */
+#define HIST_SIZE	242
+
+/*
  * MIME (mime.c)
  */
 
@@ -256,7 +263,15 @@ enum fexp_mode {
 	FEXP_FULL,			/* Full expansion */
 	FEXP_LOCAL 	= 1<<0,		/* Result must be local file/maildir */
 	FEXP_SHELL 	= 1<<1,		/* No folder %,#,&,+ stuff, yet sh(1) */
-	FEXP_NSHORTCUT	= 1<<2		/* Don't expand shortcuts */
+	FEXP_NSHORTCUT	= 1<<2,		/* Don't expand shortcuts */
+	FEXP_SILENT	= 1<<3,		/* Don't print but only return errors */
+	FEXP_MULTIOK	= 1<<4		/* Expansion to many entries is ok */
+};
+
+enum lned_mode {
+	LNED_NONE	= 0,
+	LNED_LF_ESC	= 1<<0,		/* LF can be backslash escaped */
+	LNED_HIST_ADD	= 1<<1		/* Add completed line to history */
 };
 
 enum okay {

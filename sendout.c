@@ -1040,9 +1040,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		if (err == 0)
 			goto jaskeot;
 		if (value("askcc"))
-			++err, grabh(hp, GCC, 1);
+			++err, grab_headers(hp, GCC, 1);
 		if (value("askbcc"))
-			++err, grabh(hp, GBCC, 1);
+			++err, grab_headers(hp, GBCC, 1);
 		if (value("askattach"))
 			++err, hp->h_attach = edit_attachments(hp->h_attach);
 		if (value("asksign"))

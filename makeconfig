@@ -10,10 +10,11 @@ if [ -z "${CONFIG}" ]; then
 else
 	case ${CONFIG} in
 	MINIMAL)
-		WANT_JUNK=0 WANT_SCORE=0 WANT_SOCKETS=0
+		WANT_JUNK=0 WANT_SCORE=0 WANT_SOCKETS=0 WANT_LINE_EDITOR=0
 		;;
 	NETSEND)
 		WANT_JUNK=0 WANT_SCORE=0 WANT_IMAP=0 WANT_POP3=0
+		WANT_EDITLINE=0
 		;;
 	CUSTOM)
 		;;
@@ -49,6 +50,12 @@ if nwantfeat SOCKETS && nwantfeat JUNK; then
 	WANT_MD5=0
 elif wantfeat JUNK; then
 	WANT_MD5=1
+fi
+if nwantfeat LINE_EDITOR; then
+	WANT_EDITLINE=0 WANT_EDITLINE_READLINE=0
+fi
+if nwantfeat EDITLINE; then
+	WANT_EDITLINE_READLINE=0
 fi
 
 ##  --  >8  --  8<  --  ##
@@ -307,6 +314,16 @@ int main(void)
 {
 	wchar_t	wc;
 	mbtowc(&wc, "x", 1);
+	return 0;
+}
+!
+
+link_check mbrtowc 'for mbrtowc()' '#define HAVE_MBRTOWC' << \!
+#include <wchar.h>
+int main(void)
+{
+	wchar_t	wc;
+	mbrtowc(&wc, "x", 1, NULL);
 	return 0;
 }
 !
@@ -639,6 +656,70 @@ else
 	echo '/* WANT_IDNA=0 */' >> ${out}
 fi # wantfeat IDNA
 
+if wantfeat EDITLINE_READLINE; then
+	link_check readline 'for readline(3) compatible editline(3)' \
+		'#define HAVE_LINE_EDITOR
+		#define HAVE_READLINE' '-lreadline -ltermcap' << \!
+#include <stdio.h>
+#include <readline/history.h>
+#include <readline/readline.h>
+int main(void)
+{
+	char *rl;
+	using_history();
+	read_history("");
+	stifle_history(242);
+	rl = readline("Enter a line:");
+	if (rl && *rl)
+		add_history(rl);
+	write_history("");
+	rl_extend_line_buffer(10);
+	rl_point = rl_end = 10;
+	rl_pre_input_hook = (rl_hook_func_t*)NULL;
+	rl_forced_update_display();
+
+	rl_free_line_state();
+	rl_cleanup_after_signal();
+	rl_reset_after_signal();
+	return 0;
+}
+!
+fi
+
+if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
+	link_check editline 'for editline(3)' \
+		'#define HAVE_LINE_EDITOR
+		#define HAVE_EDITLINE' '-ledit' << \!
+#include <histedit.h>
+static char * getprompt(void) { return (char*)"ok"; }
+int main(void)
+{
+	HistEvent he;
+	EditLine *el_el = el_init("TEST", stdin, stdout, stderr);
+	History *el_hcom = history_init();
+	history(el_hcom, &he, H_SETSIZE, 242);
+	el_set(el_el, EL_SIGNAL, 0);
+	el_set(el_el, EL_TERMINAL, NULL);
+	el_set(el_el, EL_HIST, &history, el_hcom);
+	el_set(el_el, EL_EDITOR, "emacs");
+	el_set(el_el, EL_PROMPT, &getprompt);
+	el_source(el_el, NULL);
+	el_end(el_el);
+	/* TODO add loader and addfn checks */
+	history_end(el_hcom);
+	return 0;
+}
+!
+fi
+
+if wantfeat LINE_EDITOR && [ -z "${have_editline}" ] &&\
+		[ -z "${have_readline}" ] &&\
+		[ -n "${have_mbrtowc}" ] && [ -n "${have_wctype}" ]; then
+	echo "#define HAVE_LINE_EDITOR" >> ${out}
+else
+	echo '/* WANT_{LINE_EDITOR,EDITLINE,EDITLINE_READLINE}=0 */' >> ${out}
+fi # wantfeat LINE_EDITOR+
+
 if wantfeat JUNK; then
 	echo "#define USE_JUNK" >> ${out}
 else
@@ -715,17 +796,20 @@ cat > ${tmp2}.c << \!
 #ifdef USE_SMTP
 : + SMTP protocol
 #endif
-#ifdef USE_JUNK
-: + Junk-mail management (Bayesian filtering)
-#endif
-#ifdef USE_SCORE
-: + Message scoring (score/kill/unkill mechanism)
-#endif
 #ifdef USE_MD5
 : + The MD5 message digest
 #endif
 #ifdef USE_IDNA
 : + IDNA (internationalized domain names for applications) support
+#endif
+#ifdef HAVE_LINE_EDITOR
+: + Command line editing and history
+#endif
+#ifdef USE_JUNK
+: + Junk-mail management (Bayesian filtering)
+#endif
+#ifdef USE_SCORE
+: + Message scoring (score/kill/unkill mechanism)
 #endif
 :
 :The following optional features are disabled:
@@ -762,17 +846,20 @@ cat > ${tmp2}.c << \!
 #ifndef USE_SMTP
 : - SMTP protocol
 #endif
-#ifndef USE_JUNK
-: - Junk-mail management (Bayesian filtering)
-#endif
-#ifndef USE_SCORE
-: - Message scoring (score/kill/unkill mechanism)
-#endif
 #ifndef USE_MD5
 : - The MD5 message digest
 #endif
 #ifndef USE_IDNA
 : - IDNA (internationalized domain names for applications) support
+#endif
+#ifndef HAVE_LINE_EDITOR
+: - Command line editing and history
+#endif
+#ifndef USE_JUNK
+: - Junk-mail management (Bayesian filtering)
+#endif
+#ifndef USE_SCORE
+: - Message scoring (score/kill/unkill mechanism)
 #endif
 :
 :Remarks:

@@ -47,16 +47,15 @@
 #include <string.h>
 #include <termios.h>
 #include <time.h>
+#ifdef HAVE_ICONV
+# include <iconv.h>
+#endif
 
 #ifdef HAVE_ASSERTS
 # include <assert.h>
 #else
 # undef assert
 # define assert(X)	((void)0)
-#endif
-
-#ifdef HAVE_ICONV
-# include <iconv.h>
 #endif
 
 #include "def.h"

@@ -1,8 +1,8 @@
 $quote $
 $ Messages for nail, a mail user agent TODO complete rebuild that, leave holes
 $set 1
-1 $panic: $
-2 \n
+1 $Panic: $
+2 -- DELETED --
 3 Too much "sourcing" going on.\n
 4 "Source" stack over-pop.\n
 5 Unmatched "if"\n
@@ -492,3 +492,6 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 506 Missing macro name to `undef'\n
 507 Syntax is: call <%s>\n
 508 Undefined macro called: \"%s\"\n
+509 $User: $
+510 $Password: $
+511 ${former content: %.*s} $

@@ -59,6 +59,7 @@ _E int		scrnwidth;		/* Screen width, or best guess */
 _E int		scrnheight;		/* Screen height, or best guess,
 					 *  for "header" command */
 _E int		utf8;			/* UTF-8 encoding in use for locale */
+_E int		enc_has_state;		/* Encoding has shift states */
 
 _E char		**altnames;		/* List of alternate names for user */
 _E char const	*homedir;		/* Path name of home directory */
@@ -89,7 +90,6 @@ _E int		msgCount;		/* Count of messages read in */
 _E enum condition cond;			/* Current state of conditional exc. */
 _E struct mailbox mb;			/* Current mailbox */
 _E int		image;			/* File descriptor for image of msg */
-_E FILE		*input;			/* Current command input file */
 _E char		mailname[MAXPATHLEN];	/* Name of current file */
 _E char		displayname[80 - 40];	/* Prettyfied for display */
 _E char		prevfile[MAXPATHLEN];	/* Name of previous file */

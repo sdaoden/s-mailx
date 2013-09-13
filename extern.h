@@ -60,8 +60,17 @@ struct attachment *	append_attachments(struct attachment *aphead,
 /* Interactively edit the attachment list, return the new list head */
 struct attachment *	edit_attachments(struct attachment *aphead);
 
-/* auxlily.c */
-void panic(const char *format, ...);
+/*
+ * auxlily.c
+ */
+
+/* Announce a fatal error and die */
+void	panic(const char *format, ...);
+
+/* Hold *all* signals, and release that total block again */
+void	hold_all_sigs(void);
+void	rele_all_sigs(void);
+
 void holdint(void);
 void relseint(void);
 void touch(struct message *mp);
@@ -345,14 +354,27 @@ char *		fgetline(char **line, size_t *linesize, size_t *count,
  */
 int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 			size_t n SMALLOC_DEBUG_ARGS);
-#ifndef HAVE_ASSERTS
-# define readline(A,B,C)	readline_restart(A, B, C, 0)
-#else
-# define readline_restart(A,B,C,D)	\
+#ifdef HAVE_ASSERTS
+# define readline_restart(A,B,C,D) \
 	readline_restart(A, B, C, D, __FILE__, __LINE__)
-# define readline(A,B,C)		\
-	(readline_restart)(A, B, C, 0, __FILE__, __LINE__)
 #endif
+
+/* Read a complete line of input (with editing if possible).
+ * If *prompt* is NULL we'll call getprompt() first.
+ * Return number of octets or a value <0 on error */
+int		readline_input(enum lned_mode lned, char const *prompt,
+			char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
+#endif
+
+/* Read a line of input (with editing if possible) and return it savestr()d,
+ * or NULL in case of errors or if an empty line would be returned.
+ * This may only be called from toplevel (not during sourcing).
+ * If *prompt* is NULL we'll call getprompt().
+ * *string* is the default/initial content of the return value (this is
+ * "almost" ignored in non-interactive mode for reproducability) */
+char *		readstr_input(char const *prompt, char const *string);
 
 void setptr(FILE *ibuf, off_t offset);
 int putline(FILE *obuf, char *linebuf, size_t count);
@@ -389,15 +411,6 @@ bool_t	getfold(char *name, size_t size);
 
 char const *getdeadletter(void);
 
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * *sourcing* so that others will realize that they are no longer reading from
- * a tty (in all probability) */
-int		source(void *v);
-
-/* Pop the current input back to the previous level.  Update the *sourcing*
- * flag as appropriate */
-int		unstack(void);
-
 void newline_appended(void);
 enum okay get_body(struct message *mp);
 
@@ -416,7 +429,26 @@ int		sgetline(char **line, size_t *linesize, size_t *linelen,
 # endif
 #endif
 
+/* Deal with loading of resource files and dealing with a stack of files for
+ * the source command */
+
+/* Load a file of user definitions */
+void		load(char const *name);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * *sourcing* so that others will realize that they are no longer reading from
+ * a tty (in all probability) */
+int		csource(void *v);
+
+/* Pop the current input back to the previous level.  Update the *sourcing*
+ * flag as appropriate */
+int		unstack(void);
+
 /* head.c */
+
+/* Fill in / reedit the desired header fields */
+int		grab_headers(struct header *hp, enum gfield gflags,
+			int subjfirst);
 
 /* Return the user's From: address(es) */
 char const *	myaddrs(struct header *hp);
@@ -551,7 +583,6 @@ void announce(int printheaders);
 int newfileinfo(void);
 int getmdot(int newmail);
 int pversion(void *v);
-void load(char const *name);
 void initbox(const char *name);
 
 /* list.c */
@@ -703,6 +734,10 @@ int		count(struct name const *np);
 struct name *	extract(char const *line, enum gfield ntype);
 struct name *	lextract(char const *line, enum gfield ntype);
 char *		detract(struct name *np, enum gfield ntype);
+
+/* Get a lextract() list via readstr_input(), reassigning to *np* */
+struct name *	grab_names(const char *field, struct name *np, int comma,
+			enum gfield gflags);
 
 struct name *	checkaddrs(struct name *np);
 struct name *	usermap(struct name *names, bool_t force_metoo);
@@ -970,9 +1005,31 @@ int ccollapse(void *v);
 int cuncollapse(void *v);
 void uncollapse1(struct message *m, int always);
 
-/* tty.c */
-int grabh(struct header *hp, enum gfield gflags, int subjfirst);
-char *readtty(char const *prefix, char const *string);
+/*
+ * tty.c
+ */
+
+/* Overall interactive terminal life cycle for command line editor library */
+#if defined HAVE_EDITLINE || defined HAVE_READLINE
+# define TTY_WANTS_SIGWINCH
+#endif
+void	tty_init(void);
+void	tty_destroy(void);
+
+/* Rather for main.c / SIGWINCH interaction only */
+void	tty_signal(int sig);
+
+/* Read a line after printing `prompt', if set and non-empty.
+ * If `n' is not 0, assumes that `*linebuf' has `n' bytes of default content */
+int	tty_readline(char const *prompt, char **linebuf, size_t *linesize,
+		size_t n SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_ASSERTS
+# define tty_readline(A,B,C,D)	tty_readline(A, B, C, D, __FILE__, __LINE__)
+#endif
+
+/* Add a line (most likely as returned by tty_readline()) to the history
+ * (only added for real if non-empty and doesn't begin with U+0020) */
+void	tty_addhist(char const *s);
 
 /* [Yy]es or [Nn]o */
 bool_t	yorn(char const *msg);

@@ -407,6 +407,8 @@ commands(void)
 			safe_signal(SIGINT, onintr);
 		if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGHUP, hangup);
+		/* TODO We do a lot of redundant signal handling, especially
+		 * TODO with the line editor(s); try to merge this */
 		safe_signal(SIGTSTP, stop);
 		safe_signal(SIGTTOU, stop);
 		safe_signal(SIGTTIN, stop);
@@ -458,16 +460,24 @@ commands(void)
 			}
 			_reset_on_stop = 1;
 			exit_status = 0;
-			printf("%s", getprompt());
 		}
-		fflush(stdout);
 
 		if (! sourcing) {
 			sreset();
+			/* TODO Note: this buffer may contain a password
+			 * TODO We should redefine the code flow which has
+			 * TODO to do that */
 			if ((nv = termios_state.ts_linebuf) != NULL) {
 				termios_state.ts_linebuf = NULL;
 				termios_state.ts_linesize = 0;
 				free(nv); /* TODO pool give-back */
+			}
+			/* TODO Due to expand-on-tab of our line editor the
+			 * TODO buffer may grow */
+			if (linesize > LINESIZE * 3) {
+				free(linebuf); /* TODO pool! but what? */
+				linebuf = NULL;
+				linesize = 0;
 			}
 		}
 
@@ -475,15 +485,8 @@ commands(void)
 		 * Read a line of commands from the current input
 		 * and handle end of file specially.
 		 */
-		n = 0;
-		for (;;) {
-			n = readline_restart(input, &linebuf, &linesize, n);
-			if (n < 0)
-				break;
-			if (n == 0 || linebuf[n - 1] != '\\')
-				break;
-			linebuf[n - 1] = ' ';
-		}
+		n = readline_input(LNED_LF_ESC | LNED_HIST_ADD, NULL,
+			&linebuf, &linesize);
 		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */
@@ -510,7 +513,7 @@ commands(void)
 			break;
 	}
 
-	if (linebuf)
+	if (linebuf != NULL)
 		free(linebuf);
 	if (sourcing)
 		sreset();
@@ -1005,27 +1008,6 @@ pversion(void *v)
 	(void)v;
 	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
 	return(0);
-}
-
-/*
- * Load a file of user definitions.
- */
-void 
-load(char const *name)
-{
-	FILE *in, *oldin;
-
-	if (name == NULL || (in = Fopen(name, "r")) == NULL)
-		return;
-	oldin = input;
-	input = in;
-	loading = TRU1;
-	sourcing = TRU1;
-	commands();
-	loading = FAL0;
-	sourcing = FAL0;
-	input = oldin;
-	Fclose(in);
 }
 
 void 

@@ -68,12 +68,21 @@
 
 #include "extern.h"
 
+struct {
+	FILE		*s_file;	/* File we were in. */
+	enum condition	s_cond;		/* Saved state of conditionals */
+	int		s_loading;	/* Loading .mailrc, etc. */
+#define	SSTACK	20
+}		_sstack[SSTACK];
+static size_t	_ssp;			/* Top of file stack */
+static FILE *	_input;
+
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 static void	_findmail(char *buf, size_t bufsize, char const *user,
 			bool_t force);
 
 /* Perform shell meta character expansion */
-static char *	_globname(char const *name);
+static char *	_globname(char const *name, enum fexp_mode fexpm);
 
 /* *line* is a buffer with the result of fgets().
  * Returns the first newline or the last character read */
@@ -116,7 +125,7 @@ jleave:
 }
 
 static char *
-_globname(char const *name)
+_globname(char const *name, enum fexp_mode fexpm)
 {
 #ifdef HAVE_WORDEXP
 	wordexp_t we;
@@ -134,9 +143,9 @@ _globname(char const *name)
 	sigprocmask(SIG_BLOCK, &nset, NULL);
 	/* Mac OS X Snow Leopard doesn't init fields on error, causing SIGSEGV
 	 * in wordfree(3) */
-#ifdef __APPLE__
+# ifdef __APPLE__
 	memset(&we, 0, sizeof we);
-#endif
+# endif
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
@@ -144,13 +153,17 @@ _globname(char const *name)
 	case 0:
 		break;
 	case WRDE_NOSPACE:
-		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
-			name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr,
+				tr(83, "\"%s\": Expansion buffer overflow.\n"),
+				name);
 		goto jleave;
 	case WRDE_BADCHAR:
 	case WRDE_SYNTAX:
 	default:
-		fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"),
+				name);
 		goto jleave;
 	}
 
@@ -159,10 +172,26 @@ _globname(char const *name)
 		cp = savestr(we.we_wordv[0]);
 		break;
 	case 0:
-		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
 		break;
 	default:
-		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
+		if (fexpm & FEXP_MULTIOK) {
+			size_t j, l;
+
+			for (l = 0, j = 0; j < we.we_wordc; ++j)
+				l += strlen(we.we_wordv[j]) + 1;
+			++l;
+			cp = salloc(l);
+			for (l = 0, j = 0; j < we.we_wordc; ++j) {
+				size_t x = strlen(we.we_wordv[j]);
+				memcpy(cp + l, we.we_wordv[j], x);
+				l += x;
+				cp[l++] = ' ';
+			}
+			cp[l] = '\0';
+		} else if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		break;
 	}
 jleave:
@@ -203,24 +232,31 @@ again:
 	}
 	close(pivec[0]);
 	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
-		fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"),
+				name);
 		return NULL;
 	}
 	if (l == 0) {
-		fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
 		return NULL;
 	}
 	if (l == sizeof xname) {
-		fprintf(stderr, tr(83, "\"%s\": Expansion buffer overflow.\n"),
-			name);
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr,
+				tr(83, "\"%s\": Expansion buffer overflow.\n"),
+				name);
 		return NULL;
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
 		;
 	cp[1] = '\0';
-	if (strchr(xname, ' ') && stat(xname, &sbuf) < 0) {
-		fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
+	if (! (fexpm & FEXP_MULTIOK) && strchr(xname, ' ') &&
+			stat(xname, &sbuf) < 0) {
+		if (! (fexpm & FEXP_SILENT))
+			fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}
 	return savestr(xname);
@@ -385,6 +421,94 @@ again:
 	return n;
 }
 
+int
+(readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
+	size_t *linesize SMALLOC_DEBUG_ARGS)
+{
+	FILE *ifile = (_input != NULL) ? _input : stdin;
+	bool_t doprompt, dotty;
+	int n;
+
+	if (prompt == NULL)
+		prompt = getprompt();
+	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && ! boption("line-editor-disable"));
+
+	for (n = 0;;) {
+		if (dotty) {
+			assert(ifile == stdin);
+			n = (tty_readline)(prompt, linebuf, linesize, n
+				SMALLOC_DEBUG_ARGSCALL);
+		} else {
+			if (doprompt && *prompt) {
+				fputs(prompt, stdout);
+				fflush(stdout);
+			}
+			n = (readline_restart)(ifile, linebuf, linesize, n
+				SMALLOC_DEBUG_ARGSCALL);
+		}
+		if (n <= 0)
+			break;
+		/*
+		 * POSIX says:
+		 * An unquoted <backslash> at the end of a command line
+		 * shall be discarded and the next line shall continue the
+		 * command.
+		 */
+		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
+			(*linebuf)[--n] = '\0';
+			if (*prompt)
+				prompt = ".. "; /* XXX PS2 .. */
+			continue;
+		}
+		if (dotty && (lned & LNED_HIST_ADD))
+			tty_addhist(*linebuf);
+		break;
+	}
+	return n;
+}
+
+char *
+readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
+{
+	/* TODO readstr_input(): linebuf pool */
+	size_t linesize = 0, slen;
+	char *linebuf = NULL, *rv = NULL;
+	bool_t doprompt, dotty;
+
+	if (prompt == NULL)
+		prompt = getprompt();
+	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && ! boption("line-editor-disable"));
+
+	/* If STDIN is not a terminal, simply read from it */
+	if (dotty) {
+		slen = (string != NULL) ? strlen(string) : 0;
+		if (slen) {
+			linesize = slen + LINESIZE + 1;
+			linebuf = smalloc(linesize);
+			if (slen)
+				memcpy(linebuf, string, slen + 1);
+		}
+		if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
+			rv = linebuf;
+	} else {
+		if (doprompt && *prompt) {
+			fputs(prompt, stdout);
+			fflush(stdout);
+		}
+		linesize = slen = 0;
+		linebuf = NULL;
+		if (readline_restart(stdin, &linebuf, &linesize, slen) >= 0)
+			rv = linebuf;
+	}
+
+	if (rv != NULL)
+		rv = (*rv == '\0') ? NULL : savestr(rv);
+	if (linebuf != NULL)
+		free(linebuf);
+	return rv;
+}
 /*
  * Set up the input pointers while copying the mail file into /tmp.
  */
@@ -730,7 +854,7 @@ jshell:
 
 	if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
 			which_protocol(res) == PROTO_FILE) {
-		res = _globname(res);
+		res = _globname(res, fexpm);
 		dyn = TRU1;
 		goto jleave;
 	}
@@ -866,69 +990,6 @@ getdeadletter(void)
 	if (cp == NULL)
 		cp = "dead.letter";
 	return cp;
-}
-
-/*
- * The following code deals with input stacking to do source
- * commands.  All but the current file pointer are saved on
- * the stack.
- */
-
-static int	ssp;			/* Top of file stack */
-struct {
-	FILE		*s_file;	/* File we were in. */
-	enum condition	s_cond;		/* Saved state of conditionals */
-	int		s_loading;	/* Loading .mailrc, etc. */
-#define	SSTACK	20
-} sstack[SSTACK];
-
-int
-source(void *v)
-{
-	char **arglist = v;
-	FILE *fi;
-	char *cp;
-
-	if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
-		return (1);
-	if ((fi = Fopen(cp, "r")) == NULL) {
-		perror(cp);
-		return (1);
-	}
-	if (ssp >= SSTACK - 1) {
-		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
-		Fclose(fi);
-		return (1);
-	}
-	sstack[ssp].s_file = input;
-	sstack[ssp].s_cond = cond;
-	sstack[ssp].s_loading = loading;
-	ssp++;
-	loading = 0;
-	cond = CANY;
-	input = fi;
-	sourcing = TRU1;
-	return(0);
-}
-
-int
-unstack(void)
-{
-	if (ssp <= 0) {
-		fprintf(stderr, tr(4, "\"Source\" stack over-pop.\n"));
-		sourcing = 0;
-		return(1);
-	}
-	Fclose(input);
-	if (cond != CANY)
-		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
-	ssp--;
-	cond = sstack[ssp].s_cond;
-	loading = sstack[ssp].s_loading;
-	input = sstack[ssp].s_file;
-	if (ssp == 0)
-		sourcing = loading;
-	return(0);
 }
 
 static enum okay
@@ -1317,3 +1378,79 @@ int
 	return lp - *line;
 }
 #endif /* HAVE_SOCKETS */
+
+void
+load(char const *name)
+{
+	FILE *in, *oldin;
+
+	if (name == NULL || (in = Fopen(name, "r")) == NULL)
+		return;
+	oldin = _input;
+	_input = in;
+	loading = TRU1;
+	sourcing = TRU1;
+	commands();
+	loading = FAL0;
+	sourcing = FAL0;
+	_input = oldin;
+	Fclose(in);
+}
+
+int
+csource(void *v)
+{
+	int rv = 1;
+	char **arglist = v;
+	FILE *fi;
+	char *cp;
+
+	if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
+		goto jleave;
+	if ((fi = Fopen(cp, "r")) == NULL) {
+		perror(cp);
+		goto jleave;
+	}
+	if (_ssp >= SSTACK - 1) {
+		fprintf(stderr, tr(3, "Too much \"sourcing\" going on.\n"));
+		Fclose(fi);
+		goto jleave;
+	}
+
+	_sstack[_ssp].s_file = _input;
+	_sstack[_ssp].s_cond = cond;
+	_sstack[_ssp].s_loading = loading;
+	++_ssp;
+	loading = FAL0;
+	cond = CANY;
+	_input = fi;
+	sourcing = TRU1;
+	rv = 0;
+jleave:
+	return rv;
+}
+
+int
+unstack(void)
+{
+	int rv = 1;
+
+	if (_ssp <= 0) {
+		fprintf(stderr, tr(4, "\"Source\" stack over-pop.\n"));
+		sourcing = FAL0;
+		goto jleave;
+	}
+
+	Fclose(_input);
+	if (cond != CANY)
+		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
+	--_ssp;
+	cond = _sstack[_ssp].s_cond;
+	loading = _sstack[_ssp].s_loading;
+	_input = _sstack[_ssp].s_file;
+	if (_ssp == 0)
+		sourcing = loading;
+	rv = 0;
+jleave:
+	return rv;
+}

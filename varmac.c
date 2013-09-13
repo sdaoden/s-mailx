@@ -151,6 +151,20 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 				*value = cp;
 		}
 	}
+#if ! defined HAVE_READLINE && ! defined HAVE_EDITLINE &&\
+		defined HAVE_LINE_EDITOR
+	else if (strcmp(name, "line-editor-cursor-right") == 0) {
+		char const *x = cp = *value;
+		int c;
+		while (*x != '\0') {
+			c = expand_shell_escape(&x);
+			if (c < 0)
+				break;
+			*cp++ = (char)c;
+		}
+		*cp++ = '\0';
+	}
+#endif
 
 	if (flag) {
 		if (enable)
@@ -464,15 +478,7 @@ define1(char const *name, int account) /* TODO make static (`account'...)! */
 	mp->ma_flags = account ? MAC_ACCOUNT : MAC_NONE;
 
 	for (;;) {
-		n = 0;
-		for (;;) {
-			n = readline_restart(input, &linebuf, &linesize, n);
-			if (n < 0)
-				break;
-			if (n == 0 || linebuf[n - 1] != '\\')
-				break;
-			linebuf[n - 1] = '\n';
-		}
+		n = readline_input(LNED_LF_ESC, "", &linebuf, &linesize);
 		if (n < 0) {
 			fprintf(stderr,
 				tr(75, "Unterminated %s definition: \"%s\".\n"),

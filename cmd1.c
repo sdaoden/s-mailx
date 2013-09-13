@@ -395,7 +395,7 @@ _parse_head(struct message *mp, char date[FROM_DATEBUF])
 	size_t hsize = 0;
 
 	if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-			(hlen = readline(ibuf, &hline, &hsize)) > 0)
+			(hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
 		(void)extract_date_from_from_(hline, hlen, date);
 	if (hline != NULL)
 		free(hline);
@@ -1144,7 +1144,7 @@ top(void *v)
 		}
 		c = mp->m_lines;
 		for (lines = 0; lines < c && lines <= topl; lines++) {
-			if (readline(ibuf, &linebuf, &linesize) < 0)
+			if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 				break;
 			puts(linebuf);
 

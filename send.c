@@ -1293,7 +1293,7 @@ newfile(struct mimepart *ip, int *ispipe)
 jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 			ip->m_partstring ? ip->m_partstring : "?",
 			ip->m_ct_type_plain);
-		f2 = readtty(": ", f != (char *)-1 ? f : NULL);
+		f2 = readstr_input(": ", f != (char *)-1 ? f : NULL);
 		if (f2 == NULL || *f2 == '\0') {
 			fprintf(stderr, tr(279, "... skipping this\n"));
 			return (NULL);

@@ -69,21 +69,42 @@
 # include "md5.h"
 #endif
 
-/*
- * Announce a fatal error and die.
- */
+/* {hold,rele}_all_sigs() */
+static size_t		_alls_depth;
+static sigset_t		_alls_nset, _alls_oset;
+
 void
-panic(const char *format, ...)
+panic(char const *format, ...)
 {
 	va_list ap;
 
+	fprintf(stderr, tr(1, "Panic: "));
+
 	va_start(ap, format);
-	fprintf(stderr, catgets(catd, CATSET, 1, "panic: "));
 	vfprintf(stderr, format, ap);
 	va_end(ap);
-	fprintf(stderr, catgets(catd, CATSET, 2, "\n"));
+
+	fputs("\n", stderr);
 	fflush(stderr);
 	abort();
+}
+
+void
+hold_all_sigs(void)
+{
+	if (_alls_depth++ == 0) {
+		sigfillset(&_alls_nset);
+		sigdelset(&_alls_nset, SIGKILL);
+		sigdelset(&_alls_nset, SIGSTOP);
+		sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
+	}
+}
+
+void
+rele_all_sigs(void)
+{
+	if (--_alls_depth == 0)
+		sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
 }
 
 void
@@ -697,6 +718,12 @@ makeprint(struct str const *in, struct str *out)
 				n = 1;
 			}
 			if (n < 0) {
+				/* FIXME Why mbtowc() resetting here?
+				 * FIXME what about ISO 2022-JP plus -- those
+				 * FIXME will loose shifts, then!
+				 * FIXME THUS - we'd need special "known points"
+				 * FIXME to do so - say, after a newline!!
+				 * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
 				(void)mbtowc(&wc, NULL, mb_cur_max);
 				wc = utf8 ? 0xFFFD : '?';
 				n = 1;

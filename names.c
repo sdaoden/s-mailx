@@ -500,6 +500,18 @@ jleave:
 	return (top);
 }
 
+struct name *
+grab_names(const char *field, struct name *np, int comma, enum gfield gflags)
+{
+	struct name *nq;
+jloop:
+	np = lextract(readstr_input(field, detract(np, comma)), gflags);
+	for (nq = np; nq != NULL; nq = nq->n_flink)
+		if (is_addr_invalid(nq, 1))
+			goto jloop;
+	return np;
+}
+
 /*
  * Check all addresses in np and delete invalid ones.
  */
