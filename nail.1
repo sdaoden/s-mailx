@@ -1512,7 +1512,7 @@ and must be located on the current server for IMAP.
 Does not reply to other recipients of the original message.
 .It Ic reply
 (r) Takes a message list and sends mail to the sender and all recipients
-of the specified message.
+of the specified messages.
 The default message must not be deleted.
 .It Ic replyall
 Similar to
@@ -2469,6 +2469,11 @@ Setting this variable causes all subparts to be displayed,
 just as if the surrounding part was of type `multipart/mixed'.
 .It Va quiet
 Suppresses the printing of the version when first invoked.
+.It Va quote-as-attachment
+If this is set, then the original message added in its entirety as
+a `message/rfc822' MIME attachment when replying to a message.
+Note this works regardless of the setting of
+.Va quote .
 .It Va recipients-in-cc
 On group replies, specify only the sender of the original mail in `To:'
 and mention it's other recipients in the secondary `Cc:'.
@@ -3056,22 +3061,24 @@ the message body and all MIME parts are included,
 making
 .Va quote
 act like an automatic `~M' command.
+Also see
+.Va quote-as-attachment .
 .It Va quote-fold
-If set in addition to
-.Va indentprefix ,
-\*(UA interprets this number as the maximum line length of the quotation
-when replying to a message.
+\*(OP Can be set in addition to
+.Va indentprefix .
 Setting this turns on a more fancy quotation algorithm in that leading
-quotation characters are compressed and overlong lines are folded to
+quotation characters are compressed and overlong lines are folded.
 .Va quote-fold
-characters each, breaking at whitespace as necessary and starting the
-follow lines with fillers to pad up to the last quotation markers width.
-The value of
-.Va quote-fold
-can't be smaller than the length of
+can be set to either one or two (space separated) numeric values,
+which are interpreted as the maximum (goal) and the minimum line length,
+respectively, in a spirit rather equal to the
+.Xr fmt 1
+program, but line-, not paragraph-based.
+If not set explicitly the minimum will reflect the goal algorithmically.
+The goal can't be smaller than the length of
 .Va indentprefix
 plus some additional pad.
-It is automatically adjusted to the minimum as necessary.
+Necessary adjustments take place silently.
 .It Va record
 If defined, gives the pathname of the folder used to record all outgoing
 mail.
@@ -4214,7 +4221,7 @@ remains intact.
 .An "Kurt Shoens" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
-.An Steffen Qo Daode Qc  Nurpmeso Aq sdaoden@users.sf.net
+.An Steffen Qo Daode Qc Nurpmeso Aq sdaoden@users.sf.net
 .\"
 .\" --  >8  --  8<  --
 .\"

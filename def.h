@@ -159,11 +159,21 @@
 #define HIST_SIZE	242
 
 /*
- * MIME (mime.c)
+ * Filters (filter.c)
  */
 
-/* Is *C* a quoting character (for *quote-fold* compression) */
+/* Quote filter */
+
+/* Is *C* a quoting (ASCII only) character? */
 #define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+
+/* Maximum number of quote characters (not bytes!) that'll be used on
+ * follow lines when compressing leading quote characters */
+#define QUOTE_MAX	42
+
+/*
+ * MIME (mime.c)
+ */
 
 /* Locations of mime.types(5) */
 #define MIME_TYPES_USR	"~/.mime.types"
@@ -375,9 +385,23 @@ struct time_current {
 	char		tc_ctime[32];
 };
 
+struct quoteflt {
+	FILE *		qf_os;		/* Output stream */
+	char const *	qf_pfix;
+	ui_it		qf_pfix_len;	/* Length of prefix: 0: bypass */
+	ui_it		qf_qfold_min;	/* Simple way: wrote prefix? */
+#ifdef HAVE_QUOTE_FMT
+	ui_it		qf_qfold_max;	/* Otherwise: line lengths */
+	ui_it		qf_state;	/* *quote-fold* state machine */
+	struct str	qf_dat;		/* Partial (visual output) line */
+	struct str	qf_currq;	/* Current quote, compressed */
+	mbstate_t	qf_mbps;
+#endif
+};
+
 struct termios_state {
 	struct termios	ts_tios;
-	char		*ts_linebuf;
+	char *		ts_linebuf;
 	size_t		ts_linesize;
 	bool_t		ts_needs_reset;
 };
