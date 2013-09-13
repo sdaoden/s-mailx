@@ -121,12 +121,8 @@ struct cmd const cmdtab[] = {
 	  DS(378, "Invoke an interactive shell") },
 	{ "version",	pversion,	M|NOLIST,	0,	0
 	  DS(413, "Print the MUA version") },
-	{ "group",	group,		M|RAWLIST,	0,	1000
-	  DS(304, "Show all or the specified alias(es), or (re)define one") },
-	{ "ungroup",	ungroup,	M|RAWLIST,	0,	1000
-	  DS(387, "Un\"alias\" <message-list>") },
 	{ "unalias",	ungroup,	M|RAWLIST,	0,	1000
-	  DS(387, "Un\"alias\" <message-list>") },
+	  DS(387, "Un\"alias\" <name-list>") },
 	{ "write",	cwrite,		A|STRLIST,	0,	0
 	  DS(406, "Write (append) to <file>") },
 	{ "from",	from,		A|MSGLIST,	0,	MMNORM

@@ -775,7 +775,7 @@ group(void *v)
 	h = hash(gname);
 	if ((gh = findgroup(gname)) == NULL) {
 		gh = (struct grouphead *)scalloc(1, sizeof *gh);
-		gh->g_name = vcopy(gname);
+		gh->g_name = sstrdup(gname);
 		gh->g_list = NULL;
 		gh->g_link = groups[h];
 		groups[h] = gh;
@@ -789,7 +789,7 @@ group(void *v)
 
 	for (ap = argv+1; *ap != NULL; ap++) {
 		gp = (struct group *)scalloc(1, sizeof *gp);
-		gp->ge_name = vcopy(*ap);
+		gp->ge_name = sstrdup(*ap);
 		gp->ge_link = gh->g_list;
 		gh->g_list = gp;
 	}
@@ -805,8 +805,7 @@ ungroup(void *v)
 	char **argv = v;
 
 	if (*argv == NULL) {
-		printf(catgets(catd, CATSET, 209,
-				"Must specify alias or group to remove\n"));
+		fprintf(stderr, tr(209, "Must specify alias to remove\n"));
 		return 1;
 	}
 	do

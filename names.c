@@ -64,6 +64,8 @@ static struct name *	extract1(char const *line, enum gfield ntype,
 static struct name *	gexpand(struct name *nlist, struct grouphead *gh,
 				int metoo, int ntype);
 
+static void		_remove_grouplist(struct grouphead *gh);
+
 static int
 same_name(char const *n1, char const *n2)
 {
@@ -270,6 +272,20 @@ skip:
 	--depth;
 jleave:
 	return (nlist);
+}
+
+static void
+_remove_grouplist(struct grouphead *gh)
+{
+	struct group *gp, *gq;
+
+	if ((gp = gh->g_list) != NULL) {
+		for (; gp; gp = gq) {
+			gq = gp->ge_link;
+			free(gp->ge_name);
+			free(gp);
+		}
+	}
 }
 
 /*
@@ -924,4 +940,52 @@ jdelall:
 		np = np->n_flink;
 	}
 	goto jleave;
+}
+
+struct grouphead *
+findgroup(char *name)
+{
+	struct grouphead *gh;
+
+	for (gh = groups[hash(name)]; gh != NULL; gh = gh->g_link)
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0)
+			return(gh);
+	return(NULL);
+}
+
+void
+printgroup(char *name)
+{
+	struct grouphead *gh;
+	struct group *gp;
+
+	if ((gh = findgroup(name)) == NULL) {
+		fprintf(stderr, tr(202, "\"%s\": no such alias\n"), name);
+		return;
+	}
+	printf("%s\t", gh->g_name);
+	for (gp = gh->g_list; gp != NULL; gp = gp->ge_link)
+		printf(" %s", gp->ge_name);
+	putchar('\n');
+}
+
+void
+remove_group(const char *name)
+{
+	struct grouphead *gh, *gp = NULL;
+	int h = hash(name);
+
+	for (gh = groups[h]; gh != NULL; gh = gh->g_link) {
+		if (*gh->g_name == *name && strcmp(gh->g_name, name) == 0) {
+			_remove_grouplist(gh);
+			free(gh->g_name);
+			if (gp != NULL)
+				gp->g_link = gh->g_link;
+			else
+				groups[h] = NULL;
+			free(gh);
+			break;
+		}
+		gp = gh;
+	}
 }

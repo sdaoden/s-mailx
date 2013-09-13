@@ -379,8 +379,10 @@ char *	fexpand(char const *name, enum fexp_mode fexpm);
 /* Get rid of queued mail */
 void	demail(void);
 
-/* vars.c hook: *folder* variable has been updated */
-bool_t	var_folder_updated(char **name);
+/* vars.c hook: *folder* variable has been updated; if *folder* shouldn't be
+ * replaced by something else, leave *store* alone, otherwise smalloc() the
+ * desired value (ownership will be taken) */
+bool_t	var_folder_updated(char const *folder, char **store);
 
 /* Determine the current *folder* name, store it in *name* */
 bool_t	getfold(char *name, size_t size);
@@ -565,17 +567,6 @@ int zfree(void *cookie);
 int zread(void *cookie, char *rbp, int num);
 void *zalloc(FILE *fp);
 
-/* macro.c */
-int cdefine(void *v);
-int define1(const char *name, int account);
-int cundef(void *v);
-int ccall(void *v);
-int callaccount(const char *name);
-int callhook(const char *name, int newmail);
-int listaccounts(FILE *fp);
-int cdefines(void *v);
-void delaccount(const char *name);
-
 /* maildir.c */
 int maildir_setfile(const char *name, int newmail, int isedit);
 void maildir_quit(void);
@@ -722,6 +713,16 @@ int		is_myname(char const *name);
 /* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
 struct name *	outof(struct name *names, FILE *fo, struct header *hp,
 			bool_t *senderror);
+
+/* Handling of alias groups */
+
+/* Locate a group name and return it */
+struct grouphead *findgroup(char *name);
+
+/* Print a group out on stdout */
+void		printgroup(char *name);
+
+void		remove_group(char const *name);
 
 /* openssl.c */
 #ifdef USE_OPENSSL
@@ -872,6 +873,11 @@ struct str *	str_concat_csvl(struct str *self, ...);
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 
+/* Hash the passed string; uses Chris Torek's hash algorithm */
+ui_it		strhash(char const *name);
+
+#define hash(S)	(strhash(S) % HSHSIZE) /* xxx COMPAT (?) */
+
 /* Are any of the characters in the two strings the same? */
 int		anyof(char const *s1, char const *s2);
 
@@ -987,22 +993,28 @@ char *	getpassword(char const *query);
  * (so that termios_state.ts_linebuf carries only one) */
 bool_t	getcredentials(char **user, char **pass);
 
-/* vars.c */
+/*
+ * varmac.c
+ */
 
 /* Assign a value to a variable */
 void	assign(char const *name, char const *value);
 
 int	unset_internal(char const *name);
 
-/* Copy a variable string into heap memory, and free such allocated space */
-char *	vcopy(char const *str);
-void	vfree(char *vstr);
-
-char *value(const char *name);
+/* Get the value of an option and return it.
+ * Look in the environment if its not available locally */
+char *	value(const char *name);
 #define boption(V)		(! ! value(V))
-#define soption(V)		value(V)
+#define voption(V)		value(V)
 
-struct grouphead *findgroup(char *name);
-void printgroup(char *name);
-int hash(const char *name);
-void remove_group(const char *name);
+int	cdefine(void *v);
+int	define1(const char *name, int account);
+int	cundef(void *v);
+int	ccall(void *v);
+int	callhook(char const *name, int newmail);
+int	cdefines(void *v);
+
+int	callaccount(char const *name);
+int	listaccounts(FILE *fp);
+void	delaccount(char const *name);
