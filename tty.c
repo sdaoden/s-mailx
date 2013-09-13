@@ -211,7 +211,7 @@ _rl_pre_input(void)
 {
    /* Handle leftover data from \ escaped former line */
    rl_extend_line_buffer(_rl_buflen + 10);
-   strcpy(rl_line_buffer, _rl_buf);
+   memcpy(rl_line_buffer, _rl_buf, _rl_buflen + 1);
    rl_point = rl_end = _rl_buflen;
    rl_pre_input_hook = (rl_hook_func_t*)NULL;
    rl_redisplay();
