@@ -143,8 +143,7 @@ getmsglist(char *buf, int *vector, int flags)
 #define	CMFLAG		040		/* Flagged messages */
 #define	CMANSWER	0100		/* Answered messages */
 #define	CMDRAFT		0200		/* Draft messages */
-#define	CMKILL		0400		/* Killed messages */
-#define	CMJUNK		01000		/* Junk messages */
+#define	CMSPAM		0400		/* Spam messages */
 
 /*
  * The following table describes the letters which can follow
@@ -165,8 +164,7 @@ static struct coltab {
 	{ 'f',		CMFLAG,		MFLAGGED,	MFLAGGED },
 	{ 'a',		CMANSWER,	MANSWERED,	MANSWERED },
 	{ 't',		CMDRAFT,	MDRAFTED,	MDRAFTED },
-	{ 'k',		CMKILL,		MKILL,		MKILL },
-	{ 'j',		CMJUNK,		MJUNK,		MJUNK },
+	{ 's',		CMSPAM,		MSPAM,		MSPAM },
 	{ 0,		0,		0,		0 }
 };
 
@@ -290,8 +288,7 @@ number:
 				}
 			} while (message[i-1].m_flag == MHIDDEN ||
 				(message[i-1].m_flag & MDELETED) !=
-					(unsigned)f ||
-				(message[i-1].m_flag & MKILL));
+					(unsigned)f);
 			mark(i, f);
 			break;
 
@@ -314,8 +311,7 @@ number:
 					}
 				} while ((message[i-1].m_flag & MHIDDEN) ||
 						(message[i-1].m_flag & MDELETED)
-							!= (unsigned)f ||
-						(message[i-1].m_flag & MKILL));
+							!= (unsigned)f);
 				mark(i, f);
 			}
 			break;
@@ -555,8 +551,7 @@ number:
 			struct coltab *colp;
 
 			if (!inhook) {
-				printf(catgets(catd, CATSET, 123,
-						"No messages satisfy"));
+				printf(tr(123, "No messages satisfy"));
 				for (colp = &coltab[0]; colp->co_char; colp++)
 					if (colp->co_bit & colmod)
 						printf(" :%c", colp->co_char);
@@ -1122,7 +1117,7 @@ metamess(int meta, int f)
 		 */
 		mp = mb.mb_threaded ? threadroot : &message[0];
 		while (mp < &message[msgCount]) {
-			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
+			if (!(mp->m_flag & MHIDDEN) &&
 					(mp->m_flag & MDELETED) == (unsigned)f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {
@@ -1144,7 +1139,7 @@ metamess(int meta, int f)
 		mp = mb.mb_threaded ? this_in_thread(threadroot, -1) :
 			&message[msgCount-1];
 		while (mp >= &message[0]) {
-			if (!(mp->m_flag & (MHIDDEN|MKILL)) &&
+			if (!(mp->m_flag & MHIDDEN) &&
 					(mp->m_flag & MDELETED) == (unsigned)f)
 				return(mp - &message[0] + 1);
 			if (mb.mb_threaded) {

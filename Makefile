@@ -52,10 +52,10 @@ PATHDEFS	= -DSYSCONFRC='"$(SYSCONFRC)"' -DMAILSPOOL='"$(MAILSPOOL)"' \
 
 OBJ = attachments.o auxlily.o cmd1.o cmd2.o cmd3.o cmdtab.o collect.o \
 	dotlock.o edit.o filter.o fio.o head.o \
-	imap.o imap_cache.o imap_search.o junk.o lex.o list.o lzw.o \
+	imap.o imap_cache.o imap_search.o lex.o list.o lzw.o \
 	maildir.o main.o md5.o mime.o mime_cte.o names.o \
 	openssl.o pop3.o popen.o quit.o \
-	send.o sendout.o smtp.o ssl.o strings.o thread.o tty.o \
+	send.o sendout.o smtp.o spam.o ssl.o strings.o thread.o tty.o \
 	varmac.o version.o
 
 .SUFFIXES: .o .c .y
@@ -71,7 +71,7 @@ $(SID)$(NAIL): $(OBJ)
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.c
-md5.o imap.o smtp.o auxlily.o pop3.o junk.o: md5.h
+md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
 mime.o: mime_types.h
 
 config.h: user.conf makeconfig Makefile

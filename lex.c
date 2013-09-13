@@ -866,12 +866,12 @@ int
 newfileinfo(void)
 {
 	struct message *mp;
-	int u, n, mdot, d, s, hidden, killed, moved;
+	int u, n, mdot, d, s, hidden, moved;
 
 	if (mb.mb_type == MB_VOID)
 		return 1;
 	mdot = getmdot(0);
-	s = d = hidden = killed = moved =0;
+	s = d = hidden = moved =0;
 	for (mp = &message[0], n = 0, u = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW)
 			n++;
@@ -885,8 +885,6 @@ newfileinfo(void)
 			s++;
 		if (mp->m_flag & MHIDDEN)
 			hidden++;
-		if (mp->m_flag & MKILL)
-			killed++;
 	}
 	_update_mailname(NULL);
 	printf(tr(103, "\"%s\": "), displayname);
@@ -906,8 +904,6 @@ newfileinfo(void)
 		printf(tr(136, " %d moved"), moved);
 	if (hidden > 0)
 		printf(tr(139, " %d hidden"), hidden);
-	if (killed > 0)
-		printf(tr(144, " %d killed"), killed);
 	if (mb.mb_type == MB_CACHE)
 		printf(" [Disconnected]");
 	else if (mb.mb_perm == 0)
@@ -922,7 +918,7 @@ getmdot(int newmail)
 	struct message	*mp;
 	char	*cp;
 	int	mdot;
-	enum mflag	avoid = MHIDDEN|MKILL|MDELETED;
+	enum mflag	avoid = MHIDDEN|MDELETED;
 
 	if (!newmail) {
 		if (value("autothread"))
