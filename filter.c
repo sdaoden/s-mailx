@@ -24,7 +24,7 @@
  * Quotation filter
  */
 
-#undef HAVE_QUOTE_FOLD
+#undef HAVE_QUOTE_FOLD /* TODO disabled for v14.4, not multibyte aware */
 
 #ifdef HAVE_QUOTE_FOLD
 CTASSERT(QUOTE_MAX > 3);
