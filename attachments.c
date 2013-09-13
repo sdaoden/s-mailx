@@ -108,7 +108,7 @@ static struct attachment *
 _read_attachment_data(struct attachment *ap, ui_it number)
 {
 	char prefix[80 * 2];
-	char const *cslc, *cp, *defcs;
+	char const *cslc = NULL/*cc uninit?*/, *cp, *defcs;
 
 	if (ap == NULL)
 		ap = csalloc(1, sizeof *ap);

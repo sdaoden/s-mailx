@@ -265,6 +265,7 @@ _spam_interact(struct spam_vc *vc)
    vc->ohup = safe_signal(SIGHUP, &__spam_onsig);
    vc->oint = safe_signal(SIGINT, &__spam_onsig);
    /* Keep sigs blocked */
+   pid = 0; /* cc uninit */
 
    if (! pipe_cloexec(p2c)) {
       perror("pipe"); /* XXX tr() */
