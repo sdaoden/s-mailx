@@ -76,7 +76,7 @@ void relseint(void);
 void touch(struct message *mp);
 int is_dir(char const *name);
 int argcount(char **argv);
-char *colalign(const char *cp, int col, int fill);
+char *colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
@@ -131,7 +131,10 @@ void cwrelse(struct cw *cw);
 void makeprint(struct str const *in, struct str *out);
 char *prstr(const char *s);
 int prout(const char *s, size_t sz, FILE *fp);
-int putuc(int u, int c, FILE *fp);
+
+/* Print out a Unicode character or a substitute for it, return 0 on error or
+ * wcwidth() (or 1) on success */
+size_t	putuc(int u, int c, FILE *fp);
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 void	time_current_update(struct time_current *tc, bool_t full_update);
