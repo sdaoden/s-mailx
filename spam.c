@@ -228,7 +228,6 @@ __spam_onsig(int sig) /* TODO someday, we won't need it no more */
 static bool_t
 _spam_interact(struct spam_vc *vc)
 {
-   char *cp;
    int p2c[2], c2p[2];
    sigset_t cset;
    size_t size;
@@ -295,7 +294,7 @@ _spam_interact(struct spam_vc *vc)
    /* Yes, we could send(SEND_MBOX), but the simply passing through the MBOX
     * content does the same in effect, but is much more efficient
     * NOTE: this may mean we pass a message without From_ line! */
-   for (cp = vc->buffer, size = vc->mp->m_size; size > 0;) {
+   for (size = vc->mp->m_size; size > 0;) {
       size_t i = fread(vc->buffer, 1, MIN(size, BUFFER_SIZE), ibuf);
       if (i == 0) {
          if (ferror(ibuf))
