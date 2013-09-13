@@ -971,6 +971,7 @@ char *		sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 int		asccasecmp(char const *s1, char const *s2);
 int		ascncasecmp(char const *s1, char const *s2, size_t sz);
 char const *	asccasestr(char const *haystack, char const *xneedle);
+bool_t		is_asccaseprefix(char const *as1, char const *as2);
 
 /* struct str related support funs */
 
