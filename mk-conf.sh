@@ -72,8 +72,9 @@ tmp=./${tmp0}1$$
 < ${conf} sed -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' > ${tmp}
 while read line; do
    i=`echo ${line} | sed -e 's/=.*$//'`
-   eval j=\$${i}
+   eval j="\$${i}" jx="\${${i}+x}"
    [ -n "${j}" ] && continue
+   [ "${jx}" = x ] && continue
    eval ${line}
 done < ${tmp}
 
@@ -106,6 +107,8 @@ while read line; do
    fi
    printf "${i} = ${j}\n" >> ${newmk}
 done < ${tmp}
+printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
+printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
 if [ -f ${lst} ] && "${CMP}" ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
@@ -126,9 +129,8 @@ inc=./config.inc
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "rm -f ${h} ${lib} ${inc} ${makefile}; exit" 1 2 15
+trap "rm -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit" 1 2 15
 trap "rm -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
-rm -f ${lib} ${inc}
 
 exec 5>&2 > ${log} 2>&1
 : > ${lib}
@@ -231,6 +233,7 @@ if [ -n "${C_INCLUDE_PATH}" ]; then
    IFS=:
    set -- ${C_INCLUDE_PATH}
    IFS=${i}
+   # for i; do -- new in POSIX Issue 7 + TC1
    for i
    do
       [ "${i}" = '/usr/pkg/include' ] && continue
@@ -245,6 +248,7 @@ if [ -n "${LD_LIBRARY_PATH}" ]; then
    IFS=:
    set -- ${LD_LIBRARY_PATH}
    IFS=${i}
+   # for i; do -- new in POSIX Issue 7 + TC1
    for i
    do
       [ "${i}" = '/usr/pkg/lib' ] && continue
@@ -265,7 +269,7 @@ echo '#define _GNU_SOURCE' >> ${h}
 link_check hello 'if a hello world program can be built' <<\! || {\
    echo >&5 'This oooops is most certainly not related to me.';\
    echo >&5 "Read the file ${log} and check your compiler environment.";\
-   rm ${lst} ${h}; exit 1;\
+   rm ${lst} ${h} ${mk}; exit 1;\
 }
 #include <stdio.h>
 
@@ -792,7 +796,7 @@ if wantfeat LINE_EDITOR && [ -z "${have_editline}" ] &&\
    echo "#define HAVE_LINE_EDITOR" >> ${h}
 else
    echo '/* WANT_{LINE_EDITOR,EDITLINE,EDITLINE_READLINE}=0 */' >> ${h}
-fi # wantfeat LINE_EDITOR+
+fi
 
 if wantfeat QUOTE_FOLD &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then

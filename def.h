@@ -89,16 +89,19 @@
 
 #define CBAD		(-15555)
 
-/* These come from the configuration */
-#ifndef SHELL
-# define SHELL		"/bin/sh"
+/* These come from the configuration (named Xxy to not clash with sh(1)..) */
+#ifndef XSHELL
+# define XSHELL		"/bin/sh"
 #endif
-#ifndef LISTER
-# define LISTER		"ls"
+#define SHELL		XSHELL
+#ifndef XLISTER
+# define XLISTER	"ls"
 #endif
-#ifndef PAGER
-# define PAGER		"more"
+#define LISTER		XLISTER
+#ifndef XPAGER
+# define XPAGER		"more"
 #endif
+#define PAGER		XPAGER
 
 /*
  * Funs, CC support etc.

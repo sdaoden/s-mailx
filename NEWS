@@ -1,6 +1,38 @@
 S - n a i l  N e w s
 ====================
 
+v14.4.1, 2013-09-14
+-------------------
+
+How terrible.
+
+- Fix some harmless stylos and typos in the manual and `conf.rc'.
+  [1a6b880, 417b066]
+
+- Ensure *complete* proper cleanup on signal-caused configuration run
+  aborts. [7a08bda]
+
+- Bugfix: reenable empty configuration variable overrides, as in
+
+    $ make install SID= NAIL=mailx ...
+  [171861d]
+
+- Bugfix: rename the `conf.rc' variables SHELL, LISTER and PAGER because
+  they clash with the POSIX standard variables of the same names, which
+  hurts now that the configuration is run through the shell itself.
+  The configuration names are now XSHELL, XLISTER and XPAGER (ouch).
+  [ef93c4e]
+
+- nail.rc: comment out some non-portable S-nail(1) specifics, for those
+  who install this file as mailx.rc or so, somewhere. [3f14b01]
+
+- From now on S-nail will use simple version tags, as, e.g., `14.4.1',
+  i.e., no more `s-nail-14.4.1'. [a75437d, 183d59c] (Jürgen Daubert)
+
+  Also move UAGENT out of `version.h' [f7be5be]
+
+Uh! v14.4 must have originated in a bad dream; good it's vanished.
+
 v14.4, 2013-09-13
 -----------------
 
