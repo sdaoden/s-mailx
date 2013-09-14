@@ -1,4 +1,4 @@
-#@ make.conf can be used adjust the set of desired features, paths, etc.
+#@ conf.rc can be used adjust the set of desired features, paths, etc.
 #@ You should have read `INSTALL' first.
 #@ Notes:
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
