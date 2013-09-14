@@ -84,13 +84,13 @@ set pipe-application/xml-dtd=@
 set pipe-application/xslt+xml=@
 
 # A nice prompt for ISO 6429/ECMA-48 terminals
-set prompt="\033[31m?\?$ \033[0m"
+#set prompt="\033[31m?\?$ \033[0m"
 
 # Immediately start $EDITOR (/ $VISUAL) when composing a message
-set editalong
+#set editalong
 
 # Try to circumvent false or missing content-type descriptions
-set mime-counter-evidence
+#set mime-counter-evidence
 
 # Don't load any mime.types(5) file, only depend on builtin types
-set mimetypes-load-control
+#set mimetypes-load-control
