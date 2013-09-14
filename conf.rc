@@ -142,13 +142,19 @@ SENDMAIL_PROGNAME=sendmail
 # Fallback sh(1) path.
 # Note that it is not guaranteed that *all* uses of the shell use this, but it
 # may actually happen that execlp(2) will need to fallback to its own one.
-SHELL=/bin/sh
+# (Note: this is named XSHELL so that it doesn't clash with the POSIX
+# standard $SHELL, which would effectively cause this setting to be ignored)
+XSHELL=/bin/sh
 
 # The default *LISTER* (in the $PATH).
-LISTER=ls
+# (Note: this is named XLISTER so that it doesn't clash with the POSIX
+# standard $LISTER, which would effectively cause this setting to be ignored)
+XLISTER=ls
 
 # The default *PAGER* (in the $PATH).
-PAGER=more
+# (Note: this is named XPAGER so that it doesn't clash with the POSIX standard
+# $PAGER, which would effectively cause this setting to be ignored)
+XPAGER=more
 
 # Build+Install: the cmp(1) command (in the $PATH)
 CMP=cmp
