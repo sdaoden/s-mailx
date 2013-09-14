@@ -112,16 +112,16 @@ _update-version:
 _update-release:
 	echo 'Name of release tag:';\
 	read REL;\
-	echo "Is <$(SID)$(NAIL)-$${REL}> correct?  ENTER continues";\
+	echo "Is $(SID)$(NAIL) <$${REL}> correct?  ENTER continues";\
 	read i;\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h &&\
-	git commit -m "Bump $(SID)$(NAIL)-$${REL}" &&\
-	git tag -f "$(SID)$(NAIL)-$${REL}" &&\
+	git commit -m "Bump $(SID)$(NAIL) $${REL}" &&\
+	git tag -f "$${REL}" &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h && git commit --amend &&\
-	git tag -f "$(SID)$(NAIL)-$${REL}" &&\
+	git tag -f "$${REL}" &&\
 	git archive --prefix="$(SID)$(NAIL)-$${REL}/" \
 		-o "$${TMPDIR}/$(SID)$(NAIL)-$${FREL}.tar.gz" HEAD &&\
 	cd "$${TMPDIR}" &&\
