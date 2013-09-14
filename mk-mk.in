@@ -102,23 +102,23 @@ distclean: clean
 _update-version:
 	@[ -z "$(VERSION)" ] && eval VERSION="`git describe --tags`";\
 	trap "rm version.tmp" 0 1 2 15;\
-	printf > version.tmp "#define VERSION \"$${VERSION:-huih buh}\"\n";\
+	printf > version.tmp "#define VERSION \"$${VERSION:-vHuih-Buh}\"\n";\
 	$(CMP) version.tmp version.h >/dev/null 2>&1 && exit;\
 	mv version.tmp version.h; trap -- - 0 1 2 15
 
 _update-release:
 	echo 'Name of release tag:';\
 	read REL;\
-	echo "Is $(UAGENT) <$${REL}> correct?  ENTER continues";\
+	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
 	read i;\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h &&\
-	git commit -m "Bump $(UAGENT) $${REL}" &&\
-	git tag -f "$${REL}" &&\
+	git commit -m "Bump $(UAGENT) v$${REL}" &&\
+	git tag -f "v$${REL}" &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h && git commit --amend &&\
-	git tag -f "$${REL}" &&\
+	git tag -f "v$${REL}" &&\
 	git archive --prefix="$(UAGENT)-$${REL}/" \
 		-o "$${TMPDIR}/$(UAGENT)-$${FREL}.tar.gz" HEAD &&\
 	cd "$${TMPDIR}" &&\
@@ -136,7 +136,7 @@ _update-release:
 	echo 'All seems fine' &&\
 	cd "$(UAGENT)-$${REL}" &&\
 	make WANT_ASSERTS=1 &&\
-	./s-nail -s "Announcing S-nail $${REL}" -c nail-cc nail &&\
+	./s-nail -s "Announcing S-nail v$${REL}" -c nail-cc nail &&\
 	cd .. &&\
 	rm -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
