@@ -1,4 +1,3 @@
-
 # Until the codebase has been overhauled (and the overhauling has itself been
 # debugged :) you may read INSTALL for hints.  But otherwise:
 # You are on your own if you turn on fancy compiler features.
@@ -19,14 +18,14 @@ CFLAGS		= -O1
 	@echo CC $<; $(CC) $(CFLAGS) $(WARN) $(INCLUDES) -c $<
 .c .y: ;
 
-all: echoes $(SID)$(NAIL)
-	@echo "$(SID)$(NAIL): ready"
+all: echoes $(UAGENT)
+	@echo "$(UAGENT): ready"
 echoes:
 	@echo "Starting compilation";\
 		echo "CC: $(CC) $(CFLAGS) $(WARN)";\
 		echo "[INCS: $(INCLUDES)]";\
 		echo "[LIBS: $(LIBS)]"
-$(SID)$(NAIL): $(OBJ)
+$(UAGENT): $(OBJ)
 	@$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
@@ -39,19 +38,19 @@ mime_types.h: mime.types
 	< mime.types > $@ sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 mkman.1: nail.1
-	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
+	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< nail.1 > $@ awk 'BEGIN {written = 0}\
 	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ {\
 		if (written == 1)\
 			next;\
 		written = 1;\
 		OFS = "";\
-		unail = toupper(ENVIRON["_NAIL"]);\
-		lnail = tolower(unail);\
-		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2);\
-		print ".ds UU \\\\%", unail;\
-		print ".ds UA \\\\%", cnail;\
-		print ".ds ua \\\\%", lnail;\
+		un = toupper(ENVIRON["_UAGENT"]);\
+		ln = tolower(un);\
+		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
+		print ".ds UU \\\\%", un;\
+		print ".ds UA \\\\%", cn;\
+		print ".ds ua \\\\%", ln;\
 		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
 		OFS = " ";\
 		next\
@@ -60,17 +59,17 @@ mkman.1: nail.1
 	'
 
 mkrc.rc: nail.rc
-	_SYSCONFRC="$(SYSCONFRC)" _NAIL="$(SID)$(NAIL)" \
+	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< nail.rc > $@ awk 'BEGIN {written = 0}\
 	/#--MKRC-START--/, /#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
 		written = 1;\
 		OFS = "";\
-		lnail = tolower(ENVIRON["_NAIL"]);\
-		cnail = toupper(substr(lnail, 1, 1)) substr(lnail, 2);\
+		ln = tolower(ENVIRON["_UAGENT"]);\
+		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
 		print "# ", ENVIRON["_SYSCONFRC"];\
-		print "# Configuration file for ", cnail, "(1)";\
+		print "# Configuration file for ", cn, "(1)";\
 		OFS = " ";\
 		next\
 	}\
@@ -79,23 +78,23 @@ mkrc.rc: nail.rc
 
 install: all mkman.1 mkrc.rc
 	test -d "$(DESTDIR)$(BINDIR)" || mkdir -p "$(DESTDIR)$(BINDIR)";\
-	$(INSTALL) -c "$(SID)$(NAIL)" "$(DESTDIR)$(BINDIR)/$(SID)$(NAIL)";\
-	$(STRIP) "$(DESTDIR)$(BINDIR)/$(SID)$(NAIL)";\
+	$(INSTALL) -c "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	test -d "$(DESTDIR)$(MANDIR)/man1" ||\
 		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
 	$(INSTALL) -c -m 644 mkman.1 \
-		"$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1";\
+		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	test -d "$(DESTDIR)$(SYSCONFDIR)" ||\
 		mkdir -p "$(DESTDIR)$(SYSCONFDIR)";\
 	test -f "$(DESTDIR)$(SYSCONFRC)" ||\
 		$(INSTALL) -c -m 644 mkrc.rc "$(DESTDIR)$(SYSCONFRC)"
 
 uninstall:
-	rm -f "$(DESTDIR)$(BINDIR)/$(SID)$(NAIL)" \
-		"$(DESTDIR)$(MANDIR)/man1/$(SID)$(NAIL).1"
+	rm -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"
 
 clean:
-	rm -f $(OBJ) "$(SID)$(NAIL)" mime_types.h mkman.1 mkrc.rc
+	rm -f $(OBJ) "$(UAGENT)" mime_types.h mkman.1 mkrc.rc
 
 distclean: clean
 	rm -f config.* *.mk
@@ -103,45 +102,43 @@ distclean: clean
 _update-version:
 	@[ -z "$(VERSION)" ] && eval VERSION="`git describe --tags`";\
 	trap "rm version.tmp" 0 1 2 15;\
-	printf > version.tmp "%s\n%s\n" \
-		"#define UAGENT \"$(SID)$(NAIL)\"" \
-		"#define VERSION \"$${VERSION:-huih buh}\"";\
+	printf > version.tmp "#define VERSION \"$${VERSION:-huih buh}\"\n";\
 	$(CMP) version.tmp version.h >/dev/null 2>&1 && exit;\
 	mv version.tmp version.h; trap -- - 0 1 2 15
 
 _update-release:
 	echo 'Name of release tag:';\
 	read REL;\
-	echo "Is $(SID)$(NAIL) <$${REL}> correct?  ENTER continues";\
+	echo "Is $(UAGENT) <$${REL}> correct?  ENTER continues";\
 	read i;\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h &&\
-	git commit -m "Bump $(SID)$(NAIL) $${REL}" &&\
+	git commit -m "Bump $(UAGENT) $${REL}" &&\
 	git tag -f "$${REL}" &&\
 	$(MAKE) -f mk.mk _update-version &&\
 	git add version.h && git commit --amend &&\
 	git tag -f "$${REL}" &&\
-	git archive --prefix="$(SID)$(NAIL)-$${REL}/" \
-		-o "$${TMPDIR}/$(SID)$(NAIL)-$${FREL}.tar.gz" HEAD &&\
+	git archive --prefix="$(UAGENT)-$${REL}/" \
+		-o "$${TMPDIR}/$(UAGENT)-$${FREL}.tar.gz" HEAD &&\
 	cd "$${TMPDIR}" &&\
-	tar -x -z -f "$(SID)$(NAIL)-$${FREL}.tar.gz" &&\
-	rm -f "$(SID)$(NAIL)-$${FREL}.tar.gz" &&\
-	tar -c -z -f "$(SID)$(NAIL)-$${FREL}.tar.gz" "$(SID)$(NAIL)-$${REL}" &&\
-	openssl md5 "$(SID)$(NAIL)-$${FREL}.tar.gz" > \
-		"$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 &&\
-	openssl sha1 "$(SID)$(NAIL)-$${FREL}.tar.gz" >> \
-		"$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 &&\
-	openssl sha256 "$(SID)$(NAIL)-$${FREL}.tar.gz" >> \
-		"$(SID)$(NAIL)-$${FREL}.cksum" 2>&1 &&\
-	echo "-put $(SID)$(NAIL)-$${FREL}.tar.gz" | \
+	tar -x -z -f "$(UAGENT)-$${FREL}.tar.gz" &&\
+	rm -f "$(UAGENT)-$${FREL}.tar.gz" &&\
+	tar -c -z -f "$(UAGENT)-$${FREL}.tar.gz" "$(UAGENT)-$${REL}" &&\
+	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	openssl sha1 "$(UAGENT)-$${FREL}.tar.gz" >> \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	openssl sha256 "$(UAGENT)-$${FREL}.tar.gz" >> \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	echo "-put $(UAGENT)-$${FREL}.tar.gz" | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail &&\
 	echo 'All seems fine' &&\
-	cd "$(SID)$(NAIL)-$${REL}" &&\
+	cd "$(UAGENT)-$${REL}" &&\
 	make WANT_ASSERTS=1 &&\
 	./s-nail -s "Announcing S-nail $${REL}" -c nail-cc nail &&\
 	cd .. &&\
-	rm -rf "$(SID)$(NAIL)-$${REL}" &&\
+	rm -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
 
 # vim:set fenc=utf-8 filetype=make:

@@ -107,6 +107,8 @@ while read line; do
    fi
    printf "${i} = ${j}\n" >> ${newmk}
 done < ${tmp}
+printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
+printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
 if [ -f ${lst} ] && "${CMP}" ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
