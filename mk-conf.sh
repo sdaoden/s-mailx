@@ -72,8 +72,9 @@ tmp=./${tmp0}1$$
 < ${conf} sed -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' > ${tmp}
 while read line; do
    i=`echo ${line} | sed -e 's/=.*$//'`
-   eval j=\$${i}
+   eval j="\$${i}" jx="\${${i}+x}"
    [ -n "${j}" ] && continue
+   [ "${jx}" = x ] && continue
    eval ${line}
 done < ${tmp}
 
