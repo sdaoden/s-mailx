@@ -56,6 +56,9 @@
 # else
 #  define MAXPATHLEN	1024
 # endif
+#elif defined PATH_MAX && MAXPATHLEN < PATH_MAX
+# undef MAXPATHLEN
+# define MAXPATHLEN	PATH_MAX
 #endif
 #if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
 # define LINESIZE	BUFSIZ		/* max readable line width */

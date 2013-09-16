@@ -66,7 +66,6 @@
 #elif defined HAVE_LINE_EDITOR
 # define __NCL
 # include <sys/stat.h>
-# include <limits.h>
 # include <wchar.h>
 # include <wctype.h>
 #endif

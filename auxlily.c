@@ -45,7 +45,6 @@
 #include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <termios.h>
