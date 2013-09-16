@@ -158,6 +158,7 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
       tcgetattr(0, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
       termios_state.ts_needs_reset = TRU1;
+      tios.c_iflag &= ~(ISTRIP);
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
       tcsetattr(0, TCSAFLUSH, &tios);
    }
@@ -1313,6 +1314,7 @@ tty_init(void)
    memcpy(&_ncl_tios.tnew, &_ncl_tios.told, sizeof _ncl_tios.tnew);
    _ncl_tios.tnew.c_cc[VMIN] = 1;
    _ncl_tios.tnew.c_cc[VTIME] = 0;
+   _ncl_tios.tnew.c_iflag &= ~(ISTRIP);
    _ncl_tios.tnew.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 
    _CL_HISTSIZE(hs);
