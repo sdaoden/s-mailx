@@ -1521,10 +1521,14 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	while (cnt > 0) {
 		if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
 			break;
-		if (ascncasecmp("status: ", buf, 8) != 0
-		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
+		/* XXX more checks: The From_ line may be seen when resending */
+		if (ascncasecmp("status: ", buf, 8) != 0 &&
+				strncmp("From ", buf, 5) != 0
+				/* In the headers, is_head() is actually
+				 * overkill, so a simple ^From_ is sufficient.
+				 * ! is_head(buf, c) */
+				)
 			fwrite(buf, sizeof *buf, c, fo);
-		}
 		if (cnt > 0 && *buf == '\n')
 			break;
 	}
