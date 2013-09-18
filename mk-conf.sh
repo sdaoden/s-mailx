@@ -266,10 +266,10 @@ echo "${LIBS}" >> ${lib}
 # without!!  Didn't check this yet (and TinyCore uses different environment).
 echo '#define _GNU_SOURCE' >> ${h}
 
-link_check hello 'if a hello world program can be built' <<\! || {\
+link_check hello 'if a hello world program can be built' << \! || {\
    echo >&5 'This oooops is most certainly not related to me.';\
    echo >&5 "Read the file ${log} and check your compiler environment.";\
-   rm ${lst} ${h} ${mk}; exit 1;\
+   rm -f ${lst} ${h} ${mk}; exit 1;\
 }
 #include <stdio.h>
 
@@ -521,9 +521,7 @@ int main(void)
       WANT_SOCKETS=0
 
    # XXX Shouldn't it be a hard error if there is no socket support, then?
-   [ ${WANT_SOCKETS} -eq 1 ] ||
-      WANT_IPV6=0 WANT_SSL=0 \
-      WANT_IMAP=0 WANT_GSSAPI=0 WANT_POP3=0 WANT_SMTP=0
+   option_update
 else
    echo '/* WANT_SOCKETS=0 */' >> ${h}
 fi # wantfeat SOCKETS
