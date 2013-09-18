@@ -20,9 +20,8 @@ _update-version:
 	@$(_prego) && $(MAKE) -f mk.mk _update-version
 _buh:
 	@WANT_ASSERTS=1 WANT_NOALLOCA=1; export WANT_ASSERTS WANT_NOALLOCA;\
-		$(_prego) &&\
-		$(MAKE) -f mk.mk CFLAGS="$${_CFLAGSDBG}" _update-version &&\
-		$(MAKE) -f mk.mk CFLAGS="$${_CFLAGSDBG}" all
+		$(_prego) && $(MAKE) -f mk.mk _update-version &&\
+		$(MAKE) -f mk.mk all
 _update-release:
 	@$(_prego) && $(MAKE) -f mk.mk _update-release
 

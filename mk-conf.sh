@@ -846,6 +846,11 @@ for i in *.c; do
    printf "`basename ${i} .c`.o " >> ${mk}
 done
 echo >> ${mk}
+if wantfeat ASSERTS; then
+   echo 'CFLAGS = $(EXT_CFLAGS)' >> ${mk}
+else
+   echo 'CFLAGS = $(STD_CFLAGS)' >> ${mk}
+fi
 echo "LIBS = `cat ${lib}`" >> ${mk}
 echo "INCLUDES = `cat ${inc}`" >> ${mk}
 echo >> ${mk}
