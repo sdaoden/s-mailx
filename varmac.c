@@ -71,7 +71,7 @@ static void		_vfree(char *cp);
 
 /* Check for special housekeeping. */
 static bool_t	_check_special_vars(char const *name, bool_t enable,
-			char **value);
+			char **val);
 
 /* If a variable name begins with a lowercase-character and contains at
  * least one '@', it is converted to all-lowercase. This is necessary
@@ -124,7 +124,7 @@ _vfree(char *cp)
 }
 
 static bool_t
-_check_special_vars(char const *name, bool_t enable, char **value)
+_check_special_vars(char const *name, bool_t enable, char **val)
 {
 	/* TODO _check_special_vars --> value cache */
 	char *cp = NULL;
@@ -140,21 +140,21 @@ _check_special_vars(char const *name, bool_t enable, char **value)
 	else if (strcmp(name, "verbose") == 0)
 		flag = OPT_VERBOSE;
 	else if (strcmp(name, "folder") == 0) {
-		rv = var_folder_updated(*value, &cp);
+		rv = var_folder_updated(*val, &cp);
 		if (rv && cp != NULL) {
-			_vfree(*value);
+			_vfree(*val);
 			/* It's smalloc()ed, but ensure we don't leak */
 			if (*cp == '\0') {
-				*value = UNCONST("");
+				*val = UNCONST("");
 				free(cp);
 			} else
-				*value = cp;
+				*val = cp;
 		}
 	}
 #if ! defined HAVE_READLINE && ! defined HAVE_EDITLINE &&\
 		defined HAVE_LINE_EDITOR
 	else if (strcmp(name, "line-editor-cursor-right") == 0) {
-		char const *x = cp = *value;
+		char const *x = cp = *val;
 		int c;
 		while (*x != '\0') {
 			c = expand_shell_escape(&x, FAL0);
@@ -357,17 +357,17 @@ _freelines(struct line *lp)
 }
 
 void
-assign(char const *name, char const *value)
+assign(char const *name, char const *val)
 {
 	struct var *vp;
 	ui_it h;
 	char *oval;
 
-	if (value == NULL) {
-		bool_t save = unset_allow_undefined;
+	if (val == NULL) {
+		bool_t tmp = unset_allow_undefined;
 		unset_allow_undefined = TRU1;
 		unset_internal(name);
-		unset_allow_undefined = save;
+		unset_allow_undefined = tmp;
 		goto jleave;
 	}
 
@@ -383,7 +383,7 @@ assign(char const *name, char const *value)
 		oval = UNCONST("");
 	} else
 		oval = vp->v_value;
-	vp->v_value = _vcopy(value);
+	vp->v_value = _vcopy(val);
 
 	/* Check if update allowed XXX wasteful on error! */
 	if (! _check_special_vars(name, TRU1, &vp->v_value)) {
@@ -465,7 +465,7 @@ jerr:
 }
 
 int
-define1(char const *name, int account) /* TODO make static (`account'...)! */
+define1(char const *name, int acc) /* TODO make static (`account'...)! */
 {
 	int ret = 1, n;
 	struct macro *mp;
@@ -475,14 +475,14 @@ define1(char const *name, int account) /* TODO make static (`account'...)! */
 
 	mp = scalloc(1, sizeof *mp);
 	mp->ma_name = sstrdup(name);
-	mp->ma_flags = account ? MAC_ACCOUNT : MAC_NONE;
+	mp->ma_flags = acc ? MAC_ACCOUNT : MAC_NONE;
 
 	for (;;) {
 		n = readline_input(LNED_LF_ESC, "", &linebuf, &linesize);
 		if (n < 0) {
 			fprintf(stderr,
 				tr(75, "Unterminated %s definition: \"%s\".\n"),
-				account ? "account" : "macro", mp->ma_name);
+				acc ? "account" : "macro", mp->ma_name);
 			if (sourcing)
 				unstack();
 			goto jerr;
@@ -574,7 +574,7 @@ jerr:
 }
 
 int
-callhook(char const *name, int newmail)
+callhook(char const *name, int nmail)
 {
 	int len, r;
 	struct macro *mp;
@@ -593,7 +593,7 @@ callhook(char const *name, int newmail)
 		r = 1;
 		goto jleave;
 	}
-	inhook = newmail ? 3 : 1;
+	inhook = nmail ? 3 : 1;
 	r = _maexec(mp);
 	inhook = 0;
 jleave:

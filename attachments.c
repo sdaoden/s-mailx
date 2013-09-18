@@ -226,7 +226,7 @@ _attach_iconv(struct attachment *ap)
 {
 	struct str oul = {NULL, 0}, inl = {NULL, 0};
 	FILE *fo = NULL, *fi = NULL;
-	size_t count, lbsize;
+	size_t cnt, lbsize;
 	iconv_t icp;
 
 	if ((icp = n_iconv_open(ap->a_charset, ap->a_input_charset))
@@ -242,7 +242,7 @@ _attach_iconv(struct attachment *ap)
 		perror(ap->a_name);
 		goto jerr;
 	}
-	count = fsize(fi);
+	cnt = fsize(fi);
 
 	inl.s = NULL;
 	if ((fo = Ftemp(&inl.s, "aiconv", "w+", 0600, 1)) == NULL) {
@@ -254,8 +254,8 @@ _attach_iconv(struct attachment *ap)
 	Ftfree(&inl.s);
 
 	for (inl.s = NULL, lbsize = 0;;) {
-		if (fgetline(&inl.s, &lbsize, &count, &inl.l, fi, 0) == NULL) {
-			if (! count)
+		if (fgetline(&inl.s, &lbsize, &cnt, &inl.l, fi, 0) == NULL) {
+			if (! cnt)
 				break;
 			perror(tr(195, "I/O read error occurred"));
 			goto jerr;

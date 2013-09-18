@@ -137,19 +137,19 @@ _mt_init(void)
 static void
 __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
 {
-	char const *type;
+	char const *typ;
 	size_t tlen, elen;
 	struct mtnode *mtn;
 
 	if (! alphachar(*line))
 		goto jleave;
 
-	type = line;
+	typ = line;
 	while (blankchar(*line) == 0 && *line != '\0')
 		++line;
 	if (*line == '\0')
 		goto jleave;
-	tlen = (size_t)(line - type);
+	tlen = (size_t)(line - typ);
 
 	while (blankchar(*line) != 0 && *line != '\0')
 		++line;
@@ -170,7 +170,7 @@ __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
 	*tail = mtn;
 	mtn->mt_next = NULL;
 	mtn->mt_mtlen = tlen;
-	memcpy(mtn->mt_line, type, tlen);
+	memcpy(mtn->mt_line, typ, tlen);
 	mtn->mt_line[tlen] = '\0';
 	++tlen;
 	memcpy(mtn->mt_line + tlen, line, elen);

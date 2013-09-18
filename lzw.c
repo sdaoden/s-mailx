@@ -79,6 +79,7 @@ typedef int avoid_empty_file_compiler_warning;
 #define u_short		unsigned short
 #undef u_char
 #define u_char		unsigned char
+#define count		cnt
 
 #define	BITS		16		/* Default bits. */
 #define	HSIZE		69001		/* 95% occupancy */

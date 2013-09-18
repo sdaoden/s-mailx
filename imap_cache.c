@@ -260,7 +260,7 @@ putcache(struct mailbox *mp, struct message *m)
 	FILE	*ibuf, *obuf;
 	char	*name, ob;
 	int	c, oflag;
-	long	n, count, oldoffset, osize, otime, olines = -1;
+	long	n, cnt, oldoffset, osize, otime, olines = -1;
 	char	iob[32768];
 	void	*zp;
 
@@ -319,10 +319,10 @@ putcache(struct mailbox *mp, struct message *m)
 		goto done;
 	fseek(obuf, INITSKIP, SEEK_SET);
 	zp = zalloc(obuf);
-	count = m->m_size;
-	while (count > 0) {
-		n = count > (long)sizeof iob ? (long)sizeof iob : count;
-		count -= n;
+	cnt = m->m_size;
+	while (cnt > 0) {
+		n = cnt > (long)sizeof iob ? (long)sizeof iob : cnt;
+		cnt -= n;
 		if ((size_t)n != fread(iob, 1, n, ibuf) ||
 				n != (long)zwrite(zp, iob, n)) {
 			unlink(name);
@@ -410,7 +410,7 @@ clean(struct mailbox *mp, struct cw *cw)
 	char *cachedir, *eaccount, *buf;
 	char const *emailbox;
 	int bufsz;
-	DIR *dirfd;
+	DIR *dirp;
 	struct dirent *dp;
 	FILE *fp = NULL;
 
@@ -443,9 +443,9 @@ clean(struct mailbox *mp, struct cw *cw)
 		return NULL;
 	if (chdir(buf) < 0)
 		return NULL;
-	if ((dirfd = opendir(".")) == NULL)
+	if ((dirp = opendir(".")) == NULL)
 		goto out;
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.' &&
 				(dp->d_name[1] == '\0' ||
 				 (dp->d_name[1] == '.' &&
@@ -453,7 +453,7 @@ clean(struct mailbox *mp, struct cw *cw)
 			continue;
 		unlink(dp->d_name);
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	fp = Fopen("UIDVALIDITY", "w");
 out:	if (cwret(cw) == STOP) {
 		fputs("Fatal: Cannot change back to current directory.\n",
@@ -469,13 +469,13 @@ builds(long *contentelem)
 	unsigned long	n, *contents = NULL;
 	long	contentalloc = 0;
 	char	*x;
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 
 	*contentelem = 0;
-	if ((dirfd = opendir(".")) == NULL)
+	if ((dirp = opendir(".")) == NULL)
 		return NULL;
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.' &&
 				(dp->d_name[1] == '\0' ||
 				 (dp->d_name[1] == '.' &&
@@ -489,7 +489,7 @@ builds(long *contentelem)
 				(contentalloc += 200) * sizeof *contents);
 		contents[(*contentelem)++] = n;
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	if (*contentelem > 0) {
 		contents[*contentelem] = 0;
 		qsort(contents, *contentelem, sizeof *contents, longlt);
@@ -607,7 +607,7 @@ enum okay
 cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 {
 	char	*name, *cachedir, *eaccount;
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 	const char	*cp, *bp, *sp;
 	int	namesz;
@@ -618,9 +618,9 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	eaccount = urlxenc(mp->mb_imap_account);
 	name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
 	snprintf(name, namesz, "%s/%s", cachedir, eaccount);
-	if ((dirfd = opendir(name)) == NULL)
+	if ((dirp = opendir(name)) == NULL)
 		return STOP;
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.')
 			continue;
 		cp = sp = urlxdec(dp->d_name);
@@ -631,7 +631,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 		cp = strip ? sp : cp;
 		fprintf(fp, "%s\n", *cp ? cp : "INBOX");
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	return OKAY;
 }
 
@@ -639,7 +639,7 @@ enum okay
 cache_remove(const char *name)
 {
 	struct stat	st;
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 	char	*path;
 	int	pathsize, pathend, n;
@@ -652,11 +652,11 @@ cache_remove(const char *name)
 	memcpy(path, dir, pathend);
 	path[pathend++] = '/';
 	path[pathend] = '\0';
-	if ((dirfd = opendir(path)) == NULL) {
+	if ((dirp = opendir(path)) == NULL) {
 		free(path);
 		return OKAY;
 	}
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.' &&
 				(dp->d_name[1] == '\0' ||
 				 (dp->d_name[1] == '.' &&
@@ -670,12 +670,12 @@ cache_remove(const char *name)
 			continue;
 		if (unlink(path) < 0) {
 			perror(path);
-			closedir(dirfd);
+			closedir(dirp);
 			free(path);
 			return STOP;
 		}
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	path[pathend] = '\0';
 	rmdir(path);	/* no error on failure, might contain submailboxes */
 	free(path);
@@ -747,7 +747,7 @@ cache_dequeue(struct mailbox *mp)
 {
 	int	bufsz;
 	char	*cachedir, *eaccount, *buf, *oldbox;
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 
 	if ((cachedir = value("imap-cache")) == NULL ||
@@ -756,16 +756,16 @@ cache_dequeue(struct mailbox *mp)
 	eaccount = urlxenc(mp->mb_imap_account);
 	buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
 	snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
-	if ((dirfd = opendir(buf)) == NULL)
+	if ((dirp = opendir(buf)) == NULL)
 		return OKAY;
 	oldbox = mp->mb_imap_mailbox;
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.')
 			continue;
 		mp->mb_imap_mailbox = urlxdec(dp->d_name);
 		dequeue1(mp);
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	mp->mb_imap_mailbox = oldbox;
 	return OKAY;
 }

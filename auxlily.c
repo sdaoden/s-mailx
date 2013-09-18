@@ -700,7 +700,7 @@ makeprint(struct str const *in, struct str *out)
 
 #if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
 	if (mb_cur_max > 1) {
-		char mb[MB_LEN_MAX + 1];
+		char mbb[MB_LEN_MAX + 1];
 		wchar_t wc;
 		int i, n;
 		out->l = 0;
@@ -733,7 +733,7 @@ makeprint(struct str const *in, struct str *out)
 				else
 					wc = utf8 ? 0x2426 : '?';
 			}
-			if ((n = wctomb(mb, wc)) <= 0)
+			if ((n = wctomb(mbb, wc)) <= 0)
 				continue;
 			out->l += n;
 			if (out->l >= msz - 1) {
@@ -742,7 +742,7 @@ makeprint(struct str const *in, struct str *out)
 				outp = &out->s[dist];
 			}
 			for (i = 0; i < n; i++)
-				*outp++ = mb[i];
+				*outp++ = mbb[i];
 		}
 	} else
 #endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
@@ -798,12 +798,12 @@ putuc(int u, int c, FILE *fp)
 
 #if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
 	if (utf8 && u & ~(wchar_t)0177) {
-		char mb[MB_LEN_MAX];
+		char mbb[MB_LEN_MAX];
 		int i, n;
-		if ((n = wctomb(mb, u)) > 0) {
+		if ((n = wctomb(mbb, u)) > 0) {
 			rv = wcwidth(u);
 			for (i = 0; i < n; ++i)
-				if (putc(mb[i] & 0377, fp) == EOF) {
+				if (putc(mbb[i] & 0377, fp) == EOF) {
 					rv = 0;
 					break;
 				}

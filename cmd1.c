@@ -56,7 +56,7 @@ static int screen;
 static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
 
 static void onpipe(int signo);
-static int dispc(struct message *mp, const char *a);
+static int _dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
 
 /* ... And place the extracted date in `date' */
@@ -355,40 +355,40 @@ endpipe:
 }
 
 static int 
-dispc(struct message *mp, const char *a)
+_dispc(struct message *mp, const char *a)
 {
-	int	dispc = ' ';
+	int i = ' ';
 
 	/*
 	 * Bletch!
 	 */
 	if ((mp->m_flag & (MREAD|MNEW)) == MREAD)
-		dispc = a[3];
+		i = a[3];
 	if ((mp->m_flag & (MREAD|MNEW)) == (MREAD|MNEW))
-		dispc = a[2];
+		i = a[2];
 	if (mp->m_flag & MANSWERED)
-		dispc = a[8];
+		i = a[8];
 	if (mp->m_flag & MDRAFTED)
-		dispc = a[9];
+		i = a[9];
 	if ((mp->m_flag & (MREAD|MNEW)) == MNEW)
-		dispc = a[0];
+		i = a[0];
 	if ((mp->m_flag & (MREAD|MNEW)) == 0)
-		dispc = a[1];
+		i = a[1];
 	if (mp->m_flag & MSPAM)
-		dispc = a[12];
+		i = a[12];
 	if (mp->m_flag & MSAVED)
-		dispc = a[4];
+		i = a[4];
 	if (mp->m_flag & MPRESERVE)
-		dispc = a[5];
+		i = a[5];
 	if (mp->m_flag & (MBOX|MBOXED))
-		dispc = a[6];
+		i = a[6];
 	if (mp->m_flag & MFLAGGED)
-		dispc = a[7];
+		i = a[7];
 	if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
-		dispc = a[11];
+		i = a[11];
 	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
-		dispc = a[10];
-	return dispc;
+		i = a[10];
+	return i;
 }
 
 static void
@@ -607,7 +607,7 @@ jdate_set:
 					c = ' ';
 				goto jputc;
 			case 'a':
-				c = dispc(mp, attrlist);
+				c = _dispc(mp, attrlist);
 jputc:
 				if (ABS(n) > wleft)
 					n = (n < 0) ? -wleft : wleft;

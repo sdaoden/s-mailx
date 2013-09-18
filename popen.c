@@ -85,7 +85,7 @@ struct child {
 static struct child	*child;
 
 static int scan_mode(const char *mode, int *omode);
-static void register_file(FILE *fp, int omode, int pipe, int pid,
+static void register_file(FILE *fp, int omode, int ispipe, int pid,
 		int compressed, const char *realfile, long offset);
 static enum okay compress(struct fp *fpp);
 static int decompress(int compression, int input, int output);
@@ -296,7 +296,7 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 
 FILE *
 Ftemp(char **fn, char const *prefix, char const *mode, int bits,
-	int register_file)
+	int doregfile)
 {
 	FILE *fp = NULL;
 	char *cp;
@@ -326,7 +326,7 @@ Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 		goto jtemperr;
 #endif
 
-	if (register_file)
+	if (doregfile)
 		fp = Fdopen(fd, mode);
 	else {
 		(void)fcntl(fd, F_SETFD, FD_CLOEXEC);
@@ -363,7 +363,7 @@ jleave:
 }
 
 FILE *
-Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
+Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 {
 	int p[2];
 	int myside, hisside, fd0, fd1;
@@ -392,10 +392,10 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 		mod[0] = 'w';
 	}
 	sigemptyset(&nset);
-	if (shell == NULL) {
+	if (sh == NULL) {
 		pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL);
 	} else {
-		pid = start_command(shell, &nset, fd0, fd1, "-c", cmd, NULL);
+		pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL);
 	}
 	if (pid < 0) {
 		close(p[READ]);
@@ -409,7 +409,7 @@ Popen(const char *cmd, const char *mode, const char *shell, int newfd1)
 }
 
 int
-Pclose(FILE *ptr, bool_t wait)
+Pclose(FILE *ptr, bool_t dowait)
 {
 	int pid;
 	sigset_t nset, oset;
@@ -419,7 +419,7 @@ Pclose(FILE *ptr, bool_t wait)
 		return 0;
 	unregister_file(ptr);
 	fclose(ptr);
-	if (wait) {
+	if (dowait) {
 		sigemptyset(&nset);
 		sigaddset(&nset, SIGINT);
 		sigaddset(&nset, SIGHUP);
@@ -442,7 +442,7 @@ close_all_files(void)
 }
 
 static void
-register_file(FILE *fp, int omode, int pipe, int pid, int compressed,
+register_file(FILE *fp, int omode, int ispipe, int pid, int compressed,
 		const char *realfile, long offset)
 {
 	struct fp *fpp;
@@ -450,7 +450,7 @@ register_file(FILE *fp, int omode, int pipe, int pid, int compressed,
 	fpp = (struct fp*)smalloc(sizeof *fpp);
 	fpp->fp = fp;
 	fpp->omode = omode;
-	fpp->pipe = pipe;
+	fpp->pipe = ispipe;
 	fpp->pid = pid;
 	fpp->link = fp_head;
 	fpp->compressed = compressed;

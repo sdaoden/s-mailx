@@ -842,7 +842,7 @@ _ncl_krefresh(struct line *l)
 static size_t
 _ncl_kht(struct line *l)
 {
-   struct str orig, bot, top, sub, exp;
+   struct str orig, bot, topp, sub, exp;
    struct cell *cword, *ctop, *cx;
    bool_t set_savec = FAL0;
    size_t rv = 0;
@@ -865,14 +865,14 @@ _ncl_kht(struct line *l)
    cword = l->line.cells;
    ctop = cword + l->cursor;
 
-   /* top: separate data right of cursor */
+   /* topp: separate data right of cursor */
    if ((cx = cword + l->topins) != ctop) {
       for (rv = 0; cx > ctop; --cx)
          rv += cx->count;
-      top.l = rv;
-      top.s = orig.s + orig.l - rv;
+      topp.l = rv;
+      topp.s = orig.s + orig.l - rv;
    } else
-      top.s = NULL, top.l = 0;
+      topp.s = NULL, topp.l = 0;
 
    /* bot, sub: we cannot expand the entire data left of cursor, but only
     * the last "word", so separate them */
@@ -885,7 +885,7 @@ _ncl_kht(struct line *l)
    bot.l = rv;
    sub.s += rv;
    sub.l -= rv;
-   sub.l -= top.l;
+   sub.l -= topp.l;
 
    if (sub.l > 0) {
       sub.s = savestrbuf(sub.s, sub.l);
@@ -898,14 +898,14 @@ _ncl_kht(struct line *l)
 
       if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
             (exp.l != sub.l || strcmp(exp.s, sub.s))) {
-         orig.l = bot.l + exp.l + top.l;
+         orig.l = bot.l + exp.l + topp.l;
          orig.s = salloc(orig.l + 1);
          rv = bot.l;
          memcpy(orig.s, bot.s, rv);
          memcpy(orig.s + rv, exp.s, exp.l);
          rv += exp.l;
-         memcpy(orig.s + rv, top.s, top.l);
-         rv += top.l;
+         memcpy(orig.s + rv, topp.s, topp.l);
+         rv += topp.l;
          orig.s[rv] = '\0';
 
          l->defc = orig;
@@ -1304,7 +1304,7 @@ tty_init(void)
    long hs;
    char *v, *lbuf;
    FILE *f;
-   size_t lsize, count, llen;
+   size_t lsize, cnt, llen;
 
    _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
    _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
@@ -1333,8 +1333,8 @@ tty_init(void)
 
    lbuf = NULL;
    lsize = 0;
-   count = fsize(f);
-   while (fgetline(&lbuf, &lsize, &count, &llen, f, FAL0) != NULL) {
+   cnt = fsize(f);
+   while (fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL) {
       if (llen > 0 && lbuf[llen - 1] == '\n')
          lbuf[--llen] = '\0';
       if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */

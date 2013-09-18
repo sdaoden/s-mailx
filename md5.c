@@ -300,10 +300,10 @@ MD5Update (
     unsigned int inputLen		/* length of input block */
 )
 {
-	unsigned int i, index, partLen;
+	unsigned int i, idx, partLen;
 
 	/* Compute number of bytes mod 64 */
-	index = context->count[0]>>3 & 0x3F;
+	idx = context->count[0]>>3 & 0x3F;
 
 	/* Update number of bits */
 	if ((context->count[0] = (context->count[0] + (inputLen<<3)) &
@@ -312,24 +312,24 @@ MD5Update (
 	context->count[1] = (context->count[1] + 1) & UINT4B_MAX;
 	context->count[1] = (context->count[1] + (inputLen >> 29)) & UINT4B_MAX;
 
-	partLen = 64 - index;
+	partLen = 64 - idx;
 
 	/*
 	 * Transform as many times as possible.
 	 */
 	if (inputLen >= partLen) {
-		memcpy(&context->buffer[index], input, partLen);
+		memcpy(&context->buffer[idx], input, partLen);
 		MD5Transform(context->state, context->buffer);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
 			MD5Transform(context->state, &input[i]);
 
-		index = 0;
+		idx = 0;
 	} else
 		i = 0;
 
 	/* Buffer remaining input */
-	memcpy(&context->buffer[index], &input[i], inputLen-i);
+	memcpy(&context->buffer[idx], &input[i], inputLen-i);
 }
 
 /*
@@ -343,7 +343,7 @@ MD5Final (
 )
 {
 	unsigned char	bits[8];
-	unsigned int	index, padLen;
+	unsigned int	idx, padLen;
 
 	/* Save number of bits */
 	Encode(bits, context->count, 8);
@@ -351,8 +351,8 @@ MD5Final (
 	/*
 	 * Pad out to 56 mod 64.
 	 */
-	index = context->count[0]>>3 & 0x3f;
-	padLen = index < 56 ? 56 - index : 120 - index;
+	idx = context->count[0]>>3 & 0x3f;
+	padLen = idx < 56 ? 56 - idx : 120 - idx;
 	MD5Update(context, PADDING, padLen);
 
 	/* Append length (before padding) */

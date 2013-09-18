@@ -306,17 +306,17 @@ _prepare_mta_args(struct name *to, struct header *hp)
 	/* -r option?  We may only pass skinned addresses, which is why we do
 	 * not simply call myorigin() (TODO myorigin shouldn't fullname!) */
 	if (options & OPT_r_FLAG) {
-		char const *from;
+		char const *froma;
 
 		if (option_r_arg[0] != '\0')
-			from = option_r_arg;
+			froma = option_r_arg;
 		else if (hp->h_from != NULL)
-			from = hp->h_from->n_name;
+			froma = hp->h_from->n_name;
 		else
-			from = myorigin(hp);
-		if (from != NULL) {
+			froma = myorigin(hp);
+		if (froma != NULL) {
 			args[i++] = "-r";
-			args[i++] = from;
+			args[i++] = froma;
 		}
 	}
 
@@ -436,7 +436,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 	fputs("This is a multi-part message in MIME format.\n", fo);
 	if (fsize(fi) != 0) {
 		char *buf;
-		size_t sz, bufsize, count;
+		size_t sz, bufsize, cnt;
 
 		fprintf(fo, "\n--%s\n", send_boundary);
 		fprintf(fo, "Content-Type: %s", contenttype);
@@ -452,7 +452,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 #endif
 				) {
 			fflush(fi);
-			count = fsize(fi);
+			cnt = fsize(fi);
 		}
 
 		for (;;) {
@@ -461,7 +461,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 					|| iconvd != (iconv_t)-1
 #endif
 					) {
-				if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
+				if (fgetline(&buf, &bufsize, &cnt, &sz, fi, 0)
 						== NULL)
 					break;
 			} else {
@@ -590,7 +590,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 			return NULL;
 		}
 	} else {
-		size_t sz, bufsize, count;
+		size_t sz, bufsize, cnt;
 		char *buf;
 
 		if (convert == CONV_TOQP
@@ -599,7 +599,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 				) {
 			fflush(fi);
-			count = fsize(fi);
+			cnt = fsize(fi);
 		}
 		buf = smalloc(bufsize = INFIX_BUF);
 		for (;;) {
@@ -608,7 +608,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 					|| iconvd != (iconv_t)-1
 #endif
 					) {
-				if (fgetline(&buf, &bufsize, &count, &sz, fi, 0)
+				if (fgetline(&buf, &bufsize, &cnt, &sz, fi, 0)
 						== NULL)
 					break;
 			} else {
@@ -669,7 +669,7 @@ savemail(char const *name, FILE *fi)
 {
 	FILE *fo;
 	char *buf;
-	size_t bufsize, buflen, count;
+	size_t bufsize, buflen, cnt;
 	int prependnl = 0, error = 0;
 
 	buf = smalloc(bufsize = LINESIZE);
@@ -711,8 +711,8 @@ savemail(char const *name, FILE *fi)
 	buflen = 0;
 	fflush(fi);
 	rewind(fi);
-	count = fsize(fi);
-	while (fgetline(&buf, &bufsize, &count, &buflen, fi, 0) != NULL) {
+	cnt = fsize(fi);
+	while (fgetline(&buf, &bufsize, &cnt, &buflen, fi, 0) != NULL) {
 #ifdef HAVE_ASSERTS /* TODO assert legacy */
 		assert(! is_head(buf, buflen));
 #else
@@ -1483,12 +1483,12 @@ static int
 infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 		int add_resent)
 {
-	size_t count, c, bufsize = 0;
+	size_t cnt, c, bufsize = 0;
 	char *buf = NULL;
 	char const *cp;
 	struct name *fromfield = NULL, *senderfield = NULL;
 
-	count = mp->m_size;
+	cnt = mp->m_size;
 	/*
 	 * Write the Resent-Fields.
 	 */
@@ -1518,23 +1518,23 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	/*
 	 * Write the original headers.
 	 */
-	while (count > 0) {
-		if (fgetline(&buf, &bufsize, &count, &c, fi, 0) == NULL)
+	while (cnt > 0) {
+		if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
 			break;
 		if (ascncasecmp("status: ", buf, 8) != 0
 		/*FIXME should not happen! && strncmp("From ", buf, 5) != 0*/) {
 			fwrite(buf, sizeof *buf, c, fo);
 		}
-		if (count > 0 && *buf == '\n')
+		if (cnt > 0 && *buf == '\n')
 			break;
 	}
 	/*
 	 * Write the message body.
 	 */
-	while (count > 0) {
-		if (fgetline(&buf, &bufsize, &count, &c, fi, 0) == NULL)
+	while (cnt > 0) {
+		if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
 			break;
-		if (count == 0 && *buf == '\n')
+		if (cnt == 0 && *buf == '\n')
 			break;
 		fwrite(buf, sizeof *buf, c, fo);
 	}

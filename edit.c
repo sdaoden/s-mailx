@@ -44,7 +44,7 @@
 
 #include "extern.h"
 
-static int edit1(int *msgvec, int type);
+static int edit1(int *msgvec, int viored);
 
 /*
  * Edit a message list.
@@ -74,7 +74,7 @@ visual(void *v)
  * We get the editor from the stuff above.
  */
 static int 
-edit1(int *msgvec, int type)
+edit1(int *msgvec, int viored)
 {
 	int c, i, wb, lastnl;
 	FILE *fp = NULL;
@@ -110,7 +110,7 @@ edit1(int *msgvec, int type)
 
 		sigint = safe_signal(SIGINT, SIG_IGN);
 		--mp->m_size; /* Strip final NL.. */
-		fp = run_editor(fp, -1/*mp->m_size*/, type,
+		fp = run_editor(fp, -1/*mp->m_size*/, viored,
 				(mb.mb_perm & MB_EDIT) == 0 || ! wb,
 				NULL, mp, wb ? SEND_MBOX : SEND_TODISP_ALL,
 				sigint);
@@ -152,20 +152,20 @@ edit1(int *msgvec, int type)
  * Run an editor on the file at "fpp" of "size" bytes,
  * and return a new file pointer.
  * Signals must be handled by the caller.
- * "Type" is 'e' for ed, 'v' for vi.
+ * "viored" is 'e' for ed, 'v' for vi.
  */
 FILE *
-run_editor(FILE *fp, off_t size, int type, int readonly,
+run_editor(FILE *fp, off_t size, int viored, int readonly,
 		struct header *hp, struct message *mp, enum sendaction action,
 		sighandler_type oldint)
 {
 	FILE *nf = NULL;
 	int t;
 	time_t modtime;
-	char const *editor;
+	char const *ed;
 	struct stat statb;
 	char *tempEdit;
-	sigset_t set;
+	sigset_t cset;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600, 1))
 			== NULL) {
@@ -207,10 +207,10 @@ run_editor(FILE *fp, off_t size, int type, int readonly,
 	}
 	nf = NULL;
 
-	if ((editor = value(type == 'e' ? "EDITOR" : "VISUAL")) == NULL)
-		editor = (type == 'e') ? "ed" : "vi";
-	sigemptyset(&set);
-	if (run_command(editor, oldint != SIG_IGN ? &set : NULL, -1, -1,
+	if ((ed = value(viored == 'e' ? "EDITOR" : "VISUAL")) == NULL)
+		ed = (viored == 'e') ? "ed" : "vi";
+	sigemptyset(&cset);
+	if (run_command(ed, oldint != SIG_IGN ? &cset : NULL, -1, -1,
 				tempEdit, NULL, NULL) < 0)
 		goto out;
 

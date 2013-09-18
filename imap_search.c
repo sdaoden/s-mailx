@@ -614,7 +614,7 @@ mkenvelope(struct name *np)
 {
 	size_t	epsize;
 	char	*ep;
-	char	*realname = NULL, *sourceaddr = NULL,
+	char	*realnam = NULL, *sourceaddr = NULL,
 		*localpart = NULL, *domainpart = NULL,
 		*cp, *rp, *xp, *ip;
 	struct str	in, out;
@@ -669,7 +669,7 @@ mkenvelope(struct name *np)
 	}
 done:	*rp = '\0';
 	if (hadphrase)
-		realname = ip;
+		realnam = ip;
 	free(out.s);
 	localpart = savestr(np->n_name);
 	if ((cp = strrchr(localpart, '@')) != NULL) {
@@ -678,7 +678,7 @@ done:	*rp = '\0';
 	}
 	ep = salloc(epsize = strlen(np->n_fullname) * 2 + 40);
 	snprintf(ep, epsize, "(%s %s %s %s)",
-			realname ? imap_quotestr(realname) : "NIL",
+			realnam ? imap_quotestr(realnam) : "NIL",
 			sourceaddr ? imap_quotestr(sourceaddr) : "NIL",
 			localpart ? imap_quotestr(localpart) : "NIL",
 			domainpart ? imap_quotestr(domainpart) : "NIL");
@@ -690,7 +690,7 @@ static int
 matchmsg(struct message *m, const char *what, int withheader)
 {
 	char	*tempFile, *line = NULL;
-	size_t	linesize, linelen, count;
+	size_t	linesize, linelen, cnt;
 	FILE	*fp;
 	int	yes = 0;
 
@@ -702,15 +702,15 @@ matchmsg(struct message *m, const char *what, int withheader)
 		goto out;
 	fflush(fp);
 	rewind(fp);
-	count = fsize(fp);
+	cnt = fsize(fp);
 	line = smalloc(linesize = LINESIZE);
 	linelen = 0;
 	if (!withheader)
-		while (fgetline(&line, &linesize, &count, &linelen, fp, 0))
+		while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0))
 			if (*line == '\n')
 				break;
 	what = imap_unquotestr(what);
-	while (fgetline(&line, &linesize, &count, &linelen, fp, 0))
+	while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0))
 		if (substr(line, what)) {
 			yes = 1;
 			break;

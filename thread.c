@@ -67,7 +67,7 @@ static unsigned mhash(const char *cp, int mprime);
 static struct mitem *mlook(char *id, struct mitem *mt, struct message *mdata,
 		int mprime);
 static void adopt(struct message *parent, struct message *child, int dist);
-static struct message *interlink(struct message *m, long count, int newmail);
+static struct message *interlink(struct message *m, long cnt, int nmail);
 static void finalize(struct message *mp);
 #ifdef HAVE_SPAM
 static int muilt(void const *a, void const *b);
@@ -75,7 +75,7 @@ static int muilt(void const *a, void const *b);
 static int mlonglt(const void *a, const void *b);
 static int mcharlt(const void *a, const void *b);
 static void lookup(struct message *m, struct mitem *mi, int mprime);
-static void makethreads(struct message *m, long count, int newmail);
+static void makethreads(struct message *m, long cnt, int nmail);
 static char const *skipre(char const *cp);
 static int colpt(int *msgvec, int cl);
 static void colps(struct message *b, int cl);
@@ -231,17 +231,17 @@ adopt(struct message *parent, struct message *child, int dist)
  * links.
  */
 static struct message *
-interlink(struct message *m, long count, int newmail)
+interlink(struct message *m, long cnt, int nmail)
 {
 	int	i;
 	long	n;
 	struct msort	*ms;
 	struct message	*root;
-	int	autocollapse = !newmail && !(inhook&2) &&
+	int	autocollapse = !nmail && !(inhook&2) &&
 			value("autocollapse") != NULL;
 
-	ms = smalloc(sizeof *ms * count);
-	for (n = 0, i = 0; i < count; i++) {
+	ms = smalloc(sizeof *ms * cnt);
+	for (n = 0, i = 0; i < cnt; i++) {
 		if (m[i].m_parent == NULL) {
 			if (autocollapse)
 				colps(&m[i], 1);
@@ -353,17 +353,17 @@ lookup(struct message *m, struct mitem *mi, int mprime)
 }
 
 static void 
-makethreads(struct message *m, long count, int newmail)
+makethreads(struct message *m, long cnt, int nmail)
 {
 	struct mitem	*mt;
 	char	*cp;
 	long	i, mprime;
 
-	if (count == 0)
+	if (cnt == 0)
 		return;
-	mprime = nextprime(count);
+	mprime = nextprime(cnt);
 	mt = scalloc(mprime, sizeof *mt);
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < cnt; i++) {
 		if ((m[i].m_flag&MHIDDEN) == 0) {
 			mlook(NULL, mt, &m[i], mprime);
 			if (m[i].m_date == 0) {
@@ -374,7 +374,7 @@ makethreads(struct message *m, long count, int newmail)
 		m[i].m_child = m[i].m_younger = m[i].m_elder =
 			m[i].m_parent = NULL;
 		m[i].m_level = 0;
-		if (!newmail && !(inhook&2))
+		if (!nmail && !(inhook&2))
 			m[i].m_collapsed = 0;
 	}
 	/*
@@ -386,9 +386,9 @@ makethreads(struct message *m, long count, int newmail)
 	 * are replies to the one message, and are sorted such that
 	 * youngest messages occur first.
 	 */
-	for (i = count-1; i >= 0; i--)
+	for (i = cnt-1; i >= 0; i--)
 		lookup(&m[i], mt, mprime);
-	threadroot = interlink(m, count, newmail);
+	threadroot = interlink(m, cnt, nmail);
 	finalize(threadroot);
 	free(mt);
 	mb.mb_threaded = 1;
