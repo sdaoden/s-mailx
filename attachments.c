@@ -113,11 +113,10 @@ _read_attachment_data(struct attachment *ap, ui_it number)
 	if (ap == NULL)
 		ap = csalloc(1, sizeof *ap);
 	else if (ap->a_msgno) {
-jisattach:
-		if (options & OPT_INTERACTIVE)
-			printf(tr(159, "#%u\tmessage %u\n"),
-				number, ap->a_msgno);
-		goto jleave;
+		char *ecp = salloc(16);
+		snprintf(ecp, 16, "#%u", (ui_it)ap->a_msgno);
+		ap->a_msgno = 0;
+		ap->a_name = ecp;
 	} else if (ap->a_conv == AC_TMPFILE) {
 		Fclose(ap->a_tmpf);
 		ap->a_conv = AC_DEFAULT;
@@ -135,11 +134,12 @@ jisattach:
 			int msgno = (int)strtol(ap->a_name + 1, &ecp, 10);
 			if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
 				ap->a_msgno = msgno;
-				ap->a_content_description = tr(513,
-					"Attached message content");
-				if (! (options & OPT_INTERACTIVE))
-					goto jcs;
-				goto jisattach;
+				ap->a_content_description =
+					tr(513, "Attached message content");
+				if (options & OPT_INTERACTIVE)
+					printf(tr(2, "~@: added message #%u\n"),
+						(ui_it)msgno);
+				goto jleave;
 			}
 		}
 		if ((cp = file_expand(ap->a_name)) != NULL &&
@@ -191,7 +191,7 @@ jcs:
 
 	if (cp != NULL && defcs == NULL) {
 		ap->a_conv = AC_FIX_INCS;
-		goto jleave;
+		goto jdone;
 	}
 	if (cp == NULL && defcs == NULL) {
 		ap->a_conv = AC_DEFAULT;
@@ -212,7 +212,10 @@ jcs:
 		ap->a_charset = defcs;
 		goto jcs;
 	}
+jdone:
 #endif
+	if (options & OPT_INTERACTIVE)
+		printf(tr(19, "~@: added attachment \"%s\"\n"), ap->a_name);
 jleave:
 	return ap;
 }

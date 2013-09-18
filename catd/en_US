@@ -2,7 +2,7 @@ $quote $
 $ Messages for nail, a mail user agent TODO complete rebuild that, leave holes
 $set 1
 1 $Panic: $
-2 -- DELETED --
+2 ~@: added message #%u\n
 3 Too much "sourcing" going on.\n
 4 "Source" stack over-pop.\n
 5 Unmatched "if"\n
@@ -166,7 +166,7 @@ $set 1
 156 Held %d messages in %s\n
 157 Unable to lock mailbox
 158 New mail has arrived.\n
-159 #%u\tmessage %u\n
+159 --DELETED--
 160 $#%u\tinput charset: $
 161 $#%u\toutput (send) charset: $
 162 $Filename doesn't indicate text content - want to edit charsets? $

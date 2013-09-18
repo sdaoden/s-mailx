@@ -407,11 +407,16 @@ put_signature(FILE *fo, int convert)
 static int
 attach_message(struct attachment *ap, FILE *fo)
 {
-	struct message	*mp;
+	struct message *mp;
 
 	fprintf(fo, "\n--%s\n"
 		    "Content-Type: message/rfc822\n"
-		    "Content-Disposition: inline\n\n", send_boundary);
+		    "Content-Disposition: inline\n", send_boundary);
+	if (ap->a_content_description != NULL)
+		fprintf(fo, "Content-Description: %s\n",
+			ap->a_content_description);
+	fputc('\n', fo);
+
 	mp = &message[ap->a_msgno - 1];
 	touch(mp);
 	if (send(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
