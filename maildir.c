@@ -104,7 +104,7 @@ jleave:	;
 int 
 maildir_setfile(const char *name, int nmail, int isedit)
 {
-	sighandler_type	saveint;
+	sighandler_type	volatile saveint;
 	struct cw	cw;
 	int	i = -1, omsgCount;
 
@@ -144,7 +144,7 @@ maildir_setfile(const char *name, int nmail, int isedit)
 			safe_signal(SIGINT, maildircatch);
 		i = maildir_setfile1(name, nmail, omsgCount);
 	}
-	if (nmail)
+	if (nmail && mdtable != NULL)
 		free(mdtable);
 	safe_signal(SIGINT, saveint);
 	if (i < 0) {

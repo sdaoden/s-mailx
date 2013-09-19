@@ -881,10 +881,10 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	 * TODO i.e., if we strip it, then the display misses it ;} */
 	struct str cin, cout;
 	char *p, *op, *upper, *cs, *cbeg;
-	char const *tcs;
 	int convert;
 	size_t lastoutl = (size_t)-1;
 #ifdef HAVE_ICONV
+	char const *tcs;
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
@@ -895,7 +895,9 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	}
 	out->s = NULL;
 
+#ifdef HAVE_ICONV
 	tcs = charset_get_lc();
+#endif
 	p = in->s;
 	upper = p + in->l;
 

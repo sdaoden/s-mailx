@@ -204,6 +204,9 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_ANSWER(2);
 		switch (auth) {
 		case AUTH_NONE:
+#ifndef HAVE_MD5
+		case AUTH_CRAM_MD5:
+#endif
 			/* FALLTRHU
 			 * Won't happen, but gcc(1) and clang(1) whine without
 			 * and Coverity whines with; that's a hard one.. */

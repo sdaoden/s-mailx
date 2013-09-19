@@ -510,7 +510,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	int volatile ispipe, rt = 0;
 	struct str rest;
 	char *line = NULL, *cp, *cp2, *start, *pipecomm = NULL;
-	char const *tcs;
 	size_t linesize = 0, linelen, cnt, len;
 	int dostat, infld = 0, ignoring = 1, isenc, c, eof;
 	struct mimepart	*volatile np;
@@ -975,7 +974,6 @@ jcopyout:
 	if (action == SEND_DECRYPT || action == SEND_MBOX ||
 			action == SEND_RFC822 || action == SEND_SHOW)
 		convert = CONV_NONE;
-	tcs = charset_get_lc();
 #ifdef HAVE_ICONV
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
@@ -983,6 +981,8 @@ jcopyout:
 			(ip->m_mimecontent == MIME_TEXT_PLAIN ||
 			 ip->m_mimecontent == MIME_TEXT_HTML ||
 			 ip->m_mimecontent == MIME_TEXT)) {
+		char const *tcs = charset_get_lc();
+
 		if (iconvd != (iconv_t)-1)
 			n_iconv_close(iconvd);
 		/* TODO Since Base64 has an odd 4:3 relation in between input
