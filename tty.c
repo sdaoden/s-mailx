@@ -898,6 +898,24 @@ _ncl_kht(struct line *l)
 
       if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
             (exp.l != sub.l || strcmp(exp.s, sub.s))) {
+         /* TODO cramp expansion length to MAX_INPUT, or 255 if not defined;
+          * TODO the problem is that we loose control otherwise; in the best
+          * TODO case the user can control via ^A and ^K etc., but be safe;
+          * TODO we cannot simply adjust fexpand() because we don't know how
+          * TODO that is implemented...  The real solution would be to check
+          * TODO wether we fit on a line, and start a pager if not.
+          * TODO However, that should be part of a real tab-COMPLETION, then,
+          * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
+          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT:
+          * TODO Note how hacky this is in respect to excess of final string */
+# ifndef MAX_INPUT
+#  define MAX_INPUT 255 /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
+# endif
+         if (exp.l >= MAX_INPUT) {
+            char const cp[] = "[maximum line size exceeded]";
+            exp.s = UNCONST(cp);
+            exp.l = sizeof(cp) - 1;
+         }
          orig.l = bot.l + exp.l + topp.l;
          orig.s = salloc(orig.l + 1);
          rv = bot.l;
