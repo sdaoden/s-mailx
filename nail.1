@@ -817,6 +817,8 @@ Cancel current operation, full reset.
 If there is an active history search or tabulator expansion then this
 command will first reset that, reverting to the former line content;
 thus a second reset is needed for a full reset in this case.
+In all cases \*(UA will reset a possibly used multibyte character input
+state machine.
 .It ^H
 The same as `backspace': backward delete one character.
 .It ^I
