@@ -65,7 +65,7 @@ static size_t		smtpbufsize;
 static sigjmp_buf	smtpjmp;
 
 static void	onterm(int signo);
-static int	read_smtp(struct sock *sp, int value, int ign_eof);
+static int	read_smtp(struct sock *sp, int val, int ign_eof);
 static int	talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			char *server, char *uhp, struct header *hp,
 			const char *user, const char *password,
@@ -79,10 +79,10 @@ onterm(int signo)
 }
 
 /*
- * Get the SMTP server's answer, expecting value.
+ * Get the SMTP server's answer, expecting val.
  */
 static int 
-read_smtp(struct sock *sp, int value, int ign_eof)
+read_smtp(struct sock *sp, int val, int ign_eof)
 {
 	int ret;
 	int len;
@@ -103,7 +103,7 @@ read_smtp(struct sock *sp, int value, int ign_eof)
 		case '4': ret = 4; break;
 		default: ret = 5;
 		}
-		if (value != ret)
+		if (val != ret)
 			fprintf(stderr, catgets(catd, CATSET, 191,
 					"smtp-server: %s"), smtpbuf);
 	} while (smtpbuf[3] == '-');
@@ -142,7 +142,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	char o[LINESIZE], *authstr, *cp, *b = NULL;
 	struct str b64;
 	struct name *n;
-	size_t blen, count, bsize = 0;
+	size_t blen, cnt, bsize = 0;
 	enum { AUTH_NONE, AUTH_PLAIN, AUTH_LOGIN, AUTH_CRAM_MD5 } auth;
 	int inhdr = 1, inbcc = 0;
 	(void)hp;
@@ -204,6 +204,9 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 		SMTP_ANSWER(2);
 		switch (auth) {
 		case AUTH_NONE:
+#ifndef HAVE_MD5
+		case AUTH_CRAM_MD5:
+#endif
 			/* FALLTRHU
 			 * Won't happen, but gcc(1) and clang(1) whine without
 			 * and Coverity whines with; that's a hard one.. */
@@ -262,8 +265,8 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	SMTP_ANSWER(3);
 	fflush(fi);
 	rewind(fi);
-	count = fsize(fi);
-	while (fgetline(&b, &bsize, &count, &blen, fi, 1) != NULL) {
+	cnt = fsize(fi);
+	while (fgetline(&b, &bsize, &cnt, &blen, fi, 1) != NULL) {
 		if (inhdr) {
 			if (*b == '\n') {
 				inhdr = 0;
@@ -304,20 +307,20 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 }
 
 char *
-smtp_auth_var(char const *type, char const *addr)
+smtp_auth_var(char const *atype, char const *addr)
 {
 	size_t tl, al, len;
 	char *var, *cp;
 
-	tl = strlen(type);
+	tl = strlen(atype);
 	al = strlen(addr);
 	len = tl + al + 10 + 1;
 	var = ac_alloc(len);
 
 	/* Try a 'user@host', i.e., address specific version first */
-	(void)snprintf(var, len, "smtp-auth%s-%s", type, addr);
+	(void)snprintf(var, len, "smtp-auth%s-%s", atype, addr);
 	if ((cp = value(var)) == NULL) {
-		snprintf(var, len, "smtp-auth%s", type);
+		snprintf(var, len, "smtp-auth%s", atype);
 		cp = value(var);
 	}
 	if (cp != NULL)

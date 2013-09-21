@@ -56,6 +56,9 @@
 # else
 #  define MAXPATHLEN	1024
 # endif
+#elif defined PATH_MAX && MAXPATHLEN < PATH_MAX
+# undef MAXPATHLEN
+# define MAXPATHLEN	PATH_MAX
 #endif
 #if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
 # define LINESIZE	BUFSIZ		/* max readable line width */
@@ -177,8 +180,8 @@
 
 /* Quote filter */
 
-/* Is *C* a quoting (ASCII only) character? */
-#define ISQUOTE(C)	((C) == '>' || (C) == '|' || (C) == '}')
+/* Is *W* a quoting (ASCII only) character? */
+#define ISQUOTE(W)	((W) == L'>' || (W) == L'|' || (W) == L'}')
 
 /* Maximum number of quote characters (not bytes!) that'll be used on
  * follow lines when compressing leading quote characters */
@@ -406,22 +409,27 @@ struct time_current {
 };
 
 struct quoteflt {
-	FILE *		qf_os;		/* Output stream */
-	char const *	qf_pfix;
+	FILE		*qf_os;		/* Output stream */
+	char const	*qf_pfix;
 	ui_it		qf_pfix_len;	/* Length of prefix: 0: bypass */
 	ui_it		qf_qfold_min;	/* Simple way: wrote prefix? */
-#ifdef HAVE_QUOTE_FMT
+#ifdef HAVE_QUOTE_FOLD
 	ui_it		qf_qfold_max;	/* Otherwise: line lengths */
 	ui_it		qf_state;	/* *quote-fold* state machine */
-	struct str	qf_dat;		/* Partial (visual output) line */
+	ui_it		qf_brkl;	/* Breakpoint */
+	ui_it		qf_brkw;
+	bool_t		qf_brk_isws;
+	uc_it		__dummy[3];
+	ui_it		qf_datw;	/* Current visual output line width */
+	struct str	qf_dat;		/* Current visual output line */
 	struct str	qf_currq;	/* Current quote, compressed */
-	mbstate_t	qf_mbps;
+	mbstate_t	qf_mbps[2];
 #endif
 };
 
 struct termios_state {
 	struct termios	ts_tios;
-	char *		ts_linebuf;
+	char 		*ts_linebuf;
 	size_t		ts_linesize;
 	bool_t		ts_needs_reset;
 };

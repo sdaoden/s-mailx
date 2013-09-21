@@ -177,10 +177,10 @@ jleave:	;
  * editing the file, otherwise we are reading our mail which has
  * signficance for mbox and so forth.
  *
- * newmail: Check for new mail in the current folder only.
+ * nmail: Check for new mail in the current folder only.
  */
 int
-setfile(char const *name, int newmail)
+setfile(char const *name, int nmail)
 {
 	FILE *ibuf;
 	int i, compressed = 0;
@@ -202,20 +202,20 @@ setfile(char const *name, int newmail)
 	case PROTO_FILE:
 		break;
 	case PROTO_MAILDIR:
-		return (maildir_setfile(name, newmail, isedit));
+		return (maildir_setfile(name, nmail, isedit));
 #ifdef HAVE_POP3
 	case PROTO_POP3:
 		shudclob = 1;
-		return (pop3_setfile(name, newmail, isedit));
+		return (pop3_setfile(name, nmail, isedit));
 #endif
 #ifdef HAVE_IMAP
 	case PROTO_IMAP:
 		shudclob = 1;
-		if (newmail) {
+		if (nmail) {
 			if (mb.mb_type == MB_CACHE)
 				return 1;
 		}
-		return imap_setfile(name, newmail, isedit);
+		return imap_setfile(name, nmail, isedit);
 #endif
 	default:
 		fprintf(stderr, tr(217, "Cannot handle protocol: %s\n"), name);
@@ -223,9 +223,9 @@ setfile(char const *name, int newmail)
 	}
 
 	if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
-		if ((!isedit && errno == ENOENT) || newmail) {
-			if (newmail)
-				goto nonewmail;
+		if ((!isedit && errno == ENOENT) || nmail) {
+			if (nmail)
+				goto jnonmail;
 			goto nomail;
 		}
 		perror(name);
@@ -234,16 +234,16 @@ setfile(char const *name, int newmail)
 
 	if (fstat(fileno(ibuf), &stb) < 0) {
 		Fclose(ibuf);
-		if (newmail)
-			goto nonewmail;
+		if (nmail)
+			goto jnonmail;
 		perror("fstat");
 		return (-1);
 	}
 
 	if (S_ISDIR(stb.st_mode)) {
 		Fclose(ibuf);
-		if (newmail)
-			goto nonewmail;
+		if (nmail)
+			goto jnonmail;
 		errno = EISDIR;
 		perror(name);
 		return (-1);
@@ -251,8 +251,8 @@ setfile(char const *name, int newmail)
 		/*EMPTY*/
 	} else {
 		Fclose(ibuf);
-		if (newmail)
-			goto nonewmail;
+		if (nmail)
+			goto jnonmail;
 		errno = EINVAL;
 		perror(name);
 		return (-1);
@@ -266,10 +266,10 @@ setfile(char const *name, int newmail)
 	 */
 
 	holdsigs(); /* TODO note on this one in quit.c:quit() */
-	if (shudclob && !newmail)
+	if (shudclob && !nmail)
 		quit();
 #ifdef HAVE_SOCKETS
-	if (!newmail && mb.mb_sock.s_fd >= 0)
+	if (!nmail && mb.mb_sock.s_fd >= 0)
 		sclose(&mb.mb_sock);
 #endif
 
@@ -281,7 +281,7 @@ setfile(char const *name, int newmail)
 	flp.l_type = F_RDLCK;
 	flp.l_start = 0;
 	flp.l_whence = SEEK_SET;
-	if (!newmail) {
+	if (!nmail) {
 		mb.mb_type = MB_FILE;
 		mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE|MB_EDIT;
 		mb.mb_compressed = compressed;
@@ -314,40 +314,40 @@ setfile(char const *name, int newmail)
 			Fclose(ibuf);
 			return -1;
 		}
-	} else /* newmail */{
+	} else /* nmail */{
 		fseek(mb.mb_otf, 0L, SEEK_END);
 		fseek(ibuf, mailsize, SEEK_SET);
 		offset = mailsize;
 		omsgCount = msgCount;
 		flp.l_len = offset;
 		if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) < 0)
-			goto nonewmail;
+			goto jnonmail;
 	}
 	mailsize = fsize(ibuf);
-	if (newmail && (size_t)mailsize <= offset) {
+	if (nmail && (size_t)mailsize <= offset) {
 		relsesigs();
-		goto nonewmail;
+		goto jnonmail;
 	}
 	setptr(ibuf, offset);
 	setmsize(msgCount);
-	if (newmail && mb.mb_sorted) {
+	if (nmail && mb.mb_sorted) {
 		mb.mb_threaded = 0;
 		sort((void *)-1);
 	}
 	Fclose(ibuf);
 	relsesigs();
-	if (!newmail)
+	if (!nmail)
 		sawcom = FAL0;
-	if ((!edit || newmail) && msgCount == 0) {
-nonewmail:
-		if (!newmail) {
+	if ((!edit || nmail) && msgCount == 0) {
+jnonmail:
+		if (!nmail) {
 			if (value("emptystart") == NULL)
 nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
 						"No mail for %s\n"), who);
 		}
 		return 1;
 	}
-	if (newmail) {
+	if (nmail) {
 		newmailinfo(omsgCount);
 	}
 	return(0);
@@ -912,14 +912,14 @@ newfileinfo(void)
 }
 
 int 
-getmdot(int newmail)
+getmdot(int nmail)
 {
 	struct message	*mp;
 	char	*cp;
 	int	mdot;
 	enum mflag	avoid = MHIDDEN|MDELETED;
 
-	if (!newmail) {
+	if (!nmail) {
 		if (value("autothread"))
 			thread(NULL);
 		else if ((cp = value("autosort")) != NULL) {
@@ -930,11 +930,11 @@ getmdot(int newmail)
 	}
 	if (mb.mb_type == MB_VOID)
 		return 1;
-	if (newmail)
+	if (nmail)
 		for (mp = &message[0]; mp < &message[msgCount]; mp++)
 			if ((mp->m_flag & (MNEWEST|avoid)) == MNEWEST)
 				break;
-	if (!newmail || mp >= &message[msgCount]) {
+	if (!nmail || mp >= &message[msgCount]) {
 		for (mp = mb.mb_threaded ? threadroot : &message[0];
 				mb.mb_threaded ?
 					mp != NULL : mp < &message[msgCount];

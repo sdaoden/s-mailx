@@ -359,7 +359,7 @@ enum okay
 ssl_open(const char *server, struct sock *sp, const char *uhp)
 {
 	char *cp;
-	long options;
+	long opts;
 
 	ssl_init();
 	ssl_set_vrfy_level(uhp);
@@ -373,10 +373,10 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	/* available with OpenSSL 0.9.6 or later */
 	SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
 #endif	/* SSL_MODE_AUTO_RETRY */
-	options = SSL_OP_ALL;
+	opts = SSL_OP_ALL;
 	if (value("ssl-v2-allow") == NULL)
-		options |= SSL_OP_NO_SSLv2;
-	SSL_CTX_set_options(sp->s_ctx, options);
+		opts |= SSL_OP_NO_SSLv2;
+	SSL_CTX_set_options(sp->s_ctx, opts);
 	ssl_load_verifications(sp);
 	ssl_certificate(sp, uhp);
 	if ((cp = value("ssl-cipher-list")) != NULL) {
@@ -1173,7 +1173,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 {
 	char	*crl_file, *crl_dir;
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 	char	*fn = NULL;
 	int	fs = 0, ds, es;
@@ -1194,7 +1194,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
 		char *x;
 		if ((x = file_expand(crl_dir)) == NULL ||
-				(dirfd = opendir(crl_dir = x)) == NULL) {
+				(dirp = opendir(crl_dir = x)) == NULL) {
 			perror(crl_dir);
 			return STOP;
 		}
@@ -1202,7 +1202,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 		fn = smalloc(fs = ds + 20);
 		memcpy(fn, crl_dir, ds);
 		fn[ds] = '/';
-		while ((dp = readdir(dirfd)) != NULL) {
+		while ((dp = readdir(dirp)) != NULL) {
 			if (dp->d_name[0] == '.' &&
 					(dp->d_name[1] == '\0' ||
 					 (dp->d_name[1] == '.' &&
@@ -1214,12 +1214,12 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 				fn = srealloc(fn, fs = ds + es + 20);
 			memcpy(fn + ds + 1, dp->d_name, es + 1);
 			if (load_crl1(store, fn) != OKAY) {
-				closedir(dirfd);
+				closedir(dirp);
 				free(fn);
 				return STOP;
 			}
 		}
-		closedir(dirfd);
+		closedir(dirp);
 		free(fn);
 #else	/* old OpenSSL */
 		fprintf(stderr,

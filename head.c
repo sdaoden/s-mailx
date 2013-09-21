@@ -471,49 +471,49 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 	char *linebuf = NULL, *colon;
 	size_t linesize = 0;
 	int seenfields = 0, lc, c;
-	char const *value, *cp;
+	char const *val, *cp;
 
 	memset(hq, 0, sizeof *hq);
 	for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; lc++)
 		;
 	rewind(fp);
 	while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
-		if ((value = thisfield(linebuf, "to")) != NULL) {
+		if ((val = thisfield(linebuf, "to")) != NULL) {
 			seenfields++;
 			hq->h_to = cat(hq->h_to, checkaddrs(
-					lextract(value, GTO|GFULL)));
-		} else if ((value = thisfield(linebuf, "cc")) != NULL) {
+					lextract(val, GTO|GFULL)));
+		} else if ((val = thisfield(linebuf, "cc")) != NULL) {
 			seenfields++;
 			hq->h_cc = cat(hq->h_cc, checkaddrs(
-					lextract(value, GCC|GFULL)));
-		} else if ((value = thisfield(linebuf, "bcc")) != NULL) {
+					lextract(val, GCC|GFULL)));
+		} else if ((val = thisfield(linebuf, "bcc")) != NULL) {
 			seenfields++;
 			hq->h_bcc = cat(hq->h_bcc, checkaddrs(
-					lextract(value, GBCC|GFULL)));
-		} else if ((value = thisfield(linebuf, "from")) != NULL) {
+					lextract(val, GBCC|GFULL)));
+		} else if ((val = thisfield(linebuf, "from")) != NULL) {
 			seenfields++;
 			hq->h_from = cat(hq->h_from, checkaddrs(
-					lextract(value, GEXTRA|GFULL)));
-		} else if ((value = thisfield(linebuf, "reply-to")) != NULL) {
+					lextract(val, GEXTRA|GFULL)));
+		} else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
 			seenfields++;
 			hq->h_replyto = cat(hq->h_replyto, checkaddrs(
-					lextract(value, GEXTRA|GFULL)));
-		} else if ((value = thisfield(linebuf, "sender")) != NULL) {
+					lextract(val, GEXTRA|GFULL)));
+		} else if ((val = thisfield(linebuf, "sender")) != NULL) {
 			seenfields++;
 			hq->h_sender = cat(hq->h_sender, checkaddrs(
-					lextract(value, GEXTRA|GFULL)));
-		} else if ((value = thisfield(linebuf,
+					lextract(val, GEXTRA|GFULL)));
+		} else if ((val = thisfield(linebuf,
 						"organization")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp); cp++)
+			for (cp = val; blankchar(*cp); cp++)
 				;
 			hq->h_organization = hq->h_organization ?
 				save2str(hq->h_organization, cp) :
 				savestr(cp);
-		} else if ((value = thisfield(linebuf, "subject")) != NULL ||
-				(value = thisfield(linebuf, "subj")) != NULL) {
+		} else if ((val = thisfield(linebuf, "subject")) != NULL ||
+				(val = thisfield(linebuf, "subj")) != NULL) {
 			seenfields++;
-			for (cp = value; blankchar(*cp); cp++)
+			for (cp = val; blankchar(*cp); cp++)
 				;
 			hq->h_subject = hq->h_subject ?
 				save2str(hq->h_subject, cp) :
@@ -1091,7 +1091,7 @@ name1(struct message *mp, int reptype)
 	size_t linesize = 0;
 	char *cp, *cp2;
 	FILE *ibuf;
-	int first = 1;
+	int f1st = 1;
 
 	if ((cp = hfield1("from", mp)) != NULL && *cp != '\0')
 		return cp;
@@ -1133,9 +1133,9 @@ newname:
 			if ((cp = strchr(cp, ' ')) == NULL)
 				break;
 			cp++;
-			if (first) {
+			if (f1st) {
 				strncpy(namebuf, cp, namesize);
-				first = 0;
+				f1st = 0;
 			} else {
 				cp2=strrchr(namebuf, '!')+1;
 				strncpy(cp2, cp, (namebuf+namesize)-cp2);
@@ -1232,14 +1232,14 @@ charcount(char *str, int c)
  * See if the given header field is supposed to be ignored.
  */
 int
-is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2])
+is_ign(char const *field, size_t fieldlen, struct ignoretab ignoret[2])
 {
 	char *realfld;
 	int ret;
 
-	if (ignore == NULL)
+	if (ignoret == NULL)
 		return 0;
-	if (ignore == allignore)
+	if (ignoret == allignore)
 		return 1;
 	/*
 	 * Lower-case the string, so that "Status" and "status"
@@ -1247,10 +1247,10 @@ is_ign(char const *field, size_t fieldlen, struct ignoretab ignore[2])
 	 */
 	realfld = ac_alloc(fieldlen + 1);
 	i_strcpy(realfld, field, fieldlen + 1);
-	if (ignore[1].i_count > 0)
-		ret = !member(realfld, ignore + 1);
+	if (ignoret[1].i_count > 0)
+		ret = !member(realfld, ignoret + 1);
 	else
-		ret = member(realfld, ignore);
+		ret = member(realfld, ignoret);
 	ac_free(realfld);
 	return ret;
 }
@@ -1335,7 +1335,7 @@ nexttoken(char const *cp)
  *               0    5   10   15   20
  */
 time_t
-unixtime(char const *from)
+unixtime(char const *fromline)
 {
 	char const *fp;
 	char *xp;
@@ -1344,9 +1344,9 @@ unixtime(char const *from)
 	int	tzdiff;
 	struct tm	*tmptr;
 
-	for (fp = from; *fp && *fp != '\n'; fp++);
+	for (fp = fromline; *fp && *fp != '\n'; fp++);
 	fp -= 24;
-	if (fp - from < 7)
+	if (fp - fromline < 7)
 		goto invalid;
 	if (fp[3] != ' ')
 		goto invalid;

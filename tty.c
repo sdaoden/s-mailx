@@ -66,7 +66,6 @@
 #elif defined HAVE_LINE_EDITOR
 # define __NCL
 # include <sys/stat.h>
-# include <limits.h>
 # include <wchar.h>
 # include <wctype.h>
 #endif
@@ -159,6 +158,7 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
       tcgetattr(0, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
       termios_state.ts_needs_reset = TRU1;
+      tios.c_iflag &= ~(ISTRIP);
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
       tcsetattr(0, TCSAFLUSH, &tios);
    }
@@ -550,10 +550,10 @@ static ssize_t _ncl_wboundary(struct line *l, ssize_t dir);
 static ssize_t _ncl_cell2dat(struct line *l);
 static void    _ncl_cell2save(struct line *l);
 
-static void    _ncl_khome(struct line *l);
+static void    _ncl_khome(struct line *l, bool_t dobell);
 static void    _ncl_kend(struct line *l);
 static void    _ncl_kbs(struct line *l);
-static void    _ncl_kkill(struct line *l);
+static void    _ncl_kkill(struct line *l, bool_t dobell);
 static ssize_t _ncl_keof(struct line *l);
 static void    _ncl_kleft(struct line *l);
 static void    _ncl_kright(struct line *l);
@@ -729,7 +729,7 @@ jleave:
 }
 
 static void
-_ncl_khome(struct line *l)
+_ncl_khome(struct line *l, bool_t dobell)
 {
    size_t c = l->cursor;
 
@@ -737,12 +737,12 @@ _ncl_khome(struct line *l)
       l->cursor = 0;
       while (c-- != 0)
          putchar('\b');
-   } else
+   } else if (dobell)
       putchar('\a');
 }
 
 static void
-_ncl_kend(struct line *l) /* XXX optionally repl. esc-seq with full repaint?! */
+_ncl_kend(struct line *l)
 {
    ssize_t i = (ssize_t)(l->topins - l->cursor);
 
@@ -770,7 +770,7 @@ _ncl_kbs(struct line *l)
 }
 
 static void
-_ncl_kkill(struct line *l)
+_ncl_kkill(struct line *l, bool_t dobell)
 {
    size_t j, c = l->cursor, i = (size_t)(l->topins - c);
 
@@ -780,7 +780,7 @@ _ncl_kkill(struct line *l)
          putchar(' ');
       for (j = i; j != 0; --j)
          putchar('\b');
-   } else
+   } else if (dobell)
       putchar('\a');
 }
 
@@ -842,7 +842,7 @@ _ncl_krefresh(struct line *l)
 static size_t
 _ncl_kht(struct line *l)
 {
-   struct str orig, bot, top, sub, exp;
+   struct str orig, bot, topp, sub, exp;
    struct cell *cword, *ctop, *cx;
    bool_t set_savec = FAL0;
    size_t rv = 0;
@@ -865,14 +865,14 @@ _ncl_kht(struct line *l)
    cword = l->line.cells;
    ctop = cword + l->cursor;
 
-   /* top: separate data right of cursor */
+   /* topp: separate data right of cursor */
    if ((cx = cword + l->topins) != ctop) {
       for (rv = 0; cx > ctop; --cx)
          rv += cx->count;
-      top.l = rv;
-      top.s = orig.s + orig.l - rv;
+      topp.l = rv;
+      topp.s = orig.s + orig.l - rv;
    } else
-      top.s = NULL, top.l = 0;
+      topp.s = NULL, topp.l = 0;
 
    /* bot, sub: we cannot expand the entire data left of cursor, but only
     * the last "word", so separate them */
@@ -885,7 +885,7 @@ _ncl_kht(struct line *l)
    bot.l = rv;
    sub.s += rv;
    sub.l -= rv;
-   sub.l -= top.l;
+   sub.l -= topp.l;
 
    if (sub.l > 0) {
       sub.s = savestrbuf(sub.s, sub.l);
@@ -898,19 +898,37 @@ _ncl_kht(struct line *l)
 
       if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
             (exp.l != sub.l || strcmp(exp.s, sub.s))) {
-         orig.l = bot.l + exp.l + top.l;
+         /* TODO cramp expansion length to MAX_INPUT, or 255 if not defined;
+          * TODO the problem is that we loose control otherwise; in the best
+          * TODO case the user can control via ^A and ^K etc., but be safe;
+          * TODO we cannot simply adjust fexpand() because we don't know how
+          * TODO that is implemented...  The real solution would be to check
+          * TODO wether we fit on a line, and start a pager if not.
+          * TODO However, that should be part of a real tab-COMPLETION, then,
+          * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
+          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT:
+          * TODO Note how hacky this is in respect to excess of final string */
+# ifndef MAX_INPUT
+#  define MAX_INPUT 255 /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
+# endif
+         if (exp.l >= MAX_INPUT) {
+            char const cp[] = "[maximum line size exceeded]";
+            exp.s = UNCONST(cp);
+            exp.l = sizeof(cp) - 1;
+         }
+         orig.l = bot.l + exp.l + topp.l;
          orig.s = salloc(orig.l + 1);
          rv = bot.l;
          memcpy(orig.s, bot.s, rv);
          memcpy(orig.s + rv, exp.s, exp.l);
          rv += exp.l;
-         memcpy(orig.s + rv, top.s, top.l);
-         rv += top.l;
+         memcpy(orig.s + rv, topp.s, topp.l);
+         rv += topp.l;
          orig.s[rv] = '\0';
 
          l->defc = orig;
-         _ncl_khome(l);
-         _ncl_kkill(l);
+         _ncl_khome(l, FAL0);
+         _ncl_kkill(l, FAL0);
          goto jleave;
       }
    }
@@ -934,8 +952,8 @@ __ncl_khist_shared(struct line *l, struct hist *hp)
       rv =
       l->defc.l = hp->len;
       if (l->topins > 0) {
-         _ncl_khome(l);
-         _ncl_kkill(l);
+         _ncl_khome(l, FAL0);
+         _ncl_kkill(l, FAL0);
       }
    } else {
       putchar('\a');
@@ -969,24 +987,33 @@ jleave:
 static size_t
 _ncl_krhist(struct line *l)
 {
+   struct str orig_savec;
    struct hist *hp = NULL;
 
    /* We cannot complete an empty line */
-   if (l->topins == 0)
+   if (l->topins == 0) {
+      /* XXX The upcoming hard reset would restore a set savec buffer,
+       * XXX so forcefully reset that.  A cleaner solution would be to
+       * XXX reset it whenever a restore is no longer desired */
+      l->savec.s = NULL, l->savec.l = 0;
       goto jleave;
+   }
    if ((hp = l->hist) == NULL) {
       if ((hp = _ncl_hist) == NULL)
          goto jleave;
-      _ncl_cell2save(l);
-   } else
-      goto jumpin;
+      orig_savec.s = NULL;
+   } else if ((hp = hp->older) == NULL)
+      goto jleave;
+   else
+      orig_savec = l->savec;
 
-   while (hp != NULL) {
+   if (orig_savec.s == NULL)
+      _ncl_cell2save(l);
+   for (; hp != NULL; hp = hp->older)
       if (is_prefix(l->savec.s, hp->dat))
          break;
-jumpin:
-      hp = hp->older;
-   }
+   if (orig_savec.s != NULL)
+      l->savec = orig_savec;
 jleave:
    return __ncl_khist_shared(l, hp);
 }
@@ -1104,7 +1131,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
     * buffer", and only otherwise read(2) it */
    mbstate_t ps[2];
    struct line l;
-   char cbuf_base[MB_LEN_MAX], *cbuf, *cbufp;
+   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    wchar_t wc;
    ssize_t rv;
 
@@ -1132,50 +1159,53 @@ jrestart:
    for (;;) {
       _ncl_check_grow(&l, len SMALLOC_DEBUG_ARGSCALL);
 
-      /* Normal read(2)?  Else buffer-takeover */
+      /* Normal read(2)?  Else buffer-takeover: speed this one up */
       if (len == 0)
+         cbufp =
          cbuf = cbuf_base;
       else {
          assert(l.defc.l > 0 && l.defc.s != NULL);
+         cbufp =
          cbuf = l.defc.s + (l.defc.l - len);
+         cbufp += len;
       }
-      cbufp = cbuf;
-      for (;;) {
-         if (len != 0) {
-            if (--len == 0)
-               l.defc.s = NULL, l.defc.l = 0;
-         } else if (cbuf != cbuf_base)
-            goto jbell;
-         else if ((rv = read(STDIN_FILENO, cbufp, 1)) < 1) {
-            if (errno == EINTR) /* xxx #if !SA_RESTART ? */
-               continue;
-            goto jleave;
-         }
-         ++cbufp;
 
-         /* Ach! the ISO C multibyte handling!  Take care not to
-          * mess up our mbstate_t, it's undefined on error!
-          * Encodings with locking shift states cannot really be
-          * helped, since it is impossible to only query the
-          * shift state, as opposed to the entire shift state
-          * + character pair (via ISO C functions), so, after
-          * cursor movement, we cannot restore only the shift
-          * state but have to keep on going with the last active
-          * one.  XXX Maybe it would be better to simply force
-          * XXX a complete mbstate_t reset after *any* error?
-          * XXX Does anything else really make sense? */
-         rv = mbrtowc(&wc, cbuf, (size_t)(cbufp - cbuf), ps + 0);
+      /* Read in the next complete multibyte character */
+      for (;;) {
+         if (len == 0) {
+            if ((rv = read(STDIN_FILENO, cbufp, 1)) < 1) {
+               if (errno == EINTR) /* xxx #if !SA_RESTART ? */
+                  continue;
+               goto jleave;
+            }
+            ++cbufp;
+         }
+
+         /* Ach! the ISO C multibyte handling!
+          * Encodings with locking shift states cannot really be helped, since
+          * it is impossible to only query the shift state, as opposed to the
+          * entire shift state + character pair (via ISO C functions) */
+         rv = (ssize_t)mbrtowc(&wc, cbuf, (size_t)(cbufp - cbuf), ps + 0);
          if (rv <= 0) {
-            /* If it's a hard error, or if too many
-             * redundant shift sequences overflow our
-             * buffer, simply perform a reset.
-             * It is anyway suboptimal, but in the worst
-             * case the user could ^U */
-            if (rv == -1 || MB_LEN_MAX == (size_t)(cbufp - cbuf))
-               cbufp = cbuf;
+            /* Any error during take-over can only result in a hard reset;
+             * Otherwise, if it's a hard error, or if too many redundant shift
+             * sequences overflow our buffer, also perform a hard reset */
+            if (len != 0 || rv == -1 ||
+                  sizeof cbuf_base == (size_t)(cbufp - cbuf)) {
+               l.savec.s = l.defc.s = NULL,
+               l.savec.l = l.defc.l = len = 0;
+               putchar('\a');
+               wc = 'G';
+               goto jreset;
+            }
+            /* Otherwise, due to the way we deal with the buffer, we need to
+             * restore the mbstate_t from before this conversion */
             ps[0] = ps[1];
             continue;
          }
+
+         if (len != 0 && (len -= (size_t)rv) == 0)
+            l.defc.s = NULL, l.defc.l = 0;
          ps[1] = ps[0];
          break;
       }
@@ -1185,7 +1215,7 @@ jrestart:
          goto jprint;
       switch (wc) {
       case 'A' ^ 0x40: /* cursor home */
-         _ncl_khome(&l);
+         _ncl_khome(&l, TRU1);
          break;
       case 'B' ^ 0x40: /* ("history backward") */
          if ((len = _ncl_khist(&l, TRU1)) > 0)
@@ -1222,10 +1252,10 @@ jrestart:
 jreset:
          /* FALLTHRU */
       case 'U' ^ 0x40: /* ^U: ^A + ^K */
-         _ncl_khome(&l);
+         _ncl_khome(&l, FAL0);
          /* FALLTHRU */
       case 'K' ^ 0x40: /* kill from cursor to end of line */
-         _ncl_kkill(&l);
+         _ncl_kkill(&l, (wc == ('K' ^ 0x40) || l.topins == 0));
          /* (Handle full reset?) */
          if (wc == ('G' ^ 0x40)) {
             l.hist = NULL;
@@ -1304,7 +1334,7 @@ tty_init(void)
    long hs;
    char *v, *lbuf;
    FILE *f;
-   size_t lsize, count, llen;
+   size_t lsize, cnt, llen;
 
    _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
    _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
@@ -1314,6 +1344,7 @@ tty_init(void)
    memcpy(&_ncl_tios.tnew, &_ncl_tios.told, sizeof _ncl_tios.tnew);
    _ncl_tios.tnew.c_cc[VMIN] = 1;
    _ncl_tios.tnew.c_cc[VTIME] = 0;
+   _ncl_tios.tnew.c_iflag &= ~(ISTRIP);
    _ncl_tios.tnew.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 
    _CL_HISTSIZE(hs);
@@ -1332,8 +1363,8 @@ tty_init(void)
 
    lbuf = NULL;
    lsize = 0;
-   count = fsize(f);
-   while (fgetline(&lbuf, &lsize, &count, &llen, f, FAL0) != NULL) {
+   cnt = fsize(f);
+   while (fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL) {
       if (llen > 0 && lbuf[llen - 1] == '\n')
          lbuf[--llen] = '\0';
       if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */

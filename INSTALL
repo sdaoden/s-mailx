@@ -85,6 +85,9 @@ o DragonFly BSD v3.4.1-RELEASE.
 o OpenBSD 5.4 (5.4 GENERIC#36 i386).
   gcc (GCC) 4.2.1 20070719.
 
+o CRUX-Linux 3.0.
+  gcc (GCC) 4.7.2.
+
 o Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
   clang version 3.0 (tags/RELEASE_30/final).

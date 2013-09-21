@@ -190,11 +190,11 @@ bad:
 }
 
 int 
-fcntl_lock(int fd, int type) /* TODO check callees for EINTR etc.!!! */
+fcntl_lock(int fd, int ltype) /* TODO check callees for EINTR etc.!!! */
 {
 	struct flock flp;
 
-	flp.l_type = type;
+	flp.l_type = ltype;
 	flp.l_start = 0;
 	flp.l_whence = SEEK_SET;
 	flp.l_len = 0;

@@ -1002,18 +1002,20 @@ n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
 		if (! skipilseq || err != EILSEQ)
 			break;
 		if (*inbleft > 0) {
-			(*inb)++;
-			(*inbleft)--;
+			++(*inb);
+			--(*inbleft);
 		} else if (*outbleft > 0) {
 			**outb = '\0';
 			break;
 		}
-		if (*outbleft > 2) {
-			(*outb)[0] = '[';
-			(*outb)[1] = '?';
-			(*outb)[2] = ']';
-			(*outb) += 3;
-			(*outbleft) -= 3;
+		if (*outbleft > 0/* TODO 0xFFFD 2*/) {
+			/* TODO 0xFFFD (*outb)[0] = '[';
+			 * TODO (*outb)[1] = '?';
+			 * TODO 0xFFFD (*outb)[2] = ']';
+			 * TODO (*outb) += 3;
+			 * TODO (*outbleft) -= 3; */
+			 *(*outb)++ = '?';
+			 --*outbleft;
 		} else {
 			err = E2BIG;
 			break;

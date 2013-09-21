@@ -12,6 +12,7 @@ export LC_ALL LANG ttycharset
 
 MAKE=make
 NAIL=./s-nail
+CONF=./conf.rc
 
 OUT=./.cc-test.out
 ERR=./.cc-test.err
@@ -23,62 +24,75 @@ rm -f "${OUT}" "${ERR}" "${BODY}" "${MBOX}" 2>> "${ERR}"
 
 # Test all configs
 cc_all_configs() {
-	for c in '' CONFIG=MINIMAL CONFIG=NETSEND \
-			'WANT_GSSAPI=1' \
-			'WANT_EDITLINE=1' \
-			'WANT_EDITLINE=1 WANT_EDITLINE_READLINE=1' \
-			'WANT_ASSERTS=1' \
-			'WANT_ASSERTS=1 WANT_NOALLOCA=1' \
-			'WANT_ASSERTS=1 WANT_NOALLOCA=1 WANT_NOGETOPT=1'
-	do
-		printf "\n\n##########\n$c\n"
-		printf "\n\n##########\n$c\n" >&2
-		sh -c "${MAKE} ${c}"
-		${MAKE} distclean
-	done >> "${OUT}" 2>> "${ERR}"
+   < ${CONF} awk '
+   BEGIN {i = 0}
+   /^[[:space:]]*WANT_/ {
+      sub(/^[[:space:]]*/, "")
+      sub(/=.*$/, "")
+      data[i++] = $1
+   }
+   END {
+      for (j = 0; j < i; ++j) {
+         for (k = 0; k < j; ++k)
+            printf data[k] "=1 "
+         for (k = j; k < i; ++k)
+            printf data[k] "=0 "
+         printf "\n"
+         for (k = 0; k < j; ++k)
+            printf data[k] "=0 "
+         for (k = j; k < i; ++k)
+            printf data[k] "=1 "
+         printf "\n"
+      }
+   }
+   ' | while read c; do
+      printf "\n\n##########\n$c\n"
+      printf "\n\n##########\n$c\n" >&2
+      sh -c "${MAKE} ${c}"
+      ${MAKE} distclean
+   done >> "${OUT}" 2>> "${ERR}"
 }
 
 # Test a UTF-8 mail as a whole via -t, and in pieces (without -t ;)
 cksum_test() {
-	f=$1 s=$2 tno=$3
-	[ "`sed -e '/^From /d' -e '/^Date: /d' \
-			-e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
-			cksum`" != "${s}" ] && {
-		ESTAT=1
-		echo "Checksum mismatch test ${tno}: ${f}" 2>> "${ERR}"
-	}
+   f=$1 s=$2 tno=$3
+   [ "`sed -e '/^From /d' -e '/^Date: /d' \
+         -e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
+         cksum`" != "${s}" ] && {
+      ESTAT=1
+      echo "Checksum mismatch test ${tno}: ${f}" 2>> "${ERR}"
+   }
 }
 
 test_mail() {
-	printf "\n\n########################################\n\n" >> "${OUT}"
-	printf "\n\n########################################\n\n" >> "${ERR}"
-	"${MAKE}" >> "${OUT}" 2>> "${ERR}"
+   printf "\n\n########################################\n\n" >> "${OUT}"
+   printf "\n\n########################################\n\n" >> "${ERR}"
+   "${MAKE}" >> "${OUT}" 2>> "${ERR}"
 
-	# Two tests for MIME-CTE and (a bit) content classification
-	rm -f "${MBOX}"
-	< "${BODY}" MAILRC=/dev/null \
-	"${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
-	cksum_test "${MBOX}" '2606934084 5649' 1
+   # Two tests for MIME-CTE and (a bit) content classification
+   rm -f "${MBOX}"
+   < "${BODY}" MAILRC=/dev/null \
+   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
+   cksum_test "${MBOX}" '2606934084 5649' 1
 
-	rm -f "${MBOX}"
-	(	echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
-		cat "${BODY}"
-	) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
-	cksum_test "${MBOX}" '799758423 5648' 2
+   rm -f "${MBOX}"
+   (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
+      cat "${BODY}"
+   ) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
+   cksum_test "${MBOX}" '799758423 5648' 2
 
-	# Test for [260e19d].  Juergen Daubert.
-	rm -f "${MBOX}"
-	echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
-	cksum_test "${MBOX}" '506144051 104' 3
+   # Test for [260e19d].  Juergen Daubert.
+   rm -f "${MBOX}"
+   echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
+   cksum_test "${MBOX}" '506144051 104' 3
 
-	# Sending of multiple mails in a single invocation
-	rm -f "${MBOX}"
-	(
-		printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
-		printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
-		echo x
-	) | MAILRC=/dev/null "${NAIL}" -N -n -# -Sstealthmua
-	cksum_test "${MBOX}" '2028749685 277' 4
+   # Sending of multiple mails in a single invocation
+   rm -f "${MBOX}"
+   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
+      printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+      echo x
+   ) | MAILRC=/dev/null "${NAIL}" -N -n -# -Sstealthmua
+   cksum_test "${MBOX}" '2028749685 277' 4
 }
 
 printf \
@@ -130,7 +144,7 @@ printf \
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '\
-	> "${BODY}"
+ > "${BODY}"
 
 SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
 'adadaddsssssssddddddddddddddddddddd'\
@@ -151,9 +165,9 @@ cc_all_configs
 test_mail
 
 if [ ${ESTAT} -eq 0 ]; then
-	echo 'Everything seems to be fine around here' >> "${OUT}" 2>> "${ERR}"
-	"${MAKE}" distclean >> "${OUT}" 2>> "${ERR}"
-	rm -f "${BODY}" "${MBOX}" >> "${OUT}" 2>> "${ERR}"
+   echo 'Everything seems to be fine around here' >> "${OUT}" 2>> "${ERR}"
+   "${MAKE}" distclean >> "${OUT}" 2>> "${ERR}"
+   rm -f "${BODY}" "${MBOX}" >> "${OUT}" 2>> "${ERR}"
 fi
 exit ${ESTAT}
-# vim:set fenc=utf8 syntax=sh ts=8 sts=8 sw=8 noet tw=79:
+# vim:set fenc=utf8:s-it-mode

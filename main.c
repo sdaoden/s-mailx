@@ -75,7 +75,7 @@ struct a_arg {
 static void	_startup(void);
 
 /* Grow a char** */
-static int	_grow_cpp(char const ***cpp, int size, int count);
+static int	_grow_cpp(char const ***cpp, int size, int cnt);
 
 /* Initialize *tempdir*, *myname*, *homedir* */
 static void	_setup_vars(void);
@@ -172,14 +172,14 @@ _startup(void)
 }
 
 static int
-_grow_cpp(char const ***cpp, int size, int count)
+_grow_cpp(char const ***cpp, int size, int cnt)
 {
 	/* Before spreserve(): use our string pool instead of LibC heap;
 	 * Increment *size* by at least 5! */
 	char const **newcpp = salloc(sizeof(char*) * (size += 8));
 
-	if (count > 0)
-		memcpy(newcpp, *cpp, count * sizeof(char*));
+	if (cnt > 0)
+		memcpy(newcpp, *cpp, (size_t)cnt * sizeof(char*));
 	*cpp = newcpp;
 	return size;
 }

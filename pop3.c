@@ -112,7 +112,7 @@ static void pop3catch(int s);
 static void maincatch(int s);
 static enum okay pop3_noop1(struct mailbox *mp);
 static void pop3alarm(int s);
-static enum okay pop3_stat(struct mailbox *mp, off_t *size, int *count);
+static enum okay pop3_stat(struct mailbox *mp, off_t *size, int *cnt);
 static enum okay pop3_list(struct mailbox *mp, int n, size_t *size);
 static void pop3_init(struct mailbox *mp, int n);
 static void pop3_dates(struct mailbox *mp);
@@ -495,7 +495,7 @@ out:	pop3lock--;
 }
 
 static enum okay
-pop3_stat(struct mailbox *mp, off_t *size, int *count)
+pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 {
 	char *cp;
 	enum okay ok = OKAY;
@@ -506,7 +506,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *count)
 	while (*cp && spacechar(*cp & 0377))
 		cp++;
 	if (*cp) {
-		*count = (int)strtol(cp, NULL, 10);
+		*cnt = (int)strtol(cp, NULL, 10);
 		while (*cp && !spacechar(*cp & 0377))
 			cp++;
 		while (*cp && spacechar(*cp & 0377))
@@ -592,7 +592,7 @@ pop3_setptr(struct mailbox *mp)
 }
 
 int
-pop3_setfile(const char *server, int newmail, int isedit)
+pop3_setfile(const char *server, int nmail, int isedit)
 {
 	struct sock	so;
 	sighandler_type	saveint;
@@ -601,7 +601,7 @@ pop3_setfile(const char *server, int newmail, int isedit)
 	const char *cp, *uhp, *volatile sp = server;
 	int use_ssl = 0;
 
-	if (newmail)
+	if (nmail)
 		return 1;
 	if (strncmp(sp, "pop3://", 7) == 0) {
 		sp = &sp[7];

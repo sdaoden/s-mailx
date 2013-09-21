@@ -45,7 +45,7 @@
 
 #include "extern.h"
 
-static int	save1(char *str, int mark, char const *cmd,
+static int	save1(char *str, int domark, char const *cmd,
 			struct ignoretab *ignore, int convert,
 			int sender_record, int domove);
 static char *	snarf(char *linebuf, int *flag, int usembox);
@@ -244,7 +244,7 @@ cDecrypt(void *v)
  * If mark is true, mark the message "saved."
  */
 static int
-save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
+save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	int convert, int sender_record, int domove)
 {
 	off_t mstats[2], tstats[2];
@@ -361,8 +361,8 @@ save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		if (prot == PROTO_IMAP &&
-				ignore[0].i_count == 0 &&
-				ignore[1].i_count == 0
+				ignoret[0].i_count == 0 &&
+				ignoret[1].i_count == 0
 #ifdef HAVE_IMAP /* TODO revisit */
 				&& imap_thisaccount(file)
 #endif
@@ -375,13 +375,13 @@ save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
 #endif
-		} else if (send(mp, obuf, ignore, NULL,
+		} else if (send(mp, obuf, ignoret, NULL,
 					convert, mstats) < 0) {
 			perror(file);
 			goto ferr;
 		}
 		touch(mp);
-		if (mark)
+		if (domark)
 			mp->m_flag |= MSAVED;
 		if (domove) {
 			mp->m_flag |= MDELETED|MSAVED;
@@ -413,7 +413,7 @@ save1(char *str, int mark, char const *cmd, struct ignoretab *ignore,
 		else
 			printf(tr(27, "binary"));
 		printf("/%lu\n", (long)tstats[1]);
-	} else if (mark) {
+	} else if (domark) {
 		for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 			mp = &message[*ip - 1];
 			mp->m_flag &= ~MSAVED;

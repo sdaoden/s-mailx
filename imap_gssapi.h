@@ -80,18 +80,18 @@
 # include <gssapi.h>
 #endif
 
-static void imap_gss_error1(const char *s, OM_uint32 code, int type);
+static void imap_gss_error1(const char *s, OM_uint32 code, int typ);
 static void imap_gss_error(const char *s, OM_uint32 maj_stat,
 		OM_uint32 min_stat);
 static void
-imap_gss_error1(const char *s, OM_uint32 code, int type)
+imap_gss_error1(const char *s, OM_uint32 code, int typ)
 {
 	OM_uint32	maj_stat, min_stat;
 	gss_buffer_desc	msg = GSS_C_EMPTY_BUFFER;
 	OM_uint32	msg_ctx = 0;
 
 	do {
-		maj_stat = gss_display_status(&min_stat, code, type,
+		maj_stat = gss_display_status(&min_stat, code, typ,
 				GSS_C_NO_OID, &msg_ctx, &msg);
 		if (maj_stat == GSS_S_COMPLETE) {
 			fprintf(stderr, "GSS error: %s / %s\n",

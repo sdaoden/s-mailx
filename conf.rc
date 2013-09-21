@@ -101,7 +101,8 @@ WANT_DOCSTRINGS=1
 # *quote-fold* mechanism.
 # This will be turned off automatically if the required character
 # classification is not available on the host.
-# TODO disabled for v14.4, since not multibyte aware WANT_QUOTE_FOLD=0
+# NOTE: this is EXPERIMENTAL and INCOMPLETE!
+WANT_QUOTE_FOLD=0
 
 ## PATHS AND PROGRAMS ##
 

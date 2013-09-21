@@ -64,9 +64,9 @@ static	sigjmp_buf	collabort;	/* To end collection with error */
 
 static	sigjmp_buf pipejmp;		/* On broken pipe */
 
-/* If *interactive* is set and *echo* is, too, also dump to *stdout* */
+/* If *interactive* is set and *doecho* is, too, also dump to *stdout* */
 static int	_include_file(FILE *fbuf, char const *name, int *linecount,
-			int *charcount, int echo);
+			int *charcount, bool_t doecho);
 
 static void onpipe(int signo);
 static void insertcommand(FILE *fp, char const *cmd);
@@ -83,11 +83,11 @@ static int putesc(const char *s, FILE *stream);
 
 static int
 _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
-	int echo)
+	bool_t doecho)
 {
 	int ret = -1;
 	char *linebuf = NULL;
-	size_t linesize = 0, linelen, count;
+	size_t linesize = 0, linelen, cnt;
 
 	if (fbuf == NULL) {
 		if ((fbuf = Fopen(name, "r")) == NULL) {
@@ -98,13 +98,13 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
 		fflush_rewind(fbuf);
 
 	*linecount = *charcount = 0;
-	count = fsize(fbuf);
-	while (fgetline(&linebuf, &linesize, &count, &linelen, fbuf, 0)
+	cnt = fsize(fbuf);
+	while (fgetline(&linebuf, &linesize, &cnt, &linelen, fbuf, 0)
 			!= NULL) {
 		if (fwrite(linebuf, sizeof *linebuf, linelen, collf)
 				!= linelen)
 			goto jleave;
-		if ((options & OPT_INTERACTIVE) && echo)
+		if ((options & OPT_INTERACTIVE) && doecho)
 			fwrite(linebuf, sizeof *linebuf, linelen, stdout);
 		++(*linecount);
 		(*charcount) += linelen;
@@ -154,24 +154,24 @@ insertcommand(FILE *fp, char const *cmd)
  * ~p command.
  */
 static void
-print_collf(FILE *collf, struct header *hp)
+print_collf(FILE *cf, struct header *hp)
 {
 	char *lbuf = NULL;
 	FILE *volatile obuf = stdout;
 	struct attachment *ap;
 	char const *cp;
 	enum gfield gf;
-	size_t linecnt, maxlines, linesize = 0, linelen, count, count2;
+	size_t linecnt, maxlines, linesize = 0, linelen, cnt, cnt2;
 
-	fflush(collf);
-	rewind(collf);
-	count = count2 = fsize(collf);
+	fflush(cf);
+	rewind(cf);
+	cnt = cnt2 = fsize(cf);
 
 	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL) {
 		for (linecnt = 0;
-			fgetline(&lbuf, &linesize, &count2, NULL, collf, 0);
+			fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0);
 			linecnt++);
-		rewind(collf);
+		rewind(cf);
 		maxlines = (*cp == '\0' ? screensize() : atoi(cp));
 		maxlines -= 4;
 		if (hp->h_to)
@@ -207,7 +207,7 @@ print_collf(FILE *collf, struct header *hp)
 	if (value("fullnames"))
 		gf |= GCOMMA;
 	puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
-	while (fgetline(&lbuf, &linesize, &count, &linelen, collf, 1))
+	while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
 		prout(lbuf, linelen, obuf);
 	if (hp->h_attach != NULL) {
 		fputs(tr(63, "-------\nAttachments:\n"), obuf);
@@ -256,7 +256,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	char *linebuf = NULL, *quote = NULL, *tempMail = NULL;
 	char const *cp;
 	size_t linesize = 0;
-	long count;
+	long cnt;
 	enum sendaction	action;
 	sigset_t oset, nset;
 	sighandler_type	savedtop;
@@ -347,8 +347,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			action = SEND_QUOTE_ALL;
 		} else {
 			cp = hfield1("from", mp);
-			if (cp != NULL && (count = (long)strlen(cp)) > 0) {
-				if (xmime_write(cp, count,
+			if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
+				if (xmime_write(cp, cnt,
 						collf, CONV_FROMHDR, TD_NONE,
 						NULL) < 0)
 					goto jerr;
@@ -381,7 +381,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		if (getfields)
 			grab_headers(hp, getfields, 1);
 		if (quotefile != NULL) {
-			if (_include_file(NULL, quotefile, &lc, &cc, 1) != 0)
+			if (_include_file(NULL, quotefile, &lc, &cc, TRU1) != 0)
 				goto jerr;
 		}
 		if ((options & OPT_INTERACTIVE) && value("editalong")) {
@@ -410,10 +410,10 @@ jcont:
 	 */
 	if (! (options & (OPT_INTERACTIVE | OPT_t_FLAG|OPT_TILDE_FLAG))) {
 		linebuf = srealloc(linebuf, linesize = LINESIZE);
-		while ((count = fread(linebuf, sizeof *linebuf,
+		while ((cnt = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
-			if ((size_t)count != fwrite(linebuf, sizeof *linebuf,
-						count, collf))
+			if ((size_t)cnt != fwrite(linebuf, sizeof *linebuf,
+						cnt, collf))
 				goto jerr;
 		}
 		if (fflush(collf))
@@ -426,10 +426,10 @@ jcont:
 	 */
 	for (;;) {
 		colljmp_p = 1;
-		count = readline_input(LNED_NONE, "", &linebuf, &linesize);
+		cnt = readline_input(LNED_NONE, "", &linebuf, &linesize);
 		colljmp_p = 0;
 
-		if (count < 0) {
+		if (cnt < 0) {
 			if ((options & OPT_INTERACTIVE) &&
 			    value("ignoreeof") != NULL && ++eofcount < 25) {
 				printf(tr(55,
@@ -438,7 +438,7 @@ jcont:
 			}
 			break;
 		}
-		if ((options & OPT_t_FLAG) && count == 0) {
+		if ((options & OPT_t_FLAG) && cnt == 0) {
 			rewind(collf);
 			if (makeheader(collf, hp) != OKAY)
 				goto jerr;
@@ -453,12 +453,12 @@ jcont:
 				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
 				(boption("dot") || boption("ignoreeof")))
 			break;
-		if (count == 0 || linebuf[0] != escape || ! (options &
+		if (cnt == 0 || linebuf[0] != escape || ! (options &
 				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
 			/* TODO calls putline(), which *always* appends LF;
 			 * TODO thus, STDIN with -t will ALWAYS end with LF,
 			 * TODO even if no trailing LF and QP CTE */
-			if (putline(collf, linebuf, count) < 0)
+			if (putline(collf, linebuf, cnt) < 0)
 				goto jerr;
 			continue;
 		}
@@ -471,7 +471,7 @@ jcont:
 			 * Otherwise, it's an error.
 			 */
 			if (c == escape) {
-				if (putline(collf, &linebuf[1], count - 1) < 0)
+				if (putline(collf, &linebuf[1], cnt - 1) < 0)
 					goto jerr;
 				else
 					break;
@@ -492,7 +492,7 @@ jcont:
 		case '_':
 			/* Escape to command mode, but be nice! */
 			inhook = 0;
-			execute(&linebuf[2], 1, count - 2);
+			execute(&linebuf[2], 1, cnt - 2);
 			goto jcont;
 		case '.':
 			/* Simulate end of file on input */
@@ -598,7 +598,7 @@ jcont:
 			}
 			printf(tr(59, "\"%s\" "), cp);
 			fflush(stdout);
-			if (_include_file(fbuf, cp, &lc, &cc, 0) != 0)
+			if (_include_file(fbuf, cp, &lc, &cc, FAL0) != 0)
 				goto jerr;
 			printf(tr(60, "%d/%d\n"), lc, cc);
 			break;
@@ -858,7 +858,7 @@ mespipe(char *cmd)
 	FILE *nf;
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 	char *tempEdit;
-	char const *shell;
+	char const *sh;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == NULL) {
 		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));
@@ -871,9 +871,9 @@ mespipe(char *cmd)
 	 * stdin = current message.
 	 * stdout = new message.
 	 */
-	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
-	if (run_command(shell,
+	if ((sh = value("SHELL")) == NULL)
+		sh = SHELL;
+	if (run_command(sh,
 	    0, fileno(collf), fileno(nf), "-c", cmd, NULL) < 0) {
 		Fclose(nf);
 		goto out;

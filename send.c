@@ -80,7 +80,7 @@ SINLINE ssize_t	_out(char const *buf, size_t len, FILE *fp,
 static enum pipeflags _pipecmd(char **result, char const *content_type);
 
 /* Create a pipe */
-static FILE *	_pipefile(char const *pipecmd, FILE **qbuf, bool_t quote,
+static FILE *	_pipefile(char const *pipecomm, FILE **qbuf, bool_t quote,
 			bool_t async);
 
 static int sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
@@ -130,7 +130,7 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	 */
 	struct mimepart	*np = NULL;
 	char *boundary, *line = NULL;
-	size_t linesize = 0, linelen, count, boundlen;
+	size_t linesize = 0, linelen, cnt, boundlen;
 	FILE *ibuf;
 	off_t offs;
 	int part = 0;
@@ -141,13 +141,13 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	boundlen = linelen;
 	if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
 		return;
-	count = ip->m_size;
-	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0))
+	cnt = ip->m_size;
+	while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0))
 		if (line[0] == '\n')
 			break;
 	offs = ftell(ibuf);
 	newpart(ip, &np, offs, NULL);
-	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
+	while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 		/* XXX linelen includes LF */
 		if (! ((lines > 0 || part == 0) && linelen > boundlen &&
 				memcmp(line, boundary, boundlen) == 0)) {
@@ -182,7 +182,7 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 			endpart(&np, offs - boundlen - 4, lines);
 			newpart(ip, &np, offs - boundlen - 4, NULL);
 		}
-		endpart(&np, offs + count, 2);
+		endpart(&np, offs + cnt, 2);
 		break;
 	}
 	if (np) {
@@ -396,9 +396,9 @@ jleave:
 }
 
 static FILE *
-_pipefile(char const *pipecmd, FILE **qbuf, bool_t quote, bool_t async)
+_pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
 {
-	char const *shell;
+	char const *sh;
 	FILE *rbuf = *qbuf;
 
 	if (quote) {
@@ -412,11 +412,11 @@ _pipefile(char const *pipecmd, FILE **qbuf, bool_t quote, bool_t async)
 		Ftfree(&tempPipe);
 		async = FAL0;
 	}
-	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
-	if ((rbuf = Popen(pipecmd, "W", shell,
+	if ((sh = value("SHELL")) == NULL)
+		sh = SHELL;
+	if ((rbuf = Popen(pipecomm, "W", sh,
 			async ? -1 : fileno(*qbuf))) == NULL)
-		perror(pipecmd);
+		perror(pipecomm);
 	else {
 		fflush(*qbuf);
 		if (*qbuf != stdout)
@@ -440,7 +440,7 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	char const *prefix, enum sendaction action, off_t *stats)
 {
 	int rv = -1, c;
-	size_t count, sz, i;
+	size_t cnt, sz, i;
 	FILE *ibuf;
 	enum parseflags pf;
 	struct mimepart *ip;
@@ -458,7 +458,7 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
 		return -1;
 
-	count = mp->m_size;
+	cnt = mp->m_size;
 	sz = 0;
 	if (mp->m_flag & MNOFROM) {
 		if (doign != allignore && doign != fwdignore &&
@@ -476,13 +476,13 @@ send(struct message *mp, FILE *obuf, struct ignoretab *doign,
 				goto jleave;
 			sz += i;
 		}
-		while (count && (c = getc(ibuf)) != EOF) {
+		while (cnt && (c = getc(ibuf)) != EOF) {
 			if (doign != allignore && doign != fwdignore &&
 					action != SEND_RFC822) {
 				putc(c, obuf);
 				sz++;
 			}
-			count--;
+			cnt--;
 			if (c == '\n')
 				break;
 		}
@@ -509,9 +509,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 {
 	int volatile ispipe, rt = 0;
 	struct str rest;
-	char *line = NULL, *cp, *cp2, *start, *pipecmd = NULL;
-	char const *tcs;
-	size_t linesize = 0, linelen, count, len;
+	char *line = NULL, *cp, *cp2, *start, *pipecomm = NULL;
+	size_t linesize = 0, linelen, cnt, len;
 	int dostat, infld = 0, ignoring = 1, isenc, c, eof;
 	struct mimepart	*volatile np;
 	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
@@ -536,13 +535,13 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	}
 	if ((ibuf = setinput(&mb, (struct message *)ip, NEED_BODY)) == NULL)
 		return -1;
-	count = ip->m_size;
+	cnt = ip->m_size;
 	if (ip->m_mimecontent == MIME_DISCARD)
 		goto skip;
 
 	if ((ip->m_flag & MNOFROM) == 0)
-		while (count && (c = getc(ibuf)) != EOF) {
-			count--;
+		while (cnt && (c = getc(ibuf)) != EOF) {
+			cnt--;
 			if (c == '\n')
 				break;
 		}
@@ -554,7 +553,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 
 	/* Work the headers */
 	quoteflt_reset(qf, obuf);
-	while (fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
+	while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 		lineno++;
 		if (line[0] == '\n') {
 			/*
@@ -651,7 +650,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 		 * Determine if the end of the line is a MIME encoded word.
 		 */
 		isenc &= ~2;
-		if (count && (c = getc(ibuf)) != EOF) {
+		if (cnt && (c = getc(ibuf)) != EOF) {
 			if (blankchar(c)) {
 				if (linelen > 0 && line[linelen - 1] == '\n')
 					cp = &line[linelen - 2];
@@ -749,11 +748,11 @@ skip:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
 			ispipe = TRU1;
-			switch (_pipecmd(&pipecmd, ip->m_ct_type_plain)) {
+			switch (_pipecmd(&pipecomm, ip->m_ct_type_plain)) {
 			case PIPE_MSG:
-				_out(pipecmd, strlen(pipecmd), obuf, CONV_NONE,
-					SEND_MBOX, qf, stats, NULL);
-				pipecmd = NULL;
+				_out(pipecomm, strlen(pipecomm), obuf,
+					CONV_NONE, SEND_MBOX, qf, stats, NULL);
+				pipecomm = NULL;
 				/* FALLTRHU */
 			case PIPE_TEXT:
 			case PIPE_COMM:
@@ -782,11 +781,11 @@ skip:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
 			ispipe = TRU1;
-			switch (_pipecmd(&pipecmd, ip->m_ct_type_plain)) {
+			switch (_pipecmd(&pipecomm, ip->m_ct_type_plain)) {
 			case PIPE_MSG:
-				_out(pipecmd, strlen(pipecmd), obuf, CONV_NONE,
-					SEND_MBOX, qf, stats, NULL);
-				pipecmd = NULL;
+				_out(pipecomm, strlen(pipecomm), obuf,
+					CONV_NONE, SEND_MBOX, qf, stats, NULL);
+				pipecomm = NULL;
 				break;
 			case PIPE_ASYNC:
 				ispipe = FAL0;
@@ -797,9 +796,9 @@ skip:
 			case PIPE_TEXT:
 				goto jcopyout; /* break; break; */
 			}
-			if (pipecmd != NULL)
+			if (pipecomm != NULL)
 				break;
-			if (level == 0 && count) {
+			if (level == 0 && cnt) {
 				char const *x = tr(210, "[Binary content]\n");
 				_out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX,
 					qf, stats, NULL);
@@ -945,7 +944,7 @@ jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
 	 */
 jcopyout:
 	if (doign == allignore && level == 0)	/* skip final blank line */
-		count--;
+		cnt--;
 	switch (ip->m_mimeenc) {
 	case MIME_BIN:
 		if (stats)
@@ -975,7 +974,6 @@ jcopyout:
 	if (action == SEND_DECRYPT || action == SEND_MBOX ||
 			action == SEND_RFC822 || action == SEND_SHOW)
 		convert = CONV_NONE;
-	tcs = charset_get_lc();
 #ifdef HAVE_ICONV
 	if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
@@ -983,6 +981,8 @@ jcopyout:
 			(ip->m_mimecontent == MIME_TEXT_PLAIN ||
 			 ip->m_mimecontent == MIME_TEXT_HTML ||
 			 ip->m_mimecontent == MIME_TEXT)) {
+		char const *tcs = charset_get_lc();
+
 		if (iconvd != (iconv_t)-1)
 			n_iconv_close(iconvd);
 		/* TODO Since Base64 has an odd 4:3 relation in between input
@@ -1018,11 +1018,11 @@ jcopyout:
 		}
 	}
 #endif
-	if (pipecmd != NULL &&
+	if (pipecomm != NULL &&
 			(action == SEND_TODISP || action == SEND_TODISP_ALL ||
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL)) {
 		qbuf = obuf;
-		pbuf = _pipefile(pipecmd, UNVOLATILE(&qbuf),
+		pbuf = _pipefile(pipecomm, UNVOLATILE(&qbuf),
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL,
 			! ispipe);
 		action = SEND_TOPIPE;
@@ -1047,7 +1047,7 @@ jcopyout:
 	rest.l = 0;
 
 	quoteflt_reset(qf, pbuf);
-	while (! eof && fgetline(&line, &linesize, &count, &linelen, ibuf, 0)) {
+	while (! eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 		++lineno;
 joutln:
 		len = (size_t)_out(line, linelen, pbuf, convert, action,
@@ -1218,7 +1218,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 		int level)
 {
 	int	c, lastc = '\n';
-	size_t	count;
+	size_t	cnt;
 	FILE	*ibuf;
 	off_t	offs;
 	struct mimepart	*np;
@@ -1226,10 +1226,10 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 
 	if ((ibuf = setinput(&mb, (struct message *)ip, NEED_BODY)) == NULL)
 		return;
-	count = ip->m_size;
+	cnt = ip->m_size;
 	lines = ip->m_lines;
-	while (count && ((c = getc(ibuf)) != EOF)) {
-		count--;
+	while (cnt && ((c = getc(ibuf)) != EOF)) {
+		cnt--;
 		if (c == '\n') {
 			lines--;
 			if (lastc == '\n')
@@ -1243,7 +1243,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_have = HAVE_HEADER|HAVE_BODY;
 	np->m_block = mailx_blockof(offs);
 	np->m_offset = mailx_offsetof(offs);
-	np->m_size = np->m_xsize = count;
+	np->m_size = np->m_xsize = cnt;
 	np->m_lines = np->m_xlines = lines;
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
@@ -1347,16 +1347,16 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 	off_t *stats)
 {
 	char *line = NULL;
-	size_t linesize = 0, linelen, count;
+	size_t linesize = 0, linelen, cnt;
 	ssize_t all_sz, sz;
 
 	fflush(pipebuf);
 	rewind(pipebuf);
-	count = fsize(pipebuf);
+	cnt = fsize(pipebuf);
 	all_sz = 0;
 
 	quoteflt_reset(qf, outbuf);/* FIXME test that this works */
-	while (fgetline(&line, &linesize, &count, &linelen, pipebuf, 0)
+	while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0)
 			!= NULL) {
 		if ((sz = quoteflt_push(qf, line, linelen)) < 0)
 			break;
@@ -1424,20 +1424,20 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
 static void
 put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 {
-	char const *from, *date, *nl;
+	char const *froma, *date, *nl;
 	int i;
 
 	if (ip && ip->m_from) {
-		from = ip->m_from;
+		froma = ip->m_from;
 		date = fakedate(ip->m_time);
 		nl = "\n";
 	} else {
-		from = myname;
+		froma = myname;
 		date = time_current.tc_ctime;
 		nl = "";
 	}
 
-	i = fprintf(fp, "From %s %s%s", from, date, nl);
+	i = fprintf(fp, "From %s %s%s", froma, date, nl);
 	if (i > 0)
 		_addstats(stats, (*nl != '\0'), i);
 }

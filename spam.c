@@ -40,7 +40,6 @@ typedef int avoid_empty_file_compiler_warning;
  * TODO    process program (unless we want to isolate the UI at that time, to
  * TODO    allow for some xUI protocol).
  * TODO    :: That is to say -- it's a horrible signal and jump mess ::
- * TODO - We do not support learning yet (neither report nor revoke).
  * TODO - We do not yet handle direct communication with spamd(1).
  * TODO   I.e., this could be a lean alternative to the first item;
  * TODO   the protocol is easy and we could support ALL operations easily.

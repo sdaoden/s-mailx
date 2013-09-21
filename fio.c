@@ -315,12 +315,12 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 }
 
 char *
-(fgetline)(char **line, size_t *linesize, size_t *count, size_t *llen,
+(fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen,
 	FILE *fp, int appendnl SMALLOC_DEBUG_ARGS)
 {
 	size_t i_llen, sz;
 
-	if (count == NULL)
+	if (cnt == NULL)
 		/*
 		 * If we have no count, we cannot determine where the
 		 * characters returned by fgets() end if there was no
@@ -331,7 +331,7 @@ char *
 	if (*line == NULL || *linesize < LINESIZE)
 		*line = (srealloc)(*line, *linesize = LINESIZE
 				SMALLOC_DEBUG_ARGSCALL);
-	sz = *linesize <= *count ? *linesize : *count + 1;
+	sz = *linesize <= *cnt ? *linesize : *cnt + 1;
 	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
 		/*
 		 * Leave llen untouched; it is used to determine whether
@@ -339,12 +339,12 @@ char *
 		 */
 		return NULL;
 	i_llen = _length_of_line(*line, sz);
-	*count -= i_llen;
+	*cnt -= i_llen;
 	while ((*line)[i_llen - 1] != '\n') {
 		*line = (srealloc)(*line, *linesize += 256
 				SMALLOC_DEBUG_ARGSCALL);
 		sz = *linesize - i_llen;
-		sz = (sz <= *count ? sz : *count + 1);
+		sz = (sz <= *cnt ? sz : *cnt + 1);
 		if (sz <= 1 || fgets(&(*line)[i_llen], sz, fp) == NULL) {
 			if (appendnl) {
 				(*line)[i_llen++] = '\n';
@@ -354,7 +354,7 @@ char *
 		}
 		sz = _length_of_line(&(*line)[i_llen], sz);
 		i_llen += sz;
-		*count -= sz;
+		*cnt -= sz;
 	}
 	if (llen)
 		*llen = i_llen;
@@ -520,7 +520,7 @@ setptr(FILE *ibuf, off_t offset)
 	char const *cp2;
 	struct message this;
 	int maybe, inhead, thiscnt;
-	size_t linesize = 0, filesize, count;
+	size_t linesize = 0, filesize, cnt;
 
 	maybe = 1;
 	inhead = 0;
@@ -530,7 +530,7 @@ setptr(FILE *ibuf, off_t offset)
 	filesize = mailsize - offset;
 	offset = ftell(mb.mb_otf);
 	for (;;) {
-		if (fgetline(&linebuf, &linesize, &filesize, &count, ibuf, 0)
+		if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0)
 				== NULL) {
 			this.m_xsize = this.m_size;
 			this.m_xlines = this.m_lines;
@@ -548,20 +548,20 @@ setptr(FILE *ibuf, off_t offset)
 #endif
 		/* XXX Convert CRLF to LF; this should be rethought in that
 		 * XXX CRLF input should possibly end as CRLF output? */
-		if (count >= 2 && linebuf[count - 1] == '\n' &&
-				linebuf[count - 2] == '\r')
-			linebuf[--count - 1] = '\n';
-		fwrite(linebuf, sizeof *linebuf, count, mb.mb_otf);
+		if (cnt >= 2 && linebuf[cnt - 1] == '\n' &&
+				linebuf[cnt - 2] == '\r')
+			linebuf[--cnt - 1] = '\n';
+		fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
 		if (ferror(mb.mb_otf)) {
 			perror("/tmp");
 			exit(1);
 		}
-		if (linebuf[count - 1] == '\n')
-			linebuf[count - 1] = '\0';
-		if (maybe && linebuf[0] == 'F' && is_head(linebuf, count)) {
+		if (linebuf[cnt - 1] == '\n')
+			linebuf[cnt - 1] = '\0';
+		if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt)) {
 			/* TODO
 			 * TODO char date[FROM_DATEBUF];
-			 * TODO extract_date_from_from_(linebuf, count, date);
+			 * TODO extract_date_from_from_(linebuf, cnt, date);
 			 * TODO this.m_time = 10000;
 			 */
 			this.m_xsize = this.m_size;
@@ -612,8 +612,8 @@ setptr(FILE *ibuf, off_t offset)
 					break;
 			}
 		}
-		offset += count;
-		this.m_size += count;
+		offset += cnt;
+		this.m_size += cnt;
 		this.m_lines++;
 		maybe = linebuf[0] == 0;
 	}
@@ -626,13 +626,13 @@ setptr(FILE *ibuf, off_t offset)
  * characters written, including the newline.
  */
 int
-putline(FILE *obuf, char *linebuf, size_t count)
+putline(FILE *obuf, char *linebuf, size_t cnt)
 {
-	fwrite(linebuf, sizeof *linebuf, count, obuf);
+	fwrite(linebuf, sizeof *linebuf, cnt, obuf);
 	putc('\n', obuf);
 	if (ferror(obuf))
 		return (-1);
-	return (count + 1);
+	return (cnt + 1);
 }
 
 /*

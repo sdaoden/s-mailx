@@ -392,11 +392,11 @@ number:
 			}
 			if (id == NULL && (cp = hfield1("references", dot))
 					!= NULL) {
-				struct name	*np;
-				if ((np = extract(cp, GREF)) != NULL) {
-					while (np->n_flink != NULL)
-						np = np->n_flink;
-					id = savestr(np->n_name);
+				struct name *enp;
+				if ((enp = extract(cp, GREF)) != NULL) {
+					while (enp->n_flink != NULL)
+						enp = enp->n_flink;
+					id = savestr(enp->n_name);
 					idfield = ID_REFERENCES;
 				}
 			}

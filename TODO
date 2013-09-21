@@ -181,7 +181,7 @@ Non-breakers
 - POP3 doesn't support "newmail" for real.  If implemented, should it sync?
   Look at POP3 impl. in general..
 
-- Having a newsreader would be a really cool thing.
+- Having a newsreader would be a really cool thing.  (RFC 977 and 2980)
 
 - There should be a way to ignore the From_ line, as opposed to the From:
   line, i.e., distinctively.
@@ -537,6 +537,8 @@ TODO S-nail 14.5:
   Security
   RFC 4422 - Simple Authentication and Security layer (SASL) 
   RFC 5246 - Transport Layer Security (TLS)
+  RFC 977 - Network News Transfer Protocol
+  RFC 2980 - Common NNTP Extensions
 
 - IMAP: if i `d' a message then this is a local change (in the meanwhile);
   yet, when i `u' it, that will go through the server, needlessly.

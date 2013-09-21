@@ -58,9 +58,9 @@ static sigjmp_buf	maildirjmp;
 /* Do some cleanup in the tmp/ subdir */
 static void		_cleantmp(void);
 
-static int maildir_setfile1(const char *name, int newmail, int omsgCount);
+static int maildir_setfile1(const char *name, int nmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
-static int subdir(const char *name, const char *sub, int newmail);
+static int subdir(const char *name, const char *sub, int nmail);
 static void append(const char *name, const char *sub, const char *fn);
 static void readin(const char *name, struct message *m);
 static void maildir_update(void);
@@ -81,14 +81,14 @@ _cleantmp(void)
 	char dep[MAXPATHLEN];
 	struct stat st;
 	time_t now;
-	DIR *dirfd;
+	DIR *dirp;
 	struct dirent *dp;
 
-	if ((dirfd = opendir("tmp")) == NULL)
+	if ((dirp = opendir("tmp")) == NULL)
 		goto jleave;
 
 	time(&now);
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.')
 			continue;
 		sstpcpy(sstpcpy(dep, "tmp/"), dp->d_name);
@@ -97,14 +97,14 @@ _cleantmp(void)
 		if (st.st_atime + 36*3600 < now)
 			unlink(dep);
 	}
-	closedir(dirfd);
+	closedir(dirp);
 jleave:	;
 }
 
 int 
-maildir_setfile(const char *name, int newmail, int isedit)
+maildir_setfile(const char *name, int nmail, int isedit)
 {
-	sighandler_type	saveint;
+	sighandler_type	volatile saveint;
 	struct cw	cw;
 	int	i = -1, omsgCount;
 
@@ -115,7 +115,7 @@ maildir_setfile(const char *name, int newmail, int isedit)
 		fprintf(stderr, "Fatal: Cannot open current directory\n");
 		return -1;
 	}
-	if (!newmail)
+	if (!nmail)
 		quit();
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	if (chdir(name) < 0) {
@@ -123,7 +123,7 @@ maildir_setfile(const char *name, int newmail, int isedit)
 		cwrelse(&cw);
 		return -1;
 	}
-	if (!newmail) {
+	if (!nmail) {
 		edit = (isedit != 0);
 		if (mb.mb_itf) {
 			fclose(mb.mb_itf);
@@ -138,13 +138,13 @@ maildir_setfile(const char *name, int newmail, int isedit)
 	}
 	mdtable = NULL;
 	if (sigsetjmp(maildirjmp, 1) == 0) {
-		if (newmail)
+		if (nmail)
 			mktable();
 		if (saveint != SIG_IGN)
 			safe_signal(SIGINT, maildircatch);
-		i = maildir_setfile1(name, newmail, omsgCount);
+		i = maildir_setfile1(name, nmail, omsgCount);
 	}
-	if (newmail)
+	if (nmail && mdtable != NULL)
 		free(mdtable);
 	safe_signal(SIGINT, saveint);
 	if (i < 0) {
@@ -159,38 +159,38 @@ maildir_setfile(const char *name, int newmail, int isedit)
 	}
 	cwrelse(&cw);
 	setmsize(msgCount);
-	if (newmail && mb.mb_sorted && msgCount > omsgCount) {
+	if (nmail && mb.mb_sorted && msgCount > omsgCount) {
 		mb.mb_threaded = 0;
 		sort((void *)-1);
 	}
-	if (!newmail)
+	if (!nmail)
 		sawcom = FAL0;
-	if (!newmail && !edit && msgCount == 0) {
+	if (!nmail && !edit && msgCount == 0) {
 		if (mb.mb_type == MB_MAILDIR && value("emptystart") == NULL)
 			fprintf(stderr, "No mail at %s\n", name);
 		return 1;
 	}
-	if (newmail && msgCount > omsgCount)
+	if (nmail && msgCount > omsgCount)
 		newmailinfo(omsgCount);
 	return 0;
 }
 
 static int 
-maildir_setfile1(const char *name, int newmail, int omsgCount)
+maildir_setfile1(const char *name, int nmail, int omsgCount)
 {
 	int	i;
 
-	if (! newmail)
+	if (! nmail)
 		_cleantmp();
 	mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
-	if ((i = subdir(name, "cur", newmail)) != 0)
+	if ((i = subdir(name, "cur", nmail)) != 0)
 		return i;
-	if ((i = subdir(name, "new", newmail)) != 0)
+	if ((i = subdir(name, "new", nmail)) != 0)
 		return i;
 	append(name, NULL, NULL);
-	for (i = newmail?omsgCount:0; i < msgCount; i++)
+	for (i = nmail?omsgCount:0; i < msgCount; i++)
 		readin(name, &message[i]);
-	if (newmail) {
+	if (nmail) {
 		if (msgCount > omsgCount)
 			qsort(&message[omsgCount],
 					msgCount - omsgCount,
@@ -222,19 +222,19 @@ mdcmp(const void *a, const void *b)
 }
 
 static int 
-subdir(const char *name, const char *sub, int newmail)
+subdir(const char *name, const char *sub, int nmail)
 {
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 
-	if ((dirfd = opendir(sub)) == NULL) {
+	if ((dirp = opendir(sub)) == NULL) {
 		fprintf(stderr, "Cannot open directory \"%s/%s\".\n",
 				name, sub);
 		return -1;
 	}
 	if (access(sub, W_OK) < 0)
 		mb.mb_perm = 0;
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.' &&
 				(dp->d_name[1] == '\0' ||
 				 (dp->d_name[1] == '.' &&
@@ -242,10 +242,10 @@ subdir(const char *name, const char *sub, int newmail)
 			continue;
 		if (dp->d_name[0] == '.')
 			continue;
-		if (!newmail || mdlook(dp->d_name, NULL) == NULL)
+		if (!nmail || mdlook(dp->d_name, NULL) == NULL)
 			append(name, sub, dp->d_name);
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	return 0;
 }
 
@@ -311,7 +311,7 @@ static void
 readin(const char *name, struct message *m)
 {
 	char	*buf;
-	size_t	bufsize, buflen, count;
+	size_t	bufsize, buflen, cnt;
 	long	size = 0, lines = 0;
 	off_t	offset;
 	FILE	*fp;
@@ -326,10 +326,10 @@ readin(const char *name, struct message *m)
 	}
 	buf = smalloc(bufsize = LINESIZE);
 	buflen = 0;
-	count = fsize(fp);
+	cnt = fsize(fp);
 	fseek(mb.mb_otf, 0L, SEEK_END);
 	offset = ftell(mb.mb_otf);
-	while (fgetline(&buf, &bufsize, &count, &buflen, fp, 1) != NULL) {
+	while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1) != NULL) {
 		/*
 		 * Since we simply copy over data without doing any transfer
 		 * encoding reclassification/adjustment we *have* to perform
@@ -477,7 +477,7 @@ move(struct message *m)
 static char *
 mkname(time_t t, enum mflag f, const char *pref)
 {
-	static unsigned long	count;
+	static unsigned long	cnt;
 	static pid_t	mypid;
 	char	*cp;
 	static char	*node;
@@ -510,7 +510,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 		cp = salloc(size);
 		n = snprintf(cp, size, "%lu.%06lu_%06lu.%s:2,",
 				(unsigned long)t,
-				(unsigned long)mypid, ++count, node);
+				(unsigned long)mypid, ++cnt, node);
 	} else {
 		size = (n = strlen(pref)) + 13;
 		cp = salloc(size);
@@ -552,7 +552,7 @@ enum okay
 maildir_append(const char *name, FILE *fp)
 {
 	char	*buf, *bp, *lp;
-	size_t	bufsize, buflen, count;
+	size_t	bufsize, buflen, cnt;
 	off_t	off1 = -1, offs;
 	int	inhead = 1;
 	int	flag = MNEW|MNEWEST;
@@ -563,10 +563,10 @@ maildir_append(const char *name, FILE *fp)
 		return STOP;
 	buf = smalloc(bufsize = LINESIZE);
 	buflen = 0;
-	count = fsize(fp);
+	cnt = fsize(fp);
 	offs = ftell(fp);
 	do {
-		bp = fgetline(&buf, &bufsize, &count, &buflen, fp, 1);
+		bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
 		if (bp == NULL || strncmp(buf, "From ", 5) == 0) {
 			if (off1 != (off_t)-1) {
 				ok = maildir_append1(name, fp, off1,
@@ -767,7 +767,7 @@ subdir_remove(const char *name, const char *sub)
 {
 	char	*path;
 	int	pathsize, pathend, namelen, sublen, n;
-	DIR	*dirfd;
+	DIR	*dirp;
 	struct dirent	*dp;
 
 	namelen = strlen(name);
@@ -778,12 +778,12 @@ subdir_remove(const char *name, const char *sub)
 	memcpy(path + namelen + 1, sub, sublen);
 	path[namelen+sublen+1] = '/';
 	path[pathend = namelen + sublen + 2] = '\0';
-	if ((dirfd = opendir(path)) == NULL) {
+	if ((dirp = opendir(path)) == NULL) {
 		perror(path);
 		free(path);
 		return STOP;
 	}
-	while ((dp = readdir(dirfd)) != NULL) {
+	while ((dp = readdir(dirp)) != NULL) {
 		if (dp->d_name[0] == '.' &&
 				(dp->d_name[1] == '\0' ||
 				 (dp->d_name[1] == '.' &&
@@ -797,12 +797,12 @@ subdir_remove(const char *name, const char *sub)
 		memcpy(path + pathend, dp->d_name, n + 1);
 		if (unlink(path) < 0) {
 			perror(path);
-			closedir(dirfd);
+			closedir(dirp);
 			free(path);
 			return STOP;
 		}
 	}
-	closedir(dirfd);
+	closedir(dirp);
 	path[pathend] = '\0';
 	if (rmdir(path) < 0) {
 		perror(path);

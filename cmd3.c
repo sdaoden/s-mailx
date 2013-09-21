@@ -146,7 +146,7 @@ int
 shell(void *v)
 {
 	char *str = v, *cmd;
-	char const *shell;
+	char const *sh;
 	size_t cmdsize;
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
 
@@ -154,9 +154,9 @@ shell(void *v)
 	memcpy(cmd, str, cmdsize);
 	if (bangexp(&cmd, &cmdsize) < 0)
 		return 1;
-	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
-	run_command(shell, 0, -1, -1, "-c", cmd, NULL);
+	if ((sh = value("SHELL")) == NULL)
+		sh = SHELL;
+	run_command(sh, 0, -1, -1, "-c", cmd, NULL);
 	safe_signal(SIGINT, sigint);
 	printf("!\n");
 	free(cmd);
@@ -171,12 +171,12 @@ int
 dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char const *shell;
+	char const *sh;
 	(void)v;
 
-	if ((shell = value("SHELL")) == NULL)
-		shell = SHELL;
-	run_command(shell, 0, -1, -1, NULL, NULL, NULL);
+	if ((sh = value("SHELL")) == NULL)
+		sh = SHELL;
+	run_command(sh, 0, -1, -1, NULL, NULL, NULL);
 	safe_signal(SIGINT, sigint);
 	putchar('\n');
 	return 0;
@@ -859,16 +859,16 @@ cfile(void *v)
 {
 	char **argv = v;
 #if 1 /* TODO this & expansion is completely redundant! */
-	char *exp;
+	char *e;
 #endif
 	if (argv[0] == NULL) {
 		newfileinfo();
 		return 0;
 	}
 #if 1
-	if ((exp = expand("&")) == NULL)
+	if ((e = expand("&")) == NULL)
 		return 0;
-	strncpy(mboxname, exp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
+	strncpy(mboxname, e, sizeof mboxname)[sizeof mboxname - 1] = '\0';
 #endif
 	return file1(*argv);
 }

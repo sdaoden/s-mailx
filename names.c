@@ -199,11 +199,11 @@ static struct name *
 extract1(char const *line, enum gfield ntype, char const *separators,
 	int keepcomms)
 {
-	struct name *top, *np, *t;
+	struct name *topp, *np, *t;
 	char const *cp;
 	char *nbuf;
 
-	top = NULL;
+	topp = NULL;
 	if (line == NULL || *line == '\0')
 		goto jleave;
 
@@ -212,8 +212,8 @@ extract1(char const *line, enum gfield ntype, char const *separators,
 	nbuf = ac_alloc(strlen(line) + 1);
 	while ((cp = yankname(cp, nbuf, separators, keepcomms)) != NULL) {
 		t = nalloc(nbuf, ntype);
-		if (top == NULL)
-			top = t;
+		if (topp == NULL)
+			topp = t;
 		else
 			np->n_flink = t;
 		t->n_blink = np;
@@ -222,7 +222,7 @@ extract1(char const *line, enum gfield ntype, char const *separators,
 	ac_free(nbuf);
 
 jleave:
-	return (top);
+	return topp;
 }
 
 static struct name *
@@ -459,11 +459,11 @@ lextract(char const *line, enum gfield ntype)
 char *
 detract(struct name *np, enum gfield ntype)
 {
-	char *top, *cp;
+	char *topp, *cp;
 	struct name *p;
 	int comma, s;
 
-	top = NULL;
+	topp = NULL;
 	if (np == NULL)
 		goto jleave;
 
@@ -483,8 +483,8 @@ detract(struct name *np, enum gfield ntype)
 		goto jleave;
 
 	s += 2;
-	top = salloc(s);
-	cp = top;
+	topp = salloc(s);
+	cp = topp;
 	for (p = np; p != NULL; p = p->n_flink) {
 		if (ntype && (p->n_type & GMASK) != ntype)
 			continue;
@@ -497,7 +497,7 @@ detract(struct name *np, enum gfield ntype)
 	if (comma && *--cp == ',')
 		*cp = 0;
 jleave:
-	return (top);
+	return topp;
 }
 
 struct name *
@@ -755,7 +755,7 @@ struct name *
 outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 {
 	int pipecnt, xcnt, *fda, i;
-	char const *shell;
+	char const *sh;
 	struct name *np;
 	FILE *fin = NULL, *fout;
 	(void)hp;
@@ -787,13 +787,13 @@ outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 	 */
 	if (pipecnt == 0) {
 		fda = NULL;
-		shell = NULL;
+		sh = NULL;
 	} else {
 		fda = (int*)salloc(sizeof(int) * pipecnt);
 		for (i = 0; i < pipecnt; ++i)
 			fda[i] = -1;
-		if ((shell = value("SHELL")) == NULL)
-			shell = SHELL;
+		if ((sh = value("SHELL")) == NULL)
+			sh = SHELL;
 	}
 
 	for (np = names; np != NULL;) {
@@ -888,7 +888,7 @@ jcantfout:			*senderror = TRU1;
 			sigaddset(&nset, SIGHUP);
 			sigaddset(&nset, SIGINT);
 			sigaddset(&nset, SIGQUIT);
-			pid = start_command(shell, &nset,
+			pid = start_command(sh, &nset,
 				fda[xcnt++], -1, "-c", np->n_name + 1, NULL);
 			if (pid < 0) {
 				fprintf(stderr, tr(281,

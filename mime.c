@@ -137,19 +137,19 @@ _mt_init(void)
 static void
 __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
 {
-	char const *type;
+	char const *typ;
 	size_t tlen, elen;
 	struct mtnode *mtn;
 
 	if (! alphachar(*line))
 		goto jleave;
 
-	type = line;
+	typ = line;
 	while (blankchar(*line) == 0 && *line != '\0')
 		++line;
 	if (*line == '\0')
 		goto jleave;
-	tlen = (size_t)(line - type);
+	tlen = (size_t)(line - typ);
 
 	while (blankchar(*line) != 0 && *line != '\0')
 		++line;
@@ -170,7 +170,7 @@ __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
 	*tail = mtn;
 	mtn->mt_next = NULL;
 	mtn->mt_mtlen = tlen;
-	memcpy(mtn->mt_line, type, tlen);
+	memcpy(mtn->mt_line, typ, tlen);
 	mtn->mt_line[tlen] = '\0';
 	++tlen;
 	memcpy(mtn->mt_line + tlen, line, elen);
@@ -244,9 +244,9 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
 			/* Incomplete multibyte at EOF is special */
 			if (flags & _TD_EOF) {
 				out.s = srealloc(out.s, out.l + 4);
-				out.s[out.l++] = '[';
+				/* TODO 0xFFFD out.s[out.l++] = '[';*/
 				out.s[out.l++] = '?'; /* TODO 0xFFFD !!! */
-				out.s[out.l++] = ']';
+				/* TODO 0xFFFD out.s[out.l++] = ']';*/
 			} else
 				(void)n_str_add(rest, &in);
 		}
@@ -881,10 +881,10 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	 * TODO i.e., if we strip it, then the display misses it ;} */
 	struct str cin, cout;
 	char *p, *op, *upper, *cs, *cbeg;
-	char const *tcs;
 	int convert;
 	size_t lastoutl = (size_t)-1;
 #ifdef HAVE_ICONV
+	char const *tcs;
 	iconv_t fhicd = (iconv_t)-1;
 #endif
 
@@ -895,7 +895,9 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 	}
 	out->s = NULL;
 
+#ifdef HAVE_ICONV
 	tcs = charset_get_lc();
+#endif
 	p = in->s;
 	upper = p + in->l;
 

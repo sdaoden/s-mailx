@@ -445,8 +445,10 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
 					/* Illegal according to RFC 2045,
 					 * section 6.7.  Almost follow it */
 jehead:
-					oc[0] = '['; oc[1] = '?'; oc[2] = ']';
-					oc += 3;
+					/* TODO 0xFFFD
+					*oc[0] = '['; oc[1] = '?'; oc[2] = ']';
+					*oc += 3; 0xFFFD TODO
+					*/ *oc++ = '?';
 				}
 			} else
 				*oc++ = (c == '_') ? ' ' : (char)c;
@@ -490,8 +492,10 @@ jehead:
 				 * Rather follow it and include the = and the
 				 * follow char */
 jebody:
-				oc[0] = '['; oc[1] = '?'; oc[2] = ']';
-				oc += 3;
+				/* TODO 0xFFFD
+				*oc[0] = '['; oc[1] = '?'; oc[2] = ']';
+				*oc += 3; 0xFFFD TODO
+				*/ *oc++ = '?';
 			}
 			continue;
 		}

@@ -132,7 +132,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 	 * TODO may run for a week or longer!!! */
 	char	*buf, *hn, *bn;
 	char	*savedfields = NULL;
-	size_t	bufsize, buflen, count, savedsize = 0;
+	size_t	bufsize, buflen, cnt, savedsize = 0;
 	int	c;
 
 	if ((*hp = Ftemp(&hn, "Rh", "w+", 0600, 1)) == NULL)
@@ -151,11 +151,11 @@ jetmp:
 	savedfields = smalloc(savedsize = 1);
 	*savedfields = '\0';
 	if (xcount < 0)
-		count = fsize(ip);
+		cnt = fsize(ip);
 	else
-		count = xcount;
+		cnt = xcount;
 
-	while (fgetline(&buf, &bufsize, &count, &buflen, ip, 0) != NULL &&
+	while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
 			*buf != '\n') {
 		if (ascncasecmp(buf, "content-", 8) == 0) {
 			if (keep)
@@ -171,7 +171,7 @@ jetmp:
 				ungetc(c, ip);
 				if (!blankchar(c))
 					break;
-				fgetline(&buf, &bufsize, &count, &buflen,
+				fgetline(&buf, &bufsize, &cnt, &buflen,
 						ip, 0);
 			}
 			continue;
@@ -183,7 +183,7 @@ jetmp:
 
 	fputs(savedfields, *bp);
 	putc('\n', *bp);
-	while (fgetline(&buf, &bufsize, &count, &buflen, ip, 0) != NULL)
+	while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL)
 		fwrite(buf, sizeof *buf, buflen, *bp);
 	fflush(*bp);
 	rewind(*bp);
@@ -295,7 +295,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 {
 	int	binary = 0, lastnl = 0;
 	char	*buf = NULL;
-	size_t	bufsize = 0, buflen, count;
+	size_t	bufsize = 0, buflen, cnt;
 	long	lines = 0, octets = 0;
 	struct message	*x;
 	off_t	offset;
@@ -305,8 +305,8 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 	fflush(mb.mb_otf);
 	fseek(mb.mb_otf, 0L, SEEK_END);
 	offset = ftell(mb.mb_otf);
-	count = fsize(hp);
-	while (fgetline(&buf, &bufsize, &count, &buflen, hp, 0) != NULL) {
+	cnt = fsize(hp);
+	while (fgetline(&buf, &bufsize, &cnt, &buflen, hp, 0) != NULL) {
 		char const *cp;
 		if (buf[0] == '\n')
 			break;
@@ -319,8 +319,8 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 	}
 	octets += mkdate(mb.mb_otf, "X-Decoding-Date");
 	lines++;
-	count = fsize(bp);
-	while (fgetline(&buf, &bufsize, &count, &buflen, bp, 0) != NULL) {
+	cnt = fsize(bp);
+	while (fgetline(&buf, &bufsize, &cnt, &buflen, bp, 0) != NULL) {
 		lines++;
 		if (!binary && buf[buflen-1] == '\n' && buf[buflen-2] == '\r')
 			buf[--buflen-1] = '\n';
