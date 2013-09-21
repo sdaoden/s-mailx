@@ -244,9 +244,9 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
 			/* Incomplete multibyte at EOF is special */
 			if (flags & _TD_EOF) {
 				out.s = srealloc(out.s, out.l + 4);
-				out.s[out.l++] = '[';
+				/* TODO 0xFFFD out.s[out.l++] = '[';*/
 				out.s[out.l++] = '?'; /* TODO 0xFFFD !!! */
-				out.s[out.l++] = ']';
+				/* TODO 0xFFFD out.s[out.l++] = ']';*/
 			} else
 				(void)n_str_add(rest, &in);
 		}
