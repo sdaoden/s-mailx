@@ -18,230 +18,252 @@
 
 #include "rcv.h"
 
+#ifdef HAVE_QUOTE_FOLD
+# include <wctype.h>
+#endif
+
 #include "extern.h"
 
 /*
  * Quotation filter
  */
 
-#undef HAVE_QUOTE_FOLD
+/*
+ * TODO quotation filter: anticipate in future data: don't break if only WS
+ * TODO or a LF escaping \ follows on the line (simply reuse the latter).
+ */
 
 #ifdef HAVE_QUOTE_FOLD
-CTASSERT(QUOTE_MAX > 3);
+CTA(QUOTE_MAX > 3);
 
 enum qf_state {
-   _QF_NONE,   /* Clean line, nothing read yet */
-   _QF_PREFIX, /* Still collecting prefix */
-   _QF_DATA    /* Prefix passed */
+   _QF_CLEAN,
+   _QF_PREFIX,
+   _QF_DATA
 };
 
 struct qf_vc {
-   struct quoteflt * self;
-   char const *      buf;
-   size_t            len;
+   struct quoteflt *self;
+   char const *buf;
+   size_t len;
 };
 
+/* Print out prefix and current quote */
+static ssize_t _qf_dump_prefix(struct quoteflt *self);
+
+/* Add one data character */
+static ssize_t _qf_add_data(struct quoteflt *self, wchar_t wc);
+
+/* State machine handlers */
 static ssize_t _qf_state_prefix(struct qf_vc *vc);
 static ssize_t _qf_state_data(struct qf_vc *vc);
 
-#if 0
-static size_t
-prefixwrite(char const *ptr, size_t size, FILE *f,
-   char const *prefix, size_t prefixlen)
+static ssize_t
+_qf_dump_prefix(struct quoteflt *self)
 {
-   p = ptr;
-   maxp = p + size;
+   ssize_t rv = 0;
 
+   if (self->qf_pfix_len > 0) {
+      rv = fwrite(self->qf_pfix, sizeof *self->qf_pfix, self->qf_pfix_len,
+            self->qf_os);
+      if (rv < 0)
+         goto jleave;
+   }
+
+   if (self->qf_currq.l > 0) {
+      ssize_t i = fwrite(self->qf_currq.s, sizeof *self->qf_currq.s,
+            self->qf_currq.l, self->qf_os);
+      if (i < 0) {
+         rv = i;
+         goto jleave;
+      }
+      rv += i;
+   }
+jleave:
+   return rv;
+}
+
+static ssize_t
+_qf_add_data(struct quoteflt *self, wchar_t wc)
+{
+   char *save_b;
+   ui_it save_l, save_w;
+   ssize_t rv = 0;
+   int w, l;
+
+   save_l = save_w = 0; /* silence cc */
+   save_b = NULL;
+   if (wc == L'\n')
+      goto jflush;
+
+   w = wcwidth(wc);
+   if (w == -1) {
+      if (wc == L'\r') /* TODO CR should be stripped in lower level!! */
+         goto jleave;
+jbad:
+      ++self->qf_datw;
+      self->qf_dat.s[self->qf_dat.l++] = '?';
    } else {
-      /* After writing a real newline followed by our prefix,
-       * compress the quoted prefixes;
-       * note that \n is only matched by spacechar(), not by
-       * blankchar() or blankspacechar() */
-      /*
-       * TODO the problem we have is again the odd 4:3 relation of
-       * TODO base64 -- if we quote a mail that is in base64 then
-       * TODO prefixwrite() doesn't get invoked with partial multi-
-       * TODO byte characters (S-nail uses the `rest' mechanism to
-       * TODO avoid that), but it may of course be invoked with a
-       * TODO partial line, and even with multiple thereof.
-       * TODO this has to be addressed in 15.0 with the MIME and send
-       * TODO layer rewrite.  The solution is that `prefixwrite' has
-       * TODO to be an object with state -- if a part is to be quoted
-       * TODO you create it, and simply feed in data; once the part
-       * TODO is done, you'll release it;  the object itself gobbles
-       * TODO data unless a *hard* newline is seen.
-       * TODO in fact we can then even implement paragraph-wise
-       * TODO quoting! FIXME in fact that is the way: objects
-       * TODO then, evaluate quote-fold when sending starts, ONCE!
-       * FIXME NOTE: base64 (yet TODO for qp) may have CRLF line
-       * FIXME endings, these need to be removed in a LOWER LAYER!!
-       */
-fprintf(stderr, "ENTRY: lastlen=%zu, size=%zu <%.*s>\n",lastlen,size,(int)size,p);
-      if ((lnlen = lastlen) != 0)
-         goto jcontb64;
-jhardnl:
-      lastlen = prefixlen;
-      for (zipl = i = 0; p + i < maxp; ++i) {
-         c = p[i];
-         if (blankspacechar(c))
-            continue;
-         if (! ISQUOTE(c))
-            break;
-         if (zipl == sizeof(zipb) - 1) {
-            zipb[sizeof(zipb) - 2] = '.';
-            zipb[sizeof(zipb) - 3] = '.';
-            zipb[sizeof(zipb) - 4] = '.';
-            continue;
-         }
-         zipb[zipl++] = c;
-      }
-      zipb[zipl] = '\0';
-      p += i;
-jsoftnl:
-      if (zipl > 0) {
-         wsz += fwrite(zipb, sizeof *zipb, zipl, f);
-         lnlen += zipl;
-         lastlen = lnlen;
-      }
-jcontb64:
-      /* Search forward until either *quote-fold* or NL.
-       * In the former case try to break at whitespace,
-       * but only if's located in the 2nd half of the data */
-      for (c = i = 0; p + i < maxp;) {
-         c = p[i++];
-         if (c == '\n')
-            break;
-         if (lnlen + i <= qfold_max)
-            continue;
+      l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
+      if (l < 0)
+         goto jbad;
+      self->qf_datw += (ui_it)w;
+      self->qf_dat.l += (size_t)l;
+   }
 
-         /* We're excessing bounds -- but don't "continue"
-          * trailing WS nor a continuation */
-         if (c == '\\' || spacechar(c)) {
-            char const *cp;
-
-            for (cp = p + i; cp < maxp; ++cp)
-               if (! spacechar(*cp))
-                  break;
-            if (cp == maxp || (*cp == '\\' &&
-                  cp[1] == '\n')) {
-               i = (size_t)(maxp - p);
-               c = 0;
-               break;
-            }
-         } else if (p + i < maxp && p[i] == '\n') {
-            ++i;
-            c = 0;
-            break;
-         }
-
-         /* We have to fold this line */
-         if (qfold_min < lnlen) {
-            /* This is because of base64 and odd 4:3.
-             * i.e., entered with some partial line yet
-             * written..  This is weird, as we may have
-             * written out `qfold_max' already.. */
-            j = 0;
-            size = --i;
-fprintf(stderr, "-- size=%zu p<%.*s>\n",size,(int)size,p);
-         } else {
-            j = qfold_min - lnlen;
-            i =
-            size = j + ((qfold_max - qfold_min) >> 1);
-            assert(p + i < maxp);
-         }
-         while (i > j && ! spacechar(p[i - 1]))
-            --i;
-         if (i == j)
-            i = size;
-         c = 0;
-         break;
+   /* TODO The last visual may excess *qfold-max* if it's a wide one;
+    * TODO place it on the next line, break before */
+   if (self->qf_datw >= self->qf_qfold_max) {
+      /* If we have seen a nice breakpoint during traversal, shuffle data
+       * around a bit so as to restore the trailing part after flushing */
+      if (self->qf_brkl > 0) {
+         save_w = self->qf_datw - self->qf_brkw;
+         save_l = self->qf_dat.l - self->qf_brkl;
+         save_b = self->qf_dat.s + self->qf_brkl + 2;
+         memmove(save_b, save_b - 2, save_l);
+         self->qf_dat.l = self->qf_brkl;
       }
 
-      if (i > 0) {
-         wsz += fwrite(p, sizeof *p, i, f);
-         p += i;
-         lastlen += i;
+      self->qf_dat.s[self->qf_dat.l++] = '\\';
+jflush:
+      self->qf_dat.s[self->qf_dat.l++] = '\n';
+      rv = quoteflt_flush(self);
+
+      /* Restore takeovers, if any */
+      if (save_b != NULL) {
+         self->qf_brk_isws = FAL0;
+         self->qf_datw += save_w;
+         self->qf_dat.l = save_l;
+         memmove(self->qf_dat.s, save_b, save_l);
       }
 
-      if (p < maxp) {
-         if (c != '\n') {
-            putc('\\', f);
-            putc('\n', f);
-            wsz += 2;
-         }
-         wsz += fwrite(prefix, sizeof *prefix, prefixlen, f);
-         lnlen = prefixlen;
-         if (c != '\n')
-            goto jsoftnl;
-         goto jhardnl;
+   } else if (self->qf_datw >= self->qf_qfold_min && ! self->qf_brk_isws) {
+      bool_t isws = iswspace(wc);
+
+      if ((isws && ! self->qf_brk_isws) || self->qf_brkl == 0) {
+         self->qf_brkl = self->qf_dat.l;
+         self->qf_brkw = self->qf_datw;
+         self->qf_brk_isws = isws;
       }
    }
 
-   lastc = p[-1];
-   return wsz;
-}
-#endif
 
+   /* If state changed to prefix, perform full reset (note this implies that
+    * quoteflt_flush() performs too much work..) */
+   if (wc == '\n') {
+      self->qf_state = _QF_PREFIX;
+      self->qf_datw = 0;
+      self->qf_currq.l = 0;
+   }
+jleave:
+   return rv;
+}
 
 static ssize_t
 _qf_state_prefix(struct qf_vc *vc)
 {
    struct quoteflt *self = vc->self;
-   char const *buf = vc->buf;
-   size_t len = vc->len, i;
    ssize_t rv = 0;
+   /*bool_t any = FAL0, lws = FAL0;*/
+   char const *buf;
+   size_t len, i;
    wchar_t wc;
 
-
-
-   for (;;) {
-      if (len < mb_cur_max) {
-         len = vc->len - len;
-         memcpy(self->dat.s + self->dat.l, vc->buf, len);
-         self->dat.l += len;
+   for (buf = vc->buf, len = vc->len; len > 0; /*any = TRU1*/) {
+      /* TODO NULL BYTE! */
+      i = mbrtowc(&wc, buf, len, self->qf_mbps);
+      if (i == (size_t)-1) {
+         /* On hard error, don't modify mbstate_t and step one byte */
+         self->qf_mbps[0] = self->qf_mbps[1];
+         ++buf;
+         --len;
+         continue;
+      }
+      self->qf_mbps[1] = self->qf_mbps[0];
+      if (i == (size_t)-2) {
+         /* Redundant shift sequence, out of buffer */
+         len = 0;
          break;
       }
-
-      i = mbrtowc(&wc, buf, len, &self->mbps);
-      if (i == (size_t)-1 || i == (size_t)-2)
-         ;
-
       buf += i;
       len -= i;
 
-      if (iswspace(wc))
+      if (wc == L'\n')
+         goto jfin;
+      if (iswspace(wc)) {
+         /*lws = TRU1;*/
          continue;
-
+      }
       if (i == 1 && ISQUOTE(wc)) {
-         if (self->currq.l == QUOTE_MAX - 3) {
-            self->currq.s[QUOTE_MAX - 3] = '.';
-            self->currq.s[QUOTE_MAX - 2] = '.';
-            self->currq.s[QUOTE_MAX - 1] = '.';
+         /*lws = FAL0;*/
+         if (self->qf_currq.l >= QUOTE_MAX - 3) {
+            self->qf_currq.s[QUOTE_MAX - 3] = '.';
+            self->qf_currq.s[QUOTE_MAX - 2] = '.';
+            self->qf_currq.s[QUOTE_MAX - 1] = '.';
+            self->qf_currq.l = QUOTE_MAX;
          } else
-            self->currq.s[self->currq.l++] = buf[-1];
+            self->qf_currq.s[self->qf_currq.l++] = buf[-1];
          continue;
       }
 
+      /* The quote is parsed and compressed; dump it */
+jfin:
+      /*if (lws && any && self->qf_currq.l > 0)
+            self->qf_currq.s[self->qf_currq.l++] = ' ';*/
+      self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       self->qf_state = _QF_DATA;
+      rv =_qf_add_data(self, wc);
       break;
-
-
    }
 
-
-jleave:
-
+   vc->buf = buf;
+   vc->len = len;
    return rv;
 }
 
 static ssize_t
 _qf_state_data(struct qf_vc *vc)
 {
+   struct quoteflt *self = vc->self;
+   ssize_t rv = 0;
+   char const *buf;
+   size_t len, i;
+   wchar_t wc;
 
+   for (buf = vc->buf, len = vc->len; len > 0;) {
+      /* TODO NULL BYTE! */
+      i = mbrtowc(&wc, buf, len, self->qf_mbps);
+      if (i == (size_t)-1) {
+         /* On hard error, don't modify mbstate_t and step one byte */
+         self->qf_mbps[0] = self->qf_mbps[1];
+         ++buf;
+         --len;
+         continue;
+      }
+      self->qf_mbps[1] = self->qf_mbps[0];
+      if (i == (size_t)-2) {
+         /* Redundant shift sequence, out of buffer */
+         len = 0;
+         break;
+      }
+      buf += i;
+      len -= i;
 
+      {  ssize_t j = _qf_add_data(self, wc);
+         if (j < 0) {
+            rv = j;
+            break;
+         }
+         rv += j;
+      }
 
+      if (self->qf_state != _QF_DATA)
+         break;
+   }
 
-   return ;
+   vc->buf = buf;
+   vc->len = len;
+   return rv;
 }
 #endif /* HAVE_QUOTE_FOLD */
 
@@ -266,9 +288,11 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_pfix_len = (ui_it)strlen(prefix);
 
    /* Check wether the user wants the more fancy quoting algorithm */
+   /* TODO *quote-fold*: QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if ((cp = voption("quote-fold")) != NULL) {
       ui_it qmin, qmax = (ui_it)strtol(cp, (char**)&xcp, 10);
+      /* These magic values ensure we don't bail :) */
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
       --qmax; /* The newline escape */
@@ -284,33 +308,25 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_qfold_min = qmin;
       self->qf_qfold_max = qmax;
 
-      self->qf_dat.s = salloc((qmax + 2) * mb_cur_len);
-      self->qf_currq.s = salloc((QUOTE_MAX + 1) * mb_cur_len);
+      /* Add pad for takeover copies, backslash and newline */
+      self->qf_dat.s = salloc((qmax + 3) * mb_cur_max);
+      self->qf_currq.s = salloc((QUOTE_MAX + 1) * mb_cur_max);
    }
 #endif
 }
 
 void
-quoteflt_destroy(struct quoteflt *self)
+quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
-#ifndef HAVE_QUOTE_FOLD
    (void)self;
-#else
-   void *p;
-
-   if ((p = self->qf_dat.s) != NULL)
-      free(p);
-   if ((p = self->qf_currq.s) != NULL)
-      free(p);
-#endif
 }
 
 void
-quoteflt_reset(struct quoteflt *self, FILE *f) /* XXX inline */
+quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
    self->qf_os = f;
 #ifdef HAVE_QUOTE_FOLD
-   self->qf_state = _QF_NONE;
+   self->qf_state = _QF_CLEAN;
    self->qf_dat.l =
    self->qf_currq.l = 0;
    memset(self->qf_mbps, 0, sizeof self->qf_mbps);
@@ -327,10 +343,10 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    if (len == 0)
       goto jleave;
 
-   /* Simple bypass? XXX Finally, this filter simply should not be used, then */
+   /* Bypass? XXX Finally, this filter simply should not be used, then */
    if (self->qf_pfix_len == 0)
       rv = fwrite(dat, sizeof *dat, len, self->qf_os);
-   /* The simple algorithm: place *indentprefix* at every BOL */
+   /* Normal: place *indentprefix* at every BOL */
    else
 #ifdef HAVE_QUOTE_FOLD
       if (self->qf_qfold_max == 0)
@@ -373,11 +389,17 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 
       self->qf_qfold_min = pxok;
    }
-   /* More complicated, though still only line-per-line: *quote-fold*.
+   /* Overly complicated, though still only line-per-line: *quote-fold*.
     * - If .qf_currq.l is 0, then we are in a clean state.  Reset .qf_mbps;
-    *   note this means we assume that lines start with reset escape seq
-    * - Lookout for a newline
-    */
+    *   TODO note this means we assume that lines start with reset escape seq,
+    *   TODO but i don't think this is any worse than what we currently do;
+    *   TODO in 15.0, with the value carrier, we should carry conversion states
+    *   TODO all along, only resetting on error (or at words for header =???=);
+    *   TODO this still is weird for error handling, but we need to act more
+    *   TODO stream-alike (though in practice i don't think cross-line states
+    *   TODO can be found, because of compatibility reasons; however, being
+    *   TODO a problem rather than a solution is not a good thing (tm))
+    * - Lookout for a newline */
 #ifdef HAVE_QUOTE_FOLD
    else {
       struct qf_vc vc;
@@ -385,18 +407,17 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
       vc.self = self;
       vc.buf = dat;
       vc.len = len;
-
       while (vc.len > 0) {
          switch (self->qf_state) {
-         case _QF_NONE:
+         case _QF_CLEAN:
          case _QF_PREFIX:
             i = _qf_state_prefix(&vc);
             break;
+         default: /* silence cc (`i' unused) */
          case _QF_DATA:
             i = _qf_state_data(&vc);
             break;
          }
-
          if (i < 0)
             goto jerr;
          rv += i;
@@ -420,14 +441,16 @@ quoteflt_flush(struct quoteflt *self)
 
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
-      rv = fwrite(self->qf_pfix, sizeof *self->qf_pfix, self->qf_pfix_len,
-            self->qf_os);
-      if (rv > 0) {
-         ssize_t j = fwrite(self->qf_dat.s, sizeof *self->qf_dat.s,
+      rv = _qf_dump_prefix(self);
+      if (rv >= 0) {
+         ssize_t i = fwrite(self->qf_dat.s, sizeof *self->qf_dat.s,
                self->qf_dat.l, self->qf_os);
-         rv = (j < 0) ? j : rv + j;
+         rv = (i < 0) ? i : rv + i;
+         self->qf_dat.l = 0;
+         self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
+         self->qf_brkl = self->qf_brkw = 0;
+         self->qf_brk_isws = FAL0;
       }
-      self->qf_dat.l = 0;
    }
 #endif
    return rv;
