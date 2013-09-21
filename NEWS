@@ -1,6 +1,79 @@
 S - n a i l  N e w s
 ====================
 
+v14.4.2, 2013-09-21
+-------------------
+
+Many thanks to Paul Vojta.
+
+- On GNU/Linux there is no MAXPATHLEN constant defined by default, as
+  this is a non-standard legacy constant.  Mozilla ran into this some
+  time ago, though a bit different [1].  It made it easier for S-nail.
+
+    [1] <https://bugzilla.mozilla.org/show_bug.cgi?id=412610>
+
+  We could include `sys/limits.h' to get at MAXPATHLEN, there it is
+  defined to be PATH_MAX, but let's just include the standard `limits.h'
+  and ensure MAXPATHLEN ends up >= PATH_MAX.  With this condition being
+  true even FORTIFYd sources won't bail with reported buffer overflows
+  because realpath(3) expects a buffer of PATH_MAX bytes. [bee5e57c]
+  (Paul Vojta)
+
+- With the builtin LINE_EDITOR, ensure proper interaction with GNU
+  rlogind(8), which is alone in its quest to set the ISTRIP termios(4)
+  flag. [61e00f2d]
+
+- Bugfix a codepath that would have prevented compilation when
+  HAVE_ICONV is not set.
+  While there, allow to unselect message attachments when using the `~@'
+  tilde command interactively, which i mysteriously had forgotten when
+  allowing selection of 'em.  (oops?) [4f58ffea]
+
+- It's now easier for packagers to get at debug-enabled CFLAGS; simply
+  use WANT_ASSERTS=1 (should not be enabled in shipouts, please).
+  [d8663406]
+
+- Fixed a terrible bug that i've introduced in november 2012, that would
+  have corrupted MBOX files when using the `resend' command.  (The
+  so-called "From_ line" would have been quoted to ">From_ line" instead
+  of simply being stripped.) [19d449e2]
+
+- Fixed a SIGSEGV for the builtin LINE_EDITOR, that would have occurred
+  if a history traversal (^B or ^F) would have been continued by
+  a reverse history completion (^R).
+  While there, avoid some multiple-beeps-in-a-row that yet occurred due
+  to code reuse, and document that ^G etc. reset the multibyte state
+  machine. [003d9f6f]
+
+  Also, the expand-on-tab code could have excessed line input maximums,
+  e.g., after `? /usr/bin/*<Tab>'.  This was of course known, but
+  i wanted to keep it because all tested (modern) terminals "mess up but
+  won't break", and thus made it possible to use the data, even if it's
+  visual representation was messed up.  The real solution will be much,
+  *much* more complicated, i.e., show possible *completions*, page-wise,
+  etc., i.e., just like is known by tab *completion*.  This will need
+  far more time because it doesn't make sense to embed such complicated
+  code into the current bed.
+  Now i've chosen to simply don't display excess, but replace the
+  content with a message that says that there was excess.  It simply
+  looks better. [0320c8ba]
+
+- I've changed the use of `[?]' as a replacement sequence for invalid
+  / non-displayable characters to `?' (again).  There are still code
+  paths (from the original codebase) which use the real Unicode
+  replacement character instead, so our display is still not unique.
+  On the long term the codepath can anticipate in all levels wether
+  use of Unicode is possible, so that, then, we will be unique again,
+  using either only `?' or the Unicode replacement character. [faf6380]
+
+- I've anticipated in v15.0 and implemented *quote-fold* as a stream
+  filter.  It is now multibyte safe and takes into account the visual
+  width of characters, i.e., ideographs etc.  It is working almost as
+  good as an algorithm can work that looks at data linewise, but is yet
+  experimental and incomplete in that it will break lines even if only
+  whitespace or a backslash escape follows.  It is code that is only
+  a few hours old, which is why it is not enabled by default. [
+
 v14.4.1, 2013-09-14
 -------------------
 
