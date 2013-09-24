@@ -842,11 +842,17 @@ squeeze_em() {
    < "${1}" > "${2}" awk \
    'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
 }
-rm -f "${tmp}"
-squeeze_em "${inc}" "${tmp}"
-mv "${tmp}" "${inc}"
-squeeze_em "${lib}" "${tmp}"
-mv "${tmp}" "${lib}"
+rm -f ${tmp}
+squeeze_em ${inc} ${tmp}
+mv ${tmp} ${inc}
+squeeze_em ${lib} ${tmp}
+mv ${tmp} ${lib}
+
+mv ${h} ${tmp}
+printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
+cat ${tmp} >> ${h}
+printf '#endif /* _CONFIG_H */\n' >> ${h}
+rm -f ${tmp}
 
 # Create the real mk.mk
 rm -rf ${tmp0}.* ${tmp0}*
