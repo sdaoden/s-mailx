@@ -496,7 +496,7 @@ forward1(char *str, int recipient_record)
 	forward_as_attachment = boption("forward-as-attachment");
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 	if ((recipient = laststring(str, &f, 0)) == NULL) {
-		puts(catgets(catd, CATSET, 47, "No recipient specified."));
+		puts(tr(47, "No recipient specified."));
 		return 1;
 	}
 	if (!f) {
@@ -594,8 +594,7 @@ preserve(void *v)
 	int *ip, mesg;
 
 	if (edit) {
-		printf(catgets(catd, CATSET, 39,
-				"Cannot \"preserve\" in edit mode\n"));
+		printf(tr(39, "Cannot \"preserve\" in edit mode\n"));
 		return(1);
 	}
 	for (ip = msgvec; *ip != 0; ip++) {
@@ -985,7 +984,7 @@ ifcmd(void *v)
 	char *cp;
 
 	if (cond != CANY) {
-		printf(catgets(catd, CATSET, 42, "Illegal nested \"if\"\n"));
+		printf(tr(42, "Illegal nested \"if\"\n"));
 		return(1);
 	}
 	cond = CANY;
@@ -1004,8 +1003,7 @@ ifcmd(void *v)
 		break;
 
 	default:
-		printf(catgets(catd, CATSET, 43,
-				"Unrecognized if-keyword: \"%s\"\n"), cp);
+		printf(tr(43, "Unrecognized if-keyword: \"%s\"\n"), cp);
 		return(1);
 	}
 	return(0);
@@ -1023,8 +1021,7 @@ elsecmd(void *v)
 
 	switch (cond) {
 	case CANY:
-		printf(catgets(catd, CATSET, 44,
-				"\"Else\" without matching \"if\"\n"));
+		printf(tr(44, "\"Else\" without matching \"if\"\n"));
 		return(1);
 
 	case CSEND:
@@ -1040,8 +1037,7 @@ elsecmd(void *v)
 		break;
 
 	default:
-		printf(catgets(catd, CATSET, 45,
-				"Mail's idea of conditions is screwed up\n"));
+		printf(tr(45, "Mail's idea of conditions is screwed up\n"));
 		cond = CANY;
 		break;
 	}
@@ -1058,8 +1054,7 @@ endifcmd(void *v)
 	(void)v;
 
 	if (cond == CANY) {
-		printf(catgets(catd, CATSET, 46,
-				"\"Endif\" without matching \"if\"\n"));
+		printf(tr(46, "\"Endif\" without matching \"if\"\n"));
 		return(1);
 	}
 	cond = CANY;
@@ -1119,7 +1114,7 @@ resend1(void *v, int add_resent)
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	name = laststring(str, &f, 1);
 	if (name == NULL) {
-		puts(catgets(catd, CATSET, 47, "No recipient specified."));
+		puts(tr(47, "No recipient specified."));
 		return 1;
 	}
 	if (!f) {
@@ -1127,8 +1122,7 @@ resend1(void *v, int add_resent)
 		if (*msgvec == 0) {
 			if (inhook)
 				return 0;
-			puts(catgets(catd, CATSET, 48,
-					"No applicable messages."));
+			puts(tr(48, "No applicable messages."));
 			return 1;
 		}
 		msgvec[1] = 0;
@@ -1209,13 +1203,12 @@ shortcut(void *v)
 		return 0;
 	}
 	if (args[1] == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 220,
-				"expansion name for shortcut missing\n"));
+		fprintf(stderr, tr(220,
+			"expansion name for shortcut missing\n"));
 		return 1;
 	}
 	if (args[2] != NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 221,
-				"too many arguments\n"));
+		fprintf(stderr, tr(221, "too many arguments\n"));
 		return 1;
 	}
 	if ((s = get_shortcut(args[0])) != NULL) {
@@ -1269,15 +1262,14 @@ unshortcut(void *v)
 	int errs = 0;
 
 	if (args[0] == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 222,
-				"need shortcut names to remove\n"));
+		fprintf(stderr, tr(222, "need shortcut names to remove\n"));
 		return 1;
 	}
 	while (*args != NULL) {
 		if (delete_shortcut(*args) != OKAY) {
 			errs = 1;
-			fprintf(stderr, catgets(catd, CATSET, 223,
-				"%s: no such shortcut\n"), *args);
+			fprintf(stderr, tr(223, "%s: no such shortcut\n"),
+				*args);
 		}
 		args++;
 	}

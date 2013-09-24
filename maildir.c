@@ -431,9 +431,8 @@ maildir_update(void)
 bypass:
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 170, "complete\n") :
-				catgets(catd, CATSET, 212, "updated.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit && mb.mb_perm != 0) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);

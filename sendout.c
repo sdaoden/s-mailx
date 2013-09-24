@@ -508,7 +508,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 	int do_iconv = 0;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
-		perror(catgets(catd, CATSET, 178, "temporary mail file"));
+		perror(tr(178, "temporary mail file"));
 		return(NULL);
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
@@ -642,7 +642,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 	fflush(nfo);
 	if (ferror(nfo)) {
-		perror(catgets(catd, CATSET, 180, "temporary mail file"));
+		perror(tr(180, "temporary mail file"));
 		Fclose(nfo);
 		Fclose(nfi);
 		return NULL;
@@ -1544,7 +1544,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	if (buf)
 		free(buf);
 	if (ferror(fo)) {
-		perror(catgets(catd, CATSET, 188, "temporary mail file"));
+		perror(tr(188, "temporary mail file"));
 		return 1;
 	}
 	return 0;

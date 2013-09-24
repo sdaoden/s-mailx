@@ -136,8 +136,7 @@ ssl_rand_init(void)
 			if (stat(cp, &st) == 0 && S_ISREG(st.st_mode) &&
 					access(cp, W_OK) == 0) {
 				if (RAND_write_file(cp) == -1) {
-					fprintf(stderr, catgets(catd, CATSET,
-								247,
+					fprintf(stderr, tr(247,
 				"writing entropy data to \"%s\" failed\n"), cp);
 				}
 			}
@@ -170,18 +169,16 @@ ssl_verify_cb(int success, X509_STORE_CTX *store)
 		verify_error_found = 1;
 		if (message_number)
 			fprintf(stderr, "Message %d: ", message_number);
-		fprintf(stderr, catgets(catd, CATSET, 229,
-				"Error with certificate at depth: %i\n"),
-				depth);
+		fprintf(stderr, tr(229,
+			"Error with certificate at depth: %i\n"), depth);
 		X509_NAME_oneline(X509_get_issuer_name(cert), data,
 				sizeof data);
-		fprintf(stderr, catgets(catd, CATSET, 230, " issuer = %s\n"),
-				data);
+		fprintf(stderr, tr(230, " issuer = %s\n"), data);
 		X509_NAME_oneline(X509_get_subject_name(cert), data,
 				sizeof data);
-		fprintf(stderr, catgets(catd, CATSET, 231, " subject = %s\n"),
+		fprintf(stderr, tr(231, " subject = %s\n"),
 				data);
-		fprintf(stderr, catgets(catd, CATSET, 232, " err %i: %s\n"),
+		fprintf(stderr, tr(232, " err %i: %s\n"),
 				err, X509_verify_cert_error_string(err));
 		if (ssl_vrfy_decide() != OKAY)
 			return 0;
@@ -231,24 +228,20 @@ ssl_load_verifications(struct sock *sp)
 	if (ca_dir != NULL || ca_file != NULL) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
 					ca_file, ca_dir) != 1) {
-			fprintf(stderr, catgets(catd, CATSET, 233,
-						"Error loading"));
+			fprintf(stderr, tr(233, "Error loading"));
 			if (ca_dir) {
-				fprintf(stderr, catgets(catd, CATSET, 234,
-							" %s"), ca_dir);
+				fprintf(stderr, tr(234, " %s"), ca_dir);
 				if (ca_file)
-					fprintf(stderr, catgets(catd, CATSET,
-							235, " or"));
+					fprintf(stderr, tr(235, " or"));
 			}
 			if (ca_file)
-				fprintf(stderr, catgets(catd, CATSET, 236,
-						" %s"), ca_file);
-			fprintf(stderr, catgets(catd, CATSET, 237, "\n"));
+				fprintf(stderr, tr(236, " %s"), ca_file);
+			fprintf(stderr, tr(237, "\n"));
 		}
 	}
 	if (value("ssl-no-default-ca") == NULL) {
 		if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
-			fprintf(stderr, catgets(catd, CATSET, 243,
+			fprintf(stderr, tr(243,
 				"Error loading default CA locations\n"));
 	}
 	verify_error_found = 0;
@@ -314,8 +307,8 @@ ssl_check_host(const char *server, struct sock *sp)
 	int	i;
 
 	if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-		fprintf(stderr, catgets(catd, CATSET, 248,
-				"no certificate from \"%s\"\n"), server);
+		fprintf(stderr, tr(248, "no certificate from \"%s\"\n"),
+			server);
 		return STOP;
 	}
 	gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
@@ -361,7 +354,7 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	if ((sp->s_ctx =
 	     SSL_CTX_new(UNCONST(ssl_select_method(uhp))))
 			== NULL) {
-		ssl_gen_err(catgets(catd, CATSET, 261, "SSL_CTX_new() failed"));
+		ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
 		return STOP;
 	}
 #ifdef	SSL_MODE_AUTO_RETRY
@@ -376,22 +369,20 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	ssl_certificate(sp, uhp);
 	if ((cp = value("ssl-cipher-list")) != NULL) {
 		if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
-			fprintf(stderr, catgets(catd, CATSET, 240,
-					"invalid ciphers: %s\n"), cp);
+			fprintf(stderr, tr(240, "invalid ciphers: %s\n"), cp);
 	}
 	if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
-		ssl_gen_err(catgets(catd, CATSET, 262, "SSL_new() failed"));
+		ssl_gen_err(tr(262, "SSL_new() failed"));
 		return STOP;
 	}
 	SSL_set_fd(sp->s_ssl, sp->s_fd);
 	if (SSL_connect(sp->s_ssl) < 0) {
-		ssl_gen_err(catgets(catd, CATSET, 263,
-				"could not initiate SSL/TLS connection"));
+		ssl_gen_err(tr(263, "could not initiate SSL/TLS connection"));
 		return STOP;
 	}
 	if (ssl_vrfy_level != VRFY_IGNORE) {
 		if (ssl_check_host(server, sp) != OKAY) {
-			fprintf(stderr, catgets(catd, CATSET, 249,
+			fprintf(stderr, tr(249,
 				"host certificate does not match \"%s\"\n"),
 				server);
 			if (ssl_vrfy_decide() != OKAY)

@@ -164,7 +164,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly,
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600, 1))
 			== NULL) {
-		perror(catgets(catd, CATSET, 73, "temporary mail edit file"));
+		perror(tr(73, "temporary mail edit file"));
 		goto out;
 	}
 	if (hp) {

@@ -515,7 +515,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 				save2str(hq->h_subject, cp) :
 				savestr(cp);
 		} else
-			fprintf(stderr, catgets(catd, CATSET, 266,
+			fprintf(stderr, tr(266,
 					"Ignoring header field \"%s\"\n"),
 					linebuf);
 	}
@@ -542,8 +542,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 		hp->h_organization = hq->h_organization;
 		hp->h_subject = hq->h_subject;
 	} else
-		fprintf(stderr, catgets(catd, CATSET, 267,
-				"Restoring deleted header lines\n"));
+		fprintf(stderr, tr(267, "Restoring deleted header lines\n"));
 	if (linebuf)
 		free(linebuf);
 }

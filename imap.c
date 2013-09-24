@@ -547,11 +547,12 @@ imapcatch(int s)
 	termios_state_reset();
 	switch (s) {
 	case SIGINT:
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 		siglongjmp(imapjmp, 1);
 		/*NOTREACHED*/
 	case SIGPIPE:
-		fprintf(stderr, "Received SIGPIPE during IMAP operation\n");
+		fprintf(stderr, tr(98,
+			"Received SIGPIPE during IMAP operation\n"));
 		break;
 	}
 }
@@ -562,7 +563,7 @@ maincatch(int s)
 {
 	(void)s;
 	if (interrupts++ == 0) {
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 		return;
 	}
 	onintr(0);
@@ -1286,8 +1287,7 @@ done:	setmsize(msgCount);
 	if (!nmail && !edit && msgCount == 0) {
 		if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
 				value("emptystart") == NULL)
-			fprintf(stderr, catgets(catd, CATSET, 258,
-				"No mail at %s\n"), server);
+			fprintf(stderr, tr(258, "No mail at %s\n"), server);
 		return 1;
 	}
 	if (nmail)
@@ -1894,9 +1894,8 @@ bypass:
 		}
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 170, "complete\n") :
-				catgets(catd, CATSET, 212, "updated.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);

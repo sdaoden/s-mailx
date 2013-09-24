@@ -813,7 +813,7 @@ exwrite(char const *name, FILE *fp, int f)
 		}
 	}
 	Fclose(of);
-	printf(catgets(catd, CATSET, 65, "%d/%ld\n"), lc, cc);
+	printf(tr(65, "%d/%ld\n"), lc, cc);
 	fflush(stdout);
 	return(0);
 }
@@ -888,7 +888,7 @@ mespipe(char *cmd)
 	char const *sh;
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w+", 0600, 1)) == NULL) {
-		perror(catgets(catd, CATSET, 66, "temporary mail edit file"));
+		perror(tr(66, "temporary mail edit file"));
 		goto out;
 	}
 	fflush(collf);
@@ -906,8 +906,7 @@ mespipe(char *cmd)
 		goto out;
 	}
 	if (fsize(nf) == 0) {
-		fprintf(stderr, catgets(catd, CATSET, 67,
-				"No bytes from \"%s\" !?\n"), cmd);
+		fprintf(stderr, tr(67, "No bytes from \"%s\" !?\n"), cmd);
 		Fclose(nf);
 		goto out;
 	}
@@ -957,15 +956,14 @@ forward(char *ms, FILE *fp, int f)
 		tabst = "\t";
 	ig = upperchar(f) ? (struct ignoretab *)NULL : ignore;
 	action = upperchar(f) ? SEND_QUOTE_ALL : SEND_QUOTE;
-	printf(catgets(catd, CATSET, 69, "Interpolating:"));
+	printf(tr(69, "Interpolating:"));
 	for (; *msgvec != 0; msgvec++) {
 		struct message *mp = message + *msgvec - 1;
 
 		touch(mp);
 		printf(" %d", *msgvec);
 		if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
-			perror(catgets(catd, CATSET, 70,
-					"temporary mail file"));
+			perror(tr(70, "temporary mail file"));
 			return(-1);
 		}
 	}

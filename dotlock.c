@@ -252,7 +252,7 @@ dot_lock(const char *fname, int fd, int pollinterval, FILE *fp, const char *msg)
 		}
 		(void)fcntl_lock(fd, F_WRLCK);
 	}
-        fprintf(stderr, catgets(catd, CATSET, 71,
+        fprintf(stderr, tr(71,
 		"%s seems a stale lock? Need to be removed by hand?\n"), path);
         return -1;
 }

@@ -212,7 +212,7 @@ quit(void)
 	}
 	if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1) {
 nolock:
-		perror(catgets(catd, CATSET, 157, "Unable to lock mailbox"));
+		perror(tr(157, "Unable to lock mailbox"));
 		Fclose(fbuf);
 		return;
 	}
@@ -220,7 +220,7 @@ nolock:
 		goto nolock;
 	rbuf = NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
-		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		printf(tr(158, "New mail has arrived.\n"));
 		rbuf = Ftemp(&tempResid, "Rq", "w", 0600, 1);
 		if (rbuf == NULL || fbuf == NULL)
 			goto newmail;
@@ -315,7 +315,7 @@ cream:
 	return;
 
 newmail:
-	printf(catgets(catd, CATSET, 166, "Thou hast new mail.\n"));
+	printf(tr(166, "Thou hast new mail.\n"));
 	if (fbuf != NULL) {
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -469,10 +469,9 @@ makembox(void)
 		return STOP;
 	}
 	if (mcount == 1)
-		printf(catgets(catd, CATSET, 164, "Saved 1 message in mbox\n"));
+		printf(tr(164, "Saved 1 message in mbox\n"));
 	else
-		printf(catgets(catd, CATSET, 165,
-				"Saved %d messages in mbox\n"), mcount);
+		printf(tr(165, "Saved %d messages in mbox\n"), mcount);
 	return OKAY;
 }
 
@@ -507,7 +506,7 @@ edstop(void)
 		char *tempname;
 
 		if ((obuf = Ftemp(&tempname, "edstop", "w", 0600, 1)) == NULL) {
-			perror(catgets(catd, CATSET, 167, "tmpfile"));
+			perror(tr(167, "tmpfile"));
 			relsesigs();
 			reset(0);
 		}
@@ -568,13 +567,11 @@ edstop(void)
 	Fclose(obuf);
 	if (gotcha && value("emptybox") == NULL) {
 		rm(mailname);
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 169, "removed\n") :
-				catgets(catd, CATSET, 211, "removed.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(169, "removed\n") : tr(211, "removed.\n"));
 	} else
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 170, "complete\n") :
-				catgets(catd, CATSET, 212, "updated.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	fflush(stdout);
 
 done:

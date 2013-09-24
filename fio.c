@@ -666,7 +666,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
 	if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block,
 					m->m_offset), SEEK_SET) < 0) {
 		perror("fseek");
-		panic(catgets(catd, CATSET, 77, "temporary file seek"));
+		panic(tr(77, "temporary file seek"));
 	}
 	return (mp->mb_itf);
 }

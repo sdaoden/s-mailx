@@ -254,8 +254,7 @@ scroll1(char *arg, int onlynew)
 scroll_forward:
 		if (screen * size > msgCount) {
 			screen = msgCount / size;
-			printf(catgets(catd, CATSET, 7,
-					"On last screenful of messages\n"));
+			printf(tr(7, "On last screenful of messages\n"));
 		}
 		break;
 
@@ -266,16 +265,14 @@ scroll_forward:
 			screen -= atoi(arg + 1);
 		if (screen < 0) {
 			screen = 0;
-			printf(catgets(catd, CATSET, 8,
-					"On first screenful of messages\n"));
+			printf(tr(8, "On first screenful of messages\n"));
 		}
 		if (cur[0] == -1)
 			cur[0] = -2;
 		break;
 
 	default:
-		printf(catgets(catd, CATSET, 9,
-			"Unrecognized scrolling command \"%s\"\n"), arg);
+		printf(tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
 		return(1);
 	}
 	return(headers(cur));
@@ -1118,8 +1115,7 @@ pipe1(char *str, int doign)
 	if ((cmd = laststring(str, &f, 1)) == NULL) {
 		cmd = value("cmd");
 		if (cmd == NULL || *cmd == '\0') {
-			fputs(catgets(catd, CATSET, 16,
-				"variable cmd not set\n"), stderr);
+			fputs(tr(16, "variable cmd not set\n"), stderr);
 			return 1;
 		}
 	}
@@ -1128,7 +1124,7 @@ pipe1(char *str, int doign)
 		if (*msgvec == 0) {
 			if (inhook)
 				return 0;
-			puts(catgets(catd, CATSET, 18, "No messages to pipe."));
+			puts(tr(18, "No messages to pipe."));
 			return 1;
 		}
 		msgvec[1] = 0;
@@ -1140,14 +1136,14 @@ pipe1(char *str, int doign)
 		printf("No applicable messages.\n");
 		return 1;
 	}
-	printf(catgets(catd, CATSET, 268, "Pipe to: \"%s\"\n"), cmd);
+	printf(tr(268, "Pipe to: \"%s\"\n"), cmd);
 	stats[0] = stats[1] = 0;
 	if ((ret = type1(msgvec, doign, 0, 1, 0, cmd, stats)) == 0) {
 		printf("\"%s\" ", cmd);
 		if (stats[0] >= 0)
 			printf("%lu", (long)stats[0]);
 		else
-			printf(catgets(catd, CATSET, 27, "binary"));
+			printf(tr(27, "binary"));
 		printf("/%lu\n", (long)stats[1]);
 	}
 	return ret;

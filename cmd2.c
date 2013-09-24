@@ -111,7 +111,7 @@ next(void *v)
 			if (*ip2 == 0)
 				ip2 = msgvec;
 		} while (ip2 != ip);
-		printf(catgets(catd, CATSET, 21, "No messages applicable\n"));
+		printf(tr(21, "No messages applicable\n"));
 		return(1);
 	}
 
@@ -144,7 +144,7 @@ next(void *v)
 	}
 	if (mp == NULL || mp >= &message[msgCount]) {
 ateof:
-		printf(catgets(catd, CATSET, 22, "At EOF\n"));
+		printf(tr(22, "At EOF\n"));
 		return(0);
 	}
 	setdot(mp);
@@ -266,8 +266,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 		if (*msgvec == 0) {
 			if (inhook)
 				return 0;
-			printf(catgets(catd, CATSET, 23,
-					"No messages to %s.\n"), cmd);
+			printf(tr(23, "No messages to %s.\n"), cmd);
 			return(1);
 		}
 		msgvec[1] = 0;
@@ -282,7 +281,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	}
 	if (sender_record) {
 		if ((cp = nameof(&message[*msgvec - 1], 0)) == NULL) {
-			printf(catgets(catd, CATSET, 24,
+			printf(tr(24,
 				"Cannot determine message sender to %s.\n"),
 				cmd);
 			return 1;
@@ -319,7 +318,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	} else {
 		if (compressed) {
 			newfile = 0;
-			disp = catgets(catd, CATSET, 25, "[Appended]");
+			disp = tr(25, "[Appended]");
 		}
 		if (!newfile && fstat(fileno(obuf), &st) &&
 				S_ISREG(st.st_mode) &&
@@ -496,9 +495,9 @@ deltype(void *v)
 			list[1] = 0;
 			return(type(list));
 		}
-		printf(catgets(catd, CATSET, 29, "At EOF\n"));
+		printf(tr(29, "At EOF\n"));
 	} else
-		printf(catgets(catd, CATSET, 30, "No more messages\n"));
+		printf(tr(30, "No more messages\n"));
 	return(0);
 }
 
@@ -733,8 +732,7 @@ igshow(struct ignoretab *tab, char const *which)
 	char **ap, **ring;
 
 	if (tab->i_count == 0) {
-		printf(catgets(catd, CATSET, 34,
-				"No fields currently being %s.\n"), which);
+		printf(tr(34, "No fields currently being %s.\n"), which);
 		return 0;
 	}
 	/*LINTED*/
@@ -820,8 +818,7 @@ static int
 unignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	if (tab->i_count == 0) {
-		printf(catgets(catd, CATSET, 34,
-				"No fields currently being %s.\n"), which);
+		printf(tr(34, "No fields currently being %s.\n"), which);
 		return 0;
 	}
 	while (*list)

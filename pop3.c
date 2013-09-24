@@ -362,8 +362,7 @@ retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->mb_sock)) > 0) {
 		case '-':
 			ok = STOP;
 			mp->mb_active = MB_NONE;
-			fprintf(stderr, catgets(catd, CATSET, 218,
-					"POP3 error: %s"), pop3buf);
+			fprintf(stderr, tr(218, "POP3 error: %s"), pop3buf);
 			break;
 		default:
 			/*
@@ -405,7 +404,7 @@ pop3catch(int s)
 	termios_state_reset();
 	switch (s) {
 	case SIGINT:
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 		siglongjmp(pop3jmp, 1);
 		break;
 	case SIGPIPE:
@@ -419,7 +418,7 @@ maincatch(int s)
 {
 	(void)s;
 	if (interrupts++ == 0) {
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 		return;
 	}
 	onintr(0);
@@ -512,8 +511,8 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 	} else
 		ok = STOP;
 	if (ok == STOP)
-		fprintf(stderr, catgets(catd, CATSET, 260,
-			"invalid POP3 STAT response: %s\n"), pop3buf);
+		fprintf(stderr, tr(260, "invalid POP3 STAT response: %s\n"),
+			pop3buf);
 	return ok;
 }
 
@@ -676,8 +675,7 @@ pop3_setfile(const char *server, int nmail, int isedit)
 	pop3lock = 0;
 	if (!edit && msgCount == 0) {
 		if (mb.mb_type == MB_POP3 && value("emptystart") == NULL)
-			fprintf(stderr, catgets(catd, CATSET, 258,
-				"No mail at %s\n"), server);
+			fprintf(stderr, tr(258, "No mail at %s\n"), server);
 		return 1;
 	}
 	return 0;
@@ -698,8 +696,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 	(void)&emptyline;
 	(void)&need;
 	if (mp->mb_sock.s_fd < 0) {
-		fprintf(stderr, catgets(catd, CATSET, 219,
-				"POP3 connection already closed.\n"));
+		fprintf(stderr, tr(219, "POP3 connection already closed.\n"));
 		return STOP;
 	}
 	if (pop3lock++ == 0) {
@@ -894,9 +891,8 @@ pop3_update(struct mailbox *mp)
 	}
 	if (gotcha && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 170, "complete\n") :
-				catgets(catd, CATSET, 212, "updated.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
@@ -915,7 +911,7 @@ pop3_quit(void)
 	sighandler_type savepipe;
 
 	if (mb.mb_sock.s_fd < 0) {
-		fprintf(stderr, catgets(catd, CATSET, 219,
+		fprintf(stderr, tr(219,
 				"POP3 connection already closed.\n"));
 		return;
 	}

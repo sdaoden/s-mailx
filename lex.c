@@ -337,8 +337,8 @@ setfile(char const *name, int nmail)
 jnonmail:
 		if (!nmail) {
 			if (value("emptystart") == NULL)
-nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
-						"No mail for %s\n"), who);
+nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
+					who);
 		}
 		return 1;
 	}
@@ -795,7 +795,7 @@ onintr(int s)
 		image = -1;
 	}
 	if (interrupts != 1)
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 	safe_signal(SIGPIPE, _oldpipe);
 	reset(0);
 }
@@ -991,7 +991,7 @@ int
 pversion(void *v)
 {
 	(void)v;
-	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
+	printf(tr(111, "Version %s\n"), version);
 	return(0);
 }
 

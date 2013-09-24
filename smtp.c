@@ -90,7 +90,7 @@ read_smtp(struct sock *sp, int val, int ign_eof)
 	do {
 		if ((len = sgetline(&smtpbuf, &smtpbufsize, NULL, sp)) < 6) {
 			if (len >= 0 && !ign_eof)
-				fprintf(stderr, catgets(catd, CATSET, 241,
+				fprintf(stderr, tr(241,
 					"Unexpected EOF on SMTP connection\n"));
 			return -1;
 		}
@@ -104,8 +104,7 @@ read_smtp(struct sock *sp, int val, int ign_eof)
 		default: ret = 5;
 		}
 		if (val != ret)
-			fprintf(stderr, catgets(catd, CATSET, 191,
-					"smtp-server: %s"), smtpbuf);
+			fprintf(stderr, tr(191, "smtp-server: %s"), smtpbuf);
 	} while (smtpbuf[3] == '-');
 	return ret;
 }

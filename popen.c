@@ -124,7 +124,7 @@ scan_mode(const char *mode, int *omode)
 	} else if (!strcmp(mode, "w+")) {
 		*omode = O_RDWR   | O_CREAT | O_EXCL;
 	} else {
-		fprintf(stderr, catgets(catd, CATSET, 152,
+		fprintf(stderr, tr(152,
 			"Internal error: bad stdio open mode %s\n"), mode);
 		errno = EINVAL;
 		return -1;
@@ -241,7 +241,7 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
 		return NULL;
 open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
-		perror(catgets(catd, CATSET, 167, "tmpfile"));
+		perror(tr(167, "tmpfile"));
 		if (input >= 0)
 			close(input);
 		return NULL;
@@ -531,7 +531,7 @@ unregister_file(FILE *fp)
 			free(p);
 			return ok;
 		}
-	panic(catgets(catd, CATSET, 153, "Invalid file pointer"));
+	panic(tr(153, "Invalid file pointer"));
 	/*NOTREACHED*/
 	return STOP;
 }
@@ -624,7 +624,7 @@ wait_command(int pid)
 {
 
 	if (wait_child(pid) < 0 && (value("bsdcompat") || value("bsdmsgs"))) {
-		printf(catgets(catd, CATSET, 154, "Fatal error in process.\n"));
+		printf(tr(154, "Fatal error in process.\n"));
 		return -1;
 	}
 	return 0;

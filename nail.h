@@ -274,14 +274,13 @@
 #define SHUGE_CUTLIMIT	LINESIZE
 
 /*
- * Translation (init in main.c) TODO convert all catgets() that remain to tr()
+ * Translation (init in main.c)
  */
 #undef tr
 #ifdef HAVE_CATGETS
 # define CATSET		1
 # define tr(c,d)	catgets(catd, CATSET, c, d)
 #else
-# define catgets(a,b,c,d) (d)
 # define tr(c,d)	(d)
 #endif
 
