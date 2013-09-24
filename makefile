@@ -2,7 +2,6 @@
 #@ Adjustments have to be made in `conf.rc' (or on the command line).
 #@ See the file `INSTALL' if you need help.
 
-.POSIX:
 .PHONY: all install uninstall clean distclean
 
 all:
