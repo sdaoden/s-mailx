@@ -37,18 +37,10 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <time.h>
-#include <unistd.h>
 #include <utime.h>
-
-#include "extern.h"
 
 /* Touch the indicated file */
 static void	alter(char const *name);
@@ -109,7 +101,7 @@ writeback(FILE *res, FILE *obuf)
 	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
-			if (send(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+			if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 				perror(mailname);
 				(void)fseek(obuf, 0L, SEEK_SET);
 				return(-1);
@@ -436,7 +428,7 @@ makembox(void)
 				if (imap_copy(mp, mp-message+1, mbox) == STOP)
 #endif
 					goto err;
-			} else if (send(mp, obuf, saveignore,
+			} else if (sendmp(mp, obuf, saveignore,
 						NULL, SEND_MBOX, NULL) < 0) {
 				perror(mbox);
 			err:	if (ibuf)
@@ -555,7 +547,7 @@ edstop(void)
 		if ((mp->m_flag & MDELETED) != 0)
 			continue;
 		c++;
-		if (send(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+		if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 			perror(mailname);
 			relsesigs();
 			reset(0);

@@ -37,13 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#ifdef HAVE_WCWIDTH
-# include <wchar.h>
-#endif
-
-#include "extern.h"
+#include "nail.h"
 
 /*
  * Print the current active headings.
@@ -1018,7 +1012,7 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 		if (! pipe && ip != msgvec)
 			fprintf(obuf, "\n");
 		_show_msg_overview(mp, *ip, obuf);
-		send(mp, obuf, doign ? ignore : 0, NULL,
+		sendmp(mp, obuf, doign ? ignore : 0, NULL,
 			pipe && value("piperaw") ? SEND_MBOX :
 				decode ? SEND_SHOW :
 				doign ? SEND_TODISP : SEND_TODISP_ALL,

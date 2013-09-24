@@ -37,13 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <errno.h>
-#include <unistd.h>
-
-#include "extern.h"
+#include "nail.h"
 
 enum pipeflags {
 	PIPE_NULL,	/* No pipe- mimetype handler */
@@ -436,7 +430,7 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
  * Note that stats[0] is valid for SEND_MBOX only.
  */
 int
-send(struct message *mp, FILE *obuf, struct ignoretab *doign,
+sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	char const *prefix, enum sendaction action, off_t *stats)
 {
 	int rv = -1, c;

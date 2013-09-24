@@ -57,11 +57,13 @@ Appendix -- Sample Code
    vectors (the code is based on MD5 code as described in [MD5]).
 */
 
-#include "rcv.h"
+#include "config.h"
 
 #ifndef HAVE_MD5
 typedef int avoid_empty_file_compiler_warning;
 #else
+#include <string.h>
+
 #include "md5.h"
 
 #define UINT4B_MAX	0xFFFFFFFFul

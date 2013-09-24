@@ -39,11 +39,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <time.h>
-
-#include "extern.h"
+#include "nail.h"
 
 static enum itoken {
 	ITBAD,
@@ -698,7 +694,7 @@ matchmsg(struct message *m, const char *what, int withheader)
 		return 0;
 	rm(tempFile);
 	Ftfree(&tempFile);
-	if (send(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
+	if (sendmp(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
 		goto out;
 	fflush(fp);
 	rewind(fp);

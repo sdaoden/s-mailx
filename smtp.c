@@ -42,20 +42,20 @@
 #ifndef HAVE_SMTP
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include "rcv.h"
+#include "nail.h"
 
-#include <setjmp.h>
-#include <unistd.h>
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
+
 # include <netdb.h>
+
 # include <netinet/in.h>
+
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
 #endif
 
-#include "extern.h"
 #ifdef HAVE_MD5
 # include "md5.h"
 #endif

@@ -37,12 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include "extern.h"
+#include "nail.h"
 
 static int edit1(int *msgvec, int viored);
 
@@ -180,7 +175,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly,
 		puthead(hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
 	}
 	if (mp) {
-		send(mp, nf, 0, NULL, action, NULL);
+		sendmp(mp, nf, 0, NULL, action, NULL);
 	} else {
 		if (size >= 0)
 			while (--size >= 0 && (t = getc(fp)) != EOF)

@@ -37,22 +37,23 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
-#include <errno.h>
+
 #include <fcntl.h>
-#include <unistd.h>
+
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>
 #endif
 
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
+
 # include <netdb.h>
+
 # include <netinet/in.h>
+
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
@@ -65,8 +66,6 @@
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
 #endif
-
-#include "extern.h"
 
 struct {
 	FILE		*s_file;	/* File we were in. */

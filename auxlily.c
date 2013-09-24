@@ -37,33 +37,23 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
 #include <sys/utsname.h>
+
 #include <ctype.h>
-#include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <pwd.h>
-#include <stdarg.h>
-#include <termios.h>
-#include <unistd.h>
-#ifdef HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-#ifdef HAVE_WCWIDTH
-# include <wchar.h>
-#endif
 
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_IPV6
 #  include <sys/socket.h>
 # endif
+
 # include <netdb.h>
 #endif
 
-#include "extern.h"
 #ifdef HAVE_MD5
 # include "md5.h"
 #endif

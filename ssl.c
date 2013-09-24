@@ -42,8 +42,7 @@
 #ifndef HAVE_SSL
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include "rcv.h"
-#include "extern.h"
+#include "nail.h"
 
 void 
 ssl_set_vrfy_level(const char *uhp)

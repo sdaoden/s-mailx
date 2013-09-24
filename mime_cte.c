@@ -37,8 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "rcv.h"
-#include "extern.h"
+#include "nail.h"
 
 enum _qact {
 	 N =   0,	/* Do not quote */

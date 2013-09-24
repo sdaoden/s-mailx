@@ -37,15 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <ctype.h>
-#include <errno.h>
-#ifdef HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-
-#include "extern.h"
+#include "nail.h"
 
 #define _CHARSET()	((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
 

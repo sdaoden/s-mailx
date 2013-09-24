@@ -37,12 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include "extern.h"
+#include "nail.h"
 
 /*
  * The following hokiness with global variables is so that on
@@ -399,7 +394,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		cp = value("indentprefix");
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
-		if (send(mp, collf, quoteig, (doprefix ? NULL : cp), action,
+		if (sendmp(mp, collf, quoteig, (doprefix ? NULL : cp), action,
 				NULL) < 0)
 			goto jerr;
 	}
@@ -968,7 +963,7 @@ forward(char *ms, FILE *fp, int f)
 
 		touch(mp);
 		printf(" %d", *msgvec);
-		if (send(mp, fp, ig, tabst, action, NULL) < 0) {
+		if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
 			perror(catgets(catd, CATSET, 70,
 					"temporary mail file"));
 			return(-1);

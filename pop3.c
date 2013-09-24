@@ -42,14 +42,8 @@
 #ifndef HAVE_POP3
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <errno.h>
-#include <time.h>
-#include <unistd.h>
-
-#include "extern.h"
 #ifdef HAVE_MD5
 # include "md5.h"
 #endif

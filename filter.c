@@ -16,13 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "rcv.h"
-
-#ifdef HAVE_QUOTE_FOLD
-# include <wctype.h>
-#endif
-
-#include "extern.h"
+#include "nail.h"
 
 /*
  * Quotation filter

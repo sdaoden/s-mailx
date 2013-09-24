@@ -37,7 +37,7 @@ $(UAGENT): $(OBJ)
 	fi;\
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 
-$(OBJ): config.h def.h extern.h glob.h rcv.h
+$(OBJ): config.h nail.h extern.h
 imap.o: imap_gssapi.h
 main.o: version.h
 md5.o imap.o smtp.o auxlily.o pop3.o: md5.h

@@ -42,14 +42,15 @@
 #ifndef HAVE_OPENSSL
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include "rcv.h"
+#include "nail.h"
 
 #include <sys/socket.h>
-#include <sys/stat.h>
+
 #include <dirent.h>
-#include <errno.h>
 #include <netdb.h>
+
 #include <netinet/in.h>
+
 #include <openssl/crypto.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -57,16 +58,10 @@ typedef int avoid_empty_file_compiler_warning;
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-#include <stdio.h>
-#include <setjmp.h>
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
+
 #ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
 #endif
-
-#include "extern.h"
 
 /*
  * OpenSSL client implementation according to: John Viega, Matt Messier,

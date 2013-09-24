@@ -37,14 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 #define	INFIX_BUF	\
 	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
@@ -419,7 +414,7 @@ attach_message(struct attachment *ap, FILE *fo)
 
 	mp = &message[ap->a_msgno - 1];
 	touch(mp);
-	if (send(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
+	if (sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
 		return -1;
 	return 0;
 }
@@ -786,13 +781,13 @@ sendmail_internal(void *v, int recipient_record)
 }
 
 int 
-sendmail(void *v)
+csendmail(void *v)
 {
 	return sendmail_internal(v, 0);
 }
 
 int 
-Sendmail(void *v)
+cSendmail(void *v)
 {
 	return sendmail_internal(v, 1);
 }

@@ -21,11 +21,7 @@
 #ifndef HAVE_SPAM
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include "rcv.h"
-
-#include <unistd.h>
-
-#include "extern.h"
+#include "nail.h"
 
 /*
  * TODO - We cannot use the spamc library because of our jumping behaviour.
@@ -290,8 +286,8 @@ _spam_interact(struct spam_vc *vc)
    close(p2c[0]);
    state &= ~_P2C_0;
 
-   /* Yes, we could send(SEND_MBOX), but the simply passing through the MBOX
-    * content does the same in effect, but is much more efficient
+   /* Yes, we could sendmp(SEND_MBOX), but simply passing through the MBOX
+    * content does the same in effect, but is much more efficient.
     * NOTE: this may mean we pass a message without From_ line! */
    for (size = vc->mp->m_size; size > 0;) {
       size_t i = fread(vc->buffer, 1, MIN(size, BUFFER_SIZE), ibuf);

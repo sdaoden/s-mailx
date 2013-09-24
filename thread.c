@@ -37,11 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <time.h>
-
-#include "extern.h"
+#include "nail.h"
 
 /*
  * Open addressing is used for Message-IDs because the maximum number of

@@ -53,10 +53,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "rcv.h"
-
-#include <errno.h>
-#include <unistd.h>
+#include "nail.h"
 
 #ifdef HAVE_READLINE
 # include <readline/history.h>
@@ -65,12 +62,7 @@
 # include <histedit.h>
 #elif defined HAVE_LINE_EDITOR
 # define __NCL
-# include <sys/stat.h>
-# include <wchar.h>
-# include <wctype.h>
 #endif
-
-#include "extern.h"
 
 /* */
 #define _CL_HISTFILE(S) \

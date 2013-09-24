@@ -47,13 +47,13 @@
  *       Werner Fink, <werner@suse.de>
  */
 
-#include "config.h"
+#define _MAIN_SOURCE
+#include "nail.h"
 
 #include <sys/ioctl.h>
-#include <sys/stat.h>
+
 #include <fcntl.h>
-#include <termios.h>
-#include <unistd.h>
+
 #ifdef HAVE_NL_LANGINFO
 # include <langinfo.h>
 #endif
@@ -61,9 +61,6 @@
 # include <locale.h>
 #endif
 
-#define _MAIL_GLOBS_
-#include "rcv.h"
-#include "extern.h"
 #include "version.h"
 
 struct a_arg {

@@ -37,14 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <ctype.h>
-#ifdef HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-
-#include "extern.h"
+#include "nail.h"
 
 enum idfield {
 	ID_REFERENCES,

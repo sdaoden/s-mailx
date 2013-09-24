@@ -37,14 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 static int		*_msgvec;
 static int		_reset_on_stop;	/* do a reset() if stopped */

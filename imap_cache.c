@@ -42,17 +42,10 @@
 #ifndef HAVE_IMAP
 typedef int avoid_empty_file_compiler_warning;
 #else
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 static char *encname(struct mailbox *mp, const char *name, int same,
 		const char *box);

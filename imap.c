@@ -37,28 +37,24 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <errno.h>
-#include <time.h>
-#include <unistd.h>
+#ifdef HAVE_IMAP
+# include <sys/socket.h>
 
-#ifndef HAVE_IMAP
-# include "extern.h"
-#else
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#ifdef HAVE_ARPA_INET_H
-# include <arpa/inet.h>
+# include <netdb.h>
+
+# include <netinet/in.h>
+
+# ifdef HAVE_ARPA_INET_H
+#  include <arpa/inet.h>
+# endif
+# ifdef HAVE_MD5
+#  include "md5.h"
+# endif
 #endif
 
-#include "extern.h"
-#ifdef HAVE_MD5
-# include "md5.h"
-#endif
-
+#ifdef HAVE_IMAP
 #define	IMAP_ANSWER()	{ \
 				if (mp->mb_type != MB_CACHE) { \
 					enum okay ok = OKAY; \

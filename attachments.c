@@ -37,12 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <errno.h>
-#include <unistd.h>
-
-#include "extern.h"
+#include "nail.h"
 
 /* We use calloc() for struct attachment */
 CTA(AC_DEFAULT == 0);

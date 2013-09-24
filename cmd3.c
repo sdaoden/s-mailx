@@ -37,13 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <errno.h>
-#include <math.h>
-#include <unistd.h>
-
-#include "extern.h"
+#include "nail.h"
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);

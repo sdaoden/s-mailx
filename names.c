@@ -37,14 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 /* Same name, taking care for *allnet*? */
 static int		same_name(char const *n1, char const *n2);

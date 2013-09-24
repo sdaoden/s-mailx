@@ -37,16 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <time.h>
 #ifdef HAVE_IDNA
-# include <errno.h>
 # include <idna.h>
 # include <stringprep.h>
 #endif
-
-#include "extern.h"
 
 struct cmatch_data {
 	size_t		tlen;	/* Length of .tdata */

@@ -37,8 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-#include "extern.h"
+#include "nail.h"
 
 #ifdef HAVE_DOCSTRINGS
 # define DS(ID,S)	, ID, S
@@ -92,10 +91,10 @@ struct cmd const cmdtab[] = {
    { "unset", unset, (M | RAWLIST), 1, 1000
      DS(402, "Unset <option-list>")
    },
-   { "mail", sendmail, (R | M | I | STRLIST), 0, 0
+   { "mail", csendmail, (R | M | I | STRLIST), 0, 0
      DS(351, "Compose mail; recipients may be given as arguments")
    },
-   { "Mail", Sendmail, (R | M | I | STRLIST), 0, 0
+   { "Mail", cSendmail, (R | M | I | STRLIST), 0, 0
      DS(350, "Like \"mail\", but derive filename from first recipient")
    },
    { "mbox", mboxit, (A | W | MSGLIST), 0, 0

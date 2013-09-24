@@ -37,20 +37,11 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <errno.h>
+
 #include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
-
-#ifndef	NSIG
-# define NSIG	64
-#endif
 
 #define READ	0
 #define WRITE	1

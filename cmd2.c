@@ -37,13 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
 #include <sys/wait.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 static int	save1(char *str, int domark, char const *cmd,
 			struct ignoretab *ignore, int convert,
@@ -375,7 +371,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
 #endif
-		} else if (send(mp, obuf, ignoret, NULL,
+		} else if (sendmp(mp, obuf, ignoret, NULL,
 					convert, mstats) < 0) {
 			perror(file);
 			goto ferr;

@@ -41,19 +41,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
 #include <ctype.h>
-#include <errno.h>
-#include <stdarg.h>
-#ifdef HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-#ifdef HAVE_WCWIDTH
-# include <wchar.h>
-#endif
-
-#include "extern.h"
 
 /*
  * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but

@@ -37,8 +37,7 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-#include "extern.h"
+#include "nail.h"
 
 #define MACPRIME	23
 #define MAC_HASH(S)	(strhash(S) % MACPRIME)

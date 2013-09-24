@@ -33,16 +33,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#include "nail.h"
 
-#include <sys/stat.h>
 #include <sys/utsname.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <time.h>
-#include <unistd.h>
 
-#include "extern.h"
+#include <fcntl.h>
 
 #ifndef O_SYNC
 # define O_SYNC	0

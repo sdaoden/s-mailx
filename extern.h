@@ -820,17 +820,15 @@ int savequitflags(void);
 void restorequitflags(int);
 
 /* send.c */
-#undef send
-#define send(a, b, c, d, e, f)  xsend(a, b, c, d, e, f)
-int send(struct message *mp, FILE *obuf, struct ignoretab *doign,
+int sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 		char const *prefix, enum sendaction action, off_t *stats);
 
 /* sendout.c */
 int mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record);
-int sendmail(void *v);
-int Sendmail(void *v);
+int csendmail(void *v);
+int cSendmail(void *v);
 enum okay mail1(struct header *hp, int printheaders, struct message *quote,
 		char *quotefile, int recipient_record, int doprefix);
 int mkdate(FILE *fo, const char *field);
