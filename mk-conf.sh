@@ -15,17 +15,22 @@ if [ -n "${CONFIG}" ]; then
       WANT_DOCSTRINGS=0
       WANT_SPAM=0
       ;;
+   MEDIUM)
+      WANT_SOCKETS=0
+      WANT_IDNA=0
+      WANT_QUOTE_FOLD=0
+      WANT_SPAM=0
+      ;;
    NETSEND)
       WANT_IMAP=0
       WANT_POP3=0
       WANT_EDITLINE=0
       WANT_QUOTE_FOLD=0
-      WANT_DOCSTRINGS=0
       WANT_SPAM=0
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: MINIMAL, NETSEND'
+      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND'
       exit 1
    esac
 fi

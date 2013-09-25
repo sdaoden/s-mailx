@@ -26,11 +26,14 @@ which take precedence over anything else:
   internationalized domain names, no command line editor, no
   documentation strings.
 
+. CONFIG=MEDIUM
+  Like MINIMAL, but with documentation strings, and the builtin command
+  line editor will be included if that is possible.
+
 . CONFIG=NETSEND
   WANT_SMTP and WANT_SSL settings are enabled, internationalized domain
-  names will be supported if the necessary libraries are available, the
-  builtin command line editor will be used if possible, otherwise
-  identical to MINIMAL.
+  names will be supported if the necessary libraries are available,
+  otherwise identical to MEDIUM.
 
 E.g.:
 
