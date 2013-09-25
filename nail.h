@@ -270,9 +270,6 @@
 #define SBUFFER_SIZE	0x18000u
 #define SBUFFER_BUILTIN	0x2000u
 
-/* Huge allocation if GT; those are never cached but will be auto freed */
-#define SHUGE_CUTLIMIT	LINESIZE
-
 /*
  * Translation (init in main.c)
  */

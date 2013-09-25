@@ -22,8 +22,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *    This product includes software developed by the University of
+ *    California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -55,10 +55,6 @@
  * not even allocate the first buffer, but let that be a builtin DATA section
  * one that is rather small, yet sufficient for send mode to *never* even
  * perform a single dynamic allocation (from our stringdope point of view).
- *
- * If allocations larger than SHUGE_CUTLIMIT come in, smalloc() them directly
- * instead and store them in an extra list that is released whenever sreset()
- * is called.
  */
 
 union __align__ {
@@ -96,22 +92,13 @@ struct buffer {
 	char		b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
-struct huge {
-	struct huge	*h_prev;
-	char		h_buf[VFIELD_SIZE(SALIGN + 1)];
-};
-#define SHUGE_CALC_SIZE(S) \
-	((sizeof(struct huge) - VFIELD_SIZEOF(struct huge, h_buf)) + (S))
-
 static struct b_bltin	_builtin_buf;
 static struct buffer	*_buf_head, *_buf_list, *_buf_server;
-static struct huge	*_huge_list;
 
 #ifdef HAVE_ASSERTS
 size_t	_all_cnt, _all_cycnt, _all_cycnt_max,
 	_all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
 	_all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
-	_all_hugecnt, _all_cyhugecnt, _all_cyhugecnt_max,
 	_all_resetreqs, _all_resets;
 #endif
 
@@ -126,7 +113,7 @@ salloc(size_t size)
 #ifdef HAVE_ASSERTS
 	size_t orig_size = size;
 #endif
-	union {struct buffer *b; struct huge *h; char *cp;} u;
+	union {struct buffer *b; char *cp;} u;
 	char *x, *y, *z;
 
 	if (size == 0)
@@ -145,9 +132,6 @@ salloc(size_t size)
 	_all_max = MAX(_all_max, size);
 	_all_wast += size - orig_size;
 #endif
-
-	if (size > SHUGE_CUTLIMIT)
-		goto jhuge;
 
 	if ((u.b = _buf_server) != NULL)
 		goto jumpin;
@@ -202,19 +186,7 @@ jumpin:		x = u.b->b._caster;
 	u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
 	u.cp = u.b->b._bot;
 jleave:
-	return (u.cp);
-
-jhuge:
-#ifdef HAVE_ASSERTS
-	++_all_hugecnt;
-	++_all_cyhugecnt;
-	_all_cyhugecnt_max = MAX(_all_cyhugecnt_max, _all_cyhugecnt);
-#endif
-	u.h = smalloc(SHUGE_CALC_SIZE(size));
-	u.h->h_prev = _huge_list;
-	_huge_list = u.h;
-	u.cp = u.h->h_buf;
-	goto jleave;
+	return u.cp;
 }
 
 void *
@@ -235,7 +207,7 @@ csalloc(size_t nmemb, size_t size)
 void 
 sreset(void)
 {
-	union {struct buffer *b; struct huge *h;} u;
+	struct buffer *bh;
 
 #ifdef HAVE_ASSERTS
 	++_all_resetreqs;
@@ -244,37 +216,30 @@ sreset(void)
 		goto jleave;
 
 #ifdef HAVE_ASSERTS
-	_all_cycnt = _all_cysize = _all_cyhugecnt = 0;
+	_all_cycnt = _all_cysize = 0;
 	_all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
 	++_all_resets;
 #endif
 
-	for (u.h = _huge_list; u.h != NULL;) {
-		struct huge *tmp = u.h;
-		u.h = u.h->h_prev;
-		free(tmp);
-	}
-	_huge_list = NULL;
-
-	if ((u.b = _buf_head) != NULL) {
-		struct buffer *b = u.b;
+	if ((bh = _buf_head) != NULL) {
+		struct buffer *b = bh;
 		b->b._caster = b->b._bot;
 #ifdef HAVE_ASSERTS
 		memset(b->b._caster, 0377,
 			(size_t)(b->b._max - b->b._caster));
 #endif
 		_buf_server = b;
-		if ((u.b = u.b->b._next) != NULL) {
-			b = u.b;
+		if ((bh = bh->b._next) != NULL) {
+			b = bh;
 			b->b._caster = b->b._bot;
 #ifdef HAVE_ASSERTS
 			memset(b->b._caster, 0377,
 				(size_t)(b->b._max - b->b._caster));
 #endif
-			for (u.b = u.b->b._next; u.b != NULL;) {
-				struct buffer *b2 = u.b->b._next;
-				free(u.b);
-				u.b = b2;
+			for (bh = bh->b._next; bh != NULL;) {
+				struct buffer *b2 = bh->b._next;
+				free(bh);
+				bh = b2;
 			}
 		}
 		_buf_list = b;
@@ -310,15 +275,12 @@ sstats(void *v)
 		"  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
 		"  Overall alloc count/bytes        : %lu/%lu\n"
 		"  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
-		"  Hugealloc count overall/cycle    : %lu/%lu (cutlimit: %lu)\n"
 		"  sreset() cycles                  : %lu (%lu performed)\n"
 		"  Cycle maximums: alloc count/bytes: %lu/%lu\n",
 		(ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
 		(ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
 		(ul_it)_all_cnt, (ul_it)_all_size,
 		(ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
-		(ul_it)_all_hugecnt, (ul_it)_all_cyhugecnt_max,
-			(ul_it)SHUGE_CUTLIMIT,
 		(ul_it)_all_resetreqs, (ul_it)_all_resets,
 		(ul_it)_all_cycnt_max, (ul_it)_all_cysize_max);
 	return (0);
