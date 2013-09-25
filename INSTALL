@@ -93,11 +93,18 @@ o Slackware 14 3.2.29-smp (i386).
   clang version 3.0 (tags/RELEASE_30/final).
 
 o UnixWare 7.1.4.
-  You need to pass ``CFLAGS='-v -O''' to the make(1) run.
-  And `conf.rc' sets `MAILSPOOL=/var/mail' by default, whereas
+  You need to pass "CFLAGS='-v -O'" to the make(1) run.
+  And because the UnixWare make(1) doesn't pass those flags through to
+  recursively invoked make(1)s (and because the S-nail build system
+  doesn't track CC and CFLAGS in `conf.rc' for updates), you need to use
+  the -e option, as in:
+
+    $ make -e CFLAGS='-v -O'
+
+  Due to this you possibly want to use env(1) to be on the safe side...
+  Also, `conf.rc' sets `MAILSPOOL=/var/mail' by default, whereas
   UnixWare uses `/var/spool/mail', so you need to overwrite it (either
-  in `conf.rc', or from within the command line).
-  Note that the `-v' compiler option still gives some harmless warnings.
+  in `conf.rc', or from within the command line.
 
 OpenIndiana is targeted for v14.5.
 And i'm very interested in reports from other combinations.
