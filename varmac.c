@@ -39,7 +39,7 @@
 
 #include "nail.h"
 
-#define MACPRIME	23
+#define MACPRIME	HSHSIZE
 #define MAC_HASH(S)	(strhash(S) % MACPRIME)
 
 enum mac_flags {
@@ -628,7 +628,7 @@ callaccount(char const *name)
 	struct macro *mp;
 
 	mp = _malook(name, NULL, MAC_ACCOUNT);
-	return (mp == NULL) ? CBAD : _maexec(mp);
+	return (mp == NULL) ? CBAD : (account_name = mp->ma_name, _maexec(mp));
 }
 
 int

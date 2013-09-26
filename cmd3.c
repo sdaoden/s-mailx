@@ -1341,13 +1341,14 @@ account(void *v)
 
 	oqf = savequitflags();
 	if ((a = get_oldaccount(args[0])) == NULL) {
+		account_name = NULL;
 		if (args[1]) {
 			a = scalloc(1, sizeof *a);
 			a->ac_next = oldaccounts;
 			oldaccounts = a;
 		} else {
 			if ((i = callaccount(args[0])) != CBAD)
-				goto setf;
+				goto jsetf;
 			printf("Account %s does not exist.\n", args[0]);
 			return 1;
 		}
@@ -1360,10 +1361,12 @@ account(void *v)
 		for (i = 0; args[i+1]; i++)
 			a->ac_vars[i] = sstrdup(args[i+1]);
 	} else {
+		account_name = a->ac_name;
 		unset_allow_undefined = TRU1;
 		set(a->ac_vars);
 		unset_allow_undefined = FAL0;
-	setf:	if (!starting) {
+jsetf:
+		if (! starting) {
 			nqf = savequitflags();
 			restorequitflags(oqf);
 			i = file1("%");

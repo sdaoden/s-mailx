@@ -90,8 +90,9 @@ long nextprime(long n);
 
 /* Check wether *s is an escape sequence, expand it as necessary.
  * Returns the expanded sequence or 0 if **s is NUL or -1 if it is \c.
- * *s is advanced to after the expanded sequence (as possible) */
-int	expand_shell_escape(char const **s, bool_t use_nail_extensions);
+ * *s is advanced to after the expanded sequence (as possible).
+ * If use_prompt_extensions is set, an enum prompt_exp may be returned */
+int	expand_shell_escape(char const **s, bool_t use_prompt_extensions);
 
 /* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
 char *	getprompt(void);
