@@ -318,7 +318,8 @@ enum user_options {
 	OPT_SENDMODE	= 1<<13,	/* Usage case forces send mode */
 	OPT_INTERACTIVE	= 1<<14,	/* isatty(0) */
 	OPT_TTYIN	= OPT_INTERACTIVE,
-	OPT_TTYOUT	= 1<<15
+	OPT_TTYOUT	= 1<<15,
+	OPT_NOPROMPT	= 1<<16		/* *noprompt* has been set */
 };
 #define IS_TTY_SESSION() \
 	((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))

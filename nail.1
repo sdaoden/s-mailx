@@ -3021,6 +3021,9 @@ a `NOOP' command to be sent each `value' seconds if no other operation
 is performed.
 .It Va prompt
 The string printed when a command is accepted.
+The prompt may be disabled by either setting this to the empty string
+or by setting
+.Va noprompt .
 Defaults to `?\ ', or to `&\ ' if the
 .Va bsdcompat
 variable is set.

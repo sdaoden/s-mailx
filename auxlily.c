@@ -391,7 +391,9 @@ getprompt(void)
 	static char buf[64];
 	char const *ccp;
 
-	if ((ccp = value("prompt")) == NULL) {
+	if (options & OPT_NOPROMPT)
+		buf[0] = '\0';
+	else if ((ccp = value("prompt")) == NULL) {
 		buf[0] = value("bsdcompat") ? '&' : '?';
 		buf[1] = ' ';
 		buf[2] = '\0';
