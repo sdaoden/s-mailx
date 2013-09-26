@@ -573,7 +573,7 @@ is_prefix(char const *as1, char const *as2)
 {
 	char c;
 	for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
-		if ((c = *as2) == '\0')
+		if (*as2 == '\0')
 			break;
 	return (c == '\0');
 }
