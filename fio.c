@@ -428,10 +428,10 @@ int
 	bool_t doprompt, dotty;
 	int n;
 
-	if (prompt == NULL)
-		prompt = getprompt();
 	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
 	dotty = (doprompt && ! boption("line-editor-disable"));
+	if (prompt == NULL)
+		prompt = doprompt ? getprompt() : "";
 
 	for (n = 0;;) {
 		if (dotty) {
@@ -475,10 +475,10 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 	char *linebuf = NULL, *rv = NULL;
 	bool_t doprompt, dotty;
 
-	if (prompt == NULL)
-		prompt = getprompt();
 	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
 	dotty = (doprompt && ! boption("line-editor-disable"));
+	if (prompt == NULL)
+		prompt = doprompt ? getprompt() : "";
 
 	/* If STDIN is not a terminal, simply read from it */
 	if (dotty) {
