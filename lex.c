@@ -622,6 +622,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 	switch (*cp) {
 	case '|':
 	case '~':
+	case '?':
 		++cp;
 		/* FALLTHRU */
 	case '\0':
