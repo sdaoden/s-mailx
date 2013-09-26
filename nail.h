@@ -73,6 +73,10 @@
 # include <wctype.h>
 #endif
 
+/*
+ * Compat
+ */
+
 #if ! defined NI_MAXHOST || NI_MAXHOST < 1025
 # undef NI_MAXHOST
 # define NI_MAXHOST	1025
@@ -88,13 +92,6 @@
 # undef MAXPATHLEN
 # define MAXPATHLEN	PATH_MAX
 #endif
-
-#if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
-# define LINESIZE	BUFSIZ		/* max readable line width */
-#else
-# define LINESIZE	2560
-#endif
-#define BUFFER_SIZE	(BUFSIZ >= (1 << 13) ? BUFSIZ : (1 << 14))
 
 #ifndef STDIN_FILENO
 # define STDIN_FILENO	0
@@ -113,10 +110,25 @@
 # define NSIG		((sizeof(sigset_t) * 8) - 1)
 #endif
 
+/*
+ *
+ */
+
+#if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
+# define LINESIZE	BUFSIZ		/* max readable line width */
+#else
+# define LINESIZE	2560
+#endif
+#define BUFFER_SIZE	(BUFSIZ >= (1 << 13) ? BUFSIZ : (1 << 14))
+
+#define CBAD		(-15555)
 #define APPEND				/* New mail goes to end of mailbox */
+#define ESCAPE		'~'		/* Default escape for sending */
+#define HIST_SIZE	242		/* tty.c: history list default size */
+#define HSHSIZE		23		/* Hash prime (aliases, vars, macros) */
 #define MAXARGC		1024		/* Maximum list of raw strings */
 #define MAXEXP		25		/* Maximum expansion of aliases */
-#define HSHSIZE		23		/* Hash prime (aliases, vars, macros) */
+#define PROMPT_BUFFER_SIZE	80	/* getprompt() bufsize (> 3!) */
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
@@ -125,11 +137,42 @@
 #define DATE_HOURSDAY	24L
 #define DATE_SECSDAY	(DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
-#define PROMPT_BUFFER_SIZE 80		/* getprompt() bufsize (> 3!) */
+/* Default *encoding* as enum conversion below */
+#define MIME_DEFAULT_ENCODING	CONV_TOQP
 
-#define ESCAPE		'~'		/* Default escape for sending */
+/* Maximum allowed line length in a mail before QP folding is necessary), and
+ * the real limit we go for */
+#define MIME_LINELEN_MAX	1000
+#define MIME_LINELEN_LIMIT	(MIME_LINELEN_MAX - 50)
 
-#define CBAD		(-15555)
+/* Locations of mime.types(5) */
+#define MIME_TYPES_USR	"~/.mime.types"
+#define MIME_TYPES_SYS	"/etc/mime.types"
+
+/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set */
+#define CHARSET_7BIT		"US-ASCII"
+#ifdef HAVE_ICONV
+# define CHARSET_8BIT		"UTF-8"
+# define CHARSET_8BIT_VAR	"charset-8bit"
+#else
+# define CHARSET_8BIT		"ISO-8859-1"
+# define CHARSET_8BIT_VAR	"ttycharset"
+#endif
+
+/* Is *W* a quoting (ASCII only) character? */
+#define ISQUOTE(W)	((W) == L'>' || (W) == L'|' || (W) == L'}')
+
+/* Maximum number of quote characters (not bytes!) that'll be used on
+ * follow lines when compressing leading quote characters */
+#define QUOTE_MAX	42
+
+/* Maximum size of a message that is passed through to the spam system */
+#define SPAM_MAXSIZE	420000
+
+/* String dope: dynamic buffer size, and size of the single builtin one that's
+ * used first */
+#define SBUFFER_SIZE	0x18000u
+#define SBUFFER_BUILTIN	0x2000u
 
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
@@ -211,70 +254,7 @@
 # define assert(X)	((void)0)
 #endif
 
-/*
- * Line editor (tty.c)
- */
-
-/* The default size in entries of the history list */
-#define HIST_SIZE	242
-
-/*
- * Filters (filter.c)
- */
-
-/* Quote filter */
-
-/* Is *W* a quoting (ASCII only) character? */
-#define ISQUOTE(W)	((W) == L'>' || (W) == L'|' || (W) == L'}')
-
-/* Maximum number of quote characters (not bytes!) that'll be used on
- * follow lines when compressing leading quote characters */
-#define QUOTE_MAX	42
-
-/*
- * MIME (mime.c)
- */
-
-/* Locations of mime.types(5) */
-#define MIME_TYPES_USR	"~/.mime.types"
-#define MIME_TYPES_SYS	"/etc/mime.types"
-
-/* Default *encoding* as enum conversion below */
-#define MIME_DEFAULT_ENCODING	CONV_TOQP
-
-/* Maximum allowed line length in a mail before QP folding is necessary), and
- * the real limit we go for */
-#define MIME_LINELEN_MAX	1000
-#define MIME_LINELEN_LIMIT	(MIME_LINELEN_MAX - 50)
-
-/* Fallback charsets, if *charset-7bit* and *charset-8bit* or not set, resp. */
-#define CHARSET_7BIT		"US-ASCII"
-#ifdef HAVE_ICONV
-# define CHARSET_8BIT		"UTF-8"
-# define CHARSET_8BIT_VAR	"charset-8bit"
-#else
-# define CHARSET_8BIT		"ISO-8859-1"
-# define CHARSET_8BIT_VAR	"ttycharset"
-#endif
-
-/*
- * Spam (spam.c)
- */
-
-/* Maximum size of a message that is passed through to the spam system */
-#define SPAM_MAXSIZE	420000
-
-/*
- * Auto-reclaimed string storage (strings.c)
- */
-
-/* Dynamic buffer size, and size of the single builtin one that's used first */
-#define SBUFFER_SIZE	0x18000u
-#define SBUFFER_BUILTIN	0x2000u
-
-/*
- * Translation (init in main.c)
- */
+/* Translation (init in main.c) */
 #undef tr
 #ifdef HAVE_CATGETS
 # define CATSET		1
