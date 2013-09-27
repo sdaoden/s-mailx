@@ -1276,6 +1276,11 @@ option is set.
 .It Ic ghost
 Define an alias for an existing command (a so-called command `ghost'),
 or list all currently defined ghosts.
+Ghosts for complete shell commands and macro calls may be defined:
+.Pp
+.Dl ? ghost ls '!ls -latro'
+.Dl ? ghost mac ~macro-name
+.Pp
 The list of ghosts is always inspected first when looking up a command.
 Also see
 .Ic unghost .

@@ -58,7 +58,8 @@ struct cmd {
 
 struct cmd_ghost {
    struct cmd_ghost  *next;
-   struct cmd const  *cmd;
+   struct cmd const  *cmd;       /* If NULL, it's a strcmd.. */
+   struct str        strcmd;     /* ..then data follows after .name */
    char              name[VFIELD_SIZE(sizeof(size_t))];
 };
 
@@ -75,8 +76,11 @@ SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
+/* Isolate the command from the arguments */
+static char *  _lex_isolate(char const *comm);
+
 /* Get first-fit, or NULL */
-static struct cmd const * _lex(char const *comm, bool_t check_ghosts);
+static struct cmd const * _lex(char const *comm);
 
 /* Command ghost handling */
 static int     _ghost(void *v);
@@ -204,21 +208,18 @@ jleave:	;
 #endif
 }
 
+static char *
+_lex_isolate(char const *comm)
+{
+   while (*comm && strchr(" \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
+      ++comm;
+   return UNCONST(comm);
+}
+
 static struct cmd const *
-_lex(char const *comm, bool_t check_ghosts)
+_lex(char const *comm)
 {
    struct cmd const *cp;
-
-   /* Command ghosts must match exactly */
-   if (check_ghosts) {
-      struct cmd_ghost *cg;
-
-      for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-         if (strcmp(comm, cg->name) == 0) {
-            cp = cg->cmd;
-            goto jleave;
-         }
-   }
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp)
       if (is_prefix(comm, cp->name))
@@ -232,21 +233,30 @@ static int
 _ghost(void *v)
 {
    char const **argv = (char const**)v;
-   struct cmd_ghost *cg;
+   struct cmd_ghost *lcg, *cg;
    struct cmd const *cmd;
-   size_t i;
+   size_t i, scl;
 
    /* Show the list? */
    if (*argv == NULL) {
       printf(tr(144, "Command ghosts are:\n"));
       for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
-         size_t j = strlen(cg->name) + strlen((cmd = cg->cmd)->name) + 6;
-         if ((i += j) > 72) {
-            i = j;
+         char const *s, *e;
+         scl = strlen(cg->name) + 6;
+         cmd = cg->cmd;
+         if (cmd != NULL) {
+            scl += strlen(cmd->name);
+            s = e = "";
+         } else {
+            scl += cg->strcmd.l + 2;
+            s = "<", e = ">";
+         }
+         if ((i += scl) > 72) {
+            i = scl;
             printf("\n");
          }
-         printf((cg->next != NULL ? "%s -> %s, " : "%s -> %s\n"),
-            cg->name, cmd->name);
+         printf((cg->next != NULL ? "%s -> %s%s%s, " : "%s -> %s%s%s\n"),
+            cg->name, s, (cmd != NULL ? cmd->name : cg->strcmd.s), e);
       }
       cmd = (struct cmd*)0x1;
       goto jleave;
@@ -260,25 +270,66 @@ _ghost(void *v)
       goto jleave;
    }
 
-   cmd = _lex(argv[1], FAL0);
-   if (cmd == NULL) {
-      fprintf(stderr, tr(91, "Unknown command: `%s'\n"), argv[1]);
-      goto jleave;
+   /* Check that we can deal with this one */
+   switch (argv[0][0]) {
+   case '|':
+   case '~':
+   case '?':
+   case '#':
+      /* FALLTHRU */
+   case '\0':
+      goto jecanon;
+   default:
+      if (argv[0] == _lex_isolate(argv[0])) {
+jecanon:
+         fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
+         cmd = NULL;
+         goto jleave;
+      }
+      break;
    }
 
-   /* Try reuse slot */
-   for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-      if (strcmp(cg->name, argv[0]) == 0) {
-         cg->cmd = cmd;
+   /* We do support macro and shell command specials */
+   switch (argv[1][0]) {
+   case '!':
+   case '~':
+      cmd = (struct cmd*)0x1;
+      scl = strlen(argv[1]) + 1;
+      break;
+   default:
+      scl = 0;
+      cmd = _lex(argv[1]);
+      if (cmd == NULL) {
+         fprintf(stderr, tr(91, "Unknown command: `%s'\n"), argv[1]);
          goto jleave;
+      }
+      break;
+   }
+
+   /* Always recreate */
+   for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
+      if (strcmp(cg->name, argv[0]) == 0) {
+         if (lcg != NULL)
+            lcg->next = cg->next;
+         else
+            _cmd_ghosts = cg->next;
+         free(cg);
+         break;
       }
 
    /* Need a new one */
    i = strlen(argv[0]) + 1;
-   cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + i);
+   cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + i + scl);
    cg->next = _cmd_ghosts;
-   cg->cmd = cmd;
    memcpy(cg->name, argv[0], i);
+   if (scl == 0)
+      cg->cmd = cmd;
+   else {
+      cg->cmd = NULL;
+      cg->strcmd.s = cg->name + i;
+      cg->strcmd.l = scl - 1;
+      memcpy(cg->strcmd.s, argv[1], scl);
+   }
 
    _cmd_ghosts = cg;
 jleave:
@@ -710,12 +761,17 @@ int
 execute(char *linebuf, int contxt, size_t linesize)
 {
 	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
-	struct cmd const *com = (struct cmd*)NULL;
+	struct cmd_ghost *cg = NULL;
+	struct cmd const *com = NULL;
 	int muvec[2], c, e = 1;
+
+	/* Command ghosts that refer to shell commands or macro expansion restart */
+jrestart:
 
 	/* Strip the white space away from the beginning of the command */
 	for (cp = linebuf; whitechar(*cp); ++cp)
 		;
+	linesize -= (size_t)(cp - linebuf);
 
 	/* Ignore comments */
 	if (*cp == '#')
@@ -745,25 +801,47 @@ execute(char *linebuf, int contxt, size_t linesize)
 	case '\0':
 		break;
 	default:
-		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
-				*cp) == NULL)
-			++cp;
+		cp = _lex_isolate(cp);
 		break;
 	}
 	c = (int)(cp - arglist[0]);
 	linesize -= c;
-	word = (c <= 1) ? _wordbuf : salloc(c + 1);
+	word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
 	memcpy(word, arglist[0], c);
 	word[c] = '\0';
 
 	/* Look up the command; if not found, bitch.
 	 * Normally, a blank command would map to the first command in the
 	 * table; while sourcing, however, we ignore blank lines to eliminate
-	 * confusion */
-	if (sourcing && *word == '\0')
+	 * confusion; act just the same for ghosts */
+	if ((sourcing || cg != NULL) && *word == '\0')
 		goto jleave0;
 
-	com = _lex(word, TRU1);
+	/* If this is the first evaluation, check command ghosts */
+	if (cg == NULL) {
+		for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+			if (strcmp(word, cg->name) == 0) {
+				com = cg->cmd;
+				if (com != NULL)
+					break;
+				if (linesize > 0) {
+					size_t i = cg->strcmd.l;
+					linebuf = salloc(i + 1 + linesize);
+					memcpy(linebuf, cg->strcmd.s, i);
+					linebuf[i++] = ' ';
+					memcpy(linebuf + i, cp, linesize);
+					linebuf[i += linesize] = '\0';
+					linesize = i;
+				} else {
+					linebuf = cg->strcmd.s;
+					linesize = cg->strcmd.l;
+				}
+				goto jrestart;
+			}
+	}
+
+	if (com == NULL)
+		com = _lex(word);
 	if (com == NULL || com->func == &ccmdnotsupp) {
 		fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
 		if (com != NULL) {
@@ -1216,7 +1294,10 @@ print_comm_docstr(char const *comm)
    for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
       if (strcmp(comm, cg->name) == 0) {
          cp = cg->cmd;
-         printf("%s -> %s: %s\n", comm, cp->name, tr(cp->docid, cp->doc));
+         if (cp != NULL)
+            printf("%s -> %s: %s\n", comm, cp->name, tr(cp->docid, cp->doc));
+         else
+            printf("%s -> %s\n", comm, cg->strcmd.s);
          rv = TRU1;
          goto jleave;
       }
