@@ -1114,11 +1114,11 @@ _E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
 _E struct termios_state termios_state;	/* getpassword(); see commands().. */
 
 /* These are initialized strings */
-_E char const *const	month_names[12 + 1];
-_E char const *const	weekday_names[7 + 1];
+_E char const	month_names[12 + 1][4];
+_E char const	weekday_names[7 + 1][4];
 
-_E char const *const	uagent;		/* User agent */
-_E char const *const	version;	/* The version string */
+_E char const	uagent[];		/* User agent */
+_E char const	version[];		/* The version string */
 
 #ifdef HAVE_SSL
 _E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */

@@ -3369,11 +3369,12 @@ imap_read_date_time(const char *cp)
 	if (cp[0] != '"' || strlen(cp) < 28 || cp[27] != '"')
 		goto invalid;
 	day = strtol(&cp[1], NULL, 10);
-	for (i = 0; month_names[i]; i++)
+	for (i = 0;;) {
 		if (ascncasecmp(&cp[4], month_names[i], 3) == 0)
 			break;
-	if (month_names[i] == NULL)
-		goto invalid;
+		if (month_names[++i][0] == '\0')
+			goto invalid;
+	}
 	month = i + 1;
 	year = strtol(&cp[8], NULL, 10);
 	hour = strtol(&cp[13], NULL, 10);
@@ -3417,11 +3418,12 @@ imap_read_date(const char *cp)
 	day = strtol(cp, &xp, 10);
 	if (day <= 0 || day > 31 || *xp++ != '-')
 		return -1;
-	for (i = 0; month_names[i]; i++)
+	for (i = 0;;) {
 		if (ascncasecmp(xp, month_names[i], 3) == 0)
 			break;
-	if (month_names[i] == NULL)
-		return -1;
+		if (month_names[++i][0] == '\0')
+			return -1;
+	}
 	month = i+1;
 	if (xp[3] != '-')
 		return -1;

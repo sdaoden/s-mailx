@@ -362,18 +362,18 @@ _hdrstop(int signo)
 	siglongjmp(__hdrjmp, 1);
 }
 
-char const *const	weekday_names[7 + 1] = {
-	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", NULL
+char const	weekday_names[7 + 1][4] = {
+	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", ""
 };
-char const *const	month_names[12 + 1] = {
+char const	month_names[12 + 1][4] = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 
-char const *const	uagent = UAGENT;
-char const *const	version = VERSION;
+char const 	uagent[] = UAGENT;
+char const 	version[] = VERSION;
 
-sighandler_type		dflpipe = SIG_DFL;
+sighandler_type	dflpipe = SIG_DFL;
 
 int 
 main(int argc, char *argv[])

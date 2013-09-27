@@ -1345,11 +1345,12 @@ unixtime(char const *fromline)
 		goto invalid;
 	if (fp[3] != ' ')
 		goto invalid;
-	for (i = 0; month_names[i]; i++)
+	for (i = 0;;) {
 		if (strncmp(&fp[4], month_names[i], 3) == 0)
 			break;
-	if (month_names[i] == 0)
-		goto invalid;
+		if (month_names[++i][0] == '\0')
+			goto invalid;
+	}
 	month = i + 1;
 	if (fp[7] != ' ')
 		goto invalid;
@@ -1400,12 +1401,12 @@ rfctime(char const *date)
 	day = strtol(cp, &x, 10); /* XXX strtol */
 	if ((cp = nexttoken(x)) == NULL)
 		goto invalid;
-	for (i = 0; month_names[i]; i++) {
+	for (i = 0;;) {
 		if (strncmp(cp, month_names[i], 3) == 0)
 			break;
+		if (month_names[++i][0] == '\0')
+			goto invalid;
 	}
-	if (month_names[i] == NULL)
-		goto invalid;
 	month = i + 1;
 	if ((cp = nexttoken(&cp[3])) == NULL)
 		goto invalid;
