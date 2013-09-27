@@ -339,6 +339,10 @@
      DS(423, "Set the spam flag for each message in <message-list>") },
    { "spamclear", cspam_clear, (A | M | MSGLIST), 0, 0
      DS(424, "Clear the spam flag for each message in <message-list>") },
+   { "ghost", &_ghost, (M | RAWLIST), 0, 2
+     DS(425, "Define a <ghost> of <command>, or list all ghosts") },
+   { "unghost", &_unghost, (M | RAWLIST), 1, 1000
+     DS(426, "Delete <ghost-list>") },
 #ifdef HAVE_ASSERTS
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },

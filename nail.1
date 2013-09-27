@@ -1273,6 +1273,12 @@ overrides
 This command has no effect when the
 .Va forward-as-attachment
 option is set.
+.It Ic ghost
+Define an alias for an existing command (a so-called command `ghost'),
+or list all currently defined ghosts.
+The list of ghosts is always inspected first when looking up a command.
+Also see
+.Ic unghost .
 .It Ic headers
 (h) Lists the current range of headers, which is an 18-message group.
 If a `+' argument is given the next 18-message group is printed,
@@ -1777,6 +1783,9 @@ command.
 Removes the header field names from the list of retained fields for the
 .Ic forward
 command.
+.It Ic unghost
+Remove an existing command
+.Ic ghost .
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
 .It Ic Unread
