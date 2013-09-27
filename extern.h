@@ -214,7 +214,6 @@ int from(void *v);
 void printhead(int mesg, FILE *f, int threaded);
 
 int pdot(void *v);
-int pcmdlist(void *v);
 char *laststring(char *linebuf, int *flag, int strip);
 int more(void *v);
 int More(void *v);
@@ -576,6 +575,12 @@ int newfileinfo(void);
 int getmdot(int newmail);
 int pversion(void *v);
 void initbox(const char *name);
+
+/* Print the docstring of `comm', which may be an abbreviation.
+ * Return FAL0 if there is no such command */
+#ifdef HAVE_DOCSTRINGS
+bool_t	print_comm_docstr(char const *comm);
+#endif
 
 /* list.c */
 int getmsglist(char *buf, int *vector, int flags);

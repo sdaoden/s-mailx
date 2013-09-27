@@ -238,23 +238,9 @@ help(void *v)
 
 	if (arg != NULL) {
 #ifdef HAVE_DOCSTRINGS
-		extern struct cmd const cmdtab[];
-		struct cmd const *cp;
-		for (cp = cmdtab; cp->c_name != NULL; ++cp) {
-			if (cp->c_func == &ccmdnotsupp)
-				continue;
-			if (strcmp(arg, cp->c_name) == 0)
-				printf("%s: %s\n", arg,
-					tr(cp->c_docid, cp->c_doc));
-			else if (is_prefix(arg, cp->c_name))
-				printf("%s (%s): %s\n", arg, cp->c_name,
-					tr(cp->c_docid, cp->c_doc));
-			else
-				continue;
-			goto jleave;
-		}
-		fprintf(stderr, tr(91, "Unknown command: \"%s\"\n"), arg);
-		ret = 1;
+		ret = ! print_comm_docstr(arg);
+		if (ret)
+			fprintf(stderr, tr(91, "Unknown command: `%s'\n"), arg);
 #else
 		ret = ccmdnotsupp(NULL);
 #endif
@@ -285,13 +271,13 @@ help(void *v)
 "!                           shell escape\n"
 "cd <directory>              chdir to directory or home if none given\n"
 "list                        list names of all available commands\n"));
-	fprintf(stdout, tr(299,
+	printf(tr(299,
 "\nA <message list> consists of integers, ranges of same, or other criteria\n"
 "separated by spaces.  If omitted, %s uses the last message typed.\n"),
 		progname);
 
 jleave:
-	return (ret);
+	return ret;
 }
 
 /*

@@ -41,9 +41,26 @@
 
 #include <fcntl.h>
 
+/* Yechh, can't initialize unions */
+#define c_minargs	c_msgflag	/* Minimum argcount for RAWLIST */
+#define c_maxargs	c_msgmask	/* Max argcount for RAWLIST */
+
+struct cmd {
+	char const	*c_name;		/* Name of command */
+	int		(*c_func)(void *);	/* Implementor of command */
+	enum argtype	c_argtype;		/* Arglist type (see below) */
+	short		c_msgflag;		/* Required flags of msgs*/
+	short		c_msgmask;		/* Relevant flags of msgs */
+#ifdef HAVE_DOCSTRINGS
+	int		c_docid;		/* Translation id of .c_doc */
+	char const	*c_doc;			/* One line doc for command */
+#endif
+};
+
 static int		*_msgvec;
 static int		_reset_on_stop;	/* do a reset() if stopped */
 static sighandler_type	_oldpipe;
+/* _cmd_tab[] after fun protos */
 
 /* Update mailname (if *name* != NULL) and displayname */
 static void	_update_mailname(char const *name);
@@ -53,8 +70,17 @@ SINLINE size_t	__narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
 static const struct cmd *lex(char *Word);
+/* Print a list of all commands */
+static int	_pcmdlist(void *v);
+static int	__pcmd_cmp(void const *s1, void const *s2);
+
 static void stop(int s);
 static void hangup(int s);
+
+/* List of all commands */
+static struct cmd const	_cmd_tab[] = {
+#include "cmd_tab.h"	
+};
 
 #ifdef HAVE_MBLEN
 SINLINE size_t
@@ -164,6 +190,49 @@ _update_mailname(char const *name)
 #ifdef HAVE_REALPATH
 jleave:	;
 #endif
+}
+
+static int
+__pcmd_cmp(void const *s1, void const *s2)
+{
+	struct cmd const * const *c1 = s1,
+		* const *c2 = s2;
+	return (strcmp((*c1)->c_name, (*c2)->c_name));
+}
+
+static int
+_pcmdlist(void *v)
+{
+	struct cmd const **cpa, *cp, **cursor;
+	size_t i;
+	(void)v;
+
+	for (i = 0; _cmd_tab[i].c_name != NULL; ++i)
+		;
+	++i;
+	cpa = ac_alloc(sizeof(cp) * i);
+
+	for (i = 0; (cp = _cmd_tab + i)->c_name != NULL; ++i)
+		cpa[i] = cp;
+	cpa[i] = NULL;
+
+	qsort(cpa, i, sizeof(cp), &__pcmd_cmp);
+
+	printf(tr(14, "Commands are:\n"));
+	for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
+		size_t j;
+		if (cp->c_func == &ccmdnotsupp)
+			continue;
+		j = strlen(cp->c_name) + 2;
+		if ((i += j) > 72) {
+			i = j;
+			printf("\n");
+		}
+		printf((*cursor != NULL ? "%s, " : "%s\n"), cp->c_name);
+	}
+
+	ac_free(cpa);
+	return 0;
 }
 
 /*
@@ -752,13 +821,14 @@ setmsize(int sz)
 static const struct cmd *
 lex(char *Word)
 {
-	extern const struct cmd cmdtab[];
 	const struct cmd *cp;
 
-	for (cp = &cmdtab[0]; cp->c_name != NULL; cp++)
+	for (cp = _cmd_tab; cp->c_name != NULL; ++cp)
 		if (is_prefix(Word, cp->c_name))
-			return(cp);
-	return(NULL);
+			goto jleave;
+	cp = NULL;
+jleave:
+	return cp;
 }
 
 /*
@@ -1034,3 +1104,27 @@ initbox(const char *name)
 	dot = NULL;
 	did_print_dot = FAL0;
 }
+
+#ifdef HAVE_DOCSTRINGS
+bool_t
+print_comm_docstr(char const *comm)
+{
+	bool_t rv = FAL0;
+	struct cmd const *cp;
+
+	for (cp = _cmd_tab; cp->c_name != NULL; ++cp) {
+		if (cp->c_func == &ccmdnotsupp)
+			continue;
+		if (strcmp(comm, cp->c_name) == 0)
+			printf("%s: %s\n", comm, tr(cp->c_docid, cp->c_doc));
+		else if (is_prefix(comm, cp->c_name))
+			printf("%s (%s): %s\n", comm, cp->c_name,
+				tr(cp->c_docid, cp->c_doc));
+		else
+			continue;
+		rv = TRU1;
+		break;
+	}
+	return rv;
+}
+#endif
