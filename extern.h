@@ -59,7 +59,6 @@ char *	value(const char *name);
 #define voption(V)		value(V)
 
 int	cdefine(void *v);
-int	define1(const char *name, int account);
 int	cundef(void *v);
 int	ccall(void *v);
 int	callhook(char const *name, int newmail);

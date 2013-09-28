@@ -42,7 +42,7 @@
 #define MA_PRIME     HSHSIZE
 #define MA_HASH(S)   (strhash(S) % MA_PRIME)
 
-enum mac_flags {
+enum ma_flags {
    MA_NONE        = 0,
    MA_ACC         = 1<<0,
    MA_TYPE_MASK   = MA_ACC,
@@ -53,13 +53,11 @@ struct macro {
    struct macro   *ma_next;
    char           *ma_name;
    struct line    *ma_contents;
-   enum mac_flags ma_flags;
+   enum ma_flags  ma_flags;
 };
 
 struct account {
    struct macro   ac_super;
-
-
 };
 
 struct line {
@@ -94,15 +92,18 @@ static bool_t        _is_closing_angle(char const *cp);
 
 /* Lookup for macros/accounts */
 static struct macro *_malook(const char *name, struct macro *data,
-                        enum mac_flags macfl);
+                        enum ma_flags mafl);
 
+/* Walk all lines of a macro and execute() them */
 static int           _maexec(struct macro *mp);
 
 /* User display helpers */
-static int           _list_macros(enum mac_flags macfl);
+static int           _list_macros(enum ma_flags mafl);
 static void          __list_line(FILE *fp, struct line *lp);
 
-static void          _undef1(const char *name, enum mac_flags macfl);
+/*  */
+static bool_t        _define1(char const *name, enum ma_flags mafl);
+static void          _undef1(const char *name, enum ma_flags mafl);
 static void          _freelines(struct line *lp);
 
 static char *
@@ -235,21 +236,21 @@ jleave:
 }
 
 static struct macro *
-_malook(const char *name, struct macro *data, enum mac_flags macfl)
+_malook(const char *name, struct macro *data, enum ma_flags mafl)
 {
-   enum mac_flags save_mfl;
+   enum ma_flags save_mafl;
    ui_it h;
    struct macro *lmp, *mp;
 
-   save_mfl = macfl;
-   macfl &= MA_TYPE_MASK;
+   save_mafl = mafl;
+   mafl &= MA_TYPE_MASK;
    h = MA_HASH(name);
 
    for (lmp = NULL, mp = _macros[h]; mp != NULL;
          lmp = mp, mp = mp->ma_next) {
-      if ((mp->ma_flags & MA_TYPE_MASK) == macfl &&
+      if ((mp->ma_flags & MA_TYPE_MASK) == mafl &&
             strcmp(mp->ma_name, name) == 0) {
-         if (save_mfl & MA_UNDEF) {
+         if (save_mafl & MA_UNDEF) {
             if (lmp == NULL)
                _macros[h] = mp->ma_next;
             else
@@ -297,7 +298,7 @@ _maexec(struct macro *mp)
 }
 
 static int
-_list_macros(enum mac_flags macfl)
+_list_macros(enum ma_flags mafl)
 {
    FILE *fp;
    char *cp;
@@ -313,12 +314,12 @@ _list_macros(enum mac_flags macfl)
    rm(cp);
    Ftfree(&cp);
 
-   macfl &= MA_TYPE_MASK;
-   typestr = (macfl & MA_ACC) ? "account" : "define";
+   mafl &= MA_TYPE_MASK;
+   typestr = (mafl & MA_ACC) ? "account" : "define";
 
    for (ti = mc = 0; ti < MA_PRIME; ++ti)
       for (mq = _macros[ti]; mq; mq = mq->ma_next)
-         if ((mq->ma_flags & MA_TYPE_MASK) == macfl) {
+         if ((mq->ma_flags & MA_TYPE_MASK) == mafl) {
             if (++mc > 1)
                fputc('\n', fp);
             fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
@@ -350,12 +351,76 @@ __list_line(FILE *fp, struct line *lp)
    putc('\n', fp);
 }
 
+static bool_t
+_define1(char const *name, enum ma_flags mafl)
+{
+   bool_t rv = FAL0;
+   struct macro *mp;
+   struct line *lp, *lst = NULL, *lnd = NULL;
+   char *linebuf = NULL;
+   size_t linesize = 0;
+   int n;
+
+   mp = scalloc(1, sizeof *mp);
+   mp->ma_name = sstrdup(name);
+   mp->ma_flags = mafl;
+
+   for (;;) {
+      n = readline_input(LNED_LF_ESC, "", &linebuf, &linesize);
+      if (n < 0) {
+         fprintf(stderr,
+            tr(75, "Unterminated %s definition: \"%s\".\n"),
+            (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
+         if (sourcing)
+            unstack();
+         goto jerr;
+      }
+      if (_is_closing_angle(linebuf))
+         break;
+
+      ++n;
+      lp = scalloc(1, sizeof(*lp) - VFIELD_SIZEOF(struct line, l_line) + n);
+      lp->l_linesize = (size_t)n;
+      memcpy(lp->l_line, linebuf, n);
+      assert(lp->l_line[n - 1] == '\0');
+      if (lst != NULL) {
+         lnd->l_next = lp;
+         lnd = lp;
+      } else
+         lst = lnd = lp;
+   }
+   mp->ma_contents = lst;
+
+   if (_malook(mp->ma_name, mp, mafl) != NULL) {
+      if (! (mafl & MA_ACC)) {
+         fprintf(stderr, tr(76, "A macro named \"%s\" already exists.\n"),
+            mp->ma_name);
+         lst = mp->ma_contents;
+         goto jerr;
+      }
+      _undef1(mp->ma_name, MA_ACC);
+      _malook(mp->ma_name, mp, MA_ACC);
+   }
+
+   rv = TRU1;
+jleave:
+   if (linebuf != NULL)
+      free(linebuf);
+   return rv;
+jerr:
+   if (lst != NULL)
+      _freelines(lst);
+   free(mp->ma_name);
+   free(mp);
+   goto jleave;
+}
+
 static void
-_undef1(const char *name, enum mac_flags macfl)
+_undef1(const char *name, enum ma_flags mafl)
 {
    struct macro *mp;
 
-   if ((mp = _malook(name, NULL, macfl | MA_UNDEF)) != NULL) {
+   if ((mp = _malook(name, NULL, mafl | MA_UNDEF)) != NULL) {
       _freelines(mp->ma_contents);
       free(mp->ma_name);
       free(mp);
@@ -477,76 +542,11 @@ cdefine(void *v)
       errs = tr(505, "Syntax is: define <name> {");
       goto jerr;
    }
-   rv = define1(args[0], 0);
+   rv = ! _define1(args[0], MA_NONE);
 jleave:
    return rv;
 jerr:
    fprintf(stderr, "%s\n", errs);
-   goto jleave;
-}
-
-int
-define1(char const *name, int acc) /* TODO make static (`account'...)! */
-{
-   int ret = 1, n;
-   struct macro *mp;
-   struct line *lp, *lst = NULL, *lnd = NULL;
-   char *linebuf = NULL;
-   size_t linesize = 0;
-
-   mp = scalloc(1, sizeof *mp);
-   mp->ma_name = sstrdup(name);
-   mp->ma_flags = acc ? MA_ACC : MA_NONE;
-
-   for (;;) {
-      n = readline_input(LNED_LF_ESC, "", &linebuf, &linesize);
-      if (n < 0) {
-         fprintf(stderr,
-            tr(75, "Unterminated %s definition: \"%s\".\n"),
-            acc ? "account" : "macro", mp->ma_name);
-         if (sourcing)
-            unstack();
-         goto jerr;
-      }
-      if (_is_closing_angle(linebuf))
-         break;
-
-      ++n;
-      lp = scalloc(1, sizeof(*lp) -
-         VFIELD_SIZEOF(struct line, l_line) + n);
-      lp->l_linesize = n;
-      memcpy(lp->l_line, linebuf, n);
-      assert(lp->l_line[n - 1] == '\0');
-      if (lst != NULL) {
-         lnd->l_next = lp;
-         lnd = lp;
-      } else
-         lst = lnd = lp;
-   }
-   mp->ma_contents = lst;
-
-   if (_malook(mp->ma_name, mp, mp->ma_flags) != NULL) {
-      if (! (mp->ma_flags & MA_ACC)) {
-         fprintf(stderr, tr(76,
-            "A macro named \"%s\" already exists.\n"),
-            mp->ma_name);
-         lst = mp->ma_contents;
-         goto jerr;
-      }
-      _undef1(mp->ma_name, MA_ACC);
-      _malook(mp->ma_name, mp, MA_ACC);
-   }
-
-   ret = 0;
-jleave:
-   if (linebuf != NULL)
-      free(linebuf);
-   return ret;
-jerr:
-   if (lst != NULL)
-      _freelines(lst);
-   free(mp->ma_name);
-   free(mp);
    goto jleave;
 }
 
@@ -646,7 +646,7 @@ c_account(void *v)
          fprintf(stderr, tr(517, "Syntax is: account <name> {\n"));
          goto jleave;
       }
-      rv = define1(args[0], 1);
+      rv = ! _define1(args[0], MA_ACC);
       goto jleave;
    }
 
