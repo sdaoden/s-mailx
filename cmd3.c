@@ -42,9 +42,6 @@
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);
 
-/* "set" command: show all option settings */
-static int	_set_show_all(void);
-
 static int	bangexp(char **str, size_t *size);
 static void	make_ref_and_cs(struct message *mp, struct header *head);
 static int (*	respond_or_Respond(int c))(int *, int);
@@ -82,53 +79,6 @@ jleave:
 	free(out.s);
 j_leave:
 	return (newsubj);
-}
-
-static int
-_set_show_all(void)
-{
-	int ret = 1;
-	FILE *fp;
-	char *cp, **vacp, **p;
-	struct var *vp;
-	size_t i;
-	union {size_t j; char const *fmt;} u;
-
-	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
-		perror("tmpfile");
-		goto jleave;
-	}
-	rm(cp);
-	Ftfree(&cp);
-
-	for (u.j = 1, i = 0; i < HSHSIZE; ++i)
-		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
-			++u.j;
-	vacp = (char**)salloc(u.j * sizeof(*vacp));
-	for (p = vacp, i = 0; i < HSHSIZE; ++i)
-		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
-			*p++ = vp->v_name;
-	*p = NULL;
-
-	asort(vacp);
-
-	i = (value("bsdcompat") != NULL || value("bsdset") != NULL);
-	u.fmt = i ? "%s\t%s\n" : "%s=\"%s\"\n";
-	for (p = vacp; *p != NULL; ++p) {
-		char const *x = value(*p);
-		if (x == NULL)
-			x = "";
-		if (i || *x)
-			fprintf(fp, u.fmt, *p, x);
-		else
-			fprintf(fp, "%s\n", *p);
-	}
-
-	page_or_print(fp, (size_t)(p - vacp));
-	Fclose(fp);
-	ret = 0;
-jleave:
-	return (ret);
 }
 
 /*
@@ -682,7 +632,7 @@ set(void *v)
 	int errs = 0;
 
 	if (*ap == NULL) {
-		_set_show_all();
+		var_list_all();
 		goto jleave;
 	}
 

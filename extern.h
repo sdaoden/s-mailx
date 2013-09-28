@@ -48,20 +48,29 @@
  */
 
 /* Assign a value to a variable */
-void	assign(char const *name, char const *value);
+void	var_assign(char const *name, char const *value);
+#define assign(N,V)		var_assign(N, V)
 
-int	unset_internal(char const *name);
+/* Unset variable (special: normally `var_assign(, NULL)' is used) */
+int	var_unset(char const *name);
+#define unset_internal(V)	var_unset(V)
 
-/* Get the value of an option and return it.
- * Look in the environment if its not available locally */
-char *	value(const char *name);
+/* Get the value of an option (fallback to `look_environ'?) */
+char *	var_lookup(char const *name, bool_t look_environ);
+
+#define value(V)		var_lookup(V, TRU1)	/* TODO legacy */
 #define boption(V)		(! ! value(V))
 #define voption(V)		value(V)
+
+/* List all variables */
+void	var_list_all(void);
 
 int	cdefine(void *v);
 int	cundef(void *v);
 int	ccall(void *v);
 int	callhook(char const *name, int newmail);
+
+/* List all macros */
 int	cdefines(void *v);
 
 int	c_account(void *v);

@@ -66,7 +66,14 @@ struct line {
    char        l_line[VFIELD_SIZE(sizeof(size_t))];
 };
 
+struct var {
+   struct var  *v_link;
+   char        *v_name;
+   char        *v_value;
+};
+
 static struct macro  *_macros[MA_PRIME];  /* TODO dynamically spaced */
+static struct var    *_vars[MA_PRIME];    /* TODO dynamically spaced */
 
 /* Special cased value string allocation */
 static char *        _vcopy(char const *str);
@@ -105,6 +112,9 @@ static void          __list_line(FILE *fp, struct line *lp);
 static bool_t        _define1(char const *name, enum ma_flags mafl);
 static void          _undef1(const char *name, enum ma_flags mafl);
 static void          _freelines(struct line *lp);
+
+/* qsort(3) helper */
+static int           __var_list_all_cmp(void const *s1, void const *s2);
 
 static char *
 _vcopy(char const *str)
@@ -203,7 +213,7 @@ _lookup(const char *name, ui_it h, bool_t hisset)
 
    if (! hisset)
       h = MA_HASH(name);
-   vap = variables + h;
+   vap = _vars + h;
 
    for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
       if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0) {
@@ -328,7 +338,7 @@ _list_macros(enum ma_flags mafl)
             fputs("}\n", fp);
          }
    if (mc)
-      try_pager(fp);
+      page_or_print(fp, 0);
 
    mc = (ui_it)ferror(fp);
    Fclose(fp);
@@ -442,8 +452,14 @@ _freelines(struct line *lp)
       free(lq);
 }
 
+static int
+__var_list_all_cmp(void const *s1, void const *s2)
+{
+   return strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
+}
+
 void
-assign(char const *name, char const *val)
+var_assign(char const *name, char const *val)
 {
    struct var *vp;
    ui_it h;
@@ -452,7 +468,7 @@ assign(char const *name, char const *val)
    if (val == NULL) {
       bool_t tmp = unset_allow_undefined;
       unset_allow_undefined = TRU1;
-      unset_internal(name);
+      var_unset(name);
       unset_allow_undefined = tmp;
       goto jleave;
    }
@@ -464,8 +480,8 @@ assign(char const *name, char const *val)
    if (vp == NULL) {
       vp = (struct var*)scalloc(1, sizeof *vp);
       vp->v_name = _vcopy(name);
-      vp->v_link = variables[h];
-      variables[h] = vp;
+      vp->v_link = _vars[h];
+      _vars[h] = vp;
       oval = UNCONST("");
    } else
       oval = vp->v_value;
@@ -479,11 +495,12 @@ assign(char const *name, char const *val)
    }
    if (*oval != '\0')
       _vfree(oval);
-jleave:  ;
+jleave:
+   ;
 }
 
 int
-unset_internal(char const *name)
+var_unset(char const *name)
 {
    int ret = 1;
    ui_it h;
@@ -500,7 +517,7 @@ unset_internal(char const *name)
       }
    } else {
       /* Always listhead after _lookup() */
-      variables[h] = variables[h]->v_link;
+      _vars[h] = _vars[h]->v_link;
       _vfree(vp->v_name);
       _vfree(vp->v_value);
       free(vp);
@@ -513,18 +530,65 @@ jleave:
 }
 
 char *
-value(const char *name)
+var_lookup(const char *name, bool_t look_environ)
 {
    struct var *vp;
-   char *vs;
+   char *rv;
 
    name = _canonify(name);
-   if ((vp = _lookup(name, 0, FAL0)) == NULL) {
-      if ((vs = getenv(name)) != NULL && *vs)
-         vs = savestr(vs);
-      return (vs);
+   if ((vp = _lookup(name, 0, FAL0)) != NULL)
+      rv = vp->v_value;
+   else if (! look_environ)
+      rv = NULL;
+   else if ((rv = getenv(name)) != NULL && *rv != '\0')
+      rv = savestr(rv);
+   return rv;
+}
+
+void
+var_list_all(void)
+{
+   FILE *fp;
+   char *cp, **vacp, **cap;
+   struct var *vp;
+   size_t no, i;
+   char const *fmt;
+
+   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+      perror("tmpfile");
+      goto jleave;
    }
-   return (vp->v_value);
+   rm(cp);
+   Ftfree(&cp);
+
+   for (no = i = 0; i < MA_PRIME; ++i)
+      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
+         ++no;
+   vacp = salloc(no * sizeof(*vacp));
+   for (cap = vacp, i = 0; i < MA_PRIME; ++i)
+      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
+         *cap++ = vp->v_name;
+
+   if (no > 1)
+      qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
+
+   i = (boption("bsdcompat") || boption("bsdset"));
+   fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
+
+   for (cap = vacp; no != 0; ++cap, --no) {
+      cp = value(*cap); /* TODO internal lookup; binary? value? */
+      if (cp == NULL)
+         cp = UNCONST("");
+      if (i || *cp != '\0')
+         fprintf(fp, fmt, *cap, cp);
+      else
+         fprintf(fp, "%s\n", *cap);
+   }
+
+   page_or_print(fp, (size_t)(cap - vacp));
+   Fclose(fp);
+jleave:
+   ;
 }
 
 int
