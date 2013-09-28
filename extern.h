@@ -41,7 +41,7 @@
  * TODO Convert optional utility+ functions to n_*(); ditto
  * TODO else use generic module-specific prefixes: str_(), am[em]_, sm[em]_, ..
  */
-#define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[c - 1] = '\0')
+#define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[(c) - 1] = '\0')
 
 /*
  * attachments.c
