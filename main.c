@@ -661,7 +661,7 @@ usage:			fprintf(stderr, tr(135, usagestr),
 		char *a[2];
 		a[0] = Aflag;
 		a[1] = NULL;
-		account(a);
+		c_account(a);
 	}
 
 	/* Ensure the -S and other command line options take precedence over

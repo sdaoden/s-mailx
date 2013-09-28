@@ -507,3 +507,8 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 513 Attached message content
 514 `%s': *spam-command* is not set\n
 515 `%s': message %lu exceeds maxsize (%lu > %lu), skip\n
+516 Cannot change folder from within a hook.\n
+517 Syntax is: account <name> {\n
+518 Cannot change account from within a hook.\n
+519 Account `%s' does not exist.\n
+520 Switching to account `%s' failed.\n

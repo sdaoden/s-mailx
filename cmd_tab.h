@@ -241,7 +241,7 @@
      DS(403, "Delete <shortcut-list>") },
    { "imap", imap_imap, (A | STRLIST), 0, 1000
      DS(345, "Send command strings directly to the IMAP server") },
-   { "account", account, (M | RAWLIST), 0, 1000
+   { "account", c_account, (M | RAWLIST), 0, 1000
      DS(303, "Creates, selects or lists an email account") },
    { "thread", thread, (A | MSGLIST), 0, 0
      DS(384, "Create threaded view of current \"folder\"") },
