@@ -104,7 +104,7 @@ o UnixWare 7.1.4.
   Due to this you possibly want to use env(1) to be on the safe side...
   Also, `conf.rc' sets `MAILSPOOL=/var/mail' by default, whereas
   UnixWare uses `/var/spool/mail', so you need to overwrite it (either
-  in `conf.rc', or from within the command line.
+  in `conf.rc', or from within the command line).
 
 OpenIndiana is targeted for v14.5.
 And i'm very interested in reports from other combinations.
