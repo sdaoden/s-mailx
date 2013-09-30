@@ -168,6 +168,9 @@
  * follow lines when compressing leading quote characters */
 #define QUOTE_MAX	42
 
+/* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
+#define QUOTE_TAB_SPACES 8
+
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE	420000
 
@@ -446,11 +449,12 @@ struct quoteflt {
 	ui_it		qf_qfold_min;	/* Simple way: wrote prefix? */
 #ifdef HAVE_QUOTE_FOLD
 	ui_it		qf_qfold_max;	/* Otherwise: line lengths */
-	ui_it		qf_state;	/* *quote-fold* state machine */
+	uc_it		qf_state;	/* *quote-fold* state machine */
+	bool_t		qf_brk_isws;	/* Breakpoint is at WS */
+	uc_it		__dummy[2];
+	ui_it		qf_wscnt;	/* Whitespace count */
 	ui_it		qf_brkl;	/* Breakpoint */
-	ui_it		qf_brkw;
-	bool_t		qf_brk_isws;
-	uc_it		__dummy[3];
+	ui_it		qf_brkw;	/* Visual width, breakpoint */
 	ui_it		qf_datw;	/* Current visual output line width */
 	struct str	qf_dat;		/* Current visual output line */
 	struct str	qf_currq;	/* Current quote, compressed */

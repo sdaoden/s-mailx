@@ -87,13 +87,30 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
 
    save_l = save_w = 0; /* silence cc */
    save_b = NULL;
+   /* <newline> ends state */
    if (wc == L'\n')
       goto jflush;
+   if (wc == L'\r') /* TODO CR should be stripped in lower level!! */
+      goto jleave;
+
+   /* Unroll <tab> to spaces */
+   if (wc == L'\t') {
+      save_l = self->qf_datw;
+      save_w = (save_l + QUOTE_TAB_SPACES) & ~(QUOTE_TAB_SPACES - 1);
+      save_w -= save_l;
+      while (save_w-- > 0) {
+         ssize_t j = _qf_add_data(self, L' ');
+         if (j < 0) {
+            rv = j;
+            break;
+         }
+         rv += j;
+      }
+      goto jleave;
+   }
 
    w = wcwidth(wc);
    if (w == -1) {
-      if (wc == L'\r') /* TODO CR should be stripped in lower level!! */
-         goto jleave;
 jbad:
       ++self->qf_datw;
       self->qf_dat.s[self->qf_dat.l++] = '?';
@@ -141,12 +158,11 @@ jflush:
       }
    }
 
-
    /* If state changed to prefix, perform full reset (note this implies that
     * quoteflt_flush() performs too much work..) */
    if (wc == '\n') {
       self->qf_state = _QF_PREFIX;
-      self->qf_datw = 0;
+      self->qf_wscnt = self->qf_datw = 0;
       self->qf_currq.l = 0;
    }
 jleave:
@@ -158,12 +174,11 @@ _qf_state_prefix(struct qf_vc *vc)
 {
    struct quoteflt *self = vc->self;
    ssize_t rv = 0;
-   /*bool_t any = FAL0, lws = FAL0;*/
    char const *buf;
    size_t len, i;
    wchar_t wc;
 
-   for (buf = vc->buf, len = vc->len; len > 0; /*any = TRU1*/) {
+   for (buf = vc->buf, len = vc->len; len > 0;) {
       /* TODO NULL BYTE! */
       i = mbrtowc(&wc, buf, len, self->qf_mbps);
       if (i == (size_t)-1) {
@@ -171,6 +186,7 @@ _qf_state_prefix(struct qf_vc *vc)
          self->qf_mbps[0] = self->qf_mbps[1];
          ++buf;
          --len;
+         self->qf_wscnt = 0;
          continue;
       }
       self->qf_mbps[1] = self->qf_mbps[0];
@@ -185,11 +201,11 @@ _qf_state_prefix(struct qf_vc *vc)
       if (wc == L'\n')
          goto jfin;
       if (iswspace(wc)) {
-         /*lws = TRU1;*/
+         ++self->qf_wscnt;
          continue;
       }
       if (i == 1 && ISQUOTE(wc)) {
-         /*lws = FAL0;*/
+         self->qf_wscnt = 0;
          if (self->qf_currq.l >= QUOTE_MAX - 3) {
             self->qf_currq.s[QUOTE_MAX - 3] = '.';
             self->qf_currq.s[QUOTE_MAX - 2] = '.';
@@ -202,11 +218,13 @@ _qf_state_prefix(struct qf_vc *vc)
 
       /* The quote is parsed and compressed; dump it */
 jfin:
-      /*if (lws && any && self->qf_currq.l > 0)
-            self->qf_currq.s[self->qf_currq.l++] = ' ';*/
       self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       self->qf_state = _QF_DATA;
-      rv =_qf_add_data(self, wc);
+      /* Overtake WS (xxx but we de-facto "normalize" to ASCII SP here) */
+      while (self->qf_wscnt-- > 0 && self->qf_currq.l < QUOTE_MAX)
+         self->qf_currq.s[self->qf_currq.l++] = ' ';
+      self->qf_wscnt = 0;
+      rv = _qf_add_data(self, wc);
       break;
    }
 
@@ -441,9 +459,9 @@ quoteflt_flush(struct quoteflt *self)
                self->qf_dat.l, self->qf_os);
          rv = (i < 0) ? i : rv + i;
          self->qf_dat.l = 0;
-         self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
-         self->qf_brkl = self->qf_brkw = 0;
          self->qf_brk_isws = FAL0;
+         self->qf_wscnt = self->qf_brkl = self->qf_brkw = 0;
+         self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       }
    }
 #endif
