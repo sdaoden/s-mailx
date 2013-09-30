@@ -999,7 +999,7 @@ struct cw {
 #ifdef HAVE_FCHDIR
 	int	cw_fd;
 #else
-	char	cw_wd[PATHSIZE];
+	char	cw_wd[MAXPATHLEN];
 #endif
 };
 
