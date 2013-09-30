@@ -39,6 +39,11 @@
 
 #include "nail.h"
 
+/*
+ * TODO in general it would be nice if it would be possible to define "macros"
+ * TODO etc. inside of other "macros"
+ */
+
 #define MA_PRIME     HSHSIZE
 #define MA_HASH(S)   (strhash(S) % MA_PRIME)
 
@@ -56,8 +61,9 @@ struct macro {
    enum ma_flags  ma_flags;
 };
 
-struct account {
+struct acc {
    struct macro   ac_super;
+   struct accvar  *ac_list;
 };
 
 struct line {
@@ -72,6 +78,19 @@ struct var {
    char        *v_value;
 };
 
+struct accvar {
+   struct accvar  *av_link;
+   char           *av_name;   /* Canonicalized */
+   char           *av_oval;   /* Value before `account' switch */
+   char           *av_val;
+};
+
+static struct acc    *_acc_curr;
+static bool_t        _acc_in_switch;
+
+/* TODO once we have a dynamically sized hashtable we could unite _macros and
+ * TODO _variables into a single hashtable, stripping down fun interface;
+ * TODO also, setting and clearing a variable can be easily joined */
 static struct macro  *_macros[MA_PRIME];  /* TODO dynamically spaced */
 static struct var    *_vars[MA_PRIME];    /* TODO dynamically spaced */
 
@@ -92,13 +111,13 @@ static bool_t        _check_special_vars(char const *name, bool_t enable,
 static char const *  _canonify(char const *vn);
 
 /* Locate a variable and return its variable node */
-static struct var *  _lookup(const char *name, ui_it h, bool_t hisset);
+static struct var *  _lookup(char const *name, ui_it h, bool_t hisset);
 
 /* Line *cp* consists solely of WS and a } */
 static bool_t        _is_closing_angle(char const *cp);
 
 /* Lookup for macros/accounts */
-static struct macro *_malook(const char *name, struct macro *data,
+static struct macro *_malook(char const *name, struct macro *data,
                         enum ma_flags mafl);
 
 /* Walk all lines of a macro and execute() them */
@@ -110,11 +129,16 @@ static void          __list_line(FILE *fp, struct line *lp);
 
 /*  */
 static bool_t        _define1(char const *name, enum ma_flags mafl);
-static void          _undef1(const char *name, enum ma_flags mafl);
+static void          _undef1(char const *name, enum ma_flags mafl);
 static void          _freelines(struct line *lp);
 
 /* qsort(3) helper */
 static int           __var_list_all_cmp(void const *s1, void const *s2);
+
+/* Update account replay-log */
+static void          _acc_value_update(char const *name, char const *oval,
+                        char const *val);
+static void          _acc_value_restore(void);
 
 static char *
 _vcopy(char const *str)
@@ -207,7 +231,7 @@ _canonify(char const *vn)
 }
 
 static struct var *
-_lookup(const char *name, ui_it h, bool_t hisset)
+_lookup(char const *name, ui_it h, bool_t hisset)
 {
    struct var **vap, *lvp, *vp;
 
@@ -246,7 +270,7 @@ jleave:
 }
 
 static struct macro *
-_malook(const char *name, struct macro *data, enum ma_flags mafl)
+_malook(char const *name, struct macro *data, enum ma_flags mafl)
 {
    enum ma_flags save_mafl;
    ui_it h;
@@ -256,8 +280,7 @@ _malook(const char *name, struct macro *data, enum ma_flags mafl)
    mafl &= MA_TYPE_MASK;
    h = MA_HASH(name);
 
-   for (lmp = NULL, mp = _macros[h]; mp != NULL;
-         lmp = mp, mp = mp->ma_next) {
+   for (lmp = NULL, mp = _macros[h]; mp != NULL; lmp = mp, mp = mp->ma_next) {
       if ((mp->ma_flags & MA_TYPE_MASK) == mafl &&
             strcmp(mp->ma_name, name) == 0) {
          if (save_mafl & MA_UNDEF) {
@@ -291,8 +314,7 @@ _maexec(struct macro *mp)
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       sp = lp->l_line;
       smax = sp + lp->l_linesize;
-      while (sp < smax &&
-            (blankchar(*sp) || *sp == '\n' || *sp == '\0'))
+      while (sp < smax && (blankchar(*sp) || *sp == '\n' || *sp == '\0'))
          ++sp;
       if (sp == smax)
          continue;
@@ -371,7 +393,7 @@ _define1(char const *name, enum ma_flags mafl)
    size_t linesize = 0;
    int n;
 
-   mp = scalloc(1, sizeof *mp);
+   mp = scalloc(1, (mafl & MA_ACC) ? sizeof(struct acc) : sizeof *mp);
    mp->ma_name = sstrdup(name);
    mp->ma_flags = mafl;
 
@@ -426,7 +448,7 @@ jerr:
 }
 
 static void
-_undef1(const char *name, enum ma_flags mafl)
+_undef1(char const *name, enum ma_flags mafl)
 {
    struct macro *mp;
 
@@ -458,6 +480,65 @@ __var_list_all_cmp(void const *s1, void const *s2)
    return strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
 }
 
+static void
+_acc_value_update(char const *name, char const *oval, char const *val)
+{
+   struct accvar *avp;
+
+   if (_acc_curr == NULL)
+      goto jleave;
+
+   for (avp = _acc_curr->ac_list; avp != NULL; avp = avp->av_link)
+      if (strcmp(avp->av_name, name) == 0) {
+         if (avp->av_oval != NULL)
+            _vfree(avp->av_oval);
+         if (avp->av_val != NULL)
+            _vfree(avp->av_val);
+         goto jup;
+      }
+
+   avp = smalloc(sizeof(struct accvar));
+   avp->av_link = _acc_curr->ac_list;
+   _acc_curr->ac_list = avp;
+   avp->av_name = sstrdup(name);
+jup:
+   avp->av_oval = (oval != NULL) ? _vcopy(oval) : NULL;
+   avp->av_val = (val != NULL) ? _vcopy(val) : NULL;
+jleave:
+   ;
+}
+
+static void
+_acc_value_restore(void) /* TODO optimize (restore log in general!) */
+{
+   struct accvar *x, *avp;
+
+   if (_acc_curr == NULL)
+      goto jleave;
+
+   for (avp = _acc_curr->ac_list; avp != NULL;) {
+      char *cv = var_lookup(avp->av_name, FAL0);
+      if (cv == NULL) {
+         if (avp->av_oval == NULL)
+            goto jcont;
+      } else if (avp->av_val != NULL && strcmp(avp->av_val, cv) != 0)
+         goto jcont;
+      var_assign(avp->av_name, avp->av_oval);
+jcont:
+      x = avp;
+      avp = avp->av_link;
+      free(x->av_name);
+      if (x->av_oval != NULL)
+         _vfree(x->av_oval);
+      if (x->av_val != NULL)
+         _vfree(x->av_val);
+      free(x);
+   }
+   _acc_curr->ac_list = NULL;
+jleave:
+   ;
+}
+
 void
 var_assign(char const *name, char const *val)
 {
@@ -475,8 +556,11 @@ var_assign(char const *name, char const *val)
 
    name = _canonify(name);
    h = MA_HASH(name);
-
    vp = _lookup(name, h, TRU1);
+
+   if (_acc_in_switch)
+      _acc_value_update(name, (vp != NULL ? vp->v_value : NULL), val);
+
    if (vp == NULL) {
       vp = (struct var*)scalloc(1, sizeof *vp);
       vp->v_name = _vcopy(name);
@@ -508,8 +592,12 @@ var_unset(char const *name)
 
    name = _canonify(name);
    h = MA_HASH(name);
+   vp = _lookup(name, h, TRU1);
 
-   if ((vp = _lookup(name, h, TRU1)) == NULL) {
+   if (_acc_in_switch)
+      _acc_value_update(name, (vp != NULL ? vp->v_value : NULL), NULL);
+
+   if (vp == NULL) {
       if (! sourcing && ! unset_allow_undefined) {
          fprintf(stderr,
             tr(203, "\"%s\": undefined variable\n"), name);
@@ -530,7 +618,7 @@ jleave:
 }
 
 char *
-var_lookup(const char *name, bool_t look_environ)
+var_lookup(char const *name, bool_t look_environ)
 {
    struct var *vp;
    char *rv;
@@ -673,8 +761,7 @@ callhook(char const *name, int nmail)
    }
    if ((mp = _malook(cp, NULL, MA_NONE)) == NULL) {
       fprintf(stderr, tr(49, "Cannot call hook for folder \"%s\": "
-         "Macro \"%s\" does not exist.\n"),
-         name, cp);
+         "Macro \"%s\" does not exist.\n"), name, cp);
       r = 1;
       goto jleave;
    }
@@ -710,6 +797,11 @@ c_account(void *v)
          fprintf(stderr, tr(517, "Syntax is: account <name> {\n"));
          goto jleave;
       }
+      if (asccasecmp(args[0], ACCOUNT_NULL) == 0) {
+         fprintf(stderr, tr(521, "Error: `%s' is a reserved name.\n"),
+            ACCOUNT_NULL);
+         goto jleave;
+      }
       rv = ! _define1(args[0], MA_ACC);
       goto jleave;
    }
@@ -723,18 +815,26 @@ c_account(void *v)
       goto jleave;
    n_strlcpy(mboxname, cp, sizeof mboxname);
 
-   if ((mp = _malook(args[0], NULL, MA_ACC)) == NULL) {
+   mp = NULL;
+   if (asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
+         (mp = _malook(args[0], NULL, MA_ACC)) == NULL) {
       fprintf(stderr, tr(519, "Account `%s' does not exist.\n"), args[0]);
       goto jleave;
    }
 
    oqf = savequitflags();
-   if (_maexec(mp) == CBAD) {
+   account_name = (mp != NULL) ? mp->ma_name : NULL;
+   _acc_value_restore();
+   _acc_curr = (struct acc*)mp;
+
+   _acc_in_switch = TRU1;
+   if (mp != NULL && _maexec(mp) == CBAD) {
+      _acc_in_switch = FAL0;
       fprintf(stderr, tr(520, "Switching to account `%s' failed.\n"), args[0]);
       goto jleave;
    }
+   _acc_in_switch = FAL0;
 
-   account_name = mp->ma_name;
    if (! starting && ! inhook) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);

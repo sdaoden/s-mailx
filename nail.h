@@ -130,6 +130,8 @@
 #define MAXEXP		25		/* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE	80	/* getprompt() bufsize (> 3!) */
 
+#define ACCOUNT_NULL	"null"		/* Name of "null" account */
+
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
 #define DATE_SECSMIN	60L
