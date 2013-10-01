@@ -60,7 +60,7 @@ struct macro {
    struct line    *ma_contents;
    size_t         ma_maxlen;     /* Maximum line length */
    enum ma_flags  ma_flags;
-   struct var     *ma_localopts; /* Restore list, `localopts' */
+   struct var     *ma_localopts; /* `account' unroll list, for `localopts' */
 };
 
 struct line {
@@ -75,8 +75,15 @@ struct var {
    char        *v_value;
 };
 
+struct lostack {
+   struct lostack *s_up;      /* Outer context */
+   struct macro   *s_mac;     /* Context (`account' or `define') */
+   struct var     *s_localopts;
+   bool_t         s_unroll;   /* Unroll? */
+};
+
 static struct macro  *_acc_curr;    /* Currently active account */
-static struct macro  *_localopts;   /* Currently executing macro unroll list */
+static struct lostack *_localopts;  /* Currently executing macro unroll list */
 
 /* TODO once we have a dynamically sized hashtable we could unite _macros and
  * TODO _variables into a single hashtable, stripping down fun interface;
@@ -111,7 +118,7 @@ static struct macro *_malook(char const *name, struct macro *data,
                         enum ma_flags mafl);
 
 /* Walk all lines of a macro and execute() them */
-static int           _maexec(struct macro const *mp);
+static int           _maexec(struct macro const *mp, struct var **unroll_store);
 
 /* User display helpers */
 static int           _list_macros(enum ma_flags mafl);
@@ -125,7 +132,7 @@ static void          _freelines(struct line *lp);
 static int           __var_list_all_cmp(void const *s1, void const *s2);
 
 /* Update replay-log */
-static void          _localopts_add(struct var **vapp, char const *name,
+static void          _localopts_add(struct lostack *losp, char const *name,
                         struct var *ovap);
 static void          _localopts_unroll(struct var **vapp);
 
@@ -292,11 +299,18 @@ jleave:
 }
 
 static int
-_maexec(struct macro const *mp)
+_maexec(struct macro const *mp, struct var **unroll_store)
 {
+   struct lostack los;
    int rv = 0;
    struct line const *lp;
    char *buf = ac_alloc(mp->ma_maxlen + 1);
+
+   los.s_up = _localopts;
+   los.s_mac = UNCONST(mp);
+   los.s_localopts = NULL;
+   los.s_unroll = FAL0;
+   _localopts = &los;
 
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       unset_allow_undefined = TRU1;
@@ -304,6 +318,12 @@ _maexec(struct macro const *mp)
       rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
       unset_allow_undefined = FAL0;
    }
+
+   _localopts = los.s_up;
+   if (unroll_store == NULL)
+      _localopts_unroll(&los.s_localopts);
+   else
+      *unroll_store = los.s_localopts;
 
    ac_free(buf);
    return rv;
@@ -459,20 +479,27 @@ __var_list_all_cmp(void const *s1, void const *s2)
 }
 
 static void
-_localopts_add(struct var **vapp, char const *name, struct var *ovap)
+_localopts_add(struct lostack *losp, char const *name, struct var *ovap)
 {
+   struct var *vap;
    size_t nl, vl;
-   struct var *vap = *vapp;
 
-   for (; vap != NULL; vap = vap->v_link)
+   /* Propagate unrolling up the stack, as necessary */
+   while (! losp->s_unroll && (losp = losp->s_up) != NULL)
+      ;
+   if (losp == NULL)
+      goto jleave;
+
+   /* We have found a level that wants to unroll; check wether it does it yet */
+   for (vap = losp->s_localopts; vap != NULL; vap = vap->v_link)
       if (strcmp(vap->v_name, name) == 0)
          goto jleave;
 
    nl = strlen(name) + 1;
    vl = (ovap != NULL) ? strlen(ovap->v_value) + 1 : 0;
    vap = smalloc(sizeof(*vap) + nl + vl);
-   vap->v_link = *vapp;
-   *vapp = vap;
+   vap->v_link = losp->s_localopts;
+   losp->s_localopts = vap;
    vap->v_name = (char*)(vap + 1);
    memcpy(vap->v_name, name, nl);
    if (vl == 0)
@@ -488,17 +515,21 @@ jleave:
 static void
 _localopts_unroll(struct var **vapp)
 {
+   struct lostack *save_los;
    struct var *x, *vap;
 
    vap = *vapp;
    *vapp = NULL;
 
+   save_los = _localopts;
+   _localopts = NULL;
    while (vap != NULL) {
       x = vap;
       vap = vap->v_link;
       var_assign(x->v_name, x->v_value);
       free(x);
    }
+   _localopts = save_los;
 }
 
 void
@@ -522,7 +553,7 @@ var_assign(char const *name, char const *val)
 
    /* Don't care what happens later on, store this in the unroll list */
    if (_localopts != NULL)
-      _localopts_add(&_localopts->ma_localopts, name, vp);
+      _localopts_add(_localopts, name, vp);
 
    if (vp == NULL) {
       vp = (struct var*)scalloc(1, sizeof *vp);
@@ -564,7 +595,7 @@ var_unset(char const *name)
       }
    } else {
       if (_localopts != NULL)
-         _localopts_add(&_localopts->ma_localopts, name, vp);
+         _localopts_add(_localopts, name, vp);
 
       /* Always listhead after _lookup() */
       _vars[h] = _vars[h]->v_link;
@@ -695,12 +726,14 @@ ccall(void *v)
       name = "name";
       goto jerr;
    }
+
    if ((mp = _malook(*args, NULL, MA_NONE)) == NULL) {
       errs = tr(508, "Undefined macro called: \"%s\"\n");
       name = *args;
       goto jerr;
    }
-   rv = _maexec(mp);
+
+   rv = _maexec(mp, NULL);
 jleave:
    return rv;
 jerr:
@@ -711,28 +744,29 @@ jerr:
 int
 callhook(char const *name, int nmail)
 {
-   int len, r;
+   int len, rv;
    struct macro *mp;
    char *var, *cp;
 
    var = ac_alloc(len = strlen(name) + 13);
    snprintf(var, len, "folder-hook-%s", name);
    if ((cp = value(var)) == NULL && (cp = value("folder-hook")) == NULL) {
-      r = 0;
+      rv = 0;
       goto jleave;
    }
    if ((mp = _malook(cp, NULL, MA_NONE)) == NULL) {
       fprintf(stderr, tr(49, "Cannot call hook for folder \"%s\": "
          "Macro \"%s\" does not exist.\n"), name, cp);
-      r = 1;
+      rv = 1;
       goto jleave;
    }
+
    inhook = nmail ? 3 : 1;
-   r = _maexec(mp);
+   rv = _maexec(mp, NULL);
    inhook = 0;
 jleave:
    ac_free(var);
-   return r;
+   return rv;
 }
 
 int
@@ -746,7 +780,7 @@ int
 c_account(void *v)
 {
    char **args = v, *cp;
-   struct macro *lo_save, *mp;
+   struct macro *mp;
    int rv = 1, i, oqf, nqf;
 
    if (args[0] == NULL) {
@@ -790,14 +824,11 @@ c_account(void *v)
    account_name = (mp != NULL) ? mp->ma_name : NULL;
    _acc_curr = mp;
 
-   lo_save = _localopts;
-   _localopts = mp;
-   if (mp != NULL && _maexec(mp) == CBAD) {
-      _localopts = lo_save; /* XXX account switch incomplete, unroll? */
+   if (mp != NULL && _maexec(mp, &mp->ma_localopts) == CBAD) {
+      /* XXX account switch incomplete, unroll? */
       fprintf(stderr, tr(520, "Switching to account `%s' failed.\n"), args[0]);
       goto jleave;
    }
-   _localopts = lo_save;
 
    if (! starting && ! inhook) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
@@ -810,6 +841,24 @@ c_account(void *v)
       announce(boption("bsdcompat") || boption("bsdannounce"));
       restorequitflags(nqf);
    }
+   rv = 0;
+jleave:
+   return rv;
+}
+
+int
+c_localopts(void *v)
+{
+   int rv = 1;
+   char **c = v;
+
+   if (_localopts == NULL) {
+      fprintf(stderr, tr(522,
+         "Cannot use `localopts' but from within a `define' or `account'\n"));
+      goto jleave;
+   }
+
+   _localopts->s_unroll = (**c == '0') ? FAL0 : TRU1;
    rv = 0;
 jleave:
    return rv;

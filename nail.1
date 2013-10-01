@@ -1368,6 +1368,30 @@ Same as
 .Ic newmail .
 .It Ic list
 Prints the names of all available commands, alphabetically sorted.
+.It Ic localopts
+Can only be used inside of a macro definition block introduced by
+.Ic account
+or
+.Ic define ,
+and is interpreted as a boolean (value `0' means false, everything
+else true).
+Any option setting that is performed after `localopts' has been turned
+on will be reset to the value it had before the macro has been called
+(or the `account' is switched).
+.Bd -literal -offset indent
+define temporary_settings {
+	set global_option1
+	localopts 1
+	set local_option1
+	set local_option2
+	localopts 0
+	set global_option2
+}
+.Ed
+.Pp
+Note that these options stack upon each other, i.e., if macro1 sets
+`localopts' and calls macro2, which explicitly resets `localopts', then
+any values set within macro2 will still be cleaned up by macro1.
 .It Ic Mail
 (M) Similar to
 .Ic mail ,

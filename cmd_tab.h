@@ -343,6 +343,8 @@
      DS(425, "Define a <ghost> of <command>, or list all ghosts") },
    { "unghost", &_unghost, (M | RAWLIST), 1, 1000
      DS(426, "Delete <ghost-list>") },
+   { "localopts", &c_localopts, (M | RAWLIST), 1, 1
+     DS(427, "Inside `define' / `account': insulate modifications? <0> / <1>")},
 #ifdef HAVE_ASSERTS
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },

@@ -73,7 +73,11 @@ int	callhook(char const *name, int newmail);
 /* List all macros */
 int	cdefines(void *v);
 
+/* `account' */
 int	c_account(void *v);
+
+/* `localopts' */
+int	c_localopts(void *v);
 
 /*
  * attachments.c
