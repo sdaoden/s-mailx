@@ -229,11 +229,23 @@ jleave:
 	return ret;
 }
 
-/*
- * Change user's working directory.
- */
+int
+c_cwd(void *v)
+{
+	char buf[MAXPATHLEN]; /* TODO getcwd(3) may return a larger value */
+
+	if (getcwd(buf, sizeof buf) != NULL) {
+		puts(buf);
+		v = (void*)0x1;
+	} else {
+		perror("getcwd");
+		v = NULL;
+	}
+	return (v == NULL);
+}
+
 int 
-schdir(void *v)
+c_chdir(void *v)
 {
 	char **arglist = v;
 	char const *cp;
@@ -247,7 +259,7 @@ schdir(void *v)
 		cp = NULL;
 	}
 jleave:
-	return (cp != NULL);
+	return (cp == NULL);
 }
 
 static void 

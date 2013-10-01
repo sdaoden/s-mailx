@@ -101,9 +101,9 @@
      DS(314, "Copy <message-list>, but don't mark them for deletion") },
    { "Copy", Copycmd, (A | M | STRLIST), 0, 0
      DS(315, "Like \"copy\", but derive filename from first sender") },
-   { "chdir", schdir, (M | RAWLIST), 0, 1
+   { "chdir", c_chdir, (M | RAWLIST), 0, 1
      DS(309, "Change CWD to the specified/the login directory") },
-   { "cd", schdir, (M | RAWLIST), 0, 1
+   { "cd", c_chdir, (M | RAWLIST), 0, 1
      DS(309, "Change CWD to the specified/the login directory") },
    { "save", save, (A | STRLIST), 0, 0
      DS(371, "Append <message-list> to <file>") },
@@ -345,6 +345,10 @@
      DS(426, "Delete <ghost-list>") },
    { "localopts", &c_localopts, (M | RAWLIST), 1, 1
      DS(427, "Inside `define' / `account': insulate modifications? <0> / <1>")},
+   { "cwd", &c_cwd, (M | NOLIST), 0, 0
+     DS(428, "Print current working directory (CWD)") },
+   { "pwd", &c_cwd, (M | NOLIST), 0, 0
+     DS(428, "Print current working directory (CWD)") },
 #ifdef HAVE_ASSERTS
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },

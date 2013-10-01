@@ -296,7 +296,13 @@ int unfwdretain(void *v);
 int shell(void *v);
 int dosh(void *v);
 int help(void *v);
-int schdir(void *v);
+
+/* Print user's working directory */
+int	c_cwd(void *v);
+
+/* Change user's working directory */
+int	c_chdir(void *v);
+
 int respond(void *v);
 int respondall(void *v);
 int respondsender(void *v);
@@ -338,8 +344,6 @@ int cundraft(void *v);
 int cnoop(void *v);
 int cremove(void *v);
 int crename(void *v);
-
-/* cmdtab.c */
 
 /* collect.c */
 
