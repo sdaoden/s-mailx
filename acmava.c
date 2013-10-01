@@ -60,11 +60,7 @@ struct macro {
    struct line    *ma_contents;
    size_t         ma_maxlen;     /* Maximum line length */
    enum ma_flags  ma_flags;
-};
-
-struct acc {
-   struct macro   ac_super;
-   struct accvar  *ac_list;
+   struct var     *ma_localopts; /* Restore list, `localopts' */
 };
 
 struct line {
@@ -79,15 +75,8 @@ struct var {
    char        *v_value;
 };
 
-struct accvar {
-   struct accvar  *av_link;
-   char           *av_name;   /* Canonicalized */
-   char           *av_oval;   /* Value before `account' switch */
-   char           *av_val;
-};
-
-static struct acc    *_acc_curr;
-static bool_t        _acc_in_switch;
+static struct macro  *_acc_curr;    /* Currently active account */
+static struct macro  *_localopts;   /* Currently executing macro unroll list */
 
 /* TODO once we have a dynamically sized hashtable we could unite _macros and
  * TODO _variables into a single hashtable, stripping down fun interface;
@@ -135,10 +124,10 @@ static void          _freelines(struct line *lp);
 /* qsort(3) helper */
 static int           __var_list_all_cmp(void const *s1, void const *s2);
 
-/* Update account replay-log */
-static void          _acc_value_update(char const *name, char const *oval,
-                        char const *val);
-static void          _acc_value_restore(void);
+/* Update replay-log */
+static void          _localopts_add(struct var **vapp, char const *name,
+                        struct var *ovap);
+static void          _localopts_unroll(struct var **vapp);
 
 static char *
 _vcopy(char const *str)
@@ -368,15 +357,14 @@ _define1(char const *name, enum ma_flags mafl)
    size_t linesize = 0, maxlen = 0;
    int n, i;
 
-   mp = scalloc(1, (mafl & MA_ACC) ? sizeof(struct acc) : sizeof *mp);
+   mp = scalloc(1, sizeof *mp);
    mp->ma_name = sstrdup(name);
    mp->ma_flags = mafl;
 
    for (;;) {
       n = readline_input(LNED_LF_ESC, "", &linebuf, &linesize);
       if (n <= 0) {
-         fprintf(stderr,
-            tr(75, "Unterminated %s definition: \"%s\".\n"),
+         fprintf(stderr, tr(75, "Unterminated %s definition: \"%s\".\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
          if (sourcing)
             unstack();
@@ -471,62 +459,46 @@ __var_list_all_cmp(void const *s1, void const *s2)
 }
 
 static void
-_acc_value_update(char const *name, char const *oval, char const *val)
+_localopts_add(struct var **vapp, char const *name, struct var *ovap)
 {
-   struct accvar *avp;
+   size_t nl, vl;
+   struct var *vap = *vapp;
 
-   if (_acc_curr == NULL)
-      goto jleave;
+   for (; vap != NULL; vap = vap->v_link)
+      if (strcmp(vap->v_name, name) == 0)
+         goto jleave;
 
-   for (avp = _acc_curr->ac_list; avp != NULL; avp = avp->av_link)
-      if (strcmp(avp->av_name, name) == 0) {
-         if (avp->av_oval != NULL)
-            _vfree(avp->av_oval);
-         if (avp->av_val != NULL)
-            _vfree(avp->av_val);
-         goto jup;
-      }
-
-   avp = smalloc(sizeof(struct accvar));
-   avp->av_link = _acc_curr->ac_list;
-   _acc_curr->ac_list = avp;
-   avp->av_name = sstrdup(name);
-jup:
-   avp->av_oval = (oval != NULL) ? _vcopy(oval) : NULL;
-   avp->av_val = (val != NULL) ? _vcopy(val) : NULL;
+   nl = strlen(name) + 1;
+   vl = (ovap != NULL) ? strlen(ovap->v_value) + 1 : 0;
+   vap = smalloc(sizeof(*vap) + nl + vl);
+   vap->v_link = *vapp;
+   *vapp = vap;
+   vap->v_name = (char*)(vap + 1);
+   memcpy(vap->v_name, name, nl);
+   if (vl == 0)
+      vap->v_value = NULL;
+   else {
+      vap->v_value = (char*)(vap + 1) + nl;
+      memcpy(vap->v_value, ovap->v_value, vl);
+   }
 jleave:
    ;
 }
 
 static void
-_acc_value_restore(void) /* TODO optimize (restore log in general!) */
+_localopts_unroll(struct var **vapp)
 {
-   struct accvar *x, *avp;
+   struct var *x, *vap;
 
-   if (_acc_curr == NULL)
-      goto jleave;
+   vap = *vapp;
+   *vapp = NULL;
 
-   for (avp = _acc_curr->ac_list; avp != NULL;) {
-      char *cv = var_lookup(avp->av_name, FAL0);
-      if (cv == NULL) {
-         if (avp->av_oval == NULL)
-            goto jcont;
-      } else if (avp->av_val != NULL && strcmp(avp->av_val, cv) != 0)
-         goto jcont;
-      var_assign(avp->av_name, avp->av_oval);
-jcont:
-      x = avp;
-      avp = avp->av_link;
-      free(x->av_name);
-      if (x->av_oval != NULL)
-         _vfree(x->av_oval);
-      if (x->av_val != NULL)
-         _vfree(x->av_val);
+   while (vap != NULL) {
+      x = vap;
+      vap = vap->v_link;
+      var_assign(x->v_name, x->v_value);
       free(x);
    }
-   _acc_curr->ac_list = NULL;
-jleave:
-   ;
 }
 
 void
@@ -548,8 +520,9 @@ var_assign(char const *name, char const *val)
    h = MA_HASH(name);
    vp = _lookup(name, h, TRU1);
 
-   if (_acc_in_switch)
-      _acc_value_update(name, (vp != NULL ? vp->v_value : NULL), val);
+   /* Don't care what happens later on, store this in the unroll list */
+   if (_localopts != NULL)
+      _localopts_add(&_localopts->ma_localopts, name, vp);
 
    if (vp == NULL) {
       vp = (struct var*)scalloc(1, sizeof *vp);
@@ -584,16 +557,15 @@ var_unset(char const *name)
    h = MA_HASH(name);
    vp = _lookup(name, h, TRU1);
 
-   if (_acc_in_switch)
-      _acc_value_update(name, (vp != NULL ? vp->v_value : NULL), NULL);
-
    if (vp == NULL) {
       if (! sourcing && ! unset_allow_undefined) {
-         fprintf(stderr,
-            tr(203, "\"%s\": undefined variable\n"), name);
+         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), name);
          goto jleave;
       }
    } else {
+      if (_localopts != NULL)
+         _localopts_add(&_localopts->ma_localopts, name, vp);
+
       /* Always listhead after _lookup() */
       _vars[h] = _vars[h]->v_link;
       _vfree(vp->v_name);
@@ -774,8 +746,8 @@ int
 c_account(void *v)
 {
    char **args = v, *cp;
+   struct macro *lo_save, *mp;
    int rv = 1, i, oqf, nqf;
-   struct macro *mp;
 
    if (args[0] == NULL) {
       rv = _list_macros(MA_ACC);
@@ -813,17 +785,19 @@ c_account(void *v)
    }
 
    oqf = savequitflags();
+   if (_acc_curr != NULL)
+      _localopts_unroll(&_acc_curr->ma_localopts);
    account_name = (mp != NULL) ? mp->ma_name : NULL;
-   _acc_value_restore();
-   _acc_curr = (struct acc*)mp;
+   _acc_curr = mp;
 
-   _acc_in_switch = TRU1;
+   lo_save = _localopts;
+   _localopts = mp;
    if (mp != NULL && _maexec(mp) == CBAD) {
-      _acc_in_switch = FAL0;
+      _localopts = lo_save; /* XXX account switch incomplete, unroll? */
       fprintf(stderr, tr(520, "Switching to account `%s' failed.\n"), args[0]);
       goto jleave;
    }
-   _acc_in_switch = FAL0;
+   _localopts = lo_save;
 
    if (! starting && ! inhook) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
