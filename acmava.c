@@ -58,6 +58,7 @@ struct macro {
    struct macro   *ma_next;
    char           *ma_name;
    struct line    *ma_contents;
+   size_t         ma_maxlen;     /* Maximum line length */
    enum ma_flags  ma_flags;
 };
 
@@ -68,7 +69,7 @@ struct acc {
 
 struct line {
    struct line *l_next;
-   size_t      l_linesize;
+   size_t      l_length;
    char        l_line[VFIELD_SIZE(sizeof(size_t))];
 };
 
@@ -121,11 +122,10 @@ static struct macro *_malook(char const *name, struct macro *data,
                         enum ma_flags mafl);
 
 /* Walk all lines of a macro and execute() them */
-static int           _maexec(struct macro *mp);
+static int           _maexec(struct macro const *mp);
 
 /* User display helpers */
 static int           _list_macros(enum ma_flags mafl);
-static void          __list_line(FILE *fp, struct line *lp);
 
 /*  */
 static bool_t        _define1(char const *name, enum ma_flags mafl);
@@ -159,7 +159,7 @@ _vcopy(char const *str)
 static void
 _vfree(char *cp)
 {
-   if (*cp)
+   if (*cp != '\0')
       free(cp);
 }
 
@@ -303,29 +303,20 @@ jleave:
 }
 
 static int
-_maexec(struct macro *mp)
+_maexec(struct macro const *mp)
 {
    int rv = 0;
-   struct line *lp;
-   char const *sp, *smax;
-   char *copy, *cp;
+   struct line const *lp;
+   char *buf = ac_alloc(mp->ma_maxlen + 1);
 
-   unset_allow_undefined = TRU1;
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
-      sp = lp->l_line;
-      smax = sp + lp->l_linesize;
-      while (sp < smax && (blankchar(*sp) || *sp == '\n' || *sp == '\0'))
-         ++sp;
-      if (sp == smax)
-         continue;
-      cp = copy = ac_alloc(lp->l_linesize + (lp->l_line - sp));
-      do
-         *cp++ = (*sp != '\n') ? *sp : ' ';
-      while (++sp < smax);
-      rv = execute(copy, 0, (size_t)(cp - copy));
-      ac_free(copy);
+      unset_allow_undefined = TRU1;
+      memcpy(buf, lp->l_line, lp->l_length + 1);
+      rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
+      unset_allow_undefined = FAL0;
    }
-   unset_allow_undefined = FAL0;
+
+   ac_free(buf);
    return rv;
 }
 
@@ -356,7 +347,7 @@ _list_macros(enum ma_flags mafl)
                fputc('\n', fp);
             fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
             for (lp = mq->ma_contents; lp; lp = lp->l_next)
-               __list_line(fp, lp);
+               fprintf(fp, "  %s\n", lp->l_line);
             fputs("}\n", fp);
          }
    if (mc)
@@ -367,31 +358,15 @@ _list_macros(enum ma_flags mafl)
    return (int)mc;
 }
 
-static void
-__list_line(FILE *fp, struct line *lp)
-{
-   char const *sp = lp->l_line, *spmax = sp + lp->l_linesize;
-   int c;
-
-   for (; sp < spmax; ++sp) {
-      if ((c = *sp & 0xFF) != '\0') {
-         if (c == '\n')
-            putc('\\', fp);
-         putc(c, fp);
-      }
-   }
-   putc('\n', fp);
-}
-
 static bool_t
 _define1(char const *name, enum ma_flags mafl)
 {
    bool_t rv = FAL0;
    struct macro *mp;
    struct line *lp, *lst = NULL, *lnd = NULL;
-   char *linebuf = NULL;
-   size_t linesize = 0;
-   int n;
+   char *linebuf = NULL, *cp;
+   size_t linesize = 0, maxlen = 0;
+   int n, i;
 
    mp = scalloc(1, (mafl & MA_ACC) ? sizeof(struct acc) : sizeof *mp);
    mp->ma_name = sstrdup(name);
@@ -399,7 +374,7 @@ _define1(char const *name, enum ma_flags mafl)
 
    for (;;) {
       n = readline_input(LNED_LF_ESC, "", &linebuf, &linesize);
-      if (n < 0) {
+      if (n <= 0) {
          fprintf(stderr,
             tr(75, "Unterminated %s definition: \"%s\".\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
@@ -410,11 +385,25 @@ _define1(char const *name, enum ma_flags mafl)
       if (_is_closing_angle(linebuf))
          break;
 
-      ++n;
+      /* Trim WS */
+      for (cp = linebuf, i = 0; i < n; ++cp, ++i)
+         if (! whitechar(*cp))
+            break;
+      if (i == n)
+         continue;
+      n -= i;
+      while (whitechar(cp[n - 1]))
+         if (--n == 0)
+            break;
+      if (n == 0)
+         continue;
+
+      maxlen = MAX(maxlen, (size_t)n);
+      cp[n++] = '\0';
+
       lp = scalloc(1, sizeof(*lp) - VFIELD_SIZEOF(struct line, l_line) + n);
-      lp->l_linesize = (size_t)n;
-      memcpy(lp->l_line, linebuf, n);
-      assert(lp->l_line[n - 1] == '\0');
+      memcpy(lp->l_line, cp, n);
+      lp->l_length = (size_t)--n;
       if (lst != NULL) {
          lnd->l_next = lp;
          lnd = lp;
@@ -422,6 +411,7 @@ _define1(char const *name, enum ma_flags mafl)
          lst = lnd = lp;
    }
    mp->ma_contents = lst;
+   mp->ma_maxlen = maxlen;
 
    if (_malook(mp->ma_name, mp, mafl) != NULL) {
       if (! (mafl & MA_ACC)) {
