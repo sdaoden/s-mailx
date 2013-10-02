@@ -25,6 +25,7 @@ echoes:
 	@echo "Starting compilation";\
 		echo "CC: $(CC) $(CFLAGS) $(WARN)";\
 		echo "[INCS: $(INCLUDES)]";\
+		echo "[LDFLAGS: $(LDFLAGS)]";\
 		echo "[LIBS: $(LIBS)]"
 $(UAGENT): $(OBJ)
 	@$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
