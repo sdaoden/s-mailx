@@ -138,7 +138,7 @@ _update-release:
 	echo 'All seems fine' &&\
 	cd "$(UAGENT)-$${REL}" &&\
 	make WANT_ASSERTS=1 &&\
-	./s-nail -s "Announcing S-nail v$${REL}" -b nail-cc nail &&\
+	./s-nail -s "Announcing S-nail v$${REL}" nail-announce &&\
 	cd .. &&\
 	rm -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
