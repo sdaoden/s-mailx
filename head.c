@@ -385,7 +385,7 @@ myaddrs(struct header *hp)
 	 */
 	if (value("smtp") == NULL)
 		goto jleave;
-	if (addr == NULL) {
+	if ((ret = addr) == NULL) {
 		char *hn = nodename(1);
 		size_t sz = strlen(myname) + strlen(hn) + 2;
 		ret = addr = smalloc(sz);
