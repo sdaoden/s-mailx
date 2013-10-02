@@ -1,6 +1,25 @@
 S - n a i l  N e w s
 ====================
 
+v14.4.3, 2013-10-02
+-------------------
+
+I convey special thanks to Karol Błażewicz and Gaetan Bisson.
+
+- The new build system didn't allow to overwrite CFLAGS= when used in
+  conjunction with GNU make(1).  To make a long story short, removing
+  a `.POSIX:' directive from the makefile fixed the problem.  Luckily.
+  [e6b26526]
+
+- More INSTALL notes for UnixWare 7.1.4, which suffers from the same
+  problem: here the fix is to use the -e option of make(1).
+
+- Karol Błażewicz reported a segmentation violation he got when using an
+  Arch Linux S-nail test package, and Gaetan Bisson informed me about
+  that.  The problem was that we didn't assign the resulting default
+  address (which gets used when *from* is not set) to the result which
+  gets used, effectively resulting in a NULL dereference. [cfd60479]
+
 v14.4.2, 2013-09-21
 -------------------
 
