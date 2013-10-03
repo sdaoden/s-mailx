@@ -1,6 +1,24 @@
 S - n a i l  N e w s
 ====================
 
+v14.4.4, 2013-10-03
+-------------------
+
+Thanked, Gavin Troy, Gaetan Bisson.
+
+- Fix output buffer confusion that would have occurred when parts of
+  a multipart mail had a pipe command set.  Longer story in [e75d16dd].
+  (Gavin Troy)
+
+- The makefile now supports a `packager-install' target that bypasses
+  the reevaluation of the configuration (after checking that there is
+  one) and directly steps ahead to the install process.
+  (Gaetan Bisson)
+
+- Notes in INSTALL that CFLAGS and LDFLAGS need to be overwritten from
+  within (conf.rc or) the command line.
+  (Gaetan Bisson)
+
 v14.4.3, 2013-10-02
 -------------------
 
