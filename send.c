@@ -829,9 +829,11 @@ skip:
 						stats, NULL);
 				}
 				if (np->m_mimecontent == MIME_TEXT_PLAIN) {
-					if (sendpart(zmp, np, obuf, doign,
+					rt = sendpart(zmp, np, obuf, doign,
 							qf, action, stats,
-							level + 1) < 0)
+							level + 1);
+					quoteflt_reset(qf, origobuf);
+					if (rt < 0)
 						return -1;
 				}
 			}
@@ -919,7 +921,8 @@ skip:
 				if (sendpart(zmp, np, obuf, doign, qf,
 						action, stats, level+1) < 0)
 					rt = -1;
-				else if (action == SEND_QUOTE)
+				quoteflt_reset(qf, origobuf);
+				if (action == SEND_QUOTE)
 					break;
 				if (action == SEND_TOFILE && obuf != origobuf) {
 					if (! ispipe)
@@ -1355,7 +1358,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 	cnt = fsize(pipebuf);
 	all_sz = 0;
 
-	quoteflt_reset(qf, outbuf);/* FIXME test that this works */
+	quoteflt_reset(qf, outbuf);
 	while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0)
 			!= NULL) {
 		if ((sz = quoteflt_push(qf, line, linelen)) < 0)
