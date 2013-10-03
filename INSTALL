@@ -40,6 +40,12 @@ would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
 binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
 
+Note that, due to the way the S-nail(1) build system is designed, the
+only safe way to overwrite compiler and linker flags, i.e., CFLAGS and
+LDFLAGS, is from within (`conf.rc' or) the make(1) command line:
+
+  $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common'
+
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable `C_INCLUDE_PATH'
@@ -85,8 +91,8 @@ o DragonFly BSD v3.4.1-RELEASE.
 o OpenBSD 5.4 (5.4 GENERIC#36 i386).
   gcc (GCC) 4.2.1 20070719.
 
-o CRUX-Linux 3.0.
-  gcc (GCC) 4.7.2.
+o CRUX 3.0 (mLinux 3.6.11).
+  gcc (CRUX-x86_64-multilib) 4.7.2.
 
 o Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
