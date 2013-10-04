@@ -9,7 +9,7 @@ all:
 install:
 	@$(_prego) && $(MAKE) -f mk.mk install
 packager-install:
-	@@(_prestop) && $(MAKE) -f mk.mk install
+	@$(_prestop) && $(MAKE) -f mk.mk install
 uninstall:
 	@$(_prestop) && $(MAKE) -f mk.mk uninstall
 clean:
