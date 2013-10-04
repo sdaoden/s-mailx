@@ -109,6 +109,11 @@ _update-version:
 	mv version.tmp version.h; trap -- - 0 1 2 15
 
 _update-release:
+	[ "`git rev-parse --verify HEAD`" != \
+			"`git rev-parse --verify master`" ] && {\
+		echo >&2 'Not on the [master] branch';\
+		exit 1;\
+	};\
 	echo 'Name of release tag:';\
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
@@ -135,7 +140,9 @@ _update-release:
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	echo "-put $(UAGENT)-$${FREL}.tar.gz" | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail &&\
-	echo 'All seems fine' &&\
+	echo 'All seems fine';\
+	echo 'Really send announcement mail?  ENTER continues';\
+	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
 	make WANT_ASSERTS=1 &&\
 	./s-nail -A sdn_sf -s "Announcing S-nail v$${REL}" nail-announce &&\
