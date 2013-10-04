@@ -4,12 +4,16 @@
 
 .PHONY: all install uninstall clean distclean
 
-all:
-	@$(_prego) && $(MAKE) -f mk.mk all
-install:
-	@$(_prego) && $(MAKE) -f mk.mk install
+config:
+	@$(_prego)
+build:
+	@$(_prestop) && $(MAKE) -f mk.mk all
 packager-install:
 	@$(_prestop) && $(MAKE) -f mk.mk install
+all: config
+	@$(MAKE) -f mk.mk all
+install: all
+	@$(MAKE) -f mk.mk install
 uninstall:
 	@$(_prestop) && $(MAKE) -f mk.mk uninstall
 clean:

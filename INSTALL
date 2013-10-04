@@ -46,6 +46,21 @@ LDFLAGS, is from within (`conf.rc' or) the make(1) command line:
 
   $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common'
 
+The following make(1) target exists:
+
+. all         Create / check + update configuration, build.
+. install     Create / check + update configuration, build + install.
+. clean       Remove anything which can be rebuild.
+. distclean   Remove anything which can be rebuild or reconfigured.
+. uninstall   Uninstall if configured.
+. config      Only create / check + update configuration.
+. build       Only build using the existing configuration.
+. packager-install
+              Only install using the build of the existing
+              configuration.  It is possible to overwrite DESTDIR= when
+              using this target (a following `uninstall' won't know
+              about that overwritten value, however).
+
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable `C_INCLUDE_PATH'
