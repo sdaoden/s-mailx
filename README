@@ -1,29 +1,32 @@
 W e l c o m e  t o  S - n a i l
 ===============================
 
-S-nail(1) is a fork of Heirloom mailx(1), formerly known as nail(1).
-It was forked from Heirloom mailx 12.5 on 2012-05-08, though i did not
-really look at the code before 2012-09-18, once i claimed on nail-devel@
-that S-nail(1) will be made available publically.
+S-nail is a mail processing system with a command syntax reminiscent of
+ed(1) with lines replaced by messages.  It is intended to provide the
+functionality of the POSIX mailx(1) command and offers (mostly optional)
+extensions for line editing, IDNA, MIME, S/MIME, SMTP, POP3 and IMAP.
+It is usable as a mail batch language.
+S-nail is a derivative of Heirloom mailx, formerly known as nail.
 
-S-nail has its git(1) repository on [1] (browse it at [2]) and a release
-tarball to be downloaded from [3].
-You may also throw on eye on its entry on my webpage [4]; here there
-also exists the possibility to browse the manual online [5].
+S-nail has its git(1) repository on [1] (browse it at [2]) and release
+tarballs to be downloaded from [3].  The project overview page is [4],
+though more information is available through its entry on my webpage
+[5]; here there also exists the possibility to browse the manual online
+[6].  Mail contact is supposed to go through [7; listinfo: 8];
+subscription is not required, but moderator approval may hold your
+message back; please be patient.
 
   [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
   [2] <http://sourceforge.net/p/s-nail/code/>
-  [3] <https://sourceforge.net/projects/s-nail/files/latest/download?\
-      source=files>
-  [4] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
-  [5] <http://sdaoden.users.sourceforge.net/code-nail.html>
+  [3] <https://sourceforge.net/projects/s-nail/files/?source=navbar>
+  [4] <https://sourceforge.net/projects/s-nail/>
+  [5] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
+  [6] <http://sdaoden.users.sourceforge.net/code-nail.html>
+  [7] <s-nail-users@lists.sourceforge.net>
+  [8] <https://lists.sourceforge.net/lists/listinfo/s-nail-users/>
 
 See the file INSTALL for installation notes and NEWS for release update
-information.  Mail contact is supposed to go through the normal
-<nail-devel@lists.sourceforge.net> list, but which needs to be subscribed
-to: I'll forward anything which reaches me under <sdaoden@users.sf.net>.
-
-The S-nail(1) git(1) repository consists of four branches:
+information.  The S-nail(1) git(1) repository consists of four branches:
 
 - master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
@@ -41,6 +44,16 @@ The S-nail(1) git(1) repository consists of four branches:
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
+
+To clone only the [master] branch, which is what a normal user most
+likely is interested in, can be accomplished like that:
+
+  $ mkdir s-nail.git
+  $ cd s-nail.git
+  $ git init
+  $ git remote add origin -t master git://git.code.sf.net/p/s-nail/code
+  $ git fetch -v
+  $ git checkout master
 
 The S-nail(1) heraldic animal `snailmail.jpg' has been found at
 <http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg>.
