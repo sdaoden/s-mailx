@@ -41,6 +41,8 @@ mime_types.h: mime.types
 
 mkman.1: nail.1 mk.mk
 	@echo 'Creating manual for $(UAGENT)';\
+	_VERSION=`< version.h \
+		sed -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.1 > $(@) awk 'BEGIN {written = 0}\
 	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ {\
@@ -53,6 +55,7 @@ mkman.1: nail.1 mk.mk
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
+		print ".ds UV \\\\%", cn, " ", ENVIRON["_VERSION"];\
 		print ".ds ua \\\\%", ln;\
 		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
 		OFS = " ";\
