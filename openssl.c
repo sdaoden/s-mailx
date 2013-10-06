@@ -228,15 +228,15 @@ ssl_load_verifications(struct sock *sp)
 	if (ca_dir != NULL || ca_file != NULL) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
 					ca_file, ca_dir) != 1) {
-			fprintf(stderr, tr(233, "Error loading"));
+			fprintf(stderr, tr(233, "Error loading "));
 			if (ca_dir) {
-				fprintf(stderr, tr(234, " %s"), ca_dir);
+				fputs(ca_dir, stderr);
 				if (ca_file)
-					fprintf(stderr, tr(235, " or"));
+					fputs(tr(234, " or "), stderr);
 			}
 			if (ca_file)
-				fprintf(stderr, tr(236, " %s"), ca_file);
-			fprintf(stderr, tr(237, "\n"));
+				fputs(ca_file, stderr);
+			fputs("\n", stderr);
 		}
 	}
 	if (value("ssl-no-default-ca") == NULL) {

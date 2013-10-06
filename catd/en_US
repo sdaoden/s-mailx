@@ -240,11 +240,11 @@ $set 1
 230 $ issuer = %s\n$
 231 $ subject = %s\n$
 232 $ err %i: %s\n$
-233 Error loading
-234 $ %s$
-235 $ or$
-236 $ %s$
-237 \n
+233 Error loading $
+234 $ or $
+235 --DELETED--
+236 --DELETED--
+237 --DELETED--
 238 cannot load private key from file %s\n
 239 cannot load certificate from file %s\n
 240 invalid ciphers: %s\n
