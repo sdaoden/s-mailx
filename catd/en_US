@@ -244,7 +244,7 @@ $set 1
 234 $ or $
 235 --DELETED--
 236 --DELETED--
-237 --DELETED--
+237 The mail file has changed, existing rfc822 attachments became invalid!\n
 238 cannot load private key from file %s\n
 239 cannot load certificate from file %s\n
 240 invalid ciphers: %s\n

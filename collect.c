@@ -110,8 +110,8 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 	execute(linebuf, TRU1, linesize);
 
 	if (mnbuf != NULL && memcmp(mnbuf, mailname, mnlen) != 0)
-		fputs("The mail file has changed, existing rfc822 "
-			"attachments became invalid!\n", stderr);
+		fputs(tr(237, "The mail file has changed, existing rfc822 "
+			"attachments became invalid!\n"), stderr);
 }
 
 static int
