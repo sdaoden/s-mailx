@@ -1276,12 +1276,19 @@ option is set.
 .It Ic ghost
 Define an alias for an existing command (a so-called command `ghost'),
 or list all currently defined ghosts.
-Ghosts for complete shell commands and macro calls may be defined:
+Ghosts for entire command lines for \*(UA commands and shell commands,
+as well as macro ghosts may be defined by prefixing the ghost definition
+with one of the special characters `*' (unchecked command with command
+line), `!' (shell command) and `~' (macro ghost).
 .Pp
+.Dl ? ghost unchecked '*command arguments'
 .Dl ? ghost ls '!ls -latro'
 .Dl ? ghost mac ~macro-name
 .Pp
-The list of ghosts is always inspected first when looking up a command.
+Without any such prefix it is verified that the command exists.
+The list of ghosts is always inspected first when looking up a command,
+and any further argument on the command line will be reappended to the
+ghost expansion.
 Also see
 .Ic unghost .
 .It Ic headers

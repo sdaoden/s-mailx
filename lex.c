@@ -232,7 +232,7 @@ jleave:
 static int
 _ghost(void *v)
 {
-   char const **argv = (char const**)v;
+   char const **argv = (char const**)v, *comm;
    struct cmd_ghost *lcg, *cg;
    struct cmd const *cmd;
    size_t i, scl;
@@ -290,17 +290,20 @@ jecanon:
    }
 
    /* We do support macro and shell command specials */
-   switch (argv[1][0]) {
+   switch ((comm = argv[1])[0]) {
+   case '*':
+      ++comm;
+      /* FALLTHRU */
    case '!':
    case '~':
       cmd = (struct cmd*)0x1;
-      scl = strlen(argv[1]) + 1;
+      scl = strlen(comm) + 1;
       break;
    default:
       scl = 0;
-      cmd = _lex(argv[1]);
+      cmd = _lex(comm);
       if (cmd == NULL) {
-         fprintf(stderr, tr(91, "Unknown command: `%s'\n"), argv[1]);
+         fprintf(stderr, tr(91, "Unknown command: `%s'\n"), comm);
          goto jleave;
       }
       break;
@@ -328,7 +331,7 @@ jecanon:
       cg->cmd = NULL;
       cg->strcmd.s = cg->name + i;
       cg->strcmd.l = scl - 1;
-      memcpy(cg->strcmd.s, argv[1], scl);
+      memcpy(cg->strcmd.s, comm, scl);
    }
 
    _cmd_ghosts = cg;
