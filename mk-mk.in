@@ -150,7 +150,8 @@ _update-release:
 	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
 	make WANT_ASSERTS=1 &&\
-	./s-nail -A sdn_sf -s "Announcing S-nail v$${REL}" nail-announce &&\
+	./s-nail -A sdn_sf -s "[ANNOUNCE] Announcing S-nail v$${REL}" \
+		nail-announce &&\
 	cd .. &&\
 	rm -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
