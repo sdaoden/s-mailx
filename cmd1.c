@@ -490,7 +490,12 @@ hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
 		if (i & (1 | 4))
 			memcpy(&time_current.tc_local, localtime(&datet),
 				sizeof time_current.tc_local);
-		if ((i & 2) && (datet > time_current.tc_time ||
+		if ((i & 2) &&
+				/* TODO *datefield-markout-older* we accept
+				 * TODO one day in the future, should be UTC
+				 * TODO offset only?  and Stephen Isard had
+				 * TODO one week once he proposed the patch! */
+				(datet > time_current.tc_time + DATE_SECSDAY ||
 #define _6M	((DATE_DAYSYEAR / 2) * DATE_SECSDAY)
 				(datet + _6M < time_current.tc_time))) {
 #undef _6M
