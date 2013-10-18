@@ -819,8 +819,11 @@ skip:
 	case MIME_ALTERNATIVE:
 		if ((action == SEND_TODISP || action == SEND_QUOTE) &&
 				value("print-alternatives") == NULL) {
+			size_t done = FAL0;
 			for (np = ip->m_multipart; np; np = np->m_nextpart) {
-				if (np->m_ct_type_plain != NULL && /* XXX */
+				if (np->m_mimecontent == MIME_TEXT_PLAIN)
+					++done;
+				if (done > 0 && np->m_ct_type_plain != NULL &&
 						action != SEND_QUOTE) {
 					_print_part_info(&rest, np, doign,
 						level);
@@ -828,16 +831,18 @@ skip:
 						CONV_NONE, SEND_MBOX, qf,
 						stats, NULL);
 				}
-				if (np->m_mimecontent == MIME_TEXT_PLAIN) {
+				if (done == 1 && np->m_mimecontent ==
+						MIME_TEXT_PLAIN) {
 					rt = sendpart(zmp, np, obuf, doign,
 							qf, action, stats,
 							level + 1);
 					quoteflt_reset(qf, origobuf);
 					if (rt < 0)
-						return -1;
+						break;
 				}
 			}
-			return rt;
+			if (done > 0)
+				return rt;
 		}
 		/*FALLTHRU*/
 	case MIME_MULTI:
