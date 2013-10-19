@@ -2338,6 +2338,13 @@ it is marked as having been answered.
 This mark has no technical meaning in the mail system;
 it just causes messages to be marked in the header summary,
 and makes them specially addressable.
+.It Va message-id-disable
+By setting this option the generation of `Message-ID:' can be completely
+suppressed, effectively leaving this task up to the mail-transfer-agent
+(MTA) or the SMTP server.
+(According to RFC 5321 your SMTP server is not required to add this
+field by itself, so you should ensure that it accepts messages without
+a `Message-ID'.)
 .It Va metoo
 Usually, when a group is expanded that contains the sender,
 the sender is removed from the expansion.

@@ -1204,19 +1204,23 @@ message_id(FILE *fo, struct header *hp)
 	size_t rl;
 	struct tm *tmp;
 
-	if ((h = value("hostname")) != NULL)
+	if (boption("message-id-disable"))
+		goto jleave;
+	if ((h = voption("hostname")) != NULL)
 		rl = 24;
 	else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
 		rl = 16;
 	else
 		/* Delivery seems to dependent on a MTA -- it's up to it */
-		return;
+		goto jleave;
 
 	tmp = &time_current.tc_gm;
 	fprintf(fo, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>\n",
 		tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
 			tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
 		getrandstring(rl), (rl == 16 ? '%' : '@'), h);
+jleave:
+	;
 }
 
 /*
