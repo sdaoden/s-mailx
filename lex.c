@@ -58,8 +58,7 @@ struct cmd {
 
 struct cmd_ghost {
    struct cmd_ghost  *next;
-   struct cmd const  *cmd;       /* If NULL, it's a strcmd.. */
-   struct str        strcmd;     /* ..then data follows after .name */
+   struct str        cmd;        /* Data follows after .name */
    char              name[VFIELD_SIZE(sizeof(size_t))];
 };
 
@@ -232,41 +231,31 @@ jleave:
 static int
 _ghost(void *v)
 {
-   char const **argv = (char const**)v, *comm;
+   char const **argv = (char const **)v;
    struct cmd_ghost *lcg, *cg;
-   struct cmd const *cmd;
-   size_t i, scl;
+   size_t nl, cl;
 
    /* Show the list? */
    if (*argv == NULL) {
       printf(tr(144, "Command ghosts are:\n"));
-      for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
-         char const *s, *e;
-         scl = strlen(cg->name) + 6;
-         cmd = cg->cmd;
-         if (cmd != NULL) {
-            scl += strlen(cmd->name);
-            s = e = "";
-         } else {
-            scl += cg->strcmd.l + 2;
-            s = "<", e = ">";
-         }
-         if ((i += scl) > 72) {
-            i = scl;
+      for (nl = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
+         cl = strlen(cg->name) + 5 + cg->cmd.l + 3;
+         if ((nl += cl) >= (size_t)scrnwidth) {
+            nl = cl;
             printf("\n");
          }
-         printf((cg->next != NULL ? "%s -> %s%s%s, " : "%s -> %s%s%s\n"),
-            cg->name, s, (cmd != NULL ? cmd->name : cg->strcmd.s), e);
+         printf((cg->next != NULL ? "%s -> <%s>, " : "%s -> <%s>\n"),
+            cg->name, cg->cmd.s);
       }
-      cmd = (struct cmd*)0x1;
+      v = NULL;
       goto jleave;
    }
 
    /* Request to add new ghost */
-   if (argv[1] == NULL || argv[2] != NULL) {
+   if (argv[1] == NULL || argv[1][0] == '\0' || argv[2] != NULL) {
       fprintf(stderr, tr(159, "Usage: %s\n"),
          tr(425, "Define a <ghost> of <command>, or list all ghosts"));
-      cmd = NULL;
+      v = NULL;
       goto jleave;
    }
 
@@ -283,27 +272,7 @@ _ghost(void *v)
       if (argv[0] == _lex_isolate(argv[0])) {
 jecanon:
          fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
-         cmd = NULL;
-         goto jleave;
-      }
-      break;
-   }
-
-   /* We do support macro and shell command specials */
-   switch ((comm = argv[1])[0]) {
-   case '*':
-      ++comm;
-      /* FALLTHRU */
-   case '!':
-   case '~':
-      cmd = (struct cmd*)0x1;
-      scl = strlen(comm) + 1;
-      break;
-   default:
-      scl = 0;
-      cmd = _lex(comm);
-      if (cmd == NULL) {
-         fprintf(stderr, tr(91, "Unknown command: `%s'\n"), comm);
+         v = NULL;
          goto jleave;
       }
       break;
@@ -321,22 +290,18 @@ jecanon:
       }
 
    /* Need a new one */
-   i = strlen(argv[0]) + 1;
-   cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + i + scl);
+   nl = strlen(argv[0]) + 1;
+   cl = strlen(argv[1]) + 1;
+   cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + nl + cl);
    cg->next = _cmd_ghosts;
-   memcpy(cg->name, argv[0], i);
-   if (scl == 0)
-      cg->cmd = cmd;
-   else {
-      cg->cmd = NULL;
-      cg->strcmd.s = cg->name + i;
-      cg->strcmd.l = scl - 1;
-      memcpy(cg->strcmd.s, comm, scl);
-   }
+   memcpy(cg->name, argv[0], nl);
+   cg->cmd.s = cg->name + nl;
+   cg->cmd.l = cl - 1;
+   memcpy(cg->cmd.s, argv[1], cl);
 
    _cmd_ghosts = cg;
 jleave:
-   return (cmd == NULL);
+   return (v == NULL);
 }
 
 static int
@@ -822,22 +787,20 @@ jrestart:
 
 	/* If this is the first evaluation, check command ghosts */
 	if (cg == NULL) {
+      /* TODO relink list head, so it's sort over time on usage? */
 		for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
 			if (strcmp(word, cg->name) == 0) {
-				com = cg->cmd;
-				if (com != NULL)
-					break;
 				if (linesize > 0) {
-					size_t i = cg->strcmd.l;
+					size_t i = cg->cmd.l;
 					linebuf = salloc(i + 1 + linesize);
-					memcpy(linebuf, cg->strcmd.s, i);
+					memcpy(linebuf, cg->cmd.s, i);
 					linebuf[i++] = ' ';
 					memcpy(linebuf + i, cp, linesize);
 					linebuf[i += linesize] = '\0';
 					linesize = i;
 				} else {
-					linebuf = cg->strcmd.s;
-					linesize = cg->strcmd.l;
+					linebuf = cg->cmd.s;
+					linesize = cg->cmd.l;
 				}
 				goto jrestart;
 			}
@@ -1294,13 +1257,10 @@ print_comm_docstr(char const *comm)
    struct cmd_ghost *cg;
    struct cmd const *cp;
 
+   /* Ghosts take precedence */
    for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
       if (strcmp(comm, cg->name) == 0) {
-         cp = cg->cmd;
-         if (cp != NULL)
-            printf("%s -> %s: %s\n", comm, cp->name, tr(cp->docid, cp->doc));
-         else
-            printf("%s -> %s\n", comm, cg->strcmd.s);
+         printf("%s -> <%s>\n", comm, cg->cmd.s);
          rv = TRU1;
          goto jleave;
       }

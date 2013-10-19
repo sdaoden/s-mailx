@@ -1274,23 +1274,20 @@ This command has no effect when the
 .Va forward-as-attachment
 option is set.
 .It Ic ghost
-Define an alias for an existing command (a so-called command `ghost'),
-or list all currently defined ghosts.
-Ghosts for entire command lines for \*(UA commands and shell commands,
-as well as macro ghosts may be defined by prefixing the ghost definition
-with one of the special characters `*' (unchecked command with command
-line), `!' (shell command) and `~' (macro ghost).
-.Pp
-.Dl ? ghost unchecked '*command arguments'
-.Dl ? ghost ls '!ls -latro'
-.Dl ? ghost mac ~macro-name
-.Pp
-Without any such prefix it is verified that the command exists.
-The list of ghosts is always inspected first when looking up a command,
-and any further argument on the command line will be reappended to the
-ghost expansion.
+Without arguments it lists all currently defined command aliases,
+so-called ghosts.
+With two arguments it defines a new command alias: the first argument is
+the name under which the second should be accessible.
+The content of the second argument can be just about anything.
+A ghost can be used everywhere a normal command can be used, but always
+takes precedence; any arguments that are given to the command alias are
+joined onto the alias content, and the resulting string forms the
+command line that is, in effect, executed.
 Also see
 .Ic unghost .
+.Pp
+.Dl ? ghost ls '!ls -latro'
+.Dl ? ls /usr/local
 .It Ic headers
 (h) Lists the current range of headers, which is an 18-message group.
 If a `+' argument is given the next 18-message group is printed,
