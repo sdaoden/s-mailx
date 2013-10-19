@@ -8,6 +8,8 @@ config:
 	@$(_prego)
 build:
 	@$(_prestop) && $(MAKE) -f mk.mk all
+test:
+	@$(_prestop) && sh ./cc-test.sh --check-only
 packager-install:
 	@$(_prestop) && $(MAKE) -f mk.mk install
 all: config
