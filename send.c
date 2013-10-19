@@ -819,25 +819,34 @@ skip:
 	case MIME_ALTERNATIVE:
 		if ((action == SEND_TODISP || action == SEND_QUOTE) &&
 				value("print-alternatives") == NULL) {
-			for (np = ip->m_multipart; np; np = np->m_nextpart) {
-				if (np->m_ct_type_plain != NULL && /* XXX */
-						action != SEND_QUOTE) {
-					_print_part_info(&rest, np, doign,
-						level);
-					_out(rest.s, rest.l, obuf,
-						CONV_NONE, SEND_MBOX, qf,
-						stats, NULL);
+			bool_t doact = FAL0;
+			for (np = ip->m_multipart; np; np = np->m_nextpart)
+				if (np->m_mimecontent == MIME_TEXT_PLAIN)
+					doact = TRU1;
+			if (doact) {
+				for (np = ip->m_multipart; np;
+						np = np->m_nextpart) {
+					if (np->m_ct_type_plain != NULL &&
+							action != SEND_QUOTE) {
+						_print_part_info(&rest, np,
+							doign, level);
+						_out(rest.s, rest.l, obuf,
+							CONV_NONE, SEND_MBOX,
+							qf, stats, NULL);
+					}
+					if (doact && np->m_mimecontent ==
+							MIME_TEXT_PLAIN) {
+						doact = FAL0;
+						rt = sendpart(zmp, np, obuf,
+							doign, qf, action,
+							stats, level + 1);
+						quoteflt_reset(qf, origobuf);
+						if (rt < 0)
+							break;
+					}
 				}
-				if (np->m_mimecontent == MIME_TEXT_PLAIN) {
-					rt = sendpart(zmp, np, obuf, doign,
-							qf, action, stats,
-							level + 1);
-					quoteflt_reset(qf, origobuf);
-					if (rt < 0)
-						return -1;
-				}
+				return rt;
 			}
-			return rt;
 		}
 		/*FALLTHRU*/
 	case MIME_MULTI:

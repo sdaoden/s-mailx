@@ -16,7 +16,7 @@ EXT_CFLAGS = -std=c89 -O2 -g \
 
 .SUFFIXES: .o .c .y
 .c.o:
-	@echo CC $<; $(CC) $(CFLAGS) $(INCLUDES) -c $<
+	@echo CC $(<); $(CC) $(CFLAGS) $(INCLUDES) -c $(<)
 .c .y: ;
 
 all: echoes $(UAGENT)
@@ -28,7 +28,7 @@ echoes:
 		echo "[LDFLAGS: $(LDFLAGS)]";\
 		echo "[LIBS: $(LIBS)]"
 $(UAGENT): $(OBJ)
-	@$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
+	@$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $(@)
 
 $(OBJ): config.h def.h extern.h glob.h rcv.h
 imap.o: imap_gssapi.h
@@ -37,11 +37,14 @@ md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
 mime.o: mime_types.h
 
 mime_types.h: mime.types
-	< mime.types > $@ sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
+	< ./mime.types > $(@) sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
-mkman.1: nail.1
+mkman.1: nail.1 mk.mk
+	@echo 'Creating manual for $(UAGENT)';\
+	_VERSION=`< version.h \
+		sed -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< nail.1 > $@ awk 'BEGIN {written = 0}\
+	< ./nail.1 > $(@) awk 'BEGIN {written = 0}\
 	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ {\
 		if (written == 1)\
 			next;\
@@ -52,6 +55,7 @@ mkman.1: nail.1
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
+		print ".ds UV \\\\%", cn, " ", ENVIRON["_VERSION"];\
 		print ".ds ua \\\\%", ln;\
 		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
 		OFS = " ";\
@@ -60,9 +64,10 @@ mkman.1: nail.1
 	{print}\
 	'
 
-mkrc.rc: nail.rc
+mkrc.rc: nail.rc mk.mk
+	@echo 'Creating default configuration file for $(UAGENT)';\
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< nail.rc > $@ awk 'BEGIN {written = 0}\
+	< ./nail.rc > $(@) awk 'BEGIN {written = 0}\
 	/#--MKRC-START--/, /#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
@@ -78,47 +83,52 @@ mkrc.rc: nail.rc
 	{print}\
 	'
 
-install: all mkman.1 mkrc.rc
+install: mk.mk mkman.1 mkrc.rc
 	test -d "$(DESTDIR)$(BINDIR)" || mkdir -p "$(DESTDIR)$(BINDIR)";\
 	$(INSTALL) -c "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	test -d "$(DESTDIR)$(MANDIR)/man1" ||\
 		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
-	$(INSTALL) -c -m 644 mkman.1 \
+	$(INSTALL) -c -m 644 ./mkman.1 \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	test -d "$(DESTDIR)$(SYSCONFDIR)" ||\
 		mkdir -p "$(DESTDIR)$(SYSCONFDIR)";\
 	test -f "$(DESTDIR)$(SYSCONFRC)" ||\
-		$(INSTALL) -c -m 644 mkrc.rc "$(DESTDIR)$(SYSCONFRC)"
+		$(INSTALL) -c -m 644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)"
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"
 
 clean:
-	rm -f $(OBJ) "$(UAGENT)" mime_types.h mkman.1 mkrc.rc
+	rm -f $(OBJ) "$(UAGENT)" ./mime_types.h ./mkman.1 ./mkrc.rc
 
 distclean: clean
-	rm -f config.* *.mk
+	rm -f ./config.* ./*.mk
 
 _update-version:
 	@[ -z "$(VERSION)" ] && eval VERSION="`git describe --tags`";\
-	trap "rm version.tmp" 0 1 2 15;\
-	printf > version.tmp "#define VERSION \"$${VERSION:-vHuih-Buh}\"\n";\
-	$(CMP) version.tmp version.h >/dev/null 2>&1 && exit;\
-	mv version.tmp version.h; trap -- - 0 1 2 15
+	trap "rm ./version.tmp" 0 1 2 15;\
+	printf > ./version.tmp "#define VERSION \"$${VERSION:-vHuih-Buh}\"\n";\
+	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
+	mv ./version.tmp ./version.h; trap -- - 0 1 2 15
 
 _update-release:
+	[ "`git rev-parse --verify HEAD`" != \
+			"`git rev-parse --verify master`" ] && {\
+		echo >&2 'Not on the [master] branch';\
+		exit 1;\
+	};\
 	echo 'Name of release tag:';\
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
 	read i;\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
-	$(MAKE) -f mk.mk _update-version &&\
+	$(MAKE) -f ./mk.mk _update-version &&\
 	git add version.h &&\
 	git commit -m "Bump $(UAGENT) v$${REL}" &&\
 	git tag -f "v$${REL}" &&\
-	$(MAKE) -f mk.mk _update-version &&\
+	$(MAKE) -f ./mk.mk _update-version &&\
 	git add version.h && git commit --amend &&\
 	git tag -f "v$${REL}" &&\
 	git archive --prefix="$(UAGENT)-$${REL}/" \
@@ -135,10 +145,13 @@ _update-release:
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	echo "-put $(UAGENT)-$${FREL}.tar.gz" | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail &&\
-	echo 'All seems fine' &&\
+	echo 'All seems fine';\
+	echo 'Really send announcement mail?  ENTER continues';\
+	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
 	make WANT_ASSERTS=1 &&\
-	./s-nail -A sdn_sf -s "Announcing S-nail v$${REL}" nail-announce &&\
+	./s-nail -A sdn_sf -s "[ANNOUNCE] Announcing S-nail v$${REL}" \
+		nail-announce &&\
 	cd .. &&\
 	rm -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'

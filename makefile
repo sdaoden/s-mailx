@@ -2,20 +2,27 @@
 #@ Adjustments have to be made in `conf.rc' (or on the command line).
 #@ See the file `INSTALL' if you need help.
 
-.PHONY: all install uninstall clean distclean
+.PHONY: all install uninstall clean distclean config build test
 
-all:
-	@$(_prego) && $(MAKE) -f mk.mk all
-install:
-	@$(_prego) && $(MAKE) -f mk.mk install
-packager-install:
-	@@(_prestop) && $(MAKE) -f mk.mk install
+all: config
+	@$(MAKE) -f mk.mk all
+install: all
+	@$(MAKE) -f mk.mk install
 uninstall:
 	@$(_prestop) && $(MAKE) -f mk.mk uninstall
 clean:
 	@$(_prestop) && $(MAKE) -f mk.mk clean
 distclean:
 	@$(_prestop) && $(MAKE) -f mk.mk distclean
+
+config:
+	@$(_prego)
+build:
+	@$(_prestop) && $(MAKE) -f mk.mk all
+test:
+	@$(_prestop) && sh ./cc-test.sh --check-only
+packager-install:
+	@$(_prestop) && $(MAKE) -f mk.mk install
 
 _update-version:
 	@$(_prego) && $(MAKE) -f mk.mk _update-version

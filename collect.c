@@ -64,6 +64,10 @@ static	sigjmp_buf	collabort;	/* To end collection with error */
 
 static	sigjmp_buf pipejmp;		/* On broken pipe */
 
+/* Handle `~:', `~_' */
+static void	_execute_command(struct header *hp, char *linebuf,
+			size_t linesize);
+
 /* If *interactive* is set and *doecho* is, too, also dump to *stdout* */
 static int	_include_file(FILE *fbuf, char const *name, int *linecount,
 			int *charcount, bool_t doecho);
@@ -80,6 +84,40 @@ static void collstop(int s);
 static void collint(int s);
 static void collhup(int s);
 static int putesc(const char *s, FILE *stream);
+
+static void
+_execute_command(struct header *hp, char *linebuf, size_t linesize)
+{
+	/* The problem arises if there are rfc822 message attachments and the
+	 * user uses `~:' to change the current file.  TODO Unfortunately we
+	 * TODO cannot simply keep a pointer to, or increment a reference count
+	 * TODO of the current `file' (mailbox that is) object, because the
+	 * TODO codebase doesn't deal with that at all; so, until some far
+	 * TODO later time, copy the name of the path, and warn the user if it
+	 * TODO changed; we COULD use the AC_TMPFILE attachment type, i.e.,
+	 * TODO copy the message attachments over to temporary files, but that
+	 * TODO would require more changes so that the user still can recognize
+	 * TODO in `~@' etc. that its a rfc822 message attachment; see below */
+	char *mnbuf = NULL;
+	struct attachment *ap;
+	size_t mnlen;
+
+	/* If the above todo is worked, remove or outsource to attachments.c! */
+	if ((ap = hp->h_attach) != NULL) do
+		if (ap->a_msgno) {
+			mnlen = strlen(mailname) + 1;
+			mnbuf = ac_alloc(mnlen);
+			memcpy(mnbuf, mailname, mnlen);
+		}
+	while ((ap = ap->a_flink) != NULL);
+
+	inhook = 0;
+	execute(linebuf, TRU1, linesize);
+
+	if (mnbuf != NULL && memcmp(mnbuf, mailname, mnlen) != 0)
+		fputs("The mail file has changed, existing rfc822 "
+			"attachments became invalid!\n", stderr);
+}
 
 static int
 _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
@@ -476,7 +514,7 @@ jcont:
 				else
 					break;
 			}
-			printf(tr(56, "Unknown tilde escape.\n"));
+			fputs(tr(56, "Unknown tilde escape.\n"), stderr);
 			break;
 #ifdef HAVE_ASSERTS
 		case 'C':
@@ -489,27 +527,21 @@ jcont:
 			shell(&linebuf[2]);
 			break;
 		case ':':
+			/* FALLTHRU */
 		case '_':
 			/* Escape to command mode, but be nice! */
-			inhook = 0;
-			execute(&linebuf[2], 1, cnt - 2);
+			_execute_command(hp, linebuf + 2, cnt - 2);
 			goto jcont;
 		case '.':
 			/* Simulate end of file on input */
 			goto jout;
 		case 'x':
 			/* Same as 'q', but no dead.letter saving */
-			hadintr++;
-			collint(0);
-			exit(1);
-			/*NOTREACHED*/
+			/* FALLTHRU */
 		case 'q':
-			/*
-			 * Force a quit of sending mail.
-			 * Act like an interrupt happened.
-			 */
-			hadintr++;
-			collint(SIGINT);
+			/* Force a quit, act like an interrupt had happened */
+			++hadintr;
+			collint((c == 'x') ? 0 : SIGINT);
 			exit(1);
 			/*NOTREACHED*/
 		case 'h':
@@ -578,8 +610,8 @@ jcont:
 			while (whitechar(*cp))
 				cp++;
 			if (*cp == '\0') {
-				fprintf(stderr, tr(57,
-					"Interpolate what file?\n"));
+				fputs(tr(57, "Interpolate what file?\n"),
+					stderr);
 				break;
 			}
 			if (*cp == '!') {
@@ -633,7 +665,7 @@ jcont:
 			while (blankchar(*cp))
 				++cp;
 			if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
-				fprintf(stderr, tr(61, "Write what file!?\n"));
+				fputs(tr(61, "Write what file!?\n"), stderr);
 				break;
 			}
 			rewind(collf);
@@ -919,9 +951,8 @@ forward(char *ms, FILE *fp, int f)
 	if (*msgvec == 0) {
 		*msgvec = first(0, MMNORM);
 		if (*msgvec == 0) {
-			printf(catgets(catd, CATSET, 68,
-					"No appropriate messages\n"));
-			return(0);
+			fputs(tr(68, "No appropriate messages\n"), stderr);
+			return 0;
 		}
 		msgvec[1] = 0;
 	}

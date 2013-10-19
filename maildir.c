@@ -102,7 +102,7 @@ jleave:	;
 }
 
 int 
-maildir_setfile(const char *name, int nmail, int isedit)
+maildir_setfile(char const * volatile name, int nmail, int isedit)
 {
 	sighandler_type	volatile saveint;
 	struct cw	cw;

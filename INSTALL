@@ -46,6 +46,23 @@ LDFLAGS, is from within (`conf.rc' or) the make(1) command line:
 
   $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common'
 
+The following make(1) target exists:
+
+. all         Create / check + update configuration, build.
+. install     Create / check + update configuration, build + install.
+. clean       Remove anything which can be rebuild.
+. distclean   Remove anything which can be rebuild or reconfigured.
+. uninstall   Uninstall if configured.
+
+. config      Only create / check + update configuration.
+. build       Only build using the existing configuration.
+. test        Run ./cc-test.sh in --check-only mode on built binary.
+. packager-install
+              Only install using the build of the existing
+              configuration.  It is possible to overwrite DESTDIR= when
+              using this target (a following `uninstall' won't know
+              about that overwritten value, however).
+
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable `C_INCLUDE_PATH'
@@ -76,29 +93,30 @@ S-nail(1) is known to be driven without errors by the `./cc-test.sh'
 shell script, with the extended CFLAGS and WARN variables uncommented in
 the Makefile, on the following operating systems:
 
-o Mac OS X Snow Leopard (x86_64).
-  gcc(1) and clang(1).
+. Mac OS X Snow Leopard (x86_64).
+  gcc-mp-4.8 (MacPorts gcc48 4.8.1_3) 4.8.1.
+  Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM 2.9svn).
 
-o FreeBSD 10.0 (amd64; 2013-06-23).
+. FreeBSD 10.0 (amd64; 2013-06-23).
   clang version 3.3 (tags/RELEASE_33/final 183502) 20130610.
 
-o NetBSD 6.99.23 (amd64).
+. NetBSD 6.99.23 (amd64).
   gcc (NetBSD nb1 20120916) 4.5.4 (forgot to look: ID as of 6.99.19).
 
-o DragonFly BSD v3.4.1-RELEASE.
+. DragonFly BSD v3.4.1-RELEASE.
   gcc 4.7.2 [DragonFly] Release/2012-09-20.
 
-o OpenBSD 5.4 (5.4 GENERIC#36 i386).
+. OpenBSD 5.4 (5.4 GENERIC#36 i386).
   gcc (GCC) 4.2.1 20070719.
 
-o CRUX 3.0 (mLinux 3.6.11).
+. CRUX 3.0 (mLinux 3.6.11).
   gcc (CRUX-x86_64-multilib) 4.7.2.
 
-o Slackware 14 3.2.29-smp (i386).
+. Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
   clang version 3.0 (tags/RELEASE_30/final).
 
-o UnixWare 7.1.4.
+. UnixWare 7.1.4.
   You need to pass "CFLAGS='-v -O'" to the make(1) run.
   And because the UnixWare make(1) doesn't pass those flags through to
   recursively invoked make(1)s (and because the S-nail build system
