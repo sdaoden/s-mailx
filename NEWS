@@ -1,6 +1,58 @@
 S - n a i l  N e w s
 ====================
 
+v14.4.5, 2013-10-19
+-------------------
+
+Many thanks: Gaetan Bisson, Stephen Isard, Jérémie Courrèges-Anglas,
+William Yodlowsky, and Adam Sjøgren from GMANE.org!
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The packager-install: target has been fixed. [a8c1b0b]
+  (Gaetan Bisson and William Yodlowsky)
+
+- As suggested by Gaetan Bisson the several build system tasks are now
+  individually addressable, i.e., 'make [OPTIONS] config', 'make build',
+  'make test', 'make packager-install'); nothing changes unless you want
+  to, in which case: please see INSTALL. [4d3b799]
+
+  The new target 'test' will call cc-test.sh with its new --check-only
+  option which will only perform the (too few) function tests on the
+  ready binary.
+  And cc-test.sh will no longer create output files, but simply echoes
+  to STDOUT and STDERR. [629e1ee, 786f219]
+  (Gaetan Bisson)
+
+- The default configuration file now sets *bsdannounce* and *bsdflags*,
+  all in one line, as suggested by William Yodlowsky.
+  (If *header* is disabled, *bsdannounce* is ignored, but *header* must
+  be enabled by default according to POSIX, and *bsdannounce* is just
+  the same as *header*, but for the folder-switched event.  Thus setting
+  *bsdannounce* is the more sane default, imho.) [6161f10]
+  (William Yodlowsky)
+
+- Announcement messages are now tagged '[ANNOUNCE]'. [26e1b35]
+  (Tagging suggested by Stephen Isard and Jérémie Courrèges-Anglas)
+
+- The manual NAME now includes the version (but it's somewhat ugly).
+  [8adcca4]
+
+ChangeLog
+^^^^^^^^^
+
+- When switching folders when in compose mode, message attachments
+  become invalid.  For v14.4.5, at least warn when this happens.
+  [47eb1ab]
+
+- When reading multipart/alternative messages which do not contain
+  a text/plain part, the (most likely HTML) part is not displayed (even
+  if S-nail is configured to display HTML).  The reason is a bug i've
+  introduced with [0d43a999] (Change "Part X:" display message..,
+  2012-12-20).  (Note that the committed fix i've posted to the list was
+  not correct either and has been fixed itself.) [225c02b, ecfa149]
+
 v14.4.4, 2013-10-03
 -------------------
 
@@ -693,7 +745,7 @@ ChangeLog
   part of a complete message via the -t command line option will loose
   the missing final newline (i.e., it'll gain one).
   This problem does *not* occur when *only* the message body comes in
-  via STDIN, as in 'cat FILE | s-nail', but *only* when the -t option is
+  via STDIN, as in 'cat FILE | s-nail', but *only* when the -t option is
   used.
   (sendout.c: does no(t/ longer) know about CTE internals!, 2013-02-09)
 
