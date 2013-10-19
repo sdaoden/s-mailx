@@ -1,4 +1,5 @@
 #!/bin/sh -
+#@ Usage: ./cc-test.sh [--check-only]
 #@ XXX Add tests
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
@@ -14,15 +15,26 @@ MAKE=make
 NAIL=./s-nail
 CONF=./conf.rc
 
-OUT=./.cc-test.out
-ERR=./.cc-test.err
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 ESTAT=0
 
-rm -f "${OUT}" "${ERR}" "${BODY}" "${MBOX}" 2>> "${ERR}"
+CHECK_ONLY=
+[ ${#} -gt 0 ] && {
+   [ "${1}" = --check-only ] || {
+      echo >&2 "Usage: ./cc-test.sh [--check-only]"
+      exit 1
+   }
+   [ -x "${NAIL}" ] || {
+      echo >&2 "--check-only mode, but ${NAIL} is not available!  Bailing out."
+      exit 1
+   }
+   CHECK_ONLY=1
+}
 
-# Test all configs
+rm -f "${BODY}" "${MBOX}"
+
+# Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
    < ${CONF} awk '
    BEGIN {i = 0}
@@ -50,7 +62,7 @@ cc_all_configs() {
       printf "\n\n##########\n$c\n" >&2
       sh -c "${MAKE} ${c}"
       ${MAKE} distclean
-   done >> "${OUT}" 2>> "${ERR}"
+   done
 }
 
 # Test a UTF-8 mail as a whole via -t, and in pieces (without -t ;)
@@ -60,14 +72,15 @@ cksum_test() {
          -e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
          cksum`" != "${s}" ] && {
       ESTAT=1
-      echo "Checksum mismatch test ${tno}: ${f}" 2>> "${ERR}"
+      echo >&2 "Checksum mismatch test ${tno}: ${f}"
    }
 }
 
 test_mail() {
-   printf "\n\n########################################\n\n" >> "${OUT}"
-   printf "\n\n########################################\n\n" >> "${ERR}"
-   "${MAKE}" >> "${OUT}" 2>> "${ERR}"
+   [ -n "${CHECK_ONLY}" ] || {
+      printf "\n\n## test_mail() #########################\n\n"
+      "${MAKE}"
+   }
 
    # Two tests for MIME-CTE and (a bit) content classification
    rm -f "${MBOX}"
@@ -161,13 +174,12 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
 'ggggggggggggggggggggggggggggggggggg'\
 'gggggggggggggggg'
 
-cc_all_configs
+[ -n "${CHECK_ONLY}" ] || cc_all_configs
 test_mail
 
-if [ ${ESTAT} -eq 0 ]; then
-   echo 'Everything seems to be fine around here' >> "${OUT}" 2>> "${ERR}"
-   "${MAKE}" distclean >> "${OUT}" 2>> "${ERR}"
-   rm -f "${BODY}" "${MBOX}" >> "${OUT}" 2>> "${ERR}"
-fi
+[ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
+[ -n "${CHECK_ONLY}" ] || "${MAKE}" distclean
+rm -f "${BODY}" "${MBOX}"
+
 exit ${ESTAT}
 # vim:set fenc=utf8:s-it-mode
