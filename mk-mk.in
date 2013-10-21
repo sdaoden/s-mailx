@@ -23,10 +23,10 @@ all: echoes $(UAGENT)
 	@echo "$(UAGENT): ready"
 echoes:
 	@echo "Starting compilation";\
-		echo "CC: $(CC) $(CFLAGS) $(WARN)";\
-		echo "[INCS: $(INCLUDES)]";\
-		echo "[LDFLAGS: $(LDFLAGS)]";\
-		echo "[LIBS: $(LIBS)]"
+	echo "CC: $(CC) $(CFLAGS) $(WARN)";\
+	echo "INCLUDES: $(INCLUDES)";\
+	echo "LDFLAGS: $(LDFLAGS)";\
+	echo "LIBS: $(LIBS)"
 $(UAGENT): $(OBJ)
 	@$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $(@)
 
@@ -37,7 +37,12 @@ md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
 mime.o: mime_types.h
 
 mime_types.h: mime.types
+	@echo 'Generating $(@)';\
 	< ./mime.types > $(@) sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
+
+test:
+	@echo 'Running test, please wait';\
+	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
 mkman.1: nail.1 mk.mk
 	@echo 'Creating manual for $(UAGENT)';\
@@ -85,7 +90,7 @@ mkrc.rc: nail.rc mk.mk
 
 install: mk.mk mkman.1 mkrc.rc
 	test -d "$(DESTDIR)$(BINDIR)" || mkdir -p "$(DESTDIR)$(BINDIR)";\
-	$(INSTALL) -c "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	$(INSTALL) -c $(UAGENT) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	test -d "$(DESTDIR)$(MANDIR)/man1" ||\
 		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
@@ -101,7 +106,7 @@ uninstall:
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"
 
 clean:
-	rm -f $(OBJ) "$(UAGENT)" ./mime_types.h ./mkman.1 ./mkrc.rc
+	rm -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
 
 distclean: clean
 	rm -f ./config.* ./*.mk

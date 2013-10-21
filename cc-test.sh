@@ -19,16 +19,17 @@ BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 ESTAT=0
 
+usage() {
+      echo >&2 "Usage: ./cc-test.sh [--check-only [nail-binary]]"
+      exit 1
+}
+
 CHECK_ONLY=
 [ ${#} -gt 0 ] && {
-   [ "${1}" = --check-only ] || {
-      echo >&2 "Usage: ./cc-test.sh [--check-only]"
-      exit 1
-   }
-   [ -x "${NAIL}" ] || {
-      echo >&2 "--check-only mode, but ${NAIL} is not available!  Bailing out."
-      exit 1
-   }
+   [ "${1}" = --check-only ] || usage
+   [ ${#} -gt 2 ] && usage
+   [ ${#} -eq 2 ] && NAIL="${2}"
+   [ -x "${NAIL}" ] || usage
    CHECK_ONLY=1
 }
 

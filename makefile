@@ -20,7 +20,7 @@ config:
 build:
 	@$(_prestop) && $(MAKE) -f mk.mk all
 test:
-	@$(_prestop) && sh ./cc-test.sh --check-only
+	@$(_prestop) && $(MAKE) -f mk.mk test
 packager-install:
 	@$(_prestop) && $(MAKE) -f mk.mk install
 

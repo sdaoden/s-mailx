@@ -176,7 +176,8 @@ INSTALL=install
 SID=s-
 
 # To ease the life of forkers and packagers one may even adjust the "nail"
-# of nail(1).  Note that $SID$NAIL must be longer than two characters
+# of nail(1).  Note that $SID$NAIL must be longer than two characters, and may
+# not contain any whitespace
 NAIL=nail
 
 # The location of the exemplary resource template.
