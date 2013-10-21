@@ -120,9 +120,9 @@ _startup(void)
 	 * start the SIGCHLD catcher, and so forth */
 	safe_signal(SIGCHLD, sigchild);
 
-	if (isatty(0))
+	if (isatty(STDIN_FILENO)) /* TODO should be isatty(0) && isatty(2)?? */
 		options |= OPT_TTYIN | OPT_INTERACTIVE;
-	if (isatty(1))
+	if (isatty(STDOUT_FILENO))
 		options |= OPT_TTYOUT;
 	if (IS_TTY_SESSION())
 		safe_signal(SIGPIPE, dflpipe = SIG_IGN);
@@ -227,16 +227,16 @@ _setscreensize(int is_sighdl)
 	}
 
 #ifdef TIOCGWINSZ
-	if (ioctl(1, TIOCGWINSZ, &ws) < 0)
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
 		ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGSIZE
-	if (ioctl(1, TIOCGSIZE, &ws) < 0)
+	if (ioctl(STDOUT_FILENO, TIOCGSIZE, &ws) < 0)
 		ts.ts_lines = ts.ts_cols = 0;
 #endif
 
 	if (scrnheight == 0) {
-		speed_t ospeed = (tcgetattr(1, &tbuf) < 0) ? B9600 :
-				cfgetospeed(&tbuf);
+		speed_t ospeed = ((tcgetattr(STDOUT_FILENO, &tbuf) < 0)
+				 ? B9600 : cfgetospeed(&tbuf));
 
 		if (ospeed < B1200)
 			scrnheight = 9;
@@ -275,7 +275,7 @@ _setscreensize(int is_sighdl)
 
 jleave:
 #ifdef SIGWINCH
-	if (is_sighdl && (options & OPT_INTERACTIVE))
+	if (is_sighdl && IS_TTY_SESSION())
 		tty_signal(SIGWINCH);
 #endif
 }
