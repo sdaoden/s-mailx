@@ -155,12 +155,12 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
    fflush(stdout);
 
    if (options & OPT_TTYIN) {
-      tcgetattr(0, &termios_state.ts_tios);
+      tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
       termios_state.ts_needs_reset = TRU1;
       tios.c_iflag &= ~(ISTRIP);
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-      tcsetattr(0, TCSAFLUSH, &tios);
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    }
 
    if (readline_restart(stdin, &termios_state.ts_linebuf,
@@ -544,6 +544,8 @@ static bool_t        _ncl_hist_load;
 static void    _ncl_sigs_up(void);
 static void    _ncl_sigs_down(void);
 
+static void    _ncl_term_mode(bool_t raw);
+
 static void    _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS);
 static void    _ncl_bs_eof_dvup(struct cell *cap, size_t i);
 static ssize_t _ncl_wboundary(struct line *l, ssize_t dir);
@@ -621,6 +623,27 @@ _ncl_sigs_down(void)
       st = _ncl_oint.shdl, _ncl_oint.sint = -1;
       safe_signal(SIGINT, st);
    }
+}
+
+static void
+_ncl_term_mode(bool_t raw)
+{
+   struct termios *tiosp = &_ncl_tios.told;
+
+   if (!raw)
+      goto jleave;
+
+   /* Always requery the attributes, in case we've been moved from background
+    * to foreground or however else in between sessions */
+   tcgetattr(STDIN_FILENO, tiosp);
+   memcpy(&_ncl_tios.tnew, tiosp, sizeof *tiosp);
+   tiosp = &_ncl_tios.tnew;
+   tiosp->c_cc[VMIN] = 1;
+   tiosp->c_cc[VTIME] = 0;
+   tiosp->c_iflag &= ~(ISTRIP);
+   tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
+jleave:
+   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
 }
 
 static void
@@ -1340,13 +1363,6 @@ tty_init(void)
    _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
    _ncl_ottou.sint = -1;
 
-   tcgetattr(STDIN_FILENO, &_ncl_tios.told);
-   memcpy(&_ncl_tios.tnew, &_ncl_tios.told, sizeof _ncl_tios.tnew);
-   _ncl_tios.tnew.c_cc[VMIN] = 1;
-   _ncl_tios.tnew.c_cc[VTIME] = 0;
-   _ncl_tios.tnew.c_iflag &= ~(ISTRIP);
-   _ncl_tios.tnew.c_lflag &= ~(ECHO | ICANON | IEXTEN);
-
    _CL_HISTSIZE(hs);
    _ncl_hist_size_max = hs;
    if (hs == 0)
@@ -1432,7 +1448,7 @@ tty_signal(int sig)
       /* We don't deal with SIGWINCH, yet get called from main.c */
       break;
    default:
-      tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.told);
+      _ncl_term_mode(FAL0);
       _ncl_sigs_down();
       sigemptyset(&nset);
       sigaddset(&nset, sig);
@@ -1441,7 +1457,7 @@ tty_signal(int sig)
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
       _ncl_sigs_up();
-      tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.tnew);
+      _ncl_term_mode(TRU1);
       break;
    }
 }
@@ -1455,9 +1471,9 @@ int
    /* Of course we have races here, but they cannot be avoided on POSIX
     * (except by even *more* actions) */
    _ncl_sigs_up();
-   tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.tnew);
+   _ncl_term_mode(TRU1);
    nn = _ncl_readline(prompt, linebuf, linesize, n SMALLOC_DEBUG_ARGSCALL);
-   tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.told);
+   _ncl_term_mode(FAL0);
    _ncl_sigs_down();
 
    return (int)nn;
