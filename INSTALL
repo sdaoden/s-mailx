@@ -42,23 +42,25 @@ binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
 
 Note that, due to the way the S-nail(1) build system is designed, the
 only safe way to overwrite compiler and linker flags, i.e., CFLAGS and
-LDFLAGS, is from within (`conf.rc' or) the make(1) command line:
+LDFLAGS, is from within the make(1) command line when running the target
+that performs the build:
 
-  $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common'
+  $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common' [all|install|build]
 
-The following make(1) target exists:
+The following make(1) target exists, and note that you can use
+a VERBOSE=1 option to gain more (or a different kind of) verbosity:
 
-. all         Create / check + update configuration, build.
-. install     Create / check + update configuration, build + install.
+. all         Create / check and update configuration, build.
+. install     Create / check and update configuration, build, install.
 . clean       Remove anything which can be rebuild.
 . distclean   Remove anything which can be rebuild or reconfigured.
-. uninstall   Uninstall if configured.
+. uninstall   Uninstall (if configured).
 
-. config      Only create / check + update configuration.
-. build       Only build using the existing configuration.
-. test        Run ./cc-test.sh in --check-only mode on built binary.
+. config      Only create or check and update the configuration.
+. build       Only build (using the existing configuration).
+. test        Run ./cc-test.sh in --check-only mode on the built binary.
 . packager-install
-              Only install using the build of the existing
+              Only install using the built files of the existing
               configuration.  It is possible to overwrite DESTDIR= when
               using this target (a following `uninstall' won't know
               about that overwritten value, however).

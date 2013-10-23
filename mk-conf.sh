@@ -1,6 +1,9 @@
 #!/bin/sh -
 #@ Please see `INSTALL' and `conf.rc' instead.
 
+LC_ALL=C
+export LC_ALL
+
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
    case ${CONFIG} in
