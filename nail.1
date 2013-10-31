@@ -3414,8 +3414,13 @@ Overrides
 for the specified account.
 .It Va ssl-method
 \*(OP Selects a SSL/TLS protocol version;
-valid values are `ssl2', `ssl3', and `tls1'.
-If unset, the method is selected automatically, if possible.
+\*(UA accepts the values `ssl2', `ssl3', `tls1', `tls1.1' and `tls1.2',
+though it depends on the OpenSSL library that is found on the system
+what is truly supported.
+If unset, the method is selected automatically, if possible
+(this process usually tries to use the most secure method possible).
+This approach is also taken if the chosen value is not supported by the
+OpenSSL library, in which case an error message will be printed first.
 .It Va ssl-method-user@host
 Overrides
 .Va ssl-method

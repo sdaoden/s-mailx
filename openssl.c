@@ -189,8 +189,8 @@ ssl_verify_cb(int success, X509_STORE_CTX *store)
 static const SSL_METHOD *
 ssl_select_method(const char *uhp)
 {
-	const SSL_METHOD *method;
-	char	*cp;
+	SSL_METHOD const *method = NULL;
+	char *cp;
 
 	cp = ssl_method_string(uhp);
 	if (cp != NULL) {
@@ -199,16 +199,31 @@ ssl_select_method(const char *uhp)
 			method = SSLv2_client_method();
 		else
 #endif
+#ifndef OPENSSL_NO_SSL3
 		if (strcmp(cp, "ssl3") == 0)
 			method = SSLv3_client_method();
-		else if (strcmp(cp, "tls1") == 0)
+		else
+#endif
+#ifndef OPENSSL_NO_TLS1
+		if (strcmp(cp, "tls1") == 0)
 			method = TLSv1_client_method();
-		else {
+		else
+# ifdef TLS1_1_VERSION
+		if (strcmp(cp, "tls1.1") == 0)
+			method = TLSv1_1_client_method();
+		else
+# endif
+# ifdef TLS1_2_VERSION
+		if (strcmp(cp, "tls1.2") == 0)
+			method = TLSv1_2_client_method();
+		else
+# endif
+#endif
 			fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"),
 				cp);
-			method = SSLv23_client_method();
-		}
-	} else
+	}
+
+	if (method == NULL)
 		method = SSLv23_client_method();
 	return method;
 }
