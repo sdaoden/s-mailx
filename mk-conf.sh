@@ -736,9 +736,10 @@ else
 fi # wantfeat IDNA
 
 if wantfeat EDITLINE_READLINE; then
-   link_check readline 'for readline(3) compatible editline(3)' \
-      '#define HAVE_LINE_EDITOR
-      #define HAVE_READLINE' '-lreadline -ltermcap' << \!
+   __edrdlib() {
+      link_check readline "for readline(3) [editline(3)] (${1})" \
+         '#define HAVE_LINE_EDITOR
+         #define HAVE_READLINE' "${1}" << \!
 #include <stdio.h>
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -763,12 +764,16 @@ int main(void)
    return 0;
 }
 !
+   }
+   __edrdlib -lreadline ||
+      __edrdlib '-lreadline -ltermcap'
 fi
 
 if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
-   link_check editline 'for editline(3)' \
-      '#define HAVE_LINE_EDITOR
-      #define HAVE_EDITLINE' '-ledit' << \!
+   __edlib() {
+      link_check editline "for editline(3) (${1})" \
+         '#define HAVE_LINE_EDITOR
+         #define HAVE_EDITLINE' "${1}" << \!
 #include <histedit.h>
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)
@@ -789,6 +794,9 @@ int main(void)
    return 0;
 }
 !
+   }
+   __edlib -ledit ||
+      __edlib '-ledit -ltermcap'
 fi
 
 if wantfeat LINE_EDITOR && [ -z "${have_editline}" ] &&\
