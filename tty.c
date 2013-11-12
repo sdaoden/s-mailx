@@ -1232,11 +1232,9 @@ jrestart:
       case 'A' ^ 0x40: /* cursor home */
          _ncl_khome(&l, TRU1);
          break;
-      case 'B' ^ 0x40: /* ("history backward") */
-         if ((len = _ncl_khist(&l, TRU1)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
+      case 'B' ^ 0x40: /* backward character */
+         _ncl_kleft(&l);
+         break;
       /* 'C': interrupt (CTRL-C) */
       case 'D' ^ 0x40: /* delete char forward if any, else EOF */
          if ((rv = _ncl_keof(&l)) < 0)
@@ -1245,13 +1243,9 @@ jrestart:
       case 'E' ^ 0x40: /* end of line */
          _ncl_kend(&l);
          break;
-      case 'F' ^ 0x40: /* history forward */
-         if (l.hist == NULL)
-            goto jbell;
-         if ((len = _ncl_khist(&l, FAL0)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
+      case 'F' ^ 0x40: /* forward character */
+         _ncl_kright(&l);
+         break;
       /* 'G' below */
       case 'H' ^ 0x40: /* backspace */
       case '\177':
@@ -1286,13 +1280,19 @@ jreset:
          _ncl_krefresh(&l);
          break;
       /* 'M': CR (\r) */
-      /* 'N' */
-      case 'O' ^ 0x40: /* cursor left */
-         _ncl_kleft(&l);
-         break;
-      case 'P' ^ 0x40: /* cursor right */
-         _ncl_kright(&l);
-         break;
+      case 'N' ^ 0x40: /* history next */
+         if (l.hist == NULL)
+            goto jbell;
+         if ((len = _ncl_khist(&l, FAL0)) > 0)
+            goto jrestart;
+         wc = 'G' ^ 0x40;
+         goto jreset;
+      /* 'O' */
+      case 'P' ^ 0x40: /* history previous */
+         if ((len = _ncl_khist(&l, TRU1)) > 0)
+            goto jrestart;
+         wc = 'G' ^ 0x40;
+         goto jreset;
       /* 'Q': no code */
       case 'R' ^ 0x40: /* reverse history search */
          if ((len = _ncl_krhist(&l)) > 0)

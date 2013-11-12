@@ -803,7 +803,7 @@ while adding an A key on top of it'':
 .It ^A
 Go to the start of the line.
 .It ^B
-History backward step.
+Move the cursor backward one character.
 .It ^D
 Forward delete the character under the cursor;
 quits \*(UA if used on the empty line, unless the
@@ -812,7 +812,7 @@ option is set.
 .It ^E
 Go to the end of the line.
 .It ^F
-History forward step.
+Move the cursor forward one character.
 .It ^G
 Cancel current operation, full reset.
 If there is an active history search or tabulator expansion then this
@@ -836,10 +836,10 @@ The same as `RETURN': complete this line of input.
 Delete all characters from the cursor to the end of the line.
 .It ^L
 Repaint the line.
-.It ^O
-Move the cursor left one character.
+.It ^N
+Go to the next history entry.
 .It ^P
-Move the cursor right one character.
+Go to the previous history entry.
 .It ^R
 Complete the current line from (the remaining older) history entries.
 .It ^U
