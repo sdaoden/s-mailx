@@ -3,6 +3,7 @@
 # You are on your own if you turn on fancy compiler features.
 STD_CFLAGS = -O1
 EXT_CFLAGS = -std=c89 -O2 -g \
+	-fno-unwind-tables -fno-asynchronous-unwind-tables \
 	-fstrict-aliasing \
 	-fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 \
 	-Wall -Wextra -pedantic \
