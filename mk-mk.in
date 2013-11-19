@@ -157,11 +157,20 @@ distclean: clean
 	rm -f ./config.* ./*.mk
 
 _update-version:
-	@[ -z "$(VERSION)" ] && eval VERSION="`git describe --tags`";\
+	@if [ -z "$(VERSION)" ]; then \
+		eval VERSION="`(git describe --tags) 2>/dev/null`";\
+		if [ -z "$${VERSION}" ]; then \
+			VERSION="`sed -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
+				version.h`";\
+			echo "$${VERSION}" | grep -q -F dirty ||\
+				VERSION="$${VERSION}-dirty";\
+		fi;\
+	fi;\
 	trap "rm ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define VERSION \"$${VERSION:-vHuih-Buh}\"\n";\
+	printf > ./version.tmp "#define VERSION \"$${VERSION}\"\n";\
 	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
-	mv ./version.tmp ./version.h; trap -- - 0 1 2 15
+	mv ./version.tmp ./version.h;\
+	trap - 0 1 2 15
 
 _update-release:
 	[ "`git rev-parse --verify HEAD`" != \
