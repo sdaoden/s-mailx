@@ -26,12 +26,12 @@ EXT_CFLAGS = -std=c89 -O2 -g \
 all: _all_echoes $(UAGENT)
 _all_echoes:
 	@echo 'Building..';\
-	[ -n "$(VERBOSE)" ] || {\
+	if [ -z "$(VERBOSE)" ]; then \
 		echo '. CC      : $(CC) $(CFLAGS) $(WARN)';\
 		echo '. INCLUDES: $(INCLUDES)';\
 		echo '. LDFLAGS : $(LDFLAGS)';\
 		echo '. LIBS    : $(LIBS)';\
-	}
+	fi
 $(UAGENT): $(OBJ)
 	@if [ -z "$(VERBOSE)" ]; then echo '  LD $(@)';\
 	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
@@ -97,14 +97,15 @@ mkrc.rc: nail.rc mk.mk
 	}\
 	{print}\
 	'
+
 _install_echoes:
 	@echo 'Installing..'
 install: _install_echoes mk.mk mkman.1 mkrc.rc
-	@test -d "$(DESTDIR)$(BINDIR)" || {\
+	@if [ ! -d "$(DESTDIR)$(BINDIR)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ mkdir -p "$(DESTDIR)$(BINDIR)"';\
 		mkdir -p "$(DESTDIR)$(BINDIR)";\
-	};\
+	fi;\
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(INSTALL) -c $(UAGENT) \
 			"$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
@@ -112,27 +113,27 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
 	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	test -d "$(DESTDIR)$(MANDIR)/man1" || {\
+	if [ ! -d "$(DESTDIR)$(MANDIR)/man1" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ mkdir -p "$(DESTDIR)$(MANDIR)/man1"';\
 		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
-	};\
+	fi;\
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(INSTALL) -c -m 644 ./mkman.1 \
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
 	$(INSTALL) -c -m 644 ./mkman.1 \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
-	test -d "$(DESTDIR)$(SYSCONFDIR)" || {\
+	if [ ! -d "$(DESTDIR)$(SYSCONFDIR)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ mkdir -p "$(DESTDIR)$(SYSCONFDIR)"';\
 		mkdir -p "$(DESTDIR)$(SYSCONFDIR)";\
-	};\
-	test -f "$(DESTDIR)$(SYSCONFRC)" || {\
+	fi;\
+	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ $(INSTALL) -c -m 644 ./mkrc.rc \
 				"$(DESTDIR)$(SYSCONFRC)"';\
 		$(INSTALL) -c -m 644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
-	}
+	fi
 
 uninstall:
 	@echo 'Uninstalling..';\
@@ -173,11 +174,11 @@ _update-version:
 	trap - 0 1 2 15
 
 _update-release:
-	[ "`git rev-parse --verify HEAD`" != \
-			"`git rev-parse --verify master`" ] && {\
+	if [ "`git rev-parse --verify HEAD`" != \
+			"`git rev-parse --verify master`" ]; then \
 		echo >&2 'Not on the [master] branch';\
 		exit 1;\
-	};\
+	fi;\
 	echo 'Name of release tag:';\
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
