@@ -1723,8 +1723,9 @@ imap_getheaders(int volatile bot, int topp)
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, imapcatch);
 		for (i = bot; i <= topp; i += chunk) {
+			int j = i + chunk - 1;
 			/*ok = */imap_fetchheaders(&mb, message, i,
-					i+chunk-1 < topp ? i+chunk-1 : topp);
+					j < topp ? j : topp);
 			if (interrupts)
 				onintr(0);
 		}
@@ -1899,7 +1900,7 @@ bypass:
 	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
-		else if (held > 1)
+		else
 			printf(tr(156, "Held %d messages in %s\n"), held,
 				displayname);
 	}

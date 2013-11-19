@@ -608,8 +608,8 @@ clob1(int n)
 
 	if (n <= 0)
 		return;
-	for (cp = buf; cp < &buf[512]; *cp++ = (char)0xFF)
-		;
+	for (cp = buf; PTRCMP(cp, <, buf + 512); ++cp)
+		*cp = (char)0xFF;
 	clob1(n - 1);
 }
 

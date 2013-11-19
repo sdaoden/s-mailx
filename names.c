@@ -749,11 +749,12 @@ jleave:
 struct name *
 outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 {
-	int pipecnt, xcnt, *fda, i;
+	ui32_t pipecnt, xcnt, i;
+	int *fda;
 	char const *sh;
 	struct name *np;
 	FILE *fin = NULL, *fout;
-	(void)hp;
+	UNUSED(hp);
 
 	/*
 	 * Look through all recipients and do a quick return if no file or pipe
@@ -843,7 +844,7 @@ outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 			while (i = c, (c = getc(fo)) != EOF)
 				putc(c, fout);
 			rewind(fo);
-			if (i != '\n')
+			if ((int)i != '\n')
 				putc('\n', fout);
 			putc('\n', fout);
 			fflush(fout);
@@ -894,7 +895,7 @@ jcantfout:			*senderror = TRU1;
 			}
 			free_child(pid);
 		} else {
-			char *fname = file_expand(np->n_name);
+			char c, *fname = file_expand(np->n_name);
 			if (fname == NULL) {
 				*senderror = TRU1;
 				goto jcant;
@@ -907,8 +908,8 @@ jcantfout:			*senderror = TRU1;
 				goto jcant;
 			}
 			rewind(fin);
-			while ((i = getc(fin)) != EOF)
-				putc(i, fout);
+			while ((c = getc(fin)) != EOF)
+				putc(c, fout);
 			if (ferror(fout)) {
 				fprintf(stderr, tr(282,
 					"Message writing to <%s> failed: %s\n"),
@@ -937,7 +938,7 @@ jleave:
 		close(image);
 		image = -1;
 	}
-	return (names);
+	return names;
 
 jdelall:
 	while (np != NULL) {

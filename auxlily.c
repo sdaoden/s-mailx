@@ -413,7 +413,7 @@ getprompt(void)
 	} else {
 		char *cp;
 
-		for (cp = buf; cp < buf + sizeof(buf) - 1; ++cp) {
+		for (cp = buf; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
 			char const *a;
 			size_t l;
 			int c = expand_shell_escape(&ccp, TRU1);
@@ -428,7 +428,7 @@ getprompt(void)
 			if (a == NULL)
 				a = "";
 			l = strlen(a);
-			if (cp + l >= buf + sizeof(buf) - 1)
+			if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
 				*cp++ = '?';
 			else {
 				memcpy(cp, a, l);

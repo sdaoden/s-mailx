@@ -896,7 +896,7 @@ pop3_update(struct mailbox *mp)
 	} else if (held && !edit) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
-		else if (held > 1)
+		else
 			printf(tr(156, "Held %d messages in %s\n"), held,
 				displayname);
 	}

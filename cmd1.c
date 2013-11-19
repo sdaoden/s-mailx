@@ -97,14 +97,14 @@ get_pager(void)
 int 
 headers(void *v)
 {
-	int *msgvec = v;
-	int g, k, n, mesg, flag = 0, lastg = 1;
+	ui32_t flag;
+	int *msgvec = v, g, k, n, mesg, size, lastg = 1;
 	struct message *mp, *mq, *lastmq = NULL;
-	int size;
 	enum mflag	fl = MNEW|MFLAGGED;
 
 	time_current_update(&time_current, FAL0);
 
+	flag = 0;
 	size = screensize();
 	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
 	if (screen < 0)
@@ -114,6 +114,7 @@ headers(void *v)
 		k = msgCount - size;
 	if (k < 0)
 		k = 0;
+
 	if (mb.mb_threaded == 0) {
 		g = 0;
 		mq = &message[0];
@@ -156,7 +157,7 @@ headers(void *v)
 			mesg++;
 			if (!visible(mp))
 				continue;
-			if (flag++ >= size)
+			if (UICMP(32, flag++, >=, size))
 				break;
 			printhead(mesg, stdout, 0);
 		}
@@ -197,7 +198,7 @@ headers(void *v)
 		while (mp) {
 			if (visible(mp) && (mp->m_collapsed <= 0 ||
 					 mp == &message[n-1])) {
-				if (flag++ >= size)
+				if (UICMP(32, flag++, >=, size))
 					break;
 				printhead(mp - &message[0] + 1, stdout,
 						mb.mb_threaded);
@@ -205,11 +206,9 @@ headers(void *v)
 			mp = next_in_thread(mp);
 		}
 	}
-	if (flag == 0) {
+	if (!flag)
 		printf(tr(6, "No more mail.\n"));
-		return(1);
-	}
-	return(0);
+	return !flag;
 }
 
 /*
@@ -867,7 +866,7 @@ printhead(int mesg, FILE *f, int threaded)
 	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-$" : "NUROSPMFAT+-$");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
-		if (sz > (int)sizeof attrlist - 1)
+		if (UICMP(32, sz, >, sizeof attrlist - 1))
 			sz = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, sz);
 	}
@@ -1212,7 +1211,8 @@ top(void *v)
 			break;
 		}
 		c = mp->m_lines;
-		for (lines = 0; lines < c && lines <= topl; lines++) {
+		for (lines = 0; lines < c && UICMP(32, lines, <=, topl);
+				++lines) {
 			if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 				break;
 			puts(linebuf);

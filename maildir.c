@@ -436,7 +436,7 @@ bypass:
 	} else if (held && !edit && mb.mb_perm != 0) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
-		else if (held > 1)
+		else
 			printf(tr(156, "Held %d messages in %s\n"), held,
 				displayname);
 	}
@@ -483,7 +483,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 			cp = nodename(0);
 			n = size = 0;
 			do {
-				if (n < size + 8)
+				if (UICMP(32, n, <, size + 8))
 					node = srealloc(node, size += 20);
 				switch (*cp) {
 				case '/':
@@ -785,7 +785,7 @@ subdir_remove(const char *name, const char *sub)
 		if (dp->d_name[0] == '.')
 			continue;
 		n = strlen(dp->d_name);
-		if (pathend + n + 1 > pathsize)
+		if (UICMP(32, pathend + n + 1, >, pathsize))
 			path = srealloc(path, pathsize = pathend + n + 30);
 		memcpy(path + pathend, dp->d_name, n + 1);
 		if (unlink(path) < 0) {
