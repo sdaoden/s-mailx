@@ -80,20 +80,126 @@
 #endif
 
 /*
- * Compiler specifics (so that it's done)
+ * CC support, generic macros etc.
  */
 
+#undef __PREREQ
 #if defined __GNUC__ || defined __clang__
 # define __EXTEN	__extension__
+# ifdef __GNUC__
+#  define __PREREQ(X,Y)	\
+	(__GNUC__ > (X) || (__GNUC__ == (X) && __GNUC_MINOR__ >= (Y)))
+# else
+#  define __PREREQ(X,Y)	1
+# endif
 #else
 # define __EXTEN
+# define __PREREQ(X,Y)	0
+#endif
+
+/* Pointer to size_t */
+#define PTR2SIZE(X)	((size_t)(uintptr_t)(X))
+
+/* Pointer comparison (types from below) */
+#define PTRCMP(A,C,B)	((uintptr_t)(A) C (uintptr_t)(B))
+
+/* Ditto, compare (maybe mixed-signed) integers cases to T bits, unsigned;
+ * Note: doesn't sign-extend correctly, that's still up to the caller */
+#define UICMP(T,A,C,B)	((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
+
+/* Members in constant array */
+#ifndef NELEM
+# define NELEM(A)	(sizeof(A) / sizeof(A[0]))
+#endif
+
+/* sizeof() for member fields */
+#define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
+
+/* Casts-away (*NOT* cast-away) */
+#define UNUSED(X)	((void)(X))
+#define UNCONST(P)	((void*)(uintptr_t)(void const*)(P))
+#define UNVOLATILE(P)	((void*)(uintptr_t)(void volatile*)(P))
+
+/* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
+#if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
+# define STRING(X)	#X
+# define XSTRING(X)	STRING(X)
+# define CONCAT(S1,S2)	_CONCAT(S1, S2)
+# define _CONCAT(S1,S2)	S1 ## S2
+#else
+# define STRING(X)	"X"
+# define XSTRING	STRING
+# define CONCAT(S1,S2)	S1/**/S2
+#endif
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+  /* Variable size arrays and structure fields */
+# define VFIELD_SIZE(X)
+# define VFIELD_SIZEOF(T,F)	(0)
+  /* Inline functions */
+# define HAVE_INLINE
+# define INLINE			inline
+# define SINLINE		static inline
+#else
+# define VFIELD_SIZE(X)		(X)
+# define VFIELD_SIZEOF(T,F)	SIZEOF_FIELD(T, F)
+# if __PREREQ(2, 9)
+#   define INLINE		static __inline
+#   define SINLINE		static __inline
+# else
+#   define INLINE
+#   define SINLINE		static
+# endif
+#endif
+
+#if defined __predict_true && defined __predict_false
+# define LIKELY(X)	__predict_true(X)
+# define UNLIKELY(X)	__predict_false(X)
+#elif __PREREQ(2, 96)
+# define LIKELY(X)	__builtin_expect(X, 1)
+# define UNLIKELY(X)	__builtin_expect(X, 0)
+#else
+# define LIKELY(X)	(X)
+# define UNLIKELY(X)	(X)
+#endif
+
+/* Compile-Time-Assert */
+#define CTA(TEST)	_CTA_1(TEST, __LINE__)
+#define _CTA_1(TEST,L)  _CTA_2(TEST, L)
+#define _CTA_2(TEST,L)	\
+	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
+
+#undef ISPOW2
+#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
+#undef MIN
+#define MIN(A, B)	((A) < (B) ? (A) : (B))
+#undef MAX
+#define MAX(A, B)	((A) < (B) ? (B) : (A))
+#undef ABS
+#define ABS(A)		((A) < 0 ? -(A) : (A))
+
+#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
+#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
+
+#ifndef HAVE_ASSERTS
+# undef assert
+# define assert(X)	((void)0)
+#endif
+
+/* Translation (init in main.c) */
+#undef tr
+#ifdef HAVE_CATGETS
+# define CATSET		1
+# define tr(c,d)	catgets(catd, CATSET, c, d)
+#else
+# define tr(c,d)	(d)
 #endif
 
 /*
- * Compat
+ * Constants, some nail-specific macros
  */
 
-#if ! defined NI_MAXHOST || NI_MAXHOST < 1025
+#if !defined NI_MAXHOST || NI_MAXHOST < 1025
 # undef NI_MAXHOST
 # define NI_MAXHOST	1025
 #endif
@@ -126,9 +232,7 @@
 # define NSIG		((sizeof(sigset_t) * 8) - 1)
 #endif
 
-/*
- *
- */
+/*  */
 
 #if BUFSIZ > 2560			/* TODO simply use BUFSIZ? */
 # define LINESIZE	BUFSIZ		/* max readable line width */
@@ -178,7 +282,8 @@
 #endif
 
 /* Is *W* a quoting (ASCII only) character? */
-#define ISQUOTE(W)	((W) == L'>' || (W) == L'|' || (W) == L'}')
+#define ISQUOTE(W)	\
+	((W) == L'>' || (W) == L'|' || (W) == L'}' || (W) == L':')
 
 /* Maximum number of quote characters (not bytes!) that'll be used on
  * follow lines when compressing leading quote characters */
@@ -208,88 +313,6 @@
 # define XPAGER		"more"
 #endif
 #define PAGER		XPAGER
-
-/*
- * Funs, CC support etc.
- */
-
-/* Pointer comparison (types from below) */
-#define PTRCMP(A,C,B)	((uintptr_t)(A) C (uintptr_t)(B))
-
-/* Ditto, compare (maybe mixed-signed) integers cases to T bits, unsigned */
-#define UICMP(T,A,C,B)	((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
-
-/* Members in constant array */
-#ifndef NELEM
-# define NELEM(A)	(sizeof(A) / sizeof(A[0]))
-#endif
-
-/* sizeof() for member fields */
-#define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
-
-/* Casts-away (*NOT* cast-away) */
-#define UNUSED(X)	((void)(X))
-#define UNCONST(P)	((void*)(unsigned long)(void const*)(P))
-#define UNVOLATILE(P)	((void*)(unsigned long)(void volatile*)(P))
-
-/* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
-#if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
-# define STRING(X)	#X
-# define XSTRING(X)	STRING(X)
-# define CONCAT(S1,S2)	_CONCAT(S1, S2)
-# define _CONCAT(S1,S2)	S1 ## S2
-#else
-# define STRING(X)	"X"
-# define XSTRING	STRING
-# define CONCAT(S1,S2)	S1/**/S2
-#endif
-
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-  /* Variable size arrays and structure fields */
-# define VFIELD_SIZE(X)
-# define VFIELD_SIZEOF(T,F)	(0)
-  /* Inline functions */
-# define HAVE_INLINE
-# define INLINE			inline
-# define SINLINE		static inline
-#else
-# define VFIELD_SIZE(X)		(X)
-# define VFIELD_SIZEOF(T,F)	SIZEOF_FIELD(T, F)
-# define INLINE
-# define SINLINE		static
-#endif
-
-#undef ISPOW2
-#define ISPOW2(X)	((((X) - 1) & (X)) == 0)
-#undef MIN
-#define MIN(A, B)	((A) < (B) ? (A) : (B))
-#undef MAX
-#define MAX(A, B)	((A) < (B) ? (B) : (A))
-#undef ABS
-#define ABS(A)		((A) < 0 ? -(A) : (A))
-
-#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
-#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
-
-/* Compile-Time-Assert */
-#define CTA(TEST)	_CTA_1(TEST, __LINE__)
-#define _CTA_1(TEST,L)  _CTA_2(TEST, L)
-#define _CTA_2(TEST,L)	\
-	typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
-
-#ifndef HAVE_ASSERTS
-# undef assert
-# define assert(X)	((void)0)
-#endif
-
-/* Translation (init in main.c) */
-#undef tr
-#ifdef HAVE_CATGETS
-# define CATSET		1
-# define tr(c,d)	catgets(catd, CATSET, c, d)
-#else
-# define tr(c,d)	(d)
-#endif
 
 /*
  * Types
