@@ -956,7 +956,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 						NULL, TRU1);
 				out = n_str_add(out, &cin);
 				if (convert) /* EINVAL at EOS */
-					out = n_str_add_buf(out, "[?]", 3);
+					out = n_str_add_buf(out, "?", 1);
 				free(cin.s);
 			} else {
 #endif
