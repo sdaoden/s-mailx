@@ -150,7 +150,7 @@ int	my_getopt(int argc, char *const argv[], const char *optstring);
 # define optopt		my_optopt
 #endif
 
-/* Memory allocation routines */
+/* Memory allocation routines; the _safe versions temporarily block signals */
 #ifdef HAVE_ASSERTS
 # define SMALLOC_DEBUG_ARGS	, char const *mdbg_file, int mdbg_line
 # define SMALLOC_DEBUG_ARGSCALL	, mdbg_file, mdbg_line
@@ -159,6 +159,9 @@ int	my_getopt(int argc, char *const argv[], const char *optstring);
 # define SMALLOC_DEBUG_ARGSCALL
 #endif
 
+void *	smalloc_safe(size_t s SMALLOC_DEBUG_ARGS);
+void *	srealloc_safe(void *v, size_t s SMALLOC_DEBUG_ARGS);
+void *	scalloc_safe(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
 void *	smalloc(size_t s SMALLOC_DEBUG_ARGS);
 void *	srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
 void *	scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
@@ -169,6 +172,9 @@ void	sfree(void *v SMALLOC_DEBUG_ARGS);
 void	smemreset(void);
 /* The *smemtrace* command */
 int	smemtrace(void *v);
+# define smalloc_safe(SZ)	smalloc_safe(SZ, __FILE__, __LINE__)
+# define srealloc_safe(P,SZ)	srealloc_safe(P, SZ, __FILE__, __LINE__)
+# define scalloc_safe(N,SZ)	scalloc_safe(N, SZ, __FILE__, __LINE__)
 # define smalloc(SZ)		smalloc(SZ, __FILE__, __LINE__)
 # define srealloc(P,SZ)		srealloc(P, SZ, __FILE__, __LINE__)
 # define scalloc(N,SZ)		scalloc(N, SZ, __FILE__, __LINE__)

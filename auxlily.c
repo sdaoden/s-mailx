@@ -907,6 +907,39 @@ out_of_memory(void)
 	panic("no memory");
 }
 
+void *
+(smalloc_safe)(size_t s SMALLOC_DEBUG_ARGS)
+{
+	void *rv;
+
+	hold_all_sigs();
+	rv = (smalloc)(s SMALLOC_DEBUG_ARGSCALL);
+	rele_all_sigs();
+	return rv;
+}
+
+void *
+(srealloc_safe)(void *v, size_t s SMALLOC_DEBUG_ARGS)
+{
+	void *rv;
+
+	hold_all_sigs();
+	rv = (srealloc)(v, s SMALLOC_DEBUG_ARGSCALL);
+	rele_all_sigs();
+	return rv;
+}
+
+void *
+(scalloc_safe)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
+{
+	void *rv;
+
+	hold_all_sigs();
+	rv = (scalloc)(nmemb, size SMALLOC_DEBUG_ARGSCALL);
+	rele_all_sigs();
+	return rv;
+}
+
 #ifndef HAVE_ASSERTS
 void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
