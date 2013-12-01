@@ -792,6 +792,7 @@ onintr(int s)
 	while (sourcing)
 		unstack();
 
+	termios_state_reset();
 	close_all_files();
 
 	if (image >= 0) {
