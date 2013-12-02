@@ -937,13 +937,24 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
 
 /* Auto-reclaimed string storage */
 
+/* Allocate 'size' more bytes of space and return the address of the first byte
+ * to the caller.  An even number of bytes are always allocated so that the
+ * space will always be on a word boundary */
 void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
+
+/* Auto-reclaim string storage */
 void		sreset(void);
+
+/* Make current string storage permanent: new allocs will be auto-reclaimed by
+ * sreset().  This is called once only, from within main() */
 void		spreserve(void);
+
+/* 'sstats' command */
 #ifdef HAVE_ASSERTS
-int		sstats(void *v);
+int		c_sstats(void *v);
 #endif
+
 char *		savestr(char const *str);
 char *		savestrbuf(char const *sbuf, size_t sbuf_len);
 char *		save2str(char const *str, char const *old);

@@ -58,232 +58,216 @@
  */
 
 union __align__ {
-	char	*cp;
-	size_t	sz;
-	ul_it	ul;
+   char     *cp;
+   size_t   sz;
+   ul_it    ul;
 };
-#define SALIGN		(sizeof(union __align__) - 1)
+#define SALIGN    (sizeof(union __align__) - 1)
 
 CTA(ISPOW2(SALIGN + 1));
 
 struct b_base {
-	struct buffer	*_next;
-	char		*_bot;		/* For spreserve() */
-	char		*_max;		/* Max usable byte */
-	char		*_caster;	/* NULL if full */
+   struct buffer  *_next;
+   char           *_bot;      /* For spreserve() */
+   char           *_max;      /* Max usable byte */
+   char           *_caster;   /* NULL if full */
 };
 
 /* Single instance builtin buffer, DATA */
 struct b_bltin {
-	struct b_base	b_base;
-	char		b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
+   struct b_base  b_base;
+   char           b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
 };
-#define SBLTIN_SIZE	SIZEOF_FIELD(struct b_bltin, b_buf)
+#define SBLTIN_SIZE  SIZEOF_FIELD(struct b_bltin, b_buf)
 
 /* Dynamically allocated buffers */
 struct b_dyn {
-	struct b_base	b_base;
-	char		b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
+   struct b_base  b_base;
+   char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
 };
-#define SDYN_SIZE	SIZEOF_FIELD(struct b_dyn, b_buf)
+#define SDYN_SIZE SIZEOF_FIELD(struct b_dyn, b_buf)
 
 struct buffer {
-	struct b_base	b;
-	char		b_buf[VFIELD_SIZE(SALIGN + 1)];
+   struct b_base  b;
+   char           b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
-static struct b_bltin	_builtin_buf;
-static struct buffer	*_buf_head, *_buf_list, *_buf_server;
+static struct b_bltin   _builtin_buf;
+static struct buffer    *_buf_head, *_buf_list, *_buf_server;
 
 #ifdef HAVE_ASSERTS
-size_t	_all_cnt, _all_cycnt, _all_cycnt_max,
-	_all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
-	_all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
-	_all_resetreqs, _all_resets;
+size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
+   _all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
+   _all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
+   _all_resetreqs, _all_resets;
 #endif
 
-/*
- * Allocate size more bytes of space and return the address of the
- * first byte to the caller.  An even number of bytes are always
- * allocated so that the space will always be on a word boundary.
- */
 void *
 salloc(size_t size)
 {
 #ifdef HAVE_ASSERTS
-	size_t orig_size = size;
+   size_t orig_size = size;
 #endif
-	union {struct buffer *b; char *cp;} u;
-	char *x, *y, *z;
+   union {struct buffer *b; char *cp;} u;
+   char *x, *y, *z;
 
-	if (size == 0)
-		++size;
-	size += SALIGN;
-	size &= ~SALIGN;
+   if (size == 0)
+      ++size;
+   size += SALIGN;
+   size &= ~SALIGN;
 
 #ifdef HAVE_ASSERTS
-	++_all_cnt;
-	++_all_cycnt;
-	_all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
-	_all_size += size;
-	_all_cysize += size;
-	_all_cysize_max = MAX(_all_cysize_max, _all_cysize);
-	_all_min = _all_max == 0 ? size : MIN(_all_min, size);
-	_all_max = MAX(_all_max, size);
-	_all_wast += size - orig_size;
+   ++_all_cnt;
+   ++_all_cycnt;
+   _all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
+   _all_size += size;
+   _all_cysize += size;
+   _all_cysize_max = MAX(_all_cysize_max, _all_cysize);
+   _all_min = (_all_max == 0) ? size : MIN(_all_min, size);
+   _all_max = MAX(_all_max, size);
+   _all_wast += size - orig_size;
 #endif
 
-	if ((u.b = _buf_server) != NULL)
-		goto jumpin;
+   if ((u.b = _buf_server) != NULL)
+      goto jumpin;
 jredo:
-	for (u.b = _buf_head; u.b != NULL; u.b = u.b->b._next) {
-jumpin:		x = u.b->b._caster;
-		if (x == NULL) {
-			if (u.b == _buf_server) {
-				if (u.b == _buf_head &&
-						(u.b = _buf_head->b._next)
-						!= NULL) {
-					_buf_server = u.b;
-					goto jumpin;
-				}
-				_buf_server = NULL;
-				goto jredo;
-			}
-			continue;
-		}
-		y = x + size;
-		z = u.b->b._max;
-		if (y <= z) {
-			/*
-			 * Alignment is the one thing, the other is what is
-			 * usually allocated, and here about 40 bytes seems to
-			 * be a good cut to avoid non-usable non-NULL casters
-			 */
-			u.b->b._caster = (y + 42+16 >= z) ? NULL : y;
-			u.cp = x;
-			goto jleave;
-		}
-	}
+   for (u.b = _buf_head; u.b != NULL; u.b = u.b->b._next) {
+jumpin:
+      x = u.b->b._caster;
+      if (x == NULL) {
+         if (u.b == _buf_server) {
+            if (u.b == _buf_head && (u.b = _buf_head->b._next) != NULL) {
+               _buf_server = u.b;
+               goto jumpin;
+            }
+            _buf_server = NULL;
+            goto jredo;
+         }
+         continue;
+      }
+      y = x + size;
+      z = u.b->b._max;
+      if (y <= z) {
+         /* Alignment is the one thing, the other is what is
+          * usually allocated, and here about 40 bytes seems to
+          * be a good cut to avoid non-usable non-NULL casters */
+         u.b->b._caster = PTRCMP(y + 42 + 16, >=, z) ? NULL : y;
+         u.cp = x;
+         goto jleave;
+      }
+   }
 
-	if (_buf_head == NULL) {
-		struct b_bltin *b = &_builtin_buf;
-		b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
-		_buf_head = (struct buffer*)b;
-		u.b = _buf_head;
-	} else {
+   if (_buf_head == NULL) {
+      struct b_bltin *b = &_builtin_buf;
+      b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
+      _buf_head = (struct buffer*)b;
+      u.b = _buf_head;
+   } else {
 #ifdef HAVE_ASSERTS
-		++_all_bufcnt;
-		++_all_cybufcnt;
-		_all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
+      ++_all_bufcnt;
+      ++_all_cybufcnt;
+      _all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
 #endif
-		u.b = (struct buffer*)smalloc(sizeof(struct b_dyn));
-		u.b->b._max = u.b->b_buf + SDYN_SIZE - 1;
-	}
-	if (_buf_list != NULL)
-		_buf_list->b._next = u.b;
-	_buf_server = _buf_list = u.b;
-	u.b->b._next = NULL;
-	u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
-	u.cp = u.b->b._bot;
+      u.b = smalloc(sizeof(struct b_dyn));
+      u.b->b._max = u.b->b_buf + SDYN_SIZE - 1;
+   }
+   if (_buf_list != NULL)
+      _buf_list->b._next = u.b;
+   _buf_server = _buf_list = u.b;
+   u.b->b._next = NULL;
+   u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
+   u.cp = u.b->b._bot;
 jleave:
-	return u.cp;
+   return u.cp;
 }
 
 void *
 csalloc(size_t nmemb, size_t size)
 {
-	void *vp;
+   void *vp;
 
-	size *= nmemb;
-	vp = salloc(size);
-	memset(vp, 0, size);
-	return (vp);
+   size *= nmemb;
+   vp = salloc(size);
+   memset(vp, 0, size);
+   return (vp);
 }
 
-/*
- * Reset the string area to be empty.
- * Called to free all strings allocated since last reset.
- */
 void 
 sreset(void)
 {
-	struct buffer *bh;
+   struct buffer *bh;
 
 #ifdef HAVE_ASSERTS
-	++_all_resetreqs;
+   ++_all_resetreqs;
 #endif
-	if (noreset)
-		goto jleave;
+   if (noreset)
+      goto jleave;
 
 #ifdef HAVE_ASSERTS
-	_all_cycnt = _all_cysize = 0;
-	_all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
-	++_all_resets;
+   _all_cycnt = _all_cysize = 0;
+   _all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
+   ++_all_resets;
 #endif
 
-	if ((bh = _buf_head) != NULL) {
-		struct buffer *b = bh;
-		b->b._caster = b->b._bot;
+   if ((bh = _buf_head) != NULL) {
+      struct buffer *b = bh;
+      b->b._caster = b->b._bot;
 #ifdef HAVE_ASSERTS
-		memset(b->b._caster, 0377,
-			(size_t)(b->b._max - b->b._caster));
+      memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
-		_buf_server = b;
-		if ((bh = bh->b._next) != NULL) {
-			b = bh;
-			b->b._caster = b->b._bot;
+      _buf_server = b;
+      if ((bh = bh->b._next) != NULL) {
+         b = bh;
+         b->b._caster = b->b._bot;
 #ifdef HAVE_ASSERTS
-			memset(b->b._caster, 0377,
-				(size_t)(b->b._max - b->b._caster));
+         memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
-			for (bh = bh->b._next; bh != NULL;) {
-				struct buffer *b2 = bh->b._next;
-				free(bh);
-				bh = b2;
-			}
-		}
-		_buf_list = b;
-		b->b._next = NULL;
-	}
+         for (bh = bh->b._next; bh != NULL;) {
+            struct buffer *b2 = bh->b._next;
+            free(bh);
+            bh = b2;
+         }
+      }
+      _buf_list = b;
+      b->b._next = NULL;
+   }
 
 #ifdef HAVE_ASSERTS
-	smemreset();
+   smemreset();
 #endif
-jleave:	;
+jleave:
+   ;
 }
 
-/*
- * Make the string area permanent.
- * Meant to be called in main, after initialization.
- */
 void 
 spreserve(void)
 {
-	struct buffer *b;
+   struct buffer *b;
 
-	for (b = _buf_head; b != NULL; b = b->b._next)
-		b->b._bot = b->b._caster;
+   for (b = _buf_head; b != NULL; b = b->b._next)
+      b->b._bot = b->b._caster;
 }
 
 #ifdef HAVE_ASSERTS
 int
-sstats(void *v)
+c_sstats(void *v)
 {
-	(void)v;
-	printf("String usage statistics (cycle means one sreset() cycle):\n"
-		"  Buffer allocs ever/max simultan. : %lu/%lu\n"
-		"  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
-		"  Overall alloc count/bytes        : %lu/%lu\n"
-		"  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
-		"  sreset() cycles                  : %lu (%lu performed)\n"
-		"  Cycle maximums: alloc count/bytes: %lu/%lu\n",
-		(ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
-		(ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
-		(ul_it)_all_cnt, (ul_it)_all_size,
-		(ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
-		(ul_it)_all_resetreqs, (ul_it)_all_resets,
-		(ul_it)_all_cycnt_max, (ul_it)_all_cysize_max);
-	return (0);
+   UNUSED(v);
+
+   printf("String usage statistics (cycle means one sreset() cycle):\n"
+      "  Buffer allocs ever/max simultan. : %lu/%lu\n"
+      "  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
+      "  Overall alloc count/bytes        : %lu/%lu\n"
+      "  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
+      "  sreset() cycles                  : %lu (%lu performed)\n"
+      "  Cycle maximums: alloc count/bytes: %lu/%lu\n",
+      (ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
+      (ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
+      (ul_it)_all_cnt, (ul_it)_all_size,
+      (ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
+      (ul_it)_all_resetreqs, (ul_it)_all_resets,
+      (ul_it)_all_cycnt_max, (ul_it)_all_cysize_max);
+   return 0;
 }
 #endif
 
@@ -1016,3 +1000,5 @@ jrealloc:	obb = srealloc(obb, olb);
 	return err;
 }
 #endif /* HAVE_ICONV */
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

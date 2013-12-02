@@ -354,7 +354,7 @@
      DS(414, "Produce a core dump (ouch!)") },
    { "clobber", clobber, (M | RAWLIST), 0, 1
      DS(415, "Globber <number> 512 byte blocks on the stack") },
-   { "sstats", sstats, (M | NOLIST), 0, 0
+   { "sstats", &c_sstats, (M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },
    { "smemtrace", smemtrace, (M | NOLIST), 0, 0
      DS(417, "Trace current memory usage afap") },
