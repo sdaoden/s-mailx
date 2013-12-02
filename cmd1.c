@@ -153,6 +153,7 @@ headers(void *v)
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(mesg+1, mesg + size);
 #endif
+		srelax_hold();
 		for (; mp < &message[msgCount]; mp++) {
 			mesg++;
 			if (!visible(mp))
@@ -160,7 +161,9 @@ headers(void *v)
 			if (UICMP(32, flag++, >=, size))
 				break;
 			printhead(mesg, stdout, 0);
+			srelax();
 		}
+		srelax_rele();
 	} else {	/* threaded */
 		g = 0;
 		mq = threadroot;
@@ -195,6 +198,7 @@ headers(void *v)
 					break;
 				}
 		}
+		srelax_hold();
 		while (mp) {
 			if (visible(mp) && (mp->m_collapsed <= 0 ||
 					 mp == &message[n-1])) {
@@ -202,9 +206,11 @@ headers(void *v)
 					break;
 				printhead(mp - &message[0] + 1, stdout,
 						mb.mb_threaded);
+				srelax();
 			}
 			mp = next_in_thread(mp);
 		}
+		srelax_rele();
 	}
 	if (!flag)
 		printf(tr(6, "No more mail.\n"));
@@ -949,6 +955,11 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 				safe_signal(SIGPIPE, brokpipe);
 		}
 	}
+
+	/* This may jump, in which case srelax_rele() wouldn't be called, but
+	 * it shouldn't matter, because we -- then -- directly reenter the
+	 * lex.c:commands() loop, which sreset()s */
+	srelax_hold();
 	for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
 		mp = &message[*ip - 1];
 		touch(mp);
@@ -963,6 +974,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 				? SEND_SHOW : doign
 				? SEND_TODISP : SEND_TODISP_ALL),
 			mstats);
+		srelax();
 		if (dopipe && boption("page"))
 			putc('\f', obuf);
 		if (tstats) {
@@ -970,6 +982,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 			tstats[1] += mstats[1];
 		}
 	}
+	srelax_rele();
 close_pipe:
 	if (obuf != stdout) {
 		/* Ignore SIGPIPE so it can't cause a duplicate close */

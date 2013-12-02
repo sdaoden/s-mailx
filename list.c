@@ -103,6 +103,7 @@ getmsglist(char *buf, int *vector, int flags)
 		if (mc == 0)
 			return -1;
 	}
+
 	if (mb.mb_threaded == 0) {
 		for (mp = &message[0]; mp < &message[msgCount]; mp++)
 			if (mp->m_flag & MMARK)
@@ -466,6 +467,7 @@ number:
 		if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
 			imap_getheaders(1, msgCount);
 #endif
+		srelax_hold();
 		for (i = 1; i <= msgCount; i++) {
 			mc = 0;
 			if (np > namelist) {
@@ -489,7 +491,9 @@ number:
 				mc++;
 			if (mc == 0)
 				unmark(i);
+			srelax();
 		}
+		srelax_rele();
 
 		/*
 		 * Make sure we got some decent messages.

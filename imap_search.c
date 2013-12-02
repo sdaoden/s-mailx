@@ -184,13 +184,17 @@ imap_search(const char *spec, int f)
 	if (mb.mb_type == MB_IMAP && needheaders)
 		imap_getheaders(1, msgCount);
 #endif
+	srelax_hold();
 	for (i = 0; i < msgCount; i++) {
 		if (message[i].m_flag&MHIDDEN)
 			continue;
-		if (f == MDELETED || (message[i].m_flag&MDELETED) == 0)
+		if (f == MDELETED || (message[i].m_flag&MDELETED) == 0) {
 			if (itexecute(&mb, &message[i], i+1, ittree))
 				mark(i+1, f);
+			srelax();
+		}
 	}
+	srelax_rele();
 	return OKAY;
 }
 
