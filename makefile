@@ -27,8 +27,8 @@ packager-install:
 _update-version:
 	@$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version
 _buh:
-	@WANT_QUOTE_FOLD=1 WANT_ASSERTS=1 WANT_NOALLOCA=1;\
-	export WANT_QUOTE_FOLD WANT_ASSERTS WANT_NOALLOCA;\
+	@WANT_GSSAPI=1 WANT_QUOTE_FOLD=1 WANT_ASSERTS=1 WANT_NOALLOCA=1;\
+	export WANT_GSSAPI=1 WANT_QUOTE_FOLD WANT_ASSERTS WANT_NOALLOCA;\
 	$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version &&\
 	LC_ALL=C $(MAKE) -f mk.mk all
 _update-release:
