@@ -801,7 +801,7 @@ jnext:
 		}
 		_findmail(cbuf, sizeof cbuf,
 			(res[1] != '\0') ? res + 1 : myname,
-			(res[1] != '\0' || option_u_arg != NULL));
+			(res[1] != '\0' || (options & OPT_u_FLAG)));
 		res = cbuf;
 		goto jislocal;
 	case '#':

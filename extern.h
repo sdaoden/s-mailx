@@ -133,11 +133,7 @@ int	expand_shell_escape(char const **s, bool_t use_prompt_extensions);
 /* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
 char *	getprompt(void);
 
-/* Search passwd file for a uid, return name on success, NULL on failure */
-char *	getname(int uid);
-/* Discover user login name */
-char *	username(void);
-/* Return our hostname */
+/* Detect and query the hostname to use */
 char *	nodename(int mayoverride);
 
 /* Try to lookup a variable named "password-*token*".

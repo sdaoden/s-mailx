@@ -393,6 +393,9 @@ setfile(char const *name, int nmail)
 	struct shortcut *sh;
 	struct flock	flp;
 
+	/* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
+	 * necessary to make a mailbox accessible by a different user, and if that
+	 * has happened, let's just let the usual file perms decide */
 	isedit = (*name != '%' && ((sh = get_shortcut(name)) == NULL ||
 			*sh->sh_long != '%'));
 	if ((name = expand(name)) == NULL)

@@ -208,7 +208,7 @@ $set 1
 198 Can't create an unique file name in "%s/tmp".\n
 199 user = %s, homedir = %s\n
 200 too long to edit\n
-201 Cannot associate a name with uid %d\n
+201 Cannot associate a name with uid %lu
 202 "%s": no such alias\n
 203 "%s": undefined variable\n
 204 No POP3 `APOP' support available, sending password in clear text\n
@@ -242,8 +242,8 @@ $set 1
 232 $ err %i: %s\n$
 233 Error loading $
 234 $ or $
-235 --DELETED--
-236 --DELETED--
+235 The -R option is meaningless in send mode.\n
+236 `%s' is not a user of this system
 237 The mail file has changed, existing rfc822 attachments became invalid!\n
 238 cannot load private key from file %s\n
 239 cannot load certificate from file %s\n

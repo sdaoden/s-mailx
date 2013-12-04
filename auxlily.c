@@ -44,7 +44,6 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <pwd.h>
 
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_IPV6
@@ -438,29 +437,6 @@ getprompt(void)
 		*cp = '\0';
 	}
 	return buf;
-}
-
-char *
-getname(int uid)
-{
-	struct passwd *pw = getpwuid(uid);
-
-	return pw == NULL ? NULL : pw->pw_name;
-}
-
-char *
-username(void)
-{
-	char *np;
-	uid_t uid;
-
-	if ((np = getenv("USER")) != NULL)
-		goto jleave;
-	if ((np = getname(uid = getuid())) != NULL)
-		goto jleave;
-	panic(tr(201, "Cannot associate a name with uid %d\n"), (int)uid);
-jleave:
-	return (np);
 }
 
 char *

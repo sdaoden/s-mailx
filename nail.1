@@ -232,11 +232,11 @@ The message to be sent is expected to contain a message header with
 giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
 .It Fl u Ar user
-Reads the mailbox of the given user name.
-Note that using this option changes the expansion of `%' so that
-dynamical changes of the
-.Va folder
-variables etc. are not reflected.
+Impersonate as
+.Ar user .
+Note that this has consequences in respect to expansions of `%' etc.
+Also see
+.Ev USER .
 .It Fl V
 Print \*(UA's version and exit.
 .It Fl v
@@ -3519,6 +3519,12 @@ Changes the letters printed in the first column of a header summary.
 Used as directory for temporary files instead of
 .Pa /tmp ,
 if set.
+.It Va USER
+Can be used to force identification as
+.Va USER ,
+i.e., identical to the
+.Fl u
+command line option.
 .El
 .\"
 .\" --  >8  --  8<  --

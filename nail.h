@@ -251,6 +251,8 @@
 #define PROMPT_BUFFER_SIZE	80	/* getprompt() bufsize (> 3!) */
 
 #define ACCOUNT_NULL	"null"		/* Name of "null" account */
+#define MAILRC		"~/.mailrc"
+#define TMPDIR_FALLBACK	"/tmp"
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
@@ -426,25 +428,26 @@ typedef void (		*sighandler_type)(int);
 
 enum user_options {
 	OPT_NONE	= 0,
-	OPT_DEBUG	= 1<< 0,	/* -d / *debug* */
-	OPT_VERBOSE	= 1<< 1,	/* -v / *verbose* */
-	OPT_EXISTONLY	= 1<< 2,	/* -e */
-	OPT_HEADERSONLY	= 1<< 3,	/* -H */
-	OPT_NOSRC	= 1<< 4,	/* -n */
-	OPT_E_FLAG	= 1<< 5,	/* -E / *skipemptybody* */
-	OPT_F_FLAG	= 1<< 6,	/* -F */
-	OPT_N_FLAG	= 1<< 7,	/* -N / *header* */
-	OPT_R_FLAG	= 1<< 8,	/* -R */
-	OPT_r_FLAG	= 1<< 9,	/* -r (plus option_r_arg) */
-	OPT_t_FLAG	= 1<<10,	/* -t */
-	OPT_TILDE_FLAG	= 1<<11,	/* -~ */
-	OPT_BATCH_FLAG	= 1<<12,	/* -# */
+	OPT_DEBUG	= 1u<< 0,	/* -d / *debug* */
+	OPT_VERBOSE	= 1u<< 1,	/* -v / *verbose* */
+	OPT_EXISTONLY	= 1u<< 2,	/* -e */
+	OPT_HEADERSONLY	= 1u<< 3,	/* -H */
+	OPT_NOSRC	= 1u<< 4,	/* -n */
+	OPT_E_FLAG	= 1u<< 5,	/* -E / *skipemptybody* */
+	OPT_F_FLAG	= 1u<< 6,	/* -F */
+	OPT_N_FLAG	= 1u<< 7,	/* -N / *header* */
+	OPT_R_FLAG	= 1u<< 8,	/* -R */
+	OPT_r_FLAG	= 1u<< 9,	/* -r (plus option_r_arg) */
+	OPT_t_FLAG	= 1u<<10,	/* -t */
+	OPT_u_FLAG	= 1u<<11,	/* -u given, or USER != getpwnam(3) */
+	OPT_TILDE_FLAG	= 1u<<12,	/* -~ */
+	OPT_BATCH_FLAG	= 1u<<13,	/* -# */
 
-	OPT_SENDMODE	= 1<<13,	/* Usage case forces send mode */
-	OPT_INTERACTIVE	= 1<<14,	/* isatty(0) */
+	OPT_SENDMODE	= 1u<<14,	/* Usage case forces send mode */
+	OPT_INTERACTIVE	= 1u<<15,	/* isatty(0) */
 	OPT_TTYIN	= OPT_INTERACTIVE,
-	OPT_TTYOUT	= 1<<15,
-	OPT_NOPROMPT	= 1<<16		/* *noprompt* has been set */
+	OPT_TTYOUT	= 1u<<16,
+	OPT_NOPROMPT	= 1u<<17	/* *noprompt* has been set */
 };
 #define IS_TTY_SESSION() \
 	((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -1177,7 +1180,6 @@ _E char const	*tempdir;		/* The temporary directory */
 
 _E int		exit_status;		/* Exit status */
 _E int		options;		/* Bits of enum user_options */
-_E char		*option_u_arg;		/* name given with -u option */
 _E char 	*option_r_arg;		/* argument to -r option */
 _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
