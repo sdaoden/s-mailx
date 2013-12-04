@@ -75,7 +75,7 @@ panic(char const *format, ...)
 
 	fputs("\n", stderr);
 	fflush(stderr);
-	abort();
+	exit(EXIT_ERR);
 }
 
 void
