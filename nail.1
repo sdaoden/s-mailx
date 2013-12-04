@@ -2820,12 +2820,9 @@ the
 .Ic alternates
 list.
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine),
-then either this variable or
+a dialup machine), then either this variable or
 .Va hostname
-have to be set or \*(UA will not generate `Message-ID:' header fields
-but leave that task up to a (then obviously present) local Mail
-Transfer Agent (MTA).
+have to be set.
 If
 .Va from
 contains more than one address,
@@ -2895,9 +2892,18 @@ Use this string as hostname when expanding local addresses instead of
 the value obtained from
 .Xr uname 2
 and
-.Xr getaddrinfo 3 .
-Note that this must be set explicitly to become used for the
-generation of `Message-ID:' fields.
+.Xr getaddrinfo 3 ,
+i.e., in `Message-ID:' and `From:' fields.
+Note that when
+.Va smtp
+transport is not used then it is normally the responsibility of the MTA
+to create these fields; you should produce some test messages with the
+desired combination of
+.Va hostname ,
+and/or
+.Va from ,
+.Va sender
+etc. first.
 .It Va imap-auth
 \*(OP Sets the IMAP authentication method.
 Valid values are `login' for the usual password-based authentication

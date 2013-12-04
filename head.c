@@ -363,32 +363,30 @@ jleave:
 char const *
 myaddrs(struct header *hp)
 {
-	static char *addr;
 	struct name *np;
-	char const *ret = NULL;
+	char *rv = NULL;
 
 	if (hp != NULL && (np = hp->h_from) != NULL) {
-		if ((ret = np->n_fullname) != NULL)
+		if ((rv = np->n_fullname) != NULL)
 			goto jleave;
-		if ((ret = np->n_name) != NULL)
+		if ((rv = np->n_name) != NULL)
 			goto jleave;
 	}
-	if ((ret = value("from")) != NULL)
+
+	if ((rv = voption("from")) != NULL)
 		goto jleave;
-	/*
-	 * When invoking sendmail directly, it's its task
+
+	/* When invoking *sendmail* directly, it's its task
 	 * to generate an otherwise undeterminable From: address.
-	 */
-	if (value("smtp") == NULL)
-		goto jleave;
-	if ((ret = addr) == NULL) {
+	 * However, if the user sets *hostname*, accept his desire */
+	if (voption("smtp") != NULL || voption("hostname") != NULL) {
 		char *hn = nodename(1);
 		size_t sz = strlen(myname) + strlen(hn) + 2;
-		ret = addr = smalloc(sz);
-		snprintf(addr, sz, "%s@%s", myname, hn);
+		rv = salloc(sz);
+		snprintf(rv, sz, "%s@%s", myname, hn);
 	}
 jleave:
-	return (ret);
+	return rv;
 }
 
 char const *

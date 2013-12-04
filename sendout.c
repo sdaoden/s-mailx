@@ -1206,7 +1206,7 @@ message_id(FILE *fo, struct header *hp)
 	else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
 		rl = 16;
 	else
-		/* Delivery seems to dependent on a MTA -- it's up to it */
+		/* Up to MTA */
 		goto jleave;
 
 	tmp = &time_current.tc_gm;
