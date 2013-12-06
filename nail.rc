@@ -3,15 +3,11 @@
 # Configuration file for S-nail(1).
 #--MKRC-END--
 
-# Slightly more "BSDish" behaviour: traditional flag display in the header
-# summary; *bsdannounce* prints a header summary on folder change and thus
-# complements *header* on a per-folder basis; it is meaningless unless
-# *header* is set (which it is by default)
-set bsdflags bsdannounce
+# If threaded mode is activated, automatically collapse thread.
+set autocollapse
 
-# Do not forward to mbox by default since this is likely to be
-# irritating for most users today.
-set hold
+# Enter threaded mode automatically
+#set autothread autosort=thread
 
 # Append rather than prepend when writing to mbox automatically.
 # This has no effect unless 'hold' is unset again.
@@ -20,33 +16,79 @@ set append
 # Ask for a message subject.
 set ask
 
+# Slightly more "BSDish" behaviour: traditional flag display in the header
+# summary; *bsdannounce* prints a header summary on folder change and thus
+# complements *header* on a per-folder basis; it is meaningless unless
+# *header* is set (which it is by default)
+set bsdflags bsdannounce
+
 # Assume a CRT-like terminal and invoke a pager.
 set crt
 
+# Define date display in header summary
+#set datefield="%R %m-%d" datefield-markout-older="   %g-%m-%d"
+
 # Messages may be terminated by a dot.
 set dot
+
+# Immediately start $EDITOR (/ $VISUAL) when composing a message
+#set editalong
+
+# Startup into interactive mode even if the (given) mailbox is empty.
+set emptybox
+
+# Do not forward to mbox by default since this is likely to be
+# irritating for most users today.
+set hold
+
+# Quote the original message in replies by "> " as usual on the Internet.
+set indentprefix="> "
+
+# Mark messages that have been answered.
+set markanswered
+
+# Try to circumvent false or missing content-type descriptions
+set mime-counter-evidence
+
+# Control loading of mime.types(5) file: the value may be a combination of the
+# letters "s" and "u": if "u" is seen ~/.mime.types will be loaded if possible;
+# "s" adds /etc/mime.types, if available; setting this without any value uses
+# only a set of builtin mimetypes; the default behaviour equals "us".
+#set mimetypes-load-control
+
+# Automatically check for new messages at each prompt, but avoid polling
+# of IMAP servers or maildir folders.
+set newmail=nopoll
 
 # Do not remove empty mail folders in the spool directory.
 # This may be relevant for privacy since other users could
 # otherwise create them with different permissions.
 set keep
 
-# Do not remove empty private mail folders.
-set emptybox
+# When writing mailbox files we strip Content-Length: and Lines: header fields
+# from edited / changed messages, because S-nail doesn't deal with these
+# (non-standard) fields -- and since other MUAs may rely on their content, if
+# present, it seems more useful to strip them than to keep them, now that they
+# became invalid; set this to include them nonetheless
+#set keep-content-length
 
-# Quote the original message in replies by "> " as usual on the Internet.
-set indentprefix="> "
+# A nice prompt for ISO 6429/ECMA-48 terminals
+#set prompt="\033[31m?\?[\$ \@]? \033[0m"
 
 # Automatically quote the text of the message that is responded to.
 set quote
 
 # On group replies, specify only the sender of the original mail in  To: and
 # mention it's other recipients in the secondary Cc: instead of placing them
-# also in To:
+# all together in To:
 set recipients-in-cc
 
+# When answering a mail, try to use the same character set
+#set reply-in-same-charset
+
 # Outgoing messages are sent in ISO-8859-1 if all their characters are
-# representable in it, otherwise in UTF-8.
+# representable in it, otherwise in UTF-8.  Also see the documentation of
+# *sendcharsets-else-ttycharset*, and the section "Character sets" in general
 set sendcharsets=iso-8859-1,utf-8
 
 # Display sender's real names in header summaries.
@@ -55,16 +97,6 @@ set showname
 # Display the recipients of messages sent by the user himself in
 # header summaries.
 set showto
-
-# Automatically check for new messages at each prompt, but avoid polling
-# of IMAP servers or maildir folders.
-set newmail=nopoll
-
-# If threaded mode is activated, automatically collapse thread.
-set autocollapse
-
-# Mark messages that have been answered.
-set markanswered
 
 # Hide some header fields which are uninteresting for most human readers.
 ignore received in-reply-to message-id references
@@ -77,6 +109,7 @@ fwdretain subject date from to
 # Add some rather useful of those.
 set pipe-application/javascript=@
 set pipe-application/json=@
+set pipe-application/mbox=@
 set pipe-application/x-latex=@
 set pipe-application/x-perl=@
 set pipe-application/x-sh=@
@@ -89,14 +122,5 @@ set pipe-application/xml=@
 set pipe-application/xml-dtd=@
 set pipe-application/xslt+xml=@
 
-# A nice prompt for ISO 6429/ECMA-48 terminals
-#set prompt="\033[31m?\?$ \033[0m"
-
-# Immediately start $EDITOR (/ $VISUAL) when composing a message
-#set editalong
-
-# Try to circumvent false or missing content-type descriptions
-#set mime-counter-evidence
-
-# Don't load any mime.types(5) file, only depend on builtin types
-#set mimetypes-load-control
+# Other pipe-CONTENT/SUBCONTENT entries
+#set pipe-text/html="lynx -stdin -dump -force_html"
