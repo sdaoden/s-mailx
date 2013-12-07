@@ -347,7 +347,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 {
    /* (xxx Ideally the actual push() [and flush()] would be functions on their
     * xxx own, via indirect vtbl call ..) */
-   ssize_t i, rv = 0;
+   ssize_t rv = 0;
 
    if (len == 0)
       goto jleave;
@@ -413,6 +413,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 #ifdef HAVE_QUOTE_FOLD
    else {
       struct qf_vc vc;
+      ssize_t i;
 
       vc.self = self;
       vc.buf = dat;
