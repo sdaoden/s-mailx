@@ -610,7 +610,7 @@ jdate_set:
 			case 'a':
 				c = _dispc(mp, attrlist);
 jputc:
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*c", n, c);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -622,7 +622,7 @@ jputc:
 						for (i=msgCount; i>999; i/=10)
 							n++;
 				}
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*d", n, mesg);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -665,7 +665,7 @@ jputc:
 				}
 				if (n == 0)
 					n = 16;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*.*s", n, n, date);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -673,7 +673,7 @@ jputc:
 			case 'l':
 				if (n == 0)
 					n = 4;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				if (mp->m_xlines) {
 					n = fprintf(f, "%*ld", n, mp->m_xlines);
@@ -688,7 +688,7 @@ jputc:
 			case 'o':
 				if (n == 0)
 					n = -5;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*lu", n, (long)mp->m_xsize);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -710,7 +710,7 @@ jputc:
 					n = -n;
 				if (subjlen > wleft)
 					subjlen = wleft;
-				if (ABS(n) > subjlen)
+				if (UICMP(32, ABS(n), >, subjlen))
 					n = (n < 0) ? -subjlen : subjlen;
 				if (B)
 					n -= (n < 0) ? -2 : 2;
@@ -733,7 +733,7 @@ jputc:
 #ifdef HAVE_IMAP
 				if (n == 0)
 					n = 9;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*lu", n, mp->m_uid);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -745,7 +745,7 @@ jputc:
 			case 'e':
 				if (n == 0)
 					n = 2;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*u", n,
 					threaded == 1 ? mp->m_level : 0);
@@ -758,7 +758,7 @@ jputc:
 						for (i=msgCount; i>999; i/=10)
 							n++;
 				}
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*ld", n,
 					threaded ? mp->m_threadpos : mesg);
@@ -768,7 +768,7 @@ jputc:
 #ifdef HAVE_SPAM
 				if (n == 0)
 					n = 4;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				{	char buf[16];
 					snprintf(buf, sizeof buf, "%u.%u",
@@ -810,7 +810,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	us = ac_alloc(mp->m_level * sizeof *us);
 
 	i = mp->m_level - 1;
-	if (mp->m_younger && (unsigned)i + 1 == mp->m_younger->m_level) {
+	if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
 		if (mp->m_parent && mp->m_parent->m_flag & important)
 			us[i] = mp->m_flag & important ? 0x2523 : 0x2520;
 		else
@@ -827,7 +827,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	mq = mp->m_parent;
 	for (i = mp->m_level - 2; i >= 0; i--) {
 		if (mq) {
-			if ((unsigned)i > mq->m_level - 1) {
+			if (UICMP(32, i, >, mq->m_level - 1)) {
 				us[i] = cs[i] = ' ';
 				continue;
 			}
