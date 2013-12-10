@@ -205,8 +205,8 @@ _print_part_info(struct str *out, struct mimepart *mip,
 	/* Max. 24 */
 	if (is_ign("content-type", 12, doign)) {
 		out->s = mip->m_ct_type_plain;
-		out->l = strlen(out->s) + 1;
-		ct.s = ac_alloc(2 + out->l);
+		out->l = strlen(out->s);
+		ct.s = ac_alloc(out->l + 2 +1);
 		ct.s[0] = ',';
 		ct.s[1] = ' ';
 		ct.l = 2;
@@ -220,7 +220,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
 			out->l = smin(out->l, 24);
 		memcpy(ct.s + ct.l, out->s, out->l);
 		ct.l += out->l;
-		ct.s[ct.l] = 0;
+		ct.s[ct.l] = '\0';
 	}
 
 	/* Max. 27 */
