@@ -44,7 +44,7 @@
 static int	save1(char *str, int domark, char const *cmd,
 			struct ignoretab *ignore, int convert,
 			int sender_record, int domove);
-static char *	snarf(char *linebuf, int *flag, int usembox);
+static char *	snarf(char *linebuf, bool_t *flag, bool_t usembox);
 static int	delm(int *msgvec);
 #ifdef HAVE_ASSERTS
 static void	clob1(int n);
@@ -245,17 +245,19 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 {
 	off_t mstats[2], tstats[2];
 	struct stat st;
-	int newfile = 0, compressed = 0, success = 1, last = 0, f, *msgvec, *ip;
+	int newfile = 0, compressed = 0, success = 1, last = 0, *msgvec, *ip;
 	struct message *mp;
 	char *file = NULL, *cp, *cq;
 	char const *disp = "";
 	FILE *obuf;
 	enum protocol prot;
+	bool_t f;
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	if (sender_record) {
-		for (cp = str; *cp && blankchar(*cp & 0377); cp++);
+		for (cp = str; *cp && blankchar(*cp); cp++)
+			;
 		f = (*cp != '\0');
 	} else {
 		if ((file = snarf(str, &f, convert != SEND_TOFILE)) == NULL)
@@ -270,8 +272,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 			return(1);
 		}
 		msgvec[1] = 0;
-	}
-	if (f && getmsglist(str, msgvec, 0) < 0)
+	} else if (getmsglist(str, msgvec, 0) < 0)
 		return(1);
 	if (*msgvec == 0) {
 		if (inhook)
@@ -457,14 +458,13 @@ cwrite(void *v)
  * which case, return 0 in the reference flag variable.
  */
 static char *
-snarf(char *linebuf, int *flag, int usembox)
+snarf(char *linebuf, bool_t *flag, bool_t usembox)
 {
 	char *cp;
 
-	*flag = 1;
 	if ((cp = laststring(linebuf, flag, 0)) == NULL) {
 		if (usembox) {
-			*flag = 0;
+			*flag = FAL0;
 			cp = expand("&");
 		} else
 			fprintf(stderr, tr(28, "No file specified.\n"));

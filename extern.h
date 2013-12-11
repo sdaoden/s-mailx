@@ -246,7 +246,6 @@ int from(void *v);
 void printhead(int mesg, FILE *f, int threaded);
 
 int pdot(void *v);
-char *laststring(char *linebuf, int *flag, int strip);
 int more(void *v);
 int More(void *v);
 int type(void *v);
@@ -1008,6 +1007,11 @@ int		is_prefix(char const *as1, char const *as2);
 
 /* Find the last AT @ before the first slash */
 char const *	last_at_before_slash(char const *sp);
+
+/* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
+ * to indicate wether getmsglist() et al need to be called to collect
+ * additional args that remain in linebuf.  Return NULL on "error" */
+char *		laststring(char *linebuf, bool_t *needs_list, bool_t strip);
 
 /* Convert a string to lowercase, in-place and with multibyte-aware */
 void		makelow(char *cp);

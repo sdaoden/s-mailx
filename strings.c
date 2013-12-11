@@ -631,6 +631,82 @@ last_at_before_slash(char const *sp)
 	return (*cp == '@' ? cp : NULL);
 }
 
+char *
+laststring(char *linebuf, bool_t *needs_list, bool_t strip)
+{
+   char *cp, *p, quoted;
+
+   /* Anything to do at all? */
+   if (*(cp = linebuf) == '\0')
+      goto jnull;
+   cp += strlen(linebuf) - 1;
+
+   /* Strip away trailing blanks */
+   while (whitechar(*cp) && PTRCMP(cp, >, linebuf))
+      --cp;
+   cp[1] = '\0';
+   if (cp == linebuf)
+      goto jleave;
+
+   /* Now search for the BOS of the "last string" */
+   quoted = *cp;
+   if (quoted == '\'' || quoted == '"') {
+      if (strip)
+         *cp = '\0';
+   } else
+      quoted = ' ';
+
+   while (PTRCMP(cp, >, linebuf)) {
+      --cp;
+      if (quoted != ' ') {
+         if (*cp != quoted)
+            continue;
+      } else if (!whitechar(*cp))
+         continue;
+      if (PTRCMP(cp, ==, linebuf) || cp[-1] != '\\') {
+         /* When in whitespace mode, WS prefix doesn't belong */
+         if (quoted == ' ')
+            ++cp;
+         break;
+      }
+      /* Expand the escaped quote character */
+      for (p = --cp; (p[0] = p[1]) != '\0'; ++p)
+         ;
+   }
+   if (strip && quoted != ' ' && *cp == quoted)
+      for (p = cp; (p[0] = p[1]) != '\0'; ++p)
+         ;
+
+   /* The "last string" has been skipped over, but still, try to step backwards
+    * until we are at BOS or see whitespace, so as to make possible things like
+    * "? copy +'x y.mbox'" or even "? copy +x\ y.mbox" */
+   while (PTRCMP(cp, >, linebuf)) {
+      --cp;
+      if (whitechar(*cp)) {
+         p = cp;
+         *cp++ = '\0';
+         /* We can furtherly release our callees if we now decide wether the
+          * remaining non-"last string" line content contains non-WS */
+         while (PTRCMP(--p, >=, linebuf))
+            if (!whitechar(*p))
+               goto jleave;
+         linebuf = cp;
+         break;
+      }
+   }
+
+jleave:
+   if (cp != NULL && *cp == '\0')
+      goto jnull;
+   *needs_list = (cp != linebuf && *linebuf != '\0');
+j_leave:
+   return cp;
+jnull:
+   *needs_list = FAL0;
+   cp = NULL;
+   goto j_leave;
+}
+
 void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {

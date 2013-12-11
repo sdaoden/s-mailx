@@ -871,6 +871,15 @@ Each command is typed on a line by itself,
 and may take arguments following the command word.
 The command need not be typed in its entirety \(en
 the first command which matches the typed prefix is used.
+(The command
+.Ic list
+prints a sorted list of available commands, and the command
+.Ic ? ,
+when given an argument, will show a documentation string for the
+expansion, as in
+.Ns ` Ns Ic ? Ns Ar unc Ns ' ;
+this mode is \*(OP, though.)
+.Pp
 For commands which take message lists as arguments,
 if no message list is given,
 then the next message forward which satisfies the command's requirements
@@ -887,12 +896,17 @@ The arguments to commands can be quoted, using the following methods:
 .It
 An argument can be enclosed between paired double-quotes `"argument"' or
 single-quotes `'argument'';
-any white space, shell word expansion, or backslash characters within
-the quotes are treated literally as part of the argument.
+any white space, shell word expansion, or backslash characters (except
+as described next) within the quotes are treated literally as part of
+the argument.
 A double-quote will be treated literally within single-quotes and vice
 versa.
-These special properties of the quote marks occur only when they are
-paired at the beginning and end of the argument.
+Inside such a quoted string the actually used quote character can be
+used nonetheless by escaping it with a backslash `\\', as in
+`"y\\"ou"'.
+.It
+An argument that is not enclosed in quotes, as above, can usually still
+contain space characters if those spaces are backslash-escaped.
 .It
 A backslash outside of the enclosing quotes is discarded
 and the following character is treated literally as part of the argument.
@@ -901,7 +915,7 @@ An unquoted backslash at the end of a command line is discarded and the
 next line continues the command.
 .El
 .Pp
-Filenames, where expected, are subjected to the following
+Filenames, where expected, are subsequently subjected to the following
 transformations, in sequence:
 .Bl -bullet -offset indent
 .It

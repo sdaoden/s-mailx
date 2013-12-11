@@ -357,10 +357,11 @@ int
 ccertsave(void *v)
 {
 	int	*ip;
-	int	f, *msgvec;
+	int	*msgvec;
 	char	*file = NULL, *str = v;
 	int	val = 0;
 	FILE	*fp;
+	bool_t	f;
 
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 	if ((file = laststring(str, &f, 1)) == NULL) {

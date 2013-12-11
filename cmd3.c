@@ -434,11 +434,11 @@ respond_internal(int *msgvec, int recipient_record)
 static int
 forward1(char *str, int recipient_record)
 {
-	int	*msgvec, f;
+	int	*msgvec;
 	char	*recipient;
 	struct message	*mp;
 	struct header	head;
-	bool_t forward_as_attachment;
+	bool_t f, forward_as_attachment;
 
 	forward_as_attachment = boption("forward-as-attachment");
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
@@ -455,8 +455,7 @@ forward1(char *str, int recipient_record)
 			return 1;
 		}
 		msgvec[1] = 0;
-	}
-	if (f && getmsglist(str, msgvec, 0) < 0)
+	} else if (getmsglist(str, msgvec, 0) < 0)
 		return 1;
 	if (*msgvec == 0) {
 		if (inhook)
@@ -1050,7 +1049,8 @@ resend1(void *v, int add_resent)
 	char *name, *str;
 	struct name *to;
 	struct name *sn;
-	int f, *ip, *msgvec;
+	int *ip, *msgvec;
+	bool_t f;
 
 	str = (char *)v;
 	/*LINTED*/
