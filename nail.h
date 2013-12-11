@@ -422,6 +422,18 @@ typedef size_t		uiz_t;
 # endif
 #endif
 
+/* XXX Note we don't really deal with that the right way in that we pass size_t
+ * XXX arguments without casting; should do, because above we assert UINT_MAX
+ * XXX is indeed ui32_t */
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define ZFMT		"zu"
+#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu
+# define ZFMT		"u"
+#endif
+#ifndef ZFMT
+# define ZFMT		"lu"
+#endif
+
 typedef enum {FAL0, TRU1} bool_t;
 
 typedef void (		*sighandler_type)(int);
