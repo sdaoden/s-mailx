@@ -78,6 +78,21 @@ panic(char const *format, ...)
 }
 
 void
+warn(char const *format, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, tr(1, "Panic: "));
+
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+
+	fputs("\n", stderr);
+	fflush(stderr);
+}
+
+void
 hold_all_sigs(void)
 {
 	if (_alls_depth++ == 0) {
@@ -899,284 +914,368 @@ my_getopt(int argc, char *const argv[], char const *optstring) /* XXX */
 #endif /* HAVE_GETOPT */
 
 static void
-out_of_memory(void)
+_out_of_memory(void)
 {
-	panic("no memory");
+   panic("no memory");
 }
 
 void *
 (smalloc_safe)(size_t s SMALLOC_DEBUG_ARGS)
 {
-	void *rv;
+   void *rv;
 
-	hold_all_sigs();
-	rv = (smalloc)(s SMALLOC_DEBUG_ARGSCALL);
-	rele_all_sigs();
-	return rv;
+   hold_all_sigs();
+   rv = (smalloc)(s SMALLOC_DEBUG_ARGSCALL);
+   rele_all_sigs();
+   return rv;
 }
 
 void *
 (srealloc_safe)(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
-	void *rv;
+   void *rv;
 
-	hold_all_sigs();
-	rv = (srealloc)(v, s SMALLOC_DEBUG_ARGSCALL);
-	rele_all_sigs();
-	return rv;
+   hold_all_sigs();
+   rv = (srealloc)(v, s SMALLOC_DEBUG_ARGSCALL);
+   rele_all_sigs();
+   return rv;
 }
 
 void *
 (scalloc_safe)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
-	void *rv;
+   void *rv;
 
-	hold_all_sigs();
-	rv = (scalloc)(nmemb, size SMALLOC_DEBUG_ARGSCALL);
-	rele_all_sigs();
-	return rv;
+   hold_all_sigs();
+   rv = (scalloc)(nmemb, size SMALLOC_DEBUG_ARGSCALL);
+   rele_all_sigs();
+   return rv;
 }
 
 #ifndef HAVE_ASSERTS
 void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
 {
-	void *p;
+   void *rv;
 
-	if (s == 0)
-		s = 1;
-	if ((p = malloc(s)) == NULL)
-		out_of_memory();
-	return p;
+   if (s == 0)
+      s = 1;
+   if ((rv = malloc(s)) == NULL)
+      _out_of_memory();
+   return rv;
 }
 
 void *
 srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
-	void *r;
+   void *rv;
 
-	if (s == 0)
-		s = 1;
-	if (v == NULL)
-		return smalloc(s);
-	if ((r = realloc(v, s)) == NULL)
-		out_of_memory();
-	return r;
+   if (s == 0)
+      s = 1;
+   if (v == NULL)
+      rv = smalloc(s);
+   else if ((rv = realloc(v, s)) == NULL)
+      _out_of_memory();
+   return rv;
 }
 
 void *
 scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
-	void *vp;
+   void *rv;
 
-	if (size == 0)
-		size = 1;
-	if ((vp = calloc(nmemb, size)) == NULL)
-		out_of_memory();
-	return vp;
+   if (size == 0)
+      size = 1;
+   if ((rv = calloc(nmemb, size)) == NULL)
+      _out_of_memory();
+   return rv;
 }
 
 #else /* !HAVE_ASSERTS */
+CTA(sizeof(char) == sizeof(ui8_t));
+
+# define _HOPE_SIZE        (2 * 8 * sizeof(char))
+# define _HOPE_SET(C)   \
+do {\
+   union ptr __xl, __xu;\
+   struct chunk *__xc;\
+   __xl.p = (C).p;\
+   __xc = __xl.c - 1;\
+   __xu.p = __xc;\
+   (C).cp += 8;\
+   __xl.ui8p[0]=0xDE; __xl.ui8p[1]=0xAA; __xl.ui8p[2]=0x55; __xl.ui8p[3]=0xAD;\
+   __xl.ui8p[4]=0xBE; __xl.ui8p[5]=0x55; __xl.ui8p[6]=0xAA; __xl.ui8p[7]=0xEF;\
+   __xu.ui8p += __xc->size - 8;\
+   __xu.ui8p[0]=0xDE; __xu.ui8p[1]=0xAA; __xu.ui8p[2]=0x55; __xu.ui8p[3]=0xAD;\
+   __xu.ui8p[4]=0xBE; __xu.ui8p[5]=0x55; __xu.ui8p[6]=0xAA; __xu.ui8p[7]=0xEF;\
+} while (0)
+# define _HOPE_GET_TRACE(C,BAD) do {(C).cp += 8; _HOPE_GET(C, BAD);} while(0)
+# define _HOPE_GET(C,BAD) \
+do {\
+   union ptr __xl, __xu;\
+   struct chunk *__xc;\
+   ui32_t __i;\
+   __xl.p = (C).p;\
+   __xl.cp -= 8;\
+   (C).cp = __xl.cp;\
+   __xc = __xl.c - 1;\
+   (BAD) = FAL0;\
+   __i = 0;\
+   if (__xl.ui8p[0] != 0xDE) __i |= 1<<0;\
+   if (__xl.ui8p[1] != 0xAA) __i |= 1<<1;\
+   if (__xl.ui8p[2] != 0x55) __i |= 1<<2;\
+   if (__xl.ui8p[3] != 0xAD) __i |= 1<<3;\
+   if (__xl.ui8p[4] != 0xBE) __i |= 1<<4;\
+   if (__xl.ui8p[5] != 0x55) __i |= 1<<5;\
+   if (__xl.ui8p[6] != 0xAA) __i |= 1<<6;\
+   if (__xl.ui8p[7] != 0xEF) __i |= 1<<7;\
+   if (__i != 0) {\
+      (BAD) = TRU1;\
+      warn("%p: corrupted lower canary: 0x%02X: %s, line %u",\
+         __xl.p, __i, mdbg_file, mdbg_line);\
+   }\
+   __xu.p = __xc;\
+   __xu.ui8p += __xc->size - 8;\
+   __i = 0;\
+   if (__xu.ui8p[0] != 0xDE) __i |= 1<<0;\
+   if (__xu.ui8p[1] != 0xAA) __i |= 1<<1;\
+   if (__xu.ui8p[2] != 0x55) __i |= 1<<2;\
+   if (__xu.ui8p[3] != 0xAD) __i |= 1<<3;\
+   if (__xu.ui8p[4] != 0xBE) __i |= 1<<4;\
+   if (__xu.ui8p[5] != 0x55) __i |= 1<<5;\
+   if (__xu.ui8p[6] != 0xAA) __i |= 1<<6;\
+   if (__xu.ui8p[7] != 0xEF) __i |= 1<<7;\
+   if (__i != 0) {\
+      (BAD) = TRU1;\
+      warn("%p: corrupted upper canary: 0x%02X: %s, line %u",\
+         __xl.p, __i, mdbg_file, mdbg_line);\
+   }\
+   if (BAD)\
+      warn("   ..canary last seen: %s, line %u", __xc->file, __xc->line);\
+} while (0)
+
 struct chunk {
-	struct chunk	*prev;
-	struct chunk	*next;
-	char const	*file;
-	us_it		line;
-	uc_it		isfree;
-	sc_it		__dummy;
-	ui_it		size;
+   struct chunk   *prev;
+   struct chunk   *next;
+   char const     *file;
+   ui16_t         line;
+   ui8_t          isfree;
+   ui8_t          __dummy;
+   ui32_t         size;
 };
 
 union ptr {
-	struct chunk	*c;
-	void		*p;
+   void           *p;
+   struct chunk   *c;
+   char           *cp;
+   ui8_t          *ui8p;
 };
 
-struct chunk	*_mlist, *_mfree;
+struct chunk   *_mlist, *_mfree;
 
 void *
 (smalloc)(size_t s SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
 
-	if (s == 0)
-		s = 1;
-	s += sizeof(struct chunk);
+   if (s == 0)
+      s = 1;
+   s += sizeof(struct chunk) + _HOPE_SIZE;
 
-	if ((p.p = malloc(s)) == NULL)
-		out_of_memory();
-	p.c->prev = NULL;
-	if ((p.c->next = _mlist) != NULL)
-		_mlist->prev = p.c;
-	p.c->file = mdbg_file;
-	p.c->line = (us_it)mdbg_line;
-	p.c->isfree = 0;
-	p.c->size = (ui_it)s;
-	_mlist = p.c++;
-	return (p.p);
+   if ((p.p = (malloc)(s)) == NULL)
+      _out_of_memory();
+   p.c->prev = NULL;
+   if ((p.c->next = _mlist) != NULL)
+      _mlist->prev = p.c;
+   p.c->file = mdbg_file;
+   p.c->line = (ui16_t)mdbg_line;
+   p.c->isfree = FAL0;
+   p.c->size = (ui32_t)s;
+   _mlist = p.c++;
+   _HOPE_SET(p);
+   return p.p;
 }
 
 void *
 (srealloc)(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
+   bool_t isbad;
 
-	if ((p.p = v) == NULL) {
-		p.p = (smalloc)(s, mdbg_file, mdbg_line);
-		goto jleave;
-	}
+   if ((p.p = v) == NULL) {
+      p.p = (smalloc)(s, mdbg_file, mdbg_line);
+      goto jleave;
+   }
 
-	--p.c;
-	if (p.c->isfree) {
-		fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
-			"\tLast seen: %s, line %d\n",
-			mdbg_file, mdbg_line, p.c->file, p.c->line);
-		goto jforce;
-	}
+   _HOPE_GET(p, isbad);
+   --p.c;
+   if (p.c->isfree) {
+      fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
+         "\tLast seen: %s, line %d\n",
+         mdbg_file, mdbg_line, p.c->file, p.c->line);
+      goto jforce;
+   }
 
-	if (p.c == _mlist)
-		_mlist = p.c->next;
-	else
-		p.c->prev->next = p.c->next;
-	if (p.c->next != NULL)
-		p.c->next->prev = p.c->prev;
+   if (p.c == _mlist)
+      _mlist = p.c->next;
+   else
+      p.c->prev->next = p.c->next;
+   if (p.c->next != NULL)
+      p.c->next->prev = p.c->prev;
 
 jforce:
-	if (s == 0)
-		s = 1;
-	s += sizeof(struct chunk);
+   if (s == 0)
+      s = 1;
+   s += sizeof(struct chunk) + _HOPE_SIZE;
 
-	if ((p.p = realloc(p.c, s)) == NULL)
-		out_of_memory();
-	p.c->prev = NULL;
-	if ((p.c->next = _mlist) != NULL)
-		_mlist->prev = p.c;
-	p.c->file = mdbg_file;
-	p.c->line = (us_it)mdbg_line;
-	p.c->isfree = 0;
-	p.c->size = (ui_it)s;
-	_mlist = p.c++;
+   if ((p.p = (realloc)(p.c, s)) == NULL)
+      _out_of_memory();
+   p.c->prev = NULL;
+   if ((p.c->next = _mlist) != NULL)
+      _mlist->prev = p.c;
+   p.c->file = mdbg_file;
+   p.c->line = (ui16_t)mdbg_line;
+   p.c->isfree = FAL0;
+   p.c->size = (ui32_t)s;
+   _mlist = p.c++;
+   _HOPE_SET(p);
 jleave:
-	return (p.p);
+   return p.p;
 }
 
 void *
 (scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
 
-	if (size == 0)
-		size = 1;
-	if (nmemb == 0)
-		nmemb = 1;
-	size *= nmemb;
-	size += sizeof(struct chunk);
+   if (size == 0)
+      size = 1;
+   if (nmemb == 0)
+      nmemb = 1;
+   size *= nmemb;
+   size += sizeof(struct chunk) + _HOPE_SIZE;
 
-	if ((p.p = malloc(size)) == NULL)
-		out_of_memory();
-	memset(p.p, 0, size);
-	p.c->prev = NULL;
-	if ((p.c->next = _mlist) != NULL)
-		_mlist->prev = p.c;
-	p.c->file = mdbg_file;
-	p.c->line = (us_it)mdbg_line;
-	p.c->isfree = 0;
-	p.c->size = (ui_it)size;
-	_mlist = p.c++;
-	return (p.p);
+   if ((p.p = (malloc)(size)) == NULL)
+      _out_of_memory();
+   memset(p.p, 0, size);
+   p.c->prev = NULL;
+   if ((p.c->next = _mlist) != NULL)
+      _mlist->prev = p.c;
+   p.c->file = mdbg_file;
+   p.c->line = (ui16_t)mdbg_line;
+   p.c->isfree = FAL0;
+   p.c->size = (ui32_t)size;
+   _mlist = p.c++;
+   _HOPE_SET(p);
+   return p.p;
 }
 
 void
 (sfree)(void *v SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
+   bool_t isbad;
 
-	if ((p.p = v) == NULL) {
-		fprintf(stderr, "sfree(NULL) from %s, line %d\n",
-			mdbg_file, mdbg_line);
-		goto jleave;
-	}
+   if ((p.p = v) == NULL) {
+      fprintf(stderr, "sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
+      goto jleave;
+   }
 
-	--p.c;
-	if (p.c->isfree) {
-		fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
-			"\tLast seen: %s, line %d\n",
-			mdbg_file, mdbg_line, p.c->file, p.c->line);
-		goto jleave;
-	}
+   _HOPE_GET(p, isbad);
+   --p.c;
+   if (p.c->isfree) {
+      fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
+         "\tLast seen: %s, line %d\n",
+         mdbg_file, mdbg_line, p.c->file, p.c->line);
+      goto jleave;
+   }
 
-	if (p.c == _mlist)
-		_mlist = p.c->next;
-	else
-		p.c->prev->next = p.c->next;
-	if (p.c->next != NULL)
-		p.c->next->prev = p.c->prev;
-	p.c->isfree = 1;
+   if (p.c == _mlist)
+      _mlist = p.c->next;
+   else
+      p.c->prev->next = p.c->next;
+   if (p.c->next != NULL)
+      p.c->next->prev = p.c->prev;
+   p.c->isfree = TRU1;
 
-	if (options & OPT_DEBUG) {
-		p.c->next = _mfree;
-		_mfree = p.c;
-	} else
-		(free)(p.c);
-jleave:	;
+   if (options & OPT_DEBUG) {
+      p.c->next = _mfree;
+      _mfree = p.c;
+   } else
+      (free)(p.c);
+jleave:
+   ;
 }
 
 void
 smemreset(void)
 {
-	union ptr p;
-	ul_it c = 0, s = 0;
+   union ptr p;
+   size_t c = 0, s = 0;
 
-	for (p.c = _mfree; p.c != NULL;) {
-		void *vp = p.c;
-		++c;
-		s += p.c->size;
-		p.c = p.c->next;
-		(free)(vp);
-	}
-	_mfree = NULL;
+   for (p.c = _mfree; p.c != NULL;) {
+      void *vp = p.c;
+      ++c;
+      s += p.c->size;
+      p.c = p.c->next;
+      (free)(vp);
+   }
+   _mfree = NULL;
 
-	if (options & OPT_DEBUG)
-		fprintf(stderr, "smemreset(): freed %lu regions/%lu bytes\n",
-			c, s);
+   if (options & OPT_DEBUG)
+      fprintf(stderr, "smemreset(): freed %" ZFMT " chunks/%" ZFMT " bytes\n",
+         c, s);
 }
 
 int
-(smemtrace)(void *v)
+smemtrace(void *v)
 {
-	FILE *fp;
-	char *cp;
-	union ptr p;
-	size_t lines = 0;
+   /* For _HOPE_GET() */
+   char const * const mdbg_file = "smemtrace()";
+   int const mdbg_line = -1;
 
-	v = (void*)0x1;
-	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
-		perror("tmpfile");
-		goto jleave;
-	}
-	rm(cp);
-	Ftfree(&cp);
+   FILE *fp;
+   char *cp;
+   union ptr p, xp;
+   bool_t isbad;
+   size_t lines;
 
-	fprintf(fp, "Currently allocated memory chunks:\n");
-	for (p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next)
-		fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
-			(void*)(p.c + 1),
-			(ui_it)(p.c->size - sizeof(struct chunk)),
-			p.c->file, p.c->line);
+   v = (void*)0x1;
+   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+      perror("tmpfile");
+      goto jleave;
+   }
+   rm(cp);
+   Ftfree(&cp);
 
-	if (options & OPT_DEBUG) {
-		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
-		for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next)
-			fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
-				(void*)(p.c + 1),
-				(ui_it)(p.c->size - sizeof(struct chunk)),
-				p.c->file, p.c->line);
-	}
+   fprintf(fp, "Currently allocated memory chunks:\n");
+   for (lines = 0, p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next) {
+      xp = p;
+      ++xp.c;
+      _HOPE_GET_TRACE(xp, isbad);
+      fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
+         (isbad ? "! CANARY ERROR: " : ""), xp.p,
+         (size_t)(p.c->size - sizeof(struct chunk)), p.c->file, p.c->line);
+   }
 
-	page_or_print(fp, lines);
-	Fclose(fp);
-	v = NULL;
+   if (options & OPT_DEBUG) {
+      fprintf(fp, "sfree()d memory chunks awaiting free():\n");
+      for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next) {
+         xp = p;
+         ++xp.c;
+         _HOPE_GET_TRACE(xp, isbad);
+         fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
+            (isbad ? "! CANARY ERROR: " : ""), xp.p,
+            (size_t)(p.c->size - sizeof(struct chunk)), p.c->file, p.c->line);
+      }
+   }
+
+   page_or_print(fp, lines);
+   Fclose(fp);
+   v = NULL;
 jleave:
-	return (v != NULL);
+   return (v != NULL);
 }
 #endif /* HAVE_ASSERTS */
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */
