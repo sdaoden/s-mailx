@@ -68,8 +68,9 @@ static sighandler_type  _oldpipe;
 static struct cmd_ghost *_cmd_ghosts;
 /* _cmd_tab[] after fun protos */
 
-/* Update mailname (if *name* != NULL) and displayname */
-static void    _update_mailname(char const *name);
+/* Update mailname (if name != NULL) and displayname, return wether displayname
+ * was large enough to swallow mailname */
+static bool_t  _update_mailname(char const *name);
 #ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
 SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
@@ -150,61 +151,63 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 }
 #endif /* HAVE_MBLEN */
 
-static void
+static bool_t
 _update_mailname(char const *name)
 {
-	char tbuf[MAXPATHLEN], *mailp, *dispp;
-	size_t i, j;
+   char tbuf[MAXPATHLEN], *mailp, *dispp;
+   size_t i, j;
+   bool_t rv;
 
-	/* Don't realpath(3) if it's only an update request */
-	if (name != NULL) {
+   /* Don't realpath(3) if it's only an update request */
+   if (name != NULL) {
 #ifdef HAVE_REALPATH
-		enum protocol p = which_protocol(name);
-		if (p == PROTO_FILE || p == PROTO_MAILDIR) {
-			if (realpath(name, mailname) == NULL) {
-				fprintf(stderr, tr(151,
-					"Can't canonicalize `%s'\n"), name);
-				goto jleave;
-			}
-		} else
+      enum protocol p = which_protocol(name);
+      if (p == PROTO_FILE || p == PROTO_MAILDIR) {
+         if (realpath(name, mailname) == NULL) {
+            fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), name);
+            rv = FAL0;
+            goto jleave;
+         }
+      } else
 #endif
-			(void)n_strlcpy(mailname, name, MAXPATHLEN);
-	}
+         n_strlcpy(mailname, name, sizeof(mailname));
+   }
 
-	mailp = mailname;
-	dispp = displayname;
+   mailp = mailname;
+   dispp = displayname;
 
-	/* Don't display an absolute path but "+FOLDER" if under *folder* */
-	if (getfold(tbuf, sizeof tbuf)) {
-		i = strlen(tbuf);
-		if (i < sizeof(tbuf) - 1)
-			tbuf[i++] = '/';
-		if (strncmp(tbuf, mailp, i) == 0) {
-			mailp += i;
-			*dispp++ = '+';
-		}
-	}
+   /* Don't display an absolute path but "+FOLDER" if under *folder* */
+   if (getfold(tbuf, sizeof tbuf)) {
+      i = strlen(tbuf);
+      if (i < sizeof(tbuf) - 1)
+         tbuf[i++] = '/';
+      if (strncmp(tbuf, mailp, i) == 0) {
+         mailp += i;
+         *dispp++ = '+';
+      }
+   }
 
-	/* We want to see the name of the folder .. on the screen */
-	i = strlen(mailp);
-	if (i < sizeof(displayname) - 1)
-		memcpy(dispp, mailp, i + 1);
-	else {
-		/* Avoid disrupting multibyte sequences (if possible) */
+   /* We want to see the name of the folder .. on the screen */
+   i = strlen(mailp);
+   if ((rv = (i < sizeof(displayname) - 1)))
+      memcpy(dispp, mailp, i + 1);
+   else {
+      /* Avoid disrupting multibyte sequences (if possible) */
 #ifndef HAVE_MBLEN
-		j = sizeof(displayname) / 3 - 1;
-		i -= sizeof(displayname) - (1/* + */ + 3) - j;
+      j = sizeof(displayname) / 3 - 1;
+      i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
-		j = __narrow_prefix(mailp, sizeof(displayname) / 3);
-		i = j + __narrow_suffix(mailp + j, i - j,
-			sizeof(displayname) - (1/* + */ + 3 + 1) - j);
+      j = __narrow_prefix(mailp, sizeof(displayname) / 3);
+      i = j + __narrow_suffix(mailp + j, i - j,
+         sizeof(displayname) - (1/* + */ + 3 + 1) - j);
 #endif
-		(void)snprintf(dispp, sizeof(displayname), "%.*s...%s",
-			(int)j, mailp, mailp + i);
-	}
+      snprintf(dispp, sizeof(displayname), "%.*s...%s",
+         (int)j, mailp, mailp + i);
+   }
 #ifdef HAVE_REALPATH
-jleave:	;
+jleave:
 #endif
+   return rv;
 }
 
 static char *
@@ -1098,8 +1101,11 @@ newfileinfo(void)
 		if (mp->m_flag & MHIDDEN)
 			hidden++;
 	}
-	_update_mailname(NULL);
-	printf(tr(103, "\"%s\": "), displayname);
+
+	/* If displayname gets truncated the user effectively has no option to see
+	 * the full pathname of the mailbox, so print it at least for '? fi' */
+	printf(tr(103, "\"%s\": "),
+		(_update_mailname(NULL) ? displayname : mailname));
 	if (msgCount == 1)
 		printf(tr(104, "1 message"));
 	else
