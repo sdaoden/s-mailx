@@ -285,7 +285,7 @@ int
    }
 
    _rl_shup = safe_signal(SIGHUP, &tty_signal);
-   line = readline(prompt);
+   line = readline(prompt != NULL ? prompt : "");
    safe_signal(SIGHUP, _rl_shup);
 
    if (line == NULL) {
@@ -406,7 +406,7 @@ int
    int nn;
    char const *line;
 
-   _el_prompt = prompt;
+   _el_prompt = (prompt != NULL) ? prompt : "";
    if (n > 0)
       el_push(_el_el, *linebuf);
    line = el_gets(_el_el, &nn);
@@ -480,6 +480,16 @@ jleave:
  */
 
 #ifdef __NCL
+# ifndef MAX_INPUT
+#  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
+# endif
+
+  /* Since we simply fputs(3) the prompt, assume each character requires two
+   * visual cells -- and we need to restrict the maximum prompt size because
+   * of MAX_INPUT and our desire to have room for some error message left */
+# define _PROMPT_VLEN(P)   (strlen(P) * 2)
+# define _PROMPT_MAX       ((MAX_INPUT / 2) + (MAX_INPUT / 4))
+
 union xsighdl {
    sighandler_type   shdl; /* Try avoid races by setting */
    sl_it             sint; /* .sint=-1 when inactive */
@@ -846,7 +856,7 @@ _ncl_krefresh(struct line *l)
    size_t i;
 
    putchar('\r');
-   if (*l->prompt)
+   if (l->prompt != NULL && *l->prompt != '\0')
       fputs(l->prompt, stdout);
    for (cap = l->line.cells, i = l->topins; i > 0; ++cap, --i)
       fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
@@ -913,32 +923,42 @@ _ncl_kht(struct line *l)
 
       if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
             (exp.l != sub.l || strcmp(exp.s, sub.s))) {
-         /* TODO cramp expansion length to MAX_INPUT, or 255 if not defined;
-          * TODO the problem is that we loose control otherwise; in the best
+         /* Cramp expansion length to MAX_INPUT, or 255 if not defined.
+          * Take care to take *prompt* into account, since we don't know
+          * anything about it's visual length (fputs(3) is used), simply
+          * assume each character requires two columns */
+         /* TODO the problem is that we loose control otherwise; in the best
           * TODO case the user can control via ^A and ^K etc., but be safe;
           * TODO we cannot simply adjust fexpand() because we don't know how
           * TODO that is implemented...  The real solution would be to check
           * TODO wether we fit on a line, and start a pager if not.
           * TODO However, that should be part of a real tab-COMPLETION, then,
           * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
-          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT:
-          * TODO Note how hacky this is in respect to excess of final string */
-# ifndef MAX_INPUT
-#  define MAX_INPUT 255 /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
-# endif
-         if (exp.l >= MAX_INPUT) {
-            char const cp[] = "[maximum line size exceeded]";
-            exp.s = UNCONST(cp);
-            exp.l = sizeof(cp) - 1;
+          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
+         rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
+         if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
+            char const e1[] = "[maximum line size exceeded]";
+            exp.s = UNCONST(e1);
+            exp.l = sizeof(e1) - 1;
+            topp.l = 0;
+            if (rv + bot.l + exp.l >= MAX_INPUT)
+               bot.l = 0;
+            if (rv + exp.l >= MAX_INPUT) {
+               char const e2[] = "[ERR]";
+               exp.s = UNCONST(e2);
+               exp.l = sizeof(e2) - 1;
+            }
          }
          orig.l = bot.l + exp.l + topp.l;
-         orig.s = salloc(orig.l + 1);
-         rv = bot.l;
-         memcpy(orig.s, bot.s, rv);
+         orig.s = salloc(orig.l + 1 + 5);
+         if ((rv = bot.l) > 0)
+            memcpy(orig.s, bot.s, rv);
          memcpy(orig.s + rv, exp.s, exp.l);
          rv += exp.l;
-         memcpy(orig.s + rv, topp.s, topp.l);
-         rv += topp.l;
+         if (topp.l > 0) {
+            memcpy(orig.s + rv, topp.s, topp.l);
+            rv += topp.l;
+         }
          orig.s[rv] = '\0';
 
          l->defc = orig;
@@ -1156,13 +1176,14 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
       l.defc.s = savestrbuf(*buf, len);
       l.defc.l = len;
    }
-   l.prompt = prompt;
+   if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
+      l.prompt = prompt = "?ERR?";
    if ((l.nd = voption("line-editor-cursor-right")) == NULL)
       l.nd = "\033[C";
    l.x_buf = buf;
    l.x_bufsize = bufsize;
 
-   if (*prompt) {
+   if (prompt != NULL && *prompt != '\0') {
       fputs(prompt, stdout);
       fflush(stdout);
    }
@@ -1551,7 +1572,7 @@ int
     */
    bool_t doffl = FAL0;
 
-   if (*prompt != '\0') {
+   if (prompt != NULL && *prompt != '\0') {
       fputs(prompt, stdout);
       doffl = TRU1;
    }

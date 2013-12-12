@@ -1103,8 +1103,8 @@ void	tty_destroy(void);
 /* Rather for main.c / SIGWINCH interaction only */
 void	tty_signal(int sig);
 
-/* Read a line after printing `prompt', if set and non-empty.
- * If `n' is not 0, assumes that `*linebuf' has `n' bytes of default content */
+/* Read a line after printing prompt (if set and non-empty).
+ * If n>0 assumes that *linebuf has n bytes of default content */
 int	tty_readline(char const *prompt, char **linebuf, size_t *linesize,
 		size_t n SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_ASSERTS
