@@ -797,9 +797,6 @@ int
 cfile(void *v)
 {
 	char **argv = v;
-#if 1 /* TODO this & expansion is completely redundant! */
-	char *e;
-#endif
 	int i;
 
 	if (*argv == NULL) {
@@ -812,11 +809,8 @@ cfile(void *v)
 			"Cannot change folder from within a hook.\n"));
 		return 1;
 	}
-#if 1
-	if ((e = expand("&")) == NULL)
-		return 0;
-	n_strlcpy(mboxname, e, sizeof mboxname);
-#endif
+
+	save_mbox_for_possible_quitstuff();
 
 	i = setfile(*argv, 0);
 	if (i < 0)

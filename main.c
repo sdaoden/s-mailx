@@ -359,9 +359,7 @@ _rcv_mode(char const *folder)
       safe_signal(SIGINT, SIG_IGN);
       safe_signal(SIGQUIT, SIG_IGN);
    }
-   if ((cp = expand("&")) == NULL)
-      cp = UNCONST("");
-   n_strlcpy(mboxname, cp, sizeof(mboxname));
+   save_mbox_for_possible_quitstuff();
    quit();
    return exit_status;
 }

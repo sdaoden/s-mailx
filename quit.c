@@ -42,6 +42,8 @@
 #include <fcntl.h>
 #include <utime.h>
 
+static char	_mboxname[MAXPATHLEN];	/* Name of mbox */
+
 /* Touch the indicated file */
 static void	alter(char const *name);
 
@@ -358,13 +360,22 @@ holdbits(void)
 	return anystat;
 }
 
+void
+save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
+{
+	char const *cp;
+
+	if ((cp = expand("&")) == NULL)
+		cp = "";
+	n_strlcpy(_mboxname, cp, sizeof _mboxname);
+}
+
 /*
  * Create another temporary file and copy user's mbox file
  * darin.  If there is no mbox, copy nothing.
  * If he has specified "append" don't copy his mailbox,
  * just copy saveable entries at the end.
  */
-
 enum okay 
 makembox(void)
 {
@@ -374,7 +385,7 @@ makembox(void)
 	FILE *ibuf = NULL, *obuf, *abuf;
 	enum protocol	prot;
 
-	mbox = mboxname;
+	mbox = _mboxname;
 	mcount = 0;
 	if (value("append") == NULL) {
 		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {

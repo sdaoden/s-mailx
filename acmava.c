@@ -779,7 +779,7 @@ cdefines(void *v)
 int
 c_account(void *v)
 {
-   char **args = v, *cp;
+   char **args = v;
    struct macro *mp;
    int rv = 1, i, oqf, nqf;
 
@@ -807,9 +807,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if ((cp = expand("&")) == NULL)
-      goto jleave;
-   n_strlcpy(mboxname, cp, sizeof mboxname);
+   save_mbox_for_possible_quitstuff();
 
    mp = NULL;
    if (asccasecmp(args[0], ACCOUNT_NULL) != 0 &&

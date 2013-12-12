@@ -853,6 +853,7 @@ int wait_child(int pid);
 int quitcmd(void *v);
 void quit(void);
 int holdbits(void);
+void	save_mbox_for_possible_quitstuff(void); /* TODO try to get rid of it */
 enum okay makembox(void);
 int savequitflags(void);
 void restorequitflags(int);

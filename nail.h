@@ -1217,7 +1217,6 @@ _E int		image;			/* File descriptor for image of msg */
 _E char		mailname[MAXPATHLEN];	/* Name of current file */
 _E char		displayname[80 - 40];	/* Prettyfied for display */
 _E char		prevfile[MAXPATHLEN];	/* Name of previous file */
-_E char		mboxname[MAXPATHLEN];	/* Name of mbox */
 _E char const *	account_name;		/* Current account name or NULL */
 _E off_t	mailsize;		/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
