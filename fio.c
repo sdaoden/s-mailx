@@ -132,19 +132,15 @@ _globname(char const *name, enum fexp_mode fexpm)
 	sigset_t nset;
 	int i;
 
-	/*
-	 * Some systems (notably Open UNIX 8.0.0) fork a shell for
-	 * wordexp() and wait for it; waiting will fail if our SIGCHLD
-	 * handler is active.
-	 */
+	/* Some systems (notably Open UNIX 8.0.0) fork a shell for wordexp()
+	 * and wait, which will fail if our SIGCHLD handler is active */
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, NULL);
-	/* Mac OS X Snow Leopard doesn't init fields on error, causing SIGSEGV
-	 * in wordfree(3) */
-# ifdef __APPLE__
+
+	/* Mac OS X Snow Leopard and Linux don't init fields on error, causing
+	 * SIGSEGV in wordfree(3); so let's just always zero it ourselfs */
 	memset(&we, 0, sizeof we);
-# endif
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
