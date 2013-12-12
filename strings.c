@@ -838,6 +838,16 @@ char *
 	return dp;
 }
 
+char *
+n_strlcpy(char *dst, const char *src, size_t len)
+{
+   assert(len > 0);
+
+   dst = strncpy(dst, src, len);
+   dst[len - 1] = '\0';
+   return dst;
+}
+
 int
 asccasecmp(char const *s1, char const *s2)
 {

@@ -41,7 +41,6 @@
  * TODO Convert optional utility+ functions to n_*(); ditto
  * TODO else use generic module-specific prefixes: str_(), am[em]_, sm[em]_, ..
  */
-#define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[(c) - 1] = '\0')
 
 /*
  * acmava.c
@@ -1031,6 +1030,8 @@ char *		sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 # define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
 # define sbufdup(CP,L)	sbufdup(CP, L, __FILE__, __LINE__)
 #endif
+
+char *		n_strlcpy(char *dst, const char *src, size_t len);
 
 /* Locale-independent character class functions */
 int		asccasecmp(char const *s1, char const *s2);
