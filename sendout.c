@@ -328,7 +328,7 @@ _prepare_mta_args(struct name *to, struct header *hp)
  * the distribution list into the appropriate fields.
  */
 static struct name *
-fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
+fixhead(struct header *hp, struct name *tolist)
 {
 	struct name *np;
 
@@ -337,7 +337,7 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 	hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
 		if (np->n_type & GDEL) {
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG /* TODO LEGACY CODE */
 			assert(0); /* Shouldn't happen here, but later on :)) */
 #else
 			continue;
@@ -708,8 +708,8 @@ savemail(char const *name, FILE *fi)
 	rewind(fi);
 	cnt = fsize(fi);
 	while (fgetline(&buf, &bufsize, &cnt, &buflen, fi, 0) != NULL) {
-#ifdef HAVE_ASSERTS /* TODO assert legacy */
-		assert(! is_head(buf, buflen));
+#ifdef HAVE_DEBUG /* TODO assert legacy */
+		assert(!is_head(buf, buflen));
 #else
 		if (is_head(buf, buflen))
 			putc('>', fo);

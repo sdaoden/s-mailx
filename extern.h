@@ -183,7 +183,7 @@ int	my_getopt(int argc, char *const argv[], const char *optstring);
 #endif
 
 /* Memory allocation routines; the _safe versions temporarily block signals */
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define SMALLOC_DEBUG_ARGS	, char const *mdbg_file, int mdbg_line
 # define SMALLOC_DEBUG_ARGSCALL	, mdbg_file, mdbg_line
 #else
@@ -198,7 +198,7 @@ void *	smalloc(size_t s SMALLOC_DEBUG_ARGS);
 void *	srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
 void *	scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 void	sfree(void *v SMALLOC_DEBUG_ARGS);
 /* Called by sreset(), then */
 void	smemreset(void);
@@ -385,7 +385,7 @@ ssize_t	quoteflt_flush(struct quoteflt *self);
 char *		fgetline(char **line, size_t *linesize, size_t *count,
 			size_t *llen, FILE *fp, int appendnl
 			SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define fgetline(A,B,C,D,E,F)	\
 	fgetline(A, B, C, D, E, F, __FILE__, __LINE__)
 #endif
@@ -396,7 +396,7 @@ char *		fgetline(char **line, size_t *linesize, size_t *count,
  */
 int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 			size_t n SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define readline_restart(A,B,C,D) \
 	readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
@@ -406,7 +406,7 @@ int		readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
  * Return number of octets or a value <0 on error */
 int		readline_input(enum lned_mode lned, char const *prompt,
 			char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
 #endif
 
@@ -466,7 +466,7 @@ enum okay sopen(const char *xserver, struct sock *sp, int use_ssl,
 /*  */
 int		sgetline(char **line, size_t *linesize, size_t *linelen,
 			struct sock *sp SMALLOC_DEBUG_ARGS);
-# ifdef HAVE_ASSERTS
+# ifdef HAVE_DEBUG
 #  define sgetline(A,B,C,D)	sgetline(A, B, C, D, __FILE__, __LINE__)
 # endif
 #endif
@@ -959,7 +959,7 @@ void		srelax_rele(void);
 void		srelax(void);
 
 /* 'sstats' command */
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 int		c_sstats(void *v);
 #endif
 
@@ -1027,7 +1027,7 @@ int		snprintf(char *str, size_t size, const char *format, ...);
 char *		sstpcpy(char *dst, const char *src);
 char *		sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 char *		sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define sstrdup(CP)	sstrdup(CP, __FILE__, __LINE__)
 # define sbufdup(CP,L)	sbufdup(CP, L, __FILE__, __LINE__)
 #endif
@@ -1052,7 +1052,7 @@ struct str *	n_str_add_buf(struct str *self, char const *buf, size_t buflen
 #define n_str_add(S, T)		n_str_add_buf(S, (T)->s, (T)->l)
 #define n_str_add_cp(S, CP)	n_str_add_buf(S, CP, (CP) ? strlen(CP) : 0)
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define n_str_dup(S,T)		n_str_dup(S, T, __FILE__, __LINE__)
 # define n_str_add_buf(S,B,BL)	n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
@@ -1107,7 +1107,7 @@ void	tty_signal(int sig);
  * If n>0 assumes that *linebuf has n bytes of default content */
 int	tty_readline(char const *prompt, char **linebuf, size_t *linesize,
 		size_t n SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # define tty_readline(A,B,C,D)	tty_readline(A, B, C, D, __FILE__, __LINE__)
 #endif
 

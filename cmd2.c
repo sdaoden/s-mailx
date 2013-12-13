@@ -46,7 +46,7 @@ static int	save1(char *str, int domark, char const *cmd,
 			int sender_record, int domove);
 static char *	snarf(char *linebuf, bool_t *flag, bool_t usembox);
 static int	delm(int *msgvec);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 static void	clob1(int n);
 #endif
 static int	ignore1(char **list, struct ignoretab *tab, char const *which);
@@ -573,7 +573,7 @@ undeletecmd(void *v)
 	return 0;
 }
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 /*
  * Interactively dump core on "core"
  */
@@ -635,7 +635,7 @@ clobber(void *v)
 	clob1(times);
 	return (0);
 }
-#endif /* HAVE_ASSERTS */
+#endif /* HAVE_DEBUG */
 
 /*
  * Add the given header fields to the retained list.

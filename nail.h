@@ -66,7 +66,7 @@
 # include <inttypes.h>
 #endif
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 # include <assert.h>
 #endif
 #ifdef HAVE_ICONV
@@ -181,9 +181,9 @@
 #define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
 #define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
 
-#ifndef HAVE_ASSERTS
+#ifndef HAVE_DEBUG
 # undef assert
-# define assert(X)	((void)0)
+# define assert(X)	UNUSED(0)
 #endif
 
 /* Translation (init in main.c) */

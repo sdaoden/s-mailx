@@ -952,7 +952,7 @@ void *
    return rv;
 }
 
-#ifndef HAVE_ASSERTS
+#ifndef HAVE_DEBUG
 void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
 {
@@ -991,7 +991,7 @@ scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
    return rv;
 }
 
-#else /* !HAVE_ASSERTS */
+#else /* !HAVE_DEBUG */
 CTA(sizeof(char) == sizeof(ui8_t));
 
 # define _HOPE_SIZE        (2 * 8 * sizeof(char))
@@ -1276,6 +1276,6 @@ smemtrace(void *v)
 jleave:
    return (v != NULL);
 }
-#endif /* HAVE_ASSERTS */
+#endif /* HAVE_DEBUG */
 
 /* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

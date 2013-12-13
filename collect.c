@@ -511,7 +511,7 @@ jcont:
 			}
 			fputs(tr(56, "Unknown tilde escape.\n"), stderr);
 			break;
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 		case 'C':
 			/* Dump core */
 			core(NULL);
@@ -567,7 +567,7 @@ jcont:
 				++cp;
 			hp->h_subject = savestr(cp);
 			break;
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 		case 'S':
 			c_sstats(NULL);
 			break;

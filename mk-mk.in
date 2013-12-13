@@ -207,7 +207,7 @@ _update-release:
 	echo 'Really send announcement mail?  ENTER continues';\
 	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
-	make WANT_ASSERTS=1 &&\
+	make _buh &&\
 	./s-nail -A sdn_sf -s "[ANNOUNCE] Announcing S-nail v$${REL}" \
 		nail-announce &&\
 	cd .. &&\

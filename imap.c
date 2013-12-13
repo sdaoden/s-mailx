@@ -1757,7 +1757,7 @@ imap_exit(struct mailbox *mp)
 	free(mp->mb_imap_mailbox);
 	if (mp->mb_cache_directory != NULL)
 		free(mp->mb_cache_directory);
-#ifndef HAVE_ASSERTS /* TODO ASSERT LEGACY */
+#ifndef HAVE_DEBUG /* TODO ASSERT LEGACY */
 	mp->mb_imap_account =
 	mp->mb_imap_mailbox =
 	mp->mb_cache_directory = "";

@@ -462,7 +462,7 @@ main(int argc, char *argv[])
 #endif
       case 'd':
          okey = "debug";
-#ifdef WANT_ASSERTS
+#ifdef HAVE_DEBUG
          assign(okey, "");
 #endif
          goto joarg;
@@ -569,7 +569,7 @@ joarg:
       case 'v':
          /* Be verbose */
          okey = "verbose";
-#ifdef WANT_ASSERTS
+#ifdef HAVE_DEBUG
          assign(okey, "");
 #endif
          goto joarg;

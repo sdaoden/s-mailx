@@ -283,7 +283,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
 	RFC 4155 compliant parser, like S-nail, takes care for From_ lines only
 	after an empty line has been seen, which cannot be detected that easily
 	right here!
-ifdef HAVE_ASSERTS /* TODO assert legacy */
+ifdef HAVE_DEBUG /* TODO assert legacy */
 	/* TODO if at all, this CAN only happen for SEND_DECRYPT, since all
 	 * TODO other input situations handle RFC 4155 OR, if newly generated,
 	 * TODO enforce quoted-printable if there is From_, as "required" by

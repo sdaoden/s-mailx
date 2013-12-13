@@ -96,7 +96,7 @@ struct buffer {
 static struct b_bltin   _builtin_buf;
 static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
    _all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
    _all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
@@ -106,7 +106,7 @@ size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
 void *
 salloc(size_t size)
 {
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
    size_t orig_size = size;
 #endif
    union {struct buffer *b; char *cp;} u;
@@ -117,7 +117,7 @@ salloc(size_t size)
    size += SALIGN;
    size &= ~SALIGN;
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
    ++_all_cnt;
    ++_all_cycnt;
    _all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
@@ -164,7 +164,7 @@ jumpin:
       _buf_head = (struct buffer*)b;
       u.b = _buf_head;
    } else {
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
       ++_all_bufcnt;
       ++_all_cybufcnt;
       _all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
@@ -199,13 +199,13 @@ sreset(bool_t only_if_relaxed)
 {
    struct buffer *bh;
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
    ++_all_resetreqs;
 #endif
    if (noreset || (only_if_relaxed && _buf_relax == NULL))
       goto jleave;
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
    _all_cycnt = _all_cysize = 0;
    _all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
    ++_all_resets;
@@ -215,7 +215,7 @@ sreset(bool_t only_if_relaxed)
       struct buffer *b = bh;
       b->b._caster = b->b._bot;
       b->b._relax = NULL;
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
       memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
       _buf_server = b;
@@ -223,7 +223,7 @@ sreset(bool_t only_if_relaxed)
          b = bh;
          b->b._caster = b->b._bot;
          b->b._relax = NULL;
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
          memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
          for (bh = bh->b._next; bh != NULL;) {
@@ -237,7 +237,7 @@ sreset(bool_t only_if_relaxed)
       _buf_relax = NULL;
    }
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
    smemreset();
 #endif
 jleave:
@@ -293,13 +293,13 @@ srelax(void)
 
    for (b = _buf_relax; b != NULL; b = b->b._next) {
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
       memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
    }
 }
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 int
 c_sstats(void *v)
 {

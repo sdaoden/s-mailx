@@ -444,8 +444,8 @@ int main(void)
 
 ##
 
-if wantfeat ASSERTS; then
-   echo '#define HAVE_ASSERTS' >> ${h}
+if wantfeat DEBUG; then
+   echo '#define HAVE_DEBUG' >> ${h}
 fi
 
 if nwantfeat NOALLOCA; then
@@ -911,7 +911,7 @@ for i in *.c; do
    printf "`basename ${i} .c`.o " >> ${mk}
 done
 echo >> ${mk}
-if wantfeat ASSERTS; then
+if wantfeat DEBUG; then
    echo 'CFLAGS = $(EXT_CFLAGS)' >> ${mk}
 else
    echo 'CFLAGS = $(STD_CFLAGS)' >> ${mk}
@@ -1042,14 +1042,10 @@ cat > ${tmp2}.c << \!
 : directory of mailx is moved while the IMAP cache is used.
 #endif
 #ifndef HAVE_GETOPT
-: . A (usable) getopt() functionality could not be found.
-: A builtin version is used instead.
+: . Using a minimal builtin POSIX-like getopt()
 #endif
-#ifdef HAVE_ASSERTS
-: . The binary will contain slow and huge debug code assertions.
-: There are also additional commands available, like "core".
-: Such a binary is not meant to be used by end-users, but only for
-: development purposes.  Thanks!
+#ifdef HAVE_DEBUG
+: . Debug enabled binary: not meant to be used by end-users: THANKS!
 #endif
 :
 !

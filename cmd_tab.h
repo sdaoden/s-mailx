@@ -349,7 +349,7 @@
      DS(428, "Print current working directory (CWD)") },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },
    { "clobber", clobber, (M | RAWLIST), 0, 1
