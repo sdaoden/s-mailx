@@ -851,6 +851,12 @@ else
    echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
+if [ -n "${have_cle}" ] && wantfeat HISTORY; then
+   echo '#define HAVE_HISTORY' >> ${h}
+else
+   echo '/* WANT_HISTORY=0 */' >> ${h}
+fi
+
 if wantfeat QUOTE_FOLD &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
@@ -964,10 +970,12 @@ cat > ${tmp2}.c << \!
 : + IDNA (internationalized domain names for applications) support
 #endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
+: + Command line editing
 # ifdef HAVE_TABEXPAND
-: + Command line editing with tabulator expansion and history
-# else
-: + Command line editing and history
+: + + Tabulator expansion
+# endif
+# ifdef HAVE_HISTORY
+: + + History management
 # endif
 #endif
 #ifdef HAVE_QUOTE_FOLD

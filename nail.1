@@ -794,7 +794,9 @@ Regardless of the actually used command line editor history entries
 will be created for lines entered in command mode only, and creation of
 such an entry can be forcefully suppressed by starting the line with
 a space character.
-Also refer to the documentation of
+Note that history handling is by itself an optional feature and may
+therefore not be available.
+For more information see the documentation of the options
 .Va emptystart ,
 .Va line-editor-disable ,
 .Va NAIL_HISTFILE
@@ -843,11 +845,11 @@ Delete all characters from the cursor to the end of the line.
 .It ^L
 Repaint the line.
 .It ^N
-Go to the next history entry.
+\*(OP Go to the next history entry.
 .It ^P
-Go to the previous history entry.
+\*(OP Go to the previous history entry.
 .It ^R
-Complete the current line from (the remaining older) history entries.
+\*(OP Complete the current line from (the remaining older) history entries.
 .It ^U
 The same as `^A' followed by `^K'.
 .It ^W

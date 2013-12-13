@@ -86,6 +86,8 @@ WANT_IDNA=1
 WANT_READLINE=0
 WANT_EDITLINE=0
 WANT_NCL=1
+# For all command line editors we optionally support history
+WANT_HISTORY=1
 # For the NCL command line editor we optionally support "expand-on-tabulator".
 # Turning it off shrinks the binary.  Please see the respective manual entry
 WANT_TABEXPAND=1

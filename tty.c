@@ -56,22 +56,23 @@
 #include "nail.h"
 
 #ifdef HAVE_READLINE
-# include <readline/history.h>
 # include <readline/readline.h>
+# ifdef HAVE_HISTORY
+#  include <readline/history.h>
+# endif
 #elif defined HAVE_EDITLINE
 # include <histedit.h>
 #endif
 
-/* */
-#define _CL_HISTFILE(S) \
+/* Shared history support macros */
+#ifdef HAVE_HISTORY
+# define _CL_HISTFILE(S) \
 do {\
    S = voption("NAIL_HISTFILE");\
    if ((S) != NULL)\
       S = fexpand(S, FEXP_LOCAL);\
 } while (0)
-
-/* */
-#define _CL_HISTSIZE(V) \
+# define _CL_HISTSIZE(V) \
 do {\
    char const *__sv = voption("NAIL_HISTSIZE");\
    long __rv;\
@@ -83,9 +84,7 @@ do {\
    else\
       (V) = __rv;\
 } while (0)
-
-/* */
-#define _CL_CHECK_ADDHIST(S,NOACT) \
+# define _CL_CHECK_ADDHIST(S,NOACT) \
 do {\
    switch (*(S)) {\
    case '\0':\
@@ -96,6 +95,7 @@ do {\
       break;\
    }\
 } while (0)
+#endif /* HAVE_HISTORY */
 
 /* fexpand() flags for expand-on-tab */
 #define _CL_TAB_FEXP_FL (FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
@@ -110,7 +110,7 @@ yorn(char const *msg)
 {
    char *cp;
 
-   if (! (options & OPT_INTERACTIVE))
+   if (!(options & OPT_INTERACTIVE))
       return TRU1;
    do if ((cp = readstr_input(msg, NULL)) == NULL)
       return FAL0;
@@ -215,32 +215,40 @@ _rl_pre_input(void)
 void
 tty_init(void)
 {
+# ifdef HAVE_HISTORY
    long hs;
    char *v;
-
-   _CL_HISTSIZE(hs);
+# endif
 
    rl_readline_name = UNCONST(uagent);
+# ifdef HAVE_HISTORY
+   _CL_HISTSIZE(hs);
    using_history();
    stifle_history((int)hs);
+# endif
    rl_read_init_file(NULL);
 
    /* Because rl_read_init_file() may have introduced yet a different
     * history size limit, simply load and incorporate the history, leave
     * it up to readline(3) to do the rest */
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       read_history(v);
+# endif
 }
 
 void
 tty_destroy(void)
 {
+# ifdef HAVE_HISTORY
    char *v;
 
    _CL_HISTFILE(v);
    if (v != NULL)
       write_history(v);
+# endif
+   ;
 }
 
 void
@@ -311,12 +319,14 @@ jleave:
 void
 tty_addhist(char const *s)
 {
+# ifdef HAVE_HISTORY
    _CL_CHECK_ADDHIST(s, goto jleave);
    hold_all_sigs();  /* XXX too heavy */
    add_history(s);   /* XXX yet we jump away! */
    rele_all_sigs();  /* XXX remove jumps */
 jleave:
-   ;
+# endif
+   UNUSED(s);
 }
 #endif /* HAVE_READLINE */
 
@@ -326,8 +336,10 @@ jleave:
 
 #ifdef HAVE_EDITLINE
 static EditLine *    _el_el;     /* editline(3) handle */
-static History *     _el_hcom;   /* History handle for commline */
 static char const *  _el_prompt; /* Current prompt */
+# ifdef HAVE_HISTORY
+static History *     _el_hcom;   /* History handle for commline */
+# endif
 
 static char const *  _el_getprompt(void);
 
@@ -340,21 +352,26 @@ _el_getprompt(void)
 void
 tty_init(void)
 {
+# ifdef HAVE_HISTORY
    HistEvent he;
    long hs;
    char *v;
+# endif
 
+# ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
-
    _el_hcom = history_init();
    history(_el_hcom, &he, H_SETSIZE, (int)hs);
    history(_el_hcom, &he, H_SETUNIQUE, 1);
+# endif
 
    _el_el = el_init(uagent, stdin, stdout, stderr);
    el_set(_el_el, EL_SIGNAL, 1);
    el_set(_el_el, EL_TERMINAL, NULL);
    /* Need to set HIST before EDITOR, otherwise it won't work automatic */
+# ifdef HAVE_HISTORY
    el_set(_el_el, EL_HIST, &history, _el_hcom);
+# endif
    el_set(_el_el, EL_EDITOR, "emacs");
    el_set(_el_el, EL_PROMPT, &_el_getprompt);
 # if 0
@@ -362,29 +379,37 @@ tty_init(void)
       "editline(3) internal completion function", &_el_file_cpl);
    el_set(_el_el, EL_BIND, "^I", "tab_complete", NULL);
 # endif
+# ifdef HAVE_HISTORY
    el_set(_el_el, EL_BIND, "^R", "ed-search-prev-history", NULL);
+# endif
    el_source(_el_el, NULL); /* Source ~/.editrc */
 
    /* Because el_source() may have introduced yet a different history size
     * limit, simply load and incorporate the history, leave it up to
     * editline(3) to do the rest */
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       history(_el_hcom, &he, H_LOAD, v);
+# endif
 }
 
 void
 tty_destroy(void)
 {
+# ifdef HAVE_HISTORY
    HistEvent he;
    char *v;
+# endif
 
    el_end(_el_el);
 
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       history(_el_hcom, &he, H_SAVE, v);
    history_end(_el_hcom);
+# endif
 }
 
 void
@@ -435,6 +460,7 @@ jleave:
 void
 tty_addhist(char const *s)
 {
+# ifdef HAVE_HISTORY
    /* Enlarge meaning of unique .. to something that rocks;
     * xxx unfortunately this is expensive to do with editline(3)
     * xxx maybe it would be better to hook the ptfs instead? */
@@ -457,7 +483,8 @@ jadd:
    history(_el_hcom, &he, H_ENTER, s);
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
-   ;
+# endif
+   UNUSED(s);
 }
 #endif /* HAVE_EDITLINE */
 
@@ -509,13 +536,6 @@ struct cell {
    char     cbuf[MB_LEN_MAX * 2];   /* .. plus reset shift sequence */
 };
 
-struct hist {
-   struct hist *  older;
-   struct hist *  younger;
-   size_t         len;
-   char           dat[VFIELD_SIZE(sizeof(size_t))];
-};
-
 struct line {
    size_t         cursor;     /* Current cursor position */
    size_t         topins;     /* Outermost cursor col set */
@@ -525,12 +545,23 @@ struct line {
    }              line;
    struct str     defc;       /* Current default content */
    struct str     savec;      /* Saved default content */
+# ifdef HAVE_HISTORY
    struct hist *  hist;       /* History cursor */
+# endif
    char const *   prompt;
    char const *   nd;         /* Cursor right */
    char **        x_buf;      /* Caller pointers */
    size_t *       x_bufsize;
 };
+
+# ifdef HAVE_HISTORY
+struct hist {
+   struct hist *  older;
+   struct hist *  younger;
+   size_t         len;
+   char           dat[VFIELD_SIZE(sizeof(size_t))];
+};
+# endif
 
 static union xsighdl _ncl_oint;
 static union xsighdl _ncl_oquit;
@@ -540,10 +571,12 @@ static union xsighdl _ncl_otstp;
 static union xsighdl _ncl_ottin;
 static union xsighdl _ncl_ottou;
 static struct xtios  _ncl_tios;
+# ifdef HAVE_HISTORY
 static struct hist * _ncl_hist;
 static size_t        _ncl_hist_size;
 static size_t        _ncl_hist_size_max;
 static bool_t        _ncl_hist_load;
+# endif
 
 static void    _ncl_sigs_up(void);
 static void    _ncl_sigs_down(void);
@@ -554,7 +587,9 @@ static void    _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS);
 static void    _ncl_bs_eof_dvup(struct cell *cap, size_t i);
 static ssize_t _ncl_wboundary(struct line *l, ssize_t dir);
 static ssize_t _ncl_cell2dat(struct line *l);
+# if defined HAVE_HISTORY || defined HAVE_TABEXPAND
 static void    _ncl_cell2save(struct line *l);
+# endif
 
 static void    _ncl_khome(struct line *l, bool_t dobell);
 static void    _ncl_kend(struct line *l);
@@ -564,12 +599,14 @@ static ssize_t _ncl_keof(struct line *l);
 static void    _ncl_kleft(struct line *l);
 static void    _ncl_kright(struct line *l);
 static void    _ncl_krefresh(struct line *l);
-static size_t  __ncl_khist_shared(struct line *l, struct hist *hp);
-static size_t  _ncl_khist(struct line *l, bool_t backwd);
-static size_t  _ncl_krhist(struct line *l);
 static void    _ncl_kbwddelw(struct line *l);
 static void    _ncl_kgow(struct line *l, ssize_t dir);
 static void    _ncl_kother(struct line *l, wchar_t wc);
+# ifdef HAVE_HISTORY
+static size_t  __ncl_khist_shared(struct line *l, struct hist *hp);
+static size_t  _ncl_khist(struct line *l, bool_t backwd);
+static size_t  _ncl_krhist(struct line *l);
+# endif
 # ifdef HAVE_TABEXPAND
 static size_t  _ncl_kht(struct line *l);
 # endif
@@ -732,6 +769,7 @@ _ncl_cell2dat(struct line *l)
    return (ssize_t)len;
 }
 
+# if defined HAVE_HISTORY || defined HAVE_TABEXPAND
 static void
 _ncl_cell2save(struct line *l)
 {
@@ -756,6 +794,7 @@ _ncl_cell2save(struct line *l)
 jleave:
    ;
 }
+# endif
 
 static void
 _ncl_khome(struct line *l, bool_t dobell)
@@ -868,6 +907,112 @@ _ncl_krefresh(struct line *l)
       putchar('\b');
 }
 
+static void
+_ncl_kbwddelw(struct line *l)
+{
+   ssize_t i;
+   size_t c = l->cursor, t, j;
+   struct cell *cap;
+
+   i = _ncl_wboundary(l, -1);
+   if (i <= 0) {
+      if (i < 0)
+         putchar('\a');
+      goto jleave;
+   }
+
+   c = l->cursor - i;
+   t = l->topins;
+   l->topins = t - i;
+   l->cursor = c;
+   cap = l->line.cells + c;
+
+   if (t != l->cursor) {
+      j = t - c + i;
+      memmove(cap, cap + i, j * sizeof(*cap));
+   }
+
+   for (j = i; j > 0; --j)
+      putchar('\b');
+   for (j = l->topins - c; j > 0; ++cap, --j)
+      fwrite(cap[0].cbuf, sizeof *cap->cbuf, cap[0].count, stdout);
+   for (j = i; j > 0; --j)
+      putchar(' ');
+   for (j = t - c; j > 0; --j)
+      putchar('\b');
+jleave:
+   ;
+}
+
+static void
+_ncl_kgow(struct line *l, ssize_t dir)
+{
+   ssize_t i = _ncl_wboundary(l, dir);
+   if (i <= 0) {
+      if (i < 0)
+         putchar('\a');
+      goto jleave;
+   }
+
+   if (dir < 0) {
+      l->cursor -= i;
+      while (i-- > 0)
+         putchar('\b');
+   } else {
+      l->cursor += i;
+      while (i-- > 0)
+         fputs(l->nd, stdout);
+   }
+jleave:
+   ;
+}
+
+static void
+_ncl_kother(struct line *l, wchar_t wc)
+{
+   /* Append if at EOL, insert otherwise;
+    * since we may move around character-wise, always use a fresh ps */
+   mbstate_t ps;
+   struct cell cell, *cap;
+   size_t i, c;
+
+   /* First init a cell and see wether we'll really handle this wc */
+   cell.wc = wc;
+   memset(&ps, 0, sizeof ps);
+   i = wcrtomb(cell.cbuf, wc, &ps);
+   if (i > MB_LEN_MAX)
+      goto jleave;
+   cell.count = (ui_it)i;
+   if (enc_has_state) {
+      i = wcrtomb(cell.cbuf + i, L'\0', &ps);
+      if (i == 1)
+         ;
+      else if (--i < MB_LEN_MAX)
+         cell.count += (ui_it)i;
+      else
+         goto jleave;
+   }
+
+   /* Yes, we will!  Place it in the array */
+   c = l->cursor++;
+   i = l->topins++ - c;
+   cap = l->line.cells + c;
+   if (i > 0)
+      memmove(cap + 1, cap, i * sizeof(cell));
+   memcpy(cap, &cell, sizeof cell);
+
+   /* And update visual */
+   c = i;
+   do
+      fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
+   while ((++cap, i-- != 0));
+   while (c-- != 0)
+      putchar('\b');
+jleave:
+   ;
+}
+
+# ifdef HAVE_HISTORY
 static size_t
 __ncl_khist_shared(struct line *l, struct hist *hp)
 {
@@ -943,109 +1088,7 @@ _ncl_krhist(struct line *l)
 jleave:
    return __ncl_khist_shared(l, hp);
 }
-
-static void
-_ncl_kbwddelw(struct line *l)
-{
-   ssize_t i;
-   size_t c = l->cursor, t, j;
-   struct cell *cap;
-
-   i = _ncl_wboundary(l, -1);
-   if (i <= 0) {
-      if (i < 0)
-         putchar('\a');
-      goto jleave;
-   }
-
-   c = l->cursor - i;
-   t = l->topins;
-   l->topins = t - i;
-   l->cursor = c;
-   cap = l->line.cells + c;
-
-   if (t != l->cursor) {
-      j = t - c + i;
-      memmove(cap, cap + i, j * sizeof(*cap));
-   }
-
-   for (j = i; j > 0; --j)
-      putchar('\b');
-   for (j = l->topins - c; j > 0; ++cap, --j)
-      fwrite(cap[0].cbuf, sizeof *cap->cbuf, cap[0].count, stdout);
-   for (j = i; j > 0; --j)
-      putchar(' ');
-   for (j = t - c; j > 0; --j)
-      putchar('\b');
-jleave:	;
-}
-
-static void
-_ncl_kgow(struct line *l, ssize_t dir)
-{
-   ssize_t i = _ncl_wboundary(l, dir);
-   if (i <= 0) {
-      if (i < 0)
-         putchar('\a');
-      goto jleave;
-   }
-
-   if (dir < 0) {
-      l->cursor -= i;
-      while (i-- > 0)
-         putchar('\b');
-   } else {
-      l->cursor += i;
-      while (i-- > 0)
-         fputs(l->nd, stdout);
-   }
-jleave:
-   ;
-}
-
-static void
-_ncl_kother(struct line *l, wchar_t wc)
-{
-   /* Append if at EOL, insert otherwise;
-    * since we may move around character-wise, always use a fresh ps */
-   mbstate_t ps;
-   struct cell cell, *cap;
-   size_t i, c;
-
-   /* First init a cell and see wether we'll really handle this wc */
-   cell.wc = wc;
-   memset(&ps, 0, sizeof ps);
-   i = wcrtomb(cell.cbuf, wc, &ps);
-   if (i > MB_LEN_MAX)
-      goto jleave;
-   cell.count = (ui_it)i;
-   if (enc_has_state) {
-      i = wcrtomb(cell.cbuf + i, L'\0', &ps);
-      if (i == 1)
-         ;
-      else if (--i < MB_LEN_MAX)
-         cell.count += (ui_it)i;
-      else
-         goto jleave;
-   }
-
-   /* Yes, we will!  Place it in the array */
-   c = l->cursor++;
-   i = l->topins++ - c;
-   cap = l->line.cells + c;
-   if (i > 0)
-      memmove(cap + 1, cap, i * sizeof(cell));
-   memcpy(cap, &cell, sizeof cell);
-
-   /* And update visual */
-   c = i;
-   do
-      fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
-   while ((++cap, i-- != 0));
-   while (c-- != 0)
-      putchar('\b');
-jleave:	;
-}
+# endif
 
 # ifdef HAVE_TABEXPAND
 static size_t
@@ -1296,7 +1339,9 @@ jreset:
          _ncl_kkill(&l, (wc == ('K' ^ 0x40) || l.topins == 0));
          /* (Handle full reset?) */
          if (wc == ('G' ^ 0x40)) {
+# ifdef HAVE_HISTORY
             l.hist = NULL;
+# endif
             if ((len = l.savec.l) != 0) {
                l.defc = l.savec;
                l.savec.s = NULL, l.savec.l = 0;
@@ -1310,24 +1355,36 @@ jreset:
          break;
       /* 'M': CR (\r) */
       case 'N' ^ 0x40: /* history next */
+# ifdef HAVE_HISTORY
          if (l.hist == NULL)
             goto jbell;
          if ((len = _ncl_khist(&l, FAL0)) > 0)
             goto jrestart;
          wc = 'G' ^ 0x40;
          goto jreset;
+# else
+         goto jbell;
+# endif
       /* 'O' */
       case 'P' ^ 0x40: /* history previous */
+# ifdef HAVE_HISTORY
          if ((len = _ncl_khist(&l, TRU1)) > 0)
             goto jrestart;
          wc = 'G' ^ 0x40;
          goto jreset;
+# else
+         goto jbell;
+# endif
       /* 'Q': no code */
       case 'R' ^ 0x40: /* reverse history search */
+# ifdef HAVE_HISTORY
          if ((len = _ncl_krhist(&l)) > 0)
             goto jrestart;
          wc = 'G' ^ 0x40;
          goto jreset;
+# else
+         goto jbell;
+# endif
       /* 'S': no code */
       /* 'U' above */
       /*case 'V' ^ 0x40: TODO*/ /* forward delete "word" */
@@ -1350,8 +1407,10 @@ jprint:
              * worked the entire buffer */
             if (len > 0)
                continue;
+# ifdef HAVE_HISTORY
             if (cbuf == cbuf_base)
                l.hist = NULL;
+# endif
          } else {
 jbell:
             putchar('\a');
@@ -1375,15 +1434,18 @@ jleave:
 void
 tty_init(void)
 {
+# ifdef HAVE_HISTORY
    long hs;
    char *v, *lbuf;
    FILE *f;
    size_t lsize, cnt, llen;
+# endif
 
    _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
    _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
    _ncl_ottou.sint = -1;
 
+# ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
    _ncl_hist_size_max = hs;
    if (hs == 0)
@@ -1417,12 +1479,14 @@ tty_init(void)
 jdone:
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
+# endif /* HAVE_HISTORY */
    ;
 }
 
 void
 tty_destroy(void)
 {
+# ifdef HAVE_HISTORY
    long hs;
    char *v;
    struct hist *hp;
@@ -1456,6 +1520,7 @@ jclose:
 jdone:
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
+# endif /* HAVE_HISTORY */
    ;
 }
 
@@ -1503,6 +1568,7 @@ int
 void
 tty_addhist(char const *s)
 {
+# ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
    size_t l = strlen(s);
    struct hist *h, *o, *y;
@@ -1529,9 +1595,9 @@ tty_addhist(char const *s)
          }
    hold_all_sigs();
 
-   if (! _ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
+   if (!_ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
       (h = _ncl_hist->younger
-      )->older = NULL;
+         )->older = NULL;
       free(_ncl_hist);
       _ncl_hist = h;
    }
@@ -1547,7 +1613,8 @@ jleave:
 
    rele_all_sigs();
 j_leave:
-   ;
+# endif
+   UNUSED(s);
 }
 #endif /* HAVE_NCL */
 
@@ -1567,7 +1634,7 @@ tty_destroy(void)
 void
 tty_signal(int sig)
 {
-   (void)sig;
+   UNUSED(sig);
 }
 
 int
@@ -1597,7 +1664,7 @@ int
 void
 tty_addhist(char const *s)
 {
-   (void)s;
+   UNUSED(s);
 }
 #endif /* nothing at all */
 
