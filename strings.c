@@ -69,6 +69,7 @@ CTA(ISPOW2(SALIGN + 1));
 struct b_base {
    struct buffer  *_next;
    char           *_bot;      /* For spreserve() */
+   char           *_relax;    /* If !NULL, used by srelax() instead of ._bot */
    char           *_max;      /* Max usable byte */
    char           *_caster;   /* NULL if full */
 };
@@ -93,7 +94,7 @@ struct buffer {
 };
 
 static struct b_bltin   _builtin_buf;
-static struct buffer    *_buf_head, *_buf_list, *_buf_server;
+static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
 
 #ifdef HAVE_ASSERTS
 size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
@@ -176,6 +177,7 @@ jumpin:
    _buf_server = _buf_list = u.b;
    u.b->b._next = NULL;
    u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
+   u.b->b._relax = NULL;
    u.cp = u.b->b._bot;
 jleave:
    return u.cp;
@@ -193,14 +195,14 @@ csalloc(size_t nmemb, size_t size)
 }
 
 void 
-sreset(void)
+sreset(bool_t only_if_relaxed)
 {
    struct buffer *bh;
 
 #ifdef HAVE_ASSERTS
    ++_all_resetreqs;
 #endif
-   if (noreset)
+   if (noreset || (only_if_relaxed && _buf_relax == NULL))
       goto jleave;
 
 #ifdef HAVE_ASSERTS
@@ -212,6 +214,7 @@ sreset(void)
    if ((bh = _buf_head) != NULL) {
       struct buffer *b = bh;
       b->b._caster = b->b._bot;
+      b->b._relax = NULL;
 #ifdef HAVE_ASSERTS
       memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
@@ -219,6 +222,7 @@ sreset(void)
       if ((bh = bh->b._next) != NULL) {
          b = bh;
          b->b._caster = b->b._bot;
+         b->b._relax = NULL;
 #ifdef HAVE_ASSERTS
          memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
 #endif
@@ -230,6 +234,7 @@ sreset(void)
       }
       _buf_list = b;
       b->b._next = NULL;
+      _buf_relax = NULL;
    }
 
 #ifdef HAVE_ASSERTS
@@ -248,11 +253,61 @@ spreserve(void)
       b->b._bot = b->b._caster;
 }
 
+void
+srelax_hold(void)
+{
+   struct buffer *b;
+
+   assert(_buf_relax == NULL);
+
+   for (b = _buf_head; b != NULL; b = b->b._next)
+      b->b._relax = b->b._caster;
+   _buf_relax = _buf_server;
+   assert(_buf_relax != NULL);
+}
+
+void
+srelax_rele(void)
+{
+   struct buffer *b;
+
+   assert(_buf_relax != NULL);
+
+   for (b = _buf_relax; b != NULL; b = b->b._next) {
+      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+      b->b._relax = NULL;
+   }
+   _buf_relax = NULL;
+}
+
+void
+srelax(void)
+{
+   /* The purpose of relaxation is only that it is possible to reset the
+    * casters, *not* to give back memory to the system.  We are presumably in
+    * an iteration over all messages of a mailbox, and it'd be quite
+    * counterproductive to give the system allocator a chance to waste time */
+   struct buffer *b;
+
+   assert(_buf_relax != NULL);
+
+   for (b = _buf_relax; b != NULL; b = b->b._next) {
+      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+#ifdef HAVE_ASSERTS
+      memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
+#endif
+   }
+}
+
 #ifdef HAVE_ASSERTS
 int
 c_sstats(void *v)
 {
+   size_t excess;
    UNUSED(v);
+
+   excess = (_all_cybufcnt_max * SDYN_SIZE) + SBLTIN_SIZE;
+   excess = (excess >= _all_cysize_max) ? 0 : _all_cysize_max - excess;
 
    printf("String usage statistics (cycle means one sreset() cycle):\n"
       "  Buffer allocs ever/max simultan. : %lu/%lu\n"
@@ -260,13 +315,13 @@ c_sstats(void *v)
       "  Overall alloc count/bytes        : %lu/%lu\n"
       "  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
       "  sreset() cycles                  : %lu (%lu performed)\n"
-      "  Cycle maximums: alloc count/bytes: %lu/%lu\n",
+      "  Cycle maximums: alloc count/bytes: %lu/%lu+%lu\n",
       (ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
       (ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
       (ul_it)_all_cnt, (ul_it)_all_size,
       (ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
       (ul_it)_all_resetreqs, (ul_it)_all_resets,
-      (ul_it)_all_cycnt_max, (ul_it)_all_cysize_max);
+      (ul_it)_all_cycnt_max, (ul_it)_all_cysize_max, (ul_it)excess);
    return 0;
 }
 #endif

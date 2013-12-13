@@ -937,18 +937,31 @@ enum okay rfc2595_hostname_match(const char *host, const char *pattern);
 
 /* Auto-reclaimed string storage */
 
-/* Allocate 'size' more bytes of space and return the address of the first byte
+/* Allocate size more bytes of space and return the address of the first byte
  * to the caller.  An even number of bytes are always allocated so that the
  * space will always be on a word boundary */
 void *		salloc(size_t size);
 void *		csalloc(size_t nmemb, size_t size);
 
-/* Auto-reclaim string storage */
-void		sreset(void);
+/* Auto-reclaim string storage; if only_if_relaxed is true then only perform
+ * the reset when a srelax_hold() is currently active */
+void		sreset(bool_t only_if_relaxed);
 
 /* Make current string storage permanent: new allocs will be auto-reclaimed by
  * sreset().  This is called once only, from within main() */
 void		spreserve(void);
+
+/* The "problem" with sreset() is that it releases all string storage except
+ * what was present once spreserve() had been called; it therefore cannot be
+ * called from all that code which yet exists and walks about all the messages
+ * in order, e.g. quit(), searches, etc., because, unfortunately, these code
+ * paths are reached with new intermediate string dope already in use.
+ * Thus such code should take a srelax_hold(), successively call srelax() after
+ * a single message has been handled, and finally srelax_rele() (unless it is
+ * clear that sreset() occurs anyway) */
+void		srelax_hold(void);
+void		srelax_rele(void);
+void		srelax(void);
 
 /* 'sstats' command */
 #ifdef HAVE_ASSERTS
