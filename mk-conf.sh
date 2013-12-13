@@ -10,7 +10,7 @@ if [ -n "${CONFIG}" ]; then
    MINIMAL)
       WANT_SOCKETS=0
       WANT_IDNA=0
-      WANT_LINE_EDITOR=0
+      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
       WANT_QUOTE_FOLD=0
       WANT_DOCSTRINGS=0
       WANT_SPAM=0
@@ -18,13 +18,14 @@ if [ -n "${CONFIG}" ]; then
    MEDIUM)
       WANT_SOCKETS=0
       WANT_IDNA=0
+      WANT_READLINE=0 WANT_EDITLINE=0
       WANT_QUOTE_FOLD=0
       WANT_SPAM=0
       ;;
    NETSEND)
       WANT_IMAP=0
       WANT_POP3=0
-      WANT_EDITLINE=0
+      WANT_READLINE=0 WANT_EDITLINE=0
       WANT_QUOTE_FOLD=0
       WANT_SPAM=0
       ;;
@@ -50,12 +51,6 @@ option_update() {
    # leave it off, plain old srand(3) should be enough for that purpose.
    if nwantfeat SOCKETS; then
       WANT_MD5=0
-   fi
-   if nwantfeat LINE_EDITOR; then
-      WANT_EDITLINE=0 WANT_EDITLINE_READLINE=0
-   fi
-   if nwantfeat EDITLINE; then
-      WANT_EDITLINE_READLINE=0
    fi
 }
 
@@ -208,14 +203,13 @@ _link_mayrun() {
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
+      echo "*** adding INCS<${incs}> LIBS<${libs}>"
       msg "okay\\n"
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
       echo "${libs}" >> ${lib}
-      echo "$2: ${libs}"
       INCS="${INCS} ${incs}"
       echo "${incs}" >> ${inc}
-      echo "$2: ${incs}"
       eval have_${variable}=yes
       return 0
    else
@@ -277,7 +271,8 @@ echo '#define _GNU_SOURCE' >> ${h}
 link_check hello 'if a hello world program can be built' << \! || {\
    echo >&5 'This oooops is most certainly not related to me.';\
    echo >&5 "Read the file ${log} and check your compiler environment.";\
-   rm -f ${lst} ${h} ${mk}; exit 1;\
+   rm -f ${lst} ${h} ${mk};\
+   exit 1;\
 }
 #include <stdio.h>
 
@@ -286,6 +281,22 @@ int main(int argc, char *argv[])
    (void)argc;
    (void)argv;
    puts("hello world");
+   return 0;
+}
+!
+
+link_check termios 'for termios.h and tc*() family' << \! || {\
+   echo >&5 'We require termios.h and the tc*() family of functions.';\
+   echo >&5 "That much Unix we indulge ourselfs.";\
+   rm -f ${lst} ${h} ${mk};\
+   exit 1;\
+}
+#include <termios.h>
+int main(void)
+{
+   struct termios tios;
+   tcgetattr(0, &tios);
+   tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
    return 0;
 }
 !
@@ -600,19 +611,19 @@ else
 fi # wantfeat IPV6
 
 if wantfeat IMAP; then
-   echo "#define HAVE_IMAP" >> ${h}
+   echo '#define HAVE_IMAP' >> ${h}
 else
    echo '/* WANT_IMAP=0 */' >> ${h}
 fi
 
 if wantfeat POP3; then
-   echo "#define HAVE_POP3" >> ${h}
+   echo '#define HAVE_POP3' >> ${h}
 else
    echo '/* WANT_POP3=0 */' >> ${h}
 fi
 
 if wantfeat SMTP; then
-   echo "#define HAVE_SMTP" >> ${h}
+   echo '#define HAVE_SMTP' >> ${h}
 else
    echo '/* WANT_SMTP=0 */' >> ${h}
 fi
@@ -653,7 +664,7 @@ int main(void)
 !
 
    if [ "${have_openssl}" = 'yes' ]; then
-      compile_check stack_of 'for STACK_OF()' \
+      compile_check stack_of 'for OpenSSL STACK_OF()' \
          '#define HAVE_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -755,11 +766,10 @@ else
    echo '/* WANT_IDNA=0 */' >> ${h}
 fi # wantfeat IDNA
 
-if wantfeat EDITLINE_READLINE; then
+if wantfeat READLINE; then
    __edrdlib() {
-      link_check readline "for readline(3) [editline(3)] (${1})" \
-         '#define HAVE_LINE_EDITOR
-         #define HAVE_READLINE' "${1}" << \!
+      link_check readline "for readline(3) (${1})" \
+         '#define HAVE_READLINE' "${1}" << \!
 #include <stdio.h>
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -792,8 +802,7 @@ fi
 if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
    __edlib() {
       link_check editline "for editline(3) (${1})" \
-         '#define HAVE_LINE_EDITOR
-         #define HAVE_EDITLINE' "${1}" << \!
+         '#define HAVE_EDITLINE' "${1}" << \!
 #include <histedit.h>
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)
@@ -819,29 +828,28 @@ int main(void)
       __edlib '-ledit -ltermcap'
 fi
 
-if wantfeat LINE_EDITOR && [ -z "${have_editline}" ] &&\
-      [ -z "${have_readline}" ] &&\
+if wantfeat NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wctype}" ]; then
-   echo "#define HAVE_LINE_EDITOR" >> ${h}
+   echo '#define HAVE_NCL' >> ${h}
 else
-   echo '/* WANT_{LINE_EDITOR,EDITLINE,EDITLINE_READLINE}=0 */' >> ${h}
+   echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
 fi
 
 if wantfeat QUOTE_FOLD &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then
-   echo "#define HAVE_QUOTE_FOLD" >> ${h}
+   echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
 if wantfeat DOCSTRINGS; then
-   echo "#define HAVE_DOCSTRINGS" >> ${h}
+   echo '#define HAVE_DOCSTRINGS' >> ${h}
 else
    echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
 if wantfeat SPAM; then
-   echo "#define HAVE_SPAM" >> ${h}
+   echo '#define HAVE_SPAM' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
       echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
@@ -850,7 +858,7 @@ else
 fi
 
 if wantfeat MD5; then
-   echo "#define HAVE_MD5" >> ${h}
+   echo '#define HAVE_MD5' >> ${h}
 else
    echo '/* WANT_MD5=0 */' >> ${h}
 fi
@@ -939,7 +947,7 @@ cat > ${tmp2}.c << \!
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
-#ifdef HAVE_LINE_EDITOR
+#if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
 : + Command line editing and history
 #endif
 #ifdef HAVE_QUOTE_FOLD
@@ -986,7 +994,7 @@ cat > ${tmp2}.c << \!
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
 #endif
-#ifndef HAVE_LINE_EDITOR
+#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history
 #endif
 #ifndef HAVE_QUOTE_FOLD

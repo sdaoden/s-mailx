@@ -536,7 +536,7 @@ where `d' denotes the day of the month as one or two digits,
 `mon' is the name of the month \(en one of
 `Jan', `Feb', `Mar', `Apr', `May', `Jun',
 `Jul', `Aug', `Sep', `Oct', `Nov', or `Dec',
-and `yyyy' is the year as four digits, e.g., ``28-Dec-2012''.
+and `yyyy' is the year as four digits, e.g., "28-Dec-2012".
 .It Ar ( on date )
 All messages that were received on the specified date.
 .It Ar ( since date )
@@ -781,24 +781,30 @@ while it is still possible to use more simple character sets for sending
 to retain maximum compatibility with older mail clients.
 .\"
 .\" --  >8  --  8<  --
-.Ss "Line editor"
+.Ss "Command line editor"
 \*(OP \*(UA can be configured to support a command line editor and
 command history lists which are saved in between sessions.
-One may link against fully-fledged external editor libraries
-.Ns ( Ns Xr editline 3 ,
-.Xr readline 3 Ns
-), or use the builtin editor instead, which should work in all
+One may link against fully-fledged external libraries
+.Ns ( Ns Xr readline 3 ,
+.Xr editline 3 Ns
+) or use the \*(UA command line editor instead, which should work in all
 environments which comply to ISO C (ISO/IEC 9899:1990/Amendment 1:1995).
-(Note, however, that commands that are based upon rightwise movement may
-not work on every terminal.
-If you encounter that issue, use the
-.Va line-editor-cursor-right
-variable to enforce a different terminal control sequence.)
 .Pp
-The builtin editor supports the following operations;
+Regardless of the actually used command line editor history entries
+will be created for lines entered in command mode only, and creation of
+such an entry can be forcefully suppressed by starting the line with
+a space character.
+Also refer to the documentation of
+.Va emptystart ,
+.Va line-editor-disable ,
+.Va NAIL_HISTFILE
+and
+.Va NAIL_HISTSIZE .
+.Pp
+The builtin \*(UA command line editor supports the following operations;
 the notation `^-character' stands for the combination of the `control'
-key plus the mentioned character, e.g., `^A' means ``hold control key
-while adding an A key on top of it'':
+key plus the mentioned character, e.g., `^A' means "hold control key
+while adding an A key on top of it":
 .Bl -tag -width "^M^"
 .It ^A
 Go to the start of the line.
@@ -823,13 +829,13 @@ state machine.
 .It ^H
 The same as `backspace': backward delete one character.
 .It ^I
-The same as `horizontal tabulator': try to expand the ``word'' before
+The same as `horizontal tabulator': try to expand the "word" before
 the cursor.
-Here ``expansion'' refers to the \*(UA expansion, as documented for
+Here "expansion" refers to the \*(UA expansion, as documented for
 .Ic folder ,
 and thus includes shell word expansion (as a last step).
-(Note that this is a real ``expansion'', not what one expects from
-``tab-completion''.)
+(Note that this is a real "expansion", not what one expects from
+"tab-completion".)
 .It ^J
 The same as `RETURN': complete this line of input.
 .It ^K
@@ -853,17 +859,10 @@ Move the cursor forward one word boundary.
 Move the cursor backward one word boundary.
 .El
 .Pp
-Regardless of the actually present command line editor history entries
-will be created for lines entered in command mode only, and creation of
-such an entry can be forcefully suppressed by starting the line with
-a space character.
-Also refer to the documentation of
-.Va emptystart ,
-.Va line-editor-cursor-right ,
-.Va line-editor-disable ,
-.Va NAIL_HISTFILE
-and
-.Va NAIL_HISTSIZE .
+If problems with commands that are based upon rightwise movement are
+encountered, adjustments of the option
+.Va line-editor-cursor-right
+may solve the problem, as documented for it.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Commands"
@@ -1745,7 +1744,7 @@ the current sorting criterion is printed.
 .It Ic source
 The source command reads commands from a file.
 .It Ic spamclear
-\*(OP Takes a list of messages and clears their ``is-spam'' flag.
+\*(OP Takes a list of messages and clears their `is-spam' flag.
 .It Ic spamforget
 \*(OP Takes a list of messages and forces the spam detector to forget it
 has ever used them to train its Bayesian filter, wether as `ham' or
@@ -1753,21 +1752,21 @@ has ever used them to train its Bayesian filter, wether as `ham' or
 .It Ic spamham
 \*(OP Takes a list of messages and teaches them to the spam detector as
 being `ham'.
-This also clears the ``is-spam'' flag of the messages in question.
+This also clears the `is-spam' flag of the messages in question.
 .It Ic spamrate
 \*(OP Takes a list of messages and rates them using the configured spam
-detector, setting their ``is-spam'' flag as appropriate.
+detector, setting their `is-spam' flag as appropriate.
 Note that the messages are not modified, and due to that the rating will
 get lost once the mailbox is left.
 Refer to the manual section
 .Sx "Handling spam"
 for the complete picture of spam handling in \*(UA.
 .It Ic spamset
-\*(OP Takes a list of messages and sets their ``is-spam'' flag.
+\*(OP Takes a list of messages and sets their `is-spam' flag.
 .It Ic spamspam
 \*(OP Takes a list of messages and teaches them to the spam detector as
 being `spam'.
-This also sets the ``is-spam'' flag of the messages in question.
+This also sets the `is-spam' flag of the messages in question.
 .It Ic thread
 (th) Create a threaded representation of the current folder,
 i.\|e. indent messages that are replies to other messages in the header
@@ -2389,7 +2388,7 @@ folder when \*(UA is quit.
 Setting this option causes all saved message to be retained.
 .It Va line-editor-disable
 Turn off any enhanced command line editing capabilities (see
-.Sx "Line editor"
+.Sx "Command line editor"
 for more).
 .It Va markanswered
 When a message is replied to and this variable is set,
@@ -2964,8 +2963,8 @@ command when operating on local mailboxes.
 Default is
 .Pa /bin/ls .
 .It Va line-editor-cursor-right
-\*(OP If the builtin line editor is used, actions which are based on
-rightwise movement may not work on some terminals.
+\*(OP If the builtin command line editor is used, actions which are
+based on rightwise movement may not work on some terminals.
 If you encounter such problems, set this variable to the terminal
 control sequence that is necessary to move the cursor one column to the
 right.
@@ -3026,8 +3025,8 @@ note that loading and incorporation of
 .Va NAIL_HISTFILE
 upon program startup can also be suppressed by doing this.
 An unset or invalid value, or 0, causes a default value to be used.
-Dependent on the available line editor this will also define the number
-of history entries in memory;
+Dependent on the available command line editor this will also define the
+number of history entries in memory;
 it is also editor-specific wether runtime updates of this value will be
 honoured.
 .It Va NAIL_TAIL
@@ -3058,7 +3057,7 @@ a shell command.
 .Pp
 The special value `@' can be used to force interpretation of the message
 part as plain text, e.g., `set pipe-application/pgp-signature=@' will
-henceforth treat signatures as plain text and display them ``as is''.
+henceforth treat signatures as plain text and display them "as is".
 .Pp
 Also, if a normal shell command is prefixed with `@', then the command
 will only be used to prepare the MIME message part if the message is
@@ -3360,7 +3359,7 @@ for specific values of sender addresses, dependent upon the variable
 .Va from .
 .It Va spam-command
 \*(OP The path to the spam detector.
-Note that the path is not expanded, but used ``as is''.
+Note that the path is not expanded, but used "as is".
 A fallback path will have been compiled into the \*(UA binary if the
 .Xr spamc 1
 executable had been found during compilation.
@@ -3991,7 +3990,7 @@ and `END CERTIFICATE' lines.
 Note that the example above is \fBinsecure\fR!
 One should use the `-verify' and `-CAfile' options of
 .Xr s_client 1
-to be ``on the safe side'' regarding the fetched certificates.
+to be "on the safe side" regarding the fetched certificates.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Reading HTML mail"
@@ -4213,11 +4212,11 @@ The commands offered are
 .Ic spamclear
 and
 .Ic spamset ,
-which simply set an ``is-spam'' flag that can be used for, e.g., message
+which simply set an `is-spam' flag that can be used for, e.g., message
 selection,
 .Ic spamrate ,
 which passes messages through to the spam detector in order to gain
-a spam score and conditionally set the ``is-spam'' flag accordingly,
+a spam score and conditionally set the `is-spam' flag accordingly,
 as well as the Bayesian filter related
 .Ic spamforget ,
 .Ic spamham
@@ -4394,10 +4393,9 @@ A \fImail\fR command appeared in Version 1 AT&T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
 This man page is derived from from The Mail Reference Manual originally
 written by Kurt Shoens.
-``Heirloom Mailx'' enhancements are maintained and documented by Gunnar
+"Heirloom Mailx" enhancements are maintained and documented by Gunnar
 Ritter.
-``S-nail'' enhancements are maintained and documented by Steffen "Daode"
-Nurpmeso.
+"S-nail" is maintained and documented by Steffen "Daode" Nurpmeso.
 .Pp
 Portions of this text are reprinted and reproduced in electronic form
 from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology

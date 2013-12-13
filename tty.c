@@ -60,8 +60,6 @@
 # include <readline/readline.h>
 #elif defined HAVE_EDITLINE
 # include <histedit.h>
-#elif defined HAVE_LINE_EDITOR
-# define __NCL
 #endif
 
 /* */
@@ -146,6 +144,10 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
    fputs(query, stdout);
    fflush(stdout);
 
+   /*
+    * FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
+    * foreground pgrp, and can fail with EINTR!!
+    */
    if (options & OPT_TTYIN) {
       tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
@@ -479,7 +481,7 @@ jleave:
  * TODO NCL: during handler de-/installation handling.
  */
 
-#ifdef __NCL
+#ifdef HAVE_NCL
 # ifndef MAX_INPUT
 #  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
 # endif
@@ -1541,13 +1543,13 @@ jleave:
 j_leave:
    ;
 }
-#endif /* __NCL */
+#endif /* HAVE_NCL */
 
 /*
  * The really-nothing-at-all implementation
  */
 
-#ifndef HAVE_LINE_EDITOR
+#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 void
 tty_init(void)
 {}
@@ -1591,6 +1593,6 @@ tty_addhist(char const *s)
 {
    (void)s;
 }
-#endif /* ! HAVE_LINE_EDITOR */
+#endif /* nothing at all */
 
 /* vim:set fenc=utf-8:s-it-mode */
