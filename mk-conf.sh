@@ -795,8 +795,10 @@ int main(void)
 }
 !
    }
+
    __edrdlib -lreadline ||
       __edrdlib '-lreadline -ltermcap'
+   [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
 if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
@@ -824,15 +826,29 @@ int main(void)
 }
 !
    }
+
    __edlib -ledit ||
       __edlib '-ledit -ltermcap'
+   [ -n "${have_editline}" ] && WANT_TABEXPAND=0
 fi
 
 if wantfeat NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wctype}" ]; then
+   have_ncl=1
    echo '#define HAVE_NCL' >> ${h}
 else
    echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
+fi
+
+if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
+      [ -n "${have_readline}" ]; then
+   have_cle=1
+fi
+
+if [ -n "${have_cle}" ] && wantfeat TABEXPAND; then
+   echo '#define HAVE_TABEXPAND' >> ${h}
+else
+   echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
 if wantfeat QUOTE_FOLD &&\
@@ -948,7 +964,11 @@ cat > ${tmp2}.c << \!
 : + IDNA (internationalized domain names for applications) support
 #endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
+# ifdef HAVE_TABEXPAND
+: + Command line editing with tabulator expansion and history
+# else
 : + Command line editing and history
+# endif
 #endif
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing

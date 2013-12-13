@@ -829,13 +829,13 @@ state machine.
 .It ^H
 The same as `backspace': backward delete one character.
 .It ^I
-The same as `horizontal tabulator': try to expand the "word" before
-the cursor.
+\*(OP The same as `horizontal tabulator': try to expand the "word"
+before the cursor.
 Here "expansion" refers to the \*(UA expansion, as documented for
 .Ic folder ,
 and thus includes shell word expansion (as a last step).
-(Note that this is a real "expansion", not what one expects from
-"tab-completion".)
+I.e., this is \*(UA "expansion", not what one usually expects from
+"tab-completion".
 .It ^J
 The same as `RETURN': complete this line of input.
 .It ^K
