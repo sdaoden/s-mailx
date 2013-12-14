@@ -55,26 +55,23 @@ static ssize_t _qf_state_data(struct qf_vc *vc);
 static ssize_t
 _qf_dump_prefix(struct quoteflt *self)
 {
-   ssize_t rv = 0;
+   ssize_t rv;
+   size_t i;
 
-   if (self->qf_pfix_len > 0) {
-      rv = fwrite(self->qf_pfix, sizeof *self->qf_pfix, self->qf_pfix_len,
-            self->qf_os);
-      if (rv < 0)
-         goto jleave;
-   }
+   if ((i = self->qf_pfix_len) > 0 && i != fwrite(self->qf_pfix, 1, i,
+         self->qf_os))
+      goto jerr;
+   rv = i;
 
-   if (self->qf_currq.l > 0) {
-      ssize_t i = fwrite(self->qf_currq.s, sizeof *self->qf_currq.s,
-            self->qf_currq.l, self->qf_os);
-      if (i < 0) {
-         rv = i;
-         goto jleave;
-      }
-      rv += i;
-   }
+   if ((i = self->qf_currq.l) > 0 && i != fwrite(self->qf_currq.s, 1, i,
+         self->qf_os))
+      goto jerr;
+   rv += i;
 jleave:
    return rv;
+jerr:
+   rv = -1;
+   goto jleave;
 }
 
 static ssize_t
@@ -356,8 +353,11 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
       goto jleave;
 
    /* Bypass? XXX Finally, this filter simply should not be used, then */
-   if (self->qf_pfix_len == 0)
-      rv = fwrite(dat, sizeof *dat, len, self->qf_os);
+   if (self->qf_pfix_len == 0) {
+      if (len != fwrite(dat, 1, len, self->qf_os))
+         goto jerr;
+      rv = len;
+   }
    /* Normal: place *indentprefix* at every BOL */
    else
 #ifdef HAVE_QUOTE_FOLD
@@ -369,12 +369,11 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
       bool_t pxok = (self->qf_qfold_min != 0);
 
       for (;;) {
-         if (! pxok) {
-            i = fwrite(self->qf_pfix, sizeof *self->qf_pfix, self->qf_pfix_len,
-                  self->qf_os);
-            if (i < 0)
+         if (!pxok) {
+            ll = self->qf_pfix_len;
+            if (ll != fwrite(self->qf_pfix, 1, ll, self->qf_os))
                goto jerr;
-            rv += i;
+            rv += ll;
             pxok = TRU1;
          }
 
@@ -390,10 +389,9 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
             ll = (size_t)((char*)vp - dat) + 1;
          }
 
-         i = fwrite(dat, sizeof *dat, ll, self->qf_os);
-         if (i < 0)
+         if (ll != fwrite(dat, sizeof *dat, ll, self->qf_os))
             goto jerr;
-         rv += i;
+         rv += ll;
          if ((len -= ll) == 0)
             break;
          dat += ll;
@@ -449,15 +447,17 @@ ssize_t
 quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;
-   (void)self;
+   UNUSED(self);
 
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
       rv = _qf_dump_prefix(self);
       if (rv >= 0) {
-         ssize_t i = fwrite(self->qf_dat.s, sizeof *self->qf_dat.s,
-               self->qf_dat.l, self->qf_os);
-         rv = (i < 0) ? i : rv + i;
+         size_t i = self->qf_dat.l;
+         if (i == fwrite(self->qf_dat.s, 1, i, self->qf_os))
+            rv += i;
+         else
+            rv = -1;
          self->qf_dat.l = 0;
          self->qf_brk_isws = FAL0;
          self->qf_wscnt = self->qf_brkl = self->qf_brkw = 0;

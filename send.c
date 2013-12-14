@@ -309,7 +309,7 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 	if (n < 0)
 		sz = n;
 	else if (n > 0) {
-		sz += n;
+		sz = (ssize_t)((size_t)sz + n);
 		n = 0;
 		if (stats != NULL && stats[0] != -1)
 			for (cp = buf; cp < &buf[sz]; ++cp)
@@ -504,8 +504,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	int volatile ispipe, rt = 0;
 	struct str rest;
 	char *line = NULL, *cp, *cp2, *start, *pipecomm = NULL;
-	size_t linesize = 0, linelen, cnt, len;
-	int dostat, infld = 0, ignoring = 1, isenc, c, eof;
+	size_t linesize = 0, linelen, cnt;
+	int dostat, infld = 0, ignoring = 1, isenc, c;
 	struct mimepart	*volatile np;
 	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
 		*volatile qbuf = obuf, *origobuf = obuf;
@@ -583,7 +583,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 * Pick up the header field if we have one.
 			 */
 			for (cp = line; (c = *cp & 0377) && c != ':' &&
-					! spacechar(c); ++cp)
+					!spacechar(c); ++cp)
 				;
 			cp2 = cp;
 			while (spacechar(*cp))
@@ -611,7 +611,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			*cp2 = 0;	/* temporarily null terminate */
 			if ((doign && is_ign(line, cp2 - line, doign)) ||
 					(action == SEND_MBOX &&
-					 ! value("keep-content-length") &&
+					 !boption("keep-content-length") &&
 					 (asccasecmp(line, "content-length")==0
 					 || asccasecmp(line, "lines") == 0)))
 				ignoring = 1;
@@ -658,9 +658,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			}
 			ungetc(c, ibuf);
 		}
-		if (! ignoring) {
+		if (!ignoring) {
+			size_t len = linelen;
 			start = line;
-			len = linelen;
 			if (action == SEND_TODISP ||
 					action == SEND_TODISP_ALL ||
 					action == SEND_QUOTE ||
@@ -672,7 +672,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * words follow on continuing lines.
 				 */
 				if (isenc & 1)
-					while (len > 0&& blankchar(*start)) {
+					while (len > 0 && blankchar(*start)) {
 						++start;
 						--len;
 					}
@@ -884,7 +884,7 @@ skip:
 							UNVOLATILE(&ispipe)))
 							== NULL)
 						continue;
-					if (! ispipe)
+					if (!ispipe)
 						break;
 					if (sigsetjmp(pipejmp, 1)) {
 						rt = -1;
@@ -928,7 +928,7 @@ skip:
 				if (action == SEND_QUOTE)
 					break;
 				if (action == SEND_TOFILE && obuf != origobuf) {
-					if (! ispipe)
+					if (!ispipe)
 						Fclose(obuf);
 					else {
 jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
@@ -1030,7 +1030,7 @@ jcopyout:
 		qbuf = obuf;
 		pbuf = _pipefile(pipecomm, UNVOLATILE(&qbuf),
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL,
-			! ispipe);
+			!ispipe);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {
 			oldpipe = safe_signal(SIGPIPE, onpipe);
@@ -1040,7 +1040,8 @@ jcopyout:
 	} else
 		pbuf = qbuf = obuf;
 
-	{/* XXX C99 */
+	{
+	bool_t eof;
 	size_t save_qf_pfix_len = qf->qf_pfix_len;
 	off_t *save_stats = stats;
 
@@ -1048,24 +1049,22 @@ jcopyout:
 		qf->qf_pfix_len = 0; /* XXX legacy (remove filter instead) */
 		stats = NULL;
 	}
-	eof = 0;
+	eof = FAL0;
 	rest.s = NULL;
 	rest.l = 0;
 
 	quoteflt_reset(qf, pbuf);
-	while (! eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
-		++lineno;
+	while (!eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
-		len = (size_t)_out(line, linelen, pbuf, convert, action,
-			qf, stats, &rest);
-		if ((ssize_t)len < 0 || ferror(pbuf)) {
-			rt = -1;
+		if (_out(line, linelen, pbuf, convert, action, qf, stats,
+				&rest) < 0 || ferror(pbuf)) {
+			rt = -1; /* XXX Should bail away?! */
 			break;
 		}
 	}
-	if (! eof && rest.l != 0) {
+	if (!eof && rest.l != 0) {
 		linelen = 0;
-		eof = 1;
+		eof = TRU1;
 		action |= _TD_EOF;
 		goto joutln;
 	}

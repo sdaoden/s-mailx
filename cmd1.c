@@ -64,8 +64,8 @@ static char *	__subject_trim(char *s);
 static void hprf(const char *fmt, int mesg, FILE *f, int threaded,
 		const char *attrlist);
 static int putindent(FILE *fp, struct message *mp, int maxwidth);
-static int type1(int *msgvec, int doign, int page, int pipe, int decode,
-		char *cmd, off_t *tstats);
+static int _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
+		bool_t dodecode, char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
 
 static void
@@ -97,14 +97,14 @@ get_pager(void)
 int 
 headers(void *v)
 {
-	int *msgvec = v;
-	int g, k, n, mesg, flag = 0, lastg = 1;
+	ui32_t flag;
+	int *msgvec = v, g, k, n, mesg, size, lastg = 1;
 	struct message *mp, *mq, *lastmq = NULL;
-	int size;
 	enum mflag	fl = MNEW|MFLAGGED;
 
 	time_current_update(&time_current, FAL0);
 
+	flag = 0;
 	size = screensize();
 	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
 	if (screen < 0)
@@ -114,6 +114,7 @@ headers(void *v)
 		k = msgCount - size;
 	if (k < 0)
 		k = 0;
+
 	if (mb.mb_threaded == 0) {
 		g = 0;
 		mq = &message[0];
@@ -156,7 +157,7 @@ headers(void *v)
 			mesg++;
 			if (!visible(mp))
 				continue;
-			if (flag++ >= size)
+			if (UICMP(32, flag++, >=, size))
 				break;
 			printhead(mesg, stdout, 0);
 		}
@@ -197,7 +198,7 @@ headers(void *v)
 		while (mp) {
 			if (visible(mp) && (mp->m_collapsed <= 0 ||
 					 mp == &message[n-1])) {
-				if (flag++ >= size)
+				if (UICMP(32, flag++, >=, size))
 					break;
 				printhead(mp - &message[0] + 1, stdout,
 						mb.mb_threaded);
@@ -205,11 +206,9 @@ headers(void *v)
 			mp = next_in_thread(mp);
 		}
 	}
-	if (flag == 0) {
+	if (!flag)
 		printf(tr(6, "No more mail.\n"));
-		return(1);
-	}
-	return(0);
+	return !flag;
 }
 
 /*
@@ -867,7 +866,7 @@ printhead(int mesg, FILE *f, int threaded)
 	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-$" : "NUROSPMFAT+-$");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
-		if (sz > (int)sizeof attrlist - 1)
+		if (UICMP(32, sz, >, sizeof attrlist - 1))
 			sz = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, sz);
 	}
@@ -906,36 +905,34 @@ brokpipe(int signo)
 }
 
 static int
-type1(int *msgvec, int doign, int page, int pipe, int decode,
-		char *cmd, off_t *tstats)
+_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
+	bool_t dodecode, char *cmd, off_t *tstats)
 {
+	off_t mstats[2];
 	int *ip;
 	struct message *mp;
 	char const *cp;
-	int nlines;
-	off_t mstats[2];
-	FILE *volatile obuf;
+	FILE * volatile obuf;
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
-	if (pipe) {
-		cp = value("SHELL");
-		if (cp == NULL)
+	if (dopipe) {
+		if ((cp = value("SHELL")) == NULL)
 			cp = SHELL;
-		obuf = Popen(cmd, "w", cp, 1);
-		if (obuf == NULL) {
+		if ((obuf = Popen(cmd, "w", cp, 1)) == NULL) {
 			perror(cmd);
 			obuf = stdout;
-		} else {
+		} else
 			safe_signal(SIGPIPE, brokpipe);
-		}
 	} else if ((options & OPT_TTYOUT) &&
-			(page || (cp = value("crt")) != NULL)) {
-		nlines = 0;
-		if (!page) {
-			for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
-				if ((message[*ip-1].m_have & HAVE_BODY) == 0) {
+			(dopage || (cp = value("crt")) != NULL)) {
+		long nlines = 0;
+		if (!dopage) {
+			for (ip = msgvec; *ip &&
+					PTRCMP(ip - msgvec, <, msgCount);
+					++ip) {
+				if (!(message[*ip - 1].m_have & HAVE_BODY)) {
 					if ((get_body(&message[*ip - 1])) !=
 							OKAY)
 						return 1;
@@ -943,32 +940,31 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 				nlines += message[*ip - 1].m_lines;
 			}
 		}
-		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
+		if (dopage || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			char const *p = get_pager();
-			obuf = Popen(p, "w", NULL, 1);
-			if (obuf == NULL) {
+			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
 				perror(p);
 				obuf = stdout;
 			} else
 				safe_signal(SIGPIPE, brokpipe);
 		}
 	}
-	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
+	for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
 		uncollapse1(mp, 1);
-		if (! pipe && ip != msgvec)
+		if (!dopipe && ip != msgvec)
 			fprintf(obuf, "\n");
 		_show_msg_overview(mp, *ip, obuf);
-		sendmp(mp, obuf, doign ? ignore : 0, NULL,
-			pipe && value("piperaw") ? SEND_MBOX :
-				decode ? SEND_SHOW :
-				doign ? SEND_TODISP : SEND_TODISP_ALL,
+		sendmp(mp, obuf, (doign ? ignore : 0), NULL,
+			((dopipe && boption("piperaw"))
+				? SEND_MBOX : dodecode
+				? SEND_SHOW : doign
+				? SEND_TODISP : SEND_TODISP_ALL),
 			mstats);
-		if (pipe && value("page")) {
+		if (dopipe && boption("page"))
 			putc('\f', obuf);
-		}
 		if (tstats) {
 			tstats[0] += mstats[0];
 			tstats[1] += mstats[1];
@@ -976,14 +972,12 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 	}
 close_pipe:
 	if (obuf != stdout) {
-		/*
-		 * Ignore SIGPIPE so it can't cause a duplicate close.
-		 */
+		/* Ignore SIGPIPE so it can't cause a duplicate close */
 		safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
-	return(0);
+	return 0;
 }
 
 /*
@@ -1090,7 +1084,7 @@ pipe1(char *str, int doign)
 	}
 	printf(tr(268, "Pipe to: \"%s\"\n"), cmd);
 	stats[0] = stats[1] = 0;
-	if ((ret = type1(msgvec, doign, 0, 1, 0, cmd, stats)) == 0) {
+	if ((ret = _type1(msgvec, doign, FAL0, TRU1, FAL0, cmd, stats)) == 0) {
 		printf("\"%s\" ", cmd);
 		if (stats[0] >= 0)
 			printf("%lu", (long)stats[0]);
@@ -1108,7 +1102,8 @@ int
 more(void *v)
 {
 	int *msgvec = v;
-	return (type1(msgvec, 1, 1, 0, 0, NULL, NULL));
+
+	return _type1(msgvec, TRU1, TRU1, FAL0, FAL0, NULL, NULL);
 }
 
 /*
@@ -1119,7 +1114,7 @@ More(void *v)
 {
 	int *msgvec = v;
 
-	return (type1(msgvec, 0, 1, 0, 0, NULL, NULL));
+	return _type1(msgvec, FAL0, TRU1, FAL0, FAL0, NULL, NULL);
 }
 
 /*
@@ -1130,7 +1125,7 @@ type(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 1, 0, 0, 0, NULL, NULL));
+	return _type1(msgvec, TRU1, FAL0, FAL0, FAL0, NULL, NULL);
 }
 
 /*
@@ -1141,7 +1136,7 @@ Type(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, 0, NULL, NULL));
+	return _type1(msgvec, FAL0, FAL0, FAL0, FAL0, NULL, NULL);
 }
 
 /*
@@ -1152,7 +1147,7 @@ show(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, 1, NULL, NULL));
+	return _type1(msgvec, FAL0, FAL0, FAL0, TRU1, NULL, NULL);
 }
 
 /*
@@ -1212,7 +1207,8 @@ top(void *v)
 			break;
 		}
 		c = mp->m_lines;
-		for (lines = 0; lines < c && lines <= topl; lines++) {
+		for (lines = 0; lines < c && UICMP(32, lines, <=, topl);
+				++lines) {
 			if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 				break;
 			puts(linebuf);

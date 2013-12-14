@@ -291,7 +291,8 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 struct message *
 smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 {
-	int	binary = 0, lastnl = 0;
+	ui32_t lastnl = 0;
+	int	binary = 0;
 	char	*buf = NULL;
 	size_t	bufsize = 0, buflen, cnt;
 	long	lines = 0, octets = 0;

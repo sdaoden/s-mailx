@@ -738,7 +738,7 @@ static int
 scan(char **sp)
 {
 	char *cp, *cp2;
-	int c, level, inquote;
+	int c, inquote;
 	struct lex *lp;
 	int quotec;
 
@@ -810,7 +810,7 @@ scan(char **sp)
 	 */
 
 	if (c == '(') {
-		level = 1;
+		ui32_t level = 1;
 		inquote = 0;
 		*cp2++ = c;
 		do {

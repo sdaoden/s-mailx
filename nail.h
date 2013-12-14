@@ -60,6 +60,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# include <stdint.h>
+#else
+# include <inttypes.h>
+#endif
+
 #ifdef HAVE_ASSERTS
 # include <assert.h>
 #endif
@@ -71,6 +77,16 @@
 #endif
 #ifdef HAVE_WCTYPE_H
 # include <wctype.h>
+#endif
+
+/*
+ * Compiler specifics (so that it's done)
+ */
+
+#if defined __GNUC__ || defined __clang__
+# define __EXTEN	__extension__
+#else
+# define __EXTEN
 #endif
 
 /*
@@ -119,7 +135,7 @@
 #else
 # define LINESIZE	2560
 #endif
-#define BUFFER_SIZE	(BUFSIZ >= (1 << 13) ? BUFSIZ : (1 << 14))
+#define BUFFER_SIZE	(BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
 #define CBAD		(-15555)
 #define APPEND				/* New mail goes to end of mailbox */
@@ -197,6 +213,12 @@
  * Funs, CC support etc.
  */
 
+/* Pointer comparison (types from below) */
+#define PTRCMP(A,C,B)	((uintptr_t)(A) C (uintptr_t)(B))
+
+/* Ditto, compare (maybe mixed-signed) integers cases to T bits, unsigned */
+#define UICMP(T,A,C,B)	((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
+
 /* Members in constant array */
 #ifndef NELEM
 # define NELEM(A)	(sizeof(A) / sizeof(A[0]))
@@ -206,6 +228,7 @@
 #define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
 
 /* Casts-away (*NOT* cast-away) */
+#define UNUSED(X)	((void)(X))
 #define UNCONST(P)	((void*)(unsigned long)(void const*)(P))
 #define UNVOLATILE(P)	((void*)(unsigned long)(void volatile*)(P))
 
@@ -272,6 +295,7 @@
  * Types
  */
 
+/* TODO convert all integer types to the new [su]i(8|16|32|64)_t */
 typedef unsigned long	ul_it;
 typedef unsigned int	ui_it;
 typedef unsigned short	us_it;
@@ -281,6 +305,97 @@ typedef signed long	sl_it;
 typedef signed int	si_it;
 typedef signed short	ss_it;
 typedef signed char	sc_it;
+
+#ifdef UINT8_MAX
+# define UI8_MAX	UINT8_MAX
+# define SI8_MIN	INT8_MIN
+# define SI8_MAX	INT8_MAX
+typedef uint8_t		ui8_t;
+typedef int8_t		si8_t;
+#elif UCHAR_MAX != 255
+# error UCHAR_MAX must be 255
+#else
+# define UI8_MAX	UCHAR_MAX
+# define SI8_MIN	CHAR_MIN
+# define SI8_MAX	CHAR_MAX
+typedef unsigned char	ui8_t;
+typedef signed char	si8_t;
+#endif
+
+#ifdef UINT16_MAX
+# define UI16_MAX	UINT16_MAX
+# define SI16_MIN	INT16_MIN
+# define SI16_MAX	INT16_MAX
+typedef uint16_t	ui16_t;
+typedef int16_t		si16_t;
+#elif USHRT_MAX != 0xFFFFu
+# error USHRT_MAX must be 0xFFFF
+#else
+# define UI16_MAX	USHRT_MAX
+# define SI16_MIN	SHRT_MIN
+# define SI16_MAX	SHRT_MAX
+typedef unsigned short	ui16_t;
+typedef signed short	si16_t;
+#endif
+
+#ifdef UINT32_MAX
+# define UI32_MAX	UINT32_MAX
+# define SI32_MIN	INT32_MIN
+# define SI32_MAX	INT32_MAX
+typedef uint32_t	ui32_t;
+typedef int32_t		si32_t;
+#elif ULONG_MAX == 0xFFFFFFFFu
+# define UI32_MAX	ULONG_MAX
+# define SI32_MIN	LONG_MIN
+# define SI32_MAX	LONG_MAX
+typedef unsigned long int	ui32_t;
+typedef signed long int		si32_t;
+#elif UINT_MAX != 0xFFFFFFFFu
+# error UINT_MAX must be 0xFFFFFFFF
+#else
+# define UI32_MAX	UINT_MAX
+# define SI32_MIN	INT_MIN
+# define SI32_MAX	INT_MAX
+typedef unsigned int	ui32_t;
+typedef signed int	si32_t;
+#endif
+
+#ifdef UINT64_MAX
+# define UI64_MAX	UINT64_MAX
+# define SI64_MIN	INT64_MIN
+# define SI64_MAX	INT64_MAX
+typedef uint64_t	ui64_t;
+#elif ULONG_MAX <= 0xFFFFFFFFu
+# if !defined ULLONG_MAX || ULLONG_MAX != 0xFFFFFFFFFFFFFFFFu
+#  error We need a 64 bit integer
+# else
+#  define UI64_MAX	ULLONG_MAX
+#  define SI64_MIN	LLONG_MIN
+#  define SI64_MAX	LLONG_MAX
+__EXTEN typedef unsigned long long	ui64_t;
+__EXTEN typedef signed long long	si64_t;
+# endif
+#else
+# define UI64_MAX	ULONG_MAX
+# define SI64_MIN	LONG_MIN
+# define SI64_MAX	LONG_MAX
+typedef unsigned long	ui64_t;
+typedef signed long	si64_t;
+#endif
+
+/* (So that we can use UICMP() for size_t comparison, too) */
+typedef size_t		uiz_t;
+/*typedef ssize_t		siz_t;*/
+
+#ifndef UINTPTR_MAX
+# ifdef SIZE_MAX
+#  define uintptr_t	size_t
+#  define UINTPTR_MAX	SIZE_MAX
+# else
+#  define uintptr_t	unsigned long
+#  define UINTPTR_MAX	ULONG_MAX
+# endif
+#endif
 
 typedef enum {FAL0, TRU1} bool_t;
 
