@@ -241,7 +241,7 @@
      DS(403, "Delete <shortcut-list>") },
    { "imap", imap_imap, (A | STRLIST), 0, 1000
      DS(345, "Send command strings directly to the IMAP server") },
-   { "account", account, (M | RAWLIST), 0, 1000
+   { "account", c_account, (M | RAWLIST), 0, 1000
      DS(303, "Creates, selects or lists an email account") },
    { "thread", thread, (A | MSGLIST), 0, 0
      DS(384, "Create threaded view of current \"folder\"") },
@@ -343,6 +343,8 @@
      DS(425, "Define a <ghost> of <command>, or list all ghosts") },
    { "unghost", &_unghost, (M | RAWLIST), 1, 1000
      DS(426, "Delete <ghost-list>") },
+   { "localopts", &c_localopts, (M | RAWLIST), 1, 1
+     DS(427, "Inside `define' / `account': insulate modifications? <0> / <1>")},
 #ifdef HAVE_ASSERTS
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },

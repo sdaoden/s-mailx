@@ -44,6 +44,42 @@
 #define n_strlcpy(a,b,c)	(strncpy(a, b, c), a[(c) - 1] = '\0')
 
 /*
+ * acmava.c
+ */
+
+/* Assign a value to a variable */
+void	var_assign(char const *name, char const *value);
+#define assign(N,V)		var_assign(N, V)
+
+/* Unset variable (special: normally `var_assign(, NULL)' is used) */
+int	var_unset(char const *name);
+#define unset_internal(V)	var_unset(V)
+
+/* Get the value of an option (fallback to `look_environ'?) */
+char *	var_lookup(char const *name, bool_t look_environ);
+
+#define value(V)		var_lookup(V, TRU1)	/* TODO legacy */
+#define boption(V)		(! ! value(V))
+#define voption(V)		value(V)
+
+/* List all variables */
+void	var_list_all(void);
+
+int	cdefine(void *v);
+int	cundef(void *v);
+int	ccall(void *v);
+int	callhook(char const *name, int newmail);
+
+/* List all macros */
+int	cdefines(void *v);
+
+/* `account' */
+int	c_account(void *v);
+
+/* `localopts' */
+int	c_localopts(void *v);
+
+/*
  * attachments.c
  */
 
@@ -293,8 +329,6 @@ int newmail(void *v);
 int shortcut(void *v);
 struct shortcut *get_shortcut(const char *str);
 int unshortcut(void *v);
-struct oldaccount *get_oldaccount(const char *name);
-int account(void *v);
 int cflag(void *v);
 int cunflag(void *v);
 int canswered(void *v);
@@ -1069,29 +1103,3 @@ char *	getpassword(char const *query);
  * *user* will be savestr()ed if neither it nor *pass* have a default value
  * (so that termios_state.ts_linebuf carries only one) */
 bool_t	getcredentials(char **user, char **pass);
-
-/*
- * varmac.c
- */
-
-/* Assign a value to a variable */
-void	assign(char const *name, char const *value);
-
-int	unset_internal(char const *name);
-
-/* Get the value of an option and return it.
- * Look in the environment if its not available locally */
-char *	value(const char *name);
-#define boption(V)		(! ! value(V))
-#define voption(V)		value(V)
-
-int	cdefine(void *v);
-int	define1(const char *name, int account);
-int	cundef(void *v);
-int	ccall(void *v);
-int	callhook(char const *name, int newmail);
-int	cdefines(void *v);
-
-int	callaccount(char const *name);
-int	listaccounts(FILE *fp);
-void	delaccount(char const *name);

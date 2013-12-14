@@ -130,6 +130,8 @@
 #define MAXEXP		25		/* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE	80	/* getprompt() bufsize (> 3!) */
 
+#define ACCOUNT_NULL	"null"		/* Name of "null" account */
+
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
 #define DATE_SECSMIN	60L
@@ -789,17 +791,6 @@ struct attachment {
 	int	a_msgno;		/* message number */
 };
 
-/*
- * Structure of a variable node.  All variables are
- * kept on a singly-linked list of these, rooted by
- * "variables"
- */
-struct var {
-	struct	var *v_link;		/* Forward link to next variable */
-	char	*v_name;		/* The variable's name */
-	char	*v_value;		/* And it's current value */
-};
-
 struct group {
 	struct	group *ge_link;		/* Next person in this group */
 	char	*ge_name;		/* This person's user name */
@@ -1049,6 +1040,7 @@ _E char 	*option_r_arg;		/* argument to -r option */
 _E char const	**smopts;		/* sendmail(1) options, command line */
 _E size_t	smopts_count;		/* Entries in smopts */
 
+/* TODO Join as many of these state machine bits into a single carrier! */
 _E int		inhook;			/* currently executing a hook */
 _E bool_t	exec_last_comm_error;	/* Last execute() command failed */
 _E bool_t	edit;			/* Indicates editing a file */
@@ -1077,7 +1069,6 @@ _E struct message *prevdot;		/* Previous current message */
 _E struct message *message;		/* The actual message structure */
 _E struct message *threadroot;		/* first threaded message */
 _E int		msgspace;		/* Number of allocated struct m */
-_E struct var	*variables[HSHSIZE];	/* Pointer to active var list */
 _E struct grouphead *groups[HSHSIZE];	/* Pointer to active groups */
 _E struct ignoretab ignore[2];		/* ignored and retained fields
 					 * 0 is ignore, 1 is retain */

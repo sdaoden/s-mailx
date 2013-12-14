@@ -42,9 +42,6 @@
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);
 
-/* "set" command: show all option settings */
-static int	_set_show_all(void);
-
 static int	bangexp(char **str, size_t *size);
 static void	make_ref_and_cs(struct message *mp, struct header *head);
 static int (*	respond_or_Respond(int c))(int *, int);
@@ -52,7 +49,6 @@ static int	respond_internal(int *msgvec, int recipient_record);
 static char *	fwdedit(char *subj);
 static void	asort(char **list);
 static int	diction(const void *a, const void *b);
-static int	file1(char const *name);
 static int	Respond_internal(int *msgvec, int recipient_record);
 static int	resend1(void *v, int add_resent);
 static void	list_shortcuts(void);
@@ -83,53 +79,6 @@ jleave:
 	free(out.s);
 j_leave:
 	return (newsubj);
-}
-
-static int
-_set_show_all(void)
-{
-	int ret = 1;
-	FILE *fp;
-	char *cp, **vacp, **p;
-	struct var *vp;
-	size_t i;
-	union {size_t j; char const *fmt;} u;
-
-	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
-		perror("tmpfile");
-		goto jleave;
-	}
-	rm(cp);
-	Ftfree(&cp);
-
-	for (u.j = 1, i = 0; i < HSHSIZE; ++i)
-		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
-			++u.j;
-	vacp = (char**)salloc(u.j * sizeof(*vacp));
-	for (p = vacp, i = 0; i < HSHSIZE; ++i)
-		for (vp = variables[i]; vp != NULL; vp = vp->v_link)
-			*p++ = vp->v_name;
-	*p = NULL;
-
-	asort(vacp);
-
-	i = (value("bsdcompat") != NULL || value("bsdset") != NULL);
-	u.fmt = i ? "%s\t%s\n" : "%s=\"%s\"\n";
-	for (p = vacp; *p != NULL; ++p) {
-		char const *x = value(*p);
-		if (x == NULL)
-			x = "";
-		if (i || *x)
-			fprintf(fp, u.fmt, *p, x);
-		else
-			fprintf(fp, "%s\n", *p);
-	}
-
-	page_or_print(fp, (size_t)(p - vacp));
-	Fclose(fp);
-	ret = 0;
-jleave:
-	return (ret);
 }
 
 /*
@@ -683,7 +632,7 @@ set(void *v)
 	int errs = 0;
 
 	if (*ap == NULL) {
-		_set_show_all();
+		var_list_all();
 		goto jleave;
 	}
 
@@ -840,28 +789,25 @@ cfile(void *v)
 #if 1 /* TODO this & expansion is completely redundant! */
 	char *e;
 #endif
-	if (argv[0] == NULL) {
+	int i;
+
+	if (*argv == NULL) {
 		newfileinfo();
 		return 0;
+	}
+
+	if (inhook) {
+		fprintf(stderr, tr(516,
+			"Cannot change folder from within a hook.\n"));
+		return 1;
 	}
 #if 1
 	if ((e = expand("&")) == NULL)
 		return 0;
-	strncpy(mboxname, e, sizeof mboxname)[sizeof mboxname - 1] = '\0';
+	n_strlcpy(mboxname, e, sizeof mboxname);
 #endif
-	return file1(*argv);
-}
 
-static int 
-file1(char const *name)
-{
-	int	i;
-
-	if (inhook) {
-		fprintf(stderr, "Cannot change folder from within a hook.\n");
-		return 1;
-	}
-	i = setfile(name, 0);
+	i = setfile(*argv, 0);
 	if (i < 0)
 		return 1;
 	callhook(mailname, 0);
@@ -870,7 +816,6 @@ file1(char const *name)
 	announce(value("bsdcompat") != NULL || value("bsdannounce") != NULL);
 	return 0;
 }
-
 
 /*
  * Expand file names like echo
@@ -1260,107 +1205,6 @@ unshortcut(void *v)
 		args++;
 	}
 	return errs;
-}
-
-struct oldaccount {
-	struct oldaccount	*ac_next;	/* next account in list */
-	char	*ac_name;			/* name of account */
-	char	**ac_vars;			/* variables to set */
-};
-
-static struct oldaccount	*oldaccounts;
-
-struct oldaccount *
-get_oldaccount(const char *name)
-{
-	struct oldaccount	*a;
-
-	for (a = oldaccounts; a; a = a->ac_next)
-		if (a->ac_name && strcmp(name, a->ac_name) == 0)
-			break;
-	return a;
-}
-
-int 
-account(void *v)
-{
-	char	**args = (char **)v;
-	struct oldaccount	*a;
-	char	*cp;
-	int	i, mc, oqf, nqf;
-
-	if (args[0] == NULL) {
-		FILE *fp;
-		if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
-			perror("tmpfile");
-			return 1;
-		}
-		rm(cp);
-		Ftfree(&cp);
-		mc = listaccounts(fp);
-		for (a = oldaccounts; a; a = a->ac_next)
-			if (a->ac_name) {
-				if (mc++)
-					fputc('\n', fp);
-				fprintf(fp, "%s:\n", a->ac_name);
-				for (i = 0; a->ac_vars[i]; i++)
-					fprintf(fp, "\t%s\n", a->ac_vars[i]);
-			}
-		if (mc)
-			try_pager(fp);
-		Fclose(fp);
-		return 0;
-	}
-	if (args[1] && args[1][0] == '{' && args[1][1] == '\0') {
-		if (args[2] != NULL) {
-			fprintf(stderr, "Syntax is: account <name> {\n");
-			return 1;
-		}
-		if ((a = get_oldaccount(args[0])) != NULL)
-			a->ac_name = NULL;
-		return define1(args[0], 1);
-	}
-
-	if ((cp = expand("&")) == NULL)
-		return (1);
-	strncpy(mboxname, cp, sizeof mboxname)[sizeof mboxname - 1] = '\0';
-
-	oqf = savequitflags();
-	if ((a = get_oldaccount(args[0])) == NULL) {
-		account_name = NULL;
-		if (args[1]) {
-			a = scalloc(1, sizeof *a);
-			a->ac_next = oldaccounts;
-			oldaccounts = a;
-		} else {
-			if ((i = callaccount(args[0])) != CBAD)
-				goto jsetf;
-			printf("Account %s does not exist.\n", args[0]);
-			return 1;
-		}
-	}
-	if (args[1]) {
-		delaccount(args[0]);
-		a->ac_name = sstrdup(args[0]);
-		for (i = 1; args[i]; i++);
-		a->ac_vars = scalloc(i, sizeof *a->ac_vars);
-		for (i = 0; args[i+1]; i++)
-			a->ac_vars[i] = sstrdup(args[i+1]);
-	} else {
-		account_name = a->ac_name;
-		unset_allow_undefined = TRU1;
-		set(a->ac_vars);
-		unset_allow_undefined = FAL0;
-jsetf:
-		if (! starting) {
-			nqf = savequitflags();
-			restorequitflags(oqf);
-			i = file1("%");
-			restorequitflags(nqf);
-			return i;
-		}
-	}
-	return 0;
 }
 
 int 
