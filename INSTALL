@@ -6,8 +6,8 @@ Compilation
 
 System specific notes can be found in the next section.
 Any (optional) feature is adjustable and documented in `conf.rc'.
-Adjustments may also take place from the command line, overriding
-those made in `conf.rc' (if any).
+Adjustments may also take place, and are usually done, from the command
+line, overriding those made in `conf.rc' (if any):
 
   $ [make &&] make install
   $ make uninstall          # Won't remove the system wide startup file!
@@ -15,8 +15,8 @@ those made in `conf.rc' (if any).
 
 With adjustments:
 
-  $ make WANT_IMAP=0 install
-  $ make WANT_NCL=0 PREFIX=/some/nasty/prefix install
+  $ make WANT_AUTOCC=1 WANT_IMAP=0 install
+  $ make WANT_AUTOCC=1 WANT_NCL=0 PREFIX=/some/nasty/prefix install
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
@@ -37,22 +37,27 @@ which take precedence over anything else:
 
 E.g.:
 
-  $ make CONFIG=MINIMAL DESTDIR=xtest install
+  $ make CONFIG=MINIMAL WANT_AUTOCC=1 DESTDIR=xtest install
 
 would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
 binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
 
-Note that, due to the way the S-nail(1) build system is designed, the
-only safe way to overwrite compiler and linker flags, i.e., CFLAGS and
-LDFLAGS, is from within the make(1) command line when running the target
-that performs the build:
+The `WANT_AUTOCC=1' switch allows the S-nail(1) build system to not only
+detect, but also adjust CFLAGS and LDFLAGS settings -- if you want to
+add specific locale additions, use `ADDCFLAGS=' and `ADDLDFLAGS=', e.g.
 
-  $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common' [all|install|build]
+  $ make WANT_AUTOCC=1 ADDCFLAGS=-pipe ADDLDFLAGS="-Wl,-O1,--sort-common"
 
-The following make(1) target exists, and note that you can use
-a VERBOSE=1 command line option to gain more (or a different kind of)
-verbosity:
+By default it doesn't dare to overwrite CFLAGS and LDFLAGS, because it
+cannot distinguish where the value comes from, a general user
+environment or a specific command line overwrite, making use cases like
+
+  $ make CFLAGS='-O1 -g -pipe'
+
+impossible.  The following make(1) target exists, and note that you can
+use a VERBOSE=1 command line option to gain more (or a different kind
+of) verbosity:
 
 . all         Create / check and update configuration, build.
 . install     Create / check and update configuration, build, install.
@@ -85,7 +90,7 @@ a Bourne/Korn/POSIX compatible shell:
   $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
   $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
-  $ make install
+  $ make WANT_AUTOCC=1 install
 
 The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
@@ -95,41 +100,55 @@ systems, including all BSD systems, Linux, Solaris ...
 Notes for S-nail(1) v14.*
 -------------------------
 
-S-nail(1) has been or is used regulary on these systems:
+S-nail(1) has been or is used regulary on these systems (uname -srm).
+Note that MAILSPOOL is by default /var/mail.
 
 . Mac OS X Snow Leopard (x86_64).
-  gcc-mp-4.8 (MacPorts gcc48 4.8.1_3) 4.8.1.
+  Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun  7 16:33:36 PDT
+    2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
+  gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
+  i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666) (dot 3).
   Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM 2.9svn).
 
-. FreeBSD 10.0 (amd64; 2013-06-23).
-  clang version 3.3 (tags/RELEASE_33/final 183502) 20130610.
-
-. NetBSD 6.99.24 (amd64).
+. NetBSD
+  NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
+    2013 amd64.
   gcc (NetBSD nb1 20120916) 4.5.4.
 
-. CRUX 3.0 (mLinux 3.6.11).
+. ArchLinux
+  Linux 3.12.3-1-ARCH #1 SMP PREEMPT Wed Dec 4 21:45:42 CET 2013
+    x86_64 GNU/Linux.
+  gcc (GCC) 4.8.2 (-5).
+
+. CRUX Linux
+  Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
   gcc (CRUX-x86_64-multilib) 4.7.2.
 
-. ArchLinux 2013.10.01 (pacman(1) update 2013-
+. DragonFly BSD
+  DragonFly 3.6-RELEASE x86_64
+  gcc 4.7.3 [DragonFly] Release/2013-04-11.
+  Note: harmless iconv(3) warning again (as if we didn't had to treat it
+  specially already).
 
-. DragonFly BSD v3.4.1-RELEASE.
-  gcc 4.7.2 [DragonFly] Release/2012-09-20.
+. FreeBSD
+  FreeBSD 10.0-CURRENT amd64.
+  FreeBSD clang version 3.3 (tags/RELEASE_33/final 183502) 20130610
+    Target: x86_64-unknown-freebsd10.0
+    Thread model: posix
 
-. OpenBSD 5.4 (5.4 GENERIC#36 i386).
+. OpenBSD
+  OpenBSD 5.4 i386.
   gcc (GCC) 4.2.1 20070719.
+
+. UnixWare 7.1.4.
+  Note: this make(1) requires the -e option to pass values to make(1)
+  subprocesses, so, if you want to overwrite DESTDIR= when doing
+  `packager-install', you better say '$ make -e DESTDIR=xy ...'.
 
 . Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
   clang version 3.0 (tags/RELEASE_30/final).
-
-. UnixWare 7.1.4.
-  Set MAILSPOOL in `conf.rc' or just run
-
-    $ make MAILSPOOL=/var/spool/mail
-
-  Note that this make(1) requires the -e option to pass values to
-  make(1) subprocesses, so, if you want to overwrite DESTDIR= when doing
-  `packager-install', you better say '$ make -e DESTDIR=xy ...'.
+  Note: not tested for v14.5, machine disappeared.
 
 OpenIndiana is targeted for v14.6.
 And i'm very interested in reports from other combinations.
