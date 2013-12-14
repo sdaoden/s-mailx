@@ -38,7 +38,7 @@
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
-.ds UV \\%S-nail Huih Buh
+.ds UV \\%S-nail dirty
 .ds ua \\%s-nail
 .ds UR \\%s-nail.rc
 .\"--MKMAN-END--
@@ -87,14 +87,14 @@
 .\" --  >8  --  8<  --
 .\"
 .Sh DESCRIPTION
+
 \*(UA is a mail processing system with a command syntax reminiscent of
 .Xr ed 1
 with lines replaced by messages.
-It is based on Heirloom mailx that is based upon Berkeley Mail 8.1,
-is intended to provide the functionality of the POSIX
+It is intended to provide the functionality of the POSIX
 .Xr mailx 1
-command and offers (mostly optional) extensions for IDNA, MIME, S/MIME,
-SMTP, POP3 and IMAP.
+command and offers (mostly optional) extensions for line editing, IDNA,
+MIME, S/MIME, SMTP, POP3 and IMAP.
 It is usable as a mail batch language.
 .Pp
 In the following list of supported command line options,
@@ -4418,7 +4418,7 @@ remains intact.
 .An "Kurt Shoens" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
-.An Steffen Qo Daode Qc Nurpmeso Aq sdaoden@users.sf.net
+.An Steffen Qo Daode Qc Nurpmeso Aq s-nail-users@lists.sourceforge.net
 .\"
 .\" --  >8  --  8<  --
 .\"
