@@ -1,5 +1,8 @@
 TODO reminder.
 
+Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
+With a clean, conforming and efficient codebase, then.
+
 Backward-compatibility breakers
 -------------------------------
 
@@ -348,6 +351,15 @@ Low-Level
   % expansions would be very helpful, especially once we can address
   individuals parts as of v15.0!)
 
+- After I/O layer rework we should optionally be able to read RSS
+  (Atom?) feeds -- Expat should be available almost everywhere and
+  should be able to parse that?
+  Atom is harder because it may support html+.
+  I mean, yeah, it's stupid, but we could fill in header fields with
+  dummies and still use S-nail to look into the separated feeds as if
+  they were mail messages; anyway i would like to save me from using too
+  many tools -- three seems reasonable.
+
 TODO S-nail 14.5:
 -----------------
 
@@ -487,10 +499,6 @@ TODO S-nail 14.5:
     clone header _x
     unset _x
 
-- Some (configurable?) verbosity for certificate validation.
-  (Martin Neitzel)
-  Rework certificate handling to match RFC 6125!  14.4!
-
 - #include cleanup.  Much too much!
 
 - Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
@@ -519,7 +527,7 @@ TODO S-nail 14.5:
   RFC 2406 - Common multimedia types. 
   RFC 2017 - URL External-Body Access-Type 
   RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
-    text (format=flowed). 
+    text (format=flowed).   (Martin Neitzel)
   RFC 2407 - Encoding of non-ASCII text in message headers. 
   RFC 2183 - The Content-Disposition Header 
   RFC 2231 - Encoding of character set and language information in MIME
@@ -595,7 +603,59 @@ TODO S-nail 14.5:
 
 - edit.c doesn't do NEED_BODY (yeah, IMAP won't work anyway).
 
-Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
-With a clean, conforming and efficient codebase, then.
+- Some (configurable?) verbosity for certificate validation.
+  See, e.g., 'curl -v' output, which is quite nice (not only in respect
+  ot certificates).
+  (Martin Neitzel)
+  Rework certificate handling to match RFC 6125!  14.4!
+
+- . Builtin line editor really should support cursor movement.
+    (For at least xterm terminals, i.e., CSI + a single character.)
+  .. s-nail </dev/null should work interactively when STDERR_FILENO is
+    a terminal!  (Builtin editor; how do editline and readline work?
+    should this be documented?  What does NetBSD Mail do?  Should we NOT
+    be interactive??  POSIX says for sh(1) (APPLICATION USAGE): 'sh
+    2>FILE' is not interactive, even though it accepts terminal input.)
+  . Automatically track message attachments when switching off the
+    folder.
+  . 'localopts' is crap for folder hooks: there any locally set option
+    should remain until we switch off the folder.
+    E.g., i can think about variables that one wants to set on
+    a per-folder basis, like Reply-To or, later ;), Mail-Followup-To:,
+    etc!  Can't we do this??  (Note this means we need to be able to
+    have multiple "threads of locality".)
+    (In fact i'm long thinking about internal events, like
+    on-folder-enter, on-folder-leave etc.  This is how i would implement
+    it (event based, non-blocking select(2) based mainloop) when
+    starting from scratch.)
+  .. Also, 'ghosts' should possibly be included in 'localopts'?
+     I ran into some not-so-nice conditions...
+     As long as it is possible to define regular ghosts when the
+     'account' command is not currently executing, that is a good idea.
+  . The spam* series (spam.c:_spam_action()) should abort if the command
+    execution failed, instead of iterating the entire list.  Look into
+    that.
+  . DESTDIR= should not be taken into account when deciding wether
+    a rebuild is necessary (not wrong to give that to Gaetan Bisson).
+  . Without VERBOSE=, echo PREFIX and DESTDIR in the same style as CC..
+  . _update-release: GMANE didn't announcement mail right (UTF-8, binary
+    encoded..)  This was an embedded NBSP (manually messed up).
+    Nonetheless, see the following comm with Gaetan Bisson, the
+    is-same-thread detection fails!
+  . In v15.0, when we can address attachments of a message individually,
+    it would be nice to provide even more access, just like nmh(1) does
+    (Johan Commelin: Are s-nail and mh related?).
+  . Just like the RFC 3676 link above, it would be nice if it would be
+    somehow possible to recognize links in a document; i don't know yet
+    how this could be achieved without loosing formatting information (i
+    mean, we could enable this and inject terminal colour sequences, but
+    one should be able to say 'follow link x', starting an action
+    handler, and the 'x' must come from somwhere - simply injecting
+    '[NUMBER]' references distorts visual).  Anyway, it's just a filter
+    that recognized the usual <SCHEME:/> stuff, and of course we can
+    simply have a buffer which records all such occurrences, so that
+    user can say '? xy NUMBER', but without the context it soon gets
+    hard.
+  . I want regular expression searches, if available.
 
 vim:set fenc=utf-8:s-ts-mode
