@@ -351,8 +351,10 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 			}
 		}
 	}
+
 	tstats[0] = tstats[1] = 0;
 	imap_created_mailbox = 0;
+	srelax_hold();
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		if (prot == PROTO_IMAP &&
@@ -365,7 +367,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 #ifdef HAVE_IMAP
 			if (imap_copy(mp, *ip, file) == STOP)
 #endif
-				goto ferr;
+				goto jferr;
 #ifdef HAVE_IMAP
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
@@ -373,8 +375,9 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 		} else if (sendmp(mp, obuf, ignoret, NULL,
 					convert, mstats) < 0) {
 			perror(file);
-			goto ferr;
+			goto jferr;
 		}
+		srelax();
 		touch(mp);
 		if (domark)
 			mp->m_flag |= MSAVED;
@@ -388,10 +391,13 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	fflush(obuf);
 	if (ferror(obuf)) {
 		perror(file);
-	ferr:	success = 0;
+jferr:
+		success = 0;
 	}
 	if (Fclose(obuf) != 0)
 		success = 0;
+	srelax_rele();
+
 	if (success) {
 		if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {
 			disp = (

@@ -98,15 +98,20 @@ writeback(FILE *res, FILE *obuf)
 		while ((c = getc(res)) != EOF)
 			putc(c, obuf);
 #endif
+	srelax_hold();
 	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
 			if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 				perror(mailname);
 				(void)fseek(obuf, 0L, SEEK_SET);
+				srelax_rele();
 				return(-1);
 			}
+			srelax();
 		}
+	srelax_rele();
+
 #ifdef APPEND
 	if (res != NULL)
 		while ((c = getc(res)) != EOF)
@@ -413,8 +418,10 @@ makembox(void)
 		}
 		fchmod(fileno(obuf), 0600);
 	}
+
+	srelax_hold();
 	prot = which_protocol(mbox);
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX) {
 			mcount++;
 			if (prot == PROTO_IMAP &&
@@ -427,17 +434,22 @@ makembox(void)
 #ifdef HAVE_IMAP
 				if (imap_copy(mp, mp-message+1, mbox) == STOP)
 #endif
-					goto err;
+					goto jerr;
 			} else if (sendmp(mp, obuf, saveignore,
 						NULL, SEND_MBOX, NULL) < 0) {
 				perror(mbox);
-			err:	if (ibuf)
+jerr:
+				if (ibuf)
 					Fclose(ibuf);
 				Fclose(obuf);
+				srelax_rele();
 				return STOP;
 			}
 			mp->m_flag |= MBOXED;
+			srelax();
 		}
+	}
+	srelax_rele();
 
 	/*
 	 * Copy the user's old mbox contents back
@@ -541,6 +553,8 @@ edstop(void)
 		reset(0);
 	}
 	ftrunc(obuf);
+
+	srelax_hold();
 	c = 0;
 	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if ((mp->m_flag & MDELETED) != 0)
@@ -549,9 +563,13 @@ edstop(void)
 		if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 			perror(mailname);
 			relsesigs();
-			reset(0);
+			srelax_rele();
+			reset(0);/* XXX jump aways are terrible */
 		}
+		srelax();
 	}
+	srelax_rele();
+
 	gotcha = (c == 0 && ibuf == NULL);
 	if (ibuf != NULL) {
 		while ((c = getc(ibuf)) != EOF)

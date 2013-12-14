@@ -661,8 +661,8 @@ commands(void)
 			exit_status = 0;
 		}
 
-		if (! sourcing) {
-			sreset();
+		sreset(sourcing);
+		if (!sourcing) {
 			/* TODO Note: this buffer may contain a password
 			 * TODO We should redefine the code flow which has
 			 * TODO to do that */
@@ -715,7 +715,7 @@ commands(void)
 	if (linebuf != NULL)
 		free(linebuf);
 	if (sourcing)
-		sreset();
+		sreset(FAL0);
 }
 
 /*

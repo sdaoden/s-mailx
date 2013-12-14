@@ -569,7 +569,7 @@ jcont:
 			break;
 #ifdef HAVE_ASSERTS
 		case 'S':
-			sstats(NULL);
+			c_sstats(NULL);
 			break;
 #endif
 		case '@':
