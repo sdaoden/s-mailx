@@ -1,17 +1,5 @@
-# Until the codebase has been overhauled (and the overhauling has itself been
-# debugged :) you may read INSTALL for hints.  But otherwise:
-# You are on your own if you turn on fancy compiler features.
-STD_CFLAGS = -O1
-EXT_CFLAGS = -std=c89 \
-	-O2 -g \
-	-fno-unwind-tables -fno-asynchronous-unwind-tables \
-	-fstrict-aliasing \
-	-fstrict-overflow -Wstrict-overflow=5 \
-	-fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 \
-	-Wall -Wextra -pedantic \
-	-Wbad-function-cast -Wcast-align -Wcast-qual -Winit-self \
-	-Wshadow -Wunused -Wwrite-strings
-#LDFLAGS =
+#@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
+#@ Please see `INSTALL' and `conf.rc' instead.
 
 .SUFFIXES: .o .c .y
 .c.o:
@@ -25,13 +13,14 @@ all: _all_echoes $(UAGENT)
 _all_echoes:
 	@echo 'Building..';\
 	if [ -z "$(VERBOSE)" ]; then \
-		echo '. CC      : $(CC) $(CFLAGS) $(WARN)';\
+		echo '. CC      : $(CC)';\
+		echo '. CFLAGS  : $(CFLAGS)';\
 		echo '. INCLUDES: $(INCLUDES)';\
-		echo '. LDFLAGS : $(LDFLAGS)';\
+		[ -n "$(LDFLAGS)" ] && echo '. LDFLAGS : $(LDFLAGS)';\
 		echo '. LIBS    : $(LIBS)';\
 	fi
 $(UAGENT): $(OBJ)
-	@if [ -z "$(VERBOSE)" ]; then echo '  LD $(@)';\
+	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
 	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
 	fi;\
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
@@ -101,44 +90,45 @@ _install_echoes:
 install: _install_echoes mk.mk mkman.1 mkrc.rc
 	@if [ ! -d "$(DESTDIR)$(BINDIR)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ mkdir -p "$(DESTDIR)$(BINDIR)"';\
-		mkdir -p "$(DESTDIR)$(BINDIR)";\
+			echo '  $$ $(MKDIR) -p "$(DESTDIR)$(BINDIR)"';\
+		$(MKDIR) -p "$(DESTDIR)$(BINDIR)";\
 	fi;\
 	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(INSTALL) -c $(UAGENT) \
+		echo '  $$ $(CP) -f $(UAGENT) \
 			"$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
-	$(INSTALL) -c $(UAGENT) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
-	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	$(CP) -f $(UAGENT) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	if [ -n "$(HAVE_STRIP)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
+			echo '  $$ $(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
+		$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	fi;\
 	if [ ! -d "$(DESTDIR)$(MANDIR)/man1" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ mkdir -p "$(DESTDIR)$(MANDIR)/man1"';\
-		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
+			echo '  $$ $(MKDIR) -p "$(DESTDIR)$(MANDIR)/man1"';\
+		$(MKDIR) -p "$(DESTDIR)$(MANDIR)/man1";\
 	fi;\
 	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(INSTALL) -c -m 644 ./mkman.1 \
+		echo '  $$ $(CP) -f ./mkman.1 \
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
-	$(INSTALL) -c -m 644 ./mkman.1 \
-		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	$(CP) -f ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	if [ ! -d "$(DESTDIR)$(SYSCONFDIR)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ mkdir -p "$(DESTDIR)$(SYSCONFDIR)"';\
-		mkdir -p "$(DESTDIR)$(SYSCONFDIR)";\
+			echo '  $$ $(MKDIR) -p "$(DESTDIR)$(SYSCONFDIR)"';\
+		$(MKDIR) -p "$(DESTDIR)$(SYSCONFDIR)";\
 	fi;\
 	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(INSTALL) -c -m 644 ./mkrc.rc \
+			echo '  $$ $(CP) -f ./mkrc.rc \
 				"$(DESTDIR)$(SYSCONFRC)"';\
-		$(INSTALL) -c -m 644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
+		$(CP) -f ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
 	fi
 
 uninstall:
 	@echo 'Uninstalling..';\
 	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ rm -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+		echo '  $$ $(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
-	rm -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+	$(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	[ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ] &&\
 		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"!'
@@ -146,14 +136,14 @@ uninstall:
 clean:
 	@echo 'Cleaning up..';\
 	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ rm -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
+		echo '  $$ $(RM) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
 			./mkrc.rc';\
-	rm -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
+	$(RM) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
 
 distclean: clean
 	@echo 'Deconfiguring..';\
-	[ -n "$(VERBOSE)" ] && echo '  $$ rm -f ./config.* ./*.mk';\
-	rm -f ./config.* ./*.mk
+	[ -n "$(VERBOSE)" ] && echo '  $$ $(RM) -f ./config.* ./*.mk';\
+	$(RM) -f ./config.* ./*.mk
 
 _update-version:
 	@if [ -z "$(VERSION)" ]; then \
@@ -165,7 +155,7 @@ _update-version:
 				VERSION="$${VERSION}-dirty";\
 		fi;\
 	fi;\
-	trap "rm ./version.tmp" 0 1 2 15;\
+	trap "$(RM) ./version.tmp" 0 1 2 15;\
 	printf > ./version.tmp "#define VERSION \"$${VERSION}\"\n";\
 	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
 	mv ./version.tmp ./version.h;\
@@ -193,7 +183,7 @@ _update-release:
 		-o "$${TMPDIR}/$(UAGENT)-$${FREL}.tar.gz" HEAD &&\
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$(UAGENT)-$${FREL}.tar.gz" &&\
-	rm -f "$(UAGENT)-$${FREL}.tar.gz" &&\
+	$(RM) -f "$(UAGENT)-$${FREL}.tar.gz" &&\
 	tar -c -z -f "$(UAGENT)-$${FREL}.tar.gz" "$(UAGENT)-$${REL}" &&\
 	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
@@ -207,11 +197,12 @@ _update-release:
 	echo 'Really send announcement mail?  ENTER continues';\
 	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
-	make _buh &&\
-	./s-nail -A sdn_sf -s "[ANNOUNCE] Announcing S-nail v$${REL}" \
-		nail-announce &&\
+	make devel &&\
+	./s-nail -A sdn_sf -s "[ANNOUNCE] of S-nail v$${REL}" nail-announce &&\
 	cd .. &&\
-	rm -rf "$(UAGENT)-$${REL}" &&\
+	echo "Really remove $(UAGENT)-$${REL} build dir?  ENTER continues";\
+	read i;\
+	$(RM) -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
 
 # vim:set fenc=utf-8 filetype=make:

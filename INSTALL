@@ -51,7 +51,8 @@ that performs the build:
   $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common' [all|install|build]
 
 The following make(1) target exists, and note that you can use
-a VERBOSE=1 option to gain more (or a different kind of) verbosity:
+a VERBOSE=1 command line option to gain more (or a different kind of)
+verbosity:
 
 . all         Create / check and update configuration, build.
 . install     Create / check and update configuration, build, install.
@@ -94,9 +95,7 @@ systems, including all BSD systems, Linux, Solaris ...
 Notes for S-nail(1) v14.*
 -------------------------
 
-S-nail(1) is known to be driven without errors by the `./cc-test.sh'
-shell script, with the extended CFLAGS and WARN variables uncommented in
-the Makefile, on the following operating systems:
+S-nail(1) has been or is used regulary on these systems:
 
 . Mac OS X Snow Leopard (x86_64).
   gcc-mp-4.8 (MacPorts gcc48 4.8.1_3) 4.8.1.
@@ -105,8 +104,13 @@ the Makefile, on the following operating systems:
 . FreeBSD 10.0 (amd64; 2013-06-23).
   clang version 3.3 (tags/RELEASE_33/final 183502) 20130610.
 
-. NetBSD 6.99.23 (amd64).
-  gcc (NetBSD nb1 20120916) 4.5.4 (forgot to look: ID as of 6.99.19).
+. NetBSD 6.99.24 (amd64).
+  gcc (NetBSD nb1 20120916) 4.5.4.
+
+. CRUX 3.0 (mLinux 3.6.11).
+  gcc (CRUX-x86_64-multilib) 4.7.2.
+
+. ArchLinux 2013.10.01 (pacman(1) update 2013-
 
 . DragonFly BSD v3.4.1-RELEASE.
   gcc 4.7.2 [DragonFly] Release/2012-09-20.
@@ -114,28 +118,20 @@ the Makefile, on the following operating systems:
 . OpenBSD 5.4 (5.4 GENERIC#36 i386).
   gcc (GCC) 4.2.1 20070719.
 
-. CRUX 3.0 (mLinux 3.6.11).
-  gcc (CRUX-x86_64-multilib) 4.7.2.
-
 . Slackware 14 3.2.29-smp (i386).
   gcc (GCC) 4.7.1.
   clang version 3.0 (tags/RELEASE_30/final).
 
 . UnixWare 7.1.4.
-  You need to pass "CFLAGS='-v -O'" to the make(1) run.
-  And because the UnixWare make(1) doesn't pass those flags through to
-  recursively invoked make(1)s (and because the S-nail build system
-  doesn't track CC and CFLAGS in `conf.rc' for updates), you need to use
-  the -e option, as in:
+  Set MAILSPOOL in `conf.rc' or just run
 
-    $ make -e CFLAGS='-v -O'
+    $ make MAILSPOOL=/var/spool/mail
 
-  Due to this you possibly want to use env(1) to be on the safe side...
-  Also, `conf.rc' sets `MAILSPOOL=/var/mail' by default, whereas
-  UnixWare uses `/var/spool/mail', so you need to overwrite it (either
-  in `conf.rc', or from within the command line).
+  Note that this make(1) requires the -e option to pass values to
+  make(1) subprocesses, so, if you want to overwrite DESTDIR= when doing
+  `packager-install', you better say '$ make -e DESTDIR=xy ...'.
 
-OpenIndiana is targeted for v14.5.
+OpenIndiana is targeted for v14.6.
 And i'm very interested in reports from other combinations.
 (It should work practically everywhere, generally speaking.)
 

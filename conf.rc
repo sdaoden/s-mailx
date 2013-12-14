@@ -17,6 +17,15 @@
 # Only a `set' variable will cause the possibly necessary feature tests to be
 # performed, so as to detect wether the wanted feature really can be used
 
+# S-nail automatically detects compilers and has a set of known compiler flags
+# which work well.  Since users should be able to define their own $CC, $CFLAGS
+# and $LDFLAGS, however, it only uses the detected environment if the user
+# has either not set those values at all, are has set them to the empty value.
+# To always force use of S-nail build system detected values, set WANT_AUTOCC.
+# Note: it is possible to add to the detected values by setting ADDCFLAGS=
+# and/or ADDLDFLAGS= (with proper configuration-changed detection)!
+WANT_AUTOCC=0
+
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
 # related/dependent stuff (GSSAPI,SSL)
 WANT_SOCKETS=1
@@ -162,15 +171,6 @@ XLISTER=ls
 # $PAGER, which would effectively cause this setting to be ignored)
 XPAGER=more
 
-# Build+Install: the cmp(1) command (in the $PATH)
-CMP=cmp
-
-# Build+Install: the strip(1) program (in the $PATH)
-STRIP=strip
-
-# Build+Install: the nonstandard install(1) program (in the $PATH)
-INSTALL=install
-
 ##  --  >8  --  8<  --  ##
 
 ## Normal users should not need to read any further
@@ -190,8 +190,12 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 
-# Enable debug only code commands (like `sstats', `smemtrace'), some code
-# assertions, possibly experimental code
+# Use debug compiler flags, enable some additional commands (like `sstats',
+# `smemtrace'), some code assertions, possibly experimental code etc.
+# Note that setting this also enables our own memory canaries, which require
+# a rather large amount of runtime memory, and forcefully disables alloca(3)
+# stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
+# of stack memory via our memory canaries
 WANT_DEBUG=0
 
 # We ship with our own small and efficient getopt(3) implementation;
@@ -202,6 +206,7 @@ WANT_NOGETOPT=0
 # S-nail will continue to be compliant to ISO C89, which has no variable
 # arrays, etc.  For testing purposes it is however nice to use the much slower
 # normal S-nail heap memory allocator instead.
+# Note: this will be forcefully set (again) if WANT_DEBUG=1
 WANT_NOALLOCA="${WANT_DEBUG}"
 
 # vim:set fenc=utf-8 syntax=conf:s-it-mode
