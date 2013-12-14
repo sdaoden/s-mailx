@@ -3,6 +3,7 @@
 # You are on your own if you turn on fancy compiler features.
 STD_CFLAGS = -O1
 EXT_CFLAGS = -std=c89 -O2 -g \
+	-fno-unwind-tables -fno-asynchronous-unwind-tables \
 	-fstrict-aliasing \
 	-fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 \
 	-Wall -Wextra -pedantic \
@@ -25,12 +26,12 @@ EXT_CFLAGS = -std=c89 -O2 -g \
 all: _all_echoes $(UAGENT)
 _all_echoes:
 	@echo 'Building..';\
-	[ -n "$(VERBOSE)" ] || {\
+	if [ -z "$(VERBOSE)" ]; then \
 		echo '. CC      : $(CC) $(CFLAGS) $(WARN)';\
 		echo '. INCLUDES: $(INCLUDES)';\
 		echo '. LDFLAGS : $(LDFLAGS)';\
 		echo '. LIBS    : $(LIBS)';\
-	}
+	fi
 $(UAGENT): $(OBJ)
 	@if [ -z "$(VERBOSE)" ]; then echo '  LD $(@)';\
 	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
@@ -45,7 +46,7 @@ md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
 mime.o: mime_types.h
 
 mime_types.h: mime.types
-	@echo '  Generating $(@)';\
+	@echo '  GEN $(@)';\
 	< ./mime.types > $(@) sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 test:
@@ -53,8 +54,7 @@ test:
 	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
 mkman.1: nail.1 mk.mk
-	@[ -n "$(VERBOSE)" ] &&\
-		echo '  Creating $(UAGENT) manual ($(@))';\
+	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	_VERSION=`< version.h \
 		sed -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
@@ -80,7 +80,7 @@ mkman.1: nail.1 mk.mk
 
 mkrc.rc: nail.rc mk.mk
 	@[ -n "$(VERBOSE)" ] &&\
-		echo '  Creating $(UAGENT) default resource file ($(@))';\
+		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.rc > $(@) awk 'BEGIN {written = 0}\
 	/#--MKRC-START--/, /#--MKRC-END--/ {\
@@ -97,14 +97,15 @@ mkrc.rc: nail.rc mk.mk
 	}\
 	{print}\
 	'
+
 _install_echoes:
 	@echo 'Installing..'
 install: _install_echoes mk.mk mkman.1 mkrc.rc
-	@test -d "$(DESTDIR)$(BINDIR)" || {\
+	@if [ ! -d "$(DESTDIR)$(BINDIR)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ mkdir -p "$(DESTDIR)$(BINDIR)"';\
 		mkdir -p "$(DESTDIR)$(BINDIR)";\
-	};\
+	fi;\
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(INSTALL) -c $(UAGENT) \
 			"$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
@@ -112,27 +113,27 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
 	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	test -d "$(DESTDIR)$(MANDIR)/man1" || {\
+	if [ ! -d "$(DESTDIR)$(MANDIR)/man1" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ mkdir -p "$(DESTDIR)$(MANDIR)/man1"';\
 		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
-	};\
+	fi;\
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(INSTALL) -c -m 644 ./mkman.1 \
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
 	$(INSTALL) -c -m 644 ./mkman.1 \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
-	test -d "$(DESTDIR)$(SYSCONFDIR)" || {\
+	if [ ! -d "$(DESTDIR)$(SYSCONFDIR)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ mkdir -p "$(DESTDIR)$(SYSCONFDIR)"';\
 		mkdir -p "$(DESTDIR)$(SYSCONFDIR)";\
-	};\
-	test -f "$(DESTDIR)$(SYSCONFRC)" || {\
+	fi;\
+	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
 		[ -n "$(VERBOSE)" ] &&\
 			echo '  $$ $(INSTALL) -c -m 644 ./mkrc.rc \
 				"$(DESTDIR)$(SYSCONFRC)"';\
 		$(INSTALL) -c -m 644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
-	}
+	fi
 
 uninstall:
 	@echo 'Uninstalling..';\
@@ -157,18 +158,27 @@ distclean: clean
 	rm -f ./config.* ./*.mk
 
 _update-version:
-	@[ -z "$(VERSION)" ] && eval VERSION="`git describe --tags`";\
+	@if [ -z "$(VERSION)" ]; then \
+		eval VERSION="`(git describe --tags) 2>/dev/null`";\
+		if [ -z "$${VERSION}" ]; then \
+			VERSION="`sed -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
+				version.h`";\
+			echo "$${VERSION}" | grep -q -F dirty ||\
+				VERSION="$${VERSION}-dirty";\
+		fi;\
+	fi;\
 	trap "rm ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define VERSION \"$${VERSION:-vHuih-Buh}\"\n";\
+	printf > ./version.tmp "#define VERSION \"$${VERSION}\"\n";\
 	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
-	mv ./version.tmp ./version.h; trap -- - 0 1 2 15
+	mv ./version.tmp ./version.h;\
+	trap - 0 1 2 15
 
 _update-release:
-	[ "`git rev-parse --verify HEAD`" != \
-			"`git rev-parse --verify master`" ] && {\
+	if [ "`git rev-parse --verify HEAD`" != \
+			"`git rev-parse --verify master`" ]; then \
 		echo >&2 'Not on the [master] branch';\
 		exit 1;\
-	};\
+	fi;\
 	echo 'Name of release tag:';\
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
