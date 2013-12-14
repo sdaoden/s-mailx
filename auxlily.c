@@ -353,7 +353,7 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
 	case '\\':			break;
 	case 'a':	c = '\a';	break;
 	case 'b':	c = '\b';	break;
-	case 'c':	c = -1;		break;
+	case 'c':	c = PROMPT_STOP;break;
 	case 'f':	c = '\f';	break;
 	case 'n':	c = '\n';	break;
 	case 'r':	c = '\r';	break;
@@ -365,10 +365,22 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
 			c |= *xs - '0';
 		}
 		goto jleave;
-	/* S-nail extension for nice prompt support */
+	/* S-nail extension for nice (get)prompt(()) support */
 	case '?':
+	case '$':
+	case '@':
 		if (use_nail_extensions) {
-			c = exec_last_comm_error ? '1' : '0';
+			switch (c) {
+			case '?':
+				c = exec_last_comm_error ? '1' : '0';
+				break;
+			case '$':
+				c = PROMPT_DOLLAR;
+				break;
+			case '@':
+				c = PROMPT_AT;
+				break;
+			}
 			break;
 		}
 		/* FALLTHRU */
@@ -388,10 +400,13 @@ jleave:
 char *
 getprompt(void)
 {
-	static char buf[64];
+	static char buf[PROMPT_BUFFER_SIZE];
+
 	char const *ccp;
 
-	if ((ccp = value("prompt")) == NULL) {
+	if (options & OPT_NOPROMPT)
+		buf[0] = '\0';
+	else if ((ccp = value("prompt")) == NULL) {
 		buf[0] = value("bsdcompat") ? '&' : '?';
 		buf[1] = ' ';
 		buf[2] = '\0';
@@ -399,10 +414,26 @@ getprompt(void)
 		char *cp;
 
 		for (cp = buf; cp < buf + sizeof(buf) - 1; ++cp) {
+			char const *a;
+			size_t l;
 			int c = expand_shell_escape(&ccp, TRU1);
-			if (c <= 0)
+			if (c > 0) {
+				*cp = (char)c;
+				continue;
+			}
+			if (c == 0 || c == PROMPT_STOP)
 				break;
-			*cp = (char)c;
+
+			a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+			if (a == NULL)
+				a = "";
+			l = strlen(a);
+			if (cp + l >= buf + sizeof(buf) - 1)
+				*cp++ = '?';
+			else {
+				memcpy(cp, a, l);
+				cp += --l;
+			}
 		}
 		*cp = '\0';
 	}

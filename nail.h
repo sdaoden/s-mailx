@@ -116,7 +116,7 @@
 #define APPEND				/* New mail goes to end of mailbox */
 #define MAXARGC		1024		/* Maximum list of raw strings */
 #define MAXEXP		25		/* Maximum expansion of aliases */
-#define HSHSIZE		23		/* Hash size aliases, vars, macros */
+#define HSHSIZE		23		/* Hash prime (aliases, vars, macros) */
 
 #define FROM_DATEBUF	64		/* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR	365L
@@ -124,6 +124,8 @@
 #define DATE_MINSHOUR	60L
 #define DATE_HOURSDAY	24L
 #define DATE_SECSDAY	(DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
+
+#define PROMPT_BUFFER_SIZE 80		/* getprompt() bufsize (> 3!) */
 
 #define ESCAPE		'~'		/* Default escape for sending */
 
@@ -318,7 +320,8 @@ enum user_options {
 	OPT_SENDMODE	= 1<<13,	/* Usage case forces send mode */
 	OPT_INTERACTIVE	= 1<<14,	/* isatty(0) */
 	OPT_TTYIN	= OPT_INTERACTIVE,
-	OPT_TTYOUT	= 1<<15
+	OPT_TTYOUT	= 1<<15,
+	OPT_NOPROMPT	= 1<<16		/* *noprompt* has been set */
 };
 #define IS_TTY_SESSION() \
 	((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -343,6 +346,14 @@ enum lned_mode {
 	LNED_NONE	= 0,
 	LNED_LF_ESC	= 1<<0,		/* LF can be backslash escaped */
 	LNED_HIST_ADD	= 1<<1		/* Add completed line to history */
+};
+
+/* <0 means "stop" unless *prompt* extensions are enabled. */
+enum prompt_exp {
+	PROMPT_STOP	= -1,		/* \c */
+	/* *prompt* extensions: \$, \@ etc. */
+	PROMPT_DOLLAR	= -2,
+	PROMPT_AT	= -3
 };
 
 enum okay {
@@ -1101,6 +1112,7 @@ _E char		mailname[MAXPATHLEN];	/* Name of current file */
 _E char		displayname[80 - 40];	/* Prettyfied for display */
 _E char		prevfile[MAXPATHLEN];	/* Name of previous file */
 _E char		mboxname[MAXPATHLEN];	/* Name of mbox */
+_E char const *	account_name;		/* Current account name or NULL */
 _E off_t	mailsize;		/* Size of system mailbox */
 _E struct message *dot;			/* Pointer to current message */
 _E struct message *prevdot;		/* Previous current message */

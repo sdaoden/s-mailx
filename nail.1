@@ -3021,6 +3021,9 @@ a `NOOP' command to be sent each `value' seconds if no other operation
 is performed.
 .It Va prompt
 The string printed when a command is accepted.
+The prompt may be disabled by either setting this to the empty string
+or by setting
+.Va noprompt .
 Defaults to `?\ ', or to `&\ ' if the
 .Va bsdcompat
 variable is set.
@@ -3028,8 +3031,14 @@ The same XSI escape sequences that are understood by the
 .Ic echo
 command may be used within
 .Va prompt .
-As a \*(UA specific addition, the escape sequence `\\?' will expand to
-`1' if the last command failed, and to `0' otherwise.
+\*(UA specific escape sequence extensions are:
+`\\?', which will expand to `1' if the last command failed, and to `0'
+otherwise,
+`\\$', which will expand to the name of the currently active
+.Ic account ,
+if any, and to the empty string otherwise,
+and `\\@', which will expand to the name of the currently active mailbox.
+(Note that the prompt buffer is size-limited, excess is cut off.)
 .It Va quote
 If set, \*(UA starts a replying message with the original message
 prefixed by the value of the variable

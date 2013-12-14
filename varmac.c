@@ -39,7 +39,7 @@
 
 #include "nail.h"
 
-#define MACPRIME	23
+#define MACPRIME	HSHSIZE
 #define MAC_HASH(S)	(strhash(S) % MACPRIME)
 
 enum mac_flags {
@@ -138,6 +138,8 @@ _check_special_vars(char const *name, bool_t enable, char **val)
 		flag = OPT_E_FLAG;
 	else if (strcmp(name, "verbose") == 0)
 		flag = OPT_VERBOSE;
+	else if (strcmp(name, "prompt") == 0)
+		flag = OPT_NOPROMPT, enable = ! enable;
 	else if (strcmp(name, "folder") == 0) {
 		rv = var_folder_updated(*val, &cp);
 		if (rv && cp != NULL) {
@@ -626,7 +628,7 @@ callaccount(char const *name)
 	struct macro *mp;
 
 	mp = _malook(name, NULL, MAC_ACCOUNT);
-	return (mp == NULL) ? CBAD : _maexec(mp);
+	return (mp == NULL) ? CBAD : (account_name = mp->ma_name, _maexec(mp));
 }
 
 int
