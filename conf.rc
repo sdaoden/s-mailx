@@ -70,22 +70,27 @@ WANT_ICONV=1
 WANT_IDNA=1
 
 # Command line editing and -history.
-# S-nail actually supports three different line editors:
-# . WANT_LINE_EDITOR=1, WANT_EDITLINE=0, WANT_EDITLINE_READLINE=0
-#   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
-#   then our builtin NCL (Nail Command Line editor) version will be used.
-#   This one is documented in the manual section "Line editor" (`./nail.1').
-# The fully fledged external libraries may offer a slightly better user
-# experience at the cost of needing more memory and CPU time; also note that
-# the behaviour of S-nail in respect to signal handling may no longer be POSIX
-# compliant.
-# . WANT_LINE_EDITOR=1, WANT_EDITLINE=1, WANT_EDITLINE_READLINE=0
-#   Command line editing via BSD editline(3)
-# . WANT_LINE_EDITOR=1, WANT_EDITLINE=1, WANT_EDITLINE_READLINE=1
+# S-nail actually supports three different command line editors, one builtin
+# and two fully fledged external libraries which may offer a slightly better
+# user experience at the cost of more memory usage and CPU time.
+# Note that these are tested in shown order, and each desired one must be
+# enabled by itself!
+# . WANT_READLINE
 #   The GNU readline(3) compatible interface
-WANT_LINE_EDITOR=1
+# . WANT_EDITLINE
+#   Command line editing via BSD editline(3)
+# . WANT_NCL
+#   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
+#   then our builtin NCL (Nail Command Line editor) version can be used.
+#   It is documented in the manual section "Command line editor" (in ./nail.1)
+WANT_READLINE=0
 WANT_EDITLINE=0
-WANT_EDITLINE_READLINE=0
+WANT_NCL=1
+# For all command line editors we optionally support history
+WANT_HISTORY=1
+# For the NCL command line editor we optionally support "expand-on-tabulator".
+# Turning it off shrinks the binary.  Please see the respective manual entry
+WANT_TABEXPAND=1
 
 # Interaction with a spam email filter is possible.
 # Refer to all commands with a `spam' prefix, and see the manual section

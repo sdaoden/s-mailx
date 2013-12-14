@@ -16,7 +16,7 @@ those made in `conf.rc' (if any).
 With adjustments:
 
   $ make WANT_IMAP=0 install
-  $ make WANT_LINE_EDITOR=0 PREFIX=/some/nasty/prefix install
+  $ make WANT_NCL=0 PREFIX=/some/nasty/prefix install
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:

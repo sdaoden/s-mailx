@@ -613,7 +613,7 @@ commands(void)
 		if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGHUP, hangup);
 		/* TODO We do a lot of redundant signal handling, especially
-		 * TODO with the line editor(s); try to merge this */
+		 * TODO with the command line editor(s); try to merge this */
 		safe_signal(SIGTSTP, stop);
 		safe_signal(SIGTTOU, stop);
 		safe_signal(SIGTTIN, stop);

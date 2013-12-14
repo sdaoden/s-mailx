@@ -424,10 +424,12 @@ int
 	bool_t doprompt, dotty;
 	int n;
 
-	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && ! boption("line-editor-disable"));
-	if (prompt == NULL)
-		prompt = doprompt ? getprompt() : "";
+	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && !boption("line-editor-disable"));
+	if (!doprompt)
+		prompt = NULL;
+	else if (prompt == NULL)
+		prompt = getprompt();
 
 	for (n = 0;;) {
 		if (dotty) {
@@ -435,7 +437,7 @@ int
 			n = (tty_readline)(prompt, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
 		} else {
-			if (doprompt && *prompt) {
+			if (prompt != NULL && *prompt != '\0') {
 				fputs(prompt, stdout);
 				fflush(stdout);
 			}
@@ -452,7 +454,7 @@ int
 		 */
 		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
-			if (*prompt)
+			if (prompt != NULL && *prompt != '\0')
 				prompt = ".. "; /* XXX PS2 .. */
 			continue;
 		}
@@ -471,10 +473,12 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 	char *linebuf = NULL, *rv = NULL;
 	bool_t doprompt, dotty;
 
-	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && ! boption("line-editor-disable"));
-	if (prompt == NULL)
-		prompt = doprompt ? getprompt() : "";
+	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && !boption("line-editor-disable"));
+	if (!doprompt)
+		prompt = NULL;
+	else if (prompt == NULL)
+		prompt = getprompt();
 
 	/* If STDIN is not a terminal, simply read from it */
 	if (dotty) {
@@ -488,7 +492,7 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 		if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
 			rv = linebuf;
 	} else {
-		if (doprompt && *prompt) {
+		if (prompt != NULL && *prompt != '\0') {
 			fputs(prompt, stdout);
 			fflush(stdout);
 		}

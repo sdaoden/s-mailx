@@ -189,8 +189,7 @@ _check_special_vars(char const *name, bool_t enable, char **val)
             *val = cp;
       }
    }
-#if ! defined HAVE_READLINE && ! defined HAVE_EDITLINE &&\
-      defined HAVE_LINE_EDITOR
+#ifdef HAVE_NCL
    else if (strcmp(name, "line-editor-cursor-right") == 0) {
       char const *x = cp = *val;
       int c;
