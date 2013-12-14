@@ -151,7 +151,7 @@ $set 1
 141 \nInterrupt\n
 142 "%s" contains invalid %s sequence\n
 143 "%s" contains invalid character %s\n
-144 --DELETED--
+144 Command ghosts are:\n
 145 detract asked to insert commas\n
 146 Creation of temporary image
 147 Creating descriptor duplicate of temporary image
@@ -166,7 +166,7 @@ $set 1
 156 Held %d messages in %s\n
 157 Unable to lock mailbox
 158 New mail has arrived.\n
-159 --DELETED--
+159 Usage: %s\n
 160 $#%u\tinput charset: $
 161 $#%u\toutput (send) charset: $
 162 $Filename doesn't indicate text content - want to edit charsets? $
@@ -485,6 +485,8 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 422 Force the spam detector to \"unlearn\" <message-list>
 423 Set the spam flag for each message in <message-list>
 424 Clear the spam flag for each message in <message-list>
+425 Define a <ghost> of <command>, or list all ghosts
+426 Delete <ghost-list>
 
 
 500 $ done.\n

@@ -663,28 +663,6 @@ enum argtype {
 #define MMNORM	(MDELETED|MSAVED|MHIDDEN) /* Look at save *and* delete bits */
 #define MMNDEL		(MDELETED|MHIDDEN)	/* Look only at deleted bit */
 
-/*
- * Format of the command description table.
- * The actual table is declared and initialized
- * in lex.c
- */
-struct cmd {
-	char const	*c_name;		/* Name of command */
-	int		(*c_func)(void *);	/* Implementor of command */
-	enum argtype	c_argtype;		/* Arglist type (see below) */
-	short		c_msgflag;		/* Required flags of msgs*/
-	short		c_msgmask;		/* Relevant flags of msgs */
-#ifdef HAVE_DOCSTRINGS
-	int		c_docid;		/* Translation id of .c_doc */
-	char const	*c_doc;			/* One line doc for command */
-#endif
-};
-
-/* Yechh, can't initialize unions */
-
-#define c_minargs	c_msgflag	/* Minimum argcount for RAWLIST */
-#define c_maxargs	c_msgmask	/* Max argcount for RAWLIST */
-
 enum gfield {
 	GTO	= 1,		/* Grab To: line */
 	GSUBJECT= 2,		/* Likewise, Subject: line */

@@ -893,54 +893,6 @@ pdot(void *v)
 }
 
 /*
- * Print out all the possible commands.
- */
-
-static int
-_pcmd_cmp(void const *s1, void const *s2)
-{
-	struct cmd const *const*c1 = s1, *const*c2 = s2;
-	return (strcmp((*c1)->c_name, (*c2)->c_name));
-}
-
-/*ARGSUSED*/
-int 
-pcmdlist(void *v)
-{
-	extern struct cmd const cmdtab[];
-	struct cmd const **cpa, *cp, **cursor;
-	size_t i;
-	(void)v;
-
-	for (i = 0; cmdtab[i].c_name != NULL; ++i)
-		;
-	++i;
-	cpa = ac_alloc(sizeof(cp) * i);
-
-	for (i = 0; (cp = cmdtab + i)->c_name != NULL; ++i)
-		cpa[i] = cp;
-	cpa[i] = NULL;
-
-	qsort(cpa, i, sizeof(cp), &_pcmd_cmp);
-
-	printf(tr(14, "Commands are:\n"));
-	for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
-		size_t j;
-		if (cp->c_func == &ccmdnotsupp)
-			continue;
-		j = strlen(cp->c_name) + 2;
-		if ((i += j) > 72) {
-			i = j;
-			printf("\n");
-		}
-		printf((*cursor != NULL ? "%s, " : "%s\n"), cp->c_name);
-	}
-
-	ac_free(cpa);
-	return (0);
-}
-
-/*
  * Type out the messages requested.
  */
 static sigjmp_buf	pipestop;

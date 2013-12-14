@@ -1273,6 +1273,21 @@ overrides
 This command has no effect when the
 .Va forward-as-attachment
 option is set.
+.It Ic ghost
+Without arguments it lists all currently defined command aliases,
+so-called ghosts.
+With two arguments it defines a new command alias: the first argument is
+the name under which the second should be accessible.
+The content of the second argument can be just about anything.
+A ghost can be used everywhere a normal command can be used, but always
+takes precedence; any arguments that are given to the command alias are
+joined onto the alias content, and the resulting string forms the
+command line that is, in effect, executed.
+Also see
+.Ic unghost .
+.Pp
+.Dl ? ghost ls '!ls -latro'
+.Dl ? ls /usr/local
 .It Ic headers
 (h) Lists the current range of headers, which is an 18-message group.
 If a `+' argument is given the next 18-message group is printed,
@@ -1777,6 +1792,9 @@ command.
 Removes the header field names from the list of retained fields for the
 .Ic forward
 command.
+.It Ic unghost
+Remove an existing command
+.Ic ghost .
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
 .It Ic Unread

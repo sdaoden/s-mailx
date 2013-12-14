@@ -39,6 +39,7 @@ $(UAGENT): $(OBJ)
 
 $(OBJ): config.h nail.h extern.h
 imap.o: imap_gssapi.h
+lex.o: cmd_tab.h
 main.o: version.h
 md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
 mime.o: mime_types.h
