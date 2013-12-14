@@ -427,7 +427,7 @@ typedef size_t		uiz_t;
  * XXX is indeed ui32_t */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define ZFMT		"zu"
-#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu
+#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
 # define ZFMT		"u"
 #endif
 #ifndef ZFMT

@@ -198,7 +198,7 @@ jleave:
 
 	struct stat sbuf;
 	char xname[MAXPATHLEN], cmdbuf[MAXPATHLEN], /* also used for files */
-		*cp, *shell;
+		*cp, *shellp;
 	int pid, l, pivec[2];
 
 	if (pipe(pivec) < 0) {
@@ -206,9 +206,9 @@ jleave:
 		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-	if ((shell = value("SHELL")) == NULL)
-		shell = UNCONST(SHELL);
-	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
+	if ((shellp = value("SHELL")) == NULL)
+		shellp = UNCONST(SHELL);
+	pid = start_command(shellp, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);

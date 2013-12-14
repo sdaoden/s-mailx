@@ -94,8 +94,8 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 	 * TODO would require more changes so that the user still can recognize
 	 * TODO in `~@' etc. that its a rfc822 message attachment; see below */
 	char *mnbuf = NULL;
+	size_t mnlen = 0 /* silence CC */;
 	struct attachment *ap;
-	size_t mnlen;
 
 	/* If the above todo is worked, remove or outsource to attachments.c! */
 	if ((ap = hp->h_attach) != NULL) do

@@ -1073,6 +1073,7 @@ _ncl_krhist(struct line *l)
       if ((hp = _ncl_hist) == NULL)
          goto jleave;
       orig_savec.s = NULL;
+      orig_savec.l = 0; /* silence CC */
    } else if ((hp = hp->older) == NULL)
       goto jleave;
    else
