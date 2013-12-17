@@ -360,12 +360,8 @@ Low-Level
   they were mail messages; anyway i would like to save me from using too
   many tools -- three seems reasonable.
 
-TODO S-nail 14.5:
+TODO S-nail 14.6:
 -----------------
-
-- Perform a WS check, and fix it.
-  (For 15.0: reformat, add vim(1) modelines and use s-it-mode.
-  To do so, write a small script and ensure no functional change occurred.)
 
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
@@ -392,17 +388,6 @@ TODO S-nail 14.5:
   finally implement the value cache for real).
   Drop main.c:_setup_vars(), then.
 
-- If we do link against OpenSSL, try to compile a test program and use
-  the OpenSSL version of MD5 if possible.
-
-  I think this is the right time to change our config/make system so that
-  the Makefile is generated with only those files which are actually
-  needed.  Move the Makefile vars to user.conf.
-
-  (Possibly drop usage of compressions tools and link against the
-  compression libraries.  Maybe dlopen() them?  Otherwise leave that for
-  future version.)
-
 - Make *password* and *password-USER@HOST* global, introduce
   *PROTOCOL-auth-password* and *PROTOCOL-auth-password-USER@HOST*.
   Then, drop smtp_auth_var(), and change lookup_password_for_token() to
@@ -412,9 +397,6 @@ TODO S-nail 14.5:
 
 - Change **use-starttls* to the opposite.  I.e., CAPA or whatever, if TLS
   is supported, use automatically.  *UNLESS* explicitly disabled.
-
-- Add a global *keepalive*, add *keepalive-USER@HOST*.  Add and use
-  a generic, single function to get the value for either protocol.
 
 - NOTE: we do not really support IPv6 sofar in that we are not prepared to
   deal with IPv6 addresses.
@@ -499,13 +481,8 @@ TODO S-nail 14.5:
     clone header _x
     unset _x
 
-- #include cleanup.  Much too much!
-
-- Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
-  global mbstate_t objects until the send / MIME layer rewrite is done and
-  has the carrier.  Use flip states and add aux funs with only update the
-  state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
-  HANDLED!!
+- Add a boolify() function, so that things like `localopts' and yorn()
+  may be less strict on user input
 
 - Ensure that `.' and EOF on a line works with all TTY modes (*ignoreeof*
   relationship, too)!  EOF conditions in general!
@@ -637,7 +614,6 @@ TODO S-nail 14.5:
     that.
   . DESTDIR= should not be taken into account when deciding wether
     a rebuild is necessary (not wrong to give that to Gaetan Bisson).
-  . Without VERBOSE=, echo PREFIX and DESTDIR in the same style as CC..
   . _update-release: GMANE didn't announcement mail right (UTF-8, binary
     encoded..)  This was an embedded NBSP (manually messed up).
     Nonetheless, see the following comm with Gaetan Bisson, the
@@ -657,5 +633,25 @@ TODO S-nail 14.5:
     user can say '? xy NUMBER', but without the context it soon gets
     hard.
   . I want regular expression searches, if available.
+  . TTY layer: the tc*() family may fail with EINTR, which MUST be
+    handled; setting also generates SIGTTOU when we're not in foreground
+    pgrp, so we better deal with all that and ENSURE WE GET THROUGH when
+    resetting terminal attributes!
+  . Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
+    global mbstate_t objects until the send / MIME layer rewrite is done and
+    has the carrier.  Use flip states and add aux funs with only update the
+    state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
+    HANDLED!!
+  . Ypnose (linuxien AT legtux DOT org) pointed out that for the IMAP
+    cache we have some kind of UID validity check -- couldn't that be
+    used to perform some kind of automatic reconnection when we get that
+    much-too-frequent connection breaks in IMAP mode??
+    Also, and also for POP3, don't let the ALARM based (ugh!  I'm
+    starting to dream wet from select(2), almost truly) timer blindly
+    tick, but restart it with a full interval when we did regular
+    conversation with a server.  Don't forget the SSL timeouts (300
+    seconds) and their interaction with normal (user) keepalives.
+    Add a global *keepalive*, add *keepalive-USER@HOST*.  (Add and use
+    a generic, single function to get the value for either protocol.)
 
 vim:set fenc=utf-8:s-ts-mode
