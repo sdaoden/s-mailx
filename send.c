@@ -106,7 +106,7 @@ static void put_from_(FILE *fp, struct mimepart *ip, off_t *stats);
 static sigjmp_buf	pipejmp;
 
 /*ARGSUSED*/
-static void 
+static void
 onpipe(int signo)
 {
 	(void)signo;
@@ -441,7 +441,7 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
  * stats[0] is line count, stats[1] is character count. stats may be NULL.
  * Note that stats[0] is valid for SEND_MBOX only.
  */
-int
+FL int
 sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	char const *prefix, enum sendaction action, off_t *stats)
 {

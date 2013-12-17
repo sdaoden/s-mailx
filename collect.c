@@ -155,7 +155,7 @@ jleave:
 }
 
 /*ARGSUSED*/
-static void 
+static void
 _collect_onpipe(int signo)
 {
 	UNUSED(signo);
@@ -278,7 +278,7 @@ endpipe:
 		free(lbuf);
 }
 
-FILE *
+FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix)
 {
@@ -849,7 +849,7 @@ makeheader(FILE *fp, struct header *hp)
  * Edit the message being collected on fp.
  * On return, make the edit file the new temp file.
  */
-static void 
+static void
 mesedit(int c, struct header *hp)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
@@ -880,7 +880,7 @@ mesedit(int c, struct header *hp)
  * New message collected from stdout.
  * Sh -c must return 0 to accept the new message.
  */
-static void 
+static void
 mespipe(char *cmd)
 {
 	FILE *nf;
@@ -976,7 +976,7 @@ forward(char *ms, FILE *fp, int f)
  * Print (continue) when continued after ^Z.
  */
 /*ARGSUSED*/
-static void 
+static void
 collstop(int s)
 {
 	sighandler_type old_action = safe_signal(s, SIG_DFL);
@@ -1000,7 +1000,7 @@ collstop(int s)
  * Then jump out of the collection loop.
  */
 /*ARGSUSED*/
-static void 
+static void
 collint(int s)
 {
 	/* the control flow is subtle, because we can be called from ~q */
@@ -1022,7 +1022,7 @@ collint(int s)
 }
 
 /*ARGSUSED*/
-static void 
+static void
 collhup(int s)
 {
 	(void)s;
@@ -1034,7 +1034,7 @@ collhup(int s)
 	exit(1);
 }
 
-void
+FL void
 savedeadletter(FILE *fp, int fflush_rewind_first)
 {
 	char const *cp;

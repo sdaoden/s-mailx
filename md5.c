@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ MD5 / HMAC-MD5 algorithm implementation. 
+ *@ MD5 / HMAC-MD5 algorithm implementation.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
@@ -276,7 +276,7 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 /*
  * MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-void
+FL void
 MD5Init (
     MD5_CTX *context	/* context */
 )
@@ -296,7 +296,7 @@ MD5Init (
  * operation, processing another message block, and updating the
  * context.
  */
-void
+FL void
 MD5Update (
     MD5_CTX *context,		/* context */
     unsigned char *input,		/* input block */
@@ -339,7 +339,7 @@ MD5Update (
  * MD5 finalization. Ends an MD5 message-digest	operation, writing the
  * the message digest and zeroizing the context.
  */
-void
+FL void
 MD5Final (
     unsigned char digest[16],	/* message digest */
     MD5_CTX *context		/* context */
@@ -369,7 +369,7 @@ MD5Final (
 	(*_volatile_memset)(context, 0, sizeof *context);
 }
 
-void
+FL void
 hmac_md5 (
     unsigned char *text,	/* pointer to data stream */
     int text_len,		/* length of data stream */

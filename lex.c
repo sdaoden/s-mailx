@@ -384,7 +384,7 @@ _pcmdlist(void *v)
  *
  * nmail: Check for new mail in the current folder only.
  */
-int
+FL int
 setfile(char const *name, int nmail)
 {
 	FILE *ibuf;
@@ -561,7 +561,7 @@ nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
 	return(0);
 }
 
-int
+FL int
 newmailinfo(int omsgCount)
 {
 	int	mdot;
@@ -599,7 +599,7 @@ newmailinfo(int omsgCount)
  * Interpret user commands one by one.  If standard input is not a tty,
  * print no prompt.
  */
-void
+FL void
 commands(void)
 {
 	int eofloop = 0, n;
@@ -733,7 +733,7 @@ commands(void)
  * the interactive command loop.
  * Contxt is non-zero if called while composing mail.
  */
-int
+FL int
 execute(char *linebuf, int contxt, size_t linesize)
 {
 	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
@@ -974,7 +974,7 @@ jleave0:
  * Set the size of the message vector used to construct argument
  * lists to message list functions.
  */
-void
+FL void
 setmsize(int sz)
 {
 
@@ -994,7 +994,7 @@ setmsize(int sz)
 static int	inithdr;		/* am printing startup headers */
 
 /*ARGSUSED*/
-void
+FL void
 onintr(int s)
 {
 	if (handlerstacktop != NULL) {
@@ -1059,7 +1059,7 @@ hangup(int s)
  * Announce the presence of the current Mail version,
  * give the message count, and print a header listing.
  */
-void
+FL void
 announce(int printheaders)
 {
 	int vec[2], mdot;
@@ -1079,7 +1079,7 @@ announce(int printheaders)
  * Announce information about the file we are editing.
  * Return a likely place to set dot.
  */
-int
+FL int
 newfileinfo(void)
 {
 	struct message *mp;
@@ -1132,7 +1132,7 @@ newfileinfo(void)
 	return(mdot);
 }
 
-int
+FL int
 getmdot(int nmail)
 {
 	struct message	*mp;
@@ -1212,7 +1212,7 @@ getmdot(int nmail)
  */
 
 /*ARGSUSED*/
-int
+FL int
 pversion(void *v)
 {
    (void)v;
@@ -1220,7 +1220,7 @@ pversion(void *v)
    return 0;
 }
 
-void
+FL void
 initbox(const char *name)
 {
 	char *tempMesg;
@@ -1261,7 +1261,7 @@ initbox(const char *name)
 }
 
 #ifdef HAVE_DOCSTRINGS
-bool_t
+FL bool_t
 print_comm_docstr(char const *comm)
 {
    bool_t rv = FAL0;

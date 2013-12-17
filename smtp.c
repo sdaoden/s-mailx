@@ -80,7 +80,7 @@ onterm(int signo)
 /*
  * Get the SMTP server's answer, expecting val.
  */
-static int 
+static int
 read_smtp(struct sock *sp, int val, int ign_eof)
 {
 	int ret;
@@ -304,7 +304,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	return 0;
 }
 
-char *
+FL char *
 smtp_auth_var(char const *atype, char const *addr)
 {
 	size_t tl, al, len;
@@ -331,7 +331,7 @@ smtp_auth_var(char const *atype, char const *addr)
 /*
  * Connect to a SMTP server.
  */
-int
+FL int
 smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 		struct header *hp, const char *user, const char *password,
 		const char *skinned)

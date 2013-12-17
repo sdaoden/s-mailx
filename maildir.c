@@ -98,7 +98,7 @@ _cleantmp(void)
 jleave:	;
 }
 
-int 
+FL int
 maildir_setfile(char const * volatile name, int nmail, int isedit)
 {
 	sighandler_type	volatile saveint;
@@ -172,7 +172,7 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
 	return 0;
 }
 
-static int 
+static int
 maildir_setfile1(const char *name, int nmail, int omsgCount)
 {
 	int	i;
@@ -206,7 +206,7 @@ maildir_setfile1(const char *name, int nmail, int omsgCount)
  * a maildir folder by 'copy *', the order of the messages in mailx will
  * not change.
  */
-static int 
+static int
 mdcmp(const void *a, const void *b)
 {
 	long	i;
@@ -218,7 +218,7 @@ mdcmp(const void *a, const void *b)
 	return i;
 }
 
-static int 
+static int
 subdir(const char *name, const char *sub, int nmail)
 {
 	DIR	*dirp;
@@ -246,7 +246,7 @@ subdir(const char *name, const char *sub, int nmail)
 	return 0;
 }
 
-static void 
+static void
 _maildir_append(const char *name, const char *sub, const char *fn)
 {
 	struct message	*m;
@@ -304,7 +304,7 @@ _maildir_append(const char *name, const char *sub, const char *fn)
 	return;
 }
 
-static void 
+static void
 readin(const char *name, struct message *m)
 {
 	char	*buf;
@@ -355,7 +355,7 @@ readin(const char *name, struct message *m)
 	substdate(m);
 }
 
-void
+FL void
 maildir_quit(void)
 {
 	sighandler_type	saveint;
@@ -448,7 +448,7 @@ free:	for (m = &message[0]; m < &message[msgCount]; m++)
 		free(m->m_maildir_file);
 }
 
-static void 
+static void
 move(struct message *m)
 {
 	char	*fn, *new;
@@ -466,7 +466,7 @@ move(struct message *m)
 		return;
 	}
 	if (unlink(m->m_maildir_file) < 0)
-		fprintf(stderr, "Cannot unlink \"%s/%s\".\n", 
+		fprintf(stderr, "Cannot unlink \"%s/%s\".\n",
 				mailname, m->m_maildir_file);
 }
 
@@ -538,13 +538,13 @@ mkname(time_t t, enum mflag f, const char *pref)
 	return cp;
 }
 
-static void 
+static void
 maildircatch(int s)
 {
 	siglongjmp(_maildir_jmp, s);
 }
 
-enum okay
+FL enum okay
 maildir_append(const char *name, FILE *fp)
 {
 	char	*buf, *bp, *lp;
@@ -679,7 +679,7 @@ jtmperr:
 	return OKAY;
 }
 
-static enum okay 
+static enum okay
 trycreate(const char *name)
 {
 	struct stat	st;
@@ -697,7 +697,7 @@ trycreate(const char *name)
 	return OKAY;
 }
 
-static enum okay 
+static enum okay
 mkmaildir(const char *name)
 {
 	char	*np;
@@ -747,7 +747,7 @@ mdlook(const char *name, struct message *data)
 	return md->md_data ? md->md_data : NULL;
 }
 
-static void 
+static void
 mktable(void)
 {
 	int	i;
@@ -758,7 +758,7 @@ mktable(void)
 		mdlook(&message[i].m_maildir_file[4], &message[i]);
 }
 
-static enum okay 
+static enum okay
 subdir_remove(const char *name, const char *sub)
 {
 	char	*path;
@@ -809,7 +809,7 @@ subdir_remove(const char *name, const char *sub)
 	return OKAY;
 }
 
-enum okay 
+FL enum okay
 maildir_remove(const char *name)
 {
 	if (subdir_remove(name, "tmp") == STOP ||

@@ -91,7 +91,8 @@ static int smime_verify(struct message *m, int n, STACK *chain,
 #endif
 static EVP_CIPHER *smime_cipher(const char *name);
 static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
-static FILE *smime_sign_cert(const char *xname, const char *xname2, int warn);
+static FILE *smime_sign_cert(const char *xname, const char *xname2,
+		bool_t dowarn);
 static char *smime_sign_include_certs(char const *name);
 #ifdef HAVE_STACK_OF
 static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
@@ -104,14 +105,14 @@ static enum okay load_crl1(X509_STORE *store, const char *name);
 static enum okay load_crls(X509_STORE *store, const char *vfile,
 		const char *vdir);
 
-static void 
+static void
 sslcatch(int s)
 {
 	termios_state_reset();
 	siglongjmp(ssljmp, s);
 }
 
-static int 
+static int
 ssl_rand_init(void)
 {
 	char *cp, *x;
@@ -145,7 +146,7 @@ ssl_rand_init(void)
 	return state;
 }
 
-static void 
+static void
 ssl_init(void)
 {
 	if (initialized == 0) {
@@ -227,7 +228,7 @@ ssl_select_method(const char *uhp)
 	return method;
 }
 
-static void 
+static void
 ssl_load_verifications(struct sock *sp)
 {
 	char *ca_dir, *ca_file;
@@ -265,7 +266,7 @@ ssl_load_verifications(struct sock *sp)
 	load_crls(store, "ssl-crl-file", "ssl-crl-dir");
 }
 
-static void 
+static void
 ssl_certificate(struct sock *sp, const char *uhp)
 {
 	size_t i;
@@ -306,7 +307,7 @@ jbcert:			fprintf(stderr, tr(239,
 	ac_free(certvar);
 }
 
-static enum okay 
+static enum okay
 ssl_check_host(const char *server, struct sock *sp)
 {
 	X509 *cert;
@@ -357,7 +358,7 @@ found:	X509_free(cert);
 	return OKAY;
 }
 
-enum okay 
+FL enum okay
 ssl_open(const char *server, struct sock *sp, const char *uhp)
 {
 	char *cp;
@@ -407,7 +408,7 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	return OKAY;
 }
 
-void
+FL void
 ssl_gen_err(const char *fmt, ...)
 {
 	va_list	ap;
@@ -420,7 +421,7 @@ ssl_gen_err(const char *fmt, ...)
 			(ERR_error_string(ERR_get_error(), NULL)));
 }
 
-FILE *
+FL FILE *
 smime_sign(FILE *ip, struct header *headp)
 {
 	FILE	*sp, *fp, *bp, *hp;
@@ -650,7 +651,7 @@ found:	if (verify_error_found == 0)
 	return verify_error_found;
 }
 
-int 
+FL int
 cverify(void *vp)
 {
 	int	*msgvec = vp, *ip;
@@ -724,7 +725,7 @@ smime_cipher(const char *name)
 	return UNCONST(cipher);
 }
 
-FILE *
+FL FILE *
 smime_encrypt(FILE *ip, const char *xcertfile, const char *to)
 {
 	char	*certfile = UNCONST(xcertfile), *cp;
@@ -797,7 +798,7 @@ smime_encrypt(FILE *ip, const char *xcertfile, const char *to)
 	return smime_encrypt_assemble(hp, yp);
 }
 
-struct message *
+FL struct message *
 smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 {
 	FILE	*fp, *bp, *hp, *op;
@@ -919,7 +920,7 @@ smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 }
 
 /*ARGSUSED4*/
-static int 
+static int
 ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 {
 	sighandler_type	saveint;
@@ -945,7 +946,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 }
 
 static FILE *
-smime_sign_cert(const char *xname, const char *xname2, int warn)
+smime_sign_cert(const char *xname, const char *xname2, bool_t dowarn)
 {
 	char	*vn, *cp;
 	int	vs;
@@ -978,7 +979,7 @@ loop:	if (name) {
 	}
 	if ((cp = value("smime-sign-cert")) != NULL)
 		goto open;
-	if (warn) {
+	if (dowarn) {
 		fprintf(stderr, "Could not find a certificate for %s", xname);
 		if (xname2)
 			fprintf(stderr, "or %s", xname2);
@@ -1070,7 +1071,7 @@ jerr:	sk_X509_pop_free(*chain, X509_free);
 	goto jleave;
 }
 
-enum okay
+FL enum okay
 smime_certsave(struct message *m, int n, FILE *op)
 {
 	struct message	*x;
@@ -1148,7 +1149,7 @@ loop:	to = hfield1("to", m);
 }
 
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-static enum okay 
+static enum okay
 load_crl1(X509_STORE *store, const char *name)
 {
 	X509_LOOKUP	*lookup;
@@ -1168,7 +1169,7 @@ load_crl1(X509_STORE *store, const char *name)
 }
 #endif	/* new OpenSSL */
 
-static enum okay 
+static enum okay
 load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 {
 	char	*crl_file, *crl_dir;

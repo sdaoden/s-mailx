@@ -284,7 +284,7 @@ delctrl(char *cp, size_t sz)
 	return y;
 }
 
-static int 
+static int
 has_highbit(const char *s)
 {
 	if (s) {
@@ -307,7 +307,7 @@ name_highbit(struct name *np)
 	return 0;
 }
 
-char const *
+FL char const *
 charset_get_7bit(void)
 {
 	char const *t;
@@ -317,7 +317,7 @@ charset_get_7bit(void)
 	return (t);
 }
 
-char const *
+FL char const *
 charset_get_8bit(void)
 {
 	char const *t;
@@ -327,7 +327,7 @@ charset_get_8bit(void)
 	return (t);
 }
 
-char const *
+FL char const *
 charset_get_lc(void)
 {
 	char const *t;
@@ -337,7 +337,7 @@ charset_get_lc(void)
 	return (t);
 }
 
-void
+FL void
 charset_iter_reset(char const *a_charset_to_try_first)
 {
 	char const *sarr[3];
@@ -384,33 +384,33 @@ charset_iter_reset(char const *a_charset_to_try_first)
 	_cs_iter = NULL;
 }
 
-char const *
+FL char const *
 charset_iter_next(void)
 {
 	return (_cs_iter = strcomma(&_cs_iter_base, 1));
 }
 
-char const *
+FL char const *
 charset_iter_current(void)
 {
 	return _cs_iter;
 }
 
-void
+FL void
 charset_iter_recurse(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 {
 	outer_storage[0] = _cs_iter_base;
 	outer_storage[1] = _cs_iter;
 }
 
-void
+FL void
 charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 {
 	_cs_iter_base = outer_storage[0];
 	_cs_iter = outer_storage[1];
 }
 
-char const *
+FL char const *
 need_hdrconv(struct header *hp, enum gfield w)
 {
 	char const *ret = NULL;
@@ -468,7 +468,7 @@ is_this_enc(const char *line, const char *encoding)
 /*
  * Get the mime encoding from a Content-Transfer-Encoding header field.
  */
-enum mimeenc 
+FL enum mimeenc
 mime_getenc(char *p)
 {
 	if (is_this_enc(p, "7bit"))
@@ -487,7 +487,7 @@ mime_getenc(char *p)
 /*
  * Get a mime style parameter from a header line.
  */
-char *
+FL char *
 mime_getparam(char const *param, char *h)
 {
 	char *p = h, *q, *r;
@@ -549,7 +549,7 @@ mime_getparam(char const *param, char *h)
 	return r;
 }
 
-char *
+FL char *
 mime_get_boundary(char *h, size_t *len)
 {
 	char *q = NULL, *p;
@@ -567,7 +567,7 @@ mime_get_boundary(char *h, size_t *len)
 	return (q);
 }
 
-char *
+FL char *
 mime_create_boundary(void)
 {
 	char *bp;
@@ -578,7 +578,7 @@ mime_create_boundary(void)
 	return bp;
 }
 
-int
+FL int
 mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	int *do_iconv)
 {
@@ -728,7 +728,7 @@ jleave:
 #undef F_SIZEOF
 }
 
-enum mimecontent
+FL enum mimecontent
 mime_classify_content_of_part(struct mimepart const *mip)
 {
 	enum mimecontent mc = MIME_UNKNOWN;
@@ -771,7 +771,7 @@ jleave:
 	return (mc);
 }
 
-char *
+FL char *
 mime_classify_content_type_by_fileext(char const *name)
 {
 	char *content = NULL;
@@ -809,7 +809,7 @@ jleave:
 	return (content);
 }
 
-int
+FL int
 cmimetypes(void *v)
 {
 	char **argv = v;
@@ -867,7 +867,7 @@ jclear:
  * Convert header fields from RFC 1522 format
  * TODO mime_fromhdr(): NO error handling, fat; REWRITE **ASAP**
  */
-void 
+FL void
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
 	/* TODO mime_fromhdr(): is called with strings that contain newlines;
@@ -1190,7 +1190,7 @@ jqp_retest:
 }
 
 /*
- * Write len characters of the passed string to the passed file, 
+ * Write len characters of the passed string to the passed file,
  * doing charset and header conversion.
  */
 static size_t
@@ -1286,7 +1286,7 @@ addconv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 /*
  * Interpret MIME strings in parts of an address field.
  */
-char *
+FL char *
 mime_fromaddr(char const *name)
 {
 	char const *cp, *lastcp;
@@ -1337,7 +1337,7 @@ mime_fromaddr(char const *name)
 	return (res);
 }
 
-ssize_t
+FL ssize_t
 xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
 	enum tdflags dflags, struct str *rest)
 {
@@ -1350,7 +1350,7 @@ xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
 	return rv;
 }
 
-ssize_t
+FL ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
 	enum conversion convert, enum tdflags dflags,
 	struct quoteflt *qf, struct str *rest)

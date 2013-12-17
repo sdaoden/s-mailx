@@ -533,7 +533,7 @@ _localopts_unroll(struct var **vapp)
    _localopts = save_los;
 }
 
-void
+FL void
 var_assign(char const *name, char const *val)
 {
    struct var *vp;
@@ -578,7 +578,7 @@ jleave:
    ;
 }
 
-int
+FL int
 var_unset(char const *name)
 {
    int ret = 1;
@@ -611,7 +611,7 @@ jleave:
    return ret;
 }
 
-char *
+FL char *
 var_lookup(char const *name, bool_t look_environ)
 {
    struct var *vp;
@@ -627,7 +627,7 @@ var_lookup(char const *name, bool_t look_environ)
    return rv;
 }
 
-void
+FL void
 var_list_all(void)
 {
    FILE *fp;
@@ -673,7 +673,7 @@ jleave:
    ;
 }
 
-int
+FL int
 cdefine(void *v)
 {
    int rv = 1;
@@ -696,7 +696,7 @@ jerr:
    goto jleave;
 }
 
-int
+FL int
 cundef(void *v)
 {
    int rv = 1;
@@ -714,7 +714,7 @@ jleave:
    return rv;
 }
 
-int
+FL int
 ccall(void *v)
 {
    int rv = 1;
@@ -742,7 +742,7 @@ jerr:
    goto jleave;
 }
 
-int
+FL int
 callhook(char const *name, int nmail)
 {
    int len, rv;
@@ -770,14 +770,14 @@ jleave:
    return rv;
 }
 
-int
+FL int
 cdefines(void *v)
 {
    (void)v;
    return _list_macros(MA_NONE);
 }
 
-int
+FL int
 c_account(void *v)
 {
    char **args = v;
@@ -845,7 +845,7 @@ jleave:
    return rv;
 }
 
-int
+FL int
 c_localopts(void *v)
 {
    int rv = 1;

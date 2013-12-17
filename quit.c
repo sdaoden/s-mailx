@@ -69,7 +69,7 @@ alter(char const *name)
  * The "quit" command.
  */
 /*ARGSUSED*/
-int 
+FL int
 quitcmd(void *v)
 {
 	(void)v;
@@ -145,7 +145,7 @@ writeback(FILE *res, FILE *obuf)
  * Save all untouched messages back in the system mailbox.
  * Remove the system mailbox, if none saved there.
  */
-void 
+FL void
 quit(void)
 {
 	int p, modify, anystat;
@@ -334,7 +334,7 @@ newmail:
 /*
  * Adjust the message flags in each message.
  */
-int 
+FL int
 holdbits(void)
 {
 	struct message *mp;
@@ -362,7 +362,7 @@ holdbits(void)
 	return anystat;
 }
 
-void
+FL void
 save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
 {
 	char const *cp;
@@ -378,7 +378,7 @@ save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
  * If he has specified "append" don't copy his mailbox,
  * just copy saveable entries at the end.
  */
-enum okay 
+FL enum okay
 makembox(void)
 {
 	struct message *mp;
@@ -504,7 +504,7 @@ jerr:
  * Terminate an editing session by attempting to write out the user's
  * file from the temporary.  Save any new stuff appended to the file.
  */
-static void 
+static void
 edstop(void)
 {
 	int gotcha, c;
@@ -627,7 +627,7 @@ static const struct quitnames {
 	{ 0,			NULL }
 };
 
-int
+FL int
 savequitflags(void)
 {
 	enum quitflags	qf = 0;
@@ -639,7 +639,7 @@ savequitflags(void)
 	return qf;
 }
 
-void
+FL void
 restorequitflags(int qf)
 {
 	int	i;

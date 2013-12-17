@@ -61,9 +61,9 @@
 
 /* {hold,rele}_all_sigs() */
 static size_t		_alls_depth;
-static sigset_t		_alls_nset, _alls_oset;
+static sigset_t	_alls_nset, _alls_oset;
 
-void
+FL void
 panic(char const *format, ...)
 {
 	va_list ap;
@@ -79,7 +79,7 @@ panic(char const *format, ...)
 	exit(EXIT_ERR);
 }
 
-void
+FL void
 warn(char const *format, ...)
 {
 	va_list ap;
@@ -94,7 +94,7 @@ warn(char const *format, ...)
 	fflush(stderr);
 }
 
-void
+FL void
 hold_all_sigs(void)
 {
 	if (_alls_depth++ == 0) {
@@ -105,7 +105,7 @@ hold_all_sigs(void)
 	}
 }
 
-void
+FL void
 rele_all_sigs(void)
 {
 	if (--_alls_depth == 0)
@@ -117,7 +117,7 @@ rele_all_sigs(void)
  * Touched messages have the effect of not being sent
  * back to the system mailbox on exit.
  */
-void 
+FL void
 touch(struct message *mp)
 {
 
@@ -130,7 +130,7 @@ touch(struct message *mp)
  * Test to see if the passed file name is a directory.
  * Return true if it is.
  */
-int 
+FL int
 is_dir(char const *name)
 {
 	struct stat sbuf;
@@ -143,17 +143,17 @@ is_dir(char const *name)
 /*
  * Count the number of arguments in the given string raw list.
  */
-int 
+FL int
 argcount(char **argv)
 {
 	char **ap;
 
 	for (ap = argv; *ap++ != NULL;)
-		;	
+		;
 	return ap - argv - 1;
 }
 
-char *
+FL char *
 colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 {
 	int col_orig = col, n, sz;
@@ -203,7 +203,7 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 	return nb;
 }
 
-size_t
+FL size_t
 paging_seems_sensible(void)
 {
 	size_t ret = 0;
@@ -214,7 +214,7 @@ paging_seems_sensible(void)
 	return ret;
 }
 
-void
+FL void
 page_or_print(FILE *fp, size_t lines)
 {
 	size_t rows;
@@ -236,7 +236,7 @@ page_or_print(FILE *fp, size_t lines)
 			putchar(c);
 }
 
-enum protocol 
+FL enum protocol
 which_protocol(const char *name)
 {
 	register const char *cp;
@@ -316,7 +316,7 @@ which_protocol(const char *name)
 	}
 }
 
-unsigned 
+FL unsigned
 pjw(const char *cp)
 {
 	unsigned	h = 0, g;
@@ -332,7 +332,7 @@ pjw(const char *cp)
 	return h;
 }
 
-long 
+FL long
 nextprime(long n)
 {
 	const long	primes[] = {
@@ -353,7 +353,7 @@ nextprime(long n)
 	return mprime;
 }
 
-int
+FL int
 expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
 	char const *xs = *s;
@@ -413,7 +413,7 @@ jleave:
 	return c;
 }
 
-char *
+FL char *
 getprompt(void)
 {
 	static char buf[PROMPT_BUFFER_SIZE];
@@ -456,7 +456,7 @@ getprompt(void)
 	return buf;
 }
 
-char *
+FL char *
 nodename(int mayoverride)
 {
 	static char *hostname;
@@ -507,7 +507,7 @@ nodename(int mayoverride)
 	return (hostname);
 }
 
-char *
+FL char *
 lookup_password_for_token(char const *token)
 {
 	size_t tl;
@@ -526,7 +526,7 @@ lookup_password_for_token(char const *token)
 	return cp;
 }
 
-char *
+FL char *
 getrandstring(size_t length)
 {
 	static unsigned char nodedigest[16];
@@ -577,7 +577,7 @@ getrandstring(size_t length)
 }
 
 #ifdef HAVE_MD5
-char *
+FL char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
 	char const *cp = vp;
@@ -592,7 +592,7 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 	return hex;
 }
 
-char *
+FL char *
 cram_md5_string(char const *user, char const *pass, char const *b64)
 {
 	struct str in, out;
@@ -622,7 +622,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 }
 #endif /* HAVE_MD5 */
 
-enum okay 
+FL enum okay
 makedir(const char *name)
 {
 	int	e;
@@ -640,7 +640,7 @@ makedir(const char *name)
 }
 
 #ifdef	HAVE_FCHDIR
-enum okay 
+FL enum okay
 cwget(struct cw *cw)
 {
 	if ((cw->cw_fd = open(".", O_RDONLY)) < 0)
@@ -652,7 +652,7 @@ cwget(struct cw *cw)
 	return OKAY;
 }
 
-enum okay 
+FL enum okay
 cwret(struct cw *cw)
 {
 	if (fchdir(cw->cw_fd) < 0)
@@ -660,13 +660,13 @@ cwret(struct cw *cw)
 	return OKAY;
 }
 
-void 
+FL void
 cwrelse(struct cw *cw)
 {
 	close(cw->cw_fd);
 }
 #else	/* !HAVE_FCHDIR */
-enum okay 
+FL enum okay
 cwget(struct cw *cw)
 {
 	if (getcwd(cw->cw_wd, sizeof cw->cw_wd) == NULL || chdir(cw->cw_wd) < 0)
@@ -674,7 +674,7 @@ cwget(struct cw *cw)
 	return OKAY;
 }
 
-enum okay 
+FL enum okay
 cwret(struct cw *cw)
 {
 	if (chdir(cw->cw_wd) < 0)
@@ -683,14 +683,14 @@ cwret(struct cw *cw)
 }
 
 /*ARGSUSED*/
-void 
+FL void
 cwrelse(struct cw *cw)
 {
 	(void)cw;
 }
 #endif	/* !HAVE_FCHDIR */
 
-void
+FL void
 makeprint(struct str const *in, struct str *out)
 {
 	static int print_all_chars = -1;
@@ -775,7 +775,7 @@ jleave:
 	out->s[out->l] = '\0';
 }
 
-char *
+FL char *
 prstr(const char *s)
 {
 	struct str	in, out;
@@ -791,7 +791,7 @@ prstr(const char *s)
 	return rp;
 }
 
-int
+FL int
 prout(const char *s, size_t sz, FILE *fp)
 {
 	struct str	in, out;
@@ -805,7 +805,7 @@ prout(const char *s, size_t sz, FILE *fp)
 	return n;
 }
 
-size_t
+FL size_t
 putuc(int u, int c, FILE *fp)
 {
 	size_t rv;
@@ -831,7 +831,7 @@ putuc(int u, int c, FILE *fp)
 	return rv;
 }
 
-void
+FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
 	tc->tc_time = time(NULL);
@@ -844,10 +844,12 @@ time_current_update(struct time_current *tc, bool_t full_update)
 }
 
 #ifndef HAVE_GETOPT
+# ifndef HAVE_AMALGAMATION
 char	*my_optarg;
 int	my_optind = 1, /*my_opterr = 1,*/ my_optopt;
+# endif
 
-int
+FL int
 my_getopt(int argc, char *const argv[], char const *optstring) /* XXX */
 {
 	static char const *lastp;
@@ -921,7 +923,7 @@ _out_of_memory(void)
    panic("no memory");
 }
 
-void *
+FL void *
 (smalloc_safe)(size_t s SMALLOC_DEBUG_ARGS)
 {
    void *rv;
@@ -932,7 +934,7 @@ void *
    return rv;
 }
 
-void *
+FL void *
 (srealloc_safe)(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
    void *rv;
@@ -943,7 +945,8 @@ void *
    return rv;
 }
 
-void *
+#ifdef notyet
+FL void *
 (scalloc_safe)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
    void *rv;
@@ -953,9 +956,10 @@ void *
    rele_all_sigs();
    return rv;
 }
+#endif
 
 #ifndef HAVE_DEBUG
-void *
+FL void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
 {
    void *rv;
@@ -967,7 +971,7 @@ smalloc(size_t s SMALLOC_DEBUG_ARGS)
    return rv;
 }
 
-void *
+FL void *
 srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
    void *rv;
@@ -981,7 +985,7 @@ srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
    return rv;
 }
 
-void *
+FL void *
 scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
    void *rv;
@@ -1075,7 +1079,7 @@ union ptr {
 
 struct chunk   *_mlist, *_mfree;
 
-void *
+FL void *
 (smalloc)(size_t s SMALLOC_DEBUG_ARGS)
 {
    union ptr p;
@@ -1098,7 +1102,7 @@ void *
    return p.p;
 }
 
-void *
+FL void *
 (srealloc)(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
    union ptr p;
@@ -1145,7 +1149,7 @@ jleave:
    return p.p;
 }
 
-void *
+FL void *
 (scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
    union ptr p;
@@ -1172,7 +1176,7 @@ void *
    return p.p;
 }
 
-void
+FL void
 (sfree)(void *v SMALLOC_DEBUG_ARGS)
 {
    union ptr p;
@@ -1209,7 +1213,7 @@ jleave:
    ;
 }
 
-void
+FL void
 smemreset(void)
 {
    union ptr p;
@@ -1229,7 +1233,7 @@ smemreset(void)
          c, s);
 }
 
-int
+FL int
 smemtrace(void *v)
 {
    /* For _HOPE_GET() */

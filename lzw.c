@@ -231,7 +231,7 @@ static int	output(struct s_zstate *, code_int);
  * file size for noticeable speed improvement on small files.  Please direct
  * questions about this implementation to ames!jaw.
  */
-int
+FL int
 zwrite(void *cookie, const char *wbp, int num)
 {
 	code_int i;
@@ -320,7 +320,7 @@ nomatch:	if (output(zs, (code_int) ent) == -1)
 	return (num);
 }
 
-int
+FL int
 zfree(void *cookie)
 {
 	struct s_zstate *zs;
@@ -449,7 +449,7 @@ output(struct s_zstate *zs, code_int ocode)
  * compressed file.  The tables used herein are shared with those of the
  * compress() routine.  See the definitions above.
  */
-int
+FL int
 zread(void *cookie, char *rbp, int num)
 {
 	u_int count;
@@ -683,7 +683,7 @@ cl_hash(struct s_zstate *zs, count_int cl_hsize)	/* Reset code table. */
 }
 
 #undef fp
-void *
+FL void *
 zalloc(FILE *fp)
 {
 #define bits	BITS

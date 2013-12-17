@@ -87,7 +87,7 @@ j_leave:
  * Process a shell escape by saving signals, ignoring signals,
  * and forking a sh -c
  */
-int 
+FL int
 shell(void *v)
 {
 	char *str = v, *cmd;
@@ -112,7 +112,7 @@ shell(void *v)
  * Fork an interactive shell.
  */
 /*ARGSUSED*/
-int 
+FL int
 dosh(void *v)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
@@ -181,7 +181,7 @@ bangexp(char **str, size_t *size)
 }
 
 /*ARGSUSED*/
-int 
+FL int
 help(void *v)
 {
 	int ret = 0;
@@ -231,7 +231,7 @@ jleave:
 	return ret;
 }
 
-int
+FL int
 c_cwd(void *v)
 {
 	char buf[MAXPATHLEN]; /* TODO getcwd(3) may return a larger value */
@@ -246,7 +246,7 @@ c_cwd(void *v)
 	return (v == NULL);
 }
 
-int 
+FL int
 c_chdir(void *v)
 {
 	char **arglist = v;
@@ -264,7 +264,7 @@ jleave:
 	return (cp == NULL);
 }
 
-static void 
+static void
 make_ref_and_cs(struct message *mp, struct header *head)
 {
 	char *oldref, *oldmsgid, *newref, *cp;
@@ -329,37 +329,37 @@ static int
 	return ((opt == 1) ^ (c == 'R')) ? Respond_internal : respond_internal;
 }
 
-int 
+FL int
 respond(void *v)
 {
 	return (respond_or_Respond('r'))((int *)v, 0);
 }
 
-int 
+FL int
 respondall(void *v)
 {
 	return respond_internal((int *)v, 0);
 }
 
-int 
+FL int
 respondsender(void *v)
 {
 	return Respond_internal((int *)v, 0);
 }
 
-int 
+FL int
 followup(void *v)
 {
 	return (respond_or_Respond('r'))((int *)v, 1);
 }
 
-int 
+FL int
 followupall(void *v)
 {
 	return respond_internal((int *)v, 1);
 }
 
-int 
+FL int
 followupsender(void *v)
 {
 	return Respond_internal((int *)v, 1);
@@ -369,7 +369,7 @@ followupsender(void *v)
  * Reply to a single message.  Extract each name from the
  * message header and send them off to mail1()
  */
-static int 
+static int
 respond_internal(int *msgvec, int recipient_record)
 {
 	struct header head;
@@ -514,7 +514,7 @@ fwdedit(char *subj)
 /*
  * The 'forward' command.
  */
-int
+FL int
 forwardcmd(void *v)
 {
 	return forward1(v, 0);
@@ -524,7 +524,7 @@ forwardcmd(void *v)
  * Similar to forward, saving the message in a file named after the
  * first recipient.
  */
-int
+FL int
 Forwardcmd(void *v)
 {
 	return forward1(v, 1);
@@ -534,7 +534,7 @@ Forwardcmd(void *v)
  * Preserve the named messages, so that they will be sent
  * back to the system mailbox.
  */
-int 
+FL int
 preserve(void *v)
 {
 	int *msgvec = v;
@@ -562,7 +562,7 @@ preserve(void *v)
 /*
  * Mark all given messages as unread.
  */
-int 
+FL int
 unread(void *v)
 {
 	int	*msgvec = v;
@@ -587,7 +587,7 @@ unread(void *v)
 /*
  * Mark all given messages as read.
  */
-int
+FL int
 seen(void *v)
 {
 	int	*msgvec = v;
@@ -603,7 +603,7 @@ seen(void *v)
 /*
  * Print the size of each message.
  */
-int 
+FL int
 messize(void *v)
 {
 	int *msgvec = v;
@@ -628,7 +628,7 @@ messize(void *v)
  * by returning an error.
  */
 /*ARGSUSED*/
-int 
+FL int
 rexit(void *v)
 {
 	(void)v;
@@ -638,7 +638,7 @@ rexit(void *v)
 	/*NOTREACHED*/
 }
 
-int 
+FL int
 set(void *v)
 {
 	char **ap = v, *cp, *cp2, *varbuf, c;
@@ -678,7 +678,7 @@ jleave:
 /*
  * Unset a bunch of variable values.
  */
-int 
+FL int
 unset(void *v)
 {
 	int errs;
@@ -693,7 +693,7 @@ unset(void *v)
 /*
  * Put add users to a group.
  */
-int 
+FL int
 group(void *v)
 {
 	char **argv = v;
@@ -750,7 +750,7 @@ group(void *v)
 /*
  * Delete the passed groups.
  */
-int 
+FL int
 ungroup(void *v)
 {
 	char **argv = v;
@@ -769,7 +769,7 @@ ungroup(void *v)
  * Sort the passed string vecotor into ascending dictionary
  * order.
  */
-static void 
+static void
 asort(char **list)
 {
 	char **ap;
@@ -785,7 +785,7 @@ asort(char **list)
  * Do a dictionary order comparison of the arguments from
  * qsort.
  */
-static int 
+static int
 diction(const void *a, const void *b)
 {
 	return(strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b)));
@@ -795,7 +795,7 @@ diction(const void *a, const void *b)
  * Change to another file.  With no argument, print information about
  * the current file.
  */
-int 
+FL int
 cfile(void *v)
 {
 	char **argv = v;
@@ -827,7 +827,7 @@ cfile(void *v)
 /*
  * Expand file names like echo
  */
-int 
+FL int
 echo(void *v)
 {
 	char const **argv = v, **ap, *cp;
@@ -853,13 +853,13 @@ jleave:
 	return 0;
 }
 
-int 
+FL int
 Respond(void *v)
 {
 	return (respond_or_Respond('R'))((int *)v, 0);
 }
 
-int 
+FL int
 Followup(void *v)
 {
 	return (respond_or_Respond('R'))((int *)v, 1);
@@ -870,7 +870,7 @@ Followup(void *v)
  * and not messing around with the To: and Cc: lists as in normal
  * reply.
  */
-static int 
+static int
 Respond_internal(int *msgvec, int recipient_record)
 {
 	struct header head;
@@ -915,7 +915,7 @@ Respond_internal(int *msgvec, int recipient_record)
  * Conditional commands.  These allow one to parameterize one's
  * .mailrc and do some things if sending, others if receiving.
  */
-int 
+FL int
 ifcmd(void *v)
 {
 	char **argv = v;
@@ -952,7 +952,7 @@ ifcmd(void *v)
  * flip over the conditional flag.
  */
 /*ARGSUSED*/
-int 
+FL int
 elsecmd(void *v)
 {
 	(void)v;
@@ -986,7 +986,7 @@ elsecmd(void *v)
  * End of if statement.  Just set cond back to anything.
  */
 /*ARGSUSED*/
-int 
+FL int
 endifcmd(void *v)
 {
 	(void)v;
@@ -1002,7 +1002,7 @@ endifcmd(void *v)
 /*
  * Set the list of alternate names.
  */
-int 
+FL int
 alternates(void *v)
 {
 	size_t l;
@@ -1039,7 +1039,7 @@ jleave:
 /*
  * Do the real work of resending.
  */
-static int 
+static int
 resend1(void *v, int add_resent)
 {
 	char *name, *str;
@@ -1085,7 +1085,7 @@ resend1(void *v, int add_resent)
 /*
  * Resend a message list to a third person.
  */
-int 
+FL int
 resendcmd(void *v)
 {
 	return resend1(v, 1);
@@ -1094,7 +1094,7 @@ resendcmd(void *v)
 /*
  * Resend a message list to a third person without adding headers.
  */
-int 
+FL int
 Resendcmd(void *v)
 {
 	return resend1(v, 0);
@@ -1105,7 +1105,7 @@ Resendcmd(void *v)
  * mail back.
  */
 /*ARGSUSED*/
-int 
+FL int
 newmail(void *v)
 {
 	int val = 1, mdot;
@@ -1122,7 +1122,7 @@ newmail(void *v)
 	return val;
 }
 
-static void 
+static void
 list_shortcuts(void)
 {
 	struct shortcut *s;
@@ -1131,7 +1131,7 @@ list_shortcuts(void)
 		printf("%s=%s\n", s->sh_short, s->sh_long);
 }
 
-int 
+FL int
 shortcut(void *v)
 {
 	char **args = (char **)v;
@@ -1163,7 +1163,7 @@ shortcut(void *v)
 	return 0;
 }
 
-struct shortcut *
+FL struct shortcut *
 get_shortcut(const char *str)
 {
 	struct shortcut *s;
@@ -1174,7 +1174,7 @@ get_shortcut(const char *str)
 	return s;
 }
 
-static enum okay 
+static enum okay
 delete_shortcut(const char *str)
 {
 	struct shortcut *sp, *sq;
@@ -1194,7 +1194,7 @@ delete_shortcut(const char *str)
 	return STOP;
 }
 
-int 
+FL int
 unshortcut(void *v)
 {
 	char **args = (char **)v;
@@ -1215,7 +1215,7 @@ unshortcut(void *v)
 	return errs;
 }
 
-int 
+FL int
 cflag(void *v)
 {
 	struct message	*m;
@@ -1231,7 +1231,7 @@ cflag(void *v)
 	return 0;
 }
 
-int 
+FL int
 cunflag(void *v)
 {
 	struct message	*m;
@@ -1249,7 +1249,7 @@ cunflag(void *v)
 	return 0;
 }
 
-int 
+FL int
 canswered(void *v)
 {
 	struct message	*m;
@@ -1265,7 +1265,7 @@ canswered(void *v)
 	return 0;
 }
 
-int 
+FL int
 cunanswered(void *v)
 {
 	struct message	*m;
@@ -1283,7 +1283,7 @@ cunanswered(void *v)
 	return 0;
 }
 
-int 
+FL int
 cdraft(void *v)
 {
 	struct message	*m;
@@ -1299,7 +1299,7 @@ cdraft(void *v)
 	return 0;
 }
 
-int 
+FL int
 cundraft(void *v)
 {
 	struct message	*m;
@@ -1318,7 +1318,7 @@ cundraft(void *v)
 }
 
 /*ARGSUSED*/
-int 
+FL int
 cnoop(void *v)
 {
 	(void)v;
@@ -1344,7 +1344,7 @@ cnoop(void *v)
 	return 0;
 }
 
-int 
+FL int
 cremove(void *v)
 {
 	char	vb[LINESIZE];
@@ -1403,7 +1403,7 @@ cremove(void *v)
 	return ec;
 }
 
-int 
+FL int
 crename(void *v)
 {
 	char	**args = v, *old, *new;

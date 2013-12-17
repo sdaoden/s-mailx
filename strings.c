@@ -105,7 +105,7 @@ size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
    _all_resetreqs, _all_resets;
 #endif
 
-void *
+FL void *
 salloc(size_t size)
 {
 #ifdef HAVE_DEBUG
@@ -185,7 +185,7 @@ jleave:
    return u.cp;
 }
 
-void *
+FL void *
 csalloc(size_t nmemb, size_t size)
 {
    void *vp;
@@ -196,7 +196,7 @@ csalloc(size_t nmemb, size_t size)
    return (vp);
 }
 
-void 
+FL void
 sreset(bool_t only_if_relaxed)
 {
    struct buffer *bh;
@@ -246,7 +246,7 @@ jleave:
    ;
 }
 
-void 
+FL void
 spreserve(void)
 {
    struct buffer *b;
@@ -255,7 +255,7 @@ spreserve(void)
       b->b._bot = b->b._caster;
 }
 
-void
+FL void
 srelax_hold(void)
 {
    struct buffer *b;
@@ -268,7 +268,7 @@ srelax_hold(void)
    assert(_buf_relax != NULL);
 }
 
-void
+FL void
 srelax_rele(void)
 {
    struct buffer *b;
@@ -282,7 +282,7 @@ srelax_rele(void)
    _buf_relax = NULL;
 }
 
-void
+FL void
 srelax(void)
 {
    /* The purpose of relaxation is only that it is possible to reset the
@@ -302,7 +302,7 @@ srelax(void)
 }
 
 #ifdef HAVE_DEBUG
-int
+FL int
 c_sstats(void *v)
 {
    size_t excess;
@@ -331,7 +331,7 @@ c_sstats(void *v)
 /*
  * Return a pointer to a dynamic copy of the argument.
  */
-char *
+FL char *
 savestr(const char *str)
 {
 	size_t size = strlen(str) + 1;
@@ -343,7 +343,7 @@ savestr(const char *str)
 /*
  * Return new string copy of a non-terminated argument.
  */
-char *
+FL char *
 savestrbuf(const char *sbuf, size_t sbuf_len)
 {
 	char *news = salloc(sbuf_len + 1);
@@ -355,7 +355,7 @@ savestrbuf(const char *sbuf, size_t sbuf_len)
 /*
  * Make a copy of new argument incorporating old one.
  */
-char *
+FL char *
 save2str(const char *str, const char *old)
 {
 	size_t newsize = strlen(str) + 1, oldsize = old ? strlen(old) + 1 : 0;
@@ -368,7 +368,7 @@ save2str(const char *str, const char *old)
 	return (news);
 }
 
-char *
+FL char *
 savecat(char const *s1, char const *s2)
 {
 	size_t l1 = strlen(s1), l2 = strlen(s2);
@@ -383,7 +383,7 @@ savecat(char const *s1, char const *s2)
  * Support routines, auto-reclaimed storage
  */
 
-char *
+FL char *
 i_strdup(char const *src)
 {
 	size_t sz;
@@ -395,7 +395,7 @@ i_strdup(char const *src)
 	return (dest);
 }
 
-char *
+FL char *
 protbase(char const *cp)
 {
 	char *n = salloc(strlen(cp) + 1), *np = n;
@@ -418,7 +418,7 @@ protbase(char const *cp)
 	return n;
 }
 
-char *
+FL char *
 urlxenc(char const *cp) /* XXX */
 {
 	char	*n, *np;
@@ -440,7 +440,7 @@ urlxenc(char const *cp) /* XXX */
 	return n;
 }
 
-char *
+FL char *
 urlxdec(char const *cp) /* XXX */
 {
 	char *n, *np;
@@ -458,7 +458,7 @@ urlxdec(char const *cp) /* XXX */
 	return (n);
 }
 
-struct str *
+FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
 	va_list vl;
@@ -484,7 +484,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 	return self;
 }
 
-struct str *
+FL struct str *
 str_concat_cpa(struct str *self, char const *const*cpa, char const *sep_o_null)
 {
 	size_t sonl, l;
@@ -550,7 +550,7 @@ uc_it const	class_char[] = {
 	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
 };
 
-int
+FL int
 anyof(char const *s1, char const *s2)
 {
 	for (; *s1 != '\0'; ++s1)
@@ -559,7 +559,7 @@ anyof(char const *s1, char const *s2)
 	return (*s1 != '\0');
 }
 
-ui_it
+FL ui_it
 strhash(char const *name)
 {
 	ui_it h = 0;
@@ -571,7 +571,7 @@ strhash(char const *name)
 	return h;
 }
 
-char *
+FL char *
 strcomma(char **iolist, int ignore_empty)
 {
 	char *base, *cp;
@@ -595,7 +595,7 @@ strcomma(char **iolist, int ignore_empty)
 	return (base);
 }
 
-void
+FL void
 i_strcpy(char *dest, const char *src, size_t size)
 {
 	if (size > 0) {
@@ -609,7 +609,7 @@ i_strcpy(char *dest, const char *src, size_t size)
 	}
 }
 
-int
+FL int
 is_prefix(char const *as1, char const *as2)
 {
 	char c;
@@ -619,7 +619,7 @@ is_prefix(char const *as1, char const *as2)
 	return (c == '\0');
 }
 
-char const *
+FL char const *
 last_at_before_slash(char const *sp)
 {
 	char const *cp;
@@ -633,7 +633,7 @@ last_at_before_slash(char const *sp)
 	return (*cp == '@' ? cp : NULL);
 }
 
-char *
+FL char *
 laststring(char *linebuf, bool_t *needs_list, bool_t strip)
 {
    char *cp, *p, quoted;
@@ -709,7 +709,7 @@ jnull:
    goto j_leave;
 }
 
-void
+FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
 #if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
@@ -739,7 +739,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
 	}
 }
 
-int
+FL int
 substr(char const *str, char const *sub)
 {
 	char const *cp, *backup;
@@ -792,7 +792,7 @@ substr(char const *str, char const *sub)
 }
 
 #ifndef HAVE_SNPRINTF
-int
+FL int
 snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
 {
 	va_list ap;
@@ -807,7 +807,7 @@ snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
 }
 #endif
 
-char *
+FL char *
 sstpcpy(char *dst, char const *src)
 {
 	while ((*dst = *src++) != '\0')
@@ -815,7 +815,7 @@ sstpcpy(char *dst, char const *src)
 	return (dst);
 }
 
-char *
+FL char *
 (sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
 {
 	char *dp = NULL;
@@ -828,7 +828,8 @@ char *
 	return dp;
 }
 
-char *
+#ifdef notyet
+FL char *
 (sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
 {
 	char *dp = NULL;
@@ -839,8 +840,9 @@ char *
 	dp[len] = '\0';
 	return dp;
 }
+#endif
 
-char *
+FL char *
 n_strlcpy(char *dst, const char *src, size_t len)
 {
    assert(len > 0);
@@ -850,7 +852,7 @@ n_strlcpy(char *dst, const char *src, size_t len)
    return dst;
 }
 
-int
+FL int
 asccasecmp(char const *s1, char const *s2)
 {
 	int cmp;
@@ -863,7 +865,7 @@ asccasecmp(char const *s1, char const *s2)
 	return cmp;
 }
 
-int
+FL int
 ascncasecmp(char const *s1, char const *s2, size_t sz)
 {
 	int cmp = 0;
@@ -876,7 +878,7 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
 	return cmp;
 }
 
-char const *
+FL char const *
 asccasestr(char const *haystack, char const *xneedle)
 {
 	char *needle = NULL, *NEEDLE;
@@ -913,7 +915,7 @@ jleave:
 	return haystack;
 }
 
-bool_t
+FL bool_t
 is_asccaseprefix(char const *as1, char const *as2)
 {
 	bool_t rv = FAL0;
@@ -928,7 +930,7 @@ is_asccaseprefix(char const *as1, char const *as2)
 	return rv;
 }
 
-struct str *
+FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
 {
 	if (t != NULL && t->l > 0) {
@@ -940,7 +942,7 @@ struct str *
 	return self;
 }
 
-struct str *
+FL struct str *
 (n_str_add_buf)(struct str *self, char const *buf, size_t buflen
 	SMALLOC_DEBUG_ARGS)
 {
@@ -976,7 +978,7 @@ _ic_stripdash(char *p)
 	while (*p++);
 }
 
-iconv_t
+FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode)
 {
 	iconv_t id;
@@ -1033,7 +1035,7 @@ n_iconv_open(char const *tocode, char const *fromcode)
 	return (iconv_t)-1;
 }
 
-void
+FL void
 n_iconv_close(iconv_t cd)
 {
 	iconv_close(cd);
@@ -1041,11 +1043,13 @@ n_iconv_close(iconv_t cd)
 		iconvd = (iconv_t)-1;
 }
 
-void
+#ifdef notyet
+FL void
 n_iconv_reset(iconv_t cd)
 {
 	(void)iconv(cd, NULL, NULL, NULL, NULL);
 }
+#endif
 
 /*
  * (2012-09-24: export and use it exclusively to isolate prototype problems
@@ -1067,7 +1071,7 @@ n_iconv_reset(iconv_t cd)
 #  define __INBCAST(S)	(char **)UNCONST(S)
 # endif
 
-int
+FL int
 n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
 	char **outb, size_t *outbleft, bool_t skipilseq)
 {
@@ -1105,7 +1109,7 @@ n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
 }
 # undef __INBCAST
 
-int
+FL int
 n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
 	struct str *in_rest_or_null, bool_t skipilseq)
 {

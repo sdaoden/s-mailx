@@ -252,7 +252,7 @@ jleave1:
 jleave:
 	return (agp);
 }
-#endif 
+#endif
 
 static int
 _addrspec_check(int skinned, struct addrguts *agp)
@@ -362,7 +362,7 @@ jleave:
 	return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
 }
 
-char const *
+FL char const *
 myaddrs(struct header *hp)
 {
 	struct name *np;
@@ -391,7 +391,7 @@ jleave:
 	return rv;
 }
 
-char const *
+FL char const *
 myorigin(struct header *hp)
 {
 	char const *ret = NULL, *ccp;
@@ -403,7 +403,7 @@ myorigin(struct header *hp)
 	return (ret);
 }
 
-int
+FL int
 is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 {
 	char date[FROM_DATEBUF];
@@ -413,7 +413,7 @@ is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 			! _is_date(date)) ? 0 : 1);
 }
 
-int
+FL int
 extract_date_from_from_(char const *line, size_t linelen,
 	char datebuf[FROM_DATEBUF])
 {
@@ -460,7 +460,7 @@ jerr:	cp = tr(213, "<Unknown date>");
 	goto jleave;
 }
 
-void
+FL void
 extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 {
 	struct header nh, *hq = &nh;
@@ -553,7 +553,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
  * If mult is zero, return the content of the first matching header
  * field only, the content of all matching header fields else.
  */
-char *
+FL char *
 hfield_mult(char const *field, struct message *mp, int mult)
 {
 	FILE *ibuf;
@@ -664,7 +664,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
  * Check whether the passed line is a header line of
  * the desired breed.  Return the field body, or 0.
  */
-char const *
+FL char const *
 thisfield(char const *linebuf, char const *field)
 {
 	while (lowerconv(*linebuf) == lowerconv(*field)) {
@@ -687,7 +687,7 @@ thisfield(char const *linebuf, char const *field)
  * a bunch of arpanet stuff in it, we may have to skin the name
  * before returning it.
  */
-char *
+FL char *
 nameof(struct message *mp, int reptype)
 {
 	char *cp, *cp2;
@@ -708,7 +708,7 @@ nameof(struct message *mp, int reptype)
  * Start of a "comment".
  * Ignore it.
  */
-char const *
+FL char const *
 skip_comment(char const *cp)
 {
 	int nesting = 1;
@@ -734,7 +734,7 @@ skip_comment(char const *cp)
  * Return the start of a route-addr (address in angle brackets),
  * if present.
  */
-char const *
+FL char const *
 routeaddr(char const *name)
 {
 	char const *np, *rp = NULL;
@@ -765,7 +765,7 @@ routeaddr(char const *name)
 /*
  * Check if a name's address part contains invalid characters.
  */
-int 
+FL int
 is_addr_invalid(struct name *np, int putmsg)
 {
 	char cbuf[sizeof "'\\U12340'"], *name = np->n_name;
@@ -797,7 +797,7 @@ jleave:
 	return ((f & NAME_ADDRSPEC_INVALID) != 0);
 }
 
-char *
+FL char *
 skin(char const *name)
 {
 	struct addrguts ag;
@@ -813,7 +813,7 @@ skin(char const *name)
 }
 
 /* TODO addrspec_with_guts: RFC 5322 */
-int
+FL int
 addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
 	char const *cp;
@@ -953,7 +953,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 /*
  * Fetch the real name from an internet mail address field.
  */
-char *
+FL char *
 realname(char const *name)
 {
 	char const *cp, *cq, *cstart = NULL, *cend = NULL;
@@ -1077,7 +1077,7 @@ brk:	if (cstart == NULL) {
  *	1 -- get sender's name for reply
  *	2 -- get sender's name for Reply
  */
-char *
+FL char *
 name1(struct message *mp, int reptype)
 {
 	char *namebuf;
@@ -1151,7 +1151,7 @@ out:
 	return cp;
 }
 
-static int 
+static int
 msgidnextc(const char **cp, int *status)
 {
 	int	c;
@@ -1193,7 +1193,7 @@ msgidnextc(const char **cp, int *status)
 	}
 }
 
-int 
+FL int
 msgidcmp(const char *s1, const char *s2)
 {
 	int	q1 = 0, q2 = 0;
@@ -1211,7 +1211,7 @@ msgidcmp(const char *s1, const char *s2)
 /*
  * Count the occurances of c in str
  */
-static int 
+static int
 charcount(char *str, int c)
 {
 	char *cp;
@@ -1226,7 +1226,7 @@ charcount(char *str, int c)
 /*
  * See if the given header field is supposed to be ignored.
  */
-int
+FL int
 is_ign(char const *field, size_t fieldlen, struct ignoretab ignoret[2])
 {
 	char *realfld;
@@ -1250,7 +1250,7 @@ is_ign(char const *field, size_t fieldlen, struct ignoretab ignoret[2])
 	return ret;
 }
 
-int 
+FL int
 member(char const *realfield, struct ignoretab *table)
 {
 	struct ignore *igp;
@@ -1265,7 +1265,7 @@ member(char const *realfield, struct ignoretab *table)
 /*
  * Fake Sender for From_ lines if missing, e. g. with POP3.
  */
-char const *
+FL char const *
 fakefrom(struct message *mp)
 {
 	char const *name;
@@ -1283,7 +1283,7 @@ fakefrom(struct message *mp)
 	return name;
 }
 
-char const *
+FL char const *
 fakedate(time_t t)
 {
 	char *cp, *cq;
@@ -1326,10 +1326,10 @@ nexttoken(char const *cp)
 
 /*
  * From username Fri Jan  2 20:13:51 2004
- *               |    |    |    |    | 
+ *               |    |    |    |    |
  *               0    5   10   15   20
  */
-time_t
+FL time_t
 unixtime(char const *fromline)
 {
 	char const *fp;
@@ -1383,7 +1383,7 @@ invalid:
 	return t;
 }
 
-time_t
+FL time_t
 rfctime(char const *date)
 {
 	char const *cp = date;
@@ -1475,7 +1475,7 @@ invalid:
 
 #define is_leapyear(Y)  ((((Y) % 100 ? (Y) : (Y) / 100) & 3) == 0)
 
-time_t
+FL time_t
 combinetime(int year, int month, int day, int hour, int minute, int second)
 {
 	time_t t;
@@ -1511,7 +1511,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second)
 	return t;
 }
 
-void 
+FL void
 substdate(struct message *m)
 {
 	char const *cp;
@@ -1539,7 +1539,7 @@ substdate(struct message *m)
 		m->m_time = time_current.tc_time;
 }
 
-int
+FL int
 check_from_and_sender(struct name *fromfield, struct name *senderfield)
 {
 	if (fromfield && fromfield->n_flink && senderfield == NULL) {
@@ -1555,7 +1555,7 @@ check_from_and_sender(struct name *fromfield, struct name *senderfield)
 	return 0;
 }
 
-char *
+FL char *
 getsender(struct message *mp)
 {
 	char	*cp;
@@ -1567,7 +1567,7 @@ getsender(struct message *mp)
 	return np->n_flink != NULL ? skin(hfield1("sender", mp)) : np->n_name;
 }
 
-int
+FL int
 grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 {
 	/* TODO grab_headers: again, check counts etc. against RFC;

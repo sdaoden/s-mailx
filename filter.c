@@ -278,7 +278,7 @@ _qf_state_data(struct qf_vc *vc)
 }
 #endif /* HAVE_QUOTE_FOLD */
 
-struct quoteflt *
+FL struct quoteflt *
 quoteflt_dummy(void) /* TODO LEGACY */
 {
    static struct quoteflt qf_i;
@@ -286,7 +286,7 @@ quoteflt_dummy(void) /* TODO LEGACY */
    return &qf_i;
 }
 
-void
+FL void
 quoteflt_init(struct quoteflt *self, char const *prefix)
 {
 #ifdef HAVE_QUOTE_FOLD
@@ -326,13 +326,13 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
 #endif
 }
 
-void
+FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
    (void)self;
 }
 
-void
+FL void
 quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
    self->qf_os = f;
@@ -344,7 +344,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 #endif
 }
 
-ssize_t
+FL ssize_t
 quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 {
    /* (xxx Ideally the actual push() [and flush()] would be functions on their
@@ -446,7 +446,7 @@ jerr:
    goto jleave;
 }
 
-ssize_t
+FL ssize_t
 quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;

@@ -91,7 +91,7 @@ static void delchild(struct child *cp);
 /*
  * Provide BSD-like signal() on all systems.
  */
-sighandler_type
+FL sighandler_type
 safe_signal(int signum, sighandler_type handler)
 {
 	struct sigaction nact, oact;
@@ -107,7 +107,7 @@ safe_signal(int signum, sighandler_type handler)
 	return oact.sa_handler;
 }
 
-static int 
+static int
 scan_mode(const char *mode, int *omode)
 {
 
@@ -134,19 +134,19 @@ scan_mode(const char *mode, int *omode)
 	return 0;
 }
 
-FILE *
+FL FILE *
 safe_fopen(const char *file, const char *mode, int *omode)
 {
 	int  fd;
 
-	if (scan_mode(mode, omode) < 0) 
+	if (scan_mode(mode, omode) < 0)
 		return NULL;
 	if ((fd = open(file, *omode, 0666)) < 0)
 		return NULL;
 	return fdopen(fd, mode);
 }
 
-FILE *
+FL FILE *
 Fopen(const char *file, const char *mode)
 {
 	FILE *fp;
@@ -159,7 +159,7 @@ Fopen(const char *file, const char *mode)
 	return fp;
 }
 
-FILE *
+FL FILE *
 Fdopen(int fd, const char *mode)
 {
 	FILE *fp;
@@ -173,7 +173,7 @@ Fdopen(int fd, const char *mode)
 	return fp;
 }
 
-int
+FL int
 Fclose(FILE *fp)
 {
 	int	i = 0;
@@ -184,7 +184,7 @@ Fclose(FILE *fp)
 	return i == 3 ? 0 : EOF;
 }
 
-FILE *
+FL FILE *
 Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 	* TODO maybe we shouldn't be simple and run commands but instead
 	* TODO links against any of available zlib.h, bzlib.h, lzma.h!
@@ -287,7 +287,7 @@ open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 	return output;
 }
 
-FILE *
+FL FILE *
 Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 	int doregfile)
 {
@@ -332,7 +332,7 @@ jtemperr:
 	goto jleave;
 }
 
-void
+FL void
 Ftfree(char **fn)
 {
 	char *cp = *fn;
@@ -341,7 +341,7 @@ Ftfree(char **fn)
 	free(cp);
 }
 
-bool_t
+FL bool_t
 pipe_cloexec(int fd[2])
 {
 	bool_t rv = FAL0;
@@ -355,7 +355,7 @@ jleave:
 	return rv;
 }
 
-FILE *
+FL FILE *
 Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 {
 	int p[2];
@@ -401,7 +401,7 @@ Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 	return fp;
 }
 
-int
+FL int
 Pclose(FILE *ptr, bool_t dowait)
 {
 	int pid;
@@ -424,7 +424,7 @@ Pclose(FILE *ptr, bool_t dowait)
 	return pid;
 }
 
-void 
+FL void
 close_all_files(void)
 {
 	while (fp_head)
@@ -557,7 +557,7 @@ file_pid(FILE *fp)
  * SIGINT is enabled unless it's in the mask.
  */
 /*VARARGS4*/
-int
+FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 		char const *a0, char const *a1, char const *a2)
 {
@@ -569,7 +569,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 }
 
 /*VARARGS4*/
-int
+FL int
 start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 		const char *a0, const char *a1, const char *a2)
 {
@@ -596,7 +596,7 @@ start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 	return pid;
 }
 
-void
+FL void
 prepare_child(sigset_t *nset, int infd, int outfd)
 {
 	int i;
@@ -621,7 +621,7 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 	sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
 }
 
-static int 
+static int
 wait_command(int pid)
 {
 
@@ -649,7 +649,7 @@ findchild(int pid)
 	return *cpp;
 }
 
-static void 
+static void
 delchild(struct child *cp)
 {
 	struct child **cpp;
@@ -661,7 +661,7 @@ delchild(struct child *cp)
 }
 
 /*ARGSUSED*/
-void 
+FL void
 sigchild(int signo)
 {
 	int pid;
@@ -688,7 +688,7 @@ int wait_status;
 /*
  * Mark a child as don't care.
  */
-void 
+FL void
 free_child(int pid)
 {
 	sigset_t nset, oset;
@@ -712,7 +712,7 @@ free_child(int pid)
  * This version is correct code, but causes harm on some loosing
  * systems. So we use the second one instead.
  */
-int 
+FL int
 wait_child(int pid)
 {
 	sigset_t nset, oset;
@@ -732,7 +732,7 @@ wait_child(int pid)
 	return -1;
 }
 #endif
-int 
+FL int
 wait_child(int pid)
 {
 	pid_t term;

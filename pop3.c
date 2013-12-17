@@ -434,7 +434,7 @@ pop3_noop1(struct mailbox *mp)
 	return OKAY;
 }
 
-enum okay
+FL enum okay
 pop3_noop(void)
 {
 	sighandler_type	volatile saveint, savepipe;
@@ -589,7 +589,7 @@ pop3_setptr(struct mailbox *mp)
 	pop3_dates(mp);
 }
 
-int
+FL int
 pop3_setfile(const char *server, int nmail, int isedit)
 {
 	struct sock	so;
@@ -829,14 +829,14 @@ retry:	switch (need) {
 	return OKAY;
 }
 
-enum okay
+FL enum okay
 pop3_header(struct message *m)
 {
 	return pop3_get(&mb, m,
 		boption("pop3-bulk-load") ? NEED_BODY : NEED_HEADER);
 }
 
-enum okay
+FL enum okay
 pop3_body(struct message *m)
 {
 	return pop3_get(&mb, m, NEED_BODY);
@@ -904,7 +904,7 @@ pop3_update(struct mailbox *mp)
 	return OKAY;
 }
 
-void
+FL void
 pop3_quit(void)
 {
 	sighandler_type	saveint;

@@ -388,7 +388,7 @@ _hdrstop(int signo)
    siglongjmp(__hdrjmp, 1);
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
    static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~#",

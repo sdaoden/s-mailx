@@ -63,7 +63,7 @@ static int	unignore1(char **list, struct ignoretab *tab,
  * following dot, otherwise, go to the next applicable message.
  * If given as first command with no arguments, print first message.
  */
-int
+FL int
 next(void *v)
 {
 	int *msgvec = v;
@@ -74,7 +74,7 @@ next(void *v)
 	if (*msgvec != 0) {
 
 		/*
-		 * If some messages were supplied, find the 
+		 * If some messages were supplied, find the
 		 * first applicable one following dot using
 		 * wrap around.
 		 */
@@ -164,7 +164,7 @@ hitit:
  * Save a message in a file.  Mark the message as saved
  * so we can discard when the user quits.
  */
-int 
+FL int
 save(void *v)
 {
 	char *str = v;
@@ -172,7 +172,7 @@ save(void *v)
 	return save1(str, 1, "save", saveignore, SEND_MBOX, 0, 0);
 }
 
-int 
+FL int
 Save(void *v)
 {
 	char *str = v;
@@ -183,7 +183,7 @@ Save(void *v)
 /*
  * Copy a message to a file without affected its saved-ness
  */
-int 
+FL int
 copycmd(void *v)
 {
 	char *str = v;
@@ -191,7 +191,7 @@ copycmd(void *v)
 	return save1(str, 0, "copy", saveignore, SEND_MBOX, 0, 0);
 }
 
-int 
+FL int
 Copycmd(void *v)
 {
 	char *str = v;
@@ -202,7 +202,7 @@ Copycmd(void *v)
 /*
  * Move a message to a file.
  */
-int 
+FL int
 cmove(void *v)
 {
 	char *str = v;
@@ -210,7 +210,7 @@ cmove(void *v)
 	return save1(str, 0, "move", saveignore, SEND_MBOX, 0, 1);
 }
 
-int 
+FL int
 cMove(void *v)
 {
 	char *str = v;
@@ -221,7 +221,7 @@ cMove(void *v)
 /*
  * Decrypt and copy a message to a file.
  */
-int 
+FL int
 cdecrypt(void *v)
 {
 	char *str = v;
@@ -229,7 +229,7 @@ cdecrypt(void *v)
 	return save1(str, 0, "decrypt", saveignore, SEND_DECRYPT, 0, 0);
 }
 
-int 
+FL int
 cDecrypt(void *v)
 {
 	char *str = v;
@@ -441,7 +441,7 @@ jferr:
  * file name, minus header and trailing blank line.
  * This is the MIME save function.
  */
-int 
+FL int
 cwrite(void *v)
 {
 	char *str = v;
@@ -477,7 +477,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
 /*
  * Delete messages.
  */
-int 
+FL int
 delete(void *v)
 {
 	int *msgvec = v;
@@ -488,7 +488,7 @@ delete(void *v)
 /*
  * Delete messages, then type the new dot.
  */
-int 
+FL int
 deltype(void *v)
 {
 	int *msgvec = v;
@@ -514,7 +514,7 @@ deltype(void *v)
  * Set dot to some nice place afterwards.
  * Internal interface.
  */
-static int 
+static int
 delm(int *msgvec)
 {
 	struct message *mp;
@@ -552,7 +552,7 @@ delm(int *msgvec)
 /*
  * Undelete the indicated messages.
  */
-int 
+FL int
 undeletecmd(void *v)
 {
 	int *msgvec = v;
@@ -580,7 +580,7 @@ undeletecmd(void *v)
  * Interactively dump core on "core"
  */
 /*ARGSUSED*/
-int 
+FL int
 core(void *v)
 {
 	int pid;
@@ -624,7 +624,7 @@ clob1(int n)
 /*
  * Clobber as many bytes of stack as the user requests.
  */
-int 
+FL int
 clobber(void *v)
 {
 	char **argv = v;
@@ -643,7 +643,7 @@ clobber(void *v)
  * Add the given header fields to the retained list.
  * If no arguments, print the current list of retained fields.
  */
-int 
+FL int
 retfield(void *v)
 {
 	char **list = v;
@@ -655,7 +655,7 @@ retfield(void *v)
  * Add the given header fields to the ignored list.
  * If no arguments, print the current list of ignored fields.
  */
-int 
+FL int
 igfield(void *v)
 {
 	char **list = v;
@@ -663,7 +663,7 @@ igfield(void *v)
 	return ignore1(list, ignore, "ignored");
 }
 
-int 
+FL int
 saveretfield(void *v)
 {
 	char **list = v;
@@ -671,7 +671,7 @@ saveretfield(void *v)
 	return ignore1(list, saveignore + 1, "retained");
 }
 
-int 
+FL int
 saveigfield(void *v)
 {
 	char **list = v;
@@ -679,7 +679,7 @@ saveigfield(void *v)
 	return ignore1(list, saveignore, "ignored");
 }
 
-int 
+FL int
 fwdretfield(void *v)
 {
 	char **list = v;
@@ -687,7 +687,7 @@ fwdretfield(void *v)
 	return ignore1(list, fwdignore + 1, "retained");
 }
 
-int 
+FL int
 fwdigfield(void *v)
 {
 	char **list = v;
@@ -695,7 +695,7 @@ fwdigfield(void *v)
 	return ignore1(list, fwdignore, "ignored");
 }
 
-static int 
+static int
 ignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	int h;
@@ -732,7 +732,7 @@ ignore1(char **list, struct ignoretab *tab, char const *which)
 /*
  * Print out all currently retained fields.
  */
-static int 
+static int
 igshow(struct ignoretab *tab, char const *which)
 {
 	int h;
@@ -759,49 +759,49 @@ igshow(struct ignoretab *tab, char const *which)
 /*
  * Compare two names for sorting ignored field list.
  */
-static int 
+static int
 igcomp(const void *l, const void *r)
 {
 	return (strcmp(*(char**)UNCONST(l), *(char**)UNCONST(r)));
 }
 
-int 
+FL int
 unignore(void *v)
 {
 	return unignore1((char **)v, ignore, "ignored");
 }
 
-int 
+FL int
 unretain(void *v)
 {
 	return unignore1((char **)v, ignore + 1, "retained");
 }
 
-int 
+FL int
 unsaveignore(void *v)
 {
 	return unignore1((char **)v, saveignore, "ignored");
 }
 
-int 
+FL int
 unsaveretain(void *v)
 {
 	return unignore1((char **)v, saveignore + 1, "retained");
 }
 
-int 
+FL int
 unfwdignore(void *v)
 {
 	return unignore1((char **)v, fwdignore, "ignored");
 }
 
-int 
+FL int
 unfwdretain(void *v)
 {
 	return unignore1((char **)v, fwdignore + 1, "retained");
 }
 
-static void 
+static void
 unignore_one(const char *name, struct ignoretab *tab)
 {
 	struct ignore *ip, *iq = NULL;
@@ -822,7 +822,7 @@ unignore_one(const char *name, struct ignoretab *tab)
 	}
 }
 
-static int 
+static int
 unignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	if (tab->i_count == 0) {

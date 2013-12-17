@@ -43,7 +43,7 @@
 
 EMPTY_FILE(ssl)
 #ifdef HAVE_SSL
-void 
+FL void
 ssl_set_vrfy_level(const char *uhp)
 {
 	size_t l;
@@ -73,7 +73,7 @@ ssl_set_vrfy_level(const char *uhp)
 	}
 }
 
-enum okay 
+FL enum okay
 ssl_vrfy_decide(void)
 {
 	enum okay ok = STOP;
@@ -104,7 +104,7 @@ ssl_vrfy_decide(void)
 	return ok;
 }
 
-char *
+FL char *
 ssl_method_string(const char *uhp)
 {
 	size_t l;
@@ -120,7 +120,7 @@ ssl_method_string(const char *uhp)
 	return cp;
 }
 
-enum okay
+FL enum okay
 smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
 	/* TODO like i said quite often now, the entire SSL stuff really needs
@@ -190,7 +190,7 @@ jetmp:
 	return OKAY;
 }
 
-FILE *
+FL FILE *
 smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 {
 	char	*boundary, *cp;
@@ -244,7 +244,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 	return op;
 }
 
-FILE *
+FL FILE *
 smime_encrypt_assemble(FILE *hp, FILE *yp)
 {
 	char	*cp;
@@ -287,7 +287,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 	return op;
 }
 
-struct message *
+FL struct message *
 smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 {
 	ui32_t lastnl = 0;
@@ -352,7 +352,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 	return x;
 }
 
-int 
+FL int
 ccertsave(void *v)
 {
 	int	*ip;
@@ -398,7 +398,7 @@ ccertsave(void *v)
 	return val;
 }
 
-enum okay
+FL enum okay
 rfc2595_hostname_match(const char *host, const char *pattern)
 {
 	if (pattern[0] == '*' && pattern[1] == '.') {

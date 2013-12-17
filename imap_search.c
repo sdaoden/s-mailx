@@ -157,7 +157,7 @@ static char *mkenvelope(struct name *np);
 static int matchmsg(struct message *m, const char *what, int withheader);
 static const char *around(const char *cp);
 
-enum okay 
+FL enum okay
 imap_search(const char *spec, int f)
 {
 	static char *lastspec;
@@ -200,7 +200,7 @@ imap_search(const char *spec, int f)
 	return OKAY;
 }
 
-static enum okay 
+static enum okay
 itparse(char const *spec, char const **xp, int sub)
 {
 	int	level = 0;
@@ -290,7 +290,7 @@ itparse(char const *spec, char const **xp, int sub)
 	return ok;
 }
 
-static enum okay 
+static enum okay
 itscan(char const *spec, char const **xp)
 {
 	int	i, n;
@@ -344,7 +344,7 @@ itscan(char const *spec, char const **xp)
 	return STOP;
 }
 
-static enum okay 
+static enum okay
 itsplit(char const *spec, char const **xp)
 {
 	char	*cp;
@@ -429,7 +429,7 @@ itsplit(char const *spec, char const **xp)
 	}
 }
 
-static enum okay 
+static enum okay
 itstring(void **tp, char const *spec, char const **xp)
 {
 	int	inquote = 0;
@@ -459,7 +459,7 @@ itstring(void **tp, char const *spec, char const **xp)
 	return OKAY;
 }
 
-static int 
+static int
 itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 {
 	char	*cp, *line = NULL;
@@ -575,7 +575,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	}
 }
 
-static int 
+static int
 matchfield(struct message *m, const char *field, const char *what)
 {
 	struct str	in, out;
@@ -591,7 +591,7 @@ matchfield(struct message *m, const char *field, const char *what)
 	return i;
 }
 
-static int 
+static int
 matchenvelope(struct message *m, const char *field, const char *what)
 {
 	struct name	*np;
@@ -688,7 +688,7 @@ done:	*rp = '\0';
 	return ep;
 }
 
-static int 
+static int
 matchmsg(struct message *m, const char *what, int withheader)
 {
 	char	*tempFile, *line = NULL;

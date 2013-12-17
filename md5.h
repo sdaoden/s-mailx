@@ -48,10 +48,10 @@ typedef struct {
 	unsigned char	buffer[64];	/* input buffer */
 } MD5_CTX;
 
-void	MD5Init(MD5_CTX *);
-void	MD5Update(MD5_CTX *, unsigned char *, unsigned int);
-void	MD5Final(unsigned char[16], MD5_CTX *);
+FL void	MD5Init(MD5_CTX *);
+FL void	MD5Update(MD5_CTX *, unsigned char *, unsigned int);
+FL void	MD5Final(unsigned char[16], MD5_CTX *);
 
-void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
+FL void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
 
 #endif /* HAVE_MD5 */
