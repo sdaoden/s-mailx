@@ -375,7 +375,11 @@ tty_init(void)
    el_set(_el_el, EL_HIST, &history, _el_hcom);
 # endif
    el_set(_el_el, EL_EDITOR, "emacs");
+# ifdef EL_PROMPT_ESC
+   el_set(_el_el, EL_PROMPT_ESC, &_el_getprompt, '\1');
+# else
    el_set(_el_el, EL_PROMPT, &_el_getprompt);
+# endif
 # if 0
    el_set(_el_el, EL_ADDFN, "tab_complete",
       "editline(3) internal completion function", &_el_file_cpl);

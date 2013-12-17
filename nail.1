@@ -3097,6 +3097,7 @@ The same XSI escape sequences that are understood by the
 .Ic echo
 command may be used within
 .Va prompt .
+.Pp
 \*(UA specific escape sequence extensions are:
 `\\?', which will expand to `1' if the last command failed, and to `0'
 otherwise,
@@ -3105,6 +3106,14 @@ otherwise,
 if any, and to the empty string otherwise,
 and `\\@', which will expand to the name of the currently active mailbox.
 (Note that the prompt buffer is size-limited, excess is cut off.)
+.Pp
+When a newer version of the
+.Xr editline 3
+.Sx "Command line editor"
+is used, any escape sequence must itself be encapsulated with another
+escape character for usage with the
+.Va EL_PROMPT_ESC
+mechanism: \*(UA configures the control character `\\01' for this.
 .It Va quote
 If set, \*(UA starts a replying message with the original message
 prefixed by the value of the variable
