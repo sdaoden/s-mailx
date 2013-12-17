@@ -923,11 +923,11 @@ smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
 static int
 ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 {
-	sighandler_type	saveint;
-	char	*pass = NULL;
-	int	len;
-	(void)rwflag;
-	(void)userdata;
+	sighandler_type	volatile saveint;
+	char *pass = NULL;
+	size_t len;
+	UNUSED(rwflag);
+	UNUSED(userdata);
 
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	if (sigsetjmp(ssljmp, 1) == 0) {
@@ -939,7 +939,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 	if (pass == NULL)
 		return 0;
 	len = strlen(pass);
-	if (len > size)
+	if (UICMP(z, len, >, size))
 		len = size;
 	memcpy(buf, pass, len);
 	return len;

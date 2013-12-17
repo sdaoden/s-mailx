@@ -459,9 +459,8 @@ pop3_noop(void)
 static void
 pop3alarm(int s)
 {
-	sighandler_type	saveint;
-	sighandler_type savepipe;
-	(void)s;
+	sighandler_type	volatile saveint, savepipe;
+	UNUSED(s);
 
 	if (_pop3_lock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -595,8 +594,8 @@ pop3_setfile(const char *server, int nmail, int isedit)
 	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
-	char *volatile user, *pass;
-	const char *cp, *uhp, *volatile sp = server;
+	char * volatile user, * volatile pass;
+	const char *cp, *uhp, * volatile sp = server;
 	int use_ssl = 0;
 
 	if (nmail)
@@ -907,8 +906,7 @@ pop3_update(struct mailbox *mp)
 FL void
 pop3_quit(void)
 {
-	sighandler_type	saveint;
-	sighandler_type savepipe;
+	sighandler_type	volatile saveint, savepipe;
 
 	if (mb.mb_sock.s_fd < 0) {
 		fprintf(stderr, tr(219,

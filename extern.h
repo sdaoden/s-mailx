@@ -108,7 +108,9 @@ FL struct attachment *  edit_attachments(struct attachment *aphead);
 
 /* Announce a fatal error (and die) */
 FL void        panic(char const *format, ...);
+#ifdef HAVE_DEBUG
 FL void        warn(char const *format, ...);
+#endif
 
 /* Hold *all* signals, and release that total block again */
 FL void        hold_all_sigs(void);
@@ -133,7 +135,7 @@ FL unsigned    pjw(const char *cp);
 FL long        nextprime(long n);
 
 /* Check wether *s is an escape sequence, expand it as necessary.
- * Returns the expanded sequence or 0 if **s is NUL or -1 if it is \c.
+ * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
  * *s is advanced to after the expanded sequence (as possible).
  * If use_prompt_extensions is set, an enum prompt_exp may be returned */
 FL int         expand_shell_escape(char const **s,
@@ -156,7 +158,7 @@ FL char *      getrandstring(size_t length);
 #define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
 
 #ifdef HAVE_MD5
-/* MD5 checksum as hexadecimal string, to be stored in *hex* */
+/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated */
 # define MD5TOHEX_SIZE           32
 FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
@@ -230,6 +232,7 @@ FL int         smemtrace(void *v);
 #endif
 
 /* cache.c */
+#ifdef HAVE_IMAP
 FL enum okay   getcache1(struct mailbox *mp, struct message *m,
                   enum needspec need, int setflags);
 FL enum okay   getcache(struct mailbox *mp, struct message *m,
@@ -246,6 +249,7 @@ FL enum okay   cache_rename(const char *old, const char *new);
 FL unsigned long cached_uidvalidity(struct mailbox *mp);
 FL FILE *      cache_queue(struct mailbox *mp);
 FL enum okay   cache_dequeue(struct mailbox *mp);
+#endif /* HAVE_IMAP */
 
 /* cmd1.c */
 FL int         ccmdnotsupp(void *v);
@@ -283,8 +287,10 @@ FL int         cmove(void *v);
 FL int         cMove(void *v);
 FL int         cdecrypt(void *v);
 FL int         cDecrypt(void *v);
+#ifdef HAVE_DEBUG
 FL int         clobber(void *v);
 FL int         core(void *v);
+#endif
 FL int         cwrite(void *v);
 FL int         delete(void *v);
 FL int         deltype(void *v);
@@ -600,6 +606,8 @@ FL int         ccache(void *vp);
 FL int         disconnected(const char *file);
 FL void        transflags(struct message *omessage, long omsgCount,
                   int transparent);
+FL time_t      imap_read_date_time(const char *cp);
+FL const char * imap_make_date_time(time_t t);
 #else
 # define imap_imap               ccmdnotsupp
 # define cconnect                ccmdnotsupp
@@ -607,9 +615,7 @@ FL void        transflags(struct message *omessage, long omsgCount,
 # define ccache                  ccmdnotsupp
 #endif
 
-FL time_t      imap_read_date_time(const char *cp);
 FL time_t      imap_read_date(const char *cp);
-FL const char * imap_make_date_time(time_t t);
 FL char *      imap_quotestr(const char *s);
 FL char *      imap_unquotestr(const char *s);
 
@@ -643,10 +649,12 @@ FL int         first(int f, int m);
 FL void        mark(int mesg, int f);
 
 /* lzw.c */
+#ifdef HAVE_IMAP
 FL int         zwrite(void *cookie, const char *wbp, int num);
 FL int         zfree(void *cookie);
 FL int         zread(void *cookie, char *rbp, int num);
 FL void *      zalloc(FILE *fp);
+#endif /* HAVE_IMAP */
 
 /* maildir.c */
 FL int         maildir_setfile(const char *name, int newmail, int isedit);

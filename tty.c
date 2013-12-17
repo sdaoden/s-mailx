@@ -723,12 +723,11 @@ _ncl_bs_eof_dvup(struct cell *cap, size_t i)
 static ssize_t
 _ncl_wboundary(struct line *l, ssize_t dir)
 {
-   size_t c = l->cursor, t = l->topins;
-   ssize_t i;
+   size_t c = l->cursor, t = l->topins, i;
    struct cell *cap;
    bool_t anynon;
 
-   i = -1;
+   i = (size_t)-1;
    if (dir < 0) {
       if (c == 0)
          goto jleave;
@@ -753,7 +752,7 @@ _ncl_wboundary(struct line *l, ssize_t dir)
          break;
    }
 jleave:
-   return i;
+   return (ssize_t)i;
 }
 
 static ssize_t

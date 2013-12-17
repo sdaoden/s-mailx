@@ -1085,10 +1085,10 @@ mark(int mesg, int f)
 static void
 unmark(int mesg)
 {
-	int i;
+	ui32_t i;
 
-	i = mesg;
-	if (i < 1 || i > msgCount)
+	i = (ui32_t)mesg;
+	if (i < 1 || i > (ui32_t)msgCount)
 		panic(tr(130, "Bad message number to unmark"));
 	message[i-1].m_flag &= ~MMARK;
 }

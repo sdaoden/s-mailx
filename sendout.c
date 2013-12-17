@@ -50,7 +50,7 @@ static char	*send_boundary;
 static bool_t	_senderror;
 
 static enum okay	_putname(char const *line, enum gfield w,
-				enum sendaction action, int *gotcha,
+				enum sendaction action, size_t *gotcha,
 				char const *prefix, FILE *fo, struct name **xp);
 
 /* Get an encoding flag based on the given string */
@@ -79,8 +79,8 @@ static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
 
 static enum okay
-_putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
-	char const *prefix, FILE *fo, struct name **xp)
+_putname(char const *line, enum gfield w, enum sendaction action,
+	size_t *gotcha, char const *prefix, FILE *fo, struct name **xp)
 {
 	enum okay ret = STOP;
 	struct name *np;
@@ -1273,10 +1273,9 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
 		char const *contenttype, char const *charset)
 {
-	int gotcha;
 	char const *addr;
 	int stealthmua;
-	size_t l;
+	size_t gotcha, l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
 
 	if ((addr = value("stealthmua")) != NULL) {

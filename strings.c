@@ -872,7 +872,9 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
 
 	while (sz-- > 0) {
 		char c1 = *s1++, c2 = *s2++;
-		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+      cmp = (ui8_t)lowerconv(c1);
+      cmp -= (ui8_t)lowerconv(c2);
+		if (cmp != 0 || c1 == '\0')
 			break;
 	}
 	return cmp;

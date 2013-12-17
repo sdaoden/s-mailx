@@ -338,7 +338,7 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 {
 	struct sock	so;
 	int	use_ssl, ret;
-	sighandler_type	saveterm;
+	sighandler_type	volatile saveterm;
 
 	memset(&so, 0, sizeof so);
 	saveterm = safe_signal(SIGTERM, SIG_IGN);

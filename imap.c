@@ -732,9 +732,8 @@ rec_rmqueue(void)
 static void
 imapalarm(int s)
 {
-	sighandler_type	saveint;
-	sighandler_type savepipe;
-	(void)s;
+	sighandler_type	volatile saveint, savepipe;
+	UNUSED(s);
 
 	if (imaplock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -1108,7 +1107,8 @@ imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
 		*sp = &(*sp)[8];
 		*use_ssl = 1;
 #endif
-	}
+	} else
+		*use_ssl = 0; /* (silence CC) */
 	if ((*cp = strchr(*sp, '/')) != NULL && (*cp)[1] != '\0') {
 		char *x = savestr(*sp);
 		x[*cp - *sp] = '\0';
@@ -1146,7 +1146,7 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
 	struct sock so;
 	sighandler_type volatile saveint, savepipe;
 	char *server, *user, *pass, *acc;
-	char const *cp, *sp, *mbx, *uhp;
+	char const *cp, *sp, * volatile mbx, *uhp;
 	int use_ssl = 0, prevcount = 0;
 	enum mbflags same_flags;
 
@@ -1171,7 +1171,11 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
 			same_imap_account = 1;
 	}
 	acc = sstrdup(sp);
-	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &mbx, &pass, &user);
+	{
+	char const *xmbx;
+	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &xmbx, &pass, &user);
+	mbx = xmbx;
+	}
 	so.s_fd = -1;
 	if (!same_imap_account) {
 		if (!disconnected(acc) &&
@@ -1420,7 +1424,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
 	char o[LINESIZE];
 	struct message mt;
-	sighandler_type	saveint = SIG_IGN, savepipe = SIG_IGN;
+	sighandler_type	volatile saveint = SIG_IGN, savepipe = SIG_IGN;
 	char *volatile head = NULL;
 	char const *cp = NULL, *loc = NULL,
 		*volatile item = NULL, *volatile resp = NULL;
@@ -1908,8 +1912,7 @@ bypass:
 FL void
 imap_quit(void)
 {
-	sighandler_type	saveint;
-	sighandler_type savepipe;
+	sighandler_type	volatile saveint, savepipe;
 
 	if (mb.mb_type == MB_CACHE) {
 		imap_update(&mb);
@@ -2314,14 +2317,21 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
 FL enum okay
 imap_append(const char *xserver, FILE *fp)
 {
-	sighandler_type	saveint, savepipe;
+	sighandler_type	volatile saveint, savepipe;
 	char *server, *user, *pass;
-	char const *sp, *cp, *mbx, *uhp;
-	int use_ssl;
+	char const *sp, *cp, * volatile mbx, *uhp;
+	int volatile use_ssl;
 	enum okay ok = STOP;
 
 	server = savestr(xserver);
-	imap_split(&server, &sp, &use_ssl, &cp, &uhp, &mbx, &pass, &user);
+	{
+	int xus;
+	char const *xmbx;
+	imap_split(&server, &sp, &xus, &cp, &uhp, &xmbx, &pass, &user);
+	use_ssl = xus;
+	mbx = xmbx;
+	}
+
 	imaplock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, &_imap_maincatch);
@@ -2466,7 +2476,7 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 }
 
 FL void
-imap_folders(const char *name, int strip)
+imap_folders(const char * volatile name, int strip)
 {
 	sighandler_type	saveint, savepipe;
 	const char *fold, *cp, *sp;
@@ -2948,14 +2958,11 @@ imap_thisaccount(const char *cp)
 }
 
 FL enum okay
-imap_remove(const char *name)
+imap_remove(const char * volatile name)
 {
-	sighandler_type saveint, savepipe;
+	sighandler_type volatile saveint, savepipe;
 	enum okay	ok = STOP;
 
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&ok;
 	if (mb.mb_type != MB_IMAP) {
 		fprintf(stderr, "Refusing to remove \"%s\" "
 				"in disconnected mode.\n", name);
@@ -3349,7 +3356,6 @@ transflags(struct message *omessage, long omsgCount, int transparent)
 	prevdot = newprevdot;
 	free(omessage);
 }
-#endif	/* HAVE_IMAP */
 
 FL time_t
 imap_read_date_time(const char *cp)
@@ -3403,6 +3409,33 @@ invalid:
 	return t;
 }
 
+FL const char *
+imap_make_date_time(time_t t)
+{
+	static char	s[30];
+	struct tm	*tmptr;
+	int	tzdiff, tzdiff_hour, tzdiff_min;
+
+	tzdiff = t - mktime(gmtime(&t));
+	tzdiff_hour = (int)(tzdiff / 60);
+	tzdiff_min = tzdiff_hour % 60;
+	tzdiff_hour /= 60;
+	tmptr = localtime(&t);
+	if (tmptr->tm_isdst > 0)
+		tzdiff_hour++;
+	snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
+			tmptr->tm_mday,
+			month_names[tmptr->tm_mon],
+			tmptr->tm_year + 1900,
+			tmptr->tm_hour,
+			tmptr->tm_min,
+			tmptr->tm_sec,
+			tzdiff_hour,
+			tzdiff_min);
+	return s;
+}
+#endif /* HAVE_IMAP */
+
 FL time_t
 imap_read_date(const char *cp)
 {
@@ -3438,32 +3471,6 @@ imap_read_date(const char *cp)
 		tzdiff += 3600;
 	t -= tzdiff;
 	return t;
-}
-
-FL const char *
-imap_make_date_time(time_t t)
-{
-	static char	s[30];
-	struct tm	*tmptr;
-	int	tzdiff, tzdiff_hour, tzdiff_min;
-
-	tzdiff = t - mktime(gmtime(&t));
-	tzdiff_hour = (int)(tzdiff / 60);
-	tzdiff_min = tzdiff_hour % 60;
-	tzdiff_hour /= 60;
-	tmptr = localtime(&t);
-	if (tmptr->tm_isdst > 0)
-		tzdiff_hour++;
-	snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
-			tmptr->tm_mday,
-			month_names[tmptr->tm_mon],
-			tmptr->tm_year + 1900,
-			tmptr->tm_hour,
-			tmptr->tm_min,
-			tmptr->tm_sec,
-			tzdiff_hour,
-			tzdiff_min);
-	return s;
 }
 
 FL char *

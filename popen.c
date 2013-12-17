@@ -81,7 +81,7 @@ static int scan_mode(const char *mode, int *omode);
 static void register_file(FILE *fp, int omode, int ispipe, int pid,
 		int compressed, const char *realfile, long offset);
 static enum okay compress(struct fp *fpp);
-static int decompress(int compression, int input, int output);
+static int decompress(int compression, int infd, int outfd);
 static enum okay unregister_file(FILE *fp);
 static int file_pid(FILE *fp);
 static int wait_command(int pid);
@@ -129,6 +129,7 @@ scan_mode(const char *mode, int *omode)
 		fprintf(stderr, tr(152,
 			"Internal error: bad stdio open mode %s\n"), mode);
 		errno = EINVAL;
+		*omode = 0; /* (silence CC) */
 		return -1;
 	}
 	return 0;
@@ -163,7 +164,7 @@ FL FILE *
 Fdopen(int fd, const char *mode)
 {
 	FILE *fp;
-	int	omode;
+	int omode;
 
 	scan_mode(mode, &omode);
 	if ((fp = fdopen(fd, mode)) != NULL) {
@@ -193,8 +194,8 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 	* TODO *or*: make it all hookable via BOXEXTENSION/DECOMPRESS etc.
 	* TODO by the user;  but not like this, Coverity went grazy about it */
 {
-	int	input;
-	FILE	*output;
+	int	infd;
+	FILE	*outf;
 	const char	*rp;
 	int	omode;
 	char	*tempfn;
@@ -214,7 +215,7 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 		*compression = p == PROTO_IMAP ? FP_IMAP : FP_MAILDIR;
 		omode = O_RDWR | O_APPEND | O_CREAT;
 		rp = file;
-		input = -1;
+		infd = -1;
 		goto open;
 	}
 	if ((extension = strrchr(file, '.')) != NULL) {
@@ -239,52 +240,52 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 	if (access(rp, W_OK) < 0)
 		*compression |= FP_READONLY;
 
-	if ((input = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
+	if ((infd = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
 			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
 		return NULL;
-open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
+open:	if ((outf = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
 		perror(tr(167, "tmpfile"));
-		if (input >= 0)
-			close(input);
+		if (infd >= 0)
+			close(infd);
 		return NULL;
 	}
 	unlink(tempfn);
 	Ftfree(&tempfn);
 
-	if (input >= 0 || (*compression&FP_MASK) == FP_IMAP ||
+	if (infd >= 0 || (*compression&FP_MASK) == FP_IMAP ||
 			(*compression&FP_MASK) == FP_MAILDIR) {
-		if (decompress(*compression, input, fileno(output)) < 0) {
-			if (input >= 0)
-				close(input);
-			Fclose(output);
+		if (decompress(*compression, infd, fileno(outf)) < 0) {
+			if (infd >= 0)
+				close(infd);
+			Fclose(outf);
 			return NULL;
 		}
 	} else {
-		if ((input = creat(rp, 0666)) < 0) {
-			Fclose(output);
+		if ((infd = creat(rp, 0666)) < 0) {
+			Fclose(outf);
 			return NULL;
 		}
 	}
-	if (input >= 0)
-		close(input);
-	fflush(output);
+	if (infd >= 0)
+		close(infd);
+	fflush(outf);
 
 	if (omode & O_APPEND) {
 		int	flags;
 
-		if ((flags = fcntl(fileno(output), F_GETFL)) < 0 ||
-				fcntl(fileno(output), F_SETFL, flags|O_APPEND)
-				< 0 || (offset = ftell(output)) < 0) {
-			Fclose(output);
+		if ((flags = fcntl(fileno(outf), F_GETFL)) < 0 ||
+				fcntl(fileno(outf), F_SETFL, flags|O_APPEND)
+				< 0 || (offset = ftell(outf)) < 0) {
+			Fclose(outf);
 			return NULL;
 		}
 	} else {
-		rewind(output);
+		rewind(outf);
 		offset = 0;
 	}
 
-	register_file(output, omode, 0, 0, *compression, rp, offset);
-	return output;
+	register_file(outf, omode, 0, 0, *compression, rp, offset);
+	return outf;
 }
 
 FL FILE *
@@ -455,7 +456,7 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int compressed,
 static enum okay
 compress(struct fp *fpp)
 {
-	int	output;
+	int	outfd;
 	char const *command[2];
 	enum okay	ok;
 
@@ -473,7 +474,7 @@ compress(struct fp *fpp)
 	if ((fpp->compressed&FP_MASK) == FP_MAILDIR) {
 		return maildir_append(fpp->realfile, fpp->fp);
 	}
-	if ((output = open(fpp->realfile,
+	if ((outfd = open(fpp->realfile,
 			(fpp->omode|O_CREAT)&~O_EXCL,
 			0666)) < 0) {
 		fprintf(stderr, "Fatal: cannot create ");
@@ -481,7 +482,7 @@ compress(struct fp *fpp)
 		return STOP;
 	}
 	if ((fpp->omode & O_APPEND) == 0)
-		ftruncate(output, 0);
+		ftruncate(outfd, 0);
 	switch (fpp->compressed & FP_MASK) {
 	case FP_GZIPPED:
 		command[0] = "gzip"; command[1] = "-c"; break;
@@ -490,17 +491,17 @@ compress(struct fp *fpp)
 	default:
 		command[0] = "cat"; command[1] = NULL; break;
 	}
-	if (run_command(command[0], 0, fileno(fpp->fp), output,
+	if (run_command(command[0], 0, fileno(fpp->fp), outfd,
 				command[1], NULL, NULL) < 0)
 		ok = STOP;
 	else
 		ok = OKAY;
-	close(output);
+	close(outfd);
 	return ok;
 }
 
 static int
-decompress(int compression, int input, int output)
+decompress(int compression, int infd, int outfd)
 {
 	char const *command[2];
 
@@ -515,8 +516,7 @@ decompress(int compression, int input, int output)
 	case FP_MAILDIR:	return 0;
 	default:		command[0] = "cat"; command[1] = NULL;
 	}
-	return run_command(command[0], 0, input, output,
-			command[1], NULL, NULL);
+	return run_command(command[0], 0, infd, outfd, command[1], NULL, NULL);
 }
 
 static enum okay

@@ -144,8 +144,8 @@ static unsigned char PADDING[64] = {
 
 static void * (	*volatile _volatile_memset)(void*, int, size_t) = &(memset);
 
-static void Encode(unsigned char *output, md5_type *input, unsigned int len);
-static void Decode(md5_type *output, unsigned char *input, unsigned int len);
+static void Encode(unsigned char *outp, md5_type *inp, unsigned int len);
+static void Decode(md5_type *outp, unsigned char *inp, unsigned int len);
 static void MD5Transform(md5_type state[], unsigned char block[]);
 
 /*
@@ -153,15 +153,15 @@ static void MD5Transform(md5_type state[], unsigned char block[]);
  * a multiple of 4.
  */
 static void
-Encode(unsigned char *output, md5_type *input, unsigned int len)
+Encode(unsigned char *outp, md5_type *inp, unsigned int len)
 {
 	unsigned int i, j;
 
 	for (i = 0, j = 0; j < len; i++, j += 4) {
-		output[j] = input[i] & 0xff;
-		output[j+1] = (input[i] >> 8) & 0xff;
-		output[j+2] = (input[i] >> 16) & 0xff;
-		output[j+3] = (input[i] >> 24) & 0xff;
+		outp[j] = inp[i] & 0xff;
+		outp[j+1] = (inp[i] >> 8) & 0xff;
+		outp[j+2] = (inp[i] >> 16) & 0xff;
+		outp[j+3] = (inp[i] >> 24) & 0xff;
 	}
 }
 
@@ -170,15 +170,15 @@ Encode(unsigned char *output, md5_type *input, unsigned int len)
  * a multiple of 4.
  */
 static void
-Decode(md5_type *output, unsigned char *input, unsigned int len)
+Decode(md5_type *outp, unsigned char *inp, unsigned int len)
 {
 	unsigned int	i, j;
 
 	for (i = 0, j = 0; j < len; i++, j += 4)
-		output[i] = ((md5_type)input[j] |
-			(md5_type)input[j+1] << 8 |
-			(md5_type)input[j+2] << 16 |
-			(md5_type)input[j+3] << 24) & UINT4B_MAX;
+		outp[i] = ((md5_type)inp[j] |
+			(md5_type)inp[j+1] << 8 |
+			(md5_type)inp[j+2] << 16 |
+			(md5_type)inp[j+3] << 24) & UINT4B_MAX;
 }
 
 /* MD5 basic transformation. Transforms	state based on block. */

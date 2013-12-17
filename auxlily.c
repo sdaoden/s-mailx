@@ -79,6 +79,7 @@ panic(char const *format, ...)
 	exit(EXIT_ERR);
 }
 
+#ifdef HAVE_DEBUG
 FL void
 warn(char const *format, ...)
 {
@@ -93,6 +94,7 @@ warn(char const *format, ...)
 	fputs("\n", stderr);
 	fflush(stderr);
 }
+#endif
 
 FL void
 hold_all_sigs(void)
@@ -588,7 +590,6 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 		hex[j] = hexchar((cp[i] & 0xf0) >> 4);
 		hex[++j] = hexchar(cp[i] & 0x0f);
 	}
-	hex[MD5TOHEX_SIZE] = '\0';
 	return hex;
 }
 
