@@ -1283,6 +1283,43 @@ smemtrace(void *v)
 jleave:
    return (v != NULL);
 }
+
+FL bool_t
+_smemcheck(char const *mdbg_file, int mdbg_line)
+{
+   union ptr p, xp;
+   bool_t anybad = FAL0, isbad;
+   size_t lines;
+
+   for (lines = 0, p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next) {
+      xp = p;
+      ++xp.c;
+      _HOPE_GET_TRACE(xp, isbad);
+      if (isbad) {
+         anybad = TRU1;
+         fprintf(stderr,
+            "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
+            xp.p, (size_t)(p.c->size - sizeof(struct chunk)),
+            p.c->file, p.c->line);
+      }
+   }
+
+   if (options & OPT_DEBUG) {
+      for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next) {
+         xp = p;
+         ++xp.c;
+         _HOPE_GET_TRACE(xp, isbad);
+         if (isbad) {
+            anybad = TRU1;
+            fprintf(stderr,
+               "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
+               xp.p, (size_t)(p.c->size - sizeof(struct chunk)),
+               p.c->file, p.c->line);
+         }
+      }
+   }
+   return anybad;
+}
 #endif /* HAVE_DEBUG */
 
 /* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

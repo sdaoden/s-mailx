@@ -220,6 +220,8 @@ FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
 FL void        smemreset(void);
 /* The *smemtrace* command */
 FL int         smemtrace(void *v);
+FL bool_t      _smemcheck(char const *file, int line);
+
 # define smalloc_safe(SZ)        smalloc_safe(SZ, __FILE__, __LINE__)
 # define srealloc_safe(P,SZ)     srealloc_safe(P, SZ, __FILE__, __LINE__)
 # define scalloc_safe(N,SZ)      scalloc_safe(N, SZ, __FILE__, __LINE__)
@@ -227,8 +229,7 @@ FL int         smemtrace(void *v);
 # define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
 # define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)
 # define free(P)                 sfree(P, __FILE__, __LINE__)
-#else
-# define smemtrace               do {} while (0)
+# define smemcheck()             _smemcheck(__FILE__, __LINE__)
 #endif
 
 /* cache.c */
