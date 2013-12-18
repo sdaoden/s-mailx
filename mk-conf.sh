@@ -306,7 +306,7 @@ compile_check() {
 
    if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
          [ -f ./${tmp}.o ]; then
-      msg "okay\\n"
+      msg "yes\\n"
       echo "${define}" >> ${h}
       eval have_${variable}=yes
       return 0
@@ -328,7 +328,7 @@ _link_mayrun() {
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
       echo "*** adding INCS<${incs}> LIBS<${libs}>"
-      msg "okay\\n"
+      msg "yes\\n"
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
       echo "${libs}" >> ${lib}
