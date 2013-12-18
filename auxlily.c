@@ -1284,6 +1284,7 @@ jleave:
    return (v != NULL);
 }
 
+# ifdef MEMCHECK
 FL bool_t
 _smemcheck(char const *mdbg_file, int mdbg_line)
 {
@@ -1320,6 +1321,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
    }
    return anybad;
 }
+# endif /* MEMCHECK */
 #endif /* HAVE_DEBUG */
 
 /* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */
