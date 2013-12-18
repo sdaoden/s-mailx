@@ -89,39 +89,42 @@ mkrc.rc: nail.rc mk.mk
 _install_echoes:
 	@echo 'Installing..'
 install: _install_echoes mk.mk mkman.1 mkrc.rc
-	@if [ ! -d "$(DESTDIR)$(BINDIR)" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(MKDIR) -p "$(DESTDIR)$(BINDIR)"';\
-		$(MKDIR) -p "$(DESTDIR)$(BINDIR)";\
-	fi;\
-	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(CP) -f $(UAGENT) \
-			"$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
-	$(CP) -f $(UAGENT) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	if [ -n "$(HAVE_STRIP)" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)"';\
-		$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	fi;\
-	if [ ! -d "$(DESTDIR)$(MANDIR)/man1" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(MKDIR) -p "$(DESTDIR)$(MANDIR)/man1"';\
-		$(MKDIR) -p "$(DESTDIR)$(MANDIR)/man1";\
-	fi;\
-	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(CP) -f ./mkman.1 \
-			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
-	$(CP) -f ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
-	if [ ! -d "$(DESTDIR)$(SYSCONFDIR)" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(MKDIR) -p "$(DESTDIR)$(SYSCONFDIR)"';\
-		$(MKDIR) -p "$(DESTDIR)$(SYSCONFDIR)";\
-	fi;\
+	@__mkdir() {\
+		_dir=$${1};\
+		if [ ! -d "$${_dir}" ]; then \
+			if [ -n "$(VERBOSE)" ]; then \
+				echo "  \$$ $(MKDIR) -m 0755 -p '$${_dir}'";\
+			fi;\
+			$(MKDIR) -m 0755 -p "$${_dir}";\
+		fi; \
+	};\
+	__copyfile() {\
+		_mode=$${1} _src=$${2} _dst=$${3};\
+		if [ -n "$(VERBOSE)" ]; then \
+			echo "  \$$ $(CP) -f '$${_src}' '$${_dst}'";\
+			echo "  \$$ $(CHMOD) $${_mode} '$${_dst}'";\
+		fi;\
+		$(CP) -f "$${_src}" "$${_dst}";\
+		$(CHMOD) $${_mode} "$${_dst}";\
+	};\
+	__stripfile() {\
+		_file=$${1};\
+		if [ -n "$(HAVE_STRIP)" ]; then \
+			if [ -n "$(VERBOSE)" ]; then \
+				echo "  \$$ $(STRIP) '$${_file}'";\
+			fi;\
+			$(STRIP) "$${_file}";\
+		fi;\
+	};\
+	if [ -n "$(DESTDIR)" ]; then __mkdir "$(DESTDIR)"; fi;\
+	__mkdir "$(DESTDIR)$(BINDIR)";\
+	__copyfile 0755 "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	__stripfile "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
+	__copyfile 0644 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
 	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(CP) -f ./mkrc.rc \
-				"$(DESTDIR)$(SYSCONFRC)"';\
-		$(CP) -f ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
+		__copyfile 0644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
 	fi
 
 uninstall:

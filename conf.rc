@@ -194,7 +194,8 @@ NAIL=nail
 SID=s-
 
 # The location of the exemplary resource template.
-# Note it's not overwritten if it yet exists!
+# Note 1: it's not overwritten if it yet exists!
+# Note 2: `make install' assumes it's under $SYSCONFDIR!
 SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##

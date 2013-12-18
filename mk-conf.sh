@@ -6,6 +6,7 @@ export LC_ALL
 
 awk=`command -pv awk`
 cat=`command -pv cat`
+chmod=`command -pv chmod`
 cp=`command -pv cp`
 cmp=`command -pv cmp`
 grep=`command -pv grep`
@@ -225,13 +226,15 @@ compiler_flags
 printf "CC = ${CC}\n" >> ${newmk}
 printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
-printf "CMP = ${cmp}\nCP = ${cp}\nMKDIR = ${mkdir}\nRM = ${rm}\n" >> ${newmk}
-printf "STRIP = ${STRIP}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
+printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
+   >> ${newmk}
+printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
 # (We include the cc(1)/ld(1) environment only for update detection..)
 printf "CC=\"${CC}\"\n" >> ${newlst}
 printf "_CFLAGS=\"${_CFLAGS}\"\nCFLAGS=\"${CFLAGS}\"\n" >> ${newlst}
 printf "_LDFLAGS=\"${_LDFLAGS}\"\nLDFLAGS=\"${LDFLAGS}\"\n" >> ${newlst}
-printf "CMP=${cmp}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n" >> ${newlst}
+printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
+   >> ${newlst}
 printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
