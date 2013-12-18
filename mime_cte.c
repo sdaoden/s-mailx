@@ -288,8 +288,8 @@ mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
 FL size_t
 qp_encode_calc_size(size_t len)
 {
-	/* Worst case: 'CRLF' -> '=0D=0A=' */
-	len = len * 3 + (len >> 1) + 1;
+	/* Worst case: 'CRLF' -> '=0D=0A=\n\0' */
+	len = (len * 3) + 1/* soft NL */ + 1/* visual NL */ + 1/* NUL */;
 	return len;
 }
 
