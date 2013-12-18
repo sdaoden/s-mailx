@@ -183,19 +183,6 @@ FL size_t      putuc(int u, int c, FILE *fp);
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
 
-/* getopt(3) fallback implementation */
-#ifndef HAVE_GETOPT
-FL char        *my_optarg;
-FL int         my_optind, /*my_opterr,*/ my_optopt;
-
-FL int         my_getopt(int argc, char *const argv[], const char *optstring);
-# define getopt                  my_getopt
-# define optarg                  my_optarg
-# define optind                  my_optind
-/*# define opterr                 my_opterr*/
-# define optopt                  my_optopt
-#endif
-
 /* Memory allocation routines; the _safe versions temporarily block signals */
 #ifdef HAVE_DEBUG
 # define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line

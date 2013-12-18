@@ -1256,6 +1256,7 @@ VL iconv_t        iconvd;
 VL nl_catd        catd;
 #endif
 
+VL sighandler_type dflpipe;
 VL sigjmp_buf     srbuf;
 VL int            interrupts;
 VL sighandler_type handlerstacktop;
@@ -1270,8 +1271,6 @@ VL char const     weekday_names[7 + 1][4];
 
 VL char const     uagent[];               /* User agent */
 VL char const     version[];              /* The version string */
-
-VL sighandler_type dflpipe;
 #endif
 
 /*

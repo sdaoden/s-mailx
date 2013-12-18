@@ -83,6 +83,24 @@ VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
 VL sighandler_type   dflpipe = SIG_DFL;
 
+/* getopt(3) fallback implementation */
+#ifdef HAVE_GETOPT
+# define _oarg       optarg
+# define _oind       optind
+/*# define _oerr     opterr*/
+# define _oopt       optopt
+#else
+static char          *_oarg;
+static int           _oind, /*_oerr,*/ _oopt;
+#endif
+
+/* getopt(3) fallback implementation */
+#ifdef HAVE_GETOPT
+# define _getopt     getopt
+#else
+static int  _getopt(int argc, char *const argv[], const char *optstring);
+#endif
+
 /* Perform basic startup initialization */
 static void _startup(void);
 
@@ -108,6 +126,76 @@ static int  _rcv_mode(char const *folder);
 /* Interrupt printing of the headers */
 static void _hdrstop(int signo);
 
+#ifndef HAVE_GETOPT
+static int
+_getopt(int argc, char * const argv[], char const *optstring)
+{
+   static char const *lastp;
+   int rv = -1, colon;
+   char const *curp;
+
+   if ((colon = (optstring[0] == ':')))
+      ++optstring;
+   if (lastp != NULL) {
+      curp = lastp;
+      lastp = 0;
+   } else {
+      if (_oind >= argc || argv[_oind] == 0 || argv[_oind][0] != '-' ||
+            argv[_oind][1] == '\0')
+         goto jleave;
+      if (argv[_oind][1] == '-' && argv[_oind][2] == '\0') {
+         ++_oind;
+         goto jleave;
+      }
+      curp = &argv[_oind][1];
+   }
+
+   _oopt = curp[0];
+   while (optstring[0] != '\0') {
+      if (optstring[0] == ':' || optstring[0] != _oopt) {
+         ++optstring;
+         continue;
+      }
+      if (optstring[1] == ':') {
+         if (curp[1] != '\0') {
+            _oarg = UNCONST(&curp[1]);
+            ++_oind;
+         } else {
+            if ((_oind += 2) > argc) {
+               if (!colon /*&& _oerr*/) {
+                  fprintf(stderr,
+                     tr(79, "%s: option requires an argument -- %c\n"),
+                     argv[0], (char)_oopt);
+               }
+               rv = (colon ? ':' : '?');
+               goto jleave;
+            }
+            _oarg = argv[_oind - 1];
+         }
+      } else {
+         if (curp[1] != '\0')
+            lastp = &curp[1];
+         else
+            ++_oind;
+         _oarg = NULL;
+      }
+      rv = _oopt;
+      goto jleave;
+   }
+
+   if (!colon /*&& opterr*/)
+      fprintf(stderr, tr(78, "%s: illegal option -- %c\n"), argv[0], _oopt);
+   if (curp[1] != '\0')
+      lastp = &curp[1];
+   else
+      ++_oind;
+   _oarg = 0;
+   rv = '?';
+jleave:
+   return rv;
+}
+#endif /* !HAVE_GETOPT */
+
 static void
 _startup(void)
 {
@@ -126,6 +214,10 @@ _startup(void)
    }
 
    image = -1;
+   dflpipe = SIG_DFL;
+#ifndef HAVE_GETOPT
+   _oind = /*_oerr =*/ 1;
+#endif
 
    if ((cp = strrchr(progname, '/')) != NULL)
       progname = ++cp;
@@ -421,11 +513,11 @@ main(int argc, char *argv[])
    _startup();
 
    /* Command line parsing */
-   while ((i = getopt(argc, argv, optstr)) >= 0) {
+   while ((i = _getopt(argc, argv, optstr)) >= 0) {
       switch (i) {
       case 'A':
          /* Execute an account command later on */
-         Aflag = optarg;
+         Aflag = _oarg;
          break;
       case 'a':
          {  struct a_arg *nap = ac_alloc(sizeof(struct a_arg));
@@ -434,7 +526,7 @@ main(int argc, char *argv[])
             else
                a_curr->aa_next = nap;
             nap->aa_next = NULL;
-            nap->aa_file = optarg;
+            nap->aa_file = _oarg;
             a_curr = nap;
          }
          options |= OPT_SENDMODE;
@@ -446,12 +538,12 @@ main(int argc, char *argv[])
          break;
       case 'b':
          /* Get Blind Carbon Copy Recipient list */
-         bcc = cat(bcc, checkaddrs(lextract(optarg, GBCC | GFULL)));
+         bcc = cat(bcc, checkaddrs(lextract(_oarg, GBCC | GFULL)));
          options |= OPT_SENDMODE;
          break;
       case 'c':
          /* Get Carbon Copy Recipient list */
-         cc = cat(cc, checkaddrs(lextract(optarg, GCC | GFULL)));
+         cc = cat(cc, checkaddrs(lextract(_oarg, GCC | GFULL)));
          options |= OPT_SENDMODE;
          break;
       case 'D':
@@ -501,12 +593,12 @@ main(int argc, char *argv[])
          /* Additional options to pass-through to MTA */
          if (smopts_count == (size_t)smopts_size)
             smopts_size = _grow_cpp(&smopts, smopts_size, (int)smopts_count);
-         smopts[smopts_count++] = skin(optarg);
+         smopts[smopts_count++] = skin(_oarg);
          break;
       case 'q':
          /* Quote file TODO drop? -Q with real quote?? what ? */
-         if (*optarg != '-')
-            qf = optarg;
+         if (*_oarg != '-')
+            qf = _oarg;
          options |= OPT_SENDMODE;
          break;
       case 'R':
@@ -516,8 +608,8 @@ main(int argc, char *argv[])
       case 'r':
          /* Set From address. */
          options |= OPT_r_FLAG;
-         if ((option_r_arg = optarg)[0] != '\0') {
-            struct name *fa = nalloc(optarg, GFULL);
+         if ((option_r_arg = _oarg)[0] != '\0') {
+            struct name *fa = nalloc(_oarg, GFULL);
 
             if (is_addr_invalid(fa, 1) || is_fileorpipe_addr(fa)) {
                fprintf(stderr, tr(271, "Invalid address argument with -r\n"));
@@ -540,7 +632,7 @@ main(int argc, char *argv[])
           * immediately, but also doesn't want it to be
           * overwritten from within resource files */
          {  char *a[2];
-            okey = a[0] = optarg;
+            okey = a[0] = _oarg;
             a[1] = NULL;
             set(a);
          }
@@ -551,7 +643,7 @@ joarg:
          break;
       case 's':
          /* Subject: */
-         subject = optarg;
+         subject = _oarg;
          options |= OPT_SENDMODE;
          break;
       case 't':
@@ -561,7 +653,7 @@ joarg:
       case 'u':
          /* Set user name to pretend to be; don't set OPT_u_FLAG yet, this is
           * done as necessary in _setup_vars() above */
-         myname = optarg;
+         myname = _oarg;
          break;
       case 'V':
          puts(version);
@@ -596,15 +688,15 @@ jusage:
    }
 
    if (folder != NULL) {
-      if (optind < argc) {
-         if (optind + 1 < argc) {
+      if (_oind < argc) {
+         if (_oind + 1 < argc) {
             fprintf(stderr, tr(205, "More than one file given with -f\n"));
             goto jusage;
          }
-         folder = argv[optind];
+         folder = argv[_oind];
       }
    } else {
-      for (i = optind; argv[i]; ++i)
+      for (i = _oind; argv[i]; ++i)
          to = cat(to, checkaddrs(lextract(argv[i], GTO | GFULL)));
       if (to != NULL)
          options |= OPT_SENDMODE;
