@@ -34,8 +34,11 @@ set dot
 # Immediately start $EDITOR (/ $VISUAL) when composing a message
 #set editalong
 
-# Startup into interactive mode even if the (given) mailbox is empty.
+# Do not remove empty private mail folders.
 set emptybox
+
+# Startup into interactive mode even if the (given) mailbox is empty.
+#set emptystart
 
 # Do not forward to mbox by default since this is likely to be
 # irritating for most users today.
