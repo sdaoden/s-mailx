@@ -67,6 +67,7 @@ EMPTY_FILE(md5)
 
 #include "md5.h"
 
+# ifndef HAVE_OPENSSL_MD5
 #define UINT4B_MAX	0xFFFFFFFFul
 
 /*
@@ -277,8 +278,8 @@ MD5Transform(md5_type state[4], unsigned char block[64])
  * MD5 initialization. Begins an MD5 operation, writing a new context.
  */
 FL void
-MD5Init (
-    MD5_CTX *context	/* context */
+md5_init(
+    md5_ctx *context	/* context */
 )
 {
 	context->count[0] = context->count[1] = 0;
@@ -297,8 +298,8 @@ MD5Init (
  * context.
  */
 FL void
-MD5Update (
-    MD5_CTX *context,		/* context */
+md5_update(
+    md5_ctx *context,		/* context */
     unsigned char *input,		/* input block */
     unsigned int inputLen		/* length of input block */
 )
@@ -340,9 +341,9 @@ MD5Update (
  * the message digest and zeroizing the context.
  */
 FL void
-MD5Final (
+md5_final(
     unsigned char digest[16],	/* message digest */
-    MD5_CTX *context		/* context */
+    md5_ctx *context		/* context */
 )
 {
 	unsigned char	bits[8];
@@ -356,10 +357,10 @@ MD5Final (
 	 */
 	idx = context->count[0]>>3 & 0x3f;
 	padLen = idx < 56 ? 56 - idx : 120 - idx;
-	MD5Update(context, PADDING, padLen);
+	md5_update(context, PADDING, padLen);
 
 	/* Append length (before padding) */
-	MD5Update(context, bits, 8);
+	md5_update(context, bits, 8);
 	/* Store state in digest */
 	Encode(digest, context->state, 16);
 
@@ -368,6 +369,7 @@ MD5Final (
 	 */
 	(*_volatile_memset)(context, 0, sizeof *context);
 }
+# endif /* !HAVE_OPENSSL_MD5 */
 
 FL void
 hmac_md5 (
@@ -378,7 +380,7 @@ hmac_md5 (
     void *digest		/* caller digest to be filled in */
 )
 {
-	MD5_CTX context;
+	md5_ctx context;
 	unsigned char k_ipad[65];    /* inner padding -
 				      * key XORd with ipad
 				      */
@@ -390,11 +392,11 @@ hmac_md5 (
 	/* if key is longer than 64 bytes reset it to key=MD5(key) */
 	if (key_len > 64) {
 
-		MD5_CTX	     tctx;
+		md5_ctx	     tctx;
 
-		MD5Init(&tctx);
-		MD5Update(&tctx, key, key_len);
-		MD5Final(tk, &tctx);
+		md5_init(&tctx);
+		md5_update(&tctx, key, key_len);
+		md5_final(tk, &tctx);
 
 		key = tk;
 		key_len = 16;
@@ -425,19 +427,16 @@ hmac_md5 (
 	/*
 	 * perform inner MD5
 	 */
-	MD5Init(&context);		     /* init context for 1st
-					      * pass */
-	MD5Update(&context, k_ipad, 64);	     /* start with inner pad */
-	MD5Update(&context, text, text_len); /* then text of datagram */
-	MD5Final(digest, &context);	     /* finish up 1st pass */
+	md5_init(&context);			/* init context for 1st pass */
+	md5_update(&context, k_ipad, 64);	/* start with inner pad */
+	md5_update(&context, text, text_len);	/* then text of datagram */
+	md5_final(digest, &context);		/* finish up 1st pass */
 	/*
 	 * perform outer MD5
 	 */
-	MD5Init(&context);		     /* init context for 2nd
-					      * pass */
-	MD5Update(&context, k_opad, 64);     /* start with outer pad */
-	MD5Update(&context, digest, 16);     /* then results of 1st
-					      * hash */
-	MD5Final(digest, &context);	     /* finish up 2nd pass */
+	md5_init(&context);			/* init context for 2nd pass */
+	md5_update(&context, k_opad, 64);	/* start with outer pad */
+	md5_update(&context, digest, 16);	/* then results of 1st hash */
+	md5_final(digest, &context);		/* finish up 2nd pass */
 }
 #endif /* HAVE_MD5 */

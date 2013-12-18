@@ -257,7 +257,7 @@ _pop3_auth_apop(struct mailbox *mp, char *xuser, char *pass, char const *ts)
 	enum okay rv = STOP;
 	unsigned char digest[16];
 	char hex[MD5TOHEX_SIZE];
-	MD5_CTX	ctx;
+	md5_ctx	ctx;
 	size_t tl, i;
 	char *user, *cp;
 
@@ -266,10 +266,10 @@ _pop3_auth_apop(struct mailbox *mp, char *xuser, char *pass, char const *ts)
 		if (! getcredentials(&user, &pass))
 			break;
 
-		MD5Init(&ctx);
-		MD5Update(&ctx, (unsigned char*)UNCONST(ts), tl);
-		MD5Update(&ctx, (unsigned char*)pass, strlen(pass));
-		MD5Final(digest, &ctx);
+		md5_init(&ctx);
+		md5_update(&ctx, (unsigned char*)UNCONST(ts), tl);
+		md5_update(&ctx, (unsigned char*)pass, strlen(pass));
+		md5_final(digest, &ctx);
 		md5tohex(hex, digest);
 
 		i = strlen(user);

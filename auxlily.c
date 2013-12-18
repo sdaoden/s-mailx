@@ -538,7 +538,7 @@ getrandstring(size_t length)
 	char *data, *cp;
 	size_t i;
 #ifdef HAVE_MD5
-	MD5_CTX	ctx;
+	md5_ctx	ctx;
 #else
 	size_t j;
 #endif
@@ -551,9 +551,9 @@ getrandstring(size_t length)
 			srand(pid);
 			cp = nodename(0);
 #ifdef HAVE_MD5
-			MD5Init(&ctx);
-			MD5Update(&ctx, (unsigned char *)cp, strlen(cp));
-			MD5Final(nodedigest, &ctx);
+			md5_init(&ctx);
+			md5_update(&ctx, (unsigned char*)cp, strlen(cp));
+			md5_final(nodedigest, &ctx);
 #else
 			/* In that case it's only used for boundaries and
 			 * Message-Id:s so that srand(3) should suffice */

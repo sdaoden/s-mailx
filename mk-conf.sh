@@ -807,6 +807,34 @@ int main(void)
    return 0;
 }
 !
+
+      run_check openssl_md5 'for MD5 digest in OpenSSL' \
+         '#define HAVE_OPENSSL_MD5' << \!
+#include <string.h>
+#include <openssl/md5.h>
+
+int main(void)
+{
+   char const dat[] = "abrakadabrafidibus";
+   char dig[16], hex[16 * 2];
+   MD5_CTX ctx;
+	size_t i, j;
+
+   memset(dig, 0, sizeof(dig));
+   memset(hex, 0, sizeof(hex));
+   MD5_Init(&ctx);
+   MD5_Update(&ctx, dat, sizeof(dat) - 1);
+   MD5_Final(dig, &ctx);
+
+#define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
+	for (i = 0; i < sizeof(hex) / 2; i++) {
+		j = i << 1;
+		hex[j] = hexchar((dig[i] & 0xf0) >> 4);
+		hex[++j] = hexchar(dig[i] & 0x0f);
+   }
+   return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
+}
+!
    fi
 
 else
