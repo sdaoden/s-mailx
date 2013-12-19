@@ -37,13 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_IMAP
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(imap_cache)
+#ifdef HAVE_IMAP
 #include <dirent.h>
 #include <fcntl.h>
 
@@ -808,4 +807,4 @@ dequeue1(struct mailbox *mp)
 	}
 	return OKAY;
 }
-#endif	/* HAVE_IMAP */
+#endif /* HAVE_IMAP */

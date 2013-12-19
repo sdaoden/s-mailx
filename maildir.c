@@ -37,17 +37,20 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <dirent.h>
 
-static struct mditem {
+struct mditem {
 	struct message	*md_data;
 	unsigned	md_hash;
-} *mdtable;
-static long	mdprime;
+};
 
-static sigjmp_buf	maildirjmp;
+static struct mditem	*_maildir_table;
+static long		_maildir_prime;
+static sigjmp_buf	_maildir_jmp;
 
 /* Do some cleanup in the tmp/ subdir */
 static void		_cleantmp(void);
@@ -55,7 +58,7 @@ static void		_cleantmp(void);
 static int maildir_setfile1(const char *name, int nmail, int omsgCount);
 static int mdcmp(const void *a, const void *b);
 static int subdir(const char *name, const char *sub, int nmail);
-static void append(const char *name, const char *sub, const char *fn);
+static void _maildir_append(const char *name, const char *sub, const char *fn);
 static void readin(const char *name, struct message *m);
 static void maildir_update(void);
 static void move(struct message *m);
@@ -130,16 +133,16 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
 		initbox(name);
 		mb.mb_type = MB_MAILDIR;
 	}
-	mdtable = NULL;
-	if (sigsetjmp(maildirjmp, 1) == 0) {
+	_maildir_table = NULL;
+	if (sigsetjmp(_maildir_jmp, 1) == 0) {
 		if (nmail)
 			mktable();
 		if (saveint != SIG_IGN)
 			safe_signal(SIGINT, maildircatch);
 		i = maildir_setfile1(name, nmail, omsgCount);
 	}
-	if (nmail && mdtable != NULL)
-		free(mdtable);
+	if (nmail && _maildir_table != NULL)
+		free(_maildir_table);
 	safe_signal(SIGINT, saveint);
 	if (i < 0) {
 		mb.mb_type = MB_VOID;
@@ -181,7 +184,7 @@ maildir_setfile1(const char *name, int nmail, int omsgCount)
 		return i;
 	if ((i = subdir(name, "new", nmail)) != 0)
 		return i;
-	append(name, NULL, NULL);
+	_maildir_append(name, NULL, NULL);
 	for (i = nmail?omsgCount:0; i < msgCount; i++)
 		readin(name, &message[i]);
 	if (nmail) {
@@ -237,14 +240,14 @@ subdir(const char *name, const char *sub, int nmail)
 		if (dp->d_name[0] == '.')
 			continue;
 		if (!nmail || mdlook(dp->d_name, NULL) == NULL)
-			append(name, sub, dp->d_name);
+			_maildir_append(name, sub, dp->d_name);
 	}
 	closedir(dirp);
 	return 0;
 }
 
 static void 
-append(const char *name, const char *sub, const char *fn)
+_maildir_append(const char *name, const char *sub, const char *fn)
 {
 	struct message	*m;
 	size_t	sz, i;
@@ -370,7 +373,7 @@ maildir_quit(void)
 		cwrelse(&cw);
 		return;
 	}
-	if (sigsetjmp(maildirjmp, 1) == 0) {
+	if (sigsetjmp(_maildir_jmp, 1) == 0) {
 		if (saveint != SIG_IGN)
 			safe_signal(SIGINT, maildircatch);
 		maildir_update();
@@ -538,7 +541,7 @@ mkname(time_t t, enum mflag f, const char *pref)
 static void 
 maildircatch(int s)
 {
-	siglongjmp(maildirjmp, s);
+	siglongjmp(_maildir_jmp, s);
 }
 
 enum okay
@@ -728,16 +731,16 @@ mdlook(const char *name, struct message *data)
 		h = ~data->m_maildir_hash;
 	else
 		h = pjw(name);
-	h %= mdprime;
-	md = &mdtable[c = h];
+	h %= _maildir_prime;
+	md = &_maildir_table[c = h];
 	while (md->md_data != NULL) {
 		if (strcmp(&md->md_data->m_maildir_file[4], name) == 0)
 			break;
 		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
 		n++;
-		while (c >= (unsigned)mdprime)
-			c -= (unsigned)mdprime;
-		md = &mdtable[c];
+		while (c >= (unsigned)_maildir_prime)
+			c -= (unsigned)_maildir_prime;
+		md = &_maildir_table[c];
 	}
 	if (data != NULL && md->md_data == NULL)
 		md->md_data = data;
@@ -749,8 +752,8 @@ mktable(void)
 {
 	int	i;
 
-	mdprime = nextprime(msgCount);
-	mdtable = scalloc(mdprime, sizeof *mdtable);
+	_maildir_prime = nextprime(msgCount);
+	_maildir_table = scalloc(_maildir_prime, sizeof *_maildir_table);
 	for (i = 0; i < msgCount; i++)
 		mdlook(&message[i].m_maildir_file[4], &message[i]);
 }

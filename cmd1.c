@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /*
  * Print the current active headings.
@@ -49,7 +51,7 @@ static int screen;
 /* Prepare and print "[Message: xy]:" intro */
 static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
 
-static void onpipe(int signo);
+static void _cmd1_onpipe(int signo);
 static int _dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
 
@@ -297,14 +299,14 @@ screensize(void)
 	return scrnheight - 4;
 }
 
-static sigjmp_buf	pipejmp;
+static sigjmp_buf	_cmd1_pipejmp;
 
 /*ARGSUSED*/
 static void 
-onpipe(int signo)
+_cmd1_onpipe(int signo)
 {
-	(void)signo;
-	siglongjmp(pipejmp, 1);
+	UNUSED(signo);
+	siglongjmp(_cmd1_pipejmp, 1);
 }
 
 /*
@@ -326,7 +328,7 @@ from(void *v)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
 			char const *p;
-			if (sigsetjmp(pipejmp, 1))
+			if (sigsetjmp(_cmd1_pipejmp, 1))
 				goto endpipe;
 			p = get_pager();
 			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
@@ -334,7 +336,7 @@ from(void *v)
 				obuf = stdout;
 				cp=NULL;
 			} else
-				safe_signal(SIGPIPE, onpipe);
+				safe_signal(SIGPIPE, _cmd1_onpipe);
 		}
 	}
 	for (ip = msgvec; *ip != 0; ip++)

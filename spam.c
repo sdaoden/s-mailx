@@ -16,13 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SPAM
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(spam)
+#ifdef HAVE_SPAM
 /*
  * TODO - We cannot use the spamc library because of our jumping behaviour.
  * TODO   We could nonetheless if we'd start a fork(2)ed child which would

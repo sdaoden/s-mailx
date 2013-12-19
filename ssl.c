@@ -37,13 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SSL
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(ssl)
+#ifdef HAVE_SSL
 void 
 ssl_set_vrfy_level(const char *uhp)
 {
@@ -409,4 +408,4 @@ rfc2595_hostname_match(const char *host, const char *pattern)
 	}
 	return asccasecmp(host, pattern) == 0 ? OKAY : STOP;
 }
-#endif	/* HAVE_SSL */
+#endif /* HAVE_SSL */

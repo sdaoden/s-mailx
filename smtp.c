@@ -37,13 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SMTP
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(smtp)
+#ifdef HAVE_SMTP
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
 

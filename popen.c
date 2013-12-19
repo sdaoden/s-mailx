@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <sys/wait.h>
 
@@ -73,7 +75,7 @@ struct child {
 	int status;
 	struct child *link;
 };
-static struct child	*child;
+static struct child	*_popen_child;
 
 static int scan_mode(const char *mode, int *omode);
 static void register_file(FILE *fp, int omode, int ispipe, int pid,
@@ -635,14 +637,14 @@ findchild(int pid)
 {
 	struct child **cpp;
 
-	for (cpp = &child; *cpp != (struct child *)NULL && (*cpp)->pid != pid;
+	for (cpp = &_popen_child; *cpp != NULL && (*cpp)->pid != pid;
 	     cpp = &(*cpp)->link)
 			;
-	if (*cpp == (struct child *)NULL) {
-		*cpp = (struct child *) smalloc(sizeof (struct child));
+	if (*cpp == NULL) {
+		*cpp = smalloc(sizeof (struct child));
 		(*cpp)->pid = pid;
 		(*cpp)->done = (*cpp)->free = 0;
-		(*cpp)->link = (struct child *)NULL;
+		(*cpp)->link = NULL;
 	}
 	return *cpp;
 }
@@ -652,7 +654,7 @@ delchild(struct child *cp)
 {
 	struct child **cpp;
 
-	for (cpp = &child; *cpp != cp; cpp = &(*cpp)->link)
+	for (cpp = &_popen_child; *cpp != cp; cpp = &(*cpp)->link)
 		;
 	*cpp = cp->link;
 	free(cp);
@@ -665,10 +667,10 @@ sigchild(int signo)
 	int pid;
 	int status;
 	struct child *cp;
-	(void)signo;
+	UNUSED(signo);
 
 again:
-	while ((pid = waitpid(-1, (int*)&status, WNOHANG)) > 0) {
+	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
 		cp = findchild(pid);
 		if (cp->free)
 			delchild(cp);

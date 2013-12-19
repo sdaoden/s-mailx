@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <sys/wait.h>
 

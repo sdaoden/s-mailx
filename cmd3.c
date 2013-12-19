@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *	_reedit(char *subj);

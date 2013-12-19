@@ -32,7 +32,8 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-#ifdef HAVE_MD5
+#if defined HAVE_MD5 && !defined _NAIL_MD5_H
+# define _NAIL_MD5_H
 
 /*
  * This version of MD5 has been changed such that any unsigned type with

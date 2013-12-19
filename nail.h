@@ -97,6 +97,8 @@
 # define __PREREQ(X,Y)	0
 #endif
 
+#define EMPTY_FILE(F)	typedef int CONCAT(avoid_empty_file__, F);
+
 /* Pointer to size_t */
 #define PTR2SIZE(X)	((size_t)(uintptr_t)(X))
 
@@ -1166,106 +1168,115 @@ struct cw {
  * These become instantiated in main.c.
  */
 
+#undef VL
 #ifdef _MAIN_SOURCE
-# undef _E
-# define _E
+# ifndef HAVE_AMALGAMATION
+#  define VL
+# else
+#  define VL   static
+# endif
 #else
-# define _E	extern
+# define VL    extern
 #endif
 
-_E gid_t	effectivegid;		/* Saved from when we started up */
-_E gid_t	realgid;		/* Saved from when we started up */
+VL gid_t          effectivegid;           /* Saved from when we started up */
+VL gid_t          realgid;                /* Saved from when we started up */
 
-_E int		mb_cur_max;		/* value of MB_CUR_MAX */
-_E int		realscreenheight;	/* the real screen height */
-_E int		scrnwidth;		/* Screen width, or best guess */
-_E int		scrnheight;		/* Screen height, or best guess,
-					 *  for "header" command */
-_E int		utf8;			/* UTF-8 encoding in use for locale */
-_E int		enc_has_state;		/* Encoding has shift states */
+VL int            mb_cur_max;             /* Value of MB_CUR_MAX */
+VL int            realscreenheight;       /* The real screen height */
+VL int            scrnwidth;              /* Screen width, or best guess */
+VL int            scrnheight;             /* Screen height/guess (4 header) */
+VL int            utf8;                   /* Locale uses UTF-8 encoding */
+VL int            enc_has_state;          /* Encoding has shift states */
 
-_E char		**altnames;		/* List of alternate names for user */
-_E char const	*homedir;		/* Path name of home directory */
-_E char const	*myname;		/* My login name */
-_E char const	*progname;		/* Our name */
-_E char const	*tempdir;		/* The temporary directory */
+VL char           **altnames;             /* List of alternate names of user */
+VL char const     *homedir;               /* Path name of home directory */
+VL char const     *myname;                /* My login name */
+VL char const     *progname;              /* Our name */
+VL char const     *tempdir;               /* The temporary directory */
 
-_E int		exit_status;		/* Exit status */
-_E int		options;		/* Bits of enum user_options */
-_E char 	*option_r_arg;		/* argument to -r option */
-_E char const	**smopts;		/* sendmail(1) options, command line */
-_E size_t	smopts_count;		/* Entries in smopts */
+VL int            exit_status;            /* Exit status */
+VL int            options;                /* Bits of enum user_options */
+VL char           *option_r_arg;          /* Argument to -r option */
+VL char const     **smopts;               /* sendmail(1) opts from commline */
+VL size_t         smopts_count;           /* Entries in smopts */
 
 /* TODO Join as many of these state machine bits into a single carrier! */
-_E int		inhook;			/* currently executing a hook */
-_E bool_t	exec_last_comm_error;	/* Last execute() command failed */
-_E bool_t	edit;			/* Indicates editing a file */
-_E bool_t	did_print_dot;		/* current message has been printed */
-_E bool_t	msglist_is_single;	/* Last NDMLIST/MSGLIST *chose* 1 msg */
-_E bool_t	loading;		/* Loading user definitions */
-_E bool_t	sourcing;		/* Currently reading variant file */
-_E bool_t	sawcom;			/* Set after first command */
-_E bool_t	starting;		/* still in startup code */
-_E bool_t	unset_allow_undefined;	/* allow to unset undefined variables */
-_E int		noreset;		/* String resets suspended */
+VL int            inhook;                 /* Currently executing a hook */
+VL bool_t         exec_last_comm_error;   /* Last execute() command failed */
+VL bool_t         edit;                   /* Indicates editing a file */
+VL bool_t         did_print_dot;          /* Current message has been printed */
+VL bool_t         msglist_is_single;      /* Last NDMLIST/MSGLIST chose 1 msg */
+VL bool_t         loading;                /* Loading user definitions */
+VL bool_t         sourcing;               /* Currently reading variant file */
+VL bool_t         sawcom;                 /* Set after first command */
+VL bool_t         starting;               /* Still in startup code */
+VL bool_t         unset_allow_undefined;  /* Allow to unset undefined vars */
+VL int            noreset;                /* String resets suspended */
 
 /* XXX stylish sorting */
-_E int		msgCount;		/* Count of messages read in */
-_E enum condition cond;			/* Current state of conditional exc. */
-_E struct mailbox mb;			/* Current mailbox */
-_E int		image;			/* File descriptor for image of msg */
-_E char		mailname[MAXPATHLEN];	/* Name of current file */
-_E char		displayname[80 - 40];	/* Prettyfied for display */
-_E char		prevfile[MAXPATHLEN];	/* Name of previous file */
-_E char const *	account_name;		/* Current account name or NULL */
-_E off_t	mailsize;		/* Size of system mailbox */
-_E struct message *dot;			/* Pointer to current message */
-_E struct message *prevdot;		/* Previous current message */
-_E struct message *message;		/* The actual message structure */
-_E struct message *threadroot;		/* first threaded message */
-_E int		msgspace;		/* Number of allocated struct m */
-_E struct grouphead *groups[HSHSIZE];	/* Pointer to active groups */
-_E struct ignoretab ignore[2];		/* ignored and retained fields
-					 * 0 is ignore, 1 is retain */
-_E struct ignoretab saveignore[2];	/* ignored and retained fields
-					 * on save to folder */
-_E struct ignoretab allignore[2];	/* special, ignore all headers */
-_E struct ignoretab fwdignore[2];	/* fields to ignore for forwarding */
-_E struct shortcut *shortcuts;		/* list of shortcuts */
-_E int		imap_created_mailbox;	/* hack to get feedback from imap */
+VL int            msgCount;               /* Count of messages read in */
+VL enum condition cond;                   /* State of conditional exc. */
+VL struct mailbox mb;                     /* Current mailbox */
+VL int            image;                  /* File descriptor for msg image */
+VL char           mailname[MAXPATHLEN];   /* Name of current file */
+VL char           displayname[80 - 40];   /* Prettyfied for display */
+VL char           prevfile[MAXPATHLEN];   /* Name of previous file */
+VL char const     *account_name;          /* Current account name or NULL */
+VL off_t          mailsize;               /* Size of system mailbox */
+VL struct message *dot;                   /* Pointer to current message */
+VL struct message *prevdot;               /* Previous current message */
+VL struct message *message;               /* The actual message structure */
+VL struct message *threadroot;            /* first threaded message */
+VL int            imap_created_mailbox;   /* hack to get feedback from imap */
+VL int            msgspace;               /* Number of allocated struct m */
 
-_E struct time_current time_current;	/* time(3); send: mail1() XXX->carrier*/
-_E struct termios_state termios_state;	/* getpassword(); see commands().. */
+VL struct grouphead  *groups[HSHSIZE];    /* Pointer to active groups */
+VL struct ignoretab  ignore[2];           /* ignored and retained fields
+                                           * 0 is ignore, 1 is retain */
+VL struct ignoretab  saveignore[2];       /* ignored and retained fields
+                                           * on save to folder */
+VL struct ignoretab  allignore[2];        /* special, ignore all headers */
+VL struct ignoretab  fwdignore[2];        /* fields to ignore for forwarding */
+VL struct shortcut   *shortcuts;          /* list of shortcuts */
 
-/* These are initialized strings */
-_E char const	month_names[12 + 1][4];
-_E char const	weekday_names[7 + 1][4];
-
-_E char const	uagent[];		/* User agent */
-_E char const	version[];		/* The version string */
+VL struct time_current  time_current;     /* time(3); send: mail1() XXXcarrier*/
+VL struct termios_state termios_state;    /* getpassword(); see commands().. */
 
 #ifdef HAVE_SSL
-_E enum ssl_vrfy_level ssl_vrfy_level;	/* SSL verification level */
+VL enum ssl_vrfy_level  ssl_vrfy_level;   /* SSL verification level */
 #endif
 
 #ifdef HAVE_ICONV
-_E iconv_t	iconvd;
+VL iconv_t        iconvd;
 #endif
 
 #ifdef HAVE_CATGETS
-_E nl_catd	catd;
+VL nl_catd        catd;
 #endif
 
-_E sigjmp_buf	srbuf;
-_E int		interrupts;
-_E sighandler_type handlerstacktop;
-#define	handlerpush(f)	(savedtop = handlerstacktop, handlerstacktop = (f))
-#define	handlerpop()	(handlerstacktop = savedtop)
-_E sighandler_type dflpipe;
+VL sigjmp_buf     srbuf;
+VL int            interrupts;
+VL sighandler_type handlerstacktop;
+#define  handlerpush(f) (savedtop = handlerstacktop, handlerstacktop = (f))
+#define  handlerpop()   (handlerstacktop = savedtop)
 
-#undef _E
+/* The remaining variables need initialization */
+
+#ifndef HAVE_AMALGAMATION
+VL char const     month_names[12 + 1][4];
+VL char const     weekday_names[7 + 1][4];
+
+VL char const     uagent[];               /* User agent */
+VL char const     version[];              /* The version string */
+
+VL sighandler_type dflpipe;
+#endif
 
 /*
  * Finally, let's include the function prototypes XXX embed
  */
+
 #include "extern.h"
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

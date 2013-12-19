@@ -37,7 +37,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 enum _qact {
 	 N =   0,	/* Do not quote */

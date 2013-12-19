@@ -57,11 +57,12 @@ Appendix -- Sample Code
    vectors (the code is based on MD5 code as described in [MD5]).
 */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_MD5
-typedef int avoid_empty_file_compiler_warning;
-#else
+EMPTY_FILE(md5)
+#ifdef HAVE_MD5
 #include <string.h>
 
 #include "md5.h"

@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <sys/wait.h>
 
@@ -92,7 +94,7 @@ static char *	_fgetline_byone(char **line, size_t *linesize, size_t *llen,
 			FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
 
 static void makemessage(void);
-static void append(struct message *mp);
+static void _fio_append(struct message *mp);
 static enum okay get_header(struct message *mp);
 
 static void
@@ -535,7 +537,7 @@ setptr(FILE *ibuf, off_t offset)
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt > 0)
-				append(&this);
+				_fio_append(&this);
 			makemessage();
 			if (linebuf)
 				free(linebuf);
@@ -567,7 +569,7 @@ setptr(FILE *ibuf, off_t offset)
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt++ > 0)
-				append(&this);
+				_fio_append(&this);
 			msgCount++;
 			this.m_flag = MUSED|MNEW|MNEWEST;
 			this.m_size = 0;
@@ -691,7 +693,7 @@ static void
 makemessage(void)
 {
 	if (msgCount == 0)
-		append(NULL);
+		_fio_append(NULL);
 	setdot(message);
 	message[msgCount].m_size = 0;
 	message[msgCount].m_lines = 0;
@@ -701,7 +703,7 @@ makemessage(void)
  * Append the passed message descriptor onto the message structure.
  */
 static void
-append(struct message *mp)
+_fio_append(struct message *mp)
 {
 	if (msgCount + 1 >= msgspace)
 		message = srealloc(message, (msgspace += 64) * sizeof *message);
@@ -727,8 +729,8 @@ rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 	return ret;
 }
 
-static int sigdepth;		/* depth of holdsigs() */
-static sigset_t nset, oset;
+static int	_fio_sigdepth;		/* depth of holdsigs() */
+static sigset_t	_fio_nset, _fio_oset;
 /*
  * Hold signals SIGHUP, SIGINT, and SIGQUIT.
  */
@@ -736,12 +738,12 @@ void
 holdsigs(void)
 {
 
-	if (sigdepth++ == 0) {
-		sigemptyset(&nset);
-		sigaddset(&nset, SIGHUP);
-		sigaddset(&nset, SIGINT);
-		sigaddset(&nset, SIGQUIT);
-		sigprocmask(SIG_BLOCK, &nset, &oset);
+	if (_fio_sigdepth++ == 0) {
+		sigemptyset(&_fio_nset);
+		sigaddset(&_fio_nset, SIGHUP);
+		sigaddset(&_fio_nset, SIGINT);
+		sigaddset(&_fio_nset, SIGQUIT);
+		sigprocmask(SIG_BLOCK, &_fio_nset, &_fio_oset);
 	}
 }
 
@@ -751,8 +753,8 @@ holdsigs(void)
 void
 relsesigs(void)
 {
-	if (--sigdepth == 0)
-		sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+	if (--_fio_sigdepth == 0)
+		sigprocmask(SIG_SETMASK, &_fio_oset, NULL);
 }
 
 /*

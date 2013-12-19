@@ -37,13 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_OPENSSL
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(openssl)
+#ifdef HAVE_OPENSSL
 #include <sys/socket.h>
 
 #include <dirent.h>

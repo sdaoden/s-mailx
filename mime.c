@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #define _CHARSET()	((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
 
