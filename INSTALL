@@ -71,8 +71,8 @@ of) verbosity:
 . packager-install
               Only install using the built files of the existing
               configuration.  It is possible to overwrite DESTDIR= when
-              using this target (a following `uninstall' won't know
-              about that overwritten value, however).
+              using this target nonetheless (a following `uninstall'
+              won't know about that overwritten value, however).
 
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
@@ -97,58 +97,84 @@ into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
 
-Notes for S-nail(1) v14.*
+Notes for S-nail(1) v14.5
 -------------------------
 
-S-nail(1) has been or is used regulary on these systems (uname -srm).
-Note that MAILSPOOL is by default /var/mail.
+S-nail(1) has been or is used regulary on these systems (`uname -srm').
+Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
 
-. Mac OS X Snow Leopard (x86_64).
-  Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun  7 16:33:36 PDT
-    2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
-  gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
-  i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666) (dot 3).
-  Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM 2.9svn).
+Also, i'm (compile) testing manually with WANT_AUTOCC=1, WANT_DEBUG=[01]
+and WANT_AMALGAMATION=[01] (and WANT_GSSAPI=1), which is what is
+reflected by the following statements.
 
-. NetBSD
+. Mac OS X <https://www.apple.com/>
+  (Snow Leopard) Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun
+  7 16:33:36 PDT 2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
+  - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
+    + Note: with WANT_AMALGAMATION there is a single warning on 'signed
+      overflow'.  I think it's wrong.
+  - clang version 3.4 (branches/release_34 197314)
+    Target: x86_64-apple-darwin10.8.0
+    Thread model: posix.
+  - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
+    (dot 3).
+  - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
+    2.9svn).
+
+. NetBSD <https://www.netbsd.org/>
   NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
-    2013 amd64.
-  gcc (NetBSD nb1 20120916) 4.5.4.
+  2013 amd64.
+  - gcc (NetBSD nb1 20120916) 4.5.4.
+    + Note: with WANT_AMALGAMATION there are many warnings on 'signed
+      overflow', all referring to the same code, and i think it's wrong.
 
-. ArchLinux
+. ArchLinux <https://www.archlinux.org/>
   Linux 3.12.3-1-ARCH #1 SMP PREEMPT Wed Dec 4 21:45:42 CET 2013
-    x86_64 GNU/Linux.
-  gcc (GCC) 4.8.2 (-5).
+  x86_64 GNU/Linux.
+  - gcc (GCC) 4.8.2.
 
-. CRUX Linux
+. CRUX Linux <http://www.crux.nu/>
   Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
-  gcc (CRUX-x86_64-multilib) 4.7.2.
+  - gcc (CRUX-x86_64-multilib) 4.7.2.
+    + Note: there is a single warning on 'signed overflow'.  I think it's
+      wrong.
 
-. DragonFly BSD
-  DragonFly 3.6-RELEASE x86_64
-  gcc 4.7.3 [DragonFly] Release/2013-04-11.
-  Note: harmless iconv(3) warning again (as if we didn't had to treat it
-  specially already).
-
-. FreeBSD
-  FreeBSD 10.0-CURRENT amd64.
-  FreeBSD clang version 3.3 (tags/RELEASE_33/final 183502) 20130610
-    Target: x86_64-unknown-freebsd10.0
-    Thread model: posix
-
-. OpenBSD
+. OpenBSD <http://www.openbsd.org/>
   OpenBSD 5.4 i386.
-  gcc (GCC) 4.2.1 20070719.
+  - gcc (GCC) 4.2.1 20070719.
+
+. FreeBSD <https://www.freebsd.org/>
+  FreeBSD 10.0-CURRENT amd64.
+  - FreeBSD clang version 3.3 (tags/RELEASE_33/final 183502) 20130610
+    Target: x86_64-unknown-freebsd10.0
+    Thread model: posix.
+
+. Void Linux <http://www.voidlinux.eu/>
+  Linux 3.10.19_1 i686.
+  - gcc (GCC) 4.7.3.
+    + Note: there is a single warning on 'signed overflow'.  I think it's
+      wrong.
+
+. DragonFly BSD <https://www.dragonflybsd.org/>
+  DragonFly 3.6-RELEASE x86_64
+  - gcc 4.7.3 [DragonFly] Release/2013-04-11.
+    + Note: harmless iconv(3) warning again (as if we didn't had to treat it
+      specially already).
+    + Note: there is a single warning on 'signed overflow'.  I think it's
+      wrong.
 
 . UnixWare 7.1.4.
-  Note: this make(1) requires the -e option to pass values to make(1)
-  subprocesses, so, if you want to overwrite DESTDIR= when doing
-  `packager-install', you better say '$ make -e DESTDIR=xy ...'.
+  + Note: this make(1) requires the -e option to pass values to make(1)
+    subprocesses, so, if you want to overwrite DESTDIR= when doing
+    `packager-install', you better say '$ make -e DESTDIR=xy ...'.
+  + You'll see some harmless and ignorable warnings.
 
-. Slackware 14 3.2.29-smp (i386).
-  gcc (GCC) 4.7.1.
-  clang version 3.0 (tags/RELEASE_30/final).
-  Note: not tested for v14.5, machine disappeared.
+. Slackware Linux <http://www.slackware.com/>
+  Slackware 14 3.2.29-smp (i386).
+  + Note: not tested for v14.5, machine disappeared.  (Will install a VM
+    with the new release before the next minor.)
+  - gcc (GCC) 4.7.1.
+  - clang version 3.0 (tags/RELEASE_30/final).
 
 OpenIndiana is targeted for v14.6.
 And i'm very interested in reports from other combinations.
