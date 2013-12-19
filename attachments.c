@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /* We use calloc() for struct attachment */
 CTA(AC_DEFAULT == 0);
@@ -287,7 +289,7 @@ jerr:
 }
 #endif /* HAVE_ICONV */
 
-struct attachment *
+FL struct attachment *
 add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 {
 	struct attachment *nap = NULL, *ap;
@@ -314,7 +316,7 @@ jleave:
 	return nap;
 }
 
-struct attachment *
+FL struct attachment *
 append_attachments(struct attachment *aphead, char *names)
 {
 	char *cp;
@@ -332,7 +334,7 @@ append_attachments(struct attachment *aphead, char *names)
 	return aphead;
 }
 
-struct attachment *
+FL struct attachment *
 edit_attachments(struct attachment *aphead)
 {
 	struct attachment *ap, *nap;

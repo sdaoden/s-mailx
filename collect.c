@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /*
  * The following hokiness with global variables is so that on
@@ -45,19 +47,17 @@
  * away on dead.letter.
  */
 
-static	sighandler_type		saveint;	/* Previous SIGINT value */
-static	sighandler_type		savehup;	/* Previous SIGHUP value */
-static	sighandler_type		savetstp;	/* Previous SIGTSTP value */
-static	sighandler_type		savettou;	/* Previous SIGTTOU value */
-static	sighandler_type		savettin;	/* Previous SIGTTIN value */
-static	FILE	*collf;			/* File for saving away */
-static	int	hadintr;		/* Have seen one SIGINT so far */
-
-static	sigjmp_buf	colljmp;	/* To get back to work */
-static	int		colljmp_p;	/* whether to long jump */
-static	sigjmp_buf	collabort;	/* To end collection with error */
-
-static	sigjmp_buf pipejmp;		/* On broken pipe */
+static sighandler_type	_coll_saveint;	/* Previous SIGINT value */
+static sighandler_type	_coll_savehup;	/* Previous SIGHUP value */
+static sighandler_type	_coll_savetstp;	/* Previous SIGTSTP value */
+static sighandler_type	_coll_savettou;	/* Previous SIGTTOU value */
+static sighandler_type	_coll_savettin;	/* Previous SIGTTIN value */
+static FILE		*_coll_fp;	/* File for saving away */
+static int volatile	_coll_hadintr;	/* Have seen one SIGINT so far */
+static sigjmp_buf	_coll_jmp;	/* To get back to work */
+static int		_coll_jmp_p;	/* whether to long jump */
+static sigjmp_buf	_coll_abort;	/* To end collection with error */
+static sigjmp_buf	_coll_pipejmp;	/* On broken pipe */
 
 /* Handle `~:', `~_' */
 static void	_execute_command(struct header *hp, char *linebuf,
@@ -67,7 +67,7 @@ static void	_execute_command(struct header *hp, char *linebuf,
 static int	_include_file(FILE *fbuf, char const *name, int *linecount,
 			int *charcount, bool_t doecho);
 
-static void onpipe(int signo);
+static void _collect_onpipe(int signo);
 static void insertcommand(FILE *fp, char const *cmd);
 static void print_collf(FILE *collf, struct header *hp);
 static int exwrite(char const *name, FILE *fp, int f);
@@ -134,7 +134,7 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
 	cnt = fsize(fbuf);
 	while (fgetline(&linebuf, &linesize, &cnt, &linelen, fbuf, 0)
 			!= NULL) {
-		if (fwrite(linebuf, sizeof *linebuf, linelen, collf)
+		if (fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp)
 				!= linelen)
 			goto jleave;
 		if ((options & OPT_INTERACTIVE) && doecho)
@@ -142,7 +142,7 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
 		++(*linecount);
 		(*charcount) += linelen;
 	}
-	if (fflush(collf))
+	if (fflush(_coll_fp))
 		goto jleave;
 
 	ret = 0;
@@ -155,11 +155,11 @@ jleave:
 }
 
 /*ARGSUSED*/
-static void 
-onpipe(int signo)
+static void
+_collect_onpipe(int signo)
 {
-	(void)signo;
-	siglongjmp(pipejmp, 1);
+	UNUSED(signo);
+	siglongjmp(_coll_pipejmp, 1);
 }
 
 /*
@@ -224,14 +224,14 @@ print_collf(FILE *cf, struct header *hp)
 		maxlines -= value("sender") != NULL || hp->h_sender != NULL;
 		if ((long)maxlines < 0 || linecnt > maxlines) {
 			cp = get_pager();
-			if (sigsetjmp(pipejmp, 1))
+			if (sigsetjmp(_coll_pipejmp, 1))
 				goto endpipe;
 			obuf = Popen(cp, "w", NULL, 1);
 			if (obuf == NULL) {
 				perror(cp);
 				obuf = stdout;
 			} else
-				safe_signal(SIGPIPE, onpipe);
+				safe_signal(SIGPIPE, &_collect_onpipe);
 		}
 	}
 
@@ -278,7 +278,7 @@ endpipe:
 		free(lbuf);
 }
 
-FILE *
+FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
 		char *quotefile, int doprefix)
 {
@@ -294,7 +294,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	sigset_t oset, nset;
 	sighandler_type	savedtop;
 
-	collf = NULL;
+	_coll_fp = NULL;
 	/*
 	 * Start catching signals from here, but we're still die on interrupts
 	 * until we're in the main loop.
@@ -304,30 +304,30 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	sigaddset(&nset, SIGHUP);
 	sigprocmask(SIG_BLOCK, &nset, &oset);
 	handlerpush(collint);
-	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+	if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGINT, collint);
-	if ((savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
+	if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
 		safe_signal(SIGHUP, collhup);
 	/* TODO We do a lot of redundant signal handling, especially
 	 * TODO with the command line editor(s); try to merge this */
-	savetstp = safe_signal(SIGTSTP, collstop);
-	savettou = safe_signal(SIGTTOU, collstop);
-	savettin = safe_signal(SIGTTIN, collstop);
-	if (sigsetjmp(collabort, 1))
+	_coll_savetstp = safe_signal(SIGTSTP, collstop);
+	_coll_savettou = safe_signal(SIGTTOU, collstop);
+	_coll_savettin = safe_signal(SIGTTIN, collstop);
+	if (sigsetjmp(_coll_abort, 1))
 		goto jerr;
-	if (sigsetjmp(colljmp, 1))
+	if (sigsetjmp(_coll_jmp, 1))
 		goto jerr;
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 
 	noreset++;
-	if ((collf = Ftemp(&tempMail, "Rs", "w+", 0600, 1)) == NULL) {
+	if ((_coll_fp = Ftemp(&tempMail, "Rs", "w+", 0600, 1)) == NULL) {
 		perror(tr(51, "temporary mail file"));
 		goto jerr;
 	}
 	unlink(tempMail);
 	Ftfree(&tempMail);
 
-	if ((cp = value("NAIL_HEAD")) != NULL && putesc(cp, collf) < 0)
+	if ((cp = value("NAIL_HEAD")) != NULL && putesc(cp, _coll_fp) < 0)
 		goto jerr;
 
 	/*
@@ -369,7 +369,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			quoteig = fwdignore;
 			if ((cp = value("fwdheading")) == NULL)
 				cp = "-------- Original Message --------";
-			if (*cp && fprintf(collf, "%s\n", cp) < 0)
+			if (*cp && fprintf(_coll_fp, "%s\n", cp) < 0)
 				goto jerr;
 		} else if (strcmp(quote, "noheading") == 0) {
 			/*EMPTY*/;
@@ -381,36 +381,37 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		} else {
 			cp = hfield1("from", mp);
 			if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-				if (xmime_write(cp, cnt,
-						collf, CONV_FROMHDR, TD_NONE,
+				if (xmime_write(cp, cnt, _coll_fp,
+						CONV_FROMHDR, TD_NONE,
 						NULL) < 0)
 					goto jerr;
-				if (fprintf(collf, tr(52, " wrote:\n\n")) < 0)
+				if (fprintf(_coll_fp,
+						tr(52, " wrote:\n\n")) < 0)
 					goto jerr;
 			}
 		}
-		if (fflush(collf))
+		if (fflush(_coll_fp))
 			goto jerr;
 		cp = value("indentprefix");
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
-		if (sendmp(mp, collf, quoteig, (doprefix ? NULL : cp), action,
-				NULL) < 0)
+		if (sendmp(mp, _coll_fp, quoteig, (doprefix ? NULL : cp),
+				action, NULL) < 0)
 			goto jerr;
 	}
 
 	/* Print what we have sofar also on the terminal */
-	(void)rewind(collf);
-	while ((c = getc(collf)) != EOF) /* XXX bytewise, yuck! */
+	rewind(_coll_fp);
+	while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
 		(void)putc(c, stdout);
-	if (fseek(collf, 0, SEEK_END))
+	if (fseek(_coll_fp, 0, SEEK_END))
 		goto jerr;
 
 	escape = ((cp = value("escape")) != NULL) ? *cp : ESCAPE;
 	eofcount = 0;
-	hadintr = 0;
+	_coll_hadintr = 0;
 
-	if (! sigsetjmp(colljmp, 1)) {
+	if (!sigsetjmp(_coll_jmp, 1)) {
 		if (getfields)
 			grab_headers(hp, getfields, 1);
 		if (quotefile != NULL) {
@@ -418,7 +419,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 				goto jerr;
 		}
 		if ((options & OPT_INTERACTIVE) && value("editalong")) {
-			rewind(collf);
+			rewind(_coll_fp);
 			mesedit('e', hp);
 			goto jcont;
 		}
@@ -429,7 +430,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		 * the write is aborted if we get a SIGTTOU.
 		 */
 jcont:
-		if (hadintr) {
+		if (_coll_hadintr) {
 			(void)fprintf(stderr, tr(53,
 				"\n(Interrupt -- one more to kill letter)\n"));
 		} else {
@@ -446,10 +447,10 @@ jcont:
 		while ((cnt = fread(linebuf, sizeof *linebuf,
 						linesize, stdin)) > 0) {
 			if ((size_t)cnt != fwrite(linebuf, sizeof *linebuf,
-						cnt, collf))
+						cnt, _coll_fp))
 				goto jerr;
 		}
-		if (fflush(collf))
+		if (fflush(_coll_fp))
 			goto jerr;
 		goto jout;
 	}
@@ -458,9 +459,9 @@ jcont:
 	 * The interactive collect loop
 	 */
 	for (;;) {
-		colljmp_p = 1;
+		_coll_jmp_p = 1;
 		cnt = readline_input(LNED_NONE, "", &linebuf, &linesize);
-		colljmp_p = 0;
+		_coll_jmp_p = 0;
 
 		if (cnt < 0) {
 			if ((options & OPT_INTERACTIVE) &&
@@ -472,16 +473,16 @@ jcont:
 			break;
 		}
 		if ((options & OPT_t_FLAG) && cnt == 0) {
-			rewind(collf);
-			if (makeheader(collf, hp) != OKAY)
+			rewind(_coll_fp);
+			if (makeheader(_coll_fp, hp) != OKAY)
 				goto jerr;
-			rewind(collf);
+			rewind(_coll_fp);
 			options &= ~OPT_t_FLAG;
 			continue;
 		}
 
 		eofcount = 0;
-		hadintr = 0;
+		_coll_hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
 				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
 				(boption("dot") || boption("ignoreeof")))
@@ -491,7 +492,7 @@ jcont:
 			/* TODO calls putline(), which *always* appends LF;
 			 * TODO thus, STDIN with -t will ALWAYS end with LF,
 			 * TODO even if no trailing LF and QP CTE */
-			if (putline(collf, linebuf, cnt) < 0)
+			if (putline(_coll_fp, linebuf, cnt) < 0)
 				goto jerr;
 			continue;
 		}
@@ -504,7 +505,7 @@ jcont:
 			 * Otherwise, it's an error.
 			 */
 			if (c == escape) {
-				if (putline(collf, &linebuf[1], cnt - 1) < 0)
+				if (putline(_coll_fp, &linebuf[1], cnt - 1) < 0)
 					goto jerr;
 				else
 					break;
@@ -535,7 +536,7 @@ jcont:
 			/* FALLTHRU */
 		case 'q':
 			/* Force a quit, act like an interrupt had happened */
-			++hadintr;
+			++_coll_hadintr;
 			collint((c == 'x') ? 0 : SIGINT);
 			exit(1);
 			/*NOTREACHED*/
@@ -599,7 +600,7 @@ jcont:
 			/*
 			 * Invoke a file:
 			 * Search for the file name,
-			 * then open it and copy the contents to collf.
+			 * then open it and copy the contents to _coll_fp.
 			 */
 			cp = &linebuf[2];
 			while (whitechar(*cp))
@@ -610,7 +611,7 @@ jcont:
 				break;
 			}
 			if (*cp == '!') {
-				insertcommand(collf, cp + 1);
+				insertcommand(_coll_fp, cp + 1);
 				break;
 			}
 			if ((cp = file_expand(cp)) == NULL)
@@ -636,7 +637,7 @@ jcont:
 				++cp;
 			if ((cp = value(cp)) == NULL || *cp == '\0')
 				break;
-			if (putesc(cp, collf) < 0)
+			if (putesc(cp, _coll_fp) < 0)
 				goto jerr;
 			if ((options & OPT_INTERACTIVE) &&
 					putesc(cp, stdout) < 0)
@@ -647,7 +648,7 @@ jcont:
 			/* Insert the contents of a signature variable */
 			if ((cp = value(c == 'a' ? "sign" : "Sign")) != NULL &&
 					*cp != '\0') {
-				if (putesc(cp, collf) < 0)
+				if (putesc(cp, _coll_fp) < 0)
 					goto jerr;
 				if ((options & OPT_INTERACTIVE) &&
 						putesc(cp, stdout) < 0)
@@ -663,8 +664,8 @@ jcont:
 				fputs(tr(61, "Write what file!?\n"), stderr);
 				break;
 			}
-			rewind(collf);
-			if (exwrite(cp, collf, 1) < 0)
+			rewind(_coll_fp);
+			if (exwrite(cp, _coll_fp, 1) < 0)
 				goto jerr;
 			break;
 		case 'm':
@@ -677,7 +678,7 @@ jcont:
 			 * standard list processing garbage.
 			 * If ~f is given, we don't shift over.
 			 */
-			if (forward(linebuf + 2, collf, c) < 0)
+			if (forward(linebuf + 2, _coll_fp, c) < 0)
 				goto jerr;
 			goto jcont;
 		case 'p':
@@ -685,14 +686,14 @@ jcont:
 			 * Print out the current state of the
 			 * message without altering anything.
 			 */
-			print_collf(collf, hp);
+			print_collf(_coll_fp, hp);
 			goto jcont;
 		case '|':
 			/*
 			 * Pipe message through command.
 			 * Collect output as new message.
 			 */
-			rewind(collf);
+			rewind(_coll_fp);
 			mespipe(&linebuf[2]);
 			goto jcont;
 		case 'v':
@@ -702,7 +703,7 @@ jcont:
 			 * 'e' means to use EDITOR
 			 * 'v' means to use VISUAL
 			 */
-			rewind(collf);
+			rewind(_coll_fp);
 			mesedit(c, value("editheaders") ? hp : NULL);
 			goto jcont;
 		case '?':
@@ -742,15 +743,15 @@ jcont:
 	}
 
 jout:
-	if (collf != NULL) {
+	if (_coll_fp != NULL) {
 		if ((cp = value("NAIL_TAIL")) != NULL) {
-			if (putesc(cp, collf) < 0)
+			if (putesc(cp, _coll_fp) < 0)
 				goto jerr;
 			if ((options & OPT_INTERACTIVE) &&
 					putesc(cp, stdout) < 0)
 				goto jerr;
 		}
-		rewind(collf);
+		rewind(_coll_fp);
 	}
 	if (linebuf != NULL)
 		free(linebuf);
@@ -760,22 +761,22 @@ jout:
 	sigaddset(&nset, SIGINT);
 	sigaddset(&nset, SIGHUP);
 	sigprocmask(SIG_BLOCK, &nset, (sigset_t*)NULL);
-	safe_signal(SIGINT, saveint);
-	safe_signal(SIGHUP, savehup);
-	safe_signal(SIGTSTP, savetstp);
-	safe_signal(SIGTTOU, savettou);
-	safe_signal(SIGTTIN, savettin);
+	safe_signal(SIGINT, _coll_saveint);
+	safe_signal(SIGHUP, _coll_savehup);
+	safe_signal(SIGTSTP, _coll_savetstp);
+	safe_signal(SIGTTOU, _coll_savettou);
+	safe_signal(SIGTTIN, _coll_savettin);
 	sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-	return (collf);
+	return _coll_fp;
 
 jerr:
 	if (tempMail != NULL) {
 		rm(tempMail);
 		Ftfree(&tempMail);
 	}
-	if (collf != NULL) {
-		Fclose(collf);
-		collf = NULL;
+	if (_coll_fp != NULL) {
+		Fclose(_coll_fp);
+		_coll_fp = NULL;
 	}
 	goto jout;
 }
@@ -835,10 +836,10 @@ makeheader(FILE *fp, struct header *hp)
 	extract_header(fp, hp);
 	while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
 		putc(c, nf);
-	if (fp != collf)
-		Fclose(collf);
+	if (fp != _coll_fp)
+		Fclose(_coll_fp);
 	Fclose(fp);
-	collf = nf;
+	_coll_fp = nf;
 	if (check_from_and_sender(hp->h_from, hp->h_sender))
 		return STOP;
 	return OKAY;
@@ -848,7 +849,7 @@ makeheader(FILE *fp, struct header *hp)
  * Edit the message being collected on fp.
  * On return, make the edit file the new temp file.
  */
-static void 
+static void
 mesedit(int c, struct header *hp)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
@@ -856,7 +857,7 @@ mesedit(int c, struct header *hp)
 	FILE *nf;
 
 	assign("add-file-recipients", "");
-	nf = run_editor(collf, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
+	nf = run_editor(_coll_fp, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
 		if (hp) {
@@ -864,8 +865,8 @@ mesedit(int c, struct header *hp)
 			makeheader(nf, hp);
 		} else {
 			fseek(nf, 0L, SEEK_END);
-			Fclose(collf);
-			collf = nf;
+			Fclose(_coll_fp);
+			_coll_fp = nf;
 		}
 	}
 
@@ -879,7 +880,7 @@ mesedit(int c, struct header *hp)
  * New message collected from stdout.
  * Sh -c must return 0 to accept the new message.
  */
-static void 
+static void
 mespipe(char *cmd)
 {
 	FILE *nf;
@@ -891,7 +892,7 @@ mespipe(char *cmd)
 		perror(tr(66, "temporary mail edit file"));
 		goto out;
 	}
-	fflush(collf);
+	fflush(_coll_fp);
 	unlink(tempEdit);
 	Ftfree(&tempEdit);
 	/*
@@ -900,8 +901,8 @@ mespipe(char *cmd)
 	 */
 	if ((sh = value("SHELL")) == NULL)
 		sh = SHELL;
-	if (run_command(sh,
-	    0, fileno(collf), fileno(nf), "-c", cmd, NULL) < 0) {
+	if (run_command(sh, 0, fileno(_coll_fp), fileno(nf), "-c", cmd, NULL)
+			< 0) {
 		Fclose(nf);
 		goto out;
 	}
@@ -914,8 +915,8 @@ mespipe(char *cmd)
 	 * Take new files.
 	 */
 	fseek(nf, 0L, SEEK_END);
-	Fclose(collf);
-	collf = nf;
+	Fclose(_coll_fp);
+	_coll_fp = nf;
 out:
 	safe_signal(SIGINT, sigint);
 }
@@ -975,7 +976,7 @@ forward(char *ms, FILE *fp, int f)
  * Print (continue) when continued after ^Z.
  */
 /*ARGSUSED*/
-static void 
+static void
 collstop(int s)
 {
 	sighandler_type old_action = safe_signal(s, SIG_DFL);
@@ -987,10 +988,10 @@ collstop(int s)
 	kill(0, s);
 	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
 	safe_signal(s, old_action);
-	if (colljmp_p) {
-		colljmp_p = 0;
-		hadintr = 0;
-		siglongjmp(colljmp, 1);
+	if (_coll_jmp_p) {
+		_coll_jmp_p = 0;
+		_coll_hadintr = 0;
+		siglongjmp(_coll_jmp, 1);
 	}
 }
 
@@ -999,35 +1000,33 @@ collstop(int s)
  * Then jump out of the collection loop.
  */
 /*ARGSUSED*/
-static void 
+static void
 collint(int s)
 {
-	/*
-	 * the control flow is subtle, because we can be called from ~q.
-	 */
-	if (!hadintr) {
+	/* the control flow is subtle, because we can be called from ~q */
+	if (_coll_hadintr == 0) {
 		if (value("ignore") != NULL) {
 			puts("@");
 			fflush(stdout);
 			clearerr(stdin);
 			return;
 		}
-		hadintr = 1;
-		siglongjmp(colljmp, 1);
+		_coll_hadintr = 1;
+		siglongjmp(_coll_jmp, 1);
 	}
 	exit_status |= 04;
 	if (value("save") != NULL && s != 0)
-		savedeadletter(collf, 1);
+		savedeadletter(_coll_fp, 1);
 	/* Aborting message, no need to fflush() .. */
-	siglongjmp(collabort, 1);
+	siglongjmp(_coll_abort, 1);
 }
 
 /*ARGSUSED*/
-static void 
+static void
 collhup(int s)
 {
 	(void)s;
-	savedeadletter(collf, 1);
+	savedeadletter(_coll_fp, 1);
 	/*
 	 * Let's pretend nobody else wants to clean up,
 	 * a true statement at this time.
@@ -1035,7 +1034,7 @@ collhup(int s)
 	exit(1);
 }
 
-void
+FL void
 savedeadletter(FILE *fp, int fflush_rewind_first)
 {
 	char const *cp;

@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 enum idfield {
 	ID_REFERENCES,
@@ -74,7 +76,7 @@ static int	threadflag;		/* mark entire threads */
  *
  * Returns the count of messages picked up or -1 on error.
  */
-int 
+FL int
 getmsglist(char *buf, int *vector, int flags)
 {
 	int *ip;
@@ -177,7 +179,7 @@ add_to_namelist(char ***namelist, size_t *nmlsize, char **np, char *string)
 	return np;
 }
 
-static int 
+static int
 markall(char *buf, int f)
 {
 #define	markall_ret(i) do { retval = i; goto out; } while (0);
@@ -567,7 +569,7 @@ out:
  * Turn the character after a colon modifier into a bit
  * value.
  */
-static int 
+static int
 evalcol(int col)
 {
 	struct coltab *colp;
@@ -585,7 +587,7 @@ evalcol(int col)
  * If f is MDELETED, then either kind will do.  Otherwise, the message
  * has to be undeleted.
  */
-static int 
+static int
 check(int mesg, int f)
 {
 	struct message *mp;
@@ -607,7 +609,7 @@ check(int mesg, int f)
  * Scan out the list of string arguments, shell style
  * for a RAWLIST.
  */
-int
+FL int
 getrawlist(const char *line, size_t linesize, char **argv, int argc,
 		int echolist)
 {
@@ -738,7 +740,7 @@ static struct lex {
 	{ 0,	0 }
 };
 
-static int 
+static int
 scan(char **sp)
 {
 	char *cp, *cp2;
@@ -903,7 +905,7 @@ scan(char **sp)
 /*
  * Unscan the named token by pushing it onto the regret stack.
  */
-static void 
+static void
 regret(int token)
 {
 	if (++regretp >= REGDEP)
@@ -917,7 +919,7 @@ regret(int token)
 /*
  * Reset all the scanner global variables.
  */
-static void 
+static void
 scaninit(void)
 {
 	regretp = -1;
@@ -928,7 +930,7 @@ scaninit(void)
  * Find the first message whose flags & m == f  and return
  * its message number.
  */
-int 
+FL int
 first(int f, int m)
 {
 	struct message *mp;
@@ -959,7 +961,7 @@ first(int f, int m)
  * See if the passed name sent the passed message number.  Return true
  * if so.
  */
-static int 
+static int
 matchsender(char *str, int mesg, int allnet)
 {
 	if (allnet) {
@@ -978,7 +980,7 @@ matchsender(char *str, int mesg, int allnet)
 			(name1(&message[mesg - 1], 0)));
 }
 
-static int 
+static int
 matchmid(char *id, enum idfield idfield, int mesg)
 {
 	struct name	*np;
@@ -1010,7 +1012,7 @@ matchmid(char *id, enum idfield idfield, int mesg)
 
 static char lastscan[128];
 
-static int 
+static int
 matchsubj(char *str, int mesg)
 {
 	struct message *mp;
@@ -1026,7 +1028,7 @@ matchsubj(char *str, int mesg)
 		lastscan[sizeof lastscan - 1]='\0';
 	}
 	mp = &message[mesg-1];
-	
+
 	/*
 	 * Now look, ignoring case, for the word in the string.
 	 */
@@ -1052,7 +1054,7 @@ matchsubj(char *str, int mesg)
 /*
  * Mark the named message by setting its mark bit.
  */
-void 
+FL void
 mark(int mesg, int f)
 {
 	struct message	*mp;
@@ -1080,13 +1082,13 @@ mark(int mesg, int f)
 /*
  * Unmark the named message.
  */
-static void 
+static void
 unmark(int mesg)
 {
-	int i;
+	ui32_t i;
 
-	i = mesg;
-	if (i < 1 || i > msgCount)
+	i = (ui32_t)mesg;
+	if (i < 1 || i > (ui32_t)msgCount)
 		panic(tr(130, "Bad message number to unmark"));
 	message[i-1].m_flag &= ~MMARK;
 }
@@ -1094,7 +1096,7 @@ unmark(int mesg)
 /*
  * Return the message number corresponding to the passed meta character.
  */
-static int 
+static int
 metamess(int meta, int f)
 {
 	int c, m;
@@ -1144,7 +1146,7 @@ metamess(int meta, int f)
 		return(-1);
 
 	case '.':
-		/* 
+		/*
 		 * Current message.
 		 */
 		m = dot - &message[0] + 1;

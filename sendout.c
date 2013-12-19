@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <fcntl.h>
 
@@ -48,7 +50,7 @@ static char	*send_boundary;
 static bool_t	_senderror;
 
 static enum okay	_putname(char const *line, enum gfield w,
-				enum sendaction action, int *gotcha,
+				enum sendaction action, size_t *gotcha,
 				char const *prefix, FILE *fo, struct name **xp);
 
 /* Get an encoding flag based on the given string */
@@ -77,8 +79,8 @@ static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
 
 static enum okay
-_putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
-	char const *prefix, FILE *fo, struct name **xp)
+_putname(char const *line, enum gfield w, enum sendaction action,
+	size_t *gotcha, char const *prefix, FILE *fo, struct name **xp)
 {
 	enum okay ret = STOP;
 	struct name *np;
@@ -736,7 +738,7 @@ savemail(char const *name, FILE *fi)
  * Interface between the argument list and the mail1 routine
  * which does all the dirty work.
  */
-int 
+FL int
 mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record)
@@ -768,7 +770,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
  * Send mail to a bunch of user names.  The interface is through
  * the mail routine below.
  */
-static int 
+static int
 sendmail_internal(void *v, int recipient_record)
 {
 	char *str = v;
@@ -780,13 +782,13 @@ sendmail_internal(void *v, int recipient_record)
 	return 0;
 }
 
-int 
+FL int
 csendmail(void *v)
 {
 	return sendmail_internal(v, 0);
 }
 
-int 
+FL int
 cSendmail(void *v)
 {
 	return sendmail_internal(v, 1);
@@ -1004,7 +1006,7 @@ jbail:			fprintf(stderr, tr(285,
  * Mail a message on standard input to the people indicated
  * in the passed header.  (Internal interface).
  */
-enum okay 
+FL enum okay
 mail1(struct header *hp, int printheaders, struct message *quote,
 	char *quotefile, int recipient_record, int doprefix)
 {
@@ -1224,7 +1226,7 @@ jleave:
  * because numeric timezones are easier to read and because $TZ is
  * not set on most GNU systems.
  */
-int
+FL int
 mkdate(FILE *fo, const char *field)
 {
 	struct tm *tmptr;
@@ -1266,15 +1268,14 @@ mkdate(FILE *fo, const char *field)
  * Dump the to, subject, cc header on the
  * passed file buffer.
  */
-int
+FL int
 puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
 		char const *contenttype, char const *charset)
 {
-	int gotcha;
 	char const *addr;
 	int stealthmua;
-	size_t l;
+	size_t gotcha, l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
 
 	if ((addr = value("stealthmua")) != NULL) {
@@ -1550,7 +1551,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	return 0;
 }
 
-enum okay 
+FL enum okay
 resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
 	enum okay ok = STOP;

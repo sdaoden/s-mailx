@@ -102,7 +102,7 @@ compiler_flags() {
    if echo "${i}" | ${grep} -q -i -e gcc -e clang; then
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
       stackprot=yes
-      _CFLAGS='-std=c89 -O2 '
+      _CFLAGS='-std=c89 -O2'
       _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
@@ -110,10 +110,17 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -Winit-self -Wshadow -Wunused -Wwrite-strings"
       if echo "${i}" | ${grep} -q gcc; then
          _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
+      else
+         _CFLAGS="${_CFLAGS} -Wno-long-long"
+         if echo "${i}" | ${grep} -q -e 'version 1'; then
+            :
+         else
+            _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
+         fi
       fi
 #   elif echo "${i}" | ${grep} -q -i clang; then
 #      stackprot=yes
-#      _CFLAGS='-std=c89 -O3 -g -Weverything'
+#      _CFLAGS='-std=c89 -O3 -g -Weverything -Wno-long-long'
    elif [ -z "${_CFLAGS}" ]; then
       _CFLAGS=-O1
    fi
@@ -243,15 +250,18 @@ tmp3=./${tmp0}3$$
 log=./config.log
 lib=./config.lib
 inc=./config.inc
+src=./config.c
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit" 1 2 15
+trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
 trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
 
 exec 5>&2 > ${log} 2>&1
 printf '' > ${lib}
 printf '' > ${inc}
+# ${src} is only created if WANT_AMALGAMATION
+${rm} -f ${src}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
@@ -557,6 +567,10 @@ int main(void)
 
 if wantfeat DEBUG; then
    echo '#define HAVE_DEBUG' >> ${h}
+fi
+
+if wantfeat AMALGAMATION; then
+   echo '#define HAVE_AMALGAMATION' >> ${h}
 fi
 
 if nwantfeat NOALLOCA; then
@@ -1017,11 +1031,26 @@ ${rm} -f ${tmp}
 
 # Create the real mk.mk
 ${rm} -rf ${tmp0}.* ${tmp0}*
-printf 'OBJ = ' >> ${mk}
-for i in *.c; do
-   printf "`basename ${i} .c`.o " >> ${mk}
-done
-echo >> ${mk}
+printf 'OBJ_SRC = ' >> ${mk}
+if nwantfeat AMALGAMATION; then
+   echo *.c >> ${mk}
+   echo 'OBJ_DEP =' >> ${mk}
+else
+   j=`echo "${src}" | sed 's/^.\///'`
+   echo "${j}" >> ${mk}
+   printf 'OBJ_DEP = main.c ' >> ${mk}
+   printf '#define _MAIN_SOURCE\n' >> ${src}
+   printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
+   for i in *.c; do
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ]; then
+         continue
+      fi
+      printf "${i} " >> ${mk}
+      printf "#include \"${i}\"\n" >> ${src}
+   done
+   echo >> ${mk}
+fi
+
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCLUDES = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}

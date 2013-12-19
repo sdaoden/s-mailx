@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /*
  * Print the current active headings.
@@ -49,7 +51,7 @@ static int screen;
 /* Prepare and print "[Message: xy]:" intro */
 static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
 
-static void onpipe(int signo);
+static void _cmd1_onpipe(int signo);
 static int _dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
 
@@ -75,7 +77,7 @@ _show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
 		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
 }
 
-int
+FL int
 ccmdnotsupp(void *v)
 {
 	(void)v;
@@ -83,7 +85,7 @@ ccmdnotsupp(void *v)
 	return (1);
 }
 
-char const *
+FL char const *
 get_pager(void)
 {
 	char const *cp;
@@ -94,7 +96,7 @@ get_pager(void)
 	return cp;
 }
 
-int 
+FL int
 headers(void *v)
 {
 	ui32_t flag;
@@ -220,13 +222,13 @@ headers(void *v)
 /*
  * Scroll to the next/previous screen
  */
-int
+FL int
 scroll(void *v)
 {
 	return scroll1(v, 0);
 }
 
-int
+FL int
 Scroll(void *v)
 {
 	return scroll1(v, 1);
@@ -286,7 +288,7 @@ scroll_forward:
 /*
  * Compute screen size.
  */
-int 
+FL int
 screensize(void)
 {
 	int s;
@@ -297,21 +299,21 @@ screensize(void)
 	return scrnheight - 4;
 }
 
-static sigjmp_buf	pipejmp;
+static sigjmp_buf	_cmd1_pipejmp;
 
 /*ARGSUSED*/
-static void 
-onpipe(int signo)
+static void
+_cmd1_onpipe(int signo)
 {
-	(void)signo;
-	siglongjmp(pipejmp, 1);
+	UNUSED(signo);
+	siglongjmp(_cmd1_pipejmp, 1);
 }
 
 /*
  * Print out the headlines for each message
  * in the passed message list.
  */
-int 
+FL int
 from(void *v)
 {
 	int *msgvec = v, *ip, n;
@@ -326,7 +328,7 @@ from(void *v)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
 			char const *p;
-			if (sigsetjmp(pipejmp, 1))
+			if (sigsetjmp(_cmd1_pipejmp, 1))
 				goto endpipe;
 			p = get_pager();
 			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
@@ -334,7 +336,7 @@ from(void *v)
 				obuf = stdout;
 				cp=NULL;
 			} else
-				safe_signal(SIGPIPE, onpipe);
+				safe_signal(SIGPIPE, _cmd1_onpipe);
 		}
 	}
 	for (ip = msgvec; *ip != 0; ip++)
@@ -350,7 +352,7 @@ endpipe:
 	return(0);
 }
 
-static int 
+static int
 _dispc(struct message *mp, const char *a)
 {
 	int i = ' ';
@@ -860,7 +862,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	return indw;
 }
 
-void
+FL void
 printhead(int mesg, FILE *f, int threaded)
 {
 	int bsdflags, bsdheadline, sz;
@@ -889,7 +891,7 @@ printhead(int mesg, FILE *f, int threaded)
  * Print out the value of dot.
  */
 /*ARGSUSED*/
-int 
+FL int
 pdot(void *v)
 {
 	(void)v;
@@ -996,7 +998,7 @@ close_pipe:
 /*
  * Pipe the messages requested.
  */
-static int 
+static int
 pipe1(char *str, int doign)
 {
 	char *cmd;
@@ -1046,7 +1048,7 @@ pipe1(char *str, int doign)
 /*
  * Paginate messages, honor ignored fields.
  */
-int 
+FL int
 more(void *v)
 {
 	int *msgvec = v;
@@ -1057,7 +1059,7 @@ more(void *v)
 /*
  * Paginate messages, even printing ignored fields.
  */
-int 
+FL int
 More(void *v)
 {
 	int *msgvec = v;
@@ -1068,7 +1070,7 @@ More(void *v)
 /*
  * Type out messages, honor ignored fields.
  */
-int 
+FL int
 type(void *v)
 {
 	int *msgvec = v;
@@ -1079,7 +1081,7 @@ type(void *v)
 /*
  * Type out messages, even printing ignored fields.
  */
-int 
+FL int
 Type(void *v)
 {
 	int *msgvec = v;
@@ -1090,7 +1092,7 @@ Type(void *v)
 /*
  * Show MIME-encoded message text, including all fields.
  */
-int
+FL int
 show(void *v)
 {
 	int *msgvec = v;
@@ -1101,7 +1103,7 @@ show(void *v)
 /*
  * Pipe messages, honor ignored fields.
  */
-int 
+FL int
 pipecmd(void *v)
 {
 	char *str = v;
@@ -1110,7 +1112,7 @@ pipecmd(void *v)
 /*
  * Pipe messages, not respecting ignored fields.
  */
-int 
+FL int
 Pipecmd(void *v)
 {
 	char *str = v;
@@ -1122,7 +1124,7 @@ Pipecmd(void *v)
  * The number of lines is taken from the variable "toplines"
  * and defaults to 5.
  */
-int 
+FL int
 top(void *v)
 {
 	int *msgvec = v, *ip, c, topl, lines, empty_last;
@@ -1176,7 +1178,7 @@ top(void *v)
  * Touch all the given messages so that they will
  * get mboxed.
  */
-int 
+FL int
 stouch(void *v)
 {
 	int *msgvec = v;
@@ -1197,7 +1199,7 @@ stouch(void *v)
 /*
  * Make sure all passed messages get mboxed.
  */
-int 
+FL int
 mboxit(void *v)
 {
 	int *msgvec = v;
@@ -1218,7 +1220,7 @@ mboxit(void *v)
 /*
  * List the folders the user currently has.
  */
-int 
+FL int
 folders(void *v)
 {
 	char dirname[MAXPATHLEN], *name, **argv = v;

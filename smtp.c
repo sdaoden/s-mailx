@@ -37,13 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SMTP
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(smtp)
+#ifdef HAVE_SMTP
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
 
@@ -81,7 +80,7 @@ onterm(int signo)
 /*
  * Get the SMTP server's answer, expecting val.
  */
-static int 
+static int
 read_smtp(struct sock *sp, int val, int ign_eof)
 {
 	int ret;
@@ -305,7 +304,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	return 0;
 }
 
-char *
+FL char *
 smtp_auth_var(char const *atype, char const *addr)
 {
 	size_t tl, al, len;
@@ -332,14 +331,14 @@ smtp_auth_var(char const *atype, char const *addr)
 /*
  * Connect to a SMTP server.
  */
-int
+FL int
 smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 		struct header *hp, const char *user, const char *password,
 		const char *skinned)
 {
 	struct sock	so;
 	int	use_ssl, ret;
-	sighandler_type	saveterm;
+	sighandler_type	volatile saveterm;
 
 	memset(&so, 0, sizeof so);
 	saveterm = safe_signal(SIGTERM, SIG_IGN);

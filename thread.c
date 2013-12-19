@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /*
  * Open addressing is used for Message-IDs because the maximum number of
@@ -81,7 +83,7 @@ static void colpm(struct message *m, int cl, int *cc, int *uc);
  * Return the hash value for a message id modulo mprime, or mprime
  * if the passed string does not look like a message-id.
  */
-static unsigned 
+static unsigned
 mhash(const char *cp, int mprime)
 {
 
@@ -191,7 +193,7 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
  * which is connected to them by m_parent links. The first reply to a
  * message gets the m_child link.
  */
-static void 
+static void
 adopt(struct message *parent, struct message *child, int dist)
 {
 	struct message	*mp, *mq;
@@ -259,7 +261,7 @@ interlink(struct message *m, long cnt, int nmail)
 	return root;
 }
 
-static void 
+static void
 finalize(struct message *mp)
 {
 	long	n;
@@ -285,7 +287,7 @@ muilt(void const *a, void const *b)
 }
 #endif
 
-static int 
+static int
 mlonglt(const void *a, const void *b)
 {
 	struct msort const *xa = a, *xb = b;
@@ -297,7 +299,7 @@ mlonglt(const void *a, const void *b)
 	return i;
 }
 
-static int 
+static int
 mcharlt(const void *a, const void *b)
 {
 	struct msort const *xa = a, *xb = b;
@@ -309,7 +311,7 @@ mcharlt(const void *a, const void *b)
 	return i;
 }
 
-static void 
+static void
 lookup(struct message *m, struct mitem *mi, int mprime)
 {
 	struct name	*np;
@@ -348,7 +350,7 @@ lookup(struct message *m, struct mitem *mi, int mprime)
 	}
 }
 
-static void 
+static void
 makethreads(struct message *m, long cnt, int nmail)
 {
 	struct mitem	*mt;
@@ -390,7 +392,7 @@ makethreads(struct message *m, long cnt, int nmail)
 	mb.mb_threaded = 1;
 }
 
-int 
+FL int
 thread(void *vp)
 {
 	if (mb.mb_threaded != 1 || vp == NULL || vp == (void *)-1) {
@@ -408,7 +410,7 @@ thread(void *vp)
 	return 0;
 }
 
-int 
+FL int
 unthread(void *vp)
 {
 	struct message	*m;
@@ -423,7 +425,7 @@ unthread(void *vp)
 	return 0;
 }
 
-struct message *
+FL struct message *
 next_in_thread(struct message *mp)
 {
 	if (mp->m_child)
@@ -438,7 +440,7 @@ next_in_thread(struct message *mp)
 	return NULL;
 }
 
-struct message *
+FL struct message *
 prev_in_thread(struct message *mp)
 {
 	if (mp->m_elder) {
@@ -453,7 +455,7 @@ prev_in_thread(struct message *mp)
 	return mp->m_parent;
 }
 
-struct message *
+FL struct message *
 this_in_thread(struct message *mp, long n)
 {
 	struct message	*mq;
@@ -485,7 +487,7 @@ this_in_thread(struct message *mp, long n)
  * Sorted mode is internally just a variant of threaded mode with all
  * m_parent and m_child links being NULL.
  */
-int 
+FL int
 sort(void *vp)
 {
 	enum method {
@@ -655,19 +657,19 @@ skipre(char const *cp)
 	return cp;
 }
 
-int 
+FL int
 ccollapse(void *v)
 {
 	return colpt(v, 1);
 }
 
-int 
+FL int
 cuncollapse(void *v)
 {
 	return colpt(v, 0);
 }
 
-static int 
+static int
 colpt(int *msgvec, int cl)
 {
 	int	*ip;
@@ -681,7 +683,7 @@ colpt(int *msgvec, int cl)
 	return 0;
 }
 
-static void 
+static void
 colps(struct message *b, int cl)
 {
 	struct message	*m;
@@ -715,7 +717,7 @@ colps(struct message *b, int cl)
 	}
 }
 
-static void 
+static void
 colpm(struct message *m, int cl, int *cc, int *uc)
 {
 	if (cl) {
@@ -739,7 +741,7 @@ colpm(struct message *m, int cl, int *cc, int *uc)
 	}
 }
 
-void 
+FL void
 uncollapse1(struct message *m, int always)
 {
 	if (mb.mb_threaded == 1 && (always || m->m_collapsed > 0))

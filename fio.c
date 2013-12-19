@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <sys/wait.h>
 
@@ -92,7 +94,7 @@ static char *	_fgetline_byone(char **line, size_t *linesize, size_t *llen,
 			FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
 
 static void makemessage(void);
-static void append(struct message *mp);
+static void _fio_append(struct message *mp);
 static enum okay get_header(struct message *mp);
 
 static void
@@ -310,7 +312,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 	return *line;
 }
 
-char *
+FL char *
 (fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen,
 	FILE *fp, int appendnl SMALLOC_DEBUG_ARGS)
 {
@@ -357,7 +359,7 @@ char *
 	return *line;
 }
 
-int
+FL int
 (readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
 	SMALLOC_DEBUG_ARGS)
 {
@@ -416,7 +418,7 @@ again:
 	return n;
 }
 
-int
+FL int
 (readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
 	size_t *linesize SMALLOC_DEBUG_ARGS)
 {
@@ -465,7 +467,7 @@ int
 	return n;
 }
 
-char *
+FL char *
 readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 {
 	/* TODO readstr_input(): linebuf pool */
@@ -511,7 +513,7 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 /*
  * Set up the input pointers while copying the mail file into /tmp.
  */
-void
+FL void
 setptr(FILE *ibuf, off_t offset)
 {
 	int c;
@@ -535,7 +537,7 @@ setptr(FILE *ibuf, off_t offset)
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt > 0)
-				append(&this);
+				_fio_append(&this);
 			makemessage();
 			if (linebuf)
 				free(linebuf);
@@ -567,7 +569,7 @@ setptr(FILE *ibuf, off_t offset)
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt++ > 0)
-				append(&this);
+				_fio_append(&this);
 			msgCount++;
 			this.m_flag = MUSED|MNEW|MNEWEST;
 			this.m_size = 0;
@@ -624,7 +626,7 @@ setptr(FILE *ibuf, off_t offset)
  * If a write error occurs, return -1, else the count of
  * characters written, including the newline.
  */
-int
+FL int
 putline(FILE *obuf, char *linebuf, size_t cnt)
 {
 	fwrite(linebuf, sizeof *linebuf, cnt, obuf);
@@ -638,7 +640,7 @@ putline(FILE *obuf, char *linebuf, size_t cnt)
  * Return a file buffer all ready to read up the
  * passed message pointer.
  */
-FILE *
+FL FILE *
 setinput(struct mailbox *mp, struct message *m, enum needspec need)
 {
 	enum okay ok = STOP;
@@ -671,7 +673,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
 	return (mp->mb_itf);
 }
 
-struct message *
+FL struct message *
 setdot(struct message *mp)
 {
 	if (dot != mp) {
@@ -691,7 +693,7 @@ static void
 makemessage(void)
 {
 	if (msgCount == 0)
-		append(NULL);
+		_fio_append(NULL);
 	setdot(message);
 	message[msgCount].m_size = 0;
 	message[msgCount].m_lines = 0;
@@ -701,7 +703,7 @@ makemessage(void)
  * Append the passed message descriptor onto the message structure.
  */
 static void
-append(struct message *mp)
+_fio_append(struct message *mp)
 {
 	if (msgCount + 1 >= msgspace)
 		message = srealloc(message, (msgspace += 64) * sizeof *message);
@@ -712,7 +714,7 @@ append(struct message *mp)
 /*
  * Delete a file, but only if the file is a plain file.
  */
-int
+FL int
 rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 {
 	struct stat sb;
@@ -727,39 +729,39 @@ rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 	return ret;
 }
 
-static int sigdepth;		/* depth of holdsigs() */
-static sigset_t nset, oset;
+static int	_fio_sigdepth;		/* depth of holdsigs() */
+static sigset_t	_fio_nset, _fio_oset;
 /*
  * Hold signals SIGHUP, SIGINT, and SIGQUIT.
  */
-void
+FL void
 holdsigs(void)
 {
 
-	if (sigdepth++ == 0) {
-		sigemptyset(&nset);
-		sigaddset(&nset, SIGHUP);
-		sigaddset(&nset, SIGINT);
-		sigaddset(&nset, SIGQUIT);
-		sigprocmask(SIG_BLOCK, &nset, &oset);
+	if (_fio_sigdepth++ == 0) {
+		sigemptyset(&_fio_nset);
+		sigaddset(&_fio_nset, SIGHUP);
+		sigaddset(&_fio_nset, SIGINT);
+		sigaddset(&_fio_nset, SIGQUIT);
+		sigprocmask(SIG_BLOCK, &_fio_nset, &_fio_oset);
 	}
 }
 
 /*
  * Release signals SIGHUP, SIGINT, and SIGQUIT.
  */
-void
+FL void
 relsesigs(void)
 {
-	if (--sigdepth == 0)
-		sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+	if (--_fio_sigdepth == 0)
+		sigprocmask(SIG_SETMASK, &_fio_oset, NULL);
 }
 
 /*
  * Determine the size of the file possessed by
  * the passed buffer.
  */
-off_t
+FL off_t
 fsize(FILE *iob)
 {
 	struct stat sbuf;
@@ -769,7 +771,7 @@ fsize(FILE *iob)
 	return sbuf.st_size;
 }
 
-char *
+FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
 	char cbuf[MAXPATHLEN], *res;
@@ -877,7 +879,7 @@ jleave:
 	return res;
 }
 
-void
+FL void
 demail(void)
 {
 
@@ -888,7 +890,7 @@ demail(void)
 	}
 }
 
-bool_t
+FL bool_t
 var_folder_updated(char const *name, char **store)
 {
 	char rv = TRU1;
@@ -957,7 +959,7 @@ jleave:
 	return rv;
 }
 
-bool_t
+FL bool_t
 getfold(char *name, size_t size)
 {
 	char const *folder;
@@ -970,7 +972,7 @@ getfold(char *name, size_t size)
 /*
  * Return the name of the dead.letter file.
  */
-char const *
+FL char const *
 getdeadletter(void)
 {
 	char const *cp;
@@ -1014,7 +1016,7 @@ get_header(struct message *mp)
 	}
 }
 
-enum okay
+FL enum okay
 get_body(struct message *mp)
 {
 	(void)mp;
@@ -1058,7 +1060,7 @@ xwrite(int fd, const char *data, size_t sz)
 	return sz;
 }
 
-int
+FL int
 sclose(struct sock *sp)
 {
 	int	i;
@@ -1086,13 +1088,13 @@ sclose(struct sock *sp)
 	return 0;
 }
 
-enum okay
+FL enum okay
 swrite(struct sock *sp, const char *data)
 {
 	return swrite1(sp, data, strlen(data), 0);
 }
 
-enum okay
+FL enum okay
 swrite1(struct sock *sp, const char *data, int sz, int use_buffer)
 {
 	int	x;
@@ -1170,7 +1172,7 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 	return OKAY;
 }
 
-enum okay
+FL enum okay
 sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose)
 {
@@ -1339,7 +1341,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	return OKAY;
 }
 
-int
+FL int
 (sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
 	SMALLOC_DEBUG_ARGS)
 {
@@ -1408,7 +1410,7 @@ int
 }
 #endif /* HAVE_SOCKETS */
 
-void
+FL void
 load(char const *name)
 {
 	FILE *in, *oldin;
@@ -1426,7 +1428,7 @@ load(char const *name)
 	Fclose(in);
 }
 
-int
+FL int
 csource(void *v)
 {
 	int rv = 1;
@@ -1459,7 +1461,7 @@ jleave:
 	return rv;
 }
 
-int
+FL int
 unstack(void)
 {
 	int rv = 1;

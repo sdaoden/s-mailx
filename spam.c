@@ -16,13 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SPAM
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "nail.h"
-
+EMPTY_FILE(spam)
+#ifdef HAVE_SPAM
 /*
  * TODO - We cannot use the spamc library because of our jumping behaviour.
  * TODO   We could nonetheless if we'd start a fork(2)ed child which would
@@ -193,7 +192,7 @@ _spam_rate2score(struct spam_vc *vc)
    char *cp;
    size_t size;
    ui_it m, s;
-   
+
    cp = strchr(vc->buffer, '/');
    if (cp == NULL)
       goto jleave;
@@ -387,7 +386,7 @@ j_leave:
    return ! (state & _ERRORS);
 }
 
-int
+FL int
 cspam_clear(void *v)
 {
    int *ip;
@@ -397,7 +396,7 @@ cspam_clear(void *v)
    return 0;
 }
 
-int
+FL int
 cspam_set(void *v)
 {
    int *ip;
@@ -407,25 +406,25 @@ cspam_set(void *v)
    return 0;
 }
 
-int
+FL int
 cspam_forget(void *v)
 {
    return _spam_action(_SPAM_FORGET, (int*)v) ? OKAY : STOP;
 }
 
-int
+FL int
 cspam_ham(void *v)
 {
    return _spam_action(_SPAM_HAM, (int*)v) ? OKAY : STOP;
 }
 
-int
+FL int
 cspam_rate(void *v)
 {
    return _spam_action(_SPAM_RATE, (int*)v) ? OKAY : STOP;
 }
 
-int
+FL int
 cspam_spam(void *v)
 {
    return _spam_action(_SPAM_SPAM, (int*)v) ? OKAY : STOP;

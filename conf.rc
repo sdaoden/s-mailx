@@ -26,6 +26,15 @@
 # and/or ADDLDFLAGS= (with proper configuration-changed detection)!
 WANT_AUTOCC=0
 
+# It is possible to compile S-nail as a "single-source", meaning that all
+# source files are injected into a single compilation unit, which is then
+# compiled.  This allows the compiler to perform much more optimizations, and
+# also reduces the management overhead that is used for / needed by the linker.
+# Of course compiling such a large source requires a lot of memory by itself
+# NOTE: experimental in that the feature is quite new -- it is thus not known
+# wether some compilers may generate buggy code when compiling single-source
+WANT_AMALGAMATION=0
+
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
 # related/dependent stuff (GSSAPI,SSL)
 WANT_SOCKETS=1

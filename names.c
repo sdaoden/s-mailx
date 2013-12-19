@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <fcntl.h>
 
@@ -287,7 +289,7 @@ _remove_grouplist(struct grouphead *gh)
  * Allocate a single element of a name list, initialize its name field to the
  * passed name and return it.
  */
-struct name *
+FL struct name *
 nalloc(char *str, enum gfield ntype)
 {
 	struct addrguts ag;
@@ -367,7 +369,7 @@ jleave:
 	return (np);
 }
 
-struct name *
+FL struct name *
 ndup(struct name *np, enum gfield ntype)
 {
 	struct name *nnp;
@@ -397,7 +399,7 @@ jleave:
 /*
  * Concatenate the two passed name lists, return the result.
  */
-struct name *
+FL struct name *
 cat(struct name *n1, struct name *n2)
 {
 	struct name *tail;
@@ -419,7 +421,7 @@ cat(struct name *n1, struct name *n2)
  * Determine the number of undeleted elements in
  * a name list and return it.
  */
-int
+FL int
 count(struct name const*np)
 {
 	int c;
@@ -435,13 +437,13 @@ count(struct name const*np)
  * and make a list of names from it.
  * Return the list or NULL if none found.
  */
-struct name *
+FL struct name *
 extract(char const *line, enum gfield ntype)
 {
 	return extract1(line, ntype, " \t,", 0);
 }
 
-struct name *
+FL struct name *
 lextract(char const *line, enum gfield ntype)
 {
 	return ((line && strpbrk(line, ",\"\\(<|")) ?
@@ -451,7 +453,7 @@ lextract(char const *line, enum gfield ntype)
 /*
  * Turn a list of names into a string of the same names.
  */
-char *
+FL char *
 detract(struct name *np, enum gfield ntype)
 {
 	char *topp, *cp;
@@ -495,7 +497,7 @@ jleave:
 	return topp;
 }
 
-struct name *
+FL struct name *
 grab_names(const char *field, struct name *np, int comma, enum gfield gflags)
 {
 	struct name *nq;
@@ -510,7 +512,7 @@ jloop:
 /*
  * Check all addresses in np and delete invalid ones.
  */
-struct name *
+FL struct name *
 checkaddrs(struct name *np)
 {
 	struct name *n;
@@ -535,7 +537,7 @@ checkaddrs(struct name *np)
  * Changed after all these months of service to recursively
  * expand names (2/14/80).
  */
-struct name *
+FL struct name *
 usermap(struct name *names, bool_t force_metoo)
 {
 	struct name *new, *np, *cp;
@@ -569,7 +571,7 @@ usermap(struct name *names, bool_t force_metoo)
  * insertion sorting them, then checking for dups.
  * Return the head of the new list.
  */
-struct name *
+FL struct name *
 elide(struct name *names)
 {
 	struct name *np, *t, *newn, *x;
@@ -674,7 +676,7 @@ elide(struct name *names)
 	return (newn);
 }
 
-struct name *
+FL struct name *
 delete_alternates(struct name *np)
 {
 	struct name *xp;
@@ -702,7 +704,7 @@ delete_alternates(struct name *np)
 	return (np);
 }
 
-int
+FL int
 is_myname(char const *name)
 {
 	int ret = 1;
@@ -746,7 +748,7 @@ jleave:
  * Recipients whose name begins with | are piped through the given
  * program and removed.
  */
-struct name *
+FL struct name *
 outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 {
 	ui32_t pipecnt, xcnt, i;
@@ -950,7 +952,7 @@ jdelall:
 	goto jleave;
 }
 
-struct grouphead *
+FL struct grouphead *
 findgroup(char *name)
 {
 	struct grouphead *gh;
@@ -961,7 +963,7 @@ findgroup(char *name)
 	return(NULL);
 }
 
-void
+FL void
 printgroup(char *name)
 {
 	struct grouphead *gh;
@@ -977,7 +979,7 @@ printgroup(char *name)
 	putchar('\n');
 }
 
-void
+FL void
 remove_group(const char *name)
 {
 	struct grouphead *gh, *gp = NULL;

@@ -47,8 +47,10 @@
  *       Werner Fink, <werner@suse.de>
  */
 
-#define _MAIN_SOURCE
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# define _MAIN_SOURCE
+# include "nail.h"
+#endif
 
 #include <sys/ioctl.h>
 
@@ -68,6 +70,18 @@ struct a_arg {
    struct a_arg   *aa_next;
    char           *aa_file;
 };
+
+/* (extern, but not with amalgamation, so define here) */
+VL char const        weekday_names[7 + 1][4] = {
+   "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", ""
+};
+VL char const        month_names[12 + 1][4] = {
+   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
+};
+VL char const        uagent[] = UAGENT;
+VL char const        version[] = VERSION;
+VL sighandler_type   dflpipe = SIG_DFL;
 
 /* Perform basic startup initialization */
 static void _startup(void);
@@ -374,20 +388,7 @@ _hdrstop(int signo)
    siglongjmp(__hdrjmp, 1);
 }
 
-char const  weekday_names[7 + 1][4] = {
-   "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", ""
-};
-char const  month_names[12 + 1][4] = {
-   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
-};
-
-char const  uagent[] = UAGENT;
-char const  version[] = VERSION;
-
-sighandler_type   dflpipe = SIG_DFL;
-
-int 
+int
 main(int argc, char *argv[])
 {
    static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~#",

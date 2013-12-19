@@ -37,7 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 /*
  * TODO in general it would be nice if it would be possible to define "macros"
@@ -57,14 +59,14 @@ enum ma_flags {
 struct macro {
    struct macro   *ma_next;
    char           *ma_name;
-   struct line    *ma_contents;
+   struct mline   *ma_contents;
    size_t         ma_maxlen;     /* Maximum line length */
    enum ma_flags  ma_flags;
    struct var     *ma_localopts; /* `account' unroll list, for `localopts' */
 };
 
-struct line {
-   struct line *l_next;
+struct mline {
+   struct mline *l_next;
    size_t      l_length;
    char        l_line[VFIELD_SIZE(sizeof(size_t))];
 };
@@ -126,7 +128,7 @@ static int           _list_macros(enum ma_flags mafl);
 /*  */
 static bool_t        _define1(char const *name, enum ma_flags mafl);
 static void          _undef1(char const *name, enum ma_flags mafl);
-static void          _freelines(struct line *lp);
+static void          _freelines(struct mline *lp);
 
 /* qsort(3) helper */
 static int           __var_list_all_cmp(void const *s1, void const *s2);
@@ -302,7 +304,7 @@ _maexec(struct macro const *mp, struct var **unroll_store)
 {
    struct lostack los;
    int rv = 0;
-   struct line const *lp;
+   struct mline const *lp;
    char *buf = ac_alloc(mp->ma_maxlen + 1);
 
    los.s_up = _localopts;
@@ -336,7 +338,7 @@ _list_macros(enum ma_flags mafl)
    char const *typestr;
    struct macro *mq;
    ui_it ti, mc;
-   struct line *lp;
+   struct mline *lp;
 
    if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
       perror("tmpfile");
@@ -371,7 +373,7 @@ _define1(char const *name, enum ma_flags mafl)
 {
    bool_t rv = FAL0;
    struct macro *mp;
-   struct line *lp, *lst = NULL, *lnd = NULL;
+   struct mline *lp, *lst = NULL, *lnd = NULL;
    char *linebuf = NULL, *cp;
    size_t linesize = 0, maxlen = 0;
    int n, i;
@@ -408,7 +410,7 @@ _define1(char const *name, enum ma_flags mafl)
       maxlen = MAX(maxlen, (size_t)n);
       cp[n++] = '\0';
 
-      lp = scalloc(1, sizeof(*lp) - VFIELD_SIZEOF(struct line, l_line) + n);
+      lp = scalloc(1, sizeof(*lp) - VFIELD_SIZEOF(struct mline, l_line) + n);
       memcpy(lp->l_line, cp, n);
       lp->l_length = (size_t)--n;
       if (lst != NULL) {
@@ -457,9 +459,9 @@ _undef1(char const *name, enum ma_flags mafl)
 }
 
 static void
-_freelines(struct line *lp)
+_freelines(struct mline *lp)
 {
-   struct line *lq;
+   struct mline *lq;
 
    for (lq = NULL; lp != NULL; ) {
       if (lq != NULL)
@@ -531,7 +533,7 @@ _localopts_unroll(struct var **vapp)
    _localopts = save_los;
 }
 
-void
+FL void
 var_assign(char const *name, char const *val)
 {
    struct var *vp;
@@ -576,7 +578,7 @@ jleave:
    ;
 }
 
-int
+FL int
 var_unset(char const *name)
 {
    int ret = 1;
@@ -609,7 +611,7 @@ jleave:
    return ret;
 }
 
-char *
+FL char *
 var_lookup(char const *name, bool_t look_environ)
 {
    struct var *vp;
@@ -625,7 +627,7 @@ var_lookup(char const *name, bool_t look_environ)
    return rv;
 }
 
-void
+FL void
 var_list_all(void)
 {
    FILE *fp;
@@ -671,7 +673,7 @@ jleave:
    ;
 }
 
-int
+FL int
 cdefine(void *v)
 {
    int rv = 1;
@@ -694,7 +696,7 @@ jerr:
    goto jleave;
 }
 
-int
+FL int
 cundef(void *v)
 {
    int rv = 1;
@@ -712,7 +714,7 @@ jleave:
    return rv;
 }
 
-int
+FL int
 ccall(void *v)
 {
    int rv = 1;
@@ -740,7 +742,7 @@ jerr:
    goto jleave;
 }
 
-int
+FL int
 callhook(char const *name, int nmail)
 {
    int len, rv;
@@ -768,14 +770,14 @@ jleave:
    return rv;
 }
 
-int
+FL int
 cdefines(void *v)
 {
    (void)v;
    return _list_macros(MA_NONE);
 }
 
-int
+FL int
 c_account(void *v)
 {
    char **args = v;
@@ -843,7 +845,7 @@ jleave:
    return rv;
 }
 
-int
+FL int
 c_localopts(void *v)
 {
    int rv = 1;

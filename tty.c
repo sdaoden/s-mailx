@@ -53,7 +53,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "nail.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #ifdef HAVE_READLINE
 # include <readline/readline.h>
@@ -105,7 +107,7 @@ do {\
  * and place the implementations one after the other below the other externals
  */
 
-bool_t
+FL bool_t
 yorn(char const *msg)
 {
    char *cp;
@@ -118,7 +120,7 @@ yorn(char const *msg)
    return (*cp == 'y' || *cp == 'Y');
 }
 
-char *
+FL char *
 getuser(char const *query)
 {
    char *user = NULL;
@@ -133,7 +135,7 @@ getuser(char const *query)
    return user;
 }
 
-char *
+FL char *
 getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 {
    struct termios tios;
@@ -167,7 +169,7 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
    return pass;
 }
 
-bool_t
+FL bool_t
 getcredentials(char **user, char **pass)
 {
    bool_t rv = TRU1;
@@ -212,7 +214,7 @@ _rl_pre_input(void)
    return 0;
 }
 
-void
+FL void
 tty_init(void)
 {
 # ifdef HAVE_HISTORY
@@ -238,7 +240,7 @@ tty_init(void)
 # endif
 }
 
-void
+FL void
 tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
@@ -251,7 +253,7 @@ tty_destroy(void)
    ;
 }
 
-void
+FL void
 tty_signal(int sig)
 {
    sigset_t nset, oset;
@@ -281,7 +283,7 @@ tty_signal(int sig)
    }
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -316,7 +318,7 @@ jleave:
    return nn;
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
 # ifdef HAVE_HISTORY
@@ -349,7 +351,7 @@ _el_getprompt(void)
    return _el_prompt;
 }
 
-void
+FL void
 tty_init(void)
 {
 # ifdef HAVE_HISTORY
@@ -394,7 +396,7 @@ tty_init(void)
 # endif
 }
 
-void
+FL void
 tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
@@ -412,7 +414,7 @@ tty_destroy(void)
 # endif
 }
 
-void
+FL void
 tty_signal(int sig)
 {
    switch (sig) {
@@ -426,7 +428,7 @@ tty_signal(int sig)
    }
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -457,7 +459,7 @@ jleave:
    return nn;
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
 # ifdef HAVE_HISTORY
@@ -721,12 +723,11 @@ _ncl_bs_eof_dvup(struct cell *cap, size_t i)
 static ssize_t
 _ncl_wboundary(struct line *l, ssize_t dir)
 {
-   size_t c = l->cursor, t = l->topins;
-   ssize_t i;
+   size_t c = l->cursor, t = l->topins, i;
    struct cell *cap;
    bool_t anynon;
 
-   i = -1;
+   i = (size_t)-1;
    if (dir < 0) {
       if (c == 0)
          goto jleave;
@@ -751,7 +752,7 @@ _ncl_wboundary(struct line *l, ssize_t dir)
          break;
    }
 jleave:
-   return i;
+   return (ssize_t)i;
 }
 
 static ssize_t
@@ -1432,7 +1433,7 @@ jleave:
    return rv;
 }
 
-void
+FL void
 tty_init(void)
 {
 # ifdef HAVE_HISTORY
@@ -1484,7 +1485,7 @@ jleave:
    ;
 }
 
-void
+FL void
 tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
@@ -1525,7 +1526,7 @@ jleave:
    ;
 }
 
-void
+FL void
 tty_signal(int sig)
 {
    sigset_t nset, oset;
@@ -1549,7 +1550,7 @@ tty_signal(int sig)
    }
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -1566,7 +1567,7 @@ int
    return (int)nn;
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
 # ifdef HAVE_HISTORY
@@ -1624,21 +1625,21 @@ j_leave:
  */
 
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
-void
+FL void
 tty_init(void)
 {}
 
-void
+FL void
 tty_destroy(void)
 {}
 
-void
+FL void
 tty_signal(int sig)
 {
    UNUSED(sig);
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -1662,7 +1663,7 @@ int
    return (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
    UNUSED(s);

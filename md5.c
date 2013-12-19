@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ MD5 / HMAC-MD5 algorithm implementation. 
+ *@ MD5 / HMAC-MD5 algorithm implementation.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
@@ -57,11 +57,12 @@ Appendix -- Sample Code
    vectors (the code is based on MD5 code as described in [MD5]).
 */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_MD5
-typedef int avoid_empty_file_compiler_warning;
-#else
+EMPTY_FILE(md5)
+#ifdef HAVE_MD5
 #include <string.h>
 
 #include "md5.h"
@@ -143,8 +144,8 @@ static unsigned char PADDING[64] = {
 
 static void * (	*volatile _volatile_memset)(void*, int, size_t) = &(memset);
 
-static void Encode(unsigned char *output, md5_type *input, unsigned int len);
-static void Decode(md5_type *output, unsigned char *input, unsigned int len);
+static void Encode(unsigned char *outp, md5_type *inp, unsigned int len);
+static void Decode(md5_type *outp, unsigned char *inp, unsigned int len);
 static void MD5Transform(md5_type state[], unsigned char block[]);
 
 /*
@@ -152,15 +153,15 @@ static void MD5Transform(md5_type state[], unsigned char block[]);
  * a multiple of 4.
  */
 static void
-Encode(unsigned char *output, md5_type *input, unsigned int len)
+Encode(unsigned char *outp, md5_type *inp, unsigned int len)
 {
 	unsigned int i, j;
 
 	for (i = 0, j = 0; j < len; i++, j += 4) {
-		output[j] = input[i] & 0xff;
-		output[j+1] = (input[i] >> 8) & 0xff;
-		output[j+2] = (input[i] >> 16) & 0xff;
-		output[j+3] = (input[i] >> 24) & 0xff;
+		outp[j] = inp[i] & 0xff;
+		outp[j+1] = (inp[i] >> 8) & 0xff;
+		outp[j+2] = (inp[i] >> 16) & 0xff;
+		outp[j+3] = (inp[i] >> 24) & 0xff;
 	}
 }
 
@@ -169,15 +170,15 @@ Encode(unsigned char *output, md5_type *input, unsigned int len)
  * a multiple of 4.
  */
 static void
-Decode(md5_type *output, unsigned char *input, unsigned int len)
+Decode(md5_type *outp, unsigned char *inp, unsigned int len)
 {
 	unsigned int	i, j;
 
 	for (i = 0, j = 0; j < len; i++, j += 4)
-		output[i] = ((md5_type)input[j] |
-			(md5_type)input[j+1] << 8 |
-			(md5_type)input[j+2] << 16 |
-			(md5_type)input[j+3] << 24) & UINT4B_MAX;
+		outp[i] = ((md5_type)inp[j] |
+			(md5_type)inp[j+1] << 8 |
+			(md5_type)inp[j+2] << 16 |
+			(md5_type)inp[j+3] << 24) & UINT4B_MAX;
 }
 
 /* MD5 basic transformation. Transforms	state based on block. */
@@ -275,7 +276,7 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 /*
  * MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-void
+FL void
 MD5Init (
     MD5_CTX *context	/* context */
 )
@@ -295,7 +296,7 @@ MD5Init (
  * operation, processing another message block, and updating the
  * context.
  */
-void
+FL void
 MD5Update (
     MD5_CTX *context,		/* context */
     unsigned char *input,		/* input block */
@@ -338,7 +339,7 @@ MD5Update (
  * MD5 finalization. Ends an MD5 message-digest	operation, writing the
  * the message digest and zeroizing the context.
  */
-void
+FL void
 MD5Final (
     unsigned char digest[16],	/* message digest */
     MD5_CTX *context		/* context */
@@ -368,7 +369,7 @@ MD5Final (
 	(*_volatile_memset)(context, 0, sizeof *context);
 }
 
-void
+FL void
 hmac_md5 (
     unsigned char *text,	/* pointer to data stream */
     int text_len,		/* length of data stream */

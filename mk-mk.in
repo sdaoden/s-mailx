@@ -1,6 +1,7 @@
 #@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
 #@ Please see `INSTALL' and `conf.rc' instead.
 
+OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
 	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(<)';\
@@ -25,12 +26,12 @@ $(UAGENT): $(OBJ)
 	fi;\
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 
-$(OBJ): config.h nail.h extern.h
-imap.o: imap_gssapi.h
-lex.o: cmd_tab.h
-main.o: version.h
-md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
-mime.o: mime_types.h
+$(OBJ): config.h nail.h extern.h $(OBJ_DEP)
+config.o imap.o: imap_gssapi.h
+config.o lex.o: cmd_tab.h
+config.o main.o: version.h
+config.o md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
+config.o mime.o: mime_types.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
@@ -205,4 +206,4 @@ _update-release:
 	$(RM) -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
 
-# vim:set fenc=utf-8 filetype=make:
+# vim:set fenc=utf-8 ft=make:
