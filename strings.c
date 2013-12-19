@@ -22,8 +22,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *    This product includes software developed by the University of
+ *    California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -41,19 +41,11 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 #include <ctype.h>
-#include <errno.h>
-#include <stdarg.h>
-#ifdef HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-#ifdef HAVE_WCWIDTH
-# include <wchar.h>
-#endif
-
-#include "extern.h"
 
 /*
  * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
@@ -65,280 +57,281 @@
  * not even allocate the first buffer, but let that be a builtin DATA section
  * one that is rather small, yet sufficient for send mode to *never* even
  * perform a single dynamic allocation (from our stringdope point of view).
- *
- * If allocations larger than SHUGE_CUTLIMIT come in, smalloc() them directly
- * instead and store them in an extra list that is released whenever sreset()
- * is called.
  */
 
 union __align__ {
-	char	*cp;
-	size_t	sz;
-	ul_it	ul;
+   char     *cp;
+   size_t   sz;
+   ul_it    ul;
 };
-#define SALIGN		(sizeof(union __align__) - 1)
+#define SALIGN    (sizeof(union __align__) - 1)
 
 CTA(ISPOW2(SALIGN + 1));
 
 struct b_base {
-	struct buffer	*_next;
-	char		*_bot;		/* For spreserve() */
-	char		*_max;		/* Max usable byte */
-	char		*_caster;	/* NULL if full */
+   struct buffer  *_next;
+   char           *_bot;      /* For spreserve() */
+   char           *_relax;    /* If !NULL, used by srelax() instead of ._bot */
+   char           *_max;      /* Max usable byte */
+   char           *_caster;   /* NULL if full */
 };
 
 /* Single instance builtin buffer, DATA */
 struct b_bltin {
-	struct b_base	b_base;
-	char		b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
+   struct b_base  b_base;
+   char           b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
 };
-#define SBLTIN_SIZE	SIZEOF_FIELD(struct b_bltin, b_buf)
+#define SBLTIN_SIZE  SIZEOF_FIELD(struct b_bltin, b_buf)
 
 /* Dynamically allocated buffers */
 struct b_dyn {
-	struct b_base	b_base;
-	char		b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
+   struct b_base  b_base;
+   char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
 };
-#define SDYN_SIZE	SIZEOF_FIELD(struct b_dyn, b_buf)
+#define SDYN_SIZE SIZEOF_FIELD(struct b_dyn, b_buf)
 
 struct buffer {
-	struct b_base	b;
-	char		b_buf[VFIELD_SIZE(SALIGN + 1)];
+   struct b_base  b;
+   char           b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
-struct huge {
-	struct huge	*h_prev;
-	char		h_buf[VFIELD_SIZE(SALIGN + 1)];
-};
-#define SHUGE_CALC_SIZE(S) \
-	((sizeof(struct huge) - VFIELD_SIZEOF(struct huge, h_buf)) + (S))
+static struct b_bltin   _builtin_buf;
+static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
 
-static struct b_bltin	_builtin_buf;
-static struct buffer	*_buf_head, *_buf_list, *_buf_server;
-static struct huge	*_huge_list;
-
-#ifdef HAVE_ASSERTS
-size_t	_all_cnt, _all_cycnt, _all_cycnt_max,
-	_all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
-	_all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
-	_all_hugecnt, _all_cyhugecnt, _all_cyhugecnt_max,
-	_all_resetreqs, _all_resets;
+#ifdef HAVE_DEBUG
+size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
+   _all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
+   _all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
+   _all_resetreqs, _all_resets;
 #endif
 
-/*
- * Allocate size more bytes of space and return the address of the
- * first byte to the caller.  An even number of bytes are always
- * allocated so that the space will always be on a word boundary.
- */
-void *
+FL void *
 salloc(size_t size)
 {
-#ifdef HAVE_ASSERTS
-	size_t orig_size = size;
+#ifdef HAVE_DEBUG
+   size_t orig_size = size;
 #endif
-	union {struct buffer *b; struct huge *h; char *cp;} u;
-	char *x, *y, *z;
+   union {struct buffer *b; char *cp;} u;
+   char *x, *y, *z;
 
-	if (size == 0)
-		++size;
-	size += SALIGN;
-	size &= ~SALIGN;
+   if (size == 0)
+      ++size;
+   size += SALIGN;
+   size &= ~SALIGN;
 
-#ifdef HAVE_ASSERTS
-	++_all_cnt;
-	++_all_cycnt;
-	_all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
-	_all_size += size;
-	_all_cysize += size;
-	_all_cysize_max = MAX(_all_cysize_max, _all_cysize);
-	_all_min = _all_max == 0 ? size : MIN(_all_min, size);
-	_all_max = MAX(_all_max, size);
-	_all_wast += size - orig_size;
+#ifdef HAVE_DEBUG
+   ++_all_cnt;
+   ++_all_cycnt;
+   _all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
+   _all_size += size;
+   _all_cysize += size;
+   _all_cysize_max = MAX(_all_cysize_max, _all_cysize);
+   _all_min = (_all_max == 0) ? size : MIN(_all_min, size);
+   _all_max = MAX(_all_max, size);
+   _all_wast += size - orig_size;
 #endif
 
-	if (size > SHUGE_CUTLIMIT)
-		goto jhuge;
-
-	if ((u.b = _buf_server) != NULL)
-		goto jumpin;
+   if ((u.b = _buf_server) != NULL)
+      goto jumpin;
 jredo:
-	for (u.b = _buf_head; u.b != NULL; u.b = u.b->b._next) {
-jumpin:		x = u.b->b._caster;
-		if (x == NULL) {
-			if (u.b == _buf_server) {
-				if (u.b == _buf_head &&
-						(u.b = _buf_head->b._next)
-						!= NULL) {
-					_buf_server = u.b;
-					goto jumpin;
-				}
-				_buf_server = NULL;
-				goto jredo;
-			}
-			continue;
-		}
-		y = x + size;
-		z = u.b->b._max;
-		if (y <= z) {
-			/*
-			 * Alignment is the one thing, the other is what is
-			 * usually allocated, and here about 40 bytes seems to
-			 * be a good cut to avoid non-usable non-NULL casters
-			 */
-			u.b->b._caster = (y + 42+16 >= z) ? NULL : y;
-			u.cp = x;
-			goto jleave;
-		}
-	}
+   for (u.b = _buf_head; u.b != NULL; u.b = u.b->b._next) {
+jumpin:
+      x = u.b->b._caster;
+      if (x == NULL) {
+         if (u.b == _buf_server) {
+            if (u.b == _buf_head && (u.b = _buf_head->b._next) != NULL) {
+               _buf_server = u.b;
+               goto jumpin;
+            }
+            _buf_server = NULL;
+            goto jredo;
+         }
+         continue;
+      }
+      y = x + size;
+      z = u.b->b._max;
+      if (y <= z) {
+         /* Alignment is the one thing, the other is what is
+          * usually allocated, and here about 40 bytes seems to
+          * be a good cut to avoid non-usable non-NULL casters */
+         u.b->b._caster = PTRCMP(y + 42 + 16, >=, z) ? NULL : y;
+         u.cp = x;
+         goto jleave;
+      }
+   }
 
-	if (_buf_head == NULL) {
-		struct b_bltin *b = &_builtin_buf;
-		b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
-		_buf_head = (struct buffer*)b;
-		u.b = _buf_head;
-	} else {
-#ifdef HAVE_ASSERTS
-		++_all_bufcnt;
-		++_all_cybufcnt;
-		_all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
+   if (_buf_head == NULL) {
+      struct b_bltin *b = &_builtin_buf;
+      b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
+      _buf_head = (struct buffer*)b;
+      u.b = _buf_head;
+   } else {
+#ifdef HAVE_DEBUG
+      ++_all_bufcnt;
+      ++_all_cybufcnt;
+      _all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
 #endif
-		u.b = (struct buffer*)smalloc(sizeof(struct b_dyn));
-		u.b->b._max = u.b->b_buf + SDYN_SIZE - 1;
-	}
-	if (_buf_list != NULL)
-		_buf_list->b._next = u.b;
-	_buf_server = _buf_list = u.b;
-	u.b->b._next = NULL;
-	u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
-	u.cp = u.b->b._bot;
+      u.b = smalloc(sizeof(struct b_dyn));
+      u.b->b._max = u.b->b_buf + SDYN_SIZE - 1;
+   }
+   if (_buf_list != NULL)
+      _buf_list->b._next = u.b;
+   _buf_server = _buf_list = u.b;
+   u.b->b._next = NULL;
+   u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
+   u.b->b._relax = NULL;
+   u.cp = u.b->b._bot;
 jleave:
-	return (u.cp);
-
-jhuge:
-#ifdef HAVE_ASSERTS
-	++_all_hugecnt;
-	++_all_cyhugecnt;
-	_all_cyhugecnt_max = MAX(_all_cyhugecnt_max, _all_cyhugecnt);
-#endif
-	u.h = smalloc(SHUGE_CALC_SIZE(size));
-	u.h->h_prev = _huge_list;
-	_huge_list = u.h;
-	u.cp = u.h->h_buf;
-	goto jleave;
+   return u.cp;
 }
 
-void *
+FL void *
 csalloc(size_t nmemb, size_t size)
 {
-	void *vp;
+   void *vp;
 
-	size *= nmemb;
-	vp = salloc(size);
-	memset(vp, 0, size);
-	return (vp);
+   size *= nmemb;
+   vp = salloc(size);
+   memset(vp, 0, size);
+   return (vp);
 }
 
-/*
- * Reset the string area to be empty.
- * Called to free all strings allocated since last reset.
- */
-void 
-sreset(void)
+FL void
+sreset(bool_t only_if_relaxed)
 {
-	union {struct buffer *b; struct huge *h;} u;
+   struct buffer *bh;
 
-#ifdef HAVE_ASSERTS
-	++_all_resetreqs;
+#ifdef HAVE_DEBUG
+   ++_all_resetreqs;
 #endif
-	if (noreset)
-		goto jleave;
+   if (noreset || (only_if_relaxed && _buf_relax == NULL))
+      goto jleave;
 
-#ifdef HAVE_ASSERTS
-	_all_cycnt = _all_cysize = _all_cyhugecnt = 0;
-	_all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
-	++_all_resets;
+#ifdef HAVE_DEBUG
+   _all_cycnt = _all_cysize = 0;
+   _all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
+   ++_all_resets;
 #endif
 
-	for (u.h = _huge_list; u.h != NULL;) {
-		struct huge *tmp = u.h;
-		u.h = u.h->h_prev;
-		free(tmp);
-	}
-	_huge_list = NULL;
+   if ((bh = _buf_head) != NULL) {
+      struct buffer *b = bh;
+      b->b._caster = b->b._bot;
+      b->b._relax = NULL;
+#ifdef HAVE_DEBUG
+      memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
+#endif
+      _buf_server = b;
+      if ((bh = bh->b._next) != NULL) {
+         b = bh;
+         b->b._caster = b->b._bot;
+         b->b._relax = NULL;
+#ifdef HAVE_DEBUG
+         memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
+#endif
+         for (bh = bh->b._next; bh != NULL;) {
+            struct buffer *b2 = bh->b._next;
+            free(bh);
+            bh = b2;
+         }
+      }
+      _buf_list = b;
+      b->b._next = NULL;
+      _buf_relax = NULL;
+   }
 
-	if ((u.b = _buf_head) != NULL) {
-		struct buffer *b = u.b;
-		b->b._caster = b->b._bot;
-#ifdef HAVE_ASSERTS
-		memset(b->b._caster, 0377,
-			(size_t)(b->b._max - b->b._caster));
+#ifdef HAVE_DEBUG
+   smemreset();
 #endif
-		_buf_server = b;
-		if ((u.b = u.b->b._next) != NULL) {
-			b = u.b;
-			b->b._caster = b->b._bot;
-#ifdef HAVE_ASSERTS
-			memset(b->b._caster, 0377,
-				(size_t)(b->b._max - b->b._caster));
-#endif
-			for (u.b = u.b->b._next; u.b != NULL;) {
-				struct buffer *b2 = u.b->b._next;
-				free(u.b);
-				u.b = b2;
-			}
-		}
-		_buf_list = b;
-		b->b._next = NULL;
-	}
-
-#ifdef HAVE_ASSERTS
-	smemreset();
-#endif
-jleave:	;
+jleave:
+   ;
 }
 
-/*
- * Make the string area permanent.
- * Meant to be called in main, after initialization.
- */
-void 
+FL void
 spreserve(void)
 {
-	struct buffer *b;
+   struct buffer *b;
 
-	for (b = _buf_head; b != NULL; b = b->b._next)
-		b->b._bot = b->b._caster;
+   for (b = _buf_head; b != NULL; b = b->b._next)
+      b->b._bot = b->b._caster;
 }
 
-#ifdef HAVE_ASSERTS
-int
-sstats(void *v)
+FL void
+srelax_hold(void)
 {
-	(void)v;
-	printf("String usage statistics (cycle means one sreset() cycle):\n"
-		"  Buffer allocs ever/max simultan. : %lu/%lu\n"
-		"  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
-		"  Overall alloc count/bytes        : %lu/%lu\n"
-		"  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
-		"  Hugealloc count overall/cycle    : %lu/%lu (cutlimit: %lu)\n"
-		"  sreset() cycles                  : %lu (%lu performed)\n"
-		"  Cycle maximums: alloc count/bytes: %lu/%lu\n",
-		(ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
-		(ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
-		(ul_it)_all_cnt, (ul_it)_all_size,
-		(ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
-		(ul_it)_all_hugecnt, (ul_it)_all_cyhugecnt_max,
-			(ul_it)SHUGE_CUTLIMIT,
-		(ul_it)_all_resetreqs, (ul_it)_all_resets,
-		(ul_it)_all_cycnt_max, (ul_it)_all_cysize_max);
-	return (0);
+   struct buffer *b;
+
+   assert(_buf_relax == NULL);
+
+   for (b = _buf_head; b != NULL; b = b->b._next)
+      b->b._relax = b->b._caster;
+   _buf_relax = _buf_server;
+   assert(_buf_relax != NULL);
+}
+
+FL void
+srelax_rele(void)
+{
+   struct buffer *b;
+
+   assert(_buf_relax != NULL);
+
+   for (b = _buf_relax; b != NULL; b = b->b._next) {
+      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+      b->b._relax = NULL;
+   }
+   _buf_relax = NULL;
+}
+
+FL void
+srelax(void)
+{
+   /* The purpose of relaxation is only that it is possible to reset the
+    * casters, *not* to give back memory to the system.  We are presumably in
+    * an iteration over all messages of a mailbox, and it'd be quite
+    * counterproductive to give the system allocator a chance to waste time */
+   struct buffer *b;
+
+   assert(_buf_relax != NULL);
+
+   for (b = _buf_relax; b != NULL; b = b->b._next) {
+      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+#ifdef HAVE_DEBUG
+      memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
+#endif
+   }
+}
+
+#ifdef HAVE_DEBUG
+FL int
+c_sstats(void *v)
+{
+   size_t excess;
+   UNUSED(v);
+
+   excess = (_all_cybufcnt_max * SDYN_SIZE) + SBLTIN_SIZE;
+   excess = (excess >= _all_cysize_max) ? 0 : _all_cysize_max - excess;
+
+   printf("String usage statistics (cycle means one sreset() cycle):\n"
+      "  Buffer allocs ever/max simultan. : %lu/%lu\n"
+      "  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
+      "  Overall alloc count/bytes        : %lu/%lu\n"
+      "  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
+      "  sreset() cycles                  : %lu (%lu performed)\n"
+      "  Cycle maximums: alloc count/bytes: %lu/%lu+%lu\n",
+      (ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
+      (ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
+      (ul_it)_all_cnt, (ul_it)_all_size,
+      (ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
+      (ul_it)_all_resetreqs, (ul_it)_all_resets,
+      (ul_it)_all_cycnt_max, (ul_it)_all_cysize_max, (ul_it)excess);
+   return 0;
 }
 #endif
 
 /*
  * Return a pointer to a dynamic copy of the argument.
  */
-char *
+FL char *
 savestr(const char *str)
 {
 	size_t size = strlen(str) + 1;
@@ -350,7 +343,7 @@ savestr(const char *str)
 /*
  * Return new string copy of a non-terminated argument.
  */
-char *
+FL char *
 savestrbuf(const char *sbuf, size_t sbuf_len)
 {
 	char *news = salloc(sbuf_len + 1);
@@ -362,7 +355,7 @@ savestrbuf(const char *sbuf, size_t sbuf_len)
 /*
  * Make a copy of new argument incorporating old one.
  */
-char *
+FL char *
 save2str(const char *str, const char *old)
 {
 	size_t newsize = strlen(str) + 1, oldsize = old ? strlen(old) + 1 : 0;
@@ -375,7 +368,7 @@ save2str(const char *str, const char *old)
 	return (news);
 }
 
-char *
+FL char *
 savecat(char const *s1, char const *s2)
 {
 	size_t l1 = strlen(s1), l2 = strlen(s2);
@@ -390,7 +383,7 @@ savecat(char const *s1, char const *s2)
  * Support routines, auto-reclaimed storage
  */
 
-char *
+FL char *
 i_strdup(char const *src)
 {
 	size_t sz;
@@ -402,7 +395,7 @@ i_strdup(char const *src)
 	return (dest);
 }
 
-char *
+FL char *
 protbase(char const *cp)
 {
 	char *n = salloc(strlen(cp) + 1), *np = n;
@@ -425,7 +418,7 @@ protbase(char const *cp)
 	return n;
 }
 
-char *
+FL char *
 urlxenc(char const *cp) /* XXX */
 {
 	char	*n, *np;
@@ -447,7 +440,7 @@ urlxenc(char const *cp) /* XXX */
 	return n;
 }
 
-char *
+FL char *
 urlxdec(char const *cp) /* XXX */
 {
 	char *n, *np;
@@ -465,7 +458,7 @@ urlxdec(char const *cp) /* XXX */
 	return (n);
 }
 
-struct str *
+FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
 	va_list vl;
@@ -491,7 +484,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 	return self;
 }
 
-struct str *
+FL struct str *
 str_concat_cpa(struct str *self, char const *const*cpa, char const *sep_o_null)
 {
 	size_t sonl, l;
@@ -557,7 +550,7 @@ uc_it const	class_char[] = {
 	C_LOWER,C_LOWER,C_LOWER,C_PUNCT,C_PUNCT,C_PUNCT,C_PUNCT,C_CNTRL
 };
 
-int
+FL int
 anyof(char const *s1, char const *s2)
 {
 	for (; *s1 != '\0'; ++s1)
@@ -566,7 +559,7 @@ anyof(char const *s1, char const *s2)
 	return (*s1 != '\0');
 }
 
-ui_it
+FL ui_it
 strhash(char const *name)
 {
 	ui_it h = 0;
@@ -578,7 +571,7 @@ strhash(char const *name)
 	return h;
 }
 
-char *
+FL char *
 strcomma(char **iolist, int ignore_empty)
 {
 	char *base, *cp;
@@ -602,7 +595,7 @@ strcomma(char **iolist, int ignore_empty)
 	return (base);
 }
 
-void
+FL void
 i_strcpy(char *dest, const char *src, size_t size)
 {
 	if (size > 0) {
@@ -616,17 +609,17 @@ i_strcpy(char *dest, const char *src, size_t size)
 	}
 }
 
-int
+FL int
 is_prefix(char const *as1, char const *as2)
 {
 	char c;
 	for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
-		if ((c = *as2) == '\0')
+		if (*as2 == '\0')
 			break;
 	return (c == '\0');
 }
 
-char const *
+FL char const *
 last_at_before_slash(char const *sp)
 {
 	char const *cp;
@@ -640,7 +633,83 @@ last_at_before_slash(char const *sp)
 	return (*cp == '@' ? cp : NULL);
 }
 
-void
+FL char *
+laststring(char *linebuf, bool_t *needs_list, bool_t strip)
+{
+   char *cp, *p, quoted;
+
+   /* Anything to do at all? */
+   if (*(cp = linebuf) == '\0')
+      goto jnull;
+   cp += strlen(linebuf) - 1;
+
+   /* Strip away trailing blanks */
+   while (whitechar(*cp) && PTRCMP(cp, >, linebuf))
+      --cp;
+   cp[1] = '\0';
+   if (cp == linebuf)
+      goto jleave;
+
+   /* Now search for the BOS of the "last string" */
+   quoted = *cp;
+   if (quoted == '\'' || quoted == '"') {
+      if (strip)
+         *cp = '\0';
+   } else
+      quoted = ' ';
+
+   while (PTRCMP(cp, >, linebuf)) {
+      --cp;
+      if (quoted != ' ') {
+         if (*cp != quoted)
+            continue;
+      } else if (!whitechar(*cp))
+         continue;
+      if (PTRCMP(cp, ==, linebuf) || cp[-1] != '\\') {
+         /* When in whitespace mode, WS prefix doesn't belong */
+         if (quoted == ' ')
+            ++cp;
+         break;
+      }
+      /* Expand the escaped quote character */
+      for (p = --cp; (p[0] = p[1]) != '\0'; ++p)
+         ;
+   }
+   if (strip && quoted != ' ' && *cp == quoted)
+      for (p = cp; (p[0] = p[1]) != '\0'; ++p)
+         ;
+
+   /* The "last string" has been skipped over, but still, try to step backwards
+    * until we are at BOS or see whitespace, so as to make possible things like
+    * "? copy +'x y.mbox'" or even "? copy +x\ y.mbox" */
+   while (PTRCMP(cp, >, linebuf)) {
+      --cp;
+      if (whitechar(*cp)) {
+         p = cp;
+         *cp++ = '\0';
+         /* We can furtherly release our callees if we now decide wether the
+          * remaining non-"last string" line content contains non-WS */
+         while (PTRCMP(--p, >=, linebuf))
+            if (!whitechar(*p))
+               goto jleave;
+         linebuf = cp;
+         break;
+      }
+   }
+
+jleave:
+   if (cp != NULL && *cp == '\0')
+      goto jnull;
+   *needs_list = (cp != linebuf && *linebuf != '\0');
+j_leave:
+   return cp;
+jnull:
+   *needs_list = FAL0;
+   cp = NULL;
+   goto j_leave;
+}
+
+FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
 #if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
@@ -670,7 +739,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
 	}
 }
 
-int
+FL int
 substr(char const *str, char const *sub)
 {
 	char const *cp, *backup;
@@ -723,7 +792,7 @@ substr(char const *str, char const *sub)
 }
 
 #ifndef HAVE_SNPRINTF
-int
+FL int
 snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
 {
 	va_list ap;
@@ -738,7 +807,7 @@ snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
 }
 #endif
 
-char *
+FL char *
 sstpcpy(char *dst, char const *src)
 {
 	while ((*dst = *src++) != '\0')
@@ -746,7 +815,7 @@ sstpcpy(char *dst, char const *src)
 	return (dst);
 }
 
-char *
+FL char *
 (sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
 {
 	char *dp = NULL;
@@ -759,7 +828,8 @@ char *
 	return dp;
 }
 
-char *
+#ifdef notyet
+FL char *
 (sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
 {
 	char *dp = NULL;
@@ -770,8 +840,19 @@ char *
 	dp[len] = '\0';
 	return dp;
 }
+#endif
 
-int
+FL char *
+n_strlcpy(char *dst, const char *src, size_t len)
+{
+   assert(len > 0);
+
+   dst = strncpy(dst, src, len);
+   dst[len - 1] = '\0';
+   return dst;
+}
+
+FL int
 asccasecmp(char const *s1, char const *s2)
 {
 	int cmp;
@@ -784,20 +865,22 @@ asccasecmp(char const *s1, char const *s2)
 	return cmp;
 }
 
-int
+FL int
 ascncasecmp(char const *s1, char const *s2, size_t sz)
 {
 	int cmp = 0;
 
 	while (sz-- > 0) {
 		char c1 = *s1++, c2 = *s2++;
-		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+      cmp = (ui8_t)lowerconv(c1);
+      cmp -= (ui8_t)lowerconv(c2);
+		if (cmp != 0 || c1 == '\0')
 			break;
 	}
 	return cmp;
 }
 
-char const *
+FL char const *
 asccasestr(char const *haystack, char const *xneedle)
 {
 	char *needle = NULL, *NEEDLE;
@@ -834,7 +917,7 @@ jleave:
 	return haystack;
 }
 
-bool_t
+FL bool_t
 is_asccaseprefix(char const *as1, char const *as2)
 {
 	bool_t rv = FAL0;
@@ -849,7 +932,7 @@ is_asccaseprefix(char const *as1, char const *as2)
 	return rv;
 }
 
-struct str *
+FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
 {
 	if (t != NULL && t->l > 0) {
@@ -861,7 +944,7 @@ struct str *
 	return self;
 }
 
-struct str *
+FL struct str *
 (n_str_add_buf)(struct str *self, char const *buf, size_t buflen
 	SMALLOC_DEBUG_ARGS)
 {
@@ -897,7 +980,7 @@ _ic_stripdash(char *p)
 	while (*p++);
 }
 
-iconv_t
+FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode)
 {
 	iconv_t id;
@@ -954,7 +1037,7 @@ n_iconv_open(char const *tocode, char const *fromcode)
 	return (iconv_t)-1;
 }
 
-void
+FL void
 n_iconv_close(iconv_t cd)
 {
 	iconv_close(cd);
@@ -962,11 +1045,13 @@ n_iconv_close(iconv_t cd)
 		iconvd = (iconv_t)-1;
 }
 
-void
+#ifdef notyet
+FL void
 n_iconv_reset(iconv_t cd)
 {
 	(void)iconv(cd, NULL, NULL, NULL, NULL);
 }
+#endif
 
 /*
  * (2012-09-24: export and use it exclusively to isolate prototype problems
@@ -988,7 +1073,7 @@ n_iconv_reset(iconv_t cd)
 #  define __INBCAST(S)	(char **)UNCONST(S)
 # endif
 
-int
+FL int
 n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
 	char **outb, size_t *outbleft, bool_t skipilseq)
 {
@@ -1026,7 +1111,7 @@ n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
 }
 # undef __INBCAST
 
-int
+FL int
 n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
 	struct str *in_rest_or_null, bool_t skipilseq)
 {
@@ -1064,3 +1149,5 @@ jrealloc:	obb = srealloc(obb, olb);
 	return err;
 }
 #endif /* HAVE_ICONV */
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

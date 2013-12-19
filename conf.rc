@@ -17,6 +17,24 @@
 # Only a `set' variable will cause the possibly necessary feature tests to be
 # performed, so as to detect wether the wanted feature really can be used
 
+# S-nail automatically detects compilers and has a set of known compiler flags
+# which work well.  Since users should be able to define their own $CC, $CFLAGS
+# and $LDFLAGS, however, it only uses the detected environment if the user
+# has either not set those values at all, are has set them to the empty value.
+# To always force use of S-nail build system detected values, set WANT_AUTOCC.
+# Note: it is possible to add to the detected values by setting ADDCFLAGS=
+# and/or ADDLDFLAGS= (with proper configuration-changed detection)!
+WANT_AUTOCC=0
+
+# It is possible to compile S-nail as a "single-source", meaning that all
+# source files are injected into a single compilation unit, which is then
+# compiled.  This allows the compiler to perform much more optimizations, and
+# also reduces the management overhead that is used for / needed by the linker.
+# Of course compiling such a large source requires a lot of memory by itself
+# NOTE: experimental in that the feature is quite new -- it is thus not known
+# wether some compilers may generate buggy code when compiling single-source
+WANT_AMALGAMATION=0
+
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
 # related/dependent stuff (GSSAPI,SSL)
 WANT_SOCKETS=1
@@ -31,8 +49,8 @@ WANT_IPV6=1
 
 # Support for SecureSocketLayer (TransportLayerSecurity, TLS), i.e.,
 # encrypted socket connections.
-# This needs OpenSSL libraries (<http://www.openssl.org>), though these should
-# be installed by default on practically all operating systems today
+# This needs OpenSSL libraries (<http://www.openssl.org>; these should be
+# installed by default on practically all operating systems today, though)
 WANT_SSL=1
 
 # Support for IMAP protocol?  (Reading of mails directly on the server)
@@ -49,7 +67,7 @@ WANT_POP3=1
 WANT_SMTP=1
 
 # Several facilities use the MD5 message digest, but for some of them it is
-# used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
+# only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
 # authentification, SMTP: CRAM-MD5 authentification).
 # If you don't need those, you may exclude MD5 from S-nail.
 # Note that WANT_MD5 is automatically turned off if its exclusion will only
@@ -70,22 +88,27 @@ WANT_ICONV=1
 WANT_IDNA=1
 
 # Command line editing and -history.
-# S-nail actually supports three different line editors:
-# . WANT_LINE_EDITOR=1, WANT_EDITLINE=0, WANT_EDITLINE_READLINE=0
-#   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
-#   then our builtin NCL (Nail Command Line editor) version will be used.
-#   This one is documented in the manual section "Line editor" (`./nail.1').
-# The fully fledged external libraries may offer a slightly better user
-# experience at the cost of needing more memory and CPU time; also note that
-# the behaviour of S-nail in respect to signal handling may no longer be POSIX
-# compliant.
-# . WANT_LINE_EDITOR=1, WANT_EDITLINE=1, WANT_EDITLINE_READLINE=0
-#   Command line editing via BSD editline(3)
-# . WANT_LINE_EDITOR=1, WANT_EDITLINE=1, WANT_EDITLINE_READLINE=1
+# S-nail actually supports three different command line editors, one builtin
+# and two fully fledged external libraries which may offer a slightly better
+# user experience at the cost of more memory usage and CPU time.
+# Note that these are tested in shown order, and each desired one must be
+# enabled by itself!
+# . WANT_READLINE
 #   The GNU readline(3) compatible interface
-WANT_LINE_EDITOR=1
+# . WANT_EDITLINE
+#   Command line editing via BSD editline(3)
+# . WANT_NCL
+#   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
+#   then our builtin NCL (Nail Command Line editor) version can be used.
+#   It is documented in the manual section "Command line editor" (in ./nail.1)
+WANT_READLINE=0
 WANT_EDITLINE=0
-WANT_EDITLINE_READLINE=0
+WANT_NCL=1
+# For all command line editors we optionally support history
+WANT_HISTORY=1
+# For the NCL command line editor we optionally support "expand-on-tabulator".
+# Turning it off shrinks the binary.  Please see the respective manual entry
+WANT_TABEXPAND=1
 
 # Interaction with a spam email filter is possible.
 # Refer to all commands with a `spam' prefix, and see the manual section
@@ -101,8 +124,8 @@ WANT_DOCSTRINGS=1
 # *quote-fold* mechanism.
 # This will be turned off automatically if the required character
 # classification is not available on the host.
-# NOTE: this is EXPERIMENTAL and INCOMPLETE!
-WANT_QUOTE_FOLD=0
+# TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
+WANT_QUOTE_FOLD=1
 
 ## PATHS AND PROGRAMS ##
 
@@ -157,42 +180,43 @@ XLISTER=ls
 # $PAGER, which would effectively cause this setting to be ignored)
 XPAGER=more
 
-# Build+Install: the cmp(1) command (in the $PATH)
-CMP=cmp
-
-# Build+Install: the strip(1) program (in the $PATH)
-STRIP=strip
-
-# Build+Install: the nonstandard install(1) program (in the $PATH)
-INSTALL=install
-
 ##  --  >8  --  8<  --  ##
 
 ## Normal users should not need to read any further
 
 ## PATHS AND PROGRAMS, DEVELOPMENT ##
 
-# For those who want to install S-nail(1) as nail(1), use an empty *SID*
+# To ease the life of forkers and packagers "our" name can be changed.
+# The name is build by concatenating $SID and $NAIL, i.e., $(SID)$(NAIL).
+# Note that the final string must be longer than two characters and may not
+# contain any whitespace
+NAIL=nail
 SID=s-
 
-# To ease the life of forkers and packagers one may even adjust the "nail"
-# of nail(1).  Note that $SID$NAIL must be longer than two characters
-NAIL=nail
-
 # The location of the exemplary resource template.
-# Note it's not overwritten if it yet exists!
+# Note 1: it's not overwritten if it yet exists!
+# Note 2: `make install' assumes it's under $SYSCONFDIR!
 SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 
+# Use debug compiler flags, enable some additional commands (like `sstats',
+# `smemtrace'), some code assertions, possibly experimental code etc.
+# Note that setting this also enables our own memory canaries, which require
+# a rather large amount of runtime memory, and forcefully disables alloca(3)
+# stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
+# of stack memory via our memory canaries
+WANT_DEBUG=0
+
 # We ship with our own small and efficient getopt(3) implementation;
-# set this to always choose that one without even checking for another one
+# set this to always choose that without even checking for another one
 WANT_NOGETOPT=0
 
-# A lot of use of alloca(3) -- use a slow and expensive heap approach instead?
-WANT_NOALLOCA=0
-
-# Enable debug-only code assertions
-WANT_ASSERTS=0
+# The codebase makes a lot of use of alloca(3), and this will remain since
+# S-nail will continue to be compliant to ISO C89, which has no variable
+# arrays, etc.  For testing purposes it is however nice to use the much slower
+# normal S-nail heap memory allocator instead.
+# Note: this will be forcefully set (again) if WANT_DEBUG=1
+WANT_NOALLOCA="${WANT_DEBUG}"
 
 # vim:set fenc=utf-8 syntax=conf:s-it-mode

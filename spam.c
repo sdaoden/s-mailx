@@ -16,17 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SPAM
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "rcv.h"
-
-#include <unistd.h>
-
-#include "extern.h"
-
+EMPTY_FILE(spam)
+#ifdef HAVE_SPAM
 /*
  * TODO - We cannot use the spamc library because of our jumping behaviour.
  * TODO   We could nonetheless if we'd start a fork(2)ed child which would
@@ -197,7 +192,7 @@ _spam_rate2score(struct spam_vc *vc)
    char *cp;
    size_t size;
    ui_it m, s;
-   
+
    cp = strchr(vc->buffer, '/');
    if (cp == NULL)
       goto jleave;
@@ -290,8 +285,8 @@ _spam_interact(struct spam_vc *vc)
    close(p2c[0]);
    state &= ~_P2C_0;
 
-   /* Yes, we could send(SEND_MBOX), but the simply passing through the MBOX
-    * content does the same in effect, but is much more efficient
+   /* Yes, we could sendmp(SEND_MBOX), but simply passing through the MBOX
+    * content does the same in effect, but is much more efficient.
     * NOTE: this may mean we pass a message without From_ line! */
    for (size = vc->mp->m_size; size > 0;) {
       size_t i = fread(vc->buffer, 1, MIN(size, BUFFER_SIZE), ibuf);
@@ -391,7 +386,7 @@ j_leave:
    return ! (state & _ERRORS);
 }
 
-int
+FL int
 cspam_clear(void *v)
 {
    int *ip;
@@ -401,7 +396,7 @@ cspam_clear(void *v)
    return 0;
 }
 
-int
+FL int
 cspam_set(void *v)
 {
    int *ip;
@@ -411,25 +406,25 @@ cspam_set(void *v)
    return 0;
 }
 
-int
+FL int
 cspam_forget(void *v)
 {
    return _spam_action(_SPAM_FORGET, (int*)v) ? OKAY : STOP;
 }
 
-int
+FL int
 cspam_ham(void *v)
 {
    return _spam_action(_SPAM_HAM, (int*)v) ? OKAY : STOP;
 }
 
-int
+FL int
 cspam_rate(void *v)
 {
    return _spam_action(_SPAM_RATE, (int*)v) ? OKAY : STOP;
 }
 
-int
+FL int
 cspam_spam(void *v)
 {
    return _spam_action(_SPAM_SPAM, (int*)v) ? OKAY : STOP;

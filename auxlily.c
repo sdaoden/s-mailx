@@ -37,42 +37,33 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#include <sys/stat.h>
 #include <sys/utsname.h>
+
 #include <ctype.h>
-#include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <pwd.h>
-#include <stdarg.h>
-#include <termios.h>
-#include <unistd.h>
-#ifdef HAVE_WCTYPE_H
-# include <wctype.h>
-#endif
-#ifdef HAVE_WCWIDTH
-# include <wchar.h>
-#endif
 
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_IPV6
 #  include <sys/socket.h>
 # endif
+
 # include <netdb.h>
 #endif
 
-#include "extern.h"
 #ifdef HAVE_MD5
 # include "md5.h"
 #endif
 
 /* {hold,rele}_all_sigs() */
 static size_t		_alls_depth;
-static sigset_t		_alls_nset, _alls_oset;
+static sigset_t	_alls_nset, _alls_oset;
 
-void
+FL void
 panic(char const *format, ...)
 {
 	va_list ap;
@@ -85,10 +76,27 @@ panic(char const *format, ...)
 
 	fputs("\n", stderr);
 	fflush(stderr);
-	abort();
+	exit(EXIT_ERR);
 }
 
-void
+#ifdef HAVE_DEBUG
+FL void
+warn(char const *format, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, tr(1, "Panic: "));
+
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+
+	fputs("\n", stderr);
+	fflush(stderr);
+}
+#endif
+
+FL void
 hold_all_sigs(void)
 {
 	if (_alls_depth++ == 0) {
@@ -99,7 +107,7 @@ hold_all_sigs(void)
 	}
 }
 
-void
+FL void
 rele_all_sigs(void)
 {
 	if (--_alls_depth == 0)
@@ -111,7 +119,7 @@ rele_all_sigs(void)
  * Touched messages have the effect of not being sent
  * back to the system mailbox on exit.
  */
-void 
+FL void
 touch(struct message *mp)
 {
 
@@ -124,7 +132,7 @@ touch(struct message *mp)
  * Test to see if the passed file name is a directory.
  * Return true if it is.
  */
-int 
+FL int
 is_dir(char const *name)
 {
 	struct stat sbuf;
@@ -137,17 +145,17 @@ is_dir(char const *name)
 /*
  * Count the number of arguments in the given string raw list.
  */
-int 
+FL int
 argcount(char **argv)
 {
 	char **ap;
 
 	for (ap = argv; *ap++ != NULL;)
-		;	
+		;
 	return ap - argv - 1;
 }
 
-char *
+FL char *
 colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 {
 	int col_orig = col, n, sz;
@@ -197,7 +205,7 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 	return nb;
 }
 
-size_t
+FL size_t
 paging_seems_sensible(void)
 {
 	size_t ret = 0;
@@ -208,7 +216,7 @@ paging_seems_sensible(void)
 	return ret;
 }
 
-void
+FL void
 page_or_print(FILE *fp, size_t lines)
 {
 	size_t rows;
@@ -230,7 +238,7 @@ page_or_print(FILE *fp, size_t lines)
 			putchar(c);
 }
 
-enum protocol 
+FL enum protocol
 which_protocol(const char *name)
 {
 	register const char *cp;
@@ -310,7 +318,7 @@ which_protocol(const char *name)
 	}
 }
 
-unsigned 
+FL unsigned
 pjw(const char *cp)
 {
 	unsigned	h = 0, g;
@@ -326,7 +334,7 @@ pjw(const char *cp)
 	return h;
 }
 
-long 
+FL long
 nextprime(long n)
 {
 	const long	primes[] = {
@@ -347,7 +355,7 @@ nextprime(long n)
 	return mprime;
 }
 
-int
+FL int
 expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
 	char const *xs = *s;
@@ -363,7 +371,7 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
 	case '\\':			break;
 	case 'a':	c = '\a';	break;
 	case 'b':	c = '\b';	break;
-	case 'c':	c = -1;		break;
+	case 'c':	c = PROMPT_STOP;break;
 	case 'f':	c = '\f';	break;
 	case 'n':	c = '\n';	break;
 	case 'r':	c = '\r';	break;
@@ -375,10 +383,22 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
 			c |= *xs - '0';
 		}
 		goto jleave;
-	/* S-nail extension for nice prompt support */
+	/* S-nail extension for nice (get)prompt(()) support */
 	case '?':
+	case '$':
+	case '@':
 		if (use_nail_extensions) {
-			c = exec_last_comm_error ? '1' : '0';
+			switch (c) {
+			case '?':
+				c = exec_last_comm_error ? '1' : '0';
+				break;
+			case '$':
+				c = PROMPT_DOLLAR;
+				break;
+			case '@':
+				c = PROMPT_AT;
+				break;
+			}
 			break;
 		}
 		/* FALLTHRU */
@@ -395,54 +415,50 @@ jleave:
 	return c;
 }
 
-char *
+FL char *
 getprompt(void)
 {
-	static char buf[64];
+	static char buf[PROMPT_BUFFER_SIZE];
+
 	char const *ccp;
 
-	if ((ccp = value("prompt")) == NULL) {
+	if (options & OPT_NOPROMPT)
+		buf[0] = '\0';
+	else if ((ccp = value("prompt")) == NULL) {
 		buf[0] = value("bsdcompat") ? '&' : '?';
 		buf[1] = ' ';
 		buf[2] = '\0';
 	} else {
 		char *cp;
 
-		for (cp = buf; cp < buf + sizeof(buf) - 1; ++cp) {
+		for (cp = buf; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
+			char const *a;
+			size_t l;
 			int c = expand_shell_escape(&ccp, TRU1);
-			if (c <= 0)
+			if (c > 0) {
+				*cp = (char)c;
+				continue;
+			}
+			if (c == 0 || c == PROMPT_STOP)
 				break;
-			*cp = (char)c;
+
+			a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+			if (a == NULL)
+				a = "";
+			l = strlen(a);
+			if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
+				*cp++ = '?';
+			else {
+				memcpy(cp, a, l);
+				cp += --l;
+			}
 		}
 		*cp = '\0';
 	}
 	return buf;
 }
 
-char *
-getname(int uid)
-{
-	struct passwd *pw = getpwuid(uid);
-
-	return pw == NULL ? NULL : pw->pw_name;
-}
-
-char *
-username(void)
-{
-	char *np;
-	uid_t uid;
-
-	if ((np = getenv("USER")) != NULL)
-		goto jleave;
-	if ((np = getname(uid = getuid())) != NULL)
-		goto jleave;
-	panic(tr(201, "Cannot associate a name with uid %d\n"), (int)uid);
-jleave:
-	return (np);
-}
-
-char *
+FL char *
 nodename(int mayoverride)
 {
 	static char *hostname;
@@ -493,7 +509,7 @@ nodename(int mayoverride)
 	return (hostname);
 }
 
-char *
+FL char *
 lookup_password_for_token(char const *token)
 {
 	size_t tl;
@@ -512,7 +528,7 @@ lookup_password_for_token(char const *token)
 	return cp;
 }
 
-char *
+FL char *
 getrandstring(size_t length)
 {
 	static unsigned char nodedigest[16];
@@ -522,7 +538,7 @@ getrandstring(size_t length)
 	char *data, *cp;
 	size_t i;
 #ifdef HAVE_MD5
-	MD5_CTX	ctx;
+	md5_ctx	ctx;
 #else
 	size_t j;
 #endif
@@ -535,9 +551,9 @@ getrandstring(size_t length)
 			srand(pid);
 			cp = nodename(0);
 #ifdef HAVE_MD5
-			MD5Init(&ctx);
-			MD5Update(&ctx, (unsigned char *)cp, strlen(cp));
-			MD5Final(nodedigest, &ctx);
+			md5_init(&ctx);
+			md5_update(&ctx, (unsigned char*)cp, strlen(cp));
+			md5_final(nodedigest, &ctx);
 #else
 			/* In that case it's only used for boundaries and
 			 * Message-Id:s so that srand(3) should suffice */
@@ -563,7 +579,7 @@ getrandstring(size_t length)
 }
 
 #ifdef HAVE_MD5
-char *
+FL char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
 	char const *cp = vp;
@@ -574,11 +590,10 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 		hex[j] = hexchar((cp[i] & 0xf0) >> 4);
 		hex[++j] = hexchar(cp[i] & 0x0f);
 	}
-	hex[MD5TOHEX_SIZE] = '\0';
 	return hex;
 }
 
-char *
+FL char *
 cram_md5_string(char const *user, char const *pass, char const *b64)
 {
 	struct str in, out;
@@ -608,7 +623,7 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
 }
 #endif /* HAVE_MD5 */
 
-enum okay 
+FL enum okay
 makedir(const char *name)
 {
 	int	e;
@@ -626,7 +641,7 @@ makedir(const char *name)
 }
 
 #ifdef	HAVE_FCHDIR
-enum okay 
+FL enum okay
 cwget(struct cw *cw)
 {
 	if ((cw->cw_fd = open(".", O_RDONLY)) < 0)
@@ -638,7 +653,7 @@ cwget(struct cw *cw)
 	return OKAY;
 }
 
-enum okay 
+FL enum okay
 cwret(struct cw *cw)
 {
 	if (fchdir(cw->cw_fd) < 0)
@@ -646,13 +661,13 @@ cwret(struct cw *cw)
 	return OKAY;
 }
 
-void 
+FL void
 cwrelse(struct cw *cw)
 {
 	close(cw->cw_fd);
 }
 #else	/* !HAVE_FCHDIR */
-enum okay 
+FL enum okay
 cwget(struct cw *cw)
 {
 	if (getcwd(cw->cw_wd, sizeof cw->cw_wd) == NULL || chdir(cw->cw_wd) < 0)
@@ -660,7 +675,7 @@ cwget(struct cw *cw)
 	return OKAY;
 }
 
-enum okay 
+FL enum okay
 cwret(struct cw *cw)
 {
 	if (chdir(cw->cw_wd) < 0)
@@ -669,14 +684,14 @@ cwret(struct cw *cw)
 }
 
 /*ARGSUSED*/
-void 
+FL void
 cwrelse(struct cw *cw)
 {
 	(void)cw;
 }
 #endif	/* !HAVE_FCHDIR */
 
-void
+FL void
 makeprint(struct str const *in, struct str *out)
 {
 	static int print_all_chars = -1;
@@ -761,7 +776,7 @@ jleave:
 	out->s[out->l] = '\0';
 }
 
-char *
+FL char *
 prstr(const char *s)
 {
 	struct str	in, out;
@@ -777,7 +792,7 @@ prstr(const char *s)
 	return rp;
 }
 
-int
+FL int
 prout(const char *s, size_t sz, FILE *fp)
 {
 	struct str	in, out;
@@ -791,7 +806,7 @@ prout(const char *s, size_t sz, FILE *fp)
 	return n;
 }
 
-size_t
+FL size_t
 putuc(int u, int c, FILE *fp)
 {
 	size_t rv;
@@ -817,7 +832,7 @@ putuc(int u, int c, FILE *fp)
 	return rv;
 }
 
-void
+FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
 	tc->tc_time = time(NULL);
@@ -829,324 +844,410 @@ time_current_update(struct time_current *tc, bool_t full_update)
 	}
 }
 
-#ifndef HAVE_GETOPT
-char	*my_optarg;
-int	my_optind = 1, /*my_opterr = 1,*/ my_optopt;
-
-int
-my_getopt(int argc, char *const argv[], char const *optstring) /* XXX */
-{
-	static char const *lastp;
-	int colon;
-	char const *curp;
-
-	if (optstring[0] == ':') {
-		colon = 1;
-		optstring++;
-	} else
-		colon = 0;
-	if (lastp) {
-		curp = lastp;
-		lastp = 0;
-	} else {
-		if (optind >= argc || argv[optind] == 0 ||
-				argv[optind][0] != '-' ||
-				argv[optind][1] == '\0')
-			return -1;
-		if (argv[optind][1] == '-' && argv[optind][2] == '\0') {
-			optind++;
-			return -1;
-		}
-		curp = &argv[optind][1];
-	}
-	optopt = curp[0];
-	while (optstring[0]) {
-		if (optstring[0] == ':' || optstring[0] != optopt) {
-			optstring++;
-			continue;
-		}
-		if (optstring[1] == ':') {
-			if (curp[1] != '\0') {
-				optarg = UNCONST(&curp[1]);
-				optind++;
-			} else {
-				if ((optind += 2) > argc) {
-					if (!colon /*&& opterr*/) {
-						fprintf(stderr, tr(79,
-				"%s: option requires an argument -- %c\n"),
-							argv[0], (char)optopt);
-					}
-					return colon ? ':' : '?';
-				}
-				optarg = argv[optind - 1];
-			}
-		} else {
-			if (curp[1] != '\0')
-				lastp = &curp[1];
-			else
-				optind++;
-			optarg = 0;
-		}
-		return optopt;
-	}
-	if (!colon /*&& opterr*/)
-		fprintf(stderr, tr(78, "%s: illegal option -- %c\n"),
-			argv[0], optopt);
-	if (curp[1] != '\0')
-		lastp = &curp[1];
-	else
-		optind++;
-	optarg = 0;
-	return '?';
-}
-#endif /* HAVE_GETOPT */
-
 static void
-out_of_memory(void)
+_out_of_memory(void)
 {
-	panic("no memory");
+   panic("no memory");
 }
 
-#ifndef HAVE_ASSERTS
-void *
+FL void *
+(smalloc_safe)(size_t s SMALLOC_DEBUG_ARGS)
+{
+   void *rv;
+
+   hold_all_sigs();
+   rv = (smalloc)(s SMALLOC_DEBUG_ARGSCALL);
+   rele_all_sigs();
+   return rv;
+}
+
+FL void *
+(srealloc_safe)(void *v, size_t s SMALLOC_DEBUG_ARGS)
+{
+   void *rv;
+
+   hold_all_sigs();
+   rv = (srealloc)(v, s SMALLOC_DEBUG_ARGSCALL);
+   rele_all_sigs();
+   return rv;
+}
+
+#ifdef notyet
+FL void *
+(scalloc_safe)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
+{
+   void *rv;
+
+   hold_all_sigs();
+   rv = (scalloc)(nmemb, size SMALLOC_DEBUG_ARGSCALL);
+   rele_all_sigs();
+   return rv;
+}
+#endif
+
+#ifndef HAVE_DEBUG
+FL void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
 {
-	void *p;
+   void *rv;
 
-	if (s == 0)
-		s = 1;
-	if ((p = malloc(s)) == NULL)
-		out_of_memory();
-	return p;
+   if (s == 0)
+      s = 1;
+   if ((rv = malloc(s)) == NULL)
+      _out_of_memory();
+   return rv;
 }
 
-void *
+FL void *
 srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
-	void *r;
+   void *rv;
 
-	if (s == 0)
-		s = 1;
-	if (v == NULL)
-		return smalloc(s);
-	if ((r = realloc(v, s)) == NULL)
-		out_of_memory();
-	return r;
+   if (s == 0)
+      s = 1;
+   if (v == NULL)
+      rv = smalloc(s);
+   else if ((rv = realloc(v, s)) == NULL)
+      _out_of_memory();
+   return rv;
 }
 
-void *
+FL void *
 scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
-	void *vp;
+   void *rv;
 
-	if (size == 0)
-		size = 1;
-	if ((vp = calloc(nmemb, size)) == NULL)
-		out_of_memory();
-	return vp;
+   if (size == 0)
+      size = 1;
+   if ((rv = calloc(nmemb, size)) == NULL)
+      _out_of_memory();
+   return rv;
 }
 
-#else /* !HAVE_ASSERTS */
+#else /* !HAVE_DEBUG */
+CTA(sizeof(char) == sizeof(ui8_t));
+
+# define _HOPE_SIZE        (2 * 8 * sizeof(char))
+# define _HOPE_SET(C)   \
+do {\
+   union ptr __xl, __xu;\
+   struct chunk *__xc;\
+   __xl.p = (C).p;\
+   __xc = __xl.c - 1;\
+   __xu.p = __xc;\
+   (C).cp += 8;\
+   __xl.ui8p[0]=0xDE; __xl.ui8p[1]=0xAA; __xl.ui8p[2]=0x55; __xl.ui8p[3]=0xAD;\
+   __xl.ui8p[4]=0xBE; __xl.ui8p[5]=0x55; __xl.ui8p[6]=0xAA; __xl.ui8p[7]=0xEF;\
+   __xu.ui8p += __xc->size - 8;\
+   __xu.ui8p[0]=0xDE; __xu.ui8p[1]=0xAA; __xu.ui8p[2]=0x55; __xu.ui8p[3]=0xAD;\
+   __xu.ui8p[4]=0xBE; __xu.ui8p[5]=0x55; __xu.ui8p[6]=0xAA; __xu.ui8p[7]=0xEF;\
+} while (0)
+# define _HOPE_GET_TRACE(C,BAD) do {(C).cp += 8; _HOPE_GET(C, BAD);} while(0)
+# define _HOPE_GET(C,BAD) \
+do {\
+   union ptr __xl, __xu;\
+   struct chunk *__xc;\
+   ui32_t __i;\
+   __xl.p = (C).p;\
+   __xl.cp -= 8;\
+   (C).cp = __xl.cp;\
+   __xc = __xl.c - 1;\
+   (BAD) = FAL0;\
+   __i = 0;\
+   if (__xl.ui8p[0] != 0xDE) __i |= 1<<0;\
+   if (__xl.ui8p[1] != 0xAA) __i |= 1<<1;\
+   if (__xl.ui8p[2] != 0x55) __i |= 1<<2;\
+   if (__xl.ui8p[3] != 0xAD) __i |= 1<<3;\
+   if (__xl.ui8p[4] != 0xBE) __i |= 1<<4;\
+   if (__xl.ui8p[5] != 0x55) __i |= 1<<5;\
+   if (__xl.ui8p[6] != 0xAA) __i |= 1<<6;\
+   if (__xl.ui8p[7] != 0xEF) __i |= 1<<7;\
+   if (__i != 0) {\
+      (BAD) = TRU1;\
+      warn("%p: corrupted lower canary: 0x%02X: %s, line %u",\
+         __xl.p, __i, mdbg_file, mdbg_line);\
+   }\
+   __xu.p = __xc;\
+   __xu.ui8p += __xc->size - 8;\
+   __i = 0;\
+   if (__xu.ui8p[0] != 0xDE) __i |= 1<<0;\
+   if (__xu.ui8p[1] != 0xAA) __i |= 1<<1;\
+   if (__xu.ui8p[2] != 0x55) __i |= 1<<2;\
+   if (__xu.ui8p[3] != 0xAD) __i |= 1<<3;\
+   if (__xu.ui8p[4] != 0xBE) __i |= 1<<4;\
+   if (__xu.ui8p[5] != 0x55) __i |= 1<<5;\
+   if (__xu.ui8p[6] != 0xAA) __i |= 1<<6;\
+   if (__xu.ui8p[7] != 0xEF) __i |= 1<<7;\
+   if (__i != 0) {\
+      (BAD) = TRU1;\
+      warn("%p: corrupted upper canary: 0x%02X: %s, line %u",\
+         __xl.p, __i, mdbg_file, mdbg_line);\
+   }\
+   if (BAD)\
+      warn("   ..canary last seen: %s, line %u", __xc->file, __xc->line);\
+} while (0)
+
 struct chunk {
-	struct chunk	*prev;
-	struct chunk	*next;
-	char const	*file;
-	us_it		line;
-	uc_it		isfree;
-	sc_it		__dummy;
-	ui_it		size;
+   struct chunk   *prev;
+   struct chunk   *next;
+   char const     *file;
+   ui16_t         line;
+   ui8_t          isfree;
+   ui8_t          __dummy;
+   ui32_t         size;
 };
 
 union ptr {
-	struct chunk	*c;
-	void		*p;
+   void           *p;
+   struct chunk   *c;
+   char           *cp;
+   ui8_t          *ui8p;
 };
 
-struct chunk	*_mlist, *_mfree;
+struct chunk   *_mlist, *_mfree;
 
-void *
+FL void *
 (smalloc)(size_t s SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
 
-	if (s == 0)
-		s = 1;
-	s += sizeof(struct chunk);
+   if (s == 0)
+      s = 1;
+   s += sizeof(struct chunk) + _HOPE_SIZE;
 
-	if ((p.p = malloc(s)) == NULL)
-		out_of_memory();
-	p.c->prev = NULL;
-	if ((p.c->next = _mlist) != NULL)
-		_mlist->prev = p.c;
-	p.c->file = mdbg_file;
-	p.c->line = (us_it)mdbg_line;
-	p.c->isfree = 0;
-	p.c->size = (ui_it)s;
-	_mlist = p.c++;
-	return (p.p);
+   if ((p.p = (malloc)(s)) == NULL)
+      _out_of_memory();
+   p.c->prev = NULL;
+   if ((p.c->next = _mlist) != NULL)
+      _mlist->prev = p.c;
+   p.c->file = mdbg_file;
+   p.c->line = (ui16_t)mdbg_line;
+   p.c->isfree = FAL0;
+   p.c->size = (ui32_t)s;
+   _mlist = p.c++;
+   _HOPE_SET(p);
+   return p.p;
 }
 
-void *
+FL void *
 (srealloc)(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
+   bool_t isbad;
 
-	if ((p.p = v) == NULL) {
-		p.p = (smalloc)(s, mdbg_file, mdbg_line);
-		goto jleave;
-	}
+   if ((p.p = v) == NULL) {
+      p.p = (smalloc)(s, mdbg_file, mdbg_line);
+      goto jleave;
+   }
 
-	--p.c;
-	if (p.c->isfree) {
-		fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
-			"\tLast seen: %s, line %d\n",
-			mdbg_file, mdbg_line, p.c->file, p.c->line);
-		goto jforce;
-	}
+   _HOPE_GET(p, isbad);
+   --p.c;
+   if (p.c->isfree) {
+      fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
+         "\tLast seen: %s, line %d\n",
+         mdbg_file, mdbg_line, p.c->file, p.c->line);
+      goto jforce;
+   }
 
-	if (p.c == _mlist)
-		_mlist = p.c->next;
-	else
-		p.c->prev->next = p.c->next;
-	if (p.c->next != NULL)
-		p.c->next->prev = p.c->prev;
+   if (p.c == _mlist)
+      _mlist = p.c->next;
+   else
+      p.c->prev->next = p.c->next;
+   if (p.c->next != NULL)
+      p.c->next->prev = p.c->prev;
 
 jforce:
-	if (s == 0)
-		s = 1;
-	s += sizeof(struct chunk);
+   if (s == 0)
+      s = 1;
+   s += sizeof(struct chunk) + _HOPE_SIZE;
 
-	if ((p.p = realloc(p.c, s)) == NULL)
-		out_of_memory();
-	p.c->prev = NULL;
-	if ((p.c->next = _mlist) != NULL)
-		_mlist->prev = p.c;
-	p.c->file = mdbg_file;
-	p.c->line = (us_it)mdbg_line;
-	p.c->isfree = 0;
-	p.c->size = (ui_it)s;
-	_mlist = p.c++;
+   if ((p.p = (realloc)(p.c, s)) == NULL)
+      _out_of_memory();
+   p.c->prev = NULL;
+   if ((p.c->next = _mlist) != NULL)
+      _mlist->prev = p.c;
+   p.c->file = mdbg_file;
+   p.c->line = (ui16_t)mdbg_line;
+   p.c->isfree = FAL0;
+   p.c->size = (ui32_t)s;
+   _mlist = p.c++;
+   _HOPE_SET(p);
 jleave:
-	return (p.p);
+   return p.p;
 }
 
-void *
+FL void *
 (scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
 
-	if (size == 0)
-		size = 1;
-	if (nmemb == 0)
-		nmemb = 1;
-	size *= nmemb;
-	size += sizeof(struct chunk);
+   if (size == 0)
+      size = 1;
+   if (nmemb == 0)
+      nmemb = 1;
+   size *= nmemb;
+   size += sizeof(struct chunk) + _HOPE_SIZE;
 
-	if ((p.p = malloc(size)) == NULL)
-		out_of_memory();
-	memset(p.p, 0, size);
-	p.c->prev = NULL;
-	if ((p.c->next = _mlist) != NULL)
-		_mlist->prev = p.c;
-	p.c->file = mdbg_file;
-	p.c->line = (us_it)mdbg_line;
-	p.c->isfree = 0;
-	p.c->size = (ui_it)size;
-	_mlist = p.c++;
-	return (p.p);
+   if ((p.p = (malloc)(size)) == NULL)
+      _out_of_memory();
+   memset(p.p, 0, size);
+   p.c->prev = NULL;
+   if ((p.c->next = _mlist) != NULL)
+      _mlist->prev = p.c;
+   p.c->file = mdbg_file;
+   p.c->line = (ui16_t)mdbg_line;
+   p.c->isfree = FAL0;
+   p.c->size = (ui32_t)size;
+   _mlist = p.c++;
+   _HOPE_SET(p);
+   return p.p;
 }
 
-void
+FL void
 (sfree)(void *v SMALLOC_DEBUG_ARGS)
 {
-	union ptr p;
+   union ptr p;
+   bool_t isbad;
 
-	if ((p.p = v) == NULL) {
-		fprintf(stderr, "sfree(NULL) from %s, line %d\n",
-			mdbg_file, mdbg_line);
-		goto jleave;
-	}
+   if ((p.p = v) == NULL) {
+      fprintf(stderr, "sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
+      goto jleave;
+   }
 
-	--p.c;
-	if (p.c->isfree) {
-		fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
-			"\tLast seen: %s, line %d\n",
-			mdbg_file, mdbg_line, p.c->file, p.c->line);
-		goto jleave;
-	}
+   _HOPE_GET(p, isbad);
+   --p.c;
+   if (p.c->isfree) {
+      fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
+         "\tLast seen: %s, line %d\n",
+         mdbg_file, mdbg_line, p.c->file, p.c->line);
+      goto jleave;
+   }
 
-	if (p.c == _mlist)
-		_mlist = p.c->next;
-	else
-		p.c->prev->next = p.c->next;
-	if (p.c->next != NULL)
-		p.c->next->prev = p.c->prev;
-	p.c->isfree = 1;
+   if (p.c == _mlist)
+      _mlist = p.c->next;
+   else
+      p.c->prev->next = p.c->next;
+   if (p.c->next != NULL)
+      p.c->next->prev = p.c->prev;
+   p.c->isfree = TRU1;
 
-	if (options & OPT_DEBUG) {
-		p.c->next = _mfree;
-		_mfree = p.c;
-	} else
-		(free)(p.c);
-jleave:	;
+   if (options & OPT_DEBUG) {
+      p.c->next = _mfree;
+      _mfree = p.c;
+   } else
+      (free)(p.c);
+jleave:
+   ;
 }
 
-void
+FL void
 smemreset(void)
 {
-	union ptr p;
-	ul_it c = 0, s = 0;
+   union ptr p;
+   size_t c = 0, s = 0;
 
-	for (p.c = _mfree; p.c != NULL;) {
-		void *vp = p.c;
-		++c;
-		s += p.c->size;
-		p.c = p.c->next;
-		(free)(vp);
-	}
-	_mfree = NULL;
+   for (p.c = _mfree; p.c != NULL;) {
+      void *vp = p.c;
+      ++c;
+      s += p.c->size;
+      p.c = p.c->next;
+      (free)(vp);
+   }
+   _mfree = NULL;
 
-	if (options & OPT_DEBUG)
-		fprintf(stderr, "smemreset(): freed %lu regions/%lu bytes\n",
-			c, s);
+   if (options & OPT_DEBUG)
+      fprintf(stderr, "smemreset(): freed %" ZFMT " chunks/%" ZFMT " bytes\n",
+         c, s);
 }
 
-int
-(smemtrace)(void *v)
+FL int
+smemtrace(void *v)
 {
-	FILE *fp;
-	char *cp;
-	union ptr p;
-	size_t lines = 0;
+   /* For _HOPE_GET() */
+   char const * const mdbg_file = "smemtrace()";
+   int const mdbg_line = -1;
 
-	v = (void*)0x1;
-	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
-		perror("tmpfile");
-		goto jleave;
-	}
-	rm(cp);
-	Ftfree(&cp);
+   FILE *fp;
+   char *cp;
+   union ptr p, xp;
+   bool_t isbad;
+   size_t lines;
 
-	fprintf(fp, "Currently allocated memory chunks:\n");
-	for (p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next)
-		fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
-			(void*)(p.c + 1),
-			(ui_it)(p.c->size - sizeof(struct chunk)),
-			p.c->file, p.c->line);
+   v = (void*)0x1;
+   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+      perror("tmpfile");
+      goto jleave;
+   }
+   rm(cp);
+   Ftfree(&cp);
 
-	if (options & OPT_DEBUG) {
-		fprintf(fp, "sfree()d memory chunks awaiting free():\n");
-		for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next)
-			fprintf(fp, "%p (%5u bytes): %s, line %hu\n",
-				(void*)(p.c + 1),
-				(ui_it)(p.c->size - sizeof(struct chunk)),
-				p.c->file, p.c->line);
-	}
+   fprintf(fp, "Currently allocated memory chunks:\n");
+   for (lines = 0, p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next) {
+      xp = p;
+      ++xp.c;
+      _HOPE_GET_TRACE(xp, isbad);
+      fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
+         (isbad ? "! CANARY ERROR: " : ""), xp.p,
+         (size_t)(p.c->size - sizeof(struct chunk)), p.c->file, p.c->line);
+   }
 
-	page_or_print(fp, lines);
-	Fclose(fp);
-	v = NULL;
+   if (options & OPT_DEBUG) {
+      fprintf(fp, "sfree()d memory chunks awaiting free():\n");
+      for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next) {
+         xp = p;
+         ++xp.c;
+         _HOPE_GET_TRACE(xp, isbad);
+         fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
+            (isbad ? "! CANARY ERROR: " : ""), xp.p,
+            (size_t)(p.c->size - sizeof(struct chunk)), p.c->file, p.c->line);
+      }
+   }
+
+   page_or_print(fp, lines);
+   Fclose(fp);
+   v = NULL;
 jleave:
-	return (v != NULL);
+   return (v != NULL);
 }
-#endif /* HAVE_ASSERTS */
+
+# ifdef MEMCHECK
+FL bool_t
+_smemcheck(char const *mdbg_file, int mdbg_line)
+{
+   union ptr p, xp;
+   bool_t anybad = FAL0, isbad;
+   size_t lines;
+
+   for (lines = 0, p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next) {
+      xp = p;
+      ++xp.c;
+      _HOPE_GET_TRACE(xp, isbad);
+      if (isbad) {
+         anybad = TRU1;
+         fprintf(stderr,
+            "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
+            xp.p, (size_t)(p.c->size - sizeof(struct chunk)),
+            p.c->file, p.c->line);
+      }
+   }
+
+   if (options & OPT_DEBUG) {
+      for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next) {
+         xp = p;
+         ++xp.c;
+         _HOPE_GET_TRACE(xp, isbad);
+         if (isbad) {
+            anybad = TRU1;
+            fprintf(stderr,
+               "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
+               xp.p, (size_t)(p.c->size - sizeof(struct chunk)),
+               p.c->file, p.c->line);
+         }
+      }
+   }
+   return anybad;
+}
+# endif /* MEMCHECK */
+#endif /* HAVE_DEBUG */
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

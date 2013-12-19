@@ -37,19 +37,16 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include "extern.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 static int edit1(int *msgvec, int viored);
 
 /*
  * Edit a message list.
  */
-int
+FL int
 editor(void *v)
 {
 	int *msgvec = v;
@@ -60,7 +57,7 @@ editor(void *v)
 /*
  * Invoke the visual editor on a message list.
  */
-int 
+FL int
 visual(void *v)
 {
 	int *msgvec = v;
@@ -73,7 +70,7 @@ visual(void *v)
  * (which should not exist) and forking an editor on it.
  * We get the editor from the stuff above.
  */
-static int 
+static int
 edit1(int *msgvec, int viored)
 {
 	int c, i, wb, lastnl;
@@ -154,7 +151,7 @@ edit1(int *msgvec, int viored)
  * Signals must be handled by the caller.
  * "viored" is 'e' for ed, 'v' for vi.
  */
-FILE *
+FL FILE *
 run_editor(FILE *fp, off_t size, int viored, int readonly,
 		struct header *hp, struct message *mp, enum sendaction action,
 		sighandler_type oldint)
@@ -169,7 +166,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly,
 
 	if ((nf = Ftemp(&tempEdit, "Re", "w", readonly ? 0400 : 0600, 1))
 			== NULL) {
-		perror(catgets(catd, CATSET, 73, "temporary mail edit file"));
+		perror(tr(73, "temporary mail edit file"));
 		goto out;
 	}
 	if (hp) {
@@ -180,7 +177,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly,
 		puthead(hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
 	}
 	if (mp) {
-		send(mp, nf, 0, NULL, action, NULL);
+		sendmp(mp, nf, 0, NULL, action, NULL);
 	} else {
 		if (size >= 0)
 			while (--size >= 0 && (t = getc(fp)) != EOF)

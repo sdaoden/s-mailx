@@ -61,17 +61,12 @@
  * Adopted for Heirloom mailx by Gunnar Ritter.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_IMAP
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "rcv.h"
-
-#include <stdio.h>
-
-#include "extern.h"
-
+EMPTY_FILE(lzw)
+#ifdef HAVE_IMAP
 /* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */
 #undef u_int
 #define u_int		unsigned int
@@ -236,7 +231,7 @@ static int	output(struct s_zstate *, code_int);
  * file size for noticeable speed improvement on small files.  Please direct
  * questions about this implementation to ames!jaw.
  */
-int
+FL int
 zwrite(void *cookie, const char *wbp, int num)
 {
 	code_int i;
@@ -325,7 +320,7 @@ nomatch:	if (output(zs, (code_int) ent) == -1)
 	return (num);
 }
 
-int
+FL int
 zfree(void *cookie)
 {
 	struct s_zstate *zs;
@@ -454,7 +449,7 @@ output(struct s_zstate *zs, code_int ocode)
  * compressed file.  The tables used herein are shared with those of the
  * compress() routine.  See the definitions above.
  */
-int
+FL int
 zread(void *cookie, char *rbp, int num)
 {
 	u_int count;
@@ -688,7 +683,7 @@ cl_hash(struct s_zstate *zs, count_int cl_hsize)	/* Reset code table. */
 }
 
 #undef fp
-void *
+FL void *
 zalloc(FILE *fp)
 {
 #define bits	BITS
@@ -711,4 +706,47 @@ zalloc(FILE *fp)
 	zs->zs_fp = fp;
 	return zs;
 }
+
+#undef u_int
+#undef u_short
+#undef u_char
+#undef count
+#undef BITS
+#undef HSIZE
+#undef BIT_MASK
+#undef BLOCK_MASK
+#undef INIT_BITS
+#undef MAXCODE
+#undef fp
+#undef zmode
+#undef state
+#undef n_bits
+#undef maxbits
+#undef maxcode
+#undef maxmaxcode
+#undef htab
+#undef codetab
+#undef hsize
+#undef free_ent
+#undef block_compress
+#undef clear_flg
+#undef ratio
+#undef checkpoint
+#undef offset
+#undef in_count
+#undef bytes_out
+#undef out_count
+#undef buf
+#undef fcode
+#undef hsize_reg
+#undef ent
+#undef hshift
+#undef stackp
+#undef finchar
+#undef code
+#undef oldcode
+#undef incode
+#undef roffset
+#undef size
+#undef gbuf
 #endif /* ndef HAVE_IMAP */

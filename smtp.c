@@ -37,25 +37,24 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_SMTP
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "rcv.h"
-
-#include <setjmp.h>
-#include <unistd.h>
+EMPTY_FILE(smtp)
+#ifdef HAVE_SMTP
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
+
 # include <netdb.h>
+
 # include <netinet/in.h>
+
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
 #endif
 
-#include "extern.h"
 #ifdef HAVE_MD5
 # include "md5.h"
 #endif
@@ -81,7 +80,7 @@ onterm(int signo)
 /*
  * Get the SMTP server's answer, expecting val.
  */
-static int 
+static int
 read_smtp(struct sock *sp, int val, int ign_eof)
 {
 	int ret;
@@ -90,7 +89,7 @@ read_smtp(struct sock *sp, int val, int ign_eof)
 	do {
 		if ((len = sgetline(&smtpbuf, &smtpbufsize, NULL, sp)) < 6) {
 			if (len >= 0 && !ign_eof)
-				fprintf(stderr, catgets(catd, CATSET, 241,
+				fprintf(stderr, tr(241,
 					"Unexpected EOF on SMTP connection\n"));
 			return -1;
 		}
@@ -104,8 +103,7 @@ read_smtp(struct sock *sp, int val, int ign_eof)
 		default: ret = 5;
 		}
 		if (val != ret)
-			fprintf(stderr, catgets(catd, CATSET, 191,
-					"smtp-server: %s"), smtpbuf);
+			fprintf(stderr, tr(191, "smtp-server: %s"), smtpbuf);
 	} while (smtpbuf[3] == '-');
 	return ret;
 }
@@ -306,7 +304,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	return 0;
 }
 
-char *
+FL char *
 smtp_auth_var(char const *atype, char const *addr)
 {
 	size_t tl, al, len;
@@ -333,14 +331,14 @@ smtp_auth_var(char const *atype, char const *addr)
 /*
  * Connect to a SMTP server.
  */
-int
+FL int
 smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 		struct header *hp, const char *user, const char *password,
 		const char *skinned)
 {
 	struct sock	so;
 	int	use_ssl, ret;
-	sighandler_type	saveterm;
+	sighandler_type	volatile saveterm;
 
 	memset(&so, 0, sizeof so);
 	saveterm = safe_signal(SIGTERM, SIG_IGN);

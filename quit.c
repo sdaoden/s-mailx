@@ -37,18 +37,14 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <time.h>
-#include <unistd.h>
 #include <utime.h>
 
-#include "extern.h"
+static char	_mboxname[MAXPATHLEN];	/* Name of mbox */
 
 /* Touch the indicated file */
 static void	alter(char const *name);
@@ -73,7 +69,7 @@ alter(char const *name)
  * The "quit" command.
  */
 /*ARGSUSED*/
-int 
+FL int
 quitcmd(void *v)
 {
 	(void)v;
@@ -106,15 +102,20 @@ writeback(FILE *res, FILE *obuf)
 		while ((c = getc(res)) != EOF)
 			putc(c, obuf);
 #endif
+	srelax_hold();
 	for (mp = &message[0]; mp < &message[msgCount]; mp++)
 		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
 			p++;
-			if (send(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+			if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 				perror(mailname);
 				(void)fseek(obuf, 0L, SEEK_SET);
+				srelax_rele();
 				return(-1);
 			}
+			srelax();
 		}
+	srelax_rele();
+
 #ifdef APPEND
 	if (res != NULL)
 		while ((c = getc(res)) != EOF)
@@ -144,7 +145,7 @@ writeback(FILE *res, FILE *obuf)
  * Save all untouched messages back in the system mailbox.
  * Remove the system mailbox, if none saved there.
  */
-void 
+FL void
 quit(void)
 {
 	int p, modify, anystat;
@@ -220,7 +221,7 @@ quit(void)
 	}
 	if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1) {
 nolock:
-		perror(catgets(catd, CATSET, 157, "Unable to lock mailbox"));
+		perror(tr(157, "Unable to lock mailbox"));
 		Fclose(fbuf);
 		return;
 	}
@@ -228,7 +229,7 @@ nolock:
 		goto nolock;
 	rbuf = NULL;
 	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
-		printf(catgets(catd, CATSET, 158, "New mail has arrived.\n"));
+		printf(tr(158, "New mail has arrived.\n"));
 		rbuf = Ftemp(&tempResid, "Rq", "w", 0600, 1);
 		if (rbuf == NULL || fbuf == NULL)
 			goto newmail;
@@ -323,7 +324,7 @@ cream:
 	return;
 
 newmail:
-	printf(catgets(catd, CATSET, 166, "Thou hast new mail.\n"));
+	printf(tr(166, "Thou hast new mail.\n"));
 	if (fbuf != NULL) {
 		Fclose(fbuf);
 		dot_unlock(mailname);
@@ -333,7 +334,7 @@ newmail:
 /*
  * Adjust the message flags in each message.
  */
-int 
+FL int
 holdbits(void)
 {
 	struct message *mp;
@@ -361,14 +362,23 @@ holdbits(void)
 	return anystat;
 }
 
+FL void
+save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
+{
+	char const *cp;
+
+	if ((cp = expand("&")) == NULL)
+		cp = "";
+	n_strlcpy(_mboxname, cp, sizeof _mboxname);
+}
+
 /*
  * Create another temporary file and copy user's mbox file
  * darin.  If there is no mbox, copy nothing.
  * If he has specified "append" don't copy his mailbox,
  * just copy saveable entries at the end.
  */
-
-enum okay 
+FL enum okay
 makembox(void)
 {
 	struct message *mp;
@@ -377,7 +387,7 @@ makembox(void)
 	FILE *ibuf = NULL, *obuf, *abuf;
 	enum protocol	prot;
 
-	mbox = mboxname;
+	mbox = _mboxname;
 	mcount = 0;
 	if (value("append") == NULL) {
 		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
@@ -421,8 +431,10 @@ makembox(void)
 		}
 		fchmod(fileno(obuf), 0600);
 	}
+
+	srelax_hold();
 	prot = which_protocol(mbox);
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
+	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MBOX) {
 			mcount++;
 			if (prot == PROTO_IMAP &&
@@ -435,17 +447,22 @@ makembox(void)
 #ifdef HAVE_IMAP
 				if (imap_copy(mp, mp-message+1, mbox) == STOP)
 #endif
-					goto err;
-			} else if (send(mp, obuf, saveignore,
+					goto jerr;
+			} else if (sendmp(mp, obuf, saveignore,
 						NULL, SEND_MBOX, NULL) < 0) {
 				perror(mbox);
-			err:	if (ibuf)
+jerr:
+				if (ibuf)
 					Fclose(ibuf);
 				Fclose(obuf);
+				srelax_rele();
 				return STOP;
 			}
 			mp->m_flag |= MBOXED;
+			srelax();
 		}
+	}
+	srelax_rele();
 
 	/*
 	 * Copy the user's old mbox contents back
@@ -477,10 +494,9 @@ makembox(void)
 		return STOP;
 	}
 	if (mcount == 1)
-		printf(catgets(catd, CATSET, 164, "Saved 1 message in mbox\n"));
+		printf(tr(164, "Saved 1 message in mbox\n"));
 	else
-		printf(catgets(catd, CATSET, 165,
-				"Saved %d messages in mbox\n"), mcount);
+		printf(tr(165, "Saved %d messages in mbox\n"), mcount);
 	return OKAY;
 }
 
@@ -488,7 +504,7 @@ makembox(void)
  * Terminate an editing session by attempting to write out the user's
  * file from the temporary.  Save any new stuff appended to the file.
  */
-static void 
+static void
 edstop(void)
 {
 	int gotcha, c;
@@ -515,7 +531,7 @@ edstop(void)
 		char *tempname;
 
 		if ((obuf = Ftemp(&tempname, "edstop", "w", 0600, 1)) == NULL) {
-			perror(catgets(catd, CATSET, 167, "tmpfile"));
+			perror(tr(167, "tmpfile"));
 			relsesigs();
 			reset(0);
 		}
@@ -550,17 +566,23 @@ edstop(void)
 		reset(0);
 	}
 	ftrunc(obuf);
+
+	srelax_hold();
 	c = 0;
 	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if ((mp->m_flag & MDELETED) != 0)
 			continue;
 		c++;
-		if (send(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+		if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 			perror(mailname);
 			relsesigs();
-			reset(0);
+			srelax_rele();
+			reset(0);/* XXX jump aways are terrible */
 		}
+		srelax();
 	}
+	srelax_rele();
+
 	gotcha = (c == 0 && ibuf == NULL);
 	if (ibuf != NULL) {
 		while ((c = getc(ibuf)) != EOF)
@@ -576,13 +598,11 @@ edstop(void)
 	Fclose(obuf);
 	if (gotcha && value("emptybox") == NULL) {
 		rm(mailname);
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 169, "removed\n") :
-				catgets(catd, CATSET, 211, "removed.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(169, "removed\n") : tr(211, "removed.\n"));
 	} else
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 170, "complete\n") :
-				catgets(catd, CATSET, 212, "updated.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	fflush(stdout);
 
 done:
@@ -607,7 +627,7 @@ static const struct quitnames {
 	{ 0,			NULL }
 };
 
-int
+FL int
 savequitflags(void)
 {
 	enum quitflags	qf = 0;
@@ -619,7 +639,7 @@ savequitflags(void)
 	return qf;
 }
 
-void
+FL void
 restorequitflags(int qf)
 {
 	int	i;

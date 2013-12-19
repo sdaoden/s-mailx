@@ -37,14 +37,11 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#include <sys/stat.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 #define	INFIX_BUF	\
 	((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
@@ -53,7 +50,7 @@ static char	*send_boundary;
 static bool_t	_senderror;
 
 static enum okay	_putname(char const *line, enum gfield w,
-				enum sendaction action, int *gotcha,
+				enum sendaction action, size_t *gotcha,
 				char const *prefix, FILE *fo, struct name **xp);
 
 /* Get an encoding flag based on the given string */
@@ -82,8 +79,8 @@ static int infix_resend(FILE *fi, FILE *fo, struct message *mp,
 		struct name *to, int add_resent);
 
 static enum okay
-_putname(char const *line, enum gfield w, enum sendaction action, int *gotcha,
-	char const *prefix, FILE *fo, struct name **xp)
+_putname(char const *line, enum gfield w, enum sendaction action,
+	size_t *gotcha, char const *prefix, FILE *fo, struct name **xp)
 {
 	enum okay ret = STOP;
 	struct name *np;
@@ -333,7 +330,7 @@ _prepare_mta_args(struct name *to, struct header *hp)
  * the distribution list into the appropriate fields.
  */
 static struct name *
-fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
+fixhead(struct header *hp, struct name *tolist)
 {
 	struct name *np;
 
@@ -342,7 +339,7 @@ fixhead(struct header *hp, struct name *tolist) /* TODO !HAVE_ASSERTS legacy*/
 	hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 	for (np = tolist; np != NULL; np = np->n_flink)
 		if (np->n_type & GDEL) {
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG /* TODO LEGACY CODE */
 			assert(0); /* Shouldn't happen here, but later on :)) */
 #else
 			continue;
@@ -419,7 +416,7 @@ attach_message(struct attachment *ap, FILE *fo)
 
 	mp = &message[ap->a_msgno - 1];
 	touch(mp);
-	if (send(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
+	if (sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
 		return -1;
 	return 0;
 }
@@ -513,7 +510,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 	int do_iconv = 0;
 
 	if ((nfo = Ftemp(&tempMail, "Rs", "w", 0600, 1)) == NULL) {
-		perror(catgets(catd, CATSET, 178, "temporary mail file"));
+		perror(tr(178, "temporary mail file"));
 		return(NULL);
 	}
 	if ((nfi = Fopen(tempMail, "r")) == NULL) {
@@ -647,7 +644,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 	fflush(nfo);
 	if (ferror(nfo)) {
-		perror(catgets(catd, CATSET, 180, "temporary mail file"));
+		perror(tr(180, "temporary mail file"));
 		Fclose(nfo);
 		Fclose(nfi);
 		return NULL;
@@ -713,8 +710,8 @@ savemail(char const *name, FILE *fi)
 	rewind(fi);
 	cnt = fsize(fi);
 	while (fgetline(&buf, &bufsize, &cnt, &buflen, fi, 0) != NULL) {
-#ifdef HAVE_ASSERTS /* TODO assert legacy */
-		assert(! is_head(buf, buflen));
+#ifdef HAVE_DEBUG /* TODO assert legacy */
+		assert(!is_head(buf, buflen));
 #else
 		if (is_head(buf, buflen))
 			putc('>', fo);
@@ -741,7 +738,7 @@ savemail(char const *name, FILE *fi)
  * Interface between the argument list and the mail1 routine
  * which does all the dirty work.
  */
-int 
+FL int
 mail(struct name *to, struct name *cc, struct name *bcc,
 		char *subject, struct attachment *attach,
 		char *quotefile, int recipient_record)
@@ -773,7 +770,7 @@ mail(struct name *to, struct name *cc, struct name *bcc,
  * Send mail to a bunch of user names.  The interface is through
  * the mail routine below.
  */
-static int 
+static int
 sendmail_internal(void *v, int recipient_record)
 {
 	char *str = v;
@@ -785,14 +782,14 @@ sendmail_internal(void *v, int recipient_record)
 	return 0;
 }
 
-int 
-sendmail(void *v)
+FL int
+csendmail(void *v)
 {
 	return sendmail_internal(v, 0);
 }
 
-int 
-Sendmail(void *v)
+FL int
+cSendmail(void *v)
 {
 	return sendmail_internal(v, 1);
 }
@@ -1009,7 +1006,7 @@ jbail:			fprintf(stderr, tr(285,
  * Mail a message on standard input to the people indicated
  * in the passed header.  (Internal interface).
  */
-enum okay 
+FL enum okay
 mail1(struct header *hp, int printheaders, struct message *quote,
 	char *quotefile, int recipient_record, int doprefix)
 {
@@ -1211,7 +1208,7 @@ message_id(FILE *fo, struct header *hp)
 	else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
 		rl = 16;
 	else
-		/* Delivery seems to dependent on a MTA -- it's up to it */
+		/* Up to MTA */
 		goto jleave;
 
 	tmp = &time_current.tc_gm;
@@ -1229,7 +1226,7 @@ jleave:
  * because numeric timezones are easier to read and because $TZ is
  * not set on most GNU systems.
  */
-int
+FL int
 mkdate(FILE *fo, const char *field)
 {
 	struct tm *tmptr;
@@ -1271,15 +1268,14 @@ mkdate(FILE *fo, const char *field)
  * Dump the to, subject, cc header on the
  * passed file buffer.
  */
-int
+FL int
 puthead(struct header *hp, FILE *fo, enum gfield w,
 		enum sendaction action, enum conversion convert,
 		char const *contenttype, char const *charset)
 {
-	int gotcha;
 	char const *addr;
 	int stealthmua;
-	size_t l;
+	size_t gotcha, l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
 
 	if ((addr = value("stealthmua")) != NULL) {
@@ -1549,13 +1545,13 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 	if (buf)
 		free(buf);
 	if (ferror(fo)) {
-		perror(catgets(catd, CATSET, 188, "temporary mail file"));
+		perror(tr(188, "temporary mail file"));
 		return 1;
 	}
 	return 0;
 }
 
-enum okay 
+FL enum okay
 resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
 	enum okay ok = STOP;

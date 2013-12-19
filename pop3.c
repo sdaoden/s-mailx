@@ -37,19 +37,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#ifndef HAVE_POP3
-typedef int avoid_empty_file_compiler_warning;
-#else
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <errno.h>
-#include <time.h>
-#include <unistd.h>
-
-#include "extern.h"
+EMPTY_FILE(pop3)
+#ifdef HAVE_POP3
 #ifdef HAVE_MD5
 # include "md5.h"
 #endif
@@ -76,12 +69,12 @@ typedef int avoid_empty_file_compiler_warning;
 	}\
 }
 
-static char	*pop3buf;
-static size_t	pop3bufsize;
-static sigjmp_buf	pop3jmp;
-static sighandler_type savealrm;
-static int	pop3keepalive;
-static volatile int	pop3lock;
+static char		*_pop3_buf;
+static size_t		_pop3_bufsize;
+static sigjmp_buf	_pop3_jmp;
+static sighandler_type	_pop3_savealrm;
+static int		_pop3_keepalive;
+static int volatile	_pop3_lock;
 
 /* Perform entire login handshake */
 static enum okay	_pop3_login(struct mailbox *mp, char *xuser, char *pass,
@@ -109,7 +102,7 @@ static void pop3_timer_off(void);
 static enum okay pop3_answer(struct mailbox *mp);
 static enum okay pop3_finish(struct mailbox *mp);
 static void pop3catch(int s);
-static void maincatch(int s);
+static void _pop3_maincatch(int s);
 static enum okay pop3_noop1(struct mailbox *mp);
 static void pop3alarm(int s);
 static enum okay pop3_stat(struct mailbox *mp, off_t *size, int *cnt);
@@ -136,7 +129,7 @@ _pop3_login(struct mailbox *mp, char *xuser, char *pass, char const *uhp,
 	/* Get the greeting, check wether APOP is advertised */
 	POP3_XANSWER(goto jleave);
 #ifdef HAVE_MD5
-	ts = _pop3_lookup_apop_timestamp(pop3buf);
+	ts = _pop3_lookup_apop_timestamp(_pop3_buf);
 #endif
 
 	if ((cp = strchr(xserver, ':')) != NULL) { /* TODO GENERIC URI PARSE! */
@@ -264,7 +257,7 @@ _pop3_auth_apop(struct mailbox *mp, char *xuser, char *pass, char const *ts)
 	enum okay rv = STOP;
 	unsigned char digest[16];
 	char hex[MD5TOHEX_SIZE];
-	MD5_CTX	ctx;
+	md5_ctx	ctx;
 	size_t tl, i;
 	char *user, *cp;
 
@@ -273,10 +266,10 @@ _pop3_auth_apop(struct mailbox *mp, char *xuser, char *pass, char const *ts)
 		if (! getcredentials(&user, &pass))
 			break;
 
-		MD5Init(&ctx);
-		MD5Update(&ctx, (unsigned char*)UNCONST(ts), tl);
-		MD5Update(&ctx, (unsigned char*)pass, strlen(pass));
-		MD5Final(digest, &ctx);
+		md5_init(&ctx);
+		md5_update(&ctx, (unsigned char*)UNCONST(ts), tl);
+		md5_update(&ctx, (unsigned char*)pass, strlen(pass));
+		md5_final(digest, &ctx);
 		md5tohex(hex, digest);
 
 		i = strlen(user);
@@ -343,9 +336,9 @@ jcont:
 static void
 pop3_timer_off(void)
 {
-	if (pop3keepalive > 0) {
+	if (_pop3_keepalive > 0) {
 		alarm(0);
-		safe_signal(SIGALRM, savealrm);
+		safe_signal(SIGALRM, _pop3_savealrm);
 	}
 }
 
@@ -355,12 +348,14 @@ pop3_answer(struct mailbox *mp)
 	int sz;
 	enum okay ok = STOP;
 
-retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->mb_sock)) > 0) {
+retry:
+	if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock))
+			> 0) {
 		if ((mp->mb_active & (MB_COMD|MB_MULT)) == MB_MULT)
 			goto multiline;
 		if (options & OPT_VERBOSE)
-			fputs(pop3buf, stderr);
-		switch (*pop3buf) {
+			fputs(_pop3_buf, stderr);
+		switch (*_pop3_buf) {
 		case '+':
 			ok = OKAY;
 			mp->mb_active &= ~MB_COMD;
@@ -368,8 +363,7 @@ retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->mb_sock)) > 0) {
 		case '-':
 			ok = STOP;
 			mp->mb_active = MB_NONE;
-			fprintf(stderr, catgets(catd, CATSET, 218,
-					"POP3 error: %s"), pop3buf);
+			fprintf(stderr, tr(218, "POP3 error: %s"), _pop3_buf);
 			break;
 		default:
 			/*
@@ -378,10 +372,11 @@ retry:	if ((sz = sgetline(&pop3buf, &pop3bufsize, NULL, &mp->mb_sock)) > 0) {
 			 * e. g. because the user interrupted a file
 			 * download. Get lines until a single dot appears.
 			 */
-	multiline:	 while (pop3buf[0] != '.' || pop3buf[1] != '\r' ||
-					pop3buf[2] != '\n' ||
-					pop3buf[3] != '\0') {
-				sz = sgetline(&pop3buf, &pop3bufsize,
+multiline:
+			while (_pop3_buf[0] != '.' || _pop3_buf[1] != '\r' ||
+					_pop3_buf[2] != '\n' ||
+					_pop3_buf[3] != '\0') {
+				sz = sgetline(&_pop3_buf, &_pop3_bufsize,
 						NULL, &mp->mb_sock);
 				if (sz <= 0)
 					goto eof;
@@ -411,8 +406,8 @@ pop3catch(int s)
 	termios_state_reset();
 	switch (s) {
 	case SIGINT:
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
-		siglongjmp(pop3jmp, 1);
+		fprintf(stderr, tr(102, "Interrupt\n"));
+		siglongjmp(_pop3_jmp, 1);
 		break;
 	case SIGPIPE:
 		fprintf(stderr, "Received SIGPIPE during POP3 operation\n");
@@ -421,11 +416,11 @@ pop3catch(int s)
 }
 
 static void
-maincatch(int s)
+_pop3_maincatch(int s)
 {
 	(void)s;
 	if (interrupts++ == 0) {
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 		return;
 	}
 	onintr(0);
@@ -439,27 +434,24 @@ pop3_noop1(struct mailbox *mp)
 	return OKAY;
 }
 
-enum okay
+FL enum okay
 pop3_noop(void)
 {
-	enum okay	ok = STOP;
-	sighandler_type	saveint, savepipe;
+	sighandler_type	volatile saveint, savepipe;
+	enum okay ok = STOP;
 
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&ok;
-	pop3lock = 1;
+	_pop3_lock = 1;
 	if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-		safe_signal(SIGINT, maincatch);
+		safe_signal(SIGINT, &_pop3_maincatch);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
-	if (sigsetjmp(pop3jmp, 1) == 0) {
+	if (sigsetjmp(_pop3_jmp, 1) == 0) {
 		if (savepipe != SIG_IGN)
 			safe_signal(SIGPIPE, pop3catch);
 		ok = pop3_noop1(&mb);
 	}
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
-	pop3lock = 0;
+	_pop3_lock = 0;
 	return ok;
 }
 
@@ -467,15 +459,14 @@ pop3_noop(void)
 static void
 pop3alarm(int s)
 {
-	sighandler_type	saveint;
-	sighandler_type savepipe;
-	(void)s;
+	sighandler_type	volatile saveint, savepipe;
+	UNUSED(s);
 
-	if (pop3lock++ == 0) {
+	if (_pop3_lock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-			safe_signal(SIGINT, maincatch);
+			safe_signal(SIGINT, &_pop3_maincatch);
 		savepipe = safe_signal(SIGPIPE, SIG_IGN);
-		if (sigsetjmp(pop3jmp, 1)) {
+		if (sigsetjmp(_pop3_jmp, 1)) {
 			safe_signal(SIGINT, saveint);
 			safe_signal(SIGPIPE, savepipe);
 			goto brk;
@@ -490,8 +481,10 @@ pop3alarm(int s)
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
 	}
-brk:	alarm(pop3keepalive);
-out:	pop3lock--;
+brk:
+	alarm(_pop3_keepalive);
+out:
+	--_pop3_lock;
 }
 
 static enum okay
@@ -502,24 +495,27 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 
 	POP3_OUT("STAT\r\n", MB_COMD)
 	POP3_ANSWER()
-	for (cp = pop3buf; *cp && !spacechar(*cp & 0377); cp++);
-	while (*cp && spacechar(*cp & 0377))
-		cp++;
-	if (*cp) {
+	for (cp = _pop3_buf; *cp != '\0' && !spacechar(*cp); ++cp)
+		;
+	while (*cp != '\0' && spacechar(*cp))
+		++cp;
+
+	if (*cp != '\0') {
 		*cnt = (int)strtol(cp, NULL, 10);
-		while (*cp && !spacechar(*cp & 0377))
-			cp++;
-		while (*cp && spacechar(*cp & 0377))
-			cp++;
-		if (*cp)
+		while (*cp != '\0' && !spacechar(*cp))
+			++cp;
+		while (*cp != '\0' && spacechar(*cp))
+			++cp;
+		if (*cp != '\0')
 			*size = (int)strtol(cp, NULL, 10);
 		else
 			ok = STOP;
 	} else
 		ok = STOP;
+
 	if (ok == STOP)
-		fprintf(stderr, catgets(catd, CATSET, 260,
-			"invalid POP3 STAT response: %s\n"), pop3buf);
+		fprintf(stderr, tr(260, "invalid POP3 STAT response: %s\n"),
+			_pop3_buf);
 	return ok;
 }
 
@@ -531,14 +527,15 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
 	snprintf(o, sizeof o, "LIST %u\r\n", n);
 	POP3_OUT(o, MB_COMD)
 	POP3_ANSWER()
-	for (cp = pop3buf; *cp && !spacechar(*cp & 0377); cp++);
-	while (*cp && spacechar(*cp & 0377))
-		cp++;
-	while (*cp && !spacechar(*cp & 0377))
-		cp++;
-	while (*cp && spacechar(*cp & 0377))
-		cp++;
-	if (*cp)
+	for (cp = _pop3_buf; *cp != '\0' && !spacechar(*cp); ++cp)
+		;
+	while (*cp != '\0' && spacechar(*cp))
+		++cp;
+	while (*cp != '\0' && !spacechar(*cp))
+		++cp;
+	while (*cp != '\0' && spacechar(*cp))
+		++cp;
+	if (*cp != '\0')
 		*size = (size_t)strtol(cp, NULL, 10);
 	else
 		*size = 0;
@@ -591,14 +588,14 @@ pop3_setptr(struct mailbox *mp)
 	pop3_dates(mp);
 }
 
-int
+FL int
 pop3_setfile(const char *server, int nmail, int isedit)
 {
 	struct sock	so;
 	sighandler_type	saveint;
 	sighandler_type savepipe;
-	char *volatile user, *pass;
-	const char *cp, *uhp, *volatile sp = server;
+	char * volatile user, * volatile pass;
+	const char *cp, *uhp, * volatile sp = server;
 	int use_ssl = 0;
 
 	if (nmail)
@@ -640,15 +637,15 @@ pop3_setfile(const char *server, int nmail, int isedit)
 	}
 	initbox(server);
 	mb.mb_type = MB_VOID;
-	pop3lock = 1;
+	_pop3_lock = 1;
 	mb.mb_sock = so;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
-	if (sigsetjmp(pop3jmp, 1)) {
+	if (sigsetjmp(_pop3_jmp, 1)) {
 		sclose(&mb.mb_sock);
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
-		pop3lock = 0;
+		_pop3_lock = 0;
 		return 1;
 	}
 	if (saveint != SIG_IGN)
@@ -656,9 +653,9 @@ pop3_setfile(const char *server, int nmail, int isedit)
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, pop3catch);
 	if ((cp = value("pop3-keepalive")) != NULL) {
-		if ((pop3keepalive = strtol(cp, NULL, 10)) > 0) {
-			savealrm = safe_signal(SIGALRM, pop3alarm);
-			alarm(pop3keepalive);
+		if ((_pop3_keepalive = (int)strtol(cp, NULL, 10)) > 0) {
+			_pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
+			alarm(_pop3_keepalive);
 		}
 	}
 	mb.mb_sock.s_desc = "POP3";
@@ -669,7 +666,7 @@ pop3_setfile(const char *server, int nmail, int isedit)
 		pop3_timer_off();
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, savepipe);
-		pop3lock = 0;
+		_pop3_lock = 0;
 		return 1;
 	}
 	mb.mb_type = MB_POP3;
@@ -679,11 +676,10 @@ pop3_setfile(const char *server, int nmail, int isedit)
 	sawcom = FAL0;
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
-	pop3lock = 0;
+	_pop3_lock = 0;
 	if (!edit && msgCount == 0) {
 		if (mb.mb_type == MB_POP3 && value("emptystart") == NULL)
-			fprintf(stderr, catgets(catd, CATSET, 258,
-				"No mail at %s\n"), server);
+			fprintf(stderr, tr(258, "No mail at %s\n"), server);
 		return 1;
 	}
 	return 0;
@@ -698,24 +694,18 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 	size_t linesize = 0, linelen, size;
 	int number = m - message + 1, emptyline = 0, lines;
 
-	(void)&saveint;
-	(void)&savepipe;
-	(void)&number;
-	(void)&emptyline;
-	(void)&need;
 	if (mp->mb_sock.s_fd < 0) {
-		fprintf(stderr, catgets(catd, CATSET, 219,
-				"POP3 connection already closed.\n"));
+		fprintf(stderr, tr(219, "POP3 connection already closed.\n"));
 		return STOP;
 	}
-	if (pop3lock++ == 0) {
+	if (_pop3_lock++ == 0) {
 		if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-			safe_signal(SIGINT, maincatch);
+			safe_signal(SIGINT, &_pop3_maincatch);
 		savepipe = safe_signal(SIGPIPE, SIG_IGN);
-		if (sigsetjmp(pop3jmp, 1)) {
+		if (sigsetjmp(_pop3_jmp, 1)) {
 			safe_signal(SIGINT, saveint);
 			safe_signal(SIGPIPE, savepipe);
-			pop3lock--;
+			_pop3_lock--;
 			return STOP;
 		}
 		if (savepipe != SIG_IGN)
@@ -832,20 +822,20 @@ retry:	switch (need) {
 		safe_signal(SIGINT, saveint);
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, savepipe);
-	pop3lock--;
+	_pop3_lock--;
 	if (interrupts)
 		onintr(0);
 	return OKAY;
 }
 
-enum okay
+FL enum okay
 pop3_header(struct message *m)
 {
 	return pop3_get(&mb, m,
 		boption("pop3-bulk-load") ? NEED_BODY : NEED_HEADER);
 }
 
-enum okay
+FL enum okay
 pop3_body(struct message *m)
 {
 	return pop3_get(&mb, m, NEED_BODY);
@@ -900,13 +890,12 @@ pop3_update(struct mailbox *mp)
 	}
 	if (gotcha && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf(value("bsdcompat") || value("bsdmsgs") ?
-				catgets(catd, CATSET, 170, "complete\n") :
-				catgets(catd, CATSET, 212, "updated.\n"));
+		printf((value("bsdcompat") || value("bsdmsgs"))
+			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit) {
 		if (held == 1)
 			printf(tr(155, "Held 1 message in %s\n"), displayname);
-		else if (held > 1)
+		else
 			printf(tr(156, "Held %d messages in %s\n"), held,
 				displayname);
 	}
@@ -914,24 +903,23 @@ pop3_update(struct mailbox *mp)
 	return OKAY;
 }
 
-void
+FL void
 pop3_quit(void)
 {
-	sighandler_type	saveint;
-	sighandler_type savepipe;
+	sighandler_type	volatile saveint, savepipe;
 
 	if (mb.mb_sock.s_fd < 0) {
-		fprintf(stderr, catgets(catd, CATSET, 219,
+		fprintf(stderr, tr(219,
 				"POP3 connection already closed.\n"));
 		return;
 	}
-	pop3lock = 1;
+	_pop3_lock = 1;
 	saveint = safe_signal(SIGINT, SIG_IGN);
 	savepipe = safe_signal(SIGPIPE, SIG_IGN);
-	if (sigsetjmp(pop3jmp, 1)) {
+	if (sigsetjmp(_pop3_jmp, 1)) {
 		safe_signal(SIGINT, saveint);
 		safe_signal(SIGPIPE, saveint);
-		pop3lock = 0;
+		_pop3_lock = 0;
 		return;
 	}
 	if (saveint != SIG_IGN)
@@ -943,6 +931,6 @@ pop3_quit(void)
 	sclose(&mb.mb_sock);
 	safe_signal(SIGINT, saveint);
 	safe_signal(SIGPIPE, savepipe);
-	pop3lock = 0;
+	_pop3_lock = 0;
 }
 #endif /* HAVE_POP3 */

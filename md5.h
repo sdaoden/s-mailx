@@ -32,8 +32,16 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-#ifdef HAVE_MD5
+#if defined HAVE_MD5 && !defined _NAIL_MD5_H
+# define _NAIL_MD5_H
+# ifdef HAVE_OPENSSL_MD5
+#  include <openssl/md5.h>
 
+#  define md5_ctx	MD5_CTX
+#  define md5_init	MD5_Init
+#  define md5_update	MD5_Update
+#  define md5_final	MD5_Final
+# else
 /*
  * This version of MD5 has been changed such that any unsigned type with
  * at least 32 bits is acceptable. This is important e.g. for Cray vector
@@ -45,12 +53,13 @@ typedef struct {
 	md5_type state[4];	/* state (ABCD) */
 	md5_type count[2];	/* number of bits, modulo 2^64 (lsb first) */
 	unsigned char	buffer[64];	/* input buffer */
-} MD5_CTX;
+} md5_ctx;
 
-void	MD5Init(MD5_CTX *);
-void	MD5Update(MD5_CTX *, unsigned char *, unsigned int);
-void	MD5Final(unsigned char[16], MD5_CTX *);
+FL void	md5_init(md5_ctx *);
+FL void	md5_update(md5_ctx *, unsigned char *, unsigned int);
+FL void	md5_final(unsigned char[16], md5_ctx *);
+# endif /* !HAVE_OPENSSL_MD5 */
 
-void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
+FL void	hmac_md5(unsigned char *, int, unsigned char *, int, void *);
 
 #endif /* HAVE_MD5 */

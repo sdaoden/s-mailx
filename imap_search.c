@@ -39,11 +39,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <time.h>
-
-#include "extern.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 static enum itoken {
 	ITBAD,
@@ -159,7 +157,7 @@ static char *mkenvelope(struct name *np);
 static int matchmsg(struct message *m, const char *what, int withheader);
 static const char *around(const char *cp);
 
-enum okay 
+FL enum okay
 imap_search(const char *spec, int f)
 {
 	static char *lastspec;
@@ -188,17 +186,21 @@ imap_search(const char *spec, int f)
 	if (mb.mb_type == MB_IMAP && needheaders)
 		imap_getheaders(1, msgCount);
 #endif
+	srelax_hold();
 	for (i = 0; i < msgCount; i++) {
 		if (message[i].m_flag&MHIDDEN)
 			continue;
-		if (f == MDELETED || (message[i].m_flag&MDELETED) == 0)
+		if (f == MDELETED || (message[i].m_flag&MDELETED) == 0) {
 			if (itexecute(&mb, &message[i], i+1, ittree))
 				mark(i+1, f);
+			srelax();
+		}
 	}
+	srelax_rele();
 	return OKAY;
 }
 
-static enum okay 
+static enum okay
 itparse(char const *spec, char const **xp, int sub)
 {
 	int	level = 0;
@@ -288,7 +290,7 @@ itparse(char const *spec, char const **xp, int sub)
 	return ok;
 }
 
-static enum okay 
+static enum okay
 itscan(char const *spec, char const **xp)
 {
 	int	i, n;
@@ -342,7 +344,7 @@ itscan(char const *spec, char const **xp)
 	return STOP;
 }
 
-static enum okay 
+static enum okay
 itsplit(char const *spec, char const **xp)
 {
 	char	*cp;
@@ -427,7 +429,7 @@ itsplit(char const *spec, char const **xp)
 	}
 }
 
-static enum okay 
+static enum okay
 itstring(void **tp, char const *spec, char const **xp)
 {
 	int	inquote = 0;
@@ -457,7 +459,7 @@ itstring(void **tp, char const *spec, char const **xp)
 	return OKAY;
 }
 
-static int 
+static int
 itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 {
 	char	*cp, *line = NULL;
@@ -573,7 +575,7 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 	}
 }
 
-static int 
+static int
 matchfield(struct message *m, const char *field, const char *what)
 {
 	struct str	in, out;
@@ -589,7 +591,7 @@ matchfield(struct message *m, const char *field, const char *what)
 	return i;
 }
 
-static int 
+static int
 matchenvelope(struct message *m, const char *field, const char *what)
 {
 	struct name	*np;
@@ -686,7 +688,7 @@ done:	*rp = '\0';
 	return ep;
 }
 
-static int 
+static int
 matchmsg(struct message *m, const char *what, int withheader)
 {
 	char	*tempFile, *line = NULL;
@@ -698,7 +700,7 @@ matchmsg(struct message *m, const char *what, int withheader)
 		return 0;
 	rm(tempFile);
 	Ftfree(&tempFile);
-	if (send(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
+	if (sendmp(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
 		goto out;
 	fflush(fp);
 	rewind(fp);

@@ -33,16 +33,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#include <sys/stat.h>
 #include <sys/utsname.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <time.h>
-#include <unistd.h>
 
-#include "extern.h"
+#include <fcntl.h>
 
 #ifndef O_SYNC
 # define O_SYNC	0
@@ -53,7 +50,7 @@ static int perhaps_setgid(const char *name, gid_t gid);
 static int create_exclusive(const char *fname);
 
 /* Check if we can write a lock file at all */
-static int 
+static int
 maildir_access(const char *fname)
 {
 	char *path;
@@ -101,7 +98,7 @@ perhaps_setgid(const char *name, gid_t gid)
  * - unlink the mostly unique filename
  * - if the link count was 2, then we are ok; else we've failed.
  */
-static int 
+static int
 create_exclusive(const char *fname)
 {
 	char path[MAXPATHLEN];
@@ -130,7 +127,7 @@ create_exclusive(const char *fname)
 	else
 		ptr++;
 
-	snprintf(path, sizeof path, "%.*s.%s.%x", 
+	snprintf(path, sizeof path, "%.*s.%s.%x",
 	    (int) (ptr - fname), fname, hostname, (unsigned int) cookie);
 
 	/*
@@ -157,7 +154,7 @@ create_exclusive(const char *fname)
 	perhaps_setgid(fname, effectivegid);
 	cc = link(path, fname);
 	(void)setgid(realgid); /* XXX */
-   
+
 	if (cc == -1)
 		goto bad;
 
@@ -189,7 +186,7 @@ bad:
 	return -1;
 }
 
-int 
+FL int
 fcntl_lock(int fd, int ltype) /* TODO check callees for EINTR etc.!!! */
 {
 	struct flock flp;
@@ -201,7 +198,7 @@ fcntl_lock(int fd, int ltype) /* TODO check callees for EINTR etc.!!! */
 	return fcntl(fd, F_SETLKW, &flp);
 }
 
-int
+FL int
 dot_lock(const char *fname, int fd, int pollinterval, FILE *fp, const char *msg)
 #ifdef	notdef
 	const char *fname;	/* Pathname to lock */
@@ -257,12 +254,12 @@ dot_lock(const char *fname, int fd, int pollinterval, FILE *fp, const char *msg)
 		}
 		(void)fcntl_lock(fd, F_WRLCK);
 	}
-        fprintf(stderr, catgets(catd, CATSET, 71,
+        fprintf(stderr, tr(71,
 		"%s seems a stale lock? Need to be removed by hand?\n"), path);
         return -1;
 }
 
-void 
+FL void
 dot_unlock(const char *fname)
 {
 	char path[MAXPATHLEN];

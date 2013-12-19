@@ -37,20 +37,13 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
-
-#ifndef	NSIG
-# define NSIG	64
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
 #endif
+
+#include <sys/wait.h>
+
+#include <fcntl.h>
 
 #define READ	0
 #define WRITE	1
@@ -82,13 +75,13 @@ struct child {
 	int status;
 	struct child *link;
 };
-static struct child	*child;
+static struct child	*_popen_child;
 
 static int scan_mode(const char *mode, int *omode);
 static void register_file(FILE *fp, int omode, int ispipe, int pid,
 		int compressed, const char *realfile, long offset);
 static enum okay compress(struct fp *fpp);
-static int decompress(int compression, int input, int output);
+static int decompress(int compression, int infd, int outfd);
 static enum okay unregister_file(FILE *fp);
 static int file_pid(FILE *fp);
 static int wait_command(int pid);
@@ -98,7 +91,7 @@ static void delchild(struct child *cp);
 /*
  * Provide BSD-like signal() on all systems.
  */
-sighandler_type
+FL sighandler_type
 safe_signal(int signum, sighandler_type handler)
 {
 	struct sigaction nact, oact;
@@ -114,7 +107,7 @@ safe_signal(int signum, sighandler_type handler)
 	return oact.sa_handler;
 }
 
-static int 
+static int
 scan_mode(const char *mode, int *omode)
 {
 
@@ -133,27 +126,28 @@ scan_mode(const char *mode, int *omode)
 	} else if (!strcmp(mode, "w+")) {
 		*omode = O_RDWR   | O_CREAT | O_EXCL;
 	} else {
-		fprintf(stderr, catgets(catd, CATSET, 152,
+		fprintf(stderr, tr(152,
 			"Internal error: bad stdio open mode %s\n"), mode);
 		errno = EINVAL;
+		*omode = 0; /* (silence CC) */
 		return -1;
 	}
 	return 0;
 }
 
-FILE *
+FL FILE *
 safe_fopen(const char *file, const char *mode, int *omode)
 {
 	int  fd;
 
-	if (scan_mode(mode, omode) < 0) 
+	if (scan_mode(mode, omode) < 0)
 		return NULL;
 	if ((fd = open(file, *omode, 0666)) < 0)
 		return NULL;
 	return fdopen(fd, mode);
 }
 
-FILE *
+FL FILE *
 Fopen(const char *file, const char *mode)
 {
 	FILE *fp;
@@ -166,11 +160,11 @@ Fopen(const char *file, const char *mode)
 	return fp;
 }
 
-FILE *
+FL FILE *
 Fdopen(int fd, const char *mode)
 {
 	FILE *fp;
-	int	omode;
+	int omode;
 
 	scan_mode(mode, &omode);
 	if ((fp = fdopen(fd, mode)) != NULL) {
@@ -180,7 +174,7 @@ Fdopen(int fd, const char *mode)
 	return fp;
 }
 
-int
+FL int
 Fclose(FILE *fp)
 {
 	int	i = 0;
@@ -191,7 +185,7 @@ Fclose(FILE *fp)
 	return i == 3 ? 0 : EOF;
 }
 
-FILE *
+FL FILE *
 Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 	* TODO maybe we shouldn't be simple and run commands but instead
 	* TODO links against any of available zlib.h, bzlib.h, lzma.h!
@@ -200,8 +194,8 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 	* TODO *or*: make it all hookable via BOXEXTENSION/DECOMPRESS etc.
 	* TODO by the user;  but not like this, Coverity went grazy about it */
 {
-	int	input;
-	FILE	*output;
+	int	infd;
+	FILE	*outf;
 	const char	*rp;
 	int	omode;
 	char	*tempfn;
@@ -221,7 +215,7 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 		*compression = p == PROTO_IMAP ? FP_IMAP : FP_MAILDIR;
 		omode = O_RDWR | O_APPEND | O_CREAT;
 		rp = file;
-		input = -1;
+		infd = -1;
 		goto open;
 	}
 	if ((extension = strrchr(file, '.')) != NULL) {
@@ -246,55 +240,55 @@ Zopen(const char *file, const char *mode, int *compression) /* TODO MESS!
 	if (access(rp, W_OK) < 0)
 		*compression |= FP_READONLY;
 
-	if ((input = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
+	if ((infd = open(rp, bits & W_OK ? O_RDWR : O_RDONLY)) < 0
 			&& ((omode&O_CREAT) == 0 || errno != ENOENT))
 		return NULL;
-open:	if ((output = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
-		perror(catgets(catd, CATSET, 167, "tmpfile"));
-		if (input >= 0)
-			close(input);
+open:	if ((outf = Ftemp(&tempfn, "Rz", "w+", 0600, 0)) == NULL) {
+		perror(tr(167, "tmpfile"));
+		if (infd >= 0)
+			close(infd);
 		return NULL;
 	}
 	unlink(tempfn);
 	Ftfree(&tempfn);
 
-	if (input >= 0 || (*compression&FP_MASK) == FP_IMAP ||
+	if (infd >= 0 || (*compression&FP_MASK) == FP_IMAP ||
 			(*compression&FP_MASK) == FP_MAILDIR) {
-		if (decompress(*compression, input, fileno(output)) < 0) {
-			if (input >= 0)
-				close(input);
-			Fclose(output);
+		if (decompress(*compression, infd, fileno(outf)) < 0) {
+			if (infd >= 0)
+				close(infd);
+			Fclose(outf);
 			return NULL;
 		}
 	} else {
-		if ((input = creat(rp, 0666)) < 0) {
-			Fclose(output);
+		if ((infd = creat(rp, 0666)) < 0) {
+			Fclose(outf);
 			return NULL;
 		}
 	}
-	if (input >= 0)
-		close(input);
-	fflush(output);
+	if (infd >= 0)
+		close(infd);
+	fflush(outf);
 
 	if (omode & O_APPEND) {
 		int	flags;
 
-		if ((flags = fcntl(fileno(output), F_GETFL)) < 0 ||
-				fcntl(fileno(output), F_SETFL, flags|O_APPEND)
-				< 0 || (offset = ftell(output)) < 0) {
-			Fclose(output);
+		if ((flags = fcntl(fileno(outf), F_GETFL)) < 0 ||
+				fcntl(fileno(outf), F_SETFL, flags|O_APPEND)
+				< 0 || (offset = ftell(outf)) < 0) {
+			Fclose(outf);
 			return NULL;
 		}
 	} else {
-		rewind(output);
+		rewind(outf);
 		offset = 0;
 	}
 
-	register_file(output, omode, 0, 0, *compression, rp, offset);
-	return output;
+	register_file(outf, omode, 0, 0, *compression, rp, offset);
+	return outf;
 }
 
-FILE *
+FL FILE *
 Ftemp(char **fn, char const *prefix, char const *mode, int bits,
 	int doregfile)
 {
@@ -339,7 +333,7 @@ jtemperr:
 	goto jleave;
 }
 
-void
+FL void
 Ftfree(char **fn)
 {
 	char *cp = *fn;
@@ -348,7 +342,7 @@ Ftfree(char **fn)
 	free(cp);
 }
 
-bool_t
+FL bool_t
 pipe_cloexec(int fd[2])
 {
 	bool_t rv = FAL0;
@@ -362,7 +356,7 @@ jleave:
 	return rv;
 }
 
-FILE *
+FL FILE *
 Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 {
 	int p[2];
@@ -408,7 +402,7 @@ Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 	return fp;
 }
 
-int
+FL int
 Pclose(FILE *ptr, bool_t dowait)
 {
 	int pid;
@@ -431,7 +425,7 @@ Pclose(FILE *ptr, bool_t dowait)
 	return pid;
 }
 
-void 
+FL void
 close_all_files(void)
 {
 	while (fp_head)
@@ -462,7 +456,7 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int compressed,
 static enum okay
 compress(struct fp *fpp)
 {
-	int	output;
+	int	outfd;
 	char const *command[2];
 	enum okay	ok;
 
@@ -480,7 +474,7 @@ compress(struct fp *fpp)
 	if ((fpp->compressed&FP_MASK) == FP_MAILDIR) {
 		return maildir_append(fpp->realfile, fpp->fp);
 	}
-	if ((output = open(fpp->realfile,
+	if ((outfd = open(fpp->realfile,
 			(fpp->omode|O_CREAT)&~O_EXCL,
 			0666)) < 0) {
 		fprintf(stderr, "Fatal: cannot create ");
@@ -488,7 +482,7 @@ compress(struct fp *fpp)
 		return STOP;
 	}
 	if ((fpp->omode & O_APPEND) == 0)
-		ftruncate(output, 0);
+		ftruncate(outfd, 0);
 	switch (fpp->compressed & FP_MASK) {
 	case FP_GZIPPED:
 		command[0] = "gzip"; command[1] = "-c"; break;
@@ -497,17 +491,17 @@ compress(struct fp *fpp)
 	default:
 		command[0] = "cat"; command[1] = NULL; break;
 	}
-	if (run_command(command[0], 0, fileno(fpp->fp), output,
+	if (run_command(command[0], 0, fileno(fpp->fp), outfd,
 				command[1], NULL, NULL) < 0)
 		ok = STOP;
 	else
 		ok = OKAY;
-	close(output);
+	close(outfd);
 	return ok;
 }
 
 static int
-decompress(int compression, int input, int output)
+decompress(int compression, int infd, int outfd)
 {
 	char const *command[2];
 
@@ -522,8 +516,7 @@ decompress(int compression, int input, int output)
 	case FP_MAILDIR:	return 0;
 	default:		command[0] = "cat"; command[1] = NULL;
 	}
-	return run_command(command[0], 0, input, output,
-			command[1], NULL, NULL);
+	return run_command(command[0], 0, infd, outfd, command[1], NULL, NULL);
 }
 
 static enum okay
@@ -540,7 +533,7 @@ unregister_file(FILE *fp)
 			free(p);
 			return ok;
 		}
-	panic(catgets(catd, CATSET, 153, "Invalid file pointer"));
+	panic(tr(153, "Invalid file pointer"));
 	/*NOTREACHED*/
 	return STOP;
 }
@@ -564,7 +557,7 @@ file_pid(FILE *fp)
  * SIGINT is enabled unless it's in the mask.
  */
 /*VARARGS4*/
-int
+FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 		char const *a0, char const *a1, char const *a2)
 {
@@ -576,7 +569,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 }
 
 /*VARARGS4*/
-int
+FL int
 start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 		const char *a0, const char *a1, const char *a2)
 {
@@ -603,7 +596,7 @@ start_command(const char *cmd, sigset_t *mask, int infd, int outfd,
 	return pid;
 }
 
-void
+FL void
 prepare_child(sigset_t *nset, int infd, int outfd)
 {
 	int i;
@@ -628,12 +621,12 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 	sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
 }
 
-static int 
+static int
 wait_command(int pid)
 {
 
 	if (wait_child(pid) < 0 && (value("bsdcompat") || value("bsdmsgs"))) {
-		printf(catgets(catd, CATSET, 154, "Fatal error in process.\n"));
+		printf(tr(154, "Fatal error in process.\n"));
 		return -1;
 	}
 	return 0;
@@ -644,40 +637,40 @@ findchild(int pid)
 {
 	struct child **cpp;
 
-	for (cpp = &child; *cpp != (struct child *)NULL && (*cpp)->pid != pid;
+	for (cpp = &_popen_child; *cpp != NULL && (*cpp)->pid != pid;
 	     cpp = &(*cpp)->link)
 			;
-	if (*cpp == (struct child *)NULL) {
-		*cpp = (struct child *) smalloc(sizeof (struct child));
+	if (*cpp == NULL) {
+		*cpp = smalloc(sizeof (struct child));
 		(*cpp)->pid = pid;
 		(*cpp)->done = (*cpp)->free = 0;
-		(*cpp)->link = (struct child *)NULL;
+		(*cpp)->link = NULL;
 	}
 	return *cpp;
 }
 
-static void 
+static void
 delchild(struct child *cp)
 {
 	struct child **cpp;
 
-	for (cpp = &child; *cpp != cp; cpp = &(*cpp)->link)
+	for (cpp = &_popen_child; *cpp != cp; cpp = &(*cpp)->link)
 		;
 	*cpp = cp->link;
 	free(cp);
 }
 
 /*ARGSUSED*/
-void 
+FL void
 sigchild(int signo)
 {
 	int pid;
 	int status;
 	struct child *cp;
-	(void)signo;
+	UNUSED(signo);
 
 again:
-	while ((pid = waitpid(-1, (int*)&status, WNOHANG)) > 0) {
+	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
 		cp = findchild(pid);
 		if (cp->free)
 			delchild(cp);
@@ -695,7 +688,7 @@ int wait_status;
 /*
  * Mark a child as don't care.
  */
-void 
+FL void
 free_child(int pid)
 {
 	sigset_t nset, oset;
@@ -719,7 +712,7 @@ free_child(int pid)
  * This version is correct code, but causes harm on some loosing
  * systems. So we use the second one instead.
  */
-int 
+FL int
 wait_child(int pid)
 {
 	sigset_t nset, oset;
@@ -739,7 +732,7 @@ wait_child(int pid)
 	return -1;
 }
 #endif
-int 
+FL int
 wait_child(int pid)
 {
 	pid_t term;

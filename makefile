@@ -5,33 +5,34 @@
 .PHONY: all install uninstall clean distclean config build test
 
 all: config
-	@$(MAKE) -f mk.mk all
+	@LC_ALL=C $(MAKE) -f mk.mk all
 install: all
-	@$(MAKE) -f mk.mk install
+	@LC_ALL=C $(MAKE) -f mk.mk install
 uninstall:
-	@$(_prestop) && $(MAKE) -f mk.mk uninstall
+	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk uninstall
 clean:
-	@$(_prestop) && $(MAKE) -f mk.mk clean
+	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk clean
 distclean:
-	@$(_prestop) && $(MAKE) -f mk.mk distclean
+	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk distclean
 
 config:
 	@$(_prego)
 build:
-	@$(_prestop) && $(MAKE) -f mk.mk all
+	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk all
 test:
-	@$(_prestop) && sh ./cc-test.sh --check-only
+	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk test
 packager-install:
-	@$(_prestop) && $(MAKE) -f mk.mk install
+	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk install
 
+devel:
+	@WANT_AUTOCC=1 WANT_DEBUG=1 WANT_GSSAPI=1;\
+	export WANT_AUTOCC WANT_DEBUG WANT_GSSAPI;\
+	$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version &&\
+	LC_ALL=C $(MAKE) -f mk.mk all
 _update-version:
-	@$(_prego) && $(MAKE) -f mk.mk _update-version
-_buh:
-	@WANT_ASSERTS=1 WANT_NOALLOCA=1; export WANT_ASSERTS WANT_NOALLOCA;\
-		$(_prego) && $(MAKE) -f mk.mk _update-version &&\
-		$(MAKE) -f mk.mk all
+	@$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version
 _update-release:
-	@$(_prego) && $(MAKE) -f mk.mk _update-release
+	@$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-release
 
 _prego = $(SHELL) ./mk-conf.sh
 _prestop = [ -f ./mk.mk ] || {\

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Lexical processing of commands.
+ *@ (Lexical processing of) Commands, and the event mainloop.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
@@ -37,29 +37,68 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-#include "extern.h"
-
-static int		*_msgvec;
-static int		_reset_on_stop;	/* do a reset() if stopped */
-static sighandler_type	_oldpipe;
-
-/* Update mailname (if *name* != NULL) and displayname */
-static void	_update_mailname(char const *name);
-#ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
-SINLINE size_t	__narrow_prefix(char const *cp, size_t maxl);
-SINLINE size_t	__narrow_suffix(char const *cp, size_t cpl, size_t maxl);
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
 #endif
 
-static const struct cmd *lex(char *Word);
+#include <fcntl.h>
+
+struct cmd {
+   char const     *name;         /* Name of command */
+   int            (*func)(void*); /* Implementor of command */
+   enum argtype   argtype;       /* Arglist type (see below) */
+   short          msgflag;       /* Required flags of msgs*/
+   short          msgmask;       /* Relevant flags of msgs */
+#ifdef HAVE_DOCSTRINGS
+   int            docid;         /* Translation id of .doc */
+   char const     *doc;          /* One line doc for command */
+#endif
+};
+/* Yechh, can't initialize unions */
+#define minargs   msgflag        /* Minimum argcount for RAWLIST */
+#define maxargs   msgmask        /* Max argcount for RAWLIST */
+
+struct cmd_ghost {
+   struct cmd_ghost  *next;
+   struct str        cmd;        /* Data follows after .name */
+   char              name[VFIELD_SIZE(sizeof(size_t))];
+};
+
+static int              *_msgvec;
+static int              _reset_on_stop;   /* do a reset() if stopped */
+static sighandler_type  _oldpipe;
+static struct cmd_ghost *_cmd_ghosts;
+/* _cmd_tab[] after fun protos */
+
+/* Update mailname (if name != NULL) and displayname, return wether displayname
+ * was large enough to swallow mailname */
+static bool_t  _update_mailname(char const *name);
+#ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
+SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
+SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
+#endif
+
+/* Isolate the command from the arguments */
+static char *  _lex_isolate(char const *comm);
+
+/* Get first-fit, or NULL */
+static struct cmd const * _lex(char const *comm);
+
+/* Command ghost handling */
+static int     _ghost(void *v);
+static int     _unghost(void *v);
+
+/* Print a list of all commands */
+static int     _pcmdlist(void *v);
+static int     __pcmd_cmp(void const *s1, void const *s2);
+
 static void stop(int s);
 static void hangup(int s);
+
+/* List of all commands */
+static struct cmd const _cmd_tab[] = {
+#include "cmd_tab.h"
+};
 
 #ifdef HAVE_MBLEN
 SINLINE size_t
@@ -114,61 +153,227 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 }
 #endif /* HAVE_MBLEN */
 
-static void
+static bool_t
 _update_mailname(char const *name)
 {
-	char tbuf[MAXPATHLEN], *mailp, *dispp;
-	size_t i, j;
+   char tbuf[MAXPATHLEN], *mailp, *dispp;
+   size_t i, j;
+   bool_t rv;
 
-	/* Don't realpath(3) if it's only an update request */
-	if (name != NULL) {
+   /* Don't realpath(3) if it's only an update request */
+   if (name != NULL) {
 #ifdef HAVE_REALPATH
-		enum protocol p = which_protocol(name);
-		if (p == PROTO_FILE || p == PROTO_MAILDIR) {
-			if (realpath(name, mailname) == NULL) {
-				fprintf(stderr, tr(151,
-					"Can't canonicalize `%s'\n"), name);
-				goto jleave;
-			}
-		} else
+      enum protocol p = which_protocol(name);
+      if (p == PROTO_FILE || p == PROTO_MAILDIR) {
+         if (realpath(name, mailname) == NULL) {
+            fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), name);
+            rv = FAL0;
+            goto jleave;
+         }
+      } else
 #endif
-			(void)n_strlcpy(mailname, name, MAXPATHLEN);
-	}
+         n_strlcpy(mailname, name, sizeof(mailname));
+   }
 
-	mailp = mailname;
-	dispp = displayname;
+   mailp = mailname;
+   dispp = displayname;
 
-	/* Don't display an absolute path but "+FOLDER" if under *folder* */
-	if (getfold(tbuf, sizeof tbuf)) {
-		i = strlen(tbuf);
-		if (i < sizeof(tbuf) - 1)
-			tbuf[i++] = '/';
-		if (strncmp(tbuf, mailp, i) == 0) {
-			mailp += i;
-			*dispp++ = '+';
-		}
-	}
+   /* Don't display an absolute path but "+FOLDER" if under *folder* */
+   if (getfold(tbuf, sizeof tbuf)) {
+      i = strlen(tbuf);
+      if (i < sizeof(tbuf) - 1)
+         tbuf[i++] = '/';
+      if (strncmp(tbuf, mailp, i) == 0) {
+         mailp += i;
+         *dispp++ = '+';
+      }
+   }
 
-	/* We want to see the name of the folder .. on the screen */
-	i = strlen(mailp);
-	if (i < sizeof(displayname) - 1)
-		memcpy(dispp, mailp, i + 1);
-	else {
-		/* Avoid disrupting multibyte sequences (if possible) */
+   /* We want to see the name of the folder .. on the screen */
+   i = strlen(mailp);
+   if ((rv = (i < sizeof(displayname) - 1)))
+      memcpy(dispp, mailp, i + 1);
+   else {
+      /* Avoid disrupting multibyte sequences (if possible) */
 #ifndef HAVE_MBLEN
-		j = sizeof(displayname) / 3 - 1;
-		i -= sizeof(displayname) - (1/* + */ + 3) - j;
+      j = sizeof(displayname) / 3 - 1;
+      i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
-		j = __narrow_prefix(mailp, sizeof(displayname) / 3);
-		i = j + __narrow_suffix(mailp + j, i - j,
-			sizeof(displayname) - (1/* + */ + 3 + 1) - j);
+      j = __narrow_prefix(mailp, sizeof(displayname) / 3);
+      i = j + __narrow_suffix(mailp + j, i - j,
+         sizeof(displayname) - (1/* + */ + 3 + 1) - j);
 #endif
-		(void)snprintf(dispp, sizeof(displayname), "%.*s...%s",
-			(int)j, mailp, mailp + i);
-	}
+      snprintf(dispp, sizeof(displayname), "%.*s...%s",
+         (int)j, mailp, mailp + i);
+   }
 #ifdef HAVE_REALPATH
-jleave:	;
+jleave:
 #endif
+   return rv;
+}
+
+static char *
+_lex_isolate(char const *comm)
+{
+   while (*comm && strchr(" \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
+      ++comm;
+   return UNCONST(comm);
+}
+
+static struct cmd const *
+_lex(char const *comm)
+{
+   struct cmd const *cp;
+
+   for (cp = _cmd_tab; cp->name != NULL; ++cp)
+      if (is_prefix(comm, cp->name))
+         goto jleave;
+   cp = NULL;
+jleave:
+   return cp;
+}
+
+static int
+_ghost(void *v)
+{
+   char const **argv = (char const **)v;
+   struct cmd_ghost *lcg, *cg;
+   size_t nl, cl;
+
+   /* Show the list? */
+   if (*argv == NULL) {
+      printf(tr(144, "Command ghosts are:\n"));
+      for (nl = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
+         cl = strlen(cg->name) + 5 + cg->cmd.l + 3;
+         if ((nl += cl) >= (size_t)scrnwidth) {
+            nl = cl;
+            printf("\n");
+         }
+         printf((cg->next != NULL ? "%s -> <%s>, " : "%s -> <%s>\n"),
+            cg->name, cg->cmd.s);
+      }
+      v = NULL;
+      goto jleave;
+   }
+
+   /* Request to add new ghost */
+   if (argv[1] == NULL || argv[1][0] == '\0' || argv[2] != NULL) {
+      fprintf(stderr, tr(159, "Usage: %s\n"),
+         tr(425, "Define a <ghost> of <command>, or list all ghosts"));
+      v = NULL;
+      goto jleave;
+   }
+
+   /* Check that we can deal with this one */
+   switch (argv[0][0]) {
+   case '|':
+   case '~':
+   case '?':
+   case '#':
+      /* FALLTHRU */
+   case '\0':
+      goto jecanon;
+   default:
+      if (argv[0] == _lex_isolate(argv[0])) {
+jecanon:
+         fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
+         v = NULL;
+         goto jleave;
+      }
+      break;
+   }
+
+   /* Always recreate */
+   for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
+      if (strcmp(cg->name, argv[0]) == 0) {
+         if (lcg != NULL)
+            lcg->next = cg->next;
+         else
+            _cmd_ghosts = cg->next;
+         free(cg);
+         break;
+      }
+
+   /* Need a new one */
+   nl = strlen(argv[0]) + 1;
+   cl = strlen(argv[1]) + 1;
+   cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + nl + cl);
+   cg->next = _cmd_ghosts;
+   memcpy(cg->name, argv[0], nl);
+   cg->cmd.s = cg->name + nl;
+   cg->cmd.l = cl - 1;
+   memcpy(cg->cmd.s, argv[1], cl);
+
+   _cmd_ghosts = cg;
+jleave:
+   return (v == NULL);
+}
+
+static int
+_unghost(void *v)
+{
+   int rv = 0;
+   char const **argv = v, *cp;
+   struct cmd_ghost *lcg, *cg;
+
+   while ((cp = *argv++) != NULL) {
+      for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
+         if (strcmp(cg->name, cp) == 0) {
+            if (lcg != NULL)
+               lcg->next = cg->next;
+            else
+               _cmd_ghosts = cg->next;
+            free(cg);
+            goto jouter;
+         }
+      fprintf(stderr, tr(91, "Unknown command: `%s'\n"), cp);
+      rv = 1;
+jouter:
+      ;
+   }
+   return rv;
+}
+
+static int
+__pcmd_cmp(void const *s1, void const *s2)
+{
+   struct cmd const * const *c1 = s1, * const *c2 = s2;
+   return (strcmp((*c1)->name, (*c2)->name));
+}
+
+static int
+_pcmdlist(void *v)
+{
+   struct cmd const **cpa, *cp, **cursor;
+   size_t i;
+   (void)v;
+
+   for (i = 0; _cmd_tab[i].name != NULL; ++i)
+      ;
+   ++i;
+   cpa = ac_alloc(sizeof(cp) * i);
+
+   for (i = 0; (cp = _cmd_tab + i)->name != NULL; ++i)
+      cpa[i] = cp;
+   cpa[i] = NULL;
+
+   qsort(cpa, i, sizeof(cp), &__pcmd_cmp);
+
+   printf(tr(14, "Commands are:\n"));
+   for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
+      size_t j;
+      if (cp->func == &ccmdnotsupp)
+         continue;
+      j = strlen(cp->name) + 2;
+      if ((i += j) > 72) {
+         i = j;
+         printf("\n");
+      }
+      printf((*cursor != NULL ? "%s, " : "%s\n"), cp->name);
+   }
+
+   ac_free(cpa);
+   return 0;
 }
 
 /*
@@ -179,7 +384,7 @@ jleave:	;
  *
  * nmail: Check for new mail in the current folder only.
  */
-int
+FL int
 setfile(char const *name, int nmail)
 {
 	FILE *ibuf;
@@ -193,6 +398,9 @@ setfile(char const *name, int nmail)
 	struct shortcut *sh;
 	struct flock	flp;
 
+	/* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
+	 * necessary to make a mailbox accessible by a different user, and if that
+	 * has happened, let's just let the usual file perms decide */
 	isedit = (*name != '%' && ((sh = get_shortcut(name)) == NULL ||
 			*sh->sh_long != '%'));
 	if ((name = expand(name)) == NULL)
@@ -342,8 +550,8 @@ setfile(char const *name, int nmail)
 jnonmail:
 		if (!nmail) {
 			if (value("emptystart") == NULL)
-nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
-						"No mail for %s\n"), who);
+nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
+					who);
 		}
 		return 1;
 	}
@@ -353,7 +561,7 @@ nomail:				fprintf(stderr, catgets(catd, CATSET, 88,
 	return(0);
 }
 
-int
+FL int
 newmailinfo(int omsgCount)
 {
 	int	mdot;
@@ -391,7 +599,7 @@ newmailinfo(int omsgCount)
  * Interpret user commands one by one.  If standard input is not a tty,
  * print no prompt.
  */
-void 
+FL void
 commands(void)
 {
 	int eofloop = 0, n;
@@ -407,7 +615,7 @@ commands(void)
 		if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
 			safe_signal(SIGHUP, hangup);
 		/* TODO We do a lot of redundant signal handling, especially
-		 * TODO with the line editor(s); try to merge this */
+		 * TODO with the command line editor(s); try to merge this */
 		safe_signal(SIGTSTP, stop);
 		safe_signal(SIGTTOU, stop);
 		safe_signal(SIGTTIN, stop);
@@ -461,8 +669,8 @@ commands(void)
 			exit_status = 0;
 		}
 
-		if (! sourcing) {
-			sreset();
+		sreset(sourcing);
+		if (!sourcing) {
 			/* TODO Note: this buffer may contain a password
 			 * TODO We should redefine the code flow which has
 			 * TODO to do that */
@@ -515,7 +723,7 @@ commands(void)
 	if (linebuf != NULL)
 		free(linebuf);
 	if (sourcing)
-		sreset();
+		sreset(FAL0);
 }
 
 /*
@@ -525,16 +733,21 @@ commands(void)
  * the interactive command loop.
  * Contxt is non-zero if called while composing mail.
  */
-int
+FL int
 execute(char *linebuf, int contxt, size_t linesize)
 {
 	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
-	struct cmd const *com = (struct cmd*)NULL;
+	struct cmd_ghost *cg = NULL;
+	struct cmd const *com = NULL;
 	int muvec[2], c, e = 1;
+
+	/* Command ghosts that refer to shell commands or macro expansion restart */
+jrestart:
 
 	/* Strip the white space away from the beginning of the command */
 	for (cp = linebuf; whitechar(*cp); ++cp)
 		;
+	linesize -= (size_t)(cp - linebuf);
 
 	/* Ignore comments */
 	if (*cp == '#')
@@ -558,31 +771,52 @@ execute(char *linebuf, int contxt, size_t linesize)
 	switch (*cp) {
 	case '|':
 	case '~':
+	case '?':
 		++cp;
 		/* FALLTHRU */
 	case '\0':
 		break;
 	default:
-		while (*cp && strchr(" \t0123456789$^.:/-+*'\",;(`",
-				*cp) == NULL)
-			++cp;
+		cp = _lex_isolate(cp);
 		break;
 	}
 	c = (int)(cp - arglist[0]);
 	linesize -= c;
-	word = (c <= 1) ? _wordbuf : salloc(c + 1);
+	word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
 	memcpy(word, arglist[0], c);
 	word[c] = '\0';
 
 	/* Look up the command; if not found, bitch.
 	 * Normally, a blank command would map to the first command in the
 	 * table; while sourcing, however, we ignore blank lines to eliminate
-	 * confusion */
-	if (sourcing && *word == '\0')
+	 * confusion; act just the same for ghosts */
+	if ((sourcing || cg != NULL) && *word == '\0')
 		goto jleave0;
 
-	com = lex(word);
-	if (com == NULL || com->c_func == &ccmdnotsupp) {
+	/* If this is the first evaluation, check command ghosts */
+	if (cg == NULL) {
+      /* TODO relink list head, so it's sort over time on usage? */
+		for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+			if (strcmp(word, cg->name) == 0) {
+				if (linesize > 0) {
+					size_t i = cg->cmd.l;
+					linebuf = salloc(i + 1 + linesize);
+					memcpy(linebuf, cg->cmd.s, i);
+					linebuf[i++] = ' ';
+					memcpy(linebuf + i, cp, linesize);
+					linebuf[i += linesize] = '\0';
+					linesize = i;
+				} else {
+					linebuf = cg->cmd.s;
+					linesize = cg->cmd.l;
+				}
+				goto jrestart;
+			}
+	}
+
+	if (com == NULL)
+		com = _lex(word);
+	if (com == NULL || com->func == &ccmdnotsupp) {
 		fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
 		if (com != NULL) {
 			ccmdnotsupp(NULL);
@@ -595,7 +829,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * See if we should execute the command -- if a conditional
 	 * we always execute it, otherwise, check the state of cond.
 	 */
-	if ((com->c_argtype & F) == 0) {
+	if ((com->argtype & F) == 0) {
 		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
 				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
 				(cond == CTERM && ! (options & OPT_TTYIN)) ||
@@ -609,45 +843,45 @@ execute(char *linebuf, int contxt, size_t linesize)
 	 * If we are sourcing an interactive command, it's
 	 * an error.
 	 */
-	if ((options & OPT_SENDMODE) && (com->c_argtype & M) == 0) {
+	if ((options & OPT_SENDMODE) && (com->argtype & M) == 0) {
 		fprintf(stderr, tr(92,
 			"May not execute `%s' while sending\n"),
-			com->c_name);
+			com->name);
 		goto jleave;
 	}
-	if (sourcing && com->c_argtype & I) {
+	if (sourcing && com->argtype & I) {
 		fprintf(stderr, tr(93,
 			"May not execute `%s' while sourcing\n"),
-			com->c_name);
+			com->name);
 		goto jleave;
 	}
-	if ((mb.mb_perm & MB_DELE) == 0 && com->c_argtype & W) {
+	if ((mb.mb_perm & MB_DELE) == 0 && com->argtype & W) {
 		fprintf(stderr, tr(94, "May not execute `%s' -- "
 			"message file is read only\n"),
-			com->c_name);
+			com->name);
 		goto jleave;
 	}
-	if (contxt && com->c_argtype & R) {
+	if (contxt && com->argtype & R) {
 		fprintf(stderr, tr(95,
-			"Cannot recursively invoke `%s'\n"), com->c_name);
+			"Cannot recursively invoke `%s'\n"), com->name);
 		goto jleave;
 	}
-	if (mb.mb_type == MB_VOID && com->c_argtype & A) {
+	if (mb.mb_type == MB_VOID && com->argtype & A) {
 		fprintf(stderr, tr(257,
 			"Cannot execute `%s' without active mailbox\n"),
-			com->c_name);
+			com->name);
 		goto jleave;
 	}
 
-	switch (com->c_argtype & ~(F|P|I|M|T|W|R|A)) {
+	switch (com->argtype & ~(F|P|I|M|T|W|R|A)) {
 	case MSGLIST:
 		/* Message list defaulting to nearest forward legal message */
 		if (_msgvec == 0)
 			goto je96;
-		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
+		if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
 			break;
 		if (c == 0) {
-			*_msgvec = first(com->c_msgflag, com->c_msgmask);
+			*_msgvec = first(com->msgflag, com->msgmask);
 			if (*_msgvec != 0)
 				_msgvec[1] = 0;
 		}
@@ -656,7 +890,7 @@ execute(char *linebuf, int contxt, size_t linesize)
 				printf(tr(97, "No applicable messages\n"));
 			break;
 		}
-		e = (*com->c_func)(_msgvec);
+		e = (*com->func)(_msgvec);
 		break;
 
 	case NDMLIST:
@@ -667,16 +901,16 @@ je96:
 				"Illegal use of `message list'\n"));
 			break;
 		}
-		if ((c = getmsglist(cp, _msgvec, com->c_msgflag)) < 0)
+		if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
 			break;
-		e = (*com->c_func)(_msgvec);
+		e = (*com->func)(_msgvec);
 		break;
 
 	case STRLIST:
 		/* Just the straight string, with leading blanks removed */
 		while (whitechar(*cp))
 			cp++;
-		e = (*com->c_func)(cp);
+		e = (*com->func)(cp);
 		break;
 
 	case RAWLIST:
@@ -684,27 +918,27 @@ je96:
 		/* A vector of strings, in shell style */
 		if ((c = getrawlist(cp, linesize, arglist,
 				sizeof arglist / sizeof *arglist,
-				(com->c_argtype&~(F|P|I|M|T|W|R|A)) == ECHOLIST)
+				(com->argtype&~(F|P|I|M|T|W|R|A)) == ECHOLIST)
 				) < 0)
 			break;
-		if (c < com->c_minargs) {
+		if (c < com->minargs) {
 			fprintf(stderr, tr(99,
 				"`%s' requires at least %d arg(s)\n"),
-				com->c_name, com->c_minargs);
+				com->name, com->minargs);
 			break;
 		}
-		if (c > com->c_maxargs) {
+		if (c > com->maxargs) {
 			fprintf(stderr, tr(100,
 				"`%s' takes no more than %d arg(s)\n"),
-				com->c_name, com->c_maxargs);
+				com->name, com->maxargs);
 			break;
 		}
-		e = (*com->c_func)(arglist);
+		e = (*com->func)(arglist);
 		break;
 
 	case NOLIST:
 		/* Just the constant zero, for exiting, eg. */
-		e = (*com->c_func)(0);
+		e = (*com->func)(0);
 		break;
 
 	default:
@@ -724,13 +958,13 @@ jleave:
 	}
 	if (com == (struct cmd*)NULL )
 		return 0;
-	if (boption("autoprint") && com->c_argtype & P)
+	if (boption("autoprint") && com->argtype & P)
 		if (visible(dot)) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
 		}
-	if (! sourcing && ! inhook && (com->c_argtype & T) == 0)
+	if (! sourcing && ! inhook && (com->argtype & T) == 0)
 		sawcom = TRU1;
 jleave0:
 	return 0;
@@ -740,30 +974,13 @@ jleave0:
  * Set the size of the message vector used to construct argument
  * lists to message list functions.
  */
-void 
+FL void
 setmsize(int sz)
 {
 
 	if (_msgvec != 0)
 		free(_msgvec);
 	_msgvec = (int*)scalloc(sz + 1, sizeof *_msgvec);
-}
-
-/*
- * Find the correct command in the command table corresponding
- * to the passed command "word"
- */
-
-static const struct cmd *
-lex(char *Word)
-{
-	extern const struct cmd cmdtab[];
-	const struct cmd *cp;
-
-	for (cp = &cmdtab[0]; cp->c_name != NULL; cp++)
-		if (is_prefix(Word, cp->c_name))
-			return(cp);
-	return(NULL);
 }
 
 /*
@@ -777,7 +994,7 @@ lex(char *Word)
 static int	inithdr;		/* am printing startup headers */
 
 /*ARGSUSED*/
-void 
+FL void
 onintr(int s)
 {
 	if (handlerstacktop != NULL) {
@@ -792,6 +1009,7 @@ onintr(int s)
 	while (sourcing)
 		unstack();
 
+	termios_state_reset();
 	close_all_files();
 
 	if (image >= 0) {
@@ -799,7 +1017,7 @@ onintr(int s)
 		image = -1;
 	}
 	if (interrupts != 1)
-		fprintf(stderr, catgets(catd, CATSET, 102, "Interrupt\n"));
+		fprintf(stderr, tr(102, "Interrupt\n"));
 	safe_signal(SIGPIPE, _oldpipe);
 	reset(0);
 }
@@ -807,7 +1025,7 @@ onintr(int s)
 /*
  * When we wake up after ^Z, reprint the prompt.
  */
-static void 
+static void
 stop(int s)
 {
 	sighandler_type old_action = safe_signal(s, SIG_DFL);
@@ -829,7 +1047,7 @@ stop(int s)
  * Branch here on hangup signal and simulate "exit".
  */
 /*ARGSUSED*/
-static void 
+static void
 hangup(int s)
 {
 	(void)s;
@@ -841,7 +1059,7 @@ hangup(int s)
  * Announce the presence of the current Mail version,
  * give the message count, and print a header listing.
  */
-void 
+FL void
 announce(int printheaders)
 {
 	int vec[2], mdot;
@@ -861,7 +1079,7 @@ announce(int printheaders)
  * Announce information about the file we are editing.
  * Return a likely place to set dot.
  */
-int 
+FL int
 newfileinfo(void)
 {
 	struct message *mp;
@@ -885,8 +1103,11 @@ newfileinfo(void)
 		if (mp->m_flag & MHIDDEN)
 			hidden++;
 	}
-	_update_mailname(NULL);
-	printf(tr(103, "\"%s\": "), displayname);
+
+	/* If displayname gets truncated the user effectively has no option to see
+	 * the full pathname of the mailbox, so print it at least for '? fi' */
+	printf(tr(103, "\"%s\": "),
+		(_update_mailname(NULL) ? displayname : mailname));
 	if (msgCount == 1)
 		printf(tr(104, "1 message"));
 	else
@@ -911,7 +1132,7 @@ newfileinfo(void)
 	return(mdot);
 }
 
-int 
+FL int
 getmdot(int nmail)
 {
 	struct message	*mp;
@@ -991,15 +1212,15 @@ getmdot(int nmail)
  */
 
 /*ARGSUSED*/
-int 
+FL int
 pversion(void *v)
 {
-	(void)v;
-	printf(catgets(catd, CATSET, 111, "Version %s\n"), version);
-	return(0);
+   (void)v;
+   printf(tr(111, "Version %s\n"), version);
+   return 0;
 }
 
-void 
+FL void
 initbox(const char *name)
 {
 	char *tempMesg;
@@ -1038,3 +1259,38 @@ initbox(const char *name)
 	dot = NULL;
 	did_print_dot = FAL0;
 }
+
+#ifdef HAVE_DOCSTRINGS
+FL bool_t
+print_comm_docstr(char const *comm)
+{
+   bool_t rv = FAL0;
+   struct cmd_ghost *cg;
+   struct cmd const *cp;
+
+   /* Ghosts take precedence */
+   for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+      if (strcmp(comm, cg->name) == 0) {
+         printf("%s -> <%s>\n", comm, cg->cmd.s);
+         rv = TRU1;
+         goto jleave;
+      }
+
+   for (cp = _cmd_tab; cp->name != NULL; ++cp) {
+      if (cp->func == &ccmdnotsupp)
+         continue;
+      if (strcmp(comm, cp->name) == 0)
+         printf("%s: %s\n", comm, tr(cp->docid, cp->doc));
+      else if (is_prefix(comm, cp->name))
+         printf("%s (%s): %s\n", comm, cp->name, tr(cp->docid, cp->doc));
+      else
+         continue;
+      rv = TRU1;
+      break;
+   }
+jleave:
+   return rv;
+}
+#endif
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

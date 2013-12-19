@@ -37,13 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#ifdef HAVE_WCWIDTH
-# include <wchar.h>
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
 #endif
-
-#include "extern.h"
 
 /*
  * Print the current active headings.
@@ -55,7 +51,7 @@ static int screen;
 /* Prepare and print "[Message: xy]:" intro */
 static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
 
-static void onpipe(int signo);
+static void _cmd1_onpipe(int signo);
 static int _dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
 
@@ -70,8 +66,8 @@ static char *	__subject_trim(char *s);
 static void hprf(const char *fmt, int mesg, FILE *f, int threaded,
 		const char *attrlist);
 static int putindent(FILE *fp, struct message *mp, int maxwidth);
-static int type1(int *msgvec, int doign, int page, int pipe, int decode,
-		char *cmd, off_t *tstats);
+static int _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
+		bool_t dodecode, char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
 
 static void
@@ -81,7 +77,7 @@ _show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
 		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
 }
 
-int
+FL int
 ccmdnotsupp(void *v)
 {
 	(void)v;
@@ -89,7 +85,7 @@ ccmdnotsupp(void *v)
 	return (1);
 }
 
-char const *
+FL char const *
 get_pager(void)
 {
 	char const *cp;
@@ -100,17 +96,17 @@ get_pager(void)
 	return cp;
 }
 
-int 
+FL int
 headers(void *v)
 {
-	int *msgvec = v;
-	int g, k, n, mesg, flag = 0, lastg = 1;
+	ui32_t flag;
+	int *msgvec = v, g, k, n, mesg, size, lastg = 1;
 	struct message *mp, *mq, *lastmq = NULL;
-	int size;
 	enum mflag	fl = MNEW|MFLAGGED;
 
 	time_current_update(&time_current, FAL0);
 
+	flag = 0;
 	size = screensize();
 	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
 	if (screen < 0)
@@ -120,6 +116,7 @@ headers(void *v)
 		k = msgCount - size;
 	if (k < 0)
 		k = 0;
+
 	if (mb.mb_threaded == 0) {
 		g = 0;
 		mq = &message[0];
@@ -158,14 +155,17 @@ headers(void *v)
 		if (mb.mb_type == MB_IMAP)
 			imap_getheaders(mesg+1, mesg + size);
 #endif
+		srelax_hold();
 		for (; mp < &message[msgCount]; mp++) {
 			mesg++;
 			if (!visible(mp))
 				continue;
-			if (flag++ >= size)
+			if (UICMP(32, flag++, >=, size))
 				break;
 			printhead(mesg, stdout, 0);
+			srelax();
 		}
+		srelax_rele();
 	} else {	/* threaded */
 		g = 0;
 		mq = threadroot;
@@ -200,34 +200,35 @@ headers(void *v)
 					break;
 				}
 		}
+		srelax_hold();
 		while (mp) {
 			if (visible(mp) && (mp->m_collapsed <= 0 ||
 					 mp == &message[n-1])) {
-				if (flag++ >= size)
+				if (UICMP(32, flag++, >=, size))
 					break;
 				printhead(mp - &message[0] + 1, stdout,
 						mb.mb_threaded);
+				srelax();
 			}
 			mp = next_in_thread(mp);
 		}
+		srelax_rele();
 	}
-	if (flag == 0) {
+	if (!flag)
 		printf(tr(6, "No more mail.\n"));
-		return(1);
-	}
-	return(0);
+	return !flag;
 }
 
 /*
  * Scroll to the next/previous screen
  */
-int
+FL int
 scroll(void *v)
 {
 	return scroll1(v, 0);
 }
 
-int
+FL int
 Scroll(void *v)
 {
 	return scroll1(v, 1);
@@ -260,8 +261,7 @@ scroll1(char *arg, int onlynew)
 scroll_forward:
 		if (screen * size > msgCount) {
 			screen = msgCount / size;
-			printf(catgets(catd, CATSET, 7,
-					"On last screenful of messages\n"));
+			printf(tr(7, "On last screenful of messages\n"));
 		}
 		break;
 
@@ -272,16 +272,14 @@ scroll_forward:
 			screen -= atoi(arg + 1);
 		if (screen < 0) {
 			screen = 0;
-			printf(catgets(catd, CATSET, 8,
-					"On first screenful of messages\n"));
+			printf(tr(8, "On first screenful of messages\n"));
 		}
 		if (cur[0] == -1)
 			cur[0] = -2;
 		break;
 
 	default:
-		printf(catgets(catd, CATSET, 9,
-			"Unrecognized scrolling command \"%s\"\n"), arg);
+		printf(tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
 		return(1);
 	}
 	return(headers(cur));
@@ -290,7 +288,7 @@ scroll_forward:
 /*
  * Compute screen size.
  */
-int 
+FL int
 screensize(void)
 {
 	int s;
@@ -301,21 +299,21 @@ screensize(void)
 	return scrnheight - 4;
 }
 
-static sigjmp_buf	pipejmp;
+static sigjmp_buf	_cmd1_pipejmp;
 
 /*ARGSUSED*/
-static void 
-onpipe(int signo)
+static void
+_cmd1_onpipe(int signo)
 {
-	(void)signo;
-	siglongjmp(pipejmp, 1);
+	UNUSED(signo);
+	siglongjmp(_cmd1_pipejmp, 1);
 }
 
 /*
  * Print out the headlines for each message
  * in the passed message list.
  */
-int 
+FL int
 from(void *v)
 {
 	int *msgvec = v, *ip, n;
@@ -330,7 +328,7 @@ from(void *v)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
 			char const *p;
-			if (sigsetjmp(pipejmp, 1))
+			if (sigsetjmp(_cmd1_pipejmp, 1))
 				goto endpipe;
 			p = get_pager();
 			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
@@ -338,7 +336,7 @@ from(void *v)
 				obuf = stdout;
 				cp=NULL;
 			} else
-				safe_signal(SIGPIPE, onpipe);
+				safe_signal(SIGPIPE, _cmd1_onpipe);
 		}
 	}
 	for (ip = msgvec; *ip != 0; ip++)
@@ -354,7 +352,7 @@ endpipe:
 	return(0);
 }
 
-static int 
+static int
 _dispc(struct message *mp, const char *a)
 {
 	int i = ' ';
@@ -614,7 +612,7 @@ jdate_set:
 			case 'a':
 				c = _dispc(mp, attrlist);
 jputc:
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*c", n, c);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -626,7 +624,7 @@ jputc:
 						for (i=msgCount; i>999; i/=10)
 							n++;
 				}
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*d", n, mesg);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -669,7 +667,7 @@ jputc:
 				}
 				if (n == 0)
 					n = 16;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*.*s", n, n, date);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -677,7 +675,7 @@ jputc:
 			case 'l':
 				if (n == 0)
 					n = 4;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				if (mp->m_xlines) {
 					n = fprintf(f, "%*ld", n, mp->m_xlines);
@@ -692,7 +690,7 @@ jputc:
 			case 'o':
 				if (n == 0)
 					n = -5;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*lu", n, (long)mp->m_xsize);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -714,7 +712,7 @@ jputc:
 					n = -n;
 				if (subjlen > wleft)
 					subjlen = wleft;
-				if (ABS(n) > subjlen)
+				if (UICMP(32, ABS(n), >, subjlen))
 					n = (n < 0) ? -subjlen : subjlen;
 				if (B)
 					n -= (n < 0) ? -2 : 2;
@@ -737,7 +735,7 @@ jputc:
 #ifdef HAVE_IMAP
 				if (n == 0)
 					n = 9;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*lu", n, mp->m_uid);
 				wleft = (n >= 0) ? wleft - n : 0;
@@ -749,7 +747,7 @@ jputc:
 			case 'e':
 				if (n == 0)
 					n = 2;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*u", n,
 					threaded == 1 ? mp->m_level : 0);
@@ -762,7 +760,7 @@ jputc:
 						for (i=msgCount; i>999; i/=10)
 							n++;
 				}
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*ld", n,
 					threaded ? mp->m_threadpos : mesg);
@@ -772,7 +770,7 @@ jputc:
 #ifdef HAVE_SPAM
 				if (n == 0)
 					n = 4;
-				if (ABS(n) > wleft)
+				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				{	char buf[16];
 					snprintf(buf, sizeof buf, "%u.%u",
@@ -814,7 +812,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	us = ac_alloc(mp->m_level * sizeof *us);
 
 	i = mp->m_level - 1;
-	if (mp->m_younger && (unsigned)i + 1 == mp->m_younger->m_level) {
+	if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
 		if (mp->m_parent && mp->m_parent->m_flag & important)
 			us[i] = mp->m_flag & important ? 0x2523 : 0x2520;
 		else
@@ -831,7 +829,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	mq = mp->m_parent;
 	for (i = mp->m_level - 2; i >= 0; i--) {
 		if (mq) {
-			if ((unsigned)i > mq->m_level - 1) {
+			if (UICMP(32, i, >, mq->m_level - 1)) {
 				us[i] = cs[i] = ' ';
 				continue;
 			}
@@ -864,7 +862,7 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	return indw;
 }
 
-void
+FL void
 printhead(int mesg, FILE *f, int threaded)
 {
 	int bsdflags, bsdheadline, sz;
@@ -876,7 +874,7 @@ printhead(int mesg, FILE *f, int threaded)
 	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-$" : "NUROSPMFAT+-$");
 	if ((cp = value("attrlist")) != NULL) {
 		sz = strlen(cp);
-		if (sz > (int)sizeof attrlist - 1)
+		if (UICMP(32, sz, >, sizeof attrlist - 1))
 			sz = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, sz);
 	}
@@ -893,60 +891,12 @@ printhead(int mesg, FILE *f, int threaded)
  * Print out the value of dot.
  */
 /*ARGSUSED*/
-int 
+FL int
 pdot(void *v)
 {
 	(void)v;
 	printf("%d\n", (int)(dot - &message[0] + 1));
 	return(0);
-}
-
-/*
- * Print out all the possible commands.
- */
-
-static int
-_pcmd_cmp(void const *s1, void const *s2)
-{
-	struct cmd const *const*c1 = s1, *const*c2 = s2;
-	return (strcmp((*c1)->c_name, (*c2)->c_name));
-}
-
-/*ARGSUSED*/
-int 
-pcmdlist(void *v)
-{
-	extern struct cmd const cmdtab[];
-	struct cmd const **cpa, *cp, **cursor;
-	size_t i;
-	(void)v;
-
-	for (i = 0; cmdtab[i].c_name != NULL; ++i)
-		;
-	++i;
-	cpa = ac_alloc(sizeof(cp) * i);
-
-	for (i = 0; (cp = cmdtab + i)->c_name != NULL; ++i)
-		cpa[i] = cp;
-	cpa[i] = NULL;
-
-	qsort(cpa, i, sizeof(cp), &_pcmd_cmp);
-
-	printf(tr(14, "Commands are:\n"));
-	for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
-		size_t j;
-		if (cp->c_func == &ccmdnotsupp)
-			continue;
-		j = strlen(cp->c_name) + 2;
-		if ((i += j) > 72) {
-			i = j;
-			printf("\n");
-		}
-		printf((*cursor != NULL ? "%s, " : "%s\n"), cp->c_name);
-	}
-
-	ac_free(cpa);
-	return (0);
 }
 
 /*
@@ -963,36 +913,34 @@ brokpipe(int signo)
 }
 
 static int
-type1(int *msgvec, int doign, int page, int pipe, int decode,
-		char *cmd, off_t *tstats)
+_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
+	bool_t dodecode, char *cmd, off_t *tstats)
 {
+	off_t mstats[2];
 	int *ip;
 	struct message *mp;
 	char const *cp;
-	int nlines;
-	off_t mstats[2];
-	FILE *volatile obuf;
+	FILE * volatile obuf;
 
 	obuf = stdout;
 	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
-	if (pipe) {
-		cp = value("SHELL");
-		if (cp == NULL)
+	if (dopipe) {
+		if ((cp = value("SHELL")) == NULL)
 			cp = SHELL;
-		obuf = Popen(cmd, "w", cp, 1);
-		if (obuf == NULL) {
+		if ((obuf = Popen(cmd, "w", cp, 1)) == NULL) {
 			perror(cmd);
 			obuf = stdout;
-		} else {
+		} else
 			safe_signal(SIGPIPE, brokpipe);
-		}
 	} else if ((options & OPT_TTYOUT) &&
-			(page || (cp = value("crt")) != NULL)) {
-		nlines = 0;
-		if (!page) {
-			for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
-				if ((message[*ip-1].m_have & HAVE_BODY) == 0) {
+			(dopage || (cp = value("crt")) != NULL)) {
+		long nlines = 0;
+		if (!dopage) {
+			for (ip = msgvec; *ip &&
+					PTRCMP(ip - msgvec, <, msgCount);
+					++ip) {
+				if (!(message[*ip - 1].m_have & HAVE_BODY)) {
 					if ((get_body(&message[*ip - 1])) !=
 							OKAY)
 						return 1;
@@ -1000,132 +948,70 @@ type1(int *msgvec, int doign, int page, int pipe, int decode,
 				nlines += message[*ip - 1].m_lines;
 			}
 		}
-		if (page || nlines > (*cp ? atoi(cp) : realscreenheight)) {
+		if (dopage || nlines > (*cp ? atoi(cp) : realscreenheight)) {
 			char const *p = get_pager();
-			obuf = Popen(p, "w", NULL, 1);
-			if (obuf == NULL) {
+			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
 				perror(p);
 				obuf = stdout;
 			} else
 				safe_signal(SIGPIPE, brokpipe);
 		}
 	}
-	for (ip = msgvec; *ip && ip - msgvec < msgCount; ip++) {
+
+	/* This may jump, in which case srelax_rele() wouldn't be called, but
+	 * it shouldn't matter, because we -- then -- directly reenter the
+	 * lex.c:commands() loop, which sreset()s */
+	srelax_hold();
+	for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
 		uncollapse1(mp, 1);
-		if (! pipe && ip != msgvec)
+		if (!dopipe && ip != msgvec)
 			fprintf(obuf, "\n");
 		_show_msg_overview(mp, *ip, obuf);
-		send(mp, obuf, doign ? ignore : 0, NULL,
-			pipe && value("piperaw") ? SEND_MBOX :
-				decode ? SEND_SHOW :
-				doign ? SEND_TODISP : SEND_TODISP_ALL,
+		sendmp(mp, obuf, (doign ? ignore : 0), NULL,
+			((dopipe && boption("piperaw"))
+				? SEND_MBOX : dodecode
+				? SEND_SHOW : doign
+				? SEND_TODISP : SEND_TODISP_ALL),
 			mstats);
-		if (pipe && value("page")) {
+		srelax();
+		if (dopipe && boption("page"))
 			putc('\f', obuf);
-		}
 		if (tstats) {
 			tstats[0] += mstats[0];
 			tstats[1] += mstats[1];
 		}
 	}
+	srelax_rele();
 close_pipe:
 	if (obuf != stdout) {
-		/*
-		 * Ignore SIGPIPE so it can't cause a duplicate close.
-		 */
+		/* Ignore SIGPIPE so it can't cause a duplicate close */
 		safe_signal(SIGPIPE, SIG_IGN);
 		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
-	return(0);
-}
-
-/*
- * Get the last, possibly quoted part of linebuf.
- */
-char *
-laststring(char *linebuf, int *flag, int strip)
-{
-	char *cp, *p;
-	char quoted;
-
-	*flag = 1;
-	cp = strlen(linebuf) + linebuf - 1;
-
-	/*
-	 * Strip away trailing blanks.
-	 */
-	while (cp > linebuf && whitechar(*cp & 0377))
-		cp--;
-	*++cp = 0;
-	if (cp == linebuf) {
-		*flag = 0;
-		return NULL;
-	}
-
-	/*
-	 * Now search for the beginning of the command name.
-	 */
-	quoted = *(cp - 1);
-	if (quoted == '\'' || quoted == '\"') {
-		cp--;
-		if (strip)
-			*cp = '\0';
-		cp--;
-		while (cp > linebuf) {
-			if (*cp != quoted) {
-				cp--;
-			} else if (*(cp - 1) != '\\') {
-				break;
-			} else {
-				p = --cp;
-				do {
-					*p = *(p + 1);
-				} while (*p++);
-				cp--;
-			}
-		}
-		if (cp == linebuf)
-			*flag = 0;
-		if (*cp == quoted) {
-			if (strip)
-				*cp++ = 0;
-		} else
-			*flag = 0;
-	} else {
-		while (cp > linebuf && !whitechar(*cp & 0377))
-			cp--;
-		if (whitechar(*cp & 0377))
-			*cp++ = 0;
-		else
-			*flag = 0;
-	}
-	if (*cp == '\0') {
-		return(NULL);
-	}
-	return(cp);
+	return 0;
 }
 
 /*
  * Pipe the messages requested.
  */
-static int 
+static int
 pipe1(char *str, int doign)
 {
 	char *cmd;
-	int f, *msgvec, ret;
+	int *msgvec, ret;
 	off_t stats[2];
+	bool_t f;
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	if ((cmd = laststring(str, &f, 1)) == NULL) {
 		cmd = value("cmd");
 		if (cmd == NULL || *cmd == '\0') {
-			fputs(catgets(catd, CATSET, 16,
-				"variable cmd not set\n"), stderr);
+			fputs(tr(16, "variable cmd not set\n"), stderr);
 			return 1;
 		}
 	}
@@ -1134,7 +1020,7 @@ pipe1(char *str, int doign)
 		if (*msgvec == 0) {
 			if (inhook)
 				return 0;
-			puts(catgets(catd, CATSET, 18, "No messages to pipe."));
+			puts(tr(18, "No messages to pipe."));
 			return 1;
 		}
 		msgvec[1] = 0;
@@ -1146,14 +1032,14 @@ pipe1(char *str, int doign)
 		printf("No applicable messages.\n");
 		return 1;
 	}
-	printf(catgets(catd, CATSET, 268, "Pipe to: \"%s\"\n"), cmd);
+	printf(tr(268, "Pipe to: \"%s\"\n"), cmd);
 	stats[0] = stats[1] = 0;
-	if ((ret = type1(msgvec, doign, 0, 1, 0, cmd, stats)) == 0) {
+	if ((ret = _type1(msgvec, doign, FAL0, TRU1, FAL0, cmd, stats)) == 0) {
 		printf("\"%s\" ", cmd);
 		if (stats[0] >= 0)
 			printf("%lu", (long)stats[0]);
 		else
-			printf(catgets(catd, CATSET, 27, "binary"));
+			printf(tr(27, "binary"));
 		printf("/%lu\n", (long)stats[1]);
 	}
 	return ret;
@@ -1162,61 +1048,62 @@ pipe1(char *str, int doign)
 /*
  * Paginate messages, honor ignored fields.
  */
-int 
+FL int
 more(void *v)
 {
 	int *msgvec = v;
-	return (type1(msgvec, 1, 1, 0, 0, NULL, NULL));
+
+	return _type1(msgvec, TRU1, TRU1, FAL0, FAL0, NULL, NULL);
 }
 
 /*
  * Paginate messages, even printing ignored fields.
  */
-int 
+FL int
 More(void *v)
 {
 	int *msgvec = v;
 
-	return (type1(msgvec, 0, 1, 0, 0, NULL, NULL));
+	return _type1(msgvec, FAL0, TRU1, FAL0, FAL0, NULL, NULL);
 }
 
 /*
  * Type out messages, honor ignored fields.
  */
-int 
+FL int
 type(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 1, 0, 0, 0, NULL, NULL));
+	return _type1(msgvec, TRU1, FAL0, FAL0, FAL0, NULL, NULL);
 }
 
 /*
  * Type out messages, even printing ignored fields.
  */
-int 
+FL int
 Type(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, 0, NULL, NULL));
+	return _type1(msgvec, FAL0, FAL0, FAL0, FAL0, NULL, NULL);
 }
 
 /*
  * Show MIME-encoded message text, including all fields.
  */
-int
+FL int
 show(void *v)
 {
 	int *msgvec = v;
 
-	return(type1(msgvec, 0, 0, 0, 1, NULL, NULL));
+	return _type1(msgvec, FAL0, FAL0, FAL0, TRU1, NULL, NULL);
 }
 
 /*
  * Pipe messages, honor ignored fields.
  */
-int 
+FL int
 pipecmd(void *v)
 {
 	char *str = v;
@@ -1225,7 +1112,7 @@ pipecmd(void *v)
 /*
  * Pipe messages, not respecting ignored fields.
  */
-int 
+FL int
 Pipecmd(void *v)
 {
 	char *str = v;
@@ -1237,7 +1124,7 @@ Pipecmd(void *v)
  * The number of lines is taken from the variable "toplines"
  * and defaults to 5.
  */
-int 
+FL int
 top(void *v)
 {
 	int *msgvec = v, *ip, c, topl, lines, empty_last;
@@ -1270,7 +1157,8 @@ top(void *v)
 			break;
 		}
 		c = mp->m_lines;
-		for (lines = 0; lines < c && lines <= topl; lines++) {
+		for (lines = 0; lines < c && UICMP(32, lines, <=, topl);
+				++lines) {
 			if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
 				break;
 			puts(linebuf);
@@ -1290,7 +1178,7 @@ top(void *v)
  * Touch all the given messages so that they will
  * get mboxed.
  */
-int 
+FL int
 stouch(void *v)
 {
 	int *msgvec = v;
@@ -1311,7 +1199,7 @@ stouch(void *v)
 /*
  * Make sure all passed messages get mboxed.
  */
-int 
+FL int
 mboxit(void *v)
 {
 	int *msgvec = v;
@@ -1332,7 +1220,7 @@ mboxit(void *v)
 /*
  * List the folders the user currently has.
  */
-int 
+FL int
 folders(void *v)
 {
 	char dirname[MAXPATHLEN], *name, **argv = v;

@@ -1,46 +1,48 @@
-# Until the codebase has been overhauled (and the overhauling has itself been
-# debugged :) you may read INSTALL for hints.  But otherwise:
-# You are on your own if you turn on fancy compiler features.
-STD_CFLAGS = -O1
-EXT_CFLAGS = -std=c89 -O2 -g \
-	-fstrict-aliasing \
-	-fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 \
-	-Wall -Wextra -pedantic \
-	-Wbad-function-cast -Wcast-align -Wcast-qual -Winit-self \
-	-Wshadow -Wunused -Wwrite-strings
-# The gcc(1) from NetBSD 6 produces a lot of errors with -fstrict-overflow,
-# so that this needs to be revisited; it was enabled on OS X 6 and FreeBSD 9,
-# and seemed to be good for gcc(1) and clang(1)
-#		-fstrict-overflow -Wstrict-overflow=5
-#LDFLAGS =
+#@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
+#@ Please see `INSTALL' and `conf.rc' instead.
 
+OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
-	@echo CC $(<); $(CC) $(CFLAGS) $(INCLUDES) -c $(<)
+	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(<)';\
+	else echo '  $$ $(CC) $(CFLAGS) $(INCLUDES) -c $(<)';\
+	fi;\
+	$(CC) $(CFLAGS) $(INCLUDES) -c $(<)
 .c .y: ;
 
-all: echoes $(UAGENT)
-	@echo "$(UAGENT): ready"
-echoes:
-	@echo "Starting compilation";\
-		echo "CC: $(CC) $(CFLAGS) $(WARN)";\
-		echo "[INCS: $(INCLUDES)]";\
-		echo "[LDFLAGS: $(LDFLAGS)]";\
-		echo "[LIBS: $(LIBS)]"
+all: _all_echoes $(UAGENT)
+_all_echoes:
+	@echo 'Building..';\
+	if [ -z "$(VERBOSE)" ]; then \
+		echo '. CC      : $(CC)';\
+		echo '. CFLAGS  : $(CFLAGS)';\
+		echo '. INCLUDES: $(INCLUDES)';\
+		[ -n "$(LDFLAGS)" ] && echo '. LDFLAGS : $(LDFLAGS)';\
+		echo '. LIBS    : $(LIBS)';\
+	fi
 $(UAGENT): $(OBJ)
-	@$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $(@)
+	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
+	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
+	fi;\
+	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 
-$(OBJ): config.h def.h extern.h glob.h rcv.h
-imap.o: imap_gssapi.h
-main.o: version.h
-md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
-mime.o: mime_types.h
+$(OBJ): config.h nail.h extern.h $(OBJ_DEP)
+config.o imap.o: imap_gssapi.h
+config.o lex.o: cmd_tab.h
+config.o main.o: version.h
+config.o md5.o imap.o smtp.o auxlily.o pop3.o: md5.h
+config.o mime.o: mime_types.h
 
 mime_types.h: mime.types
+	@echo '  GEN $(@)';\
 	< ./mime.types > $(@) sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
+test:
+	@echo 'Running test, please wait';\
+	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
+
 mkman.1: nail.1 mk.mk
-	@echo 'Creating manual for $(UAGENT)';\
+	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	_VERSION=`< version.h \
 		sed -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
@@ -55,7 +57,7 @@ mkman.1: nail.1 mk.mk
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
-		print ".ds UV \\\\%", cn, " ", ENVIRON["_VERSION"];\
+		printf ".ds UV \\\\%%%s [%s]\n", cn, ENVIRON["_VERSION"];\
 		print ".ds ua \\\\%", ln;\
 		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
 		OFS = " ";\
@@ -65,7 +67,8 @@ mkman.1: nail.1 mk.mk
 	'
 
 mkrc.rc: nail.rc mk.mk
-	@echo 'Creating default configuration file for $(UAGENT)';\
+	@[ -n "$(VERBOSE)" ] &&\
+		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.rc > $(@) awk 'BEGIN {written = 0}\
 	/#--MKRC-START--/, /#--MKRC-END--/ {\
@@ -83,42 +86,91 @@ mkrc.rc: nail.rc mk.mk
 	{print}\
 	'
 
-install: mk.mk mkman.1 mkrc.rc
-	test -d "$(DESTDIR)$(BINDIR)" || mkdir -p "$(DESTDIR)$(BINDIR)";\
-	$(INSTALL) -c "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	$(STRIP) "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
-	test -d "$(DESTDIR)$(MANDIR)/man1" ||\
-		mkdir -p "$(DESTDIR)$(MANDIR)/man1";\
-	$(INSTALL) -c -m 644 ./mkman.1 \
-		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
-	test -d "$(DESTDIR)$(SYSCONFDIR)" ||\
-		mkdir -p "$(DESTDIR)$(SYSCONFDIR)";\
-	test -f "$(DESTDIR)$(SYSCONFRC)" ||\
-		$(INSTALL) -c -m 644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)"
+_install_echoes:
+	@echo 'Installing..'
+install: _install_echoes mk.mk mkman.1 mkrc.rc
+	@__mkdir() {\
+		_dir=$${1};\
+		if [ ! -d "$${_dir}" ]; then \
+			if [ -n "$(VERBOSE)" ]; then \
+				echo "  \$$ $(MKDIR) -m 0755 -p '$${_dir}'";\
+			fi;\
+			$(MKDIR) -m 0755 -p "$${_dir}";\
+		fi; \
+	};\
+	__copyfile() {\
+		_mode=$${1} _src=$${2} _dst=$${3};\
+		if [ -n "$(VERBOSE)" ]; then \
+			echo "  \$$ $(CP) -f '$${_src}' '$${_dst}'";\
+			echo "  \$$ $(CHMOD) $${_mode} '$${_dst}'";\
+		fi;\
+		$(CP) -f "$${_src}" "$${_dst}";\
+		$(CHMOD) $${_mode} "$${_dst}";\
+	};\
+	__stripfile() {\
+		_file=$${1};\
+		if [ -n "$(HAVE_STRIP)" ]; then \
+			if [ -n "$(VERBOSE)" ]; then \
+				echo "  \$$ $(STRIP) '$${_file}'";\
+			fi;\
+			$(STRIP) "$${_file}";\
+		fi;\
+	};\
+	if [ -n "$(DESTDIR)" ]; then __mkdir "$(DESTDIR)"; fi;\
+	__mkdir "$(DESTDIR)$(BINDIR)";\
+	__copyfile 0755 "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	__stripfile "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
+	__copyfile 0644 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
+	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
+		__copyfile 0644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
+	fi
 
 uninstall:
-	rm -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
-		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"
+	@echo 'Uninstalling..';\
+	[ -n "$(VERBOSE)" ] &&\
+		echo '  $$ $(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
+	$(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	[ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ] &&\
+		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"!'
 
 clean:
-	rm -f $(OBJ) "$(UAGENT)" ./mime_types.h ./mkman.1 ./mkrc.rc
+	@echo 'Cleaning up..';\
+	[ -n "$(VERBOSE)" ] &&\
+		echo '  $$ $(RM) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
+			./mkrc.rc';\
+	$(RM) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
 
 distclean: clean
-	rm -f ./config.* ./*.mk
+	@echo 'Deconfiguring..';\
+	[ -n "$(VERBOSE)" ] && echo '  $$ $(RM) -f ./config.* ./*.mk';\
+	$(RM) -f ./config.* ./*.mk
 
 _update-version:
-	@[ -z "$(VERSION)" ] && eval VERSION="`git describe --tags`";\
-	trap "rm ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define VERSION \"$${VERSION:-vHuih-Buh}\"\n";\
+	@if [ -z "$(VERSION)" ]; then \
+		eval VERSION="`(git describe --tags) 2>/dev/null`";\
+		if [ -z "$${VERSION}" ]; then \
+			VERSION="`sed -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
+				version.h`";\
+			echo "$${VERSION}" | grep -q -F dirty ||\
+				VERSION="$${VERSION}-dirty";\
+		fi;\
+	fi;\
+	trap "$(RM) ./version.tmp" 0 1 2 15;\
+	printf > ./version.tmp "#define VERSION \"$${VERSION}\"\n";\
 	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
-	mv ./version.tmp ./version.h; trap -- - 0 1 2 15
+	mv ./version.tmp ./version.h;\
+	trap - 0 1 2 15
 
 _update-release:
-	[ "`git rev-parse --verify HEAD`" != \
-			"`git rev-parse --verify master`" ] && {\
+	if [ "`git rev-parse --verify HEAD`" != \
+			"`git rev-parse --verify master`" ]; then \
 		echo >&2 'Not on the [master] branch';\
 		exit 1;\
-	};\
+	fi;\
 	echo 'Name of release tag:';\
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
@@ -135,7 +187,7 @@ _update-release:
 		-o "$${TMPDIR}/$(UAGENT)-$${FREL}.tar.gz" HEAD &&\
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$(UAGENT)-$${FREL}.tar.gz" &&\
-	rm -f "$(UAGENT)-$${FREL}.tar.gz" &&\
+	$(RM) -f "$(UAGENT)-$${FREL}.tar.gz" &&\
 	tar -c -z -f "$(UAGENT)-$${FREL}.tar.gz" "$(UAGENT)-$${REL}" &&\
 	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
@@ -149,11 +201,12 @@ _update-release:
 	echo 'Really send announcement mail?  ENTER continues';\
 	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
-	make WANT_ASSERTS=1 &&\
-	./s-nail -A sdn_sf -s "[ANNOUNCE] Announcing S-nail v$${REL}" \
-		nail-announce &&\
+	make devel &&\
+	./s-nail -A sdn_sf -s "[ANNOUNCE] of S-nail v$${REL}" nail-announce &&\
 	cd .. &&\
-	rm -rf "$(UAGENT)-$${REL}" &&\
+	echo "Really remove $(UAGENT)-$${REL} build dir?  ENTER continues";\
+	read i;\
+	$(RM) -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
 
-# vim:set fenc=utf-8 filetype=make:
+# vim:set fenc=utf-8 ft=make:

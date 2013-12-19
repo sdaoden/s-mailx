@@ -53,35 +53,28 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "rcv.h"
-
-#include <errno.h>
-#include <unistd.h>
-
-#ifdef HAVE_READLINE
-# include <readline/history.h>
-# include <readline/readline.h>
-#elif defined HAVE_EDITLINE
-# include <histedit.h>
-#elif defined HAVE_LINE_EDITOR
-# define __NCL
-# include <sys/stat.h>
-# include <wchar.h>
-# include <wctype.h>
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
 #endif
 
-#include "extern.h"
+#ifdef HAVE_READLINE
+# include <readline/readline.h>
+# ifdef HAVE_HISTORY
+#  include <readline/history.h>
+# endif
+#elif defined HAVE_EDITLINE
+# include <histedit.h>
+#endif
 
-/* */
-#define _CL_HISTFILE(S) \
+/* Shared history support macros */
+#ifdef HAVE_HISTORY
+# define _CL_HISTFILE(S) \
 do {\
    S = voption("NAIL_HISTFILE");\
    if ((S) != NULL)\
       S = fexpand(S, FEXP_LOCAL);\
 } while (0)
-
-/* */
-#define _CL_HISTSIZE(V) \
+# define _CL_HISTSIZE(V) \
 do {\
    char const *__sv = voption("NAIL_HISTSIZE");\
    long __rv;\
@@ -93,9 +86,7 @@ do {\
    else\
       (V) = __rv;\
 } while (0)
-
-/* */
-#define _CL_CHECK_ADDHIST(S,NOACT) \
+# define _CL_CHECK_ADDHIST(S,NOACT) \
 do {\
    switch (*(S)) {\
    case '\0':\
@@ -106,6 +97,7 @@ do {\
       break;\
    }\
 } while (0)
+#endif /* HAVE_HISTORY */
 
 /* fexpand() flags for expand-on-tab */
 #define _CL_TAB_FEXP_FL (FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
@@ -115,12 +107,12 @@ do {\
  * and place the implementations one after the other below the other externals
  */
 
-bool_t
+FL bool_t
 yorn(char const *msg)
 {
    char *cp;
 
-   if (! (options & OPT_INTERACTIVE))
+   if (!(options & OPT_INTERACTIVE))
       return TRU1;
    do if ((cp = readstr_input(msg, NULL)) == NULL)
       return FAL0;
@@ -128,7 +120,7 @@ yorn(char const *msg)
    return (*cp == 'y' || *cp == 'Y');
 }
 
-char *
+FL char *
 getuser(char const *query)
 {
    char *user = NULL;
@@ -143,7 +135,7 @@ getuser(char const *query)
    return user;
 }
 
-char *
+FL char *
 getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 {
    struct termios tios;
@@ -154,13 +146,17 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
    fputs(query, stdout);
    fflush(stdout);
 
+   /*
+    * FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
+    * foreground pgrp, and can fail with EINTR!!
+    */
    if (options & OPT_TTYIN) {
-      tcgetattr(0, &termios_state.ts_tios);
+      tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
       termios_state.ts_needs_reset = TRU1;
       tios.c_iflag &= ~(ISTRIP);
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-      tcsetattr(0, TCSAFLUSH, &tios);
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    }
 
    if (readline_restart(stdin, &termios_state.ts_linebuf,
@@ -173,7 +169,7 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
    return pass;
 }
 
-bool_t
+FL bool_t
 getcredentials(char **user, char **pass)
 {
    bool_t rv = TRU1;
@@ -218,38 +214,46 @@ _rl_pre_input(void)
    return 0;
 }
 
-void
+FL void
 tty_init(void)
 {
+# ifdef HAVE_HISTORY
    long hs;
    char *v;
-
-   _CL_HISTSIZE(hs);
+# endif
 
    rl_readline_name = UNCONST(uagent);
+# ifdef HAVE_HISTORY
+   _CL_HISTSIZE(hs);
    using_history();
    stifle_history((int)hs);
+# endif
    rl_read_init_file(NULL);
 
    /* Because rl_read_init_file() may have introduced yet a different
     * history size limit, simply load and incorporate the history, leave
     * it up to readline(3) to do the rest */
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       read_history(v);
+# endif
 }
 
-void
+FL void
 tty_destroy(void)
 {
+# ifdef HAVE_HISTORY
    char *v;
 
    _CL_HISTFILE(v);
    if (v != NULL)
       write_history(v);
+# endif
+   ;
 }
 
-void
+FL void
 tty_signal(int sig)
 {
    sigset_t nset, oset;
@@ -279,7 +283,7 @@ tty_signal(int sig)
    }
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -293,7 +297,7 @@ int
    }
 
    _rl_shup = safe_signal(SIGHUP, &tty_signal);
-   line = readline(prompt);
+   line = readline(prompt != NULL ? prompt : "");
    safe_signal(SIGHUP, _rl_shup);
 
    if (line == NULL) {
@@ -314,15 +318,17 @@ jleave:
    return nn;
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
+# ifdef HAVE_HISTORY
    _CL_CHECK_ADDHIST(s, goto jleave);
    hold_all_sigs();  /* XXX too heavy */
    add_history(s);   /* XXX yet we jump away! */
    rele_all_sigs();  /* XXX remove jumps */
 jleave:
-   ;
+# endif
+   UNUSED(s);
 }
 #endif /* HAVE_READLINE */
 
@@ -332,8 +338,10 @@ jleave:
 
 #ifdef HAVE_EDITLINE
 static EditLine *    _el_el;     /* editline(3) handle */
-static History *     _el_hcom;   /* History handle for commline */
 static char const *  _el_prompt; /* Current prompt */
+# ifdef HAVE_HISTORY
+static History *     _el_hcom;   /* History handle for commline */
+# endif
 
 static char const *  _el_getprompt(void);
 
@@ -343,57 +351,74 @@ _el_getprompt(void)
    return _el_prompt;
 }
 
-void
+FL void
 tty_init(void)
 {
+# ifdef HAVE_HISTORY
    HistEvent he;
    long hs;
    char *v;
+# endif
 
+# ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
-
    _el_hcom = history_init();
    history(_el_hcom, &he, H_SETSIZE, (int)hs);
    history(_el_hcom, &he, H_SETUNIQUE, 1);
+# endif
 
    _el_el = el_init(uagent, stdin, stdout, stderr);
    el_set(_el_el, EL_SIGNAL, 1);
    el_set(_el_el, EL_TERMINAL, NULL);
    /* Need to set HIST before EDITOR, otherwise it won't work automatic */
+# ifdef HAVE_HISTORY
    el_set(_el_el, EL_HIST, &history, _el_hcom);
+# endif
    el_set(_el_el, EL_EDITOR, "emacs");
+# ifdef EL_PROMPT_ESC
+   el_set(_el_el, EL_PROMPT_ESC, &_el_getprompt, '\1');
+# else
    el_set(_el_el, EL_PROMPT, &_el_getprompt);
+# endif
 # if 0
    el_set(_el_el, EL_ADDFN, "tab_complete",
       "editline(3) internal completion function", &_el_file_cpl);
    el_set(_el_el, EL_BIND, "^I", "tab_complete", NULL);
 # endif
+# ifdef HAVE_HISTORY
    el_set(_el_el, EL_BIND, "^R", "ed-search-prev-history", NULL);
+# endif
    el_source(_el_el, NULL); /* Source ~/.editrc */
 
    /* Because el_source() may have introduced yet a different history size
     * limit, simply load and incorporate the history, leave it up to
     * editline(3) to do the rest */
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       history(_el_hcom, &he, H_LOAD, v);
+# endif
 }
 
-void
+FL void
 tty_destroy(void)
 {
+# ifdef HAVE_HISTORY
    HistEvent he;
    char *v;
+# endif
 
    el_end(_el_el);
 
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       history(_el_hcom, &he, H_SAVE, v);
    history_end(_el_hcom);
+# endif
 }
 
-void
+FL void
 tty_signal(int sig)
 {
    switch (sig) {
@@ -407,14 +432,14 @@ tty_signal(int sig)
    }
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
    int nn;
    char const *line;
 
-   _el_prompt = prompt;
+   _el_prompt = (prompt != NULL) ? prompt : "";
    if (n > 0)
       el_push(_el_el, *linebuf);
    line = el_gets(_el_el, &nn);
@@ -438,9 +463,10 @@ jleave:
    return nn;
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
+# ifdef HAVE_HISTORY
    /* Enlarge meaning of unique .. to something that rocks;
     * xxx unfortunately this is expensive to do with editline(3)
     * xxx maybe it would be better to hook the ptfs instead? */
@@ -463,7 +489,8 @@ jadd:
    history(_el_hcom, &he, H_ENTER, s);
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
-   ;
+# endif
+   UNUSED(s);
 }
 #endif /* HAVE_EDITLINE */
 
@@ -487,7 +514,17 @@ jleave:
  * TODO NCL: during handler de-/installation handling.
  */
 
-#ifdef __NCL
+#ifdef HAVE_NCL
+# ifndef MAX_INPUT
+#  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
+# endif
+
+  /* Since we simply fputs(3) the prompt, assume each character requires two
+   * visual cells -- and we need to restrict the maximum prompt size because
+   * of MAX_INPUT and our desire to have room for some error message left */
+# define _PROMPT_VLEN(P)   (strlen(P) * 2)
+# define _PROMPT_MAX       ((MAX_INPUT / 2) + (MAX_INPUT / 4))
+
 union xsighdl {
    sighandler_type   shdl; /* Try avoid races by setting */
    sl_it             sint; /* .sint=-1 when inactive */
@@ -505,13 +542,6 @@ struct cell {
    char     cbuf[MB_LEN_MAX * 2];   /* .. plus reset shift sequence */
 };
 
-struct hist {
-   struct hist *  older;
-   struct hist *  younger;
-   size_t         len;
-   char           dat[VFIELD_SIZE(sizeof(size_t))];
-};
-
 struct line {
    size_t         cursor;     /* Current cursor position */
    size_t         topins;     /* Outermost cursor col set */
@@ -521,12 +551,23 @@ struct line {
    }              line;
    struct str     defc;       /* Current default content */
    struct str     savec;      /* Saved default content */
+# ifdef HAVE_HISTORY
    struct hist *  hist;       /* History cursor */
+# endif
    char const *   prompt;
    char const *   nd;         /* Cursor right */
    char **        x_buf;      /* Caller pointers */
    size_t *       x_bufsize;
 };
+
+# ifdef HAVE_HISTORY
+struct hist {
+   struct hist *  older;
+   struct hist *  younger;
+   size_t         len;
+   char           dat[VFIELD_SIZE(sizeof(size_t))];
+};
+# endif
 
 static union xsighdl _ncl_oint;
 static union xsighdl _ncl_oquit;
@@ -536,19 +577,25 @@ static union xsighdl _ncl_otstp;
 static union xsighdl _ncl_ottin;
 static union xsighdl _ncl_ottou;
 static struct xtios  _ncl_tios;
+# ifdef HAVE_HISTORY
 static struct hist * _ncl_hist;
 static size_t        _ncl_hist_size;
 static size_t        _ncl_hist_size_max;
 static bool_t        _ncl_hist_load;
+# endif
 
 static void    _ncl_sigs_up(void);
 static void    _ncl_sigs_down(void);
+
+static void    _ncl_term_mode(bool_t raw);
 
 static void    _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS);
 static void    _ncl_bs_eof_dvup(struct cell *cap, size_t i);
 static ssize_t _ncl_wboundary(struct line *l, ssize_t dir);
 static ssize_t _ncl_cell2dat(struct line *l);
+# if defined HAVE_HISTORY || defined HAVE_TABEXPAND
 static void    _ncl_cell2save(struct line *l);
+# endif
 
 static void    _ncl_khome(struct line *l, bool_t dobell);
 static void    _ncl_kend(struct line *l);
@@ -558,13 +605,17 @@ static ssize_t _ncl_keof(struct line *l);
 static void    _ncl_kleft(struct line *l);
 static void    _ncl_kright(struct line *l);
 static void    _ncl_krefresh(struct line *l);
-static size_t  _ncl_kht(struct line *l);
-static size_t  __ncl_khist_shared(struct line *l, struct hist *hp);
-static size_t  _ncl_khist(struct line *l, bool_t backwd);
-static size_t  _ncl_krhist(struct line *l);
 static void    _ncl_kbwddelw(struct line *l);
 static void    _ncl_kgow(struct line *l, ssize_t dir);
 static void    _ncl_kother(struct line *l, wchar_t wc);
+# ifdef HAVE_HISTORY
+static size_t  __ncl_khist_shared(struct line *l, struct hist *hp);
+static size_t  _ncl_khist(struct line *l, bool_t backwd);
+static size_t  _ncl_krhist(struct line *l);
+# endif
+# ifdef HAVE_TABEXPAND
+static size_t  _ncl_kht(struct line *l);
+# endif
 static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
                   size_t len SMALLOC_DEBUG_ARGS);
 
@@ -624,6 +675,27 @@ _ncl_sigs_down(void)
 }
 
 static void
+_ncl_term_mode(bool_t raw)
+{
+   struct termios *tiosp = &_ncl_tios.told;
+
+   if (!raw)
+      goto jleave;
+
+   /* Always requery the attributes, in case we've been moved from background
+    * to foreground or however else in between sessions */
+   tcgetattr(STDIN_FILENO, tiosp);
+   memcpy(&_ncl_tios.tnew, tiosp, sizeof *tiosp);
+   tiosp = &_ncl_tios.tnew;
+   tiosp->c_cc[VMIN] = 1;
+   tiosp->c_cc[VTIME] = 0;
+   tiosp->c_iflag &= ~(ISTRIP);
+   tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
+jleave:
+   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
+}
+
+static void
 _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
 {
    size_t i = (l->topins + no) * sizeof(struct cell) + 2 * sizeof(struct cell);
@@ -632,7 +704,7 @@ _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
       i <<= 1;
       *l->x_bufsize = i;
       l->line.cbuf =
-      *l->x_buf = (srealloc)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
+      *l->x_buf = (srealloc_safe)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
    }
 }
 
@@ -655,12 +727,11 @@ _ncl_bs_eof_dvup(struct cell *cap, size_t i)
 static ssize_t
 _ncl_wboundary(struct line *l, ssize_t dir)
 {
-   size_t c = l->cursor, t = l->topins;
-   ssize_t i;
+   size_t c = l->cursor, t = l->topins, i;
    struct cell *cap;
    bool_t anynon;
 
-   i = -1;
+   i = (size_t)-1;
    if (dir < 0) {
       if (c == 0)
          goto jleave;
@@ -685,7 +756,7 @@ _ncl_wboundary(struct line *l, ssize_t dir)
          break;
    }
 jleave:
-   return i;
+   return (ssize_t)i;
 }
 
 static ssize_t
@@ -703,6 +774,7 @@ _ncl_cell2dat(struct line *l)
    return (ssize_t)len;
 }
 
+# if defined HAVE_HISTORY || defined HAVE_TABEXPAND
 static void
 _ncl_cell2save(struct line *l)
 {
@@ -727,6 +799,7 @@ _ncl_cell2save(struct line *l)
 jleave:
    ;
 }
+# endif
 
 static void
 _ncl_khome(struct line *l, bool_t dobell)
@@ -831,191 +904,12 @@ _ncl_krefresh(struct line *l)
    size_t i;
 
    putchar('\r');
-   if (*l->prompt)
+   if (l->prompt != NULL && *l->prompt != '\0')
       fputs(l->prompt, stdout);
    for (cap = l->line.cells, i = l->topins; i > 0; ++cap, --i)
       fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
    for (i = l->topins - l->cursor; i > 0; --i)
       putchar('\b');
-}
-
-static size_t
-_ncl_kht(struct line *l)
-{
-   struct str orig, bot, topp, sub, exp;
-   struct cell *cword, *ctop, *cx;
-   bool_t set_savec = FAL0;
-   size_t rv = 0;
-
-   /* We cannot expand an empty line */
-   if (l->topins == 0)
-      goto jleave;
-
-   /* Get plain line data; if this is the first expansion/xy, update the
-    * very original content so that ^G gets the origin back */
-   orig = l->savec;
-   _ncl_cell2save(l);
-   exp = l->savec;
-   if (orig.s != NULL)
-      l->savec = orig;
-   else
-      set_savec = TRU1;
-   orig = exp;
-
-   cword = l->line.cells;
-   ctop = cword + l->cursor;
-
-   /* topp: separate data right of cursor */
-   if ((cx = cword + l->topins) != ctop) {
-      for (rv = 0; cx > ctop; --cx)
-         rv += cx->count;
-      topp.l = rv;
-      topp.s = orig.s + orig.l - rv;
-   } else
-      topp.s = NULL, topp.l = 0;
-
-   /* bot, sub: we cannot expand the entire data left of cursor, but only
-    * the last "word", so separate them */
-   while (cx > cword && ! iswspace(cx[-1].wc))
-      --cx;
-   for (rv = 0; cword < cx; ++cword)
-      rv += cword->count;
-   sub =
-   bot = orig;
-   bot.l = rv;
-   sub.s += rv;
-   sub.l -= rv;
-   sub.l -= topp.l;
-
-   if (sub.l > 0) {
-      sub.s = savestrbuf(sub.s, sub.l);
-      /* TODO there is a TODO note upon fexpand() with multi-return;
-       * TODO if that will change, the if() below can be simplified */
-      /* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
-      hold_all_sigs();
-      exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
-      rele_all_sigs();
-
-      if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
-            (exp.l != sub.l || strcmp(exp.s, sub.s))) {
-         /* TODO cramp expansion length to MAX_INPUT, or 255 if not defined;
-          * TODO the problem is that we loose control otherwise; in the best
-          * TODO case the user can control via ^A and ^K etc., but be safe;
-          * TODO we cannot simply adjust fexpand() because we don't know how
-          * TODO that is implemented...  The real solution would be to check
-          * TODO wether we fit on a line, and start a pager if not.
-          * TODO However, that should be part of a real tab-COMPLETION, then,
-          * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
-          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT:
-          * TODO Note how hacky this is in respect to excess of final string */
-# ifndef MAX_INPUT
-#  define MAX_INPUT 255 /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
-# endif
-         if (exp.l >= MAX_INPUT) {
-            char const cp[] = "[maximum line size exceeded]";
-            exp.s = UNCONST(cp);
-            exp.l = sizeof(cp) - 1;
-         }
-         orig.l = bot.l + exp.l + topp.l;
-         orig.s = salloc(orig.l + 1);
-         rv = bot.l;
-         memcpy(orig.s, bot.s, rv);
-         memcpy(orig.s + rv, exp.s, exp.l);
-         rv += exp.l;
-         memcpy(orig.s + rv, topp.s, topp.l);
-         rv += topp.l;
-         orig.s[rv] = '\0';
-
-         l->defc = orig;
-         _ncl_khome(l, FAL0);
-         _ncl_kkill(l, FAL0);
-         goto jleave;
-      }
-   }
-
-   /* If we've provided a default content, but failed to expand, there is
-    * nothing we can "revert to": drop that default again */
-   if (set_savec)
-      l->savec.s = NULL, l->savec.l = 0;
-   rv = 0;
-jleave:
-   return rv;
-}
-
-static size_t
-__ncl_khist_shared(struct line *l, struct hist *hp)
-{
-   size_t rv;
-
-   if ((l->hist = hp) != NULL) {
-      l->defc.s = savestrbuf(hp->dat, hp->len);
-      rv =
-      l->defc.l = hp->len;
-      if (l->topins > 0) {
-         _ncl_khome(l, FAL0);
-         _ncl_kkill(l, FAL0);
-      }
-   } else {
-      putchar('\a');
-      rv = 0;
-   }
-   return rv;
-}
-
-static size_t
-_ncl_khist(struct line *l, bool_t backwd)
-{
-   struct hist *hp;
-
-   /* If we're not in history mode yet, save line content;
-    * also, disallow forward search, then, and, of course, bail unless we
-    * do have any history at all */
-   if ((hp = l->hist) == NULL) {
-      if (! backwd)
-         goto jleave;
-      if ((hp = _ncl_hist) == NULL)
-         goto jleave;
-      _ncl_cell2save(l);
-      goto jleave;
-   }
-
-   hp = backwd ? hp->older : hp->younger;
-jleave:
-   return __ncl_khist_shared(l, hp);
-}
-
-static size_t
-_ncl_krhist(struct line *l)
-{
-   struct str orig_savec;
-   struct hist *hp = NULL;
-
-   /* We cannot complete an empty line */
-   if (l->topins == 0) {
-      /* XXX The upcoming hard reset would restore a set savec buffer,
-       * XXX so forcefully reset that.  A cleaner solution would be to
-       * XXX reset it whenever a restore is no longer desired */
-      l->savec.s = NULL, l->savec.l = 0;
-      goto jleave;
-   }
-   if ((hp = l->hist) == NULL) {
-      if ((hp = _ncl_hist) == NULL)
-         goto jleave;
-      orig_savec.s = NULL;
-   } else if ((hp = hp->older) == NULL)
-      goto jleave;
-   else
-      orig_savec = l->savec;
-
-   if (orig_savec.s == NULL)
-      _ncl_cell2save(l);
-   for (; hp != NULL; hp = hp->older)
-      if (is_prefix(l->savec.s, hp->dat))
-         break;
-   if (orig_savec.s != NULL)
-      l->savec = orig_savec;
-jleave:
-   return __ncl_khist_shared(l, hp);
 }
 
 static void
@@ -1051,7 +945,8 @@ _ncl_kbwddelw(struct line *l)
       putchar(' ');
    for (j = t - c; j > 0; --j)
       putchar('\b');
-jleave:	;
+jleave:
+   ;
 }
 
 static void
@@ -1118,8 +1013,203 @@ _ncl_kother(struct line *l, wchar_t wc)
    while ((++cap, i-- != 0));
    while (c-- != 0)
       putchar('\b');
-jleave:	;
+jleave:
+   ;
 }
+
+# ifdef HAVE_HISTORY
+static size_t
+__ncl_khist_shared(struct line *l, struct hist *hp)
+{
+   size_t rv;
+
+   if ((l->hist = hp) != NULL) {
+      l->defc.s = savestrbuf(hp->dat, hp->len);
+      rv =
+      l->defc.l = hp->len;
+      if (l->topins > 0) {
+         _ncl_khome(l, FAL0);
+         _ncl_kkill(l, FAL0);
+      }
+   } else {
+      putchar('\a');
+      rv = 0;
+   }
+   return rv;
+}
+
+static size_t
+_ncl_khist(struct line *l, bool_t backwd)
+{
+   struct hist *hp;
+
+   /* If we're not in history mode yet, save line content;
+    * also, disallow forward search, then, and, of course, bail unless we
+    * do have any history at all */
+   if ((hp = l->hist) == NULL) {
+      if (! backwd)
+         goto jleave;
+      if ((hp = _ncl_hist) == NULL)
+         goto jleave;
+      _ncl_cell2save(l);
+      goto jleave;
+   }
+
+   hp = backwd ? hp->older : hp->younger;
+jleave:
+   return __ncl_khist_shared(l, hp);
+}
+
+static size_t
+_ncl_krhist(struct line *l)
+{
+   struct str orig_savec;
+   struct hist *hp = NULL;
+
+   /* We cannot complete an empty line */
+   if (l->topins == 0) {
+      /* XXX The upcoming hard reset would restore a set savec buffer,
+       * XXX so forcefully reset that.  A cleaner solution would be to
+       * XXX reset it whenever a restore is no longer desired */
+      l->savec.s = NULL, l->savec.l = 0;
+      goto jleave;
+   }
+   if ((hp = l->hist) == NULL) {
+      if ((hp = _ncl_hist) == NULL)
+         goto jleave;
+      orig_savec.s = NULL;
+      orig_savec.l = 0; /* silence CC */
+   } else if ((hp = hp->older) == NULL)
+      goto jleave;
+   else
+      orig_savec = l->savec;
+
+   if (orig_savec.s == NULL)
+      _ncl_cell2save(l);
+   for (; hp != NULL; hp = hp->older)
+      if (is_prefix(l->savec.s, hp->dat))
+         break;
+   if (orig_savec.s != NULL)
+      l->savec = orig_savec;
+jleave:
+   return __ncl_khist_shared(l, hp);
+}
+# endif
+
+# ifdef HAVE_TABEXPAND
+static size_t
+_ncl_kht(struct line *l)
+{
+   struct str orig, bot, topp, sub, exp;
+   struct cell *cword, *ctop, *cx;
+   bool_t set_savec = FAL0;
+   size_t rv = 0;
+
+   /* We cannot expand an empty line */
+   if (l->topins == 0)
+      goto jleave;
+
+   /* Get plain line data; if this is the first expansion/xy, update the
+    * very original content so that ^G gets the origin back */
+   orig = l->savec;
+   _ncl_cell2save(l);
+   exp = l->savec;
+   if (orig.s != NULL)
+      l->savec = orig;
+   else
+      set_savec = TRU1;
+   orig = exp;
+
+   cword = l->line.cells;
+   ctop = cword + l->cursor;
+
+   /* topp: separate data right of cursor */
+   if ((cx = cword + l->topins) != ctop) {
+      for (rv = 0; cx > ctop; --cx)
+         rv += cx->count;
+      topp.l = rv;
+      topp.s = orig.s + orig.l - rv;
+   } else
+      topp.s = NULL, topp.l = 0;
+
+   /* bot, sub: we cannot expand the entire data left of cursor, but only
+    * the last "word", so separate them */
+   while (cx > cword && ! iswspace(cx[-1].wc))
+      --cx;
+   for (rv = 0; cword < cx; ++cword)
+      rv += cword->count;
+   sub =
+   bot = orig;
+   bot.l = rv;
+   sub.s += rv;
+   sub.l -= rv;
+   sub.l -= topp.l;
+
+   if (sub.l > 0) {
+      sub.s = savestrbuf(sub.s, sub.l);
+      /* TODO there is a TODO note upon fexpand() with multi-return;
+       * TODO if that will change, the if() below can be simplified */
+      /* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
+      hold_all_sigs();
+      exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
+      rele_all_sigs();
+
+      if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
+            (exp.l != sub.l || strcmp(exp.s, sub.s))) {
+         /* Cramp expansion length to MAX_INPUT, or 255 if not defined.
+          * Take care to take *prompt* into account, since we don't know
+          * anything about it's visual length (fputs(3) is used), simply
+          * assume each character requires two columns */
+         /* TODO the problem is that we loose control otherwise; in the best
+          * TODO case the user can control via ^A and ^K etc., but be safe;
+          * TODO we cannot simply adjust fexpand() because we don't know how
+          * TODO that is implemented...  The real solution would be to check
+          * TODO wether we fit on a line, and start a pager if not.
+          * TODO However, that should be part of a real tab-COMPLETION, then,
+          * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
+          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
+         rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
+         if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
+            char const e1[] = "[maximum line size exceeded]";
+            exp.s = UNCONST(e1);
+            exp.l = sizeof(e1) - 1;
+            topp.l = 0;
+            if (rv + bot.l + exp.l >= MAX_INPUT)
+               bot.l = 0;
+            if (rv + exp.l >= MAX_INPUT) {
+               char const e2[] = "[ERR]";
+               exp.s = UNCONST(e2);
+               exp.l = sizeof(e2) - 1;
+            }
+         }
+         orig.l = bot.l + exp.l + topp.l;
+         orig.s = salloc(orig.l + 1 + 5);
+         if ((rv = bot.l) > 0)
+            memcpy(orig.s, bot.s, rv);
+         memcpy(orig.s + rv, exp.s, exp.l);
+         rv += exp.l;
+         if (topp.l > 0) {
+            memcpy(orig.s + rv, topp.s, topp.l);
+            rv += topp.l;
+         }
+         orig.s[rv] = '\0';
+
+         l->defc = orig;
+         _ncl_khome(l, FAL0);
+         _ncl_kkill(l, FAL0);
+         goto jleave;
+      }
+   }
+
+   /* If we've provided a default content, but failed to expand, there is
+    * nothing we can "revert to": drop that default again */
+   if (set_savec)
+      l->savec.s = NULL, l->savec.l = 0;
+   rv = 0;
+jleave:
+   return rv;
+}
+# endif /* HAVE_TABEXPAND */
 
 static ssize_t
 _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
@@ -1141,13 +1231,14 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
       l.defc.s = savestrbuf(*buf, len);
       l.defc.l = len;
    }
-   l.prompt = prompt;
+   if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
+      l.prompt = prompt = "?ERR?";
    if ((l.nd = voption("line-editor-cursor-right")) == NULL)
       l.nd = "\033[C";
    l.x_buf = buf;
    l.x_bufsize = bufsize;
 
-   if (*prompt) {
+   if (prompt != NULL && *prompt != '\0') {
       fputs(prompt, stdout);
       fflush(stdout);
    }
@@ -1217,11 +1308,9 @@ jrestart:
       case 'A' ^ 0x40: /* cursor home */
          _ncl_khome(&l, TRU1);
          break;
-      case 'B' ^ 0x40: /* ("history backward") */
-         if ((len = _ncl_khist(&l, TRU1)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
+      case 'B' ^ 0x40: /* backward character */
+         _ncl_kleft(&l);
+         break;
       /* 'C': interrupt (CTRL-C) */
       case 'D' ^ 0x40: /* delete char forward if any, else EOF */
          if ((rv = _ncl_keof(&l)) < 0)
@@ -1230,21 +1319,19 @@ jrestart:
       case 'E' ^ 0x40: /* end of line */
          _ncl_kend(&l);
          break;
-      case 'F' ^ 0x40: /* history forward */
-         if (l.hist == NULL)
-            goto jbell;
-         if ((len = _ncl_khist(&l, FAL0)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
+      case 'F' ^ 0x40: /* forward character */
+         _ncl_kright(&l);
+         break;
       /* 'G' below */
       case 'H' ^ 0x40: /* backspace */
       case '\177':
          _ncl_kbs(&l);
          break;
       case 'I' ^ 0x40: /* horizontal tab */
+# ifdef HAVE_TABEXPAND
          if ((len = _ncl_kht(&l)) > 0)
             goto jrestart;
+# endif
          goto jbell;
       case 'J' ^ 0x40: /* NL (\n) */
          goto jdone;
@@ -1258,7 +1345,9 @@ jreset:
          _ncl_kkill(&l, (wc == ('K' ^ 0x40) || l.topins == 0));
          /* (Handle full reset?) */
          if (wc == ('G' ^ 0x40)) {
+# ifdef HAVE_HISTORY
             l.hist = NULL;
+# endif
             if ((len = l.savec.l) != 0) {
                l.defc = l.savec;
                l.savec.s = NULL, l.savec.l = 0;
@@ -1271,19 +1360,37 @@ jreset:
          _ncl_krefresh(&l);
          break;
       /* 'M': CR (\r) */
-      /* 'N' */
-      case 'O' ^ 0x40: /* cursor left */
-         _ncl_kleft(&l);
-         break;
-      case 'P' ^ 0x40: /* cursor right */
-         _ncl_kright(&l);
-         break;
+      case 'N' ^ 0x40: /* history next */
+# ifdef HAVE_HISTORY
+         if (l.hist == NULL)
+            goto jbell;
+         if ((len = _ncl_khist(&l, FAL0)) > 0)
+            goto jrestart;
+         wc = 'G' ^ 0x40;
+         goto jreset;
+# else
+         goto jbell;
+# endif
+      /* 'O' */
+      case 'P' ^ 0x40: /* history previous */
+# ifdef HAVE_HISTORY
+         if ((len = _ncl_khist(&l, TRU1)) > 0)
+            goto jrestart;
+         wc = 'G' ^ 0x40;
+         goto jreset;
+# else
+         goto jbell;
+# endif
       /* 'Q': no code */
       case 'R' ^ 0x40: /* reverse history search */
+# ifdef HAVE_HISTORY
          if ((len = _ncl_krhist(&l)) > 0)
             goto jrestart;
          wc = 'G' ^ 0x40;
          goto jreset;
+# else
+         goto jbell;
+# endif
       /* 'S': no code */
       /* 'U' above */
       /*case 'V' ^ 0x40: TODO*/ /* forward delete "word" */
@@ -1306,8 +1413,10 @@ jprint:
              * worked the entire buffer */
             if (len > 0)
                continue;
+# ifdef HAVE_HISTORY
             if (cbuf == cbuf_base)
                l.hist = NULL;
+# endif
          } else {
 jbell:
             putchar('\a');
@@ -1328,25 +1437,21 @@ jleave:
    return rv;
 }
 
-void
+FL void
 tty_init(void)
 {
+# ifdef HAVE_HISTORY
    long hs;
    char *v, *lbuf;
    FILE *f;
    size_t lsize, cnt, llen;
+# endif
 
    _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
    _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
    _ncl_ottou.sint = -1;
 
-   tcgetattr(STDIN_FILENO, &_ncl_tios.told);
-   memcpy(&_ncl_tios.tnew, &_ncl_tios.told, sizeof _ncl_tios.tnew);
-   _ncl_tios.tnew.c_cc[VMIN] = 1;
-   _ncl_tios.tnew.c_cc[VTIME] = 0;
-   _ncl_tios.tnew.c_iflag &= ~(ISTRIP);
-   _ncl_tios.tnew.c_lflag &= ~(ECHO | ICANON | IEXTEN);
-
+# ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
    _ncl_hist_size_max = hs;
    if (hs == 0)
@@ -1380,12 +1485,14 @@ tty_init(void)
 jdone:
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
+# endif /* HAVE_HISTORY */
    ;
 }
 
-void
+FL void
 tty_destroy(void)
 {
+# ifdef HAVE_HISTORY
    long hs;
    char *v;
    struct hist *hp;
@@ -1419,10 +1526,11 @@ jclose:
 jdone:
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
+# endif /* HAVE_HISTORY */
    ;
 }
 
-void
+FL void
 tty_signal(int sig)
 {
    sigset_t nset, oset;
@@ -1432,7 +1540,7 @@ tty_signal(int sig)
       /* We don't deal with SIGWINCH, yet get called from main.c */
       break;
    default:
-      tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.told);
+      _ncl_term_mode(FAL0);
       _ncl_sigs_down();
       sigemptyset(&nset);
       sigaddset(&nset, sig);
@@ -1441,12 +1549,12 @@ tty_signal(int sig)
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
       _ncl_sigs_up();
-      tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.tnew);
+      _ncl_term_mode(TRU1);
       break;
    }
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -1455,17 +1563,18 @@ int
    /* Of course we have races here, but they cannot be avoided on POSIX
     * (except by even *more* actions) */
    _ncl_sigs_up();
-   tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.tnew);
+   _ncl_term_mode(TRU1);
    nn = _ncl_readline(prompt, linebuf, linesize, n SMALLOC_DEBUG_ARGSCALL);
-   tcsetattr(STDIN_FILENO, TCSANOW, &_ncl_tios.told);
+   _ncl_term_mode(FAL0);
    _ncl_sigs_down();
 
    return (int)nn;
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
+# ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
    size_t l = strlen(s);
    struct hist *h, *o, *y;
@@ -1492,9 +1601,9 @@ tty_addhist(char const *s)
          }
    hold_all_sigs();
 
-   if (! _ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
+   if (!_ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
       (h = _ncl_hist->younger
-      )->older = NULL;
+         )->older = NULL;
       free(_ncl_hist);
       _ncl_hist = h;
    }
@@ -1510,30 +1619,31 @@ jleave:
 
    rele_all_sigs();
 j_leave:
-   ;
+# endif
+   UNUSED(s);
 }
-#endif /* __NCL */
+#endif /* HAVE_NCL */
 
 /*
  * The really-nothing-at-all implementation
  */
 
-#ifndef HAVE_LINE_EDITOR
-void
+#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
+FL void
 tty_init(void)
 {}
 
-void
+FL void
 tty_destroy(void)
 {}
 
-void
+FL void
 tty_signal(int sig)
 {
-   (void)sig;
+   UNUSED(sig);
 }
 
-int
+FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
@@ -1543,7 +1653,7 @@ int
     */
    bool_t doffl = FAL0;
 
-   if (*prompt != '\0') {
+   if (prompt != NULL && *prompt != '\0') {
       fputs(prompt, stdout);
       doffl = TRU1;
    }
@@ -1557,11 +1667,11 @@ int
    return (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
 }
 
-void
+FL void
 tty_addhist(char const *s)
 {
-   (void)s;
+   UNUSED(s);
 }
-#endif /* ! HAVE_LINE_EDITOR */
+#endif /* nothing at all */
 
 /* vim:set fenc=utf-8:s-it-mode */

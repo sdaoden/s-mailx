@@ -37,13 +37,9 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
-
-#include <sys/stat.h>
-#include <errno.h>
-#include <unistd.h>
-
-#include "extern.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 enum pipeflags {
 	PIPE_NULL,	/* No pipe- mimetype handler */
@@ -110,7 +106,7 @@ static void put_from_(FILE *fp, struct mimepart *ip, off_t *stats);
 static sigjmp_buf	pipejmp;
 
 /*ARGSUSED*/
-static void 
+static void
 onpipe(int signo)
 {
 	(void)signo;
@@ -205,8 +201,8 @@ _print_part_info(struct str *out, struct mimepart *mip,
 	/* Max. 24 */
 	if (is_ign("content-type", 12, doign)) {
 		out->s = mip->m_ct_type_plain;
-		out->l = strlen(out->s) + 1;
-		ct.s = ac_alloc(2 + out->l);
+		out->l = strlen(out->s);
+		ct.s = ac_alloc(out->l + 2 +1);
 		ct.s[0] = ',';
 		ct.s[1] = ' ';
 		ct.l = 2;
@@ -220,14 +216,24 @@ _print_part_info(struct str *out, struct mimepart *mip,
 			out->l = smin(out->l, 24);
 		memcpy(ct.s + ct.l, out->s, out->l);
 		ct.l += out->l;
-		ct.s[ct.l] = 0;
+		ct.s[ct.l] = '\0';
 	}
 
 	/* Max. 27 */
 	if (is_ign("content-disposition", 19, doign) &&
 			mip->m_filename != NULL) {
-		cd.s = ac_alloc(2 + 25 + 1);
-		cd.l = snprintf(cd.s, 2 + 25 + 1, ", %.25s", mip->m_filename);
+		struct str ti, to;
+
+		ti.l = strlen(ti.s = mip->m_filename);
+		mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
+		to.l = MIN(to.l, 25);
+		cd.s = ac_alloc(to.l + 2 +1);
+		cd.s[0] = ',';
+		cd.s[1] = ' ';
+		memcpy(cd.s + 2, to.s, to.l);
+		to.l += 2;
+		cd.s[to.l] = '\0';
+		free(to.s);
 	}
 
 	/* Take care of "99.99", i.e., 5 */
@@ -279,7 +285,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
 	RFC 4155 compliant parser, like S-nail, takes care for From_ lines only
 	after an empty line has been seen, which cannot be detected that easily
 	right here!
-ifdef HAVE_ASSERTS /* TODO assert legacy */
+ifdef HAVE_DEBUG /* TODO assert legacy */
 	/* TODO if at all, this CAN only happen for SEND_DECRYPT, since all
 	 * TODO other input situations handle RFC 4155 OR, if newly generated,
 	 * TODO enforce quoted-printable if there is From_, as "required" by
@@ -315,7 +321,7 @@ ifdef HAVE_ASSERTS /* TODO assert legacy */
 	if (n < 0)
 		sz = n;
 	else if (n > 0) {
-		sz += n;
+		sz = (ssize_t)((size_t)sz + n);
 		n = 0;
 		if (stats != NULL && stats[0] != -1)
 			for (cp = buf; cp < &buf[sz]; ++cp)
@@ -435,8 +441,8 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
  * stats[0] is line count, stats[1] is character count. stats may be NULL.
  * Note that stats[0] is valid for SEND_MBOX only.
  */
-int
-send(struct message *mp, FILE *obuf, struct ignoretab *doign,
+FL int
+sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	char const *prefix, enum sendaction action, off_t *stats)
 {
 	int rv = -1, c;
@@ -510,8 +516,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 	int volatile ispipe, rt = 0;
 	struct str rest;
 	char *line = NULL, *cp, *cp2, *start, *pipecomm = NULL;
-	size_t linesize = 0, linelen, cnt, len;
-	int dostat, infld = 0, ignoring = 1, isenc, c, eof;
+	size_t linesize = 0, linelen, cnt;
+	int dostat, infld = 0, ignoring = 1, isenc, c;
 	struct mimepart	*volatile np;
 	FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
 		*volatile qbuf = obuf, *origobuf = obuf;
@@ -589,7 +595,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 * Pick up the header field if we have one.
 			 */
 			for (cp = line; (c = *cp & 0377) && c != ':' &&
-					! spacechar(c); ++cp)
+					!spacechar(c); ++cp)
 				;
 			cp2 = cp;
 			while (spacechar(*cp))
@@ -617,7 +623,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			*cp2 = 0;	/* temporarily null terminate */
 			if ((doign && is_ign(line, cp2 - line, doign)) ||
 					(action == SEND_MBOX &&
-					 ! value("keep-content-length") &&
+					 !boption("keep-content-length") &&
 					 (asccasecmp(line, "content-length")==0
 					 || asccasecmp(line, "lines") == 0)))
 				ignoring = 1;
@@ -664,9 +670,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			}
 			ungetc(c, ibuf);
 		}
-		if (! ignoring) {
+		if (!ignoring) {
+			size_t len = linelen;
 			start = line;
-			len = linelen;
 			if (action == SEND_TODISP ||
 					action == SEND_TODISP_ALL ||
 					action == SEND_QUOTE ||
@@ -678,7 +684,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				 * words follow on continuing lines.
 				 */
 				if (isenc & 1)
-					while (len > 0&& blankchar(*start)) {
+					while (len > 0 && blankchar(*start)) {
 						++start;
 						--len;
 					}
@@ -890,7 +896,7 @@ skip:
 							UNVOLATILE(&ispipe)))
 							== NULL)
 						continue;
-					if (! ispipe)
+					if (!ispipe)
 						break;
 					if (sigsetjmp(pipejmp, 1)) {
 						rt = -1;
@@ -934,7 +940,7 @@ skip:
 				if (action == SEND_QUOTE)
 					break;
 				if (action == SEND_TOFILE && obuf != origobuf) {
-					if (! ispipe)
+					if (!ispipe)
 						Fclose(obuf);
 					else {
 jpipe_close:					safe_signal(SIGPIPE, SIG_IGN);
@@ -1036,7 +1042,7 @@ jcopyout:
 		qbuf = obuf;
 		pbuf = _pipefile(pipecomm, UNVOLATILE(&qbuf),
 			action == SEND_QUOTE || action == SEND_QUOTE_ALL,
-			! ispipe);
+			!ispipe);
 		action = SEND_TOPIPE;
 		if (pbuf != qbuf) {
 			oldpipe = safe_signal(SIGPIPE, onpipe);
@@ -1046,7 +1052,8 @@ jcopyout:
 	} else
 		pbuf = qbuf = obuf;
 
-	{/* XXX C99 */
+	{
+	bool_t eof;
 	size_t save_qf_pfix_len = qf->qf_pfix_len;
 	off_t *save_stats = stats;
 
@@ -1054,24 +1061,22 @@ jcopyout:
 		qf->qf_pfix_len = 0; /* XXX legacy (remove filter instead) */
 		stats = NULL;
 	}
-	eof = 0;
+	eof = FAL0;
 	rest.s = NULL;
 	rest.l = 0;
 
 	quoteflt_reset(qf, pbuf);
-	while (! eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
-		++lineno;
+	while (!eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
-		len = (size_t)_out(line, linelen, pbuf, convert, action,
-			qf, stats, &rest);
-		if ((ssize_t)len < 0 || ferror(pbuf)) {
-			rt = -1;
+		if (_out(line, linelen, pbuf, convert, action, qf, stats,
+				&rest) < 0 || ferror(pbuf)) {
+			rt = -1; /* XXX Should bail away?! */
 			break;
 		}
 	}
-	if (! eof && rest.l != 0) {
+	if (!eof && rest.l != 0) {
 		linelen = 0;
-		eof = 1;
+		eof = TRU1;
 		action |= _TD_EOF;
 		goto joutln;
 	}

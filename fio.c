@@ -37,22 +37,25 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
-#include <errno.h>
+
 #include <fcntl.h>
-#include <unistd.h>
+
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>
 #endif
 
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
+
 # include <netdb.h>
+
 # include <netinet/in.h>
+
 # ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
@@ -65,8 +68,6 @@
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
 #endif
-
-#include "extern.h"
 
 struct {
 	FILE		*s_file;	/* File we were in. */
@@ -93,7 +94,7 @@ static char *	_fgetline_byone(char **line, size_t *linesize, size_t *llen,
 			FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
 
 static void makemessage(void);
-static void append(struct message *mp);
+static void _fio_append(struct message *mp);
 static enum okay get_header(struct message *mp);
 
 static void
@@ -133,19 +134,15 @@ _globname(char const *name, enum fexp_mode fexpm)
 	sigset_t nset;
 	int i;
 
-	/*
-	 * Some systems (notably Open UNIX 8.0.0) fork a shell for
-	 * wordexp() and wait for it; waiting will fail if our SIGCHLD
-	 * handler is active.
-	 */
+	/* Some systems (notably Open UNIX 8.0.0) fork a shell for wordexp()
+	 * and wait, which will fail if our SIGCHLD handler is active */
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, NULL);
-	/* Mac OS X Snow Leopard doesn't init fields on error, causing SIGSEGV
-	 * in wordfree(3) */
-# ifdef __APPLE__
+
+	/* Mac OS X Snow Leopard and Linux don't init fields on error, causing
+	 * SIGSEGV in wordfree(3); so let's just always zero it ourselfs */
 	memset(&we, 0, sizeof we);
-# endif
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
@@ -203,7 +200,7 @@ jleave:
 
 	struct stat sbuf;
 	char xname[MAXPATHLEN], cmdbuf[MAXPATHLEN], /* also used for files */
-		*cp, *shell;
+		*cp, *shellp;
 	int pid, l, pivec[2];
 
 	if (pipe(pivec) < 0) {
@@ -211,9 +208,9 @@ jleave:
 		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-	if ((shell = value("SHELL")) == NULL)
-		shell = UNCONST(SHELL);
-	pid = start_command(shell, 0, -1, pivec[1], "-c", cmdbuf, NULL);
+	if ((shellp = value("SHELL")) == NULL)
+		shellp = UNCONST(SHELL);
+	pid = start_command(shellp, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);
 		close(pivec[1]);
@@ -285,13 +282,14 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 {
 	int c;
 
-	if (*line == NULL || *linesize < LINESIZE + n + 1)
-		*line = (srealloc)(*line, *linesize = LINESIZE + n + 1
-				SMALLOC_DEBUG_ARGSCALL);
+	assert(*linesize == 0 || *line != NULL);
 	for (;;) {
-		if (n >= *linesize - 128)
-			*line = (srealloc)(*line, *linesize += 256
+		if (*linesize <= LINESIZE || n >= *linesize - 128) {
+			*linesize += ((*line == NULL)
+				? LINESIZE + n + 1 : 256);
+			*line = (srealloc_safe)(*line, *linesize
 					SMALLOC_DEBUG_ARGSCALL);
+		}
 		c = getc(fp);
 		if (c != EOF) {
 			(*line)[n++] = c;
@@ -314,7 +312,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 	return *line;
 }
 
-char *
+FL char *
 (fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen,
 	FILE *fp, int appendnl SMALLOC_DEBUG_ARGS)
 {
@@ -329,7 +327,7 @@ char *
 		return _fgetline_byone(line, linesize, llen, fp, appendnl, 0
 			SMALLOC_DEBUG_ARGSCALL);
 	if (*line == NULL || *linesize < LINESIZE)
-		*line = (srealloc)(*line, *linesize = LINESIZE
+		*line = (srealloc_safe)(*line, *linesize = LINESIZE
 				SMALLOC_DEBUG_ARGSCALL);
 	sz = *linesize <= *cnt ? *linesize : *cnt + 1;
 	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
@@ -341,7 +339,7 @@ char *
 	i_llen = _length_of_line(*line, sz);
 	*cnt -= i_llen;
 	while ((*line)[i_llen - 1] != '\n') {
-		*line = (srealloc)(*line, *linesize += 256
+		*line = (srealloc_safe)(*line, *linesize += 256
 				SMALLOC_DEBUG_ARGSCALL);
 		sz = *linesize - i_llen;
 		sz = (sz <= *cnt ? sz : *cnt + 1);
@@ -361,7 +359,7 @@ char *
 	return *line;
 }
 
-int
+FL int
 (readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
 	SMALLOC_DEBUG_ARGS)
 {
@@ -376,15 +374,14 @@ int
 	 * bypass it by read() then.
 	 */
 	if (fileno(ibuf) == 0 && (options & OPT_TTYIN)) {
-		if (*linebuf == NULL || *linesize < LINESIZE + n + 1)
-			*linebuf = (srealloc)(*linebuf,
-					*linesize = LINESIZE + n + 1
-					SMALLOC_DEBUG_ARGSCALL);
+		assert(*linesize == 0 || *linebuf != NULL);
 		for (;;) {
-			if (n >= *linesize - 128)
-				*linebuf = (srealloc)(*linebuf,
-						*linesize += 256
+			if (*linesize <= LINESIZE || n >= *linesize - 128) {
+				*linesize += ((*linebuf == NULL)
+					? LINESIZE + n + 1 : 256);
+				*linebuf = (srealloc_safe)(*linebuf, *linesize
 						SMALLOC_DEBUG_ARGSCALL);
+			}
 again:
 			sz = read(0, *linebuf + n, *linesize - n - 1);
 			if (sz > 0) {
@@ -421,7 +418,7 @@ again:
 	return n;
 }
 
-int
+FL int
 (readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
 	size_t *linesize SMALLOC_DEBUG_ARGS)
 {
@@ -429,10 +426,12 @@ int
 	bool_t doprompt, dotty;
 	int n;
 
-	if (prompt == NULL)
+	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && !boption("line-editor-disable"));
+	if (!doprompt)
+		prompt = NULL;
+	else if (prompt == NULL)
 		prompt = getprompt();
-	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && ! boption("line-editor-disable"));
 
 	for (n = 0;;) {
 		if (dotty) {
@@ -440,7 +439,7 @@ int
 			n = (tty_readline)(prompt, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
 		} else {
-			if (doprompt && *prompt) {
+			if (prompt != NULL && *prompt != '\0') {
 				fputs(prompt, stdout);
 				fflush(stdout);
 			}
@@ -457,7 +456,7 @@ int
 		 */
 		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
-			if (*prompt)
+			if (prompt != NULL && *prompt != '\0')
 				prompt = ".. "; /* XXX PS2 .. */
 			continue;
 		}
@@ -468,7 +467,7 @@ int
 	return n;
 }
 
-char *
+FL char *
 readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 {
 	/* TODO readstr_input(): linebuf pool */
@@ -476,24 +475,26 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 	char *linebuf = NULL, *rv = NULL;
 	bool_t doprompt, dotty;
 
-	if (prompt == NULL)
+	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
+	dotty = (doprompt && !boption("line-editor-disable"));
+	if (!doprompt)
+		prompt = NULL;
+	else if (prompt == NULL)
 		prompt = getprompt();
-	doprompt = (! sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && ! boption("line-editor-disable"));
 
 	/* If STDIN is not a terminal, simply read from it */
 	if (dotty) {
 		slen = (string != NULL) ? strlen(string) : 0;
 		if (slen) {
 			linesize = slen + LINESIZE + 1;
-			linebuf = smalloc(linesize);
+			linebuf = smalloc_safe(linesize);
 			if (slen)
 				memcpy(linebuf, string, slen + 1);
 		}
 		if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
 			rv = linebuf;
 	} else {
-		if (doprompt && *prompt) {
+		if (prompt != NULL && *prompt != '\0') {
 			fputs(prompt, stdout);
 			fflush(stdout);
 		}
@@ -512,7 +513,7 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 /*
  * Set up the input pointers while copying the mail file into /tmp.
  */
-void
+FL void
 setptr(FILE *ibuf, off_t offset)
 {
 	int c;
@@ -536,7 +537,7 @@ setptr(FILE *ibuf, off_t offset)
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt > 0)
-				append(&this);
+				_fio_append(&this);
 			makemessage();
 			if (linebuf)
 				free(linebuf);
@@ -568,7 +569,7 @@ setptr(FILE *ibuf, off_t offset)
 			this.m_xlines = this.m_lines;
 			this.m_have = HAVE_HEADER|HAVE_BODY;
 			if (thiscnt++ > 0)
-				append(&this);
+				_fio_append(&this);
 			msgCount++;
 			this.m_flag = MUSED|MNEW|MNEWEST;
 			this.m_size = 0;
@@ -625,7 +626,7 @@ setptr(FILE *ibuf, off_t offset)
  * If a write error occurs, return -1, else the count of
  * characters written, including the newline.
  */
-int
+FL int
 putline(FILE *obuf, char *linebuf, size_t cnt)
 {
 	fwrite(linebuf, sizeof *linebuf, cnt, obuf);
@@ -639,7 +640,7 @@ putline(FILE *obuf, char *linebuf, size_t cnt)
  * Return a file buffer all ready to read up the
  * passed message pointer.
  */
-FILE *
+FL FILE *
 setinput(struct mailbox *mp, struct message *m, enum needspec need)
 {
 	enum okay ok = STOP;
@@ -667,12 +668,12 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
 	if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block,
 					m->m_offset), SEEK_SET) < 0) {
 		perror("fseek");
-		panic(catgets(catd, CATSET, 77, "temporary file seek"));
+		panic(tr(77, "temporary file seek"));
 	}
 	return (mp->mb_itf);
 }
 
-struct message *
+FL struct message *
 setdot(struct message *mp)
 {
 	if (dot != mp) {
@@ -692,7 +693,7 @@ static void
 makemessage(void)
 {
 	if (msgCount == 0)
-		append(NULL);
+		_fio_append(NULL);
 	setdot(message);
 	message[msgCount].m_size = 0;
 	message[msgCount].m_lines = 0;
@@ -702,7 +703,7 @@ makemessage(void)
  * Append the passed message descriptor onto the message structure.
  */
 static void
-append(struct message *mp)
+_fio_append(struct message *mp)
 {
 	if (msgCount + 1 >= msgspace)
 		message = srealloc(message, (msgspace += 64) * sizeof *message);
@@ -713,7 +714,7 @@ append(struct message *mp)
 /*
  * Delete a file, but only if the file is a plain file.
  */
-int
+FL int
 rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 {
 	struct stat sb;
@@ -728,39 +729,39 @@ rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 	return ret;
 }
 
-static int sigdepth;		/* depth of holdsigs() */
-static sigset_t nset, oset;
+static int	_fio_sigdepth;		/* depth of holdsigs() */
+static sigset_t	_fio_nset, _fio_oset;
 /*
  * Hold signals SIGHUP, SIGINT, and SIGQUIT.
  */
-void
+FL void
 holdsigs(void)
 {
 
-	if (sigdepth++ == 0) {
-		sigemptyset(&nset);
-		sigaddset(&nset, SIGHUP);
-		sigaddset(&nset, SIGINT);
-		sigaddset(&nset, SIGQUIT);
-		sigprocmask(SIG_BLOCK, &nset, &oset);
+	if (_fio_sigdepth++ == 0) {
+		sigemptyset(&_fio_nset);
+		sigaddset(&_fio_nset, SIGHUP);
+		sigaddset(&_fio_nset, SIGINT);
+		sigaddset(&_fio_nset, SIGQUIT);
+		sigprocmask(SIG_BLOCK, &_fio_nset, &_fio_oset);
 	}
 }
 
 /*
  * Release signals SIGHUP, SIGINT, and SIGQUIT.
  */
-void
+FL void
 relsesigs(void)
 {
-	if (--sigdepth == 0)
-		sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+	if (--_fio_sigdepth == 0)
+		sigprocmask(SIG_SETMASK, &_fio_oset, NULL);
 }
 
 /*
  * Determine the size of the file possessed by
  * the passed buffer.
  */
-off_t
+FL off_t
 fsize(FILE *iob)
 {
 	struct stat sbuf;
@@ -770,7 +771,7 @@ fsize(FILE *iob)
 	return sbuf.st_size;
 }
 
-char *
+FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
 	char cbuf[MAXPATHLEN], *res;
@@ -802,7 +803,7 @@ jnext:
 		}
 		_findmail(cbuf, sizeof cbuf,
 			(res[1] != '\0') ? res + 1 : myname,
-			(res[1] != '\0' || option_u_arg != NULL));
+			(res[1] != '\0' || (options & OPT_u_FLAG)));
 		res = cbuf;
 		goto jislocal;
 	case '#':
@@ -878,7 +879,7 @@ jleave:
 	return res;
 }
 
-void
+FL void
 demail(void)
 {
 
@@ -889,7 +890,7 @@ demail(void)
 	}
 }
 
-bool_t
+FL bool_t
 var_folder_updated(char const *name, char **store)
 {
 	char rv = TRU1;
@@ -958,7 +959,7 @@ jleave:
 	return rv;
 }
 
-bool_t
+FL bool_t
 getfold(char *name, size_t size)
 {
 	char const *folder;
@@ -971,7 +972,7 @@ getfold(char *name, size_t size)
 /*
  * Return the name of the dead.letter file.
  */
-char const *
+FL char const *
 getdeadletter(void)
 {
 	char const *cp;
@@ -1015,7 +1016,7 @@ get_header(struct message *mp)
 	}
 }
 
-enum okay
+FL enum okay
 get_body(struct message *mp)
 {
 	(void)mp;
@@ -1059,7 +1060,7 @@ xwrite(int fd, const char *data, size_t sz)
 	return sz;
 }
 
-int
+FL int
 sclose(struct sock *sp)
 {
 	int	i;
@@ -1087,13 +1088,13 @@ sclose(struct sock *sp)
 	return 0;
 }
 
-enum okay
+FL enum okay
 swrite(struct sock *sp, const char *data)
 {
 	return swrite1(sp, data, strlen(data), 0);
 }
 
-enum okay
+FL enum okay
 swrite1(struct sock *sp, const char *data, int sz, int use_buffer)
 {
 	int	x;
@@ -1171,7 +1172,7 @@ ssl_retry:	x = SSL_write(sp->s_ssl, data, sz);
 	return OKAY;
 }
 
-enum okay
+FL enum okay
 sopen(const char *xserver, struct sock *sp, int use_ssl,
 		const char *uhp, const char *portstr, int verbose)
 {
@@ -1340,7 +1341,7 @@ sopen(const char *xserver, struct sock *sp, int use_ssl,
 	return OKAY;
 }
 
-int
+FL int
 (sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
 	SMALLOC_DEBUG_ARGS)
 {
@@ -1409,7 +1410,7 @@ int
 }
 #endif /* HAVE_SOCKETS */
 
-void
+FL void
 load(char const *name)
 {
 	FILE *in, *oldin;
@@ -1427,7 +1428,7 @@ load(char const *name)
 	Fclose(in);
 }
 
-int
+FL int
 csource(void *v)
 {
 	int rv = 1;
@@ -1460,7 +1461,7 @@ jleave:
 	return rv;
 }
 
-int
+FL int
 unstack(void)
 {
 	int rv = 1;

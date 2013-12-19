@@ -37,8 +37,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "rcv.h"
-#include "extern.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
 enum _qact {
 	 N =   0,	/* Do not quote */
@@ -273,7 +274,7 @@ jleave:
 	return ret;
 }
 
-size_t
+FL size_t
 mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
 {
 	size_t ret;
@@ -284,15 +285,16 @@ mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
 	return ret;
 }
 
-size_t
+FL size_t
 qp_encode_calc_size(size_t len)
 {
-	/* Worst case: 'CRLF' -> '=0D=0A=' */
-	len = len * 3 + (len >> 1) + 1;
+	/* Worst case: 'CRLF' -> '=0D=0A=\n\0' */
+	len = (len * 3) + 1/* soft NL */ + 1/* visual NL */ + 1/* NUL */;
 	return len;
 }
 
-struct str *
+#ifdef notyet
+FL struct str *
 qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
 {
 	struct str in;
@@ -301,7 +303,7 @@ qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
 	return qp_encode(out, &in, flags);
 }
 
-struct str *
+FL struct str *
 qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
 	enum qpflags flags)
 {
@@ -310,8 +312,9 @@ qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
 	in.l = vp_len;
 	return qp_encode(out, &in, flags);
 }
+#endif /* notyet */
 
-struct str *
+FL struct str *
 qp_encode(struct str *out, struct str const *in, enum qpflags flags)
 {
 	bool_t sol = (flags & QP_ISHEAD ? FAL0 : TRU1), seenx;
@@ -408,7 +411,7 @@ jleave:
 	return out;
 }
 
-int
+FL int
 qp_decode(struct str *out, struct str const *in, struct str *rest)
 {
 	int ret = STOP;
@@ -533,7 +536,7 @@ jleave:
 	return ret;
 }
 
-size_t
+FL size_t
 b64_encode_calc_size(size_t len)
 {
 	len = (len * 4) / 3;
@@ -542,7 +545,7 @@ b64_encode_calc_size(size_t len)
 	return len;
 }
 
-struct str *
+FL struct str *
 b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 {
 	static char const b64table[] =
@@ -609,7 +612,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 	return out;
 }
 
-struct str *
+FL struct str *
 b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
 {
 	struct str in;
@@ -618,7 +621,7 @@ b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
 	return b64_encode(out, &in, flags);
 }
 
-struct str *
+FL struct str *
 b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 	enum b64flags flags)
 {
@@ -628,7 +631,7 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 	return b64_encode(out, &in, flags);
 }
 
-int
+FL int
 b64_decode(struct str *out, struct str const *in, struct str *rest)
 {
 	struct str work;

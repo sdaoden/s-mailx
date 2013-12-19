@@ -1,6 +1,215 @@
 S - n a i l  N e w s
 ====================
 
+The complete changelog of commits in between two versions can be
+inspected by using the git(1) `log' command as shown below, where `OLD'
+and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5:
+
+  # All commits:
+  $ git log --reverse --topo-order OLD..NEW
+  # Only topic branch headers:
+  $ git log --oneline --merges --reverse OLD..NEW
+  # Same, but truly accessible:
+  $ git log --oneline --parents --merges --reverse OLD..NEW |
+    while read c1 c2 c3 c4 c5 c6; do
+      printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
+    done
+
+v14.5, 2013-12-19
+-----------------
+
+Many thanks: Gaetan Bisson, William Yodlowsky, Gavin Troy,
+Thomas (wasd AT gmx DOT net), Ypnose.
+And Gavin Troy definetely deserves a very special credit.
+But thank you all, and very much indeed!
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The `test' make target has been fixed. [f0991e14]
+  (Gaetan Bisson)
+
+- It is possible to gain a different kind of make(1) verbosity by
+  using a VERBOSE=1 command line argument (this knob is not taken into
+  account when deciding wether a rebuild is needed). [498e4ad0]
+  (William Yodlowsky)
+
+- On Crux 3 Linux and OpenBSD the readline(3) and editline(3),
+  respectively, libraries will now be found when desired. [a7d1aa78]
+  (William Yodlowsky)
+
+- WANT_LINE_EDITOR has been renamed to WANT_NCL, *plus*.
+  So now there are WANT_READLINE, WANT_EDITLINE and WANT_NLC, each of
+  them can be set individually, and they are tested in the shown order.
+  Also, WANT_TABEXPAND and WANT_HISTORY have been introduced and can be
+  used to fine-tune functionality. [ae4e01e1, b2635feb, 9742bf40]
+
+  (While here, i've fixed WANT_TABEXPAND code so that it is more
+  sensitive to line excess; on Linux etc., where MAX_INPUT is 255,
+  strange behaviour could be seen because we didn't take into account
+  the length of the prompt at all.  The NCL is assumed to have only
+  one remaining, but unfixable problem: backspace often is incapable
+  to cross visual line boundaries; use ^A/^E + ^L, then. [e832c04a]
+
+  Also, cursor (now ^B and ^F) and history movement (now ^P and ^N) of
+  the NCL have been changed. [d7d928da])
+
+- WANT_QUOTE_FOLD is now enabled by default.  And WANT_ASSERTS has been
+  renamed to WANT_DEBUG. [1e10da1f]
+
+- The build system has seen yet another overhaul in general.  CC, CFLAGS
+  and LDFLAGS plus are now tracked and changes will force rebuilds.
+  The new WANT_AUTOCC option can be used to let the build system figure
+  out a compiler and choose known-to-work flags.  Use the new ADDCFLAGS=
+  and ADDLDFLAGS= command line arguments to add your specific flags on
+  top of those -- the final CFLAGS etc. are what is change-tracked.
+
+  This rather massive internal rework revealed that old Bourne shells
+  were yet not supported by the new build system, and so did testing
+  that UnixWare installation was yet impossible due to tool
+  incompatibility. [75c4b74e]
+
+- The new WANT_AMALGAMATION option will force compilation of all the
+  sources in a single compilation unit.  This requires a rather large
+  amount of memory, but may produce a more compact, maybe more optimized
+  binary.  (Implementing this revealed quite some bugs which could
+  therefore be fixed.) [topic/amalgam]
+
+- `nail.rc' has been pimped a bit (mostly comments, but
+  *mime-counter-evidence* is now always set). [e3094ba7]
+
+   That changeset was however buggy. [f3dcb46]
+   (Gavin Troy)
+
+- We no longer use install(1) for `install'ation make rules. [80b02cd9]
+
+ChangeLog
+^^^^^^^^^
+
+- Even '$ s-nail & fg $!' will now work with the NCL. [2a8b5c55]
+
+- Several off-by-one (off-by-two) fixes. [32ce9836, 71e6d013, f139dc36]
+  (Gavin Troy, Thomas)
+
+- Setting *noprompt* now prevents prompting, as per POSIX. [ecefaf63]
+
+- *prompt*: new \$ (exit status of last command) and \@ (name of
+  currently active mailbox) escape sequences. [6f652046]
+
+- One may now omit the space in '? unc' ('?unc') [05fcb383]
+
+- New commands: `ghost' and `unghost' define command aliases (since
+  `alias' is taken for a different purpose) [topic/commands]
+
+    ? ghost ps '!ps axu'
+    ? ps |grep nail
+
+- There is now a pseudo account `null' (case-insensitive).
+  Also a new `localopts' command exists; when used from within an
+  `account' block, options changed will be reverted back to its former
+  value when the account is left (e.g. by switching to `null'):
+
+    define sdn_ {
+       alternates sdaoden@users.sf.net sdaoden@users.sourceforge.net \
+          sdaoden@googlemail.com sdaoden@gmail.com
+       set Sign="\n--steffen\nForza Figa!" sign="\n--steffen"
+       set smtp=smtp.gmail.com smtp-auth=plain smtp-use-starttls
+       #..
+    }
+    account sdn_gm {
+       localopts 1
+       call sdn_
+       set from="Steffen \"Daode\" Nurpmeso <sdaoden@gmail.com>"
+    }
+    account sdn_sf {
+       localopts 1
+       call sdn_
+       set from="Steffen \"Daode\" Nurpmeso <sdaoden@users.sf.net>"
+    }
+
+  E.g., after
+
+    ? acc sdn_gm
+    ? acc null
+
+  neither of *Sign*, *sign*, *smtp** nor *from* should be set.
+  Please see the manual for more.
+  TODO - neither command-ghosts nor alternates etc. are yet tracked
+  TODO - we should have a boolify() so as to say 'localopts yes' etc.
+  [topic/acmava]
+
+- New command: `cwd' (print current working directory).
+  Also fixing the `chdir' return value. [eff4397c]
+
+- The *ssl-method* now allows explicit setting of 'tls.1.1' and
+  'tls1.2' values. [c66b4196]
+
+- When sending to display, be aware that filenames in MIME parts may of
+  course be MIME-encoded! [1454be03]
+
+- *hostname* is now honoured even if *smtp* is not set.  (We always
+  supported *from*, so why not *hostname*?)
+
+- The `-u user' option now acts identically to setting the $USER
+  environment variable and both now tend to mean something like
+  "impersonate as user in some aspects".  Note that we have always used
+  the latter in one or the other way, and `-u user' always ment more
+  than just "open mailbox of user", so i think this change sharpens the
+  edge in the right direction. [09632731]
+
+- Filename argument quoting has been tweaked for (some) function(s which
+  take a filename argument last).  The following snippet as reported by
+  Gavin Troy should work now: [2bb9b80e]
+
+    ? mv +inbox.Junk\ Mail
+
+- The GNU implementation of wordexp(3) is also (i've added a workaround
+  for the very same bug for Mac OS X in S-nail v14.3 [63273772]) buggy,
+   which causes segmentation faults when expansions failed (`fi &VOID').
+  [470527b7]
+  (Gavin Troy)
+
+- The `fi' command no longer uses the (possibly truncated) display
+  version of a filename, but the full path. [5cd85b07]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Large rework of internal structure: bundle inclusion of most of the
+  external and the content of most of the internal #include files in the
+  new nail.h.  If that would have been done very first bugs like the
+  infamous MAXPATHLEN bug as reported by Paul Vojta (see v14.4.2) would
+  never have occurred. [21f3155b]
+
+- Support for -fstrict-overflow cc(1) flags. [topic/strict-overflow]
+
+- Fixed the quotation filter which yet allocated memory even if not
+  used. [c98cdaf5]
+
+- String relaxation reduces memory pressure rather drastically when
+  working with many (especially MIME) mails at a time, e.g., when
+  writing a modified mailbox.  Before all messages of a mailbox had to
+  be worked without releasing any memory in between, now we give back
+  memory (to our pool, not the system) after each and every message.
+  [topic/srelax]
+
+- The other memory source now uses bound canaries, which also found some
+  errors. [3d9fe741]
+
+- We now use the EL_PROMPT_ESC editline(3) mode for prompting, which
+  should offer the possibility to use coloured prompts etc. with
+  (even those) editline(3) (versions which do offer it -- older versions
+  should just do fine by themselves).
+  S-nail uses the special trigger control character \1. [ea30d818]
+  (Ypnose)
+
+  Note however that all tested editline(3) versions are buggy and
+  either don't get it right (`\1COLOR-ON\1stuff\1COLOR-OFF\1') or are
+  incapable of proper repainting (`\1COLOR-ONstuffCOLOR-OFF\1').
+
+- We now use the MD5 digest code from the OpenSSL library if that is
+  usable. [893b16c0]
+
 v14.4.5, 2013-10-19
 -------------------
 

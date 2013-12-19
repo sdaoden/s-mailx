@@ -6,8 +6,8 @@ Compilation
 
 System specific notes can be found in the next section.
 Any (optional) feature is adjustable and documented in `conf.rc'.
-Adjustments may also take place from the command line, overriding
-those made in `conf.rc' (if any).
+Adjustments may also take place, and are usually done, from the command
+line, overriding those made in `conf.rc' (if any):
 
   $ [make &&] make install
   $ make uninstall          # Won't remove the system wide startup file!
@@ -15,8 +15,8 @@ those made in `conf.rc' (if any).
 
 With adjustments:
 
-  $ make WANT_IMAP=0 install
-  $ make WANT_LINE_EDITOR=0 PREFIX=/some/nasty/prefix install
+  $ make WANT_AUTOCC=1 WANT_IMAP=0 install
+  $ make WANT_AUTOCC=1 WANT_NCL=0 PREFIX=/some/nasty/prefix install
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
@@ -26,42 +26,53 @@ which take precedence over anything else:
   internationalized domain names, no command line editor, no
   documentation strings.
 
+. CONFIG=MEDIUM
+  Like MINIMAL, but with documentation strings, and the builtin command
+  line editor will be included if that is possible.
+
 . CONFIG=NETSEND
   WANT_SMTP and WANT_SSL settings are enabled, internationalized domain
-  names will be supported if the necessary libraries are available, the
-  builtin command line editor will be used if possible, otherwise
-  identical to MINIMAL.
+  names will be supported if the necessary libraries are available,
+  otherwise identical to MEDIUM.
 
 E.g.:
 
-  $ make CONFIG=MINIMAL DESTDIR=xtest install
+  $ make CONFIG=MINIMAL WANT_AUTOCC=1 DESTDIR=xtest install
 
 would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
 binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
 
-Note that, due to the way the S-nail(1) build system is designed, the
-only safe way to overwrite compiler and linker flags, i.e., CFLAGS and
-LDFLAGS, is from within (`conf.rc' or) the make(1) command line:
+The `WANT_AUTOCC=1' switch allows the S-nail(1) build system to not only
+detect, but also adjust CFLAGS and LDFLAGS settings -- if you want to
+add specific locale additions, use `ADDCFLAGS=' and `ADDLDFLAGS=', e.g.
 
-  $ make CFLAGS='-O2' LDFLAGS='-Wl,--sort-common'
+  $ make WANT_AUTOCC=1 ADDCFLAGS=-pipe ADDLDFLAGS="-Wl,-O1,--sort-common"
 
-The following make(1) target exists:
+By default it doesn't dare to overwrite CFLAGS and LDFLAGS, because it
+cannot distinguish where the value comes from, a general user
+environment or a specific command line overwrite, making use cases like
 
-. all         Create / check + update configuration, build.
-. install     Create / check + update configuration, build + install.
+  $ make CFLAGS='-O1 -g -pipe'
+
+impossible.  The following make(1) target exists, and note that you can
+use a VERBOSE=1 command line option to gain more (or a different kind
+of) verbosity:
+
+. all         Create / check and update configuration, build.
+. install     Create / check and update configuration, build, install.
 . clean       Remove anything which can be rebuild.
 . distclean   Remove anything which can be rebuild or reconfigured.
-. uninstall   Uninstall if configured.
+. uninstall   Uninstall (if configured).
 
-. config      Only create / check + update configuration.
-. build       Only build using the existing configuration.
-. test        Run ./cc-test.sh in --check-only mode on built binary.
+. config      Only create or check and update the configuration.
+. build       Only build (using the existing configuration).
+. test        Run ./cc-test.sh in --check-only mode on the built binary.
 . packager-install
-              Only install using the build of the existing
+              Only install using the built files of the existing
               configuration.  It is possible to overwrite DESTDIR= when
-              using this target (a following `uninstall' won't know
-              about that overwritten value, however).
+              using this target nonetheless (a following `uninstall'
+              won't know about that overwritten value, however).
 
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
@@ -79,58 +90,93 @@ a Bourne/Korn/POSIX compatible shell:
   $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
   $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
-  $ make install
+  $ make WANT_AUTOCC=1 install
 
 The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
 
-Notes for S-nail(1) v14.*
+Notes for S-nail(1) v14.5
 -------------------------
 
-S-nail(1) is known to be driven without errors by the `./cc-test.sh'
-shell script, with the extended CFLAGS and WARN variables uncommented in
-the Makefile, on the following operating systems:
+S-nail(1) has been or is used regulary on these systems (`uname -srm').
+Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
 
-. Mac OS X Snow Leopard (x86_64).
-  gcc-mp-4.8 (MacPorts gcc48 4.8.1_3) 4.8.1.
-  Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM 2.9svn).
+Also, i'm (compile) testing manually with WANT_AUTOCC=1, WANT_DEBUG=[01]
+and WANT_AMALGAMATION=[01] (and WANT_GSSAPI=1), which is what is
+reflected by the following statements.
 
-. FreeBSD 10.0 (amd64; 2013-06-23).
-  clang version 3.3 (tags/RELEASE_33/final 183502) 20130610.
+. Mac OS X <https://www.apple.com/>
+  (Snow Leopard) Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun
+  7 16:33:36 PDT 2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
+  - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
+    + Note: with WANT_AMALGAMATION there is a single warning on 'signed
+      overflow'.  I think it's wrong.
+  - clang version 3.4 (branches/release_34 197314)
+    Target: x86_64-apple-darwin10.8.0
+    Thread model: posix.
+  - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
+    (dot 3).
+  - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
+    2.9svn).
 
-. NetBSD 6.99.23 (amd64).
-  gcc (NetBSD nb1 20120916) 4.5.4 (forgot to look: ID as of 6.99.19).
+. NetBSD <https://www.netbsd.org/>
+  NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
+  2013 amd64.
+  - gcc (NetBSD nb1 20120916) 4.5.4.
+    + Note: with WANT_AMALGAMATION there are many warnings on 'signed
+      overflow', all referring to the same code, and i think it's wrong.
 
-. DragonFly BSD v3.4.1-RELEASE.
-  gcc 4.7.2 [DragonFly] Release/2012-09-20.
+. ArchLinux <https://www.archlinux.org/>
+  Linux 3.12.3-1-ARCH #1 SMP PREEMPT Wed Dec 4 21:45:42 CET 2013
+  x86_64 GNU/Linux.
+  - gcc (GCC) 4.8.2.
 
-. OpenBSD 5.4 (5.4 GENERIC#36 i386).
-  gcc (GCC) 4.2.1 20070719.
+. CRUX Linux <http://www.crux.nu/>
+  Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
+  - gcc (CRUX-x86_64-multilib) 4.7.2.
+    + Note: there is a single warning on 'signed overflow'.  I think it's
+      wrong.
 
-. CRUX 3.0 (mLinux 3.6.11).
-  gcc (CRUX-x86_64-multilib) 4.7.2.
+. OpenBSD <http://www.openbsd.org/>
+  OpenBSD 5.4 i386.
+  - gcc (GCC) 4.2.1 20070719.
 
-. Slackware 14 3.2.29-smp (i386).
-  gcc (GCC) 4.7.1.
-  clang version 3.0 (tags/RELEASE_30/final).
+. FreeBSD <https://www.freebsd.org/>
+  FreeBSD 10.0-CURRENT amd64.
+  - FreeBSD clang version 3.3 (tags/RELEASE_33/final 183502) 20130610
+    Target: x86_64-unknown-freebsd10.0
+    Thread model: posix.
+
+. Void Linux <http://www.voidlinux.eu/>
+  Linux 3.10.19_1 i686.
+  - gcc (GCC) 4.7.3.
+    + Note: there is a single warning on 'signed overflow'.  I think it's
+      wrong.
+
+. DragonFly BSD <https://www.dragonflybsd.org/>
+  DragonFly 3.6-RELEASE x86_64
+  - gcc 4.7.3 [DragonFly] Release/2013-04-11.
+    + Note: harmless iconv(3) warning again (as if we didn't had to treat it
+      specially already).
+    + Note: there is a single warning on 'signed overflow'.  I think it's
+      wrong.
 
 . UnixWare 7.1.4.
-  You need to pass "CFLAGS='-v -O'" to the make(1) run.
-  And because the UnixWare make(1) doesn't pass those flags through to
-  recursively invoked make(1)s (and because the S-nail build system
-  doesn't track CC and CFLAGS in `conf.rc' for updates), you need to use
-  the -e option, as in:
+  + Note: this make(1) requires the -e option to pass values to make(1)
+    subprocesses, so, if you want to overwrite DESTDIR= when doing
+    `packager-install', you better say '$ make -e DESTDIR=xy ...'.
+  + You'll see some harmless and ignorable warnings.
 
-    $ make -e CFLAGS='-v -O'
+. Slackware Linux <http://www.slackware.com/>
+  Slackware 14 3.2.29-smp (i386).
+  + Note: not tested for v14.5, machine disappeared.  (Will install a VM
+    with the new release before the next minor.)
+  - gcc (GCC) 4.7.1.
+  - clang version 3.0 (tags/RELEASE_30/final).
 
-  Due to this you possibly want to use env(1) to be on the safe side...
-  Also, `conf.rc' sets `MAILSPOOL=/var/mail' by default, whereas
-  UnixWare uses `/var/spool/mail', so you need to overwrite it (either
-  in `conf.rc', or from within the command line).
-
-OpenIndiana is targeted for v14.5.
+OpenIndiana is targeted for v14.6.
 And i'm very interested in reports from other combinations.
 (It should work practically everywhere, generally speaking.)
 

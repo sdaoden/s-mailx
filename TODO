@@ -1,5 +1,8 @@
 TODO reminder.
 
+Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
+With a clean, conforming and efficient codebase, then.
+
 Backward-compatibility breakers
 -------------------------------
 
@@ -348,12 +351,17 @@ Low-Level
   % expansions would be very helpful, especially once we can address
   individuals parts as of v15.0!)
 
-TODO S-nail 14.5:
------------------
+- After I/O layer rework we should optionally be able to read RSS
+  (Atom?) feeds -- Expat should be available almost everywhere and
+  should be able to parse that?
+  Atom is harder because it may support html+.
+  I mean, yeah, it's stupid, but we could fill in header fields with
+  dummies and still use S-nail to look into the separated feeds as if
+  they were mail messages; anyway i would like to save me from using too
+  many tools -- three seems reasonable.
 
-- Perform a WS check, and fix it.
-  (For 15.0: reformat, add vim(1) modelines and use s-it-mode.
-  To do so, write a small script and ensure no functional change occurred.)
+TODO S-nail 14.6:
+-----------------
 
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
@@ -380,17 +388,6 @@ TODO S-nail 14.5:
   finally implement the value cache for real).
   Drop main.c:_setup_vars(), then.
 
-- If we do link against OpenSSL, try to compile a test program and use
-  the OpenSSL version of MD5 if possible.
-
-  I think this is the right time to change our config/make system so that
-  the Makefile is generated with only those files which are actually
-  needed.  Move the Makefile vars to user.conf.
-
-  (Possibly drop usage of compressions tools and link against the
-  compression libraries.  Maybe dlopen() them?  Otherwise leave that for
-  future version.)
-
 - Make *password* and *password-USER@HOST* global, introduce
   *PROTOCOL-auth-password* and *PROTOCOL-auth-password-USER@HOST*.
   Then, drop smtp_auth_var(), and change lookup_password_for_token() to
@@ -400,9 +397,6 @@ TODO S-nail 14.5:
 
 - Change **use-starttls* to the opposite.  I.e., CAPA or whatever, if TLS
   is supported, use automatically.  *UNLESS* explicitly disabled.
-
-- Add a global *keepalive*, add *keepalive-USER@HOST*.  Add and use
-  a generic, single function to get the value for either protocol.
 
 - NOTE: we do not really support IPv6 sofar in that we are not prepared to
   deal with IPv6 addresses.
@@ -487,17 +481,8 @@ TODO S-nail 14.5:
     clone header _x
     unset _x
 
-- Some (configurable?) verbosity for certificate validation.
-  (Martin Neitzel)
-  Rework certificate handling to match RFC 6125!  14.4!
-
-- #include cleanup.  Much too much!
-
-- Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
-  global mbstate_t objects until the send / MIME layer rewrite is done and
-  has the carrier.  Use flip states and add aux funs with only update the
-  state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
-  HANDLED!!
+- Add a boolify() function, so that things like `localopts' and yorn()
+  may be less strict on user input
 
 - Ensure that `.' and EOF on a line works with all TTY modes (*ignoreeof*
   relationship, too)!  EOF conditions in general!
@@ -519,7 +504,7 @@ TODO S-nail 14.5:
   RFC 2406 - Common multimedia types. 
   RFC 2017 - URL External-Body Access-Type 
   RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
-    text (format=flowed). 
+    text (format=flowed).   (Martin Neitzel)
   RFC 2407 - Encoding of non-ASCII text in message headers. 
   RFC 2183 - The Content-Disposition Header 
   RFC 2231 - Encoding of character set and language information in MIME
@@ -595,7 +580,78 @@ TODO S-nail 14.5:
 
 - edit.c doesn't do NEED_BODY (yeah, IMAP won't work anyway).
 
-Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
-With a clean, conforming and efficient codebase, then.
+- Some (configurable?) verbosity for certificate validation.
+  See, e.g., 'curl -v' output, which is quite nice (not only in respect
+  ot certificates).
+  (Martin Neitzel)
+  Rework certificate handling to match RFC 6125!  14.4!
+
+- . Builtin line editor really should support cursor movement.
+    (For at least xterm terminals, i.e., CSI + a single character.)
+  .. s-nail </dev/null should work interactively when STDERR_FILENO is
+    a terminal!  (Builtin editor; how do editline and readline work?
+    should this be documented?  What does NetBSD Mail do?  Should we NOT
+    be interactive??  POSIX says for sh(1) (APPLICATION USAGE): 'sh
+    2>FILE' is not interactive, even though it accepts terminal input.)
+  . Automatically track message attachments when switching off the
+    folder.
+  . 'localopts' is crap for folder hooks: there any locally set option
+    should remain until we switch off the folder.
+    E.g., i can think about variables that one wants to set on
+    a per-folder basis, like Reply-To or, later ;), Mail-Followup-To:,
+    etc!  Can't we do this??  (Note this means we need to be able to
+    have multiple "threads of locality".)
+    (In fact i'm long thinking about internal events, like
+    on-folder-enter, on-folder-leave etc.  This is how i would implement
+    it (event based, non-blocking select(2) based mainloop) when
+    starting from scratch.)
+  .. Also, 'ghosts' should possibly be included in 'localopts'?
+     I ran into some not-so-nice conditions...
+     As long as it is possible to define regular ghosts when the
+     'account' command is not currently executing, that is a good idea.
+  . The spam* series (spam.c:_spam_action()) should abort if the command
+    execution failed, instead of iterating the entire list.  Look into
+    that.
+  . DESTDIR= should not be taken into account when deciding wether
+    a rebuild is necessary (not wrong to give that to Gaetan Bisson).
+  . _update-release: GMANE didn't announcement mail right (UTF-8, binary
+    encoded..)  This was an embedded NBSP (manually messed up).
+    Nonetheless, see the following comm with Gaetan Bisson, the
+    is-same-thread detection fails!
+  . In v15.0, when we can address attachments of a message individually,
+    it would be nice to provide even more access, just like nmh(1) does
+    (Johan Commelin: Are s-nail and mh related?).
+  . Just like the RFC 3676 link above, it would be nice if it would be
+    somehow possible to recognize links in a document; i don't know yet
+    how this could be achieved without loosing formatting information (i
+    mean, we could enable this and inject terminal colour sequences, but
+    one should be able to say 'follow link x', starting an action
+    handler, and the 'x' must come from somwhere - simply injecting
+    '[NUMBER]' references distorts visual).  Anyway, it's just a filter
+    that recognized the usual <SCHEME:/> stuff, and of course we can
+    simply have a buffer which records all such occurrences, so that
+    user can say '? xy NUMBER', but without the context it soon gets
+    hard.
+  . I want regular expression searches, if available.
+  . TTY layer: the tc*() family may fail with EINTR, which MUST be
+    handled; setting also generates SIGTTOU when we're not in foreground
+    pgrp, so we better deal with all that and ENSURE WE GET THROUGH when
+    resetting terminal attributes!
+  . Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
+    global mbstate_t objects until the send / MIME layer rewrite is done and
+    has the carrier.  Use flip states and add aux funs with only update the
+    state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
+    HANDLED!!
+  . Ypnose (linuxien AT legtux DOT org) pointed out that for the IMAP
+    cache we have some kind of UID validity check -- couldn't that be
+    used to perform some kind of automatic reconnection when we get that
+    much-too-frequent connection breaks in IMAP mode??
+    Also, and also for POP3, don't let the ALARM based (ugh!  I'm
+    starting to dream wet from select(2), almost truly) timer blindly
+    tick, but restart it with a full interval when we did regular
+    conversation with a server.  Don't forget the SSL timeouts (300
+    seconds) and their interaction with normal (user) keepalives.
+    Add a global *keepalive*, add *keepalive-USER@HOST*.  (Add and use
+    a generic, single function to get the value for either protocol.)
 
 vim:set fenc=utf-8:s-ts-mode

@@ -1,32 +1,58 @@
 #!/bin/sh -
 #@ Please see `INSTALL' and `conf.rc' instead.
 
+LC_ALL=C
+export LC_ALL
+
+awk=`command -pv awk`
+cat=`command -pv cat`
+chmod=`command -pv chmod`
+cp=`command -pv cp`
+cmp=`command -pv cmp`
+grep=`command -pv grep`
+make="${MAKE:-`command -pv make`}"
+mkdir=`command -pv mkdir`
+mv=`command -pv mv`
+rm=`command -pv rm`
+sed=`command -pv sed`
+tee=`command -pv tee`
+
+STRIP=`command -pv strip`
+[ ${?} -eq 0 ] && HAVE_STRIP=1 || HAVE_STRIP=0
+
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
    case ${CONFIG} in
    MINIMAL)
       WANT_SOCKETS=0
       WANT_IDNA=0
-      WANT_LINE_EDITOR=0
+      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
       WANT_QUOTE_FOLD=0
       WANT_DOCSTRINGS=0
+      WANT_SPAM=0
+      ;;
+   MEDIUM)
+      WANT_SOCKETS=0
+      WANT_IDNA=0
+      WANT_READLINE=0 WANT_EDITLINE=0
+      WANT_QUOTE_FOLD=0
       WANT_SPAM=0
       ;;
    NETSEND)
       WANT_IMAP=0
       WANT_POP3=0
-      WANT_EDITLINE=0
+      WANT_READLINE=0 WANT_EDITLINE=0
       WANT_QUOTE_FOLD=0
-      WANT_DOCSTRINGS=0
       WANT_SPAM=0
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: MINIMAL, NETSEND'
+      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND'
       exit 1
    esac
 fi
 
+# Inter-relationships
 option_update() {
    if nwantfeat SOCKETS; then
       WANT_IPV6=0 WANT_SSL=0
@@ -43,17 +69,96 @@ option_update() {
    if nwantfeat SOCKETS; then
       WANT_MD5=0
    fi
-   if nwantfeat LINE_EDITOR; then
-      WANT_EDITLINE=0 WANT_EDITLINE_READLINE=0
-   fi
-   if nwantfeat EDITLINE; then
-      WANT_EDITLINE_READLINE=0
+   if wantfeat DEBUG; then
+      WANT_NOALLOCA=1
    fi
 }
 
-make="${MAKE:-make}"
+# Check out compiler ($CC) and -flags ($CFLAGS)
+compiler_flags() {
+   i=`uname -s`
+   _CFLAGS=
+   if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
+      _CFLAGS=
+      if { CC="`command -v clang`"; }; then
+         :
+      elif { CC="`command -v gcc`"; }; then
+         :
+      elif { CC="`command -v c89`"; }; then
+         [ "${i}" = UnixWare ] && _CFLAGS='-v -O'
+      elif { CC="`command -v c99`"; }; then
+         :
+      else
+         echo >&2 'ERROR'
+         echo >&2 ' I cannot find a compiler!'
+         echo >&2 ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+         echo >&2 ' Please set the CC environment variable, maybe CFLAGS also.'
+         exit 1
+      fi
+   fi
+   export CC
+
+   ccver=`${CC} --version 2>/dev/null`
+   stackprot=no
+   if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
+   #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
+      stackprot=yes
+      _CFLAGS='-std=c89 -O2'
+      _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
+      _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
+      _CFLAGS="${_CFLAGS} -fstrict-aliasing"
+      _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
+      _CFLAGS="${_CFLAGS} -Winit-self -Wshadow -Wunused -Wwrite-strings"
+      if { i=$ccver; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
+         :
+      else
+         _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
+         if wantfeat AMALGAMATION && nwantfeat DEBUG; then
+            _CFLAGS="${_CFLAGS} -Wno-unused-function"
+         fi
+         if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
+            _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
+         fi
+      fi
+      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
+#   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
+#      stackprot=yes
+#      _CFLAGS='-std=c89 -O3 -g -Weverything -Wno-long-long'
+   elif [ -z "${_CFLAGS}" ]; then
+      _CFLAGS=-O1
+   fi
+
+   if nwantfeat DEBUG; then
+      _CFLAGS="${_CFLAGS} -DNDEBUG"
+   else
+      _CFLAGS="${_CFLAGS} -g";
+      if [ "${stackprot}" = yes ]; then
+         _CFLAGS="${_CFLAGS} -fstack-protector-all "
+            _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
+      fi
+   fi
+   _CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+   _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
+   export _CFLAGS _LDFLAGS
+
+   if wantfeat AUTOCC || [ -z "${CFLAGS}" ]; then
+      CFLAGS=$_CFLAGS
+      export CFLAGS
+   fi
+   if wantfeat AUTOCC || [ -z "${LDFLAGS}" ]; then
+      LDFLAGS=$_LDFLAGS
+      export LDFLAGS
+   fi
+}
 
 ##  --  >8  --  8<  --  ##
+
+## Notes:
+## - Heirloom sh(1) (and same origin) have problems with ': >' redirection,
+##   so use "printf '' >" instead
+## - Heirloom sh(1) and maybe more execute loops with redirection in a subshell
+##   (but don't export eval's from within), therefore we need to (re)include
+##   variable assignments at toplevel instead (via reading temporary files)
 
 ## First of all, create new configuration and check wether it changed ##
 
@@ -69,14 +174,20 @@ tmp0=___tmp
 tmp=./${tmp0}1$$
 
 # Only incorporate what wasn't overwritten from command line / CONFIG
-< ${conf} sed -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' > ${tmp}
+trap "${rm} -f ${tmp}; exit" 1 2 15
+trap "${rm} -f ${tmp}" 0
+${rm} -f ${tmp}
+
+< ${conf} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
 while read line; do
-   i=`echo ${line} | sed -e 's/=.*$//'`
-   eval j="\$${i}" jx="\${${i}+x}"
-   [ -n "${j}" ] && continue
-   [ "${jx}" = x ] && continue
-   eval ${line}
-done < ${tmp}
+   i=`echo ${line} | ${sed} -e 's/=.*$//'`
+   eval j=\$${i} jx=\${${i}+x}
+   if [ -n "${j}" ] || [ "${jx}" = x ]; then
+      line="${i}=\"${j}\""
+   fi
+   echo ${line}
+done > ${tmp}
+. ./${tmp}
 
 wantfeat() {
    eval i=\$WANT_${1}
@@ -90,14 +201,13 @@ nwantfeat() {
 option_update
 
 # (No function since some shells loose non-exported variables in traps)
-trap "rm -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
-trap "rm -f ${tmp} ${newlst} ${newmk} ${newh}" 0
-rm -f ${newlst} ${newmk} ${newh}
+trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
+trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}" 0
+${rm} -f ${newlst} ${newmk} ${newh}
 
 while read line; do
-   i=`echo ${line} | sed -e 's/=.*$//'`
+   i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
-   printf "${i}=\"${j}\"\n" >> ${newlst}
    if [ -z "${j}" ] || [ "${j}" = 0 ]; then
       printf "/*#define ${i}*/\n" >> ${newh}
    elif [ "${j}" = 1 ]; then
@@ -106,18 +216,37 @@ while read line; do
       printf "#define ${i} \"${j}\"\n" >> ${newh}
    fi
    printf "${i} = ${j}\n" >> ${newmk}
-done < ${tmp}
+   printf "${i}=\"${j}\"\n"
+done < ${tmp} > ${newlst}
+. ./${newlst}
+
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
-if [ -f ${lst} ] && "${CMP}" ${newlst} ${lst} >/dev/null 2>&1; then
+compiler_flags
+
+printf "CC = ${CC}\n" >> ${newmk}
+printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
+printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
+printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
+   >> ${newmk}
+printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
+# (We include the cc(1)/ld(1) environment only for update detection..)
+printf "CC=\"${CC}\"\n" >> ${newlst}
+printf "_CFLAGS=\"${_CFLAGS}\"\nCFLAGS=\"${CFLAGS}\"\n" >> ${newlst}
+printf "_LDFLAGS=\"${_LDFLAGS}\"\nLDFLAGS=\"${LDFLAGS}\"\n" >> ${newlst}
+printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
+   >> ${newlst}
+printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
+
+if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
 fi
 [ -f ${lst} ] && echo 'configuration updated..' || echo 'shiny configuration..'
 
-mv -f ${newlst} ${lst}
-mv -f ${newh} ${h}
-mv -f ${newmk} ${mk}
+${mv} -f ${newlst} ${lst}
+${mv} -f ${newh} ${h}
+${mv} -f ${newmk} ${mk}
 
 ## Compile and link checking ##
 
@@ -126,26 +255,26 @@ tmp3=./${tmp0}3$$
 log=./config.log
 lib=./config.lib
 inc=./config.inc
+src=./config.c
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "rm -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit" 1 2 15
-trap "rm -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
+trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
 
 exec 5>&2 > ${log} 2>&1
-: > ${lib}
-: > ${inc}
-cat > ${makefile} << \!
+printf '' > ${lib}
+printf '' > ${inc}
+# ${src} is only created if WANT_AMALGAMATION
+${rm} -f ${src}
+${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
 	$(CC) $(XINCS) -c $<
-
 .c.x:
 	$(CC) $(XINCS) -E $< >$@
-
 .c:
 	$(CC) $(XINCS) -o $@ $< $(XLIBS)
-
 .y: ;
 !
 
@@ -163,12 +292,12 @@ _check_preface() {
    echo '**********'
    msg "checking ${topic} ... "
    echo "/* checked ${topic} */" >> ${h}
-   rm -f ${tmp} ${tmp}.o
+   ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
-   tee ${tmp}.c
+   ${tee} ${tmp}.c
    #echo '*** the preprocessor generates'
    #${make} -f ${makefile} ${tmp}.x
-   #cat ${tmp}.x
+   #${cat} ${tmp}.x
    echo '*** results are'
 }
 
@@ -179,7 +308,7 @@ compile_check() {
 
    if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
          [ -f ./${tmp}.o ]; then
-      msg "okay\\n"
+      msg "yes\\n"
       echo "${define}" >> ${h}
       eval have_${variable}=yes
       return 0
@@ -200,14 +329,13 @@ _link_mayrun() {
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
-      msg "okay\\n"
+      echo "*** adding INCS<${incs}> LIBS<${libs}>"
+      msg "yes\\n"
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
       echo "${libs}" >> ${lib}
-      echo "$2: ${libs}"
       INCS="${INCS} ${incs}"
       echo "${incs}" >> ${inc}
-      echo "$2: ${incs}"
       eval have_${variable}=yes
       return 0
    else
@@ -269,7 +397,8 @@ echo '#define _GNU_SOURCE' >> ${h}
 link_check hello 'if a hello world program can be built' << \! || {\
    echo >&5 'This oooops is most certainly not related to me.';\
    echo >&5 "Read the file ${log} and check your compiler environment.";\
-   rm -f ${lst} ${h} ${mk}; exit 1;\
+   ${rm} -f ${lst} ${h} ${mk};\
+   exit 1;\
 }
 #include <stdio.h>
 
@@ -278,6 +407,22 @@ int main(int argc, char *argv[])
    (void)argc;
    (void)argv;
    puts("hello world");
+   return 0;
+}
+!
+
+link_check termios 'for termios.h and tc*() family' << \! || {\
+   echo >&5 'We require termios.h and the tc*() family of functions.';\
+   echo >&5 "That much Unix we indulge ourselfs.";\
+   ${rm} -f ${lst} ${h} ${mk};\
+   exit 1;\
+}
+#include <termios.h>
+int main(void)
+{
+   struct termios tios;
+   tcgetattr(0, &tios);
+   tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
    return 0;
 }
 !
@@ -425,8 +570,12 @@ int main(void)
 
 ##
 
-if wantfeat ASSERTS; then
-   echo '#define HAVE_ASSERTS' >> ${h}
+if wantfeat DEBUG; then
+   echo '#define HAVE_DEBUG' >> ${h}
+fi
+
+if wantfeat AMALGAMATION; then
+   echo '#define HAVE_AMALGAMATION' >> ${h}
 fi
 
 if nwantfeat NOALLOCA; then
@@ -461,7 +610,7 @@ fi
 ##
 
 if wantfeat ICONV; then
-   cat > ${tmp2}.c << \!
+   ${cat} > ${tmp2}.c << \!
 #include <iconv.h>
 int main(void)
 {
@@ -491,7 +640,7 @@ if wantfeat SOCKETS; then
 #include <arpa/inet.h>
 !
 
-   cat > ${tmp2}.c << \!
+   ${cat} > ${tmp2}.c << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -592,19 +741,19 @@ else
 fi # wantfeat IPV6
 
 if wantfeat IMAP; then
-   echo "#define HAVE_IMAP" >> ${h}
+   echo '#define HAVE_IMAP' >> ${h}
 else
    echo '/* WANT_IMAP=0 */' >> ${h}
 fi
 
 if wantfeat POP3; then
-   echo "#define HAVE_POP3" >> ${h}
+   echo '#define HAVE_POP3' >> ${h}
 else
    echo '/* WANT_POP3=0 */' >> ${h}
 fi
 
 if wantfeat SMTP; then
-   echo "#define HAVE_SMTP" >> ${h}
+   echo '#define HAVE_SMTP' >> ${h}
 else
    echo '/* WANT_SMTP=0 */' >> ${h}
 fi
@@ -619,16 +768,33 @@ if wantfeat SSL; then
 #include <openssl/x509.h>
 #include <openssl/rand.h>
 
+#if defined OPENSSL_NO_SSL2 && defined OPENSSL_NO_SSL3 &&\
+      defined OPENSSL_NO_TLS1
+# error We need one of (SSLv2 and) SSLv3 and TLS1.
+#endif
+
 int main(void)
 {
    SSLv23_client_method();
+#ifndef OPENSSL_NO_SSL3
+   SSLv3_client_method();
+#endif
+#ifndef OPENSSL_NO_TLS1
+   TLSv1_client_method();
+# ifdef TLS1_1_VERSION
+   TLSv1_1_client_method();
+# endif
+# ifdef TLS1_2_VERSION
+   TLSv1_2_client_method();
+# endif
+#endif
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
 }
 !
 
    if [ "${have_openssl}" = 'yes' ]; then
-      compile_check stack_of 'for STACK_OF()' \
+      compile_check stack_of 'for OpenSSL STACK_OF()' \
          '#define HAVE_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -638,11 +804,37 @@ int main(void)
 
 int main(void)
 {
-   STACK_OF(GENERAL_NAME)	*gens = NULL;
+   STACK_OF(GENERAL_NAME) *gens = NULL;
    printf("%p", gens);	/* to make it used */
-   SSLv23_client_method();
-   PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
+}
+!
+
+      run_check openssl_md5 'for MD5 digest in OpenSSL' \
+         '#define HAVE_OPENSSL_MD5' << \!
+#include <string.h>
+#include <openssl/md5.h>
+
+int main(void)
+{
+   char const dat[] = "abrakadabrafidibus";
+   char dig[16], hex[16 * 2];
+   MD5_CTX ctx;
+	size_t i, j;
+
+   memset(dig, 0, sizeof(dig));
+   memset(hex, 0, sizeof(hex));
+   MD5_Init(&ctx);
+   MD5_Update(&ctx, dat, sizeof(dat) - 1);
+   MD5_Final(dig, &ctx);
+
+#define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
+	for (i = 0; i < sizeof(hex) / 2; i++) {
+		j = i << 1;
+		hex[j] = hexchar((dig[i] & 0xf0) >> 4);
+		hex[++j] = hexchar(dig[i] & 0x0f);
+   }
+   return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
    fi
@@ -652,7 +844,7 @@ else
 fi # wantfeat SSL
 
 if wantfeat GSSAPI; then
-   cat > ${tmp2}.c << \!
+   ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
 
 int main(void)
@@ -662,7 +854,7 @@ int main(void)
    return 0;
 }
 !
-   sed -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
+   ${sed} -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
 
    if command -v krb5-config >/dev/null 2>&1; then
       i=`command -v krb5-config`
@@ -732,10 +924,10 @@ else
    echo '/* WANT_IDNA=0 */' >> ${h}
 fi # wantfeat IDNA
 
-if wantfeat EDITLINE_READLINE; then
-   link_check readline 'for readline(3) compatible editline(3)' \
-      '#define HAVE_LINE_EDITOR
-      #define HAVE_READLINE' '-lreadline -ltermcap' << \!
+if wantfeat READLINE; then
+   __edrdlib() {
+      link_check readline "for readline(3) (${1})" \
+         '#define HAVE_READLINE' "${1}" << \!
 #include <stdio.h>
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -760,12 +952,17 @@ int main(void)
    return 0;
 }
 !
+   }
+
+   __edrdlib -lreadline ||
+      __edrdlib '-lreadline -ltermcap'
+   [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
 if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
-   link_check editline 'for editline(3)' \
-      '#define HAVE_LINE_EDITOR
-      #define HAVE_EDITLINE' '-ledit' << \!
+   __edlib() {
+      link_check editline "for editline(3) (${1})" \
+         '#define HAVE_EDITLINE' "${1}" << \!
 #include <histedit.h>
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)
@@ -786,31 +983,53 @@ int main(void)
    return 0;
 }
 !
+   }
+
+   __edlib -ledit ||
+      __edlib '-ledit -ltermcap'
+   [ -n "${have_editline}" ] && WANT_TABEXPAND=0
 fi
 
-if wantfeat LINE_EDITOR && [ -z "${have_editline}" ] &&\
-      [ -z "${have_readline}" ] &&\
+if wantfeat NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wctype}" ]; then
-   echo "#define HAVE_LINE_EDITOR" >> ${h}
+   have_ncl=1
+   echo '#define HAVE_NCL' >> ${h}
 else
-   echo '/* WANT_{LINE_EDITOR,EDITLINE,EDITLINE_READLINE}=0 */' >> ${h}
+   echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
+fi
+
+if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
+      [ -n "${have_readline}" ]; then
+   have_cle=1
+fi
+
+if [ -n "${have_cle}" ] && wantfeat TABEXPAND; then
+   echo '#define HAVE_TABEXPAND' >> ${h}
+else
+   echo '/* WANT_TABEXPAND=0 */' >> ${h}
+fi
+
+if [ -n "${have_cle}" ] && wantfeat HISTORY; then
+   echo '#define HAVE_HISTORY' >> ${h}
+else
+   echo '/* WANT_HISTORY=0 */' >> ${h}
 fi
 
 if wantfeat QUOTE_FOLD &&\
       [ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then
-   echo "#define HAVE_QUOTE_FOLD" >> ${h}
+   echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
 if wantfeat DOCSTRINGS; then
-   echo "#define HAVE_DOCSTRINGS" >> ${h}
+   echo '#define HAVE_DOCSTRINGS' >> ${h}
 else
    echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
 if wantfeat SPAM; then
-   echo "#define HAVE_SPAM" >> ${h}
+   echo '#define HAVE_SPAM' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
       echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
@@ -819,7 +1038,7 @@ else
 fi
 
 if wantfeat MD5; then
-   echo "#define HAVE_MD5" >> ${h}
+   echo '#define HAVE_MD5' >> ${h}
 else
    echo '/* WANT_MD5=0 */' >> ${h}
 fi
@@ -828,35 +1047,51 @@ fi
 
 # Since we cat(1) the content of those to cc/"ld", convert them to single line
 squeeze_em() {
-   < "${1}" > "${2}" awk \
+   < "${1}" > "${2}" ${awk} \
    'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
 }
-rm -f "${tmp}"
-squeeze_em "${inc}" "${tmp}"
-mv "${tmp}" "${inc}"
-squeeze_em "${lib}" "${tmp}"
-mv "${tmp}" "${lib}"
+${rm} -f ${tmp}
+squeeze_em ${inc} ${tmp}
+${mv} ${tmp} ${inc}
+squeeze_em ${lib} ${tmp}
+${mv} ${tmp} ${lib}
+
+${mv} ${h} ${tmp}
+printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
+${cat} ${tmp} >> ${h}
+printf '#endif /* _CONFIG_H */\n' >> ${h}
+${rm} -f ${tmp}
 
 # Create the real mk.mk
-rm -rf ${tmp0}.* ${tmp0}*
-printf 'OBJ = ' >> ${mk}
-for i in *.c; do
-   printf "`basename ${i} .c`.o " >> ${mk}
-done
-echo >> ${mk}
-if wantfeat ASSERTS; then
-   echo 'CFLAGS = $(EXT_CFLAGS)' >> ${mk}
+${rm} -rf ${tmp0}.* ${tmp0}*
+printf 'OBJ_SRC = ' >> ${mk}
+if nwantfeat AMALGAMATION; then
+   echo *.c >> ${mk}
+   echo 'OBJ_DEP =' >> ${mk}
 else
-   echo 'CFLAGS = $(STD_CFLAGS)' >> ${mk}
+   j=`echo "${src}" | sed 's/^.\///'`
+   echo "${j}" >> ${mk}
+   printf 'OBJ_DEP = main.c ' >> ${mk}
+   printf '#define _MAIN_SOURCE\n' >> ${src}
+   printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
+   for i in *.c; do
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ]; then
+         continue
+      fi
+      printf "${i} " >> ${mk}
+      printf "#include \"${i}\"\n" >> ${src}
+   done
+   echo >> ${mk}
 fi
-echo "LIBS = `cat ${lib}`" >> ${mk}
-echo "INCLUDES = `cat ${inc}`" >> ${mk}
+
+echo "LIBS = `${cat} ${lib}`" >> ${mk}
+echo "INCLUDES = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
-cat ./mk-mk.in >> ${mk}
+${cat} ./mk-mk.in >> ${mk}
 
 ## Finished! ##
 
-cat > ${tmp2}.c << \!
+${cat} > ${tmp2}.c << \!
 #include "config.h"
 #ifdef HAVE_NL_LANGINFO
 #include <langinfo.h>
@@ -902,8 +1137,14 @@ cat > ${tmp2}.c << \!
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
-#ifdef HAVE_LINE_EDITOR
-: + Command line editing and history
+#if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
+: + Command line editing
+# ifdef HAVE_TABEXPAND
+: + + Tabulator expansion
+# endif
+# ifdef HAVE_HISTORY
+: + + History management
+# endif
 #endif
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
@@ -949,7 +1190,7 @@ cat > ${tmp2}.c << \!
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
 #endif
-#ifndef HAVE_LINE_EDITOR
+#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history
 #endif
 #ifndef HAVE_QUOTE_FOLD
@@ -969,19 +1210,15 @@ cat > ${tmp2}.c << \!
 : directory of mailx is moved while the IMAP cache is used.
 #endif
 #ifndef HAVE_GETOPT
-: . A (usable) getopt() functionality could not be found.
-: A builtin version is used instead.
+: . Using a minimal builtin POSIX-like getopt()
 #endif
-#ifdef HAVE_ASSERTS
-: . The binary will contain slow and huge debug code assertions.
-: There are also additional commands available, like "core".
-: Such a binary is not meant to be used by end-users, but only for
-: development purposes.  Thanks!
+#ifdef HAVE_DEBUG
+: . Debug enabled binary: not meant to be used by end-users: THANKS!
 #endif
 :
 !
 
 ${make} -f ${makefile} ${tmp2}.x
-< ${tmp2}.x >&5 sed -e '/^[^:]/d; /^$/d; s/^://'
+< ${tmp2}.x >&5 ${sed} -e '/^[^:]/d; /^$/d; s/^://'
 
 # vim:set fenc=utf-8:s-it-mode

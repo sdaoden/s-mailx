@@ -37,20 +37,18 @@
  * SUCH DAMAGE.
  */
 
-#include "rcv.h"
+#ifndef HAVE_AMALGAMATION
+# include "nail.h"
+#endif
 
-#include <sys/stat.h>
 #include <sys/wait.h>
-#include <unistd.h>
-
-#include "extern.h"
 
 static int	save1(char *str, int domark, char const *cmd,
 			struct ignoretab *ignore, int convert,
 			int sender_record, int domove);
-static char *	snarf(char *linebuf, int *flag, int usembox);
+static char *	snarf(char *linebuf, bool_t *flag, bool_t usembox);
 static int	delm(int *msgvec);
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 static void	clob1(int n);
 #endif
 static int	ignore1(char **list, struct ignoretab *tab, char const *which);
@@ -65,7 +63,7 @@ static int	unignore1(char **list, struct ignoretab *tab,
  * following dot, otherwise, go to the next applicable message.
  * If given as first command with no arguments, print first message.
  */
-int
+FL int
 next(void *v)
 {
 	int *msgvec = v;
@@ -76,7 +74,7 @@ next(void *v)
 	if (*msgvec != 0) {
 
 		/*
-		 * If some messages were supplied, find the 
+		 * If some messages were supplied, find the
 		 * first applicable one following dot using
 		 * wrap around.
 		 */
@@ -115,7 +113,7 @@ next(void *v)
 			if (*ip2 == 0)
 				ip2 = msgvec;
 		} while (ip2 != ip);
-		printf(catgets(catd, CATSET, 21, "No messages applicable\n"));
+		printf(tr(21, "No messages applicable\n"));
 		return(1);
 	}
 
@@ -148,7 +146,7 @@ next(void *v)
 	}
 	if (mp == NULL || mp >= &message[msgCount]) {
 ateof:
-		printf(catgets(catd, CATSET, 22, "At EOF\n"));
+		printf(tr(22, "At EOF\n"));
 		return(0);
 	}
 	setdot(mp);
@@ -166,7 +164,7 @@ hitit:
  * Save a message in a file.  Mark the message as saved
  * so we can discard when the user quits.
  */
-int 
+FL int
 save(void *v)
 {
 	char *str = v;
@@ -174,7 +172,7 @@ save(void *v)
 	return save1(str, 1, "save", saveignore, SEND_MBOX, 0, 0);
 }
 
-int 
+FL int
 Save(void *v)
 {
 	char *str = v;
@@ -185,7 +183,7 @@ Save(void *v)
 /*
  * Copy a message to a file without affected its saved-ness
  */
-int 
+FL int
 copycmd(void *v)
 {
 	char *str = v;
@@ -193,7 +191,7 @@ copycmd(void *v)
 	return save1(str, 0, "copy", saveignore, SEND_MBOX, 0, 0);
 }
 
-int 
+FL int
 Copycmd(void *v)
 {
 	char *str = v;
@@ -204,7 +202,7 @@ Copycmd(void *v)
 /*
  * Move a message to a file.
  */
-int 
+FL int
 cmove(void *v)
 {
 	char *str = v;
@@ -212,7 +210,7 @@ cmove(void *v)
 	return save1(str, 0, "move", saveignore, SEND_MBOX, 0, 1);
 }
 
-int 
+FL int
 cMove(void *v)
 {
 	char *str = v;
@@ -223,7 +221,7 @@ cMove(void *v)
 /*
  * Decrypt and copy a message to a file.
  */
-int 
+FL int
 cdecrypt(void *v)
 {
 	char *str = v;
@@ -231,7 +229,7 @@ cdecrypt(void *v)
 	return save1(str, 0, "decrypt", saveignore, SEND_DECRYPT, 0, 0);
 }
 
-int 
+FL int
 cDecrypt(void *v)
 {
 	char *str = v;
@@ -249,17 +247,19 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 {
 	off_t mstats[2], tstats[2];
 	struct stat st;
-	int newfile = 0, compressed = 0, success = 1, last = 0, f, *msgvec, *ip;
+	int newfile = 0, compressed = 0, success = 1, last = 0, *msgvec, *ip;
 	struct message *mp;
 	char *file = NULL, *cp, *cq;
 	char const *disp = "";
 	FILE *obuf;
 	enum protocol prot;
+	bool_t f;
 
 	/*LINTED*/
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	if (sender_record) {
-		for (cp = str; *cp && blankchar(*cp & 0377); cp++);
+		for (cp = str; *cp && blankchar(*cp); cp++)
+			;
 		f = (*cp != '\0');
 	} else {
 		if ((file = snarf(str, &f, convert != SEND_TOFILE)) == NULL)
@@ -270,13 +270,11 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 		if (*msgvec == 0) {
 			if (inhook)
 				return 0;
-			printf(catgets(catd, CATSET, 23,
-					"No messages to %s.\n"), cmd);
+			printf(tr(23, "No messages to %s.\n"), cmd);
 			return(1);
 		}
 		msgvec[1] = 0;
-	}
-	if (f && getmsglist(str, msgvec, 0) < 0)
+	} else if (getmsglist(str, msgvec, 0) < 0)
 		return(1);
 	if (*msgvec == 0) {
 		if (inhook)
@@ -286,7 +284,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	}
 	if (sender_record) {
 		if ((cp = nameof(&message[*msgvec - 1], 0)) == NULL) {
-			printf(catgets(catd, CATSET, 24,
+			printf(tr(24,
 				"Cannot determine message sender to %s.\n"),
 				cmd);
 			return 1;
@@ -323,7 +321,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	} else {
 		if (compressed) {
 			newfile = 0;
-			disp = catgets(catd, CATSET, 25, "[Appended]");
+			disp = tr(25, "[Appended]");
 		}
 		if (!newfile && fstat(fileno(obuf), &st) &&
 				S_ISREG(st.st_mode) &&
@@ -356,8 +354,10 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 			}
 		}
 	}
+
 	tstats[0] = tstats[1] = 0;
 	imap_created_mailbox = 0;
+	srelax_hold();
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		if (prot == PROTO_IMAP &&
@@ -370,16 +370,17 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 #ifdef HAVE_IMAP
 			if (imap_copy(mp, *ip, file) == STOP)
 #endif
-				goto ferr;
+				goto jferr;
 #ifdef HAVE_IMAP
 			mstats[0] = -1;
 			mstats[1] = mp->m_xsize;
 #endif
-		} else if (send(mp, obuf, ignoret, NULL,
+		} else if (sendmp(mp, obuf, ignoret, NULL,
 					convert, mstats) < 0) {
 			perror(file);
-			goto ferr;
+			goto jferr;
 		}
+		srelax();
 		touch(mp);
 		if (domark)
 			mp->m_flag |= MSAVED;
@@ -393,10 +394,13 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 	fflush(obuf);
 	if (ferror(obuf)) {
 		perror(file);
-	ferr:	success = 0;
+jferr:
+		success = 0;
 	}
 	if (Fclose(obuf) != 0)
 		success = 0;
+	srelax_rele();
+
 	if (success) {
 		if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {
 			disp = (
@@ -437,7 +441,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
  * file name, minus header and trailing blank line.
  * This is the MIME save function.
  */
-int 
+FL int
 cwrite(void *v)
 {
 	char *str = v;
@@ -456,14 +460,13 @@ cwrite(void *v)
  * which case, return 0 in the reference flag variable.
  */
 static char *
-snarf(char *linebuf, int *flag, int usembox)
+snarf(char *linebuf, bool_t *flag, bool_t usembox)
 {
 	char *cp;
 
-	*flag = 1;
 	if ((cp = laststring(linebuf, flag, 0)) == NULL) {
 		if (usembox) {
-			*flag = 0;
+			*flag = FAL0;
 			cp = expand("&");
 		} else
 			fprintf(stderr, tr(28, "No file specified.\n"));
@@ -474,7 +477,7 @@ snarf(char *linebuf, int *flag, int usembox)
 /*
  * Delete messages.
  */
-int 
+FL int
 delete(void *v)
 {
 	int *msgvec = v;
@@ -485,7 +488,7 @@ delete(void *v)
 /*
  * Delete messages, then type the new dot.
  */
-int 
+FL int
 deltype(void *v)
 {
 	int *msgvec = v;
@@ -500,9 +503,9 @@ deltype(void *v)
 			list[1] = 0;
 			return(type(list));
 		}
-		printf(catgets(catd, CATSET, 29, "At EOF\n"));
+		printf(tr(29, "At EOF\n"));
 	} else
-		printf(catgets(catd, CATSET, 30, "No more messages\n"));
+		printf(tr(30, "No more messages\n"));
 	return(0);
 }
 
@@ -511,7 +514,7 @@ deltype(void *v)
  * Set dot to some nice place afterwards.
  * Internal interface.
  */
-static int 
+static int
 delm(int *msgvec)
 {
 	struct message *mp;
@@ -549,7 +552,7 @@ delm(int *msgvec)
 /*
  * Undelete the indicated messages.
  */
-int 
+FL int
 undeletecmd(void *v)
 {
 	int *msgvec = v;
@@ -572,12 +575,12 @@ undeletecmd(void *v)
 	return 0;
 }
 
-#ifdef HAVE_ASSERTS
+#ifdef HAVE_DEBUG
 /*
  * Interactively dump core on "core"
  */
 /*ARGSUSED*/
-int 
+FL int
 core(void *v)
 {
 	int pid;
@@ -613,15 +616,15 @@ clob1(int n)
 
 	if (n <= 0)
 		return;
-	for (cp = buf; cp < &buf[512]; *cp++ = (char)0xFF)
-		;
+	for (cp = buf; PTRCMP(cp, <, buf + 512); ++cp)
+		*cp = (char)0xFF;
 	clob1(n - 1);
 }
 
 /*
  * Clobber as many bytes of stack as the user requests.
  */
-int 
+FL int
 clobber(void *v)
 {
 	char **argv = v;
@@ -634,13 +637,13 @@ clobber(void *v)
 	clob1(times);
 	return (0);
 }
-#endif /* HAVE_ASSERTS */
+#endif /* HAVE_DEBUG */
 
 /*
  * Add the given header fields to the retained list.
  * If no arguments, print the current list of retained fields.
  */
-int 
+FL int
 retfield(void *v)
 {
 	char **list = v;
@@ -652,7 +655,7 @@ retfield(void *v)
  * Add the given header fields to the ignored list.
  * If no arguments, print the current list of ignored fields.
  */
-int 
+FL int
 igfield(void *v)
 {
 	char **list = v;
@@ -660,7 +663,7 @@ igfield(void *v)
 	return ignore1(list, ignore, "ignored");
 }
 
-int 
+FL int
 saveretfield(void *v)
 {
 	char **list = v;
@@ -668,7 +671,7 @@ saveretfield(void *v)
 	return ignore1(list, saveignore + 1, "retained");
 }
 
-int 
+FL int
 saveigfield(void *v)
 {
 	char **list = v;
@@ -676,7 +679,7 @@ saveigfield(void *v)
 	return ignore1(list, saveignore, "ignored");
 }
 
-int 
+FL int
 fwdretfield(void *v)
 {
 	char **list = v;
@@ -684,7 +687,7 @@ fwdretfield(void *v)
 	return ignore1(list, fwdignore + 1, "retained");
 }
 
-int 
+FL int
 fwdigfield(void *v)
 {
 	char **list = v;
@@ -692,7 +695,7 @@ fwdigfield(void *v)
 	return ignore1(list, fwdignore, "ignored");
 }
 
-static int 
+static int
 ignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	int h;
@@ -729,7 +732,7 @@ ignore1(char **list, struct ignoretab *tab, char const *which)
 /*
  * Print out all currently retained fields.
  */
-static int 
+static int
 igshow(struct ignoretab *tab, char const *which)
 {
 	int h;
@@ -737,8 +740,7 @@ igshow(struct ignoretab *tab, char const *which)
 	char **ap, **ring;
 
 	if (tab->i_count == 0) {
-		printf(catgets(catd, CATSET, 34,
-				"No fields currently being %s.\n"), which);
+		printf(tr(34, "No fields currently being %s.\n"), which);
 		return 0;
 	}
 	/*LINTED*/
@@ -757,49 +759,49 @@ igshow(struct ignoretab *tab, char const *which)
 /*
  * Compare two names for sorting ignored field list.
  */
-static int 
+static int
 igcomp(const void *l, const void *r)
 {
 	return (strcmp(*(char**)UNCONST(l), *(char**)UNCONST(r)));
 }
 
-int 
+FL int
 unignore(void *v)
 {
 	return unignore1((char **)v, ignore, "ignored");
 }
 
-int 
+FL int
 unretain(void *v)
 {
 	return unignore1((char **)v, ignore + 1, "retained");
 }
 
-int 
+FL int
 unsaveignore(void *v)
 {
 	return unignore1((char **)v, saveignore, "ignored");
 }
 
-int 
+FL int
 unsaveretain(void *v)
 {
 	return unignore1((char **)v, saveignore + 1, "retained");
 }
 
-int 
+FL int
 unfwdignore(void *v)
 {
 	return unignore1((char **)v, fwdignore, "ignored");
 }
 
-int 
+FL int
 unfwdretain(void *v)
 {
 	return unignore1((char **)v, fwdignore + 1, "retained");
 }
 
-static void 
+static void
 unignore_one(const char *name, struct ignoretab *tab)
 {
 	struct ignore *ip, *iq = NULL;
@@ -820,12 +822,11 @@ unignore_one(const char *name, struct ignoretab *tab)
 	}
 }
 
-static int 
+static int
 unignore1(char **list, struct ignoretab *tab, char const *which)
 {
 	if (tab->i_count == 0) {
-		printf(catgets(catd, CATSET, 34,
-				"No fields currently being %s.\n"), which);
+		printf(tr(34, "No fields currently being %s.\n"), which);
 		return 0;
 	}
 	while (*list)
