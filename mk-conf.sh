@@ -98,9 +98,9 @@ compiler_flags() {
    fi
    export CC
 
-   i=`${CC} --version 2>/dev/null`
+   ccver=`${CC} --version 2>/dev/null`
    stackprot=no
-   if echo "${i}" | ${grep} -q -i -e gcc -e clang; then
+   if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
       stackprot=yes
       _CFLAGS='-std=c89 -O2'
@@ -109,17 +109,19 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
       _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
       _CFLAGS="${_CFLAGS} -Winit-self -Wshadow -Wunused -Wwrite-strings"
-      if echo "${i}" | ${grep} -q gcc; then
-         _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
+      if { i=$ccver; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
+         :
       else
-         _CFLAGS="${_CFLAGS} -Wno-long-long"
-         if echo "${i}" | ${grep} -q -e 'version 1'; then
-            :
-         else
-            _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
+         _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
+         if wantfeat AMALGAMATION && nwantfeat DEBUG; then
+            _CFLAGS="${_CFLAGS} -Wno-unused-function"
+         fi
+         if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
+            _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
-#   elif echo "${i}" | ${grep} -q -i clang; then
+      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
+#   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      stackprot=yes
 #      _CFLAGS='-std=c89 -O3 -g -Weverything -Wno-long-long'
    elif [ -z "${_CFLAGS}" ]; then
