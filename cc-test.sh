@@ -121,6 +121,12 @@ test_mail() {
       echo x
    ) | MAILRC=/dev/null "${NAIL}" -n -# -Sstealthmua
    cksum_test 5 "${MBOX}" '2028749685 277'
+
+   # Test for [d1f1a19]
+   ${rm} -f "${MBOX}"
+   printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix' |
+      MAILRC=/dev/null "${NAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
+   cksum_test 100 "${MBOX}" '4214021069 15'
 }
 
 printf \
