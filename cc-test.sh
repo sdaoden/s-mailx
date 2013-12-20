@@ -68,7 +68,7 @@ cc_all_configs() {
 
 # Test a UTF-8 mail as a whole via -t, and in pieces (without -t ;)
 cksum_test() {
-   f=$1 s=$2 tno=$3
+   tno=$1 f=$2 s=$3
    [ "`sed -e '/^From /d' -e '/^Date: /d' \
          -e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
          cksum`" != "${s}" ] && {
@@ -83,22 +83,29 @@ test_mail() {
       "${MAKE}"
    }
 
-   # Two tests for MIME-CTE and (a bit) content classification
+   # Three tests for MIME-CTE and (a bit) content classification.
+   # At the same time testing -q FILE, < FILE and -t FILE
    rm -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test "${MBOX}" '2606934084 5649' 1
+   cksum_test 1 "${MBOX}" '2606934084 5649'
+
+   rm -f "${MBOX}"
+   < /dev/null MAILRC=/dev/null \
+   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" \
+      -q "${BODY}" "${MBOX}"
+   cksum_test 2 "${MBOX}" '2606934084 5649'
 
    rm -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       cat "${BODY}"
    ) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
-   cksum_test "${MBOX}" '799758423 5648' 2
+   cksum_test 3 "${MBOX}" '799758423 5648'
 
    # Test for [260e19d].  Juergen Daubert.
    rm -f "${MBOX}"
    echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
-   cksum_test "${MBOX}" '506144051 104' 3
+   cksum_test 4 "${MBOX}" '506144051 104'
 
    # Sending of multiple mails in a single invocation
    rm -f "${MBOX}"
@@ -106,7 +113,7 @@ test_mail() {
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
    ) | MAILRC=/dev/null "${NAIL}" -N -n -# -Sstealthmua
-   cksum_test "${MBOX}" '2028749685 277' 4
+   cksum_test 5 "${MBOX}" '2028749685 277'
 }
 
 printf \
