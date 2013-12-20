@@ -180,7 +180,7 @@ _check_special_vars(char const *name, bool_t enable, char **val)
    else if (strcmp(name, "prompt") == 0)
       flag = OPT_NOPROMPT, enable = ! enable;
    else if (strcmp(name, "folder") == 0) {
-      rv = var_folder_updated(*val, &cp);
+      rv = (val == NULL || var_folder_updated(*val, &cp));
       if (rv && cp != NULL) {
          _vfree(*val);
          /* It's smalloc()ed, but ensure we don't leak */
