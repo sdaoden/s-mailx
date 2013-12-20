@@ -232,9 +232,11 @@ The message to be sent is expected to contain a message header with
 giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
 .It Fl u Ar user
-Impersonate as
-.Ar user .
-Note that this has consequences in respect to expansions of `%' etc.
+Read the system mailbox of
+.Ar user
+(appropriate privileges presumed), and `assume to be'
+.Ar user
+in some aspects, e.g. in respect to expansions of `%' etc.
 Also see
 .Ev USER .
 .It Fl V
@@ -680,9 +682,9 @@ where `type/subtype' are strings describing the file contents,
 and `extension' is the part of a filename starting after the last dot.
 Any line not immediately beginning with an ASCII alphabetical character
 is ignored by \*(UA.
-If \*(UA cannot find any MIME type files,
-it will use a restricted set of builtin mappings.
-The
+The variable
+.Va mimetypes-load-control
+can be used to control the sources of MIME types, and the
 .Ic mimetypes
 command can be used to show the list of mime types known to \*(UA.
 If there is a match with the `extension' of the file to attach,
@@ -690,6 +692,8 @@ the given `type/subtype' pair is used.
 Otherwise, or if the filename has no extension,
 the content types `text/plain' or `application/octet-stream' are used,
 dependent upon file content inspection.
+Also see
+.Va mime-allow-text-controls .
 .\"
 .\" --  >8  --  8<  --
 .Ss "Character sets"
@@ -879,7 +883,7 @@ prints a sorted list of available commands, and the command
 when given an argument, will show a documentation string for the
 expansion, as in
 .Ns ` Ns Ic ? Ns Ar unc Ns ' ;
-this mode is \*(OP, though.)
+documentation strings are however \*(OP.)
 .Pp
 For commands which take message lists as arguments,
 if no message list is given,
