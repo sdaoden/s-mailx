@@ -712,7 +712,7 @@ jnull:
 FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
-#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+#ifdef HAVE_C90AMEND1
 	if (mb_cur_max > 1) {
 		char *tp = cp;
 		wchar_t wc;
@@ -747,7 +747,7 @@ substr(char const *str, char const *sub)
 	cp = sub;
 	backup = str;
 	while (*str && *cp) {
-#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+#ifdef HAVE_C90AMEND1
 		if (mb_cur_max > 1) {
 			wchar_t c, c2;
 			int sz;
@@ -773,7 +773,7 @@ substr(char const *str, char const *sub)
 		{
 			int c, c2;
 
-#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+#ifdef HAVE_C90AMEND1
 	singlebyte:
 #endif
 			c = *cp++ & 0377;

@@ -564,7 +564,7 @@ jdate_set:
 			if (*fp == '\0')
 				break;
 		} else {
-#if defined HAVE_MBTOWC && defined HAVE_WCWIDTH
+#ifdef HAVE_WCWIDTH
 			if (mb_cur_max > 1) {
 				wchar_t	wc;
 				if ((s = mbtowc(&wc, fp, mb_cur_max)) < 0)

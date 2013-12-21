@@ -472,53 +472,6 @@ int main(void)
 }
 !
 
-link_check wctype 'for wctype functionality' '#define HAVE_WCTYPE_H' << \!
-#include <wctype.h>
-int main(void)
-{
-   iswprint(L'c');
-   towupper(L'c');
-   return 0;
-}
-!
-
-link_check wcwidth 'for wcwidth() ' '#define HAVE_WCWIDTH' << \!
-#include <wchar.h>
-int main(void)
-{
-   wcwidth(L'c');
-   return 0;
-}
-!
-
-link_check mbtowc 'for mbtowc()' '#define HAVE_MBTOWC' << \!
-#include <stdlib.h>
-int main(void)
-{
-   wchar_t	wc;
-   mbtowc(&wc, "x", 1);
-   return 0;
-}
-!
-
-link_check mbrtowc 'for mbrtowc()' '#define HAVE_MBRTOWC' << \!
-#include <wchar.h>
-int main(void)
-{
-   wchar_t	wc;
-   mbrtowc(&wc, "x", 1, NULL);
-   return 0;
-}
-!
-
-link_check mblen 'for mblen()' '#define HAVE_MBLEN' << \!
-#include <stdlib.h>
-int main(void)
-{
-   return mblen("\0", 1) == 0;
-}
-!
-
 link_check setlocale 'for setlocale()' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)
@@ -528,14 +481,47 @@ int main(void)
 }
 !
 
-link_check nl_langinfo 'for nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
-#include <langinfo.h>
+if [ "${have_setlocale}" = yes ]; then
+   link_check c90amend1 'for ISO/IEC 9899:1990/Amendment 1:1995' \
+      '#define HAVE_C90AMEND1' << \!
+#include <limits.h>
+#include <stdlib.h>
+#include <wchar.h>
+#include <wctype.h>
 int main(void)
 {
-   nl_langinfo(DAY_1);
+	char mbb[MB_LEN_MAX + 1];
+   wchar_t	wc;
+   iswprint(L'c');
+   towupper(L'c');
+   mbtowc(&wc, "x", 1);
+   mbrtowc(&wc, "x", 1, NULL);
+	(void)wctomb(mbb, wc);
+   return (mblen("\0", 1) == 0);
+}
+!
+
+   if [ "${have_c90amend1}" = yes ]; then
+      link_check wcwidth 'for wcwidth()' '#define HAVE_WCWIDTH' << \!
+#include <wchar.h>
+int main(void)
+{
+   wcwidth(L'c');
    return 0;
 }
 !
+   fi
+
+   link_check nl_langinfo 'for nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
+#include <langinfo.h>
+#include <stdlib.h>
+int main(void)
+{
+   nl_langinfo(DAY_1);
+   return (nl_langinfo(CODESET) == NULL);
+}
+!
+fi # have_setlocale
 
 link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
@@ -988,7 +974,7 @@ int main(void)
 fi
 
 if wantfeat NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
-      [ -n "${have_mbrtowc}" ] && [ -n "${have_wctype}" ]; then
+      [ -n "${have_c90amend1}" ]; then
    have_ncl=1
    echo '#define HAVE_NCL' >> ${h}
 else
@@ -1013,7 +999,7 @@ else
 fi
 
 if wantfeat QUOTE_FOLD &&\
-      [ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then
+      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
@@ -1120,7 +1106,7 @@ ${cat} ./mk-mk.in >> ${mk}
 ${cat} > ${tmp2}.c << \!
 #include "config.h"
 #ifdef HAVE_NL_LANGINFO
-#include <langinfo.h>
+# include <langinfo.h>
 #endif
 :
 :The following optional features are enabled:
@@ -1129,10 +1115,10 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifdef HAVE_SETLOCALE
 : + Locale support: Printable characters depend on the environment
-# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+# ifdef HAVE_C90AMEND1
 : + Multibyte character support
 # endif
-# if defined HAVE_NL_LANGINFO && defined CODESET
+# ifdef HAVE_NL_LANGINFO
 : + Automatic detection of terminal character set
 # endif
 #endif
@@ -1179,31 +1165,31 @@ ${cat} > ${tmp2}.c << \!
 #endif
 :
 :The following optional features are disabled:
-#ifndef	HAVE_ICONV
+#ifndef HAVE_ICONV
 : - Character set conversion using iconv()
 #endif
-#ifndef	HAVE_SETLOCALE
+#ifndef HAVE_SETLOCALE
 : - Locale support: Only ASCII characters are recognized
 #endif
-#if ! defined HAVE_SETLOCALE || ! defined HAVE_MBTOWC || !defined HAVE_WCTYPE_H
+# ifndef HAVE_C90AMEND1
 : - Multibyte character support
-#endif
-#if ! defined HAVE_SETLOCALE || ! defined HAVE_NL_LANGINFO || ! defined CODESET
+# endif
+# ifndef HAVE_NL_LANGINFO
 : - Automatic detection of terminal character set
-#endif
-#ifndef	HAVE_SOCKETS
+# endif
+#ifndef HAVE_SOCKETS
 : - Network support
 #endif
-#ifndef	HAVE_IPV6
+#ifndef HAVE_IPV6
 : - Support for Internet Protocol v6 (IPv6)
 #endif
-#if ! defined HAVE_SSL
+#if !defined HAVE_SSL
 : - SSL/TLS (network transport authentication and encryption)
 #endif
 #ifndef HAVE_IMAP
 : - IMAP protocol
 #endif
-#ifndef	HAVE_GSSAPI
+#ifndef HAVE_GSSAPI
 : - IMAP GSSAPI authentication
 #endif
 #ifndef HAVE_POP3
@@ -1226,13 +1212,13 @@ ${cat} > ${tmp2}.c << \!
 #endif
 :
 :Remarks:
-#ifndef	HAVE_SNPRINTF
+#ifndef HAVE_SNPRINTF
 : . The function snprintf() could not be found. mailx will be compiled to use
 : sprintf() instead. This might overflow buffers if input values are larger
 : than expected. Use the resulting binary with care or update your system
 : environment and start the configuration process again.
 #endif
-#ifndef	HAVE_FCHDIR
+#ifndef HAVE_FCHDIR
 : . The function fchdir() could not be found. mailx will be compiled to use
 : chdir() instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.

@@ -201,7 +201,7 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 
 	np = nb = salloc(mb_cur_max * strlen(cp) + col + 1);
 	while (*cp) {
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCWIDTH)
+#ifdef HAVE_WCWIDTH
 		if (mb_cur_max > 1) {
 			wchar_t	wc;
 
@@ -212,7 +212,7 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 					n = 1;
 			}
 		} else
-#endif	/* HAVE_MBTOWC && HAVE_WCWIDTH */
+#endif
 		{
 			n = sz = 1;
 		}
@@ -727,7 +727,7 @@ makeprint(struct str const *in, struct str *out)
 	static int print_all_chars = -1;
 	char const *inp, *maxp;
 	char *outp;
-	size_t msz, dist;
+	size_t msz;
 
 	if (print_all_chars == -1)
 		print_all_chars = (value("print-all-chars") != NULL);
@@ -743,11 +743,13 @@ makeprint(struct str const *in, struct str *out)
 		goto jleave;
 	}
 
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+#ifdef HAVE_C90AMEND1
 	if (mb_cur_max > 1) {
 		char mbb[MB_LEN_MAX + 1];
 		wchar_t wc;
 		int i, n;
+	   size_t dist;
+
 		out->l = 0;
 		while (inp < maxp) {
 			if (*inp & 0200)
@@ -790,7 +792,7 @@ makeprint(struct str const *in, struct str *out)
 				*outp++ = mbb[i];
 		}
 	} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+#endif /* C90AMEND1 */
 	{
 		int c;
 		while (inp < maxp) {
@@ -840,9 +842,10 @@ FL size_t
 putuc(int u, int c, FILE *fp)
 {
 	size_t rv;
+   UNUSED(u);
 
-#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
-	if (utf8 && u & ~(wchar_t)0177) {
+#ifdef HAVE_C90AMEND1
+	if (utf8 && (u & ~(wchar_t)0177)) {
 		char mbb[MB_LEN_MAX];
 		int i, n;
 		if ((n = wctomb(mbb, u)) > 0) {
@@ -857,7 +860,7 @@ putuc(int u, int c, FILE *fp)
 		else
 			rv = 0;
 	} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+#endif
 		rv = (putc(c, fp) != EOF);
 	return rv;
 }

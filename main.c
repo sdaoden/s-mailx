@@ -274,12 +274,12 @@ _startup(void)
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
-# if defined HAVE_NL_LANGINFO && defined CODESET
+# ifdef HAVE_NL_LANGINFO
    if (voption("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
       assign("ttycharset", cp);
 # endif
 
-# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+# ifdef HAVE_C90AMEND1
    if (mb_cur_max > 1) {
       wchar_t  wc;
       if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&

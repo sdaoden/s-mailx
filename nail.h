@@ -72,10 +72,8 @@
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_MBRTOWC
+#ifdef HAVE_C90AMEND1
 # include <wchar.h>
-#endif
-#ifdef HAVE_WCTYPE_H
 # include <wctype.h>
 #endif
 

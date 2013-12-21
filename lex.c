@@ -73,7 +73,7 @@ static struct cmd_ghost *_cmd_ghosts;
 /* Update mailname (if name != NULL) and displayname, return wether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
-#ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
+#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_{pre,suf}fix() into one fun! */
 SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
@@ -106,7 +106,7 @@ static struct cmd const _cmd_tab[] = {
 #include "cmd_tab.h"
 };
 
-#ifdef HAVE_MBLEN
+#ifdef HAVE_C90AMEND1
 SINLINE size_t
 __narrow_prefix(char const *cp, size_t maxl)
 {
@@ -157,7 +157,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 	}
 	return ok;
 }
-#endif /* HAVE_MBLEN */
+#endif /* HAVE_C90AMEND1 */
 
 static bool_t
 _update_mailname(char const *name)
@@ -201,7 +201,7 @@ _update_mailname(char const *name)
       memcpy(dispp, mailp, i + 1);
    else {
       /* Avoid disrupting multibyte sequences (if possible) */
-#ifndef HAVE_MBLEN
+#ifndef HAVE_C90AMEND1
       j = sizeof(displayname) / 3 - 1;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
