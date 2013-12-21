@@ -54,12 +54,13 @@
  * acmava.c
  */
 
-/* Assign a value to a variable */
-FL void     var_assign(char const *name, char const *value);
+/* Assign a value to a variable, return wether error occurred */
+FL bool_t   var_assign(char const *name, char const *value);
 #define assign(N,V)              var_assign(N, V)
 
-/* Unset variable (special: normally `var_assign(, NULL)' is used) */
-FL int      var_unset(char const *name);
+/* Unset variable (special: normally `var_assign(, NULL)' is used), return
+ * wether error occurred */
+FL bool_t   var_unset(char const *name);
 #define unset_internal(V)        var_unset(V)
 
 /* Get the value of an option (fallback to `look_environ'?) */

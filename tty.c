@@ -1233,7 +1233,8 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
-   if ((l.nd = voption("line-editor-cursor-right")) == NULL)
+   /* TODO *l.nd=='\0' only because we have no value-cache -> see acmava.c */
+   if ((l.nd = voption("line-editor-cursor-right")) == NULL || *l.nd == '\0')
       l.nd = "\033[C";
    l.x_buf = buf;
    l.x_bufsize = bufsize;

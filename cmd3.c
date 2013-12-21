@@ -668,7 +668,7 @@ set(void *v)
 		if (varbuf[0] == 'n' && varbuf[1] == 'o')
 			errs += unset_internal(&varbuf[2]);
 		else
-			assign(varbuf, cp);
+			errs += assign(varbuf, cp);
 jnext:		ac_free(varbuf);
 	}
 jleave:
