@@ -233,8 +233,41 @@ _startup(void)
       options |= OPT_TTYOUT;
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+
+   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
+   /* noallnet */
+   /* noappend */
+   assign("asksub", "");
+   /* noaskbcc */
+   /* noaskcc */
+   /* noautoprint */
+   /* nobang */
+   /* nocmd */
+   /* nocrt */
+   /* nodebug */
+   /* nodot */
+   /* assign("escape", "~"); TODO non-compliant */
+   /* noflipr */
+   /* nofolder */
    assign("header", "");
+   /* nohold */
+   /* noignore */
+   /* noignoreeof */
+   /* nokeep */
+   /* nokeepsave */
+   /* nometoo */
+   /* noonehop -- Note: we ignore this one */
+   /* nooutfolder */
+   /* nopage */
+   assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
+   /* noquiet */
+   /* norecord */
    assign("save", "");
+   /* nosendwait */
+   /* noshowto */
+   /* nosign */
+   /* noSign */
+   /* assign("toplines", "5"); XXX somewhat hmm */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");

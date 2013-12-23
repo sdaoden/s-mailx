@@ -95,6 +95,10 @@ t_behave() {
    printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix' |
       MAILRC=/dev/null "${NAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
    cksum_test behave:1 "${MBOX}" '4214021069 15'
+
+   # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
+   # TODO for this to be testable we need a way to echo a variable
+   # TODO or to force echo of the prompt
 }
 
 # t_content()

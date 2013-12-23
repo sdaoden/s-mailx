@@ -396,104 +396,96 @@ nextprime(long n)
 FL int
 expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
-	char const *xs = *s;
-	int c, n;
+   char const *xs = *s;
+   int c, n;
 
-	if ((c = *xs & 0xFF) == '\0')
-		goto jleave;
-	++xs;
-	if (c != '\\')
-		goto jleave;
+   if ((c = *xs & 0xFF) == '\0')
+      goto jleave;
+   ++xs;
+   if (c != '\\')
+      goto jleave;
 
-	switch ((c = *xs & 0xFF)) {
-	case '\\':			break;
-	case 'a':	c = '\a';	break;
-	case 'b':	c = '\b';	break;
-	case 'c':	c = PROMPT_STOP;break;
-	case 'f':	c = '\f';	break;
-	case 'n':	c = '\n';	break;
-	case 'r':	c = '\r';	break;
-	case 't':	c = '\t';	break;
-	case 'v':	c = '\v';	break;
-	case '0':
-		for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
-			c <<= 3;
-			c |= *xs - '0';
-		}
-		goto jleave;
-	/* S-nail extension for nice (get)prompt(()) support */
-	case '?':
-	case '$':
-	case '@':
-		if (use_nail_extensions) {
-			switch (c) {
-			case '?':
-				c = exec_last_comm_error ? '1' : '0';
-				break;
-			case '$':
-				c = PROMPT_DOLLAR;
-				break;
-			case '@':
-				c = PROMPT_AT;
-				break;
-			}
-			break;
-		}
-		/* FALLTHRU */
-	case '\0':
-		/* A sole <backslash> at EOS is treated as-is! */
-		/* FALLTHRU */
-	default:
-		c = '\\';
-		goto jleave;
-	}
-	++xs;
+   switch ((c = *xs & 0xFF)) {
+   case '\\':                    break;
+   case 'a':   c = '\a';         break;
+   case 'b':   c = '\b';         break;
+   case 'c':   c = PROMPT_STOP;  break;
+   case 'f':   c = '\f';         break;
+   case 'n':   c = '\n';         break;
+   case 'r':   c = '\r';         break;
+   case 't':   c = '\t';         break;
+   case 'v':   c = '\v';         break;
+   case '0':
+      for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
+         c <<= 3;
+         c |= *xs - '0';
+      }
+      goto jleave;
+   /* S-nail extension for nice (get)prompt(()) support */
+   case '&':
+   case '?':
+   case '$':
+   case '@':
+      if (use_nail_extensions) {
+         switch (c) {
+         case '&':   c = boption("bsdcompat") ? '&' : '?';  break;
+         case '?':   c = exec_last_comm_error ? '1' : '0';  break;
+         case '$':   c = PROMPT_DOLLAR;                     break;
+         case '@':   c = PROMPT_AT;                         break;
+         }
+         break;
+      }
+      /* FALLTHRU */
+   case '\0':
+      /* A sole <backslash> at EOS is treated as-is! */
+      /* FALLTHRU */
+   default:
+      c = '\\';
+      goto jleave;
+   }
+   ++xs;
 jleave:
-	*s = xs;
-	return c;
+   *s = xs;
+   return c;
 }
 
 FL char *
 getprompt(void)
 {
-	static char buf[PROMPT_BUFFER_SIZE];
+   static char buf[PROMPT_BUFFER_SIZE];
 
-	char const *ccp;
+   char *cp = buf;
+   char const *ccp;
 
-	if (options & OPT_NOPROMPT)
-		buf[0] = '\0';
-	else if ((ccp = value("prompt")) == NULL) {
-		buf[0] = value("bsdcompat") ? '&' : '?';
-		buf[1] = ' ';
-		buf[2] = '\0';
-	} else {
-		char *cp;
+   if ((ccp = voption("prompt")) == NULL || *ccp == '\0')
+      goto jleave;
 
-		for (cp = buf; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
-			char const *a;
-			size_t l;
-			int c = expand_shell_escape(&ccp, TRU1);
-			if (c > 0) {
-				*cp = (char)c;
-				continue;
-			}
-			if (c == 0 || c == PROMPT_STOP)
-				break;
+   for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
+      char const *a;
+      size_t l;
+      int c = expand_shell_escape(&ccp, TRU1);
 
-			a = (c == PROMPT_DOLLAR) ? account_name : displayname;
-			if (a == NULL)
-				a = "";
-			l = strlen(a);
-			if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
-				*cp++ = '?';
-			else {
-				memcpy(cp, a, l);
-				cp += --l;
-			}
-		}
-		*cp = '\0';
-	}
-	return buf;
+      if (c > 0) {
+         *cp = (char)c;
+         continue;
+      }
+      if (c == 0 || c == PROMPT_STOP)
+         break;
+
+      a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+      if (a == NULL)
+         a = "";
+      l = strlen(a);
+      if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
+         *cp++ = '?';
+      else {
+         memcpy(cp, a, l);
+         cp += --l;
+      }
+   }
+jleave:
+   *cp = '\0';
+   return buf;
 }
 
 FL char *

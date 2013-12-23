@@ -2244,9 +2244,10 @@ command.
 Sets some cosmetical features to traditional BSD style;
 has the same affect as setting
 .Va askatend
-and all other variables prefixed with `bsd' as well as setting
+and all other variables prefixed with `bsd';
+it also changes the meaning of the \*(UA specific `\\&'
 .Va prompt
-to `&\ '.
+escape sequence.
 .It Va bsdflags
 Changes the letters printed in the first column of a header summary
 to traditional BSD style.
@@ -3087,18 +3088,21 @@ a `NOOP' command to be sent each `value' seconds if no other operation
 is performed.
 .It Va prompt
 The string printed when a command is accepted.
-The prompt may be disabled by either setting this to the empty string
+Prompting may be prevented by either setting this to the null string
 or by setting
 .Va noprompt .
-Defaults to `?\ ', or to `&\ ' if the
-.Va bsdcompat
-variable is set.
 The same XSI escape sequences that are understood by the
 .Ic echo
 command may be used within
 .Va prompt .
 .Pp
-\*(UA specific escape sequence extensions are:
+In addition, the following \*(UA specific additional sequences are
+understood:
+`\\&', which expands to `?' unless
+.Va bsdcompat
+is set, in which case it expands to `&';
+note that "\\& " is the default value for
+.Va prompt .
 `\\?', which will expand to `1' if the last command failed, and to `0'
 otherwise,
 `\\$', which will expand to the name of the currently active

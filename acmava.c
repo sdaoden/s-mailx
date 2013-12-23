@@ -180,8 +180,6 @@ _check_special_vars(char const *name, bool_t enable, char **val)
       flag = OPT_E_FLAG;
    else if (strcmp(name, "verbose") == 0)
       flag = OPT_VERBOSE;
-   else if (strcmp(name, "prompt") == 0)
-      flag = OPT_NOPROMPT, enable = !enable;
    else if (strcmp(name, "folder") == 0) {
       rv = (val == NULL || var_folder_updated(*val, &cp));
       if (rv && cp != NULL) {
