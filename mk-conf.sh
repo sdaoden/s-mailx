@@ -1056,9 +1056,36 @@ ${mv} ${tmp} ${inc}
 squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
+# config.h
 ${mv} ${h} ${tmp}
 printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
 ${cat} ${tmp} >> ${h}
+
+printf '\n/* The "feature string", for "simplicity" and lex.c */\n' >> ${h}
+printf '#ifdef _MAIN_SOURCE\n' >> ${h}
+printf '# ifdef HAVE_AMALGAMATION\nstatic\n# endif\n' >> ${h}
+printf 'char const features[] = "MIME"\n' >> ${h}
+printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TSL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_GSSAPI\n   ",GSSAPI"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
+printf '# if defined HAVE_READLINE || defined HAVE_EDITLINE || '\
+'defined HAVE_NCL\n   ",COMMAND LINE EDITOR"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_HISTORY\n   ",HISTORY MANAGEMENT"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
+
 printf '#endif /* _CONFIG_H */\n' >> ${h}
 ${rm} -f ${tmp}
 
@@ -1116,8 +1143,10 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_IPV6
 : + Support for Internet Protocol v6 (IPv6)
 #endif
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL
+# ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS using OpenSSL
+# endif
 #endif
 #ifdef HAVE_IMAP
 : + IMAP protocol

@@ -81,6 +81,8 @@ VL char const        month_names[12 + 1][4] = {
 };
 VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
+/*VL char const        features[]; The "feature string" comes from config.h */
+
 VL sighandler_type   dflpipe = SIG_DFL;
 
 /* getopt(3) fallback implementation */

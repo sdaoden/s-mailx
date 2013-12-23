@@ -92,6 +92,12 @@ static int     _unghost(void *v);
 static int     _pcmdlist(void *v);
 static int     __pcmd_cmp(void const *s1, void const *s2);
 
+/* Print the binaries compiled-in features */
+static int     _features(void *v);
+
+/* Print the binaries version number */
+static int     _version(void *v);
+
 static void stop(int s);
 static void hangup(int s);
 
@@ -373,6 +379,22 @@ _pcmdlist(void *v)
    }
 
    ac_free(cpa);
+   return 0;
+}
+
+static int
+_features(void *v)
+{
+   UNUSED(v);
+   printf(tr(523, "Features: %s\n"), features);
+   return 0;
+}
+
+static int
+_version(void *v)
+{
+   UNUSED(v);
+   printf(tr(111, "Version %s\n"), version);
    return 0;
 }
 
@@ -1205,19 +1227,6 @@ getmdot(int nmail)
 		mdot = mp < &message[msgCount] ? mp-&message[0]+1 : 1;
 	}
 	return mdot;
-}
-
-/*
- * Print the current version number.
- */
-
-/*ARGSUSED*/
-FL int
-pversion(void *v)
-{
-   (void)v;
-   printf(tr(111, "Version %s\n"), version);
-   return 0;
 }
 
 FL void

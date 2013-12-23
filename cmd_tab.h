@@ -115,8 +115,6 @@
      DS(376, "Print all variables, or set variables to argument(s)") },
    { "shell", dosh, (I | NOLIST), 0, 0
      DS(378, "Invoke an interactive shell") },
-   { "version", pversion, (M | NOLIST), 0, 0
-     DS(413, "Print the MUA version") },
    { "unalias", ungroup, (M | RAWLIST), 0, 1000
      DS(387, "Un\"alias\" <name-list>") },
    { "write", cwrite, (A | STRLIST), 0, 0
@@ -349,6 +347,10 @@
      DS(428, "Print current working directory (CWD)") },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
+   { "features", &_features, (M | NOLIST), 0, 0
+     DS(429, "Show features that are compiled into the MUA") },
+   { "version", &_version, (M | NOLIST), 0, 0
+     DS(413, "Print the MUA version") },
 #ifdef HAVE_DEBUG
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },

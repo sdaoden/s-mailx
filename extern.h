@@ -629,7 +629,6 @@ FL void        onintr(int s);
 FL void        announce(int printheaders);
 FL int         newfileinfo(void);
 FL int         getmdot(int newmail);
-FL int         pversion(void *v);
 FL void        initbox(const char *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.

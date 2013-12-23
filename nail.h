@@ -1270,6 +1270,7 @@ VL char const     weekday_names[7 + 1][4];
 
 VL char const     uagent[];               /* User agent */
 VL char const     version[];              /* The version string */
+VL char const     features[];             /* The "feature string" */
 #endif
 
 /*
