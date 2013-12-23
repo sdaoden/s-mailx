@@ -88,25 +88,6 @@ static int wait_command(int pid);
 static struct child *findchild(int pid);
 static void delchild(struct child *cp);
 
-/*
- * Provide BSD-like signal() on all systems.
- */
-FL sighandler_type
-safe_signal(int signum, sighandler_type handler)
-{
-	struct sigaction nact, oact;
-
-	nact.sa_handler = handler;
-	sigemptyset(&nact.sa_mask);
-	nact.sa_flags = 0;
-#ifdef	SA_RESTART
-	nact.sa_flags |= SA_RESTART;
-#endif
-	if (sigaction(signum, &nact, &oact) != 0)
-		return SIG_ERR;
-	return oact.sa_handler;
-}
-
 static int
 scan_mode(const char *mode, int *omode)
 {

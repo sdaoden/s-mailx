@@ -60,58 +60,96 @@
 #endif
 
 /* {hold,rele}_all_sigs() */
-static size_t		_alls_depth;
-static sigset_t	_alls_nset, _alls_oset;
+static size_t     _alls_depth;
+static sigset_t   _alls_nset, _alls_oset;
+
+/* {hold,rele}_sigs() */
+static size_t     _hold_sigdepth;
+static sigset_t   _hold_nset, _hold_oset;
 
 FL void
 panic(char const *format, ...)
 {
-	va_list ap;
+   va_list ap;
 
-	fprintf(stderr, tr(1, "Panic: "));
+   fprintf(stderr, tr(1, "Panic: "));
 
-	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	va_end(ap);
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
 
-	fputs("\n", stderr);
-	fflush(stderr);
-	exit(EXIT_ERR);
+   fputs("\n", stderr);
+   fflush(stderr);
+   exit(EXIT_ERR);
 }
 
 #ifdef HAVE_DEBUG
 FL void
 warn(char const *format, ...)
 {
-	va_list ap;
+   va_list ap;
 
-	fprintf(stderr, tr(1, "Panic: "));
+   fprintf(stderr, tr(1, "Panic: "));
 
-	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	va_end(ap);
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
 
-	fputs("\n", stderr);
-	fflush(stderr);
+   fputs("\n", stderr);
+   fflush(stderr);
 }
 #endif
+
+FL sighandler_type
+safe_signal(int signum, sighandler_type handler)
+{
+   struct sigaction nact, oact;
+
+   nact.sa_handler = handler;
+   sigemptyset(&nact.sa_mask);
+   nact.sa_flags = 0;
+#ifdef SA_RESTART
+   nact.sa_flags |= SA_RESTART;
+#endif
+   return ((sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler);
+}
 
 FL void
 hold_all_sigs(void)
 {
-	if (_alls_depth++ == 0) {
-		sigfillset(&_alls_nset);
-		sigdelset(&_alls_nset, SIGKILL);
-		sigdelset(&_alls_nset, SIGSTOP);
-		sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
-	}
+   if (_alls_depth++ == 0) {
+      sigfillset(&_alls_nset);
+      sigdelset(&_alls_nset, SIGKILL);
+      sigdelset(&_alls_nset, SIGSTOP);
+      sigdelset(&_alls_nset, SIGCHLD);
+      sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
+   }
 }
 
 FL void
 rele_all_sigs(void)
 {
-	if (--_alls_depth == 0)
-		sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
+   if (--_alls_depth == 0)
+      sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
+}
+
+FL void
+hold_sigs(void)
+{
+   if (_hold_sigdepth++ == 0) {
+      sigemptyset(&_hold_nset);
+      sigaddset(&_hold_nset, SIGHUP);
+      sigaddset(&_hold_nset, SIGINT);
+      sigaddset(&_hold_nset, SIGQUIT);
+      sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
+   }
+}
+
+FL void
+rele_sigs(void)
+{
+   if (--_hold_sigdepth == 0)
+      sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
 }
 
 /*

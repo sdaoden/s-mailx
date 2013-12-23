@@ -253,7 +253,7 @@ _spam_interact(struct spam_vc *vc)
    vc->ottin = safe_signal(SIGTTIN, SIG_DFL);
    vc->ottou = safe_signal(SIGTTOU, SIG_DFL);
    vc->opipe = safe_signal(SIGPIPE, SIG_IGN);
-   holdsigs();
+   hold_sigs();
    state |= _SIGHOLD;
    vc->ohup = safe_signal(SIGHUP, &__spam_onsig);
    vc->oint = safe_signal(SIGINT, &__spam_onsig);
@@ -276,7 +276,7 @@ _spam_interact(struct spam_vc *vc)
       state |= _JUMPED;
       goto jleave;
    }
-   relsesigs();
+   rele_sigs();
    state &= ~_SIGHOLD;
 
    sigemptyset(&cset);
@@ -307,7 +307,7 @@ jleave:
     * atomic compare-and-swap; it only matters if we */
    if (state & _SIGHOLD) {
       state &= ~_SIGHOLD;
-      relsesigs();
+      rele_sigs();
    }
 
    if (state & _P2C_0) {

@@ -473,7 +473,7 @@ setfile(char const *name, int nmail)
 	 * the message[] data structure.
 	 */
 
-	holdsigs(); /* TODO note on this one in quit.c:quit() */
+	hold_sigs(); /* TODO note on this one in quit.c:quit() */
 	if (shudclob && !nmail)
 		quit();
 #ifdef HAVE_SOCKETS
@@ -533,7 +533,7 @@ setfile(char const *name, int nmail)
 	}
 	mailsize = fsize(ibuf);
 	if (nmail && (size_t)mailsize <= offset) {
-		relsesigs();
+		rele_sigs();
 		goto jnonmail;
 	}
 	setptr(ibuf, offset);
@@ -543,7 +543,7 @@ setfile(char const *name, int nmail)
 		sort((void *)-1);
 	}
 	Fclose(ibuf);
-	relsesigs();
+	rele_sigs();
 	if (!nmail)
 		sawcom = FAL0;
 	if ((!edit || nmail) && msgCount == 0) {

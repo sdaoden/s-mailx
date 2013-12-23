@@ -729,34 +729,6 @@ rm(char *name) /* TODO TOCTOU; but i'm out of ideas today */
 	return ret;
 }
 
-static int	_fio_sigdepth;		/* depth of holdsigs() */
-static sigset_t	_fio_nset, _fio_oset;
-/*
- * Hold signals SIGHUP, SIGINT, and SIGQUIT.
- */
-FL void
-holdsigs(void)
-{
-
-	if (_fio_sigdepth++ == 0) {
-		sigemptyset(&_fio_nset);
-		sigaddset(&_fio_nset, SIGHUP);
-		sigaddset(&_fio_nset, SIGINT);
-		sigaddset(&_fio_nset, SIGQUIT);
-		sigprocmask(SIG_BLOCK, &_fio_nset, &_fio_oset);
-	}
-}
-
-/*
- * Release signals SIGHUP, SIGINT, and SIGQUIT.
- */
-FL void
-relsesigs(void)
-{
-	if (--_fio_sigdepth == 0)
-		sigprocmask(SIG_SETMASK, &_fio_oset, NULL);
-}
-
 /*
  * Determine the size of the file possessed by
  * the passed buffer.
