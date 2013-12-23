@@ -864,7 +864,9 @@ FL bool_t      pipe_cloexec(int fd[2]);
 
 FL FILE *      Popen(const char *cmd, const char *mode, const char *shell,
                   int newfd1);
-FL int         Pclose(FILE *ptr, bool_t dowait);
+
+FL bool_t      Pclose(FILE *ptr, bool_t dowait);
+
 FL void        close_all_files(void);
 FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
@@ -873,7 +875,10 @@ FL int         start_command(const char *cmd, sigset_t *mask, int infd,
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 FL void        sigchild(int signo);
 FL void        free_child(int pid);
-FL int         wait_child(int pid);
+
+/* Wait for pid, return wether we've had a normal EXIT_SUCCESS exit.
+ * If wait_status is set, set it to the reported waitpid(2) wait status */
+FL bool_t      wait_child(int pid, int *wait_status);
 
 /* quit.c */
 FL int         quitcmd(void *v);

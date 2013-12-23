@@ -134,15 +134,15 @@ _globname(char const *name, enum fexp_mode fexpm)
 	sigset_t nset;
 	int i;
 
+	/* Mac OS X Snow Leopard and Linux don't init fields on error, causing
+	 * SIGSEGV in wordfree(3); so let's just always zero it ourselfs */
+	memset(&we, 0, sizeof we);
+
 	/* Some systems (notably Open UNIX 8.0.0) fork a shell for wordexp()
 	 * and wait, which will fail if our SIGCHLD handler is active */
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, NULL);
-
-	/* Mac OS X Snow Leopard and Linux don't init fields on error, causing
-	 * SIGSEGV in wordfree(3); so let's just always zero it ourselfs */
-	memset(&we, 0, sizeof we);
 	i = wordexp(name, &we, 0);
 	sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
@@ -150,7 +150,7 @@ _globname(char const *name, enum fexp_mode fexpm)
 	case 0:
 		break;
 	case WRDE_NOSPACE:
-		if (! (fexpm & FEXP_SILENT))
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr,
 				tr(83, "\"%s\": Expansion buffer overflow.\n"),
 				name);
@@ -158,7 +158,7 @@ _globname(char const *name, enum fexp_mode fexpm)
 	case WRDE_BADCHAR:
 	case WRDE_SYNTAX:
 	default:
-		if (! (fexpm & FEXP_SILENT))
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr, tr(242, "Syntax error in \"%s\"\n"),
 				name);
 		goto jleave;
@@ -169,7 +169,7 @@ _globname(char const *name, enum fexp_mode fexpm)
 		cp = savestr(we.we_wordv[0]);
 		break;
 	case 0:
-		if (! (fexpm & FEXP_SILENT))
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
 		break;
 	default:
@@ -187,7 +187,7 @@ _globname(char const *name, enum fexp_mode fexpm)
 				cp[l++] = ' ';
 			}
 			cp[l] = '\0';
-		} else if (! (fexpm & FEXP_SILENT))
+		} else if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		break;
 	}
@@ -196,12 +196,10 @@ jleave:
 	return cp;
 
 #else /* !HAVE_WORDEXP */
-	extern int wait_status;
-
 	struct stat sbuf;
 	char xname[MAXPATHLEN], cmdbuf[MAXPATHLEN], /* also used for files */
 		*cp, *shellp;
-	int pid, l, pivec[2];
+	int pivec[2], pid, l, waits;
 
 	if (pipe(pivec) < 0) {
 		perror("pipe");
@@ -228,31 +226,31 @@ again:
 		return NULL;
 	}
 	close(pivec[0]);
-	if (wait_child(pid) < 0 && WTERMSIG(wait_status) != SIGPIPE) {
-		if (! (fexpm & FEXP_SILENT))
+	if (!wait_child(pid, &waits) && WTERMSIG(waits) != SIGPIPE) {
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr, tr(81, "\"%s\": Expansion failed.\n"),
 				name);
 		return NULL;
 	}
 	if (l == 0) {
-		if (! (fexpm & FEXP_SILENT))
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr, tr(82, "\"%s\": No match.\n"), name);
 		return NULL;
 	}
 	if (l == sizeof xname) {
-		if (! (fexpm & FEXP_SILENT))
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr,
 				tr(83, "\"%s\": Expansion buffer overflow.\n"),
 				name);
 		return NULL;
 	}
 	xname[l] = 0;
-	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)
+	for (cp = &xname[l - 1]; *cp == '\n' && cp > xname; --cp)
 		;
 	cp[1] = '\0';
-	if (! (fexpm & FEXP_MULTIOK) && strchr(xname, ' ') &&
+	if (!(fexpm & FEXP_MULTIOK) && strchr(xname, ' ') &&
 			stat(xname, &sbuf) < 0) {
-		if (! (fexpm & FEXP_SILENT))
+		if (!(fexpm & FEXP_SILENT))
 			fprintf(stderr, tr(84, "\"%s\": Ambiguous.\n"), name);
 		return NULL;
 	}

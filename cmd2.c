@@ -576,18 +576,12 @@ undeletecmd(void *v)
 }
 
 #ifdef HAVE_DEBUG
-/*
- * Interactively dump core on "core"
- */
-/*ARGSUSED*/
+/* Interactively dump core on "core" */
 FL int
 core(void *v)
 {
-	int pid;
-# ifdef	WCOREDUMP
-	extern int wait_status;
-# endif
-	(void)v;
+	int pid, waits;
+	UNUSED(v);
 
 	switch (pid = fork()) {
 	case -1:
@@ -597,16 +591,16 @@ core(void *v)
 		abort();
 		_exit(1);
 	}
-	(void)printf(tr(31, "Okie dokie"));
-	(void)fflush(stdout);
-	(void)wait_child(pid);
+	printf(tr(31, "Okie dokie"));
+	fflush(stdout);
+	wait_child(pid, &waits);
 # ifdef	WCOREDUMP
-	if (WCOREDUMP(wait_status))
-		(void)printf(tr(32, " -- Core dumped.\n"));
+	if (WCOREDUMP(waits))
+		printf(tr(32, " -- Core dumped.\n"));
 	else
-		(void)printf(tr(33, " -- Can't dump core.\n"));
+		printf(tr(33, " -- Can't dump core.\n"));
 # endif
-	return (0);
+	return 0;
 }
 
 static void

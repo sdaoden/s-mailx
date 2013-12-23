@@ -383,15 +383,16 @@ Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 	return fp;
 }
 
-FL int
+FL bool_t
 Pclose(FILE *ptr, bool_t dowait)
 {
-	int pid;
 	sigset_t nset, oset;
+	bool_t rv = FAL0;
+	int pid;
 
 	pid = file_pid(ptr);
 	if (pid < 0)
-		return 0;
+		goto jleave;
 	unregister_file(ptr);
 	fclose(ptr);
 	if (dowait) {
@@ -399,11 +400,14 @@ Pclose(FILE *ptr, bool_t dowait)
 		sigaddset(&nset, SIGINT);
 		sigaddset(&nset, SIGHUP);
 		sigprocmask(SIG_BLOCK, &nset, &oset);
-		pid = wait_child(pid);
+		rv = wait_child(pid, NULL);
 		sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-	} else
+	} else {
 		free_child(pid);
-	return pid;
+		rv = TRU1;
+	}
+jleave:
+	return rv;
 }
 
 FL void
@@ -607,7 +611,7 @@ wait_command(int pid)
 {
 	int rv = 0;
 
-	if (wait_child(pid) < 0) {
+	if (!wait_child(pid, NULL)) {
 		if (boption("bsdcompat") || boption("bsdmsgs"))
 			fprintf(stderr, tr(154, "Fatal error in process.\n"));
 		rv = -1;
@@ -665,8 +669,6 @@ jagain:
 		goto jagain;
 }
 
-int wait_status;
-
 /*
  * Mark a child as don't care.
  */
@@ -689,12 +691,12 @@ free_child(int pid)
 	sigprocmask(SIG_SETMASK, &oset, NULL);
 }
 
-/* Wait for a specific child to die */
-FL int
-wait_child(int pid)
+FL bool_t
+wait_child(int pid, int *wait_status)
 {
 	sigset_t nset, oset;
 	struct child *cp;
+	int ws;
 
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
@@ -703,10 +705,12 @@ wait_child(int pid)
 	cp = findchild(pid);
 	while (!cp->done)
 		sigsuspend(&oset);
-	wait_status = cp->status;
+	ws = cp->status;
 	delchild(cp);
 
 	sigprocmask(SIG_SETMASK, &oset, NULL);
 
-	return ((!WIFEXITED(wait_status) || WEXITSTATUS(wait_status)) ? -1 : 0);
+	if (wait_status != NULL)
+		*wait_status = ws;
+	return (WIFEXITED(ws) && WEXITSTATUS(ws) == 0);
 }

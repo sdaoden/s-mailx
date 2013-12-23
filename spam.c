@@ -326,7 +326,7 @@ jleave:
 
    if (state & _RUNNING) {
       state &= ~_RUNNING;
-      if (wait_child(pid) == 0)
+      if (wait_child(pid, NULL))
          state |= _GOODRUN;
    }
 
