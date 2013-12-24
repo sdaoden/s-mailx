@@ -707,11 +707,12 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_count + 3 >= oargs_size)
+         if (oargs_count + 5 >= oargs_size)
             oargs_size = _grow_cpp(&oargs, oargs_size, oargs_count);
          oargs[oargs_count++] = "dot";
          oargs[oargs_count++] = "emptystart";
          oargs[oargs_count++] = "noheader";
+         oargs[oargs_count++] = "quiet";
          oargs[oargs_count++] = "sendwait";
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;
