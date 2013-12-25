@@ -407,17 +407,25 @@ _parse_from_(struct message *mp, char date[FROM_DATEBUF])
 static char *
 __subject_trim(char *s)
 {
+	struct {
+		ui8_t	len;
+		char	dat[7];
+	} const *pp, ignored[] = { /* TODO make ignore list configurable */
+		{ 3, "re:" }, { 4, "fwd:" },
+		{ 3, "aw:" }, { 5, "antw:" },
+		{ 0, "" }
+	};
+jouter:
 	while (*s != '\0') {
 		while (spacechar(*s))
 			++s;
-		if (is_asccaseprefix("re:", s)) {
-			s += 3;
-			continue;
-		}
-		if (is_asccaseprefix("fwd:", s)) {
-			s += 4;
-			continue;
-		}
+		/* TODO While it is maybe ok not to MIME decode these, we
+		 * TODO should skip =?..?= at the beginning? */
+		for (pp = ignored; pp->len > 0; ++pp)
+			if (is_asccaseprefix(pp->dat, s)) {
+				s += pp->len;
+				goto jouter;
+			}
 		break;
 	}
 	return s;
@@ -426,33 +434,27 @@ __subject_trim(char *s)
 static char *
 _get_subject(struct message *mp, bool_t threaded)
 {
+	/* XXX NOTE: because of efficiency reasons we simply ignore any encoded
+	 * XXX parts and use ASCII case-insensitive comparison */
 	struct str in, out;
+	struct message *xmp;
 	char *rv = (char*)-1, *ms, *mso, *os;
 
 	if ((ms = hfield1("subject", mp)) == NULL)
 		goto jleave;
 
-	if (! threaded || mp->m_level == 0)
+	if (!threaded || mp->m_level == 0)
 		goto jconv;
 
 	/* In a display thread - check wether this message uses the same
 	 * Subject: as it's parent or elder neighbour, suppress printing it if
 	 * this is the case.  To extend this a bit, ignore any leading Re: or
-	 * Fwd: plus follow-up WS; XXX NOTE: because of efficiency reasons we
-	 * XXX simply ignore any encoded parts and use ASCII case-insensitive
-	 * XXX comparison */
+	 * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
 	mso = __subject_trim(ms);
-
-	if (mp->m_elder != NULL &&
-			(os = hfield1("subject", mp->m_elder)) != NULL &&
-			asccasecmp(mso, __subject_trim(os)) == 0)
-		goto jleave;
-
-	if (mp->m_parent != NULL &&
-			(os = hfield1("subject", mp->m_parent)) != NULL &&
-			asccasecmp(mso, __subject_trim(os)) == 0)
-		goto jleave;
-
+	for (xmp = mp; (xmp = prev_in_thread(xmp)) != NULL;)
+		if (visible(xmp) && (os = hfield1("subject", xmp)) != NULL &&
+				asccasecmp(mso, __subject_trim(os)) == 0)
+			goto jleave;
 jconv:
 	in.s = ms;
 	in.l = strlen(ms);
@@ -865,25 +867,29 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 FL void
 printhead(int mesg, FILE *f, int threaded)
 {
-	int bsdflags, bsdheadline, sz;
 	char attrlist[30], *cp;
 	char const *fmt;
 
-	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
-		getenv("SYSV3") != NULL;
-	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-$" : "NUROSPMFAT+-$");
-	if ((cp = value("attrlist")) != NULL) {
-		sz = strlen(cp);
-		if (UICMP(32, sz, >, sizeof attrlist - 1))
-			sz = (int)sizeof attrlist - 1;
-		memcpy(attrlist, cp, sz);
+	if ((cp = voption("attrlist")) != NULL) {
+		size_t i = strlen(cp);
+		if (UICMP(32, i, >, sizeof attrlist - 1))
+			i = (int)sizeof attrlist - 1;
+		memcpy(attrlist, cp, i);
+	} else if (boption("bsdcompat") || boption("bsdflags") ||
+			getenv("SYSV3") != NULL) {
+		char const bsdattr[] = "NU  *HMFAT+-$";
+		memcpy(attrlist, bsdattr, sizeof bsdattr - 1);
+	} else {
+		char const pattr[] = "NUROSPMFAT+-$";
+		memcpy(attrlist, pattr, sizeof pattr - 1);
 	}
-	bsdheadline = value("bsdcompat") != NULL ||
-		value("bsdheadline") != NULL;
-	if ((fmt = value("headline")) == NULL)
-		fmt = bsdheadline ?
-			"%>%a%m %-20f  %16d %3l/%-5o %i%-S" :
-			"%>%a%m %-18f %16d %4l/%-5o %i%-s";
+
+	if ((fmt = voption("headline")) == NULL) {
+		fmt = ((boption("bsdcompat") || boption("bsdheadline"))
+			? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
+			: "%>%a%m %-18f %16d %4l/%-5o %i%-s");
+	}
+
 	hprf(fmt, mesg, f, threaded, attrlist);
 }
 
