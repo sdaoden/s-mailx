@@ -259,9 +259,8 @@ FL int         Scroll(void *v);
 FL int         screensize(void);
 FL int         from(void *v);
 
-/* Print out the header of a specific message.
- * Note: ensure to call time_current_update() before first use in cycle! */
-FL void        printhead(int mesg, FILE *f, int threaded);
+/* Print all message in between bottom and topx (including bottom) */
+FL void        print_headers(size_t bottom, size_t topx);
 
 FL int         pdot(void *v);
 FL int         more(void *v);
