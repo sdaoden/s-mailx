@@ -91,7 +91,8 @@ WANT_IDNA=1
 # Command line editing and -history.
 # S-nail actually supports three different command line editors, one builtin
 # and two fully fledged external libraries which may offer a slightly better
-# user experience at the cost of more memory usage and CPU time.
+# user experience at the cost of more memory usage and CPU time; also the
+# interactive behaviour may not be one-to-one to what is documented.
 # Note that these are tested in shown order, and each desired one must be
 # enabled by itself!
 # . WANT_READLINE
@@ -105,7 +106,7 @@ WANT_IDNA=1
 WANT_READLINE=0
 WANT_EDITLINE=0
 WANT_NCL=1
-# For all command line editors we optionally support history
+# For all command line editors we optionally support history management
 WANT_HISTORY=1
 # For the NCL command line editor we optionally support "expand-on-tabulator".
 # Turning it off shrinks the binary.  Please see the respective manual entry

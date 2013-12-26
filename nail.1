@@ -87,7 +87,6 @@
 .\" --  >8  --  8<  --
 .\"
 .Sh DESCRIPTION
-
 \*(UA is a mail processing system with a command syntax reminiscent of
 .Xr ed 1
 with lines replaced by messages.
@@ -596,10 +595,17 @@ Unexamined messages go back to the post office.
 (Also see the
 .Fl f
 option above.)
+When command line history is tracked, an updated history file is
+written.
+None of these actions is performed when the command
+.Ic exit
+(`x') is used instead of
+.Ic quit
+(`q').
 .\"
 .\" --  >8  --  8<  --
 .Ss "Personal and systemwide distribution lists"
-It is also possible to create personal distribution lists so that,
+It is possible to create personal distribution lists so that,
 for instance, the user can send mail to `cohorts'
 and have it go to a group of people.
 Such lists can be defined via the
@@ -613,19 +619,18 @@ Using
 .Ic alias
 without arguments lists all the currently known aliases.
 .Pp
-System wide distribution lists can be created by editing
+Please note that this mechanism has nothing in common with the system
+wide aliases that may be used by the local MTA (mail-transfer-agent)
+and are often tracked in a file
 .Pa /etc/aliases
-(see
+(and documented in
 .Xr aliases 5
 and
 .Xr sendmail 1 Ns
-),
-which are kept in a different syntax and will be used by the MTA
-(mail-transfer-agent) rather than by \*(UA.
+).
 Personal aliases will be expanded by \*(UA before the message is sent.
-System wide aliases are not expanded when the mail is sent by \*(UA,
-but any reply returned to the machine will have the system wide alias
-expanded as all mail goes through the MTA.
+They are a convenient alternative to specifying each addressee by
+itself.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Recipient address specifications"
@@ -794,6 +799,9 @@ One may link against fully-fledged external libraries
 .Xr editline 3 Ns
 ) or use the \*(UA command line editor instead, which should work in all
 environments which comply to ISO C (ISO/IEC 9899:1990/Amendment 1:1995).
+When an external library is used, interactive behaviour of \*(UA relies
+on that library and may not correspond one-to-one to what is described
+in this manual.
 .Pp
 Regardless of the actually used command line editor history entries
 will be created for lines entered in command mode only, and creation of
@@ -1146,7 +1154,10 @@ Marks the end of an if statement.
 .It Ic exit
 (ex or x) Effects an immediate return to the Shell without modifying the
 user's system mailbox, his `mbox' file, or his edit file in
-.Fl f .
+.Fl f ,
+as well as a possibly tracked command line editor history file.
+.It Ic features
+Print the list of features that have been compiled into \*(UA.
 .It Ic file
 (fi) The same as
 .Ic folder .
@@ -1397,9 +1408,9 @@ or
 .Ic define ,
 and is interpreted as a boolean (value `0' means false, everything
 else true).
-Any option setting that is performed after `localopts' has been turned
-on will be reset to the value it had before the macro has been called
-(or the `account' is switched).
+Any option that had been set while `localopts' was in effect will be
+reverted to its former value once the block is left / the `account'
+is switched.
 .Bd -literal -offset indent
 define temporary_settings {
 	set global_option1
