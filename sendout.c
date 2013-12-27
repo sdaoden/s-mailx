@@ -941,7 +941,7 @@ jstop:		savedeadletter(input, 0);
 	}
 	if ((options & (OPT_DEBUG|OPT_VERBOSE|OPT_BATCH_FLAG)) ||
 			value("sendwait")) {
-		if (wait_child(pid) == 0)
+		if (wait_child(pid, NULL))
 			ok = OKAY;
 		else
 			_senderror = TRU1;

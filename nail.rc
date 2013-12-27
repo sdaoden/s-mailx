@@ -76,7 +76,7 @@ set keep
 #set keep-content-length
 
 # A nice prompt for ISO 6429/ECMA-48 terminals
-#set prompt="\033[31m?\?[\$ \@]? \033[0m"
+#set prompt="\033[31m?\?[\$ \@]\& \033[0m"
 
 # Automatically quote the text of the message that is responded to.
 set quote

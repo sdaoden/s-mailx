@@ -164,7 +164,10 @@ _vfree(char *cp)
 static bool_t
 _check_special_vars(char const *name, bool_t enable, char **val)
 {
-   /* TODO _check_special_vars --> value cache */
+   /* TODO _check_special_vars --> value cache
+    * TODO in general: some may not be unset etc. etc.  All this shouldn't
+    * TODO be handled like this, but through a generic value-cache interface,
+    * TODO which may apply constaints *before* use; also see below  */
    char *cp = NULL;
    bool_t rv = TRU1;
    int flag = 0;
@@ -172,15 +175,13 @@ _check_special_vars(char const *name, bool_t enable, char **val)
    if (strcmp(name, "debug") == 0)
       flag = OPT_DEBUG;
    else if (strcmp(name, "header") == 0)
-      flag = OPT_N_FLAG, enable = ! enable;
+      flag = OPT_N_FLAG, enable = !enable;
    else if (strcmp(name, "skipemptybody") == 0)
       flag = OPT_E_FLAG;
    else if (strcmp(name, "verbose") == 0)
       flag = OPT_VERBOSE;
-   else if (strcmp(name, "prompt") == 0)
-      flag = OPT_NOPROMPT, enable = ! enable;
    else if (strcmp(name, "folder") == 0) {
-      rv = var_folder_updated(*val, &cp);
+      rv = (val == NULL || var_folder_updated(*val, &cp));
       if (rv && cp != NULL) {
          _vfree(*val);
          /* It's smalloc()ed, but ensure we don't leak */
@@ -192,16 +193,23 @@ _check_special_vars(char const *name, bool_t enable, char **val)
       }
    }
 #ifdef HAVE_NCL
-   else if (strcmp(name, "line-editor-cursor-right") == 0) {
+   else if (strcmp(name, "line-editor-cursor-right") == 0 &&
+         (rv = (val != NULL && *val != NULL))) {
       char const *x = cp = *val;
       int c;
-      while (*x != '\0') {
-         c = expand_shell_escape(&x, FAL0);
-         if (c < 0)
-            break;
-         *cp++ = (char)c;
+
+      /* Set with no value? *//*TODO invalid,but no way to "re-unset";see above
+       * TODO adjust tty.c when line-editor-cursor-right is properly handled in
+       * TODO here */
+      if (*x != '\0') {
+         do {
+            c = expand_shell_escape(&x, FAL0);
+            if (c < 0)
+               break;
+            *cp++ = (char)c;
+         } while (*x != '\0');
+         *cp++ = '\0';
       }
-      *cp++ = '\0';
    }
 #endif
 
@@ -533,9 +541,10 @@ _localopts_unroll(struct var **vapp)
    _localopts = save_los;
 }
 
-FL void
+FL bool_t
 var_assign(char const *name, char const *val)
 {
+   bool_t err;
    struct var *vp;
    ui_it h;
    char *oval;
@@ -543,7 +552,7 @@ var_assign(char const *name, char const *val)
    if (val == NULL) {
       bool_t tmp = unset_allow_undefined;
       unset_allow_undefined = TRU1;
-      var_unset(name);
+      err = var_unset(name);
       unset_allow_undefined = tmp;
       goto jleave;
    }
@@ -567,7 +576,7 @@ var_assign(char const *name, char const *val)
    vp->v_value = _vcopy(val);
 
    /* Check if update allowed XXX wasteful on error! */
-   if (! _check_special_vars(name, TRU1, &vp->v_value)) {
+   if ((err = !_check_special_vars(name, TRU1, &vp->v_value))) {
       char *cp = vp->v_value;
       vp->v_value = oval;
       oval = cp;
@@ -575,13 +584,13 @@ var_assign(char const *name, char const *val)
    if (*oval != '\0')
       _vfree(oval);
 jleave:
-   ;
+   return err;
 }
 
-FL int
+FL bool_t
 var_unset(char const *name)
 {
-   int ret = 1;
+   int err = TRU1;
    ui_it h;
    struct var *vp;
 
@@ -590,7 +599,7 @@ var_unset(char const *name)
    vp = _lookup(name, h, TRU1);
 
    if (vp == NULL) {
-      if (! sourcing && ! unset_allow_undefined) {
+      if (!sourcing && !unset_allow_undefined) {
          fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), name);
          goto jleave;
       }
@@ -604,11 +613,12 @@ var_unset(char const *name)
       _vfree(vp->v_value);
       free(vp);
 
-      _check_special_vars(name, FAL0, NULL);
+      if (!_check_special_vars(name, FAL0, NULL))
+         goto jleave;
    }
-   ret = 0;
+   err = FAL0;
 jleave:
-   return ret;
+   return err;
 }
 
 FL char *

@@ -72,10 +72,8 @@
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_MBRTOWC
+#ifdef HAVE_C90AMEND1
 # include <wchar.h>
-#endif
-#ifdef HAVE_WCTYPE_H
 # include <wctype.h>
 #endif
 
@@ -461,8 +459,7 @@ enum user_options {
 	OPT_SENDMODE	= 1u<<14,	/* Usage case forces send mode */
 	OPT_INTERACTIVE	= 1u<<15,	/* isatty(0) */
 	OPT_TTYIN	= OPT_INTERACTIVE,
-	OPT_TTYOUT	= 1u<<16,
-	OPT_NOPROMPT	= 1u<<17	/* *noprompt* has been set */
+	OPT_TTYOUT	= 1u<<16
 };
 #define IS_TTY_SESSION() \
 	((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -736,6 +733,12 @@ enum mflag {
 	MSPAM		= (1<<27)	/* message is classified as spam */
 };
 
+/* Oft-used mask values */
+#define MMNORM       (MDELETED | MSAVED | MHIDDEN) /* Save and deleted bits */
+#define MMNDEL       (MDELETED | MHIDDEN)          /* Only deleted bit */
+
+#define visible(mp)  (((mp)->m_flag & MMNDEL) == 0)
+
 struct mimepart {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the part */
@@ -819,12 +822,6 @@ enum argtype {
 	A	= 010000	/* Needs an active mailbox */
 };
 
-/*
- * Oft-used mask values
- */
-#define MMNORM	(MDELETED|MSAVED|MHIDDEN) /* Look at save *and* delete bits */
-#define MMNDEL		(MDELETED|MHIDDEN)	/* Look only at deleted bit */
-
 enum gfield {
 	GTO	= 1,		/* Grab To: line */
 	GSUBJECT= 2,		/* Likewise, Subject: line */
@@ -848,8 +845,6 @@ enum gfield {
 };
 
 #define GMASK		(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
-
-#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN)) == 0)
 
 /*
  * Structure used to pass about the current state of a message (header).
@@ -1271,6 +1266,7 @@ VL char const     weekday_names[7 + 1][4];
 
 VL char const     uagent[];               /* User agent */
 VL char const     version[];              /* The version string */
+VL char const     features[];             /* The "feature string" */
 #endif
 
 /*

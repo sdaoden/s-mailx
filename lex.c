@@ -73,7 +73,7 @@ static struct cmd_ghost *_cmd_ghosts;
 /* Update mailname (if name != NULL) and displayname, return wether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
-#ifdef HAVE_MBLEN /* TODO unite __narrow_{pre,suf}fix() into one function! */
+#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_{pre,suf}fix() into one fun! */
 SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
@@ -92,6 +92,12 @@ static int     _unghost(void *v);
 static int     _pcmdlist(void *v);
 static int     __pcmd_cmp(void const *s1, void const *s2);
 
+/* Print the binaries compiled-in features */
+static int     _features(void *v);
+
+/* Print the binaries version number */
+static int     _version(void *v);
+
 static void stop(int s);
 static void hangup(int s);
 
@@ -100,7 +106,7 @@ static struct cmd const _cmd_tab[] = {
 #include "cmd_tab.h"
 };
 
-#ifdef HAVE_MBLEN
+#ifdef HAVE_C90AMEND1
 SINLINE size_t
 __narrow_prefix(char const *cp, size_t maxl)
 {
@@ -151,7 +157,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 	}
 	return ok;
 }
-#endif /* HAVE_MBLEN */
+#endif /* HAVE_C90AMEND1 */
 
 static bool_t
 _update_mailname(char const *name)
@@ -195,7 +201,7 @@ _update_mailname(char const *name)
       memcpy(dispp, mailp, i + 1);
    else {
       /* Avoid disrupting multibyte sequences (if possible) */
-#ifndef HAVE_MBLEN
+#ifndef HAVE_C90AMEND1
       j = sizeof(displayname) / 3 - 1;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
@@ -376,6 +382,22 @@ _pcmdlist(void *v)
    return 0;
 }
 
+static int
+_features(void *v)
+{
+   UNUSED(v);
+   printf(tr(523, "Features: %s\n"), features);
+   return 0;
+}
+
+static int
+_version(void *v)
+{
+   UNUSED(v);
+   printf(tr(111, "Version %s\n"), version);
+   return 0;
+}
+
 /*
  * Set up editing on the given file name.
  * If the first character of name is %, we are considered to be
@@ -473,7 +495,7 @@ setfile(char const *name, int nmail)
 	 * the message[] data structure.
 	 */
 
-	holdsigs(); /* TODO note on this one in quit.c:quit() */
+	hold_sigs(); /* TODO note on this one in quit.c:quit() */
 	if (shudclob && !nmail)
 		quit();
 #ifdef HAVE_SOCKETS
@@ -533,7 +555,7 @@ setfile(char const *name, int nmail)
 	}
 	mailsize = fsize(ibuf);
 	if (nmail && (size_t)mailsize <= offset) {
-		relsesigs();
+		rele_sigs();
 		goto jnonmail;
 	}
 	setptr(ibuf, offset);
@@ -543,7 +565,7 @@ setfile(char const *name, int nmail)
 		sort((void *)-1);
 	}
 	Fclose(ibuf);
-	relsesigs();
+	rele_sigs();
 	if (!nmail)
 		sawcom = FAL0;
 	if ((!edit || nmail) && msgCount == 0) {
@@ -555,10 +577,9 @@ nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
 		}
 		return 1;
 	}
-	if (nmail) {
+	if (nmail)
 		newmailinfo(omsgCount);
-	}
-	return(0);
+	return 0;
 }
 
 FL int
@@ -582,16 +603,8 @@ newmailinfo(int omsgCount)
 		printf(tr(224, "Loaded %d messages.\n"), msgCount);
 	callhook(mailname, 1);
 	mdot = getmdot(1);
-	if (value("header")) {
-#ifdef HAVE_IMAP
-		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(omsgCount+1, msgCount);
-#endif
-		time_current_update(&time_current, FAL0);
-		while (++omsgCount <= msgCount)
-			if (visible(&message[omsgCount-1]))
-				printhead(omsgCount, stdout, 0);
-	}
+	if (value("header"))
+		print_headers(omsgCount + 1, msgCount);
 	return mdot;
 }
 
@@ -1205,19 +1218,6 @@ getmdot(int nmail)
 		mdot = mp < &message[msgCount] ? mp-&message[0]+1 : 1;
 	}
 	return mdot;
-}
-
-/*
- * Print the current version number.
- */
-
-/*ARGSUSED*/
-FL int
-pversion(void *v)
-{
-   (void)v;
-   printf(tr(111, "Version %s\n"), version);
-   return 0;
 }
 
 FL void

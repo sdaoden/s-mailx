@@ -115,8 +115,6 @@
      DS(376, "Print all variables, or set variables to argument(s)") },
    { "shell", dosh, (I | NOLIST), 0, 0
      DS(378, "Invoke an interactive shell") },
-   { "version", pversion, (M | NOLIST), 0, 0
-     DS(413, "Print the MUA version") },
    { "unalias", ungroup, (M | RAWLIST), 0, 1000
      DS(387, "Un\"alias\" <name-list>") },
    { "write", cwrite, (A | STRLIST), 0, 0
@@ -325,7 +323,7 @@
      DS(393, "Un\"fwdignore\" <header-fields>") },
    { "unfwdretain", unfwdretain, (M | RAWLIST), 0, 1000
      DS(394, "Un\"fwdretain\" <header-fields>") },
-   { "mimetypes", cmimetypes, (M | RAWLIST), 0, 1000
+   { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 1000
      DS(418, "Either <show> (default) or <clear> the mime.types cache") },
    { "spamrate", cspam_rate, (A | M | R | MSGLIST), 0, 0
      DS(419, "Rate <message-list> via the spam detector") },
@@ -349,6 +347,10 @@
      DS(428, "Print current working directory (CWD)") },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
+   { "features", &_features, (M | NOLIST), 0, 0
+     DS(429, "Show features that are compiled into the MUA") },
+   { "version", &_version, (M | NOLIST), 0, 0
+     DS(413, "Print the MUA version") },
 #ifdef HAVE_DEBUG
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },

@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Dec 17, 2013
+.Dd Dec 27, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -87,7 +87,6 @@
 .\" --  >8  --  8<  --
 .\"
 .Sh DESCRIPTION
-
 \*(UA is a mail processing system with a command syntax reminiscent of
 .Xr ed 1
 with lines replaced by messages.
@@ -232,9 +231,11 @@ The message to be sent is expected to contain a message header with
 giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
 .It Fl u Ar user
-Impersonate as
-.Ar user .
-Note that this has consequences in respect to expansions of `%' etc.
+Read the system mailbox of
+.Ar user
+(appropriate privileges presumed), and `assume to be'
+.Ar user
+in some aspects, e.g. in respect to expansions of `%' etc.
 Also see
 .Ev USER .
 .It Fl V
@@ -251,6 +252,7 @@ This sets multiple options to prepare \*(UA for working in batch mode
 .Va dot ,
 .Va emptystart ,
 .Va noheader ,
+.Va quiet ,
 .Va sendwait ;
 it also enables processing of tilde escapes.
 E.g., the following should send an email message to `alias'.
@@ -554,10 +556,28 @@ If the previous command line contained more than one independent
 criterion then the last of those criteria is used.
 .El
 .Pp
-A practical method to read a set of messages is to issue a
-.Ic from
-command with the search criteria first to check for appropriate messages,
-and to read each single message then by typing ``' repeatedly.
+\*(OP An IMAP-style search can be turned into a case-insensitive regular
+expression search (see
+.Xr re_format 7 Ns
+) in its entirety by using a slash `/' as the first character after the
+opening parenthesis, as in
+.Bd -literal -offset indent
+   ? f (/or subject ^\\[S-nail (subject ^\\[nail-devel))
+.Ed
+.Pp
+On the lowest nesting level each expression is treated by itself:
+.Bd -literal -offset indent
+   ? f (/subject ^\\[S-nail) (/subject ^\\[nail-devel)
+.Ed
+.Pp
+Of course, now that we have regular expression support those should be
+written much more efficiently as
+.Bd -literal -offset indent
+   ? f (/subject "^\\\\[(S-nail|nail-devel)")
+.Ed
+.Pp
+Note that regular expression searches are always performed on local
+storage, messages will be downloaded first as necessary.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Replying to or originating mail"
@@ -593,10 +613,17 @@ Unexamined messages go back to the post office.
 (Also see the
 .Fl f
 option above.)
+When command line history is tracked, an updated history file is
+written.
+None of these actions is performed when the command
+.Ic exit
+(`x') is used instead of
+.Ic quit
+(`q').
 .\"
 .\" --  >8  --  8<  --
 .Ss "Personal and systemwide distribution lists"
-It is also possible to create personal distribution lists so that,
+It is possible to create personal distribution lists so that,
 for instance, the user can send mail to `cohorts'
 and have it go to a group of people.
 Such lists can be defined via the
@@ -610,19 +637,18 @@ Using
 .Ic alias
 without arguments lists all the currently known aliases.
 .Pp
-System wide distribution lists can be created by editing
+Please note that this mechanism has nothing in common with the system
+wide aliases that may be used by the local MTA (mail-transfer-agent)
+and are often tracked in a file
 .Pa /etc/aliases
-(see
+(and documented in
 .Xr aliases 5
 and
 .Xr sendmail 1 Ns
-),
-which are kept in a different syntax and will be used by the MTA
-(mail-transfer-agent) rather than by \*(UA.
+).
 Personal aliases will be expanded by \*(UA before the message is sent.
-System wide aliases are not expanded when the mail is sent by \*(UA,
-but any reply returned to the machine will have the system wide alias
-expanded as all mail goes through the MTA.
+They are a convenient alternative to specifying each addressee by
+itself.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Recipient address specifications"
@@ -680,9 +706,9 @@ where `type/subtype' are strings describing the file contents,
 and `extension' is the part of a filename starting after the last dot.
 Any line not immediately beginning with an ASCII alphabetical character
 is ignored by \*(UA.
-If \*(UA cannot find any MIME type files,
-it will use a restricted set of builtin mappings.
-The
+The variable
+.Va mimetypes-load-control
+can be used to control the sources of MIME types, and the
 .Ic mimetypes
 command can be used to show the list of mime types known to \*(UA.
 If there is a match with the `extension' of the file to attach,
@@ -690,6 +716,8 @@ the given `type/subtype' pair is used.
 Otherwise, or if the filename has no extension,
 the content types `text/plain' or `application/octet-stream' are used,
 dependent upon file content inspection.
+Also see
+.Va mime-allow-text-controls .
 .\"
 .\" --  >8  --  8<  --
 .Ss "Character sets"
@@ -789,6 +817,9 @@ One may link against fully-fledged external libraries
 .Xr editline 3 Ns
 ) or use the \*(UA command line editor instead, which should work in all
 environments which comply to ISO C (ISO/IEC 9899:1990/Amendment 1:1995).
+When an external library is used, interactive behaviour of \*(UA relies
+on that library and may not correspond one-to-one to what is described
+in this manual.
 .Pp
 Regardless of the actually used command line editor history entries
 will be created for lines entered in command mode only, and creation of
@@ -879,7 +910,7 @@ prints a sorted list of available commands, and the command
 when given an argument, will show a documentation string for the
 expansion, as in
 .Ns ` Ns Ic ? Ns Ar unc Ns ' ;
-this mode is \*(OP, though.)
+documentation strings are however \*(OP.)
 .Pp
 For commands which take message lists as arguments,
 if no message list is given,
@@ -1141,7 +1172,10 @@ Marks the end of an if statement.
 .It Ic exit
 (ex or x) Effects an immediate return to the Shell without modifying the
 user's system mailbox, his `mbox' file, or his edit file in
-.Fl f .
+.Fl f ,
+as well as a possibly tracked command line editor history file.
+.It Ic features
+Print the list of features that have been compiled into \*(UA.
 .It Ic file
 (fi) The same as
 .Ic folder .
@@ -1392,9 +1426,9 @@ or
 .Ic define ,
 and is interpreted as a boolean (value `0' means false, everything
 else true).
-Any option setting that is performed after `localopts' has been turned
-on will be reset to the value it had before the macro has been called
-(or the `account' is switched).
+Any option that had been set while `localopts' was in effect will be
+reverted to its former value once the block is left / the `account'
+is switched.
 .Bd -literal -offset indent
 define temporary_settings {
 	set global_option1
@@ -2244,9 +2278,10 @@ command.
 Sets some cosmetical features to traditional BSD style;
 has the same affect as setting
 .Va askatend
-and all other variables prefixed with `bsd' as well as setting
+and all other variables prefixed with `bsd';
+it also changes the meaning of the \*(UA specific `\\&'
 .Va prompt
-to `&\ '.
+escape sequence.
 .It Va bsdflags
 Changes the letters printed in the first column of a header summary
 to traditional BSD style.
@@ -3087,18 +3122,21 @@ a `NOOP' command to be sent each `value' seconds if no other operation
 is performed.
 .It Va prompt
 The string printed when a command is accepted.
-The prompt may be disabled by either setting this to the empty string
+Prompting may be prevented by either setting this to the null string
 or by setting
 .Va noprompt .
-Defaults to `?\ ', or to `&\ ' if the
-.Va bsdcompat
-variable is set.
 The same XSI escape sequences that are understood by the
 .Ic echo
 command may be used within
 .Va prompt .
 .Pp
-\*(UA specific escape sequence extensions are:
+In addition, the following \*(UA specific additional sequences are
+understood:
+`\\&', which expands to `?' unless
+.Va bsdcompat
+is set, in which case it expands to `&';
+note that "\\& " is the default value for
+.Va prompt .
 `\\?', which will expand to `1' if the last command failed, and to `0'
 otherwise,
 `\\$', which will expand to the name of the currently active
@@ -4310,6 +4348,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr aliases 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
+.Xr re_format 7 ,
 .Xr mailwrapper 8
 .\"
 .\" --  >8  --  8<  --

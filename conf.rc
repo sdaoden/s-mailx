@@ -20,10 +20,11 @@
 # S-nail automatically detects compilers and has a set of known compiler flags
 # which work well.  Since users should be able to define their own $CC, $CFLAGS
 # and $LDFLAGS, however, it only uses the detected environment if the user
-# has either not set those values at all, are has set them to the empty value.
-# To always force use of S-nail build system detected values, set WANT_AUTOCC.
-# Note: it is possible to add to the detected values by setting ADDCFLAGS=
-# and/or ADDLDFLAGS= (with proper configuration-changed detection)!
+# forces their usage via setting WANT_AUTOCC=1.  (Except for $CC, which is
+# always set if it's empty or set to "cc".)
+# Note: it is possible to add to the detected values by setting ADDCFLAGS="xy"
+# and/or ADDLDFLAGS="xy" -- "configuration-has-changed" detection will work on
+# the final $CC / $CFLAGS / $LDFLAGS, and thus will include those additions
 WANT_AUTOCC=0
 
 # It is possible to compile S-nail as a "single-source", meaning that all
@@ -87,10 +88,16 @@ WANT_ICONV=1
 # This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>)
 WANT_IDNA=1
 
+# Regular expression (re_format(7)) support for IMAP-style searches,
+# (then) triggerable by using a slash as the second character _of the complete
+# search expression_: e.g., `(/from .*bsd.*)'.
+WANT_REGEX=1
+
 # Command line editing and -history.
 # S-nail actually supports three different command line editors, one builtin
 # and two fully fledged external libraries which may offer a slightly better
-# user experience at the cost of more memory usage and CPU time.
+# user experience at the cost of more memory usage and CPU time; also the
+# interactive behaviour may not be one-to-one to what is documented.
 # Note that these are tested in shown order, and each desired one must be
 # enabled by itself!
 # . WANT_READLINE
@@ -104,7 +111,7 @@ WANT_IDNA=1
 WANT_READLINE=0
 WANT_EDITLINE=0
 WANT_NCL=1
-# For all command line editors we optionally support history
+# For all command line editors we optionally support history management
 WANT_HISTORY=1
 # For the NCL command line editor we optionally support "expand-on-tabulator".
 # Turning it off shrinks the binary.  Please see the respective manual entry
@@ -117,7 +124,7 @@ WANT_SPAM=1
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may
-# disable this feature.
+# disable this feature
 WANT_DOCSTRINGS=1
 
 # A simple line-based quoting mechanism can be made available via the

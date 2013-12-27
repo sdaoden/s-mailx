@@ -60,58 +60,96 @@
 #endif
 
 /* {hold,rele}_all_sigs() */
-static size_t		_alls_depth;
-static sigset_t	_alls_nset, _alls_oset;
+static size_t     _alls_depth;
+static sigset_t   _alls_nset, _alls_oset;
+
+/* {hold,rele}_sigs() */
+static size_t     _hold_sigdepth;
+static sigset_t   _hold_nset, _hold_oset;
 
 FL void
 panic(char const *format, ...)
 {
-	va_list ap;
+   va_list ap;
 
-	fprintf(stderr, tr(1, "Panic: "));
+   fprintf(stderr, tr(1, "Panic: "));
 
-	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	va_end(ap);
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
 
-	fputs("\n", stderr);
-	fflush(stderr);
-	exit(EXIT_ERR);
+   fputs("\n", stderr);
+   fflush(stderr);
+   exit(EXIT_ERR);
 }
 
 #ifdef HAVE_DEBUG
 FL void
 warn(char const *format, ...)
 {
-	va_list ap;
+   va_list ap;
 
-	fprintf(stderr, tr(1, "Panic: "));
+   fprintf(stderr, tr(1, "Panic: "));
 
-	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	va_end(ap);
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
 
-	fputs("\n", stderr);
-	fflush(stderr);
+   fputs("\n", stderr);
+   fflush(stderr);
 }
 #endif
+
+FL sighandler_type
+safe_signal(int signum, sighandler_type handler)
+{
+   struct sigaction nact, oact;
+
+   nact.sa_handler = handler;
+   sigemptyset(&nact.sa_mask);
+   nact.sa_flags = 0;
+#ifdef SA_RESTART
+   nact.sa_flags |= SA_RESTART;
+#endif
+   return ((sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler);
+}
 
 FL void
 hold_all_sigs(void)
 {
-	if (_alls_depth++ == 0) {
-		sigfillset(&_alls_nset);
-		sigdelset(&_alls_nset, SIGKILL);
-		sigdelset(&_alls_nset, SIGSTOP);
-		sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
-	}
+   if (_alls_depth++ == 0) {
+      sigfillset(&_alls_nset);
+      sigdelset(&_alls_nset, SIGKILL);
+      sigdelset(&_alls_nset, SIGSTOP);
+      sigdelset(&_alls_nset, SIGCHLD);
+      sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
+   }
 }
 
 FL void
 rele_all_sigs(void)
 {
-	if (--_alls_depth == 0)
-		sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
+   if (--_alls_depth == 0)
+      sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
+}
+
+FL void
+hold_sigs(void)
+{
+   if (_hold_sigdepth++ == 0) {
+      sigemptyset(&_hold_nset);
+      sigaddset(&_hold_nset, SIGHUP);
+      sigaddset(&_hold_nset, SIGINT);
+      sigaddset(&_hold_nset, SIGQUIT);
+      sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
+   }
+}
+
+FL void
+rele_sigs(void)
+{
+   if (--_hold_sigdepth == 0)
+      sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
 }
 
 /*
@@ -163,7 +201,7 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 
 	np = nb = salloc(mb_cur_max * strlen(cp) + col + 1);
 	while (*cp) {
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCWIDTH)
+#ifdef HAVE_WCWIDTH
 		if (mb_cur_max > 1) {
 			wchar_t	wc;
 
@@ -174,7 +212,7 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 					n = 1;
 			}
 		} else
-#endif	/* HAVE_MBTOWC && HAVE_WCWIDTH */
+#endif
 		{
 			n = sz = 1;
 		}
@@ -358,104 +396,96 @@ nextprime(long n)
 FL int
 expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
-	char const *xs = *s;
-	int c, n;
+   char const *xs = *s;
+   int c, n;
 
-	if ((c = *xs & 0xFF) == '\0')
-		goto jleave;
-	++xs;
-	if (c != '\\')
-		goto jleave;
+   if ((c = *xs & 0xFF) == '\0')
+      goto jleave;
+   ++xs;
+   if (c != '\\')
+      goto jleave;
 
-	switch ((c = *xs & 0xFF)) {
-	case '\\':			break;
-	case 'a':	c = '\a';	break;
-	case 'b':	c = '\b';	break;
-	case 'c':	c = PROMPT_STOP;break;
-	case 'f':	c = '\f';	break;
-	case 'n':	c = '\n';	break;
-	case 'r':	c = '\r';	break;
-	case 't':	c = '\t';	break;
-	case 'v':	c = '\v';	break;
-	case '0':
-		for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
-			c <<= 3;
-			c |= *xs - '0';
-		}
-		goto jleave;
-	/* S-nail extension for nice (get)prompt(()) support */
-	case '?':
-	case '$':
-	case '@':
-		if (use_nail_extensions) {
-			switch (c) {
-			case '?':
-				c = exec_last_comm_error ? '1' : '0';
-				break;
-			case '$':
-				c = PROMPT_DOLLAR;
-				break;
-			case '@':
-				c = PROMPT_AT;
-				break;
-			}
-			break;
-		}
-		/* FALLTHRU */
-	case '\0':
-		/* A sole <backslash> at EOS is treated as-is! */
-		/* FALLTHRU */
-	default:
-		c = '\\';
-		goto jleave;
-	}
-	++xs;
+   switch ((c = *xs & 0xFF)) {
+   case '\\':                    break;
+   case 'a':   c = '\a';         break;
+   case 'b':   c = '\b';         break;
+   case 'c':   c = PROMPT_STOP;  break;
+   case 'f':   c = '\f';         break;
+   case 'n':   c = '\n';         break;
+   case 'r':   c = '\r';         break;
+   case 't':   c = '\t';         break;
+   case 'v':   c = '\v';         break;
+   case '0':
+      for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
+         c <<= 3;
+         c |= *xs - '0';
+      }
+      goto jleave;
+   /* S-nail extension for nice (get)prompt(()) support */
+   case '&':
+   case '?':
+   case '$':
+   case '@':
+      if (use_nail_extensions) {
+         switch (c) {
+         case '&':   c = boption("bsdcompat") ? '&' : '?';  break;
+         case '?':   c = exec_last_comm_error ? '1' : '0';  break;
+         case '$':   c = PROMPT_DOLLAR;                     break;
+         case '@':   c = PROMPT_AT;                         break;
+         }
+         break;
+      }
+      /* FALLTHRU */
+   case '\0':
+      /* A sole <backslash> at EOS is treated as-is! */
+      /* FALLTHRU */
+   default:
+      c = '\\';
+      goto jleave;
+   }
+   ++xs;
 jleave:
-	*s = xs;
-	return c;
+   *s = xs;
+   return c;
 }
 
 FL char *
 getprompt(void)
 {
-	static char buf[PROMPT_BUFFER_SIZE];
+   static char buf[PROMPT_BUFFER_SIZE];
 
-	char const *ccp;
+   char *cp = buf;
+   char const *ccp;
 
-	if (options & OPT_NOPROMPT)
-		buf[0] = '\0';
-	else if ((ccp = value("prompt")) == NULL) {
-		buf[0] = value("bsdcompat") ? '&' : '?';
-		buf[1] = ' ';
-		buf[2] = '\0';
-	} else {
-		char *cp;
+   if ((ccp = voption("prompt")) == NULL || *ccp == '\0')
+      goto jleave;
 
-		for (cp = buf; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
-			char const *a;
-			size_t l;
-			int c = expand_shell_escape(&ccp, TRU1);
-			if (c > 0) {
-				*cp = (char)c;
-				continue;
-			}
-			if (c == 0 || c == PROMPT_STOP)
-				break;
+   for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
+      char const *a;
+      size_t l;
+      int c = expand_shell_escape(&ccp, TRU1);
 
-			a = (c == PROMPT_DOLLAR) ? account_name : displayname;
-			if (a == NULL)
-				a = "";
-			l = strlen(a);
-			if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
-				*cp++ = '?';
-			else {
-				memcpy(cp, a, l);
-				cp += --l;
-			}
-		}
-		*cp = '\0';
-	}
-	return buf;
+      if (c > 0) {
+         *cp = (char)c;
+         continue;
+      }
+      if (c == 0 || c == PROMPT_STOP)
+         break;
+
+      a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+      if (a == NULL)
+         a = "";
+      l = strlen(a);
+      if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
+         *cp++ = '?';
+      else {
+         memcpy(cp, a, l);
+         cp += --l;
+      }
+   }
+jleave:
+   *cp = '\0';
+   return buf;
 }
 
 FL char *
@@ -697,7 +727,7 @@ makeprint(struct str const *in, struct str *out)
 	static int print_all_chars = -1;
 	char const *inp, *maxp;
 	char *outp;
-	size_t msz, dist;
+	size_t msz;
 
 	if (print_all_chars == -1)
 		print_all_chars = (value("print-all-chars") != NULL);
@@ -713,11 +743,13 @@ makeprint(struct str const *in, struct str *out)
 		goto jleave;
 	}
 
-#if defined (HAVE_MBTOWC) && defined (HAVE_WCTYPE_H)
+#ifdef HAVE_C90AMEND1
 	if (mb_cur_max > 1) {
 		char mbb[MB_LEN_MAX + 1];
 		wchar_t wc;
 		int i, n;
+	   size_t dist;
+
 		out->l = 0;
 		while (inp < maxp) {
 			if (*inp & 0200)
@@ -760,7 +792,7 @@ makeprint(struct str const *in, struct str *out)
 				*outp++ = mbb[i];
 		}
 	} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+#endif /* C90AMEND1 */
 	{
 		int c;
 		while (inp < maxp) {
@@ -810,9 +842,10 @@ FL size_t
 putuc(int u, int c, FILE *fp)
 {
 	size_t rv;
+   UNUSED(u);
 
-#if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
-	if (utf8 && u & ~(wchar_t)0177) {
+#ifdef HAVE_C90AMEND1
+	if (utf8 && (u & ~(wchar_t)0177)) {
 		char mbb[MB_LEN_MAX];
 		int i, n;
 		if ((n = wctomb(mbb, u)) > 0) {
@@ -827,7 +860,7 @@ putuc(int u, int c, FILE *fp)
 		else
 			rv = 0;
 	} else
-#endif	/* HAVE_MBTOWC && HAVE_WCTYPE_H */
+#endif
 		rv = (putc(c, fp) != EOF);
 	return rv;
 }

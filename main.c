@@ -81,6 +81,8 @@ VL char const        month_names[12 + 1][4] = {
 };
 VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
+/*VL char const        features[]; The "feature string" comes from config.h */
+
 VL sighandler_type   dflpipe = SIG_DFL;
 
 /* getopt(3) fallback implementation */
@@ -233,18 +235,51 @@ _startup(void)
       options |= OPT_TTYOUT;
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+
+   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
+   /* noallnet */
+   /* noappend */
+   assign("asksub", "");
+   /* noaskbcc */
+   /* noaskcc */
+   /* noautoprint */
+   /* nobang */
+   /* nocmd */
+   /* nocrt */
+   /* nodebug */
+   /* nodot */
+   /* assign("escape", "~"); TODO non-compliant */
+   /* noflipr */
+   /* nofolder */
    assign("header", "");
+   /* nohold */
+   /* noignore */
+   /* noignoreeof */
+   /* nokeep */
+   /* nokeepsave */
+   /* nometoo */
+   /* noonehop -- Note: we ignore this one */
+   /* nooutfolder */
+   /* nopage */
+   assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
+   /* noquiet */
+   /* norecord */
    assign("save", "");
+   /* nosendwait */
+   /* noshowto */
+   /* nosign */
+   /* noSign */
+   /* assign("toplines", "5"); XXX somewhat hmm */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
-# if defined HAVE_NL_LANGINFO && defined CODESET
+# ifdef HAVE_NL_LANGINFO
    if (voption("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
       assign("ttycharset", cp);
 # endif
 
-# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+# ifdef HAVE_C90AMEND1
    if (mb_cur_max > 1) {
       wchar_t  wc;
       if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
@@ -426,13 +461,7 @@ _rcv_mode(char const *folder)
       exit(i);
 
    if (options & OPT_HEADERSONLY) {
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(1, msgCount);
-#endif
-      time_current_update(&time_current, FAL0);
-      for (i = 1; i <= msgCount; ++i)
-         printhead(i, stdout, 0);
+      print_headers(1, msgCount);
       exit(exit_status);
    }
 
@@ -672,11 +701,12 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_count + 3 >= oargs_size)
+         if (oargs_count + 5 >= oargs_size)
             oargs_size = _grow_cpp(&oargs, oargs_size, oargs_count);
          oargs[oargs_count++] = "dot";
          oargs[oargs_count++] = "emptystart";
          oargs[oargs_count++] = "noheader";
+         oargs[oargs_count++] = "quiet";
          oargs[oargs_count++] = "sendwait";
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;

@@ -163,7 +163,7 @@ quit(void)
 	 */
 	if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
 		return;
-	/* TODO lex.c:setfile() has just called holdsigs(); before it called
+	/* TODO lex.c:setfile() has just called hold_sigs(); before it called
 	 * TODO us, but this causes uninterruptible hangs due to blocked sigs
 	 * TODO anywhere except for MB_FILE (all others install their own
 	 * TODO handlers, as it seems, properly); marked YYY */
@@ -171,23 +171,23 @@ quit(void)
 	case MB_FILE:
 		break;
 	case MB_MAILDIR:
-		relsesigs(); /* YYY */
+		rele_sigs(); /* YYY */
 		maildir_quit();
-		holdsigs(); /* YYY */
+		hold_sigs(); /* YYY */
 		return;
 #ifdef HAVE_POP3
 	case MB_POP3:
-		relsesigs(); /* YYY */
+		rele_sigs(); /* YYY */
 		pop3_quit();
-		holdsigs(); /* YYY */
+		hold_sigs(); /* YYY */
 		return;
 #endif
 #ifdef HAVE_IMAP
 	case MB_IMAP:
 	case MB_CACHE:
-		relsesigs(); /* YYY */
+		rele_sigs(); /* YYY */
 		imap_quit();
-		holdsigs(); /* YYY */
+		hold_sigs(); /* YYY */
 		return;
 #endif
 	case MB_VOID:
@@ -514,7 +514,7 @@ edstop(void)
 
 	if (mb.mb_perm == 0)
 		return;
-	holdsigs();
+	hold_sigs();
 	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
 			mp->m_flag &= ~MNEW;
@@ -532,7 +532,7 @@ edstop(void)
 
 		if ((obuf = Ftemp(&tempname, "edstop", "w", 0600, 1)) == NULL) {
 			perror(tr(167, "tmpfile"));
-			relsesigs();
+			rele_sigs();
 			reset(0);
 		}
 		if ((ibuf = Zopen(mailname, "r", &mb.mb_compressed)) == NULL) {
@@ -540,7 +540,7 @@ edstop(void)
 			Fclose(obuf);
 			rm(tempname);
 			Ftfree(&tempname);
-			relsesigs();
+			rele_sigs();
 			reset(0);
 		}
 		fseek(ibuf, (long)mailsize, SEEK_SET);
@@ -552,7 +552,7 @@ edstop(void)
 			perror(tempname);
 			rm(tempname);
 			Ftfree(&tempname);
-			relsesigs();
+			rele_sigs();
 			reset(0);
 		}
 		rm(tempname);
@@ -562,7 +562,7 @@ edstop(void)
 	fflush(stdout);
 	if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
 		perror(mailname);
-		relsesigs();
+		rele_sigs();
 		reset(0);
 	}
 	ftrunc(obuf);
@@ -575,7 +575,7 @@ edstop(void)
 		c++;
 		if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
 			perror(mailname);
-			relsesigs();
+			rele_sigs();
 			srelax_rele();
 			reset(0);/* XXX jump aways are terrible */
 		}
@@ -592,7 +592,7 @@ edstop(void)
 	fflush(obuf);
 	if (ferror(obuf)) {
 		perror(mailname);
-		relsesigs();
+		rele_sigs();
 		reset(0);
 	}
 	Fclose(obuf);
@@ -606,7 +606,7 @@ edstop(void)
 	fflush(stdout);
 
 done:
-	relsesigs();
+	rele_sigs();
 }
 
 enum quitflags {

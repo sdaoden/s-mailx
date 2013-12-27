@@ -810,7 +810,7 @@ jleave:
 }
 
 FL int
-cmimetypes(void *v)
+c_mimetypes(void *v)
 {
 	char **argv = v;
 	struct mtnode *mtn;
@@ -828,7 +828,7 @@ jerr:
 		"Either <show> (default) or <clear> the mime.types cache"));
 	v = NULL;
 jleave:
-	return (v == NULL ? STOP : OKAY);
+	return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:	{
 	FILE *fp;

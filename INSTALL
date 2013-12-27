@@ -97,8 +97,8 @@ into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
 
-Notes for S-nail(1) v14.5
--------------------------
+Notes for S-nail(1) v14.5*
+--------------------------
 
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
 Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
@@ -121,17 +121,17 @@ reflected by the following statements.
   - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
     2.9svn).
 
+. ArchLinux <https://www.archlinux.org/>
+  Linux 3.12.6-1-ARCH x86_64
+  - gcc (GCC) 4.8.2 20131219 (prerelease)
+    + Note: warnings on unused results, just ignore (for now).
+
 . NetBSD <https://www.netbsd.org/>
   NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
   2013 amd64.
   - gcc (NetBSD nb1 20120916) 4.5.4.
     + Note: with WANT_AMALGAMATION there are many warnings on 'signed
       overflow', all referring to the same code, and i think it's wrong.
-
-. ArchLinux <https://www.archlinux.org/>
-  Linux 3.12.3-1-ARCH #1 SMP PREEMPT Wed Dec 4 21:45:42 CET 2013
-  x86_64 GNU/Linux.
-  - gcc (GCC) 4.8.2.
 
 . CRUX Linux <http://www.crux.nu/>
   Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.

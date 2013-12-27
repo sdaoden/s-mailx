@@ -88,25 +88,6 @@ static int wait_command(int pid);
 static struct child *findchild(int pid);
 static void delchild(struct child *cp);
 
-/*
- * Provide BSD-like signal() on all systems.
- */
-FL sighandler_type
-safe_signal(int signum, sighandler_type handler)
-{
-	struct sigaction nact, oact;
-
-	nact.sa_handler = handler;
-	sigemptyset(&nact.sa_mask);
-	nact.sa_flags = 0;
-#ifdef	SA_RESTART
-	nact.sa_flags |= SA_RESTART;
-#endif
-	if (sigaction(signum, &nact, &oact) != 0)
-		return SIG_ERR;
-	return oact.sa_handler;
-}
-
 static int
 scan_mode(const char *mode, int *omode)
 {
@@ -402,15 +383,16 @@ Popen(const char *cmd, const char *mode, const char *sh, int newfd1)
 	return fp;
 }
 
-FL int
+FL bool_t
 Pclose(FILE *ptr, bool_t dowait)
 {
-	int pid;
 	sigset_t nset, oset;
+	bool_t rv = FAL0;
+	int pid;
 
 	pid = file_pid(ptr);
 	if (pid < 0)
-		return 0;
+		goto jleave;
 	unregister_file(ptr);
 	fclose(ptr);
 	if (dowait) {
@@ -418,11 +400,14 @@ Pclose(FILE *ptr, bool_t dowait)
 		sigaddset(&nset, SIGINT);
 		sigaddset(&nset, SIGHUP);
 		sigprocmask(SIG_BLOCK, &nset, &oset);
-		pid = wait_child(pid);
+		rv = wait_child(pid, NULL);
 		sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-	} else
+	} else {
 		free_child(pid);
-	return pid;
+		rv = TRU1;
+	}
+jleave:
+	return rv;
 }
 
 FL void
@@ -602,14 +587,13 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 	int i;
 	sigset_t fset;
 
-	/*
-	 * All file descriptors other than 0, 1, and 2 are supposed to be
-	 * close-on-exec.
-	 */
+	/* All file descriptors other than 0, 1, and 2 are supposed to be
+	 * close-on-exec */
 	if (infd >= 0)
 		dup2(infd, 0);
 	if (outfd >= 0)
 		dup2(outfd, 1);
+
 	if (nset) {
 		for (i = 1; i < NSIG; i++)
 			if (sigismember(nset, i))
@@ -617,19 +601,22 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 		if (!sigismember(nset, SIGINT))
 			safe_signal(SIGINT, SIG_DFL);
 	}
-	sigfillset(&fset);
-	sigprocmask(SIG_UNBLOCK, &fset, (sigset_t *)NULL);
+
+	sigemptyset(&fset);
+	sigprocmask(SIG_SETMASK, &fset, NULL);
 }
 
 static int
 wait_command(int pid)
 {
+	int rv = 0;
 
-	if (wait_child(pid) < 0 && (value("bsdcompat") || value("bsdmsgs"))) {
-		printf(tr(154, "Fatal error in process.\n"));
-		return -1;
+	if (!wait_child(pid, NULL)) {
+		if (boption("bsdcompat") || boption("bsdmsgs"))
+			fprintf(stderr, tr(154, "Fatal error in process.\n"));
+		rv = -1;
 	}
-	return 0;
+	return rv;
 }
 
 static struct child *
@@ -664,12 +651,11 @@ delchild(struct child *cp)
 FL void
 sigchild(int signo)
 {
-	int pid;
-	int status;
+	int pid, status;
 	struct child *cp;
 	UNUSED(signo);
 
-again:
+jagain:
 	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
 		cp = findchild(pid);
 		if (cp->free)
@@ -680,10 +666,8 @@ again:
 		}
 	}
 	if (pid == -1 && errno == EINTR)
-		goto again;
+		goto jagain;
 }
-
-int wait_status;
 
 /*
  * Mark a child as don't care.
@@ -692,86 +676,41 @@ FL void
 free_child(int pid)
 {
 	sigset_t nset, oset;
-	struct child *cp = findchild(pid);
+	struct child *cp;
+
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, &oset);
 
+	cp = findchild(pid);
 	if (cp->done)
 		delchild(cp);
 	else
 		cp->free = 1;
-	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 }
 
-/*
- * Wait for a specific child to die.
- */
-#if 0
-/*
- * This version is correct code, but causes harm on some loosing
- * systems. So we use the second one instead.
- */
-FL int
-wait_child(int pid)
+FL bool_t
+wait_child(int pid, int *wait_status)
 {
 	sigset_t nset, oset;
-	struct child *cp = findchild(pid);
+	struct child *cp;
+	int ws;
+
 	sigemptyset(&nset);
 	sigaddset(&nset, SIGCHLD);
 	sigprocmask(SIG_BLOCK, &nset, &oset);
 
+	cp = findchild(pid);
 	while (!cp->done)
 		sigsuspend(&oset);
-	wait_status = cp->status;
+	ws = cp->status;
 	delchild(cp);
-	sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
 
-	if (WIFEXITED(wait_status) && (WEXITSTATUS(wait_status) == 0))
-		return 0;
-	return -1;
-}
-#endif
-FL int
-wait_child(int pid)
-{
-	pid_t term;
-	struct child *cp;
-	struct sigaction nact, oact;
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 
-	nact.sa_handler = SIG_DFL;
-	sigemptyset(&nact.sa_mask);
-	nact.sa_flags = SA_NOCLDSTOP;
-	sigaction(SIGCHLD, &nact, &oact);
-
-	cp = findchild(pid);
-	if (!cp->done) {
-		do {
-			term = wait(&wait_status);
-			if (term == -1 && errno == EINTR)
-				continue;
-			if (term == 0 || term == -1)
-				break;
-			cp = findchild(term);
-			if (cp->free || term == pid) {
-				delchild(cp);
-			} else {
-				cp->done = 1;
-				cp->status = wait_status;
-			}
-		} while (term != pid);
-	} else {
-		wait_status = cp->status;
-		delchild(cp);
-	}
-
-	sigaction(SIGCHLD, &oact, NULL);
-	/*
-	 * Make sure no zombies are left.
-	 */
-	sigchild(SIGCHLD);
-
-	if (WIFEXITED(wait_status) && (WEXITSTATUS(wait_status) == 0))
-		return 0;
-	return -1;
+	if (wait_status != NULL)
+		*wait_status = ws;
+	return (WIFEXITED(ws) && WEXITSTATUS(ws) == 0);
 }

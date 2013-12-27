@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5:
+and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.1:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -14,6 +14,82 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.5.1, 2013-12-27
+-------------------
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The build system *only* uses the automatically detected $CFLAGS and
+  $LDFLAGS if WANT_AUTOCC=1.  I.e., even unset or empty $CFLAGS and
+  $LDFLAGS are not touched until then.
+  (We do however still set $CC if that is unset or empty or set to the
+  plain string "cc".) [856625f6]
+
+ChangeLog
+^^^^^^^^^
+
+- Fixed segmentation faults / bus errors when setting *nofolder*
+  / *line-editor-cursor-right* to the null string (only with WANT_NCL),
+  respectively. [d1f1a19b, 21e5c285, 9f6ff25d]
+
+- *prompt* handling is now really POSIX compliant (thus no prompting
+  occurs not only for 'set noprompt', but also for setting *prompt* to
+  the null string).
+
+  This was indeed a rather large changeset that also introduced the new
+  *prompt* escape character \&, which expands to `?' by default and to
+  `&' if *bsdcompat* is set.
+
+  Like that we now can simply assign "\& " to *prompt* at program
+  startup, which (a) allows to do 'set noprompt' without error (once)
+  and (b) allows for POSIX compliance in respect to prompt handling
+  without any complicated conditional code, but (c) gives us the
+  opportunity to continue to support BSD prompts.
+  [0dfe53db]
+
+- For completeness: new command: `features'.  (Rather useful for being
+  able to implement more tests in the future, and act according to what
+  is really compiled into the tested binary.
+
+- The `-#' command line option now also sets *quiet* by itself.
+  [7b5a5c87]
+
+- nail.1: a newly introduced empty line in the manual produced error
+  messages on some systems.  Fixed.
+
+- The return value of the `mimetypes' command has been reversed and
+  should now be fixed. [acf56ac52]
+
+- In threaded display the Subject: followup suppression no longer
+  takes into account invisible messages.
+  Also, rudely hack in a messages-already-written-in-this-round counter,
+  so that the followup suppression knows when "the top of the screen" is
+  reached, which (seems to) help(s) against missing subjects up there as
+  well as after a `newmail'. [topic/subject]
+
+- Added a WANT_REGEX=1 toggle in `conf.rc'.
+  When we find regular expressions then a new regex-enabled IMAP-style
+  search is available (see the manual for more) [1ec8fe68]
+
+    ? f (/or subject ^\[S-nail (subject ^\[nail-devel))
+    ? f (/subject ^\[S-nail) (/subject ^\[nail-devel)
+    ? f (/subject "^\\[(S-nail|nail-devel)")
+
+  I'm looking forward for being able to add another, simplified, syntax.
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The cc-test.sh has seen some tweaks, for easier future extension, and
+  for adding a test for [d1f1a19]. [several, mentioned: 21e5c285]
+
+- On systems without a real wordexp(3) implementations deadlocks could
+  occur because we sometimes hold_all_sigs() to avoid longjmp(3)s away
+  (and will do so for quite some time, still), and that resulted in the
+  SIGCHLD that reported the exit of the started subshell to be blocked,
+  too (e.g., after '? *.h<Tab>': endless hang).  Fixed.
 
 v14.5, 2013-12-19
 -----------------

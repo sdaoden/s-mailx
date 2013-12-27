@@ -54,12 +54,13 @@
  * acmava.c
  */
 
-/* Assign a value to a variable */
-FL void     var_assign(char const *name, char const *value);
+/* Assign a value to a variable, return wether error occurred */
+FL bool_t   var_assign(char const *name, char const *value);
 #define assign(N,V)              var_assign(N, V)
 
-/* Unset variable (special: normally `var_assign(, NULL)' is used) */
-FL int      var_unset(char const *name);
+/* Unset variable (special: normally `var_assign(, NULL)' is used), return
+ * wether error occurred */
+FL bool_t   var_unset(char const *name);
 #define unset_internal(V)        var_unset(V)
 
 /* Get the value of an option (fallback to `look_environ'?) */
@@ -112,9 +113,16 @@ FL void        panic(char const *format, ...);
 FL void        warn(char const *format, ...);
 #endif
 
-/* Hold *all* signals, and release that total block again */
+/* Provide BSD-like signal() on all (POSIX) systems */
+FL sighandler_type safe_signal(int signum, sighandler_type handler);
+
+/* Hold *all* signals but SIGCHLD, and release that total block again */
 FL void        hold_all_sigs(void);
 FL void        rele_all_sigs(void);
+
+/* Hold HUP/QUIT/INT */
+FL void        hold_sigs(void);
+FL void        rele_sigs(void);
 
 FL void        touch(struct message *mp);
 FL int         is_dir(char const *name);
@@ -251,9 +259,8 @@ FL int         Scroll(void *v);
 FL int         screensize(void);
 FL int         from(void *v);
 
-/* Print out the header of a specific message.
- * Note: ensure to call time_current_update() before first use in cycle! */
-FL void        printhead(int mesg, FILE *f, int threaded);
+/* Print all message in between bottom and topx (including bottom) */
+FL void        print_headers(size_t bottom, size_t topx);
 
 FL int         pdot(void *v);
 FL int         more(void *v);
@@ -437,8 +444,6 @@ FL FILE *      setinput(struct mailbox *mp, struct message *m,
                   enum needspec need);
 FL struct message * setdot(struct message *mp);
 FL int         rm(char *name);
-FL void        holdsigs(void);
-FL void        relsesigs(void);
 FL off_t       fsize(FILE *iob);
 
 /* Evaluate the string given as a new mailbox name. Supported meta characters:
@@ -623,7 +628,6 @@ FL void        onintr(int s);
 FL void        announce(int printheaders);
 FL int         newfileinfo(void);
 FL int         getmdot(int newmail);
-FL int         pversion(void *v);
 FL void        initbox(const char *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
@@ -696,7 +700,7 @@ FL enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
 FL char *      mime_classify_content_type_by_fileext(char const *name);
 
 /* "mimetypes" command */
-FL int         cmimetypes(void *v);
+FL int         c_mimetypes(void *v);
 
 FL void        mime_fromhdr(struct str const *in, struct str *out,
                   enum tdflags flags);
@@ -835,7 +839,6 @@ FL void        pop3_quit(void);
  * Subprocesses, popen, but also file handling with registering
  */
 
-FL sighandler_type safe_signal(int signum, sighandler_type handler);
 FL FILE *      safe_fopen(const char *file, const char *mode, int *omode);
 FL FILE *      Fopen(const char *file, const char *mode);
 FL FILE *      Fdopen(int fd, const char *mode);
@@ -859,7 +862,9 @@ FL bool_t      pipe_cloexec(int fd[2]);
 
 FL FILE *      Popen(const char *cmd, const char *mode, const char *shell,
                   int newfd1);
-FL int         Pclose(FILE *ptr, bool_t dowait);
+
+FL bool_t      Pclose(FILE *ptr, bool_t dowait);
+
 FL void        close_all_files(void);
 FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
@@ -868,7 +873,10 @@ FL int         start_command(const char *cmd, sigset_t *mask, int infd,
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 FL void        sigchild(int signo);
 FL void        free_child(int pid);
-FL int         wait_child(int pid);
+
+/* Wait for pid, return wether we've had a normal EXIT_SUCCESS exit.
+ * If wait_status is set, set it to the reported waitpid(2) wait status */
+FL bool_t      wait_child(int pid, int *wait_status);
 
 /* quit.c */
 FL int         quitcmd(void *v);
@@ -1051,9 +1059,7 @@ FL int         snprintf(char *str, size_t size, const char *format, ...);
 
 FL char *      sstpcpy(char *dst, const char *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
-#ifdef notyet
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
-#endif
 #ifdef HAVE_DEBUG
 # define sstrdup(CP)             sstrdup(CP, __FILE__, __LINE__)
 # define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)

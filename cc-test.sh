@@ -1,6 +1,18 @@
 #!/bin/sh -
-#@ Usage: ./cc-test.sh [--check-only]
-#@ XXX Add tests
+#@ Usage: ./cc-test.sh [--check-only [nail-binary]]
+
+NAIL=./s-nail
+CONF=./conf.rc
+BODY=./.cc-body.txt
+MBOX=./.cc-test.mbox
+
+awk=`command -pv awk`
+cat=`command -pv cat`
+cksum=`command -pv cksum`
+MAKE="${MAKE:-`command -pv make`}"
+rm=`command -pv rm`
+
+##  --  >8  --  8<  --  ##
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
 # nl_langinfo(CODESET), then, so also overwrite ttycharset.
@@ -11,17 +23,11 @@ LC_ALL=${LC} LANG=${LC}
 ttycharset=UTF-8
 export LC_ALL LANG ttycharset
 
-MAKE=make
-NAIL=./s-nail
-CONF=./conf.rc
-
-BODY=./.cc-body.txt
-MBOX=./.cc-test.mbox
 ESTAT=0
 
 usage() {
-      echo >&2 "Usage: ./cc-test.sh [--check-only [nail-binary]]"
-      exit 1
+   echo >&2 "Usage: ./cc-test.sh [--check-only [nail-binary]]"
+   exit 1
 }
 
 CHECK_ONLY=
@@ -33,31 +39,30 @@ CHECK_ONLY=
    CHECK_ONLY=1
 }
 
-rm -f "${BODY}" "${MBOX}"
-
+# cc_all_configs()
 # Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
-   < ${CONF} awk '
-   BEGIN {i = 0}
-   /^[[:space:]]*WANT_/ {
-      sub(/^[[:space:]]*/, "")
-      sub(/=.*$/, "")
-      data[i++] = $1
-   }
-   END {
-      for (j = 0; j < i; ++j) {
-         for (k = 0; k < j; ++k)
-            printf data[k] "=1 "
-         for (k = j; k < i; ++k)
-            printf data[k] "=0 "
-         printf "\n"
-         for (k = 0; k < j; ++k)
-            printf data[k] "=0 "
-         for (k = j; k < i; ++k)
-            printf data[k] "=1 "
-         printf "\n"
+   < ${CONF} ${awk} '
+      BEGIN {i = 0}
+      /^[[:space:]]*WANT_/ {
+         sub(/^[[:space:]]*/, "")
+         sub(/=.*$/, "")
+         data[i++] = $1
       }
-   }
+      END {
+         for (j = 0; j < i; ++j) {
+            for (k = 0; k < j; ++k)
+               printf data[k] "=1 "
+            for (k = j; k < i; ++k)
+               printf data[k] "=0 "
+            printf "\n"
+            for (k = 0; k < j; ++k)
+               printf data[k] "=0 "
+            for (k = j; k < i; ++k)
+               printf data[k] "=1 "
+            printf "\n"
+         }
+      }
    ' | while read c; do
       printf "\n\n##########\n$c\n"
       printf "\n\n##########\n$c\n" >&2
@@ -66,49 +71,45 @@ cc_all_configs() {
    done
 }
 
-# Test a UTF-8 mail as a whole via -t, and in pieces (without -t ;)
+# cksum_test()
+# Read mailbox $2, strip non-constant headers and MIME boundaries, query the
+# cksum(1) of the resulting data and compare against the checksum $3
 cksum_test() {
-   f=$1 s=$2 tno=$3
-   [ "`sed -e '/^From /d' -e '/^Date: /d' \
-         -e '/^ boundary=/d' -e /^--=_/d < \"${f}\" | \
-         cksum`" != "${s}" ] && {
+   tid=$1 f=$2 s=$3
+   printf "${tid}: "
+   csum="`sed -e '/^From /d' -e '/^Date: /d' \
+         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" | cksum`";
+   if [ "${csum}" = "${s}" ]; then
+      printf 'ok\n'
+   else
       ESTAT=1
-      echo >&2 "Checksum mismatch test ${tno}: ${f}"
-   }
+      printf 'error: checksum mismatch\n'
+   fi
 }
 
-test_mail() {
-   [ -n "${CHECK_ONLY}" ] || {
-      printf "\n\n## test_mail() #########################\n\n"
-      "${MAKE}"
-   }
+# t_behave()
+# Basic (easily testable) behaviour tests
+t_behave() {
+   # Test for [d1f1a19]
+   ${rm} -f "${MBOX}"
+   printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix' |
+      MAILRC=/dev/null "${NAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
+   cksum_test behave:1 "${MBOX}" '4214021069 15'
 
-   # Two tests for MIME-CTE and (a bit) content classification
-   rm -f "${MBOX}"
-   < "${BODY}" MAILRC=/dev/null \
-   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test "${MBOX}" '2606934084 5649' 1
-
-   rm -f "${MBOX}"
-   (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
-      cat "${BODY}"
-   ) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
-   cksum_test "${MBOX}" '799758423 5648' 2
-
-   # Test for [260e19d].  Juergen Daubert.
-   rm -f "${MBOX}"
-   echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
-   cksum_test "${MBOX}" '506144051 104' 3
-
-   # Sending of multiple mails in a single invocation
-   rm -f "${MBOX}"
-   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
-      printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
-      echo x
-   ) | MAILRC=/dev/null "${NAIL}" -N -n -# -Sstealthmua
-   cksum_test "${MBOX}" '2028749685 277' 4
+   # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
+   # TODO for this to be testable we need a way to echo a variable
+   # TODO or to force echo of the prompt
 }
 
+# t_content()
+# Some basic tests regarding correct sending of mails, via STDIN / -t / -q,
+# including basic MIME Content-Transfer-Encoding correctness (quoted-printable)
+# Note we unfortunately need to place some statements without proper
+# indentation because of continuation problems
+t_content() {
+   ${rm} -f "${BODY}" "${MBOX}"
+
+   # MIME CTE (QP) stress message body
 printf \
 'Ich bin eine DÖS-Datäi mit sehr langen Zeilen und auch '\
 'sonst bin ich ganz schön am Schleudern, da kannste denke '\
@@ -145,21 +146,25 @@ printf \
 "auf den zeilen vorher.\n"\
 "ditto.\n"\
 "Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.\n"\
-"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1\n"\
-"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12\n"\
-"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.123\n"\
-"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1"\
 "\n"\
-"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234"\
-"5\n"\
-"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234"\
-"56\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
+"\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
+"3\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
+"34\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
+"345\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
+"3456\n"\
 "=VIER = EQUAL SIGNS=ON A LINE=\n"\
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '\
  > "${BODY}"
 
+   # MIME CTE (QP) stress message subject
 SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
 'adadaddsssssssddddddddddddddddddddd'\
 'ddddddddddddddddddddddddddddddddddd'\
@@ -175,12 +180,52 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
 'ggggggggggggggggggggggggggggggggggg'\
 'gggggggggggggggg'
 
-[ -n "${CHECK_ONLY}" ] || cc_all_configs
-test_mail
+   # Three tests for MIME-CTE and (a bit) content classification.
+   # At the same time testing -q FILE, < FILE and -t FILE
+   ${rm} -f "${MBOX}"
+   < "${BODY}" MAILRC=/dev/null \
+   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
+   cksum_test content:1 "${MBOX}" '2606934084 5649'
+
+   ${rm} -f "${MBOX}"
+   < /dev/null MAILRC=/dev/null \
+   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" \
+      -q "${BODY}" "${MBOX}"
+   cksum_test content:2 "${MBOX}" '2606934084 5649'
+
+   ${rm} -f "${MBOX}"
+   (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
+      ${cat} "${BODY}"
+   ) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
+   cksum_test content:3 "${MBOX}" '799758423 5648'
+
+   # Test for [260e19d].  Juergen Daubert.
+   ${rm} -f "${MBOX}"
+   echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
+   cksum_test content:4 "${MBOX}" '506144051 104'
+
+   # Sending of multiple mails in a single invocation
+   ${rm} -f "${MBOX}"
+   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
+      printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+      echo x
+   ) | MAILRC=/dev/null "${NAIL}" -n -# -Sstealthmua
+   cksum_test content:5 "${MBOX}" '2028749685 277'
+
+   ${rm} -f "${BODY}" "${MBOX}"
+}
+
+if [ -z "${CHECK_ONLY}" ]; then
+   cc_all_configs
+   printf "\n\n######## STARTING TESTS ########\n\n"
+   "${MAKE}" devel
+fi
+
+t_behave
+t_content
 
 [ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
 [ -n "${CHECK_ONLY}" ] || "${MAKE}" distclean
-rm -f "${BODY}" "${MBOX}"
 
 exit ${ESTAT}
 # vim:set fenc=utf8:s-it-mode

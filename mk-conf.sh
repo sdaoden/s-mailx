@@ -27,23 +27,26 @@ if [ -n "${CONFIG}" ]; then
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
-      WANT_QUOTE_FOLD=0
-      WANT_DOCSTRINGS=0
+      WANT_REGEX=0
       WANT_SPAM=0
+      WANT_DOCSTRINGS=0
+      WANT_QUOTE_FOLD=0
       ;;
    MEDIUM)
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0
-      WANT_QUOTE_FOLD=0
+      WANT_REGEX=0
       WANT_SPAM=0
+      WANT_QUOTE_FOLD=0
       ;;
    NETSEND)
       WANT_IMAP=0
       WANT_POP3=0
       WANT_READLINE=0 WANT_EDITLINE=0
-      WANT_QUOTE_FOLD=0
+      WANT_REGEX=0
       WANT_SPAM=0
+      WANT_QUOTE_FOLD=0
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -78,6 +81,8 @@ option_update() {
 compiler_flags() {
    i=`uname -s`
    _CFLAGS=
+
+   # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
       _CFLAGS=
       if { CC="`command -v clang`"; }; then
@@ -141,13 +146,11 @@ compiler_flags() {
    _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
    export _CFLAGS _LDFLAGS
 
-   if wantfeat AUTOCC || [ -z "${CFLAGS}" ]; then
+   # $CFLAGS and $LDFLAGS are only overwritten if explicitly wanted
+   if wantfeat AUTOCC; then
       CFLAGS=$_CFLAGS
-      export CFLAGS
-   fi
-   if wantfeat AUTOCC || [ -z "${LDFLAGS}" ]; then
       LDFLAGS=$_LDFLAGS
-      export LDFLAGS
+      export CFLAGS LDFLAGS
    fi
 }
 
@@ -205,6 +208,7 @@ trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
 trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}" 0
 ${rm} -f ${newlst} ${newmk} ${newh}
 
+# (Could: use FD redirection, add eval(1) and don't re-'. ./${newlst}')
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
@@ -388,10 +392,7 @@ echo "${LIBS}" >> ${lib}
 
 ##
 
-# Better set _GNU_SOURCE (if we are on Linux only?)
-# Fixes compilation on Slackware 14 + (with at least clang(1)).
-# Since i've always defined this on GNU/Linux, i'm even surprised it works
-# without!!  Didn't check this yet (and TinyCore uses different environment).
+# Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without
 echo '#define _GNU_SOURCE' >> ${h}
 
 link_check hello 'if a hello world program can be built' << \! || {\
@@ -475,53 +476,6 @@ int main(void)
 }
 !
 
-link_check wctype 'for wctype functionality' '#define HAVE_WCTYPE_H' << \!
-#include <wctype.h>
-int main(void)
-{
-   iswprint(L'c');
-   towupper(L'c');
-   return 0;
-}
-!
-
-link_check wcwidth 'for wcwidth() ' '#define HAVE_WCWIDTH' << \!
-#include <wchar.h>
-int main(void)
-{
-   wcwidth(L'c');
-   return 0;
-}
-!
-
-link_check mbtowc 'for mbtowc()' '#define HAVE_MBTOWC' << \!
-#include <stdlib.h>
-int main(void)
-{
-   wchar_t	wc;
-   mbtowc(&wc, "x", 1);
-   return 0;
-}
-!
-
-link_check mbrtowc 'for mbrtowc()' '#define HAVE_MBRTOWC' << \!
-#include <wchar.h>
-int main(void)
-{
-   wchar_t	wc;
-   mbrtowc(&wc, "x", 1, NULL);
-   return 0;
-}
-!
-
-link_check mblen 'for mblen()' '#define HAVE_MBLEN' << \!
-#include <stdlib.h>
-int main(void)
-{
-   return mblen("\0", 1) == 0;
-}
-!
-
 link_check setlocale 'for setlocale()' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)
@@ -531,14 +485,47 @@ int main(void)
 }
 !
 
-link_check nl_langinfo 'for nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
-#include <langinfo.h>
+if [ "${have_setlocale}" = yes ]; then
+   link_check c90amend1 'for ISO/IEC 9899:1990/Amendment 1:1995' \
+      '#define HAVE_C90AMEND1' << \!
+#include <limits.h>
+#include <stdlib.h>
+#include <wchar.h>
+#include <wctype.h>
 int main(void)
 {
-   nl_langinfo(DAY_1);
+	char mbb[MB_LEN_MAX + 1];
+   wchar_t	wc;
+   iswprint(L'c');
+   towupper(L'c');
+   mbtowc(&wc, "x", 1);
+   mbrtowc(&wc, "x", 1, NULL);
+	(void)wctomb(mbb, wc);
+   return (mblen("\0", 1) == 0);
+}
+!
+
+   if [ "${have_c90amend1}" = yes ]; then
+      link_check wcwidth 'for wcwidth()' '#define HAVE_WCWIDTH' << \!
+#include <wchar.h>
+int main(void)
+{
+   wcwidth(L'c');
    return 0;
 }
 !
+   fi
+
+   link_check nl_langinfo 'for nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
+#include <langinfo.h>
+#include <stdlib.h>
+int main(void)
+{
+   nl_langinfo(DAY_1);
+   return (nl_langinfo(CODESET) == NULL);
+}
+!
+fi # have_setlocale
 
 link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
@@ -922,7 +909,26 @@ int main(void)
 !
 else
    echo '/* WANT_IDNA=0 */' >> ${h}
-fi # wantfeat IDNA
+fi
+
+if wantfeat REGEX; then
+   link_check regex 'for regular expressions' '#define HAVE_REGEX' << \!
+#include <regex.h>
+#include <stdlib.h>
+int main(void)
+{
+   int status;
+   regex_t re;
+   if (regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0)
+      return 1;
+   status = regexec(&re, "plan9", 0,NULL, 0);
+   regfree(&re);
+   return !(status == REG_NOMATCH);
+}
+!
+else
+   echo '/* WANT_REGEX=0 */' >> ${h}
+fi
 
 if wantfeat READLINE; then
    __edrdlib() {
@@ -991,7 +997,7 @@ int main(void)
 fi
 
 if wantfeat NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
-      [ -n "${have_mbrtowc}" ] && [ -n "${have_wctype}" ]; then
+      [ -n "${have_c90amend1}" ]; then
    have_ncl=1
    echo '#define HAVE_NCL' >> ${h}
 else
@@ -1016,7 +1022,7 @@ else
 fi
 
 if wantfeat QUOTE_FOLD &&\
-      [ -n "${have_mbrtowc}" ] && [ -n "${have_wcwidth}" ]; then
+      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
@@ -1056,9 +1062,39 @@ ${mv} ${tmp} ${inc}
 squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
+# config.h
 ${mv} ${h} ${tmp}
 printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
 ${cat} ${tmp} >> ${h}
+
+printf '\n/* The "feature string", for "simplicity" and lex.c */\n' >> ${h}
+printf '#ifdef _MAIN_SOURCE\n' >> ${h}
+printf '# ifdef HAVE_AMALGAMATION\nstatic\n# endif\n' >> ${h}
+printf 'char const features[] = "MIME"\n' >> ${h}
+printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TSL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_GSSAPI\n   ",GSSAPI"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_HISTORY\n   ",HISTORY MANAGEMENT"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
+printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
+
 printf '#endif /* _CONFIG_H */\n' >> ${h}
 ${rm} -f ${tmp}
 
@@ -1094,7 +1130,7 @@ ${cat} ./mk-mk.in >> ${mk}
 ${cat} > ${tmp2}.c << \!
 #include "config.h"
 #ifdef HAVE_NL_LANGINFO
-#include <langinfo.h>
+# include <langinfo.h>
 #endif
 :
 :The following optional features are enabled:
@@ -1103,10 +1139,10 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifdef HAVE_SETLOCALE
 : + Locale support: Printable characters depend on the environment
-# if defined HAVE_MBTOWC && defined HAVE_WCTYPE_H
+# ifdef HAVE_C90AMEND1
 : + Multibyte character support
 # endif
-# if defined HAVE_NL_LANGINFO && defined CODESET
+# ifdef HAVE_NL_LANGINFO
 : + Automatic detection of terminal character set
 # endif
 #endif
@@ -1116,8 +1152,10 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_IPV6
 : + Support for Internet Protocol v6 (IPv6)
 #endif
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL
+# ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS using OpenSSL
+# endif
 #endif
 #ifdef HAVE_IMAP
 : + IMAP protocol
@@ -1137,6 +1175,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
+#ifdef HAVE_REGEX
+: + Regular expression searches
+#endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
 : + Command line editing
 # ifdef HAVE_TABEXPAND
@@ -1151,31 +1192,31 @@ ${cat} > ${tmp2}.c << \!
 #endif
 :
 :The following optional features are disabled:
-#ifndef	HAVE_ICONV
+#ifndef HAVE_ICONV
 : - Character set conversion using iconv()
 #endif
-#ifndef	HAVE_SETLOCALE
+#ifndef HAVE_SETLOCALE
 : - Locale support: Only ASCII characters are recognized
 #endif
-#if ! defined HAVE_SETLOCALE || ! defined HAVE_MBTOWC || !defined HAVE_WCTYPE_H
+# ifndef HAVE_C90AMEND1
 : - Multibyte character support
-#endif
-#if ! defined HAVE_SETLOCALE || ! defined HAVE_NL_LANGINFO || ! defined CODESET
+# endif
+# ifndef HAVE_NL_LANGINFO
 : - Automatic detection of terminal character set
-#endif
-#ifndef	HAVE_SOCKETS
+# endif
+#ifndef HAVE_SOCKETS
 : - Network support
 #endif
-#ifndef	HAVE_IPV6
+#ifndef HAVE_IPV6
 : - Support for Internet Protocol v6 (IPv6)
 #endif
-#if ! defined HAVE_SSL
+#if !defined HAVE_SSL
 : - SSL/TLS (network transport authentication and encryption)
 #endif
 #ifndef HAVE_IMAP
 : - IMAP protocol
 #endif
-#ifndef	HAVE_GSSAPI
+#ifndef HAVE_GSSAPI
 : - IMAP GSSAPI authentication
 #endif
 #ifndef HAVE_POP3
@@ -1190,6 +1231,9 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
 #endif
+#ifndef HAVE_REGEX
+: - Regular expression searches
+#endif
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history
 #endif
@@ -1198,13 +1242,13 @@ ${cat} > ${tmp2}.c << \!
 #endif
 :
 :Remarks:
-#ifndef	HAVE_SNPRINTF
+#ifndef HAVE_SNPRINTF
 : . The function snprintf() could not be found. mailx will be compiled to use
 : sprintf() instead. This might overflow buffers if input values are larger
 : than expected. Use the resulting binary with care or update your system
 : environment and start the configuration process again.
 #endif
-#ifndef	HAVE_FCHDIR
+#ifndef HAVE_FCHDIR
 : . The function fchdir() could not be found. mailx will be compiled to use
 : chdir() instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.
