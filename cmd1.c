@@ -51,23 +51,28 @@ static int screen;
 /* Prepare and print "[Message: xy]:" intro */
 static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
 
+/* ... And place the extracted date in `date' */
+static void	_parse_from_(struct message *mp, char date[FROM_DATEBUF]);
+
+/* Print out the header of a specific message
+ * __hprf: handle *headline*
+ * __subject: Subject:, but return NULL if threaded and Subject: yet seen
+ * __putindent: print out the indenting in threaded display */
+static void	_print_head(size_t yetprinted, int msgno, FILE *f,
+			bool_t threaded);
+static void	__hprf(size_t yetprinted, const char *fmt, int mesg, FILE *f,
+			bool_t threaded, const char *attrlist);
+static char *	__subject(struct message *mp, bool_t threaded,
+			size_t yetprinted);
+static char *	__subject_trim(char *s);
+static int	__putindent(FILE *fp, struct message *mp, int maxwidth);
+
 static void _cmd1_onpipe(int signo);
 static int _dispc(struct message *mp, const char *a);
 static int scroll1(char *arg, int onlynew);
 
-/* ... And place the extracted date in `date' */
-static void	_parse_from_(struct message *mp, char date[FROM_DATEBUF]);
-
-/* Get the Subject:, but return NULL if in threaded mode and the message
- * printed before was in the same thread and had the same subject */
-static char *	_get_subject(struct message *mp, bool_t threaded);
-static char *	__subject_trim(char *s);
-
-static void hprf(const char *fmt, int mesg, FILE *f, int threaded,
-		const char *attrlist);
-static int putindent(FILE *fp, struct message *mp, int maxwidth);
-static int _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-		bool_t dodecode, char *cmd, off_t *tstats);
+static int	_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
+			bool_t dodecode, char *cmd, off_t *tstats);
 static int pipe1(char *str, int doign);
 
 static void
@@ -75,318 +80,6 @@ _show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
 {
 	fprintf(obuf, tr(17, "[-- Message %2d -- %lu lines, %lu bytes --]:\n"),
 		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
-}
-
-FL int
-ccmdnotsupp(void *v)
-{
-	(void)v;
-	fprintf(stderr, tr(10, "The requested feature is not compiled in\n"));
-	return (1);
-}
-
-FL char const *
-get_pager(void)
-{
-	char const *cp;
-
-	cp = value("PAGER");
-	if (cp == NULL || *cp == '\0')
-		cp = PAGER;
-	return cp;
-}
-
-FL int
-headers(void *v)
-{
-	ui32_t flag;
-	int *msgvec = v, g, k, n, mesg, size, lastg = 1;
-	struct message *mp, *mq, *lastmq = NULL;
-	enum mflag	fl = MNEW|MFLAGGED;
-
-	time_current_update(&time_current, FAL0);
-
-	flag = 0;
-	size = screensize();
-	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
-	if (screen < 0)
-		screen = 0;
-	k = screen * size;
-	if (k >= msgCount)
-		k = msgCount - size;
-	if (k < 0)
-		k = 0;
-
-	if (mb.mb_threaded == 0) {
-		g = 0;
-		mq = &message[0];
-		for (mp = &message[0]; mp < &message[msgCount]; mp++)
-			if (visible(mp)) {
-				if (g % size == 0)
-					mq = mp;
-				if (mp->m_flag&fl) {
-					lastg = g;
-					lastmq = mq;
-				}
-				if ((n > 0 && mp == &message[n-1]) ||
-						(n == 0 && g == k) ||
-						(n == -2 && g == k + size &&
-						 lastmq) ||
-						(n < 0 && g >= k &&
-						 (mp->m_flag & fl) != 0))
-					break;
-				g++;
-			}
-		if (lastmq && (n==-2 || (n==-1 && mp == &message[msgCount]))) {
-			g = lastg;
-			mq = lastmq;
-		}
-		screen = g / size;
-		mp = mq;
-		mesg = mp - &message[0];
-		if (dot != &message[n-1]) {
-			for (mq = mp; mq < &message[msgCount]; mq++)
-				if (visible(mq)) {
-					setdot(mq);
-					break;
-				}
-		}
-#ifdef HAVE_IMAP
-		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(mesg+1, mesg + size);
-#endif
-		srelax_hold();
-		for (; mp < &message[msgCount]; mp++) {
-			mesg++;
-			if (!visible(mp))
-				continue;
-			if (UICMP(32, flag++, >=, size))
-				break;
-			printhead(mesg, stdout, 0);
-			srelax();
-		}
-		srelax_rele();
-	} else {	/* threaded */
-		g = 0;
-		mq = threadroot;
-		for (mp = threadroot; mp; mp = next_in_thread(mp))
-			if (visible(mp) && (mp->m_collapsed <= 0 ||
-					 mp == &message[n-1])) {
-				if (g % size == 0)
-					mq = mp;
-				if (mp->m_flag&fl) {
-					lastg = g;
-					lastmq = mq;
-				}
-				if ((n > 0 && mp == &message[n-1]) ||
-						(n == 0 && g == k) ||
-						(n == -2 && g == k + size &&
-						 lastmq) ||
-						(n < 0 && g >= k &&
-						 (mp->m_flag & fl) != 0))
-					break;
-				g++;
-			}
-		if (lastmq && (n==-2 || (n==-1 && mp==&message[msgCount]))) {
-			g = lastg;
-			mq = lastmq;
-		}
-		screen = g / size;
-		mp = mq;
-		if (dot != &message[n-1]) {
-			for (mq = mp; mq; mq = next_in_thread(mq))
-				if (visible(mq) && mq->m_collapsed <= 0) {
-					setdot(mq);
-					break;
-				}
-		}
-		srelax_hold();
-		while (mp) {
-			if (visible(mp) && (mp->m_collapsed <= 0 ||
-					 mp == &message[n-1])) {
-				if (UICMP(32, flag++, >=, size))
-					break;
-				printhead(mp - &message[0] + 1, stdout,
-						mb.mb_threaded);
-				srelax();
-			}
-			mp = next_in_thread(mp);
-		}
-		srelax_rele();
-	}
-	if (!flag)
-		printf(tr(6, "No more mail.\n"));
-	return !flag;
-}
-
-/*
- * Scroll to the next/previous screen
- */
-FL int
-scroll(void *v)
-{
-	return scroll1(v, 0);
-}
-
-FL int
-Scroll(void *v)
-{
-	return scroll1(v, 1);
-}
-
-static int
-scroll1(char *arg, int onlynew)
-{
-	int size;
-	int cur[1];
-
-	cur[0] = onlynew ? -1 : 0;
-	size = screensize();
-	switch (*arg) {
-	case '1': case '2': case '3': case '4': case '5':
-	case '6': case '7': case '8': case '9': case '0':
-		screen = atoi(arg);
-		goto scroll_forward;
-	case '\0':
-		screen++;
-		goto scroll_forward;
-	case '$':
-		screen = msgCount / size;
-		goto scroll_forward;
-	case '+':
-		if (arg[1] == '\0')
-			screen++;
-		else
-			screen += atoi(arg + 1);
-scroll_forward:
-		if (screen * size > msgCount) {
-			screen = msgCount / size;
-			printf(tr(7, "On last screenful of messages\n"));
-		}
-		break;
-
-	case '-':
-		if (arg[1] == '\0')
-			screen--;
-		else
-			screen -= atoi(arg + 1);
-		if (screen < 0) {
-			screen = 0;
-			printf(tr(8, "On first screenful of messages\n"));
-		}
-		if (cur[0] == -1)
-			cur[0] = -2;
-		break;
-
-	default:
-		printf(tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
-		return(1);
-	}
-	return(headers(cur));
-}
-
-/*
- * Compute screen size.
- */
-FL int
-screensize(void)
-{
-	int s;
-	char *cp;
-
-	if ((cp = value("screen")) != NULL && (s = atoi(cp)) > 0)
-		return s;
-	return scrnheight - 4;
-}
-
-static sigjmp_buf	_cmd1_pipejmp;
-
-/*ARGSUSED*/
-static void
-_cmd1_onpipe(int signo)
-{
-	UNUSED(signo);
-	siglongjmp(_cmd1_pipejmp, 1);
-}
-
-/*
- * Print out the headlines for each message
- * in the passed message list.
- */
-FL int
-from(void *v)
-{
-	int *msgvec = v, *ip, n;
-	char *cp;
-	FILE *volatile obuf = stdout;
-
-	time_current_update(&time_current, FAL0);
-
-	/* TODO unfixable memory leaks still */
-	if (IS_TTY_SESSION() && (cp = value("crt")) != NULL) {
-		for (n = 0, ip = msgvec; *ip; ip++)
-			n++;
-		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
-			char const *p;
-			if (sigsetjmp(_cmd1_pipejmp, 1))
-				goto endpipe;
-			p = get_pager();
-			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
-				perror(p);
-				obuf = stdout;
-				cp=NULL;
-			} else
-				safe_signal(SIGPIPE, _cmd1_onpipe);
-		}
-	}
-	for (ip = msgvec; *ip != 0; ip++)
-		printhead(*ip, obuf, mb.mb_threaded);
-	if (--ip >= msgvec)
-		setdot(&message[*ip - 1]);
-endpipe:
-	if (obuf != stdout) {
-		safe_signal(SIGPIPE, SIG_IGN);
-		Pclose(obuf, TRU1);
-		safe_signal(SIGPIPE, dflpipe);
-	}
-	return(0);
-}
-
-static int
-_dispc(struct message *mp, const char *a)
-{
-	int i = ' ';
-
-	/*
-	 * Bletch!
-	 */
-	if ((mp->m_flag & (MREAD|MNEW)) == MREAD)
-		i = a[3];
-	if ((mp->m_flag & (MREAD|MNEW)) == (MREAD|MNEW))
-		i = a[2];
-	if (mp->m_flag & MANSWERED)
-		i = a[8];
-	if (mp->m_flag & MDRAFTED)
-		i = a[9];
-	if ((mp->m_flag & (MREAD|MNEW)) == MNEW)
-		i = a[0];
-	if ((mp->m_flag & (MREAD|MNEW)) == 0)
-		i = a[1];
-	if (mp->m_flag & MSPAM)
-		i = a[12];
-	if (mp->m_flag & MSAVED)
-		i = a[4];
-	if (mp->m_flag & MPRESERVE)
-		i = a[5];
-	if (mp->m_flag & (MBOX|MBOXED))
-		i = a[6];
-	if (mp->m_flag & MFLAGGED)
-		i = a[7];
-	if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
-		i = a[11];
-	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
-		i = a[10];
-	return i;
 }
 
 static void
@@ -404,71 +97,43 @@ _parse_from_(struct message *mp, char date[FROM_DATEBUF])
 		free(hline);
 }
 
-static char *
-__subject_trim(char *s)
+static void
+_print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 {
-	while (*s != '\0') {
-		while (spacechar(*s))
-			++s;
-		if (is_asccaseprefix("re:", s)) {
-			s += 3;
-			continue;
-		}
-		if (is_asccaseprefix("fwd:", s)) {
-			s += 4;
-			continue;
-		}
-		break;
+	char attrlist[30], *cp;
+	char const *fmt;
+
+	if ((cp = voption("attrlist")) != NULL) {
+		size_t i = strlen(cp);
+		if (UICMP(32, i, >, sizeof attrlist - 1))
+			i = (int)sizeof attrlist - 1;
+		memcpy(attrlist, cp, i);
+	} else if (boption("bsdcompat") || boption("bsdflags") ||
+			getenv("SYSV3") != NULL) {
+		char const bsdattr[] = "NU  *HMFAT+-$";
+		memcpy(attrlist, bsdattr, sizeof bsdattr - 1);
+	} else {
+		char const pattr[] = "NUROSPMFAT+-$";
+		memcpy(attrlist, pattr, sizeof pattr - 1);
 	}
-	return s;
-}
 
-static char *
-_get_subject(struct message *mp, bool_t threaded)
-{
-	struct str in, out;
-	char *rv = (char*)-1, *ms, *mso, *os;
+	if ((fmt = voption("headline")) == NULL) {
+		fmt = ((boption("bsdcompat") || boption("bsdheadline"))
+			? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
+			: "%>%a%m %-18f %16d %4l/%-5o %i%-s");
+	}
 
-	if ((ms = hfield1("subject", mp)) == NULL)
-		goto jleave;
-
-	if (! threaded || mp->m_level == 0)
-		goto jconv;
-
-	/* In a display thread - check wether this message uses the same
-	 * Subject: as it's parent or elder neighbour, suppress printing it if
-	 * this is the case.  To extend this a bit, ignore any leading Re: or
-	 * Fwd: plus follow-up WS; XXX NOTE: because of efficiency reasons we
-	 * XXX simply ignore any encoded parts and use ASCII case-insensitive
-	 * XXX comparison */
-	mso = __subject_trim(ms);
-
-	if (mp->m_elder != NULL &&
-			(os = hfield1("subject", mp->m_elder)) != NULL &&
-			asccasecmp(mso, __subject_trim(os)) == 0)
-		goto jleave;
-
-	if (mp->m_parent != NULL &&
-			(os = hfield1("subject", mp->m_parent)) != NULL &&
-			asccasecmp(mso, __subject_trim(os)) == 0)
-		goto jleave;
-
-jconv:
-	in.s = ms;
-	in.l = strlen(ms);
-	mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
-	rv = out.s;
-jleave:
-	return rv;
+	__hprf(yetprinted, fmt, msgno, f, threaded, attrlist);
 }
 
 static void
-hprf(const char *fmt, int mesg, FILE *f, int threaded, const char *attrlist)
+__hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
+	char const *attrlist)
 {
 	char datebuf[FROM_DATEBUF], *cp, *subjline;
 	char const *datefmt, *date, *name, *fp;
 	int B, c, i, n, s, wleft, subjlen, isto = 0, isaddr = 0;
-	struct message *mp = &message[mesg - 1];
+	struct message *mp = &message[msgno - 1];
 	time_t datet = mp->m_time;
 
 	date = NULL;
@@ -626,7 +291,7 @@ jputc:
 				}
 				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
-				n = fprintf(f, "%*d", n, mesg);
+				n = fprintf(f, "%*d", n, msgno);
 				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case 'f':
@@ -697,7 +362,7 @@ jputc:
 				break;
 			case 'i':
 				if (threaded) {
-					n = putindent(f, mp, MIN(wleft,
+					n = __putindent(f, mp, MIN(wleft,
 						scrnwidth - 60));
 					wleft = (n >= 0) ? wleft - n : 0;
 				}
@@ -719,7 +384,8 @@ jputc:
 				if (n == 0)
 					break;
 				if (subjline == NULL)
-					subjline = _get_subject(mp, threaded);
+					subjline = __subject(mp, threaded,
+							yetprinted);
 				if (subjline == (char*)-1) {
 					n = fprintf(f, "%*s", n, "");
 					wleft = (n >= 0) ? wleft-n : 0;
@@ -763,7 +429,7 @@ jputc:
 				if (UICMP(32, ABS(n), >, wleft))
 					n = (n < 0) ? -wleft : wleft;
 				n = fprintf(f, "%*ld", n,
-					threaded ? mp->m_threadpos : mesg);
+					threaded ? mp->m_threadpos : msgno);
 				wleft = (n >= 0) ? wleft - n : 0;
 				break;
 			case '$':
@@ -796,11 +462,68 @@ jputc:
 		free(subjline);
 }
 
-/*
- * Print out the indenting in threaded display.
- */
+static char *
+__subject_trim(char *s)
+{
+	struct {
+		ui8_t	len;
+		char	dat[7];
+	} const *pp, ignored[] = { /* TODO make ignore list configurable */
+		{ 3, "re:" }, { 4, "fwd:" },
+		{ 3, "aw:" }, { 5, "antw:" },
+		{ 0, "" }
+	};
+jouter:
+	while (*s != '\0') {
+		while (spacechar(*s))
+			++s;
+		/* TODO While it is maybe ok not to MIME decode these, we
+		 * TODO should skip =?..?= at the beginning? */
+		for (pp = ignored; pp->len > 0; ++pp)
+			if (is_asccaseprefix(pp->dat, s)) {
+				s += pp->len;
+				goto jouter;
+			}
+		break;
+	}
+	return s;
+}
+
+static char *
+__subject(struct message *mp, bool_t threaded, size_t yetprinted)
+{
+	/* XXX NOTE: because of efficiency reasons we simply ignore any encoded
+	 * XXX parts and use ASCII case-insensitive comparison */
+	struct str in, out;
+	struct message *xmp;
+	char *rv = (char*)-1, *ms, *mso, *os;
+
+	if ((ms = hfield1("subject", mp)) == NULL)
+		goto jleave;
+
+	if (!threaded || mp->m_level == 0)
+		goto jconv;
+
+	/* In a display thread - check wether this message uses the same
+	 * Subject: as it's parent or elder neighbour, suppress printing it if
+	 * this is the case.  To extend this a bit, ignore any leading Re: or
+	 * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
+	mso = __subject_trim(ms);
+	for (xmp = mp; (xmp = prev_in_thread(xmp)) != NULL && yetprinted-- > 0;)
+		if (visible(xmp) && (os = hfield1("subject", xmp)) != NULL &&
+				asccasecmp(mso, __subject_trim(os)) == 0)
+			goto jleave;
+jconv:
+	in.s = ms;
+	in.l = strlen(ms);
+	mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
+	rv = out.s;
+jleave:
+	return rv;
+}
+
 static int
-putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
+__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 {
 	struct message *mq;
 	int *us, indlvl, indw, i, important = MNEW|MFLAGGED;
@@ -862,29 +585,332 @@ putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
 	return indw;
 }
 
-FL void
-printhead(int mesg, FILE *f, int threaded)
+FL int
+ccmdnotsupp(void *v) /* TODO -> lex.c */
 {
-	int bsdflags, bsdheadline, sz;
-	char attrlist[30], *cp;
-	char const *fmt;
+	(void)v;
+	fprintf(stderr, tr(10, "The requested feature is not compiled in\n"));
+	return (1);
+}
 
-	bsdflags = value("bsdcompat") != NULL || value("bsdflags") != NULL ||
-		getenv("SYSV3") != NULL;
-	strcpy(attrlist, bsdflags ? "NU  *HMFAT+-$" : "NUROSPMFAT+-$");
-	if ((cp = value("attrlist")) != NULL) {
-		sz = strlen(cp);
-		if (UICMP(32, sz, >, sizeof attrlist - 1))
-			sz = (int)sizeof attrlist - 1;
-		memcpy(attrlist, cp, sz);
+FL char const *
+get_pager(void)
+{
+	char const *cp;
+
+	cp = value("PAGER");
+	if (cp == NULL || *cp == '\0')
+		cp = PAGER;
+	return cp;
+}
+
+FL int
+headers(void *v)
+{
+	ui32_t flag;
+	int *msgvec = v, g, k, n, mesg, size, lastg = 1;
+	struct message *mp, *mq, *lastmq = NULL;
+	enum mflag	fl = MNEW|MFLAGGED;
+
+	time_current_update(&time_current, FAL0);
+
+	flag = 0;
+	size = screensize();
+	n = msgvec[0];	/* n == {-2, -1, 0}: called from scroll() */
+	if (screen < 0)
+		screen = 0;
+	k = screen * size;
+	if (k >= msgCount)
+		k = msgCount - size;
+	if (k < 0)
+		k = 0;
+
+	if (mb.mb_threaded == 0) {
+		g = 0;
+		mq = &message[0];
+		for (mp = &message[0]; mp < &message[msgCount]; mp++)
+			if (visible(mp)) {
+				if (g % size == 0)
+					mq = mp;
+				if (mp->m_flag&fl) {
+					lastg = g;
+					lastmq = mq;
+				}
+				if ((n > 0 && mp == &message[n-1]) ||
+						(n == 0 && g == k) ||
+						(n == -2 && g == k + size &&
+						 lastmq) ||
+						(n < 0 && g >= k &&
+						 (mp->m_flag & fl) != 0))
+					break;
+				g++;
+			}
+		if (lastmq && (n==-2 || (n==-1 && mp == &message[msgCount]))) {
+			g = lastg;
+			mq = lastmq;
+		}
+		screen = g / size;
+		mp = mq;
+		mesg = mp - &message[0];
+		if (dot != &message[n-1]) {
+			for (mq = mp; mq < &message[msgCount]; mq++)
+				if (visible(mq)) {
+					setdot(mq);
+					break;
+				}
+		}
+#ifdef HAVE_IMAP
+		if (mb.mb_type == MB_IMAP)
+			imap_getheaders(mesg+1, mesg + size);
+#endif
+		srelax_hold();
+		for (; mp < &message[msgCount]; mp++) {
+			mesg++;
+			if (!visible(mp))
+				continue;
+			if (UICMP(32, flag++, >=, size))
+				break;
+			_print_head(0, mesg, stdout, 0);
+			srelax();
+		}
+		srelax_rele();
+	} else {	/* threaded */
+		g = 0;
+		mq = threadroot;
+		for (mp = threadroot; mp; mp = next_in_thread(mp))
+			if (visible(mp) && (mp->m_collapsed <= 0 ||
+					 mp == &message[n-1])) {
+				if (g % size == 0)
+					mq = mp;
+				if (mp->m_flag&fl) {
+					lastg = g;
+					lastmq = mq;
+				}
+				if ((n > 0 && mp == &message[n-1]) ||
+						(n == 0 && g == k) ||
+						(n == -2 && g == k + size &&
+						 lastmq) ||
+						(n < 0 && g >= k &&
+						 (mp->m_flag & fl) != 0))
+					break;
+				g++;
+			}
+		if (lastmq && (n==-2 || (n==-1 && mp==&message[msgCount]))) {
+			g = lastg;
+			mq = lastmq;
+		}
+		screen = g / size;
+		mp = mq;
+		if (dot != &message[n-1]) {
+			for (mq = mp; mq; mq = next_in_thread(mq))
+				if (visible(mq) && mq->m_collapsed <= 0) {
+					setdot(mq);
+					break;
+				}
+		}
+		srelax_hold();
+		while (mp) {
+			if (visible(mp) && (mp->m_collapsed <= 0 ||
+					 mp == &message[n-1])) {
+				if (UICMP(32, flag++, >=, size))
+					break;
+				_print_head(flag - 1, mp - &message[0] + 1,
+					stdout, mb.mb_threaded);
+				srelax();
+			}
+			mp = next_in_thread(mp);
+		}
+		srelax_rele();
 	}
-	bsdheadline = value("bsdcompat") != NULL ||
-		value("bsdheadline") != NULL;
-	if ((fmt = value("headline")) == NULL)
-		fmt = bsdheadline ?
-			"%>%a%m %-20f  %16d %3l/%-5o %i%-S" :
-			"%>%a%m %-18f %16d %4l/%-5o %i%-s";
-	hprf(fmt, mesg, f, threaded, attrlist);
+	if (!flag)
+		printf(tr(6, "No more mail.\n"));
+	return !flag;
+}
+
+/*
+ * Scroll to the next/previous screen
+ */
+FL int
+scroll(void *v)
+{
+	return scroll1(v, 0);
+}
+
+FL int
+Scroll(void *v)
+{
+	return scroll1(v, 1);
+}
+
+static int
+scroll1(char *arg, int onlynew)
+{
+	int size;
+	int cur[1];
+
+	cur[0] = onlynew ? -1 : 0;
+	size = screensize();
+	switch (*arg) {
+	case '1': case '2': case '3': case '4': case '5':
+	case '6': case '7': case '8': case '9': case '0':
+		screen = atoi(arg);
+		goto scroll_forward;
+	case '\0':
+		screen++;
+		goto scroll_forward;
+	case '$':
+		screen = msgCount / size;
+		goto scroll_forward;
+	case '+':
+		if (arg[1] == '\0')
+			screen++;
+		else
+			screen += atoi(arg + 1);
+scroll_forward:
+		if (screen * size > msgCount) {
+			screen = msgCount / size;
+			printf(tr(7, "On last screenful of messages\n"));
+		}
+		break;
+
+	case '-':
+		if (arg[1] == '\0')
+			screen--;
+		else
+			screen -= atoi(arg + 1);
+		if (screen < 0) {
+			screen = 0;
+			printf(tr(8, "On first screenful of messages\n"));
+		}
+		if (cur[0] == -1)
+			cur[0] = -2;
+		break;
+
+	default:
+		printf(tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
+		return(1);
+	}
+	return(headers(cur));
+}
+
+/*
+ * Compute screen size.
+ */
+FL int
+screensize(void)
+{
+	int s;
+	char *cp;
+
+	if ((cp = value("screen")) != NULL && (s = atoi(cp)) > 0)
+		return s;
+	return scrnheight - 4;
+}
+
+static sigjmp_buf	_cmd1_pipejmp;
+
+/*ARGSUSED*/
+static void
+_cmd1_onpipe(int signo)
+{
+	UNUSED(signo);
+	siglongjmp(_cmd1_pipejmp, 1);
+}
+
+/*
+ * Print out the headlines for each message
+ * in the passed message list.
+ */
+FL int
+from(void *v)
+{
+	int *msgvec = v, *ip, n;
+	char *cp;
+	FILE *volatile obuf = stdout;
+
+	time_current_update(&time_current, FAL0);
+
+	/* TODO unfixable memory leaks still */
+	if (IS_TTY_SESSION() && (cp = value("crt")) != NULL) {
+		for (n = 0, ip = msgvec; *ip; ip++)
+			n++;
+		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
+			char const *p;
+			if (sigsetjmp(_cmd1_pipejmp, 1))
+				goto endpipe;
+			p = get_pager();
+			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
+				perror(p);
+				obuf = stdout;
+				cp=NULL;
+			} else
+				safe_signal(SIGPIPE, _cmd1_onpipe);
+		}
+	}
+	for (n = 0, ip = msgvec; *ip != 0; ip++)
+		_print_head((size_t)n++, *ip, obuf, mb.mb_threaded);
+	if (--ip >= msgvec)
+		setdot(&message[*ip - 1]);
+endpipe:
+	if (obuf != stdout) {
+		safe_signal(SIGPIPE, SIG_IGN);
+		Pclose(obuf, TRU1);
+		safe_signal(SIGPIPE, dflpipe);
+	}
+	return(0);
+}
+
+static int
+_dispc(struct message *mp, const char *a)
+{
+	int i = ' ';
+
+	/*
+	 * Bletch!
+	 */
+	if ((mp->m_flag & (MREAD|MNEW)) == MREAD)
+		i = a[3];
+	if ((mp->m_flag & (MREAD|MNEW)) == (MREAD|MNEW))
+		i = a[2];
+	if (mp->m_flag & MANSWERED)
+		i = a[8];
+	if (mp->m_flag & MDRAFTED)
+		i = a[9];
+	if ((mp->m_flag & (MREAD|MNEW)) == MNEW)
+		i = a[0];
+	if ((mp->m_flag & (MREAD|MNEW)) == 0)
+		i = a[1];
+	if (mp->m_flag & MSPAM)
+		i = a[12];
+	if (mp->m_flag & MSAVED)
+		i = a[4];
+	if (mp->m_flag & MPRESERVE)
+		i = a[5];
+	if (mp->m_flag & (MBOX|MBOXED))
+		i = a[6];
+	if (mp->m_flag & MFLAGGED)
+		i = a[7];
+	if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
+		i = a[11];
+	if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
+		i = a[10];
+	return i;
+}
+
+FL void
+print_headers(size_t bottom, size_t topx)
+{
+	size_t printed;
+
+#ifdef HAVE_IMAP
+	if (mb.mb_type == MB_IMAP)
+		imap_getheaders(bottom, topx);
+#endif
+	time_current_update(&time_current, FAL0);
+
+	for (printed = 0; bottom <= topx; ++bottom)
+		if (visible(&message[bottom - 1]))
+			_print_head(printed++, bottom, stdout, 0);
 }
 
 /*

@@ -461,13 +461,7 @@ _rcv_mode(char const *folder)
       exit(i);
 
    if (options & OPT_HEADERSONLY) {
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(1, msgCount);
-#endif
-      time_current_update(&time_current, FAL0);
-      for (i = 1; i <= msgCount; ++i)
-         printhead(i, stdout, 0);
+      print_headers(1, msgCount);
       exit(exit_status);
    }
 

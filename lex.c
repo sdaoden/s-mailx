@@ -577,10 +577,9 @@ nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
 		}
 		return 1;
 	}
-	if (nmail) {
+	if (nmail)
 		newmailinfo(omsgCount);
-	}
-	return(0);
+	return 0;
 }
 
 FL int
@@ -604,16 +603,8 @@ newmailinfo(int omsgCount)
 		printf(tr(224, "Loaded %d messages.\n"), msgCount);
 	callhook(mailname, 1);
 	mdot = getmdot(1);
-	if (value("header")) {
-#ifdef HAVE_IMAP
-		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(omsgCount+1, msgCount);
-#endif
-		time_current_update(&time_current, FAL0);
-		while (++omsgCount <= msgCount)
-			if (visible(&message[omsgCount-1]))
-				printhead(omsgCount, stdout, 0);
-	}
+	if (value("header"))
+		print_headers(omsgCount + 1, msgCount);
 	return mdot;
 }
 

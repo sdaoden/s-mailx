@@ -733,6 +733,12 @@ enum mflag {
 	MSPAM		= (1<<27)	/* message is classified as spam */
 };
 
+/* Oft-used mask values */
+#define MMNORM       (MDELETED | MSAVED | MHIDDEN) /* Save and deleted bits */
+#define MMNDEL       (MDELETED | MHIDDEN)          /* Only deleted bit */
+
+#define visible(mp)  (((mp)->m_flag & MMNDEL) == 0)
+
 struct mimepart {
 	enum mflag	m_flag;		/* flags */
 	enum havespec	m_have;		/* downloaded parts of the part */
@@ -816,12 +822,6 @@ enum argtype {
 	A	= 010000	/* Needs an active mailbox */
 };
 
-/*
- * Oft-used mask values
- */
-#define MMNORM	(MDELETED|MSAVED|MHIDDEN) /* Look at save *and* delete bits */
-#define MMNDEL		(MDELETED|MHIDDEN)	/* Look only at deleted bit */
-
 enum gfield {
 	GTO	= 1,		/* Grab To: line */
 	GSUBJECT= 2,		/* Likewise, Subject: line */
@@ -845,8 +845,6 @@ enum gfield {
 };
 
 #define GMASK		(GTO|GSUBJECT|GCC|GBCC)	/* Mask of places from whence */
-
-#define visible(mp)	(((mp)->m_flag & (MDELETED|MHIDDEN)) == 0)
 
 /*
  * Structure used to pass about the current state of a message (header).
