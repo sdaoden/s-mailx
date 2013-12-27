@@ -1059,9 +1059,7 @@ FL int         snprintf(char *str, size_t size, const char *format, ...);
 
 FL char *      sstpcpy(char *dst, const char *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
-#ifdef notyet
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
-#endif
 #ifdef HAVE_DEBUG
 # define sstrdup(CP)             sstrdup(CP, __FILE__, __LINE__)
 # define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)

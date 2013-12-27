@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Dec 17, 2013
+.Dd Dec 27, 2013
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -556,10 +556,28 @@ If the previous command line contained more than one independent
 criterion then the last of those criteria is used.
 .El
 .Pp
-A practical method to read a set of messages is to issue a
-.Ic from
-command with the search criteria first to check for appropriate messages,
-and to read each single message then by typing ``' repeatedly.
+\*(OP An IMAP-style search can be turned into a case-insensitive regular
+expression search (see
+.Xr re_format 7 Ns
+) in its entirety by using a slash `/' as the first character after the
+opening parenthesis, as in
+.Bd -literal -offset indent
+   ? f (/or subject ^\\[S-nail (subject ^\\[nail-devel))
+.Ed
+.Pp
+On the lowest nesting level each expression is treated by itself:
+.Bd -literal -offset indent
+   ? f (/subject ^\\[S-nail) (/subject ^\\[nail-devel)
+.Ed
+.Pp
+Of course, now that we have regular expression support those should be
+written much more efficiently as
+.Bd -literal -offset indent
+   ? f (/subject "^\\\\[(S-nail|nail-devel)")
+.Ed
+.Pp
+Note that regular expression searches are always performed on local
+storage, messages will be downloaded first as necessary.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Replying to or originating mail"
@@ -4330,6 +4348,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr aliases 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
+.Xr re_format 7 ,
 .Xr mailwrapper 8
 .\"
 .\" --  >8  --  8<  --

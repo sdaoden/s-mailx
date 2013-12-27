@@ -43,177 +43,200 @@
 # include "nail.h"
 #endif
 
-static enum itoken {
-	ITBAD,
-	ITEOD,
-	ITBOL,
-	ITEOL,
-	ITAND,
-	ITSET,
-	ITALL,
-	ITANSWERED,
-	ITBCC,
-	ITBEFORE,
-	ITBODY,
-	ITCC,
-	ITDELETED,
-	ITDRAFT,
-	ITFLAGGED,
-	ITFROM,
-	ITHEADER,
-	ITKEYWORD,
-	ITLARGER,
-	ITNEW,
-	ITNOT,
-	ITOLD,
-	ITON,
-	ITOR,
-	ITRECENT,
-	ITSEEN,
-	ITSENTBEFORE,
-	ITSENTON,
-	ITSENTSINCE,
-	ITSINCE,
-	ITSMALLER,
-	ITSUBJECT,
-	ITTEXT,
-	ITTO,
-	ITUID,
-	ITUNANSWERED,
-	ITUNDELETED,
-	ITUNDRAFT,
-	ITUNFLAGGED,
-	ITUNKEYWORD,
-	ITUNSEEN
-} itoken;
+#ifdef HAVE_REGEX
+# include <regex.h>
+#endif
 
-static unsigned long	inumber;
-static void	*iargs[2];
-static int	needheaders;
-
-static struct itlex {
-	const char	*s_string;
-	enum itoken	s_token;
-} strings[] = {
-	{ "ALL",	ITALL },
-	{ "ANSWERED",	ITANSWERED },
-	{ "BCC",	ITBCC },
-	{ "BEFORE",	ITBEFORE },
-	{ "BODY",	ITBODY },
-	{ "CC",		ITCC },
-	{ "DELETED",	ITDELETED },
-	{ "DRAFT",	ITDRAFT },
-	{ "FLAGGED",	ITFLAGGED },
-	{ "FROM",	ITFROM },
-	{ "HEADER",	ITHEADER },
-	{ "KEYWORD",	ITKEYWORD },
-	{ "LARGER",	ITLARGER },
-	{ "NEW",	ITNEW },
-	{ "NOT",	ITNOT },
-	{ "OLD",	ITOLD },
-	{ "ON",		ITON },
-	{ "OR",		ITOR },
-	{ "RECENT",	ITRECENT },
-	{ "SEEN",	ITSEEN },
-	{ "SENTBEFORE",	ITSENTBEFORE },
-	{ "SENTON",	ITSENTON },
-	{ "SENTSINCE",	ITSENTSINCE },
-	{ "SINCE",	ITSINCE },
-	{ "SMALLER",	ITSMALLER },
-	{ "SUBJECT",	ITSUBJECT },
-	{ "TEXT",	ITTEXT },
-	{ "TO",		ITTO },
-	{ "UID",	ITUID },
-	{ "UNANSWERED",	ITUNANSWERED },
-	{ "UNDELETED",	ITUNDELETED },
-	{ "UNDRAFT",	ITUNDRAFT },
-	{ "UNFLAGGED",	ITUNFLAGGED },
-	{ "UNKEYWORD",	ITUNKEYWORD },
-	{ "UNSEEN",	ITUNSEEN },
-	{ NULL,		ITBAD }
+enum itoken {
+   ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
+   ITBCC, ITBEFORE, ITBODY,
+   ITCC,
+   ITDELETED, ITDRAFT,
+   ITFLAGGED, ITFROM,
+   ITHEADER,
+   ITKEYWORD,
+   ITLARGER,
+   ITNEW, ITNOT,
+   ITOLD, ITON, ITOR,
+   ITRECENT,
+   ITSEEN, ITSENTBEFORE, ITSENTON, ITSENTSINCE, ITSINCE, ITSMALLER,
+      ITSUBJECT,
+   ITTEXT, ITTO,
+   ITUID, ITUNANSWERED, ITUNDELETED, ITUNDRAFT, ITUNFLAGGED, ITUNKEYWORD,
+      ITUNSEEN
 };
 
-static struct itnode {
-	enum itoken	n_token;
-	unsigned long	n_n;
-	void	*n_v;
-	void	*n_w;
-	struct itnode	*n_x;
-	struct itnode	*n_y;
-} *ittree;
+struct itlex {
+   const char  *s_string;
+   enum itoken s_token;
+};
 
-static const char	*begin;
+#ifdef HAVE_REGEX
+struct itregex {
+   struct itregex *re_next;
+   regex_t        re_regex;
+};
+#endif
+
+struct itnode {
+   enum itoken    n_token;
+   unsigned long  n_n;
+   void           *n_v;
+   void           *n_w;
+   struct itnode  *n_x;
+   struct itnode  *n_y;
+};
+
+static struct itlex const  _it_strings[] = {
+   { "ALL",          ITALL },
+   { "ANSWERED",     ITANSWERED },
+   { "BCC",          ITBCC },
+   { "BEFORE",       ITBEFORE },
+   { "BODY",         ITBODY },
+   { "CC",           ITCC },
+   { "DELETED",      ITDELETED },
+   { "DRAFT",        ITDRAFT },
+   { "FLAGGED",      ITFLAGGED },
+   { "FROM",         ITFROM },
+   { "HEADER",       ITHEADER },
+   { "KEYWORD",      ITKEYWORD },
+   { "LARGER",       ITLARGER },
+   { "NEW",          ITNEW },
+   { "NOT",          ITNOT },
+   { "OLD",          ITOLD },
+   { "ON",           ITON },
+   { "OR",           ITOR },
+   { "RECENT",       ITRECENT },
+   { "SEEN",         ITSEEN },
+   { "SENTBEFORE",   ITSENTBEFORE },
+   { "SENTON",       ITSENTON },
+   { "SENTSINCE",    ITSENTSINCE },
+   { "SINCE",        ITSINCE },
+   { "SMALLER",      ITSMALLER },
+   { "SUBJECT",      ITSUBJECT },
+   { "TEXT",         ITTEXT },
+   { "TO",           ITTO },
+   { "UID",          ITUID },
+   { "UNANSWERED",   ITUNANSWERED },
+   { "UNDELETED",    ITUNDELETED },
+   { "UNDRAFT",      ITUNDRAFT },
+   { "UNFLAGGED",    ITUNFLAGGED },
+   { "UNKEYWORD",    ITUNKEYWORD },
+   { "UNSEEN",       ITUNSEEN },
+   { NULL,           ITBAD }
+};
+
+static struct itnode    *_it_tree;
+#ifdef HAVE_REGEX
+static struct itregex   *_it_regex;
+#endif
+static char             *_it_begin;
+static enum itoken      _it_token;
+static unsigned long    _it_number;
+static void             *_it_args[2];
+static size_t           _it_need_headers;
+static bool_t           _it_need_regex;
 
 static enum okay itparse(char const *spec, char const **xp, int sub);
 static enum okay itscan(char const *spec, char const **xp);
 static enum okay itsplit(char const *spec, char const **xp);
 static enum okay itstring(void **tp, char const *spec, char const **xp);
 static int itexecute(struct mailbox *mp, struct message *m,
-		int c, struct itnode *n);
-static int matchfield(struct message *m, const char *field, const char *what);
+		size_t c, struct itnode *n);
+static int matchfield(struct message *m, const char *field, const void *what);
 static int matchenvelope(struct message *m, const char *field,
-		const char *what);
+		const void *what);
 static char *mkenvelope(struct name *np);
-static int matchmsg(struct message *m, const char *what, int withheader);
+static int matchmsg(struct message *m, const void *what, int withheader);
 static const char *around(const char *cp);
 
 FL enum okay
 imap_search(const char *spec, int f)
 {
-	static char *lastspec;
-	char const *xp;
-	int i;
+   static char *lastspec;
 
-	if (strcmp(spec, "()")) {
-		free(lastspec);
-		lastspec = sstrdup(spec);
-	} else if (lastspec == NULL) {
-		fprintf(stderr, "No last SEARCH criteria available.\n");
-		return STOP;
-	} else
-		spec = lastspec;
-	begin = spec;
+   enum okay rv = STOP;
+   char const *xp;
+   size_t i;
+
+   if (strcmp(spec, "()")) {
+      if (lastspec != NULL)
+         free(lastspec);
+      _it_need_regex = (spec[0] == '(' && spec[1] == '/');
+      i = strlen(spec);
+      lastspec = sbufdup(spec + _it_need_regex, i - _it_need_regex);
+      if (_it_need_regex)
+         lastspec[0] = '(';
+   } else if (lastspec == NULL) {
+      fprintf(stderr, tr(524, "No last SEARCH criteria available.\n"));
+      goto jleave;
+   }
+   spec =
+   _it_begin = lastspec;
+
+   /* Regular expression searches are always local */
+   _it_need_headers = FAL0;
+   if (!_it_need_regex) {
 #ifdef HAVE_IMAP
-	if (imap_search1(spec, f) == OKAY)
-		return OKAY;
-	needheaders = 0;
+      if ((rv = imap_search1(spec, f) == OKAY))
+         goto jleave;
 #endif
-	if (itparse(spec, &xp, 0) == STOP)
-		return STOP;
-	if (ittree == NULL)
-		return OKAY;
+   }
+#ifndef HAVE_REGEX
+   else {
+      fprintf(stderr, tr(525, "No regular expression support for SEARCHes.\n"));
+      goto jleave;
+   }
+#endif
+
+   if (itparse(spec, &xp, 0) == STOP)
+      goto jleave;
+   if (_it_tree == NULL) {
+      rv = OKAY;
+      goto jleave;
+   }
+
 #ifdef HAVE_IMAP
-	if (mb.mb_type == MB_IMAP && needheaders)
-		imap_getheaders(1, msgCount);
+   if (mb.mb_type == MB_IMAP && _it_need_headers)
+      imap_getheaders(1, msgCount);
 #endif
-	srelax_hold();
-	for (i = 0; i < msgCount; i++) {
-		if (message[i].m_flag&MHIDDEN)
-			continue;
-		if (f == MDELETED || (message[i].m_flag&MDELETED) == 0) {
-			if (itexecute(&mb, &message[i], i+1, ittree))
-				mark(i+1, f);
-			srelax();
-		}
-	}
-	srelax_rele();
-	return OKAY;
+   srelax_hold();
+   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+      if (message[i].m_flag & MHIDDEN)
+         continue;
+      if (f == MDELETED || !(message[i].m_flag & MDELETED)) {
+         size_t j = (int)(i + 1);
+         if (itexecute(&mb, &message[i], j, _it_tree))
+            mark((int)j, f);
+         srelax();
+      }
+   }
+   srelax_rele();
+
+   rv = OKAY;
+jleave:
+#ifdef HAVE_REGEX
+   for (; _it_regex != NULL; _it_regex = _it_regex->re_next)
+      regfree(&_it_regex->re_regex);
+   _it_regex = NULL;
+#endif
+   return rv;
 }
 
 static enum okay
 itparse(char const *spec, char const **xp, int sub)
 {
 	int	level = 0;
-	struct itnode	n, *z, *_ittree;
+	struct itnode	n, *z, *ittree;
 	enum okay	ok;
 
-	ittree = NULL;
-	while ((ok = itscan(spec, xp)) == OKAY && itoken != ITBAD &&
-			itoken != ITEOD) {
-		_ittree = ittree;
+	_it_tree = NULL;
+	while ((ok = itscan(spec, xp)) == OKAY && _it_token != ITBAD &&
+			_it_token != ITEOD) {
+		ittree = _it_tree;
 		memset(&n, 0, sizeof n);
 		spec = *xp;
-		switch (itoken) {
+		switch (_it_token) {
 		case ITBOL:
 			level++;
 			continue;
@@ -236,20 +259,20 @@ itparse(char const *spec, char const **xp, int sub)
 			if (itparse(spec, xp, sub+1) == STOP)
 				return STOP;
 			spec = *xp;
-			if ((n.n_x = ittree) == NULL) {
+			if ((n.n_x = _it_tree) == NULL) {
 				fprintf(stderr,
 				"Criterion for NOT missing: >>> %s <<<\n",
 					around(*xp));
 				return STOP;
 			}
-			itoken = ITNOT;
+			_it_token = ITNOT;
 			break;
 		case ITOR:
 			/* <search-key1> <search-key2> */
 			n.n_token = ITOR;
 			if (itparse(spec, xp, sub+1) == STOP)
 				return STOP;
-			if ((n.n_x = ittree) == NULL) {
+			if ((n.n_x = _it_tree) == NULL) {
 				fprintf(stderr, "First criterion for OR "
 						"missing: >>> %s <<<\n",
 						around(*xp));
@@ -259,7 +282,7 @@ itparse(char const *spec, char const **xp, int sub)
 			if (itparse(spec, xp, sub+1) == STOP)
 				return STOP;
 			spec = *xp;
-			if ((n.n_y = ittree) == NULL) {
+			if ((n.n_y = _it_tree) == NULL) {
 				fprintf(stderr, "Second criterion for OR "
 						"missing: >>> %s <<<\n",
 						around(*xp));
@@ -267,22 +290,22 @@ itparse(char const *spec, char const **xp, int sub)
 			}
 			break;
 		default:
-			n.n_token = itoken;
-			n.n_n = inumber;
-			n.n_v = iargs[0];
-			n.n_w = iargs[1];
+			n.n_token = _it_token;
+			n.n_n = _it_number;
+			n.n_v = _it_args[0];
+			n.n_w = _it_args[1];
 		}
-		ittree = _ittree;
-		if (ittree == NULL) {
-			ittree = salloc(sizeof *ittree);
-			*ittree = n;
+		_it_tree = ittree;
+		if (_it_tree == NULL) {
+			_it_tree = salloc(sizeof *_it_tree);
+			*_it_tree = n;
 		} else {
-			z = ittree;
-			ittree = salloc(sizeof *ittree);
-			ittree->n_token = ITAND;
-			ittree->n_x = z;
-			ittree->n_y = salloc(sizeof*ittree->n_y);
-			*ittree->n_y = n;
+			z = _it_tree;
+			_it_tree = salloc(sizeof *_it_tree);
+			_it_tree->n_token = ITAND;
+			_it_tree->n_x = z;
+			_it_tree->n_y = salloc(sizeof *_it_tree->n_y);
+			*_it_tree->n_y = n;
 		}
 		if (sub && level == 0)
 			break;
@@ -299,58 +322,58 @@ itscan(char const *spec, char const **xp)
 		spec++;
 	if (*spec == '(') {
 		*xp = &spec[1];
-		itoken = ITBOL;
+		_it_token = ITBOL;
 		return OKAY;
 	}
 	if (*spec == ')') {
 		*xp = &spec[1];
-		itoken = ITEOL;
+		_it_token = ITEOL;
 		return OKAY;
 	}
 	while (spacechar(*spec))
 		spec++;
 	if (*spec == '\0') {
-		itoken = ITEOD;
+		_it_token = ITEOD;
 		return OKAY;
 	}
-	for (i = 0; strings[i].s_string; i++) {
-		n = strlen(strings[i].s_string);
-		if (ascncasecmp(spec, strings[i].s_string, n) == 0 &&
-				(spacechar(spec[n]&0377) || spec[n] == '\0'
-				 || spec[n] == '(' || spec[n] == ')')) {
-			itoken = strings[i].s_token;
+	for (i = 0; _it_strings[i].s_string; i++) {
+		n = strlen(_it_strings[i].s_string);
+		if (ascncasecmp(spec, _it_strings[i].s_string, n) == 0 &&
+				(spacechar(spec[n]) || spec[n] == '\0' ||
+				 spec[n] == '(' || spec[n] == ')')) {
+			_it_token = _it_strings[i].s_token;
 			spec += n;
-			while (spacechar(*spec&0377))
+			while (spacechar(*spec))
 				spec++;
 			return itsplit(spec, xp);
 		}
 	}
 	if (digitchar(*spec)) {
-		inumber = strtoul(spec, UNCONST(xp), 10);
+		_it_number = strtoul(spec, UNCONST(xp), 10);
 		if (spacechar(**xp) || **xp == '\0' ||
 				**xp == '(' || **xp == ')') {
-			itoken = ITSET;
+			_it_token = ITSET;
 			return OKAY;
 		}
 	}
 	fprintf(stderr, "Bad SEARCH criterion \"");
-	while (*spec && !spacechar(*spec) &&
-			*spec != '(' && *spec != ')') {
+	while (*spec && !spacechar(*spec) && *spec != '(' && *spec != ')') {
 		putc(*spec&0377, stderr);
 		spec++;
 	}
 	fprintf(stderr, "\": >>> %s <<<\n", around(*xp));
-	itoken = ITBAD;
+	_it_token = ITBAD;
 	return STOP;
 }
 
 static enum okay
 itsplit(char const *spec, char const **xp)
 {
-	char	*cp;
-	time_t	t;
+	enum okay rv;
+	char *cp;
+	time_t t;
 
-	switch (itoken) {
+	switch (_it_token) {
 	case ITBCC:
 	case ITBODY:
 	case ITCC:
@@ -359,74 +382,109 @@ itsplit(char const *spec, char const **xp)
 	case ITTEXT:
 	case ITTO:
 		/* <string> */
-		needheaders++;
-		return itstring(&iargs[0], spec, xp);
+		_it_need_headers++;
+		rv = itstring(&_it_args[0], spec, xp);
+#ifdef HAVE_REGEX
+		if (rv == OKAY && _it_need_regex) {
+			_it_number = 0;
+			goto jregcomp;
+		}
+#endif
+		break;
 	case ITSENTBEFORE:
 	case ITSENTON:
 	case ITSENTSINCE:
-		needheaders++;
+		_it_need_headers++;
 		/*FALLTHRU*/
 	case ITBEFORE:
 	case ITON:
 	case ITSINCE:
 		/* <date> */
-		if (itstring(&iargs[0], spec, xp) != OKAY)
-			return STOP;
-		if ((t = imap_read_date(iargs[0])) == (time_t)-1) {
+		if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+			break;
+		if ((t = imap_read_date(_it_args[0])) == (time_t)-1) {
 			fprintf(stderr, "Invalid date \"%s\": >>> %s <<<\n",
-					(char *)iargs[0], around(*xp));
-			return STOP;
+					(char*)_it_args[0], around(*xp));
+			rv = STOP;
+			break;
 		}
-		inumber = t;
-		return OKAY;
+		_it_number = t;
+		rv = OKAY;
+		break;
 	case ITHEADER:
 		/* <field-name> <string> */
-		needheaders++;
-		if (itstring(&iargs[0], spec, xp) != OKAY)
-			return STOP;
+		_it_need_headers++;
+		if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+			break;
 		spec = *xp;
-		return itstring(&iargs[1], spec, xp);
+		if ((rv = itstring(&_it_args[1], spec, xp)) != OKAY)
+			break;
+#ifdef HAVE_REGEX
+		_it_number = 1;
+jregcomp:
+		if (_it_need_regex) {
+			struct itregex *itre = salloc(sizeof *_it_regex);
+			itre->re_next = _it_regex;
+			_it_regex = itre;
+
+			cp = _it_args[_it_number];
+			_it_args[_it_number] = &itre->re_regex;
+			if (regcomp(&itre->re_regex, cp, REG_EXTENDED | REG_ICASE | REG_NOSUB)
+               != 0) {
+				fprintf(stderr, tr(526,
+               "Invalid regular expression \"%s\": >>> %s <<<\n"),
+               cp, around(*xp));
+				rv = STOP;
+				break;
+			}
+		}
+#endif
+		break;
 	case ITKEYWORD:
 	case ITUNKEYWORD:
 		/* <flag> */
-		if (itstring(&iargs[0], spec, xp) != OKAY)
-			return STOP;
-		if (asccasecmp(iargs[0], "\\Seen") == 0)
-			inumber = MREAD;
-		else if (asccasecmp(iargs[0], "\\Deleted") == 0)
-			inumber = MDELETED;
-		else if (asccasecmp(iargs[0], "\\Recent") == 0)
-			inumber = MNEW;
-		else if (asccasecmp(iargs[0], "\\Flagged") == 0)
-			inumber = MFLAGGED;
-		else if (asccasecmp(iargs[0], "\\Answered") == 0)
-			inumber = MANSWERED;
-		else if (asccasecmp(iargs[0], "\\Draft") == 0)
-			inumber = MDRAFT;
+		if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+			break;
+		if (asccasecmp(_it_args[0], "\\Seen") == 0)
+			_it_number = MREAD;
+		else if (asccasecmp(_it_args[0], "\\Deleted") == 0)
+			_it_number = MDELETED;
+		else if (asccasecmp(_it_args[0], "\\Recent") == 0)
+			_it_number = MNEW;
+		else if (asccasecmp(_it_args[0], "\\Flagged") == 0)
+			_it_number = MFLAGGED;
+		else if (asccasecmp(_it_args[0], "\\Answered") == 0)
+			_it_number = MANSWERED;
+		else if (asccasecmp(_it_args[0], "\\Draft") == 0)
+			_it_number = MDRAFT;
 		else
-			inumber = 0;
-		return OKAY;
+			_it_number = 0;
+		break;
 	case ITLARGER:
 	case ITSMALLER:
 		/* <n> */
-		if (itstring(&iargs[0], spec, xp) != OKAY)
-			return STOP;
-		inumber = strtoul(iargs[0], &cp, 10);
-		if (spacechar(*cp&0377) || *cp == '\0')
-			return OKAY;
+		if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+			break;
+		_it_number = strtoul(_it_args[0], &cp, 10);
+		if (spacechar(*cp) || *cp == '\0')
+			break;
 		fprintf(stderr, "Invalid size: >>> %s <<<\n",
 				around(*xp));
-		return STOP;
+		rv = STOP;
+		break;
 	case ITUID:
 		/* <message set> */
 		fprintf(stderr,
 			"Searching for UIDs is not supported: >>> %s <<<\n",
 			around(*xp));
-		return STOP;
+		rv = STOP;
+		break;
 	default:
 		*xp = spec;
-		return OKAY;
+		rv = OKAY;
+		break;
 	}
+	return rv;
 }
 
 static enum okay
@@ -435,7 +493,7 @@ itstring(void **tp, char const *spec, char const **xp)
 	int	inquote = 0;
 	char	*ap;
 
-	while (spacechar(*spec&0377))
+	while (spacechar(*spec))
 		spec++;
 	if (*spec == '\0' || *spec == '(' || *spec == ')') {
 		fprintf(stderr, "Missing string argument: >>> %s <<<\n",
@@ -449,18 +507,20 @@ itstring(void **tp, char const *spec, char const **xp)
 			*ap++ = *(*xp)++;
 		else if (**xp == '"')
 			inquote = !inquote;
-		else if (!inquote && (spacechar(**xp&0377) ||
+		else if (!inquote && (spacechar(**xp) ||
 				**xp == '(' || **xp == ')')) {
 			*ap++ = '\0';
 			break;
 		}
 		*ap++ = **xp;
 	} while (*(*xp)++);
+
+	*tp = imap_unquotestr(*tp);
 	return OKAY;
 }
 
 static int
-itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
+itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
 {
 	char	*cp, *line = NULL;
 	size_t	linesize = 0;
@@ -576,39 +636,55 @@ itexecute(struct mailbox *mp, struct message *m, int c, struct itnode *n)
 }
 
 static int
-matchfield(struct message *m, const char *field, const char *what)
+matchfield(struct message *m, const char *field, const void *what)
 {
-	struct str	in, out;
-	int	i;
+   struct str in, out;
+   int i = 0;
 
-	if ((in.s = hfieldX(imap_unquotestr(field), m)) == NULL)
-		return 0;
-	in.l = strlen(in.s);
-	mime_fromhdr(&in, &out, TD_ICONV);
-	what = imap_unquotestr(what);
-	i = substr(out.s, what);
-	free(out.s);
-	return i;
+   if ((in.s = hfieldX(field, m)) == NULL)
+      goto jleave;
+
+   in.l = strlen(in.s);
+   mime_fromhdr(&in, &out, TD_ICONV);
+
+#ifdef HAVE_REGEX
+   if (_it_need_regex)
+      i = (regexec(what, out.s, 0,NULL, 0) != REG_NOMATCH);
+   else
+#endif
+      i = substr(out.s, what);
+
+   free(out.s);
+jleave:
+   return i;
 }
 
 static int
-matchenvelope(struct message *m, const char *field, const char *what)
+matchenvelope(struct message *m, const char *field, const void *what)
 {
-	struct name	*np;
-	char	*cp;
+   struct name *np;
+   char *cp;
+   int rv = 0;
 
-	if ((cp = hfieldX(imap_unquotestr(field), m)) == NULL)
-		return 0;
-	what = imap_unquotestr(what);
-	np = lextract(cp, GFULL);
-	while (np) {
-		if (substr(np->n_name, what))
-			return 1;
-		if (substr(mkenvelope(np), what))
-			return 1;
-		np = np->n_flink;
-	}
-	return 0;
+   if ((cp = hfieldX(field, m)) == NULL)
+      goto jleave;
+
+   for (np = lextract(cp, GFULL); np != NULL; np = np->n_flink) {
+#ifdef HAVE_REGEX
+      if (_it_need_regex) {
+         if (regexec(what, np->n_name, 0,NULL, 0) == REG_NOMATCH &&
+               regexec(what, mkenvelope(np), 0,NULL, 0) == REG_NOMATCH)
+            continue;
+      } else
+#endif
+      if (!substr(np->n_name, what) && !substr(mkenvelope(np), what))
+         continue;
+      rv = 1;
+      break;
+   }
+
+jleave:
+   return rv;
 }
 
 static char *
@@ -689,51 +765,65 @@ done:	*rp = '\0';
 }
 
 static int
-matchmsg(struct message *m, const char *what, int withheader)
+matchmsg(struct message *m, const void *what, int withheader)
 {
-	char	*tempFile, *line = NULL;
-	size_t	linesize, linelen, cnt;
-	FILE	*fp;
-	int	yes = 0;
+   char *tempFile, *line = NULL;
+   size_t linesize, linelen, cnt;
+   FILE *fp;
+   int yes = 0;
 
-	if ((fp = Ftemp(&tempFile, "Ra", "w+", 0600, 1)) == NULL)
-		return 0;
-	rm(tempFile);
-	Ftfree(&tempFile);
-	if (sendmp(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
-		goto out;
-	fflush(fp);
-	rewind(fp);
-	cnt = fsize(fp);
-	line = smalloc(linesize = LINESIZE);
-	linelen = 0;
-	if (!withheader)
-		while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0))
-			if (*line == '\n')
-				break;
-	what = imap_unquotestr(what);
-	while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0))
-		if (substr(line, what)) {
-			yes = 1;
-			break;
-		}
-out:
-	free(line);
-	Fclose(fp);
-	return yes;
+   if ((fp = Ftemp(&tempFile, "Ra", "w+", 0600, 1)) == NULL)
+      goto j_leave;
+   rm(tempFile);
+   Ftfree(&tempFile);
+   if (sendmp(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
+      goto jleave;
+   fflush(fp);
+   rewind(fp);
+
+   cnt = fsize(fp);
+   line = smalloc(linesize = LINESIZE);
+   linelen = 0;
+
+   if (!withheader)
+      while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0))
+         if (*line == '\n')
+            break;
+
+   while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0)) {
+#ifdef HAVE_REGEX
+      if (_it_need_regex) {
+         if (regexec(what, line, 0,NULL, 0) == REG_NOMATCH)
+            continue;
+      } else
+#endif
+      if (!substr(line, what))
+         continue;
+      yes = 1;
+      break;
+   }
+
+jleave:
+   free(line);
+   Fclose(fp);
+j_leave:
+   return yes;
 }
 
-#define	SURROUNDING	16
+#define SURROUNDING 16
 static const char *
 around(const char *cp)
 {
-	int	i;
-	static char	ab[2*SURROUNDING+1];
+   static char ab[2 * SURROUNDING +1];
 
-	for (i = 0; i < SURROUNDING && cp > begin; i++)
-		cp--;
-	for (i = 0; i < (int)sizeof ab - 1; i++)
-		ab[i] = *cp++;
-	ab[i] = '\0';
-	return ab;
+   size_t i;
+
+   for (i = 0; i < SURROUNDING && cp > _it_begin; ++i)
+      --cp;
+   for (i = 0; i < sizeof(ab) - 1; ++i)
+      ab[i] = *cp++;
+   ab[i] = '\0';
+   return ab;
 }
+
+/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */

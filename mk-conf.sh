@@ -27,23 +27,26 @@ if [ -n "${CONFIG}" ]; then
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
-      WANT_QUOTE_FOLD=0
-      WANT_DOCSTRINGS=0
+      WANT_REGEX=0
       WANT_SPAM=0
+      WANT_DOCSTRINGS=0
+      WANT_QUOTE_FOLD=0
       ;;
    MEDIUM)
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0
-      WANT_QUOTE_FOLD=0
+      WANT_REGEX=0
       WANT_SPAM=0
+      WANT_QUOTE_FOLD=0
       ;;
    NETSEND)
       WANT_IMAP=0
       WANT_POP3=0
       WANT_READLINE=0 WANT_EDITLINE=0
-      WANT_QUOTE_FOLD=0
+      WANT_REGEX=0
       WANT_SPAM=0
+      WANT_QUOTE_FOLD=0
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -78,6 +81,8 @@ option_update() {
 compiler_flags() {
    i=`uname -s`
    _CFLAGS=
+
+   # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
       _CFLAGS=
       if { CC="`command -v clang`"; }; then
@@ -141,6 +146,7 @@ compiler_flags() {
    _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
    export _CFLAGS _LDFLAGS
 
+   # $CFLAGS and $LDFLAGS are only overwritten if explicitly wanted
    if wantfeat AUTOCC; then
       CFLAGS=$_CFLAGS
       LDFLAGS=$_LDFLAGS
@@ -202,6 +208,7 @@ trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
 trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}" 0
 ${rm} -f ${newlst} ${newmk} ${newh}
 
+# (Could: use FD redirection, add eval(1) and don't re-'. ./${newlst}')
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
@@ -385,10 +392,7 @@ echo "${LIBS}" >> ${lib}
 
 ##
 
-# Better set _GNU_SOURCE (if we are on Linux only?)
-# Fixes compilation on Slackware 14 + (with at least clang(1)).
-# Since i've always defined this on GNU/Linux, i'm even surprised it works
-# without!!  Didn't check this yet (and TinyCore uses different environment).
+# Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without
 echo '#define _GNU_SOURCE' >> ${h}
 
 link_check hello 'if a hello world program can be built' << \! || {\
@@ -905,7 +909,26 @@ int main(void)
 !
 else
    echo '/* WANT_IDNA=0 */' >> ${h}
-fi # wantfeat IDNA
+fi
+
+if wantfeat REGEX; then
+   link_check regex 'for regular expressions' '#define HAVE_REGEX' << \!
+#include <regex.h>
+#include <stdlib.h>
+int main(void)
+{
+   int status;
+   regex_t re;
+   if (regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0)
+      return 1;
+   status = regexec(&re, "plan9", 0,NULL, 0);
+   regfree(&re);
+   return !(status == REG_NOMATCH);
+}
+!
+else
+   echo '/* WANT_REGEX=0 */' >> ${h}
+fi
 
 if wantfeat READLINE; then
    __edrdlib() {
@@ -1062,6 +1085,7 @@ printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
@@ -1151,6 +1175,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
+#ifdef HAVE_REGEX
+: + Regular expression searches
+#endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
 : + Command line editing
 # ifdef HAVE_TABEXPAND
@@ -1203,6 +1230,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
+#endif
+#ifndef HAVE_REGEX
+: - Regular expression searches
 #endif
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history

@@ -828,7 +828,6 @@ FL char *
 	return dp;
 }
 
-#ifdef notyet
 FL char *
 (sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
 {
@@ -840,7 +839,6 @@ FL char *
 	dp[len] = '\0';
 	return dp;
 }
-#endif
 
 FL char *
 n_strlcpy(char *dst, const char *src, size_t len)
