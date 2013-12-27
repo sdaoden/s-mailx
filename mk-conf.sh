@@ -141,13 +141,10 @@ compiler_flags() {
    _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
    export _CFLAGS _LDFLAGS
 
-   if wantfeat AUTOCC || [ -z "${CFLAGS}" ]; then
+   if wantfeat AUTOCC; then
       CFLAGS=$_CFLAGS
-      export CFLAGS
-   fi
-   if wantfeat AUTOCC || [ -z "${LDFLAGS}" ]; then
       LDFLAGS=$_LDFLAGS
-      export LDFLAGS
+      export CFLAGS LDFLAGS
    fi
 }
 
@@ -1079,11 +1076,13 @@ printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
-printf '# if defined HAVE_READLINE || defined HAVE_EDITLINE || '\
-'defined HAVE_NCL\n   ",COMMAND LINE EDITOR"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY MANAGEMENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
 
 printf '#endif /* _CONFIG_H */\n' >> ${h}
