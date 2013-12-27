@@ -701,7 +701,7 @@ FL enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
 FL char *      mime_classify_content_type_by_fileext(char const *name);
 
 /* "mimetypes" command */
-FL int         cmimetypes(void *v);
+FL int         c_mimetypes(void *v);
 
 FL void        mime_fromhdr(struct str const *in, struct str *out,
                   enum tdflags flags);

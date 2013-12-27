@@ -323,7 +323,7 @@
      DS(393, "Un\"fwdignore\" <header-fields>") },
    { "unfwdretain", unfwdretain, (M | RAWLIST), 0, 1000
      DS(394, "Un\"fwdretain\" <header-fields>") },
-   { "mimetypes", cmimetypes, (M | RAWLIST), 0, 1000
+   { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 1000
      DS(418, "Either <show> (default) or <clear> the mime.types cache") },
    { "spamrate", cspam_rate, (A | M | R | MSGLIST), 0, 0
      DS(419, "Rate <message-list> via the spam detector") },
