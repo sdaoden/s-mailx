@@ -4,22 +4,6 @@
 LC_ALL=C
 export LC_ALL
 
-awk=`command -pv awk`
-cat=`command -pv cat`
-chmod=`command -pv chmod`
-cp=`command -pv cp`
-cmp=`command -pv cmp`
-grep=`command -pv grep`
-make="${MAKE:-`command -pv make`}"
-mkdir=`command -pv mkdir`
-mv=`command -pv mv`
-rm=`command -pv rm`
-sed=`command -pv sed`
-tee=`command -pv tee`
-
-STRIP=`command -pv strip`
-[ ${?} -eq 0 ] && HAVE_STRIP=1 || HAVE_STRIP=0
-
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
    case ${CONFIG} in
@@ -176,6 +160,25 @@ newh=./config.h-new
 tmp0=___tmp
 tmp=./${tmp0}1$$
 
+# We need some standard utilities
+unset -f command
+check_tool() {
+   n=$1 i=$2 opt=${3:-0}
+   if type "${i}" >/dev/null 2>&1; then
+      eval ${n}=${i}
+      return 1
+   fi
+   if [ ${opt} -eq 0 ]; then
+      echo >&2 "ERROR: no trace of the utility \`${n}'"
+      exit 1
+   fi
+   return 0
+}
+
+# Check those tools right now that we need before including ${conf}
+check_tool rm "${rm:-`command -pv rm`}"
+check_tool sed "${sed:-`command -pv sed`}"
+
 # Only incorporate what wasn't overwritten from command line / CONFIG
 trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
@@ -191,6 +194,21 @@ while read line; do
    echo ${line}
 done > ${tmp}
 . ./${tmp}
+
+check_tool awk "${awk:-`command -pv awk`}"
+check_tool cat "${cat:-`command -pv cat`}"
+check_tool chmod "${chmod:-`command -pv chmod`}"
+check_tool cp "${cp:-`command -pv cp`}"
+check_tool cmp "${cmp:-`command -pv cmp`}"
+check_tool grep "${grep:-`command -pv grep`}"
+check_tool mkdir "${mkdir:-`command -pv mkdir`}"
+check_tool mv "${mv:-`command -pv mv`}"
+# rm(1), sed(1) above
+check_tool tee "${tee:-`command -pv tee`}"
+
+check_tool make "${MAKE:-`command -pv make`}"
+check_tool strip "${STRIP:-`command -pv strip`}" 1
+HAVE_STRIP=${?}
 
 wantfeat() {
    eval i=\$WANT_${1}
@@ -234,14 +252,14 @@ printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
 printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
    >> ${newmk}
-printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
+printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
 # (We include the cc(1)/ld(1) environment only for update detection..)
 printf "CC=\"${CC}\"\n" >> ${newlst}
 printf "_CFLAGS=\"${_CFLAGS}\"\nCFLAGS=\"${CFLAGS}\"\n" >> ${newlst}
 printf "_LDFLAGS=\"${_LDFLAGS}\"\nLDFLAGS=\"${LDFLAGS}\"\n" >> ${newlst}
 printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
    >> ${newlst}
-printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
+printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0

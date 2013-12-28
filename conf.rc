@@ -187,6 +187,14 @@ XLISTER=ls
 # $PAGER, which would effectively cause this setting to be ignored)
 XPAGER=more
 
+# The following tools may be provided a.k.a. overwritten, `command -pv NAME`
+# is used to query the utility otherwise:
+#  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, grep=, mkdir=, mv=, tee=
+#  rm=, sed=
+# Note that rm(1) and sed(1) are needed before this file is read, all other
+# utilities will be checked afterwards only.
+# For cross-compilation setting MAKE= and STRIP= may be necessary
+
 ##  --  >8  --  8<  --  ##
 
 ## Normal users should not need to read any further
