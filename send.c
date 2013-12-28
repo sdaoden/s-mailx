@@ -211,9 +211,9 @@ _print_part_info(struct str *out, struct mimepart *mip,
 			ct.l += 7;
 			out->l -= 12;
 			out->s += 12;
-			out->l = smin(out->l, 17);
+			out->l = MIN(out->l, 17);
 		} else
-			out->l = smin(out->l, 24);
+			out->l = MIN(out->l, 24);
 		memcpy(ct.s + ct.l, out->s, out->l);
 		ct.l += out->l;
 		ct.s[ct.l] = '\0';

@@ -179,9 +179,6 @@
 #undef ABS
 #define ABS(A)		((A) < 0 ? -(A) : (A))
 
-#define smin(a, b)	((a) < (b) ? (a) : (b)) /* TODO OBSOLETE */
-#define smax(a, b)	((a) < (b) ? (b) : (a)) /* TODO OBSOLETE */
-
 #ifndef HAVE_DEBUG
 # undef assert
 # define assert(X)	UNUSED(0)
