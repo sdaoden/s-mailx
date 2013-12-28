@@ -193,7 +193,6 @@ _idna_apply(struct addrguts *agp)
 {
 	char *idna_utf8, *idna_ascii, *cs;
 	size_t sz, i;
-	int strict = (value("idna-strict-checks") != NULL);
 
 	sz = agp->ag_slen - agp->ag_sdom_start;
 	assert(sz > 0);
@@ -221,9 +220,7 @@ _idna_apply(struct addrguts *agp)
 		}
 	}
 
-	if (idna_to_ascii_8z(idna_utf8, &idna_ascii,
-			strict ? IDNA_USE_STD3_ASCII_RULES : 0)
-			!= IDNA_SUCCESS) {
+	if (idna_to_ascii_8z(idna_utf8, &idna_ascii, 0) != IDNA_SUCCESS) {
 		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
 				NAME_ADDRSPEC_ERR_CHAR;
 		goto jleave1;
