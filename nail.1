@@ -2251,9 +2251,6 @@ Causes threads to be collapsed automatically when threaded mode is
 entered (see the
 .Ic collapse
 command).
-.It Va autoinc
-Same as
-.Va newmail .
 .It Va autoprint
 Causes the delete command to behave like `dp -';
 thus, after deleting a message the next one will be typed automatically.
@@ -2475,26 +2472,6 @@ but simply specify `application/octet-stream',
 even for plain text attachments like `text/diff'.
 If this variable is set then \*(UA will use the file extension of
 attachments to classify such MIME message parts, if possible.
-.It Va newmail
-Checks for new mail in the current folder each time the prompt is
-printed.
-For IMAP mailboxes the server is then polled for new mail,
-which may result in delayed operation if the connection to the server is
-slow.
-A `maildir' folder must be re-scanned to determine if new mail has
-arrived.
-.Pp
-If this variable is set to the special value `nopoll' an IMAP server is
-not actively asked for new mail,
-but new mail may still be detected and announced with any other IMAP
-command that is sent to the server.
-A `maildir' folder is not scanned, then.
-.Pp
-In either case the IMAP server may send notifications about messages
-that have been deleted on the server by another process or client.
-In this case, `Expunged X messages' is printed regardless of this
-variable,
-and message numbers may have changed.
 .It Va noheader
 Setting this option is the same as using the command line option
 .Fl N .
@@ -2730,6 +2707,9 @@ outgoing message will be sent automatically.
 .It Va autocc
 Specifies a list of recipients to which a carbon copy of each outgoing
 message will be sent automatically.
+.It Va autoinc
+Same as
+.Va newmail .
 .It Va autosort
 Causes sorted mode (see the
 .Ic sort
@@ -3072,6 +3052,26 @@ The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
 .It Va newfolders
 If this variable has the value `maildir',
 newly created local folders will be in `maildir' format.
+.It Va newmail
+Checks for new mail in the current folder each time the prompt is
+printed.
+For IMAP mailboxes the server is then polled for new mail,
+which may result in delayed operation if the connection to the server is
+slow.
+A `maildir' folder must be re-scanned to determine if new mail has
+arrived.
+.Pp
+If this variable is set to the special value `nopoll' an IMAP server is
+not actively asked for new mail,
+but new mail may still be detected and announced with any other IMAP
+command that is sent to the server.
+A `maildir' folder is not scanned, then.
+.Pp
+In either case the IMAP server may send notifications about messages
+that have been deleted on the server by another process or client.
+In this case, `Expunged X messages' is printed regardless of this
+variable,
+and message numbers may have changed.
 .It Va ORGANIZATION
 The value to put into the `Organization:' field of the message header.
 .It Va PAGER
