@@ -322,10 +322,10 @@ _maexec(struct macro const *mp, struct var **unroll_store)
    _localopts = &los;
 
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
-      unset_allow_undefined = TRU1;
+      var_unset_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length + 1);
       rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
-      unset_allow_undefined = FAL0;
+      var_unset_allow_undefined = FAL0;
    }
 
    _localopts = los.s_up;
@@ -550,10 +550,10 @@ var_assign(char const *name, char const *val)
    char *oval;
 
    if (val == NULL) {
-      bool_t tmp = unset_allow_undefined;
-      unset_allow_undefined = TRU1;
+      bool_t tmp = var_unset_allow_undefined;
+      var_unset_allow_undefined = TRU1;
       err = var_unset(name);
-      unset_allow_undefined = tmp;
+      var_unset_allow_undefined = tmp;
       goto jleave;
    }
 
@@ -599,7 +599,7 @@ var_unset(char const *name)
    vp = _lookup(name, h, TRU1);
 
    if (vp == NULL) {
-      if (!sourcing && !unset_allow_undefined) {
+      if (!sourcing && !var_unset_allow_undefined) {
          fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), name);
          goto jleave;
       }

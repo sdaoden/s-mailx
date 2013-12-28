@@ -56,12 +56,10 @@
 
 /* Assign a value to a variable, return wether error occurred */
 FL bool_t   var_assign(char const *name, char const *value);
-#define assign(N,V)              var_assign(N, V)
 
 /* Unset variable (special: normally `var_assign(, NULL)' is used), return
  * wether error occurred */
 FL bool_t   var_unset(char const *name);
-#define unset_internal(V)        var_unset(V)
 
 /* Get the value of an option (fallback to `look_environ'?) */
 FL char *   var_lookup(char const *name, bool_t look_environ);

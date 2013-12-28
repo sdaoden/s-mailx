@@ -856,7 +856,7 @@ mesedit(int c, struct header *hp)
 	char *saved = value("add-file-recipients");
 	FILE *nf;
 
-	assign("add-file-recipients", "");
+	var_assign("add-file-recipients", "");
 	nf = run_editor(_coll_fp, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
@@ -870,7 +870,7 @@ mesedit(int c, struct header *hp)
 		}
 	}
 
-	assign("add-file-recipients", saved);
+	var_assign("add-file-recipients", saved);
 	safe_signal(SIGINT, sigint);
 }
 

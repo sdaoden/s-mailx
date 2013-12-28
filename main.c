@@ -271,7 +271,7 @@ _startup(void)
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* noallnet */
    /* noappend */
-   assign("asksub", "");
+   var_assign("asksub", "");
    /* noaskbcc */
    /* noaskcc */
    /* noautoprint */
@@ -280,10 +280,10 @@ _startup(void)
    /* nocrt */
    /* nodebug */
    /* nodot */
-   /* assign("escape", "~"); TODO non-compliant */
+   /* var_assign("escape", ESCAPE *"~"*); TODO non-compliant */
    /* noflipr */
    /* nofolder */
-   assign("header", "");
+   var_assign("header", "");
    /* nohold */
    /* noignore */
    /* noignoreeof */
@@ -293,22 +293,22 @@ _startup(void)
    /* noonehop -- Note: we ignore this one */
    /* nooutfolder */
    /* nopage */
-   assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
+   var_assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
    /* noquiet */
    /* norecord */
-   assign("save", "");
+   var_assign("save", "");
    /* nosendwait */
    /* noshowto */
    /* nosign */
    /* noSign */
-   /* assign("toplines", "5"); XXX somewhat hmm */
+   /* var_assign("toplines", "5"); XXX somewhat hmm */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
    if (voption("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
-      assign("ttycharset", cp);
+      var_assign("ttycharset", cp);
 # endif
 
 # ifdef HAVE_C90AMEND1
@@ -568,7 +568,7 @@ main(int argc, char *argv[])
     */
 
    starting =
-   unset_allow_undefined = TRU1;
+   var_unset_allow_undefined = TRU1;
 
    progname = argv[0];
    _startup();
@@ -617,7 +617,7 @@ main(int argc, char *argv[])
       case 'd':
          okey = "debug";
 #ifdef HAVE_DEBUG
-         assign(okey, "");
+         var_assign(okey, "");
 #endif
          goto joarg;
       case 'E':
@@ -724,7 +724,7 @@ joarg:
          /* Be verbose */
          okey = "verbose";
 #ifdef HAVE_DEBUG
-         assign(okey, "");
+         var_assign(okey, "");
 #endif
          goto joarg;
       case '~':
@@ -834,7 +834,7 @@ jusage:
     */
 
    starting =
-   unset_allow_undefined = FAL0;
+   var_unset_allow_undefined = FAL0;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);

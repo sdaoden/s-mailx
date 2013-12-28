@@ -666,9 +666,9 @@ set(void *v)
 			goto jnext;
 		}
 		if (varbuf[0] == 'n' && varbuf[1] == 'o')
-			errs += unset_internal(&varbuf[2]);
+			errs += var_unset(&varbuf[2]);
 		else
-			errs += assign(varbuf, cp);
+			errs += var_assign(varbuf, cp);
 jnext:		ac_free(varbuf);
 	}
 jleave:
@@ -685,9 +685,9 @@ unset(void *v)
 	char **ap;
 
 	errs = 0;
-	for (ap = (char **)v; *ap != NULL; ap++)
-		errs += unset_internal(*ap);
-	return(errs);
+	for (ap = (char**)v; *ap != NULL; ap++)
+		errs += var_unset(*ap);
+	return errs;
 }
 
 /*

@@ -647,7 +647,7 @@ restorequitflags(int qf)
 	for (i = 0; quitnames[i].name; i++)
 		if (qf & quitnames[i].flag) {
 			if (value(quitnames[i].name) == NULL)
-				assign(quitnames[i].name, "");
+				var_assign(quitnames[i].name, "");
 		} else if (value(quitnames[i].name))
-			unset_internal(quitnames[i].name);
+			var_unset(quitnames[i].name);
 }

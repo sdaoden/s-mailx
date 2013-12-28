@@ -3234,8 +3234,8 @@ cconnect(void *vp)
 		fprintf(stderr, "Already connected.\n");
 		return 1;
 	}
-	unset_allow_undefined = TRU1;
-	unset_internal("disconnected");
+	var_unset_allow_undefined = TRU1;
+	var_unset("disconnected");
 	cp = protbase(mailname);
 	if (strncmp(cp, "imap://", 7) == 0)
 		cp += 7;
@@ -3243,8 +3243,8 @@ cconnect(void *vp)
 		cp += 8;
 	if ((cq = strchr(cp, ':')) != NULL)
 		*cq = '\0';
-	unset_internal(savecat("disconnected-", cp));
-	unset_allow_undefined = FAL0;
+	var_unset(savecat("disconnected-", cp));
+	var_unset_allow_undefined = FAL0;
 	if (mb.mb_type == MB_CACHE) {
 		imap_setfile1(mailname, 0, edit, 1);
 		if (msgCount > omsgCount)
@@ -3269,7 +3269,7 @@ cdisconnect(void *vp)
 	}
 	if (*msgvec)
 		ccache(vp);
-	assign("disconnected", "");
+	var_assign("disconnected", "");
 	if (mb.mb_type == MB_IMAP) {
 		sclose(&mb.mb_sock);
 		imap_setfile1(mailname, 0, edit, 1);
