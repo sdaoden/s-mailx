@@ -45,9 +45,9 @@
 
 #undef FL
 #ifndef HAVE_AMALGAMATION
-# define FL extern
+# define FL                      extern
 #else
-# define FL static
+# define FL                      static
 #endif
 
 /*
@@ -66,6 +66,18 @@ FL char *   var_lookup(char const *name, bool_t look_environ);
 #define value(V)                 var_lookup(V, TRU1)  /* TODO legacy */
 #define boption(V)               (!!value(V))
 #define voption(V)               value(V)
+
+FL char *   _var_oklook(enum okeys okey);
+#define ok_blook(C)              (_var_oklook(CONCAT(ok_b_, C)) != NULL)
+#define ok_vlook(C)              _var_oklook(CONCAT(ok_v_, C))
+
+FL bool_t   _var_okset(enum okeys okey, uintptr_t val);
+#define ok_bset(C,B)             _var_okset(CONCAT(ok_b_, C), (uintptr_t)(B))
+#define ok_vset(C,V)             _var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
+
+FL bool_t   _var_okclear(enum okeys okey);
+#define ok_bclear(C)             _var_okclear(CONCAT(ok_b_, C))
+#define ok_vclear(C)             _var_okclear(CONCAT(ok_v_, C))
 
 /* List all variables */
 FL void     var_list_all(void);
