@@ -257,7 +257,7 @@ _addrspec_check(int skinned, struct addrguts *agp)
 	char *addr, *p, in_quote, in_domain, hadat;
 	union {char c; unsigned char u;} c;
 #ifdef HAVE_IDNA
-	uc_it use_idna = ! boption("idna-disable");
+	uc_it use_idna = !ok_blook(idna_disable);
 #endif
 
 	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
@@ -1573,7 +1573,7 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 	int volatile comma;
 
 	errs = 0;
-	comma = (value("bsdcompat") || value("bsdmsgs")) ? 0 : GCOMMA;
+	comma = (ok_blook(bsdcompat) || ok_blook(bsdmsgs)) ? 0 : GCOMMA;
 
 	if (gflags & GTO)
 		hp->h_to = grab_names("To: ", hp->h_to, comma, GTO|GFULL);

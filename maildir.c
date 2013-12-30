@@ -163,7 +163,7 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
 	if (!nmail)
 		sawcom = FAL0;
 	if (!nmail && !edit && msgCount == 0) {
-		if (mb.mb_type == MB_MAILDIR && value("emptystart") == NULL)
+		if (mb.mb_type == MB_MAILDIR && !ok_blook(emptystart))
 			fprintf(stderr, "No mail at %s\n", name);
 		return 1;
 	}
@@ -434,7 +434,7 @@ maildir_update(void)
 bypass:
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf((value("bsdcompat") || value("bsdmsgs"))
+		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit && mb.mb_perm != 0) {
 		if (held == 1)

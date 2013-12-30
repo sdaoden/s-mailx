@@ -341,10 +341,10 @@ holdbits(void)
 	int anystat, autohold, holdbit, nohold;
 
 	anystat = 0;
-	autohold = value("hold") != NULL;
+	autohold = ok_blook(hold);
 	holdbit = autohold ? MPRESERVE : MBOX;
 	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
-	if (value("keepsave") != NULL)
+	if (ok_blook(keepsave))
 		nohold &= ~MSAVED;
 	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
 		if (mp->m_flag & MNEW) {
@@ -389,7 +389,7 @@ makembox(void)
 
 	mbox = _mboxname;
 	mcount = 0;
-	if (value("append") == NULL) {
+	if (!ok_blook(append)) {
 		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
 			perror(tr(163, "temporary mail quit file"));
 			return STOP;
@@ -470,7 +470,7 @@ jerr:
 	 * If we are appending, this is unnecessary.
 	 */
 
-	if (value("append") == NULL) {
+	if (!ok_blook(append)) {
 		rewind(ibuf);
 		c = getc(ibuf);
 		while (c != EOF) {
@@ -596,12 +596,12 @@ edstop(void)
 		reset(0);
 	}
 	Fclose(obuf);
-	if (gotcha && value("emptybox") == NULL) {
+	if (gotcha && !ok_blook(emptybox)) {
 		rm(mailname);
-		printf((value("bsdcompat") || value("bsdmsgs"))
+		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			? tr(169, "removed\n") : tr(211, "removed.\n"));
 	} else
-		printf((value("bsdcompat") || value("bsdmsgs"))
+		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	fflush(stdout);
 
@@ -618,23 +618,23 @@ enum quitflags {
 
 static const struct quitnames {
 	enum quitflags	flag;
-	const char	*name;
+	enum okeys	okey;
 } quitnames[] = {
-	{ QUITFLAG_HOLD,	"hold" },
-	{ QUITFLAG_KEEPSAVE,	"keepsave" },
-	{ QUITFLAG_APPEND,	"append" },
-	{ QUITFLAG_EMPTYBOX,	"emptybox" },
-	{ 0,			NULL }
+	{ QUITFLAG_HOLD,	ok_b_hold },
+	{ QUITFLAG_KEEPSAVE,	ok_b_keepsave },
+	{ QUITFLAG_APPEND,	ok_b_append },
+	{ QUITFLAG_EMPTYBOX,	ok_b_emptybox },
+	{ 0,			0 }
 };
 
 FL int
 savequitflags(void)
 {
 	enum quitflags	qf = 0;
-	int	i;
+	size_t i;
 
-	for (i = 0; quitnames[i].name; i++)
-		if (value(quitnames[i].name))
+	for (i = 0; quitnames[i].flag != 0; ++i)
+		if (_var_oklook(quitnames[i].okey) != NULL)
 			qf |= quitnames[i].flag;
 	return qf;
 }
@@ -642,12 +642,14 @@ savequitflags(void)
 FL void
 restorequitflags(int qf)
 {
-	int	i;
+	size_t i;
 
-	for (i = 0; quitnames[i].name; i++)
+	for (i = 0; quitnames[i].flag != 0; ++i) {
+		char *x = _var_oklook(quitnames[i].okey);
 		if (qf & quitnames[i].flag) {
-			if (value(quitnames[i].name) == NULL)
-				var_assign(quitnames[i].name, "");
-		} else if (value(quitnames[i].name))
-			var_unset(quitnames[i].name);
+			if (x == NULL)
+				_var_okset(quitnames[i].okey, TRU1);
+		} else if (x != NULL)
+			_var_okclear(quitnames[i].okey);
+	}
 }

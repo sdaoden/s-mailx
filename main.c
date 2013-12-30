@@ -271,7 +271,7 @@ _startup(void)
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* noallnet */
    /* noappend */
-   var_assign("asksub", "");
+   ok_bset(asksub, TRU1);
    /* noaskbcc */
    /* noaskcc */
    /* noautoprint */
@@ -283,7 +283,7 @@ _startup(void)
    /* var_assign("escape", ESCAPE *"~"*); TODO non-compliant */
    /* noflipr */
    /* nofolder */
-   var_assign("header", "");
+   ok_bset(header, TRU1);
    /* nohold */
    /* noignore */
    /* noignoreeof */
@@ -296,7 +296,7 @@ _startup(void)
    var_assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
    /* noquiet */
    /* norecord */
-   var_assign("save", "");
+   ok_bset(save, TRU1);
    /* nosendwait */
    /* noshowto */
    /* nosign */
@@ -498,16 +498,16 @@ _rcv_mode(char const *folder)
    }
 
    callhook(mailname, 0);
-   if (i > 0 && !boption("emptystart"))
+   if (i > 0 && !ok_blook(emptystart))
       exit(1);
 
    if (sigsetjmp(__hdrjmp, 1) == 0) {
       if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, _hdrstop);
       if (!(options & OPT_N_FLAG)) {
-         if (!value("quiet"))
+         if (!ok_blook(quiet))
             printf(tr(140, "%s version %s.  Type ? for help.\n"),
-               (boption("bsdcompat") ? "Mail" : uagent), version);
+               (ok_blook(bsdcompat) ? "Mail" : uagent), version);
          announce(1);
          fflush(stdout);
       }
@@ -617,7 +617,7 @@ main(int argc, char *argv[])
       case 'd':
          okey = "debug";
 #ifdef HAVE_DEBUG
-         var_assign(okey, "");
+         ok_bset(debug, TRU1);
 #endif
          goto joarg;
       case 'E':
@@ -724,7 +724,7 @@ joarg:
          /* Be verbose */
          okey = "verbose";
 #ifdef HAVE_DEBUG
-         var_assign(okey, "");
+         ok_bset(verbose, TRU1);
 #endif
          goto joarg;
       case '~':

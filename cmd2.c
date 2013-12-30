@@ -291,7 +291,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 		}
 		for (cq = cp; *cq && *cq != '@'; cq++);
 		*cq = '\0';
-		if (value("outfolder")) {
+		if (ok_blook(outfolder)) {
 			size_t sz = strlen(cp) + 1;
 			file = salloc(sz + 1);
 			file[0] = '+';

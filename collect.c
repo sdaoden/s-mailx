@@ -237,7 +237,7 @@ print_collf(FILE *cf, struct header *hp)
 
 	fprintf(obuf, tr(62, "-------\nMessage contains:\n"));
 	gf = GIDENT|GTO|GSUBJECT|GCC|GBCC|GNL|GFILES;
-	if (value("fullnames"))
+	if (ok_blook(fullnames))
 		gf |= GCOMMA;
 	puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
 	while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
@@ -338,18 +338,18 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	getfields = 0;
 	if (! (options & OPT_t_FLAG)) {
 		t = GTO|GSUBJECT|GCC|GNL;
-		if (value("fullnames"))
+		if (ok_blook(fullnames))
 			t |= GCOMMA;
 		if (hp->h_subject == NULL && (options & OPT_INTERACTIVE) &&
-			    (value("ask") != NULL || value("asksub") != NULL))
+			    (ok_blook(ask) || ok_blook(asksub)))
 			t &= ~GNL, getfields |= GSUBJECT;
 		if (hp->h_to == NULL && (options & OPT_INTERACTIVE))
 			t &= ~GNL, getfields |= GTO;
-		if (value("bsdcompat") == NULL && value("askatend") == NULL &&
+		if (!ok_blook(bsdcompat) && !ok_blook(askatend) &&
 				(options & OPT_INTERACTIVE)) {
-			if (hp->h_bcc == NULL && value("askbcc"))
+			if (hp->h_bcc == NULL && ok_blook(askbcc))
 				t &= ~GNL, getfields |= GBCC;
-			if (hp->h_cc == NULL && value("askcc"))
+			if (hp->h_cc == NULL && ok_blook(askcc))
 				t &= ~GNL, getfields |= GCC;
 		}
 		if (printheaders) {
@@ -418,7 +418,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			if (_include_file(NULL, quotefile, &lc, &cc, TRU1) != 0)
 				goto jerr;
 		}
-		if ((options & OPT_INTERACTIVE) && value("editalong")) {
+		if ((options & OPT_INTERACTIVE) && ok_blook(editalong)) {
 			rewind(_coll_fp);
 			mesedit('e', hp);
 			goto jcont;
@@ -465,7 +465,7 @@ jcont:
 
 		if (cnt < 0) {
 			if ((options & OPT_INTERACTIVE) &&
-			    value("ignoreeof") != NULL && ++eofcount < 25) {
+			    ok_blook(ignoreeof) && ++eofcount < 25) {
 				printf(tr(55,
 					"Use \".\" to terminate letter\n"));
 				continue;
@@ -485,7 +485,7 @@ jcont:
 		_coll_hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
 				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
-				(boption("dot") || boption("ignoreeof")))
+				(ok_blook(dot) || ok_blook(ignoreeof)))
 			break;
 		if (cnt == 0 || linebuf[0] != escape || ! (options &
 				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
@@ -544,8 +544,8 @@ jcont:
 			/* Grab a bunch of headers */
 			do
 				grab_headers(hp, GTO|GSUBJECT|GCC|GBCC,
-						(value("bsdcompat") != NULL &&
-						value("bsdorder") != NULL));
+						(ok_blook(bsdcompat) &&
+						ok_blook(bsdorder)));
 			while (hp->h_to == NULL);
 			goto jcont;
 		case 'H':
@@ -704,7 +704,7 @@ jcont:
 			 * 'v' means to use VISUAL
 			 */
 			rewind(_coll_fp);
-			mesedit(c, value("editheaders") ? hp : NULL);
+			mesedit(c, ok_blook(editheaders) ? hp : NULL);
 			goto jcont;
 		case '?':
 			/*
@@ -853,10 +853,10 @@ static void
 mesedit(int c, struct header *hp)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *saved = value("add-file-recipients");
+	bool_t saved = ok_blook(add_file_recipients);
 	FILE *nf;
 
-	var_assign("add-file-recipients", "");
+	ok_bset(add_file_recipients, FAL0);
 	nf = run_editor(_coll_fp, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
@@ -870,7 +870,7 @@ mesedit(int c, struct header *hp)
 		}
 	}
 
-	var_assign("add-file-recipients", saved);
+	ok_bset(add_file_recipients, saved);
 	safe_signal(SIGINT, sigint);
 }
 
@@ -1005,7 +1005,7 @@ collint(int s)
 {
 	/* the control flow is subtle, because we can be called from ~q */
 	if (_coll_hadintr == 0) {
-		if (value("ignore") != NULL) {
+		if (ok_blook(ignore)) {
 			puts("@");
 			fflush(stdout);
 			clearerr(stdin);
@@ -1015,7 +1015,7 @@ collint(int s)
 		siglongjmp(_coll_jmp, 1);
 	}
 	exit_status |= 04;
-	if (value("save") != NULL && s != 0)
+	if (ok_blook(save) && s != 0)
 		savedeadletter(_coll_fp, 1);
 	/* Aborting message, no need to fflush() .. */
 	siglongjmp(_coll_abort, 1);

@@ -69,7 +69,7 @@ same_name(char const *n1, char const *n2)
 	int ret = 0;
 	char c1, c2;
 
-	if (value("allnet") != NULL) {
+	if (ok_blook(allnet)) {
 		do {
 			c1 = *n1++;
 			c2 = *n2++;
@@ -546,7 +546,7 @@ usermap(struct name *names, bool_t force_metoo)
 
 	new = NULL;
 	np = names;
-	metoo = (force_metoo || value("metoo") != NULL);
+	metoo = (force_metoo || ok_blook(metoo));
 	while (np != NULL) {
 		assert((np->n_type & GDEL) == 0); /* TODO legacy */
 		if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {

@@ -108,7 +108,7 @@ _print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 		if (UICMP(32, i, >, sizeof attrlist - 1))
 			i = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, i);
-	} else if (boption("bsdcompat") || boption("bsdflags") ||
+	} else if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
 			getenv("SYSV3") != NULL) {
 		char const bsdattr[] = "NU  *HMFAT+-$";
 		memcpy(attrlist, bsdattr, sizeof bsdattr - 1);
@@ -118,7 +118,7 @@ _print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 	}
 
 	if ((fmt = voption("headline")) == NULL) {
-		fmt = ((boption("bsdcompat") || boption("bsdheadline"))
+		fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
 			? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
 			: "%>%a%m %-18f %16d %4l/%-5o %i%-s");
 	}
@@ -186,7 +186,7 @@ jdate_set:
 
 	isaddr = 1;
 	name = name1(mp, 0);
-	if (name != NULL && value("showto") && is_myname(skin(name))) {
+	if (name != NULL && ok_blook(showto) && is_myname(skin(name))) {
 		if ((cp = hfield1("to", mp)) != NULL) {
 			name = cp;
 			isto = 1;
@@ -197,7 +197,7 @@ jdate_set:
 		isaddr = 0;
 	}
 	if (isaddr) {
-		if (value("showname"))
+		if (ok_blook(showname))
 			name = realname(name);
 		else {
 			name = prstr(skin(name));
@@ -997,13 +997,13 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 			fprintf(obuf, "\n");
 		_show_msg_overview(mp, *ip, obuf);
 		sendmp(mp, obuf, (doign ? ignore : 0), NULL,
-			((dopipe && boption("piperaw"))
+			((dopipe && ok_blook(piperaw))
 				? SEND_MBOX : dodecode
 				? SEND_SHOW : doign
 				? SEND_TODISP : SEND_TODISP_ALL),
 			mstats);
 		srelax();
-		if (dopipe && boption("page"))
+		if (dopipe && ok_blook(page))
 			putc('\f', obuf);
 		if (tstats) {
 			tstats[0] += mstats[0];

@@ -763,7 +763,7 @@ imap_use_starttls(const char *uhp)
 {
 	char	*var;
 
-	if (value("imap-use-starttls"))
+	if (ok_blook(imap_use_starttls))
 		return 1;
 	var = savecat("imap-use-starttls-", uhp);
 	return value(var) != NULL;
@@ -1287,7 +1287,7 @@ done:	setmsize(msgCount);
 	}
 	if (!nmail && !edit && msgCount == 0) {
 		if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
-				value("emptystart") == NULL)
+				!ok_blook(emptystart))
 			fprintf(stderr, tr(258, "No mail at %s\n"), server);
 		return 1;
 	}
@@ -1896,7 +1896,7 @@ bypass:
 		}
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf((value("bsdcompat") || value("bsdmsgs"))
+		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
@@ -3235,7 +3235,7 @@ cconnect(void *vp)
 		return 1;
 	}
 	var_unset_allow_undefined = TRU1;
-	var_unset("disconnected");
+	ok_bclear(disconnected);
 	cp = protbase(mailname);
 	if (strncmp(cp, "imap://", 7) == 0)
 		cp += 7;
@@ -3269,7 +3269,7 @@ cdisconnect(void *vp)
 	}
 	if (*msgvec)
 		ccache(vp);
-	var_assign("disconnected", "");
+	ok_bset(disconnected, TRU1);
 	if (mb.mb_type == MB_IMAP) {
 		sclose(&mb.mb_sock);
 		imap_setfile1(mailname, 0, edit, 1);
@@ -3305,7 +3305,7 @@ disconnected(const char *file)
 	char	*cp, *cq, *vp;
 	int	vs, r;
 
-	if (value("disconnected"))
+	if (ok_blook(disconnected))
 		return 1;
 	cp = protbase(file);
 	if (strncmp(cp, "imap://", 7) == 0)

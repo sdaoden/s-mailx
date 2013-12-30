@@ -612,7 +612,7 @@ wait_command(int pid)
 	int rv = 0;
 
 	if (!wait_child(pid, NULL)) {
-		if (boption("bsdcompat") || boption("bsdmsgs"))
+		if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			fprintf(stderr, tr(154, "Fatal error in process.\n"));
 		rv = -1;
 	}

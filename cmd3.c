@@ -140,7 +140,7 @@ bangexp(char **str, size_t *size)
 {
 	char *bangbuf;
 	int changed = 0;
-	int dobang = value("bang") != NULL;
+	int dobang = ok_blook(bang);
 	size_t sz, i, j, bangbufsize;
 
 	bangbuf = smalloc(bangbufsize = *size);
@@ -314,7 +314,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
 	}
 	n->n_blink = NULL;
 	head->h_ref = n;
-	if (value("reply-in-same-charset") != NULL &&
+	if (ok_blook(reply_in_same_charset) &&
 			(cp = hfield1("content-type", mp)) != NULL)
 		head->h_charset = mime_getparam("charset", cp);
 }
@@ -324,8 +324,8 @@ static int
 {
 	int opt = 0;
 
-	opt += (value("Replyall") != NULL);
-	opt += (value("flipr") != NULL);
+	opt += ok_blook(Replyall);
+	opt += ok_blook(flipr);
 	return ((opt == 1) ^ (c == 'R')) ? Respond_internal : respond_internal;
 }
 
@@ -376,7 +376,7 @@ respond_internal(int *msgvec, int recipient_record)
 	struct message *mp;
 	char *cp, *rcv;
 	struct name *np = NULL;
-	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
+	enum gfield gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
 	if (msgvec[1] != 0) {
 		fprintf(stderr, tr(37,
@@ -392,7 +392,7 @@ respond_internal(int *msgvec, int recipient_record)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
 		np = lextract(rcv, GTO|gf);
-	if (! boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+	if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
 		np = cat(np, lextract(cp, GTO | gf));
 	/*
 	 * Delete my name from the reply list,
@@ -408,7 +408,7 @@ respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = _reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
-	if (boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+	if (ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
 		np = lextract(cp, GCC | gf);
 	if ((cp = hfield1("cc", mp)) != NULL)
 		np = cat(np, lextract(cp, GCC | gf));
@@ -416,7 +416,7 @@ respond_internal(int *msgvec, int recipient_record)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
 
-	if (boption("quote-as-attachment")) {
+	if (ok_blook(quote_as_attachment)) {
 		head.h_attach = csalloc(1, sizeof *head.h_attach);
 		head.h_attach->a_msgno = *msgvec;
 		head.h_attach->a_content_description = tr(512,
@@ -424,7 +424,7 @@ respond_internal(int *msgvec, int recipient_record)
 	}
 
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-			boption("markanswered") &&
+			ok_blook(markanswered) &&
 			(mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER | MANSWERED;
 	return 0;
@@ -442,7 +442,7 @@ forward1(char *str, int recipient_record)
 	struct header	head;
 	bool_t f, forward_as_attachment;
 
-	forward_as_attachment = boption("forward-as-attachment");
+	forward_as_attachment = ok_blook(forward_as_attachment);
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 	if ((recipient = laststring(str, &f, 0)) == NULL) {
 		puts(tr(47, "No recipient specified."));
@@ -471,7 +471,7 @@ forward1(char *str, int recipient_record)
 	}
 	memset(&head, 0, sizeof head);
 	if ((head.h_to = lextract(recipient,
-			GTO | (value("fullnames") ? GFULL : GSKIN))) == NULL)
+			GTO | (ok_blook(fullnames) ? GFULL : GSKIN))) == NULL)
 		return 1;
 	mp = &message[*msgvec - 1];
 	if (forward_as_attachment) {
@@ -818,9 +818,9 @@ cfile(void *v)
 	if (i < 0)
 		return 1;
 	callhook(mailname, 0);
-	if (i > 0 && value("emptystart") == NULL)
+	if (i > 0 && !ok_blook(emptystart))
 		return 1;
-	announce(value("bsdcompat") != NULL || value("bsdannounce") != NULL);
+	announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
 	return 0;
 }
 
@@ -877,7 +877,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	struct message *mp;
 	int *ap;
 	char *cp;
-	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
+	enum gfield gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
 	memset(&head, 0, sizeof head);
 
@@ -898,7 +898,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 
-	if (boption("quote-as-attachment")) {
+	if (ok_blook(quote_as_attachment)) {
 		head.h_attach = csalloc(1, sizeof *head.h_attach);
 		head.h_attach->a_msgno = *msgvec;
 		head.h_attach->a_content_description = tr(512,
@@ -906,7 +906,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	}
 
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
+			ok_blook(markanswered) && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER | MANSWERED;
 	return 0;
 }

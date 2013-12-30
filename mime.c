@@ -347,7 +347,7 @@ charset_iter_reset(char const *a_charset_to_try_first)
 	sarr[0] = a_charset_to_try_first;
 #ifdef HAVE_ICONV
 	if ((sarr[1] = value("sendcharsets")) == NULL &&
-			value("sendcharsets-else-ttycharset"))
+			ok_blook(sendcharsets_else_ttycharset))
 		sarr[1] = charset_get_lc();
 #endif
 	sarr[2] = charset_get_8bit();
@@ -613,7 +613,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	if (*contenttype == NULL)
 		ctt = _NCTT;
 	else if (ascncasecmp(*contenttype, "text/", 5) == 0)
-		ctt = value("mime-allow-text-controls")
+		ctt = ok_blook(mime_allow_text_controls)
 			? _ISTXT | _ISTXTCOK : _ISTXT;
 	convert = _conversion_by_encoding();
 
@@ -736,7 +736,7 @@ mime_classify_content_of_part(struct mimepart const *mip)
 
 	if (asccasecmp(ct, "application/octet-stream") == 0 &&
 			mip->m_filename != NULL &&
-			value("mime-counter-evidence")) {
+			ok_blook(mime_counter_evidence)) {
 		ct = mime_classify_content_type_by_fileext(mip->m_filename);
 		if (ct == NULL)
 			/* TODO how about let *mime-counter-evidence* have

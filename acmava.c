@@ -860,7 +860,7 @@ var_list_all(void)
    if (no > 1)
       qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
 
-   i = (boption("bsdcompat") || boption("bsdset"));
+   i = (ok_blook(bsdcompat) || ok_blook(bsdset));
    fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
 
    for (cap = vacp; no != 0; ++cap, --no) {
@@ -1041,9 +1041,9 @@ c_account(void *v)
       if ((i = setfile("%", 0)) < 0)
          goto jleave;
       callhook(mailname, 0);
-      if (i > 0 && ! boption("emptystart"))
+      if (i > 0 && !ok_blook(emptystart))
          goto jleave;
-      announce(boption("bsdcompat") || boption("bsdannounce"));
+      announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
       restorequitflags(nqf);
    }
    rv = 0;

@@ -866,7 +866,7 @@ _ncl_keof(struct line *l)
    if (i > 0) {
       l->topins = --t;
       _ncl_bs_eof_dvup(l->line.cells + c, --i);
-   } else if (t == 0 && ! boption("ignoreeof")) {
+   } else if (t == 0 && !ok_blook(ignoreeof)) {
       fputs("^D", stdout);
       fflush(stdout);
       i = -1;

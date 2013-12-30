@@ -83,7 +83,7 @@ edit1(int *msgvec, int viored)
 	/*
 	 * Deal with each message to be edited . . .
 	 */
-	wb = value("writebackedited") != NULL;
+	wb = ok_blook(writebackedited);
 	for (i = 0; msgvec[i] && i < msgCount; i++) {
 		sighandler_type sigint;
 

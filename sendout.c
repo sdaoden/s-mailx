@@ -292,7 +292,7 @@ _prepare_mta_args(struct name *to, struct header *hp)
 
 	args[1] = "-i";
 	i = 2;
-	if (value("metoo"))
+	if (ok_blook(metoo))
 		args[i++] = "-m";
 	if (options & OPT_VERBOSE)
 		args[i++] = "-v";
@@ -841,7 +841,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 		}
 	}
 	if (cnt) {
-		if (value("smime-force-encryption") ||
+		if (ok_blook(smime_force_encryption) ||
 				start_mta(to, input, hp) != OKAY)
 			ok = STOP;
 	}
@@ -939,8 +939,8 @@ jstop:		savedeadletter(input, 0);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if ((options & (OPT_DEBUG|OPT_VERBOSE|OPT_BATCH_FLAG)) ||
-			value("sendwait")) {
+	if ((options & (OPT_DEBUG | OPT_VERBOSE | OPT_BATCH_FLAG)) ||
+			ok_blook(sendwait)) {
 		if (wait_child(pid, NULL))
 			ok = OKAY;
 		else
@@ -977,7 +977,7 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 			ep = "NULL";
 			goto jbail;
 		}
-		if (value("outfolder") && *ep != '/' && *ep != '+' &&
+		if (ok_blook(outfolder) && *ep != '/' && *ep != '+' &&
 				which_protocol(ep) == PROTO_FILE) {
 			size_t i = strlen(cp);
 			cq = salloc(i + 2);
@@ -1036,16 +1036,16 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		goto j_leave;
 
 	if (options & OPT_INTERACTIVE) {
-		err = (value("bsdcompat") || value("askatend"));
+		err = (ok_blook(bsdcompat) || ok_blook(askatend));
 		if (err == 0)
 			goto jaskeot;
-		if (value("askcc"))
+		if (ok_blook(askcc))
 			++err, grab_headers(hp, GCC, 1);
-		if (value("askbcc"))
+		if (ok_blook(askbcc))
 			++err, grab_headers(hp, GBCC, 1);
-		if (value("askattach"))
+		if (ok_blook(askattach))
 			++err, hp->h_attach = edit_attachments(hp->h_attach);
-		if (value("asksign"))
+		if (ok_blook(asksign))
 			++err, dosign = yorn(tr(35,
 				"Sign this message (y/n)? "));
 		if (err == 1) {
@@ -1061,12 +1061,12 @@ jaskeot:
 		if (hp->h_subject == NULL)
 			printf(tr(184,
 				"No message, no subject; hope that's ok\n"));
-		else if (value("bsdcompat") || value("bsdmsgs"))
+		else if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			printf(tr(185, "Null message body; hope that's ok\n"));
 	}
 
 	if (dosign < 0)
-		dosign = (value("smime-sign") != NULL);
+		dosign = ok_blook(smime_sign);
 #ifndef HAVE_SSL
 	if (dosign) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
@@ -1201,7 +1201,7 @@ message_id(FILE *fo, struct header *hp)
 	size_t rl;
 	struct tm *tmp;
 
-	if (boption("message-id-disable"))
+	if (ok_blook(message_id_disable))
 		goto jleave;
 	if ((h = voption("hostname")) != NULL)
 		rl = 24;
@@ -1344,7 +1344,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			return 1;
 		gotcha++;
 	}
-	if (value("bsdcompat") == NULL && value("bsdorder") == NULL)
+	if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
 		FMT_CC_AND_BCC
 	if (hp->h_subject != NULL && w & GSUBJECT) {
 		fwrite("Subject: ", sizeof (char), 9, fo);
@@ -1371,7 +1371,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		gotcha++;
 		fwrite("\n", sizeof (char), 1, fo);
 	}
-	if (value("bsdcompat") || value("bsdorder"))
+	if (ok_blook(bsdcompat) || ok_blook(bsdorder))
 		FMT_CC_AND_BCC
 	if (w & GMSGID && stealthmua <= 0)
 		message_id(fo, hp), gotcha++;
@@ -1431,7 +1431,7 @@ fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 			m |= m_NOPF;
 			goto jstep;
 		}
-		if (value("add-file-recipients"))
+		if (ok_blook(add_file_recipients))
 			goto jstep;
 		if ((col == 3 && ((asccasecmp(str, "to:") == 0) ||
 					asccasecmp(str, "cc:") == 0)) ||
@@ -1606,8 +1606,7 @@ jerr_o:
 		savedeadletter(nfi, 0);
 	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
-		if (value("record-resent") == NULL ||
-				mightrecord(nfi, to, 0) == OKAY)
+		if (!ok_blook(record_resent) || mightrecord(nfi, to, 0) == OKAY)
 			ok = transfer(to, nfi, NULL);
 	} else if (! _senderror)
 		ok = OKAY;

@@ -173,7 +173,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	}
 	SMTP_ANSWER(2);
 #ifdef HAVE_SSL
-	if (! sp->s_use_ssl && value("smtp-use-starttls")) {
+	if (!sp->s_use_ssl && ok_blook(smtp_use_starttls)) {
 		char *server;
 		if ((cp = strchr(xserver, ':')) != NULL) {
 			server = salloc(cp - xserver + 1);
@@ -191,7 +191,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			return 1;
 	}
 #else
-	if (value("smtp-use-starttls")) {
+	if (ok_blook(smtp_use_starttls)) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		return 1;
 	}

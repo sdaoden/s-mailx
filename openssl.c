@@ -254,7 +254,7 @@ ssl_load_verifications(struct sock *sp)
 			fputs("\n", stderr);
 		}
 	}
-	if (value("ssl-no-default-ca") == NULL) {
+	if (!ok_blook(ssl_no_default_ca)) {
 		if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
 			fprintf(stderr, tr(243,
 				"Error loading default CA locations\n"));
@@ -378,7 +378,7 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
 #endif	/* SSL_MODE_AUTO_RETRY */
 	opts = SSL_OP_ALL;
-	if (value("ssl-v2-allow") == NULL)
+	if (!ok_blook(ssl_v2_allow))
 		opts |= SSL_OP_NO_SSLv2;
 	SSL_CTX_set_options(sp->s_ctx, opts);
 	ssl_load_verifications(sp);
@@ -683,7 +683,7 @@ cverify(void *vp)
 			return 1;
 		}
 	}
-	if (value("smime-no-default-ca") == NULL) {
+	if (!ok_blook(smime_no_default_ca)) {
 		if (X509_STORE_set_default_paths(store) != 1) {
 			ssl_gen_err("Error loading default CA locations");
 			return 1;

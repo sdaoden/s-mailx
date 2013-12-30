@@ -425,7 +425,7 @@ FL int
 	int n;
 
 	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && !boption("line-editor-disable"));
+	dotty = (doprompt && !ok_blook(line_editor_disable));
 	if (!doprompt)
 		prompt = NULL;
 	else if (prompt == NULL)
@@ -474,7 +474,7 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 	bool_t doprompt, dotty;
 
 	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && !boption("line-editor-disable"));
+	dotty = (doprompt && !ok_blook(line_editor_disable));
 	if (!doprompt)
 		prompt = NULL;
 	else if (prompt == NULL)
@@ -853,7 +853,7 @@ FL void
 demail(void)
 {
 
-	if (value("keep") != NULL || rm(mailname) < 0) {
+	if (ok_blook(keep) || rm(mailname) < 0) {
 		int fd = open(mailname, O_WRONLY|O_CREAT|O_TRUNC, 0600);
 		if (fd >= 0)
 			close(fd);

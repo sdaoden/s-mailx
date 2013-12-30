@@ -428,7 +428,7 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
    case '@':
       if (use_nail_extensions) {
          switch (c) {
-         case '&':   c = boption("bsdcompat") ? '&' : '?';  break;
+         case '&':   c = ok_blook(bsdcompat) ? '&' : '?';   break;
          case '?':   c = exec_last_comm_error ? '1' : '0';  break;
          case '$':   c = PROMPT_DOLLAR;                     break;
          case '@':   c = PROMPT_AT;                         break;
@@ -730,7 +730,7 @@ makeprint(struct str const *in, struct str *out)
 	size_t msz;
 
 	if (print_all_chars == -1)
-		print_all_chars = (value("print-all-chars") != NULL);
+		print_all_chars = ok_blook(print_all_chars);
 
 	msz = in->l + 1;
 	out->s = outp = smalloc(msz);
