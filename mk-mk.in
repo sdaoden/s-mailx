@@ -196,14 +196,24 @@ _update-release:
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$(UAGENT)-$${FREL}.tar.gz" &&\
 	$(RM) -f "$(UAGENT)-$${FREL}.tar.gz" &&\
-	tar -c -z -f "$(UAGENT)-$${FREL}.tar.gz" "$(UAGENT)-$${REL}" &&\
+	tar -c -f "$(UAGENT)-$${FREL}.tar" "$(UAGENT)-$${REL}" &&\
+	< "$(UAGENT)-$${FREL}.tar" gzip > "$(UAGENT)-$${FREL}.tar.gz" &&\
+	< "$(UAGENT)-$${FREL}.tar" xz > "$(UAGENT)-$${FREL}.tar.xz" &&\
+	$(RM) -f "$(UAGENT)-$${FREL}.tar" &&\
 	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	openssl sha1 "$(UAGENT)-$${FREL}.tar.gz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	openssl sha256 "$(UAGENT)-$${FREL}.tar.gz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
-	echo "-put $(UAGENT)-$${FREL}.tar.gz" | \
+	openssl md5 "$(UAGENT)-$${FREL}.tar.xz" > \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	openssl sha1 "$(UAGENT)-$${FREL}.tar.xz" >> \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	openssl sha256 "$(UAGENT)-$${FREL}.tar.xz" >> \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	( echo "-put $(UAGENT)-$${FREL}.tar.gz";\
+	  echo "-put $(UAGENT)-$${FREL}.tar.xz" ) | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail &&\
 	echo 'All seems fine';\
 	echo 'Really send announcement mail?  ENTER continues';\
