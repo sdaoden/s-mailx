@@ -1005,7 +1005,7 @@ static size_t
 mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
 {
 	struct str cin, cout;
-	char buf[B64_LINESIZE];
+	char buf[B64_LINESIZE +1]; /* (No CR/LF used) */
 	char const *charset7, *charset, *upper, *wbeg, *wend, *lastspc,
 		*lastwordend = NULL;
 	size_t sz = 0, col = 0, quoteany, wr, charsetlen,

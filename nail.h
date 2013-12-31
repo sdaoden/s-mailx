@@ -999,20 +999,20 @@ struct shortcut {
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8 */
 
-#define QP_LINESIZE     (4 * 19  +1)   /* Max. compliant QP linesize (+1) */
+#define QP_LINESIZE     (4 * 19)       /* Max. compliant QP linesize */
 
-#define B64_LINESIZE    (4 * 19  +1)   /* Max. compl. Base64 linesize (+1) */
+#define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
 #define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
 
 /* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
 enum __mimecte_flags {
    MIMECTE_NONE,
    MIMECTE_SALLOC = 1<<0,     /* Use salloc(), not srealloc().. */
-   /* ..result .s,.l point to user buffer of *_LINESIZE+ bytes instead */
+   /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
    MIMECTE_BUF    = 1<<1,
    MIMECTE_CRLF   = 1<<2,     /* (encode) Append "\r\n" to lines */
    MIMECTE_LF     = 1<<3,     /* (encode) Append "\n" to lines */
-   /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE and
+   /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE+[+[+]] and
     * inject the desired line-ending whenever a linewrap is desired */
    MIMECTE_MULTILINE = 1<<4,
    /* (encode) Quote with header rules, do not generate soft NL breaks? */

@@ -753,7 +753,7 @@ FL int         qp_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /* How much space is necessary to encode *len* bytes in Base64, worst case.
- * Includes room for terminator */
+ * Includes room for (CR/LF/CRLF and) terminator */
 FL size_t      b64_encode_calc_size(size_t len);
 
 /* Note these simply convert all the input (if possible), including the

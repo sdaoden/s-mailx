@@ -360,7 +360,7 @@ jheadq:
 
       if (mq == N && (c != '\n' || !seenx)) {
          *qp++ = c;
-         if (++lnlen < QP_LINESIZE - 1 -1)
+         if (++lnlen < QP_LINESIZE - 1)
             continue;
          /* Don't write a soft line break when we're in the last possible
           * column and either an LF has been written or only an LF follows, as
@@ -378,7 +378,7 @@ jsoftnl:
          continue;
       }
 
-      if (lnlen > QP_LINESIZE - 3 - 1 -1) {
+      if (lnlen > QP_LINESIZE - 3 - 1) {
          qp[0] = '=';
          qp[1] = '\n';
          qp += 2;
@@ -533,7 +533,7 @@ b64_encode_calc_size(size_t len)
 {
    len = (len * 4) / 3;
    len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
-   ++len;
+   len += 2 + 1; /* CRLF, \0 */
    return len;
 }
 
@@ -584,7 +584,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
       if (!(flags & B64_MULTILINE))
          continue;
       lnlen += 4;
-      if (lnlen < B64_LINESIZE - 1)
+      if (lnlen < B64_LINESIZE)
          continue;
 
       lnlen = 0;
