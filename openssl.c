@@ -285,7 +285,8 @@ ssl_certificate(struct sock *sp, const char *uhp)
 		} else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert)
 				== 1) {
 			keyvar = ac_alloc(strlen(uhp) + 9);
-			strcpy(keyvar, "ssl-key-");
+			memcpy(keyvar, "ssl-key-", 8);
+			memcpy(keyvar + 8, uhp, i + 1);
 			if ((key = value(keyvar)) == NULL &&
 					(key = value("ssl-key")) == NULL)
 				key = cert;
