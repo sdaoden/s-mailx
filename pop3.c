@@ -227,7 +227,7 @@ _pop3_use_starttls(char const *uhp)
 	if (ok_blook(pop3_use_starttls))
 		return TRU1;
 	var = savecat("pop3-use-starttls-", uhp);
-	return value(var) != NULL;
+	return vok_blook(var);
 }
 
 static bool_t
@@ -242,7 +242,7 @@ _pop3_no_apop(char const *uhp)
 		char *var = ac_alloc(i + __SL);
 		memcpy(var, __S, __SL - 1);
 		memcpy(var + __SL - 1, uhp, i + 1);
-		ret = boption(var);
+		ret = vok_blook(var);
 		ac_free(var);
 #undef __SL
 #undef __S

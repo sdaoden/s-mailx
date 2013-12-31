@@ -275,7 +275,7 @@ ssl_certificate(struct sock *sp, const char *uhp)
 	certvar = ac_alloc(i + 9 + 1);
 	memcpy(certvar, "ssl-cert-", 9);
 	memcpy(certvar + 9, uhp, i + 1);
-	if ((cert = value(certvar)) != NULL ||
+	if ((cert = vok_vlook(certvar)) != NULL ||
 			(cert = ok_vlook(ssl_cert)) != NULL) {
 		x = cert;
 		if ((cert = file_expand(cert)) == NULL) {
@@ -286,7 +286,7 @@ ssl_certificate(struct sock *sp, const char *uhp)
 			keyvar = ac_alloc(strlen(uhp) + 9);
 			memcpy(keyvar, "ssl-key-", 8);
 			memcpy(keyvar + 8, uhp, i + 1);
-			if ((key = value(keyvar)) == NULL &&
+			if ((key = vok_vlook(keyvar)) == NULL &&
 					(key = ok_vlook(ssl_key)) == NULL)
 				key = cert;
 			else if ((x = key, key = file_expand(key)) == NULL) {
@@ -706,7 +706,7 @@ smime_cipher(const char *name)
 
 	vn = ac_alloc(vs = strlen(name) + 30);
 	snprintf(vn, vs, "smime-cipher-%s", name);
-	if ((cp = value(vn)) != NULL) {
+	if ((cp = vok_vlook(vn)) != NULL) {
 		if (strcmp(cp, "rc2-40") == 0)
 			cipher = EVP_rc2_40_cbc();
 		else if (strcmp(cp, "rc2-64") == 0)
@@ -965,7 +965,7 @@ loop:	if (name) {
 			 */
 			vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
-			cp = value(vn);
+			cp = vok_vlook(vn);
 			ac_free(vn);
 			if (cp != NULL)
 				goto open;
@@ -1008,7 +1008,7 @@ smime_sign_include_certs(char const *name)
 			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-include-certs-%s",
 				np->n_name);
-			ret = value(vn);
+			ret = vok_vlook(vn);
 			ac_free(vn);
 			if (ret != NULL)
 				return ret;

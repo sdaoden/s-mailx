@@ -552,7 +552,7 @@ lookup_password_for_token(char const *token)
 	memcpy(var + 9, token, tl);
 	var[tl + 9] = '\0';
 
-	if ((cp = value(var)) != NULL)
+	if ((cp = vok_vlook(var)) != NULL)
 		cp = savestr(cp);
 	ac_free(var);
 	return cp;

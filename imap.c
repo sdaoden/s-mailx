@@ -766,7 +766,7 @@ imap_use_starttls(const char *uhp)
 	if (ok_blook(imap_use_starttls))
 		return 1;
 	var = savecat("imap-use-starttls-", uhp);
-	return value(var) != NULL;
+	return vok_blook(var);
 }
 
 static enum okay
@@ -846,7 +846,7 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 		var = ac_alloc(i + 10);
 		memcpy(var, "imap-auth-", 10);
 		memcpy(var + 10, uhp, i);
-		auth = value(var);
+		auth = vok_vlook(var);
 		ac_free(var);
 	}
 	if (auth == NULL || strcmp(auth, "login") == 0)
@@ -3318,7 +3318,7 @@ disconnected(const char *file)
 		*cq = '\0';
 	vp = ac_alloc(vs = strlen(cp) + 14);
 	snprintf(vp, vs, "disconnected-%s", cp);
-	r = value(vp) != NULL;
+	r = vok_blook(vp);
 	ac_free(vp);
 	return r;
 }

@@ -631,11 +631,11 @@ jcont:
 			printf(tr(60, "%d/%d\n"), lc, cc);
 			break;
 		case 'i':
-			/* Insert an environment variable into the file */
+			/* Insert a variable into the file */
 			cp = &linebuf[2];
 			while (whitechar(*cp))
 				++cp;
-			if ((cp = value(cp)) == NULL || *cp == '\0')
+			if ((cp = vok_vlook(cp)) == NULL || *cp == '\0')
 				break;
 			if (putesc(cp, _coll_fp) < 0)
 				goto jerr;

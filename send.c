@@ -352,7 +352,7 @@ _pipecmd(char **result, char const *content_type)
 	do
 		*cp++ = lowerconv(*cq);
 	while (*cq++ != '\0');
-	cp = value(s);
+	cp = vok_vlook(s);
 	ac_free(s);
 
 	if (cp == NULL)

@@ -317,9 +317,9 @@ smtp_auth_var(char const *atype, char const *addr)
 
 	/* Try a 'user@host', i.e., address specific version first */
 	(void)snprintf(var, len, "smtp-auth%s-%s", atype, addr);
-	if ((cp = value(var)) == NULL) {
+	if ((cp = vok_vlook(var)) == NULL) {
 		snprintf(var, len, "smtp-auth%s", atype);
-		cp = value(var);
+		cp = vok_vlook(var);
 	}
 	if (cp != NULL)
 		cp = savestr(cp);

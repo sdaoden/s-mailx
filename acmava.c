@@ -882,7 +882,7 @@ var_list_all(void)
    fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
 
    for (cap = vacp; no != 0; ++cap, --no) {
-      cp = value(*cap); /* TODO internal lookup; binary? value? */
+      cp = vok_vlook(*cap); /* XXX when lookup checks value/binary, change */
       if (cp == NULL)
          cp = UNCONST("");
       if (i || *cp != '\0')
@@ -975,7 +975,7 @@ callhook(char const *name, int nmail)
 
    var = ac_alloc(len = strlen(name) + 13);
    snprintf(var, len, "folder-hook-%s", name);
-   if ((cp = value(var)) == NULL && (cp = ok_vlook(folder_hook)) == NULL) {
+   if ((cp = vok_vlook(var)) == NULL && (cp = ok_vlook(folder_hook)) == NULL) {
       rv = 0;
       goto jleave;
    }

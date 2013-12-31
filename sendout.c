@@ -804,8 +804,8 @@ transfer(struct name *to, FILE *input, struct header *hp)
 
 	np = to;
 	while (np) {
-		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
-		if ((cp = value(o)) != NULL) {
+		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);/* XXX */
+		if ((cp = vok_vlook(o)) != NULL) {
 #ifdef HAVE_SSL
 			struct name *nt;
 			FILE *ef;
