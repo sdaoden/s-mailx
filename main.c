@@ -568,7 +568,7 @@ main(int argc, char *argv[])
     */
 
    starting =
-   var_unset_allow_undefined = TRU1;
+   var_clear_allow_undefined = TRU1;
 
    progname = argv[0];
    _startup();
@@ -835,7 +835,7 @@ jusage:
     */
 
    starting =
-   var_unset_allow_undefined = FAL0;
+   var_clear_allow_undefined = FAL0;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);

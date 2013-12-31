@@ -666,10 +666,11 @@ set(void *v)
 			goto jnext;
 		}
 		if (varbuf[0] == 'n' && varbuf[1] == 'o')
-			errs += var_unset(&varbuf[2]);
+			errs += _var_vokclear(&varbuf[2]);
 		else
-			errs += var_assign(varbuf, cp);
-jnext:		ac_free(varbuf);
+			errs += _var_vokset(varbuf, (uintptr_t)cp);
+jnext:
+		ac_free(varbuf);
 	}
 jleave:
 	return (errs);
@@ -686,7 +687,7 @@ unset(void *v)
 
 	errs = 0;
 	for (ap = (char**)v; *ap != NULL; ap++)
-		errs += var_unset(*ap);
+		errs += _var_vokclear(*ap);
 	return errs;
 }
 

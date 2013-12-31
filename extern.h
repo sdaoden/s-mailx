@@ -54,18 +54,7 @@
  * acmava.c
  */
 
-/* Assign a value to a variable, return wether error occurred */
-FL bool_t   var_assign(char const *name, char const *value);
-
-/* Unset variable (special: normally `var_assign(, NULL)' is used), return
- * wether error occurred */
-FL bool_t   var_unset(char const *name);
-
-/* Get the value of an option (fallback to `look_environ'?) */
-FL char *   var_lookup(char const *name, bool_t look_environ);
-#define value(V)                 var_lookup(V, TRU1)  /* TODO legacy */
-#define boption(V)               (!!value(V))
-#define voption(V)               value(V)
+/* Don't use _var_* unless you *really* have to! */
 
 /* Constant option key look/(un)set/clear */
 FL char *   _var_oklook(enum okeys okey);

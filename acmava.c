@@ -112,6 +112,11 @@ static char const *  _canonify(char const *vn);
 /* Locate a variable and return its variable node */
 static struct var *  _lookup(char const *name, ui_it h, bool_t hisset);
 
+/* Legacy */
+static bool_t     __var_assign(char const *name, char const *val);
+static bool_t     __var_unset(char const *name);
+static char *     __var_lookup(char const *name, bool_t look_environ);
+
 /* Line *cp* consists solely of WS and a } */
 static bool_t        _is_closing_angle(char const *cp);
 
@@ -260,6 +265,102 @@ jleave:
 }
 
 static bool_t
+__var_assign(char const *name, char const *val)
+{
+   bool_t err;
+   struct var *vp;
+   ui_it h;
+   char *oval;
+
+   if (val == NULL) {
+      bool_t tmp = var_clear_allow_undefined;
+      var_clear_allow_undefined = TRU1;
+      err = __var_unset(name);
+      var_clear_allow_undefined = tmp;
+      goto jleave;
+   }
+
+   name = _canonify(name);
+   h = MA_HASH(name);
+   vp = _lookup(name, h, TRU1);
+
+   /* Don't care what happens later on, store this in the unroll list */
+   if (_localopts != NULL)
+      _localopts_add(_localopts, name, vp);
+
+   if (vp == NULL) {
+      vp = (struct var*)scalloc(1, sizeof *vp);
+      vp->v_name = _vcopy(name);
+      vp->v_link = _vars[h];
+      _vars[h] = vp;
+      oval = UNCONST("");
+   } else
+      oval = vp->v_value;
+   vp->v_value = _vcopy(val);
+
+   /* Check if update allowed XXX wasteful on error! */
+   if ((err = !_check_special_vars(name, TRU1, &vp->v_value))) {
+      char *cp = vp->v_value;
+      vp->v_value = oval;
+      oval = cp;
+   }
+   if (*oval != '\0')
+      _vfree(oval);
+jleave:
+   return err;
+}
+
+static bool_t
+__var_unset(char const *name)
+{
+   int err = TRU1;
+   ui_it h;
+   struct var *vp;
+
+   name = _canonify(name);
+   h = MA_HASH(name);
+   vp = _lookup(name, h, TRU1);
+
+   if (vp == NULL) {
+      if (!sourcing && !var_clear_allow_undefined) {
+         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), name);
+         goto jleave;
+      }
+   } else {
+      if (_localopts != NULL)
+         _localopts_add(_localopts, name, vp);
+
+      /* Always listhead after _lookup() */
+      _vars[h] = _vars[h]->v_link;
+      _vfree(vp->v_name);
+      _vfree(vp->v_value);
+      free(vp);
+
+      if (!_check_special_vars(name, FAL0, NULL))
+         goto jleave;
+   }
+   err = FAL0;
+jleave:
+   return err;
+}
+
+static char *
+__var_lookup(char const *name, bool_t look_environ)
+{
+   struct var *vp;
+   char *rv;
+
+   name = _canonify(name);
+   if ((vp = _lookup(name, 0, FAL0)) != NULL)
+      rv = vp->v_value;
+   else if (! look_environ)
+      rv = NULL;
+   else if ((rv = getenv(name)) != NULL && *rv != '\0')
+      rv = savestr(rv);
+   return rv;
+}
+
+static bool_t
 _is_closing_angle(char const *cp)
 {
    bool_t rv = FAL0;
@@ -322,10 +423,10 @@ _maexec(struct macro const *mp, struct var **unroll_store)
    _localopts = &los;
 
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
-      var_unset_allow_undefined = TRU1;
+      var_clear_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length + 1);
       rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
-      var_unset_allow_undefined = FAL0;
+      var_clear_allow_undefined = FAL0;
    }
 
    _localopts = los.s_up;
@@ -535,106 +636,10 @@ _localopts_unroll(struct var **vapp)
    while (vap != NULL) {
       x = vap;
       vap = vap->v_link;
-      var_assign(x->v_name, x->v_value);
+      __var_assign(x->v_name, x->v_value);
       free(x);
    }
    _localopts = save_los;
-}
-
-FL bool_t
-var_assign(char const *name, char const *val)
-{
-   bool_t err;
-   struct var *vp;
-   ui_it h;
-   char *oval;
-
-   if (val == NULL) {
-      bool_t tmp = var_unset_allow_undefined;
-      var_unset_allow_undefined = TRU1;
-      err = var_unset(name);
-      var_unset_allow_undefined = tmp;
-      goto jleave;
-   }
-
-   name = _canonify(name);
-   h = MA_HASH(name);
-   vp = _lookup(name, h, TRU1);
-
-   /* Don't care what happens later on, store this in the unroll list */
-   if (_localopts != NULL)
-      _localopts_add(_localopts, name, vp);
-
-   if (vp == NULL) {
-      vp = (struct var*)scalloc(1, sizeof *vp);
-      vp->v_name = _vcopy(name);
-      vp->v_link = _vars[h];
-      _vars[h] = vp;
-      oval = UNCONST("");
-   } else
-      oval = vp->v_value;
-   vp->v_value = _vcopy(val);
-
-   /* Check if update allowed XXX wasteful on error! */
-   if ((err = !_check_special_vars(name, TRU1, &vp->v_value))) {
-      char *cp = vp->v_value;
-      vp->v_value = oval;
-      oval = cp;
-   }
-   if (*oval != '\0')
-      _vfree(oval);
-jleave:
-   return err;
-}
-
-FL bool_t
-var_unset(char const *name)
-{
-   int err = TRU1;
-   ui_it h;
-   struct var *vp;
-
-   name = _canonify(name);
-   h = MA_HASH(name);
-   vp = _lookup(name, h, TRU1);
-
-   if (vp == NULL) {
-      if (!sourcing && !var_unset_allow_undefined) {
-         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), name);
-         goto jleave;
-      }
-   } else {
-      if (_localopts != NULL)
-         _localopts_add(_localopts, name, vp);
-
-      /* Always listhead after _lookup() */
-      _vars[h] = _vars[h]->v_link;
-      _vfree(vp->v_name);
-      _vfree(vp->v_value);
-      free(vp);
-
-      if (!_check_special_vars(name, FAL0, NULL))
-         goto jleave;
-   }
-   err = FAL0;
-jleave:
-   return err;
-}
-
-FL char *
-var_lookup(char const *name, bool_t look_environ)
-{
-   struct var *vp;
-   char *rv;
-
-   name = _canonify(name);
-   if ((vp = _lookup(name, 0, FAL0)) != NULL)
-      rv = vp->v_value;
-   else if (! look_environ)
-      rv = NULL;
-   else if ((rv = getenv(name)) != NULL && *rv != '\0')
-      rv = savestr(rv);
-   return rv;
 }
 
 static char const * const _tempo_okmap[] = {
@@ -814,7 +819,7 @@ _var_oklook(enum okeys okey)
 {
    char const *k = _tempo_okmap[okey];
 
-   return var_lookup(k, TRU1);
+   return __var_lookup(k, TRU1);
 }
 
 FL bool_t
@@ -822,7 +827,7 @@ _var_okset(enum okeys okey, uintptr_t val)
 {
    char const *k = _tempo_okmap[okey];
 
-   return var_assign(k, (val == 0x1) ? "" : (char const*)val);
+   return __var_assign(k, (val == 0x1) ? "" : (char const*)val);
 }
 
 FL bool_t
@@ -830,25 +835,25 @@ _var_okclear(enum okeys okey)
 {
    char const *k = _tempo_okmap[okey];
 
-   return var_unset(k);
+   return __var_unset(k);
 }
 
 FL char *
 _var_voklook(char const *vokey)
 {
-   return var_lookup(vokey, TRU1);
+   return __var_lookup(vokey, TRU1);
 }
 
 FL bool_t
 _var_vokset(char const *vokey, uintptr_t val)
 {
-   return var_assign(vokey, (val == 0x1) ? "" : (char const*)val);
+   return __var_assign(vokey, (val == 0x1) ? "" : (char const*)val);
 }
 
 FL bool_t
 _var_vokclear(char const *vokey)
 {
-   return var_unset(vokey);
+   return __var_unset(vokey);
 }
 
 FL void
