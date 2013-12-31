@@ -645,10 +645,12 @@ commands(void)
 		 * string space, and flush the output.
 		 */
 		if (!sourcing && (options & OPT_INTERACTIVE)) {
-			av = (av = voption("autoinc")) ? savestr(av) : NULL;
-			nv = (nv = voption("newmail")) ? savestr(nv) : NULL;
+			if ((av = ok_vlook(autoinc)) != NULL)
+				av = savestr(av);
+			if ((nv = ok_vlook(newmail)) != NULL)
+				nv = savestr(nv);
 			if ((options & OPT_TTYIN) &&
-               (av != NULL || nv != NULL || mb.mb_type == MB_IMAP)) {
+					(av != NULL || nv != NULL || mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
 				n = (av && strcmp(av, "noimap") && strcmp(av, "nopoll")) |
@@ -1153,7 +1155,7 @@ getmdot(int nmail)
 	if (!nmail) {
 		if (ok_blook(autothread))
 			thread(NULL);
-		else if ((cp = value("autosort")) != NULL) {
+		else if ((cp = ok_vlook(autosort)) != NULL) {
 			free(mb.mb_sorted);
 			mb.mb_sorted = sstrdup(cp);
 			sort(NULL);

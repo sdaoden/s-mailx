@@ -957,7 +957,7 @@ callhook(char const *name, int nmail)
 
    var = ac_alloc(len = strlen(name) + 13);
    snprintf(var, len, "folder-hook-%s", name);
-   if ((cp = value(var)) == NULL && (cp = value("folder-hook")) == NULL) {
+   if ((cp = value(var)) == NULL && (cp = ok_vlook(folder_hook)) == NULL) {
       rv = 0;
       goto jleave;
    }

@@ -652,7 +652,7 @@ pop3_setfile(const char *server, int nmail, int isedit)
 		safe_signal(SIGINT, pop3catch);
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, pop3catch);
-	if ((cp = value("pop3-keepalive")) != NULL) {
+	if ((cp = ok_vlook(pop3_keepalive)) != NULL) {
 		if ((_pop3_keepalive = (int)strtol(cp, NULL, 10)) > 0) {
 			_pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
 			alarm(_pop3_keepalive);

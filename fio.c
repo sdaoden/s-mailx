@@ -103,7 +103,7 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 	char *cp;
 
 	if (strcmp(user, myname) == 0 && ! force &&
-			(cp = value("folder")) != NULL) {
+			(cp = ok_vlook(folder)) != NULL) {
 		switch (which_protocol(cp)) {
 		case PROTO_IMAP:
 			if (strcmp(cp, protbase(cp)) != 0)
@@ -115,7 +115,7 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 		}
 	}
 
-	if (force || (cp = value("MAIL")) == NULL)
+	if (force || (cp = ok_vlook(MAIL)) == NULL)
 		snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
 	else {
 jcopy:
@@ -206,8 +206,8 @@ jleave:
 		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-	if ((shellp = value("SHELL")) == NULL)
-		shellp = UNCONST(SHELL);
+	if ((shellp = ok_vlook(SHELL)) == NULL)
+		shellp = UNCONST(XSHELL);
 	pid = start_command(shellp, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);
@@ -788,7 +788,7 @@ jnext:
 		goto jislocal;
 	case '&':
 		if (res[1] == '\0') {
-			if ((res = value("MBOX")) == NULL)
+			if ((res = ok_vlook(MBOX)) == NULL)
 				res = UNCONST("~/mbox");
 			else if (res[0] != '&' || res[1] != '\0')
 				goto jnext;
@@ -934,7 +934,7 @@ getfold(char *name, size_t size)
 {
 	char const *folder;
 
-	if ((folder = value("folder")) != NULL)
+	if ((folder = ok_vlook(folder)) != NULL)
 		(void)n_strlcpy(name, folder, size);
 	return (folder != NULL);
 }
@@ -947,7 +947,7 @@ getdeadletter(void)
 {
 	char const *cp;
 
-	if ((cp = value("DEAD")) == NULL ||
+	if ((cp = ok_vlook(DEAD)) == NULL ||
 			(cp = fexpand(cp, FEXP_LOCAL)) == NULL)
 		cp = fexpand("~/dead.letter", FEXP_LOCAL|FEXP_SHELL);
 	else if (*cp != '/') {

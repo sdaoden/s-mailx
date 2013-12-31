@@ -249,7 +249,7 @@ paging_seems_sensible(void)
 	size_t ret = 0;
 	char const *cp;
 
-	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL)
+	if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL)
 		ret = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
 	return ret;
 }
@@ -345,7 +345,7 @@ which_protocol(const char *name)
 			if (stat(np, &st) < 0) {
 				strcpy(&np[sz], ".bz2");
 				if (stat(np, &st) < 0) {
-					if ((cp = value("newfolders")) != 0 &&
+					if ((cp = ok_vlook(newfolders)) != NULL &&
 						strcmp(cp, "maildir") == 0)
 					p = PROTO_MAILDIR;
 				}
@@ -457,7 +457,7 @@ getprompt(void)
    char *cp = buf;
    char const *ccp;
 
-   if ((ccp = voption("prompt")) == NULL || *ccp == '\0')
+   if ((ccp = ok_vlook(prompt)) == NULL || *ccp == '\0')
       goto jleave;
 
    for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
@@ -502,7 +502,7 @@ nodename(int mayoverride)
 # endif
 #endif
 
-	if (mayoverride && (hn = value("hostname")) != NULL && *hn != '\0') {
+	if (mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0') {
 		if (hostname != NULL)
 			free(hostname);
 		hostname = sstrdup(hn);

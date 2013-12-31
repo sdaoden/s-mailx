@@ -103,7 +103,7 @@ _print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 	char attrlist[30], *cp;
 	char const *fmt;
 
-	if ((cp = voption("attrlist")) != NULL) {
+	if ((cp = ok_vlook(attrlist)) != NULL) {
 		size_t i = strlen(cp);
 		if (UICMP(32, i, >, sizeof attrlist - 1))
 			i = (int)sizeof attrlist - 1;
@@ -117,7 +117,7 @@ _print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 		memcpy(attrlist, pattr, sizeof pattr - 1);
 	}
 
-	if ((fmt = voption("headline")) == NULL) {
+	if ((fmt = ok_vlook(headline)) == NULL) {
 		fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
 			? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
 			: "%>%a%m %-18f %16d %4l/%-5o %i%-s");
@@ -137,7 +137,7 @@ __hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
 	time_t datet = mp->m_time;
 
 	date = NULL;
-	if ((datefmt = value("datefield")) != NULL) {
+	if ((datefmt = ok_vlook(datefield)) != NULL) {
 		fp = hfield1("date", mp);/* TODO use m_date field! */
 		if (fp == NULL) {
 			datefmt = NULL;
@@ -145,7 +145,7 @@ __hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
 		}
 		datet = rfctime(fp);
 		date = fakedate(datet);
-		fp = value("datefield-markout-older");
+		fp = ok_vlook(datefield_markout_older);
 		i = (*datefmt != '\0');
 		if (fp != NULL)
 			i |= (*fp != '\0') ? 2 | 4 : 2;
@@ -598,9 +598,9 @@ get_pager(void)
 {
 	char const *cp;
 
-	cp = value("PAGER");
+	cp = ok_vlook(PAGER);
 	if (cp == NULL || *cp == '\0')
-		cp = PAGER;
+		cp = XPAGER;
 	return cp;
 }
 
@@ -802,7 +802,7 @@ screensize(void)
 	int s;
 	char *cp;
 
-	if ((cp = value("screen")) != NULL && (s = atoi(cp)) > 0)
+	if ((cp = ok_vlook(screen)) != NULL && (s = atoi(cp)) > 0)
 		return s;
 	return scrnheight - 4;
 }
@@ -831,7 +831,7 @@ from(void *v)
 	time_current_update(&time_current, FAL0);
 
 	/* TODO unfixable memory leaks still */
-	if (IS_TTY_SESSION() && (cp = value("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
@@ -952,15 +952,15 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
 	if (dopipe) {
-		if ((cp = value("SHELL")) == NULL)
-			cp = SHELL;
+		if ((cp = ok_vlook(SHELL)) == NULL)
+			cp = XSHELL;
 		if ((obuf = Popen(cmd, "w", cp, 1)) == NULL) {
 			perror(cmd);
 			obuf = stdout;
 		} else
 			safe_signal(SIGPIPE, brokpipe);
 	} else if ((options & OPT_TTYOUT) &&
-			(dopage || (cp = value("crt")) != NULL)) {
+			(dopage || (cp = ok_vlook(crt)) != NULL)) {
 		long nlines = 0;
 		if (!dopage) {
 			for (ip = msgvec; *ip &&
@@ -1035,7 +1035,7 @@ pipe1(char *str, int doign)
 	/*LINTED*/
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	if ((cmd = laststring(str, &f, 1)) == NULL) {
-		cmd = value("cmd");
+		cmd = ok_vlook(cmd);
 		if (cmd == NULL || *cmd == '\0') {
 			fputs(tr(16, "variable cmd not set\n"), stderr);
 			return 1;
@@ -1160,7 +1160,7 @@ top(void *v)
 	FILE *ibuf;
 
 	topl = 5;
-	cp = value("toplines");
+	cp = ok_vlook(toplines);
 	if (cp != NULL) {
 		topl = atoi(cp);
 		if (topl < 0 || topl > 10000)
@@ -1269,8 +1269,8 @@ folders(void *v)
 		return ccmdnotsupp(NULL);
 #endif
 	} else {
-		if ((cmd = value("LISTER")) == NULL)
-			cmd = LISTER;
+		if ((cmd = ok_vlook(LISTER)) == NULL)
+			cmd = XLISTER;
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
 	return 0;

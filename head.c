@@ -372,13 +372,13 @@ myaddrs(struct header *hp)
 			goto jleave;
 	}
 
-	if ((rv = voption("from")) != NULL)
+	if ((rv = ok_vlook(from)) != NULL)
 		goto jleave;
 
 	/* When invoking *sendmail* directly, it's its task
 	 * to generate an otherwise undeterminable From: address.
 	 * However, if the user sets *hostname*, accept his desire */
-	if (voption("smtp") != NULL || voption("hostname") != NULL) {
+	if (ok_vlook(smtp) != NULL || ok_vlook(hostname) != NULL) {
 		char *hn = nodename(1);
 		size_t sz = strlen(myname) + strlen(hn) + 2;
 		rv = salloc(sz);
@@ -396,7 +396,7 @@ myorigin(struct header *hp)
 
 	if ((ccp = myaddrs(hp)) != NULL &&
 			(np = lextract(ccp, GEXTRA|GFULL)) != NULL)
-		ret = np->n_flink != NULL ? value("sender") : ccp;
+		ret = np->n_flink != NULL ? ok_vlook(sender) : ccp;
 	return (ret);
 }
 
@@ -1593,16 +1593,16 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 		hp->h_from = grab_names("From: ", hp->h_from, comma,
 				GEXTRA|GFULL);
 		if (hp->h_replyto == NULL)
-			hp->h_replyto = lextract(value("replyto"),
-					GEXTRA|GFULL);
+			hp->h_replyto = lextract(ok_vlook(replyto),
+					GEXTRA | GFULL);
 		hp->h_replyto = grab_names("Reply-To: ", hp->h_replyto, comma,
 				GEXTRA|GFULL);
 		if (hp->h_sender == NULL)
-			hp->h_sender = extract(value("sender"), GEXTRA|GFULL);
+			hp->h_sender = extract(ok_vlook(sender), GEXTRA|GFULL);
 		hp->h_sender = grab_names("Sender: ", hp->h_sender, comma,
 				GEXTRA|GFULL);
 		if (hp->h_organization == NULL)
-			hp->h_organization = value("ORGANIZATION");
+			hp->h_organization = ok_vlook(ORGANIZATION);
 		hp->h_organization = readstr_input("Organization: ",
 				hp->h_organization);
 	}

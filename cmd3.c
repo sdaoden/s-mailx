@@ -99,8 +99,8 @@ shell(void *v)
 	memcpy(cmd, str, cmdsize);
 	if (bangexp(&cmd, &cmdsize) < 0)
 		return 1;
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	run_command(sh, 0, -1, -1, "-c", cmd, NULL);
 	safe_signal(SIGINT, sigint);
 	printf("!\n");
@@ -119,8 +119,8 @@ dosh(void *v)
 	char const *sh;
 	(void)v;
 
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	run_command(sh, 0, -1, -1, NULL, NULL, NULL);
 	safe_signal(SIGINT, sigint);
 	putchar('\n');

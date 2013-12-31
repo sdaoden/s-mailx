@@ -841,7 +841,7 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 
 	if (!(mp->mb_active & MB_PREAUTH))
 		return OKAY;
-	if ((auth = value("imap-auth")) == NULL) {
+	if ((auth = ok_vlook(imap_auth)) == NULL) {
 		size_t i = strlen(uhp) + 1;
 		var = ac_alloc(i + 10);
 		memcpy(var, "imap-auth-", 10);
@@ -1239,7 +1239,7 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
 					server);
 			goto done;
 		}
-		if ((cp = value("imap-keepalive")) != NULL) {
+		if ((cp = ok_vlook(imap_keepalive)) != NULL) {
 			if ((imapkeepalive = strtol(cp, NULL, 10)) > 0) {
 				savealrm = safe_signal(SIGALRM, imapalarm);
 				alarm(imapkeepalive);
@@ -2435,7 +2435,7 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	char	*cp;
 	int	depth;
 
-	depth = (cp = value("imap-list-depth")) != NULL ? atoi(cp) : 2;
+	depth = (cp = ok_vlook(imap_list_depth)) != NULL ? atoi(cp) : 2;
 	if (imap_list1(mp, base, &list, &lend, 0) == STOP)
 		return STOP;
 	if (list == NULL || lend == NULL)
@@ -2567,7 +2567,7 @@ dopr(FILE *fp)
 				columns, width);
 	} else
 		strncpy(o, "sort", sizeof o)[sizeof o - 1] = '\0';
-	run_command(SHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
+	run_command(XSHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
 	try_pager(out);
 	Fclose(out);
 }

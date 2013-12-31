@@ -282,10 +282,10 @@
 #define CHARSET_7BIT    "US-ASCII"
 #ifdef HAVE_ICONV
 # define CHARSET_8BIT      "UTF-8"
-# define CHARSET_8BIT_VAR  "charset-8bit"
+# define CHARSET_8BIT_OKEY charset_8bit
 #else
 # define CHARSET_8BIT      "ISO-8859-1"
-# define CHARSET_8BIT_VAR  "ttycharset"
+# define CHARSET_8BIT_OKEY ttycharset
 #endif
 
 /* Is *W* a quoting (ASCII only) character? */
@@ -311,15 +311,12 @@
 #ifndef XSHELL
 # define XSHELL         "/bin/sh"
 #endif
-#define SHELL           XSHELL
 #ifndef XLISTER
 # define XLISTER        "ls"
 #endif
-#define LISTER          XLISTER
 #ifndef XPAGER
 # define XPAGER         "more"
 #endif
-#define PAGER           XPAGER
 
 /*
  * Types

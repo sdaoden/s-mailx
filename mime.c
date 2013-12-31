@@ -93,7 +93,7 @@ _mt_init(void)
 	char const *ccp, *const*srcs;
 	FILE *fp;
 
-	if ((ccp = value("mimetypes-load-control")) == NULL)
+	if ((ccp = ok_vlook(mimetypes_load_control)) == NULL)
 		idx_ok = (ui_it)-1;
 	else for (idx_ok = 0; *ccp != '\0'; ++ccp)
 		switch (*ccp) {
@@ -179,7 +179,7 @@ _conversion_by_encoding(void)
 	char const *cp;
 	enum conversion ret;
 
-	if ((cp = value("encoding")) == NULL)
+	if ((cp = ok_vlook(encoding)) == NULL)
 		ret = MIME_DEFAULT_ENCODING;
 	else if (strcmp(cp, "quoted-printable") == 0)
 		ret = CONV_TOQP;
@@ -312,7 +312,7 @@ charset_get_7bit(void)
 {
 	char const *t;
 
-	if ((t = value("charset-7bit")) == NULL)
+	if ((t = ok_vlook(charset_7bit)) == NULL)
 		t = CHARSET_7BIT;
 	return (t);
 }
@@ -322,7 +322,7 @@ charset_get_8bit(void)
 {
 	char const *t;
 
-	if ((t = value(CHARSET_8BIT_VAR)) == NULL)
+	if ((t = ok_vlook(CHARSET_8BIT_OKEY)) == NULL)
 		t = CHARSET_8BIT;
 	return (t);
 }
@@ -332,7 +332,7 @@ charset_get_lc(void)
 {
 	char const *t;
 
-	if ((t = value("ttycharset")) == NULL)
+	if ((t = ok_vlook(ttycharset)) == NULL)
 		t = CHARSET_8BIT;
 	return (t);
 }
@@ -346,7 +346,7 @@ charset_iter_reset(char const *a_charset_to_try_first)
 
 	sarr[0] = a_charset_to_try_first;
 #ifdef HAVE_ICONV
-	if ((sarr[1] = value("sendcharsets")) == NULL &&
+	if ((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
 			ok_blook(sendcharsets_else_ttycharset))
 		sarr[1] = charset_get_lc();
 #endif
@@ -424,17 +424,17 @@ need_hdrconv(struct header *hp, enum gfield w)
 		if (hp->h_organization) {
 			if (has_highbit(hp->h_organization))
 				goto jneeds;
-		} else if (has_highbit(value("ORGANIZATION")))
+		} else if (has_highbit(ok_vlook(ORGANIZATION)))
 			goto jneeds;
 		if (hp->h_replyto) {
 			if (name_highbit(hp->h_replyto))
 				goto jneeds;
-		} else if (has_highbit(value("replyto")))
+		} else if (has_highbit(ok_vlook(replyto)))
 			goto jneeds;
 		if (hp->h_sender) {
 			if (name_highbit(hp->h_sender))
 				goto jneeds;
-		} else if (has_highbit(value("sender")))
+		} else if (has_highbit(ok_vlook(sender)))
 			goto jneeds;
 	}
 	if (w & GTO && name_highbit(hp->h_to))

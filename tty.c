@@ -70,13 +70,13 @@
 #ifdef HAVE_HISTORY
 # define _CL_HISTFILE(S) \
 do {\
-   S = voption("NAIL_HISTFILE");\
+   S = ok_vlook(NAIL_HISTFILE);\
    if ((S) != NULL)\
       S = fexpand(S, FEXP_LOCAL);\
 } while (0)
 # define _CL_HISTSIZE(V) \
 do {\
-   char const *__sv = voption("NAIL_HISTSIZE");\
+   char const *__sv = ok_vlook(NAIL_HISTSIZE);\
    long __rv;\
    if (__sv == NULL || *__sv == '\0' ||\
          (__rv = strtol(__sv, NULL, 10)) == 0)\
@@ -1234,7 +1234,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
    /* TODO *l.nd=='\0' only because we have no value-cache -> see acmava.c */
-   if ((l.nd = voption("line-editor-cursor-right")) == NULL || *l.nd == '\0')
+   if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
       l.nd = "\033[C";
    l.x_buf = buf;
    l.x_bufsize = bufsize;

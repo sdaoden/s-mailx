@@ -286,7 +286,7 @@ _prepare_mta_args(struct name *to, struct header *hp)
 	size_t j, i = 4 + smopts_count + 2 + count(to) + 1;
 	char const **args = salloc(i * sizeof(char*));
 
-	args[0] = value("sendmail-progname");
+	args[0] = ok_vlook(sendmail_progname);
 	if (args[0] == NULL || *args[0] == '\0')
 		args[0] = SENDMAIL_PROGNAME;
 
@@ -370,7 +370,7 @@ put_signature(FILE *fo, int convert)
 	FILE *fsig;
 	size_t sz;
 
-	sig = value("signature");
+	sig = ok_vlook(signature);
 	if (sig == NULL || *sig == '\0')
 		return 0;
 	else if ((sig = file_expand(sig)) == NULL)
@@ -865,8 +865,8 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	sigset_t nset;
 	(void)hp;
 
-	if ((smtp = value("smtp")) == NULL) {
-		if ((mta = value("sendmail")) != NULL) {
+	if ((smtp = ok_vlook(smtp)) == NULL) {
+		if ((mta = ok_vlook(sendmail)) != NULL) {
 			if ((mta = file_expand(mta)) == NULL)
 				goto jstop;
 		} else
@@ -970,7 +970,7 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 			;
 		*cq = '\0';
 	} else
-		cp = value("record");
+		cp = ok_vlook(record);
 	if (cp != NULL) {
 		ep = expand(cp);
 		if (ep == NULL) {
@@ -1022,9 +1022,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	time_current_update(&time_current, TRU1);
 
 	/*  */
-	if ((cp = value("autocc")) != NULL && *cp)
+	if ((cp = ok_vlook(autocc)) != NULL && *cp)
 		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC|GFULL)));
-	if ((cp = value("autobcc")) != NULL && *cp)
+	if ((cp = ok_vlook(autobcc)) != NULL && *cp)
 		hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp,GBCC|GFULL)));
 
 	/*
@@ -1103,8 +1103,8 @@ jaskeot:
 	/* Do alias expansion on Reply-To: members, too (Martin Neitzel) */
 	/* TODO puthead() YET (!!! see ONCE note above) expands the value, but
 	 * TODO doesn't perform alias expansion; encapsulate in the ONCE-o */
-	if (hp->h_replyto == NULL && (cp = value("replyto")) != NULL)
-		hp->h_replyto = checkaddrs(lextract(cp, GEXTRA|GFULL));
+	if (hp->h_replyto == NULL && (cp = ok_vlook(replyto)) != NULL)
+		hp->h_replyto = checkaddrs(lextract(cp, GEXTRA | GFULL));
 	if (hp->h_replyto != NULL)
 		hp->h_replyto = elide(usermap(hp->h_replyto, TRU1));
 
@@ -1203,7 +1203,7 @@ message_id(FILE *fo, struct header *hp)
 
 	if (ok_blook(message_id_disable))
 		goto jleave;
-	if ((h = voption("hostname")) != NULL)
+	if ((h = ok_vlook(hostname)) != NULL)
 		rl = 24;
 	else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
 		rl = 16;
@@ -1278,7 +1278,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 	size_t gotcha, l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
 
-	if ((addr = value("stealthmua")) != NULL) {
+	if ((addr = ok_vlook(stealthmua)) != NULL) {
 		stealthmua = (strcmp(addr, "noagent") == 0) ? -1 : 1;
 	} else
 		stealthmua = 0;
@@ -1300,7 +1300,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			hp->h_from = fromfield;
 		}
 		if (((addr = hp->h_organization) != NULL ||
-				(addr = value("ORGANIZATION")) != NULL) &&
+				(addr = ok_vlook(ORGANIZATION)) != NULL) &&
 				(l = strlen(addr)) > 0) {
 			fwrite("Organization: ", sizeof (char), 14, fo);
 			if (xmime_write(addr, l, fo,
@@ -1321,7 +1321,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 					action!=SEND_TODISP))
 				return 1;
 			gotcha++;
-		} else if ((addr = value("replyto")) != NULL)
+		} else if ((addr = ok_vlook(replyto)) != NULL)
 			if (_putname(addr, w, action, &gotcha, "Reply-To:", fo,
 						NULL))
 				return 1;
@@ -1331,7 +1331,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				return 1;
 			gotcha++;
 			senderfield = hp->h_sender;
-		} else if ((addr = value("sender")) != NULL)
+		} else if ((addr = ok_vlook(sender)) != NULL)
 			if (_putname(addr, w, action, &gotcha, "Sender:", fo,
 						&senderfield))
 				return 1;
@@ -1500,14 +1500,14 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 					"Resent-From:", fo, &fromfield))
 				return 1;
 		}
-		if ((cp = value("sender")) != NULL) {
+		if ((cp = ok_vlook(sender)) != NULL) {
 			if (_putname(cp, GCOMMA, SEND_MBOX, NULL,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
 		if (fmt("Resent-To:", to, fo, 1, 1, 0))
 			return 1;
-		if ((cp = value("stealthmua")) == NULL ||
+		if ((cp = ok_vlook(stealthmua)) == NULL ||
 				strcmp(cp, "noagent") == 0) {
 			fputs("Resent-", fo);
 			message_id(fo, NULL);

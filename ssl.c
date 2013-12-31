@@ -56,7 +56,7 @@ ssl_set_vrfy_level(const char *uhp)
 	memcpy(vrvar + 11, uhp, l + 1);
 
 	if ((cp = value(vrvar)) == NULL)
-		cp = value("ssl-verify");
+		cp = ok_vlook(ssl_verify);
 	ac_free(vrvar);
 	if (cp != NULL) {
 		if (strcmp(cp, "strict") == 0)
@@ -115,7 +115,7 @@ ssl_method_string(const char *uhp)
 	memcpy(mtvar, "ssl-method-", 11);
 	memcpy(mtvar + 11, uhp, l + 1);
 	if ((cp = value(mtvar)) == NULL)
-		cp = value("ssl-method");
+		cp = ok_vlook(ssl_method);
 	ac_free(mtvar);
 	return cp;
 }

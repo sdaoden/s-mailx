@@ -280,7 +280,7 @@ _startup(void)
    /* nocrt */
    /* nodebug */
    /* nodot */
-   /* var_assign("escape", ESCAPE *"~"*); TODO non-compliant */
+   /* ok_vset(escape, ESCAPE *"~"*); TODO non-compliant */
    /* noflipr */
    /* nofolder */
    ok_bset(header, TRU1);
@@ -293,7 +293,7 @@ _startup(void)
    /* noonehop -- Note: we ignore this one */
    /* nooutfolder */
    /* nopage */
-   var_assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
+   ok_vset(prompt, "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
    /* noquiet */
    /* norecord */
    ok_bset(save, TRU1);
@@ -301,14 +301,14 @@ _startup(void)
    /* noshowto */
    /* nosign */
    /* noSign */
-   /* var_assign("toplines", "5"); XXX somewhat hmm */
+   /* ok_vset(toplines, "5"); XXX somewhat hmm */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
-   if (voption("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
-      var_assign("ttycharset", cp);
+   if (ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+      ok_vset(ttycharset, cp);
 # endif
 
 # ifdef HAVE_C90AMEND1
@@ -482,7 +482,7 @@ _rcv_mode(char const *folder)
    else if (*folder == '@') {
       /* This must be treated specially to make invocation like
        * -A imap -f @mailbox work */
-      if ((cp = value("folder")) != NULL && which_protocol(cp) == PROTO_IMAP)
+      if ((cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP)
          (void)n_strlcpy(mailname, cp, MAXPATHLEN);
    }
 
@@ -809,7 +809,8 @@ jusage:
       load(file_expand(cp));
    else
       load(file_expand(MAILRC));
-   if (getenv("NAIL_EXTRA_RC") == NULL && (cp = value("NAIL_EXTRA_RC")) != NULL)
+   if (getenv("NAIL_EXTRA_RC") == NULL &&
+         (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
 
    /* Now we can set the account */

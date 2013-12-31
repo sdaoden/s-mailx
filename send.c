@@ -418,8 +418,8 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
 		Ftfree(&tempPipe);
 		async = FAL0;
 	}
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	if ((rbuf = Popen(pipecomm, "W", sh,
 			async ? -1 : fileno(*qbuf))) == NULL)
 		perror(pipecomm);
@@ -1346,9 +1346,9 @@ jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 
 	if (*f == '|') {
 		char const *cp;
-		cp = value("SHELL");
+		cp = ok_vlook(SHELL);
 		if (cp == NULL)
-			cp = SHELL;
+			cp = XSHELL;
 		fp = Popen(f + 1, "w", cp, 1);
 		if (! (*ispipe = (fp != NULL)))
 			perror(f);
