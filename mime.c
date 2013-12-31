@@ -364,7 +364,7 @@ charset_iter_reset(char const *a_charset_to_try_first)
 		sarrl[0] = 0;
 #endif
 
-	_cs_iter_base = cp = salloc(len + 1);
+	_cs_iter_base = cp = salloc(len + 1 + 1 +1);
 
 #ifdef HAVE_ICONV
 	if ((len = sarrl[0]) != 0) {
