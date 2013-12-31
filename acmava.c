@@ -833,6 +833,24 @@ _var_okclear(enum okeys okey)
    return var_unset(k);
 }
 
+FL char *
+_var_voklook(char const *vokey)
+{
+   return var_lookup(vokey, TRU1);
+}
+
+FL bool_t
+_var_vokset(char const *vokey, uintptr_t val)
+{
+   return var_assign(vokey, (val == 0x1) ? "" : (char const*)val);
+}
+
+FL bool_t
+_var_vokclear(char const *vokey)
+{
+   return var_unset(vokey);
+}
+
 FL void
 var_list_all(void)
 {
