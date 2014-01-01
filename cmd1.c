@@ -593,17 +593,6 @@ ccmdnotsupp(void *v) /* TODO -> lex.c */
 	return (1);
 }
 
-FL char const *
-get_pager(void)
-{
-	char const *cp;
-
-	cp = ok_vlook(PAGER);
-	if (cp == NULL || *cp == '\0')
-		cp = XPAGER;
-	return cp;
-}
-
 FL int
 headers(void *v)
 {

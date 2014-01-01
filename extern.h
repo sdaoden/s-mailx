@@ -145,6 +145,9 @@ FL int         argcount(char **argv);
 FL char *      colalign(const char *cp, int col, int fill,
                   int *cols_decr_used_or_null);
 
+/* Get our PAGER */
+FL char const *get_pager(void);
+
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
 FL size_t      paging_seems_sensible(void);
@@ -272,7 +275,6 @@ FL enum okay   cache_dequeue(struct mailbox *mp);
 
 /* cmd1.c */
 FL int         ccmdnotsupp(void *v);
-FL char const *get_pager(void);
 FL int         headers(void *v);
 FL int         scroll(void *v);
 FL int         Scroll(void *v);

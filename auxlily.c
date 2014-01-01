@@ -243,6 +243,17 @@ colalign(const char *cp, int col, int fill, int *cols_decr_used_or_null)
 	return nb;
 }
 
+FL char const *
+get_pager(void)
+{
+	char const *cp;
+
+	cp = ok_vlook(PAGER);
+	if (cp == NULL || *cp == '\0')
+		cp = XPAGER;
+	return cp;
+}
+
 FL size_t
 paging_seems_sensible(void)
 {
