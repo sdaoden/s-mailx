@@ -49,7 +49,7 @@
 static int screen;
 
 /* Prepare and print "[Message: xy]:" intro */
-static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
+static void	_show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
 
 /* ... And place the extracted date in `date' */
 static void	_parse_from_(struct message *mp, char date[FROM_DATEBUF]);
@@ -76,7 +76,7 @@ static int	_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 static int pipe1(char *str, int doign);
 
 static void
-_show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
+_show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 {
 	fprintf(obuf, tr(17, "[-- Message %2d -- %lu lines, %lu bytes --]:\n"),
 		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
@@ -942,6 +942,11 @@ static int
 _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 	bool_t dodecode, char *cmd, off_t *tstats)
 {
+	enum sendaction const action = ((dopipe && ok_blook(piperaw))
+			? SEND_MBOX : dodecode
+			? SEND_SHOW : doign
+			? SEND_TODISP : SEND_TODISP_ALL);
+	bool_t const formfeed = (dopipe && ok_blook(page));
 	off_t mstats[2];
 	int *ip;
 	struct message *mp;
@@ -993,17 +998,15 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 		touch(mp);
 		setdot(mp);
 		uncollapse1(mp, 1);
-		if (!dopipe && ip != msgvec)
-			fprintf(obuf, "\n");
-		_show_msg_overview(mp, *ip, obuf);
-		sendmp(mp, obuf, (doign ? ignore : 0), NULL,
-			((dopipe && ok_blook(piperaw))
-				? SEND_MBOX : dodecode
-				? SEND_SHOW : doign
-				? SEND_TODISP : SEND_TODISP_ALL),
-			mstats);
+		if (!dopipe) {
+			if (ip != msgvec)
+				fprintf(obuf, "\n");
+			if (action != SEND_MBOX)
+				_show_msg_overview(obuf, mp, *ip);
+		}
+		sendmp(mp, obuf, (doign ? ignore : NULL), NULL, action, mstats);
 		srelax();
-		if (dopipe && ok_blook(page))
+		if (formfeed)
 			putc('\f', obuf);
 		if (tstats) {
 			tstats[0] += mstats[0];
@@ -1172,9 +1175,9 @@ top(void *v)
 		touch(mp);
 		setdot(mp);
 		did_print_dot = TRU1;
-		if (! empty_last)
+		if (!empty_last)
 			printf("\n");
-		_show_msg_overview(mp, *ip, stdout);
+		_show_msg_overview(stdout, mp, *ip);
 		if (mp->m_flag & MNOFROM)
 			printf("From %s %s\n", fakefrom(mp),
 				fakedate(mp->m_time));
