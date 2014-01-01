@@ -1066,11 +1066,12 @@ FL ui_it       strhash(char const *name);
 /* Are any of the characters in the two strings the same? */
 FL int         anyof(char const *s1, char const *s2);
 
-/* Treat **iolist* as a comma separated list of strings; find and return the
- * next entry, trimming surrounding whitespace, and point **iolist* to the next
- * entry or to NULL if no more entries are contained.  If *ignore_empty* is not
+/* Treat *iolist as a sep separated list of strings; find and return the
+ * next entry, trimming surrounding whitespace, and point *iolist to the next
+ * entry or to NULL if no more entries are contained.  If ignore_empty is not
  * set empty entries are started over.  Return NULL or an entry */
-FL char *      strcomma(char **iolist, int ignore_empty);
+FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
+#define strcomma(IOL,IGN)        n_strsep(IOL, ',', IGN)
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
