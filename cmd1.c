@@ -1156,7 +1156,7 @@ top(void *v)
 	int *msgvec = v, *ip, c, topl, lines, empty_last;
 	struct message *mp;
 	char *cp, *linebuf = NULL;
-	size_t linesize;
+	size_t linesize = 0;
 	FILE *ibuf;
 
 	topl = 5;
