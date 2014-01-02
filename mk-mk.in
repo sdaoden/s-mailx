@@ -35,7 +35,7 @@ config.o mime.o: mime_types.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
-	< ./mime.types > $(@) sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
+	< ./mime.types > $(@) $(SED) -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 test:
 	@echo 'Running test, please wait';\
@@ -44,9 +44,9 @@ test:
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	_VERSION=`< version.h \
-		sed -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
+		$(SED) -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.1 > $(@) awk 'BEGIN {written = 0}\
+	< ./nail.1 > $(@) $(AWK) 'BEGIN {written = 0}\
 	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ {\
 		if (written == 1)\
 			next;\
@@ -70,7 +70,7 @@ mkrc.rc: nail.rc mk.mk
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.rc > $(@) awk 'BEGIN {written = 0}\
+	< ./nail.rc > $(@) $(AWK) 'BEGIN {written = 0}\
 	/#--MKRC-START--/, /#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
@@ -153,7 +153,7 @@ _update-version:
 	@if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -z "$${VERSION}" ]; then \
-			VERSION="`sed -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
+			VERSION="`$(SED) -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
 				version.h`";\
 			echo "$${VERSION}" | grep -q -F dirty ||\
 				VERSION="$${VERSION}-dirty";\
@@ -175,7 +175,7 @@ _update-release:
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
 	read i;\
-	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
+	FREL=`echo $${REL} | $(SED) -e 's/\./_/g'` &&\
 	$(MAKE) -f ./mk.mk _update-version &&\
 	git add version.h &&\
 	git commit -m "Bump $(UAGENT) v$${REL}" &&\
