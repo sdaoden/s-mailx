@@ -179,9 +179,16 @@
 #undef ABS
 #define ABS(A)          ((A) < 0 ? -(A) : (A))
 
+#undef DBG
+#undef NDBG
 #ifndef HAVE_DEBUG
 # undef assert
 # define assert(X)      UNUSED(0)
+# define DBG(X)
+# define NDBG(X)        X
+#else
+# define DBG(X)         X
+# define NDBG(X)
 #endif
 
 /* Translation (init in main.c) */
