@@ -965,19 +965,27 @@ FL enum okay   rfc2595_hostname_match(const char *host, const char *pattern);
 
 /* Auto-reclaimed string storage */
 
+#ifdef HAVE_DEBUG
+# define SALLOC_DEBUG_ARGS       , char const *mdbg_file, int mdbg_line
+# define SALLOC_DEBUG_ARGSCALL   , mdbg_file, mdbg_line
+#else
+# define SALLOC_DEBUG_ARGS
+# define SALLOC_DEBUG_ARGSCALL
+#endif
+
 /* Allocate size more bytes of space and return the address of the first byte
  * to the caller.  An even number of bytes are always allocated so that the
  * space will always be on a word boundary */
-FL void *      salloc(size_t size);
-FL void *      csalloc(size_t nmemb, size_t size);
+FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
+FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
+# define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
+#endif
 
 /* Auto-reclaim string storage; if only_if_relaxed is true then only perform
  * the reset when a srelax_hold() is currently active */
 FL void        sreset(bool_t only_if_relaxed);
-
-/* Make current string storage permanent: new allocs will be auto-reclaimed by
- * sreset().  This is called once only, from within main() */
-FL void        spreserve(void);
 
 /* The "problem" with sreset() is that it releases all string storage except
  * what was present once spreserve() had been called; it therefore cannot be
@@ -991,29 +999,62 @@ FL void        srelax_hold(void);
 FL void        srelax_rele(void);
 FL void        srelax(void);
 
+/* Make current string storage permanent: new allocs will be auto-reclaimed by
+ * sreset().  This is called once only, from within main() */
+FL void        spreserve(void);
+
 /* 'sstats' command */
 #ifdef HAVE_DEBUG
 FL int         c_sstats(void *v);
 #endif
 
-FL char *      savestr(char const *str);
-FL char *      savestrbuf(char const *sbuf, size_t sbuf_len);
-FL char *      save2str(char const *str, char const *old);
-FL char *      savecat(char const *s1, char const *s2);
+/* Return a pointer to a dynamic copy of the argument */
+FL char *      savestr(char const *str SALLOC_DEBUG_ARGS);
+FL char *      savestrbuf(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define savestr(CP)             savestr(CP, __FILE__, __LINE__)
+# define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
+#endif
+
+/* Make copy of argument incorporating old one, if set, separated by space */
+FL char *      save2str(char const *str, char const *old SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define save2str(S,O)           save2str(S, O, __FILE__, __LINE__)
+#endif
+
+/* strcat */
+FL char *      savecat(char const *s1, char const *s2 SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define savecat(S1,S2)          savecat(S1, S2, __FILE__, __LINE__)
+#endif
 
 /* Create duplicate, lowercasing all characters along the way */
-FL char *      i_strdup(char const *src);
+FL char *      i_strdup(char const *src SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define i_strdup(CP)            i_strdup(CP, __FILE__, __LINE__)
+#endif
 
 /* Extract the protocol base and return a duplicate */
-FL char *      protbase(char const *cp);
+FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define protbase(CP)            protbase(CP, __FILE__, __LINE__)
+#endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp);
-FL char *      urlxdec(char const *cp);
+FL char *      urlxenc(char const *cp SALLOC_DEBUG_ARGS);
+FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define urlxenc(CP)             urlxenc(CP, __FILE__, __LINE__)
+# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
+#endif
 
+/*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
-FL struct str * str_concat_cpa(struct str *self, char const *const*cpa,
-                  char const *sep_o_null);
+FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
+                  char const *sep_o_null SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
+#endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 

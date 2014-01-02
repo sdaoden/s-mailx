@@ -10,7 +10,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,7 +57,28 @@
  * not even allocate the first buffer, but let that be a builtin DATA section
  * one that is rather small, yet sufficient for send mode to *never* even
  * perform a single dynamic allocation (from our stringdope point of view).
+ * Encapsulate user chunks with canaries if HAVE_DEBUG.
  */
+
+#ifdef HAVE_DEBUG
+# define _SHOPE_SIZE       (2 * 8 * sizeof(char) + sizeof(struct schunk))
+
+CTA(sizeof(char) == sizeof(ui8_t));
+
+struct schunk {
+   char const     *file;
+   ui32_t         line;
+   ui16_t         usr_size;
+   ui16_t         full_size;
+};
+
+union sptr {
+   void           *p;
+   struct schunk  *c;
+   char           *cp;
+   ui8_t          *ui8p;
+};
+#endif /* HAVE_DEBUG */
 
 union __align__ {
    char     *cp;
@@ -97,20 +118,73 @@ struct buffer {
 
 static struct b_bltin   _builtin_buf;
 static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
+#ifdef HAVE_DEBUG
+static size_t           _all_cnt, _all_cycnt, _all_cycnt_max,
+                        _all_size, _all_cysize, _all_cysize_max, _all_min,
+                           _all_max, _all_wast,
+                        _all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
+                        _all_resetreqs, _all_resets;
+#endif
+
+/* sreset() / srelax() release a buffer, check the canaries of all chunks */
+#ifdef HAVE_DEBUG
+static void    _salloc_bcheck(struct buffer *b);
+#endif
 
 #ifdef HAVE_DEBUG
-size_t   _all_cnt, _all_cycnt, _all_cycnt_max,
-   _all_size, _all_cysize, _all_cysize_max, _all_min, _all_max, _all_wast,
-   _all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
-   _all_resetreqs, _all_resets;
+static void
+_salloc_bcheck(struct buffer *b)
+{
+   union sptr pmax, pp;
+
+   pmax.cp = (b->b._caster == NULL) ? b->b._max : b->b._caster;
+   pp.cp = b->b._bot;
+
+   while (PTRCMP(pp.cp, <, pmax.cp)) {
+      struct schunk *c;
+      union sptr x;
+      void *ux;
+      ui8_t i;
+
+      c = pp.c;
+      pp.cp += c->full_size;
+      x.p = c + 1;
+      ux = x.cp + 8;
+
+      i = 0;
+      if (x.ui8p[0] != 0xDE) i |= 1<<0;
+      if (x.ui8p[1] != 0xAA) i |= 1<<1;
+      if (x.ui8p[2] != 0x55) i |= 1<<2;
+      if (x.ui8p[3] != 0xAD) i |= 1<<3;
+      if (x.ui8p[4] != 0xBE) i |= 1<<4;
+      if (x.ui8p[5] != 0x55) i |= 1<<5;
+      if (x.ui8p[6] != 0xAA) i |= 1<<6;
+      if (x.ui8p[7] != 0xEF) i |= 1<<7;
+      if (i != 0)
+         warn("sdope %p: corrupted lower canary: 0x%02X, size %u: %s, line %u",
+            ux, i, c->usr_size, c->file, c->line);
+      x.cp += 8 + c->usr_size;
+
+      i = 0;
+      if (x.ui8p[0] != 0xDE) i |= 1<<0;
+      if (x.ui8p[1] != 0xAA) i |= 1<<1;
+      if (x.ui8p[2] != 0x55) i |= 1<<2;
+      if (x.ui8p[3] != 0xAD) i |= 1<<3;
+      if (x.ui8p[4] != 0xBE) i |= 1<<4;
+      if (x.ui8p[5] != 0x55) i |= 1<<5;
+      if (x.ui8p[6] != 0xAA) i |= 1<<6;
+      if (x.ui8p[7] != 0xEF) i |= 1<<7;
+      if (i != 0)
+         warn("sdope %p: corrupted upper canary: 0x%02X, size %u: %s, line %u",
+            ux, i, c->usr_size, c->file, c->line);
+   }
+}
 #endif
 
 FL void *
-salloc(size_t size)
+(salloc)(size_t size SALLOC_DEBUG_ARGS)
 {
-#ifdef HAVE_DEBUG
-   size_t orig_size = size;
-#endif
+   DBG( size_t orig_size = size; )
    union {struct buffer *b; char *cp;} u;
    char *x, *y, *z;
 
@@ -129,8 +203,11 @@ salloc(size_t size)
    _all_min = (_all_max == 0) ? size : MIN(_all_min, size);
    _all_max = MAX(_all_max, size);
    _all_wast += size - orig_size;
+
+   size += _SHOPE_SIZE;
 #endif
 
+   /* Search for a buffer with enough free space to serve request */
    if ((u.b = _buf_server) != NULL)
       goto jumpin;
 jredo:
@@ -150,16 +227,19 @@ jumpin:
       }
       y = x + size;
       z = u.b->b._max;
-      if (y <= z) {
-         /* Alignment is the one thing, the other is what is
-          * usually allocated, and here about 40 bytes seems to
-          * be a good cut to avoid non-usable non-NULL casters */
-         u.b->b._caster = PTRCMP(y + 42 + 16, >=, z) ? NULL : y;
+      if (PTRCMP(y, <=, z)) {
+         /* Alignment is the one thing, the other is what is usually allocated,
+          * and here about 40 bytes seems to be a good cut to avoid non-usable
+          * non-NULL casters.  However, because of _salloc_bcheck(), we may not
+          * set ._caster to NULL because then it would check all chunks up to
+          * ._max, which surely doesn't work; speed is no issue with DEBUG */
+         u.b->b._caster = NDBG( PTRCMP(y + 42 + 16, >=, z) ? NULL : ) y;
          u.cp = x;
          goto jleave;
       }
    }
 
+   /* Need a new buffer */
    if (_buf_head == NULL) {
       struct b_bltin *b = &_builtin_buf;
       b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
@@ -181,19 +261,42 @@ jumpin:
    u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
    u.b->b._relax = NULL;
    u.cp = u.b->b._bot;
+
 jleave:
+   /* Encapsulate user chunk in debug canaries */
+#ifdef HAVE_DEBUG
+   {
+      union sptr xl, xu;
+      struct schunk *xc;
+
+      xl.p = u.cp;
+      xc = xl.c;
+      xc->file = mdbg_file;
+      xc->line = mdbg_line;
+      xc->usr_size = (ui16_t)orig_size;
+      xc->full_size = (ui16_t)size;
+      xl.p = xc + 1;
+      xl.ui8p[0]=0xDE; xl.ui8p[1]=0xAA; xl.ui8p[2]=0x55; xl.ui8p[3]=0xAD;
+      xl.ui8p[4]=0xBE; xl.ui8p[5]=0x55; xl.ui8p[6]=0xAA; xl.ui8p[7]=0xEF;
+      u.cp = xl.cp + 8;
+      xu.p = u.cp;
+      xu.cp += orig_size;
+      xu.ui8p[0]=0xDE; xu.ui8p[1]=0xAA; xu.ui8p[2]=0x55; xu.ui8p[3]=0xAD;
+      xu.ui8p[4]=0xBE; xu.ui8p[5]=0x55; xu.ui8p[6]=0xAA; xu.ui8p[7]=0xEF;
+   }
+#endif
    return u.cp;
 }
 
 FL void *
-csalloc(size_t nmemb, size_t size)
+(csalloc)(size_t nmemb, size_t size SALLOC_DEBUG_ARGS)
 {
    void *vp;
 
    size *= nmemb;
-   vp = salloc(size);
+   vp = (salloc)(size SALLOC_DEBUG_ARGSCALL);
    memset(vp, 0, size);
-   return (vp);
+   return vp;
 }
 
 FL void
@@ -201,9 +304,7 @@ sreset(bool_t only_if_relaxed)
 {
    struct buffer *bh;
 
-#ifdef HAVE_DEBUG
-   ++_all_resetreqs;
-#endif
+   DBG( ++_all_resetreqs; )
    if (noreset || (only_if_relaxed && _buf_relax == NULL))
       goto jleave;
 
@@ -215,21 +316,22 @@ sreset(bool_t only_if_relaxed)
 
    if ((bh = _buf_head) != NULL) {
       struct buffer *b = bh;
+      DBG( _salloc_bcheck(b); )
       b->b._caster = b->b._bot;
       b->b._relax = NULL;
-#ifdef HAVE_DEBUG
-      memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
-#endif
+      DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
       _buf_server = b;
+
       if ((bh = bh->b._next) != NULL) {
          b = bh;
+         DBG( _salloc_bcheck(b); )
          b->b._caster = b->b._bot;
          b->b._relax = NULL;
-#ifdef HAVE_DEBUG
-         memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
-#endif
+         DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
+
          for (bh = bh->b._next; bh != NULL;) {
             struct buffer *b2 = bh->b._next;
+            DBG( _salloc_bcheck(bh); )
             free(bh);
             bh = b2;
          }
@@ -239,20 +341,9 @@ sreset(bool_t only_if_relaxed)
       _buf_relax = NULL;
    }
 
-#ifdef HAVE_DEBUG
-   smemreset();
-#endif
+   DBG( smemreset(); )
 jleave:
    ;
-}
-
-FL void
-spreserve(void)
-{
-   struct buffer *b;
-
-   for (b = _buf_head; b != NULL; b = b->b._next)
-      b->b._bot = b->b._caster;
 }
 
 FL void
@@ -276,6 +367,7 @@ srelax_rele(void)
    assert(_buf_relax != NULL);
 
    for (b = _buf_relax; b != NULL; b = b->b._next) {
+      DBG( _salloc_bcheck(b); )
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
       b->b._relax = NULL;
    }
@@ -294,11 +386,19 @@ srelax(void)
    assert(_buf_relax != NULL);
 
    for (b = _buf_relax; b != NULL; b = b->b._next) {
+      DBG( _salloc_bcheck(b); )
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-#ifdef HAVE_DEBUG
-      memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster));
-#endif
+      DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
    }
+}
+
+FL void
+spreserve(void)
+{
+   struct buffer *b;
+
+   for (b = _buf_head; b != NULL; b = b->b._next)
+      b->b._bot = b->b._caster;
 }
 
 #ifdef HAVE_DEBUG
@@ -328,55 +428,59 @@ c_sstats(void *v)
 }
 #endif
 
-/*
- * Return a pointer to a dynamic copy of the argument.
- */
 FL char *
-savestr(const char *str)
+(savestr)(const char *str SALLOC_DEBUG_ARGS)
 {
-	size_t size = strlen(str) + 1;
-	char *news = salloc(size);
-	memcpy(news, str, size);
-	return (news);
-}
+   size_t size;
+   char *news;
 
-/*
- * Return new string copy of a non-terminated argument.
- */
-FL char *
-savestrbuf(const char *sbuf, size_t sbuf_len)
-{
-	char *news = salloc(sbuf_len + 1);
-	memcpy(news, sbuf, sbuf_len);
-	news[sbuf_len] = 0;
-	return (news);
-}
-
-/*
- * Make a copy of new argument incorporating old one.
- */
-FL char *
-save2str(const char *str, const char *old)
-{
-	size_t newsize = strlen(str) + 1, oldsize = old ? strlen(old) + 1 : 0;
-	char *news = salloc(newsize + oldsize);
-	if (oldsize) {
-		memcpy(news, old, oldsize);
-		news[oldsize - 1] = ' ';
-	}
-	memcpy(news + oldsize, str, newsize);
-	return (news);
+   size = strlen(str) + 1;
+   news = (salloc)(size SALLOC_DEBUG_ARGSCALL);
+   memcpy(news, str, size);
+   return news;
 }
 
 FL char *
-savecat(char const *s1, char const *s2)
+(savestrbuf)(const char *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS)
 {
-	size_t l1 = strlen(s1), l2 = strlen(s2);
-	char *news = salloc(l1 + l2 + 1);
-	memcpy(news + 0, s1, l1);
-	memcpy(news + l1, s2, l2);
-	news[l1 + l2] = '\0';
-	return (news);
+   char *news;
+
+   news = (salloc)(sbuf_len + 1 SALLOC_DEBUG_ARGSCALL);
+   memcpy(news, sbuf, sbuf_len);
+   news[sbuf_len] = 0;
+   return news;
+}
+
+FL char *
+(save2str)(const char *str, const char *old SALLOC_DEBUG_ARGS)
+{
+   size_t newsize, oldsize;
+   char *news;
+
+   newsize = strlen(str) + 1;
+   oldsize = (old != NULL) ? strlen(old) + 1 : 0;
+   news = (salloc)(newsize + oldsize SALLOC_DEBUG_ARGSCALL);
+   if (oldsize) {
+      memcpy(news, old, oldsize);
+      news[oldsize - 1] = ' ';
+   }
+   memcpy(news + oldsize, str, newsize);
+   return news;
+}
+
+FL char *
+(savecat)(char const *s1, char const *s2 SALLOC_DEBUG_ARGS)
+{
+   size_t l1, l2;
+   char *news;
+
+   l1 = strlen(s1);
+   l2 = strlen(s2);
+   news = (salloc)(l1 + l2 + 1 SALLOC_DEBUG_ARGSCALL);
+   memcpy(news + 0, s1, l1);
+   memcpy(news + l1, s2, l2);
+   news[l1 + l2] = '\0';
+   return news;
 }
 
 /*
@@ -384,131 +488,135 @@ savecat(char const *s1, char const *s2)
  */
 
 FL char *
-i_strdup(char const *src)
+(i_strdup)(char const *src SALLOC_DEBUG_ARGS)
 {
-	size_t sz;
-	char *dest;
+   size_t sz;
+   char *dest;
 
-	sz = strlen(src) + 1;
-	dest = salloc(sz);
-	i_strcpy(dest, src, sz);
-	return (dest);
+   sz = strlen(src) + 1;
+   dest = (salloc)(sz SALLOC_DEBUG_ARGSCALL);
+   i_strcpy(dest, src, sz);
+   return dest;
 }
 
 FL char *
-protbase(char const *cp)
+(protbase)(char const *cp SALLOC_DEBUG_ARGS)
 {
-	char *n = salloc(strlen(cp) + 1), *np = n;
+   char *n, *np;
 
-	/* Just ignore the `is-system-mailbox' prefix XXX */
-	if (cp[0] == '%' && cp[1] == ':')
-		cp += 2;
+   np = n = (salloc)(strlen(cp) + 1 SALLOC_DEBUG_ARGSCALL);
 
-	while (*cp) {
-		if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-			*np++ = *cp++;
-			*np++ = *cp++;
-			*np++ = *cp++;
-		} else if (cp[0] == '/')
-			break;
-		else
-			*np++ = *cp++;
-	}
-	*np = '\0';
-	return n;
+   /* Just ignore the `is-system-mailbox' prefix XXX */
+   if (cp[0] == '%' && cp[1] == ':')
+      cp += 2;
+
+   while (*cp != '\0') {
+      if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
+         *np++ = *cp++;
+         *np++ = *cp++;
+         *np++ = *cp++;
+      } else if (cp[0] == '/')
+         break;
+      else
+         *np++ = *cp++;
+   }
+   *np = '\0';
+   return n;
 }
 
 FL char *
-urlxenc(char const *cp) /* XXX */
+(urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
 {
-	char	*n, *np;
+   char *n, *np;
 
-	np = n = salloc(strlen(cp) * 3 + 1);
-	while (*cp) {
-		if (alnumchar(*cp) || *cp == '_' || *cp == '@' ||
-				(np > n && (*cp == '.' || *cp == '-' ||
-						*cp == ':')))
-			*np++ = *cp;
-		else {
-			*np++ = '%';
-			*np++ = Hexchar((*cp&0xf0) >> 4);
-			*np++ = Hexchar(*cp&0x0f);
-		}
-		cp++;
-	}
-	*np = '\0';
-	return n;
+   np = n = (salloc)(strlen(cp) * 3 + 1 SALLOC_DEBUG_ARGSCALL);
+
+   while (*cp != '\0') {
+      if (alnumchar(*cp) || *cp == '_' || *cp == '@' ||
+            (PTRCMP(np, >, n) && (*cp == '.' || *cp == '-' || *cp == ':')))
+         *np++ = *cp;
+      else {
+         *np++ = '%';
+         *np++ = Hexchar((*cp & 0xf0) >> 4);
+         *np++ = Hexchar(*cp & 0x0f);
+      }
+      cp++;
+   }
+   *np = '\0';
+   return n;
 }
 
 FL char *
-urlxdec(char const *cp) /* XXX */
+(urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
 {
-	char *n, *np;
+   char *n, *np;
 
-	np = n = salloc(strlen(cp) + 1);
-	while (*cp) {
-		if (cp[0] == '%' && cp[1] && cp[2]) {
-			*np = (int)(cp[1]>'9'?cp[1]-'A'+10:cp[1]-'0') << 4;
-			*np++ |= cp[2]>'9'?cp[2]-'A'+10:cp[2]-'0';
-			cp += 3;
-		} else
-			*np++ = *cp++;
-	}
-	*np = '\0';
-	return (n);
+   np = n = (salloc)(strlen(cp) + 1 SALLOC_DEBUG_ARGSCALL);
+
+   while (*cp != '\0') {
+      if (cp[0] == '%' && cp[1] != '\0' && cp[2] != '\0') {
+         *np = (int)(cp[1] > '9' ? cp[1] - 'A' + 10 : cp[1] - '0') << 4;
+         *np++ |= cp[2] > '9' ? cp[2] - 'A' + 10 : cp[2] - '0';
+         cp += 3;
+      } else
+         *np++ = *cp++;
+   }
+   *np = '\0';
+   return n;
 }
 
 FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
-	va_list vl;
-	size_t l;
-	char const *cs;
+   va_list vl;
+   size_t l;
+   char const *cs;
 
-	va_start(vl, self);
-	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
-		l += strlen(cs);
-	va_end(vl);
+   va_start(vl, self);
+   for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
+      l += strlen(cs);
+   va_end(vl);
 
-	self->l = l;
-	self->s = salloc(l + 1);
+   self->l = l;
+   self->s = salloc(l + 1);
 
-	va_start(vl, self);
-	for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
-		size_t i = strlen(cs);
-		memcpy(self->s + l, cs, i);
-		l += i;
-	}
-	self->s[l] = '\0';
-	va_end(vl);
-	return self;
+   va_start(vl, self);
+   for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
+      size_t i = strlen(cs);
+      memcpy(self->s + l, cs, i);
+      l += i;
+   }
+   self->s[l] = '\0';
+   va_end(vl);
+   return self;
 }
 
 FL struct str *
-str_concat_cpa(struct str *self, char const *const*cpa, char const *sep_o_null)
+(str_concat_cpa)(struct str *self, char const * const *cpa,
+   char const *sep_o_null SALLOC_DEBUG_ARGS)
 {
-	size_t sonl, l;
-	char const *const*xcpa;
+   size_t sonl, l;
+   char const * const *xcpa;
 
-	sonl = (sep_o_null != NULL) ? strlen(sep_o_null) : 0;
+   sonl = (sep_o_null != NULL) ? strlen(sep_o_null) : 0;
 
-	for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa)
-		l += strlen(*xcpa) + sonl;
+   for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa)
+      l += strlen(*xcpa) + sonl;
 
-	self->l = l;
-	self->s = salloc(l + 1);
+   self->l = l;
+   self->s = (salloc)(l + 1 SALLOC_DEBUG_ARGSCALL);
 
-	for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
-		size_t i = strlen(*xcpa);
-		memcpy(self->s + l, *xcpa, i);
-		l += i;
-		if (sonl > 0) {
-			memcpy(self->s + l, sep_o_null, sonl);
-			l += sonl;
-		}
-	}
-	self->s[l] = '\0';
-	return self;
+   for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
+      size_t i = strlen(*xcpa);
+      memcpy(self->s + l, *xcpa, i);
+      l += i;
+      if (sonl > 0) {
+         memcpy(self->s + l, sep_o_null, sonl);
+         l += sonl;
+      }
+   }
+   self->s[l] = '\0';
+   return self;
 }
 
 /*
