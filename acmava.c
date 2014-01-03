@@ -123,7 +123,7 @@ static bool_t        _check_special_vars(char const *name, bool_t enable,
 static char const *  _canonify(char const *vn);
 
 /* Locate a variable and return its variable node */
-static struct var *  _lookup(char const *name, ui_it h, bool_t hisset);
+static struct var *  _lookup(char const *name, ui32_t h, bool_t hisset);
 
 /* Legacy */
 static bool_t     __var_assign(char const *name, char const *val);
@@ -243,7 +243,7 @@ _check_special_vars(char const *name, bool_t enable, char **val)
 static char const *
 _canonify(char const *vn)
 {
-   if (! upperchar(*vn)) {
+   if (!upperchar(*vn)) {
       char const *vp;
 
       for (vp = vn; *vp != '\0' && *vp != '@'; ++vp)
@@ -254,11 +254,11 @@ _canonify(char const *vn)
 }
 
 static struct var *
-_lookup(char const *name, ui_it h, bool_t hisset)
+_lookup(char const *name, ui32_t h, bool_t hisset)
 {
    struct var **vap, *lvp, *vp;
 
-   if (! hisset)
+   if (!hisset)
       h = MA_HASH(name);
    vap = _vars + h;
 
@@ -282,7 +282,7 @@ __var_assign(char const *name, char const *val)
 {
    bool_t err;
    struct var *vp;
-   ui_it h;
+   ui32_t h;
    char *oval;
 
    if (val == NULL) {
@@ -326,8 +326,8 @@ jleave:
 static bool_t
 __var_unset(char const *name)
 {
-   int err = TRU1;
-   ui_it h;
+   bool_t err = TRU1;
+   ui32_t h;
    struct var *vp;
 
    name = _canonify(name);
@@ -366,7 +366,7 @@ __var_lookup(char const *name, bool_t look_environ)
    name = _canonify(name);
    if ((vp = _lookup(name, 0, FAL0)) != NULL)
       rv = vp->v_value;
-   else if (! look_environ)
+   else if (!look_environ)
       rv = NULL;
    else if ((rv = getenv(name)) != NULL && *rv != '\0')
       rv = savestr(rv);
@@ -392,7 +392,7 @@ static struct macro *
 _malook(char const *name, struct macro *data, enum ma_flags mafl)
 {
    enum ma_flags save_mafl;
-   ui_it h;
+   ui32_t h;
    struct macro *lmp, *mp;
 
    save_mafl = mafl;
@@ -459,7 +459,7 @@ _list_macros(enum ma_flags mafl)
    char *cp;
    char const *typestr;
    struct macro *mq;
-   ui_it ti, mc;
+   ui32_t ti, mc;
    struct mline *lp;
 
    if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
@@ -485,7 +485,7 @@ _list_macros(enum ma_flags mafl)
    if (mc)
       page_or_print(fp, 0);
 
-   mc = (ui_it)ferror(fp);
+   mc = (ui32_t)ferror(fp);
    Fclose(fp);
    return (int)mc;
 }
@@ -518,7 +518,7 @@ _define1(char const *name, enum ma_flags mafl)
 
       /* Trim WS */
       for (cp = linebuf, i = 0; i < n; ++cp, ++i)
-         if (! whitechar(*cp))
+         if (!whitechar(*cp))
             break;
       if (i == n)
          continue;
@@ -545,7 +545,7 @@ _define1(char const *name, enum ma_flags mafl)
    mp->ma_maxlen = maxlen;
 
    if (_malook(mp->ma_name, mp, mafl) != NULL) {
-      if (! (mafl & MA_ACC)) {
+      if (!(mafl & MA_ACC)) {
          fprintf(stderr, tr(76, "A macro named \"%s\" already exists.\n"),
             mp->ma_name);
          lst = mp->ma_contents;
@@ -608,7 +608,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
    size_t nl, vl;
 
    /* Propagate unrolling up the stack, as necessary */
-   while (! losp->s_unroll && (losp = losp->s_up) != NULL)
+   while (!losp->s_unroll && (losp = losp->s_up) != NULL)
       ;
    if (losp == NULL)
       goto jleave;
@@ -758,7 +758,7 @@ cdefine(void *v)
       errs = tr(505, "Syntax is: define <name> {");
       goto jerr;
    }
-   rv = ! _define1(args[0], MA_NONE);
+   rv = !_define1(args[0], MA_NONE);
 jleave:
    return rv;
 jerr:
@@ -778,7 +778,7 @@ cundef(void *v)
    }
    do
       _undef1(*args, MA_NONE);
-   while (*++args);
+   while (*++args != NULL);
    rv = 0;
 jleave:
    return rv;
@@ -832,7 +832,7 @@ callhook(char const *name, int nmail)
       goto jleave;
    }
 
-   inhook = nmail ? 3 : 1;
+   inhook = nmail ? 3 : 1; /* XXX enum state machine */
    rv = _maexec(mp, NULL);
    inhook = 0;
 jleave:
@@ -843,7 +843,7 @@ jleave:
 FL int
 cdefines(void *v)
 {
-   (void)v;
+   UNUSED(v);
    return _list_macros(MA_NONE);
 }
 
@@ -869,7 +869,7 @@ c_account(void *v)
             ACCOUNT_NULL);
          goto jleave;
       }
-      rv = ! _define1(args[0], MA_ACC);
+      rv = !_define1(args[0], MA_ACC);
       goto jleave;
    }
 
@@ -899,7 +899,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if (! starting && ! inhook) {
+   if (!starting && !inhook) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if ((i = setfile("%", 0)) < 0)
