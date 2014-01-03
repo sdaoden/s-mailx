@@ -2,7 +2,7 @@
  *@ TTY interaction.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -38,7 +38,7 @@
  */
 /* The NCL version is
  *
- * Copyright (c) 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2013 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
