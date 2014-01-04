@@ -190,7 +190,7 @@ XLISTER=ls
 # $PAGER, which would effectively cause this setting to be ignored)
 XPAGER=more
 
-# The following tools may be provided a.k.a. overwritten, `command -pv NAME`
+# The following tools may be provided a.k.a. overwritten, `command -v NAME`
 # is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, grep=, mkdir=, mv=, tee=
 #  rm=, sed=

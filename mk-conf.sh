@@ -179,8 +179,8 @@ check_tool() {
 }
 
 # Check those tools right now that we need before including ${conf}
-check_tool rm "${rm:-`command -pv rm`}"
-check_tool sed "${sed:-`command -pv sed`}"
+check_tool rm "${rm:-`command -v rm`}"
+check_tool sed "${sed:-`command -v sed`}"
 
 # Only incorporate what wasn't overwritten from command line / CONFIG
 trap "${rm} -f ${tmp}; exit" 1 2 15
@@ -198,19 +198,19 @@ while read line; do
 done > ${tmp}
 . ./${tmp}
 
-check_tool awk "${awk:-`command -pv awk`}"
-check_tool cat "${cat:-`command -pv cat`}"
-check_tool chmod "${chmod:-`command -pv chmod`}"
-check_tool cp "${cp:-`command -pv cp`}"
-check_tool cmp "${cmp:-`command -pv cmp`}"
-check_tool grep "${grep:-`command -pv grep`}"
-check_tool mkdir "${mkdir:-`command -pv mkdir`}"
-check_tool mv "${mv:-`command -pv mv`}"
+check_tool awk "${awk:-`command -v awk`}"
+check_tool cat "${cat:-`command -v cat`}"
+check_tool chmod "${chmod:-`command -v chmod`}"
+check_tool cp "${cp:-`command -v cp`}"
+check_tool cmp "${cmp:-`command -v cmp`}"
+check_tool grep "${grep:-`command -v grep`}"
+check_tool mkdir "${mkdir:-`command -v mkdir`}"
+check_tool mv "${mv:-`command -v mv`}"
 # rm(1), sed(1) above
-check_tool tee "${tee:-`command -pv tee`}"
+check_tool tee "${tee:-`command -v tee`}"
 
-check_tool make "${MAKE:-`command -pv make`}"
-check_tool strip "${STRIP:-`command -pv strip`}" 1
+check_tool make "${MAKE:-`command -v make`}"
+check_tool strip "${STRIP:-`command -v strip`}" 1
 HAVE_STRIP=${?}
 
 wantfeat() {

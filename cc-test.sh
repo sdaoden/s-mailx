@@ -6,13 +6,16 @@ CONF=./conf.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 
-awk=`command -pv awk`
-cat=`command -pv cat`
-cksum=`command -pv cksum`
-MAKE="${MAKE:-`command -pv make`}"
-rm=`command -pv rm`
+awk=`command -v awk`
+cat=`command -v cat`
+cksum=`command -v cksum`
+MAKE="${MAKE:-`command -v make`}"
+rm=`command -v rm`
+sed=`command -v sed`
 
 ##  --  >8  --  8<  --  ##
+
+export NAIL CONF BODY MBOX awk cat cksum MAKE rm sed
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
 # nl_langinfo(CODESET), then, so also overwrite ttycharset.
@@ -77,8 +80,8 @@ cc_all_configs() {
 cksum_test() {
    tid=$1 f=$2 s=$3
    printf "${tid}: "
-   csum="`sed -e '/^From /d' -e '/^Date: /d' \
-         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" | cksum`";
+   csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
+         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" | ${cksum}`";
    if [ "${csum}" = "${s}" ]; then
       printf 'ok\n'
    else
