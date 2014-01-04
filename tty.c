@@ -1224,6 +1224,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    wchar_t wc;
    ssize_t rv;
+   ui32_t maybe_cursor;
 
    memset(&l, 0, sizeof l);
    l.line.cbuf = *buf;
@@ -1235,7 +1236,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
       l.prompt = prompt = "?ERR?";
    /* TODO *l.nd=='\0' only because we have no value-cache -> see acmava.c */
    if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
-      l.nd = "\033[C";
+      l.nd = "\033[C"; /* XXX no "magic" constant */
    l.x_buf = buf;
    l.x_bufsize = bufsize;
 
@@ -1245,6 +1246,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
 jrestart:
    memset(ps, 0, sizeof ps);
+   maybe_cursor = 0;
    /* TODO: NCL: we should output the reset sequence when we jrestart:
     * TODO: NCL: if we are using a stateful encoding? !
     * TODO: NCL: in short: this is not yet well understood */
@@ -1309,6 +1311,7 @@ jrestart:
       case 'A' ^ 0x40: /* cursor home */
          _ncl_khome(&l, TRU1);
          break;
+j_b:
       case 'B' ^ 0x40: /* backward character */
          _ncl_kleft(&l);
          break;
@@ -1320,6 +1323,7 @@ jrestart:
       case 'E' ^ 0x40: /* end of line */
          _ncl_kend(&l);
          break;
+j_f:
       case 'F' ^ 0x40: /* forward character */
          _ncl_kright(&l);
          break;
@@ -1361,6 +1365,7 @@ jreset:
          _ncl_krefresh(&l);
          break;
       /* 'M': CR (\r) */
+j_n:
       case 'N' ^ 0x40: /* history next */
 # ifdef HAVE_HISTORY
          if (l.hist == NULL)
@@ -1373,6 +1378,7 @@ jreset:
          goto jbell;
 # endif
       /* 'O' */
+j_p:
       case 'P' ^ 0x40: /* history previous */
 # ifdef HAVE_HISTORY
          if ((len = _ncl_khist(&l, TRU1)) > 0)
@@ -1405,7 +1411,28 @@ jreset:
          _ncl_kgow(&l, -1);
          break;
       /* 'Z': suspend (CTRL-Z) */
+      case 0x1B:
+         if (maybe_cursor++ != 0)
+            goto jreset;
+         continue;
       default:
+         /* XXX Handle usual ^[[[ABCD] cursor keys -- UGLY, "MAGIC", INFLEX */
+         if (maybe_cursor > 0) {
+            if (++maybe_cursor == 2) {
+               if (wc == L'[')
+                  continue;
+               maybe_cursor = 0;
+            } else {
+               maybe_cursor = 0;
+               switch (wc) {
+               case L'A':  goto j_p;
+               case L'B':  goto j_n;
+               case L'C':  goto j_f;
+               case L'D':  goto j_b;
+               }
+               _ncl_kother(&l, L'[');
+            }
+         }
 jprint:
          if (iswprint(wc)) {
             _ncl_kother(&l, wc);
