@@ -253,7 +253,11 @@ This sets multiple options to prepare \*(UA for working in batch mode
 .Va emptystart ,
 .Va noheader ,
 .Va quiet ,
-.Va sendwait ;
+.Va sendwait ,
+as well as
+.Va MBOX
+to
+.Pa /dev/null .
 it also enables processing of tilde escapes.
 E.g., the following should send an email message to `alias'.
 .Pp

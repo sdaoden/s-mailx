@@ -132,17 +132,17 @@ static int           _oind, /*_oerr,*/ _oopt;
 #ifdef HAVE_GETOPT
 # define _getopt     getopt
 #else
-static int  _getopt(int argc, char *const argv[], const char *optstring);
+static int     _getopt(int argc, char *const argv[], const char *optstring);
 #endif
 
 /* Perform basic startup initialization */
-static void _startup(void);
+static void    _startup(void);
 
 /* Grow a char** */
-static int  _grow_cpp(char const ***cpp, int size, int cnt);
+static size_t  _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt);
 
 /* Initialize *tempdir*, *myname*, *homedir* */
-static void _setup_vars(void);
+static void    _setup_vars(void);
 
 /* We're in an interactive session - compute what the screen size for printing
  * headers etc. should be; notify tty upon resize if *is_sighdl* is not 0.
@@ -151,14 +151,14 @@ static void _setup_vars(void);
  * If baud rate = 1200, use 14
  * If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col */
-static void _setscreensize(int is_sighdl);
+static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int  _rcv_mode(char const *folder);
+static int     _rcv_mode(char const *folder);
 
 /* Interrupt printing of the headers */
-static void _hdrstop(int signo);
+static void    _hdrstop(int signo);
 
 #ifndef HAVE_GETOPT
 static int
@@ -341,17 +341,16 @@ _startup(void)
 #endif
 }
 
-static int
-_grow_cpp(char const ***cpp, int size, int cnt)
+static size_t
+_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 {
-   /* Before spreserve(): use our string pool instead of LibC heap;
-    * Increment *size* by at least 5! */
-   char const **newcpp = salloc(sizeof(char*) * (size += 8));
+   /* Before spreserve(): use our string pool instead of LibC heap */
+   char const **newcpp = salloc(sizeof(char*) * newsize);
 
-   if (cnt > 0)
-      memcpy(newcpp, *cpp, (size_t)cnt * sizeof(char*));
+   if (oldcnt > 0)
+      memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   return size;
+   return newsize;
 }
 
 static void
@@ -561,7 +560,8 @@ main(int argc, char *argv[])
    struct attachment *attach = NULL;
    char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
    char const *okey, **oargs = NULL, *folder = NULL;
-   int oargs_size = 0, oargs_count = 0, smopts_size = 0, i;
+   size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
+   int i;
 
    /*
     * Start our lengthy setup
@@ -653,7 +653,7 @@ main(int argc, char *argv[])
       case 'O':
          /* Additional options to pass-through to MTA */
          if (smopts_count == (size_t)smopts_size)
-            smopts_size = _grow_cpp(&smopts, smopts_size, (int)smopts_count);
+            smopts_size = _grow_cpp(&smopts, smopts_size + 8, smopts_count);
          smopts[smopts_count++] = skin(_oarg);
          break;
       case 'q':
@@ -699,7 +699,7 @@ main(int argc, char *argv[])
          }
 joarg:
          if (oargs_count == oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size, oargs_count);
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
          oargs[oargs_count++] = okey;
          break;
       case 's':
@@ -733,13 +733,15 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_count + 5 >= oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size, oargs_count);
-         oargs[oargs_count++] = "dot";
-         oargs[oargs_count++] = "emptystart";
-         oargs[oargs_count++] = "noheader";
-         oargs[oargs_count++] = "quiet";
-         oargs[oargs_count++] = "sendwait";
+         if (oargs_count + 6 >= oargs_size)
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
+         oargs[oargs_count + 0] = "dot";
+         oargs[oargs_count + 1] = "emptystart";
+         oargs[oargs_count + 2] = "noheader";
+         oargs[oargs_count + 3] = "quiet";
+         oargs[oargs_count + 4] = "sendwait";
+         oargs[oargs_count + 5] = "MBOX=/dev/null";
+         oargs_count += 6;
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;
       case '?':
@@ -823,7 +825,7 @@ jusage:
 
    /* Ensure the -S and other command line options take precedence over
     * anything that may have been placed in resource files */
-   for (i = 0; i < oargs_count; ++i) {
+   for (i = 0; UICMP(z, i, <, oargs_count); ++i) {
       char const *a[2];
       a[0] = oargs[i];
       a[1] = NULL;
