@@ -47,7 +47,7 @@
  */
 
 #define MA_PRIME     HSHSIZE
-#define MA_HASH(S)   (strhash(S) % MA_PRIME)
+#define MA_HASH(S)   (torek_hash(S) % MA_PRIME)
 
 enum ma_flags {
    MA_NONE        = 0,

@@ -152,6 +152,11 @@ FL void        page_or_print(FILE *fp, size_t lines);
 #define try_pager(FP)            page_or_print(FP, 0) /* TODO obsolete */
 
 FL enum protocol  which_protocol(const char *name);
+
+/* Hash the passed string -- uses Chris Torek's hash algorithm */
+FL ui32_t      torek_hash(char const *name);
+#define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
+
 FL unsigned    pjw(const char *cp);
 FL long        nextprime(long n);
 
@@ -1070,11 +1075,6 @@ FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
-
-/* Hash the passed string; uses Chris Torek's hash algorithm */
-FL ui_it       strhash(char const *name);
-
-#define hash(S)                  (strhash(S) % HSHSIZE) /* xxx COMPAT (?) */
 
 /* Are any of the characters in the two strings the same? */
 FL int         anyof(char const *s1, char const *s2);

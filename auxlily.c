@@ -356,6 +356,21 @@ which_protocol(const char *name)
 	}
 }
 
+FL ui32_t
+torek_hash(char const *name)
+{
+   /* Chris Torek's hash.
+    * NOTE: need to change *at least* create-okey-map.pl when changing the
+    * algorithm!! */
+	ui32_t h = 0;
+
+	while (*name != '\0') {
+		h *= 33;
+		h += *name++;
+	}
+	return h;
+}
+
 FL unsigned
 pjw(const char *cp)
 {
