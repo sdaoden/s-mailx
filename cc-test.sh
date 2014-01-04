@@ -1,7 +1,7 @@
 #!/bin/sh -
-#@ Usage: ./cc-test.sh [--check-only [nail-binary]]
+#@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
-NAIL=./s-nail
+SNAIL=./s-nail
 CONF=./conf.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
@@ -15,7 +15,7 @@ sed=`command -v sed`
 
 ##  --  >8  --  8<  --  ##
 
-export NAIL CONF BODY MBOX awk cat cksum MAKE rm sed
+export SNAIL CONF BODY MBOX awk cat cksum MAKE rm sed
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
 # nl_langinfo(CODESET), then, so also overwrite ttycharset.
@@ -29,7 +29,7 @@ export LC_ALL LANG ttycharset
 ESTAT=0
 
 usage() {
-   echo >&2 "Usage: ./cc-test.sh [--check-only [nail-binary]]"
+   echo >&2 "Usage: ./cc-test.sh [--check-only [s-nail-binary]]"
    exit 1
 }
 
@@ -37,8 +37,8 @@ CHECK_ONLY=
 [ ${#} -gt 0 ] && {
    [ "${1}" = --check-only ] || usage
    [ ${#} -gt 2 ] && usage
-   [ ${#} -eq 2 ] && NAIL="${2}"
-   [ -x "${NAIL}" ] || usage
+   [ ${#} -eq 2 ] && SNAIL="${2}"
+   [ -x "${SNAIL}" ] || usage
    CHECK_ONLY=1
 }
 
@@ -95,8 +95,8 @@ cksum_test() {
 t_behave() {
    # Test for [d1f1a19]
    ${rm} -f "${MBOX}"
-   printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix' |
-      MAILRC=/dev/null "${NAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
+   printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
+      MAILRC=/dev/null "${SNAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
    cksum_test behave:1 "${MBOX}" '4214021069 15'
 
    # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
@@ -187,24 +187,24 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    # At the same time testing -q FILE, < FILE and -t FILE
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
-   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
+   "${SNAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
    cksum_test content:1 "${MBOX}" '2606934084 5649'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
-   "${NAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" \
+   "${SNAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
    cksum_test content:2 "${MBOX}" '2606934084 5649'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
-   ) | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua -a "${BODY}" -t
+   ) | MAILRC=/dev/null "${SNAIL}" -n -Sstealthmua -a "${BODY}" -t
    cksum_test content:3 "${MBOX}" '799758423 5648'
 
    # Test for [260e19d].  Juergen Daubert.
    ${rm} -f "${MBOX}"
-   echo body | MAILRC=/dev/null "${NAIL}" -n -Sstealthmua "${MBOX}"
+   echo body | MAILRC=/dev/null "${SNAIL}" -n -Sstealthmua "${MBOX}"
    cksum_test content:4 "${MBOX}" '506144051 104'
 
    # Sending of multiple mails in a single invocation
@@ -212,7 +212,7 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
-   ) | MAILRC=/dev/null "${NAIL}" -n -# -Sstealthmua
+   ) | MAILRC=/dev/null "${SNAIL}" -n -# -Sstealthmua
    cksum_test content:5 "${MBOX}" '2028749685 277'
 
    ${rm} -f "${BODY}" "${MBOX}"
