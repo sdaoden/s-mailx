@@ -76,8 +76,8 @@ struct mline {
 
 struct var {
    struct var  *v_link;
-   char        *v_name;
    char        *v_value;
+   char        v_name[VFIELD_SIZE(sizeof(size_t))];
 };
 
 struct var_map {
@@ -302,10 +302,12 @@ __var_assign(char const *name, char const *val)
       _localopts_add(_localopts, name, vp);
 
    if (vp == NULL) {
-      vp = (struct var*)scalloc(1, sizeof *vp);
-      vp->v_name = _vcopy(name);
+      size_t l = strlen(name) + 1;
+
+      vp = smalloc(sizeof(*vp) - VFIELD_SIZEOF(struct var, v_name) + l);
       vp->v_link = _vars[h];
       _vars[h] = vp;
+      memcpy(vp->v_name, name, l);
       oval = UNCONST("");
    } else
       oval = vp->v_value;
@@ -345,7 +347,6 @@ __var_unset(char const *name)
 
       /* Always listhead after _lookup() */
       _vars[h] = _vars[h]->v_link;
-      _vfree(vp->v_name);
       _vfree(vp->v_value);
       free(vp);
 
@@ -620,15 +621,14 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
 
    nl = strlen(name) + 1;
    vl = (ovap != NULL) ? strlen(ovap->v_value) + 1 : 0;
-   vap = smalloc(sizeof(*vap) + nl + vl);
+   vap = smalloc(sizeof(*vap) - VFIELD_SIZEOF(struct var, v_name) + nl + vl);
    vap->v_link = losp->s_localopts;
    losp->s_localopts = vap;
-   vap->v_name = (char*)(vap + 1);
    memcpy(vap->v_name, name, nl);
    if (vl == 0)
       vap->v_value = NULL;
    else {
-      vap->v_value = (char*)(vap + 1) + nl;
+      vap->v_value = vap->v_name + nl;
       memcpy(vap->v_value, ovap->v_value, vl);
    }
 jleave:
