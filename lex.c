@@ -815,7 +815,7 @@ jrestart:
 			if (strcmp(word, cg->name) == 0) {
 				if (linesize > 0) {
 					size_t i = cg->cmd.l;
-					linebuf = salloc(i + 1 + linesize);
+					linebuf = salloc(i + 1 + linesize + 1);
 					memcpy(linebuf, cg->cmd.s, i);
 					linebuf[i++] = ' ';
 					memcpy(linebuf + i, cp, linesize);
