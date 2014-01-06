@@ -826,6 +826,45 @@ jleave:
 }
 
 FL int
+c_var_inspect(void *v)
+{
+   struct var_carrier vc;
+   char **argv = v, *val;
+   bool_t isenv, isset;
+
+   if (*argv == NULL) {
+      v = NULL;
+      goto jleave;
+   }
+
+   for (; *argv != NULL; ++argv) {
+      memset(&vc, 0, sizeof vc);
+      _var_revlookup(&vc, *argv);
+      if (_var_lookup(&vc)) {
+         val = vc.vc_var->v_value;
+         isenv = FAL0;
+      } else
+         isenv = ((val = getenv(vc.vc_name)) != NULL);
+      if (val == NULL)
+         val = UNCONST("NULL");
+      isset = (vc.vc_var != NULL);
+
+      if (vc.vc_vmap != NULL) {
+         if (vc.vc_vmap->vm_binary)
+            printf("%s: binary option (%d): isset=%d/environ=%d\n",
+               vc.vc_name, vc.vc_okey, isset, isenv);
+         else
+            printf("%s: value option (%d): isset=%d/environ=%d value<%s>\n",
+               vc.vc_name, vc.vc_okey, isset, isenv, val);
+      } else
+         printf("%s: isset=%d/environ=%d value<%s>\n",
+            vc.vc_name, isset, isenv, val);
+   }
+jleave:
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+}
+
+FL int
 c_define(void *v)
 {
    int rv = 1;
