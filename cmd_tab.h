@@ -360,10 +360,6 @@
      DS(431, "Either <show> (default) or <clear> the line editor history") },
 #endif
 #ifdef HAVE_DEBUG
-   { "core", core, (M | NOLIST), 0, 0
-     DS(414, "Produce a core dump (ouch!)") },
-   { "clobber", clobber, (M | RAWLIST), 0, 1
-     DS(415, "Globber <number> 512 byte blocks on the stack") },
    { "sstats", &c_sstats, (M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },
    { "smemtrace", smemtrace, (M | NOLIST), 0, 0

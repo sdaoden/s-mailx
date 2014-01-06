@@ -313,10 +313,6 @@ FL int         cmove(void *v);
 FL int         cMove(void *v);
 FL int         cdecrypt(void *v);
 FL int         cDecrypt(void *v);
-#ifdef HAVE_DEBUG
-FL int         clobber(void *v);
-FL int         core(void *v);
-#endif
 FL int         cwrite(void *v);
 FL int         delete(void *v);
 FL int         deltype(void *v);

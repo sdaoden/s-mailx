@@ -517,12 +517,6 @@ jcont:
 			}
 			fputs(tr(56, "Unknown tilde escape.\n"), stderr);
 			break;
-#ifdef HAVE_DEBUG
-		case 'C':
-			/* Dump core */
-			core(NULL);
-			break;
-#endif
 		case '!':
 			/* Shell escape, send the balance of line to sh -c */
 			shell(&linebuf[2]);
