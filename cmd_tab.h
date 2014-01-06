@@ -269,15 +269,15 @@
      DS(324, "Mark <message-list> as draft") },
    { "undraft", cundraft, (A | M | MSGLIST), 0, 0
      DS(389, "Un\"draft\" <message-list>") },
-   { "define", cdefine, (M | RAWLIST), 0, 2
+   { "define", &c_define, (M | RAWLIST), 0, 2
      DS(319, "Define a macro") },
-   { "defines", cdefines, (M | RAWLIST), 0, 0
+   { "defines", &c_defines, (M | RAWLIST), 0, 0
      DS(320, "Show all defined macros including their content") },
-   { "undef", cundef, (M | RAWLIST), 0, 1000
+   { "undef", &c_undef, (M | RAWLIST), 0, 1000
      DS(391, "Un\"define\" all <macros>") },
-   { "call", ccall, (M | RAWLIST), 0, 1
+   { "call", &c_call, (M | RAWLIST), 0, 1
      DS(308, "Call a macro") },
-   { "~", ccall, (M | RAWLIST), 0, 1
+   { "~", &c_call, (M | RAWLIST), 0, 1
      DS(308, "Call a macro") },
    { "move", cmove, (A | M | STRLIST), 0, 0
      DS(353, "Like \"copy\", but mark messages for deletion") },

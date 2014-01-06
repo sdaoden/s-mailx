@@ -49,14 +49,15 @@
  */
 
 /* Note: changing the hash function must be reflected in create-okey-map.pl */
-#define MA_PRIME     HSHSIZE
-#define MA_HASH(S)   (torek_hash(S) % MA_PRIME)
+#define MA_PRIME           HSHSIZE
+#define MA_NAME2HASH(N)    torek_hash(N)
+#define MA_HASH2PRIME(H)   ((H) % MA_PRIME)
 
 enum ma_flags {
    MA_NONE        = 0,
    MA_ACC         = 1<<0,
    MA_TYPE_MASK   = MA_ACC,
-   MA_UNDEF       = 1<<1   /* Unlink after lookup */
+   MA_UNDEF       = 1<<1         /* Unlink after lookup */
 };
 
 struct macro {
@@ -69,29 +70,38 @@ struct macro {
 };
 
 struct mline {
-   struct mline *l_next;
-   size_t      l_length;
-   char        l_line[VFIELD_SIZE(sizeof(size_t))];
+   struct mline   *l_next;
+   size_t         l_length;
+   char           l_line[VFIELD_SIZE(sizeof(size_t))];
 };
 
 struct var {
-   struct var  *v_link;
-   char        *v_value;
-   char        v_name[VFIELD_SIZE(sizeof(size_t))];
+   struct var     *v_link;
+   char           *v_value;
+   char           v_name[VFIELD_SIZE(sizeof(size_t))];
 };
 
 struct var_map {
-   ui32_t      vm_hash;
-   ui16_t      vm_keyoff;
-   ui8_t       vm_binary;
-   ui8_t       vm_special;
+   ui32_t         vm_hash;
+   ui16_t         vm_keyoff;
+   ui8_t          vm_binary;
+   ui8_t          vm_special;
+};
+
+struct var_carrier {
+   char const     *vc_name;
+   ui32_t         vc_hash;
+   ui32_t         vc_prime;
+   struct var     *vc_var;
+   struct var_map const *vc_vmap;
+   enum okeys     vc_okey;
 };
 
 struct lostack {
-   struct lostack *s_up;      /* Outer context */
-   struct macro   *s_mac;     /* Context (`account' or `define') */
+   struct lostack *s_up;         /* Outer context */
+   struct macro   *s_mac;        /* Context (`account' or `define') */
    struct var     *s_localopts;
-   bool_t         s_unroll;   /* Unroll? */
+   bool_t         s_unroll;      /* Unroll? */
 };
 
 /* Include the constant create-okey-map.pl output */
@@ -111,7 +121,7 @@ static char *        _vcopy(char const *str);
 static void          _vfree(char *cp);
 
 /* Check for special housekeeping. */
-static bool_t        _check_special_vars(char const *name, bool_t enable,
+static bool_t        _check_special_vars(enum okeys okey, bool_t enable,
                         char **val);
 
 /* If a variable name begins with a lowercase-character and contains at
@@ -122,13 +132,19 @@ static bool_t        _check_special_vars(char const *name, bool_t enable,
  * be lower-cased, but practice has established otherwise here */
 static char const *  _canonify(char const *vn);
 
-/* Locate a variable and return its variable node */
-static struct var *  _lookup(char const *name, ui32_t h, bool_t hisset);
+/* Try to reverse lookup an option name to an enum okeys mapping.
+ * Updates vcp.vc_name and vcp.vc_hash; vcp.vc_vmap is NULL on "error" */
+static bool_t        _var_revlookup(struct var_carrier *vcp, char const *name);
 
-/* Legacy */
-static bool_t     __var_assign(char const *name, char const *val);
-static bool_t     __var_unset(char const *name);
-static char *     __var_lookup(char const *name, bool_t look_environ);
+/* Lookup a variable from vcp.vc_(vmap|name|hash).
+ * Sets vcp.vc_prime; vcp.vc_var is NULL on "error" */
+static bool_t        _var_lookup(struct var_carrier *vcp);
+
+/* Set variable from vcp.vc_(vmap|name|hash); sets vcp.vc_var if NULL */
+static bool_t        _var_set(struct var_carrier *vcp, char const *value);
+
+/* Clear variable from vcp.vc_(vmap|name|hash); sets vcp.vc_var to NULL */
+static bool_t        _var_clear(struct var_carrier *vcp);
 
 /* Line *cp* consists solely of WS and a } */
 static bool_t        _is_closing_angle(char const *cp);
@@ -138,18 +154,18 @@ static struct macro *_malook(char const *name, struct macro *data,
                         enum ma_flags mafl);
 
 /* Walk all lines of a macro and execute() them */
-static int           _maexec(struct macro const *mp, struct var **unroll_store);
+static int           _maexec(struct macro const *mp, struct var **unroller);
 
 /* User display helpers */
 static int           _list_macros(enum ma_flags mafl);
 
-/*  */
+/* */
 static bool_t        _define1(char const *name, enum ma_flags mafl);
 static void          _undef1(char const *name, enum ma_flags mafl);
 static void          _freelines(struct mline *lp);
 
-/* qsort(3) helper */
-static int           __var_list_all_cmp(void const *s1, void const *s2);
+/* var_list_all(): qsort(3) helper */
+static int           _var_list_all_cmp(void const *s1, void const *s2);
 
 /* Update replay-log */
 static void          _localopts_add(struct lostack *losp, char const *name,
@@ -180,25 +196,27 @@ _vfree(char *cp)
 }
 
 static bool_t
-_check_special_vars(char const *name, bool_t enable, char **val)
+_check_special_vars(enum okeys okey, bool_t enable, char **val)
 {
-   /* TODO _check_special_vars --> value cache
-    * TODO in general: some may not be unset etc. etc.  All this shouldn't
-    * TODO be handled like this, but through a generic value-cache interface,
-    * TODO which may apply constaints *before* use; also see below  */
    char *cp = NULL;
    bool_t rv = TRU1;
    int flag = 0;
 
-   if (strcmp(name, "debug") == 0)
+   switch (okey) {
+   case ok_b_debug:
       flag = OPT_DEBUG;
-   else if (strcmp(name, "header") == 0)
-      flag = OPT_N_FLAG, enable = !enable;
-   else if (strcmp(name, "skipemptybody") == 0)
+      break;
+   case ok_b_header:
+      flag = OPT_N_FLAG;
+      enable = !enable;
+      break;
+   case ok_b_skipemptybody:
       flag = OPT_E_FLAG;
-   else if (strcmp(name, "verbose") == 0)
+      break;
+   case ok_b_verbose:
       flag = OPT_VERBOSE;
-   else if (strcmp(name, "folder") == 0) {
+      break;
+   case ok_v_folder:
       rv = (val == NULL || var_folder_updated(*val, &cp));
       if (rv && cp != NULL) {
          _vfree(*val);
@@ -209,27 +227,28 @@ _check_special_vars(char const *name, bool_t enable, char **val)
          } else
             *val = cp;
       }
-   }
+      break;
 #ifdef HAVE_NCL
-   else if (strcmp(name, "line-editor-cursor-right") == 0 &&
-         (rv = (val != NULL && *val != NULL))) {
-      char const *x = cp = *val;
-      int c;
-
-      /* Set with no value? *//*TODO invalid,but no way to "re-unset";see above
-       * TODO adjust tty.c when line-editor-cursor-right is properly handled in
-       * TODO here */
-      if (*x != '\0') {
-         do {
-            c = expand_shell_escape(&x, FAL0);
-            if (c < 0)
-               break;
-            *cp++ = (char)c;
-         } while (*x != '\0');
-         *cp++ = '\0';
+   case ok_v_line_editor_cursor_right:
+      if ((rv = (val != NULL && *val != NULL))) {
+         /* Set with no value? TODO very guly */
+         if (*(cp = *val) != '\0') {
+            char const *x = cp;
+            int c;
+            do {
+               c = expand_shell_escape(&x, FAL0);
+               if (c < 0)
+                  break;
+               *cp++ = (char)c;
+            } while (*x != '\0');
+            *cp++ = '\0';
+         }
       }
-   }
+      break;
 #endif
+   default:
+      break;
+   }
 
    if (flag) {
       if (enable)
@@ -253,17 +272,49 @@ _canonify(char const *vn)
    return vn;
 }
 
-static struct var *
-_lookup(char const *name, ui32_t h, bool_t hisset)
+static bool_t
+_var_revlookup(struct var_carrier *vcp, char const *name)
+{
+   ui32_t hash, i, j;
+   struct var_map const *vmp;
+
+   vcp->vc_name = name = _canonify(name);
+   vcp->vc_hash = hash = MA_NAME2HASH(name);
+
+   for (i = hash % _VAR_REV_PRIME, j = 0; j <= _VAR_REV_LONGEST; ++j) {
+      ui32_t x = _var_revmap[i];
+      if (x == _VAR_REV_ILL)
+         break;
+      vmp = _var_map + x;
+      if (vmp->vm_hash == hash &&
+            !strcmp(_var_keydat + vmp->vm_keyoff, name)) {
+         vcp->vc_vmap = vmp;
+         vcp->vc_okey = (enum okeys)x;
+         goto jleave;
+      }
+      if (++i == _VAR_REV_PRIME) {
+#ifdef _VAR_REV_WRAPAROUND
+         i = 0;
+#else
+         break;
+#endif
+      }
+   }
+   vcp->vc_vmap = NULL;
+   vcp = NULL;
+jleave:
+   return (vcp != NULL);
+}
+
+static bool_t
+_var_lookup(struct var_carrier *vcp)
 {
    struct var **vap, *lvp, *vp;
 
-   if (!hisset)
-      h = MA_HASH(name);
-   vap = _vars + h;
+   vap = _vars + (vcp->vc_prime = MA_HASH2PRIME(vcp->vc_hash));
 
    for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
-      if (*vp->v_name == *name && strcmp(vp->v_name, name) == 0) {
+      if (strcmp(vp->v_name, vcp->vc_name) == 0) {
          /* Relink as head, hope it "sorts on usage" over time */
          if (lvp != NULL) {
             lvp->v_link = vp->v_link;
@@ -274,83 +325,81 @@ _lookup(char const *name, ui32_t h, bool_t hisset)
       }
    vp = NULL;
 jleave:
-   return vp;
+   vcp->vc_var = vp;
+   return (vp != NULL);
 }
 
 static bool_t
-__var_assign(char const *name, char const *val)
+_var_set(struct var_carrier *vcp, char const *value)
 {
    bool_t err;
    struct var *vp;
-   ui32_t h;
    char *oval;
 
-   if (val == NULL) {
+   if (value == NULL) {
       bool_t tmp = var_clear_allow_undefined;
       var_clear_allow_undefined = TRU1;
-      err = __var_unset(name);
+      err = _var_clear(vcp);
       var_clear_allow_undefined = tmp;
       goto jleave;
    }
 
-   name = _canonify(name);
-   h = MA_HASH(name);
-   vp = _lookup(name, h, TRU1);
+   _var_lookup(vcp);
 
    /* Don't care what happens later on, store this in the unroll list */
    if (_localopts != NULL)
-      _localopts_add(_localopts, name, vp);
+      _localopts_add(_localopts, vcp->vc_name, vcp->vc_var);
 
-   if (vp == NULL) {
-      size_t l = strlen(name) + 1;
+   if ((vp = vcp->vc_var) == NULL) {
+      size_t l = strlen(vcp->vc_name) + 1;
 
+      vcp->vc_var =
       vp = smalloc(sizeof(*vp) - VFIELD_SIZEOF(struct var, v_name) + l);
-      vp->v_link = _vars[h];
-      _vars[h] = vp;
-      memcpy(vp->v_name, name, l);
+      vp->v_link = _vars[vcp->vc_prime];
+      _vars[vcp->vc_prime] = vp;
+      memcpy(vp->v_name, vcp->vc_name, l);
       oval = UNCONST("");
    } else
       oval = vp->v_value;
-   vp->v_value = _vcopy(val);
+   vp->v_value = _vcopy(value);
 
    /* Check if update allowed XXX wasteful on error! */
-   if ((err = !_check_special_vars(name, TRU1, &vp->v_value))) {
+   if (vcp->vc_vmap != NULL && vcp->vc_vmap->vm_special &&
+         (err = !_check_special_vars(vcp->vc_okey, TRU1, &vp->v_value))) {
       char *cp = vp->v_value;
       vp->v_value = oval;
       oval = cp;
    }
    if (*oval != '\0')
       _vfree(oval);
+   err = FAL0;
 jleave:
    return err;
 }
 
 static bool_t
-__var_unset(char const *name)
+_var_clear(struct var_carrier *vcp)
 {
    bool_t err = TRU1;
-   ui32_t h;
-   struct var *vp;
 
-   name = _canonify(name);
-   h = MA_HASH(name);
-   vp = _lookup(name, h, TRU1);
-
-   if (vp == NULL) {
+   if (!_var_lookup(vcp)) {
       if (!sourcing && !var_clear_allow_undefined) {
-         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), name);
+         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"),
+            vcp->vc_name);
          goto jleave;
       }
    } else {
       if (_localopts != NULL)
-         _localopts_add(_localopts, name, vp);
+         _localopts_add(_localopts, vcp->vc_name, vcp->vc_var);
 
-      /* Always listhead after _lookup() */
-      _vars[h] = _vars[h]->v_link;
-      _vfree(vp->v_value);
-      free(vp);
+      /* Always listhead after _var_lookup() */
+      _vars[vcp->vc_prime] = _vars[vcp->vc_prime]->v_link;
+      _vfree(vcp->vc_var->v_value);
+      free(vcp->vc_var);
+      vcp->vc_var = NULL;
 
-      if (!_check_special_vars(name, FAL0, NULL))
+      if (vcp->vc_vmap != NULL && vcp->vc_vmap->vm_special &&
+            !_check_special_vars(vcp->vc_okey, FAL0, NULL))
          goto jleave;
    }
    err = FAL0;
@@ -358,26 +407,11 @@ jleave:
    return err;
 }
 
-static char *
-__var_lookup(char const *name, bool_t look_environ)
-{
-   struct var *vp;
-   char *rv;
-
-   name = _canonify(name);
-   if ((vp = _lookup(name, 0, FAL0)) != NULL)
-      rv = vp->v_value;
-   else if (!look_environ)
-      rv = NULL;
-   else if ((rv = getenv(name)) != NULL && *rv != '\0')
-      rv = savestr(rv);
-   return rv;
-}
-
 static bool_t
 _is_closing_angle(char const *cp)
 {
    bool_t rv = FAL0;
+
    while (spacechar(*cp))
       ++cp;
    if (*cp++ != '}')
@@ -398,7 +432,8 @@ _malook(char const *name, struct macro *data, enum ma_flags mafl)
 
    save_mafl = mafl;
    mafl &= MA_TYPE_MASK;
-   h = MA_HASH(name);
+   h = MA_NAME2HASH(name);
+   h = MA_HASH2PRIME(h);
 
    for (lmp = NULL, mp = _macros[h]; mp != NULL; lmp = mp, mp = mp->ma_next) {
       if ((mp->ma_flags & MA_TYPE_MASK) == mafl &&
@@ -423,7 +458,7 @@ jleave:
 }
 
 static int
-_maexec(struct macro const *mp, struct var **unroll_store)
+_maexec(struct macro const *mp, struct var **unroller)
 {
    struct lostack los;
    int rv = 0;
@@ -444,10 +479,10 @@ _maexec(struct macro const *mp, struct var **unroll_store)
    }
 
    _localopts = los.s_up;
-   if (unroll_store == NULL)
+   if (unroller == NULL)
       _localopts_unroll(&los.s_localopts);
    else
-      *unroll_store = los.s_localopts;
+      *unroller = los.s_localopts;
 
    ac_free(buf);
    return rv;
@@ -597,7 +632,7 @@ _freelines(struct mline *lp)
 }
 
 static int
-__var_list_all_cmp(void const *s1, void const *s2)
+_var_list_all_cmp(void const *s1, void const *s2)
 {
    return strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
 }
@@ -614,7 +649,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
    if (losp == NULL)
       goto jleave;
 
-   /* We have found a level that wants to unroll; check wether it does it yet */
+   /* We've found a level that wants to unroll; check wether it does it yet */
    for (vap = losp->s_localopts; vap != NULL; vap = vap->v_link)
       if (strcmp(vap->v_name, name) == 0)
          goto jleave;
@@ -649,7 +684,7 @@ _localopts_unroll(struct var **vapp)
    while (vap != NULL) {
       x = vap;
       vap = vap->v_link;
-      __var_assign(x->v_name, x->v_value);
+      vok_vset(x->v_name, x->v_value);
       free(x);
    }
    _localopts = save_los;
@@ -658,43 +693,90 @@ _localopts_unroll(struct var **vapp)
 FL char *
 _var_oklook(enum okeys okey)
 {
-   char const *k = _var_keydat + _var_map[okey].vm_keyoff;
+   struct var_carrier vc;
+   char *rv;
 
-   return __var_lookup(k, TRU1);
+   vc.vc_vmap = _var_map + okey;
+   vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
+   vc.vc_hash = _var_map[okey].vm_hash;
+   vc.vc_okey = okey;
+
+   if (!_var_lookup(&vc)) {
+      if ((rv = getenv(vc.vc_name)) != NULL) {
+         _var_set(&vc, rv);
+         assert(vc.vc_var != NULL);
+         goto jvar;
+      }
+   } else
+jvar:
+      rv = vc.vc_var->v_value;
+   return rv;
 }
 
 FL bool_t
 _var_okset(enum okeys okey, uintptr_t val)
 {
-   char const *k = _var_keydat + _var_map[okey].vm_keyoff;
+   struct var_carrier vc;
 
-   return __var_assign(k, (val == 0x1) ? "" : (char const*)val);
+   vc.vc_vmap = _var_map + okey;
+   vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
+   vc.vc_hash = _var_map[okey].vm_hash;
+   vc.vc_okey = okey;
+
+   return _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
 }
 
 FL bool_t
 _var_okclear(enum okeys okey)
 {
-   char const *k = _var_keydat + _var_map[okey].vm_keyoff;
+   struct var_carrier vc;
 
-   return __var_unset(k);
+   vc.vc_vmap = _var_map + okey;
+   vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
+   vc.vc_hash = _var_map[okey].vm_hash;
+   vc.vc_okey = okey;
+
+   return _var_clear(&vc);
 }
 
 FL char *
 _var_voklook(char const *vokey)
 {
-   return __var_lookup(vokey, TRU1);
+   struct var_carrier vc;
+   char *rv;
+
+   _var_revlookup(&vc, vokey);
+
+   if (!_var_lookup(&vc)) {
+      if ((rv = getenv(vc.vc_name)) != NULL) {
+         _var_set(&vc, rv);
+         assert(vc.vc_var != NULL);
+         goto jvar;
+      }
+   } else
+jvar:
+      rv = vc.vc_var->v_value;
+   return rv;
 }
 
 FL bool_t
 _var_vokset(char const *vokey, uintptr_t val)
 {
-   return __var_assign(vokey, (val == 0x1) ? "" : (char const*)val);
+   struct var_carrier vc;
+
+   _var_revlookup(&vc, vokey);
+
+   return _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
 }
 
 FL bool_t
 _var_vokclear(char const *vokey)
 {
-   return __var_unset(vokey);
+   struct var_carrier vc;
+
+   _var_revlookup(&vc, vokey);
+
+   return _var_clear(&vc);
 }
 
 FL void
@@ -722,7 +804,7 @@ var_list_all(void)
          *cap++ = vp->v_name;
 
    if (no > 1)
-      qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
+      qsort(vacp, no, sizeof *vacp, &_var_list_all_cmp);
 
    i = (ok_blook(bsdcompat) || ok_blook(bsdset));
    fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
@@ -737,14 +819,14 @@ var_list_all(void)
          fprintf(fp, "%s\n", *cap);
    }
 
-   page_or_print(fp, (size_t)(cap - vacp));
+   page_or_print(fp, PTR2SIZE(cap - vacp));
    Fclose(fp);
 jleave:
    ;
 }
 
 FL int
-cdefine(void *v)
+c_define(void *v)
 {
    int rv = 1;
    char **args = v;
@@ -754,7 +836,8 @@ cdefine(void *v)
       errs = tr(504, "Missing macro name to `define'");
       goto jerr;
    }
-   if (args[1] == NULL || strcmp(args[1], "{") || args[2] != NULL) {
+   if (args[1] == NULL || args[1][0] != '{' || args[1][1] != '\0' ||
+         args[2] != NULL) {
       errs = tr(505, "Syntax is: define <name> {");
       goto jerr;
    }
@@ -767,7 +850,7 @@ jerr:
 }
 
 FL int
-cundef(void *v)
+c_undef(void *v)
 {
    int rv = 1;
    char **args = v;
@@ -785,7 +868,7 @@ jleave:
 }
 
 FL int
-ccall(void *v)
+c_call(void *v)
 {
    int rv = 1;
    char **args = v;
@@ -841,7 +924,7 @@ jleave:
 }
 
 FL int
-cdefines(void *v)
+c_defines(void *v)
 {
    UNUSED(v);
    return _list_macros(MA_NONE);

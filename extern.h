@@ -85,13 +85,13 @@ FL bool_t   _var_vokclear(char const *vokey);
 /* List all variables */
 FL void     var_list_all(void);
 
-FL int      cdefine(void *v);
-FL int      cundef(void *v);
-FL int      ccall(void *v);
+FL int      c_define(void *v);
+FL int      c_undef(void *v);
+FL int      c_call(void *v);
 FL int      callhook(char const *name, int newmail);
 
 /* List all macros */
-FL int      cdefines(void *v);
+FL int      c_defines(void *v);
 
 /* `account' */
 FL int      c_account(void *v);
