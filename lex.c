@@ -840,16 +840,32 @@ jrestart:
 		goto jleave;
 	}
 
-	/*
-	 * See if we should execute the command -- if a conditional
-	 * we always execute it, otherwise, check the state of cond.
-	 */
+	/* See if we should execute the command -- if a conditional we always
+	 * execute it, otherwise, check the state of cond */
 	if ((com->argtype & F) == 0) {
-		if ((cond == CRCV && (options & OPT_SENDMODE)) ||
-				(cond == CSEND && ! (options & OPT_SENDMODE)) ||
-				(cond == CTERM && ! (options & OPT_TTYIN)) ||
-				(cond == CNONTERM && (options & OPT_TTYIN)))
+		switch (cond_state) {
+		case COND_RCV:
+			if (options & OPT_SENDMODE)
+					goto jleave0;
+			break;
+		case COND_SEND:
+				if (!(options & OPT_SENDMODE))
+					goto jleave0;
+			break;
+		case COND_TERM:
+				if (!(options & OPT_TTYIN))
+					goto jleave0;
+			break;
+		case COND_NOTERM:
+				if (options & OPT_TTYIN)
+					goto jleave0;
+			break;
+		case COND_ANY:
+		case COND_EXEC:
+			break;
+		case COND_NOEXEC:
 			goto jleave0;
+		}
 	}
 
 	/*

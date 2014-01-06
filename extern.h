@@ -375,9 +375,12 @@ FL int         Respond(void *v);
 FL int         Followup(void *v);
 FL int         forwardcmd(void *v);
 FL int         Forwardcmd(void *v);
-FL int         ifcmd(void *v);
-FL int         elsecmd(void *v);
-FL int         endifcmd(void *v);
+
+/* if.else.endif conditional execution */
+FL int         c_if(void *v);
+FL int         c_else(void *v);
+FL int         c_endif(void *v);
+
 FL int         alternates(void *v);
 FL int         resendcmd(void *v);
 FL int         Resendcmd(void *v);

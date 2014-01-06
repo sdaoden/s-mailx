@@ -1186,11 +1186,13 @@ enum ltoken {
 /* Constants for conditional commands.  These describe whether we should be
  * executing stuff or not */
 enum condition {
-   CANY           = 0,        /* Execute in send or receive mode */
-   CRCV           = 1,        /* Execute in receive mode only */
-   CSEND          = 2,        /* Execute in send mode only */
-   CTERM          = 3,        /* Execute only if stdin is a tty */
-   CNONTERM       = 4         /* Execute only if stdin not tty */
+   COND_ANY       = 0,        /* Execute in send or receive mode */
+   COND_RCV       = 1,        /* Execute in receive mode only */
+   COND_SEND      = 2,        /* Execute in send mode only */
+   COND_TERM      = 3,        /* Execute only if stdin is a tty */
+   COND_NOTERM    = 4,        /* Execute only if stdin not tty */
+   COND_EXEC      = 5,        /* Do execute this block */
+   COND_NOEXEC    = 6         /* Don't execute this block */
 };
 
 /* For the 'shortcut' and 'unshortcut' functionality */
@@ -1381,7 +1383,7 @@ VL int         noreset;             /* String resets suspended */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
-VL enum condition cond;                /* State of conditional exc. */
+VL enum condition cond_state;          /* State of conditional exc. */
 VL struct mailbox mb;                  /* Current mailbox */
 VL int            image;               /* File descriptor for msg image */
 VL char           mailname[MAXPATHLEN]; /* Name of current file */

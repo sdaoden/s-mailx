@@ -1400,16 +1400,8 @@ command issued after
 .Ic hold
 will display the following message, not the current one.
 .It Ic if
-Commands in \*(UA's startup files can be executed conditionally
-depending on whether the user is sending or receiving mail with the if
-command, e.g.:
-.Bd -literal -offset indent
-   if receive
-      commands ...
-   endif
-.Ed
-.Pp
-An else form is also available:
+Commands in \*(UA's startup files can be executed conditionally by
+testing conditions via the command `if', as in:
 .Bd -literal -offset indent
    if receive
       commands ...
@@ -1418,8 +1410,26 @@ An else form is also available:
    endif
 .Ed
 .Pp
-Note that the only allowed conditions are `receive', `send' and `term'
-(execute if standard input is a tty).
+Note that the only allowed conditions are `[Rr]eceive', `[Ss]end',
+`[Tt]erm' (execute if standard input is a tty), as well as `0' (never
+execute) and `1' (always execute).
+In addition it is possible to condionalize upon wether an option is set,
+or set to a specific value, by using the `$' conditional trigger, e.g.:
+.Bd -literal -offset indent
+   if $debug
+      commands ...
+   endif
+   if $encoding == "UTF-8"
+      commands ...
+   endif
+   if $encoding != "UTF-8"
+      commands ...
+   endif
+.Ed
+.Pp
+The first form simply checks wether an option is set, the other two also
+perform value content comparison (equality and non-equality,
+respectively); an unset value is treated as the empty string, then.
 .It Ic ignore
 Add the list of header fields named to the ignored list.
 Header fields in the ignore list are not printed on the terminal when

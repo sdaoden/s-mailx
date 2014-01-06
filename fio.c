@@ -1419,11 +1419,11 @@ csource(void *v)
 	}
 
 	_sstack[_ssp].s_file = _input;
-	_sstack[_ssp].s_cond = cond;
+	_sstack[_ssp].s_cond = cond_state;
 	_sstack[_ssp].s_loading = loading;
 	++_ssp;
 	loading = FAL0;
-	cond = CANY;
+	cond_state = COND_ANY;
 	_input = fi;
 	sourcing = TRU1;
 	rv = 0;
@@ -1443,10 +1443,10 @@ unstack(void)
 	}
 
 	Fclose(_input);
-	if (cond != CANY)
+	if (cond_state != COND_ANY)
 		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
 	--_ssp;
-	cond = _sstack[_ssp].s_cond;
+	cond_state = _sstack[_ssp].s_cond;
 	loading = _sstack[_ssp].s_loading;
 	_input = _sstack[_ssp].s_file;
 	if (_ssp == 0)

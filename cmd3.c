@@ -912,92 +912,134 @@ Respond_internal(int *msgvec, int recipient_record)
 	return 0;
 }
 
-/*
- * Conditional commands.  These allow one to parameterize one's
- * .mailrc and do some things if sending, others if receiving.
- */
 FL int
-ifcmd(void *v)
+c_if(void *v)
 {
-	char **argv = v;
-	char *cp;
+	int rv = 1;
+	char **argv = v, *cp, *op;
 
-	if (cond != CANY) {
-		printf(tr(42, "Illegal nested \"if\"\n"));
-		return(1);
+	if (cond_state != COND_ANY) {
+		fprintf(stderr, tr(42, "Illegal nested \"if\"\n"));
+		goto jleave;
 	}
-	cond = CANY;
+
 	cp = argv[0];
+	if (*cp != '$' && argv[1] != NULL) {
+jesyn:
+		fprintf(stderr, tr(528,
+			"Invalid conditional expression \"%s %s %s\"\n"),
+			argv[0], (argv[1] != NULL ? argv[1] : ""),
+			(argv[2] != NULL ? argv[2] : ""));
+		cond_state = COND_ANY;
+		goto jleave;
+	}
+
 	switch (*cp) {
-	case 'r': case 'R':
-		cond = CRCV;
+	case '0':
+		cond_state = COND_NOEXEC;
 		break;
-
-	case 's': case 'S':
-		cond = CSEND;
+	case '1':
+		cond_state = COND_EXEC;
 		break;
-
-	case 't': case 'T':
-		cond = CTERM;
+	case 'R': case 'r':
+		cond_state = COND_RCV;
 		break;
+	case 'S': case 's':
+		cond_state = COND_SEND;
+		break;
+	case 'T': case 't':
+		cond_state = COND_TERM;
+		break;
+	case '$':
+		/* Look up the value in question, we need it anyway */
+		v = vok_vlook(++cp);
 
+		/* Single argument, "implicit boolean" form? */
+		if ((op = argv[1]) == NULL) {
+			cond_state = (v == NULL) ? COND_NOEXEC : COND_EXEC;
+			break;
+		}
+
+		/* Three argument comparison form? */
+		if (argv[2] == NULL ||
+				op[0] == '\0' || op[1] != '=' || op[2] != '\0')
+			goto jesyn;
+		/* A null value is treated as the empty string */
+		if (v == NULL)
+			v = UNCONST("");
+		if (strcmp(v, argv[2]))
+			v = NULL;
+		switch (op[0]) {
+		case '!':
+		case '=':
+			cond_state = (((op[0] == '!') ^ (v == NULL))
+					? COND_NOEXEC : COND_EXEC);
+			break;
+		default:
+			goto jesyn;
+		}
+		break;
 	default:
-		printf(tr(43, "Unrecognized if-keyword: \"%s\"\n"), cp);
-		return(1);
+		fprintf(stderr, tr(43, "Unrecognized if-keyword: \"%s\"\n"),
+			cp);
+		cond_state = COND_ANY;
+		goto jleave;
 	}
-	return(0);
+	rv = 0;
+jleave:
+	return rv;
 }
 
-/*
- * Implement 'else'.  This is pretty simple -- we just
- * flip over the conditional flag.
- */
-/*ARGSUSED*/
 FL int
-elsecmd(void *v)
+c_else(void *v)
 {
-	(void)v;
+	int rv = 1;
+	UNUSED(v);
 
-	switch (cond) {
-	case CANY:
-		printf(tr(44, "\"Else\" without matching \"if\"\n"));
-		return(1);
-
-	case CSEND:
-		cond = CRCV;
+	switch (cond_state) {
+	case COND_ANY:
+		fprintf(stderr, tr(44, "\"Else\" without matching \"if\"\n"));
+		goto jleave;
+	case COND_SEND:
+		cond_state = COND_RCV;
 		break;
-
-	case CRCV:
-		cond = CSEND;
+	case COND_RCV:
+		cond_state = COND_SEND;
 		break;
-
-	case CTERM:
-		cond = CNONTERM;
+	case COND_TERM:
+		cond_state = COND_NOTERM;
 		break;
-
+	case COND_EXEC:
+		cond_state = COND_NOEXEC;
+		break;
+	case COND_NOEXEC:
+		cond_state = COND_EXEC;
+		break;
 	default:
-		printf(tr(45, "Mail's idea of conditions is screwed up\n"));
-		cond = CANY;
-		break;
+		fprintf(stderr, tr(45,
+			"Mail's idea of conditions is screwed up\n"));
+		cond_state = COND_ANY;
+		goto jleave;
 	}
-	return(0);
+	rv = 0;
+jleave:
+	return rv;
 }
 
-/*
- * End of if statement.  Just set cond back to anything.
- */
-/*ARGSUSED*/
 FL int
-endifcmd(void *v)
+c_endif(void *v)
 {
-	(void)v;
+	int rv;
+	UNUSED(v);
 
-	if (cond == CANY) {
-		printf(tr(46, "\"Endif\" without matching \"if\"\n"));
-		return(1);
+	if (cond_state == COND_ANY) {
+		fprintf(stderr, tr(46, "\"Endif\" without matching \"if\"\n"));
+		rv = 1;
+	} else {
+		cond_state = COND_ANY;
+		rv = 0;
 	}
-	cond = CANY;
-	return(0);
+	return rv;
 }
 
 /*

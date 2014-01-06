@@ -201,11 +201,11 @@
      DS(381, "Show size in characters for <message-list>") },
    { "hold", preserve, (A | W | MSGLIST), 0, MMNDEL
      DS(344, "Save <message-list> in system mailbox instead of *mbox*") },
-   { "if", ifcmd, (F | M | RAWLIST), 1, 1
+   { "if", &c_if, (F | M | RAWLIST), 1, 3
      DS(327, "Part of the if .. then .. endif statement") },
-   { "else", elsecmd, (F | M | RAWLIST), 0, 0
+   { "else", &c_else, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
-   { "endif", endifcmd, (F | M | RAWLIST), 0, 0
+   { "endif", &c_endif, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
    { "alternates", alternates, (M | RAWLIST), 0, 1000
      DS(305, "Show or define an alternate list for the invoking user") },
