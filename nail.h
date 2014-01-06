@@ -1286,7 +1286,7 @@ enum {
  * smalloc()/free() if not available */
 #ifdef HAVE_ALLOCA
 # define ac_alloc(n)    HAVE_ALLOCA(n)
-# define ac_free(n)     do {} while (0)
+# define ac_free(n)     do {UNUSED(n);} while (0)
 #else
 # define ac_alloc(n)    smalloc(n)
 # define ac_free(n)     free(n)
