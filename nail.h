@@ -587,7 +587,7 @@ enum ssl_vrfy_level {
 /* A large enum with all the binary and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
- * Note: this enum is parsed from the build system, don't change syntax! */
+ * Note: see the comments in acmava.c before changing *anything* in here! */
 enum okeys {
    /* Option keys for binary options */
    ok_b_add_file_recipients,

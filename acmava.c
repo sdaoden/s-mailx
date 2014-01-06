@@ -42,10 +42,13 @@
 #endif
 
 /*
- * TODO in general it would be nice if it would be possible to define "macros"
- * TODO etc. inside of other "macros"
+ * HOWTO add a new non-dynamic binary or value option:
+ * - add an entry to nail.h:enum okeys
+ * - run create-okey-map.pl
+ * - update nail.1
  */
 
+/* Note: changing the hash function must be reflected in create-okey-map.pl */
 #define MA_PRIME     HSHSIZE
 #define MA_HASH(S)   (torek_hash(S) % MA_PRIME)
 
@@ -77,12 +80,22 @@ struct var {
    char        *v_value;
 };
 
+struct var_map {
+   ui32_t      vm_hash;
+   ui16_t      vm_keyoff;
+   ui8_t       vm_binary;
+   ui8_t       vm_special;
+};
+
 struct lostack {
    struct lostack *s_up;      /* Outer context */
    struct macro   *s_mac;     /* Context (`account' or `define') */
    struct var     *s_localopts;
    bool_t         s_unroll;   /* Unroll? */
 };
+
+/* Include the constant create-okey-map.pl output */
+#include "okeys.h"
 
 static struct macro  *_acc_curr;    /* Currently active account */
 static struct lostack *_localopts;  /* Currently executing macro unroll list */
@@ -642,182 +655,10 @@ _localopts_unroll(struct var **vapp)
    _localopts = save_los;
 }
 
-static char const * const _tempo_okmap[] = {
-   "add-file-recipients",
-   "allnet",
-   "append",
-   "ask",
-   "askatend",
-   "askattach",
-   "askbcc",
-   "askcc",
-   "asksign",
-   "asksub",
-   "attachment-ask-content-description",
-   "attachment-ask-content-disposition",
-   "attachment-ask-content-id",
-   "attachment-ask-content-type",
-   "autocollapse",
-   "autoprint",
-   "autothread",
-   "bang",
-   "batch-exit-on-error",
-   "bsdannounce",
-   "bsdcompat",
-   "bsdflags",
-   "bsdheadline",
-   "bsdmsgs",
-   "bsdorder",
-   "bsdset",
-   "debug",
-   "disconnected",
-   "dot",
-   "editalong",
-   "editheaders",
-   "emptybox",
-   "emptystart",
-   "flipr",
-   "forward-as-attachment",
-   "fullnames",
-   "header",
-   "hold",
-   "idna-disable",
-   "ignore",
-   "ignoreeof",
-   "imap-use-starttls",
-   "keep",
-   "keep-content-length",
-   "keepsave",
-   "line-editor-disable",
-   "markanswered",
-   "message-id-disable",
-   "metoo",
-   "mime-allow-text-controls",
-   "mime-counter-evidence",
-   "outfolder",
-   "page",
-   "piperaw",
-   "pop3-bulk-load",
-   "pop3-no-apop",
-   "pop3-use-starttls",
-   "print-all-chars",
-   "print-alternatives",
-   "quiet",
-   "quote-as-attachment",
-   "recipients-in-cc",
-   "record-resent",
-   "reply-in-same-charset",
-   "Replyall",
-   "rfc822-body-from_",
-   "save",
-   "searchheaders",
-   "sendcharsets-else-ttycharset",
-   "sendwait",
-   "showlast",
-   "showname",
-   "showto",
-   "skipemptybody",
-   "smime-force-encryption",
-   "smime-no-default-ca",
-   "smime-sign",
-   "smtp-use-starttls",
-   "ssl-no-default-ca",
-   "ssl-v2-allow",
-   "writebackedited",
-   "verbose",
-
-   "attrlist",
-   "autobcc",
-   "autocc",
-   "autoinc",
-   "autosort",
-   "charset-7bit",
-   "charset-8bit",
-   "cmd",
-   "crt",
-   "datefield",
-   "datefield-markout-older",
-   "DEAD",
-   "EDITOR",
-   "encoding",
-   "escape",
-   "folder",
-   "folder-hook",
-   "from",
-   "fwdheading",
-   "headline",
-   "hostname",
-   "imap-auth",
-   "imap-cache",
-   "imap-keepalive",
-   "imap-list-depth",
-   "indentprefix",
-   "line-editor-cursor-right",
-   "LISTER",
-   "MAIL",
-   "MBOX",
-   "mimetypes-load-control",
-   "NAIL_EXTRA_RC",
-   "NAIL_HEAD",
-   "NAIL_HISTFILE",
-   "NAIL_HISTSIZE",
-   "NAIL_TAIL",
-   "newfolders",
-   "newmail",
-   "ORGANIZATION",
-   "PAGER",
-   "pop3-keepalive",
-   "prompt",
-   "quote",
-   "quote-fold",
-   "record",
-   "replyto",
-   "screen",
-   "sendcharsets",
-   "sender",
-   "sendmail",
-   "sendmail-progname",
-   "SHELL",
-   "Sign",
-   "sign",
-   "signature",
-   "smime-ca-dir",
-   "smime-ca-file",
-   "smime-crl-dir",
-   "smime-crl-file",
-   "smime-sign-cert",
-   "smime-sign-include-certs",
-   "smtp",
-   "smtp-auth",
-   "smtp-auth-password",
-   "smtp-auth-user",
-   "spam-command",
-   "spam-host",
-   "spam-maxsize",
-   "spam-port",
-   "spam-socket",
-   "spam-user",
-   "ssl-ca-dir",
-   "ssl-ca-file",
-   "ssl-cert",
-   "ssl-cipher-list",
-   "ssl-crl-dir",
-   "ssl-crl-file",
-   "ssl-key",
-   "ssl-method",
-   "ssl-rand-egd",
-   "ssl-rand-file",
-   "ssl-verify",
-   "stealthmua",
-   "toplines",
-   "ttycharset",
-   "VISUAL"
-};
-
 FL char *
 _var_oklook(enum okeys okey)
 {
-   char const *k = _tempo_okmap[okey];
+   char const *k = _var_keydat + _var_map[okey].vm_keyoff;
 
    return __var_lookup(k, TRU1);
 }
@@ -825,7 +666,7 @@ _var_oklook(enum okeys okey)
 FL bool_t
 _var_okset(enum okeys okey, uintptr_t val)
 {
-   char const *k = _tempo_okmap[okey];
+   char const *k = _var_keydat + _var_map[okey].vm_keyoff;
 
    return __var_assign(k, (val == 0x1) ? "" : (char const*)val);
 }
@@ -833,7 +674,7 @@ _var_okset(enum okeys okey, uintptr_t val)
 FL bool_t
 _var_okclear(enum okeys okey)
 {
-   char const *k = _tempo_okmap[okey];
+   char const *k = _var_keydat + _var_map[okey].vm_keyoff;
 
    return __var_unset(k);
 }
