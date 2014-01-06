@@ -984,7 +984,15 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 		if (dopage || UICMP(z, nlines, >,
 				(*cp != '\0' ? atoi(cp) : realscreenheight))) {
 			pager = get_pager();
+#ifdef HAVE_SETENV
+			if ((cp = getenv("LESS")) == NULL) /* XXX not here! */
+				setenv("LESS", "FRXi", 0); /* XXX add env. */
+#endif
 			obuf = Popen(pager, "w", NULL, 1);
+#ifdef HAVE_SETENV
+			if (cp != NULL)
+				unsetenv("LESS"); /* XXX to Popen() etc.?!! */
+#endif
 			if (obuf == NULL) {
 				perror(pager);
 				obuf = stdout;

@@ -449,6 +449,16 @@ int main(void)
 }
 !
 
+link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
+#include <stdlib.h>
+int main(void)
+{
+   setenv("s-nail", "to be made nifty!", 1);
+   unsetenv("s-nail");
+   return 0;
+}
+!
+
 link_check snprintf 'for snprintf()' '#define HAVE_SNPRINTF' << \!
 #include <stdio.h>
 int main(void)
