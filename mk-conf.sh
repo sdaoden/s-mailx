@@ -982,7 +982,8 @@ int main(void)
    rl_point = rl_end = 10;
    rl_pre_input_hook = (rl_hook_func_t*)NULL;
    rl_forced_update_display();
-
+   clear_history();
+   history_list();
    rl_free_line_state();
    rl_cleanup_after_signal();
    rl_reset_after_signal();
@@ -1004,8 +1005,8 @@ if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)
 {
-   HistEvent he;
    EditLine *el_el = el_init("TEST", stdin, stdout, stderr);
+   HistEvent he;
    History *el_hcom = history_init();
    history(el_hcom, &he, H_SETSIZE, 242);
    el_set(el_el, EL_SIGNAL, 0);
@@ -1014,6 +1015,8 @@ int main(void)
    el_set(el_el, EL_EDITOR, "emacs");
    el_set(el_el, EL_PROMPT, &getprompt);
    el_source(el_el, NULL);
+   history(el_hcom, &he, H_GETSIZE);
+   history(el_hcom, &he, H_CLEAR);
    el_end(el_el);
    /* TODO add loader and addfn checks */
    history_end(el_hcom);

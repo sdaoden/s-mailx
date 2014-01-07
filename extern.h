@@ -1245,6 +1245,11 @@ FL int         tty_readline(char const *prompt, char **linebuf,
  * (only added for real if non-empty and doesn't begin with U+0020) */
 FL void        tty_addhist(char const *s);
 
+#if defined HAVE_HISTORY &&\
+   (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
+FL int         c_history(void *v);
+#endif
+
 #ifndef HAVE_AMALGAMATION
 # undef FL
 # define FL

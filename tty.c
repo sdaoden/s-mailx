@@ -97,6 +97,23 @@ do {\
       break;\
    }\
 } while (0)
+# define C_HISTORY_SHARED \
+	char **argv = v;\
+\
+	if (*argv == NULL)\
+		goto jlist;\
+	if (argv[1] != NULL)\
+		goto jerr;\
+	if (asccasecmp(*argv, "show") == 0)\
+		goto jlist;\
+	if (asccasecmp(*argv, "clear") == 0)\
+		goto jclear;\
+jerr:\
+	fprintf(stderr, "Synopsis: history: %s\n", tr(431,\
+      "Either <show> (default) or <clear> the line editor history"));\
+	v = NULL;\
+jleave:\
+	return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 #endif /* HAVE_HISTORY */
 
 /* fexpand() flags for expand-on-tab */
@@ -330,6 +347,51 @@ jleave:
 # endif
    UNUSED(s);
 }
+
+# ifdef HAVE_HISTORY
+FL int
+c_history(void *v)
+{
+   C_HISTORY_SHARED;
+
+jlist: {
+	FILE *fp;
+	char *cp;
+   HIST_ENTRY **hl;
+	size_t i, b;
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		v = NULL;
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+   hl = history_list();
+   i = 0;
+   if (hl != NULL)
+      while (hl[i] != NULL)
+         ++i;
+
+   b = 0;
+   while (i-- > 0) {
+      size_t sl = strlen(hl[i]->line);
+		fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+         (ul_it)i, hl[i]->line, (ul_it)b, (ul_it)sl);
+      b += sl;
+   }
+
+	page_or_print(fp, i);
+	Fclose(fp);
+	}
+	goto jleave;
+
+jclear:
+   clear_history();
+	goto jleave;
+}
+# endif /* HAVE_HISTORY */
 #endif /* HAVE_READLINE */
 
 /*
@@ -492,6 +554,51 @@ jleave:
 # endif
    UNUSED(s);
 }
+
+# ifdef HAVE_HISTORY
+FL int
+c_history(void *v)
+{
+   C_HISTORY_SHARED;
+
+jlist: {
+   HistEvent he;
+	FILE *fp;
+	char *cp;
+	size_t i, b;
+   int x;
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		v = NULL;
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+   i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
+   b = 0;
+   for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
+         x = history(_el_hcom, &he, H_NEXT)) {
+      size_t sl = strlen(he.str);
+		fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+         (ul_it)i, he.str, (ul_it)b, (ul_it)sl);
+      --i;
+      b += sl;
+   }
+
+	page_or_print(fp, i);
+	Fclose(fp);
+	}
+	goto jleave;
+
+jclear: {
+   HistEvent he;
+   history(_el_hcom, &he, H_CLEAR);
+   }
+	goto jleave;
+}
+# endif /* HAVE_HISTORY */
 #endif /* HAVE_EDITLINE */
 
 /*
@@ -1047,7 +1154,7 @@ _ncl_khist(struct line *l, bool_t backwd)
     * also, disallow forward search, then, and, of course, bail unless we
     * do have any history at all */
    if ((hp = l->hist) == NULL) {
-      if (! backwd)
+      if (!backwd)
          goto jleave;
       if ((hp = _ncl_hist) == NULL)
          goto jleave;
@@ -1134,7 +1241,7 @@ _ncl_kht(struct line *l)
 
    /* bot, sub: we cannot expand the entire data left of cursor, but only
     * the last "word", so separate them */
-   while (cx > cword && ! iswspace(cx[-1].wc))
+   while (cx > cword && !iswspace(cx[-1].wc))
       --cx;
    for (rv = 0; cword < cx; ++cword)
       rv += cword->count;
@@ -1481,6 +1588,7 @@ tty_init(void)
 
 # ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
+   _ncl_hist_size = 0;
    _ncl_hist_size_max = hs;
    if (hs == 0)
       goto jleave;
@@ -1611,7 +1719,7 @@ tty_addhist(char const *s)
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
-   if (! _ncl_hist_load)
+   if (!_ncl_hist_load)
       for (h = _ncl_hist; h != NULL; h = h->older)
          if (h->len == l && strcmp(h->dat, s) == 0) {
             hold_all_sigs();
@@ -1629,7 +1737,9 @@ tty_addhist(char const *s)
          }
    hold_all_sigs();
 
+   ++_ncl_hist_size;
    if (!_ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
+      --_ncl_hist_size;
       (h = _ncl_hist->younger
          )->older = NULL;
       free(_ncl_hist);
@@ -1650,6 +1760,52 @@ j_leave:
 # endif
    UNUSED(s);
 }
+
+# ifdef HAVE_HISTORY
+FL int
+c_history(void *v)
+{
+   C_HISTORY_SHARED;
+
+jlist: {
+	FILE *fp;
+	char *cp;
+	size_t i, b;
+   struct hist *h;
+
+	if (_ncl_hist == NULL)
+      goto jleave;
+
+	if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+		perror("tmpfile");
+		v = NULL;
+		goto jleave;
+	}
+	rm(cp);
+	Ftfree(&cp);
+
+   i = _ncl_hist_size;
+   b = 0;
+	for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
+		fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+         (ul_it)i, h->dat, (ul_it)b, (ul_it)h->len);
+
+	page_or_print(fp, i);
+	Fclose(fp);
+	}
+	goto jleave;
+
+jclear: {
+   struct hist *h;
+	while ((h = _ncl_hist) != NULL) {
+		_ncl_hist = h->older;
+		free(h);
+	}
+   _ncl_hist_size = 0;
+   }
+	goto jleave;
+}
+# endif /* HAVE_HISTORY */
 #endif /* HAVE_NCL */
 
 /*

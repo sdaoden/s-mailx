@@ -353,6 +353,11 @@
      DS(429, "Show features that are compiled into the MUA") },
    { "version", &_version, (M | NOLIST), 0, 0
      DS(413, "Print the MUA version") },
+#if defined HAVE_HISTORY &&\
+      (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
+   { "history", &c_history, (M | RAWLIST), 0, 1
+     DS(431, "Either <show> (default) or <clear> the line editor history") },
+#endif
 #ifdef HAVE_DEBUG
    { "core", core, (M | NOLIST), 0, 0
      DS(414, "Produce a core dump (ouch!)") },
