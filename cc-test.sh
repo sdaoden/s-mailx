@@ -6,12 +6,13 @@ CONF=./conf.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 
-awk=`command -v awk`
-cat=`command -v cat`
-cksum=`command -v cksum`
+awk=${AWK:-`command -v awk`}
+cat=${CAT:-`command -v cat`}
+# TODO cksum not fixated via mk-conf.sh, mk.mk should export variables!!
+cksum=${cksum:-`command -v cksum`}
 MAKE="${MAKE:-`command -v make`}"
-rm=`command -v rm`
-sed=`command -v sed`
+rm=${RM:-`command -v rm`}
+sed=${SED:-`command -v sed`}
 
 ##  --  >8  --  8<  --  ##
 
