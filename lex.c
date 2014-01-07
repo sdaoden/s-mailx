@@ -998,6 +998,7 @@ jleave:
 	if (!sourcing && !inhook && (com->argtype & T) == 0)
 		sawcom = TRU1;
 jleave0:
+   exec_last_comm_error = 0;
 	return 0;
 }
 
