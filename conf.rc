@@ -134,6 +134,9 @@ WANT_DOCSTRINGS=1
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
 WANT_QUOTE_FOLD=1
 
+# A simple form of coloured output can optionally be produced (see manual)
+WANT_COLOUR=1
+
 ## PATHS AND PROGRAMS ##
 
 # General prefix where S-nail should be installed

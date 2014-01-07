@@ -210,6 +210,20 @@ FL int         prout(const char *s, size_t sz, FILE *fp);
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
 
+/* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
+ * we check against *colour-pagers* wether colour is really desirable */
+#ifdef HAVE_COLOUR
+FL void        colour_table_create(char const *pager_used);
+FL void        colour_put(FILE *fp, enum colourspec cs);
+FL void        colour_put_header(FILE *fp, char const *name);
+FL void        colour_reset(FILE *fp);
+FL struct str const * colour_get(enum colourspec cs);
+#else
+# define colour_put(FP,CS)
+# define colour_put_header(FP,N)
+# define colour_reset(FP)
+#endif
+
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);

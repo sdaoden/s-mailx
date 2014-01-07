@@ -15,6 +15,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_SPAM=0
       WANT_DOCSTRINGS=0
       WANT_QUOTE_FOLD=0
+      WANT_COLOUR=0
       ;;
    MEDIUM)
       WANT_SOCKETS=0
@@ -23,6 +24,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
+      WANT_COLOUR=0
       ;;
    NETSEND)
       WANT_IMAP=0
@@ -31,6 +33,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
+      WANT_COLOUR=0
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -1039,11 +1042,13 @@ else
    echo '/* WANT_HISTORY=0 */' >> ${h}
 fi
 
-if wantfeat QUOTE_FOLD &&\
-      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
-   echo '#define HAVE_QUOTE_FOLD' >> ${h}
+if wantfeat SPAM; then
+   echo '#define HAVE_SPAM' >> ${h}
+   if command -v spamc >/dev/null 2>&1; then
+      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+   fi
 else
-   echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
+   echo '/* WANT_SPAM=0 */' >> ${h}
 fi
 
 if wantfeat DOCSTRINGS; then
@@ -1052,13 +1057,17 @@ else
    echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
-if wantfeat SPAM; then
-   echo '#define HAVE_SPAM' >> ${h}
-   if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
-   fi
+if wantfeat QUOTE_FOLD &&\
+      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
+   echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
-   echo '/* WANT_SPAM=0 */' >> ${h}
+   echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
+fi
+
+if wantfeat COLOUR; then
+   echo '#define HAVE_COLOUR' >> ${h}
+else
+   echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
 if wantfeat MD5; then
@@ -1110,6 +1119,7 @@ printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY MANAGEMENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
 
@@ -1208,6 +1218,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
 #endif
+#ifdef HAVE_COLOUR
+: + Coloured message display (simple)
+#endif
 :
 :The following optional features are disabled:
 #ifndef HAVE_ICONV
@@ -1257,6 +1270,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
+#endif
+#ifndef HAVE_COLOUR
+: - Coloured message display (simple)
 #endif
 :
 :Remarks:

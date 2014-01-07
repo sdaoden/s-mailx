@@ -59,6 +59,11 @@
 # include "md5.h"
 #endif
 
+/* Create an ISO 6429 (ECMA-48/ANSI) terminal control escape sequence */
+#ifdef HAVE_COLOUR
+static char *  _colour_iso6429(char const *wish);
+#endif
+
 /* {hold,rele}_all_sigs() */
 static size_t     _alls_depth;
 static sigset_t   _alls_nset, _alls_oset;
@@ -66,6 +71,101 @@ static sigset_t   _alls_nset, _alls_oset;
 /* {hold,rele}_sigs() */
 static size_t     _hold_sigdepth;
 static sigset_t   _hold_nset, _hold_oset;
+
+#ifdef HAVE_COLOUR
+static char *
+_colour_iso6429(char const *wish)
+{
+   char const * const wish_orig = wish;
+   char *xwish, *cp, cfg[3] = {0, 0, 0};
+
+   /* Since we use salloc(), reuse the strcomma() buffer also for the return
+    * value, ensure we have enough room for that */
+   {
+      size_t i = strlen(wish) + 1;
+      xwish = salloc(MAX(i, sizeof("\033[1;30;40m")));
+      memcpy(xwish, wish, i);
+      wish = xwish;
+   }
+
+   /* Iterate over the colour spec */
+   while ((cp = strcomma(&xwish, TRU1)) != NULL) {
+      char *y, *x = strchr(cp, '=');
+      if (x == NULL) {
+jbail:
+         fprintf(stderr, tr(527,
+            "Invalid colour specification \"%s\": >>> %s <<<\n"),
+            wish_orig, cp);
+         continue;
+      }
+      *x++ = '\0';
+
+      /* TODO convert the ft/fg/bg parser into a table-based one! */
+      if (!asccasecmp(cp, "ft")) {
+         if (!asccasecmp(x, "bold"))
+            cfg[0] = '1';
+         else if (!asccasecmp(x, "inverse"))
+            cfg[0] = '7';
+         else if (!asccasecmp(x, "underline"))
+            cfg[0] = '4';
+         else
+            goto jbail;
+      } else if (!asccasecmp(cp, "fg")) {
+         y = cfg + 1;
+         goto jiter_colour;
+      } else if (!asccasecmp(cp, "bg")) {
+         y = cfg + 2;
+jiter_colour:
+         if (!asccasecmp(x, "black"))
+            *y = '0';
+         else if (!asccasecmp(x, "blue"))
+            *y = '4';
+         else if (!asccasecmp(x, "green"))
+            *y = '2';
+         else if (!asccasecmp(x, "red"))
+            *y = '1';
+         else if (!asccasecmp(x, "brown"))
+            *y = '3';
+         else if (!asccasecmp(x, "magenta"))
+            *y = '5';
+         else if (!asccasecmp(x, "cyan"))
+            *y = '6';
+         else if (!asccasecmp(x, "white"))
+            *y = '7';
+         else
+            goto jbail;
+      } else
+         goto jbail;
+   }
+
+   /* Restore our salloc() buffer, create return value */
+   xwish = UNCONST(wish);
+   if (cfg[0] || cfg[1] || cfg[2]) {
+      xwish[0] = '\033';
+      xwish[1] = '[';
+      xwish += 2;
+      if (cfg[0])
+         *xwish++ = cfg[0];
+      if (cfg[1]) {
+         if (cfg[0])
+            *xwish++ = ';';
+         xwish[0] = '3';
+         xwish[1] = cfg[1];
+         xwish += 2;
+      }
+      if (cfg[2]) {
+         if (cfg[0] || cfg[1])
+            *xwish++ = ';';
+         xwish[0] = '4';
+         xwish[1] = cfg[2];
+         xwish += 2;
+      }
+      *xwish++ = 'm';
+   }
+   *xwish = '\0';
+   return UNCONST(wish);
+}
+#endif /* HAVE_COLOUR */
 
 FL void
 panic(char const *format, ...)
@@ -890,6 +990,145 @@ putuc(int u, int c, FILE *fp)
 		rv = (putc(c, fp) != EOF);
 	return rv;
 }
+
+#ifdef HAVE_COLOUR
+FL void
+colour_table_create(char const *pager_used)
+{
+   union {char *cp; char const *ccp; void *vp; struct colour_table *ctp;} u;
+   size_t i;
+   struct colour_table *ct;
+
+   if (ok_blook(colour_disable))
+      goto jleave;
+
+   /* If pager, check wether it is allowed to use colour */
+   if (pager_used != NULL) {
+      char *pager;
+
+      if ((u.cp = ok_vlook(colour_pagers)) == NULL)
+         u.ccp = COLOUR_PAGERS;
+      pager = savestr(u.cp);
+
+      while ((u.cp = strcomma(&pager, TRU1)) != NULL)
+         if (strstr(pager_used, u.cp) != NULL)
+            goto jok;
+      goto jleave;
+   }
+
+   /* $TERM is different in that we default to false unless whitelisted */
+   {
+      char *term, *okterms;
+
+      /* Don't use getenv(), but force copy-in into our own tables.. */
+      if ((term = _var_voklook("TERM")) == NULL)
+         goto jleave;
+      if ((okterms = ok_vlook(colour_terms)) == NULL)
+         okterms = UNCONST(COLOUR_TERMS);
+      okterms = savestr(okterms);
+
+      i = strlen(term);
+      while ((u.cp = strcomma(&okterms, TRU1)) != NULL)
+         if (!strncmp(u.cp, term, i))
+            goto jok;
+      goto jleave;
+   }
+
+jok:
+   colour_table = ct = salloc(sizeof *ct); /* XXX lex.c yet resets (FILTER!) */
+   {  static struct {
+         enum okeys        okey;
+         enum colourspec   cspec;
+         char const        *defval;
+      } const map[] = {
+         {ok_v_colour_msginfo,  COLOURSPEC_MSGINFO,  COLOUR_MSGINFO},
+         {ok_v_colour_partinfo, COLOURSPEC_PARTINFO, COLOUR_PARTINFO},
+         {ok_v_colour_from_,    COLOURSPEC_FROM_,    COLOUR_FROM_},
+         {ok_v_colour_header,   COLOURSPEC_HEADER,   COLOUR_HEADER},
+         {ok_v_colour_uheader,  COLOURSPEC_UHEADER,  COLOUR_UHEADER}
+      };
+
+      for (i = 0; i < NELEM(map); ++i) {
+         if ((u.cp = _var_oklook(map[i].okey)) == NULL)
+            u.ccp = map[i].defval;
+         u.cp = _colour_iso6429(u.ccp);
+         ct->ct_csinfo[map[i].cspec].l = strlen(u.cp);
+         ct->ct_csinfo[map[i].cspec].s = u.cp;
+      }
+   }
+   ct->ct_csinfo[COLOURSPEC_RESET].l = sizeof("\033[0m") - 1;
+   ct->ct_csinfo[COLOURSPEC_RESET].s = UNCONST("\033[0m");
+
+   if ((u.cp = ok_vlook(colour_user_headers)) == NULL)
+      u.ccp = COLOUR_USER_HEADERS;
+   ct->ct_csinfo[COLOURSPEC_RESET + 1].l = i = strlen(u.ccp);
+   ct->ct_csinfo[COLOURSPEC_RESET + 1].s = (i == 0) ? NULL : savestr(u.ccp);
+jleave:
+   ;
+}
+
+FL void
+colour_put(FILE *fp, enum colourspec cs)
+{
+   if (colour_table != NULL) {
+      struct str const *cp = colour_get(cs);
+
+      fwrite(cp->s, cp->l, 1, fp);
+   }
+}
+
+FL void
+colour_put_header(FILE *fp, char const *name)
+{
+   enum colourspec cs = COLOURSPEC_HEADER;
+   struct str const *uheads;
+   char *cp, *cp_base, *x;
+   size_t namelen;
+
+   if (colour_table == NULL)
+      goto j_leave;
+   /* Normal header colours if there are no user headers */
+   uheads = colour_table->ct_csinfo + COLOURSPEC_RESET + 1;
+   if (uheads->s == NULL)
+      goto jleave;
+
+   /* Iterate over all entries in the *colour-user-headers* list */
+   cp = ac_alloc(uheads->l + 1);
+   memcpy(cp, uheads->s, uheads->l + 1);
+   cp_base = cp;
+   namelen = strlen(name);
+   while ((x = strcomma(&cp, TRU1)) != NULL) {
+      size_t l = (cp != NULL) ? PTR2SIZE(cp - x) - 1 : strlen(x);
+      if (l == namelen && !ascncasecmp(x, name, namelen)) {
+         cs = COLOURSPEC_UHEADER;
+         break;
+      }
+   }
+   ac_free(cp_base);
+jleave:
+   colour_put(fp, cs);
+j_leave:
+   ;
+}
+
+FL void
+colour_reset(FILE *fp)
+{
+   if (colour_table != NULL)
+      fwrite("\033[0m", 4, 1, fp);
+}
+
+FL struct str const *
+colour_get(enum colourspec cs)
+{
+   struct str const *rv = NULL;
+
+   if (colour_table != NULL)
+      if ((rv = colour_table->ct_csinfo + cs)->s == NULL)
+         rv = NULL;
+   return rv;
+}
+#endif /* HAVE_COLOUR */
 
 FL void
 time_current_update(struct time_current *tc, bool_t full_update)
