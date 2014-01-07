@@ -285,7 +285,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 		if (*linesize <= LINESIZE || n >= *linesize - 128) {
 			*linesize += ((*line == NULL)
 				? LINESIZE + n + 1 : 256);
-			*line = (srealloc_safe)(*line, *linesize
+			*line = (srealloc)(*line, *linesize
 					SMALLOC_DEBUG_ARGSCALL);
 		}
 		c = getc(fp);
@@ -325,7 +325,7 @@ FL char *
 		return _fgetline_byone(line, linesize, llen, fp, appendnl, 0
 			SMALLOC_DEBUG_ARGSCALL);
 	if (*line == NULL || *linesize < LINESIZE)
-		*line = (srealloc_safe)(*line, *linesize = LINESIZE
+		*line = (srealloc)(*line, *linesize = LINESIZE
 				SMALLOC_DEBUG_ARGSCALL);
 	sz = *linesize <= *cnt ? *linesize : *cnt + 1;
 	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
@@ -337,7 +337,7 @@ FL char *
 	i_llen = _length_of_line(*line, sz);
 	*cnt -= i_llen;
 	while ((*line)[i_llen - 1] != '\n') {
-		*line = (srealloc_safe)(*line, *linesize += 256
+		*line = (srealloc)(*line, *linesize += 256
 				SMALLOC_DEBUG_ARGSCALL);
 		sz = *linesize - i_llen;
 		sz = (sz <= *cnt ? sz : *cnt + 1);
@@ -377,7 +377,7 @@ FL int
 			if (*linesize <= LINESIZE || n >= *linesize - 128) {
 				*linesize += ((*linebuf == NULL)
 					? LINESIZE + n + 1 : 256);
-				*linebuf = (srealloc_safe)(*linebuf, *linesize
+				*linebuf = (srealloc)(*linebuf, *linesize
 						SMALLOC_DEBUG_ARGSCALL);
 			}
 again:
@@ -485,7 +485,7 @@ readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
 		slen = (string != NULL) ? strlen(string) : 0;
 		if (slen) {
 			linesize = slen + LINESIZE + 1;
-			linebuf = smalloc_safe(linesize);
+			linebuf = smalloc(linesize);
 			if (slen)
 				memcpy(linebuf, string, slen + 1);
 		}

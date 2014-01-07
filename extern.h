@@ -228,7 +228,7 @@ FL struct str const * colour_get(enum colourspec cs);
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
 
-/* Memory allocation routines; the _safe versions temporarily block signals */
+/* Memory allocation routines */
 #ifdef HAVE_DEBUG
 # define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
 # define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
@@ -237,11 +237,6 @@ FL void        time_current_update(struct time_current *tc,
 # define SMALLOC_DEBUG_ARGSCALL
 #endif
 
-FL void *      smalloc_safe(size_t s SMALLOC_DEBUG_ARGS);
-FL void *      srealloc_safe(void *v, size_t s SMALLOC_DEBUG_ARGS);
-#ifdef notyet
-FL void *      scalloc_safe(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
-#endif
 FL void *      smalloc(size_t s SMALLOC_DEBUG_ARGS);
 FL void *      srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
 FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
@@ -257,9 +252,6 @@ FL int         smemtrace(void *v);
 FL bool_t      _smemcheck(char const *file, int line);
 # endif
 
-# define smalloc_safe(SZ)        smalloc_safe(SZ, __FILE__, __LINE__)
-# define srealloc_safe(P,SZ)     srealloc_safe(P, SZ, __FILE__, __LINE__)
-# define scalloc_safe(N,SZ)      scalloc_safe(N, SZ, __FILE__, __LINE__)
 # define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
 # define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
 # define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)

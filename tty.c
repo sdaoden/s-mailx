@@ -811,7 +811,7 @@ _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
       i <<= 1;
       *l->x_bufsize = i;
       l->line.cbuf =
-      *l->x_buf = (srealloc_safe)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
+      *l->x_buf = (srealloc)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
    }
 }
 
