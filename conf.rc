@@ -25,7 +25,10 @@
 # Note: it is possible to add to the detected values by setting ADDCFLAGS="xy"
 # and/or ADDLDFLAGS="xy" -- "configuration-has-changed" detection will work on
 # the final $CC / $CFLAGS / $LDFLAGS, and thus will include those additions
-WANT_AUTOCC=0
+# Thus: set this to 0 and use your normal $CC / $CFLAGS / $LDFLAGS, set this to
+# 1 and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
+# Whatever you do, the configuration is fixated and updates will force rebuilds
+WANT_AUTOCC=1
 
 # It is possible to compile S-nail as a "single-source", meaning that all
 # source files are injected into a single compilation unit, which is then
