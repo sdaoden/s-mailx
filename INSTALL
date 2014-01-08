@@ -107,6 +107,30 @@ Also, i'm (compile) testing manually with WANT_AUTOCC=1, WANT_DEBUG=[01]
 and WANT_AMALGAMATION=[01] (and WANT_GSSAPI=1), which is what is
 reflected by the following statements.
 
+. All 32-bit systems:
+  - There _may_ be warnings about format strings, like, e.g.,
+
+      auxlily.c:1610:10: warning: format '%lu' expects type 'long
+      unsigned int', but argument 3 has type 'size_t'
+
+    This is ugly, but it has been decided to keep the S-nail codebase
+    ISO C89 compatible, which means that there are no usable language
+    hints for format strings.  However, `nail.h' tries hard to detect
+    the real type sizes and ends up in a way that should ensure that the
+    actually expected datatype is of the same size in reality:
+
+/* XXX Note we don't really deal with that the right way in that we pass size_t
+ * XXX arguments without casting; should do, because above we assert UINT_MAX
+ * XXX is indeed ui32_t */
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define ZFMT           "zu"
+#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
+# define ZFMT           "u"
+#endif
+#ifndef ZFMT
+# define ZFMT           "lu"
+#endif
+
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun
   7 16:33:36 PDT 2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
@@ -127,9 +151,20 @@ reflected by the following statements.
     + Note: warnings on unused results, just ignore (for now).
 
 . NetBSD <https://www.netbsd.org/>
+  NetBSD 6.99.28 NetBSD 6.99.28 (GENERIC) #0: Fri Jan  3 05:24:46 UTC
+  2014 i386
+  - gcc (NetBSD nb1 20120916) 4.5.4
+    + Warnings on format strings -- as above.
+    + Note: i think faulty message on longjmp() clobbering (on
+      a variable that is 'const').
+    + Note: with WANT_AMALGAMATION there are many warnings on 'signed
+      overflow', all referring to the same code, and i think it's wrong.
+
   NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
   2013 amd64.
   - gcc (NetBSD nb1 20120916) 4.5.4.
+    + Note: i think faulty message on longjmp() clobbering (on
+      a variable that is 'const'.
     + Note: with WANT_AMALGAMATION there are many warnings on 'signed
       overflow', all referring to the same code, and i think it's wrong.
 
