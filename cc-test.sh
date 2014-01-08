@@ -71,6 +71,7 @@ cc_all_configs() {
       printf "\n\n##########\n$c\n"
       printf "\n\n##########\n$c\n" >&2
       sh -c "${MAKE} ${c}"
+      t_all
       ${MAKE} distclean
    done
 }
@@ -219,17 +220,18 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    ${rm} -f "${BODY}" "${MBOX}"
 }
 
+t_all() {
+   t_behave
+   t_content
+}
+
 if [ -z "${CHECK_ONLY}" ]; then
    cc_all_configs
-   printf "\n\n######## STARTING TESTS ########\n\n"
-   "${MAKE}" devel
+else
+   t_all
 fi
 
-t_behave
-t_content
-
 [ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
-[ -n "${CHECK_ONLY}" ] || "${MAKE}" distclean
 
 exit ${ESTAT}
 # vim:set fenc=utf8:s-it-mode
