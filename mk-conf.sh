@@ -70,6 +70,7 @@ compiler_flags() {
    _CFLAGS=
 
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
+   optim= dbgoptim=
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
       _CFLAGS=
       if { CC="`command -v clang`"; }; then
@@ -77,7 +78,7 @@ compiler_flags() {
       elif { CC="`command -v gcc`"; }; then
          :
       elif { CC="`command -v c89`"; }; then
-         [ "${i}" = UnixWare ] && _CFLAGS='-v -O'
+         [ "${i}" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
       elif { CC="`command -v c99`"; }; then
          :
       else
@@ -94,8 +95,9 @@ compiler_flags() {
    stackprot=no
    if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
+      optim=-O2 dbgoptim=-O
       stackprot=yes
-      _CFLAGS='-std=c89 -O2'
+      _CFLAGS='-std=c89'
       _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
@@ -115,15 +117,16 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      stackprot=yes
-#      _CFLAGS='-std=c89 -O3 -g -Weverything -Wno-long-long'
-   elif [ -z "${_CFLAGS}" ]; then
-      _CFLAGS=-O1
+#      optim=-O3 dbgoptim=-O
+#      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
+   elif [ -z "${optim}" ]; then
+      optim=-O1 dbgoptim=-O
    fi
 
    if nwantfeat DEBUG; then
-      _CFLAGS="${_CFLAGS} -DNDEBUG"
+      _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
-      _CFLAGS="${_CFLAGS} -g";
+      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
       if [ "${stackprot}" = yes ]; then
          _CFLAGS="${_CFLAGS} -fstack-protector-all "
             _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
