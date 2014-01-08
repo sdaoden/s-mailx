@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jan 07, 2014
+.Dd Jan 08, 2014
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -2224,6 +2224,10 @@ Read the named file into the message.
 Cause the named string to become the current subject field.
 .It Ic ~t Ar name ...
 Add the given name(s) to the direct recipient list.
+.It Ic ~u Ar messages
+Like `~f', but exclude all message headers.
+.It Ic ~U Ar messages
+Like `~m', but exclude all message headers.
 .It Ic ~v
 Invoke an alternate editor (defined by the
 .Va VISUAL

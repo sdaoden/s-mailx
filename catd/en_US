@@ -353,11 +353,13 @@ $ ~? output is splitted due to compiler limits
 ~M messages    Same as ~m, but keep all header lines\n\
 ~s subject     Set subject\n\
 ~t users       Add users to to list\n\
-~v             Invoke display editor on message\n\
+~u messages    Same as ~f, but without any headers\n\
+~U messages    Same as ~m, but without any headers\n
+
+302 ~v             Invoke display editor on message\n\
 ~w file        Write message onto file\n\
 ~x             Abort message composition and discard text written so far\n
-
-302 ~!command      Invoke the shell\n\
+~!command      Invoke the shell\n\
 ~:command      Execute a regular command\n\
 -----------------------------------------------------------\n
 

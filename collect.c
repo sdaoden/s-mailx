@@ -672,6 +672,8 @@ jcont:
 		case 'M':
 		case 'f':
 		case 'F':
+		case 'u':
+		case 'U':
 			/*
 			 * Interpolate the named messages, if we
 			 * are in receiving mail mode.  Does the
@@ -731,10 +733,12 @@ jcont:
 "~M messages    Same as ~m, but keep all header lines\n"
 "~s subject     Set subject\n"
 "~t users       Add users to to list\n"
+"~u messages    Same as ~f, but without any headers\n"
+"~U messages    Same as ~m, but without any headers\n"));
+			(void)puts(tr(302,
 "~v             Invoke display editor on message\n"
 "~w file        Write message onto file\n"
-"~x             Abort message composition and discard text written so far\n"));
-			(void)puts(tr(302,
+"~x             Abort message composition and discard text written so far\n"
 "~!command      Invoke the shell\n"
 "~:command      Execute a regular command\n"
 "-----------------------------------------------------------\n"));
@@ -951,12 +955,17 @@ forward(char *ms, FILE *fp, int f)
 		}
 		msgvec[1] = 0;
 	}
-	if (f == 'f' || f == 'F')
+
+	if (f == 'f' || f == 'F' || f == 'u')
 		tabst = NULL;
 	else if ((tabst = ok_vlook(indentprefix)) == NULL)
 		tabst = "\t";
-	ig = upperchar(f) ? (struct ignoretab *)NULL : ignore;
-	action = upperchar(f) ? SEND_QUOTE_ALL : SEND_QUOTE;
+	if (f == 'u' || f == 'U')
+		ig = allignore;
+	else
+		ig = upperchar(f) ? (struct ignoretab*)NULL : ignore;
+	action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
+
 	printf(tr(69, "Interpolating:"));
 	for (; *msgvec != 0; msgvec++) {
 		struct message *mp = message + *msgvec - 1;
