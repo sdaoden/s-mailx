@@ -254,14 +254,15 @@ printf "CC = ${CC}\n" >> ${newmk}
 printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
 printf "AWK = ${awk}\nCMP = ${cmp}\nCHMOD = ${chmod}\nCP = ${cp}\n" >> ${newmk}
-printf "MKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" >> ${newmk}
+printf "GREP = ${grep}\nMKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" \
+   >> ${newmk}
 printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
 # (We include the cc(1)/ld(1) environment only for update detection..)
 printf "CC=\"${CC}\"\n" >> ${newlst}
 printf "_CFLAGS=\"${_CFLAGS}\"\nCFLAGS=\"${CFLAGS}\"\n" >> ${newlst}
 printf "_LDFLAGS=\"${_LDFLAGS}\"\nLDFLAGS=\"${LDFLAGS}\"\n" >> ${newlst}
 printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
-printf "MKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
 printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then

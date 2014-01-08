@@ -156,7 +156,7 @@ _update-version:
 		if [ -z "$${VERSION}" ]; then \
 			VERSION="`$(SED) -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
 				version.h`";\
-			echo "$${VERSION}" | grep -q -F dirty ||\
+			echo "$${VERSION}" | $(GREP) -q -F dirty ||\
 				VERSION="$${VERSION}-dirty";\
 		fi;\
 	fi;\
