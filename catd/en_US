@@ -244,7 +244,7 @@ $set 1
 234 $ or $
 235 The -R option is meaningless in send mode.\n
 236 `%s' is not a user of this system
-237 The mail file has changed, existing rfc822 attachments became invalid!\n
+237 Mailbox changed: it seems existing rfc822 attachments became invalid!\n
 238 cannot load private key from file %s\n
 239 cannot load certificate from file %s\n
 240 invalid ciphers: %s\n

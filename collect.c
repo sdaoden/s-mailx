@@ -103,15 +103,20 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 			mnlen = strlen(mailname) + 1;
 			mnbuf = ac_alloc(mnlen);
 			memcpy(mnbuf, mailname, mnlen);
+			break;
 		}
 	while ((ap = ap->a_flink) != NULL);
 
 	inhook = 0;
 	execute(linebuf, TRU1, linesize);
 
-	if (mnbuf != NULL && memcmp(mnbuf, mailname, mnlen) != 0)
-		fputs(tr(237, "The mail file has changed, existing rfc822 "
-			"attachments became invalid!\n"), stderr);
+	if (mnbuf != NULL) {
+		if (strncmp(mnbuf, mailname, mnlen))
+			fputs(tr(237, "Mailbox changed: it seems existing "
+				"rfc822 attachments became invalid!\n"),
+				stderr);
+		ac_free(mnbuf);
+	}
 }
 
 static int
