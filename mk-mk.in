@@ -110,7 +110,11 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	};\
 	__stripfile() {\
 		_file=$${1};\
-		if [ -n "$(HAVE_STRIP)" ]; then \
+		if [ "$(WANT_DEBUG)" != 0 ]; then \
+			if [ -n "$(VERBOSE)" ]; then \
+				echo "  \$$ :WANT_DEBUG=1, not strip(1)ing";\
+			fi;\
+		elif [ -n "$(HAVE_STRIP)" ]; then \
 			if [ -n "$(VERBOSE)" ]; then \
 				echo "  \$$ $(STRIP) '$${_file}'";\
 			fi;\
