@@ -990,7 +990,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 #endif
 			obuf = Popen(pager, "w", NULL, 1);
 #ifdef HAVE_SETENV
-			if (cp != NULL)
+			if (cp == NULL)
 				unsetenv("LESS"); /* XXX to Popen() etc.?!! */
 #endif
 			if (obuf == NULL) {
