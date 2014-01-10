@@ -227,12 +227,12 @@ _lex_isolate(char const *comm)
 }
 
 static struct cmd const *
-_lex(char const *comm)
+_lex(char const *comm) /* TODO **command hashtable**! linear list search!!! */
 {
    struct cmd const *cp;
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp)
-      if (is_prefix(comm, cp->name))
+      if (*comm == *cp->name && is_prefix(comm, cp->name))
          goto jleave;
    cp = NULL;
 jleave:
@@ -762,7 +762,7 @@ jrestart:
 	/* Strip the white space away from the beginning of the command */
 	for (cp = linebuf; whitechar(*cp); ++cp)
 		;
-	linesize -= (size_t)(cp - linebuf);
+	linesize -= PTR2SIZE(cp - linebuf);
 
 	/* Ignore comments */
 	if (*cp == '#')
@@ -781,7 +781,7 @@ jrestart:
 	/* Isolate the actual command; since it may not necessarily be
 	 * separated from the arguments (as in `p1') we need to duplicate it to
 	 * be able to create a NUL terminated version.
-	 * We must be aware of special one letter commands here */
+	 * We must be aware of several special one letter commands here */
 	arglist[0] = cp;
 	switch (*cp) {
 	case '|':
@@ -795,7 +795,7 @@ jrestart:
 		cp = _lex_isolate(cp);
 		break;
 	}
-	c = (int)(cp - arglist[0]);
+	c = (int)PTR2SIZE(cp - arglist[0]);
 	linesize -= c;
 	word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
 	memcpy(word, arglist[0], c);
@@ -805,17 +805,24 @@ jrestart:
 	 * Normally, a blank command would map to the first command in the
 	 * table; while sourcing, however, we ignore blank lines to eliminate
 	 * confusion; act just the same for ghosts */
-	if ((sourcing || cg != NULL) && *word == '\0')
-		goto jleave0;
+   if (*word == '\0') {
+	   if (sourcing || cg != NULL)
+		   goto jleave0;
+      com = _cmd_tab + 0;
+      goto jexec;
+   }
 
 	/* If this is the first evaluation, check command ghosts */
 	if (cg == NULL) {
-      /* TODO relink list head, so it's sort over time on usage? */
+      /* TODO relink list head, so it's sorted on usage over time?
+       * TODO in fact, there should be one hashmap over all commands and ghosts
+       * TODO so that the lookup could be made much more efficient than it is
+       * TODO now (two adjacent list searches! */
 		for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
 			if (strcmp(word, cg->name) == 0) {
 				if (linesize > 0) {
 					size_t i = cg->cmd.l;
-					linebuf = salloc(i + 1 + linesize + 1);
+					linebuf = salloc(i + 1 + linesize +1);
 					memcpy(linebuf, cg->cmd.s, i);
 					linebuf[i++] = ' ';
 					memcpy(linebuf + i, cp, linesize);
@@ -829,9 +836,7 @@ jrestart:
 			}
 	}
 
-	if (com == NULL)
-		com = _lex(word);
-	if (com == NULL || com->func == &ccmdnotsupp) {
+   if ((com = _lex(word)) == NULL || com->func == &ccmdnotsupp) {
 		fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
 		if (com != NULL) {
 			ccmdnotsupp(NULL);
@@ -842,6 +847,7 @@ jrestart:
 
 	/* See if we should execute the command -- if a conditional we always
 	 * execute it, otherwise, check the state of cond */
+jexec:
 	if ((com->argtype & F) == 0) {
 		switch (cond_state) {
 		case COND_RCV:

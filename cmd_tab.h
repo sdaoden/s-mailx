@@ -43,6 +43,7 @@
 # define DS(ID,S)
 #endif
 
+   /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", next, (A | NDMLIST), 0, MMNDEL
      DS(355, "Goes to the next message (-list) and prints it") },
    { "alias", group, (M | RAWLIST), 0, 1000
@@ -193,7 +194,7 @@
      DS(328, "Immediate return to the shell without saving") },
    { "pipe", pipecmd, (A | STRLIST), 0, MMNDEL
      DS(359, "Pipe <message-list> to <command>") },
-   { " | ", pipecmd, (A | STRLIST), 0, MMNDEL
+   { "|", pipecmd, (A | STRLIST), 0, MMNDEL
      DS(359, "Pipe <message-list> to <command>") },
    { "Pipe", Pipecmd, (A | STRLIST), 0, MMNDEL
      DS(358, "Like \"pipe\", but pipes all headers and parts") },
