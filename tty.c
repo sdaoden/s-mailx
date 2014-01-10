@@ -74,29 +74,30 @@ do {\
    if ((S) != NULL)\
       S = fexpand(S, FEXP_LOCAL);\
 } while (0)
+
 # define _CL_HISTSIZE(V) \
 do {\
    char const *__sv = ok_vlook(NAIL_HISTSIZE);\
    long __rv;\
-   if (__sv == NULL || *__sv == '\0' ||\
-         (__rv = strtol(__sv, NULL, 10)) == 0)\
+   if (__sv == NULL || *__sv == '\0' || (__rv = strtol(__sv, NULL, 10)) == 0)\
       (V) = HIST_SIZE;\
    else if (__rv < 0)\
       (V) = 0;\
    else\
       (V) = __rv;\
 } while (0)
+
 # define _CL_CHECK_ADDHIST(S,NOACT) \
 do {\
    switch (*(S)) {\
    case '\0':\
    case ' ':\
       NOACT;\
-      /* FALLTHRU */\
    default:\
       break;\
    }\
 } while (0)
+
 # define C_HISTORY_SHARED \
 	char **argv = v;\
 \
@@ -686,6 +687,7 @@ static union xsighdl _ncl_ottou;
 static struct xtios  _ncl_tios;
 # ifdef HAVE_HISTORY
 static struct hist * _ncl_hist;
+static struct hist * _ncl_hist_tail;
 static size_t        _ncl_hist_size;
 static size_t        _ncl_hist_size_max;
 static bool_t        _ncl_hist_load;
@@ -1646,7 +1648,7 @@ tty_destroy(void)
       while (hp->older != NULL && hs-- != 0)
          hp = hp->older;
 
-   hold_all_sigs(); /* too heavy, yet we may jump even here!? */
+   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if (f == NULL)
       goto jdone;
@@ -1715,20 +1717,22 @@ tty_addhist(char const *s)
    size_t l = strlen(s);
    struct hist *h, *o, *y;
 
+   if (_ncl_hist_size_max == 0)
+      goto j_leave;
    _CL_CHECK_ADDHIST(s, goto j_leave);
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
    if (!_ncl_hist_load)
       for (h = _ncl_hist; h != NULL; h = h->older)
-         if (h->len == l && strcmp(h->dat, s) == 0) {
-            hold_all_sigs();
+         if (h->len == l && !strcmp(h->dat, s)) {
+            hold_all_sigs(); /* TODO */
             o = h->older;
             y = h->younger;
-            if (o != NULL) {
-               if ((o->younger = y) == NULL)
-                  _ncl_hist = o;
-            }
+            if (o != NULL)
+               o->younger = y;
+            else
+               _ncl_hist_tail = y;
             if (y != NULL)
                y->older = o;
             else
@@ -1738,20 +1742,25 @@ tty_addhist(char const *s)
    hold_all_sigs();
 
    ++_ncl_hist_size;
-   if (!_ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
+   if (!_ncl_hist_load && _ncl_hist_size > _ncl_hist_size_max) {
       --_ncl_hist_size;
-      (h = _ncl_hist->younger
-         )->older = NULL;
-      free(_ncl_hist);
-      _ncl_hist = h;
+      if ((h = _ncl_hist_tail) != NULL) {
+         if ((_ncl_hist_tail = h->younger) == NULL)
+            _ncl_hist = NULL;
+         else
+            _ncl_hist_tail->older = NULL;
+         free(h);
+      }
    }
 
-   h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l + 1);
+   h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l +1);
    h->len = l;
-   memcpy(h->dat, s, l + 1);
+   memcpy(h->dat, s, l +1);
 jleave:
    if ((h->older = _ncl_hist) != NULL)
       _ncl_hist->younger = h;
+   else
+      _ncl_hist_tail = h;
    h->younger = NULL;
    _ncl_hist = h;
 
@@ -1801,6 +1810,7 @@ jclear: {
 		_ncl_hist = h->older;
 		free(h);
 	}
+   _ncl_hist_tail = NULL;
    _ncl_hist_size = 0;
    }
 	goto jleave;
