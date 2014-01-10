@@ -146,7 +146,7 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 		/* XXX linelen includes LF */
 		if (! ((lines > 0 || part == 0) && linelen > boundlen &&
-				memcmp(line, boundary, boundlen) == 0)) {
+				!strncmp(line, boundary, boundlen))) {
 			++lines;
 			continue;
 		}

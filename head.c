@@ -405,9 +405,9 @@ is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 {
 	char date[FROM_DATEBUF];
 
-	return ((linelen <= 5 || memcmp(linebuf, "From ", 5) != 0 ||
-			! extract_date_from_from_(linebuf, linelen, date) ||
-			! _is_date(date)) ? 0 : 1);
+	return ((linelen <= 5 || strncmp(linebuf, "From ", 5) != 0 ||
+			!extract_date_from_from_(linebuf, linelen, date) ||
+			!_is_date(date)) ? 0 : 1);
 }
 
 FL int

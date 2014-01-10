@@ -683,7 +683,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 		} else if ((ctt & _FROM_) == 0 && curlen < (sl_it)F_SIZEOF) {
 			*f_p++ = (char)c;
 			if (curlen == (sl_it)(F_SIZEOF - 1) &&
-					(size_t)(f_p - f_buf) == F_SIZEOF &&
+					PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
 					memcmp(f_buf, F_, F_SIZEOF) == 0)
 				ctt |= _FROM_;
 		}
