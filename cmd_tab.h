@@ -272,7 +272,7 @@
      DS(389, "Un\"draft\" <message-list>") },
    { "define", &c_define, (M | RAWLIST), 0, 2
      DS(319, "Define a macro") },
-   { "defines", &c_defines, (M | RAWLIST), 0, 0
+   { "defines", &c_defines, (I | M | RAWLIST), 0, 0
      DS(320, "Show all defined macros including their content") },
    { "undef", &c_undef, (M | RAWLIST), 0, 1000
      DS(391, "Un\"define\" all <macros>") },
@@ -356,13 +356,13 @@
      DS(413, "Print the MUA version") },
 #if defined HAVE_HISTORY &&\
       (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
-   { "history", &c_history, (M | RAWLIST), 0, 1
+   { "history", &c_history, (I | M | RAWLIST), 0, 1
      DS(431, "Either <show> (default) or <clear> the line editor history") },
 #endif
 #ifdef HAVE_DEBUG
-   { "sstats", &c_sstats, (M | NOLIST), 0, 0
+   { "sstats", &c_sstats, (I | M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },
-   { "smemtrace", smemtrace, (M | NOLIST), 0, 0
+   { "smemtrace", &smemtrace, (I | M | NOLIST), 0, 0
      DS(417, "Trace current memory usage afap") },
 #endif
    { NULL, NULL, 0, 0, 0 DS(0, "") }
