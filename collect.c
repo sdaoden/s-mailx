@@ -859,7 +859,7 @@ mesedit(int c, struct header *hp)
 	bool_t saved = ok_blook(add_file_recipients);
 	FILE *nf;
 
-	ok_bset(add_file_recipients, FAL0);
+	ok_bset(add_file_recipients, TRU1);
 	nf = run_editor(_coll_fp, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
