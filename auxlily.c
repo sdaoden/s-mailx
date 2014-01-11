@@ -219,9 +219,16 @@ hold_all_sigs(void)
 {
    if (_alls_depth++ == 0) {
       sigfillset(&_alls_nset);
-      sigdelset(&_alls_nset, SIGKILL);
-      sigdelset(&_alls_nset, SIGSTOP);
+      sigdelset(&_alls_nset, SIGABRT);
+#ifdef SIGBUS
+      sigdelset(&_alls_nset, SIGBUS);
+#endif
       sigdelset(&_alls_nset, SIGCHLD);
+      sigdelset(&_alls_nset, SIGFPE);
+      sigdelset(&_alls_nset, SIGILL);
+      sigdelset(&_alls_nset, SIGKILL);
+      sigdelset(&_alls_nset, SIGSEGV);
+      sigdelset(&_alls_nset, SIGSTOP);
       sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
    }
 }
