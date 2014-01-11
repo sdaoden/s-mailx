@@ -286,6 +286,15 @@
 # endif
 #endif
 
+#undef __FUN__
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define __FUN__        __func__
+#elif __PREREQ(3, 4)
+# define __FUN__        __FUNCTION__
+#else
+# define __FUN__        uagent   /* Something that is not a literal */
+#endif
+
 #if defined __predict_true && defined __predict_false
 # define LIKELY(X)      __predict_true(X)
 # define UNLIKELY(X)    __predict_false(X)
