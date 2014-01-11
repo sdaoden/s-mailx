@@ -708,7 +708,7 @@ commands(void)
 		 * and handle end of file specially.
 		 */
 		n = readline_input(LNED_LF_ESC | LNED_HIST_ADD, NULL,
-			&linebuf, &linesize);
+			&linebuf, &linesize, NULL);
 		_reset_on_stop = 0;
 		if (n < 0) {
 				/* eof */

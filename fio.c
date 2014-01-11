@@ -418,8 +418,9 @@ again:
 
 FL int
 (readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
-	size_t *linesize SMALLOC_DEBUG_ARGS)
+	size_t *linesize, char const *string SMALLOC_DEBUG_ARGS)
 {
+	/* TODO readline: linebuf pool! */
 	FILE *ifile = (_input != NULL) ? _input : stdin;
 	bool_t doprompt, dotty;
 	int n;
@@ -434,6 +435,16 @@ FL int
 	for (n = 0;;) {
 		if (dotty) {
 			assert(ifile == stdin);
+			if (string != NULL && (n = (int)strlen(string)) > 0) {
+				if (*linesize > 0)
+					*linesize += n +1;
+				else
+					*linesize = (size_t)n + LINESIZE +1;
+				*linebuf = (srealloc)(*linebuf, *linesize
+					SMALLOC_DEBUG_ARGSCALL);
+				memcpy(*linebuf, string, (size_t)n +1);
+			}
+			string = NULL;
 			n = (tty_readline)(prompt, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
 		} else {
@@ -446,12 +457,10 @@ FL int
 		}
 		if (n <= 0)
 			break;
-		/*
-		 * POSIX says:
+		/* POSIX says:
 		 * An unquoted <backslash> at the end of a command line
 		 * shall be discarded and the next line shall continue the
-		 * command.
-		 */
+		 * command */
 		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
 			if (prompt != NULL && *prompt != '\0')
@@ -466,44 +475,17 @@ FL int
 }
 
 FL char *
-readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
+readstr_input(char const *prompt, char const *string)
 {
-	/* TODO readstr_input(): linebuf pool */
-	size_t linesize = 0, slen;
+	/* FIXME readstr_input: without linepool leaks on sigjmp */
+	size_t linesize = 0;
 	char *linebuf = NULL, *rv = NULL;
-	bool_t doprompt, dotty;
+	int n;
 
-	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && !ok_blook(line_editor_disable));
-	if (!doprompt)
-		prompt = NULL;
-	else if (prompt == NULL)
-		prompt = getprompt();
+	n = readline_input(LNED_NONE, prompt, &linebuf, &linesize, string);
+	if (n > 0)
+		rv = savestrbuf(linebuf, (size_t)n + 1);
 
-	/* If STDIN is not a terminal, simply read from it */
-	if (dotty) {
-		slen = (string != NULL) ? strlen(string) : 0;
-		if (slen) {
-			linesize = slen + LINESIZE + 1;
-			linebuf = smalloc(linesize);
-			if (slen)
-				memcpy(linebuf, string, slen + 1);
-		}
-		if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
-			rv = linebuf;
-	} else {
-		if (prompt != NULL && *prompt != '\0') {
-			fputs(prompt, stdout);
-			fflush(stdout);
-		}
-		linesize = slen = 0;
-		linebuf = NULL;
-		if (readline_restart(stdin, &linebuf, &linesize, slen) >= 0)
-			rv = linebuf;
-	}
-
-	if (rv != NULL)
-		rv = (*rv == '\0') ? NULL : savestr(rv);
 	if (linebuf != NULL)
 		free(linebuf);
 	return rv;

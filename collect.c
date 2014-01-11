@@ -465,7 +465,7 @@ jcont:
 	 */
 	for (;;) {
 		_coll_jmp_p = 1;
-		cnt = readline_input(LNED_NONE, "", &linebuf, &linesize);
+		cnt = readline_input(LNED_NONE, "", &linebuf, &linesize, NULL);
 		_coll_jmp_p = 0;
 
 		if (cnt < 0) {

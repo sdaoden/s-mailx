@@ -448,21 +448,24 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a complete line of input (with editing if possible).
- * If *prompt* is NULL we'll call getprompt() first.
+/* Read a complete line of input, with editing if interactive and possible.
+ * If prompt is NULL we'll call getprompt() first, if necessary.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error */
 FL int         readline_input(enum lned_mode lned, char const *prompt,
-                  char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS);
+                  char **linebuf, size_t *linesize, char const *string
+                  SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
+# define readline_input(A,B,C,D,E) readline_input(A,B,C,D,E,__FILE__,__LINE__)
 #endif
 
-/* Read a line of input (with editing if possible) and return it savestr()d,
- * or NULL in case of errors or if an empty line would be returned.
+/* Read a line of input, with editing if interactive and possible, return it
+ * savestr()d or NULL in case of errors or if an empty line would be returned.
  * This may only be called from toplevel (not during sourcing).
- * If *prompt* is NULL we'll call getprompt().
- * *string* is the default/initial content of the return value (this is
- * "almost" ignored in non-interactive mode for reproducability) */
+ * If prompt is NULL we'll call getprompt() if necessary.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility */
 FL char *      readstr_input(char const *prompt, char const *string);
 
 FL void        setptr(FILE *ibuf, off_t offset);

@@ -147,7 +147,7 @@ getuser(char const *query)
       query = tr(509, "User: ");
 
    if (readline_input(LNED_NONE, query, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize) >= 0)
+         &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
    termios_state_reset();
    return user;
