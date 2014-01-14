@@ -741,15 +741,38 @@ commands(void)
 		sreset(FAL0);
 }
 
-/*
- * Execute a single command.
- * Command functions return 0 for success, 1 for error, and -1
- * for abort.  A 1 or -1 aborts a load or source.  A -1 aborts
- * the interactive command loop.
- * Contxt is non-zero if called while composing mail.
- */
 FL int
 execute(char *linebuf, int contxt, size_t linesize)
+{
+   struct eval_ctx ev;
+#ifdef HAVE_COLOUR
+   struct colour_table *ct_save;
+#endif
+   int rv;
+
+   /* TODO Maybe recursion from within collect.c!  As long as we don't have
+    * TODO a value carrier that transports the entire state of a recursion
+    * TODO we need to save away also the colour table */
+#ifdef HAVE_COLOUR
+   ct_save = colour_table;
+   colour_table = NULL;
+#endif
+
+   memset(&ev, 0, sizeof ev);
+   ev.ev_line.s = linebuf;
+   ev.ev_line.l = linesize;
+   ev.ev_is_recursive = (contxt != 0);
+   rv = evaluate(&ev);
+
+#ifdef HAVE_COLOUR
+   colour_table = ct_save;
+#endif
+
+   return rv;
+}
+
+FL int
+evaluate(struct eval_ctx *evp)
 {
 	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
 	struct cmd_ghost *cg = NULL;
@@ -760,9 +783,9 @@ execute(char *linebuf, int contxt, size_t linesize)
 jrestart:
 
 	/* Strip the white space away from the beginning of the command */
-	for (cp = linebuf; whitechar(*cp); ++cp)
+	for (cp = evp->ev_line.s; whitechar(*cp); ++cp)
 		;
-	linesize -= PTR2SIZE(cp - linebuf);
+	evp->ev_line.l -= PTR2SIZE(cp - evp->ev_line.s);
 
 	/* Ignore comments */
 	if (*cp == '#')
@@ -796,7 +819,7 @@ jrestart:
 		break;
 	}
 	c = (int)PTR2SIZE(cp - arglist[0]);
-	linesize -= c;
+	evp->ev_line.l -= c;
 	word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
 	memcpy(word, arglist[0], c);
 	word[c] = '\0';
@@ -820,17 +843,17 @@ jrestart:
        * TODO now (two adjacent list searches! */
 		for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
 			if (strcmp(word, cg->name) == 0) {
-				if (linesize > 0) {
+				if (evp->ev_line.l > 0) {
 					size_t i = cg->cmd.l;
-					linebuf = salloc(i + 1 + linesize +1);
-					memcpy(linebuf, cg->cmd.s, i);
-					linebuf[i++] = ' ';
-					memcpy(linebuf + i, cp, linesize);
-					linebuf[i += linesize] = '\0';
-					linesize = i;
+					evp->ev_line.s = salloc(i + 1 + evp->ev_line.l +1);
+					memcpy(evp->ev_line.s, cg->cmd.s, i);
+					evp->ev_line.s[i++] = ' ';
+					memcpy(evp->ev_line.s + i, cp, evp->ev_line.l);
+					evp->ev_line.s[i += evp->ev_line.l] = '\0';
+					evp->ev_line.l = i;
 				} else {
-					linebuf = cg->cmd.s;
-					linesize = cg->cmd.l;
+					evp->ev_line.s = cg->cmd.s;
+					evp->ev_line.l = cg->cmd.l;
 				}
 				goto jrestart;
 			}
@@ -848,7 +871,7 @@ jrestart:
 	/* See if we should execute the command -- if a conditional we always
 	 * execute it, otherwise, check the state of cond */
 jexec:
-	if ((com->argtype & F) == 0) {
+	if (!(com->argtype & ARG_F)) {
 		switch (cond_state) {
 		case COND_RCV:
 			if (options & OPT_SENDMODE)
@@ -874,44 +897,41 @@ jexec:
 		}
 	}
 
-	/*
-	 * Process the arguments to the command, depending
-	 * on the type he expects.  Default to an error.
-	 * If we are sourcing an interactive command, it's
-	 * an error.
-	 */
-	if ((options & OPT_SENDMODE) && (com->argtype & M) == 0) {
+	/* Process the arguments to the command, depending on the type he expects.
+	 * Default to an error.
+	 * If we are sourcing an interactive command, it's an error */
+	if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
 		fprintf(stderr, tr(92,
 			"May not execute `%s' while sending\n"),
 			com->name);
 		goto jleave;
 	}
-	if (sourcing && com->argtype & I) {
+	if (sourcing && (com->argtype & ARG_I)) {
 		fprintf(stderr, tr(93,
 			"May not execute `%s' while sourcing\n"),
 			com->name);
 		goto jleave;
 	}
-	if ((mb.mb_perm & MB_DELE) == 0 && com->argtype & W) {
+	if (!(mb.mb_perm & MB_DELE) && (com->argtype & ARG_W)) {
 		fprintf(stderr, tr(94, "May not execute `%s' -- "
 			"message file is read only\n"),
 			com->name);
 		goto jleave;
 	}
-	if (contxt && com->argtype & R) {
+	if (evp->ev_is_recursive && (com->argtype & ARG_R)) {
 		fprintf(stderr, tr(95,
 			"Cannot recursively invoke `%s'\n"), com->name);
 		goto jleave;
 	}
-	if (mb.mb_type == MB_VOID && com->argtype & A) {
+	if (mb.mb_type == MB_VOID && (com->argtype & ARG_A)) {
 		fprintf(stderr, tr(257,
 			"Cannot execute `%s' without active mailbox\n"),
 			com->name);
 		goto jleave;
 	}
 
-	switch (com->argtype & ~(F|P|I|M|T|W|R|A)) {
-	case MSGLIST:
+	switch (com->argtype & ARG_ARGMASK) {
+	case ARG_MSGLIST:
 		/* Message list defaulting to nearest forward legal message */
 		if (_msgvec == 0)
 			goto je96;
@@ -930,7 +950,7 @@ jexec:
 		e = (*com->func)(_msgvec);
 		break;
 
-	case NDMLIST:
+	case ARG_NDMLIST:
 		/* Message list with no defaults, but no error if none exist */
 		if (_msgvec == 0) {
 je96:
@@ -943,20 +963,19 @@ je96:
 		e = (*com->func)(_msgvec);
 		break;
 
-	case STRLIST:
+	case ARG_STRLIST:
 		/* Just the straight string, with leading blanks removed */
 		while (whitechar(*cp))
 			cp++;
 		e = (*com->func)(cp);
 		break;
 
-	case RAWLIST:
-	case ECHOLIST:
+	case ARG_RAWLIST:
+	case ARG_ECHOLIST:
 		/* A vector of strings, in shell style */
-		if ((c = getrawlist(cp, linesize, arglist,
+		if ((c = getrawlist(cp, evp->ev_line.l, arglist,
 				sizeof arglist / sizeof *arglist,
-				(com->argtype&~(F|P|I|M|T|W|R|A)) == ECHOLIST)
-				) < 0)
+				((com->argtype & ARG_ARGMASK) == ARG_ECHOLIST))) < 0)
 			break;
 		if (c < com->minargs) {
 			fprintf(stderr, tr(99,
@@ -973,7 +992,7 @@ je96:
 		e = (*com->func)(arglist);
 		break;
 
-	case NOLIST:
+	case ARG_NOLIST:
 		/* Just the constant zero, for exiting, eg. */
 		e = (*com->func)(0);
 		break;
@@ -993,15 +1012,15 @@ jleave:
 			unstack();
 		return 0;
 	}
-	if (com == (struct cmd*)NULL)
+	if (com == NULL)
 		return 0;
-	if (com->argtype & P && ok_blook(autoprint))
+	if ((com->argtype & ARG_P) && ok_blook(autoprint))
 		if (visible(dot)) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
 		}
-	if (!sourcing && !inhook && (com->argtype & T) == 0)
+	if (!sourcing && !inhook && (com->argtype & ARG_T) == 0)
 		sawcom = TRU1;
 jleave0:
    exec_last_comm_error = 0;

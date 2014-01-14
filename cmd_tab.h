@@ -37,8 +37,25 @@
  * SUCH DAMAGE.
  */
 
+/* Some shorter aliases to be able to define a command in two lines */
+#define MSGLIST      ARG_MSGLIST
+#define STRLIST      ARG_STRLIST
+#define RAWLIST      ARG_RAWLIST
+#define NOLIST       ARG_NOLIST
+#define NDMLIST      ARG_NDMLIST
+#define ECHOLIST     ARG_ECHOLIST
+#define ARG_ARGMASK  ARG_ARGMASK
+#define A            ARG_A
+#define F            ARG_F
+#define I            ARG_I
+#define M            ARG_M
+#define P            ARG_P
+#define R            ARG_R
+#define T            ARG_T
+#define W            ARG_W
+
 #ifdef HAVE_DOCSTRINGS
-# define DS(ID,S)	, ID, S
+# define DS(ID,S)    , ID, S
 #else
 # define DS(ID,S)
 #endif
@@ -366,5 +383,23 @@
      DS(417, "Trace current memory usage afap") },
 #endif
    { NULL, NULL, 0, 0, 0 DS(0, "") }
+
+#undef DS
+
+#undef MSGLIST
+#undef STRLIST
+#undef RAWLIST
+#undef NOLIST
+#undef NDMLIST
+#undef ECHOLIST
+#undef ARG_ARGMASK
+#undef A
+#undef F
+#undef I
+#undef M
+#undef P
+#undef R
+#undef T
+#undef W
 
 /* vim:set fenc=utf-8:s-it-mode */

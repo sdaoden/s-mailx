@@ -652,7 +652,15 @@ FL enum okay   imap_search(const char *spec, int f);
 FL int         setfile(char const *name, int newmail);
 FL int         newmailinfo(int omsgCount);
 FL void        commands(void);
+
+/* Evaluate a single command.
+ * Command functions return 0 for success, 1 for error, and -1 for abort.
+ * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
+FL int         evaluate(struct eval_ctx *evp);
+/* TODO drop execute() is the legacy version of evaluate().
+ * Contxt is non-zero if called while composing mail */
 FL int         execute(char *linebuf, int contxt, size_t linesize);
+
 FL void        setmsize(int sz);
 FL void        onintr(int s);
 FL void        announce(int printheaders);

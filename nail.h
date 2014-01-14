@@ -828,6 +828,11 @@ struct quoteflt {
 #endif
 };
 
+struct eval_ctx {
+   struct str  ev_line;
+   bool_t      ev_is_recursive; /*  */
+};
+
 struct termios_state {
    struct termios ts_tios;
    char        *ts_linebuf;
@@ -1011,20 +1016,22 @@ struct message {
 
 /* Argument types */
 enum argtype {
-   MSGLIST        = 0,        /* Message list type */
-   STRLIST        = 1,        /* A pure string */
-   RAWLIST        = 2,        /* Shell string list */
-   NOLIST         = 3,        /* Just plain 0 */
-   NDMLIST        = 4,        /* Message list, no defaults */
-   ECHOLIST       = 5,        /* Like raw list, but keep quote chars */
-   P              = 040,      /* Autoprint dot after command */
-   I              = 0100,     /* Interactive command bit */
-   M              = 0200,     /* Legal from send mode bit */
-   W              = 0400,     /* Illegal when read only bit */
-   F              = 01000,    /* Is a conditional command */
-   T              = 02000,    /* Is a transparent command */
-   R              = 04000,    /* Cannot be called from collect */
-   A              = 010000    /* Needs an active mailbox */
+   ARG_MSGLIST    = 0,        /* Message list type */
+   ARG_STRLIST    = 1,        /* A pure string */
+   ARG_RAWLIST    = 2,        /* Shell string list */
+   ARG_NOLIST     = 3,        /* Just plain 0 */
+   ARG_NDMLIST    = 4,        /* Message list, no defaults */
+   ARG_ECHOLIST   = 5,        /* Like raw list, but keep quote chars */
+   ARG_ARGMASK    = 7,        /* Mask of the above */
+
+   ARG_A          = 1u<< 4,   /* Needs an active mailbox */
+   ARG_F          = 1u<< 5,   /* Is a conditional command */
+   ARG_I          = 1u<< 6,   /* Interactive command bit */
+   ARG_M          = 1u<< 7,   /* Legal from send mode bit */
+   ARG_P          = 1u<< 8,   /* Autoprint dot after command */
+   ARG_R          = 1u<< 9,   /* Cannot be called from collect / recursion */
+   ARG_T          = 1u<<10,   /* Is a transparent command */
+   ARG_W          = 1u<<11    /* Illegal when read only bit */
 };
 
 enum gfield {
