@@ -2779,9 +2779,6 @@ outgoing message will be sent automatically.
 .It Va autocc
 Specifies a list of recipients to which a carbon copy of each outgoing
 message will be sent automatically.
-.It Va autoinc
-Same as
-.Va newmail .
 .It Va autosort
 Causes sorted mode (see the
 .Ic sort
@@ -4503,8 +4500,8 @@ use of the
 command instead of
 .Ic quit
 will not cause it to be reset, and if the
-.Va autoinc Ns / Ns Va newmail
-variables are unset, messages that arrived during a session will not be
+.Va newmail
+variable is unset, messages that arrived during a session will not be
 in state `new' anymore when the folder is opened again.
 Also if commands queued in disconnected mode are committed,
 the IMAP server will delete the `new' flag for all messages in the

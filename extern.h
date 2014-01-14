@@ -90,7 +90,7 @@ FL int      c_define(void *v);
 FL int      c_undef(void *v);
 FL int      c_call(void *v);
 
-FL int      callhook(char const *name, int newmail);
+FL int      callhook(char const *name, int nmail);
 
 /* List all macros */
 FL int      c_defines(void *v);
@@ -609,7 +609,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx);
-FL int         imap_setfile(const char *xserver, int newmail, int isedit);
+FL int         imap_setfile(const char *xserver, int nmail, int isedit);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -617,7 +617,7 @@ FL void        imap_quit(void);
 FL enum okay   imap_undelete(struct message *m, int n);
 FL enum okay   imap_unread(struct message *m, int n);
 FL int         imap_imap(void *vp);
-FL int         imap_newmail(int autoinc);
+FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
 FL void        imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
@@ -649,8 +649,10 @@ FL char *      imap_unquotestr(const char *s);
 FL enum okay   imap_search(const char *spec, int f);
 
 /* lex.c */
-FL int         setfile(char const *name, int newmail);
+FL int         setfile(char const *name, int nmail);
 FL int         newmailinfo(int omsgCount);
+
+/* Interpret user commands.  If standard input is not a tty, print no prompt */
 FL void        commands(void);
 
 /* Evaluate a single command.
@@ -665,7 +667,7 @@ FL void        setmsize(int sz);
 FL void        onintr(int s);
 FL void        announce(int printheaders);
 FL int         newfileinfo(void);
-FL int         getmdot(int newmail);
+FL int         getmdot(int nmail);
 FL void        initbox(const char *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
@@ -690,7 +692,7 @@ FL void *      zalloc(FILE *fp);
 #endif /* HAVE_IMAP */
 
 /* maildir.c */
-FL int         maildir_setfile(const char *name, int newmail, int isedit);
+FL int         maildir_setfile(const char *name, int nmail, int isedit);
 FL void        maildir_quit(void);
 FL enum okay   maildir_append(const char *name, FILE *fp);
 FL enum okay   maildir_remove(const char *name);
@@ -866,7 +868,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 /* pop3.c */
 #ifdef HAVE_POP3
 FL enum okay   pop3_noop(void);
-FL int         pop3_setfile(const char *server, int newmail, int isedit);
+FL int         pop3_setfile(const char *server, int nmail, int isedit);
 FL enum okay   pop3_header(struct message *m);
 FL enum okay   pop3_body(struct message *m);
 FL void        pop3_quit(void);
