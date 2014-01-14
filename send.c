@@ -479,28 +479,49 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 
 	cnt = mp->m_size;
 	sz = 0;
-	colour_put(obuf, COLOURSPEC_FROM_);
+	{
+	struct str const *cpre, *csuf;
+#ifdef HAVE_COLOUR
+	cpre = colour_get(COLOURSPEC_FROM_);
+	csuf = colour_get(COLOURSPEC_RESET);
+#else
+	cpre = csuf = NULL;
+#endif
 	if (mp->m_flag & MNOFROM) {
 		if (doign != allignore && doign != fwdignore &&
 				action != SEND_RFC822)
-			sz = fprintf(obuf, "%.*sFrom %s %s\n",
+			sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
+					(cpre != NULL ? cpre->s : ""),
 					(int)qf.qf_pfix_len,
 					(qf.qf_pfix_len != 0 ? qf.qf_pfix : ""),
-					fakefrom(mp), fakedate(mp->m_time));
+					fakefrom(mp), fakedate(mp->m_time),
+					(csuf != NULL ? csuf->s : ""));
 	} else {
-		if (qf.qf_pfix_len > 0 && doign != allignore &&
-				doign != fwdignore && action != SEND_RFC822) {
-			i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix,
-				qf.qf_pfix_len, obuf);
-			if (i != qf.qf_pfix_len) {
-				colour_reset(obuf);
-				goto jleave;
+		if (doign != allignore && doign != fwdignore &&
+			action != SEND_RFC822) {
+			if (qf.qf_pfix_len > 0) {
+				i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix,
+					qf.qf_pfix_len, obuf);
+				if (i != qf.qf_pfix_len)
+					goto jleave;
+				sz += i;
 			}
-			sz += i;
+#ifdef HAVE_COLOUR
+			if (cpre != NULL) {
+				fputs(cpre->s, obuf);
+				cpre = (struct str const*)0x1;
+			}
+#endif
 		}
 		while (cnt && (c = getc(ibuf)) != EOF) {
 			if (doign != allignore && doign != fwdignore &&
 					action != SEND_RFC822) {
+#ifdef HAVE_COLOUR
+				if (c == '\n' && csuf != NULL) {
+					cpre = (struct str const*)0x1;
+					fputs(csuf->s, obuf);
+				}
+#endif
 				putc(c, obuf);
 				sz++;
 			}
@@ -508,8 +529,12 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 			if (c == '\n')
 				break;
 		}
+#ifdef HAVE_COLOUR
+		if (csuf != NULL && cpre != (struct str const*)0x1)
+			fputs(csuf->s, obuf);
+#endif
 	}
-	colour_reset(obuf);
+	}
 	if (sz)
 		_addstats(stats, 1, sz);
 
@@ -608,12 +633,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 					isenc |= 1;
 			}
 		} else {
-#ifdef HAVE_COLOUR /* XXX colour handling is yet hacky, should be filter! */
-			if (pipecomm != NULL) {
-				pipecomm = NULL;
-				colour_reset(obuf); /* XXX reset after \n!! */
-			}
-#endif
 			/*
 			 * Pick up the header field if we have one.
 			 */
@@ -724,22 +743,32 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 					--len;
 			}
 #ifdef HAVE_COLOUR
-			if (pipecomm != NULL)
+			{
+			bool_t colour_stripped = FAL0;
+			if (pipecomm != NULL) {
 				colour_put_header(obuf, pipecomm);
+				if (len > 0 && start[len - 1] == '\n') {
+					colour_stripped = TRU1;
+					--len;
+				}
+			}
 #endif
 			_out(start, len, obuf, convert, action, qf, stats,
 				NULL);
+#ifdef HAVE_COLOUR
+			if (pipecomm != NULL) {
+				colour_reset(obuf); /* XXX reset after \n!! */
+				if (colour_stripped)
+					fputc('\n', obuf);
+			}
+			}
+#endif
 			if (ferror(obuf)) {
 				free(line);
 				return -1;
 			}
 		}
 	}
-#ifdef HAVE_COLOUR
-	pipecomm = NULL;
-	if (infld)
-		colour_reset(obuf); /* XXX reset after \n!! */
-#endif
 	quoteflt_flush(qf);
 	free(line);
 	line = NULL;
