@@ -491,12 +491,6 @@ enum fexp_mode {
    FEXP_MULTIOK   = 1<<4      /* Expansion to many entries is ok */
 };
 
-enum lned_mode {
-   LNED_NONE,
-   LNED_LF_ESC    = 1<<0,     /* LF can be backslash escaped */
-   LNED_HIST_ADD  = 1<<1      /* Add completed line to history */
-};
-
 /* <0 means "stop" unless *prompt* extensions are enabled. */
 enum prompt_exp {
    PROMPT_STOP    = -1,       /* \c */

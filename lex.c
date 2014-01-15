@@ -685,8 +685,7 @@ commands(void)
       }
 
       /* Read a line of commands and handle end of file specially */
-      n = readline_input(LNED_LF_ESC | LNED_HIST_ADD, NULL,
-            &ev.ev_line.s, &ev.ev_line.l, NULL);
+      n = readline_input(NULL, TRU1, &ev.ev_line.s, &ev.ev_line.l, NULL);
       _reset_on_stop = 0;
       if (n < 0) {
          /* EOF */

@@ -417,7 +417,7 @@ again:
 }
 
 FL int
-(readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
+(readline_input)(char const *prompt, bool_t nl_escape, char **linebuf,
 	size_t *linesize, char const *string SMALLOC_DEBUG_ARGS)
 {
 	/* TODO readline: linebuf pool! */
@@ -458,17 +458,14 @@ FL int
 		if (n <= 0)
 			break;
 		/* POSIX says:
-		 * An unquoted <backslash> at the end of a command line
-		 * shall be discarded and the next line shall continue the
-		 * command */
-		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
+		 * An unquoted <backslash> at the end of a command line shall
+		 * be discarded and the next line shall continue the command */
+		if (nl_escape && (*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
 			if (prompt != NULL && *prompt != '\0')
 				prompt = ".. "; /* XXX PS2 .. */
 			continue;
 		}
-		if (dotty && (lned & LNED_HIST_ADD))
-			tty_addhist(*linebuf);
 		break;
 	}
 	return n;
@@ -482,7 +479,7 @@ readstr_input(char const *prompt, char const *string)
 	char *linebuf = NULL, *rv = NULL;
 	int n;
 
-	n = readline_input(LNED_NONE, prompt, &linebuf, &linesize, string);
+	n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
 	if (n > 0)
 		rv = savestrbuf(linebuf, (size_t)n + 1);
 

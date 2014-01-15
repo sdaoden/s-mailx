@@ -450,10 +450,11 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 
 /* Read a complete line of input, with editing if interactive and possible.
  * If prompt is NULL we'll call getprompt() first, if necessary.
+ * nl_escape defines wether user can escape newlines via backslash (POSIX).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error */
-FL int         readline_input(enum lned_mode lned, char const *prompt,
+FL int         readline_input(char const *prompt, bool_t nl_escape,
                   char **linebuf, size_t *linesize, char const *string
                   SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
