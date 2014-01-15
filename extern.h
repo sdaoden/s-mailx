@@ -657,6 +657,7 @@ FL int         newmailinfo(int omsgCount);
 FL void        commands(void);
 
 /* Evaluate a single command.
+ * .ev_add_history and .ev_new_content will be updated upon success.
  * Command functions return 0 for success, 1 for error, and -1 for abort.
  * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
 FL int         evaluate(struct eval_ctx *evp);

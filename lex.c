@@ -611,7 +611,7 @@ newmailinfo(int omsgCount)
 FL void
 commands(void)
 {
-   struct eval_ctx ev = {{NULL, 0}, FAL0};
+   struct eval_ctx ev;
    int n;
 
    if (!sourcing) {
@@ -627,6 +627,8 @@ commands(void)
    }
    _oldpipe = safe_signal(SIGPIPE, SIG_IGN);
    safe_signal(SIGPIPE, _oldpipe);
+
+   memset(&ev, 0, sizeof ev);
 
    setexit();
    for (;;) {
@@ -658,6 +660,7 @@ commands(void)
                }
             }
          }
+
          _reset_on_stop = 1;
          exit_status = 0;
       }
@@ -685,7 +688,9 @@ commands(void)
       }
 
       /* Read a line of commands and handle end of file specially */
-      n = readline_input(NULL, TRU1, &ev.ev_line.s, &ev.ev_line.l, NULL);
+jreadline:
+      n = readline_input(NULL, TRU1, &ev.ev_line.s, &ev.ev_line.l,
+            ev.ev_new_content);
       _reset_on_stop = 0;
       if (n < 0) {
          /* EOF */
@@ -708,6 +713,12 @@ commands(void)
       if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
             ok_blook(batch_exit_on_error))
          break;
+      if (!sourcing && (options & OPT_INTERACTIVE)) {
+         if (ev.ev_new_content != NULL)
+            goto jreadline;
+         if (ev.ev_add_history)
+            tty_addhist(ev.ev_line.s);
+      }
    }
 
    if (ev.ev_line.s != NULL)
@@ -755,7 +766,9 @@ evaluate(struct eval_ctx *evp)
    struct cmd const *com = NULL;
    int muvec[2], c, e = 1;
 
-   line = evp->ev_line; /* XXX don't change original */
+   line = evp->ev_line; /* XXX don't change original (buffer pointer) */
+   evp->ev_add_history = FAL0;
+   evp->ev_new_content = NULL;
 
    /* Command ghosts that refer to shell commands or macro expansion restart */
 jrestart:
@@ -919,7 +932,7 @@ jexec:
             _msgvec[1] = 0;
       }
       if (*_msgvec == 0) {
-         if (! inhook)
+         if (!inhook)
             printf(tr(97, "No applicable messages\n"));
          break;
       }
@@ -976,10 +989,8 @@ je96:
    if (e == 0 && (com->argtype & ARG_V) &&
          (cp = temporary_arg_v_store) != NULL) {
       temporary_arg_v_store = NULL;
-      line.l = strlen(cp);
-      line.s = savestrbuf(cp, line.l +1);
-      cg = NULL;
-      goto jrestart;
+      evp->ev_new_content = cp;
+      goto jleave0;
    }
 
 jleave:

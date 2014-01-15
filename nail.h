@@ -824,7 +824,10 @@ struct quoteflt {
 
 struct eval_ctx {
    struct str  ev_line;
-   bool_t      ev_is_recursive; /*  */
+   bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
+   ui8_t       __dummy[6];
+   bool_t      ev_add_history;   /* Enter (final) command in history? */
+   char const  *ev_new_content;  /* History: reenter line, start with this */
 };
 
 struct termios_state {
@@ -1025,7 +1028,7 @@ enum argtype {
    ARG_P          = 1u<< 8,   /* Autoprint dot after command */
    ARG_R          = 1u<< 9,   /* Cannot be called from collect / recursion */
    ARG_T          = 1u<<10,   /* Is a transparent command */
-   ARG_V          = 1u<<11,   /* Returns additional value in argv[0] */
+   ARG_V          = 1u<<11,   /* Places data in temporary_arg_v_store */
    ARG_W          = 1u<<12    /* Illegal when read only bit */
 };
 
