@@ -805,12 +805,9 @@ jusage:
       load(SYSCONFRC);
    /* *expand() returns a savestr(), but load only uses the file name for
     * fopen(), so it's safe to do this */
-   if ((cp = getenv("MAILRC")) != NULL)
-      load(file_expand(cp));
-   else if ((cp = getenv("NAILRC")) != NULL)
-      load(file_expand(cp));
-   else
-      load(file_expand(MAILRC));
+   if ((cp = getenv("MAILRC")) == NULL && (cp = getenv("NAILRC")) == NULL)
+      cp = UNCONST(MAILRC);
+   load(file_expand(cp));
    if (getenv("NAIL_EXTRA_RC") == NULL &&
          (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
