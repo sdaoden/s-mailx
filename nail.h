@@ -1378,6 +1378,7 @@ VL int         inhook;              /* Currently executing a hook */
 VL bool_t      exec_last_comm_error; /* Last execute() command failed */
 VL bool_t      edit;                /* Indicates editing a file */
 VL bool_t      did_print_dot;       /* Current message has been printed */
+VL bool_t      list_saw_numbers;    /* Last *LIST saw numerics */
 VL bool_t      msglist_is_single;   /* Last NDMLIST/MSGLIST chose 1 msg */
 VL bool_t      loading;             /* Loading user definitions */
 VL bool_t      sourcing;            /* Currently reading variant file */

@@ -83,7 +83,9 @@ getmsglist(char *buf, int *vector, int flags)
 	struct message *mp;
 	int	mc;
 
+	list_saw_numbers =
 	msglist_is_single = FAL0;
+
 	if (msgCount == 0) {
 		*vector = 0;
 		return 0;
@@ -226,6 +228,7 @@ number:
 				printf(tr(112, "No numbers mixed with *\n"));
 				markall_ret(-1)
 			}
+			list_saw_numbers = TRU1;
 			mc++;
 			other++;
 			if (beg != 0) {
@@ -402,6 +405,7 @@ number:
 			break;
 
 		case TERROR:
+			list_saw_numbers = TRU1;
 			msglist_is_single = FAL0;
 			markall_ret(-1)
 		}
@@ -617,6 +621,8 @@ getrawlist(const char *line, size_t linesize, char **argv, int argc,
 	const char	*cp;
 	int argn;
 	char *linebuf;
+
+	list_saw_numbers = FAL0;
 
 	argn = 0;
 	cp = line;
