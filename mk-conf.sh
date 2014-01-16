@@ -1049,6 +1049,7 @@ else
    echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
 fi
 
+# Generic have-a-command-line-editor switch for those who need it below
 if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
       [ -n "${have_readline}" ]; then
    have_cle=1

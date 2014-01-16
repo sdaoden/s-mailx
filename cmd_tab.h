@@ -373,8 +373,7 @@
      DS(429, "Show features that are compiled into the MUA") },
    { "version", &_version, (M | NOLIST), 0, 0
      DS(413, "Print the MUA version") },
-#if defined HAVE_HISTORY &&\
-      (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
+#ifdef HAVE_HISTORY
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(431, "<show> (default), <clear> or select <NO> from editor history") },
 #endif
