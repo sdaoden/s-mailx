@@ -47,6 +47,7 @@
 #define ARG_ARGMASK  ARG_ARGMASK
 #define A            ARG_A
 #define F            ARG_F
+#define H            ARG_H
 #define I            ARG_I
 #define M            ARG_M
 #define P            ARG_P
@@ -158,9 +159,9 @@
      DS(408, "Like \"z\", but continues to the next flagged message") },
    { "headers", headers, (A | MSGLIST), 0, MMNDEL
      DS(342, "Show the current(/last/next) 18-message group of headers") },
-   { "help", help, (M | RAWLIST), 0, 1
+   { "help", help, (/*H |*/ M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
-   { "?", help, (M | RAWLIST), 0, 1
+   { "?", help, (H | M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
    { "=", pdot, (A | NOLIST), 0, 0
      DS(409, "Show current message number") },
@@ -374,7 +375,7 @@
      DS(413, "Print the MUA version") },
 #if defined HAVE_HISTORY &&\
       (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
-   { "history", &c_history, (I | M | V | RAWLIST), 0, 1
+   { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(431, "<show> (default), <clear> or select <NO> from editor history") },
 #endif
 #ifdef HAVE_DEBUG
@@ -396,6 +397,7 @@
 #undef ARG_ARGMASK
 #undef A
 #undef F
+#undef H
 #undef I
 #undef M
 #undef P

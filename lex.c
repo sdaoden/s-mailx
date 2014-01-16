@@ -789,6 +789,7 @@ jrestart:
          goto jleave;
       }
       shell(++cp);
+      evp->ev_add_history = TRU1;
       goto jleave0;
    }
 
@@ -992,6 +993,8 @@ je96:
       evp->ev_new_content = cp;
       goto jleave0;
    }
+   if (!(com->argtype & ARG_H) && !list_saw_numbers)
+      evp->ev_add_history = TRU1;
 
 jleave:
    /* Exit the current source file on error */

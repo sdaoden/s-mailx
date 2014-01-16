@@ -1023,13 +1023,14 @@ enum argtype {
 
    ARG_A          = 1u<< 4,   /* Needs an active mailbox */
    ARG_F          = 1u<< 5,   /* Is a conditional command */
-   ARG_I          = 1u<< 6,   /* Interactive command bit */
-   ARG_M          = 1u<< 7,   /* Legal from send mode bit */
-   ARG_P          = 1u<< 8,   /* Autoprint dot after command */
-   ARG_R          = 1u<< 9,   /* Cannot be called from collect / recursion */
-   ARG_T          = 1u<<10,   /* Is a transparent command */
-   ARG_V          = 1u<<11,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<12    /* Illegal when read only bit */
+   ARG_H          = 1u<< 6,   /* Never place in history */
+   ARG_I          = 1u<< 7,   /* Interactive command bit */
+   ARG_M          = 1u<< 8,   /* Legal from send mode bit */
+   ARG_P          = 1u<< 9,   /* Autoprint dot after command */
+   ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
+   ARG_T          = 1u<<11,   /* Is a transparent command */
+   ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
+   ARG_W          = 1u<<13    /* Illegal when read only bit */
 };
 
 enum gfield {
