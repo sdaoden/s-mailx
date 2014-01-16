@@ -904,6 +904,9 @@ jexec:
       goto jleave;
    }
 
+   if (com->argtype & ARG_V)
+      temporary_arg_v_store = NULL;
+
    switch (com->argtype & ARG_ARGMASK) {
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
@@ -969,6 +972,15 @@ je96:
 
    default:
       panic(tr(101, "Unknown argument type"));
+   }
+
+   if (e == 0 && (com->argtype & ARG_V) &&
+         (cp = temporary_arg_v_store) != NULL) {
+      temporary_arg_v_store = NULL;
+      line.l = strlen(cp);
+      line.s = savestrbuf(cp, line.l +1);
+      cg = NULL;
+      goto jrestart;
    }
 
 jleave:

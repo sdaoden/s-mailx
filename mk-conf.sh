@@ -975,6 +975,9 @@ if wantfeat READLINE; then
 int main(void)
 {
    char *rl;
+   HISTORY_STATE *hs;
+   HIST_ENTRY **he;
+   int i;
    using_history();
    read_history("");
    stifle_history(242);
@@ -987,7 +990,11 @@ int main(void)
    rl_pre_input_hook = (rl_hook_func_t*)NULL;
    rl_forced_update_display();
    clear_history();
-   history_list();
+   hs = history_get_history_state();
+   i = hs->length;
+   he = history_list();
+   if (i > 0)
+      rl = he[0]->line;
    rl_free_line_state();
    rl_cleanup_after_signal();
    rl_reset_after_signal();

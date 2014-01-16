@@ -52,6 +52,7 @@
 #define P            ARG_P
 #define R            ARG_R
 #define T            ARG_T
+#define V            ARG_V
 #define W            ARG_W
 
 #ifdef HAVE_DOCSTRINGS
@@ -373,8 +374,8 @@
      DS(413, "Print the MUA version") },
 #if defined HAVE_HISTORY &&\
       (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
-   { "history", &c_history, (I | M | RAWLIST), 0, 1
-     DS(431, "Either <show> (default) or <clear> the line editor history") },
+   { "history", &c_history, (I | M | V | RAWLIST), 0, 1
+     DS(431, "<show> (default), <clear> or select <NO> from editor history") },
 #endif
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (I | M | NOLIST), 0, 0
@@ -400,6 +401,7 @@
 #undef P
 #undef R
 #undef T
+#undef V
 #undef W
 
 /* vim:set fenc=utf-8:s-it-mode */

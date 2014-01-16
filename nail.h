@@ -1031,7 +1031,8 @@ enum argtype {
    ARG_P          = 1u<< 8,   /* Autoprint dot after command */
    ARG_R          = 1u<< 9,   /* Cannot be called from collect / recursion */
    ARG_T          = 1u<<10,   /* Is a transparent command */
-   ARG_W          = 1u<<11    /* Illegal when read only bit */
+   ARG_V          = 1u<<11,   /* Returns additional value in argv[0] */
+   ARG_W          = 1u<<12    /* Illegal when read only bit */
 };
 
 enum gfield {
@@ -1439,6 +1440,8 @@ VL sighandler_type dflpipe;
 VL sighandler_type handlerstacktop;
 #define handlerpush(f)  (savedtop = handlerstacktop, handlerstacktop = (f))
 #define handlerpop()    (handlerstacktop = savedtop)
+
+VL char        *temporary_arg_v_store;
 
 /* The remaining variables need initialization */
 

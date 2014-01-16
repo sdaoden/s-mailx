@@ -493,7 +493,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 428 Print current working directory (CWD)
 429 Show features that are compiled into the MUA
 430 Print some informations on the given <variables>
-431 Either <show> (default) or <clear> the line editor history
+431 <show> (default), <clear> or select <NO> from editor history
 
 
 500 $ done.\n
