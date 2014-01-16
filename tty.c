@@ -435,7 +435,7 @@ tty_init(void)
    _CL_HISTSIZE(hs);
    _el_hcom = history_init();
    history(_el_hcom, &he, H_SETSIZE, (int)hs);
-   history(_el_hcom, &he, H_SETUNIQUE, 1);
+   /* We unroll our own one history(_el_hcom, &he, H_SETUNIQUE, 1);*/
 # endif
 
    _el_el = el_init(uagent, stdin, stdout, stderr);
@@ -547,16 +547,12 @@ tty_addhist(char const *s)
    _CL_CHECK_ADDHIST(s, goto jleave);
 
    hold_all_sigs(); /* XXX too heavy, yet we jump away! */
-   if (history(_el_hcom, &he, H_GETUNIQUE) < 0 || he.num == 0)
-      goto jadd;
-
    for (i = history(_el_hcom, &he, H_FIRST); i >= 0;
          i = history(_el_hcom, &he, H_NEXT))
       if (strcmp(he.str, s) == 0) {
          history(_el_hcom, &he, H_DEL, he.num);
          break;
       }
-jadd:
    history(_el_hcom, &he, H_ENTER, s);
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
@@ -607,8 +603,23 @@ jclear: {
    }
    goto jleave;
 
-jentry:
-   fprintf(stderr, "`history NUMBER' not implemented for readline(3)\n");
+jentry: {
+   HistEvent he;
+   size_t i;
+   int x;
+
+   i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
+   if (UICMP(z, entry, <=, i)) {
+      entry = (long)i - entry;
+      for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
+            x = history(_el_hcom, &he, H_NEXT))
+         if (entry-- == 0) {
+            v = temporary_arg_v_store = UNCONST(he.str);
+            goto jleave;
+         }
+   }
+   v = NULL;
+   }
    goto jleave;
 }
 # endif /* HAVE_HISTORY */
