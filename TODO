@@ -115,23 +115,14 @@ Non-breakers
   be possible to reply to the very message in respect to its header fields,
   but (optionally?) keep the original Cc:'d.  (Parts by Martin Neitzel)
 
--- In general i like the possibility of mutt(1) to toggle in between header
-   and header-ignore mode with a simple switch (h), and that *this toggle
-   is used when replying*.  Yes i know mutt(1) sucks beside that in respect
-   to base64, MBOX, QP for CRLF files etc.
-
--- Also, mutt(1) quotes all text parts of a message, not only the first
-   one!  This should at least be optionally available.
+- mutt(1) quotes all text parts of a message, not only the first one!
+  This should at least be optionally available.
 
 - If pipes fail for part viewers then at least the usual PART X.Y should be
   shown, maybe even including some error message.
   I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
   does not have lynx(1), and i thought i've found a S-nail(1) bug.
   And so it was.
-
-= Update: (Change "Part X:" display message.., 2012-12-20) did one step,
-  but we need to rewrite the entire layers to handle that the separating
-  newline in between messages is considered to be part of it.
 
 - I want to have a ~R tilde command that works like ~r except it performs
   quoting of the input just as ~m does.  Also see -q above.
@@ -172,9 +163,6 @@ Non-breakers
   classify the stuff so that it matches what is defined in RFC dependent on
   header field.  Place the result in objects that know what they represent.
   See the name extraction topic below.
-
-- Also check against newest POSIX.
-  Maybe add a bash(1)ish POSIXLY_CORRECT (or so) variable?  Though..
 
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
@@ -221,22 +209,8 @@ Non-breakers
 Low-Level
 ---------
 
-- Revise the code:
-  + [v13:messed up] Use NetBSD KNF in respect to parens for return+.
-  + [v13:started] Add C99-likeish typedefs and use them everywhere.
-  + [v13:started] Don't use magic constants/values.
-  + [v13:started] Use const arguments whenever possible.  Yet started, but
-    with ugly casts at some places because this is a can of worms.
-  + Inline functions?  [Restrict pointers?]
-  + [v13:started] Document the functions in the interface declarators.
-  + [v13:started] Resort the functions and where they are implemented.
-  + Make more use of struct str, and offer more support functions for it.
-  + Make more use of value carriers in the call stack.  There are functions
-    with an incredible amount of arguments, needlessly.
-  ++ E.g., use a struct readlinectx.
-  + Ftemp(): offer an operation mode enum that includes "do-unlink".
-    In general: now there is O_CLOEXEC etc. ...
-  + Lazy install sigchild handler etc.
+- Ftemp(): offer an operation mode enum that includes "do-unlink".
+  In general: now there is O_CLOEXEC etc. ...
 
 - [v13:started] Improve name extraction rules.  And field parsing.  There
   are structured and unstructured fields.  There are quoted pairs and
@@ -261,15 +235,18 @@ Low-Level
     "co$mm1 cö,mm,2 'c'omm.3" <abc@däf.de>
   Or?
 
-- Think about a name bypass hashmap cache, and whenever we have to skin or
-  nalloc() or whatever, look in there.  Maybe even an additional link for
-  non GFULL(/GSKIN) and fully skinned struct name objects.
-  The amount of duplicated work in this codebase is frustrating, but the
-  real healing would make necessary a complete rewrite of the name handling!
-  Such a cache would work without touching the current code flow ... or
-  allow a smooth transition to a new one anyway.
+-- Think about a name bypass hashmap cache, and whenever we have to skin or
+   nalloc() or whatever, look in there.  Maybe even an additional link for
+   non GFULL(/GSKIN) and fully skinned struct name objects.
+   The amount of duplicated work in this codebase is frustrating, but the
+   real healing would make necessary a complete rewrite of the name handling!
+   Such a cache would work without touching the current code flow ... or
+   allow a smooth transition to a new one anyway.
 
-- Think about a value() cache.  (Yet added boption() and soption() stubs.)
+++  NOTE: 'alternates' tracking happens BEFORE we enter composing, this
+    means that an account switch during message composing will NOT cause
+    reevaluation of all that very very clumy
+    elide/delete_alternates/gexpand/is_myname etc. handling.
 
 - Think about replacing the IMAP cache with an SQLITE3 interface.
   Or rewrite it.  Error handling etc. etc. is peculiar.
@@ -289,6 +266,10 @@ Low-Level
   would be if we would be able to sequentially work what we have, and
   detect when it is safe to "dump that out".
   This MUST be part of the send/mime layer rewrite in 15.0.
+
+-- In v15.0, when we can address attachments of a message individually,
+   it would be nice to provide even more access, just like nmh(1) does
+   (Johan Commelin: Are s-nail and mh related?).
 
 - I want a clean PTF interface for the actual layers.  There should be no
   switch() statements around that test for the type of BOX that is
@@ -323,25 +304,12 @@ Low-Level
   output goes to stdout and scrolls it off the screen.
   Note that yet some errors messages still go to stdout.
 
-- Dramatically pimp the cc-test.sh script, and recognize and report
-  compilation errors, too.
-  WE NEED MORE AUTOMATIZED TESTING!
-
-- An `account' should imply an environment snapshot of all variables.
-  I.e., variables which become modified while an account is active would
-  gain their old / a different value (back) when switching off this
-  account.  We would need some "set-variable-global" or something, to
-  get around that?
-  There should be an implicit account ("global" or "*" or whatever) that
-  can be switched back to.
-
--- It would be very nice if it would be possible to have
+- It would be very nice if it would be possible to have
    account-specific macros that will be lost when a user switches off
    an account.
 
---- It would also be very nice if we could define macros while defining
-    account, i.e., recursive definition of macros...
-    See below on account/define though.
+-- It would also be very nice if we could define macros while defining
+   account, i.e., recursive definition of macros...
 
 - At some later time extend the logic behind -# -- it should not have
   a current folder, but start in VOID mode (...), and unless one is
@@ -360,6 +328,34 @@ Low-Level
   they were mail messages; anyway i would like to save me from using too
   many tools -- three seems reasonable.
 
+- Add TODO notes for those RFCs:
+  RFC 5322 - The basic format of email messages.
+  MIME (Multimeda) email extensions
+  RFC 2405 - The format of MIME message bodies.
+  RFC 2406 - Common multimedia types.
+  RFC 2017 - URL External-Body Access-Type
+  RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
+    text (format=flowed).   (Martin Neitzel)
+  RFC 2407 - Encoding of non-ASCII text in message headers.
+  RFC 2183 - The Content-Disposition Header
+  RFC 2231 - Encoding of character set and language information in MIME
+    parameter values.
+  SMTP (Simple Mail Transfer Protocol)
+  RFC 5321 - Simple Mail Transfer Protocol.
+  RFC 6409 - Message Submission for Mail
+  RFC 4954 - SMTP Authentication
+  RFC 3207 - SMTP over TLS
+  RFC 6152 - SMTP Service Extension for 8-bit MIME Transport
+  Post Office Protocol (POP)
+  RFC 1939 - Post Office Protocol v3
+  RFC 2449 - POP3 Extensions (including SASL)
+  RFC 2595 - TLS for POP3 (among others)
+  Security
+  RFC 4422 - Simple Authentication and Security layer (SASL)
+  RFC 5246 - Transport Layer Security (TLS)
+  RFC 977 - Network News Transfer Protocol
+  RFC 2980 - Common NNTP Extensions
+
 TODO S-nail 14.6:
 -----------------
 
@@ -377,16 +373,6 @@ TODO S-nail 14.6:
 
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
-
-- Drop the restriction that environment variables cannot be modified
-  from within interactive S-nail(1), check carefully what depends on
-  that (findmail() looks for MAIL, be aware of -u interaction etc.).
-  Drop tempdir, myname and homedir variables and always use functions to
-  look the values up (just make them function local variables where
-  used).
-  If necessary, add more hooks in vars.c:_check_special_vars() (or
-  finally implement the value cache for real).
-  Drop main.c:_setup_vars(), then.
 
 - Make *password* and *password-USER@HOST* global, introduce
   *PROTOCOL-auth-password* and *PROTOCOL-auth-password-USER@HOST*.
@@ -497,34 +483,6 @@ TODO S-nail 14.6:
    in case we have so many of them that they don't fit on the screen.
    ...  Etc. ...
 
-- Add TODO notes for those RFCs:
-  RFC 5322 - The basic format of email messages. 
-  MIME (Multimeda) email extensions
-  RFC 2405 - The format of MIME message bodies. 
-  RFC 2406 - Common multimedia types. 
-  RFC 2017 - URL External-Body Access-Type 
-  RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
-    text (format=flowed).   (Martin Neitzel)
-  RFC 2407 - Encoding of non-ASCII text in message headers. 
-  RFC 2183 - The Content-Disposition Header 
-  RFC 2231 - Encoding of character set and language information in MIME
-    parameter values. 
-  SMTP (Simple Mail Transfer Protocol)
-  RFC 5321 - Simple Mail Transfer Protocol. 
-  RFC 6409 - Message Submission for Mail 
-  RFC 4954 - SMTP Authentication 
-  RFC 3207 - SMTP over TLS 
-  RFC 6152 - SMTP Service Extension for 8-bit MIME Transport 
-  Post Office Protocol (POP)
-  RFC 1939 - Post Office Protocol v3 
-  RFC 2449 - POP3 Extensions (including SASL) 
-  RFC 2595 - TLS for POP3 (among others) 
-  Security
-  RFC 4422 - Simple Authentication and Security layer (SASL) 
-  RFC 5246 - Transport Layer Security (TLS)
-  RFC 977 - Network News Transfer Protocol
-  RFC 2980 - Common NNTP Extensions
-
 - IMAP: if i `d' a message then this is a local change (in the meanwhile);
   yet, when i `u' it, that will go through the server, needlessly.
 
@@ -534,7 +492,7 @@ TODO S-nail 14.6:
   time). (2013-08-06)
 
 - Yet another one:
- 
+
   :>>> T1026 NOOP
   Received SIGPIPE during IMAP operation
   IMAP write error: error:00000000:lib(0):func(0):reason(0)
@@ -563,20 +521,12 @@ TODO S-nail 14.6:
   IMAP connection closed.
   IMAP connection closed.
   IMAP connection closed.
-   U 51                    Thu Jan  1 0    /    0 
+   U 51                    Thu Jan  1 0    /    0
    IMAP connection closed.
    IMAP connection closed.
    IMAP connection closed.
    IMAP connection closed.
    IMAP connection closed.
-
-- The codebase has a lot of problems with type mixing; int,off_t,size_t are
-  often used INTERCHANGEABLY to store the same size / value; especially
-  IMAP seems to be quite weird.  I've yet changed some off_t to size_t,
-  which is not a good idea for 32-bit and large files, but (a) it's
-  questionable wether we could handle those anyway and (b) all bets are off
-  since pieces of code also use int storage for them, iirc.
-  This will be a long-term problem.
 
 - edit.c doesn't do NEED_BODY (yeah, IMAP won't work anyway).
 
@@ -586,8 +536,6 @@ TODO S-nail 14.6:
   (Martin Neitzel)
   Rework certificate handling to match RFC 6125!  14.4!
 
-- . Builtin line editor really should support cursor movement.
-    (For at least xterm terminals, i.e., CSI + a single character.)
   .. s-nail </dev/null should work interactively when STDERR_FILENO is
     a terminal!  (Builtin editor; how do editline and readline work?
     should this be documented?  What does NetBSD Mail do?  Should we NOT
@@ -595,32 +543,18 @@ TODO S-nail 14.6:
     2>FILE' is not interactive, even though it accepts terminal input.)
   . Automatically track message attachments when switching off the
     folder.
-  . 'localopts' is crap for folder hooks: there any locally set option
-    should remain until we switch off the folder.
-    E.g., i can think about variables that one wants to set on
-    a per-folder basis, like Reply-To or, later ;), Mail-Followup-To:,
-    etc!  Can't we do this??  (Note this means we need to be able to
-    have multiple "threads of locality".)
-    (In fact i'm long thinking about internal events, like
-    on-folder-enter, on-folder-leave etc.  This is how i would implement
-    it (event based, non-blocking select(2) based mainloop) when
-    starting from scratch.)
-  .. Also, 'ghosts' should possibly be included in 'localopts'?
-     I ran into some not-so-nice conditions...
-     As long as it is possible to define regular ghosts when the
-     'account' command is not currently executing, that is a good idea.
+    NOTE: 'alternates' tracking happens BEFORE we enter composing, this
+    means that an account switch during message composing will NOT cause
+    reevaluation of all that very very clumy
+    elide/delete_alternates/gexpand/is_myname etc. handling.
+    We REALLY need an object based rework of all that.
+  . It would be cool if ghosts, shortcuts, alternates could
+    (optionally?) be tracked via localopts.
   . The spam* series (spam.c:_spam_action()) should abort if the command
     execution failed, instead of iterating the entire list.  Look into
     that.
   . DESTDIR= should not be taken into account when deciding wether
     a rebuild is necessary (not wrong to give that to Gaetan Bisson).
-  . _update-release: GMANE didn't announcement mail right (UTF-8, binary
-    encoded..)  This was an embedded NBSP (manually messed up).
-    Nonetheless, see the following comm with Gaetan Bisson, the
-    is-same-thread detection fails!
-  . In v15.0, when we can address attachments of a message individually,
-    it would be nice to provide even more access, just like nmh(1) does
-    (Johan Commelin: Are s-nail and mh related?).
   . Just like the RFC 3676 link above, it would be nice if it would be
     somehow possible to recognize links in a document; i don't know yet
     how this could be achieved without loosing formatting information (i
@@ -632,7 +566,6 @@ TODO S-nail 14.6:
     simply have a buffer which records all such occurrences, so that
     user can say '? xy NUMBER', but without the context it soon gets
     hard.
-  . I want regular expression searches, if available.
   . TTY layer: the tc*() family may fail with EINTR, which MUST be
     handled; setting also generates SIGTTOU when we're not in foreground
     pgrp, so we better deal with all that and ENSURE WE GET THROUGH when
@@ -653,5 +586,19 @@ TODO S-nail 14.6:
     seconds) and their interaction with normal (user) keepalives.
     Add a global *keepalive*, add *keepalive-USER@HOST*.  (Add and use
     a generic, single function to get the value for either protocol.)
+  . if.else.endif conditionals should REALLY be nestable.  Thank you.
+  . HAVE_HISTORY plus: for WANT_EDITLINE and WANT_READLINE the
+    mk-conf.sh yet always tests anything, i.e., we could fail due to
+    history related stuff even though the user doesn't WANT_HISTORY.
+  .. We should in fact convert our NCL history to a shared history
+     implementation, and only hook editline(3) and readline(3) so that
+     ^R and Cursor-(Up|Down) work as expected everywhere.
+     Like that we would have duplicate elimination for readline(3), too.
+  .. tty_addhist() should take a struct str.  Anyway, evaluate() should
+     enter a history entry if the caller allows so, and it should trim
+     also trailing whitespace; also, the expanded command should be
+     stored, not the abbreviation, so that 'sst' and 'sstats' will no
+     longer produce two separate entries.
+  . Commands should take a struct callargs*, not void*. asap.
 
 vim:set fenc=utf-8:s-ts-mode
