@@ -164,6 +164,8 @@ reflected by the following statements.
 . OpenBSD <http://www.openbsd.org/>
   OpenBSD 5.4 i386.
   - gcc (GCC) 4.2.1 20070719.
+    + Note: i think faulty message on longjmp() clobbering (on
+      a variable that is 'const').
 
 . FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.0-CURRENT amd64.
