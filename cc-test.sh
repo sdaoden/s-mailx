@@ -50,7 +50,12 @@ cc_all_configs() {
       BEGIN {i = 0}
       /^[[:space:]]*WANT_/ {
          sub(/^[[:space:]]*/, "")
-         sub(/=.*$/, "")
+         # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
+         # does not seem to be a compliant escape for =
+         #sub(/=.*$/, "")
+         $1 = substr($1, 1, index($1, "=") - 1)
+         if ($1 == "WANT_AUTOCC")
+            next
          data[i++] = $1
       }
       END {
@@ -59,11 +64,14 @@ cc_all_configs() {
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
+            printf "WANT_AUTOCC=1\n"
             printf "\n"
+
             for (k = 0; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
+            printf "WANT_AUTOCC=1\n"
             printf "\n"
          }
       }
