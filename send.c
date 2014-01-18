@@ -197,6 +197,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
 {
 	struct str ct = {NULL, 0}, cd = {NULL, 0};
 	char const *ps;
+	struct str const *cpre, *csuf;
 
 	/* Max. 24 */
 	if (is_ign("content-type", 12, doign)) {
@@ -240,19 +241,31 @@ _print_part_info(struct str *out, struct mimepart *mip,
 	if ((ps = mip->m_partstring) == NULL || ps[0] == '\0')
 		ps = "?";
 
-	/*
-	 * Assume maximum possible sizes for 64 bit integers here to avoid any
+#ifdef HAVE_COLOUR
+	cpre = colour_get(COLOURSPEC_PARTINFO);
+	csuf = colour_get(COLOURSPEC_RESET);
+#else
+	cpre = csuf = NULL;
+#endif
+
+	/* Assume maximum possible sizes for 64 bit integers here to avoid any
 	 * buffer overflows just in case we have a bug somewhere and / or the
 	 * snprintf() is our internal version that doesn't really provide hard
-	 * buffer cuts
-	 */
-#define __msg	"%s[-- #%s : %lu/%lu%s%s --]\n"
-	out->l = sizeof(__msg) + strlen(ps) + 2*21 + ct.l + cd.l + 1;
+	 * buffer cuts */
+#define __msg   "%s%s[-- #%s : %lu/%lu%s%s --]%s\n"
+	out->l = sizeof(__msg) +
+#ifdef HAVE_COLOUR
+			(cpre != NULL ? cpre->l + csuf->l : 0) +
+#endif
+			strlen(ps) + 2*21 + ct.l + cd.l + 1;
 	out->s = salloc(out->l);
 	out->l = snprintf(out->s, out->l, __msg,
-			(level || (ps[0] != '1' && ps[1] == '\0')) ? "\n" : "",
+			(level || (ps[0] != '1' && ps[1] == '\0') ? "\n" : ""),
+				(cpre != NULL ? cpre->s : ""),
 			ps, (ul_it)mip->m_lines, (ul_it)mip->m_size,
-			(ct.s != NULL ? ct.s : ""), (cd.s != NULL ? cd.s : ""));
+				(ct.s != NULL ? ct.s : ""),
+				(cd.s != NULL ? cd.s : ""),
+			(csuf != NULL ? csuf->s : ""));
 	out->s[out->l] = '\0';
 #undef __msg
 
@@ -466,6 +479,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 
 	cnt = mp->m_size;
 	sz = 0;
+	colour_put(obuf, COLOURSPEC_FROM_);
 	if (mp->m_flag & MNOFROM) {
 		if (doign != allignore && doign != fwdignore &&
 				action != SEND_RFC822)
@@ -478,8 +492,10 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 				doign != fwdignore && action != SEND_RFC822) {
 			i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix,
 				qf.qf_pfix_len, obuf);
-			if (i != qf.qf_pfix_len)
+			if (i != qf.qf_pfix_len) {
+				colour_reset(obuf);
 				goto jleave;
+			}
 			sz += i;
 		}
 		while (cnt && (c = getc(ibuf)) != EOF) {
@@ -493,6 +509,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 				break;
 		}
 	}
+	colour_reset(obuf);
 	if (sz)
 		_addstats(stats, 1, sz);
 
@@ -591,6 +608,12 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 					isenc |= 1;
 			}
 		} else {
+#ifdef HAVE_COLOUR /* XXX colour handling is yet hacky, should be filter! */
+			if (pipecomm != NULL) {
+				pipecomm = NULL;
+				colour_reset(obuf); /* XXX reset after \n!! */
+			}
+#endif
 			/*
 			 * Pick up the header field if we have one.
 			 */
@@ -621,7 +644,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			 */
 			c = *cp2;
 			*cp2 = 0;	/* temporarily null terminate */
-			if ((doign && is_ign(line, cp2 - line, doign)) ||
+			if ((doign &&
+				is_ign(line, PTR2SIZE(cp2 - line), doign)) ||
 					(action == SEND_MBOX &&
 					 !ok_blook(keep_content_length) &&
 					 (asccasecmp(line, "content-length")==0
@@ -647,8 +671,13 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 					dostat &= ~2;
 					ignoring = 1;
 				}
-			} else
+			} else {
 				ignoring = 0;
+#ifdef HAVE_COLOUR
+				pipecomm = savestrbuf(line,
+						PTR2SIZE(cp2 - line));
+#endif
+			}
 			*cp2 = c;
 			infld = 1;
 		}
@@ -694,6 +723,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 				while (len > 0 && blankchar(start[len - 1]))
 					--len;
 			}
+#ifdef HAVE_COLOUR
+			if (pipecomm != NULL)
+				colour_put_header(obuf, pipecomm);
+#endif
 			_out(start, len, obuf, convert, action, qf, stats,
 				NULL);
 			if (ferror(obuf)) {
@@ -702,6 +735,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			}
 		}
 	}
+#ifdef HAVE_COLOUR
+	pipecomm = NULL;
+	if (infld)
+		colour_reset(obuf); /* XXX reset after \n!! */
+#endif
 	quoteflt_flush(qf);
 	free(line);
 	line = NULL;
@@ -1454,7 +1492,9 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
 		nl = "";
 	}
 
+	colour_put(fp, COLOURSPEC_FROM_);
 	i = fprintf(fp, "From %s %s%s", froma, date, nl);
+	colour_reset(fp);
 	if (i > 0)
 		_addstats(stats, (*nl != '\0'), i);
 }

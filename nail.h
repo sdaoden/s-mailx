@@ -259,6 +259,16 @@
 #define MAILRC          "~/.mailrc"
 #define TMPDIR_FALLBACK "/tmp"
 
+#define COLOUR_MSGINFO  "fg=green"
+#define COLOUR_PARTINFO "fg=brown"
+#define COLOUR_FROM_    "fg=brown"
+#define COLOUR_HEADER   "fg=red"
+#define COLOUR_UHEADER  "ft=bold,fg=red"
+#define COLOUR_PAGERS   "less"
+#define COLOUR_TERMS    \
+   "cons25,linux,rxvt,rxvt-unicode,sun,vt100,vt220,wsvt25,xterm,xterm-color"
+#define COLOUR_USER_HEADERS "from,subject"
+
 #define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR   365L
 #define DATE_SECSMIN    60L
@@ -495,6 +505,15 @@ enum prompt_exp {
    PROMPT_AT      = -3
 };
 
+enum colourspec {
+   COLOURSPEC_MSGINFO,
+   COLOURSPEC_PARTINFO,
+   COLOURSPEC_FROM_,
+   COLOURSPEC_HEADER,
+   COLOURSPEC_UHEADER,
+   COLOURSPEC_RESET
+};
+
 enum okay {
    STOP = 0,
    OKAY = 1
@@ -616,6 +635,7 @@ enum okeys {
    ok_b_bsdmsgs,
    ok_b_bsdorder,
    ok_b_bsdset,
+   ok_b_colour_disable,
    ok_b_debug,                         /* {special=1} */
    ok_b_disconnected,
    ok_b_dot,
@@ -683,6 +703,14 @@ enum okeys {
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_cmd,
+   ok_v_colour_pagers,
+   ok_v_colour_from_,                  /* {name=colour-from_} */
+   ok_v_colour_header,
+   ok_v_colour_msginfo,
+   ok_v_colour_partinfo,
+   ok_v_colour_terms,
+   ok_v_colour_uheader,
+   ok_v_colour_user_headers,
    ok_v_crt,
    ok_v_datefield,
    ok_v_datefield_markout_older,
@@ -766,6 +794,11 @@ enum okeys {
 struct str {
    char     *s;      /* the string's content */
    size_t   l;       /* the stings's length */
+};
+
+struct colour_table {
+   /* Plus a copy of *colour-user-headers* */
+   struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
 };
 
 struct time_current {
@@ -1374,6 +1407,10 @@ VL struct shortcut   *shortcuts;       /* list of shortcuts */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
+
+#ifdef HAVE_COLOUR
+VL struct colour_table  *colour_table;
+#endif
 
 #ifdef HAVE_SSL
 VL enum ssl_vrfy_level  ssl_vrfy_level; /* SSL verification level */

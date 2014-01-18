@@ -681,6 +681,9 @@ commands(void)
 			exit_status = 0;
 		}
 
+#ifdef HAVE_COLOUR
+      colour_table = NULL; /* XXX intermediate hack */
+#endif
 		sreset(sourcing);
 		if (!sourcing) {
 			/* TODO Note: this buffer may contain a password

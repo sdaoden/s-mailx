@@ -17,7 +17,7 @@ $set 1
 14 Commands are:\n
 15 [Invalid Base64 encoding ignored]\n
 16 variable cmd not set\n
-17 [-- Message #%2d -- %lu lines, %lu bytes --]:\n
+17 %s[-- Message #%2d -- %lu lines, %lu bytes --]:%s\n
 18 No messages to pipe.
 19 ~@: added attachment "%s"\n
 20 No value set for "folder"\n
@@ -522,3 +522,4 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 524 No last SEARCH criteria available.\n
 525 No regular expression support for SEARCHes.\n
 526 Invalid regular expression "%s": >>> %s <<<\n
+527 Invalid colour specification "%s": >>> %s <<<\n
