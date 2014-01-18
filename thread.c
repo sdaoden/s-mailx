@@ -361,6 +361,8 @@ makethreads(struct message *m, long cnt, int nmail)
 		return;
 	mprime = nextprime(cnt);
 	mt = scalloc(mprime, sizeof *mt);
+
+	srelax_hold();
 	for (i = 0; i < cnt; i++) {
 		if ((m[i].m_flag&MHIDDEN) == 0) {
 			mlook(NULL, mt, &m[i], mprime);
@@ -374,6 +376,7 @@ makethreads(struct message *m, long cnt, int nmail)
 		m[i].m_level = 0;
 		if (!nmail && !(inhook&2))
 			m[i].m_collapsed = 0;
+		srelax();
 	}
 	/*
 	 * Most folders contain the eldest messages first. Traversing
@@ -384,8 +387,12 @@ makethreads(struct message *m, long cnt, int nmail)
 	 * are replies to the one message, and are sorted such that
 	 * youngest messages occur first.
 	 */
-	for (i = cnt-1; i >= 0; i--)
+	for (i = cnt-1; i >= 0; i--) {
 		lookup(&m[i], mt, mprime);
+		srelax();
+	}
+	srelax_rele();
+
 	threadroot = interlink(m, cnt, nmail);
 	finalize(threadroot);
 	free(mt);
@@ -565,6 +572,8 @@ sort(void *vp)
 	default:
 		break;
 	}
+
+	srelax_hold();
 	for (n = 0, i = 0; i < msgCount; i++) {
 		mp = &message[i];
 		if ((mp->m_flag&MHIDDEN) == 0) {
@@ -628,7 +637,10 @@ sort(void *vp)
 		mp->m_child = mp->m_younger = mp->m_elder = mp->m_parent = NULL;
 		mp->m_level = 0;
 		mp->m_collapsed = 0;
+		srelax();
 	}
+	srelax_rele();
+
 	if (n > 0) {
 		qsort(ms, n, sizeof *ms, func);
 		threadroot = &message[ms[0].ms_n];
