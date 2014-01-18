@@ -37,8 +37,27 @@
  * SUCH DAMAGE.
  */
 
+/* Some shorter aliases to be able to define a command in two lines */
+#define MSGLIST      ARG_MSGLIST
+#define STRLIST      ARG_STRLIST
+#define RAWLIST      ARG_RAWLIST
+#define NOLIST       ARG_NOLIST
+#define NDMLIST      ARG_NDMLIST
+#define ECHOLIST     ARG_ECHOLIST
+#define ARG_ARGMASK  ARG_ARGMASK
+#define A            ARG_A
+#define F            ARG_F
+#define H            ARG_H
+#define I            ARG_I
+#define M            ARG_M
+#define P            ARG_P
+#define R            ARG_R
+#define T            ARG_T
+#define V            ARG_V
+#define W            ARG_W
+
 #ifdef HAVE_DOCSTRINGS
-# define DS(ID,S)	, ID, S
+# define DS(ID,S)    , ID, S
 #else
 # define DS(ID,S)
 #endif
@@ -140,9 +159,9 @@
      DS(408, "Like \"z\", but continues to the next flagged message") },
    { "headers", headers, (A | MSGLIST), 0, MMNDEL
      DS(342, "Show the current(/last/next) 18-message group of headers") },
-   { "help", help, (M | RAWLIST), 0, 1
+   { "help", help, (/*H |*/ M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
-   { "?", help, (M | RAWLIST), 0, 1
+   { "?", help, (H | M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
    { "=", pdot, (A | NOLIST), 0, 0
      DS(409, "Show current message number") },
@@ -354,10 +373,9 @@
      DS(429, "Show features that are compiled into the MUA") },
    { "version", &_version, (M | NOLIST), 0, 0
      DS(413, "Print the MUA version") },
-#if defined HAVE_HISTORY &&\
-      (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
-   { "history", &c_history, (I | M | RAWLIST), 0, 1
-     DS(431, "Either <show> (default) or <clear> the line editor history") },
+#ifdef HAVE_HISTORY
+   { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
+     DS(431, "<show> (default), <clear> or select <NO> from editor history") },
 #endif
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (I | M | NOLIST), 0, 0
@@ -366,5 +384,25 @@
      DS(417, "Trace current memory usage afap") },
 #endif
    { NULL, NULL, 0, 0, 0 DS(0, "") }
+
+#undef DS
+
+#undef MSGLIST
+#undef STRLIST
+#undef RAWLIST
+#undef NOLIST
+#undef NDMLIST
+#undef ECHOLIST
+#undef ARG_ARGMASK
+#undef A
+#undef F
+#undef H
+#undef I
+#undef M
+#undef P
+#undef R
+#undef T
+#undef V
+#undef W
 
 /* vim:set fenc=utf-8:s-it-mode */

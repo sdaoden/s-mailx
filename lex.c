@@ -608,404 +608,418 @@ newmailinfo(int omsgCount)
 	return mdot;
 }
 
-/*
- * Interpret user commands one by one.  If standard input is not a tty,
- * print no prompt.
- */
 FL void
 commands(void)
 {
-	int eofloop = 0, n;
-	char *linebuf = NULL, *av, *nv;
-	size_t linesize = 0;
+   struct eval_ctx ev;
+   int n;
+
+   if (!sourcing) {
+      if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
+         safe_signal(SIGINT, onintr);
+      if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
+         safe_signal(SIGHUP, hangup);
+      /* TODO We do a lot of redundant signal handling, especially
+       * TODO with the command line editor(s); try to merge this */
+      safe_signal(SIGTSTP, stop);
+      safe_signal(SIGTTOU, stop);
+      safe_signal(SIGTTIN, stop);
+   }
+   _oldpipe = safe_signal(SIGPIPE, SIG_IGN);
+   safe_signal(SIGPIPE, _oldpipe);
+
+   memset(&ev, 0, sizeof ev);
+
+   setexit();
+   for (;;) {
+      interrupts = 0;
+      handlerstacktop = NULL;
+
+      if (!sourcing && (options & OPT_INTERACTIVE)) {
+         char *cp;
+
+         if ((cp = ok_vlook(newmail)) == NULL)
+            cp = ok_vlook(autoinc); /* TODO legacy */
+         if ((options & OPT_TTYIN) && (cp != NULL || mb.mb_type == MB_IMAP)) {
+            struct stat st;
+
+            n = (cp != NULL && strcmp(cp, "noimap") && strcmp(cp, "nopoll"));
+            if ((mb.mb_type == MB_FILE && stat(mailname, &st) == 0 &&
+                     st.st_size > mailsize) ||
 #ifdef HAVE_IMAP
-	int x;
+                  (mb.mb_type == MB_IMAP && imap_newmail(n) > (cp == NULL)) ||
 #endif
+                  (mb.mb_type == MB_MAILDIR && n != 0)) {
+               size_t odot = PTR2SIZE(dot - message);
+               bool_t odid = did_print_dot;
 
-	if (!sourcing) {
-		if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
-			safe_signal(SIGINT, onintr);
-		if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
-			safe_signal(SIGHUP, hangup);
-		/* TODO We do a lot of redundant signal handling, especially
-		 * TODO with the command line editor(s); try to merge this */
-		safe_signal(SIGTSTP, stop);
-		safe_signal(SIGTTOU, stop);
-		safe_signal(SIGTTIN, stop);
-	}
-	_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
-	safe_signal(SIGPIPE, _oldpipe);
-	setexit();
+               setfile(mailname, 1);
+               if (mb.mb_type != MB_IMAP) {
+                  dot = message + odot;
+                  did_print_dot = odid;
+               }
+            }
+         }
 
-	for (;;) {
-		interrupts = 0;
-		handlerstacktop = NULL;
-		/*
-		 * Print the prompt, if needed.  Clear out
-		 * string space, and flush the output.
-		 */
-		if (!sourcing && (options & OPT_INTERACTIVE)) {
-			if ((av = ok_vlook(autoinc)) != NULL)
-				av = savestr(av);
-			if ((nv = ok_vlook(newmail)) != NULL)
-				nv = savestr(nv);
-			if ((options & OPT_TTYIN) &&
-					(av != NULL || nv != NULL || mb.mb_type == MB_IMAP)) {
-				struct stat st;
-
-				n = (av && strcmp(av, "noimap") && strcmp(av, "nopoll")) |
-					(nv && strcmp(nv, "noimap") && strcmp(nv, "nopoll"));
-#ifdef HAVE_IMAP
-				x = !(av || nv);
-#endif
-				if ((mb.mb_type == MB_FILE &&
-						stat(mailname, &st) == 0 &&
-						st.st_size > mailsize) ||
-#ifdef HAVE_IMAP
-						(mb.mb_type == MB_IMAP &&
-						imap_newmail(n) > x) ||
-#endif
-						(mb.mb_type == MB_MAILDIR &&
-						n != 0)) {
-					int odot = dot - &message[0];
-					bool_t odid = did_print_dot;
-
-					setfile(mailname, 1);
-					if (mb.mb_type != MB_IMAP) {
-						dot = &message[odot];
-						did_print_dot = odid;
-					}
-				}
-			}
-			_reset_on_stop = 1;
-			exit_status = 0;
-		}
+         _reset_on_stop = 1;
+         exit_status = 0;
+      }
 
 #ifdef HAVE_COLOUR
       colour_table = NULL; /* XXX intermediate hack */
 #endif
-		sreset(sourcing);
-		if (!sourcing) {
-			/* TODO Note: this buffer may contain a password
-			 * TODO We should redefine the code flow which has
-			 * TODO to do that */
-			if ((nv = termios_state.ts_linebuf) != NULL) {
-				termios_state.ts_linebuf = NULL;
-				termios_state.ts_linesize = 0;
-				free(nv); /* TODO pool give-back */
-			}
-			/* TODO Due to expand-on-tab of our line editor the
-			 * TODO buffer may grow */
-			if (linesize > LINESIZE * 3) {
-				free(linebuf); /* TODO pool! but what? */
-				linebuf = NULL;
-				linesize = 0;
-			}
-		}
+      sreset(sourcing);
+      if (!sourcing) {
+         char *cp;
 
-		/*
-		 * Read a line of commands from the current input
-		 * and handle end of file specially.
-		 */
-		n = readline_input(LNED_LF_ESC | LNED_HIST_ADD, NULL,
-			&linebuf, &linesize);
-		_reset_on_stop = 0;
-		if (n < 0) {
-				/* eof */
-			if (loading)
-				break;
-			if (sourcing) {
-				unstack();
-				continue;
-			}
-			if ((options & OPT_INTERACTIVE) &&
-					ok_blook(ignoreeof) && ++eofloop < 25) {
-				printf(tr(89, "Use `quit' to quit.\n"));
-				continue;
-			}
-			break;
-		}
+         /* TODO Note: this buffer may contain a password.  We should redefine
+          * TODO the code flow which has to do that */
+         if ((cp = termios_state.ts_linebuf) != NULL) {
+            termios_state.ts_linebuf = NULL;
+            termios_state.ts_linesize = 0;
+            free(cp); /* TODO pool give-back */
+         }
+         /* TODO Due to expand-on-tab of NCL the buffer may grow */
+         if (ev.ev_line.l > LINESIZE * 3) {
+            free(ev.ev_line.s); /* TODO pool! but what? */
+            ev.ev_line.s = NULL;
+            ev.ev_line.l = 0;
+         }
+      }
 
-		eofloop = 0;
-		inhook = 0;
-		if (execute(linebuf, 0, n))
-			break;
-		if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
-				ok_blook(batch_exit_on_error))
-			break;
-	}
+      /* Read a line of commands and handle end of file specially */
+jreadline:
+      n = readline_input(NULL, TRU1, &ev.ev_line.s, &ev.ev_line.l,
+            ev.ev_new_content);
+      _reset_on_stop = 0;
+      if (n < 0) {
+         /* EOF */
+         if (loading)
+            break;
+         if (sourcing) {
+            unstack();
+            continue;
+         }
+         if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
+            printf(tr(89, "Use `quit' to quit.\n"));
+            continue;
+         }
+         break;
+      }
 
-	if (linebuf != NULL)
-		free(linebuf);
-	if (sourcing)
-		sreset(FAL0);
+      inhook = 0;
+      if (evaluate(&ev))
+         break;
+      if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
+            ok_blook(batch_exit_on_error))
+         break;
+      if (!sourcing && (options & OPT_INTERACTIVE)) {
+         if (ev.ev_new_content != NULL)
+            goto jreadline;
+         if (ev.ev_add_history)
+            tty_addhist(ev.ev_line.s);
+      }
+   }
+
+   if (ev.ev_line.s != NULL)
+      free(ev.ev_line.s);
+   if (sourcing)
+      sreset(FAL0);
 }
 
-/*
- * Execute a single command.
- * Command functions return 0 for success, 1 for error, and -1
- * for abort.  A 1 or -1 aborts a load or source.  A -1 aborts
- * the interactive command loop.
- * Contxt is non-zero if called while composing mail.
- */
 FL int
-execute(char *linebuf, int contxt, size_t linesize)
+execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
 {
-	char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
-	struct cmd_ghost *cg = NULL;
-	struct cmd const *com = NULL;
-	int muvec[2], c, e = 1;
+   struct eval_ctx ev;
+#ifdef HAVE_COLOUR
+   struct colour_table *ct_save;
+#endif
+   int rv;
 
-	/* Command ghosts that refer to shell commands or macro expansion restart */
+   /* TODO Maybe recursion from within collect.c!  As long as we don't have
+    * TODO a value carrier that transports the entire state of a recursion
+    * TODO we need to save away also the colour table */
+#ifdef HAVE_COLOUR
+   ct_save = colour_table;
+   colour_table = NULL;
+#endif
+
+   memset(&ev, 0, sizeof ev);
+   ev.ev_line.s = linebuf;
+   ev.ev_line.l = linesize;
+   ev.ev_is_recursive = (contxt != 0);
+   rv = evaluate(&ev);
+
+#ifdef HAVE_COLOUR
+   colour_table = ct_save;
+#endif
+
+   return rv;
+}
+
+FL int
+evaluate(struct eval_ctx *evp)
+{
+   struct str line;
+   char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
+   struct cmd_ghost *cg = NULL;
+   struct cmd const *com = NULL;
+   int muvec[2], c, e = 1;
+
+   line = evp->ev_line; /* XXX don't change original (buffer pointer) */
+   evp->ev_add_history = FAL0;
+   evp->ev_new_content = NULL;
+
+   /* Command ghosts that refer to shell commands or macro expansion restart */
 jrestart:
 
-	/* Strip the white space away from the beginning of the command */
-	for (cp = linebuf; whitechar(*cp); ++cp)
-		;
-	linesize -= PTR2SIZE(cp - linebuf);
+   /* Strip the white space away from the beginning of the command */
+   for (cp = line.s; whitechar(*cp); ++cp)
+      ;
+   line.l -= PTR2SIZE(cp - line.s);
 
-	/* Ignore comments */
-	if (*cp == '#')
-		goto jleave0;
+   /* Ignore comments */
+   if (*cp == '#')
+      goto jleave0;
 
-	/* Handle ! differently to get the correct lexical conventions */
-	if (*cp == '!') {
-		if (sourcing) {
-			fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
-			goto jleave;
-		}
-		shell(++cp);
-		goto jleave0;
-	}
+   /* Handle ! differently to get the correct lexical conventions */
+   if (*cp == '!') {
+      if (sourcing) {
+         fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
+         goto jleave;
+      }
+      shell(++cp);
+      evp->ev_add_history = TRU1;
+      goto jleave0;
+   }
 
-	/* Isolate the actual command; since it may not necessarily be
-	 * separated from the arguments (as in `p1') we need to duplicate it to
-	 * be able to create a NUL terminated version.
-	 * We must be aware of several special one letter commands here */
-	arglist[0] = cp;
-	switch (*cp) {
-	case '|':
-	case '~':
-	case '?':
-		++cp;
-		/* FALLTHRU */
-	case '\0':
-		break;
-	default:
-		cp = _lex_isolate(cp);
-		break;
-	}
-	c = (int)PTR2SIZE(cp - arglist[0]);
-	linesize -= c;
-	word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
-	memcpy(word, arglist[0], c);
-	word[c] = '\0';
+   /* Isolate the actual command; since it may not necessarily be
+    * separated from the arguments (as in `p1') we need to duplicate it to
+    * be able to create a NUL terminated version.
+    * We must be aware of several special one letter commands here */
+   arglist[0] = cp;
+   switch (*cp) {
+   case '|':
+   case '~':
+   case '?':
+      ++cp;
+      /* FALLTHRU */
+   case '\0':
+      break;
+   default:
+      cp = _lex_isolate(cp);
+      break;
+   }
+   c = (int)PTR2SIZE(cp - arglist[0]);
+   line.l -= c;
+   word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
+   memcpy(word, arglist[0], c);
+   word[c] = '\0';
 
-	/* Look up the command; if not found, bitch.
-	 * Normally, a blank command would map to the first command in the
-	 * table; while sourcing, however, we ignore blank lines to eliminate
-	 * confusion; act just the same for ghosts */
+   /* Look up the command; if not found, bitch.
+    * Normally, a blank command would map to the first command in the
+    * table; while sourcing, however, we ignore blank lines to eliminate
+    * confusion; act just the same for ghosts */
    if (*word == '\0') {
-	   if (sourcing || cg != NULL)
-		   goto jleave0;
+      if (sourcing || cg != NULL)
+         goto jleave0;
       com = _cmd_tab + 0;
       goto jexec;
    }
 
-	/* If this is the first evaluation, check command ghosts */
-	if (cg == NULL) {
+   /* If this is the first evaluation, check command ghosts */
+   if (cg == NULL) {
       /* TODO relink list head, so it's sorted on usage over time?
        * TODO in fact, there should be one hashmap over all commands and ghosts
        * TODO so that the lookup could be made much more efficient than it is
        * TODO now (two adjacent list searches! */
-		for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-			if (strcmp(word, cg->name) == 0) {
-				if (linesize > 0) {
-					size_t i = cg->cmd.l;
-					linebuf = salloc(i + 1 + linesize +1);
-					memcpy(linebuf, cg->cmd.s, i);
-					linebuf[i++] = ' ';
-					memcpy(linebuf + i, cp, linesize);
-					linebuf[i += linesize] = '\0';
-					linesize = i;
-				} else {
-					linebuf = cg->cmd.s;
-					linesize = cg->cmd.l;
-				}
-				goto jrestart;
-			}
-	}
+      for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+         if (strcmp(word, cg->name) == 0) {
+            if (line.l > 0) {
+               size_t i = cg->cmd.l;
+               line.s = salloc(i + 1 + line.l +1);
+               memcpy(line.s, cg->cmd.s, i);
+               line.s[i++] = ' ';
+               memcpy(line.s + i, cp, line.l);
+               line.s[i += line.l] = '\0';
+               line.l = i;
+            } else {
+               line.s = cg->cmd.s;
+               line.l = cg->cmd.l;
+            }
+            goto jrestart;
+         }
+   }
 
    if ((com = _lex(word)) == NULL || com->func == &ccmdnotsupp) {
-		fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
-		if (com != NULL) {
-			ccmdnotsupp(NULL);
-			com = NULL;
-		}
-		goto jleave;
-	}
+      fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
+      if (com != NULL) {
+         ccmdnotsupp(NULL);
+         com = NULL;
+      }
+      goto jleave;
+   }
 
-	/* See if we should execute the command -- if a conditional we always
-	 * execute it, otherwise, check the state of cond */
+   /* See if we should execute the command -- if a conditional we always
+    * execute it, otherwise, check the state of cond */
 jexec:
-	if ((com->argtype & F) == 0) {
-		switch (cond_state) {
-		case COND_RCV:
-			if (options & OPT_SENDMODE)
-					goto jleave0;
-			break;
-		case COND_SEND:
-				if (!(options & OPT_SENDMODE))
-					goto jleave0;
-			break;
-		case COND_TERM:
-				if (!(options & OPT_TTYIN))
-					goto jleave0;
-			break;
-		case COND_NOTERM:
-				if (options & OPT_TTYIN)
-					goto jleave0;
-			break;
-		case COND_ANY:
-		case COND_EXEC:
-			break;
-		case COND_NOEXEC:
-			goto jleave0;
-		}
-	}
+   if (!(com->argtype & ARG_F)) {
+      switch (cond_state) {
+      case COND_RCV:
+         if (options & OPT_SENDMODE)
+               goto jleave0;
+         break;
+      case COND_SEND:
+            if (!(options & OPT_SENDMODE))
+               goto jleave0;
+         break;
+      case COND_TERM:
+            if (!(options & OPT_TTYIN))
+               goto jleave0;
+         break;
+      case COND_NOTERM:
+            if (options & OPT_TTYIN)
+               goto jleave0;
+         break;
+      case COND_ANY:
+      case COND_EXEC:
+         break;
+      case COND_NOEXEC:
+         goto jleave0;
+      }
+   }
 
-	/*
-	 * Process the arguments to the command, depending
-	 * on the type he expects.  Default to an error.
-	 * If we are sourcing an interactive command, it's
-	 * an error.
-	 */
-	if ((options & OPT_SENDMODE) && (com->argtype & M) == 0) {
-		fprintf(stderr, tr(92,
-			"May not execute `%s' while sending\n"),
-			com->name);
-		goto jleave;
-	}
-	if (sourcing && com->argtype & I) {
-		fprintf(stderr, tr(93,
-			"May not execute `%s' while sourcing\n"),
-			com->name);
-		goto jleave;
-	}
-	if ((mb.mb_perm & MB_DELE) == 0 && com->argtype & W) {
-		fprintf(stderr, tr(94, "May not execute `%s' -- "
-			"message file is read only\n"),
-			com->name);
-		goto jleave;
-	}
-	if (contxt && com->argtype & R) {
-		fprintf(stderr, tr(95,
-			"Cannot recursively invoke `%s'\n"), com->name);
-		goto jleave;
-	}
-	if (mb.mb_type == MB_VOID && com->argtype & A) {
-		fprintf(stderr, tr(257,
-			"Cannot execute `%s' without active mailbox\n"),
-			com->name);
-		goto jleave;
-	}
+   /* Process the arguments to the command, depending on the type he expects.
+    * Default to an error.
+    * If we are sourcing an interactive command, it's an error */
+   if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
+      fprintf(stderr, tr(92, "May not execute `%s' while sending\n"),
+         com->name);
+      goto jleave;
+   }
+   if (sourcing && (com->argtype & ARG_I)) {
+      fprintf(stderr, tr(93, "May not execute `%s' while sourcing\n"),
+         com->name);
+      goto jleave;
+   }
+   if (!(mb.mb_perm & MB_DELE) && (com->argtype & ARG_W)) {
+      fprintf(stderr, tr(94, "May not execute `%s' -- "
+         "message file is read only\n"), com->name);
+      goto jleave;
+   }
+   if (evp->ev_is_recursive && (com->argtype & ARG_R)) {
+      fprintf(stderr, tr(95, "Cannot recursively invoke `%s'\n"), com->name);
+      goto jleave;
+   }
+   if (mb.mb_type == MB_VOID && (com->argtype & ARG_A)) {
+      fprintf(stderr, tr(257, "Cannot execute `%s' without active mailbox\n"),
+         com->name);
+      goto jleave;
+   }
 
-	switch (com->argtype & ~(F|P|I|M|T|W|R|A)) {
-	case MSGLIST:
-		/* Message list defaulting to nearest forward legal message */
-		if (_msgvec == 0)
-			goto je96;
-		if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
-			break;
-		if (c == 0) {
-			*_msgvec = first(com->msgflag, com->msgmask);
-			if (*_msgvec != 0)
-				_msgvec[1] = 0;
-		}
-		if (*_msgvec == 0) {
-			if (! inhook)
-				printf(tr(97, "No applicable messages\n"));
-			break;
-		}
-		e = (*com->func)(_msgvec);
-		break;
+   if (com->argtype & ARG_V)
+      temporary_arg_v_store = NULL;
 
-	case NDMLIST:
-		/* Message list with no defaults, but no error if none exist */
-		if (_msgvec == 0) {
+   switch (com->argtype & ARG_ARGMASK) {
+   case ARG_MSGLIST:
+      /* Message list defaulting to nearest forward legal message */
+      if (_msgvec == 0)
+         goto je96;
+      if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
+         break;
+      if (c == 0) {
+         *_msgvec = first(com->msgflag, com->msgmask);
+         if (*_msgvec != 0)
+            _msgvec[1] = 0;
+      }
+      if (*_msgvec == 0) {
+         if (!inhook)
+            printf(tr(97, "No applicable messages\n"));
+         break;
+      }
+      e = (*com->func)(_msgvec);
+      break;
+
+   case ARG_NDMLIST:
+      /* Message list with no defaults, but no error if none exist */
+      if (_msgvec == 0) {
 je96:
-			fprintf(stderr, tr(96,
-				"Illegal use of `message list'\n"));
-			break;
-		}
-		if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
-			break;
-		e = (*com->func)(_msgvec);
-		break;
+         fprintf(stderr, tr(96, "Illegal use of `message list'\n"));
+         break;
+      }
+      if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
+         break;
+      e = (*com->func)(_msgvec);
+      break;
 
-	case STRLIST:
-		/* Just the straight string, with leading blanks removed */
-		while (whitechar(*cp))
-			cp++;
-		e = (*com->func)(cp);
-		break;
+   case ARG_STRLIST:
+      /* Just the straight string, with leading blanks removed */
+      while (whitechar(*cp))
+         cp++;
+      e = (*com->func)(cp);
+      break;
 
-	case RAWLIST:
-	case ECHOLIST:
-		/* A vector of strings, in shell style */
-		if ((c = getrawlist(cp, linesize, arglist,
-				sizeof arglist / sizeof *arglist,
-				(com->argtype&~(F|P|I|M|T|W|R|A)) == ECHOLIST)
-				) < 0)
-			break;
-		if (c < com->minargs) {
-			fprintf(stderr, tr(99,
-				"`%s' requires at least %d arg(s)\n"),
-				com->name, com->minargs);
-			break;
-		}
-		if (c > com->maxargs) {
-			fprintf(stderr, tr(100,
-				"`%s' takes no more than %d arg(s)\n"),
-				com->name, com->maxargs);
-			break;
-		}
-		e = (*com->func)(arglist);
-		break;
+   case ARG_RAWLIST:
+   case ARG_ECHOLIST:
+      /* A vector of strings, in shell style */
+      if ((c = getrawlist(cp, line.l, arglist, NELEM(arglist),
+            ((com->argtype & ARG_ARGMASK) == ARG_ECHOLIST))) < 0)
+         break;
+      if (c < com->minargs) {
+         fprintf(stderr, tr(99, "`%s' requires at least %d arg(s)\n"),
+            com->name, com->minargs);
+         break;
+      }
+      if (c > com->maxargs) {
+         fprintf(stderr, tr(100, "`%s' takes no more than %d arg(s)\n"),
+            com->name, com->maxargs);
+         break;
+      }
+      e = (*com->func)(arglist);
+      break;
 
-	case NOLIST:
-		/* Just the constant zero, for exiting, eg. */
-		e = (*com->func)(0);
-		break;
+   case ARG_NOLIST:
+      /* Just the constant zero, for exiting, eg. */
+      e = (*com->func)(0);
+      break;
 
-	default:
-		panic(tr(101, "Unknown argument type"));
-	}
+   default:
+      panic(tr(101, "Unknown argument type"));
+   }
+
+   if (e == 0 && (com->argtype & ARG_V) &&
+         (cp = temporary_arg_v_store) != NULL) {
+      temporary_arg_v_store = NULL;
+      evp->ev_new_content = cp;
+      goto jleave0;
+   }
+   if (!(com->argtype & ARG_H) && !list_saw_numbers)
+      evp->ev_add_history = TRU1;
 
 jleave:
-	/* Exit the current source file on error */
-	if ((exec_last_comm_error = (e != 0))) {
-		if (e < 0)
-			return 1;
-		if (loading)
-			return 1;
-		if (sourcing)
-			unstack();
-		return 0;
-	}
-	if (com == (struct cmd*)NULL)
-		return 0;
-	if (com->argtype & P && ok_blook(autoprint))
-		if (visible(dot)) {
-			muvec[0] = dot - &message[0] + 1;
-			muvec[1] = 0;
-			type(muvec);
-		}
-	if (!sourcing && !inhook && (com->argtype & T) == 0)
-		sawcom = TRU1;
+   /* Exit the current source file on error */
+   if ((exec_last_comm_error = (e != 0))) {
+      if (e < 0)
+         return 1;
+      if (loading)
+         return 1;
+      if (sourcing)
+         unstack();
+      return 0;
+   }
+   if (com == NULL)
+      return 0;
+   if ((com->argtype & ARG_P) && ok_blook(autoprint))
+      if (visible(dot)) {
+         muvec[0] = (int)PTR2SIZE(dot - message + 1);
+         muvec[1] = 0;
+         type(muvec);
+      }
+   if (!sourcing && !inhook && (com->argtype & ARG_T) == 0)
+      sawcom = TRU1;
 jleave0:
    exec_last_comm_error = 0;
-	return 0;
+   return 0;
 }
 
 /*

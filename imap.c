@@ -2063,9 +2063,9 @@ out:	safe_signal(SIGINT, saveint);
 }
 
 FL int
-imap_newmail(int autoinc)
+imap_newmail(int nmail)
 {
-	if (autoinc && had_exists < 0 && had_expunge < 0) {
+	if (nmail && had_exists < 0 && had_expunge < 0) {
 		imaplock = 1;
 		imap_noop();
 		imaplock = 0;

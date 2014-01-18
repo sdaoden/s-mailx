@@ -90,7 +90,7 @@ FL int      c_define(void *v);
 FL int      c_undef(void *v);
 FL int      c_call(void *v);
 
-FL int      callhook(char const *name, int newmail);
+FL int      callhook(char const *name, int nmail);
 
 /* List all macros */
 FL int      c_defines(void *v);
@@ -448,21 +448,25 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a complete line of input (with editing if possible).
- * If *prompt* is NULL we'll call getprompt() first.
+/* Read a complete line of input, with editing if interactive and possible.
+ * If prompt is NULL we'll call getprompt() first, if necessary.
+ * nl_escape defines wether user can escape newlines via backslash (POSIX).
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error */
-FL int         readline_input(enum lned_mode lned, char const *prompt,
-                  char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS);
+FL int         readline_input(char const *prompt, bool_t nl_escape,
+                  char **linebuf, size_t *linesize, char const *string
+                  SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
+# define readline_input(A,B,C,D,E) readline_input(A,B,C,D,E,__FILE__,__LINE__)
 #endif
 
-/* Read a line of input (with editing if possible) and return it savestr()d,
- * or NULL in case of errors or if an empty line would be returned.
+/* Read a line of input, with editing if interactive and possible, return it
+ * savestr()d or NULL in case of errors or if an empty line would be returned.
  * This may only be called from toplevel (not during sourcing).
- * If *prompt* is NULL we'll call getprompt().
- * *string* is the default/initial content of the return value (this is
- * "almost" ignored in non-interactive mode for reproducability) */
+ * If prompt is NULL we'll call getprompt() if necessary.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility */
 FL char *      readstr_input(char const *prompt, char const *string);
 
 FL void        setptr(FILE *ibuf, off_t offset);
@@ -606,7 +610,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx);
-FL int         imap_setfile(const char *xserver, int newmail, int isedit);
+FL int         imap_setfile(const char *xserver, int nmail, int isedit);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -614,7 +618,7 @@ FL void        imap_quit(void);
 FL enum okay   imap_undelete(struct message *m, int n);
 FL enum okay   imap_unread(struct message *m, int n);
 FL int         imap_imap(void *vp);
-FL int         imap_newmail(int autoinc);
+FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
 FL void        imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
@@ -646,15 +650,26 @@ FL char *      imap_unquotestr(const char *s);
 FL enum okay   imap_search(const char *spec, int f);
 
 /* lex.c */
-FL int         setfile(char const *name, int newmail);
+FL int         setfile(char const *name, int nmail);
 FL int         newmailinfo(int omsgCount);
+
+/* Interpret user commands.  If standard input is not a tty, print no prompt */
 FL void        commands(void);
+
+/* Evaluate a single command.
+ * .ev_add_history and .ev_new_content will be updated upon success.
+ * Command functions return 0 for success, 1 for error, and -1 for abort.
+ * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
+FL int         evaluate(struct eval_ctx *evp);
+/* TODO drop execute() is the legacy version of evaluate().
+ * Contxt is non-zero if called while composing mail */
 FL int         execute(char *linebuf, int contxt, size_t linesize);
+
 FL void        setmsize(int sz);
 FL void        onintr(int s);
 FL void        announce(int printheaders);
 FL int         newfileinfo(void);
-FL int         getmdot(int newmail);
+FL int         getmdot(int nmail);
 FL void        initbox(const char *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
@@ -679,7 +694,7 @@ FL void *      zalloc(FILE *fp);
 #endif /* HAVE_IMAP */
 
 /* maildir.c */
-FL int         maildir_setfile(const char *name, int newmail, int isedit);
+FL int         maildir_setfile(const char *name, int nmail, int isedit);
 FL void        maildir_quit(void);
 FL enum okay   maildir_append(const char *name, FILE *fp);
 FL enum okay   maildir_remove(const char *name);
@@ -855,7 +870,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 /* pop3.c */
 #ifdef HAVE_POP3
 FL enum okay   pop3_noop(void);
-FL int         pop3_setfile(const char *server, int newmail, int isedit);
+FL int         pop3_setfile(const char *server, int nmail, int isedit);
 FL enum okay   pop3_header(struct message *m);
 FL enum okay   pop3_body(struct message *m);
 FL void        pop3_quit(void);
