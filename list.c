@@ -463,7 +463,7 @@ number:
 	 */
 
 	if (np > namelist || id) {
-		int	allnet = value("allnet") != NULL;
+		bool_t allnet = ok_blook(allnet);
 
 #ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
@@ -976,7 +976,7 @@ matchsender(char *str, int mesg, int allnet)
 		} while (cp++, *str++ != '\0');
 		return 0;
 	}
-	return !strcmp(str, (value("showname") ? realname : skin)
+	return !strcmp(str, (ok_blook(showname) ? realname : skin)
 			(name1(&message[mesg - 1], 0)));
 }
 
@@ -1033,7 +1033,7 @@ matchsubj(char *str, int mesg)
 	 * Now look, ignoring case, for the word in the string.
 	 */
 
-	if (value("searchheaders") && (cp = strchr(str, ':'))) {
+	if (ok_blook(searchheaders) && (cp = strchr(str, ':'))) {
 		*cp++ = '\0';
 		cp2 = hfieldX(str, mp);
 		cp[-1] = ':';

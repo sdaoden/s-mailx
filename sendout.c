@@ -286,13 +286,13 @@ _prepare_mta_args(struct name *to, struct header *hp)
 	size_t j, i = 4 + smopts_count + 2 + count(to) + 1;
 	char const **args = salloc(i * sizeof(char*));
 
-	args[0] = value("sendmail-progname");
+	args[0] = ok_vlook(sendmail_progname);
 	if (args[0] == NULL || *args[0] == '\0')
 		args[0] = SENDMAIL_PROGNAME;
 
 	args[1] = "-i";
 	i = 2;
-	if (value("metoo"))
+	if (ok_blook(metoo))
 		args[i++] = "-m";
 	if (options & OPT_VERBOSE)
 		args[i++] = "-v";
@@ -370,7 +370,7 @@ put_signature(FILE *fo, int convert)
 	FILE *fsig;
 	size_t sz;
 
-	sig = value("signature");
+	sig = ok_vlook(signature);
 	if (sig == NULL || *sig == '\0')
 		return 0;
 	else if ((sig = file_expand(sig)) == NULL)
@@ -804,8 +804,8 @@ transfer(struct name *to, FILE *input, struct header *hp)
 
 	np = to;
 	while (np) {
-		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);
-		if ((cp = value(o)) != NULL) {
+		snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);/* XXX */
+		if ((cp = vok_vlook(o)) != NULL) {
 #ifdef HAVE_SSL
 			struct name *nt;
 			FILE *ef;
@@ -841,7 +841,7 @@ transfer(struct name *to, FILE *input, struct header *hp)
 		}
 	}
 	if (cnt) {
-		if (value("smime-force-encryption") ||
+		if (ok_blook(smime_force_encryption) ||
 				start_mta(to, input, hp) != OKAY)
 			ok = STOP;
 	}
@@ -865,8 +865,8 @@ start_mta(struct name *to, FILE *input, struct header *hp)
 	sigset_t nset;
 	(void)hp;
 
-	if ((smtp = value("smtp")) == NULL) {
-		if ((mta = value("sendmail")) != NULL) {
+	if ((smtp = ok_vlook(smtp)) == NULL) {
+		if ((mta = ok_vlook(sendmail)) != NULL) {
 			if ((mta = file_expand(mta)) == NULL)
 				goto jstop;
 		} else
@@ -939,8 +939,8 @@ jstop:		savedeadletter(input, 0);
 		fputs(tr(182, ". . . message not sent.\n"), stderr);
 		_exit(1);
 	}
-	if ((options & (OPT_DEBUG|OPT_VERBOSE|OPT_BATCH_FLAG)) ||
-			value("sendwait")) {
+	if ((options & (OPT_DEBUG | OPT_VERBOSE | OPT_BATCH_FLAG)) ||
+			ok_blook(sendwait)) {
 		if (wait_child(pid, NULL))
 			ok = OKAY;
 		else
@@ -970,14 +970,14 @@ mightrecord(FILE *fp, struct name *to, int recipient_record)
 			;
 		*cq = '\0';
 	} else
-		cp = value("record");
+		cp = ok_vlook(record);
 	if (cp != NULL) {
 		ep = expand(cp);
 		if (ep == NULL) {
 			ep = "NULL";
 			goto jbail;
 		}
-		if (value("outfolder") && *ep != '/' && *ep != '+' &&
+		if (ok_blook(outfolder) && *ep != '/' && *ep != '+' &&
 				which_protocol(ep) == PROTO_FILE) {
 			size_t i = strlen(cp);
 			cq = salloc(i + 2);
@@ -1022,9 +1022,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 	time_current_update(&time_current, TRU1);
 
 	/*  */
-	if ((cp = value("autocc")) != NULL && *cp)
+	if ((cp = ok_vlook(autocc)) != NULL && *cp)
 		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC|GFULL)));
-	if ((cp = value("autobcc")) != NULL && *cp)
+	if ((cp = ok_vlook(autobcc)) != NULL && *cp)
 		hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp,GBCC|GFULL)));
 
 	/*
@@ -1036,16 +1036,16 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 		goto j_leave;
 
 	if (options & OPT_INTERACTIVE) {
-		err = (value("bsdcompat") || value("askatend"));
+		err = (ok_blook(bsdcompat) || ok_blook(askatend));
 		if (err == 0)
 			goto jaskeot;
-		if (value("askcc"))
+		if (ok_blook(askcc))
 			++err, grab_headers(hp, GCC, 1);
-		if (value("askbcc"))
+		if (ok_blook(askbcc))
 			++err, grab_headers(hp, GBCC, 1);
-		if (value("askattach"))
+		if (ok_blook(askattach))
 			++err, hp->h_attach = edit_attachments(hp->h_attach);
-		if (value("asksign"))
+		if (ok_blook(asksign))
 			++err, dosign = yorn(tr(35,
 				"Sign this message (y/n)? "));
 		if (err == 1) {
@@ -1061,12 +1061,12 @@ jaskeot:
 		if (hp->h_subject == NULL)
 			printf(tr(184,
 				"No message, no subject; hope that's ok\n"));
-		else if (value("bsdcompat") || value("bsdmsgs"))
+		else if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			printf(tr(185, "Null message body; hope that's ok\n"));
 	}
 
 	if (dosign < 0)
-		dosign = (value("smime-sign") != NULL);
+		dosign = ok_blook(smime_sign);
 #ifndef HAVE_SSL
 	if (dosign) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
@@ -1103,8 +1103,8 @@ jaskeot:
 	/* Do alias expansion on Reply-To: members, too (Martin Neitzel) */
 	/* TODO puthead() YET (!!! see ONCE note above) expands the value, but
 	 * TODO doesn't perform alias expansion; encapsulate in the ONCE-o */
-	if (hp->h_replyto == NULL && (cp = value("replyto")) != NULL)
-		hp->h_replyto = checkaddrs(lextract(cp, GEXTRA|GFULL));
+	if (hp->h_replyto == NULL && (cp = ok_vlook(replyto)) != NULL)
+		hp->h_replyto = checkaddrs(lextract(cp, GEXTRA | GFULL));
 	if (hp->h_replyto != NULL)
 		hp->h_replyto = elide(usermap(hp->h_replyto, TRU1));
 
@@ -1201,9 +1201,9 @@ message_id(FILE *fo, struct header *hp)
 	size_t rl;
 	struct tm *tmp;
 
-	if (boption("message-id-disable"))
+	if (ok_blook(message_id_disable))
 		goto jleave;
-	if ((h = voption("hostname")) != NULL)
+	if ((h = ok_vlook(hostname)) != NULL)
 		rl = 24;
 	else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
 		rl = 16;
@@ -1278,7 +1278,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 	size_t gotcha, l;
 	struct name *np, *fromfield = NULL, *senderfield = NULL;
 
-	if ((addr = value("stealthmua")) != NULL) {
+	if ((addr = ok_vlook(stealthmua)) != NULL) {
 		stealthmua = (strcmp(addr, "noagent") == 0) ? -1 : 1;
 	} else
 		stealthmua = 0;
@@ -1300,7 +1300,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			hp->h_from = fromfield;
 		}
 		if (((addr = hp->h_organization) != NULL ||
-				(addr = value("ORGANIZATION")) != NULL) &&
+				(addr = ok_vlook(ORGANIZATION)) != NULL) &&
 				(l = strlen(addr)) > 0) {
 			fwrite("Organization: ", sizeof (char), 14, fo);
 			if (xmime_write(addr, l, fo,
@@ -1321,7 +1321,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 					action!=SEND_TODISP))
 				return 1;
 			gotcha++;
-		} else if ((addr = value("replyto")) != NULL)
+		} else if ((addr = ok_vlook(replyto)) != NULL)
 			if (_putname(addr, w, action, &gotcha, "Reply-To:", fo,
 						NULL))
 				return 1;
@@ -1331,7 +1331,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 				return 1;
 			gotcha++;
 			senderfield = hp->h_sender;
-		} else if ((addr = value("sender")) != NULL)
+		} else if ((addr = ok_vlook(sender)) != NULL)
 			if (_putname(addr, w, action, &gotcha, "Sender:", fo,
 						&senderfield))
 				return 1;
@@ -1344,7 +1344,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 			return 1;
 		gotcha++;
 	}
-	if (value("bsdcompat") == NULL && value("bsdorder") == NULL)
+	if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
 		FMT_CC_AND_BCC
 	if (hp->h_subject != NULL && w & GSUBJECT) {
 		fwrite("Subject: ", sizeof (char), 9, fo);
@@ -1371,7 +1371,7 @@ puthead(struct header *hp, FILE *fo, enum gfield w,
 		gotcha++;
 		fwrite("\n", sizeof (char), 1, fo);
 	}
-	if (value("bsdcompat") || value("bsdorder"))
+	if (ok_blook(bsdcompat) || ok_blook(bsdorder))
 		FMT_CC_AND_BCC
 	if (w & GMSGID && stealthmua <= 0)
 		message_id(fo, hp), gotcha++;
@@ -1431,7 +1431,7 @@ fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
 			m |= m_NOPF;
 			goto jstep;
 		}
-		if (value("add-file-recipients"))
+		if (ok_blook(add_file_recipients))
 			goto jstep;
 		if ((col == 3 && ((asccasecmp(str, "to:") == 0) ||
 					asccasecmp(str, "cc:") == 0)) ||
@@ -1500,14 +1500,14 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
 					"Resent-From:", fo, &fromfield))
 				return 1;
 		}
-		if ((cp = value("sender")) != NULL) {
+		if ((cp = ok_vlook(sender)) != NULL) {
 			if (_putname(cp, GCOMMA, SEND_MBOX, NULL,
 					"Resent-Sender:", fo, &senderfield))
 				return 1;
 		}
 		if (fmt("Resent-To:", to, fo, 1, 1, 0))
 			return 1;
-		if ((cp = value("stealthmua")) == NULL ||
+		if ((cp = ok_vlook(stealthmua)) == NULL ||
 				strcmp(cp, "noagent") == 0) {
 			fputs("Resent-", fo);
 			message_id(fo, NULL);
@@ -1606,8 +1606,7 @@ jerr_o:
 		savedeadletter(nfi, 0);
 	to = elide(to); /* TODO should have been done in fixhead()? */
 	if (count(to) != 0) {
-		if (value("record-resent") == NULL ||
-				mightrecord(nfi, to, 0) == OKAY)
+		if (!ok_blook(record_resent) || mightrecord(nfi, to, 0) == OKAY)
 			ok = transfer(to, nfi, NULL);
 	} else if (! _senderror)
 		ok = OKAY;

@@ -172,9 +172,9 @@ insertcommand(FILE *fp, char const *cmd)
 	char const *cp;
 	int c;
 
-	cp = value("SHELL");
+	cp = ok_vlook(SHELL);
 	if (cp == NULL)
-		cp = SHELL;
+		cp = XSHELL;
 	if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
 		while ((c = getc(ibuf)) != EOF) /* XXX bytewise, yuck! */
 			putc(c, fp);
@@ -200,7 +200,7 @@ print_collf(FILE *cf, struct header *hp)
 	rewind(cf);
 	cnt = cnt2 = fsize(cf);
 
-	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
 		for (linecnt = 0;
 			fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0);
 			linecnt++);
@@ -218,10 +218,10 @@ print_collf(FILE *cf, struct header *hp)
 		if (hp->h_attach)
 			maxlines--;
 		maxlines -= myaddrs(hp) != NULL || hp->h_from != NULL;
-		maxlines -= value("ORGANIZATION") != NULL ||
+		maxlines -= ok_vlook(ORGANIZATION) != NULL ||
 			hp->h_organization != NULL;
-		maxlines -= value("replyto") != NULL || hp->h_replyto != NULL;
-		maxlines -= value("sender") != NULL || hp->h_sender != NULL;
+		maxlines -= ok_vlook(replyto) != NULL || hp->h_replyto != NULL;
+		maxlines -= ok_vlook(sender) != NULL || hp->h_sender != NULL;
 		if ((long)maxlines < 0 || linecnt > maxlines) {
 			cp = get_pager();
 			if (sigsetjmp(_coll_pipejmp, 1))
@@ -237,7 +237,7 @@ print_collf(FILE *cf, struct header *hp)
 
 	fprintf(obuf, tr(62, "-------\nMessage contains:\n"));
 	gf = GIDENT|GTO|GSUBJECT|GCC|GBCC|GNL|GFILES;
-	if (value("fullnames"))
+	if (ok_blook(fullnames))
 		gf |= GCOMMA;
 	puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
 	while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
@@ -327,7 +327,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	unlink(tempMail);
 	Ftfree(&tempMail);
 
-	if ((cp = value("NAIL_HEAD")) != NULL && putesc(cp, _coll_fp) < 0)
+	if ((cp = ok_vlook(NAIL_HEAD)) != NULL && putesc(cp, _coll_fp) < 0)
 		goto jerr;
 
 	/*
@@ -338,18 +338,18 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	getfields = 0;
 	if (! (options & OPT_t_FLAG)) {
 		t = GTO|GSUBJECT|GCC|GNL;
-		if (value("fullnames"))
+		if (ok_blook(fullnames))
 			t |= GCOMMA;
 		if (hp->h_subject == NULL && (options & OPT_INTERACTIVE) &&
-			    (value("ask") != NULL || value("asksub") != NULL))
+			    (ok_blook(ask) || ok_blook(asksub)))
 			t &= ~GNL, getfields |= GSUBJECT;
 		if (hp->h_to == NULL && (options & OPT_INTERACTIVE))
 			t &= ~GNL, getfields |= GTO;
-		if (value("bsdcompat") == NULL && value("askatend") == NULL &&
+		if (!ok_blook(bsdcompat) && !ok_blook(askatend) &&
 				(options & OPT_INTERACTIVE)) {
-			if (hp->h_bcc == NULL && value("askbcc"))
+			if (hp->h_bcc == NULL && ok_blook(askbcc))
 				t &= ~GNL, getfields |= GBCC;
-			if (hp->h_cc == NULL && value("askcc"))
+			if (hp->h_cc == NULL && ok_blook(askcc))
 				t &= ~GNL, getfields |= GCC;
 		}
 		if (printheaders) {
@@ -362,12 +362,12 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	/*
 	 * Quote an original message
 	 */
-	if (mp != NULL && (doprefix || (quote = value("quote")) != NULL)) {
+	if (mp != NULL && (doprefix || (quote = ok_vlook(quote)) != NULL)) {
 		quoteig = allignore;
 		action = SEND_QUOTE;
 		if (doprefix) {
 			quoteig = fwdignore;
-			if ((cp = value("fwdheading")) == NULL)
+			if ((cp = ok_vlook(fwdheading)) == NULL)
 				cp = "-------- Original Message --------";
 			if (*cp && fprintf(_coll_fp, "%s\n", cp) < 0)
 				goto jerr;
@@ -392,7 +392,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 		}
 		if (fflush(_coll_fp))
 			goto jerr;
-		cp = value("indentprefix");
+		cp = ok_vlook(indentprefix);
 		if (cp != NULL && *cp == '\0')
 			cp = "\t";
 		if (sendmp(mp, _coll_fp, quoteig, (doprefix ? NULL : cp),
@@ -407,7 +407,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 	if (fseek(_coll_fp, 0, SEEK_END))
 		goto jerr;
 
-	escape = ((cp = value("escape")) != NULL) ? *cp : ESCAPE;
+	escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
 	eofcount = 0;
 	_coll_hadintr = 0;
 
@@ -418,7 +418,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 			if (_include_file(NULL, quotefile, &lc, &cc, TRU1) != 0)
 				goto jerr;
 		}
-		if ((options & OPT_INTERACTIVE) && value("editalong")) {
+		if ((options & OPT_INTERACTIVE) && ok_blook(editalong)) {
 			rewind(_coll_fp);
 			mesedit('e', hp);
 			goto jcont;
@@ -465,7 +465,7 @@ jcont:
 
 		if (cnt < 0) {
 			if ((options & OPT_INTERACTIVE) &&
-			    value("ignoreeof") != NULL && ++eofcount < 25) {
+			    ok_blook(ignoreeof) && ++eofcount < 25) {
 				printf(tr(55,
 					"Use \".\" to terminate letter\n"));
 				continue;
@@ -485,7 +485,7 @@ jcont:
 		_coll_hadintr = 0;
 		if (linebuf[0] == '.' && linebuf[1] == '\0' &&
 				(options & (OPT_INTERACTIVE|OPT_TILDE_FLAG)) &&
-				(boption("dot") || boption("ignoreeof")))
+				(ok_blook(dot) || ok_blook(ignoreeof)))
 			break;
 		if (cnt == 0 || linebuf[0] != escape || ! (options &
 				(OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
@@ -544,8 +544,8 @@ jcont:
 			/* Grab a bunch of headers */
 			do
 				grab_headers(hp, GTO|GSUBJECT|GCC|GBCC,
-						(value("bsdcompat") != NULL &&
-						value("bsdorder") != NULL));
+						(ok_blook(bsdcompat) &&
+						ok_blook(bsdorder)));
 			while (hp->h_to == NULL);
 			goto jcont;
 		case 'H':
@@ -631,11 +631,11 @@ jcont:
 			printf(tr(60, "%d/%d\n"), lc, cc);
 			break;
 		case 'i':
-			/* Insert an environment variable into the file */
+			/* Insert a variable into the file */
 			cp = &linebuf[2];
 			while (whitechar(*cp))
 				++cp;
-			if ((cp = value(cp)) == NULL || *cp == '\0')
+			if ((cp = vok_vlook(cp)) == NULL || *cp == '\0')
 				break;
 			if (putesc(cp, _coll_fp) < 0)
 				goto jerr;
@@ -646,8 +646,8 @@ jcont:
 		case 'a':
 		case 'A':
 			/* Insert the contents of a signature variable */
-			if ((cp = value(c == 'a' ? "sign" : "Sign")) != NULL &&
-					*cp != '\0') {
+			cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
+			if (cp != NULL && *cp != '\0') {
 				if (putesc(cp, _coll_fp) < 0)
 					goto jerr;
 				if ((options & OPT_INTERACTIVE) &&
@@ -704,7 +704,7 @@ jcont:
 			 * 'v' means to use VISUAL
 			 */
 			rewind(_coll_fp);
-			mesedit(c, value("editheaders") ? hp : NULL);
+			mesedit(c, ok_blook(editheaders) ? hp : NULL);
 			goto jcont;
 		case '?':
 			/*
@@ -744,7 +744,7 @@ jcont:
 
 jout:
 	if (_coll_fp != NULL) {
-		if ((cp = value("NAIL_TAIL")) != NULL) {
+		if ((cp = ok_vlook(NAIL_TAIL)) != NULL) {
 			if (putesc(cp, _coll_fp) < 0)
 				goto jerr;
 			if ((options & OPT_INTERACTIVE) &&
@@ -853,10 +853,10 @@ static void
 mesedit(int c, struct header *hp)
 {
 	sighandler_type sigint = safe_signal(SIGINT, SIG_IGN);
-	char *saved = value("add-file-recipients");
+	bool_t saved = ok_blook(add_file_recipients);
 	FILE *nf;
 
-	assign("add-file-recipients", "");
+	ok_bset(add_file_recipients, FAL0);
 	nf = run_editor(_coll_fp, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
 
 	if (nf != NULL) {
@@ -870,7 +870,7 @@ mesedit(int c, struct header *hp)
 		}
 	}
 
-	assign("add-file-recipients", saved);
+	ok_bset(add_file_recipients, saved);
 	safe_signal(SIGINT, sigint);
 }
 
@@ -899,8 +899,8 @@ mespipe(char *cmd)
 	 * stdin = current message.
 	 * stdout = new message.
 	 */
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	if (run_command(sh, 0, fileno(_coll_fp), fileno(nf), "-c", cmd, NULL)
 			< 0) {
 		Fclose(nf);
@@ -953,7 +953,7 @@ forward(char *ms, FILE *fp, int f)
 	}
 	if (f == 'f' || f == 'F')
 		tabst = NULL;
-	else if ((tabst = value("indentprefix")) == NULL)
+	else if ((tabst = ok_vlook(indentprefix)) == NULL)
 		tabst = "\t";
 	ig = upperchar(f) ? (struct ignoretab *)NULL : ignore;
 	action = upperchar(f) ? SEND_QUOTE_ALL : SEND_QUOTE;
@@ -1005,7 +1005,7 @@ collint(int s)
 {
 	/* the control flow is subtle, because we can be called from ~q */
 	if (_coll_hadintr == 0) {
-		if (value("ignore") != NULL) {
+		if (ok_blook(ignore)) {
 			puts("@");
 			fflush(stdout);
 			clearerr(stdin);
@@ -1015,7 +1015,7 @@ collint(int s)
 		siglongjmp(_coll_jmp, 1);
 	}
 	exit_status |= 04;
-	if (value("save") != NULL && s != 0)
+	if (ok_blook(save) && s != 0)
 		savedeadletter(_coll_fp, 1);
 	/* Aborting message, no need to fflush() .. */
 	siglongjmp(_coll_abort, 1);

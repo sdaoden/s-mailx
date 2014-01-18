@@ -571,7 +571,7 @@ setfile(char const *name, int nmail)
 	if ((!edit || nmail) && msgCount == 0) {
 jnonmail:
 		if (!nmail) {
-			if (value("emptystart") == NULL)
+			if (!ok_blook(emptystart))
 nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
 					who);
 		}
@@ -603,7 +603,7 @@ newmailinfo(int omsgCount)
 		printf(tr(224, "Loaded %d messages.\n"), msgCount);
 	callhook(mailname, 1);
 	mdot = getmdot(1);
-	if (value("header"))
+	if (ok_blook(header))
 		print_headers(omsgCount + 1, msgCount);
 	return mdot;
 }
@@ -644,18 +644,17 @@ commands(void)
 		 * Print the prompt, if needed.  Clear out
 		 * string space, and flush the output.
 		 */
-		if (! sourcing && (options & OPT_INTERACTIVE)) {
-			av = (av = value("autoinc")) ? savestr(av) : NULL;
-			nv = (nv = value("newmail")) ? savestr(nv) : NULL;
+		if (!sourcing && (options & OPT_INTERACTIVE)) {
+			if ((av = ok_vlook(autoinc)) != NULL)
+				av = savestr(av);
+			if ((nv = ok_vlook(newmail)) != NULL)
+				nv = savestr(nv);
 			if ((options & OPT_TTYIN) &&
-					(av != NULL || nv != NULL ||
-					mb.mb_type == MB_IMAP)) {
+					(av != NULL || nv != NULL || mb.mb_type == MB_IMAP)) {
 				struct stat st;
 
-				n = (av && strcmp(av, "noimap") &&
-						strcmp(av, "nopoll")) |
-					(nv && strcmp(nv, "noimap") &&
-					 	strcmp(nv, "nopoll"));
+				n = (av && strcmp(av, "noimap") && strcmp(av, "nopoll")) |
+					(nv && strcmp(nv, "noimap") && strcmp(nv, "nopoll"));
 #ifdef HAVE_IMAP
 				x = !(av || nv);
 #endif
@@ -717,7 +716,7 @@ commands(void)
 				continue;
 			}
 			if ((options & OPT_INTERACTIVE) &&
-					value("ignoreeof") && ++eofloop < 25) {
+					ok_blook(ignoreeof) && ++eofloop < 25) {
 				printf(tr(89, "Use `quit' to quit.\n"));
 				continue;
 			}
@@ -729,7 +728,7 @@ commands(void)
 		if (execute(linebuf, 0, n))
 			break;
 		if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
-				boption("batch-exit-on-error"))
+				ok_blook(batch_exit_on_error))
 			break;
 	}
 
@@ -969,15 +968,15 @@ jleave:
 			unstack();
 		return 0;
 	}
-	if (com == (struct cmd*)NULL )
+	if (com == (struct cmd*)NULL)
 		return 0;
-	if (boption("autoprint") && com->argtype & P)
+	if (com->argtype & P && ok_blook(autoprint))
 		if (visible(dot)) {
 			muvec[0] = dot - &message[0] + 1;
 			muvec[1] = 0;
 			type(muvec);
 		}
-	if (! sourcing && ! inhook && (com->argtype & T) == 0)
+	if (!sourcing && !inhook && (com->argtype & T) == 0)
 		sawcom = TRU1;
 jleave0:
 	return 0;
@@ -1081,7 +1080,7 @@ announce(int printheaders)
 	vec[0] = mdot;
 	vec[1] = 0;
 	dot = &message[mdot - 1];
-	if (printheaders && msgCount > 0 && value("header") != NULL) {
+	if (printheaders && msgCount > 0 && ok_blook(header)) {
 		inithdr++;
 		headers(vec);
 		inithdr = 0;
@@ -1154,9 +1153,9 @@ getmdot(int nmail)
 	enum mflag	avoid = MHIDDEN|MDELETED;
 
 	if (!nmail) {
-		if (value("autothread"))
+		if (ok_blook(autothread))
 			thread(NULL);
-		else if ((cp = value("autosort")) != NULL) {
+		else if ((cp = ok_vlook(autosort)) != NULL) {
 			free(mb.mb_sorted);
 			mb.mb_sorted = sstrdup(cp);
 			sort(NULL);
@@ -1193,7 +1192,7 @@ getmdot(int nmail)
 				break;
 	if (mb.mb_threaded ? mp != NULL : mp < &message[msgCount])
 		mdot = mp - &message[0] + 1;
-	else if (value("showlast")) {
+	else if (ok_blook(showlast)) {
 		if (mb.mb_threaded) {
 			for (mp = this_in_thread(threadroot, -1); mp;
 					mp = prev_in_thread(mp))

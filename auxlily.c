@@ -249,7 +249,7 @@ paging_seems_sensible(void)
 	size_t ret = 0;
 	char const *cp;
 
-	if (IS_TTY_SESSION() && (cp = voption("crt")) != NULL)
+	if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL)
 		ret = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
 	return ret;
 }
@@ -345,7 +345,7 @@ which_protocol(const char *name)
 			if (stat(np, &st) < 0) {
 				strcpy(&np[sz], ".bz2");
 				if (stat(np, &st) < 0) {
-					if ((cp = value("newfolders")) != 0 &&
+					if ((cp = ok_vlook(newfolders)) != NULL &&
 						strcmp(cp, "maildir") == 0)
 					p = PROTO_MAILDIR;
 				}
@@ -354,6 +354,21 @@ which_protocol(const char *name)
 		ac_free(np);
 		return p;
 	}
+}
+
+FL ui32_t
+torek_hash(char const *name)
+{
+   /* Chris Torek's hash.
+    * NOTE: need to change *at least* create-okey-map.pl when changing the
+    * algorithm!! */
+	ui32_t h = 0;
+
+	while (*name != '\0') {
+		h *= 33;
+		h += *name++;
+	}
+	return h;
 }
 
 FL unsigned
@@ -428,7 +443,7 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
    case '@':
       if (use_nail_extensions) {
          switch (c) {
-         case '&':   c = boption("bsdcompat") ? '&' : '?';  break;
+         case '&':   c = ok_blook(bsdcompat) ? '&' : '?';   break;
          case '?':   c = exec_last_comm_error ? '1' : '0';  break;
          case '$':   c = PROMPT_DOLLAR;                     break;
          case '@':   c = PROMPT_AT;                         break;
@@ -457,7 +472,7 @@ getprompt(void)
    char *cp = buf;
    char const *ccp;
 
-   if ((ccp = voption("prompt")) == NULL || *ccp == '\0')
+   if ((ccp = ok_vlook(prompt)) == NULL || *ccp == '\0')
       goto jleave;
 
    for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
@@ -502,7 +517,7 @@ nodename(int mayoverride)
 # endif
 #endif
 
-	if (mayoverride && (hn = value("hostname")) != NULL && *hn != '\0') {
+	if (mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0') {
 		if (hostname != NULL)
 			free(hostname);
 		hostname = sstrdup(hn);
@@ -552,7 +567,7 @@ lookup_password_for_token(char const *token)
 	memcpy(var + 9, token, tl);
 	var[tl + 9] = '\0';
 
-	if ((cp = value(var)) != NULL)
+	if ((cp = vok_vlook(var)) != NULL)
 		cp = savestr(cp);
 	ac_free(var);
 	return cp;
@@ -730,7 +745,7 @@ makeprint(struct str const *in, struct str *out)
 	size_t msz;
 
 	if (print_all_chars == -1)
-		print_all_chars = (value("print-all-chars") != NULL);
+		print_all_chars = ok_blook(print_all_chars);
 
 	msz = in->l + 1;
 	out->s = outp = smalloc(msz);

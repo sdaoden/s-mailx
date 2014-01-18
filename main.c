@@ -271,7 +271,7 @@ _startup(void)
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* noallnet */
    /* noappend */
-   assign("asksub", "");
+   ok_bset(asksub, TRU1);
    /* noaskbcc */
    /* noaskcc */
    /* noautoprint */
@@ -280,10 +280,10 @@ _startup(void)
    /* nocrt */
    /* nodebug */
    /* nodot */
-   /* assign("escape", "~"); TODO non-compliant */
+   /* ok_vset(escape, ESCAPE *"~"*); TODO non-compliant */
    /* noflipr */
    /* nofolder */
-   assign("header", "");
+   ok_bset(header, TRU1);
    /* nohold */
    /* noignore */
    /* noignoreeof */
@@ -293,22 +293,22 @@ _startup(void)
    /* noonehop -- Note: we ignore this one */
    /* nooutfolder */
    /* nopage */
-   assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
+   ok_vset(prompt, "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
    /* noquiet */
    /* norecord */
-   assign("save", "");
+   ok_bset(save, TRU1);
    /* nosendwait */
    /* noshowto */
    /* nosign */
    /* noSign */
-   /* assign("toplines", "5"); XXX somewhat hmm */
+   /* ok_vset(toplines, "5"); XXX somewhat hmm */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
-   if (voption("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
-      assign("ttycharset", cp);
+   if (ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+      ok_vset(ttycharset, cp);
 # endif
 
 # ifdef HAVE_C90AMEND1
@@ -482,7 +482,7 @@ _rcv_mode(char const *folder)
    else if (*folder == '@') {
       /* This must be treated specially to make invocation like
        * -A imap -f @mailbox work */
-      if ((cp = value("folder")) != NULL && which_protocol(cp) == PROTO_IMAP)
+      if ((cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP)
          (void)n_strlcpy(mailname, cp, MAXPATHLEN);
    }
 
@@ -498,16 +498,16 @@ _rcv_mode(char const *folder)
    }
 
    callhook(mailname, 0);
-   if (i > 0 && !boption("emptystart"))
+   if (i > 0 && !ok_blook(emptystart))
       exit(1);
 
    if (sigsetjmp(__hdrjmp, 1) == 0) {
       if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, _hdrstop);
       if (!(options & OPT_N_FLAG)) {
-         if (!value("quiet"))
+         if (!ok_blook(quiet))
             printf(tr(140, "%s version %s.  Type ? for help.\n"),
-               (boption("bsdcompat") ? "Mail" : uagent), version);
+               (ok_blook(bsdcompat) ? "Mail" : uagent), version);
          announce(1);
          fflush(stdout);
       }
@@ -568,7 +568,7 @@ main(int argc, char *argv[])
     */
 
    starting =
-   unset_allow_undefined = TRU1;
+   var_clear_allow_undefined = TRU1;
 
    progname = argv[0];
    _startup();
@@ -617,7 +617,7 @@ main(int argc, char *argv[])
       case 'd':
          okey = "debug";
 #ifdef HAVE_DEBUG
-         assign(okey, "");
+         ok_bset(debug, TRU1);
 #endif
          goto joarg;
       case 'E':
@@ -724,7 +724,7 @@ joarg:
          /* Be verbose */
          okey = "verbose";
 #ifdef HAVE_DEBUG
-         assign(okey, "");
+         ok_bset(verbose, TRU1);
 #endif
          goto joarg;
       case '~':
@@ -809,7 +809,8 @@ jusage:
       load(file_expand(cp));
    else
       load(file_expand(MAILRC));
-   if (getenv("NAIL_EXTRA_RC") == NULL && (cp = value("NAIL_EXTRA_RC")) != NULL)
+   if (getenv("NAIL_EXTRA_RC") == NULL &&
+         (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
 
    /* Now we can set the account */
@@ -834,7 +835,7 @@ jusage:
     */
 
    starting =
-   unset_allow_undefined = FAL0;
+   var_clear_allow_undefined = FAL0;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);

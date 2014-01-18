@@ -83,7 +83,7 @@ edit1(int *msgvec, int viored)
 	/*
 	 * Deal with each message to be edited . . .
 	 */
-	wb = value("writebackedited") != NULL;
+	wb = ok_blook(writebackedited);
 	for (i = 0; msgvec[i] && i < msgCount; i++) {
 		sighandler_type sigint;
 
@@ -204,8 +204,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly,
 	}
 	nf = NULL;
 
-	if ((ed = value(viored == 'e' ? "EDITOR" : "VISUAL")) == NULL)
-		ed = (viored == 'e') ? "ed" : "vi";
+	ed = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
+	if (ed == NULL)
+		ed = (viored == 'e') ? "ed" : "vi"; /* XXX */
 	sigemptyset(&cset);
 	if (run_command(ed, oldint != SIG_IGN ? &cset : NULL, -1, -1,
 				tempEdit, NULL, NULL) < 0)

@@ -236,7 +236,7 @@ interlink(struct message *m, long cnt, int nmail)
 	struct msort	*ms;
 	struct message	*root;
 	int	autocollapse = !nmail && !(inhook&2) &&
-			value("autocollapse") != NULL;
+			ok_blook(autocollapse);
 
 	ms = smalloc(sizeof *ms * cnt);
 	for (n = 0, i = 0; i < cnt; i++) {
@@ -405,7 +405,7 @@ thread(void *vp)
 			free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
 	}
-	if (vp && vp != (void *)-1 && !inhook && value("header"))
+	if (vp && vp != (void *)-1 && !inhook && ok_blook(header))
 		return headers(vp);
 	return 0;
 }
@@ -420,7 +420,7 @@ unthread(void *vp)
 	mb.mb_sorted = NULL;
 	for (m = &message[0]; m < &message[msgCount]; m++)
 		m->m_collapsed = 0;
-	if (vp && !inhook && value("header"))
+	if (vp && !inhook && ok_blook(header))
 		return headers(vp);
 	return 0;
 }
@@ -524,7 +524,7 @@ sort(void *vp)
 	struct msort	*ms;
 	struct str	in, out;
 	int	i, n, msgvec[2];
-	int	showname = value("showname") != NULL;
+	bool_t showname = ok_blook(showname);
 	struct message	*mp;
 
 	msgvec[0] = dot - &message[0] + 1;
@@ -641,8 +641,8 @@ sort(void *vp)
 	finalize(threadroot);
 	mb.mb_threaded = 2;
 	ac_free(ms);
-	return vp && vp != (void *)-1 && !inhook &&
-		value("header") ? headers(msgvec) : 0;
+	return ((vp && vp != (void *)-1 && !inhook && ok_blook(header))
+		? headers(msgvec) : 0);
 }
 
 static char const *

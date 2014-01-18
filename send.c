@@ -352,7 +352,7 @@ _pipecmd(char **result, char const *content_type)
 	do
 		*cp++ = lowerconv(*cq);
 	while (*cq++ != '\0');
-	cp = value(s);
+	cp = vok_vlook(s);
 	ac_free(s);
 
 	if (cp == NULL)
@@ -418,8 +418,8 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
 		Ftfree(&tempPipe);
 		async = FAL0;
 	}
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	if ((rbuf = Popen(pipecomm, "W", sh,
 			async ? -1 : fileno(*qbuf))) == NULL)
 		perror(pipecomm);
@@ -623,7 +623,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 			*cp2 = 0;	/* temporarily null terminate */
 			if ((doign && is_ign(line, cp2 - line, doign)) ||
 					(action == SEND_MBOX &&
-					 !boption("keep-content-length") &&
+					 !ok_blook(keep_content_length) &&
 					 (asccasecmp(line, "content-length")==0
 					 || asccasecmp(line, "lines") == 0)))
 				ignoring = 1;
@@ -717,7 +717,7 @@ skip:
 		case SEND_TODISP_ALL:
 		case SEND_QUOTE:
 		case SEND_QUOTE_ALL:
-			if (value("rfc822-body-from_")) {
+			if (ok_blook(rfc822_body_from_)) {
 				if (qf->qf_pfix_len > 0) {
 					size_t i = fwrite(qf->qf_pfix,
 						sizeof *qf->qf_pfix,
@@ -733,7 +733,7 @@ skip:
 			goto multi;
 		case SEND_TOFILE:
 		case SEND_TOPIPE:
-			if (value("rfc822-body-from_"))
+			if (ok_blook(rfc822_body_from_))
 				put_from_(obuf, ip->m_multipart, stats);
 			/*FALLTHRU*/
 		case SEND_MBOX:
@@ -824,7 +824,7 @@ skip:
 		break;
 	case MIME_ALTERNATIVE:
 		if ((action == SEND_TODISP || action == SEND_QUOTE) &&
-				value("print-alternatives") == NULL) {
+				!ok_blook(print_alternatives)) {
 			bool_t doact = FAL0;
 			for (np = ip->m_multipart; np; np = np->m_nextpart)
 				if (np->m_mimecontent == MIME_TEXT_PLAIN)
@@ -1265,7 +1265,7 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 	np->m_partstring = ip->m_partstring;
 	np->m_parent = ip;
 	ip->m_multipart = np;
-	if (value("rfc822-body-from_")) {
+	if (ok_blook(rfc822_body_from_)) {
 		substdate((struct message *)np);
 		np->m_from = fakefrom((struct message *)np);
 	}
@@ -1346,9 +1346,9 @@ jgetname:	(void)printf(tr(278, "Enter filename for part %s (%s)"),
 
 	if (*f == '|') {
 		char const *cp;
-		cp = value("SHELL");
+		cp = ok_vlook(SHELL);
 		if (cp == NULL)
-			cp = SHELL;
+			cp = XSHELL;
 		fp = Popen(f + 1, "w", cp, 1);
 		if (! (*ispipe = (fp != NULL)))
 			perror(f);

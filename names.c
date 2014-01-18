@@ -69,7 +69,7 @@ same_name(char const *n1, char const *n2)
 	int ret = 0;
 	char c1, c2;
 
-	if (value("allnet") != NULL) {
+	if (ok_blook(allnet)) {
 		do {
 			c1 = *n1++;
 			c2 = *n2++;
@@ -546,7 +546,7 @@ usermap(struct name *names, bool_t force_metoo)
 
 	new = NULL;
 	np = names;
-	metoo = (force_metoo || value("metoo") != NULL);
+	metoo = (force_metoo || ok_blook(metoo));
 	while (np != NULL) {
 		assert((np->n_type & GDEL) == 0); /* TODO legacy */
 		if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {
@@ -686,17 +686,17 @@ delete_alternates(struct name *np)
 	if (altnames)
 		for (ap = altnames; *ap; ap++)
 			np = delname(np, *ap);
-	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
 		while (xp) {
 			np = delname(np, xp->n_name);
 			xp = xp->n_flink;
 		}
-	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN)) != NULL)
 		while (xp) {
 			np = delname(np, xp->n_name);
 			xp = xp->n_flink;
 		}
-	if ((xp = extract(value("sender"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL)
 		while (xp) {
 			np = delname(np, xp->n_name);
 			xp = xp->n_flink;
@@ -717,19 +717,19 @@ is_myname(char const *name)
 		for (ap = altnames; *ap; ap++)
 			if (same_name(*ap, name))
 				goto jleave;
-	if ((xp = lextract(value("from"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
 		while (xp) {
 			if (same_name(xp->n_name, name))
 				goto jleave;
 			xp = xp->n_flink;
 		}
-	if ((xp = lextract(value("replyto"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN)) != NULL)
 		while (xp) {
 			if (same_name(xp->n_name, name))
 				goto jleave;
 			xp = xp->n_flink;
 		}
-	if ((xp = extract(value("sender"), GEXTRA|GSKIN)) != NULL)
+	if ((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL)
 		while (xp) {
 			if (same_name(xp->n_name, name))
 				goto jleave;
@@ -790,8 +790,8 @@ outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
 		fda = (int*)salloc(sizeof(int) * pipecnt);
 		for (i = 0; i < pipecnt; ++i)
 			fda[i] = -1;
-		if ((sh = value("SHELL")) == NULL)
-			sh = SHELL;
+		if ((sh = ok_vlook(SHELL)) == NULL)
+			sh = XSHELL;
 	}
 
 	for (np = names; np != NULL;) {

@@ -224,10 +224,10 @@ _pop3_use_starttls(char const *uhp)
 {
 	char *var;
 
-	if (value("pop3-use-starttls"))
+	if (ok_blook(pop3_use_starttls))
 		return TRU1;
 	var = savecat("pop3-use-starttls-", uhp);
-	return value(var) != NULL;
+	return vok_blook(var);
 }
 
 static bool_t
@@ -235,14 +235,14 @@ _pop3_no_apop(char const *uhp)
 {
 	bool_t ret;
 
-	if (! (ret = boption("pop3-no-apop"))) {
+	if (!(ret = ok_blook(pop3_no_apop))) {
 #define __S	"pop3-no-apop-"
 #define __SL	sizeof(__S)
 		size_t i = strlen(uhp);
 		char *var = ac_alloc(i + __SL);
 		memcpy(var, __S, __SL - 1);
 		memcpy(var + __SL - 1, uhp, i + 1);
-		ret = boption(var);
+		ret = vok_blook(var);
 		ac_free(var);
 #undef __SL
 #undef __S
@@ -652,7 +652,7 @@ pop3_setfile(const char *server, int nmail, int isedit)
 		safe_signal(SIGINT, pop3catch);
 	if (savepipe != SIG_IGN)
 		safe_signal(SIGPIPE, pop3catch);
-	if ((cp = value("pop3-keepalive")) != NULL) {
+	if ((cp = ok_vlook(pop3_keepalive)) != NULL) {
 		if ((_pop3_keepalive = (int)strtol(cp, NULL, 10)) > 0) {
 			_pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
 			alarm(_pop3_keepalive);
@@ -678,7 +678,7 @@ pop3_setfile(const char *server, int nmail, int isedit)
 	safe_signal(SIGPIPE, savepipe);
 	_pop3_lock = 0;
 	if (!edit && msgCount == 0) {
-		if (mb.mb_type == MB_POP3 && value("emptystart") == NULL)
+		if (mb.mb_type == MB_POP3 && !ok_blook(emptystart))
 			fprintf(stderr, tr(258, "No mail at %s\n"), server);
 		return 1;
 	}
@@ -832,7 +832,7 @@ FL enum okay
 pop3_header(struct message *m)
 {
 	return pop3_get(&mb, m,
-		boption("pop3-bulk-load") ? NEED_BODY : NEED_HEADER);
+		ok_blook(pop3_bulk_load) ? NEED_BODY : NEED_HEADER);
 }
 
 FL enum okay
@@ -890,7 +890,7 @@ pop3_update(struct mailbox *mp)
 	}
 	if (gotcha && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf((value("bsdcompat") || value("bsdmsgs"))
+		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit) {
 		if (held == 1)

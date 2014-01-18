@@ -102,8 +102,7 @@ static int smime_sign_include_chain_creat(STACK **chain, char *cfiles);
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
 static enum okay load_crl1(X509_STORE *store, const char *name);
 #endif
-static enum okay load_crls(X509_STORE *store, const char *vfile,
-		const char *vdir);
+static enum okay load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
 static void
 sslcatch(int s)
@@ -118,14 +117,14 @@ ssl_rand_init(void)
 	char *cp, *x;
 	int state = 0;
 
-	if ((cp = value("ssl-rand-egd")) != NULL) {
+	if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
 		if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
 			fprintf(stderr, tr(245,
 				"entropy daemon at \"%s\" not available\n"),
 				cp);
 		else
 			state = 1;
-	} else if ((cp = value("ssl-rand-file")) != NULL) {
+	} else if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
 		if ((x = file_expand(cp)) == NULL ||
 				RAND_load_file(cp = x, 1024) == -1)
 			fprintf(stderr, tr(246,
@@ -236,9 +235,9 @@ ssl_load_verifications(struct sock *sp)
 
 	if (ssl_vrfy_level == VRFY_IGNORE)
 		return;
-	if ((ca_dir = value("ssl-ca-dir")) != NULL)
+	if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
 		ca_dir = file_expand(ca_dir);
-	if ((ca_file = value("ssl-ca-file")) != NULL)
+	if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
 		ca_file = file_expand(ca_file);
 	if (ca_dir != NULL || ca_file != NULL) {
 		if (SSL_CTX_load_verify_locations(sp->s_ctx,
@@ -254,7 +253,7 @@ ssl_load_verifications(struct sock *sp)
 			fputs("\n", stderr);
 		}
 	}
-	if (value("ssl-no-default-ca") == NULL) {
+	if (!ok_blook(ssl_no_default_ca)) {
 		if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
 			fprintf(stderr, tr(243,
 				"Error loading default CA locations\n"));
@@ -263,7 +262,7 @@ ssl_load_verifications(struct sock *sp)
 	message_number = 0;
 	SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, ssl_verify_cb);
 	store = SSL_CTX_get_cert_store(sp->s_ctx);
-	load_crls(store, "ssl-crl-file", "ssl-crl-dir");
+	load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
 }
 
 static void
@@ -276,8 +275,8 @@ ssl_certificate(struct sock *sp, const char *uhp)
 	certvar = ac_alloc(i + 9 + 1);
 	memcpy(certvar, "ssl-cert-", 9);
 	memcpy(certvar + 9, uhp, i + 1);
-	if ((cert = value(certvar)) != NULL ||
-			(cert = value("ssl-cert")) != NULL) {
+	if ((cert = vok_vlook(certvar)) != NULL ||
+			(cert = ok_vlook(ssl_cert)) != NULL) {
 		x = cert;
 		if ((cert = file_expand(cert)) == NULL) {
 			cert = x;
@@ -287,8 +286,8 @@ ssl_certificate(struct sock *sp, const char *uhp)
 			keyvar = ac_alloc(strlen(uhp) + 9);
 			memcpy(keyvar, "ssl-key-", 8);
 			memcpy(keyvar + 8, uhp, i + 1);
-			if ((key = value(keyvar)) == NULL &&
-					(key = value("ssl-key")) == NULL)
+			if ((key = vok_vlook(keyvar)) == NULL &&
+					(key = ok_vlook(ssl_key)) == NULL)
 				key = cert;
 			else if ((x = key, key = file_expand(key)) == NULL) {
 				key = x;
@@ -378,12 +377,12 @@ ssl_open(const char *server, struct sock *sp, const char *uhp)
 	SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
 #endif	/* SSL_MODE_AUTO_RETRY */
 	opts = SSL_OP_ALL;
-	if (value("ssl-v2-allow") == NULL)
+	if (!ok_blook(ssl_v2_allow))
 		opts |= SSL_OP_NO_SSLv2;
 	SSL_CTX_set_options(sp->s_ctx, opts);
 	ssl_load_verifications(sp);
 	ssl_certificate(sp, uhp);
-	if ((cp = value("ssl-cipher-list")) != NULL) {
+	if ((cp = ok_vlook(ssl_cipher_list)) != NULL) {
 		if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
 			fprintf(stderr, tr(240, "invalid ciphers: %s\n"), cp);
 	}
@@ -672,9 +671,9 @@ cverify(void *vp)
 		return 1;
 	}
 	X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
-	if ((ca_dir = value("smime-ca-dir")) != NULL)
+	if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
 		ca_dir = file_expand(ca_dir);
-	if ((ca_file = value("smime-ca-file")) != NULL)
+	if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
 		ca_file = file_expand(ca_file);
 	if (ca_dir != NULL || ca_file != NULL) {
 		if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
@@ -683,13 +682,13 @@ cverify(void *vp)
 			return 1;
 		}
 	}
-	if (value("smime-no-default-ca") == NULL) {
+	if (!ok_blook(smime_no_default_ca)) {
 		if (X509_STORE_set_default_paths(store) != 1) {
 			ssl_gen_err("Error loading default CA locations");
 			return 1;
 		}
 	}
-	if (load_crls(store, "smime-crl-file", "smime-crl-dir") != OKAY)
+	if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
 		return 1;
 	for (ip = msgvec; *ip; ip++) {
 		setdot(&message[*ip-1]);
@@ -707,7 +706,7 @@ smime_cipher(const char *name)
 
 	vn = ac_alloc(vs = strlen(name) + 30);
 	snprintf(vn, vs, "smime-cipher-%s", name);
-	if ((cp = value(vn)) != NULL) {
+	if ((cp = vok_vlook(vn)) != NULL) {
 		if (strcmp(cp, "rc2-40") == 0)
 			cipher = EVP_rc2_40_cbc();
 		else if (strcmp(cp, "rc2-64") == 0)
@@ -966,7 +965,7 @@ loop:	if (name) {
 			 */
 			vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
-			cp = value(vn);
+			cp = vok_vlook(vn);
 			ac_free(vn);
 			if (cp != NULL)
 				goto open;
@@ -978,7 +977,7 @@ loop:	if (name) {
 			goto loop;
 		}
 	}
-	if ((cp = value("smime-sign-cert")) != NULL)
+	if ((cp = ok_vlook(smime_sign_cert)) != NULL)
 		goto open;
 	if (dowarn) {
 		fprintf(stderr, "Could not find a certificate for %s", xname);
@@ -1009,14 +1008,14 @@ smime_sign_include_certs(char const *name)
 			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
 			snprintf(vn, vs, "smime-sign-include-certs-%s",
 				np->n_name);
-			ret = value(vn);
+			ret = vok_vlook(vn);
 			ac_free(vn);
 			if (ret != NULL)
 				return ret;
 			np = np->n_flink;
 		}
 	}
-	return value("smime-sign-include-certs");
+	return ok_vlook(smime_sign_include_certs);
 }
 
 static int
@@ -1171,7 +1170,7 @@ load_crl1(X509_STORE *store, const char *name)
 #endif	/* new OpenSSL */
 
 static enum okay
-load_crls(X509_STORE *store, const char *vfile, const char *vdir)
+load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
 {
 	char	*crl_file, *crl_dir;
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
@@ -1181,7 +1180,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 	int	fs = 0, ds, es;
 #endif	/* new OpenSSL */
 
-	if ((crl_file = value(vfile)) != NULL) {
+	if ((crl_file = _var_oklook(fok)) != NULL) {
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
 		if ((crl_file = file_expand(crl_file)) == NULL ||
 				load_crl1(store, crl_file) != OKAY)
@@ -1192,7 +1191,7 @@ load_crls(X509_STORE *store, const char *vfile, const char *vdir)
 		return STOP;
 #endif	/* old OpenSSL */
 	}
-	if ((crl_dir = value(vdir)) != NULL) {
+	if ((crl_dir = _var_oklook(dok)) != NULL) {
 #if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
 		char *x;
 		if ((x = file_expand(crl_dir)) == NULL ||

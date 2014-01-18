@@ -632,18 +632,6 @@ anyof(char const *s1, char const *s2)
 	return (*s1 != '\0');
 }
 
-FL ui_it
-strhash(char const *name)
-{
-	ui_it h = 0;
-
-	while (*name != '\0') {
-		h *= 33;
-		h += *name++;
-	}
-	return h;
-}
-
 FL char *
 n_strsep(char **iolist, char sep, bool_t ignore_empty)
 {

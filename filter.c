@@ -301,7 +301,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
    /* Check wether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
-   if (self->qf_pfix_len > 0 && (cp = voption("quote-fold")) != NULL) {
+   if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
       ui_it qmin, qmax = (ui_it)strtol(cp, (char**)&xcp, 10);
       /* These magic values ensure we don't bail :) */
       if (qmax < self->qf_pfix_len + 6)

@@ -45,40 +45,55 @@
 
 #undef FL
 #ifndef HAVE_AMALGAMATION
-# define FL extern
+# define FL                      extern
 #else
-# define FL static
+# define FL                      static
 #endif
 
 /*
  * acmava.c
  */
 
-/* Assign a value to a variable, return wether error occurred */
-FL bool_t   var_assign(char const *name, char const *value);
-#define assign(N,V)              var_assign(N, V)
+/* Don't use _var_* unless you *really* have to! */
 
-/* Unset variable (special: normally `var_assign(, NULL)' is used), return
- * wether error occurred */
-FL bool_t   var_unset(char const *name);
-#define unset_internal(V)        var_unset(V)
+/* Constant option key look/(un)set/clear */
+FL char *   _var_oklook(enum okeys okey);
+#define ok_blook(C)              (_var_oklook(CONCAT(ok_b_, C)) != NULL)
+#define ok_vlook(C)              _var_oklook(CONCAT(ok_v_, C))
 
-/* Get the value of an option (fallback to `look_environ'?) */
-FL char *   var_lookup(char const *name, bool_t look_environ);
-#define value(V)                 var_lookup(V, TRU1)  /* TODO legacy */
-#define boption(V)               (!!value(V))
-#define voption(V)               value(V)
+FL bool_t   _var_okset(enum okeys okey, uintptr_t val);
+#define ok_bset(C,B)             _var_okset(CONCAT(ok_b_, C), (uintptr_t)(B))
+#define ok_vset(C,V)             _var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
+
+FL bool_t   _var_okclear(enum okeys okey);
+#define ok_bclear(C)             _var_okclear(CONCAT(ok_b_, C))
+#define ok_vclear(C)             _var_okclear(CONCAT(ok_v_, C))
+
+/* Variable option key look/(un)set/clear */
+FL char *   _var_voklook(char const *vokey);
+#define vok_blook(S)              (_var_voklook(S) != NULL)
+#define vok_vlook(S)              _var_voklook(S)
+
+FL bool_t   _var_vokset(char const *vokey, uintptr_t val);
+#define vok_bset(S,B)            _var_vokset(S, (uintptr_t)(B))
+#define vok_vset(S,V)            _var_vokset(S, (uintptr_t)(V))
+
+FL bool_t   _var_vokclear(char const *vokey);
+#define vok_bclear(S)            _var_vokclear(S)
+#define vok_vclear(S)            _var_vokclear(S)
 
 /* List all variables */
 FL void     var_list_all(void);
 
-FL int      cdefine(void *v);
-FL int      cundef(void *v);
-FL int      ccall(void *v);
+FL int      c_var_inspect(void *v);
+FL int      c_define(void *v);
+FL int      c_undef(void *v);
+FL int      c_call(void *v);
+
 FL int      callhook(char const *name, int newmail);
 
 /* List all macros */
-FL int      cdefines(void *v);
+FL int      c_defines(void *v);
 
 /* `account' */
 FL int      c_account(void *v);
@@ -139,6 +154,11 @@ FL void        page_or_print(FILE *fp, size_t lines);
 #define try_pager(FP)            page_or_print(FP, 0) /* TODO obsolete */
 
 FL enum protocol  which_protocol(const char *name);
+
+/* Hash the passed string -- uses Chris Torek's hash algorithm */
+FL ui32_t      torek_hash(char const *name);
+#define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
+
 FL unsigned    pjw(const char *cp);
 FL long        nextprime(long n);
 
@@ -1057,11 +1077,6 @@ FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
-
-/* Hash the passed string; uses Chris Torek's hash algorithm */
-FL ui_it       strhash(char const *name);
-
-#define hash(S)                  (strhash(S) % HSHSIZE) /* xxx COMPAT (?) */
 
 /* Are any of the characters in the two strings the same? */
 FL int         anyof(char const *s1, char const *s2);
