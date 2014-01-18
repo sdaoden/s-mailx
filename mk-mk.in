@@ -211,7 +211,7 @@ _update-release:
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	openssl sha256 "$(UAGENT)-$${FREL}.tar.gz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
-	openssl md5 "$(UAGENT)-$${FREL}.tar.xz" > \
+	openssl md5 "$(UAGENT)-$${FREL}.tar.xz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	openssl sha1 "$(UAGENT)-$${FREL}.tar.xz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
