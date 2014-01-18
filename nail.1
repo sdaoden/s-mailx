@@ -2,7 +2,7 @@
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
 .\"     Gunnar Ritter.  All rights reserved.
-.\" Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+.\" Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Dec 27, 2013
+.Dd Jan 08, 2014
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -253,7 +253,11 @@ This sets multiple options to prepare \*(UA for working in batch mode
 .Va emptystart ,
 .Va noheader ,
 .Va quiet ,
-.Va sendwait ;
+.Va sendwait ,
+as well as
+.Va MBOX
+to
+.Pa /dev/null .
 it also enables processing of tilde escapes.
 E.g., the following should send an email message to `alias'.
 .Pp
@@ -898,6 +902,47 @@ encountered, adjustments of the option
 may solve the problem, as documented for it.
 .\"
 .\" --  >8  --  8<  --
+.Ss "Coloured message display"
+\*(OP \*(UA can be configured to support coloured message display.
+Colours are used only when the
+.Va TERM
+environment variable is set and the terminal type can be found in
+.Va colour-terms .
+Beyond that, if a command requires to output through the
+.Va PAGER
+(also see
+.Va crt )
+then the used
+.Va PAGER
+must be mentioned in the variable
+.Va colour-pagers ,
+otherwise no colours will be used regardless of the actual terminal type.
+.Pp
+"Coloured message display" can be configured through font attributes
+(`ft=' \(en `bold', `invers' and `underline'), foreground (`fg=') and
+background (`bg=') colours (`black', `blue', `green', `red', `brown',
+`magenta', `cyan' and `white').
+Multiple specifications can be joined in a comma separated list, as in
+.Pp
+.Dl set colour-msginfo="ft=bold,fg=magenta,bg=cyan"
+.Pp
+Options to be set are
+.Va colour-msginfo ,
+.Va colour-partinfo ,
+.Va colour-from_ ,
+.Va colour-header
+and
+.Va colour-uheader ,
+as well as
+.Va colour-user-headers ,
+which is a list of headers to be colourized via
+.Va colour-uheader
+instead of the default
+.Va colour-header .
+To forcefully disable colours, set
+.Va colour-disable .
+.\"
+.\" --  >8  --  8<  --
 .Ss "Commands"
 Each command is typed on a line by itself,
 and may take arguments following the command word.
@@ -1346,6 +1391,13 @@ If a `+' argument is given the next 18-message group is printed,
 likewise the previous is printed if the argument was `-'.
 .It Ic help
 A synonym for `?'.
+.It Ic history
+\*(OP Either
+.Ns ( Ar show
+or)
+.Ar clear
+the
+command line editor history.
 .It Ic hold
 (ho, also preserve) Takes a message list and marks each message therein
 to be saved in the user's system mailbox instead of in `mbox'.
@@ -1359,16 +1411,8 @@ command issued after
 .Ic hold
 will display the following message, not the current one.
 .It Ic if
-Commands in \*(UA's startup files can be executed conditionally
-depending on whether the user is sending or receiving mail with the if
-command, e.g.:
-.Bd -literal -offset indent
-   if receive
-      commands ...
-   endif
-.Ed
-.Pp
-An else form is also available:
+Commands in \*(UA's startup files can be executed conditionally by
+testing conditions via the command `if', as in:
 .Bd -literal -offset indent
    if receive
       commands ...
@@ -1377,8 +1421,26 @@ An else form is also available:
    endif
 .Ed
 .Pp
-Note that the only allowed conditions are `receive', `send' and `term'
-(execute if standard input is a tty).
+Note that the only allowed conditions are `[Rr]eceive', `[Ss]end',
+`[Tt]erm' (execute if standard input is a tty), as well as `0' (never
+execute) and `1' (always execute).
+In addition it is possible to condionalize upon wether an option is set,
+or set to a specific value, by using the `$' conditional trigger, e.g.:
+.Bd -literal -offset indent
+   if $debug
+      commands ...
+   endif
+   if $encoding == "UTF-8"
+      commands ...
+   endif
+   if $encoding != "UTF-8"
+      commands ...
+   endif
+.Ed
+.Pp
+The first form simply checks wether an option is set, the other two also
+perform value content comparison (equality and non-equality,
+respectively); an unset value is treated as the empty string, then.
 .It Ic ignore
 Add the list of header fields named to the ignored list.
 Header fields in the ignore list are not printed on the terminal when
@@ -1907,6 +1969,8 @@ print a header summary.
 .It Ic unthread
 (unth) Same as
 .Ic unsort .
+.It Ic var-inspect
+Show information about all given options.
 .It Ic verify
 \*(OP (verif) Takes a message list and verifies each message.
 If a message is not an S/MIME signed message,
@@ -2160,6 +2224,10 @@ Read the named file into the message.
 Cause the named string to become the current subject field.
 .It Ic ~t Ar name ...
 Add the given name(s) to the direct recipient list.
+.It Ic ~u Ar messages
+Like `~f', but exclude all message headers.
+.It Ic ~U Ar messages
+Like `~m', but exclude all message headers.
 .It Ic ~v
 Invoke an alternate editor (defined by the
 .Va VISUAL
@@ -2251,9 +2319,6 @@ Causes threads to be collapsed automatically when threaded mode is
 entered (see the
 .Ic collapse
 command).
-.It Va autoinc
-Same as
-.Va newmail .
 .It Va autoprint
 Causes the delete command to behave like `dp -';
 thus, after deleting a message the next one will be typed automatically.
@@ -2297,6 +2362,10 @@ in message headers and with the `~h' tilde command.
 Changes the output format of the
 .Ic set
 command to traditional BSD style.
+.It Va colour-disable
+\*(OP Forcefully disable usage of colours.
+Also see the section
+.Sx "Coloured message display" .
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2475,26 +2544,6 @@ but simply specify `application/octet-stream',
 even for plain text attachments like `text/diff'.
 If this variable is set then \*(UA will use the file extension of
 attachments to classify such MIME message parts, if possible.
-.It Va newmail
-Checks for new mail in the current folder each time the prompt is
-printed.
-For IMAP mailboxes the server is then polled for new mail,
-which may result in delayed operation if the connection to the server is
-slow.
-A `maildir' folder must be re-scanned to determine if new mail has
-arrived.
-.Pp
-If this variable is set to the special value `nopoll' an IMAP server is
-not actively asked for new mail,
-but new mail may still be detected and announced with any other IMAP
-command that is sent to the server.
-A `maildir' folder is not scanned, then.
-.Pp
-In either case the IMAP server may send notifications about messages
-that have been deleted on the server by another process or client.
-In this case, `Expunged X messages' is printed regardless of this
-variable,
-and message numbers may have changed.
 .It Va noheader
 Setting this option is the same as using the command line option
 .Fl N .
@@ -2757,6 +2806,58 @@ for the complete picture of character set conversion in \*(UA.
 The default value for the
 .Ic pipe
 command.
+.It Va colour-from_
+\*(OP The colour specification for so-called `From_' lines.
+See the section
+.Sx "Coloured message display"
+for the format of the value.
+.It Va colour-header
+\*(OP The colour specification for header lines.
+See the section
+.Sx "Coloured message display"
+for the format of the value.
+.It Va colour-msginfo
+\*(OP The colour specification for the introductional message info line.
+See the section
+.Sx "Coloured message display"
+for the format of the value.
+.It Va colour-pagers
+\*(OP A comma-separated list of
+.Va PAGER Ns
+s for which coloured message display can be used.
+Note that only a substring comparison is performed, meaning that the
+string `lesser' will match the string `less'.
+See the section
+.Sx "Coloured message display"
+for more on this.
+The default is set to the sole string `less'.
+.It Va colour-partinfo
+\*(OP The colour specification for MIME part info lines.
+See the section
+.Sx "Coloured message display"
+for the format of the value.
+.It Va colour-terms
+\*(OP A comma-separated list of
+.Va TERM Ns
+inals for which coloured message display can be used.
+The default is
+.Pp
+.Dl cons25,linux,rxvt,rxvt-unicode,\:sun,\:vt100,\:vt220,\:\
+wsvt25,\:xterm,\:xterm-color
+.It Va colour-uheader
+\*(OP The colour specification for those header lines that have been
+placed in the
+.Va colour-user-headers
+list.
+See the section
+.Sx "Coloured message display"
+for the format of the value.
+.It Va colour-user-headers
+A comma separated list of (case-insensitive) header names which should
+be colourized with the alternative
+.Va colour-uheader
+colours.
+The default value is `from,subject'.
 .It Va crt
 The valued option crt is used as a threshold to determine how long
 a message must be before
@@ -3072,6 +3173,26 @@ The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
 .It Va newfolders
 If this variable has the value `maildir',
 newly created local folders will be in `maildir' format.
+.It Va newmail
+Checks for new mail in the current folder each time the prompt is
+printed.
+For IMAP mailboxes the server is then polled for new mail,
+which may result in delayed operation if the connection to the server is
+slow.
+A `maildir' folder must be re-scanned to determine if new mail has
+arrived.
+.Pp
+If this variable is set to the special value `nopoll' an IMAP server is
+not actively asked for new mail,
+but new mail may still be detected and announced with any other IMAP
+command that is sent to the server.
+A `maildir' folder is not scanned, then.
+.Pp
+In either case the IMAP server may send notifications about messages
+that have been deleted on the server by another process or client.
+In this case, `Expunged X messages' is printed regardless of this
+variable,
+and message numbers may have changed.
 .It Va ORGANIZATION
 The value to put into the `Organization:' field of the message header.
 .It Va PAGER
@@ -3556,7 +3677,11 @@ or window (only used during startup).
 The user's home directory.
 .It Va LANG , Va LC_ALL , Va LC_COLLATE , Va LC_CTYPE , Va LC_MESSAGES
 See
-.Xr locale  7 .
+.Xr locale 7 .
+.It Va LESS
+\*(OP When a pager is started, this variable is set to the string
+`FRXi' unless it already exists in the environment, in which case it is
+left alone.
 .It Va LINES
 The user's preferred number of lines on a page or the vertical screen or
 window size in lines (only used during startup).
@@ -3577,6 +3702,8 @@ the option
 .Fl n .
 .It Va SYSV3
 Changes the letters printed in the first column of a header summary.
+.It Va TERM
+\*(OP The terminal type for which output is to be prepared.
 .It Va TMPDIR
 Used as directory for temporary files instead of
 .Pa /tmp ,
@@ -4330,6 +4457,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Sh "SEE ALSO"
 .Xr file 1 ,
 .Xr fmt 1 ,
+.Xr less 1 ,
 .Xr more 1 ,
 .Xr newaliases 1 ,
 .Xr openssl 1 ,
@@ -4372,8 +4500,8 @@ use of the
 command instead of
 .Ic quit
 will not cause it to be reset, and if the
-.Va autoinc Ns / Ns Va newmail
-variables are unset, messages that arrived during a session will not be
+.Va newmail
+variable is unset, messages that arrived during a session will not be
 in state `new' anymore when the folder is opened again.
 Also if commands queued in disconnected mode are committed,
 the IMAP server will delete the `new' flag for all messages in the

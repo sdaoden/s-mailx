@@ -2,7 +2,7 @@
  *@ Still more user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -99,8 +99,8 @@ shell(void *v)
 	memcpy(cmd, str, cmdsize);
 	if (bangexp(&cmd, &cmdsize) < 0)
 		return 1;
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	run_command(sh, 0, -1, -1, "-c", cmd, NULL);
 	safe_signal(SIGINT, sigint);
 	printf("!\n");
@@ -119,8 +119,8 @@ dosh(void *v)
 	char const *sh;
 	(void)v;
 
-	if ((sh = value("SHELL")) == NULL)
-		sh = SHELL;
+	if ((sh = ok_vlook(SHELL)) == NULL)
+		sh = XSHELL;
 	run_command(sh, 0, -1, -1, NULL, NULL, NULL);
 	safe_signal(SIGINT, sigint);
 	putchar('\n');
@@ -140,7 +140,7 @@ bangexp(char **str, size_t *size)
 {
 	char *bangbuf;
 	int changed = 0;
-	int dobang = value("bang") != NULL;
+	int dobang = ok_blook(bang);
 	size_t sz, i, j, bangbufsize;
 
 	bangbuf = smalloc(bangbufsize = *size);
@@ -314,7 +314,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
 	}
 	n->n_blink = NULL;
 	head->h_ref = n;
-	if (value("reply-in-same-charset") != NULL &&
+	if (ok_blook(reply_in_same_charset) &&
 			(cp = hfield1("content-type", mp)) != NULL)
 		head->h_charset = mime_getparam("charset", cp);
 }
@@ -324,8 +324,8 @@ static int
 {
 	int opt = 0;
 
-	opt += (value("Replyall") != NULL);
-	opt += (value("flipr") != NULL);
+	opt += ok_blook(Replyall);
+	opt += ok_blook(flipr);
 	return ((opt == 1) ^ (c == 'R')) ? Respond_internal : respond_internal;
 }
 
@@ -376,7 +376,7 @@ respond_internal(int *msgvec, int recipient_record)
 	struct message *mp;
 	char *cp, *rcv;
 	struct name *np = NULL;
-	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
+	enum gfield gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
 	if (msgvec[1] != 0) {
 		fprintf(stderr, tr(37,
@@ -392,7 +392,7 @@ respond_internal(int *msgvec, int recipient_record)
 			rcv = nameof(mp, 1);
 	if (rcv != NULL)
 		np = lextract(rcv, GTO|gf);
-	if (! boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+	if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
 		np = cat(np, lextract(cp, GTO | gf));
 	/*
 	 * Delete my name from the reply list,
@@ -408,7 +408,7 @@ respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = _reedit(head.h_subject);
 	/* Cc: */
 	np = NULL;
-	if (boption("recipients-in-cc") && (cp = hfield1("to", mp)) != NULL)
+	if (ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
 		np = lextract(cp, GCC | gf);
 	if ((cp = hfield1("cc", mp)) != NULL)
 		np = cat(np, lextract(cp, GCC | gf));
@@ -416,7 +416,7 @@ respond_internal(int *msgvec, int recipient_record)
 		head.h_cc = elide(delete_alternates(np));
 	make_ref_and_cs(mp, &head);
 
-	if (boption("quote-as-attachment")) {
+	if (ok_blook(quote_as_attachment)) {
 		head.h_attach = csalloc(1, sizeof *head.h_attach);
 		head.h_attach->a_msgno = *msgvec;
 		head.h_attach->a_content_description = tr(512,
@@ -424,7 +424,7 @@ respond_internal(int *msgvec, int recipient_record)
 	}
 
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-			boption("markanswered") &&
+			ok_blook(markanswered) &&
 			(mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER | MANSWERED;
 	return 0;
@@ -442,7 +442,7 @@ forward1(char *str, int recipient_record)
 	struct header	head;
 	bool_t f, forward_as_attachment;
 
-	forward_as_attachment = boption("forward-as-attachment");
+	forward_as_attachment = ok_blook(forward_as_attachment);
 	msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 	if ((recipient = laststring(str, &f, 0)) == NULL) {
 		puts(tr(47, "No recipient specified."));
@@ -471,7 +471,7 @@ forward1(char *str, int recipient_record)
 	}
 	memset(&head, 0, sizeof head);
 	if ((head.h_to = lextract(recipient,
-			GTO | (value("fullnames") ? GFULL : GSKIN))) == NULL)
+			GTO | (ok_blook(fullnames) ? GFULL : GSKIN))) == NULL)
 		return 1;
 	mp = &message[*msgvec - 1];
 	if (forward_as_attachment) {
@@ -666,10 +666,11 @@ set(void *v)
 			goto jnext;
 		}
 		if (varbuf[0] == 'n' && varbuf[1] == 'o')
-			errs += unset_internal(&varbuf[2]);
+			errs += _var_vokclear(&varbuf[2]);
 		else
-			errs += assign(varbuf, cp);
-jnext:		ac_free(varbuf);
+			errs += _var_vokset(varbuf, (uintptr_t)cp);
+jnext:
+		ac_free(varbuf);
 	}
 jleave:
 	return (errs);
@@ -685,9 +686,9 @@ unset(void *v)
 	char **ap;
 
 	errs = 0;
-	for (ap = (char **)v; *ap != NULL; ap++)
-		errs += unset_internal(*ap);
-	return(errs);
+	for (ap = (char**)v; *ap != NULL; ap++)
+		errs += _var_vokclear(*ap);
+	return errs;
 }
 
 /*
@@ -818,9 +819,9 @@ cfile(void *v)
 	if (i < 0)
 		return 1;
 	callhook(mailname, 0);
-	if (i > 0 && value("emptystart") == NULL)
+	if (i > 0 && !ok_blook(emptystart))
 		return 1;
-	announce(value("bsdcompat") != NULL || value("bsdannounce") != NULL);
+	announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
 	return 0;
 }
 
@@ -877,7 +878,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	struct message *mp;
 	int *ap;
 	char *cp;
-	enum gfield gf = boption("fullnames") ? GFULL : GSKIN;
+	enum gfield gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
 	memset(&head, 0, sizeof head);
 
@@ -898,7 +899,7 @@ Respond_internal(int *msgvec, int recipient_record)
 	head.h_subject = _reedit(head.h_subject);
 	make_ref_and_cs(mp, &head);
 
-	if (boption("quote-as-attachment")) {
+	if (ok_blook(quote_as_attachment)) {
 		head.h_attach = csalloc(1, sizeof *head.h_attach);
 		head.h_attach->a_msgno = *msgvec;
 		head.h_attach->a_content_description = tr(512,
@@ -906,97 +907,139 @@ Respond_internal(int *msgvec, int recipient_record)
 	}
 
 	if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-			value("markanswered") && (mp->m_flag & MANSWERED) == 0)
+			ok_blook(markanswered) && (mp->m_flag & MANSWERED) == 0)
 		mp->m_flag |= MANSWER | MANSWERED;
 	return 0;
 }
 
-/*
- * Conditional commands.  These allow one to parameterize one's
- * .mailrc and do some things if sending, others if receiving.
- */
 FL int
-ifcmd(void *v)
+c_if(void *v)
 {
-	char **argv = v;
-	char *cp;
+	int rv = 1;
+	char **argv = v, *cp, *op;
 
-	if (cond != CANY) {
-		printf(tr(42, "Illegal nested \"if\"\n"));
-		return(1);
+	if (cond_state != COND_ANY) {
+		fprintf(stderr, tr(42, "Illegal nested \"if\"\n"));
+		goto jleave;
 	}
-	cond = CANY;
+
 	cp = argv[0];
+	if (*cp != '$' && argv[1] != NULL) {
+jesyn:
+		fprintf(stderr, tr(528,
+			"Invalid conditional expression \"%s %s %s\"\n"),
+			argv[0], (argv[1] != NULL ? argv[1] : ""),
+			(argv[2] != NULL ? argv[2] : ""));
+		cond_state = COND_ANY;
+		goto jleave;
+	}
+
 	switch (*cp) {
-	case 'r': case 'R':
-		cond = CRCV;
+	case '0':
+		cond_state = COND_NOEXEC;
 		break;
-
-	case 's': case 'S':
-		cond = CSEND;
+	case '1':
+		cond_state = COND_EXEC;
 		break;
-
-	case 't': case 'T':
-		cond = CTERM;
+	case 'R': case 'r':
+		cond_state = COND_RCV;
 		break;
+	case 'S': case 's':
+		cond_state = COND_SEND;
+		break;
+	case 'T': case 't':
+		cond_state = COND_TERM;
+		break;
+	case '$':
+		/* Look up the value in question, we need it anyway */
+		v = vok_vlook(++cp);
 
+		/* Single argument, "implicit boolean" form? */
+		if ((op = argv[1]) == NULL) {
+			cond_state = (v == NULL) ? COND_NOEXEC : COND_EXEC;
+			break;
+		}
+
+		/* Three argument comparison form? */
+		if (argv[2] == NULL ||
+				op[0] == '\0' || op[1] != '=' || op[2] != '\0')
+			goto jesyn;
+		/* A null value is treated as the empty string */
+		if (v == NULL)
+			v = UNCONST("");
+		if (strcmp(v, argv[2]))
+			v = NULL;
+		switch (op[0]) {
+		case '!':
+		case '=':
+			cond_state = (((op[0] == '!') ^ (v == NULL))
+					? COND_NOEXEC : COND_EXEC);
+			break;
+		default:
+			goto jesyn;
+		}
+		break;
 	default:
-		printf(tr(43, "Unrecognized if-keyword: \"%s\"\n"), cp);
-		return(1);
+		fprintf(stderr, tr(43, "Unrecognized if-keyword: \"%s\"\n"),
+			cp);
+		cond_state = COND_ANY;
+		goto jleave;
 	}
-	return(0);
+	rv = 0;
+jleave:
+	return rv;
 }
 
-/*
- * Implement 'else'.  This is pretty simple -- we just
- * flip over the conditional flag.
- */
-/*ARGSUSED*/
 FL int
-elsecmd(void *v)
+c_else(void *v)
 {
-	(void)v;
+	int rv = 1;
+	UNUSED(v);
 
-	switch (cond) {
-	case CANY:
-		printf(tr(44, "\"Else\" without matching \"if\"\n"));
-		return(1);
-
-	case CSEND:
-		cond = CRCV;
+	switch (cond_state) {
+	case COND_ANY:
+		fprintf(stderr, tr(44, "\"Else\" without matching \"if\"\n"));
+		goto jleave;
+	case COND_SEND:
+		cond_state = COND_RCV;
 		break;
-
-	case CRCV:
-		cond = CSEND;
+	case COND_RCV:
+		cond_state = COND_SEND;
 		break;
-
-	case CTERM:
-		cond = CNONTERM;
+	case COND_TERM:
+		cond_state = COND_NOTERM;
 		break;
-
+	case COND_EXEC:
+		cond_state = COND_NOEXEC;
+		break;
+	case COND_NOEXEC:
+		cond_state = COND_EXEC;
+		break;
 	default:
-		printf(tr(45, "Mail's idea of conditions is screwed up\n"));
-		cond = CANY;
-		break;
+		fprintf(stderr, tr(45,
+			"Mail's idea of conditions is screwed up\n"));
+		cond_state = COND_ANY;
+		goto jleave;
 	}
-	return(0);
+	rv = 0;
+jleave:
+	return rv;
 }
 
-/*
- * End of if statement.  Just set cond back to anything.
- */
-/*ARGSUSED*/
 FL int
-endifcmd(void *v)
+c_endif(void *v)
 {
-	(void)v;
+	int rv;
+	UNUSED(v);
 
-	if (cond == CANY) {
-		printf(tr(46, "\"Endif\" without matching \"if\"\n"));
-		return(1);
+	if (cond_state == COND_ANY) {
+		fprintf(stderr, tr(46, "\"Endif\" without matching \"if\"\n"));
+		rv = 1;
+	} else {
+		cond_state = COND_ANY;
+		rv = 0;
 	}
-	cond = CANY;
-	return(0);
+	return rv;
 }
 
 /*

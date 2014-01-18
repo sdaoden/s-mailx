@@ -2,7 +2,7 @@
  *@ Routines for processing and detecting headlines.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -193,7 +193,6 @@ _idna_apply(struct addrguts *agp)
 {
 	char *idna_utf8, *idna_ascii, *cs;
 	size_t sz, i;
-	int strict = (value("idna-strict-checks") != NULL);
 
 	sz = agp->ag_slen - agp->ag_sdom_start;
 	assert(sz > 0);
@@ -221,9 +220,7 @@ _idna_apply(struct addrguts *agp)
 		}
 	}
 
-	if (idna_to_ascii_8z(idna_utf8, &idna_ascii,
-			strict ? IDNA_USE_STD3_ASCII_RULES : 0)
-			!= IDNA_SUCCESS) {
+	if (idna_to_ascii_8z(idna_utf8, &idna_ascii, 0) != IDNA_SUCCESS) {
 		agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA |
 				NAME_ADDRSPEC_ERR_CHAR;
 		goto jleave1;
@@ -260,7 +257,7 @@ _addrspec_check(int skinned, struct addrguts *agp)
 	char *addr, *p, in_quote, in_domain, hadat;
 	union {char c; unsigned char u;} c;
 #ifdef HAVE_IDNA
-	uc_it use_idna = ! boption("idna-disable");
+	uc_it use_idna = !ok_blook(idna_disable);
 #endif
 
 	agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
@@ -375,13 +372,13 @@ myaddrs(struct header *hp)
 			goto jleave;
 	}
 
-	if ((rv = voption("from")) != NULL)
+	if ((rv = ok_vlook(from)) != NULL)
 		goto jleave;
 
 	/* When invoking *sendmail* directly, it's its task
 	 * to generate an otherwise undeterminable From: address.
 	 * However, if the user sets *hostname*, accept his desire */
-	if (voption("smtp") != NULL || voption("hostname") != NULL) {
+	if (ok_vlook(smtp) != NULL || ok_vlook(hostname) != NULL) {
 		char *hn = nodename(1);
 		size_t sz = strlen(myname) + strlen(hn) + 2;
 		rv = salloc(sz);
@@ -399,7 +396,7 @@ myorigin(struct header *hp)
 
 	if ((ccp = myaddrs(hp)) != NULL &&
 			(np = lextract(ccp, GEXTRA|GFULL)) != NULL)
-		ret = np->n_flink != NULL ? value("sender") : ccp;
+		ret = np->n_flink != NULL ? ok_vlook(sender) : ccp;
 	return (ret);
 }
 
@@ -408,9 +405,9 @@ is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
 {
 	char date[FROM_DATEBUF];
 
-	return ((linelen <= 5 || memcmp(linebuf, "From ", 5) != 0 ||
-			! extract_date_from_from_(linebuf, linelen, date) ||
-			! _is_date(date)) ? 0 : 1);
+	return ((linelen <= 5 || strncmp(linebuf, "From ", 5) != 0 ||
+			!extract_date_from_from_(linebuf, linelen, date) ||
+			!_is_date(date)) ? 0 : 1);
 }
 
 FL int
@@ -1576,7 +1573,7 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 	int volatile comma;
 
 	errs = 0;
-	comma = (value("bsdcompat") || value("bsdmsgs")) ? 0 : GCOMMA;
+	comma = (ok_blook(bsdcompat) || ok_blook(bsdmsgs)) ? 0 : GCOMMA;
 
 	if (gflags & GTO)
 		hp->h_to = grab_names("To: ", hp->h_to, comma, GTO|GFULL);
@@ -1596,16 +1593,16 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 		hp->h_from = grab_names("From: ", hp->h_from, comma,
 				GEXTRA|GFULL);
 		if (hp->h_replyto == NULL)
-			hp->h_replyto = lextract(value("replyto"),
-					GEXTRA|GFULL);
+			hp->h_replyto = lextract(ok_vlook(replyto),
+					GEXTRA | GFULL);
 		hp->h_replyto = grab_names("Reply-To: ", hp->h_replyto, comma,
 				GEXTRA|GFULL);
 		if (hp->h_sender == NULL)
-			hp->h_sender = extract(value("sender"), GEXTRA|GFULL);
+			hp->h_sender = extract(ok_vlook(sender), GEXTRA|GFULL);
 		hp->h_sender = grab_names("Sender: ", hp->h_sender, comma,
 				GEXTRA|GFULL);
 		if (hp->h_organization == NULL)
-			hp->h_organization = value("ORGANIZATION");
+			hp->h_organization = ok_vlook(ORGANIZATION);
 		hp->h_organization = readstr_input("Organization: ",
 				hp->h_organization);
 	}

@@ -2,7 +2,7 @@
  *@ MD5 / HMAC-MD5 algorithm implementation.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * The MD5_CTX algorithm is derived from RFC 1321:

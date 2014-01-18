@@ -2,7 +2,7 @@
  *@ More user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -48,9 +48,6 @@ static int	save1(char *str, int domark, char const *cmd,
 			int sender_record, int domove);
 static char *	snarf(char *linebuf, bool_t *flag, bool_t usembox);
 static int	delm(int *msgvec);
-#ifdef HAVE_DEBUG
-static void	clob1(int n);
-#endif
 static int	ignore1(char **list, struct ignoretab *tab, char const *which);
 static int	igshow(struct ignoretab *tab, char const *which);
 static int	igcomp(const void *l, const void *r);
@@ -291,7 +288,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 		}
 		for (cq = cp; *cq && *cq != '@'; cq++);
 		*cq = '\0';
-		if (value("outfolder")) {
+		if (ok_blook(outfolder)) {
 			size_t sz = strlen(cp) + 1;
 			file = salloc(sz + 1);
 			file[0] = '+';
@@ -574,64 +571,6 @@ undeletecmd(void *v)
 	}
 	return 0;
 }
-
-#ifdef HAVE_DEBUG
-/* Interactively dump core on "core" */
-FL int
-core(void *v)
-{
-	int pid, waits;
-	UNUSED(v);
-
-	switch (pid = fork()) {
-	case -1:
-		perror("fork");
-		return (1);
-	case 0:
-		abort();
-		_exit(1);
-	}
-	printf(tr(31, "Okie dokie"));
-	fflush(stdout);
-	wait_child(pid, &waits);
-# ifdef	WCOREDUMP
-	if (WCOREDUMP(waits))
-		printf(tr(32, " -- Core dumped.\n"));
-	else
-		printf(tr(33, " -- Can't dump core.\n"));
-# endif
-	return 0;
-}
-
-static void
-clob1(int n)
-{
-	char buf[512], *cp;
-
-	if (n <= 0)
-		return;
-	for (cp = buf; PTRCMP(cp, <, buf + 512); ++cp)
-		*cp = (char)0xFF;
-	clob1(n - 1);
-}
-
-/*
- * Clobber as many bytes of stack as the user requests.
- */
-FL int
-clobber(void *v)
-{
-	char **argv = v;
-	int times;
-
-	if (argv[0] == 0)
-		times = 1;
-	else
-		times = (atoi(argv[0]) + 511) / 512;
-	clob1(times);
-	return (0);
-}
-#endif /* HAVE_DEBUG */
 
 /*
  * Add the given header fields to the retained list.

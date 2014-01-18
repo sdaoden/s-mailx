@@ -2,7 +2,7 @@
  *@ Generic SSL / SMIME commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -55,8 +55,8 @@ ssl_set_vrfy_level(const char *uhp)
 	memcpy(vrvar, "ssl-verify-", 11);
 	memcpy(vrvar + 11, uhp, l + 1);
 
-	if ((cp = value(vrvar)) == NULL)
-		cp = value("ssl-verify");
+	if ((cp = vok_vlook(vrvar)) == NULL)
+		cp = ok_vlook(ssl_verify);
 	ac_free(vrvar);
 	if (cp != NULL) {
 		if (strcmp(cp, "strict") == 0)
@@ -114,8 +114,8 @@ ssl_method_string(const char *uhp)
 	mtvar = ac_alloc(l + 12);
 	memcpy(mtvar, "ssl-method-", 11);
 	memcpy(mtvar + 11, uhp, l + 1);
-	if ((cp = value(mtvar)) == NULL)
-		cp = value("ssl-method");
+	if ((cp = vok_vlook(mtvar)) == NULL)
+		cp = ok_vlook(ssl_method);
 	ac_free(mtvar);
 	return cp;
 }

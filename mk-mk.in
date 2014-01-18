@@ -27,6 +27,7 @@ $(UAGENT): $(OBJ)
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 
 $(OBJ): config.h nail.h extern.h $(OBJ_DEP)
+config.o acmava.o: okeys.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
 config.o main.o: version.h
@@ -35,7 +36,7 @@ config.o mime.o: mime_types.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
-	< ./mime.types > $(@) sed -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
+	< ./mime.types > $(@) $(SED) -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
 test:
 	@echo 'Running test, please wait';\
@@ -44,9 +45,9 @@ test:
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	_VERSION=`< version.h \
-		sed -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
+		$(SED) -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.1 > $(@) awk 'BEGIN {written = 0}\
+	< ./nail.1 > $(@) $(AWK) 'BEGIN {written = 0}\
 	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ {\
 		if (written == 1)\
 			next;\
@@ -70,7 +71,7 @@ mkrc.rc: nail.rc mk.mk
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.rc > $(@) awk 'BEGIN {written = 0}\
+	< ./nail.rc > $(@) $(AWK) 'BEGIN {written = 0}\
 	/#--MKRC-START--/, /#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
@@ -109,7 +110,11 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	};\
 	__stripfile() {\
 		_file=$${1};\
-		if [ -n "$(HAVE_STRIP)" ]; then \
+		if [ "$(WANT_DEBUG)" != 0 ]; then \
+			if [ -n "$(VERBOSE)" ]; then \
+				echo "  \$$ :WANT_DEBUG=1, not strip(1)ing";\
+			fi;\
+		elif [ -n "$(HAVE_STRIP)" ]; then \
 			if [ -n "$(VERBOSE)" ]; then \
 				echo "  \$$ $(STRIP) '$${_file}'";\
 			fi;\
@@ -153,9 +158,9 @@ _update-version:
 	@if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -z "$${VERSION}" ]; then \
-			VERSION="`sed -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
+			VERSION="`$(SED) -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
 				version.h`";\
-			echo "$${VERSION}" | grep -q -F dirty ||\
+			echo "$${VERSION}" | $(GREP) -q -F dirty ||\
 				VERSION="$${VERSION}-dirty";\
 		fi;\
 	fi;\
@@ -175,7 +180,7 @@ _update-release:
 	read REL;\
 	echo "Is $(UAGENT) <v$${REL}> correct?  ENTER continues";\
 	read i;\
-	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
+	FREL=`echo $${REL} | $(SED) -e 's/\./_/g'` &&\
 	$(MAKE) -f ./mk.mk _update-version &&\
 	git add version.h &&\
 	git commit -m "Bump $(UAGENT) v$${REL}" &&\
@@ -196,14 +201,24 @@ _update-release:
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$(UAGENT)-$${FREL}.tar.gz" &&\
 	$(RM) -f "$(UAGENT)-$${FREL}.tar.gz" &&\
-	tar -c -z -f "$(UAGENT)-$${FREL}.tar.gz" "$(UAGENT)-$${REL}" &&\
+	tar -c -f "$(UAGENT)-$${FREL}.tar" "$(UAGENT)-$${REL}" &&\
+	< "$(UAGENT)-$${FREL}.tar" gzip > "$(UAGENT)-$${FREL}.tar.gz" &&\
+	< "$(UAGENT)-$${FREL}.tar" xz > "$(UAGENT)-$${FREL}.tar.xz" &&\
+	$(RM) -f "$(UAGENT)-$${FREL}.tar" &&\
 	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	openssl sha1 "$(UAGENT)-$${FREL}.tar.gz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
 	openssl sha256 "$(UAGENT)-$${FREL}.tar.gz" >> \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
-	echo "-put $(UAGENT)-$${FREL}.tar.gz" | \
+	openssl md5 "$(UAGENT)-$${FREL}.tar.xz" > \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	openssl sha1 "$(UAGENT)-$${FREL}.tar.xz" >> \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	openssl sha256 "$(UAGENT)-$${FREL}.tar.xz" >> \
+		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
+	( echo "-put $(UAGENT)-$${FREL}.tar.gz";\
+	  echo "-put $(UAGENT)-$${FREL}.tar.xz" ) | \
 	sftp -b - sdaoden@frs.sourceforge.net:/home/frs/project/s-nail &&\
 	echo 'All seems fine';\
 	echo 'Really send announcement mail?  ENTER continues';\

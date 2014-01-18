@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.1:
+and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -14,6 +14,135 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.1:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.5.2, 2014-01-18
+-------------------
+
+Thanks to Ypnose, Sunil Nimmagadda and Gavin Troy.
+Gavin Troy *really* deserves special thanks for facing [next]!
+And i want to dedicate the new coloured message display functionality
+to John Dodson and Ypnose.  Thank you.
+(And best wishes to beautiful Australia!)
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- All utilities can now be overwritten during configuration so that
+  their values are fixated in the generated makefile (`mk.mk').
+  I.e., talking about MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=,
+  grep=, mkdir=, mv=, tee=.
+  rm= and sed= have to be overwritten from the command line, they're
+  needed before `conf.rc' is read.
+  [5c03347, 072ec65, 39a00ab, 23a1245, ?]
+  (Ypnose)
+
+- The release tarball is now also available in a xz(1) version.
+
+- New configuration option: WANT_COLOUR, by default enabled.
+
+- 'make test' should now really work, even if the running user has
+  a mailbox with content. [f223a91]
+
+- WANT_AUTOCC is now by default enabled, so as for normal users which
+  don't have the need to embed into a defined packaging environment.
+  [d7e4e31]
+
+- Installation no longer strip(1)s away debug symbols if WANT_DEBUG was
+  enabled. [6d075c6]
+  (Gavin Troy)
+
+ChangeLog
+^^^^^^^^^
+
+- Fixes to some bugs that are present since the first cvs(1) commit of
+  Heirloom mailx(1); includes that *ssl-key-user@host* should now work.
+  [4405a2cc, 9770c26f, 692976b9]
+
+- Some off-by-XY fixes, thanks to the debug memory canaries.
+  [19b2b0d, 202506e, 43df6e4]
+
+- Fixes for (other) stupidisms (of mine): [1c2161f]
+
+  This includes true implementation of in-memory history limit for the
+  NCL, which was the final and real solution to a segmentation fault
+  that Gavin Troy had to deal with on [next]. [1089f2b]
+  (Gavin Troy)
+
+- For completeness: new command `var-inspect' shows information about
+  all given options.  Mostly ment for implementing future tests.
+  [topic/okeys]
+
+- The `pipe' command no longer embeds message information into the
+  data passed through to the command (when *piperaw* is set).
+  [ef5ecc6 (part of topic/colour)]
+
+- Simple coloured message (header) display is now possible.  Please
+  read the new manual section "Coloured message display", use
+  *colour-disable* to turn it off.  (It is enabled by default if it
+  knows the terminal is capable and, if used, the pager can, too.  Note
+  we now set LESS=FRXi when starting PAGER and no LESS= is in the
+  environment.)
+
+  Dedicated to John Dodson and Ypnose.
+  [topic/colour, c6e84c7]
+
+- The `if', `else', `endif' syntax has been extended.
+  You can now "if 0" (never), "if 1" (always), "if $OPTION" (boolean
+  check for OPTION) and "if $OPTION == 'VALUE'" as well as "if $OPTION
+  != 'VALUE'".  Unfortunately it is still not possible to use
+  conditionals inside conditionals. [0fb2ae7]
+
+- -# now also sets MBOX=/dev/null. [4be2f1e]
+
+- The NCL command line editor now supports cursor keys when the terminal
+  produces xterm(1)-compatible keycodes ('ESC' + '[' + [DACB] for left,
+  up, right and down, respectively).  What a thrill, yay!!! [0cbf672]
+
+- New (optional) command: `history': show or clear command line history,
+  or select a specific command line from in there.
+  History works a bit different now, and should no longer include
+  command lines which include specific message numbers; more to come.
+  [59c6195, topic/hist2]
+
+  I plan to join all the history management and use only the one that is
+  part of NCL now, hooking it into editline(3) and readline(3).  That
+  would shrink tty.c a bit and also introduce duplicate elimination for
+  readline(3).
+
+- The new ~u and ~U tilde escapes work like ~f and ~m, respectively, but
+  don't include any header lines.  Inspired by a patch from
+  Sunil Nimmagadda on openbsd-tech@.  [c37b8b3]
+
+- The `|' command should work again -- it has stopped working on
+  2013-09-09 when i've accidentally changed the command name from `|' to
+  ` | '. [5a8378d]
+  (Gavin Troy)
+
+- As a rather careless last-minute change i've added string relaxation
+  to threaded and sorted display, but it's really one more step towards
+  lowering memory pressure -- i couldn't resist [a9b67e9] after seeing
+    ?0[ /Users/steffen/src/nail.git/t.mbox]? sst
+      Buffer allocs ever/max simultan. : 14/14
+      Overall alloc count/bytes        : 17165/881088
+      Cycle maximums: alloc count/bytes: 16906/876984+0
+    ?0[ /Users/steffen/src/nail.git/t.mbox]? sst
+      Buffer allocs ever/max simultan. : 0/0
+      Overall alloc count/bytes        : 16515/841816
+      Cycle maximums: alloc count/bytes: 16256/837712+829560
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- We now have debug canaries for all memory sources now that [8419d44]
+  added them to the "string dope".
+
+- The most work has been done on our value system, which manages the
+  binary and value options, like *folder* etc.
+  It is now based on enumerations, i.e., constant integers, not on
+  strings.  This of course only relates to non-dynamic options.
+  Anyway, this saves us key hashing and allows more compact data
+  representation in general (see the new header `okeys.h' for more).
+  [topic/okeys]
 
 v14.5.1, 2013-12-27
 -------------------

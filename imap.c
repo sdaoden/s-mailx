@@ -2,7 +2,7 @@
  *@ IMAP v4r1 client following RFC 2060.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -763,10 +763,10 @@ imap_use_starttls(const char *uhp)
 {
 	char	*var;
 
-	if (value("imap-use-starttls"))
+	if (ok_blook(imap_use_starttls))
 		return 1;
 	var = savecat("imap-use-starttls-", uhp);
-	return value(var) != NULL;
+	return vok_blook(var);
 }
 
 static enum okay
@@ -841,12 +841,12 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
 
 	if (!(mp->mb_active & MB_PREAUTH))
 		return OKAY;
-	if ((auth = value("imap-auth")) == NULL) {
+	if ((auth = ok_vlook(imap_auth)) == NULL) {
 		size_t i = strlen(uhp) + 1;
 		var = ac_alloc(i + 10);
 		memcpy(var, "imap-auth-", 10);
 		memcpy(var + 10, uhp, i);
-		auth = value(var);
+		auth = vok_vlook(var);
 		ac_free(var);
 	}
 	if (auth == NULL || strcmp(auth, "login") == 0)
@@ -1239,7 +1239,7 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
 					server);
 			goto done;
 		}
-		if ((cp = value("imap-keepalive")) != NULL) {
+		if ((cp = ok_vlook(imap_keepalive)) != NULL) {
 			if ((imapkeepalive = strtol(cp, NULL, 10)) > 0) {
 				savealrm = safe_signal(SIGALRM, imapalarm);
 				alarm(imapkeepalive);
@@ -1287,7 +1287,7 @@ done:	setmsize(msgCount);
 	}
 	if (!nmail && !edit && msgCount == 0) {
 		if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
-				value("emptystart") == NULL)
+				!ok_blook(emptystart))
 			fprintf(stderr, tr(258, "No mail at %s\n"), server);
 		return 1;
 	}
@@ -1896,7 +1896,7 @@ bypass:
 		}
 	if ((gotcha || modflags) && edit) {
 		printf(tr(168, "\"%s\" "), displayname);
-		printf((value("bsdcompat") || value("bsdmsgs"))
+		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
 			? tr(170, "complete\n") : tr(212, "updated.\n"));
 	} else if (held && !edit && mp->mb_perm != 0) {
 		if (held == 1)
@@ -2063,9 +2063,9 @@ out:	safe_signal(SIGINT, saveint);
 }
 
 FL int
-imap_newmail(int autoinc)
+imap_newmail(int nmail)
 {
-	if (autoinc && had_exists < 0 && had_expunge < 0) {
+	if (nmail && had_exists < 0 && had_expunge < 0) {
 		imaplock = 1;
 		imap_noop();
 		imaplock = 0;
@@ -2435,7 +2435,7 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	char	*cp;
 	int	depth;
 
-	depth = (cp = value("imap-list-depth")) != NULL ? atoi(cp) : 2;
+	depth = (cp = ok_vlook(imap_list_depth)) != NULL ? atoi(cp) : 2;
 	if (imap_list1(mp, base, &list, &lend, 0) == STOP)
 		return STOP;
 	if (list == NULL || lend == NULL)
@@ -2567,7 +2567,7 @@ dopr(FILE *fp)
 				columns, width);
 	} else
 		strncpy(o, "sort", sizeof o)[sizeof o - 1] = '\0';
-	run_command(SHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
+	run_command(XSHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
 	try_pager(out);
 	Fclose(out);
 }
@@ -3234,8 +3234,8 @@ cconnect(void *vp)
 		fprintf(stderr, "Already connected.\n");
 		return 1;
 	}
-	unset_allow_undefined = TRU1;
-	unset_internal("disconnected");
+	var_clear_allow_undefined = TRU1;
+	ok_bclear(disconnected);
 	cp = protbase(mailname);
 	if (strncmp(cp, "imap://", 7) == 0)
 		cp += 7;
@@ -3243,8 +3243,8 @@ cconnect(void *vp)
 		cp += 8;
 	if ((cq = strchr(cp, ':')) != NULL)
 		*cq = '\0';
-	unset_internal(savecat("disconnected-", cp));
-	unset_allow_undefined = FAL0;
+	vok_bclear(savecat("disconnected-", cp));
+	var_clear_allow_undefined = FAL0;
 	if (mb.mb_type == MB_CACHE) {
 		imap_setfile1(mailname, 0, edit, 1);
 		if (msgCount > omsgCount)
@@ -3269,7 +3269,7 @@ cdisconnect(void *vp)
 	}
 	if (*msgvec)
 		ccache(vp);
-	assign("disconnected", "");
+	ok_bset(disconnected, TRU1);
 	if (mb.mb_type == MB_IMAP) {
 		sclose(&mb.mb_sock);
 		imap_setfile1(mailname, 0, edit, 1);
@@ -3305,7 +3305,7 @@ disconnected(const char *file)
 	char	*cp, *cq, *vp;
 	int	vs, r;
 
-	if (value("disconnected"))
+	if (ok_blook(disconnected))
 		return 1;
 	cp = protbase(file);
 	if (strncmp(cp, "imap://", 7) == 0)
@@ -3318,7 +3318,7 @@ disconnected(const char *file)
 		*cq = '\0';
 	vp = ac_alloc(vs = strlen(cp) + 14);
 	snprintf(vp, vs, "disconnected-%s", cp);
-	r = value(vp) != NULL;
+	r = vok_blook(vp);
 	ac_free(vp);
 	return r;
 }

@@ -15,8 +15,8 @@ line, overriding those made in `conf.rc' (if any):
 
 With adjustments:
 
-  $ make WANT_AUTOCC=1 WANT_IMAP=0 install
-  $ make WANT_AUTOCC=1 WANT_NCL=0 PREFIX=/some/nasty/prefix install
+  $ make WANT_IMAP=0 install
+  $ make WANT_NCL=0 PREFIX=/some/nasty/prefix install
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
@@ -37,27 +37,14 @@ which take precedence over anything else:
 
 E.g.:
 
-  $ make CONFIG=MINIMAL WANT_AUTOCC=1 DESTDIR=xtest install
+  $ make CONFIG=MINIMAL DESTDIR=xtest install
 
 would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
 binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
-
-The `WANT_AUTOCC=1' switch allows the S-nail(1) build system to not only
-detect, but also adjust CFLAGS and LDFLAGS settings -- if you want to
-add specific locale additions, use `ADDCFLAGS=' and `ADDLDFLAGS=', e.g.
-
-  $ make WANT_AUTOCC=1 ADDCFLAGS=-pipe ADDLDFLAGS="-Wl,-O1,--sort-common"
-
-By default it doesn't dare to overwrite CFLAGS and LDFLAGS, because it
-cannot distinguish where the value comes from, a general user
-environment or a specific command line overwrite, making use cases like
-
-  $ make CFLAGS='-O1 -g -pipe'
-
-impossible.  The following make(1) target exists, and note that you can
-use a VERBOSE=1 command line option to gain more (or a different kind
-of) verbosity:
+The following make(1) target exists, and note that you can use
+a VERBOSE=1 command line option to gain more (or a different kind of)
+verbosity:
 
 . all         Create / check and update configuration, build.
 . install     Create / check and update configuration, build, install.
@@ -90,7 +77,7 @@ a Bourne/Korn/POSIX compatible shell:
   $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
   $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
-  $ make WANT_AUTOCC=1 install
+  $ make install
 
 The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
@@ -106,6 +93,30 @@ Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
 Also, i'm (compile) testing manually with WANT_AUTOCC=1, WANT_DEBUG=[01]
 and WANT_AMALGAMATION=[01] (and WANT_GSSAPI=1), which is what is
 reflected by the following statements.
+
+. All 32-bit systems:
+  - There _may_ be warnings about format strings, like, e.g.,
+
+      auxlily.c:1610:10: warning: format '%lu' expects type 'long
+      unsigned int', but argument 3 has type 'size_t'
+
+    This is ugly, but it has been decided to keep the S-nail codebase
+    ISO C89 compatible, which means that there are no usable language
+    hints for format strings.  However, `nail.h' tries hard to detect
+    the real type sizes and ends up in a way that should ensure that the
+    actually expected datatype is of the same size in reality:
+
+/* XXX Note we don't really deal with that the right way in that we pass size_t
+ * XXX arguments without casting; should do, because above we assert UINT_MAX
+ * XXX is indeed ui32_t */
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define ZFMT           "zu"
+#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
+# define ZFMT           "u"
+#endif
+#ifndef ZFMT
+# define ZFMT           "lu"
+#endif
 
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun
@@ -127,9 +138,20 @@ reflected by the following statements.
     + Note: warnings on unused results, just ignore (for now).
 
 . NetBSD <https://www.netbsd.org/>
+  NetBSD 6.99.28 NetBSD 6.99.28 (GENERIC) #0: Fri Jan  3 05:24:46 UTC
+  2014 i386
+  - gcc (NetBSD nb1 20120916) 4.5.4
+    + Warnings on format strings -- as above.
+    + Note: i think faulty message on longjmp() clobbering (on
+      a variable that is 'const').
+    + Note: with WANT_AMALGAMATION there are many warnings on 'signed
+      overflow', all referring to the same code, and i think it's wrong.
+
   NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
   2013 amd64.
   - gcc (NetBSD nb1 20120916) 4.5.4.
+    + Note: i think faulty message on longjmp() clobbering (on
+      a variable that is 'const'.
     + Note: with WANT_AMALGAMATION there are many warnings on 'signed
       overflow', all referring to the same code, and i think it's wrong.
 
@@ -142,6 +164,8 @@ reflected by the following statements.
 . OpenBSD <http://www.openbsd.org/>
   OpenBSD 5.4 i386.
   - gcc (GCC) 4.2.1 20070719.
+    + Note: i think faulty message on longjmp() clobbering (on
+      a variable that is 'const').
 
 . FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.0-CURRENT amd64.

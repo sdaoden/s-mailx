@@ -2,7 +2,7 @@
  *@ MIME support functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2000
@@ -93,7 +93,7 @@ _mt_init(void)
 	char const *ccp, *const*srcs;
 	FILE *fp;
 
-	if ((ccp = value("mimetypes-load-control")) == NULL)
+	if ((ccp = ok_vlook(mimetypes_load_control)) == NULL)
 		idx_ok = (ui_it)-1;
 	else for (idx_ok = 0; *ccp != '\0'; ++ccp)
 		switch (*ccp) {
@@ -179,7 +179,7 @@ _conversion_by_encoding(void)
 	char const *cp;
 	enum conversion ret;
 
-	if ((cp = value("encoding")) == NULL)
+	if ((cp = ok_vlook(encoding)) == NULL)
 		ret = MIME_DEFAULT_ENCODING;
 	else if (strcmp(cp, "quoted-printable") == 0)
 		ret = CONV_TOQP;
@@ -312,7 +312,7 @@ charset_get_7bit(void)
 {
 	char const *t;
 
-	if ((t = value("charset-7bit")) == NULL)
+	if ((t = ok_vlook(charset_7bit)) == NULL)
 		t = CHARSET_7BIT;
 	return (t);
 }
@@ -322,7 +322,7 @@ charset_get_8bit(void)
 {
 	char const *t;
 
-	if ((t = value(CHARSET_8BIT_VAR)) == NULL)
+	if ((t = ok_vlook(CHARSET_8BIT_OKEY)) == NULL)
 		t = CHARSET_8BIT;
 	return (t);
 }
@@ -332,7 +332,7 @@ charset_get_lc(void)
 {
 	char const *t;
 
-	if ((t = value("ttycharset")) == NULL)
+	if ((t = ok_vlook(ttycharset)) == NULL)
 		t = CHARSET_8BIT;
 	return (t);
 }
@@ -346,8 +346,8 @@ charset_iter_reset(char const *a_charset_to_try_first)
 
 	sarr[0] = a_charset_to_try_first;
 #ifdef HAVE_ICONV
-	if ((sarr[1] = value("sendcharsets")) == NULL &&
-			value("sendcharsets-else-ttycharset"))
+	if ((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
+			ok_blook(sendcharsets_else_ttycharset))
 		sarr[1] = charset_get_lc();
 #endif
 	sarr[2] = charset_get_8bit();
@@ -364,7 +364,7 @@ charset_iter_reset(char const *a_charset_to_try_first)
 		sarrl[0] = 0;
 #endif
 
-	_cs_iter_base = cp = salloc(len + 1);
+	_cs_iter_base = cp = salloc(len + 1 + 1 +1);
 
 #ifdef HAVE_ICONV
 	if ((len = sarrl[0]) != 0) {
@@ -424,17 +424,17 @@ need_hdrconv(struct header *hp, enum gfield w)
 		if (hp->h_organization) {
 			if (has_highbit(hp->h_organization))
 				goto jneeds;
-		} else if (has_highbit(value("ORGANIZATION")))
+		} else if (has_highbit(ok_vlook(ORGANIZATION)))
 			goto jneeds;
 		if (hp->h_replyto) {
 			if (name_highbit(hp->h_replyto))
 				goto jneeds;
-		} else if (has_highbit(value("replyto")))
+		} else if (has_highbit(ok_vlook(replyto)))
 			goto jneeds;
 		if (hp->h_sender) {
 			if (name_highbit(hp->h_sender))
 				goto jneeds;
-		} else if (has_highbit(value("sender")))
+		} else if (has_highbit(ok_vlook(sender)))
 			goto jneeds;
 	}
 	if (w & GTO && name_highbit(hp->h_to))
@@ -613,7 +613,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 	if (*contenttype == NULL)
 		ctt = _NCTT;
 	else if (ascncasecmp(*contenttype, "text/", 5) == 0)
-		ctt = value("mime-allow-text-controls")
+		ctt = ok_blook(mime_allow_text_controls)
 			? _ISTXT | _ISTXTCOK : _ISTXT;
 	convert = _conversion_by_encoding();
 
@@ -683,7 +683,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 		} else if ((ctt & _FROM_) == 0 && curlen < (sl_it)F_SIZEOF) {
 			*f_p++ = (char)c;
 			if (curlen == (sl_it)(F_SIZEOF - 1) &&
-					(size_t)(f_p - f_buf) == F_SIZEOF &&
+					PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
 					memcmp(f_buf, F_, F_SIZEOF) == 0)
 				ctt |= _FROM_;
 		}
@@ -736,7 +736,7 @@ mime_classify_content_of_part(struct mimepart const *mip)
 
 	if (asccasecmp(ct, "application/octet-stream") == 0 &&
 			mip->m_filename != NULL &&
-			value("mime-counter-evidence")) {
+			ok_blook(mime_counter_evidence)) {
 		ct = mime_classify_content_type_by_fileext(mip->m_filename);
 		if (ct == NULL)
 			/* TODO how about let *mime-counter-evidence* have
@@ -1005,7 +1005,7 @@ static size_t
 mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
 {
 	struct str cin, cout;
-	char buf[B64_LINESIZE];
+	char buf[B64_LINESIZE +1]; /* (No CR/LF used) */
 	char const *charset7, *charset, *upper, *wbeg, *wend, *lastspc,
 		*lastwordend = NULL;
 	size_t sz = 0, col = 0, quoteany, wr, charsetlen,

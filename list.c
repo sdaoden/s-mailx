@@ -2,7 +2,7 @@
  *@ Message list handling.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -83,7 +83,9 @@ getmsglist(char *buf, int *vector, int flags)
 	struct message *mp;
 	int	mc;
 
+	list_saw_numbers =
 	msglist_is_single = FAL0;
+
 	if (msgCount == 0) {
 		*vector = 0;
 		return 0;
@@ -226,6 +228,7 @@ number:
 				printf(tr(112, "No numbers mixed with *\n"));
 				markall_ret(-1)
 			}
+			list_saw_numbers = TRU1;
 			mc++;
 			other++;
 			if (beg != 0) {
@@ -402,6 +405,7 @@ number:
 			break;
 
 		case TERROR:
+			list_saw_numbers = TRU1;
 			msglist_is_single = FAL0;
 			markall_ret(-1)
 		}
@@ -463,7 +467,7 @@ number:
 	 */
 
 	if (np > namelist || id) {
-		int	allnet = value("allnet") != NULL;
+		bool_t allnet = ok_blook(allnet);
 
 #ifdef HAVE_IMAP
 		if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
@@ -617,6 +621,8 @@ getrawlist(const char *line, size_t linesize, char **argv, int argc,
 	const char	*cp;
 	int argn;
 	char *linebuf;
+
+	list_saw_numbers = FAL0;
 
 	argn = 0;
 	cp = line;
@@ -976,7 +982,7 @@ matchsender(char *str, int mesg, int allnet)
 		} while (cp++, *str++ != '\0');
 		return 0;
 	}
-	return !strcmp(str, (value("showname") ? realname : skin)
+	return !strcmp(str, (ok_blook(showname) ? realname : skin)
 			(name1(&message[mesg - 1], 0)));
 }
 
@@ -1033,7 +1039,7 @@ matchsubj(char *str, int mesg)
 	 * Now look, ignoring case, for the word in the string.
 	 */
 
-	if (value("searchheaders") && (cp = strchr(str, ':'))) {
+	if (ok_blook(searchheaders) && (cp = strchr(str, ':'))) {
 		*cp++ = '\0';
 		cp2 = hfieldX(str, mp);
 		cp[-1] = ':';

@@ -2,7 +2,7 @@
  *@ Message threading.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -236,7 +236,7 @@ interlink(struct message *m, long cnt, int nmail)
 	struct msort	*ms;
 	struct message	*root;
 	int	autocollapse = !nmail && !(inhook&2) &&
-			value("autocollapse") != NULL;
+			ok_blook(autocollapse);
 
 	ms = smalloc(sizeof *ms * cnt);
 	for (n = 0, i = 0; i < cnt; i++) {
@@ -361,6 +361,8 @@ makethreads(struct message *m, long cnt, int nmail)
 		return;
 	mprime = nextprime(cnt);
 	mt = scalloc(mprime, sizeof *mt);
+
+	srelax_hold();
 	for (i = 0; i < cnt; i++) {
 		if ((m[i].m_flag&MHIDDEN) == 0) {
 			mlook(NULL, mt, &m[i], mprime);
@@ -374,6 +376,7 @@ makethreads(struct message *m, long cnt, int nmail)
 		m[i].m_level = 0;
 		if (!nmail && !(inhook&2))
 			m[i].m_collapsed = 0;
+		srelax();
 	}
 	/*
 	 * Most folders contain the eldest messages first. Traversing
@@ -384,8 +387,12 @@ makethreads(struct message *m, long cnt, int nmail)
 	 * are replies to the one message, and are sorted such that
 	 * youngest messages occur first.
 	 */
-	for (i = cnt-1; i >= 0; i--)
+	for (i = cnt-1; i >= 0; i--) {
 		lookup(&m[i], mt, mprime);
+		srelax();
+	}
+	srelax_rele();
+
 	threadroot = interlink(m, cnt, nmail);
 	finalize(threadroot);
 	free(mt);
@@ -405,7 +412,7 @@ thread(void *vp)
 			free(mb.mb_sorted);
 		mb.mb_sorted = sstrdup("thread");
 	}
-	if (vp && vp != (void *)-1 && !inhook && value("header"))
+	if (vp && vp != (void *)-1 && !inhook && ok_blook(header))
 		return headers(vp);
 	return 0;
 }
@@ -420,7 +427,7 @@ unthread(void *vp)
 	mb.mb_sorted = NULL;
 	for (m = &message[0]; m < &message[msgCount]; m++)
 		m->m_collapsed = 0;
-	if (vp && !inhook && value("header"))
+	if (vp && !inhook && ok_blook(header))
 		return headers(vp);
 	return 0;
 }
@@ -524,7 +531,7 @@ sort(void *vp)
 	struct msort	*ms;
 	struct str	in, out;
 	int	i, n, msgvec[2];
-	int	showname = value("showname") != NULL;
+	bool_t showname = ok_blook(showname);
 	struct message	*mp;
 
 	msgvec[0] = dot - &message[0] + 1;
@@ -565,6 +572,8 @@ sort(void *vp)
 	default:
 		break;
 	}
+
+	srelax_hold();
 	for (n = 0, i = 0; i < msgCount; i++) {
 		mp = &message[i];
 		if ((mp->m_flag&MHIDDEN) == 0) {
@@ -628,7 +637,10 @@ sort(void *vp)
 		mp->m_child = mp->m_younger = mp->m_elder = mp->m_parent = NULL;
 		mp->m_level = 0;
 		mp->m_collapsed = 0;
+		srelax();
 	}
+	srelax_rele();
+
 	if (n > 0) {
 		qsort(ms, n, sizeof *ms, func);
 		threadroot = &message[ms[0].ms_n];
@@ -641,8 +653,8 @@ sort(void *vp)
 	finalize(threadroot);
 	mb.mb_threaded = 2;
 	ac_free(ms);
-	return vp && vp != (void *)-1 && !inhook &&
-		value("header") ? headers(msgvec) : 0;
+	return ((vp && vp != (void *)-1 && !inhook && ok_blook(header))
+		? headers(msgvec) : 0);
 }
 
 static char const *

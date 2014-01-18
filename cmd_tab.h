@@ -2,7 +2,7 @@
  *@ This header is included by ./lex.c and defines the command array content.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,12 +37,32 @@
  * SUCH DAMAGE.
  */
 
+/* Some shorter aliases to be able to define a command in two lines */
+#define MSGLIST      ARG_MSGLIST
+#define STRLIST      ARG_STRLIST
+#define RAWLIST      ARG_RAWLIST
+#define NOLIST       ARG_NOLIST
+#define NDMLIST      ARG_NDMLIST
+#define ECHOLIST     ARG_ECHOLIST
+#define ARG_ARGMASK  ARG_ARGMASK
+#define A            ARG_A
+#define F            ARG_F
+#define H            ARG_H
+#define I            ARG_I
+#define M            ARG_M
+#define P            ARG_P
+#define R            ARG_R
+#define T            ARG_T
+#define V            ARG_V
+#define W            ARG_W
+
 #ifdef HAVE_DOCSTRINGS
-# define DS(ID,S)	, ID, S
+# define DS(ID,S)    , ID, S
 #else
 # define DS(ID,S)
 #endif
 
+   /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", next, (A | NDMLIST), 0, MMNDEL
      DS(355, "Goes to the next message (-list) and prints it") },
    { "alias", group, (M | RAWLIST), 0, 1000
@@ -139,9 +159,9 @@
      DS(408, "Like \"z\", but continues to the next flagged message") },
    { "headers", headers, (A | MSGLIST), 0, MMNDEL
      DS(342, "Show the current(/last/next) 18-message group of headers") },
-   { "help", help, (M | RAWLIST), 0, 1
+   { "help", help, (/*H |*/ M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
-   { "?", help, (M | RAWLIST), 0, 1
+   { "?", help, (H | M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
    { "=", pdot, (A | NOLIST), 0, 0
      DS(409, "Show current message number") },
@@ -193,7 +213,7 @@
      DS(328, "Immediate return to the shell without saving") },
    { "pipe", pipecmd, (A | STRLIST), 0, MMNDEL
      DS(359, "Pipe <message-list> to <command>") },
-   { " | ", pipecmd, (A | STRLIST), 0, MMNDEL
+   { "|", pipecmd, (A | STRLIST), 0, MMNDEL
      DS(359, "Pipe <message-list> to <command>") },
    { "Pipe", Pipecmd, (A | STRLIST), 0, MMNDEL
      DS(358, "Like \"pipe\", but pipes all headers and parts") },
@@ -201,11 +221,11 @@
      DS(381, "Show size in characters for <message-list>") },
    { "hold", preserve, (A | W | MSGLIST), 0, MMNDEL
      DS(344, "Save <message-list> in system mailbox instead of *mbox*") },
-   { "if", ifcmd, (F | M | RAWLIST), 1, 1
+   { "if", &c_if, (F | M | RAWLIST), 1, 3
      DS(327, "Part of the if .. then .. endif statement") },
-   { "else", elsecmd, (F | M | RAWLIST), 0, 0
+   { "else", &c_else, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
-   { "endif", endifcmd, (F | M | RAWLIST), 0, 0
+   { "endif", &c_endif, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
    { "alternates", alternates, (M | RAWLIST), 0, 1000
      DS(305, "Show or define an alternate list for the invoking user") },
@@ -269,15 +289,15 @@
      DS(324, "Mark <message-list> as draft") },
    { "undraft", cundraft, (A | M | MSGLIST), 0, 0
      DS(389, "Un\"draft\" <message-list>") },
-   { "define", cdefine, (M | RAWLIST), 0, 2
+   { "define", &c_define, (M | RAWLIST), 0, 2
      DS(319, "Define a macro") },
-   { "defines", cdefines, (M | RAWLIST), 0, 0
+   { "defines", &c_defines, (I | M | RAWLIST), 0, 0
      DS(320, "Show all defined macros including their content") },
-   { "undef", cundef, (M | RAWLIST), 0, 1000
+   { "undef", &c_undef, (M | RAWLIST), 0, 1000
      DS(391, "Un\"define\" all <macros>") },
-   { "call", ccall, (M | RAWLIST), 0, 1
+   { "call", &c_call, (M | RAWLIST), 0, 1
      DS(308, "Call a macro") },
-   { "~", ccall, (M | RAWLIST), 0, 1
+   { "~", &c_call, (M | RAWLIST), 0, 1
      DS(308, "Call a macro") },
    { "move", cmove, (A | M | STRLIST), 0, 0
      DS(353, "Like \"copy\", but mark messages for deletion") },
@@ -347,20 +367,42 @@
      DS(428, "Print current working directory (CWD)") },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
+   { "var-inspect", &c_var_inspect, (M | RAWLIST), 1, 1000
+     DS(430, "Print some informations on the given <variables>") },
    { "features", &_features, (M | NOLIST), 0, 0
      DS(429, "Show features that are compiled into the MUA") },
    { "version", &_version, (M | NOLIST), 0, 0
      DS(413, "Print the MUA version") },
+#ifdef HAVE_HISTORY
+   { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
+     DS(431, "<show> (default), <clear> or select <NO> from editor history") },
+#endif
 #ifdef HAVE_DEBUG
-   { "core", core, (M | NOLIST), 0, 0
-     DS(414, "Produce a core dump (ouch!)") },
-   { "clobber", clobber, (M | RAWLIST), 0, 1
-     DS(415, "Globber <number> 512 byte blocks on the stack") },
-   { "sstats", &c_sstats, (M | NOLIST), 0, 0
+   { "sstats", &c_sstats, (I | M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },
-   { "smemtrace", smemtrace, (M | NOLIST), 0, 0
+   { "smemtrace", &smemtrace, (I | M | NOLIST), 0, 0
      DS(417, "Trace current memory usage afap") },
 #endif
    { NULL, NULL, 0, 0, 0 DS(0, "") }
+
+#undef DS
+
+#undef MSGLIST
+#undef STRLIST
+#undef RAWLIST
+#undef NOLIST
+#undef NDMLIST
+#undef ECHOLIST
+#undef ARG_ARGMASK
+#undef A
+#undef F
+#undef H
+#undef I
+#undef M
+#undef P
+#undef R
+#undef T
+#undef V
+#undef W
 
 /* vim:set fenc=utf-8:s-it-mode */

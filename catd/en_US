@@ -17,7 +17,7 @@ $set 1
 14 Commands are:\n
 15 [Invalid Base64 encoding ignored]\n
 16 variable cmd not set\n
-17 [-- Message #%2d -- %lu lines, %lu bytes --]:\n
+17 %s[-- Message #%2d -- %lu lines, %lu bytes --]:%s\n
 18 No messages to pipe.
 19 ~@: added attachment "%s"\n
 20 No value set for "folder"\n
@@ -244,7 +244,7 @@ $set 1
 234 $ or $
 235 The -R option is meaningless in send mode.\n
 236 `%s' is not a user of this system
-237 The mail file has changed, existing rfc822 attachments became invalid!\n
+237 Mailbox changed: it seems existing rfc822 attachments became invalid!\n
 238 cannot load private key from file %s\n
 239 cannot load certificate from file %s\n
 240 invalid ciphers: %s\n
@@ -353,11 +353,13 @@ $ ~? output is splitted due to compiler limits
 ~M messages    Same as ~m, but keep all header lines\n\
 ~s subject     Set subject\n\
 ~t users       Add users to to list\n\
-~v             Invoke display editor on message\n\
+~u messages    Same as ~f, but without any headers\n\
+~U messages    Same as ~m, but without any headers\n
+
+302 ~v             Invoke display editor on message\n\
 ~w file        Write message onto file\n\
 ~x             Abort message composition and discard text written so far\n
-
-302 ~!command      Invoke the shell\n\
+~!command      Invoke the shell\n\
 ~:command      Execute a regular command\n\
 -----------------------------------------------------------\n
 
@@ -490,6 +492,8 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 427 Inside `define' / `account': insulate modifications: <0> / <1>
 428 Print current working directory (CWD)
 429 Show features that are compiled into the MUA
+430 Print some informations on the given <variables>
+431 <show> (default), <clear> or select <NO> from editor history
 
 
 500 $ done.\n
@@ -521,3 +525,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 524 No last SEARCH criteria available.\n
 525 No regular expression support for SEARCHes.\n
 526 Invalid regular expression "%s": >>> %s <<<\n
+527 Invalid colour specification "%s": >>> %s <<<\n
+528 Invalid conditional expression "%s %s %s"\n

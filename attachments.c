@@ -2,7 +2,7 @@
  *@ Handling of attachments.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -73,12 +73,12 @@ _fill_in(struct attachment *ap, char const *file, ui_it number)
 		file = ap->a_name;
 
 	ap->a_content_type = mime_classify_content_type_by_fileext(file);
-	if (number > 0 && value("attachment-ask-content-type")) {
+	if (number > 0 && ok_blook(attachment_ask_content_type)) {
 		snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
 		ap->a_content_type = readstr_input(prefix, ap->a_content_type);
 	}
 
-	if (number > 0 && value("attachment-ask-content-disposition")) {
+	if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
 		snprintf(prefix, sizeof prefix,
 			"#%u\tContent-Disposition: ", number);
 		ap->a_content_disposition = readstr_input(prefix,
@@ -87,12 +87,12 @@ _fill_in(struct attachment *ap, char const *file, ui_it number)
 	if (ap->a_content_disposition == NULL)
 		ap->a_content_disposition = "attachment";
 
-	if (number > 0 && value("attachment-ask-content-id")) {
+	if (number > 0 && ok_blook(attachment_ask_content_id)) {
 		snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
 		ap->a_content_id = readstr_input(prefix, ap->a_content_id);
 	}
 
-	if (number > 0 && value("attachment-ask-content-description")) {
+	if (number > 0 && ok_blook(attachment_ask_content_description)) {
 		snprintf(prefix, sizeof prefix,
 			"#%u\tContent-Description: ", number);
 		ap->a_content_description = readstr_input(prefix,

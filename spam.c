@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Spam related facilities.
  *
- * Copyright (c) 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -95,7 +95,7 @@ _spam_action(enum spam_action sa, int *ip)
 
    vc.action = sa;
 
-   if ((cp = voption("spam-command")) == NULL) {
+   if ((cp = ok_vlook(spam_command)) == NULL) {
 #ifdef SPAMC_PATH
       cp = SPAMC_PATH;
 #else
@@ -128,15 +128,15 @@ jlearn:
    }
    ++args;
 
-   if ((cp = voption("spam-socket")) != NULL) {
+   if ((cp = ok_vlook(spam_socket)) != NULL) {
       *args++ = "-U";
       *args++ = cp;
    } else {
-      if ((cp = voption("spam-host")) != NULL) {
+      if ((cp = ok_vlook(spam_host)) != NULL) {
          *args++ = "-d";
          *args++ = cp;
       }
-      if ((cp = voption("spam-port")) != NULL) {
+      if ((cp = ok_vlook(spam_port)) != NULL) {
          *args++ = "-p";
          *args++ = cp;
       }
@@ -144,7 +144,7 @@ jlearn:
 
    *args++ = "-l"; /* --log-to-stderr */
 
-   if ((cp = voption("spam-user")) != NULL) {
+   if ((cp = ok_vlook(spam_user)) != NULL) {
       *args++ = "-u";
       *args++ = cp;
    }
@@ -156,7 +156,7 @@ jlearn:
 
    /* *spam-maxsize* we do handle ourselfs instead */
    maxsize = 0;
-   if ((cp = voption("spam-maxsize")) != NULL)
+   if ((cp = ok_vlook(spam_maxsize)) != NULL)
       maxsize = (size_t)strtol(cp, NULL, 10);
    if (maxsize <= 0)
       maxsize = SPAM_MAXSIZE;

@@ -2,7 +2,7 @@
  *@ Exported function prototypes.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*-
  * Copyright (c) 1992, 1993
@@ -45,40 +45,55 @@
 
 #undef FL
 #ifndef HAVE_AMALGAMATION
-# define FL extern
+# define FL                      extern
 #else
-# define FL static
+# define FL                      static
 #endif
 
 /*
  * acmava.c
  */
 
-/* Assign a value to a variable, return wether error occurred */
-FL bool_t   var_assign(char const *name, char const *value);
-#define assign(N,V)              var_assign(N, V)
+/* Don't use _var_* unless you *really* have to! */
 
-/* Unset variable (special: normally `var_assign(, NULL)' is used), return
- * wether error occurred */
-FL bool_t   var_unset(char const *name);
-#define unset_internal(V)        var_unset(V)
+/* Constant option key look/(un)set/clear */
+FL char *   _var_oklook(enum okeys okey);
+#define ok_blook(C)              (_var_oklook(CONCAT(ok_b_, C)) != NULL)
+#define ok_vlook(C)              _var_oklook(CONCAT(ok_v_, C))
 
-/* Get the value of an option (fallback to `look_environ'?) */
-FL char *   var_lookup(char const *name, bool_t look_environ);
-#define value(V)                 var_lookup(V, TRU1)  /* TODO legacy */
-#define boption(V)               (!!value(V))
-#define voption(V)               value(V)
+FL bool_t   _var_okset(enum okeys okey, uintptr_t val);
+#define ok_bset(C,B)             _var_okset(CONCAT(ok_b_, C), (uintptr_t)(B))
+#define ok_vset(C,V)             _var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
+
+FL bool_t   _var_okclear(enum okeys okey);
+#define ok_bclear(C)             _var_okclear(CONCAT(ok_b_, C))
+#define ok_vclear(C)             _var_okclear(CONCAT(ok_v_, C))
+
+/* Variable option key look/(un)set/clear */
+FL char *   _var_voklook(char const *vokey);
+#define vok_blook(S)              (_var_voklook(S) != NULL)
+#define vok_vlook(S)              _var_voklook(S)
+
+FL bool_t   _var_vokset(char const *vokey, uintptr_t val);
+#define vok_bset(S,B)            _var_vokset(S, (uintptr_t)(B))
+#define vok_vset(S,V)            _var_vokset(S, (uintptr_t)(V))
+
+FL bool_t   _var_vokclear(char const *vokey);
+#define vok_bclear(S)            _var_vokclear(S)
+#define vok_vclear(S)            _var_vokclear(S)
 
 /* List all variables */
 FL void     var_list_all(void);
 
-FL int      cdefine(void *v);
-FL int      cundef(void *v);
-FL int      ccall(void *v);
-FL int      callhook(char const *name, int newmail);
+FL int      c_var_inspect(void *v);
+FL int      c_define(void *v);
+FL int      c_undef(void *v);
+FL int      c_call(void *v);
+
+FL int      callhook(char const *name, int nmail);
 
 /* List all macros */
-FL int      cdefines(void *v);
+FL int      c_defines(void *v);
 
 /* `account' */
 FL int      c_account(void *v);
@@ -130,6 +145,9 @@ FL int         argcount(char **argv);
 FL char *      colalign(const char *cp, int col, int fill,
                   int *cols_decr_used_or_null);
 
+/* Get our PAGER */
+FL char const *get_pager(void);
+
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
 FL size_t      paging_seems_sensible(void);
@@ -139,6 +157,11 @@ FL void        page_or_print(FILE *fp, size_t lines);
 #define try_pager(FP)            page_or_print(FP, 0) /* TODO obsolete */
 
 FL enum protocol  which_protocol(const char *name);
+
+/* Hash the passed string -- uses Chris Torek's hash algorithm */
+FL ui32_t      torek_hash(char const *name);
+#define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
+
 FL unsigned    pjw(const char *cp);
 FL long        nextprime(long n);
 
@@ -187,11 +210,25 @@ FL int         prout(const char *s, size_t sz, FILE *fp);
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
 
+/* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
+ * we check against *colour-pagers* wether colour is really desirable */
+#ifdef HAVE_COLOUR
+FL void        colour_table_create(char const *pager_used);
+FL void        colour_put(FILE *fp, enum colourspec cs);
+FL void        colour_put_header(FILE *fp, char const *name);
+FL void        colour_reset(FILE *fp);
+FL struct str const * colour_get(enum colourspec cs);
+#else
+# define colour_put(FP,CS)
+# define colour_put_header(FP,N)
+# define colour_reset(FP)
+#endif
+
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
 
-/* Memory allocation routines; the _safe versions temporarily block signals */
+/* Memory allocation routines */
 #ifdef HAVE_DEBUG
 # define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
 # define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
@@ -200,11 +237,6 @@ FL void        time_current_update(struct time_current *tc,
 # define SMALLOC_DEBUG_ARGSCALL
 #endif
 
-FL void *      smalloc_safe(size_t s SMALLOC_DEBUG_ARGS);
-FL void *      srealloc_safe(void *v, size_t s SMALLOC_DEBUG_ARGS);
-#ifdef notyet
-FL void *      scalloc_safe(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
-#endif
 FL void *      smalloc(size_t s SMALLOC_DEBUG_ARGS);
 FL void *      srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
 FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
@@ -220,9 +252,6 @@ FL int         smemtrace(void *v);
 FL bool_t      _smemcheck(char const *file, int line);
 # endif
 
-# define smalloc_safe(SZ)        smalloc_safe(SZ, __FILE__, __LINE__)
-# define srealloc_safe(P,SZ)     srealloc_safe(P, SZ, __FILE__, __LINE__)
-# define scalloc_safe(N,SZ)      scalloc_safe(N, SZ, __FILE__, __LINE__)
 # define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
 # define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
 # define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)
@@ -252,7 +281,6 @@ FL enum okay   cache_dequeue(struct mailbox *mp);
 
 /* cmd1.c */
 FL int         ccmdnotsupp(void *v);
-FL char const *get_pager(void);
 FL int         headers(void *v);
 FL int         scroll(void *v);
 FL int         Scroll(void *v);
@@ -285,10 +313,6 @@ FL int         cmove(void *v);
 FL int         cMove(void *v);
 FL int         cdecrypt(void *v);
 FL int         cDecrypt(void *v);
-#ifdef HAVE_DEBUG
-FL int         clobber(void *v);
-FL int         core(void *v);
-#endif
 FL int         cwrite(void *v);
 FL int         delete(void *v);
 FL int         deltype(void *v);
@@ -339,9 +363,12 @@ FL int         Respond(void *v);
 FL int         Followup(void *v);
 FL int         forwardcmd(void *v);
 FL int         Forwardcmd(void *v);
-FL int         ifcmd(void *v);
-FL int         elsecmd(void *v);
-FL int         endifcmd(void *v);
+
+/* if.else.endif conditional execution */
+FL int         c_if(void *v);
+FL int         c_else(void *v);
+FL int         c_endif(void *v);
+
 FL int         alternates(void *v);
 FL int         resendcmd(void *v);
 FL int         Resendcmd(void *v);
@@ -421,21 +448,25 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a complete line of input (with editing if possible).
- * If *prompt* is NULL we'll call getprompt() first.
+/* Read a complete line of input, with editing if interactive and possible.
+ * If prompt is NULL we'll call getprompt() first, if necessary.
+ * nl_escape defines wether user can escape newlines via backslash (POSIX).
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error */
-FL int         readline_input(enum lned_mode lned, char const *prompt,
-                  char **linebuf, size_t *linesize SMALLOC_DEBUG_ARGS);
+FL int         readline_input(char const *prompt, bool_t nl_escape,
+                  char **linebuf, size_t *linesize, char const *string
+                  SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define readline_input(A,B,C,D) readline_input(A, B, C, D, __FILE__, __LINE__)
+# define readline_input(A,B,C,D,E) readline_input(A,B,C,D,E,__FILE__,__LINE__)
 #endif
 
-/* Read a line of input (with editing if possible) and return it savestr()d,
- * or NULL in case of errors or if an empty line would be returned.
+/* Read a line of input, with editing if interactive and possible, return it
+ * savestr()d or NULL in case of errors or if an empty line would be returned.
  * This may only be called from toplevel (not during sourcing).
- * If *prompt* is NULL we'll call getprompt().
- * *string* is the default/initial content of the return value (this is
- * "almost" ignored in non-interactive mode for reproducability) */
+ * If prompt is NULL we'll call getprompt() if necessary.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility */
 FL char *      readstr_input(char const *prompt, char const *string);
 
 FL void        setptr(FILE *ibuf, off_t offset);
@@ -579,7 +610,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx);
-FL int         imap_setfile(const char *xserver, int newmail, int isedit);
+FL int         imap_setfile(const char *xserver, int nmail, int isedit);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -587,7 +618,7 @@ FL void        imap_quit(void);
 FL enum okay   imap_undelete(struct message *m, int n);
 FL enum okay   imap_unread(struct message *m, int n);
 FL int         imap_imap(void *vp);
-FL int         imap_newmail(int autoinc);
+FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
 FL void        imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
@@ -619,15 +650,26 @@ FL char *      imap_unquotestr(const char *s);
 FL enum okay   imap_search(const char *spec, int f);
 
 /* lex.c */
-FL int         setfile(char const *name, int newmail);
+FL int         setfile(char const *name, int nmail);
 FL int         newmailinfo(int omsgCount);
+
+/* Interpret user commands.  If standard input is not a tty, print no prompt */
 FL void        commands(void);
+
+/* Evaluate a single command.
+ * .ev_add_history and .ev_new_content will be updated upon success.
+ * Command functions return 0 for success, 1 for error, and -1 for abort.
+ * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
+FL int         evaluate(struct eval_ctx *evp);
+/* TODO drop execute() is the legacy version of evaluate().
+ * Contxt is non-zero if called while composing mail */
 FL int         execute(char *linebuf, int contxt, size_t linesize);
+
 FL void        setmsize(int sz);
 FL void        onintr(int s);
 FL void        announce(int printheaders);
 FL int         newfileinfo(void);
-FL int         getmdot(int newmail);
+FL int         getmdot(int nmail);
 FL void        initbox(const char *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
@@ -652,7 +694,7 @@ FL void *      zalloc(FILE *fp);
 #endif /* HAVE_IMAP */
 
 /* maildir.c */
-FL int         maildir_setfile(const char *name, int newmail, int isedit);
+FL int         maildir_setfile(const char *name, int nmail, int isedit);
 FL void        maildir_quit(void);
 FL enum okay   maildir_append(const char *name, FILE *fp);
 FL enum okay   maildir_remove(const char *name);
@@ -753,7 +795,7 @@ FL int         qp_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /* How much space is necessary to encode *len* bytes in Base64, worst case.
- * Includes room for terminator */
+ * Includes room for (CR/LF/CRLF and) terminator */
 FL size_t      b64_encode_calc_size(size_t len);
 
 /* Note these simply convert all the input (if possible), including the
@@ -828,7 +870,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 /* pop3.c */
 #ifdef HAVE_POP3
 FL enum okay   pop3_noop(void);
-FL int         pop3_setfile(const char *server, int newmail, int isedit);
+FL int         pop3_setfile(const char *server, int nmail, int isedit);
 FL enum okay   pop3_header(struct message *m);
 FL enum okay   pop3_body(struct message *m);
 FL void        pop3_quit(void);
@@ -965,19 +1007,27 @@ FL enum okay   rfc2595_hostname_match(const char *host, const char *pattern);
 
 /* Auto-reclaimed string storage */
 
+#ifdef HAVE_DEBUG
+# define SALLOC_DEBUG_ARGS       , char const *mdbg_file, int mdbg_line
+# define SALLOC_DEBUG_ARGSCALL   , mdbg_file, mdbg_line
+#else
+# define SALLOC_DEBUG_ARGS
+# define SALLOC_DEBUG_ARGSCALL
+#endif
+
 /* Allocate size more bytes of space and return the address of the first byte
  * to the caller.  An even number of bytes are always allocated so that the
  * space will always be on a word boundary */
-FL void *      salloc(size_t size);
-FL void *      csalloc(size_t nmemb, size_t size);
+FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
+FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
+# define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
+#endif
 
 /* Auto-reclaim string storage; if only_if_relaxed is true then only perform
  * the reset when a srelax_hold() is currently active */
 FL void        sreset(bool_t only_if_relaxed);
-
-/* Make current string storage permanent: new allocs will be auto-reclaimed by
- * sreset().  This is called once only, from within main() */
-FL void        spreserve(void);
 
 /* The "problem" with sreset() is that it releases all string storage except
  * what was present once spreserve() had been called; it therefore cannot be
@@ -991,45 +1041,74 @@ FL void        srelax_hold(void);
 FL void        srelax_rele(void);
 FL void        srelax(void);
 
+/* Make current string storage permanent: new allocs will be auto-reclaimed by
+ * sreset().  This is called once only, from within main() */
+FL void        spreserve(void);
+
 /* 'sstats' command */
 #ifdef HAVE_DEBUG
 FL int         c_sstats(void *v);
 #endif
 
-FL char *      savestr(char const *str);
-FL char *      savestrbuf(char const *sbuf, size_t sbuf_len);
-FL char *      save2str(char const *str, char const *old);
-FL char *      savecat(char const *s1, char const *s2);
+/* Return a pointer to a dynamic copy of the argument */
+FL char *      savestr(char const *str SALLOC_DEBUG_ARGS);
+FL char *      savestrbuf(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define savestr(CP)             savestr(CP, __FILE__, __LINE__)
+# define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
+#endif
+
+/* Make copy of argument incorporating old one, if set, separated by space */
+FL char *      save2str(char const *str, char const *old SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define save2str(S,O)           save2str(S, O, __FILE__, __LINE__)
+#endif
+
+/* strcat */
+FL char *      savecat(char const *s1, char const *s2 SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define savecat(S1,S2)          savecat(S1, S2, __FILE__, __LINE__)
+#endif
 
 /* Create duplicate, lowercasing all characters along the way */
-FL char *      i_strdup(char const *src);
+FL char *      i_strdup(char const *src SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define i_strdup(CP)            i_strdup(CP, __FILE__, __LINE__)
+#endif
 
 /* Extract the protocol base and return a duplicate */
-FL char *      protbase(char const *cp);
+FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define protbase(CP)            protbase(CP, __FILE__, __LINE__)
+#endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp);
-FL char *      urlxdec(char const *cp);
+FL char *      urlxenc(char const *cp SALLOC_DEBUG_ARGS);
+FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define urlxenc(CP)             urlxenc(CP, __FILE__, __LINE__)
+# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
+#endif
 
+/*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
-FL struct str * str_concat_cpa(struct str *self, char const *const*cpa,
-                  char const *sep_o_null);
+FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
+                  char const *sep_o_null SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
+#endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
-
-/* Hash the passed string; uses Chris Torek's hash algorithm */
-FL ui_it       strhash(char const *name);
-
-#define hash(S)                  (strhash(S) % HSHSIZE) /* xxx COMPAT (?) */
 
 /* Are any of the characters in the two strings the same? */
 FL int         anyof(char const *s1, char const *s2);
 
-/* Treat **iolist* as a comma separated list of strings; find and return the
- * next entry, trimming surrounding whitespace, and point **iolist* to the next
- * entry or to NULL if no more entries are contained.  If *ignore_empty* is not
+/* Treat *iolist as a sep separated list of strings; find and return the
+ * next entry, trimming surrounding whitespace, and point *iolist to the next
+ * entry or to NULL if no more entries are contained.  If ignore_empty is not
  * set empty entries are started over.  Return NULL or an entry */
-FL char *      strcomma(char **iolist, int ignore_empty);
+FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
+#define strcomma(IOL,IGN)        n_strsep(IOL, ',', IGN)
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
@@ -1168,6 +1247,11 @@ FL int         tty_readline(char const *prompt, char **linebuf,
 /* Add a line (most likely as returned by tty_readline()) to the history
  * (only added for real if non-empty and doesn't begin with U+0020) */
 FL void        tty_addhist(char const *s);
+
+#if defined HAVE_HISTORY &&\
+   (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
+FL int         c_history(void *v);
+#endif
 
 #ifndef HAVE_AMALGAMATION
 # undef FL

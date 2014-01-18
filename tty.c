@@ -2,11 +2,11 @@
  *@ TTY interaction.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *    This product includes software developed by the University of
+ *    California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -38,7 +38,7 @@
  */
 /* The NCL version is
  *
- * Copyright (c) 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2013 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -70,33 +70,54 @@
 #ifdef HAVE_HISTORY
 # define _CL_HISTFILE(S) \
 do {\
-   S = voption("NAIL_HISTFILE");\
+   S = ok_vlook(NAIL_HISTFILE);\
    if ((S) != NULL)\
       S = fexpand(S, FEXP_LOCAL);\
 } while (0)
+
 # define _CL_HISTSIZE(V) \
 do {\
-   char const *__sv = voption("NAIL_HISTSIZE");\
+   char const *__sv = ok_vlook(NAIL_HISTSIZE);\
    long __rv;\
-   if (__sv == NULL || *__sv == '\0' ||\
-         (__rv = strtol(__sv, NULL, 10)) == 0)\
+   if (__sv == NULL || *__sv == '\0' || (__rv = strtol(__sv, NULL, 10)) == 0)\
       (V) = HIST_SIZE;\
    else if (__rv < 0)\
       (V) = 0;\
    else\
       (V) = __rv;\
 } while (0)
+
 # define _CL_CHECK_ADDHIST(S,NOACT) \
 do {\
    switch (*(S)) {\
    case '\0':\
    case ' ':\
       NOACT;\
-      /* FALLTHRU */\
    default:\
       break;\
    }\
 } while (0)
+
+# define C_HISTORY_SHARED \
+   char **argv = v;\
+   long entry;\
+\
+   if (*argv == NULL)\
+      goto jlist;\
+   if (argv[1] != NULL)\
+      goto jerr;\
+   if (asccasecmp(*argv, "show") == 0)\
+      goto jlist;\
+   if (asccasecmp(*argv, "clear") == 0)\
+      goto jclear;\
+   if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
+      goto jentry;\
+jerr:\
+   fprintf(stderr, "Synopsis: history: %s\n", tr(431,\
+      "<show> (default), <clear> or select <NO> from editor history"));\
+   v = NULL;\
+jleave:\
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 #endif /* HAVE_HISTORY */
 
 /* fexpand() flags for expand-on-tab */
@@ -128,8 +149,8 @@ getuser(char const *query)
    if (query == NULL)
       query = tr(509, "User: ");
 
-   if (readline_input(LNED_NONE, query, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize) >= 0)
+   if (readline_input(query, FAL0, &termios_state.ts_linebuf,
+         &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
    termios_state_reset();
    return user;
@@ -330,6 +351,56 @@ jleave:
 # endif
    UNUSED(s);
 }
+
+# ifdef HAVE_HISTORY
+FL int
+c_history(void *v)
+{
+   C_HISTORY_SHARED;
+
+jlist: {
+   FILE *fp;
+   char *cp;
+   HISTORY_STATE *hs;
+   HIST_ENTRY **hl;
+   ul_it i, b;
+
+   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+      perror("tmpfile");
+      v = NULL;
+      goto jleave;
+   }
+   rm(cp);
+   Ftfree(&cp);
+
+   hs = history_get_history_state();
+
+   for (i = (ul_it)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
+      size_t sl = strlen(cp = (*--hl)->line);
+      fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n", i, cp, b, sl);
+      b += sl;
+   }
+
+   page_or_print(fp, (size_t)hs->length);
+   Fclose(fp);
+   }
+   goto jleave;
+
+jclear:
+   clear_history();
+   goto jleave;
+
+jentry: {
+   HISTORY_STATE *hs = history_get_history_state();
+
+   if (UICMP(z, entry, <=, hs->length))
+      v = temporary_arg_v_store = hs->entries[entry - 1]->line;
+   else
+      v = NULL;
+   }
+   goto jleave;
+}
+# endif /* HAVE_HISTORY */
 #endif /* HAVE_READLINE */
 
 /*
@@ -364,7 +435,7 @@ tty_init(void)
    _CL_HISTSIZE(hs);
    _el_hcom = history_init();
    history(_el_hcom, &he, H_SETSIZE, (int)hs);
-   history(_el_hcom, &he, H_SETUNIQUE, 1);
+   /* We unroll our own one history(_el_hcom, &he, H_SETUNIQUE, 1);*/
 # endif
 
    _el_el = el_init(uagent, stdin, stdout, stderr);
@@ -476,22 +547,82 @@ tty_addhist(char const *s)
    _CL_CHECK_ADDHIST(s, goto jleave);
 
    hold_all_sigs(); /* XXX too heavy, yet we jump away! */
-   if (history(_el_hcom, &he, H_GETUNIQUE) < 0 || he.num == 0)
-      goto jadd;
-
    for (i = history(_el_hcom, &he, H_FIRST); i >= 0;
          i = history(_el_hcom, &he, H_NEXT))
       if (strcmp(he.str, s) == 0) {
          history(_el_hcom, &he, H_DEL, he.num);
          break;
       }
-jadd:
    history(_el_hcom, &he, H_ENTER, s);
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
 # endif
    UNUSED(s);
 }
+
+# ifdef HAVE_HISTORY
+FL int
+c_history(void *v)
+{
+   C_HISTORY_SHARED;
+
+jlist: {
+   HistEvent he;
+   FILE *fp;
+   char *cp;
+   size_t i, b;
+   int x;
+
+   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+      perror("tmpfile");
+      v = NULL;
+      goto jleave;
+   }
+   rm(cp);
+   Ftfree(&cp);
+
+   i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
+   b = 0;
+   for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
+         x = history(_el_hcom, &he, H_NEXT)) {
+      size_t sl = strlen(he.str);
+      fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+         (ul_it)i, he.str, (ul_it)b, (ul_it)sl);
+      --i;
+      b += sl;
+   }
+
+   page_or_print(fp, i);
+   Fclose(fp);
+   }
+   goto jleave;
+
+jclear: {
+   HistEvent he;
+   history(_el_hcom, &he, H_CLEAR);
+   }
+   goto jleave;
+
+jentry: {
+   HistEvent he;
+   size_t i;
+   int x;
+
+   i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
+   if (UICMP(z, entry, <=, i)) {
+      entry = (long)i - entry;
+      for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
+            x = history(_el_hcom, &he, H_NEXT))
+         if (entry-- == 0) {
+            v = temporary_arg_v_store = UNCONST(he.str);
+            goto jleave;
+         }
+   }
+   v = NULL;
+   }
+   goto jleave;
+}
+# endif /* HAVE_HISTORY */
 #endif /* HAVE_EDITLINE */
 
 /*
@@ -579,6 +710,7 @@ static union xsighdl _ncl_ottou;
 static struct xtios  _ncl_tios;
 # ifdef HAVE_HISTORY
 static struct hist * _ncl_hist;
+static struct hist * _ncl_hist_tail;
 static size_t        _ncl_hist_size;
 static size_t        _ncl_hist_size_max;
 static bool_t        _ncl_hist_load;
@@ -704,7 +836,7 @@ _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
       i <<= 1;
       *l->x_bufsize = i;
       l->line.cbuf =
-      *l->x_buf = (srealloc_safe)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
+      *l->x_buf = (srealloc)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
    }
 }
 
@@ -866,7 +998,7 @@ _ncl_keof(struct line *l)
    if (i > 0) {
       l->topins = --t;
       _ncl_bs_eof_dvup(l->line.cells + c, --i);
-   } else if (t == 0 && ! boption("ignoreeof")) {
+   } else if (t == 0 && !ok_blook(ignoreeof)) {
       fputs("^D", stdout);
       fflush(stdout);
       i = -1;
@@ -1047,7 +1179,7 @@ _ncl_khist(struct line *l, bool_t backwd)
     * also, disallow forward search, then, and, of course, bail unless we
     * do have any history at all */
    if ((hp = l->hist) == NULL) {
-      if (! backwd)
+      if (!backwd)
          goto jleave;
       if ((hp = _ncl_hist) == NULL)
          goto jleave;
@@ -1134,7 +1266,7 @@ _ncl_kht(struct line *l)
 
    /* bot, sub: we cannot expand the entire data left of cursor, but only
     * the last "word", so separate them */
-   while (cx > cword && ! iswspace(cx[-1].wc))
+   while (cx > cword && !iswspace(cx[-1].wc))
       --cx;
    for (rv = 0; cword < cx; ++cword)
       rv += cword->count;
@@ -1224,6 +1356,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    wchar_t wc;
    ssize_t rv;
+   ui32_t maybe_cursor;
 
    memset(&l, 0, sizeof l);
    l.line.cbuf = *buf;
@@ -1234,8 +1367,8 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
    /* TODO *l.nd=='\0' only because we have no value-cache -> see acmava.c */
-   if ((l.nd = voption("line-editor-cursor-right")) == NULL || *l.nd == '\0')
-      l.nd = "\033[C";
+   if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
+      l.nd = "\033[C"; /* XXX no "magic" constant */
    l.x_buf = buf;
    l.x_bufsize = bufsize;
 
@@ -1245,6 +1378,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
 jrestart:
    memset(ps, 0, sizeof ps);
+   maybe_cursor = 0;
    /* TODO: NCL: we should output the reset sequence when we jrestart:
     * TODO: NCL: if we are using a stateful encoding? !
     * TODO: NCL: in short: this is not yet well understood */
@@ -1309,6 +1443,7 @@ jrestart:
       case 'A' ^ 0x40: /* cursor home */
          _ncl_khome(&l, TRU1);
          break;
+j_b:
       case 'B' ^ 0x40: /* backward character */
          _ncl_kleft(&l);
          break;
@@ -1320,6 +1455,7 @@ jrestart:
       case 'E' ^ 0x40: /* end of line */
          _ncl_kend(&l);
          break;
+j_f:
       case 'F' ^ 0x40: /* forward character */
          _ncl_kright(&l);
          break;
@@ -1361,6 +1497,7 @@ jreset:
          _ncl_krefresh(&l);
          break;
       /* 'M': CR (\r) */
+j_n:
       case 'N' ^ 0x40: /* history next */
 # ifdef HAVE_HISTORY
          if (l.hist == NULL)
@@ -1373,6 +1510,7 @@ jreset:
          goto jbell;
 # endif
       /* 'O' */
+j_p:
       case 'P' ^ 0x40: /* history previous */
 # ifdef HAVE_HISTORY
          if ((len = _ncl_khist(&l, TRU1)) > 0)
@@ -1405,7 +1543,28 @@ jreset:
          _ncl_kgow(&l, -1);
          break;
       /* 'Z': suspend (CTRL-Z) */
+      case 0x1B:
+         if (maybe_cursor++ != 0)
+            goto jreset;
+         continue;
       default:
+         /* XXX Handle usual ^[[[ABCD] cursor keys -- UGLY, "MAGIC", INFLEX */
+         if (maybe_cursor > 0) {
+            if (++maybe_cursor == 2) {
+               if (wc == L'[')
+                  continue;
+               maybe_cursor = 0;
+            } else {
+               maybe_cursor = 0;
+               switch (wc) {
+               case L'A':  goto j_p;
+               case L'B':  goto j_n;
+               case L'C':  goto j_f;
+               case L'D':  goto j_b;
+               }
+               _ncl_kother(&l, L'[');
+            }
+         }
 jprint:
          if (iswprint(wc)) {
             _ncl_kother(&l, wc);
@@ -1454,6 +1613,7 @@ tty_init(void)
 
 # ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
+   _ncl_hist_size = 0;
    _ncl_hist_size_max = hs;
    if (hs == 0)
       goto jleave;
@@ -1511,7 +1671,7 @@ tty_destroy(void)
       while (hp->older != NULL && hs-- != 0)
          hp = hp->older;
 
-   hold_all_sigs(); /* too heavy, yet we may jump even here!? */
+   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if (f == NULL)
       goto jdone;
@@ -1580,20 +1740,22 @@ tty_addhist(char const *s)
    size_t l = strlen(s);
    struct hist *h, *o, *y;
 
+   if (_ncl_hist_size_max == 0)
+      goto j_leave;
    _CL_CHECK_ADDHIST(s, goto j_leave);
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
-   if (! _ncl_hist_load)
+   if (!_ncl_hist_load)
       for (h = _ncl_hist; h != NULL; h = h->older)
-         if (h->len == l && strcmp(h->dat, s) == 0) {
-            hold_all_sigs();
+         if (h->len == l && !strcmp(h->dat, s)) {
+            hold_all_sigs(); /* TODO */
             o = h->older;
             y = h->younger;
-            if (o != NULL) {
-               if ((o->younger = y) == NULL)
-                  _ncl_hist = o;
-            }
+            if (o != NULL)
+               o->younger = y;
+            else
+               _ncl_hist_tail = y;
             if (y != NULL)
                y->older = o;
             else
@@ -1602,19 +1764,26 @@ tty_addhist(char const *s)
          }
    hold_all_sigs();
 
-   if (!_ncl_hist_load && _ncl_hist_size >= _ncl_hist_size_max) {
-      (h = _ncl_hist->younger
-         )->older = NULL;
-      free(_ncl_hist);
-      _ncl_hist = h;
+   ++_ncl_hist_size;
+   if (!_ncl_hist_load && _ncl_hist_size > _ncl_hist_size_max) {
+      --_ncl_hist_size;
+      if ((h = _ncl_hist_tail) != NULL) {
+         if ((_ncl_hist_tail = h->younger) == NULL)
+            _ncl_hist = NULL;
+         else
+            _ncl_hist_tail->older = NULL;
+         free(h);
+      }
    }
 
-   h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l + 1);
+   h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l +1);
    h->len = l;
-   memcpy(h->dat, s, l + 1);
+   memcpy(h->dat, s, l +1);
 jleave:
    if ((h->older = _ncl_hist) != NULL)
       _ncl_hist->younger = h;
+   else
+      _ncl_hist_tail = h;
    h->younger = NULL;
    _ncl_hist = h;
 
@@ -1623,6 +1792,71 @@ j_leave:
 # endif
    UNUSED(s);
 }
+
+# ifdef HAVE_HISTORY
+FL int
+c_history(void *v)
+{
+   C_HISTORY_SHARED;
+
+jlist: {
+   FILE *fp;
+   char *cp;
+   size_t i, b;
+   struct hist *h;
+
+   if (_ncl_hist == NULL)
+      goto jleave;
+
+   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+      perror("tmpfile");
+      v = NULL;
+      goto jleave;
+   }
+   rm(cp);
+   Ftfree(&cp);
+
+   i = _ncl_hist_size;
+   b = 0;
+   for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
+      fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+         (ul_it)i, h->dat, (ul_it)b, (ul_it)h->len);
+
+   page_or_print(fp, i);
+   Fclose(fp);
+   }
+   goto jleave;
+
+jclear: {
+   struct hist *h;
+   while ((h = _ncl_hist) != NULL) {
+      _ncl_hist = h->older;
+      free(h);
+   }
+   _ncl_hist_tail = NULL;
+   _ncl_hist_size = 0;
+   }
+   goto jleave;
+
+jentry: {
+   struct hist *h = _ncl_hist;
+   if (UICMP(z, entry, <=, _ncl_hist_size)) {
+      entry = (long)_ncl_hist_size - entry;
+      for (h = _ncl_hist;; h = h->older)
+         if (h == NULL)
+            break;
+         else if (entry-- != 0)
+            continue;
+         else {
+            v = temporary_arg_v_store = h->dat;
+            goto jleave;
+         }
+   }
+   v = NULL;
+   }
+   goto jleave;
+}
+# endif /* HAVE_HISTORY */
 #endif /* HAVE_NCL */
 
 /*

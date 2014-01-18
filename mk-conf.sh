@@ -4,22 +4,6 @@
 LC_ALL=C
 export LC_ALL
 
-awk=`command -pv awk`
-cat=`command -pv cat`
-chmod=`command -pv chmod`
-cp=`command -pv cp`
-cmp=`command -pv cmp`
-grep=`command -pv grep`
-make="${MAKE:-`command -pv make`}"
-mkdir=`command -pv mkdir`
-mv=`command -pv mv`
-rm=`command -pv rm`
-sed=`command -pv sed`
-tee=`command -pv tee`
-
-STRIP=`command -pv strip`
-[ ${?} -eq 0 ] && HAVE_STRIP=1 || HAVE_STRIP=0
-
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
    case ${CONFIG} in
@@ -31,6 +15,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_SPAM=0
       WANT_DOCSTRINGS=0
       WANT_QUOTE_FOLD=0
+      WANT_COLOUR=0
       ;;
    MEDIUM)
       WANT_SOCKETS=0
@@ -39,6 +24,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
+      WANT_COLOUR=0
       ;;
    NETSEND)
       WANT_IMAP=0
@@ -47,6 +33,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
+      WANT_COLOUR=0
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -83,6 +70,7 @@ compiler_flags() {
    _CFLAGS=
 
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
+   optim= dbgoptim=
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
       _CFLAGS=
       if { CC="`command -v clang`"; }; then
@@ -90,7 +78,7 @@ compiler_flags() {
       elif { CC="`command -v gcc`"; }; then
          :
       elif { CC="`command -v c89`"; }; then
-         [ "${i}" = UnixWare ] && _CFLAGS='-v -O'
+         [ "${i}" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
       elif { CC="`command -v c99`"; }; then
          :
       else
@@ -107,8 +95,9 @@ compiler_flags() {
    stackprot=no
    if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
+      optim=-O2 dbgoptim=-O
       stackprot=yes
-      _CFLAGS='-std=c89 -O2'
+      _CFLAGS='-std=c89'
       _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
@@ -128,15 +117,16 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      stackprot=yes
-#      _CFLAGS='-std=c89 -O3 -g -Weverything -Wno-long-long'
-   elif [ -z "${_CFLAGS}" ]; then
-      _CFLAGS=-O1
+#      optim=-O3 dbgoptim=-O
+#      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
+   elif [ -z "${optim}" ]; then
+      optim=-O1 dbgoptim=-O
    fi
 
    if nwantfeat DEBUG; then
-      _CFLAGS="${_CFLAGS} -DNDEBUG"
+      _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
-      _CFLAGS="${_CFLAGS} -g";
+      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
       if [ "${stackprot}" = yes ]; then
          _CFLAGS="${_CFLAGS} -fstack-protector-all "
             _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
@@ -176,6 +166,25 @@ newh=./config.h-new
 tmp0=___tmp
 tmp=./${tmp0}1$$
 
+# We need some standard utilities
+unset -f command
+check_tool() {
+   n=$1 i=$2 opt=${3:-0}
+   if type "${i}" >/dev/null 2>&1; then
+      eval ${n}=${i}
+      return 1
+   fi
+   if [ ${opt} -eq 0 ]; then
+      echo >&2 "ERROR: no trace of the utility \`${n}'"
+      exit 1
+   fi
+   return 0
+}
+
+# Check those tools right now that we need before including ${conf}
+check_tool rm "${rm:-`command -v rm`}"
+check_tool sed "${sed:-`command -v sed`}"
+
 # Only incorporate what wasn't overwritten from command line / CONFIG
 trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
@@ -191,6 +200,21 @@ while read line; do
    echo ${line}
 done > ${tmp}
 . ./${tmp}
+
+check_tool awk "${awk:-`command -v awk`}"
+check_tool cat "${cat:-`command -v cat`}"
+check_tool chmod "${chmod:-`command -v chmod`}"
+check_tool cp "${cp:-`command -v cp`}"
+check_tool cmp "${cmp:-`command -v cmp`}"
+check_tool grep "${grep:-`command -v grep`}"
+check_tool mkdir "${mkdir:-`command -v mkdir`}"
+check_tool mv "${mv:-`command -v mv`}"
+# rm(1), sed(1) above
+check_tool tee "${tee:-`command -v tee`}"
+
+check_tool make "${MAKE:-`command -v make`}"
+check_tool strip "${STRIP:-`command -v strip`}" 1
+HAVE_STRIP=${?}
 
 wantfeat() {
    eval i=\$WANT_${1}
@@ -232,16 +256,17 @@ compiler_flags
 printf "CC = ${CC}\n" >> ${newmk}
 printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
-printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
+printf "AWK = ${awk}\nCMP = ${cmp}\nCHMOD = ${chmod}\nCP = ${cp}\n" >> ${newmk}
+printf "GREP = ${grep}\nMKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" \
    >> ${newmk}
-printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
+printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
 # (We include the cc(1)/ld(1) environment only for update detection..)
 printf "CC=\"${CC}\"\n" >> ${newlst}
 printf "_CFLAGS=\"${_CFLAGS}\"\nCFLAGS=\"${CFLAGS}\"\n" >> ${newlst}
 printf "_LDFLAGS=\"${_LDFLAGS}\"\nLDFLAGS=\"${LDFLAGS}\"\n" >> ${newlst}
-printf "CMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\nMKDIR=${mkdir}\nRM=${rm}\n"\
-   >> ${newlst}
-printf "STRIP=${STRIP}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
+printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
+printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
@@ -424,6 +449,16 @@ int main(void)
    struct termios tios;
    tcgetattr(0, &tios);
    tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
+   return 0;
+}
+!
+
+link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
+#include <stdlib.h>
+int main(void)
+{
+   setenv("s-nail", "to be made nifty!", 1);
+   unsetenv("s-nail");
    return 0;
 }
 !
@@ -940,6 +975,9 @@ if wantfeat READLINE; then
 int main(void)
 {
    char *rl;
+   HISTORY_STATE *hs;
+   HIST_ENTRY **he;
+   int i;
    using_history();
    read_history("");
    stifle_history(242);
@@ -951,7 +989,12 @@ int main(void)
    rl_point = rl_end = 10;
    rl_pre_input_hook = (rl_hook_func_t*)NULL;
    rl_forced_update_display();
-
+   clear_history();
+   hs = history_get_history_state();
+   i = hs->length;
+   he = history_list();
+   if (i > 0)
+      rl = he[0]->line;
    rl_free_line_state();
    rl_cleanup_after_signal();
    rl_reset_after_signal();
@@ -973,8 +1016,8 @@ if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)
 {
-   HistEvent he;
    EditLine *el_el = el_init("TEST", stdin, stdout, stderr);
+   HistEvent he;
    History *el_hcom = history_init();
    history(el_hcom, &he, H_SETSIZE, 242);
    el_set(el_el, EL_SIGNAL, 0);
@@ -983,6 +1026,8 @@ int main(void)
    el_set(el_el, EL_EDITOR, "emacs");
    el_set(el_el, EL_PROMPT, &getprompt);
    el_source(el_el, NULL);
+   history(el_hcom, &he, H_GETSIZE);
+   history(el_hcom, &he, H_CLEAR);
    el_end(el_el);
    /* TODO add loader and addfn checks */
    history_end(el_hcom);
@@ -1004,6 +1049,7 @@ else
    echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
 fi
 
+# Generic have-a-command-line-editor switch for those who need it below
 if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
       [ -n "${have_readline}" ]; then
    have_cle=1
@@ -1021,11 +1067,13 @@ else
    echo '/* WANT_HISTORY=0 */' >> ${h}
 fi
 
-if wantfeat QUOTE_FOLD &&\
-      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
-   echo '#define HAVE_QUOTE_FOLD' >> ${h}
+if wantfeat SPAM; then
+   echo '#define HAVE_SPAM' >> ${h}
+   if command -v spamc >/dev/null 2>&1; then
+      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+   fi
 else
-   echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
+   echo '/* WANT_SPAM=0 */' >> ${h}
 fi
 
 if wantfeat DOCSTRINGS; then
@@ -1034,13 +1082,17 @@ else
    echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
-if wantfeat SPAM; then
-   echo '#define HAVE_SPAM' >> ${h}
-   if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
-   fi
+if wantfeat QUOTE_FOLD &&\
+      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
+   echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
-   echo '/* WANT_SPAM=0 */' >> ${h}
+   echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
+fi
+
+if wantfeat COLOUR; then
+   echo '#define HAVE_COLOUR' >> ${h}
+else
+   echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
 if wantfeat MD5; then
@@ -1092,6 +1144,7 @@ printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY MANAGEMENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
 
@@ -1190,6 +1243,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
 #endif
+#ifdef HAVE_COLOUR
+: + Coloured message display (simple)
+#endif
 :
 :The following optional features are disabled:
 #ifndef HAVE_ICONV
@@ -1239,6 +1295,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
+#endif
+#ifndef HAVE_COLOUR
+: - Coloured message display (simple)
 #endif
 :
 :Remarks:

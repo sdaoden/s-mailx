@@ -2,7 +2,7 @@
  *@ SMTP client and other internet related functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2000
@@ -173,7 +173,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 	}
 	SMTP_ANSWER(2);
 #ifdef HAVE_SSL
-	if (! sp->s_use_ssl && value("smtp-use-starttls")) {
+	if (!sp->s_use_ssl && ok_blook(smtp_use_starttls)) {
 		char *server;
 		if ((cp = strchr(xserver, ':')) != NULL) {
 			server = salloc(cp - xserver + 1);
@@ -191,7 +191,7 @@ talk_smtp(struct name *to, FILE *fi, struct sock *sp,
 			return 1;
 	}
 #else
-	if (value("smtp-use-starttls")) {
+	if (ok_blook(smtp_use_starttls)) {
 		fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 		return 1;
 	}
@@ -317,9 +317,9 @@ smtp_auth_var(char const *atype, char const *addr)
 
 	/* Try a 'user@host', i.e., address specific version first */
 	(void)snprintf(var, len, "smtp-auth%s-%s", atype, addr);
-	if ((cp = value(var)) == NULL) {
+	if ((cp = vok_vlook(var)) == NULL) {
 		snprintf(var, len, "smtp-auth%s", atype);
-		cp = value(var);
+		cp = vok_vlook(var);
 	}
 	if (cp != NULL)
 		cp = savestr(cp);

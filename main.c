@@ -2,7 +2,7 @@
  *@ Startup -- interface with user.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -82,8 +82,40 @@ VL char const        month_names[12 + 1][4] = {
 VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
 /*VL char const        features[]; The "feature string" comes from config.h */
-
-VL sighandler_type   dflpipe = SIG_DFL;
+VL uc_it const       class_char[] = {
+/* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel  */
+   C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
+/* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si   */
+   C_CNTRL,  C_BLANK,  C_WHITE, C_SPACE, C_SPACE, C_SPACE, C_CNTRL, C_CNTRL,
+/* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb  */
+   C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
+/* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us   */
+   C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
+/* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  '   */
+   C_BLANK, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
+/* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  /   */
+   C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
+/* 060  0   061  1   062  2   063  3   064  4   065  5   066  6   067  7   */
+   C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL,
+/* 070  8   071  9   072  :   073  ;   074  <   075  =   076  >   077  ?   */
+   C_DIGIT, C_DIGIT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
+/* 100  @   101  A   102  B   103  C   104  D   105  E   106  F   107  G   */
+   C_PUNCT, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
+/* 110  H   111  I   112  J   113  K   114  L   115  M   116  N   117  O   */
+   C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
+/* 120  P   121  Q   122  R   123  S   124  T   125  U   126  V   127  W   */
+   C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
+/* 130  X   131  Y   132  Z   133  [   134  \   135  ]   136  ^   137  _   */
+   C_UPPER, C_UPPER, C_UPPER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
+/* 140  `   141  a   142  b   143  c   144  d   145  e   146  f   147  g   */
+   C_PUNCT, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
+/* 150  h   151  i   152  j   153  k   154  l   155  m   156  n   157  o   */
+   C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
+/* 160  p   161  q   162  r   163  s   164  t   165  u   166  v   167  w   */
+   C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
+/* 170  x   171  y   172  z   173  {   174  |   175  }   176  ~   177 del  */
+   C_LOWER, C_LOWER, C_LOWER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_CNTRL
+};
 
 /* getopt(3) fallback implementation */
 #ifdef HAVE_GETOPT
@@ -100,17 +132,17 @@ static int           _oind, /*_oerr,*/ _oopt;
 #ifdef HAVE_GETOPT
 # define _getopt     getopt
 #else
-static int  _getopt(int argc, char *const argv[], const char *optstring);
+static int     _getopt(int argc, char *const argv[], const char *optstring);
 #endif
 
 /* Perform basic startup initialization */
-static void _startup(void);
+static void    _startup(void);
 
 /* Grow a char** */
-static int  _grow_cpp(char const ***cpp, int size, int cnt);
+static size_t  _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt);
 
 /* Initialize *tempdir*, *myname*, *homedir* */
-static void _setup_vars(void);
+static void    _setup_vars(void);
 
 /* We're in an interactive session - compute what the screen size for printing
  * headers etc. should be; notify tty upon resize if *is_sighdl* is not 0.
@@ -119,14 +151,14 @@ static void _setup_vars(void);
  * If baud rate = 1200, use 14
  * If baud rate > 1200, use 24 or ws_row
  * Width is either 80 or ws_col */
-static void _setscreensize(int is_sighdl);
+static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int  _rcv_mode(char const *folder);
+static int     _rcv_mode(char const *folder);
 
 /* Interrupt printing of the headers */
-static void _hdrstop(int signo);
+static void    _hdrstop(int signo);
 
 #ifndef HAVE_GETOPT
 static int
@@ -239,7 +271,7 @@ _startup(void)
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* noallnet */
    /* noappend */
-   assign("asksub", "");
+   ok_bset(asksub, TRU1);
    /* noaskbcc */
    /* noaskcc */
    /* noautoprint */
@@ -248,10 +280,10 @@ _startup(void)
    /* nocrt */
    /* nodebug */
    /* nodot */
-   /* assign("escape", "~"); TODO non-compliant */
+   /* ok_vset(escape, ESCAPE *"~"*); TODO non-compliant */
    /* noflipr */
    /* nofolder */
-   assign("header", "");
+   ok_bset(header, TRU1);
    /* nohold */
    /* noignore */
    /* noignoreeof */
@@ -261,22 +293,22 @@ _startup(void)
    /* noonehop -- Note: we ignore this one */
    /* nooutfolder */
    /* nopage */
-   assign("prompt", "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
+   ok_vset(prompt, "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
    /* noquiet */
    /* norecord */
-   assign("save", "");
+   ok_bset(save, TRU1);
    /* nosendwait */
    /* noshowto */
    /* nosign */
    /* noSign */
-   /* assign("toplines", "5"); XXX somewhat hmm */
+   /* ok_vset(toplines, "5"); XXX somewhat hmm */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
-   if (voption("ttycharset") == NULL && (cp = nl_langinfo(CODESET)) != NULL)
-      assign("ttycharset", cp);
+   if (ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+      ok_vset(ttycharset, cp);
 # endif
 
 # ifdef HAVE_C90AMEND1
@@ -309,17 +341,16 @@ _startup(void)
 #endif
 }
 
-static int
-_grow_cpp(char const ***cpp, int size, int cnt)
+static size_t
+_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 {
-   /* Before spreserve(): use our string pool instead of LibC heap;
-    * Increment *size* by at least 5! */
-   char const **newcpp = salloc(sizeof(char*) * (size += 8));
+   /* Before spreserve(): use our string pool instead of LibC heap */
+   char const **newcpp = salloc(sizeof(char*) * newsize);
 
-   if (cnt > 0)
-      memcpy(newcpp, *cpp, (size_t)cnt * sizeof(char*));
+   if (oldcnt > 0)
+      memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   return size;
+   return newsize;
 }
 
 static void
@@ -450,7 +481,7 @@ _rcv_mode(char const *folder)
    else if (*folder == '@') {
       /* This must be treated specially to make invocation like
        * -A imap -f @mailbox work */
-      if ((cp = value("folder")) != NULL && which_protocol(cp) == PROTO_IMAP)
+      if ((cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP)
          (void)n_strlcpy(mailname, cp, MAXPATHLEN);
    }
 
@@ -466,16 +497,16 @@ _rcv_mode(char const *folder)
    }
 
    callhook(mailname, 0);
-   if (i > 0 && !boption("emptystart"))
+   if (i > 0 && !ok_blook(emptystart))
       exit(1);
 
    if (sigsetjmp(__hdrjmp, 1) == 0) {
       if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, _hdrstop);
       if (!(options & OPT_N_FLAG)) {
-         if (!value("quiet"))
+         if (!ok_blook(quiet))
             printf(tr(140, "%s version %s.  Type ? for help.\n"),
-               (boption("bsdcompat") ? "Mail" : uagent), version);
+               (ok_blook(bsdcompat) ? "Mail" : uagent), version);
          announce(1);
          fflush(stdout);
       }
@@ -529,14 +560,15 @@ main(int argc, char *argv[])
    struct attachment *attach = NULL;
    char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
    char const *okey, **oargs = NULL, *folder = NULL;
-   int oargs_size = 0, oargs_count = 0, smopts_size = 0, i;
+   size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
+   int i;
 
    /*
     * Start our lengthy setup
     */
 
    starting =
-   unset_allow_undefined = TRU1;
+   var_clear_allow_undefined = TRU1;
 
    progname = argv[0];
    _startup();
@@ -585,7 +617,7 @@ main(int argc, char *argv[])
       case 'd':
          okey = "debug";
 #ifdef HAVE_DEBUG
-         assign(okey, "");
+         ok_bset(debug, TRU1);
 #endif
          goto joarg;
       case 'E':
@@ -621,7 +653,7 @@ main(int argc, char *argv[])
       case 'O':
          /* Additional options to pass-through to MTA */
          if (smopts_count == (size_t)smopts_size)
-            smopts_size = _grow_cpp(&smopts, smopts_size, (int)smopts_count);
+            smopts_size = _grow_cpp(&smopts, smopts_size + 8, smopts_count);
          smopts[smopts_count++] = skin(_oarg);
          break;
       case 'q':
@@ -667,7 +699,7 @@ main(int argc, char *argv[])
          }
 joarg:
          if (oargs_count == oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size, oargs_count);
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
          oargs[oargs_count++] = okey;
          break;
       case 's':
@@ -692,7 +724,7 @@ joarg:
          /* Be verbose */
          okey = "verbose";
 #ifdef HAVE_DEBUG
-         assign(okey, "");
+         ok_bset(verbose, TRU1);
 #endif
          goto joarg;
       case '~':
@@ -701,13 +733,15 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_count + 5 >= oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size, oargs_count);
-         oargs[oargs_count++] = "dot";
-         oargs[oargs_count++] = "emptystart";
-         oargs[oargs_count++] = "noheader";
-         oargs[oargs_count++] = "quiet";
-         oargs[oargs_count++] = "sendwait";
+         if (oargs_count + 6 >= oargs_size)
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
+         oargs[oargs_count + 0] = "dot";
+         oargs[oargs_count + 1] = "emptystart";
+         oargs[oargs_count + 2] = "noheader";
+         oargs[oargs_count + 3] = "quiet";
+         oargs[oargs_count + 4] = "sendwait";
+         oargs[oargs_count + 5] = "MBOX=/dev/null";
+         oargs_count += 6;
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;
       case '?':
@@ -771,13 +805,11 @@ jusage:
       load(SYSCONFRC);
    /* *expand() returns a savestr(), but load only uses the file name for
     * fopen(), so it's safe to do this */
-   if ((cp = getenv("MAILRC")) != NULL)
-      load(file_expand(cp));
-   else if ((cp = getenv("NAILRC")) != NULL)
-      load(file_expand(cp));
-   else
-      load(file_expand(MAILRC));
-   if (getenv("NAIL_EXTRA_RC") == NULL && (cp = value("NAIL_EXTRA_RC")) != NULL)
+   if ((cp = getenv("MAILRC")) == NULL && (cp = getenv("NAILRC")) == NULL)
+      cp = UNCONST(MAILRC);
+   load(file_expand(cp));
+   if (getenv("NAIL_EXTRA_RC") == NULL &&
+         (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
 
    /* Now we can set the account */
@@ -790,7 +822,7 @@ jusage:
 
    /* Ensure the -S and other command line options take precedence over
     * anything that may have been placed in resource files */
-   for (i = 0; i < oargs_count; ++i) {
+   for (i = 0; UICMP(z, i, <, oargs_count); ++i) {
       char const *a[2];
       a[0] = oargs[i];
       a[1] = NULL;
@@ -802,7 +834,7 @@ jusage:
     */
 
    starting =
-   unset_allow_undefined = FAL0;
+   var_clear_allow_undefined = FAL0;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);

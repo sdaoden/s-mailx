@@ -25,7 +25,10 @@
 # Note: it is possible to add to the detected values by setting ADDCFLAGS="xy"
 # and/or ADDLDFLAGS="xy" -- "configuration-has-changed" detection will work on
 # the final $CC / $CFLAGS / $LDFLAGS, and thus will include those additions
-WANT_AUTOCC=0
+# Thus: set this to 0 and use your normal $CC / $CFLAGS / $LDFLAGS, set this to
+# 1 and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
+# Whatever you do, the configuration is fixated and updates will force rebuilds
+WANT_AUTOCC=1
 
 # It is possible to compile S-nail as a "single-source", meaning that all
 # source files are injected into a single compilation unit, which is then
@@ -134,6 +137,9 @@ WANT_DOCSTRINGS=1
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
 WANT_QUOTE_FOLD=1
 
+# A simple form of coloured output can optionally be produced (see manual)
+WANT_COLOUR=1
+
 ## PATHS AND PROGRAMS ##
 
 # General prefix where S-nail should be installed
@@ -186,6 +192,14 @@ XLISTER=ls
 # (Note: this is named XPAGER so that it doesn't clash with the POSIX standard
 # $PAGER, which would effectively cause this setting to be ignored)
 XPAGER=more
+
+# The following tools may be provided a.k.a. overwritten, `command -v NAME`
+# is used to query the utility otherwise:
+#  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, grep=, mkdir=, mv=, tee=
+#  rm=, sed=
+# Note that rm(1) and sed(1) are needed before this file is read, all other
+# utilities will be checked afterwards only.
+# For cross-compilation setting MAKE= and STRIP= may be necessary
 
 ##  --  >8  --  8<  --  ##
 

@@ -2,7 +2,7 @@
  *@ A cache for IMAP.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -102,7 +102,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 		snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
 				*ename ? "/" : "", ename);
 	} else {
-		if ((cachedir = value("imap-cache")) == NULL ||
+		if ((cachedir = ok_vlook(imap_cache)) == NULL ||
 				(cachedir = file_expand(cachedir)) == NULL)
 			return NULL;
 		eaccount = urlxenc(mp->mb_imap_account);
@@ -406,7 +406,7 @@ clean(struct mailbox *mp, struct cw *cw)
 	struct dirent *dp;
 	FILE *fp = NULL;
 
-	if ((cachedir = value("imap-cache")) == NULL ||
+	if ((cachedir = ok_vlook(imap_cache)) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
 		return NULL;
 	eaccount = urlxenc(mp->mb_imap_account);
@@ -604,7 +604,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
 	const char	*cp, *bp, *sp;
 	int	namesz;
 
-	if ((cachedir = value("imap-cache")) == NULL ||
+	if ((cachedir = ok_vlook(imap_cache)) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
 		return STOP;
 	eaccount = urlxenc(mp->mb_imap_account);
@@ -742,7 +742,7 @@ cache_dequeue(struct mailbox *mp)
 	DIR	*dirp;
 	struct dirent	*dp;
 
-	if ((cachedir = value("imap-cache")) == NULL ||
+	if ((cachedir = ok_vlook(imap_cache)) == NULL ||
 			(cachedir = file_expand(cachedir)) == NULL)
 		return OKAY;
 	eaccount = urlxenc(mp->mb_imap_account);

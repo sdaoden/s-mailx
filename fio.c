@@ -2,7 +2,7 @@
  *@ File I/O.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -103,7 +103,7 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 	char *cp;
 
 	if (strcmp(user, myname) == 0 && ! force &&
-			(cp = value("folder")) != NULL) {
+			(cp = ok_vlook(folder)) != NULL) {
 		switch (which_protocol(cp)) {
 		case PROTO_IMAP:
 			if (strcmp(cp, protbase(cp)) != 0)
@@ -115,7 +115,7 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 		}
 	}
 
-	if (force || (cp = value("MAIL")) == NULL)
+	if (force || (cp = ok_vlook(MAIL)) == NULL)
 		snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
 	else {
 jcopy:
@@ -206,8 +206,8 @@ jleave:
 		return NULL;
 	}
 	snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-	if ((shellp = value("SHELL")) == NULL)
-		shellp = UNCONST(SHELL);
+	if ((shellp = ok_vlook(SHELL)) == NULL)
+		shellp = UNCONST(XSHELL);
 	pid = start_command(shellp, 0, -1, pivec[1], "-c", cmdbuf, NULL);
 	if (pid < 0) {
 		close(pivec[0]);
@@ -285,7 +285,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 		if (*linesize <= LINESIZE || n >= *linesize - 128) {
 			*linesize += ((*line == NULL)
 				? LINESIZE + n + 1 : 256);
-			*line = (srealloc_safe)(*line, *linesize
+			*line = (srealloc)(*line, *linesize
 					SMALLOC_DEBUG_ARGSCALL);
 		}
 		c = getc(fp);
@@ -325,7 +325,7 @@ FL char *
 		return _fgetline_byone(line, linesize, llen, fp, appendnl, 0
 			SMALLOC_DEBUG_ARGSCALL);
 	if (*line == NULL || *linesize < LINESIZE)
-		*line = (srealloc_safe)(*line, *linesize = LINESIZE
+		*line = (srealloc)(*line, *linesize = LINESIZE
 				SMALLOC_DEBUG_ARGSCALL);
 	sz = *linesize <= *cnt ? *linesize : *cnt + 1;
 	if (sz <= 1 || fgets(*line, sz, fp) == NULL)
@@ -337,7 +337,7 @@ FL char *
 	i_llen = _length_of_line(*line, sz);
 	*cnt -= i_llen;
 	while ((*line)[i_llen - 1] != '\n') {
-		*line = (srealloc_safe)(*line, *linesize += 256
+		*line = (srealloc)(*line, *linesize += 256
 				SMALLOC_DEBUG_ARGSCALL);
 		sz = *linesize - i_llen;
 		sz = (sz <= *cnt ? sz : *cnt + 1);
@@ -377,7 +377,7 @@ FL int
 			if (*linesize <= LINESIZE || n >= *linesize - 128) {
 				*linesize += ((*linebuf == NULL)
 					? LINESIZE + n + 1 : 256);
-				*linebuf = (srealloc_safe)(*linebuf, *linesize
+				*linebuf = (srealloc)(*linebuf, *linesize
 						SMALLOC_DEBUG_ARGSCALL);
 			}
 again:
@@ -417,15 +417,16 @@ again:
 }
 
 FL int
-(readline_input)(enum lned_mode lned, char const *prompt, char **linebuf,
-	size_t *linesize SMALLOC_DEBUG_ARGS)
+(readline_input)(char const *prompt, bool_t nl_escape, char **linebuf,
+	size_t *linesize, char const *string SMALLOC_DEBUG_ARGS)
 {
+	/* TODO readline: linebuf pool! */
 	FILE *ifile = (_input != NULL) ? _input : stdin;
 	bool_t doprompt, dotty;
 	int n;
 
 	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && !boption("line-editor-disable"));
+	dotty = (doprompt && !ok_blook(line_editor_disable));
 	if (!doprompt)
 		prompt = NULL;
 	else if (prompt == NULL)
@@ -434,6 +435,16 @@ FL int
 	for (n = 0;;) {
 		if (dotty) {
 			assert(ifile == stdin);
+			if (string != NULL && (n = (int)strlen(string)) > 0) {
+				if (*linesize > 0)
+					*linesize += n +1;
+				else
+					*linesize = (size_t)n + LINESIZE +1;
+				*linebuf = (srealloc)(*linebuf, *linesize
+					SMALLOC_DEBUG_ARGSCALL);
+				memcpy(*linebuf, string, (size_t)n +1);
+			}
+			string = NULL;
 			n = (tty_readline)(prompt, linebuf, linesize, n
 				SMALLOC_DEBUG_ARGSCALL);
 		} else {
@@ -446,64 +457,32 @@ FL int
 		}
 		if (n <= 0)
 			break;
-		/*
-		 * POSIX says:
-		 * An unquoted <backslash> at the end of a command line
-		 * shall be discarded and the next line shall continue the
-		 * command.
-		 */
-		if ((lned & LNED_LF_ESC) && (*linebuf)[n - 1] == '\\') {
+		/* POSIX says:
+		 * An unquoted <backslash> at the end of a command line shall
+		 * be discarded and the next line shall continue the command */
+		if (nl_escape && (*linebuf)[n - 1] == '\\') {
 			(*linebuf)[--n] = '\0';
 			if (prompt != NULL && *prompt != '\0')
 				prompt = ".. "; /* XXX PS2 .. */
 			continue;
 		}
-		if (dotty && (lned & LNED_HIST_ADD))
-			tty_addhist(*linebuf);
 		break;
 	}
 	return n;
 }
 
 FL char *
-readstr_input(char const *prompt, char const *string) /* FIXME SIGS<->leaks */
+readstr_input(char const *prompt, char const *string)
 {
-	/* TODO readstr_input(): linebuf pool */
-	size_t linesize = 0, slen;
+	/* FIXME readstr_input: without linepool leaks on sigjmp */
+	size_t linesize = 0;
 	char *linebuf = NULL, *rv = NULL;
-	bool_t doprompt, dotty;
+	int n;
 
-	doprompt = (!sourcing && (options & OPT_INTERACTIVE));
-	dotty = (doprompt && !boption("line-editor-disable"));
-	if (!doprompt)
-		prompt = NULL;
-	else if (prompt == NULL)
-		prompt = getprompt();
+	n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
+	if (n > 0)
+		rv = savestrbuf(linebuf, (size_t)n + 1);
 
-	/* If STDIN is not a terminal, simply read from it */
-	if (dotty) {
-		slen = (string != NULL) ? strlen(string) : 0;
-		if (slen) {
-			linesize = slen + LINESIZE + 1;
-			linebuf = smalloc_safe(linesize);
-			if (slen)
-				memcpy(linebuf, string, slen + 1);
-		}
-		if (tty_readline(prompt, &linebuf, &linesize, slen) >= 0)
-			rv = linebuf;
-	} else {
-		if (prompt != NULL && *prompt != '\0') {
-			fputs(prompt, stdout);
-			fflush(stdout);
-		}
-		linesize = slen = 0;
-		linebuf = NULL;
-		if (readline_restart(stdin, &linebuf, &linesize, slen) >= 0)
-			rv = linebuf;
-	}
-
-	if (rv != NULL)
-		rv = (*rv == '\0') ? NULL : savestr(rv);
 	if (linebuf != NULL)
 		free(linebuf);
 	return rv;
@@ -788,7 +767,7 @@ jnext:
 		goto jislocal;
 	case '&':
 		if (res[1] == '\0') {
-			if ((res = value("MBOX")) == NULL)
+			if ((res = ok_vlook(MBOX)) == NULL)
 				res = UNCONST("~/mbox");
 			else if (res[0] != '&' || res[1] != '\0')
 				goto jnext;
@@ -853,7 +832,7 @@ FL void
 demail(void)
 {
 
-	if (value("keep") != NULL || rm(mailname) < 0) {
+	if (ok_blook(keep) || rm(mailname) < 0) {
 		int fd = open(mailname, O_WRONLY|O_CREAT|O_TRUNC, 0600);
 		if (fd >= 0)
 			close(fd);
@@ -934,7 +913,7 @@ getfold(char *name, size_t size)
 {
 	char const *folder;
 
-	if ((folder = value("folder")) != NULL)
+	if ((folder = ok_vlook(folder)) != NULL)
 		(void)n_strlcpy(name, folder, size);
 	return (folder != NULL);
 }
@@ -947,7 +926,7 @@ getdeadletter(void)
 {
 	char const *cp;
 
-	if ((cp = value("DEAD")) == NULL ||
+	if ((cp = ok_vlook(DEAD)) == NULL ||
 			(cp = fexpand(cp, FEXP_LOCAL)) == NULL)
 		cp = fexpand("~/dead.letter", FEXP_LOCAL|FEXP_SHELL);
 	else if (*cp != '/') {
@@ -1419,11 +1398,11 @@ csource(void *v)
 	}
 
 	_sstack[_ssp].s_file = _input;
-	_sstack[_ssp].s_cond = cond;
+	_sstack[_ssp].s_cond = cond_state;
 	_sstack[_ssp].s_loading = loading;
 	++_ssp;
 	loading = FAL0;
-	cond = CANY;
+	cond_state = COND_ANY;
 	_input = fi;
 	sourcing = TRU1;
 	rv = 0;
@@ -1443,10 +1422,10 @@ unstack(void)
 	}
 
 	Fclose(_input);
-	if (cond != CANY)
+	if (cond_state != COND_ANY)
 		fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
 	--_ssp;
-	cond = _sstack[_ssp].s_cond;
+	cond_state = _sstack[_ssp].s_cond;
 	loading = _sstack[_ssp].s_loading;
 	_input = _sstack[_ssp].s_file;
 	if (_ssp == 0)

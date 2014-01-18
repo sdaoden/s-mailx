@@ -2,7 +2,7 @@
  *@ Perform message editing functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -78,12 +78,12 @@ edit1(int *msgvec, int viored)
 	struct message *mp;
 	off_t size;
 	char *line = NULL;
-	size_t linesize;
+	size_t linesize = 0;
 
 	/*
 	 * Deal with each message to be edited . . .
 	 */
-	wb = value("writebackedited") != NULL;
+	wb = ok_blook(writebackedited);
 	for (i = 0; msgvec[i] && i < msgCount; i++) {
 		sighandler_type sigint;
 
@@ -204,8 +204,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly,
 	}
 	nf = NULL;
 
-	if ((ed = value(viored == 'e' ? "EDITOR" : "VISUAL")) == NULL)
-		ed = (viored == 'e') ? "ed" : "vi";
+	ed = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
+	if (ed == NULL)
+		ed = (viored == 'e') ? "ed" : "vi"; /* XXX */
 	sigemptyset(&cset);
 	if (run_command(ed, oldint != SIG_IGN ? &cset : NULL, -1, -1,
 				tempEdit, NULL, NULL) < 0)

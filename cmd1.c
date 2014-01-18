@@ -2,7 +2,7 @@
  *@ User commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2013 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -49,7 +49,7 @@
 static int screen;
 
 /* Prepare and print "[Message: xy]:" intro */
-static void	_show_msg_overview(struct message *mp, int msg_no, FILE *obuf);
+static void	_show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
 
 /* ... And place the extracted date in `date' */
 static void	_parse_from_(struct message *mp, char date[FROM_DATEBUF]);
@@ -76,10 +76,22 @@ static int	_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 static int pipe1(char *str, int doign);
 
 static void
-_show_msg_overview(struct message *mp, int msg_no, FILE *obuf)
+_show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 {
-	fprintf(obuf, tr(17, "[-- Message %2d -- %lu lines, %lu bytes --]:\n"),
-		msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size);
+	char const *cpre = "", *csuf = "";
+
+#ifdef HAVE_COLOUR
+	if (colour_table != NULL) {
+		struct str const *sp;
+
+		if ((sp = colour_get(COLOURSPEC_MSGINFO)) != NULL)
+			cpre = sp->s;
+		csuf = colour_get(COLOURSPEC_RESET)->s;
+	}
+#endif
+	fprintf(obuf, tr(17,
+		"%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
+		cpre, msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size, csuf);
 }
 
 static void
@@ -103,12 +115,12 @@ _print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 	char attrlist[30], *cp;
 	char const *fmt;
 
-	if ((cp = voption("attrlist")) != NULL) {
+	if ((cp = ok_vlook(attrlist)) != NULL) {
 		size_t i = strlen(cp);
 		if (UICMP(32, i, >, sizeof attrlist - 1))
 			i = (int)sizeof attrlist - 1;
 		memcpy(attrlist, cp, i);
-	} else if (boption("bsdcompat") || boption("bsdflags") ||
+	} else if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
 			getenv("SYSV3") != NULL) {
 		char const bsdattr[] = "NU  *HMFAT+-$";
 		memcpy(attrlist, bsdattr, sizeof bsdattr - 1);
@@ -117,8 +129,8 @@ _print_head(size_t yetprinted, int msgno, FILE *f, bool_t threaded)
 		memcpy(attrlist, pattr, sizeof pattr - 1);
 	}
 
-	if ((fmt = voption("headline")) == NULL) {
-		fmt = ((boption("bsdcompat") || boption("bsdheadline"))
+	if ((fmt = ok_vlook(headline)) == NULL) {
+		fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
 			? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
 			: "%>%a%m %-18f %16d %4l/%-5o %i%-s");
 	}
@@ -137,7 +149,7 @@ __hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
 	time_t datet = mp->m_time;
 
 	date = NULL;
-	if ((datefmt = value("datefield")) != NULL) {
+	if ((datefmt = ok_vlook(datefield)) != NULL) {
 		fp = hfield1("date", mp);/* TODO use m_date field! */
 		if (fp == NULL) {
 			datefmt = NULL;
@@ -145,7 +157,7 @@ __hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
 		}
 		datet = rfctime(fp);
 		date = fakedate(datet);
-		fp = value("datefield-markout-older");
+		fp = ok_vlook(datefield_markout_older);
 		i = (*datefmt != '\0');
 		if (fp != NULL)
 			i |= (*fp != '\0') ? 2 | 4 : 2;
@@ -186,7 +198,7 @@ jdate_set:
 
 	isaddr = 1;
 	name = name1(mp, 0);
-	if (name != NULL && value("showto") && is_myname(skin(name))) {
+	if (name != NULL && ok_blook(showto) && is_myname(skin(name))) {
 		if ((cp = hfield1("to", mp)) != NULL) {
 			name = cp;
 			isto = 1;
@@ -197,7 +209,7 @@ jdate_set:
 		isaddr = 0;
 	}
 	if (isaddr) {
-		if (value("showname"))
+		if (ok_blook(showname))
 			name = realname(name);
 		else {
 			name = prstr(skin(name));
@@ -593,17 +605,6 @@ ccmdnotsupp(void *v) /* TODO -> lex.c */
 	return (1);
 }
 
-FL char const *
-get_pager(void)
-{
-	char const *cp;
-
-	cp = value("PAGER");
-	if (cp == NULL || *cp == '\0')
-		cp = PAGER;
-	return cp;
-}
-
 FL int
 headers(void *v)
 {
@@ -802,7 +803,7 @@ screensize(void)
 	int s;
 	char *cp;
 
-	if ((cp = value("screen")) != NULL && (s = atoi(cp)) > 0)
+	if ((cp = ok_vlook(screen)) != NULL && (s = atoi(cp)) > 0)
 		return s;
 	return scrnheight - 4;
 }
@@ -831,7 +832,7 @@ from(void *v)
 	time_current_update(&time_current, FAL0);
 
 	/* TODO unfixable memory leaks still */
-	if (IS_TTY_SESSION() && (cp = value("crt")) != NULL) {
+	if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
 		for (n = 0, ip = msgvec; *ip; ip++)
 			n++;
 		if (n > (*cp == '\0' ? screensize() : atoi((char*)cp)) + 3) {
@@ -942,6 +943,11 @@ static int
 _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 	bool_t dodecode, char *cmd, off_t *tstats)
 {
+	enum sendaction const action = ((dopipe && ok_blook(piperaw))
+			? SEND_MBOX : dodecode
+			? SEND_SHOW : doign
+			? SEND_TODISP : SEND_TODISP_ALL);
+	bool_t const formfeed = (dopipe && ok_blook(page));
 	off_t mstats[2];
 	int *ip;
 	struct message *mp;
@@ -952,16 +958,17 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 	if (sigsetjmp(pipestop, 1))
 		goto close_pipe;
 	if (dopipe) {
-		if ((cp = value("SHELL")) == NULL)
-			cp = SHELL;
+		if ((cp = ok_vlook(SHELL)) == NULL)
+			cp = XSHELL;
 		if ((obuf = Popen(cmd, "w", cp, 1)) == NULL) {
 			perror(cmd);
 			obuf = stdout;
 		} else
 			safe_signal(SIGPIPE, brokpipe);
 	} else if ((options & OPT_TTYOUT) &&
-			(dopage || (cp = value("crt")) != NULL)) {
-		long nlines = 0;
+			(dopage || (cp = ok_vlook(crt)) != NULL)) {
+		char const *pager = NULL;
+		size_t nlines = 0;
 		if (!dopage) {
 			for (ip = msgvec; *ip &&
 					PTRCMP(ip - msgvec, <, msgCount);
@@ -974,15 +981,34 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 				nlines += message[*ip - 1].m_lines;
 			}
 		}
-		if (dopage || nlines > (*cp ? atoi(cp) : realscreenheight)) {
-			char const *p = get_pager();
-			if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
-				perror(p);
+		if (dopage || UICMP(z, nlines, >,
+				(*cp != '\0' ? atoi(cp) : realscreenheight))) {
+			pager = get_pager();
+#ifdef HAVE_SETENV
+			if ((cp = getenv("LESS")) == NULL) /* XXX not here! */
+				setenv("LESS", "FRXi", 0); /* XXX add env. */
+#endif
+			obuf = Popen(pager, "w", NULL, 1);
+#ifdef HAVE_SETENV
+			if (cp == NULL)
+				unsetenv("LESS"); /* XXX to Popen() etc.?!! */
+#endif
+			if (obuf == NULL) {
+				perror(pager);
 				obuf = stdout;
+				pager = NULL;
 			} else
 				safe_signal(SIGPIPE, brokpipe);
 		}
+#ifdef HAVE_COLOUR
+		if (action != SEND_MBOX)
+			colour_table_create(pager); /* (salloc()s!) */
+#endif
 	}
+#ifdef HAVE_COLOUR
+	else if ((options & OPT_TTYOUT) && action != SEND_MBOX)
+		colour_table_create(NULL); /* (salloc()s!) */
+#endif
 
 	/* This may jump, in which case srelax_rele() wouldn't be called, but
 	 * it shouldn't matter, because we -- then -- directly reenter the
@@ -993,17 +1019,15 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 		touch(mp);
 		setdot(mp);
 		uncollapse1(mp, 1);
-		if (!dopipe && ip != msgvec)
-			fprintf(obuf, "\n");
-		_show_msg_overview(mp, *ip, obuf);
-		sendmp(mp, obuf, (doign ? ignore : 0), NULL,
-			((dopipe && boption("piperaw"))
-				? SEND_MBOX : dodecode
-				? SEND_SHOW : doign
-				? SEND_TODISP : SEND_TODISP_ALL),
-			mstats);
+		if (!dopipe) {
+			if (ip != msgvec)
+				fprintf(obuf, "\n");
+			if (action != SEND_MBOX)
+				_show_msg_overview(obuf, mp, *ip);
+		}
+		sendmp(mp, obuf, (doign ? ignore : NULL), NULL, action, mstats);
 		srelax();
-		if (dopipe && boption("page"))
+		if (formfeed)
 			putc('\f', obuf);
 		if (tstats) {
 			tstats[0] += mstats[0];
@@ -1015,6 +1039,7 @@ close_pipe:
 	if (obuf != stdout) {
 		/* Ignore SIGPIPE so it can't cause a duplicate close */
 		safe_signal(SIGPIPE, SIG_IGN);
+		colour_reset(obuf); /* XXX hacky; only here because we still jump */
 		Pclose(obuf, TRU1);
 		safe_signal(SIGPIPE, dflpipe);
 	}
@@ -1035,7 +1060,7 @@ pipe1(char *str, int doign)
 	/*LINTED*/
 	msgvec = (int *)salloc((msgCount + 2) * sizeof *msgvec);
 	if ((cmd = laststring(str, &f, 1)) == NULL) {
-		cmd = value("cmd");
+		cmd = ok_vlook(cmd);
 		if (cmd == NULL || *cmd == '\0') {
 			fputs(tr(16, "variable cmd not set\n"), stderr);
 			return 1;
@@ -1156,26 +1181,32 @@ top(void *v)
 	int *msgvec = v, *ip, c, topl, lines, empty_last;
 	struct message *mp;
 	char *cp, *linebuf = NULL;
-	size_t linesize;
+	size_t linesize = 0;
 	FILE *ibuf;
 
 	topl = 5;
-	cp = value("toplines");
+	cp = ok_vlook(toplines);
 	if (cp != NULL) {
 		topl = atoi(cp);
 		if (topl < 0 || topl > 10000)
 			topl = 5;
 	}
+
+#ifdef HAVE_COLOUR
+	if (options & OPT_TTYOUT)
+		colour_table_create(NULL); /* (salloc()s) */
+#endif
 	empty_last = 1;
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {
 		mp = &message[*ip - 1];
 		touch(mp);
 		setdot(mp);
 		did_print_dot = TRU1;
-		if (! empty_last)
+		if (!empty_last)
 			printf("\n");
-		_show_msg_overview(mp, *ip, stdout);
+		_show_msg_overview(stdout, mp, *ip);
 		if (mp->m_flag & MNOFROM)
+			/* XXX top(): coloured output? */
 			printf("From %s %s\n", fakefrom(mp),
 				fakedate(mp->m_time));
 		if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {	/* XXX could use TOP */
@@ -1269,8 +1300,8 @@ folders(void *v)
 		return ccmdnotsupp(NULL);
 #endif
 	} else {
-		if ((cmd = value("LISTER")) == NULL)
-			cmd = LISTER;
+		if ((cmd = ok_vlook(LISTER)) == NULL)
+			cmd = XLISTER;
 		run_command(cmd, 0, -1, -1, name, NULL, NULL);
 	}
 	return 0;
