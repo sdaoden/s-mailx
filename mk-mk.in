@@ -188,14 +188,12 @@ _update-release:
 	$(MAKE) -f ./mk.mk _update-version &&\
 	git add version.h && git commit --amend &&\
 	git tag -f "v$${REL}" &&\
-	git checkout -B crawl master &&\
-	git checkout -B next master &&\
-	git checkout master &&\
+	git update-ref refs/heads/next master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
 	git branch &&\
 	echo "Push git(1) repo?  ENTER continues";\
 	read i;\
-	git push && git gc --aggressive &&\
+	git push &&\
 	git archive --prefix="$(UAGENT)-$${REL}/" \
 		-o "$${TMPDIR}/$(UAGENT)-$${FREL}.tar.gz" HEAD &&\
 	cd "$${TMPDIR}" &&\
