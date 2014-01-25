@@ -1277,69 +1277,88 @@ _ncl_kht(struct line *l)
    sub.l -= rv;
    sub.l -= topp.l;
 
-   if (sub.l > 0) {
-      sub.s = savestrbuf(sub.s, sub.l);
-      /* TODO there is a TODO note upon fexpand() with multi-return;
-       * TODO if that will change, the if() below can be simplified */
-      /* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
-      hold_all_sigs();
-      exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
-      rele_all_sigs();
+   /* Leave room for "implicit asterisk" expansion, as below */
+   if (sub.l == 0) {
+      sub.s = UNCONST("*");
+      sub.l = 1;
+   } else {
+      exp.s = salloc(sub.l + 1 +1);
+      memcpy(exp.s, sub.s, sub.l);
+      exp.s[sub.l] = '\0';
+      sub.s = exp.s;
+   }
 
-      if (exp.s != NULL && (exp.l = strlen(exp.s)) > 0 &&
-            (exp.l != sub.l || strcmp(exp.s, sub.s))) {
-         /* Cramp expansion length to MAX_INPUT, or 255 if not defined.
-          * Take care to take *prompt* into account, since we don't know
-          * anything about it's visual length (fputs(3) is used), simply
-          * assume each character requires two columns */
-         /* TODO the problem is that we loose control otherwise; in the best
-          * TODO case the user can control via ^A and ^K etc., but be safe;
-          * TODO we cannot simply adjust fexpand() because we don't know how
-          * TODO that is implemented...  The real solution would be to check
-          * TODO wether we fit on a line, and start a pager if not.
-          * TODO However, that should be part of a real tab-COMPLETION, then,
-          * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
-          * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
-         rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
-         if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
-            char const e1[] = "[maximum line size exceeded]";
-            exp.s = UNCONST(e1);
-            exp.l = sizeof(e1) - 1;
-            topp.l = 0;
-            if (rv + bot.l + exp.l >= MAX_INPUT)
-               bot.l = 0;
-            if (rv + exp.l >= MAX_INPUT) {
-               char const e2[] = "[ERR]";
-               exp.s = UNCONST(e2);
-               exp.l = sizeof(e2) - 1;
-            }
-         }
-         orig.l = bot.l + exp.l + topp.l;
-         orig.s = salloc(orig.l + 1 + 5);
-         if ((rv = bot.l) > 0)
-            memcpy(orig.s, bot.s, rv);
-         memcpy(orig.s + rv, exp.s, exp.l);
-         rv += exp.l;
-         if (topp.l > 0) {
-            memcpy(orig.s + rv, topp.s, topp.l);
-            rv += topp.l;
-         }
-         orig.s[rv] = '\0';
+   /* TODO there is a TODO note upon fexpand() with multi-return;
+    * TODO if that will change, the if() below can be simplified */
+   /* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
+jredo:
+   hold_all_sigs();
+   exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
+   rele_all_sigs();
 
-         l->defc = orig;
-         _ncl_khome(l, FAL0);
-         _ncl_kkill(l, FAL0);
-         goto jleave;
+   if (exp.s == NULL || (exp.l = strlen(exp.s)) == 0)
+      goto jnope;
+   /* If the expansion equals the original string, assume the user wants what
+    * is usually known as tab completion, append `*' and restart */
+   if (exp.l == sub.l && !strcmp(exp.s, sub.s)) {
+         if (sub.s[sub.l - 1] == '*')
+            goto jnope;
+         sub.s[sub.l++] = '*';
+         sub.s[sub.l] = '\0';
+         goto jredo;
+   }
+
+   /* Cramp expansion length to MAX_INPUT, or 255 if not defined.
+    * Take care to take *prompt* into account, since we don't know
+    * anything about it's visual length (fputs(3) is used), simply
+    * assume each character requires two columns */
+   /* TODO the problem is that we loose control otherwise; in the best
+    * TODO case the user can control via ^A and ^K etc., but be safe;
+    * TODO we cannot simply adjust fexpand() because we don't know how
+    * TODO that is implemented...  The real solution would be to check
+    * TODO wether we fit on a line, and start a pager if not.
+    * TODO However, that should be part of a real tab-COMPLETION, then,
+    * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
+    * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
+   rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
+   if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
+      char const e1[] = "[maximum line size exceeded]";
+      exp.s = UNCONST(e1);
+      exp.l = sizeof(e1) - 1;
+      topp.l = 0;
+      if (rv + bot.l + exp.l >= MAX_INPUT)
+         bot.l = 0;
+      if (rv + exp.l >= MAX_INPUT) {
+         char const e2[] = "[ERR]";
+         exp.s = UNCONST(e2);
+         exp.l = sizeof(e2) - 1;
       }
    }
 
+   orig.l = bot.l + exp.l + topp.l;
+   orig.s = salloc(orig.l + 1 + 5);
+   if ((rv = bot.l) > 0)
+      memcpy(orig.s, bot.s, rv);
+   memcpy(orig.s + rv, exp.s, exp.l);
+   rv += exp.l;
+   if (topp.l > 0) {
+      memcpy(orig.s + rv, topp.s, topp.l);
+      rv += topp.l;
+   }
+   orig.s[rv] = '\0';
+
+   l->defc = orig;
+   _ncl_khome(l, FAL0);
+   _ncl_kkill(l, FAL0);
+jleave:
+   return rv;
+jnope:
    /* If we've provided a default content, but failed to expand, there is
     * nothing we can "revert to": drop that default again */
    if (set_savec)
       l->savec.s = NULL, l->savec.l = 0;
    rv = 0;
-jleave:
-   return rv;
+   goto jleave;
 }
 # endif /* HAVE_TABEXPAND */
 
