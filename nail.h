@@ -86,13 +86,17 @@
 # define NI_MAXHOST     1025
 #endif
 
-#ifndef MAXPATHLEN
-# ifdef PATH_MAX
-#  define MAXPATHLEN    PATH_MAX
+#ifndef PATH_MAX
+# ifdef MAXPATHLEN
+#  define PATH_MAX      MAXPATHLEN
 # else
-#  define MAXPATHLEN    1024
+#  define PATH_MAX      1024        /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
 # endif
-#elif defined PATH_MAX && MAXPATHLEN < PATH_MAX
+#endif
+/* TODO Legacy: drop MAXPATHLEN */
+#ifndef MAXPATHLEN
+# define MAXPATHLEN     PATH_MAX
+#elif MAXPATHLEN < PATH_MAX
 # undef MAXPATHLEN
 # define MAXPATHLEN     PATH_MAX
 #endif
@@ -1332,7 +1336,7 @@ struct cw {
 #ifdef HAVE_FCHDIR
    int         cw_fd;
 #else
-   char        cw_wd[MAXPATHLEN];
+   char        cw_wd[PATH_MAX];
 #endif
 };
 
@@ -1394,9 +1398,9 @@ VL int            msgCount;            /* Count of messages read in */
 VL enum condition cond_state;          /* State of conditional exc. */
 VL struct mailbox mb;                  /* Current mailbox */
 VL int            image;               /* File descriptor for msg image */
-VL char           mailname[MAXPATHLEN]; /* Name of current file */
+VL char           mailname[PATH_MAX];  /* Name of current file */
 VL char           displayname[80 - 40]; /* Prettyfied for display */
-VL char           prevfile[MAXPATHLEN]; /* Name of previous file */
+VL char           prevfile[PATH_MAX];  /* Name of previous file */
 VL char const     *account_name;       /* Current account name or NULL */
 VL off_t          mailsize;            /* Size of system mailbox */
 VL struct message *dot;                /* Pointer to current message */
