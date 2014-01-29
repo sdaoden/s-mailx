@@ -161,7 +161,7 @@ _salloc_bcheck(struct buffer *b)
       if (x.ui8p[6] != 0xAA) i |= 1<<6;
       if (x.ui8p[7] != 0xEF) i |= 1<<7;
       if (i != 0)
-         warn("sdope %p: corrupted lower canary: 0x%02X, size %u: %s, line %u",
+         alert("sdope %p: corrupt lower canary: 0x%02X, size %u: %s, line %u",
             ux, i, c->usr_size, c->file, c->line);
       x.cp += 8 + c->usr_size;
 
@@ -175,7 +175,7 @@ _salloc_bcheck(struct buffer *b)
       if (x.ui8p[6] != 0xAA) i |= 1<<6;
       if (x.ui8p[7] != 0xEF) i |= 1<<7;
       if (i != 0)
-         warn("sdope %p: corrupted upper canary: 0x%02X, size %u: %s, line %u",
+         alert("sdope %p: corrupt upper canary: 0x%02X, size %u: %s, line %u",
             ux, i, c->usr_size, c->file, c->line);
    }
 }
