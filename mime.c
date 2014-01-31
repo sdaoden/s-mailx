@@ -1422,7 +1422,7 @@ jconvert:
 		state = b64_decode(&out, &in, rest);
 jqpb64_dec:
 		if ((sz = out.l) != 0) {
-			size_t opl = qf->qf_pfix_len;
+			ui32_t opl = qf->qf_pfix_len;
 			if (state != OKAY)
 				qf->qf_pfix_len = 0;
 			sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), rest,qf);

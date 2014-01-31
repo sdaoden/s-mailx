@@ -1121,7 +1121,7 @@ jcopyout:
 
 	{
 	bool_t eof;
-	size_t save_qf_pfix_len = qf->qf_pfix_len;
+	ui32_t save_qf_pfix_len = qf->qf_pfix_len;
 	off_t *save_stats = stats;
 
 	if (pbuf != origobuf) {

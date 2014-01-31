@@ -820,17 +820,17 @@ struct time_current {
 struct quoteflt {
    FILE        *qf_os;        /* Output stream */
    char const  *qf_pfix;
-   ui_it       qf_pfix_len;   /* Length of prefix: 0: bypass */
-   ui_it       qf_qfold_min;  /* Simple way: wrote prefix? */
+   ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
+   ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
 #ifdef HAVE_QUOTE_FOLD
-   ui_it       qf_qfold_max;  /* Otherwise: line lengths */
-   uc_it       qf_state;      /* *quote-fold* state machine */
+   ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
+   ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
-   uc_it       __dummy[2];
-   ui_it       qf_wscnt;      /* Whitespace count */
-   ui_it       qf_brkl;       /* Breakpoint */
-   ui_it       qf_brkw;       /* Visual width, breakpoint */
-   ui_it       qf_datw;       /* Current visual output line width */
+   ui8_t       __dummy[2];
+   ui32_t      qf_wscnt;      /* Whitespace count */
+   ui32_t      qf_brkl;       /* Breakpoint */
+   ui32_t      qf_brkw;       /* Visual width, breakpoint */
+   ui32_t      qf_datw;       /* Current visual output line width */
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];

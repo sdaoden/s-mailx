@@ -572,8 +572,8 @@ FL struct quoteflt * quoteflt_dummy(void); /* TODO LEGACY */
 FL void        quoteflt_init(struct quoteflt *self, char const *prefix);
 FL void        quoteflt_destroy(struct quoteflt *self);
 FL void        quoteflt_reset(struct quoteflt *self, FILE *f);
-FL ssize_t     quoteflt_push(struct quoteflt *self,
-                  char const *dat, size_t len);
+FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
+                  size_t len);
 FL ssize_t     quoteflt_flush(struct quoteflt *self);
 
 /* fio.c */
