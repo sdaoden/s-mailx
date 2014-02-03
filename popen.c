@@ -67,6 +67,7 @@ struct fp {
    enum {
       FP_RAW      = 0,
       FP_GZIP     = 1<<0,
+      FP_XZ       = 1<<1,
       FP_BZIP2    = 1<<2,
       FP_IMAP     = 1<<3,
       FP_MAILDIR  = 1<<4,
@@ -195,6 +196,8 @@ _compress(struct fp *fpp)
       cmd[0] = "gzip";  cmd[1] = "-c"; break;
    case FP_BZIP2:
       cmd[0] = "bzip2"; cmd[1] = "-c"; break;
+   case FP_XZ:
+      cmd[0] = "xz";    cmd[1] = "-c"; break;
    default:
       cmd[0] = "cat";   cmd[1] = NULL; break;
    }
@@ -216,6 +219,7 @@ _decompress(int compression, int infd, int outfd)
    switch (compression & FP_MASK) {
    case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
    case FP_BZIP2:    cmd[0] = "bzip2"; cmd[1] = "-cd"; break;
+   case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
    default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
    case FP_IMAP:
    case FP_MAILDIR:
@@ -418,6 +422,8 @@ Zopen(char const *file, char const *oflags, int *compression) /* FIXME MESS! */
       if ((ext = strrchr(file, '.')) != NULL) {
          if (!strcmp(ext, ".gz"))
             *compression |= FP_GZIP;
+         else if (!strcmp(ext, ".xz"))
+            *compression |= FP_XZ;
          else if (!strcmp(ext, ".bz2"))
             *compression |= FP_BZIP2;
          else

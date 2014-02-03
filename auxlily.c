@@ -477,9 +477,7 @@ which_protocol(char const *name)
 #else
          fprintf(stderr, tr(216, "No POP3 support compiled in.\n"));
 #endif
-         goto jleave;
-      }
-      if (strncmp(name, "pop3s://", 8) == 0) {
+      } else if (strncmp(name, "pop3s://", 8) == 0) {
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
@@ -490,17 +488,13 @@ which_protocol(char const *name)
          fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 # endif
 #endif
-         goto jleave;
-      }
-      if (strncmp(name, "imap://", 7) == 0) {
+      } else if (strncmp(name, "imap://", 7) == 0) {
 #ifdef HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          fprintf(stderr, tr(269, "No IMAP support compiled in.\n"));
 #endif
-         goto jleave;
-      }
-      if (strncmp(name, "imaps://", 8) == 0) {
+      } else if (strncmp(name, "imaps://", 8) == 0) {
 #if defined HAVE_IMAP && defined HAVE_SSL
          rv = PROTO_IMAP;
 #else
@@ -511,39 +505,24 @@ which_protocol(char const *name)
          fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 # endif
 #endif
-         goto jleave;
       }
-   } else {
-      /* TODO This is the de facto maildir code and thus belongs into there! */
-jfile:
-      rv = PROTO_FILE;
-      np = ac_alloc((sz = strlen(name)) + 5);
-      memcpy(np, name, sz + 1);
-      if (stat(name, &st) == 0) {
-         if (S_ISDIR(st.st_mode)) {
-            strcpy(&np[sz], "/tmp");
-            if (stat(np, &st) == 0 && S_ISDIR(st.st_mode)) {
-               strcpy(&np[sz], "/new");
-               if (stat(np, &st) == 0 && S_ISDIR(st.st_mode)) {
-                  strcpy(&np[sz], "/cur");
-                  if (stat(np, &st) == 0 && S_ISDIR(st.st_mode))
-                      rv = PROTO_MAILDIR;
-               }
-            }
-         }
-      } else {
-         strcpy(&np[sz], ".gz");
-         if (stat(np, &st) < 0) {
-            strcpy(&np[sz], ".bz2");
-            if (stat(np, &st) < 0) {
-               if ((cp = ok_vlook(newfolders)) != NULL &&
-                  strcmp(cp, "maildir") == 0)
-               rv = PROTO_MAILDIR;
-            }
-         }
-      }
-      ac_free(np);
+      goto jleave;
    }
+
+   /* TODO This is the de facto maildir code and thus belongs into there! */
+jfile:
+   rv = PROTO_FILE;
+   np = ac_alloc((sz = strlen(name)) + 4 +1);
+   memcpy(np, name, sz + 1);
+   if (!stat(name, &st)) {
+      if (S_ISDIR(st.st_mode) &&
+            (strcpy(&np[sz], "/tmp"), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (strcpy(&np[sz], "/new"), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (strcpy(&np[sz], "/cur"), !stat(np, &st) && S_ISDIR(st.st_mode)))
+          rv = PROTO_MAILDIR;
+   } else if ((cp = ok_vlook(newfolders)) != NULL && !strcmp(cp, "maildir"))
+      rv = PROTO_MAILDIR;
+   ac_free(np);
 jleave:
    NYD_LEAVE;
    return rv;

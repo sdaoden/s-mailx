@@ -1230,14 +1230,6 @@ urgent/special attention.
 This mark has no technical meaning in the mail system;
 it just causes messages to be highlighted in the header summary,
 and makes them specially addressable.
-.It Ic folders
-With no arguments, list the names of the folders in the folder directory.
-With an existing folder as an argument,
-lists the names of folders below the named folder;
-e.\|g. the command `folders @' lists the folders on the base level of
-the current IMAP server.
-See also the variable
-.Va imap-list-depth .
 .It Ic folder
 (fold) The folder command switches to a new mail file or folder.
 With no arguments, it tells the user which file he is currently reading.
@@ -1279,15 +1271,13 @@ commands.
 If the name matches one of the strings defined with the command
 .Ic shortcut ,
 it is replaced by its long form and expanded.
-If the name ends with `.gz' or `.bz2' it is treated as being compressed
-with
-.Xr gzip 1
+If the name ends with `.gz', `.bz2' or `.xz' it is treated as being
+compressed with
+.Xr gzip 1 ,
+.Xr bzip2 1
 or
-.Xr bzip2 1 ,
+.Xr xz 1 ,
 respectively.
-Likewise, if `name' does not exist,
-but either `name.gz' or `name.bz2' does,
-then the compressed file is used.
 If `name' refers to a directory with the subdirectories `tmp', `new',
 and `cur', then it is treated as a folder in `maildir' format.
 A name of the form
@@ -1306,6 +1296,14 @@ if it is omitted, the default `INBOX' is used.
 If \*(UA is connected to an IMAP server,
 a name of the form `@mailbox' refers to the `mailbox' on that server,
 but otherwise a `@' prefix has no special meaning.
+.It Ic folders
+With no arguments, list the names of the folders in the folder directory.
+With an existing folder as an argument,
+lists the names of folders below the named folder;
+e.\|g. the command `folders @' lists the folders on the base level of
+the current IMAP server.
+See also the variable
+.Va imap-list-depth .
 .It Ic Followup
 (F) Similar to
 .Ic Respond ,
@@ -4471,8 +4469,10 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .\" --  >8  --  8<  --
 .\"
 .Sh "SEE ALSO"
+.Xr bzip2 1 ,
 .Xr file 1 ,
 .Xr fmt 1 ,
+.Xr gzip 1 ,
 .Xr less 1 ,
 .Xr more 1 ,
 .Xr newaliases 1 ,
@@ -4484,6 +4484,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr spamc 1 ,
 .Xr spamd 1 ,
 .Xr vacation 1 ,
+.Xr xz 1 ,
 .Xr editline 3 ,
 .Xr iconv 3 ,
 .Xr readline 3 ,
