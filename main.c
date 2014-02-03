@@ -83,37 +83,37 @@ VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
 /*VL char const        features[]; The "feature string" comes from config.h */
 VL uc_it const       class_char[] = {
-/* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel  */
+/* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si   */
+/* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
    C_CNTRL,  C_BLANK,  C_WHITE, C_SPACE, C_SPACE, C_SPACE, C_CNTRL, C_CNTRL,
-/* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb  */
+/* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us   */
+/* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  '   */
+/* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  ' */
    C_BLANK, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  /   */
+/* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  / */
    C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 060  0   061  1   062  2   063  3   064  4   065  5   066  6   067  7   */
+/* 060  0   061  1   062  2   063  3   064  4   065  5   066  6   067  7 */
    C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL,
-/* 070  8   071  9   072  :   073  ;   074  <   075  =   076  >   077  ?   */
+/* 070  8   071  9   072  :   073  ;   074  <   075  =   076  >   077  ? */
    C_DIGIT, C_DIGIT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 100  @   101  A   102  B   103  C   104  D   105  E   106  F   107  G   */
+/* 100  @   101  A   102  B   103  C   104  D   105  E   106  F   107  G */
    C_PUNCT, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 110  H   111  I   112  J   113  K   114  L   115  M   116  N   117  O   */
+/* 110  H   111  I   112  J   113  K   114  L   115  M   116  N   117  O */
    C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 120  P   121  Q   122  R   123  S   124  T   125  U   126  V   127  W   */
+/* 120  P   121  Q   122  R   123  S   124  T   125  U   126  V   127  W */
    C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 130  X   131  Y   132  Z   133  [   134  \   135  ]   136  ^   137  _   */
+/* 130  X   131  Y   132  Z   133  [   134  \   135  ]   136  ^   137  _ */
    C_UPPER, C_UPPER, C_UPPER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 140  `   141  a   142  b   143  c   144  d   145  e   146  f   147  g   */
+/* 140  `   141  a   142  b   143  c   144  d   145  e   146  f   147  g */
    C_PUNCT, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 150  h   151  i   152  j   153  k   154  l   155  m   156  n   157  o   */
+/* 150  h   151  i   152  j   153  k   154  l   155  m   156  n   157  o */
    C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 160  p   161  q   162  r   163  s   164  t   165  u   166  v   167  w   */
+/* 160  p   161  q   162  r   163  s   164  t   165  u   166  v   167  w */
    C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 170  x   171  y   172  z   173  {   174  |   175  }   176  ~   177 del  */
+/* 170  x   171  y   172  z   173  {   174  |   175  }   176  ~   177 del */
    C_LOWER, C_LOWER, C_LOWER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_CNTRL
 };
 
@@ -132,7 +132,7 @@ static int           _oind, /*_oerr,*/ _oopt;
 #ifdef HAVE_GETOPT
 # define _getopt     getopt
 #else
-static int     _getopt(int argc, char *const argv[], const char *optstring);
+static int     _getopt(int argc, char *const argv[], char const *optstring);
 #endif
 
 /* Perform basic startup initialization */
@@ -238,11 +238,10 @@ _startup(void)
    char *cp;
    NYD_ENTER;
 
-   /* Absolutely the first thing we do is save our egid
-    * and set it to the rgid, so that we can safely run
-    * setgid.  We use the sgid (saved set-gid) to allow ourselves
-    * to revert to the egid if we want (temporarily) to become
-    * privileged XXX (s-nail-)*dotlock(-program)* */
+   /* Absolutely the first thing we do is save our egid and set it to the rgid,
+    * so that we can safely run setgid.  We use the sgid (saved set-gid) to
+    * allow ourselves to revert to the egid if we want (temporarily) to become
+    * privileged XXX (s-nail-)*dotlock(-program)* [maybe forked<->Unix IPC?] */
    effectivegid = getegid();
    realgid = getgid();
    if (setgid(realgid) < 0) {
@@ -329,9 +328,8 @@ _startup(void)
       if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
             mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
          utf8 = 1;
-      /* Reset state - it may have been messed up; luckily this also
-       * gives us an indication wether the encoding has locking shift
-       * state sequences */
+      /* Reset possibly messed up state; luckily this also gives us an
+       * indication wether the encoding has locking shift state sequences */
       /* TODO temporary - use option bits! */
       enc_has_state = mbtowc(&wc, NULL, mb_cur_max);
    }
@@ -501,15 +499,15 @@ _rcv_mode(char const *folder)
    if (folder == NULL)
       folder = "%";
    else if (*folder == '@') {
-      /* This must be treated specially to make invocation like
-       * -A imap -f @mailbox work */
+      /* This must be treated specially to make possible invocation like
+       * -A imap -f @mailbox */
       if ((cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP)
-         (void)n_strlcpy(mailname, cp, MAXPATHLEN);
+         n_strlcpy(mailname, cp, PATH_MAX);
    }
 
    i = setfile(folder, 0);
    if (i < 0)
-      exit(1);    /* error already reported */
+      exit(1); /* error already reported */
    if (options & OPT_EXISTONLY)
       exit(i);
 
@@ -712,10 +710,9 @@ main(int argc, char *argv[])
          }
          break;
       case 'S':
-         /* Set variable.  We need to do this twice, since the
-          * user surely wants the setting to take effect
-          * immediately, but also doesn't want it to be
-          * overwritten from within resource files */
+         /* Set variable.  We need to do this twice, since the user surely
+          * wants the setting to take effect immediately, but also doesn't want
+          * it to be overwritten from within resource files */
          {  char *a[2];
             okey = a[0] = _oarg;
             a[1] = NULL;
