@@ -1053,14 +1053,14 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * - Base64, section 6.8
  */
 
-/* How many characters of (the complete body) *ln* need to be quoted */
+/* How many characters of (the complete body) ln need to be quoted */
 FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead);
 
-/* How much space is necessary to encode *len* bytes in QP, worst case.
+/* How much space is necessary to encode len bytes in QP, worst case.
  * Includes room for terminator */
 FL size_t      qp_encode_calc_size(size_t len);
 
-/* If *flags* includes QP_ISHEAD these assume "word" input and use special
+/* If flags includes QP_ISHEAD these assume "word" input and use special
  * quoting rules in addition; soft line breaks are not generated.
  * Otherwise complete input lines are assumed and soft line breaks are
  * generated as necessary */
@@ -1073,18 +1073,18 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum qpflags flags);
 #endif
 
-/* If *rest* is set then decoding will assume body text input (assumes input
+/* If rest is set then decoding will assume body text input (assumes input
  * represents lines, only create output when input didn't end with soft line
  * break [except it finalizes an encoded CRLF pair]), otherwise it is assumed
  * to decode a header strings and (1) uses special decoding rules and (b)
  * directly produces output.
- * The buffers of *out* and possibly *rest* will be managed via srealloc().
- * Returns OKAY. XXX or STOP on error (in which case *out* is set to an error
+ * The buffers of out and possibly rest will be managed via srealloc().
+ * Returns OKAY. XXX or STOP on error (in which case out is set to an error
  * XXX message); caller is responsible to free buffers */
 FL int         qp_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
-/* How much space is necessary to encode *len* bytes in Base64, worst case.
+/* How much space is necessary to encode len bytes in Base64, worst case.
  * Includes room for (CR/LF/CRLF and) terminator */
 FL size_t      b64_encode_calc_size(size_t len);
 
@@ -1099,9 +1099,9 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
 FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum b64flags flags);
 
-/* If *rest* is set then decoding will assume text input.
- * The buffers of *out* and possibly *rest* will be managed via srealloc().
- * Returns OKAY or STOP on error (in which case *out* is set to an error
+/* If rest is set then decoding will assume text input.
+ * The buffers of out and possibly rest will be managed via srealloc().
+ * Returns OKAY or STOP on error (in which case out is set to an error
  * message); caller is responsible to free buffers */
 FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
