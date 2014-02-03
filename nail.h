@@ -97,13 +97,6 @@
 #  define PATH_MAX      1024        /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
 # endif
 #endif
-/* TODO Legacy: drop MAXPATHLEN */
-#ifndef MAXPATHLEN
-# define MAXPATHLEN     PATH_MAX
-#elif MAXPATHLEN < PATH_MAX
-# undef MAXPATHLEN
-# define MAXPATHLEN     PATH_MAX
-#endif
 
 #ifndef STDIN_FILENO
 # define STDIN_FILENO   0
