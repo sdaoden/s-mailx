@@ -1359,10 +1359,13 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
  */
 
 #ifdef HAVE_SMTP
-FL char *      smtp_auth_var(const char *type, const char *addr);
+/* smtp-authXY, where XY=type=-user|-password etc */
+FL char *      smtp_auth_var(char const *type, char const *addr);
+
+/* Connect to a SMTP server */
 FL int         smtp_mta(char *server, struct name *to, FILE *fi,
-                  struct header *hp, const char *user, const char *password,
-                  const char *skinned);
+                  struct header *hp, char const *user, char const *password,
+                  char const *skinned);
 #endif
 
 /*
