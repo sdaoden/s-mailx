@@ -1373,6 +1373,7 @@ FL int         smtp_mta(char *server, struct name *to, FILE *fi,
  */
 
 #ifdef HAVE_SPAM
+/* Direct mappings of the various spam* commands */
 FL int         cspam_clear(void *v);
 FL int         cspam_set(void *v);
 FL int         cspam_forget(void *v);
