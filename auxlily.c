@@ -180,7 +180,7 @@ panic(char const *format, ...)
 
    fputs("\n", stderr);
    fflush(stderr);
-   exit(EXIT_ERR);
+   abort(); /* Was exit(EXIT_ERR); for a while, but no */
 }
 
 #ifdef HAVE_DEBUG
