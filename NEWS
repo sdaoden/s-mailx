@@ -15,6 +15,23 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.5.2: fix 2: 2014-02-05
+--------------------------
+
+- s-nail-14_5_2-mimeheader.patch
+  A header like
+
+    Subject: ehm, .getElementById("blink") needs <span
+     =?US-ASCII?Q?id=3D"blink">,?= not =?US-ASCII?Q?class=3D"id"?=
+
+  would yet be displayed without the " not " in between the two encoded
+  words because of faulty "encoded-word-continuation" detection (note
+  the quotation marks).  The error path could also have been seen in
+  mail forwarding and in faulty searching etc.
+  This patch is in a row of fixes for my hasty [0f9ad93] from 2013-03-12
+  that already caused the v14.2 minor release (because of [b608c6b] from
+  2013-03-14).  Those with mercy may read the commit message of [c81afce].
+
 v14.5.2: fix 1: 2014-01-30
 --------------------------
 
