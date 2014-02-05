@@ -863,20 +863,26 @@ jclear:
 	goto jleave;
 }
 
-/*
- * Convert header fields from RFC 1522 format
- * TODO mime_fromhdr(): NO error handling, fat; REWRITE **ASAP**
- */
 FL void
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
-	/* TODO mime_fromhdr(): is called with strings that contain newlines;
-	 * TODO this is the usual newline problem all around the codebase;
-	 * TODO i.e., if we strip it, then the display misses it ;} */
+   /* TODO mime_fromhdr(): is called with strings that contain newlines;
+    * TODO this is the usual newline problem all around the codebase;
+    * TODO i.e., if we strip it, then the display misses it ;>
+    * TODO this is why it is so messy and why S-nail v14.2 plus additional
+    * TODO patch for v14.5.2 (and maybe even v14.5.3 subminor) occurred, and
+    * TODO why our display reflects what is contained in the message: the 1:1
+    * TODO relationship of message content and display!
+    * TODO instead a header line should be decoded to what it is (a single
+    * TODO line that is) and it should be objective to the backend wether
+    * TODO it'll be folded to fit onto the display or not, e.g., for search
+    * TODO purposes etc.  then the only condition we have to honour in here
+    * TODO is that whitespace in between multiple adjacent MIME encoded words
+    * TODO á la RFC 2047 is discarded; i.e.: this function should deal with
+    * TODO RFC 2047 and be renamed: mime_fromhdr() -> mime_rfc2047_decode() */
 	struct str cin, cout;
 	char *p, *op, *upper, *cs, *cbeg;
-	int convert;
-	size_t lastoutl = (size_t)-1;
+   ui32_t convert, lastenc, lastoutl;
 #ifdef HAVE_ICONV
 	char const *tcs;
 	iconv_t fhicd = (iconv_t)-1;
@@ -894,6 +900,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 #endif
 	p = in->s;
 	upper = p + in->l;
+   lastenc = lastoutl = 0;
 
 	while (p < upper) {
 		op = p;
@@ -949,8 +956,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 					--cout.l;
 			} else
 				(void)qp_decode(&cout, &cin, NULL);
-			if (lastoutl != (size_t)-1)
-				out->l = lastoutl;
+			out->l = lastenc;
 #ifdef HAVE_ICONV
 			if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
 				cin.s = NULL, cin.l = 0; /* XXX string pool ! */
@@ -966,21 +972,30 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 #ifdef HAVE_ICONV
 			}
 #endif
-			lastoutl = out->l;
+			lastenc = lastoutl = out->l;
 			free(cout.s);
-		} else {
-jnotmime:
-			p = op;
-			convert = 1;
-			while ((op = p + convert) < upper &&
-					(op[0] != '=' || op[1] != '?'))
-				++convert;
-			out = n_str_add_buf(out, p, convert);
-			p += convert;
-			if (! blankchar(p[-1]))
-				lastoutl = (size_t)-1;
-		}
+		} else
+jnotmime: {
+         bool_t onlyws;
+
+         p = op;
+         onlyws = (lastenc > 0);
+         for (;;) {
+            if (++op == upper)
+               break;
+            if (op[0] == '=' && (PTRCMP(op + 1, ==, upper) || op[1] == '?'))
+               break;
+            if (onlyws && !blankchar(*op))
+               onlyws = FAL0;
+         }
+
+         out = n_str_add_buf(out, p, PTR2SIZE(op - p));
+         p = op;
+         if (!onlyws || lastoutl != lastenc)
+            lastenc = out->l;
+         lastoutl = out->l;
 	}
+  }
 	out->s[out->l] = '\0';
 
 	if (flags & TD_ISPR) {
