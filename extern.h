@@ -1622,16 +1622,31 @@ FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
                   struct str *in_rest_or_null, bool_t skipilseq);
 #endif
 
-/* thread.c */
+/*
+ * thread.c
+ */
+
+/*  */
 FL int         thread(void *vp);
+
+/*  */
 FL int         unthread(void *vp);
+
+/*  */
 FL struct message * next_in_thread(struct message *mp);
 FL struct message * prev_in_thread(struct message *mp);
 FL struct message * this_in_thread(struct message *mp, long n);
+
+/* Sorted mode is internally just a variant of threaded mode with all m_parent
+ * and m_child links being NULL */
 FL int         sort(void *vp);
+
+/*  */
 FL int         ccollapse(void *v);
 FL int         cuncollapse(void *v);
-FL void        uncollapse1(struct message *m, int always);
+
+/*  */
+FL void        uncollapse1(struct message *mp, int always);
 
 /*
  * tty.c
