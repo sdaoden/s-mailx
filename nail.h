@@ -66,15 +66,19 @@
 # include <inttypes.h>
 #endif
 
+#ifdef HAVE_C90AMEND1
+# include <wchar.h>
+# include <wctype.h>
+#endif
 #ifdef HAVE_DEBUG
 # include <assert.h>
 #endif
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_C90AMEND1
-# include <wchar.h>
-# include <wctype.h>
+
+#ifdef HAVE_OPENSSL_MD5
+# include <openssl/md5.h>
 #endif
 
 /*

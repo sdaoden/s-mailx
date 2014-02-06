@@ -214,7 +214,17 @@ FL char *      getrandstring(size_t length);
 #define Hexchar(n)               ((n)>9 ? (n)-10+'A' : (n)+'0')
 #define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
 
+/* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
+# ifdef HAVE_OPENSSL_MD5
+#  define md5_ctx	               MD5_CTX
+#  define md5_init	            MD5_Init
+#  define md5_update	            MD5_Update
+#  define md5_final	            MD5_Final
+# else
+#  include "rfc1321.h"
+# endif
+
 /* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated */
 # define MD5TOHEX_SIZE           32
 FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
@@ -222,9 +232,18 @@ FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 /* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
 FL char *      cram_md5_string(char const *user, char const *pass,
                   char const *b64);
+
+/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
+ * unsigned char *text: pointer to data stream
+ * int text_len       : length of data stream
+ * unsigned char *key : pointer to authentication key
+ * int key_len        : length of authentication key
+ * caddr_t digest     : caller digest to be filled in */
+FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
+                  int key_len, void *digest);
 #endif
 
-FL enum okay   makedir(const char *name);
+FL enum okay   makedir(char const *name);
 
 /* A get-wd..restore-wd approach */
 FL enum okay   cwget(struct cw *cw);

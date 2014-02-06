@@ -55,10 +55,6 @@ EMPTY_FILE(smtp)
 # endif
 #endif
 
-#ifdef HAVE_MD5
-# include "md5.h"
-#endif
-
 static char		*smtpbuf;
 static size_t		smtpbufsize;
 static sigjmp_buf	smtpjmp;

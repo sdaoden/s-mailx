@@ -43,9 +43,6 @@
 
 EMPTY_FILE(pop3)
 #ifdef HAVE_POP3
-#ifdef HAVE_MD5
-# include "md5.h"
-#endif
 
 #define POP3_ANSWER()	POP3_XANSWER(return STOP);
 #define POP3_XANSWER(ACTIONSTOP) \

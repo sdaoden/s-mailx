@@ -55,10 +55,6 @@
 # include <netdb.h>
 #endif
 
-#ifdef HAVE_MD5
-# include "md5.h"
-#endif
-
 #ifdef HAVE_DEBUG
 struct nyd_info {
    char const  *ni_file;
@@ -879,6 +875,78 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
    ac_free(in.s);
    NYD_LEAVE;
    return out.s;
+}
+
+FL void
+hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
+   void *digest)
+{
+   /*
+    * This code is taken from
+    *
+    * Network Working Group                                       H. Krawczyk
+    * Request for Comments: 2104                                          IBM
+    * Category: Informational                                      M. Bellare
+    *                                                                    UCSD
+    *                                                              R. Canetti
+    *                                                                     IBM
+    *                                                           February 1997
+    *
+    *
+    *             HMAC: Keyed-Hashing for Message Authentication
+    */
+   md5_ctx context;
+   unsigned char k_ipad[65]; /* inner padding - key XORd with ipad */
+   unsigned char k_opad[65]; /* outer padding - key XORd with opad */
+   unsigned char tk[16];
+   int i;
+   NYD_ENTER;
+
+   /* if key is longer than 64 bytes reset it to key=MD5(key) */
+   if (key_len > 64) {
+      md5_ctx tctx;
+
+      md5_init(&tctx);
+      md5_update(&tctx, key, key_len);
+      md5_final(tk, &tctx);
+
+      key = tk;
+      key_len = 16;
+   }
+
+   /* the HMAC_MD5 transform looks like:
+    *
+    * MD5(K XOR opad, MD5(K XOR ipad, text))
+    *
+    * where K is an n byte key
+    * ipad is the byte 0x36 repeated 64 times
+    * opad is the byte 0x5c repeated 64 times
+    * and text is the data being protected */
+
+   /* start out by storing key in pads */
+   memset(k_ipad, 0, sizeof k_ipad);
+   memset(k_opad, 0, sizeof k_opad);
+   memcpy(k_ipad, key, key_len);
+   memcpy(k_opad, key, key_len);
+
+   /* XOR key with ipad and opad values */
+   for (i=0; i<64; i++) {
+      k_ipad[i] ^= 0x36;
+      k_opad[i] ^= 0x5c;
+   }
+
+   /* perform inner MD5 */
+   md5_init(&context);                    /* init context for 1st pass */
+   md5_update(&context, k_ipad, 64);      /* start with inner pad */
+   md5_update(&context, text, text_len);  /* then text of datagram */
+   md5_final(digest, &context);           /* finish up 1st pass */
+
+   /* perform outer MD5 */
+   md5_init(&context);                 /* init context for 2nd pass */
+   md5_update(&context, k_opad, 64);   /* start with outer pad */
+   md5_update(&context, digest, 16);   /* then results of 1st hash */
+   md5_final(digest, &context);        /* finish up 2nd pass */
+   NYD_LEAVE;
 }
 #endif /* HAVE_MD5 */
 
