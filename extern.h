@@ -923,11 +923,22 @@ FL void        initbox(char const *name);
 FL bool_t      print_comm_docstr(char const *comm);
 #endif
 
-/* list.c */
+/*
+ * list.c
+ */
+
+/* Convert user string of message numbers and store the numbers into vector.
+ * Returns the count of messages picked up or -1 on error */
 FL int         getmsglist(char *buf, int *vector, int flags);
-FL int         getrawlist(const char *line, size_t linesize,
+
+/* Scan out the list of string arguments, shell style for a RAWLIST */
+FL int         getrawlist(char const *line, size_t linesize,
                   char **argv, int argc, int echolist);
+
+/* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);
+
+/* Mark the named message by setting its mark bit */
 FL void        mark(int mesg, int f);
 
 /* lzw.c */

@@ -131,7 +131,7 @@ $set 1
 128 Too many regrets
 129 Bad message number to mark
 130 Bad message number to unmark
-131 No applicable messages\n
+131 No previously marked messages.\n
 132 No applicable messages\n
 133 %d: Inappropriate message\n
 134 Unknown metachar (%c)\n
