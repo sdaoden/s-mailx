@@ -707,14 +707,13 @@ FL int         csource(void *v);
  * flag as appropriate */
 FL int         unstack(void);
 
-/* head.c */
-
-/* Fill in / reedit the desired header fields */
-FL int         grab_headers(struct header *hp, enum gfield gflags,
-                  int subjfirst);
+/*
+ * head.c
+ */
 
 /* Return the user's From: address(es) */
 FL char const * myaddrs(struct header *hp);
+
 /* Boil the user's From: addresses down to a single one, or use *sender* */
 FL char const * myorigin(struct header *hp);
 
@@ -722,20 +721,41 @@ FL char const * myorigin(struct header *hp);
  * is a mail From_ header line according to RFC 4155 */
 FL int         is_head(char const *linebuf, size_t linelen);
 
-/* Savage extract date field from From_ line.  *linelen* is convenience as line
+/* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
  * Return wether the From_ line was parsed successfully */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
+/* Fill in / reedit the desired header fields */
+FL int         grab_headers(struct header *hp, enum gfield gflags,
+                  int subjfirst);
+
 FL void        extract_header(FILE *fp, struct header *hp);
+
+/* Return the desired header line from the passed message
+ * pointer (or NULL if the desired header field is not available).
+ * If mult is zero, return the content of the first matching header
+ * field only, the content of all matching header fields else */
+FL char *      hfield_mult(char const *field, struct message *mp, int mult);
 #define hfieldX(a, b)            hfield_mult(a, b, 1)
 #define hfield1(a, b)            hfield_mult(a, b, 0)
-FL char *      hfield_mult(char const *field, struct message *mp, int mult);
+
+/* Check whether the passed line is a header line of the desired breed.
+ * Return the field body, or 0 */
 FL char const * thisfield(char const *linebuf, char const *field);
+
+/* Get sender's name from this message.  If the message has a bunch of arpanet
+ * stuff in it, we may have to skin the name before returning it */
 FL char *      nameof(struct message *mp, int reptype);
+
+/* Start of a "comment".  Ignore it */
 FL char const * skip_comment(char const *cp);
+
+/* Return the start of a route-addr (address in angle brackets), if present */
 FL char const * routeaddr(char const *name);
+
+/* Check if a name's address part contains invalid characters */
 FL int         is_addr_invalid(struct name *np, int putmsg);
 
 /* Does *NP* point to a file or pipe addressee? */
@@ -758,21 +778,43 @@ FL char *      skin(char const *name);
 FL int         addrspec_with_guts(int doskin, char const *name,
                   struct addrguts *agp);
 
+/* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);
+
+/* Fetch the sender's name from the passed message.  reptype can be
+ * 0 -- get sender's name for display purposes
+ * 1 -- get sender's name for reply
+ * 2 -- get sender's name for Reply */
 FL char *      name1(struct message *mp, int reptype);
-FL int         msgidcmp(const char *s1, const char *s2);
+
+FL int         msgidcmp(char const *s1, char const *s2);
+
+/* See if the given header field is supposed to be ignored */
 FL int         is_ign(char const *field, size_t fieldlen,
                   struct ignoretab ignore[2]);
+
 FL int         member(char const *realfield, struct ignoretab *table);
+
+/* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);
+
 FL char const * fakedate(time_t t);
+
+/* From username Fri Jan  2 20:13:51 2004
+ *               |    |    |    |    |
+ *               0    5   10   15   20 */
 FL time_t      unixtime(char const *from);
+
 FL time_t      rfctime(char const *date);
+
 FL time_t      combinetime(int year, int month, int day,
                   int hour, int minute, int second);
+
 FL void        substdate(struct message *m);
+
 FL int         check_from_and_sender(struct name *fromfield,
                   struct name *senderfield);
+
 FL char *      getsender(struct message *m);
 
 /* imap.c */
