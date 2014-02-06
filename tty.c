@@ -129,16 +129,41 @@ jleave:\
  */
 
 FL bool_t
+getapproval(char const *prompt, bool_t noninteract_default)
+{
+   bool_t rv;
+
+   if (!(options & OPT_INTERACTIVE)) {
+      rv = noninteract_default;
+      goto jleave;
+   }
+
+   if (prompt == NULL)
+      prompt = tr(264, "Continue (y/n)? ");
+
+   rv = FAL0;
+   if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
+         &termios_state.ts_linesize, NULL) >= 0)
+      switch (termios_state.ts_linebuf[0]) {
+      case 'y':
+      case 'Y':
+         rv = TRU1;
+         /* FALLTHRU */
+      default:
+         break;
+      }
+   termios_state_reset();
+jleave:
+   return rv;
+}
+
+FL bool_t
 yorn(char const *msg)
 {
-   char *cp;
+   bool_t rv;
 
-   if (!(options & OPT_INTERACTIVE))
-      return TRU1;
-   do if ((cp = readstr_input(msg, NULL)) == NULL)
-      return FAL0;
-   while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
-   return (*cp == 'y' || *cp == 'Y');
+   rv = getapproval(msg, TRU1);
+   return rv;
 }
 
 FL char *
