@@ -1197,14 +1197,26 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 # define cverify                 ccmdnotsupp
 #endif
 
-/* pop3.c */
+/*
+ * pop3.c
+ */
+
 #ifdef HAVE_POP3
+/*  */
 FL enum okay   pop3_noop(void);
-FL int         pop3_setfile(const char *server, int nmail, int isedit);
+
+/*  */
+FL int         pop3_setfile(char const *server, int nmail, int isedit);
+
+/*  */
 FL enum okay   pop3_header(struct message *m);
+
+/*  */
 FL enum okay   pop3_body(struct message *m);
+
+/*  */
 FL void        pop3_quit(void);
-#endif
+#endif /* HAVE_POP3 */
 
 /*
  * popen.c
