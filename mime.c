@@ -721,7 +721,7 @@ charset_iter_next(void)
    char const *rv;
    NYD_ENTER;
 
-   rv = _cs_iter = strcomma(&_cs_iter_base, 1);
+   rv = _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1);
    NYD_LEAVE;
    return rv;
 }

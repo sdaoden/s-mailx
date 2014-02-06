@@ -1538,7 +1538,6 @@ FL int         anyof(char const *s1, char const *s2);
  * entry or to NULL if no more entries are contained.  If ignore_empty is not
  * set empty entries are started over.  Return NULL or an entry */
 FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
-#define strcomma(IOL,IGN)        n_strsep(IOL, ',', IGN)
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */

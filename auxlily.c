@@ -96,7 +96,7 @@ _colour_iso6429(char const *wish)
    char *xwish, *cp, cfg[3] = {0, 0, 0};
    NYD_ENTER;
 
-   /* Since we use salloc(), reuse the strcomma() buffer also for the return
+   /* Since we use salloc(), reuse the n_strsep() buffer also for the return
     * value, ensure we have enough room for that */
    {
       size_t i = strlen(wish) + 1;
@@ -106,7 +106,7 @@ _colour_iso6429(char const *wish)
    }
 
    /* Iterate over the colour spec */
-   while ((cp = strcomma(&xwish, TRU1)) != NULL) {
+   while ((cp = n_strsep(&xwish, ',', TRU1)) != NULL) {
       char *y, *x = strchr(cp, '=');
       if (x == NULL) {
 jbail:
@@ -1240,7 +1240,7 @@ colour_table_create(char const *pager_used)
          u.ccp = COLOUR_PAGERS;
       pager = savestr(u.cp);
 
-      while ((u.cp = strcomma(&pager, TRU1)) != NULL)
+      while ((u.cp = n_strsep(&pager, ',', TRU1)) != NULL)
          if (strstr(pager_used, u.cp) != NULL)
             goto jok;
       goto jleave;
@@ -1258,7 +1258,7 @@ colour_table_create(char const *pager_used)
       okterms = savestr(okterms);
 
       i = strlen(term);
-      while ((u.cp = strcomma(&okterms, TRU1)) != NULL)
+      while ((u.cp = n_strsep(&okterms, ',', TRU1)) != NULL)
          if (!strncmp(u.cp, term, i))
             goto jok;
       goto jleave;
@@ -1330,7 +1330,7 @@ colour_put_header(FILE *fp, char const *name)
    memcpy(cp, uheads->s, uheads->l + 1);
    cp_base = cp;
    namelen = strlen(name);
-   while ((x = strcomma(&cp, TRU1)) != NULL) {
+   while ((x = n_strsep(&cp, ',', TRU1)) != NULL) {
       size_t l = (cp != NULL) ? PTR2SIZE(cp - x) - 1 : strlen(x);
       if (l == namelen && !ascncasecmp(x, name, namelen)) {
          cs = COLOURSPEC_UHEADER;

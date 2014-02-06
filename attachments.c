@@ -323,7 +323,7 @@ append_attachments(struct attachment *aphead, char *names)
    struct attachment *xaph, *nap;
    NYD_ENTER;
 
-   while ((cp = strcomma(&names, 1)) != NULL) {
+   while ((cp = n_strsep(&names, ',', 1)) != NULL) {
       if ((xaph = add_attachment(aphead, cp, &nap)) != NULL) {
          aphead = xaph;
          if (options & OPT_INTERACTIVE)
