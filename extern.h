@@ -980,7 +980,9 @@ FL enum okay   maildir_append(char const *name, FILE *fp);
 
 FL enum okay   maildir_remove(char const *name);
 
-/* mime.c */
+/*
+ * mime.c
+ */
 
 /* *charset-7bit*, else CHARSET_7BIT */
 FL char const * charset_get_7bit(void);
@@ -1001,7 +1003,11 @@ FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
 FL char const * need_hdrconv(struct header *hp, enum gfield w);
+
+/* Get the mime encoding from a Content-Transfer-Encoding header field */
 FL enum mimeenc mime_getenc(char *h);
+
+/* Get a mime style parameter from a header line */
 FL char *      mime_getparam(char const *param, char *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
@@ -1025,8 +1031,11 @@ FL char *      mime_classify_content_type_by_fileext(char const *name);
 /* "mimetypes" command */
 FL int         c_mimetypes(void *v);
 
+/* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
                   enum tdflags flags);
+
+/* Interpret MIME strings in parts of an address field */
 FL char *      mime_fromaddr(char const *name);
 
 /* fwrite(3) performing the given MIME conversion */
