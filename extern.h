@@ -865,8 +865,11 @@ FL FILE *      cache_queue(struct mailbox *mp);
 FL enum okay   cache_dequeue(struct mailbox *mp);
 #endif /* HAVE_IMAP */
 
-/* imap_search.c */
-FL enum okay   imap_search(const char *spec, int f);
+/*
+ * imap_search.c
+ */
+
+FL enum okay   imap_search(char const *spec, int f);
 
 /* lex.c */
 FL int         setfile(char const *name, int nmail);
