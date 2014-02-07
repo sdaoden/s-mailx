@@ -547,10 +547,19 @@ FL int         dot_lock(char const *fname, int fd, int pollinterval, FILE *fp,
                   char const *msg);
 FL void        dot_unlock(char const *fname);
 
-/* edit.c */
+/*
+ * edit.c
+ */
+
+/* Edit a message list */
 FL int         editor(void *v);
+
+/* Invoke the visual editor on a message list */
 FL int         visual(void *v);
-FL FILE *      run_editor(FILE *fp, off_t size, int type, int readonly,
+
+/* Run an editor on the file at fp of size bytes, and return a new file.
+ * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
+FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,
                   enum sendaction action, sighandler_type oldint);
 
