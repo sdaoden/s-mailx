@@ -115,11 +115,17 @@ compiler_flags() {
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
+      if wantfeat AMALGAMATION; then
+         _CFLAGS="${_CFLAGS} -pipe"
+      fi
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      stackprot=yes
 #      optim=-O3 dbgoptim=-O
 #      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
+#      if wantfeat AMALGAMATION; then
+#         _CFLAGS="${_CFLAGS} -pipe"
+#      fi
    elif [ -z "${optim}" ]; then
       optim=-O1 dbgoptim=-O
    fi
