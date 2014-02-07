@@ -529,7 +529,9 @@ FL int         cremove(void *v);
 /* Rename mailbox */
 FL int         crename(void *v);
 
-/* collect.c */
+/*
+ * collect.c
+ */
 
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
                   char *quotefile, int doprefix);
