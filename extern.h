@@ -871,8 +871,16 @@ FL enum okay   cache_dequeue(struct mailbox *mp);
 
 FL enum okay   imap_search(char const *spec, int f);
 
-/* lex.c */
+/*
+ * lex.c
+ */
+
+/* Set up editing on the given file name.
+ * If the first character of name is %, we are considered to be editing the
+ * file, otherwise we are reading our mail which has signficance for mbox and
+ * so forth.  nmail: Check for new mail in the current folder only */
 FL int         setfile(char const *name, int nmail);
+
 FL int         newmailinfo(int omsgCount);
 
 /* Interpret user commands.  If standard input is not a tty, print no prompt */
@@ -887,12 +895,27 @@ FL int         evaluate(struct eval_ctx *evp);
  * Contxt is non-zero if called while composing mail */
 FL int         execute(char *linebuf, int contxt, size_t linesize);
 
+/* Set the size of the message vector used to construct argument lists to
+ * message list functions */
 FL void        setmsize(int sz);
+
+/* The following gets called on receipt of an interrupt.  This is to abort
+ * printout of a command, mainly.  Dispatching here when command() is inactive
+ * crashes rcv.  Close all open files except 0, 1, 2, and the temporary.  Also,
+ * unstack all source files */
 FL void        onintr(int s);
+
+/* Announce the presence of the current Mail version, give the message count,
+ * and print a header listing */
 FL void        announce(int printheaders);
+
+/* Announce information about the file we are editing.  Return a likely place
+ * to set dot */
 FL int         newfileinfo(void);
+
 FL int         getmdot(int nmail);
-FL void        initbox(const char *name);
+
+FL void        initbox(char const *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
  * Return FAL0 if there is no such command */
