@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *    This product includes software developed by the University of
+ *    California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -44,612 +44,574 @@
 #include <fcntl.h>
 #include <utime.h>
 
-static char	_mboxname[MAXPATHLEN];	/* Name of mbox */
+enum quitflags {
+   QUITFLAG_HOLD      = 001,
+   QUITFLAG_KEEPSAVE  = 002,
+   QUITFLAG_APPEND    = 004,
+   QUITFLAG_EMPTYBOX  = 010
+};
+
+struct quitnames {
+   enum quitflags flag;
+   enum okeys     okey;
+};
+
+static struct quitnames const _quitnames[] = {
+   {QUITFLAG_HOLD, ok_b_hold},
+   {QUITFLAG_KEEPSAVE, ok_b_keepsave},
+   {QUITFLAG_APPEND, ok_b_append},
+   {QUITFLAG_EMPTYBOX, ok_b_emptybox}
+};
+
+static char _mboxname[PATH_MAX];  /* Name of mbox */
 
 /* Touch the indicated file */
-static void	alter(char const *name);
+static void _alter(char const *name);
 
-static int writeback(FILE *res, FILE *obuf);
+/* Preserve all the appropriate messages back in the system mailbox, and print
+ * a nice message indicated how many were saved.  On any error, just return -1.
+ * Else return 0.  Incorporate the any new mail that we found */
+static int  writeback(FILE *res, FILE *obuf);
+
+/* Terminate an editing session by attempting to write out the user's file from
+ * the temporary.  Save any new stuff appended to the file */
 static void edstop(void);
 
 static void
-alter(char const *name)
+_alter(char const *name)
 {
-	struct stat sb;
-	struct utimbuf utb;
+   struct stat sb;
+   struct utimbuf utb;
+   NYD_ENTER;
 
-	if (stat(name, &sb))
-		return;
-	utb.actime = time((time_t *)0) + 1;
-	utb.modtime = sb.st_mtime;
-	utime(name, &utb);
+   if (!stat(name, &sb)) {
+      utb.actime = time(NULL) + 1;
+      utb.modtime = sb.st_mtime;
+      utime(name, &utb);
+   }
+   NYD_LEAVE;
 }
 
-/*
- * The "quit" command.
- */
-/*ARGSUSED*/
-FL int
-quitcmd(void *v)
-{
-	(void)v;
-	/*
-	 * If we are sourcing, then return 1 so execute() can handle it.
-	 * Otherwise, return -1 to abort command loop.
-	 */
-	if (sourcing)
-		return 1;
-	return -1;
-}
-
-/*
- * Preserve all the appropriate messages back in the system
- * mailbox, and print a nice message indicated how many were
- * saved.  On any error, just return -1.  Else return 0.
- * Incorporate the any new mail that we found.
- */
 static int
 writeback(FILE *res, FILE *obuf)
 {
-	struct message *mp;
-	int p, c;
+   struct message *mp;
+   int rv = -1, p, c;
+   NYD_ENTER;
 
-	p = 0;
-	if (fseek(obuf, 0L, SEEK_SET) < 0)
-		return -1;
+   if (fseek(obuf, 0L, SEEK_SET) == -1)
+      goto jleave;
+
 #ifndef APPEND
-	if (res != NULL)
-		while ((c = getc(res)) != EOF)
-			putc(c, obuf);
+   if (res != NULL)
+      while ((c = getc(res)) != EOF)
+         putc(c, obuf);
 #endif
-	srelax_hold();
-	for (mp = &message[0]; mp < &message[msgCount]; mp++)
-		if ((mp->m_flag&MPRESERVE)||(mp->m_flag&MTOUCH)==0) {
-			p++;
-			if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
-				perror(mailname);
-				(void)fseek(obuf, 0L, SEEK_SET);
-				srelax_rele();
-				return(-1);
-			}
-			srelax();
-		}
-	srelax_rele();
-
+   srelax_hold();
+   for (p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
+         ++p;
+         if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+            srelax_rele();
+            goto jerror;
+         }
+         srelax();
+      }
+   srelax_rele();
 #ifdef APPEND
-	if (res != NULL)
-		while ((c = getc(res)) != EOF)
-			putc(c, obuf);
+   if (res != NULL)
+      while ((c = getc(res)) != EOF)
+         putc(c, obuf);
 #endif
-	fflush(obuf);
-	ftrunc(obuf);
-	if (ferror(obuf)) {
-		perror(mailname);
-		(void)fseek(obuf, 0L, SEEK_SET);
-		return(-1);
-	}
-	if (res != NULL)
-		Fclose(res);
-	if (fseek(obuf, 0L, SEEK_SET) < 0)
-		return -1;
-	alter(mailname);
-	if (p == 1)
-		printf(tr(155, "Held 1 message in %s\n"), displayname);
-	else
-		printf(tr(156, "Held %d messages in %s\n"), p, displayname);
-	return 0;
+   fflush(obuf);
+   ftrunc(obuf);
+
+   if (ferror(obuf)) {
+jerror:
+      perror(mailname);
+      fseek(obuf, 0L, SEEK_SET);
+      goto jleave;
+   }
+   if (fseek(obuf, 0L, SEEK_SET) == -1)
+      goto jleave;
+
+   _alter(mailname);
+   if (p == 1)
+      printf(tr(155, "Held 1 message in %s\n"), displayname);
+   else
+      printf(tr(156, "Held %d messages in %s\n"), p, displayname);
+   rv = 0;
+jleave:
+   if (res != NULL)
+      Fclose(res);
+   NYD_LEAVE;
+   return rv;
 }
 
-/*
- * Save all of the undetermined messages at the top of "mbox"
- * Save all untouched messages back in the system mailbox.
- * Remove the system mailbox, if none saved there.
- */
+static void
+edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
+{
+   int gotcha, c;
+   struct message *mp;
+   FILE *obuf = NULL, *ibuf = NULL;
+   struct stat statb;
+   bool_t doreset;
+   NYD_ENTER;
+
+   hold_sigs();
+   doreset = FAL0;
+
+   if (mb.mb_perm == 0)
+      goto jleave;
+
+   for (mp = message, gotcha = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if (mp->m_flag & MNEW) {
+         mp->m_flag &= ~MNEW;
+         mp->m_flag |= MSTATUS;
+      }
+      if (mp->m_flag & (MODIFY | MDELETED | MSTATUS | MFLAG | MUNFLAG |
+            MANSWER | MUNANSWER | MDRAFT | MUNDRAFT))
+         ++gotcha;
+   }
+   if (!gotcha)
+      goto jleave;
+
+   doreset = TRU1;
+
+   if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
+      if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER,
+            0600)) == NULL) {
+         perror(tr(167, "tmpfile"));
+         goto jleave;
+      }
+      if ((ibuf = Zopen(mailname, "r", &mb.mb_compressed)) == NULL) {
+         perror(mailname);
+         Fclose(obuf);
+         goto jleave;
+      }
+      fseek(ibuf, (long)mailsize, SEEK_SET);
+      while ((c = getc(ibuf)) != EOF)
+         putc(c, obuf);
+      Fclose(ibuf);
+      ibuf = obuf;
+      fflush_rewind(obuf);
+   }
+
+   printf(tr(168, "\"%s\" "), displayname);
+   fflush(stdout);
+   if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
+      perror(mailname);
+      goto jleave;
+   }
+   ftrunc(obuf);
+
+   srelax_hold();
+   c = 0;
+   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if ((mp->m_flag & MDELETED) != 0)
+         continue;
+      ++c;
+      if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+         perror(mailname);
+         srelax_rele();
+         goto jleave;
+      }
+      srelax();
+   }
+   srelax_rele();
+
+   gotcha = (c == 0 && ibuf == NULL);
+   if (ibuf != NULL) {
+      while ((c = getc(ibuf)) != EOF)
+         putc(c, obuf);
+      Fclose(ibuf);
+   }
+   fflush(obuf);
+   if (ferror(obuf)) {
+      perror(mailname);
+      goto jleave;
+   }
+   Fclose(obuf);
+
+   doreset = FAL0;
+
+   if (gotcha && !ok_blook(emptybox)) {
+      rm(mailname);
+      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+         ? tr(169, "removed\n") : tr(211, "removed.\n"));
+   } else
+      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+         ? tr(170, "complete\n") : tr(212, "updated.\n"));
+   fflush(stdout);
+jleave:
+   if (ibuf != NULL)
+      Fclose(ibuf);
+   rele_sigs();
+   NYD_LEAVE;
+   if (doreset)
+      reset(0);
+}
+
+FL int
+quitcmd(void *v)
+{
+   int rv;
+   NYD_ENTER;
+   UNUSED(v);
+
+   /* If we are sourcing, then return 1 so evaluate() can handle it.
+    * Otherwise return -1 to abort command loop */
+   rv = sourcing ? 1 : -1;
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 quit(void)
 {
-	int p, modify, anystat;
-	FILE *fbuf, *rbuf, *abuf;
-	struct message *mp;
-	int c;
-	char *tempResid;
-	struct stat minfo;
+   int p, modify, anystat, c;
+   FILE *fbuf = NULL, *rbuf, *abuf;
+   struct message *mp;
+   char *tempResid;
+   struct stat minfo;
+   NYD_ENTER;
 
-	/*
-	 * If we are read only, we can't do anything,
-	 * so just return quickly. IMAP can set some
-	 * flags (e.g. "\\Seen") so imap_quit must be
-	 * called even then.
-	 */
-	if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
-		return;
-	/* TODO lex.c:setfile() has just called hold_sigs(); before it called
-	 * TODO us, but this causes uninterruptible hangs due to blocked sigs
-	 * TODO anywhere except for MB_FILE (all others install their own
-	 * TODO handlers, as it seems, properly); marked YYY */
-	switch (mb.mb_type) {
-	case MB_FILE:
-		break;
-	case MB_MAILDIR:
-		rele_sigs(); /* YYY */
-		maildir_quit();
-		hold_sigs(); /* YYY */
-		return;
+   /* If we are read only, we can't do anything, so just return quickly. IMAP
+    * can set some flags (e.g. "\\Seen") so imap_quit must be called anyway */
+   if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
+      goto jleave;
+
+   /* TODO lex.c:setfile() has just called hold_sigs(); before it called
+    * TODO us, but this causes uninterruptible hangs due to blocked sigs
+    * TODO anywhere except for MB_FILE (all others install their own
+    * TODO handlers, as it seems, properly); marked YYY */
+   switch (mb.mb_type) {
+   case MB_FILE:
+      break;
+   case MB_MAILDIR:
+      rele_sigs(); /* YYY */
+      maildir_quit();
+      hold_sigs(); /* YYY */
+      goto jleave;
 #ifdef HAVE_POP3
-	case MB_POP3:
-		rele_sigs(); /* YYY */
-		pop3_quit();
-		hold_sigs(); /* YYY */
-		return;
+   case MB_POP3:
+      rele_sigs(); /* YYY */
+      pop3_quit();
+      hold_sigs(); /* YYY */
+      goto jleave;
 #endif
 #ifdef HAVE_IMAP
-	case MB_IMAP:
-	case MB_CACHE:
-		rele_sigs(); /* YYY */
-		imap_quit();
-		hold_sigs(); /* YYY */
-		return;
+   case MB_IMAP:
+   case MB_CACHE:
+      rele_sigs(); /* YYY */
+      imap_quit();
+      hold_sigs(); /* YYY */
+      goto jleave;
 #endif
-	case MB_VOID:
-	default:
-		return;
-	}
-	/*
-	 * If editing (not reading system mail box), then do the work
-	 * in edstop()
-	 */
-	if (edit) {
-		edstop();
-		return;
-	}
+   case MB_VOID:
+   default:
+      goto jleave;
+   }
 
-	/*
-	 * See if there any messages to save in mbox.  If no, we
-	 * can save copying mbox to /tmp and back.
-	 *
-	 * Check also to see if any files need to be preserved.
-	 * Delete all untouched messages to keep them out of mbox.
-	 * If all the messages are to be preserved, just exit with
-	 * a message.
-	 */
+   /* If editing (not reading system mail box), then do the work in edstop() */
+   if (edit) {
+      edstop();
+      goto jleave;
+   }
 
-	fbuf = Zopen(mailname, "r+", &mb.mb_compressed);
-	if (fbuf == NULL) {
-		if (errno == ENOENT)
-			return;
-		goto newmail;
-	}
-	if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1) {
-nolock:
-		perror(tr(157, "Unable to lock mailbox"));
-		Fclose(fbuf);
-		return;
-	}
-	if (dot_lock(mailname, fileno(fbuf), 1, stdout, ".") == -1)
-		goto nolock;
-	rbuf = NULL;
-	if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
-		printf(tr(158, "New mail has arrived.\n"));
-		rbuf = Ftemp(&tempResid, "Rq", "w", 0600, 1);
-		if (rbuf == NULL || fbuf == NULL)
-			goto newmail;
+   /* See if there any messages to save in mbox.  If no, we
+    * can save copying mbox to /tmp and back.
+    *
+    * Check also to see if any files need to be preserved.
+    * Delete all untouched messages to keep them out of mbox.
+    * If all the messages are to be preserved, just exit with
+    * a message */
+   fbuf = Zopen(mailname, "r+", &mb.mb_compressed);
+   if (fbuf == NULL) {
+      if (errno == ENOENT)
+         goto jleave;
+jnewmail:
+      printf(tr(166, "Thou hast new mail.\n"));
+      goto jleave;
+   }
+
+   if (fcntl_lock(fileno(fbuf), F_WRLCK) == -1 ||
+         dot_lock(mailname, fileno(fbuf), 1, stdout, ".") == -1) {
+      perror(tr(157, "Unable to lock mailbox"));
+      Fclose(fbuf);
+      fbuf = NULL;
+      goto jleave;
+   }
+
+   rbuf = NULL;
+   if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
+      printf(tr(158, "New mail has arrived.\n"));
+      rbuf = Ftmp(&tempResid, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
+      if (rbuf == NULL || fbuf == NULL)
+         goto jnewmail;
 #ifdef APPEND
-		fseek(fbuf, (long)mailsize, SEEK_SET);
-		while ((c = getc(fbuf)) != EOF)
-			putc(c, rbuf);
+      fseek(fbuf, (long)mailsize, SEEK_SET);
+      while ((c = getc(fbuf)) != EOF)
+         putc(c, rbuf);
 #else
-		p = minfo.st_size - mailsize;
-		while (p-- > 0) {
-			c = getc(fbuf);
-			if (c == EOF)
-				goto newmail;
-			putc(c, rbuf);
-		}
+      p = minfo.st_size - mailsize;
+      while (p-- > 0) {
+         c = getc(fbuf);
+         if (c == EOF)
+            goto jnewmail;
+         putc(c, rbuf);
+      }
 #endif
-		Fclose(rbuf);
-		if ((rbuf = Fopen(tempResid, "r")) == NULL)
-			goto newmail;
-		rm(tempResid);
-		Ftfree(&tempResid);
-	}
+      fflush_rewind(rbuf);
+   }
 
-	anystat = holdbits();
-	modify = 0;
-	for (c = 0, p = 0, mp = &message[0]; mp < &message[msgCount]; mp++) {
-		if (mp->m_flag & MBOX)
-			c++;
-		if (mp->m_flag & MPRESERVE)
-			p++;
-		if (mp->m_flag & MODIFY)
-			modify++;
-	}
-	if (p == msgCount && !modify && !anystat) {
-		if (p == 1)
-			printf(tr(155, "Held 1 message in %s\n"), displayname);
-		else if (p > 1)
-			printf(tr(156, "Held %d messages in %s\n"),
-				p, displayname);
-		Fclose(fbuf);
-		dot_unlock(mailname);
-		return;
-	}
-	if (c == 0) {
-		if (p != 0) {
-			writeback(rbuf, fbuf);
-			Fclose(fbuf);
-			dot_unlock(mailname);
-			return;
-		}
-		goto cream;
-	}
+   anystat = holdbits();
+   modify = 0;
+   for (c = 0, p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if (mp->m_flag & MBOX)
+         c++;
+      if (mp->m_flag & MPRESERVE)
+         p++;
+      if (mp->m_flag & MODIFY)
+         modify++;
+   }
+   if (p == msgCount && !modify && !anystat) {
+      if (p == 1)
+         printf(tr(155, "Held 1 message in %s\n"), displayname);
+      else if (p > 1)
+         printf(tr(156, "Held %d messages in %s\n"), p, displayname);
+      goto jleave;
+   }
+   if (c == 0) {
+      if (p != 0) {
+         writeback(rbuf, fbuf);
+         goto jleave;
+      }
+      goto jcream;
+   }
 
-	if (makembox() == STOP) {
-		Fclose(fbuf);
-		dot_unlock(mailname);
-		return;
-	}
-	/*
-	 * Now we are ready to copy back preserved files to
-	 * the system mailbox, if any were requested.
-	 */
+   if (makembox() == STOP)
+      goto jleave;
 
-	if (p != 0) {
-		writeback(rbuf, fbuf);
-		Fclose(fbuf);
-		dot_unlock(mailname);
-		return;
-	}
+   /* Now we are ready to copy back preserved files to the system mailbox, if
+    * any were requested */
+   if (p != 0) {
+      writeback(rbuf, fbuf);
+      goto jleave;
+   }
 
-	/*
-	 * Finally, remove his /usr/mail file.
-	 * If new mail has arrived, copy it back.
-	 */
-
-cream:
-	if (rbuf != NULL) {
-		abuf = fbuf;
-		fseek(abuf, 0L, SEEK_SET);
-		while ((c = getc(rbuf)) != EOF)
-			putc(c, abuf);
-		Fclose(rbuf);
-		ftrunc(abuf);
-		alter(mailname);
-		Fclose(fbuf);
-		dot_unlock(mailname);
-		return;
-	}
-	demail();
-	Fclose(fbuf);
-	dot_unlock(mailname);
-	return;
-
-newmail:
-	printf(tr(166, "Thou hast new mail.\n"));
-	if (fbuf != NULL) {
-		Fclose(fbuf);
-		dot_unlock(mailname);
-	}
+   /* Finally, remove his file.  If new mail has arrived, copy it back */
+jcream:
+   if (rbuf != NULL) {
+      abuf = fbuf;
+      fseek(abuf, 0L, SEEK_SET);
+      while ((c = getc(rbuf)) != EOF)
+         putc(c, abuf);
+      Fclose(rbuf);
+      ftrunc(abuf);
+      _alter(mailname);
+      goto jleave;
+   }
+   demail();
+jleave:
+   if (fbuf != NULL) {
+      Fclose(fbuf);
+      dot_unlock(mailname);
+   }
+   NYD_LEAVE;
 }
 
-/*
- * Adjust the message flags in each message.
- */
 FL int
 holdbits(void)
 {
-	struct message *mp;
-	int anystat, autohold, holdbit, nohold;
+   struct message *mp;
+   int anystat, autohold, holdbit, nohold;
+   NYD_ENTER;
 
-	anystat = 0;
-	autohold = ok_blook(hold);
-	holdbit = autohold ? MPRESERVE : MBOX;
-	nohold = MBOX|MSAVED|MDELETED|MPRESERVE;
-	if (ok_blook(keepsave))
-		nohold &= ~MSAVED;
-	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
-		if (mp->m_flag & MNEW) {
-			mp->m_flag &= ~MNEW;
-			mp->m_flag |= MSTATUS;
-		}
-		if (mp->m_flag & (MSTATUS|MFLAG|MUNFLAG|MANSWER|MUNANSWER|
-					MDRAFT|MUNDRAFT))
-			anystat++;
-		if ((mp->m_flag & MTOUCH) == 0)
-			mp->m_flag |= MPRESERVE;
-		if ((mp->m_flag & nohold) == 0)
-			mp->m_flag |= holdbit;
-	}
-	return anystat;
+   anystat = 0;
+   autohold = ok_blook(hold);
+   holdbit = autohold ? MPRESERVE : MBOX;
+   nohold = MBOX | MSAVED | MDELETED | MPRESERVE;
+   if (ok_blook(keepsave))
+      nohold &= ~MSAVED;
+   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if (mp->m_flag & MNEW) {
+         mp->m_flag &= ~MNEW;
+         mp->m_flag |= MSTATUS;
+      }
+      if (mp->m_flag & (MSTATUS | MFLAG | MUNFLAG | MANSWER | MUNANSWER |
+            MDRAFT | MUNDRAFT))
+         ++anystat;
+      if (!(mp->m_flag & MTOUCH))
+         mp->m_flag |= MPRESERVE;
+      if (!(mp->m_flag & nohold))
+         mp->m_flag |= holdbit;
+   }
+   NYD_LEAVE;
+   return anystat;
+}
+
+FL enum okay
+makembox(void) /* TODO oh my god */
+{
+   struct message *mp;
+   char *mbox, *tempQuit;
+   int mcount, c;
+   FILE *ibuf = NULL, *obuf, *abuf;
+   enum protocol prot;
+   enum okay rv = STOP;
+   NYD_ENTER;
+
+   mbox = _mboxname;
+   mcount = 0;
+   if (!ok_blook(append)) {
+      if ((obuf = Ftmp(&tempQuit, "makembox",
+            OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
+         perror(tr(163, "temporary mail quit file"));
+         goto jleave;
+      }
+      if ((ibuf = Fopen(tempQuit, "r")) == NULL)
+         perror(tempQuit);
+      Ftmp_release(&tempQuit);
+      if (ibuf == NULL) {
+         Fclose(obuf);
+         goto jleave;
+      }
+
+      if ((abuf = Zopen(mbox, "r", NULL)) != NULL) {
+         while ((c = getc(abuf)) != EOF)
+            putc(c, obuf);
+         Fclose(abuf);
+      }
+      if (ferror(obuf)) {
+         perror(tr(163, "temporary mail quit file"));
+         Fclose(ibuf);
+         Fclose(obuf);
+         goto jleave;
+      }
+      Fclose(obuf);
+
+      if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0600)) >= 0)
+         close(c);
+      if ((obuf = Zopen(mbox, "r+", NULL)) == NULL) {
+         perror(mbox);
+         Fclose(ibuf);
+         goto jleave;
+      }
+   } else {
+      if ((obuf = Zopen(mbox, "a", NULL)) == NULL) {
+         perror(mbox);
+         goto jleave;
+      }
+      fchmod(fileno(obuf), 0600);
+   }
+
+   srelax_hold();
+   prot = which_protocol(mbox);
+   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if (mp->m_flag & MBOX) {
+         ++mcount;
+         if (prot == PROTO_IMAP &&
+               saveignore[0].i_count == 0 && saveignore[1].i_count == 0
+#ifdef HAVE_IMAP /* TODO revisit */
+               && imap_thisaccount(mbox)
+#endif
+         ) {
+#ifdef HAVE_IMAP
+            if (imap_copy(mp, PTR2SIZE(mp - message + 1), mbox) == STOP)
+#endif
+               goto jerr;
+         } else if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
+            perror(mbox);
+jerr:
+            if (ibuf != NULL)
+               Fclose(ibuf);
+            Fclose(obuf);
+            srelax_rele();
+            goto jleave;
+         }
+         mp->m_flag |= MBOXED;
+         srelax();
+      }
+   }
+   srelax_rele();
+
+   /* Copy the user's old mbox contents back to the end of the stuff we just
+    * saved.  If we are appending, this is unnecessary */
+   if (!ok_blook(append)) {
+      rewind(ibuf);
+      c = getc(ibuf);
+      while (c != EOF) {
+         putc(c, obuf);
+         if (ferror(obuf))
+            break;
+         c = getc(ibuf);
+      }
+      Fclose(ibuf);
+      fflush(obuf);
+   }
+   ftrunc(obuf);
+   if (ferror(obuf)) {
+      perror(mbox);
+      Fclose(obuf);
+      goto jleave;
+   }
+   if (Fclose(obuf) != 0) {
+      if (prot != PROTO_IMAP)
+         perror(mbox);
+      goto jleave;
+   }
+   if (mcount == 1)
+      printf(tr(164, "Saved 1 message in mbox\n"));
+   else
+      printf(tr(165, "Saved %d messages in mbox\n"), mcount);
+   rv = OKAY;
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 FL void
 save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
 {
-	char const *cp;
+   char const *cp;
+   NYD_ENTER;
 
-	if ((cp = expand("&")) == NULL)
-		cp = "";
-	n_strlcpy(_mboxname, cp, sizeof _mboxname);
+   if ((cp = expand("&")) == NULL)
+      cp = "";
+   n_strlcpy(_mboxname, cp, sizeof _mboxname);
+   NYD_LEAVE;
 }
-
-/*
- * Create another temporary file and copy user's mbox file
- * darin.  If there is no mbox, copy nothing.
- * If he has specified "append" don't copy his mailbox,
- * just copy saveable entries at the end.
- */
-FL enum okay
-makembox(void)
-{
-	struct message *mp;
-	char *mbox, *tempQuit;
-	int mcount, c;
-	FILE *ibuf = NULL, *obuf, *abuf;
-	enum protocol	prot;
-
-	mbox = _mboxname;
-	mcount = 0;
-	if (!ok_blook(append)) {
-		if ((obuf = Ftemp(&tempQuit, "Rm", "w", 0600, 1)) == NULL) {
-			perror(tr(163, "temporary mail quit file"));
-			return STOP;
-		}
-		if ((ibuf = Fopen(tempQuit, "r")) == NULL) {
-			perror(tempQuit);
-			Fclose(obuf);
-		}
-		rm(tempQuit);
-		Ftfree(&tempQuit);
-		if (ibuf == NULL)
-			return STOP;
-
-		if ((abuf = Zopen(mbox, "r", NULL)) != NULL) {
-			while ((c = getc(abuf)) != EOF)
-				putc(c, obuf);
-			Fclose(abuf);
-		}
-		if (ferror(obuf)) {
-			perror(tr(163, "temporary mail quit file"));
-			Fclose(ibuf);
-			Fclose(obuf);
-			return STOP;
-		}
-		Fclose(obuf);
-
-		if ((c = open(mbox, O_CREAT|O_TRUNC|O_WRONLY, 0600)) >= 0)
-			close(c);
-		if ((obuf = Zopen(mbox, "r+", NULL)) == NULL) {
-			perror(mbox);
-			Fclose(ibuf);
-			return STOP;
-		}
-	}
-	else {
-		if ((obuf = Zopen(mbox, "a", NULL)) == NULL) {
-			perror(mbox);
-			return STOP;
-		}
-		fchmod(fileno(obuf), 0600);
-	}
-
-	srelax_hold();
-	prot = which_protocol(mbox);
-	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
-		if (mp->m_flag & MBOX) {
-			mcount++;
-			if (prot == PROTO_IMAP &&
-					saveignore[0].i_count == 0 &&
-					saveignore[1].i_count == 0
-#ifdef HAVE_IMAP /* TODO revisit */
-					&& imap_thisaccount(mbox)
-#endif
-			) {
-#ifdef HAVE_IMAP
-				if (imap_copy(mp, mp-message+1, mbox) == STOP)
-#endif
-					goto jerr;
-			} else if (sendmp(mp, obuf, saveignore,
-						NULL, SEND_MBOX, NULL) < 0) {
-				perror(mbox);
-jerr:
-				if (ibuf)
-					Fclose(ibuf);
-				Fclose(obuf);
-				srelax_rele();
-				return STOP;
-			}
-			mp->m_flag |= MBOXED;
-			srelax();
-		}
-	}
-	srelax_rele();
-
-	/*
-	 * Copy the user's old mbox contents back
-	 * to the end of the stuff we just saved.
-	 * If we are appending, this is unnecessary.
-	 */
-
-	if (!ok_blook(append)) {
-		rewind(ibuf);
-		c = getc(ibuf);
-		while (c != EOF) {
-			putc(c, obuf);
-			if (ferror(obuf))
-				break;
-			c = getc(ibuf);
-		}
-		Fclose(ibuf);
-		fflush(obuf);
-	}
-	ftrunc(obuf);
-	if (ferror(obuf)) {
-		perror(mbox);
-		Fclose(obuf);
-		return STOP;
-	}
-	if (Fclose(obuf) != 0) {
-		if (prot != PROTO_IMAP)
-			perror(mbox);
-		return STOP;
-	}
-	if (mcount == 1)
-		printf(tr(164, "Saved 1 message in mbox\n"));
-	else
-		printf(tr(165, "Saved %d messages in mbox\n"), mcount);
-	return OKAY;
-}
-
-/*
- * Terminate an editing session by attempting to write out the user's
- * file from the temporary.  Save any new stuff appended to the file.
- */
-static void
-edstop(void)
-{
-	int gotcha, c;
-	struct message *mp;
-	FILE *obuf, *ibuf = NULL;
-	struct stat statb;
-
-	if (mb.mb_perm == 0)
-		return;
-	hold_sigs();
-	for (mp = &message[0], gotcha = 0; mp < &message[msgCount]; mp++) {
-		if (mp->m_flag & MNEW) {
-			mp->m_flag &= ~MNEW;
-			mp->m_flag |= MSTATUS;
-		}
-		if (mp->m_flag & (MODIFY|MDELETED|MSTATUS|MFLAG|MUNFLAG|
-					MANSWER|MUNANSWER|MDRAFT|MUNDRAFT))
-			gotcha++;
-	}
-	if (!gotcha)
-		goto done;
-	ibuf = NULL;
-	if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
-		char *tempname;
-
-		if ((obuf = Ftemp(&tempname, "edstop", "w", 0600, 1)) == NULL) {
-			perror(tr(167, "tmpfile"));
-			rele_sigs();
-			reset(0);
-		}
-		if ((ibuf = Zopen(mailname, "r", &mb.mb_compressed)) == NULL) {
-			perror(mailname);
-			Fclose(obuf);
-			rm(tempname);
-			Ftfree(&tempname);
-			rele_sigs();
-			reset(0);
-		}
-		fseek(ibuf, (long)mailsize, SEEK_SET);
-		while ((c = getc(ibuf)) != EOF)
-			putc(c, obuf);
-		Fclose(ibuf);
-		Fclose(obuf);
-		if ((ibuf = Fopen(tempname, "r")) == NULL) {
-			perror(tempname);
-			rm(tempname);
-			Ftfree(&tempname);
-			rele_sigs();
-			reset(0);
-		}
-		rm(tempname);
-		Ftfree(&tempname);
-	}
-	printf(tr(168, "\"%s\" "), displayname);
-	fflush(stdout);
-	if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
-		perror(mailname);
-		rele_sigs();
-		reset(0);
-	}
-	ftrunc(obuf);
-
-	srelax_hold();
-	c = 0;
-	for (mp = &message[0]; mp < &message[msgCount]; mp++) {
-		if ((mp->m_flag & MDELETED) != 0)
-			continue;
-		c++;
-		if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
-			perror(mailname);
-			rele_sigs();
-			srelax_rele();
-			reset(0);/* XXX jump aways are terrible */
-		}
-		srelax();
-	}
-	srelax_rele();
-
-	gotcha = (c == 0 && ibuf == NULL);
-	if (ibuf != NULL) {
-		while ((c = getc(ibuf)) != EOF)
-			putc(c, obuf);
-		Fclose(ibuf);
-	}
-	fflush(obuf);
-	if (ferror(obuf)) {
-		perror(mailname);
-		rele_sigs();
-		reset(0);
-	}
-	Fclose(obuf);
-	if (gotcha && !ok_blook(emptybox)) {
-		rm(mailname);
-		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-			? tr(169, "removed\n") : tr(211, "removed.\n"));
-	} else
-		printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-			? tr(170, "complete\n") : tr(212, "updated.\n"));
-	fflush(stdout);
-
-done:
-	rele_sigs();
-}
-
-enum quitflags {
-	QUITFLAG_HOLD      = 001,
-	QUITFLAG_KEEPSAVE  = 002,
-	QUITFLAG_APPEND    = 004,
-	QUITFLAG_EMPTYBOX  = 010
-};
-
-static const struct quitnames {
-	enum quitflags	flag;
-	enum okeys	okey;
-} quitnames[] = {
-	{ QUITFLAG_HOLD,	ok_b_hold },
-	{ QUITFLAG_KEEPSAVE,	ok_b_keepsave },
-	{ QUITFLAG_APPEND,	ok_b_append },
-	{ QUITFLAG_EMPTYBOX,	ok_b_emptybox },
-	{ 0,			0 }
-};
 
 FL int
 savequitflags(void)
 {
-	enum quitflags	qf = 0;
-	size_t i;
+   enum quitflags qf = 0;
+   size_t i;
+   NYD_ENTER;
 
-	for (i = 0; quitnames[i].flag != 0; ++i)
-		if (_var_oklook(quitnames[i].okey) != NULL)
-			qf |= quitnames[i].flag;
-	return qf;
+   for (i = 0; i < NELEM(_quitnames); ++i)
+      if (_var_oklook(_quitnames[i].okey) != NULL)
+         qf |= _quitnames[i].flag;
+   NYD_LEAVE;
+   return qf;
 }
 
 FL void
 restorequitflags(int qf)
 {
-	size_t i;
+   size_t i;
+   NYD_ENTER;
 
-	for (i = 0; quitnames[i].flag != 0; ++i) {
-		char *x = _var_oklook(quitnames[i].okey);
-		if (qf & quitnames[i].flag) {
-			if (x == NULL)
-				_var_okset(quitnames[i].okey, TRU1);
-		} else if (x != NULL)
-			_var_okclear(quitnames[i].okey);
-	}
+   for (i = 0;  i < NELEM(_quitnames); ++i) {
+      char *x = _var_oklook(_quitnames[i].okey);
+      if (qf & _quitnames[i].flag) {
+         if (x == NULL)
+            _var_okset(_quitnames[i].okey, TRU1);
+      } else if (x != NULL)
+         _var_okclear(_quitnames[i].okey);
+   }
+   NYD_LEAVE;
 }
+
+/* vim:set fenc=utf-8:s-it-mode */

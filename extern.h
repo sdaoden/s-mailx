@@ -1281,13 +1281,30 @@ FL void        free_child(int pid);
  * If wait_status is set, set it to the reported waitpid(2) wait status */
 FL bool_t      wait_child(int pid, int *wait_status);
 
-/* quit.c */
+/*
+ * quit.c
+ */
+
+/* The `quit' command */
 FL int         quitcmd(void *v);
+
+/* Save all of the undetermined messages at the top of "mbox".  Save all
+ * untouched messages back in the system mailbox.  Remove the system mailbox,
+ * if none saved there */
 FL void        quit(void);
+
+/* Adjust the message flags in each message */
 FL int         holdbits(void);
-FL void        save_mbox_for_possible_quitstuff(void); /* TODO DROP IF U CAN */
+
+/* Create another temporary file and copy user's mbox file darin.  If there is
+ * no mbox, copy nothing.  If he has specified "append" don't copy his mailbox,
+ * just copy saveable entries at the end */
 FL enum okay   makembox(void);
+
+FL void        save_mbox_for_possible_quitstuff(void); /* TODO DROP IF U CAN */
+
 FL int         savequitflags(void);
+
 FL void        restorequitflags(int);
 
 /* send.c */

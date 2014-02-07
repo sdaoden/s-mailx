@@ -220,7 +220,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 jleave:
    if (tempEdit != NULL) {
       unlink(tempEdit);
-      Ftfree(&tempEdit);
+      Ftmp_free(&tempEdit);
    }
    NYD_LEAVE;
    return nf;
