@@ -938,6 +938,7 @@ fi # wantfeat GSSAPI
 if wantfeat IDNA; then
    link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
 #include <idna.h>
+#include <idn-free.h>
 #include <stringprep.h>
 int main(void)
 {
@@ -946,6 +947,7 @@ int main(void)
    if (idna_to_ascii_8z(utf8, &idna_ascii, IDNA_USE_STD3_ASCII_RULES)
          != IDNA_SUCCESS)
       return 1;
+   idn_free(idna_ascii);
    /* (Rather link check only here) */
    idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", "de_DE");
    return 0;

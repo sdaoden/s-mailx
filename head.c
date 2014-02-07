@@ -43,6 +43,7 @@
 
 #ifdef HAVE_IDNA
 # include <idna.h>
+# include <idn-free.h>
 # include <stringprep.h>
 #endif
 
@@ -249,12 +250,12 @@ _idna_apply(struct addrguts *agp)
    NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
       NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
 
-   (free)(idna_ascii);
+   idn_free(idna_ascii);
 jleave1:
    if (utf8)
       ac_free(idna_utf8);
    else
-      (free)(idna_utf8);
+      idn_free(idna_utf8);
 jleave:
    NYD_LEAVE;
    return agp;
