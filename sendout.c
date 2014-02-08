@@ -1133,7 +1133,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char *subject,
 }
 
 FL int
-csendmail(void *v)
+c_sendmail(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -1144,7 +1144,7 @@ csendmail(void *v)
 }
 
 FL int
-cSendmail(void *v)
+c_Sendmail(void *v)
 {
    int rv;
    NYD_ENTER;

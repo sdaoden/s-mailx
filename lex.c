@@ -392,7 +392,7 @@ _pcmdlist(void *v)
    printf(tr(14, "Commands are:\n"));
    for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
       size_t j;
-      if (cp->func == &ccmdnotsupp)
+      if (cp->func == &c_cmdnotsupp)
          continue;
       j = strlen(cp->name) + 2;
       if ((i += j) > 72) {
@@ -615,7 +615,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    setmsize(msgCount);
    if (nmail && mb.mb_sorted) {
       mb.mb_threaded = 0;
-      sort((void*)-1);
+      c_sort((void*)-1);
    }
 
    Fclose(ibuf);
@@ -858,7 +858,7 @@ jrestart:
          fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
          goto jleave;
       }
-      shell(++cp);
+      c_shell(++cp);
       evp->ev_add_history = TRU1;
       goto jleave0;
    }
@@ -921,10 +921,10 @@ jrestart:
          }
    }
 
-   if ((com = _lex(word)) == NULL || com->func == &ccmdnotsupp) {
+   if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
       fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
       if (com != NULL) {
-         ccmdnotsupp(NULL);
+         c_cmdnotsupp(NULL);
          com = NULL;
       }
       goto jleave;
@@ -1083,7 +1083,7 @@ jleave:
       if (visible(dot)) {
          muvec[0] = (int)PTR2SIZE(dot - message + 1);
          muvec[1] = 0;
-         type(muvec);
+         c_type(muvec);
       }
    if (!sourcing && !inhook && (com->argtype & ARG_T) == 0)
       sawcom = TRU1;
@@ -1148,7 +1148,7 @@ announce(int printheaders)
    dot = &message[mdot - 1];
    if (printheaders && msgCount > 0 && ok_blook(header)) {
       ++_lex_inithdr;
-      headers(vec);
+      c_headers(vec);
       _lex_inithdr = 0;
    }
    NYD_LEAVE;
@@ -1224,11 +1224,11 @@ getmdot(int nmail)
 
    if (!nmail) {
       if (ok_blook(autothread))
-         thread(NULL);
+         c_thread(NULL);
       else if ((cp = ok_vlook(autosort)) != NULL) {
          free(mb.mb_sorted);
          mb.mb_sorted = sstrdup(cp);
-         sort(NULL);
+         c_sort(NULL);
       }
    }
    if (mb.mb_type == MB_VOID) {
@@ -1369,7 +1369,7 @@ print_comm_docstr(char const *comm)
       }
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp) {
-      if (cp->func == &ccmdnotsupp)
+      if (cp->func == &c_cmdnotsupp)
          continue;
       if (!strcmp(comm, cp->name))
          printf("%s: %s\n", comm, tr(cp->docid, cp->doc));

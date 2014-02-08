@@ -869,7 +869,7 @@ ssl_gen_err(char const *fmt, ...)
 }
 
 FL int
-cverify(void *vp)
+c_verify(void *vp)
 {
    int *msgvec = vp, *ip, ec = 0, rv = 1;
    _STACKOF(X509) *chain = NULL;

@@ -702,7 +702,7 @@ jscroll_forward:
       size = 1;
       goto jleave;
    }
-   size = headers(cur);
+   size = c_headers(cur);
 jleave:
    NYD_LEAVE;
    return size;
@@ -877,7 +877,7 @@ jleave:
 }
 
 FL int
-ccmdnotsupp(void *v) /* TODO -> lex.c */
+c_cmdnotsupp(void *v) /* TODO -> lex.c */
 {
    NYD_ENTER;
    UNUSED(v);
@@ -887,12 +887,12 @@ ccmdnotsupp(void *v) /* TODO -> lex.c */
 }
 
 FL int
-headers(void *v)
+c_headers(void *v)
 {
    ui32_t flag;
    int *msgvec = v, g, k, n, mesg, size, lastg = 1;
    struct message *mp, *mq, *lastmq = NULL;
-   enum mflag  fl = MNEW | MFLAGGED;
+   enum mflag fl = MNEW | MFLAGGED;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
@@ -1005,7 +1005,7 @@ headers(void *v)
 }
 
 FL int
-scroll(void *v)
+c_scroll(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -1016,7 +1016,7 @@ scroll(void *v)
 }
 
 FL int
-Scroll(void *v)
+c_Scroll(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -1027,7 +1027,7 @@ Scroll(void *v)
 }
 
 FL int
-from(void *v)
+c_from(void *v)
 {
    int *msgvec = v, *ip, n;
    char *cp;
@@ -1089,7 +1089,7 @@ print_headers(size_t bottom, size_t topx)
 }
 
 FL int
-pdot(void *v)
+c_pdot(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
@@ -1099,7 +1099,7 @@ pdot(void *v)
 }
 
 FL int
-more(void *v)
+c_more(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;
@@ -1110,7 +1110,7 @@ more(void *v)
 }
 
 FL int
-More(void *v)
+c_More(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;
@@ -1121,7 +1121,7 @@ More(void *v)
 }
 
 FL int
-type(void *v)
+c_type(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;
@@ -1132,7 +1132,7 @@ type(void *v)
 }
 
 FL int
-Type(void *v)
+c_Type(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;
@@ -1143,7 +1143,7 @@ Type(void *v)
 }
 
 FL int
-show(void *v)
+c_show(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;
@@ -1154,7 +1154,7 @@ show(void *v)
 }
 
 FL int
-pipecmd(void *v)
+c_pipe(void *v)
 {
    char *str = v;
    int rv;
@@ -1166,7 +1166,7 @@ pipecmd(void *v)
 }
 
 FL int
-Pipecmd(void *v)
+c_Pipe(void *v)
 {
    char *str = v;
    int rv;
@@ -1178,7 +1178,7 @@ Pipecmd(void *v)
 }
 
 FL int
-top(void *v)
+c_top(void *v)
 {
    int *msgvec = v, *ip, c, topl, lines, empty_last;
    struct message *mp;
@@ -1210,7 +1210,7 @@ top(void *v)
          printf("\n");
       _show_msg_overview(stdout, mp, *ip);
       if (mp->m_flag & MNOFROM)
-         /* XXX top(): coloured output? */
+         /* XXX c_top(): coloured output? */
          printf("From %s %s\n", fakefrom(mp), fakedate(mp->m_time));
       if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {  /* XXX could use TOP */
          v = NULL;
@@ -1235,7 +1235,7 @@ top(void *v)
 }
 
 FL int
-stouch(void *v)
+c_stouch(void *v)
 {
    int *msgvec = v, *ip;
    NYD_ENTER;
@@ -1251,7 +1251,7 @@ stouch(void *v)
 }
 
 FL int
-mboxit(void *v)
+c_mboxit(void *v)
 {
    int *msgvec = v, *ip;
    NYD_ENTER;
@@ -1267,7 +1267,7 @@ mboxit(void *v)
 }
 
 FL int
-folders(void *v)
+c_folders(void *v)
 {
    char dirname[PATH_MAX], *name, **argv = v;
    char const *cmd;
@@ -1288,7 +1288,7 @@ folders(void *v)
 #ifdef HAVE_IMAP
       imap_folders(name, *argv == NULL);
 #else
-      rv = ccmdnotsupp(NULL);
+      rv = c_cmdnotsupp(NULL);
 #endif
    } else {
       if ((cmd = ok_vlook(LISTER)) == NULL)

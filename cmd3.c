@@ -548,7 +548,7 @@ delete_shortcut(char const *str)
 }
 
 FL int
-shell(void *v)
+c_shell(void *v)
 {
    char const *sh = NULL;
    char *str = v, *cmd;
@@ -573,7 +573,7 @@ shell(void *v)
 }
 
 FL int
-dosh(void *v)
+c_dosh(void *v)
 {
    sighandler_type sigint;
    char const *sh;
@@ -592,7 +592,7 @@ dosh(void *v)
 }
 
 FL int
-help(void *v)
+c_help(void *v)
 {
    int ret = 0;
    char *arg;
@@ -606,7 +606,7 @@ help(void *v)
       if (ret)
          fprintf(stderr, tr(91, "Unknown command: `%s'\n"), arg);
 #else
-      ret = ccmdnotsupp(NULL);
+      ret = c_cmdnotsupp(NULL);
 #endif
       goto jleave;
    }
@@ -683,7 +683,7 @@ jleave:
 }
 
 FL int
-respond(void *v)
+c_respond(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -694,7 +694,7 @@ respond(void *v)
 }
 
 FL int
-respondall(void *v)
+c_respondall(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -705,7 +705,7 @@ respondall(void *v)
 }
 
 FL int
-respondsender(void *v)
+c_respondsender(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -716,7 +716,7 @@ respondsender(void *v)
 }
 
 FL int
-Respond(void *v)
+c_Respond(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -727,7 +727,7 @@ Respond(void *v)
 }
 
 FL int
-followup(void *v)
+c_followup(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -738,7 +738,7 @@ followup(void *v)
 }
 
 FL int
-followupall(void *v)
+c_followupall(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -749,7 +749,7 @@ followupall(void *v)
 }
 
 FL int
-followupsender(void *v)
+c_followupsender(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -760,7 +760,7 @@ followupsender(void *v)
 }
 
 FL int
-Followup(void *v)
+c_Followup(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -771,7 +771,7 @@ Followup(void *v)
 }
 
 FL int
-forwardcmd(void *v)
+c_forward(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -782,7 +782,7 @@ forwardcmd(void *v)
 }
 
 FL int
-Forwardcmd(void *v)
+c_Forward(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -793,7 +793,7 @@ Forwardcmd(void *v)
 }
 
 FL int
-resendcmd(void *v)
+c_resend(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -804,7 +804,7 @@ resendcmd(void *v)
 }
 
 FL int
-Resendcmd(void *v)
+c_Resend(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -815,7 +815,7 @@ Resendcmd(void *v)
 }
 
 FL int
-preserve(void *v)
+c_preserve(void *v)
 {
    int *msgvec = v, *ip, mesg, rv = 1;
    struct message *mp;
@@ -841,7 +841,7 @@ jleave:
 }
 
 FL int
-unread(void *v)
+c_unread(void *v)
 {
    int *msgvec = v, *ip;
    NYD_ENTER;
@@ -861,7 +861,7 @@ unread(void *v)
 }
 
 FL int
-seen(void *v)
+c_seen(void *v)
 {
    int *msgvec = v, *ip;
    NYD_ENTER;
@@ -875,7 +875,7 @@ seen(void *v)
 }
 
 FL int
-messize(void *v)
+c_messize(void *v)
 {
    int *msgvec = v, *ip, mesg;
    struct message *mp;
@@ -896,7 +896,7 @@ messize(void *v)
 }
 
 FL int
-rexit(void *v)
+c_rexit(void *v)
 {
    UNUSED(v);
    NYD_ENTER;
@@ -909,7 +909,7 @@ rexit(void *v)
 }
 
 FL int
-set(void *v)
+c_set(void *v)
 {
    char **ap = v, *cp, *cp2, *varbuf, c;
    int errs = 0;
@@ -948,7 +948,7 @@ jleave:
 }
 
 FL int
-unset(void *v)
+c_unset(void *v)
 {
    int errs;
    char **ap;
@@ -962,7 +962,7 @@ unset(void *v)
 }
 
 FL int
-group(void *v)
+c_group(void *v)
 {
    char **argv = v, **ap, *gname, **p;
    struct grouphead *gh;
@@ -1014,7 +1014,7 @@ jleave:
 }
 
 FL int
-ungroup(void *v)
+c_ungroup(void *v)
 {
    char **argv = v;
    int rv = 1;
@@ -1035,7 +1035,7 @@ jleave:
 }
 
 FL int
-cfile(void *v)
+c_file(void *v)
 {
    char **argv = v;
    int i;
@@ -1073,7 +1073,7 @@ jleave:
 }
 
 FL int
-echo(void *v)
+c_echo(void *v)
 {
    char const **argv = v, **ap, *cp;
    int c;
@@ -1231,7 +1231,7 @@ c_endif(void *v)
 }
 
 FL int
-alternates(void *v)
+c_alternates(void *v)
 {
    size_t l;
    char **namelist = v, **ap, **ap2, *cp;
@@ -1266,7 +1266,7 @@ jleave:
 }
 
 FL int
-newmail(void *v)
+c_newmail(void *v)
 {
    int val = 1, mdot;
    NYD_ENTER;
@@ -1285,7 +1285,7 @@ newmail(void *v)
 }
 
 FL int
-shortcut(void *v)
+c_shortcut(void *v)
 {
    char **args = v;
    struct shortcut *s;
@@ -1338,7 +1338,7 @@ get_shortcut(char const *str)
 }
 
 FL int
-unshortcut(void *v)
+c_unshortcut(void *v)
 {
    char **args = v;
    bool_t errs = FAL0;
@@ -1363,7 +1363,7 @@ jleave:
 }
 
 FL int
-cflag(void *v)
+c_flag(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
@@ -1380,7 +1380,7 @@ cflag(void *v)
 }
 
 FL int
-cunflag(void *v)
+c_unflag(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
@@ -1399,7 +1399,7 @@ cunflag(void *v)
 }
 
 FL int
-canswered(void *v)
+c_answered(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
@@ -1416,7 +1416,7 @@ canswered(void *v)
 }
 
 FL int
-cunanswered(void *v)
+c_unanswered(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
@@ -1435,7 +1435,7 @@ cunanswered(void *v)
 }
 
 FL int
-cdraft(void *v)
+c_draft(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
@@ -1452,7 +1452,7 @@ cdraft(void *v)
 }
 
 FL int
-cundraft(void *v)
+c_undraft(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
@@ -1471,7 +1471,7 @@ cundraft(void *v)
 }
 
 FL int
-cnoop(void *v)
+c_noop(void *v)
 {
    int rv = 0;
    NYD_ENTER;
@@ -1482,14 +1482,14 @@ cnoop(void *v)
 #ifdef HAVE_IMAP
       imap_noop();
 #else
-      rv = ccmdnotsupp(NULL);
+      rv = c_cmdnotsupp(NULL);
 #endif
       break;
    case MB_POP3:
 #ifdef HAVE_POP3
       pop3_noop();
 #else
-      rv = ccmdnotsupp(NULL);
+      rv = c_cmdnotsupp(NULL);
 #endif
       break;
    default:
@@ -1500,7 +1500,7 @@ cnoop(void *v)
 }
 
 FL int
-cremove(void *v)
+c_remove(void *v)
 {
    char const *fmt;
    size_t fmt_len;
@@ -1571,7 +1571,7 @@ jleave:
 }
 
 FL int
-crename(void *v)
+c_rename(void *v)
 {
    char **args = v, *old, *new;
    enum protocol oldp, newp;

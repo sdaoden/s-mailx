@@ -445,7 +445,7 @@ jleave:
 }
 
 FL int
-next(void *v)
+c_next(void *v)
 {
    int list[2], *ip, *ip2, mdot, *msgvec = v, rv = 1;
    struct message *mp;
@@ -512,14 +512,14 @@ jateof:
 jhitit:
    list[0] = (int)PTR2SIZE(dot - message + 1);
    list[1] = 0;
-   rv = type(list);
+   rv = c_type(list);
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-save(void *v)
+c_save(void *v)
 {
    char *str = v;
    int rv;
@@ -531,7 +531,7 @@ save(void *v)
 }
 
 FL int
-Save(void *v)
+c_Save(void *v)
 {
    char *str = v;
    int rv;
@@ -543,7 +543,7 @@ Save(void *v)
 }
 
 FL int
-copycmd(void *v)
+c_copy(void *v)
 {
    char *str = v;
    int rv;
@@ -555,7 +555,7 @@ copycmd(void *v)
 }
 
 FL int
-Copycmd(void *v)
+c_Copy(void *v)
 {
    char *str = v;
    int rv;
@@ -567,7 +567,7 @@ Copycmd(void *v)
 }
 
 FL int
-cmove(void *v)
+c_move(void *v)
 {
    char *str = v;
    int rv;
@@ -579,7 +579,7 @@ cmove(void *v)
 }
 
 FL int
-cMove(void *v)
+c_Move(void *v)
 {
    char *str = v;
    int rv;
@@ -591,7 +591,7 @@ cMove(void *v)
 }
 
 FL int
-cdecrypt(void *v)
+c_decrypt(void *v)
 {
    char *str = v;
    int rv;
@@ -603,7 +603,7 @@ cdecrypt(void *v)
 }
 
 FL int
-cDecrypt(void *v)
+c_Decrypt(void *v)
 {
    char *str = v;
    int rv;
@@ -615,7 +615,7 @@ cDecrypt(void *v)
 }
 
 FL int
-cwrite(void *v)
+c_write(void *v)
 {
    char *str = v;
    int rv;
@@ -629,7 +629,7 @@ cwrite(void *v)
 }
 
 FL int
-delete(void *v)
+c_delete(void *v)
 {
    int *msgvec = v;
    NYD_ENTER;
@@ -651,7 +651,7 @@ c_deltype(void *v)
       if (list[0] > lastdot) {
          touch(dot);
          list[1] = 0;
-         rv = type(list);
+         rv = c_type(list);
          goto jleave;
       }
       printf(tr(29, "At EOF\n"));
@@ -663,7 +663,7 @@ jleave:
 }
 
 FL int
-undeletecmd(void *v)
+c_undelete(void *v)
 {
    int *msgvec = v, *ip;
    struct message *mp;
@@ -688,7 +688,7 @@ undeletecmd(void *v)
 }
 
 FL int
-retfield(void *v)
+c_retfield(void *v)
 {
    char **list = v;
    int rv;
@@ -700,7 +700,7 @@ retfield(void *v)
 }
 
 FL int
-igfield(void *v)
+c_igfield(void *v)
 {
    char **list = v;
    int rv;
@@ -712,7 +712,7 @@ igfield(void *v)
 }
 
 FL int
-saveretfield(void *v)
+c_saveretfield(void *v)
 {
    char **list = v;
    int rv;
@@ -724,7 +724,7 @@ saveretfield(void *v)
 }
 
 FL int
-saveigfield(void *v)
+c_saveigfield(void *v)
 {
    char **list = v;
    int rv;
@@ -736,7 +736,7 @@ saveigfield(void *v)
 }
 
 FL int
-fwdretfield(void *v)
+c_fwdretfield(void *v)
 {
    char **list = v;
    int rv;
@@ -748,7 +748,7 @@ fwdretfield(void *v)
 }
 
 FL int
-fwdigfield(void *v)
+c_fwdigfield(void *v)
 {
    char **list = v;
    int rv;
@@ -760,7 +760,7 @@ fwdigfield(void *v)
 }
 
 FL int
-unignore(void *v)
+c_unignore(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -771,7 +771,7 @@ unignore(void *v)
 }
 
 FL int
-unretain(void *v)
+c_unretain(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -782,7 +782,7 @@ unretain(void *v)
 }
 
 FL int
-unsaveignore(void *v)
+c_unsaveignore(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -793,7 +793,7 @@ unsaveignore(void *v)
 }
 
 FL int
-unsaveretain(void *v)
+c_unsaveretain(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -804,7 +804,7 @@ unsaveretain(void *v)
 }
 
 FL int
-unfwdignore(void *v)
+c_unfwdignore(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -815,7 +815,7 @@ unfwdignore(void *v)
 }
 
 FL int
-unfwdretain(void *v)
+c_unfwdretain(void *v)
 {
    int rv;
    NYD_ENTER;

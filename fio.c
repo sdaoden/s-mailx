@@ -1428,7 +1428,7 @@ jleave:
 }
 
 FL int
-csource(void *v)
+c_source(void *v)
 {
    int rv = 1;
    char **arglist = v, *cp;

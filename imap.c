@@ -1377,7 +1377,7 @@ jdone:
       purgecache(&mb, message, msgCount);
    if ((nmail || transparent) && mb.mb_sorted) {
       mb.mb_threaded = 0;
-      sort((void*)-1);
+      c_sort((void*)-1);
    }
 
    if (!nmail && !edit && msgCount == 0) {
@@ -2147,7 +2147,7 @@ tag(int new)
 }
 
 FL int
-imap_imap(void *vp)
+c_imap_imap(void *vp)
 {
    char o[LINESIZE];
    sighandler_type   saveint, savepipe;
@@ -3430,9 +3430,8 @@ check_expunged(void)
    return rv;
 }
 
-/*ARGSUSED*/
 FL int
-cconnect(void *vp)
+c_connect(void *vp)
 {
    char *cp, *cq;
    int rv, omsgCount = msgCount;
@@ -3471,7 +3470,7 @@ jleave:
 }
 
 FL int
-cdisconnect(void *vp)
+c_disconnect(void *vp)
 {
    int rv = 1, *msgvec = vp;
    NYD_ENTER;
@@ -3488,7 +3487,7 @@ cdisconnect(void *vp)
    }
 
    if (*msgvec)
-      ccache(vp);
+      c_cache(vp);
    ok_bset(disconnected, TRU1);
    if (mb.mb_type == MB_IMAP) {
       sclose(&mb.mb_sock);
@@ -3501,7 +3500,7 @@ jleave:
 }
 
 FL int
-ccache(void *vp)
+c_cache(void *vp)
 {
    int rv = 1, *msgvec = vp, *ip;
    struct message *mp;

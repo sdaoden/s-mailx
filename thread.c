@@ -518,7 +518,7 @@ _colpm(struct message *m, int cl, int *cc, int *uc)
 }
 
 FL int
-thread(void *vp)
+c_thread(void *vp)
 {
    int rv;
    NYD_ENTER;
@@ -535,7 +535,7 @@ thread(void *vp)
    }
 
    if (vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
-      rv = headers(vp);
+      rv = c_headers(vp);
    else
       rv = 0;
    NYD_LEAVE;
@@ -543,7 +543,7 @@ thread(void *vp)
 }
 
 FL int
-unthread(void *vp)
+c_unthread(void *vp)
 {
    struct message *m;
    int rv;
@@ -557,7 +557,7 @@ unthread(void *vp)
       m->m_collapsed = 0;
 
    if (vp && !inhook && ok_blook(header))
-      rv = headers(vp);
+      rv = c_headers(vp);
    else
       rv = 0;
    NYD_LEAVE;
@@ -643,7 +643,7 @@ jleave:
 }
 
 FL int
-sort(void *vp)
+c_sort(void *vp)
 {
    enum method {SORT_SUBJECT, SORT_DATE, SORT_STATUS, SORT_SIZE, SORT_FROM,
       SORT_TO, SORT_SPAM, SORT_THREAD} method;
@@ -702,7 +702,7 @@ jmethok:
    mb.mb_sorted = sstrdup(args[0]);
 
    if (method == SORT_THREAD) {
-      i = thread((vp != NULL && vp != (void*)-1) ? msgvec : vp);
+      i = c_thread((vp != NULL && vp != (void*)-1) ? msgvec : vp);
       goto jleave;
    }
 
@@ -810,14 +810,14 @@ jmethok:
    }
    ac_free(ms);
    i = ((vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
-         ? headers(msgvec) : 0);
+         ? c_headers(msgvec) : 0);
 jleave:
    NYD_LEAVE;
    return i;
 }
 
 FL int
-ccollapse(void *v)
+c_collapse(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -828,7 +828,7 @@ ccollapse(void *v)
 }
 
 FL int
-cuncollapse(void *v)
+c_uncollapse(void *v)
 {
    int rv;
    NYD_ENTER;

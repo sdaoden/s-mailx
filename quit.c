@@ -253,7 +253,7 @@ jleave:
 }
 
 FL int
-quitcmd(void *v)
+c_quit(void *v)
 {
    int rv;
    NYD_ENTER;

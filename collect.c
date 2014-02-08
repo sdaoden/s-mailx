@@ -790,7 +790,7 @@ jcont:
          break;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
-         shell(linebuf + 2);
+         c_shell(linebuf + 2);
          break;
       case ':':
          /* FALLTHRU */

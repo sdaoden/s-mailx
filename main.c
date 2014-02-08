@@ -716,7 +716,7 @@ main(int argc, char *argv[])
          {  char *a[2];
             okey = a[0] = _oarg;
             a[1] = NULL;
-            set(a);
+            c_set(a);
          }
 joarg:
          if (oargs_count == oargs_size)
@@ -847,7 +847,7 @@ jusage:
       char const *a[2];
       a[0] = oargs[i];
       a[1] = NULL;
-      set(a);
+      c_set(a);
    }
 
    /*

@@ -126,7 +126,7 @@ edit1(int *msgvec, int viored)
 }
 
 FL int
-editor(void *v)
+c_editor(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;
@@ -137,7 +137,7 @@ editor(void *v)
 }
 
 FL int
-visual(void *v)
+c_visual(void *v)
 {
    int *msgvec = v, rv;
    NYD_ENTER;

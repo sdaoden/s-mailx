@@ -394,7 +394,7 @@ j_leave:
 }
 
 FL int
-cspam_clear(void *v)
+c_spam_clear(void *v)
 {
    int *ip;
    NYD_ENTER;
@@ -406,7 +406,7 @@ cspam_clear(void *v)
 }
 
 FL int
-cspam_set(void *v)
+c_spam_set(void *v)
 {
    int *ip;
    NYD_ENTER;
@@ -418,7 +418,7 @@ cspam_set(void *v)
 }
 
 FL int
-cspam_forget(void *v)
+c_spam_forget(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -429,7 +429,7 @@ cspam_forget(void *v)
 }
 
 FL int
-cspam_ham(void *v)
+c_spam_ham(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -440,7 +440,7 @@ cspam_ham(void *v)
 }
 
 FL int
-cspam_rate(void *v)
+c_spam_rate(void *v)
 {
    int rv;
    NYD_ENTER;
@@ -451,7 +451,7 @@ cspam_rate(void *v)
 }
 
 FL int
-cspam_spam(void *v)
+c_spam_spam(void *v)
 {
    int rv;
    NYD_ENTER;

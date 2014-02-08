@@ -317,51 +317,51 @@ FL bool_t      _smemcheck(char const *file, int line);
  * cmd1.c
  */
 
-FL int         ccmdnotsupp(void *v);
+FL int         c_cmdnotsupp(void *v);
 
 /* Show header group */
-FL int         headers(void *v);
+FL int         c_headers(void *v);
 
 /* Scroll to the next/previous screen */
-FL int         scroll(void *v);
-FL int         Scroll(void *v);
+FL int         c_scroll(void *v);
+FL int         c_Scroll(void *v);
 
 /* Print out the headlines for each message in the passed message list */
-FL int         from(void *v);
+FL int         c_from(void *v);
 
 /* Print all message in between bottom and topx (including bottom) */
 FL void        print_headers(size_t bottom, size_t topx);
 
 /* Print out the value of dot */
-FL int         pdot(void *v);
+FL int         c_pdot(void *v);
 
 /* Paginate messages, honor/don't honour ignored fields, respectively */
-FL int         more(void *v);
-FL int         More(void *v);
+FL int         c_more(void *v);
+FL int         c_More(void *v);
 
 /* Type out messages, honor/don't honour ignored fields, respectively */
-FL int         type(void *v);
-FL int         Type(void *v);
+FL int         c_type(void *v);
+FL int         c_Type(void *v);
 
 /* Show MIME-encoded message text, including all fields */
-FL int         show(void *v);
+FL int         c_show(void *v);
 
 /* Pipe messages, honor/don't honour ignored fields, respectively */
-FL int         pipecmd(void *v);
-FL int         Pipecmd(void *v);
+FL int         c_pipe(void *v);
+FL int         c_Pipe(void *v);
 
 /* Print the top so many lines of each desired message.
  * The number of lines is taken from *toplines* and defaults to 5 */
-FL int         top(void *v);
+FL int         c_top(void *v);
 
 /* Touch all the given messages so that they will get mboxed */
-FL int         stouch(void *v);
+FL int         c_stouch(void *v);
 
 /* Make sure all passed messages get mboxed */
-FL int         mboxit(void *v);
+FL int         c_mboxit(void *v);
 
 /* List the folders the user currently has */
-FL int         folders(void *v);
+FL int         c_folders(void *v);
 
 /*
  * cmd2.c
@@ -370,69 +370,69 @@ FL int         folders(void *v);
 /* If any arguments were given, go to the next applicable argument following
  * dot, otherwise, go to the next applicable message.  If given as first
  * command with no arguments, print first message */
-FL int         next(void *v);
+FL int         c_next(void *v);
 
 /* Save a message in a file.  Mark the message as saved so we can discard when
  * the user quits */
-FL int         save(void *v);
-FL int         Save(void *v);
+FL int         c_save(void *v);
+FL int         c_Save(void *v);
 
 /* Copy a message to a file without affected its saved-ness */
-FL int         copycmd(void *v);
-FL int         Copycmd(void *v);
+FL int         c_copy(void *v);
+FL int         c_Copy(void *v);
 
 /* Move a message to a file */
-FL int         cmove(void *v);
-FL int         cMove(void *v);
+FL int         c_move(void *v);
+FL int         c_Move(void *v);
 
 /* Decrypt and copy a message to a file */
-FL int         cdecrypt(void *v);
-FL int         cDecrypt(void *v);
+FL int         c_decrypt(void *v);
+FL int         c_Decrypt(void *v);
 
 /* Write the indicated messages at the end of the passed file name, minus
  * header and trailing blank line.  This is the MIME save function */
-FL int         cwrite(void *v);
+FL int         c_write(void *v);
 
 /* Delete messages */
-FL int         delete(void *v);
+FL int         c_delete(void *v);
 
 /* Delete messages, then type the new dot */
-FL int         deltype(void *v);
+FL int         c_deltype(void *v);
 
 /* Undelete the indicated messages */
-FL int         undeletecmd(void *v);
+FL int         c_undelete(void *v);
 
 /* Add the given header fields to the retained list.  If no arguments, print
  * the current list of retained fields */
-FL int         retfield(void *v);
+FL int         c_retfield(void *v);
 
 /* Add the given header fields to the ignored list.  If no arguments, print the
  * current list of ignored fields */
-FL int         igfield(void *v);
+FL int         c_igfield(void *v);
 
-FL int         saveretfield(void *v);
-FL int         saveigfield(void *v);
-FL int         fwdretfield(void *v);
-FL int         fwdigfield(void *v);
-FL int         unignore(void *v);
-FL int         unretain(void *v);
-FL int         unsaveignore(void *v);
-FL int         unsaveretain(void *v);
-FL int         unfwdignore(void *v);
-FL int         unfwdretain(void *v);
+FL int         c_saveretfield(void *v);
+FL int         c_saveigfield(void *v);
+FL int         c_fwdretfield(void *v);
+FL int         c_fwdigfield(void *v);
+FL int         c_unignore(void *v);
+FL int         c_unretain(void *v);
+FL int         c_unsaveignore(void *v);
+FL int         c_unsaveretain(void *v);
+FL int         c_unfwdignore(void *v);
+FL int         c_unfwdretain(void *v);
 
 /*
  * cmd3.c
  */
 
 /* Process a shell escape by saving signals, ignoring signals and a sh -c */
-FL int         shell(void *v);
+FL int         c_shell(void *v);
 
 /* Fork an interactive shell */
-FL int         dosh(void *v);
+FL int         c_dosh(void *v);
 
 /* Show the help screen */
-FL int         help(void *v);
+FL int         c_help(void *v);
 
 /* Print user's working directory */
 FL int         c_cwd(void *v);
@@ -440,60 +440,60 @@ FL int         c_cwd(void *v);
 /* Change user's working directory */
 FL int         c_chdir(void *v);
 
-FL int         respond(void *v);
-FL int         respondall(void *v);
-FL int         respondsender(void *v);
-FL int         Respond(void *v);
-FL int         followup(void *v);
-FL int         followupall(void *v);
-FL int         followupsender(void *v);
-FL int         Followup(void *v);
+FL int         c_respond(void *v);
+FL int         c_respondall(void *v);
+FL int         c_respondsender(void *v);
+FL int         c_Respond(void *v);
+FL int         c_followup(void *v);
+FL int         c_followupall(void *v);
+FL int         c_followupsender(void *v);
+FL int         c_Followup(void *v);
 
 /* The 'forward' command */
-FL int         forwardcmd(void *v);
+FL int         c_forward(void *v);
 
 /* Similar to forward, saving the message in a file named after the first
  * recipient */
-FL int         Forwardcmd(void *v);
+FL int         c_Forward(void *v);
 
 /* Resend a message list to a third person */
-FL int         resendcmd(void *v);
+FL int         c_resend(void *v);
 
 /* Resend a message list to a third person without adding headers */
-FL int         Resendcmd(void *v);
+FL int         c_Resend(void *v);
 
 /* Preserve messages, so that they will be sent back to the system mailbox */
-FL int         preserve(void *v);
+FL int         c_preserve(void *v);
 
 /* Mark all given messages as unread */
-FL int         unread(void *v);
+FL int         c_unread(void *v);
 
 /* Mark all given messages as read */
-FL int         seen(void *v);
+FL int         c_seen(void *v);
 
 /* Print the size of each message */
-FL int         messize(void *v);
+FL int         c_messize(void *v);
 
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
-FL int         rexit(void *v);
+FL int         c_rexit(void *v);
 
 /* Set or display a variable value.  Syntax is similar to that of sh */
-FL int         set(void *v);
+FL int         c_set(void *v);
 
 /* Unset a bunch of variable values */
-FL int         unset(void *v);
+FL int         c_unset(void *v);
 
 /* Put add users to a group */
-FL int         group(void *v);
+FL int         c_group(void *v);
 
 /* Delete the passed groups */
-FL int         ungroup(void *v);
+FL int         c_ungroup(void *v);
 
 /* Change to another file.  With no argument, print info about current file */
-FL int         cfile(void *v);
+FL int         c_file(void *v);
 
 /* Expand file names like echo */
-FL int         echo(void *v);
+FL int         c_echo(void *v);
 
 /* if.else.endif conditional execution */
 FL int         c_if(void *v);
@@ -501,32 +501,32 @@ FL int         c_else(void *v);
 FL int         c_endif(void *v);
 
 /* Set the list of alternate names */
-FL int         alternates(void *v);
+FL int         c_alternates(void *v);
 
-/* 'newmail'/'inc' command: Check for new mail without writing old mail back */
-FL int         newmail(void *v);
+/* 'newmail' command: Check for new mail without writing old mail back */
+FL int         c_newmail(void *v);
 
 /* Shortcuts */
-FL int         shortcut(void *v);
+FL int         c_shortcut(void *v);
 FL struct shortcut *get_shortcut(char const *str);
-FL int         unshortcut(void *v);
+FL int         c_unshortcut(void *v);
 
 /* Message flag manipulation */
-FL int         cflag(void *v);
-FL int         cunflag(void *v);
-FL int         canswered(void *v);
-FL int         cunanswered(void *v);
-FL int         cdraft(void *v);
-FL int         cundraft(void *v);
+FL int         c_flag(void *v);
+FL int         c_unflag(void *v);
+FL int         c_answered(void *v);
+FL int         c_unanswered(void *v);
+FL int         c_draft(void *v);
+FL int         c_undraft(void *v);
 
 /* noop */
-FL int         cnoop(void *v);
+FL int         c_noop(void *v);
 
 /* Remove mailbox */
-FL int         cremove(void *v);
+FL int         c_remove(void *v);
 
 /* Rename mailbox */
-FL int         crename(void *v);
+FL int         c_rename(void *v);
 
 /*
  * collect.c
@@ -551,10 +551,10 @@ FL void        dot_unlock(char const *fname);
  */
 
 /* Edit a message list */
-FL int         editor(void *v);
+FL int         c_editor(void *v);
 
 /* Invoke the visual editor on a message list */
-FL int         visual(void *v);
+FL int         c_visual(void *v);
 
 /* Run an editor on the file at fp of size bytes, and return a new file.
  * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
@@ -700,7 +700,7 @@ FL void        load(char const *name);
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * *sourcing* so that others will realize that they are no longer reading from
  * a tty (in all probability) */
-FL int         csource(void *v);
+FL int         c_source(void *v);
 
 /* Pop the current input back to the previous level.  Update the *sourcing*
  * flag as appropriate */
@@ -832,7 +832,7 @@ FL void        imap_getheaders(int bot, int top);
 FL void        imap_quit(void);
 FL enum okay   imap_undelete(struct message *m, int n);
 FL enum okay   imap_unread(struct message *m, int n);
-FL int         imap_imap(void *vp);
+FL int         c_imap_imap(void *vp);
 FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
 FL void        imap_folders(const char *name, int strip);
@@ -842,19 +842,19 @@ FL int         imap_thisaccount(const char *cp);
 FL enum okay   imap_remove(const char *name);
 FL enum okay   imap_rename(const char *old, const char *new);
 FL enum okay   imap_dequeue(struct mailbox *mp, FILE *fp);
-FL int         cconnect(void *vp);
-FL int         cdisconnect(void *vp);
-FL int         ccache(void *vp);
+FL int         c_connect(void *vp);
+FL int         c_disconnect(void *vp);
+FL int         c_cache(void *vp);
 FL int         disconnected(const char *file);
 FL void        transflags(struct message *omessage, long omsgCount,
                   int transparent);
 FL time_t      imap_read_date_time(const char *cp);
 FL const char * imap_make_date_time(time_t t);
 #else
-# define imap_imap               ccmdnotsupp
-# define cconnect                ccmdnotsupp
-# define cdisconnect             ccmdnotsupp
-# define ccache                  ccmdnotsupp
+# define c_imap_imap             c_cmdnotsupp
+# define c_connect               c_cmdnotsupp
+# define c_disconnect            c_cmdnotsupp
+# define c_cache                 c_cmdnotsupp
 #endif
 
 FL time_t      imap_read_date(char const *cp);
@@ -960,7 +960,7 @@ FL int         first(int f, int m);
 /* Mark the named message by setting its mark bit */
 FL void        mark(int mesg, int f);
 
-/* lzw.c */
+/* lzw.c TODO drop */
 #ifdef HAVE_IMAP
 FL int         zwrite(void *cookie, const char *wbp, int num);
 FL int         zfree(void *cookie);
@@ -1179,7 +1179,7 @@ FL enum okay   ssl_open(char const *server, struct sock *sp, char const *uhp);
 FL void        ssl_gen_err(char const *fmt, ...);
 
 /*  */
-FL int         cverify(void *vp);
+FL int         c_verify(void *vp);
 
 /*  */
 FL FILE *      smime_sign(FILE *ip, struct header *);
@@ -1194,7 +1194,7 @@ FL struct message * smime_decrypt(struct message *m, char const *to,
 FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 
 #else /* HAVE_OPENSSL */
-# define cverify                 ccmdnotsupp
+# define c_verify                c_cmdnotsupp
 #endif
 
 /*
@@ -1286,7 +1286,7 @@ FL bool_t      wait_child(int pid, int *wait_status);
  */
 
 /* The `quit' command */
-FL int         quitcmd(void *v);
+FL int         c_quit(void *v);
 
 /* Save all of the undetermined messages at the top of "mbox".  Save all
  * untouched messages back in the system mailbox.  Remove the system mailbox,
@@ -1332,8 +1332,8 @@ FL int         mail(struct name *to, struct name *cc, struct name *bcc,
                   int recipient_record);
 
 /* `mail' and `Mail' commands, respectively */
-FL int         csendmail(void *v);
-FL int         cSendmail(void *v);
+FL int         c_sendmail(void *v);
+FL int         c_Sendmail(void *v);
 
 /* Mail a message on standard input to the people indicated in the passed
  * header.  (Internal interface) */
@@ -1374,19 +1374,19 @@ FL int         smtp_mta(char *server, struct name *to, FILE *fi,
 
 #ifdef HAVE_SPAM
 /* Direct mappings of the various spam* commands */
-FL int         cspam_clear(void *v);
-FL int         cspam_set(void *v);
-FL int         cspam_forget(void *v);
-FL int         cspam_ham(void *v);
-FL int         cspam_rate(void *v);
-FL int         cspam_spam(void *v);
+FL int         c_spam_clear(void *v);
+FL int         c_spam_set(void *v);
+FL int         c_spam_forget(void *v);
+FL int         c_spam_ham(void *v);
+FL int         c_spam_rate(void *v);
+FL int         c_spam_spam(void *v);
 #else
-# define cspam_clear             ccmdnotsupp
-# define cspam_set               ccmdnotsupp
-# define cspam_forget            ccmdnotsupp
-# define cspam_ham               ccmdnotsupp
-# define cspam_rate              ccmdnotsupp
-# define cspam_spam              ccmdnotsupp
+# define c_spam_clear            c_cmdnotsupp
+# define c_spam_set              c_cmdnotsupp
+# define c_spam_forget           c_cmdnotsupp
+# define c_spam_ham              c_cmdnotsupp
+# define c_spam_rate             c_cmdnotsupp
+# define c_spam_spam             c_cmdnotsupp
 #endif
 
 /*
@@ -1418,12 +1418,12 @@ FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
                      FILE *bp);
 
 /*  */
-FL int         ccertsave(void *v);
+FL int         c_certsave(void *v);
 
 /*  */
 FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
 #else /* HAVE_SSL */
-# define ccertsave               ccmdnotsupp
+# define c_certsave              c_cmdnotsupp
 #endif
 
 /*
@@ -1626,10 +1626,10 @@ FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
  */
 
 /*  */
-FL int         thread(void *vp);
+FL int         c_thread(void *vp);
 
 /*  */
-FL int         unthread(void *vp);
+FL int         c_unthread(void *vp);
 
 /*  */
 FL struct message * next_in_thread(struct message *mp);
@@ -1638,11 +1638,11 @@ FL struct message * this_in_thread(struct message *mp, long n);
 
 /* Sorted mode is internally just a variant of threaded mode with all m_parent
  * and m_child links being NULL */
-FL int         sort(void *vp);
+FL int         c_sort(void *vp);
 
 /*  */
-FL int         ccollapse(void *v);
-FL int         cuncollapse(void *v);
+FL int         c_collapse(void *v);
+FL int         c_uncollapse(void *v);
 
 /*  */
 FL void        uncollapse1(struct message *mp, int always);

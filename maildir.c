@@ -747,7 +747,7 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
    setmsize(msgCount);
    if (nmail && mb.mb_sorted && msgCount > omsgCount) {
       mb.mb_threaded = 0;
-      sort((void*)-1);
+      c_sort((void*)-1);
    }
    if (!nmail)
       sawcom = FAL0;

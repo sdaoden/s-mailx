@@ -377,7 +377,7 @@ jleave:
 }
 
 FL int
-ccertsave(void *v)
+c_certsave(void *v)
 {
    int *ip, *msgvec, val;
    char *file = NULL, *str = v;
