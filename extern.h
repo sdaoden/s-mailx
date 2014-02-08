@@ -549,7 +549,7 @@ FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
  * dotlock.c
  */
 
-FL int         fcntl_lock(int fd, int type);
+FL int         fcntl_lock(int fd, enum flock_type ft);
 FL int         dot_lock(char const *fname, int fd, int pollinterval, FILE *fp,
                   char const *msg);
 FL void        dot_unlock(char const *fname);

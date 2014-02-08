@@ -44,7 +44,6 @@
 EMPTY_FILE(imap_cache)
 #ifdef HAVE_IMAP
 # include <dirent.h>
-# include <fcntl.h>
 
 static char *           encname(struct mailbox *mp, const char *name, int same,
                            const char *box);
@@ -158,7 +157,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
       goto jleave;
 
-   (void)fcntl_lock(fileno(fp), F_RDLCK);
+   fcntl_lock(fileno(fp), FLOCK_READ);
    if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
          (unsigned long*)&xtime, &xlines) < 4)
       goto jfail;
@@ -291,9 +290,9 @@ putcache(struct mailbox *mp, struct message *m)
    if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
       if ((obuf = Fopen(name, "w")) == NULL)
          goto jleave;
-      (void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
+      fcntl_lock(fileno(obuf), FLOCK_WRITE); /* XXX err hdl */
    } else {
-      (void)fcntl_lock(fileno(obuf), F_WRLCK); /* XXX err hdl */
+      fcntl_lock(fileno(obuf), FLOCK_READ); /* XXX err hdl */
       if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
             (unsigned long*)&otime, &olines) >= 4 && ob != '\0' &&
             (ob == 'B' || (ob == 'H' && c != 'B'))) {
@@ -379,7 +378,7 @@ initcache(struct mailbox *mp)
    if (cwget(&cw) == STOP)
       goto jleave;
    if ((uvfp = Fopen(uvname, "r+")) == NULL ||
-         (fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
+         (fcntl_lock(fileno(uvfp), FLOCK_READ), 0) ||
          fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
          goto jout;
@@ -387,7 +386,7 @@ initcache(struct mailbox *mp)
       fflush(uvfp);
       rewind(uvfp);
    }
-   fcntl_lock(fileno(uvfp), F_WRLCK);
+   fcntl_lock(fileno(uvfp), FLOCK_WRITE);
    fprintf(uvfp, "%lu\n", mp->mb_uidvalidity);
    if (ferror(uvfp) || Fclose(uvfp) != 0) {
       unlink(uvname);
@@ -747,7 +746,7 @@ cached_uidvalidity(struct mailbox *mp)
       goto jleave;
    }
    if ((uvfp = Fopen(uvname, "r")) == NULL ||
-         (fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
+         (fcntl_lock(fileno(uvfp), FLOCK_READ), 0) ||
          fscanf(uvfp, "%lu", &uv) != 1)
       uv = 0;
    if (uvfp != NULL)
@@ -767,7 +766,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
    if ((fp = Fopen(name, mode)) != NULL)
-      fcntl_lock(fileno(fp), F_WRLCK);
+      fcntl_lock(fileno(fp), FLOCK_WRITE);
    if (xname)
       *xname = name;
 jleave:
@@ -840,7 +839,7 @@ dequeue1(struct mailbox *mp)
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = Fopen(uvname, "r")) == NULL ||
-            (fcntl_lock(fileno(uvfp), F_RDLCK), 0) ||
+            (fcntl_lock(fileno(uvfp), FLOCK_READ), 0) ||
             fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
          fprintf(stderr, "Unique identifiers for \"%s\" are out of date. "
             "Cannot commit IMAP commands.\n", mp->mb_imap_mailbox);

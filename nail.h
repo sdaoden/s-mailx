@@ -505,6 +505,12 @@ enum fexp_mode {
    FEXP_MULTIOK   = 1<<4      /* Expansion to many entries is ok */
 };
 
+enum flock_type {
+   FLOCK_READ,
+   FLOCK_WRITE,
+   FLOCK_UNLOCK
+};
+
 /* <0 means "stop" unless *prompt* extensions are enabled. */
 enum prompt_exp {
    PROMPT_STOP    = -1,       /* \c */

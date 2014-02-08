@@ -200,13 +200,20 @@ jbad:
 }
 
 FL int
-fcntl_lock(int fd, int ltype) /* TODO check callees for EINTR etc.!!! */
+fcntl_lock(int fd, enum flock_type ft) /* TODO check callees */
 {
    struct flock flp;
    int rv;
    NYD_ENTER;
 
-   flp.l_type = ltype;
+   switch (ft) {
+   case FLOCK_READ:     rv = F_RDLCK;  break;
+   case FLOCK_WRITE:    rv = F_WRLCK;  break;
+   default:
+   case FLOCK_UNLOCK:   rv = F_UNLCK;  break;
+   }
+
+   flp.l_type = rv;
    flp.l_start = 0;
    flp.l_whence = SEEK_SET;
    flp.l_len = 0;
@@ -249,7 +256,7 @@ dot_lock(char const *fname, int fd, int pollival, FILE *fp, char const *msg)
          goto jleave;
       assert(rv == -1);
 
-      fcntl_lock(fd, F_UNLCK);
+      fcntl_lock(fd, FLOCK_UNLOCK);
       if (olderrno != EEXIST)
          goto jleave;
 
@@ -263,7 +270,7 @@ dot_lock(char const *fname, int fd, int pollival, FILE *fp, char const *msg)
          }
          sleep(pollival);
       }
-      fcntl_lock(fd, F_WRLCK);
+      fcntl_lock(fd, FLOCK_WRITE);
    }
    fprintf(stderr, tr(71,
       "%s seems a stale lock? Need to be removed by hand?\n"), path);
