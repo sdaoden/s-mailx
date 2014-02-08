@@ -935,14 +935,10 @@ sstpcpy(char *dst, char const *src)
 FL char *
 (sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
 {
-   char *dp = NULL;
+   char *dp;
    NYD_ENTER;
 
-   if (cp != NULL) {
-      size_t l = strlen(cp) + 1;
-      dp = (smalloc)(l SMALLOC_DEBUG_ARGSCALL);
-      memcpy(dp, cp, l);
-   }
+   dp = (cp == NULL) ? NULL : (sbufdup)(cp, strlen(cp) SMALLOC_DEBUG_ARGSCALL);
    NYD_LEAVE;
    return dp;
 }
