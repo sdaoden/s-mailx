@@ -934,29 +934,8 @@ jrestart:
     * execute it, otherwise, check the state of cond */
 jexec:
    if (!(com->argtype & ARG_F)) {
-      switch (cond_state) {
-      case COND_RCV:
-         if (options & OPT_SENDMODE)
-               goto jleave0;
-         break;
-      case COND_SEND:
-            if (!(options & OPT_SENDMODE))
-               goto jleave0;
-         break;
-      case COND_TERM:
-            if (!(options & OPT_TTYIN))
-               goto jleave0;
-         break;
-      case COND_NOTERM:
-            if (options & OPT_TTYIN)
-               goto jleave0;
-         break;
-      case COND_ANY:
-      case COND_EXEC:
-         break;
-      case COND_NOEXEC:
+      if (condstack_isskip())
          goto jleave0;
-      }
    }
 
    /* Process the arguments to the command, depending on the type he expects.

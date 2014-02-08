@@ -42,11 +42,11 @@ $set 1
 39 Cannot "preserve" in edit mode\n
 40 %d: %d/%u\n
 41 Non-null variable name required\n
-42 Illegal nested "if"\n
+42 --DELETED--
 43 Unrecognized if-keyword: "%s"\n
-44 "Else" without matching "if"\n
-45 Mail's idea of conditions is screwed up\n
-46 "Endif" without matching "if"\n
+44 "else" without matching "if"\n
+45 --DELETED--
+46 "endif" without matching "if"\n
 47 No recipient specified.
 48 No applicable messages.
 49 Cannot call hook for folder "%s": Macro "%s" does not exist.\n

@@ -112,6 +112,102 @@ t_behave() {
    # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
    # TODO for this to be testable we need a way to echo a variable
    # TODO or to force echo of the prompt
+
+   __behave_ifelse
+}
+
+__behave_ifelse() {
+   # Nestable conditions test
+   ${rm} -f "${MBOX}"
+   cat <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
+		if 0
+		   echo 1.err
+		else
+		   echo 1.ok
+		endif
+		if 1
+		   echo 2.ok
+		else
+		   echo 2.err
+		endif
+		if $dietcurd
+		   echo 3.err
+		else
+		   echo 3.ok
+		endif
+		set dietcurd=yoho
+		if $dietcurd
+		   echo 4.ok
+		else
+		   echo 4.err
+		endif
+		if $dietcurd == 'yoho'
+		   echo 5.ok
+		else
+		   echo 5.err
+		endif
+		if $dietcurd != 'yoho'
+		   echo 6.err
+		else
+		   echo 6.ok
+		endif
+		# Nesting
+		if 0
+		   echo 7.err1
+		   if 1
+		      echo 7.err2
+		      if 1
+		         echo 7.err3
+		      else
+		         echo 7.err4
+		      endif
+		      echo 7.err5
+		   endif
+		   echo 7.err6
+		else
+		   echo 7.ok7
+		   if 1
+		      echo 7.ok8
+		      if 0
+		         echo 7.err9
+		      else
+		         echo 7.ok9
+		      endif
+		      echo 7.ok10
+		   else
+		      echo 7.err11
+		      if 1
+		         echo 7.err12
+		      else
+		         echo 7.err13
+		      endif
+		   endif
+		   echo 7.ok14
+		endif
+		if r
+		   echo 8.ok1
+		   if R
+		      echo 8.ok2
+		   else
+		      echo 8.err2
+		   endif
+		   echo 8.ok3
+		else
+		   echo 8.err1
+		endif
+		if s
+		   echo 9.err1
+		else
+		   echo 9.ok1
+		   if S
+		      echo 9.err2
+		   else
+		      echo 9.ok2
+		   endif
+		   echo 9.ok3
+		endif
+	__EOT
+   cksum_test behave:2 "${MBOX}" '1909382116 98'
 }
 
 # t_content()

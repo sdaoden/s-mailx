@@ -1217,18 +1217,6 @@ enum ltoken {
 
 #define REGDEP          2     /* Maximum regret depth. */
 
-/* Constants for conditional commands.  These describe whether we should be
- * executing stuff or not */
-enum condition {
-   COND_ANY       = 0,        /* Execute in send or receive mode */
-   COND_RCV       = 1,        /* Execute in receive mode only */
-   COND_SEND      = 2,        /* Execute in send mode only */
-   COND_TERM      = 3,        /* Execute only if stdin is a tty */
-   COND_NOTERM    = 4,        /* Execute only if stdin not tty */
-   COND_EXEC      = 5,        /* Do execute this block */
-   COND_NOEXEC    = 6         /* Don't execute this block */
-};
-
 /* For the 'shortcut' and 'unshortcut' functionality */
 struct shortcut {
    struct shortcut *sh_next;  /* next shortcut in list */
@@ -1418,7 +1406,6 @@ VL int         noreset;             /* String resets suspended */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
-VL enum condition cond_state;          /* State of conditional exc. */
 VL struct mailbox mb;                  /* Current mailbox */
 VL int            image;               /* File descriptor for msg image */
 VL char           mailname[PATH_MAX];  /* Name of current file */

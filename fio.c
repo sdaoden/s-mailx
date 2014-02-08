@@ -71,7 +71,7 @@
 
 struct fio_stack {
    FILE           *s_file;    /* File we were in. */
-   enum condition s_cond;     /* Saved state of conditionals */
+   void           *s_cond;    /* Saved state of conditional stack */
    int            s_loading;  /* Loading .mailrc, etc. */
 };
 
@@ -1449,11 +1449,10 @@ c_source(void *v)
    }
 
    _fio_stack[_fio_stack_size].s_file = _fio_input;
-   _fio_stack[_fio_stack_size].s_cond = cond_state;
+   _fio_stack[_fio_stack_size].s_cond = condstack_release();
    _fio_stack[_fio_stack_size].s_loading = loading;
    ++_fio_stack_size;
    loading = FAL0;
-   cond_state = COND_ANY;
    _fio_input = fi;
    sourcing = TRU1;
    rv = 0;
@@ -1475,11 +1474,10 @@ unstack(void)
    }
 
    Fclose(_fio_input);
-   if (cond_state != COND_ANY)
-      fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
 
    --_fio_stack_size;
-   cond_state = _fio_stack[_fio_stack_size].s_cond;
+   if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
+      fprintf(stderr, tr(5, "Unmatched \"if\"\n"));
    loading = _fio_stack[_fio_stack_size].s_loading;
    _fio_input = _fio_stack[_fio_stack_size].s_file;
    if (_fio_stack_size == 0)

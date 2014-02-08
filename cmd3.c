@@ -41,8 +41,17 @@
 # include "nail.h"
 #endif
 
-static char *  _bang_buf;
-static size_t  _bang_size;
+struct cond_stack {
+   struct cond_stack *c_outer;
+   bool_t            c_noop;  /* Outer stack !c_go, entirely no-op */
+   bool_t            c_go;    /* Green light */
+   bool_t            c_else;  /* In `else' clause */
+   ui8_t             __dummy[5];
+};
+
+static struct cond_stack   *_cond_stack;
+static char *              _bang_buf;
+static size_t              _bang_size;
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *     _reedit(char *subj);
@@ -1101,14 +1110,17 @@ jleave:
 FL int
 c_if(void *v)
 {
+   struct cond_stack *csp;
    int rv = 1;
    char **argv = v, *cp, *op;
    NYD_ENTER;
 
-   if (cond_state != COND_ANY) {
-      fprintf(stderr, tr(42, "Illegal nested \"if\"\n"));
-      goto jleave;
-   }
+   csp = smalloc(sizeof *csp);
+   csp->c_outer = _cond_stack;
+   csp->c_noop = condstack_isskip();
+   csp->c_go = TRU1;
+   csp->c_else = FAL0;
+   _cond_stack = csp;
 
    cp = argv[0];
    if (*cp != '$' && argv[1] != NULL) {
@@ -1116,25 +1128,21 @@ jesyn:
       fprintf(stderr, tr(528, "Invalid conditional expression \"%s %s %s\"\n"),
          argv[0], (argv[1] != NULL ? argv[1] : ""),
          (argv[2] != NULL ? argv[2] : ""));
-      cond_state = COND_ANY;
       goto jleave;
    }
 
    switch (*cp) {
    case '0':
-      cond_state = COND_NOEXEC;
-      break;
-   case '1':
-      cond_state = COND_EXEC;
+      csp->c_go = FAL0;
       break;
    case 'R': case 'r':
-      cond_state = COND_RCV;
+      csp->c_go = !(options & OPT_SENDMODE);
       break;
    case 'S': case 's':
-      cond_state = COND_SEND;
+      csp->c_go = ((options & OPT_SENDMODE) != 0);
       break;
    case 'T': case 't':
-      cond_state = COND_TERM;
+      csp->c_go = ((options & OPT_TTYIN) != 0);
       break;
    case '$':
       /* Look up the value in question, we need it anyway */
@@ -1142,7 +1150,7 @@ jesyn:
 
       /* Single argument, "implicit boolean" form? */
       if ((op = argv[1]) == NULL) {
-         cond_state = (v == NULL) ? COND_NOEXEC : COND_EXEC;
+         csp->c_go = (v != NULL);
          break;
       }
 
@@ -1157,8 +1165,7 @@ jesyn:
       switch (op[0]) {
       case '!':
       case '=':
-         cond_state = (((op[0] == '!') ^ (v == NULL))
-               ? COND_NOEXEC : COND_EXEC);
+         csp->c_go = ((op[0] == '=') ^ (v == NULL));
          break;
       default:
          goto jesyn;
@@ -1166,7 +1173,8 @@ jesyn:
       break;
    default:
       fprintf(stderr, tr(43, "Unrecognized if-keyword: \"%s\"\n"), cp);
-      cond_state = COND_ANY;
+   case '1':
+      csp->c_go = TRU1;
       goto jleave;
    }
    rv = 0;
@@ -1178,36 +1186,18 @@ jleave:
 FL int
 c_else(void *v)
 {
-   int rv = 1;
+   int rv;
    NYD_ENTER;
    UNUSED(v);
 
-   switch (cond_state) {
-   case COND_ANY:
-      fprintf(stderr, tr(44, "\"Else\" without matching \"if\"\n"));
-      goto jleave;
-   case COND_SEND:
-      cond_state = COND_RCV;
-      break;
-   case COND_RCV:
-      cond_state = COND_SEND;
-      break;
-   case COND_TERM:
-      cond_state = COND_NOTERM;
-      break;
-   case COND_EXEC:
-      cond_state = COND_NOEXEC;
-      break;
-   case COND_NOEXEC:
-      cond_state = COND_EXEC;
-      break;
-   default:
-      fprintf(stderr, tr(45, "Mail's idea of conditions is screwed up\n"));
-      cond_state = COND_ANY;
-      goto jleave;
+   if (_cond_stack == NULL || _cond_stack->c_else) {
+      fprintf(stderr, tr(44, "\"else\" without matching \"if\"\n"));
+      rv = 1;
+   } else {
+      _cond_stack->c_go = !_cond_stack->c_go;
+      _cond_stack->c_else = TRU1;
+      rv = 0;
    }
-   rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -1215,17 +1205,60 @@ jleave:
 FL int
 c_endif(void *v)
 {
+   struct cond_stack *csp;
    int rv;
    NYD_ENTER;
    UNUSED(v);
 
-   if (cond_state == COND_ANY) {
-      fprintf(stderr, tr(46, "\"Endif\" without matching \"if\"\n"));
+   if ((csp = _cond_stack) == NULL) {
+      fprintf(stderr, tr(46, "\"endif\" without matching \"if\"\n"));
       rv = 1;
    } else {
-      cond_state = COND_ANY;
+      _cond_stack = csp->c_outer;
+      free(csp);
       rv = 0;
    }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+condstack_isskip(void)
+{
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = (_cond_stack != NULL && (_cond_stack->c_noop || !_cond_stack->c_go));
+   NYD_LEAVE;
+   return rv;
+}
+
+FL void *
+condstack_release(void)
+{
+   void *rv;
+   NYD_ENTER;
+
+   rv = _cond_stack;
+   _cond_stack = NULL;
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+condstack_take(void *self)
+{
+   struct cond_stack *csp;
+   bool_t rv;
+   NYD_ENTER;
+
+   if (!(rv = ((csp = _cond_stack) == NULL)))
+      do {
+         _cond_stack = csp->c_outer;
+         free(csp);
+      } while ((csp = _cond_stack) != NULL);
+
+   _cond_stack = self;
    NYD_LEAVE;
    return rv;
 }
