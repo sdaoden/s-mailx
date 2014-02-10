@@ -15,6 +15,17 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.5.2: fix 3: 2014-02-10
+--------------------------
+
+- s-nail-14_5_2-maildir.patch
+  maildir folders would have caused problems in environments which
+  provide the realpath(3) function: beside a "cannot canonicalize PATH"
+  warning the finally used path would be wrong (`test3' would end up as
+  `test3/test3'), so that any further access would try to use the wrong
+  path.  Please read the description of this patch and/or the commit
+  logs of the commits [1c2563b] and [13f325f].
+
 v14.5.2: fix 2: 2014-02-05
 --------------------------
 
