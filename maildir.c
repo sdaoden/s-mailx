@@ -240,16 +240,15 @@ _maildir_append(char const *name, char const *sub, char const *fn)
       }
    }
 
-   if (msgCount + 1 >= msgspace) {
-      int const chunk = 64;
-      message = srealloc(message, (msgspace += chunk) * sizeof *message);
-      memset(&message[msgCount], 0, chunk * sizeof *message);
-   }
+   /* Ensure room (and a NULLified last entry) */
+   ++msgCount;
+   message_append(NULL);
+   --msgCount;
 
    if (fn == NULL || sub == NULL)
       goto jleave;
 
-   m = &message[msgCount++];
+   m = message + msgCount++;
    i = strlen(fn);
    m->m_maildir_file = smalloc((sz = strlen(sub)) + i + 2);
    memcpy(m->m_maildir_file, sub, sz);

@@ -1290,12 +1290,7 @@ initbox(char const *name)
    }
    Ftmp_release(&tempMesg);
 
-   msgCount = 0;
-   if (message) {
-      free(message);
-      message = NULL;
-      msgspace = 0;
-   }
+   message_reset();
    mb.mb_threaded = 0;
    if (mb.mb_sorted != NULL) {
       free(mb.mb_sorted);

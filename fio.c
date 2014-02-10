@@ -75,6 +75,7 @@ struct fio_stack {
    int            s_loading;  /* Loading .mailrc, etc. */
 };
 
+static size_t           _message_space;   /* Slots in ::message */
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
 static size_t           _fio_stack_size;
 static FILE *           _fio_input;
@@ -97,9 +98,6 @@ static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 /* Take the data out of the passed ghost file and toss it into a dynamically
  * allocated message structure */
 static void       makemessage(void);
-
-/* Append the passed message descriptor onto the message structure */
-static void       _fio_append(struct message *mp);
 
 static enum okay  get_header(struct message *mp);
 
@@ -329,21 +327,10 @@ makemessage(void)
 {
    NYD_ENTER;
    if (msgCount == 0)
-      _fio_append(NULL);
+      message_append(NULL);
    setdot(message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
-   NYD_LEAVE;
-}
-
-static void
-_fio_append(struct message *mp)
-{
-   NYD_ENTER;
-   if (msgCount + 1 >= msgspace)
-      message = srealloc(message, (msgspace += 64) * sizeof *message);
-   if (msgCount > 0)
-      message[msgCount - 1] = *mp;
    NYD_LEAVE;
 }
 
@@ -588,25 +575,25 @@ readstr_input(char const *prompt, char const *string)
 FL void
 setptr(FILE *ibuf, off_t offset)
 {
-   struct message this;
+   struct message self;
    char *cp, *linebuf = NULL;
    char const *cp2;
-   int c, maybe = 1, inhead = 0, thiscnt = 0;
+   int c, maybe = 1, inhead = 0, selfcnt = 0;
    size_t linesize = 0, filesize, cnt;
    NYD_ENTER;
 
-   memset(&this, 0, sizeof this);
-   this.m_flag = MUSED | MNEW | MNEWEST;
+   memset(&self, 0, sizeof self);
+   self.m_flag = MUSED | MNEW | MNEWEST;
    filesize = mailsize - offset;
    offset = ftell(mb.mb_otf);
 
    for (;;) {
       if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
-         this.m_xsize = this.m_size;
-         this.m_xlines = this.m_lines;
-         this.m_have = HAVE_HEADER | HAVE_BODY;
-         if (thiscnt > 0)
-            _fio_append(&this);
+         self.m_xsize = self.m_size;
+         self.m_xlines = self.m_lines;
+         self.m_have = HAVE_HEADER | HAVE_BODY;
+         if (selfcnt > 0)
+            message_append(&self);
          makemessage();
          if (linebuf)
             free(linebuf);
@@ -631,18 +618,18 @@ setptr(FILE *ibuf, off_t offset)
       if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt)) {
          /* TODO char date[FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
-          * TODO this.m_time = 10000; */
-         this.m_xsize = this.m_size;
-         this.m_xlines = this.m_lines;
-         this.m_have = HAVE_HEADER | HAVE_BODY;
-         if (thiscnt++ > 0)
-            _fio_append(&this);
+          * TODO self.m_time = 10000; */
+         self.m_xsize = self.m_size;
+         self.m_xlines = self.m_lines;
+         self.m_have = HAVE_HEADER | HAVE_BODY;
+         if (selfcnt++ > 0)
+            message_append(&self);
          msgCount++;
-         this.m_flag = MUSED | MNEW | MNEWEST;
-         this.m_size = 0;
-         this.m_lines = 0;
-         this.m_block = mailx_blockof(offset);
-         this.m_offset = mailx_offsetof(offset);
+         self.m_flag = MUSED | MNEW | MNEWEST;
+         self.m_size = 0;
+         self.m_lines = 0;
+         self.m_block = mailx_blockof(offset);
+         self.m_offset = mailx_offsetof(offset);
          inhead = 1;
       } else if (linebuf[0] == 0) {
          inhead = 0;
@@ -655,9 +642,9 @@ setptr(FILE *ibuf, off_t offset)
                   break;
                while ((c = *cp++) != '\0')
                   if (c == 'R')
-                     this.m_flag |= MREAD;
+                     self.m_flag |= MREAD;
                   else if (c == 'O')
-                     this.m_flag &= ~MNEW;
+                     self.m_flag &= ~MNEW;
                break;
             }
             if (*cp != c && *cp != upperconv(c))
@@ -671,11 +658,11 @@ setptr(FILE *ibuf, off_t offset)
                   break;
                while ((c = *cp++) != '\0')
                   if (c == 'F')
-                     this.m_flag |= MFLAGGED;
+                     self.m_flag |= MFLAGGED;
                   else if (c == 'A')
-                     this.m_flag |= MANSWERED;
+                     self.m_flag |= MANSWERED;
                   else if (c == 'T')
-                     this.m_flag |= MDRAFTED;
+                     self.m_flag |= MDRAFTED;
                break;
             }
             if (*cp != c && *cp != upperconv(c))
@@ -683,8 +670,8 @@ setptr(FILE *ibuf, off_t offset)
          }
       }
       offset += cnt;
-      this.m_size += cnt;
-      this.m_lines++;
+      self.m_size += cnt;
+      ++self.m_lines;
       maybe = linebuf[0] == 0;
    }
    NYD_LEAVE;
@@ -735,6 +722,38 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+FL void
+message_reset(void)
+{
+   NYD_ENTER;
+   if (message != NULL) {
+      free(message);
+      message = NULL;
+   }
+   msgCount = 0;
+   _message_space = 0;
+   NYD_LEAVE;
+}
+
+FL void
+message_append(struct message *mp)
+{
+   NYD_ENTER;
+   if (UICMP(z, msgCount + 1, >=, _message_space)) {
+      /* XXX remove _message_space magics (or use s_Vector) */
+      _message_space = (_message_space >= 128 && _message_space <= 1000000)
+            ? _message_space << 1 : _message_space + 64;
+      message = srealloc(message, _message_space * sizeof *message);
+   }
+   if (msgCount > 0) {
+      if (mp != NULL)
+         message[msgCount - 1] = *mp;
+      else
+         memset(message + msgCount - 1, 0, sizeof *message);
+   }
+   NYD_LEAVE;
 }
 
 FL struct message *

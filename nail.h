@@ -1424,7 +1424,6 @@ VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
-VL int            msgspace;            /* Number of allocated struct m */
 
 VL struct grouphead  *groups[HSHSIZE]; /* Pointer to active groups */
 VL struct ignoretab  ignore[2];        /* ignored and retained fields

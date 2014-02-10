@@ -645,6 +645,13 @@ FL int         putline(FILE *obuf, char *linebuf, size_t count);
 FL FILE *      setinput(struct mailbox *mp, struct message *m,
                   enum needspec need);
 
+/* Reset (free) the global message array */
+FL void        message_reset(void);
+
+/* Append the passed message descriptor onto the message array; if mp is NULL,
+ * NULLify the entry at &[msgCount-1] */
+FL void        message_append(struct message *mp);
+
 FL struct message * setdot(struct message *mp);
 
 /* Delete a file, but only if the file is a plain file */
