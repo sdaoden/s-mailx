@@ -20,7 +20,7 @@ And GMANE.org added s-nail-users@ to their archive [9] -- thank you!
   [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
   [2] <http://sourceforge.net/p/s-nail/code/>
   [3] <https://sourceforge.net/projects/s-nail/files/?source=navbar>
-  [4] <http://downloads.sourceforge.net/project/s-nail/s-nail-MAJ_MIN_SUB.tar.?z>
+  [4] <https://downloads.sourceforge.net/project/s-nail/s-nail-MAJ_MIN_SUB.tar.?z>
   [5] <https://sourceforge.net/projects/s-nail/>
   [6] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
   [7] <s-nail-users@lists.sourceforge.net>
@@ -28,7 +28,7 @@ And GMANE.org added s-nail-users@ to their archive [9] -- thank you!
   [9] <news://news.gmane.org/gmane.mail.s-nail.user>
 
 See the file INSTALL for installation notes and NEWS for release update
-information.  The S-nail(1) git(1) repository consists of four branches:
+information.  The S-nail(1) git(1) repository consists of five branches:
 
 - master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
@@ -46,6 +46,11 @@ information.  The S-nail(1) git(1) repository consists of four branches:
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
+
+- patches: this branch only contains the official bugfix patches.
+  Official in that they have been sent to the ML and have been uploaded
+  to the download area.
+  This branch was added after the release of S-nail v14.5.2.
 
 To clone only the [master] branch, which is what a normal user most
 likely is interested in, can be accomplished like that:
