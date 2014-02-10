@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Maildir folder support.
+ *@ Maildir folder support. FIXME rewrite - why do we chdir(2)??
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
@@ -101,75 +101,87 @@ jleave:	;
 FL int
 maildir_setfile(char const * volatile name, int nmail, int isedit)
 {
-	sighandler_type	volatile saveint;
-	struct cw	cw;
-	int	i = -1, omsgCount;
+   sighandler_type volatile saveint;
+   struct cw cw;
+   int i = -1, omsgCount;
 
-	(void)&saveint;
-	(void)&i;
-	omsgCount = msgCount;
-	if (cwget(&cw) == STOP) {
-		fprintf(stderr, "Fatal: Cannot open current directory\n");
-		return -1;
-	}
-	if (!nmail)
-		quit();
-	saveint = safe_signal(SIGINT, SIG_IGN);
-	if (chdir(name) < 0) {
-		fprintf(stderr, "Cannot change directory to \"%s\".\n", name);
-		cwrelse(&cw);
-		return -1;
-	}
-	if (!nmail) {
-		edit = (isedit != 0);
-		if (mb.mb_itf) {
-			fclose(mb.mb_itf);
-			mb.mb_itf = NULL;
-		}
-		if (mb.mb_otf) {
-			fclose(mb.mb_otf);
-			mb.mb_otf = NULL;
-		}
-		initbox(name);
-		mb.mb_type = MB_MAILDIR;
-	}
-	_maildir_table = NULL;
-	if (sigsetjmp(_maildir_jmp, 1) == 0) {
-		if (nmail)
-			mktable();
-		if (saveint != SIG_IGN)
-			safe_signal(SIGINT, maildircatch);
-		i = maildir_setfile1(name, nmail, omsgCount);
-	}
-	if (nmail && _maildir_table != NULL)
-		free(_maildir_table);
-	safe_signal(SIGINT, saveint);
-	if (i < 0) {
-		mb.mb_type = MB_VOID;
-		*mailname = '\0';
-		msgCount = 0;
-	}
-	if (cwret(&cw) == STOP) {
-		fputs("Fatal: Cannot change back to current directory.\n",
-				stderr);
-		abort();
-	}
-	cwrelse(&cw);
-	setmsize(msgCount);
-	if (nmail && mb.mb_sorted && msgCount > omsgCount) {
-		mb.mb_threaded = 0;
-		sort((void *)-1);
-	}
-	if (!nmail)
-		sawcom = FAL0;
-	if (!nmail && !edit && msgCount == 0) {
-		if (mb.mb_type == MB_MAILDIR && !ok_blook(emptystart))
-			fprintf(stderr, "No mail at %s\n", name);
-		return 1;
-	}
-	if (nmail && msgCount > omsgCount)
-		newmailinfo(omsgCount);
-	return 0;
+   /* TODO ince we have a VOID box... */
+   omsgCount = msgCount;
+   if (cwget(&cw) == STOP) {
+      alert("Cannot open current directory");
+      goto jleave;
+   }
+
+   if (!nmail)
+      quit();
+
+   saveint = safe_signal(SIGINT, SIG_IGN);
+
+   if (!nmail) {
+      edit = (isedit != 0);
+      if (mb.mb_itf) {
+         fclose(mb.mb_itf);
+         mb.mb_itf = NULL;
+      }
+      if (mb.mb_otf) {
+         fclose(mb.mb_otf);
+         mb.mb_otf = NULL;
+      }
+      initbox(name);
+      mb.mb_type = MB_MAILDIR;
+   }
+
+   if (chdir(name) < 0) {
+      fprintf(stderr, "Cannot change directory to \"%s\".\n", name);/*TODO tr*/
+      mb.mb_type = MB_VOID;
+      *mailname = '\0';
+      msgCount = 0;
+      cwrelse(&cw);
+      safe_signal(SIGINT, saveint);
+      goto jleave;
+   }
+
+   _maildir_table = NULL;
+   if (sigsetjmp(_maildir_jmp, 1) == 0) {
+      if (nmail)
+         mktable();
+      if (saveint != SIG_IGN)
+         safe_signal(SIGINT, &maildircatch);
+      i = maildir_setfile1(name, nmail, omsgCount);
+   }
+   if (nmail && _maildir_table != NULL)
+      free(_maildir_table);
+
+   safe_signal(SIGINT, saveint);
+
+   if (i < 0) {
+      mb.mb_type = MB_VOID;
+      *mailname = '\0';
+      msgCount = 0;
+   }
+
+   if (cwret(&cw) == STOP)
+      panic("Cannot change back to current directory.");/* TODO tr */
+   cwrelse(&cw);
+
+   setmsize(msgCount);
+   if (nmail && mb.mb_sorted && msgCount > omsgCount) {
+      mb.mb_threaded = 0;
+      sort((void*)-1);
+   }
+   if (!nmail)
+      sawcom = FAL0;
+   if (!nmail && !edit && msgCount == 0) {
+      if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
+         fprintf(stderr, tr(258, "No mail at %s\n"), name);
+      i = 1;
+      goto jleave;
+   }
+   if (nmail && msgCount > omsgCount)
+      newmailinfo(omsgCount);
+   i = 0;
+jleave:
+   return i;
 }
 
 static int
