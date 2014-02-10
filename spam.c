@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Spam related facilities.
  *
- * Copyright (c) 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2013 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
