@@ -1110,23 +1110,47 @@ FL int         b64_decode(struct str *out, struct str const *in,
  * names.c
  */
 
+/* Allocate a single element of a name list, initialize its name field to the
+ * passed name and return it */
 FL struct name * nalloc(char *str, enum gfield ntype);
-FL struct name * ndup(struct name *np, enum gfield ntype);
-FL struct name * cat(struct name *n1, struct name *n2);
-FL int         count(struct name const *np);
 
+/* Like nalloc(), but initialize from content of np */
+FL struct name * ndup(struct name *np, enum gfield ntype);
+
+/* Concatenate the two passed name lists, return the result */
+FL struct name * cat(struct name *n1, struct name *n2);
+
+/* Determine the number of undeleted elements in a name list and return it */
+FL ui32_t      count(struct name const *np);
+
+/* Extract a list of names from a line, and make a list of names from it.
+ * Return the list or NULL if none found */
 FL struct name * extract(char const *line, enum gfield ntype);
+
+/* Like extract() unless line contains anyof ",\"\\(<|", in which case
+ * comma-separated list extraction is used instead */
 FL struct name * lextract(char const *line, enum gfield ntype);
+
+/* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);
 
 /* Get a lextract() list via readstr_input(), reassigning to *np* */
-FL struct name * grab_names(const char *field, struct name *np, int comma,
-         enum gfield gflags);
+FL struct name * grab_names(char const *field, struct name *np, int comma,
+                     enum gfield gflags);
 
+/* Check all addresses in np and delete invalid ones */
 FL struct name * checkaddrs(struct name *np);
+
+/* Map all of the aliased users in the invoker's mailrc file and insert them
+ * into the list */
 FL struct name * usermap(struct name *names, bool_t force_metoo);
+
+/* Remove all of the duplicates from the passed name list by insertion sorting
+ * them, then checking for dups.  Return the head of the new list */
 FL struct name * elide(struct name *names);
+
 FL struct name * delete_alternates(struct name *np);
+
 FL int         is_myname(char const *name);
 
 /* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
