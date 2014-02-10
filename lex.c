@@ -164,7 +164,7 @@ _update_mailname(char const *name)
 {
    char tbuf[MAXPATHLEN], *mailp, *dispp;
    size_t i, j;
-   bool_t rv;
+   bool_t rv = TRU1;
 
    /* Don't realpath(3) if it's only an update request */
    if (name != NULL) {
@@ -174,9 +174,10 @@ _update_mailname(char const *name)
          if (realpath(name, mailname) == NULL) {
             fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), name);
             rv = FAL0;
-            goto jleave;
+            goto jdocopy;
          }
       } else
+jdocopy:
 #endif
          n_strlcpy(mailname, name, sizeof(mailname));
    }
@@ -197,9 +198,10 @@ _update_mailname(char const *name)
 
    /* We want to see the name of the folder .. on the screen */
    i = strlen(mailp);
-   if ((rv = (i < sizeof(displayname) - 1)))
+   if (i < sizeof(displayname) - 1)
       memcpy(dispp, mailp, i + 1);
    else {
+      rv = FAL0;
       /* Avoid disrupting multibyte sequences (if possible) */
 #ifndef HAVE_C90AMEND1
       j = sizeof(displayname) / 3 - 1;
@@ -212,9 +214,6 @@ _update_mailname(char const *name)
       snprintf(dispp, sizeof(displayname), "%.*s...%s",
          (int)j, mailp, mailp + i);
    }
-#ifdef HAVE_REALPATH
-jleave:
-#endif
    return rv;
 }
 
