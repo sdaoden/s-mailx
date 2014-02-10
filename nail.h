@@ -435,7 +435,7 @@ typedef signed long     si64_t;
 
 /* (So that we can use UICMP() for size_t comparison, too) */
 typedef size_t          uiz_t;
-/*typedef ssize_t         siz_t;*/
+typedef ssize_t         siz_t;
 
 #ifndef UINTPTR_MAX
 # ifdef SIZE_MAX
@@ -459,9 +459,10 @@ typedef size_t          uiz_t;
 # define ZFMT           "lu"
 #endif
 
-typedef enum {FAL0, TRU1}  bool_t;
+enum {FAL0, TRU1};
+typedef si8_t           bool_t;
 
-typedef void (             *sighandler_type)(int);
+typedef void (          *sighandler_type)(int);
 
 enum user_options {
    OPT_NONE,
