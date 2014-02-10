@@ -981,7 +981,7 @@ struct mimepart {
    enum mflag  m_flag;        /* flags */
    enum havespec m_have;      /* downloaded parts of the part */
 #ifdef HAVE_SPAM
-   ui_it       m_spamscore;   /* Spam score as int, 24:8 bits */
+   ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
    int         m_block;       /* block number of this part */
    size_t      m_offset;      /* offset in block of part */
