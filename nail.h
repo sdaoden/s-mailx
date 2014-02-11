@@ -76,6 +76,9 @@
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
+#ifdef HAVE_REGEX
+# include <regex.h>
+#endif
 
 #ifdef HAVE_OPENSSL_MD5
 # include <openssl/md5.h>
@@ -854,6 +857,14 @@ struct quoteflt {
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];
+#endif
+};
+
+struct search_expr {
+   char const  *ss_where;  /* to search for the expression (not always used) */
+   char const  *ss_sexpr;  /* String search expression; NULL: use .ss_reexpr */
+#ifdef HAVE_REGEX
+   regex_t     ss_reexpr;
 #endif
 };
 

@@ -652,6 +652,11 @@ FL void        message_reset(void);
  * NULLify the entry at &[msgCount-1] */
 FL void        message_append(struct message *mp);
 
+/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches mp.  If with_headers is
+ * true then the headers will also be searched (as plain text) */
+FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
+                  bool_t with_headers);
+
 FL struct message * setdot(struct message *mp);
 
 /* Delete a file, but only if the file is a plain file */
