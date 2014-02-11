@@ -137,8 +137,6 @@ static bool_t        matchfield(struct message *m, char const *field,
 static int           matchenvelope(struct message *m, char const *field,
                         const void *what);
 static char *        mkenvelope(struct name *np);
-static bool_t        _matchmsg(struct message *m, const void *what,
-                        int withheader);
 static char const *  around(char const *cp);
 
 static enum okay
@@ -428,6 +426,7 @@ jleave:
 static int
 itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
 {
+   struct search_expr se;
    char *cp, *line = NULL;
    size_t linesize = 0;
    FILE *ibuf;
@@ -486,7 +485,9 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = UICMP(z, m->m_time, <, n->n_n);
       break;
    case ITBODY:
-      rv = _matchmsg(m, n->n_v, 0);
+      se.ss_sexpr = n->n_v;
+      se.ss_where = "body";
+      rv = message_match(m, &se, FAL0);
       break;
    case ITCC:
       rv = matchenvelope(m, "cc", n->n_v);
@@ -554,7 +555,9 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = matchfield(m, "subject", n->n_v);
       break;
    case ITTEXT:
-      rv = _matchmsg(m, n->n_v, 1);
+      se.ss_sexpr = n->n_v;
+      se.ss_where = "text";
+      rv = message_match(m, &se, TRU1);
       break;
    case ITTO:
       rv = matchenvelope(m, "to", n->n_v);
@@ -743,45 +746,6 @@ jdone:
    ac_free(ip);
    NYD_LEAVE;
    return ep;
-}
-
-static bool_t
-_matchmsg(struct message *m, const void *what, int withheader)
-{
-   char *line = NULL;
-   size_t linesize = 0, cnt;
-   FILE *fp;
-   bool_t rv = FAL0;
-   NYD_ENTER;
-
-   if ((fp = Ftmp(NULL, "imasrch", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL)
-      goto j_leave;
-   if (sendmp(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
-      goto jleave;
-   fflush_rewind(fp);
-
-   cnt = fsize(fp);
-
-   if (!withheader)
-      while (fgetline(&line, &linesize, &cnt, NULL, fp, 0))
-         if (*line == '\n')
-            break;
-
-   while (fgetline(&line, &linesize, &cnt, NULL, fp, 0)) {
-      if (!substr(line, what))
-         continue;
-      rv = TRU1;
-      break;
-   }
-
-jleave:
-   if (line != NULL)
-      free(line);
-   Fclose(fp);
-j_leave:
-   NYD_LEAVE;
-   return rv;
 }
 
 #define SURROUNDING 16
