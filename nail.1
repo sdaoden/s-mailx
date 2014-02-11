@@ -444,9 +444,10 @@ performed.
 The IMAP-style
 .Ns ` Ns Li "(from address)" Ns '
 expression can be used instead if substring matches are desired.
-.It Ar ( criterion )
-All messages that satisfy the given IMAP-style SEARCH
-.Ar criterion .
+.El
+.\" ---
+.Pp
+\*(OP IMAP-style SEARCH expressions may also be used.
 This addressing mode is available with all types of folders;
 for folders not located on IMAP servers,
 or for servers unable to execute the SEARCH command,
@@ -466,7 +467,12 @@ constructed as
 .Pp
 for each address,
 and the addresses without real names from the respective header field.
-Criteria can be nested using parentheses.
+These search expressions can be nested using parentheses, see below for
+examples.
+.Bl -tag -width ".It .Ar :n:u"
+.It Ar ( criterion )
+All messages that satisfy the given
+.Ar criterion .
 .It Ar ( criterion1 criterion2 ... criterionN )
 All messages that satisfy all of the given criteria.
 .It Ar ( or criterion1 criterion2 )
@@ -559,29 +565,6 @@ This specification cannot be used as part of another criterion.
 If the previous command line contained more than one independent
 criterion then the last of those criteria is used.
 .El
-.Pp
-\*(OP An IMAP-style search can be turned into a case-insensitive regular
-expression search (see
-.Xr re_format 7 Ns
-) in its entirety by using a slash `/' as the first character after the
-opening parenthesis, as in
-.Bd -literal -offset indent
-   ? f (/or subject ^\\[S-nail (subject ^\\[nail-devel))
-.Ed
-.Pp
-On the lowest nesting level each expression is treated by itself:
-.Bd -literal -offset indent
-   ? f (/subject ^\\[S-nail) (/subject ^\\[nail-devel)
-.Ed
-.Pp
-Of course, now that we have regular expression support those should be
-written much more efficiently as
-.Bd -literal -offset indent
-   ? f (/subject "^\\\\[(S-nail|nail-devel)")
-.Ed
-.Pp
-Note that regular expression searches are always performed on local
-storage, messages will be downloaded first as necessary.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Replying to or originating mail"

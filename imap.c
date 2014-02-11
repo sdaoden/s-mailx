@@ -250,8 +250,10 @@ static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, time_t t,
                      long off1, long xsize, long size, long lines, int flag,
                      const char *name);
 static enum okay  imap_appenduid_cached(struct mailbox *mp, FILE *fp);
+#ifdef HAVE_IMAP_SEARCH
 static enum okay  imap_search2(struct mailbox *mp, struct message *m, int cnt,
                      const char *spec, int f);
+#endif
 static enum okay  imap_remove1(struct mailbox *mp, const char *name);
 static enum okay  imap_rename1(struct mailbox *mp, const char *old,
                      const char *new);
@@ -3038,6 +3040,7 @@ jstop:
    return rv;
 }
 
+#ifdef HAVE_IMAP_SEARCH
 static enum okay
 imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    int f)
@@ -3056,7 +3059,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
       c |= *cp;
    if (c & 0200) {
       cp = charset_get_lc();
-#ifdef HAVE_ICONV
+# ifdef HAVE_ICONV
       if (asccasecmp(cp, "utf-8") && asccasecmp(cp, "utf8")) {
          iconv_t  it;
          char *nsp, *nspec;
@@ -3073,7 +3076,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
             n_iconv_close(it);
          }
       }
-#endif
+# endif
       cp = imap_quotestr(cp);
       cs = salloc(n = strlen(cp) + 10);
       snprintf(cs, n, "CHARSET %s ", cp);
@@ -3131,6 +3134,7 @@ jleave:
       onintr(0);
    return rv;
 }
+#endif /* HAVE_IMAP_SEARCH */
 
 FL int
 imap_thisaccount(const char *cp)
@@ -3667,47 +3671,7 @@ imap_make_date_time(time_t t)
 }
 #endif /* HAVE_IMAP */
 
-FL time_t
-imap_read_date(char const *cp)
-{
-   time_t t = (time_t)-1;
-   int year, month, day, i, tzdiff;
-   struct tm *tmptr;
-   char *xp, *yp;
-   NYD_ENTER;
-
-   if (*cp == '"')
-      ++cp;
-   day = strtol(cp, &xp, 10);
-   if (day <= 0 || day > 31 || *xp++ != '-')
-      goto jleave;
-
-   for (i = 0;;) {
-      if (ascncasecmp(xp, month_names[i], 3) == 0)
-         break;
-      if (month_names[++i][0] == '\0')
-         goto jleave;
-   }
-   month = i+1;
-   if (xp[3] != '-')
-      goto jleave;
-   year = strtol(&xp[4], &yp, 10);
-   if (year < 1970 || year > 2037 || yp != &xp[8])
-      goto jleave;
-   if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
-      goto jleave;
-   if ((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
-      goto jleave;
-   tzdiff = t - mktime(gmtime(&t));
-   tmptr = localtime(&t);
-   if (tmptr->tm_isdst > 0)
-      tzdiff += 3600;
-   t -= tzdiff;
-jleave:
-   NYD_LEAVE;
-   return t;
-}
-
+#if defined HAVE_IMAP || defined HAVE_IMAP_SEARCH
 FL char *
 imap_quotestr(char const *s)
 {
@@ -3751,5 +3715,6 @@ jleave:
    NYD_LEAVE;
    return n;
 }
+#endif /* defined HAVE_IMAP || defined HAVE_IMAP_SEARCH */
 
 /* vim:set fenc=utf-8:s-it-mode */

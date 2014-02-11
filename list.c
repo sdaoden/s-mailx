@@ -173,11 +173,12 @@ markall(char *buf, int f)
 {
 #define markall_ret(i) do { rv = i; goto jleave; } while (0);
 
+   /* TODO use a bit carrier for all the states */
    char **np, **nq;
-   int i, rv;
+   int i, rv, tok, beg, mc, other, valdot, colmod, colresult;
    struct message *mp, *mx;
    char **namelist, *bufp, *id = NULL, *cp;
-   int tok, beg, mc, star, other, valdot, colmod, colresult, topen, tback;
+   bool_t star, topen, tback;
    size_t nmlsize;
    enum idfield idfield = ID_REFERENCES;
 #ifdef HAVE_IMAP
@@ -205,7 +206,7 @@ markall(char *buf, int f)
    np = &namelist[0];
    scaninit();
    bufp = buf;
-   beg = mc = star = other = topen = tback = 0;
+   beg = mc = star = other = topen = tback = FAL0;
 #ifdef HAVE_IMAP
    gotheaders = 0;
 #endif
@@ -265,7 +266,7 @@ number:
                mx = next_in_thread(&message[i - 1]);
                i = mx ? (int)PTR2SIZE(mx - message + 1) : msgCount + 1;
             } else
-               i++;
+               ++i;
             if (i > msgCount) {
                fprintf(stderr, tr(114, "Referencing beyond EOF\n"));
                markall_ret(-1)
@@ -284,7 +285,7 @@ number:
                   mx = prev_in_thread(&message[i - 1]);
                   i = mx ? (int)PTR2SIZE(mx - message + 1) : 0;
                } else
-                  i--;
+                  --i;
                if (i <= 0) {
                   fprintf(stderr, tr(115, "Referencing before 1\n"));
                   markall_ret(-1)
@@ -301,7 +302,7 @@ number:
             fprintf(stderr, tr(116, "Non-numeric second argument\n"));
             markall_ret(-1)
          }
-         other++;
+         ++other;
          if (lexstring[0] == ':') {
             colresult = evalcol(lexstring[1]);
             if (colresult == 0) {
@@ -316,10 +317,17 @@ number:
          break;
 
       case TOPEN:
+#ifdef HAVE_IMAP_SEARCH
          msglist_is_single = FAL0;
-         if (imap_search(lexstring, f) == STOP) /* TODO IMAP_SEARCH->option */
+         if (imap_search(lexstring, f) == STOP)
             markall_ret(-1)
-         ++topen;
+         topen = TRU1;
+#else
+         fprintf(stderr, tr(42,
+            "`%s': the used selector is optional and not available\n"),
+            lexstring);
+         markall_ret(-1)
+#endif
          break;
 
       case TDOLLAR:
@@ -334,7 +342,7 @@ number:
 
       case TBACK:
          msglist_is_single = FAL0;
-         tback = 1;
+         tback = TRU1;
          for (i = 1; i <= msgCount; i++) {
             if ((message[i - 1].m_flag & MHIDDEN) ||
                   (message[i - 1].m_flag & MDELETED) != (unsigned)f)
@@ -350,7 +358,7 @@ number:
             fprintf(stderr, tr(118, "Can't mix \"*\" with anything\n"));
             markall_ret(-1)
          }
-         ++star;
+         star = TRU1;
          break;
 
       case TCOMMA:

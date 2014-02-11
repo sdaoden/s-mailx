@@ -852,7 +852,9 @@ FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
 FL void        imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
+# ifdef HAVE_IMAP_SEARCH
 FL enum okay   imap_search1(const char *spec, int f);
+# endif
 FL int         imap_thisaccount(const char *cp);
 FL enum okay   imap_remove(const char *name);
 FL enum okay   imap_rename(const char *old, const char *new);
@@ -872,9 +874,10 @@ FL const char * imap_make_date_time(time_t t);
 # define c_cache                 c_cmdnotsupp
 #endif
 
-FL time_t      imap_read_date(char const *cp);
+#if defined HAVE_IMAP || defined HAVE_IMAP_SEARCH
 FL char *      imap_quotestr(char const *s);
 FL char *      imap_unquotestr(char const *s);
+#endif
 
 /*
  * imap_cache.c
@@ -903,7 +906,9 @@ FL enum okay   cache_dequeue(struct mailbox *mp);
  * imap_search.c
  */
 
+#ifdef HAVE_IMAP_SEARCH
 FL enum okay   imap_search(char const *spec, int f);
+#endif
 
 /*
  * lex.c

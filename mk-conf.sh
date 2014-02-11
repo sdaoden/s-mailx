@@ -11,6 +11,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
+      WANT_IMAP_SEARCH=0
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_DOCSTRINGS=0
@@ -21,6 +22,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0
+      WANT_IMAP_SEARCH=0
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
@@ -30,6 +32,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_IMAP=0
       WANT_POP3=0
       WANT_READLINE=0 WANT_EDITLINE=0
+      WANT_IMAP_SEARCH=0
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
@@ -1106,6 +1109,12 @@ else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
+if wantfeat IMAP_SEARCH; then
+   echo '#define HAVE_IMAP_SEARCH' >> ${h}
+else
+   echo '/* WANT_IMAP_SEARCH=0 */' >> ${h}
+fi
+
 if wantfeat MD5; then
    echo '#define HAVE_MD5' >> ${h}
 else
@@ -1148,6 +1157,7 @@ printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-searches"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
@@ -1239,6 +1249,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
+#ifdef HAVE_IMAP_SEARCH
+: + IMAP-style search expressions
+#endif
 #ifdef HAVE_REGEX
 : + Regular expression searches
 #endif
@@ -1297,6 +1310,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
+#endif
+#ifndef HAVE_IMAP_SEARCH
+: - IMAP-style search expressions
 #endif
 #ifndef HAVE_REGEX
 : - Regular expression searches
