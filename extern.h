@@ -1578,7 +1578,7 @@ FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
 FL void        makelow(char *cp);
 
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
-FL int         substr(char const *str, char const *sub);
+FL bool_t      substr(char const *str, char const *sub);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF
