@@ -576,16 +576,18 @@ FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
                   size_t len);
 FL ssize_t     quoteflt_flush(struct quoteflt *self);
 
-/* fio.c */
+/*
+ * fio.c
+ */
 
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0
  * characters.
- * *line* - line buffer. *line be NULL.
- * *linesize* - allocated size of line buffer.
- * *count* - maximum characters to read. May be NULL.
- * *llen* - length_of_line(*line).
- * *fp* - input FILE.
- * *appendnl* - always terminate line with \n, append if necessary.
+ * line - line buffer.  *line may be NULL.
+ * linesize - allocated size of line buffer.
+ * count - maximum characters to read.  May be NULL.
+ * llen - length_of_line(*line).
+ * fp - input FILE.
+ * appendnl - always terminate line with \n, append if necessary.
  */
 FL char *      fgetline(char **line, size_t *linesize, size_t *count,
                   size_t *llen, FILE *fp, int appendnl SMALLOC_DEBUG_ARGS);
@@ -596,8 +598,7 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
 
 /* Read up a line from the specified input into the linebuffer.
  * Return the number of characters read.  Do not include the newline at EOL.
- * *n* is the number of characters already read.
- */
+ * n is the number of characters already read */
 FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
                   size_t n SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
@@ -626,12 +627,23 @@ FL int         readline_input(char const *prompt, bool_t nl_escape,
  * mode, otherwise this argument is ignored for reproducibility */
 FL char *      readstr_input(char const *prompt, char const *string);
 
+/* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
+
+/* Drop the passed line onto the passed output buffer.  If a write error occurs
+ * return -1, else the count of characters written, including the newline */
 FL int         putline(FILE *obuf, char *linebuf, size_t count);
+
+/* Return a file buffer all ready to read up the passed message pointer */
 FL FILE *      setinput(struct mailbox *mp, struct message *m,
                   enum needspec need);
+
 FL struct message * setdot(struct message *mp);
-FL int         rm(char *name);
+
+/* Delete a file, but only if the file is a plain file */
+FL int         rm(char const *name);
+
+/* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
 
 /* Evaluate the string given as a new mailbox name. Supported meta characters:
@@ -650,25 +662,27 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 /* Get rid of queued mail */
 FL void        demail(void);
 
-/* vars.c hook: *folder* variable has been updated; if *folder* shouldn't be
- * replaced by something else, leave *store* alone, otherwise smalloc() the
+/* acmava.c hook: *folder* variable has been updated; if folder shouldn't be
+ * replaced by something else leave store alone, otherwise smalloc() the
  * desired value (ownership will be taken) */
 FL bool_t      var_folder_updated(char const *folder, char **store);
 
 /* Determine the current *folder* name, store it in *name* */
 FL bool_t      getfold(char *name, size_t size);
 
+/* Return the name of the dead.letter file */
 FL char const * getdeadletter(void);
 
 FL enum okay   get_body(struct message *mp);
 
+/* Socket I/O */
 #ifdef HAVE_SOCKETS
 FL int         sclose(struct sock *sp);
-FL enum okay   swrite(struct sock *sp, const char *data);
-FL enum okay   swrite1(struct sock *sp, const char *data, int sz,
+FL enum okay   swrite(struct sock *sp, char const *data);
+FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
                   int use_buffer);
-FL enum okay   sopen(const char *xserver, struct sock *sp, int use_ssl,
-                  const char *uhp, const char *portstr, int verbose);
+FL enum okay   sopen(char const *xserver, struct sock *sp, int use_ssl,
+                  char const *uhp, char const *portstr);
 
 /*  */
 FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
@@ -676,7 +690,7 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
 # ifdef HAVE_DEBUG
 #  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
 # endif
-#endif
+#endif /* HAVE_SOCKETS */
 
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */

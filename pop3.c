@@ -619,8 +619,8 @@ pop3_setfile(const char *server, int nmail, int isedit)
 		user = urlxdec(user);
 	} else
 		user = NULL;
-	if (sopen(sp, &so, use_ssl, uhp, use_ssl ? "pop3s" : "pop3",
-				(options & OPT_VERBOSE) != 0) != OKAY) {
+	if (sopen(sp, &so, use_ssl, uhp, (use_ssl ? "pop3s" : "pop3"))
+			!= OKAY) {
 		return -1;
 	}
 	quit();

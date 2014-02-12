@@ -359,8 +359,7 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
 	} else
 		use_ssl = 0;
 	if ((options & OPT_DEBUG) == 0 && sopen(server, &so, use_ssl, server,
-			use_ssl ? "smtps" : "smtp",
-			(options & OPT_VERBOSE) != 0) != OKAY) {
+			(use_ssl ? "smtps" : "smtp")) != OKAY) {
 		safe_signal(SIGTERM, saveterm);
 		return 1;
 	}

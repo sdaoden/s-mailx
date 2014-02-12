@@ -130,6 +130,7 @@
 #define CBAD            (-15555)
 #define APPEND                   /* New mail goes to end of mailbox */
 #define ESCAPE          '~'      /* Default escape for sending */
+#define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
 #define MAXARGC         1024     /* Maximum list of raw strings */

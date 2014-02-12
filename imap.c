@@ -1180,8 +1180,7 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
 	if (!same_imap_account) {
 		if (!disconnected(acc) &&
 				sopen(sp, &so, use_ssl, uhp,
-					use_ssl ? "imaps" : "imap",
-					(options & OPT_VERBOSE) != 0) != OKAY) {
+					(use_ssl ? "imaps" : "imap")) != OKAY) {
 			free(acc);
 			return -1;
 		}
@@ -2351,8 +2350,7 @@ imap_append(const char *xserver, FILE *fp)
 		memset(&mx, 0, sizeof mx);
 		if (disconnected(server) == 0) {
 			if (sopen(sp, &mx.mb_sock, use_ssl, uhp,
-					use_ssl ? "imaps" : "imap",
-					(options & OPT_VERBOSE) != 0) != OKAY)
+					(use_ssl ? "imaps" : "imap")) != OKAY)
 				goto fail;
 			mx.mb_sock.s_desc = "IMAP";
 			mx.mb_type = MB_IMAP;
