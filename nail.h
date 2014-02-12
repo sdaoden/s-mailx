@@ -586,6 +586,20 @@ enum mimecontent {
    MIME_DISCARD      /* content is discarded */
 };
 
+enum oflags {
+   OF_RDONLY      = 1<<0,
+   OF_WRONLY      = 1<<1,
+   OF_RDWR        = 1<<2,
+   OF_APPEND      = 1<<3,
+   OF_CREATE      = 1<<4,
+   OF_TRUNC       = 1<<5,
+   OF_EXCL        = 1<<6,
+   OF_CLOEXEC     = 1<<7,
+   OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
+   OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
+   OF_REGISTER    = 1<<10     /* Register file in our file table */
+};
+
 enum tdflags {
    TD_NONE,                   /* no display conversion */
    TD_ISPR        = 1<<0,     /* use isprint() checks */

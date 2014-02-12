@@ -1223,39 +1223,58 @@ FL void        pop3_quit(void);
  * Subprocesses, popen, but also file handling with registering
  */
 
-FL FILE *      safe_fopen(const char *file, const char *mode, int *omode);
-FL FILE *      Fopen(const char *file, const char *mode);
-FL FILE *      Fdopen(int fd, const char *mode);
+/* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
+FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
+
+/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags */
+FL FILE *      Fopen(char const *file, char const *oflags);
+
+FL FILE *      Fdopen(int fd, char const *oflags);
+
 FL int         Fclose(FILE *fp);
-FL FILE *      Zopen(const char *file, const char *mode, int *compression);
+
+FL FILE *      Zopen(char const *file, char const *oflags, int *compression);
 
 /* Create a temporary file in tempdir, use prefix for its name, store the
- * unique name in fn, and return a stdio FILE pointer with access mode.
- * *bits* specifies the access mode of the newly created temporary file */
-FL FILE *      Ftemp(char **fn, char const *prefix, char const *mode,
-                  int bits, int register_file);
+ * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
+ * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
+ * mode specifies the access mode of the newly created temporary file */
+FL FILE *      Ftmp(char **fn, char const *prefix, enum oflags oflags,
+                  int mode);
+
+/* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
+ * called: call this to unlink(2) and free *fn and to rele_all_sigs() */
+FL void        Ftmp_release(char **fn);
 
 /* Free the resources associated with the given filename.  To be called after
- * unlink().  Since this function can be called after receiving a signal, the
- * variable must be made NULL first and then free()d, to avoid more than one
- * free() call in all circumstances */
-FL void        Ftfree(char **fn);
+ * unlink() */
+FL void        Ftmp_free(char **fn);
 
 /* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
 FL bool_t      pipe_cloexec(int fd[2]);
 
-FL FILE *      Popen(const char *cmd, const char *mode, const char *shell,
+FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
 FL void        close_all_files(void);
+
+/* Run a command without a shell, with optional arguments and splicing of stdin
+ * and stdout.  The command name can be a sequence of words.  Signals must be
+ * handled by the caller.  "Mask" contains the signals to ignore in the new
+ * process.  SIGINT is enabled unless it's in the mask */
 FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
-FL int         start_command(const char *cmd, sigset_t *mask, int infd,
-                  int outfd, const char *a0, const char *a1, const char *a2);
+
+FL int         start_command(char const *cmd, sigset_t *mask, int infd,
+                  int outfd, char const *a0, char const *a1, char const *a2);
+
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
+
 FL void        sigchild(int signo);
+
+/* Mark a child as don't care */
 FL void        free_child(int pid);
 
 /* Wait for pid, return wether we've had a normal EXIT_SUCCESS exit.
