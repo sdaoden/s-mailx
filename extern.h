@@ -314,28 +314,54 @@ FL FILE *      cache_queue(struct mailbox *mp);
 FL enum okay   cache_dequeue(struct mailbox *mp);
 #endif /* HAVE_IMAP */
 
-/* cmd1.c */
+/*
+ * cmd1.c
+ */
+
 FL int         ccmdnotsupp(void *v);
+
+/* Show header group */
 FL int         headers(void *v);
+
+/* Scroll to the next/previous screen */
 FL int         scroll(void *v);
 FL int         Scroll(void *v);
 
+/* Print out the headlines for each message in the passed message list */
 FL int         from(void *v);
 
 /* Print all message in between bottom and topx (including bottom) */
 FL void        print_headers(size_t bottom, size_t topx);
 
+/* Print out the value of dot */
 FL int         pdot(void *v);
+
+/* Paginate messages, honor/don't honour ignored fields, respectively */
 FL int         more(void *v);
 FL int         More(void *v);
+
+/* Type out messages, honor/don't honour ignored fields, respectively */
 FL int         type(void *v);
 FL int         Type(void *v);
+
+/* Show MIME-encoded message text, including all fields */
 FL int         show(void *v);
+
+/* Pipe messages, honor/don't honour ignored fields, respectively */
 FL int         pipecmd(void *v);
 FL int         Pipecmd(void *v);
+
+/* Print the top so many lines of each desired message.
+ * The number of lines is taken from *toplines* and defaults to 5 */
 FL int         top(void *v);
+
+/* Touch all the given messages so that they will get mboxed */
 FL int         stouch(void *v);
+
+/* Make sure all passed messages get mboxed */
 FL int         mboxit(void *v);
+
+/* List the folders the user currently has */
 FL int         folders(void *v);
 
 /* cmd2.c */
