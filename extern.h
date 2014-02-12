@@ -1559,14 +1559,14 @@ FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
 FL void        makelow(char *cp);
 
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
-FL int         substr(const char *str, const char *sub);
+FL int         substr(char const *str, char const *sub);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF
-FL int         snprintf(char *str, size_t size, const char *format, ...);
+FL int         snprintf(char *str, size_t size, char const *format, ...);
 #endif
 
-FL char *      sstpcpy(char *dst, const char *src);
+FL char *      sstpcpy(char *dst, char const *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
@@ -1574,7 +1574,7 @@ FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 # define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)
 #endif
 
-FL char *      n_strlcpy(char *dst, const char *src, size_t len);
+FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 
 /* Locale-independent character class functions */
 FL int         asccasecmp(char const *s1, char const *s2);
