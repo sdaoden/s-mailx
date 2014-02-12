@@ -926,7 +926,7 @@ mightrecord(FILE *fp, struct name *to)
 jbail:
          fprintf(stderr, tr(285, "Failed to save message in %s - "
             "message not sent\n"), ep);
-         exit_status |= 1;
+         exit_status |= EXIT_ERR;
          savedeadletter(fp, 1);
          rv = STOP;
       }

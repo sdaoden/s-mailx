@@ -527,7 +527,7 @@ collint(int s)
       _coll_hadintr = 1;
       siglongjmp(_coll_jmp, 1);
    }
-   exit_status |= 04;
+   exit_status |= EXIT_SEND_ERROR;
    if (ok_blook(save) && s != 0)
       savedeadletter(_coll_fp, 1);
    /* Aborting message, no need to fflush() .. */

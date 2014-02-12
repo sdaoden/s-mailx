@@ -506,19 +506,25 @@ _rcv_mode(char const *folder)
    }
 
    i = setfile(folder, 0);
-   if (i < 0)
-      exit(1); /* error already reported */
-   if (options & OPT_EXISTONLY)
-      exit(i);
+   if (i < 0) {
+      exit_status = EXIT_ERR; /* error already reported */
+      goto jleave;
+   }
+   if (options & OPT_EXISTONLY) {
+      exit_status = i;
+      goto jleave;
+   }
 
    if (options & OPT_HEADERSONLY) {
       print_headers(1, msgCount);
-      exit(exit_status);
+      goto jleave;
    }
 
    callhook(mailname, 0);
-   if (i > 0 && !ok_blook(emptystart))
-      exit(1);
+   if (i > 0 && !ok_blook(emptystart)) {
+      exit_status = EXIT_ERR;
+      goto jleave;
+   }
 
    if (sigsetjmp(__hdrjmp, 1) == 0) {
       if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -547,6 +553,7 @@ _rcv_mode(char const *folder)
    }
    save_mbox_for_possible_quitstuff();
    quit();
+jleave:
    NYD_LEAVE;
    return exit_status;
 }
@@ -554,6 +561,7 @@ _rcv_mode(char const *folder)
 static void
 _hdrstop(int signo)
 {
+   NYD_X; /* Signal handler */
    UNUSED(signo);
 
    fflush(stdout);
@@ -768,7 +776,8 @@ joarg:
       case '?':
 jusage:
          fprintf(stderr, tr(135, usagestr), progname, progname, progname);
-         exit(2);
+         exit_status = EXIT_USE;
+         goto jleave;
       }
    }
 
@@ -877,7 +886,8 @@ jusage:
          ac_free(a_curr);
       } else {
          perror(a_head->aa_file);
-         exit(1);
+         exit_status = EXIT_ERR;
+         goto jleave;
       }
    }
 
