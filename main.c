@@ -580,9 +580,10 @@ main(int argc, char *argv[])
          "\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
             "[-S var[=value]]\n"
          "\t  [-s subject] to-addr...\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acct] "
-            "[-S var[=value]] -f [file]\n"
-         "  %s [-BDdEeiNnRv~#] [-A acc] [-S var[=value]] [-u user]\n";
+         "  %s [-BDdEeHiNnRv~#] [-A acc] [-S var[=value]] "
+            "-f [file]\n"
+         "  %s [-BDdEeHiNnRv~#] [-A acc] [-S var[=value]] "
+            "[-u user]\n";
 
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
@@ -797,18 +798,37 @@ jusage:
    }
 
    /* Check for inconsistent arguments */
-   if (folder != NULL && to != NULL) {
-      fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
-      goto jusage;
-   }
-   if ((options & (OPT_SENDMODE | OPT_t_FLAG)) == OPT_SENDMODE && to == NULL) {
-      fprintf(stderr, tr(138,
-         "Send options without primary recipient specified.\n"));
-      goto jusage;
-   }
-   if ((options & OPT_R_FLAG) && to != NULL) {
-      fprintf(stderr, tr(235, "The -R option is meaningless in send mode.\n"));
-      goto jusage;
+   if (options & OPT_SENDMODE) {
+      if (folder != NULL) {
+         fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
+         goto jusage;
+      }
+      if (myname != NULL) {
+         fprintf(stderr, tr(568,
+            "The -u option cannot be used in send mode\n"));
+         goto jusage;
+      }
+      if (!(options & OPT_t_FLAG) && to == NULL) {
+         fprintf(stderr, tr(138,
+            "Send options without primary recipient specified.\n"));
+         goto jusage;
+      }
+      if (options & OPT_HEADERSONLY) {
+         fprintf(stderr, tr(45,
+            "The -H option cannot be used in send mode.\n"));
+         goto jusage;
+      }
+      if (options & OPT_R_FLAG) {
+         fprintf(stderr,
+            tr(235, "The -R option is meaningless in send mode.\n"));
+         goto jusage;
+      }
+   } else {
+      if (folder != NULL && myname != NULL) {
+         fprintf(stderr, tr(569,
+            "The options -f and -u are mutually exclusive\n"));
+         goto jusage;
+      }
    }
 
    /*

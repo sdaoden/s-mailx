@@ -45,7 +45,7 @@ $set 1
 42 --DELETED--
 43 Unrecognized if-keyword: "%s"\n
 44 "else" without matching "if"\n
-45 --DELETED--
+45 The -H option cannot be used in send mode.\n
 46 "endif" without matching "if"\n
 47 No recipient specified.
 48 No applicable messages.
@@ -140,8 +140,8 @@ $set 1
   %s [-BDdEFintv~] [-A acc] [-a attachment] [-b bcc-addr] [-c cc-addr]\n\
 \t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] [-S var[=value]]\n\
 \t  [-s subject] to-addr...\n\
-  %s [-BDdEeHiNnRv~#] [-A acct] [-S var[=value]] -f [file]\n\
-  %s [-BDdEeiNnRv~#] [-A acc] [-S var[=value]] [-u user]\n
+  %s [-BDdEeHiNnRv~#] [-A acc] [-S var[=value]] -f [file]\n\
+  %s [-BDdEeHiNnRv~#] [-A acc] [-S var[=value]] [-u user]\n
 
 136 $ %d moved$
 137 Cannot give -f and people to send to.\n
@@ -566,3 +566,5 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 565 Error creating X509 lookup object
 566 Error loading CRL from "%s"
 567 This OpenSSL version is too old to use CRLs.\n
+568 The -u option cannot be used in send mode\n
+569 The options -f and -u are mutually exclusive\n
