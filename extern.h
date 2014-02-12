@@ -817,7 +817,10 @@ FL int         check_from_and_sender(struct name *fromfield,
 
 FL char *      getsender(struct message *m);
 
-/* imap.c */
+/*
+ * imap.c
+ */
+
 #ifdef HAVE_IMAP
 FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
@@ -855,9 +858,9 @@ FL const char * imap_make_date_time(time_t t);
 # define ccache                  ccmdnotsupp
 #endif
 
-FL time_t      imap_read_date(const char *cp);
-FL char *      imap_quotestr(const char *s);
-FL char *      imap_unquotestr(const char *s);
+FL time_t      imap_read_date(char const *cp);
+FL char *      imap_quotestr(char const *s);
+FL char *      imap_unquotestr(char const *s);
 
 /* imap_search.c */
 FL enum okay   imap_search(const char *spec, int f);
