@@ -1018,7 +1018,7 @@ struct message {
    unsigned long m_uid;       /* IMAP unique identifier */
 #endif
    char        *m_maildir_file;  /* original maildir file of msg */
-   unsigned    m_maildir_hash;   /* hash of file name in maildir sub */
+   ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
 };
 

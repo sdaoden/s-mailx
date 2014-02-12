@@ -949,11 +949,17 @@ FL int         zread(void *cookie, char *rbp, int num);
 FL void *      zalloc(FILE *fp);
 #endif /* HAVE_IMAP */
 
-/* maildir.c */
-FL int         maildir_setfile(const char *name, int nmail, int isedit);
+/*
+ * maildir.c
+ */
+
+FL int         maildir_setfile(char const *name, int nmail, int isedit);
+
 FL void        maildir_quit(void);
-FL enum okay   maildir_append(const char *name, FILE *fp);
-FL enum okay   maildir_remove(const char *name);
+
+FL enum okay   maildir_append(char const *name, FILE *fp);
+
+FL enum okay   maildir_remove(char const *name);
 
 /* mime.c */
 
