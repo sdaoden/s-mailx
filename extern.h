@@ -538,11 +538,14 @@ FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
 
 FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
 
-/* dotlock.c */
+/*
+ * dotlock.c
+ */
+
 FL int         fcntl_lock(int fd, int type);
-FL int         dot_lock(const char *fname, int fd, int pollinterval, FILE *fp,
-                  const char *msg);
-FL void        dot_unlock(const char *fname);
+FL int         dot_lock(char const *fname, int fd, int pollinterval, FILE *fp,
+                  char const *msg);
+FL void        dot_unlock(char const *fname);
 
 /* edit.c */
 FL int         editor(void *v);
