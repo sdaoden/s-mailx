@@ -134,6 +134,7 @@
 #define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
+#define NYD_CALLS_MAX   1000     /* Number of NYD calls that are remembered */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */

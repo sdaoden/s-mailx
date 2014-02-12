@@ -167,6 +167,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    static char const *lastp;
    int rv = -1, colon;
    char const *curp;
+   NYD_ENTER;
 
    if ((colon = (optstring[0] == ':')))
       ++optstring;
@@ -226,6 +227,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    _oarg = 0;
    rv = '?';
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 #endif /* !HAVE_GETOPT */
@@ -234,6 +236,7 @@ static void
 _startup(void)
 {
    char *cp;
+   NYD_ENTER;
 
    /* Absolutely the first thing we do is save our egid
     * and set it to the rgid, so that we can safely run
@@ -259,7 +262,16 @@ _startup(void)
    /* Set up a reasonable environment.
     * Figure out whether we are being run interactively,
     * start the SIGCHLD catcher, and so forth */
-   safe_signal(SIGCHLD, sigchild);
+   safe_signal(SIGCHLD, &sigchild);
+#ifdef HAVE_DEBUG
+   safe_signal(SIGABRT, &_nyd_oncrash);
+# ifdef SIGBUS
+   safe_signal(SIGBUS, &_nyd_oncrash);
+# endif
+   safe_signal(SIGFPE, &_nyd_oncrash);
+   safe_signal(SIGILL, &_nyd_oncrash);
+   safe_signal(SIGSEGV, &_nyd_oncrash);
+#endif
 
    if (isatty(STDIN_FILENO)) /* TODO should be isatty(0) && isatty(2)?? */
       options |= OPT_TTYIN | OPT_INTERACTIVE;
@@ -339,17 +351,22 @@ _startup(void)
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
+   NYD_LEAVE;
 }
 
 static size_t
 _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 {
    /* Before spreserve(): use our string pool instead of LibC heap */
-   char const **newcpp = salloc(sizeof(char*) * newsize);
+   char const **newcpp;
+   NYD_ENTER;
+
+   newcpp = salloc(sizeof(char*) * newsize);
 
    if (oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
+   NYD_LEAVE;
    return newsize;
 }
 
@@ -361,6 +378,7 @@ _setup_vars(void)
    char const *cp;
    uid_t uid;
    struct passwd *pwuid, *pw;
+   NYD_ENTER;
 
    tempdir = ((cp = getenv("TMPDIR")) != NULL) ? savestr(cp) : TMPDIR_FALLBACK;
 
@@ -383,6 +401,7 @@ _setup_vars(void)
    if ((cp = getenv("HOME")) == NULL)
       cp = "."; /* XXX User and Login objects; Login: pw->pw_dir */
    homedir = savestr(cp);
+   NYD_LEAVE;
 }
 
 static void
@@ -394,6 +413,7 @@ _setscreensize(int is_sighdl)
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
+   NYD_ENTER;
 
    scrnheight = realscreenheight = scrnwidth = 0;
 
@@ -465,6 +485,7 @@ jleave:
    if (is_sighdl && IS_TTY_SESSION())
       tty_signal(SIGWINCH);
 #endif
+   NYD_LEAVE;
 }
 
 static sigjmp_buf __hdrjmp; /* XXX */
@@ -475,6 +496,7 @@ _rcv_mode(char const *folder)
    char *cp;
    int i;
    sighandler_type prevint;
+   NYD_ENTER;
 
    if (folder == NULL)
       folder = "%";
@@ -527,6 +549,7 @@ _rcv_mode(char const *folder)
    }
    save_mbox_for_possible_quitstuff();
    quit();
+   NYD_LEAVE;
    return exit_status;
 }
 
@@ -562,6 +585,7 @@ main(int argc, char *argv[])
    char const *okey, **oargs = NULL, *folder = NULL;
    size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
    int i;
+   NYD_ENTER;
 
    /*
     * Start our lengthy setup
@@ -867,6 +891,7 @@ jusage:
    if (options & OPT_INTERACTIVE)
       tty_destroy();
 jleave:
+   NYD_LEAVE;
    return exit_status;
 }
 

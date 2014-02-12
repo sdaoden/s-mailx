@@ -137,11 +137,35 @@ FL void        rele_all_sigs(void);
 FL void        hold_sigs(void);
 FL void        rele_sigs(void);
 
+/* Not-Yet-Dead debug information (handler installation in main.c) */
+#ifdef HAVE_DEBUG
+FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
+                  char const *fun);
+FL void        _nyd_oncrash(int signo);
+
+# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+# define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+#else
+# define NYD_ENTER               do {} while (0)
+# define NYD_LEAVE               do {} while (0)
+# define NYD                     do {} while (0)
+# define NYD_X                   do {} while (0) /* XXX LEGACY */
+#endif
+
+/* Touch the named message by setting its MTOUCH flag.  Touched messages have
+ * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
-FL int         is_dir(char const *name);
+
+/* Test to see if the passed file name is a directory, return true if it is */
+FL bool_t      is_dir(char const *name);
+
+/* Count the number of arguments in the given string raw list */
 FL int         argcount(char **argv);
-FL char *      colalign(const char *cp, int col, int fill,
-                  int *cols_decr_used_or_null);
+
+/* Compute screen size */
+FL int         screensize(void);
 
 /* Get our PAGER */
 FL char const *get_pager(void);
@@ -154,14 +178,18 @@ FL size_t      paging_seems_sensible(void);
 FL void        page_or_print(FILE *fp, size_t lines);
 #define try_pager(FP)            page_or_print(FP, 0) /* TODO obsolete */
 
-FL enum protocol  which_protocol(const char *name);
+/* Parse name and guess at the required protocol */
+FL enum protocol  which_protocol(char const *name);
 
 /* Hash the passed string -- uses Chris Torek's hash algorithm */
 FL ui32_t      torek_hash(char const *name);
 #define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
 
-FL unsigned    pjw(const char *cp);
-FL long        nextprime(long n);
+/* Create hash */
+FL ui32_t      pjw(char const *cp); /* TODO obsolete -> torek_hash() */
+
+/* Find a prime greater than n */
+FL ui32_t      nextprime(ui32_t n);
 
 /* Check wether *s is an escape sequence, expand it as necessary.
  * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
@@ -197,12 +225,21 @@ FL char *      cram_md5_string(char const *user, char const *pass,
 #endif
 
 FL enum okay   makedir(const char *name);
+
+/* A get-wd..restore-wd approach */
 FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
+
+/* xxx Place cp in a salloc()ed buffer, column-aligned */
+FL char *      colalign(char const *cp, int col, int fill,
+                  int *cols_decr_used_or_null);
+
+/* Convert a string to a displayable one;
+ * prstr() returns the result savestr()d, prout() writes it */
 FL void        makeprint(struct str const *in, struct str *out);
-FL char *      prstr(const char *s);
-FL int         prout(const char *s, size_t sz, FILE *fp);
+FL char *      prstr(char const *s);
+FL int         prout(char const *s, size_t sz, FILE *fp);
 
 /* Print out a Unicode character or a substitute for it, return 0 on error or
  * wcwidth() (or 1) on success */
@@ -243,8 +280,8 @@ FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
 FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
 /* Called by sreset(), then */
 FL void        smemreset(void);
-/* The *smemtrace* command */
-FL int         smemtrace(void *v);
+
+FL int         c_smemtrace(void *v);
 # if 0
 #  define MEMCHECK
 FL bool_t      _smemcheck(char const *file, int line);
@@ -282,7 +319,7 @@ FL int         ccmdnotsupp(void *v);
 FL int         headers(void *v);
 FL int         scroll(void *v);
 FL int         Scroll(void *v);
-FL int         screensize(void);
+
 FL int         from(void *v);
 
 /* Print all message in between bottom and topx (including bottom) */

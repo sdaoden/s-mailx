@@ -797,20 +797,6 @@ scroll_forward:
 	return(headers(cur));
 }
 
-/*
- * Compute screen size.
- */
-FL int
-screensize(void)
-{
-	int s;
-	char *cp;
-
-	if ((cp = ok_vlook(screen)) != NULL && (s = atoi(cp)) > 0)
-		return s;
-	return scrnheight - 4;
-}
-
 static sigjmp_buf	_cmd1_pipejmp;
 
 /*ARGSUSED*/
