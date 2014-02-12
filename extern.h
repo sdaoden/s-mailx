@@ -294,26 +294,6 @@ FL bool_t      _smemcheck(char const *file, int line);
 # define smemcheck()             _smemcheck(__FILE__, __LINE__)
 #endif
 
-/* cache.c */
-#ifdef HAVE_IMAP
-FL enum okay   getcache1(struct mailbox *mp, struct message *m,
-                  enum needspec need, int setflags);
-FL enum okay   getcache(struct mailbox *mp, struct message *m,
-                  enum needspec need);
-FL void        putcache(struct mailbox *mp, struct message *m);
-FL void        initcache(struct mailbox *mp);
-FL void        purgecache(struct mailbox *mp, struct message *m, long mc);
-FL void        delcache(struct mailbox *mp, struct message *m);
-FL enum okay   cache_setptr(int transparent);
-FL enum okay   cache_list(struct mailbox *mp, const char *base, int strip,
-                  FILE *fp);
-FL enum okay   cache_remove(const char *name);
-FL enum okay   cache_rename(const char *old, const char *new);
-FL unsigned long cached_uidvalidity(struct mailbox *mp);
-FL FILE *      cache_queue(struct mailbox *mp);
-FL enum okay   cache_dequeue(struct mailbox *mp);
-#endif /* HAVE_IMAP */
-
 /*
  * cmd1.c
  */
@@ -861,6 +841,29 @@ FL const char * imap_make_date_time(time_t t);
 FL time_t      imap_read_date(char const *cp);
 FL char *      imap_quotestr(char const *s);
 FL char *      imap_unquotestr(char const *s);
+
+/*
+ * imap_cache.c
+ */
+
+#ifdef HAVE_IMAP
+FL enum okay   getcache1(struct mailbox *mp, struct message *m,
+                  enum needspec need, int setflags);
+FL enum okay   getcache(struct mailbox *mp, struct message *m,
+                  enum needspec need);
+FL void        putcache(struct mailbox *mp, struct message *m);
+FL void        initcache(struct mailbox *mp);
+FL void        purgecache(struct mailbox *mp, struct message *m, long mc);
+FL void        delcache(struct mailbox *mp, struct message *m);
+FL enum okay   cache_setptr(int transparent);
+FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
+                  FILE *fp);
+FL enum okay   cache_remove(char const *name);
+FL enum okay   cache_rename(char const *old, char const *new);
+FL unsigned long cached_uidvalidity(struct mailbox *mp);
+FL FILE *      cache_queue(struct mailbox *mp);
+FL enum okay   cache_dequeue(struct mailbox *mp);
+#endif /* HAVE_IMAP */
 
 /* imap_search.c */
 FL enum okay   imap_search(const char *spec, int f);
