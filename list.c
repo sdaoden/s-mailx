@@ -136,16 +136,20 @@ static void    regret(int token);
 /* Reset all the scanner global variables */
 static void    scaninit(void);
 
-/* See if the passed name sent the passed message number.  Return true if so */
-static int     matchsender(char *str, int mesg, int allnet);
+/* See if the passed name sent the passed message */
+static bool_t  _matchsender(struct message *mp, char const *str, bool_t allnet);
 
-static int     matchmid(char *id, enum idfield idfield, int mesg);
+static bool_t  _matchmid(struct message *mp, char *id, enum idfield idfield);
 
-/* See if the given string matches inside the subject field of the given
- * message.  For the purpose of the scan, we ignore case differences.  If it
- * does, return true.  The string search argument is assumed to have the form
- * "/string."  If it is of the form "/" we use the previous search string */
-static int     matchsubj(char *str, int mesg);
+/* See if the given string matches.
+ * For the purpose of the scan, we ignore case differences.
+ * This is the engine behind the `/' search */
+static bool_t  _match_dash(struct message *mp, char const *str);
+
+/* See if the given search expression matches.
+ * For the purpose of the scan, we ignore case differences.
+ * This is the engine behind the `?[..]?' search */
+static bool_t  _match_qm(struct message *mp, struct search_expr *sep);
 
 /* Unmark the named message */
 static void    unmark(int mesg);
@@ -161,7 +165,7 @@ add_to_namelist(char ***namelist, size_t *nmlsize, char **np, char *string)
 
    if ((idx = PTR2SIZE(np - *namelist)) >= *nmlsize) {
       *namelist = srealloc(*namelist, (*nmlsize += 8) * sizeof *np);
-      np = &(*namelist)[idx];
+      np = *namelist + idx;
    }
    *np++ = string;
    NYD_LEAVE;
@@ -174,12 +178,11 @@ markall(char *buf, int f)
 #define markall_ret(i) do { rv = i; goto jleave; } while (0);
 
    /* TODO use a bit carrier for all the states */
-   char **np, **nq;
-   int i, rv, tok, beg, mc, other, valdot, colmod, colresult;
+   char **np, **nq, **namelist, *bufp, *id = NULL, *cp;
+   int rv = 0, i, tok, beg, mc, other, valdot, colmod, colresult;
    struct message *mp, *mx;
-   char **namelist, *bufp, *id = NULL, *cp;
    bool_t star, topen, tback;
-   size_t nmlsize;
+   size_t j, nmlsize;
    enum idfield idfield = ID_REFERENCES;
 #ifdef HAVE_IMAP
    int gotheaders;
@@ -441,34 +444,87 @@ number:
             mark(i, f);
       }
 
-   /* If any names were given, go through and eliminate any messages whose
-    * senders were not requested */
+   /* If any names were given, go through and eliminate any messages which
+    * don't match */
    if (np > namelist || id) {
-      bool_t allnet = ok_blook(allnet);
+      struct search_expr *sep = NULL;
+      bool_t allnet;
+
+      /* If  */
+      if (np > namelist) {
+         sep = scalloc(PTR2SIZE(np - namelist), sizeof(*sep));
+
+         for (j = 0, nq = namelist; *nq != NULL; ++j, ++nq) {
+            char *x = *nq;
+
+            sep[j].ss_sexpr = x;
+            if (*x != '?' || rv < 0)
+               continue;
+
+            x = strchr(++x, '?');
+            sep[j].ss_where = (x == NULL || x - 1 == *nq) ? "subject"
+                  : savestrbuf(*nq + 1, PTR2SIZE(x - *nq) - 1);
+
+            x = (x == NULL ? *nq : x) + 1;
+            if (*x == '\0') { /* TODO Empty ?? expression: remove from list */
+               fprintf(stderr, tr(525,
+                  "Invalid `?[..]?' search expression: >>> %s <<<\n"), *nq);
+               rv = -1;
+               continue;
+            }
+#ifdef HAVE_REGEX
+            if (!anyof("^.[]*+?(){}|$", x))
+#endif
+               sep[j].ss_sexpr = x;
+#ifdef HAVE_REGEX
+            else {
+               sep[j].ss_sexpr = NULL;
+               if (regcomp(&sep[j].ss_reexpr, x,
+                     REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0) {
+                  fprintf(stderr, tr(526,
+                     "Invalid regular expression: >>> %s <<<\n"), x);
+                  rv = -1;
+                  continue;
+               }
+            }
+#endif
+         }
+         if (rv < 0)
+            goto jsepfree;
+      }
 
 #ifdef HAVE_IMAP
       if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
          imap_getheaders(1, msgCount);
 #endif
       srelax_hold();
+      allnet = ok_blook(allnet);
       for (i = 1; i <= msgCount; ++i) {
+         mp = message + i - 1;
          mc = 0;
+
          if (np > namelist) {
-            for (nq = namelist; *nq != NULL; ++nq)
-               if (**nq == '/') {
-                  if (matchsubj(*nq, i)) {
+            for (nq = namelist; *nq != NULL; ++nq) {
+               if (**nq == '?') {
+                  if (_match_qm(mp, sep + PTR2SIZE(nq - namelist))) {
                      ++mc;
                      break;
                   }
-               } else if (matchsender(*nq, i, allnet)) {
+               } else if (**nq == '/') {
+                  if (_match_dash(mp, *nq)) {
+                     ++mc;
+                     break;
+                  }
+               } else if (_matchsender(mp, *nq, allnet)) {
                   ++mc;
                   break;
                }
+            }
          }
-         if (mc == 0 && id && matchmid(id, idfield, i))
+         if (mc == 0 && id && _matchmid(mp, id, idfield))
             ++mc;
          if (mc == 0)
-            unmark(i);
+            mp->m_flag &= ~MMARK;
          srelax();
       }
       srelax_rele();
@@ -488,8 +544,21 @@ number:
             printf(tr(122, "}\n"));
          } else if (id)
             printf(tr(227, "Parent message not found\n"));
-         markall_ret(-1)
+         rv = -1;
+         goto jsepfree;
       }
+
+jsepfree:
+      if (sep != NULL) {
+#ifdef HAVE_REGEX
+         for (i = (int)PTR2SIZE(np - namelist); i-- != 0;)
+            if (sep[i].ss_sexpr == NULL)
+               regfree(&sep[i].ss_reexpr);
+#endif
+         free(sep);
+      }
+      if (rv < 0)
+         goto jleave;
    }
 
    /* If any colon modifiers were given, go through and unmark any
@@ -749,106 +818,146 @@ scaninit(void)
    NYD_LEAVE;
 }
 
-static int
-matchsender(char *str, int mesg, int allnet)
+static bool_t
+_matchsender(struct message *mp, char const *str, bool_t allnet)
 {
-   int rv;
+   bool_t rv;
    NYD_ENTER;
 
    if (allnet) {
-      char *cp = nameof(&message[mesg - 1], 0);
+      char *cp = nameof(mp, 0);
 
       do {
          if ((*cp == '@' || *cp == '\0') && (*str == '@' || *str == '\0')) {
-            rv = 1;
+            rv = TRU1;
             goto jleave;
          }
          if (*cp != *str)
             break;
       } while (cp++, *str++ != '\0');
-      rv = 0;
+      rv = FAL0;
       goto jleave;
    }
-   rv = !strcmp(str,
-         (ok_blook(showname) ? realname : skin)(name1(&message[mesg - 1], 0)));
+   rv = !strcmp(str, (ok_blook(showname) ? realname : skin)(name1(mp, 0)));
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
-static int
-matchmid(char *id, enum idfield idfield, int mesg)
+static bool_t
+_matchmid(struct message *mp, char *id, enum idfield idfield)
 {
-   struct name *np;
    char *cp;
-   int rv;
+   bool_t rv;
    NYD_ENTER;
 
-   if ((cp = hfield1("message-id", &message[mesg - 1])) != NULL) {
+   if ((cp = hfield1("message-id", mp)) != NULL) {
       switch (idfield) {
       case ID_REFERENCES:
          rv = (msgidcmp(id, cp) == 0);
          goto jleave;
-      case ID_IN_REPLY_TO:
+      case ID_IN_REPLY_TO: {
+         struct name *np;
+
          if ((np = extract(id, GREF)) != NULL)
             do {
                if (msgidcmp(np->n_name, cp) == 0) {
-                  rv = 1;
+                  rv = TRU1;
                   goto jleave;
                }
             } while ((np = np->n_flink) != NULL);
          break;
       }
+      }
    }
-   rv = 0;
+   rv = FAL0;
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
-static int
-matchsubj(char *str, int mesg) /* FIXME regex-enable; funbody=only matching!! */
+static bool_t
+_match_dash(struct message *mp, char const *str)
 {
    static char lastscan[128];
 
    struct str in, out;
-   struct message *mp;
-   char *cp, *cp2;
-   int i;
+   char *hfield, *hbody;
+   bool_t rv;
    NYD_ENTER;
 
-   ++str;
-   if (strlen(str) == 0) {
+   if (*++str == '\0') {
       str = lastscan;
    } else {
       strncpy(lastscan, str, sizeof lastscan); /* XXX use new n_str object! */
       lastscan[sizeof lastscan - 1] = '\0';
    }
 
-   mp = &message[mesg - 1];
-
    /* Now look, ignoring case, for the word in the string */
-   if (ok_blook(searchheaders) && (cp = strchr(str, ':'))) {
-      *cp++ = '\0';
-      cp2 = hfieldX(str, mp);
-      cp[-1] = ':';
+   if (ok_blook(searchheaders) && (hfield = strchr(str, ':'))) {
+      size_t l = PTR2SIZE(hfield - str);
+      hfield = ac_alloc(l + 1);
+      memcpy(hfield, str, l);
+      hfield[l] = '\0';
+      hbody = hfieldX(hfield, mp);
+      ac_free(hfield);
+      hfield = UNCONST(str + l + 1);
    } else {
-      cp = str;
-      cp2 = hfield1("subject", mp);
+      hfield = UNCONST(str);
+      hbody = hfield1("subject", mp);
    }
-   if (cp2 == NULL) {
-      i = 0;
+   if (hbody == NULL) {
+      rv = FAL0;
       goto jleave;
    }
 
-   in.s = cp2;
-   in.l = strlen(cp2);
+   in.s = hbody;
+   in.l = strlen(hbody);
    mime_fromhdr(&in, &out, TD_ICONV);
-   i = substr(out.s, cp);
+   rv = substr(out.s, hfield);
    free(out.s);
 jleave:
    NYD_LEAVE;
-   return i;
+   return rv;
+}
+
+static bool_t
+_match_qm(struct message *mp, struct search_expr *sep)
+{
+   struct str in, out;
+   char *nfield, *cfield;
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+   nfield = savestr(sep->ss_where);
+
+   while ((cfield = n_strsep(&nfield, ',', TRU1)) != NULL) {
+      if (!asccasecmp(cfield, "body")) {
+         rv = FAL0;
+jmsg:
+         if ((rv = message_match(mp, sep, rv)))
+            break;
+      } else if (!asccasecmp(cfield, "text")) {
+         rv = TRU1;
+         goto jmsg;
+      } else if ((in.s = hfieldX(cfield, mp)) == NULL)
+         continue;
+      else {
+         in.l = strlen(in.s);
+         mime_fromhdr(&in, &out, TD_ICONV);
+#ifdef HAVE_REGEX
+         if (sep->ss_sexpr == NULL)
+            rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+         else
+#endif
+            rv = substr(out.s, sep->ss_sexpr);
+         free(out.s);
+         if (rv)
+            break;
+      }
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 static void
