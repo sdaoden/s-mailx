@@ -364,22 +364,53 @@ FL int         mboxit(void *v);
 /* List the folders the user currently has */
 FL int         folders(void *v);
 
-/* cmd2.c */
+/*
+ * cmd2.c
+ */
+
+/* If any arguments were given, go to the next applicable argument following
+ * dot, otherwise, go to the next applicable message.  If given as first
+ * command with no arguments, print first message */
 FL int         next(void *v);
+
+/* Save a message in a file.  Mark the message as saved so we can discard when
+ * the user quits */
 FL int         save(void *v);
 FL int         Save(void *v);
+
+/* Copy a message to a file without affected its saved-ness */
 FL int         copycmd(void *v);
 FL int         Copycmd(void *v);
+
+/* Move a message to a file */
 FL int         cmove(void *v);
 FL int         cMove(void *v);
+
+/* Decrypt and copy a message to a file */
 FL int         cdecrypt(void *v);
 FL int         cDecrypt(void *v);
+
+/* Write the indicated messages at the end of the passed file name, minus
+ * header and trailing blank line.  This is the MIME save function */
 FL int         cwrite(void *v);
+
+/* Delete messages */
 FL int         delete(void *v);
+
+/* Delete messages, then type the new dot */
 FL int         deltype(void *v);
+
+/* Undelete the indicated messages */
 FL int         undeletecmd(void *v);
+
+/* Add the given header fields to the retained list.  If no arguments, print
+ * the current list of retained fields */
 FL int         retfield(void *v);
+
+/* Add the given header fields to the ignored list.  If no arguments, print the
+ * current list of ignored fields */
 FL int         igfield(void *v);
+
 FL int         saveretfield(void *v);
 FL int         saveigfield(void *v);
 FL int         fwdretfield(void *v);
