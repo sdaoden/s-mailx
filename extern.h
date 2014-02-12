@@ -422,9 +422,17 @@ FL int         unsaveretain(void *v);
 FL int         unfwdignore(void *v);
 FL int         unfwdretain(void *v);
 
-/* cmd3.c */
+/*
+ * cmd3.c
+ */
+
+/* Process a shell escape by saving signals, ignoring signals and a sh -c */
 FL int         shell(void *v);
+
+/* Fork an interactive shell */
 FL int         dosh(void *v);
+
+/* Show the help screen */
 FL int         help(void *v);
 
 /* Print user's working directory */
@@ -436,46 +444,89 @@ FL int         c_chdir(void *v);
 FL int         respond(void *v);
 FL int         respondall(void *v);
 FL int         respondsender(void *v);
+FL int         Respond(void *v);
 FL int         followup(void *v);
 FL int         followupall(void *v);
 FL int         followupsender(void *v);
+FL int         Followup(void *v);
+
+/* The 'forward' command */
+FL int         forwardcmd(void *v);
+
+/* Similar to forward, saving the message in a file named after the first
+ * recipient */
+FL int         Forwardcmd(void *v);
+
+/* Resend a message list to a third person */
+FL int         resendcmd(void *v);
+
+/* Resend a message list to a third person without adding headers */
+FL int         Resendcmd(void *v);
+
+/* Preserve messages, so that they will be sent back to the system mailbox */
 FL int         preserve(void *v);
+
+/* Mark all given messages as unread */
 FL int         unread(void *v);
+
+/* Mark all given messages as read */
 FL int         seen(void *v);
+
+/* Print the size of each message */
 FL int         messize(void *v);
+
+/* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         rexit(void *v);
+
 /* Set or display a variable value.  Syntax is similar to that of sh */
 FL int         set(void *v);
+
+/* Unset a bunch of variable values */
 FL int         unset(void *v);
+
+/* Put add users to a group */
 FL int         group(void *v);
+
+/* Delete the passed groups */
 FL int         ungroup(void *v);
+
+/* Change to another file.  With no argument, print info about current file */
 FL int         cfile(void *v);
+
+/* Expand file names like echo */
 FL int         echo(void *v);
-FL int         Respond(void *v);
-FL int         Followup(void *v);
-FL int         forwardcmd(void *v);
-FL int         Forwardcmd(void *v);
 
 /* if.else.endif conditional execution */
 FL int         c_if(void *v);
 FL int         c_else(void *v);
 FL int         c_endif(void *v);
 
+/* Set the list of alternate names */
 FL int         alternates(void *v);
-FL int         resendcmd(void *v);
-FL int         Resendcmd(void *v);
+
+/* 'newmail'/'inc' command: Check for new mail without writing old mail back */
 FL int         newmail(void *v);
+
+/* Shortcuts */
 FL int         shortcut(void *v);
-FL struct shortcut *get_shortcut(const char *str);
+FL struct shortcut *get_shortcut(char const *str);
 FL int         unshortcut(void *v);
+
+/* Message flag manipulation */
 FL int         cflag(void *v);
 FL int         cunflag(void *v);
 FL int         canswered(void *v);
 FL int         cunanswered(void *v);
 FL int         cdraft(void *v);
 FL int         cundraft(void *v);
+
+/* noop */
 FL int         cnoop(void *v);
+
+/* Remove mailbox */
 FL int         cremove(void *v);
+
+/* Rename mailbox */
 FL int         crename(void *v);
 
 /* collect.c */
