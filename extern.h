@@ -124,9 +124,7 @@ FL struct attachment *  edit_attachments(struct attachment *aphead);
 
 /* Announce a fatal error (and die) */
 FL void        panic(char const *format, ...);
-#ifdef HAVE_DEBUG
-FL void        warn(char const *format, ...);
-#endif
+FL void        alert(char const *format, ...);
 
 /* Provide BSD-like signal() on all (POSIX) systems */
 FL sighandler_type safe_signal(int signum, sighandler_type handler);

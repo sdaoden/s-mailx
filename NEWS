@@ -15,6 +15,60 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.5.2: fix 4: 2014-02-15 (2014-02-14)
+---------------------------------------
+
+- s-nail-14_5_2-smime.patch
+  Fix a very stupid off-by-one error that i've introduced
+  in [7bdf330] (OpenBSD 5.3: sigh, address strcpy(),strcat()
+  etc., 2013-06-01).
+  Until we've changed the used data from string to something
+  line-wise, use strcat(3) again.
+
+v14.5.2: fix 3: 2014-02-10
+--------------------------
+
+- s-nail-14_5_2-maildir.patch
+  maildir folders would have caused problems in environments which
+  provide the realpath(3) function: beside a "cannot canonicalize PATH"
+  warning the finally used path would be wrong (`test3' would end up as
+  `test3/test3'), so that any further access would try to use the wrong
+  path.  Please read the description of this patch and/or the commit
+  logs of the commits [1c2563b] and [13f325f].
+
+v14.5.2: fix 2: 2014-02-05
+--------------------------
+
+- s-nail-14_5_2-mimeheader.patch
+  A header like
+
+    Subject: ehm, .getElementById("blink") needs <span
+     =?US-ASCII?Q?id=3D"blink">,?= not =?US-ASCII?Q?class=3D"id"?=
+
+  would yet be displayed without the " not " in between the two encoded
+  words because of faulty "encoded-word-continuation" detection (note
+  the quotation marks).  The error path could also have been seen in
+  mail forwarding and in faulty searching etc.
+  This patch is in a row of fixes for my hasty [0f9ad93] from 2013-03-12
+  that already caused the v14.2 minor release (because of [b608c6b] from
+  2013-03-14).  Those with mercy may read the commit message of [c81afce].
+
+v14.5.2: fix 1: 2014-01-30
+--------------------------
+
+- s-nail-14_5_2-sort.patch
+  Reverses (sort(),thread(): use srelax()!, 2014-01-18, [a9b67e9]),
+  which was a hasty commit of an untested diff that i've added few
+  minutes beforehand:
+
+    As a rather careless last-minute change i've added string relaxation
+    to threaded and sorted display, but it's really one more step towards
+    lowering memory pressure -- i couldn't resist [a9b67e9] after seeing
+
+  An alternative, forward-heading patch that keeps string relaxation has
+  been pushed to [master] as [5e75529] and is also available as
+  s-nail-14_5_2-sort-alt.patch.
+
 v14.5.2, 2014-01-18
 -------------------
 

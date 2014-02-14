@@ -102,7 +102,8 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
       _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
-      _CFLAGS="${_CFLAGS} -Winit-self -Wshadow -Wunused -Wwrite-strings"
+      _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
+      _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
       if { i=$ccver; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
          :
       else
@@ -126,13 +127,14 @@ compiler_flags() {
    if nwantfeat DEBUG; then
       _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
-      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
+      _CFLAGS="${dbgoptim} -g -ftrapv ${_CFLAGS}";
       if [ "${stackprot}" = yes ]; then
          _CFLAGS="${_CFLAGS} -fstack-protector-all "
             _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
       fi
    fi
    _CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+   # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
    _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
    export _CFLAGS _LDFLAGS
 
@@ -832,7 +834,8 @@ int main(void)
 }
 !
 
-      run_check openssl_md5 'for MD5 digest in OpenSSL' \
+      if wantfeat MD5; then
+         run_check openssl_md5 'for MD5 digest in OpenSSL' \
          '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
 #include <openssl/md5.h>
@@ -842,7 +845,7 @@ int main(void)
    char const dat[] = "abrakadabrafidibus";
    char dig[16], hex[16 * 2];
    MD5_CTX ctx;
-	size_t i, j;
+   size_t i, j;
 
    memset(dig, 0, sizeof(dig));
    memset(hex, 0, sizeof(hex));
@@ -850,17 +853,17 @@ int main(void)
    MD5_Update(&ctx, dat, sizeof(dat) - 1);
    MD5_Final(dig, &ctx);
 
-#define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
-	for (i = 0; i < sizeof(hex) / 2; i++) {
-		j = i << 1;
-		hex[j] = hexchar((dig[i] & 0xf0) >> 4);
-		hex[++j] = hexchar(dig[i] & 0x0f);
+#define hexchar(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
+   for (i = 0; i < sizeof(hex) / 2; i++) {
+      j = i << 1;
+      hex[j] = hexchar((dig[i] & 0xf0) >> 4);
+      hex[++j] = hexchar(dig[i] & 0x0f);
    }
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
+      fi # wantfeat MD5
    fi
-
 else
    echo '/* WANT_SSL=0 */' >> ${h}
 fi # wantfeat SSL

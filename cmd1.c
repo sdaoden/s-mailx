@@ -145,15 +145,20 @@ __hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
 	char datebuf[FROM_DATEBUF], *cp, *subjline;
 	char const *datefmt, *date, *name, *fp;
 	int B, c, i, n, s, wleft, subjlen, isto = 0, isaddr = 0;
-	struct message *mp = &message[msgno - 1];
-	time_t datet = mp->m_time;
+	struct message *mp;
+	time_t datet;
 
+	mp = &message[msgno - 1];
+	datet = mp->m_time;
 	date = NULL;
-	if ((datefmt = ok_vlook(datefield)) != NULL) {
+
+	datefmt = ok_vlook(datefield);
+jredo:
+	if (datefmt != NULL) {
 		fp = hfield1("date", mp);/* TODO use m_date field! */
 		if (fp == NULL) {
 			datefmt = NULL;
-			goto jdate_set;
+			goto jredo;
 		}
 		datet = rfctime(fp);
 		date = fakedate(datet);
@@ -184,17 +189,15 @@ __hprf(size_t yetprinted, char const *fmt, int msgno, FILE *f, bool_t threaded,
 			}
 		} else if ((i & 1) == 0)
 			datefmt = NULL;
-	} else if (datet == (time_t)0 && (mp->m_flag & MNOFROM) == 0) {
+	} else if (datet == (time_t)0 && !(mp->m_flag & MNOFROM)) {
 		/* TODO eliminate this path, query the FROM_ date in setptr(),
 		 * TODO all other codepaths do so by themselves ALREADY ?????
 		 * TODO assert(mp->m_time != 0);, then
 		 * TODO ALSO changes behaviour of markout-non-current */
 		_parse_from_(mp, datebuf);
 		date = datebuf;
-	} else {
-jdate_set:
+	} else
 		date = fakedate(datet);
-	}
 
 	isaddr = 1;
 	name = name1(mp, 0);

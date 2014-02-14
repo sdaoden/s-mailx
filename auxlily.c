@@ -180,12 +180,11 @@ panic(char const *format, ...)
 
    fputs("\n", stderr);
    fflush(stderr);
-   exit(EXIT_ERR);
+   abort(); /* Was exit(EXIT_ERR); for a while, but no */
 }
 
-#ifdef HAVE_DEBUG
 FL void
-warn(char const *format, ...)
+alert(char const *format, ...)
 {
    va_list ap;
 
@@ -198,7 +197,6 @@ warn(char const *format, ...)
    fputs("\n", stderr);
    fflush(stderr);
 }
-#endif
 
 FL sighandler_type
 safe_signal(int signum, sighandler_type handler)
@@ -1234,7 +1232,7 @@ do {\
    if (__xl.ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      warn("%p: corrupted lower canary: 0x%02X: %s, line %u",\
+      alert("%p: corrupt lower canary: 0x%02X: %s, line %u",\
          __xl.p, __i, mdbg_file, mdbg_line);\
    }\
    __xu.p = __xc;\
@@ -1250,11 +1248,11 @@ do {\
    if (__xu.ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      warn("%p: corrupted upper canary: 0x%02X: %s, line %u",\
+      alert("%p: corrupt upper canary: 0x%02X: %s, line %u",\
          __xl.p, __i, mdbg_file, mdbg_line);\
    }\
    if (BAD)\
-      warn("   ..canary last seen: %s, line %u", __xc->file, __xc->line);\
+      alert("   ..canary last seen: %s, line %u", __xc->file, __xc->line);\
 } while (0)
 
 struct chunk {

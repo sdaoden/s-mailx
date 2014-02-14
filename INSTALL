@@ -182,8 +182,8 @@ reflected by the following statements.
 . DragonFly BSD <https://www.dragonflybsd.org/>
   DragonFly 3.6-RELEASE x86_64
   - gcc 4.7.3 [DragonFly] Release/2013-04-11.
-    + Note: harmless iconv(3) warning again (as if we didn't had to treat it
-      specially already).
+    + Note: harmless iconv(3) warning again (as if we didn't have had to
+      treat it specially already).
     + Note: there is a single warning on 'signed overflow'.  I think it's
       wrong.
 
@@ -193,15 +193,7 @@ reflected by the following statements.
     `packager-install', you better say '$ make -e DESTDIR=xy ...'.
   + You'll see some harmless and ignorable warnings.
 
-. Slackware Linux <http://www.slackware.com/>
-  Slackware 14 3.2.29-smp (i386).
-  + Note: not tested for v14.5, machine disappeared.  (Will install a VM
-    with the new release before the next minor.)
-  - gcc (GCC) 4.7.1.
-  - clang version 3.0 (tags/RELEASE_30/final).
-
-OpenIndiana is targeted for v14.6.
-And i'm very interested in reports from other combinations.
+I'm very interested in reports from other combinations.
 (It should work practically everywhere, generally speaking.)
 
 Program features yet to be overhauled

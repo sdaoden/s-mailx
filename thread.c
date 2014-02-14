@@ -144,7 +144,7 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
 		mp = &mt[c];
 	}
 	if (mdata != NULL && mp->mi_id == NULL) {
-		mp->mi_id = id;
+		mp->mi_id = sstrdup(id);
 		mp->mi_data = mdata;
 		mdata->m_idhash = ~h;
 	}
@@ -395,6 +395,10 @@ makethreads(struct message *m, long cnt, int nmail)
 
 	threadroot = interlink(m, cnt, nmail);
 	finalize(threadroot);
+
+	for (i = 0; i < mprime; ++i)
+		if (mt[i].mi_id != NULL)
+			free(mt[i].mi_id);
 	free(mt);
 	mb.mb_threaded = 1;
 }
@@ -612,11 +616,11 @@ sort(void *vp)
 			case SORT_TO:
 				if ((cp = hfield1(method == SORT_FROM ?
 						"from" : "to", mp)) != NULL) {
-					ms[n].ms_u.ms_char = showname ?
-						realname(cp) : skin(cp);
+					ms[n].ms_u.ms_char = sstrdup(showname ?
+						realname(cp) : skin(cp));
 					makelow(ms[n].ms_u.ms_char);
 				} else
-					ms[n].ms_u.ms_char = UNCONST("");
+					ms[n].ms_u.ms_char = sstrdup("");
 				break;
 			default:
 			case SORT_SUBJECT:
@@ -624,12 +628,12 @@ sort(void *vp)
 					in.s = cp;
 					in.l = strlen(in.s);
 					mime_fromhdr(&in, &out, TD_ICONV);
-					ms[n].ms_u.ms_char =
-						savestr(skipre(out.s));
+					ms[n].ms_u.ms_char = sstrdup(
+							skipre(out.s));
 					free(out.s);
 					makelow(ms[n].ms_u.ms_char);
 				} else
-					ms[n].ms_u.ms_char = UNCONST("");
+					ms[n].ms_u.ms_char = sstrdup("");
 				break;
 			}
 			ms[n++].ms_n = i;
@@ -652,6 +656,17 @@ sort(void *vp)
 		threadroot = &message[0];
 	finalize(threadroot);
 	mb.mb_threaded = 2;
+
+	switch (method) {
+	case SORT_FROM:
+	case SORT_TO:
+	case SORT_SUBJECT:
+		for (i = 0; i < n; ++i)
+			free(ms[i].ms_u.ms_char);
+		/* FALLTHRU */
+	default:
+		break;
+	}
 	ac_free(ms);
 	return ((vp && vp != (void *)-1 && !inhook && ok_blook(header))
 		? headers(msgvec) : 0);
