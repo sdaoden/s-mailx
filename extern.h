@@ -1389,20 +1389,40 @@ FL int         cspam_spam(void *v);
 # define cspam_spam              ccmdnotsupp
 #endif
 
-/* ssl.c */
+/*
+ * ssl.c
+ */
+
 #ifdef HAVE_SSL
-FL void        ssl_set_vrfy_level(const char *uhp);
-FL enum okay   ssl_vrfy_decide(void);
-FL char *      ssl_method_string(const char *uhp);
+/*  */
+FL void        ssl_set_verify_level(char const *uhp);
+
+/*  */
+FL enum okay   ssl_verify_decide(void);
+
+/*  */
+FL char *      ssl_method_string(char const *uhp);
+
+/*  */
 FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
                   int keep);
+
+/*  */
 FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp);
+
+/*  */
 FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
+
+/*  */
 FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
                      FILE *bp);
+
+/*  */
 FL int         ccertsave(void *v);
-FL enum okay   rfc2595_hostname_match(const char *host, const char *pattern);
-#else
+
+/*  */
+FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
+#else /* HAVE_SSL */
 # define ccertsave               ccmdnotsupp
 #endif
 

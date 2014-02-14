@@ -272,7 +272,7 @@ $set 1
 262 SSL_new() failed
 263 could not initiate SSL/TLS connection
 264 $Continue (y/n)? $
-265 invalid value of ssl-verify: %s\n
+265 Invalid value of %s: %s\n
 266 Ignoring header field "%s"\n
 267 Restoring deleted header lines\n
 268 Pipe to: "%s"\n

@@ -623,11 +623,11 @@ enum protocol {
 };
 
 #ifdef HAVE_SSL
-enum ssl_vrfy_level {
-   VRFY_IGNORE,
-   VRFY_WARN,
-   VRFY_ASK,
-   VRFY_STRICT
+enum ssl_verify_level {
+   SSL_VERIFY_IGNORE,
+   SSL_VERIFY_WARN,
+   SSL_VERIFY_ASK,
+   SSL_VERIFY_STRICT
 };
 #endif
 
@@ -1456,7 +1456,7 @@ VL struct colour_table  *colour_table;
 #endif
 
 #ifdef HAVE_SSL
-VL enum ssl_vrfy_level  ssl_vrfy_level; /* SSL verification level */
+VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 #endif
 
 #ifdef HAVE_ICONV

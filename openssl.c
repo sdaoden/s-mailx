@@ -233,7 +233,7 @@ ssl_verify_cb(int success, X509_STORE_CTX *store)
       fprintf(stderr, tr(231, " subject = %s\n"), data);
       fprintf(stderr, tr(232, " err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
-      if (ssl_vrfy_decide() != OKAY)
+      if (ssl_verify_decide() != OKAY)
          rv = FAL0;
    }
    NYD_LEAVE;
@@ -270,7 +270,7 @@ ssl_load_verifications(struct sock *sp)
    X509_STORE *store;
    NYD_ENTER;
 
-   if (ssl_vrfy_level == VRFY_IGNORE)
+   if (ssl_verify_level == SSL_VERIFY_IGNORE)
       goto jleave;
 
    if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
@@ -809,7 +809,7 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
    NYD_ENTER;
 
    ssl_init();
-   ssl_set_vrfy_level(uhp);
+   ssl_set_verify_level(uhp);
    if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
       ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
       goto jleave;
@@ -839,11 +839,11 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
       ssl_gen_err(tr(263, "could not initiate SSL/TLS connection"));
       goto jleave;
    }
-   if (ssl_vrfy_level != VRFY_IGNORE) {
+   if (ssl_verify_level != SSL_VERIFY_IGNORE) {
       if (ssl_check_host(server, sp) != OKAY) {
          fprintf(stderr, tr(249, "host certificate does not match \"%s\"\n"),
             server);
-         if (ssl_vrfy_decide() != OKAY)
+         if (ssl_verify_decide() != OKAY)
             goto jleave;
       }
    }
@@ -879,7 +879,7 @@ cverify(void *vp)
 
    ssl_init();
 
-   ssl_vrfy_level = VRFY_STRICT;
+   ssl_verify_level = SSL_VERIFY_STRICT;
    if ((store = X509_STORE_new()) == NULL) {
       ssl_gen_err(tr(544, "Error creating X509 store"));
       goto jleave;
