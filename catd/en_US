@@ -247,7 +247,7 @@ $set 1
 237 Mailbox changed: it seems existing rfc822 attachments became invalid!\n
 238 cannot load private key from file %s\n
 239 cannot load certificate from file %s\n
-240 invalid ciphers: %s\n
+240 Invalid cipher(s): %s\n
 241 Unexpected EOF on SMTP connection\n
 242 Syntax error in "%s"\n
 243 Error loading default CA locations\n
@@ -529,3 +529,40 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 528 Invalid conditional expression "%s %s %s"\n
 529 A Sender: field is required with multiple addresses in From: field.\n
 530 The Sender: field may contain only one address.\n
+531 No "from" address for signing specified\n
+532 Error reading private key from
+533 Error reading signer certificate from
+534 Error creating BIO signing objects
+535 Error creating the PKCS#7 signing object
+536 Error writing signed S/MIME data
+537 Error creating BIO verification object for message %d
+538 Error reading PKCS#7 object for message %d
+539 Error verifying message %d
+540 Warning: Message %d has no sender.\n
+541 No certificates found in message %d.\n
+542 Message %d: certificate does not match <%s>\n
+543 Message %d was verified successfully.\n
+544 Error creating X509 store
+545 Error loading %s
+546 Error loading default CA locations
+547 Error reading encryption certificate from "%s"
+548 Error creating BIO encryption objects
+549 Error creating the PKCS#7 encryption object
+550 Error writing encrypted S/MIME data
+551 Error reading private key
+552 Error reading decryption certificate
+553 Error creating BIO decryption objects
+554 Error reading PKCS#7 object
+555 No appropriate private key found.\n
+556 No appropriate certificate found.\n
+557 Error decrypting PKCS#7 object
+558 Could not find a certificate for %s
+559 or %s
+560 Error reading certificate from "%s"
+561 smime-sign-include-certs defined but empty\n
+562 Error reading PKCS#7 object for message %d
+563 No certificates found in message %d\n
+564 Error writing certificate %d from message %d
+565 Error creating X509 lookup object
+566 Error loading CRL from "%s"
+567 This OpenSSL version is too old to use CRLs.\n

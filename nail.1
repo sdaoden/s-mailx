@@ -3400,12 +3400,18 @@ verification of S/MIME signed messages.
 .It Va smime-cipher-user@host
 \*(OP Specifies a cipher to use when generating S/MIME encrypted
 messages for `user@host'.
-Valid ciphers are `rc2-40' (RC2 with 40 bits), `rc2-64' (RC2 with 64
-bits), `des' (DES, 56 bits) and `des-ede3' (3DES, 112/168 bits).
-The default is 3DES.
-It is not recommended to use the other ciphers unless a recipient's
-client is actually unable to handle 3DES since they are comparatively
-weak.
+RFC 5751 mandates a default of `aes-128' (AES-128 CBC).
+.Pp
+The actually available cipher algorithms depend on the cryptographic
+library that \*(UA uses; possible values are, in decreasing cipher
+strength:
+`aes-256' (AES-256 CBC), `aes-192' (AES-192 CBC), `aes-128' (AES-128 CBC),
+`des3' (DES EDE3 CBC, 168 bits; default if `aes-128' isn't available)
+and `des' (DES CBC, 56 bits).
+.Pp
+The following ciphers have been obsoleted and are no longer mentioned by
+the S/MIME specification (RFC 5751), but may be selected if available:
+`rc2-64' (RC2 CBC, 64 bits) and `rc2-40' (RC2 CBC, 40 bits).
 .It Va smime-crl-file
 \*(OP Specifies a file that contains a CRL in PEM format to use when
 verifying S/MIME messages.
@@ -3602,14 +3608,24 @@ Overrides
 .Va ssl-key
 for the specified account.
 .It Va ssl-method
-\*(OP Selects a SSL/TLS protocol version;
-\*(UA accepts the values `ssl2', `ssl3', `tls1', `tls1.1' and `tls1.2',
-though it depends on the OpenSSL library that is found on the system
-what is truly supported.
-If unset, the method is selected automatically, if possible
-(this process usually tries to use the most secure method possible).
-This approach is also taken if the chosen value is not supported by the
-OpenSSL library, in which case an error message will be printed first.
+\*(OP Selects the used TLS/SSL protocol version.
+The actually available protocol versions depend on the TLS/SSL
+library that \*(UA uses; possible values are, from newest to oldest:
+`tls1.2', `tls1.1', `tls1', `ssl3' and `ssl2'.
+.Pp
+Setting
+.Va ssl-method
+to any of these values will fixate the used protocol, which means that
+connections will fail if the server doesn't support it.
+The value `auto', which is the default, chooses a compatibility method
+that automatically uses the newest protocol version that the server
+is capable to understand.
+.Pp
+It has to be noted that `auto' is used as a fallback method if
+the actual setting of
+.Va ssl-method
+isn't supported by the used TLS/SSL library \(em in this case an error
+message will be printed first, however.
 .It Va ssl-method-user@host
 Overrides
 .Va ssl-method

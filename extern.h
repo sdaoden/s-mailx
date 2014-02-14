@@ -1167,17 +1167,33 @@ FL void        printgroup(char *name);
 
 FL void        remove_group(char const *name);
 
-/* openssl.c */
+/*
+ * openssl.c
+ */
+
 #ifdef HAVE_OPENSSL
-FL enum okay   ssl_open(const char *server, struct sock *sp, const char *uhp);
-FL void        ssl_gen_err(const char *fmt, ...);
+/*  */
+FL enum okay   ssl_open(char const *server, struct sock *sp, char const *uhp);
+
+/*  */
+FL void        ssl_gen_err(char const *fmt, ...);
+
+/*  */
 FL int         cverify(void *vp);
+
+/*  */
 FL FILE *      smime_sign(FILE *ip, struct header *);
-FL FILE *      smime_encrypt(FILE *ip, const char *certfile, const char *to);
-FL struct message * smime_decrypt(struct message *m, const char *to,
-                     const char *cc, int signcall);
+
+/*  */
+FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
+
+FL struct message * smime_decrypt(struct message *m, char const *to,
+                     char const *cc, int signcall);
+
+/*  */
 FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
-#else
+
+#else /* HAVE_OPENSSL */
 # define cverify                 ccmdnotsupp
 #endif
 
