@@ -23,7 +23,6 @@ if [ -n "${CONFIG}" ]; then
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0
       WANT_IMAP_SEARCH=0
-      WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
@@ -33,7 +32,6 @@ if [ -n "${CONFIG}" ]; then
       WANT_POP3=0
       WANT_READLINE=0 WANT_EDITLINE=0
       WANT_IMAP_SEARCH=0
-      WANT_REGEX=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
