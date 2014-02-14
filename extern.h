@@ -1321,19 +1321,37 @@ FL void        restorequitflags(int);
 FL int         sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
                   char const *prefix, enum sendaction action, off_t *stats);
 
-/* sendout.c */
+/*
+ * sendout.c
+ */
+
+/* Interface between the argument list and the mail1 routine which does all the
+ * dirty work */
 FL int         mail(struct name *to, struct name *cc, struct name *bcc,
-                  char *subject, struct attachment *attach,
-                  char *quotefile, int recipient_record);
+                  char *subject, struct attachment *attach, char *quotefile,
+                  int recipient_record);
+
+/* `mail' and `Mail' commands, respectively */
 FL int         csendmail(void *v);
 FL int         cSendmail(void *v);
-FL enum        okay mail1(struct header *hp, int printheaders,
+
+/* Mail a message on standard input to the people indicated in the passed
+ * header.  (Internal interface) */
+FL enum okay   mail1(struct header *hp, int printheaders,
                   struct message *quote, char *quotefile, int recipient_record,
                   int doprefix);
-FL int         mkdate(FILE *fo, const char *field);
+
+/* Create a Date: header field.
+ * We compare the localtime() and gmtime() results to get the timezone, because
+ * numeric timezones are easier to read and because $TZ isn't always set */
+FL int         mkdate(FILE *fo, char const *field);
+
+/* Dump the to, subject, cc header on the passed file buffer */
 FL int         puthead(struct header *hp, FILE *fo, enum gfield w,
                   enum sendaction action, enum conversion convert,
                   char const *contenttype, char const *charset);
+
+/*  */
 FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
 
 /*
