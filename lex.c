@@ -518,18 +518,13 @@ setfile(char const *name, int nmail) /* TODO oh my god */
       goto jem1;
    }
 
-   if (S_ISDIR(stb.st_mode)) {
-      if (nmail)
-         goto jnonmail;
-      errno = EISDIR;
-      perror(name);
-      goto jem1;
-   } else if (S_ISREG(stb.st_mode)) {
+   if (S_ISREG(stb.st_mode) ||
+         (options & OPT_BATCH_FLAG && !S_ISDIR(stb.st_mode))) {
       /*EMPTY*/
    } else {
       if (nmail)
          goto jnonmail;
-      errno = EINVAL;
+      errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
       perror(name);
       goto jem1;
    }

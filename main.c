@@ -781,6 +781,7 @@ joarg:
          oargs[oargs_count + 4] = "sendwait";
          oargs[oargs_count + 5] = "MBOX=/dev/null";
          oargs_count += 6;
+         folder = "/dev/null";
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;
       case '?':
