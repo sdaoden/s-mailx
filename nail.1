@@ -74,13 +74,15 @@
 .Nm \*(ua
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
+.Op Fl L Ar spec-list
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Bk
 .Fl f Op Ar file
 .Ek
 .Nm \*(ua
-.Op Fl BDdEeiNnRv~#
+.Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
+.Op Fl L Ar spec-list
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .\"
@@ -163,11 +165,34 @@ is not a direct argument to the flag
 but is instead taken from the command line after option processing has
 been completed.
 .It Fl H
-Print header summaries for all messages and exit.
+Print a header summary of all messages and exit.
+A configurable summary view is available via the
+.Fl L
+option.
 .It Fl i
 Set the
 .Va ignore
 variable to ignore tty interrupt signals.
+.It Fl L Ar spec-list
+Print a header summary of only those messages that match the given
+.Ar spec-list ,
+then exit.
+See the section
+.Sx "Specifying messages"
+for the format of
+.Ar spec-list .
+If the
+.Fl H
+option has been given in addition to
+.Fl L ,
+then printing of the header summary is suppressed,
+and \*(UA will instead indicate via its exit status wether
+.Ar spec-list
+matched any messages (`0') or not (`1');
+note that messages are forcefully suppressed, then, and unless verbosity
+is explicitly enabled (e.g., by using the
+.Fl v
+option).
 .It Fl N
 Unset the
 .Va header

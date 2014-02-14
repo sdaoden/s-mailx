@@ -329,8 +329,9 @@ FL int         c_Scroll(void *v);
 /* Print out the headlines for each message in the passed message list */
 FL int         c_from(void *v);
 
-/* Print all message in between bottom and topx (including bottom) */
-FL void        print_headers(size_t bottom, size_t topx);
+/* Print all message in between and including bottom and topx if they are
+ * visible and either only_marked is false or they are MMARKed */
+FL void        print_headers(size_t bottom, size_t topx, bool_t only_marked);
 
 /* Print out the value of dot */
 FL int         c_pdot(void *v);
@@ -942,6 +943,9 @@ FL int         execute(char *linebuf, int contxt, size_t linesize);
 /* Set the size of the message vector used to construct argument lists to
  * message list functions */
 FL void        setmsize(int sz);
+
+/* Logic behind -H / -L invocations */
+FL void        print_header_summary(char const *Larg);
 
 /* The following gets called on receipt of an interrupt.  This is to abort
  * printout of a command, mainly.  Dispatching here when command() is inactive

@@ -1794,7 +1794,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
 }
 
 FL void
-imap_getheaders(int volatile bot, int topp)
+imap_getheaders(int volatile bot, int topp) /* TODO should take iterator!! */
 {
    sighandler_type saveint, savepipe;
    /* enum okay ok = STOP;*/

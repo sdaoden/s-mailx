@@ -444,16 +444,16 @@ number:
             mark(i, f);
       }
 
-   /* If any names were given, go through and eliminate any messages which
-    * don't match */
+   /* If any names were given, eliminate any messages which don't match */
    if (np > namelist || id) {
       struct search_expr *sep = NULL;
       bool_t allnet;
 
-      /* If  */
+      /* The `?' search works with struct search_expr, so build an array.
+       * To simplify array, i.e., regex_t destruction, and optimize for the
+       * common case we walk the entire array even in case of errors */
       if (np > namelist) {
          sep = scalloc(PTR2SIZE(np - namelist), sizeof(*sep));
-
          for (j = 0, nq = namelist; *nq != NULL; ++j, ++nq) {
             char *x = *nq;
 
@@ -466,18 +466,13 @@ number:
                   : savestrbuf(*nq + 1, PTR2SIZE(x - *nq) - 1);
 
             x = (x == NULL ? *nq : x) + 1;
-            if (*x == '\0') { /* TODO Empty ?? expression: remove from list */
-               fprintf(stderr, tr(525,
-                  "Invalid `?[..]?' search expression: >>> %s <<<\n"), *nq);
+            if (*x == '\0') { /* XXX Simply remove from list instead? */
+               fprintf(stderr, tr(525, "Empty `?[..]?' search expression\n"));
                rv = -1;
                continue;
             }
 #ifdef HAVE_REGEX
-            if (!anyof("^.[]*+?(){}|$", x))
-#endif
-               sep[j].ss_sexpr = x;
-#ifdef HAVE_REGEX
-            else {
+            if (anyof("^.[]*+?(){}|$", x)) {
                sep[j].ss_sexpr = NULL;
                if (regcomp(&sep[j].ss_reexpr, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0) {
@@ -486,11 +481,12 @@ number:
                   rv = -1;
                   continue;
                }
-            }
+            } else
 #endif
+               sep[j].ss_sexpr = x;
          }
          if (rv < 0)
-            goto jsepfree;
+            goto jnamesearch_sepfree;
       }
 
 #ifdef HAVE_IMAP
@@ -501,42 +497,41 @@ number:
       allnet = ok_blook(allnet);
       for (i = 1; i <= msgCount; ++i) {
          mp = message + i - 1;
-         mc = 0;
-
+         j = 0;
          if (np > namelist) {
             for (nq = namelist; *nq != NULL; ++nq) {
                if (**nq == '?') {
                   if (_match_qm(mp, sep + PTR2SIZE(nq - namelist))) {
-                     ++mc;
+                     ++j;
                      break;
                   }
                } else if (**nq == '/') {
                   if (_match_dash(mp, *nq)) {
-                     ++mc;
+                     ++j;
                      break;
                   }
                } else if (_matchsender(mp, *nq, allnet)) {
-                  ++mc;
+                  ++j;
                   break;
                }
             }
          }
-         if (mc == 0 && id && _matchmid(mp, id, idfield))
-            ++mc;
-         if (mc == 0)
+         if (j == 0 && id && _matchmid(mp, id, idfield))
+            ++j;
+         if (j == 0)
             mp->m_flag &= ~MMARK;
          srelax();
       }
       srelax_rele();
 
       /* Make sure we got some decent messages */
-      mc = 0;
+      j = 0;
       for (i = 1; i <= msgCount; ++i)
          if (message[i - 1].m_flag & MMARK) {
-            ++mc;
+            ++j;
             break;
          }
-      if (mc == 0) {
+      if (j == 0) {
          if (!inhook && np > namelist) {
             printf(tr(120, "No applicable messages from {%s"), namelist[0]);
             for (nq = namelist + 1; *nq != NULL; ++nq)
@@ -545,15 +540,15 @@ number:
          } else if (id)
             printf(tr(227, "Parent message not found\n"));
          rv = -1;
-         goto jsepfree;
+         goto jnamesearch_sepfree;
       }
 
-jsepfree:
+jnamesearch_sepfree:
       if (sep != NULL) {
 #ifdef HAVE_REGEX
-         for (i = (int)PTR2SIZE(np - namelist); i-- != 0;)
-            if (sep[i].ss_sexpr == NULL)
-               regfree(&sep[i].ss_reexpr);
+         for (j = PTR2SIZE(np - namelist); j-- != 0;)
+            if (sep[j].ss_sexpr == NULL)
+               regfree(&sep[j].ss_reexpr);
 #endif
          free(sep);
       }
