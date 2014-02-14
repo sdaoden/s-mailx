@@ -15,6 +15,16 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.5.2: fix 4: 2014-02-15 (2014-02-14)
+---------------------------------------
+
+- s-nail-14_5_2-smime.patch
+  Fix a very stupid off-by-one error that i've introduced
+  in [7bdf330] (OpenBSD 5.3: sigh, address strcpy(),strcat()
+  etc., 2013-06-01).
+  Until we've changed the used data from string to something
+  line-wise, use strcat(3) again.
+
 v14.5.2: fix 3: 2014-02-10
 --------------------------
 
