@@ -160,8 +160,7 @@ jetmp:
 			for (;;) {
 				savedsize += buflen;
 				savedfields = srealloc(savedfields, savedsize);
-				memcpy(savedfields + strlen(savedfields),
-					buf, strlen(buf));
+				strcat(savedfields, buf);
 				if (keep)
 					fwrite(buf, sizeof *buf, buflen, *hp);
 				c = getc(ip);
