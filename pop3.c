@@ -170,6 +170,7 @@ jleave:
    return rv;
 }
 
+#ifdef HAVE_MD5
 static char *
 _pop3_lookup_apop_timestamp(char const *bp)
 {
@@ -212,6 +213,7 @@ jleave:
    NYD_LEAVE;
    return rp;
 }
+#endif
 
 static bool_t
 _pop3_use_starttls(char const *uhp)
