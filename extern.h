@@ -1031,7 +1031,9 @@ FL char const * charset_iter_current(void);
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
+#ifdef HAVE_ICONV
 FL char const * need_hdrconv(struct header *hp, enum gfield w);
+#endif
 
 /* Get the mime encoding from a Content-Transfer-Encoding header field */
 FL enum mimeenc mime_getenc(char *h);

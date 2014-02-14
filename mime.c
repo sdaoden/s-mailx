@@ -66,8 +66,10 @@ static void             _mt_init(void);
 static void             __mt_add_line(char const *line, struct mtnode **tail);
 
 /* Is 7-bit enough? */
+#ifdef HAVE_ICONV
 static bool_t           _has_highbit(char const *s);
 static bool_t           _name_highbit(struct name *np);
+#endif
 
 /* Get the conversion that matches *encoding* */
 static enum conversion  _conversion_by_encoding(void);
@@ -190,6 +192,7 @@ jleave:
    NYD_LEAVE;
 }
 
+#ifdef HAVE_ICONV
 static bool_t
 _has_highbit(char const *s)
 {
@@ -224,6 +227,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
+#endif
 
 static enum conversion
 _conversion_by_encoding(void)
@@ -755,6 +759,7 @@ charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
    NYD_LEAVE;
 }
 
+#ifdef HAVE_ICONV
 FL char const *
 need_hdrconv(struct header *hp, enum gfield w)
 {
@@ -795,6 +800,7 @@ jneeds:
    NYD_LEAVE;
    return ret;
 }
+#endif /* HAVE_ICONV */
 
 FL enum mimeenc
 mime_getenc(char *p)
