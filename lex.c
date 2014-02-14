@@ -231,7 +231,8 @@ static char *
 _lex_isolate(char const *comm)
 {
    NYD_ENTER;
-   while (*comm && strchr(" \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
+   while (*comm != '\0' &&
+         strchr("~|?&% \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
       ++comm;
    NYD_LEAVE;
    return UNCONST(comm);
@@ -286,22 +287,10 @@ _ghost(void *v)
    }
 
    /* Check that we can deal with this one */
-   switch (argv[0][0]) {
-   case '|':
-   case '~':
-   case '?':
-   case '#':
-      /* FALLTHRU */
-   case '\0':
-      goto jecanon;
-   default:
-      if (argv[0] == _lex_isolate(argv[0])) {
-jecanon:
-         fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
-         v = NULL;
-         goto jleave;
-      }
-      break;
+   if (argv[0] == _lex_isolate(argv[0])) {
+      fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
+      v = NULL;
+      goto jleave;
    }
 
    /* Always recreate */
@@ -868,18 +857,9 @@ jrestart:
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
    arglist[0] = cp;
-   switch (*cp) {
-   case '|':
-   case '~':
-   case '?':
+   if ((cp = _lex_isolate(cp)) == arglist[0] &&
+         (*cp == '|' || *cp == '~' || *cp == '?'))
       ++cp;
-      /* FALLTHRU */
-   case '\0':
-      break;
-   default:
-      cp = _lex_isolate(cp);
-      break;
-   }
    c = (int)PTR2SIZE(cp - arglist[0]);
    line.l -= c;
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
