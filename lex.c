@@ -718,7 +718,7 @@ commands(void)
          }
 
          _reset_on_stop = 1;
-         exit_status = 0;
+         exit_status = EXIT_OK;
       }
 
 #ifdef HAVE_COLOUR
