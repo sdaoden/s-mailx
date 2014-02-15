@@ -1402,9 +1402,13 @@ FL int
    SMALLOC_DEBUG_ARGS)
 {
    int rv;
-   size_t lsize = *linesize;
-   char *lp_base = *line, *lp = lp_base;
+   size_t lsize;
+   char *lp_base, *lp;
    NYD_ENTER;
+
+   lsize = *linesize;
+   lp_base = *line;
+   lp = lp_base;
 
    if (sp->s_rsz < 0) {
       sclose(sp);

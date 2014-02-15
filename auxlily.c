@@ -589,9 +589,11 @@ nextprime(ui32_t n)
 FL int
 expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
-   char const *xs = *s;
+   char const *xs;
    int c, n;
    NYD_ENTER;
+
+   xs = *s;
 
    if ((c = *xs & 0xFF) == '\0')
       goto jleave;

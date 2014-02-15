@@ -1074,11 +1074,14 @@ jleave:
 FL enum mimecontent
 mime_classify_content_of_part(struct mimepart const *mip)
 {
-   enum mimecontent mc = MIME_UNKNOWN;
-   char const *ct = mip->m_ct_type_plain;
+   enum mimecontent mc;
+   char const *ct;
    NYD_ENTER;
 
-   if (asccasecmp(ct, "application/octet-stream") == 0 &&
+   mc = MIME_UNKNOWN;
+   ct = mip->m_ct_type_plain;
+
+   if (!asccasecmp(ct, "application/octet-stream") &&
          mip->m_filename != NULL && ok_blook(mime_counter_evidence)) {
       ct = mime_classify_content_type_by_fileext(mip->m_filename);
       if (ct == NULL)
@@ -1091,24 +1094,24 @@ mime_classify_content_of_part(struct mimepart const *mip)
    }
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
-   else if (asccasecmp(ct, "text/plain") == 0)
+   else if (!asccasecmp(ct, "text/plain"))
       mc = MIME_TEXT_PLAIN;
-   else if (asccasecmp(ct, "text/html") == 0)
+   else if (!asccasecmp(ct, "text/html"))
       mc = MIME_TEXT_HTML;
-   else if (ascncasecmp(ct, "text/", 5) == 0)
+   else if (!ascncasecmp(ct, "text/", 5))
       mc = MIME_TEXT;
-   else if (asccasecmp(ct, "message/rfc822") == 0)
+   else if (!asccasecmp(ct, "message/rfc822"))
       mc = MIME_822;
-   else if (ascncasecmp(ct, "message/", 8) == 0)
+   else if (!ascncasecmp(ct, "message/", 8))
       mc = MIME_MESSAGE;
-   else if (asccasecmp(ct, "multipart/alternative") == 0)
+   else if (!asccasecmp(ct, "multipart/alternative"))
       mc = MIME_ALTERNATIVE;
-   else if (asccasecmp(ct, "multipart/digest") == 0)
+   else if (!asccasecmp(ct, "multipart/digest"))
       mc = MIME_DIGEST;
-   else if (ascncasecmp(ct, "multipart/", 10) == 0)
+   else if (!ascncasecmp(ct, "multipart/", 10))
       mc = MIME_MULTI;
-   else if (asccasecmp(ct, "application/x-pkcs7-mime") == 0 ||
-         asccasecmp(ct, "application/pkcs7-mime") == 0)
+   else if (!asccasecmp(ct, "application/x-pkcs7-mime") ||
+         !asccasecmp(ct, "application/pkcs7-mime"))
       mc = MIME_PKCS7;
 jleave:
    NYD_LEAVE;

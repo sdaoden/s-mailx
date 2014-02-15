@@ -174,12 +174,15 @@ jleave:
 static ssize_t
 _qf_state_prefix(struct qf_vc *vc)
 {
-   struct quoteflt *self = vc->self;
-   ssize_t rv = 0;
+   struct quoteflt *self;
+   ssize_t rv;
    char const *buf;
    size_t len, i;
    wchar_t wc;
    NYD_ENTER;
+
+   self = vc->self;
+   rv = 0;
 
    for (buf = vc->buf, len = vc->len; len > 0;) {
       /* TODO NULL BYTE! */
@@ -240,12 +243,15 @@ jfin:
 static ssize_t
 _qf_state_data(struct qf_vc *vc)
 {
-   struct quoteflt *self = vc->self;
-   ssize_t rv = 0;
+   struct quoteflt *self;
+   ssize_t rv;
    char const *buf;
    size_t len, i;
    wchar_t wc;
    NYD_ENTER;
+
+   self = vc->self;
+   rv = 0;
 
    for (buf = vc->buf, len = vc->len; len > 0;) {
       /* TODO NULL BYTE! */

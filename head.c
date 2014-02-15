@@ -870,11 +870,16 @@ jleave:
 FL int
 is_addr_invalid(struct name *np, int putmsg)
 {
-   char cbuf[sizeof "'\\U12340'"], *name = np->n_name;
-   int f = np->n_flags, ok8bit = 1;
+   char cbuf[sizeof "'\\U12340'"], *name;
+   int f, ok8bit;
    ui_it c;
-   char const *fmt = "'\\x%02X'", *cs;
+   char const *fmt, *cs;
    NYD_ENTER;
+
+   name = np->n_name;
+   f = np->n_flags;
+   ok8bit = 1;
+   fmt = "'\\x%02X'";
 
    if ((f & NAME_ADDRSPEC_INVALID) == 0 || !putmsg ||
          (f & NAME_ADDRSPEC_ERR_EMPTY) != 0)

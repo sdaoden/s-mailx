@@ -226,9 +226,13 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 FL bool_t
 getcredentials(char **user, char **pass)
 {
-   bool_t rv = TRU1;
-   char *u = *user, *p = *pass;
+   bool_t rv;
+   char *u, *p;
    NYD_ENTER;
+
+   rv = TRU1;
+   u = *user;
+   p = *pass;
 
    if (u == NULL) {
       if ((u = getuser(NULL)) == NULL)
@@ -1010,9 +1014,10 @@ jleave:
 static void
 _ncl_khome(struct line *l, bool_t dobell)
 {
-   size_t c = l->cursor;
+   size_t c;
    NYD_ENTER;
 
+   c = l->cursor;
    if (c > 0) {
       l->cursor = 0;
       while (c-- != 0)
@@ -1885,13 +1890,15 @@ tty_addhist(char const *s)
 {
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
-   size_t l = strlen(s);
+   size_t l;
    struct hist *h, *o, *y;
 # endif
    NYD_ENTER;
    UNUSED(s);
 
 # ifdef HAVE_HISTORY
+   l = strlen(s);
+
    if (_ncl_hist_size_max == 0)
       goto j_leave;
    _CL_CHECK_ADDHIST(s, goto j_leave);

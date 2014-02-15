@@ -1254,13 +1254,17 @@ FL int
 n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
    struct str *in_rest_or_null, bool_t skipilseq)
 {
-   int err = 0;
-   char *obb = out->s, *ob;
+   int err;
+   char *obb, *ob;
    char const *ib;
-   size_t olb = out->l, ol, il;
+   size_t olb, ol, il;
    NYD_ENTER;
 
+   err = 0;
+   obb = out->s;
+   olb = out->l;
    ol = in->l;
+
    ol = (ol << 1) - (ol >> 4);
    if (olb < ol) {
       olb = ol;

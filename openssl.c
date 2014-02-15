@@ -1107,15 +1107,20 @@ jleave:
 FL struct message *
 smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
 {
-   struct message *rv = NULL;
+   struct message *rv;
    FILE *fp, *bp, *hp, *op;
-   X509 *cert = NULL;
+   X509 *cert;
    PKCS7 *pkcs7;
-   EVP_PKEY *pkey = NULL;
+   EVP_PKEY *pkey;
    BIO *bb, *pb, *ob;
-   long size = m->m_size;
+   long size;
    FILE *yp;
    NYD_ENTER;
+
+   rv = NULL;
+   cert = NULL;
+   pkey = NULL;
+   size = m->m_size;
 
    if ((yp = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;

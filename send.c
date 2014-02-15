@@ -1266,12 +1266,14 @@ jleave:
 static FILE *
 newfile(struct mimepart *ip, int *ispipe)
 {
-   char *f = ip->m_filename;
    struct str in, out;
+   char *f;
    FILE *fp;
    NYD_ENTER;
 
+   f = ip->m_filename;
    *ispipe = 0;
+
    if (f != NULL && f != (char*)-1) {
       in.s = f;
       in.l = strlen(f);
