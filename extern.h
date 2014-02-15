@@ -1307,7 +1307,17 @@ FL int         savequitflags(void);
 
 FL void        restorequitflags(int);
 
-/* send.c */
+/*
+ * send.c
+ */
+
+/* Send message described by the passed pointer to the passed output buffer.
+ * Return -1 on error.  Adjust the status: field if need be.  If doign is
+ * given, suppress ignored header fields.  prefix is a string to prepend to
+ * each output line.   action = data destination
+ * (SEND_MBOX,_TOFILE,_TODISP,_QUOTE,_DECRYPT).  stats[0] is line count,
+ * stats[1] is character count.  stats may be NULL.  Note that stats[0] is
+ * valid for SEND_MBOX only */
 FL int         sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
                   char const *prefix, enum sendaction action, off_t *stats);
 
