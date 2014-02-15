@@ -107,9 +107,9 @@ do {\
       goto jlist;\
    if (argv[1] != NULL)\
       goto jerr;\
-   if (asccasecmp(*argv, "show") == 0)\
+   if (!asccasecmp(*argv, "show"))\
       goto jlist;\
-   if (asccasecmp(*argv, "clear") == 0)\
+   if (!asccasecmp(*argv, "clear"))\
       goto jclear;\
    if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
@@ -610,7 +610,7 @@ tty_addhist(char const *s)
    hold_all_sigs(); /* XXX too heavy, yet we jump away! */
    for (i = history(_el_hcom, &he, H_FIRST); i >= 0;
          i = history(_el_hcom, &he, H_NEXT))
-      if (strcmp(he.str, s) == 0) {
+      if (!strcmp(he.str, s)) {
          history(_el_hcom, &he, H_DEL, he.num);
          break;
       }

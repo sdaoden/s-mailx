@@ -261,7 +261,7 @@ itscan(char const *spec, char const **xp)
 
    for (i = 0; _it_strings[i].s_string; i++) {
       n = strlen(_it_strings[i].s_string);
-      if (ascncasecmp(spec, _it_strings[i].s_string, n) == 0 &&
+      if (!ascncasecmp(spec, _it_strings[i].s_string, n) &&
             (spacechar(spec[n]) || spec[n] == '\0' ||
              spec[n] == '(' || spec[n] == ')')) {
          _it_token = _it_strings[i].s_token;
@@ -346,17 +346,17 @@ itsplit(char const *spec, char const **xp)
       /* <flag> */
       if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
          break;
-      if (asccasecmp(_it_args[0], "\\Seen") == 0)
+      if (!asccasecmp(_it_args[0], "\\Seen"))
          _it_number = MREAD;
-      else if (asccasecmp(_it_args[0], "\\Deleted") == 0)
+      else if (!asccasecmp(_it_args[0], "\\Deleted"))
          _it_number = MDELETED;
-      else if (asccasecmp(_it_args[0], "\\Recent") == 0)
+      else if (!asccasecmp(_it_args[0], "\\Recent"))
          _it_number = MNEW;
-      else if (asccasecmp(_it_args[0], "\\Flagged") == 0)
+      else if (!asccasecmp(_it_args[0], "\\Flagged"))
          _it_number = MFLAGGED;
-      else if (asccasecmp(_it_args[0], "\\Answered") == 0)
+      else if (!asccasecmp(_it_args[0], "\\Answered"))
          _it_number = MANSWERED;
-      else if (asccasecmp(_it_args[0], "\\Draft") == 0)
+      else if (!asccasecmp(_it_args[0], "\\Draft"))
          _it_number = MDRAFT;
       else
          _it_number = 0;
@@ -602,7 +602,7 @@ _read_imap_date(char const *cp)
       goto jleave;
 
    for (i = 0;;) {
-      if (ascncasecmp(xp, month_names[i], 3) == 0)
+      if (!ascncasecmp(xp, month_names[i], 3))
          break;
       if (month_names[++i][0] == '\0')
          goto jleave;

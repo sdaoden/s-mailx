@@ -821,7 +821,7 @@ maildir_append(char const *name, FILE *fp)
    offs = ftell(fp);
    do /* while (bp != NULL); */ {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
-      if (bp == NULL || strncmp(buf, "From ", 5) == 0) {
+      if (bp == NULL || !strncmp(buf, "From ", 5)) {
          if (off1 != (off_t)-1) {
             rv = maildir_append1(name, fp, off1, size, flag);
             if (rv == STOP)
@@ -840,7 +840,7 @@ maildir_append(char const *name, FILE *fp)
       offs += buflen;
       if (bp && buf[0] == '\n')
          inhead = 0;
-      else if (bp && inhead && ascncasecmp(buf, "status", 6) == 0) {
+      else if (bp && inhead && !ascncasecmp(buf, "status", 6)) {
          lp = &buf[6];
          while (whitechar(*lp))
             lp++;
@@ -854,7 +854,7 @@ maildir_append(char const *name, FILE *fp)
                   flag &= ~MNEW;
                   break;
                }
-      } else if (bp && inhead && ascncasecmp(buf, "x-status", 8) == 0) {
+      } else if (bp && inhead && !ascncasecmp(buf, "x-status", 8)) {
          lp = &buf[8];
          while (whitechar(*lp))
             lp++;

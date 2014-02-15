@@ -168,7 +168,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
 
    mp = &mt[c = h];
    while (mp->mi_id != NULL) {
-      if (msgidcmp(mp->mi_id, id) == 0)
+      if (!msgidcmp(mp->mi_id, id))
          break;
       c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
       ++n;

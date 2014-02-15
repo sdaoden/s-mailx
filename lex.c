@@ -199,7 +199,7 @@ jdocopy:
       i = strlen(tbuf);
       if (i < sizeof(tbuf) - 1)
          tbuf[i++] = '/';
-      if (strncmp(tbuf, mailp, i) == 0) {
+      if (!strncmp(tbuf, mailp, i)) {
          mailp += i;
          *dispp++ = '+';
       }

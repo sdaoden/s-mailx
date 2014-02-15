@@ -848,11 +848,11 @@ pop3_setfile(char const *server, int nmail, int isedit)
    if (nmail)
       goto jleave;
 
-   if (strncmp(sp, "pop3://", 7) == 0) {
+   if (!strncmp(sp, "pop3://", 7)) {
       sp = &sp[7];
       use_ssl = 0;
 #ifdef HAVE_SSL
-   } else if (strncmp(sp, "pop3s://", 8) == 0) {
+   } else if (!strncmp(sp, "pop3s://", 8)) {
       sp = &sp[8];
       use_ssl = 1;
 #endif

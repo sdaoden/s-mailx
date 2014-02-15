@@ -540,7 +540,7 @@ delete_shortcut(char const *str)
    NYD_ENTER;
 
    for (sp = shortcuts, sq = NULL; sp; sq = sp, sp = sp->sh_next) {
-      if (strcmp(sp->sh_short, str) == 0) {
+      if (!strcmp(sp->sh_short, str)) {
          free(sp->sh_short);
          free(sp->sh_long);
          if (sq)

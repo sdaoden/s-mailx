@@ -846,7 +846,7 @@ mime_getparam(char const *param, char *h)
    for (;;) {
       while (whitechar(*p))
          ++p;
-      if (ascncasecmp(p, param, sz) == 0) {
+      if (!ascncasecmp(p, param, sz)) {
          p += sz;
          while (whitechar(*p))
             ++p;
@@ -960,7 +960,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
    if (*contenttype == NULL)
       ctt = _NCTT;
-   else if (ascncasecmp(*contenttype, "text/", 5) == 0)
+   else if (!ascncasecmp(*contenttype, "text/", 5))
       ctt = ok_blook(mime_allow_text_controls) ? _ISTXT | _ISTXTCOK : _ISTXT;
    convert = _conversion_by_encoding();
 
@@ -1025,7 +1025,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
          *f_p++ = (char)c;
          if (curlen == (sl_it)(F_SIZEOF - 1) &&
                PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
-               memcmp(f_buf, F_, F_SIZEOF) == 0)
+               !memcmp(f_buf, F_, F_SIZEOF))
             ctt |= _FROM_;
       }
    }
@@ -1141,7 +1141,7 @@ mime_classify_content_type_by_fileext(char const *name)
             ++cp;
          /* Better to do case-insensitive comparison on extension, since the
           * RFC doesn't specify case of attribute values? */
-         if (nlen == PTR2SIZE(cp - ext) && ascncasecmp(name, ext, nlen) == 0) {
+         if (nlen == PTR2SIZE(cp - ext) && !ascncasecmp(name, ext, nlen)) {
             content = savestrbuf(mtn->mt_line, mtn->mt_mtlen);
             goto jleave;
          }
@@ -1166,9 +1166,9 @@ c_mimetypes(void *v)
       goto jlist;
    if (argv[1] != NULL)
       goto jerr;
-   if (asccasecmp(*argv, "show") == 0)
+   if (!asccasecmp(*argv, "show"))
       goto jlist;
-   if (asccasecmp(*argv, "clear") == 0)
+   if (!asccasecmp(*argv, "clear"))
       goto jclear;
 jerr:
    fprintf(stderr, "Synopsis: mimetypes: %s\n",

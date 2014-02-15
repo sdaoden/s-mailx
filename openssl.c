@@ -1241,7 +1241,7 @@ jloop:
    cnttype = hfield1("content-type", m);
    if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;
-   if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
+   if (cnttype && !strncmp(cnttype, "application/x-pkcs7-mime", 24)) {
       if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
          goto jleave;
       if (x != (struct message*)-1) {

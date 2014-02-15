@@ -325,7 +325,7 @@ _var_lookup(struct var_carrier *vcp)
    vap = _vars + (vcp->vc_prime = MA_HASH2PRIME(vcp->vc_hash));
 
    for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
-      if (strcmp(vp->v_name, vcp->vc_name) == 0) {
+      if (!strcmp(vp->v_name, vcp->vc_name)) {
          /* Relink as head, hope it "sorts on usage" over time */
          if (lvp != NULL) {
             lvp->v_link = vp->v_link;
@@ -456,7 +456,7 @@ _malook(char const *name, struct macro *data, enum ma_flags mafl)
 
    for (lmp = NULL, mp = _macros[h]; mp != NULL; lmp = mp, mp = mp->ma_next) {
       if ((mp->ma_flags & MA_TYPE_MASK) == mafl &&
-            strcmp(mp->ma_name, name) == 0) {
+            !strcmp(mp->ma_name, name)) {
          if (save_mafl & MA_UNDEF) {
             if (lmp == NULL)
                _macros[h] = mp->ma_next;
@@ -688,7 +688,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
 
    /* We've found a level that wants to unroll; check wether it does it yet */
    for (vap = losp->s_localopts; vap != NULL; vap = vap->v_link)
-      if (strcmp(vap->v_name, name) == 0)
+      if (!strcmp(vap->v_name, name))
          goto jleave;
 
    nl = strlen(name) + 1;
@@ -1062,7 +1062,7 @@ c_account(void *v)
          fprintf(stderr, tr(517, "Syntax is: account <name> {\n"));
          goto jleave;
       }
-      if (asccasecmp(args[0], ACCOUNT_NULL) == 0) {
+      if (!asccasecmp(args[0], ACCOUNT_NULL)) {
          fprintf(stderr, tr(521, "Error: `%s' is a reserved name.\n"),
             ACCOUNT_NULL);
          goto jleave;

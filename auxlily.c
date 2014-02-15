@@ -471,13 +471,13 @@ which_protocol(char const *name)
          goto jfile;
 
    if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-      if (strncmp(name, "pop3://", 7) == 0) {
+      if (!strncmp(name, "pop3://", 7)) {
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
          fprintf(stderr, tr(216, "No POP3 support compiled in.\n"));
 #endif
-      } else if (strncmp(name, "pop3s://", 8) == 0) {
+      } else if (!strncmp(name, "pop3s://", 8)) {
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
@@ -488,13 +488,13 @@ which_protocol(char const *name)
          fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
 # endif
 #endif
-      } else if (strncmp(name, "imap://", 7) == 0) {
+      } else if (!strncmp(name, "imap://", 7)) {
 #ifdef HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          fprintf(stderr, tr(269, "No IMAP support compiled in.\n"));
 #endif
-      } else if (strncmp(name, "imaps://", 8) == 0) {
+      } else if (!strncmp(name, "imaps://", 8)) {
 #if defined HAVE_IMAP && defined HAVE_SSL
          rv = PROTO_IMAP;
 #else

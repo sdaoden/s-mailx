@@ -412,7 +412,7 @@ unignore_one(char const *name, struct ignoretab *tab)
 
    h = hash(name);
    for (iq = NULL, ip = tab->i_head[h]; ip != NULL; ip = ip->i_link) {
-      if (asccasecmp(ip->i_field, name) == 0) {
+      if (!asccasecmp(ip->i_field, name)) {
          free(ip->i_field);
          if (iq != NULL)
             iq->i_link = ip->i_link;

@@ -1223,7 +1223,7 @@ jnewname:
       namebuf = srealloc(namebuf, namesize = linesize + 1);
 
    while ((cp = strchr(cp, 'r')) != NULL) {
-      if (strncmp(cp, "remote", 6) == 0) {
+      if (!strncmp(cp, "remote", 6)) {
          if ((cp = strchr(cp, 'f')) == NULL)
             break;
          if (strncmp(cp, "from", 4) != 0)
@@ -1365,7 +1365,7 @@ unixtime(char const *fromline)
    if (fp[3] != ' ')
       goto jinvalid;
    for (i = 0;;) {
-      if (strncmp(fp + 4, month_names[i], 3) == 0)
+      if (!strncmp(fp + 4, month_names[i], 3))
          break;
       if (month_names[++i][0] == '\0')
          goto jinvalid;
@@ -1423,7 +1423,7 @@ rfctime(char const *date)
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
    for (i = 0;;) {
-      if (strncmp(cp, month_names[i], 3) == 0)
+      if (!strncmp(cp, month_names[i], 3))
          break;
       if (month_names[++i][0] == '\0')
          goto jinvalid;

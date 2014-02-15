@@ -1129,13 +1129,13 @@ n_iconv_open(char const *tocode, char const *fromcode)
       goto jleave;
 
    /* Remove the "iso-" prefixes for Solaris */
-   if (ascncasecmp(tocode, "iso-", 4) == 0)
+   if (!ascncasecmp(tocode, "iso-", 4))
       tocode += 4;
-   else if (ascncasecmp(tocode, "iso", 3) == 0)
+   else if (!ascncasecmp(tocode, "iso", 3))
       tocode += 3;
-   if (ascncasecmp(fromcode, "iso-", 4) == 0)
+   if (!ascncasecmp(fromcode, "iso-", 4))
       fromcode += 4;
-   else if (ascncasecmp(fromcode, "iso", 3) == 0)
+   else if (!ascncasecmp(fromcode, "iso", 3))
       fromcode += 3;
    if (*tocode == '\0' || *fromcode == '\0') {
       id = (iconv_t)-1;
