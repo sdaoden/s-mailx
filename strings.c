@@ -852,7 +852,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
    NYD_LEAVE;
 }
 
-FL int
+FL bool_t
 substr(char const *str, char const *sub)
 {
    char const *cp, *backup;

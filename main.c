@@ -155,7 +155,7 @@ static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int     _rcv_mode(char const *folder);
+static int     _rcv_mode(char const *folder, char const *Larg);
 
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
@@ -489,7 +489,7 @@ jleave:
 static sigjmp_buf __hdrjmp; /* XXX */
 
 static int
-_rcv_mode(char const *folder)
+_rcv_mode(char const *folder, char const *Larg)
 {
    char *cp;
    int i;
@@ -515,8 +515,8 @@ _rcv_mode(char const *folder)
       goto jleave;
    }
 
-   if (options & OPT_HEADERSONLY) {
-      print_headers(1, msgCount);
+   if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
+      print_header_summary(Larg);
       goto jleave;
    }
 
@@ -572,7 +572,7 @@ _hdrstop(int signo)
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~#",
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHiL:NnO:q:Rr:S:s:tu:Vv~#",
       usagestr[] =
          "Synopsis:\n"
          "  %s [-BDdEFintv~] [-A acc] [-a attachment] "
@@ -580,15 +580,15 @@ main(int argc, char *argv[])
          "\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
             "[-S var[=value]]\n"
          "\t  [-s subject] to-addr...\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acc] [-S var[=value]] "
+         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
             "-f [file]\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acc] [-S var[=value]] "
+         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
             "[-u user]\n";
 
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
    struct attachment *attach = NULL;
-   char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
+   char *cp = NULL, *subject = NULL, *qf = NULL, *Aarg = NULL, *Larg = NULL;
    char const *okey, **oargs = NULL, *folder = NULL;
    size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
    int i;
@@ -609,7 +609,7 @@ main(int argc, char *argv[])
       switch (i) {
       case 'A':
          /* Execute an account command later on */
-         Aflag = _oarg;
+         Aarg = _oarg;
          break;
       case 'a':
          {  struct a_arg *nap = ac_alloc(sizeof(struct a_arg));
@@ -673,6 +673,15 @@ main(int argc, char *argv[])
          /* Ignore interrupts */
          okey = "ignore";
          goto joarg;
+      case 'L':
+         Larg = optarg;
+         if (*Larg == '"' || *Larg == '\'') { /* TODO list.c:listspec_check() */
+            size_t j = strlen(++Larg);
+            if (j > 0)
+               Larg[j - 1] = '\0';
+         }
+         options |= OPT_HEADERLIST;
+         break;
       case 'N':
          /* Avoid initial header printing */
          okey = "noheader";
@@ -813,9 +822,9 @@ jusage:
             "Send options without primary recipient specified.\n"));
          goto jusage;
       }
-      if (options & OPT_HEADERSONLY) {
+      if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
          fprintf(stderr, tr(45,
-            "The -H option cannot be used in send mode.\n"));
+            "The -H and -L options cannot be used in send mode.\n"));
          goto jusage;
       }
       if (options & OPT_R_FLAG) {
@@ -863,9 +872,9 @@ jusage:
       load(file_expand(cp));
 
    /* Now we can set the account */
-   if (Aflag != NULL) {
+   if (Aarg != NULL) {
       char *a[2];
-      a[0] = Aflag;
+      a[0] = Aarg;
       a[1] = NULL;
       c_account(a);
    }
@@ -890,7 +899,7 @@ jusage:
       fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
-      exit_status = _rcv_mode(folder);
+      exit_status = _rcv_mode(folder, Larg);
       goto jleave;
    }
 

@@ -329,8 +329,9 @@ FL int         c_Scroll(void *v);
 /* Print out the headlines for each message in the passed message list */
 FL int         c_from(void *v);
 
-/* Print all message in between bottom and topx (including bottom) */
-FL void        print_headers(size_t bottom, size_t topx);
+/* Print all message in between and including bottom and topx if they are
+ * visible and either only_marked is false or they are MMARKed */
+FL void        print_headers(size_t bottom, size_t topx, bool_t only_marked);
 
 /* Print out the value of dot */
 FL int         c_pdot(void *v);
@@ -652,6 +653,11 @@ FL void        message_reset(void);
  * NULLify the entry at &[msgCount-1] */
 FL void        message_append(struct message *mp);
 
+/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches mp.  If with_headers is
+ * true then the headers will also be searched (as plain text) */
+FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
+                  bool_t with_headers);
+
 FL struct message * setdot(struct message *mp);
 
 /* Delete a file, but only if the file is a plain file */
@@ -852,7 +858,9 @@ FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
 FL void        imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
+# ifdef HAVE_IMAP_SEARCH
 FL enum okay   imap_search1(const char *spec, int f);
+# endif
 FL int         imap_thisaccount(const char *cp);
 FL enum okay   imap_remove(const char *name);
 FL enum okay   imap_rename(const char *old, const char *new);
@@ -872,9 +880,10 @@ FL const char * imap_make_date_time(time_t t);
 # define c_cache                 c_cmdnotsupp
 #endif
 
-FL time_t      imap_read_date(char const *cp);
+#if defined HAVE_IMAP || defined HAVE_IMAP_SEARCH
 FL char *      imap_quotestr(char const *s);
 FL char *      imap_unquotestr(char const *s);
+#endif
 
 /*
  * imap_cache.c
@@ -903,7 +912,9 @@ FL enum okay   cache_dequeue(struct mailbox *mp);
  * imap_search.c
  */
 
+#ifdef HAVE_IMAP_SEARCH
 FL enum okay   imap_search(char const *spec, int f);
+#endif
 
 /*
  * lex.c
@@ -932,6 +943,9 @@ FL int         execute(char *linebuf, int contxt, size_t linesize);
 /* Set the size of the message vector used to construct argument lists to
  * message list functions */
 FL void        setmsize(int sz);
+
+/* Logic behind -H / -L invocations */
+FL void        print_header_summary(char const *Larg);
 
 /* The following gets called on receipt of an interrupt.  This is to abort
  * printout of a command, mainly.  Dispatching here when command() is inactive
@@ -1573,7 +1587,7 @@ FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
 FL void        makelow(char *cp);
 
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
-FL int         substr(char const *str, char const *sub);
+FL bool_t      substr(char const *str, char const *sub);
 
 /* Lazy vsprintf wrapper */
 #ifndef HAVE_SNPRINTF

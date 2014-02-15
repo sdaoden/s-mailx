@@ -76,6 +76,9 @@
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
+#ifdef HAVE_REGEX
+# include <regex.h>
+#endif
 
 #ifdef HAVE_OPENSSL_MD5
 # include <openssl/md5.h>
@@ -470,21 +473,22 @@ enum user_options {
    OPT_VERBOSE    = 1u<< 1,   /* -v / *verbose* */
    OPT_EXISTONLY  = 1u<< 2,   /* -e */
    OPT_HEADERSONLY = 1u<< 3,  /* -H */
-   OPT_NOSRC      = 1u<< 4,   /* -n */
-   OPT_E_FLAG     = 1u<< 5,   /* -E / *skipemptybody* */
-   OPT_F_FLAG     = 1u<< 6,   /* -F */
-   OPT_N_FLAG     = 1u<< 7,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<< 8,   /* -R */
-   OPT_r_FLAG     = 1u<< 9,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<10,   /* -t */
-   OPT_u_FLAG     = 1u<<11,   /* -u given, or USER != getpwnam(3) */
-   OPT_TILDE_FLAG = 1u<<12,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<13,   /* -# */
+   OPT_HEADERLIST = 1u<< 4,   /* -L */
+   OPT_NOSRC      = 1u<< 5,   /* -n */
+   OPT_E_FLAG     = 1u<< 6,   /* -E / *skipemptybody* */
+   OPT_F_FLAG     = 1u<< 7,   /* -F */
+   OPT_N_FLAG     = 1u<< 8,   /* -N / *header* */
+   OPT_R_FLAG     = 1u<< 9,   /* -R */
+   OPT_r_FLAG     = 1u<<10,   /* -r (plus option_r_arg) */
+   OPT_t_FLAG     = 1u<<11,   /* -t */
+   OPT_u_FLAG     = 1u<<12,   /* -u given, or USER != getpwnam(3) */
+   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<14,   /* -# */
 
-   OPT_SENDMODE   = 1u<<14,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<15,  /* isatty(0) */
+   OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
+   OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<16
+   OPT_TTYOUT     = 1u<<17
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -854,6 +858,14 @@ struct quoteflt {
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];
+#endif
+};
+
+struct search_expr {
+   char const  *ss_where;  /* to search for the expression (not always used) */
+   char const  *ss_sexpr;  /* String search expression; NULL: use .ss_reexpr */
+#ifdef HAVE_REGEX
+   regex_t     ss_reexpr;
 #endif
 };
 

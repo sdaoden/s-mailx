@@ -1071,7 +1071,7 @@ jendpipe:
 }
 
 FL void
-print_headers(size_t bottom, size_t topx)
+print_headers(size_t bottom, size_t topx, bool_t only_marked)
 {
    size_t printed;
    NYD_ENTER;
@@ -1082,9 +1082,15 @@ print_headers(size_t bottom, size_t topx)
 #endif
    time_current_update(&time_current, FAL0);
 
-   for (printed = 0; bottom <= topx; ++bottom) /* TODO join into _print_head()*/
-      if (visible(&message[bottom - 1]))
-         _print_head(printed++, bottom, stdout, FAL0);
+   for (printed = 0; bottom <= topx; ++bottom) {
+      struct message *mp = message + bottom - 1;
+      if (only_marked) {
+         if (!(mp->m_flag & MMARK))
+            continue;
+      } else if (!visible(mp))
+         continue;
+      _print_head(printed++, bottom, stdout, FAL0);
+   }
    NYD_LEAVE;
 }
 

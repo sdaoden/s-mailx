@@ -756,6 +756,53 @@ message_append(struct message *mp)
    NYD_LEAVE;
 }
 
+FL bool_t
+message_match(struct message *mp, struct search_expr const *sep,
+   bool_t with_headers)
+{
+   char **line;
+   size_t *linesize, cnt;
+   FILE *fp;
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+   if ((fp = Ftmp(NULL, "mpmatch", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL)
+      goto j_leave;
+
+   if (sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
+      goto jleave;
+   fflush_rewind(fp);
+
+   cnt = fsize(fp);
+   line = &termios_state.ts_linebuf; /* XXX line pool */
+   linesize = &termios_state.ts_linesize; /* XXX line pool */
+
+   if (!with_headers)
+      while (fgetline(line, linesize, &cnt, NULL, fp, 0))
+         if (**line == '\n')
+            break;
+
+   while (fgetline(line, linesize, &cnt, NULL, fp, 0)) {
+#ifdef HAVE_REGEX
+      if (sep->ss_sexpr == NULL) {
+         if (regexec(&sep->ss_reexpr, *line, 0,NULL, 0) == REG_NOMATCH)
+            continue;
+      } else
+#endif
+      if (!substr(*line, sep->ss_sexpr))
+         continue;
+      rv = TRU1;
+      break;
+   }
+
+jleave:
+   Fclose(fp);
+j_leave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL struct message *
 setdot(struct message *mp)
 {

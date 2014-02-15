@@ -47,7 +47,7 @@ struct cmd {
    char const     *name;         /* Name of command */
    int            (*func)(void*); /* Implementor of command */
    enum argtype   argtype;       /* Arglist type (see below) */
-   short          msgflag;       /* Required flags of msgs*/
+   short          msgflag;       /* Required flags of msgs */
    short          msgmask;       /* Relevant flags of msgs */
 #ifdef HAVE_DOCSTRINGS
    int            docid;         /* Translation id of .doc */
@@ -658,7 +658,7 @@ newmailinfo(int omsgCount)
    callhook(mailname, 1);
    mdot = getmdot(1);
    if (ok_blook(header))
-      print_headers(omsgCount + 1, msgCount);
+      print_headers(omsgCount + 1, msgCount, FAL0);
    NYD_LEAVE;
    return mdot;
 }
@@ -952,7 +952,7 @@ jexec:
    switch (com->argtype & ARG_ARGMASK) {
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
-      if (_msgvec == 0)
+      if (_msgvec == NULL)
          goto je96;
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
          break;
@@ -971,7 +971,7 @@ jexec:
 
    case ARG_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
-      if (_msgvec == 0) {
+      if (_msgvec == NULL) {
 je96:
          fprintf(stderr, tr(96, "Illegal use of `message list'\n"));
          break;
@@ -1062,6 +1062,40 @@ setmsize(int sz)
    if (_msgvec != 0)
       free(_msgvec);
    _msgvec = scalloc(sz + 1, sizeof *_msgvec);
+   NYD_LEAVE;
+}
+
+FL void
+print_header_summary(char const *Larg)
+{
+   size_t bot, top, i, j;
+   NYD_ENTER;
+
+   if (Larg != NULL) {
+      /* Avoid any messages XXX add a make_mua_silent() and use it? */
+      if ((options & (OPT_VERBOSE | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
+         freopen("/dev/null", "w", stdout);
+         freopen("/dev/null", "w", stderr);
+      }
+      if (getmsglist(/*TODO make arg const */UNCONST(Larg), _msgvec, 0) <= 0) {
+         if (options & OPT_HEADERSONLY)
+            exit_status = 1;
+         goto jleave;
+      }
+      if (options & OPT_HEADERSONLY) {
+         exit_status = 0;
+         goto jleave;
+      }
+      for (bot = msgCount, top = 0, i = 0; (j = _msgvec[i]) != 0; ++i) {
+         if (bot > j)
+            bot = j;
+         if (top < j)
+            top = j;
+      }
+   } else
+      bot = 1, top = msgCount;
+   print_headers(bot, top, (Larg != NULL)); /* TODO should take iterator!! */
+jleave:
    NYD_LEAVE;
 }
 

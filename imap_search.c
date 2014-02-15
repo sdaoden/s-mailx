@@ -43,9 +43,8 @@
 # include "nail.h"
 #endif
 
-#ifdef HAVE_REGEX
-# include <regex.h>
-#endif
+EMPTY_FILE(imap_search)
+#ifdef HAVE_IMAP_SEARCH
 
 enum itoken {
    ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
@@ -70,13 +69,6 @@ struct itlex {
    char const     *s_string;
    enum itoken    s_token;
 };
-
-#ifdef HAVE_REGEX
-struct itregex {
-   struct itregex *re_next;
-   regex_t        re_regex;
-};
-#endif
 
 struct itnode {
    enum itoken    n_token;
@@ -127,15 +119,11 @@ static struct itlex const  _it_strings[] = {
 };
 
 static struct itnode    *_it_tree;
-#ifdef HAVE_REGEX
-static struct itregex   *_it_regex;
-#endif
 static char             *_it_begin;
 static enum itoken      _it_token;
 static unsigned long    _it_number;
 static void             *_it_args[2];
 static size_t           _it_need_headers;
-static bool_t           _it_need_regex;
 
 static enum okay     itparse(char const *spec, char const **xp, int sub);
 static enum okay     itscan(char const *spec, char const **xp);
@@ -143,13 +131,12 @@ static enum okay     itsplit(char const *spec, char const **xp);
 static enum okay     itstring(void **tp, char const *spec, char const **xp);
 static int           itexecute(struct mailbox *mp, struct message *m,
                         size_t c, struct itnode *n);
-static int           matchfield(struct message *m, char const *field,
+static time_t        _read_imap_date(char const *cp);
+static bool_t        matchfield(struct message *m, char const *field,
                         const void *what);
 static int           matchenvelope(struct message *m, char const *field,
                         const void *what);
 static char *        mkenvelope(struct name *np);
-static int           matchmsg(struct message *m, const void *what,
-                        int withheader);
 static char const *  around(char const *cp);
 
 static enum okay
@@ -168,14 +155,14 @@ itparse(char const *spec, char const **xp, int sub)
       spec = *xp;
       switch (_it_token) {
       case ITBOL:
-         level++;
+         ++level;
          continue;
       case ITEOL:
          if (--level == 0)
             goto jleave;
          if (level < 0) {
             if (sub > 0) {
-               (*xp)--;
+               --(*xp);
                goto jleave;
             }
             fprintf(stderr, "Excess in \")\".\n");
@@ -322,19 +309,13 @@ itsplit(char const *spec, char const **xp)
    case ITTEXT:
    case ITTO:
       /* <string> */
-      _it_need_headers++;
+      ++_it_need_headers;
       rv = itstring(&_it_args[0], spec, xp);
-#ifdef HAVE_REGEX
-      if (rv == OKAY && _it_need_regex) {
-         _it_number = 0;
-         goto jregcomp;
-      }
-#endif
       break;
    case ITSENTBEFORE:
    case ITSENTON:
    case ITSENTSINCE:
-      _it_need_headers++;
+      ++_it_need_headers;
       /*FALLTHRU*/
    case ITBEFORE:
    case ITON:
@@ -342,7 +323,7 @@ itsplit(char const *spec, char const **xp)
       /* <date> */
       if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
          break;
-      if ((t = imap_read_date(_it_args[0])) == (time_t)-1) {
+      if ((t = _read_imap_date(_it_args[0])) == (time_t)-1) {
          fprintf(stderr, "Invalid date \"%s\": >>> %s <<<\n",
                (char*)_it_args[0], around(*xp));
          rv = STOP;
@@ -353,32 +334,12 @@ itsplit(char const *spec, char const **xp)
       break;
    case ITHEADER:
       /* <field-name> <string> */
-      _it_need_headers++;
+      ++_it_need_headers;
       if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
          break;
       spec = *xp;
       if ((rv = itstring(&_it_args[1], spec, xp)) != OKAY)
          break;
-#ifdef HAVE_REGEX
-      _it_number = 1;
-jregcomp:
-      if (_it_need_regex) {
-         struct itregex *itre = salloc(sizeof *_it_regex);
-         itre->re_next = _it_regex;
-         _it_regex = itre;
-
-         cp = _it_args[_it_number];
-         _it_args[_it_number] = &itre->re_regex;
-         if (regcomp(&itre->re_regex, cp, REG_EXTENDED | REG_ICASE | REG_NOSUB)
-               != 0) {
-            fprintf(stderr, tr(526,
-               "Invalid regular expression \"%s\": >>> %s <<<\n"),
-               cp, around(*xp));
-            rv = STOP;
-            break;
-         }
-      }
-#endif
       break;
    case ITKEYWORD:
    case ITUNKEYWORD:
@@ -465,6 +426,7 @@ jleave:
 static int
 itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
 {
+   struct search_expr se;
    char *cp, *line = NULL;
    size_t linesize = 0;
    FILE *ibuf;
@@ -523,7 +485,9 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = UICMP(z, m->m_time, <, n->n_n);
       break;
    case ITBODY:
-      rv = matchmsg(m, n->n_v, 0);
+      se.ss_sexpr = n->n_v;
+      se.ss_where = "body";
+      rv = message_match(m, &se, FAL0);
       break;
    case ITCC:
       rv = matchenvelope(m, "cc", n->n_v);
@@ -591,7 +555,9 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = matchfield(m, "subject", n->n_v);
       break;
    case ITTEXT:
-      rv = matchmsg(m, n->n_v, 1);
+      se.ss_sexpr = n->n_v;
+      se.ss_where = "text";
+      rv = message_match(m, &se, TRU1);
       break;
    case ITTO:
       rv = matchenvelope(m, "to", n->n_v);
@@ -620,11 +586,52 @@ jleave:
    return rv;
 }
 
-static int
+static time_t
+_read_imap_date(char const *cp)
+{
+   time_t t = (time_t)-1;
+   int year, month, day, i, tzdiff;
+   struct tm *tmptr;
+   char *xp, *yp;
+   NYD_ENTER;
+
+   if (*cp == '"')
+      ++cp;
+   day = strtol(cp, &xp, 10);
+   if (day <= 0 || day > 31 || *xp++ != '-')
+      goto jleave;
+
+   for (i = 0;;) {
+      if (ascncasecmp(xp, month_names[i], 3) == 0)
+         break;
+      if (month_names[++i][0] == '\0')
+         goto jleave;
+   }
+   month = i+1;
+   if (xp[3] != '-')
+      goto jleave;
+   year = strtol(&xp[4], &yp, 10);
+   if (year < 1970 || year > 2037 || yp != &xp[8])
+      goto jleave;
+   if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
+      goto jleave;
+   if ((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
+      goto jleave;
+   tzdiff = t - mktime(gmtime(&t));
+   tmptr = localtime(&t);
+   if (tmptr->tm_isdst > 0)
+      tzdiff += 3600;
+   t -= tzdiff;
+jleave:
+   NYD_LEAVE;
+   return t;
+}
+
+static bool_t
 matchfield(struct message *m, char const *field, const void *what)
 {
    struct str in, out;
-   int i = 0;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
    if ((in.s = hfieldX(field, m)) == NULL)
@@ -632,18 +639,11 @@ matchfield(struct message *m, char const *field, const void *what)
 
    in.l = strlen(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
-
-#ifdef HAVE_REGEX
-   if (_it_need_regex)
-      i = (regexec(what, out.s, 0,NULL, 0) != REG_NOMATCH);
-   else
-#endif
-      i = substr(out.s, what);
-
+   rv = substr(out.s, what);
    free(out.s);
 jleave:
    NYD_LEAVE;
-   return i;
+   return rv;
 }
 
 static int
@@ -658,13 +658,6 @@ matchenvelope(struct message *m, char const *field, const void *what)
       goto jleave;
 
    for (np = lextract(cp, GFULL); np != NULL; np = np->n_flink) {
-#ifdef HAVE_REGEX
-      if (_it_need_regex) {
-         if (regexec(what, np->n_name, 0,NULL, 0) == REG_NOMATCH &&
-               regexec(what, mkenvelope(np), 0,NULL, 0) == REG_NOMATCH)
-            continue;
-      } else
-#endif
       if (!substr(np->n_name, what) && !substr(mkenvelope(np), what))
          continue;
       rv = 1;
@@ -746,60 +739,13 @@ jdone:
 
    ep = salloc(epsize = strlen(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
-         realnam ? imap_quotestr(realnam) : "NIL",
-         sourceaddr ? imap_quotestr(sourceaddr) : "NIL",
-         localpart ? imap_quotestr(localpart) : "NIL",
-         domainpart ? imap_quotestr(domainpart) : "NIL");
+      realnam ? imap_quotestr(realnam) : "NIL",
+      sourceaddr ? imap_quotestr(sourceaddr) : "NIL",
+      localpart ? imap_quotestr(localpart) : "NIL",
+      domainpart ? imap_quotestr(domainpart) : "NIL");
    ac_free(ip);
    NYD_LEAVE;
    return ep;
-}
-
-static int
-matchmsg(struct message *m, const void *what, int withheader)
-{
-   char *line = NULL;
-   size_t linesize, linelen, cnt;
-   FILE *fp;
-   int yes = 0;
-   NYD_ENTER;
-
-   if ((fp = Ftmp(NULL, "imasrch", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL)
-      goto j_leave;
-   if (sendmp(m, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
-      goto jleave;
-   fflush(fp);
-   rewind(fp);
-
-   cnt = fsize(fp);
-   line = smalloc(linesize = LINESIZE);
-   linelen = 0;
-
-   if (!withheader)
-      while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0))
-         if (*line == '\n')
-            break;
-
-   while (fgetline(&line, &linesize, &cnt, &linelen, fp, 0)) {
-#ifdef HAVE_REGEX
-      if (_it_need_regex) {
-         if (regexec(what, line, 0,NULL, 0) == REG_NOMATCH)
-            continue;
-      } else
-#endif
-      if (!substr(line, what))
-         continue;
-      yes = 1;
-      break;
-   }
-
-jleave:
-   free(line);
-   Fclose(fp);
-j_leave:
-   NYD_LEAVE;
-   return yes;
 }
 
 #define SURROUNDING 16
@@ -833,11 +779,8 @@ imap_search(char const *spec, int f)
    if (strcmp(spec, "()")) {
       if (lastspec != NULL)
          free(lastspec);
-      _it_need_regex = (spec[0] == '(' && spec[1] == '/');
       i = strlen(spec);
-      lastspec = sbufdup(spec + _it_need_regex, i - _it_need_regex);
-      if (_it_need_regex)
-         lastspec[0] = '(';
+      lastspec = sbufdup(spec, i);
    } else if (lastspec == NULL) {
       fprintf(stderr, tr(524, "No last SEARCH criteria available.\n"));
       goto jleave;
@@ -845,19 +788,10 @@ imap_search(char const *spec, int f)
    spec =
    _it_begin = lastspec;
 
-   /* Regular expression searches are always local */
    _it_need_headers = FAL0;
-   if (!_it_need_regex) {
 #ifdef HAVE_IMAP
-      if ((rv = imap_search1(spec, f) == OKAY))
-         goto jleave;
-#endif
-   }
-#ifndef HAVE_REGEX
-   else {
-      fprintf(stderr, tr(525, "No regular expression support for SEARCHes.\n"));
+   if ((rv = imap_search1(spec, f) == OKAY))
       goto jleave;
-   }
 #endif
 
    if (itparse(spec, &xp, 0) == STOP)
@@ -886,13 +820,9 @@ imap_search(char const *spec, int f)
 
    rv = OKAY;
 jleave:
-#ifdef HAVE_REGEX
-   for (; _it_regex != NULL; _it_regex = _it_regex->re_next)
-      regfree(&_it_regex->re_regex);
-   _it_regex = NULL;
-#endif
    NYD_LEAVE;
    return rv;
 }
+#endif /* HAVE_IMAP_SEARCH */
 
 /* vim:set fenc=utf-8:s-it-mode */
