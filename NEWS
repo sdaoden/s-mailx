@@ -15,8 +15,8 @@ and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
-v14.6 2014-02-15
-----------------
+v14.6, 2014-02-15
+-----------------
 
 + With this release the S-nail codebase has been converted to my usual
   style of function-code-flow and notation.
@@ -154,8 +154,8 @@ ChangeLog (purely technical)
   other flees and flaws, however.  But it looks good so far.
   Thank you.
 
-v14.5.3 2014-02-15
-------------------
+v14.5.3, 2014-02-15
+-------------------
 
 + No official release, only exists as git(1) tag.
 
