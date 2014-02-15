@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
+and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -14,6 +14,150 @@ and `NEW' are the two versions to be compared, e.g., v14.4.5 and v14.5.2:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.6 2014-02-15
+----------------
+
++ With this release the S-nail codebase has been converted to my usual
+  style of function-code-flow and notation.
+
+  ?0[]$ git diff --shortstat v14.5.2..HEAD
+   55 files changed, 28065 insertions(+), 25356 deletions(-)
+  ?0[]$ git diff --ignore-all-space --shortstat v14.5.2..HEAD
+   55 files changed, 14664 insertions(+), 11955 deletions(-)
+
+  Maildir and S/MIME support have been restored, and a MIME bug that
+  could have led to missing data in header display+ has been fixed.
+  Ah, and users of compressed boxes should now feel luckier, too --
+  at least once they've realized that the compress extension is no
+  longer appended automatically, but must be given explicitly.
+
+  Thus: i hope that all those i-am-new-to-the-codebase bugs i've
+  introduced over a year ago have been found and fixed, and that
+  v14.6 is the true "sweet sixteen" (months of maintainership).
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- If WANT_AMALGAMATION is set, `-pipe' will be added to our CFLAGS
+  (which are only honoured with WANT_AUTOCC, of course).  [1330411]
+
+- New configuration option: WANT_IMAP_SEARCH, enabled by default.
+
+  The regular expression support for IMAP-style search expressions has
+  been removed again: it changed the IMAP search semantic in that it
+  couldn't be executed on the server, but only local, and the syntax
+  sucked, too.  (And we have a new `?' search expression.)  [402b7c6]
+
+- CONFIG=MEDIUM and CONFIG=NETSEND now both WANT_REGEX.  [dee954e]
+
+- The `make test' target should *really* work gracefully, now that usage
+  of the `-#' command line option also sets the folder to be opened to
+  `/dev/null'.  (Still no `void' box in sight.)  [0119d514]
+
+- All published patches may also be found in a new [patches] branch.
+
+ChangeLog
+^^^^^^^^^
+
+- Several fixes that saw published patches (with equivalent
+  functionality), and are thus described in NEWS, are included:
+
+  . s-nail-14.5.2-sort-alt.patch
+    Fixes a hasty commit that introduced string relaxation in a faulty
+    way.  [5e75529]
+
+  . s-nail-14_5_2-mimeheader.patch
+    Fixes data loss if multiple MIME encoded-words follow each other in
+    header bodies.  [c81afce]
+
+  . s-nail-14_5_2-maildir.patch
+    Effectively restores proper maildir support.  [1c2563b, 13f325f]
+
+  . s-nail-14_5_2-smime.patch
+    Fixes an off-by-one error and, in effect, restores S/MIME sign and
+    encryption etc. support.  [e759f75]
+
+- The `screen' terminal type is by default recognized as being
+  colour-capable.  [e759f75]
+
+- With the NCL command line editor and WANT_TABEXPAND hitting <TAB>
+  should now act as if an "implicit asterisk" had been given in case
+  there was no expansion of the original user input; e.g., '? ls <TAB>'
+  may exceed your line limit now ;).  [0910a8f]
+
+- The S/MIME cipher list was outdated, RFC 5751 requires AES-128 as
+  the default, the RC2 ones are long obsoleted (etc.).  Also we now
+  should handle that OpenSSL may not support individual algorithms.
+
+  Note: we use the option value `des3' for `DES EDE3' from now on!
+  (Maybe see *smime-cipher-user@host* manual entry.)
+
+  *ssl-method* may now also be assigned the new (default) method `auto'
+  explicitly.
+  [2472670]
+
+- Messages will now be stored in a set *record* even if only file or
+  pipe addressees were given.  [a11935b]
+
+- Support for xz(1) compressed mailboxes has been added.
+  (The `Can't canonicalize' warning for compressed boxes had the same
+  cause that made maildir usage impossible, but i don't feel _too_ bad
+  because looking into the code a bit revealed that the *newmail*
+  mechanism never worked for such boxes anyway.  And will for a while.)
+  [7fd9979]
+
+- S-nail now supports nested if..else..endif conditionals.  [3c22c04]
+
+- The NCL command line editor now locks its' history file when it reads
+  and writes it, so as to protect against concurrent usage.  [c3a39ce]
+
+- You can now say 'fi%', 'fi&', 'p&10' and `ghost ps '!ps axu'' followed
+  by 'ps|grep nail'.  [c3266c6]
+
+- Invocation cleanup: usage of -f and -u is mutual, -H and -u is ok, -u
+  in send mode not.  [fa0a0aa]
+
+- New message specification: `[?name-list]?search-string' will search
+  in locally available messages.  If the optional `?name-list' part is
+  given, that specifies the (comma-separated list of) header fields to
+  search in.  The special names `body' and `text' can be used to search
+  in message bodies alone and bodies including the headers fields,
+  respectively.  Note that "message bodies" unfortunately still means
+  "including headers of attachments and attachments themselves", and
+  until some later time.  [61bb460]
+
+- The new command line option `-L spec-list' prints a header summary of
+  only those messages that comply to the specification list `spec-list'.
+  If -L and -H are used in combination, no summary is printed at all,
+  but the exit status reports wether `spec-list' would have matched some
+  messages or not.  [934e12c]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Most of the work was changing the code-flow of the entire codebase to
+  my usual style of programming, with a single function entry and
+  a single function exit, including the addition of N(ot) Y(et) D(ead)
+  points of interest, which finally enabled me to get rid of (sic!)
+  using a debugger for S-nail development.  Just compile via 'make
+  devel', and in case of a crash you should get a nice backtrace
+  listing.  (You use IMAP, do you?)
+
+  However, because practically every line of code has been touched, this
+  caused some other changes along the way, e.g., the handling of
+  temporary files was changed completely (the formerly used Ftemp()
+  function has been replaced with a new Ftmp(), which handles unlinking
+  itself as necessary etc.), it was detected that the S/MIME support was
+  no longer compliant to any RFC, some resource leaks have been
+  eliminated...  It is likely that a change so large introduced some
+  other flees and flaws, however.  But it looks good so far.
+  Thank you.
+
+v14.5.3 2014-02-15
+------------------
+
++ No official release, only exists as git(1) tag.
 
 v14.5.2: fix 4: 2014-02-15 (2014-02-14)
 ---------------------------------------
