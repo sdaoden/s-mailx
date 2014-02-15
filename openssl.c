@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 2002
- *	Gunnar Ritter.  All rights reserved.
+ * Gunnar Ritter.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by Gunnar Ritter
- *	and his contributors.
+ *    This product includes software developed by Gunnar Ritter
+ *    and his contributors.
  * 4. Neither the name of Gunnar Ritter nor the names of his contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -67,1172 +67,1231 @@ EMPTY_FILE(openssl)
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-static sigjmp_buf	ssljmp;
-
-static int	initialized;
-static int	rand_init;
-static int	message_number;
-static int	verify_error_found;
-
-static void sslcatch(int s);
-static int ssl_rand_init(void);
-static void ssl_init(void);
-static int ssl_verify_cb(int success, X509_STORE_CTX *store);
-static const SSL_METHOD *ssl_select_method(const char *uhp);
-static void ssl_load_verifications(struct sock *sp);
-static void ssl_certificate(struct sock *sp, const char *uhp);
-static enum okay ssl_check_host(const char *server, struct sock *sp);
 #ifdef HAVE_STACK_OF
-static int smime_verify(struct message *m, int n, STACK_OF(X509) *chain,
-		X509_STORE *store);
+# define _STACKOF(X)    STACK_OF(X)
 #else
-static int smime_verify(struct message *m, int n, STACK *chain,
-		X509_STORE *store);
+# define _STACKOF(X)    /*X*/STACK
 #endif
-static EVP_CIPHER *smime_cipher(const char *name);
-static int ssl_password_cb(char *buf, int size, int rwflag, void *userdata);
-static FILE *smime_sign_cert(const char *xname, const char *xname2,
-		bool_t dowarn);
-static char *smime_sign_include_certs(char const *name);
-#ifdef HAVE_STACK_OF
-static int smime_sign_include_chain_creat(STACK_OF(X509) **chain, char *cfiles);
-#else
-static int smime_sign_include_chain_creat(STACK **chain, char *cfiles);
+
+struct ssl_method {
+   char const           sm_name[8];
+   SSL_METHOD const *   (*sm_fun)(void);
+};
+
+struct smime_cipher {
+   char const           sc_name[8];
+   EVP_CIPHER const *   (*sc_fun)(void);
+};
+
+/* Supported SSL/TLS methods: update manual on change! */
+static struct ssl_method const   _ssl_methods[] = {
+   {"auto", &SSLv23_client_method},
+#define _SSL_DEFAULT_METHOD      SSLv23_client_method
+#ifndef OPENSSL_NO_TLS1
+# ifdef TLS1_2_VERSION
+   {"tls1.2", &TLSv1_2_client_method},
+# endif
+# ifdef TLS1_1_VERSION
+   {"tls1.1", &TLSv1_1_client_method},
+# endif
+   {"tls1", &TLSv1_client_method},
 #endif
-#if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-static enum okay load_crl1(X509_STORE *store, const char *name);
+#ifndef OPENSSL_NO_SSL3
+   {"ssl3", &SSLv3_client_method},
 #endif
-static enum okay load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
+#ifndef OPENSSL_NO_SSL2
+   {"ssl2", &SSLv2_client_method}
+#endif
+};
+
+/* Supported S/MIME cipher algorithms: update manual on change! */
+static struct smime_cipher const _smime_ciphers[] = {
+#ifndef OPENSSL_NO_AES
+# define _SMIME_DEFAULT_CIPHER   EVP_aes_128_cbc   /* According to RFC 5751 */
+   {"aes-128", &EVP_aes_128_cbc},
+   {"aes-256", &EVP_aes_256_cbc},
+   {"aes-192", &EVP_aes_192_cbc},
+#endif
+#ifndef OPENSSL_NO_DES
+# ifndef _SMIME_DEFAULT_CIPHER
+#  define _SMIME_DEFAULT_CIPHER   EVP_des_ede3_cbc
+# endif
+   {"des3", &EVP_des_ede3_cbc},
+   {"des", &EVP_des_cbc},
+#endif
+#ifndef OPENSSL_NO_RC2
+   {"rc2-40", &EVP_rc2_40_cbc},
+   {"rc2-64", &EVP_rc2_64_cbc},
+#endif
+};
+#ifndef _SMIME_DEFAULT_CIPHER
+# error Your OpenSSL library does not include the necessary
+# error cipher algorithms that are required to support S/MIME
+#endif
+
+static sigjmp_buf ssljmp;
+static int        initialized;
+static int        rand_init;
+static int        message_number;
+static int        verify_error_found;
+
+static void       sslcatch(int s);
+static int        ssl_rand_init(void);
+static void       ssl_init(void);
+static int        ssl_verify_cb(int success, X509_STORE_CTX *store);
+static const SSL_METHOD *ssl_select_method(char const *uhp);
+static void       ssl_load_verifications(struct sock *sp);
+static void       ssl_certificate(struct sock *sp, char const *uhp);
+static enum okay  ssl_check_host(char const *server, struct sock *sp);
+static int        smime_verify(struct message *m, int n, _STACKOF(X509) *chain,
+                        X509_STORE *store);
+static EVP_CIPHER const * _smime_cipher(char const *name);
+static int        ssl_password_cb(char *buf, int size, int rwflag,
+                     void *userdata);
+static FILE *     smime_sign_cert(char const *xname, char const *xname2,
+                     bool_t dowarn);
+static char *     smime_sign_include_certs(char const *name);
+static int        smime_sign_include_chain_creat(_STACKOF(X509) **chain,
+                     char const *cfiles);
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+static enum okay  load_crl1(X509_STORE *store, char const *name);
+#endif
+static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
 static void
 sslcatch(int s)
 {
-	termios_state_reset();
-	siglongjmp(ssljmp, s);
+   NYD_X; /* Signal handler */
+   termios_state_reset();
+   siglongjmp(ssljmp, s);
 }
 
 static int
 ssl_rand_init(void)
 {
-	char *cp, *x;
-	int state = 0;
+   char *cp, *x;
+   int state = 0;
+   NYD_ENTER;
 
-	if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
-		if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
-			fprintf(stderr, tr(245,
-				"entropy daemon at \"%s\" not available\n"),
-				cp);
-		else
-			state = 1;
-	} else if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
-		if ((x = file_expand(cp)) == NULL ||
-				RAND_load_file(cp = x, 1024) == -1)
-			fprintf(stderr, tr(246,
-				"entropy file at \"%s\" not available\n"), cp);
-		else {
-			struct stat st;
+   if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
+      if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
+         fprintf(stderr, tr(245, "entropy daemon at \"%s\" not available\n"),
+            cp);
+      else
+         state = 1;
+   } else if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
+      if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
+         fprintf(stderr, tr(246, "entropy file at \"%s\" not available\n"), cp);
+      else {
+         struct stat st;
 
-			if (stat(cp, &st) == 0 && S_ISREG(st.st_mode) &&
-					access(cp, W_OK) == 0) {
-				if (RAND_write_file(cp) == -1) {
-					fprintf(stderr, tr(247,
-				"writing entropy data to \"%s\" failed\n"), cp);
-				}
-			}
-			state = 1;
-		}
-	}
-	return state;
+         if (stat(cp, &st) == 0 && S_ISREG(st.st_mode) && !access(cp, W_OK)) {
+            if (RAND_write_file(cp) == -1) {
+               fprintf(stderr, tr(247,
+                  "writing entropy data to \"%s\" failed\n"), cp);
+            }
+         }
+         state = 1;
+      }
+   }
+   NYD_LEAVE;
+   return state;
 }
 
 static void
 ssl_init(void)
 {
-	if (initialized == 0) {
-		SSL_library_init();
-		initialized = 1;
-	}
-	if (rand_init == 0)
-		rand_init = ssl_rand_init();
+   NYD_ENTER;
+   if (initialized == 0) {
+      SSL_library_init();
+      initialized = 1;
+   }
+   if (rand_init == 0)
+      rand_init = ssl_rand_init();
+   NYD_LEAVE;
 }
 
 static int
 ssl_verify_cb(int success, X509_STORE_CTX *store)
 {
-	if (success == 0) {
-		char data[256];
-		X509 *cert = X509_STORE_CTX_get_current_cert(store);
-		int depth = X509_STORE_CTX_get_error_depth(store);
-		int err = X509_STORE_CTX_get_error(store);
+   int rv = TRU1;
+   NYD_ENTER;
 
-		verify_error_found = 1;
-		if (message_number)
-			fprintf(stderr, "Message %d: ", message_number);
-		fprintf(stderr, tr(229,
-			"Error with certificate at depth: %i\n"), depth);
-		X509_NAME_oneline(X509_get_issuer_name(cert), data,
-				sizeof data);
-		fprintf(stderr, tr(230, " issuer = %s\n"), data);
-		X509_NAME_oneline(X509_get_subject_name(cert), data,
-				sizeof data);
-		fprintf(stderr, tr(231, " subject = %s\n"),
-				data);
-		fprintf(stderr, tr(232, " err %i: %s\n"),
-				err, X509_verify_cert_error_string(err));
-		if (ssl_vrfy_decide() != OKAY)
-			return 0;
-	}
-	return 1;
+   if (success == 0) {
+      char data[256];
+      X509 *cert = X509_STORE_CTX_get_current_cert(store);
+      int depth = X509_STORE_CTX_get_error_depth(store);
+      int err = X509_STORE_CTX_get_error(store);
+
+      verify_error_found = 1;
+      if (message_number)
+         fprintf(stderr, "Message %d: ", message_number);
+      fprintf(stderr, tr(229, "Error with certificate at depth: %i\n"), depth);
+      X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
+      fprintf(stderr, tr(230, " issuer = %s\n"), data);
+      X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
+      fprintf(stderr, tr(231, " subject = %s\n"), data);
+      fprintf(stderr, tr(232, " err %i: %s\n"),
+         err, X509_verify_cert_error_string(err));
+      if (ssl_verify_decide() != OKAY)
+         rv = FAL0;
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
-static const SSL_METHOD *
-ssl_select_method(const char *uhp)
+static SSL_METHOD const *
+ssl_select_method(char const *uhp)
 {
-	SSL_METHOD const *method = NULL;
-	char *cp;
+   SSL_METHOD const *method;
+   char *cp;
+   size_t i;
+   NYD_ENTER;
 
-	cp = ssl_method_string(uhp);
-	if (cp != NULL) {
-#ifndef OPENSSL_NO_SSL2
-		if (strcmp(cp, "ssl2") == 0)
-			method = SSLv2_client_method();
-		else
-#endif
-#ifndef OPENSSL_NO_SSL3
-		if (strcmp(cp, "ssl3") == 0)
-			method = SSLv3_client_method();
-		else
-#endif
-#ifndef OPENSSL_NO_TLS1
-		if (strcmp(cp, "tls1") == 0)
-			method = TLSv1_client_method();
-		else
-# ifdef TLS1_1_VERSION
-		if (strcmp(cp, "tls1.1") == 0)
-			method = TLSv1_1_client_method();
-		else
-# endif
-# ifdef TLS1_2_VERSION
-		if (strcmp(cp, "tls1.2") == 0)
-			method = TLSv1_2_client_method();
-		else
-# endif
-#endif
-			fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"),
-				cp);
-	}
-
-	if (method == NULL)
-		method = SSLv23_client_method();
-	return method;
+   if ((cp = ssl_method_string(uhp)) != NULL) {
+      method = NULL;
+      for (i = 0; i < NELEM(_ssl_methods); ++i)
+         if (!strcmp(_ssl_methods[i].sm_name, cp)) {
+            method = (*_ssl_methods[i].sm_fun)();
+            goto jleave;
+         }
+      fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"), cp);
+   }
+   method = _SSL_DEFAULT_METHOD();
+jleave:
+   NYD_LEAVE;
+   return method;
 }
 
 static void
 ssl_load_verifications(struct sock *sp)
 {
-	char *ca_dir, *ca_file;
-	X509_STORE	*store;
+   char *ca_dir, *ca_file;
+   X509_STORE *store;
+   NYD_ENTER;
 
-	if (ssl_vrfy_level == VRFY_IGNORE)
-		return;
-	if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
-		ca_dir = file_expand(ca_dir);
-	if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
-		ca_file = file_expand(ca_file);
-	if (ca_dir != NULL || ca_file != NULL) {
-		if (SSL_CTX_load_verify_locations(sp->s_ctx,
-					ca_file, ca_dir) != 1) {
-			fprintf(stderr, tr(233, "Error loading "));
-			if (ca_dir) {
-				fputs(ca_dir, stderr);
-				if (ca_file)
-					fputs(tr(234, " or "), stderr);
-			}
-			if (ca_file)
-				fputs(ca_file, stderr);
-			fputs("\n", stderr);
-		}
-	}
-	if (!ok_blook(ssl_no_default_ca)) {
-		if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
-			fprintf(stderr, tr(243,
-				"Error loading default CA locations\n"));
-	}
-	verify_error_found = 0;
-	message_number = 0;
-	SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, ssl_verify_cb);
-	store = SSL_CTX_get_cert_store(sp->s_ctx);
-	load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
+   if (ssl_verify_level == SSL_VERIFY_IGNORE)
+      goto jleave;
+
+   if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
+      ca_dir = file_expand(ca_dir);
+   if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
+      ca_file = file_expand(ca_file);
+
+   if (ca_dir != NULL || ca_file != NULL) {
+      if (SSL_CTX_load_verify_locations(sp->s_ctx, ca_file, ca_dir) != 1) {
+         fprintf(stderr, tr(233, "Error loading "));
+         if (ca_dir) {
+            fputs(ca_dir, stderr);
+            if (ca_file)
+               fputs(tr(234, " or "), stderr);
+         }
+         if (ca_file)
+            fputs(ca_file, stderr);
+         fputs("\n", stderr);
+      }
+   }
+
+   if (!ok_blook(ssl_no_default_ca)) {
+      if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
+         fprintf(stderr, tr(243, "Error loading default CA locations\n"));
+   }
+
+   verify_error_found = 0;
+   message_number = 0;
+   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, ssl_verify_cb);
+   store = SSL_CTX_get_cert_store(sp->s_ctx);
+   load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
+jleave:
+   NYD_LEAVE;
 }
 
 static void
-ssl_certificate(struct sock *sp, const char *uhp)
+ssl_certificate(struct sock *sp, char const *uhp)
 {
-	size_t i;
-	char *certvar, *keyvar, *cert, *key, *x;
+   size_t i;
+   char *certvar, *keyvar, *cert, *key, *x;
+   NYD_ENTER;
 
-	i = strlen(uhp);
-	certvar = ac_alloc(i + 9 + 1);
-	memcpy(certvar, "ssl-cert-", 9);
-	memcpy(certvar + 9, uhp, i + 1);
-	if ((cert = vok_vlook(certvar)) != NULL ||
-			(cert = ok_vlook(ssl_cert)) != NULL) {
-		x = cert;
-		if ((cert = file_expand(cert)) == NULL) {
-			cert = x;
-			goto jbcert;
-		} else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert)
-				== 1) {
-			keyvar = ac_alloc(strlen(uhp) + 9);
-			memcpy(keyvar, "ssl-key-", 8);
-			memcpy(keyvar + 8, uhp, i + 1);
-			if ((key = vok_vlook(keyvar)) == NULL &&
-					(key = ok_vlook(ssl_key)) == NULL)
-				key = cert;
-			else if ((x = key, key = file_expand(key)) == NULL) {
-				key = x;
-				goto jbkey;
-			}
-			if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key,
-						SSL_FILETYPE_PEM) != 1)
-jbkey:				fprintf(stderr, tr(238,
-					"cannot load private key from file "
-					"%s\n"), key);
-			ac_free(keyvar);
-		} else
-jbcert:			fprintf(stderr, tr(239,
-				"cannot load certificate from file %s\n"),
-				cert);
-	}
-	ac_free(certvar);
+   i = strlen(uhp);
+   certvar = ac_alloc(i + 9 + 1);
+   memcpy(certvar, "ssl-cert-", 9);
+   memcpy(certvar + 9, uhp, i + 1);
+
+   if ((cert = vok_vlook(certvar)) != NULL ||
+         (cert = ok_vlook(ssl_cert)) != NULL) {
+      x = cert;
+      if ((cert = file_expand(cert)) == NULL) {
+         cert = x;
+         goto jbcert;
+      } else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) == 1) {
+         keyvar = ac_alloc(strlen(uhp) + 9);
+         memcpy(keyvar, "ssl-key-", 8);
+         memcpy(keyvar + 8, uhp, i + 1);
+         if ((key = vok_vlook(keyvar)) == NULL &&
+               (key = ok_vlook(ssl_key)) == NULL)
+            key = cert;
+         else if ((x = key, key = file_expand(key)) == NULL) {
+            key = x;
+            goto jbkey;
+         }
+         if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1)
+jbkey:
+            fprintf(stderr, tr(238, "cannot load private key from file %s\n"),
+               key);
+         ac_free(keyvar);
+      } else
+jbcert:
+         fprintf(stderr, tr(239, "cannot load certificate from file %s\n"),
+            cert);
+   }
+   ac_free(certvar);
+   NYD_LEAVE;
 }
 
 static enum okay
-ssl_check_host(const char *server, struct sock *sp)
+ssl_check_host(char const *server, struct sock *sp)
 {
-	X509 *cert;
-	X509_NAME *subj;
-	char data[256];
-#ifdef HAVE_STACK_OF
-	STACK_OF(GENERAL_NAME)	*gens;
-#else
-	/*GENERAL_NAMES*/STACK	*gens;
-#endif
-	GENERAL_NAME	*gen;
-	int	i;
+   char data[256];
+   X509 *cert;
+   X509_NAME *subj;
+   _STACKOF(GENERAL_NAME) *gens;
+   GENERAL_NAME *gen;
+   int i;
+   enum okay rv = STOP;
+   NYD_ENTER;
 
-	if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-		fprintf(stderr, tr(248, "no certificate from \"%s\"\n"),
-			server);
-		return STOP;
-	}
-	gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-	if (gens != NULL) {
-		for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
-			gen = sk_GENERAL_NAME_value(gens, i);
-			if (gen->type == GEN_DNS) {
-				if (options & OPT_VERBOSE)
-					fprintf(stderr,
-						"Comparing DNS name: \"%s\"\n",
-						gen->d.ia5->data);
-				if (rfc2595_hostname_match(server,
-						(char *)gen->d.ia5->data)
-						== OKAY)
-					goto found;
-			}
-		}
-	}
-	if ((subj = X509_get_subject_name(cert)) != NULL &&
-			X509_NAME_get_text_by_NID(subj, NID_commonName,
-				data, sizeof data) > 0) {
-		data[sizeof data - 1] = 0;
-		if (options & OPT_VERBOSE)
-			fprintf(stderr, "Comparing common name: \"%s\"\n",
-					data);
-		if (rfc2595_hostname_match(server, data) == OKAY)
-			goto found;
-	}
-	X509_free(cert);
-	return STOP;
-found:	X509_free(cert);
-	return OKAY;
-}
+   if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
+      fprintf(stderr, tr(248, "no certificate from \"%s\"\n"), server);
+      goto jleave;
+   }
 
-FL enum okay
-ssl_open(const char *server, struct sock *sp, const char *uhp)
-{
-	char *cp;
-	long opts;
+   gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+   if (gens != NULL) {
+      for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
+         gen = sk_GENERAL_NAME_value(gens, i);
+         if (gen->type == GEN_DNS) {
+            if (options & OPT_VERBOSE)
+               fprintf(stderr, "Comparing DNS name: \"%s\"\n",
+                  gen->d.ia5->data);
+            rv = rfc2595_hostname_match(server, (char*)gen->d.ia5->data);
+            if (rv == OKAY)
+               goto jdone;
+         }
+      }
+   }
 
-	ssl_init();
-	ssl_set_vrfy_level(uhp);
-	if ((sp->s_ctx =
-	     SSL_CTX_new(UNCONST(ssl_select_method(uhp))))
-			== NULL) {
-		ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
-		return STOP;
-	}
-#ifdef	SSL_MODE_AUTO_RETRY
-	/* available with OpenSSL 0.9.6 or later */
-	SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
-#endif	/* SSL_MODE_AUTO_RETRY */
-	opts = SSL_OP_ALL;
-	if (!ok_blook(ssl_v2_allow))
-		opts |= SSL_OP_NO_SSLv2;
-	SSL_CTX_set_options(sp->s_ctx, opts);
-	ssl_load_verifications(sp);
-	ssl_certificate(sp, uhp);
-	if ((cp = ok_vlook(ssl_cipher_list)) != NULL) {
-		if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
-			fprintf(stderr, tr(240, "invalid ciphers: %s\n"), cp);
-	}
-	if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
-		ssl_gen_err(tr(262, "SSL_new() failed"));
-		return STOP;
-	}
-	SSL_set_fd(sp->s_ssl, sp->s_fd);
-	if (SSL_connect(sp->s_ssl) < 0) {
-		ssl_gen_err(tr(263, "could not initiate SSL/TLS connection"));
-		return STOP;
-	}
-	if (ssl_vrfy_level != VRFY_IGNORE) {
-		if (ssl_check_host(server, sp) != OKAY) {
-			fprintf(stderr, tr(249,
-				"host certificate does not match \"%s\"\n"),
-				server);
-			if (ssl_vrfy_decide() != OKAY)
-				return STOP;
-		}
-	}
-	sp->s_use_ssl = 1;
-	return OKAY;
-}
-
-FL void
-ssl_gen_err(const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	SSL_load_error_strings();
-	fprintf(stderr, ": %s\n",
-			(ERR_error_string(ERR_get_error(), NULL)));
-}
-
-FL FILE *
-smime_sign(FILE *ip, struct header *headp)
-{
-	FILE	*sp, *fp, *bp, *hp;
-	char	*cp;
-	char const *addr;
-	X509	*cert;
-#ifdef HAVE_STACK_OF
-	STACK_OF(X509)	*chain = NULL;
-#else
-	STACK	*chain = NULL;
-#endif
-	PKCS7	*pkcs7;
-	EVP_PKEY	*pkey;
-	BIO	*bb, *sb;
-
-	ssl_init();
-	if ((addr = myorigin(headp)) == NULL) {
-		fprintf(stderr, "No \"from\" address for signing specified\n");
-		return NULL;
-	}
-	if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)
-		return NULL;
-	if ((pkey = PEM_read_PrivateKey(fp, NULL, ssl_password_cb, NULL))
-			== NULL) {
-		ssl_gen_err("Error reading private key from");
-		Fclose(fp);
-		return NULL;
-	}
-	rewind(fp);
-	if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
-		ssl_gen_err("Error reading signer certificate from");
-		Fclose(fp);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	Fclose(fp);
-	if ((cp = smime_sign_include_certs(addr)) != NULL &&
-			!smime_sign_include_chain_creat(&chain, cp)) {
-		X509_free(cert);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if ((sp = Ftemp(&cp, "Rs", "w+", 0600, 1)) == NULL) {
-		perror("tempfile");
-		if (chain != NULL)
-			sk_X509_pop_free(chain, X509_free);
-		X509_free(cert);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	rm(cp);
-	Ftfree(&cp);
-	rewind(ip);
-	if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
-		Fclose(sp);
-		if (chain != NULL)
-			sk_X509_pop_free(chain, X509_free);
-		X509_free(cert);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
-			(sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
-		ssl_gen_err("Error creating BIO signing objects");
-		Fclose(sp);
-		if (chain != NULL)
-			sk_X509_pop_free(chain, X509_free);
-		X509_free(cert);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb,
-			PKCS7_DETACHED)) == NULL) {
-		ssl_gen_err("Error creating the PKCS#7 signing object");
-		BIO_free(bb);
-		BIO_free(sb);
-		Fclose(sp);
-		if (chain != NULL)
-			sk_X509_pop_free(chain, X509_free);
-		X509_free(cert);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
-		ssl_gen_err("Error writing signed S/MIME data");
-		BIO_free(bb);
-		BIO_free(sb);
-		Fclose(sp);
-		if (chain != NULL)
-			sk_X509_pop_free(chain, X509_free);
-		X509_free(cert);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	BIO_free(bb);
-	BIO_free(sb);
-	if (chain != NULL)
-		sk_X509_pop_free(chain, X509_free);
-	X509_free(cert);
-	EVP_PKEY_free(pkey);
-	rewind(bp);
-	fflush(sp);
-	rewind(sp);
-	return smime_sign_assemble(hp, bp, sp);
+   if ((subj = X509_get_subject_name(cert)) != NULL &&
+         X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data)
+            > 0) {
+      data[sizeof data - 1] = '\0';
+      if (options & OPT_VERBOSE)
+         fprintf(stderr, "Comparing common name: \"%s\"\n", data);
+      rv = rfc2595_hostname_match(server, data);
+   }
+jdone:
+   X509_free(cert);
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
-#ifdef HAVE_STACK_OF
-smime_verify(struct message *m, int n, STACK_OF(X509) *chain, X509_STORE *store)
-#else
-smime_verify(struct message *m, int n, STACK *chain, X509_STORE *store)
-#endif
+smime_verify(struct message *m, int n, _STACKOF(X509) *chain,
+   X509_STORE *store)
 {
-	struct message	*x;
-	char	*cp, *sender, *to, *cc, *cnttype;
-	int	c, i, j;
-	FILE	*fp, *ip;
-	off_t	size;
-	BIO	*fb, *pb;
-	PKCS7	*pkcs7;
-#ifdef HAVE_STACK_OF
-	STACK_OF(X509)	*certs;
-	STACK_OF(GENERAL_NAME)	*gens;
-#else
-	STACK	*certs, *gens;
-#endif
-	X509	*cert;
-	X509_NAME	*subj;
-	char	data[LINESIZE];
-	GENERAL_NAME	*gen;
+   char data[LINESIZE], *sender, *to, *cc, *cnttype;
+   int rv, c, i, j;
+   struct message *x;
+   FILE *fp, *ip;
+   off_t size;
+   BIO *fb, *pb;
+   PKCS7 *pkcs7;
+   _STACKOF(X509) *certs;
+   _STACKOF(GENERAL_NAME) *gens;
+   X509 *cert;
+   X509_NAME *subj;
+   GENERAL_NAME *gen;
+   NYD_ENTER;
 
-	verify_error_found = 0;
-	message_number = n;
-loop:	sender = getsender(m);
-	to = hfield1("to", m);
-	cc = hfield1("cc", m);
-	cnttype = hfield1("content-type", m);
-	if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
-		return 1;
-	if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
-		if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
-			return 1;
-		if (x != (struct message *)-1) {
-			m = x;
-			goto loop;
-		}
-	}
-	size = m->m_size;
-	if ((fp = Ftemp(&cp, "Rv", "w+", 0600, 1)) == NULL) {
-		perror("tempfile");
-		return 1;
-	}
-	rm(cp);
-	Ftfree(&cp);
-	while (size-- > 0) {
-		c = getc(ip);
-		putc(c, fp);
-	}
-	fflush(fp);
-	rewind(fp);
-	if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
-		ssl_gen_err("Error creating BIO verification object "
-				"for message %d", n);
-		Fclose(fp);
-		return 1;
-	}
-	if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
-		ssl_gen_err("Error reading PKCS#7 object for message %d", n);
-		BIO_free(fb);
-		Fclose(fp);
-		return 1;
-	}
-	if (PKCS7_verify(pkcs7, chain, store, pb, NULL, 0) != 1) {
-		ssl_gen_err("Error verifying message %d", n);
-		BIO_free(fb);
-		Fclose(fp);
-		return 1;
-	}
-	BIO_free(fb);
-	Fclose(fp);
-	if (sender == NULL) {
-		fprintf(stderr,
-			"Warning: Message %d has no sender.\n", n);
-		return 0;
-	}
-	certs = PKCS7_get0_signers(pkcs7, chain, 0);
-	if (certs == NULL) {
-		fprintf(stderr, "No certificates found in message %d.\n", n);
-		return 1;
-	}
-	for (i = 0; i < sk_X509_num(certs); i++) {
-		cert = sk_X509_value(certs, i);
-		gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-		if (gens != NULL) {
-			for (j = 0; j < sk_GENERAL_NAME_num(gens); j++) {
-				gen = sk_GENERAL_NAME_value(gens, j);
-				if (gen->type == GEN_EMAIL) {
-					if (options & OPT_VERBOSE)
-						fprintf(stderr,
-							"Comparing alt. "
-							"address: %s\"\n",
-							data);
-					if (!asccasecmp((char *)
-							gen->d.ia5->data,
-							sender))
-						goto found;
-				}
-			}
-		}
-		if ((subj = X509_get_subject_name(cert)) != NULL &&
-				X509_NAME_get_text_by_NID(subj,
-					NID_pkcs9_emailAddress,
-					data, sizeof data) > 0) {
-			data[sizeof data - 1] = 0;
-			if (options & OPT_VERBOSE)
-				fprintf(stderr, "Comparing address: \"%s\"\n",
-						data);
-			if (asccasecmp(data, sender) == 0)
-				goto found;
-		}
-	}
-	fprintf(stderr, "Message %d: certificate does not match <%s>\n",
-			n, sender);
-	return 1;
-found:	if (verify_error_found == 0)
-		printf("Message %d was verified successfully.\n", n);
-	return verify_error_found;
+   rv = 1;
+   fp = NULL;
+   fb = NULL;
+   verify_error_found = 0;
+   message_number = n;
+
+   for (;;) {
+      sender = getsender(m);
+      to = hfield1("to", m);
+      cc = hfield1("cc", m);
+      cnttype = hfield1("content-type", m);
+      if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
+         goto jleave;
+      if (cnttype && !strncmp(cnttype, "application/x-pkcs7-mime", 24)) {
+         if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
+            goto jleave;
+         if (x != (struct message*)-1) {
+            m = x;
+            continue;
+         }
+      }
+      size = m->m_size;
+      break;
+   }
+
+   if ((fp = Ftmp(NULL, "smimever", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
+      perror("tempfile");
+      goto jleave;
+   }
+   while (size-- > 0) {
+      c = getc(ip);
+      putc(c, fp);
+   }
+   fflush_rewind(fp);
+
+   if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
+      ssl_gen_err(tr(537,
+         "Error creating BIO verification object for message %d"), n);
+      goto jleave;
+   }
+
+   if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
+      ssl_gen_err(tr(538, "Error reading PKCS#7 object for message %d"), n);
+      goto jleave;
+   }
+   if (PKCS7_verify(pkcs7, chain, store, pb, NULL, 0) != 1) {
+      ssl_gen_err(tr(539, "Error verifying message %d"), n);
+      goto jleave;
+   }
+
+   if (sender == NULL) {
+      fprintf(stderr, tr(540, "Warning: Message %d has no sender.\n"), n);
+      rv = 0;
+      goto jleave;
+   }
+
+   certs = PKCS7_get0_signers(pkcs7, chain, 0);
+   if (certs == NULL) {
+      fprintf(stderr, tr(541, "No certificates found in message %d.\n"), n);
+      goto jleave;
+   }
+
+   for (i = 0; i < sk_X509_num(certs); i++) {
+      cert = sk_X509_value(certs, i);
+      gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+      if (gens != NULL) {
+         for (j = 0; j < sk_GENERAL_NAME_num(gens); ++j) {
+            gen = sk_GENERAL_NAME_value(gens, j);
+            if (gen->type == GEN_EMAIL) {
+               if (options & OPT_VERBOSE)
+                  fprintf(stderr, "Comparing alt. address: %s\"\n", data);
+               if (!asccasecmp((char*)gen->d.ia5->data, sender))
+                  goto jfound;
+            }
+         }
+      }
+
+      if ((subj = X509_get_subject_name(cert)) != NULL &&
+            X509_NAME_get_text_by_NID(subj, NID_pkcs9_emailAddress,
+               data, sizeof data) > 0) {
+         data[sizeof data - 1] = 0;
+         if (options & OPT_VERBOSE)
+            fprintf(stderr, "Comparing address: \"%s\"\n", data);
+         if (!asccasecmp(data, sender))
+            goto jfound;
+      }
+   }
+   fprintf(stderr, tr(542, "Message %d: certificate does not match <%s>\n"),
+      n, sender);
+   goto jleave;
+jfound:
+   if (verify_error_found == 0)
+      printf(tr(543, "Message %d was verified successfully.\n"), n);
+   rv = verify_error_found;
+jleave:
+   if (fb != NULL)
+      BIO_free(fb);
+   if (fp != NULL)
+      Fclose(fp);
+   NYD_LEAVE;
+   return rv;
 }
 
-FL int
-cverify(void *vp)
+static EVP_CIPHER const *
+_smime_cipher(char const *name)
 {
-	int	*msgvec = vp, *ip;
-	int	ec = 0;
-#ifdef HAVE_STACK_OF
-	STACK_OF(X509)	*chain = NULL;
-#else
-	STACK	*chain = NULL;
-#endif
-	X509_STORE	*store;
-	char *ca_dir, *ca_file;
+   EVP_CIPHER const *cipher;
+   char *vn, *cp;
+   size_t i;
+   NYD_ENTER;
 
-	ssl_init();
-	ssl_vrfy_level = VRFY_STRICT;
-	if ((store = X509_STORE_new()) == NULL) {
-		ssl_gen_err("Error creating X509 store");
-		return 1;
-	}
-	X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
-	if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
-		ca_dir = file_expand(ca_dir);
-	if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
-		ca_file = file_expand(ca_file);
-	if (ca_dir != NULL || ca_file != NULL) {
-		if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
-			ssl_gen_err("Error loading %s",
-					ca_file ? ca_file : ca_dir);
-			return 1;
-		}
-	}
-	if (!ok_blook(smime_no_default_ca)) {
-		if (X509_STORE_set_default_paths(store) != 1) {
-			ssl_gen_err("Error loading default CA locations");
-			return 1;
-		}
-	}
-	if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
-		return 1;
-	for (ip = msgvec; *ip; ip++) {
-		setdot(&message[*ip-1]);
-		ec |= smime_verify(&message[*ip-1], *ip, chain, store);
-	}
-	return ec;
+   vn = ac_alloc(i = strlen(name) + 13 +1);
+   snprintf(vn, (int)i, "smime-cipher-%s", name);
+   cp = vok_vlook(vn);
+   ac_free(vn);
+
+   if (cp != NULL) {
+      cipher = NULL;
+      for (i = 0; i < NELEM(_smime_ciphers); ++i)
+         if (!strcmp(_smime_ciphers[i].sc_name, cp)) {
+            cipher = (*_smime_ciphers[i].sc_fun)();
+            goto jleave;
+         }
+      fprintf(stderr, tr(240, "Invalid cipher(s): %s\n"), cp);
+   } else
+      cipher = _SMIME_DEFAULT_CIPHER();
+jleave:
+   NYD_LEAVE;
+   return cipher;
 }
 
-static EVP_CIPHER *
-smime_cipher(const char *name)
-{
-	const EVP_CIPHER	*cipher;
-	char	*vn, *cp;
-	int	vs;
-
-	vn = ac_alloc(vs = strlen(name) + 30);
-	snprintf(vn, vs, "smime-cipher-%s", name);
-	if ((cp = vok_vlook(vn)) != NULL) {
-		if (strcmp(cp, "rc2-40") == 0)
-			cipher = EVP_rc2_40_cbc();
-		else if (strcmp(cp, "rc2-64") == 0)
-			cipher = EVP_rc2_64_cbc();
-		else if (strcmp(cp, "des") == 0)
-			cipher = EVP_des_cbc();
-		else if (strcmp(cp, "des-ede3") == 0)
-			cipher = EVP_des_ede3_cbc();
-		else {
-			fprintf(stderr, "Invalid cipher \"%s\".\n", cp);
-			cipher = NULL;
-		}
-	} else
-		cipher = EVP_des_ede3_cbc();
-	ac_free(vn);
-	return UNCONST(cipher);
-}
-
-FL FILE *
-smime_encrypt(FILE *ip, const char *xcertfile, const char *to)
-{
-	char	*certfile = UNCONST(xcertfile), *cp;
-	FILE	*yp, *fp, *bp, *hp;
-	X509	*cert;
-	PKCS7	*pkcs7;
-	BIO	*bb, *yb;
-#ifdef HAVE_STACK_OF
-	STACK_OF(X509)	*certs;
-#else
-	STACK	*certs;
-#endif
-	EVP_CIPHER	*cipher;
-
-	if ((certfile = file_expand(certfile)) == NULL)
-		return NULL;
-
-	ssl_init();
-	if ((cipher = smime_cipher(to)) == NULL)
-		return NULL;
-	if ((fp = Fopen(certfile, "r")) == NULL) {
-		perror(certfile);
-		return NULL;
-	}
-	if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
-		ssl_gen_err("Error reading encryption certificate from \"%s\"",
-				certfile);
-		Fclose(fp);
-		return NULL;
-	}
-	Fclose(fp);
-	certs = sk_X509_new_null();
-	sk_X509_push(certs, cert);
-	if ((yp = Ftemp(&cp, "Ry", "w+", 0600, 1)) == NULL) {
-		perror("tempfile");
-		return NULL;
-	}
-	rm(cp);
-	Ftfree(&cp);
-	rewind(ip);
-	if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
-		Fclose(yp);
-		return NULL;
-	}
-	if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
-			(yb = BIO_new_fp(yp, BIO_NOCLOSE)) == NULL) {
-		ssl_gen_err("Error creating BIO encryption objects");
-		Fclose(yp);
-		return NULL;
-	}
-	if ((pkcs7 = PKCS7_encrypt(certs, bb, cipher, 0)) == NULL) {
-		ssl_gen_err("Error creating the PKCS#7 encryption object");
-		BIO_free(bb);
-		BIO_free(yb);
-		Fclose(yp);
-		return NULL;
-	}
-	if (PEM_write_bio_PKCS7(yb, pkcs7) == 0) {
-		ssl_gen_err("Error writing encrypted S/MIME data");
-		BIO_free(bb);
-		BIO_free(yb);
-		Fclose(yp);
-		return NULL;
-	}
-	BIO_free(bb);
-	BIO_free(yb);
-	Fclose(bp);
-	fflush(yp);
-	rewind(yp);
-	return smime_encrypt_assemble(hp, yp);
-}
-
-FL struct message *
-smime_decrypt(struct message *m, const char *to, const char *cc, int signcall)
-{
-	FILE	*fp, *bp, *hp, *op;
-	char	*cp;
-	X509	*cert = NULL;
-	PKCS7	*pkcs7;
-	EVP_PKEY	*pkey = NULL;
-	BIO	*bb, *pb, *ob;
-	long	size = m->m_size;
-	FILE	*yp;
-
-	if ((yp = setinput(&mb, m, NEED_BODY)) == NULL)
-		return NULL;
-	ssl_init();
-	if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
-		if ((pkey = PEM_read_PrivateKey(fp, NULL, ssl_password_cb,
-						NULL)) == NULL) {
-			ssl_gen_err("Error reading private key");
-			Fclose(fp);
-			return NULL;
-		}
-		rewind(fp);
-		if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb,
-						NULL)) == NULL) {
-			ssl_gen_err("Error reading decryption certificate");
-			Fclose(fp);
-			EVP_PKEY_free(pkey);
-			return NULL;
-		}
-		Fclose(fp);
-	}
-	if ((op = Ftemp(&cp, "Rp", "w+", 0600, 1)) == NULL) {
-		perror("tempfile");
-		if (cert)
-			X509_free(cert);
-		if (pkey)
-			EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	rm(cp);
-	Ftfree(&cp);
-	if (smime_split(yp, &hp, &bp, size, 1) == STOP) {
-		Fclose(op);
-		if (cert)
-			X509_free(cert);
-		if (pkey)
-			EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if ((ob = BIO_new_fp(op, BIO_NOCLOSE)) == NULL ||
-			(bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL) {
-		ssl_gen_err("Error creating BIO decryption objects");
-		Fclose(op);
-		if (cert)
-			X509_free(cert);
-		if (pkey)
-			EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if ((pkcs7 = SMIME_read_PKCS7(bb, &pb)) == NULL) {
-		ssl_gen_err("Error reading PKCS#7 object");
-		Fclose(op);
-		if (cert)
-			X509_free(cert);
-		if (pkey)
-			EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	if (PKCS7_type_is_signed(pkcs7)) {
-		if (signcall) {
-			BIO_free(bb);
-			BIO_free(ob);
-			if (cert)
-				X509_free(cert);
-			if (pkey)
-				EVP_PKEY_free(pkey);
-			Fclose(op);
-			Fclose(bp);
-			Fclose(hp);
-			setinput(&mb, m, NEED_BODY);
-			return (struct message *)-1;
-		}
-		if (PKCS7_verify(pkcs7, NULL, NULL, NULL, ob,
-				PKCS7_NOVERIFY|PKCS7_NOSIGS) != 1)
-			goto err;
-		fseek(hp, 0L, SEEK_END);
-		fprintf(hp, "X-Encryption-Cipher: none\n");
-		fflush(hp);
-		rewind(hp);
-	} else if (pkey == NULL) {
-		fprintf(stderr, "No appropriate private key found.\n");
-		goto err2;
-	} else if (cert == NULL) {
-		fprintf(stderr, "No appropriate certificate found.\n");
-		goto err2;
-	} else if (PKCS7_decrypt(pkcs7, pkey, cert, ob, 0) != 1) {
-	err:	ssl_gen_err("Error decrypting PKCS#7 object");
-	err2:	BIO_free(bb);
-		BIO_free(ob);
-		Fclose(op);
-		Fclose(bp);
-		Fclose(hp);
-		if (cert)
-			X509_free(cert);
-		if (pkey)
-			EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	BIO_free(bb);
-	BIO_free(ob);
-	if (cert)
-		X509_free(cert);
-	if (pkey)
-		EVP_PKEY_free(pkey);
-	fflush(op);
-	rewind(op);
-	Fclose(bp);
-	return smime_decrypt_assemble(m, hp, op);
-}
-
-/*ARGSUSED4*/
 static int
 ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 {
-	sighandler_type	volatile saveint;
-	char *pass = NULL;
-	size_t len;
-	UNUSED(rwflag);
-	UNUSED(userdata);
+   sighandler_type volatile saveint;
+   char *pass = NULL;
+   size_t len;
+   NYD_ENTER;
+   UNUSED(rwflag);
+   UNUSED(userdata);
 
-	saveint = safe_signal(SIGINT, SIG_IGN);
-	if (sigsetjmp(ssljmp, 1) == 0) {
-		if (saveint != SIG_IGN)
-			safe_signal(SIGINT, sslcatch);
-		pass = getpassword("PEM pass phrase:");
-	}
-	safe_signal(SIGINT, saveint);
-	if (pass == NULL)
-		return 0;
-	len = strlen(pass);
-	if (UICMP(z, len, >, size))
-		len = size;
-	memcpy(buf, pass, len);
-	return len;
+   saveint = safe_signal(SIGINT, SIG_IGN);
+   if (sigsetjmp(ssljmp, 1) == 0) {
+      if (saveint != SIG_IGN)
+         safe_signal(SIGINT, sslcatch);
+      pass = getpassword("PEM pass phrase:");
+   }
+   safe_signal(SIGINT, saveint);
+
+   if (pass == NULL) {
+      len = 0;
+      goto jleave;
+   }
+   len = strlen(pass);
+   if (UICMP(z, len, >, size))
+      len = size;
+   memcpy(buf, pass, len);
+jleave:
+   NYD_LEAVE;
+   return (int)len;
 }
 
 static FILE *
-smime_sign_cert(const char *xname, const char *xname2, bool_t dowarn)
+smime_sign_cert(char const *xname, char const *xname2, bool_t dowarn)
 {
-	char	*vn, *cp;
-	int	vs;
-	FILE	*fp;
-	struct name	*np;
-	const char	*name = xname, *name2 = xname2;
+   char *vn, *cp;
+   int vs;
+   struct name *np;
+   char const *name = xname, *name2 = xname2;
+   FILE *fp = NULL;
+   NYD_ENTER;
 
-loop:	if (name) {
-		np = lextract(name, GTO|GSKIN);
-		while (np) {
-			/*
-			 * This needs to be more intelligent since it will
-			 * currently take the first name for which a private
-			 * key is available regardless of whether it is the
-			 * right one for the message.
-			 */
-			vn = ac_alloc(vs = strlen(np->n_name) + 30);
-			snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
-			cp = vok_vlook(vn);
-			ac_free(vn);
-			if (cp != NULL)
-				goto open;
-			np = np->n_flink;
-		}
-		if (name2) {
-			name = name2;
-			name2 = NULL;
-			goto loop;
-		}
-	}
-	if ((cp = ok_vlook(smime_sign_cert)) != NULL)
-		goto open;
-	if (dowarn) {
-		fprintf(stderr, "Could not find a certificate for %s", xname);
-		if (xname2)
-			fprintf(stderr, "or %s", xname2);
-		fputc('\n', stderr);
-	}
-	return NULL;
-open:
-	if ((cp = file_expand(cp)) == NULL)
-		return (NULL);
-	if ((fp = Fopen(cp, "r")) == NULL) {
-		perror(cp);
-		return NULL;
-	}
-	return fp;
+jloop:
+   if (name) {
+      np = lextract(name, GTO|GSKIN);
+      while (np) {
+         /* This needs to be more intelligent since it will currently take the
+          * first name for which a private key is available regardless of
+          * whether it is the right one for the message */
+         vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
+         cp = vok_vlook(vn);
+         ac_free(vn);
+         if (cp != NULL)
+            goto jopen;
+         np = np->n_flink;
+      }
+      if (name2) {
+         name = name2;
+         name2 = NULL;
+         goto jloop;
+      }
+   }
+
+   if ((cp = ok_vlook(smime_sign_cert)) != NULL)
+      goto jopen;
+   if (dowarn) {
+      fprintf(stderr, tr(558, "Could not find a certificate for %s"), xname);
+      if (xname2)
+         fprintf(stderr, tr(559, "or %s"), xname2);
+      fputc('\n', stderr);
+   }
+jleave:
+   NYD_LEAVE;
+   return fp;
+jopen:
+   if ((cp = file_expand(cp)) == NULL)
+      goto jleave;
+   if ((fp = Fopen(cp, "r")) == NULL)
+      perror(cp);
+   goto jleave;
 }
 
 static char *
 smime_sign_include_certs(char const *name)
 {
-	char *ret;
-	/* See comments in smime_sign_cert() for algorithm pitfalls */
-	if (name) {
-		struct name *np = lextract(name, GTO|GSKIN);
-		while (np) {
-			int vs;
-			char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
-			snprintf(vn, vs, "smime-sign-include-certs-%s",
-				np->n_name);
-			ret = vok_vlook(vn);
-			ac_free(vn);
-			if (ret != NULL)
-				return ret;
-			np = np->n_flink;
-		}
-	}
-	return ok_vlook(smime_sign_include_certs);
+   char *rv;
+   NYD_ENTER;
+
+   /* See comments in smime_sign_cert() for algorithm pitfalls */
+   if (name != NULL) {
+      struct name *np;
+
+      for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
+         int vs;
+         char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
+         rv = vok_vlook(vn);
+         ac_free(vn);
+         if (rv != NULL)
+            goto jleave;
+      }
+   }
+   rv = ok_vlook(smime_sign_include_certs);
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
-smime_sign_include_chain_creat(
-#ifdef HAVE_STACK_OF
-	STACK_OF(X509) **chain,
-#else
-	STACK **chain,
-#endif
-	char *cfiles)
+smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
 {
-	*chain = sk_X509_new_null();
+   X509 *tmp;
+   FILE *fp;
+   char *rest, *x, *ncf;
+   NYD_ENTER;
 
-	for (;;) {
-		X509 *tmp;
-		FILE *fp;
-		char *x, *ncf = strchr(cfiles, ',');
-		if (ncf)
-			*ncf++ = '\0';
-		/* This fails for '=,file' constructs, but those are sick */
-		if (! *cfiles)
-			break;
+   *chain = sk_X509_new_null();
 
-		if ((x = file_expand(cfiles)) == NULL ||
-				(fp = Fopen(cfiles = x, "r")) == NULL) {
-			perror(cfiles);
-			goto jerr;
-		}
-		if ((tmp = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)
-				) == NULL) {
-			ssl_gen_err("Error reading certificate from \"%s\"",
-				cfiles);
-			Fclose(fp);
-			goto jerr;
-		}
-		sk_X509_push(*chain, tmp);
-		Fclose(fp);
+   for (rest = savestr(cfiles);;) {
+      ncf = strchr(rest, ',');
+      if (ncf != NULL)
+         *ncf++ = '\0';
+      /* This fails for '=,file' constructs, but those are sick */
+      if (*rest == '\0')
+         break;
 
-		if (! ncf)
-			break;
-		cfiles = ncf;
-	}
+      if ((x = file_expand(rest)) == NULL ||
+            (fp = Fopen(rest = x, "r")) == NULL) {
+         perror(cfiles);
+         goto jerr;
+      }
+      if ((tmp = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+         ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), rest);
+         Fclose(fp);
+         goto jerr;
+      }
+      sk_X509_push(*chain, tmp);
+      Fclose(fp);
 
-	if (sk_X509_num(*chain) == 0) {
-		fprintf(stderr, "smime-sign-include-certs defined but empty\n");
-		goto jerr;
-	}
+      if (ncf == NULL)
+         break;
+      rest = ncf;
+   }
 
-jleave:	return (*chain != NULL);
+   if (sk_X509_num(*chain) == 0) {
+      fprintf(stderr, tr(561, "smime-sign-include-certs defined but empty\n"));
+      goto jerr;
+   }
+jleave:
+   NYD_LEAVE;
+   return (*chain != NULL);
+jerr:
+   sk_X509_pop_free(*chain, X509_free);
+   *chain = NULL;
+   goto jleave;
+}
 
-jerr:	sk_X509_pop_free(*chain, X509_free);
-	*chain = NULL;
-	goto jleave;
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+static enum okay
+load_crl1(X509_STORE *store, char const *name)
+{
+   X509_LOOKUP *lookup;
+   enum okay rv = STOP;
+   NYD_ENTER;
+
+   if (options & OPT_VERBOSE)
+      printf("Loading CRL from \"%s\".\n", name);
+   if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
+      ssl_gen_err(tr(565, "Error creating X509 lookup object"));
+      goto jleave;
+   }
+   if (X509_load_crl_file(lookup, name, X509_FILETYPE_PEM) != 1) {
+      ssl_gen_err(tr(566, "Error loading CRL from \"%s\""), name);
+      goto jleave;
+   }
+   rv = OKAY;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+#endif /* new OpenSSL */
+
+static enum okay
+load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
+{
+   char *crl_file, *crl_dir;
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+   DIR *dirp;
+   struct dirent *dp;
+   char *fn = NULL;
+   int fs = 0, ds, es;
+#endif
+   enum okay rv = STOP;
+   NYD_ENTER;
+
+   if ((crl_file = _var_oklook(fok)) != NULL) {
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+      if ((crl_file = file_expand(crl_file)) == NULL ||
+            load_crl1(store, crl_file) != OKAY)
+         goto jleave;
+#else
+      fprintf(stderr, tr(567,
+         "This OpenSSL version is too old to use CRLs.\n"));
+      goto jleave;
+#endif
+   }
+
+   if ((crl_dir = _var_oklook(dok)) != NULL) {
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+      char *x;
+      if ((x = file_expand(crl_dir)) == NULL ||
+            (dirp = opendir(crl_dir = x)) == NULL) {
+         perror(crl_dir);
+         goto jleave;
+      }
+
+      ds = strlen(crl_dir);
+      fn = smalloc(fs = ds + 20);
+      memcpy(fn, crl_dir, ds);
+      fn[ds] = '/';
+      while ((dp = readdir(dirp)) != NULL) {
+         if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' ||
+               (dp->d_name[1] == '.' && dp->d_name[2] == '\0')))
+            continue;
+         if (dp->d_name[0] == '.')
+            continue;
+         if (ds + (es = strlen(dp->d_name)) + 2 < fs)
+            fn = srealloc(fn, fs = ds + es + 20);
+         memcpy(fn + ds + 1, dp->d_name, es + 1);
+         if (load_crl1(store, fn) != OKAY) {
+            closedir(dirp);
+            free(fn);
+            goto jleave;
+         }
+      }
+      closedir(dirp);
+      free(fn);
+#else /* old OpenSSL */
+      fprintf(stderr, tr(567,
+         "This OpenSSL version is too old to use CRLs.\n"));
+      goto jleave;
+#endif
+   }
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+   if (crl_file || crl_dir)
+      X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK |
+         X509_V_FLAG_CRL_CHECK_ALL);
+#endif
+   rv = OKAY;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL enum okay
+ssl_open(char const *server, struct sock *sp, char const *uhp)
+{
+   char *cp;
+   long opts;
+   enum okay rv = STOP;
+   NYD_ENTER;
+
+   ssl_init();
+   ssl_set_verify_level(uhp);
+   if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
+      ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
+      goto jleave;
+   }
+
+#ifdef SSL_MODE_AUTO_RETRY
+   /* available with OpenSSL 0.9.6 or later */
+   SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
+#endif   /* SSL_MODE_AUTO_RETRY */
+   opts = SSL_OP_ALL;
+   if (!ok_blook(ssl_v2_allow))
+      opts |= SSL_OP_NO_SSLv2;
+   SSL_CTX_set_options(sp->s_ctx, opts);
+   ssl_load_verifications(sp);
+   ssl_certificate(sp, uhp);
+   if ((cp = ok_vlook(ssl_cipher_list)) != NULL) {
+      if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
+         fprintf(stderr, tr(240, "Invalid cipher(s): %s\n"), cp);
+   }
+
+   if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
+      ssl_gen_err(tr(262, "SSL_new() failed"));
+      goto jleave;
+   }
+   SSL_set_fd(sp->s_ssl, sp->s_fd);
+   if (SSL_connect(sp->s_ssl) < 0) {
+      ssl_gen_err(tr(263, "could not initiate SSL/TLS connection"));
+      goto jleave;
+   }
+   if (ssl_verify_level != SSL_VERIFY_IGNORE) {
+      if (ssl_check_host(server, sp) != OKAY) {
+         fprintf(stderr, tr(249, "host certificate does not match \"%s\"\n"),
+            server);
+         if (ssl_verify_decide() != OKAY)
+            goto jleave;
+      }
+   }
+   sp->s_use_ssl = 1;
+   rv = OKAY;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL void
+ssl_gen_err(char const *fmt, ...)
+{
+   va_list  ap;
+   NYD_ENTER;
+
+   va_start(ap, fmt);
+   vfprintf(stderr, fmt, ap);
+   va_end(ap);
+   SSL_load_error_strings();
+   fprintf(stderr, ": %s\n", ERR_error_string(ERR_get_error(), NULL));
+   NYD_LEAVE;
+}
+
+FL int
+cverify(void *vp)
+{
+   int *msgvec = vp, *ip, ec = 0, rv = 1;
+   _STACKOF(X509) *chain = NULL;
+   X509_STORE *store;
+   char *ca_dir, *ca_file;
+   NYD_ENTER;
+
+   ssl_init();
+
+   ssl_verify_level = SSL_VERIFY_STRICT;
+   if ((store = X509_STORE_new()) == NULL) {
+      ssl_gen_err(tr(544, "Error creating X509 store"));
+      goto jleave;
+   }
+   X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
+
+   if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
+      ca_dir = file_expand(ca_dir);
+   if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
+      ca_file = file_expand(ca_file);
+
+   if (ca_dir != NULL || ca_file != NULL) {
+      if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
+         ssl_gen_err(tr(545, "Error loading %s"),
+            (ca_file != NULL) ? ca_file : ca_dir);
+         goto jleave;
+      }
+   }
+   if (!ok_blook(smime_no_default_ca)) {
+      if (X509_STORE_set_default_paths(store) != 1) {
+         ssl_gen_err(tr(546, "Error loading default CA locations"));
+         goto jleave;
+      }
+   }
+
+   if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
+      goto jleave;
+   for (ip = msgvec; *ip; ip++) {
+      setdot(&message[*ip-1]);
+      ec |= smime_verify(message + *ip - 1, *ip, chain, store);
+   }
+   rv = ec;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL FILE *
+smime_sign(FILE *ip, struct header *headp)
+{
+   FILE *rv = NULL, *sp, *fp, *bp, *hp;
+   char const *addr;
+   X509 *cert;
+   _STACKOF(X509) *chain = NULL;
+   PKCS7 *pkcs7;
+   EVP_PKEY *pkey;
+   BIO *bb, *sb;
+   NYD_ENTER;
+
+   ssl_init();
+
+   if ((addr = myorigin(headp)) == NULL) {
+      fprintf(stderr, tr(531, "No \"from\" address for signing specified\n"));
+      goto jleave;
+   }
+   if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)
+      goto jleave;
+
+   if ((pkey = PEM_read_PrivateKey(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+      ssl_gen_err(tr(532, "Error reading private key from"));
+      Fclose(fp);
+      goto jleave;
+   }
+   rewind(fp);
+   if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+      ssl_gen_err(tr(533, "Error reading signer certificate from"));
+      EVP_PKEY_free(pkey);
+      Fclose(fp);
+      goto jleave;
+   }
+
+   Fclose(fp);
+
+   if ((addr = smime_sign_include_certs(addr)) != NULL &&
+         !smime_sign_include_chain_creat(&chain, addr)) {
+      X509_free(cert);
+      EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+
+   if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
+         == NULL) {
+      perror("tempfile");
+      if (chain != NULL)
+         sk_X509_pop_free(chain, X509_free);
+      X509_free(cert);
+      EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+
+   rewind(ip);
+   if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
+      Fclose(sp);
+      if (chain != NULL)
+         sk_X509_pop_free(chain, X509_free);
+      X509_free(cert);
+      EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+
+   if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
+         (sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
+      ssl_gen_err(tr(534, "Error creating BIO signing objects"));
+      Fclose(sp);
+      if (chain != NULL)
+         sk_X509_pop_free(chain, X509_free);
+      X509_free(cert);
+      EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+
+   if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb,
+         PKCS7_DETACHED)) == NULL) {
+      ssl_gen_err(tr(535, "Error creating the PKCS#7 signing object"));
+      goto jerr;
+   }
+   if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
+      ssl_gen_err(tr(536, "Error writing signed S/MIME data"));
+jerr:
+      BIO_free(bb);
+      BIO_free(sb);
+      Fclose(sp);
+      if (chain != NULL)
+         sk_X509_pop_free(chain, X509_free);
+      X509_free(cert);
+      EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+   BIO_free(bb);
+   BIO_free(sb);
+   if (chain != NULL)
+      sk_X509_pop_free(chain, X509_free);
+   X509_free(cert);
+   EVP_PKEY_free(pkey);
+
+   rewind(bp);
+   fflush(sp);
+   rewind(sp);
+   rv = smime_sign_assemble(hp, bp, sp);
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL FILE *
+smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
+{
+   char *certfile = UNCONST(xcertfile);
+   FILE *rv = NULL, *yp, *fp, *bp, *hp;
+   X509 *cert;
+   PKCS7 *pkcs7;
+   BIO *bb, *yb;
+   _STACKOF(X509) *certs;
+   EVP_CIPHER const *cipher;
+   NYD_ENTER;
+
+   if ((certfile = file_expand(certfile)) == NULL)
+      goto jleave;
+
+   ssl_init();
+   if ((cipher = _smime_cipher(to)) == NULL)
+      goto jleave;
+   if ((fp = Fopen(certfile, "r")) == NULL) {
+      perror(certfile);
+      goto jleave;
+   }
+
+   if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+      ssl_gen_err(tr(547, "Error reading encryption certificate from \"%s\""),
+         certfile);
+      Fclose(fp);
+      goto jleave;
+   }
+   Fclose(fp);
+
+   certs = sk_X509_new_null();
+   sk_X509_push(certs, cert);
+
+   if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
+      perror("tempfile");
+      goto jleave;
+   }
+
+   rewind(ip);
+   if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
+      Fclose(yp);
+      goto jleave;
+   }
+
+   yb = NULL;
+   if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
+         (yb = BIO_new_fp(yp, BIO_NOCLOSE)) == NULL) {
+      ssl_gen_err(tr(548, "Error creating BIO encryption objects"));
+      goto jerrall;
+   }
+   if ((pkcs7 = PKCS7_encrypt(certs, bb, cipher, 0)) == NULL) {
+      ssl_gen_err(tr(549, "Error creating the PKCS#7 encryption object"));
+      goto jerrall;
+   }
+   if (PEM_write_bio_PKCS7(yb, pkcs7) == 0) {
+      ssl_gen_err(tr(550, "Error writing encrypted S/MIME data"));
+jerrall:
+      /* TODO better code flow */
+      if (bb != NULL)
+         BIO_free(bb);
+      if (yb != NULL)
+         BIO_free(yb);
+      Fclose(bp);
+      Fclose(yp);
+      goto jleave;
+   }
+   BIO_free(bb);
+   BIO_free(yb);
+   Fclose(bp);
+   fflush(yp);
+   rewind(yp);
+
+   rv = smime_encrypt_assemble(hp, yp);
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL struct message *
+smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
+{
+   struct message *rv = NULL;
+   FILE *fp, *bp, *hp, *op;
+   X509 *cert = NULL;
+   PKCS7 *pkcs7;
+   EVP_PKEY *pkey = NULL;
+   BIO *bb, *pb, *ob;
+   long size = m->m_size;
+   FILE *yp;
+   NYD_ENTER;
+
+   if ((yp = setinput(&mb, m, NEED_BODY)) == NULL)
+      goto jleave;
+
+   ssl_init();
+   if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
+      pkey = PEM_read_PrivateKey(fp, NULL, ssl_password_cb, NULL);
+      if (pkey == NULL) {
+         ssl_gen_err(tr(551, "Error reading private key"));
+         Fclose(fp);
+         goto jleave;
+      }
+      rewind(fp);
+
+      if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+         ssl_gen_err(tr(552, "Error reading decryption certificate"));
+         Fclose(fp);
+         EVP_PKEY_free(pkey);
+         goto jleave;
+      }
+      Fclose(fp);
+   }
+
+   if ((op = Ftmp(NULL, "smimedec", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
+      perror("tempfile");
+      goto j_ferr;
+   }
+
+   if (smime_split(yp, &hp, &bp, size, 1) == STOP)
+      goto jferr;
+
+   if ((ob = BIO_new_fp(op, BIO_NOCLOSE)) == NULL ||
+         (bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL) {
+      ssl_gen_err(tr(553, "Error creating BIO decryption objects"));
+      goto jferr;
+   }
+   if ((pkcs7 = SMIME_read_PKCS7(bb, &pb)) == NULL) {
+      ssl_gen_err(tr(554, "Error reading PKCS#7 object"));
+jferr:
+      Fclose(op);
+j_ferr:
+      if (cert)
+         X509_free(cert);
+      if (pkey)
+         EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+
+   if (PKCS7_type_is_signed(pkcs7)) {
+      if (signcall) {
+         setinput(&mb, m, NEED_BODY);
+         rv = (struct message*)-1;
+         goto jerr2;
+      }
+      if (PKCS7_verify(pkcs7, NULL, NULL, NULL, ob,
+            PKCS7_NOVERIFY | PKCS7_NOSIGS) != 1)
+         goto jerr;
+      fseek(hp, 0L, SEEK_END);
+      fprintf(hp, "X-Encryption-Cipher: none\n");
+      fflush(hp);
+      rewind(hp);
+   } else if (pkey == NULL) {
+      fprintf(stderr, tr(555, "No appropriate private key found.\n"));
+      goto jerr2;
+   } else if (cert == NULL) {
+      fprintf(stderr, tr(556, "No appropriate certificate found.\n"));
+      goto jerr2;
+   } else if (PKCS7_decrypt(pkcs7, pkey, cert, ob, 0) != 1) {
+jerr:
+      ssl_gen_err(tr(557, "Error decrypting PKCS#7 object"));
+jerr2:
+      BIO_free(bb);
+      BIO_free(ob);
+      Fclose(op);
+      Fclose(bp);
+      Fclose(hp);
+      if (cert != NULL)
+         X509_free(cert);
+      if (pkey != NULL)
+         EVP_PKEY_free(pkey);
+      goto jleave;
+   }
+   BIO_free(bb);
+   BIO_free(ob);
+   if (cert)
+      X509_free(cert);
+   if (pkey)
+      EVP_PKEY_free(pkey);
+   fflush_rewind(op);
+   Fclose(bp);
+
+   rv = smime_decrypt_assemble(m, hp, op);
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 FL enum okay
 smime_certsave(struct message *m, int n, FILE *op)
 {
-	struct message	*x;
-	char	*cp, *to, *cc, *cnttype;
-	int	c, i;
-	FILE	*fp, *ip;
-	off_t	size;
-	BIO	*fb, *pb;
-	PKCS7	*pkcs7;
-#ifdef HAVE_STACK_OF
-	STACK_OF(X509)	*certs;
-	STACK_OF(X509)	*chain = NULL;
-#else
-	STACK	*certs;
-	STACK	*chain = NULL;
-#endif
-	X509	*cert;
-	enum okay	ok = OKAY;
+   struct message *x;
+   char *to, *cc, *cnttype;
+   int c, i;
+   FILE *fp, *ip;
+   off_t size;
+   BIO *fb, *pb;
+   PKCS7 *pkcs7;
+   _STACKOF(X509) *certs, *chain = NULL;
+   X509 *cert;
+   enum okay rv = STOP;
+   NYD_ENTER;
 
-	message_number = n;
-loop:	to = hfield1("to", m);
-	cc = hfield1("cc", m);
-	cnttype = hfield1("content-type", m);
-	if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
-		return STOP;
-	if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
-		if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
-			return STOP;
-		if (x != (struct message *)-1) {
-			m = x;
-			goto loop;
-		}
-	}
-	size = m->m_size;
-	if ((fp = Ftemp(&cp, "Rv", "w+", 0600, 1)) == NULL) {
-		perror("tempfile");
-		return STOP;
-	}
-	rm(cp);
-	Ftfree(&cp);
-	while (size-- > 0) {
-		c = getc(ip);
-		putc(c, fp);
-	}
-	fflush(fp);
-	rewind(fp);
-	if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
-		ssl_gen_err("Error creating BIO object for message %d", n);
-		Fclose(fp);
-		return STOP;
-	}
-	if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
-		ssl_gen_err("Error reading PKCS#7 object for message %d", n);
-		BIO_free(fb);
-		Fclose(fp);
-		return STOP;
-	}
-	BIO_free(fb);
-	Fclose(fp);
-	certs = PKCS7_get0_signers(pkcs7, chain, 0);
-	if (certs == NULL) {
-		fprintf(stderr, "No certificates found in message %d.\n", n);
-		return STOP;
-	}
-	for (i = 0; i < sk_X509_num(certs); i++) {
-		cert = sk_X509_value(certs, i);
-		if (X509_print_fp(op, cert) == 0 ||
-				PEM_write_X509(op, cert) == 0) {
-			ssl_gen_err("Error writing certificate %d from "
-					"message %d", i, n);
-			ok = STOP;
-		}
-	}
-	return ok;
-}
+   message_number = n;
+jloop:
+   to = hfield1("to", m);
+   cc = hfield1("cc", m);
+   cnttype = hfield1("content-type", m);
+   if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
+      goto jleave;
+   if (cnttype && strncmp(cnttype, "application/x-pkcs7-mime", 24) == 0) {
+      if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
+         goto jleave;
+      if (x != (struct message*)-1) {
+         m = x;
+         goto jloop;
+      }
+   }
+   size = m->m_size;
 
-#if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-static enum okay
-load_crl1(X509_STORE *store, const char *name)
-{
-	X509_LOOKUP	*lookup;
+   if ((fp = Ftmp(NULL, "smimecert", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
+         == NULL) {
+      perror("tempfile");
+      goto jleave;
+   }
 
-	if (options & OPT_VERBOSE)
-		printf("Loading CRL from \"%s\".\n", name);
-	if ((lookup = X509_STORE_add_lookup(store,
-					X509_LOOKUP_file())) == NULL) {
-		ssl_gen_err("Error creating X509 lookup object");
-		return STOP;
-	}
-	if (X509_load_crl_file(lookup, name, X509_FILETYPE_PEM) != 1) {
-		ssl_gen_err("Error loading CRL from \"%s\"", name);
-		return STOP;
-	}
-	return OKAY;
-}
-#endif	/* new OpenSSL */
+   while (size-- > 0) {
+      c = getc(ip);
+      putc(c, fp);
+   }
+   fflush(fp);
 
-static enum okay
-load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
-{
-	char	*crl_file, *crl_dir;
-#if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-	DIR	*dirp;
-	struct dirent	*dp;
-	char	*fn = NULL;
-	int	fs = 0, ds, es;
-#endif	/* new OpenSSL */
+   rewind(fp);
+   if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
+      ssl_gen_err("Error creating BIO object for message %d", n);
+      Fclose(fp);
+      goto jleave;
+   }
 
-	if ((crl_file = _var_oklook(fok)) != NULL) {
-#if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-		if ((crl_file = file_expand(crl_file)) == NULL ||
-				load_crl1(store, crl_file) != OKAY)
-			return STOP;
-#else	/* old OpenSSL */
-		fprintf(stderr,
-			"This OpenSSL version is too old to use CRLs.\n");
-		return STOP;
-#endif	/* old OpenSSL */
-	}
-	if ((crl_dir = _var_oklook(dok)) != NULL) {
-#if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-		char *x;
-		if ((x = file_expand(crl_dir)) == NULL ||
-				(dirp = opendir(crl_dir = x)) == NULL) {
-			perror(crl_dir);
-			return STOP;
-		}
-		ds = strlen(crl_dir);
-		fn = smalloc(fs = ds + 20);
-		memcpy(fn, crl_dir, ds);
-		fn[ds] = '/';
-		while ((dp = readdir(dirp)) != NULL) {
-			if (dp->d_name[0] == '.' &&
-					(dp->d_name[1] == '\0' ||
-					 (dp->d_name[1] == '.' &&
-					  dp->d_name[2] == '\0')))
-				continue;
-			if (dp->d_name[0] == '.')
-				continue;
-			if (ds + (es = strlen(dp->d_name)) + 2 < fs)
-				fn = srealloc(fn, fs = ds + es + 20);
-			memcpy(fn + ds + 1, dp->d_name, es + 1);
-			if (load_crl1(store, fn) != OKAY) {
-				closedir(dirp);
-				free(fn);
-				return STOP;
-			}
-		}
-		closedir(dirp);
-		free(fn);
-#else	/* old OpenSSL */
-		fprintf(stderr,
-			"This OpenSSL version is too old to use CRLs.\n");
-		return STOP;
-#endif	/* old OpenSSL */
-	}
-#if defined (X509_V_FLAG_CRL_CHECK) && defined (X509_V_FLAG_CRL_CHECK_ALL)
-	if (crl_file || crl_dir)
-		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK |
-				X509_V_FLAG_CRL_CHECK_ALL);
-#endif	/* old OpenSSL */
-	return OKAY;
+   if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
+      ssl_gen_err(tr(562, "Error reading PKCS#7 object for message %d"), n);
+      BIO_free(fb);
+      Fclose(fp);
+      goto jleave;
+   }
+   BIO_free(fb);
+   Fclose(fp);
+   certs = PKCS7_get0_signers(pkcs7, chain, 0);
+   if (certs == NULL) {
+      fprintf(stderr, tr(563, "No certificates found in message %d\n"), n);
+      goto jleave;
+   }
+
+   for (i = 0; i < sk_X509_num(certs); ++i) {
+      cert = sk_X509_value(certs, i);
+      if (X509_print_fp(op, cert) == 0 || PEM_write_X509(op, cert) == 0) {
+         ssl_gen_err(tr(564, "Error writing certificate %d from message %d"),
+            i, n);
+         goto jleave;
+      }
+   }
+   rv = OKAY;
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 #endif /* HAVE_OPENSSL */
+
+/* vim:set fenc=utf-8:s-it-mode */

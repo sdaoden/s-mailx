@@ -177,6 +177,7 @@ _vcopy(char const *str)
 {
    char *news;
    size_t len;
+   NYD_ENTER;
 
    if (*str == '\0')
       news = UNCONST("");
@@ -185,14 +186,17 @@ _vcopy(char const *str)
       news = smalloc(len);
       memcpy(news, str, len);
    }
+   NYD_LEAVE;
    return news;
 }
 
 static void
 _vfree(char *cp)
 {
+   NYD_ENTER;
    if (*cp != '\0')
       free(cp);
+   NYD_LEAVE;
 }
 
 static bool_t
@@ -201,6 +205,7 @@ _check_special_vars(enum okeys okey, bool_t enable, char **val)
    char *cp = NULL;
    bool_t rv = TRU1;
    int flag = 0;
+   NYD_ENTER;
 
    switch (okey) {
    case ok_b_debug:
@@ -256,12 +261,14 @@ _check_special_vars(enum okeys okey, bool_t enable, char **val)
       else
          options &= ~flag;
    }
+   NYD_LEAVE;
    return rv;
 }
 
 static char const *
 _canonify(char const *vn)
 {
+   NYD_ENTER;
    if (!upperchar(*vn)) {
       char const *vp;
 
@@ -269,6 +276,7 @@ _canonify(char const *vn)
          ;
       vn = (*vp == '@') ? i_strdup(vn) : vn;
    }
+   NYD_LEAVE;
    return vn;
 }
 
@@ -277,6 +285,7 @@ _var_revlookup(struct var_carrier *vcp, char const *name)
 {
    ui32_t hash, i, j;
    struct var_map const *vmp;
+   NYD_ENTER;
 
    vcp->vc_name = name = _canonify(name);
    vcp->vc_hash = hash = MA_NAME2HASH(name);
@@ -303,6 +312,7 @@ _var_revlookup(struct var_carrier *vcp, char const *name)
    vcp->vc_vmap = NULL;
    vcp = NULL;
 jleave:
+   NYD_LEAVE;
    return (vcp != NULL);
 }
 
@@ -310,6 +320,7 @@ static bool_t
 _var_lookup(struct var_carrier *vcp)
 {
    struct var **vap, *lvp, *vp;
+   NYD_ENTER;
 
    vap = _vars + (vcp->vc_prime = MA_HASH2PRIME(vcp->vc_hash));
 
@@ -326,6 +337,7 @@ _var_lookup(struct var_carrier *vcp)
    vp = NULL;
 jleave:
    vcp->vc_var = vp;
+   NYD_LEAVE;
    return (vp != NULL);
 }
 
@@ -335,6 +347,7 @@ _var_set(struct var_carrier *vcp, char const *value)
    bool_t err;
    struct var *vp;
    char *oval;
+   NYD_ENTER;
 
    if (value == NULL) {
       bool_t tmp = var_clear_allow_undefined;
@@ -374,6 +387,7 @@ _var_set(struct var_carrier *vcp, char const *value)
       _vfree(oval);
    err = FAL0;
 jleave:
+   NYD_LEAVE;
    return err;
 }
 
@@ -381,6 +395,7 @@ static bool_t
 _var_clear(struct var_carrier *vcp)
 {
    bool_t err = TRU1;
+   NYD_ENTER;
 
    if (!_var_lookup(vcp)) {
       if (!sourcing && !var_clear_allow_undefined) {
@@ -404,6 +419,7 @@ _var_clear(struct var_carrier *vcp)
    }
    err = FAL0;
 jleave:
+   NYD_LEAVE;
    return err;
 }
 
@@ -411,6 +427,7 @@ static bool_t
 _is_closing_angle(char const *cp)
 {
    bool_t rv = FAL0;
+   NYD_ENTER;
 
    while (spacechar(*cp))
       ++cp;
@@ -420,6 +437,7 @@ _is_closing_angle(char const *cp)
       ++cp;
    rv = (*cp == '\0');
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 
@@ -429,6 +447,7 @@ _malook(char const *name, struct macro *data, enum ma_flags mafl)
    enum ma_flags save_mafl;
    ui32_t h;
    struct macro *lmp, *mp;
+   NYD_ENTER;
 
    save_mafl = mafl;
    mafl &= MA_TYPE_MASK;
@@ -454,6 +473,7 @@ _malook(char const *name, struct macro *data, enum ma_flags mafl)
       mp = NULL;
    }
 jleave:
+   NYD_LEAVE;
    return mp;
 }
 
@@ -462,8 +482,9 @@ _maexec(struct macro const *mp, struct var **unroller)
 {
    struct lostack los;
    int rv = 0;
+   char *buf;
    struct mline const *lp;
-   char *buf = ac_alloc(mp->ma_maxlen + 1);
+   NYD_ENTER;
 
    los.s_up = _localopts;
    los.s_mac = UNCONST(mp);
@@ -471,20 +492,21 @@ _maexec(struct macro const *mp, struct var **unroller)
    los.s_unroll = FAL0;
    _localopts = &los;
 
+   buf = ac_alloc(mp->ma_maxlen + 1);
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       var_clear_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length + 1);
       rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
       var_clear_allow_undefined = FAL0;
    }
+   ac_free(buf);
 
    _localopts = los.s_up;
    if (unroller == NULL)
       _localopts_unroll(&los.s_localopts);
    else
       *unroller = los.s_localopts;
-
-   ac_free(buf);
+   NYD_LEAVE;
    return rv;
 }
 
@@ -492,18 +514,18 @@ static int
 _list_macros(enum ma_flags mafl)
 {
    FILE *fp;
-   char *cp;
    char const *typestr;
    struct macro *mq;
    ui32_t ti, mc;
    struct mline *lp;
+   NYD_ENTER;
 
-   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+   if ((fp = Ftmp(NULL, "listmacs", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
       perror("tmpfile");
-      return 1;
+      mc = 1;
+      goto jleave;
    }
-   rm(cp);
-   Ftfree(&cp);
 
    mafl &= MA_TYPE_MASK;
    typestr = (mafl & MA_ACC) ? "account" : "define";
@@ -523,6 +545,8 @@ _list_macros(enum ma_flags mafl)
 
    mc = (ui32_t)ferror(fp);
    Fclose(fp);
+jleave:
+   NYD_LEAVE;
    return (int)mc;
 }
 
@@ -535,6 +559,7 @@ _define1(char const *name, enum ma_flags mafl)
    char *linebuf = NULL, *cp;
    size_t linesize = 0, maxlen = 0;
    int n, i;
+   NYD_ENTER;
 
    mp = scalloc(1, sizeof *mp);
    mp->ma_name = sstrdup(name);
@@ -595,7 +620,9 @@ _define1(char const *name, enum ma_flags mafl)
 jleave:
    if (linebuf != NULL)
       free(linebuf);
+   NYD_LEAVE;
    return rv;
+
 jerr:
    if (lst != NULL)
       _freelines(lst);
@@ -608,18 +635,21 @@ static void
 _undef1(char const *name, enum ma_flags mafl)
 {
    struct macro *mp;
+   NYD_ENTER;
 
    if ((mp = _malook(name, NULL, mafl | MA_UNDEF)) != NULL) {
       _freelines(mp->ma_contents);
       free(mp->ma_name);
       free(mp);
    }
+   NYD_LEAVE;
 }
 
 static void
 _freelines(struct mline *lp)
 {
    struct mline *lq;
+   NYD_ENTER;
 
    for (lq = NULL; lp != NULL; ) {
       if (lq != NULL)
@@ -629,12 +659,18 @@ _freelines(struct mline *lp)
    }
    if (lq)
       free(lq);
+   NYD_LEAVE;
 }
 
 static int
 _var_list_all_cmp(void const *s1, void const *s2)
 {
-   return strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
+   int rv;
+   NYD_ENTER;
+
+   rv = strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
+   NYD_LEAVE;
+   return rv;
 }
 
 static void
@@ -642,6 +678,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
 {
    struct var *vap;
    size_t nl, vl;
+   NYD_ENTER;
 
    /* Propagate unrolling up the stack, as necessary */
    while (!losp->s_unroll && (losp = losp->s_up) != NULL)
@@ -667,7 +704,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
       memcpy(vap->v_value, ovap->v_value, vl);
    }
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 static void
@@ -675,6 +712,7 @@ _localopts_unroll(struct var **vapp)
 {
    struct lostack *save_los;
    struct var *x, *vap;
+   NYD_ENTER;
 
    vap = *vapp;
    *vapp = NULL;
@@ -688,6 +726,7 @@ _localopts_unroll(struct var **vapp)
       free(x);
    }
    _localopts = save_los;
+   NYD_LEAVE;
 }
 
 FL char *
@@ -695,6 +734,7 @@ _var_oklook(enum okeys okey)
 {
    struct var_carrier vc;
    char *rv;
+   NYD_ENTER;
 
    vc.vc_vmap = _var_map + okey;
    vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
@@ -710,6 +750,7 @@ _var_oklook(enum okeys okey)
    } else
 jvar:
       rv = vc.vc_var->v_value;
+   NYD_LEAVE;
    return rv;
 }
 
@@ -717,26 +758,34 @@ FL bool_t
 _var_okset(enum okeys okey, uintptr_t val)
 {
    struct var_carrier vc;
+   bool_t rv;
+   NYD_ENTER;
 
    vc.vc_vmap = _var_map + okey;
    vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
    vc.vc_hash = _var_map[okey].vm_hash;
    vc.vc_okey = okey;
 
-   return _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   rv = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   NYD_LEAVE;
+   return rv;
 }
 
 FL bool_t
 _var_okclear(enum okeys okey)
 {
    struct var_carrier vc;
+   bool_t rv;
+   NYD_ENTER;
 
    vc.vc_vmap = _var_map + okey;
    vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
    vc.vc_hash = _var_map[okey].vm_hash;
    vc.vc_okey = okey;
 
-   return _var_clear(&vc);
+   rv = _var_clear(&vc);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL char *
@@ -744,6 +793,7 @@ _var_voklook(char const *vokey)
 {
    struct var_carrier vc;
    char *rv;
+   NYD_ENTER;
 
    _var_revlookup(&vc, vokey);
 
@@ -756,6 +806,7 @@ _var_voklook(char const *vokey)
    } else
 jvar:
       rv = vc.vc_var->v_value;
+   NYD_LEAVE;
    return rv;
 }
 
@@ -763,37 +814,45 @@ FL bool_t
 _var_vokset(char const *vokey, uintptr_t val)
 {
    struct var_carrier vc;
+   bool_t rv;
+   NYD_ENTER;
 
    _var_revlookup(&vc, vokey);
 
-   return _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   rv = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   NYD_LEAVE;
+   return rv;
 }
 
 FL bool_t
 _var_vokclear(char const *vokey)
 {
    struct var_carrier vc;
+   bool_t rv;
+   NYD_ENTER;
 
    _var_revlookup(&vc, vokey);
 
-   return _var_clear(&vc);
+   rv = _var_clear(&vc);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL void
 var_list_all(void)
 {
    FILE *fp;
-   char *cp, **vacp, **cap;
+   char **vacp, **cap;
    struct var *vp;
    size_t no, i;
    char const *fmt;
+   NYD_ENTER;
 
-   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
       perror("tmpfile");
       goto jleave;
    }
-   rm(cp);
-   Ftfree(&cp);
 
    for (no = i = 0; i < MA_PRIME; ++i)
       for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
@@ -810,7 +869,7 @@ var_list_all(void)
    fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
 
    for (cap = vacp; no != 0; ++cap, --no) {
-      cp = vok_vlook(*cap); /* XXX when lookup checks value/binary, change */
+      char *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin, change */
       if (cp == NULL)
          cp = UNCONST("");
       if (i || *cp != '\0')
@@ -822,7 +881,7 @@ var_list_all(void)
    page_or_print(fp, PTR2SIZE(cap - vacp));
    Fclose(fp);
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 FL int
@@ -831,6 +890,7 @@ c_var_inspect(void *v)
    struct var_carrier vc;
    char **argv = v, *val;
    bool_t isenv, isset;
+   NYD_ENTER;
 
    if (*argv == NULL) {
       v = NULL;
@@ -861,6 +921,7 @@ c_var_inspect(void *v)
             vc.vc_name, isset, isenv, val);
    }
 jleave:
+   NYD_LEAVE;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
@@ -870,6 +931,7 @@ c_define(void *v)
    int rv = 1;
    char **args = v;
    char const *errs;
+   NYD_ENTER;
 
    if (args[0] == NULL) {
       errs = tr(504, "Missing macro name to `define'");
@@ -880,8 +942,10 @@ c_define(void *v)
       errs = tr(505, "Syntax is: define <name> {");
       goto jerr;
    }
+
    rv = !_define1(args[0], MA_NONE);
 jleave:
+   NYD_LEAVE;
    return rv;
 jerr:
    fprintf(stderr, "%s\n", errs);
@@ -893,6 +957,7 @@ c_undef(void *v)
 {
    int rv = 1;
    char **args = v;
+   NYD_ENTER;
 
    if (*args == NULL) {
       fprintf(stderr, tr(506, "Missing macro name to `undef'\n"));
@@ -903,6 +968,7 @@ c_undef(void *v)
    while (*++args != NULL);
    rv = 0;
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 
@@ -913,6 +979,7 @@ c_call(void *v)
    char **args = v;
    char const *errs, *name;
    struct macro *mp;
+   NYD_ENTER;
 
    if (args[0] == NULL || (args[1] != NULL && args[2] != NULL)) {
       errs = tr(507, "Syntax is: call <%s>\n");
@@ -928,6 +995,7 @@ c_call(void *v)
 
    rv = _maexec(mp, NULL);
 jleave:
+   NYD_LEAVE;
    return rv;
 jerr:
    fprintf(stderr, errs, name);
@@ -940,6 +1008,7 @@ callhook(char const *name, int nmail)
    int len, rv;
    struct macro *mp;
    char *var, *cp;
+   NYD_ENTER;
 
    var = ac_alloc(len = strlen(name) + 13);
    snprintf(var, len, "folder-hook-%s", name);
@@ -959,14 +1028,20 @@ callhook(char const *name, int nmail)
    inhook = 0;
 jleave:
    ac_free(var);
+   NYD_LEAVE;
    return rv;
 }
 
 FL int
 c_defines(void *v)
 {
+   int rv;
+   NYD_ENTER;
    UNUSED(v);
-   return _list_macros(MA_NONE);
+
+   rv = _list_macros(MA_NONE);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
@@ -975,6 +1050,7 @@ c_account(void *v)
    char **args = v;
    struct macro *mp;
    int rv = 1, i, oqf, nqf;
+   NYD_ENTER;
 
    if (args[0] == NULL) {
       rv = _list_macros(MA_ACC);
@@ -1034,6 +1110,7 @@ c_account(void *v)
    }
    rv = 0;
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 
@@ -1042,6 +1119,7 @@ c_localopts(void *v)
 {
    int rv = 1;
    char **c = v;
+   NYD_ENTER;
 
    if (_localopts == NULL) {
       fprintf(stderr, tr(522,
@@ -1052,6 +1130,7 @@ c_localopts(void *v)
    _localopts->s_unroll = (**c == '0') ? FAL0 : TRU1;
    rv = 0;
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 

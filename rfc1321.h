@@ -1,12 +1,54 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ MD5 / HMAC-MD5 algorithm implementation.
+ *@ RFC 1321 derived MD5 algorithm implementation.
+ *@ This is included by extern.h if 'HAVE_MD5 && !HAVE_OPENSSL_MD5',
+ *@ and contains MD5.H as well as MD5C.C from the RFC.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
  */
-/*
- * The MD5_CTX algorithm is derived from RFC 1321:
+
+/* MD5.H - header file for MD5C.C
  */
+/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
+rights reserved.
+
+License to copy and use this software is granted provided that it
+is identified as the "RSA Data Security, Inc. MD5 Message-Digest
+Algorithm" in all material mentioning or referencing this software
+or this function.
+
+License is also granted to make and use derivative works provided
+that such works are identified as "derived from the RSA Data
+Security, Inc. MD5 Message-Digest Algorithm" in all material
+mentioning or referencing the derived work.
+
+RSA Data Security, Inc. makes no representations concerning either
+the merchantability of this software or the suitability of this
+software for any particular purpose. It is provided "as is"
+without express or implied warranty of any kind.
+
+These notices must be retained in any copies of any part of this
+documentation and/or software.
+ */
+
+/*
+ * This version of MD5 has been changed such that any unsigned type with
+ * at least 32 bits is acceptable. This is important e.g. for Cray vector
+ * machines which provide only 64-bit integers.
+ */
+typedef	unsigned long	md5_type;
+
+typedef struct {
+	md5_type state[4];	/* state (ABCD) */
+	md5_type count[2];	/* number of bits, modulo 2^64 (lsb first) */
+	unsigned char	buffer[64];	/* input buffer */
+} md5_ctx;
+
+FL void	md5_init(md5_ctx *);
+FL void	md5_update(md5_ctx *, unsigned char *, unsigned int);
+FL void	md5_final(unsigned char[16], md5_ctx *);
+
+#ifdef _MAIN_SOURCE
 /* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
  */
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
@@ -31,47 +73,11 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-/* hmac_md5() is derived from:
+# include <string.h>
 
-Network Working Group					    H. Krawczyk
-Request for Comments: 2104					    IBM
-Category: Informational					     M. Bellare
-								   UCSD
-							     R. Canetti
-								    IBM
-							  February 1997
-
-
-	     HMAC: Keyed-Hashing for Message Authentication
-
-Status of This Memo
-
-   This memo provides information for the Internet community.  This memo
-   does not specify an Internet standard of any kind.  Distribution of
-   this memo is unlimited.
-
-Appendix -- Sample Code
-
-   For the sake of illustration we provide the following sample code for
-   the implementation of HMAC-MD5 as well as some corresponding test
-   vectors (the code is based on MD5 code as described in [MD5]).
-*/
-
-#ifndef HAVE_AMALGAMATION
-# include "nail.h"
-#endif
-
-EMPTY_FILE(md5)
-#ifdef HAVE_MD5
-#include <string.h>
-
-#include "md5.h"
-
-# ifndef HAVE_OPENSSL_MD5
 #define UINT4B_MAX	0xFFFFFFFFul
 
-/*
- * Constants for MD5Transform routine.
+/* Constants for MD5Transform routine.
  */
 #define S11 7
 #define S12 12
@@ -110,8 +116,7 @@ static unsigned char PADDING[64] = {
 #define	H(b,c,d)	((b) ^ (c) ^ (d))
 #define	I(b,c,d)	(((~(d) & UINT4B_MAX) | (b)) ^ (c))
 
-/*
- * ROTATE_LEFT rotates x left n bits.
+/* ROTATE_LEFT rotates x left n bits.
  */
 #define	ROTATE_LEFT(x, n) ((((x) << (n)) & UINT4B_MAX) | ((x) >> (32 - (n))))
 
@@ -143,7 +148,7 @@ static unsigned char PADDING[64] = {
 	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
-static void * (	*volatile _volatile_memset)(void*, int, size_t) = &(memset);
+static void * (* volatile _volatile_memset)(void*, int, size_t) = &(memset);
 
 static void Encode(unsigned char *outp, md5_type *inp, unsigned int len);
 static void Decode(md5_type *outp, unsigned char *inp, unsigned int len);
@@ -369,74 +374,31 @@ md5_final(
 	 */
 	(*_volatile_memset)(context, 0, sizeof *context);
 }
-# endif /* !HAVE_OPENSSL_MD5 */
 
-FL void
-hmac_md5 (
-    unsigned char *text,	/* pointer to data stream */
-    int text_len,		/* length of data stream */
-    unsigned char *key,		/* pointer to authentication key */
-    int key_len,		/* length of authentication key */
-    void *digest		/* caller digest to be filled in */
-)
-{
-	md5_ctx context;
-	unsigned char k_ipad[65];    /* inner padding -
-				      * key XORd with ipad
-				      */
-	unsigned char k_opad[65];    /* outer padding -
-				      * key XORd with opad
-				      */
-	unsigned char tk[16];
-	int i;
-	/* if key is longer than 64 bytes reset it to key=MD5(key) */
-	if (key_len > 64) {
-
-		md5_ctx	     tctx;
-
-		md5_init(&tctx);
-		md5_update(&tctx, key, key_len);
-		md5_final(tk, &tctx);
-
-		key = tk;
-		key_len = 16;
-	}
-
-	/*
-	 * the HMAC_MD5 transform looks like:
-	 *
-	 * MD5(K XOR opad, MD5(K XOR ipad, text))
-	 *
-	 * where K is an n byte key
-	 * ipad is the byte 0x36 repeated 64 times
-	 * opad is the byte 0x5c repeated 64 times
-	 * and text is the data being protected
-	 */
-
-	/* start out by storing key in pads */
-	memset(k_ipad, 0, sizeof k_ipad);
-	memset(k_opad, 0, sizeof k_opad);
-	memcpy(k_ipad, key, key_len);
-	memcpy(k_opad, key, key_len);
-
-	/* XOR key with ipad and opad values */
-	for (i=0; i<64; i++) {
-		k_ipad[i] ^= 0x36;
-		k_opad[i] ^= 0x5c;
-	}
-	/*
-	 * perform inner MD5
-	 */
-	md5_init(&context);			/* init context for 1st pass */
-	md5_update(&context, k_ipad, 64);	/* start with inner pad */
-	md5_update(&context, text, text_len);	/* then text of datagram */
-	md5_final(digest, &context);		/* finish up 1st pass */
-	/*
-	 * perform outer MD5
-	 */
-	md5_init(&context);			/* init context for 2nd pass */
-	md5_update(&context, k_opad, 64);	/* start with outer pad */
-	md5_update(&context, digest, 16);	/* then results of 1st hash */
-	md5_final(digest, &context);		/* finish up 2nd pass */
-}
-#endif /* HAVE_MD5 */
+# undef UINT4B_MAX
+# undef S11
+# undef S12
+# undef S13
+# undef S14
+# undef S21
+# undef S22
+# undef S23
+# undef S24
+# undef S31
+# undef S32
+# undef S33
+# undef S34
+# undef S41
+# undef S42
+# undef S43
+# undef S44
+# undef	F
+# undef	G
+# undef	H
+# undef	I
+# undef	ROTATE_LEFT
+# undef FF
+# undef GG
+# undef HH
+# undef II
+#endif /* _MAIN_SOURCE */

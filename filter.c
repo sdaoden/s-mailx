@@ -39,9 +39,9 @@ enum qf_state {
 };
 
 struct qf_vc {
-   struct quoteflt *self;
-   char const *buf;
-   size_t len;
+   struct quoteflt   *self;
+   char const        *buf;
+   size_t            len;
 };
 
 /* Print out prefix and current quote */
@@ -59,6 +59,7 @@ _qf_dump_prefix(struct quoteflt *self)
 {
    ssize_t rv;
    size_t i;
+   NYD_ENTER;
 
    if ((i = self->qf_pfix_len) > 0 && i != fwrite(self->qf_pfix, 1, i,
          self->qf_os))
@@ -70,6 +71,7 @@ _qf_dump_prefix(struct quoteflt *self)
       goto jerr;
    rv += i;
 jleave:
+   NYD_LEAVE;
    return rv;
 jerr:
    rv = -1;
@@ -80,9 +82,10 @@ static ssize_t
 _qf_add_data(struct quoteflt *self, wchar_t wc)
 {
    char *save_b;
-   ui_it save_l, save_w;
+   ui32_t save_l, save_w;
    ssize_t rv = 0;
    int w, l;
+   NYD_ENTER;
 
    save_l = save_w = 0; /* silence cc */
    save_b = NULL;
@@ -117,7 +120,7 @@ jbad:
       l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
       if (l < 0)
          goto jbad;
-      self->qf_datw += (ui_it)w;
+      self->qf_datw += (ui32_t)w;
       self->qf_dat.l += (size_t)l;
    }
 
@@ -146,11 +149,10 @@ jflush:
          self->qf_dat.l = save_l;
          memmove(self->qf_dat.s, save_b, save_l);
       }
-
-   } else if (self->qf_datw >= self->qf_qfold_min && ! self->qf_brk_isws) {
+   } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
       bool_t isws = iswspace(wc);
 
-      if ((isws && ! self->qf_brk_isws) || self->qf_brkl == 0) {
+      if ((isws && !self->qf_brk_isws) || self->qf_brkl == 0) {
          self->qf_brkl = self->qf_dat.l;
          self->qf_brkw = self->qf_datw;
          self->qf_brk_isws = isws;
@@ -165,6 +167,7 @@ jflush:
       self->qf_currq.l = 0;
    }
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 
@@ -176,6 +179,7 @@ _qf_state_prefix(struct qf_vc *vc)
    char const *buf;
    size_t len, i;
    wchar_t wc;
+   NYD_ENTER;
 
    for (buf = vc->buf, len = vc->len; len > 0;) {
       /* TODO NULL BYTE! */
@@ -229,6 +233,7 @@ jfin:
 
    vc->buf = buf;
    vc->len = len;
+   NYD_LEAVE;
    return rv;
 }
 
@@ -240,6 +245,7 @@ _qf_state_data(struct qf_vc *vc)
    char const *buf;
    size_t len, i;
    wchar_t wc;
+   NYD_ENTER;
 
    for (buf = vc->buf, len = vc->len; len > 0;) {
       /* TODO NULL BYTE! */
@@ -274,6 +280,7 @@ _qf_state_data(struct qf_vc *vc)
 
    vc->buf = buf;
    vc->len = len;
+   NYD_LEAVE;
    return rv;
 }
 #endif /* HAVE_QUOTE_FOLD */
@@ -292,17 +299,18 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
 #ifdef HAVE_QUOTE_FOLD
    char *xcp, *cp;
 #endif
+   NYD_ENTER;
 
    memset(self, 0, sizeof *self);
 
    if ((self->qf_pfix = prefix) != NULL)
-      self->qf_pfix_len = (ui_it)strlen(prefix);
+      self->qf_pfix_len = (ui32_t)strlen(prefix);
 
    /* Check wether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui_it qmin, qmax = (ui_it)strtol(cp, (char**)&xcp, 10);
+      ui32_t qmin, qmax = (ui32_t)strtol(cp, &xcp, 10);
       /* These magic values ensure we don't bail :) */
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
@@ -310,7 +318,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       if (cp == xcp || *xcp == '\0')
          qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
       else {
-         qmin = (ui_it)strtol(xcp + 1, NULL, 10);
+         qmin = (ui32_t)strtol(xcp + 1, NULL, 10);
          if (qmin < qmax >> 1)
             qmin = qmax >> 1;
          else if (qmin > qmax - 2)
@@ -324,17 +332,21 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_currq.s = salloc((QUOTE_MAX + 1) * mb_cur_max);
    }
 #endif
+   NYD_LEAVE;
 }
 
 FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
-   (void)self;
+   NYD_ENTER;
+   UNUSED(self);
+   NYD_LEAVE;
 }
 
 FL void
 quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
+   NYD_ENTER;
    self->qf_os = f;
 #ifdef HAVE_QUOTE_FOLD
    self->qf_state = _QF_CLEAN;
@@ -342,6 +354,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
    self->qf_currq.l = 0;
    memset(self->qf_mbps, 0, sizeof self->qf_mbps);
 #endif
+   NYD_LEAVE;
 }
 
 FL ssize_t
@@ -350,6 +363,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    /* (xxx Ideally the actual push() [and flush()] would be functions on their
     * xxx own, via indirect vtbl call ..) */
    ssize_t rv = 0;
+   NYD_ENTER;
 
    if (len == 0)
       goto jleave;
@@ -388,7 +402,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
             ll = len;
          else {
             pxok = FAL0;
-            ll = (size_t)((char*)vp - dat) + 1;
+            ll = PTR2SIZE((char*)vp - dat) + 1;
          }
 
          if (ll != fwrite(dat, sizeof *dat, ll, self->qf_os))
@@ -439,8 +453,8 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 #endif /* HAVE_QUOTE_FOLD */
 
 jleave:
+   NYD_LEAVE;
    return rv;
-
 jerr:
    rv = -1;
    goto jleave;
@@ -450,6 +464,7 @@ FL ssize_t
 quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;
+   NYD_ENTER;
    UNUSED(self);
 
 #ifdef HAVE_QUOTE_FOLD
@@ -468,6 +483,7 @@ quoteflt_flush(struct quoteflt *self)
       }
    }
 #endif
+   NYD_LEAVE;
    return rv;
 }
 

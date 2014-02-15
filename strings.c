@@ -47,8 +47,7 @@
 
 #include <ctype.h>
 
-/*
- * Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
+/* Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
  * release all except the first two in sreset(), because other allocations are
  * performed and the underlaying allocator should have the possibility to
  * reorder stuff and possibly even madvise(2), so that S-nail(1) integrates
@@ -57,11 +56,10 @@
  * not even allocate the first buffer, but let that be a builtin DATA section
  * one that is rather small, yet sufficient for send mode to *never* even
  * perform a single dynamic allocation (from our stringdope point of view).
- * Encapsulate user chunks with canaries if HAVE_DEBUG.
- */
+ * Encapsulate user chunks with canaries if HAVE_DEBUG */
 
 #ifdef HAVE_DEBUG
-# define _SHOPE_SIZE       (2 * 8 * sizeof(char) + sizeof(struct schunk))
+# define _SHOPE_SIZE       (2u * 8 * sizeof(char) + sizeof(struct schunk))
 
 CTA(sizeof(char) == sizeof(ui8_t));
 
@@ -136,6 +134,7 @@ static void
 _salloc_bcheck(struct buffer *b)
 {
    union sptr pmax, pp;
+   /*NYD_ENTER;*/
 
    pmax.cp = (b->b._caster == NULL) ? b->b._max : b->b._caster;
    pp.cp = b->b._bot;
@@ -178,6 +177,7 @@ _salloc_bcheck(struct buffer *b)
          alert("sdope %p: corrupt upper canary: 0x%02X, size %u: %s, line %u",
             ux, i, c->usr_size, c->file, c->line);
    }
+   /*NYD_LEAVE;*/
 }
 #endif
 
@@ -187,6 +187,7 @@ FL void *
    DBG( size_t orig_size = size; )
    union {struct buffer *b; char *cp;} u;
    char *x, *y, *z;
+   NYD_ENTER;
 
    if (size == 0)
       ++size;
@@ -285,6 +286,7 @@ jleave:
       xu.ui8p[4]=0xBE; xu.ui8p[5]=0x55; xu.ui8p[6]=0xAA; xu.ui8p[7]=0xEF;
    }
 #endif
+   NYD_LEAVE;
    return u.cp;
 }
 
@@ -292,10 +294,12 @@ FL void *
 (csalloc)(size_t nmemb, size_t size SALLOC_DEBUG_ARGS)
 {
    void *vp;
+   NYD_ENTER;
 
    size *= nmemb;
    vp = (salloc)(size SALLOC_DEBUG_ARGSCALL);
    memset(vp, 0, size);
+   NYD_LEAVE;
    return vp;
 }
 
@@ -303,6 +307,7 @@ FL void
 sreset(bool_t only_if_relaxed)
 {
    struct buffer *bh;
+   NYD_ENTER;
 
    DBG( ++_all_resetreqs; )
    if (noreset || (only_if_relaxed && _buf_relax == NULL))
@@ -343,13 +348,14 @@ sreset(bool_t only_if_relaxed)
 
    DBG( smemreset(); )
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 FL void
 srelax_hold(void)
 {
    struct buffer *b;
+   NYD_ENTER;
 
    assert(_buf_relax == NULL);
 
@@ -357,12 +363,14 @@ srelax_hold(void)
       b->b._relax = b->b._caster;
    _buf_relax = _buf_server;
    assert(_buf_relax != NULL);
+   NYD_LEAVE;
 }
 
 FL void
 srelax_rele(void)
 {
    struct buffer *b;
+   NYD_ENTER;
 
    assert(_buf_relax != NULL);
 
@@ -372,6 +380,7 @@ srelax_rele(void)
       b->b._relax = NULL;
    }
    _buf_relax = NULL;
+   NYD_LEAVE;
 }
 
 FL void
@@ -382,6 +391,7 @@ srelax(void)
     * an iteration over all messages of a mailbox, and it'd be quite
     * counterproductive to give the system allocator a chance to waste time */
    struct buffer *b;
+   NYD_ENTER;
 
    assert(_buf_relax != NULL);
 
@@ -390,15 +400,18 @@ srelax(void)
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
       DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
    }
+   NYD_LEAVE;
 }
 
 FL void
 spreserve(void)
 {
    struct buffer *b;
+   NYD_ENTER;
 
    for (b = _buf_head; b != NULL; b = b->b._next)
       b->b._bot = b->b._caster;
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_DEBUG
@@ -406,6 +419,7 @@ FL int
 c_sstats(void *v)
 {
    size_t excess;
+   NYD_ENTER;
    UNUSED(v);
 
    excess = (_all_cybufcnt_max * SDYN_SIZE) + SBLTIN_SIZE;
@@ -424,38 +438,44 @@ c_sstats(void *v)
       (ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
       (ul_it)_all_resetreqs, (ul_it)_all_resets,
       (ul_it)_all_cycnt_max, (ul_it)_all_cysize_max, (ul_it)excess);
+   NYD_LEAVE;
    return 0;
 }
 #endif
 
 FL char *
-(savestr)(const char *str SALLOC_DEBUG_ARGS)
+(savestr)(char const *str SALLOC_DEBUG_ARGS)
 {
    size_t size;
    char *news;
+   NYD_ENTER;
 
    size = strlen(str) + 1;
    news = (salloc)(size SALLOC_DEBUG_ARGSCALL);
    memcpy(news, str, size);
+   NYD_LEAVE;
    return news;
 }
 
 FL char *
-(savestrbuf)(const char *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS)
+(savestrbuf)(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS)
 {
    char *news;
+   NYD_ENTER;
 
    news = (salloc)(sbuf_len + 1 SALLOC_DEBUG_ARGSCALL);
    memcpy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
+   NYD_LEAVE;
    return news;
 }
 
 FL char *
-(save2str)(const char *str, const char *old SALLOC_DEBUG_ARGS)
+(save2str)(char const *str, char const *old SALLOC_DEBUG_ARGS)
 {
    size_t newsize, oldsize;
    char *news;
+   NYD_ENTER;
 
    newsize = strlen(str) + 1;
    oldsize = (old != NULL) ? strlen(old) + 1 : 0;
@@ -465,6 +485,7 @@ FL char *
       news[oldsize - 1] = ' ';
    }
    memcpy(news + oldsize, str, newsize);
+   NYD_LEAVE;
    return news;
 }
 
@@ -473,6 +494,7 @@ FL char *
 {
    size_t l1, l2;
    char *news;
+   NYD_ENTER;
 
    l1 = strlen(s1);
    l2 = strlen(s2);
@@ -480,6 +502,7 @@ FL char *
    memcpy(news + 0, s1, l1);
    memcpy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
+   NYD_LEAVE;
    return news;
 }
 
@@ -492,10 +515,12 @@ FL char *
 {
    size_t sz;
    char *dest;
+   NYD_ENTER;
 
    sz = strlen(src) + 1;
    dest = (salloc)(sz SALLOC_DEBUG_ARGSCALL);
    i_strcpy(dest, src, sz);
+   NYD_LEAVE;
    return dest;
 }
 
@@ -503,6 +528,7 @@ FL char *
 (protbase)(char const *cp SALLOC_DEBUG_ARGS)
 {
    char *n, *np;
+   NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) + 1 SALLOC_DEBUG_ARGSCALL);
 
@@ -521,6 +547,7 @@ FL char *
          *np++ = *cp++;
    }
    *np = '\0';
+   NYD_LEAVE;
    return n;
 }
 
@@ -528,6 +555,7 @@ FL char *
 (urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
 {
    char *n, *np;
+   NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) * 3 + 1 SALLOC_DEBUG_ARGSCALL);
 
@@ -543,6 +571,7 @@ FL char *
       cp++;
    }
    *np = '\0';
+   NYD_LEAVE;
    return n;
 }
 
@@ -550,6 +579,7 @@ FL char *
 (urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
 {
    char *n, *np;
+   NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) + 1 SALLOC_DEBUG_ARGSCALL);
 
@@ -562,6 +592,7 @@ FL char *
          *np++ = *cp++;
    }
    *np = '\0';
+   NYD_LEAVE;
    return n;
 }
 
@@ -571,6 +602,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    va_list vl;
    size_t l;
    char const *cs;
+   NYD_ENTER;
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
@@ -588,6 +620,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    }
    self->s[l] = '\0';
    va_end(vl);
+   NYD_LEAVE;
    return self;
 }
 
@@ -597,6 +630,7 @@ FL struct str *
 {
    size_t sonl, l;
    char const * const *xcpa;
+   NYD_ENTER;
 
    sonl = (sep_o_null != NULL) ? strlen(sep_o_null) : 0;
 
@@ -616,6 +650,7 @@ FL struct str *
       }
    }
    self->s[l] = '\0';
+   NYD_LEAVE;
    return self;
 }
 
@@ -626,16 +661,19 @@ FL struct str *
 FL int
 anyof(char const *s1, char const *s2)
 {
-	for (; *s1 != '\0'; ++s1)
-		if (strchr(s2, *s1))
-			break;
-	return (*s1 != '\0');
+   NYD_ENTER;
+   for (; *s1 != '\0'; ++s1)
+      if (strchr(s2, *s1) != NULL)
+         break;
+   NYD_LEAVE;
+   return (*s1 != '\0');
 }
 
 FL char *
 n_strsep(char **iolist, char sep, bool_t ignore_empty)
 {
    char *base, *cp;
+   NYD_ENTER;
 
    for (base = *iolist; base != NULL; base = *iolist) {
       while (*base != '\0' && blankspacechar(*base))
@@ -653,51 +691,62 @@ n_strsep(char **iolist, char sep, bool_t ignore_empty)
       if (*base != '\0' || !ignore_empty)
          break;
    }
+   NYD_LEAVE;
    return base;
 }
 
 FL void
-i_strcpy(char *dest, const char *src, size_t size)
+i_strcpy(char *dest, char const *src, size_t size)
 {
-	if (size > 0) {
-		for (;; ++dest, ++src)
-			if ((*dest = lowerconv(*src)) == '\0') {
-				break;
-			} else if (--size == 0) {
-				*dest = '\0';
-				break;
-			}
-	}
+   NYD_ENTER;
+   if (size > 0) {
+      for (;; ++dest, ++src)
+         if ((*dest = lowerconv(*src)) == '\0') {
+            break;
+         } else if (--size == 0) {
+            *dest = '\0';
+            break;
+         }
+   }
+   NYD_LEAVE;
 }
 
 FL int
 is_prefix(char const *as1, char const *as2)
 {
-	char c;
-	for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
-		if (*as2 == '\0')
-			break;
-	return (c == '\0');
+   char c;
+   NYD_ENTER;
+
+   for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
+      if (*as2 == '\0')
+         break;
+   NYD_LEAVE;
+   return (c == '\0');
 }
 
 FL char const *
 last_at_before_slash(char const *sp)
 {
-	char const *cp;
-	char c;
+   char const *cp;
+   char c;
+   NYD_ENTER;
 
-	for (cp = sp; (c = *cp) != '\0'; ++cp)
-		if (c == '/')
-			break;
-	while (cp > sp && *--cp != '@')
-		;
-	return (*cp == '@' ? cp : NULL);
+   for (cp = sp; (c = *cp) != '\0'; ++cp)
+      if (c == '/')
+         break;
+   while (cp > sp && *--cp != '@')
+      ;
+   if (*cp != '@')
+      cp = NULL;
+   NYD_LEAVE;
+   return cp;
 }
 
 FL char *
 laststring(char *linebuf, bool_t *needs_list, bool_t strip)
 {
    char *cp, *p, quoted;
+   NYD_ENTER;
 
    /* Anything to do at all? */
    if (*(cp = linebuf) == '\0')
@@ -763,6 +812,7 @@ jleave:
       goto jnull;
    *needs_list = (cp != linebuf && *linebuf != '\0');
 j_leave:
+   NYD_LEAVE;
    return cp;
 jnull:
    *needs_list = FAL0;
@@ -773,440 +823,477 @@ jnull:
 FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
+      NYD_ENTER;
 #ifdef HAVE_C90AMEND1
-	if (mb_cur_max > 1) {
-		char *tp = cp;
-		wchar_t wc;
-		int len;
+   if (mb_cur_max > 1) {
+      char *tp = cp;
+      wchar_t wc;
+      int len;
 
-		while (*cp) {
-			len = mbtowc(&wc, cp, mb_cur_max);
-			if (len < 0)
-				*tp++ = *cp++;
-			else {
-				wc = towlower(wc);
-				if (wctomb(tp, wc) == len)
-					tp += len, cp += len;
-				else
-					*tp++ = *cp++; /* <-- at least here */
-			}
-		}
-	} else
+      while (*cp) {
+         len = mbtowc(&wc, cp, mb_cur_max);
+         if (len < 0)
+            *tp++ = *cp++;
+         else {
+            wc = towlower(wc);
+            if (wctomb(tp, wc) == len)
+               tp += len, cp += len;
+            else
+               *tp++ = *cp++; /* <-- at least here */
+         }
+      }
+   } else
 #endif
-	{
-		do
-			*cp = tolower((uc_it)*cp);
-		while (*cp++);
-	}
+   {
+      do
+         *cp = tolower((uc_it)*cp);
+      while (*cp++);
+   }
+   NYD_LEAVE;
 }
 
 FL int
 substr(char const *str, char const *sub)
 {
-	char const *cp, *backup;
+   char const *cp, *backup;
+   NYD_ENTER;
 
-	cp = sub;
-	backup = str;
-	while (*str && *cp) {
+   cp = sub;
+   backup = str;
+   while (*str && *cp) {
 #ifdef HAVE_C90AMEND1
-		if (mb_cur_max > 1) {
-			wchar_t c, c2;
-			int sz;
+      if (mb_cur_max > 1) {
+         wchar_t c, c2;
+         int sz;
 
-			if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
-				goto singlebyte;
-			cp += sz;
-			if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
-				goto singlebyte;
-			str += sz;
-			c = towupper(c);
-			c2 = towupper(c2);
-			if (c != c2) {
-				if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
-					backup += sz;
-					str = backup;
-				} else
-					str = ++backup;
-				cp = sub;
-			}
-		} else
+         if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
+            goto Jsinglebyte;
+         cp += sz;
+         if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
+            goto Jsinglebyte;
+         str += sz;
+         c = towupper(c);
+         c2 = towupper(c2);
+         if (c != c2) {
+            if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
+               backup += sz;
+               str = backup;
+            } else
+               str = ++backup;
+            cp = sub;
+         }
+      } else
+Jsinglebyte:
 #endif
-		{
-			int c, c2;
+      {
+         int c, c2;
 
-#ifdef HAVE_C90AMEND1
-	singlebyte:
-#endif
-			c = *cp++ & 0377;
-			if (islower(c))
-				c = toupper(c);
-			c2 = *str++ & 0377;
-			if (islower(c2))
-				c2 = toupper(c2);
-			if (c != c2) {
-				str = ++backup;
-				cp = sub;
-			}
-		}
-	}
-	return *cp == '\0';
+         c = *cp++ & 0377;
+         if (islower(c))
+            c = toupper(c);
+         c2 = *str++ & 0377;
+         if (islower(c2))
+            c2 = toupper(c2);
+         if (c != c2) {
+            str = ++backup;
+            cp = sub;
+         }
+      }
+   }
+   NYD_LEAVE;
+   return (*cp == '\0');
 }
 
 #ifndef HAVE_SNPRINTF
 FL int
-snprintf(char *str, size_t size, const char *format, ...) /* XXX DANGER! */
+snprintf(char *str, size_t size, char const *format, ...) /* XXX DANGER! */
 {
-	va_list ap;
-	int ret;
+   va_list ap;
+   int ret;
+   NYD_ENTER;
 
-	va_start(ap, format);
-	ret = vsprintf(str, format, ap);
-	va_end(ap);
-	if (ret < 0)
-		ret = strlen(str);
-	return ret;
+   va_start(ap, format);
+   ret = vsprintf(str, format, ap);
+   va_end(ap);
+   if (ret < 0)
+      ret = strlen(str);
+   NYD_LEAVE;
+   return ret;
 }
 #endif
 
 FL char *
 sstpcpy(char *dst, char const *src)
 {
-	while ((*dst = *src++) != '\0')
-		dst++;
-	return (dst);
+   NYD_ENTER;
+   while ((*dst = *src++) != '\0')
+      ++dst;
+   NYD_LEAVE;
+   return dst;
 }
 
 FL char *
 (sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
 {
-	char *dp = NULL;
+   char *dp = NULL;
+   NYD_ENTER;
 
-	if (cp != NULL) {
-		size_t l = strlen(cp) + 1;
-		dp = (smalloc)(l SMALLOC_DEBUG_ARGSCALL);
-		memcpy(dp, cp, l);
-	}
-	return dp;
+   if (cp != NULL) {
+      size_t l = strlen(cp) + 1;
+      dp = (smalloc)(l SMALLOC_DEBUG_ARGSCALL);
+      memcpy(dp, cp, l);
+   }
+   NYD_LEAVE;
+   return dp;
 }
 
 FL char *
 (sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
 {
-	char *dp = NULL;
+   char *dp = NULL;
+   NYD_ENTER;
 
-	dp = (smalloc)(len + 1 SMALLOC_DEBUG_ARGSCALL);
-	if (cp != NULL)
-		memcpy(dp, cp, len);
-	dp[len] = '\0';
-	return dp;
+   dp = (smalloc)(len + 1 SMALLOC_DEBUG_ARGSCALL);
+   if (cp != NULL)
+      memcpy(dp, cp, len);
+   dp[len] = '\0';
+   NYD_LEAVE;
+   return dp;
 }
 
 FL char *
-n_strlcpy(char *dst, const char *src, size_t len)
+n_strlcpy(char *dst, char const *src, size_t len)
 {
+   NYD_ENTER;
+
    assert(len > 0);
 
    dst = strncpy(dst, src, len);
    dst[len - 1] = '\0';
+   NYD_LEAVE;
    return dst;
 }
 
 FL int
 asccasecmp(char const *s1, char const *s2)
 {
-	int cmp;
+   int cmp;
+   NYD_ENTER;
 
-	for (;;) {
-		char c1 = *s1++, c2 = *s2++;
-		if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
-			break;
-	}
-	return cmp;
+   for (;;) {
+      char c1 = *s1++, c2 = *s2++;
+      if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
+         break;
+   }
+   NYD_LEAVE;
+   return cmp;
 }
 
 FL int
 ascncasecmp(char const *s1, char const *s2, size_t sz)
 {
-	int cmp = 0;
+   int cmp = 0;
+   NYD_ENTER;
 
-	while (sz-- > 0) {
-		char c1 = *s1++, c2 = *s2++;
+   while (sz-- > 0) {
+      char c1 = *s1++, c2 = *s2++;
       cmp = (ui8_t)lowerconv(c1);
       cmp -= (ui8_t)lowerconv(c2);
-		if (cmp != 0 || c1 == '\0')
-			break;
-	}
-	return cmp;
+      if (cmp != 0 || c1 == '\0')
+         break;
+   }
+   NYD_LEAVE;
+   return cmp;
 }
 
 FL char const *
 asccasestr(char const *haystack, char const *xneedle)
 {
-	char *needle = NULL, *NEEDLE;
-	size_t i, sz;
+   char *needle = NULL, *NEEDLE;
+   size_t i, sz;
+   NYD_ENTER;
 
-	sz = strlen(xneedle);
-	if (sz == 0)
-		goto jleave;
+   sz = strlen(xneedle);
+   if (sz == 0)
+      goto jleave;
 
-	needle = ac_alloc(sz);
-	NEEDLE = ac_alloc(sz);
-	for (i = 0; i < sz; i++) {
-		needle[i] = lowerconv(xneedle[i]);
-		NEEDLE[i] = upperconv(xneedle[i]);
-	}
+   needle = ac_alloc(sz);
+   NEEDLE = ac_alloc(sz);
+   for (i = 0; i < sz; i++) {
+      needle[i] = lowerconv(xneedle[i]);
+      NEEDLE[i] = upperconv(xneedle[i]);
+   }
 
-	while (*haystack) {
-		if (*haystack == *needle || *haystack == *NEEDLE) {
-			for (i = 1; i < sz; i++)
-				if (haystack[i] != needle[i] &&
-						haystack[i] != NEEDLE[i])
-					break;
-			if (i == sz)
-				goto jleave;
-		}
-		haystack++;
-	}
-	haystack = NULL;
+   while (*haystack) {
+      if (*haystack == *needle || *haystack == *NEEDLE) {
+         for (i = 1; i < sz; i++)
+            if (haystack[i] != needle[i] &&
+                  haystack[i] != NEEDLE[i])
+               break;
+         if (i == sz)
+            goto jleave;
+      }
+      haystack++;
+   }
+   haystack = NULL;
 jleave:
-	if (needle != NULL) {
-		ac_free(NEEDLE);
-		ac_free(needle);
-	}
-	return haystack;
+   if (needle != NULL) {
+      ac_free(NEEDLE);
+      ac_free(needle);
+   }
+   NYD_LEAVE;
+   return haystack;
 }
 
 FL bool_t
 is_asccaseprefix(char const *as1, char const *as2)
 {
-	bool_t rv = FAL0;
+   bool_t rv = FAL0;
+   NYD_ENTER;
 
-	for (;; ++as1, ++as2) {
-		char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
-		if ((rv = (c1 == '\0')))
-			break;
-		if (c1 != c2 || c2 == '\0')
-			break;
-	}
-	return rv;
+   for (;; ++as1, ++as2) {
+      char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
+      if ((rv = (c1 == '\0')))
+         break;
+      if (c1 != c2 || c2 == '\0')
+         break;
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
 {
-	if (t != NULL && t->l > 0) {
-		self->l = t->l;
-		self->s = (srealloc)(self->s, t->l + 1 SMALLOC_DEBUG_ARGSCALL);
-		memcpy(self->s, t->s, t->l);
-	} else
-		self->l = 0;
-	return self;
+   NYD_ENTER;
+   if (t != NULL && t->l > 0) {
+      self->l = t->l;
+      self->s = (srealloc)(self->s, t->l + 1 SMALLOC_DEBUG_ARGSCALL);
+      memcpy(self->s, t->s, t->l);
+   } else
+      self->l = 0;
+   NYD_LEAVE;
+   return self;
 }
 
 FL struct str *
 (n_str_add_buf)(struct str *self, char const *buf, size_t buflen
-	SMALLOC_DEBUG_ARGS)
+   SMALLOC_DEBUG_ARGS)
 {
-	if (buflen != 0) {
-		size_t sl = self->l;
-		self->l = sl + buflen;
-		self->s = (srealloc)(self->s, self->l+1 SMALLOC_DEBUG_ARGSCALL);
-		memcpy(self->s + sl, buf, buflen);
-	}
-	return self;
+   NYD_ENTER;
+   if (buflen != 0) {
+      size_t sl = self->l;
+      self->l = sl + buflen;
+      self->s = (srealloc)(self->s, self->l+1 SMALLOC_DEBUG_ARGSCALL);
+      memcpy(self->s + sl, buf, buflen);
+   }
+   NYD_LEAVE;
+   return self;
 }
 
+/*
+ * Our iconv(3) wrapper
+ */
 #ifdef HAVE_ICONV
+
 static void _ic_toupper(char *dest, char const *src);
 static void _ic_stripdash(char *p);
 
 static void
-_ic_toupper(char *dest, const char *src)
+_ic_toupper(char *dest, char const *src)
 {
-	do
-		*dest++ = upperconv(*src);
-	while (*src++);
+   NYD_ENTER;
+   do
+      *dest++ = upperconv(*src);
+   while (*src++);
+   NYD_LEAVE;
 }
 
 static void
 _ic_stripdash(char *p)
 {
-	char *q = p;
+   char *q = p;
+   NYD_ENTER;
 
-	do
-		if (*(q = p) != '-')
-			q++;
-	while (*p++);
+   do
+      if (*(q = p) != '-')
+         ++q;
+   while (*p++ != '\0');
+   NYD_LEAVE;
 }
 
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode)
 {
-	iconv_t id;
-	char *t, *f;
+   iconv_t id;
+   char *t, *f;
+   NYD_ENTER;
 
-	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
-		return id;
+   if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
+      goto jleave;
 
-	/*
-	 * Remove the "iso-" prefixes for Solaris.
-	 */
-	if (ascncasecmp(tocode, "iso-", 4) == 0)
-		tocode += 4;
-	else if (ascncasecmp(tocode, "iso", 3) == 0)
-		tocode += 3;
-	if (ascncasecmp(fromcode, "iso-", 4) == 0)
-		fromcode += 4;
-	else if (ascncasecmp(fromcode, "iso", 3) == 0)
-		fromcode += 3;
-	if (*tocode == '\0' || *fromcode == '\0')
-		return (iconv_t) -1;
-	if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Solaris prefers upper-case charset names. Don't ask...
-	 */
-	t = salloc(strlen(tocode) + 1);
-	_ic_toupper(t, tocode);
-	f = salloc(strlen(fromcode) + 1);
-	_ic_toupper(f, fromcode);
-	if ((id = iconv_open(t, f)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Strip dashes for UnixWare.
-	 */
-	_ic_stripdash(t);
-	_ic_stripdash(f);
-	if ((id = iconv_open(t, f)) != (iconv_t)-1)
-		return id;
-	/*
-	 * Add your vendor's sillynesses here.
-	 */
+   /* Remove the "iso-" prefixes for Solaris */
+   if (ascncasecmp(tocode, "iso-", 4) == 0)
+      tocode += 4;
+   else if (ascncasecmp(tocode, "iso", 3) == 0)
+      tocode += 3;
+   if (ascncasecmp(fromcode, "iso-", 4) == 0)
+      fromcode += 4;
+   else if (ascncasecmp(fromcode, "iso", 3) == 0)
+      fromcode += 3;
+   if (*tocode == '\0' || *fromcode == '\0') {
+      id = (iconv_t)-1;
+      goto jleave;
+   }
+   if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
+      goto jleave;
 
-	/*
-	 * If the encoding names are equal at this point, they
-	 * are just not understood by iconv(), and we cannot
-	 * sensibly use it in any way. We do not perform this
-	 * as an optimization above since iconv() can otherwise
-	 * be used to check the validity of the input even with
-	 * identical encoding names.
-	 */
-	if (strcmp(t, f) == 0)
-		errno = 0;
-	return (iconv_t)-1;
+   /* Solaris prefers upper-case charset names. Don't ask... */
+   t = salloc(strlen(tocode) + 1);
+   _ic_toupper(t, tocode);
+   f = salloc(strlen(fromcode) + 1);
+   _ic_toupper(f, fromcode);
+   if ((id = iconv_open(t, f)) != (iconv_t)-1)
+      goto jleave;
+
+   /* Strip dashes for UnixWare */
+   _ic_stripdash(t);
+   _ic_stripdash(f);
+   if ((id = iconv_open(t, f)) != (iconv_t)-1)
+      goto jleave;
+
+   /* Add your vendor's sillynesses here */
+
+   /* If the encoding names are equal at this point, they are just not
+    * understood by iconv(), and we cannot sensibly use it in any way.  We do
+    * not perform this as an optimization above since iconv() can otherwise be
+    * used to check the validity of the input even with identical encoding
+    * names */
+   if (!strcmp(t, f))
+      errno = 0;
+jleave:
+   NYD_LEAVE;
+   return id;
 }
 
 FL void
 n_iconv_close(iconv_t cd)
 {
-	iconv_close(cd);
-	if (cd == iconvd)
-		iconvd = (iconv_t)-1;
+   NYD_ENTER;
+   iconv_close(cd);
+   if (cd == iconvd)
+      iconvd = (iconv_t)-1;
+   NYD_LEAVE;
 }
 
 #ifdef notyet
 FL void
 n_iconv_reset(iconv_t cd)
 {
-	(void)iconv(cd, NULL, NULL, NULL, NULL);
+   NYD_ENTER;
+   (void)iconv(cd, NULL, NULL, NULL, NULL);
+   NYD_LEAVE;
 }
 #endif
 
-/*
- * (2012-09-24: export and use it exclusively to isolate prototype problems
+/* (2012-09-24: export and use it exclusively to isolate prototype problems
  * (*inb* is 'char const **' except in POSIX) in a single place.
  * GNU libiconv even allows for configuration time const/non-const..
  * In the end it's an ugly guess, but we can't do better since make(1) doesn't
- * support compiler invocations which bail on error, so no -Werror.
- */
+ * support compiler invocations which bail on error, so no -Werror */
 /* Citrus project? */
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special */
 #  ifdef __DragonFly__
-#   define __INBCAST(S)	(char ** __restrict__)UNCONST(S)
+#   define __INBCAST(S) (char ** __restrict__)UNCONST(S)
 #  else
-#   define __INBCAST(S)	(char const **)UNCONST(S)
+#   define __INBCAST(S) (char const **)UNCONST(S)
 #  endif
 # endif
 # ifndef __INBCAST
-#  define __INBCAST(S)	(char **)UNCONST(S)
+#  define __INBCAST(S)  (char **)UNCONST(S)
 # endif
 
 FL int
 n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
-	char **outb, size_t *outbleft, bool_t skipilseq)
+   char **outb, size_t *outbleft, bool_t skipilseq)
 {
-	int err = 0;
+   int err = 0;
+   NYD_ENTER;
 
-	for (;;) {
-		size_t sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
-		if (sz != (size_t)-1)
-			break;
-		err = errno;
-		if (! skipilseq || err != EILSEQ)
-			break;
-		if (*inbleft > 0) {
-			++(*inb);
-			--(*inbleft);
-		} else if (*outbleft > 0) {
-			**outb = '\0';
-			break;
-		}
-		if (*outbleft > 0/* TODO 0xFFFD 2*/) {
-			/* TODO 0xFFFD (*outb)[0] = '[';
-			 * TODO (*outb)[1] = '?';
-			 * TODO 0xFFFD (*outb)[2] = ']';
-			 * TODO (*outb) += 3;
-			 * TODO (*outbleft) -= 3; */
-			 *(*outb)++ = '?';
-			 --*outbleft;
-		} else {
-			err = E2BIG;
-			break;
-		}
-		err = 0;
-	}
-	return err;
+   for (;;) {
+      size_t sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
+      if (sz != (size_t)-1)
+         break;
+      err = errno;
+      if (!skipilseq || err != EILSEQ)
+         break;
+      if (*inbleft > 0) {
+         ++(*inb);
+         --(*inbleft);
+      } else if (*outbleft > 0) {
+         **outb = '\0';
+         break;
+      }
+      if (*outbleft > 0/* TODO 0xFFFD 2*/) {
+         /* TODO 0xFFFD (*outb)[0] = '[';
+          * TODO (*outb)[1] = '?';
+          * TODO 0xFFFD (*outb)[2] = ']';
+          * TODO (*outb) += 3;
+          * TODO (*outbleft) -= 3; */
+          *(*outb)++ = '?';
+          --*outbleft;
+      } else {
+         err = E2BIG;
+         break;
+      }
+      err = 0;
+   }
+   NYD_LEAVE;
+   return err;
 }
 # undef __INBCAST
 
 FL int
 n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
-	struct str *in_rest_or_null, bool_t skipilseq)
+   struct str *in_rest_or_null, bool_t skipilseq)
 {
-	int err = 0;
-	char *obb = out->s, *ob;
-	char const *ib;
-	size_t olb = out->l, ol, il;
+   int err = 0;
+   char *obb = out->s, *ob;
+   char const *ib;
+   size_t olb = out->l, ol, il;
+   NYD_ENTER;
 
-	ol = in->l;
-	ol = (ol << 1) - (ol >> 4);
-	if (olb < ol) {
-		olb = ol;
-		goto jrealloc;
-	}
+   ol = in->l;
+   ol = (ol << 1) - (ol >> 4);
+   if (olb < ol) {
+      olb = ol;
+      goto jrealloc;
+   }
 
-	for (;;) {
-		ib = in->s;
-		il = in->l;
-		ob = obb;
-		ol = olb;
-		err = n_iconv_buf(cd, &ib, &il, &ob, &ol, skipilseq);
-		if (err == 0 || err != E2BIG)
-			break;
-		err = 0;
-		olb += in->l;
-jrealloc:	obb = srealloc(obb, olb);
-	}
+   for (;;) {
+      ib = in->s;
+      il = in->l;
+      ob = obb;
+      ol = olb;
+      err = n_iconv_buf(cd, &ib, &il, &ob, &ol, skipilseq);
+      if (err == 0 || err != E2BIG)
+         break;
+      err = 0;
+      olb += in->l;
+jrealloc:
+      obb = srealloc(obb, olb);
+   }
 
-	if (in_rest_or_null != NULL) {
-		in_rest_or_null->s = UNCONST(ib);
-		in_rest_or_null->l = il;
-	}
-	out->s = obb;
-	out->l = olb - ol;
-	return err;
+   if (in_rest_or_null != NULL) {
+      in_rest_or_null->s = UNCONST(ib);
+      in_rest_or_null->l = il;
+   }
+   out->s = obb;
+   out->l = olb - ol;
+   NYD_LEAVE;
+   return err;
 }
 #endif /* HAVE_ICONV */
 
-/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */
+/* vim:set fenc=utf-8:s-it-mode */

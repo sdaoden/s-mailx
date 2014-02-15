@@ -66,15 +66,19 @@
 # include <inttypes.h>
 #endif
 
+#ifdef HAVE_C90AMEND1
+# include <wchar.h>
+# include <wctype.h>
+#endif
 #ifdef HAVE_DEBUG
 # include <assert.h>
 #endif
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_C90AMEND1
-# include <wchar.h>
-# include <wctype.h>
+
+#ifdef HAVE_OPENSSL_MD5
+# include <openssl/md5.h>
 #endif
 
 /*
@@ -130,10 +134,12 @@
 #define CBAD            (-15555)
 #define APPEND                   /* New mail goes to end of mailbox */
 #define ESCAPE          '~'      /* Default escape for sending */
+#define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
+#define NYD_CALLS_MAX   1000     /* Number of NYD calls that are remembered */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
@@ -284,6 +290,15 @@
 #   define INLINE
 #   define SINLINE      static
 # endif
+#endif
+
+#undef __FUN__
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define __FUN__        __func__
+#elif __PREREQ(3, 4)
+# define __FUN__        __FUNCTION__
+#else
+# define __FUN__        uagent   /* Something that is not a literal */
 #endif
 
 #if defined __predict_true && defined __predict_false
@@ -571,6 +586,20 @@ enum mimecontent {
    MIME_DISCARD      /* content is discarded */
 };
 
+enum oflags {
+   OF_RDONLY      = 1<<0,
+   OF_WRONLY      = 1<<1,
+   OF_RDWR        = 1<<2,
+   OF_APPEND      = 1<<3,
+   OF_CREATE      = 1<<4,
+   OF_TRUNC       = 1<<5,
+   OF_EXCL        = 1<<6,
+   OF_CLOEXEC     = 1<<7,
+   OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
+   OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
+   OF_REGISTER    = 1<<10     /* Register file in our file table */
+};
+
 enum tdflags {
    TD_NONE,                   /* no display conversion */
    TD_ISPR        = 1<<0,     /* use isprint() checks */
@@ -594,11 +623,11 @@ enum protocol {
 };
 
 #ifdef HAVE_SSL
-enum ssl_vrfy_level {
-   VRFY_IGNORE,
-   VRFY_WARN,
-   VRFY_ASK,
-   VRFY_STRICT
+enum ssl_verify_level {
+   SSL_VERIFY_IGNORE,
+   SSL_VERIFY_WARN,
+   SSL_VERIFY_ASK,
+   SSL_VERIFY_STRICT
 };
 #endif
 
@@ -810,17 +839,17 @@ struct time_current {
 struct quoteflt {
    FILE        *qf_os;        /* Output stream */
    char const  *qf_pfix;
-   ui_it       qf_pfix_len;   /* Length of prefix: 0: bypass */
-   ui_it       qf_qfold_min;  /* Simple way: wrote prefix? */
+   ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
+   ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
 #ifdef HAVE_QUOTE_FOLD
-   ui_it       qf_qfold_max;  /* Otherwise: line lengths */
-   uc_it       qf_state;      /* *quote-fold* state machine */
+   ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
+   ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
-   uc_it       __dummy[2];
-   ui_it       qf_wscnt;      /* Whitespace count */
-   ui_it       qf_brkl;       /* Breakpoint */
-   ui_it       qf_brkw;       /* Visual width, breakpoint */
-   ui_it       qf_datw;       /* Current visual output line width */
+   ui8_t       __dummy[2];
+   ui32_t      qf_wscnt;      /* Whitespace count */
+   ui32_t      qf_brkl;       /* Breakpoint */
+   ui32_t      qf_brkw;       /* Visual width, breakpoint */
+   ui32_t      qf_datw;       /* Current visual output line width */
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];
@@ -986,7 +1015,7 @@ struct message {
    enum mflag  m_flag;        /* flags */
    enum havespec m_have;      /* downloaded parts of the message */
 #ifdef HAVE_SPAM
-   ui_it       m_spamscore;   /* Spam score as int, 24:8 bits */
+   ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
    int         m_block;       /* block number of this message */
    size_t      m_offset;      /* offset in block of message */
@@ -1007,7 +1036,7 @@ struct message {
    unsigned long m_uid;       /* IMAP unique identifier */
 #endif
    char        *m_maildir_file;  /* original maildir file of msg */
-   unsigned    m_maildir_hash;   /* hash of file name in maildir sub */
+   ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
 };
 
@@ -1427,7 +1456,7 @@ VL struct colour_table  *colour_table;
 #endif
 
 #ifdef HAVE_SSL
-VL enum ssl_vrfy_level  ssl_vrfy_level; /* SSL verification level */
+VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 #endif
 
 #ifdef HAVE_ICONV
