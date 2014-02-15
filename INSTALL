@@ -23,12 +23,13 @@ which take precedence over anything else:
 
 . CONFIG=MINIMAL
   little is left but some air to breathe; no internet connectivity, no
-  internationalized domain names, no command line editor, no
-  documentation strings.
+  internationalized domain names, no IMAP-searches, no regular
+  expression searches, no command line editor, no documentation strings.
 
 . CONFIG=MEDIUM
-  Like MINIMAL, but with documentation strings, and the builtin command
-  line editor will be included if that is possible.
+  Like MINIMAL, but with documentation strings, and the regular
+  expression searches as well as the builtin command line editor will be
+  included if that is possible.
 
 . CONFIG=NETSEND
   WANT_SMTP and WANT_SSL settings are enabled, internationalized domain
@@ -84,15 +85,24 @@ into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
 
-Notes for S-nail(1) v14.5*
+Notes for S-nail(1) v14.6*
 --------------------------
 
-S-nail(1) has been or is used regulary on these systems (`uname -srm').
 Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
+Running `make test' should succeed always and everywhere.
 
+S-nail(1) has been or is used regulary on these systems (`uname -srm').
 Also, i'm (compile) testing manually with WANT_AUTOCC=1, WANT_DEBUG=[01]
 and WANT_AMALGAMATION=[01] (and WANT_GSSAPI=1), which is what is
 reflected by the following statements.
+
+. All with WANT_AMALGAMATION=1:
+  - Dependent on the configuration you may see some warnings about
+    unused functions.  This shouldn't happen for a any of the predefined
+    CONFIG= urations, including the one that results from the default
+    settings of `conf.rc'.  It may temporarily happen for other
+    individual configurations as long as the codebase is in that heavy
+    fluctuation state.  Reports are welcome to vanish them until v20.
 
 . All 32-bit systems:
   - There _may_ be warnings about format strings, like, e.g.,
@@ -101,97 +111,96 @@ reflected by the following statements.
       unsigned int', but argument 3 has type 'size_t'
 
     This is ugly, but it has been decided to keep the S-nail codebase
-    ISO C89 compatible, which means that there are no usable language
-    hints for format strings.  However, `nail.h' tries hard to detect
-    the real type sizes and ends up in a way that should ensure that the
-    actually expected datatype is of the same size in reality:
-
-/* XXX Note we don't really deal with that the right way in that we pass size_t
- * XXX arguments without casting; should do, because above we assert UINT_MAX
- * XXX is indeed ui32_t */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define ZFMT           "zu"
-#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
-# define ZFMT           "u"
-#endif
-#ifndef ZFMT
-# define ZFMT           "lu"
-#endif
+    ISO C89 compatible, so that there is no %z format string modifier.
+    However, `nail.h' tries hard to detect the real type sizes and ends
+    up in a way that should ensure that the actually expected datatype
+    is of the same size in reality -- please see the definition of the
+    `ZFMT' macro in `nail.h' to verify this statement is true.
 
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun
   7 16:33:36 PDT 2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
   - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
-    + Note: with WANT_AMALGAMATION there is a single warning on 'signed
-      overflow'.  I think it's wrong.
+    + Two warnings on 'signed overflow'.  I think they're wrong.
   - clang version 3.4 (branches/release_34 197314)
     Target: x86_64-apple-darwin10.8.0
     Thread model: posix.
   - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
     (dot 3).
+    + Some (i think faulty) warnings on signed overflow.
   - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
     2.9svn).
 
 . ArchLinux <https://www.archlinux.org/>
-  Linux 3.12.6-1-ARCH x86_64
+  Linux arlx 3.12.9-2-ARCH #1 SMP PREEMPT Fri Jan 31 10:22:54 CET 2014
+  x86_64 GNU/Linux
   - gcc (GCC) 4.8.2 20131219 (prerelease)
-    + Note: warnings on unused results, just ignore (for now).
+    + `devel'opment target: warnings on unused results, just ignore (for
+      now).
+
+. CRUX Linux <http://www.crux.nu/>
+  Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
+  - gcc (CRUX-x86_64-multilib) 4.7.2.
+    + A single (i think faulty) warning on 'signed overflow'.
+    + `devel'opment target: warnings on unused results, just ignore
+      (for now).
+    + In a very special test mailbox the character `☕' (U+2615 HOT
+      BEVERAGE) is displayed as `[3m<98><95>' (`set PAGER='cat -vet''
+      prints `M-bM-^XM-^U').  Because this is the only system i have
+      seen this, and only in this single mailbox, i suspect a problem
+      in the character conversion environment.  (I hope v14.7 brings
+      sole usage of mbrtowc(3) instead of mbtowc(3) and per-message
+      multibyte states.  Let's see if that fixes this problem.  I'll
+      keep the VM around.)
 
 . NetBSD <https://www.netbsd.org/>
   NetBSD 6.99.28 NetBSD 6.99.28 (GENERIC) #0: Fri Jan  3 05:24:46 UTC
   2014 i386
   - gcc (NetBSD nb1 20120916) 4.5.4
     + Warnings on format strings -- as above.
-    + Note: i think faulty message on longjmp() clobbering (on
-      a variable that is 'const').
-    + Note: with WANT_AMALGAMATION there are many warnings on 'signed
-      overflow', all referring to the same code, and i think it's wrong.
+    + Faulty message on longjmp() clobbering (on a const variable).
 
   NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
   2013 amd64.
   - gcc (NetBSD nb1 20120916) 4.5.4.
-    + Note: i think faulty message on longjmp() clobbering (on
-      a variable that is 'const'.
-    + Note: with WANT_AMALGAMATION there are many warnings on 'signed
-      overflow', all referring to the same code, and i think it's wrong.
-
-. CRUX Linux <http://www.crux.nu/>
-  Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
-  - gcc (CRUX-x86_64-multilib) 4.7.2.
-    + Note: there is a single warning on 'signed overflow'.  I think it's
-      wrong.
-
-. OpenBSD <http://www.openbsd.org/>
-  OpenBSD 5.4 i386.
-  - gcc (GCC) 4.2.1 20070719.
-    + Note: i think faulty message on longjmp() clobbering (on
-      a variable that is 'const').
+    + Faulty message on longjmp() clobbering (on a const variable).
 
 . FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.0-CURRENT amd64.
+  FreeBSD 10.0-RELEASE amd64
   - FreeBSD clang version 3.3 (tags/RELEASE_33/final 183502) 20130610
     Target: x86_64-unknown-freebsd10.0
-    Thread model: posix.
+    Thread model: posix
 
 . Void Linux <http://www.voidlinux.eu/>
   Linux 3.10.19_1 i686.
   - gcc (GCC) 4.7.3.
-    + Note: there is a single warning on 'signed overflow'.  I think it's
-      wrong.
+    + A single (i think faulty) warning on 'signed overflow'.
+    + `devel'opment target: warnings on unused results, just ignore (for
+      now).
+    + `devel'opment target: warnings on format strings -- as above.
+
+. OpenBSD <http://www.openbsd.org/>
+  OpenBSD 5.4 i386.
+  - gcc (GCC) 4.2.1 20070719.
+    + Faulty message on longjmp() clobbering (on a const variable).
+    + Warning on usage of strcat(3) in smime_split() (to be addressed
+      for real (i.e., without loosing S/MIME support) in next minor).
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
   DragonFly 3.6-RELEASE x86_64
   - gcc 4.7.3 [DragonFly] Release/2013-04-11.
-    + Note: harmless iconv(3) warning again (as if we didn't have had to
+    + A single (i think faulty) warning on 'signed overflow'.
+      (Yep, i think it's finally time to fix it once in a while.)
+    + Harmless iconv(3) warning again (as if we didn't have had to
       treat it specially already).
-    + Note: there is a single warning on 'signed overflow'.  I think it's
-      wrong.
 
 . UnixWare 7.1.4.
   + Note: this make(1) requires the -e option to pass values to make(1)
     subprocesses, so, if you want to overwrite DESTDIR= when doing
     `packager-install', you better say '$ make -e DESTDIR=xy ...'.
-  + You'll see some harmless and ignorable warnings.
+  + You'll see some harmless and ignorable warnings (the problematic
+    looking warning `"openssl.c", line 88: initialization type mismatch'
+    refers to a cast from non-const to const, which shouldn't matter).
 
 I'm very interested in reports from other combinations.
 (It should work practically everywhere, generally speaking.)
@@ -200,15 +209,13 @@ Program features yet to be overhauled
 -------------------------------------
 
 Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
-2012-09-18 i make my way through the codebase, but have not yet taken
-a look (rather: at all) into the following modules/parts:
+2012-09-18 i make my way through the codebase, and i'm getting more
+and more used to it as time goes by -- of course, i'm thinking object
+and thus this codebase and i are antipodes.
+The following modules have not yet been looked at and/or have known
+design flaws or bugs:
 
-  [List view/threading], Maildir, SSL, IMAP, POP3, SMTP, GSSAPI, Caching
-
-These will remain features of S-nail(1) and they will be looked at, and
-of course i will fix bugs when i notice them, but they are not yet part
-of the overhauled "S-nail core" (though SMTP and POP are in daily use,
-and IMAP is slowly coming along).
+  IMAP, (IMAP-) GSSAPI, (IMAP-) Caching
 
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Mail, as a good one, then.  Also see `TODO'.

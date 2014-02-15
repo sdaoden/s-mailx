@@ -91,9 +91,13 @@ WANT_ICONV=1
 # This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>)
 WANT_IDNA=1
 
-# Regular expression (re_format(7)) support for IMAP-style searches,
-# (then) triggerable by using a slash as the second character _of the complete
-# search expression_: e.g., `(/from .*bsd.*)'.
+# IMAP-style SEARCH expressions can be supported.
+# This addressing mode is available with all types of folders; for folders not
+# located on IMAP servers, or for servers unable to execute the SEARCH command,
+# the search is performed locally
+WANT_IMAP_SEARCH=1
+
+# Regular expression (re_format(7)) support for searches.
 WANT_REGEX=1
 
 # Command line editing and -history.

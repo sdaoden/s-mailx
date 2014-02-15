@@ -11,6 +11,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
+      WANT_IMAP_SEARCH=0
       WANT_REGEX=0
       WANT_SPAM=0
       WANT_DOCSTRINGS=0
@@ -21,7 +22,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_SOCKETS=0
       WANT_IDNA=0
       WANT_READLINE=0 WANT_EDITLINE=0
-      WANT_REGEX=0
+      WANT_IMAP_SEARCH=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
@@ -30,7 +31,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_IMAP=0
       WANT_POP3=0
       WANT_READLINE=0 WANT_EDITLINE=0
-      WANT_REGEX=0
+      WANT_IMAP_SEARCH=0
       WANT_SPAM=0
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
@@ -115,11 +116,17 @@ compiler_flags() {
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
+      if wantfeat AMALGAMATION; then
+         _CFLAGS="${_CFLAGS} -pipe"
+      fi
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      stackprot=yes
 #      optim=-O3 dbgoptim=-O
 #      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
+#      if wantfeat AMALGAMATION; then
+#         _CFLAGS="${_CFLAGS} -pipe"
+#      fi
    elif [ -z "${optim}" ]; then
       optim=-O1 dbgoptim=-O
    fi
@@ -932,6 +939,7 @@ fi # wantfeat GSSAPI
 if wantfeat IDNA; then
    link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
 #include <idna.h>
+#include <idn-free.h>
 #include <stringprep.h>
 int main(void)
 {
@@ -940,6 +948,7 @@ int main(void)
    if (idna_to_ascii_8z(utf8, &idna_ascii, IDNA_USE_STD3_ASCII_RULES)
          != IDNA_SUCCESS)
       return 1;
+   idn_free(idna_ascii);
    /* (Rather link check only here) */
    idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", "de_DE");
    return 0;
@@ -1098,6 +1107,12 @@ else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
+if wantfeat IMAP_SEARCH; then
+   echo '#define HAVE_IMAP_SEARCH' >> ${h}
+else
+   echo '/* WANT_IMAP_SEARCH=0 */' >> ${h}
+fi
+
 if wantfeat MD5; then
    echo '#define HAVE_MD5' >> ${h}
 else
@@ -1140,6 +1155,7 @@ printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-searches"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
@@ -1231,6 +1247,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
+#ifdef HAVE_IMAP_SEARCH
+: + IMAP-style search expressions
+#endif
 #ifdef HAVE_REGEX
 : + Regular expression searches
 #endif
@@ -1289,6 +1308,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
+#endif
+#ifndef HAVE_IMAP_SEARCH
+: - IMAP-style search expressions
 #endif
 #ifndef HAVE_REGEX
 : - Regular expression searches

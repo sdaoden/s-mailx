@@ -2,7 +2,7 @@
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
 .\"     Gunnar Ritter.  All rights reserved.
-.\" Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+.\" Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Jan 08, 2014
+.Dd Feb 14, 2014
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -74,13 +74,15 @@
 .Nm \*(ua
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
+.Op Fl L Ar spec-list
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Bk
 .Fl f Op Ar file
 .Ek
 .Nm \*(ua
-.Op Fl BDdEeiNnRv~#
+.Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
+.Op Fl L Ar spec-list
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .\"
@@ -163,11 +165,34 @@ is not a direct argument to the flag
 but is instead taken from the command line after option processing has
 been completed.
 .It Fl H
-Print header summaries for all messages and exit.
+Print a header summary of all messages and exit.
+A configurable summary view is available via the
+.Fl L
+option.
 .It Fl i
 Set the
 .Va ignore
 variable to ignore tty interrupt signals.
+.It Fl L Ar spec-list
+Print a header summary of only those messages that match the given
+.Ar spec-list ,
+then exit.
+See the section
+.Sx "Specifying messages"
+for the format of
+.Ar spec-list .
+If the
+.Fl H
+option has been given in addition to
+.Fl L ,
+then printing of the header summary is suppressed,
+and \*(UA will instead indicate via its exit status wether
+.Ar spec-list
+matched any messages (`0') or not (`1');
+note that messages are forcefully suppressed, then, and unless verbosity
+is explicitly enabled (e.g., by using the
+.Fl v
+option).
 .It Fl N
 Unset the
 .Va header
@@ -256,6 +281,8 @@ This sets multiple options to prepare \*(UA for working in batch mode
 .Va sendwait ,
 as well as
 .Va MBOX
+and
+.Va folder
 to
 .Pa /dev/null .
 it also enables processing of tilde escapes.
@@ -427,6 +454,27 @@ If
 .Ar string
 is empty,
 the string from the previous specification of that type is used again.
+.It Xo Op Ar \&? Ns Ar name-list Ns
+.Ar \&? Ns Ar expr
+.Xc
+All messages that contain the given case-insensitive search
+.Ar expr Ns
+ession; if the \*(OP regular expression support is available
+.Ar expr
+will be interpreted as one if any of the `magic'al regular expression
+characters is seen.
+If the optional
+.Ar \&? Ns Ar name-list
+part is missing, the search is restricted to the subject field body,
+but otherwise
+.Ar name-list
+specifies a comma-separated list of header fields to search, as in
+.Pp
+.Dl '?to,from,cc?Someone i ought to know'
+.Pp
+The special names `body' and `text' can be used to search in message
+bodies \(en whereas the former searches only the body, the latter form
+also performs a fulltext search in the header fields.
 .It Ar address
 All messages from
 .Ar address .
@@ -444,9 +492,10 @@ performed.
 The IMAP-style
 .Ns ` Ns Li "(from address)" Ns '
 expression can be used instead if substring matches are desired.
-.It Ar ( criterion )
-All messages that satisfy the given IMAP-style SEARCH
-.Ar criterion .
+.El
+.\" ---
+.Pp
+\*(OP IMAP-style SEARCH expressions may also be used.
 This addressing mode is available with all types of folders;
 for folders not located on IMAP servers,
 or for servers unable to execute the SEARCH command,
@@ -466,7 +515,12 @@ constructed as
 .Pp
 for each address,
 and the addresses without real names from the respective header field.
-Criteria can be nested using parentheses.
+These search expressions can be nested using parentheses, see below for
+examples.
+.Bl -tag -width ".It .Ar :n:u"
+.It Ar ( criterion )
+All messages that satisfy the given
+.Ar criterion .
 .It Ar ( criterion1 criterion2 ... criterionN )
 All messages that satisfy all of the given criteria.
 .It Ar ( or criterion1 criterion2 )
@@ -559,29 +613,6 @@ This specification cannot be used as part of another criterion.
 If the previous command line contained more than one independent
 criterion then the last of those criteria is used.
 .El
-.Pp
-\*(OP An IMAP-style search can be turned into a case-insensitive regular
-expression search (see
-.Xr re_format 7 Ns
-) in its entirety by using a slash `/' as the first character after the
-opening parenthesis, as in
-.Bd -literal -offset indent
-   ? f (/or subject ^\\[S-nail (subject ^\\[nail-devel))
-.Ed
-.Pp
-On the lowest nesting level each expression is treated by itself:
-.Bd -literal -offset indent
-   ? f (/subject ^\\[S-nail) (/subject ^\\[nail-devel)
-.Ed
-.Pp
-Of course, now that we have regular expression support those should be
-written much more efficiently as
-.Bd -literal -offset indent
-   ? f (/subject "^\\\\[(S-nail|nail-devel)")
-.Ed
-.Pp
-Note that regular expression searches are always performed on local
-storage, messages will be downloaded first as necessary.
 .\"
 .\" --  >8  --  8<  --
 .Ss "Replying to or originating mail"
@@ -1230,14 +1261,6 @@ urgent/special attention.
 This mark has no technical meaning in the mail system;
 it just causes messages to be highlighted in the header summary,
 and makes them specially addressable.
-.It Ic folders
-With no arguments, list the names of the folders in the folder directory.
-With an existing folder as an argument,
-lists the names of folders below the named folder;
-e.\|g. the command `folders @' lists the folders on the base level of
-the current IMAP server.
-See also the variable
-.Va imap-list-depth .
 .It Ic folder
 (fold) The folder command switches to a new mail file or folder.
 With no arguments, it tells the user which file he is currently reading.
@@ -1279,15 +1302,13 @@ commands.
 If the name matches one of the strings defined with the command
 .Ic shortcut ,
 it is replaced by its long form and expanded.
-If the name ends with `.gz' or `.bz2' it is treated as being compressed
-with
-.Xr gzip 1
+If the name ends with `.gz', `.bz2' or `.xz' it is treated as being
+compressed with
+.Xr gzip 1 ,
+.Xr bzip2 1
 or
-.Xr bzip2 1 ,
+.Xr xz 1 ,
 respectively.
-Likewise, if `name' does not exist,
-but either `name.gz' or `name.bz2' does,
-then the compressed file is used.
 If `name' refers to a directory with the subdirectories `tmp', `new',
 and `cur', then it is treated as a folder in `maildir' format.
 A name of the form
@@ -1306,6 +1327,14 @@ if it is omitted, the default `INBOX' is used.
 If \*(UA is connected to an IMAP server,
 a name of the form `@mailbox' refers to the `mailbox' on that server,
 but otherwise a `@' prefix has no special meaning.
+.It Ic folders
+With no arguments, list the names of the folders in the folder directory.
+With an existing folder as an argument,
+lists the names of folders below the named folder;
+e.\|g. the command `folders @' lists the folders on the base level of
+the current IMAP server.
+See also the variable
+.Va imap-list-depth .
 .It Ic Followup
 (F) Similar to
 .Ic Respond ,
@@ -1412,7 +1441,7 @@ command issued after
 will display the following message, not the current one.
 .It Ic if
 Commands in \*(UA's startup files can be executed conditionally by
-testing conditions via the command `if', as in:
+testing conditions via the nestable command `if', as in:
 .Bd -literal -offset indent
    if receive
       commands ...
@@ -3400,12 +3429,18 @@ verification of S/MIME signed messages.
 .It Va smime-cipher-user@host
 \*(OP Specifies a cipher to use when generating S/MIME encrypted
 messages for `user@host'.
-Valid ciphers are `rc2-40' (RC2 with 40 bits), `rc2-64' (RC2 with 64
-bits), `des' (DES, 56 bits) and `des-ede3' (3DES, 112/168 bits).
-The default is 3DES.
-It is not recommended to use the other ciphers unless a recipient's
-client is actually unable to handle 3DES since they are comparatively
-weak.
+RFC 5751 mandates a default of `aes-128' (AES-128 CBC).
+.Pp
+The actually available cipher algorithms depend on the cryptographic
+library that \*(UA uses; possible values are, in decreasing cipher
+strength:
+`aes-256' (AES-256 CBC), `aes-192' (AES-192 CBC), `aes-128' (AES-128 CBC),
+`des3' (DES EDE3 CBC, 168 bits; default if `aes-128' isn't available)
+and `des' (DES CBC, 56 bits).
+.Pp
+The following ciphers have been obsoleted and are no longer mentioned by
+the S/MIME specification (RFC 5751), but may be selected if available:
+`rc2-64' (RC2 CBC, 64 bits) and `rc2-40' (RC2 CBC, 40 bits).
 .It Va smime-crl-file
 \*(OP Specifies a file that contains a CRL in PEM format to use when
 verifying S/MIME messages.
@@ -3602,14 +3637,24 @@ Overrides
 .Va ssl-key
 for the specified account.
 .It Va ssl-method
-\*(OP Selects a SSL/TLS protocol version;
-\*(UA accepts the values `ssl2', `ssl3', `tls1', `tls1.1' and `tls1.2',
-though it depends on the OpenSSL library that is found on the system
-what is truly supported.
-If unset, the method is selected automatically, if possible
-(this process usually tries to use the most secure method possible).
-This approach is also taken if the chosen value is not supported by the
-OpenSSL library, in which case an error message will be printed first.
+\*(OP Selects the used TLS/SSL protocol version.
+The actually available protocol versions depend on the TLS/SSL
+library that \*(UA uses; possible values are, from newest to oldest:
+`tls1.2', `tls1.1', `tls1', `ssl3' and `ssl2'.
+.Pp
+Setting
+.Va ssl-method
+to any of these values will fixate the used protocol, which means that
+connections will fail if the server doesn't support it.
+The value `auto', which is the default, chooses a compatibility method
+that automatically uses the newest protocol version that the server
+is capable to understand.
+.Pp
+It has to be noted that `auto' is used as a fallback method if
+the actual setting of
+.Va ssl-method
+isn't supported by the used TLS/SSL library \(em in this case an error
+message will be printed first, however.
 .It Va ssl-method-user@host
 Overrides
 .Va ssl-method
@@ -4455,8 +4500,10 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .\" --  >8  --  8<  --
 .\"
 .Sh "SEE ALSO"
+.Xr bzip2 1 ,
 .Xr file 1 ,
 .Xr fmt 1 ,
+.Xr gzip 1 ,
 .Xr less 1 ,
 .Xr more 1 ,
 .Xr newaliases 1 ,
@@ -4468,6 +4515,7 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr spamc 1 ,
 .Xr spamd 1 ,
 .Xr vacation 1 ,
+.Xr xz 1 ,
 .Xr editline 3 ,
 .Xr iconv 3 ,
 .Xr readline 3 ,
@@ -4573,7 +4621,7 @@ This man page is derived from from The Mail Reference Manual originally
 written by Kurt Shoens.
 "Heirloom Mailx" enhancements are maintained and documented by Gunnar
 Ritter.
-"S-nail" is maintained and documented by Steffen "Daode" Nurpmeso.
+"S-nail" is maintained and documented by Steffen (Daode) Nurpmeso.
 .Pp
 Portions of this text are reprinted and reproduced in electronic form
 from IEEE Std 1003.1, 2003 Edition, Standard for Information Technology
@@ -4594,7 +4642,7 @@ remains intact.
 .An "Kurt Shoens" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
-.An Steffen Qo Daode Qc Nurpmeso Aq s-nail-users@lists.sourceforge.net
+.An Steffen Po Daode Pc Nurpmeso Aq s-nail-users@lists.sourceforge.net
 .\"
 .\" --  >8  --  8<  --
 .\"

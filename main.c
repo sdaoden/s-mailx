@@ -2,7 +2,7 @@
  *@ Startup -- interface with user.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -83,37 +83,37 @@ VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
 /*VL char const        features[]; The "feature string" comes from config.h */
 VL uc_it const       class_char[] = {
-/* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel  */
+/* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si   */
+/* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
    C_CNTRL,  C_BLANK,  C_WHITE, C_SPACE, C_SPACE, C_SPACE, C_CNTRL, C_CNTRL,
-/* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb  */
+/* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us   */
+/* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  '   */
+/* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  ' */
    C_BLANK, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  /   */
+/* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  / */
    C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 060  0   061  1   062  2   063  3   064  4   065  5   066  6   067  7   */
+/* 060  0   061  1   062  2   063  3   064  4   065  5   066  6   067  7 */
    C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL,
-/* 070  8   071  9   072  :   073  ;   074  <   075  =   076  >   077  ?   */
+/* 070  8   071  9   072  :   073  ;   074  <   075  =   076  >   077  ? */
    C_DIGIT, C_DIGIT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 100  @   101  A   102  B   103  C   104  D   105  E   106  F   107  G   */
+/* 100  @   101  A   102  B   103  C   104  D   105  E   106  F   107  G */
    C_PUNCT, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 110  H   111  I   112  J   113  K   114  L   115  M   116  N   117  O   */
+/* 110  H   111  I   112  J   113  K   114  L   115  M   116  N   117  O */
    C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 120  P   121  Q   122  R   123  S   124  T   125  U   126  V   127  W   */
+/* 120  P   121  Q   122  R   123  S   124  T   125  U   126  V   127  W */
    C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 130  X   131  Y   132  Z   133  [   134  \   135  ]   136  ^   137  _   */
+/* 130  X   131  Y   132  Z   133  [   134  \   135  ]   136  ^   137  _ */
    C_UPPER, C_UPPER, C_UPPER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 140  `   141  a   142  b   143  c   144  d   145  e   146  f   147  g   */
+/* 140  `   141  a   142  b   143  c   144  d   145  e   146  f   147  g */
    C_PUNCT, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 150  h   151  i   152  j   153  k   154  l   155  m   156  n   157  o   */
+/* 150  h   151  i   152  j   153  k   154  l   155  m   156  n   157  o */
    C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 160  p   161  q   162  r   163  s   164  t   165  u   166  v   167  w   */
+/* 160  p   161  q   162  r   163  s   164  t   165  u   166  v   167  w */
    C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 170  x   171  y   172  z   173  {   174  |   175  }   176  ~   177 del  */
+/* 170  x   171  y   172  z   173  {   174  |   175  }   176  ~   177 del */
    C_LOWER, C_LOWER, C_LOWER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_CNTRL
 };
 
@@ -132,7 +132,7 @@ static int           _oind, /*_oerr,*/ _oopt;
 #ifdef HAVE_GETOPT
 # define _getopt     getopt
 #else
-static int     _getopt(int argc, char *const argv[], const char *optstring);
+static int     _getopt(int argc, char *const argv[], char const *optstring);
 #endif
 
 /* Perform basic startup initialization */
@@ -155,7 +155,7 @@ static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int     _rcv_mode(char const *folder);
+static int     _rcv_mode(char const *folder, char const *Larg);
 
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
@@ -165,8 +165,10 @@ static int
 _getopt(int argc, char * const argv[], char const *optstring)
 {
    static char const *lastp;
+
    int rv = -1, colon;
    char const *curp;
+   NYD_ENTER;
 
    if ((colon = (optstring[0] == ':')))
       ++optstring;
@@ -226,6 +228,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    _oarg = 0;
    rv = '?';
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 #endif /* !HAVE_GETOPT */
@@ -234,12 +237,12 @@ static void
 _startup(void)
 {
    char *cp;
+   NYD_ENTER;
 
-   /* Absolutely the first thing we do is save our egid
-    * and set it to the rgid, so that we can safely run
-    * setgid.  We use the sgid (saved set-gid) to allow ourselves
-    * to revert to the egid if we want (temporarily) to become
-    * privileged XXX (s-nail-)*dotlock(-program)* */
+   /* Absolutely the first thing we do is save our egid and set it to the rgid,
+    * so that we can safely run setgid.  We use the sgid (saved set-gid) to
+    * allow ourselves to revert to the egid if we want (temporarily) to become
+    * privileged XXX (s-nail-)*dotlock(-program)* [maybe forked<->Unix IPC?] */
    effectivegid = getegid();
    realgid = getgid();
    if (setgid(realgid) < 0) {
@@ -259,7 +262,16 @@ _startup(void)
    /* Set up a reasonable environment.
     * Figure out whether we are being run interactively,
     * start the SIGCHLD catcher, and so forth */
-   safe_signal(SIGCHLD, sigchild);
+   safe_signal(SIGCHLD, &sigchild);
+#ifdef HAVE_DEBUG
+   safe_signal(SIGABRT, &_nyd_oncrash);
+# ifdef SIGBUS
+   safe_signal(SIGBUS, &_nyd_oncrash);
+# endif
+   safe_signal(SIGFPE, &_nyd_oncrash);
+   safe_signal(SIGILL, &_nyd_oncrash);
+   safe_signal(SIGSEGV, &_nyd_oncrash);
+#endif
 
    if (isatty(STDIN_FILENO)) /* TODO should be isatty(0) && isatty(2)?? */
       options |= OPT_TTYIN | OPT_INTERACTIVE;
@@ -317,9 +329,8 @@ _startup(void)
       if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
             mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
          utf8 = 1;
-      /* Reset state - it may have been messed up; luckily this also
-       * gives us an indication wether the encoding has locking shift
-       * state sequences */
+      /* Reset possibly messed up state; luckily this also gives us an
+       * indication wether the encoding has locking shift state sequences */
       /* TODO temporary - use option bits! */
       enc_has_state = mbtowc(&wc, NULL, mb_cur_max);
    }
@@ -339,17 +350,22 @@ _startup(void)
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
+   NYD_LEAVE;
 }
 
 static size_t
 _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 {
    /* Before spreserve(): use our string pool instead of LibC heap */
-   char const **newcpp = salloc(sizeof(char*) * newsize);
+   char const **newcpp;
+   NYD_ENTER;
+
+   newcpp = salloc(sizeof(char*) * newsize);
 
    if (oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
+   NYD_LEAVE;
    return newsize;
 }
 
@@ -361,6 +377,7 @@ _setup_vars(void)
    char const *cp;
    uid_t uid;
    struct passwd *pwuid, *pw;
+   NYD_ENTER;
 
    tempdir = ((cp = getenv("TMPDIR")) != NULL) ? savestr(cp) : TMPDIR_FALLBACK;
 
@@ -383,6 +400,7 @@ _setup_vars(void)
    if ((cp = getenv("HOME")) == NULL)
       cp = "."; /* XXX User and Login objects; Login: pw->pw_dir */
    homedir = savestr(cp);
+   NYD_LEAVE;
 }
 
 static void
@@ -394,6 +412,7 @@ _setscreensize(int is_sighdl)
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
+   NYD_ENTER;
 
    scrnheight = realscreenheight = scrnwidth = 0;
 
@@ -465,40 +484,48 @@ jleave:
    if (is_sighdl && IS_TTY_SESSION())
       tty_signal(SIGWINCH);
 #endif
+   NYD_LEAVE;
 }
 
 static sigjmp_buf __hdrjmp; /* XXX */
 
 static int
-_rcv_mode(char const *folder)
+_rcv_mode(char const *folder, char const *Larg)
 {
    char *cp;
    int i;
    sighandler_type prevint;
+   NYD_ENTER;
 
    if (folder == NULL)
       folder = "%";
    else if (*folder == '@') {
-      /* This must be treated specially to make invocation like
-       * -A imap -f @mailbox work */
+      /* This must be treated specially to make possible invocation like
+       * -A imap -f @mailbox */
       if ((cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP)
-         (void)n_strlcpy(mailname, cp, MAXPATHLEN);
+         n_strlcpy(mailname, cp, PATH_MAX);
    }
 
    i = setfile(folder, 0);
-   if (i < 0)
-      exit(1);    /* error already reported */
-   if (options & OPT_EXISTONLY)
-      exit(i);
+   if (i < 0) {
+      exit_status = EXIT_ERR; /* error already reported */
+      goto jleave;
+   }
+   if (options & OPT_EXISTONLY) {
+      exit_status = i;
+      goto jleave;
+   }
 
-   if (options & OPT_HEADERSONLY) {
-      print_headers(1, msgCount);
-      exit(exit_status);
+   if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
+      print_header_summary(Larg);
+      goto jleave;
    }
 
    callhook(mailname, 0);
-   if (i > 0 && !ok_blook(emptystart))
-      exit(1);
+   if (i > 0 && !ok_blook(emptystart)) {
+      exit_status = EXIT_ERR;
+      goto jleave;
+   }
 
    if (sigsetjmp(__hdrjmp, 1) == 0) {
       if ((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -527,12 +554,15 @@ _rcv_mode(char const *folder)
    }
    save_mbox_for_possible_quitstuff();
    quit();
+jleave:
+   NYD_LEAVE;
    return exit_status;
 }
 
 static void
 _hdrstop(int signo)
 {
+   NYD_X; /* Signal handler */
    UNUSED(signo);
 
    fflush(stdout);
@@ -543,7 +573,7 @@ _hdrstop(int signo)
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHiNnO:q:Rr:S:s:tu:Vv~#",
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHiL:NnO:q:Rr:S:s:tu:Vv~#",
       usagestr[] =
          "Synopsis:\n"
          "  %s [-BDdEFintv~] [-A acc] [-a attachment] "
@@ -551,17 +581,19 @@ main(int argc, char *argv[])
          "\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
             "[-S var[=value]]\n"
          "\t  [-s subject] to-addr...\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acct] "
-            "[-S var[=value]] -f [file]\n"
-         "  %s [-BDdEeiNnRv~#] [-A acc] [-S var[=value]] [-u user]\n";
+         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
+            "-f [file]\n"
+         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
+            "[-u user]\n";
 
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
    struct attachment *attach = NULL;
-   char *cp = NULL, *subject = NULL, *qf = NULL, *Aflag = NULL;
+   char *cp = NULL, *subject = NULL, *qf = NULL, *Aarg = NULL, *Larg = NULL;
    char const *okey, **oargs = NULL, *folder = NULL;
    size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
    int i;
+   NYD_ENTER;
 
    /*
     * Start our lengthy setup
@@ -578,7 +610,7 @@ main(int argc, char *argv[])
       switch (i) {
       case 'A':
          /* Execute an account command later on */
-         Aflag = _oarg;
+         Aarg = _oarg;
          break;
       case 'a':
          {  struct a_arg *nap = ac_alloc(sizeof(struct a_arg));
@@ -642,6 +674,15 @@ main(int argc, char *argv[])
          /* Ignore interrupts */
          okey = "ignore";
          goto joarg;
+      case 'L':
+         Larg = optarg;
+         if (*Larg == '"' || *Larg == '\'') { /* TODO list.c:listspec_check() */
+            size_t j = strlen(++Larg);
+            if (j > 0)
+               Larg[j - 1] = '\0';
+         }
+         options |= OPT_HEADERLIST;
+         break;
       case 'N':
          /* Avoid initial header printing */
          okey = "noheader";
@@ -688,14 +729,13 @@ main(int argc, char *argv[])
          }
          break;
       case 'S':
-         /* Set variable.  We need to do this twice, since the
-          * user surely wants the setting to take effect
-          * immediately, but also doesn't want it to be
-          * overwritten from within resource files */
+         /* Set variable.  We need to do this twice, since the user surely
+          * wants the setting to take effect immediately, but also doesn't want
+          * it to be overwritten from within resource files */
          {  char *a[2];
             okey = a[0] = _oarg;
             a[1] = NULL;
-            set(a);
+            c_set(a);
          }
 joarg:
          if (oargs_count == oargs_size)
@@ -742,12 +782,14 @@ joarg:
          oargs[oargs_count + 4] = "sendwait";
          oargs[oargs_count + 5] = "MBOX=/dev/null";
          oargs_count += 6;
+         folder = "/dev/null";
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;
       case '?':
 jusage:
          fprintf(stderr, tr(135, usagestr), progname, progname, progname);
-         exit(2);
+         exit_status = EXIT_USE;
+         goto jleave;
       }
    }
 
@@ -767,18 +809,37 @@ jusage:
    }
 
    /* Check for inconsistent arguments */
-   if (folder != NULL && to != NULL) {
-      fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
-      goto jusage;
-   }
-   if ((options & (OPT_SENDMODE | OPT_t_FLAG)) == OPT_SENDMODE && to == NULL) {
-      fprintf(stderr, tr(138,
-         "Send options without primary recipient specified.\n"));
-      goto jusage;
-   }
-   if ((options & OPT_R_FLAG) && to != NULL) {
-      fprintf(stderr, tr(235, "The -R option is meaningless in send mode.\n"));
-      goto jusage;
+   if (options & OPT_SENDMODE) {
+      if (folder != NULL) {
+         fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
+         goto jusage;
+      }
+      if (myname != NULL) {
+         fprintf(stderr, tr(568,
+            "The -u option cannot be used in send mode\n"));
+         goto jusage;
+      }
+      if (!(options & OPT_t_FLAG) && to == NULL) {
+         fprintf(stderr, tr(138,
+            "Send options without primary recipient specified.\n"));
+         goto jusage;
+      }
+      if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
+         fprintf(stderr, tr(45,
+            "The -H and -L options cannot be used in send mode.\n"));
+         goto jusage;
+      }
+      if (options & OPT_R_FLAG) {
+         fprintf(stderr,
+            tr(235, "The -R option is meaningless in send mode.\n"));
+         goto jusage;
+      }
+   } else {
+      if (folder != NULL && myname != NULL) {
+         fprintf(stderr, tr(569,
+            "The options -f and -u are mutually exclusive\n"));
+         goto jusage;
+      }
    }
 
    /*
@@ -813,9 +874,9 @@ jusage:
       load(file_expand(cp));
 
    /* Now we can set the account */
-   if (Aflag != NULL) {
+   if (Aarg != NULL) {
       char *a[2];
-      a[0] = Aflag;
+      a[0] = Aarg;
       a[1] = NULL;
       c_account(a);
    }
@@ -826,7 +887,7 @@ jusage:
       char const *a[2];
       a[0] = oargs[i];
       a[1] = NULL;
-      set(a);
+      c_set(a);
    }
 
    /*
@@ -840,7 +901,7 @@ jusage:
       fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
-      exit_status = _rcv_mode(folder);
+      exit_status = _rcv_mode(folder, Larg);
       goto jleave;
    }
 
@@ -856,7 +917,8 @@ jusage:
          ac_free(a_curr);
       } else {
          perror(a_head->aa_file);
-         exit(1);
+         exit_status = EXIT_ERR;
+         goto jleave;
       }
    }
 
@@ -867,6 +929,7 @@ jusage:
    if (options & OPT_INTERACTIVE)
       tty_destroy();
 jleave:
+   NYD_LEAVE;
    return exit_status;
 }
 

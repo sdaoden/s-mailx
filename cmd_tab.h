@@ -2,7 +2,7 @@
  *@ This header is included by ./lex.c and defines the command array content.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -63,163 +63,163 @@
 #endif
 
    /* Note: the first command in here may NOT expand to an unsupported one! */
-   { "next", next, (A | NDMLIST), 0, MMNDEL
+   { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(355, "Goes to the next message (-list) and prints it") },
-   { "alias", group, (M | RAWLIST), 0, 1000
+   { "alias", &c_group, (M | RAWLIST), 0, 1000
      DS(304, "Show all or the specified alias(es), or (re)define one") },
-   { "print", type, (A | MSGLIST), 0, MMNDEL
+   { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(361, "Type each message of <message-list> on the terminal") },
-   { "type", type, (A | MSGLIST), 0, MMNDEL
+   { "type", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(361, "Type each message of <message-list> on the terminal") },
-   { "Type", Type, (A | MSGLIST), 0, MMNDEL
+   { "Type", &c_Type, (A | MSGLIST), 0, MMNDEL
      DS(360, "Like \"print\", but prints all headers and parts") },
-   { "Print", Type, (A | MSGLIST), 0, MMNDEL
+   { "Print", &c_Type, (A | MSGLIST), 0, MMNDEL
      DS(360, "Like \"print\", but prints all headers and parts") },
-   { "visual", visual, (A | I | MSGLIST), 0, MMNORM
+   { "visual", &c_visual, (A | I | MSGLIST), 0, MMNORM
      DS(326, "Edit <message-list>") },
-   { "top", top, (A | MSGLIST), 0, MMNDEL
+   { "top", &c_top, (A | MSGLIST), 0, MMNDEL
      DS(385, "Print top few lines of <message-list>") },
-   { "touch", stouch, (A | W | MSGLIST), 0, MMNDEL
+   { "touch", &c_stouch, (A | W | MSGLIST), 0, MMNDEL
      DS(386, "Mark <message-list> for saving in *mbox*") },
-   { "preserve", preserve, (A | W | MSGLIST), 0, MMNDEL
+   { "preserve", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
      DS(344, "Save <message-list> in system mailbox instead of *mbox*") },
-   { "delete", delete, (A | W | P | MSGLIST), 0, MMNDEL
+   { "delete", &c_delete, (A | W | P | MSGLIST), 0, MMNDEL
      DS(320, "Delete <message-list>") },
-   { "dp", deltype, (A | W | MSGLIST), 0, MMNDEL
+   { "dp", &c_deltype, (A | W | MSGLIST), 0, MMNDEL
      DS(323, "Delete the current message, then print the next") },
-   { "dt", deltype, (A | W | MSGLIST), 0, MMNDEL
+   { "dt", &c_deltype, (A | W | MSGLIST), 0, MMNDEL
      DS(323, "Delete the current message, then print the next") },
-   { "undelete", undeletecmd, (A | P | MSGLIST), MDELETED,MMNDEL
+   { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS(392, "Un\"delete\" <message-list>") },
-   { "unset", unset, (M | RAWLIST), 1, 1000
+   { "unset", &c_unset, (M | RAWLIST), 1, 1000
      DS(402, "Unset <option-list>") },
-   { "mail", csendmail, (R | M | I | STRLIST), 0, 0
+   { "mail", &c_sendmail, (R | M | I | STRLIST), 0, 0
      DS(351, "Compose mail; recipients may be given as arguments") },
-   { "Mail", cSendmail, (R | M | I | STRLIST), 0, 0
+   { "Mail", &c_Sendmail, (R | M | I | STRLIST), 0, 0
      DS(350, "Like \"mail\", but derive filename from first recipient") },
-   { "mbox", mboxit, (A | W | MSGLIST), 0, 0
+   { "mbox", &c_mboxit, (A | W | MSGLIST), 0, 0
      DS(352, "Indicate that <message-list> is to be stored in *mbox*") },
-   { "more", more, (A | MSGLIST), 0, MMNDEL
+   { "more", &c_more, (A | MSGLIST), 0, MMNDEL
      DS(410, "Like \"type\"/\"print\", put print \\f between messages") },
-   { "page", more, (A | MSGLIST), 0, MMNDEL
+   { "page", &c_more, (A | MSGLIST), 0, MMNDEL
      DS(410, "Like \"type\"/\"print\", put print \\f between messages") },
-   { "More", More, (A | MSGLIST), 0, MMNDEL
+   { "More", &c_More, (A | MSGLIST), 0, MMNDEL
      DS(411, "Like \"Type\"/\"Print\", put print \\f between messages") },
-   { "Page", More, (A | MSGLIST), 0, MMNDEL
+   { "Page", &c_More, (A | MSGLIST), 0, MMNDEL
      DS(411, "Like \"Type\"/\"Print\", put print \\f between messages") },
-   { "unread", unread, (A | MSGLIST), 0, MMNDEL
+   { "unread", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(356, "Mark <message-list> as not being read") },
-   { "Unread", unread, (A | MSGLIST), 0, MMNDEL
+   { "Unread", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(356, "Mark <message-list> as not being read") },
-   { "new", unread, (A | MSGLIST), 0, MMNDEL
+   { "new", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(356, "Mark <message-list> as not being read") },
-   { "New", unread, (A | MSGLIST), 0, MMNDEL
+   { "New", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(356, "Mark <message-list> as not being read") },
-   { "!", shell, (I | STRLIST), 0, 0
+   { "!", &c_shell, (I | STRLIST), 0, 0
      DS(412, "Execute <shell-command>") },
-   { "copy", copycmd, (A | M | STRLIST), 0, 0
+   { "copy", &c_copy, (A | M | STRLIST), 0, 0
      DS(314, "Copy <message-list>, but don't mark them for deletion") },
-   { "Copy", Copycmd, (A | M | STRLIST), 0, 0
+   { "Copy", &c_Copy, (A | M | STRLIST), 0, 0
      DS(315, "Like \"copy\", but derive filename from first sender") },
-   { "chdir", c_chdir, (M | RAWLIST), 0, 1
+   { "chdir", &c_chdir, (M | RAWLIST), 0, 1
      DS(309, "Change CWD to the specified/the login directory") },
-   { "cd", c_chdir, (M | RAWLIST), 0, 1
+   { "cd", &c_chdir, (M | RAWLIST), 0, 1
      DS(309, "Change CWD to the specified/the login directory") },
-   { "save", save, (A | STRLIST), 0, 0
+   { "save", &c_save, (A | STRLIST), 0, 0
      DS(371, "Append <message-list> to <file>") },
-   { "Save", Save, (A | STRLIST), 0, 0
+   { "Save", &c_Save, (A | STRLIST), 0, 0
      DS(372, "Like \"save\", but derive filename from first sender") },
-   { "source", csource, (M | RAWLIST), 1, 1
+   { "source", &c_source, (M | RAWLIST), 1, 1
      DS(383, "Read commands from <file>") },
-   { "set", set, (M | RAWLIST), 0, 1000
+   { "set", &c_set, (M | RAWLIST), 0, 1000
      DS(376, "Print all variables, or set variables to argument(s)") },
-   { "shell", dosh, (I | NOLIST), 0, 0
+   { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(378, "Invoke an interactive shell") },
-   { "unalias", ungroup, (M | RAWLIST), 0, 1000
+   { "unalias", &c_ungroup, (M | RAWLIST), 0, 1000
      DS(387, "Un\"alias\" <name-list>") },
-   { "write", cwrite, (A | STRLIST), 0, 0
+   { "write", &c_write, (A | STRLIST), 0, 0
      DS(406, "Write (append) to <file>") },
-   { "from", from, (A | MSGLIST), 0, MMNORM
+   { "from", &c_from, (A | MSGLIST), 0, MMNORM
      DS(338, "Show message headers of <message-list>") },
-   { "file", cfile, (T | M | RAWLIST), 0, 1
+   { "file", &c_file, (T | M | RAWLIST), 0, 1
      DS(329, "Switch to new or show the current mail file or folder") },
-   { "followup", followup, (A | R | I | MSGLIST), 0, MMNDEL
+   { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL
      DS(333, "Like \"respond\", but derive filename from first sender") },
-   { "followupall", followupall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "followupall", &c_followupall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(334, "Like \"respond\", but derive filename from first sender") },
-   { "followupsender", followupsender, (A | R | I | MSGLIST), 0, MMNDEL
+   { "followupsender", &c_followupsender, (A | R | I | MSGLIST), 0, MMNDEL
      DS(335, "Like \"Followup\", but always respond to the sender only") },
-   { "folder", cfile, (T | M | RAWLIST), 0, 1
+   { "folder", &c_file, (T | M | RAWLIST), 0, 1
      DS(329, "Switch to new or show the current mail file or folder") },
-   { "folders", folders, (T | M | RAWLIST), 0, 1
+   { "folders", &c_folders, (T | M | RAWLIST), 0, 1
      DS(332, "List folders (below given folder)") },
-   { "z", scroll, (A | M | STRLIST), 0, 0
+   { "z", &c_scroll, (A | M | STRLIST), 0, 0
      DS(407, "Scroll to next/previous window of headers") },
-   { "Z", Scroll, (A | M | STRLIST), 0, 0
+   { "Z", &c_Scroll, (A | M | STRLIST), 0, 0
      DS(408, "Like \"z\", but continues to the next flagged message") },
-   { "headers", headers, (A | MSGLIST), 0, MMNDEL
+   { "headers", &c_headers, (A | MSGLIST), 0, MMNDEL
      DS(342, "Show the current(/last/next) 18-message group of headers") },
-   { "help", help, (/*H |*/ M | RAWLIST), 0, 1
+   { "help", &c_help, (/*H |*/ M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
-   { "?", help, (H | M | RAWLIST), 0, 1
+   { "?", &c_help, (H | M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
-   { "=", pdot, (A | NOLIST), 0, 0
+   { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(409, "Show current message number") },
-   { "Reply", Respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Reply", &c_Respond, (A | R | I | MSGLIST), 0, MMNDEL
      DS(368, "Reply to originator, exclusively") },
-   { "Respond", Respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Respond", &c_Respond, (A | R | I | MSGLIST), 0, MMNDEL
      DS(368, "Reply to originator, exclusively") },
-   { "Followup", Followup, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Followup", &c_Followup, (A | R | I | MSGLIST), 0, MMNDEL
      DS(332, "Like \"Respond\", but derive filename from first sender") },
-   { "reply", respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "reply", &c_respond, (A | R | I | MSGLIST), 0, MMNDEL
      DS(369, "Reply to originator and recipients of <message-list>") },
-   { "replyall", respondall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replyall", &c_respondall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(369, "Reply to originator and recipients of <message-list>") },
-   { "replysender", respondsender, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replysender", &c_respondsender, (A | R | I | MSGLIST), 0, MMNDEL
      DS(368, "Reply to originator, exclusively") },
-   { "respond", respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respond", &c_respond, (A | R | I | MSGLIST), 0, MMNDEL
      DS(369, "Reply to originators and recipients of <message-list>") },
-   { "respondall", respondall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respondall", &c_respondall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(369, "Reply to originators and recipients of <message-list>") },
-   { "respondsender", respondsender, (A | R | I | MSGLIST),0, MMNDEL
+   { "respondsender", &c_respondsender, (A | R | I | MSGLIST),0, MMNDEL
      DS(368, "Reply to originator, exclusively") },
-   { "Resend", Resendcmd, (A | R | STRLIST), 0, MMNDEL
+   { "Resend", &c_Resend, (A | R | STRLIST), 0, MMNDEL
      DS(365, "Like \"resend\", but don't add Resent-* headers") },
-   { "Redirect", Resendcmd, (A | R | STRLIST), 0, MMNDEL
+   { "Redirect", &c_Resend, (A | R | STRLIST), 0, MMNDEL
      DS(365, "Like \"resend\", but don't add Resent-* headers") },
-   { "resend", resendcmd, (A | R | STRLIST), 0, MMNDEL
+   { "resend", &c_resend, (A | R | STRLIST), 0, MMNDEL
      DS(364, "Resend <message-list> to <user>, add Resent-* headers") },
-   { "redirect", resendcmd, (A | R | STRLIST), 0, MMNDEL
+   { "redirect", &c_resend, (A | R | STRLIST), 0, MMNDEL
      DS(364, "Resend <message-list> to <user>, add Resent-* headers") },
-   { "Forward", Forwardcmd, (A | R | STRLIST), 0, MMNDEL
+   { "Forward", &c_Forward, (A | R | STRLIST), 0, MMNDEL
      DS(337, "Like \"forward\", but derive filename from <address>") },
-   { "Fwd", Forwardcmd, (A | R | STRLIST), 0, MMNDEL
+   { "Fwd", &c_Forward, (A | R | STRLIST), 0, MMNDEL
      DS(337, "Like \"forward\", but derive filename from <address>") },
-   { "forward", forwardcmd, (A | R | STRLIST), 0, MMNDEL
+   { "forward", &c_forward, (A | R | STRLIST), 0, MMNDEL
      DS(336, "Forward <message> to <address>") },
-   { "fwd", forwardcmd, (A | R | STRLIST), 0, MMNDEL
+   { "fwd", &c_forward, (A | R | STRLIST), 0, MMNDEL
      DS(336, "Forward <message> to <address>") },
-   { "edit", editor, (A | I | MSGLIST), 0, MMNORM
+   { "edit", &c_editor, (A | I | MSGLIST), 0, MMNORM
      DS(326, "Edit <message-list>") },
-   { "echo", echo, (M | ECHOLIST), 0, 1000
+   { "echo", &c_echo, (M | ECHOLIST), 0, 1000
      DS(325, "Echo given arguments") },
-   { "quit", quitcmd, NOLIST, 0, 0
+   { "quit", &c_quit, NOLIST, 0, 0
      DS(363, "Terminate session, saving messages as necessary") },
    { "list", &_pcmdlist, (M | NOLIST), 0, 0
      DS(349, "List all available commands") },
-   { "xit", rexit, (M | NOLIST), 0, 0
+   { "xit", &c_rexit, (M | NOLIST), 0, 0
      DS(328, "Immediate return to the shell without saving") },
-   { "exit", rexit, (M | NOLIST), 0, 0
+   { "exit", &c_rexit, (M | NOLIST), 0, 0
      DS(328, "Immediate return to the shell without saving") },
-   { "pipe", pipecmd, (A | STRLIST), 0, MMNDEL
+   { "pipe", &c_pipe, (A | STRLIST), 0, MMNDEL
      DS(359, "Pipe <message-list> to <command>") },
-   { "|", pipecmd, (A | STRLIST), 0, MMNDEL
+   { "|", &c_pipe, (A | STRLIST), 0, MMNDEL
      DS(359, "Pipe <message-list> to <command>") },
-   { "Pipe", Pipecmd, (A | STRLIST), 0, MMNDEL
+   { "Pipe", &c_Pipe, (A | STRLIST), 0, MMNDEL
      DS(358, "Like \"pipe\", but pipes all headers and parts") },
-   { "size", messize, (A | MSGLIST), 0, MMNDEL
+   { "size", &c_messize, (A | MSGLIST), 0, MMNDEL
      DS(381, "Show size in characters for <message-list>") },
-   { "hold", preserve, (A | W | MSGLIST), 0, MMNDEL
+   { "hold", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
      DS(344, "Save <message-list> in system mailbox instead of *mbox*") },
    { "if", &c_if, (F | M | RAWLIST), 1, 3
      DS(327, "Part of the if .. then .. endif statement") },
@@ -227,67 +227,67 @@
      DS(327, "Part of the if .. then .. endif statement") },
    { "endif", &c_endif, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
-   { "alternates", alternates, (M | RAWLIST), 0, 1000
+   { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(305, "Show or define an alternate list for the invoking user") },
-   { "ignore", igfield, (M | RAWLIST), 0, 1000
+   { "ignore", &c_igfield, (M | RAWLIST), 0, 1000
      DS(321, "Add header fields to ignored LIST), or show that list") },
-   { "discard", igfield, (M | RAWLIST), 0, 1000
+   { "discard", &c_igfield, (M | RAWLIST), 0, 1000
      DS(321, "Add header fields to ignored LIST), or show that list") },
-   { "retain", retfield, (M | RAWLIST), 0, 1000
+   { "retain", &c_retfield, (M | RAWLIST), 0, 1000
      DS(370, "Add header fields to retained LIST), or show that list") },
-   { "saveignore", saveigfield, (M | RAWLIST), 0, 1000
+   { "saveignore", &c_saveigfield, (M | RAWLIST), 0, 1000
      DS(373, "Is to \"save\" what \"ignore\" is to \"type\"/\"print\"") },
-   { "savediscard",saveigfield, (M | RAWLIST), 0, 1000
+   { "savediscard", &c_saveigfield, (M | RAWLIST), 0, 1000
      DS(373, "Is to \"save\" what \"ignore\" is to \"type\"/\"print\"") },
-   { "saveretain", saveretfield, (M | RAWLIST), 0, 1000
+   { "saveretain", &c_saveretfield, (M | RAWLIST), 0, 1000
      DS(374, "Is to \"save\" what \"retain\" is to \"type\"/\"print\"") },
-   { "unignore", unignore, (M | RAWLIST), 0, 1000
+   { "unignore", &c_unignore, (M | RAWLIST), 0, 1000
      DS(396, "Un\"ignore\" <header-fields>") },
-   { "unretain", unretain, (M | RAWLIST), 0, 1000
+   { "unretain", &c_unretain, (M | RAWLIST), 0, 1000
      DS(399, "Un\"retain\" <header-fields>") },
-   { "unsaveignore", unsaveignore, (M | RAWLIST), 0, 1000
+   { "unsaveignore", &c_unsaveignore, (M | RAWLIST), 0, 1000
      DS(400, "Un\"saveignore\" <header-fields>") },
-   { "unsaveretain", unsaveretain, (M | RAWLIST), 0, 1000
+   { "unsaveretain", &c_unsaveretain, (M | RAWLIST), 0, 1000
      DS(401, "Un\"saveretain\" <header-fields>") },
-   { "inc", newmail, (A | T | NOLIST), 0, 0
+   { "inc", &c_newmail, (A | T | NOLIST), 0, 0
      DS(346, "Check for new mail in current folder") },
-   { "newmail", newmail, (A | T | NOLIST), 0, 0
+   { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(346, "Check for new mail in current folder") },
-   { "shortcut", shortcut, (M | RAWLIST), 0, 1000
+   { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
      DS(379, "Define a <shortcut> and <expansion>, or list shortcuts") },
-   { "unshortcut", unshortcut, (M | RAWLIST), 0, 1000
+   { "unshortcut", &c_unshortcut, (M | RAWLIST), 0, 1000
      DS(403, "Delete <shortcut-list>") },
-   { "imap", imap_imap, (A | STRLIST), 0, 1000
+   { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(345, "Send command strings directly to the IMAP server") },
-   { "account", c_account, (M | RAWLIST), 0, 1000
+   { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(303, "Creates, selects or lists an email account") },
-   { "thread", thread, (A | MSGLIST), 0, 0
+   { "thread", &c_thread, (A | MSGLIST), 0, 0
      DS(384, "Create threaded view of current \"folder\"") },
-   { "unthread", unthread, (A | MSGLIST), 0, 0
+   { "unthread", &c_unthread, (A | MSGLIST), 0, 0
      DS(404, "Disable sorted or threaded mode") },
-   { "online", cconnect, (A | NOLIST), 0, 0
+   { "online", &c_connect, (A | NOLIST), 0, 0
      DS(314, "If disconnected, connect to IMAP mailbox") },
-   { "connect", cconnect, (A | NOLIST), 0, 0
+   { "connect", &c_connect, (A | NOLIST), 0, 0
      DS(314, "If disconnected, connect to IMAP mailbox") },
-   { "disconnect", cdisconnect, (A | NDMLIST), 0, 0
+   { "disconnect", &c_disconnect, (A | NDMLIST), 0, 0
      DS(322, "If connected, disconnect from IMAP mailbox") },
-   { "sort", sort, (A | RAWLIST), 0, 1
+   { "sort", &c_sort, (A | RAWLIST), 0, 1
      DS(382, "Change sorting criteria (and addressing modes)") },
-   { "unsort", unthread, (A | MSGLIST), 0, 0
+   { "unsort", &c_unthread, (A | MSGLIST), 0, 0
      DS(404, "Disable sorted or threaded mode") },
-   { "cache", ccache, (A | MSGLIST), 0, 0
+   { "cache", &c_cache, (A | MSGLIST), 0, 0
      DS(307, "Read specified <message list> into the IMAP cache") },
-   { "flag", cflag, (A | M | MSGLIST), 0, 0
+   { "flag", &c_flag, (A | M | MSGLIST), 0, 0
      DS(330, "(Un)Flag <message-list> (for special attention)") },
-   { "unflag", cunflag, (A | M | MSGLIST), 0, 0
+   { "unflag", &c_unflag, (A | M | MSGLIST), 0, 0
      DS(330, "(Un)Flag <message-list> (for special attention)") },
-   { "answered", canswered, (A | M | MSGLIST), 0, 0
+   { "answered", &c_answered, (A | M | MSGLIST), 0, 0
      DS(306, "Mark the given <message list> as \"answered\"") },
-   { "unanswered", cunanswered, (A | M | MSGLIST), 0, 0
+   { "unanswered", &c_unanswered, (A | M | MSGLIST), 0, 0
      DS(388, "Un\"answered\" <message-list>") },
-   { "draft", cdraft, (A | M | MSGLIST), 0, 0
+   { "draft", &c_draft, (A | M | MSGLIST), 0, 0
      DS(324, "Mark <message-list> as draft") },
-   { "undraft", cundraft, (A | M | MSGLIST), 0, 0
+   { "undraft", &c_undraft, (A | M | MSGLIST), 0, 0
      DS(389, "Un\"draft\" <message-list>") },
    { "define", &c_define, (M | RAWLIST), 0, 2
      DS(319, "Define a macro") },
@@ -299,63 +299,63 @@
      DS(308, "Call a macro") },
    { "~", &c_call, (M | RAWLIST), 0, 1
      DS(308, "Call a macro") },
-   { "move", cmove, (A | M | STRLIST), 0, 0
+   { "move", &c_move, (A | M | STRLIST), 0, 0
      DS(353, "Like \"copy\", but mark messages for deletion") },
-   { "mv", cmove, (A | M | STRLIST), 0, 0
+   { "mv", &c_move, (A | M | STRLIST), 0, 0
      DS(353, "Like \"copy\", but mark messages for deletion") },
-   { "Move", cMove, (A | M | STRLIST), 0, 0
+   { "Move", &c_Move, (A | M | STRLIST), 0, 0
      DS(354, "Like \"move\", but derive filename from first sender") },
-   { "Mv", cMove, (A | M | STRLIST), 0, 0
+   { "Mv", &c_Move, (A | M | STRLIST), 0, 0
      DS(354, "Like \"move\", but derive filename from first sender") },
-   { "noop", cnoop, (A | M | RAWLIST), 0, 0
+   { "noop", &c_noop, (A | M | RAWLIST), 0, 0
      DS(357, "NOOP command if IMAP or POP folder; else noop") },
-   { "collapse", ccollapse, (A | MSGLIST), 0, 0
+   { "collapse", &c_collapse, (A | MSGLIST), 0, 0
      DS(312, "Collapse thread views for <message-list>") },
-   { "uncollapse", cuncollapse, (A | MSGLIST), 0, 0
+   { "uncollapse", &c_uncollapse, (A | MSGLIST), 0, 0
      DS(390, "Uncollapse <message-list> if in threaded view") },
-   { "verify", cverify, (A | MSGLIST), 0, 0
+   { "verify", &c_verify, (A | MSGLIST), 0, 0
      DS(405, "Verify <message-list>") },
-   { "decrypt", cdecrypt, (A | M | STRLIST), 0, 0
+   { "decrypt", &c_decrypt, (A | M | STRLIST), 0, 0
      DS(316, "Like \"copy\", but decrypt first, if encrypted") },
-   { "Decrypt", cDecrypt, (A | M | STRLIST), 0, 0
+   { "Decrypt", &c_Decrypt, (A | M | STRLIST), 0, 0
      DS(317, "Like \"decrypt\", but derive filename from first sender") },
-   { "certsave", ccertsave, (A | STRLIST), 0, 0
+   { "certsave", &c_certsave, (A | STRLIST), 0, 0
      DS(310, "Save S/MIME certificates of <message-list> to <file>") },
-   { "rename", crename, (M | RAWLIST), 0, 2
+   { "rename", &c_rename, (M | RAWLIST), 0, 2
      DS(367, "Rename <existing-folder> to <new-folder>") },
-   { "remove", cremove, (M | RAWLIST), 0, 1000
+   { "remove", &c_remove, (M | RAWLIST), 0, 1000
      DS(366, "Remove the named folders") },
-   { "show", show, (A | MSGLIST), 0, MMNDEL
+   { "show", &c_show, (A | MSGLIST), 0, MMNDEL
      DS(380, "Like \"print\", but show raw message content") },
-   { "Show", show, (A | MSGLIST), 0, MMNDEL
+   { "Show", &c_show, (A | MSGLIST), 0, MMNDEL
      DS(380, "Like \"print\", but show raw message content") },
-   { "seen", seen, (A | M | MSGLIST), 0, MMNDEL
+   { "seen", &c_seen, (A | M | MSGLIST), 0, MMNDEL
      DS(377, "Mark <message-list> as seen") },
-   { "Seen", seen, (A | M | MSGLIST), 0, MMNDEL
+   { "Seen", &c_seen, (A | M | MSGLIST), 0, MMNDEL
      DS(377, "Mark <message-list> as seen") },
-   { "fwdignore", fwdigfield, (M | RAWLIST), 0, 1000
+   { "fwdignore", &c_fwdigfield, (M | RAWLIST), 0, 1000
      DS(339, "Which header fields are to be ignored with \"forward\"") },
-   { "fwddiscard", fwdigfield, (M | RAWLIST), 0, 1000
+   { "fwddiscard", &c_fwdigfield, (M | RAWLIST), 0, 1000
      DS(339, "Which header fields are to be ignored with \"forward\"") },
-   { "fwdretain", fwdretfield, (M | RAWLIST), 0, 1000
+   { "fwdretain", &c_fwdretfield, (M | RAWLIST), 0, 1000
      DS(340, "Which header fields have to be retained with \"forward\"") },
-   { "unfwdignore", unfwdignore, (M | RAWLIST), 0, 1000
+   { "unfwdignore", &c_unfwdignore, (M | RAWLIST), 0, 1000
      DS(393, "Un\"fwdignore\" <header-fields>") },
-   { "unfwdretain", unfwdretain, (M | RAWLIST), 0, 1000
+   { "unfwdretain", &c_unfwdretain, (M | RAWLIST), 0, 1000
      DS(394, "Un\"fwdretain\" <header-fields>") },
    { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 1000
      DS(418, "Either <show> (default) or <clear> the mime.types cache") },
-   { "spamrate", cspam_rate, (A | M | R | MSGLIST), 0, 0
+   { "spamrate", &c_spam_rate, (A | M | R | MSGLIST), 0, 0
      DS(419, "Rate <message-list> via the spam detector") },
-   { "spamham", cspam_ham, (A | M | R | MSGLIST), 0, 0
+   { "spamham", &c_spam_ham, (A | M | R | MSGLIST), 0, 0
      DS(420, "Teach the spam detector that <message-list> is ham") },
-   { "spamspam", cspam_spam, (A | M | R | MSGLIST), 0, 0
+   { "spamspam", &c_spam_spam, (A | M | R | MSGLIST), 0, 0
      DS(421, "Teach the spam detector that <message-list> is spam") },
-   { "spamforget", cspam_forget, (A | M | R | MSGLIST), 0, 0
+   { "spamforget", &c_spam_forget, (A | M | R | MSGLIST), 0, 0
      DS(422, "Force the spam detector to \"unlearn\" <message-list>") },
-   { "spamset", cspam_set, (A | M | MSGLIST), 0, 0
+   { "spamset", &c_spam_set, (A | M | MSGLIST), 0, 0
      DS(423, "Set the spam flag for each message in <message-list>") },
-   { "spamclear", cspam_clear, (A | M | MSGLIST), 0, 0
+   { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(424, "Clear the spam flag for each message in <message-list>") },
    { "ghost", &_ghost, (M | RAWLIST), 0, 2
      DS(425, "Define a <ghost> of <command>, or list all ghosts") },
@@ -380,7 +380,7 @@
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (I | M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },
-   { "smemtrace", &smemtrace, (I | M | NOLIST), 0, 0
+   { "smemtrace", &c_smemtrace, (I | M | NOLIST), 0, 0
      DS(417, "Trace current memory usage afap") },
 #endif
    { NULL, NULL, 0, 0, 0 DS(0, "") }

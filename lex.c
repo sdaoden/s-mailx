@@ -2,11 +2,11 @@
  *@ (Lexical processing of) Commands, and the event mainloop.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *    This product includes software developed by the University of
+ *    California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -47,7 +47,7 @@ struct cmd {
    char const     *name;         /* Name of command */
    int            (*func)(void*); /* Implementor of command */
    enum argtype   argtype;       /* Arglist type (see below) */
-   short          msgflag;       /* Required flags of msgs*/
+   short          msgflag;       /* Required flags of msgs */
    short          msgmask;       /* Relevant flags of msgs */
 #ifdef HAVE_DOCSTRINGS
    int            docid;         /* Translation id of .doc */
@@ -69,6 +69,7 @@ static int              _reset_on_stop;   /* do a reset() if stopped */
 static sighandler_type  _oldpipe;
 static struct cmd_ghost *_cmd_ghosts;
 /* _cmd_tab[] after fun protos */
+static int              _lex_inithdr;     /* am printing startup headers */
 
 /* Update mailname (if name != NULL) and displayname, return wether displayname
  * was large enough to swallow mailname */
@@ -98,8 +99,11 @@ static int     _features(void *v);
 /* Print the binaries version number */
 static int     _version(void *v);
 
-static void stop(int s);
-static void hangup(int s);
+/* When we wake up after ^Z, reprint the prompt */
+static void    stop(int s);
+
+/* Branch here on hangup signal and simulate "exit" */
+static void    hangup(int s);
 
 /* List of all commands */
 static struct cmd const _cmd_tab[] = {
@@ -110,61 +114,66 @@ static struct cmd const _cmd_tab[] = {
 SINLINE size_t
 __narrow_prefix(char const *cp, size_t maxl)
 {
-	int err;
-	size_t i, ok;
+   int err;
+   size_t i, ok;
+   NYD_ENTER;
 
-	for (err = ok = i = 0; i < maxl;) {
-		int ml = mblen(cp, maxl - i);
-		if (ml < 0) { /* XXX _narrow_prefix(): mblen() error; action? */
-			(void)mblen(NULL, 0);
-			err = 1;
-			ml = 1;
-		} else {
-			if (! err)
-				ok = i;
-			err = 0;
-			if (ml == 0)
-				break;
-		}
-		cp += ml;
-		i += ml;
-	}
-	return ok;
+   for (err = ok = i = 0; i < maxl;) {
+      int ml = mblen(cp, maxl - i);
+      if (ml < 0) { /* XXX _narrow_prefix(): mblen() error; action? */
+         (void)mblen(NULL, 0);
+         err = 1;
+         ml = 1;
+      } else {
+         if (!err)
+            ok = i;
+         err = 0;
+         if (ml == 0)
+            break;
+      }
+      cp += ml;
+      i += ml;
+   }
+   NYD_LEAVE;
+   return ok;
 }
 
 SINLINE size_t
 __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 {
-	int err;
-	size_t i, ok;
+   int err;
+   size_t i, ok;
+   NYD_ENTER;
 
-	for (err = ok = i = 0; cpl > maxl || err;) {
-		int ml = mblen(cp, cpl);
-		if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
-			(void)mblen(NULL, 0);
-			err = 1;
-			ml = 1;
-		} else {
-			if (! err)
-				ok = i;
-			err = 0;
-			if (ml == 0)
-				break;
-		}
-		cp += ml;
-		i += ml;
-		cpl -= ml;
-	}
-	return ok;
+   for (err = ok = i = 0; cpl > maxl || err;) {
+      int ml = mblen(cp, cpl);
+      if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
+         (void)mblen(NULL, 0);
+         err = 1;
+         ml = 1;
+      } else {
+         if (!err)
+            ok = i;
+         err = 0;
+         if (ml == 0)
+            break;
+      }
+      cp += ml;
+      i += ml;
+      cpl -= ml;
+   }
+   NYD_LEAVE;
+   return ok;
 }
 #endif /* HAVE_C90AMEND1 */
 
 static bool_t
 _update_mailname(char const *name)
 {
-   char tbuf[MAXPATHLEN], *mailp, *dispp;
+   char tbuf[PATH_MAX], *mailp, *dispp;
    size_t i, j;
    bool_t rv = TRU1;
+   NYD_ENTER;
 
    /* Don't realpath(3) if it's only an update request */
    if (name != NULL) {
@@ -190,7 +199,7 @@ jdocopy:
       i = strlen(tbuf);
       if (i < sizeof(tbuf) - 1)
          tbuf[i++] = '/';
-      if (strncmp(tbuf, mailp, i) == 0) {
+      if (!strncmp(tbuf, mailp, i)) {
          mailp += i;
          *dispp++ = '+';
       }
@@ -214,14 +223,18 @@ jdocopy:
       snprintf(dispp, sizeof(displayname), "%.*s...%s",
          (int)j, mailp, mailp + i);
    }
+   NYD_LEAVE;
    return rv;
 }
 
 static char *
 _lex_isolate(char const *comm)
 {
-   while (*comm && strchr(" \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
+   NYD_ENTER;
+   while (*comm != '\0' &&
+         strchr("~|?&% \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
       ++comm;
+   NYD_LEAVE;
    return UNCONST(comm);
 }
 
@@ -229,12 +242,14 @@ static struct cmd const *
 _lex(char const *comm) /* TODO **command hashtable**! linear list search!!! */
 {
    struct cmd const *cp;
+   NYD_ENTER;
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp)
       if (*comm == *cp->name && is_prefix(comm, cp->name))
          goto jleave;
    cp = NULL;
 jleave:
+   NYD_LEAVE;
    return cp;
 }
 
@@ -244,13 +259,15 @@ _ghost(void *v)
    char const **argv = (char const **)v;
    struct cmd_ghost *lcg, *cg;
    size_t nl, cl;
+   NYD_ENTER;
 
    /* Show the list? */
    if (*argv == NULL) {
       printf(tr(144, "Command ghosts are:\n"));
       for (nl = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
          cl = strlen(cg->name) + 5 + cg->cmd.l + 3;
-         if ((nl += cl) >= (size_t)scrnwidth) {
+         nl += cl;
+         if (UICMP(z, nl, >=, scrnwidth)) {
             nl = cl;
             printf("\n");
          }
@@ -270,27 +287,15 @@ _ghost(void *v)
    }
 
    /* Check that we can deal with this one */
-   switch (argv[0][0]) {
-   case '|':
-   case '~':
-   case '?':
-   case '#':
-      /* FALLTHRU */
-   case '\0':
-      goto jecanon;
-   default:
-      if (argv[0] == _lex_isolate(argv[0])) {
-jecanon:
-         fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
-         v = NULL;
-         goto jleave;
-      }
-      break;
+   if (argv[0] == _lex_isolate(argv[0])) {
+      fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
+      v = NULL;
+      goto jleave;
    }
 
    /* Always recreate */
    for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
-      if (strcmp(cg->name, argv[0]) == 0) {
+      if (!strcmp(cg->name, argv[0])) {
          if (lcg != NULL)
             lcg->next = cg->next;
          else
@@ -311,6 +316,7 @@ jecanon:
 
    _cmd_ghosts = cg;
 jleave:
+   NYD_LEAVE;
    return (v == NULL);
 }
 
@@ -320,10 +326,11 @@ _unghost(void *v)
    int rv = 0;
    char const **argv = v, *cp;
    struct cmd_ghost *lcg, *cg;
+   NYD_ENTER;
 
    while ((cp = *argv++) != NULL) {
       for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
-         if (strcmp(cg->name, cp) == 0) {
+         if (!strcmp(cg->name, cp)) {
             if (lcg != NULL)
                lcg->next = cg->next;
             else
@@ -336,6 +343,7 @@ _unghost(void *v)
 jouter:
       ;
    }
+   NYD_LEAVE;
    return rv;
 }
 
@@ -343,7 +351,12 @@ static int
 __pcmd_cmp(void const *s1, void const *s2)
 {
    struct cmd const * const *c1 = s1, * const *c2 = s2;
-   return (strcmp((*c1)->name, (*c2)->name));
+   int rv;
+   NYD_ENTER;
+
+   rv = strcmp((*c1)->name, (*c2)->name);
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
@@ -351,7 +364,8 @@ _pcmdlist(void *v)
 {
    struct cmd const **cpa, *cp, **cursor;
    size_t i;
-   (void)v;
+   NYD_ENTER;
+   UNUSED(v);
 
    for (i = 0; _cmd_tab[i].name != NULL; ++i)
       ;
@@ -367,7 +381,7 @@ _pcmdlist(void *v)
    printf(tr(14, "Commands are:\n"));
    for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
       size_t j;
-      if (cp->func == &ccmdnotsupp)
+      if (cp->func == &c_cmdnotsupp)
          continue;
       j = strlen(cp->name) + 2;
       if ((i += j) > 72) {
@@ -378,233 +392,270 @@ _pcmdlist(void *v)
    }
 
    ac_free(cpa);
+   NYD_LEAVE;
    return 0;
 }
 
 static int
 _features(void *v)
 {
+   NYD_ENTER;
    UNUSED(v);
    printf(tr(523, "Features: %s\n"), features);
+   NYD_LEAVE;
    return 0;
 }
 
 static int
 _version(void *v)
 {
+   NYD_ENTER;
    UNUSED(v);
    printf(tr(111, "Version %s\n"), version);
+   NYD_LEAVE;
    return 0;
 }
 
-/*
- * Set up editing on the given file name.
- * If the first character of name is %, we are considered to be
- * editing the file, otherwise we are reading our mail which has
- * signficance for mbox and so forth.
- *
- * nmail: Check for new mail in the current folder only.
- */
-FL int
-setfile(char const *name, int nmail)
+static void
+stop(int s)
 {
-	FILE *ibuf;
-	int i, compressed = 0;
-	struct stat stb;
-	bool_t isedit;
-	char const *who = name[1] ? name + 1 : myname;
-	static int shudclob;
-	size_t offset;
-	int omsgCount = 0;
-	struct shortcut *sh;
-	struct flock	flp;
+   sighandler_type old_action;
+   sigset_t nset;
+   NYD_X; /* Signal handler */
 
-	/* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
-	 * necessary to make a mailbox accessible by a different user, and if that
-	 * has happened, let's just let the usual file perms decide */
-	isedit = (*name != '%' && ((sh = get_shortcut(name)) == NULL ||
-			*sh->sh_long != '%'));
-	if ((name = expand(name)) == NULL)
-		return (-1);
+   old_action = safe_signal(s, SIG_DFL);
 
-	switch (which_protocol(name)) {
-	case PROTO_FILE:
-		break;
-	case PROTO_MAILDIR:
-		return (maildir_setfile(name, nmail, isedit));
+   sigemptyset(&nset);
+   sigaddset(&nset, s);
+   sigprocmask(SIG_UNBLOCK, &nset, NULL);
+   kill(0, s);
+   sigprocmask(SIG_BLOCK, &nset, NULL);
+   safe_signal(s, old_action);
+   if (_reset_on_stop) {
+      _reset_on_stop = 0;
+      reset(0);
+   }
+}
+
+static void
+hangup(int s)
+{
+   NYD_X; /* Signal handler */
+   UNUSED(s);
+   /* nothing to do? */
+   exit(1);
+}
+
+FL int
+setfile(char const *name, int nmail) /* TODO oh my god */
+{
+   static int shudclob;
+
+   struct stat stb;
+   struct flock flp;
+   FILE *ibuf = NULL;
+   int rv, i, compressed = 0, omsgCount = 0;
+   bool_t isedit;
+   char const *who;
+   size_t offset;
+   struct shortcut *sh;
+   NYD_ENTER;
+
+   /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
+    * necessary to make a mailbox accessible by a different user, and if that
+    * has happened, let's just let the usual file perms decide */
+   who = (name[1] != '\0') ? name + 1 : myname;
+   isedit = (*name != '%' && ((sh = get_shortcut(name)) == NULL ||
+         *sh->sh_long != '%'));
+   if ((name = expand(name)) == NULL)
+      goto jem1;
+
+   switch (which_protocol(name)) {
+   case PROTO_FILE:
+      break;
+   case PROTO_MAILDIR:
+      rv = maildir_setfile(name, nmail, isedit);
+      goto jleave;
 #ifdef HAVE_POP3
-	case PROTO_POP3:
-		shudclob = 1;
-		return (pop3_setfile(name, nmail, isedit));
+   case PROTO_POP3:
+      shudclob = 1;
+      rv = pop3_setfile(name, nmail, isedit);
+      goto jleave;
 #endif
 #ifdef HAVE_IMAP
-	case PROTO_IMAP:
-		shudclob = 1;
-		if (nmail) {
-			if (mb.mb_type == MB_CACHE)
-				return 1;
-		}
-		return imap_setfile(name, nmail, isedit);
+   case PROTO_IMAP:
+      shudclob = 1;
+      if (nmail && mb.mb_type == MB_CACHE)
+         rv = 1;
+      else
+         rv = imap_setfile(name, nmail, isedit);
+      goto jleave;
 #endif
-	default:
-		fprintf(stderr, tr(217, "Cannot handle protocol: %s\n"), name);
-		return (-1);
-	}
+   default:
+      fprintf(stderr, tr(217, "Cannot handle protocol: %s\n"), name);
+      goto jem1;
+   }
 
-	if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
-		if ((!isedit && errno == ENOENT) || nmail) {
-			if (nmail)
-				goto jnonmail;
-			goto nomail;
-		}
-		perror(name);
-		return(-1);
-	}
+   /* FIXME this FILE leaks if quit()->edstop() reset()s!  This entire code
+    * FIXME here is total crap, below we open(2) the same name again just to
+    * FIXME close it right away etc.  The normal thing would be to (1) finalize
+    * FIXME the current box and (2) open the new box; yet, since (2) may fail
+    * FIXME we terribly need our VOID box to make this logic order possible! */
+   if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
+      if ((!isedit && errno == ENOENT) || nmail) {
+         if (nmail)
+            goto jnonmail;
+         goto jnomail;
+      }
+      perror(name);
+      goto jem1;
+   }
 
-	if (fstat(fileno(ibuf), &stb) < 0) {
-		Fclose(ibuf);
-		if (nmail)
-			goto jnonmail;
-		perror("fstat");
-		return (-1);
-	}
+   if (fstat(fileno(ibuf), &stb) < 0) {
+      if (nmail)
+         goto jnonmail;
+      perror("fstat");
+      goto jem1;
+   }
 
-	if (S_ISDIR(stb.st_mode)) {
-		Fclose(ibuf);
-		if (nmail)
-			goto jnonmail;
-		errno = EISDIR;
-		perror(name);
-		return (-1);
-	} else if (S_ISREG(stb.st_mode)) {
-		/*EMPTY*/
-	} else {
-		Fclose(ibuf);
-		if (nmail)
-			goto jnonmail;
-		errno = EINVAL;
-		perror(name);
-		return (-1);
-	}
+   if (S_ISREG(stb.st_mode) ||
+         (options & OPT_BATCH_FLAG && !S_ISDIR(stb.st_mode))) {
+      /*EMPTY*/
+   } else {
+      if (nmail)
+         goto jnonmail;
+      errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
+      perror(name);
+      goto jem1;
+   }
 
-	/*
-	 * Looks like all will be well.  We must now relinquish our
-	 * hold on the current set of stuff.  Must hold signals
-	 * while we are reading the new file, else we will ruin
-	 * the message[] data structure.
-	 */
+   /* Looks like all will be well.  We must now relinquish our hold on the
+    * current set of stuff.  Must hold signals while we are reading the new
+    * file, else we will ruin the message[] data structure */
 
-	hold_sigs(); /* TODO note on this one in quit.c:quit() */
-	if (shudclob && !nmail)
-		quit();
+   hold_sigs(); /* TODO note on this one in quit.c:quit() */
+   if (shudclob && !nmail)
+      quit();
 #ifdef HAVE_SOCKETS
-	if (!nmail && mb.mb_sock.s_fd >= 0)
-		sclose(&mb.mb_sock);
+   if (!nmail && mb.mb_sock.s_fd >= 0)
+      sclose(&mb.mb_sock);
 #endif
 
-	/*
-	 * Copy the messages into /tmp
-	 * and set pointers.
-	 */
+   /* Copy the messages into /tmp and set pointers */
+   flp.l_type = F_RDLCK;
+   flp.l_start = 0;
+   flp.l_whence = SEEK_SET;
+   if (!nmail) {
+      mb.mb_type = MB_FILE;
+      mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE | MB_EDIT;
+      mb.mb_compressed = compressed;
+      if (compressed) {
+         if (compressed & 0200)
+            mb.mb_perm = 0;
+      } else {
+         if ((i = open(name, O_WRONLY)) < 0)
+            mb.mb_perm = 0;
+         else
+            close(i);
+      }
+      if (shudclob) {
+         if (mb.mb_itf) {
+            fclose(mb.mb_itf);
+            mb.mb_itf = NULL;
+         }
+         if (mb.mb_otf) {
+            fclose(mb.mb_otf);
+            mb.mb_otf = NULL;
+         }
+      }
+      shudclob = 1;
+      edit = isedit;
+      initbox(name);
+      offset = 0;
+      flp.l_len = 0;
+      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+         perror("Unable to lock mailbox");
+         rele_sigs();
+         goto jem1;
+      }
+   } else /* nmail */{
+      fseek(mb.mb_otf, 0L, SEEK_END);
+      fseek(ibuf, mailsize, SEEK_SET);
+      offset = mailsize;
+      omsgCount = msgCount;
+      flp.l_len = offset;
+      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+         rele_sigs();
+         goto jnonmail;
+      }
+   }
+   mailsize = fsize(ibuf);
 
-	flp.l_type = F_RDLCK;
-	flp.l_start = 0;
-	flp.l_whence = SEEK_SET;
-	if (!nmail) {
-		mb.mb_type = MB_FILE;
-		mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE|MB_EDIT;
-		mb.mb_compressed = compressed;
-		if (compressed) {
-			if (compressed & 0200)
-				mb.mb_perm = 0;
-		} else {
-			if ((i = open(name, O_WRONLY)) < 0)
-				mb.mb_perm = 0;
-			else
-				close(i);
-		}
-		if (shudclob) {
-			if (mb.mb_itf) {
-				fclose(mb.mb_itf);
-				mb.mb_itf = NULL;
-			}
-			if (mb.mb_otf) {
-				fclose(mb.mb_otf);
-				mb.mb_otf = NULL;
-			}
-		}
-		shudclob = 1;
-		edit = isedit;
-		initbox(name);
-		offset = 0;
-		flp.l_len = 0;
-		if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) < 0) {
-			perror("Unable to lock mailbox");
-			Fclose(ibuf);
-			return -1;
-		}
-	} else /* nmail */{
-		fseek(mb.mb_otf, 0L, SEEK_END);
-		fseek(ibuf, mailsize, SEEK_SET);
-		offset = mailsize;
-		omsgCount = msgCount;
-		flp.l_len = offset;
-		if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) < 0)
-			goto jnonmail;
-	}
-	mailsize = fsize(ibuf);
-	if (nmail && (size_t)mailsize <= offset) {
-		rele_sigs();
-		goto jnonmail;
-	}
-	setptr(ibuf, offset);
-	setmsize(msgCount);
-	if (nmail && mb.mb_sorted) {
-		mb.mb_threaded = 0;
-		sort((void *)-1);
-	}
-	Fclose(ibuf);
-	rele_sigs();
-	if (!nmail)
-		sawcom = FAL0;
-	if ((!edit || nmail) && msgCount == 0) {
+   if (nmail && UICMP(z, mailsize, <=, offset)) {
+      rele_sigs();
+      goto jnonmail;
+   }
+   setptr(ibuf, offset);
+   setmsize(msgCount);
+   if (nmail && mb.mb_sorted) {
+      mb.mb_threaded = 0;
+      c_sort((void*)-1);
+   }
+
+   Fclose(ibuf);
+   ibuf = NULL;
+   rele_sigs();
+   if (!nmail)
+      sawcom = FAL0;
+
+   if ((!edit || nmail) && msgCount == 0) {
 jnonmail:
-		if (!nmail) {
-			if (!ok_blook(emptystart))
-nomail:				fprintf(stderr, tr(88, "No mail for %s\n"),
-					who);
-		}
-		return 1;
-	}
-	if (nmail)
-		newmailinfo(omsgCount);
-	return 0;
+      if (!nmail) {
+         if (!ok_blook(emptystart))
+jnomail:
+            fprintf(stderr, tr(88, "No mail for %s\n"), who);
+      }
+      rv = 1;
+      goto jleave;
+   }
+   if (nmail)
+      newmailinfo(omsgCount);
+
+   rv = 0;
+jleave:
+   if (ibuf != NULL)
+      Fclose(ibuf);
+   NYD_LEAVE;
+   return rv;
+jem1:
+   rv = -1;
+   goto jleave;
 }
 
 FL int
 newmailinfo(int omsgCount)
 {
-	int	mdot;
-	int	i;
+   int mdot, i;
+   NYD_ENTER;
 
-	for (i = 0; i < omsgCount; i++)
-		message[i].m_flag &= ~MNEWEST;
-	if (msgCount > omsgCount) {
-		for (i = omsgCount; i < msgCount; i++)
-			message[i].m_flag |= MNEWEST;
-		printf(tr(158, "New mail has arrived.\n"));
-		if (msgCount - omsgCount == 1)
-			printf(tr(214, "Loaded 1 new message.\n"));
-		else
-			printf(tr(215, "Loaded %d new messages.\n"),
-				msgCount - omsgCount);
-	} else
-		printf(tr(224, "Loaded %d messages.\n"), msgCount);
-	callhook(mailname, 1);
-	mdot = getmdot(1);
-	if (ok_blook(header))
-		print_headers(omsgCount + 1, msgCount);
-	return mdot;
+   for (i = 0; i < omsgCount; i++)
+      message[i].m_flag &= ~MNEWEST;
+   if (msgCount > omsgCount) {
+      for (i = omsgCount; i < msgCount; i++)
+         message[i].m_flag |= MNEWEST;
+      printf(tr(158, "New mail has arrived.\n"));
+      if (msgCount - omsgCount == 1)
+         printf(tr(214, "Loaded 1 new message.\n"));
+      else
+         printf(tr(215, "Loaded %d new messages.\n"), msgCount - omsgCount);
+   } else
+      printf(tr(224, "Loaded %d messages.\n"), msgCount);
+   callhook(mailname, 1);
+   mdot = getmdot(1);
+   if (ok_blook(header))
+      print_headers(omsgCount + 1, msgCount, FAL0);
+   NYD_LEAVE;
+   return mdot;
 }
 
 FL void
@@ -612,6 +663,7 @@ commands(void)
 {
    struct eval_ctx ev;
    int n;
+   NYD_ENTER;
 
    if (!sourcing) {
       if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
@@ -661,7 +713,7 @@ commands(void)
          }
 
          _reset_on_stop = 1;
-         exit_status = 0;
+         exit_status = EXIT_OK;
       }
 
 #ifdef HAVE_COLOUR
@@ -724,6 +776,7 @@ jreadline:
       free(ev.ev_line.s);
    if (sourcing)
       sreset(FAL0);
+   NYD_LEAVE;
 }
 
 FL int
@@ -734,6 +787,7 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    struct colour_table *ct_save;
 #endif
    int rv;
+   NYD_ENTER;
 
    /* TODO Maybe recursion from within collect.c!  As long as we don't have
     * TODO a value carrier that transports the entire state of a recursion
@@ -752,7 +806,7 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
 #ifdef HAVE_COLOUR
    colour_table = ct_save;
 #endif
-
+   NYD_LEAVE;
    return rv;
 }
 
@@ -764,6 +818,7 @@ evaluate(struct eval_ctx *evp)
    struct cmd_ghost *cg = NULL;
    struct cmd const *com = NULL;
    int muvec[2], c, e = 1;
+   NYD_ENTER;
 
    line = evp->ev_line; /* XXX don't change original (buffer pointer) */
    evp->ev_add_history = FAL0;
@@ -787,7 +842,7 @@ jrestart:
          fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
          goto jleave;
       }
-      shell(++cp);
+      c_shell(++cp);
       evp->ev_add_history = TRU1;
       goto jleave0;
    }
@@ -797,21 +852,12 @@ jrestart:
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
    arglist[0] = cp;
-   switch (*cp) {
-   case '|':
-   case '~':
-   case '?':
+   if ((cp = _lex_isolate(cp)) == arglist[0] &&
+         (*cp == '|' || *cp == '~' || *cp == '?'))
       ++cp;
-      /* FALLTHRU */
-   case '\0':
-      break;
-   default:
-      cp = _lex_isolate(cp);
-      break;
-   }
    c = (int)PTR2SIZE(cp - arglist[0]);
    line.l -= c;
-   word = (c < (int)sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
+   word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
    memcpy(word, arglist[0], c);
    word[c] = '\0';
 
@@ -833,7 +879,7 @@ jrestart:
        * TODO so that the lookup could be made much more efficient than it is
        * TODO now (two adjacent list searches! */
       for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-         if (strcmp(word, cg->name) == 0) {
+         if (!strcmp(word, cg->name)) {
             if (line.l > 0) {
                size_t i = cg->cmd.l;
                line.s = salloc(i + 1 + line.l +1);
@@ -850,10 +896,10 @@ jrestart:
          }
    }
 
-   if ((com = _lex(word)) == NULL || com->func == &ccmdnotsupp) {
+   if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
       fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
       if (com != NULL) {
-         ccmdnotsupp(NULL);
+         c_cmdnotsupp(NULL);
          com = NULL;
       }
       goto jleave;
@@ -863,29 +909,8 @@ jrestart:
     * execute it, otherwise, check the state of cond */
 jexec:
    if (!(com->argtype & ARG_F)) {
-      switch (cond_state) {
-      case COND_RCV:
-         if (options & OPT_SENDMODE)
-               goto jleave0;
-         break;
-      case COND_SEND:
-            if (!(options & OPT_SENDMODE))
-               goto jleave0;
-         break;
-      case COND_TERM:
-            if (!(options & OPT_TTYIN))
-               goto jleave0;
-         break;
-      case COND_NOTERM:
-            if (options & OPT_TTYIN)
-               goto jleave0;
-         break;
-      case COND_ANY:
-      case COND_EXEC:
-         break;
-      case COND_NOEXEC:
+      if (condstack_isskip())
          goto jleave0;
-      }
    }
 
    /* Process the arguments to the command, depending on the type he expects.
@@ -922,7 +947,7 @@ jexec:
    switch (com->argtype & ARG_ARGMASK) {
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
-      if (_msgvec == 0)
+      if (_msgvec == NULL)
          goto je96;
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
          break;
@@ -941,7 +966,7 @@ jexec:
 
    case ARG_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
-      if (_msgvec == 0) {
+      if (_msgvec == NULL) {
 je96:
          fprintf(stderr, tr(96, "Illegal use of `message list'\n"));
          break;
@@ -954,7 +979,7 @@ je96:
    case ARG_STRLIST:
       /* Just the straight string, with leading blanks removed */
       while (whitechar(*cp))
-         cp++;
+         ++cp;
       e = (*com->func)(cp);
       break;
 
@@ -998,304 +1023,315 @@ je96:
 jleave:
    /* Exit the current source file on error */
    if ((exec_last_comm_error = (e != 0))) {
-      if (e < 0)
-         return 1;
-      if (loading)
-         return 1;
+      if (e < 0 || loading) {
+         e = 1;
+         goto jret;
+      }
       if (sourcing)
          unstack();
-      return 0;
+      goto jret0;
    }
    if (com == NULL)
-      return 0;
+      goto jret0;
    if ((com->argtype & ARG_P) && ok_blook(autoprint))
       if (visible(dot)) {
          muvec[0] = (int)PTR2SIZE(dot - message + 1);
          muvec[1] = 0;
-         type(muvec);
+         c_type(muvec);
       }
    if (!sourcing && !inhook && (com->argtype & ARG_T) == 0)
       sawcom = TRU1;
 jleave0:
    exec_last_comm_error = 0;
-   return 0;
+jret0:
+   e = 0;
+jret:
+   NYD_LEAVE;
+   return e;
 }
 
-/*
- * Set the size of the message vector used to construct argument
- * lists to message list functions.
- */
 FL void
 setmsize(int sz)
 {
-
-	if (_msgvec != 0)
-		free(_msgvec);
-	_msgvec = (int*)scalloc(sz + 1, sizeof *_msgvec);
+   NYD_ENTER;
+   if (_msgvec != 0)
+      free(_msgvec);
+   _msgvec = scalloc(sz + 1, sizeof *_msgvec);
+   NYD_LEAVE;
 }
 
-/*
- * The following gets called on receipt of an interrupt.  This is
- * to abort printout of a command, mainly.
- * Dispatching here when command() is inactive crashes rcv.
- * Close all open files except 0, 1, 2, and the temporary.
- * Also, unstack all source files.
- */
+FL void
+print_header_summary(char const *Larg)
+{
+   size_t bot, top, i, j;
+   NYD_ENTER;
 
-static int	inithdr;		/* am printing startup headers */
+   if (Larg != NULL) {
+      /* Avoid any messages XXX add a make_mua_silent() and use it? */
+      if ((options & (OPT_VERBOSE | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
+         freopen("/dev/null", "w", stdout);
+         freopen("/dev/null", "w", stderr);
+      }
+      if (getmsglist(/*TODO make arg const */UNCONST(Larg), _msgvec, 0) <= 0) {
+         if (options & OPT_HEADERSONLY)
+            exit_status = 1;
+         goto jleave;
+      }
+      if (options & OPT_HEADERSONLY) {
+         exit_status = 0;
+         goto jleave;
+      }
+      for (bot = msgCount, top = 0, i = 0; (j = _msgvec[i]) != 0; ++i) {
+         if (bot > j)
+            bot = j;
+         if (top < j)
+            top = j;
+      }
+   } else
+      bot = 1, top = msgCount;
+   print_headers(bot, top, (Larg != NULL)); /* TODO should take iterator!! */
+jleave:
+   NYD_LEAVE;
+}
 
-/*ARGSUSED*/
 FL void
 onintr(int s)
 {
-	if (handlerstacktop != NULL) {
-		handlerstacktop(s);
-		return;
-	}
-	safe_signal(SIGINT, onintr);
-	noreset = 0;
-	if (!inithdr)
-		sawcom = TRU1;
-	inithdr = 0;
-	while (sourcing)
-		unstack();
+   NYD_X; /* Signal handler */
 
-	termios_state_reset();
-	close_all_files();
+   if (handlerstacktop != NULL) {
+      handlerstacktop(s);
+      return;
+   }
+   safe_signal(SIGINT, onintr);
+   noreset = 0;
+   if (!_lex_inithdr)
+      sawcom = TRU1;
+   _lex_inithdr = 0;
+   while (sourcing)
+      unstack();
 
-	if (image >= 0) {
-		close(image);
-		image = -1;
-	}
-	if (interrupts != 1)
-		fprintf(stderr, tr(102, "Interrupt\n"));
-	safe_signal(SIGPIPE, _oldpipe);
-	reset(0);
+   termios_state_reset();
+   close_all_files();
+
+   if (image >= 0) {
+      close(image);
+      image = -1;
+   }
+   if (interrupts != 1)
+      fprintf(stderr, tr(102, "Interrupt\n"));
+   safe_signal(SIGPIPE, _oldpipe);
+   reset(0);
 }
 
-/*
- * When we wake up after ^Z, reprint the prompt.
- */
-static void
-stop(int s)
-{
-	sighandler_type old_action = safe_signal(s, SIG_DFL);
-	sigset_t nset;
-
-	sigemptyset(&nset);
-	sigaddset(&nset, s);
-	sigprocmask(SIG_UNBLOCK, &nset, (sigset_t *)NULL);
-	kill(0, s);
-	sigprocmask(SIG_BLOCK, &nset, (sigset_t *)NULL);
-	safe_signal(s, old_action);
-	if (_reset_on_stop) {
-		_reset_on_stop = 0;
-		reset(0);
-	}
-}
-
-/*
- * Branch here on hangup signal and simulate "exit".
- */
-/*ARGSUSED*/
-static void
-hangup(int s)
-{
-	(void)s;
-	/* nothing to do? */
-	exit(1);
-}
-
-/*
- * Announce the presence of the current Mail version,
- * give the message count, and print a header listing.
- */
 FL void
 announce(int printheaders)
 {
-	int vec[2], mdot;
+   int vec[2], mdot;
+   NYD_ENTER;
 
-	mdot = newfileinfo();
-	vec[0] = mdot;
-	vec[1] = 0;
-	dot = &message[mdot - 1];
-	if (printheaders && msgCount > 0 && ok_blook(header)) {
-		inithdr++;
-		headers(vec);
-		inithdr = 0;
-	}
+   mdot = newfileinfo();
+   vec[0] = mdot;
+   vec[1] = 0;
+   dot = &message[mdot - 1];
+   if (printheaders && msgCount > 0 && ok_blook(header)) {
+      ++_lex_inithdr;
+      c_headers(vec);
+      _lex_inithdr = 0;
+   }
+   NYD_LEAVE;
 }
 
-/*
- * Announce information about the file we are editing.
- * Return a likely place to set dot.
- */
 FL int
 newfileinfo(void)
 {
-	struct message *mp;
-	int u, n, mdot, d, s, hidden, moved;
+   struct message *mp;
+   int u, n, mdot, d, s, hidden, moved;
+   NYD_ENTER;
 
-	if (mb.mb_type == MB_VOID)
-		return 1;
-	mdot = getmdot(0);
-	s = d = hidden = moved =0;
-	for (mp = &message[0], n = 0, u = 0; mp < &message[msgCount]; mp++) {
-		if (mp->m_flag & MNEW)
-			n++;
-		if ((mp->m_flag & MREAD) == 0)
-			u++;
-		if ((mp->m_flag & (MDELETED|MSAVED)) == (MDELETED|MSAVED))
-			moved++;
-		if ((mp->m_flag & (MDELETED|MSAVED)) == MDELETED)
-			d++;
-		if ((mp->m_flag & (MDELETED|MSAVED)) == MSAVED)
-			s++;
-		if (mp->m_flag & MHIDDEN)
-			hidden++;
-	}
+   if (mb.mb_type == MB_VOID) {
+      mdot = 1;
+      goto jleave;
+   }
 
-	/* If displayname gets truncated the user effectively has no option to see
-	 * the full pathname of the mailbox, so print it at least for '? fi' */
-	printf(tr(103, "\"%s\": "),
-		(_update_mailname(NULL) ? displayname : mailname));
-	if (msgCount == 1)
-		printf(tr(104, "1 message"));
-	else
-		printf(tr(105, "%d messages"), msgCount);
-	if (n > 0)
-		printf(tr(106, " %d new"), n);
-	if (u-n > 0)
-		printf(tr(107, " %d unread"), u);
-	if (d > 0)
-		printf(tr(108, " %d deleted"), d);
-	if (s > 0)
-		printf(tr(109, " %d saved"), s);
-	if (moved > 0)
-		printf(tr(136, " %d moved"), moved);
-	if (hidden > 0)
-		printf(tr(139, " %d hidden"), hidden);
-	if (mb.mb_type == MB_CACHE)
-		printf(" [Disconnected]");
-	else if (mb.mb_perm == 0)
-		printf(tr(110, " [Read only]"));
-	printf("\n");
-	return(mdot);
+   mdot = getmdot(0);
+   s = d = hidden = moved =0;
+   for (mp = message, n = 0, u = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if (mp->m_flag & MNEW)
+         ++n;
+      if ((mp->m_flag & MREAD) == 0)
+         ++u;
+      if ((mp->m_flag & (MDELETED | MSAVED)) == (MDELETED | MSAVED))
+         ++moved;
+      if ((mp->m_flag & (MDELETED | MSAVED)) == MDELETED)
+         ++d;
+      if ((mp->m_flag & (MDELETED | MSAVED)) == MSAVED)
+         ++s;
+      if (mp->m_flag & MHIDDEN)
+         ++hidden;
+   }
+
+   /* If displayname gets truncated the user effectively has no option to see
+    * the full pathname of the mailbox, so print it at least for '? fi' */
+   printf(tr(103, "\"%s\": "),
+      (_update_mailname(NULL) ? displayname : mailname));
+   if (msgCount == 1)
+      printf(tr(104, "1 message"));
+   else
+      printf(tr(105, "%d messages"), msgCount);
+   if (n > 0)
+      printf(tr(106, " %d new"), n);
+   if (u-n > 0)
+      printf(tr(107, " %d unread"), u);
+   if (d > 0)
+      printf(tr(108, " %d deleted"), d);
+   if (s > 0)
+      printf(tr(109, " %d saved"), s);
+   if (moved > 0)
+      printf(tr(136, " %d moved"), moved);
+   if (hidden > 0)
+      printf(tr(139, " %d hidden"), hidden);
+   if (mb.mb_type == MB_CACHE)
+      printf(" [Disconnected]");
+   else if (mb.mb_perm == 0)
+      printf(tr(110, " [Read only]"));
+   printf("\n");
+jleave:
+   NYD_LEAVE;
+   return mdot;
 }
 
 FL int
 getmdot(int nmail)
 {
-	struct message	*mp;
-	char	*cp;
-	int	mdot;
-	enum mflag	avoid = MHIDDEN|MDELETED;
+   struct message *mp;
+   char *cp;
+   int mdot;
+   enum mflag avoid = MHIDDEN | MDELETED;
+   NYD_ENTER;
 
-	if (!nmail) {
-		if (ok_blook(autothread))
-			thread(NULL);
-		else if ((cp = ok_vlook(autosort)) != NULL) {
-			free(mb.mb_sorted);
-			mb.mb_sorted = sstrdup(cp);
-			sort(NULL);
-		}
-	}
-	if (mb.mb_type == MB_VOID)
-		return 1;
-	if (nmail)
-		for (mp = &message[0]; mp < &message[msgCount]; mp++)
-			if ((mp->m_flag & (MNEWEST|avoid)) == MNEWEST)
-				break;
-	if (!nmail || mp >= &message[msgCount]) {
-		for (mp = mb.mb_threaded ? threadroot : &message[0];
-				mb.mb_threaded ?
-					mp != NULL : mp < &message[msgCount];
-				mb.mb_threaded ?
-					mp = next_in_thread(mp) : mp++)
-			if ((mp->m_flag & (MNEW|avoid)) == MNEW)
-				break;
-	}
-	if (mb.mb_threaded ? mp == NULL : mp >= &message[msgCount])
-		for (mp = mb.mb_threaded ? threadroot : &message[0];
-				mb.mb_threaded ? mp != NULL:
-					mp < &message[msgCount];
-				mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
-			if (mp->m_flag & MFLAGGED)
-				break;
-	if (mb.mb_threaded ? mp == NULL : mp >= &message[msgCount])
-		for (mp = mb.mb_threaded ? threadroot : &message[0];
-				mb.mb_threaded ? mp != NULL:
-					mp < &message[msgCount];
-				mb.mb_threaded ? mp = next_in_thread(mp) : mp++)
-			if ((mp->m_flag & (MREAD|avoid)) == 0)
-				break;
-	if (mb.mb_threaded ? mp != NULL : mp < &message[msgCount])
-		mdot = mp - &message[0] + 1;
-	else if (ok_blook(showlast)) {
-		if (mb.mb_threaded) {
-			for (mp = this_in_thread(threadroot, -1); mp;
-					mp = prev_in_thread(mp))
-				if ((mp->m_flag & avoid) == 0)
-					break;
-			mdot = mp ? mp - &message[0] + 1 : msgCount;
-		} else {
-			for (mp = &message[msgCount-1]; mp >= &message[0]; mp--)
-				if ((mp->m_flag & avoid) == 0)
-					break;
-			mdot = mp >= &message[0] ? mp-&message[0]+1 : msgCount;
-		}
-	} else if (mb.mb_threaded) {
-		for (mp = threadroot; mp; mp = next_in_thread(mp))
-			if ((mp->m_flag & avoid) == 0)
-				break;
-		mdot = mp ? mp - &message[0] + 1 : 1;
-	} else {
-		for (mp = &message[0]; mp < &message[msgCount]; mp++)
-			if ((mp->m_flag & avoid) == 0)
-				break;
-		mdot = mp < &message[msgCount] ? mp-&message[0]+1 : 1;
-	}
-	return mdot;
+   if (!nmail) {
+      if (ok_blook(autothread))
+         c_thread(NULL);
+      else if ((cp = ok_vlook(autosort)) != NULL) {
+         free(mb.mb_sorted);
+         mb.mb_sorted = sstrdup(cp);
+         c_sort(NULL);
+      }
+   }
+   if (mb.mb_type == MB_VOID) {
+      mdot = 1;
+      goto jleave;
+   }
+
+   if (nmail)
+      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         if ((mp->m_flag & (MNEWEST | avoid)) == MNEWEST)
+            break;
+
+   if (!nmail || PTRCMP(mp, >=, message + msgCount)) {
+      if (mb.mb_threaded) {
+         for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
+            if ((mp->m_flag & (MNEW | avoid)) == MNEW)
+               break;
+      } else {
+         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+            if ((mp->m_flag & (MNEW | avoid)) == MNEW)
+               break;
+      }
+   }
+
+   if ((mb.mb_threaded ? (mp == NULL) : PTRCMP(mp, >=, message + msgCount))) {
+      if (mb.mb_threaded) {
+         for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
+            if (mp->m_flag & MFLAGGED)
+               break;
+      } else {
+         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+            if (mp->m_flag & MFLAGGED)
+               break;
+      }
+   }
+
+   if ((mb.mb_threaded ? (mp == NULL) : PTRCMP(mp, >=, message + msgCount))) {
+      if (mb.mb_threaded) {
+         for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
+            if (!(mp->m_flag & (MREAD | avoid)))
+               break;
+      } else {
+         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+            if (!(mp->m_flag & (MREAD | avoid)))
+               break;
+      }
+   }
+
+   if ((mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
+      mdot = (int)PTR2SIZE(mp - message + 1);
+   else if (ok_blook(showlast)) {
+      if (mb.mb_threaded) {
+         for (mp = this_in_thread(threadroot, -1); mp;
+               mp = prev_in_thread(mp))
+            if (!(mp->m_flag & avoid))
+               break;
+         mdot = (mp != NULL) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
+      } else {
+         for (mp = message + msgCount - 1; mp >= message; --mp)
+            if (!(mp->m_flag & avoid))
+               break;
+         mdot = (mp >= message) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
+      }
+   } else if (mb.mb_threaded) {
+      for (mp = threadroot; mp; mp = next_in_thread(mp))
+         if (!(mp->m_flag & avoid))
+            break;
+      mdot = (mp != NULL) ? (int)PTR2SIZE(mp - message + 1) : 1;
+   } else {
+      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         if (!(mp->m_flag & avoid))
+            break;
+      mdot = PTRCMP(mp, <, message + msgCount)
+            ? (int)PTR2SIZE(mp - message + 1) : 1;
+   }
+jleave:
+   NYD_LEAVE;
+   return mdot;
 }
 
 FL void
-initbox(const char *name)
+initbox(char const *name)
 {
-	char *tempMesg;
-	int dummy;
+   char *tempMesg;
+   NYD_ENTER;
 
-	if (mb.mb_type != MB_VOID)
-		(void)n_strlcpy(prevfile, mailname, MAXPATHLEN);
-	_update_mailname(name != mailname ? name : NULL);
-	if ((mb.mb_otf = Ftemp(&tempMesg, "tmpbox", "w", 0600, 0)) == NULL) {
-		perror(tr(87, "temporary mail message file"));
-		exit(1);
-	}
-	(void)fcntl(fileno(mb.mb_otf), F_SETFD, FD_CLOEXEC);
-	if ((mb.mb_itf = safe_fopen(tempMesg, "r", &dummy)) == NULL) {
-		perror(tr(87, "temporary mail message file"));
-		exit(1);
-	}
-	(void)fcntl(fileno(mb.mb_itf), F_SETFD, FD_CLOEXEC);
-	rm(tempMesg);
-	Ftfree(&tempMesg);
-	msgCount = 0;
-	if (message) {
-		free(message);
-		message = NULL;
-		msgspace = 0;
-	}
-	mb.mb_threaded = 0;
-	if (mb.mb_sorted != NULL) {
-		free(mb.mb_sorted);
-		mb.mb_sorted = NULL;
-	}
+   if (mb.mb_type != MB_VOID)
+      n_strlcpy(prevfile, mailname, PATH_MAX);
+
+   _update_mailname(name != mailname ? name : NULL);
+
+   if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
+         NULL) {
+      perror(tr(87, "temporary mail message file"));
+      exit(1);
+   }
+   if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
+      perror(tr(87, "temporary mail message file"));
+      exit(1);
+   }
+   Ftmp_release(&tempMesg);
+
+   message_reset();
+   mb.mb_threaded = 0;
+   if (mb.mb_sorted != NULL) {
+      free(mb.mb_sorted);
+      mb.mb_sorted = NULL;
+   }
 #ifdef HAVE_IMAP
-	mb.mb_flags = MB_NOFLAGS;
+   mb.mb_flags = MB_NOFLAGS;
 #endif
-	prevdot = NULL;
-	dot = NULL;
-	did_print_dot = FAL0;
+   prevdot = NULL;
+   dot = NULL;
+   did_print_dot = FAL0;
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_DOCSTRINGS
@@ -1305,19 +1341,20 @@ print_comm_docstr(char const *comm)
    bool_t rv = FAL0;
    struct cmd_ghost *cg;
    struct cmd const *cp;
+   NYD_ENTER;
 
    /* Ghosts take precedence */
    for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-      if (strcmp(comm, cg->name) == 0) {
+      if (!strcmp(comm, cg->name)) {
          printf("%s -> <%s>\n", comm, cg->cmd.s);
          rv = TRU1;
          goto jleave;
       }
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp) {
-      if (cp->func == &ccmdnotsupp)
+      if (cp->func == &c_cmdnotsupp)
          continue;
-      if (strcmp(comm, cp->name) == 0)
+      if (!strcmp(comm, cp->name))
          printf("%s: %s\n", comm, tr(cp->docid, cp->doc));
       else if (is_prefix(comm, cp->name))
          printf("%s (%s): %s\n", comm, cp->name, tr(cp->docid, cp->doc));
@@ -1327,8 +1364,9 @@ print_comm_docstr(char const *comm)
       break;
    }
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 #endif
 
-/* vim:set fenc=utf-8:s-it-mode (TODO only partial true) */
+/* vim:set fenc=utf-8:s-it-mode */

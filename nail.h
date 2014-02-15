@@ -2,7 +2,7 @@
  *@ Header inclusion, macros, constants, types and the global var declarations.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -66,15 +66,22 @@
 # include <inttypes.h>
 #endif
 
+#ifdef HAVE_C90AMEND1
+# include <wchar.h>
+# include <wctype.h>
+#endif
 #ifdef HAVE_DEBUG
 # include <assert.h>
 #endif
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_C90AMEND1
-# include <wchar.h>
-# include <wctype.h>
+#ifdef HAVE_REGEX
+# include <regex.h>
+#endif
+
+#ifdef HAVE_OPENSSL_MD5
+# include <openssl/md5.h>
 #endif
 
 /*
@@ -86,15 +93,12 @@
 # define NI_MAXHOST     1025
 #endif
 
-#ifndef MAXPATHLEN
-# ifdef PATH_MAX
-#  define MAXPATHLEN    PATH_MAX
+#ifndef PATH_MAX
+# ifdef MAXPATHLEN
+#  define PATH_MAX      MAXPATHLEN
 # else
-#  define MAXPATHLEN    1024
+#  define PATH_MAX      1024        /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
 # endif
-#elif defined PATH_MAX && MAXPATHLEN < PATH_MAX
-# undef MAXPATHLEN
-# define MAXPATHLEN     PATH_MAX
 #endif
 
 #ifndef STDIN_FILENO
@@ -126,10 +130,12 @@
 #define CBAD            (-15555)
 #define APPEND                   /* New mail goes to end of mailbox */
 #define ESCAPE          '~'      /* Default escape for sending */
+#define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
+#define NYD_CALLS_MAX   1000     /* Number of NYD calls that are remembered */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
@@ -282,6 +288,15 @@
 # endif
 #endif
 
+#undef __FUN__
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define __FUN__        __func__
+#elif __PREREQ(3, 4)
+# define __FUN__        __FUNCTION__
+#else
+# define __FUN__        uagent   /* Something that is not a literal */
+#endif
+
 #if defined __predict_true && defined __predict_false
 # define LIKELY(X)      __predict_true(X)
 # define UNLIKELY(X)    __predict_false(X)
@@ -423,7 +438,7 @@ typedef signed long     si64_t;
 
 /* (So that we can use UICMP() for size_t comparison, too) */
 typedef size_t          uiz_t;
-/*typedef ssize_t         siz_t;*/
+typedef ssize_t         siz_t;
 
 #ifndef UINTPTR_MAX
 # ifdef SIZE_MAX
@@ -447,9 +462,10 @@ typedef size_t          uiz_t;
 # define ZFMT           "lu"
 #endif
 
-typedef enum {FAL0, TRU1}  bool_t;
+enum {FAL0, TRU1};
+typedef si8_t           bool_t;
 
-typedef void (             *sighandler_type)(int);
+typedef void (          *sighandler_type)(int);
 
 enum user_options {
    OPT_NONE,
@@ -457,21 +473,22 @@ enum user_options {
    OPT_VERBOSE    = 1u<< 1,   /* -v / *verbose* */
    OPT_EXISTONLY  = 1u<< 2,   /* -e */
    OPT_HEADERSONLY = 1u<< 3,  /* -H */
-   OPT_NOSRC      = 1u<< 4,   /* -n */
-   OPT_E_FLAG     = 1u<< 5,   /* -E / *skipemptybody* */
-   OPT_F_FLAG     = 1u<< 6,   /* -F */
-   OPT_N_FLAG     = 1u<< 7,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<< 8,   /* -R */
-   OPT_r_FLAG     = 1u<< 9,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<10,   /* -t */
-   OPT_u_FLAG     = 1u<<11,   /* -u given, or USER != getpwnam(3) */
-   OPT_TILDE_FLAG = 1u<<12,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<13,   /* -# */
+   OPT_HEADERLIST = 1u<< 4,   /* -L */
+   OPT_NOSRC      = 1u<< 5,   /* -n */
+   OPT_E_FLAG     = 1u<< 6,   /* -E / *skipemptybody* */
+   OPT_F_FLAG     = 1u<< 7,   /* -F */
+   OPT_N_FLAG     = 1u<< 8,   /* -N / *header* */
+   OPT_R_FLAG     = 1u<< 9,   /* -R */
+   OPT_r_FLAG     = 1u<<10,   /* -r (plus option_r_arg) */
+   OPT_t_FLAG     = 1u<<11,   /* -t */
+   OPT_u_FLAG     = 1u<<12,   /* -u given, or USER != getpwnam(3) */
+   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<14,   /* -# */
 
-   OPT_SENDMODE   = 1u<<14,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<15,  /* isatty(0) */
+   OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
+   OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<16
+   OPT_TTYOUT     = 1u<<17
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -479,6 +496,7 @@ enum user_options {
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
    EXIT_ERR       = EXIT_FAILURE,
+   EXIT_USE       = 2,
    EXIT_COLL_ABORT = 1<<1,    /* Message collection was aborted */
    EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
 };
@@ -490,6 +508,12 @@ enum fexp_mode {
    FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
    FEXP_SILENT    = 1<<3,     /* Don't print but only return errors */
    FEXP_MULTIOK   = 1<<4      /* Expansion to many entries is ok */
+};
+
+enum flock_type {
+   FLOCK_READ,
+   FLOCK_WRITE,
+   FLOCK_UNLOCK
 };
 
 /* <0 means "stop" unless *prompt* extensions are enabled. */
@@ -567,6 +591,20 @@ enum mimecontent {
    MIME_DISCARD      /* content is discarded */
 };
 
+enum oflags {
+   OF_RDONLY      = 1<<0,
+   OF_WRONLY      = 1<<1,
+   OF_RDWR        = 1<<2,
+   OF_APPEND      = 1<<3,
+   OF_CREATE      = 1<<4,
+   OF_TRUNC       = 1<<5,
+   OF_EXCL        = 1<<6,
+   OF_CLOEXEC     = 1<<7,
+   OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
+   OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
+   OF_REGISTER    = 1<<10     /* Register file in our file table */
+};
+
 enum tdflags {
    TD_NONE,                   /* no display conversion */
    TD_ISPR        = 1<<0,     /* use isprint() checks */
@@ -590,11 +628,11 @@ enum protocol {
 };
 
 #ifdef HAVE_SSL
-enum ssl_vrfy_level {
-   VRFY_IGNORE,
-   VRFY_WARN,
-   VRFY_ASK,
-   VRFY_STRICT
+enum ssl_verify_level {
+   SSL_VERIFY_IGNORE,
+   SSL_VERIFY_WARN,
+   SSL_VERIFY_ASK,
+   SSL_VERIFY_STRICT
 };
 #endif
 
@@ -806,20 +844,28 @@ struct time_current {
 struct quoteflt {
    FILE        *qf_os;        /* Output stream */
    char const  *qf_pfix;
-   ui_it       qf_pfix_len;   /* Length of prefix: 0: bypass */
-   ui_it       qf_qfold_min;  /* Simple way: wrote prefix? */
+   ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
+   ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
 #ifdef HAVE_QUOTE_FOLD
-   ui_it       qf_qfold_max;  /* Otherwise: line lengths */
-   uc_it       qf_state;      /* *quote-fold* state machine */
+   ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
+   ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
-   uc_it       __dummy[2];
-   ui_it       qf_wscnt;      /* Whitespace count */
-   ui_it       qf_brkl;       /* Breakpoint */
-   ui_it       qf_brkw;       /* Visual width, breakpoint */
-   ui_it       qf_datw;       /* Current visual output line width */
+   ui8_t       __dummy[2];
+   ui32_t      qf_wscnt;      /* Whitespace count */
+   ui32_t      qf_brkl;       /* Breakpoint */
+   ui32_t      qf_brkw;       /* Visual width, breakpoint */
+   ui32_t      qf_datw;       /* Current visual output line width */
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];
+#endif
+};
+
+struct search_expr {
+   char const  *ss_where;  /* to search for the expression (not always used) */
+   char const  *ss_sexpr;  /* String search expression; NULL: use .ss_reexpr */
+#ifdef HAVE_REGEX
+   regex_t     ss_reexpr;
 #endif
 };
 
@@ -955,7 +1001,7 @@ struct mimepart {
    enum mflag  m_flag;        /* flags */
    enum havespec m_have;      /* downloaded parts of the part */
 #ifdef HAVE_SPAM
-   ui_it       m_spamscore;   /* Spam score as int, 24:8 bits */
+   ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
    int         m_block;       /* block number of this part */
    size_t      m_offset;      /* offset in block of part */
@@ -982,7 +1028,7 @@ struct message {
    enum mflag  m_flag;        /* flags */
    enum havespec m_have;      /* downloaded parts of the message */
 #ifdef HAVE_SPAM
-   ui_it       m_spamscore;   /* Spam score as int, 24:8 bits */
+   ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
    int         m_block;       /* block number of this message */
    size_t      m_offset;      /* offset in block of message */
@@ -1003,7 +1049,7 @@ struct message {
    unsigned long m_uid;       /* IMAP unique identifier */
 #endif
    char        *m_maildir_file;  /* original maildir file of msg */
-   unsigned    m_maildir_hash;   /* hash of file name in maildir sub */
+   ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
 };
 
@@ -1190,18 +1236,6 @@ enum ltoken {
 
 #define REGDEP          2     /* Maximum regret depth. */
 
-/* Constants for conditional commands.  These describe whether we should be
- * executing stuff or not */
-enum condition {
-   COND_ANY       = 0,        /* Execute in send or receive mode */
-   COND_RCV       = 1,        /* Execute in receive mode only */
-   COND_SEND      = 2,        /* Execute in send mode only */
-   COND_TERM      = 3,        /* Execute only if stdin is a tty */
-   COND_NOTERM    = 4,        /* Execute only if stdin not tty */
-   COND_EXEC      = 5,        /* Do execute this block */
-   COND_NOEXEC    = 6         /* Don't execute this block */
-};
-
 /* For the 'shortcut' and 'unshortcut' functionality */
 struct shortcut {
    struct shortcut *sh_next;  /* next shortcut in list */
@@ -1332,7 +1366,7 @@ struct cw {
 #ifdef HAVE_FCHDIR
    int         cw_fd;
 #else
-   char        cw_wd[MAXPATHLEN];
+   char        cw_wd[PATH_MAX];
 #endif
 };
 
@@ -1391,12 +1425,11 @@ VL int         noreset;             /* String resets suspended */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
-VL enum condition cond_state;          /* State of conditional exc. */
 VL struct mailbox mb;                  /* Current mailbox */
 VL int            image;               /* File descriptor for msg image */
-VL char           mailname[MAXPATHLEN]; /* Name of current file */
+VL char           mailname[PATH_MAX];  /* Name of current file */
 VL char           displayname[80 - 40]; /* Prettyfied for display */
-VL char           prevfile[MAXPATHLEN]; /* Name of previous file */
+VL char           prevfile[PATH_MAX];  /* Name of previous file */
 VL char const     *account_name;       /* Current account name or NULL */
 VL off_t          mailsize;            /* Size of system mailbox */
 VL struct message *dot;                /* Pointer to current message */
@@ -1404,7 +1437,6 @@ VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
-VL int            msgspace;            /* Number of allocated struct m */
 
 VL struct grouphead  *groups[HSHSIZE]; /* Pointer to active groups */
 VL struct ignoretab  ignore[2];        /* ignored and retained fields
@@ -1423,7 +1455,7 @@ VL struct colour_table  *colour_table;
 #endif
 
 #ifdef HAVE_SSL
-VL enum ssl_vrfy_level  ssl_vrfy_level; /* SSL verification level */
+VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 #endif
 
 #ifdef HAVE_ICONV

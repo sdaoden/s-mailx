@@ -2,7 +2,23 @@
  *@ TTY interaction.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ */
+/* The NCL version is
+ *
+ * Copyright (c) 2013 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -35,22 +51,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-/* The NCL version is
- *
- * Copyright (c) 2013 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #ifndef HAVE_AMALGAMATION
@@ -101,14 +101,15 @@ do {\
 # define C_HISTORY_SHARED \
    char **argv = v;\
    long entry;\
+   NYD_ENTER;\
 \
    if (*argv == NULL)\
       goto jlist;\
    if (argv[1] != NULL)\
       goto jerr;\
-   if (asccasecmp(*argv, "show") == 0)\
+   if (!asccasecmp(*argv, "show"))\
       goto jlist;\
-   if (asccasecmp(*argv, "clear") == 0)\
+   if (!asccasecmp(*argv, "clear"))\
       goto jclear;\
    if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
@@ -117,6 +118,7 @@ jerr:\
       "<show> (default), <clear> or select <NO> from editor history"));\
    v = NULL;\
 jleave:\
+   NYD_LEAVE;\
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 #endif /* HAVE_HISTORY */
 
@@ -129,22 +131,52 @@ jleave:\
  */
 
 FL bool_t
-yorn(char const *msg)
+getapproval(char const *prompt, bool_t noninteract_default)
 {
-   char *cp;
+   bool_t rv;
+   NYD_ENTER;
 
-   if (!(options & OPT_INTERACTIVE))
-      return TRU1;
-   do if ((cp = readstr_input(msg, NULL)) == NULL)
-      return FAL0;
-   while (*cp != 'y' && *cp != 'Y' && *cp != 'n' && *cp != 'N');
-   return (*cp == 'y' || *cp == 'Y');
+   if (!(options & OPT_INTERACTIVE)) {
+      rv = noninteract_default;
+      goto jleave;
+   }
+
+   if (prompt == NULL)
+      prompt = tr(264, "Continue (y/n)? ");
+
+   rv = FAL0;
+   if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
+         &termios_state.ts_linesize, NULL) >= 0)
+      switch (termios_state.ts_linebuf[0]) {
+      case 'y':
+      case 'Y':
+         rv = TRU1;
+         /* FALLTHRU */
+      default:
+         break;
+      }
+   termios_state_reset();
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+yorn(char const *msg) /* TODO obsolete */
+{
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = getapproval(msg, TRU1);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL char *
 getuser(char const *query)
 {
    char *user = NULL;
+   NYD_ENTER;
 
    if (query == NULL)
       query = tr(509, "User: ");
@@ -153,6 +185,7 @@ getuser(char const *query)
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
    termios_state_reset();
+   NYD_LEAVE;
    return user;
 }
 
@@ -161,16 +194,15 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 {
    struct termios tios;
    char *pass = NULL;
+   NYD_ENTER;
 
    if (query == NULL)
       query = tr(510, "Password: ");
    fputs(query, stdout);
    fflush(stdout);
 
-   /*
-    * FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
-    * foreground pgrp, and can fail with EINTR!!
-    */
+   /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
+    * FIXME foreground pgrp, and can fail with EINTR!! */
    if (options & OPT_TTYIN) {
       tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
@@ -187,14 +219,20 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 
    if (options & OPT_TTYIN)
       fputc('\n', stdout);
+   NYD_LEAVE;
    return pass;
 }
 
 FL bool_t
 getcredentials(char **user, char **pass)
 {
-   bool_t rv = TRU1;
-   char *u = *user, *p = *pass;
+   bool_t rv;
+   char *u, *p;
+   NYD_ENTER;
+
+   rv = TRU1;
+   u = *user;
+   p = *pass;
 
    if (u == NULL) {
       if ((u = getuser(NULL)) == NULL)
@@ -209,6 +247,7 @@ getcredentials(char **user, char **pass)
          rv = FAL0;
       *pass = p;
    }
+   NYD_LEAVE;
    return rv;
 }
 
@@ -226,12 +265,14 @@ static int  _rl_pre_input(void);
 static int
 _rl_pre_input(void)
 {
+   NYD_ENTER;
    /* Handle leftover data from \ escaped former line */
    rl_extend_line_buffer(_rl_buflen + 10);
    memcpy(rl_line_buffer, _rl_buf, _rl_buflen + 1);
    rl_point = rl_end = _rl_buflen;
    rl_pre_input_hook = (rl_hook_func_t*)NULL;
    rl_redisplay();
+   NYD_LEAVE;
    return 0;
 }
 
@@ -242,6 +283,7 @@ tty_init(void)
    long hs;
    char *v;
 # endif
+   NYD_ENTER;
 
    rl_readline_name = UNCONST(uagent);
 # ifdef HAVE_HISTORY
@@ -259,6 +301,7 @@ tty_init(void)
    if (v != NULL)
       read_history(v);
 # endif
+   NYD_LEAVE;
 }
 
 FL void
@@ -266,18 +309,22 @@ tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
    char *v;
+# endif
+   NYD_ENTER;
 
+# ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
    if (v != NULL)
       write_history(v);
 # endif
-   ;
+   NYD_LEAVE;
 }
 
 FL void
 tty_signal(int sig)
 {
    sigset_t nset, oset;
+   NYD_X; /* Signal handler */
 
    switch (sig) {
 # ifdef SIGWINCH
@@ -310,6 +357,7 @@ FL int
 {
    int nn;
    char *line;
+   NYD_ENTER;
 
    if (n > 0) {
       _rl_buf = *linebuf;
@@ -336,12 +384,15 @@ FL int
    (*linebuf)[n] = '\0';
    nn = (int)n;
 jleave:
+   NYD_LEAVE;
    return nn;
 }
 
 FL void
 tty_addhist(char const *s)
 {
+   NYD_ENTER;
+   UNUSED(s);
 # ifdef HAVE_HISTORY
    _CL_CHECK_ADDHIST(s, goto jleave);
    hold_all_sigs();  /* XXX too heavy */
@@ -349,7 +400,7 @@ tty_addhist(char const *s)
    rele_all_sigs();  /* XXX remove jumps */
 jleave:
 # endif
-   UNUSED(s);
+   NYD_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
@@ -360,23 +411,22 @@ c_history(void *v)
 
 jlist: {
    FILE *fp;
-   char *cp;
    HISTORY_STATE *hs;
    HIST_ENTRY **hl;
    ul_it i, b;
 
-   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
       perror("tmpfile");
       v = NULL;
       goto jleave;
    }
-   rm(cp);
-   Ftfree(&cp);
 
    hs = history_get_history_state();
 
    for (i = (ul_it)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
-      size_t sl = strlen(cp = (*--hl)->line);
+      char *cp = (*--hl)->line;
+      size_t sl = strlen(cp);
       fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n", i, cp, b, sl);
       b += sl;
    }
@@ -430,6 +480,7 @@ tty_init(void)
    long hs;
    char *v;
 # endif
+   NYD_ENTER;
 
 # ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
@@ -469,6 +520,7 @@ tty_init(void)
    if (v != NULL)
       history(_el_hcom, &he, H_LOAD, v);
 # endif
+   NYD_LEAVE;
 }
 
 FL void
@@ -478,6 +530,7 @@ tty_destroy(void)
    HistEvent he;
    char *v;
 # endif
+   NYD_ENTER;
 
    el_end(_el_el);
 
@@ -487,11 +540,13 @@ tty_destroy(void)
       history(_el_hcom, &he, H_SAVE, v);
    history_end(_el_hcom);
 # endif
+   NYD_LEAVE;
 }
 
 FL void
 tty_signal(int sig)
 {
+   NYD_X; /* Signal handler */
    switch (sig) {
 # ifdef SIGWINCH
    case SIGWINCH:
@@ -509,6 +564,7 @@ FL int
 {
    int nn;
    char const *line;
+   NYD_ENTER;
 
    _el_prompt = (prompt != NULL) ? prompt : "";
    if (n > 0)
@@ -531,6 +587,7 @@ FL int
    memcpy(*linebuf, line, n);
    (*linebuf)[n] = '\0';
 jleave:
+   NYD_LEAVE;
    return nn;
 }
 
@@ -543,13 +600,17 @@ tty_addhist(char const *s)
     * xxx maybe it would be better to hook the ptfs instead? */
    HistEvent he;
    int i;
+# endif
+   NYD_ENTER;
+   UNUSED(s);
 
+# ifdef HAVE_HISTORY
    _CL_CHECK_ADDHIST(s, goto jleave);
 
    hold_all_sigs(); /* XXX too heavy, yet we jump away! */
    for (i = history(_el_hcom, &he, H_FIRST); i >= 0;
          i = history(_el_hcom, &he, H_NEXT))
-      if (strcmp(he.str, s) == 0) {
+      if (!strcmp(he.str, s)) {
          history(_el_hcom, &he, H_DEL, he.num);
          break;
       }
@@ -557,7 +618,7 @@ tty_addhist(char const *s)
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
 # endif
-   UNUSED(s);
+   NYD_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
@@ -569,17 +630,15 @@ c_history(void *v)
 jlist: {
    HistEvent he;
    FILE *fp;
-   char *cp;
    size_t i, b;
    int x;
 
-   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
       perror("tmpfile");
       v = NULL;
       goto jleave;
    }
-   rm(cp);
-   Ftfree(&cp);
 
    i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
    b = 0;
@@ -669,7 +728,7 @@ struct xtios {
 
 struct cell {
    wchar_t  wc;
-   ui_it    count;
+   ui32_t   count;
    char     cbuf[MB_LEN_MAX * 2];   /* .. plus reset shift sequence */
 };
 
@@ -754,6 +813,7 @@ static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
 static void
 _ncl_sigs_up(void)
 {
+   NYD_ENTER;
    if (_ncl_oint.sint == -1)
       _ncl_oint.shdl = safe_signal(SIGINT, &tty_signal);
    if (_ncl_oquit.sint == -1)
@@ -768,6 +828,7 @@ _ncl_sigs_up(void)
       _ncl_ottin.shdl = safe_signal(SIGTTIN, &tty_signal);
    if (_ncl_ottou.sint == -1)
       _ncl_ottou.shdl  = safe_signal(SIGTTOU, &tty_signal);
+   NYD_LEAVE;
 }
 
 static void
@@ -775,6 +836,7 @@ _ncl_sigs_down(void)
 {
    /* aaah.. atomic cas would be nice (but isn't it all redundant?) */
    sighandler_type st;
+   NYD_ENTER;
 
    if (_ncl_ottou.sint != -1) {
       st = _ncl_ottou.shdl, _ncl_ottou.sint = -1;
@@ -804,12 +866,14 @@ _ncl_sigs_down(void)
       st = _ncl_oint.shdl, _ncl_oint.sint = -1;
       safe_signal(SIGINT, st);
    }
+   NYD_LEAVE;
 }
 
 static void
 _ncl_term_mode(bool_t raw)
 {
    struct termios *tiosp = &_ncl_tios.told;
+   NYD_ENTER;
 
    if (!raw)
       goto jleave;
@@ -825,25 +889,30 @@ _ncl_term_mode(bool_t raw)
    tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
 jleave:
    tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
+   NYD_LEAVE;
 }
 
 static void
 _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
 {
-   size_t i = (l->topins + no) * sizeof(struct cell) + 2 * sizeof(struct cell);
+   size_t i;
+   NYD_ENTER;
 
+   i = (l->topins + no) * sizeof(struct cell) + 2 * sizeof(struct cell);
    if (i > *l->x_bufsize) {
       i <<= 1;
       *l->x_bufsize = i;
       l->line.cbuf =
       *l->x_buf = (srealloc)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
    }
+   NYD_LEAVE;
 }
 
 static void
 _ncl_bs_eof_dvup(struct cell *cap, size_t i)
 {
    size_t j;
+   NYD_ENTER;
 
    if (i > 0)
       memmove(cap, cap + 1, i * sizeof(*cap));
@@ -854,16 +923,21 @@ _ncl_bs_eof_dvup(struct cell *cap, size_t i)
    fputs(" \b", stdout);
    for (j = 0; j < i; ++j)
       putchar('\b');
+   NYD_LEAVE;
 }
 
 static ssize_t
 _ncl_wboundary(struct line *l, ssize_t dir)
 {
-   size_t c = l->cursor, t = l->topins, i;
+   size_t c, t, i;
    struct cell *cap;
    bool_t anynon;
+   NYD_ENTER;
 
+   c = l->cursor;
+   t = l->topins;
    i = (size_t)-1;
+
    if (dir < 0) {
       if (c == 0)
          goto jleave;
@@ -888,6 +962,7 @@ _ncl_wboundary(struct line *l, ssize_t dir)
          break;
    }
 jleave:
+   NYD_LEAVE;
    return (ssize_t)i;
 }
 
@@ -895,6 +970,7 @@ static ssize_t
 _ncl_cell2dat(struct line *l)
 {
    size_t len = 0, i;
+   NYD_ENTER;
 
    if (l->topins > 0)
       for (i = 0; i < l->topins; ++i) {
@@ -903,6 +979,7 @@ _ncl_cell2dat(struct line *l)
          len += cap->count;
       }
    l->line.cbuf[len] = '\0';
+   NYD_LEAVE;
    return (ssize_t)len;
 }
 
@@ -912,6 +989,7 @@ _ncl_cell2save(struct line *l)
 {
    size_t len, i;
    struct cell *cap;
+   NYD_ENTER;
 
    l->savec.s = NULL, l->savec.l = 0;
    if (l->topins == 0)
@@ -929,27 +1007,33 @@ _ncl_cell2save(struct line *l)
    }
    l->savec.s[len] = '\0';
 jleave:
-   ;
+   NYD_LEAVE;
 }
 # endif
 
 static void
 _ncl_khome(struct line *l, bool_t dobell)
 {
-   size_t c = l->cursor;
+   size_t c;
+   NYD_ENTER;
 
+   c = l->cursor;
    if (c > 0) {
       l->cursor = 0;
       while (c-- != 0)
          putchar('\b');
    } else if (dobell)
       putchar('\a');
+   NYD_LEAVE;
 }
 
 static void
 _ncl_kend(struct line *l)
 {
-   ssize_t i = (ssize_t)(l->topins - l->cursor);
+   ssize_t i;
+   NYD_ENTER;
+
+   i = (ssize_t)(l->topins - l->cursor);
 
    if (i > 0) {
       l->cursor = l->topins;
@@ -957,12 +1041,17 @@ _ncl_kend(struct line *l)
          fputs(l->nd, stdout);
    } else
       putchar('\a');
+   NYD_LEAVE;
 }
 
 static void
 _ncl_kbs(struct line *l)
 {
-   ssize_t c = l->cursor, t = l->topins;
+   ssize_t c, t;
+   NYD_ENTER;
+
+   c = l->cursor;
+   t = l->topins;
 
    if (c > 0) {
       putchar('\b');
@@ -972,12 +1061,17 @@ _ncl_kbs(struct line *l)
       _ncl_bs_eof_dvup(l->line.cells + c, t);
    } else
       putchar('\a');
+   NYD_LEAVE;
 }
 
 static void
 _ncl_kkill(struct line *l, bool_t dobell)
 {
-   size_t j, c = l->cursor, i = (size_t)(l->topins - c);
+   size_t j, c, i;
+   NYD_ENTER;
+
+   c = l->cursor;
+   i = (size_t)(l->topins - c);
 
    if (i > 0) {
       l->topins = c;
@@ -987,13 +1081,19 @@ _ncl_kkill(struct line *l, bool_t dobell)
          putchar('\b');
    } else if (dobell)
       putchar('\a');
+   NYD_LEAVE;
 }
 
 static ssize_t
 _ncl_keof(struct line *l)
 {
-   size_t c = l->cursor, t = l->topins;
-   ssize_t i = (ssize_t)(t - c);
+   size_t c, t;
+   ssize_t i;
+   NYD_ENTER;
+
+   c = l->cursor;
+   t = l->topins;
+   i = (ssize_t)(t - c);
 
    if (i > 0) {
       l->topins = --t;
@@ -1006,27 +1106,32 @@ _ncl_keof(struct line *l)
       putchar('\a');
       i = 0;
    }
+   NYD_LEAVE;
    return i;
 }
 
 static void
 _ncl_kleft(struct line *l)
 {
+   NYD_ENTER;
    if (l->cursor > 0) {
       --l->cursor;
       putchar('\b');
    } else
       putchar('\a');
+   NYD_LEAVE;
 }
 
 static void
 _ncl_kright(struct line *l)
 {
+   NYD_ENTER;
    if (l->cursor < l->topins) {
       ++l->cursor;
       fputs(l->nd, stdout);
    } else
       putchar('\a');
+   NYD_LEAVE;
 }
 
 static void
@@ -1034,6 +1139,7 @@ _ncl_krefresh(struct line *l)
 {
    struct cell *cap;
    size_t i;
+   NYD_ENTER;
 
    putchar('\r');
    if (l->prompt != NULL && *l->prompt != '\0')
@@ -1042,14 +1148,16 @@ _ncl_krefresh(struct line *l)
       fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
    for (i = l->topins - l->cursor; i > 0; --i)
       putchar('\b');
+   NYD_LEAVE;
 }
 
 static void
 _ncl_kbwddelw(struct line *l)
 {
    ssize_t i;
-   size_t c = l->cursor, t, j;
+   size_t c, t, j;
    struct cell *cap;
+   NYD_ENTER;
 
    i = _ncl_wboundary(l, -1);
    if (i <= 0) {
@@ -1078,13 +1186,16 @@ _ncl_kbwddelw(struct line *l)
    for (j = t - c; j > 0; --j)
       putchar('\b');
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 static void
 _ncl_kgow(struct line *l, ssize_t dir)
 {
-   ssize_t i = _ncl_wboundary(l, dir);
+   ssize_t i;
+   NYD_ENTER;
+
+   i = _ncl_wboundary(l, dir);
    if (i <= 0) {
       if (i < 0)
          putchar('\a');
@@ -1101,7 +1212,7 @@ _ncl_kgow(struct line *l, ssize_t dir)
          fputs(l->nd, stdout);
    }
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 static void
@@ -1112,6 +1223,7 @@ _ncl_kother(struct line *l, wchar_t wc)
    mbstate_t ps;
    struct cell cell, *cap;
    size_t i, c;
+   NYD_ENTER;
 
    /* First init a cell and see wether we'll really handle this wc */
    cell.wc = wc;
@@ -1146,7 +1258,7 @@ _ncl_kother(struct line *l, wchar_t wc)
    while (c-- != 0)
       putchar('\b');
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
@@ -1154,6 +1266,7 @@ static size_t
 __ncl_khist_shared(struct line *l, struct hist *hp)
 {
    size_t rv;
+   NYD_ENTER;
 
    if ((l->hist = hp) != NULL) {
       l->defc.s = savestrbuf(hp->dat, hp->len);
@@ -1167,6 +1280,7 @@ __ncl_khist_shared(struct line *l, struct hist *hp)
       putchar('\a');
       rv = 0;
    }
+   NYD_LEAVE;
    return rv;
 }
 
@@ -1174,6 +1288,8 @@ static size_t
 _ncl_khist(struct line *l, bool_t backwd)
 {
    struct hist *hp;
+   size_t rv;
+   NYD_ENTER;
 
    /* If we're not in history mode yet, save line content;
     * also, disallow forward search, then, and, of course, bail unless we
@@ -1189,7 +1305,9 @@ _ncl_khist(struct line *l, bool_t backwd)
 
    hp = backwd ? hp->older : hp->younger;
 jleave:
-   return __ncl_khist_shared(l, hp);
+   rv = __ncl_khist_shared(l, hp);
+   NYD_LEAVE;
+   return rv;
 }
 
 static size_t
@@ -1197,6 +1315,8 @@ _ncl_krhist(struct line *l)
 {
    struct str orig_savec;
    struct hist *hp = NULL;
+   size_t rv;
+   NYD_ENTER;
 
    /* We cannot complete an empty line */
    if (l->topins == 0) {
@@ -1224,7 +1344,9 @@ _ncl_krhist(struct line *l)
    if (orig_savec.s != NULL)
       l->savec = orig_savec;
 jleave:
-   return __ncl_khist_shared(l, hp);
+   rv = __ncl_khist_shared(l, hp);
+   NYD_LEAVE;
+   return rv;
 }
 # endif
 
@@ -1236,6 +1358,7 @@ _ncl_kht(struct line *l)
    struct cell *cword, *ctop, *cx;
    bool_t set_savec = FAL0;
    size_t rv = 0;
+   NYD_ENTER;
 
    /* We cannot expand an empty line */
    if (l->topins == 0)
@@ -1351,6 +1474,7 @@ jredo:
    _ncl_khome(l, FAL0);
    _ncl_kkill(l, FAL0);
 jleave:
+   NYD_LEAVE;
    return rv;
 jnope:
    /* If we've provided a default content, but failed to expand, there is
@@ -1376,6 +1500,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    wchar_t wc;
    ssize_t rv;
    ui32_t maybe_cursor;
+   NYD_ENTER;
 
    memset(&l, 0, sizeof l);
    l.line.cbuf = *buf;
@@ -1613,6 +1738,7 @@ jdone:
    len = _ncl_cell2dat(&l);
    rv = (ssize_t)len;
 jleave:
+   NYD_LEAVE;
    return rv;
 }
 
@@ -1625,6 +1751,7 @@ tty_init(void)
    FILE *f;
    size_t lsize, cnt, llen;
 # endif
+   NYD_ENTER;
 
    _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
    _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
@@ -1641,10 +1768,11 @@ tty_init(void)
    if (v == NULL)
       goto jleave;
 
-   hold_all_sigs(); /* XXX too heavy, yet we may jump even here!? */
+   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
    if (f == NULL)
       goto jdone;
+   fcntl_lock(fileno(f), FLOCK_READ); /* TODO ouch, retval check, etc. */
 
    lbuf = NULL;
    lsize = 0;
@@ -1666,7 +1794,7 @@ jdone:
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
 # endif /* HAVE_HISTORY */
-   ;
+   NYD_LEAVE;
 }
 
 FL void
@@ -1677,7 +1805,10 @@ tty_destroy(void)
    char *v;
    struct hist *hp;
    FILE *f;
+# endif
+   NYD_ENTER;
 
+# ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
    if (hs == 0)
       goto jleave;
@@ -1694,6 +1825,7 @@ tty_destroy(void)
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if (f == NULL)
       goto jdone;
+   fcntl_lock(fileno(f), FLOCK_WRITE); /* TODO ouch, retval check, etc. */
    if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
       goto jclose;
 
@@ -1707,13 +1839,14 @@ jdone:
    rele_all_sigs(); /* XXX remove jumps */
 jleave:
 # endif /* HAVE_HISTORY */
-   ;
+   NYD_LEAVE;
 }
 
 FL void
 tty_signal(int sig)
 {
    sigset_t nset, oset;
+   NYD_X; /* Signal handler */
 
    switch (sig) {
    case SIGWINCH:
@@ -1739,6 +1872,7 @@ FL int
    SMALLOC_DEBUG_ARGS)
 {
    ssize_t nn;
+   NYD_ENTER;
 
    /* Of course we have races here, but they cannot be avoided on POSIX
     * (except by even *more* actions) */
@@ -1747,7 +1881,7 @@ FL int
    nn = _ncl_readline(prompt, linebuf, linesize, n SMALLOC_DEBUG_ARGSCALL);
    _ncl_term_mode(FAL0);
    _ncl_sigs_down();
-
+   NYD_LEAVE;
    return (int)nn;
 }
 
@@ -1756,8 +1890,14 @@ tty_addhist(char const *s)
 {
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
-   size_t l = strlen(s);
+   size_t l;
    struct hist *h, *o, *y;
+# endif
+   NYD_ENTER;
+   UNUSED(s);
+
+# ifdef HAVE_HISTORY
+   l = strlen(s);
 
    if (_ncl_hist_size_max == 0)
       goto j_leave;
@@ -1809,7 +1949,7 @@ jleave:
    rele_all_sigs();
 j_leave:
 # endif
-   UNUSED(s);
+   NYD_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
@@ -1820,20 +1960,18 @@ c_history(void *v)
 
 jlist: {
    FILE *fp;
-   char *cp;
    size_t i, b;
    struct hist *h;
 
    if (_ncl_hist == NULL)
       goto jleave;
 
-   if ((fp = Ftemp(&cp, "Ra", "w+", 0600, 1)) == NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
       perror("tmpfile");
       v = NULL;
       goto jleave;
    }
-   rm(cp);
-   Ftfree(&cp);
 
    i = _ncl_hist_size;
    b = 0;
@@ -1885,15 +2023,22 @@ jentry: {
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 FL void
 tty_init(void)
-{}
+{
+   NYD_ENTER;
+   NYD_LEAVE;
+}
 
 FL void
 tty_destroy(void)
-{}
+{
+   NYD_ENTER;
+   NYD_LEAVE;
+}
 
 FL void
 tty_signal(int sig)
 {
+   NYD_X; /* Signal handler */
    UNUSED(sig);
 }
 
@@ -1901,11 +2046,11 @@ FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
-   /*
-    * TODO The nothing-at-all tty layer even forces re-entering all the
-    * TODO original data when re-editing a field
-    */
+   /* TODO The nothing-at-all tty layer even forces re-entering all the
+    * TODO original data when re-editing a field */
    bool_t doffl = FAL0;
+   int rv;
+   NYD_ENTER;
 
    if (prompt != NULL && *prompt != '\0') {
       fputs(prompt, stdout);
@@ -1918,13 +2063,17 @@ FL int
    }
    if (doffl)
       fflush(stdout);
-   return (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
+   rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL void
 tty_addhist(char const *s)
 {
+   NYD_ENTER;
    UNUSED(s);
+   NYD_LEAVE;
 }
 #endif /* nothing at all */
 

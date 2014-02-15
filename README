@@ -86,6 +86,6 @@ support, and POSIX conformance improvements. In March 2006, the
 program has been integrated into the Heirloom project.
 
 In 2012 the stale Heirloom mailx(1) was adapted as S-nail(1) by
-Steffen "Daode" Nurpmeso.
+Steffen (Daode) Nurpmeso.
 
 vim:set fenc=utf-8:s-ts-mode

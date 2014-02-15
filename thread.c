@@ -2,11 +2,11 @@
  *@ Message threading.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
- *	Gunnar Ritter.  All rights reserved.
+ * Gunnar Ritter.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by Gunnar Ritter
- *	and his contributors.
+ *    This product includes software developed by Gunnar Ritter
+ *    and his contributors.
  * 4. Neither the name of Gunnar Ritter nor the names of his contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -41,119 +41,35 @@
 # include "nail.h"
 #endif
 
-/*
- * Open addressing is used for Message-IDs because the maximum number of
- * messages in the table is known in advance (== msgCount).
- */
-struct	mitem {
-	struct message	*mi_data;
-	char	*mi_id;
+/* Open addressing is used for Message-IDs because the maximum number of
+ * messages in the table is known in advance (== msgCount) */
+struct mitem {
+   struct message *mi_data;
+   char           *mi_id;
 };
+#define NOT_AN_ID ((struct mitem*)-1)
 
 struct msort {
-	union {
+   union {
 #ifdef HAVE_SPAM
-		ui_it	ms_ui;
+      ui32_t   ms_ui;
 #endif
-		long	ms_long;
-		char *	ms_char;
-	} ms_u;
-	int	ms_n;
+      long     ms_long;
+      char     *ms_char;
+   }           ms_u;
+   int         ms_n;
 };
 
-static unsigned mhash(const char *cp, int mprime);
-static struct mitem *mlook(char *id, struct mitem *mt, struct message *mdata,
-		int mprime);
-static void adopt(struct message *parent, struct message *child, int dist);
-static struct message *interlink(struct message *m, long cnt, int nmail);
-static void finalize(struct message *mp);
-#ifdef HAVE_SPAM
-static int muilt(void const *a, void const *b);
-#endif
-static int mlonglt(const void *a, const void *b);
-static int mcharlt(const void *a, const void *b);
-static void lookup(struct message *m, struct mitem *mi, int mprime);
-static void makethreads(struct message *m, long cnt, int nmail);
-static char const *skipre(char const *cp);
-static int colpt(int *msgvec, int cl);
-static void colps(struct message *b, int cl);
-static void colpm(struct message *m, int cl, int *cc, int *uc);
+/* Return the hash value for a message id modulo mprime, or mprime if the
+ * passed string does not look like a message-id */
+static ui32_t           _mhash(char const *cp, ui32_t mprime);
 
-/*
- * Return the hash value for a message id modulo mprime, or mprime
- * if the passed string does not look like a message-id.
- */
-static unsigned
-mhash(const char *cp, int mprime)
-{
+/* Look up a message id. Returns NOT_AN_ID if the passed string does not look
+ * like a message-id */
+static struct mitem *   _mlook(char *id, struct mitem *mt,
+                           struct message *mdata, ui32_t mprime);
 
-	unsigned	h = 0, g, at = 0;
-
-	cp--;
-	while (*++cp) {
-		/*
-		 * Pay attention not to hash characters which are
-		 * irrelevant for Message-ID semantics.
-		 */
-		if (*cp == '(') {
-			cp = skip_comment(&cp[1]) - 1;
-			continue;
-		}
-		if (*cp == '"' || *cp == '\\')
-			continue;
-		if (*cp == '@')
-			at++;
-		h = ((h << 4) & 0xffffffff) + lowerconv(*cp & 0377);
-		if ((g = h & 0xf0000000) != 0) {
-			h = h ^ (g >> 24);
-			h = h ^ g;
-		}
-	}
-	return at ? h % (unsigned int)mprime : (unsigned int)mprime;
-}
-
-#define	NOT_AN_ID	((struct mitem *)-1)
-
-/*
- * Look up a message id. Returns NOT_AN_ID if the passed string does
- * not look like a message-id.
- */
-static struct mitem *
-mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
-{
-	struct mitem	*mp;
-	unsigned	h, c, n = 0;
-
-	if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
-		return NULL;
-	if (mdata && mdata->m_idhash)
-		h = ~mdata->m_idhash;
-	else {
-		h = mhash(id, mprime);
-		if (h == (unsigned int)mprime)
-			return NOT_AN_ID;
-	}
-	mp = &mt[c = h];
-	while (mp->mi_id != NULL) {
-		if (msgidcmp(mp->mi_id, id) == 0)
-			break;
-		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
-		n++;
-		while (c >= (unsigned int)mprime)
-			c -= mprime;
-		mp = &mt[c];
-	}
-	if (mdata != NULL && mp->mi_id == NULL) {
-		mp->mi_id = sstrdup(id);
-		mp->mi_data = mdata;
-		mdata->m_idhash = ~h;
-	}
-	return mp->mi_id ? mp : NULL;
-}
-
-/*
- * Child is to be adopted by parent. A thread tree is structured
- * as follows:
+/* Child is to be adopted by parent.  A thread tree is structured as follows:
  *
  *  ------       m_child       ------        m_child
  *  |    |-------------------->|    |------------------------> . . .
@@ -165,19 +81,6 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
  *     |       ----             |  |
  *     |           \            |  | m_elder
  *     |   m_parent ----        |  |
- *     |                \       |  |
- *     |                 ----   |  |
- *     |                     \  +  |
- *     |                       ------        m_child
- *     |                       |    |------------------------> . . .
- *     |                       |    |<-----------------------  . . .
- *     |                       ------       m_parent
- *     |                        |  ^
- *      \-----        m_younger |  |
- *            \                 |  |
- *             ----             |  |
- *                 \            |  | m_elder
- *         m_parent ----        |  |
  *                      \       |  |
  *                       ----   |  |
  *                           \  +  |
@@ -188,589 +91,760 @@ mlook(char *id, struct mitem *mt, struct message *mdata, int mprime)
  *                              |  ^
  *                              . . .
  *
- * The base message of a thread does not have a m_parent link. Elements
- * connected by m_younger/m_elder links are replies to the same message,
- * which is connected to them by m_parent links. The first reply to a
- * message gets the m_child link.
- */
-static void
-adopt(struct message *parent, struct message *child, int dist)
-{
-	struct message	*mp, *mq;
+ * The base message of a thread does not have a m_parent link.  Elements
+ * connected by m_younger/m_elder links are replies to the same message, which
+ * is connected to them by m_parent links.  The first reply to a message gets
+ * the m_child link */
+static void             _adopt(struct message *parent, struct message *child,
+                           int dist);
 
-	for (mp = parent; mp; mp = mp->m_parent)
-		if (mp == child)
-			return;
-	child->m_level = dist;	/* temporarily store distance */
-	child->m_parent = parent;
-	if (parent->m_child != NULL) {
-		mq = NULL;
-		for (mp = parent->m_child; mp; mp = mp->m_younger) {
-			if (mp->m_date >= child->m_date) {
-				if (mp->m_elder)
-					mp->m_elder->m_younger = child;
-				child->m_elder = mp->m_elder;
-				mp->m_elder = child;
-				child->m_younger = mp;
-				if (mp == parent->m_child)
-					parent->m_child = child;
-				return;
-			}
-			mq = mp;
-		}
-		mq->m_younger = child;
-		child->m_elder = mq;
-	} else
-		parent->m_child = child;
+/* Connect all msgs on the lowest thread level with m_younger/m_elder links */
+static struct message * _interlink(struct message *m, ui32_t cnt, int nmail);
+
+static void             _finalize(struct message *mp);
+
+/* Several sort comparison PTFs */
+#ifdef HAVE_SPAM
+static int              _mui32lt(void const *a, void const *b);
+#endif
+static int              _mlonglt(const void *a, const void *b);
+static int              _mcharlt(const void *a, const void *b);
+
+static void             _lookup(struct message *m, struct mitem *mi,
+                           ui32_t mprime);
+static void             _makethreads(struct message *m, ui32_t cnt, int nmail);
+static char const *     _skipre(char const *cp);
+static int              _colpt(int *msgvec, int cl);
+static void             _colps(struct message *b, int cl);
+static void             _colpm(struct message *m, int cl, int *cc, int *uc);
+
+static ui32_t
+_mhash(char const *cp, ui32_t mprime)
+{
+   ui32_t h = 0, g, at = 0;
+   NYD_ENTER;
+
+   for (--cp; *++cp;) {
+      /* Pay attention not to hash characters which are irrelevant for
+       * Message-ID semantics */
+      if (*cp == '(') {
+         cp = skip_comment(&cp[1]) - 1;
+         continue;
+      }
+      if (*cp == '"' || *cp == '\\')
+         continue;
+      if (*cp == '@')
+         at++;
+      /* TODO torek hash */
+      h = ((h << 4) & 0xffffffff) + lowerconv(*cp);
+      if ((g = h & 0xf0000000) != 0) {
+         h = h ^ (g >> 24);
+         h = h ^ g;
+      }
+   }
+   NYD_LEAVE;
+   return (at ? h % mprime : mprime);
 }
 
-/*
- * Connect all messages on the lowest thread level with m_younger/m_elder
- * links.
- */
+static struct mitem *
+_mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
+{
+   struct mitem *mp = NULL;
+   ui32_t h, c, n = 0;
+   NYD_ENTER;
+
+   if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
+      goto jleave;
+
+   if (mdata && mdata->m_idhash)
+      h = ~mdata->m_idhash;
+   else {
+      h = _mhash(id, mprime);
+      if (h == mprime) {
+         mp = NOT_AN_ID;
+         goto jleave;
+      }
+   }
+
+   mp = &mt[c = h];
+   while (mp->mi_id != NULL) {
+      if (!msgidcmp(mp->mi_id, id))
+         break;
+      c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
+      ++n;
+      while (c >= mprime)
+         c -= mprime;
+      mp = &mt[c];
+   }
+
+   if (mdata != NULL && mp->mi_id == NULL) {
+      mp->mi_id = sstrdup(id);
+      mp->mi_data = mdata;
+      mdata->m_idhash = ~h;
+   }
+   if (mp->mi_id == NULL)
+      mp = NULL;
+jleave:
+   NYD_LEAVE;
+   return mp;
+}
+
+static void
+_adopt(struct message *parent, struct message *child, int dist)
+{
+   struct message *mp, *mq;
+   NYD_ENTER;
+
+   for (mp = parent; mp; mp = mp->m_parent)
+      if (mp == child)
+         goto jleave;
+
+   child->m_level = dist; /* temporarily store distance */
+   child->m_parent = parent;
+
+   if (parent->m_child != NULL) {
+      mq = NULL;
+      for (mp = parent->m_child; mp != NULL; mp = mp->m_younger) {
+         if (mp->m_date >= child->m_date) {
+            if (mp->m_elder != NULL)
+               mp->m_elder->m_younger = child;
+            child->m_elder = mp->m_elder;
+            mp->m_elder = child;
+            child->m_younger = mp;
+            if (mp == parent->m_child)
+               parent->m_child = child;
+            goto jleave;
+         }
+         mq = mp;
+      }
+      mq->m_younger = child;
+      child->m_elder = mq;
+   } else
+      parent->m_child = child;
+jleave:
+   NYD_LEAVE;
+}
+
 static struct message *
-interlink(struct message *m, long cnt, int nmail)
+_interlink(struct message *m, ui32_t cnt, int nmail)
 {
-	int	i;
-	long	n;
-	struct msort	*ms;
-	struct message	*root;
-	int	autocollapse = !nmail && !(inhook&2) &&
-			ok_blook(autocollapse);
+   struct message *root;
+   ui32_t n;
+   struct msort *ms;
+   int i, autocollapse;
+   NYD_ENTER;
 
-	ms = smalloc(sizeof *ms * cnt);
-	for (n = 0, i = 0; i < cnt; i++) {
-		if (m[i].m_parent == NULL) {
-			if (autocollapse)
-				colps(&m[i], 1);
-			ms[n].ms_u.ms_long = m[i].m_date;
-			ms[n].ms_n = i;
-			n++;
-		}
-	}
-	if (n > 0) {
-		qsort(ms, n, sizeof *ms, mlonglt);
-		root = &m[ms[0].ms_n];
-		for (i = 1; i < n; i++) {
-			m[ms[i-1].ms_n].m_younger = &m[ms[i].ms_n];
-			m[ms[i].ms_n].m_elder = &m[ms[i-1].ms_n];
-		}
-	} else
-		root = &m[0];
-	free(ms);
-	return root;
+   autocollapse = (!nmail && !(inhook & 2) && ok_blook(autocollapse));
+   ms = smalloc(sizeof *ms * cnt);
+
+   for (n = 0, i = 0; UICMP(32, i, <, cnt); ++i) {
+      if (m[i].m_parent == NULL) {
+         if (autocollapse)
+            _colps(&m[i], 1);
+         ms[n].ms_u.ms_long = m[i].m_date;
+         ms[n].ms_n = i;
+         n++;
+      }
+   }
+
+   if (n > 0) {
+      qsort(ms, n, sizeof *ms, &_mlonglt);
+      root = &m[ms[0].ms_n];
+      for (i = 1; UICMP(32, i, <, n); ++i) {
+         m[ms[i-1].ms_n].m_younger = &m[ms[i].ms_n];
+         m[ms[i].ms_n].m_elder = &m[ms[i-1].ms_n];
+      }
+   } else
+      root = &m[0];
+
+   free(ms);
+   NYD_LEAVE;
+   return root;
 }
 
 static void
-finalize(struct message *mp)
+_finalize(struct message *mp)
 {
-	long	n;
+   long n;
+   NYD_ENTER;
 
-	for (n = 0; mp; mp = next_in_thread(mp)) {
-		mp->m_threadpos = ++n;
-		mp->m_level = mp->m_parent ?
-			mp->m_level + mp->m_parent->m_level : 0;
-	}
+   for (n = 0; mp; mp = next_in_thread(mp)) {
+      mp->m_threadpos = ++n;
+      mp->m_level = mp->m_parent ? mp->m_level + mp->m_parent->m_level : 0;
+   }
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_SPAM
 static int
-muilt(void const *a, void const *b)
+_mui32lt(void const *a, void const *b)
 {
-	struct msort const *xa = a, *xb = b;
-	int i;
+   struct msort const *xa = a, *xb = b;
+   int i;
+   NYD_ENTER;
 
-	i = (int)(xa->ms_u.ms_ui - xb->ms_u.ms_ui);
-	if (i == 0)
-		i = xa->ms_n - xb->ms_n;
-	return i;
+   i = (int)(xa->ms_u.ms_ui - xb->ms_u.ms_ui);
+   if (i == 0)
+      i = xa->ms_n - xb->ms_n;
+   NYD_LEAVE;
+   return i;
 }
 #endif
 
 static int
-mlonglt(const void *a, const void *b)
+_mlonglt(const void *a, const void *b)
 {
-	struct msort const *xa = a, *xb = b;
-	int i;
+   struct msort const *xa = a, *xb = b;
+   int i;
+   NYD_ENTER;
 
-	i = (int)(xa->ms_u.ms_long - xb->ms_u.ms_long);
-	if (i == 0)
-		i = xa->ms_n - xb->ms_n;
-	return i;
+   i = (int)(xa->ms_u.ms_long - xb->ms_u.ms_long);
+   if (i == 0)
+      i = xa->ms_n - xb->ms_n;
+   NYD_LEAVE;
+   return i;
 }
 
 static int
-mcharlt(const void *a, const void *b)
+_mcharlt(const void *a, const void *b)
 {
-	struct msort const *xa = a, *xb = b;
-	int i;
+   struct msort const *xa = a, *xb = b;
+   int i;
+   NYD_ENTER;
 
-	i = strcoll(xa->ms_u.ms_char, xb->ms_u.ms_char);
-	if (i == 0)
-		i = xa->ms_n - xb->ms_n;
-	return i;
+   i = strcoll(xa->ms_u.ms_char, xb->ms_u.ms_char);
+   if (i == 0)
+      i = xa->ms_n - xb->ms_n;
+   NYD_LEAVE;
+   return i;
 }
 
 static void
-lookup(struct message *m, struct mitem *mi, int mprime)
+_lookup(struct message *m, struct mitem *mi, ui32_t mprime)
 {
-	struct name	*np;
-	struct mitem	*ip;
-	char	*cp;
-	long	dist;
+   struct name *np;
+   struct mitem *ip;
+   char *cp;
+   long dist;
+   NYD_ENTER;
 
-	if (m->m_flag & MHIDDEN)
-		return;
-	dist = 1;
-	if ((cp = hfield1("in-reply-to", m)) != NULL) {
-		if ((np = extract(cp, GREF)) != NULL)
-			do {
-				if ((ip = mlook(np->n_name, mi, NULL, mprime))
-						!= NULL && ip != NOT_AN_ID) {
-					adopt(ip->mi_data, m, 1);
-					return;
-				}
-			} while ((np = np->n_flink) != NULL);
-	}
-	if ((cp = hfield1("references", m)) != NULL) {
-		if ((np = extract(cp, GREF)) != NULL) {
-			while (np->n_flink != NULL)
-				np = np->n_flink;
-			do {
-				if ((ip = mlook(np->n_name, mi, NULL, mprime))
-						!= NULL) {
-					if (ip == NOT_AN_ID)
-						continue; /* skip dist++ */
-					adopt(ip->mi_data, m, dist);
-					return;
-				}
-				dist++;
-			} while ((np = np->n_blink) != NULL);
-		}
-	}
+   if (m->m_flag & MHIDDEN)
+      goto jleave;
+
+   dist = 1;
+   if ((cp = hfield1("in-reply-to", m)) != NULL) {
+      if ((np = extract(cp, GREF)) != NULL)
+         do {
+            if ((ip = _mlook(np->n_name, mi, NULL, mprime)) != NULL &&
+                  ip != NOT_AN_ID) {
+               _adopt(ip->mi_data, m, 1);
+               goto jleave;
+            }
+         } while ((np = np->n_flink) != NULL);
+   }
+
+   if ((cp = hfield1("references", m)) != NULL) {
+      if ((np = extract(cp, GREF)) != NULL) {
+         while (np->n_flink != NULL)
+            np = np->n_flink;
+         do {
+            if ((ip = _mlook(np->n_name, mi, NULL, mprime)) != NULL) {
+               if (ip == NOT_AN_ID)
+                  continue; /* skip dist++ */
+               _adopt(ip->mi_data, m, dist);
+               goto jleave;
+            }
+            ++dist;
+         } while ((np = np->n_blink) != NULL);
+      }
+   }
+jleave:
+   NYD_LEAVE;
 }
 
 static void
-makethreads(struct message *m, long cnt, int nmail)
+_makethreads(struct message *m, ui32_t cnt, int nmail)
 {
-	struct mitem	*mt;
-	char	*cp;
-	long	i, mprime;
+   struct mitem *mt;
+   char *cp;
+   ui32_t i, mprime;
+   NYD_ENTER;
 
-	if (cnt == 0)
-		return;
-	mprime = nextprime(cnt);
-	mt = scalloc(mprime, sizeof *mt);
+   if (cnt == 0)
+      goto jleave;
 
-	srelax_hold();
-	for (i = 0; i < cnt; i++) {
-		if ((m[i].m_flag&MHIDDEN) == 0) {
-			mlook(NULL, mt, &m[i], mprime);
-			if (m[i].m_date == 0) {
-				if ((cp = hfield1("date", &m[i])) != NULL)
-					m[i].m_date = rfctime(cp);
-			}
-		}
-		m[i].m_child = m[i].m_younger = m[i].m_elder =
-			m[i].m_parent = NULL;
-		m[i].m_level = 0;
-		if (!nmail && !(inhook&2))
-			m[i].m_collapsed = 0;
-		srelax();
-	}
-	/*
-	 * Most folders contain the eldest messages first. Traversing
-	 * them in descending order makes it more likely that younger
-	 * brothers are found first, so elder ones can be prepended to
-	 * the brother list, which is faster. The worst case is still
-	 * in O(n^2) and occurs when all but one messages in a folder
-	 * are replies to the one message, and are sorted such that
-	 * youngest messages occur first.
-	 */
-	for (i = cnt-1; i >= 0; i--) {
-		lookup(&m[i], mt, mprime);
-		srelax();
-	}
-	srelax_rele();
+   mprime = nextprime(cnt);
+   mt = scalloc(mprime, sizeof *mt);
 
-	threadroot = interlink(m, cnt, nmail);
-	finalize(threadroot);
+   srelax_hold();
 
-	for (i = 0; i < mprime; ++i)
-		if (mt[i].mi_id != NULL)
-			free(mt[i].mi_id);
-	free(mt);
-	mb.mb_threaded = 1;
+   for (i = 0; i < cnt; ++i) {
+      if (!(m[i].m_flag & MHIDDEN)) {
+         _mlook(NULL, mt, &m[i], mprime);
+         if (m[i].m_date == 0) {
+            if ((cp = hfield1("date", &m[i])) != NULL)
+               m[i].m_date = rfctime(cp);
+         }
+      }
+      m[i].m_child = m[i].m_younger = m[i].m_elder = m[i].m_parent = NULL;
+      m[i].m_level = 0;
+      if (!nmail && !(inhook & 2))
+         m[i].m_collapsed = 0;
+      srelax();
+   }
+
+   /* Most folders contain the eldest messages first.  Traversing them in
+    * descending order makes it more likely that younger brothers are found
+    * first, so elder ones can be prepended to the brother list, which is
+    * faster.  The worst case is still in O(n^2) and occurs when all but one
+    * messages in a folder are replies to the one message, and are sorted such
+    * that youngest messages occur first */
+   for (i = cnt; i > 0; --i) {
+      _lookup(&m[i - 1], mt, mprime);
+      srelax();
+   }
+
+   srelax_rele();
+
+   threadroot = _interlink(m, cnt, nmail);
+   _finalize(threadroot);
+
+   for (i = 0; i < mprime; ++i)
+      if (mt[i].mi_id != NULL)
+         free(mt[i].mi_id);
+
+   free(mt);
+   mb.mb_threaded = 1;
+jleave:
+   NYD_LEAVE;
+}
+
+static char const *
+_skipre(char const *cp)
+{
+   NYD_ENTER;
+   if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' && cp[2] == ':' &&
+         spacechar(cp[3])) {
+      cp = &cp[4];
+      while (spacechar(*cp))
+         ++cp;
+   }
+   NYD_LEAVE;
+   return cp;
+}
+
+static int
+_colpt(int *msgvec, int cl)
+{
+   int *ip, rv;
+   NYD_ENTER;
+
+   if (mb.mb_threaded != 1) {
+      puts("Not in threaded mode.");
+      rv = 1;
+   } else {
+      for (ip = msgvec; *ip != 0; ++ip)
+         _colps(&message[*ip - 1], cl);
+      rv = 0;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+static void
+_colps(struct message *b, int cl)
+{
+   struct message *m;
+   int cc = 0, uc = 0;
+   NYD_ENTER;
+
+   if (cl && (b->m_collapsed > 0 || (b->m_flag & (MNEW | MREAD)) == MNEW))
+      goto jleave;
+
+   if (b->m_child != NULL) {
+      m = b->m_child;
+      _colpm(m, cl, &cc, &uc);
+      for (m = m->m_younger; m != NULL; m = m->m_younger)
+         _colpm(m, cl, &cc, &uc);
+   }
+
+   if (cl) {
+      b->m_collapsed = -cc;
+      for (m = b->m_parent; m != NULL; m = m->m_parent)
+         if (m->m_collapsed <= -uc) {
+            m->m_collapsed += uc;
+            break;
+         }
+   } else {
+      if (b->m_collapsed > 0) {
+         b->m_collapsed = 0;
+         ++uc;
+      }
+      for (m = b; m != NULL; m = m->m_parent)
+         if (m->m_collapsed <= -uc) {
+            m->m_collapsed += uc;
+            break;
+         }
+   }
+jleave:
+   NYD_LEAVE;
+}
+
+static void
+_colpm(struct message *m, int cl, int *cc, int *uc)
+{
+   NYD_ENTER;
+   if (cl) {
+      if (m->m_collapsed > 0)
+         ++(*uc);
+      if ((m->m_flag & (MNEW | MREAD)) != MNEW || m->m_collapsed < 0)
+         m->m_collapsed = 1;
+      if (m->m_collapsed > 0)
+         ++(*cc);
+   } else {
+      if (m->m_collapsed > 0) {
+         m->m_collapsed = 0;
+         ++(*uc);
+      }
+   }
+
+   if (m->m_child != NULL) {
+      m = m->m_child;
+      _colpm(m, cl, cc, uc);
+      for (m = m->m_younger; m != NULL; m = m->m_younger)
+         _colpm(m, cl, cc, uc);
+   }
+   NYD_LEAVE;
 }
 
 FL int
-thread(void *vp)
+c_thread(void *vp)
 {
-	if (mb.mb_threaded != 1 || vp == NULL || vp == (void *)-1) {
+   int rv;
+   NYD_ENTER;
+
+   if (mb.mb_threaded != 1 || vp == NULL || vp == (void*)-1) {
 #ifdef HAVE_IMAP
-		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(1, msgCount);
+      if (mb.mb_type == MB_IMAP)
+         imap_getheaders(1, msgCount);
 #endif
-		makethreads(message, msgCount, vp == (void *)-1);
-		if (mb.mb_sorted != NULL)
-			free(mb.mb_sorted);
-		mb.mb_sorted = sstrdup("thread");
-	}
-	if (vp && vp != (void *)-1 && !inhook && ok_blook(header))
-		return headers(vp);
-	return 0;
+      _makethreads(message, msgCount, (vp == (void*)-1));
+      if (mb.mb_sorted != NULL)
+         free(mb.mb_sorted);
+      mb.mb_sorted = sstrdup("thread");
+   }
+
+   if (vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
+      rv = c_headers(vp);
+   else
+      rv = 0;
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
-unthread(void *vp)
+c_unthread(void *vp)
 {
-	struct message	*m;
+   struct message *m;
+   int rv;
+   NYD_ENTER;
 
-	mb.mb_threaded = 0;
-	free(mb.mb_sorted);
-	mb.mb_sorted = NULL;
-	for (m = &message[0]; m < &message[msgCount]; m++)
-		m->m_collapsed = 0;
-	if (vp && !inhook && ok_blook(header))
-		return headers(vp);
-	return 0;
+   mb.mb_threaded = 0;
+   free(mb.mb_sorted);
+   mb.mb_sorted = NULL;
+
+   for (m = message; PTRCMP(m, <, message + msgCount); ++m)
+      m->m_collapsed = 0;
+
+   if (vp && !inhook && ok_blook(header))
+      rv = c_headers(vp);
+   else
+      rv = 0;
+   NYD_LEAVE;
+   return rv;
 }
 
 FL struct message *
 next_in_thread(struct message *mp)
 {
-	if (mp->m_child)
-		return mp->m_child;
-	if (mp->m_younger)
-		return mp->m_younger;
-	while (mp->m_parent) {
-		if (mp->m_parent->m_younger)
-			return mp->m_parent->m_younger;
-		mp = mp->m_parent;
-	}
-	return NULL;
+   struct message *rv;
+   NYD_ENTER;
+
+   if ((rv = mp->m_child) != NULL)
+      goto jleave;
+   if ((rv = mp->m_younger) != NULL)
+      goto jleave;
+
+   while ((rv = mp->m_parent) != NULL) {
+      mp = rv;
+      if ((rv = rv->m_younger) != NULL)
+         goto jleave;
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 FL struct message *
 prev_in_thread(struct message *mp)
 {
-	if (mp->m_elder) {
-		mp = mp->m_elder;
-		while (mp->m_child) {
-			mp = mp->m_child;
-			while (mp->m_younger)
-				mp = mp->m_younger;
-		}
-		return mp;
-	}
-	return mp->m_parent;
+   struct message *rv;
+   NYD_ENTER;
+
+   if ((rv = mp->m_elder) != NULL) {
+      for (mp = rv; (rv = mp->m_child) != NULL;) {
+         mp = rv;
+         while ((rv = mp->m_younger) != NULL)
+            mp = rv;
+      }
+      rv = mp;
+      goto jleave;
+   }
+   rv = mp->m_parent;
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 FL struct message *
 this_in_thread(struct message *mp, long n)
 {
-	struct message	*mq;
+   struct message *rv;
+   NYD_ENTER;
 
-	if (n == -1) {	/* find end of thread */
-		while (mp) {
-			if (mp->m_younger) {
-				mp = mp->m_younger;
-				continue;
-			}
-			mq = next_in_thread(mp);
-			if (mq == NULL || mq->m_threadpos < mp->m_threadpos)
-				return mp;
-			mp = mq;
-		}
-		return NULL;
-	}
-	while (mp && mp->m_threadpos < n) {
-		if (mp->m_younger && mp->m_younger->m_threadpos <= n) {
-			mp = mp->m_younger;
-			continue;
-		}
-		mp = next_in_thread(mp);
-	}
-	return mp && mp->m_threadpos == n ? mp : NULL;
+   if (n == -1) { /* find end of thread */
+      while (mp != NULL) {
+         if ((rv = mp->m_younger) != NULL) {
+            mp = rv;
+            continue;
+         }
+         rv = next_in_thread(mp);
+         if (rv == NULL || rv->m_threadpos < mp->m_threadpos) {
+            rv = mp;
+            goto jleave;
+         }
+         mp = rv;
+      }
+      rv = mp;
+      goto jleave;
+   }
+
+   while (mp != NULL && mp->m_threadpos < n) {
+      if ((rv = mp->m_younger) != NULL && rv->m_threadpos <= n) {
+         mp = rv;
+         continue;
+      }
+      mp = next_in_thread(mp);
+   }
+   rv = (mp != NULL && mp->m_threadpos == n) ? mp : NULL;
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
-/*
- * Sorted mode is internally just a variant of threaded mode with all
- * m_parent and m_child links being NULL.
- */
 FL int
-sort(void *vp)
+c_sort(void *vp)
 {
-	enum method {
-		SORT_SUBJECT,
-		SORT_DATE,
-		SORT_STATUS,
-		SORT_SIZE,
-		SORT_FROM,
-		SORT_TO,
+   enum method {SORT_SUBJECT, SORT_DATE, SORT_STATUS, SORT_SIZE, SORT_FROM,
+      SORT_TO, SORT_SPAM, SORT_THREAD} method;
+   struct {
+      char const *me_name;
+      enum method me_method;
+      int         (*me_func)(void const *, void const *);
+   } const methnames[] = {
+      {"date", SORT_DATE, &_mlonglt},
+      {"from", SORT_FROM, &_mcharlt},
+      {"to", SORT_TO, &_mcharlt},
+      {"subject", SORT_SUBJECT, &_mcharlt},
+      {"size", SORT_SIZE, &_mlonglt},
 #ifdef HAVE_SPAM
-		SORT_SPAM,
+      {"spam", SORT_SPAM, &_mui32lt},
 #endif
-		SORT_THREAD
-	} method;
-	struct {
-		const char	*me_name;
-		enum method	me_method;
-		int	(*me_func)(const void *, const void *);
-	} methnames[] = {
-		{ "date",	SORT_DATE,	mlonglt },
-		{ "from",	SORT_FROM,	mcharlt },
-		{ "to",		SORT_TO,	mcharlt },
-		{ "subject",	SORT_SUBJECT,	mcharlt },
-		{ "size",	SORT_SIZE,	mlonglt },
-#ifdef HAVE_SPAM
-		{ "spam",	SORT_SPAM,	muilt },
-#endif
-		{ "status",	SORT_STATUS,	mlonglt },
-		{ "thread",	SORT_THREAD,	NULL },
-		{ NULL,		-1,		NULL }
-	};
-	char	**args = (char **)vp, *cp, *_args[2];
-	int	(*func)(const void *, const void *);
-	struct msort	*ms;
-	struct str	in, out;
-	int	i, n, msgvec[2];
-	bool_t showname = ok_blook(showname);
-	struct message	*mp;
+      {"status", SORT_STATUS, &_mlonglt},
+      {"thread", SORT_THREAD, NULL}
+   };
 
-	msgvec[0] = dot - &message[0] + 1;
-	msgvec[1] = 0;
-	if (vp == NULL || vp == (void *)-1) {
-		_args[0] = savestr(mb.mb_sorted);
-		_args[1] = NULL;
-		args = _args;
-	} else if (args[0] == NULL) {
-		printf("Current sorting criterion is: %s\n",
-				mb.mb_sorted ? mb.mb_sorted : "unsorted");
-		return 0;
-	}
-	for (i = 0; methnames[i].me_name; i++)
-		if (*args[0] && is_prefix(args[0], methnames[i].me_name))
-			break;
-	if (methnames[i].me_name == NULL) {
-		fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
-		return 1;
-	}
-	method = methnames[i].me_method;
-	func = methnames[i].me_func;
-	free(mb.mb_sorted);
-	mb.mb_sorted = sstrdup(args[0]);
-	if (method == SORT_THREAD)
-		return thread(vp && vp != (void *)-1 ? msgvec : vp);
-	ms = ac_alloc(sizeof *ms * msgCount);
-	switch (method) {
-	case SORT_SUBJECT:
-	case SORT_DATE:
-	case SORT_FROM:
-	case SORT_TO:
+   struct str in, out;
+   char **args = (char**)vp, *cp, *_args[2];
+   int (*func)(void const *, void const *);
+   struct msort *ms;
+   int i, n, msgvec[2];
+   struct message *mp;
+   bool_t showname;
+   NYD_ENTER;
+
+   showname = ok_blook(showname);
+   msgvec[0] = (int)PTR2SIZE(dot - message + 1);
+   msgvec[1] = 0;
+
+   if (vp == NULL || vp == (void*)-1) {
+      _args[0] = savestr(mb.mb_sorted);
+      _args[1] = NULL;
+      args = _args;
+   } else if (args[0] == NULL) {
+      printf("Current sorting criterion is: %s\n",
+            (mb.mb_sorted ? mb.mb_sorted : "unsorted"));
+      i = 0;
+      goto jleave;
+   }
+
+   for (i = 0; UICMP(z, i, <, NELEM(methnames)); ++i)
+      if (*args[0] && is_prefix(args[0], methnames[i].me_name))
+         goto jmethok;
+   fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
+   i = 1;
+   goto jleave;
+
+jmethok:
+   method = methnames[i].me_method;
+   func = methnames[i].me_func;
+   free(mb.mb_sorted);
+   mb.mb_sorted = sstrdup(args[0]);
+
+   if (method == SORT_THREAD) {
+      i = c_thread((vp != NULL && vp != (void*)-1) ? msgvec : vp);
+      goto jleave;
+   }
+
+   ms = ac_alloc(sizeof *ms * msgCount);
 #ifdef HAVE_IMAP
-		if (mb.mb_type == MB_IMAP)
-			imap_getheaders(1, msgCount);
+   switch (method) {
+   case SORT_SUBJECT:
+   case SORT_DATE:
+   case SORT_FROM:
+   case SORT_TO:
+      if (mb.mb_type == MB_IMAP)
+         imap_getheaders(1, msgCount);
+      break;
+   default:
+      break;
+   }
 #endif
-		break;
-	default:
-		break;
-	}
 
-	srelax_hold();
-	for (n = 0, i = 0; i < msgCount; i++) {
-		mp = &message[i];
-		if ((mp->m_flag&MHIDDEN) == 0) {
-			switch (method) {
-			case SORT_DATE:
-				if (mp->m_date == 0 &&
-						(cp = hfield1("date", mp)) != 0)
-					mp->m_date = rfctime(cp);
-				ms[n].ms_u.ms_long = mp->m_date;
-				break;
-			case SORT_STATUS:
-				if (mp->m_flag & MDELETED)
-					ms[n].ms_u.ms_long = 1;
-				else if ((mp->m_flag&(MNEW|MREAD)) == MNEW)
-					ms[n].ms_u.ms_long = 90;
-				else if (mp->m_flag & MFLAGGED)
-					ms[n].ms_u.ms_long = 85;
-				else if ((mp->m_flag&(MNEW|MBOX)) == MBOX)
-					ms[n].ms_u.ms_long = 70;
-				else if (mp->m_flag & MNEW)
-					ms[n].ms_u.ms_long = 80;
-				else if (mp->m_flag & MREAD)
-					ms[n].ms_u.ms_long = 40;
-				else
-					ms[n].ms_u.ms_long = 60;
-				break;
-			case SORT_SIZE:
-				ms[n].ms_u.ms_long = mp->m_xsize;
-				break;
+   srelax_hold();
+   for (n = 0, i = 0; i < msgCount; ++i) {
+      mp = message + i;
+      if (!(mp->m_flag & MHIDDEN)) {
+         switch (method) {
+         case SORT_DATE:
+            if (mp->m_date == 0 && (cp = hfield1("date", mp)) != NULL)
+               mp->m_date = rfctime(cp);
+            ms[n].ms_u.ms_long = mp->m_date;
+            break;
+         case SORT_STATUS:
+            if (mp->m_flag & MDELETED)
+               ms[n].ms_u.ms_long = 1;
+            else if ((mp->m_flag & (MNEW | MREAD)) == MNEW)
+               ms[n].ms_u.ms_long = 90;
+            else if (mp->m_flag & MFLAGGED)
+               ms[n].ms_u.ms_long = 85;
+            else if ((mp->m_flag & (MNEW | MBOX)) == MBOX)
+               ms[n].ms_u.ms_long = 70;
+            else if (mp->m_flag & MNEW)
+               ms[n].ms_u.ms_long = 80;
+            else if (mp->m_flag & MREAD)
+               ms[n].ms_u.ms_long = 40;
+            else
+               ms[n].ms_u.ms_long = 60;
+            break;
+         case SORT_SIZE:
+            ms[n].ms_u.ms_long = mp->m_xsize;
+            break;
 #ifdef HAVE_SPAM
-			case SORT_SPAM:
-				ms[n].ms_u.ms_ui = mp->m_spamscore;
-				break;
+         case SORT_SPAM:
+            ms[n].ms_u.ms_ui = mp->m_spamscore;
+            break;
 #endif
-			case SORT_FROM:
-			case SORT_TO:
-				if ((cp = hfield1(method == SORT_FROM ?
-						"from" : "to", mp)) != NULL) {
-					ms[n].ms_u.ms_char = sstrdup(showname ?
-						realname(cp) : skin(cp));
-					makelow(ms[n].ms_u.ms_char);
-				} else
-					ms[n].ms_u.ms_char = sstrdup("");
-				break;
-			default:
-			case SORT_SUBJECT:
-				if ((cp = hfield1("subject", mp)) != NULL) {
-					in.s = cp;
-					in.l = strlen(in.s);
-					mime_fromhdr(&in, &out, TD_ICONV);
-					ms[n].ms_u.ms_char = sstrdup(
-							skipre(out.s));
-					free(out.s);
-					makelow(ms[n].ms_u.ms_char);
-				} else
-					ms[n].ms_u.ms_char = sstrdup("");
-				break;
-			}
-			ms[n++].ms_n = i;
-		}
-		mp->m_child = mp->m_younger = mp->m_elder = mp->m_parent = NULL;
-		mp->m_level = 0;
-		mp->m_collapsed = 0;
-		srelax();
-	}
-	srelax_rele();
+         case SORT_FROM:
+         case SORT_TO:
+            if ((cp = hfield1((method == SORT_FROM ?  "from" : "to"), mp)) !=
+                  NULL) {
+               ms[n].ms_u.ms_char = sstrdup(showname ? realname(cp) : skin(cp));
+               makelow(ms[n].ms_u.ms_char);
+            } else
+               ms[n].ms_u.ms_char = sstrdup("");
+            break;
+         default:
+         case SORT_SUBJECT:
+            if ((cp = hfield1("subject", mp)) != NULL) {
+               in.s = cp;
+               in.l = strlen(in.s);
+               mime_fromhdr(&in, &out, TD_ICONV);
+               ms[n].ms_u.ms_char = sstrdup(_skipre(out.s));
+               free(out.s);
+               makelow(ms[n].ms_u.ms_char);
+            } else
+               ms[n].ms_u.ms_char = sstrdup("");
+            break;
+         }
+         ms[n++].ms_n = i;
+      }
+      mp->m_child = mp->m_younger = mp->m_elder = mp->m_parent = NULL;
+      mp->m_level = 0;
+      mp->m_collapsed = 0;
+      srelax();
+   }
+   srelax_rele();
 
-	if (n > 0) {
-		qsort(ms, n, sizeof *ms, func);
-		threadroot = &message[ms[0].ms_n];
-		for (i = 1; i < n; i++) {
-			message[ms[i-1].ms_n].m_younger = &message[ms[i].ms_n];
-			message[ms[i].ms_n].m_elder = &message[ms[i-1].ms_n];
-		}
-	} else
-		threadroot = &message[0];
-	finalize(threadroot);
-	mb.mb_threaded = 2;
+   if (n > 0) {
+      qsort(ms, n, sizeof *ms, func);
+      threadroot = &message[ms[0].ms_n];
+      for (i = 1; i < n; ++i) {
+         message[ms[i-1].ms_n].m_younger = &message[ms[i].ms_n];
+         message[ms[i].ms_n].m_elder = &message[ms[i-1].ms_n];
+      }
+   } else
+      threadroot = &message[0];
+   _finalize(threadroot);
+   mb.mb_threaded = 2;
 
-	switch (method) {
-	case SORT_FROM:
-	case SORT_TO:
-	case SORT_SUBJECT:
-		for (i = 0; i < n; ++i)
-			free(ms[i].ms_u.ms_char);
-		/* FALLTHRU */
-	default:
-		break;
-	}
-	ac_free(ms);
-	return ((vp && vp != (void *)-1 && !inhook && ok_blook(header))
-		? headers(msgvec) : 0);
-}
-
-static char const *
-skipre(char const *cp)
-{
-	if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' &&
-			cp[2] == ':' && spacechar(cp[3])) {
-		cp = &cp[4];
-		while (spacechar(*cp))
-			cp++;
-	}
-	return cp;
+   switch (method) {
+   case SORT_FROM:
+   case SORT_TO:
+   case SORT_SUBJECT:
+      for (i = 0; i < n; ++i)
+         free(ms[i].ms_u.ms_char);
+      /* FALLTHRU */
+   default:
+      break;
+   }
+   ac_free(ms);
+   i = ((vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
+         ? c_headers(msgvec) : 0);
+jleave:
+   NYD_LEAVE;
+   return i;
 }
 
 FL int
-ccollapse(void *v)
+c_collapse(void *v)
 {
-	return colpt(v, 1);
+   int rv;
+   NYD_ENTER;
+
+   rv = _colpt(v, 1);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
-cuncollapse(void *v)
+c_uncollapse(void *v)
 {
-	return colpt(v, 0);
-}
+   int rv;
+   NYD_ENTER;
 
-static int
-colpt(int *msgvec, int cl)
-{
-	int	*ip;
-
-	if (mb.mb_threaded != 1) {
-		puts("Not in threaded mode.");
-		return 1;
-	}
-	for (ip = msgvec; *ip != 0; ip++)
-		colps(&message[*ip-1], cl);
-	return 0;
-}
-
-static void
-colps(struct message *b, int cl)
-{
-	struct message	*m;
-	int	cc = 0, uc = 0;
-
-	if (cl && (b->m_collapsed > 0 || (b->m_flag & (MNEW|MREAD)) == MNEW))
-		return;
-	if (b->m_child) {
-		m = b->m_child;
-		colpm(m, cl, &cc, &uc);
-		for (m = m->m_younger; m; m = m->m_younger)
-			colpm(m, cl, &cc, &uc);
-	}
-	if (cl) {
-		b->m_collapsed = -cc;
-		for (m = b->m_parent; m; m = m->m_parent)
-			if (m->m_collapsed <= -uc ) {
-				m->m_collapsed += uc;
-				break;
-			}
-	} else {
-		if (b->m_collapsed > 0) {
-			b->m_collapsed = 0;
-			uc++;
-		}
-		for (m = b; m; m = m->m_parent)
-			if (m->m_collapsed <= -uc) {
-				m->m_collapsed += uc;
-				break;
-			}
-	}
-}
-
-static void
-colpm(struct message *m, int cl, int *cc, int *uc)
-{
-	if (cl) {
-		if (m->m_collapsed > 0)
-			(*uc)++;
-		if ((m->m_flag & (MNEW|MREAD)) != MNEW || m->m_collapsed < 0)
-			m->m_collapsed = 1;
-		if (m->m_collapsed > 0)
-			(*cc)++;
-	} else {
-		if (m->m_collapsed > 0) {
-			m->m_collapsed = 0;
-			(*uc)++;
-		}
-	}
-	if (m->m_child) {
-		m = m->m_child;
-		colpm(m, cl, cc, uc);
-		for (m = m->m_younger; m; m = m->m_younger)
-			colpm(m, cl, cc, uc);
-	}
+   rv = _colpt(v, 0);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL void
-uncollapse1(struct message *m, int always)
+uncollapse1(struct message *mp, int always)
 {
-	if (mb.mb_threaded == 1 && (always || m->m_collapsed > 0))
-		colps(m, 0);
+   NYD_ENTER;
+   if (mb.mb_threaded == 1 && (always || mp->m_collapsed > 0))
+      _colps(mp, 0);
+   NYD_LEAVE;
 }
+
+/* vim:set fenc=utf-8:s-it-mode */

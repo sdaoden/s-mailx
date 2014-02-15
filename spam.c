@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Spam related facilities.
  *
- * Copyright (c) 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2013 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -53,12 +53,12 @@ enum spam_action {
 };
 
 struct spam_vc {
-   struct message *  mp;
+   struct message    *mp;
    size_t            mno;
    int               action;
    int               __dummy;
-   char *            comm_s;
-   char *            buffer;
+   char              *comm_s;
+   char              *buffer;
    /* TODO This codebase jumps around and uses "stacks" of signal handling;
     * TODO until some later time we have to play the same game */
    sighandler_type   otstp;
@@ -67,7 +67,7 @@ struct spam_vc {
    sighandler_type   ohup;
    sighandler_type   opipe;
    sighandler_type   oint;
-   char const *      comm_a[16];
+   char const        *comm_a[16];
 };
 
 /* Indices according to enum spam_action */
@@ -92,6 +92,7 @@ _spam_action(enum spam_action sa, int *ip)
    size_t maxsize;
    char const *cp, **args;
    bool_t ok = FAL0;
+   NYD_ENTER;
 
    vc.action = sa;
 
@@ -183,7 +184,8 @@ jlearn:
 #ifndef SPAMC_PATH
 jleave:
 #endif
-   return ! ok;
+   NYD_LEAVE;
+   return !ok;
 }
 
 static void
@@ -191,30 +193,32 @@ _spam_rate2score(struct spam_vc *vc)
 {
    char *cp;
    size_t size;
-   ui_it m, s;
+   ui32_t m, s;
+   NYD_ENTER;
 
    cp = strchr(vc->buffer, '/');
    if (cp == NULL)
       goto jleave;
-   size = (size_t)(cp - vc->buffer);
+   size = PTR2SIZE(cp - vc->buffer);
    vc->buffer[size] = '\0';
 
-   m = (ui_it)strtol(vc->buffer, &cp, 10);
+   m = (ui32_t)strtol(vc->buffer, &cp, 10);
    if (cp == vc->buffer)
       goto jleave;
 
-   s = (*cp == '\0') ? 0 : (ui_it)strtol(++cp, NULL, 10);
+   s = (*cp == '\0') ? 0 : (ui32_t)strtol(++cp, NULL, 10);
 
    vc->mp->m_spamscore = (m << 8) | (s & 0xFF);
 jleave:
-   ;
+   NYD_LEAVE;
 }
 
 static sigjmp_buf __spam_actjmp; /* TODO someday, we won't need it no more */
-static int __spam_sig; /* TODO someday, we won't need it no more */
+static int        __spam_sig; /* TODO someday, we won't need it no more */
 static void
 __spam_onsig(int sig) /* TODO someday, we won't need it no more */
 {
+   NYD_X; /* Signal handler */
    __spam_sig = sig;
    siglongjmp(__spam_actjmp, 1);
 }
@@ -241,6 +245,7 @@ _spam_interact(struct spam_vc *vc)
       _GOODRUN = 1<<7,
       _ERRORS  = 1<<8
    } state = _NONE;
+   NYD_ENTER;
 
    setdot(vc->mp);
    if ((ibuf = setinput(&mb, vc->mp, NEED_BODY)) == NULL) {
@@ -260,13 +265,13 @@ _spam_interact(struct spam_vc *vc)
    /* Keep sigs blocked */
    pid = 0; /* cc uninit */
 
-   if (! pipe_cloexec(p2c)) {
+   if (!pipe_cloexec(p2c)) {
       perror("pipe"); /* XXX tr() */
       goto jleave;
    }
    state |= _P2C;
 
-   if (! pipe_cloexec(c2p)) {
+   if (!pipe_cloexec(c2p)) {
       perror("pipe"); /* XXX tr() */
       goto jleave;
    }
@@ -334,7 +339,7 @@ jleave:
     * XXX everything until EOF on input, then (2) work, then (3) output
     * XXX a single result line; otherwise we could deadlock here, but since
     * TODO this is rather intermediate, go with it */
-   if (vc->action == _SPAM_RATE && ! (state & (_JUMPED | _ERRORS))) {
+   if (vc->action == _SPAM_RATE && !(state & (_JUMPED | _ERRORS))) {
       ssize_t i = read(c2p[0], vc->buffer, BUFFER_SIZE - 1);
       if (i > 0) {
          vc->buffer[i] = '\0';
@@ -380,54 +385,80 @@ jleave:
       sigemptyset(&cset);
       sigaddset(&cset, __spam_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
-      kill(0, __spam_sig);
    }
 j_leave:
-   return ! (state & _ERRORS);
+   NYD_LEAVE;
+   if (state & _JUMPED)
+      kill(0, __spam_sig);
+   return !(state & _ERRORS);
 }
 
 FL int
-cspam_clear(void *v)
+c_spam_clear(void *v)
 {
    int *ip;
+   NYD_ENTER;
 
    for (ip = v; *ip != 0; ++ip)
       message[(size_t)*ip - 1].m_flag &= ~MSPAM;
+   NYD_LEAVE;
    return 0;
 }
 
 FL int
-cspam_set(void *v)
+c_spam_set(void *v)
 {
    int *ip;
+   NYD_ENTER;
 
    for (ip = v; *ip != 0; ++ip)
       message[(size_t)*ip - 1].m_flag |= MSPAM;
+   NYD_LEAVE;
    return 0;
 }
 
 FL int
-cspam_forget(void *v)
+c_spam_forget(void *v)
 {
-   return _spam_action(_SPAM_FORGET, (int*)v) ? OKAY : STOP;
+   int rv;
+   NYD_ENTER;
+
+   rv = _spam_action(_SPAM_FORGET, (int*)v) ? OKAY : STOP;
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
-cspam_ham(void *v)
+c_spam_ham(void *v)
 {
-   return _spam_action(_SPAM_HAM, (int*)v) ? OKAY : STOP;
+   int rv;
+   NYD_ENTER;
+
+   rv = _spam_action(_SPAM_HAM, (int*)v) ? OKAY : STOP;
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
-cspam_rate(void *v)
+c_spam_rate(void *v)
 {
-   return _spam_action(_SPAM_RATE, (int*)v) ? OKAY : STOP;
+   int rv;
+   NYD_ENTER;
+
+   rv = _spam_action(_SPAM_RATE, (int*)v) ? OKAY : STOP;
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
-cspam_spam(void *v)
+c_spam_spam(void *v)
 {
-   return _spam_action(_SPAM_SPAM, (int*)v) ? OKAY : STOP;
+   int rv;
+   NYD_ENTER;
+
+   rv = _spam_action(_SPAM_SPAM, (int*)v) ? OKAY : STOP;
+   NYD_LEAVE;
+   return rv;
 }
 #endif /* HAVE_SPAM */
 

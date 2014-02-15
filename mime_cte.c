@@ -4,10 +4,10 @@
  *@ - Base64, section 6.8
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen "Daode" Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /* QP quoting idea, _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
-/*	$NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $	*/
+/* $NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $ */
 /*
  * Copyright (c) 2006 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -60,27 +60,27 @@ enum _qact {
  * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
  * - don't care about the special ^F[rom] and ^.$ */
 static ui8_t const   _qtab_body[] = {
-       Q, Q, Q, Q,  Q, Q, Q, Q,  Q,TB,NL, Q,  Q,CR, Q, Q,
-       Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
-      SP, N, N, N,  N, N, N, N,  N, N, N, N,  N, N,XD, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N, N,
+    Q, Q, Q, Q,  Q, Q, Q, Q,  Q,TB,NL, Q,  Q,CR, Q, Q,
+    Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+   SP, N, N, N,  N, N, N, N,  N, N, N, N,  N, N,XD, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N, N,
 
-       N, N, N, N,  N, N,XF, N,  N, N, N, N,  N, N, N, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
-   },
+    N, N, N, N,  N, N,XF, N,  N, N, N, N,  N, N, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+},
                      _qtab_head[] = {
-       Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
-       Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
-      US, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N,QM,
+    Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+    Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+   US, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N,QM,
 
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-       N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
-   };
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+};
 
 /* Check wether **s* must be quoted according to *ishead*, else body rules;
  * *sol* indicates wether we are at the first character of a line/field */
@@ -103,8 +103,12 @@ static ssize_t       _b64_decode(struct str *out, struct str *in);
 SINLINE enum _qact
 _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
 {
-   ui8_t const *qtab = ishead ? _qtab_head : _qtab_body;
-   enum _qact a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s], r;
+   ui8_t const *qtab;
+   enum _qact a, r;
+   NYD_ENTER;
+
+   qtab = ishead ? _qtab_head : _qtab_body;
+   a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s];
 
    if ((r = a) == N || (r = a) == Q)
       goto jleave;
@@ -120,7 +124,7 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
       /* Treat '?' only special if part of '=?' and '?=' (still to much quoting
        * since it's '=?CHARSET?CTE?stuff?=', and especially the trailing ?=
        * should be hard too match */
-      if (a == QM && ((! sol && s[-1] == '=') || (s < e && s[1] == '=')))
+      if (a == QM && ((!sol && s[-1] == '=') || (s < e && s[1] == '=')))
          goto jleave;
       goto jnquote;
    }
@@ -150,6 +154,7 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
 jnquote:
    r = N;
 jleave:
+   NYD_LEAVE;
    return r;
 }
 
@@ -157,11 +162,13 @@ SINLINE char *
 _qp_ctohex(char *store, char c)
 {
    static char const hexmap[] = "0123456789ABCDEF";
+   NYD_ENTER;
 
    store[2] = '\0';
    store[1] = hexmap[(ui8_t)c & 0x0F];
    c = ((ui8_t)c >> 4) & 0x0F;
    store[0] = hexmap[(ui8_t)c];
+   NYD_LEAVE;
    return store;
 }
 
@@ -178,20 +185,23 @@ _qp_cfromhex(char const *hex)
       0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x58-0x5f */
       0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF  /* 0x60-0x67 */
    };
+
    ui8_t i1, i2;
    si32_t r;
+   NYD_ENTER;
 
    if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(atoi16) ||
          (i2 = (ui8_t)hex[1] - '0') >= NELEM(atoi16))
       goto jerr;
    i1 = atoi16[i1];
    i2 = atoi16[i2];
-   if ((i1 | i2) & 0xF0)
+   if ((i1 | i2) & 0xF0u)
       goto jerr;
    r = i1;
    r <<= 4;
    r += i2;
 jleave:
+   NYD_LEAVE;
    return r;
 jerr:
    r = -1;
@@ -201,8 +211,12 @@ jerr:
 static size_t
 _b64_decode_prepare(struct str *work, struct str const *in)
 {
-   char *cp = in->s;
-   size_t cp_len = in->l;
+   char *cp;
+   size_t cp_len;
+   NYD_ENTER;
+
+   cp = in->s;
+   cp_len = in->l;
 
    while (cp_len > 0 && spacechar(*cp))
       ++cp, --cp_len;
@@ -217,6 +231,7 @@ _b64_decode_prepare(struct str *work, struct str const *in)
 
    if (cp_len > 16)
       cp_len = ((cp_len * 3) >> 2) + (cp_len >> 3);
+   NYD_LEAVE;
    return cp_len;
 }
 
@@ -238,9 +253,12 @@ _b64_decode(struct str *out, struct str *in)
 #define uchar64(c)   ((c) >= sizeof(b64index) ? BAD : (ui32_t)b64index[(c)])
 
    ssize_t ret = -1;
-   ui8_t *p = (ui8_t*)out->s;
-   ui8_t const *q = (ui8_t const*)in->s, *end;
+   ui8_t *p;
+   ui8_t const *q, *end;
+   NYD_ENTER;
 
+   p = (ui8_t*)out->s;
+   q = (ui8_t const*)in->s;
    out->l = 0;
 
    for (end = q + in->l; q + 4 <= end; q += 4) {
@@ -256,7 +274,7 @@ _b64_decode(struct str *out, struct str *in)
             goto jleave;
          break;
       }
-      *p++ = (((b & 0x0f) << 4) | ((c & 0x3c) >> 2));
+      *p++ = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
       if (d == EQU) /* got '=' */
          break;
       *p++ = (((c & 0x03) << 6) | d);
@@ -270,6 +288,7 @@ _b64_decode(struct str *out, struct str *in)
 jleave:
    in->l -= PTR2SIZE((char*)UNCONST(q) - in->s);
    in->s = UNCONST(q);
+   NYD_LEAVE;
    return ret;
 }
 
@@ -278,17 +297,21 @@ mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
 {
    size_t ret;
    bool_t sol;
+   NYD_ENTER;
 
    for (ret = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
       ret += (_mustquote(ln, ln + lnlen, sol, ishead) != N);
+   NYD_LEAVE;
    return ret;
 }
 
 FL size_t
 qp_encode_calc_size(size_t len)
 {
+   NYD_ENTER;
    /* Worst case: 'CRLF' -> '=0D=0A=\n\0' */
    len = (len * 3) + 1/* soft NL */ + 1/* visual NL */ + 1/* NUL */;
+   NYD_LEAVE;
    return len;
 }
 
@@ -297,9 +320,13 @@ FL struct str *
 qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
 {
    struct str in;
+   NYD_ENTER;
+
    in.s = UNCONST(cp);
    in.l = strlen(cp);
-   return qp_encode(out, &in, flags);
+   out = qp_encode(out, &in, flags);
+   NYD_LEAVE;
+   return out;
 }
 
 FL struct str *
@@ -307,9 +334,13 @@ qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
    enum qpflags flags)
 {
    struct str in;
+   NYD_ENTER;
+
    in.s = UNCONST(vp);
    in.l = vp_len;
-   return qp_encode(out, &in, flags);
+   out = qp_encode(out, &in, flags);
+   NYD_LEAVE;
+   return out;
 }
 #endif /* notyet */
 
@@ -320,6 +351,7 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
    ssize_t lnlen;
    char *qp;
    char const *is, *ie;
+   NYD_ENTER;
 
    if ((flags & QP_BUF) == 0) {
       lnlen = qp_encode_calc_size(in->l);
@@ -405,6 +437,7 @@ jsoftnl:
 jleave:
    out->l = PTR2SIZE(qp - out->s);
    out->s[out->l] = '\0';
+   NYD_LEAVE;
    return out;
 }
 
@@ -414,6 +447,7 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
    int ret = STOP;
    char *os, *oc;
    char const *is, *ie;
+   NYD_ENTER;
 
    if (rest != NULL && rest->l != 0) {
       os = out->s;
@@ -430,7 +464,7 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
 
    /* Decoding encoded-word (RFC 2049) in a header field? */
    if (rest == NULL) {
-      while (PTRCMP(is, <, ie)) {
+      while (is < ie) {
          si32_t c = *is++;
          if (c == '=') {
             if (PTRCMP(is + 1, >=, ie)) {
@@ -456,7 +490,7 @@ jehead:
    }
 
    /* Decoding a complete message/mimepart body line */
-   while (PTRCMP(is, <, ie)) {
+   while (is < ie) {
       si32_t c = *is++;
       if (c != '=') {
          *oc++ = (char)c;
@@ -468,7 +502,7 @@ jehead:
        *   trailing white space on a line must be deleted, as it will
        *   necessarily have been added by intermediate transport
        *   agents */
-      for (; PTRCMP(is, <, ie) && blankchar(*is); ++is)
+      for (; is < ie && blankchar(*is); ++is)
          ;
       if (PTRCMP(is + 1, >=, ie)) {
          /* Soft line break? */
@@ -500,7 +534,7 @@ jebody:
        * check for this special case, and simply forget we have seen one, so as
        * not to end up with the entire DOS file in a contiguous buffer */
 jsoftnl:
-      if (PTRCMP(oc, >, os) && oc[-1] == '\n') {
+      if (oc > os && oc[-1] == '\n') {
 #if 0       /* TODO qp_decode() we do not normalize CRLF
           * TODO to LF because for that we would need
           * TODO to know if we are about to write to
@@ -525,15 +559,18 @@ jsoftnl:
 jleave:
    out->l = PTR2SIZE(oc - os);
    ret = OKAY;
+   NYD_LEAVE;
    return ret;
 }
 
 FL size_t
 b64_encode_calc_size(size_t len)
 {
+   NYD_ENTER;
    len = (len * 4) / 3;
    len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
    len += 2 + 1; /* CRLF, \0 */
+   NYD_LEAVE;
    return len;
 }
 
@@ -542,9 +579,13 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 {
    static char const b64table[] =
        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-   ui8_t const *p = (ui8_t const*)in->s;
+
+   ui8_t const *p;
    ssize_t i, lnlen;
    char *b64;
+   NYD_ENTER;
+
+   p = (ui8_t const*)in->s;
 
    if (!(flags & B64_BUF)) {
       i = b64_encode_calc_size(in->l);
@@ -567,16 +608,16 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
          break;
       case 2:
          b = p[1];
-         b64[1] = b64table[((a & 0x3) << 4) | ((b & 0xf0) >> 4)];
-         b64[2] = b64table[((b & 0xf) << 2)];
+         b64[1] = b64table[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
+         b64[2] = b64table[((b & 0x0F) << 2)];
          b64[3] = '=';
          break;
       default:
          b = p[1];
          c = p[2];
-         b64[1] = b64table[((a & 0x3) << 4) | ((b & 0xf0) >> 4)];
-         b64[2] = b64table[((b & 0xf) << 2) | ((c & 0xc0) >> 6)];
-         b64[3] = b64table[c & 0x3f];
+         b64[1] = b64table[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
+         b64[2] = b64table[((b & 0x0F) << 2) | ((c & 0xC0u) >> 6)];
+         b64[3] = b64table[c & 0x3F];
          break;
       }
 
@@ -603,6 +644,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
    }
    out->l = PTR2SIZE(b64 - out->s);
    out->s[out->l] = '\0';
+   NYD_LEAVE;
    return out;
 }
 
@@ -610,9 +652,13 @@ FL struct str *
 b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
 {
    struct str in;
+   NYD_ENTER;
+
    in.s = UNCONST(cp);
    in.l = strlen(cp);
-   return b64_encode(out, &in, flags);
+   out = b64_encode(out, &in, flags);
+   NYD_LEAVE;
+   return out;
 }
 
 FL struct str *
@@ -620,9 +666,13 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
    enum b64flags flags)
 {
    struct str in;
+   NYD_ENTER;
+
    in.s = UNCONST(vp);
    in.l = vp_len;
-   return b64_encode(out, &in, flags);
+   out = b64_encode(out, &in, flags);
+   NYD_LEAVE;
+   return out;
 }
 
 FL int
@@ -631,13 +681,15 @@ b64_decode(struct str *out, struct str const *in, struct str *rest)
    struct str work;
    char *x;
    int ret = STOP;
-   size_t len = _b64_decode_prepare(&work, in);
+   size_t len;
+   NYD_ENTER;
+
+   len = _b64_decode_prepare(&work, in);
 
    /* Ignore an empty input, as may happen for an empty final line */
    if (work.l == 0) {
-      /* In B64_T cases there may be leftover decoded data for
-       * iconv(3) though, even if that means it's incomplete
-       * multibyte character we have to copy over */
+      /* With B64_T there may be leftover decoded data for iconv(3), even if
+       * that means it's incomplete multibyte character we have to copy over */
       /* XXX strictly speaking this should not be handled in here,
        * XXX since its leftover decoded data from an iconv(3);
        * XXX like this we shared the prototype with QP, though?? */
@@ -658,6 +710,7 @@ b64_decode(struct str *out, struct str const *in, struct str *rest)
    if (ret != OKAY || (ssize_t)(len = _b64_decode(out, &work)) < 0)
       goto jerr;
 jleave:
+   NYD_LEAVE;
    return ret;
 
 jerr: {
