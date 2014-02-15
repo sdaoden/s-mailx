@@ -849,14 +849,14 @@ _matchmid(struct message *mp, char *id, enum idfield idfield)
    if ((cp = hfield1("message-id", mp)) != NULL) {
       switch (idfield) {
       case ID_REFERENCES:
-         rv = (msgidcmp(id, cp) == 0);
+         rv = !msgidcmp(id, cp);
          goto jleave;
       case ID_IN_REPLY_TO: {
          struct name *np;
 
          if ((np = extract(id, GREF)) != NULL)
             do {
-               if (msgidcmp(np->n_name, cp) == 0) {
+               if (!msgidcmp(np->n_name, cp)) {
                   rv = TRU1;
                   goto jleave;
                }

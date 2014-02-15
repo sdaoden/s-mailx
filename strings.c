@@ -1129,13 +1129,13 @@ n_iconv_open(char const *tocode, char const *fromcode)
       goto jleave;
 
    /* Remove the "iso-" prefixes for Solaris */
-   if (ascncasecmp(tocode, "iso-", 4) == 0)
+   if (!ascncasecmp(tocode, "iso-", 4))
       tocode += 4;
-   else if (ascncasecmp(tocode, "iso", 3) == 0)
+   else if (!ascncasecmp(tocode, "iso", 3))
       tocode += 3;
-   if (ascncasecmp(fromcode, "iso-", 4) == 0)
+   if (!ascncasecmp(fromcode, "iso-", 4))
       fromcode += 4;
-   else if (ascncasecmp(fromcode, "iso", 3) == 0)
+   else if (!ascncasecmp(fromcode, "iso", 3))
       fromcode += 3;
    if (*tocode == '\0' || *fromcode == '\0') {
       id = (iconv_t)-1;
@@ -1254,13 +1254,17 @@ FL int
 n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
    struct str *in_rest_or_null, bool_t skipilseq)
 {
-   int err = 0;
-   char *obb = out->s, *ob;
+   int err;
+   char *obb, *ob;
    char const *ib;
-   size_t olb = out->l, ol, il;
+   size_t olb, ol, il;
    NYD_ENTER;
 
+   err = 0;
+   obb = out->s;
+   olb = out->l;
    ol = in->l;
+
    ol = (ol << 1) - (ol >> 4);
    if (olb < ol) {
       olb = ol;

@@ -165,6 +165,7 @@ static int
 _getopt(int argc, char * const argv[], char const *optstring)
 {
    static char const *lastp;
+
    int rv = -1, colon;
    char const *curp;
    NYD_ENTER;

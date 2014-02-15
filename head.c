@@ -870,11 +870,16 @@ jleave:
 FL int
 is_addr_invalid(struct name *np, int putmsg)
 {
-   char cbuf[sizeof "'\\U12340'"], *name = np->n_name;
-   int f = np->n_flags, ok8bit = 1;
+   char cbuf[sizeof "'\\U12340'"], *name;
+   int f, ok8bit;
    ui_it c;
-   char const *fmt = "'\\x%02X'", *cs;
+   char const *fmt, *cs;
    NYD_ENTER;
+
+   name = np->n_name;
+   f = np->n_flags;
+   ok8bit = 1;
+   fmt = "'\\x%02X'";
 
    if ((f & NAME_ADDRSPEC_INVALID) == 0 || !putmsg ||
          (f & NAME_ADDRSPEC_ERR_EMPTY) != 0)
@@ -1218,7 +1223,7 @@ jnewname:
       namebuf = srealloc(namebuf, namesize = linesize + 1);
 
    while ((cp = strchr(cp, 'r')) != NULL) {
-      if (strncmp(cp, "remote", 6) == 0) {
+      if (!strncmp(cp, "remote", 6)) {
          if ((cp = strchr(cp, 'f')) == NULL)
             break;
          if (strncmp(cp, "from", 4) != 0)
@@ -1360,7 +1365,7 @@ unixtime(char const *fromline)
    if (fp[3] != ' ')
       goto jinvalid;
    for (i = 0;;) {
-      if (strncmp(fp + 4, month_names[i], 3) == 0)
+      if (!strncmp(fp + 4, month_names[i], 3))
          break;
       if (month_names[++i][0] == '\0')
          goto jinvalid;
@@ -1418,7 +1423,7 @@ rfctime(char const *date)
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
    for (i = 0;;) {
-      if (strncmp(cp, month_names[i], 3) == 0)
+      if (!strncmp(cp, month_names[i], 3))
          break;
       if (month_names[++i][0] == '\0')
          goto jinvalid;

@@ -439,7 +439,7 @@ jleave:
 static void
 pop3alarm(int s)
 {
-   sighandler_type   volatile saveint, savepipe;
+   sighandler_type volatile saveint, savepipe;
    NYD_X; /* Signal handler */
    UNUSED(s);
 
@@ -589,13 +589,20 @@ pop3_setptr(struct mailbox *mp)
 static enum okay
 pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 {
-   char o[LINESIZE], *line = NULL, *lp;
-   sighandler_type   volatile saveint = SIG_IGN, savepipe = SIG_IGN;
-   size_t linesize = 0, linelen, size;
-   int number = m - message + 1, emptyline = 0, lines;
+   char o[LINESIZE], *line, *lp;
+   sighandler_type volatile saveint, savepipe;
+   size_t linesize, linelen, size;
+   int number, emptyline, lines;
    off_t offset;
-   enum okay rv = STOP;
+   enum okay rv;
    NYD_ENTER;
+
+   line = NULL;
+   saveint = savepipe = SIG_IGN;
+   linesize = 0;
+   number = (int)PTR2SIZE(m - message + 1);
+   emptyline = 0;
+   rv = STOP;
 
    if (mp->mb_sock.s_fd < 0) {
       fprintf(stderr, tr(219, "POP3 connection already closed.\n"));
@@ -808,7 +815,7 @@ pop3_update(struct mailbox *mp)
 FL enum okay
 pop3_noop(void)
 {
-   sighandler_type   volatile saveint, savepipe;
+   sighandler_type volatile saveint, savepipe;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -832,7 +839,7 @@ FL int
 pop3_setfile(char const *server, int nmail, int isedit)
 {
    struct sock so;
-   sighandler_type   saveint, savepipe;
+   sighandler_type saveint, savepipe;
    char * volatile user, * volatile pass;
    char const *cp, *uhp, * volatile sp = server;
    int use_ssl = 0, rv = 1;
@@ -841,11 +848,11 @@ pop3_setfile(char const *server, int nmail, int isedit)
    if (nmail)
       goto jleave;
 
-   if (strncmp(sp, "pop3://", 7) == 0) {
+   if (!strncmp(sp, "pop3://", 7)) {
       sp = &sp[7];
       use_ssl = 0;
 #ifdef HAVE_SSL
-   } else if (strncmp(sp, "pop3s://", 8) == 0) {
+   } else if (!strncmp(sp, "pop3s://", 8)) {
       sp = &sp[8];
       use_ssl = 1;
 #endif
@@ -960,7 +967,7 @@ pop3_body(struct message *m)
 FL void
 pop3_quit(void)
 {
-   sighandler_type   volatile saveint, savepipe;
+   sighandler_type volatile saveint, savepipe;
    NYD_ENTER;
 
    if (mb.mb_sock.s_fd < 0) {

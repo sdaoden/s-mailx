@@ -487,7 +487,7 @@ jleave:
 static enum okay
 imap_parse_list(void)
 {
-   char  *cp;
+   char *cp;
    enum okay rv;
    NYD_ENTER;
 
@@ -1007,7 +1007,7 @@ FL enum okay
 imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx)
 {
    enum okay ok = OKAY;
-   char const*cp;
+   char const *cp;
    char o[LINESIZE];
    FILE *queuefp = NULL;
    NYD_X;
@@ -1528,19 +1528,29 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
    char o[LINESIZE];
    struct message mt;
-   sighandler_type volatile saveint = SIG_IGN, savepipe = SIG_IGN;
-   char *volatile head = NULL;
-   char const *cp = NULL, *loc = NULL, * volatile item = NULL,
-      * volatile resp = NULL;
+   sighandler_type volatile saveint, savepipe;
+   char * volatile head;
+   char const *cp, *loc, * volatile item, * volatile resp;
    size_t expected;
-   size_t volatile headsize = 0;
-   int number = m - message + 1;
-   FILE *queuefp = NULL;
-   long volatile headlines = 0;
-   long n = -1;
-   unsigned long u = 0;
-   enum okay ok = STOP;
+   size_t volatile headsize;
+   int number;
+   FILE *queuefp;
+   long volatile headlines;
+   long n;
+   unsigned long u;
+   enum okay ok;
    NYD_X;
+
+   saveint = savepipe = SIG_IGN;
+   head = NULL;
+   cp = loc = item = resp = NULL;
+   headsize = 0;
+   number = (int)PTR2SIZE(m - message + 1);
+   queuefp = NULL;
+   headlines = 0;
+   n = -1;
+   u = 0;
+   ok = STOP;
 
    if (getcache(mp, m, need) == OKAY)
       return OKAY;
@@ -2110,7 +2120,7 @@ imap_unread(struct message *m, int n)
 static enum okay
 imap_unstore(struct message *m, int n, const char *flag)
 {
-   sighandler_type   saveint, savepipe;
+   sighandler_type saveint, savepipe;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -2152,7 +2162,7 @@ FL int
 c_imap_imap(void *vp)
 {
    char o[LINESIZE];
-   sighandler_type   saveint, savepipe;
+   sighandler_type saveint, savepipe;
    struct mailbox *mp = &mb;
    FILE *queuefp = NULL;
    enum okay ok = STOP;
@@ -2458,7 +2468,7 @@ jleave:
 FL enum okay
 imap_append(const char *xserver, FILE *fp)
 {
-   sighandler_type   volatile saveint, savepipe;
+   sighandler_type volatile saveint, savepipe;
    char *server, *user, *pass;
    char const *sp, *cp, * volatile mbx, *uhp;
    int volatile use_ssl;
@@ -2626,7 +2636,7 @@ imap_folders(const char * volatile name, int strip)
 {
    sighandler_type saveint, savepipe;
    const char *fold, *cp, *sp;
-   FILE *volatile fp;
+   FILE * volatile fp;
    NYD_ENTER;
 
    cp = protbase(name);
@@ -3106,7 +3116,7 @@ out:
 }
 
 FL enum okay
-imap_search1(const char *volatile spec, int f)
+imap_search1(const char * volatile spec, int f)
 {
    sighandler_type saveint, savepipe;
    enum okay rv = STOP;

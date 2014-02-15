@@ -537,7 +537,7 @@ __subject(struct message *mp, bool_t threaded, size_t yetprinted)
    mso = __subject_trim(ms);
    for (xmp = mp; (xmp = prev_in_thread(xmp)) != NULL && yetprinted-- > 0;)
       if (visible(xmp) && (os = hfield1("subject", xmp)) != NULL &&
-            asccasecmp(mso, __subject_trim(os)) == 0)
+            !asccasecmp(mso, __subject_trim(os)))
          goto jleave;
 jconv:
    in.s = ms;

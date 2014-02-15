@@ -144,11 +144,11 @@ do {\
 
    if ((authstr = smtp_auth_var("", skinned)) == NULL)
       auth = (user != NULL && password != NULL) ? AUTH_LOGIN : AUTH_NONE;
-   else if (strcmp(authstr, "plain") == 0)
+   else if (!strcmp(authstr, "plain"))
       auth = AUTH_PLAIN;
-   else if (strcmp(authstr, "login") == 0)
+   else if (!strcmp(authstr, "login"))
       auth = AUTH_LOGIN;
-   else if (strcmp(authstr, "cram-md5") == 0) {
+   else if (!strcmp(authstr, "cram-md5")) {
 #ifdef HAVE_MD5
       auth = AUTH_CRAM_MD5;
 #else
@@ -275,7 +275,7 @@ do {\
             continue;
          /* We know what we have generated first, so do not look for whitespace
           * before the ':' */
-         else if (ascncasecmp(buf, "bcc: ", 5) == 0) {
+         else if (!ascncasecmp(buf, "bcc: ", 5)) {
             inbcc = 1;
             continue;
          } else

@@ -846,7 +846,7 @@ mime_getparam(char const *param, char *h)
    for (;;) {
       while (whitechar(*p))
          ++p;
-      if (ascncasecmp(p, param, sz) == 0) {
+      if (!ascncasecmp(p, param, sz)) {
          p += sz;
          while (whitechar(*p))
             ++p;
@@ -960,7 +960,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
    if (*contenttype == NULL)
       ctt = _NCTT;
-   else if (ascncasecmp(*contenttype, "text/", 5) == 0)
+   else if (!ascncasecmp(*contenttype, "text/", 5))
       ctt = ok_blook(mime_allow_text_controls) ? _ISTXT | _ISTXTCOK : _ISTXT;
    convert = _conversion_by_encoding();
 
@@ -1025,7 +1025,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
          *f_p++ = (char)c;
          if (curlen == (sl_it)(F_SIZEOF - 1) &&
                PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
-               memcmp(f_buf, F_, F_SIZEOF) == 0)
+               !memcmp(f_buf, F_, F_SIZEOF))
             ctt |= _FROM_;
       }
    }
@@ -1074,11 +1074,14 @@ jleave:
 FL enum mimecontent
 mime_classify_content_of_part(struct mimepart const *mip)
 {
-   enum mimecontent mc = MIME_UNKNOWN;
-   char const *ct = mip->m_ct_type_plain;
+   enum mimecontent mc;
+   char const *ct;
    NYD_ENTER;
 
-   if (asccasecmp(ct, "application/octet-stream") == 0 &&
+   mc = MIME_UNKNOWN;
+   ct = mip->m_ct_type_plain;
+
+   if (!asccasecmp(ct, "application/octet-stream") &&
          mip->m_filename != NULL && ok_blook(mime_counter_evidence)) {
       ct = mime_classify_content_type_by_fileext(mip->m_filename);
       if (ct == NULL)
@@ -1091,24 +1094,24 @@ mime_classify_content_of_part(struct mimepart const *mip)
    }
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
-   else if (asccasecmp(ct, "text/plain") == 0)
+   else if (!asccasecmp(ct, "text/plain"))
       mc = MIME_TEXT_PLAIN;
-   else if (asccasecmp(ct, "text/html") == 0)
+   else if (!asccasecmp(ct, "text/html"))
       mc = MIME_TEXT_HTML;
-   else if (ascncasecmp(ct, "text/", 5) == 0)
+   else if (!ascncasecmp(ct, "text/", 5))
       mc = MIME_TEXT;
-   else if (asccasecmp(ct, "message/rfc822") == 0)
+   else if (!asccasecmp(ct, "message/rfc822"))
       mc = MIME_822;
-   else if (ascncasecmp(ct, "message/", 8) == 0)
+   else if (!ascncasecmp(ct, "message/", 8))
       mc = MIME_MESSAGE;
-   else if (asccasecmp(ct, "multipart/alternative") == 0)
+   else if (!asccasecmp(ct, "multipart/alternative"))
       mc = MIME_ALTERNATIVE;
-   else if (asccasecmp(ct, "multipart/digest") == 0)
+   else if (!asccasecmp(ct, "multipart/digest"))
       mc = MIME_DIGEST;
-   else if (ascncasecmp(ct, "multipart/", 10) == 0)
+   else if (!ascncasecmp(ct, "multipart/", 10))
       mc = MIME_MULTI;
-   else if (asccasecmp(ct, "application/x-pkcs7-mime") == 0 ||
-         asccasecmp(ct, "application/pkcs7-mime") == 0)
+   else if (!asccasecmp(ct, "application/x-pkcs7-mime") ||
+         !asccasecmp(ct, "application/pkcs7-mime"))
       mc = MIME_PKCS7;
 jleave:
    NYD_LEAVE;
@@ -1138,7 +1141,7 @@ mime_classify_content_type_by_fileext(char const *name)
             ++cp;
          /* Better to do case-insensitive comparison on extension, since the
           * RFC doesn't specify case of attribute values? */
-         if (nlen == PTR2SIZE(cp - ext) && ascncasecmp(name, ext, nlen) == 0) {
+         if (nlen == PTR2SIZE(cp - ext) && !ascncasecmp(name, ext, nlen)) {
             content = savestrbuf(mtn->mt_line, mtn->mt_mtlen);
             goto jleave;
          }
@@ -1163,9 +1166,9 @@ c_mimetypes(void *v)
       goto jlist;
    if (argv[1] != NULL)
       goto jerr;
-   if (asccasecmp(*argv, "show") == 0)
+   if (!asccasecmp(*argv, "show"))
       goto jlist;
-   if (asccasecmp(*argv, "clear") == 0)
+   if (!asccasecmp(*argv, "clear"))
       goto jclear;
 jerr:
    fprintf(stderr, "Synopsis: mimetypes: %s\n",
