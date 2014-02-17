@@ -51,9 +51,9 @@
 #ifndef O_CLOEXEC
 # define _OUR_CLOEXEC
 # define O_CLOEXEC         0
-# define _SET_CLOEXEC(FD)  fcntl((FD), F_SETFD, FD_CLOEXEC)
+# define _SET_CLOEXEC(FD)  do fcntl((FD), F_SETFD, FD_CLOEXEC); while (0)
 #else
-# define _SET_CLOEXEC(FD)
+# define _SET_CLOEXEC(FD)  do {} while (0)
 #endif
 
 struct fp {
@@ -522,6 +522,8 @@ jclose:
    if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC |
          (oflags & OF_APPEND ? O_APPEND : 0), mode)) < 0)
       goto junlink;
+   if (!(oflags & OF_REGISTER))
+      _SET_CLOEXEC(fd);
 #endif
 
    fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
