@@ -454,8 +454,8 @@ If
 .Ar string
 is empty,
 the string from the previous specification of that type is used again.
-.It Xo Op Ar \&? Ns Ar name-list Ns
-.Ar \&? Ns Ar expr
+.It Xo Op Ar @ Ns Ar name-list Ns
+.Ar @ Ns Ar expr
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
@@ -464,17 +464,21 @@ ession; if the \*(OP regular expression support is available
 will be interpreted as one if any of the `magic'al regular expression
 characters is seen.
 If the optional
-.Ar \&? Ns Ar name-list
+.Ar @ Ns Ar name-list
 part is missing, the search is restricted to the subject field body,
 but otherwise
 .Ar name-list
 specifies a comma-separated list of header fields to search, as in
 .Pp
-.Dl '?to,from,cc?Someone i ought to know'
+.Dl '@to,from,cc@Someone i ought to know'
 .Pp
 The special names `body' and `text' can be used to search in message
 bodies \(en whereas the former searches only the body, the latter form
 also performs a fulltext search in the header fields.
+In order to search for a string that includes a `@' (commercial at)
+character the
+.Ar name-list
+is effectively non-optional, but may be given as the empty string.
 .It Ar address
 All messages from
 .Ar address .

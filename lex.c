@@ -232,7 +232,7 @@ _lex_isolate(char const *comm)
 {
    NYD_ENTER;
    while (*comm != '\0' &&
-         strchr("~|?&% \t0123456789$^.:/-+*'\",;(`", *comm) == NULL)
+         strchr("~|? \t0123456789&%@$^.:/-+*'\",;(`", *comm) == NULL)
       ++comm;
    NYD_LEAVE;
    return UNCONST(comm);

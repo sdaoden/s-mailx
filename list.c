@@ -148,7 +148,7 @@ static bool_t  _match_dash(struct message *mp, char const *str);
 
 /* See if the given search expression matches.
  * For the purpose of the scan, we ignore case differences.
- * This is the engine behind the `?[..]?' search */
+ * This is the engine behind the `@[..]@' search */
 static bool_t  _match_qm(struct message *mp, struct search_expr *sep);
 
 /* Unmark the named message */
@@ -449,25 +449,34 @@ number:
       struct search_expr *sep = NULL;
       bool_t allnet;
 
-      /* The `?' search works with struct search_expr, so build an array.
+      /* The `@' search works with struct search_expr, so build an array.
        * To simplify array, i.e., regex_t destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
       if (np > namelist) {
          sep = scalloc(PTR2SIZE(np - namelist), sizeof(*sep));
          for (j = 0, nq = namelist; *nq != NULL; ++j, ++nq) {
-            char *x = *nq;
+            char *x = *nq, *y;
 
             sep[j].ss_sexpr = x;
-            if (*x != '?' || rv < 0)
+            if (*x != '@' || rv < 0)
                continue;
 
-            x = strchr(++x, '?');
+            for (y = x + 1;; ++y) {
+               if (*y == '\0' || !fieldnamechar(*y)) {
+                  x = NULL;
+                  break;
+               }
+               if (*y == '@') {
+                  x = y;
+                  break;
+               }
+            }
             sep[j].ss_where = (x == NULL || x - 1 == *nq) ? "subject"
                   : savestrbuf(*nq + 1, PTR2SIZE(x - *nq) - 1);
 
             x = (x == NULL ? *nq : x) + 1;
             if (*x == '\0') { /* XXX Simply remove from list instead? */
-               fprintf(stderr, tr(525, "Empty `?[..]?' search expression\n"));
+               fprintf(stderr, tr(525, "Empty `[@..]@' search expression\n"));
                rv = -1;
                continue;
             }
@@ -500,7 +509,7 @@ number:
          j = 0;
          if (np > namelist) {
             for (nq = namelist; *nq != NULL; ++nq) {
-               if (**nq == '?') {
+               if (**nq == '@') {
                   if (_match_qm(mp, sep + PTR2SIZE(nq - namelist))) {
                      ++j;
                      break;
