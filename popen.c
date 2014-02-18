@@ -247,8 +247,13 @@ unregister_file(FILE *fp)
          free(p);
          goto jleave;
       }
+#ifdef HAVE_DEBUG
+   panic
+#else
+   alert
+#endif
+      (tr(153, "Invalid file pointer"));
    rv = STOP;
-   panic(tr(153, "Invalid file pointer"));
 jleave:
    NYD_LEAVE;
    return rv;
