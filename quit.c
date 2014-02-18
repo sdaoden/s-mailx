@@ -224,7 +224,6 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    if (ibuf != NULL) {
       while ((c = getc(ibuf)) != EOF)
          putc(c, obuf);
-      Fclose(ibuf);
    }
    fflush(obuf);
    if (ferror(obuf)) {
