@@ -1107,7 +1107,14 @@ sclose(struct sock *sp)
    int i;
    NYD_ENTER;
 
-   if (sp->s_fd > 0) {
+   i = sp->s_fd;
+   sp->s_fd = -1;
+   /* TODO NOTE: we MUST NOT close the descriptor `0' here...
+    * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
+    * TODO but unfortunately it isn't yet */
+   if (i <= 0)
+      i = 0;
+   else {
       if (sp->s_onclose != NULL)
          (*sp->s_onclose)();
 # ifdef HAVE_OPENSSL
@@ -1115,20 +1122,17 @@ sclose(struct sock *sp)
          void *s_ssl = sp->s_ssl, *s_ctx = sp->s_ctx;
          sp->s_ssl = sp->s_ctx = NULL;
          sp->s_use_ssl = 0;
-         assert(s_ssl != NULL);
+         NYD_X;
          while (!SSL_shutdown(s_ssl)) /* XXX */
             ;
+         NYD_X;
          SSL_free(s_ssl);
+         NYD_X;
          SSL_CTX_free(s_ctx);
       }
 # endif
-      i = close(sp->s_fd);
-      sp->s_fd = -1;
-      goto jleave;
+      i = close(i);
    }
-   sp->s_fd = -1;
-   i = 0;
-jleave:
    NYD_LEAVE;
    return i;
 }

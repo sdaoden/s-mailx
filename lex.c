@@ -538,7 +538,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
       quit();
 #ifdef HAVE_SOCKETS
    if (!nmail && mb.mb_sock.s_fd >= 0)
-      sclose(&mb.mb_sock);
+      sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */
 #endif
 
    /* Copy the messages into /tmp and set pointers */
