@@ -519,8 +519,8 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    }
 
    if (S_ISREG(stb.st_mode) ||
-         (options & OPT_BATCH_FLAG && !S_ISDIR(stb.st_mode))) {
-      /*EMPTY*/
+         (options & OPT_BATCH_FLAG && !strcmp(name, "/dev/null"))) {
+      /* EMPTY */
    } else {
       if (nmail)
          goto jnonmail;
