@@ -41,7 +41,7 @@
 
 #include <fcntl.h>
 
-#define APID_SZ        40  /* sufficient for 128 bits pids XXX nail.h */
+#define APID_SZ         40 /* sufficient for 128 bits pids XXX nail.h */
 #define CREATE_RETRIES  5  /* XXX nail.h */
 #define DOTLOCK_RETRIES 15 /* XXX nail.h */
 
@@ -59,6 +59,7 @@ do if (realgid != effectivegid && !_maybe_setgid(P, effectivegid)) {\
    perror("setgid");\
    exit(1);\
 } while (0)
+
 #define GID_RESET() \
 do if (realgid != effectivegid && setgid(realgid) == -1) {\
    perror("setgid");\
@@ -87,7 +88,7 @@ _maybe_setgid(char const *name, gid_t gid)
    bool_t rv;
    NYD_ENTER;
 
-   if (strncmp(name, safepath, sizeof(safepath) - 1) ||
+   if (strncmp(name, safepath, sizeof(safepath) -1) ||
          strchr(name + sizeof(safepath), '/') != NULL)
       rv = TRU1;
    else
@@ -104,8 +105,8 @@ maildir_access(char const *fname)
    NYD_ENTER;
 
    i = (int)strlen(fname);
-   path = ac_alloc(i + 2);
-   memcpy(path, fname, i + 1);
+   path = ac_alloc(i + 1 +1);
+   memcpy(path, fname, i +1);
    p = strrchr(path, '/');
    if (p != NULL)
       *p = '\0';
