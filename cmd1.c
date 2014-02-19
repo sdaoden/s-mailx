@@ -114,7 +114,7 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 }
 
 static void
-_parse_from_(struct message *mp, char date[FROM_DATEBUF])
+_parse_from_(struct message *mp, char date[FROM_DATEBUF]) /* TODO line pool */
 {
    FILE *ibuf;
    int hlen;
@@ -133,24 +133,28 @@ _parse_from_(struct message *mp, char date[FROM_DATEBUF])
 static void
 _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
 {
-   char attrlist[30], *cp;
+   enum {attrlen = 13};
+   char attrlist[attrlen +1], *cp;
    char const *fmt;
    NYD_ENTER;
 
    if ((cp = ok_vlook(attrlist)) != NULL) {
-      size_t i = strlen(cp);
-      if (UICMP(32, i, >, sizeof attrlist - 1))
-         i = (int)sizeof attrlist - 1;
-      memcpy(attrlist, cp, i);
-   } else if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
-         getenv("SYSV3") != NULL) {
-      char const bsdattr[] = "NU  *HMFAT+-$";
-      memcpy(attrlist, bsdattr, sizeof bsdattr - 1);
-   } else {
-      char const pattr[] = "NUROSPMFAT+-$";
-      memcpy(attrlist, pattr, sizeof pattr - 1);
+      if (strlen(cp) == attrlen) {
+         memcpy(attrlist, cp, attrlen +1);
+         goto jattrok;
+      }
+      fprintf(stderr, tr(570,
+         "The value of *attrlist* is not of the correct length\n"));
    }
-
+   if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
+         getenv("SYSV3") != NULL) {
+      char const bsdattr[attrlen +1] = "NU  *HMFAT+-$";
+      memcpy(attrlist, bsdattr, sizeof bsdattr);
+   } else {
+      char const pattr[attrlen +1] = "NUROSPMFAT+-$";
+      memcpy(attrlist, pattr, sizeof pattr);
+   }
+jattrok:
    if ((fmt = ok_vlook(headline)) == NULL) {
       fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
             ? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
@@ -172,7 +176,7 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    time_t datet;
    NYD_ENTER;
 
-   mp = &message[msgno - 1];
+   mp = message + msgno - 1;
    datet = mp->m_time;
    date = NULL;
 
@@ -189,7 +193,7 @@ jredo:
       fp = ok_vlook(datefield_markout_older);
       i = (*datefmt != '\0');
       if (fp != NULL)
-         i |= (*fp != '\0') ? 2 | 4 : 2;
+         i |= (*fp != '\0') ? 2 | 4 : 2; /* XXX no magics */
 
       /* May we strftime(3)? */
       if (i & (1 | 4))
@@ -262,9 +266,9 @@ jredo:
 #ifdef HAVE_WCWIDTH
          if (mb_cur_max > 1) {
             wchar_t  wc;
-            if ((s = mbtowc(&wc, fp, mb_cur_max)) < 0)
+            if ((s = mbtowc(&wc, fp, mb_cur_max)) == -1)
                n = s = 1;
-            else if ((n = wcwidth(wc)) < 0)
+            else if ((n = wcwidth(wc)) == -1)
                n = 1;
          } else
 #endif
@@ -276,9 +280,11 @@ jredo:
       }
    }
 
-   /* Walk *headline*, producing output */
+   /* Walk *headline*, producing output TODO not (really) MB safe */
    for (fp = fmt; *fp != '\0'; ++fp) {
-      if ((c = *fp & 0xFF) == '%') {
+      if ((c = *fp & 0xFF) != '%')
+         putc(c, f);
+      else {
          B = 0;
          n = 0;
          s = 1;
@@ -304,6 +310,22 @@ jredo:
             if (dot != mp)
                c = ' ';
             goto jputc;
+         case '$':
+#ifdef HAVE_SPAM
+            if (n == 0)
+               n = 4;
+            if (UICMP(32, ABS(n), >, wleft))
+               n = (n < 0) ? -wleft : wleft;
+            {  char buf[16];
+               snprintf(buf, sizeof buf, "%u.%u",
+                  (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
+               n = fprintf(f, "%*s", n, buf);
+               wleft = (n >= 0) ? wleft - n : 0;
+            }
+#else
+            c = '?';
+            goto jputc;
+#endif
          case 'a':
             c = _dispc(mp, attrlist);
 jputc:
@@ -312,16 +334,31 @@ jputc:
             n = fprintf(f, "%*c", n, c);
             wleft = (n >= 0) ? wleft - n : 0;
             break;
-         case 'm':
-            if (n == 0) {
-               n = 3;
-               if (threaded)
-                  for (i = msgCount; i > 999; i /= 10)
-                     ++n;
+         case 'd':
+            if (datefmt != NULL) {
+               i = strftime(datebuf, sizeof datebuf, datefmt,
+                     &time_current.tc_local);
+               if (i != 0)
+                  date = datebuf;
+               else
+                  fprintf(stderr, tr(174,
+                     "Ignored date format, it excesses the target buffer "
+                     "(%lu bytes)\n"), (ul_it)sizeof datebuf);
+               datefmt = NULL;
             }
+            if (n == 0)
+               n = 16;
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, (ul_it)msgno);
+            n = fprintf(f, "%*.*s", n, n, date);
+            wleft = (n >= 0) ? wleft - n : 0;
+            break;
+         case 'e':
+            if (n == 0)
+               n = 2;
+            if (UICMP(32, ABS(n), >, wleft))
+               n = (n < 0) ? -wleft : wleft;
+            n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
             wleft = (n >= 0) ? wleft - n : 0;
             break;
          case 'f':
@@ -344,24 +381,11 @@ jputc:
             else if (isto)
                wleft -= 3;
             break;
-         case 'd':
-            if (datefmt != NULL) {
-               i = strftime(datebuf, sizeof datebuf, datefmt,
-                     &time_current.tc_local);
-               if (i != 0)
-                  date = datebuf;
-               else
-                  fprintf(stderr, tr(174,
-                     "Ignored date format, it excesses the target buffer "
-                     "(%lu bytes)\n"), (ul_it)sizeof datebuf);
-               datefmt = NULL;
+         case 'i':
+            if (threaded) {
+               n = __putindent(f, mp, MIN(wleft, scrnwidth - 60));
+               wleft = (n >= 0) ? wleft - n : 0;
             }
-            if (n == 0)
-               n = 16;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*.*s", n, n, date);
-            wleft = (n >= 0) ? wleft - n : 0;
             break;
          case 'l':
             if (n == 0)
@@ -378,6 +402,18 @@ jputc:
                   putc(' ', f);
             }
             break;
+         case 'm':
+            if (n == 0) {
+               n = 3;
+               if (threaded)
+                  for (i = msgCount; i > 999; i /= 10)
+                     ++n;
+            }
+            if (UICMP(32, ABS(n), >, wleft))
+               n = (n < 0) ? -wleft : wleft;
+            n = fprintf(f, "%*lu", n, (ul_it)msgno);
+            wleft = (n >= 0) ? wleft - n : 0;
+            break;
          case 'o':
             if (n == 0)
                n = -5;
@@ -385,12 +421,6 @@ jputc:
                n = (n < 0) ? -wleft : wleft;
             n = fprintf(f, "%*lu", n, (long)mp->m_xsize);
             wleft = (n >= 0) ? wleft - n : 0;
-            break;
-         case 'i':
-            if (threaded) {
-               n = __putindent(f, mp, MIN(wleft, scrnwidth - 60));
-               wleft = (n >= 0) ? wleft - n : 0;
-            }
             break;
          case 'S':
             B = 1;
@@ -420,27 +450,6 @@ jputc:
                   wleft = 0;
             }
             break;
-         case 'U':
-#ifdef HAVE_IMAP
-            if (n == 0)
-               n = 9;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, mp->m_uid);
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-#else
-            c = '?';
-            goto jputc;
-#endif
-         case 'e':
-            if (n == 0)
-               n = 2;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
          case 't':
             if (n == 0) {
                n = 3;
@@ -454,18 +463,15 @@ jputc:
                   (threaded ? (ul_it)mp->m_threadpos : (ul_it)msgno));
             wleft = (n >= 0) ? wleft - n : 0;
             break;
-         case '$':
-#ifdef HAVE_SPAM
+         case 'U':
+#ifdef HAVE_IMAP
             if (n == 0)
-               n = 4;
+               n = 9;
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            {  char buf[16];
-               snprintf(buf, sizeof buf, "%u.%u",
-                  (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
-               n = fprintf(f, "%*s", n, buf);
-               wleft = (n >= 0) ? wleft - n : 0;
-            }
+            n = fprintf(f, "%*lu", n, mp->m_uid);
+            wleft = (n >= 0) ? wleft - n : 0;
+            break;
 #else
             c = '?';
             goto jputc;
@@ -474,8 +480,7 @@ jputc:
 
          if (wleft <= 0)
             break;
-      } else
-         putc(c, f);
+      }
    }
    putc('\n', f);
 
@@ -501,7 +506,7 @@ jouter:
    while (*s != '\0') {
       while (spacechar(*s))
          ++s;
-      /* TODO While it is maybe ok not to MIME decode these, we
+      /* TODO While it is maybe ok not to MIME decode these (for purpose), we
        * TODO should skip =?..?= at the beginning? */
       for (pp = ignored; pp->len > 0; ++pp)
          if (is_asccaseprefix(pp->dat, s)) {
@@ -601,10 +606,10 @@ __putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
    }
 
    --maxwidth;
-   for (indlvl = indw = 0; (uc_it)indlvl < mp->m_level && indw < maxwidth;
+   for (indlvl = indw = 0; (ui8_t)indlvl < mp->m_level && indw < maxwidth;
          ++indlvl) {
       if (indw < maxwidth - 1)
-         indw += (int)putuc(us[indlvl], cs[indlvl] & 0377, fp);
+         indw += (int)putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
       else
          indw += (int)putuc(0x21B8, '^', fp);
    }
@@ -633,7 +638,7 @@ _dispc(struct message *mp, char const *a)
       i = a[9];
    if ((mp->m_flag & (MREAD | MNEW)) == MNEW)
       i = a[0];
-   if ((mp->m_flag & (MREAD | MNEW)) == 0)
+   if (!(mp->m_flag & (MREAD | MNEW)))
       i = a[1];
    if (mp->m_flag & MSPAM)
       i = a[12];
@@ -698,7 +703,7 @@ jscroll_forward:
       break;
 
    default:
-      printf(tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
+      fprintf(stderr, tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
       size = 1;
       goto jleave;
    }
@@ -740,9 +745,10 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          (dopage || (cp = ok_vlook(crt)) != NULL)) {
       char const *pager = NULL;
       size_t nlines = 0;
+
       if (!dopage) {
          for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
-            mp = &message[*ip - 1];
+            mp = message + *ip - 1;
             if (!(mp->m_have & HAVE_BODY))
                if (get_body(mp) != OKAY) {
                   rv = 1;
@@ -751,6 +757,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             nlines += mp->m_lines;
          }
       }
+
       if (dopage || UICMP(z, nlines, >,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
          pager = get_pager();
@@ -785,7 +792,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
     * lex.c:commands() loop, which sreset()s */
    srelax_hold();
    for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
-      mp = &message[*ip - 1];
+      mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
       uncollapse1(mp, 1);
@@ -797,7 +804,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
       sendmp(mp, obuf, (doign ? ignore : NULL), NULL, action, mstats);
       srelax();
-      if (formfeed)
+      if (formfeed) /* TODO a nicer way to separate piped messages! */
          putc('\f', obuf);
       if (tstats) {
          tstats[0] += mstats[0];
@@ -805,6 +812,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
    }
    srelax_rele();
+
 jclose_pipe:
    if (obuf != stdout) {
       /* Ignore SIGPIPE so it can't cause a duplicate close */
@@ -919,20 +927,21 @@ c_headers(void *v)
                lastg = g;
                lastmq = mq;
             }
-            if ((n > 0 && mp == &message[n - 1]) || (n == 0 && g == k) ||
-                  (n == -2 && g == k + size && lastmq) ||
+            if ((n > 0 && PTRCMP(mp, ==, message + n - 1)) ||
+                  (n == 0 && g == k) || (n == -2 && g == k + size && lastmq) ||
                   (n < 0 && g >= k && (mp->m_flag & fl) != 0))
                break;
             g++;
          }
-      if (lastmq && (n == -2 || (n == -1 && mp == &message[msgCount]))) {
+      if (lastmq && (n == -2 ||
+            (n == -1 && PTRCMP(mp, ==, message + msgCount)))) {
          g = lastg;
          mq = lastmq;
       }
       _screen = g / size;
       mp = mq;
       mesg = (int)PTR2SIZE(mp - message);
-      if (dot != &message[n - 1]) {
+      if (PTRCMP(dot, !=, message + n - 1)) {
          for (mq = mp; PTRCMP(mq, <, message + msgCount); ++mq)
             if (visible(mq)) {
                setdot(mq);
@@ -958,26 +967,28 @@ c_headers(void *v)
       g = 0;
       mq = threadroot;
       for (mp = threadroot; mp; mp = next_in_thread(mp))
-         if (visible(mp) && (mp->m_collapsed <= 0 || mp == &message[n - 1])) {
+         if (visible(mp) &&
+               (mp->m_collapsed <= 0 || PTRCMP(mp, ==, message + n - 1))) {
             if (g % size == 0)
                mq = mp;
             if (mp->m_flag & fl) {
                lastg = g;
                lastmq = mq;
             }
-            if ((n > 0 && mp == &message[n - 1]) || (n == 0 && g == k) ||
-                  (n == -2 && g == k + size && lastmq) ||
+            if ((n > 0 && PTRCMP(mp, ==, message + n - 1)) ||
+                  (n == 0 && g == k) || (n == -2 && g == k + size && lastmq) ||
                   (n < 0 && g >= k && (mp->m_flag & fl) != 0))
                break;
             g++;
          }
-      if (lastmq && (n == -2 || (n == -1 && mp == &message[msgCount]))) {
+      if (lastmq && (n == -2 ||
+            (n == -1 && PTRCMP(mp, ==, message + msgCount)))) {
          g = lastg;
          mq = lastmq;
       }
       _screen = g / size;
       mp = mq;
-      if (dot != &message[n - 1]) {
+      if (PTRCMP(dot, !=, message + n - 1)) {
          for (mq = mp; mq; mq = next_in_thread(mq))
             if (visible(mq) && mq->m_collapsed <= 0) {
                setdot(mq);
@@ -986,7 +997,8 @@ c_headers(void *v)
       }
       srelax_hold();
       while (mp) {
-         if (visible(mp) && (mp->m_collapsed <= 0 || mp == &message[n - 1])) {
+         if (visible(mp) &&
+               (mp->m_collapsed <= 0 || PTRCMP(mp, ==, message + n - 1))) {
             if (UICMP(32, flag++, >=, size))
                break;
             _print_head(flag - 1, PTR2SIZE(mp - message + 1), stdout,
@@ -1058,7 +1070,7 @@ c_from(void *v)
    for (n = 0, ip = msgvec; *ip != 0; ++ip) /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
    if (--ip >= msgvec)
-      setdot(&message[*ip - 1]);
+      setdot(message + *ip - 1);
 
 jendpipe:
    if (obuf != stdout) {
@@ -1208,7 +1220,7 @@ c_top(void *v)
    empty_last = 1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
-      mp = &message[*ip - 1];
+      mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
       did_print_dot = TRU1;
@@ -1228,7 +1240,7 @@ c_top(void *v)
             break;
          puts(linebuf);
 
-         for (cp = linebuf; *cp && blankchar(*cp); ++cp)
+         for (cp = linebuf; *cp != '\0' && blankchar(*cp); ++cp)
             ;
          empty_last = (*cp == '\0');
       }
@@ -1247,7 +1259,7 @@ c_stouch(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(&message[*ip - 1]);
+      setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH;
       dot->m_flag &= ~MPRESERVE;
       did_print_dot = TRU1;
@@ -1263,7 +1275,7 @@ c_mboxit(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(&message[*ip - 1]);
+      setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
       did_print_dot = TRU1;
