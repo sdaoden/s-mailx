@@ -65,7 +65,7 @@ static int     ignore1(char **list, struct ignoretab *tab, char const *which);
 static int     igshow(struct ignoretab *tab, char const *which);
 
 /* Compare two names for sorting ignored field list */
-static int     igcomp(const void *l, const void *r);
+static int     igcomp(void const *l, void const *r);
 
 static void    unignore_one(char const *name, struct ignoretab *tab);
 static int     unignore1(char **list, struct ignoretab *tab, char const *which);
@@ -118,7 +118,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    }
 
    if (sender_record) {
-      if ((cp = nameof(&message[*msgvec - 1], 0)) == NULL) {
+      if ((cp = nameof(message + *msgvec - 1, 0)) == NULL) {
          printf(tr(24, "Cannot determine message sender to %s.\n"), cmd);
          goto jleave;
       }
@@ -127,7 +127,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          ;
       *cq = '\0';
       if (ok_blook(outfolder)) {
-         size_t sz = strlen(cp) + 1;
+         size_t sz = strlen(cp) +1;
          file = salloc(sz + 1);
          file[0] = '+';
          memcpy(file + 1, cp, sz);
@@ -199,7 +199,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    srelax_hold();
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
-      mp = &message[*ip - 1];
+      mp = message + *ip - 1;
       if (prot == PROTO_IMAP && ignoret[0].i_count == 0 &&
             ignoret[1].i_count == 0
 #ifdef HAVE_IMAP /* TODO revisit */
@@ -261,15 +261,15 @@ jferr:
 jiterand:
       for (ip = msgvec; *ip != 0 &&
             UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
-         mp = &message[*ip - 1];
+         mp = message + *ip - 1;
          mp->m_flag &= newfile;
       }
    }
 
    if (domove && last && success) {
-      setdot(&message[last - 1]);
+      setdot(message + last - 1);
       last = first(0, MDELETED);
-      setdot(&message[last ? last - 1 : 0]);
+      setdot(message + (last != 0 ? last - 1 : 0));
    }
 jleave:
    NYD_LEAVE;
@@ -302,20 +302,20 @@ delm(int *msgvec)
 
    last = 0;
    for (ip = msgvec; *ip != 0; ++ip) {
-      mp = &message[*ip - 1];
+      mp = message + *ip - 1;
       touch(mp);
       mp->m_flag |= MDELETED | MTOUCH;
       mp->m_flag &= ~(MPRESERVE | MSAVED | MBOX);
       last = *ip;
    }
    if (last != 0) {
-      setdot(&message[last - 1]);
+      setdot(message + last - 1);
       last = first(0, MDELETED);
       if (last != 0) {
-         setdot(&message[last - 1]);
+         setdot(message + last - 1);
          rv = 0;
       } else {
-         setdot(&message[0]);
+         setdot(message);
       }
    }
    NYD_LEAVE;
@@ -339,16 +339,15 @@ ignore1(char **list, struct ignoretab *tab, char const *which)
       char *field;
       size_t sz;
 
-      sz = strlen(*ap);
-      field = ac_alloc(sz + 1);
-      i_strcpy(field, *ap, sz + 1);
-      assert(field[sz] == '\0');
+      sz = strlen(*ap) +1;
+      field = ac_alloc(sz);
+      i_strcpy(field, *ap, sz);
       if (member(field, tab))
          goto jnext;
 
       h = hash(field);
       igp = scalloc(1, sizeof *igp);
-      sz = strlen(field) + 1;
+      sz = strlen(field) +1;
       igp->i_field = smalloc(sz);
       memcpy(igp->i_field, field, sz);
       igp->i_link = tab->i_head[h];
@@ -378,7 +377,7 @@ igshow(struct ignoretab *tab, char const *which)
 
    ring = salloc((tab->i_count + 1) * sizeof *ring);
    ap = ring;
-   for (h = 0; h < HSHSIZE; h++)
+   for (h = 0; h < HSHSIZE; ++h)
       for (igp = tab->i_head[h]; igp != 0; igp = igp->i_link)
          *ap++ = igp->i_field;
    *ap = 0;
@@ -393,7 +392,7 @@ jleave:
 }
 
 static int
-igcomp(const void *l, const void *r)
+igcomp(void const *l, void const *r)
 {
    int rv;
    NYD_ENTER;
@@ -466,8 +465,8 @@ c_next(void *v)
          ip = msgvec;
       ip2 = ip;
       do {
-         mp = &message[*ip2 - 1];
-         if ((mp->m_flag & (MDELETED | MHIDDEN)) == 0) {
+         mp = message + *ip2 - 1;
+         if (!(mp->m_flag & MMNDEL)) {
             setdot(mp);
             goto jhitit;
          }
@@ -491,13 +490,13 @@ c_next(void *v)
    /* Just find the next good message after dot, no wraparound */
    if (mb.mb_threaded == 0) {
       for (mp = dot + did_print_dot; PTRCMP(mp, <, message + msgCount); ++mp)
-         if (!(mp->m_flag & (MDELETED | MSAVED | MHIDDEN)))
+         if (!(mp->m_flag & MMNORM))
             break;
    } else {
       mp = dot;
       if (did_print_dot)
          mp = next_in_thread(mp);
-      while (mp && mp->m_flag & (MDELETED | MSAVED | MHIDDEN))
+      while (mp && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);
    }
    if (mp == NULL || PTRCMP(mp, >=, message + msgCount)) {
@@ -671,7 +670,7 @@ c_undelete(void *v)
 
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
-      mp = &message[*ip - 1];
+      mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
       if (mp->m_flag & (MDELETED | MSAVED))
