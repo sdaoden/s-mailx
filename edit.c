@@ -53,7 +53,7 @@ edit1(int *msgvec, int viored)
    struct message *mp;
    off_t size;
    bool_t wb, lastnl;
-   char *line = NULL;
+   char *line = NULL; /* TODO line pool */
    size_t linesize = 0;
    NYD_ENTER;
 
@@ -63,7 +63,7 @@ edit1(int *msgvec, int viored)
    for (i = 0; msgvec[i] != 0 && i < msgCount; ++i) {
       sighandler_type sigint;
 
-      if (i > 0) {
+      if (i > 0) { /* TODO getapproval(): return APPROV_{YES,NO,QUIT}: USE! */
          char *p;
 
          printf(tr(72, "Edit message %d [ynq]? "), msgvec[i]);
@@ -77,17 +77,18 @@ edit1(int *msgvec, int viored)
          if (*p == 'n')
             continue;
       }
-      setdot(mp = &message[msgvec[i] - 1]);
+      mp = message + msgvec[i] - 1;
+      setdot(mp);
       did_print_dot = TRU1;
       touch(mp);
 
       sigint = safe_signal(SIGINT, SIG_IGN);
 
-      --mp->m_size; /* Strip final NL.. */
-      fp = run_editor(fp, -1/*mp->m_size*/, viored,
-         ((mb.mb_perm & MB_EDIT) == 0 || !wb), NULL, mp,
-         (wb ? SEND_MBOX : SEND_TODISP_ALL), sigint);
-      ++mp->m_size; /* And readd it */
+      --mp->m_size; /* Strip final NL.. TODO MAILVFS->MESSAGE->length() */
+      fp = run_editor(fp, -1/*mp->m_size TODO */, viored,
+            ((mb.mb_perm & MB_EDIT) == 0 || !wb), NULL, mp,
+            (wb ? SEND_MBOX : SEND_TODISP_ALL), sigint);
+      ++mp->m_size; /* And readd it TODO */
 
       if (fp != NULL) {
          fseek(mb.mb_otf, 0L, SEEK_END);
@@ -168,7 +169,8 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if (hp != NULL) {
       t = GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA;
-      if (hp->h_from || hp->h_replyto || hp->h_sender || hp->h_organization)
+      if (hp->h_from != NULL || hp->h_replyto != NULL ||
+            hp->h_sender != NULL || hp->h_organization != NULL)
          t |= GIDENT;
       puthead(hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
    }
@@ -185,7 +187,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    fflush(nf);
-   if (fstat(fileno(nf), &statb) < 0)
+   if (fstat(fileno(nf), &statb) == -1)
       modtime = 0;
    else
       modtime = statb.st_mtime;
@@ -211,7 +213,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
     * and return.  Otherwise switch to new file */
    if (readonly)
       goto jleave;
-   if (stat(tempEdit, &statb) < 0) {
+   if (stat(tempEdit, &statb) == -1) {
       perror(tempEdit);
       goto jleave;
    }
