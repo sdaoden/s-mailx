@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ (Lexical processing of) Commands, and the event mainloop.
+ *@ (Lexical processing of) Commands, and the (blocking) "event mainloop".
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -197,7 +197,7 @@ jdocopy:
    /* Don't display an absolute path but "+FOLDER" if under *folder* */
    if (getfold(tbuf, sizeof tbuf)) {
       i = strlen(tbuf);
-      if (i < sizeof(tbuf) - 1)
+      if (i < sizeof(tbuf) -1)
          tbuf[i++] = '/';
       if (!strncmp(tbuf, mailp, i)) {
          mailp += i;
@@ -207,8 +207,8 @@ jdocopy:
 
    /* We want to see the name of the folder .. on the screen */
    i = strlen(mailp);
-   if (i < sizeof(displayname) - 1)
-      memcpy(dispp, mailp, i + 1);
+   if (i < sizeof(displayname) -1)
+      memcpy(dispp, mailp, i +1);
    else {
       rv = FAL0;
       /* Avoid disrupting multibyte sequences (if possible) */
@@ -256,7 +256,7 @@ jleave:
 static int
 _ghost(void *v)
 {
-   char const **argv = (char const **)v;
+   char const **argv = v;
    struct cmd_ghost *lcg, *cg;
    size_t nl, cl;
    NYD_ENTER;
@@ -305,13 +305,13 @@ _ghost(void *v)
       }
 
    /* Need a new one */
-   nl = strlen(argv[0]) + 1;
-   cl = strlen(argv[1]) + 1;
+   nl = strlen(argv[0]) +1;
+   cl = strlen(argv[1]) +1;
    cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + nl + cl);
    cg->next = _cmd_ghosts;
    memcpy(cg->name, argv[0], nl);
    cg->cmd.s = cg->name + nl;
-   cg->cmd.l = cl - 1;
+   cg->cmd.l = cl -1;
    memcpy(cg->cmd.s, argv[1], cl);
 
    _cmd_ghosts = cg;
@@ -511,7 +511,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
       goto jem1;
    }
 
-   if (fstat(fileno(ibuf), &stb) < 0) {
+   if (fstat(fileno(ibuf), &stb) == -1) {
       if (nmail)
          goto jnonmail;
       perror("fstat");
@@ -519,7 +519,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    }
 
    if (S_ISREG(stb.st_mode) ||
-         (options & OPT_BATCH_FLAG && !strcmp(name, "/dev/null"))) {
+         ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"))) {
       /* EMPTY */
    } else {
       if (nmail)
@@ -553,7 +553,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
          if (compressed & 0200)
             mb.mb_perm = 0;
       } else {
-         if ((i = open(name, O_WRONLY)) < 0)
+         if ((i = open(name, O_WRONLY)) == -1)
             mb.mb_perm = 0;
          else
             close(i);
@@ -573,7 +573,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
       initbox(name);
       offset = 0;
       flp.l_len = 0;
-      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {/*TODO dotlock!*/
          perror("Unable to lock mailbox");
          rele_sigs();
          goto jem1;
@@ -584,7 +584,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
       offset = mailsize;
       omsgCount = msgCount;
       flp.l_len = offset;
-      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {/*TODO dotlock!*/
          rele_sigs();
          goto jnonmail;
       }
@@ -638,16 +638,16 @@ newmailinfo(int omsgCount)
    int mdot, i;
    NYD_ENTER;
 
-   for (i = 0; i < omsgCount; i++)
+   for (i = 0; i < omsgCount; ++i)
       message[i].m_flag &= ~MNEWEST;
    if (msgCount > omsgCount) {
-      for (i = omsgCount; i < msgCount; i++)
+      for (i = omsgCount; i < msgCount; ++i)
          message[i].m_flag |= MNEWEST;
       printf(tr(158, "New mail has arrived.\n"));
-      if (msgCount - omsgCount == 1)
+      if ((i = msgCount - omsgCount) == 1)
          printf(tr(214, "Loaded 1 new message.\n"));
       else
-         printf(tr(215, "Loaded %d new messages.\n"), msgCount - omsgCount);
+         printf(tr(215, "Loaded %d new messages.\n"), i);
    } else
       printf(tr(224, "Loaded %d messages.\n"), msgCount);
    callhook(mailname, 1);
@@ -695,7 +695,7 @@ commands(void)
             struct stat st;
 
             n = (cp != NULL && strcmp(cp, "noimap") && strcmp(cp, "nopoll"));
-            if ((mb.mb_type == MB_FILE && stat(mailname, &st) == 0 &&
+            if ((mb.mb_type == MB_FILE && !stat(mailname, &st) &&
                      st.st_size > mailsize) ||
 #ifdef HAVE_IMAP
                   (mb.mb_type == MB_IMAP && imap_newmail(n) > (cp == NULL)) ||
@@ -857,7 +857,7 @@ jrestart:
       ++cp;
    c = (int)PTR2SIZE(cp - arglist[0]);
    line.l -= c;
-   word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : salloc(c + 1);
+   word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : salloc(c +1);
    memcpy(word, arglist[0], c);
    word[c] = '\0';
 
@@ -908,14 +908,11 @@ jrestart:
    /* See if we should execute the command -- if a conditional we always
     * execute it, otherwise, check the state of cond */
 jexec:
-   if (!(com->argtype & ARG_F)) {
-      if (condstack_isskip())
-         goto jleave0;
-   }
+   if (!(com->argtype & ARG_F) && condstack_isskip())
+      goto jleave0;
 
-   /* Process the arguments to the command, depending on the type he expects.
-    * Default to an error.
-    * If we are sourcing an interactive command, it's an error */
+   /* Process the arguments to the command, depending on the type it expects,
+    * default to error.  If we're sourcing an interactive command: error */
    if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
       fprintf(stderr, tr(92, "May not execute `%s' while sending\n"),
          com->name);
@@ -1037,9 +1034,9 @@ jleave:
       if (visible(dot)) {
          muvec[0] = (int)PTR2SIZE(dot - message + 1);
          muvec[1] = 0;
-         c_type(muvec);
+         c_type(muvec); /* TODO what if error?  re-eval! */
       }
-   if (!sourcing && !inhook && (com->argtype & ARG_T) == 0)
+   if (!sourcing && !inhook && !(com->argtype & ARG_T))
       sawcom = TRU1;
 jleave0:
    exec_last_comm_error = 0;
@@ -1054,7 +1051,7 @@ FL void
 setmsize(int sz)
 {
    NYD_ENTER;
-   if (_msgvec != 0)
+   if (_msgvec != NULL)
       free(_msgvec);
    _msgvec = scalloc(sz + 1, sizeof *_msgvec);
    NYD_LEAVE;
@@ -1072,15 +1069,13 @@ print_header_summary(char const *Larg)
          freopen("/dev/null", "w", stdout);
          freopen("/dev/null", "w", stderr);
       }
-      if (getmsglist(/*TODO make arg const */UNCONST(Larg), _msgvec, 0) <= 0) {
-         if (options & OPT_HEADERSONLY)
-            exit_status = 1;
-         goto jleave;
-      }
+      i = (getmsglist(/*TODO make arg const */UNCONST(Larg), _msgvec, 0) <= 0);
       if (options & OPT_HEADERSONLY) {
-         exit_status = 0;
+         exit_status = (int)i;
          goto jleave;
       }
+      if (i)
+         goto jleave;
       for (bot = msgCount, top = 0, i = 0; (j = _msgvec[i]) != 0; ++i) {
          if (bot > j)
             bot = j;
@@ -1133,10 +1128,10 @@ announce(int printheaders)
    mdot = newfileinfo();
    vec[0] = mdot;
    vec[1] = 0;
-   dot = &message[mdot - 1];
+   dot = message + mdot - 1;
    if (printheaders && msgCount > 0 && ok_blook(header)) {
       ++_lex_inithdr;
-      c_headers(vec);
+      c_headers(vec); /* XXX errors? */
       _lex_inithdr = 0;
    }
    NYD_LEAVE;
@@ -1306,7 +1301,7 @@ initbox(char const *name)
    if (mb.mb_type != MB_VOID)
       n_strlcpy(prevfile, mailname, PATH_MAX);
 
-   _update_mailname(name != mailname ? name : NULL);
+   _update_mailname((name != mailname) ? name : NULL);
 
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
          NULL) {
