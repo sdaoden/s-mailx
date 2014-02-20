@@ -48,7 +48,7 @@
 #endif
 
 struct cmatch_data {
-   size_t      tlen; /* Length of .tdata */
+   size_t      tlen;    /* Length of .tdata */
    char const  *tdata;  /* Template date - see _cmatch_data[] */
 };
 
@@ -209,7 +209,7 @@ _idna_apply(struct addrguts *agp)
 
    sz = agp->ag_slen - agp->ag_sdom_start;
    assert(sz > 0);
-   idna_utf8 = ac_alloc(sz + 1);
+   idna_utf8 = ac_alloc(sz +1);
    memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
    idna_utf8[sz] = '\0';
 
@@ -324,7 +324,7 @@ jaddr_check:
    for (p = addr; (c.c = *p++) != '\0';) {
       if (c.c == '"') {
          in_quote = !in_quote;
-      } else if (c.u < 040 || c.u >= 0177) {
+      } else if (c.u < 040 || c.u >= 0177) { /* TODO no magics: !bodychar()? */
 #ifdef HAVE_IDNA
          if (in_domain && use_idna > 0) {
             if (use_idna == 1)
@@ -390,7 +390,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
          rem = -1;
          break;
       }
-      for (cp = *linebuf; fieldnamechar(*cp & 0377); ++cp)
+      for (cp = *linebuf; fieldnamechar(*cp); ++cp)
          ;
       if (cp > *linebuf)
          while (blankchar(*cp))
@@ -558,9 +558,9 @@ myaddrs(struct header *hp)
     * accept his desire */
    if (ok_vlook(smtp) != NULL || ok_vlook(hostname) != NULL) {
       char *hn = nodename(1);
-      size_t sz = strlen(myname) + strlen(hn) + 2;
+      size_t sz = strlen(myname) + strlen(hn) + 1 +1;
       rv = salloc(sz);
-      snprintf(rv, sz, "%s@%s", myname, hn);
+      sstpcpy(sstpcpy(sstpcpy(rv, myname), "@"), hn);
    }
 jleave:
    NYD_LEAVE;
@@ -649,7 +649,7 @@ FL void
 extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
 {
    struct header nh, *hq = &nh;
-   char *linebuf = NULL, *colon;
+   char *linebuf = NULL /* TODO line pool */, *colon;
    size_t linesize = 0, seenfields = 0;
    int lc, c;
    char const *val, *cp;
@@ -735,7 +735,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
 {
    FILE *ibuf;
    int lc;
-   size_t linesize = 0;
+   size_t linesize = 0; /* TODO line pool */
    char *linebuf = NULL, *colon, *oldhfield = NULL;
    char const *hfield;
    NYD_ENTER;
@@ -872,7 +872,7 @@ is_addr_invalid(struct name *np, int putmsg)
 {
    char cbuf[sizeof "'\\U12340'"], *name;
    int f, ok8bit;
-   ui_it c;
+   ui32_t c;
    char const *fmt, *cs;
    NYD_ENTER;
 
@@ -881,8 +881,7 @@ is_addr_invalid(struct name *np, int putmsg)
    ok8bit = 1;
    fmt = "'\\x%02X'";
 
-   if ((f & NAME_ADDRSPEC_INVALID) == 0 || !putmsg ||
-         (f & NAME_ADDRSPEC_ERR_EMPTY) != 0)
+   if (!(f & NAME_ADDRSPEC_INVALID) || !putmsg || (f & NAME_ADDRSPEC_ERR_EMPTY))
       goto jleave;
 
    if (f & NAME_ADDRSPEC_ERR_IDNA)
@@ -916,7 +915,7 @@ skin(char const *name)
    if (name != NULL) {
       addrspec_with_guts(1, name, &ag);
       ret = ag.ag_skinned;
-      if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0)
+      if (!(ag.ag_n_flags & NAME_NAME_SALLOC))
          ret = savestrbuf(ret, ag.ag_slen);
    }
    NYD_LEAVE;
@@ -1181,7 +1180,7 @@ jleave:
 FL char *
 name1(struct message *mp, int reptype)
 {
-   char *namebuf, *cp, *cp2, *linebuf = NULL;
+   char *namebuf, *cp, *cp2, *linebuf = NULL /* TODO line pool */;
    size_t namesize, linesize = 0;
    FILE *ibuf;
    int f1st = 1;
@@ -1203,13 +1202,13 @@ name1(struct message *mp, int reptype)
 
 jnewname:
    if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize + 1);
+      namebuf = srealloc(namebuf, namesize = linesize +1);
    for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
       ;
    for (; blankchar(*cp); ++cp)
       ;
    for (cp2 = namebuf + strlen(namebuf);
-        *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize - 1);)
+        *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize -1);)
       *cp2++ = *cp++;
    *cp2 = '\0';
 
@@ -1217,7 +1216,7 @@ jnewname:
       goto jout;
    if ((cp = strchr(linebuf, 'F')) == NULL)
       goto jout;
-   if (strncmp(cp, "From", 4) != 0)
+   if (strncmp(cp, "From", 4)) /* XXX is_head? */
       goto jout;
    if (namesize <= linesize)
       namebuf = srealloc(namebuf, namesize = linesize + 1);
@@ -1288,8 +1287,8 @@ is_ign(char const *field, size_t fieldlen, struct ignoretab ignoret[2])
       goto jleave;
 
    /* Lowercase it so that "Status" and "status" will hash to the same place */
-   realfld = ac_alloc(fieldlen + 1);
-   i_strcpy(realfld, field, fieldlen + 1);
+   realfld = ac_alloc(fieldlen +1);
+   i_strcpy(realfld, field, fieldlen +1);
    if (ignoret[1].i_count > 0)
       rv = !member(realfld, ignoret + 1);
    else
