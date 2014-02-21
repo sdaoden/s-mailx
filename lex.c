@@ -761,9 +761,16 @@ jreadline:
       inhook = 0;
       if (evaluate(&ev))
          break;
-      if (exit_status != EXIT_OK && (options & OPT_BATCH_FLAG) &&
-            ok_blook(batch_exit_on_error))
-         break;
+      if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
+         if (exit_status != EXIT_OK)
+            break;
+         /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
+          * TODO the current behaviour is suboptimal AT BEST! */
+         if (exec_last_comm_error != 0 && !sourcing && !loading) {
+            exit_status = EXIT_ERR;
+            break;
+         }
+      }
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
