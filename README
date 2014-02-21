@@ -4,9 +4,12 @@ W e l c o m e  t o  S - n a i l
 S-nail is a mail processing system with a command syntax reminiscent of
 ed(1) with lines replaced by messages.  It is intended to provide the
 functionality of the POSIX mailx(1) command and offers (mostly optional)
-extensions for line editing, IDNA, MIME, S/MIME, SMTP, POP3 and IMAP.
+extensions for line editing, IDNA, MIME, S/MIME, SMTP and POP3 (and IMAP).
 It is usable as a mail batch language.
 S-nail is a derivative of Heirloom mailx, formerly known as nail.
+
+Please refer to the file INSTALL for build, install and codebase state
+remarks, and to NEWS for release update information.
 
 S-nail has a git(1) repository [1] (browsable [2]) and regulary produces
 release tarballs [3], which can be addressed directly (e.g., via `curl
@@ -27,8 +30,7 @@ And GMANE.org added s-nail-users@ to their archive [9] -- thank you!
   [8] <https://lists.sourceforge.net/lists/listinfo/s-nail-users/>
   [9] <news://news.gmane.org/gmane.mail.s-nail.user>
 
-See the file INSTALL for installation notes and NEWS for release update
-information.  The S-nail(1) git(1) repository consists of five branches:
+The S-nail(1) git(1) repository consists of five branches:
 
 - master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
