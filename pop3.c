@@ -397,7 +397,6 @@ static void
 pop3catch(int s)
 {
    NYD_X; /* Signal handler */
-   termios_state_reset();
    switch (s) {
    case SIGINT:
       fprintf(stderr, tr(102, "Interrupt\n"));

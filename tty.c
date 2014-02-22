@@ -130,6 +130,15 @@ jleave:\
  * and place the implementations one after the other below the other externals
  */
 
+static sigjmp_buf __tty_actjmp; /* TODO someday, we won't need it no more */
+static void
+__tty_acthdl(int s) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   termios_state_reset();
+   siglongjmp(__tty_actjmp, s);
+}
+
 FL bool_t
 getapproval(char const *prompt, bool_t noninteract_default)
 {
@@ -173,29 +182,42 @@ yorn(char const *msg) /* TODO obsolete */
 }
 
 FL char *
-getuser(char const *query)
+getuser(char const * volatile query)
 {
+   sighandler_type volatile ohdl;
    char *user = NULL;
+   bool_t hadsig = FAL0;
    NYD_ENTER;
 
    if (query == NULL)
       query = tr(509, "User: ");
 
-/* FIXME WE NEED TO BE INTERRUPTIBLE - steal the getpassword stuff from
- * FIXME openssl.c, remove it there! */
+   ohdl = safe_signal(SIGINT, SIG_IGN);
+   if (sigsetjmp(__tty_actjmp, 1) != 0) {
+      hadsig  = TRU1;
+      goto jrestore;
+   }
+   safe_signal(SIGINT, &__tty_acthdl);
+
    if (readline_input(query, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
+jrestore:
    termios_state_reset();
+   safe_signal(SIGINT, ohdl);
    NYD_LEAVE;
+   if (hadsig && ohdl != SIG_IGN)
+      kill(0, SIGINT);
    return user;
 }
 
 FL char *
 getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 {
+   sighandler_type volatile ohdl;
    struct termios tios;
    char *pass = NULL;
+   bool_t hadsig = FAL0;
    NYD_ENTER;
 
    if (query == NULL)
@@ -204,7 +226,8 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
    fflush(stdout);
 
    /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
-    * FIXME foreground pgrp, and can fail with EINTR!! */
+    * FIXME foreground pgrp, and can fail with EINTR!! also affects
+    * FIXME termios_state_reset() */
    if (options & OPT_TTYIN) {
       tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
@@ -214,15 +237,24 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
       tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    }
 
-/* FIXME WE NEED TO BE INTERRUPTIBLE */
+   ohdl = safe_signal(SIGINT, SIG_IGN);
+   if (sigsetjmp(__tty_actjmp, 1) != 0) {
+      hadsig  = TRU1;
+      goto jrestore;
+   }
+   safe_signal(SIGINT, &__tty_acthdl);
+
    if (readline_restart(stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
       pass = termios_state.ts_linebuf;
+jrestore:
    termios_state_reset();
-
+   safe_signal(SIGINT, ohdl);
    if (options & OPT_TTYIN)
       fputc('\n', stdout);
    NYD_LEAVE;
+   if (hadsig && ohdl != SIG_IGN)
+      kill(0, SIGINT);
    return pass;
 }
 

@@ -129,13 +129,11 @@ static struct smime_cipher const _smime_ciphers[] = {
 # error cipher algorithms that are required to support S/MIME
 #endif
 
-static sigjmp_buf ssljmp;
 static int        initialized;
 static int        rand_init;
 static int        message_number;
 static int        verify_error_found;
 
-static void       sslcatch(int s);
 static int        ssl_rand_init(void);
 static void       ssl_init(void);
 static int        ssl_verify_cb(int success, X509_STORE_CTX *store);
@@ -157,14 +155,6 @@ static int        smime_sign_include_chain_creat(_STACKOF(X509) **chain,
 static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
-
-static void
-sslcatch(int s)
-{
-   NYD_X; /* Signal handler */
-   termios_state_reset();
-   siglongjmp(ssljmp, s);
-}
 
 static int
 ssl_rand_init(void)
@@ -548,30 +538,20 @@ jleave:
 static int
 ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 {
-   sighandler_type volatile saveint;
-   char *pass = NULL;
+   char *pass;
    size_t len;
    NYD_ENTER;
    UNUSED(rwflag);
    UNUSED(userdata);
 
-   saveint = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(ssljmp, 1) == 0) {
-      if (saveint != SIG_IGN)
-         safe_signal(SIGINT, sslcatch);
-      pass = getpassword("PEM pass phrase:");
-   }
-   safe_signal(SIGINT, saveint);
-
-   if (pass == NULL) {
+   if ((pass = getpassword("PEM pass phrase:")) != NULL) {
+      len = strlen(pass);
+      if (UICMP(z, len, >=, size))
+         len = size -1;
+      memcpy(buf, pass, len);
+      buf[len] = '\0';
+   } else
       len = 0;
-      goto jleave;
-   }
-   len = strlen(pass);
-   if (UICMP(z, len, >, size))
-      len = size;
-   memcpy(buf, pass, len);
-jleave:
    NYD_LEAVE;
    return (int)len;
 }
@@ -677,7 +657,7 @@ smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
          perror(cfiles);
          goto jerr;
       }
-      if ((tmp = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+      if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
          ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), rest);
          Fclose(fp);
          goto jerr;
@@ -941,13 +921,13 @@ smime_sign(FILE *ip, struct header *headp)
    if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)
       goto jleave;
 
-   if ((pkey = PEM_read_PrivateKey(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+   if ((pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
       ssl_gen_err(tr(532, "Error reading private key from"));
       goto jleave;
    }
 
    rewind(fp);
-   if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+   if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
       ssl_gen_err(tr(533, "Error reading signer certificate from"));
       goto jleave;
    }
@@ -1039,7 +1019,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
       goto jleave;
    }
 
-   if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+   if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
       ssl_gen_err(tr(547, "Error reading encryption certificate from \"%s\""),
          certfile);
       bail = TRU1;
@@ -1121,7 +1101,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
 
    ssl_init();
    if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
-      pkey = PEM_read_PrivateKey(fp, NULL, ssl_password_cb, NULL);
+      pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL);
       if (pkey == NULL) {
          ssl_gen_err(tr(551, "Error reading private key"));
          Fclose(fp);
@@ -1129,7 +1109,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
       }
       rewind(fp);
 
-      if ((cert = PEM_read_X509(fp, NULL, ssl_password_cb, NULL)) == NULL) {
+      if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
          ssl_gen_err(tr(552, "Error reading decryption certificate"));
          Fclose(fp);
          EVP_PKEY_free(pkey);
