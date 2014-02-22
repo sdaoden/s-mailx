@@ -494,15 +494,21 @@ _maexec(struct macro const *mp, struct var **unroller)
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       var_clear_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length +1);
+      temporary_localopts_store = _localopts; /* XXX intermediate hack */
+      /* FIXME if the execute() jumps away (via INT) then our internal state
+       * FIXME is messed up, even though temporary_localopts_free() is likely
+       * FIXME to correct some of that */
       rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
+      temporary_localopts_store = NULL;  /* XXX intermediate hack */
       var_clear_allow_undefined = FAL0;
    }
    ac_free(buf);
 
    _localopts = los.s_up;
-   if (unroller == NULL)
-      _localopts_unroll(&los.s_localopts);
-   else
+   if (unroller == NULL) {
+      if (los.s_localopts != NULL)
+         _localopts_unroll(&los.s_localopts);
+   } else
       *unroller = los.s_localopts;
    NYD_LEAVE;
    return rv;
@@ -1084,7 +1090,7 @@ c_account(void *v)
    }
 
    oqf = savequitflags();
-   if (_acc_curr != NULL)
+   if (_acc_curr != NULL && _acc_curr->ma_localopts != NULL)
       _localopts_unroll(&_acc_curr->ma_localopts);
    account_name = (mp != NULL) ? mp->ma_name : NULL;
    _acc_curr = mp;
@@ -1130,6 +1136,19 @@ c_localopts(void *v)
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+FL void
+temporary_localopts_free(void) /* XXX intermediate hack */
+{
+   struct lostack *losp;
+   NYD_ENTER;
+
+   var_clear_allow_undefined = FAL0;
+   losp = temporary_localopts_store;
+   temporary_localopts_store = NULL;
+   _localopts_unroll(&losp->s_localopts);
+   NYD_LEAVE;
 }
 
 /* vim:set fenc=utf-8:s-it-mode */

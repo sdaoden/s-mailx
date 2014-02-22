@@ -1473,7 +1473,10 @@ VL sighandler_type handlerstacktop;
 #define handlerpush(f)  (savedtop = handlerstacktop, handlerstacktop = (f))
 #define handlerpop()    (handlerstacktop = savedtop)
 
+/* TODO Temporary hacks unless the codebase doesn't jump and uses pass-by-value
+ * TODO carrier structs instead of locals */
 VL char        *temporary_arg_v_store;
+VL void        *temporary_localopts_store;
 
 /* The remaining variables need initialization */
 

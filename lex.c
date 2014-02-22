@@ -719,6 +719,8 @@ commands(void)
 #ifdef HAVE_COLOUR
       colour_table = NULL; /* XXX intermediate hack */
 #endif
+      if (temporary_localopts_store != NULL) /* XXX intermediate hack */
+         temporary_localopts_free(); /* XXX intermediate hack */
       sreset(sourcing);
       if (!sourcing) {
          char *cp;
