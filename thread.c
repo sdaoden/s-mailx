@@ -107,8 +107,8 @@ static void             _finalize(struct message *mp);
 #ifdef HAVE_SPAM
 static int              _mui32lt(void const *a, void const *b);
 #endif
-static int              _mlonglt(const void *a, const void *b);
-static int              _mcharlt(const void *a, const void *b);
+static int              _mlonglt(void const *a, void const *b);
+static int              _mcharlt(void const *a, void const *b);
 
 static void             _lookup(struct message *m, struct mitem *mi,
                            ui32_t mprime);
@@ -124,17 +124,17 @@ _mhash(char const *cp, ui32_t mprime)
    ui32_t h = 0, g, at = 0;
    NYD_ENTER;
 
-   for (--cp; *++cp;) {
+   for (--cp; *++cp != '\0';) {
       /* Pay attention not to hash characters which are irrelevant for
        * Message-ID semantics */
       if (*cp == '(') {
-         cp = skip_comment(&cp[1]) - 1;
+         cp = skip_comment(cp + 1) - 1;
          continue;
       }
       if (*cp == '"' || *cp == '\\')
          continue;
       if (*cp == '@')
-         at++;
+         ++at;
       /* TODO torek hash */
       h = ((h << 4) & 0xffffffff) + lowerconv(*cp);
       if ((g = h & 0xf0000000) != 0) {
@@ -156,7 +156,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
    if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
       goto jleave;
 
-   if (mdata && mdata->m_idhash)
+   if (mdata != NULL && mdata->m_idhash)
       h = ~mdata->m_idhash;
    else {
       h = _mhash(id, mprime);
@@ -166,7 +166,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
       }
    }
 
-   mp = &mt[c = h];
+   mp = mt + (c = h);
    while (mp->mi_id != NULL) {
       if (!msgidcmp(mp->mi_id, id))
          break;
@@ -174,7 +174,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
       ++n;
       while (c >= mprime)
          c -= mprime;
-      mp = &mt[c];
+      mp = mt + c;
    }
 
    if (mdata != NULL && mp->mi_id == NULL) {
@@ -195,7 +195,7 @@ _adopt(struct message *parent, struct message *child, int dist)
    struct message *mp, *mq;
    NYD_ENTER;
 
-   for (mp = parent; mp; mp = mp->m_parent)
+   for (mp = parent; mp != NULL; mp = mp->m_parent)
       if (mp == child)
          goto jleave;
 
@@ -240,22 +240,22 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    for (n = 0, i = 0; UICMP(32, i, <, cnt); ++i) {
       if (m[i].m_parent == NULL) {
          if (autocollapse)
-            _colps(&m[i], 1);
+            _colps(m + i, 1);
          ms[n].ms_u.ms_long = m[i].m_date;
          ms[n].ms_n = i;
-         n++;
+         ++n;
       }
    }
 
    if (n > 0) {
       qsort(ms, n, sizeof *ms, &_mlonglt);
-      root = &m[ms[0].ms_n];
+      root = m + ms[0].ms_n;
       for (i = 1; UICMP(32, i, <, n); ++i) {
-         m[ms[i-1].ms_n].m_younger = &m[ms[i].ms_n];
-         m[ms[i].ms_n].m_elder = &m[ms[i-1].ms_n];
+         m[ms[i-1].ms_n].m_younger = m + ms[i].ms_n;
+         m[ms[i].ms_n].m_elder = m + ms[i - 1].ms_n;
       }
    } else
-      root = &m[0];
+      root = m;
 
    free(ms);
    NYD_LEAVE;
@@ -292,7 +292,7 @@ _mui32lt(void const *a, void const *b)
 #endif
 
 static int
-_mlonglt(const void *a, const void *b)
+_mlonglt(void const *a, void const *b)
 {
    struct msort const *xa = a, *xb = b;
    int i;
@@ -306,7 +306,7 @@ _mlonglt(const void *a, const void *b)
 }
 
 static int
-_mcharlt(const void *a, const void *b)
+_mcharlt(void const *a, void const *b)
 {
    struct msort const *xa = a, *xb = b;
    int i;
@@ -380,9 +380,9 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
 
    for (i = 0; i < cnt; ++i) {
       if (!(m[i].m_flag & MHIDDEN)) {
-         _mlook(NULL, mt, &m[i], mprime);
+         _mlook(NULL, mt, m + i, mprime);
          if (m[i].m_date == 0) {
-            if ((cp = hfield1("date", &m[i])) != NULL)
+            if ((cp = hfield1("date", m + i)) != NULL)
                m[i].m_date = rfctime(cp);
          }
       }
@@ -400,7 +400,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
     * messages in a folder are replies to the one message, and are sorted such
     * that youngest messages occur first */
    for (i = cnt; i > 0; --i) {
-      _lookup(&m[i - 1], mt, mprime);
+      _lookup(m + i - 1, mt, mprime);
       srelax();
    }
 
@@ -425,7 +425,7 @@ _skipre(char const *cp)
    NYD_ENTER;
    if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' && cp[2] == ':' &&
          spacechar(cp[3])) {
-      cp = &cp[4];
+      cp = cp + 4;
       while (spacechar(*cp))
          ++cp;
    }
@@ -444,7 +444,7 @@ _colpt(int *msgvec, int cl)
       rv = 1;
    } else {
       for (ip = msgvec; *ip != 0; ++ip)
-         _colps(&message[*ip - 1], cl);
+         _colps(message + *ip - 1, cl);
       rv = 0;
    }
    NYD_LEAVE;
@@ -689,7 +689,7 @@ c_sort(void *vp)
    }
 
    for (i = 0; UICMP(z, i, <, NELEM(methnames)); ++i)
-      if (*args[0] && is_prefix(args[0], methnames[i].me_name))
+      if (*args[0] != '\0' && is_prefix(args[0], methnames[i].me_name))
          goto jmethok;
    fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
    i = 1;
@@ -788,13 +788,13 @@ jmethok:
 
    if (n > 0) {
       qsort(ms, n, sizeof *ms, func);
-      threadroot = &message[ms[0].ms_n];
+      threadroot = message + ms[0].ms_n;
       for (i = 1; i < n; ++i) {
-         message[ms[i-1].ms_n].m_younger = &message[ms[i].ms_n];
-         message[ms[i].ms_n].m_elder = &message[ms[i-1].ms_n];
+         message[ms[i - 1].ms_n].m_younger = message + ms[i].ms_n;
+         message[ms[i].ms_n].m_elder = message + ms[i - 1].ms_n;
       }
    } else
-      threadroot = &message[0];
+      threadroot = message;
    _finalize(threadroot);
    mb.mb_threaded = 2;
 
