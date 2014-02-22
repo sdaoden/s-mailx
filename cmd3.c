@@ -564,6 +564,7 @@ c_shell(void *v)
    char const *sh = NULL;
    char *str = v, *cmd;
    size_t cmdsize;
+   sigset_t mask;
    sighandler_type sigint;
    NYD_ENTER;
 
@@ -574,7 +575,8 @@ c_shell(void *v)
       sh = XSHELL;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
-   run_command(sh, 0, -1, -1, "-c", cmd, NULL);
+   sigemptyset(&mask);
+   run_command(sh, &mask, -1, -1, "-c", cmd, NULL);
    safe_signal(SIGINT, sigint);
    printf("!\n");
 
