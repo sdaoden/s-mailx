@@ -1118,6 +1118,8 @@ sclose(struct sock *sp)
    else {
       if (sp->s_onclose != NULL)
          (*sp->s_onclose)();
+      if (sp->s_wbuf != NULL)
+         free(sp->s_wbuf);
 # ifdef HAVE_OPENSSL
       if (sp->s_use_ssl) {
          /* XXX Don't wonder: as of v14.6 there is a problem in the IMAP code in
