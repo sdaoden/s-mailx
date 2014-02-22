@@ -641,5 +641,30 @@ TODO S-nail 14.7:
     const *tr_res;}) injection optimization, then.  (Think SFSYS)
   . Searching body/text yet includes headers from attachments and
     attachment data.  This is shit.  :)
+  . Btw.: (with IMAP) when opening a folder the hook gets executed after
+    the flags but before the headers are loaded, but for `newmail' it is
+    *after* the headers have been loaded.
+  .      /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
+          * TODO the current behaviour is suboptimal AT BEST! */
+  . there MUST be a way to specify that a single SPECIFIC box has to be
+    opened readonly.  only the global -R flag is NOT ENOUGH!
+  . the "nifty" unregister_file()->_compress() mechanism that even
+    shovels '-Sfolder=imaps://user1@localhost -Srecord="+Sent Items"'
+    *records* calls clearerr() on the descriptor before performing it's
+    action anyway.  when we really make it even to the I/O rewrite, it
+    should be possible to dis-/allow such -- it doesn't make sense to
+    add something faulty to whatever was not faulty before!
+  . The message from Andy Switala on nail-devel made me think about some
+    mechanism that invokes a macro after a message has been sent.
+    Unless macros can have args (or do we introduce $*/$@/$1..).
+    Even if the codebase will at some future time be stable and really
+    reliable, sending a message via multiple channels will never be
+    atomic, so that it would make sense for a user to be able to restore
+    *the complete message* in a save place if any of the sends failed,
+    but to remove it from our temporary place otherwise.  A simple
+    version of this would be a matter of five minutes, but since
+    mightrecord() may internally (via _compress()) instantiate
+    a complete IMAP session and try to send incomplete data etc.,
+    and all that may jump, i refrained from doing so.
 
 vim:set fenc=utf-8:s-ts-mode
