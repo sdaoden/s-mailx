@@ -113,13 +113,13 @@ _putname(char const *line, enum gfield w, enum sendaction action,
    NYD_ENTER;
 
    np = lextract(line, GEXTRA | GFULL);
-   if (xp)
+   if (xp != NULL)
       *xp = np;
    if (np == NULL)
       ;
    else if (fmt(prefix, np, fo, w & GCOMMA, 0, (action != SEND_TODISP)))
       rv = OKAY;
-   else if (gotcha)
+   else if (gotcha != NULL)
       ++(*gotcha);
    NYD_LEAVE;
    return rv;
@@ -163,7 +163,7 @@ _attach_file(struct attachment *ap, FILE *fo)
    if (ap->a_conv == AC_FIX_INCS)
       ap->a_charset = ap->a_input_charset;
 
-   if ((offs = ftell(fo)) < 0) {
+   if ((offs = ftell(fo)) == -1) {
       err = EIO;
       goto jleave;
    }
@@ -204,7 +204,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
    /* Either charset-converted temporary file, or plain path */
    if (ap->a_conv == AC_TMPFILE) {
       fi = ap->a_tmpf;
-      assert(ftell(fi) == 0x0l);
+      assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
       err = errno;
       perror(ap->a_name);
@@ -438,7 +438,7 @@ attach_message(struct attachment *ap, FILE *fo)
       fprintf(fo, "Content-Description: %s\n", ccp);
    fputc('\n', fo);
 
-   mp = &message[ap->a_msgno - 1];
+   mp = message + ap->a_msgno - 1;
    touch(mp);
    rv = (sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0) ? -1 : 0;
    NYD_LEAVE;
@@ -747,13 +747,14 @@ transfer(struct name *to, FILE *input, struct header *hp)
    NYD_ENTER;
 
    np = to;
-   while (np) {
+   while (np != NULL) {
       snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);/* XXX */
       if ((cp = vok_vlook(o)) != NULL) {
 #ifdef HAVE_SSL
          struct name *nt;
          FILE *ef;
-         if ((ef = smime_encrypt(input, cp, np->n_name)) != 0) {
+
+         if ((ef = smime_encrypt(input, cp, np->n_name)) != NULL) {
             nt = ndup(np, np->n_type & ~(GFULL | GSKIN));
             rv = start_mta(nt, ef, hp);
             Fclose(ef);
@@ -769,9 +770,9 @@ transfer(struct name *to, FILE *input, struct header *hp)
 #endif
          rewind(input);
 
-         if (np->n_flink)
+         if (np->n_flink != NULL)
             np->n_flink->n_blink = np->n_blink;
-         if (np->n_blink)
+         if (np->n_blink != NULL)
             np->n_blink->n_flink = np->n_flink;
          if (np == to)
             to = np->n_flink;
@@ -909,14 +910,14 @@ mightrecord(FILE *fp, struct name *to)
          goto jbail;
       }
 
-      if (ok_blook(outfolder) && *ep != '/' && *ep != '+' &&
+      if (*ep != '/' && *ep != '+' && ok_blook(outfolder) &&
             which_protocol(ep) == PROTO_FILE) {
          size_t i = strlen(cp);
          cq = salloc(i + 1 +1);
          cq[0] = '+';
-         memcpy(cq + 1, cp, i + 1);
+         memcpy(cq + 1, cp, i +1);
          cp = cq;
-         if ((ep = expand(cp)) == NULL) { /* TODO file_expand() possible? */
+         if ((ep = file_expand(cp)) == NULL) {
             ep = "NULL";
             goto jbail;
          }
@@ -1074,7 +1075,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       /* XXX more checks: The From_ line may be seen when resending */
       /* During headers is_head() is actually overkill, so ^From_ is sufficient
        * && !is_head(buf, c) */
-      if (ascncasecmp("status: ", buf, 8) != 0 && strncmp("From ", buf, 5))
+      if (ascncasecmp("status: ", buf, 8) && strncmp("From ", buf, 5))
          fwrite(buf, sizeof *buf, c, fo);
       if (cnt > 0 && *buf == '\n')
          break;
@@ -1358,13 +1359,13 @@ puthead(struct header *hp, FILE *fo, enum gfield w, enum sendaction action,
 {
 #define FMT_CC_AND_BCC()   \
 do {\
-   if (hp->h_cc != NULL && w & GCC) {\
+   if (hp->h_cc != NULL && (w & GCC)) {\
       if (fmt("Cc:", hp->h_cc, fo, (w & (GCOMMA | GFILES)), 0,\
             (action != SEND_TODISP)))\
          goto jleave;\
       ++gotcha;\
    }\
-   if (hp->h_bcc != NULL && w & GBCC) {\
+   if (hp->h_bcc != NULL && (w & GBCC)) {\
       if (fmt("Bcc:", hp->h_bcc, fo, (w & (GCOMMA | GFILES)), 0,\
             (action != SEND_TODISP)))\
          goto jleave;\
@@ -1444,9 +1445,9 @@ do {\
    if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
       FMT_CC_AND_BCC();
 
-   if (hp->h_subject != NULL && w & GSUBJECT) {
+   if (hp->h_subject != NULL && (w & GSUBJECT)) {
       fwrite("Subject: ", sizeof (char), 9, fo);
-      if (!ascncasecmp(hp->h_subject, "re: ", 4)) {
+      if (!ascncasecmp(hp->h_subject, "re: ", 4)) {/* TODO localizable */
          fwrite("Re: ", sizeof(char), 4, fo);
          if (strlen(hp->h_subject + 4) > 0 &&
                xmime_write(hp->h_subject + 4, strlen(hp->h_subject + 4), fo,
@@ -1466,13 +1467,13 @@ do {\
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
       FMT_CC_AND_BCC();
 
-   if (w & GMSGID && stealthmua <= 0)
+   if ((w & GMSGID) && stealthmua <= 0)
       message_id(fo, hp), ++gotcha;
 
-   if ((np = hp->h_ref) != NULL && w & GREF) {
+   if ((np = hp->h_ref) != NULL && (w & GREF)) {
       fmt("References:", np, fo, 0, 1, 0);
-      if (np->n_name) {
-         while (np->n_flink)
+      if (np->n_name != NULL) {
+         while (np->n_flink != NULL)
             np = np->n_flink;
          if (!is_addr_invalid(np, 0)) {
             fprintf(fo, "In-Reply-To: %s\n", np->n_name);
@@ -1481,7 +1482,7 @@ do {\
       }
    }
 
-   if (w & GUA && stealthmua == 0)
+   if ((w & GUA) && stealthmua == 0)
       fprintf(fo, "User-Agent: %s %s\n", uagent, version), ++gotcha;
 
    if (w & GMIME) {
@@ -1499,7 +1500,7 @@ do {\
       }
    }
 
-   if (gotcha && w & GNL)
+   if (gotcha && (w & GNL))
       putc('\n', fo);
    rv = 0;
 jleave:
