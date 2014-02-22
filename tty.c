@@ -181,6 +181,8 @@ getuser(char const *query)
    if (query == NULL)
       query = tr(509, "User: ");
 
+/* FIXME WE NEED TO BE INTERRUPTIBLE - steal the getpassword stuff from
+ * FIXME openssl.c, remove it there! */
    if (readline_input(query, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
@@ -212,6 +214,7 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
       tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    }
 
+/* FIXME WE NEED TO BE INTERRUPTIBLE */
    if (readline_restart(stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
       pass = termios_state.ts_linebuf;
@@ -342,7 +345,7 @@ tty_signal(int sig)
       kill(0, sig);
       /* XXX When we come here we'll continue editing, so reestablish
        * XXX cannot happen */
-      sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+      sigprocmask(SIG_BLOCK, &oset, NULL);
       _rl_shup = safe_signal(SIGHUP, &tty_signal);
       rl_reset_after_signal();
       break;
@@ -376,7 +379,7 @@ FL int
    n = strlen(line);
 
    if (n >= *linesize) {
-      *linesize = LINESIZE + n + 1;
+      *linesize = LINESIZE + n +1;
       *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
    }
    memcpy(*linebuf, line, n);
@@ -872,9 +875,10 @@ _ncl_sigs_down(void)
 static void
 _ncl_term_mode(bool_t raw)
 {
-   struct termios *tiosp = &_ncl_tios.told;
+   struct termios *tiosp;
    NYD_ENTER;
 
+   tiosp = &_ncl_tios.told;
    if (!raw)
       goto jleave;
 
@@ -1445,7 +1449,7 @@ jredo:
     * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
    rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
    if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
-      char const e1[] = "[maximum line size exceeded]";
+      char const e1[] = "[ERR_TOO_LONG]";
       exp.s = UNCONST(e1);
       exp.l = sizeof(e1) - 1;
       topp.l = 0;
@@ -1459,7 +1463,7 @@ jredo:
    }
 
    orig.l = bot.l + exp.l + topp.l;
-   orig.s = salloc(orig.l + 1 + 5);
+   orig.s = salloc(orig.l + 5 +1);
    if ((rv = bot.l) > 0)
       memcpy(orig.s, bot.s, rv);
    memcpy(orig.s + rv, exp.s, exp.l);
@@ -1510,7 +1514,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
-   /* TODO *l.nd=='\0' only because we have no value-cache -> see acmava.c */
+   /* TODO *l.nd=='\0' : instead adjust acmava.c to disallow empty vals */
    if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
       l.nd = "\033[C"; /* XXX no "magic" constant */
    l.x_buf = buf;
@@ -1555,13 +1559,13 @@ jrestart:
           * Encodings with locking shift states cannot really be helped, since
           * it is impossible to only query the shift state, as opposed to the
           * entire shift state + character pair (via ISO C functions) */
-         rv = (ssize_t)mbrtowc(&wc, cbuf, (size_t)(cbufp - cbuf), ps + 0);
+         rv = (ssize_t)mbrtowc(&wc, cbuf, PTR2SIZE(cbufp - cbuf), ps + 0);
          if (rv <= 0) {
             /* Any error during take-over can only result in a hard reset;
              * Otherwise, if it's a hard error, or if too many redundant shift
              * sequences overflow our buffer, also perform a hard reset */
             if (len != 0 || rv == -1 ||
-                  sizeof cbuf_base == (size_t)(cbufp - cbuf)) {
+                  sizeof cbuf_base == PTR2SIZE(cbufp - cbuf)) {
                l.savec.s = l.defc.s = NULL,
                l.savec.l = l.defc.l = len = 0;
                putchar('\a');
@@ -1713,8 +1717,7 @@ jprint:
          if (iswprint(wc)) {
             _ncl_kother(&l, wc);
             /* Don't clear the history during takeover..
-             * ..and also avoid fflush()ing unless we've
-             * worked the entire buffer */
+             * ..and also avoid fflush()ing unless we've worked entire buffer */
             if (len > 0)
                continue;
 # ifdef HAVE_HISTORY
