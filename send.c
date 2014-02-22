@@ -150,23 +150,24 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       ip->m_ct_type_plain = savestr(ip->m_ct_type);
       if ((cp = strchr(ip->m_ct_type_plain, ';')) != NULL)
          *cp = '\0';
-   } else if (ip->m_parent && ip->m_parent->m_mimecontent == MIME_DIGEST)
+   } else if (ip->m_parent != NULL &&
+         ip->m_parent->m_mimecontent == MIME_DIGEST)
       ip->m_ct_type_plain = UNCONST("message/rfc822");
    else
       ip->m_ct_type_plain = UNCONST("text/plain");
 
-   if (ip->m_ct_type)
+   if (ip->m_ct_type != NULL)
       ip->m_charset = mime_getparam("charset", ip->m_ct_type);
    if (ip->m_charset == NULL)
       ip->m_charset = charset_get_7bit();
 
    ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
-         (struct message *)ip);
-   ip->m_mimeenc = ip->m_ct_transfer_enc ?
-         mime_getenc(ip->m_ct_transfer_enc) : MIME_7B;
+         (struct message*)ip);
+   ip->m_mimeenc = (ip->m_ct_transfer_enc != NULL)
+         ? mime_getenc(ip->m_ct_transfer_enc) : MIME_7B;
 
-   if (((cp = hfield1("content-disposition", (struct message*)ip)) == 0 ||
-         (ip->m_filename = mime_getparam("filename", cp)) == 0) &&
+   if (((cp = hfield1("content-disposition", (struct message*)ip)) == NULL ||
+         (ip->m_filename = mime_getparam("filename", cp)) == NULL) &&
          ip->m_ct_type != NULL)
       ip->m_filename = mime_getparam("name", ip->m_ct_type);
 
@@ -247,11 +248,11 @@ parse822(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    ip->m_multipart = np;
 
    if (ok_blook(rfc822_body_from_)) {
-      substdate((struct message *)np);
+      substdate((struct message*)np);
       np->m_from = fakefrom((struct message*)np);/* TODO strip MNOFROM flag? */
    }
 
-   parsepart(zmp, np, pf, level+1);
+   parsepart(zmp, np, pf, level + 1);
 jleave:
    NYD_LEAVE;
 }
@@ -282,7 +283,7 @@ parsepkcs7(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       np->m_xlines = xmp->m_xlines;
       np->m_partstring = ip->m_partstring;
 
-      if (parsepart(zmp, np, pf, level+1) == OKAY) {
+      if (parsepart(zmp, np, pf, level + 1) == OKAY) {
          np->m_parent = ip;
          ip->m_multipart = np;
       }
@@ -366,7 +367,7 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       __endpart(&np, offs, lines);
    }
 
-   for (np = ip->m_multipart; np; np = np->m_nextpart)
+   for (np = ip->m_multipart; np != NULL; np = np->m_nextpart)
       if (np->m_mimecontent != MIME_DISCARD)
          parsepart(zmp, np, pf, level + 1);
    free(line);
@@ -453,8 +454,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
    }
 
    /* Max. 27 */
-   if (is_ign("content-disposition", 19, doign) &&
-         mip->m_filename != NULL) {
+   if (is_ign("content-disposition", 19, doign) && mip->m_filename != NULL) {
       struct str ti, to;
 
       ti.l = strlen(ti.s = mip->m_filename);
@@ -489,7 +489,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
 #ifdef HAVE_COLOUR
          (cpre != NULL ? cpre->l + csuf->l : 0) +
 #endif
-         strlen(ps) + 2*21 + ct.l + cd.l + 1;
+         strlen(ps) + 2*21 + ct.l + cd.l +1;
    out->s = salloc(out->l);
    out->l = snprintf(out->s, out->l, __msg,
          (level || (ps[0] != '1' && ps[1] == '\0') ? "\n" : ""),
@@ -522,9 +522,9 @@ _pipecmd(char **result, char const *content_type)
       goto jleave;
 
    /* First check wether there is a special pipe-MIMETYPE handler */
-   s = ac_alloc(strlen(content_type) + 6);
+   s = ac_alloc(strlen(content_type) + 5 +1);
    memcpy(s, "pipe-", 5);
-   cp = &s[5];
+   cp = s + 5;
    cq = content_type;
    do
       *cp++ = lowerconv(*cq);
@@ -557,7 +557,7 @@ _pipecmd(char **result, char const *content_type)
     * TODO the '#if 0' code here) */
       size_t l = strlen(content_type);
       char const *x = tr(999, "Should i display a part `%s' (y/n)? ");
-      s = ac_alloc(l += strlen(x) + 1);
+      s = ac_alloc(l += strlen(x) +1);
       snprintf(s, l - 1, x, content_type);
       l = yorn(s);
          puts(""); /* .. we've hijacked a pipe 8-] ... */
@@ -670,7 +670,7 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
       sz = (ssize_t)((size_t)sz + n);
       n = 0;
       if (stats != NULL && stats[0] != -1)
-         for (cp = buf; cp < &buf[sz]; ++cp)
+         for (cp = buf; PTRCMP(cp, <, buf + sz); ++cp)
             if (*cp == '\n')
                ++n;
       _addstats(stats, n, sz);
@@ -698,8 +698,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
    size_t linesize = 0, linelen, cnt;
    int dostat, infld = 0, ignoring = 1, isenc, c;
    struct mimepart *volatile np;
-   FILE *volatile ibuf = NULL, *volatile pbuf = obuf,
-      *volatile qbuf = obuf, *origobuf = obuf;
+   FILE * volatile ibuf = NULL, * volatile pbuf = obuf, * volatile qbuf = obuf,
+      *origobuf = obuf;
    enum conversion volatile convert;
    sighandler_type volatile oldpipe = SIG_DFL;
    long lineno = 0;
@@ -719,7 +719,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
       } else
          dostat = 3;
    }
-   if ((ibuf = setinput(&mb, (struct message *)ip, NEED_BODY)) == NULL) {
+   if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL) {
       rv = -1;
       goto jleave;
    }
@@ -728,7 +728,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
    if (ip->m_mimecontent == MIME_DISCARD)
       goto jskip;
 
-   if ((ip->m_flag & MNOFROM) == 0)
+   if (!(ip->m_flag & MNOFROM))
       while (cnt && (c = getc(ibuf)) != EOF) {
          cnt--;
          if (c == '\n')
@@ -761,9 +761,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
          /* If this line is a continuation (SP / HT) of a previous header
           * field, determine if the start of the line is a MIME encoded word */
          if (isenc & 2) {
-            for (cp = line; blankchar(*cp); cp++);
-            if (cp > line && linelen - (cp - line) > 8 && cp[0] == '=' &&
-                  cp[1] == '?')
+            for (cp = line; blankchar(*cp); ++cp);
+            if (cp > line && linelen - PTR2SIZE(cp - line) > 8 &&
+                  cp[0] == '=' && cp[1] == '?')
                isenc |= 1;
          }
       } else {
@@ -785,11 +785,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
             break;
          }
 
-         /* If it is an ignored field and we care about such things, skip it */
+         /* If it is an ignored field and we care about such things, skip it.
+          * Misuse dostat also for another bit xxx use a bitenum + for more */
+         if (ok_blook(keep_content_length))
+            dostat |= 1 << 2;
          c = *cp2;
          *cp2 = 0; /* temporarily null terminate */
          if ((doign && is_ign(line, PTR2SIZE(cp2 - line), doign)) ||
-               (action == SEND_MBOX && !ok_blook(keep_content_length) &&
+               (action == SEND_MBOX && !(dostat & (1 << 2)) &&
                 (!asccasecmp(line, "content-length") ||
                 !asccasecmp(line, "lines"))))
             ignoring = 1;
@@ -814,20 +817,26 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
 #endif
          }
          *cp2 = c;
+         dostat &= ~(1 << 2);
          infld = 1;
       }
 
       /* Determine if the end of the line is a MIME encoded word */
+      /* TODO geeeh!  all this lengthy stuff that follows is about is dealing
+       * TODO with header follow lines, and it should be up to the backend
+       * TODO what happens and what not, i.e., it doesn't matter wether it's
+       * TODO a MIME-encoded word or not, as long as a single separating space
+       * TODO remains in between lines (the MIME stuff will correctly remove
+       * TODO whitespace in between multiple adjacent encoded words) */
       isenc &= ~2;
       if (cnt && (c = getc(ibuf)) != EOF) {
          if (blankchar(c)) {
-            if (linelen > 0 && line[linelen - 1] == '\n')
-               cp = &line[linelen - 2];
-            else
-               cp = &line[linelen - 1];
+            cp = line + linelen - 1;
+            if (linelen > 0 && *cp == '\n')
+               --cp;
             while (cp >= line && whitechar(*cp))
-               ++cp;
-            if (cp - line > 8 && cp[0] == '=' && cp[-1] == '?')
+               --cp;
+            if (PTR2SIZE(cp - line > 8) && cp[0] == '=' && cp[-1] == '?')
                isenc |= 2;
          }
          ungetc(c, ibuf);
@@ -953,7 +962,7 @@ jskip:
       break;
    case MIME_PKCS7:
       if (action != SEND_MBOX && action != SEND_RFC822 &&
-            action != SEND_SHOW && ip->m_multipart)
+            action != SEND_SHOW && ip->m_multipart != NULL)
          goto jmulti;
       /* FALLTHRU */
    default:
@@ -1002,11 +1011,11 @@ jskip:
             !ok_blook(print_alternatives)) {
          bool_t doact = FAL0;
 
-         for (np = ip->m_multipart; np; np = np->m_nextpart)
+         for (np = ip->m_multipart; np != NULL; np = np->m_nextpart)
             if (np->m_mimecontent == MIME_TEXT_PLAIN)
                doact = TRU1;
          if (doact) {
-            for (np = ip->m_multipart; np; np = np->m_nextpart) {
+            for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
                if (np->m_ct_type_plain != NULL && action != SEND_QUOTE) {
                   _print_part_info(&rest, np, doign, level);
                   _out(rest.s, rest.l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
@@ -1043,12 +1052,12 @@ jmulti:
              ip->m_multipart->m_mimecontent == MIME_DISCARD &&
              ip->m_multipart->m_nextpart == NULL) {
             char const *x = tr(85,
-               "[Missing multipart boundary - use \"show\" to display "
-               "the raw message]\n");
+                  "[Missing multipart boundary - use \"show\" to display "
+                  "the raw message]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
          }
 
-         for (np = ip->m_multipart; np; np = np->m_nextpart) {
+         for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
             if (np->m_mimecontent == MIME_DISCARD && action != SEND_DECRYPT)
                continue;
             ispipe = FAL0;
@@ -1122,7 +1131,7 @@ jcopyout:
       --cnt;
    switch (ip->m_mimeenc) {
    case MIME_BIN:
-      if (stats)
+      if (stats != NULL)
          stats[0] = -1;
       /* FALLTHRU */
    case MIME_7B:
@@ -1186,7 +1195,7 @@ jcopyout:
          if (iconvd == (iconv_t)-1 && errno == EINVAL) {
             fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
                ip->m_charset, tcs);
-            /*rv = 1; goto jleave*/
+            /*rv = 1; goto jleave;*/
          }
       }
    }
@@ -1286,9 +1295,9 @@ newfile(struct mimepart *ip, int *ispipe)
    if (options & OPT_INTERACTIVE) {
       char *f2, *f3;
 jgetname:
-         printf(tr(278, "Enter filename for part %s (%s)"),
-            ip->m_partstring ? ip->m_partstring : "?",
-            ip->m_ct_type_plain);
+      printf(tr(278, "Enter filename for part %s (%s)"),
+         (ip->m_partstring != NULL) ? ip->m_partstring : "?",
+         ip->m_ct_type_plain);
       f2 = readstr_input(": ", (f != (char*)-1) ? f : NULL);
       if (f2 == NULL || *f2 == '\0') {
          fprintf(stderr, tr(279, "... skipping this\n"));
@@ -1303,7 +1312,7 @@ jgetname:
       else
          f = f3;
    }
-   if (f == NULL || f == (char *)-1) {
+   if (f == NULL || f == (char*)-1) {
       fp = NULL;
       goto jleave;
    }
@@ -1329,7 +1338,7 @@ static void
 pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    off_t *stats)
 {
-   char *line = NULL;
+   char *line = NULL; /* TODO line pool */
    size_t linesize = 0, linelen, cnt;
    ssize_t all_sz, sz;
    NYD_ENTER;
@@ -1365,7 +1374,7 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
 
    if (mp->m_flag & MREAD)
       *cp++ = 'R';
-   if ((mp->m_flag & MNEW) == 0)
+   if (!(mp->m_flag & MNEW))
       *cp++ = 'O';
    *cp = 0;
    if (statout[0]) {
@@ -1408,7 +1417,7 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
    int i;
    NYD_ENTER;
 
-   if (ip && ip->m_from) {
+   if (ip != NULL && ip->m_from != NULL) {
       froma = ip->m_from;
       date = fakedate(ip->m_time);
       nl = "\n";
@@ -1440,7 +1449,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 
    if (mp == dot && action != SEND_TOSRCH && action != SEND_TOFLTR)
       did_print_dot = 1;
-   if (stats)
+   if (stats != NULL)
       stats[0] = stats[1] = 0;
    quoteflt_init(&qf, prefix);
 
@@ -1481,7 +1490,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 #endif
       }
 
-      while (cnt && (c = getc(ibuf)) != EOF) {
+      while (cnt > 0 && (c = getc(ibuf)) != EOF) {
          if (doign != allignore && doign != fwdignore &&
                action != SEND_RFC822) {
 #ifdef HAVE_COLOUR
@@ -1504,7 +1513,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 #endif
    }
    }
-   if (sz)
+   if (sz > 0)
       _addstats(stats, 1, sz);
 
    pf = 0;

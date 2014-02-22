@@ -50,7 +50,7 @@ struct cond_stack {
 };
 
 static struct cond_stack   *_cond_stack;
-static char *              _bang_buf;
+static char                *_bang_buf;
 static size_t              _bang_size;
 
 /* Modify subject we reply to to begin with Re: if it does not already */
@@ -83,7 +83,7 @@ static char *     fwdedit(char *subj);
 static void       asort(char **list);
 
 /* Do a dictionary order comparison of the arguments from qsort */
-static int        diction(const void *a, const void *b);
+static int        diction(void const *a, void const *b);
 
 /* Do the real work of resending */
 static int        resend1(void *v, int add_resent);
@@ -108,13 +108,13 @@ _reedit(char *subj)
    in.l = strlen(subj);
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
-   /* XXX _reedit: we should take into account Aw: etc. (see mime.c!) */
+   /* TODO _reedit: should be localizable (see cmd1.c:__subject_trim()!) */
    if ((out.s[0] == 'r' || out.s[0] == 'R') &&
          (out.s[1] == 'e' || out.s[1] == 'E') && out.s[2] == ':') {
       newsubj = savestr(out.s);
       goto jleave;
    }
-   newsubj = salloc(out.l + 5);
+   newsubj = salloc(out.l + 4 +1);
    sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
 jleave:
    free(out.s);
@@ -186,6 +186,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
       head->h_ref = NULL;
       goto jleave;
    }
+
    reflen = 1;
    if (oldref) {
       oldreflen = strlen(oldref);
@@ -198,21 +199,21 @@ make_ref_and_cs(struct message *mp, struct header *head)
 
    newref = ac_alloc(reflen);
    if (oldref != NULL) {
-      memcpy(newref, oldref, oldreflen + 1);
+      memcpy(newref, oldref, oldreflen +1);
       if (oldmsgid != NULL) {
          newref[oldreflen++] = ',';
          newref[oldreflen++] = ' ';
-         memcpy(newref + oldreflen, oldmsgid, oldmsgidlen + 1);
+         memcpy(newref + oldreflen, oldmsgid, oldmsgidlen +1);
       }
    } else if (oldmsgid)
-      memcpy(newref, oldmsgid, oldmsgidlen + 1);
+      memcpy(newref, oldmsgid, oldmsgidlen +1);
    n = extract(newref, GREF);
    ac_free(newref);
 
-   /* Limit the references to 21 entries */
+   /* Limit number of references */
    while (n->n_flink != NULL)
       n = n->n_flink;
-   for (i = 1; i < 21; ++i) {
+   for (i = 1; i < 21; ++i) { /* XXX no magics */
       if (n->n_blink != NULL)
          n = n->n_blink;
       else
@@ -230,11 +231,11 @@ jleave:
 static int
 (*respond_or_Respond(int c))(int *, int)
 {
-   int opt = 0;
+   int opt;
    int (*rv)(int*, int);
    NYD_ENTER;
 
-   opt += ok_blook(Replyall);
+   opt = ok_blook(Replyall);
    opt += ok_blook(flipr);
    rv = ((opt == 1) ^ (c == 'R')) ? &Respond_internal : &respond_internal;
    NYD_LEAVE;
@@ -260,7 +261,7 @@ respond_internal(int *msgvec, int recipient_record)
       goto jleave;
    }
 
-   mp = &message[msgvec[0] - 1];
+   mp = message + msgvec[0] - 1;
    touch(mp);
    setdot(mp);
 
@@ -299,7 +300,7 @@ respond_internal(int *msgvec, int recipient_record)
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-         ok_blook(markanswered) && (mp->m_flag & MANSWERED) == 0)
+         ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
    rv = 0;
 jleave:
@@ -321,7 +322,7 @@ Respond_internal(int *msgvec, int recipient_record)
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
    for (ap = msgvec; *ap != 0; ++ap) {
-      mp = &message[*ap - 1];
+      mp = message + *ap - 1;
       touch(mp);
       setdot(mp);
       if ((cp = hfield1("reply-to", mp)) == NULL)
@@ -332,7 +333,7 @@ Respond_internal(int *msgvec, int recipient_record)
    if (head.h_to == NULL)
       goto jleave;
 
-   mp = &message[msgvec[0] - 1];
+   mp = message + msgvec[0] - 1;
    head.h_subject = hfield1("subject", mp);
    head.h_subject = _reedit(head.h_subject);
    make_ref_and_cs(mp, &head);
@@ -345,7 +346,7 @@ Respond_internal(int *msgvec, int recipient_record)
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-         ok_blook(markanswered) && (mp->m_flag & MANSWERED) == 0)
+         ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 jleave:
    NYD_LEAVE;
@@ -355,10 +356,10 @@ jleave:
 static int
 forward1(char *str, int recipient_record)
 {
+   struct header head;
    int *msgvec, rv = 1;
    char *recipient;
    struct message *mp;
-   struct header head;
    bool_t f, forward_as_attachment;
    NYD_ENTER;
 
@@ -398,11 +399,11 @@ forward1(char *str, int recipient_record)
    }
 
    memset(&head, 0, sizeof head);
-   if ((head.h_to = lextract(recipient, GTO |
-         (ok_blook(fullnames) ? GFULL : GSKIN))) == NULL)
+   if ((head.h_to = lextract(recipient,
+         (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)))) == NULL)
       goto jleave;
 
-   mp = &message[*msgvec - 1];
+   mp = message + *msgvec - 1;
 
    if (forward_as_attachment) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
@@ -437,7 +438,7 @@ fwdedit(char *subj)
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
    newsubj = salloc(out.l + 6);
-   memcpy(newsubj, "Fwd: ", 5);
+   memcpy(newsubj, "Fwd: ", 5); /* XXX localizable */
    memcpy(newsubj + 5, out.s, out.l + 1);
    free(out.s);
 jleave:
@@ -449,17 +450,18 @@ static void
 asort(char **list)
 {
    char **ap;
+   size_t i;
    NYD_ENTER;
 
    for (ap = list; *ap != NULL; ++ap)
       ;
-   if (PTR2SIZE(ap - list) >= 2)
-      qsort(list, PTR2SIZE(ap - list), sizeof *list, diction);
+   if ((i = PTR2SIZE(ap - list)) >= 2)
+      qsort(list, i, sizeof *list, diction);
    NYD_LEAVE;
 }
 
 static int
-diction(const void *a, const void *b)
+diction(void const *a, void const *b)
 {
    int rv;
    NYD_ENTER;
@@ -513,7 +515,7 @@ resend1(void *v, int add_resent)
    to = usermap(sn, FAL0);
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip)
-      if (resend_msg(&message[*ip - 1], to, add_resent) != OKAY)
+      if (resend_msg(message + *ip - 1, to, add_resent) != OKAY)
          goto jleave;
    f = FAL0;
 jleave:
@@ -527,7 +529,7 @@ list_shortcuts(void)
    struct shortcut *s;
    NYD_ENTER;
 
-   for (s = shortcuts; s; s = s->sh_next)
+   for (s = shortcuts; s != NULL; s = s->sh_next)
       printf("%s=%s\n", s->sh_short, s->sh_long);
    NYD_LEAVE;
 }
@@ -539,11 +541,11 @@ delete_shortcut(char const *str)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   for (sp = shortcuts, sq = NULL; sp; sq = sp, sp = sp->sh_next) {
+   for (sp = shortcuts, sq = NULL; sp != NULL; sq = sp, sp = sp->sh_next) {
       if (!strcmp(sp->sh_short, str)) {
          free(sp->sh_short);
          free(sp->sh_long);
-         if (sq)
+         if (sq != NULL)
             sq->sh_next = sp->sh_next;
          if (sp == shortcuts)
             shortcuts = sp->sh_next;
@@ -562,17 +564,19 @@ c_shell(void *v)
    char const *sh = NULL;
    char *str = v, *cmd;
    size_t cmdsize;
+   sigset_t mask;
    sighandler_type sigint;
    NYD_ENTER;
 
-   cmd = smalloc(cmdsize = strlen(str) + 1);
+   cmd = smalloc(cmdsize = strlen(str) +1);
    memcpy(cmd, str, cmdsize);
    _bangexp(&cmd, &cmdsize);
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
-   run_command(sh, 0, -1, -1, "-c", cmd, NULL);
+   sigemptyset(&mask);
+   run_command(sh, &mask, -1, -1, "-c", cmd, NULL);
    safe_signal(SIGINT, sigint);
    printf("!\n");
 
@@ -682,7 +686,7 @@ c_chdir(void *v)
       cp = homedir;
    else if ((cp = file_expand(*arglist)) == NULL)
       goto jleave;
-   if (chdir(cp) < 0) {
+   if (chdir(cp) == -1) {
       perror(cp);
       cp = NULL;
    }
@@ -837,7 +841,7 @@ c_preserve(void *v)
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mesg = *ip;
-      mp = &message[mesg - 1];
+      mp = message + mesg - 1;
       mp->m_flag |= MPRESERVE;
       mp->m_flag &= ~MBOX;
       setdot(mp);
@@ -856,12 +860,12 @@ c_unread(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(&message[*ip - 1]);
+      setdot(message + *ip - 1);
       dot->m_flag &= ~(MREAD | MTOUCH);
       dot->m_flag |= MSTATUS;
 #ifdef HAVE_IMAP
       if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
-         imap_unread(&message[*ip - 1], *ip); /* TODO return? */
+         imap_unread(message + *ip - 1, *ip); /* TODO return? */
 #endif
       did_print_dot = TRU1;
    }
@@ -876,8 +880,9 @@ c_seen(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(&message[*ip - 1]);
-      touch(&message[*ip - 1]);
+      struct message *mp = message + *ip - 1;
+      setdot(mp);
+      touch(mp);
    }
    NYD_LEAVE;
    return 0;
@@ -892,7 +897,7 @@ c_messize(void *v)
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mesg = *ip;
-      mp = &message[mesg - 1];
+      mp = message + mesg - 1;
       printf("%d: ", mesg);
       if (mp->m_xlines > 0)
          printf("%ld", mp->m_xlines);
@@ -910,11 +915,10 @@ c_rexit(void *v)
    UNUSED(v);
    NYD_ENTER;
 
-   if (sourcing) {
-      NYD_LEAVE;
-      return 1;
-   }
-   exit(0);
+   if (!sourcing)
+      exit(0);
+   NYD_LEAVE;
+   return 1;
 }
 
 FL int
@@ -931,7 +935,7 @@ c_set(void *v)
 
    for (; *ap != NULL; ++ap) {
       cp = *ap;
-      cp2 = varbuf = ac_alloc(strlen(cp) + 1);
+      cp2 = varbuf = ac_alloc(strlen(cp) +1);
       for (; (c = *cp) != '=' && c != '\0'; ++cp)
          *cp2++ = c;
       *cp2 = '\0';
@@ -982,13 +986,16 @@ c_group(void *v)
    if (*argv == NULL) {
       for (h = 0, s = 1; h < HSHSIZE; ++h)
          for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            s++;
+            ++s;
       ap = salloc(s * sizeof *ap);
+
       for (h = 0, p = ap; h < HSHSIZE; ++h)
          for (gh = groups[h]; gh != NULL; gh = gh->g_link)
             *p++ = gh->g_name;
       *p = NULL;
+
       asort(ap);
+
       for (p = ap; *p != NULL; ++p)
          printgroup(*p);
       goto jleave;
@@ -1311,7 +1318,7 @@ c_newmail(void *v)
 #endif
          (val = setfile(mailname, 1)) == 0) {
       mdot = getmdot(1);
-      setdot(&message[mdot - 1]);
+      setdot(message + mdot - 1);
    }
    NYD_LEAVE;
    return val;
@@ -1403,9 +1410,9 @@ c_flag(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      m = &message[*ip - 1];
+      m = message + *ip - 1;
       setdot(m);
-      if ((m->m_flag & (MFLAG | MFLAGGED)) == 0)
+      if (!(m->m_flag & (MFLAG | MFLAGGED)))
          m->m_flag |= MFLAG | MFLAGGED;
    }
    NYD_LEAVE;
@@ -1420,7 +1427,7 @@ c_unflag(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      m = &message[*ip - 1];
+      m = message + *ip - 1;
       setdot(m);
       if (m->m_flag & (MFLAG | MFLAGGED)) {
          m->m_flag &= ~(MFLAG | MFLAGGED);
@@ -1439,9 +1446,9 @@ c_answered(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      m = &message[*ip - 1];
+      m = message + *ip - 1;
       setdot(m);
-      if ((m->m_flag & (MANSWER | MANSWERED)) == 0)
+      if (!(m->m_flag & (MANSWER | MANSWERED)))
          m->m_flag |= MANSWER | MANSWERED;
    }
    NYD_LEAVE;
@@ -1456,7 +1463,7 @@ c_unanswered(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      m = &message[*ip - 1];
+      m = message + *ip - 1;
       setdot(m);
       if (m->m_flag & (MANSWER | MANSWERED)) {
          m->m_flag &= ~(MANSWER | MANSWERED);
@@ -1475,9 +1482,9 @@ c_draft(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      m = &message[*ip - 1];
+      m = message + *ip - 1;
       setdot(m);
-      if ((m->m_flag & (MDRAFT | MDRAFTED)) == 0)
+      if (!(m->m_flag & (MDRAFT | MDRAFTED)))
          m->m_flag |= MDRAFT | MDRAFTED;
    }
    NYD_LEAVE;
@@ -1492,7 +1499,7 @@ c_undraft(void *v)
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      m = &message[*ip - 1];
+      m = message + *ip - 1;
       setdot(m);
       if (m->m_flag & (MDRAFT | MDRAFTED)) {
          m->m_flag &= ~(MDRAFT | MDRAFTED);
@@ -1572,7 +1579,7 @@ c_remove(void *v)
 
       switch (which_protocol(name)) {
       case PROTO_FILE:
-         if (unlink(name) < 0) { /* TODO do not handle .gz .bz2 */
+         if (unlink(name) == -1) { /* TODO do not handle .gz .bz2 .xz.. */
             perror(name);
             ec |= 1;
          }

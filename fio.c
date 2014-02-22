@@ -70,9 +70,9 @@
 #endif
 
 struct fio_stack {
-   FILE           *s_file;    /* File we were in. */
-   void           *s_cond;    /* Saved state of conditional stack */
-   int            s_loading;  /* Loading .mailrc, etc. */
+   FILE  *s_file;    /* File we were in. */
+   void  *s_cond;    /* Saved state of conditional stack */
+   int   s_loading;  /* Loading .mailrc, etc. */
 };
 
 static size_t           _message_space;   /* Slots in ::message */
@@ -250,7 +250,7 @@ jagain:
       goto jleave;
    }
    xname[l] = 0;
-   for (cp = &xname[l - 1]; *cp == '\n' && cp > xname; --cp)
+   for (cp = xname + l - 1; *cp == '\n' && cp > xname; --cp)
       ;
    cp[1] = '\0';
    if (!(fexpm & FEXP_MULTIOK) && strchr(xname, ' ') != NULL &&
@@ -445,7 +445,7 @@ FL int
    SMALLOC_DEBUG_ARGS)
 {
    /* TODO readline_restart(): always *appends* LF just to strip it again;
-    * TODO should be configurable just as for fgetline(); ..or whatevr.. */
+    * TODO should be configurable just as for fgetline(); ..or whatever.. */
    int rv = -1;
    long sz;
    NYD_ENTER;
@@ -556,7 +556,7 @@ FL int
 FL char *
 readstr_input(char const *prompt, char const *string)
 {
-   /* FIXME readstr_input: without linepool leaks on sigjmp */
+   /* FIXME readstr_input: leaks on sigjmp without linepool */
    size_t linesize = 0;
    char *linebuf = NULL, *rv = NULL;
    int n;
@@ -892,7 +892,7 @@ jnext:
    case '&':
       if (res[1] == '\0') {
          if ((res = ok_vlook(MBOX)) == NULL)
-            res = UNCONST("~/mbox");
+            res = UNCONST("~/mbox"); /* XXX no magics (POSIX though) */
          else if (res[0] != '&' || res[1] != '\0')
             goto jnext;
       }
@@ -923,14 +923,16 @@ jshell:
       res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
       dyn = TRU1;
    }
-
-   if (anyof(res, "|&;<>~{}()[]*?$`'\"\\") &&
-         which_protocol(res) == PROTO_FILE) {
-      res = _globname(res, fexpm);
-      dyn = TRU1;
-      goto jleave;
-   }
-
+   if (anyof(res, "|&;<>~{}()[]*?$`'\"\\"))
+      switch (which_protocol(res)) {
+      case PROTO_FILE:
+      case PROTO_MAILDIR:
+         res = _globname(res, fexpm);
+         dyn = TRU1;
+         goto jleave;
+      default:
+         break;
+      }
 jislocal:
    if (fexpm & FEXP_LOCAL)
       switch (which_protocol(res)) {
@@ -982,7 +984,6 @@ var_folder_updated(char const *name, char **store)
 
    switch (which_protocol(folder)) {
    case PROTO_POP3:
-      /* Ooops.  This won't work */
       fprintf(stderr, tr(501,
          "`folder' cannot be set to a flat, readonly POP3 account\n"));
       rv = FAL0;
@@ -1014,7 +1015,7 @@ var_folder_updated(char const *name, char **store)
     * getfold() to be able to abbreviate to the +FOLDER syntax if
     * possible, we need to realpath(3) the folder, too */
 #ifdef HAVE_REALPATH
-   res = ac_alloc(PATH_MAX);
+   res = ac_alloc(PATH_MAX +1);
    if (realpath(folder, res) == NULL)
       fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), folder);
    else
@@ -1054,7 +1055,7 @@ getdeadletter(void) /* XXX should that be in auxlily.c? */
    if ((cp = ok_vlook(DEAD)) == NULL || (cp = fexpand(cp, FEXP_LOCAL)) == NULL)
       cp = fexpand("~/dead.letter", FEXP_LOCAL | FEXP_SHELL);
    else if (*cp != '/') {
-      size_t sz = strlen(cp) + 3;
+      size_t sz = strlen(cp) + 2 +1;
       char *buf = ac_alloc(sz);
 
       snprintf(buf, sz, "~/%s", cp);
@@ -1107,28 +1108,45 @@ sclose(struct sock *sp)
    int i;
    NYD_ENTER;
 
-   if (sp->s_fd > 0) {
+   i = sp->s_fd;
+   sp->s_fd = -1;
+   /* TODO NOTE: we MUST NOT close the descriptor `0' here...
+    * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
+    * TODO but unfortunately it isn't yet */
+   if (i <= 0)
+      i = 0;
+   else {
       if (sp->s_onclose != NULL)
          (*sp->s_onclose)();
+      if (sp->s_wbuf != NULL)
+         free(sp->s_wbuf);
 # ifdef HAVE_OPENSSL
       if (sp->s_use_ssl) {
+         /* XXX Don't wonder: as of v14.6 there is a problem in the IMAP code in
+          * XXX that if i connect via `file' to an IMAP account, that connection
+          * XXX breaks, and i simply re-`file' to the same account, then it may
+          * XXX happen that the OpenSSL library crashes, in SSL_CTX_free()?,
+          * XXX but more checking is needed.  That is true for 0* as well as for
+          * XXX `OpenSSL 1.0.1f 6 Jan 2014'; i've reported that on @openssl-user
+          * XXX somewhen in november 2013, i.e., the wrong list.  What i still
+          * XXX don't understand, and the reason for why all this NYD_X is here
+          * XXX etc.: the socket is has not been closed, so these SSL_* funs
+          * XXX below have not yet been called on the SSL objects */
          void *s_ssl = sp->s_ssl, *s_ctx = sp->s_ctx;
          sp->s_ssl = sp->s_ctx = NULL;
          sp->s_use_ssl = 0;
-         assert(s_ssl != NULL);
-         while (!SSL_shutdown(s_ssl)) /* XXX */
+         NYD_X;
+         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling */
             ;
+         NYD_X;
          SSL_free(s_ssl);
+         NYD_X;
          SSL_CTX_free(s_ctx);
+         NYD_X;
       }
 # endif
-      i = close(sp->s_fd);
-      sp->s_fd = -1;
-      goto jleave;
+      i = close(i);
    }
-   sp->s_fd = -1;
-   i = 0;
-jleave:
    NYD_LEAVE;
    return i;
 }
@@ -1163,7 +1181,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
          di = sp->s_wbufsize - sp->s_wbufpos;
          sz -= di;
          if (sp->s_wbufpos > 0) {
-            memcpy(&sp->s_wbuf[sp->s_wbufpos], data, di);
+            memcpy(sp->s_wbuf + sp->s_wbufpos, data, di);
             rv = swrite1(sp, sp->s_wbuf, sp->s_wbufsize, -1);
          } else
             rv = swrite1(sp, data, sp->s_wbufsize, -1);
@@ -1177,7 +1195,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
          if (rv != OKAY)
             goto jleave;
       } else if (sz) {
-         memcpy(&sp->s_wbuf[sp->s_wbufpos], data, sz);
+         memcpy(sp->s_wbuf+ sp->s_wbufpos, data, sz);
          sp->s_wbufpos += sz;
       }
       rv = OKAY;
@@ -1240,7 +1258,7 @@ sopen(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
    struct linger li;
 # endif
 # ifdef HAVE_IPV6
-   char  hbuf[NI_MAXHOST];
+   char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0, *res;
 # else
    struct sockaddr_in servaddr;
@@ -1261,7 +1279,7 @@ sopen(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
 # ifndef HAVE_IPV6
       port = strtol(portstr, NULL, 10);
 # endif
-      server = salloc(cp - xserver + 1);
+      server = salloc(cp - xserver +1);
       memcpy(server, xserver, cp - xserver);
       server[cp - xserver] = '\0';
    }

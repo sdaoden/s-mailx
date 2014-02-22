@@ -124,7 +124,7 @@ jbad:
       self->qf_dat.l += (size_t)l;
    }
 
-   /* TODO The last visual may excess *qfold-max* if it's a wide one;
+   /* TODO The last visual may excess (adjusted!) *qfold-max* if it's a wide;
     * TODO place it on the next line, break before */
    if (self->qf_datw >= self->qf_qfold_max) {
       /* If we have seen a nice breakpoint during traversal, shuffle data
@@ -185,7 +185,7 @@ _qf_state_prefix(struct qf_vc *vc)
    rv = 0;
 
    for (buf = vc->buf, len = vc->len; len > 0;) {
-      /* TODO NULL BYTE! */
+      /* xxx NULL BYTE! */
       i = mbrtowc(&wc, buf, len, self->qf_mbps);
       if (i == (size_t)-1) {
          /* On hard error, don't modify mbstate_t and step one byte */
@@ -254,7 +254,7 @@ _qf_state_data(struct qf_vc *vc)
    rv = 0;
 
    for (buf = vc->buf, len = vc->len; len > 0;) {
-      /* TODO NULL BYTE! */
+      /* xxx NULL BYTE! */
       i = mbrtowc(&wc, buf, len, self->qf_mbps);
       if (i == (size_t)-1) {
          /* On hard error, don't modify mbstate_t and step one byte */
@@ -292,7 +292,7 @@ _qf_state_data(struct qf_vc *vc)
 #endif /* HAVE_QUOTE_FOLD */
 
 FL struct quoteflt *
-quoteflt_dummy(void) /* TODO LEGACY */
+quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 {
    static struct quoteflt qf_i;
 

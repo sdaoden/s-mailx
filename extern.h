@@ -101,6 +101,8 @@ FL int      c_account(void *v);
 /* `localopts' */
 FL int      c_localopts(void *v);
 
+FL void     temporary_localopts_free(void); /* XXX intermediate hack */
+
 /*
  * attachments.c
  */

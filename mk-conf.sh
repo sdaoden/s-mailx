@@ -94,38 +94,44 @@ compiler_flags() {
 
    ccver=`${CC} --version 2>/dev/null`
    stackprot=no
-   if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
+   if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
-      _CFLAGS='-std=c89'
       _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
       _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
-      if { i=$ccver; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
+      if { i=${ccver}; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
          :
       else
          _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
          if wantfeat AMALGAMATION && nwantfeat DEBUG; then
             _CFLAGS="${_CFLAGS} -Wno-unused-function"
          fi
-         if { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
+         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
       if wantfeat AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
-      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-#   elif { i=$ccver; echo "${i}"; } | ${grep} -q -i -e clang; then
+      if wantfeat DEBUG; then
+         _CFLAGS="${_CFLAGS} -std=c89"
+         _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
+      fi
+#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      stackprot=yes
 #      optim=-O3 dbgoptim=-O
 #      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
 #      if wantfeat AMALGAMATION; then
 #         _CFLAGS="${_CFLAGS} -pipe"
+#      fi
+#      if wantfeat DEBUG; then
+#         _CFLAGS="${_CFLAGS} -std=c89"
+#         _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #      fi
    elif [ -z "${optim}" ]; then
       optim=-O1 dbgoptim=-O
@@ -496,6 +502,17 @@ link_check fchdir 'for fchdir()' '#define HAVE_FCHDIR' << \!
 int main(void)
 {
    fchdir(0);
+   return 0;
+}
+!
+
+link_check pipe2 'for pipe2()' '#define HAVE_PIPE2' << \!
+#include <fcntl.h>
+#include <unistd.h>
+int main(void)
+{
+   int fds[2];
+   pipe2(fds, O_CLOEXEC);
    return 0;
 }
 !
@@ -1148,7 +1165,7 @@ printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TSL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_GSSAPI\n   ",GSSAPI"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}

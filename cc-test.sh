@@ -6,17 +6,18 @@ CONF=./conf.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 
-awk=${AWK:-`command -v awk`}
-cat=${CAT:-`command -v cat`}
+MAKE="${MAKE:-`command -v make`}"
+awk=${awk:-`command -v awk`}
+cat=${cat:-`command -v cat`}
 # TODO cksum not fixated via mk-conf.sh, mk.mk should export variables!!
 cksum=${cksum:-`command -v cksum`}
-MAKE="${MAKE:-`command -v make`}"
-rm=${RM:-`command -v rm`}
-sed=${SED:-`command -v sed`}
+rm=${rm:-`command -v rm`}
+sed=${sed:-`command -v sed`}
+grep=${grep:-`command -v grep`}
 
 ##  --  >8  --  8<  --  ##
 
-export SNAIL CONF BODY MBOX awk cat cksum MAKE rm sed
+export SNAIL CONF BODY MBOX MAKE awk cat cksum rm sed grep
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
 # nl_langinfo(CODESET), then, so also overwrite ttycharset.
@@ -114,6 +115,13 @@ t_behave() {
    # TODO or to force echo of the prompt
 
    __behave_ifelse
+
+   FEAT=`printf 'feat\n' | MAILRC=/dev/null "${SNAIL}" -n -#`
+   if { i=${FEAT}; echo "${i}"; } | ${grep} -q DEBUG &&
+         { i=${FEAT}; echo "${i}"; } | ${grep} -q 'SSL/TLS' &&
+         { i=${FEAT}; echo "${i}"; } | ${grep} -q 'S/MIME'; then
+      __behave_smime
+   fi
 }
 
 __behave_ifelse() {
@@ -208,6 +216,92 @@ __behave_ifelse() {
 		endif
 	__EOT
    cksum_test behave:2 "${MBOX}" '1909382116 98'
+}
+
+__behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
+   echo WARNING: behave_smime is yet debug only and not generalized
+   printf 'behave:s/mime: .. generating test key and certificate ..\n'
+   cat <<-_EOT > t.conf
+		[ req ]
+		default_bits           = 1024
+		default_keyfile        = keyfile.pem
+		distinguished_name     = req_distinguished_name
+		attributes             = req_attributes
+		prompt                 = no
+		output_password        =
+
+		[ req_distinguished_name ]
+		C                      = GB
+		ST                     = Over the
+		L                      = rainbow
+		O                      = S-nail
+		OU                     = S-nail.smime
+		CN                     = S-nail.test
+		emailAddress           = test@localhost
+
+		[ req_attributes ]
+		challengePassword =
+	_EOT
+   openssl req -x509 -nodes -days 3650 -config t.conf \
+      -newkey rsa:1024 -keyout tkey.pem -out tcert.pem >/dev/null 2>&1
+   rm -f t.conf
+   cat tkey.pem tcert.pem > tpair.pem
+
+   printf "behave:s/mime:sign/verify: "
+   echo bla |
+   MAILRC=/dev/null ./s-nail -n# \
+      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-sign -Sfrom=test@localhost \
+      -s 'S/MIME test' ./VERIFY
+   # TODO CHECK
+   printf 'verify\nx\n' |
+   MAILRC=/dev/null ./s-nail -n# \
+      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-sign -Sfrom=test@localhost \
+      -Sbatch-exit-on-error -R \
+      -f ./VERIFY >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      ESTAT=1
+      printf 'error: verification failed\n'
+      rm -f ./VERIFY tkey.pem tcert.pem tpair.pem
+      return
+   fi
+   rm -rf ./VERIFY
+
+   printf "behave:s/mime:encrypt/decrypt: "
+   cat <<-_EOT > tsendmail.sh
+		#!/bin/sh -
+		(echo 'From S-Postman Thu May 10 20:40:54 2012' && cat) > ./ENCRYPT
+	_EOT
+   chmod 0755 tsendmail.sh
+
+   echo bla |
+   MAILRC=/dev/null ./s-nail -n# \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=tpair.pem \
+      -Ssendmail=./tsendmail.sh \
+      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-sign -Sfrom=test@localhost \
+      -s 'S/MIME test' recei@ver.com
+   # TODO CHECK
+   printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
+   MAILRC=/dev/null ./s-nail -n# \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=tpair.pem \
+      -Ssendmail=./tsendmail.sh \
+      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-sign -Sfrom=test@localhost \
+      -Sbatch-exit-on-error -R \
+      -f ./ENCRYPT >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      ESTAT=1
+      printf 'error: decryption+verification failed\n'
+   fi
+   rm -f ./tsendmail.sh ./ENCRYPT ./DECRYPT tkey.pem tcert.pem tpair.pem
 }
 
 # t_content()

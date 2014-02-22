@@ -99,7 +99,7 @@ _colour_iso6429(char const *wish)
    /* Since we use salloc(), reuse the n_strsep() buffer also for the return
     * value, ensure we have enough room for that */
    {
-      size_t i = strlen(wish) + 1;
+      size_t i = strlen(wish) +1;
       xwish = salloc(MAX(i, sizeof("\033[1;30;40m")));
       memcpy(xwish, wish, i);
       wish = xwish;
@@ -351,8 +351,8 @@ _nyd_oncrash(int signo)
    sigaddset(&xset, signo);
    sigprocmask(SIG_UNBLOCK, &xset, NULL);
    kill(0, signo);
-   while (1)
-      exit(1);
+   for (;;)
+      _exit(EXIT_ERR);
 }
 #endif
 
@@ -374,7 +374,7 @@ is_dir(char const *name)
    NYD_ENTER;
 
    if (!stat(name, &sbuf))
-      rv = !!S_ISDIR(sbuf.st_mode);
+      rv = (S_ISDIR(sbuf.st_mode) != 0);
    NYD_LEAVE;
    return rv;
 }
@@ -388,7 +388,7 @@ argcount(char **argv)
    for (ap = argv; *ap++ != NULL;)
       ;
    NYD_LEAVE;
-   return ap - argv - 1;
+   return (int)PTR2SIZE(ap - argv - 1);
 }
 
 FL int
@@ -399,7 +399,7 @@ screensize(void)
    NYD_ENTER;
 
    if ((cp = ok_vlook(screen)) == NULL || (s = atoi(cp)) <= 0)
-      s = scrnheight - 4;
+      s = scrnheight - 4; /* XXX no magics */
    NYD_LEAVE;
    return s;
 }
@@ -509,7 +509,9 @@ which_protocol(char const *name)
       goto jleave;
    }
 
-   /* TODO This is the de facto maildir code and thus belongs into there! */
+   /* TODO This is the de facto maildir code and thus belongs into there!
+    * TODO and: we should have maildir:// and mbox:// pseudo-protos, instead of
+    * TODO or (more likely) in addition to *newfolders*) */
 jfile:
    rv = PROTO_FILE;
    np = ac_alloc((sz = strlen(name)) + 4 +1);
@@ -546,7 +548,7 @@ torek_hash(char const *name)
 }
 
 FL unsigned
-pjw(char const *cp) /* XXX obsolete that -> torek_hash */
+pjw(char const *cp) /* TODO obsolete that -> torek_hash */
 {
    unsigned h = 0, g;
    NYD_ENTER;
@@ -573,15 +575,17 @@ nextprime(ui32_t n)
       268435399, 536870909, 1073741789, 2147483647
    };
 
-   ui32_t mprime = 7;
+   ui32_t mprime = 7, cutlim;
    size_t i;
    NYD_ENTER;
 
+   cutlim = (n < 65536 ? n << 2 : (n < 262144 ? n << 1 : n));
+
    for (i = 0; i < NELEM(primes); i++)
-      if ((mprime = primes[i]) >= (n < 65536 ? n*4 : (n < 262144u ? n*2 : n)))
+      if ((mprime = primes[i]) >= cutlim)
          break;
-   if (i == NELEM(primes))
-      mprime = n; /* TODO not so prime, but better than failure */
+   if (i == NELEM(primes) && mprime < n)
+      mprime = n;
    NYD_LEAVE;
    return mprime;
 }
@@ -691,6 +695,7 @@ FL char *
 nodename(int mayoverride)
 {
    static char *hostname;
+
    struct utsname ut;
    char *hn;
 #ifdef HAVE_SOCKETS
@@ -713,13 +718,13 @@ nodename(int mayoverride)
 # ifdef HAVE_IPV6
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
-      hints.ai_socktype = SOCK_DGRAM;  /* dummy */
+      hints.ai_socktype = SOCK_DGRAM; /* (dummy) */
       hints.ai_flags = AI_CANONNAME;
       if (getaddrinfo(hn, "0", &hints, &res) == 0) {
          if (res->ai_canonname != NULL) {
-            size_t l = strlen(res->ai_canonname);
-            hn = ac_alloc(l + 1);
-            memcpy(hn, res->ai_canonname, l + 1);
+            size_t l = strlen(res->ai_canonname) +1;
+            hn = ac_alloc(l);
+            memcpy(hn, res->ai_canonname, l);
          }
          freeaddrinfo(res);
       }
@@ -778,6 +783,7 @@ getrandstring(size_t length)
    NYD_ENTER;
 
    data = ac_alloc(length);
+
    if ((fd = open("/dev/urandom", O_RDONLY)) == -1 ||
          length != (size_t)read(fd, data, length)) {
       if (pid == 0) {
@@ -803,7 +809,7 @@ getrandstring(size_t length)
    if (fd >= 0)
       close(fd);
 
-   (void)b64_encode_buf(&b64, data, length, B64_SALLOC);
+   b64_encode_buf(&b64, data, length, B64_SALLOC);
    ac_free(data);
    assert(length < b64.l);
    b64.s[length] = '\0';
@@ -839,19 +845,19 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
    out.s = NULL;
    in.s = UNCONST(b64);
    in.l = strlen(in.s);
-   (void)b64_decode(&out, &in, NULL);
+   b64_decode(&out, &in, NULL);
    assert(out.s != NULL);
 
    hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass), digest);
    free(out.s);
-   cp = md5tohex(salloc(MD5TOHEX_SIZE + 1), digest);
+   cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
 
    lu = strlen(user);
    in.l = lu + MD5TOHEX_SIZE +1;
    in.s = ac_alloc(lu + 1 + MD5TOHEX_SIZE +1);
    memcpy(in.s, user, lu);
-   in.s[lu] = ' ';
-   memcpy(in.s + lu + 1, cp, MD5TOHEX_SIZE);
+   in.s[lu++] = ' ';
+   memcpy(in.s + lu, cp, MD5TOHEX_SIZE);
    b64_encode(&out, &in, B64_SALLOC | B64_CRLF);
    ac_free(in.s);
    NYD_LEAVE;
@@ -942,7 +948,7 @@ makedir(char const *name)
       rv = OKAY;
    else {
       int e = errno;
-      if ((e == EEXIST || e == ENOSYS) && stat(name, &st) == 0 &&
+      if ((e == EEXIST || e == ENOSYS) && !stat(name, &st) &&
             S_ISDIR(st.st_mode))
          rv = OKAY;
    }
@@ -1030,15 +1036,15 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
    char *nb, *np;
    NYD_ENTER;
 
-   np = nb = salloc(mb_cur_max * strlen(cp) + col + 1);
+   np = nb = salloc(mb_cur_max * strlen(cp) + col +1);
    while (*cp) {
 #ifdef HAVE_WCWIDTH
       if (mb_cur_max > 1) {
          wchar_t  wc;
 
-         if ((sz = mbtowc(&wc, cp, mb_cur_max)) < 0)
+         if ((sz = mbtowc(&wc, cp, mb_cur_max)) == -1)
             n = sz = 1;
-         else if ((n = wcwidth(wc)) < 0)
+         else if ((n = wcwidth(wc)) == -1)
             n = 1;
       } else
 #endif
@@ -1056,7 +1062,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 
    if (fill && col != 0) {
       if (fill > 0) {
-         memmove(nb + col, nb, (size_t)(np - nb));
+         memmove(nb + col, nb, PTR2SIZE(np - nb));
          memset(nb, ' ', col);
       } else
          memset(np, ' ', col);
@@ -1084,7 +1090,7 @@ makeprint(struct str const *in, struct str *out)
    if (print_all_chars == -1)
       print_all_chars = ok_blook(print_all_chars);
 
-   msz = in->l + 1;
+   msz = in->l +1;
    out->s = outp = smalloc(msz);
    inp = in->s;
    maxp = inp + in->l;
@@ -1105,19 +1111,19 @@ makeprint(struct str const *in, struct str *out)
       out->l = 0;
       while (inp < maxp) {
          if (*inp & 0200)
-            n = mbtowc(&wc, inp, maxp - inp);
+            n = mbtowc(&wc, inp, PTR2SIZE(maxp - inp));
          else {
             wc = *inp;
             n = 1;
          }
-         if (n < 0) {
+         if (n == -1) {
             /* FIXME Why mbtowc() resetting here?
              * FIXME what about ISO 2022-JP plus -- those
              * FIXME will loose shifts, then!
              * FIXME THUS - we'd need special "known points"
              * FIXME to do so - say, after a newline!!
              * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
-            (void)mbtowc(&wc, NULL, mb_cur_max);
+            mbtowc(&wc, NULL, mb_cur_max);
             wc = utf8 ? 0xFFFD : '?';
             n = 1;
          } else if (n == 0)
@@ -1140,7 +1146,7 @@ makeprint(struct str const *in, struct str *out)
             out->s = srealloc(out->s, msz += 32);
             outp = &out->s[dist];
          }
-         for (i = 0; i < n; i++)
+         for (i = 0; i < n; ++i)
             *outp++ = mbb[i];
       }
    } else
@@ -1156,8 +1162,8 @@ makeprint(struct str const *in, struct str *out)
       out->l = in->l;
    }
 jleave:
-   NYD_LEAVE;
    out->s[out->l] = '\0';
+   NYD_LEAVE;
 }
 
 FL char *
@@ -1288,7 +1294,7 @@ jok:
          ct->ct_csinfo[map[i].cspec].s = u.cp;
       }
    }
-   ct->ct_csinfo[COLOURSPEC_RESET].l = sizeof("\033[0m") - 1;
+   ct->ct_csinfo[COLOURSPEC_RESET].l = sizeof("\033[0m") -1;
    ct->ct_csinfo[COLOURSPEC_RESET].s = UNCONST("\033[0m");
 
    if ((u.cp = ok_vlook(colour_user_headers)) == NULL)
@@ -1328,8 +1334,8 @@ colour_put_header(FILE *fp, char const *name)
       goto jleave;
 
    /* Iterate over all entries in the *colour-user-headers* list */
-   cp = ac_alloc(uheads->l + 1);
-   memcpy(cp, uheads->s, uheads->l + 1);
+   cp = ac_alloc(uheads->l +1);
+   memcpy(cp, uheads->s, uheads->l +1);
    cp_base = cp;
    namelen = strlen(name);
    while ((x = n_strsep(&cp, ',', TRU1)) != NULL) {
@@ -1451,7 +1457,12 @@ do {\
    __xu.ui8p[0]=0xDE; __xu.ui8p[1]=0xAA; __xu.ui8p[2]=0x55; __xu.ui8p[3]=0xAD;\
    __xu.ui8p[4]=0xBE; __xu.ui8p[5]=0x55; __xu.ui8p[6]=0xAA; __xu.ui8p[7]=0xEF;\
 } while (0)
-# define _HOPE_GET_TRACE(C,BAD) do {(C).cp += 8; _HOPE_GET(C, BAD);} while(0)
+# define _HOPE_GET_TRACE(C,BAD) \
+do {\
+   (C).cp += 8;\
+   _HOPE_GET(C, BAD);\
+   (C).cp += 8;\
+} while(0)
 # define _HOPE_GET(C,BAD) \
 do {\
    union ptr __xl, __xu;\

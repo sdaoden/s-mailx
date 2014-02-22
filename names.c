@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Handle name lists, alias expansion; outof(): serve file / pipe addresses
+ *@ Handle name lists, alias expansion; outof(): serve file / pipe addresses.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -51,7 +51,7 @@
 # define _SET_CLOEXEC(FD)
 #endif
 
-/* Same name, taking care for *allnet*? */
+/* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
 
 /* Delete the given name from a namelist */
@@ -226,7 +226,7 @@ _extract1(char const *line, enum gfield ntype, char const *separators,
 
    np = NULL;
    cp = line;
-   nbuf = ac_alloc(strlen(line) + 1);
+   nbuf = ac_alloc(strlen(line) +1);
    while ((cp = yankname(cp, nbuf, separators, keepcomms)) != NULL) {
       t = nalloc(nbuf, ntype);
       if (topp == NULL)
@@ -316,8 +316,8 @@ nalloc(char *str, enum gfield ntype)
    np->n_type = ntype;
    np->n_flags = 0;
 
-   addrspec_with_guts((ntype & (GFULL | GSKIN | GREF)) != 0, str, &ag);
-   if ((ag.ag_n_flags & NAME_NAME_SALLOC) == 0) {
+   addrspec_with_guts(((ntype & (GFULL | GSKIN | GREF)) != 0), str, &ag);
+   if (!(ag.ag_n_flags & NAME_NAME_SALLOC)) {
       ag.ag_n_flags |= NAME_NAME_SALLOC;
       ag.ag_skinned = savestrbuf(ag.ag_skinned, ag.ag_slen);
    }
@@ -327,14 +327,14 @@ nalloc(char *str, enum gfield ntype)
    if (ntype & GFULL) {
       if (ag.ag_ilen == ag.ag_slen
 #ifdef HAVE_IDNA
-                           && (ag.ag_n_flags & NAME_IDNA) == 0
+            && !(ag.ag_n_flags & NAME_IDNA)
 #endif
-                )
+      )
          goto jleave;
       if (ag.ag_n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
          goto jleave;
 #ifdef HAVE_IDNA
-      if ((ag.ag_n_flags & NAME_IDNA) == 0) {
+      if (!(ag.ag_n_flags & NAME_IDNA)) {
 #endif
          in.s = str;
          in.l = ag.ag_ilen;
@@ -345,7 +345,7 @@ nalloc(char *str, enum gfield ntype)
           * converted version, since MIME doesn't perform encoding of addrs */
          size_t l = ag.ag_iaddr_start,
             lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
-         in.s = ac_alloc(l + ag.ag_slen + lsuff + 1);
+         in.s = ac_alloc(l + ag.ag_slen + lsuff +1);
          memcpy(in.s, str, l);
          memcpy(in.s + l, ag.ag_skinned, ag.ag_slen);
          l += ag.ag_slen;
@@ -488,7 +488,7 @@ detract(struct name *np, enum gfield ntype)
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
-      s += strlen(p->n_fullname) + 1;
+      s += strlen(p->n_fullname) +1;
       if (comma)
          s++;
    }
@@ -519,6 +519,7 @@ grab_names(char const *field, struct name *np, int comma, enum gfield gflags)
 {
    struct name *nq;
    NYD_ENTER;
+
 jloop:
    np = lextract(readstr_input(field, detract(np, comma)), gflags);
    for (nq = np; nq != NULL; nq = nq->n_flink)
@@ -561,7 +562,7 @@ usermap(struct name *names, bool_t force_metoo)
    np = names;
    metoo = (force_metoo || ok_blook(metoo));
    while (np != NULL) {
-      assert((np->n_type & GDEL) == 0); /* TODO legacy */
+      assert(!(np->n_type & GDEL)); /* TODO legacy */
       if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {
          cp = np->n_flink;
          new = put(new, np);
@@ -609,15 +610,17 @@ elide(struct name *names)
    newn->n_flink = NULL;
 
    while (np != NULL) {
+      int cmpres;
+
       t = newn;
-      while (asccasecmp(t->n_name, np->n_name) < 0) {
+      while ((cmpres = asccasecmp(t->n_name, np->n_name)) < 0) {
          if (t->n_flink == NULL)
             break;
          t = t->n_flink;
       }
 
       /* If we ran out of t's, put new entry after the current value of t */
-      if (asccasecmp(t->n_name, np->n_name) < 0) {
+      if (cmpres < 0) {
          t->n_flink = np;
          np->n_blink = t;
          t = np;
@@ -683,19 +686,19 @@ delete_alternates(struct name *np)
          np = delname(np, *ap);
 
    if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
-      while (xp) {
+      while (xp != NULL) {
          np = delname(np, xp->n_name);
          xp = xp->n_flink;
       }
 
    if ((xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN)) != NULL)
-      while (xp) {
+      while (xp != NULL) {
          np = delname(np, xp->n_name);
          xp = xp->n_flink;
       }
 
    if ((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL)
-      while (xp) {
+      while (xp != NULL) {
          np = delname(np, xp->n_name);
          xp = xp->n_flink;
       }
@@ -719,21 +722,21 @@ is_myname(char const *name)
             goto jleave;
 
    if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
-      while (xp) {
+      while (xp != NULL) {
          if (_same_name(xp->n_name, name))
             goto jleave;
          xp = xp->n_flink;
       }
 
    if ((xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN)) != NULL)
-      while (xp) {
+      while (xp != NULL) {
          if (_same_name(xp->n_name, name))
             goto jleave;
          xp = xp->n_flink;
       }
 
    if ((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL)
-      while (xp) {
+      while (xp != NULL) {
          if (_same_name(xp->n_name, name))
             goto jleave;
          xp = xp->n_flink;

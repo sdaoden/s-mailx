@@ -139,7 +139,7 @@ _salloc_bcheck(struct buffer *b)
    pmax.cp = (b->b._caster == NULL) ? b->b._max : b->b._caster;
    pp.cp = b->b._bot;
 
-   while (PTRCMP(pp.cp, <, pmax.cp)) {
+   while (pp.cp < pmax.cp) {
       struct schunk *c;
       union sptr x;
       void *ux;
@@ -450,7 +450,7 @@ FL char *
    char *news;
    NYD_ENTER;
 
-   size = strlen(str) + 1;
+   size = strlen(str) +1;
    news = (salloc)(size SALLOC_DEBUG_ARGSCALL);
    memcpy(news, str, size);
    NYD_LEAVE;
@@ -463,7 +463,7 @@ FL char *
    char *news;
    NYD_ENTER;
 
-   news = (salloc)(sbuf_len + 1 SALLOC_DEBUG_ARGSCALL);
+   news = (salloc)(sbuf_len +1 SALLOC_DEBUG_ARGSCALL);
    memcpy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
    NYD_LEAVE;
@@ -477,7 +477,7 @@ FL char *
    char *news;
    NYD_ENTER;
 
-   newsize = strlen(str) + 1;
+   newsize = strlen(str) +1;
    oldsize = (old != NULL) ? strlen(old) + 1 : 0;
    news = (salloc)(newsize + oldsize SALLOC_DEBUG_ARGSCALL);
    if (oldsize) {
@@ -498,7 +498,7 @@ FL char *
 
    l1 = strlen(s1);
    l2 = strlen(s2);
-   news = (salloc)(l1 + l2 + 1 SALLOC_DEBUG_ARGSCALL);
+   news = (salloc)(l1 + l2 +1 SALLOC_DEBUG_ARGSCALL);
    memcpy(news + 0, s1, l1);
    memcpy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
@@ -517,7 +517,7 @@ FL char *
    char *dest;
    NYD_ENTER;
 
-   sz = strlen(src) + 1;
+   sz = strlen(src) +1;
    dest = (salloc)(sz SALLOC_DEBUG_ARGSCALL);
    i_strcpy(dest, src, sz);
    NYD_LEAVE;
@@ -530,7 +530,7 @@ FL char *
    char *n, *np;
    NYD_ENTER;
 
-   np = n = (salloc)(strlen(cp) + 1 SALLOC_DEBUG_ARGSCALL);
+   np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
 
    /* Just ignore the `is-system-mailbox' prefix XXX */
    if (cp[0] == '%' && cp[1] == ':')
@@ -557,7 +557,7 @@ FL char *
    char *n, *np;
    NYD_ENTER;
 
-   np = n = (salloc)(strlen(cp) * 3 + 1 SALLOC_DEBUG_ARGSCALL);
+   np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
 
    while (*cp != '\0') {
       if (alnumchar(*cp) || *cp == '_' || *cp == '@' ||
@@ -581,7 +581,7 @@ FL char *
    char *n, *np;
    NYD_ENTER;
 
-   np = n = (salloc)(strlen(cp) + 1 SALLOC_DEBUG_ARGSCALL);
+   np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
 
    while (*cp != '\0') {
       if (cp[0] == '%' && cp[1] != '\0' && cp[2] != '\0') {
@@ -610,7 +610,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    va_end(vl);
 
    self->l = l;
-   self->s = salloc(l + 1);
+   self->s = salloc(l +1);
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
@@ -638,7 +638,7 @@ FL struct str *
       l += strlen(*xcpa) + sonl;
 
    self->l = l;
-   self->s = (salloc)(l + 1 SALLOC_DEBUG_ARGSCALL);
+   self->s = (salloc)(l +1 SALLOC_DEBUG_ARGSCALL);
 
    for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
       size_t i = strlen(*xcpa);
@@ -751,10 +751,10 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
    /* Anything to do at all? */
    if (*(cp = linebuf) == '\0')
       goto jnull;
-   cp += strlen(linebuf) - 1;
+   cp += strlen(linebuf) -1;
 
    /* Strip away trailing blanks */
-   while (whitechar(*cp) && PTRCMP(cp, >, linebuf))
+   while (whitechar(*cp) && cp > linebuf)
       --cp;
    cp[1] = '\0';
    if (cp == linebuf)
@@ -768,14 +768,14 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
    } else
       quoted = ' ';
 
-   while (PTRCMP(cp, >, linebuf)) {
+   while (cp > linebuf) {
       --cp;
       if (quoted != ' ') {
          if (*cp != quoted)
             continue;
       } else if (!whitechar(*cp))
          continue;
-      if (PTRCMP(cp, ==, linebuf) || cp[-1] != '\\') {
+      if (cp == linebuf || cp[-1] != '\\') {
          /* When in whitespace mode, WS prefix doesn't belong */
          if (quoted == ' ')
             ++cp;
@@ -792,14 +792,14 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
    /* The "last string" has been skipped over, but still, try to step backwards
     * until we are at BOS or see whitespace, so as to make possible things like
     * "? copy +'x y.mbox'" or even "? copy +x\ y.mbox" */
-   while (PTRCMP(cp, >, linebuf)) {
+   while (cp > linebuf) {
       --cp;
       if (whitechar(*cp)) {
          p = cp;
          *cp++ = '\0';
          /* We can furtherly release our callees if we now decide wether the
           * remaining non-"last string" line content contains non-WS */
-         while (PTRCMP(--p, >=, linebuf))
+         while (--p >= linebuf)
             if (!whitechar(*p))
                goto jleave;
          linebuf = cp;
@@ -830,7 +830,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
       wchar_t wc;
       int len;
 
-      while (*cp) {
+      while (*cp != '\0') {
          len = mbtowc(&wc, cp, mb_cur_max);
          if (len < 0)
             *tp++ = *cp++;
@@ -847,7 +847,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
    {
       do
          *cp = tolower((uc_it)*cp);
-      while (*cp++);
+      while (*cp++ != '\0');
    }
    NYD_LEAVE;
 }
@@ -860,16 +860,16 @@ substr(char const *str, char const *sub)
 
    cp = sub;
    backup = str;
-   while (*str && *cp) {
+   while (*str != '\0' && *cp != '\0') {
 #ifdef HAVE_C90AMEND1
       if (mb_cur_max > 1) {
          wchar_t c, c2;
          int sz;
 
-         if ((sz = mbtowc(&c, cp, mb_cur_max)) < 0)
+         if ((sz = mbtowc(&c, cp, mb_cur_max)) == -1)
             goto Jsinglebyte;
          cp += sz;
-         if ((sz = mbtowc(&c2, str, mb_cur_max)) < 0)
+         if ((sz = mbtowc(&c2, str, mb_cur_max)) == -1)
             goto Jsinglebyte;
          str += sz;
          c = towupper(c);
@@ -949,7 +949,7 @@ FL char *
    char *dp = NULL;
    NYD_ENTER;
 
-   dp = (smalloc)(len + 1 SMALLOC_DEBUG_ARGSCALL);
+   dp = (smalloc)(len +1 SMALLOC_DEBUG_ARGSCALL);
    if (cp != NULL)
       memcpy(dp, cp, len);
    dp[len] = '\0';
@@ -965,7 +965,7 @@ n_strlcpy(char *dst, char const *src, size_t len)
    assert(len > 0);
 
    dst = strncpy(dst, src, len);
-   dst[len - 1] = '\0';
+   dst[len -1] = '\0';
    NYD_LEAVE;
    return dst;
 }
@@ -1020,16 +1020,15 @@ asccasestr(char const *haystack, char const *xneedle)
       NEEDLE[i] = upperconv(xneedle[i]);
    }
 
-   while (*haystack) {
+   while (*haystack != '\0') {
       if (*haystack == *needle || *haystack == *NEEDLE) {
-         for (i = 1; i < sz; i++)
-            if (haystack[i] != needle[i] &&
-                  haystack[i] != NEEDLE[i])
+         for (i = 1; i < sz; ++i)
+            if (haystack[i] != needle[i] && haystack[i] != NEEDLE[i])
                break;
          if (i == sz)
             goto jleave;
       }
-      haystack++;
+      ++haystack;
    }
    haystack = NULL;
 jleave:
@@ -1064,8 +1063,8 @@ FL struct str *
    NYD_ENTER;
    if (t != NULL && t->l > 0) {
       self->l = t->l;
-      self->s = (srealloc)(self->s, t->l + 1 SMALLOC_DEBUG_ARGSCALL);
-      memcpy(self->s, t->s, t->l);
+      self->s = (srealloc)(self->s, t->l +1 SMALLOC_DEBUG_ARGSCALL);
+      memcpy(self->s, t->s, t->l +1);
    } else
       self->l = 0;
    NYD_LEAVE;
@@ -1080,8 +1079,9 @@ FL struct str *
    if (buflen != 0) {
       size_t sl = self->l;
       self->l = sl + buflen;
-      self->s = (srealloc)(self->s, self->l+1 SMALLOC_DEBUG_ARGSCALL);
+      self->s = (srealloc)(self->s, self->l +1 SMALLOC_DEBUG_ARGSCALL);
       memcpy(self->s + sl, buf, buflen);
+      self->s[self->l] = '\0';
    }
    NYD_LEAVE;
    return self;
@@ -1101,7 +1101,7 @@ _ic_toupper(char *dest, char const *src)
    NYD_ENTER;
    do
       *dest++ = upperconv(*src);
-   while (*src++);
+   while (*src++ != '\0');
    NYD_LEAVE;
 }
 
@@ -1145,9 +1145,9 @@ n_iconv_open(char const *tocode, char const *fromcode)
       goto jleave;
 
    /* Solaris prefers upper-case charset names. Don't ask... */
-   t = salloc(strlen(tocode) + 1);
+   t = salloc(strlen(tocode) +1);
    _ic_toupper(t, tocode);
-   f = salloc(strlen(fromcode) + 1);
+   f = salloc(strlen(fromcode) +1);
    _ic_toupper(f, fromcode);
    if ((id = iconv_open(t, f)) != (iconv_t)-1)
       goto jleave;
@@ -1187,7 +1187,7 @@ FL void
 n_iconv_reset(iconv_t cd)
 {
    NYD_ENTER;
-   (void)iconv(cd, NULL, NULL, NULL, NULL);
+   iconv(cd, NULL, NULL, NULL, NULL);
    NYD_LEAVE;
 }
 #endif
@@ -1199,7 +1199,7 @@ n_iconv_reset(iconv_t cd)
  * support compiler invocations which bail on error, so no -Werror */
 /* Citrus project? */
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
-  /* DragonFly 3.2.1 is special */
+  /* DragonFly 3.2.1 is special TODO newer DragonFly too, but different */
 #  ifdef __DragonFly__
 #   define __INBCAST(S) (char ** __restrict__)UNCONST(S)
 #  else

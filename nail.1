@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Feb 14, 2014
+.Dd Feb 22, 2014
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -95,7 +95,7 @@ with lines replaced by messages.
 It is intended to provide the functionality of the POSIX
 .Xr mailx 1
 command and offers (mostly optional) extensions for line editing, IDNA,
-MIME, S/MIME, SMTP, POP3 and IMAP.
+MIME, S/MIME, SMTP and POP3 (and IMAP).
 It is usable as a mail batch language.
 .Pp
 In the following list of supported command line options,
@@ -454,8 +454,8 @@ If
 .Ar string
 is empty,
 the string from the previous specification of that type is used again.
-.It Xo Op Ar \&? Ns Ar name-list Ns
-.Ar \&? Ns Ar expr
+.It Xo Op Ar @ Ns Ar name-list Ns
+.Ar @ Ns Ar expr
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
@@ -464,17 +464,21 @@ ession; if the \*(OP regular expression support is available
 will be interpreted as one if any of the `magic'al regular expression
 characters is seen.
 If the optional
-.Ar \&? Ns Ar name-list
+.Ar @ Ns Ar name-list
 part is missing, the search is restricted to the subject field body,
 but otherwise
 .Ar name-list
 specifies a comma-separated list of header fields to search, as in
 .Pp
-.Dl '?to,from,cc?Someone i ought to know'
+.Dl '@to,from,cc@Someone i ought to know'
 .Pp
 The special names `body' and `text' can be used to search in message
 bodies \(en whereas the former searches only the body, the latter form
 also performs a fulltext search in the header fields.
+In order to search for a string that includes a `@' (commercial at)
+character the
+.Ar name-list
+is effectively non-optional, but may be given as the empty string.
 .It Ar address
 All messages from
 .Ar address .
@@ -4648,3 +4652,7 @@ remains intact.
 .\"
 .Sh BUGS
 Variables in the environment passed to \*(UA cannot be unset.
+The codebase in inherently broken in respect to non-local code jumps
+and loss of opened mail folders; expect this to remain until the v16
+series has passed.
+Thank you.

@@ -1,8 +1,12 @@
 I n s t a l l i n g  S - n a i l
 ================================
 
-Compilation
------------
+1. Compilation
+2. Notes for S-nail(1) v14.6*
+3. Current codebase state
+
+1. Compilation
+--------------
 
 System specific notes can be found in the next section.
 Any (optional) feature is adjustable and documented in `conf.rc'.
@@ -85,8 +89,8 @@ into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
 
-Notes for S-nail(1) v14.6*
---------------------------
+2. Notes for S-nail(1) v14.6*
+-----------------------------
 
 Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
 Running `make test' should succeed always and everywhere.
@@ -118,30 +122,30 @@ reflected by the following statements.
     `ZFMT' macro in `nail.h' to verify this statement is true.
 
 . Mac OS X <https://www.apple.com/>
-  (Snow Leopard) Darwin 10.8.0 Darwin Kernel Version 10.8.0: Tue Jun
-  7 16:33:36 PDT 2011; root:xnu-1504.15.3~1/RELEASE_I386 i386.
+  (Snow Leopard) Darwin 10.8.0 i386
   - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
-    + Two warnings on 'signed overflow'.  I think they're wrong.
+    + Two warnings on 'signed overflow': the '_match_at()' one is to be
+      inspected
   - clang version 3.4 (branches/release_34 197314)
     Target: x86_64-apple-darwin10.8.0
     Thread model: posix.
   - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
     (dot 3).
-    + Some (i think faulty) warnings on signed overflow.
   - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
     2.9svn).
 
 . ArchLinux <https://www.archlinux.org/>
-  Linux arlx 3.12.9-2-ARCH #1 SMP PREEMPT Fri Jan 31 10:22:54 CET 2014
-  x86_64 GNU/Linux
-  - gcc (GCC) 4.8.2 20131219 (prerelease)
+  Linux 3.13.4-1-ARCH x86_64
+  - gcc (GCC) 4.8.2 20140206 (prerelease)
     + `devel'opment target: warnings on unused results, just ignore (for
       now).
+    + Two warnings on 'signed overflow': the '_match_at()' one is to be
+      inspected
 
 . CRUX Linux <http://www.crux.nu/>
   Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
   - gcc (CRUX-x86_64-multilib) 4.7.2.
-    + A single (i think faulty) warning on 'signed overflow'.
+    + A single warning on 'signed overflow'.
     + `devel'opment target: warnings on unused results, just ignore
       (for now).
     + In a very special test mailbox the character `☕' (U+2615 HOT
@@ -174,7 +178,7 @@ reflected by the following statements.
 . Void Linux <http://www.voidlinux.eu/>
   Linux 3.10.19_1 i686.
   - gcc (GCC) 4.7.3.
-    + A single (i think faulty) warning on 'signed overflow'.
+    + A single warning on 'signed overflow'.
     + `devel'opment target: warnings on unused results, just ignore (for
       now).
     + `devel'opment target: warnings on format strings -- as above.
@@ -189,8 +193,7 @@ reflected by the following statements.
 . DragonFly BSD <https://www.dragonflybsd.org/>
   DragonFly 3.6-RELEASE x86_64
   - gcc 4.7.3 [DragonFly] Release/2013-04-11.
-    + A single (i think faulty) warning on 'signed overflow'.
-      (Yep, i think it's finally time to fix it once in a while.)
+    + A single warning on 'signed overflow'.
     + Harmless iconv(3) warning again (as if we didn't have had to
       treat it specially already).
 
@@ -205,8 +208,8 @@ reflected by the following statements.
 I'm very interested in reports from other combinations.
 (It should work practically everywhere, generally speaking.)
 
-Program features yet to be overhauled
--------------------------------------
+3. Current codebase state
+-------------------------
 
 Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
 2012-09-18 i make my way through the codebase, and i'm getting more
@@ -219,5 +222,38 @@ design flaws or bugs:
 
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Mail, as a good one, then.  Also see `TODO'.
+
+In general, S-nail versions before v14.5.2 (old-style codebase, when
+used with the four published patches (on Sourceforge or the [patches]
+branch)) and v14.6.1 (new-style codebase, after the NYD rewrite) should
+not be used. Furthermore, for now (see below) i mostly care about the
+core POSIX mailx(1) functionality, everything else has to wait until
+some later time, mostly because the Berkeley codebase and its nail fork
+have design flaws in respect to mailbox handling and non-local code
+jumps (due to / and signals). The (MIME capable) NetBSD and OpenBSD
+forks have instead addressed this problem, more or less complete, in one
+or the other way.
+
+For S-nail, v15.0 (not before 2015) is dedicated to a send and MIME
+layer rewrite that will bring the possibility to access each message
+part individually, and will also address some of the jump-related
+problems (at least as far as the send, mail-collection and MIME layer is
+affected), which unfortunately include memory leaks and, also, may
+include crashes. Just let it run run run until anything is fixed. I'm
+afraid that many jump related problems will remain even in v15.0.
+
+v16.0 (not before 2016) will have to address signal handling and thus
+the jumps, because only like that we have the possibility to ever reach
+a clean state from which we can actually think about re-extending this
+MUA. We need to change string / buffer handling in order to reduce the
+overall resource usage and also minimize the duplication of
+functionality that internally exists. It is likely that IMAP support is
+temporarily dropped for the entire v16 cycle, leaving only the plain
+mailx(1) plus Maildir, SMTP and POP3 functionality. v16.0 has to move
+under the headline reduce to the max.
+
+v17 and above will then hopefully see new features on top of a straight
+object-based, and thus truly extensible interface. I hope for IMAP,
+would like to see News, a SQLite-based folder backend...
 
 vim:set fenc=utf-8:s-ts-mode

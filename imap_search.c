@@ -133,9 +133,9 @@ static int           itexecute(struct mailbox *mp, struct message *m,
                         size_t c, struct itnode *n);
 static time_t        _read_imap_date(char const *cp);
 static bool_t        matchfield(struct message *m, char const *field,
-                        const void *what);
+                        void const *what);
 static int           matchenvelope(struct message *m, char const *field,
-                        const void *what);
+                        void const *what);
 static char *        mkenvelope(struct name *np);
 static char const *  around(char const *cp);
 
@@ -259,11 +259,10 @@ itscan(char const *spec, char const **xp)
       goto jleave;
    }
 
-   for (i = 0; _it_strings[i].s_string; i++) {
+#define __GO(C)   ((C) != '\0' && (C) != '(' && (C) != ')' && !spacechar(C))
+   for (i = 0; _it_strings[i].s_string != NULL; ++i) {
       n = strlen(_it_strings[i].s_string);
-      if (!ascncasecmp(spec, _it_strings[i].s_string, n) &&
-            (spacechar(spec[n]) || spec[n] == '\0' ||
-             spec[n] == '(' || spec[n] == ')')) {
+      if (!ascncasecmp(spec, _it_strings[i].s_string, n) && !__GO(spec[n])) {
          _it_token = _it_strings[i].s_token;
          spec += n;
          while (spacechar(*spec))
@@ -274,16 +273,18 @@ itscan(char const *spec, char const **xp)
    }
    if (digitchar(*spec)) {
       _it_number = strtoul(spec, UNCONST(xp), 10);
-      if (spacechar(**xp) || **xp == '\0' || **xp == '(' || **xp == ')') {
+      if (!__GO(**xp)) {
          _it_token = ITSET;
          goto jleave;
       }
    }
    fprintf(stderr, "Bad SEARCH criterion \"");
-   while (*spec && !spacechar(*spec) && *spec != '(' && *spec != ')') {
+   while (__GO(*spec)) {
       putc(*spec & 0377, stderr);
       ++spec;
    }
+#undef __GO
+
    fprintf(stderr, "\": >>> %s <<<\n", around(*xp));
    _it_token = ITBAD;
    rv = STOP;
@@ -310,7 +311,7 @@ itsplit(char const *spec, char const **xp)
    case ITTO:
       /* <string> */
       ++_it_need_headers;
-      rv = itstring(&_it_args[0], spec, xp);
+      rv = itstring(_it_args, spec, xp);
       break;
    case ITSENTBEFORE:
    case ITSENTON:
@@ -321,11 +322,11 @@ itsplit(char const *spec, char const **xp)
    case ITON:
    case ITSINCE:
       /* <date> */
-      if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+      if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
       if ((t = _read_imap_date(_it_args[0])) == (time_t)-1) {
          fprintf(stderr, "Invalid date \"%s\": >>> %s <<<\n",
-               (char*)_it_args[0], around(*xp));
+            (char*)_it_args[0], around(*xp));
          rv = STOP;
          break;
       }
@@ -335,16 +336,16 @@ itsplit(char const *spec, char const **xp)
    case ITHEADER:
       /* <field-name> <string> */
       ++_it_need_headers;
-      if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+      if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
       spec = *xp;
-      if ((rv = itstring(&_it_args[1], spec, xp)) != OKAY)
+      if ((rv = itstring(_it_args + 1, spec, xp)) != OKAY)
          break;
       break;
    case ITKEYWORD:
    case ITUNKEYWORD:
-      /* <flag> */
-      if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+      /* <flag> */ /* TODO use table->flag map search instead */
+      if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
       if (!asccasecmp(_it_args[0], "\\Seen"))
          _it_number = MREAD;
@@ -364,7 +365,7 @@ itsplit(char const *spec, char const **xp)
    case ITLARGER:
    case ITSMALLER:
       /* <n> */
-      if ((rv = itstring(&_it_args[0], spec, xp)) != OKAY)
+      if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
       _it_number = strtoul(_it_args[0], &cp, 10);
       if (spacechar(*cp) || *cp == '\0')
@@ -388,7 +389,7 @@ itsplit(char const *spec, char const **xp)
 }
 
 static enum okay
-itstring(void **tp, char const *spec, char const **xp)
+itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
 {
    int inquote = 0;
    char *ap;
@@ -396,13 +397,13 @@ itstring(void **tp, char const *spec, char const **xp)
    NYD_ENTER;
 
    while (spacechar(*spec))
-      spec++;
+      ++spec;
    if (*spec == '\0' || *spec == '(' || *spec == ')') {
       fprintf(stderr, "Missing string argument: >>> %s <<<\n",
          around(&(*xp)[spec - *xp]));
       goto jleave;
    }
-   ap = *tp = salloc(strlen(spec) + 1);
+   ap = *tp = salloc(strlen(spec) +1);
    *xp = spec;
     do {
       if (inquote && **xp == '\\')
@@ -427,7 +428,7 @@ static int
 itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
 {
    struct search_expr se;
-   char *cp, *line = NULL;
+   char *cp, *line = NULL; /* TODO line pool */
    size_t linesize = 0;
    FILE *ibuf;
    int rv;
@@ -607,11 +608,11 @@ _read_imap_date(char const *cp)
       if (month_names[++i][0] == '\0')
          goto jleave;
    }
-   month = i+1;
+   month = i + 1;
    if (xp[3] != '-')
       goto jleave;
-   year = strtol(&xp[4], &yp, 10);
-   if (year < 1970 || year > 2037 || yp != &xp[8])
+   year = strtol(xp + 4, &yp, 10);
+   if (year < 1970 || year > 2037 || PTRCMP(yp, !=, xp + 8))
       goto jleave;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
       goto jleave;
@@ -628,7 +629,7 @@ jleave:
 }
 
 static bool_t
-matchfield(struct message *m, char const *field, const void *what)
+matchfield(struct message *m, char const *field, void const *what)
 {
    struct str in, out;
    bool_t rv = FAL0;
@@ -647,7 +648,7 @@ jleave:
 }
 
 static int
-matchenvelope(struct message *m, char const *field, const void *what)
+matchenvelope(struct message *m, char const *field, void const *what)
 {
    struct name *np;
    char *cp;
@@ -689,19 +690,19 @@ mkenvelope(struct name *np)
          while (*cp) {
             if (*++cp == '"')
                break;
-            if (*cp == '\\' && cp[1])
-               cp++;
+            if (cp[0] == '\\' && cp[1] != '\0')
+               ++cp;
             *rp++ = *cp;
          }
          break;
       case '<':
          while (cp > out.s && blankchar(cp[-1]))
-            cp--;
+            --cp;
          rp = ip;
          xp = out.s;
-         if (xp < &cp[-1] && *xp == '"' && cp[-1] == '"') {
-            xp++;
-            cp--;
+         if (PTRCMP(xp, <, cp - 1) && *xp == '"' && cp[-1] == '"') {
+            ++xp;
+            --cp;
          }
          while (xp < cp)
             *rp++ = *xp++;
@@ -718,7 +719,7 @@ mkenvelope(struct name *np)
             goto jdfl;
          break;
       case '\\':
-         if (level && cp[1])
+         if (level && cp[1] != '\0')
             cp++;
          goto jdfl;
       default:
@@ -734,7 +735,7 @@ jdone:
    localpart = savestr(np->n_name);
    if ((cp = strrchr(localpart, '@')) != NULL) {
       *cp = '\0';
-      domainpart = &cp[1];
+      domainpart = cp + 1;
    }
 
    ep = salloc(epsize = strlen(np->n_fullname) * 2 + 40);
@@ -759,7 +760,7 @@ around(char const *cp)
 
    for (i = 0; i < SURROUNDING && cp > _it_begin; ++i)
       --cp;
-   for (i = 0; i < sizeof(ab) - 1; ++i)
+   for (i = 0; i < sizeof(ab) -1; ++i)
       ab[i] = *cp++;
    ab[i] = '\0';
    NYD_LEAVE;
@@ -811,7 +812,7 @@ imap_search(char const *spec, int f)
          continue;
       if (f == MDELETED || !(message[i].m_flag & MDELETED)) {
          size_t j = (int)(i + 1);
-         if (itexecute(&mb, &message[i], j, _it_tree))
+         if (itexecute(&mb, message + i, j, _it_tree))
             mark((int)j, f);
          srelax();
       }

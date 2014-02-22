@@ -59,10 +59,10 @@ enum {
 };
 
 struct coltab {
-   char        co_char;    /* What to find past : */
-   int         co_bit;     /* Associated modifier bit */
-   int         co_mask;    /* m_status bits to mask */
-   int         co_equal;   /* ... must equal this */
+   char  co_char;    /* What to find past : */
+   int   co_bit;     /* Associated modifier bit */
+   int   co_mask;    /* m_status bits to mask */
+   int   co_equal;   /* ... must equal this */
 };
 
 struct lex {
@@ -148,8 +148,8 @@ static bool_t  _match_dash(struct message *mp, char const *str);
 
 /* See if the given search expression matches.
  * For the purpose of the scan, we ignore case differences.
- * This is the engine behind the `?[..]?' search */
-static bool_t  _match_qm(struct message *mp, struct search_expr *sep);
+ * This is the engine behind the `@[..]@' search */
+static bool_t  _match_at(struct message *mp, struct search_expr *sep);
 
 /* Unmark the named message */
 static void    unmark(int mesg);
@@ -189,7 +189,7 @@ markall(char *buf, int f)
 #endif
    NYD_ENTER;
 
-   lexstring = ac_alloc(STRINGLEN = 2 * strlen(buf) + 1);
+   lexstring = ac_alloc(STRINGLEN = 2 * strlen(buf) +1);
    valdot = (int)PTR2SIZE(dot - message + 1);
    colmod = 0;
 
@@ -205,8 +205,7 @@ markall(char *buf, int f)
       message[i - 1].m_flag = mf;
    }
 
-   namelist = smalloc((nmlsize = 8) * sizeof *namelist);
-   np = &namelist[0];
+   np = namelist = smalloc((nmlsize = 8) * sizeof *namelist);
    scaninit();
    bufp = buf;
    beg = mc = star = other = topen = tback = FAL0;
@@ -223,8 +222,8 @@ number:
             markall_ret(-1)
          }
          list_saw_numbers = TRU1;
-         mc++;
-         other++;
+         ++mc;
+         ++other;
          if (beg != 0) {
             if (check(lexnumber, f))
                markall_ret(-1)
@@ -266,7 +265,7 @@ number:
          i = valdot;
          do {
             if (mb.mb_threaded) {
-               mx = next_in_thread(&message[i - 1]);
+               mx = next_in_thread(message + i - 1);
                i = mx ? (int)PTR2SIZE(mx - message + 1) : msgCount + 1;
             } else
                ++i;
@@ -274,8 +273,8 @@ number:
                fprintf(stderr, tr(114, "Referencing beyond EOF\n"));
                markall_ret(-1)
             }
-         } while (message[i-1].m_flag == MHIDDEN ||
-            (message[i - 1].m_flag & MDELETED) != (unsigned)f);
+         } while (message[i - 1].m_flag == MHIDDEN ||
+               (message[i - 1].m_flag & MDELETED) != (unsigned)f);
          mark(i, f);
          break;
 
@@ -285,7 +284,7 @@ number:
             i = valdot;
             do {
                if (mb.mb_threaded) {
-                  mx = prev_in_thread(&message[i - 1]);
+                  mx = prev_in_thread(message + i - 1);
                   i = mx ? (int)PTR2SIZE(mx - message + 1) : 0;
                } else
                   --i;
@@ -449,25 +448,34 @@ number:
       struct search_expr *sep = NULL;
       bool_t allnet;
 
-      /* The `?' search works with struct search_expr, so build an array.
+      /* The `@' search works with struct search_expr, so build an array.
        * To simplify array, i.e., regex_t destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
       if (np > namelist) {
          sep = scalloc(PTR2SIZE(np - namelist), sizeof(*sep));
          for (j = 0, nq = namelist; *nq != NULL; ++j, ++nq) {
-            char *x = *nq;
+            char *x = *nq, *y;
 
             sep[j].ss_sexpr = x;
-            if (*x != '?' || rv < 0)
+            if (*x != '@' || rv < 0)
                continue;
 
-            x = strchr(++x, '?');
-            sep[j].ss_where = (x == NULL || x - 1 == *nq) ? "subject"
-                  : savestrbuf(*nq + 1, PTR2SIZE(x - *nq) - 1);
+            for (y = x + 1;; ++y) {
+               if (*y == '\0' || !fieldnamechar(*y)) {
+                  x = NULL;
+                  break;
+               }
+               if (*y == '@') {
+                  x = y;
+                  break;
+               }
+            }
+            sep[j].ss_where = (x == NULL || x - 1 == *nq)
+                  ? "subject" : savestrbuf(*nq + 1, PTR2SIZE(x - *nq) - 1);
 
             x = (x == NULL ? *nq : x) + 1;
             if (*x == '\0') { /* XXX Simply remove from list instead? */
-               fprintf(stderr, tr(525, "Empty `?[..]?' search expression\n"));
+               fprintf(stderr, tr(525, "Empty `[@..]@' search expression\n"));
                rv = -1;
                continue;
             }
@@ -500,8 +508,8 @@ number:
          j = 0;
          if (np > namelist) {
             for (nq = namelist; *nq != NULL; ++nq) {
-               if (**nq == '?') {
-                  if (_match_qm(mp, sep + PTR2SIZE(nq - namelist))) {
+               if (**nq == '@') {
+                  if (_match_at(mp, sep + PTR2SIZE(nq - namelist))) {
                      ++j;
                      break;
                   }
@@ -563,7 +571,7 @@ jnamesearch_sepfree:
          struct coltab const *colp;
          bool_t bad = TRU1;
 
-         mp = &message[i - 1];
+         mp = message + i - 1;
          for (colp = _coltab; colp->co_char != '\0'; ++colp)
             if ((colp->co_bit & colmod) &&
                   ((mp->m_flag & colp->co_mask) == (unsigned)colp->co_equal))
@@ -629,7 +637,7 @@ check(int mesg, int f)
       printf(tr(124, "%d: Invalid message number\n"), mesg);
       goto jem1;
    }
-   mp = &message[mesg - 1];
+   mp = message + mesg - 1;
    if (mp->m_flag & MHIDDEN ||
          (f != MDELETED && (mp->m_flag & MDELETED) != 0)) {
       fprintf(stderr, tr(125, "%d: Inappropriate message\n"), mesg);
@@ -654,7 +662,7 @@ scan(char **sp)
 
    if (regretp >= 0) {
       strncpy(lexstring, string_stack[regretp], STRINGLEN);
-      lexstring[STRINGLEN-1]='\0';
+      lexstring[STRINGLEN -1] = '\0';
       lexnumber = numberstack[regretp];
       rv = regretstack[regretp--];
       goto jleave;
@@ -729,15 +737,15 @@ jmtop:
          else if (inquote)
             /*EMPTY*/;
          else if (c == '(')
-            level++;
+            ++level;
          else if (c == ')')
-            level--;
+            --level;
          else if (spacechar(c)) {
             /* Replace unquoted whitespace by single space characters, to make
              * the string IMAP SEARCH conformant */
             c = ' ';
             if (cp2[-1] == ' ')
-               cp2--;
+               --cp2;
          }
          *cp2++ = c;
       } while (c != ')' || level > 0);
@@ -766,10 +774,10 @@ jmtop:
       c = *cp++;
    }
    while (c != '\0') {
-      if (quotec == 0 && c == '\\' && *cp)
+      if (quotec == 0 && c == '\\' && *cp != '\0')
          c = *cp++;
       if (c == quotec) {
-         cp++;
+         ++cp;
          break;
       }
       if (quotec == 0 && blankchar(c))
@@ -798,7 +806,7 @@ regret(int token)
    if (++regretp >= REGDEP)
       panic(tr(128, "Too many regrets"));
    regretstack[regretp] = token;
-   lexstring[STRINGLEN - 1] = '\0';
+   lexstring[STRINGLEN -1] = '\0';
    string_stack[regretp] = savestr(lexstring);
    numberstack[regretp] = lexnumber;
    NYD_LEAVE;
@@ -829,11 +837,11 @@ _matchsender(struct message *mp, char const *str, bool_t allnet)
          }
          if (*cp != *str)
             break;
-      } while (cp++, *str++ != '\0');
+      } while (++cp, *str++ != '\0');
       rv = FAL0;
       goto jleave;
    }
-   rv = !strcmp(str, (ok_blook(showname) ? realname : skin)(name1(mp, 0)));
+   rv = !strcmp(str, (*(ok_blook(showname) ? &realname : &skin))(name1(mp, 0)));
 jleave:
    NYD_LEAVE;
    return rv;
@@ -885,13 +893,13 @@ _match_dash(struct message *mp, char const *str)
       str = lastscan;
    } else {
       strncpy(lastscan, str, sizeof lastscan); /* XXX use new n_str object! */
-      lastscan[sizeof lastscan - 1] = '\0';
+      lastscan[sizeof lastscan -1] = '\0';
    }
 
    /* Now look, ignoring case, for the word in the string */
    if (ok_blook(searchheaders) && (hfield = strchr(str, ':'))) {
       size_t l = PTR2SIZE(hfield - str);
-      hfield = ac_alloc(l + 1);
+      hfield = ac_alloc(l +1);
       memcpy(hfield, str, l);
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);
@@ -917,7 +925,7 @@ jleave:
 }
 
 static bool_t
-_match_qm(struct message *mp, struct search_expr *sep)
+_match_at(struct message *mp, struct search_expr *sep)
 {
    struct str in, out;
    char *nfield, *cfield;
@@ -978,9 +986,9 @@ metamess(int meta, int f)
    c = meta;
    switch (c) {
    case '^': /* First 'good' message left */
-      mp = mb.mb_threaded ? threadroot : &message[0];
+      mp = mb.mb_threaded ? threadroot : message;
       while (PTRCMP(mp, <, message + msgCount)) {
-         if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) ==(unsigned)f){
+         if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == (ui32_t)f) {
             c = (int)PTR2SIZE(mp - message + 1);
             goto jleave;
          }
@@ -996,9 +1004,9 @@ metamess(int meta, int f)
       goto jem1;
 
    case '$': /* Last 'good message left */
-      mp = mb.mb_threaded ? this_in_thread(threadroot, -1)
-            : &message[msgCount-1];
-      while (mp >= &message[0]) {
+      mp = mb.mb_threaded
+            ? this_in_thread(threadroot, -1) : message + msgCount - 1;
+      while (mp >= message) {
          if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == (ui32_t)f) {
             c = (int)PTR2SIZE(mp - message + 1);
             goto jleave;
@@ -1017,7 +1025,7 @@ metamess(int meta, int f)
    case '.':
       /* Current message */
       m = dot - message + 1;
-      if ((dot->m_flag & MHIDDEN) || (dot->m_flag & MDELETED) != (unsigned)f) {
+      if ((dot->m_flag & MHIDDEN) || (dot->m_flag & MDELETED) != (ui32_t)f) {
          printf(tr(133, "%d: Inappropriate message\n"), m);
          goto jem1;
       }
@@ -1032,7 +1040,7 @@ metamess(int meta, int f)
       }
       m = prevdot - message + 1;
       if ((prevdot->m_flag & MHIDDEN) ||
-            (prevdot->m_flag & MDELETED) != (unsigned)f) {
+            (prevdot->m_flag & MDELETED) != (ui32_t)f) {
          fprintf(stderr, tr(133, "%d: Inappropriate message\n"), m);
          goto jem1;
       }
@@ -1078,7 +1086,7 @@ getmsglist(char *buf, int *vector, int flags)
       mc = 0;
       for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
          if (mp->m_flag & MMARK) {
-            if ((mp->m_flag & MNEWEST) == 0)
+            if (!(mp->m_flag & MNEWEST))
                unmark((int)PTR2SIZE(mp - message + 1));
             else
                ++mc;
@@ -1119,7 +1127,7 @@ getrawlist(char const *line, size_t linesize, char **argv, int argc,
 
    argn = 0;
    cp = line;
-   linebuf = ac_alloc(linesize + 1);
+   linebuf = ac_alloc(linesize +1);
    for (;;) {
       for (; blankchar(*cp); ++cp)
          ;
@@ -1230,18 +1238,18 @@ first(int f, int m)
    f &= MDELETED;
    m &= MDELETED;
    for (mp = dot;
-         mb.mb_threaded ? mp != NULL : PTRCMP(mp, <, message + msgCount);
-         mb.mb_threaded ? mp = next_in_thread(mp) : ++mp) {
-      if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (unsigned)f) {
+         mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount);
+         mb.mb_threaded ? (mp = next_in_thread(mp)) : ++mp) {
+      if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (ui32_t)f) {
          rv = (int)PTR2SIZE(mp - message + 1);
          goto jleave;
       }
    }
 
    if (dot > message) {
-      for (mp = dot-1; (mb.mb_threaded ? mp != NULL : mp >= message);
-            mb.mb_threaded ? mp = prev_in_thread(mp) : --mp) {
-         if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (unsigned)f) {
+      for (mp = dot - 1; (mb.mb_threaded ? (mp != NULL) : (mp >= message));
+            mb.mb_threaded ? (mp = prev_in_thread(mp)) : --mp) {
+         if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (ui32_t)f) {
             rv = (int)PTR2SIZE(mp - message + 1);
             goto jleave;
          }
@@ -1264,15 +1272,15 @@ mark(int mesg, int f)
    if (i < 1 || i > msgCount)
       panic(tr(129, "Bad message number to mark"));
    if (mb.mb_threaded == 1 && threadflag) {
-      if ((message[i - 1].m_flag & MHIDDEN) == 0) {
-         if (f == MDELETED || (message[i - 1].m_flag&MDELETED) == 0)
+      if (!(message[i - 1].m_flag & MHIDDEN)) {
+         if (f == MDELETED || !(message[i - 1].m_flag & MDELETED))
          message[i - 1].m_flag |= MMARK;
       }
 
       if (message[i - 1].m_child) {
          mp = message[i - 1].m_child;
          mark((int)PTR2SIZE(mp - message + 1), f);
-         for (mp = mp->m_younger; mp; mp = mp->m_younger)
+         for (mp = mp->m_younger; mp != NULL; mp = mp->m_younger)
             mark((int)PTR2SIZE(mp - message + 1), f);
       }
    } else

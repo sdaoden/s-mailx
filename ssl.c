@@ -67,10 +67,11 @@ ssl_set_verify_level(char const *uhp)
 
    i = strlen(uhp);
    vrvar = ac_alloc(11u + i +1);
-   memcpy(vrvar, "ssl-verify-", 11u);
-   memcpy(vrvar + 11u, uhp, i +1);
 
+   memcpy(vrvar, "ssl-verify-", 11);
+   memcpy(vrvar + 11, uhp, i +1);
    cp = vok_vlook(vrvar);
+
    if (cp == NULL) {
       vrvar[10] = '\0';
       cp = ok_vlook(ssl_verify);
@@ -119,11 +120,13 @@ ssl_method_string(char const *uhp)
    NYD_ENTER;
 
    l = strlen(uhp);
-   mtvar = ac_alloc(11u + l +1);
+   mtvar = ac_alloc(11 + l +1);
+
    memcpy(mtvar, "ssl-method-", 11);
    memcpy(mtvar + 11, uhp, l +1);
    if ((cp = vok_vlook(mtvar)) == NULL)
       cp = ok_vlook(ssl_method);
+
    ac_free(mtvar);
    NYD_LEAVE;
    return cp;
@@ -332,7 +335,11 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       ++lines;
    }
 
-   octets += mkdate(mb.mb_otf, "X-Decoding-Date");
+   {  struct time_current save = time_current;
+      time_current_update(&time_current, TRU1);
+      octets += mkdate(mb.mb_otf, "X-Decoding-Date");
+      time_current = save;
+   }
    ++lines;
 
    cnt = fsize(bp);
@@ -388,23 +395,17 @@ c_certsave(void *v)
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    val = 1;
 
-   if ((file = laststring(str, &f, 1)) == NULL) {
+   if ((file = laststring(str, &f, 1)) == NULL ||
+         (file = file_expand(file)) == NULL) {
       fprintf(stderr, "No file to save certificate given.\n");
       goto jleave;
    }
-   if (!f) {
-      *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
-         if (inhook)
-            val = 0;
-         else
-            fprintf(stderr, "No messages to get certificates from.\n");
-         goto jleave;
-      }
-      msgvec[1] = 0;
-   } else if (getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
 
+   if (!f) {
+      msgvec[1] = 0;
+      *msgvec = first(0, MMNORM);
+   } else
+      getmsglist(str, msgvec, 0);
    if (*msgvec == 0) {
       if (inhook)
          val = 0;

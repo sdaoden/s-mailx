@@ -308,8 +308,8 @@ _spam_interact(struct spam_vc *vc)
    }
 
 jleave:
-   /* In what follows you see a lot of races; these can't be helped without
-    * atomic compare-and-swap; it only matters if we */
+   /* TODO In what follows you see a lot of races; these can't be helped without
+    * TODO atomic compare-and-swap -- WE COULD ALSO BLOCK ANYTHING FOR A WHILE*/
    if (state & _SIGHOLD) {
       state &= ~_SIGHOLD;
       rele_sigs();

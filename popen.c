@@ -51,9 +51,9 @@
 #ifndef O_CLOEXEC
 # define _OUR_CLOEXEC
 # define O_CLOEXEC         0
-# define _SET_CLOEXEC(FD)  fcntl((FD), F_SETFD, FD_CLOEXEC)
+# define _SET_CLOEXEC(FD)  do fcntl((FD), F_SETFD, FD_CLOEXEC); while (0)
 #else
-# define _SET_CLOEXEC(FD)
+# define _SET_CLOEXEC(FD)  do {} while (0)
 #endif
 
 struct fp {
@@ -124,7 +124,7 @@ scan_mode(char const *mode, int *omode)
          goto jleave;
       }
 
-   fprintf(stderr, tr(152, "Internal error: bad stdio open mode %s\n"), mode);
+   alert(tr(152, "Internal error: bad stdio open mode %s\n"), mode);
    errno = EINVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
@@ -147,7 +147,7 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int compressed,
    fpp->pid = pid;
    fpp->link = fp_head;
    fpp->compressed = compressed;
-   fpp->realfile = realfile ? sstrdup(realfile) : NULL;
+   fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
    fpp->offset = offset;
    fp_head = fpp;
    NYD_LEAVE;
@@ -169,7 +169,7 @@ _compress(struct fp *fpp)
 
    fflush(fpp->fp);
    clearerr(fpp->fp);
-   if (fseek(fpp->fp, fpp->offset, SEEK_SET) < 0)
+   if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1)
       goto jleave;
 
 #ifdef HAVE_IMAP
@@ -184,12 +184,12 @@ _compress(struct fp *fpp)
    }
 
    outfd = open(fpp->realfile, (fpp->omode | O_CREAT) & ~O_EXCL, 0666);
-   if (outfd < 0) {
+   if (outfd == -1) {
       fprintf(stderr, "Fatal: cannot create ");
       perror(fpp->realfile);
       goto jleave;
    }
-   if ((fpp->omode & O_APPEND) == 0)
+   if (!(fpp->omode & O_APPEND))
       ftruncate(outfd, 0);
    switch (fpp->compressed & FP_MASK) {
    case FP_GZIP:
@@ -247,8 +247,13 @@ unregister_file(FILE *fp)
          free(p);
          goto jleave;
       }
+#ifdef HAVE_DEBUG
+   panic
+#else
+   alert
+#endif
+      (tr(153, "Invalid file pointer"));
    rv = STOP;
-   panic(tr(153, "Invalid file pointer"));
 jleave:
    NYD_LEAVE;
    return rv;
@@ -331,7 +336,7 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
    if (xflags != NULL)
       *xflags = osflags;
 
-   if ((fd = open(file, osflags, 0666)) < 0)
+   if ((fd = open(file, osflags, 0666)) == -1)
       goto jleave;
    _SET_CLOEXEC(fd);
 
@@ -381,7 +386,7 @@ Fclose(FILE *fp)
    if (fclose(fp) == 0)
       i |= 2;
    NYD_LEAVE;
-   return i == 3 ? 0 : EOF;
+   return (i == 3 ? 0 : EOF);
 }
 
 FL FILE *
@@ -520,8 +525,10 @@ jclose:
    if (mktemp(cp_base) == NULL)
       goto jfree;
    if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC |
-         (oflags & OF_APPEND ? O_APPEND : 0), mode)) < 0)
+         (oflags & OF_APPEND ? O_APPEND : 0), mode)) == -1)
       goto junlink;
+   if (!(oflags & OF_REGISTER))
+      _SET_CLOEXEC(fd);
 #endif
 
    fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
@@ -580,10 +587,15 @@ pipe_cloexec(int fd[2])
    bool_t rv = FAL0;
    NYD_ENTER;
 
-   if (pipe(fd) < 0)
+#ifdef HAVE_PIPE2
+   if (pipe2(fd, O_CLOEXEC) == -1)
+      goto jleave;
+#else
+   if (pipe(fd) == -1)
       goto jleave;
    fcntl(fd[0], F_SETFD, FD_CLOEXEC);
    fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+#endif
    rv = TRU1;
 jleave:
    NYD_LEAVE;
@@ -594,7 +606,7 @@ FL FILE *
 Popen(char const *cmd, char const *mode, char const *sh, int newfd1)
 {
    int p[2], myside, hisside, fd0, fd1, pid;
-   char mod[2] = { '0', '\0' };
+   char mod[2] = {'0', '\0'};
    sigset_t nset;
    FILE *rv = NULL;
    NYD_ENTER;
@@ -700,7 +712,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    int rv;
    NYD_ENTER;
 
-   if ((rv = fork()) < 0) {
+   if ((rv = fork()) == -1) {
       perror("fork");
       rv = -1;
    } else if (rv == 0) {
@@ -754,8 +766,13 @@ sigchild(int signo)
    NYD_X; /* Signal handler */
    UNUSED(signo);
 
-jagain:
-   while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+   for (;;) {
+      pid = waitpid(-1, &status, WNOHANG);
+      if (pid == -1) {
+         if (errno == EINTR)
+            continue;
+         break;
+      }
       cp = findchild(pid);
       if (cp->free)
          delchild(cp);
@@ -764,8 +781,6 @@ jagain:
          cp->status = status;
       }
    }
-   if (pid == -1 && errno == EINTR)
-      goto jagain;
 }
 
 FL void

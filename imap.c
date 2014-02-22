@@ -570,7 +570,6 @@ static void
 imapcatch(int s)
 {
    NYD_X; /*  Signal handler */
-   termios_state_reset();
    switch (s) {
    case SIGINT:
       fprintf(stderr, tr(102, "Interrupt\n"));
@@ -1248,7 +1247,8 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
    same_imap_account = 0;
    sp = protbase(server);
    if (mb.mb_imap_account && mb.mb_type == MB_IMAP) {
-      if (mb.mb_sock.s_fd > 0 && strcmp(mb.mb_imap_account, sp) == 0 &&
+      if (mb.mb_sock.s_fd > 0 && mb.mb_sock.s_rsz >= 0 &&
+            strcmp(mb.mb_imap_account, sp) == 0 &&
             disconnected(mb.mb_imap_account) == 0)
          same_imap_account = 1;
    }
@@ -1844,7 +1844,8 @@ imap_getheaders(int volatile bot, int topp) /* TODO should take iterator!! */
 
       for (i = bot; i <= topp; i += chunk) {
          int j = i + chunk - 1;
-         /*ok = */imap_fetchheaders(&mb, message, i, (j < topp ? j : topp));
+         if (visible(message + j))
+            /*ok = */imap_fetchheaders(&mb, message, i, (j < topp ? j : topp));
          if (interrupts)
             onintr(0); /* XXX imaplock? */
       }
