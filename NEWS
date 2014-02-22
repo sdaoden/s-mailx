@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6:
+and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.1:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -14,6 +14,45 @@ and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.6.1, 2014-02-22
+-------------------
+
+Thanks to Andy Switala (andy DOT switala AT gmail DOT com).
+And thanks to all package maintainers for their stamina.
+
+At the first workday after the release i've run into a bug that was
+caused by an oversight, a double-Fclose() that would be harmless if we
+wouldn't forcefully panic() when we encounter it!
+
+So i've spent another week on a review, and despite fixing many
+additional notational oversights i haven't found more oversights of
+newly introduced problems.  On the other hand i've found and fixed some
+old problems during the review, and tweaked some other things:
+
+- The INSTALL file now has a `Current codebase state' section.
+
+- Commands invoked via `!' should now be interruptable.
+  I'm afraid the exit status of such a command will not be reflected by
+  the return value of the `!' command yet, but hey, at least `!sleep 10'
+  can now be interrupted -- try this with another Berkeley Mail!
+  [381ff46]
+
+- All credential prompts should now be interruptable.
+  (Inspired from Andy Switala) [c3bb2a2]
+
+- 'make test' will now test a silly S/MIME case when WANT_DEBUG (or
+  'make devel') was used. [8cff17f]
+
+- *batch-exit-on-error* should now look at the exit status of *every*
+  command when the command loop ticks. [c7e7d53]
+
+- The new `[?name-list]?search-pattern' search expression has been
+  changed to `[@name-list]@search-pattern' -- like this it doesn't clash
+  with the `?' help command and can thus be used on a line by itself,
+  causing the default command (`next') to be invoked on its' result,
+  shall there be one.  Ok, yes, that was surely also an oversight.
+  [8368f70]
 
 v14.6, 2014-02-15
 -----------------
