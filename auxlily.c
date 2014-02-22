@@ -1457,7 +1457,12 @@ do {\
    __xu.ui8p[0]=0xDE; __xu.ui8p[1]=0xAA; __xu.ui8p[2]=0x55; __xu.ui8p[3]=0xAD;\
    __xu.ui8p[4]=0xBE; __xu.ui8p[5]=0x55; __xu.ui8p[6]=0xAA; __xu.ui8p[7]=0xEF;\
 } while (0)
-# define _HOPE_GET_TRACE(C,BAD) do {(C).cp += 8; _HOPE_GET(C, BAD);} while(0)
+# define _HOPE_GET_TRACE(C,BAD) \
+do {\
+   (C).cp += 8;\
+   _HOPE_GET(C, BAD);\
+   (C).cp += 8;\
+} while(0)
 # define _HOPE_GET(C,BAD) \
 do {\
    union ptr __xl, __xu;\
