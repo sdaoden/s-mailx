@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Maildir folder support. FIXME rewrite - why do we chdir(2)??
+ *@ FIXME indeed - my S-Postman Python (!) is faster dealing with maildir!!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -142,8 +143,8 @@ maildir_setfile1(char const *name, int nmail, int omsgCount)
    if ((i = subdir(name, "new", nmail)) != 0)
       goto jleave;
    _maildir_append(name, NULL, NULL);
-   for (i = nmail ? omsgCount : 0; i < msgCount; ++i)
-      readin(name, &message[i]);
+   for (i = (nmail ? omsgCount : 0); i < msgCount; ++i)
+      readin(name, message + i);
    if (nmail) {
       if (msgCount > omsgCount)
          qsort(&message[omsgCount], msgCount - omsgCount, sizeof *message,
@@ -182,7 +183,7 @@ subdir(char const *name, char const *sub, int nmail)
       rv = -1;
       goto jleave;
    }
-   if (access(sub, W_OK) < 0)
+   if (access(sub, W_OK) == -1)
       mb.mb_perm = 0;
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' ||
@@ -250,10 +251,10 @@ _maildir_append(char const *name, char const *sub, char const *fn)
 
    m = message + msgCount++;
    i = strlen(fn);
-   m->m_maildir_file = smalloc((sz = strlen(sub)) + i + 2);
+   m->m_maildir_file = smalloc((sz = strlen(sub)) + i + 1 +1);
    memcpy(m->m_maildir_file, sub, sz);
    m->m_maildir_file[sz] = '/';
-   memcpy(m->m_maildir_file + sz + 1, fn, i + 1);
+   memcpy(m->m_maildir_file + sz + 1, fn, i +1);
    m->m_time = t;
    m->m_flag = f;
    m->m_maildir_hash = ~pjw(fn);
@@ -382,18 +383,18 @@ move(struct message *m)
    char *fn, *new;
    NYD_ENTER;
 
-   fn = mkname(0, m->m_flag, &m->m_maildir_file[4]);
+   fn = mkname(0, m->m_flag, m->m_maildir_file + 4);
    new = savecat("cur/", fn);
    if (!strcmp(m->m_maildir_file, new))
       goto jleave;
-   if (link(m->m_maildir_file, new) < 0) {
+   if (link(m->m_maildir_file, new) == -1) {
       fprintf(stderr, /* TODO tr */
          "Cannot link \"%s/%s\" to \"%s/%s\": message %d not touched.\n",
          mailname, m->m_maildir_file, mailname, new,
          (int)PTR2SIZE(m - message + 1));
       goto jleave;
    }
-   if (unlink(m->m_maildir_file) < 0)
+   if (unlink(m->m_maildir_file) == -1)
       fprintf(stderr, /* TODO tr */"Cannot unlink \"%s/%s\".\n",
          mailname, m->m_maildir_file);
 jleave:
@@ -432,7 +433,7 @@ mkname(time_t t, enum mflag f, char const *pref)
             default:
                node[n++] = *cp;
             }
-         } while (*cp++);
+         } while (*cp++ != '\0');
       }
       size = 60 + strlen(node);
       cp = salloc(size);
@@ -441,14 +442,14 @@ mkname(time_t t, enum mflag f, char const *pref)
    } else {
       size = (n = strlen(pref)) + 13;
       cp = salloc(size);
-      memcpy(cp, pref, n + 1);
+      memcpy(cp, pref, n +1);
       for (i = n; i > 3; --i)
          if (cp[i - 1] == ',' && cp[i - 2] == '2' && cp[i - 3] == ':') {
             n = i;
             break;
          }
       if (i <= 3) {
-         memcpy(cp + n, ":2,", 4);
+         memcpy(cp + n, ":2,", 3 +1);
          n += 3;
       }
    }
@@ -503,7 +504,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
          break;
    }
 
-   if (fseek(fp, off1, SEEK_SET) < 0)
+   if (fseek(fp, off1, SEEK_SET) == -1)
       goto jtmperr;
    while (size > 0) {
       z = size > (long)sizeof buf ? (long)sizeof buf : size;
@@ -521,11 +522,11 @@ jtmperr:
 
    new = salloc(n = strlen(name) + strlen(fn) + 6);
    snprintf(new, n, "%s/new/%s", name, fn);
-   if (link(tmp, new) < 0) {
+   if (link(tmp, new) == -1) {
       fprintf(stderr, "Cannot link \"%s\" to \"%s\".\n", tmp, new);/* TODO tr */
       goto jleave;
    }
-   if (unlink(tmp) < 0)
+   if (unlink(tmp) == -1)
       fprintf(stderr, "Cannot unlink \"%s\".\n", tmp); /* TODO tr */
    rv = OKAY;
 jleave:
@@ -540,7 +541,7 @@ trycreate(char const *name)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if (stat(name, &st) == 0) {
+   if (!stat(name, &st)) {
       if (!S_ISDIR(st.st_mode)) {
          fprintf(stderr, "\"%s\" is not a directory.\n", name);/* TODO tr */
          goto jleave;
@@ -565,13 +566,13 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
    NYD_ENTER;
 
    if (trycreate(name) == OKAY) {
-      np = ac_alloc((sz = strlen(name)) + 5);
+      np = ac_alloc((sz = strlen(name)) + 4 +1);
       memcpy(np, name, sz);
-      memcpy(np + sz, "/tmp", 5);
+      memcpy(np + sz, "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {
-         strcpy(&np[sz], "/new");
+         memcpy(np + sz, "/new", 4 +1);
          if (trycreate(np) == OKAY) {
-            strcpy(&np[sz], "/cur");
+            memcpy(np + sz, "/cur", 4 +1);
             rv = trycreate(np);
          }
       }
@@ -593,33 +594,35 @@ mdlook(char const *name, struct message *data)
    else
       h = pjw(name);
    h %= _maildir_prime;
-   md = &_maildir_table[c = h];
+   c = h;
+   md = _maildir_table + c;
 
    while (md->md_data != NULL) {
-      if (!strcmp(&md->md_data->m_maildir_file[4], name))
+      if (!strcmp(md->md_data->m_maildir_file + 4, name))
          break;
-      c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
+      c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
       n++;
       while (c >= _maildir_prime)
          c -= _maildir_prime;
-      md = &_maildir_table[c];
+      md = _maildir_table + c;
    }
    if (data != NULL && md->md_data == NULL)
       md->md_data = data;
    NYD_LEAVE;
-   return md->md_data ? md->md_data : NULL;
+   return md->md_data;
 }
 
 static void
 mktable(void)
 {
-   int i;
+   struct message *mp;
+   size_t i;
    NYD_ENTER;
 
    _maildir_prime = nextprime(msgCount);
    _maildir_table = scalloc(_maildir_prime, sizeof *_maildir_table);
-   for (i = 0; i < msgCount; i++)
-      mdlook(&message[i].m_maildir_file[4], &message[i]);
+   for (mp = message, i = msgCount; i-- != 0;)
+      mdlook(mp->m_maildir_file + 4, mp);
    NYD_LEAVE;
 }
 
@@ -635,11 +638,11 @@ subdir_remove(char const *name, char const *sub)
 
    namelen = strlen(name);
    sublen = strlen(sub);
-   path = smalloc(pathsize = namelen + sublen + 30);
+   path = smalloc(pathsize = namelen + sublen + 30 +1);
    memcpy(path, name, namelen);
    path[namelen] = '/';
    memcpy(path + namelen + 1, sub, sublen);
-   path[namelen+sublen+1] = '/';
+   path[namelen + sublen + 1] = '/';
    path[pathend = namelen + sublen + 2] = '\0';
 
    if ((dirp = opendir(path)) == NULL) {
@@ -653,10 +656,10 @@ subdir_remove(char const *name, char const *sub)
       if (dp->d_name[0] == '.')
          continue;
       n = strlen(dp->d_name);
-      if (UICMP(32, pathend + n + 1, >, pathsize))
+      if (UICMP(32, pathend + n +1, >, pathsize))
          path = srealloc(path, pathsize = pathend + n + 30);
-      memcpy(path + pathend, dp->d_name, n + 1);
-      if (unlink(path) < 0) {
+      memcpy(path + pathend, dp->d_name, n +1);
+      if (unlink(path) == -1) {
          perror(path);
          closedir(dirp);
          goto jleave;
@@ -665,7 +668,7 @@ subdir_remove(char const *name, char const *sub)
    closedir(dirp);
 
    path[pathend] = '\0';
-   if (rmdir(path) < 0) {
+   if (rmdir(path) == -1) {
       perror(path);
       free(path);
       goto jleave;
@@ -778,7 +781,7 @@ maildir_quit(void)
 
    saveint = safe_signal(SIGINT, SIG_IGN);
 
-   if (chdir(mailname) < 0) {
+   if (chdir(mailname) == -1) {
       fprintf(stderr, "Cannot change directory to \"%s\".\n",/* TODO tr */
          mailname);
       cwrelse(&cw);
@@ -841,9 +844,9 @@ maildir_append(char const *name, FILE *fp)
       if (bp && buf[0] == '\n')
          inhead = 0;
       else if (bp && inhead && !ascncasecmp(buf, "status", 6)) {
-         lp = &buf[6];
+         lp = buf + 6;
          while (whitechar(*lp))
-            lp++;
+            ++lp;
          if (*lp == ':')
             while (*++lp != '\0')
                switch (*lp) {
@@ -855,9 +858,9 @@ maildir_append(char const *name, FILE *fp)
                   break;
                }
       } else if (bp && inhead && !ascncasecmp(buf, "x-status", 8)) {
-         lp = &buf[8];
+         lp = buf + 8;
          while (whitechar(*lp))
-            lp++;
+            ++lp;
          if (*lp == ':')
             while (*++lp != '\0')
                switch (*lp) {
@@ -890,7 +893,7 @@ maildir_remove(char const *name)
          subdir_remove(name, "new") == STOP ||
          subdir_remove(name, "cur") == STOP)
       goto jleave;
-   if (rmdir(name) < 0) {
+   if (rmdir(name) == -1) {
       perror(name);
       goto jleave;
    }

@@ -126,8 +126,8 @@ _pop3_login(struct mailbox *mp, char *xuser, char *pass, char const *uhp,
 #endif
 
    if ((cp = strchr(xserver, ':')) != NULL) { /* TODO GENERIC URI PARSE! */
-      size_t l = (size_t)(cp - xserver);
-      char *x = salloc(l + 1);
+      size_t l = PTR2SIZE(cp - xserver);
+      char *x = salloc(l +1);
       memcpy(x, xserver, l);
       x[l] = '\0';
       xserver = x;
@@ -191,7 +191,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
       goto jleave;
 
    /* xxx What about malformed APOP timestamp (<@>) here? */
-   for (ep = cp; *ep; ep++) {
+   for (ep = cp; *ep != '\0'; ++ep) {
       if (spacechar(*ep))
          goto jleave;
       else if (*ep == '@')
@@ -361,10 +361,8 @@ jretry:
          fprintf(stderr, tr(218, "POP3 error: %s"), _pop3_buf);
          break;
       default:
-         /* If the answer starts neither with '+' nor with
-          * '-', it must be part of a multiline response,
-          * e. g. because the user interrupted a file
-          * download. Get lines until a single dot appears */
+         /* If the answer starts neither with '+' nor with '-', it must be part
+          * of a multiline response.  Get lines until a single dot appears */
 jmultiline:
          while (_pop3_buf[0] != '.' || _pop3_buf[1] != '\r' ||
                _pop3_buf[2] != '\n' || _pop3_buf[3] != '\0') {
@@ -497,8 +495,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
       rv = STOP;
 
    if (rv == STOP)
-      fprintf(stderr, tr(260, "invalid POP3 STAT response: %s\n"),
-         _pop3_buf);
+      fprintf(stderr, tr(260, "invalid POP3 STAT response: %s\n"), _pop3_buf);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -597,7 +594,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    enum okay rv;
    NYD_ENTER;
 
-   line = NULL;
+   line = NULL; /* TODO line pool */
    saveint = savepipe = SIG_IGN;
    linesize = 0;
    number = (int)PTR2SIZE(m - message + 1);
@@ -657,8 +654,8 @@ jretry:
          break;
       }
       if (line[0] == '.') {
-         lp = &line[1];
-         linelen--;
+         lp = line + 1;
+         --linelen;
       } else
          lp = line;
       /* TODO >>
@@ -703,8 +700,8 @@ jretry:
       /* This is very ugly; but some POP3 daemons don't end a
        * message with \r\n\r\n, and we need \n\n for mbox format */
       fputc('\n', mp->mb_otf);
-      lines++;
-      size++;
+      ++lines;
+      ++size;
    }
    m->m_size = size;
    m->m_lines = lines;
@@ -849,11 +846,11 @@ pop3_setfile(char const *server, int nmail, int isedit)
       goto jleave;
 
    if (!strncmp(sp, "pop3://", 7)) {
-      sp = &sp[7];
+      sp = sp + 7;
       use_ssl = 0;
 #ifdef HAVE_SSL
    } else if (!strncmp(sp, "pop3s://", 8)) {
-      sp = &sp[8];
+      sp = sp + 8;
       use_ssl = 1;
 #endif
    }
@@ -864,7 +861,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
       user = salloc(cp - sp +1);
       memcpy(user, sp, cp - sp);
       user[cp - sp] = '\0';
-      sp = &cp[1];
+      sp = cp + 1;
       user = urlxdec(user);
    } else
       user = NULL;

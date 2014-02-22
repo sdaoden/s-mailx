@@ -183,7 +183,7 @@ do {\
       _OUT(LINE("STARTTLS"));
       _ANSWER(2, 0);
 
-      if ((options & OPT_DEBUG) == 0 && ssl_open(server, sp, uhp) != OKAY)
+      if (!(options & OPT_DEBUG) && ssl_open(server, sp, uhp) != OKAY)
          goto jleave;
    }
 #else
@@ -204,8 +204,8 @@ do {\
       case AUTH_CRAM_MD5:
 #endif
          /* FALLTRHU
-          * Won't happen, but gcc(1) and clang(1) whine without
-          * and Coverity whines with; that's a hard one.. */
+          * XXX Won't happen, but gcc(1) and clang(1) whine without
+          * XXX and Coverity whines with; that's a hard one.. */
       case AUTH_LOGIN:
          _OUT(LINE("AUTH LOGIN"));
          _ANSWER(3, 0);
@@ -325,7 +325,7 @@ smtp_auth_var(char const *atype, char const *addr) /* FIXME GENERIC */
    var = ac_alloc(len);
 
    /* Try a 'user@host', i.e., address specific version first */
-   (void)snprintf(var, len, "smtp-auth%s-%s", atype, addr);
+   snprintf(var, len, "smtp-auth%s-%s", atype, addr);
    if ((cp = vok_vlook(var)) == NULL) {
       snprintf(var, len, "smtp-auth%s", atype);
       cp = vok_vlook(var);

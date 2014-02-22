@@ -121,7 +121,7 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
          r = US;
          goto jleave;
       }
-      /* Treat '?' only special if part of '=?' and '?=' (still to much quoting
+      /* Treat '?' only special if part of '=?' .. '?=' (still too much quoting
        * since it's '=?CHARSET?CTE?stuff?=', and especially the trailing ?=
        * should be hard too match */
       if (a == QM && ((!sol && s[-1] == '=') || (s < e && s[1] == '=')))
@@ -133,7 +133,7 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
 
    if (a == SP) {
       /* WS only if trailing white space */
-      if (s + 1 == e || s[1] == '\n')
+      if (PTRCMP(s + 1, ==, e) || s[1] == '\n')
          goto jleave;
       goto jnquote;
    }
@@ -144,12 +144,12 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
 
    /* ^From */
    if (a == XF) {
-      if (s + 4 < e && s[1] == 'r' && s[2] == 'o' && s[3] == 'm')
+      if (PTRCMP(s + 4, <, e) && s[1] == 'r' && s[2] == 'o' && s[3] == 'm')
          goto jleave;
       goto jnquote;
    }
    /* ^.$ */
-   if (a == XD && (s + 1 == e || s[1] == '\n'))
+   if (a == XD && (PTRCMP(s + 1, ==, e) || s[1] == '\n'))
       goto jleave;
 jnquote:
    r = N;
@@ -261,7 +261,7 @@ _b64_decode(struct str *out, struct str *in)
    q = (ui8_t const*)in->s;
    out->l = 0;
 
-   for (end = q + in->l; q + 4 <= end; q += 4) {
+   for (end = q + in->l; PTRCMP(q + 4, <=, end); q += 4) {
       ui32_t a = uchar64(q[0]), b = uchar64(q[1]), c = uchar64(q[2]),
          d = uchar64(q[3]);
 
@@ -353,7 +353,7 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
    char const *is, *ie;
    NYD_ENTER;
 
-   if ((flags & QP_BUF) == 0) {
+   if (!(flags & QP_BUF)) {
       lnlen = qp_encode_calc_size(in->l);
       out->s = (flags & QP_SALLOC) ? salloc(lnlen) : srealloc(out->s, lnlen);
    }
@@ -703,7 +703,7 @@ b64_decode(struct str *out, struct str const *in, struct str *rest)
       ret = OKAY;
       goto jleave;
    }
-   if (work.l >= 4 && (work.l & 3) == 0) {
+   if (work.l >= 4 && !(work.l & 3)) {
       out->s = srealloc(out->s, len);
       ret = OKAY;
    }
@@ -716,7 +716,7 @@ jleave:
 jerr: {
    char const *err = tr(15, "[Invalid Base64 encoding ignored]\n");
    len = strlen(err);
-   x = out->s = srealloc(out->s, len + 2);
+   x = out->s = srealloc(out->s, len + 1 +1);
    if (rest != NULL && rest->l)
       *x++ = '\n';
    memcpy(x, err, len);

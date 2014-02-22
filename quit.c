@@ -123,7 +123,6 @@ writeback(FILE *res, FILE *obuf)
       while ((c = getc(res)) != EOF)
          putc(c, obuf);
 #endif
-   fflush(obuf);
    ftrunc(obuf);
 
    if (ferror(obuf)) {
@@ -178,7 +177,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
 
    doreset = TRU1;
 
-   if (stat(mailname, &statb) >= 0 && statb.st_size > mailsize) {
+   if (!stat(mailname, &statb) && statb.st_size > mailsize) {
       if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
          perror(tr(167, "tmpfile"));
@@ -208,7 +207,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    srelax_hold();
    c = 0;
    for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
-      if ((mp->m_flag & MDELETED) != 0)
+      if (mp->m_flag & MDELETED)
          continue;
       ++c;
       if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
@@ -343,7 +342,7 @@ jnewmail:
    }
 
    rbuf = NULL;
-   if (fstat(fileno(fbuf), &minfo) >= 0 && minfo.st_size > mailsize) {
+   if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
       printf(tr(158, "New mail has arrived.\n"));
       rbuf = Ftmp(&tempResid, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
       if (rbuf == NULL || fbuf == NULL)
@@ -490,7 +489,7 @@ makembox(void) /* TODO oh my god */
       }
       Fclose(obuf);
 
-      if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0600)) >= 0)
+      if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0600)) != -1)
          close(c);
       if ((obuf = Zopen(mbox, "r+", NULL)) == NULL) {
          perror(mbox);

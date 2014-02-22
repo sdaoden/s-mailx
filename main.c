@@ -132,7 +132,7 @@ static int           _oind, /*_oerr,*/ _oopt;
 #ifdef HAVE_GETOPT
 # define _getopt     getopt
 #else
-static int     _getopt(int argc, char *const argv[], char const *optstring);
+static int     _getopt(int argc, char * const argv[], char const *optstring);
 #endif
 
 /* Perform basic startup initialization */
@@ -194,7 +194,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
       }
       if (optstring[1] == ':') {
          if (curp[1] != '\0') {
-            _oarg = UNCONST(&curp[1]);
+            _oarg = UNCONST(curp + 1);
             ++_oind;
          } else {
             if ((_oind += 2) > argc) {
@@ -210,7 +210,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
          }
       } else {
          if (curp[1] != '\0')
-            lastp = &curp[1];
+            lastp = curp + 1;
          else
             ++_oind;
          _oarg = NULL;
@@ -222,7 +222,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    if (!colon /*&& opterr*/)
       fprintf(stderr, tr(78, "%s: illegal option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
-      lastp = &curp[1];
+      lastp = curp + 1;
    else
       ++_oind;
    _oarg = 0;
@@ -245,7 +245,7 @@ _startup(void)
     * privileged XXX (s-nail-)*dotlock(-program)* [maybe forked<->Unix IPC?] */
    effectivegid = getegid();
    realgid = getgid();
-   if (setgid(realgid) < 0) {
+   if (setgid(realgid) == -1) {
       perror("setgid");
       exit(1);
    }
@@ -433,15 +433,15 @@ _setscreensize(int is_sighdl)
    }
 
 #ifdef TIOCGWINSZ
-   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
+   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
       ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGSIZE
-   if (ioctl(STDOUT_FILENO, TIOCGSIZE, &ws) < 0)
+   if (ioctl(STDOUT_FILENO, TIOCGSIZE, &ws) == -1)
       ts.ts_lines = ts.ts_cols = 0;
 #endif
 
    if (scrnheight == 0) {
-      speed_t ospeed = ((tcgetattr(STDOUT_FILENO, &tbuf) < 0)
+      speed_t ospeed = ((tcgetattr(STDOUT_FILENO, &tbuf) == -1)
             ? B9600 : cfgetospeed(&tbuf));
 
       if (ospeed < B1200)
@@ -793,7 +793,8 @@ jusage:
       }
    }
 
-   if (folder != NULL) {
+   /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
+   if (folder != NULL && folder[1] == '\0') {
       if (_oind < argc) {
          if (_oind + 1 < argc) {
             fprintf(stderr, tr(205, "More than one file given with -f\n"));
@@ -810,7 +811,7 @@ jusage:
 
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
-      if (folder != NULL) {
+      if (folder != NULL && !(options & OPT_BATCH_FLAG)) {
          fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
          goto jusage;
       }

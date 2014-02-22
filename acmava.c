@@ -127,26 +127,26 @@ static bool_t        _check_special_vars(enum okeys okey, bool_t enable,
 /* If a variable name begins with a lowercase-character and contains at
  * least one '@', it is converted to all-lowercase. This is necessary
  * for lookups of names based on email addresses.
- *
  * Following the standard, only the part following the last '@' should
- * be lower-cased, but practice has established otherwise here */
+ * be lower-cased, but practice has established otherwise here.
+ * Return value may have been placed in string dope (salloc()) */
 static char const *  _canonify(char const *vn);
 
 /* Try to reverse lookup an option name to an enum okeys mapping.
- * Updates vcp.vc_name and vcp.vc_hash; vcp.vc_vmap is NULL on "error" */
+ * Updates vcp.vc_name and vcp.vc_hash; vcp.vc_vmap is NULL if none found */
 static bool_t        _var_revlookup(struct var_carrier *vcp, char const *name);
 
 /* Lookup a variable from vcp.vc_(vmap|name|hash).
- * Sets vcp.vc_prime; vcp.vc_var is NULL on "error" */
+ * Sets vcp.vc_prime; vcp.vc_var is NULL if not found */
 static bool_t        _var_lookup(struct var_carrier *vcp);
 
-/* Set variable from vcp.vc_(vmap|name|hash); sets vcp.vc_var if NULL */
+/* Set variable from vcp.vc_(vmap|name|hash) */
 static bool_t        _var_set(struct var_carrier *vcp, char const *value);
 
 /* Clear variable from vcp.vc_(vmap|name|hash); sets vcp.vc_var to NULL */
 static bool_t        _var_clear(struct var_carrier *vcp);
 
-/* Line *cp* consists solely of WS and a } */
+/* Does cp consist solely of WS and a } */
 static bool_t        _is_closing_angle(char const *cp);
 
 /* Lookup for macros/accounts */
@@ -182,7 +182,7 @@ _vcopy(char const *str)
    if (*str == '\0')
       news = UNCONST("");
    else {
-      len = strlen(str) + 1;
+      len = strlen(str) +1;
       news = smalloc(len);
       memcpy(news, str, len);
    }
@@ -246,7 +246,7 @@ _check_special_vars(enum okeys okey, bool_t enable, char **val)
                   break;
                *cp++ = (char)c;
             } while (*x != '\0');
-            *cp++ = '\0';
+            *cp = '\0';
          }
       }
       break;
@@ -295,8 +295,7 @@ _var_revlookup(struct var_carrier *vcp, char const *name)
       if (x == _VAR_REV_ILL)
          break;
       vmp = _var_map + x;
-      if (vmp->vm_hash == hash &&
-            !strcmp(_var_keydat + vmp->vm_keyoff, name)) {
+      if (vmp->vm_hash == hash && !strcmp(_var_keydat + vmp->vm_keyoff, name)) {
          vcp->vc_vmap = vmp;
          vcp->vc_okey = (enum okeys)x;
          goto jleave;
@@ -326,7 +325,8 @@ _var_lookup(struct var_carrier *vcp)
 
    for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
       if (!strcmp(vp->v_name, vcp->vc_name)) {
-         /* Relink as head, hope it "sorts on usage" over time */
+         /* Relink as head, hope it "sorts on usage" over time.
+          * _var_clear() relies on this behaviour */
          if (lvp != NULL) {
             lvp->v_link = vp->v_link;
             vp->v_link = *vap;
@@ -399,8 +399,7 @@ _var_clear(struct var_carrier *vcp)
 
    if (!_var_lookup(vcp)) {
       if (!sourcing && !var_clear_allow_undefined) {
-         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"),
-            vcp->vc_name);
+         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), vcp->vc_name);
          goto jleave;
       }
    } else {
@@ -455,8 +454,7 @@ _malook(char const *name, struct macro *data, enum ma_flags mafl)
    h = MA_HASH2PRIME(h);
 
    for (lmp = NULL, mp = _macros[h]; mp != NULL; lmp = mp, mp = mp->ma_next) {
-      if ((mp->ma_flags & MA_TYPE_MASK) == mafl &&
-            !strcmp(mp->ma_name, name)) {
+      if ((mp->ma_flags & MA_TYPE_MASK) == mafl && !strcmp(mp->ma_name, name)) {
          if (save_mafl & MA_UNDEF) {
             if (lmp == NULL)
                _macros[h] = mp->ma_next;
@@ -492,10 +490,10 @@ _maexec(struct macro const *mp, struct var **unroller)
    los.s_unroll = FAL0;
    _localopts = &los;
 
-   buf = ac_alloc(mp->ma_maxlen + 1);
+   buf = ac_alloc(mp->ma_maxlen +1);
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       var_clear_allow_undefined = TRU1;
-      memcpy(buf, lp->l_line, lp->l_length + 1);
+      memcpy(buf, lp->l_line, lp->l_length +1);
       rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
       var_clear_allow_undefined = FAL0;
    }
@@ -536,7 +534,7 @@ _list_macros(enum ma_flags mafl)
             if (++mc > 1)
                fputc('\n', fp);
             fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
-            for (lp = mq->ma_contents; lp; lp = lp->l_next)
+            for (lp = mq->ma_contents; lp != NULL; lp = lp->l_next)
                fprintf(fp, "  %s\n", lp->l_line);
             fputs("}\n", fp);
          }
@@ -1010,7 +1008,7 @@ callhook(char const *name, int nmail)
    char *var, *cp;
    NYD_ENTER;
 
-   var = ac_alloc(len = strlen(name) + 13);
+   var = ac_alloc(len = strlen(name) + 12 +1);
    snprintf(var, len, "folder-hook-%s", name);
    if ((cp = vok_vlook(var)) == NULL && (cp = ok_vlook(folder_hook)) == NULL) {
       rv = 0;

@@ -41,8 +41,8 @@
 # include "nail.h"
 #endif
 
-/* The following hokiness with global variables is so that on receipt of an
- * interrupt signal, the partial message can be salted away on dead.letter */
+/* The following hookiness with global variables is so that on receipt of an
+ * interrupt signal, the partial message can be salted away on *DEAD* */
 
 static sighandler_type  _coll_saveint;    /* Previous SIGINT value */
 static sighandler_type  _coll_savehup;    /* Previous SIGHUP value */
@@ -123,7 +123,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
    /* If the above todo is worked, remove or outsource to attachments.c! */
    if ((ap = hp->h_attach) != NULL) do
       if (ap->a_msgno) {
-         mnlen = strlen(mailname) + 1;
+         mnlen = strlen(mailname) +1;
          mnbuf = ac_alloc(mnlen);
          memcpy(mnbuf, mailname, mnlen);
          break;
@@ -147,7 +147,7 @@ _include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
    bool_t doecho)
 {
    int ret = -1;
-   char *linebuf = NULL;
+   char *linebuf = NULL; /* TODO line pool */
    size_t linesize = 0, linelen, cnt;
    NYD_ENTER;
 
@@ -214,7 +214,7 @@ insertcommand(FILE *fp, char const *cmd)
 static void
 print_collf(FILE *cf, struct header *hp)
 {
-   char *lbuf = NULL;
+   char *lbuf = NULL; /* TODO line pool */
    FILE *volatile obuf = stdout;
    struct attachment *ap;
    char const *cp;
@@ -246,7 +246,7 @@ print_collf(FILE *cf, struct header *hp)
       maxlines -= (ok_vlook(ORGANIZATION) !=NULL || hp->h_organization !=NULL);
       maxlines -= (ok_vlook(replyto) != NULL || hp->h_replyto != NULL);
       maxlines -= (ok_vlook(sender) != NULL || hp->h_sender != NULL);
-      if ((long)maxlines < 0 || linecnt > maxlines) {
+      if ((ssize_t)maxlines < 0 || linecnt > maxlines) {
          cp = get_pager();
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
@@ -282,9 +282,8 @@ print_collf(FILE *cf, struct header *hp)
                cs = charset_get_lc();
             if ((cp = ap->a_content_type) == NULL)
                cp = "?";
-            else if (ascncasecmp(cp, "text/", 5) != 0)
+            else if (ascncasecmp(cp, "text/", 5))
                csi = "";
-
             fprintf(obuf, " - [%s, %s%s] %s\n", cp, csi, cs, ap->a_name);
          }
       }
@@ -447,8 +446,6 @@ forward(char *ms, FILE *fp, int f)
    NYD_ENTER;
 
    msgvec = salloc((size_t)(msgCount + 1) * sizeof *msgvec);
-   if (msgvec == NULL)
-      goto jleave;
    if (getmsglist(ms, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
@@ -592,7 +589,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    int volatile escape, getfields;
    char *linebuf = NULL, *quote = NULL;
    char const *cp;
-   size_t linesize = 0;
+   size_t linesize = 0; /* TODO line pool */
    long cnt;
    enum sendaction action;
    sigset_t oset, nset;
@@ -620,7 +617,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    if (sigsetjmp(_coll_jmp, 1))
       goto jerr;
-   sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    ++noreset;
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER,
@@ -802,7 +799,7 @@ jcont:
          /* Simulate end of file on input */
          goto jout;
       case 'x':
-         /* Same as 'q', but no dead.letter saving */
+         /* Same as 'q', but no *DEAD* saving */
          /* FALLTHRU */
       case 'q':
          /* Force a quit, act like an interrupt had happened */
@@ -860,7 +857,7 @@ jcont:
          break;
       case 'd':
          strncpy(linebuf + 2, getdeadletter(), linesize - 2);
-         linebuf[linesize - 1]='\0';
+         linebuf[linesize - 1] = '\0';
          /*FALLTHRU*/
       case 'r':
       case '<':
@@ -868,7 +865,7 @@ jcont:
           * contents to _coll_fp */
          cp = linebuf + 2;
          while (whitechar(*cp))
-            cp++;
+            ++cp;
          if (*cp == '\0') {
             fputs(tr(57, "Interpolate what file?\n"), stderr);
             break;

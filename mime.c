@@ -103,7 +103,7 @@ static void
 _mt_init(void)
 {
    struct mtnode *tail = NULL;
-   char *line = NULL;
+   char *line = NULL; /* TODO line pool */
    size_t linesize = 0;
    ui32_t idx, idx_ok;
    char const *ccp, * const *srcs;
@@ -128,7 +128,7 @@ _mt_init(void)
       }
 
    for (idx = 1, srcs = _mt_sources; *srcs != NULL; idx <<= 1, ++srcs) {
-      if ((idx & idx_ok) == 0 || (ccp = file_expand(*srcs)) == NULL)
+      if (!(idx & idx_ok) || (ccp = file_expand(*srcs)) == NULL)
          continue;
       if ((fp = Fopen(ccp, "r")) == NULL) {
          /*fprintf(stderr, tr(176, "Cannot open %s\n"), fn);*/
@@ -158,20 +158,24 @@ __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
       goto jleave;
 
    typ = line;
-   while (blankchar(*line) == 0 && *line != '\0')
+   while (!blankchar(*line) && *line != '\0')
       ++line;
    if (*line == '\0')
       goto jleave;
    tlen = PTR2SIZE(line - typ);
 
-   while (blankchar(*line) != 0 && *line != '\0')
+   while (blankchar(*line) && *line != '\0')
       ++line;
+
    if (*line == '\0')
       goto jleave;
-
    elen = strlen(line);
-   if (line[elen - 1] == '\n' && line[--elen] == '\0')
-      goto jleave;
+   if (line[elen - 1] == '\n') {
+      if (--elen > 0 && line[elen - 1] == '\r')
+         --elen;
+      if (elen == 0)
+         goto jleave;
+   }
 
    mtn = smalloc(sizeof(struct mtnode) -
          VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 + elen +1);
@@ -201,7 +205,7 @@ _has_highbit(char const *s)
 
    if (s) {
       do
-         if (*s & 0200)
+         if ((ui8_t)*s & 0x80)
             goto jleave;
       while (*s++ != '\0');
    }
@@ -227,7 +231,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-#endif
+#endif /* HAVE_ICONV */
 
 static enum conversion
 _conversion_by_encoding(void)
@@ -286,7 +290,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
 
       if (rest != NULL && rest->l > 0) {
          in.l = rest->l + input->l;
-         in.s = buf = smalloc(in.l + 1);
+         in.s = buf = smalloc(in.l +1);
          memcpy(in.s, rest->s, rest->l);
          memcpy(in.s + rest->l, input->s, input->l);
          rest->l = 0;
@@ -353,9 +357,9 @@ is_this_enc(char const *line, char const *encoding)
    NYD_ENTER;
 
    if (*line == '"')
-      quoted = 1, line++;
+      quoted = 1, ++line;
    rv = 0;
-   while (*line && *encoding)
+   while (*line != '\0' && *encoding)
       if ((c = *line++, lowerconv(c) != *encoding++))
          goto jleave;
    rv = 1;
@@ -404,7 +408,7 @@ mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
          wend = upper;
          cin.s = UNCONST(wbeg);
          for (;;) {
-            cin.l = wend - wbeg;
+            cin.l = PTR2SIZE(wend - wbeg);
             if (cin.l * 4/3 + 7 + charsetlen < maxcol - col) {
                cout.s = buf;
                cout.l = sizeof buf;
@@ -460,10 +464,11 @@ mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
          mustquote = (mime_cte_mustquote(wbeg, PTR2SIZE(wend - wbeg), TRU1)
                != 0);
 
-         if (mustquote || broken || ((wend - wbeg) >= 76-5 && quoteany)) {
+         if (mustquote || broken ||
+               (PTR2SIZE(wend - wbeg) >= 76-5 && quoteany)) {
             for (cout.s = NULL;;) {
                cin.s = UNCONST(lastwordend ?  lastwordend : wbeg);
-               cin.l = wend - cin.s;
+               cin.l = PTR2SIZE(wend - cin.s);
                qp_encode(&cout, &cin, QP_ISHEAD);
                wr = cout.l + charsetlen + 7;
 jqp_retest:
@@ -520,7 +525,7 @@ jqp_retest:
                   ++sz;
                   --maxcol;
                } else
-                  maxcol -= wbeg - lastspc;
+                  maxcol -= PTR2SIZE(wbeg - lastspc);
             }
             if (lastspc)
                while (lastspc < wbeg) {
@@ -580,7 +585,7 @@ mime_write_tohdr_a(struct str *in, FILE *f)
    in->s[in->l] = '\0';
    lastcp = in->s;
    if ((cp = routeaddr(in->s)) != NULL && cp > lastcp) {
-      sz += convhdra(lastcp, cp - lastcp, f);
+      sz += convhdra(lastcp, PTR2SIZE(cp - lastcp), f);
       lastcp = cp;
    } else
       cp = in->s;
@@ -788,13 +793,13 @@ need_hdrconv(struct header *hp, enum gfield w)
       } else if (_has_highbit(ok_vlook(sender)))
          goto jneeds;
    }
-   if (w & GTO && _name_highbit(hp->h_to))
+   if ((w & GTO) && _name_highbit(hp->h_to))
       goto jneeds;
-   if (w & GCC && _name_highbit(hp->h_cc))
+   if ((w & GCC) && _name_highbit(hp->h_cc))
       goto jneeds;
-   if (w & GBCC && _name_highbit(hp->h_bcc))
+   if ((w & GBCC) && _name_highbit(hp->h_bcc))
       goto jneeds;
-   if (w & GSUBJECT && _has_highbit(hp->h_subject))
+   if ((w & GSUBJECT) && _has_highbit(hp->h_subject))
 jneeds:
       ret = _CHARSET();
    NYD_LEAVE;
@@ -854,10 +859,10 @@ mime_getparam(char const *param, char *h)
             break;
       }
       c = '\0';
-      while (*p && (*p != ';' || c == '\\')) {
+      while (*p != '\0' && (*p != ';' || c == '\\')) {
          if (*p == '"' && c != '\\') {
             ++p;
-            while (*p && (*p != '"' || c == '\\')) {
+            while (*p != '\0' && (*p != '"' || c == '\\')) {
                c = (c == '\\') ? '\0' : *p;
                ++p;
             }
@@ -879,10 +884,10 @@ mime_getparam(char const *param, char *h)
       if ((q = strchr(p, '"')) == NULL)
          goto jleave;
    } else {
-      while (*q && !whitechar(*q) && *q != ';')
+      while (*q != '\0' && !whitechar(*q) && *q != ';')
          ++q;
    }
-   sz = q - p;
+   sz = PTR2SIZE(q - p);
    rv = salloc(q - p +1);
    memcpy(rv, p, sz);
    rv[sz] = '\0';
@@ -932,15 +937,15 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
    /* TODO BTW., after the MIME/send layer rewrite we could use a MIME
     * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
     * TODO and report that state to the outer world */
-#define F_     "From "
-#define F_SIZEOF  (sizeof(F_) - 1)
+#define F_        "From "
+#define F_SIZEOF  (sizeof(F_) -1)
 
    char f_buf[F_SIZEOF], *f_p = f_buf;
    enum {
       _CLEAN      = 0,     /* Plain RFC 2822 message */
       _NCTT       = 1<<0,  /* *contenttype == NULL */
       _ISTXT      = 1<<1,  /* *contenttype =~ text/ */
-      _ISTXTCOK   = 1<<2,  /* _ISTXT+*mime-allow-text-controls* */
+      _ISTXTCOK   = 1<<2,  /* _ISTXT + *mime-allow-text-controls* */
       _HIGHBIT    = 1<<3,  /* Not 7bit clean */
       _LONGLINES  = 1<<4,  /* MIME_LINELEN_LIMIT exceed. */
       _CTRLCHAR   = 1<<5,  /* Control characters seen */
@@ -950,7 +955,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
       _FROM_      = 1<<9   /* ^From_ seen */
    } ctt = _CLEAN;
    enum conversion convert;
-   sl_it curlen;
+   ssize_t curlen;
    int c, lastc;
    NYD_ENTER;
 
@@ -974,7 +979,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
 
       if (c == '\0') {
          ctt |= _HASNUL;
-         if ((ctt & _ISTXTCOK) == 0)
+         if (!(ctt & _ISTXTCOK))
             break;
          continue;
       }
@@ -998,7 +1003,7 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
        /*else*/ if (lastc == '\r')
          ctt |= _CTRLCHAR;
 
-      /* Control character? */
+      /* Control character? XXX this is all ASCII here */
       if (c < 0x20 || c == 0x7F) {
          /* RFC 2045, 6.7, as above ... */
          if (c != '\t' && c != '\r')
@@ -1011,19 +1016,19 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
          if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
             continue;
          ctt |= _HASNUL; /* Force base64 */
-         if ((ctt & _ISTXTCOK) == 0)
+         if (!(ctt & _ISTXTCOK))
             break;
-      } else if (c & 0x80) {
+      } else if ((ui8_t)c & 0x80) {
          ctt |= _HIGHBIT;
          /* TODO count chars with HIGHBIT? libmagic?
           * TODO try encode part - base64 if bails? */
-         if ((ctt & (_NCTT|_ISTXT)) == 0) { /* TODO _NCTT?? */
+         if (!(ctt & (_NCTT | _ISTXT))) { /* TODO _NCTT?? */
             ctt |= _HASNUL; /* Force base64 */
             break;
          }
-      } else if ((ctt & _FROM_) == 0 && curlen < (sl_it)F_SIZEOF) {
+      } else if (!(ctt & _FROM_) && UICMP(z, curlen, <, F_SIZEOF)) {
          *f_p++ = (char)c;
-         if (curlen == (sl_it)(F_SIZEOF - 1) &&
+         if (UICMP(z, curlen, ==, F_SIZEOF - 1) &&
                PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
                !memcmp(f_buf, F_, F_SIZEOF))
             ctt |= _FROM_;
@@ -1052,8 +1057,8 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
    }
    if (ctt & _HIGHBIT) {
 jstepi:
-      if (ctt & (_NCTT|_ISTXT))
-         *do_iconv = (ctt & _HIGHBIT) != 0;
+      if (ctt & (_NCTT | _ISTXT))
+         *do_iconv = ((ctt & _HIGHBIT) != 0);
    } else
 j7bit:
       convert = CONV_7BIT;
@@ -1487,7 +1492,7 @@ jqpb64_dec:
          ui32_t opl = qf->qf_pfix_len;
          if (state != OKAY)
             qf->qf_pfix_len = 0;
-         sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), rest,qf);
+         sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), rest, qf);
          qf->qf_pfix_len = opl;
       }
       if (state != OKAY)

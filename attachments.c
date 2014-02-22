@@ -78,8 +78,7 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    }
 
    if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
-      snprintf(prefix, sizeof prefix,
-         "#%u\tContent-Disposition: ", number);
+      snprintf(prefix, sizeof prefix, "#%u\tContent-Disposition: ", number);
       ap->a_content_disposition = readstr_input(prefix,
             ap->a_content_disposition);
    }
@@ -287,8 +286,7 @@ jerr:
 #endif /* HAVE_ICONV */
 
 FL struct attachment *
-add_attachment(struct attachment *aphead, char *file,
-   struct attachment **newap)
+add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 {
    struct attachment *nap = NULL, *ap;
    NYD_ENTER;
