@@ -500,6 +500,17 @@ int main(void)
 }
 !
 
+link_check pipe2 'for pipe2()' '#define HAVE_PIPE2' << \!
+#include <fcntl.h>
+#include <unistd.h>
+int main(void)
+{
+   int fds[2];
+   pipe2(fds, O_CLOEXEC);
+   return 0;
+}
+!
+
 link_check mmap 'for mmap()' '#define HAVE_MMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
