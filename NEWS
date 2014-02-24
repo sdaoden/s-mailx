@@ -54,6 +54,22 @@ old problems during the review, and tweaked some other things:
   shall there be one.  Ok, yes, that was surely also an oversight.
   [8368f70]
 
+- *attrlist* must now be exactly 13 characters, just as it should
+  be.  An error message is printed if not.  It was always komisch,
+  but i'd buggified it somewhen in the past.  Now fixed.
+  [part of 0d4e934]
+
+- The NCL WANT_TABEXPAND feature now also works if *newfolders* is
+  set to `maildir'.  Yet, if a folder was assumed to be of maildir
+  type, shell globbing would not occur. [part of f5c184c]
+
+- The `X-Decoding-Data' S/MIME header field was set to the epoch
+  origin instead of NOW in v14.6.
+
+  Also the `certsave' command now supports file globbing (i.e.,
+  '~/.certs/' should end up in your $HOME now).
+  [both part of 7e0aec7]
+
 v14.6, 2014-02-15
 -----------------
 
