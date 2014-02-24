@@ -16,6 +16,7 @@
 # XXX could itself choose wether something is text / displayable or not; yet
 # XXX text/ is used to decide, but sh,json,js,tex etc. are all application/..
 
+application/cbor	cbor
 application/javascript	js
 application/json	json
 application/mbox	mbox
