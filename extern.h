@@ -303,8 +303,9 @@ FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
 FL void        smemreset(void);
 
 FL int         c_smemtrace(void *v);
+/* For immediate debugging purposes, it is possible to check on request */
 # if 0
-#  define MEMCHECK
+#  define _HAVE_MEMCHECK
 FL bool_t      _smemcheck(char const *file, int line);
 # endif
 
