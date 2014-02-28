@@ -464,7 +464,7 @@ page_or_print(FILE *fp, size_t lines)
       while ((c = getc(fp)) != EOF)
          if (c == '\n' && ++lines > rows)
             break;
-      rewind(fp);
+      really_rewind(fp);
    }
 
    if (rows != 0 && lines >= rows)
