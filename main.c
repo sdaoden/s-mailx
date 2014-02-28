@@ -259,10 +259,8 @@ _startup(void)
    if ((cp = strrchr(progname, '/')) != NULL)
       progname = ++cp;
 
-   /* Set up a reasonable environment.
-    * Figure out whether we are being run interactively,
-    * start the SIGCHLD catcher, and so forth */
-   safe_signal(SIGCHLD, &sigchild);
+   /* Set up a reasonable environment */
+
 #ifdef HAVE_DEBUG
    safe_signal(SIGABRT, &_nyd_oncrash);
 # ifdef SIGBUS
@@ -272,6 +270,7 @@ _startup(void)
    safe_signal(SIGILL, &_nyd_oncrash);
    safe_signal(SIGSEGV, &_nyd_oncrash);
 #endif
+   command_manager_start();
 
    if (isatty(STDIN_FILENO)) /* TODO should be isatty(0) && isatty(2)?? */
       options |= OPT_TTYIN | OPT_INTERACTIVE;
