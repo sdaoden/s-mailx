@@ -97,7 +97,7 @@ cksum_test() {
       printf 'ok\n'
    else
       ESTAT=1
-      printf 'error: checksum mismatch\n'
+      printf 'error: checksum mismatch (got %s)\n' "${csum}"
    fi
 }
 
@@ -387,24 +387,24 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    # At the same time testing -q FILE, < FILE and -t FILE
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
-   "${SNAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
+   "${SNAIL}" -nSstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
    cksum_test content:1 "${MBOX}" '2606934084 5649'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
-   "${SNAIL}" -n -Sstealthmua -a "${BODY}" -s "${SUB}" \
+   "${SNAIL}" -n#Sstealthmua -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
    cksum_test content:2 "${MBOX}" '2606934084 5649'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
-   ) | MAILRC=/dev/null "${SNAIL}" -n -Sstealthmua -a "${BODY}" -t
+   ) | MAILRC=/dev/null "${SNAIL}" -nSstealthmua -a "${BODY}" -t
    cksum_test content:3 "${MBOX}" '799758423 5648'
 
-   # Test for [260e19d].  Juergen Daubert.
+   # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
-   echo body | MAILRC=/dev/null "${SNAIL}" -n -Sstealthmua "${MBOX}"
+   echo body | MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua "${MBOX}"
    cksum_test content:4 "${MBOX}" '506144051 104'
 
    # Sending of multiple mails in a single invocation
@@ -412,8 +412,18 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
-   ) | MAILRC=/dev/null "${SNAIL}" -n -# -Sstealthmua
+   ) | MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua
    cksum_test content:5 "${MBOX}" '2028749685 277'
+
+   ## $BODY CHANGED
+
+   # "Test for" [d6f316a] (Gavin Troy)
+   ${rm} -f "${MBOX}"
+   printf "m ${MBOX}\n~s subject1\nEmail body\n.\nfi ${MBOX}\np\nx\n" |
+   MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua \
+      -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
+   ${sed} -e 1d < "${BODY}" > "${MBOX}"
+   cksum_test content:6 "${MBOX}" '3062395510 181'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }

@@ -303,8 +303,9 @@ FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
 FL void        smemreset(void);
 
 FL int         c_smemtrace(void *v);
+/* For immediate debugging purposes, it is possible to check on request */
 # if 0
-#  define MEMCHECK
+#  define _HAVE_MEMCHECK
 FL bool_t      _smemcheck(char const *file, int line);
 # endif
 
@@ -1256,6 +1257,9 @@ FL void        pop3_quit(void);
  * Subprocesses, popen, but also file handling with registering
  */
 
+/* For program startup in main.c: initialize process manager */
+FL void        command_manager_start(void);
+
 /* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
 FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
 
@@ -1304,8 +1308,6 @@ FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
 
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
-
-FL void        sigchild(int signo);
 
 /* Mark a child as don't care */
 FL void        free_child(int pid);

@@ -1046,17 +1046,7 @@ savedeadletter(FILE *fp, int fflush_rewind_first)
    if (dbuf == NULL)
       goto jleave;
 
-   /* There are problems with dup()ing of file-descriptors for child
-    * processes.  As long as those are not fixed in equal spirit to
-    * (outof(): FIX and recode.., 2012-10-04), and to avoid reviving of
-    * bugs like (If *record* is set, avoid writing dead content twice..,
-    * 2012-09-14), we have to somehow accomplish that the FILE* fp
-    * makes itself comfortable with the *real* offset of the underlaying
-    * file descriptor.  Unfortunately Standard I/O and POSIX don't
-    * describe a way for that -- fflush();rewind(); won't do it.
-    * This fseek(END),rewind() pair works around the problem on *BSD */
-   fseek(fp, 0, SEEK_END);
-   rewind(fp);
+   really_rewind(fp);
 
    printf("\"%s\" ", cp);
    for (lines = bytes = 0; (c = getc(fp)) != EOF; ++bytes) {

@@ -94,6 +94,10 @@ static enum okay     _compress(struct fp *fpp);
 static int           _decompress(int compression, int infd, int outfd);
 static enum okay     unregister_file(FILE *fp);
 static int           file_pid(FILE *fp);
+
+/* Handle SIGCHLD */
+static void          _sigchld(int signo);
+
 static int           wait_command(int pid);
 static struct child *findchild(int pid);
 static void          delchild(struct child *cp);
@@ -276,6 +280,31 @@ file_pid(FILE *fp)
    return rv;
 }
 
+static void
+_sigchld(int signo)
+{
+   int pid, status;
+   struct child *cp;
+   NYD_X; /* Signal handler */
+   UNUSED(signo);
+
+   for (;;) {
+      pid = (int)waitpid((pid_t)-1, &status, WNOHANG);
+      if (pid <= 0) {
+         if (pid == -1 && errno == EINTR)
+            continue;
+         break;
+      }
+      cp = findchild(pid);
+      if (cp->free)
+         delchild(cp);
+      else {
+         cp->done = 1;
+         cp->status = status;
+      }
+   }
+}
+
 static int
 wait_command(int pid)
 {
@@ -320,6 +349,27 @@ delchild(struct child *cp)
       ;
    *cpp = cp->link;
    free(cp);
+   NYD_LEAVE;
+}
+
+FL void
+command_manager_start(void)
+{
+   struct sigaction nact, oact;
+   NYD_ENTER;
+
+   nact.sa_handler = &_sigchld;
+   sigemptyset(&nact.sa_mask);
+   nact.sa_flags = 0
+#ifdef SA_RESTART
+         | SA_RESTART
+#endif
+#ifdef SA_NOCLDSTOP
+         | SA_NOCLDSTOP
+#endif
+         ;
+   if (sigaction(SIGCHLD, &nact, &oact) != 0)
+      panic("Cannot install signal handler for child process management");
    NYD_LEAVE;
 }
 
@@ -756,31 +806,6 @@ prepare_child(sigset_t *nset, int infd, int outfd)
    sigemptyset(&fset);
    sigprocmask(SIG_SETMASK, &fset, NULL);
    NYD_LEAVE;
-}
-
-FL void
-sigchild(int signo)
-{
-   int pid, status;
-   struct child *cp;
-   NYD_X; /* Signal handler */
-   UNUSED(signo);
-
-   for (;;) {
-      pid = waitpid(-1, &status, WNOHANG);
-      if (pid == -1) {
-         if (errno == EINTR)
-            continue;
-         break;
-      }
-      cp = findchild(pid);
-      if (cp->free)
-         delchild(cp);
-      else {
-         cp->done = 1;
-         cp->status = status;
-      }
-   }
 }
 
 FL void

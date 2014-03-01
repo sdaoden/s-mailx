@@ -46,21 +46,9 @@ Backward-compatibility breakers
   but i have not thought about that for real.  Maybe this should be at
   least configurable.
 
-- Maybe we should not use pipes to pagers at all.
-  This would also (beside getting rid of longjumps that cross allocations
-  afaik etc.) make it possible to honour the *crt* variable in respect
-  to what really is displayed, not in respect to message size.
-  It irritates me that a message with 5 visible lines but 115 header lines
+- It irritates me that a message with 5 visible lines but 115 header lines
   goes through the pager, even if i have *crt=*.
   P.S.: we could simply count the headers in addition?
-
-- The IMAP cache is file-based, which is quite nice, since a filesystem
-  is a database.  On the other hand it may be better if we could hook
-  into sqlite3, which is available almost everywhere by default, with
-  a clearly documented DB content (so that users can use sqlite3(1) to
-  dig into it).  (And just in case S-nail will ever be able to read news
-  and/or have MTA functionality.)
-  One question would be wether compression should be applied.
 
 - We should possibly get away of using command line utilities for
   compression.  (At least optionally?)  Instead we should link against
@@ -93,8 +81,7 @@ Non-breakers
 -- Also, when the folder is modified concurrently we should bail, or, in an
   interactive session, prompt the user what to do.
 
-- IDNA decoding.  It may be that this will never be supported.  But
-  wouldn't it be nice for at least viewing messages?
+- IDNA decoding.  Needs a complete design change.
 
 - Mail-Followup-To:.
 
@@ -144,12 +131,6 @@ Non-breakers
 - For those who use S-nail(1) only with a MTA it may be desirable to have
   some "smopts" expansion mechanism in equal spirit to NetBSD mailx(1).
 
-- Check against RFC 5322.
-  Rework all the header parsing code.  Actually understand the content,
-  classify the stuff so that it matches what is defined in RFC dependent on
-  header field.  Place the result in objects that know what they represent.
-  See the name extraction topic below.
-
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
@@ -195,7 +176,7 @@ Non-breakers
 Low-Level
 ---------
 
-- [v13:started] Improve name extraction rules.  And field parsing.  There
+- Improve name extraction rules.  And field parsing.  There
   are structured and unstructured fields.  There are quoted pairs and
   comments etc.  Rewrite the entire parsing mechanism to comply to RFC
   5322, and try to merge all those many subparsers around in the codebase,
@@ -259,12 +240,7 @@ Low-Level
   currently open.  Especially important for possible NEWS support, but the
   code is a mess in general...
 
-- I hate longjmp()s and signals.  I suspect some pitfalls in the codebase.
-  All that stuff should at least be collected in a single place.
-  Just imagine how easy it could be done with a non-blocking select(2)
-  based event loop, ISIG off termios flags, etc.  ach!!
-
-  I would like to see that compilation with a C++ compiler is possible,
+- I would like to see that compilation with a C++ compiler is possible,
   though that would be a long way and be especially problematic due to the
   (C ish) way enums are used.
 
@@ -339,6 +315,43 @@ Low-Level
   RFC 977 -> 3977 - Network News Transfer Protocol
   RFC 1036 - Standard for USENET Messages
   RFC 2980 - Common NNTP Extensions
+
+- This is how the codebase has to be reworked in respect to signals and
+  jumping:
+
+  1. We introduce some environment/carrier structs: struct eval_ctx,
+     struct cmd_ctx, (struct send_ctx).  All of these form lists.
+     eval_ctx gets a new instance every time evaluate() is entered; for
+     the interactive mode, commands() instantiates an outermost eval_ctx
+     that "cannot be left".
+     cmd_ctx knows about the eval_ctx in which it is was created; it is
+     created for each command that has an entry in cmd_tab and is passed
+     as the new argument of these kind of functions.
+     (send_ctx is the carrier for the MIME and send layer rewrite.)
+  2. We'll get a signal manager.  This is a global layer which is the
+     sole object-in-charge for signals.  We'll install a complete set of
+     handlers once -- those will only set has-occurred bits.
+     All interested parties have to peek at the signal manager when they
+     are in the position to deal with signals, via a series of
+     "ha(s|ve)_occurred", "needs_action", "would_raise" or whatever, as
+     well as "doact".
+  3. We need a sort of non-local return, everything else would require
+     a totally different way of programming.  Also, non-local returns
+     are not *that* bad, generally speaking.  We'll be easy and add the
+     possibility to define a jump target location in eval_ctx and
+     cmd_ctx, by peeking at the signal manager (for object design
+     reasons, though done by a macro, say), just like saying "i need to
+     have the chance to perform some actions shall a jump be necessary".
+  4. So, somewhere deep down the still recursive codebase, shall the
+     necessity to honour a jump request occur, we peek the signal
+     manager to "unroll" the current cmd_ctx/eval_ctx chain(s), which
+     will result in none-to-multiple jumps to locations which require
+     cleanup actions, ultimately ending in the non-leavable commands()
+     eval_ctx or whatever.
+  6. Hot: we save us from thousands of syscalls, and get rid of the
+     fucking sig* shit.  It rhymes, it rhymes :)
+     Should we even be able to go the non-blocking select(2) way in the
+     end -- that would be fantastic!
 
 TODO S-nail 14.7:
 -----------------
@@ -475,43 +488,6 @@ TODO S-nail 14.7:
   Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
   time). (2013-08-06)
 
-- Yet another one:
-
-  :>>> T1026 NOOP
-  Received SIGPIPE during IMAP operation
-  IMAP write error: error:00000000:lib(0):func(0):reason(0)
-
-  [DOING STUFF]
-
-  ? newmail
-  >>> T1027 FETCH 51:52 (FLAGS UID)
-  IMAP write error: Bad file descriptor
-  >>> T1028 FETCH 51:52 (RFC822.HEADER)
-  IMAP write error: Bad file descriptor
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  New mail has arrived.
-  Loaded 2 new messages.
-  >>> T1029 FETCH 51:52 (RFC822.HEADER)
-  IMAP write error: Bad file descriptor
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-  IMAP connection closed.
-   U 51                    Thu Jan  1 0    /    0
-   IMAP connection closed.
-   IMAP connection closed.
-   IMAP connection closed.
-   IMAP connection closed.
-   IMAP connection closed.
-
 - edit.c doesn't do NEED_BODY (yeah, IMAP won't work anyway).
 
 - Some (configurable?) verbosity for certificate validation.
@@ -584,7 +560,6 @@ TODO S-nail 14.7:
      also trailing whitespace; also, the expanded command should be
      stored, not the abbreviation, so that 'sst' and 'sstats' will no
      longer produce two separate entries.
-  . Commands should take a struct callargs*, not void*. asap.
   . getprompt() is not multibyte safe in that it should mbrtowc() before
     calling expand_shell_escape() (i.e., only call that if ASCII,
     otherwise pass through if fits as such).

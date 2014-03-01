@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.1:
+and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.2:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -14,6 +14,30 @@ and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.1:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.6.2, 2014-03-01
+-------------------
+
+Many thanks to the perpetual Gavin Troy.
+
+- Faulty notational change of system call return values from `<0' to
+  `==-1' caused endless waitpid(2) loop. [d6f316a; test(!): 79fd761]
+  (Gavin Troy)
+
+- (GLibC) STD I/O overoptimizes rewind(3) so that underlaying file
+  descriptor offset is not reset to 0.  Generalize the already
+  used `really_rewind()' hack and use it not only in
+  `savedeadletter()' but also in `page_or_print()'.  It is likely
+  that this not also fixes `history' listing but also some other
+  things which go through the pager, dependend on the setting of
+  *crt* etc., and on at least GNU/Linux systems. [463660f]
+
+  Note: standard I/O does NOT offer a possibility to do this in
+  a non-hackish way.  It is thus likely that S-nail will gain
+  a completely new I/O layer in the future.  That'll also be faster.
+
+- Old shells will now correctly execute an error-condition
+  execution path in `mk-conf.sh'. [afef55f]
 
 v14.6.1, 2014-02-22
 -------------------
@@ -53,6 +77,22 @@ old problems during the review, and tweaked some other things:
   causing the default command (`next') to be invoked on its' result,
   shall there be one.  Ok, yes, that was surely also an oversight.
   [8368f70]
+
+- *attrlist* must now be exactly 13 characters, just as it should
+  be.  An error message is printed if not.  It was always komisch,
+  but i'd buggified it somewhen in the past.  Now fixed.
+  [part of 0d4e934]
+
+- The NCL WANT_TABEXPAND feature now also works if *newfolders* is
+  set to `maildir'.  Yet, if a folder was assumed to be of maildir
+  type, shell globbing would not occur. [part of f5c184c]
+
+- The `X-Decoding-Data' S/MIME header field was set to the epoch
+  origin instead of NOW in v14.6.
+
+  Also the `certsave' command now supports file globbing (i.e.,
+  '~/.certs/' should end up in your $HOME now).
+  [both part of 7e0aec7]
 
 v14.6, 2014-02-15
 -----------------

@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Feb 22, 2014
+.Dd Mar 01, 2014
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -909,7 +909,7 @@ and thus includes shell word expansion (as a last step).
 I.e., this is \*(UA "expansion", not what one usually expects from
 "tab-completion".
 .It ^J
-The same as `RETURN': complete this line of input.
+The same as `ENTER': complete this line of input.
 .It ^K
 Delete all characters from the cursor to the end of the line.
 .It ^L
@@ -1426,11 +1426,17 @@ likewise the previous is printed if the argument was `-'.
 A synonym for `?'.
 .It Ic history
 \*(OP Either
-.Ns ( Ar show
-or)
+.Ar show
+or
 .Ar clear
-the
-command line editor history.
+the list of history entries;
+a decimal
+.Ar NUMBER
+argument selects and shows the respective history entry \(en
+press `ENTER' to accept it, and the history entry will become the new
+history top.
+The default mode if no arguments are given is
+.Ar show .
 .It Ic hold
 (ho, also preserve) Takes a message list and marks each message therein
 to be saved in the user's system mailbox instead of in `mbox'.
@@ -1457,7 +1463,7 @@ testing conditions via the nestable command `if', as in:
 Note that the only allowed conditions are `[Rr]eceive', `[Ss]end',
 `[Tt]erm' (execute if standard input is a tty), as well as `0' (never
 execute) and `1' (always execute).
-In addition it is possible to condionalize upon wether an option is set,
+In addition it is possible to conditionalize upon wether an option is set,
 or set to a specific value, by using the `$' conditional trigger, e.g.:
 .Bd -literal -offset indent
    if $debug
@@ -1569,7 +1575,7 @@ cache.
 In the former case all sources are loaded first as necessary.
 The
 .Va mimetypes-load-control
-option can be used to fine-tune loading of the sources.
+option can be used to fine-tune which sources are loaded.
 .It Ic move
 (mv) Acts like
 .Ic copy
@@ -2875,7 +2881,7 @@ for the format of the value.
 inals for which coloured message display can be used.
 The default is
 .Pp
-.Dl cons25,linux,rxvt,rxvt-unicode,\:sun,\:vt100,\:vt220,\:\
+.Dl cons25,linux,rxvt,rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:\
 wsvt25,\:xterm,\:xterm-color
 .It Va colour-uheader
 \*(OP The colour specification for those header lines that have been
@@ -4652,7 +4658,3 @@ remains intact.
 .\"
 .Sh BUGS
 Variables in the environment passed to \*(UA cannot be unset.
-The codebase in inherently broken in respect to non-local code jumps
-and loss of opened mail folders; expect this to remain until the v16
-series has passed.
-Thank you.

@@ -62,13 +62,34 @@ struct nyd_info {
    ui32_t      ni_chirp_line;
    ui32_t      ni_level;
 };
-#endif
 
-/* NYD */
+struct mem_chunk {
+   struct mem_chunk  *mc_prev;
+   struct mem_chunk  *mc_next;
+   char const        *mc_file;
+   ui16_t            mc_line;
+   ui8_t             mc_isfree;
+   ui8_t             __dummy;
+   ui32_t            mc_size;
+};
+
+union mem_ptr {
+   void              *p_p;
+   struct mem_chunk  *p_c;
+   char              *p_cp;
+   ui8_t             *p_ui8p;
+};
+#endif /* HAVE_DEBUG */
+
+/* NYD, memory pool debug */
 #ifdef HAVE_DEBUG
-static ui32_t           _nyd_curr;
-static ui32_t           _nyd_level;
+static ui32_t           _nyd_curr, _nyd_level;
 static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
+
+static size_t           _mem_aall, _mem_acur, _mem_amax,
+                        _mem_mall, _mem_mcur, _mem_mmax;
+
+static struct mem_chunk *_mem_list, *_mem_free;
 #endif
 
 /* {hold,rele}_all_sigs() */
@@ -443,7 +464,7 @@ page_or_print(FILE *fp, size_t lines)
       while ((c = getc(fp)) != EOF)
          if (c == '\n' && ++lines > rows)
             break;
-      rewind(fp);
+      really_rewind(fp);
    }
 
    if (rows != 0 && lines >= rows)
@@ -1445,165 +1466,167 @@ CTA(sizeof(char) == sizeof(ui8_t));
 # define _HOPE_SIZE        (2 * 8 * sizeof(char))
 # define _HOPE_SET(C)   \
 do {\
-   union ptr __xl, __xu;\
-   struct chunk *__xc;\
-   __xl.p = (C).p;\
-   __xc = __xl.c - 1;\
-   __xu.p = __xc;\
-   (C).cp += 8;\
-   __xl.ui8p[0]=0xDE; __xl.ui8p[1]=0xAA; __xl.ui8p[2]=0x55; __xl.ui8p[3]=0xAD;\
-   __xl.ui8p[4]=0xBE; __xl.ui8p[5]=0x55; __xl.ui8p[6]=0xAA; __xl.ui8p[7]=0xEF;\
-   __xu.ui8p += __xc->size - 8;\
-   __xu.ui8p[0]=0xDE; __xu.ui8p[1]=0xAA; __xu.ui8p[2]=0x55; __xu.ui8p[3]=0xAD;\
-   __xu.ui8p[4]=0xBE; __xu.ui8p[5]=0x55; __xu.ui8p[6]=0xAA; __xu.ui8p[7]=0xEF;\
+   union mem_ptr __xl, __xu;\
+   struct mem_chunk *__xc;\
+   __xl.p_p = (C).p_p;\
+   __xc = __xl.p_c - 1;\
+   __xu.p_p = __xc;\
+   (C).p_cp += 8;\
+   __xl.p_ui8p[0]=0xDE; __xl.p_ui8p[1]=0xAA;\
+   __xl.p_ui8p[2]=0x55; __xl.p_ui8p[3]=0xAD;\
+   __xl.p_ui8p[4]=0xBE; __xl.p_ui8p[5]=0x55;\
+   __xl.p_ui8p[6]=0xAA; __xl.p_ui8p[7]=0xEF;\
+   __xu.p_ui8p += __xc->mc_size - 8;\
+   __xu.p_ui8p[0]=0xDE; __xu.p_ui8p[1]=0xAA;\
+   __xu.p_ui8p[2]=0x55; __xu.p_ui8p[3]=0xAD;\
+   __xu.p_ui8p[4]=0xBE; __xu.p_ui8p[5]=0x55;\
+   __xu.p_ui8p[6]=0xAA; __xu.p_ui8p[7]=0xEF;\
 } while (0)
 # define _HOPE_GET_TRACE(C,BAD) \
 do {\
-   (C).cp += 8;\
+   (C).p_cp += 8;\
    _HOPE_GET(C, BAD);\
-   (C).cp += 8;\
+   (C).p_cp += 8;\
 } while(0)
 # define _HOPE_GET(C,BAD) \
 do {\
-   union ptr __xl, __xu;\
-   struct chunk *__xc;\
+   union mem_ptr __xl, __xu;\
+   struct mem_chunk *__xc;\
    ui32_t __i;\
-   __xl.p = (C).p;\
-   __xl.cp -= 8;\
-   (C).cp = __xl.cp;\
-   __xc = __xl.c - 1;\
+   __xl.p_p = (C).p_p;\
+   __xl.p_cp -= 8;\
+   (C).p_cp = __xl.p_cp;\
+   __xc = __xl.p_c - 1;\
    (BAD) = FAL0;\
    __i = 0;\
-   if (__xl.ui8p[0] != 0xDE) __i |= 1<<0;\
-   if (__xl.ui8p[1] != 0xAA) __i |= 1<<1;\
-   if (__xl.ui8p[2] != 0x55) __i |= 1<<2;\
-   if (__xl.ui8p[3] != 0xAD) __i |= 1<<3;\
-   if (__xl.ui8p[4] != 0xBE) __i |= 1<<4;\
-   if (__xl.ui8p[5] != 0x55) __i |= 1<<5;\
-   if (__xl.ui8p[6] != 0xAA) __i |= 1<<6;\
-   if (__xl.ui8p[7] != 0xEF) __i |= 1<<7;\
+   if (__xl.p_ui8p[0] != 0xDE) __i |= 1<<0;\
+   if (__xl.p_ui8p[1] != 0xAA) __i |= 1<<1;\
+   if (__xl.p_ui8p[2] != 0x55) __i |= 1<<2;\
+   if (__xl.p_ui8p[3] != 0xAD) __i |= 1<<3;\
+   if (__xl.p_ui8p[4] != 0xBE) __i |= 1<<4;\
+   if (__xl.p_ui8p[5] != 0x55) __i |= 1<<5;\
+   if (__xl.p_ui8p[6] != 0xAA) __i |= 1<<6;\
+   if (__xl.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
       alert("%p: corrupt lower canary: 0x%02X: %s, line %u",\
-         __xl.p, __i, mdbg_file, mdbg_line);\
+         __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
-   __xu.p = __xc;\
-   __xu.ui8p += __xc->size - 8;\
+   __xu.p_p = __xc;\
+   __xu.p_ui8p += __xc->mc_size - 8;\
    __i = 0;\
-   if (__xu.ui8p[0] != 0xDE) __i |= 1<<0;\
-   if (__xu.ui8p[1] != 0xAA) __i |= 1<<1;\
-   if (__xu.ui8p[2] != 0x55) __i |= 1<<2;\
-   if (__xu.ui8p[3] != 0xAD) __i |= 1<<3;\
-   if (__xu.ui8p[4] != 0xBE) __i |= 1<<4;\
-   if (__xu.ui8p[5] != 0x55) __i |= 1<<5;\
-   if (__xu.ui8p[6] != 0xAA) __i |= 1<<6;\
-   if (__xu.ui8p[7] != 0xEF) __i |= 1<<7;\
+   if (__xu.p_ui8p[0] != 0xDE) __i |= 1<<0;\
+   if (__xu.p_ui8p[1] != 0xAA) __i |= 1<<1;\
+   if (__xu.p_ui8p[2] != 0x55) __i |= 1<<2;\
+   if (__xu.p_ui8p[3] != 0xAD) __i |= 1<<3;\
+   if (__xu.p_ui8p[4] != 0xBE) __i |= 1<<4;\
+   if (__xu.p_ui8p[5] != 0x55) __i |= 1<<5;\
+   if (__xu.p_ui8p[6] != 0xAA) __i |= 1<<6;\
+   if (__xu.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
       alert("%p: corrupt upper canary: 0x%02X: %s, line %u",\
-         __xl.p, __i, mdbg_file, mdbg_line);\
+         __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    if (BAD)\
-      alert("   ..canary last seen: %s, line %u", __xc->file, __xc->line);\
+      alert("   ..canary last seen: %s, line %u",\
+         __xc->mc_file, __xc->mc_line);\
 } while (0)
-
-struct chunk {
-   struct chunk   *prev;
-   struct chunk   *next;
-   char const     *file;
-   ui16_t         line;
-   ui8_t          isfree;
-   ui8_t          __dummy;
-   ui32_t         size;
-};
-
-union ptr {
-   void           *p;
-   struct chunk   *c;
-   char           *cp;
-   ui8_t          *ui8p;
-};
-
-struct chunk   *_mlist, *_mfree;
 
 FL void *
 (smalloc)(size_t s SMALLOC_DEBUG_ARGS)
 {
-   union ptr p;
+   union mem_ptr p;
    NYD_ENTER;
 
    if (s == 0)
       s = 1;
-   s += sizeof(struct chunk) + _HOPE_SIZE;
+   s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
-   if ((p.p = (malloc)(s)) == NULL)
+   if ((p.p_p = (malloc)(s)) == NULL)
       _out_of_memory();
-   p.c->prev = NULL;
-   if ((p.c->next = _mlist) != NULL)
-      _mlist->prev = p.c;
-   p.c->file = mdbg_file;
-   p.c->line = (ui16_t)mdbg_line;
-   p.c->isfree = FAL0;
-   p.c->size = (ui32_t)s;
-   _mlist = p.c++;
+   p.p_c->mc_prev = NULL;
+   if ((p.p_c->mc_next = _mem_list) != NULL)
+      _mem_list->mc_prev = p.p_c;
+   p.p_c->mc_file = mdbg_file;
+   p.p_c->mc_line = (ui16_t)mdbg_line;
+   p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_size = (ui32_t)s;
+   _mem_list = p.p_c++;
    _HOPE_SET(p);
+
+   ++_mem_aall;
+   ++_mem_acur;
+   _mem_amax = MAX(_mem_amax, _mem_acur);
+   _mem_mall += s;
+   _mem_mcur += s;
+   _mem_mmax = MAX(_mem_mmax, _mem_mcur);
    NYD_LEAVE;
-   return p.p;
+   return p.p_p;
 }
 
 FL void *
 (srealloc)(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
-   union ptr p;
+   union mem_ptr p;
    bool_t isbad;
    NYD_ENTER;
 
-   if ((p.p = v) == NULL) {
-      p.p = (smalloc)(s, mdbg_file, mdbg_line);
+   if ((p.p_p = v) == NULL) {
+      p.p_p = (smalloc)(s, mdbg_file, mdbg_line);
       goto jleave;
    }
 
    _HOPE_GET(p, isbad);
-   --p.c;
-   if (p.c->isfree) {
+   --p.p_c;
+   if (p.p_c->mc_isfree) {
       fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
          "\tLast seen: %s, line %d\n",
-         mdbg_file, mdbg_line, p.c->file, p.c->line);
+         mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jforce;
    }
 
-   if (p.c == _mlist)
-      _mlist = p.c->next;
+   if (p.p_c == _mem_list)
+      _mem_list = p.p_c->mc_next;
    else
-      p.c->prev->next = p.c->next;
-   if (p.c->next != NULL)
-      p.c->next->prev = p.c->prev;
+      p.p_c->mc_prev->mc_next = p.p_c->mc_next;
+   if (p.p_c->mc_next != NULL)
+      p.p_c->mc_next->mc_prev = p.p_c->mc_prev;
 
+   --_mem_acur;
+   _mem_mcur -= p.p_c->mc_size;
 jforce:
    if (s == 0)
       s = 1;
-   s += sizeof(struct chunk) + _HOPE_SIZE;
+   s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
-   if ((p.p = (realloc)(p.c, s)) == NULL)
+   if ((p.p_p = (realloc)(p.p_c, s)) == NULL)
       _out_of_memory();
-   p.c->prev = NULL;
-   if ((p.c->next = _mlist) != NULL)
-      _mlist->prev = p.c;
-   p.c->file = mdbg_file;
-   p.c->line = (ui16_t)mdbg_line;
-   p.c->isfree = FAL0;
-   p.c->size = (ui32_t)s;
-   _mlist = p.c++;
+   p.p_c->mc_prev = NULL;
+   if ((p.p_c->mc_next = _mem_list) != NULL)
+      _mem_list->mc_prev = p.p_c;
+   p.p_c->mc_file = mdbg_file;
+   p.p_c->mc_line = (ui16_t)mdbg_line;
+   p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_size = (ui32_t)s;
+   _mem_list = p.p_c++;
    _HOPE_SET(p);
+
+   ++_mem_aall;
+   ++_mem_acur;
+   _mem_amax = MAX(_mem_amax, _mem_acur);
+   _mem_mall += s;
+   _mem_mcur += s;
+   _mem_mmax = MAX(_mem_mmax, _mem_mcur);
 jleave:
    NYD_LEAVE;
-   return p.p;
+   return p.p_p;
 }
 
 FL void *
 (scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
-   union ptr p;
+   union mem_ptr p;
    NYD_ENTER;
 
    if (size == 0)
@@ -1611,58 +1634,68 @@ FL void *
    if (nmemb == 0)
       nmemb = 1;
    size *= nmemb;
-   size += sizeof(struct chunk) + _HOPE_SIZE;
+   size += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
-   if ((p.p = (malloc)(size)) == NULL)
+   if ((p.p_p = (malloc)(size)) == NULL)
       _out_of_memory();
-   memset(p.p, 0, size);
-   p.c->prev = NULL;
-   if ((p.c->next = _mlist) != NULL)
-      _mlist->prev = p.c;
-   p.c->file = mdbg_file;
-   p.c->line = (ui16_t)mdbg_line;
-   p.c->isfree = FAL0;
-   p.c->size = (ui32_t)size;
-   _mlist = p.c++;
+   memset(p.p_p, 0, size);
+   p.p_c->mc_prev = NULL;
+   if ((p.p_c->mc_next = _mem_list) != NULL)
+      _mem_list->mc_prev = p.p_c;
+   p.p_c->mc_file = mdbg_file;
+   p.p_c->mc_line = (ui16_t)mdbg_line;
+   p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_size = (ui32_t)size;
+   _mem_list = p.p_c++;
    _HOPE_SET(p);
+
+   ++_mem_aall;
+   ++_mem_acur;
+   _mem_amax = MAX(_mem_amax, _mem_acur);
+   _mem_mall += size;
+   _mem_mcur += size;
+   _mem_mmax = MAX(_mem_mmax, _mem_mcur);
    NYD_LEAVE;
-   return p.p;
+   return p.p_p;
 }
 
 FL void
 (sfree)(void *v SMALLOC_DEBUG_ARGS)
 {
-   union ptr p;
+   union mem_ptr p;
    bool_t isbad;
    NYD_ENTER;
 
-   if ((p.p = v) == NULL) {
+   if ((p.p_p = v) == NULL) {
       fprintf(stderr, "sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
       goto jleave;
    }
 
    _HOPE_GET(p, isbad);
-   --p.c;
-   if (p.c->isfree) {
+   --p.p_c;
+   if (p.p_c->mc_isfree) {
       fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
          "\tLast seen: %s, line %d\n",
-         mdbg_file, mdbg_line, p.c->file, p.c->line);
+         mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jleave;
    }
 
-   if (p.c == _mlist)
-      _mlist = p.c->next;
+   if (p.p_c == _mem_list)
+      _mem_list = p.p_c->mc_next;
    else
-      p.c->prev->next = p.c->next;
-   if (p.c->next != NULL)
-      p.c->next->prev = p.c->prev;
-   p.c->isfree = TRU1;
+      p.p_c->mc_prev->mc_next = p.p_c->mc_next;
+   if (p.p_c->mc_next != NULL)
+      p.p_c->mc_next->mc_prev = p.p_c->mc_prev;
+   p.p_c->mc_isfree = TRU1;
+
+   --_mem_acur;
+   _mem_mcur -= p.p_c->mc_size;
 
    if (options & OPT_DEBUG) {
-      p.c->next = _mfree;
-      _mfree = p.c;
+      p.p_c->mc_next = _mem_free;
+      _mem_free = p.p_c;
    } else
-      (free)(p.c);
+      (free)(p.p_c);
 jleave:
    NYD_LEAVE;
 }
@@ -1670,18 +1703,18 @@ jleave:
 FL void
 smemreset(void)
 {
-   union ptr p;
+   union mem_ptr p;
    size_t c = 0, s = 0;
    NYD_ENTER;
 
-   for (p.c = _mfree; p.c != NULL;) {
-      void *vp = p.c;
+   for (p.p_c = _mem_free; p.p_c != NULL;) {
+      void *vp = p.p_c;
       ++c;
-      s += p.c->size;
-      p.c = p.c->next;
+      s += p.p_c->mc_size;
+      p.p_c = p.p_c->mc_next;
       (free)(vp);
    }
-   _mfree = NULL;
+   _mem_free = NULL;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, "smemreset(): freed %" ZFMT " chunks/%" ZFMT " bytes\n",
@@ -1696,7 +1729,7 @@ c_smemtrace(void *v)
    char const * const mdbg_file = "smemtrace()";
    int const mdbg_line = -1;
    FILE *fp;
-   union ptr p, xp;
+   union mem_ptr p, xp;
    bool_t isbad;
    size_t lines;
    NYD_ENTER;
@@ -1708,25 +1741,33 @@ c_smemtrace(void *v)
       goto jleave;
    }
 
+   fprintf(fp, "Memory statistics:\n"
+      "  Count cur/peek/all: %7" ZFMT "/%7" ZFMT "/%10" ZFMT "\n"
+      "  Bytes cur/peek/all: %7" ZFMT "/%7" ZFMT "/%10" ZFMT "\n\n",
+      _mem_acur, _mem_amax, _mem_aall, _mem_mcur, _mem_mmax, _mem_mall);
+
    fprintf(fp, "Currently allocated memory chunks:\n");
-   for (lines = 0, p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next) {
+   for (lines = 0, p.p_c = _mem_list; p.p_c != NULL;
+         ++lines, p.p_c = p.p_c->mc_next) {
       xp = p;
-      ++xp.c;
+      ++xp.p_c;
       _HOPE_GET_TRACE(xp, isbad);
       fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
-         (isbad ? "! CANARY ERROR: " : ""), xp.p,
-         (size_t)(p.c->size - sizeof(struct chunk)), p.c->file, p.c->line);
+         (isbad ? "! CANARY ERROR: " : ""), xp.p_p,
+         (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)), p.p_c->mc_file,
+         p.p_c->mc_line);
    }
 
    if (options & OPT_DEBUG) {
       fprintf(fp, "sfree()d memory chunks awaiting free():\n");
-      for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next) {
+      for (p.p_c = _mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
          xp = p;
-         ++xp.c;
+         ++xp.p_c;
          _HOPE_GET_TRACE(xp, isbad);
          fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
-            (isbad ? "! CANARY ERROR: " : ""), xp.p,
-            (size_t)(p.c->size - sizeof(struct chunk)), p.c->file, p.c->line);
+            (isbad ? "! CANARY ERROR: " : ""), xp.p_p,
+            (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
+            p.p_c->mc_file, p.p_c->mc_line);
       }
    }
 
@@ -1738,46 +1779,52 @@ jleave:
    return (v != NULL);
 }
 
-# ifdef MEMCHECK
+# ifdef _HAVE_MEMCHECK
 FL bool_t
 _smemcheck(char const *mdbg_file, int mdbg_line)
 {
-   union ptr p, xp;
+   union mem_ptr p, xp;
    bool_t anybad = FAL0, isbad;
    size_t lines;
    NYD_ENTER;
 
-   for (lines = 0, p.c = _mlist; p.c != NULL; ++lines, p.c = p.c->next) {
+   for (lines = 0, p.p_c = _mem_list; p.p_c != NULL;
+         ++lines, p.p_c = p.p_c->mc_next) {
       xp = p;
-      ++xp.c;
+      ++xp.p_c;
       _HOPE_GET_TRACE(xp, isbad);
       if (isbad) {
          anybad = TRU1;
          fprintf(stderr,
             "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
-            xp.p, (size_t)(p.c->size - sizeof(struct chunk)),
-            p.c->file, p.c->line);
+            xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
+            p.p_c->mc_file, p.p_c->mc_line);
       }
    }
 
    if (options & OPT_DEBUG) {
-      for (p.c = _mfree; p.c != NULL; ++lines, p.c = p.c->next) {
+      for (p.p_c = _mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
          xp = p;
-         ++xp.c;
+         ++xp.p_c;
          _HOPE_GET_TRACE(xp, isbad);
          if (isbad) {
             anybad = TRU1;
             fprintf(stderr,
                "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
-               xp.p, (size_t)(p.c->size - sizeof(struct chunk)),
-               p.c->file, p.c->line);
+               xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
+               p.p_c->mc_file, p.p_c->mc_line);
          }
       }
    }
    NYD_LEAVE;
    return anybad;
 }
-# endif /* MEMCHECK */
+# endif /* _HAVE_MEMCHECK */
+
+# undef _HOPE_SIZE
+# undef _HOPE_SET
+# undef _HOPE_GET_TRACE
+# undef _HOPE_GET
 #endif /* HAVE_DEBUG */
 
 /* vim:set fenc=utf-8:s-it-mode */
