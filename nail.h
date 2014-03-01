@@ -730,8 +730,6 @@ enum okeys {
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,
-   /* XXX autoinc is the same as *newmail*, unite!! */
-   ok_v_autoinc,
    ok_v_autosort,
    ok_v_charset_7bit,
    ok_v_charset_8bit,

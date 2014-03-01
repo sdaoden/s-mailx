@@ -594,9 +594,6 @@ TODO S-nail 14.7:
     message structures instead; i.e., for maildir boxes the path is yet
     allocated separately, then it could be part of the message object,
     etc.
-  . Drop support for *autoinc* in favour of *newmail* -- mention that
-    i have forgotten to mention that it's legacy in 14.5.2 release
-    notes.
   . Given how many temporary files we use, it would make sense to
     support a reusable single temporary file, as in singletmp_take() and
     singletmp_release(), where singletmp_release() would close and thus
