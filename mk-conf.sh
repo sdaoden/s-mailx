@@ -435,12 +435,7 @@ echo "${LIBS}" >> ${lib}
 # Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without
 echo '#define _GNU_SOURCE' >> ${h}
 
-link_check hello 'if a hello world program can be built' << \! || {\
-   echo >&5 'This oooops is most certainly not related to me.';\
-   echo >&5 "Read the file ${log} and check your compiler environment.";\
-   ${rm} -f ${lst} ${h} ${mk};\
-   exit 1;\
-}
+if link_check hello 'if a hello world program can be built' << \!
 #include <stdio.h>
 
 int main(int argc, char *argv[])
@@ -451,13 +446,16 @@ int main(int argc, char *argv[])
    return 0;
 }
 !
+then
+   :
+else
+   echo >&5 'This oooops is most certainly not related to me.'
+   echo >&5 "Read the file ${log} and check your compiler environment."
+   ${rm} -f ${lst} ${h} ${mk}
+   exit 1
+fi
 
-link_check termios 'for termios.h and tc*() family' << \! || {\
-   echo >&5 'We require termios.h and the tc*() family of functions.';\
-   echo >&5 "That much Unix we indulge ourselfs.";\
-   ${rm} -f ${lst} ${h} ${mk};\
-   exit 1;\
-}
+if link_check termios 'for termios.h and tc*() family' << \!
 #include <termios.h>
 int main(void)
 {
@@ -467,6 +465,14 @@ int main(void)
    return 0;
 }
 !
+then
+   :
+else
+   echo >&5 'We require termios.h and the tc*() family of functions.'
+   echo >&5 "That much Unix we indulge ourselfs."
+   ${rm} -f ${lst} ${h} ${mk}
+   exit 1
+fi
 
 link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
