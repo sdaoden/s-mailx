@@ -1367,12 +1367,27 @@ do {\
  * of the underlaying file descriptor.  Unfortunately Standard I/O and POSIX
  * don't describe a way for that -- fflush();rewind(); won't do it.  This
  * fseek(END),rewind() pair works around the problem on *BSD and Linux.
- * We need our own, reliable I/O */
-#define really_rewind(stream) \
+ * Update as of 2014-03-03: with Issue 7 POSIX has overloaded fflush(3): if
+ * used on a readable stream, then
+ *
+ *    if the file is not already at EOF, and the file is one capable of
+ *    seeking, the file offset of the underlying open file description shall
+ *    be set to the file position of the stream.
+ *
+ * We need our own, simplified and reliable I/O */
+#if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+# define really_rewind(stream) \
+do {\
+   rewind(stream);\
+   fflush(stream);\
+} while (0)
+#else
+# define really_rewind(stream) \
 do {\
    fseek(stream, 0, SEEK_END);\
    rewind(stream);\
 } while (0)
+#endif
 
 /* For saving the current directory and later returning */
 struct cw {
