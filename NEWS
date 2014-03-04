@@ -36,6 +36,13 @@ Many thanks to the perpetual Gavin Troy.
   a non-hackish way.  It is thus likely that S-nail will gain
   a completely new I/O layer in the future.  That'll also be faster.
 
+  P.S., 2014-03-04:
+  This note is false: POSIX Issue 7 overloaded the meaning of
+  fflush(3): when used on readable streams the file offset of the
+  underlaying file descriptor is adjusted to that of the stream.
+  (nail.h: adjust really_rewind(): POSIX Issue 7 defined a way..)
+  uses this official approach instead if _POSIX_VERSION>=200809L.
+
 - Old shells will now correctly execute an error-condition
   execution path in `mk-conf.sh'. [afef55f]
 
