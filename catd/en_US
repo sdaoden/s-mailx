@@ -76,7 +76,7 @@ $set 1
 73 temporary mail edit file
 74 cannot create tempfile\n
 75 Unterminated %s definition: "%s".\n
-76 A macro named "%s" already exists.\n
+76 A %s named `%s' already exists.\n
 77 temporary file seek
 78 %s: illegal option -- %c\n
 79 %s: option requires an argument -- %c\n
@@ -210,7 +210,7 @@ $set 1
 200 too long to edit\n
 201 Cannot associate a name with uid %lu
 202 "%s": no such alias\n
-203 "%s": undefined variable\n
+203 `%s': undefined variable\n
 204 No POP3 `APOP' support available, sending password in clear text\n
 205 More than one file given with -f\n
 206 $%c%c%3d %s%-*.*s  %16.16s %s\n$
@@ -494,6 +494,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 429 Show features that are compiled into the MUA
 430 Print some informations on the given <variables>
 431 <show> (default), <clear> or select <NO> from editor history
+432 Delete all given <accounts>
 
 
 500 $ done.\n
@@ -502,11 +503,11 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
  the current one is\n\
   `%s' -- try `folders @'.\n
 503 [NONE]
-504 Missing macro name to `define'
+504 `%s': required arguments are missing\n
 505 Syntax is: define <name> {
-506 Missing macro name to `undef'\n
+506 Rejecting deletion of currently active account `%s'\n
 507 Syntax is: call <%s>\n
-508 Undefined macro called: \"%s\"\n
+508 Undefined macro called: `%s'\n
 509 $User: $
 510 $Password: $
 511 ${former content: %.*s} $
@@ -569,3 +570,4 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 568 The -u option cannot be used in send mode\n
 569 The options -f and -u are mutually exclusive\n
 570 The value of *attrlist* is not of the correct length\n
+571 %s `%s' is not defined\n

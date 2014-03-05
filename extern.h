@@ -85,18 +85,17 @@ FL bool_t   _var_vokclear(char const *vokey);
 /* List all variables */
 FL void     var_list_all(void);
 
+/* `var-inspect', `define', `undefine', `call' / `~' */
 FL int      c_var_inspect(void *v);
 FL int      c_define(void *v);
-FL int      c_undef(void *v);
+FL int      c_undefine(void *v);
 FL int      c_call(void *v);
 
 FL int      callhook(char const *name, int nmail);
 
-/* List all macros */
-FL int      c_defines(void *v);
-
-/* `account' */
+/* `account', `unaccount' */
 FL int      c_account(void *v);
+FL int      c_unaccount(void *v);
 
 /* `localopts' */
 FL int      c_localopts(void *v);

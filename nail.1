@@ -1102,11 +1102,15 @@ As an example,
 creates an account named `myisp' which can later be selected by
 specifying `account myisp'.
 The special account `null' (case-insensitive) always exists.
+Accounts can be deleted via
+.Ic unaccount .
 .It Ic alias
 (a) With no arguments, prints out all currently-defined aliases.
 With one argument, prints out that alias.
 With more than one argument,
 creates a new alias or changes an old one.
+.Ic unalias
+can be used to delete aliases.
 .It Ic alternates
 (alt) The alternates command is useful if the user has accounts on
 several machines.
@@ -1184,7 +1188,9 @@ Encrypted messages are first decrypted, if possible, and then copied.
 but saves the messages in a file named after the local part of the
 sender address of the first message.
 .It Ic define
-(def) Defines a macro.
+(def) Without arguments the current list of macros, including their
+content, is printed.
+If arguments are given this command defines a macro.
 A macro definition is a sequence of commands in the following form:
 .Bd -literal -offset indent
    define name {
@@ -1204,8 +1210,8 @@ or it can be implicitly invoked by setting the
 or
 .Va folder-hook-fullname
 variables.
-.It Ic defines
-Prints the currently defined macros including their contents.
+Macros can be deleted via
+.Ic undefine .
 .It Ic delete
 (d) Takes a list of messages as argument and marks them all as deleted.
 Deleted messages will not be saved in `mbox',
@@ -1935,6 +1941,10 @@ command.
 .It Ic type
 (t) A synonym for
 .Ic print .
+.It Ic unaccount
+Delete all given accounts.
+An error message is printed if a given account is not defined.
+Attempts to delete the currently active account are rejected.
 .It Ic unalias
 Takes a list of names defined by alias commands
 and discards the remembered groups of users.
@@ -1948,10 +1958,9 @@ When a message becomes the current message,
 it is automatically made visible.
 Also when a message with collapsed replies is printed,
 all of these are automatically uncollapsed.
-.It Ic undef
-Undefines each of the named macros.
-It is not an error to use a name that does not belong to
-one of the currently defined macros.
+.It Ic undefine
+Undefine all given macros.
+An error message is printed if a given macro is not defined.
 .It Ic undelete
 (u) Takes a message list and marks each message as not being deleted.
 .It Ic undraft

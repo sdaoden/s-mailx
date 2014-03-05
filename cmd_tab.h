@@ -291,10 +291,10 @@
      DS(389, "Un\"draft\" <message-list>") },
    { "define", &c_define, (M | RAWLIST), 0, 2
      DS(319, "Define a macro") },
-   { "defines", &c_defines, (I | M | RAWLIST), 0, 0
-     DS(320, "Show all defined macros including their content") },
-   { "undef", &c_undef, (M | RAWLIST), 0, 1000
+   { "undefine", &c_undefine, (M | RAWLIST), 0, 1000
      DS(391, "Un\"define\" all <macros>") },
+   { "unaccount", &c_unaccount, (M | RAWLIST), 0, 1000
+     DS(432, "Delete all given <accounts>") },
    { "call", &c_call, (M | RAWLIST), 0, 1
      DS(308, "Call a macro") },
    { "~", &c_call, (M | RAWLIST), 0, 1
