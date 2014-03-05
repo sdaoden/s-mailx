@@ -120,6 +120,7 @@ reflected by the following statements.
     up in a way that should ensure that the actually expected datatype
     is of the same size in reality -- please see the definition of the
     `ZFMT' macro in `nail.h' to verify this statement is true.
+    It is also compile-time asserted via __ZFMT_CTA(), in main.c.
 
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 i386

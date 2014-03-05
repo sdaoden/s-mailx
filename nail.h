@@ -452,14 +452,17 @@ typedef ssize_t         siz_t;
 
 /* XXX Note we don't really deal with that the right way in that we pass size_t
  * XXX arguments without casting; should do, because above we assert UINT_MAX
- * XXX is indeed ui32_t */
+ * XXX is indeed ui32_t -- CTAsserted in main.c */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define ZFMT           "zu"
+# define __ZFMT_CTA()   CTA(1 == 1)
 #elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
 # define ZFMT           "u"
+# define __ZFMT_CTA()   CTA(sizeof(size_t) == sizeof(unsigned int))
 #endif
 #ifndef ZFMT
 # define ZFMT           "lu"
+# define __ZFMT_CTA()   CTA(sizeof(size_t) == sizeof(unsigned long))
 #endif
 
 enum {FAL0, TRU1};

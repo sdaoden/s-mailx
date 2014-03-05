@@ -66,6 +66,9 @@
 
 #include "version.h"
 
+/* Verify that our size_t ZFMT format string has the correct type size */
+__ZFMT_CTA();
+
 struct a_arg {
    struct a_arg   *aa_next;
    char           *aa_file;
