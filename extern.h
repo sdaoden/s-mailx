@@ -178,7 +178,6 @@ FL size_t      paging_seems_sensible(void);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
-#define try_pager(FP)            page_or_print(FP, 0) /* TODO obsolete */
 
 /* Parse name and guess at the required protocol */
 FL enum protocol  which_protocol(char const *name);

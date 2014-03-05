@@ -2734,7 +2734,7 @@ dopr(FILE *fp)
    } else
       strncpy(o, "sort", sizeof o)[sizeof o - 1] = '\0';
    run_command(XSHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
-   try_pager(out);
+   page_or_print(out, 0);
    Fclose(out);
 jleave:
    NYD_LEAVE;
