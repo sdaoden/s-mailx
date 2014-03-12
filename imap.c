@@ -1844,8 +1844,9 @@ imap_getheaders(int volatile bot, int topp) /* TODO should take iterator!! */
 
       for (i = bot; i <= topp; i += chunk) {
          int j = i + chunk - 1;
-         /* FIXME Gavin reported SEGV>800 msgs if (visible(message + j)) */
-            /*ok = */imap_fetchheaders(&mb, message, i, (j < topp ? j : topp));
+         j = MIN(j, topp);
+         if (visible(message + j))
+            /*ok = */imap_fetchheaders(&mb, message, i, j);
          if (interrupts)
             onintr(0); /* XXX imaplock? */
       }
