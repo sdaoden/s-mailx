@@ -462,7 +462,7 @@ jlist: {
    for (i = (ul_it)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
       char *cp = (*--hl)->line;
       size_t sl = strlen(cp);
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n", i, cp, b, sl);
+      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n", i, cp, b, sl);
       b += sl;
    }
 
@@ -680,7 +680,7 @@ jlist: {
    for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
          x = history(_el_hcom, &he, H_NEXT)) {
       size_t sl = strlen(he.str);
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n",
          (ul_it)i, he.str, (ul_it)b, (ul_it)sl);
       --i;
       b += sl;
@@ -2011,7 +2011,7 @@ jlist: {
    i = _ncl_hist_size;
    b = 0;
    for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%lu bytes)\n",
+      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n",
          (ul_it)i, h->dat, (ul_it)b, (ul_it)h->len);
 
    page_or_print(fp, i);
