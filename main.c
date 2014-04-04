@@ -674,7 +674,7 @@ main(int argc, char *argv[])
          okey = "ignore";
          goto joarg;
       case 'L':
-         Larg = optarg;
+         Larg = _oarg;
          if (*Larg == '"' || *Larg == '\'') { /* TODO list.c:listspec_check() */
             size_t j = strlen(++Larg);
             if (j > 0)
