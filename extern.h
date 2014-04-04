@@ -85,8 +85,8 @@ FL bool_t   _var_vokclear(char const *vokey);
 /* List all variables */
 FL void     var_list_all(void);
 
-/* `var-inspect', `define', `undefine', `call' / `~' */
-FL int      c_var_inspect(void *v);
+/* `varshow', `define', `undefine', `call' / `~' */
+FL int      c_varshow(void *v);
 FL int      c_define(void *v);
 FL int      c_undefine(void *v);
 FL int      c_call(void *v);

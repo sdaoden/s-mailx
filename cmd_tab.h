@@ -367,8 +367,8 @@
      DS(428, "Print current working directory (CWD)") },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
-   { "var-inspect", &c_var_inspect, (M | RAWLIST), 1, 1000
-     DS(430, "Print some informations on the given <variables>") },
+   { "varshow", &c_varshow, (M | RAWLIST), 1, 1000
+     DS(430, "Show some informations about the given <variables>") },
    { "features", &_features, (M | NOLIST), 0, 0
      DS(429, "Show features that are compiled into the MUA") },
    { "version", &_version, (M | NOLIST), 0, 0

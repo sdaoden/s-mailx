@@ -887,7 +887,7 @@ jleave:
 }
 
 FL int
-c_var_inspect(void *v)
+c_varshow(void *v)
 {
    struct var_carrier vc;
    char **argv = v, *val;
