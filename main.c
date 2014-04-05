@@ -66,6 +66,9 @@
 
 #include "version.h"
 
+/* Verify that our size_t ZFMT format string has the correct type size */
+__ZFMT_CTA();
+
 struct a_arg {
    struct a_arg   *aa_next;
    char           *aa_file;
@@ -674,7 +677,7 @@ main(int argc, char *argv[])
          okey = "ignore";
          goto joarg;
       case 'L':
-         Larg = optarg;
+         Larg = _oarg;
          if (*Larg == '"' || *Larg == '\'') { /* TODO list.c:listspec_check() */
             size_t j = strlen(++Larg);
             if (j > 0)

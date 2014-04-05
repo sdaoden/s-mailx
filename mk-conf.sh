@@ -105,7 +105,7 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
       if { i=${ccver}; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
-         :
+         _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
          _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
          if wantfeat AMALGAMATION && nwantfeat DEBUG; then

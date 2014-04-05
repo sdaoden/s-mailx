@@ -85,18 +85,17 @@ FL bool_t   _var_vokclear(char const *vokey);
 /* List all variables */
 FL void     var_list_all(void);
 
-FL int      c_var_inspect(void *v);
+/* `varshow', `define', `undefine', `call' / `~' */
+FL int      c_varshow(void *v);
 FL int      c_define(void *v);
-FL int      c_undef(void *v);
+FL int      c_undefine(void *v);
 FL int      c_call(void *v);
 
 FL int      callhook(char const *name, int nmail);
 
-/* List all macros */
-FL int      c_defines(void *v);
-
-/* `account' */
+/* `account', `unaccount' */
 FL int      c_account(void *v);
+FL int      c_unaccount(void *v);
 
 /* `localopts' */
 FL int      c_localopts(void *v);
@@ -114,11 +113,10 @@ FL struct attachment *  add_attachment(struct attachment *aphead, char *file,
                            struct attachment **newap);
 
 /* Append comma-separated list of file names to the end of attachment list */
-FL struct attachment *  append_attachments(struct attachment *aphead,
-                           char *names);
+FL void        append_attachments(struct attachment **aphead, char *names);
 
-/* Interactively edit the attachment list, return the new list head */
-FL struct attachment *  edit_attachments(struct attachment *aphead);
+/* Interactively edit the attachment list */
+FL void        edit_attachments(struct attachment **aphead);
 
 /*
  * auxlily.c
@@ -178,7 +176,6 @@ FL size_t      paging_seems_sensible(void);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
-#define try_pager(FP)            page_or_print(FP, 0) /* TODO obsolete */
 
 /* Parse name and guess at the required protocol */
 FL enum protocol  which_protocol(char const *name);
@@ -1020,17 +1017,22 @@ FL enum okay   maildir_remove(char const *name);
 FL char const * charset_get_7bit(void);
 
 /* *charset-8bit*, else CHARSET_8BIT */
+#ifdef HAVE_ICONV
 FL char const * charset_get_8bit(void);
+#endif
 
 /* LC_CTYPE:CODESET / *ttycharset*, else *charset-8bit*, else CHARSET_8BIT */
 FL char const * charset_get_lc(void);
 
-/* *sendcharsets* / *charset-8bit* iterator.
- * *a_charset_to_try_first* may be used to prepend a charset (as for
- * *reply-in-same-charset*);  works correct for !HAVE_ICONV */
-FL void        charset_iter_reset(char const *a_charset_to_try_first);
-FL char const * charset_iter_next(void);
-FL char const * charset_iter_current(void);
+/* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be
+ * used to prepend a charset to this list (e.g., for *reply-in-same-charset*).
+ * The returned boolean indicates charset_iter_is_valid().
+ * Without HAVE_ICONV, this "iterates" over charset_get_lc() only */
+FL bool_t      charset_iter_reset(char const *a_charset_to_try_first);
+FL bool_t      charset_iter_next(void);
+FL bool_t      charset_iter_is_valid(void);
+FL char const * charset_iter(void);
+
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 

@@ -92,7 +92,8 @@ cksum_test() {
    tid=$1 f=$2 s=$3
    printf "${tid}: "
    csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
-         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" | ${cksum}`";
+         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" \
+         -e '/^\[-- Message/d' | ${cksum}`";
    if [ "${csum}" = "${s}" ]; then
       printf 'ok\n'
    else
@@ -423,7 +424,7 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua \
       -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:6 "${MBOX}" '3062395510 181'
+   cksum_test content:6 "${MBOX}" '1520300594 138'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }

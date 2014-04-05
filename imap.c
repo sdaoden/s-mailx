@@ -1844,8 +1844,9 @@ imap_getheaders(int volatile bot, int topp) /* TODO should take iterator!! */
 
       for (i = bot; i <= topp; i += chunk) {
          int j = i + chunk - 1;
+         j = MIN(j, topp);
          if (visible(message + j))
-            /*ok = */imap_fetchheaders(&mb, message, i, (j < topp ? j : topp));
+            /*ok = */imap_fetchheaders(&mb, message, i, j);
          if (interrupts)
             onintr(0); /* XXX imaplock? */
       }
@@ -2733,7 +2734,7 @@ dopr(FILE *fp)
    } else
       strncpy(o, "sort", sizeof o)[sizeof o - 1] = '\0';
    run_command(XSHELL, 0, fileno(fp), fileno(out), "-c", o, NULL);
-   try_pager(out);
+   page_or_print(out, 0);
    Fclose(out);
 jleave:
    NYD_LEAVE;

@@ -841,9 +841,9 @@ jcont:
       case '@':
          /* Edit the attachment list */
          if (linebuf[2] != '\0')
-            hp->h_attach = append_attachments(hp->h_attach, linebuf + 2);
+            append_attachments(&hp->h_attach, linebuf + 2);
          else
-            hp->h_attach = edit_attachments(hp->h_attach);
+            edit_attachments(&hp->h_attach);
          break;
       case 'c':
          /* Add to the CC list */

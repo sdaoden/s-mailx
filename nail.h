@@ -452,14 +452,17 @@ typedef ssize_t         siz_t;
 
 /* XXX Note we don't really deal with that the right way in that we pass size_t
  * XXX arguments without casting; should do, because above we assert UINT_MAX
- * XXX is indeed ui32_t */
+ * XXX is indeed ui32_t -- CTAsserted in main.c */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define ZFMT           "zu"
+# define __ZFMT_CTA()   CTA(1 == 1)
 #elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
 # define ZFMT           "u"
+# define __ZFMT_CTA()   CTA(sizeof(size_t) == sizeof(unsigned int))
 #endif
 #ifndef ZFMT
 # define ZFMT           "lu"
+# define __ZFMT_CTA()   CTA(sizeof(size_t) == sizeof(unsigned long))
 #endif
 
 enum {FAL0, TRU1};
@@ -730,8 +733,6 @@ enum okeys {
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,
-   /* XXX autoinc is the same as *newmail*, unite!! */
-   ok_v_autoinc,
    ok_v_autosort,
    ok_v_charset_7bit,
    ok_v_charset_8bit,
@@ -1369,12 +1370,27 @@ do {\
  * of the underlaying file descriptor.  Unfortunately Standard I/O and POSIX
  * don't describe a way for that -- fflush();rewind(); won't do it.  This
  * fseek(END),rewind() pair works around the problem on *BSD and Linux.
- * We need our own, reliable I/O */
-#define really_rewind(stream) \
+ * Update as of 2014-03-03: with Issue 7 POSIX has overloaded fflush(3): if
+ * used on a readable stream, then
+ *
+ *    if the file is not already at EOF, and the file is one capable of
+ *    seeking, the file offset of the underlying open file description shall
+ *    be set to the file position of the stream.
+ *
+ * We need our own, simplified and reliable I/O */
+#if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+# define really_rewind(stream) \
+do {\
+   rewind(stream);\
+   fflush(stream);\
+} while (0)
+#else
+# define really_rewind(stream) \
 do {\
    fseek(stream, 0, SEEK_END);\
    rewind(stream);\
 } while (0)
+#endif
 
 /* For saving the current directory and later returning */
 struct cw {

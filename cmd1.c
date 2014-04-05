@@ -754,11 +754,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
                   rv = 1;
                   goto jleave;
                }
-            nlines += mp->m_lines;
+            nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */
          }
       }
 
-      if (dopage || UICMP(z, nlines, >,
+      /* `>=' not `<': we return to the prompt */
+      if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
          pager = get_pager();
 #ifdef HAVE_SETENV

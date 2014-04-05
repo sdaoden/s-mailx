@@ -147,29 +147,38 @@ _attach_file(struct attachment *ap, FILE *fo)
 {
    /* TODO of course, the MIME classification needs to performed once
     * TODO only, not for each and every charset anew ... ;-// */
-   int err = 0;
    char *charset_iter_orig[2];
    long offs;
+   int err = 0;
    NYD_ENTER;
 
-   /* Is this already in target charset? */
+   /* Is this already in target charset?  Simply copy over */
    if (ap->a_conv == AC_TMPFILE) {
       err = __attach_file(ap, fo);
       Fclose(ap->a_tmpf);
+      DBG( ap->a_tmpf = NULL; )
       goto jleave;
    }
 
-   /* We "consume" *ap*, so directly adjust it as we need it */
-   if (ap->a_conv == AC_FIX_INCS)
+   /* If we don't apply charset conversion at all (fixed input=ouput charset)
+    * we also simply copy over, since it's the users desire */
+   if (ap->a_conv == AC_FIX_INCS) {
       ap->a_charset = ap->a_input_charset;
+      err = __attach_file(ap, fo);
+      goto jleave;
+   }
 
+   /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
       err = EIO;
       goto jleave;
    }
-
    charset_iter_recurse(charset_iter_orig);
-   for (charset_iter_reset(NULL); charset_iter_next() != NULL;) {
+   for (charset_iter_reset(NULL);; charset_iter_next()) {
+      if (!charset_iter_is_valid()) {
+         err = EILSEQ;
+         break;
+      }
       err = __attach_file(ap, fo);
       if (err == 0 || (err != EILSEQ && err != EINVAL))
          break;
@@ -1191,7 +1200,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       if (ok_blook(askbcc))
          ++err, grab_headers(hp, GBCC, 1);
       if (ok_blook(askattach))
-         ++err, hp->h_attach = edit_attachments(hp->h_attach);
+         ++err, edit_attachments(&hp->h_attach);
       if (ok_blook(asksign))
          ++err, dosign = yorn(tr(35, "Sign this message (y/n)? "));
       if (err == 1) {
@@ -1270,8 +1279,8 @@ jaskeot:
    to = fixhead(hp, to);
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
-   for (charset_iter_reset(hp->h_charset);;) {
-      if (charset_iter_next() == NULL)
+   for (charset_iter_reset(hp->h_charset);; charset_iter_next()) {
+      if (!charset_iter_is_valid())
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;

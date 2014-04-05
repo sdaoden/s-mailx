@@ -399,7 +399,7 @@ _var_clear(struct var_carrier *vcp)
 
    if (!_var_lookup(vcp)) {
       if (!sourcing && !var_clear_allow_undefined) {
-         fprintf(stderr, tr(203, "\"%s\": undefined variable\n"), vcp->vc_name);
+         fprintf(stderr, tr(203, "`%s': undefined variable\n"), vcp->vc_name);
          goto jleave;
       }
    } else {
@@ -610,14 +610,10 @@ _define1(char const *name, enum ma_flags mafl)
    mp->ma_maxlen = maxlen;
 
    if (_malook(mp->ma_name, mp, mafl) != NULL) {
-      if (!(mafl & MA_ACC)) {
-         fprintf(stderr, tr(76, "A macro named \"%s\" already exists.\n"),
-            mp->ma_name);
-         lst = mp->ma_contents;
-         goto jerr;
-      }
-      _undef1(mp->ma_name, MA_ACC);
-      _malook(mp->ma_name, mp, MA_ACC);
+      fprintf(stderr, tr(76, "A %s named `%s' already exists.\n"),
+         (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
+      lst = mp->ma_contents;
+      goto jerr;
    }
 
    rv = TRU1;
@@ -645,7 +641,9 @@ _undef1(char const *name, enum ma_flags mafl)
       _freelines(mp->ma_contents);
       free(mp->ma_name);
       free(mp);
-   }
+   } else
+      fprintf(stderr, tr(571, "%s `%s' is not defined\n"),
+         (mafl & MA_ACC ? "Account" : "Macro"), name);
    NYD_LEAVE;
 }
 
@@ -889,7 +887,7 @@ jleave:
 }
 
 FL int
-c_var_inspect(void *v)
+c_varshow(void *v)
 {
    struct var_carrier vc;
    char **argv = v, *val;
@@ -934,37 +932,35 @@ c_define(void *v)
 {
    int rv = 1;
    char **args = v;
-   char const *errs;
    NYD_ENTER;
 
    if (args[0] == NULL) {
-      errs = tr(504, "Missing macro name to `define'");
-      goto jerr;
+      rv = _list_macros(MA_NONE);
+      goto jleave;
    }
+
    if (args[1] == NULL || args[1][0] != '{' || args[1][1] != '\0' ||
          args[2] != NULL) {
-      errs = tr(505, "Syntax is: define <name> {");
-      goto jerr;
+      fprintf(stderr, tr(505, "Syntax is: define <name> {"));
+      goto jleave;
    }
 
    rv = !_define1(args[0], MA_NONE);
 jleave:
    NYD_LEAVE;
    return rv;
-jerr:
-   fprintf(stderr, "%s\n", errs);
-   goto jleave;
 }
 
 FL int
-c_undef(void *v)
+c_undefine(void *v)
 {
    int rv = 1;
    char **args = v;
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, tr(506, "Missing macro name to `undef'\n"));
+      fprintf(stderr, tr(504, "`%s': required arguments are missing\n"),
+         "undefine");
       goto jleave;
    }
    do
@@ -992,7 +988,7 @@ c_call(void *v)
    }
 
    if ((mp = _malook(*args, NULL, MA_NONE)) == NULL) {
-      errs = tr(508, "Undefined macro called: \"%s\"\n");
+      errs = tr(508, "Undefined macro called: `%s'\n");
       name = *args;
       goto jerr;
    }
@@ -1032,18 +1028,6 @@ callhook(char const *name, int nmail)
    inhook = 0;
 jleave:
    ac_free(var);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_defines(void *v)
-{
-   int rv;
-   NYD_ENTER;
-   UNUSED(v);
-
-   rv = _list_macros(MA_NONE);
    NYD_LEAVE;
    return rv;
 }
@@ -1113,6 +1097,33 @@ c_account(void *v)
       restorequitflags(nqf);
    }
    rv = 0;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unaccount(void *v)
+{
+   int rv = 1;
+   char **args = v;
+   NYD_ENTER;
+
+   if (*args == NULL) {
+      fprintf(stderr, tr(504, "`%s': required arguments are missing\n"),
+         "unaccount");
+      goto jleave;
+   }
+
+   rv = 0;
+   do {
+      if (account_name != NULL && !strcmp(account_name, *args)) {
+         fprintf(stderr, tr(506,
+            "Rejecting deletion of currently active account `%s'\n"), *args);
+         continue;
+      }
+      _undef1(*args, MA_ACC);
+   } while (*++args != NULL);
 jleave:
    NYD_LEAVE;
    return rv;

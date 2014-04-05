@@ -248,6 +248,8 @@ unregister_file(FILE *fp)
          if ((p->compressed & FP_MASK) != FP_RAW) /* TODO ;} */
             rv = _compress(p);
          *pp = p->link;
+         if (p->realfile != NULL)
+            free(p->realfile);
          free(p);
          goto jleave;
       }

@@ -689,8 +689,7 @@ commands(void)
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          char *cp;
 
-         if ((cp = ok_vlook(newmail)) == NULL)
-            cp = ok_vlook(autoinc); /* TODO legacy */
+         cp = ok_vlook(newmail);
          if ((options & OPT_TTYIN) && (cp != NULL || mb.mb_type == MB_IMAP)) {
             struct stat st;
 
