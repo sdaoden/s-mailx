@@ -169,7 +169,7 @@ $set 1
 159 Usage: %s\n
 160 $#%u\tinput charset: $
 161 $#%u\toutput (send) charset: $
-162 $Filename doesn't indicate text content - want to edit charsets? $
+162 $Filename doesn't indicate text content - edit charsets nonetheless? $
 163 temporary mail quit file
 164 Saved 1 message in mbox\n
 165 Saved %d messages in mbox\n
@@ -571,3 +571,4 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 569 The options -f and -u are mutually exclusive\n
 570 The value of *attrlist* is not of the correct length\n
 571 %s `%s' is not defined\n
+572 *sendcharsets* and *charset-8bit* iteration exhausted, restarting\n

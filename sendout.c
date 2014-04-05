@@ -1200,7 +1200,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       if (ok_blook(askbcc))
          ++err, grab_headers(hp, GBCC, 1);
       if (ok_blook(askattach))
-         ++err, hp->h_attach = edit_attachments(hp->h_attach);
+         ++err, edit_attachments(&hp->h_attach);
       if (ok_blook(asksign))
          ++err, dosign = yorn(tr(35, "Sign this message (y/n)? "));
       if (err == 1) {

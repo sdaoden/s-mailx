@@ -113,11 +113,10 @@ FL struct attachment *  add_attachment(struct attachment *aphead, char *file,
                            struct attachment **newap);
 
 /* Append comma-separated list of file names to the end of attachment list */
-FL struct attachment *  append_attachments(struct attachment *aphead,
-                           char *names);
+FL void        append_attachments(struct attachment **aphead, char *names);
 
-/* Interactively edit the attachment list, return the new list head */
-FL struct attachment *  edit_attachments(struct attachment *aphead);
+/* Interactively edit the attachment list */
+FL void        edit_attachments(struct attachment **aphead);
 
 /*
  * auxlily.c

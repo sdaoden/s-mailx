@@ -65,6 +65,8 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    char prefix[80 * 2];
    NYD_ENTER;
 
+   ap->a_input_charset = ap->a_charset = NULL;
+
    ap->a_name = file;
    if ((file = strrchr(file, '/')) != NULL)
       ++file;
@@ -79,16 +81,18 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
 
    if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Disposition: ", number);
-      ap->a_content_disposition = readstr_input(prefix,
-            ap->a_content_disposition);
-   }
-   if (ap->a_content_disposition == NULL)
+      if ((ap->a_content_disposition = readstr_input(prefix,
+            ap->a_content_disposition)) == NULL)
+         goto jcdis;
+   } else
+jcdis:
       ap->a_content_disposition = "attachment";
 
    if (number > 0 && ok_blook(attachment_ask_content_id)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
       ap->a_content_id = readstr_input(prefix, ap->a_content_id);
-   }
+   } else
+      ap->a_content_id = NULL;
 
    if (number > 0 && ok_blook(attachment_ask_content_description)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Description: ", number);
@@ -99,44 +103,71 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    return ap;
 }
 
-static struct attachment *
-_read_attachment_data(struct attachment *ap, ui32_t number)
+static sigjmp_buf __atticonv_jmp; /* TODO someday, we won't need it no more */
+static int __atticonv_sig; /* TODO someday, we won't need it no more */
+static void
+__atticonv_onsig(int sig) /* TODO someday, we won't need it no more */
 {
+   NYD_X; /* Signal handler */
+   __atticonv_sig = sig;
+   siglongjmp(__atticonv_jmp, 1);
+}
+
+static struct attachment *
+_read_attachment_data(struct attachment * volatile ap, ui32_t number)
+{
+   sighandler_type volatile ohdl;
    char prefix[80 * 2];
    char const *cslc = NULL/*cc uninit?*/, *cp, *defcs;
    NYD_ENTER;
 
+   hold_sigs(); /* TODO until we have signal manager (see TODO) */
+   ohdl = safe_signal(SIGINT, SIG_IGN);
+   __atticonv_sig = 0;
+   if (sigsetjmp(__atticonv_jmp, 1)) {
+      ap = NULL;
+      goto jleave;
+   }
+   safe_signal(SIGINT, &__atticonv_onsig);
+
    if (ap == NULL)
       ap = csalloc(1, sizeof *ap);
    else if (ap->a_msgno) {
-      char *ecp = salloc(16);
-      snprintf(ecp, 16, "#%u", (ui_it)ap->a_msgno);
+      char *ecp = salloc(24);
+      snprintf(ecp, 24, "#%u", (ui_it)ap->a_msgno);
       ap->a_msgno = 0;
+      ap->a_content_description = NULL;
       ap->a_name = ecp;
    } else if (ap->a_conv == AC_TMPFILE) {
       Fclose(ap->a_tmpf);
+      DBG( ap->a_tmpf = NULL; )
       ap->a_conv = AC_DEFAULT;
    }
 
+   rele_sigs(); /* TODO until we have signal manager (see TODO) */
    snprintf(prefix, sizeof prefix, tr(50, "#%u\tfilename: "), number);
    for (;;) {
       if ((ap->a_name = readstr_input(prefix, ap->a_name)) == NULL) {
          ap = NULL;
          goto jleave;
       }
-      /* May be a message number */
+
+      /* May be a message number (XXX add "AC_MSG", use that not .a_msgno) */
       if (ap->a_name[0] == '#') {
          char *ecp;
          int msgno = (int)strtol(ap->a_name + 1, &ecp, 10);
          if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
             ap->a_msgno = msgno;
+            ap->a_content_type = ap->a_content_disposition =
+                  ap->a_content_id = NULL;
             ap->a_content_description = tr(513, "Attached message content");
             if (options & OPT_INTERACTIVE)
                printf(tr(2, "~@: added message #%u\n"), msgno);
             goto jleave;
          }
       }
-      if ((cp = file_expand(ap->a_name)) != NULL && access(cp, R_OK) == 0) {
+
+      if ((cp = file_expand(ap->a_name)) != NULL && !access(cp, R_OK)) {
          ap->a_name = cp;
          break;
       }
@@ -153,13 +184,13 @@ _read_attachment_data(struct attachment *ap, ui32_t number)
    if (!(options & OPT_INTERACTIVE))
       goto jcs;
    if ((cp = ap->a_content_type) != NULL && ascncasecmp(cp, "text/", 5) != 0 &&
-         !yorn(tr(162,
-            "Filename doesn't indicate text content - want to edit charsets? "))
-   ) {
+         !yorn(tr(162, "Filename doesn't indicate text content - "
+            "edit charsets nonetheless? "))) {
       ap->a_conv = AC_DEFAULT;
       goto jleave;
    }
 
+jcs_restart:
    charset_iter_reset(NULL);
 jcs:
 #endif
@@ -181,28 +212,40 @@ jcs:
       defcs = charset_iter();
    defcs = ap->a_charset = readstr_input(prefix, defcs);
 
+   /* Input, no output -> input=as given, output=no conversion at all */
    if (cp != NULL && defcs == NULL) {
       ap->a_conv = AC_FIX_INCS;
       goto jdone;
    }
+
+   /* No input, no output -> input=*ttycharset*, output=iterator */
    if (cp == NULL && defcs == NULL) {
       ap->a_conv = AC_DEFAULT;
       ap->a_input_charset = cslc;
       ap->a_charset = charset_iter();
-   } else if (cp == NULL && defcs != NULL) {
+      assert(charset_iter_is_valid());
+      charset_iter_next();
+   }
+   /* No input, output -> input=*ttycharset*, output=as given */
+   else if (cp == NULL && defcs != NULL) {
       ap->a_conv = AC_FIX_OUTCS;
       ap->a_input_charset = cslc;
-   } else
-      ap->a_conv = AC_TMPFILE;
+   }
+   /* Input, output -> try conversion from input=as given to output=as given */
 
    printf(tr(197, "Trying conversion from %s to %s\n"), ap->a_input_charset,
       ap->a_charset);
    if (_attach_iconv(ap))
       ap->a_conv = AC_TMPFILE;
    else {
+      ap->a_conv = AC_DEFAULT;
       ap->a_input_charset = cp;
       ap->a_charset = defcs;
-      charset_iter_next();
+      if (!charset_iter_is_valid()) {
+         printf(tr(572, "*sendcharsets* and *charset-8bit* iteration "
+            "exhausted, restarting\n"));
+         goto jcs_restart;
+      }
       goto jcs;
    }
 jdone:
@@ -210,6 +253,14 @@ jdone:
    if (options & OPT_INTERACTIVE)
       printf(tr(19, "~@: added attachment \"%s\"\n"), ap->a_name);
 jleave:
+   safe_signal(SIGINT, ohdl);/* TODO until we have signal manager (see TODO) */
+   if (__atticonv_sig != 0) {
+      sigset_t nset;
+      sigemptyset(&nset);
+      sigaddset(&nset, SIGINT);
+      sigprocmask(SIG_UNBLOCK, &nset, NULL);
+      /* Caller kills */
+   }
    NYD_LEAVE;
    return ap;
 }
@@ -223,6 +274,8 @@ _attach_iconv(struct attachment *ap)
    size_t cnt, lbsize;
    iconv_t icp;
    NYD_ENTER;
+
+   hold_sigs(); /* TODO until we have signal manager (see TODO) */
 
    icp = n_iconv_open(ap->a_charset, ap->a_input_charset);
    if (icp == (iconv_t)-1) {
@@ -272,6 +325,8 @@ jleave:
       Fclose(fi);
    if (icp != (iconv_t)-1)
       n_iconv_close(icp);
+
+   rele_sigs(); /* TODO until we have signal manager (see TODO) */
    NYD_LEAVE;
    return (fo != NULL);
 
@@ -286,6 +341,7 @@ jerr:
 }
 #endif /* HAVE_ICONV */
 
+/* TODO add_attachment(): also work with **aphead, not *aphead ... */
 FL struct attachment *
 add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
 {
@@ -315,65 +371,70 @@ jleave:
    return nap;
 }
 
-FL struct attachment *
-append_attachments(struct attachment *aphead, char *names)
+FL void
+append_attachments(struct attachment **aphead, char *names)
 {
    char *cp;
    struct attachment *xaph, *nap;
    NYD_ENTER;
 
    while ((cp = n_strsep(&names, ',', 1)) != NULL) {
-      if ((xaph = add_attachment(aphead, cp, &nap)) != NULL) {
-         aphead = xaph;
+      if ((xaph = add_attachment(*aphead, cp, &nap)) != NULL) {
+         *aphead = xaph;
          if (options & OPT_INTERACTIVE)
             printf(tr(19, "~@: added attachment \"%s\"\n"), nap->a_name);
       } else
          perror(cp);
    }
    NYD_LEAVE;
-   return aphead;
 }
 
-FL struct attachment *
-edit_attachments(struct attachment *aphead)
+FL void
+edit_attachments(struct attachment **aphead)
 {
-   struct attachment *ap, *nap;
-   ui_it attno = 1;
+   struct attachment *ap, *fap, *bap;
+   ui32_t attno = 1;
    NYD_ENTER;
 
    /* Modify already present ones? */
-   for (ap = aphead; ap != NULL; ap = ap->a_flink) {
+   for (ap = *aphead; ap != NULL; ap = fap) {
       if (_read_attachment_data(ap, attno) != NULL) {
+         fap = ap->a_flink;
          ++attno;
          continue;
       }
-      nap = ap->a_flink;
-      if (ap->a_blink != NULL)
-         ap->a_blink->a_flink = nap;
+      fap = ap->a_flink;
+      if ((bap = ap->a_blink) != NULL)
+         bap->a_flink = fap;
       else
-         aphead = nap;
-      if (nap != NULL)
-         nap->a_blink = ap->a_blink;
-      else
+         *aphead = fap;
+      if (fap != NULL)
+         fap->a_blink = bap;
+      /*else*//* TODO until we have signal manager (see TODO) */
+      if (__atticonv_sig != 0)
+         kill(0, SIGINT);
+      if (fap == NULL)
          goto jleave;
    }
 
    /* Add some more? */
-   while ((nap = _read_attachment_data(NULL, attno)) != NULL) {
-      if ((ap = aphead) != NULL) {
-         while (ap->a_flink != NULL)
-            ap = ap->a_flink;
-         ap->a_flink = nap;
-      }
-      nap->a_blink = ap;
-      nap->a_flink = NULL;
-      if (aphead == NULL)
-         aphead = nap;
+   if ((bap = *aphead) != NULL)
+      while (bap->a_flink != NULL)
+         bap = bap->a_flink;
+   while ((fap = _read_attachment_data(NULL, attno)) != NULL) {
+      if (bap != NULL)
+         bap->a_flink = fap;
+      else
+         *aphead = fap;
+      fap->a_blink = bap;
+      fap->a_flink = NULL;
+      bap = fap;
       ++attno;
    }
+   if (__atticonv_sig != 0) /* TODO until we have signal manager (see TODO) */
+      kill(0, SIGINT);
 jleave:
    NYD_LEAVE;
-   return aphead;
 }
 
 /* vim:set fenc=utf-8:s-it-mode */
