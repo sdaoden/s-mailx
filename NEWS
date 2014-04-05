@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.2:
+and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.3:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -27,6 +27,10 @@ ChangeLog (packager-affine)
 - WANT_AUTOCC knows that clang(1) version 1 can dig -Wstrict-overflow=5.
   [2f77640]
 
+- '$ make test' should work even if you are not steffen.
+  (Gaetan Bisson, Gaetan Bisson, Gaetan Bisson, Gaetan Bisson,
+  Gavin Troy, Gavin Troy) [8b796ba]
+
 ChangeLog
 ^^^^^^^^^
 
@@ -34,10 +38,6 @@ ChangeLog
 
 - Working with large(r) IMAP boxes should work again without causing
   segmentation violations. (Gavin Troy) [761dd87, b0ce180]
-
-- '$ make test' should work even if you are not steffen.
-  (Gaetan Bisson, Gaetan Bisson, Gaetan Bisson, Gaetan Bisson,
-  Gavin Troy, Gavin Troy) [8b796ba]
 
 - With our builtin getopt a.k.a. WANT_NOGETOPT=1 usage of the -L option
   caused segmentation violations. (Tarqi Kazan, Gaetan Bisson) [f2c2646]
