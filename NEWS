@@ -15,6 +15,79 @@ and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.2:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.6.3, 2014-04-05
+-------------------
+
+Thanks and greetings to Gavin Troy, Gaetan Bisson and Tarqi Kazan (tarqi
+AT cfs DOT dyndns DOT biz).
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- WANT_AUTOCC knows that clang(1) version 1 can dig -Wstrict-overflow=5.
+  [2f77640]
+
+ChangeLog
+^^^^^^^^^
+
+- *autoinc* is gone -- this is *newmail*. [07a8462]
+
+- Working with large(r) IMAP boxes should work again without causing
+  segmentation violations. (Gavin Troy) [761dd87, b0ce180]
+
+- '$ make test' should work even if you are not steffen.
+  (Gaetan Bisson, Gaetan Bisson, Gaetan Bisson, Gaetan Bisson,
+  Gavin Troy, Gavin Troy) [8b796ba]
+
+- With our builtin getopt a.k.a. WANT_NOGETOPT=1 usage of the -L option
+  caused segmentation violations. (Tarqi Kazan, Gaetan Bisson) [f2c2646]
+
+- The decision wether we need $PAGER or not now also incorporates the
+  informational lines we inject for messages. [316b4cd]
+
+- Drop `defines', add `unaccount', rename `undefine'..
+  The `defines' command has been united with `define' -- just like
+  `account' will list all defined accounts when used without arguments
+  `define' will now do so for macros.  And `undefine' is the new name of
+  `undef'.  The new command `unaccount' can be used to delete all given
+  accounts, in equal spirit to `undefine' and macros.
+  All of this is still vulnerable against recursivity, e.g., deleting
+  an executing macro still works, but don't that. [b0b3275]
+
+- Rename `var-inspect' to `varshow'; silly oversight that `var-inspect'
+  will try to lookup a variable "-inspect".  Ouch. [afffd30]
+
+- Without HAVE_ICONV the character set iterator sofar used
+  *charset-8bit* as the last resort, whereas it should have used
+  *ttycharset*.  Fixed.
+  P.S.: All this still preliminary, we await the MIME and send layer
+  rewrite to calm down the stuff for real. [edc3226, df9aefd]
+
+- During `~@' editing it is possible to leave the possibly endless
+  character set selection loop by interrupting via ^C.
+  In the meanwhile this effectively drops the currently edited
+  attachment and leaves the entire attachment selection session; it
+  doesn't make sense to make it any better until we have our signal
+  manager and stop jumping around.
+
+  This changeset should also fix dangling Content-Xy MIME information of
+  attachments which were in the same slot before, e.g., if #1 was
+  a message attachment and that was changed on-the-fly to be a real file
+  attachment then the Content-Description would still have stated that
+  it is a message attachment.
+  [07a8462]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Since it has been decided to remain compatible to ISO C89 we cannot
+  use the ISO C99 `z' format string modifier (printf(3)).
+  Since quite some time we make efforts to provide our own `ZFMT' macro
+  (in `nail.h') which provides somethint compatible, but on 32-bit
+  platforms compilers often complain nonetheless.
+  Therefore we now also have a compile-time assertion that proves that
+  our `ZFMT' macro is really correct. [397e4d1]
+
 v14.6.2, 2014-03-01
 -------------------
 
