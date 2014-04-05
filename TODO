@@ -352,6 +352,39 @@ Low-Level
      fucking sig* shit.  It rhymes, it rhymes :)
      Should we even be able to go the non-blocking select(2) way in the
      end -- that would be fantastic!
+ 10. The line buffer used in evaluate() that is passed through to
+     commands (thus: in cmd_ctx, then) needs to become `const'.
+     (I tried to do so in the past, but some commands write into it,
+     thus i stopped and iirc even added some changes on my own which
+     take favour of reusing that buffer.)
+     + Macro execution then no longer needs to clone the macro content
+     lines before executing then.
+ 11. Macro execution is potentially recursive.  Meaning that
+     `undefine', etc. can occur while macros are executing.
+     The simplemost approach would be to have some recursion counter for
+     each macro and a delete_later flag that gets honoured when the
+     recursion counter gets zero.  It would be already possible to
+     immediately remove the macro from the hashtable, so that deeper
+     levels wouldn't find it anymore.  To avoid leaks (which *are*) we
+     need to have a jump location for our upcoming signal handler
+     anyway.  (Also to get rid of the temporary_localopts_free() hack.
+     + The same is true for `account's.  Here things are complicated by
+     the global `account_name', i.e., the account could be the current
+     one.
+ 12. It is annoying that you cannot `source' your MAILRC multiple times.
+     Defining a macro/account/xy should overwrite the current thing,
+     just as it does anyway for normal variables!
+     This is no different than 11. plus additional re-addition.
+     (Same exception: what if the currently active account is
+     overwritten?  Same answer, plus a message "new settings take effect
+     when account is switched to the next time".)
+ 20. The attachment charset selection loop can then be rewritten to
+     check wether an ^C occurred and treat that as end-of-loop
+     condition.  In v14.6.3 this was introduced, but it should act
+     differently depending on wether the interrupt occurred during
+     character set selection or attachment filename input.
+     Also in respect wether the interrupt is "propagated" or not.
+     It's ugly, and documented accordingly.
 
 TODO S-nail 14.7:
 -----------------
@@ -594,6 +627,9 @@ TODO S-nail 14.7:
     message structures instead; i.e., for maildir boxes the path is yet
     allocated separately, then it could be part of the message object,
     etc.
+    It should contain a ui8_t that tracks the number of contained parts,
+    so that the "fits-onto-the-screen" tests are more useful than today;
+    i think 8-bit is sufficient, with 0xFF meaning more-than-fits-here.
   . Given how many temporary files we use, it would make sense to
     support a reusable single temporary file, as in singletmp_take() and
     singletmp_release(), where singletmp_release() would close and thus
@@ -638,5 +674,35 @@ TODO S-nail 14.7:
     mightrecord() may internally (via _compress()) instantiate
     a complete IMAP session and try to send incomplete data etc.,
     and all that may jump, i refrained from doing so.
+  . (RFC 6409 and) SMTPS should go for port 587.  Also /etc/services
+    doesn't deal with SMTPS but on NetBSD, here the (original, now wrong,
+    and still used in our codebase: IPv4) port 465 is used for SMTPS.
+    This means: users which use smtps:// alone will most likely not be
+    able to use SMTPS, they have to add a :PORTSTR.
+    (Ooops - i think this should go to Gianluca Ramunno!)
+  . `dp' prints EOF at the end of a thread even if unread messages
+    follow
+  . [-- #2 : 41/2761, text/plain, 0001-Israel-DST-transitio --]
+    If not fit, it should do `...'
+    It is not multibyte safe anyway, implement a generic function (or
+    two, one that takes an iconv_t) to trim a string into a buffer
+  . The check for `LESS' shouldn't only check wether LESS is in
+    the environ, since we may `set' it - if so, *that* has to be
+    exported.  I have forgotten why we don't export variables to the
+    environment (some parts of the code rely on this!), but having
+    a general mechanism would surely be the best here.  Maybe add an
+    explicit `setenv' command?
+  . When doing `~w FILE' and FILE cannot be written to (was a directory)
+    then the composed mail is lost completely, it seems we jump to the
+    very main loop!
+  . Shouldn't `resend' store to +record?  It .. doesn't?
+  . The capability to save a message under the name of a recipient is in
+    the standard etc., but i've never used it.
+    What would be cool, otoh, would be if there would be the possibility
+    to register a regular expression, and if just *any* recipient of
+    a message matches, store the message in the given folder instead.
+    I.e., if i send a message to s-nail-users@ then i most likely want
+    to get a copy to the corresponding box, regardless of whoever the
+    message was sent To: Cc: or Bcc: else..
 
 vim:set fenc=utf-8:s-ts-mode
