@@ -34,7 +34,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd Mar 01, 2014
+.Dd Apr 05, 2014
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -795,7 +795,7 @@ If no character set conversion capabilities have been compiled into
 library has been found), then
 .Va ttycharset
 will be the only supported character set,
-and it is simply assumed that it can be used to exchange 8 bit messages,
+it is simply assumed that it can be used to exchange 8 bit messages,
 and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to `ISO-8859-1'.
@@ -817,10 +817,11 @@ an outgoing text part if it contains characters that do not conform to
 the set of characters that are allowed by the email standards.
 Permissible values for character sets can be declared using the
 .Va sendcharsets
-variable, which is expected to contain a (comma-separated list of)
-character set (names), and the
-.Va charset-8bit
-variable, which is used as a catch-all last-resort fallback.
+variable, and
+.Va charset-8bit ,
+which defines a catch-all last-resort fallback character set that is
+implicitly appended to the list of character-sets in
+.Va sendcharsets .
 .Pp
 All the specified character sets are tried in order unless the
 conversion of the part or attachment succeeds.
@@ -828,10 +829,6 @@ If none of the tried (8 bit) character sets is capable to represent the
 content of the part or attachment,
 then the message will not be sent and its text will be saved to
 .Va DEAD .
-Note that some character set conversions will never fail, even if the
-result is incorrect; e.g., `ISO-8859-1' is capable to represent any
-8 bit message.
-.Pp
 In general, if the message `Cannot convert from a to b' appears, either
 some characters are not appropriate for the currently selected
 (terminal) character set,
@@ -2149,6 +2146,11 @@ The user will be asked repeatedly until the desired conversion succeeds.
 Finally, if an input-, but no output character set is specified, then no
 conversion is ever performed, but the `charset=' MIME parameter will
 still be set to the user input.
+.It
+The character set selection loop can be left by typing `control-C',
+i.e., causing an interrupt.
+XXX Note that before \*(UA version 15.0 this terminates the entire
+current attachment selection, not only the character set selection.
 .El
 .Pp
 Without character set conversion support, \*(UA will ask for the input
@@ -2697,7 +2699,8 @@ This variable can be used to force the display of a so-called `From_'
 line for messages that are embedded into an envelope mail via the
 `message/rfc822' MIME mechanism.
 .It Va save
-When the user aborts a message with two `RUBOUT' (interrupt) characters,
+When the user aborts a message with two `RUBOUT' (interrupt,
+`control-C') characters,
 \*(UA will copy the partial letter to the file
 .Va DEAD .
 This option is set by default.
@@ -2721,6 +2724,9 @@ fallback character set.
 Thus, mail message text will be in `ISO-8859-1' encoding when send from
 within a `ISO-8859-1' locale, and in `UTF-8' encoding when send from
 within an `UTF-8' locale.
+If no character set conversion capabilities are available in \*(UA then
+the only supported character set is
+.Va ttycharset .
 .It Va sendwait
 When sending a message wait until the MTA exits before accepting further
 commands.
@@ -2839,10 +2845,9 @@ the message data was performed.
 This defaults to `US-ASCII', and the chosen character set should be
 `US-ASCII' compatible.
 .It Va charset-8bit
-\*(OP The default 8 bit character set that is used if
-.Va sendcharsets
-is not set or no character set therein was capable to represent the
-content of a message.
+\*(OP The default 8 bit character set that is used as an implied last
+member of the variable
+.Va sendcharsets .
 Defaults to `UTF-8'.
 If no character set conversion capabilities are available in \*(UA then
 the only supported character set is
@@ -3384,6 +3389,9 @@ command.
 .It Va sendcharsets
 \*(OP A comma-separated list of character set names that can be used in
 outgoing Internet mail.
+The value of the variable
+.Va charset-8bit
+is automatically appended to this list of character-sets.
 If no character set conversion capabilities are compiled into \*(UA then
 the only supported charset is
 .Va ttycharset .
@@ -3816,7 +3824,7 @@ which will cause \*(UA to echo `EOT' and return you to the shell.
 .Pp
 If, while you are composing the message you decide that you do not wish
 to send it after all, you can abort the letter by typing two `RUBOUT'
-(interrupt) characters.
+(interrupt, `control-C') characters.
 Typing a single `RUBOUT' causes \*(UA to print
 .Ns ` Ns Li (Interrupt -- one more to kill letter) Ns '.
 Typing a second `RUBOUT' causes \*(UA to save your partial letter on the
@@ -4594,9 +4602,10 @@ reset.
 The `newmail' command and the `newmail' variable have no effect.
 It is not possible to rename or to remove POP3 mailboxes.
 .Pp
-If a `RUBOUT' (interrupt) is typed while an IMAP or POP3 operation is in
-progress, \*(UA will wait until the operation can be safely aborted, and
-will then return to the command loop and print the prompt again.
+If a `RUBOUT' (interrupt, `control-C') is typed while an IMAP or POP3
+operation is in progress, \*(UA will wait until the operation can be
+safely aborted,
+and will then return to the command loop and print the prompt again.
 When a second `RUBOUT' is typed while \*(UA is waiting for the operation
 to complete, the operation itself will be cancelled.
 In this case, data that has not been fetched yet will have to be fetched
