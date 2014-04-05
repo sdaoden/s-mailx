@@ -136,7 +136,7 @@ reflected by the following statements.
     2.9svn).
 
 . ArchLinux <https://www.archlinux.org/>
-  Linux 3.13.5-1-ARCH x86_64
+  Linux 3.13.8-1-ARCH x86_64
   - gcc (GCC) 4.8.2 20140206 (prerelease)
     + `devel'opment target: warnings on unused results, just ignore (for
       now).
