@@ -59,7 +59,11 @@ static char const * const _mt_sources[] = {
 struct mtnode     *_mt_list;
 char              *_cs_iter_base, *_cs_iter;
 
-#define _CS_ITER_GET()  ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
+#ifdef HAVE_ICONV
+# define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
+#else
+# define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : charset_get_lc())
+#endif
 #define _CS_ITER_STEP() _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1)
 
 /* Initialize MIME type list */
