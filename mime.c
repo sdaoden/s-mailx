@@ -41,8 +41,6 @@
 # include "nail.h"
 #endif
 
-#define _CHARSET()   ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
-
 struct mtnode {
    struct mtnode  *mt_next;
    size_t         mt_mtlen;   /* Length of MIME type string */
@@ -60,6 +58,9 @@ static char const * const _mt_sources[] = {
 
 struct mtnode     *_mt_list;
 char              *_cs_iter_base, *_cs_iter;
+
+#define _CS_ITER_GET()  ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
+#define _CS_ITER_STEP() _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1)
 
 /* Initialize MIME type list */
 static void             _mt_init(void);
@@ -83,14 +84,14 @@ static size_t           delctrl(char *cp, size_t sz);
 static int              is_this_enc(char const *line, char const *encoding);
 
 /* Convert header fields to RFC 1522 format and write to the file fo */
-static size_t           mime_write_tohdr(struct str *in, FILE *fo);
+static ssize_t          mime_write_tohdr(struct str *in, FILE *fo);
 
 /* Write len characters of the passed string to the passed file, doing charset
  * and header conversion */
-static size_t           convhdra(char const *str, size_t len, FILE *fp);
+static ssize_t          convhdra(char const *str, size_t len, FILE *fp);
 
 /* Write an address to a header field */
-static size_t           mime_write_tohdr_a(struct str *in, FILE *f);
+static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f);
 
 /* Append to buf, handling resizing */
 static void             addstr(char **buf, size_t *sz, size_t *pos,
@@ -373,20 +374,21 @@ jleave:
    return rv;
 }
 
-static size_t
+static ssize_t
 mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
 {
    struct str cin, cout;
    char buf[B64_LINESIZE +1]; /* (No CR/LF used) */
    char const *charset7, *charset, *upper, *wbeg, *wend, *lastspc,
       *lastwordend = NULL;
-   size_t sz = 0, col = 0, quoteany, wr, charsetlen,
+   size_t col = 0, quoteany, wr, charsetlen,
       maxcol = 65 /* there is the header field's name, too */;
+   ssize_t sz = 0;
    bool_t highbit, mustquote, broken;
    NYD_ENTER;
 
    charset7 = charset_get_7bit();
-   charset = _CHARSET();
+   charset = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
    wr = strlen(charset7);
    charsetlen = strlen(charset);
    charsetlen = MAX(charsetlen, wr);
@@ -399,8 +401,14 @@ mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
    highbit = FAL0;
    if (quoteany != 0)
       for (wbeg = in->s; wbeg < upper; ++wbeg)
-         if ((ui8_t)*wbeg & 0x80)
+         if ((ui8_t)*wbeg & 0x80) {
             highbit = TRU1;
+            if (charset == NULL) {
+               sz = -1;
+               goto jleave;
+            }
+            break;
+         }
 
    if (quoteany << 1 > in->l) {
       /* Print the entire field in base64 */
@@ -540,18 +548,19 @@ jqp_retest:
          }
       }
    }
+jleave:
    NYD_LEAVE;
    return sz;
 }
 
-static size_t
+static ssize_t
 convhdra(char const *str, size_t len, FILE *fp)
 {
 #ifdef HAVE_ICONV
    struct str ciconv;
 #endif
    struct str cin;
-   size_t ret = 0;
+   ssize_t ret = 0;
    NYD_ENTER;
 
    cin.s = UNCONST(str);
@@ -575,28 +584,37 @@ jleave:
    return ret;
 }
 
-static size_t
-mime_write_tohdr_a(struct str *in, FILE *f)
+static ssize_t
+mime_write_tohdr_a(struct str *in, FILE *f) /* TODO error handling */
 {
    char const *cp, *lastcp;
-   size_t sz = 0;
+   ssize_t sz, x;
    NYD_ENTER;
 
    in->s[in->l] = '\0';
    lastcp = in->s;
    if ((cp = routeaddr(in->s)) != NULL && cp > lastcp) {
-      sz += convhdra(lastcp, PTR2SIZE(cp - lastcp), f);
+      if ((sz = convhdra(lastcp, PTR2SIZE(cp - lastcp), f)) < 0)
+         goto jleave;
       lastcp = cp;
-   } else
+   } else {
       cp = in->s;
+      sz = 0;
+   }
+
    for ( ; *cp != '\0'; ++cp) {
       switch (*cp) {
       case '(':
          sz += fwrite(lastcp, 1, PTR2SIZE(cp - lastcp + 1), f);
          lastcp = ++cp;
          cp = skip_comment(cp);
-         if (--cp > lastcp)
-            sz += convhdra(lastcp, PTR2SIZE(cp - lastcp), f);
+         if (--cp > lastcp) {
+            if ((x = convhdra(lastcp, PTR2SIZE(cp - lastcp), f)) < 0) {
+               sz = x;
+               goto jleave;
+            }
+            sz += x;
+         }
          lastcp = cp;
          break;
       case '"':
@@ -604,13 +622,14 @@ mime_write_tohdr_a(struct str *in, FILE *f)
             if (*++cp == '"')
                break;
             if (*cp == '\\' && cp[1] != '\0')
-               cp++;
+               ++cp;
          }
          break;
       }
    }
    if (cp > lastcp)
       sz += fwrite(lastcp, 1, PTR2SIZE(cp - lastcp), f);
+jleave:
    NYD_LEAVE;
    return sz;
 }
@@ -651,6 +670,7 @@ charset_get_7bit(void)
    return t;
 }
 
+#ifdef HAVE_ICONV
 FL char const *
 charset_get_8bit(void)
 {
@@ -662,6 +682,7 @@ charset_get_8bit(void)
    NYD_LEAVE;
    return t;
 }
+#endif
 
 FL char const *
 charset_get_lc(void)
@@ -675,21 +696,24 @@ charset_get_lc(void)
    return t;
 }
 
-FL void
+FL bool_t
 charset_iter_reset(char const *a_charset_to_try_first)
 {
    char const *sarr[3];
    size_t sarrl[3], len;
    char *cp;
    NYD_ENTER;
+   UNUSED(a_charset_to_try_first);
 
-   sarr[0] = a_charset_to_try_first;
 #ifdef HAVE_ICONV
+   sarr[0] = a_charset_to_try_first;
    if ((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
          ok_blook(sendcharsets_else_ttycharset))
       sarr[1] = charset_get_lc();
-#endif
    sarr[2] = charset_get_8bit();
+#else
+   sarr[2] = charset_get_lc();
+#endif
 
    sarrl[2] = len = strlen(sarr[2]);
 #ifdef HAVE_ICONV
@@ -720,23 +744,37 @@ charset_iter_reset(char const *a_charset_to_try_first)
    len = sarrl[2];
    memcpy(cp, sarr[2], len);
    cp[len] = '\0';
-   _cs_iter = NULL;
+
+   _CS_ITER_STEP();
    NYD_LEAVE;
+   return (_cs_iter != NULL);
 }
 
-FL char const *
+FL bool_t
 charset_iter_next(void)
 {
-   char const *rv;
+   bool_t rv;
    NYD_ENTER;
 
-   rv = _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1);
+   _CS_ITER_STEP();
+   rv = (_cs_iter != NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+charset_iter_is_valid(void)
+{
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = (_cs_iter != NULL);
    NYD_LEAVE;
    return rv;
 }
 
 FL char const *
-charset_iter_current(void)
+charset_iter(void)
 {
    char const *rv;
    NYD_ENTER;
@@ -766,7 +804,7 @@ charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 
 #ifdef HAVE_ICONV
 FL char const *
-need_hdrconv(struct header *hp, enum gfield w)
+need_hdrconv(struct header *hp, enum gfield w) /* TODO once only, then iter */
 {
    char const *ret = NULL;
    NYD_ENTER;
@@ -801,7 +839,7 @@ need_hdrconv(struct header *hp, enum gfield w)
       goto jneeds;
    if ((w & GSUBJECT) && _has_highbit(hp->h_subject))
 jneeds:
-      ret = _CHARSET();
+      ret = _CS_ITER_GET(); /* TODO MIME/send: iter active? iter! else */
    NYD_LEAVE;
    return ret;
 }
@@ -1067,8 +1105,8 @@ j7bit:
 
    /* Not an attachment with specified charset? */
 jcharset:
-   if (*charset == NULL)
-      *charset = (ctt & _HIGHBIT) ? _CHARSET() : charset_get_7bit();
+   if (*charset == NULL) /* TODO MIME/send: iter active? iter! else */
+      *charset = (ctt & _HIGHBIT) ? _CS_ITER_GET() : charset_get_7bit();
 jleave:
    NYD_LEAVE;
    return convert;

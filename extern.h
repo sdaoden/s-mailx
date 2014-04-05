@@ -1018,17 +1018,22 @@ FL enum okay   maildir_remove(char const *name);
 FL char const * charset_get_7bit(void);
 
 /* *charset-8bit*, else CHARSET_8BIT */
+#ifdef HAVE_ICONV
 FL char const * charset_get_8bit(void);
+#endif
 
 /* LC_CTYPE:CODESET / *ttycharset*, else *charset-8bit*, else CHARSET_8BIT */
 FL char const * charset_get_lc(void);
 
-/* *sendcharsets* / *charset-8bit* iterator.
- * *a_charset_to_try_first* may be used to prepend a charset (as for
- * *reply-in-same-charset*);  works correct for !HAVE_ICONV */
-FL void        charset_iter_reset(char const *a_charset_to_try_first);
-FL char const * charset_iter_next(void);
-FL char const * charset_iter_current(void);
+/* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be
+ * used to prepend a charset to this list (e.g., for *reply-in-same-charset*).
+ * The returned boolean indicates charset_iter_is_valid().
+ * Without HAVE_ICONV, this "iterates" over charset_get_lc() only */
+FL bool_t      charset_iter_reset(char const *a_charset_to_try_first);
+FL bool_t      charset_iter_next(void);
+FL bool_t      charset_iter_is_valid(void);
+FL char const * charset_iter(void);
+
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 

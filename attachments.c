@@ -178,7 +178,7 @@ jcs:
    snprintf(prefix, sizeof prefix, tr(161, "#%u\toutput (send) charset: "),
       number);
    if ((defcs = ap->a_charset) == NULL)
-      defcs = charset_iter_next();
+      defcs = charset_iter();
    defcs = ap->a_charset = readstr_input(prefix, defcs);
 
    if (cp != NULL && defcs == NULL) {
@@ -188,7 +188,7 @@ jcs:
    if (cp == NULL && defcs == NULL) {
       ap->a_conv = AC_DEFAULT;
       ap->a_input_charset = cslc;
-      ap->a_charset = charset_iter_current();
+      ap->a_charset = charset_iter();
    } else if (cp == NULL && defcs != NULL) {
       ap->a_conv = AC_FIX_OUTCS;
       ap->a_input_charset = cslc;
@@ -202,6 +202,7 @@ jcs:
    else {
       ap->a_input_charset = cp;
       ap->a_charset = defcs;
+      charset_iter_next();
       goto jcs;
    }
 jdone:
