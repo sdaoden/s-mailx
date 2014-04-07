@@ -385,6 +385,36 @@ Low-Level
      character set selection or attachment filename input.
      Also in respect wether the interrupt is "propagated" or not.
      It's ugly, and documented accordingly.
+ 30. Mail protocols and mail messages are accessed through a "VFS".
+ 31. Flag updates of individual messages must find their way through to
+     the protocol.
+ 32. Use deque (on partial views).
+ 33. It must be possible to open individual boxes read-only, new command
+     `cfile' (and `cfolder') as a last resort.
+ 34. We need a new abstraction: `vie[ws]'.  I.e, viewset, viewclear,
+     view(show|look)?  We will have (possibly readonly) boxes, a summary
+     cache file, which is created when a mailbox is read in, and all
+     that crap that we currently have (setptr(), setmsize(), etc.!) must
+     vanish.  Instead there is another, in-memory abstraction, the view.
+     Some views are builtin and are somehow selectable (the "all" view,
+     for example, and the "new" view).
+     It is possible to make a view persistent by giving it a name, e.g.,
+     'viewset NAME MSG-SPEC' -- 'viewset allnew :n' (and 'viewset XY `'
+     or something must be capable to tag the last a.k.a current).
+     Switching to a named view would thus look over the entire current
+     view (!) for all messages that comply to the message-spec of the
+     view, then create a sorted/threaded display of that subset and
+     create a new anonymous "result" view.  It must be possible to
+     specify that a view is to be applied to the entire mailbox instead
+     of the current view, via a simple easy understandable syntax.
+ 99. Now i'm dreaming some more: with the new object-based approach
+     multiple mailboxes could be in an open state.  And it should be
+     possible to do so for the user (`file' and `folder' are required to
+     quit the current mailbox [first -- this not yet]), which is why we
+     either need new trigger characters or new commands (then also in
+     a readonly version, again, it gets lengthy).
+     The absolute sensation would be joinable operations over multiple
+     open mailboxes, e.g., views over multiple such!
 
 TODO S-nail 14.7:
 -----------------
@@ -704,5 +734,7 @@ TODO S-nail 14.7:
     I.e., if i send a message to s-nail-users@ then i most likely want
     to get a copy to the corresponding box, regardless of whoever the
     message was sent To: Cc: or Bcc: else..
+  . in my ~xother with *nohold* if at the begin i have many large
+    messages i ended up with a truncated *mbox*? what was that?
 
 vim:set fenc=utf-8:s-ts-mode
