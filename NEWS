@@ -3,7 +3,7 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.3:
+and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.4:
 
   # All commits:
   $ git log --reverse --topo-order OLD..NEW
@@ -14,6 +14,18 @@ and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.3:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.6.4, 2014-04-07
+-------------------
+
+Many thanks to Gaetan Bisson.
+
+ChangeLog
+^^^^^^^^^
+
+- Avoid segmentation faults with -L option if s-nail is opened on
+  non-existent mailboxes, e.g. '$ MAIL= s-nail -Lx'.  (Gaetan Bisson)
+  [e6c86da]
 
 v14.6.3, 2014-04-05
 -------------------
