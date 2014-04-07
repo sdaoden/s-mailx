@@ -1077,6 +1077,7 @@ print_header_summary(char const *Larg)
          freopen("/dev/null", "w", stdout);
          freopen("/dev/null", "w", stderr);
       }
+      assert(_msgvec != NULL);
       i = (getmsglist(/*TODO make arg const */UNCONST(Larg), _msgvec, 0) <= 0);
       if (options & OPT_HEADERSONLY) {
          exit_status = (int)i;
