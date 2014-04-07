@@ -517,9 +517,9 @@ _rcv_mode(char const *folder, char const *Larg)
       exit_status = i;
       goto jleave;
    }
-
    if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-      print_header_summary(Larg);
+      if ((exit_status = i) == EXIT_OK)
+         print_header_summary(Larg);
       goto jleave;
    }
 
