@@ -67,19 +67,15 @@ option_update() {
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
 compiler_flags() {
-   i=`uname -s`
-   _CFLAGS=
-
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
-   optim= dbgoptim=
+   optim= dbgoptim= _CFLAGS=
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
-      _CFLAGS=
       if { CC="`command -v clang`"; }; then
          :
       elif { CC="`command -v gcc`"; }; then
          :
       elif { CC="`command -v c89`"; }; then
-         [ "${i}" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
+         [ "`uname -s`" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
       elif { CC="`command -v c99`"; }; then
          :
       else
@@ -98,12 +94,13 @@ compiler_flags() {
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
-      _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
+      _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
       _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
+      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
       if { i=${ccver}; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
@@ -118,20 +115,12 @@ compiler_flags() {
       if wantfeat AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
-      if wantfeat DEBUG; then
-         _CFLAGS="${_CFLAGS} -std=c89"
-         _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      fi
 #   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
-#      stackprot=yes
 #      optim=-O3 dbgoptim=-O
-#      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
+#      stackprot=yes
+#      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
 #      if wantfeat AMALGAMATION; then
 #         _CFLAGS="${_CFLAGS} -pipe"
-#      fi
-#      if wantfeat DEBUG; then
-#         _CFLAGS="${_CFLAGS} -std=c89"
-#         _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #      fi
    elif [ -z "${optim}" ]; then
       optim=-O1 dbgoptim=-O
