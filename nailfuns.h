@@ -314,10 +314,6 @@ FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
 
-/* Try to lookup a variable named "password-*token*".
- * Return NULL or salloc()ed buffer */
-FL char *      lookup_password_for_token(char const *token);
-
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
 

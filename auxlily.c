@@ -1311,27 +1311,6 @@ jleave:
 }
 
 FL char *
-lookup_password_for_token(char const *token)
-{
-   size_t tl;
-   char *var, *cp;
-   NYD_ENTER;
-
-   tl = strlen(token);
-   var = ac_alloc(tl + 9 +1);
-
-   memcpy(var, "password-", 9);
-   memcpy(var + 9, token, tl);
-   var[tl + 9] = '\0';
-
-   if ((cp = vok_vlook(var)) != NULL)
-      cp = savestr(cp);
-   ac_free(var);
-   NYD_LEAVE;
-   return cp;
-}
-
-FL char *
 getrandstring(size_t length)
 {
    static unsigned char nodedigest[16];
