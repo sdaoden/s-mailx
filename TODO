@@ -716,12 +716,7 @@ TODO S-nail 14.7:
     If not fit, it should do `...'
     It is not multibyte safe anyway, implement a generic function (or
     two, one that takes an iconv_t) to trim a string into a buffer
-  . The check for `LESS' shouldn't only check wether LESS is in
-    the environ, since we may `set' it - if so, *that* has to be
-    exported.  I have forgotten why we don't export variables to the
-    environment (some parts of the code rely on this!), but having
-    a general mechanism would surely be the best here.  Maybe add an
-    explicit `setenv' command?
+  . Explicit `setenv' command!
   . When doing `~w FILE' and FILE cannot be written to (was a directory)
     then the composed mail is lost completely, it seems we jump to the
     very main loop!
