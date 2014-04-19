@@ -1810,13 +1810,6 @@ FL char *      getuser(char const *query);
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
 
-/* Get both, user and password in the expected way; simply reuses a value that
- * is set, otherwise calls one of the above.
- * Returns true only if we have a user and a password.
- * *user* will be savestr()ed if neither it nor *pass* have a default value
- * (so that termios_state.ts_linebuf carries only one) */
-FL bool_t      getcredentials(char **user, char **pass);
-
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
 # define TTY_WANTS_SIGWINCH
