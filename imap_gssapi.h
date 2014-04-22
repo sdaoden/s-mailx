@@ -1,12 +1,13 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of IMAP GSSAPI authentication according to RFC 1731.
+ *@ TODO GSSAPI should also be joined into "a VFS".  TODO LEAKS (error path)
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
- * Copyright (c) 2004
- * Gunnar Ritter.  All rights reserved.
+ * Copyright (c) 2004 Gunnar Ritter.
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -214,12 +215,12 @@ imap_gss(struct mailbox *mp, char *user)
             &send_tok,
             &ret_flags,
             NULL);
+      free(out.s);
       if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
          imap_gss_error("initializing context", maj_stat, min_stat);
          gss_release_name(&min_stat, &target_name);
          return STOP;
       }
-      free(out.s);
    }
    /*
     * Pass token obtained from second gss_init_sec_context() call.
@@ -276,6 +277,8 @@ imap_gss(struct mailbox *mp, char *user)
    gss_release_buffer(&min_stat, &recv_tok);
    return ok;
 }
+
+# undef GSS_C_NT_HOSTBASED_SERVICE
 #endif /* HAVE_GSSAPI */
 
 /* vim:set fenc=utf-8:s-it-mode */
