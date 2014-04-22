@@ -571,10 +571,12 @@ _define1(char const *name, enum ma_flags mafl)
 
    for (;;) {
       n = readline_input("", TRU1, &linebuf, &linesize, NULL);
-      if (n <= 0) {
+      if (n == 0)
+         continue;
+      if (n < 0) {
          fprintf(stderr, tr(75, "Unterminated %s definition: \"%s\".\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
-         if (sourcing)
+         if (sourcing && !loading)
             unstack();
          goto jerr;
       }
