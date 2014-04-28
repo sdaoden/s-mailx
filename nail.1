@@ -3641,6 +3641,14 @@ chosen by assigning a value like \*(IN
 (\*(OU `smtps://server[:port]');
 due to the mentioned problems it is usually necessary to explicitly
 specify the port as `:465', however.
+.It
+Finally there is the `SUBMISSION' protocol (RFC 6409), which usually
+lives on server port 587 and is practically identically to the `SMTP'
+protocol from \*(UAs point of view beside that; it requires setting the
+.Va smtp-use-starttls
+variable to enter a SSL/TLS secured session state.
+Assign a value like \*(IN `submission://[user[:password]@]server[:port]'
+(\*(OU `submission://server[:port]').
 .El
 .Pp
 \*(IN If `user' or `password' contain special characters, in particular

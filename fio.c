@@ -1472,6 +1472,8 @@ sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
          port = htons(25);
       else if (!strcmp(portstr, "smtps"))
          port = htons(465);
+      else if (!strcmp(portstr, "submission"))
+         port = htons(587);
 #  endif
 #  ifdef HAVE_IMAP
       else if (!strcmp(portstr, "imap"))
