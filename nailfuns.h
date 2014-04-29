@@ -1325,7 +1325,7 @@ FL void        ssl_gen_err(char const *fmt, ...);
 FL int         c_verify(void *vp);
 
 /*  */
-FL FILE *      smime_sign(FILE *ip, struct header *);
+FL FILE *      smime_sign(FILE *ip, char const *addr);
 
 /*  */
 FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);

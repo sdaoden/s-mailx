@@ -1303,7 +1303,7 @@ jfail_dead:
    mtf = nmtf;
 #ifdef HAVE_SSL
    if (dosign) {
-      if ((nmtf = smime_sign(mtf, hp)) == NULL)
+      if ((nmtf = smime_sign(mtf, myorigin(hp))) == NULL)
          goto jfail_dead;
       Fclose(mtf);
       mtf = nmtf;
