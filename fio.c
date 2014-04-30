@@ -1248,7 +1248,7 @@ jleave:
 }
 
 FL enum okay
-sopen(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
+sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
    char const *portstr)
 {
 # ifdef HAVE_SO_SNDTIMEO
@@ -1330,10 +1330,12 @@ sopen(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
 
 # else /* HAVE_IPV6 */
    if (port == 0) {
+#  ifdef HAVE_SMTP
       if (!strcmp(portstr, "smtp"))
          port = htons(25);
       else if (!strcmp(portstr, "smtps"))
          port = htons(465);
+#  endif
 #  ifdef HAVE_IMAP
       else if (!strcmp(portstr, "imap"))
          port = htons(143);

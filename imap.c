@@ -1262,7 +1262,7 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
    so.s_fd = -1;
    if (!same_imap_account) {
       if (!disconnected(acc) &&
-            sopen(sp, &so, use_ssl, uhp, (use_ssl ? "imaps" : "imap")
+            sopen_old(sp, &so, use_ssl, uhp, (use_ssl ? "imaps" : "imap")
             ) != OKAY) {
          free(acc);
          rv = -1;
@@ -2503,7 +2503,7 @@ imap_append(const char *xserver, FILE *fp)
 
       memset(&mx, 0, sizeof mx);
       if (disconnected(server) == 0) {
-         if (sopen(sp, &mx.mb_sock, use_ssl, uhp,
+         if (sopen_old(sp, &mx.mb_sock, use_ssl, uhp,
                (use_ssl ? "imaps" : "imap")) != OKAY)
             goto jfail;
          mx.mb_sock.s_desc = "IMAP";
