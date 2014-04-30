@@ -879,7 +879,7 @@ jstop:
       }
 #endif
       savedeadletter(input, 1);
-      fputs(tr(182, ". . . message not sent.\n"), stderr);
+      fputs(tr(182, "... message not sent.\n"), stderr);
       _exit(1);
    }
    if ((options & (OPT_DEBUG | OPT_VERBOSE | OPT_BATCH_FLAG)) ||
@@ -1295,7 +1295,7 @@ jfail_dead:
 #endif
       _sendout_error = TRU1;
       savedeadletter(mtf, 1);
-      fputs(tr(187, ". . . message not sent.\n"), stderr);
+      fputs(tr(182, "... message not sent.\n"), stderr);
       goto jleave;
    }
 
@@ -1561,7 +1561,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 
    if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
       savedeadletter(nfi, 1);
-      fputs(tr(190, ". . . message not sent.\n"), stderr);
+      fputs(tr(182, "... message not sent.\n"), stderr);
 jerr_all:
       Fclose(nfi);
 jerr_o:

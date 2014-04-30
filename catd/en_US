@@ -189,15 +189,15 @@ $set 1
 179 Cannot convert from %s to %s\n
 180 temporary mail file
 181 Sendmail arguments:
-182 . . . message not sent.\n
+182 ... message not sent.\n
 183 EOT\n
 184 No message, no subject; hope that's ok\n
 185 Null message body; hope that's ok\n
 186 No recipients specified\n
-187 . . . message not sent.\n
+187 --DELETED--
 188 temporary mail file
 189 temporary mail file
-190 . . . message not sent.\n
+190 --DELETED--
 191 smtp-server: %s
 192 %sConnecting to %s . . .
 193 $ connected.\n$
