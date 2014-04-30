@@ -922,59 +922,6 @@ c_rexit(void *v)
 }
 
 FL int
-c_set(void *v)
-{
-   char **ap = v, *cp, *cp2, *varbuf, c;
-   int errs = 0;
-   NYD_ENTER;
-
-   if (*ap == NULL) {
-      var_list_all();
-      goto jleave;
-   }
-
-   for (; *ap != NULL; ++ap) {
-      cp = *ap;
-      cp2 = varbuf = ac_alloc(strlen(cp) +1);
-      for (; (c = *cp) != '=' && c != '\0'; ++cp)
-         *cp2++ = c;
-      *cp2 = '\0';
-      if (c == '\0')
-         cp = UNCONST("");
-      else
-         ++cp;
-      if (varbuf == cp2) {
-         fprintf(stderr, tr(41, "Non-null variable name required\n"));
-         ++errs;
-         goto jnext;
-      }
-      if (varbuf[0] == 'n' && varbuf[1] == 'o')
-         errs += _var_vokclear(&varbuf[2]);
-      else
-         errs += _var_vokset(varbuf, (uintptr_t)cp);
-jnext:
-      ac_free(varbuf);
-   }
-jleave:
-   NYD_LEAVE;
-   return errs;
-}
-
-FL int
-c_unset(void *v)
-{
-   int errs;
-   char **ap;
-   NYD_ENTER;
-
-   errs = 0;
-   for (ap = v; *ap != NULL; ++ap)
-      errs += _var_vokclear(*ap);
-   NYD_LEAVE;
-   return errs;
-}
-
-FL int
 c_group(void *v)
 {
    char **argv = v, **ap, *gname, **p;

@@ -93,6 +93,8 @@
      DS(392, "Un\"delete\" <message-list>") },
    { "unset", &c_unset, (M | RAWLIST), 1, 1000
      DS(402, "Unset <option-list>") },
+   { "unsetenv", &c_unsetenv, (M | RAWLIST), 1, 1000
+     DS(434, "Unset <option-list>, also in the program environment") },
    { "mail", &c_sendmail, (R | M | I | STRLIST), 0, 0
      DS(351, "Compose mail; recipients may be given as arguments") },
    { "Mail", &c_Sendmail, (R | M | I | STRLIST), 0, 0
@@ -132,7 +134,9 @@
    { "source", &c_source, (M | RAWLIST), 1, 1
      DS(383, "Read commands from <file>") },
    { "set", &c_set, (M | RAWLIST), 0, 1000
-     DS(376, "Print all variables, or set variables to argument(s)") },
+     DS(376, "Print all variables, or set (a) variable(s)") },
+   { "setenv", &c_setenv, (M | RAWLIST), 2, 2
+     DS(433, "Set (a) variable(s) and export into the program environment") },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(378, "Invoke an interactive shell") },
    { "unalias", &c_ungroup, (M | RAWLIST), 0, 1000

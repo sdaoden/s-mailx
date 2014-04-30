@@ -438,7 +438,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 373 Is to "save" what "ignore" is to "type"/"print"
 374 Is to "save" what "retain" is to "type"/"print"
 375 --DELETED--
-376 Print all variables, or set variables to argument(s)
+376 Print all variables, or set (a) variable(s)
 377 Mark <message-list> as seen
 378 Invoke an interactive shell
 379 Define a <shortcut> and <expansion>, or list shortcuts
@@ -495,6 +495,8 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 430 Show some informations about the given <variables>
 431 <show> (default), <clear> or select <NO> from editor history
 432 Delete all given <accounts>
+433 Set (a) variable(s) and export into the program environment
+434 Unset <option-list>, also in the program environment
 
 
 500 $ done.\n

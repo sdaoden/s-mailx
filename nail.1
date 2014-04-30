@@ -1853,6 +1853,8 @@ overrides
 .Ic saveignore .
 The use of this command is strongly discouraged since it may strip
 header fields that are needed to decode the message correctly.
+.It Ic seen
+Takes a message list and marks all messages as having been read.
 .It Ic set
 (se) With no arguments, prints all variable values.
 Otherwise, sets an option.
@@ -1867,8 +1869,17 @@ If an argument begins with `no', as in `set nosave',
 the effect is the same as invoking the
 .Ic unset
 command with the remaining part of the variable (`unset save').
-.It Ic seen
-Takes a message list and marks all messages as having been read.
+.It Ic setenv
+Identical to
+.Ic set
+except that the options are also exported into the program environment;
+since this task requires native host support the command will always
+report error if that is not available (but still act like
+.Ic set Ns
+).
+This operation is a no-op unless all resource files have been loaded.
+Also see
+.Ic unsetenv .
 .It Ic shell
 (sh) Invokes an interactive version of the shell.
 .It Ic shortcut
@@ -2048,6 +2059,17 @@ saving.
 Takes a list of option names and discards their remembered values;
 the inverse of
 .Ic set .
+.It Ic unsetenv
+Identical to
+.Ic unset
+except that the options are also removed from the program environment;
+since this task requires native host support the command will always
+report error if that is not available (but still act like
+.Ic unset Ns
+).
+This operation is a no-op unless all resource files have been loaded.
+Also see
+.Ic setenv .
 .It Ic unshortcut
 Deletes the shortcut names given as arguments.
 .It Ic unsort
@@ -4858,5 +4880,4 @@ remains intact.
 .An Steffen Po Daode Pc Nurpmeso Aq s-nail-users@lists.sourceforge.net
 .\"
 .Sh BUGS
-Too much.
-Variables in the environment passed to \*(UA cannot be unset.
+Too many (see the file `TODO' from the distribution or the repository).

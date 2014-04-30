@@ -157,50 +157,58 @@ do {\
 /* Don't use _var_* unless you *really* have to! */
 
 /* Constant option key look/(un)set/clear */
-FL char *   _var_oklook(enum okeys okey);
+FL char *      _var_oklook(enum okeys okey);
 #define ok_blook(C)              (_var_oklook(CONCAT(ok_b_, C)) != NULL)
 #define ok_vlook(C)              _var_oklook(CONCAT(ok_v_, C))
 
-FL bool_t   _var_okset(enum okeys okey, uintptr_t val);
+FL bool_t      _var_okset(enum okeys okey, uintptr_t val);
 #define ok_bset(C,B)             _var_okset(CONCAT(ok_b_, C), (uintptr_t)(B))
 #define ok_vset(C,V)             _var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
 
-FL bool_t   _var_okclear(enum okeys okey);
+FL bool_t      _var_okclear(enum okeys okey);
 #define ok_bclear(C)             _var_okclear(CONCAT(ok_b_, C))
 #define ok_vclear(C)             _var_okclear(CONCAT(ok_v_, C))
 
 /* Variable option key look/(un)set/clear */
-FL char *   _var_voklook(char const *vokey);
+FL char *      _var_voklook(char const *vokey);
 #define vok_blook(S)              (_var_voklook(S) != NULL)
 #define vok_vlook(S)              _var_voklook(S)
 
-FL bool_t   _var_vokset(char const *vokey, uintptr_t val);
+FL bool_t      _var_vokset(char const *vokey, uintptr_t val);
 #define vok_bset(S,B)            _var_vokset(S, (uintptr_t)(B))
 #define vok_vset(S,V)            _var_vokset(S, (uintptr_t)(V))
 
-FL bool_t   _var_vokclear(char const *vokey);
+FL bool_t      _var_vokclear(char const *vokey);
 #define vok_bclear(S)            _var_vokclear(S)
 #define vok_vclear(S)            _var_vokclear(S)
 
 /* List all variables */
-FL void     var_list_all(void);
+FL void        var_list_all(void);
 
-/* `varshow', `define', `undefine', `call' / `~' */
-FL int      c_varshow(void *v);
-FL int      c_define(void *v);
-FL int      c_undefine(void *v);
-FL int      c_call(void *v);
+/* `varshow' */
+FL int         c_varshow(void *v);
 
-FL int      callhook(char const *name, int nmail);
+/* User variable access: `set', `setenv', `unset' and `unsetenv' */
+FL int         c_set(void *v);
+FL int         c_setenv(void *v);
+FL int         c_unset(void *v);
+FL int         c_unsetenv(void *v);
 
-/* `account', `unaccount' */
-FL int      c_account(void *v);
-FL int      c_unaccount(void *v);
+/* Macros: `define', `undefine', `call' / `~' */
+FL int         c_define(void *v);
+FL int         c_undefine(void *v);
+FL int         c_call(void *v);
+
+FL int         callhook(char const *name, int nmail);
+
+/* Accounts: `account', `unaccount' */
+FL int         c_account(void *v);
+FL int         c_unaccount(void *v);
 
 /* `localopts' */
-FL int      c_localopts(void *v);
+FL int         c_localopts(void *v);
 
-FL void     temporary_localopts_free(void); /* XXX intermediate hack */
+FL void        temporary_localopts_free(void); /* XXX intermediate hack */
 
 /*
  * attachments.c
@@ -584,12 +592,6 @@ FL int         c_messize(void *v);
 
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
-
-/* Set or display a variable value.  Syntax is similar to that of sh */
-FL int         c_set(void *v);
-
-/* Unset a bunch of variable values */
-FL int         c_unset(void *v);
 
 /* Put add users to a group */
 FL int         c_group(void *v);
