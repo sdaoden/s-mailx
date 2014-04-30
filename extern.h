@@ -1701,7 +1701,7 @@ FL bool_t      yorn(char const *msg);
 FL char *      getuser(char const *query);
 
 /* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error.
+ * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
 
