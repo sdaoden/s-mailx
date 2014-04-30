@@ -1642,4 +1642,36 @@ jleave:
    return ec;
 }
 
+FL int
+c_urlenc(void *v) /* XXX IDNA?? */
+{
+   char **ap;
+   NYD_ENTER;
+
+   for (ap = v; *ap != NULL; ++ap) {
+      char *in = *ap, *out = urlxenc(in);
+
+      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+         in, strlen(in), out, strlen(out));
+   }
+   NYD_LEAVE;
+   return 0;
+}
+
+FL int
+c_urldec(void *v) /* XXX IDNA?? */
+{
+   char **ap;
+   NYD_ENTER;
+
+   for (ap = v; *ap != NULL; ++ap) {
+      char *in = *ap, *out = urlxdec(in);
+
+      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+         in, strlen(in), out, strlen(out));
+   }
+   NYD_LEAVE;
+   return 0;
+}
+
 /* vim:set fenc=utf-8:s-it-mode */
