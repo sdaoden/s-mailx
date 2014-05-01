@@ -1247,6 +1247,143 @@ jleave:
    return rv;
 }
 
+FL bool_t
+sopen(struct sock *sp, struct url *urlp)
+{
+# ifdef HAVE_SO_SNDTIMEO
+   struct timeval tv;
+# endif
+# ifdef HAVE_SO_LINGER
+   struct linger li;
+# endif
+# ifdef HAVE_IPV6
+   char hbuf[NI_MAXHOST];
+   struct addrinfo hints, *res0, *res;
+# else
+   struct sockaddr_in servaddr;
+   struct in_addr **pptr;
+   struct hostent *hp;
+   struct servent *ep;
+# endif
+   char const *serv;
+   int sofd = -1;
+   NYD_ENTER;
+
+   /* Connect timeouts after 30 seconds XXX configurable */
+# ifdef HAVE_SO_SNDTIMEO
+   tv.tv_sec = 30;
+   tv.tv_usec = 0;
+# endif
+   serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
+
+   if (options & OPT_VERBOSE)
+      fprintf(stderr, tr(187, "Resolving host %s:%s ..."),
+         urlp->url_host.s, serv);
+
+# ifdef HAVE_IPV6
+   memset(&hints, 0, sizeof hints);
+   hints.ai_socktype = SOCK_STREAM;
+   if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
+      fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), urlp->url_host.s);
+      goto jleave;
+   } else if (options & OPT_VERBOSE)
+      fprintf(stderr, tr(500, " done.\n"));
+
+   for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
+      if (options & OPT_VERBOSE) {
+         if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
+               NULL, 0, NI_NUMERICHOST))
+            strcpy(hbuf, "unknown host");
+         fprintf(stderr, tr(192, "%sConnecting to %s:%s ..."),
+               (res == res0 ? "" : "\n"), hbuf, serv);
+      }
+      sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+      if (sofd >= 0) {
+#  ifdef HAVE_SO_SNDTIMEO
+         setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+#  endif
+         if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
+            close(sofd);
+            sofd = -1;
+         }
+      }
+   }
+   freeaddrinfo(res0);
+   if (sofd < 0) {
+      perror(tr(254, " could not connect"));
+      goto jleave;
+   }
+
+# else /* HAVE_IPV6 */
+   if (urlp->url_port == NULL && urlp->url_portno == 0) {
+      if ((ep = getservbyname(UNCONST(urlp->url_proto), "tcp")) != NULL)
+         urlp->url_portno = ep->s_port;
+      else {
+         fprintf(stderr, tr(251, "Unknown service: %s\n"), urlp->url_proto);
+         goto jleave;
+      }
+   }
+
+   if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
+      fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), urlp->url_host.s);
+      goto jleave;
+   } else if (options & OPT_VERBOSE)
+      fprintf(stderr, tr(500, " done.\n"));
+
+   pptr = (struct in_addr**)hp->h_addr_list;
+   if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+      perror(tr(253, "could not create socket"));
+      goto jleave;
+   }
+
+   memset(&servaddr, 0, sizeof servaddr);
+   servaddr.sin_family = AF_INET;
+   servaddr.sin_port = htons(urlp->url_portno);
+   memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
+   if (options & OPT_VERBOSE)
+      fprintf(stderr, tr(190, "%sConnecting to %s:%d ..."),
+         "", inet_ntoa(**pptr), (int)urlp->url_portno);
+#  ifdef HAVE_SO_SNDTIMEO
+   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+#  endif
+   if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
+      perror(tr(254, " could not connect"));
+      close(sofd);
+      sofd = -1;
+      goto jleave;
+   }
+# endif /* !HAVE_IPV6 */
+
+   if (options & OPT_VERBOSE)
+      fputs(tr(193, " connected.\n"), stderr);
+
+   /* And the regular timeouts XXX configurable */
+# ifdef HAVE_SO_SNDTIMEO
+   tv.tv_sec = 42;
+   tv.tv_usec = 0;
+   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+# endif
+# ifdef HAVE_SO_LINGER
+   li.l_onoff = 1;
+   li.l_linger = 42;
+   setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
+# endif
+
+   memset(sp, 0, sizeof *sp);
+   sp->s_fd = sofd;
+# ifdef HAVE_SSL
+   if (urlp->url_needs_tls &&
+         ssl_open(urlp->url_host.s, sp, urlp->url_uhp.s) != OKAY) {
+      sclose(sp);
+      sofd = -1;
+   }
+# endif
+jleave:
+   NYD_LEAVE;
+   return (sofd >= 0);
+}
+
 FL enum okay
 sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
    char const *portstr)
@@ -1292,7 +1429,7 @@ sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
 
 # ifdef HAVE_IPV6
    if (options & OPT_VERBOSE)
-      fprintf(stderr, "Resolving host %s . . .", server);
+      fprintf(stderr, "Resolving host %s ...", server);
    memset(&hints, 0, sizeof hints);
    hints.ai_socktype = SOCK_STREAM;
    if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
@@ -1307,7 +1444,7 @@ sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST) != 0)
             strcpy(hbuf, "unknown host");
-         fprintf(stderr, tr(192, "%sConnecting to %s:%s . . ."),
+         fprintf(stderr, tr(192, "%sConnecting to %s:%s ..."),
                (res == res0 ? "" : "\n"), hbuf, portstr);
       }
       sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -1359,7 +1496,7 @@ sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
       port = htons(port);
 
    if (options & OPT_VERBOSE)
-      fprintf(stderr, "Resolving host %s . . .", server);
+      fprintf(stderr, "Resolving host %s ...", server);
    if ((hp = gethostbyname(server)) == NULL) {
       fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
       goto jleave;
@@ -1376,8 +1513,8 @@ sopen_old(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
    servaddr.sin_port = port;
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (options & OPT_VERBOSE)
-      fprintf(stderr, tr(192, "%sConnecting to %s:%d . . ."),
-         "", inet_ntoa(**pptr), ntohs(port));
+      fprintf(stderr, tr(190, "%sConnecting to %s:%d ..."),
+         "", inet_ntoa(**pptr), (int)ntohs(port));
 
 #  ifdef HAVE_SO_SNDTIMEO
    setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);

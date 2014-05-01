@@ -194,12 +194,12 @@ $set 1
 184 No message, no subject; hope that's ok\n
 185 Null message body; hope that's ok\n
 186 No recipients specified\n
-187 --DELETED--
+187 Resolving host %s:%s ...
 188 temporary mail file
 189 temporary mail file
-190 --DELETED--
+190 %sConnecting to %s:%d ...
 191 smtp-server: %s
-192 %sConnecting to %s . . .
+192 %sConnecting to %s:%s ...
 193 $ connected.\n$
 194 No SMTP support compiled in.\n
 195 I/O read error occurred
