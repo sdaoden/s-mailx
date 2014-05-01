@@ -932,6 +932,15 @@ If problems with commands that are based upon rightwise movement are
 encountered, adjustments of the option
 .Va line-editor-cursor-right
 may solve the problem, as documented for it.
+.Pp
+If the terminal produces key sequences which are compatible with
+.Xr xterm 1
+then the left and right cursor keys will map to `^B' and `^F',
+respectively, the up and down cursor keys will map to `^P' and `^N',
+and the Home/End/PgUp/PgDown keys will call the
+.Ic z
+command with the respective arguments `0', `$', `-' and `+'
+(i.e., perform scrolling through the header summary list).
 .\"
 .\" --  >8  --  8<  --
 .Ss "Coloured message display"
@@ -4548,7 +4557,8 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
 .Xr re_format 7 ,
-.Xr mailwrapper 8
+.Xr mailwrapper 8 ,
+.Xr xterm 1
 .\"
 .\" --  >8  --  8<  --
 .\"

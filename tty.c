@@ -1532,10 +1532,9 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
     * buffer", and only otherwise read(2) it */
    mbstate_t ps[2];
    struct line l;
-   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
+   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp, cursor_maybe, cursor_store;
    wchar_t wc;
    ssize_t rv;
-   ui32_t maybe_cursor;
    NYD_ENTER;
 
    memset(&l, 0, sizeof l);
@@ -1558,7 +1557,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
 jrestart:
    memset(ps, 0, sizeof ps);
-   maybe_cursor = 0;
+   cursor_maybe = cursor_store = 0;
    /* TODO: NCL: we should output the reset sequence when we jrestart:
     * TODO: NCL: if we are using a stateful encoding? !
     * TODO: NCL: in short: this is not yet well understood */
@@ -1673,6 +1672,7 @@ jreset:
          }
          fflush(stdout);
          goto jrestart;
+j_l:
       case 'L' ^ 0x40: /* repaint line */
          _ncl_krefresh(&l);
          break;
@@ -1724,25 +1724,48 @@ j_p:
          break;
       /* 'Z': suspend (CTRL-Z) */
       case 0x1B:
-         if (maybe_cursor++ != 0)
+         if (cursor_maybe++ != 0)
             goto jreset;
          continue;
       default:
-         /* XXX Handle usual ^[[[ABCD] cursor keys -- UGLY, "MAGIC", INFLEX */
-         if (maybe_cursor > 0) {
-            if (++maybe_cursor == 2) {
+         /* XXX Handle usual ^[[[ABCD1456] cursor keys: UGLY,"MAGIC",INFLEX */
+         if (cursor_maybe > 0) {
+            if (++cursor_maybe == 2) {
                if (wc == L'[')
                   continue;
-               maybe_cursor = 0;
-            } else {
-               maybe_cursor = 0;
+               cursor_maybe = 0;
+            } else if (cursor_maybe == 3) {
+               cursor_maybe = 0;
                switch (wc) {
+               default:    break;
                case L'A':  goto j_p;
                case L'B':  goto j_n;
                case L'C':  goto j_f;
                case L'D':  goto j_b;
+               case L'1':
+               case L'4':
+               case L'5':
+               case L'6':
+                  cursor_store = ((wc == L'1') ? '0' :
+                        (wc == L'4' ? '$' : (wc == L'5' ? '-' : '+')));
+                  cursor_maybe = 3;
+                  continue;
                }
                _ncl_kother(&l, L'[');
+            } else {
+               cursor_maybe = 0;
+               if (wc == L'~') {
+                  char x[2];
+                  x[0] = cursor_store;
+                  x[1] = '\0';
+                  putchar('\n');
+                  c_scroll(x);
+                  cursor_store = 0;
+                  goto j_l;
+               }
+               _ncl_kother(&l, L'[');
+               _ncl_kother(&l, (wchar_t)cursor_store);
+               cursor_store = 0;
             }
          }
 jprint:
