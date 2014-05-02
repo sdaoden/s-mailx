@@ -559,7 +559,7 @@ _pipecmd(char **result, char const *content_type)
       char const *x = tr(999, "Should i display a part `%s' (y/n)? ");
       s = ac_alloc(l += strlen(x) +1);
       snprintf(s, l - 1, x, content_type);
-      l = yorn(s);
+      l = getapproval(s), TRU1;
          puts(""); /* .. we've hijacked a pipe 8-] ... */
       ac_free(s);
       if (!l) {

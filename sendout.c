@@ -1202,7 +1202,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       if (ok_blook(askattach))
          ++err, edit_attachments(&hp->h_attach);
       if (ok_blook(asksign))
-         ++err, dosign = yorn(tr(35, "Sign this message (y/n)? "));
+         ++err, dosign = getapproval(tr(35, "Sign this message (y/n)? "), TRU1);
       if (err == 1) {
 jaskeot:
          printf(tr(183, "EOT\n"));

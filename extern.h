@@ -1689,12 +1689,9 @@ FL void        uncollapse1(struct message *mp, int always);
  */
 
 /* Return wether user says yes.  If prompt is NULL, "Continue (y/n)? " is used
- * instead.  If interactive, asks on STDIN, anything but [0]==[yY] is false.
- * If noninteractive, returns noninteract_default */
+ * instead.  If interactive, asks on STDIN, anything but [0]==[Nn] is true.
+ * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
-
-/* [Yy]es or [Nn]o.  Always `yes' if not interactive, always `no' on error */
-FL bool_t      yorn(char const *msg);
 
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */

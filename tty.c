@@ -140,44 +140,41 @@ __tty_acthdl(int s) /* TODO someday, we won't need it no more */
 }
 
 FL bool_t
-getapproval(char const *prompt, bool_t noninteract_default)
+getapproval(char const * volatile prompt, bool_t noninteract_default)
 {
-   bool_t rv;
+   sighandler_type volatile ohdl;
+   bool_t hadsig = FAL0, rv;
    NYD_ENTER;
 
    if (!(options & OPT_INTERACTIVE)) {
       rv = noninteract_default;
       goto jleave;
    }
+   rv = FAL0;
 
    if (prompt == NULL)
       prompt = tr(264, "Continue (y/n)? ");
 
-   rv = FAL0;
+   ohdl = safe_signal(SIGINT, SIG_IGN);
+   if (sigsetjmp(__tty_actjmp, 1) != 0) {
+      hadsig  = TRU1;
+      goto jrestore;
+   }
+   safe_signal(SIGINT, &__tty_acthdl);
+
    if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       switch (termios_state.ts_linebuf[0]) {
-      case 'y':
-      case 'Y':
-         rv = TRU1;
-         /* FALLTHRU */
-      default:
-         break;
+      case 'N': case 'n':  rv = FAL0; break ;
+      default:             rv = TRU1; break;
       }
+jrestore:
    termios_state_reset();
+   safe_signal(SIGINT, ohdl);
 jleave:
    NYD_LEAVE;
-   return rv;
-}
-
-FL bool_t
-yorn(char const *msg) /* TODO obsolete */
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   rv = getapproval(msg, TRU1);
-   NYD_LEAVE;
+   if (hadsig && ohdl != SIG_IGN)
+      kill(0, SIGINT);
    return rv;
 }
 
