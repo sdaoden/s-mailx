@@ -1094,7 +1094,8 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
    }
 
    if (ctt & (_LONGLINES | _CTRLCHAR | _NOTERMNL | _TRAILWS | _FROM_)) {
-      convert = CONV_TOQP;
+      if (convert != CONV_TOB64)
+         convert = CONV_TOQP;
       goto jstepi;
    }
    if (ctt & _HIGHBIT) {
