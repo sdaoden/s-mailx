@@ -741,8 +741,11 @@ commands(void)
 
       /* Read a line of commands and handle end of file specially */
 jreadline:
+      ev.ev_line.l = ev.ev_line_size;
       n = readline_input(NULL, TRU1, &ev.ev_line.s, &ev.ev_line.l,
             ev.ev_new_content);
+      ev.ev_line_size = (ui32_t)ev.ev_line.l;
+      ev.ev_line.l = (ui32_t)n;
       _reset_on_stop = 0;
       if (n < 0) {
          /* EOF */

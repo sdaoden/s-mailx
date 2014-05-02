@@ -975,9 +975,10 @@ struct search_expr {
 };
 
 struct eval_ctx {
-   struct str  ev_line;
+   struct str  ev_line;          /* The terminated data to evaluate */
+   ui32_t      ev_line_size;     /* May be used to store line memory size */
    bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
-   ui8_t       __dummy[6];
+   ui8_t       __dummy[3];
    bool_t      ev_add_history;   /* Enter (final) command in history? */
    char const  *ev_new_content;  /* History: reenter line, start with this */
 };
