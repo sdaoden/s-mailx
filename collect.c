@@ -96,7 +96,7 @@ static void       collstop(int s);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
-static void       collint(int s);
+static void       _collint(int s);
 
 static void       collhup(int s);
 
@@ -509,7 +509,7 @@ collstop(int s)
 }
 
 static void
-collint(int s)
+_collint(int s)
 {
    NYD_X; /* Signal handler */
 
@@ -519,9 +519,8 @@ collint(int s)
          puts("@");
          fflush(stdout);
          clearerr(stdin);
-         return;
-      }
-      _coll_hadintr = 1;
+      } else
+         _coll_hadintr = 1;
       siglongjmp(_coll_jmp, 1);
    }
    exit_status |= EXIT_SEND_ERROR;
@@ -603,9 +602,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
    sigaddset(&nset, SIGINT);
    sigaddset(&nset, SIGHUP);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-   handlerpush(collint);
+   handlerpush(&_collint);
    if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-      safe_signal(SIGINT, collint);
+      safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGHUP, collhup);
    /* TODO We do a lot of redundant signal handling, especially
@@ -804,7 +803,7 @@ jcont:
       case 'q':
          /* Force a quit, act like an interrupt had happened */
          ++_coll_hadintr;
-         collint((c == 'x') ? 0 : SIGINT);
+         _collint((c == 'x') ? 0 : SIGINT);
          exit(1);
          /*NOTREACHED*/
       case 'h':
