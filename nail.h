@@ -1015,6 +1015,12 @@ struct sock {                 /* data associated with a socket */
    char        s_rbuf[LINESIZE + 1];   /* for buffered reads */
 };
 
+struct sockconn {
+   struct url     sc_url;
+   struct ccred   sc_cred;
+   struct sock    sc_sock;
+};
+
 struct mailbox {
    enum {
       MB_NONE     = 000,      /* no reply expected */
