@@ -308,6 +308,12 @@ FL char *      nodename(int mayoverride);
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
                   char const *data);
 
+/* Zero ccp and lookup credentials for communicating with urlp.
+ * Return wether credentials are available and valid (for chosen auth) */
+FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
+FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
+                  char const *addr);
+
 /* Try to lookup a variable named "password-*token*".
  * Return NULL or salloc()ed buffer */
 FL char *      lookup_password_for_token(char const *token);

@@ -675,6 +675,15 @@ enum cproto {
    CPROTO_IMAP
 };
 
+enum authtype {
+   AUTHTYPE_NONE     = 1<<0,
+   AUTHTYPE_PLAIN    = 1<<1,  /* POP3: APOP is covered by this */
+   AUTHTYPE_LOGIN    = 1<<2,
+   AUTHTYPE_CRAM_MD5 = 1<<3,
+   AUTHTYPE_GSSAPI   = 1<<4,
+   AUTHTYPE_SASL     = 1<<5   /* TODO */
+};
+
 #ifdef HAVE_SSL
 enum ssl_verify_level {
    SSL_VERIFY_IGNORE,
@@ -921,6 +930,14 @@ struct url {
    char const     *url_puhpp;       /* .url_proto://.url_uhp[/.url_path] */
 };
 
+struct ccred {
+   enum cproto    cc_cproto;     /* Communication protocol */
+   enum authtype  cc_authtype;   /* Desired authentication */
+   char const     *cc_auth;      /* Authentication type as string */
+   struct str     cc_user;       /* User (urlxdec()oded) or NULL */
+   struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
+};
+
 struct time_current {
    time_t      tc_time;
    struct tm   tc_gm;
@@ -994,8 +1011,8 @@ struct sock {                 /* data associated with a socket */
    char        *s_rbufptr;    /* read pointer to s_rbuf */
    int         s_rsz;         /* size of last read in s_rbuf */
    char const  *s_desc;       /* description of error messages */
-   void        (*s_onclose)(void); /* execute on close */
-   char        s_rbuf[LINESIZE + 1]; /* for buffered reads */
+   void        (*s_onclose)(void);     /* execute on close */
+   char        s_rbuf[LINESIZE + 1];   /* for buffered reads */
 };
 
 struct mailbox {

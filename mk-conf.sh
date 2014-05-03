@@ -902,35 +902,34 @@ int main(void)
 
    if command -v krb5-config >/dev/null 2>&1; then
       i=`command -v krb5-config`
-      GSSAPI_LIBS="`CFLAGS= ${i} --libs gssapi`"
-      GSSAPI_INCS="`CFLAGS= ${i} --cflags`"
-      i='for GSSAPI via krb5-config(1)'
+      GSS_LIBS="`CFLAGS= ${i} --libs gssapi`"
+      GSS_INCS="`CFLAGS= ${i} --cflags`"
+      i='for GSS-API via krb5-config(1)'
    else
-      GSSAPI_LIBS='-lgssapi'
-      GSSAPI_INCS=
-      i='for GSSAPI in gssapi/gssapi.h, libgssapi'
+      GSS_LIBS='-lgssapi'
+      GSS_INCS=
+      i='for GSS-API in gssapi/gssapi.h, libgssapi'
    fi
-   < ${tmp2}.c link_check gssapi \
-         "${i}" '#define HAVE_GSSAPI' \
-         "${GSSAPI_LIBS}" "${GSSAPI_INCS}" ||\
-      < ${tmp3}.c link_check gssapi \
-         'for GSSAPI in gssapi.h, libgssapi' \
+   < ${tmp2}.c link_check gss \
+         "${i}" '#define HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
+      < ${tmp3}.c link_check gss \
+         'for GSS-API in gssapi.h, libgssapi' \
          '#define HAVE_GSSAPI
-         #define	GSSAPI_REG_INCLUDE' \
+         #define GSSAPI_REG_INCLUDE' \
          '-lgssapi' ||\
-      < ${tmp2}.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
+      < ${tmp2}.c link_check gss 'for GSS-API in libgssapi_krb5' \
          '#define HAVE_GSSAPI' \
          '-lgssapi_krb5' ||\
-      < ${tmp3}.c link_check gssapi \
-         'for GSSAPI in libgssapi, OpenBSD-style (pre 5.3)' \
+      < ${tmp3}.c link_check gss \
+         'for GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
          '#define HAVE_GSSAPI
-         #define	GSSAPI_REG_INCLUDE' \
+         #define GSS_REG_INCLUDE' \
          '-lgssapi -lkrb5 -lcrypto' \
          '-I/usr/include/kerberosV' ||\
-      < ${tmp2}.c link_check gssapi 'for GSSAPI in libgss' \
+      < ${tmp2}.c link_check gss 'for GSS-API in libgss' \
          '#define HAVE_GSSAPI' \
          '-lgss' ||\
-      link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
+      link_check gss 'for GSS-API in libgssapi_krb5, old-style' \
          '#define HAVE_GSSAPI
          #define GSSAPI_OLD_STYLE' \
          '-lgssapi_krb5' << \!
@@ -1162,7 +1161,7 @@ printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_GSSAPI\n   ",GSSAPI"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
@@ -1245,7 +1244,7 @@ ${cat} > ${tmp2}.c << \!
 : + IMAP protocol
 #endif
 #ifdef HAVE_GSSAPI
-: + IMAP GSSAPI authentication
+: + GSS-API authentication
 #endif
 #ifdef HAVE_POP3
 : + POP3 protocol
@@ -1307,7 +1306,7 @@ ${cat} > ${tmp2}.c << \!
 : - IMAP protocol
 #endif
 #ifndef HAVE_GSSAPI
-: - IMAP GSSAPI authentication
+: - GSS-API authentication
 #endif
 #ifndef HAVE_POP3
 : - POP3 protocol

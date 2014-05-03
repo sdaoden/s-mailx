@@ -434,12 +434,9 @@ TODO S-nail 14.7:
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
 
-- Make *password* and *password-USER@HOST* global, introduce
-  *PROTOCOL-auth-password* and *PROTOCOL-auth-password-USER@HOST*.
-  Then, drop smtp_auth_var(), and change lookup_password_for_token() to
-  work like (PROTOCOL, user,host|TOKEN) -- *password* is a global override,
-  only if that is not set lookup protocol specific.
-  Use that single function from everywhere.
+- Use ccred_lookup() for all protocols, obsolete getcredentials(),
+  lookup_password_for_token(), and whatever else can be dropped.
+  We want PROTOCOL-authXY for *all* protocols.
 
 - Change **use-starttls* to the opposite.  I.e., CAPA or whatever, if TLS
   is supported, use automatically.  *UNLESS* explicitly disabled.

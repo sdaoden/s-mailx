@@ -916,16 +916,16 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
       fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
       rv = STOP;
 #endif
-   } else if (!strcmp(auth, "gssapi")) {
+   } else if (!strcmp(auth, "gss-api") || !strcmp(auth, "gssapi")) {
 #ifdef HAVE_GSSAPI
       rv = imap_gss(mp, xuser);
 #else
-      fprintf(stderr, tr(272, "No GSSAPI support compiled in.\n"));
+      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
       rv = STOP;
 #endif
    } else {
-      fprintf(stderr, tr(273,
-         "Unknown IMAP authentication method: %s\n"), auth);
+      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
+         "IMAP", auth);
       rv = STOP;
    }
 jleave:

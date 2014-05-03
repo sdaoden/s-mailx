@@ -279,10 +279,10 @@ $set 1
 269 No IMAP support compiled in.\n
 270 IMAP error: %s
 271 Invalid address argument with -r\n
-272 No GSSAPI support compiled in.\n
-273 Unknown IMAP authentication method: %s\n
-274 Unknown SMTP authentication method: %s\n
-275 User and password are necessary for SMTP authentication.\n
+272 No GSS-API support compiled in.\n
+273 Unsupported %s authentication method: %s\n
+274 A user is necessary for %s authentication.\n
+275 A password is necessary for %s authentication.\n
 276 POP3 `APOP' authentication failed, maybe try setting *pop3-no-apop*\n
 277 No CRAM-MD5 support compiled in.\n
 278 Enter filename for part %s (%s)
