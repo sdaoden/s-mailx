@@ -765,8 +765,9 @@ enum okeys {
    ok_b_smtp_use_starttls,
    ok_b_ssl_no_default_ca,
    ok_b_ssl_v2_allow,
-   ok_b_writebackedited,
+   ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
+   ok_b_writebackedited,
 
    /* Option keys for values options */
    ok_v_attrlist,
