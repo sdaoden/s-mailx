@@ -804,7 +804,8 @@ static enum okay
 start_mta(struct name *to, FILE *input, struct header *hp)
 {
 #ifdef HAVE_SMTP
-   char *user = NULL, *password = NULL, *skinned = NULL;
+   struct url url;
+   struct ccred ccred;
 #endif
    char const **args = NULL, **t, *mta;
    char *smtp;
@@ -836,10 +837,27 @@ start_mta(struct name *to, FILE *input, struct header *hp)
       fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
       goto jstop;
 #else
-      skinned = skin(myorigin(hp));
-      if ((user = smtp_auth_var("-user", skinned)) != NULL &&
-            (password = smtp_auth_var("-password", skinned)) == NULL)
-         password = getpassword(NULL);
+      if (!url_parse(&url, CPROTO_SMTP, smtp)) /* v15-compat: check EARLY! */
+         goto jstop;
+
+      smtp = skin(myorigin(hp));
+      if (ok_blook(v15_compat)) {
+         struct url u2, *up;
+
+         /* Can we use the URL spec, or need we be relative to *from*? */
+         if (url.url_had_user)
+            up = &url;
+         else {
+            if (!url_parse(&u2, CPROTO_SMTP, smtp))/*v15-compat: check EARLY!*/
+               goto jstop;
+            up = &u2;
+         }
+
+         if (!ccred_lookup(&ccred, up))
+            goto jstop;
+      } else if (!ccred_lookup_old(&ccred, CPROTO_SMTP, smtp))
+         goto jstop;
+      url.url_uh.l = strlen(url.url_uh.s = smtp);
 #endif
    }
 
@@ -864,7 +882,7 @@ jstop:
 #ifdef HAVE_SMTP
       if (smtp != NULL) {
          prepare_child(&nset, 0, 1);
-         if (smtp_mta(smtp, to, input, hp, user, password, skinned) == 0)
+         if (smtp_mta(&url, to, input, hp, &ccred) == 0)
             _exit(0);
       } else {
 #endif
@@ -1303,7 +1321,7 @@ jfail_dead:
    mtf = nmtf;
 #ifdef HAVE_SSL
    if (dosign) {
-      if ((nmtf = smime_sign(mtf, myorigin(hp))) == NULL)
+      if ((nmtf = smime_sign(mtf, skin(myorigin(hp)))) == NULL)
          goto jfail_dead;
       Fclose(mtf);
       mtf = nmtf;
