@@ -748,7 +748,7 @@ jleave:
 }
 
 FL struct name *
-outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
+outof(struct name *names, FILE *fo, bool_t *senderror)
 {
    ui32_t pipecnt, xcnt, i;
    int *fda;
@@ -756,7 +756,6 @@ outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
    struct name *np;
    FILE *fin = NULL, *fout;
    NYD_ENTER;
-   UNUSED(hp);
 
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */

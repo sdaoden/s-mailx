@@ -1298,8 +1298,7 @@ FL struct name * delete_alternates(struct name *np);
 FL int         is_myname(char const *name);
 
 /* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
-FL struct name * outof(struct name *names, FILE *fo, struct header *hp,
-                  bool_t *senderror);
+FL struct name * outof(struct name *names, FILE *fo, bool_t *senderror);
 
 /* Handling of alias groups */
 

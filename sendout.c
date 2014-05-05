@@ -1315,20 +1315,20 @@ jfail_dead:
     * TODO even if (1) savedeadletter() etc.  To me this doesn't make sense? */
 
    /* Deliver pipe and file addressees */
-   to = outof(to, mtf, hp, &_sendout_error);
+   to = outof(to, mtf, &_sendout_error);
    if (_sendout_error)
       savedeadletter(mtf, 0);
 
    to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
-   dosign = (int)count(to); /* XXX ui32; reuse as "do-transfer" */
-   if ((!recipient_record || dosign) &&
-         mightrecord(mtf, (recipient_record ? to : NULL)) != OKAY)
-      goto jleave;
-   if (dosign)
-      rv = transfer(to, mtf, hp);
-   else if (!_sendout_error)
-      rv = OKAY;
-
+   {  ui32_t cnt = count(to);
+      if ((!recipient_record || cnt > 0) &&
+            mightrecord(mtf, (recipient_record ? to : NULL)) != OKAY)
+         goto jleave;
+      if (cnt > 0)
+         rv = transfer(to, mtf, hp);
+      else if (!_sendout_error)
+         rv = OKAY;
+   }
 jleave:
    Fclose(mtf);
 j_leave:
@@ -1524,7 +1524,6 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
    FILE *ibuf, *nfo, *nfi;
    char *tempMail;
-   struct header head;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -1532,8 +1531,6 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
-
-   memset(&head, 0, sizeof head);
 
    if ((to = checkaddrs(to)) == NULL) {
       _sendout_error = TRU1;
@@ -1557,10 +1554,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
       goto jerr_all;
 
-   head.h_to = to;
-   to = fixhead(&head, to);
-
-   if (infix_resend(ibuf, nfo, mp, head.h_to, add_resent) != 0) {
+   if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
       savedeadletter(nfi, 1);
       fputs(tr(182, "... message not sent.\n"), stderr);
 jerr_all:
@@ -1573,12 +1567,11 @@ jerr_o:
    Fclose(nfo);
    rewind(nfi);
 
-   to = outof(to, nfi, &head, &_sendout_error);
+   to = outof(to, nfi, &_sendout_error);
    if (_sendout_error)
       savedeadletter(nfi, 0);
 
    to = elide(to); /* TODO should have been done in fixhead()? */
-
    if (count(to) != 0) {
       if (!ok_blook(record_resent) || mightrecord(nfi, to) == OKAY)
          rv = transfer(to, nfi, NULL);
