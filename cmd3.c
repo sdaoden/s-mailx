@@ -86,7 +86,7 @@ static void       asort(char **list);
 static int        diction(void const *a, void const *b);
 
 /* Do the real work of resending */
-static int        resend1(void *v, int add_resent);
+static int        _resend1(void *v, bool_t add_resent);
 
 /* ..to stdout */
 static void       list_shortcuts(void);
@@ -472,7 +472,7 @@ diction(void const *a, void const *b)
 }
 
 static int
-resend1(void *v, int add_resent)
+_resend1(void *v, bool_t add_resent)
 {
    char *name, *str;
    struct name *to, *sn;
@@ -511,7 +511,7 @@ resend1(void *v, int add_resent)
       goto jleave;
    }
 
-   sn = nalloc(name, GTO);
+   sn = nalloc(name, GTO | GSKIN);
    to = usermap(sn, FAL0);
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip)
@@ -811,7 +811,7 @@ c_resend(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = resend1(v, 1);
+   rv = _resend1(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -822,7 +822,7 @@ c_Resend(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = resend1(v, 0);
+   rv = _resend1(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
