@@ -433,13 +433,26 @@ jleave:
 }
 
 FL ui32_t
-count(struct name const*np)
+count(struct name const *np)
 {
    ui32_t c;
    NYD_ENTER;
 
    for (c = 0; np != NULL; np = np->n_flink)
       if (!(np->n_type & GDEL))
+         ++c;
+   NYD_LEAVE;
+   return c;
+}
+
+FL ui32_t
+count_nonlocal(struct name const *np)
+{
+   ui32_t c;
+   NYD_ENTER;
+
+   for (c = 0; np != NULL; np = np->n_flink)
+      if (!(np->n_type & GDEL) && !(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE))
          ++c;
    NYD_LEAVE;
    return c;

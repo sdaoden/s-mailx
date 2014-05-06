@@ -1264,8 +1264,10 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 /* Concatenate the two passed name lists, return the result */
 FL struct name * cat(struct name *n1, struct name *n2);
 
-/* Determine the number of undeleted elements in a name list and return it */
+/* Determine the number of undeleted elements in a name list and return it;
+ * the latter also doesn't count file and pipe addressees in addition */
 FL ui32_t      count(struct name const *np);
+FL ui32_t      count_nonlocal(struct name const *np);
 
 /* Extract a list of names from a line, and make a list of names from it.
  * Return the list or NULL if none found */
