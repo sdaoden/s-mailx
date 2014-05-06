@@ -41,6 +41,28 @@
 # include "nail.h"
 #endif
 
+/* Token values returned by the scanner used for argument lists.
+ * Also, sizes of scanner-related things */
+enum ltoken {
+   TEOL           = 0,        /* End of the command line */
+   TNUMBER        = 1,        /* A message number */
+   TDASH          = 2,        /* A simple dash */
+   TSTRING        = 3,        /* A string (possibly containing -) */
+   TDOT           = 4,        /* A "." */
+   TUP            = 5,        /* A "^" */
+   TDOLLAR        = 6,        /* A "$" */
+   TSTAR          = 7,        /* A "*" */
+   TOPEN          = 8,        /* A '(' */
+   TCLOSE         = 9,        /* A ')' */
+   TPLUS          = 10,       /* A '+' */
+   TERROR         = 11,       /* A lexical error */
+   TCOMMA         = 12,       /* A ',' */
+   TSEMI          = 13,       /* A ';' */
+   TBACK          = 14        /* A '`' */
+};
+
+#define REGDEP          2     /* Maximum regret depth. */
+
 enum idfield {
    ID_REFERENCES,
    ID_IN_REPLY_TO
