@@ -3685,9 +3685,10 @@ If it receives a TERM signal, it will abort and save the message to
 .It Va smtp-auth
 \*(OP Sets the SMTP authentication method.
 Possible values are `none' (the default), `plain', `login'
-as well as the \*(OPal method `cram-md5'.
+as well as the \*(OPal methods `cram-md5' and `gssapi'.
 The `none' method doesn't need any user credentials,
-all other methods require a user name and a password.
+`gssapi' requires a user name
+and all other methods require a user name and a password.
 See \*(IN
 .Va smtp ,
 .Va user

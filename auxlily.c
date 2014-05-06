@@ -1028,7 +1028,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       pxstr = "smtp-auth";
       pxlen = sizeof("smtp-auth") -1;
       authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
-            AUTHTYPE_CRAM_MD5;
+            AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
       authdef = "none";
       addr_is_nuser = TRU1;
       break;
@@ -1196,7 +1196,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       pstr = "smtp";
       plen = sizeof("smtp") -1;
       authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
-            AUTHTYPE_CRAM_MD5;
+            AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
       authdef = "none";
       break;
    case CPROTO_POP3:

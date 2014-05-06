@@ -79,6 +79,11 @@ static int     _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
 static int     _smtp_talk(struct name *to, struct header *hp, FILE *fi,
                   struct sock *sp, struct url *urlp, struct ccred *ccred);
 
+#ifdef HAVE_GSSAPI
+static bool_t  _smtp_gssapi(struct sock *sp, struct url *urlp,
+                  struct ccred *ccred, struct smtp_line *slp);
+#endif
+
 static void
 _smtp_onterm(int signo)
 {
@@ -233,6 +238,12 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
       _ANSWER(2, FAL0, FAL0);
       break;
 #endif
+#ifdef HAVE_GSSAPI
+   case AUTHTYPE_GSSAPI:
+      if (!_smtp_gssapi(sp, urlp, ccred, slp))
+         goto jleave;
+      break;
+#endif
    }
 
 jsend:
@@ -296,6 +307,9 @@ jleave:
    return rv;
 }
 
+#ifdef HAVE_GSSAPI
+# include "smtp_gssapi.h"
+#endif
 
 #undef _OUT
 #undef _ANSWER
