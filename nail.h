@@ -1408,6 +1408,6 @@ VL uc_it const class_char[];
  * Finally, let's include the function prototypes XXX embed
  */
 
-#include "extern.h"
+#include "nailfuns.h"
 
 /* vim:set fenc=utf-8:s-it-mode */
