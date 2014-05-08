@@ -43,7 +43,8 @@
 
 #include <fcntl.h>
 
-#define  INFIX_BUF   \
+#undef SEND_LINESIZE
+#define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
 static char *  _sendout_boundary;
@@ -289,7 +290,7 @@ jerr_header:
    }
 #endif
 
-   bufsize = INFIX_BUF;
+   bufsize = SEND_LINESIZE;
    buf = smalloc(bufsize);
    if (convert == CONV_TOQP
 #ifdef HAVE_ICONV
@@ -454,7 +455,7 @@ fixhead(struct header *hp, struct name *tolist)
 static int
 put_signature(FILE *fo, int convert)
 {
-   char buf[INFIX_BUF], *sig, c = '\n';
+   char buf[SEND_LINESIZE], *sig, c = '\n';
    FILE *fsig;
    size_t sz;
    int rv;
@@ -473,7 +474,7 @@ put_signature(FILE *fo, int convert)
       perror(sig);
       goto jleave;
    }
-   while ((sz = fread(buf, sizeof *buf, INFIX_BUF, fsig)) != 0) {
+   while ((sz = fread(buf, sizeof *buf, SEND_LINESIZE, fsig)) != 0) {
       c = buf[sz - 1];
       if (xmime_write(buf, sz, fo, convert, TD_NONE, NULL) < 0)
          goto jerr;
@@ -535,7 +536,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
       fprintf(fo, "\nContent-Transfer-Encoding: %s\n"
          "Content-Disposition: inline\n\n", _get_encoding(convert));
 
-      buf = smalloc(bufsize = INFIX_BUF);
+      buf = smalloc(bufsize = SEND_LINESIZE);
       if (convert == CONV_TOQP
 #ifdef HAVE_ICONV
             || iconvd != (iconv_t)-1
@@ -664,7 +665,7 @@ jiconv_err:
          fflush(fi);
          cnt = fsize(fi);
       }
-      buf = smalloc(bufsize = INFIX_BUF);
+      buf = smalloc(bufsize = SEND_LINESIZE);
       for (err = 0;;) {
          if (convert == CONV_TOQP
 #ifdef HAVE_ICONV
@@ -1674,5 +1675,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
+
+#undef SEND_LINESIZE
 
 /* vim:set fenc=utf-8:s-it-mode */
