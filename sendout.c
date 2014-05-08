@@ -47,6 +47,7 @@
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
+static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
 static char *  _sendout_boundary;
 static bool_t  _sendout_error;
 
@@ -101,7 +102,7 @@ static bool_t        start_mta(struct sendbundle *sbp);
 static bool_t        mightrecord(FILE *fp, struct name *to);
 
 /* Create a Message-Id: header field.  Use either host name or from address */
-static void          message_id(FILE *fo, struct header *hp);
+static void          _message_id(FILE *fo, struct header *hp);
 
 /* Format the given header line to not exceed 72 characters */
 static int           fmt(char const *str, struct name *np, FILE *fo, int comma,
@@ -360,6 +361,8 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          assert(from != NULL);
          sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
       }
+      else
+         __sendout_ident = sbp->sb_url.url_uh.s;
       if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
          goto jleave;
    } else {
@@ -1011,7 +1014,7 @@ jbail:
 }
 
 static void
-message_id(FILE *fo, struct header *hp)
+_message_id(FILE *fo, struct header *hp)
 {
    char const *h;
    size_t rl;
@@ -1021,10 +1024,12 @@ message_id(FILE *fo, struct header *hp)
    if (ok_blook(message_id_disable))
       goto jleave;
 
-   if ((h = ok_vlook(hostname)) != NULL)
-      rl = 24;
-   else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
+   if ((h = __sendout_ident) != NULL)
+      rl = 8;
+   else if ((h = ok_vlook(hostname)) != NULL)
       rl = 16;
+   else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
+      rl = 8;
    else
       /* Up to MTA */
       goto jleave;
@@ -1033,8 +1038,9 @@ message_id(FILE *fo, struct header *hp)
    fprintf(fo, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>\n",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      getrandstring(rl), (rl == 16 ? '%' : '@'), h);
+      getrandstring(rl), (rl == 8 ? '%' : '@'), h);
 jleave:
+   __sendout_ident = NULL;
    NYD_LEAVE;
 }
 
@@ -1136,7 +1142,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
          goto jleave;
       if ((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) {
          fputs("Resent-", fo);
-         message_id(fo, NULL);
+         _message_id(fo, NULL);
       }
    }
    if (check_from_and_sender(fromfield, senderfield))
@@ -1556,7 +1562,7 @@ do {\
       FMT_CC_AND_BCC();
 
    if ((w & GMSGID) && stealthmua <= 0)
-      message_id(fo, hp), ++gotcha;
+      _message_id(fo, hp), ++gotcha;
 
    if ((np = hp->h_ref) != NULL && (w & GREF)) {
       fmt("References:", np, fo, 0, 1, 0);
