@@ -148,8 +148,8 @@ static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
                      bool_t dowarn);
-static char *     smime_sign_include_certs(char const *name);
-static int        smime_sign_include_chain_creat(_STACKOF(X509) **chain,
+static char *     _smime_sign_include_certs(char const *name);
+static bool_t     _smime_sign_include_chain_creat(_STACKOF(X509) **chain,
                      char const *cfiles);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 static enum okay  load_crl1(X509_STORE *store, char const *name);
@@ -613,7 +613,7 @@ jerr:
 }
 
 static char *
-smime_sign_include_certs(char const *name)
+_smime_sign_include_certs(char const *name)
 {
    char *rv;
    NYD_ENTER;
@@ -638,40 +638,30 @@ jleave:
    return rv;
 }
 
-static int
-smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
+static bool_t
+_smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
 {
    X509 *tmp;
    FILE *fp;
-   char *rest, *x, *ncf;
+   char *nfield, *cfield, *x;
    NYD_ENTER;
 
    *chain = sk_X509_new_null();
 
-   for (rest = savestr(cfiles);;) {
-      ncf = strchr(rest, ',');/* FIXME use n_strsep(): this FIXES behaviour! */
-      if (ncf != NULL)
-         *ncf++ = '\0';
-      /* This fails for '=,file' constructs, but those are sick */
-      if (*rest == '\0')
-         break;
-
-      if ((x = file_expand(rest)) == NULL ||
-            (fp = Fopen(rest = x, "r")) == NULL) {
+   for (nfield = savestr(cfiles);
+         (cfield = n_strsep(&nfield, ',', TRU1)) != NULL;) {
+      if ((x = file_expand(cfield)) == NULL ||
+            (fp = Fopen(cfield = x, "r")) == NULL) {
          perror(cfiles);
          goto jerr;
       }
       if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-         ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), rest);
+         ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), cfield);
          Fclose(fp);
          goto jerr;
       }
       sk_X509_push(*chain, tmp);
       Fclose(fp);
-
-      if (ncf == NULL)
-         break;
-      rest = ncf;
    }
 
    if (sk_X509_num(*chain) == 0) {
@@ -937,8 +927,8 @@ smime_sign(FILE *ip, char const *addr)
    Fclose(fp);
    fp = NULL;
 
-   if ((addr = smime_sign_include_certs(addr)) != NULL &&
-         !smime_sign_include_chain_creat(&chain, addr))
+   if ((addr = _smime_sign_include_certs(addr)) != NULL &&
+         !_smime_sign_include_chain_creat(&chain, addr))
       goto jleave;
 
    if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
@@ -961,8 +951,7 @@ smime_sign(FILE *ip, char const *addr)
       goto jerr;
    }
 
-   if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb,
-         PKCS7_DETACHED)) == NULL) {
+   if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb, PKCS7_DETACHED)) == NULL) {
       ssl_gen_err(tr(535, "Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
@@ -1255,6 +1244,7 @@ jloop:
    }
    BIO_free(fb);
    Fclose(fp);
+
    certs = PKCS7_get0_signers(pkcs7, chain, 0);
    if (certs == NULL) {
       fprintf(stderr, tr(563, "No certificates found in message %d\n"), n);
