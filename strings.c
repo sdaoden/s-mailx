@@ -206,6 +206,10 @@ FL void *
    _all_wast += size - orig_size;
 
    size += _SHOPE_SIZE;
+
+   if (size >= 2048)
+      alert("salloc() of %" ZFMT " bytes from `%s', line %u\n",
+         size, mdbg_file, mdbg_line);
 #endif
 
    /* Search for a buffer with enough free space to serve request */
