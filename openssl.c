@@ -362,8 +362,8 @@ ssl_check_host(char const *server, struct sock *sp)
          gen = sk_GENERAL_NAME_value(gens, i);
          if (gen->type == GEN_DNS) {
             if (options & OPT_VERBOSE)
-               fprintf(stderr, "Comparing DNS name: \"%s\"\n",
-                  gen->d.ia5->data);
+               fprintf(stderr, "Comparing DNS: <%s>; should <%s>\n",
+                  server, (char*)gen->d.ia5->data);
             rv = rfc2595_hostname_match(server, (char*)gen->d.ia5->data);
             if (rv == OKAY)
                goto jdone;
@@ -376,7 +376,8 @@ ssl_check_host(char const *server, struct sock *sp)
             > 0) {
       data[sizeof data - 1] = '\0';
       if (options & OPT_VERBOSE)
-         fprintf(stderr, "Comparing common name: \"%s\"\n", data);
+         fprintf(stderr, "Comparing commonName: <%s>; should <%s>\n",
+            server, data);
       rv = rfc2595_hostname_match(server, data);
    }
 jdone:
@@ -474,7 +475,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             gen = sk_GENERAL_NAME_value(gens, j);
             if (gen->type == GEN_EMAIL) {
                if (options & OPT_VERBOSE)
-                  fprintf(stderr, "Comparing alt. address: %s\"\n", data);
+                  fprintf(stderr,
+                     "Comparing subject_alt_name: <%s>; should <%s>\n",
+                     sender, (char*)gen->d.ia5->data);
                if (!asccasecmp((char*)gen->d.ia5->data, sender))
                   goto jfound;
             }
@@ -486,7 +489,8 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
                data, sizeof data) > 0) {
          data[sizeof data -1] = '\0';
          if (options & OPT_VERBOSE)
-            fprintf(stderr, "Comparing address: \"%s\"\n", data);
+            fprintf(stderr, "Comparing emailAddress: <%s>; should <%s>\n",
+               sender, data);
          if (!asccasecmp(data, sender))
             goto jfound;
       }
