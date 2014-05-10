@@ -571,9 +571,10 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    char o[LINESIZE], *line, *lp;
    sighandler_type volatile saveint, savepipe;
    size_t linesize, linelen, size;
-   int number, emptyline, lines;
+   int number, lines;
+   int volatile emptyline;
    off_t offset;
-   enum okay rv;
+   enum okay volatile rv;
    NYD_ENTER;
 
    line = NULL; /* TODO line pool */
@@ -819,7 +820,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    struct sockconn sc;
    sighandler_type saveint, savepipe;
    char const *cp;
-   int rv;
+   int volatile rv;
    NYD_ENTER;
 
    rv = 1;
