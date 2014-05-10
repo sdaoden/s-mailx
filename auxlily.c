@@ -715,7 +715,7 @@ jleave:
 FL char *
 nodename(int mayoverride)
 {
-   static char *hostname;
+   static char *sys_hostname, *hostname; /* XXX free-at-exit */
 
    struct utsname ut;
    char *hn;
@@ -729,10 +729,8 @@ nodename(int mayoverride)
    NYD_ENTER;
 
    if (mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0') {
-      if (hostname != NULL)
-         free(hostname);
-      hostname = sstrdup(hn);
-   } else if (hostname == NULL) {
+      ;
+   } else if ((hn = sys_hostname) == NULL) {
       uname(&ut);
       hn = ut.nodename;
 #ifdef HAVE_SOCKETS
@@ -755,12 +753,17 @@ nodename(int mayoverride)
          hn = hent->h_name;
 # endif
 #endif
-      hostname = sstrdup(hn);
+      sys_hostname = sstrdup(hn);
 #if defined HAVE_SOCKETS && defined HAVE_IPV6
       if (hn != ut.nodename)
          ac_free(hn);
 #endif
+      hn = sys_hostname;
    }
+
+   if (hostname != NULL && hostname != sys_hostname)
+      free(hostname);
+   hostname = sstrdup(hn);
    NYD_LEAVE;
    return hostname;
 }
