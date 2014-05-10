@@ -857,6 +857,7 @@ enum okeys {
    ok_v_smtp_auth,
    ok_v_smtp_auth_password,
    ok_v_smtp_auth_user,
+   ok_v_smtp_hostname,
    ok_v_spam_command,
    ok_v_spam_host,
    ok_v_spam_maxsize,
