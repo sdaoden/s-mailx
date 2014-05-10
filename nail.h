@@ -1306,6 +1306,15 @@ struct attachment {
    int         a_msgno;       /* message number */
 };
 
+struct sendbundle {
+   struct header  *sb_hp;
+   struct name    *sb_to;
+   FILE           *sb_input;
+   struct str     sb_signer;  /* USER@HOST for signing+ */
+   struct url     sb_url;
+   struct ccred   sb_ccred;
+};
+
 struct group {
    struct group *ge_link;     /* Next person in this group */
    char        *ge_name;      /* This person's user name */
