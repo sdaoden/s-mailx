@@ -677,7 +677,8 @@ mkenvelope(struct name *np)
    char *ep, *realnam = NULL, *sourceaddr = NULL, *localpart = NULL,
       *domainpart = NULL, *cp, *rp, *xp, *ip;
    struct str in, out;
-   int level = 0, hadphrase = 0;
+   int level = 0;
+   bool_t hadphrase = FAL0;
    NYD_ENTER;
 
    in.s = np->n_fullname;
@@ -706,13 +707,14 @@ mkenvelope(struct name *np)
          }
          while (xp < cp)
             *rp++ = *xp++;
-         hadphrase = 1;
+         hadphrase = TRU1;
          goto jdone;
       case '(':
          if (level++)
             goto jdfl;
-         if (hadphrase++ == 0)
+         if (!hadphrase)
             rp = ip;
+         hadphrase = TRU1;
          break;
       case ')':
          if (--level)
