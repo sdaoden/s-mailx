@@ -964,21 +964,34 @@ jserver:
       s->l = i;
    }
 
-   /* USER@HOST */
-   if (urlp->url_user_enc.l == 0)
-      urlp->url_uh = urlp->url_host;
-   else {
-      struct str *s = &urlp->url_uh;
-      size_t i = urlp->url_user_enc.l;
+   /* USER@HOST
+    * For SMTP we apply ridiculously complicated *v15-compat* plus
+    * *smtp-hostname* / *hostname* dependent rules */
+   {  struct str h;
 
-      s->s = salloc(i + 1 + urlp->url_host.l +1);
-      if (i > 0) {
-         memcpy(s->s, urlp->url_user_enc.s, i);
-         s->s[i++] = '@';
+      if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
+            (cp = ok_vlook(smtp_hostname)) != NULL) {
+         if (*cp == '\0')
+            cp = nodename(1);
+         h.s = savestrbuf(cp, h.l = strlen(cp));
+      } else
+         h = urlp->url_host;
+
+      if (urlp->url_user_enc.l == 0)
+         urlp->url_uh = h;
+      else {
+         struct str *s = &urlp->url_uh;
+         size_t i = urlp->url_user_enc.l;
+
+         s->s = salloc(i + 1 + h.l +1);
+         if (i > 0) {
+            memcpy(s->s, urlp->url_user_enc.s, i);
+            s->s[i++] = '@';
+         }
+         memcpy(s->s + i, h.s, h.l +1);
+         i += h.l;
+         s->l = i;
       }
-      memcpy(s->s + i, urlp->url_host.s, urlp->url_host.l +1);
-      i += urlp->url_host.l;
-      s->l = i;
    }
 
    /* Finally, for fun: .url_proto://.url_uhp[/.url_path] */
