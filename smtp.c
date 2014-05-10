@@ -76,12 +76,11 @@ static int     _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
                   bool_t ign_eof, bool_t want_dat);
 
 /* Talk to a SMTP server */
-static int     _smtp_talk(struct name *to, struct header *hp, FILE *fi,
-                  struct sock *sp, struct url *urlp, struct ccred *ccred);
+static bool_t  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
 
 #ifdef HAVE_GSSAPI
-static bool_t  _smtp_gssapi(struct sock *sp, struct url *urlp,
-                  struct ccred *ccred, struct smtp_line *slp);
+static bool_t  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
+                  struct smtp_line *slp);
 #endif
 
 static void
@@ -151,19 +150,18 @@ do {\
       swrite(sp, X);\
 } while (0)
 
-static int
-_smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
-   struct url *urlp, struct ccred *ccred)
+static bool_t
+_smtp_talk(struct sock *sp, struct sendbundle *sbp)
 {
-   char o[LINESIZE], *cp;
+   char o[LINESIZE], *hostname, *cp;
    struct smtp_line _sl, *slp = &_sl;
    struct str b64;
    struct name *n;
    size_t blen, cnt;
-   int inhdr = 1, inbcc = 0, rv = 1;
+   bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
    NYD_ENTER;
-   UNUSED(hp);
 
+   hostname = nodename(TRU1);
    slp->buf = NULL;
    slp->bufsize = 0;
 
@@ -172,7 +170,7 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
 
 #ifdef HAVE_SSL
    if (!sp->s_use_ssl && ok_blook(smtp_use_starttls)) {
-      snprintf(o, sizeof o, LINE("EHLO %s"), nodename(1));
+      snprintf(o, sizeof o, LINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
 
@@ -180,7 +178,7 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
       _ANSWER(2, FAL0, FAL0);
 
       if (!(options & OPT_DEBUG) &&
-            ssl_open(urlp->url_host.s, sp, urlp->url_uhp.s) != OKAY)
+            ssl_open(sbp->sb_url.url_host.s, sp, sbp->sb_url.url_uhp.s) != OKAY)
          goto jleave;
    }
 #else
@@ -191,19 +189,19 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
 #endif
 
    /* Shorthand: no authentication, plain HELO? */
-   if (ccred->cc_authtype == AUTHTYPE_NONE) {
-      snprintf(o, sizeof o, LINE("HELO %s"), nodename(1));
+   if (sbp->sb_ccred.cc_authtype == AUTHTYPE_NONE) {
+      snprintf(o, sizeof o, LINE("HELO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
       goto jsend;
    }
 
    /* We'll have to deal with authentication */
-   snprintf(o, sizeof o, LINE("EHLO %s"), nodename(1));
+   snprintf(o, sizeof o, LINE("EHLO %s"), hostname);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
-   switch (ccred->cc_authtype) {
+   switch (sbp->sb_ccred.cc_authtype) {
    default:
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
@@ -211,8 +209,9 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
       _ANSWER(3, FAL0, FAL0);
 
       snprintf(o, sizeof o, "%c%s%c%s",
-         '\0', ccred->cc_user.s, '\0', ccred->cc_pass.s);
-      b64_encode_buf(&b64, o, ccred->cc_user.l + ccred->cc_pass.l + 2,
+         '\0', sbp->sb_ccred.cc_user.s, '\0', sbp->sb_ccred.cc_pass.s);
+      b64_encode_buf(&b64, o,
+         sbp->sb_ccred.cc_user.l + sbp->sb_ccred.cc_pass.l + 2,
          B64_SALLOC | B64_CRLF);
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
@@ -221,11 +220,11 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
       _OUT(LINE("AUTH LOGIN"));
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_cp(&b64, ccred->cc_user.s, B64_SALLOC | B64_CRLF);
+      b64_encode_cp(&b64, sbp->sb_ccred.cc_user.s, B64_SALLOC | B64_CRLF);
       _OUT(b64.s);
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_cp(&b64, ccred->cc_pass.s, B64_SALLOC | B64_CRLF);
+      b64_encode_cp(&b64, sbp->sb_ccred.cc_pass.s, B64_SALLOC | B64_CRLF);
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
@@ -233,25 +232,26 @@ _smtp_talk(struct name *to, struct header *hp, FILE *fi, struct sock *sp,
    case AUTHTYPE_CRAM_MD5:
       _OUT(LINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
-      cp = cram_md5_string(ccred->cc_user.s, ccred->cc_pass.s, slp->dat);
+      cp = cram_md5_string(sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_pass.s,
+            slp->dat);
       _OUT(cp);
       _ANSWER(2, FAL0, FAL0);
       break;
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
-      if (!_smtp_gssapi(sp, urlp, ccred, slp))
+      if (!_smtp_gssapi(sp, sbp, slp))
          goto jleave;
       break;
 #endif
    }
 
 jsend:
-   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), urlp->url_uh.s);
+   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), sbp->sb_url.url_uh.s);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
-   for (n = to; n != NULL; n = n->n_flink) {
+   for (n = sbp->sb_to; n != NULL; n = n->n_flink) {
       if (!(n->n_type & GDEL)) {
          snprintf(o, sizeof o, LINE("RCPT TO:<%s>"), skinned_name(n));
          _OUT(o);
@@ -262,22 +262,22 @@ jsend:
    _OUT(LINE("DATA"));
    _ANSWER(3, FAL0, FAL0);
 
-   fflush_rewind(fi);
-   cnt = fsize(fi);
-   while (fgetline(&slp->buf, &slp->bufsize, &cnt, &blen, fi, 1) != NULL) {
+   fflush_rewind(sbp->sb_input);
+   cnt = fsize(sbp->sb_input);
+   while (fgetline(&slp->buf, &slp->bufsize, &cnt, &blen, sbp->sb_input, 1)
+         != NULL) {
       if (inhdr) {
-         if (*slp->buf == '\n') {
-            inhdr = 0;
-            inbcc = 0;
-         } else if (inbcc && blankchar(*slp->buf))
+         if (*slp->buf == '\n')
+            inhdr = inbcc = FAL0;
+         else if (inbcc && blankchar(*slp->buf))
             continue;
          /* We know what we have generated first, so do not look for whitespace
           * before the ':' */
          else if (!ascncasecmp(slp->buf, "bcc: ", 5)) {
-            inbcc = 1;
+            inbcc = TRU1;
             continue;
          } else
-            inbcc = 0;
+            inbcc = FAL0;
       }
 
       if (*slp->buf == '.') {
@@ -299,7 +299,7 @@ jsend:
 
    _OUT(LINE("QUIT"));
    _ANSWER(2, TRU1, FAL0);
-   rv = 0;
+   rv = TRU1;
 jleave:
    if (slp->buf != NULL)
       free(slp->buf);
@@ -314,13 +314,12 @@ jleave:
 #undef _OUT
 #undef _ANSWER
 
-FL int
-smtp_mta(struct url *urlp, struct name * volatile to, FILE *fi,
-   struct header *hp, struct ccred *ccred)
+FL bool_t
+smtp_mta(struct sendbundle *sbp)
 {
    struct sock so;
    sighandler_type volatile saveterm;
-   int rv = 1;
+   bool_t volatile rv = FAL0;
    NYD_ENTER;
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);
@@ -330,11 +329,11 @@ smtp_mta(struct url *urlp, struct name * volatile to, FILE *fi,
       safe_signal(SIGTERM, &_smtp_onterm);
 
    memset(&so, 0, sizeof so);
-   if (!(options & OPT_DEBUG) && sopen(&so, urlp) != OKAY)
+   if (!(options & OPT_DEBUG) && !sopen(&so, &sbp->sb_url))
       goto jleave;
 
    so.s_desc = "SMTP";
-   rv = _smtp_talk(to, hp, fi, &so, urlp, ccred);
+   rv = _smtp_talk(&so, sbp);
 
    if (!(options & OPT_DEBUG))
       sclose(&so);

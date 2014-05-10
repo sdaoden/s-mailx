@@ -530,7 +530,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 528 Invalid conditional expression "%s %s %s"\n
 529 A Sender: field is required with multiple addresses in From: field.\n
 530 The Sender: field may contain only one address.\n
-531 No "from" address for signing specified\n
+531 No *from* address for signing specified\n
 532 Error reading private key from
 533 Error reading signer certificate from
 534 Error creating BIO signing objects

@@ -1506,8 +1506,7 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
 
 #ifdef HAVE_SMTP
 /* Send a message via SMTP */
-FL int         smtp_mta(struct url *urlp, struct name *to, FILE *fi,
-                  struct header *hp, struct ccred *ccred);
+FL bool_t      smtp_mta(struct sendbundle *sbp);
 #endif
 
 /*

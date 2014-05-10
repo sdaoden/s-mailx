@@ -60,6 +60,11 @@ static char const *  _get_encoding(const enum conversion convert);
 static int           _attach_file(struct attachment *ap, FILE *fo);
 static int           __attach_file(struct attachment *ap, FILE *fo);
 
+/* There are non-local receivers, collect credentials etc. */
+static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
+                        bool_t signing_caps);
+
+/* Prepare arguments for the MTA (non *smtp* mode) */
 static char const ** _prepare_mta_args(struct name *to, struct header *hp);
 
 /* Fix the header by glopping all of the expanded names from the distribution
@@ -85,13 +90,14 @@ static int           savemail(char const *name, FILE *fi);
 /* Send mail to a bunch of user names.  The interface is through mail() */
 static int           sendmail_internal(void *v, int recipient_record);
 
-static enum okay     transfer(struct name *to, FILE *input, struct header *hp);
+/*  */
+static bool_t        _transfer(struct sendbundle *sbp);
 
-/* Start the MTA mailing to namelist and stdin redirected to input */
-static enum okay     start_mta(struct name *to, FILE *input, struct header *hp);
+/* Start the MTA mailing */
+static bool_t        start_mta(struct sendbundle *sbp);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static enum okay     mightrecord(FILE *fp, struct name *to);
+static bool_t        mightrecord(FILE *fp, struct name *to);
 
 /* Create a Message-Id: header field.  Use either host name or from address */
 static void          message_id(FILE *fo, struct header *hp);
@@ -316,6 +322,60 @@ jerr_fclose:
 jleave:
    NYD_LEAVE;
    return err;
+}
+
+static bool_t
+_sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
+{
+   bool_t v15, rv = FAL0;
+   char *shost, *from, *smtp;
+   NYD_ENTER;
+
+   v15 = ok_blook(v15_compat);
+   shost = (v15 ? ok_vlook(smtp_hostname) : NULL);
+   from = ((signing_caps || !v15 || shost == NULL)
+         ? skin(myorigin(sbp->sb_hp)) : NULL);
+
+   if (signing_caps) {
+      if (from == NULL) {
+#ifdef HAVE_SSL
+         fprintf(stderr, tr(531, "No *from* address for signing specified\n"));
+         goto jleave;
+#endif
+      } else
+         sbp->sb_signer.l = strlen(sbp->sb_signer.s = from);
+   }
+
+   if ((smtp = ok_vlook(smtp)) == NULL) {
+      rv = TRU1;
+      goto jleave;
+   }
+
+   if (!url_parse(&sbp->sb_url, CPROTO_SMTP, smtp))
+      goto jleave;
+
+   if (v15) {
+      if (shost == NULL) {
+         assert(from != NULL);
+         sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
+      }
+      if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
+         goto jleave;
+   } else {
+      if (sbp->sb_url.url_had_user || sbp->sb_url.url_pass.s != NULL) {
+         fprintf(stderr, "New-style URL used without *v15-compat* being set\n");
+         goto jleave;
+      }
+      if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, smtp))
+         goto jleave;
+      assert(from != NULL);
+      sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
+   }
+
+   rv = TRU1;
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 static char const **
@@ -747,73 +807,78 @@ sendmail_internal(void *v, int recipient_record)
    return rv;
 }
 
-static enum okay
-transfer(struct name *to, FILE *input, struct header *hp)
+static bool_t
+_transfer(struct sendbundle *sbp)
 {
-   char o[LINESIZE], *cp;
    struct name *np;
-   int cnt = 0;
-   enum okay rv = OKAY;
+   ui32_t cnt;
+   bool_t rv = TRU1;
    NYD_ENTER;
 
-   np = to;
-   while (np != NULL) {
-      snprintf(o, sizeof o, "smime-encrypt-%s", np->n_name);/* XXX */
-      if ((cp = vok_vlook(o)) != NULL) {
+   for (cnt = 0, np = sbp->sb_to; np != NULL;) {
+      char const k[] = "smime-encrypt-";
+      size_t nl = strlen(np->n_name);
+      char *cp, *vs = ac_alloc(sizeof(k)-1 + nl +1);
+      memcpy(vs, k, sizeof(k) -1);
+      memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
+
+      if ((cp = vok_vlook(vs)) != NULL) {
 #ifdef HAVE_SSL
-         struct name *nt;
          FILE *ef;
 
-         if ((ef = smime_encrypt(input, cp, np->n_name)) != NULL) {
-            nt = ndup(np, np->n_type & ~(GFULL | GSKIN));
-            rv = start_mta(nt, ef, hp);
+         if ((ef = smime_encrypt(sbp->sb_input, cp, np->n_name)) != NULL) {
+            FILE *fisave = sbp->sb_input;
+            struct name *nsave = sbp->sb_to;
+
+            sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
+            sbp->sb_input = ef;
+            if (!start_mta(sbp))
+               rv = FAL0;
+            sbp->sb_to = nsave;
+            sbp->sb_input = fisave;
+
             Fclose(ef);
          } else {
 #else
             fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
-            rv = STOP;
+            rv = FAL0;
 #endif
             fprintf(stderr, tr(38, "Message not sent to <%s>\n"), np->n_name);
             _sendout_error = TRU1;
 #ifdef HAVE_SSL
          }
 #endif
-         rewind(input);
+         rewind(sbp->sb_input);
 
          if (np->n_flink != NULL)
             np->n_flink->n_blink = np->n_blink;
          if (np->n_blink != NULL)
             np->n_blink->n_flink = np->n_flink;
-         if (np == to)
-            to = np->n_flink;
+         if (np == sbp->sb_to)
+            sbp->sb_to = np->n_flink;
          np = np->n_flink;
       } else {
          ++cnt;
          np = np->n_flink;
       }
+      ac_free(vs);
    }
 
-   if (cnt)
-      if (ok_blook(smime_force_encryption) || start_mta(to, input, hp) != OKAY)
-         rv = STOP;
+   if (cnt > 0 && (ok_blook(smime_force_encryption) || !start_mta(sbp)))
+      rv = FAL0;
    NYD_LEAVE;
    return rv;
 }
 
-static enum okay
-start_mta(struct name *to, FILE *input, struct header *hp)
+static bool_t
+start_mta(struct sendbundle *sbp)
 {
-#ifdef HAVE_SMTP
-   struct url url;
-   struct ccred ccred;
-#endif
    char const **args = NULL, **t, *mta;
    char *smtp;
    pid_t pid;
    sigset_t nset;
-   enum okay rv = STOP;
+   bool_t rv = FAL0;
    NYD_ENTER;
-   UNUSED(hp);
 
    if ((smtp = ok_vlook(smtp)) == NULL) {
       if ((mta = ok_vlook(sendmail)) != NULL) {
@@ -822,13 +887,13 @@ start_mta(struct name *to, FILE *input, struct header *hp)
       } else
          mta = SENDMAIL;
 
-      args = _prepare_mta_args(to, hp);
+      args = _prepare_mta_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
          printf(tr(181, "Sendmail arguments:"));
          for (t = args; *t != NULL; ++t)
             printf(" \"%s\"", *t);
          printf("\n");
-         rv = OKAY;
+         rv = TRU1;
          goto jleave;
       }
    } else {
@@ -837,27 +902,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
       fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
       goto jstop;
 #else
-      if (!url_parse(&url, CPROTO_SMTP, smtp)) /* v15-compat: check EARLY! */
-         goto jstop;
-
-      smtp = skin(myorigin(hp));
-      if (ok_blook(v15_compat)) {
-         struct url u2, *up;
-
-         /* Can we use the URL spec, or need we be relative to *from*? */
-         if (url.url_had_user)
-            up = &url;
-         else {
-            if (!url_parse(&u2, CPROTO_SMTP, smtp))/*v15-compat: check EARLY!*/
-               goto jstop;
-            up = &u2;
-         }
-
-         if (!ccred_lookup(&ccred, up))
-            goto jstop;
-      } else if (!ccred_lookup_old(&ccred, CPROTO_SMTP, smtp))
-         goto jstop;
-      url.url_uh.l = strlen(url.url_uh.s = smtp);
+      /* XXX assert that sendbundle is setup? */
 #endif
    }
 
@@ -866,7 +911,7 @@ start_mta(struct name *to, FILE *input, struct header *hp)
    if ((pid = fork()) == -1) {
       perror("fork");
 jstop:
-      savedeadletter(input, 0);
+      savedeadletter(sbp->sb_input, 0);
       _sendout_error = TRU1;
       goto jleave;
    }
@@ -882,11 +927,11 @@ jstop:
 #ifdef HAVE_SMTP
       if (smtp != NULL) {
          prepare_child(&nset, 0, 1);
-         if (smtp_mta(&url, to, input, hp, &ccred) == 0)
+         if (smtp_mta(sbp))
             _exit(0);
       } else {
 #endif
-         prepare_child(&nset, fileno(input), -1);
+         prepare_child(&nset, fileno(sbp->sb_input), -1);
          /* If *record* is set then savemail() will move the file position;
           * it'll call rewind(), but that may optimize away the systemcall if
           * possible, and since dup2() shares the position with the original FD
@@ -897,18 +942,18 @@ jstop:
 #ifdef HAVE_SMTP
       }
 #endif
-      savedeadletter(input, 1);
+      savedeadletter(sbp->sb_input, 1);
       fputs(tr(182, "... message not sent.\n"), stderr);
       _exit(1);
    }
    if ((options & (OPT_DEBUG | OPT_VERBOSE | OPT_BATCH_FLAG)) ||
          ok_blook(sendwait)) {
       if (wait_child(pid, NULL))
-         rv = OKAY;
+         rv = TRU1;
       else
          _sendout_error = TRU1;
    } else {
-      rv = OKAY;
+      rv = TRU1;
       free_child(pid);
    }
 jleave:
@@ -916,12 +961,12 @@ jleave:
    return rv;
 }
 
-static enum okay
+static bool_t
 mightrecord(FILE *fp, struct name *to)
 {
    char *cp, *cq;
    char const *ep;
-   enum okay rv = OKAY;
+   bool_t rv = TRU1;
    NYD_ENTER;
 
    if (to != NULL) {
@@ -957,7 +1002,7 @@ jbail:
             "message not sent\n"), ep);
          exit_status |= EXIT_ERR;
          savedeadletter(fp, 1);
-         rv = STOP;
+         rv = FAL0;
       }
    }
    NYD_LEAVE;
@@ -1187,6 +1232,7 @@ FL enum okay
 mail1(struct header *hp, int printheaders, struct message *quote,
    char *quotefile, int recipient_record, int doprefix)
 {
+   struct sendbundle sb;
    struct name *to;
    FILE *mtf, *nmtf;
    int dosign = -1, err;
@@ -1285,7 +1331,7 @@ jaskeot:
     * TODO duplicates removed).
     * TODO later on we use the merged list for outof() pipe/file saving,
     * TODO then we eliminate duplicates (again) and then we use that one
-    * TODO for mightrecord() and transfer(), and again.  ... Please ... */
+    * TODO for mightrecord() and _transfer(), and again.  ... Please ... */
 
    /* NOTE: Due to elide() in fixhead(), ENSURE to,cc,bcc order of to!,
     * because otherwise the recipients will be "degraded" if they occur
@@ -1296,6 +1342,16 @@ jaskeot:
       _sendout_error = TRU1;
    }
    to = fixhead(hp, to);
+
+   /* */
+   memset(&sb, 0, sizeof sb);
+   sb.sb_hp = hp;
+   sb.sb_to = to;
+   sb.sb_input = mtf;
+   if ((dosign || count_nonlocal(to) > 0) &&
+         !_sendbundle_setup_creds(&sb, (dosign > 0)))
+      /* TODO saving $DEAD and recovering etc is not yet well defined */
+      goto jfail_dead;
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
    for (charset_iter_reset(hp->h_charset);; charset_iter_next()) {
@@ -1309,19 +1365,18 @@ jaskeot:
       }
 
       perror("");
-#ifdef HAVE_SSL
 jfail_dead:
-#endif
       _sendout_error = TRU1;
-      savedeadletter(mtf, 1);
+      savedeadletter(mtf, TRU1);
       fputs(tr(182, "... message not sent.\n"), stderr);
       goto jleave;
    }
-
    mtf = nmtf;
+
+   /*  */
 #ifdef HAVE_SSL
    if (dosign) {
-      if ((nmtf = smime_sign(mtf, skin(myorigin(hp)))) == NULL)
+      if ((nmtf = smime_sign(mtf, sb.sb_signer.s)) == NULL)
          goto jfail_dead;
       Fclose(mtf);
       mtf = nmtf;
@@ -1335,16 +1390,20 @@ jfail_dead:
    /* Deliver pipe and file addressees */
    to = outof(to, mtf, &_sendout_error);
    if (_sendout_error)
-      savedeadletter(mtf, 0);
+      savedeadletter(mtf, FAL0);
 
    to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
    {  ui32_t cnt = count(to);
       if ((!recipient_record || cnt > 0) &&
-            mightrecord(mtf, (recipient_record ? to : NULL)) != OKAY)
+            !mightrecord(mtf, (recipient_record ? to : NULL)))
          goto jleave;
-      if (cnt > 0)
-         rv = transfer(to, mtf, hp);
-      else if (!_sendout_error)
+      if (cnt > 0) {
+         sb.sb_hp = hp;
+         sb.sb_to = to;
+         sb.sb_input = mtf;
+         if (_transfer(&sb))
+            rv = OKAY;
+      } else if (!_sendout_error)
          rv = OKAY;
    }
 jleave:
@@ -1540,6 +1599,7 @@ jleave:
 FL enum okay
 resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 {
+   struct sendbundle sb;
    FILE *ibuf, *nfo, *nfi;
    char *tempMail;
    enum okay rv = STOP;
@@ -1572,8 +1632,15 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
       goto jerr_all;
 
+   memset(&sb, 0, sizeof sb);
+   sb.sb_to = to;
+   sb.sb_input = nfi;
+   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
+      /* TODO saving $DEAD and recovering etc is not yet well defined */
+      goto jerr_all;
+
    if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
-      savedeadletter(nfi, 1);
+      savedeadletter(nfi, TRU1);
       fputs(tr(182, "... message not sent.\n"), stderr);
 jerr_all:
       Fclose(nfi);
@@ -1587,12 +1654,16 @@ jerr_o:
 
    to = outof(to, nfi, &_sendout_error);
    if (_sendout_error)
-      savedeadletter(nfi, 0);
+      savedeadletter(nfi, FAL0);
 
    to = elide(to); /* TODO should have been done in fixhead()? */
    if (count(to) != 0) {
-      if (!ok_blook(record_resent) || mightrecord(nfi, to) == OKAY)
-         rv = transfer(to, nfi, NULL);
+      if (!ok_blook(record_resent) || mightrecord(nfi, to)) {
+         sb.sb_to = to;
+         /*sb.sb_input = nfi;*/
+         if (_transfer(&sb))
+            rv = OKAY;
+      }
    } else if (!_sendout_error)
       rv = OKAY;
 

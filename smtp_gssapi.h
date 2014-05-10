@@ -117,8 +117,7 @@ _smtp_gssapi_error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 }
 
 static bool_t
-_smtp_gssapi(struct sock *sp, struct url *urlp, struct ccred *ccred,
-   struct smtp_line *slp)
+_smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
 {
    struct str in, out;
    gss_buffer_desc send_tok, recv_tok, *token_ptr;
@@ -129,9 +128,10 @@ _smtp_gssapi(struct sock *sp, struct url *urlp, struct ccred *ccred,
    bool_t ok = FAL0;
    NYD_ENTER;
 
-   send_tok.value = salloc(send_tok.length = urlp->url_host.l + 5 +1);
+   send_tok.value = salloc(send_tok.length = sbp->sb_url.url_host.l + 5 +1);
    memcpy(send_tok.value, "smtp@", 5);
-   memcpy((char*)send_tok.value + 5, urlp->url_host.s, urlp->url_host.l +1);
+   memcpy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
+      sbp->sb_url.url_host.l +1);
 
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
@@ -224,13 +224,12 @@ _smtp_gssapi(struct sock *sp, struct url *urlp, struct ccred *ccred,
     *    mechanism).
     * Second to fourth octet: maximum message size in network byte order.
     * Fifth and following octets: user name string */
-   in.s = salloc(4 + ccred->cc_user.l +1);
-   memcpy(in.s + 4, ccred->cc_user.s, ccred->cc_user.l +1);
+   in.s = salloc(send_tok.length = 4 + sbp->sb_ccred.cc_user.l +1);
+   memcpy(in.s + 4, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
    in.s[0] = 1;
    in.s[1] = 0;
    in.s[2] = in.s[3] = (char)0xFF;
    send_tok.value = in.s;
-   send_tok.length = ccred->cc_user.l + 4 +1;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    if (maj_stat != GSS_S_COMPLETE) {
