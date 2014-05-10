@@ -1091,7 +1091,7 @@ jstep:
       }
       len = strlen(np->n_fullname);
       ++col; /* The separating space */
-      if ((m & m_INIT) && col > 1 && col + len > 72) {
+      if ((m & m_INIT) && /*col > 1 &&*/ UICMP(z, col + len, >, 72)) {
          fputs("\n ", fo);
          col = 1;
          m &= ~m_CSEEN;
