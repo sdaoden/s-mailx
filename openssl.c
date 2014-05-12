@@ -264,32 +264,30 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
    if (_ssl_msgno != 0) {
       fprintf(stderr, "Message %d:\n", _ssl_msgno);
       _ssl_msgno = 0;
-   } else
-      fputc('\n', stderr);
+   }
+   fprintf(stderr, tr(229, " Certificate depth %d %s\n"),
+      X509_STORE_CTX_get_error_depth(store), (success ? "" : tr(579, "ERROR")));
 
    cert = X509_STORE_CTX_get_current_cert(store);
 
    X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
-   fprintf(stderr, tr(231, " subject = %s\n"), data);
+   fprintf(stderr, tr(231, "  subject = %s\n"), data);
 
    _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
-   fprintf(stderr, tr(577, " notBefore = %s\n"), data);
+   fprintf(stderr, tr(577, "  notBefore = %s\n"), data);
 
    _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
-   fprintf(stderr, tr(578, " notAfter = %s\n"), data);
+   fprintf(stderr, tr(578, "  notAfter = %s\n"), data);
 
    if (!success) {
-      int depth = X509_STORE_CTX_get_error_depth(store),
-         err = X509_STORE_CTX_get_error(store);
-      fprintf(stderr, tr(229, "Error with certificate at depth: %i\n"),
-         depth);
-      fprintf(stderr, tr(232, " err %i: %s\n"),
+      int err = X509_STORE_CTX_get_error(store);
+      fprintf(stderr, tr(232, "  err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
       _ssl_verify_error = 1;
    }
 
    X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
-   fprintf(stderr, tr(230, " issuer = %s\n"), data);
+   fprintf(stderr, tr(230, "  issuer = %s\n"), data);
 
    if (!success && ssl_verify_decide() != OKAY)
       rv = FAL0;
