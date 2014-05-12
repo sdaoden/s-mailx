@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Startup -- interface with user.
+ *@ This file is also used to materialize externals.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -35,16 +36,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-
-/*
- * Most strcpy/sprintf functions have been changed to strncpy/snprintf to
- * correct several buffer overruns (at least one ot them was exploitable).
- * Sat Jun 20 04:58:09 CEST 1998 Alvaro Martinez Echevarria <alvaro@lander.es>
- * ---
- * Note: We set egid to realgid ... and only if we need the egid we will
- *       switch back temporary.  Nevertheless, I do not like seg faults.
- *       Werner Fink, <werner@suse.de>
  */
 
 #ifndef HAVE_AMALGAMATION
@@ -89,7 +80,7 @@ VL uc_it const       class_char[] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
-   C_CNTRL,  C_BLANK,  C_WHITE, C_SPACE, C_SPACE, C_SPACE, C_CNTRL, C_CNTRL,
+   C_CNTRL, C_BLANK, C_WHITE, C_SPACE, C_SPACE, C_SPACE, C_CNTRL, C_CNTRL,
 /* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us */
