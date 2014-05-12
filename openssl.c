@@ -136,6 +136,8 @@ static int        _ssl_verify_error;
 
 static int        _ssl_rand_init(void);
 static void       _ssl_init(void);
+static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
+                     char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 static const SSL_METHOD *ssl_select_method(char const *uhp);
 static void       ssl_load_verifications(struct sock *sp);
@@ -201,6 +203,53 @@ _ssl_init(void)
    NYD_LEAVE;
 }
 
+static bool_t
+_ssl_parse_asn1_time(ASN1_TIME *atp, char *bdat, size_t blen)
+{
+   /* Shamelessly stolen from CURL */
+   char const *db, *gm;
+   int Y, M, d, h, m, s;
+   bool_t rv;
+   NYD_ENTER;
+
+   db = (char const*)atp->data;
+   if (atp->length < 10)
+      goto jerr;
+
+   for (s = 0; s < 10; ++s)
+      if (!digitchar(db[s]))
+         goto jerr;
+
+   gm = (db[atp->length - 1] == 'Z') ? "GMT" : "";
+
+   Y = (db[0] - '0') * 10 + (db[1] - '0');
+   if (Y < 50)
+      Y += 100;
+   Y += 1900;
+
+   M = (db[2] - '0') * 10 + (db[3] - '0');
+   if (M > 12 || M < 1)
+      goto jerr;
+
+   d = (db[4] - '0') * 10 + (db[5] - '0');
+   h = (db[6] - '0') * 10 + (db[7] - '0');
+   m = (db[8] - '0') * 10 + (db[9] - '0');
+   s = (db[10] >= '0' && db[10] <= '9' && db[11] >= '0' && db[11] <= '9')
+         ? ((db[10] - '0') * 10 + (db[11] - '0')) : 0;
+
+   snprintf(bdat, blen, "%04d-%02d-%02d %02d:%02d:%02d %s",
+      Y, M, d, h, m, s, gm);
+   rv = TRU1;
+jleave:
+   NYD_LEAVE;
+   return rv;
+jerr:
+   snprintf(bdat, blen, tr(576, "Bogus certificate date: %.*s\n"),
+      atp->length, db);
+   rv = FAL0;
+   goto jleave;
+}
+
 static int
 _ssl_verify_cb(int success, X509_STORE_CTX *store)
 {
@@ -222,6 +271,12 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
 
    X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
    fprintf(stderr, tr(231, " subject = %s\n"), data);
+
+   _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
+   fprintf(stderr, tr(577, " notBefore = %s\n"), data);
+
+   _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
+   fprintf(stderr, tr(578, " notAfter = %s\n"), data);
 
    if (!success) {
       int depth = X509_STORE_CTX_get_error_depth(store),

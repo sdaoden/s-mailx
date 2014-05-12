@@ -579,3 +579,6 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 573 URL with invalid port number: `%s'\n
 574 URL `proto://' prefix invalid: `%s'\n
 575 URL protocol doesn't support paths: `%s'\n
+576 Bogus certificate date: %.*s\n
+577  notBefore = %s\n
+578  notAfter = %s\n
