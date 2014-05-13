@@ -1645,14 +1645,13 @@ makeprint(struct str const *in, struct str *out)
 
    char const *inp, *maxp;
    char *outp;
-   size_t msz;
+   DBG( size_t msz; )
    NYD_ENTER;
 
    if (print_all_chars == -1)
       print_all_chars = ok_blook(print_all_chars);
 
-   msz = in->l +1;
-   out->s = outp = smalloc(msz);
+   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max);
    inp = in->s;
    maxp = inp + in->l;
 
@@ -1667,7 +1666,6 @@ makeprint(struct str const *in, struct str *out)
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
       int i, n;
-      size_t dist;
       bool_t isuni = ((options & OPT_UNICODE) != 0);
 
       out->l = 0;
@@ -1703,11 +1701,7 @@ makeprint(struct str const *in, struct str *out)
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
          out->l += n;
-         if (out->l >= msz - 1) {
-            dist = outp - out->s;
-            out->s = srealloc(out->s, msz += 32);
-            outp = &out->s[dist];
-         }
+         assert(out->l < msz);
          for (i = 0; i < n; ++i)
             *outp++ = mbb[i];
       }
