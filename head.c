@@ -215,7 +215,7 @@ _idna_apply(struct addrguts *agp)
 
    /* GNU Libidn settles on top of iconv(3) without any fallback, so let's just
     * let it perform the charset conversion, if any should be necessary */
-   if (!utf8) {
+   if (!(options & OPT_UNICODE)) {
       char const *tcs = charset_get_lc();
       idna_ascii = idna_utf8;
       idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", tcs);
@@ -252,7 +252,7 @@ _idna_apply(struct addrguts *agp)
 
    idn_free(idna_ascii);
 jleave1:
-   if (utf8)
+   if (options & OPT_UNICODE)
       ac_free(idna_utf8);
    else
       idn_free(idna_utf8);

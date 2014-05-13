@@ -1668,6 +1668,7 @@ makeprint(struct str const *in, struct str *out)
       wchar_t wc;
       int i, n;
       size_t dist;
+      bool_t isuni = ((options & OPT_UNICODE) != 0);
 
       out->l = 0;
       while (inp < maxp) {
@@ -1685,7 +1686,7 @@ makeprint(struct str const *in, struct str *out)
              * FIXME to do so - say, after a newline!!
              * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
             mbtowc(&wc, NULL, mb_cur_max);
-            wc = utf8 ? 0xFFFD : '?';
+            wc = isuni ? 0xFFFD : '?';
             n = 1;
          } else if (n == 0)
             n = 1;
@@ -1693,11 +1694,11 @@ makeprint(struct str const *in, struct str *out)
          if (!iswprint(wc) && wc != '\n' && wc != '\r' && wc != '\b' &&
                wc != '\t') {
             if ((wc & ~(wchar_t)037) == 0)
-               wc = utf8 ? 0x2400 | wc : '?';
+               wc = isuni ? 0x2400 | wc : '?';
             else if (wc == 0177)
-               wc = utf8 ? 0x2421 : '?';
+               wc = isuni ? 0x2421 : '?';
             else
-               wc = utf8 ? 0x2426 : '?';
+               wc = isuni ? 0x2426 : '?';
          }
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
@@ -1767,7 +1768,7 @@ putuc(int u, int c, FILE *fp)
    NYD_ENTER;
 
 #ifdef HAVE_C90AMEND1
-   if (utf8 && (u & ~(wchar_t)0177)) {
+   if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
       char mbb[MB_LEN_MAX];
       int i, n;
 

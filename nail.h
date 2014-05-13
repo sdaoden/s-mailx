@@ -492,7 +492,8 @@ enum user_options {
    OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
    OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<17
+   OPT_TTYOUT     = 1u<<17,
+   OPT_UNICODE    = 1u<<18    /* We're in an UTF-8 environment */
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -1377,7 +1378,6 @@ VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
-VL int         utf8;                /* Locale uses UTF-8 encoding */
 VL int         enc_has_state;       /* Encoding has shift states */
 
 VL char        **altnames;          /* List of alternate names of user */

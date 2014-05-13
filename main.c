@@ -321,7 +321,7 @@ _startup(void)
       wchar_t  wc;
       if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
             mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
-         utf8 = 1;
+         options |= OPT_UNICODE;
       /* Reset possibly messed up state; luckily this also gives us an
        * indication wether the encoding has locking shift state sequences */
       /* TODO temporary - use option bits! */
