@@ -1594,28 +1594,47 @@ FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
    int col_orig = col, n, sz;
+   bool_t isuni, isrepl;
    char *nb, *np;
    NYD_ENTER;
 
-   np = nb = salloc(mb_cur_max * strlen(cp) + col +1);
-   while (*cp) {
-#ifdef HAVE_WCWIDTH
+   isuni = ((options & OPT_UNICODE) != 0);
+   np = nb = salloc(mb_cur_max * strlen(cp) + ((fill ? col : 0) +1));
+
+   while (*cp != '\0') {
+#ifdef HAVE_C90AMEND1
       if (mb_cur_max > 1) {
          wchar_t  wc;
 
+         n = 1;
+         isrepl = TRU1;
          if ((sz = mbtowc(&wc, cp, mb_cur_max)) == -1)
-            n = sz = 1;
-         else if ((n = wcwidth(wc)) == -1)
-            n = 1;
+            sz = 1;
+         else if (iswprint(wc)) {
+# ifndef HAVE_WCWIDTH
+            n = 1 + (wc >= 0x1100u); /* XXX use S-CText / groff isfullwidth() */
+# else
+            if ((n = wcwidth(wc)) == -1)
+               n = 1;
+            else
+# endif
+               isrepl = FAL0;
+         }
       } else
 #endif
-         n = sz = 1;
+         n = sz = 1,
+         isrepl = !isprint(*cp);
+
       if (n > col)
          break;
       col -= n;
-      if (sz == 1 && spacechar(*cp)) {
+
+      if (isrepl) {
+         *np++ = '?';
+         cp += sz;
+      } else if (sz == 1 && spacechar(*cp)) {
          *np++ = ' ';
-         cp++;
+         ++cp;
       } else
          while (sz--)
             *np++ = *cp++;
@@ -1630,8 +1649,8 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
       np += col;
       col = 0;
    }
-
    *np = '\0';
+
    if (cols_decr_used_or_null != NULL)
       *cols_decr_used_or_null -= col_orig - col;
    NYD_LEAVE;
