@@ -201,6 +201,12 @@
 #define SBUFFER_SIZE    0x18000u
 #define SBUFFER_BUILTIN 0x2000u
 
+/* Is it at least theoretically possible that Unicode support is of interest */
+#undef HAVE_UNICODE
+#if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
+# define HAVE_UNICODE
+#endif
+
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
 # define XSHELL         "/bin/sh"
