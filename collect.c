@@ -62,7 +62,7 @@ static void       _execute_command(struct header *hp, char *linebuf,
 
 /* If *interactive* is set and *doecho* is, too, also dump to *stdout* */
 static int        _include_file(char const *name, int *linecount,
-                     int *charcount, bool_t doecho);
+                     int *charcount, bool_t doecho, bool_t indent);
 
 static void       _collect_onpipe(int signo);
 
@@ -144,12 +144,13 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 
 static int
 _include_file(char const *name, int *linecount, int *charcount,
-   bool_t doecho)
+   bool_t doecho, bool_t indent)
 {
+   FILE *fbuf;
+   char const *indb;
    int ret = -1;
    char *linebuf = NULL; /* TODO line pool */
-   size_t linesize = 0, linelen, cnt;
-   FILE *fbuf;
+   size_t linesize = 0, indl, linelen, cnt;
    NYD_ENTER;
 
    if ((fbuf = Fopen(name, "r")) == NULL) {
@@ -157,15 +158,28 @@ _include_file(char const *name, int *linecount, int *charcount,
       goto jleave;
    }
 
+   if (!indent)
+      indb = NULL, indl = 0;
+   else {
+      if ((indb = ok_vlook(indentprefix)) == NULL)
+         indb = INDENT_DEFAULT;
+      indl = strlen(indb);
+   }
+
    *linecount = *charcount = 0;
    cnt = fsize(fbuf);
    while (fgetline(&linebuf, &linesize, &cnt, &linelen, fbuf, 0) != NULL) {
+      if (indl > 0 && fwrite(indb, sizeof *indb, indl, _coll_fp) != indl)
+         goto jleave;
       if (fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp) != linelen)
          goto jleave;
-      if ((options & OPT_INTERACTIVE) && doecho)
-         fwrite(linebuf, sizeof *linebuf, linelen, stdout);
       ++(*linecount);
-      (*charcount) += linelen;
+      (*charcount) += linelen + indl;
+      if ((options & OPT_INTERACTIVE) && doecho) {
+         if (indl > 0)
+            fwrite(indb, sizeof *indb, indl, stdout);
+         fwrite(linebuf, sizeof *linebuf, linelen, stdout);
+      }
    }
    if (fflush(_coll_fp))
       goto jleave;
@@ -700,7 +714,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       if (getfields)
          grab_headers(hp, getfields, 1);
       if (quotefile != NULL) {
-         if (_include_file(quotefile, &lc, &cc, TRU1) != 0)
+         if (_include_file(quotefile, &lc, &cc, TRU1, FAL0) != 0)
             goto jerr;
       }
       if ((options & OPT_INTERACTIVE) && ok_blook(editalong)) {
@@ -855,6 +869,7 @@ jcont:
          strncpy(linebuf + 2, getdeadletter(), linesize - 2);
          linebuf[linesize - 1] = '\0';
          /*FALLTHRU*/
+      case 'R':
       case 'r':
       case '<':
          /* Invoke a file: Search for the file name, then open it and copy the
@@ -878,7 +893,7 @@ jcont:
          }
          printf(tr(59, "\"%s\" "), cp);
          fflush(stdout);
-         if (_include_file(cp, &lc, &cc, FAL0) != 0)
+         if (_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0)
             goto jerr;
          printf(tr(60, "%d/%d\n"), lc, cc);
          break;
@@ -956,20 +971,21 @@ jcont:
 "~c users       Add users to cc list\n"
 "~d             Read in dead.letter\n"
 "~e             Edit the message buffer\n"
-"~f messages    Read in messages without indenting lines\n"
-"~F messages    Same as ~f, but keep all header lines\n"
+"~F messages    Read in messages, keep all header lines, don't indent lines\n"
+"~f messages    Like ~F, but keep only selected header lines\n"
 "~h             Prompt for to list, subject, cc, and \"blind\" cc list\n"));
          puts(tr(301,
-"~r file        Read a file into the message buffer\n"
+"~R file        Read in a file, indent lines\n"
+"~r file        Read in a file, don't indent lines\n"
 "~p             Print the message buffer\n"
 "~q             Abort message composition and save text to dead.letter\n"
-"~m messages    Read in messages with each line indented\n"
-"~M messages    Same as ~m, but keep all header lines\n"
+"~M messages    Read in messages, keep all header lines, indent lines\n"
+"~m messages    Like ~F, but keep only selected header lines\n"
 "~s subject     Set subject\n"
-"~t users       Add users to to list\n"
-"~u messages    Same as ~f, but without any headers\n"
-"~U messages    Same as ~m, but without any headers\n"));
+"~t users       Add users to to list\n"));
          puts(tr(302,
+"~U messages    Same as ~m, but without any headers\n"
+"~u messages    Same as ~f, but without any headers\n"
 "~v             Invoke display editor on message\n"
 "~w file        Write message onto file\n"
 "~x             Abort message composition and discard text written so far\n"
