@@ -61,7 +61,7 @@ static void       _execute_command(struct header *hp, char *linebuf,
                      size_t linesize);
 
 /* If *interactive* is set and *doecho* is, too, also dump to *stdout* */
-static int        _include_file(FILE *fbuf, char const *name, int *linecount,
+static int        _include_file(char const *name, int *linecount,
                      int *charcount, bool_t doecho);
 
 static void       _collect_onpipe(int signo);
@@ -143,21 +143,19 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 }
 
 static int
-_include_file(FILE *fbuf, char const *name, int *linecount, int *charcount,
+_include_file(char const *name, int *linecount, int *charcount,
    bool_t doecho)
 {
    int ret = -1;
    char *linebuf = NULL; /* TODO line pool */
    size_t linesize = 0, linelen, cnt;
+   FILE *fbuf;
    NYD_ENTER;
 
-   if (fbuf == NULL) {
-      if ((fbuf = Fopen(name, "r")) == NULL) {
-         perror(name);
-         goto jleave;
-      }
-   } else
-      fflush_rewind(fbuf);
+   if ((fbuf = Fopen(name, "r")) == NULL) {
+      perror(name);
+      goto jleave;
+   }
 
    *linecount = *charcount = 0;
    cnt = fsize(fbuf);
@@ -582,7 +580,6 @@ FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
    char *quotefile, int doprefix)
 {
-   FILE *fbuf;
    struct ignoretab *quoteig;
    int lc, cc, c, t;
    int volatile escape, getfields;
@@ -703,7 +700,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       if (getfields)
          grab_headers(hp, getfields, 1);
       if (quotefile != NULL) {
-         if (_include_file(NULL, quotefile, &lc, &cc, TRU1) != 0)
+         if (_include_file(quotefile, &lc, &cc, TRU1) != 0)
             goto jerr;
       }
       if ((options & OPT_INTERACTIVE) && ok_blook(editalong)) {
@@ -879,13 +876,9 @@ jcont:
             fprintf(stderr, tr(58, "%s: Directory\n"), cp);
             break;
          }
-         if ((fbuf = Fopen(cp, "r")) == NULL) {
-            perror(cp);
-            break;
-         }
          printf(tr(59, "\"%s\" "), cp);
          fflush(stdout);
-         if (_include_file(fbuf, cp, &lc, &cc, FAL0) != 0)
+         if (_include_file(cp, &lc, &cc, FAL0) != 0)
             goto jerr;
          printf(tr(60, "%d/%d\n"), lc, cc);
          break;
