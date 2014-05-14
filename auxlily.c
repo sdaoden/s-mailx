@@ -1593,13 +1593,93 @@ cwrelse(struct cw *cw)
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
+   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
+    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
+    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
+    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE */
+#ifdef HAVE_UNICODE
+   char const _bire[2][6] = { "\xE2\x81\xA8" "\xE2\x81\xA9",
+      "\xE2\x80\x8E" "\xE2\x80\x8E"
+      /* worse results: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
+   }, *birep;
+#endif
    int col_orig = col, n, sz;
-   bool_t isuni, isrepl;
+   bool_t isbidi, isuni, isrepl;
    char *nb, *np;
    NYD_ENTER;
 
-   isuni = ((options & OPT_UNICODE) != 0);
-   np = nb = salloc(mb_cur_max * strlen(cp) + ((fill ? col : 0) +1));
+   /* Bidi only on request and when there is 8-bit data */
+   isbidi = isuni = FAL0;
+#ifdef HAVE_UNICODE
+   if ((isuni = ((options & OPT_UNICODE) != 0))) {
+      if ((nb = ok_vlook(headline_bidi)) == NULL)
+         goto jnobidi;
+      for (birep = cp;; ++birep) {
+         if (*birep == '\0')
+            goto jnobidi;
+         else if (*birep & (char)0x80) {
+            /* TODO Checking for BIDI character: use S-CText fromutf8
+             * TODO plus isrighttoleft (or whatever there will be)! */
+            ui32_t c, x = (ui8_t)*birep;
+            if ((x & 0xE0) == 0xC0) {
+               c = x & ~0xC0;
+               if ((x = (ui8_t)*++birep) == '\0')
+                  goto jnobidi;
+            } else if ((x & 0xF0) == 0xE0) {
+               c = x & ~0xE0;
+               if ((x = (ui8_t)*++birep) == '\0' || *++birep == '\0')
+                  goto jnobidi;
+               c <<= 6;
+               c |= x & 0x7F;
+               x = (ui8_t)*birep;
+            } else {
+               c = x & ~0xF0;
+               if ((x = (ui8_t)*++birep) == '\0' ||
+                     *++birep == '\0' || birep[1] == '\0')
+                  goto jnobidi;
+               c <<= 6;
+               c |= x & 0x7F;
+               c <<= 6;
+               c |= (x = (ui8_t)*birep) & 0x7F;
+               x = (ui8_t)*++birep;
+            }
+            c <<= 6;
+            c |= x & 0x7F;
+            /* (Very very fuzzy, awaiting S-CText for good) */
+            if ((c >= 0x05BE && c <= 0x08E3) ||
+                  (c >= 0xFB1D && c <= 0xFEFC) ||
+                  (c >= 0x10800 && c <= 0x10C48) ||
+                  (c >= 0x1EE00 && c <= 0x1EEF1))
+               break;
+         }
+      }
+
+      isbidi = TRU1;
+      birep = _bire[0];
+      switch (*nb) {
+      case '3': col -= 2;
+      case '2': birep = _bire[1];
+                break;
+      case '1': col -= 2;
+      default:  break;
+      }
+      if (col < 0)
+         col = 0;
+   }
+jnobidi:
+#endif /* HAVE_UNICODE */
+
+   np = nb = salloc(mb_cur_max * strlen(cp) +
+         ((fill ? col : 0) + (isbidi ? sizeof(_bire[0]) : 0) +1));
+
+#ifdef HAVE_UNICODE
+   if (isbidi) {
+      np[0] = birep[0];
+      np[1] = birep[1];
+      np[2] = birep[2];
+      np += 3;
+   }
+#endif
 
    while (*cp != '\0') {
 #ifdef HAVE_C90AMEND1
@@ -1612,7 +1692,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
             sz = 1;
          else if (iswprint(wc)) {
 # ifndef HAVE_WCWIDTH
-            n = 1 + (wc >= 0x1100u); /* XXX use S-CText / groff isfullwidth() */
+            n = 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
 # else
             if ((n = wcwidth(wc)) == -1)
                n = 1;
@@ -1630,7 +1710,13 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
       col -= n;
 
       if (isrepl) {
-         *np++ = '?';
+         if (isuni) {
+            np[0] = (char)0xEFu;
+            np[1] = (char)0xBFu;
+            np[2] = (char)0xBDu;
+            np += 3;
+         } else
+            *np++ = '?';
          cp += sz;
       } else if (sz == 1 && spacechar(*cp)) {
          *np++ = ' ';
@@ -1649,8 +1735,17 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
       np += col;
       col = 0;
    }
-   *np = '\0';
 
+#ifdef HAVE_UNICODE
+   if (isbidi) {
+      np[0] = birep[3];
+      np[1] = birep[4];
+      np[2] = birep[5];
+      np += 3;
+   }
+#endif
+
+   *np = '\0';
    if (cols_decr_used_or_null != NULL)
       *cols_decr_used_or_null -= col_orig - col;
    NYD_LEAVE;

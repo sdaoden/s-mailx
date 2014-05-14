@@ -820,6 +820,7 @@ enum okeys {
    ok_v_from,
    ok_v_fwdheading,
    ok_v_headline,
+   ok_v_headline_bidi,
    ok_v_hostname,
    ok_v_imap_auth,
    ok_v_imap_cache,
