@@ -160,6 +160,9 @@
 #define DATE_HOURSDAY   24L
 #define DATE_SECSDAY    (DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
+/* *indentprefix* default as of POSIX */
+#define INDENT_DEFAULT  "\t"
+
 /* Default *encoding* as enum conversion below */
 #define MIME_DEFAULT_ENCODING CONV_TOQP
 

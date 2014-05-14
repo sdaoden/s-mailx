@@ -458,7 +458,7 @@ forward(char *ms, FILE *fp, int f)
    if (f == 'f' || f == 'F' || f == 'u')
       tabst = NULL;
    else if ((tabst = ok_vlook(indentprefix)) == NULL)
-      tabst = "\t";
+      tabst = INDENT_DEFAULT;
    if (f == 'u' || f == 'U')
       ig = allignore;
    else
@@ -678,11 +678,11 @@ collect(struct header *hp, int printheaders, struct message *mp,
       }
       if (fflush(_coll_fp))
          goto jerr;
-      cp = ok_vlook(indentprefix);
-      if (cp != NULL && *cp == '\0')
-         cp = "\t";
-      if (sendmp(mp, _coll_fp, quoteig, (doprefix ? NULL : cp), action, NULL)
-            < 0)
+      if (doprefix)
+         cp = NULL;
+      else if ((cp = ok_vlook(indentprefix)) == NULL)
+         cp = INDENT_DEFAULT;
+      if (sendmp(mp, _coll_fp, quoteig, cp, action, NULL) < 0)
          goto jerr;
    }
 
