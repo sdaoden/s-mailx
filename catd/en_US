@@ -44,9 +44,9 @@ $set 1
 41 Non-null variable name required\n
 42 `%s': the used selector is optional and not available\n
 43 Unrecognized if-keyword: "%s"\n
-44 "else" without matching "if"\n
+44 `else' without matching `if'\n
 45 The -H and -L options cannot be used in send mode.\n
-46 "endif" without matching "if"\n
+46 `endif' without matching `if'\n
 47 No recipient specified.
 48 No applicable messages.
 49 Cannot call hook for folder "%s": Macro "%s" does not exist.\n
@@ -584,3 +584,4 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 577   notBefore = %s\n
 578   notAfter = %s\n
 579 ERROR
+580 `elif' without matching `if'\n

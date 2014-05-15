@@ -1156,6 +1156,26 @@ jleave:
 }
 
 FL int
+c_elif(void *v)
+{
+   struct cond_stack *csp;
+   int rv;
+   NYD_ENTER;
+
+   if ((csp = _cond_stack) == NULL || csp->c_else) {
+      fprintf(stderr, tr(580, "`elif' without matching `if'\n"));
+      rv = 1;
+   } else {
+      csp->c_go = !csp->c_go;
+      rv = c_if(v);
+      _cond_stack->c_outer = csp->c_outer;
+      free(csp);
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_else(void *v)
 {
    int rv;
@@ -1163,7 +1183,7 @@ c_else(void *v)
    UNUSED(v);
 
    if (_cond_stack == NULL || _cond_stack->c_else) {
-      fprintf(stderr, tr(44, "\"else\" without matching \"if\"\n"));
+      fprintf(stderr, tr(44, "`else' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack->c_go = !_cond_stack->c_go;
@@ -1183,7 +1203,7 @@ c_endif(void *v)
    UNUSED(v);
 
    if ((csp = _cond_stack) == NULL) {
-      fprintf(stderr, tr(46, "\"endif\" without matching \"if\"\n"));
+      fprintf(stderr, tr(46, "`endif' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack = csp->c_outer;

@@ -219,8 +219,42 @@ __behave_ifelse() {
 		   endif
 		   echo 9.ok3
 		endif
+		# `elif'
+		if $dietcurd == 'yohu'
+		   echo 10.err1
+		elif $dietcurd == 'yoha'
+		   echo 10.err2
+		elif $dietcurd == 'yohe'
+		   echo 10.err3
+		elif $dietcurd == 'yoho'
+		   echo 10.ok1
+		   if $dietcurd == 'yohu'
+		      echo 10.err4
+		   elif $dietcurd == 'yoha'
+		      echo 10.err5
+		   elif $dietcurd == 'yohe'
+		      echo 10.err6
+		   elif $dietcurd == 'yoho'
+		      echo 10.ok2
+		      if $dietcurd == 'yohu'
+		         echo 10.err7
+		      elif $dietcurd == 'yoha'
+		         echo 10.err8
+		      elif $dietcurd == 'yohe'
+		         echo 10.err9
+		      elif $dietcurd == 'yoho'
+		         echo 10.ok3
+		      else
+		         echo 10.err10
+		      endif
+		   else
+		      echo 10.err11
+		   endif
+		else
+		   echo 10.err12
+		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '1909382116 98'
+   cksum_test behave:if-normal "${MBOX}" '2760114576 119'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
