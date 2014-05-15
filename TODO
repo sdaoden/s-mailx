@@ -3,16 +3,8 @@ TODO reminder.
 Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
 With a clean, conforming and efficient codebase, then.
 
-Backward-compatibility breakers
--------------------------------
-
 - Recipients specified on the command line should be added to those
   specified in the message when the -t option is set.
-
-- The -q option makes me sad as it doesn't use *indentprefix* for the
-  quoted file.  So either there should be -Q which does so, or -q should be
-  changed.  Also see ~R below.
-  [Note: i think i go for the latter.  Please complain.]
 
 - At least optionally disallow silent discarding of invalid addresses,
   i.e., cause sending to be aborted if not all recipient addresses pass the
@@ -23,32 +15,15 @@ Backward-compatibility breakers
 
 - I.e., it is fine to be silent unless an error occurs, but then please
   report errors and offer (in interactive mode) the possibility to act at
-  a glance.
-
--- While there.  There should be some kind of "verbose" switch that - in
-   interactive mode - also gives *positive* feedback, as in "added
-   attachment X, charset Y", but without giving details about protocol
-   delivery etc.
-
-   [It is terrible that there is almost no feedback in the UI.  When
-   i temporarily implemented a sorted cmdtab i've often used wrong commands,
-   but got no feedback at all!  E.g., wanted to "undelete 14", first did "u
-   14", then "und 14" and then realized my fault and did "undelete 14".
-   *Nothing*.]
+  a glance.  (See error ring topic around here.)
 
 - POSIX says that, when written to DEAD: "If the file exists, the message
   shall be written to replace the contents of the file".  This is mentioned
   for ASYNCHRONOUS EVENTS, but it's the only description of what should be
   done in which way to DEAD.  savedeadletter() yet appends.  See ZOMBIE ,)
 
-- Furthermore, *all* file operations yet append, even recipient target
-  files are appended.  I don't know if this is really desirable behaviour,
-  but i have not thought about that for real.  Maybe this should be at
-  least configurable.
-
 - It irritates me that a message with 5 visible lines but 115 header lines
   goes through the pager, even if i have *crt=*.
-  P.S.: we could simply count the headers in addition?
 
 - We should possibly get away of using command line utilities for
   compression.  (At least optionally?)  Instead we should link against
@@ -60,17 +35,8 @@ Backward-compatibility breakers
 - We should maybe turn -~ into the meaning "force interactive".
   We should extend cc-test.sh, then, to test some interactive things.
 
-Non-breakers
-------------
-
 - We need a "void" box that can be jumped to, i.e., a state in which no box
   at all is active.
-
-  (schdir(): realpath() local files before leaving CWD.., 2013-01-08)
-  did a first step to avoid "getting stuck" when the current folder becomes
-  unaccessible.
-  That is however only a command-specific workaround for a deeper design
-  problem.
 
 -- When a MBOX mailbox is removed while it is opened then changing the
   folder is not possible.  This is an inherent problem of the Berkeley
@@ -78,18 +44,12 @@ Non-breakers
   VOID box mechanism plus an object-based mailbox implementation to
   overcome it.
 
--- Also, when the folder is modified concurrently we should bail, or, in an
-  interactive session, prompt the user what to do.
+-- Also, when the folder was modified concurrently we should bail, or,
+   in an interactive session, prompt the user what to do.
 
 - IDNA decoding.  Needs a complete design change.
 
 - Mail-Followup-To:.
-
-- Make it possible to reply to/save/write/xy part X.Y[.Z] by allowing its
-  specification directly, as in, e.g., ':w 1.2'.  If doing so on an
-  embedded message/rfc822, e.g., a message embedded in a digest, it should
-  be possible to reply to the very message in respect to its header fields,
-  but (optionally?) keep the original Cc:'d.  (Parts by Martin Neitzel)
 
 - mutt(1) quotes all text parts of a message, not only the first one!
   This should at least be optionally available.
@@ -98,10 +58,6 @@ Non-breakers
   shown, maybe even including some error message.
   I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
   does not have lynx(1), and i thought i've found a S-nail(1) bug.
-  And so it was.
-
-- I want to have a ~R tilde command that works like ~r except it performs
-  quoting of the input just as ~m does.  Also see -q above.
 
 - Offer the possibility to work with certificate fingerprints instead of
   full certificates, in equal spirit to the current maintainers S-Postman
@@ -146,10 +102,6 @@ Non-breakers
 
 - There should be a variable that controls wether leading and trailing
   empty lines of parts and/or messages as such should be printed or not.
-
-- RFC 2387: multipart/related.
-
-- rfc2384.txt etc.  I.e., Much better URL support.
 
 - printhead()/hprf(): support %n newline format (%t tab?).
   Make it possible to use the *datefield* algorithm for plain From_ derived
@@ -212,9 +164,6 @@ Low-Level
     reevaluation of all that very very clumy
     elide/delete_alternates/gexpand/is_myname etc. handling.
 
-- Think about replacing the IMAP cache with an SQLITE3 interface.
-  Or rewrite it.  Error handling etc. etc. is peculiar.
-
 - The char classification stuff can be improved; currently each character
   has exactly one classification bit set, even if multiple would apply
   (e.g., HT=\t == CNTRL|SPACE|ASCII|BLANK).  This would allow better
@@ -234,15 +183,6 @@ Low-Level
 -- In v15.0, when we can address attachments of a message individually,
    it would be nice to provide even more access, just like nmh(1) does
    (Johan Commelin: Are s-nail and mh related?).
-
-- I want a clean PTF interface for the actual layers.  There should be no
-  switch() statements around that test for the type of BOX that is
-  currently open.  Especially important for possible NEWS support, but the
-  code is a mess in general...
-
-- I would like to see that compilation with a C++ compiler is possible,
-  though that would be a long way and be especially problematic due to the
-  (C ish) way enums are used.
 
 - I never used anything but the *datefield* option, and it would really be
   nice if the date strings would be parsed off into some 16 byte or what
@@ -264,8 +204,8 @@ Low-Level
   Note that yet some errors messages still go to stdout.
 
 - It would be very nice if it would be possible to have
-   account-specific macros that will be lost when a user switches off
-   an account.
+  account-specific macros that will be lost when a user switches off
+  an account.
 
 -- It would also be very nice if we could define macros while defining
    account, i.e., recursive definition of macros...
@@ -310,11 +250,19 @@ Low-Level
   RFC 2449 - POP3 Extensions (including SASL)
   RFC 2595 - TLS for POP3 (among others)
   Security
-  RFC 4422 - Simple Authentication and Security layer (SASL)
+  RFC 4422, 4505 - Simple Authentication and Security layer (SASL)
+            (Tarqi Kazan)
   RFC 5246 - Transport Layer Security (TLS)
   RFC 977 -> 3977 - Network News Transfer Protocol
   RFC 1036 - Standard for USENET Messages
   RFC 2980 - Common NNTP Extensions
+  RFC 2387 - multipart/related
+  RFC 2384,1738 - I.e., Much better URL support
+  RFC 5751 - Secure/Multipurpose Internet Mail Extensions (S/MIME)
+  RFC 6125 - Representation and Verification of Domain-Based Application
+    Service Identity within Internet Public Key Infrastructure Using
+    X.509 (PKIX) Certificates in the Context of Transport Layer Security
+    (TLS)
 
 - This is how the codebase has to be reworked in respect to signals and
   jumping:
@@ -407,6 +355,15 @@ Low-Level
      create a new anonymous "result" view.  It must be possible to
      specify that a view is to be applied to the entire mailbox instead
      of the current view, via a simple easy understandable syntax.
+ 50. Support SASL, unite all GSS-API etc. under an abstraction!
+     Maybe even drop direct GSS-API and support only through SASL.
+     That is, we can very well provide our own little SASL-client
+     abstraction with what we have already by simply defining some
+     "readline" abstraction plus struct ccred for use by the
+     authentication layer: the protocols must set it up by passing in
+     a line of authentication mechanisms and a callback mechanism.
+     Possibly the user should be able to permit or forbid automatic
+     selection of GSS-API (to avoid useless round-trips) etc. etc.
  99. Now i'm dreaming some more: with the new object-based approach
      multiple mailboxes could be in an open state.  And it should be
      possible to do so for the user (`file' and `folder' are required to
@@ -434,25 +391,14 @@ TODO S-nail 14.7:
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
 
-- Change **use-starttls* to the opposite.  I.e., CAPA or whatever, if TLS
-  is supported, use automatically.  *UNLESS* explicitly disabled.
+- Drop **use-starttls* in favour of something better: support 'auto',
+  'no' and 'yes' and act accordingly.  For the former be smart enough on
+  the protocol side.  (RFC 3207 describes man-in-the-middle attacks due
+  to 'auto' TLS, so explicit 'yes' should be favoured).
 
 - NOTE: we do not really support IPv6 sofar in that we are not prepared to
-  deal with IPv6 addresses.
-  Introduce an URI abstraction structure in 14.5, and start using it, i.e.,
-  _pop3_user() and, very important, sopen().
-  Note this shit software use a lot of places which mess around...
-
-- The account command involves a lot of code but it's only difference to
-  define is that a "fi" is executed.  If we would have the possibility to
-  explicitly jump to VOID boxes, we could use QUIT->FOLDER instead of
-  FOLDER[OK? -> QUIT], and then it'd be up to the use to simply use a "fi"
-  at the end of a define.  Or so.
-  See above for more on account/define though.
-
--- If *folder* is set to an IMAP box, and we're about to "mbox" data to
-   there, and we're currently on a POP3 server, and the connection fails,
-   we're completely lost and cannot even interrupt...
+  deal with IPv6 addresses (as in '[ADDR]:PORT').  Pimp url_parse().
+  And socket I/O.
 
 - mutt(1) dotlock ..., "mbox" command doesn'T work?
 
@@ -473,45 +419,7 @@ TODO S-nail 14.7:
   five minutes of waiting followed by CNTRL-C), nor did the layer
   recognize this very well (got myriads of `POP3 connection already
   closed.' messages, btw., the thirty-something messages which were not
-  yet downloaded caused (after CNTRL-C) this:
-
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-     U 23                    Thu Jan  1 0    /    0
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-    POP3 connection already closed.
-     U 24                    Thu Jan  1 0    /    0
-
-  i had to switch off and back).  At least we didn't crash.
-  Thereafter, still very unstable connection, i tried to login again:
-
-    ? fi xpop
-    Resolving host pop.gmail.com . . . done.
-    Connecting to 173.194.70.109:pop3s . . . connected.
-    Comparing DNS name: "pop.gmail.com"
-    POP3 connection already closed.
-    +OK Gpop ready for requests from XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  [..nothing!..]
-    ^CInterrupt
-    ? fi %
-    "/private/var/mail/steffen": 0 messages
-    ? fi xpop
-    Resolving host pop.gmail.com . . . done.
-    Connecting to 173.194.70.109:pop3s . . . connected.
-    Comparing DNS name: "pop.gmail.com"
-    ? fi
-    ? fi
-    ? fi
-
-  Can of worms.
+  yet downloaded caused (after CNTRL-C) this: ETC. ETC.
 
 - Add a value-duplication command, i.e.,
     clone _x header
@@ -542,15 +450,9 @@ TODO S-nail 14.7:
 - I got an email in base64 that obviously used CRNL line endings, and once
   i've replied the CR where quoted as *control* characters.
   Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
-  time). (2013-08-06)
+  time, due to how we deal with I/O and Send layer etc).
 
-- edit.c doesn't do NEED_BODY (yeah, IMAP won't work anyway).
-
-- Some (configurable?) verbosity for certificate validation.
-  See, e.g., 'curl -v' output, which is quite nice (not only in respect
-  ot certificates).
-  (Martin Neitzel)
-  Rework certificate handling to match RFC 6125.
+- edit.c doesn't do NEED_BODY (but IMAP won't work anyway).
 
 - Stuff
   .. s-nail </dev/null should work interactively when STDERR_FILENO is
@@ -677,9 +579,9 @@ TODO S-nail 14.7:
     *after* the headers have been loaded.
   .      /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
           * TODO the current behaviour is suboptimal AT BEST! */
-  . there MUST be a way to specify that a single SPECIFIC box has to be
+  . There MUST be a way to specify that a single SPECIFIC box has to be
     opened readonly.  only the global -R flag is NOT ENOUGH!
-  . the "nifty" unregister_file()->_compress() mechanism that even
+  . The "nifty" unregister_file()->_compress() mechanism that even
     shovels '-Sfolder=imaps://user1@localhost -Srecord="+Sent Items"'
     *records* calls clearerr() on the descriptor before performing it's
     action anyway.  when we really make it even to the I/O rewrite, it
@@ -697,11 +599,12 @@ TODO S-nail 14.7:
     mightrecord() may internally (via _compress()) instantiate
     a complete IMAP session and try to send incomplete data etc.,
     and all that may jump, i refrained from doing so.
-  . (RFC 6409 and) SMTPS should go for port 587.  Also /etc/services
-    doesn't deal with SMTPS but on NetBSD, here the (original, now wrong,
-    and still used in our codebase: IPv4) port 465 is used for SMTPS.
-    This means: users which use smtps:// alone will most likely not be
-    able to use SMTPS, they have to add a :PORTSTR.
+  . SMTPS never became a standard and :465 was already reassigned
+    (thanks, carriers), but if a user says SMTPS and doesn't specify
+    a port also then we could simply assume :465 because except NetBSD
+    noone has SMTPS in their /etc/services?
+    Or at least automatically restart a failed getaddrinfo() in the
+    SMPTS case (if EAI_SERVICE)?
     (Ooops - i think this should go to Gianluca Ramunno!)
   . `dp' prints EOF at the end of a thread even if unread messages
     follow
@@ -709,11 +612,16 @@ TODO S-nail 14.7:
     If not fit, it should do `...'
     It is not multibyte safe anyway, implement a generic function (or
     two, one that takes an iconv_t) to trim a string into a buffer
-  . Explicit `setenv' command!
   . When doing `~w FILE' and FILE cannot be written to (was a directory)
     then the composed mail is lost completely, it seems we jump to the
     very main loop!
-  . Shouldn't `resend' store to +record?  It .. doesn't?
+  . `resend' doesn't smime-sign.
+  . Really do extend the test already today; test S/MIME
+    signing/encryption/decryption with two pairs of identities, instead
+    of of one.
+  . RFC 5751 describes a message multipart layout that also includes the
+    headers in the signature; it would be nice (for completeness sake)
+    to be able to support that.
   . The capability to save a message under the name of a recipient is in
     the standard etc., but i've never used it.
     What would be cool, otoh, would be if there would be the possibility
@@ -722,7 +630,25 @@ TODO S-nail 14.7:
     I.e., if i send a message to s-nail-users@ then i most likely want
     to get a copy to the corresponding box, regardless of whoever the
     message was sent To: Cc: or Bcc: else..
-  . in my ~xother with *nohold* if at the begin i have many large
+  . In my ~xother with *nohold* if at the begin i have many large
     messages i ended up with a truncated *mbox*? what was that?
+  . We should support ~/.netrc for account / password storage!
+  . Things like colalign(), makeprint(), colour*, as well as
+    possibly even cmd1.c:(__hprf|putindent)(), etc. belong into a cui.c,
+    display.c or the like, but not into auxlily.c etc. for sure.
+    Also writing a range of headers should be done through an
+    iterator-thing with setup/finalize init/destroy life cycle, which
+    would encapsulate the entire cmd1.c:_print_head() in the single
+    iterator setup function!
+  . Using -t should still optionally offer an option to enter editing.
+    Also we should support command line arguments on top.
+    Add a -T flag for that.  Drop -q, let -T mean the same if no header
+    fields are given (i.e., header fields are not mandatory as with -t).
+    ANYWAY: -t and -q are mutual, enforce that (yet done?)
+  . Add manual section for URL and the (*v15-compat*) proto, user and
+    password chains, just as done in the s-nail-users mail.
+  . mutt list handling (`~') is very powerful
+  . Check what happens if an account switch or a network connection is
+    done while we are loading the resource files...
 
 vim:set fenc=utf-8:s-ts-mode
