@@ -114,7 +114,7 @@ static struct smime_cipher const _smime_ciphers[] = {
 #endif
 #ifndef OPENSSL_NO_DES
 # ifndef _SMIME_DEFAULT_CIPHER
-#  define _SMIME_DEFAULT_CIPHER   EVP_des_ede3_cbc
+#  define _SMIME_DEFAULT_CIPHER  EVP_des_ede3_cbc
 # endif
    {"des3", &EVP_des_ede3_cbc},
    {"des", &EVP_des_cbc},
@@ -129,14 +129,14 @@ static struct smime_cipher const _smime_ciphers[] = {
 # error cipher algorithms that are required to support S/MIME
 #endif
 
-static int        initialized;
-static int        rand_init;
-static int        message_number;
-static int        verify_error_found;
+static int        _ssl_isinit;
+static int        _ssl_rand_isinit;
+static int        _ssl_msgno;
+static int        _ssl_verify_error;
 
-static int        ssl_rand_init(void);
-static void       ssl_init(void);
-static int        ssl_verify_cb(int success, X509_STORE_CTX *store);
+static int        _ssl_rand_init(void);
+static void       _ssl_init(void);
+static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 static const SSL_METHOD *ssl_select_method(char const *uhp);
 static void       ssl_load_verifications(struct sock *sp);
 static void       ssl_certificate(struct sock *sp, char const *uhp);
@@ -157,7 +157,7 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
 static int
-ssl_rand_init(void)
+_ssl_rand_init(void)
 {
    char *cp, *x;
    int state = 0;
@@ -189,43 +189,56 @@ ssl_rand_init(void)
 }
 
 static void
-ssl_init(void)
+_ssl_init(void)
 {
    NYD_ENTER;
-   if (initialized == 0) {
+   if (_ssl_isinit == 0) {
       SSL_library_init();
-      initialized = 1;
+      _ssl_isinit = 1;
    }
-   if (rand_init == 0)
-      rand_init = ssl_rand_init();
+   if (_ssl_rand_isinit == 0)
+      _ssl_rand_isinit = _ssl_rand_init();
    NYD_LEAVE;
 }
 
 static int
-ssl_verify_cb(int success, X509_STORE_CTX *store)
+_ssl_verify_cb(int success, X509_STORE_CTX *store)
 {
+   char data[256];
+   X509 *cert;
    int rv = TRU1;
    NYD_ENTER;
 
-   if (success == 0) {
-      char data[256];
-      X509 *cert = X509_STORE_CTX_get_current_cert(store);
-      int depth = X509_STORE_CTX_get_error_depth(store);
-      int err = X509_STORE_CTX_get_error(store);
+   if (success && !(options & OPT_VERBOSE))
+      goto jleave;
 
-      verify_error_found = 1;
-      if (message_number)
-         fprintf(stderr, "Message %d: ", message_number);
-      fprintf(stderr, tr(229, "Error with certificate at depth: %i\n"), depth);
-      X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
-      fprintf(stderr, tr(230, " issuer = %s\n"), data);
-      X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
-      fprintf(stderr, tr(231, " subject = %s\n"), data);
+   if (_ssl_msgno != 0) {
+      fprintf(stderr, "Message %d:\n", _ssl_msgno);
+      _ssl_msgno = 0;
+   } else
+      fputc('\n', stderr);
+
+   cert = X509_STORE_CTX_get_current_cert(store);
+
+   X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
+   fprintf(stderr, tr(231, " subject = %s\n"), data);
+
+   if (!success) {
+      int depth = X509_STORE_CTX_get_error_depth(store),
+         err = X509_STORE_CTX_get_error(store);
+      fprintf(stderr, tr(229, "Error with certificate at depth: %i\n"),
+         depth);
       fprintf(stderr, tr(232, " err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
-      if (ssl_verify_decide() != OKAY)
-         rv = FAL0;
+      _ssl_verify_error = 1;
    }
+
+   X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
+   fprintf(stderr, tr(230, " issuer = %s\n"), data);
+
+   if (!success && ssl_verify_decide() != OKAY)
+      rv = FAL0;
+jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -287,9 +300,9 @@ ssl_load_verifications(struct sock *sp)
          fprintf(stderr, tr(243, "Error loading default CA locations\n"));
    }
 
-   verify_error_found = 0;
-   message_number = 0;
-   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, ssl_verify_cb);
+   _ssl_verify_error = 0;
+   _ssl_msgno = 0;
+   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(sp->s_ctx);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
 jleave:
@@ -407,8 +420,8 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
    rv = 1;
    fp = NULL;
    fb = NULL;
-   verify_error_found = 0;
-   message_number = n;
+   _ssl_verify_error = 0;
+   _ssl_msgno = n;
 
    for (;;) {
       sender = getsender(m);
@@ -417,7 +430,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       cnttype = hfield1("content-type", m);
       if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
          goto jleave;
-      if (cnttype && !strncmp(cnttype, "application/x-pkcs7-mime", 24)) {
+      if (cnttype && !ascncasecmp(cnttype, "application/x-pkcs7-mime", 24)) {
          if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
             goto jleave;
          if (x != (struct message*)-1) {
@@ -499,9 +512,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       n, sender);
    goto jleave;
 jfound:
-   if (verify_error_found == 0)
+   if (_ssl_verify_error == 0)
       printf(tr(543, "Message %d was verified successfully.\n"), n);
-   rv = verify_error_found;
+   rv = _ssl_verify_error;
 jleave:
    if (fb != NULL)
       BIO_free(fb);
@@ -782,7 +795,7 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   ssl_init();
+   _ssl_init();
    ssl_set_verify_level(uhp);
    if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
       ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
@@ -851,14 +864,14 @@ c_verify(void *vp)
    char *ca_dir, *ca_file;
    NYD_ENTER;
 
-   ssl_init();
+   _ssl_init();
 
    ssl_verify_level = SSL_VERIFY_STRICT;
    if ((store = X509_STORE_new()) == NULL) {
       ssl_gen_err(tr(544, "Error creating X509 store"));
       goto jleave;
    }
-   X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
+   X509_STORE_set_verify_cb_func(store, &_ssl_verify_cb);
 
    if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
       ca_dir = file_expand(ca_dir);
@@ -905,7 +918,7 @@ smime_sign(FILE *ip, char const *addr)
    bool_t bail = FAL0;
    NYD_ENTER;
 
-   ssl_init();
+   _ssl_init();
 
    if (addr == NULL) {
       fprintf(stderr, tr(531, "No \"from\" address for signing specified\n"));
@@ -1003,7 +1016,8 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((certfile = file_expand(certfile)) == NULL)
       goto jleave;
 
-   ssl_init();
+   _ssl_init();
+
    if ((cipher = _smime_cipher(to)) == NULL)
       goto jleave;
    if ((fp = Fopen(certfile, "r")) == NULL) {
@@ -1091,7 +1105,8 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
    if ((yp = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;
 
-   ssl_init();
+   _ssl_init();
+
    if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
       pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL);
       if (pkey == NULL) {
@@ -1200,7 +1215,7 @@ smime_certsave(struct message *m, int n, FILE *op)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   message_number = n;
+   _ssl_msgno = n;
 jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);
