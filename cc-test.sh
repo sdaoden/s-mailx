@@ -220,7 +220,35 @@ __behave_ifelse() {
 		   echo 9.ok3
 		endif
 	__EOT
-   cksum_test behave:2 "${MBOX}" '1909382116 98'
+   cksum_test behave:if-normal "${MBOX}" '1909382116 98'
+
+   if have_feat REGEX; then
+      ${rm} -f "${MBOX}"
+      ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
+			set dietcurd=yoho
+			if $dietcurd =~ '^yo.*'
+			   echo 1.ok
+			else
+			   echo 1.err
+			endif
+			if $dietcurd =~ '^yoho.+'
+			   echo 2.err
+			else
+			   echo 2.ok
+			endif
+			if $dietcurd !~ '.*ho$'
+			   echo 3.err
+			else
+			   echo 3.ok
+			endif
+			if $dietcurd !~ '.+yoho$'
+			   echo 4.ok
+			else
+			   echo 4.err
+			endif
+		__EOT
+      cksum_test behave:if-regex "${MBOX}" '3930005258 20'
+   fi
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!

@@ -1109,11 +1109,29 @@ jesyn:
       }
 
       /* Three argument comparison form? */
-      if (argv[2] == NULL || op[0] == '\0' || op[1] != '=' || op[2] != '\0')
+      if (argv[2] == NULL || op[0] == '\0' ||
+#ifdef HAVE_REGEX
+            (op[1] != '=' && op[1] != '~') ||
+#else
+            op[1] != '=' ||
+#endif
+            op[2] != '\0')
          goto jesyn;
+
       /* A null value is treated as the empty string */
       if (v == NULL)
          v = UNCONST("");
+#ifdef HAVE_REGEX
+      if (op[1] == '~') {
+         regex_t re;
+
+         if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
+            goto jesyn;
+         if (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH)
+            v = NULL;
+         regfree(&re);
+      } else
+#endif
       if (strcmp(v, argv[2]))
          v = NULL;
       switch (op[0]) {

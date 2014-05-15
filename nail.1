@@ -474,7 +474,9 @@ the string from the previous specification of that type is used again.
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
-ession; if the \*(OPal regular expression support is available
+ession; if the \*(OPal regular expression (see
+.Xr re_format 7 )
+support is available
 .Ar expr
 will be interpreted as one if any of the `magic'al regular expression
 characters is seen.
@@ -1533,6 +1535,10 @@ or set to a specific value, by using the `$' conditional trigger, e.g.:
 The first form simply checks wether an option is set, the other two also
 perform value content comparison (equality and non-equality,
 respectively); an unset value is treated as the empty string, then.
+The \*(OPal regular expression support adds `=~' and `!~' tests, which
+treat the right hand side as a regular expression instead (see
+.Xr re_format 7 Ns
+).
 .It Ic ignore
 Add the list of header fields named to the ignored list.
 Header fields in the ignore list are not printed on the terminal when
