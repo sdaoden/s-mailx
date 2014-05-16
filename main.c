@@ -598,7 +598,10 @@ main(int argc, char *argv[])
    progname = argv[0];
    _startup();
 
-   /* Command line parsing */
+   /* Command line parsing
+    * Variable settings need to be done twice, since the user surely wants the
+    * setting to take effect immediately, but also doesn't want it to be
+    * overwritten from within resource files */
    while ((i = _getopt(argc, argv, optstr)) >= 0) {
       switch (i) {
       case 'A':
@@ -606,6 +609,7 @@ main(int argc, char *argv[])
          Aarg = _oarg;
          break;
       case 'a':
+         options |= OPT_SENDMODE;
          {  struct a_arg *nap = ac_alloc(sizeof(struct a_arg));
             if (a_head == NULL)
                a_head = nap;
@@ -615,7 +619,6 @@ main(int argc, char *argv[])
             nap->aa_file = _oarg;
             a_curr = nap;
          }
-         options |= OPT_SENDMODE;
          break;
       case 'B':
          /* Make 0/1 line buffered */
@@ -624,28 +627,28 @@ main(int argc, char *argv[])
          break;
       case 'b':
          /* Get Blind Carbon Copy Recipient list */
-         bcc = cat(bcc, checkaddrs(lextract(_oarg, GBCC | GFULL)));
          options |= OPT_SENDMODE;
+         bcc = cat(bcc, checkaddrs(lextract(_oarg, GBCC | GFULL)));
          break;
       case 'c':
          /* Get Carbon Copy Recipient list */
-         cc = cat(cc, checkaddrs(lextract(_oarg, GCC | GFULL)));
          options |= OPT_SENDMODE;
+         cc = cat(cc, checkaddrs(lextract(_oarg, GCC | GFULL)));
          break;
       case 'D':
 #ifdef HAVE_IMAP
+         ok_bset(disconnected, TRU1);
          okey = "disconnected";
          goto joarg;
 #else
          break;
 #endif
       case 'd':
-         okey = "debug";
-#ifdef HAVE_DEBUG
          ok_bset(debug, TRU1);
-#endif
+         okey = "debug";
          goto joarg;
       case 'E':
+         ok_bset(skipemptybody, TRU1);
          okey = "skipemptybody";
          goto joarg;
       case 'e':
@@ -665,19 +668,21 @@ main(int argc, char *argv[])
          break;
       case 'i':
          /* Ignore interrupts */
+         ok_bset(ignore, TRU1);
          okey = "ignore";
          goto joarg;
       case 'L':
          Larg = _oarg;
+         options |= OPT_HEADERLIST;
          if (*Larg == '"' || *Larg == '\'') { /* TODO list.c:listspec_check() */
             size_t j = strlen(++Larg);
             if (j > 0)
                Larg[j - 1] = '\0';
          }
-         options |= OPT_HEADERLIST;
          break;
       case 'N':
          /* Avoid initial header printing */
+         ok_bset(header, FAL0);
          okey = "noheader";
          goto joarg;
       case 'n':
@@ -692,9 +697,9 @@ main(int argc, char *argv[])
          break;
       case 'q':
          /* Quote file TODO drop? -Q with real quote?? what ? */
+         options |= OPT_SENDMODE;
          if (*_oarg != '-')
             qf = _oarg;
-         options |= OPT_SENDMODE;
          break;
       case 'R':
          /* Open folders read-only */
@@ -722,9 +727,7 @@ main(int argc, char *argv[])
          }
          break;
       case 'S':
-         /* Set variable.  We need to do this twice, since the user surely
-          * wants the setting to take effect immediately, but also doesn't want
-          * it to be overwritten from within resource files */
+         /* Set variable (twice) */
          {  char *a[2];
             okey = a[0] = _oarg;
             a[1] = NULL;
@@ -755,10 +758,8 @@ joarg:
          /* NOTREACHED */
       case 'v':
          /* Be verbose */
-         okey = "verbose";
-#ifdef HAVE_DEBUG
          ok_bset(verbose, TRU1);
-#endif
+         okey = "verbose";
          goto joarg;
       case '~':
          /* Enable tilde escapes even in non-interactive mode */
@@ -768,6 +769,16 @@ joarg:
          /* Work in batch mode, even if non-interactive */
          if (oargs_count + 6 >= oargs_size)
             oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
+         /* xxx Setting most of the -# options immediately is useless, so be
+          * selective in what is set immediately */
+         options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
+         folder = "/dev/null";
+         ok_bset(dot, TRU1);
+         ok_bset(emptystart, TRU1);
+         ok_bset(header, FAL0);
+         ok_bset(quiet, TRU1);
+         ok_bset(sendwait, TRU1);
+         ok_vset(MBOX, folder);
          oargs[oargs_count + 0] = "dot";
          oargs[oargs_count + 1] = "emptystart";
          oargs[oargs_count + 2] = "noheader";
@@ -775,8 +786,6 @@ joarg:
          oargs[oargs_count + 4] = "sendwait";
          oargs[oargs_count + 5] = "MBOX=/dev/null";
          oargs_count += 6;
-         folder = "/dev/null";
-         options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          break;
       case '?':
 jusage:
