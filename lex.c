@@ -1076,7 +1076,7 @@ print_header_summary(char const *Larg)
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
-      if ((options & (OPT_VERBOSE | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
+      if ((options & (OPT_VERB | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
          freopen("/dev/null", "w", stdout);
          freopen("/dev/null", "w", stderr);
       }

@@ -885,7 +885,10 @@ jusage:
    }
 
    /* Ensure the -S and other command line options take precedence over
-    * anything that may have been placed in resource files */
+    * anything that may have been placed in resource files.
+    * Our "ternary binary" option *verbose* needs special treament */
+   if ((options & (OPT_VERB | OPT_VERBVERB)) == OPT_VERB)
+      options &= ~OPT_VERB;
    for (i = 0; UICMP(z, i, <, oargs_count); ++i) {
       char const *a[2];
       a[0] = oargs[i];

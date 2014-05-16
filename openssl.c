@@ -258,7 +258,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
    int rv = TRU1;
    NYD_ENTER;
 
-   if (success && !(options & OPT_VERBOSE))
+   if (success && !(options & OPT_VERB))
       goto jleave;
 
    if (_ssl_msgno != 0) {
@@ -427,7 +427,7 @@ ssl_check_host(char const *server, struct sock *sp)
       for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
          gen = sk_GENERAL_NAME_value(gens, i);
          if (gen->type == GEN_DNS) {
-            if (options & OPT_VERBOSE)
+            if (options & OPT_VERB)
                fprintf(stderr, "Comparing DNS: <%s>; should <%s>\n",
                   server, (char*)gen->d.ia5->data);
             rv = rfc2595_hostname_match(server, (char*)gen->d.ia5->data);
@@ -441,7 +441,7 @@ ssl_check_host(char const *server, struct sock *sp)
          X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data)
             > 0) {
       data[sizeof data - 1] = '\0';
-      if (options & OPT_VERBOSE)
+      if (options & OPT_VERB)
          fprintf(stderr, "Comparing commonName: <%s>; should <%s>\n",
             server, data);
       rv = rfc2595_hostname_match(server, data);
@@ -540,7 +540,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
          for (j = 0; j < sk_GENERAL_NAME_num(gens); ++j) {
             gen = sk_GENERAL_NAME_value(gens, j);
             if (gen->type == GEN_EMAIL) {
-               if (options & OPT_VERBOSE)
+               if (options & OPT_VERB)
                   fprintf(stderr,
                      "Comparing subject_alt_name: <%s>; should <%s>\n",
                      sender, (char*)gen->d.ia5->data);
@@ -554,7 +554,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             X509_NAME_get_text_by_NID(subj, NID_pkcs9_emailAddress,
                data, sizeof data) > 0) {
          data[sizeof data -1] = '\0';
-         if (options & OPT_VERBOSE)
+         if (options & OPT_VERB)
             fprintf(stderr, "Comparing emailAddress: <%s>; should <%s>\n",
                sender, data);
          if (!asccasecmp(data, sender))
@@ -751,7 +751,7 @@ load_crl1(X509_STORE *store, char const *name)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if (options & OPT_VERBOSE)
+   if (options & OPT_VERB)
       printf("Loading CRL from \"%s\".\n", name);
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
       ssl_gen_err(tr(565, "Error creating X509 lookup object"));
