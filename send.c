@@ -141,15 +141,19 @@ static enum okay
 parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    int level)
 {
-   char *cp;
+   char *cp_b, *cp;
    enum okay rv = STOP;
    NYD_ENTER;
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL) {
-      ip->m_ct_type_plain = savestr(ip->m_ct_type);
-      if ((cp = strchr(ip->m_ct_type_plain, ';')) != NULL)
+      cp_b = ip->m_ct_type_plain = savestr(ip->m_ct_type);
+      if ((cp = strchr(cp_b, ';')) != NULL)
          *cp = '\0';
+      cp = cp_b + strlen(cp_b);
+      while (cp > cp_b && blankchar(cp[-1]))
+         --cp;
+      *cp = '\0';
    } else if (ip->m_parent != NULL &&
          ip->m_parent->m_mimecontent == MIME_DIGEST)
       ip->m_ct_type_plain = UNCONST("message/rfc822");

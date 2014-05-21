@@ -783,7 +783,7 @@ thisfield(char const *linebuf, char const *field)
    if (*linebuf++ != ':')
       goto jleave;
 
-   while (blankchar(*linebuf))
+   while (blankchar(*linebuf)) /* TODO header parser..  strip trailing WS?!? */
       ++linebuf;
    rv = linebuf;
 jleave:
