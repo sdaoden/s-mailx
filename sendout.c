@@ -419,7 +419,7 @@ _prepare_mta_args(struct name *to, struct header *hp)
       } else
          froma = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
       if (froma != NULL) { /* XXX ugh! */
-         args[i++] = "-r";
+         args[i++] = "-f";
          args[i++] = froma;
       }
    }

@@ -231,7 +231,8 @@ May be given in send mode only.
 Opens any folders read-only.
 .It Fl r Ar address
 Sets the envelope sender address by passing an
-.Fl r
+.Ns ` Ns Fl f
+.Ar address Ns '
 option to the MTA when a message is send.
 If a non-empty
 .Ar address
@@ -240,7 +241,7 @@ the given value, but otherwise the content of the variable
 .Va from
 will be used for that purpose \(en i.e., it'll be passed through to
 the MTA via the
-.Fl r
+.Fl f
 option whenever a message is send.
 A valid non-empty value will also be set as if an additional
 .Ns ` Ns Li "-Sfrom=VALUE" Ns '
