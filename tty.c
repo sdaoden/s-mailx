@@ -1597,8 +1597,8 @@ jrestart:
       case 'A' ^ 0x40: /* cursor home */
          _ncl_khome(&l, TRU1);
          break;
-j_b:
       case 'B' ^ 0x40: /* backward character */
+j_b:
          _ncl_kleft(&l);
          break;
       /* 'C': interrupt (CTRL-C) */
@@ -1609,8 +1609,8 @@ j_b:
       case 'E' ^ 0x40: /* end of line */
          _ncl_kend(&l);
          break;
-j_f:
       case 'F' ^ 0x40: /* forward character */
+j_f:
          _ncl_kright(&l);
          break;
       /* 'G' below */
@@ -1647,13 +1647,13 @@ jreset:
          }
          fflush(stdout);
          goto jrestart;
-j_l:
       case 'L' ^ 0x40: /* repaint line */
+j_l:
          _ncl_krefresh(&l);
          break;
       /* 'M': CR (\r) */
-j_n:
       case 'N' ^ 0x40: /* history next */
+j_n:
 # ifdef HAVE_HISTORY
          if (l.hist == NULL)
             goto jbell;
@@ -1665,8 +1665,16 @@ j_n:
          goto jbell;
 # endif
       /* 'O' */
-j_p:
+      case 'O' ^ 0x40: /* `dp' */
+         putchar('\n');
+         cbuf_base[0] = 'd';
+         cbuf_base[1] = 'p';
+         cbuf_base[2] = '\0';
+         inhook = 0;
+         execute(cbuf_base, TRU1, 2);
+         goto j_l;
       case 'P' ^ 0x40: /* history previous */
+j_p:
 # ifdef HAVE_HISTORY
          if ((len = _ncl_khist(&l, TRU1)) > 0)
             goto jrestart;
