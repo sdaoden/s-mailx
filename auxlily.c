@@ -1601,7 +1601,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
    char const _bire[2][6] = { "\xE2\x81\xA8" "\xE2\x81\xA9",
       "\xE2\x80\x8E" "\xE2\x80\x8E"
       /* worse results: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
-   }, *birep;
+   }, *birep = NULL /* old gcc warning */;
 #endif
    int col_orig = col, n, sz;
    bool_t isbidi, isuni, isrepl;
