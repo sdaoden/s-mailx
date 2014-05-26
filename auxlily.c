@@ -539,9 +539,9 @@ jfile:
    memcpy(np, name, sz + 1);
    if (!stat(name, &st)) {
       if (S_ISDIR(st.st_mode) &&
-            (strcpy(&np[sz], "/tmp"), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (strcpy(&np[sz], "/new"), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (strcpy(&np[sz], "/cur"), !stat(np, &st) && S_ISDIR(st.st_mode)))
+            (memcpy(np+sz, "/tmp", 4), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (memcpy(np+sz, "/new", 4), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (memcpy(np+sz, "/cur", 4), !stat(np, &st) && S_ISDIR(st.st_mode)))
           rv = PROTO_MAILDIR;
    } else if ((cp = ok_vlook(newfolders)) != NULL && !strcmp(cp, "maildir"))
       rv = PROTO_MAILDIR;
