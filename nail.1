@@ -3957,6 +3957,8 @@ for a specific account.
 .It Va ssl-rand-egd
 \*(OP Gives the pathname to an entropy daemon socket, see
 .Xr RAND_egd 3 .
+Note that (as of 2014) not all OpenSSL installations include this
+functionality.
 .It Va ssl-rand-file
 \*(OP Gives the pathname to a file with entropy data, see
 .Xr RAND_load_file 3 .
