@@ -98,7 +98,7 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 				echo "  \$$ $(MKDIR) -m 0755 -p '$${_dir}'";\
 			fi;\
 			$(MKDIR) -m 0755 -p "$${_dir}";\
-		fi; \
+		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _dst=$${3};\
@@ -140,8 +140,9 @@ uninstall:
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
 	$(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
-	[ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ] &&\
-		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"!'
+	if [ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
+		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"';\
+	fi
 
 clean:
 	@echo 'Cleaning up..';\
