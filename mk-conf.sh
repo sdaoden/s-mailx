@@ -129,9 +129,9 @@ compiler_flags() {
    if nwantfeat DEBUG; then
       _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
-      _CFLAGS="${dbgoptim} -g -ftrapv ${_CFLAGS}";
+      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
       if [ "${stackprot}" = yes ]; then
-         _CFLAGS="${_CFLAGS} -fstack-protector-all "
+         _CFLAGS="${_CFLAGS} -ftrapv -fstack-protector-all "
             _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
       fi
    fi
