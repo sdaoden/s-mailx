@@ -476,7 +476,7 @@ page_or_print(FILE *fp, size_t lines)
 }
 
 FL enum protocol
-which_protocol(char const *name)
+which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
 {
    struct stat st;
    char const *cp;

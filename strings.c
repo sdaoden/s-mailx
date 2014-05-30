@@ -525,7 +525,7 @@ FL char *
 }
 
 FL char *
-(protbase)(char const *cp SALLOC_DEBUG_ARGS)
+(protbase)(char const *cp SALLOC_DEBUG_ARGS) /* TODO obsolete */
 {
    char *n, *np;
    NYD_ENTER;
@@ -552,7 +552,7 @@ FL char *
 }
 
 FL char *
-(urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
+(urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
 {
    char *n, *np;
    NYD_ENTER;
@@ -576,7 +576,7 @@ FL char *
 }
 
 FL char *
-(urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
+(urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
 {
    char *n, *np;
    NYD_ENTER;
@@ -725,7 +725,7 @@ is_prefix(char const *as1, char const *as2)
 }
 
 FL char const *
-last_at_before_slash(char const *sp)
+last_at_before_slash(char const *sp)/* XXX (->URL (yet auxlily.c) / obsolete) */
 {
    char const *cp;
    char c;
