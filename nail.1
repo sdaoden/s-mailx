@@ -3789,6 +3789,17 @@ from the `LC_CTYPE' locale environment.
 Refer to the section
 .Sx "Character sets"
 for the complete picture about character sets.
+.It Va user
+\*(IN Sets a global fallback user name, which is used in case none has
+been given in the protocol and account-specific URL and there is also
+no matching
+.Va user-HOST .
+This variable defaults to the value of
+.Va USER .
+.It Va user-HOST
+\*(IN Overrides
+.Va user
+for a specific host.
 .It Va VISUAL
 Pathname of the text editor to use in the
 .Ic visual

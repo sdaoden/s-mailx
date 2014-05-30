@@ -765,6 +765,248 @@ nodename(int mayoverride)
    return hostname;
 }
 
+FL bool_t
+url_parse(struct url *urlp, enum cproto cproto, char const *data)
+{
+#if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
+# define __ALLPROTO
+#endif
+#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP
+# define __ANYPROTO
+   char *cp, *x;
+#endif
+   bool_t rv = FAL0;
+   NYD_ENTER;
+   UNUSED(data);
+
+   memset(urlp, 0, sizeof *urlp);
+   urlp->url_input = data;
+   urlp->url_cproto = cproto;
+
+   /* Network protocol */
+#define _protox(X,Y)  \
+   urlp->url_portno = Y;\
+   memcpy(urlp->url_proto, X "://", sizeof(X "://"));\
+   urlp->url_proto[sizeof(X) -1] = '\0';\
+   urlp->url_proto_len = sizeof(X) -1;\
+   urlp->url_proto_xlen = sizeof(X "://") -1
+#define __if(X,Y,Z)  \
+   if (!ascncasecmp(data, X "://", sizeof(X "://") -1)) {\
+      _protox(X, Y);\
+      data += sizeof(X "://") -1;\
+      do { Z; } while (0);\
+      goto juser;\
+   }
+#define _if(X,Y)     __if(X, Y, (void)0)
+#ifdef HAVE_SSL
+# define _ifs(X,Y)   __if(X, Y, urlp->url_needs_tls = TRU1)
+#else
+# define _ifs(X,Y)   goto jeproto;
+#endif
+
+   switch (cproto) {
+   case CPROTO_SMTP:
+#ifdef HAVE_SMTP
+      _if ("smtp", 25)
+      _if ("submission", 587)
+      _ifs ("smtps", 465)
+      _protox("smtp", 25);
+      break;
+#else
+      goto jeproto;
+#endif
+   case CPROTO_POP3:
+#ifdef HAVE_POP3
+      _if ("pop3", 110)
+      _ifs ("pop3s", 995)
+      _protox("pop3", 110);
+      break;
+#else
+      goto jeproto;
+#endif
+   case CPROTO_IMAP:
+#ifdef HAVE_IMAP
+      _if ("imap", 143)
+      _ifs ("imaps", 993)
+      _protox("imap", 143);
+      break;
+#else
+      goto jeproto;
+#endif
+   }
+
+#undef _ifs
+#undef _if
+#undef __if
+#undef _protox
+
+   if (strstr(data, "://") != NULL) {
+#if !defined __ALLPROTO || !defined HAVE_SSL
+jeproto:
+#endif
+      fprintf(stderr, tr(574, "URL `proto://' prefix invalid: `%s'\n"),
+         urlp->url_input);
+      goto jleave;
+   }
+#ifdef __ANYPROTO
+
+   /* User and password, I */
+juser:
+   if ((cp = UNCONST(last_at_before_slash(data))) == NULL)
+      goto jserver;
+
+   urlp->url_had_user = TRU1;
+   urlp->url_user.s = savestrbuf(data, urlp->url_user.l = PTR2SIZE(cp - data));
+   data = ++cp;
+
+   /* And also have a password? */
+   if ((cp = strchr(urlp->url_user.s, ':')) != NULL) {
+      x = urlp->url_user.s;
+      urlp->url_user.s = savestrbuf(x, urlp->url_user.l = PTR2SIZE(cp - x));
+      urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(++cp));
+      urlp->url_pass_enc.l = strlen(
+            urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s));
+   }
+
+   /* Servername and port -- and possible path suffix */
+jserver:
+   if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, IPv6 support */
+      char *eptr;
+      long l;
+
+      urlp->url_port = x = savestr(x = cp + 1);
+      if ((x = strchr(x, '/')) != NULL)
+         *x = '\0';
+      l = strtol(urlp->url_port, &eptr, 10);
+      if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
+         fprintf(stderr, tr(573, "URL with invalid port number: `%s'\n"),
+            urlp->url_input);
+         goto jleave;
+      }
+      urlp->url_portno = (ui16_t)l;
+   } else {
+      if ((x = strchr(data, '/')) != NULL)
+         data = savestrbuf(data, PTR2SIZE(x - data));
+      cp = UNCONST(data + strlen(data));
+   }
+
+   /* A (non-empty) path may only occur with IMAP */
+   if (x != NULL && x[1] != '\0') {
+      if (cproto != CPROTO_IMAP) {
+         fprintf(stderr, tr(575, "URL protocol doesn't support paths: `%s'\n"),
+            urlp->url_input);
+         goto jleave;
+      }
+      urlp->url_path.l = strlen(++x);
+      urlp->url_path.s = savestrbuf(x, urlp->url_path.l);
+   }
+
+   urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
+   {  size_t i;
+      for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
+         *cp = lowerconv(*cp);
+   }
+
+   /* HOST:PORT */
+   {  size_t i;
+      struct str *s = &urlp->url_hp;
+
+      s->s = salloc(urlp->url_host.l + 1 + sizeof("65536")-1 +1);
+      memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
+      if (urlp->url_port != NULL) {
+         size_t j = strlen(urlp->url_port);
+         s->s[i++] = ':';
+         memcpy(s->s + i, urlp->url_port, j);
+         i += j;
+      }
+      s->s[i] = '\0';
+      s->l = i;
+   }
+
+   /* User, II
+    * If there was no user in the URL, do we have *user-HOST* or *user*? */
+   if (!urlp->url_had_user) {
+      char const usrstr[] = "user-";
+      size_t const usrlen = sizeof(usrstr) -1;
+
+      cp = ac_alloc(usrlen + urlp->url_hp.l +1);
+      memcpy(cp, usrstr, usrlen);
+      memcpy(cp + usrlen, urlp->url_hp.s, urlp->url_hp.l +1);
+      if ((urlp->url_user.s = vok_vlook(cp)) == NULL) {
+         cp[usrlen - 1] = '\0';
+         if ((urlp->url_user.s = vok_vlook(cp)) == NULL)
+            urlp->url_user.s = UNCONST(myname);
+      }
+      ac_free(cp);
+   }
+
+   urlp->url_user.l = strlen(urlp->url_user.s = urlxdec(urlp->url_user.s));
+   urlp->url_user_enc.l = strlen(
+         urlp->url_user_enc.s = urlxenc(urlp->url_user.s));
+
+   /* USER@HOST:PORT */
+   if (urlp->url_user_enc.l == 0)
+      urlp->url_uhp = urlp->url_hp;
+   else {
+      struct str *s = &urlp->url_uhp;
+      size_t i = urlp->url_user_enc.l;
+
+      s->s = salloc(i + 1 + urlp->url_hp.l +1);
+      if (i > 0) {
+         memcpy(s->s, urlp->url_user_enc.s, i);
+         s->s[i++] = '@';
+      }
+      memcpy(s->s + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      i += urlp->url_hp.l;
+      s->l = i;
+   }
+
+   /* USER@HOST */
+   if (urlp->url_user_enc.l == 0)
+      urlp->url_uh = urlp->url_host;
+   else {
+      struct str *s = &urlp->url_uh;
+      size_t i = urlp->url_user_enc.l;
+
+      s->s = salloc(i + 1 + urlp->url_host.l +1);
+      if (i > 0) {
+         memcpy(s->s, urlp->url_user_enc.s, i);
+         s->s[i++] = '@';
+      }
+      memcpy(s->s + i, urlp->url_host.s, urlp->url_host.l +1);
+      i += urlp->url_host.l;
+      s->l = i;
+   }
+
+   /* Finally, for fun: .url_proto://.url_uhp[/.url_path] */
+   {  size_t i;
+      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_uhp.l) +
+            1 + urlp->url_path.l +1);
+
+      urlp->url_proto[urlp->url_proto_len] = ':';
+      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_uhp.s, urlp->url_uhp.l +1);
+      urlp->url_proto[urlp->url_proto_len] = '\0';
+
+      if (urlp->url_path.l == 0)
+         urlp->url_puhp = urlp->url_puhpp = ud;
+      else {
+         urlp->url_puhp = savestrbuf(ud, i);
+         urlp->url_puhpp = ud;
+         ud += i;
+         *ud++ = '/';
+         memcpy(ud, urlp->url_path.s, urlp->url_path.l +1);
+      }
+   }
+
+   rv = TRU1;
+#endif /* __ANYPROTO */
+jleave:
+   NYD_LEAVE;
+   return rv;
+#undef __ANYPROTO
+#undef __ALLPROTO
+}
+
 FL char *
 lookup_password_for_token(char const *token)
 {

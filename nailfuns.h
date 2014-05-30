@@ -303,6 +303,11 @@ FL char *      getprompt(void);
 /* Detect and query the hostname to use */
 FL char *      nodename(int mayoverride);
 
+/* Parse data, which must meet the criteria of the protocol cproto, and fill
+ * in the URL structure urlp */
+FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
+                  char const *data);
+
 /* Try to lookup a variable named "password-*token*".
  * Return NULL or salloc()ed buffer */
 FL char *      lookup_password_for_token(char const *token);

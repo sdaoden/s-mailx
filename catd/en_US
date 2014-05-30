@@ -572,3 +572,6 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 570 The value of *attrlist* is not of the correct length\n
 571 %s `%s' is not defined\n
 572 *sendcharsets* and *charset-8bit* iteration exhausted, restarting\n
+573 URL with invalid port number: `%s'\n
+574 URL `proto://' prefix invalid: `%s'\n
+575 URL protocol doesn't support paths: `%s'\n
