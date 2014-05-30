@@ -135,8 +135,13 @@ ssl_method_string(char const *uhp)
 FL enum okay
 smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
-   char *buf, *savedfields/* TODO use struct str or local per-line xy */ = NULL;
-   size_t bufsize, buflen, cnt, savedsize = 0;
+   struct myline {
+      struct myline  *ml_next;
+      size_t         ml_len;
+      char           ml_buf[VFIELD_SIZE(sizeof(uiz_t))];
+   } *head, *tail;
+   char *buf;
+   size_t bufsize, buflen, cnt;
    int c;
    enum okay rv = STOP;
    NYD_ENTER;
@@ -152,13 +157,9 @@ jetmp:
       goto jleave;
    }
 
+   head = tail = NULL;
    buf = smalloc(bufsize = LINESIZE);
-   savedfields = smalloc(savedsize = 1);
-   *savedfields = '\0';
-   if (xcount < 0)
-      cnt = fsize(ip);
-   else
-      cnt = xcount;
+   cnt = (xcount < 0) ? fsize(ip) : xcount;
 
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
          *buf != '\n') {
@@ -166,9 +167,16 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            savedsize += buflen;
-            savedfields = srealloc(savedfields, savedsize);
-            strcat(savedfields, buf);
+            struct myline *ml = smalloc(sizeof *ml -
+                  VFIELD_SIZEOF(struct myline, ml_buf) + buflen +1);
+            if (tail != NULL)
+               tail->ml_next = ml;
+            else
+               head = ml;
+            tail = ml;
+            ml->ml_next = NULL;
+            ml->ml_len = buflen;
+            memcpy(ml->ml_buf, buf, buflen +1);
             if (keep)
                fwrite(buf, sizeof *buf, buflen, *hp);
             c = getc(ip);
@@ -183,13 +191,17 @@ jetmp:
    }
    fflush_rewind(*hp);
 
-   fputs(savedfields, *bp);
+   while (head != NULL) {
+      fwrite(head->ml_buf, sizeof *head->ml_buf, head->ml_len, *bp);
+      tail = head;
+      head = head->ml_next;
+      free(tail);
+   }
    putc('\n', *bp);
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL)
       fwrite(buf, sizeof *buf, buflen, *bp);
    fflush_rewind(*bp);
 
-   free(savedfields);
    free(buf);
    rv = OKAY;
 jleave:
