@@ -35,8 +35,6 @@ WANT_AUTOCC=1
 # compiled.  This allows the compiler to perform much more optimizations, and
 # also reduces the management overhead that is used for / needed by the linker.
 # Of course compiling such a large source requires a lot of memory by itself
-# NOTE: experimental in that the feature is quite new -- it is thus not known
-# wether some compilers may generate buggy code when compiling single-source
 WANT_AMALGAMATION=0
 
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and

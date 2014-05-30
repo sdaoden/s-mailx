@@ -40,6 +40,9 @@ which take precedence over anything else:
   names will be supported if the necessary libraries are available,
   otherwise identical to MEDIUM.
 
+. CONFIG=MAXIMAL
+  Anything on.
+
 E.g.:
 
   $ make CONFIG=MINIMAL DESTDIR=xtest install

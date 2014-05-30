@@ -36,6 +36,9 @@ if [ -n "${CONFIG}" ]; then
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
       ;;
+   MAXIMAL)
+      WANT_GSSAPI=1
+      ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
       echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND'
