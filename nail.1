@@ -2687,16 +2687,20 @@ will be used when connecting to a POP3 server that advertises support.
 The advantage of APOP over `USER/PASS' authentication is that the
 password is not sent in clear text over the wire and that only a single
 packet is sent for the user/password tuple.
-.It Va pop3-no-apop-user@host
-Disables usage of the `APOP' authentication method (see
-.Va pop3-no-apop )
-for a specific account.
+.It Va pop3-no-apop-HOST
+\*(IN Disables the `APOP' authentication method for a specific host.
+.It Va pop3-no-apop-USER@HOST
+Disables the `APOP' authentication method for a specific account.
 .It Va pop3-use-starttls
 \*(OP Causes \*(UA to issue a `STLS' command to make an unencrypted POP3
 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the POP3S method.
-.It Va pop3-use-starttls-user@host
+.It Va pop3-use-starttls-HOST
+\*(IN Activates
+.Va pop3-use-starttls
+for a specific host.
+.It Va pop3-use-starttls-USER@HOST
 Activates
 .Va pop3-use-starttls
 for a specific account.
