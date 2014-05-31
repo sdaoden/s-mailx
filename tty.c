@@ -143,7 +143,7 @@ FL bool_t
 getapproval(char const * volatile prompt, bool_t noninteract_default)
 {
    sighandler_type volatile ohdl;
-   bool_t hadsig = FAL0, rv;
+   bool_t volatile hadsig = FAL0, rv;
    NYD_ENTER;
 
    if (!(options & OPT_INTERACTIVE)) {
@@ -182,8 +182,8 @@ FL char *
 getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
    sighandler_type volatile ohdl;
-   char *user = NULL;
-   bool_t hadsig = FAL0;
+   char * volatile user = NULL;
+   bool_t volatile hadsig = FAL0;
    NYD_ENTER;
 
    if (query == NULL)
@@ -213,7 +213,7 @@ getpassword(char const *query)
 {
    sighandler_type volatile ohdl;
    struct termios tios;
-   char *pass = NULL;
+   char * volatile pass = NULL;
 #if 0
    bool_t hadsig = FAL0; /* TODO getpassword() no longer reraises SIGINT */
 #endif

@@ -229,7 +229,7 @@ _spam_interact(struct spam_vc *vc)
    int p2c[2], c2p[2];
    sigset_t cset;
    size_t size;
-   pid_t pid;
+   pid_t volatile pid;
    FILE *ibuf;
    enum {
       _NONE    = 0,

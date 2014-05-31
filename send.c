@@ -688,7 +688,7 @@ _send_onpipe(int signo)
 }
 
 static int
-sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
+sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct ignoretab *doign, struct quoteflt *qf,
    enum sendaction volatile action, off_t *volatile stats, int level)
 {

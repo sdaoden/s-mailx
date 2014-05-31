@@ -201,9 +201,9 @@ markall(char *buf, int f)
 
    /* TODO use a bit carrier for all the states */
    char **np, **nq, **namelist, *bufp, *id = NULL, *cp;
-   int rv = 0, i, tok, beg, mc, other, valdot, colmod, colresult;
+   int rv = 0, i, tok, beg, other, valdot, colmod, colresult;
    struct message *mp, *mx;
-   bool_t star, topen, tback;
+   bool_t mc, star, topen, tback;
    size_t j, nmlsize;
    enum idfield idfield = ID_REFERENCES;
 #ifdef HAVE_IMAP
@@ -230,7 +230,8 @@ markall(char *buf, int f)
    np = namelist = smalloc((nmlsize = 8) * sizeof *namelist);
    scaninit();
    bufp = buf;
-   beg = mc = star = other = topen = tback = FAL0;
+   mc = FAL0;
+   beg = star = other = topen = tback = FAL0;
 #ifdef HAVE_IMAP
    gotheaders = 0;
 #endif
@@ -244,7 +245,7 @@ number:
             markall_ret(-1)
          }
          list_saw_numbers = TRU1;
-         ++mc;
+         mc = TRU1;
          ++other;
          if (beg != 0) {
             if (check(lexnumber, f))
@@ -424,16 +425,16 @@ number:
    lastcolmod = colmod;
    np = add_to_namelist(&namelist, &nmlsize, np, NULL);
    --np;
-   mc = 0;
+   mc = FAL0;
    if (star) {
       for (i = 0; i < msgCount; ++i) {
          if (!(message[i].m_flag & MHIDDEN) &&
                (message[i].m_flag & MDELETED) == (unsigned)f) {
             mark(i + 1, f);
-            ++mc;
+            mc = TRU1;
          }
       }
-      if (mc == 0) {
+      if (!mc) {
          if (!inhook)
             printf(tr(119, "No applicable messages.\n"));
          markall_ret(-1)
@@ -441,11 +442,11 @@ number:
       markall_ret(0)
    }
 
-   if ((topen || tback) && mc == 0) {
+   if ((topen || tback) && !mc) {
       for (i = 0; i < msgCount; ++i)
          if (message[i].m_flag & MMARK)
-            ++mc;
-      if (mc == 0) {
+            mc = TRU1;
+      if (!mc) {
          if (!inhook) {
             if (tback)
                fprintf(stderr, tr(131, "No previously marked messages.\n"));
@@ -458,7 +459,7 @@ number:
 
    /* If no numbers were given, mark all messages, so that we can unmark
     * any whose sender was not selected if any user names were given */
-   if ((np > namelist || colmod != 0 || id) && mc == 0)
+   if ((np > namelist || colmod != 0 || id) && !mc)
       for (i = 1; i <= msgCount; ++i) {
          if (!(message[i - 1].m_flag & MHIDDEN) &&
                (message[i - 1].m_flag & MDELETED) == (unsigned)f)
