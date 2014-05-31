@@ -187,23 +187,19 @@ static int        imap_use_starttls(const char *uhp);
 static enum okay  imap_preauth(struct mailbox *mp, const char *xserver,
                      const char *uhp);
 static enum okay  imap_capability(struct mailbox *mp);
-static enum okay  imap_auth(struct mailbox *mp, const char *uhp,
-                     char *xuser, char *pass);
+static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
 #ifdef HAVE_MD5
-static enum okay  imap_cram_md5(struct mailbox *mp, char *xuser, char *xpass);
+static enum okay  imap_cram_md5(struct mailbox *mp, struct ccred *ccred);
 #endif
-static enum okay  imap_login(struct mailbox *mp, char *xuser, char *xpass);
+static enum okay  imap_login(struct mailbox *mp, struct ccred *ccred);
 #ifdef HAVE_GSSAPI
-static enum okay  imap_gss(struct mailbox *mp, char *user);
+static enum okay  _imap_gssapi(struct mailbox *mp, struct ccred *ccred);
 #endif
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
-static void       imap_split(char **server, const char **sp, int *use_ssl,
-                     const char **cp, char const **uhp, char const **mbx,
-                     char **pass, char **user);
-static int        imap_setfile1(const char *xserver, int nmail, int isedit,
+static int        _imap_setfile1(struct url *urlp, int nmail, int isedit,
                      int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
                      size_t expected, int need, const char *head,
@@ -887,9 +883,8 @@ imap_capability(struct mailbox *mp)
 }
 
 static enum okay
-imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
+imap_auth(struct mailbox *mp, struct ccred *ccred)
 {
-   char *var, *auth;
    enum okay rv;
    NYD_ENTER;
 
@@ -898,35 +893,23 @@ imap_auth(struct mailbox *mp, const char *uhp, char *xuser, char *pass)
       goto jleave;
    }
 
-   if ((auth = ok_vlook(imap_auth)) == NULL) {
-      size_t i = strlen(uhp) + 1;
-      var = ac_alloc(i + 10);
-      memcpy(var, "imap-auth-", 10);
-      memcpy(var + 10, uhp, i);
-      auth = vok_vlook(var);
-      ac_free(var);
-   }
-
-   if (auth == NULL || !strcmp(auth, "login"))
-      rv = imap_login(mp, xuser, pass);
-   else if (!strcmp(auth, "cram-md5")) {
+   switch (ccred->cc_authtype) {
+   case AUTHTYPE_LOGIN:
+      rv = imap_login(mp, ccred);
+      break;
 #ifdef HAVE_MD5
-      rv = imap_cram_md5(mp, xuser, pass);
-#else
-      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
-      rv = STOP;
+   case AUTHTYPE_CRAM_MD5:
+      rv = imap_cram_md5(mp, ccred);
+      break;
 #endif
-   } else if (!strcmp(auth, "gss-api") || !strcmp(auth, "gssapi")) {
 #ifdef HAVE_GSSAPI
-      rv = imap_gss(mp, xuser);
-#else
-      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
-      rv = STOP;
+   case AUTHTYPE_GSSAPI:
+      rv = _imap_gssapi(mp, ccred);
+      break;
 #endif
-   } else {
-      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
-         "IMAP", auth);
+   default:
       rv = STOP;
+      break;
    }
 jleave:
    NYD_LEAVE;
@@ -936,18 +919,12 @@ jleave:
 /* Implementation of RFC 2194 */
 #ifdef HAVE_MD5
 static enum okay
-imap_cram_md5(struct mailbox *mp, char *xuser, char *xpass)
+imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
 {
-   char o[LINESIZE], *user, *pass, *cp;
+   char o[LINESIZE], *cp;
    FILE *queuefp = NULL;
    enum okay rv = STOP;
    NYD_ENTER;
-
-jretry:
-   user = xuser;
-   pass = xpass;
-   if (!getcredentials(&user, &pass))
-      goto jleave;
 
    snprintf(o, sizeof o, "%s AUTHENTICATE CRAM-MD5\r\n", tag(1));
    IMAP_XOUT(o, 0, goto jleave, goto jleave);
@@ -955,14 +932,10 @@ jretry:
    if (response_type != RESPONSE_CONT)
       goto jleave;
 
-   cp = cram_md5_string(user, pass, responded_text);
+   cp = cram_md5_string(ccred->cc_user.s, ccred->cc_pass.s, responded_text);
    IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    while (mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
-   if (rv == STOP) {
-      xpass = NULL;
-      goto jretry;
-   }
 jleave:
    NYD_LEAVE;
    return rv;
@@ -970,29 +943,18 @@ jleave:
 #endif /* HAVE_MD5 */
 
 static enum okay
-imap_login(struct mailbox *mp, char *xuser, char *xpass)
+imap_login(struct mailbox *mp, struct ccred *ccred)
 {
    char o[LINESIZE];
-   char *user, *pass;
    FILE *queuefp = NULL;
    enum okay rv = STOP;
    NYD_ENTER;
 
-jretry:
-   user = xuser;
-   pass = xpass;
-   if (!getcredentials(&user, &pass))
-      goto jleave;
-
    snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
-      tag(1), imap_quotestr(user), imap_quotestr(pass));
+      tag(1), imap_quotestr(ccred->cc_user.s), imap_quotestr(ccred->cc_pass.s));
    IMAP_XOUT(o, MB_COMD, goto jleave, goto jleave);
    while (mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
-   if (rv == STOP) {
-      xpass = NULL;
-      goto jretry;
-   }
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1165,73 +1127,40 @@ imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
    NYD_LEAVE;
 }
 
-static void
-imap_split(char **server, const char **sp, int *use_ssl, const char **cp,
-   char const **uhp, char const **mbx, char **pass, char **user)
-{
-   NYD_ENTER;
-   *sp = *server;
-   if (strncmp(*sp, "imap://", 7) == 0) {
-      *sp = &(*sp)[7];
-      *use_ssl = 0;
-#ifdef HAVE_SSL
-   } else if (strncmp(*sp, "imaps://", 8) == 0) {
-      *sp = &(*sp)[8];
-      *use_ssl = 1;
-#endif
-   } else
-      *use_ssl = 0; /* (silence CC) */
-
-   if ((*cp = strchr(*sp, '/')) != NULL && (*cp)[1] != '\0') {
-      char *x = savestr(*sp);
-      x[*cp - *sp] = '\0';
-      *uhp = x;
-      *mbx = &(*cp)[1];
-   } else {
-      if (*cp)
-         (*server)[*cp - *server] = '\0';
-      *uhp = *sp;
-      *mbx = "INBOX";
-   }
-
-   *pass = lookup_password_for_token(*uhp);
-   if ((*cp = last_at_before_slash(*uhp)) != NULL) {
-      *user = salloc(*cp - *uhp + 1);
-      memcpy(*user, *uhp, *cp - *uhp);
-      (*user)[*cp - *uhp] = '\0';
-      *sp = &(*cp)[1];
-      *user = urlxdec(*user);
-   } else {
-      *user = NULL;
-      *sp = *uhp;
-   }
-   NYD_LEAVE;
-}
-
 FL int
 imap_setfile(const char *xserver, int nmail, int isedit)
 {
+   struct url url;
    int rv;
    NYD_ENTER;
 
-   rv = imap_setfile1(xserver, nmail, isedit, 0);
+   if (!url_parse(&url, CPROTO_IMAP, xserver)) {
+      rv = 1;
+      goto jleave;
+   }
+   if (!ok_blook(v15_compat) &&
+         (!url.url_had_user || url.url_pass.s != NULL))
+      fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
+
+   rv = _imap_setfile1(&url, nmail, isedit, 0);
+jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static int
-imap_setfile1(const char *xserver, int nmail, int isedit,
+_imap_setfile1(struct url *urlp, int nmail, int isedit,
    int volatile transparent)
 {
    struct sock so;
+   struct ccred ccred;
    sighandler_type volatile saveint, savepipe;
-   char *server, *user, *pass, *acc;
-   char const *cp, *sp, * volatile mbx, *uhp;
-   int rv, use_ssl = 0, prevcount = 0;
+   char const *cp;
+   int rv;
+   int volatile prevcount = 0;
    enum mbflags same_flags;
    NYD_ENTER;
 
-   server = savestr(xserver);
    if (nmail) {
       saveint = safe_signal(SIGINT, SIG_IGN);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -1245,26 +1174,29 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
 
    same_flags = mb.mb_flags;
    same_imap_account = 0;
-   sp = protbase(server);
-   if (mb.mb_imap_account && mb.mb_type == MB_IMAP) {
+   if (mb.mb_imap_account != NULL &&
+         (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)) {
       if (mb.mb_sock.s_fd > 0 && mb.mb_sock.s_rsz >= 0 &&
-            strcmp(mb.mb_imap_account, sp) == 0 &&
-            disconnected(mb.mb_imap_account) == 0)
+            !strcmp(mb.mb_imap_account, urlp->url_puhp) &&
+            disconnected(mb.mb_imap_account) == 0) {
          same_imap_account = 1;
+         if (urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
+            urlp->url_pass.s = mb.mb_imap_pass;
+      } else if ((transparent || mb.mb_type == MB_CACHE) &&
+            !strcmp(mb.mb_imap_account, urlp->url_puhp) &&
+            urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
+         urlp->url_pass.s = mb.mb_imap_pass;
    }
-   acc = sstrdup(sp);
 
-   {
-   char const *xmbx;
-   imap_split(&server, &sp, &use_ssl, &cp, &uhp, &xmbx, &pass, &user);
-   mbx = xmbx;
+   if (!(ok_blook(v15_compat) ? ccred_lookup(&ccred, urlp)
+         : ccred_lookup_old(&ccred, CPROTO_IMAP, urlp->url_uhp.s))) {
+      rv = -1;
+      goto jleave;
    }
+
    so.s_fd = -1;
    if (!same_imap_account) {
-      if (!disconnected(acc) &&
-            sopen_old(sp, &so, use_ssl, uhp, (use_ssl ? "imaps" : "imap")
-            ) != OKAY) {
-         free(acc);
+      if (!disconnected(urlp->url_puhp) && !sopen(&so, urlp)) {
          rv = -1;
          goto jleave;
       }
@@ -1276,7 +1208,13 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
    edit = (isedit != 0);
    if (mb.mb_imap_account != NULL)
       free(mb.mb_imap_account);
-   mb.mb_imap_account = acc;
+   if (mb.mb_imap_pass != NULL)
+      free(mb.mb_imap_pass);
+   mb.mb_imap_account = sstrdup(urlp->url_puhp);
+   /* TODO This is a hack to allow '@boxname'; in the end everything will be an
+    * TODO object, and mailbox will naturally have an URL and credentials */
+   mb.mb_imap_pass = sstrdup(ccred.cc_pass.s);
+
    if (!same_imap_account) {
       if (mb.mb_sock.s_fd >= 0)
          sclose(&mb.mb_sock);
@@ -1294,8 +1232,9 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
       }
       if (mb.mb_imap_mailbox != NULL)
          free(mb.mb_imap_mailbox);
-      mb.mb_imap_mailbox = sstrdup(mbx);
-      initbox(server);
+      mb.mb_imap_mailbox = sstrdup((urlp->url_path.s != NULL)
+            ? urlp->url_path.s : "INBOX");
+      initbox(urlp->url_puhpp);
    }
    mb.mb_type = MB_VOID;
    mb.mb_active = MB_NONE;
@@ -1323,9 +1262,8 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
    if (mb.mb_sock.s_fd < 0) {
       if (disconnected(mb.mb_imap_account)) {
          if (cache_setptr(transparent) == STOP)
-            fprintf(stderr,
-               "Mailbox \"%s\" is not cached.\n",
-               server);
+            fprintf(stderr, "Mailbox \"%s\" is not cached.\n",
+               urlp->url_puhpp);
          goto jdone;
       }
       if ((cp = ok_vlook(imap_keepalive)) != NULL) {
@@ -1338,8 +1276,8 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
       mb.mb_sock = so;
       mb.mb_sock.s_desc = "IMAP";
       mb.mb_sock.s_onclose = imap_timer_off;
-      if (imap_preauth(&mb, sp, uhp) != OKAY ||
-            imap_auth(&mb, uhp, user, pass) != OKAY) {
+      if (imap_preauth(&mb, urlp->url_hp.s, urlp->url_uhp.s) != OKAY ||
+            imap_auth(&mb, &ccred) != OKAY) {
          sclose(&mb.mb_sock);
          imap_timer_off();
          safe_signal(SIGINT, saveint);
@@ -1354,7 +1292,8 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
    mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
-   if (imap_select(&mb, &mailsize, &msgCount, mbx) != OKAY) {
+   if (imap_select(&mb, &mailsize, &msgCount,
+         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX")) != OKAY) {
       /*sclose(&mb.mb_sock);
       imap_timer_off();*/
       safe_signal(SIGINT, saveint);
@@ -1366,7 +1305,7 @@ imap_setfile1(const char *xserver, int nmail, int isedit,
    }
 
 jnmail:
-   imap_setptr(&mb, nmail, transparent, &prevcount);
+   imap_setptr(&mb, nmail, transparent, UNVOLATILE(&prevcount));
 jdone:
    setmsize(msgCount);
    if (!nmail && !transparent)
@@ -1385,7 +1324,7 @@ jdone:
    if (!nmail && !edit && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
-         fprintf(stderr, tr(258, "No mail at %s\n"), server);
+         fprintf(stderr, tr(258, "No mail at %s\n"), urlp->url_puhpp);
       rv = 1;
       goto jleave;
    }
@@ -1537,7 +1476,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    FILE *queuefp;
    long volatile headlines;
    long n;
-   unsigned long u;
+   ul_it volatile u;
    enum okay ok;
    NYD_X;
 
@@ -1804,7 +1743,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
 }
 
 FL void
-imap_getheaders(int volatile bot, int topp) /* TODO should take iterator!! */
+imap_getheaders(int volatile bot, int volatile topp) /* TODO iterator!! */
 {
    sighandler_type saveint, savepipe;
    /* enum okay ok = STOP;*/
@@ -1878,6 +1817,7 @@ imap_exit(struct mailbox *mp)
 
    rv = __imap_exit(mp);
 #if 0 /* TODO the option today: memory leak(s) and halfway reuse or nottin */
+   free(mp->mb_imap_pass);
    free(mp->mb_imap_account);
    free(mp->mb_imap_mailbox);
    if (mp->mb_cache_directory != NULL)
@@ -2167,7 +2107,7 @@ c_imap_imap(void *vp)
    sighandler_type saveint, savepipe;
    struct mailbox *mp = &mb;
    FILE *queuefp = NULL;
-   enum okay ok = STOP;
+   enum okay volatile ok = STOP;
    NYD_X;
 
    if (mp->mb_type != MB_IMAP) {
@@ -2471,20 +2411,18 @@ FL enum okay
 imap_append(const char *xserver, FILE *fp)
 {
    sighandler_type volatile saveint, savepipe;
-   char *server, *user, *pass;
-   char const *sp, *cp, * volatile mbx, *uhp;
-   int volatile use_ssl;
+   struct url url;
+   struct ccred ccred;
+   char const * volatile mbx;
    enum okay rv = STOP;
    NYD_ENTER;
 
-   server = savestr(xserver);
-   {
-   int xus;
-   char const *xmbx;
-   imap_split(&server, &sp, &xus, &cp, &uhp, &xmbx, &pass, &user);
-   use_ssl = xus;
-   mbx = xmbx;
-   }
+   if (!url_parse(&url, CPROTO_IMAP, xserver))
+      goto j_leave;
+   if (!ok_blook(v15_compat) &&
+         (!url.url_had_user || url.url_pass.s != NULL))
+      fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
+   mbx = (url.url_path.s != NULL) ? url.url_path.s : "INBOX";
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -2496,19 +2434,22 @@ imap_append(const char *xserver, FILE *fp)
       safe_signal(SIGPIPE, imapcatch);
 
    if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd > 0) && mb.mb_imap_account &&
-         strcmp(protbase(server), mb.mb_imap_account) == 0) {
+         !strcmp(url.url_puhp, mb.mb_imap_account)) {
       rv = imap_append0(&mb, mbx, fp);
    } else {
       struct mailbox mx;
 
+      if (!(ok_blook(v15_compat) ? ccred_lookup(&ccred, &url)
+            : ccred_lookup_old(&ccred, CPROTO_IMAP, url.url_uhp.s)))
+         goto jleave;
+
       memset(&mx, 0, sizeof mx);
-      if (disconnected(server) == 0) {
-         if (sopen_old(sp, &mx.mb_sock, use_ssl, uhp,
-               (use_ssl ? "imaps" : "imap")) != OKAY)
+      if (disconnected(url.url_puhp) == 0) {
+         if (!sopen(&mx.mb_sock, &url))
             goto jfail;
          mx.mb_sock.s_desc = "IMAP";
          mx.mb_type = MB_IMAP;
-         mx.mb_imap_account = (char *)protbase(server);
+         mx.mb_imap_account = UNCONST(url.url_puhp);
          /* TODO the code now did
           * TODO mx.mb_imap_mailbox = mbx;
           * TODO though imap_mailbox is sfree()d and mbx
@@ -2516,15 +2457,15 @@ imap_append(const char *xserver, FILE *fp)
           * TODO i changed this to sstrdup() sofar, as is used
           * TODO somewhere else in this file for this! */
          mx.mb_imap_mailbox = sstrdup(mbx);
-         if (imap_preauth(&mx, sp, uhp) != OKAY ||
-               imap_auth(&mx, uhp, user, pass)!=OKAY) {
+         if (imap_preauth(&mx, url.url_hp.s, url.url_uhp.s) != OKAY ||
+               imap_auth(&mx, &ccred) != OKAY) {
             sclose(&mx.mb_sock);
             goto jfail;
          }
          rv = imap_append0(&mx, mbx, fp);
          imap_exit(&mx);
       } else {
-         mx.mb_imap_account = (char*)protbase(server);
+         mx.mb_imap_account = UNCONST(url.url_puhp);
          mx.mb_imap_mailbox = sstrdup(mbx); /* TODO as above */
          mx.mb_type = MB_CACHE;
          rv = imap_append0(&mx, mbx, fp);
@@ -2532,11 +2473,12 @@ imap_append(const char *xserver, FILE *fp)
 jfail:
       ;
    }
+
 jleave:
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
-
+j_leave:
    NYD_LEAVE;
    if (interrupts)
       onintr(0);
@@ -3121,7 +3063,7 @@ FL enum okay
 imap_search1(const char * volatile spec, int f)
 {
    sighandler_type saveint, savepipe;
-   enum okay rv = STOP;
+   enum okay volatile rv = STOP;
    NYD_ENTER;
 
    if (mb.mb_type != MB_IMAP)
@@ -3447,9 +3389,9 @@ check_expunged(void)
 }
 
 FL int
-c_connect(void *vp)
+c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 {
-   char *cp, *cq;
+   struct url url;
    int rv, omsgCount = msgCount;
    NYD_ENTER;
    UNUSED(vp);
@@ -3460,22 +3402,17 @@ c_connect(void *vp)
       goto jleave;
    }
 
+   if (!url_parse(&url, CPROTO_IMAP, mailname)) {
+      rv = 1;
+      goto jleave;
+   }
    var_clear_allow_undefined = TRU1;
    ok_bclear(disconnected);
-
-   cp = protbase(mailname);
-   if (strncmp(cp, "imap://", 7) == 0)
-      cp += 7;
-   else if (strncmp(cp, "imaps://", 8) == 0)
-      cp += 8;
-   if ((cq = strchr(cp, ':')) != NULL)
-      *cq = '\0';
-
-   vok_bclear(savecat("disconnected-", cp));
+   vok_bclear(savecat("disconnected-", url.url_uhp.s));
    var_clear_allow_undefined = FAL0;
 
    if (mb.mb_type == MB_CACHE) {
-      imap_setfile1(mailname, 0, edit, 1);
+      _imap_setfile1(&url, 0, edit, 1);
       if (msgCount > omsgCount)
          newmailinfo(omsgCount);
    }
@@ -3486,8 +3423,9 @@ jleave:
 }
 
 FL int
-c_disconnect(void *vp)
+c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 {
+   struct url url;
    int rv = 1, *msgvec = vp;
    NYD_ENTER;
 
@@ -3495,19 +3433,20 @@ c_disconnect(void *vp)
       fprintf(stderr, "Not connected.\n");
       goto jleave;
    }
-   if (mb.mb_type == MB_IMAP) {
-      if (cached_uidvalidity(&mb) == 0) {
-         fprintf(stderr, "The current mailbox is not cached.\n");
-         goto jleave;
-      }
+   if (mb.mb_type != MB_IMAP || cached_uidvalidity(&mb) == 0) {
+      fprintf(stderr, "The current mailbox is not cached.\n");
+      goto jleave;
    }
+
+   if (!url_parse(&url, CPROTO_IMAP, mailname))
+      goto jleave;
 
    if (*msgvec)
       c_cache(vp);
    ok_bset(disconnected, TRU1);
    if (mb.mb_type == MB_IMAP) {
       sclose(&mb.mb_sock);
-      imap_setfile1(mailname, 0, edit, 1);
+      _imap_setfile1(&url, 0, edit, 1);
    }
    rv = 0;
 jleave:
@@ -3545,32 +3484,24 @@ jleave:
 FL int
 disconnected(const char *file)
 {
-   char *cp, *cq, *vp;
-   int vs, r = 1;
+   struct url url;
+   int rv = 1;
    NYD_ENTER;
 
-   if (ok_blook(disconnected))
-      goto jleave;
-
-   cp = protbase(file);
-   if (strncmp(cp, "imap://", 7) == 0)
-      cp += 7;
-   else if (strncmp(cp, "imaps://", 8) == 0)
-      cp += 8;
-   else {
-      r = 0;
+   if (ok_blook(disconnected)) {
+      rv = 1;
       goto jleave;
    }
 
-   if ((cq = strchr(cp, ':')) != NULL)
-      *cq = '\0';
-   vp = ac_alloc(vs = strlen(cp) + 14);
-   snprintf(vp, vs, "disconnected-%s", cp);
-   r = vok_blook(vp);
-   ac_free(vp);
+   if (!url_parse(&url, CPROTO_IMAP, file)) {
+      rv = 0;
+      goto jleave;
+   }
+   rv = vok_blook(savecat("disconnected-", url.url_uhp.s));
+
 jleave:
    NYD_LEAVE;
-   return r;
+   return rv;
 }
 
 FL void

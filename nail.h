@@ -1053,6 +1053,7 @@ struct mailbox {
    }           mb_flags;
    unsigned long  mb_uidvalidity;   /* IMAP unique identifier validity */
    char        *mb_imap_account;    /* name of current IMAP account */
+   char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
 #endif
