@@ -1181,11 +1181,12 @@ _imap_setfile1(struct url *urlp, int nmail, int isedit,
             disconnected(mb.mb_imap_account) == 0) {
          same_imap_account = 1;
          if (urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
-            urlp->url_pass.s = mb.mb_imap_pass;
+            goto jduppass;
       } else if ((transparent || mb.mb_type == MB_CACHE) &&
             !strcmp(mb.mb_imap_account, urlp->url_puhp) &&
             urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
-         urlp->url_pass.s = mb.mb_imap_pass;
+jduppass:
+         urlp->url_pass.s = savestr(mb.mb_imap_pass);
    }
 
    if (!(ok_blook(v15_compat) ? ccred_lookup(&ccred, urlp)
