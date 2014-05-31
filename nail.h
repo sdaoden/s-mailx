@@ -93,6 +93,7 @@
 # define NI_MAXHOST     1025
 #endif
 
+/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
 #ifndef PATH_MAX
 # ifdef MAXPATHLEN
 #  define PATH_MAX      MAXPATHLEN
@@ -357,7 +358,6 @@
  * Types
  */
 
-/* TODO convert all integer types to the new [su]i(8|16|32|64)_t */
 typedef unsigned long   ul_it;
 typedef unsigned int    ui_it;
 typedef unsigned short  us_it;
@@ -691,8 +691,7 @@ enum authtype {
    AUTHTYPE_PLAIN    = 1<<1,  /* POP3: APOP is covered by this */
    AUTHTYPE_LOGIN    = 1<<2,
    AUTHTYPE_CRAM_MD5 = 1<<3,
-   AUTHTYPE_GSSAPI   = 1<<4,
-   AUTHTYPE_SASL     = 1<<5   /* TODO */
+   AUTHTYPE_GSSAPI   = 1<<4
 };
 
 #ifdef HAVE_SSL
@@ -1420,9 +1419,9 @@ VL int         noreset;             /* String resets suspended */
 VL int            msgCount;            /* Count of messages read in */
 VL struct mailbox mb;                  /* Current mailbox */
 VL int            image;               /* File descriptor for msg image */
-VL char           mailname[PATH_MAX];  /* Name of current file */
-VL char           displayname[80 - 40]; /* Prettyfied for display */
-VL char           prevfile[PATH_MAX];  /* Name of previous file */
+VL char           mailname[PATH_MAX];  /* Name of current file TODO URL/object*/
+VL char           displayname[80 - 40]; /* Prettyfied for display TODO URL/obj*/
+VL char           prevfile[PATH_MAX];  /* Name of previous file TODO URL/obj */
 VL char const     *account_name;       /* Current account name or NULL */
 VL off_t          mailsize;            /* Size of system mailbox */
 VL struct message *dot;                /* Pointer to current message */
