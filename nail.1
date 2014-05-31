@@ -1125,13 +1125,15 @@ As an example,
       set folder=imaps://mylogin@imap.myisp.example
       set record=+Sent
       set from="myname@myisp.example (My Name)"
-      set smtp=smtp.myisp.example
+      set smtp=smtp://mylogin@smtp.myisp.example
    }
 .Ed
 .Pp
 creates an account named `myisp' which can later be selected by
 specifying `account myisp'.
 The special account `null' (case-insensitive) always exists.
+.Ic localopts
+can be used to localize account settings.
 Accounts can be deleted via
 .Ic unaccount .
 .It Ic alias
@@ -2806,13 +2808,18 @@ do not send it but discard it silently (see also the command line option
 .It Va smime-force-encryption
 \*(OP Causes \*(UA to refuse sending unencrypted messages.
 .It Va smime-sign
-\*(OP S/MIME sign outgoing messages with the user's private key.
+\*(OP S/MIME sign outgoing messages with the user's private key and
+include the user's certificate as a MIME attachment.
 Signing a message enables a recipient to verify that the sender used
 a valid certificate,
 that the email addresses in the certificate match those in the message
 header and that the message content has not been altered.
 It does not change the message text,
 and people will be able to read the message as usual.
+Also see
+.Va smime-sign-cert
+and
+.Va smime-sign-include-certs .
 .It Va smime-no-default-ca
 \*(OP Don't load default CA locations when verifying S/MIME signed
 messages.
@@ -3081,21 +3088,27 @@ is not executed if this variable is effective for a folder
 ed from within the actually executed macro).
 .It Va from
 The address (or a list of addresses) to put into the `From:' field of
-the message header.
+the message header, quoting RFC 5322:
+the author(s) of the message, that is, the mailbox(es) of the person(s)
+or system(s) responsible for the writing of the message.
 If replying to messages these addresses are handled as if they were in
 the
 .Ic alternates
 list.
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine), then either this variable or
+a dialup machine) then either this variable or
 .Va hostname
+(\*(IN and with
+.Va smtp
+.Va smtp-hostname
+adds even more fine-tuning capabilities),
 have to be set.
 If
 .Va from
 contains more than one address,
-the
+setting the
 .Va sender
-variable must also be set.
+variable is required (according to the standard RFC 5322).
 .It Va fwdheading
 The string to print before the text of a message with the
 .Ic forward
@@ -3164,8 +3177,12 @@ i.e., in `Message-ID:' and `From:' fields.
 Note that when
 .Va smtp
 transport is not used then it is normally the responsibility of the MTA
-to create these fields; you should produce some test messages with the
-desired combination of
+to create these fields, \*(IN in conjunction with
+.Va smtp
+however
+.Va smtp-hostname
+also influences the results;
+you should produce some test messages with the desired combination of
 .Va hostname ,
 and/or
 .Va from ,
@@ -3482,15 +3499,11 @@ and refer to the section
 .Sx "Character sets"
 for the complete picture of character set conversion in \*(UA.
 .It Va sender
-An address that is put into the `Sender:' field of outgoing messages.
-This field needs not normally be present.
-It is, however, required if the `From:' field contains more than one
-address.
-It can also be used to indicate that a message was sent on behalf of
-someone else \(en in this case, `From:' should contain the address
-of the person that took responsibility for the message,
-and `Sender:' should contain the address of the person that actually
-sent the message.
+An address that is put into the `Sender:' field of outgoing messages,
+quoting RFC 5322: the mailbox of the agent responsible for the actual
+transmission of the message.
+This field should normally not be used unless the `From:' field contains
+more than one address, on which case it is required.
 The
 .Va sender
 address is handled as if it were in the
@@ -3572,58 +3585,100 @@ It is recommended to sign encrypted messages, i.e., to also set the
 .Va smime-sign
 variable.
 .It Va smime-sign-cert
-\*(OP Points to a file in PEM format that contains the user's private
-key as well as his certificate.
-Both are used with S/MIME for signing and decrypting messages.
+\*(OP Points to a file in PEM format.
+For the purpose of signing and decryption this file needs to contain the
+user's private key as well as his certificate.
+.Pp
+For the purpose of encryption the recipient's public encryption key
+(certificate) is expected; the command
+.Ic certsave
+can be used to save certificates of signed messages (the section
+.Sx "Signed and encrypted messages with S/MIME"
+gives some details).
+This mode of operation is usually driven via
+.Va smime-sign-cert-USER@HOST ,
+though.
 .It Va smime-sign-cert-USER@HOST
 Overrides
 .Va smime-sign-cert
-for the specified account.
-When signing messages and the value of the
+for a specific account.
+For message signing `USER@HOST' is always derived from the value of
 .Va from
-variable is set to `user@host', the specific file is used.
-When decrypting messages,
-their recipient fields (`To:' and `Cc:') are searched for addresses
-for which such a variable is set.
+(or, if that contains multiple addresses,
+.Va sender Ns
+).
+.Pp
+When decrypting messages the account is derived from the recipient
+fields (`To:' and `Cc:') of the message, which are searched for
+addresses for which such a variable is set.
 \*(UA always uses the first address that matches,
 so if the same message is sent to more than one of the user's addresses
 using different encryption keys, decryption might fail.
 .It Va smime-sign-include-certs
-\*(OP If used, this must be set to a comma-separated list of files,
-each of which containing a single certificate in PEM format to be
-included in the S/MIME message in addition to the
+\*(OP If used, this is supposed to a consist of a comma-separated list
+of files, each of which containing a single certificate in PEM format to
+be included in the S/MIME message in addition to the
 .Va smime-sign-cert
 certificate.
 This is most useful for long certificate chains if it is desired to aid
 the receiving party's verification process.
+Note that top level certificates may also be included in the chain but
+don't play a role for verification.
+Also see
+.Va smime-sign-cert
+and
+.Va smime-sign-cert-USER@HOST .
 .It Va smime-sign-include-certs-USER@HOST
 Overrides
 .Va smime-sign-include-certs
-for the specific addresses.
-Refer to the discussion of
-.Va smime-sign-cert-USER@HOST
-for more on this topic.
+for a specific account.
 .It Va smtp
-\*(OP Normally \*(UA invokes
-.Xr sendmail 1
-directly to transfer messages.
-If the
+\*(OP Normally \*(UA invokes the program defined via
+.Va sendmail
+to transfer messages.
+Setting the
 .Va smtp
-variable is set, a SMTP connection to the server specified by the value
-of this variable is used instead.
-If the SMTP server does not use the standard port, a value of
-`server:port' can be given, with `port' as a name or as a number.
-.Pp
-There are two possible methods to get SSL/TLS encrypted SMTP sessions:
-First, the `STARTTLS' command can be used to encrypt a session after it
-has been initiated,
-but before any user-related data has been sent; see
+variable will instead cause `SMTP' network connections be made to the
+server specified therein in order to directly submit the message.
+\*(UA knows about three different "SMTP protocols":
+.Bl -bullet -offset indent
+.It
+The plain `SMTP' protocol (RFC 5321) that normally lives on the
+server port 25 and requires setting of the
 .Va smtp-use-starttls
-above.
-Second, some servers accept sessions that are encrypted from begin on.
-This mode is configured by assigning `smtps://server[:port]' to the
-.Va smtp
-variable.
+variable as above to enter a SSL/TLS encrypted session state.
+Assign a value like \*(IN `[smtp://][user[:password]@]server[:port]'
+(\*(OU `[smtp://]server[:port]')
+to choose this protocol.
+.It
+Then the so-called `SMTPS' which is supposed to live on server port 465
+and is automatically SSL/TLS secured.
+Unfortunately it never became a standardized protocol and may thus not
+be supported by your hosts network service database
+\(en in fact the port number has already been reassigned to other
+protocols!
+.Pp
+`SMTPS' is nonetheless a commonly offered "protocol" and thus can be
+chosen by assigning a value like \*(IN
+`smtps://[user[:password]@]server[:port]'
+(\*(OU `smtps://server[:port]');
+due to the mentioned problems it is usually necessary to explicitly
+specify the port as `:465', however.
+.It
+Finally there is the `SUBMISSION' protocol (RFC 6409), which usually
+lives on server port 587 and is practically identically to the `SMTP'
+protocol from \*(UAs point of view beside that; it requires setting the
+.Va smtp-use-starttls
+variable to enter a SSL/TLS secured session state.
+Assign a value like \*(IN `submission://[user[:password]@]server[:port]'
+(\*(OU `submission://server[:port]').
+.El
+.Pp
+\*(IN If `user' or `password' contain special characters, in particular
+whitespace, `/', `:' or `%', they must be specified in URL notation
+(the command
+.Ic urlenc
+may be helpful for preparation).
 .Pp
 The SMTP transfer is executed in a child process, which runs
 asynchronously unless either the
@@ -3635,41 +3690,75 @@ If it receives a TERM signal, it will abort and save the message to
 .Va DEAD .
 .It Va smtp-auth
 \*(OP Sets the SMTP authentication method.
-If set to `login', or if unset and
-.Va smtp-auth-user
-is set, `AUTH LOGIN' is used.
-If set to `cram-md5', `AUTH CRAM-MD5' is used;
-if set to `plain', `AUTH PLAIN' is used.
-Otherwise, no SMTP authentication is performed.
-.It Va smtp-auth-user@host
+Possible values are `none' (the default), `plain', `login'
+as well as the \*(OPal methods `cram-md5' and `gssapi'.
+The `none' method doesn't need any user credentials,
+`gssapi' requires a user name
+and all other methods require a user name and a password.
+See \*(IN
+.Va smtp ,
+.Va user
+and
+.Va password
+(\*(OU
+.Va smtp-auth-password
+and
+.Va smtp-auth-user Ns
+).
+.It Va smtp-auth-HOST
+\*(IN Overrides
+.Va smtp-auth
+for SMTP accounts on a specific host.
+.It Va smtp-auth-USER@HOST
 Overrides
 .Va smtp-auth
-for specific values of sender addresses, dependend upon the variable
-.Va from .
+for a specific account.
+(\*(OU For specific values of sender addresses, dependend upon the variable
+.Va from Ns
+.Ns .)
 .It Va smtp-auth-password
-\*(OP Sets the global password for `SMTP AUTH'.
-Both user and password have to be given for `AUTH LOGIN' and
-`AUTH CRAM-MD5'.
-.It Va smtp-auth-password-user@host
+\*(OP \*(OU Sets the global fallback password for SMTP authentication.
+If the authentication method requires a password, but neither
+.Va smtp-auth-password
+nor a matching
+.Va smtp-auth-password-USER@HOST
+can be found,
+\*(UA will ask for a password on the user's terminal.
+.It Va smtp-auth-password-USER@HOST
 Overrides
 .Va smtp-auth-password
 for specific values of sender addresses, dependent upon the variable
 .Va from .
 .It Va smtp-auth-user
-\*(OP Sets the global user name for `SMTP AUTH'.
-Both user and password have to be given for `AUTH LOGIN' and
-`AUTH CRAM-MD5'.
-If this variable is set but neither
-.Va smtp-auth-password
+\*(OP \*(OU Sets the global fallback user name for SMTP authentication.
+If the authentication method requires a user name, but neither
+.Va smtp-auth-user
 nor a matching
-.Va smtp-auth-password-user@host
+.Va smtp-auth-user-USER@HOST
 can be found,
-\*(UA will ask for a password on the user's terminal.
-.It Va smtp-auth-user-user@host
+\*(UA will ask for a user name on the user's terminal.
+.It Va smtp-auth-user-USER@HOST
 Overrides
 .Va smtp-auth-user
 for specific values of sender addresses, dependent upon the variable
 .Va from .
+.It Va smtp-hostname
+\*(IN Normally \*(UA uses the variable
+.Va from
+to derive the necessary `USER@HOST' information to issue a
+`MAIL FROM:<>' SMTP command.
+Setting
+.Va smtp-hostname
+can be used to use the `USER' from the SMTP account
+.Ns ( Va smtp
+or the
+.Va user
+variable chain)
+and the `HOST' from the content of this variable
+(or, if that is the empty string,
+.Va hostname
+or the local hostname as a last resort).
+Setting this variable also influences the generated `Message-Id:'.
 .It Va spam-command
 \*(OP The path to the spam detector.
 Note that the path is not expanded, but used "as is".
@@ -4209,8 +4298,8 @@ and can then access incoming mail for this account by invoking
 \*(UA.
 After that, a command like `copy 1 +otherfolder' will refer to
 `otherfolder' on the IMAP server.
-In particular, `fi &' will change to the `mbox' folder,
-and `fi +Sent' will show your recorded sent mail,
+In particular, `fi&' will change to the `mbox' folder,
+and `fi+Sent' will show your recorded sent mail,
 with both folders located on the IMAP server.
 .Pp
 \*(UA will ask you for a password string each time you connect to
@@ -4613,10 +4702,10 @@ Since many configuration options are not valid shell variables, the
 .Xr env 1
 command is useful if the approach via environment variables is used:
 .Bd -literal -offset indent
-env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
-    smtp-auth-user=login smtp-auth-password=secret \e
-    smtp-auth=login \*(ua \-n \-s "subject" \e
-    \-a attachment_file recipient@domain < content_file
+env MAILRC=/dev/null password=secret \*(ua -n -Sv15-compat \e
+    -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
+    -S 'from=scriptreply@domain' \e
+    -s 'subject' -a attachment_file recipient@domain < content_file
 .Ed
 .\" }}}
 .\" }}} (Examples)

@@ -219,7 +219,8 @@ and thus this codebase and i are antipodes.
 The following modules have not yet been looked at and/or have known
 design flaws or bugs:
 
-  IMAP, (IMAP-) GSSAPI, (IMAP-) Caching
+  IMAP, (IMAP-) Caching
+  GSS-API (Tarqi Kazan reported with LOG that GSS-API still works)
 
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Mail, as a good one, then.  Also see `TODO'.

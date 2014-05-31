@@ -900,10 +900,9 @@ jleave:
 }
 
 FL FILE *
-smime_sign(FILE *ip, struct header *headp)
+smime_sign(FILE *ip, char const *addr)
 {
    FILE *rv = NULL, *sp = NULL, *fp = NULL, *bp, *hp;
-   char const *addr;
    X509 *cert = NULL;
    _STACKOF(X509) *chain = NULL;
    PKCS7 *pkcs7;
@@ -914,7 +913,7 @@ smime_sign(FILE *ip, struct header *headp)
 
    ssl_init();
 
-   if ((addr = myorigin(headp)) == NULL) {
+   if (addr == NULL) {
       fprintf(stderr, tr(531, "No \"from\" address for signing specified\n"));
       goto jleave;
    }

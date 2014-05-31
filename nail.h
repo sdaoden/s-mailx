@@ -857,6 +857,7 @@ enum okeys {
    ok_v_smtp_auth,
    ok_v_smtp_auth_password,
    ok_v_smtp_auth_user,
+   ok_v_smtp_hostname,
    ok_v_spam_command,
    ok_v_spam_host,
    ok_v_spam_maxsize,
@@ -1303,6 +1304,15 @@ struct attachment {
    FILE        *a_tmpf;       /* If AC_TMPFILE */
    enum attach_conv a_conv;   /* User chosen conversion */
    int         a_msgno;       /* message number */
+};
+
+struct sendbundle {
+   struct header  *sb_hp;
+   struct name    *sb_to;
+   FILE           *sb_input;
+   struct str     sb_signer;  /* USER@HOST for signing+ */
+   struct url     sb_url;
+   struct ccred   sb_ccred;
 };
 
 struct group {

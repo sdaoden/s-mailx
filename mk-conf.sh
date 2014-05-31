@@ -52,7 +52,7 @@ option_update() {
    if nwantfeat IMAP && nwantfeat POP3 && nwantfeat SMTP; then
       WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0
    fi
-   if nwantfeat IMAP; then
+   if nwantfeat IMAP && nwantfeat SMTP; then
       WANT_GSSAPI=0
    fi
    # If we don't need MD5 except for producing boundary and message-id strings,

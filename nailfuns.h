@@ -1264,8 +1264,10 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 /* Concatenate the two passed name lists, return the result */
 FL struct name * cat(struct name *n1, struct name *n2);
 
-/* Determine the number of undeleted elements in a name list and return it */
+/* Determine the number of undeleted elements in a name list and return it;
+ * the latter also doesn't count file and pipe addressees in addition */
 FL ui32_t      count(struct name const *np);
+FL ui32_t      count_nonlocal(struct name const *np);
 
 /* Extract a list of names from a line, and make a list of names from it.
  * Return the list or NULL if none found */
@@ -1298,8 +1300,7 @@ FL struct name * delete_alternates(struct name *np);
 FL int         is_myname(char const *name);
 
 /* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
-FL struct name * outof(struct name *names, FILE *fo, struct header *hp,
-                  bool_t *senderror);
+FL struct name * outof(struct name *names, FILE *fo, bool_t *senderror);
 
 /* Handling of alias groups */
 
@@ -1326,7 +1327,7 @@ FL void        ssl_gen_err(char const *fmt, ...);
 FL int         c_verify(void *vp);
 
 /*  */
-FL FILE *      smime_sign(FILE *ip, struct header *);
+FL FILE *      smime_sign(FILE *ip, char const *addr);
 
 /*  */
 FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
@@ -1504,13 +1505,8 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
  */
 
 #ifdef HAVE_SMTP
-/* smtp-authXY, where XY=type=-user|-password etc */
-FL char *      smtp_auth_var(char const *type, char const *addr);
-
-/* Connect to a SMTP server */
-FL int         smtp_mta(char *server, struct name *to, FILE *fi,
-                  struct header *hp, char const *user, char const *password,
-                  char const *skinned);
+/* Send a message via SMTP */
+FL bool_t      smtp_mta(struct sendbundle *sbp);
 #endif
 
 /*
