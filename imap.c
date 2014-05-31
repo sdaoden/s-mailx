@@ -78,7 +78,7 @@ do {\
       if (imap_finish(mp) == STOP) {\
          ACTIONBAIL;\
       }\
-      if (options & OPT_VERBOSE)\
+      if (options & OPT_VERBVERB)\
          fprintf(stderr, ">>> %s", X);\
       mp->mb_active |= Y;\
       if (swrite(&mp->mb_sock, X) == STOP) {\
@@ -408,7 +408,7 @@ imap_answer(struct mailbox *mp, int errprnt)
    rv = STOP;
 jagain:
    if (sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-      if (options & OPT_VERBOSE)
+      if (options & OPT_VERBVERB)
          fputs(imapbuf, stderr);
       imap_response_parse();
       if (response_type == RESPONSE_ILLEGAL)
@@ -1596,7 +1596,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          break;
       }
       if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-         if (options & OPT_VERBOSE)
+         if (options & OPT_VERBVERB)
             fputs(imapbuf, stderr);
          if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
             u = atol(&cp[4]);
@@ -1724,7 +1724,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
       if (n >= 0 && !(m[n-1].m_have & HAVE_HEADER))
          commitmsg(mp, &m[n-1], &mt, HAVE_HEADER);
       if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-         if (options & OPT_VERBOSE)
+         if (options & OPT_VERBVERB)
             fputs(imapbuf, stderr);
          if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
             u = atoi(&cp[4]);

@@ -59,7 +59,7 @@ do {\
    if (((RV) = pop3_finish(mp)) == STOP) {\
       ACTIONSTOP;\
    }\
-   if (options & OPT_VERBOSE)\
+   if (options & OPT_VERBVERB)\
       fprintf(stderr, ">>> %s", X);\
    mp->mb_active |= Y;\
    if (((RV) = swrite(&mp->mb_sock, X)) == STOP) {\
@@ -155,7 +155,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
          goto jleave;
       } else
 #endif
-      if (options & OPT_VERBOSE)
+      if (options & OPT_VERB)
          fprintf(stderr, tr(204, "No POP3 `APOP' support "
             "available, sending password in clear text\n"));
    }
@@ -331,7 +331,7 @@ jretry:
    if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock)) > 0) {
       if ((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
-      if (options & OPT_VERBOSE)
+      if (options & OPT_VERBVERB)
          fputs(_pop3_buf, stderr);
       switch (*_pop3_buf) {
       case '+':

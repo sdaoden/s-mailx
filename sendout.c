@@ -400,7 +400,7 @@ _prepare_mta_args(struct name *to, struct header *hp)
    i = 2;
    if (ok_blook(metoo))
       args[i++] = "-m";
-   if (options & OPT_VERBOSE)
+   if (options & OPT_VERB)
       args[i++] = "-v";
 
    for (j = 0; j < smopts_count; ++j, ++i)
@@ -950,7 +950,7 @@ jstop:
       fputs(tr(182, "... message not sent.\n"), stderr);
       _exit(1);
    }
-   if ((options & (OPT_DEBUG | OPT_VERBOSE | OPT_BATCH_FLAG)) ||
+   if ((options & (OPT_DEBUG | OPT_VERB | OPT_BATCH_FLAG)) ||
          ok_blook(sendwait)) {
       if (wait_child(pid, NULL))
          rv = TRU1;

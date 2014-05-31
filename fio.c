@@ -1276,7 +1276,7 @@ sopen(struct sock *sp, struct url *urlp)
 # endif
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
-   if (options & OPT_VERBOSE)
+   if (options & OPT_VERB)
       fprintf(stderr, tr(187, "Resolving host %s:%s ..."),
          urlp->url_host.s, serv);
 
@@ -1286,11 +1286,11 @@ sopen(struct sock *sp, struct url *urlp)
    if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
       fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), urlp->url_host.s);
       goto jleave;
-   } else if (options & OPT_VERBOSE)
+   } else if (options & OPT_VERB)
       fprintf(stderr, tr(500, " done.\n"));
 
    for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
-      if (options & OPT_VERBOSE) {
+      if (options & OPT_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             strcpy(hbuf, "unknown host");
@@ -1327,7 +1327,7 @@ sopen(struct sock *sp, struct url *urlp)
    if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
       fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), urlp->url_host.s);
       goto jleave;
-   } else if (options & OPT_VERBOSE)
+   } else if (options & OPT_VERB)
       fprintf(stderr, tr(500, " done.\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
@@ -1340,7 +1340,7 @@ sopen(struct sock *sp, struct url *urlp)
    servaddr.sin_family = AF_INET;
    servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
-   if (options & OPT_VERBOSE)
+   if (options & OPT_VERB)
       fprintf(stderr, tr(190, "%sConnecting to %s:%d ..."),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
@@ -1354,7 +1354,7 @@ sopen(struct sock *sp, struct url *urlp)
    }
 # endif /* !HAVE_IPV6 */
 
-   if (options & OPT_VERBOSE)
+   if (options & OPT_VERB)
       fputs(tr(193, " connected.\n"), stderr);
 
    /* And the regular timeouts XXX configurable */

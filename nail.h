@@ -473,7 +473,8 @@ typedef void (          *sighandler_type)(int);
 enum user_options {
    OPT_NONE,
    OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
-   OPT_VERBOSE    = 1u<< 1,   /* -v / *verbose* */
+   OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
+   OPT_VERBVERB   = 1u<<19,   /* .. even more verbosity */
    OPT_EXISTONLY  = 1u<< 2,   /* -e */
    OPT_HEADERSONLY = 1u<< 3,  /* -H */
    OPT_HEADERLIST = 1u<< 4,   /* -L */

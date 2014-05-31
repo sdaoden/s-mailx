@@ -223,7 +223,8 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
       flag = OPT_E_FLAG;
       break;
    case ok_b_verbose:
-      flag = OPT_VERBOSE;
+      flag = (enable && !(options & OPT_VERB))
+            ? OPT_VERB : OPT_VERB | OPT_VERBVERB;
       break;
    case ok_v_folder:
       rv = (val == NULL || var_folder_updated(*val, &cp));

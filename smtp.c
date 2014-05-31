@@ -106,7 +106,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
             rv = -1;
             goto jleave;
       }
-      if (options & OPT_VERBOSE)
+      if (options & OPT_VERBVERB)
          fputs(slp->buf, stderr);
       switch (slp->buf[0]) {
       case '1':   rv = 1; break;
@@ -144,7 +144,7 @@ do if (!(options & OPT_DEBUG)) {\
 } while (0)
 #define _OUT(X) \
 do {\
-   if (options & OPT_VERBOSE)\
+   if (options & OPT_VERBVERB)\
       fprintf(stderr, ">>> %s", X);\
    if (!(options & OPT_DEBUG))\
       swrite(sp, X);\

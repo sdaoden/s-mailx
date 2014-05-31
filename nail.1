@@ -276,9 +276,10 @@ Also see
 .It Fl V
 Print \*(UA's version and exit.
 .It Fl v
-Sets the
+Setting the
 .Va verbose
-option, which enables more verbose messages.
+option causes some verbosity (like printing of certificate chains).
+Using it twice increases the level of verbosity.
 .It Fl ~
 Enable tilde escapes even if not in interactive mode.
 .It Fl #
@@ -2227,7 +2228,8 @@ still be set to the user input.
 .It
 The character set selection loop can be left by typing `control-C',
 i.e., causing an interrupt.
-XXX Note that before \*(UA version 15.0 this terminates the entire
+.\" \*(OU next sentence
+Note that before \*(UA version 15.0 this terminates the entire
 current attachment selection, not only the character set selection.
 .El
 .Pp
@@ -2584,6 +2586,10 @@ and comments are retained.
 Causes the header summary to be written at startup and after commands
 that affect the number of messages or the order of messages in the
 current folder; enabled by default.
+The command line option
+.Fl N
+can be used to set
+.Va noheader .
 .It Va hold
 This option is used to hold messages in the system mailbox by default.
 .It Va idna-disable
@@ -2674,9 +2680,6 @@ but simply specify `application/octet-stream',
 even for plain text attachments like `text/diff'.
 If this variable is set then \*(UA will use the file extension of
 attachments to classify such MIME message parts, if possible.
-.It Va noheader
-Setting this option is the same as using the command line option
-.Fl N .
 .It Va outfolder
 Causes the filename given in the
 .Va record
@@ -2880,17 +2883,16 @@ handled.
 This manual uses \*(IN and \*(OU to refer to the new and the old way of
 doing things, respectively.
 .It Va verbose
-Setting the option verbose is the same as using the command line option
-.Fl v .
-When \*(UA runs in verbose mode details of the actual message delivery
-and protocol conversations for IMAP, POP3, and SMTP,
-as well as of other internal processes,
-are displayed on the user's terminal.
-This is sometimes useful to debug problems.
-\*(UA prints all data that is sent to remote servers in clear texts,
-including passwords,
-so care should be taken that no unauthorized option can view the screen
-if this option is enabled.
+Setting this option, also controllable via the command line option
+.Fl v ,
+causes \*(UA to be more verbose, so that, e.g., certificate chains will
+be displayed on the users terminal.
+Setting this binary options twice increases the level of verbosity, in
+which case even details of the actual message delivery and protocol
+conversations are also shown.
+A single
+.Va noverbose
+is sufficient to disable verbosity as such.
 .It Va writebackedited
 If this variable is set messages modified using the
 .Ic edit

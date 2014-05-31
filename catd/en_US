@@ -236,10 +236,10 @@ $set 1
 226 Cannot determine parent Message-ID of the current message\n
 227 Parent message not found\n
 228 No previously current message\n
-229 Error with certificate at depth: %i\n
-230 $ issuer = %s\n$
-231 $ subject = %s\n$
-232 $ err %i: %s\n$
+229 $ Certificate depth %d %s\n
+230 $  issuer = %s\n$
+231 $  subject = %s\n$
+232 $  err %i: %s\n$
 233 Error loading $
 234 $ or $
 235 The -R option is meaningless in send mode.\n
@@ -579,3 +579,7 @@ $ It follows the "help command" one line help block, alpha-sorted (see nail.1)
 573 URL with invalid port number: `%s'\n
 574 URL `proto://' prefix invalid: `%s'\n
 575 URL protocol doesn't support paths: `%s'\n
+576 Bogus certificate date: %.*s\n
+577   notBefore = %s\n
+578   notAfter = %s\n
+579 ERROR
