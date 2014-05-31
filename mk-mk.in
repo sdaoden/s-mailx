@@ -26,7 +26,7 @@ $(UAGENT): $(OBJ)
 	fi;\
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 
-$(OBJ): config.h nail.h extern.h $(OBJ_DEP)
+$(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
 config.o acmava.o: okeys.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h

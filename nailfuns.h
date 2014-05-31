@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Exported function prototypes.
+ *@ Function prototypes and function-alike macros.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -48,6 +48,106 @@
 # define FL                      extern
 #else
 # define FL                      static
+#endif
+
+/*
+ * Macro-based generics
+ */
+
+/* Kludges to handle the change from setexit / reset to setjmp / longjmp */
+#define setexit()             (void)sigsetjmp(srbuf, 1)
+#define reset(x)              siglongjmp(srbuf, x)
+
+/* ASCII char classification */
+#define __ischarof(C, FLAGS)  \
+   (asciichar(C) && (class_char[(uc_it)(C)] & (FLAGS)) != 0)
+
+#define asciichar(c)    ((uc_it)(c) <= 0177)
+#define alnumchar(c)    __ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
+#define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
+#define blankchar(c)    __ischarof(c, C_BLANK)
+#define blankspacechar(c) __ischarof(c, C_BLANK | C_SPACE)
+#define cntrlchar(c)    __ischarof(c, C_CNTRL)
+#define digitchar(c)    __ischarof(c, C_DIGIT | C_OCTAL)
+#define lowerchar(c)    __ischarof(c, C_LOWER)
+#define punctchar(c)    __ischarof(c, C_PUNCT)
+#define spacechar(c)    __ischarof(c, C_BLANK | C_SPACE | C_WHITE)
+#define upperchar(c)    __ischarof(c, C_UPPER)
+#define whitechar(c)    __ischarof(c, C_BLANK | C_WHITE)
+#define octalchar(c)    __ischarof(c, C_OCTAL)
+
+#define upperconv(c)    (lowerchar(c) ? (char)((uc_it)(c) - 'a' + 'A') : (c))
+#define lowerconv(c)    (upperchar(c) ? (char)((uc_it)(c) - 'A' + 'a') : (c))
+/* RFC 822, 3.2. */
+#define fieldnamechar(c) \
+   (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
+
+/* Try to use alloca() for some function-local buffers and data, fall back to
+ * smalloc()/free() if not available */
+#ifdef HAVE_ALLOCA
+# define ac_alloc(n)    HAVE_ALLOCA(n)
+# define ac_free(n)     do {UNUSED(n);} while (0)
+#else
+# define ac_alloc(n)    smalloc(n)
+# define ac_free(n)     free(n)
+#endif
+
+/* Single-threaded, use unlocked I/O */
+#ifdef HAVE_PUTC_UNLOCKED
+# undef getc
+# define getc(c)        getc_unlocked(c)
+# undef putc
+# define putc(c, f)     putc_unlocked(c, f)
+# undef putchar
+# define putchar(c)     putc_unlocked((c), stdout)
+#endif
+
+/* Truncate a file to the last character written.  This is useful just before
+ * closing an old file that was opened for read/write */
+#define ftrunc(stream) \
+do {\
+   off_t off;\
+   fflush(stream);\
+   off = ftell(stream);\
+   if (off >= 0)\
+      ftruncate(fileno(stream), off);\
+} while (0)
+
+/* fflush() and rewind() */
+#define fflush_rewind(stream) \
+do {\
+   fflush(stream);\
+   rewind(stream);\
+} while (0)
+
+/* There are problems with dup()ing of file-descriptors for child processes.
+ * As long as those are not fixed in equal spirit to (outof(): FIX and
+ * recode.., 2012-10-04), and to avoid reviving of bugs like (If *record* is
+ * set, avoid writing dead content twice.., 2012-09-14), we have to somehow
+ * accomplish that the FILE* fp makes itself comfortable with the *real* offset
+ * of the underlaying file descriptor.  Unfortunately Standard I/O and POSIX
+ * don't describe a way for that -- fflush();rewind(); won't do it.  This
+ * fseek(END),rewind() pair works around the problem on *BSD and Linux.
+ * Update as of 2014-03-03: with Issue 7 POSIX has overloaded fflush(3): if
+ * used on a readable stream, then
+ *
+ *    if the file is not already at EOF, and the file is one capable of
+ *    seeking, the file offset of the underlying open file description shall
+ *    be set to the file position of the stream.
+ *
+ * We need our own, simplified and reliable I/O */
+#if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+# define really_rewind(stream) \
+do {\
+   rewind(stream);\
+   fflush(stream);\
+} while (0)
+#else
+# define really_rewind(stream) \
+do {\
+   fseek(stream, 0, SEEK_END);\
+   rewind(stream);\
+} while (0)
 #endif
 
 /*
