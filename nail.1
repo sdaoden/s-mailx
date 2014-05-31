@@ -474,7 +474,9 @@ the string from the previous specification of that type is used again.
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
-ession; if the \*(OPal regular expression support is available
+ession; if the \*(OPal regular expression (see
+.Xr re_format 7 )
+support is available
 .Ar expr
 will be interpreted as one if any of the `magic'al regular expression
 characters is seen.
@@ -1281,11 +1283,36 @@ The escape sequences `\ea', `\eb', `\ec', `\ef', `\en', `\er', `\et',
 Modified contents are discarded unless the
 .Va writebackedited
 variable is set.
+.It Ic elif
+Part of the
+.Ic if /
+.Ic elif /
+.Ic else /
+.Ic endif
+conditional \(em if the condition of a preceeding
+.Ic if
+was false, check the following condition and execute the following block
+if it evaluates true.
 .It Ic else
-Marks the end of the then-part of an if statement and the beginning of
-the part to take effect if the condition of the if statement is false.
+Part of the
+.Ic if /
+.Ic elif /
+.Ic else /
+.Ic endif
+conditional \(em if none of the conditions of the preceeding
+.Ic if
+and
+.Ic elif
+commands was true, the
+.Ic else
+block is executed.
 .It Ic endif
-Marks the end of an if statement.
+Marks the end of an
+.Ic if /
+.Ic elif /
+.Ic else /
+.Ic endif
+conditional execution block.
 .It Ic exit
 (ex or x) Effects an immediate return to the Shell without modifying the
 user's system mailbox, his `mbox' file, or his edit file in
@@ -1503,8 +1530,13 @@ command issued after
 .Ic hold
 will display the following message, not the current one.
 .It Ic if
-Commands in \*(UA's startup files can be executed conditionally by
-testing conditions via the nestable command `if', as in:
+Part of the nestable
+.Ic if /
+.Ic elif /
+.Ic else /
+.Ic endif
+conditional execution construct \(em if the given condition is false
+execute the following block.
 .Bd -literal -offset indent
    if receive
       commands ...
@@ -1513,10 +1545,10 @@ testing conditions via the nestable command `if', as in:
    endif
 .Ed
 .Pp
-Note that the only allowed conditions are `[Rr]eceive', `[Ss]end',
-`[Tt]erm' (execute if standard input is a tty), as well as `0' (never
-execute) and `1' (always execute).
-In addition it is possible to conditionalize upon wether an option is set,
+Note that POSIX only supports the conditions `[Rr]eceive', `[Ss]end'
+and `[Tt]erm' (execute if standard input is a tty).
+Extensions are `0' (never execute) and `1' (always execute);
+it is also possible to conditionalize upon wether an option is set,
 or set to a specific value, by using the `$' conditional trigger, e.g.:
 .Bd -literal -offset indent
    if $debug
@@ -1533,6 +1565,10 @@ or set to a specific value, by using the `$' conditional trigger, e.g.:
 The first form simply checks wether an option is set, the other two also
 perform value content comparison (equality and non-equality,
 respectively); an unset value is treated as the empty string, then.
+The \*(OPal regular expression support adds `=~' and `!~' tests, which
+treat the right hand side as a regular expression, e.g., `^UTF.*' (see
+.Xr re_format 7 Ns
+).
 .It Ic ignore
 Add the list of header fields named to the ignored list.
 Header fields in the ignore list are not printed on the terminal when

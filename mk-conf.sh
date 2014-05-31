@@ -1262,7 +1262,7 @@ ${cat} > ${tmp2}.c << \!
 : + IMAP-style search expressions
 #endif
 #ifdef HAVE_REGEX
-: + Regular expression searches
+: + Regular expression support (searches, conditional expressions etc.)
 #endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
 : + Command line editing
@@ -1324,7 +1324,7 @@ ${cat} > ${tmp2}.c << \!
 : - IMAP-style search expressions
 #endif
 #ifndef HAVE_REGEX
-: - Regular expression searches
+: - Regular expression support
 #endif
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history

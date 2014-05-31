@@ -229,6 +229,8 @@
      DS(327, "Part of the if .. then .. endif statement") },
    { "else", &c_else, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
+   { "elif", &c_elif, (F | M | RAWLIST), 1, 3
+     DS(327, "Part of the if .. then .. endif statement") },
    { "endif", &c_endif, (F | M | RAWLIST), 0, 0
      DS(327, "Part of the if .. then .. endif statement") },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000

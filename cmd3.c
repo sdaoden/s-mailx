@@ -1109,11 +1109,29 @@ jesyn:
       }
 
       /* Three argument comparison form? */
-      if (argv[2] == NULL || op[0] == '\0' || op[1] != '=' || op[2] != '\0')
+      if (argv[2] == NULL || op[0] == '\0' ||
+#ifdef HAVE_REGEX
+            (op[1] != '=' && op[1] != '~') ||
+#else
+            op[1] != '=' ||
+#endif
+            op[2] != '\0')
          goto jesyn;
+
       /* A null value is treated as the empty string */
       if (v == NULL)
          v = UNCONST("");
+#ifdef HAVE_REGEX
+      if (op[1] == '~') {
+         regex_t re;
+
+         if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
+            goto jesyn;
+         if (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH)
+            v = NULL;
+         regfree(&re);
+      } else
+#endif
       if (strcmp(v, argv[2]))
          v = NULL;
       switch (op[0]) {
@@ -1138,6 +1156,26 @@ jleave:
 }
 
 FL int
+c_elif(void *v)
+{
+   struct cond_stack *csp;
+   int rv;
+   NYD_ENTER;
+
+   if ((csp = _cond_stack) == NULL || csp->c_else) {
+      fprintf(stderr, tr(580, "`elif' without matching `if'\n"));
+      rv = 1;
+   } else {
+      csp->c_go = !csp->c_go;
+      rv = c_if(v);
+      _cond_stack->c_outer = csp->c_outer;
+      free(csp);
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_else(void *v)
 {
    int rv;
@@ -1145,7 +1183,7 @@ c_else(void *v)
    UNUSED(v);
 
    if (_cond_stack == NULL || _cond_stack->c_else) {
-      fprintf(stderr, tr(44, "\"else\" without matching \"if\"\n"));
+      fprintf(stderr, tr(44, "`else' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack->c_go = !_cond_stack->c_go;
@@ -1165,7 +1203,7 @@ c_endif(void *v)
    UNUSED(v);
 
    if ((csp = _cond_stack) == NULL) {
-      fprintf(stderr, tr(46, "\"endif\" without matching \"if\"\n"));
+      fprintf(stderr, tr(46, "`endif' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack = csp->c_outer;

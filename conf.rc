@@ -99,7 +99,8 @@ WANT_IDNA=1
 # the search is performed locally
 WANT_IMAP_SEARCH=1
 
-# Regular expression (re_format(7)) support for searches.
+# Regular expression (re_format(7)) support for searches, conditional
+# expressions etc.
 WANT_REGEX=1
 
 # Command line editing and -history.
