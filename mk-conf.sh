@@ -838,7 +838,7 @@ int main(void)
 
    if [ "${have_openssl}" = 'yes' ]; then
       compile_check stack_of 'for OpenSSL STACK_OF()' \
-         '#define HAVE_STACK_OF' << \!
+         '#define HAVE_OPENSSL_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -850,6 +850,16 @@ int main(void)
    STACK_OF(GENERAL_NAME) *gens = NULL;
    printf("%p", gens);	/* to make it used */
    return 0;
+}
+!
+
+      link_check rand_egd 'for OpenSSL RAND_egd()' \
+         '#define HAVE_OPENSSL_RAND_EGD' '-lssl -lcrypto' << \!
+#include <openssl/rand.h>
+
+int main(void)
+{
+   return RAND_egd("some.where") > 0;
 }
 !
 

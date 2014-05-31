@@ -67,7 +67,7 @@ EMPTY_FILE(openssl)
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-#ifdef HAVE_STACK_OF
+#ifdef HAVE_OPENSSL_STACK_OF
 # define _STACKOF(X)    STACK_OF(X)
 #else
 # define _STACKOF(X)    /*X*/STACK
@@ -165,13 +165,16 @@ _ssl_rand_init(void)
    int state = 0;
    NYD_ENTER;
 
+#ifdef HAVE_OPENSSL_RAND_EGD
    if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
          fprintf(stderr, tr(245, "entropy daemon at \"%s\" not available\n"),
             cp);
       else
          state = 1;
-   } else if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
+   } else
+#endif
+   if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
          fprintf(stderr, tr(246, "entropy file at \"%s\" not available\n"), cp);
       else {
