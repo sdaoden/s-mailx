@@ -2687,16 +2687,20 @@ will be used when connecting to a POP3 server that advertises support.
 The advantage of APOP over `USER/PASS' authentication is that the
 password is not sent in clear text over the wire and that only a single
 packet is sent for the user/password tuple.
-.It Va pop3-no-apop-user@host
-Disables usage of the `APOP' authentication method (see
-.Va pop3-no-apop )
-for a specific account.
+.It Va pop3-no-apop-HOST
+\*(IN Disables the `APOP' authentication method for a specific host.
+.It Va pop3-no-apop-USER@HOST
+Disables the `APOP' authentication method for a specific account.
 .It Va pop3-use-starttls
 \*(OP Causes \*(UA to issue a `STLS' command to make an unencrypted POP3
 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the POP3S method.
-.It Va pop3-use-starttls-user@host
+.It Va pop3-use-starttls-HOST
+\*(IN Activates
+.Va pop3-use-starttls
+for a specific host.
+.It Va pop3-use-starttls-USER@HOST
 Activates
 .Va pop3-use-starttls
 for a specific account.
@@ -3313,7 +3317,25 @@ Pathname of the program to use in the more command or when the
 variable is set.
 The default paginator is
 .Xr more 1 .
-.It Va password-user@host
+.It Va password
+\*(IN Sets a global fallback password, which is used in case none has
+been given in the protocol and account-specific URL and neither is there
+a matching `password-USER@HOST' nor a matching `password-HOST';
+as a last resort \*(UA will ask for a password on the user's terminal if
+the authentication method requires a password.
+Specifying passwords in a startup file is generally a security risk;
+the file should be readable by the invoking user only.
+.It Va password-HOST
+\*(IN Override
+.Va password
+for accounts on a specific host.
+.It Va password-USER@HOST
+\*(IN Override
+.Va password
+and
+.Va password-HOST
+for a specific account.
+\*(OU
 Set the password for `user' when connecting to `host'.
 If no such variable is defined for a host,
 the user will be asked for a password on standard input.
@@ -4203,7 +4225,7 @@ You should change the permissions of this file to 0600, see
 .Pp
 \*(UA supports different authentication methods for both IMAP and POP3.
 If Kerberos is used at your location,
-you can try to activate (the optional) GSSAPI-based authentication via
+you can try to activate (the optional) GSS-API based authentication via
 .Pp
 .Dl set imap-auth=gssapi
 .Pp

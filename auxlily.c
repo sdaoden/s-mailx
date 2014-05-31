@@ -1007,25 +1007,307 @@ jleave:
 #undef __ALLPROTO
 }
 
-FL char *
-lookup_password_for_token(char const *token)
+FL bool_t
+ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 {
-   size_t tl;
-   char *var, *cp;
+   char const *pname, *pxstr, *authdef;
+   size_t pxlen, addrlen, i;
+   char *vbuf, *s;
+   ui8_t authmask;
+   enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
+      ware = NONE;
+   bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
    NYD_ENTER;
 
-   tl = strlen(token);
-   var = ac_alloc(tl + 9 +1);
+   memset(ccp, 0, sizeof *ccp);
 
-   memcpy(var, "password-", 9);
-   memcpy(var + 9, token, tl);
-   var[tl + 9] = '\0';
+   switch (cproto) {
+   default:
+   case CPROTO_SMTP:
+      pname = "SMTP";
+      pxstr = "smtp-auth";
+      pxlen = sizeof("smtp-auth") -1;
+      authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
+            AUTHTYPE_CRAM_MD5;
+      authdef = "none";
+      addr_is_nuser = TRU1;
+      break;
+   case CPROTO_POP3:
+      pname = "POP3";
+      pxstr = "pop3-auth";
+      pxlen = sizeof("pop3-auth") -1;
+      authmask = AUTHTYPE_PLAIN;
+      authdef = "plain";
+      break;
+   case CPROTO_IMAP:
+      pname = "IMAP";
+      pxstr = "imap-auth";
+      pxlen = sizeof("imap-auth") -1;
+      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "login";
+      break;
+   }
 
-   if ((cp = vok_vlook(var)) != NULL)
-      cp = savestr(cp);
-   ac_free(var);
+   ccp->cc_cproto = cproto;
+   addrlen = strlen(addr);
+   vbuf = ac_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
+   memcpy(vbuf, pxstr, pxlen);
+
+   /* Authentication type */
+   vbuf[pxlen] = '-';
+   memcpy(vbuf + pxlen + 1, addr, addrlen +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      vbuf[pxlen] = '\0';
+      if ((s = vok_vlook(vbuf)) == NULL)
+         s = UNCONST(authdef);
+   }
+
+   if (!asccasecmp(s, "none")) {
+      ccp->cc_auth = "NONE";
+      ccp->cc_authtype = AUTHTYPE_NONE;
+      /*ware = NONE;*/
+   } else if (!asccasecmp(s, "plain")) {
+      ccp->cc_auth = "PLAIN";
+      ccp->cc_authtype = AUTHTYPE_PLAIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "login")) {
+      ccp->cc_auth = "LOGIN";
+      ccp->cc_authtype = AUTHTYPE_LOGIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "cram-md5")) {
+      ccp->cc_auth = "CRAM-MD5";
+      ccp->cc_authtype = AUTHTYPE_CRAM_MD5;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "gssapi")) {
+      ccp->cc_auth = "GSS-API";
+      ccp->cc_authtype = AUTHTYPE_GSSAPI;
+      ware = REQ_USER;
+#if 0 /* TODO SASL (homebrew `auto'matic indeed) */
+   } else if (!asccasecmp(cp, "sasl")) {
+      ware = REQ_USER | WANT_PASS;
+#endif
+   }
+
+   /* Verify method */
+   if (!(ccp->cc_authtype & authmask)) {
+      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
+         pname, s);
+      ccp = NULL;
+      goto jleave;
+   }
+#ifndef HAVE_MD5
+   if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
+      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+#ifndef HAVE_GSSAPI
+   if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
+      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+
+   /* User name */
+   if (!(ware & (WANT_USER | REQ_USER)))
+      goto jpass;
+
+   if (!addr_is_nuser) {
+      if ((s = UNCONST(last_at_before_slash(addr))) != NULL) {
+         ccp->cc_user.s = urlxdec(savestrbuf(addr, PTR2SIZE(s - addr)));
+         ccp->cc_user.l = strlen(ccp->cc_user.s);
+      } else if (ware & REQ_USER)
+         goto jgetuser;
+      goto jpass;
+   }
+
+   memcpy(vbuf + pxlen, "-user-", i = sizeof("-user-") -1);
+   i += pxlen;
+   memcpy(vbuf + i, addr, addrlen +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      vbuf[--i] = '\0';
+      if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_USER)) {
+         if ((s = getuser(NULL)) != NULL)
+            s = savestr(s);
+         else {
+jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
+             * TODO even better: introduce `PROTO-user' and `PROTO-pass' and
+             * TODO check that first, then! change control flow, grow `vbuf' */
+            fprintf(stderr, tr(274,
+               "A user is necessary for %s authentication.\n"), pname);
+            ccp = NULL;
+            goto jleave;
+         }
+      }
+   }
+   ccp->cc_user.l = strlen(ccp->cc_user.s = s);
+
+   /* Password */
+jpass:
+   if (!(ware & (WANT_PASS | REQ_PASS)))
+      goto jleave;
+
+   if (!addr_is_nuser) {
+      memcpy(vbuf, "password-", i = sizeof("password-") -1);
+   } else {
+      memcpy(vbuf + pxlen, "-password-", i = sizeof("-password-") -1);
+      i += pxlen;
+   }
+   memcpy(vbuf + i, addr, addrlen +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      vbuf[--i] = '\0';
+      if ((!addr_is_nuser || (s = vok_vlook(vbuf)) == NULL) &&
+            (ware & REQ_PASS)) {
+         if ((s = getpassword(NULL)) == NULL) {
+            fprintf(stderr, tr(275,
+               "A password is necessary for %s authentication.\n"), pname);
+            ccp = NULL;
+            goto jleave;
+         }
+      }
+   }
+   ccp->cc_pass.l = strlen(ccp->cc_pass.s = urlxdec(s));
+
+jleave:
+   ac_free(vbuf);
    NYD_LEAVE;
-   return cp;
+   return (ccp != NULL);
+}
+
+FL bool_t
+ccred_lookup(struct ccred *ccp, struct url *urlp)
+{
+   char const *pstr, *authdef;
+   size_t plen, i;
+   char *vbuf, *s;
+   ui8_t authmask;
+   enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
+      ware = NONE;
+   NYD_ENTER;
+
+   memset(ccp, 0, sizeof *ccp);
+   ccp->cc_user = urlp->url_user;
+
+   switch ((ccp->cc_cproto = urlp->url_cproto)) {
+   default:
+   case CPROTO_SMTP:
+      pstr = "smtp";
+      plen = sizeof("smtp") -1;
+      authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
+            AUTHTYPE_CRAM_MD5;
+      authdef = "none";
+      break;
+   case CPROTO_POP3:
+      pstr = "pop3";
+      plen = sizeof("pop3") -1;
+      authmask = AUTHTYPE_PLAIN;
+      authdef = "plain";
+      break;
+   case CPROTO_IMAP:
+      pstr = "imap";
+      plen = sizeof("imap") -1;
+      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "login";
+      break;
+   }
+
+   /* Note: "password-" is longer than "-auth-", ditto .url_uhp and .url_hp */
+   vbuf = ac_alloc(plen + sizeof("password-")-1 + urlp->url_uhp.l +1);
+   memcpy(vbuf, pstr, plen);
+
+   /* Authentication type */
+   memcpy(vbuf + plen, "-auth-", i = sizeof("-auth-") -1);
+   i += plen;
+   /* -USER@HOST, -HOST, '' */
+   memcpy(vbuf + i, urlp->url_uhp.s, urlp->url_uhp.l +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      memcpy(vbuf + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      if ((s = vok_vlook(vbuf)) == NULL) {
+         vbuf[plen + sizeof("-auth") -1] = '\0';
+         if ((s = vok_vlook(vbuf)) == NULL)
+            s = UNCONST(authdef);
+      }
+   }
+
+   if (!asccasecmp(s, "none")) {
+      ccp->cc_auth = "NONE";
+      ccp->cc_authtype = AUTHTYPE_NONE;
+      /*ware = NONE;*/
+   } else if (!asccasecmp(s, "plain")) {
+      ccp->cc_auth = "PLAIN";
+      ccp->cc_authtype = AUTHTYPE_PLAIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "login")) {
+      ccp->cc_auth = "LOGIN";
+      ccp->cc_authtype = AUTHTYPE_LOGIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "cram-md5")) {
+      ccp->cc_auth = "CRAM-MD5";
+      ccp->cc_authtype = AUTHTYPE_CRAM_MD5;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "gssapi")) {
+      ccp->cc_auth = "GSS-API";
+      ccp->cc_authtype = AUTHTYPE_GSSAPI;
+      ware = REQ_USER;
+#if 0 /* TODO SASL (homebrew `auto'matic indeed) */
+   } else if (!asccasecmp(cp, "sasl")) {
+      ware = REQ_USER | WANT_PASS;
+#endif
+   }
+
+   /* Verify method */
+   if (!(ccp->cc_authtype & authmask)) {
+      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
+         pstr, s);
+      ccp = NULL;
+      goto jleave;
+   }
+#ifndef HAVE_MD5
+   if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
+      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+#ifndef HAVE_GSSAPI
+   if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
+      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+
+   /* Password */
+   if ((ccp->cc_pass = urlp->url_pass).s != NULL)
+      goto jleave;
+
+   memcpy(vbuf, "password-", i = sizeof("password-") -1);
+   /* -USER@HOST, -HOST, '' */
+   memcpy(vbuf + i, urlp->url_uhp.s, urlp->url_uhp.l +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      memcpy(vbuf + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      if ((s = vok_vlook(vbuf)) == NULL) {
+         vbuf[--i] = '\0';
+         if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS)) {
+            if ((s = getpassword(NULL)) != NULL)
+               s = savestr(s);
+            else {
+               fprintf(stderr, tr(275,
+                  "A password is necessary for %s authentication.\n"), pstr);
+               ccp = NULL;
+               goto jleave;
+            }
+         }
+      }
+   }
+   ccp->cc_pass.l = strlen(ccp->cc_pass.s = urlxdec(s));
+
+jleave:
+   ac_free(vbuf);
+   NYD_LEAVE;
+   return (ccp != NULL);
 }
 
 FL char *

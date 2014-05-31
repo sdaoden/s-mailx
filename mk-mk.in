@@ -28,10 +28,10 @@ $(UAGENT): $(OBJ)
 
 $(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
 config.o acmava.o: okeys.h
+config.o auxlily.o imap.o pop3.o smtp.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
 config.o main.o: version.h
-config.o imap.o smtp.o auxlily.o pop3.o: rfc1321.h
 config.o mime.o: mime_types.h
 
 mime_types.h: mime.types

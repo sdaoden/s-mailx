@@ -308,9 +308,11 @@ FL char *      nodename(int mayoverride);
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
                   char const *data);
 
-/* Try to lookup a variable named "password-*token*".
- * Return NULL or salloc()ed buffer */
-FL char *      lookup_password_for_token(char const *token);
+/* Zero ccp and lookup credentials for communicating with urlp.
+ * Return wether credentials are available and valid (for chosen auth) */
+FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
+FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
+                  char const *addr);
 
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
@@ -1807,13 +1809,6 @@ FL char *      getuser(char const *query);
  * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
-
-/* Get both, user and password in the expected way; simply reuses a value that
- * is set, otherwise calls one of the above.
- * Returns true only if we have a user and a password.
- * *user* will be savestr()ed if neither it nor *pass* have a default value
- * (so that termios_state.ts_linebuf carries only one) */
-FL bool_t      getcredentials(char **user, char **pass);
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE

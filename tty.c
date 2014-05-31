@@ -261,34 +261,6 @@ jrestore:
    return pass;
 }
 
-FL bool_t
-getcredentials(char **user, char **pass)
-{
-   bool_t rv;
-   char *u, *p;
-   NYD_ENTER;
-
-   rv = TRU1;
-   u = *user;
-   p = *pass;
-
-   if (u == NULL) {
-      if ((u = getuser(NULL)) == NULL)
-         rv = FAL0;
-      else if (p == NULL)
-         u = savestr(u);
-      *user = u;
-   }
-
-   if (p == NULL) {
-      if ((p = getpassword(NULL)) == NULL)
-         rv = FAL0;
-      *pass = p;
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
 /*
  * readline(3)
  */

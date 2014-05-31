@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of IMAP GSSAPI authentication according to RFC 1731.
- *@ TODO GSSAPI should also be joined into "a VFS".  TODO LEAKS (error path)
+ *@ Implementation of IMAP GSS-API authentication according to RFC 1731.
+ *@ TODO GSS-API should also be joined into "a VFS".  TODO LEAKS (error path)
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -49,7 +49,7 @@
  */
 /*
  * Copyright 1994 by OpenVision Technologies, Inc.
- * 
+ *
  * Permission to use, copy, modify, distribute, and sell this software
  * and its documentation for any purpose is hereby granted without fee,
  * provided that the above copyright notice appears in all copies and
@@ -59,7 +59,7 @@
  * without specific, written prior permission. OpenVision makes no
  * representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied warranty.
- * 
+ *
  * OPENVISION DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
  * EVENT SHALL OPENVISION BE LIABLE FOR ANY SPECIAL, INDIRECT OR
@@ -80,12 +80,12 @@
 # include <gssapi.h>
 #endif
 
-static void imap_gss_error1(const char *s, OM_uint32 code, int typ);
-static void imap_gss_error(const char *s, OM_uint32 maj_stat,
+static void _imap_gssapi_error1(const char *s, OM_uint32 code, int typ);
+static void _imap_gssapi_error(const char *s, OM_uint32 maj_stat,
                OM_uint32 min_stat);
 
 static void
-imap_gss_error1(const char *s, OM_uint32 code, int typ)
+_imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
 {
    OM_uint32 maj_stat, min_stat;
    gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
@@ -108,16 +108,16 @@ imap_gss_error1(const char *s, OM_uint32 code, int typ)
 }
 
 static void
-imap_gss_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
+_imap_gssapi_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 {
    NYD_ENTER;
-   imap_gss_error1(s, maj_stat, GSS_C_GSS_CODE);
-   imap_gss_error1(s, min_stat, GSS_C_MECH_CODE);
+   _imap_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
+   _imap_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
    NYD_LEAVE;
 }
 
-static enum okay 
-imap_gss(struct mailbox *mp, char *user)
+static enum okay
+_imap_gssapi(struct mailbox *mp, struct ccred *ccred)
 {
    char o[LINESIZE];
    struct str in, out;
@@ -131,11 +131,6 @@ imap_gss(struct mailbox *mp, char *user)
    enum okay ok = STOP;
    NYD_X;
 
-   if (user == NULL) {
-      if ((user = getuser(NULL)) == NULL)
-         return STOP;
-      user = savestr(user);
-   }
    {  size_t i = strlen(mp->mb_imap_account) +1;
       server = salloc(i);
       memcpy(server, mp->mb_imap_account, i);
@@ -153,7 +148,7 @@ imap_gss(struct mailbox *mp, char *user)
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    if (maj_stat != GSS_S_COMPLETE) {
-      imap_gss_error(send_tok.value, maj_stat, min_stat);
+      _imap_gssapi_error(send_tok.value, maj_stat, min_stat);
       return STOP;
    }
    token_ptr = GSS_C_NO_BUFFER;
@@ -172,7 +167,7 @@ imap_gss(struct mailbox *mp, char *user)
          &ret_flags,
          NULL);
    if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
-      imap_gss_error("initializing GSS context", maj_stat, min_stat);
+      _imap_gssapi_error("initializing GSS context", maj_stat, min_stat);
       gss_release_name(&min_stat, &target_name);
       return STOP;
    }
@@ -217,7 +212,7 @@ imap_gss(struct mailbox *mp, char *user)
             NULL);
       free(out.s);
       if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
-         imap_gss_error("initializing context", maj_stat, min_stat);
+         _imap_gssapi_error("initializing context", maj_stat, min_stat);
          gss_release_name(&min_stat, &target_name);
          return STOP;
       }
@@ -248,7 +243,7 @@ imap_gss(struct mailbox *mp, char *user)
          &conf_state, NULL);
    free(out.s);
    if (maj_stat != GSS_S_COMPLETE) {
-      imap_gss_error("unwrapping data", maj_stat, min_stat);
+      _imap_gssapi_error("unwrapping data", maj_stat, min_stat);
       return STOP;
    }
    /*
@@ -260,13 +255,13 @@ imap_gss(struct mailbox *mp, char *user)
    o[0] = 1;
    o[1] = 0;
    o[2] = o[3] = (char)0377;
-   snprintf(&o[4], sizeof o - 4, "%s", user);
+   snprintf(&o[4], sizeof o - 4, "%s", ccred->cc_user.s);
    send_tok.value = o;
    send_tok.length = strlen(&o[4]) + 5;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    if (maj_stat != GSS_S_COMPLETE) {
-      imap_gss_error("wrapping data", maj_stat, min_stat);
+      _imap_gssapi_error("wrapping data", maj_stat, min_stat);
       return STOP;
    }
    b64_encode_buf(&out, recv_tok.value, recv_tok.length, B64_SALLOC | B64_CRLF);
