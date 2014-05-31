@@ -364,7 +364,7 @@ FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
-/* xxx Place cp in a salloc()ed buffer, column-aligned */
+/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
 FL char *      colalign(char const *cp, int col, int fill,
                   int *cols_decr_used_or_null);
 

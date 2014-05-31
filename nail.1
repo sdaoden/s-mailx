@@ -3195,6 +3195,37 @@ The default is `%>\&%a\&%m\ %-18f\ %16d\ %4l/%\-5o\ %i%-s',
 or `%>\&%a\&%m\ %20-f\ \ %16d\ %3l/%\-5o\ %i%-S' if
 .Va bsdcompat
 is set.
+Also see
+.Va headline-bidi .
+.It Va headline-bidi
+Bidirectional text requires special treatment when displaying headers,
+because numbers (in dates or for file sizes etc.) will not affect the
+current text direction, in effect resulting in ugly line layouts when
+arabic or other right-to-left text is to be displayed.
+On the other hand only a minority of terminals is capable to correctly
+handle direction changes, so that user interaction is necessary for
+acceptable results.
+Note that extended host system support is required nonetheless, e.g.,
+detection of the terminal character set is one precondition;
+and this feature only works in an Unicode (i.e., UTF-8) locale.
+.Pp
+In general setting this variable will cause \*(UA to encapsulate text
+fields that may occur when printing
+.Va headline
+with special Unicode control sequences;
+it is possible to fine-tune the terminal support level by assigning
+a value:
+no value (or any value other than `1', `2' and `3') will make \*(UA
+assume that the terminal is capable to properly deal with Unicode
+version 6.3, in which case text is embedded in a pair of U+2068 (FIRST
+STRONG ISOLATE) and U+2069 (POP DIRECTIONAL ISOLATE) characters.
+In addition no space on the line is reserved for these characters.
+.Pp
+Weaker support is chosen by using the value `1' (Unicode 6.3, but
+reserve the room of two spaces for writing the control sequences onto
+the line).
+The values `2' and `3' select Unicode 1.1 support (U+200E, LEFT-TO-RIGHT
+MARK); the latter again reserves room for two spaces in addition.
 .It Va hostname
 Use this string as hostname when expanding local addresses instead of
 the value obtained from

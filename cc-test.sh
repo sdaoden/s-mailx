@@ -447,4 +447,4 @@ fi
 [ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
 
 exit ${ESTAT}
-# vim:set fenc=utf8:s-it-mode
+# vim:set fenc=utf-8:s-it-mode

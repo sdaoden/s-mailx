@@ -201,6 +201,12 @@
 #define SBUFFER_SIZE    0x18000u
 #define SBUFFER_BUILTIN 0x2000u
 
+/* Is it at least theoretically possible that Unicode support is of interest */
+#undef HAVE_UNICODE
+#if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
+# define HAVE_UNICODE
+#endif
+
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
 # define XSHELL         "/bin/sh"
@@ -492,7 +498,8 @@ enum user_options {
    OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
    OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<17
+   OPT_TTYOUT     = 1u<<17,
+   OPT_UNICODE    = 1u<<18    /* We're in an UTF-8 environment */
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -813,6 +820,7 @@ enum okeys {
    ok_v_from,
    ok_v_fwdheading,
    ok_v_headline,
+   ok_v_headline_bidi,
    ok_v_hostname,
    ok_v_imap_auth,
    ok_v_imap_cache,
@@ -1377,7 +1385,6 @@ VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
-VL int         utf8;                /* Locale uses UTF-8 encoding */
 VL int         enc_has_state;       /* Encoding has shift states */
 
 VL char        **altnames;          /* List of alternate names of user */

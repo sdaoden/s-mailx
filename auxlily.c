@@ -1593,29 +1593,134 @@ cwrelse(struct cw *cw)
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
+   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
+    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
+    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
+    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE */
+#ifdef HAVE_UNICODE
+   char const _bire[2][6] = { "\xE2\x81\xA8" "\xE2\x81\xA9",
+      "\xE2\x80\x8E" "\xE2\x80\x8E"
+      /* worse results: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
+   }, *birep;
+#endif
    int col_orig = col, n, sz;
+   bool_t isbidi, isuni, isrepl;
    char *nb, *np;
    NYD_ENTER;
 
-   np = nb = salloc(mb_cur_max * strlen(cp) + col +1);
-   while (*cp) {
-#ifdef HAVE_WCWIDTH
+   /* Bidi only on request and when there is 8-bit data */
+   isbidi = isuni = FAL0;
+#ifdef HAVE_UNICODE
+   if ((isuni = ((options & OPT_UNICODE) != 0))) {
+      if ((nb = ok_vlook(headline_bidi)) == NULL)
+         goto jnobidi;
+      for (birep = cp;; ++birep) {
+         if (*birep == '\0')
+            goto jnobidi;
+         else if (*birep & (char)0x80) {
+            /* TODO Checking for BIDI character: use S-CText fromutf8
+             * TODO plus isrighttoleft (or whatever there will be)! */
+            ui32_t c, x = (ui8_t)*birep;
+            if ((x & 0xE0) == 0xC0) {
+               c = x & ~0xC0;
+               if ((x = (ui8_t)*++birep) == '\0')
+                  goto jnobidi;
+            } else if ((x & 0xF0) == 0xE0) {
+               c = x & ~0xE0;
+               if ((x = (ui8_t)*++birep) == '\0' || *++birep == '\0')
+                  goto jnobidi;
+               c <<= 6;
+               c |= x & 0x7F;
+               x = (ui8_t)*birep;
+            } else {
+               c = x & ~0xF0;
+               if ((x = (ui8_t)*++birep) == '\0' ||
+                     *++birep == '\0' || birep[1] == '\0')
+                  goto jnobidi;
+               c <<= 6;
+               c |= x & 0x7F;
+               c <<= 6;
+               c |= (x = (ui8_t)*birep) & 0x7F;
+               x = (ui8_t)*++birep;
+            }
+            c <<= 6;
+            c |= x & 0x7F;
+            /* (Very very fuzzy, awaiting S-CText for good) */
+            if ((c >= 0x05BE && c <= 0x08E3) ||
+                  (c >= 0xFB1D && c <= 0xFEFC) ||
+                  (c >= 0x10800 && c <= 0x10C48) ||
+                  (c >= 0x1EE00 && c <= 0x1EEF1))
+               break;
+         }
+      }
+
+      isbidi = TRU1;
+      birep = _bire[0];
+      switch (*nb) {
+      case '3': col -= 2;
+      case '2': birep = _bire[1];
+                break;
+      case '1': col -= 2;
+      default:  break;
+      }
+      if (col < 0)
+         col = 0;
+   }
+jnobidi:
+#endif /* HAVE_UNICODE */
+
+   np = nb = salloc(mb_cur_max * strlen(cp) +
+         ((fill ? col : 0) + (isbidi ? sizeof(_bire[0]) : 0) +1));
+
+#ifdef HAVE_UNICODE
+   if (isbidi) {
+      np[0] = birep[0];
+      np[1] = birep[1];
+      np[2] = birep[2];
+      np += 3;
+   }
+#endif
+
+   while (*cp != '\0') {
+#ifdef HAVE_C90AMEND1
       if (mb_cur_max > 1) {
          wchar_t  wc;
 
+         n = 1;
+         isrepl = TRU1;
          if ((sz = mbtowc(&wc, cp, mb_cur_max)) == -1)
-            n = sz = 1;
-         else if ((n = wcwidth(wc)) == -1)
-            n = 1;
+            sz = 1;
+         else if (iswprint(wc)) {
+# ifndef HAVE_WCWIDTH
+            n = 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
+# else
+            if ((n = wcwidth(wc)) == -1)
+               n = 1;
+            else
+# endif
+               isrepl = FAL0;
+         }
       } else
 #endif
-         n = sz = 1;
+         n = sz = 1,
+         isrepl = !isprint(*cp);
+
       if (n > col)
          break;
       col -= n;
-      if (sz == 1 && spacechar(*cp)) {
+
+      if (isrepl) {
+         if (isuni) {
+            np[0] = (char)0xEFu;
+            np[1] = (char)0xBFu;
+            np[2] = (char)0xBDu;
+            np += 3;
+         } else
+            *np++ = '?';
+         cp += sz;
+      } else if (sz == 1 && spacechar(*cp)) {
          *np++ = ' ';
-         cp++;
+         ++cp;
       } else
          while (sz--)
             *np++ = *cp++;
@@ -1631,6 +1736,15 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
       col = 0;
    }
 
+#ifdef HAVE_UNICODE
+   if (isbidi) {
+      np[0] = birep[3];
+      np[1] = birep[4];
+      np[2] = birep[5];
+      np += 3;
+   }
+#endif
+
    *np = '\0';
    if (cols_decr_used_or_null != NULL)
       *cols_decr_used_or_null -= col_orig - col;
@@ -1645,14 +1759,13 @@ makeprint(struct str const *in, struct str *out)
 
    char const *inp, *maxp;
    char *outp;
-   size_t msz;
+   DBG( size_t msz; )
    NYD_ENTER;
 
    if (print_all_chars == -1)
       print_all_chars = ok_blook(print_all_chars);
 
-   msz = in->l +1;
-   out->s = outp = smalloc(msz);
+   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max);
    inp = in->s;
    maxp = inp + in->l;
 
@@ -1667,7 +1780,7 @@ makeprint(struct str const *in, struct str *out)
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
       int i, n;
-      size_t dist;
+      bool_t isuni = ((options & OPT_UNICODE) != 0);
 
       out->l = 0;
       while (inp < maxp) {
@@ -1685,7 +1798,7 @@ makeprint(struct str const *in, struct str *out)
              * FIXME to do so - say, after a newline!!
              * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
             mbtowc(&wc, NULL, mb_cur_max);
-            wc = utf8 ? 0xFFFD : '?';
+            wc = isuni ? 0xFFFD : '?';
             n = 1;
          } else if (n == 0)
             n = 1;
@@ -1693,20 +1806,16 @@ makeprint(struct str const *in, struct str *out)
          if (!iswprint(wc) && wc != '\n' && wc != '\r' && wc != '\b' &&
                wc != '\t') {
             if ((wc & ~(wchar_t)037) == 0)
-               wc = utf8 ? 0x2400 | wc : '?';
+               wc = isuni ? 0x2400 | wc : '?';
             else if (wc == 0177)
-               wc = utf8 ? 0x2421 : '?';
+               wc = isuni ? 0x2421 : '?';
             else
-               wc = utf8 ? 0x2426 : '?';
+               wc = isuni ? 0x2426 : '?';
          }
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
          out->l += n;
-         if (out->l >= msz - 1) {
-            dist = outp - out->s;
-            out->s = srealloc(out->s, msz += 32);
-            outp = &out->s[dist];
-         }
+         assert(out->l < msz);
          for (i = 0; i < n; ++i)
             *outp++ = mbb[i];
       }
@@ -1767,7 +1876,7 @@ putuc(int u, int c, FILE *fp)
    NYD_ENTER;
 
 #ifdef HAVE_C90AMEND1
-   if (utf8 && (u & ~(wchar_t)0177)) {
+   if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
       char mbb[MB_LEN_MAX];
       int i, n;
 
