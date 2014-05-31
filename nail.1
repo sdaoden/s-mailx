@@ -645,10 +645,8 @@ defines the contents of the message.
 While the user is composing a message \*(UA treats lines beginning with
 the character `~' specially.
 For instance, typing `~m' (alone on a line) will place a copy of the
-current message into the response right shifting it by a tabstop
-(more about the
-.Va indentprefix
-variable below).
+current message into the response, each line prefixed by the value of
+.Va indentprefix .
 Other escapes will set up subject fields,
 add and delete recipients to the message,
 attach files to it
@@ -2288,10 +2286,13 @@ variable into the message.
 Invoke the text editor on the message collected so far.
 After the editing session is finished,
 the user may continue appending text to the message.
+.It Ic ~F Ar messages
+Read the named messages into the message being sent, including all
+message headers and MIME parts.
+If no messages are specified, read in the current message.
 .It Ic ~f Ar messages
 Read the named messages into the message being sent.
-If no messages are specified,
-read in the current message.
+If no messages are specified, read in the current message.
 Message headers currently being ignored (by the
 .Ic ignore
 or
@@ -2299,16 +2300,10 @@ or
 command) are not included.
 For MIME multipart messages,
 only the first printable part is included.
-.It Ic ~F Ar messages
-Identical to `~f', except that all message headers and MIME parts are
-included.
-.It Ic ~h
-Edit the message header fields `To:', `Cc:', `Bcc:', and `Subject:' by
-typing each one in turn and allowing the user to edit the field.
 .It Ic ~H
 Edit the message header fields `From:', `Reply-To:', `Sender:' and
-`Organization:' in the same manner as described for
-.Ic ~h .
+`Organization:' by typing each one in turn and allowing the user to edit
+the field.
 The default values for these fields originate from the
 .Va from ,
 .Va replyto ,
@@ -2316,17 +2311,24 @@ The default values for these fields originate from the
 and
 .Va ORGANIZATION
 variables.
+.It Ic ~h
+Edit the message header fields `To:', `Cc:', `Bcc:', and `Subject:' by
+typing each one in turn and allowing the user to edit the field.
 .It Ic ~i Ar variable
 Insert the value of the specified variable into the message,
 adding a newline character at the end.
 The message remains unaltered if the variable is unset or empty.
 The escape sequences `\et' (tabulator) and `\en' (newline) are understood.
+.It Ic ~M Ar messages
+Read the named messages into the message being sent,
+indented by
+.Va indentprefix .
+If no messages are specified, read the current message.
 .It Ic ~m Ar messages
 Read the named messages into the message being sent,
-indented by a tab or by the value of
+indented by
 .Va indentprefix .
-If no messages are specified,
-read the current message.
+If no messages are specified, read the current message.
 Message headers currently being ignored (by the
 .Ic ignore
 or
@@ -2334,9 +2336,6 @@ or
 commands) are not included.
 For MIME multipart messages,
 only the first printable part is included.
-.It Ic ~M Ar messages
-Identical to `~m', except that all message headers and MIME parts are
-included.
 .It Ic ~p
 Print out the message collected so far,
 prefaced by the message header fields
@@ -2348,16 +2347,19 @@ copying it to the file specified by the
 variable if
 .Va save
 is set.
+.It Ic ~R Ar filename
+Read the named file into the message, indented by
+.Va indentprefix .
 .It Ic ~r Ar filename
 Read the named file into the message.
 .It Ic ~s Ar string
 Cause the named string to become the current subject field.
 .It Ic ~t Ar name ...
 Add the given name(s) to the direct recipient list.
-.It Ic ~u Ar messages
-Like `~f', but exclude all message headers.
 .It Ic ~U Ar messages
 Like `~m', but exclude all message headers.
+.It Ic ~u Ar messages
+Like `~f', but exclude all message headers.
 .It Ic ~v
 Invoke an alternate editor (defined by the
 .Va VISUAL
@@ -3281,10 +3283,10 @@ this variable has no effect and the
 .Ic folders
 command does not descend to subfolders.
 .It Va indentprefix
-String used by the `~m' and `~M' tilde escapes and by the
+String used by the `~m', `~M' and `~R' tilde escapes and by the
 .Va quote
 option for indenting messages,
-in place of the normal tab character (`^I').
+in place of the normal tabulator character (`^I'), which is the default.
 Be sure to quote the value if it contains spaces or tabs.
 .It Va LISTER
 Pathname of the directory lister to use in the
