@@ -342,18 +342,19 @@ _prepare_mta_args(struct name *to, struct header *hp)
    for (j = 0; j < smopts_count; ++j, ++i)
       args[i] = smopts[j];
 
-   /* -r option?  We may only pass skinned addresses, which is why we do
-    * not simply call myorigin() (TODO myorigin shouldn't fullname!) */
+   /* -r option?  We may only pass skinned addresses */
    if (options & OPT_r_FLAG) {
       char const *froma;
 
       if (option_r_arg[0] != '\0')
          froma = option_r_arg;
-      else if (hp->h_from != NULL)
+      else if (hp != NULL) {
+         /* puthead() did it, then */
+         assert(hp->h_from != NULL);
          froma = hp->h_from->n_name;
-      else
-         froma = myorigin(hp);
-      if (froma != NULL) {
+      } else
+         froma = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
+      if (froma != NULL) { /* XXX ugh! */
          args[i++] = "-r";
          args[i++] = froma;
       }
