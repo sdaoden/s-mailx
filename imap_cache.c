@@ -81,8 +81,7 @@ Files named QUEUE contain data that will be sent do the IMAP server next\n\
 time a connection is made in online mode.\n";
 static const char README4[] = "\n\
 You can safely delete any file or directory here, unless it contains a QUEUE\n\
-file that is not empty; " UAGENT
-   "mailx(1) will download the data again and will also\n\
+file that is not empty; " UAGENT " will download the data again and will also\n\
 write new cache entries if configured in this way. If you do not wish to use\n\
 the cache anymore, delete the entire directory and unset the 'imap-cache'\n\
 variable in " UAGENT "(1).\n";
@@ -539,7 +538,8 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
       fputs("Fatal: Cannot change back to current directory.\n", stderr);
       abort();
    }
-   free(contents);
+   if (contents != NULL)
+      free(contents);
 jleave:
    NYD_LEAVE;
 }
