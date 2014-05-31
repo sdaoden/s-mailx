@@ -865,7 +865,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    } else
       user = NULL;
 
-   if (sopen(sp, &so, use_ssl, uhp, (use_ssl ? "pop3s" : "pop3")) != OKAY) {
+   if (sopen_old(sp, &so, use_ssl, uhp, (use_ssl ? "pop3s" : "pop3")) != OKAY) {
       rv = -1;
       goto jleave;
    }

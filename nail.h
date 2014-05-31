@@ -669,6 +669,12 @@ enum protocol {
    PROTO_UNKNOWN     /* unknown protocol */
 };
 
+enum cproto {
+   CPROTO_SMTP,
+   CPROTO_POP3,
+   CPROTO_IMAP
+};
+
 #ifdef HAVE_SSL
 enum ssl_verify_level {
    SSL_VERIFY_IGNORE,
@@ -765,8 +771,9 @@ enum okeys {
    ok_b_smtp_use_starttls,
    ok_b_ssl_no_default_ca,
    ok_b_ssl_v2_allow,
-   ok_b_writebackedited,
+   ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
+   ok_b_writebackedited,
 
    /* Option keys for values options */
    ok_v_attrlist,
@@ -885,6 +892,33 @@ struct str {
 struct colour_table {
    /* Plus a copy of *colour-user-headers* */
    struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
+};
+
+struct url {
+   char const     *url_input;       /* Input as given (really) */
+   enum cproto    url_cproto;       /* Communication protocol as given */
+   bool_t         url_needs_tls;    /* Wether the protocol uses SSL/TLS */
+   bool_t         url_had_user;     /* Wether .url_user was part of the URL */
+   ui16_t         url_portno;       /* atoi .url_port or default, host endian */
+   char const     *url_port;        /* Port (if given) or NULL */
+   char           url_proto[14];    /* Communication protocol as 'xy\0//' */
+   ui8_t          url_proto_len;    /* Length of .url_proto ('\0' index) */
+   ui8_t          url_proto_xlen;   /* .. if '\0' is replaced with ':' */
+   struct str     url_user;         /* User, urlxdec()oded */
+   struct str     url_user_enc;     /* User, urlxenc()oded */
+   struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
+   struct str     url_pass_enc;     /* Pass (urlxenc()oded) or NULL */
+   struct str     url_host;         /* Service hostname */
+   struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
+   /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
+   struct str     url_hp;           /* .url_host[:.url_port] */
+   struct str     url_uhp;          /* .url_user_enc@.url_host[:.url_port] */
+   /* .url_user_enc@.url_host
+    * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
+    * *hostname*)!  (And may later be overwritten according to *from*!) */
+   struct str     url_uh;
+   char const     *url_puhp;        /* .url_proto://.url_uhp */
+   char const     *url_puhpp;       /* .url_proto://.url_uhp[/.url_path] */
 };
 
 struct time_current {

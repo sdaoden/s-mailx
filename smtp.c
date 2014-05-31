@@ -367,7 +367,7 @@ smtp_mta(char *volatile server, struct name *volatile to, FILE *fi,
    } else
       use_ssl = 0;
 
-   if (!(options & OPT_DEBUG) && sopen(server, &so, use_ssl, server,
+   if (!(options & OPT_DEBUG) && sopen_old(server, &so, use_ssl, server,
          (use_ssl ? "smtps" : "smtp")) != OKAY)
       goto jleave;
 

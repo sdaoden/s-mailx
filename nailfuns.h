@@ -303,6 +303,11 @@ FL char *      getprompt(void);
 /* Detect and query the hostname to use */
 FL char *      nodename(int mayoverride);
 
+/* Parse data, which must meet the criteria of the protocol cproto, and fill
+ * in the URL structure urlp */
+FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
+                  char const *data);
+
 /* Try to lookup a variable named "password-*token*".
  * Return NULL or salloc()ed buffer */
 FL char *      lookup_password_for_token(char const *token);
@@ -797,12 +802,13 @@ FL enum okay   get_body(struct message *mp);
 
 /* Socket I/O */
 #ifdef HAVE_SOCKETS
+FL bool_t      sopen(struct sock *sp, struct url *urlp);
+FL enum okay   sopen_old(char const *xserver, struct sock *sp, int use_ssl,
+                  char const *uhp, char const *portstr);
 FL int         sclose(struct sock *sp);
 FL enum okay   swrite(struct sock *sp, char const *data);
 FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
                   int use_buffer);
-FL enum okay   sopen(char const *xserver, struct sock *sp, int use_ssl,
-                  char const *uhp, char const *portstr);
 
 /*  */
 FL int         sgetline(char **line, size_t *linesize, size_t *linelen,

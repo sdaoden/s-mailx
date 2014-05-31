@@ -45,17 +45,16 @@
 .\" If not ~/.mailrc, it breaks POSIX compatibility.  And adjust main.c.
 .ds ur \\%~/.mailrc
 \."
-.ds OP [Optional]
-.ds LE [Legacy]
-.ds OB [Obsolete]
+.ds OP [Option]
+.ds IN [v15-compat]
+.ds OU [no v15-compat]
 \."
 .Dt "\*(UU" 1
 .Sh NAME
 .Nm \*(UV
 .Nd send and receive Internet mail
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh SYNOPSIS {{{
 .Sh SYNOPSIS
 .Nm \*(ua
 .Op Fl BDdEFintv~
@@ -89,6 +88,17 @@
 .\" --  >8  --  8<  --
 .\"
 .Sh DESCRIPTION
+.Bd -filled -offset indent -compact
+.Sy Compatibility note:
+\*(UA and part of its configuration syntax will change in v15.0.
+Until then there will exist a partial but growing number of
+backward and forward compatibility configuration options.
+To choose the new syntax and behaviour already today, the binary option
+.Va v15-compat
+must be set.
+The manual will refer to it via \*(IN and \*(OU as necessary.
+.Ed
+.Pp
 \*(UA is a mail processing system with a command syntax reminiscent of
 .Xr ed 1
 with lines replaced by messages.
@@ -291,8 +301,9 @@ E.g., the following should send an email message to `alias'.
 .Dl printf 'm alias\en~s Subject\enBody\en.\enx\en' | \
    MAILRC=/dev/null s-nail -n -#
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Sending mail" {{{
 .Ss "Sending mail"
 To send a message to one or more people,
 \*(UA can be invoked with arguments which are the names of people to
@@ -314,8 +325,9 @@ The section
 .Sx "Replying to or originating mail"
 describes some features of \*(UA available to help when composing
 letters.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Reading mail" {{{
 .Ss "Reading mail"
 In normal usage \*(UA is given no arguments and checks the user's mail
 out of the post office,
@@ -327,8 +339,9 @@ command, which can be abbreviated `p'.
 The commands `p+' and `p\-' move forward to the next and backward to the
 previous message, respectively, and messages can be addressed directly
 by specifying their message number, as in `p 1'.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Disposing of mail" {{{
 .Ss "Disposing of mail"
 After examining a message the user can
 .Ic delete
@@ -345,8 +358,9 @@ or the \*(UA session can be ended by giving the
 (`x') command.
 Deleted messages will, however, usually disappear never to be seen
 again.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Specifying messages" {{{
 .Ss "Specifying messages"
 Commands such as print and delete can be given a list of message numbers
 as arguments to apply to a number of messages at once.
@@ -459,7 +473,7 @@ the string from the previous specification of that type is used again.
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
-ession; if the \*(OP regular expression support is available
+ession; if the \*(OPal regular expression support is available
 .Ar expr
 will be interpreted as one if any of the `magic'al regular expression
 characters is seen.
@@ -617,8 +631,9 @@ This specification cannot be used as part of another criterion.
 If the previous command line contained more than one independent
 criterion then the last of those criteria is used.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Replying to or originating mail" {{{
 .Ss "Replying to or originating mail"
 The command
 .Ic reply
@@ -639,8 +654,9 @@ attach files to it
 and allow the user to escape to an editor to revise the message
 or to a shell to run some commands.
 (These options are given in the summary below.)
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Ending a mail processing session" {{{
 .Ss "Ending a mail processing session"
 The user can end a \*(UA session by issuing the
 .Ic quit
@@ -659,8 +675,9 @@ None of these actions is performed when the command
 (`x') is used instead of
 .Ic quit
 (`q').
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Personal and systemwide distribution lists" {{{
 .Ss "Personal and systemwide distribution lists"
 It is possible to create personal distribution lists so that,
 for instance, the user can send mail to `cohorts'
@@ -688,8 +705,9 @@ and
 Personal aliases will be expanded by \*(UA before the message is sent.
 They are a convenient alternative to specifying each addressee by
 itself.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Recipient address specifications" {{{
 .Ss "Recipient address specifications"
 When an address is used to name a recipient (in `To:', `Cc:', or `Bcc:'),
 names of local mail folders and pipes to external commands may also be
@@ -708,8 +726,9 @@ what remains is treated as a mail address.
 Compressed folders are handled as described for the
 .Ic folder
 command.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Network mail (Internet / ARPA, UUCP, Berknet)" {{{
 .Ss "Network mail (Internet / ARPA, UUCP, Berknet)"
 See
 .Xr mailaddr 7
@@ -732,8 +751,9 @@ feature, and
 .Ic "set idna-disable"
 will disable the mentioned IDNA conversion even if support is available.
 (These options are summarized below.)
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "MIME types" {{{
 .Ss "MIME types"
 For any outgoing attachment \*(UA tries to determine the content type.
 It does this by reading MIME type files whose lines have the following
@@ -757,8 +777,9 @@ the content types `text/plain' or `application/octet-stream' are used,
 dependent upon file content inspection.
 Also see
 .Va mime-allow-text-controls .
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Character sets" {{{
 .Ss "Character sets"
 \*(UA normally detects the character set of the terminal by using
 mechanisms that are controlled by the `LC_CTYPE' locale setting,
@@ -843,8 +864,9 @@ in which case the full Unicode spectrum of characters is available.
 In this setup characters from various countries can be displayed,
 while it is still possible to use more simple character sets for sending
 to retain maximum compatibility with older mail clients.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Command line editor" {{{
 .Ss "Command line editor"
 \*(OP \*(UA can be configured to support a command line editor and
 command history lists which are saved in between sessions.
@@ -941,8 +963,9 @@ and the Home/End/PgUp/PgDown keys will call the
 .Ic z
 command with the respective arguments `0', `$', `-' and `+'
 (i.e., perform scrolling through the header summary list).
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Coloured message display" {{{
 .Ss "Coloured message display"
 \*(OP \*(UA can be configured to support coloured message display.
 Colours are used only when the
@@ -982,8 +1005,9 @@ instead of the default
 .Va colour-header .
 To forcefully disable colours, set
 .Va colour-disable .
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Commands" {{{
 .Ss "Commands"
 Each command is typed on a line by itself,
 and may take arguments following the command word.
@@ -1150,7 +1174,7 @@ contained within the message signatures to the named file in both
 human-readable and PEM format.
 The certificates can later be used to send encrypted messages to the
 respective message senders by setting
-.Va smime-encrypt-user@host
+.Va smime-encrypt-USER@HOST
 variables.
 .It Ic chdir
 (ch) Changes the user's working directory to the specified one,
@@ -1329,15 +1353,31 @@ If `name' refers to a directory with the subdirectories `tmp', `new',
 and `cur', then it is treated as a folder in `maildir' format.
 A name of the form
 .Pp
-.Dl protocol://[user@]host[:port][/file]
+.Dl \*(IN protocol://[user[:password]@]host[:port][/path]
+.Dl \*(OU protocol://[user@]host[:port][/path]
 .Pp
 is taken as an Internet mailbox specification.
-The (optionally) supported protocols are `imap' (IMAP v4r1), `imaps'
+The \*(OPally supported protocols are `imap' (IMAP v4r1), `imaps'
 (IMAP with SSL/TLS encrypted transport), `pop3' (POP3) and `pop3s' (POP3
 with SSL/TLS encrypted transport).
-If `user' contains special characters, in particular `/' or `%',
-they must be escaped in URL notation, as `%2F' or `%25'.
-The optional `file' part applies to IMAP only;
+The `[/path]' part is valid only for IMAP; there it defaults to `INBOX'.
+.Pp
+\*(IN If `user' or `password' contain special characters, in particular
+whitespace, `/', `:' or `%', they must be specified in URL notation
+(the command
+.Ic urlenc
+may be helpful for preparation).
+If no `user' is specified in the URL, the
+.Va user
+variable chain is inspected; likewise the
+.Va password
+variable chain for the password.
+.Pp
+\*(OU If `user' contains special characters, in particular `/' or `%',
+they must be escaped in URL notation \(en the command
+.Ic urlenc
+can be used to show the necessary conversion.
+The optional `path' part applies to IMAP only;
 if it is omitted, the default `INBOX' is used.
 .Pp
 If \*(UA is connected to an IMAP server,
@@ -2083,8 +2123,9 @@ Similar to
 but scrolls to the next or previous window that contains at least one
 new or `flagged' message.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Tilde escapes" {{{
 .Ss "Tilde escapes"
 Here is a summary of the tilde escapes,
 which are used to perform special functions when composing messages.
@@ -2308,8 +2349,9 @@ E.g., the command
 .Xr fmt 1
 is often used as a rejustifying filter.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Variable options" {{{
 .Ss "Variable options"
 Options are controlled via
 .Ic set
@@ -2324,8 +2366,9 @@ environment.
 Options may be either binary, in which case it is only significant to
 see whether they are set or not;
 or string, in which case the actual value is of interest.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Binary options" {{{
 .Ss "Binary options"
 The binary options include the following:
 .Bl -tag -width ".Va autoprint"
@@ -2454,7 +2497,7 @@ ones in the cache at that time.
 Data is saved to
 .Va DEAD
 when this problem occurs.
-.It Va disconnected-user@host
+.It Va disconnected-USER@HOST
 The specified account is handled as described for the
 .Va disconnected
 variable above,
@@ -2524,8 +2567,8 @@ Since the IDNA code assumes domain names are specified with the
 character set, an UTF-8 locale charset is required to represent
 all possible international domain names (before conversion, that is).
 .It Va ignore
-Causes interrupt signals from the terminal to be ignored
-and echoed as `@'s.
+Ignore interrupt signals from the terminal while entering messages;
+instead echo them as `@' characters and discard the current line.
 .It Va ignoreeof
 An option related to
 .Va dot
@@ -2538,7 +2581,7 @@ This option also applies to \*(UA command mode.
 IMAP session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
-.It Va imap-use-starttls-user@host
+.It Va imap-use-starttls-USER@HOST
 Activates
 .Va imap-use-starttls
 for a specific account.
@@ -2793,6 +2836,12 @@ Note that, if this is not set but
 .Va writebackedited ,
 as below, is, a possibly performed automatic stripping of these header
 fields already marks the message as being modified.
+.It Va v15-compat
+Setting this option enables upward compatibility with \*(UA version 15.0
+in respect to which configuration options are available and how they are
+handled.
+This manual uses \*(IN and \*(OU to refer to the new and the old way of
+doing things, respectively.
 .It Va verbose
 Setting the option verbose is the same as using the command line option
 .Fl v .
@@ -2818,8 +2867,9 @@ performed,
 and proper RFC 4155 `From ' quoting of newly added or edited content is
 also left as an excercise to the user.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Value options" {{{
 .Ss "Value options"
 The value options include the following:
 .Bl -tag -width ".Va autoprint"
@@ -2969,11 +3019,11 @@ command and
 tilde escape.
 A default editor is used if this value is not defined.
 .It Va encoding
-The default MIME encoding to use in outgoing text messages and message
-parts.
+Suggestion for the MIME encoding to use in outgoing text messages
+and message parts.
 Valid values are the default `quoted-printable', `8bit' and `base64'.
-`8bit' may cause problems with mail transfers that are not ESMTP
-compliant.
+`8bit' may cause problems with when transferring mail messages over
+channels that are not ESMTP (RFC 1869) compliant.
 If there is no need to encode a message,
 `7bit' transfer mode is always used regardless of this variable.
 Binary data is always encoded as `base64'.
@@ -3123,8 +3173,8 @@ Valid values are `login' for the usual password-based authentication
 (the default),
 `cram-md5', which is a password-based authentication that does not send
 the password over the network in clear text,
-and `gssapi' for GSSAPI-based authentication.
-.It Va imap-auth-user@host
+and `gssapi' for GSS-API based authentication.
+.It Va imap-auth-USER@HOST
 Sets the IMAP authentication method for a specific account.
 .It Va imap-cache
 \*(OP Enables caching of IMAP mailboxes.
@@ -3462,9 +3512,9 @@ Enhanced Mail) format for verification of S/MIME signed messages.
 .It Va smime-ca-file
 \*(OP Specifies a file with CA certificates in PEM format for
 verification of S/MIME signed messages.
-.It Va smime-cipher-user@host
+.It Va smime-cipher-USER@HOST
 \*(OP Specifies a cipher to use when generating S/MIME encrypted
-messages for `user@host'.
+messages for the specified account.
 RFC 5751 mandates a default of `aes-128' (AES-128 CBC).
 .Pp
 The actually available cipher algorithms depend on the cryptographic
@@ -3483,9 +3533,9 @@ verifying S/MIME messages.
 .It Va smime-crl-dir
 \*(OP Specifies a directory that contains files with CRLs in PEM format
 to use when verifying S/MIME messages.
-.It Va smime-encrypt-user@host
-\*(OP If this variable is set, messages to `user@host' are encrypted
-before sending.
+.It Va smime-encrypt-USER@HOST
+\*(OP If this variable is set, messages send to the given receiver are
+encrypted before sending.
 The value of the variable must be set to the name of a file that
 contains a certificate in PEM format.
 .Pp
@@ -3503,10 +3553,10 @@ variable.
 \*(OP Points to a file in PEM format that contains the user's private
 key as well as his certificate.
 Both are used with S/MIME for signing and decrypting messages.
-.It Va smime-sign-cert-user@host
+.It Va smime-sign-cert-USER@HOST
 Overrides
 .Va smime-sign-cert
-for the specific addresses.
+for the specified account.
 When signing messages and the value of the
 .Va from
 variable is set to `user@host', the specific file is used.
@@ -3524,12 +3574,12 @@ included in the S/MIME message in addition to the
 certificate.
 This is most useful for long certificate chains if it is desired to aid
 the receiving party's verification process.
-.It Va smime-sign-include-certs-user@host
+.It Va smime-sign-include-certs-USER@HOST
 Overrides
 .Va smime-sign-include-certs
 for the specific addresses.
 Refer to the discussion of
-.Va smime-sign-cert-user@host
+.Va smime-sign-cert-USER@HOST
 for more on this topic.
 .It Va smtp
 \*(OP Normally \*(UA invokes
@@ -3644,7 +3694,7 @@ for more information.
 .It Va ssl-cert
 \*(OP Sets the file name for a SSL/TLS client certificate required by
 some servers.
-.It Va ssl-cert-user@host
+.It Va ssl-cert-USER@HOST
 Sets an account-specific file name for a SSL/TLS client certificate
 required by some servers.
 Overrides
@@ -3666,7 +3716,7 @@ to use when verifying SSL/TLS server certificates.
 certificate.
 If unset, the name of the certificate file is used.
 The file is expected to be in PEM format.
-.It Va ssl-key-user@host
+.It Va ssl-key-USER@HOST
 Sets an account-specific file name for the private key of a SSL/TLS
 client certificate.
 Overrides
@@ -3691,7 +3741,7 @@ the actual setting of
 .Va ssl-method
 isn't supported by the used TLS/SSL library \(em in this case an error
 message will be printed first, however.
-.It Va ssl-method-user@host
+.It Va ssl-method-USER@HOST
 Overrides
 .Va ssl-method
 for a specific account.
@@ -3712,7 +3762,7 @@ Valid values are
 `warn' (print a warning and continue),
 `ignore' (do not perform validation).
 The default is `ask'.
-.It Va ssl-verify-user@host
+.It Va ssl-verify-USER@HOST
 Overrides
 .Va ssl-verify
 for a specific account.
@@ -3739,14 +3789,25 @@ from the `LC_CTYPE' locale environment.
 Refer to the section
 .Sx "Character sets"
 for the complete picture about character sets.
+.It Va user
+\*(IN Sets a global fallback user name, which is used in case none has
+been given in the protocol and account-specific URL and there is also
+no matching
+.Va user-HOST .
+This variable defaults to the value of
+.Va USER .
+.It Va user-HOST
+\*(IN Overrides
+.Va user
+for a specific host.
 .It Va VISUAL
 Pathname of the text editor to use in the
 .Ic visual
 command and `~v' tilde escape.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh ENVIRONMENT {{{
 .Sh ENVIRONMENT
 Besides the variables described above,
 \*(UA uses the following environment variables:
@@ -3792,9 +3853,9 @@ i.e., identical to the
 .Fl u
 command line option.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh FILES {{{
 .Sh FILES
 .Bl -tag -width ".It Pa /etc/mime.types"
 .It Pa \*(ur
@@ -3806,12 +3867,12 @@ Personal MIME types.
 .It Pa /etc/mime.types
 System wide MIME types.
 .El
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh EXAMPLES {{{
 .Sh EXAMPLES
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Getting started" {{{
 .Ss "Getting started"
 The \*(UA command has two distinct usages, according to whether one
 wants to send or receive mail.
@@ -4047,8 +4108,9 @@ For example, to print the text of the message so far, use:
 which will print a line of dashes, the recipients of your message, and
 the text of the message so far.
 A list of the most important tilde escapes is available with `~?'.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "IMAP or POP3 client setup" {{{
 .Ss "IMAP or POP3 client setup"
 \*(OP First you need the following data from your ISP:
 the host name of the IMAP or POP3 server,
@@ -4244,8 +4306,9 @@ Note that the example above is \fBinsecure\fR!
 One should use the `-verify' and `-CAfile' options of
 .Xr s_client 1
 to be "on the safe side" regarding the fetched certificates.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Reading HTML mail" {{{
 .Ss "Reading HTML mail"
 You need either the
 .Xr elinks 1
@@ -4258,8 +4321,9 @@ standard output.
 .Dl set pipe-text/html="lynx -stdin -dump -force_html"
 .Pp
 will cause HTML message parts to be converted into a more friendly form.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Viewing PDF attachments" {{{
 .Ss "Viewing PDF attachments"
 Most PDF viewers do not accept input directly from a pipe.
 It is thus necessary to store the attachment in a temporary file first:
@@ -4272,8 +4336,9 @@ time.
 Automatical command execution like this can compromise your system
 security,
 in particular if you stay not always informed about such issues.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Signed and encrypted messages with S/MIME" {{{
 .Ss "Signed and encrypted messages with S/MIME"
 \*(OP S/MIME provides two central mechanisms:
 message signing and message encryption.
@@ -4357,7 +4422,7 @@ After that, retrieve the certificate and tell \*(UA that it should use
 it for encryption:
 .Pp
 .Dl certsave filename
-.Dl set smime-encrypt-user@host=filename
+.Dl set smime-encrypt-USER@HOST=filename
 .Pp
 You should carefully consider if you prefer to store encrypted messages
 in decrypted form.
@@ -4380,8 +4445,9 @@ and cannot be trusted even if the message content has been verified.
 When sending signed messages,
 it is recommended to repeat any important header information in the
 message text.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Using CRLs with S/MIME or SSL/TLS" {{{
 .Ss "Using CRLs with S/MIME or SSL/TLS"
 \*(OP Certification authorities (CAs) issue certificate revocation
 lists (CRLs) on a regular basis.
@@ -4412,8 +4478,9 @@ or
 variables, respectively, must then be set to point to that directory.
 After that, \*(UA requires a CRL to be present for each CA that is used
 to verify a certificate.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Handling spam" {{{
 .Ss "Handling spam"
 \*(OP \*(UA can make use of spam detection and learning facilities \(en
 more precisely, SpamAssassin (\%<http://spamassassin.apache.org>).
@@ -4501,8 +4568,9 @@ See also the documentation for the variables
 .Va spam-user
 and
 .Va spam-maxsize .
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" .Ss "Sending mail from scripts" {{{
 .Ss "Sending mail from scripts"
 If you want to send mail from scripts, you must be aware that \*(UA
 reads the user's configuration files by default.
@@ -4528,9 +4596,10 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
     smtp-auth=login \*(ua \-n \-s "subject" \e
     \-a attachment_file recipient@domain < content_file
 .Ed
+.\" }}}
+.\" }}} (Examples)
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh "SEE ALSO" {{{
 .Sh "SEE ALSO"
 .Xr bzip2 1 ,
 .Xr file 1 ,
@@ -4559,9 +4628,9 @@ env MAILRC=/dev/null from=scriptreply@domain smtp=host \e
 .Xr re_format 7 ,
 .Xr mailwrapper 8 ,
 .Xr xterm 1
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh "IMPLEMENTATION NOTES" {{{
 .Sh "IMPLEMENTATION NOTES"
 The character set conversion uses and relies upon the
 .Xr iconv 3
@@ -4645,9 +4714,9 @@ Thus the recommended setup for sending mail in
 mode is to configure a local SMTP server such that it sends outgoing
 mail as soon as an external network connection is available again,
 i.e., to advise it to do that from a network startup script.
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
-.\"
+.\" .Sh HISTORY {{{
 .Sh HISTORY
 A \fImail\fR command appeared in Version 1 AT&T Unix.
 Berkeley Mail was written in 1978 by Kurt Shoens.
@@ -4669,8 +4738,7 @@ The original Standard can be obtained online at
 \%<http://www.opengroup.org/unix/online.html>.
 Redistribution of this material is permitted so long as this notice
 remains intact.
-.\"
-.\" --  >8  --  8<  --
+.\" }}}
 .\"
 .Sh AUTHORS
 .An "Kurt Shoens" ,
@@ -4678,7 +4746,6 @@ remains intact.
 .An "Gunnar Ritter" ,
 .An Steffen Po Daode Pc Nurpmeso Aq s-nail-users@lists.sourceforge.net
 .\"
-.\" --  >8  --  8<  --
-.\"
 .Sh BUGS
+Too much.
 Variables in the environment passed to \*(UA cannot be unset.
