@@ -1702,9 +1702,6 @@ Same as
 .It Ic new
 Same as
 .Ic unread .
-.It Ic online
-Same as
-.Ic connect .
 .It Ic noop
 If the current folder is located on an IMAP or POP3 server,
 a `NOOP' command is sent.
@@ -2554,12 +2551,9 @@ are not available;
 to fetch all messages in a mailbox at once,
 the command
 .Ns ` Ns Li copy * /dev/null Ns '
-can be used while still in
-.Va online
-mode.
+can be used while still in connected mode.
 Changes that are made to IMAP mailboxes in disconnected mode are queued
-and committed later when a connection to that server is opened in online
-mode.
+and committed later when a connection to that server is made.
 This procedure is not completely reliable since it cannot be guaranteed
 that the IMAP unique identifiers (UIDs) on the server still match the
 ones in the cache at that time.
@@ -4466,9 +4460,7 @@ Messages that have not yet been completely cached are not available
 then, but all other messages can be handled as usual.
 Changes made to IMAP mailboxes in
 .Va disconnected
-mode are committed to the IMAP server next time it is used in
-.Va online
-mode.
+mode are committed to the IMAP server next time it is being connected to.
 Synchronizing the local status with the status on the server is thus
 partially within your responsibility;
 if you forget to initiate a connection to the server again before you

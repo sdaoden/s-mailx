@@ -271,8 +271,6 @@
      DS(384, "Create threaded view of current \"folder\"") },
    { "unthread", &c_unthread, (A | MSGLIST), 0, 0
      DS(404, "Disable sorted or threaded mode") },
-   { "online", &c_connect, (A | NOLIST), 0, 0
-     DS(314, "If disconnected, connect to IMAP mailbox") },
    { "connect", &c_connect, (A | NOLIST), 0, 0
      DS(314, "If disconnected, connect to IMAP mailbox") },
    { "disconnect", &c_disconnect, (A | NDMLIST), 0, 0
