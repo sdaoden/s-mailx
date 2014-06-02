@@ -463,7 +463,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
 
       ti.l = strlen(ti.s = mip->m_filename);
       mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
-      to.l = MIN(to.l, 25); /* FIXME MIME: filename may be multibyte enc!! */
+      to.l = field_detect_clip(25, to.s, to.l);
       cd.s = ac_alloc(to.l + 2 +1); /* FIXME ..visual length would be better */
       cd.s[0] = ',';
       cd.s[1] = ' ';
