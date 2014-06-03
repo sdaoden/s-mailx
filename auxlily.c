@@ -1590,6 +1590,31 @@ cwrelse(struct cw *cw)
 }
 #endif /* !HAVE_FCHDIR */
 
+FL size_t
+field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
+{
+   size_t rv;
+   NYD_ENTER;
+
+#ifdef HAVE_NATCH_CHAR
+   maxlen = MIN(maxlen, blen);
+   for (rv = 0; maxlen > 0;) {
+      int ml = mblen(buf, maxlen);
+      if (ml <= 0) {
+         mblen(NULL, 0);
+         break;
+      }
+      buf += ml;
+      rv += ml;
+      maxlen -= ml;
+   }
+#else
+   rv = MIN(blen, maxlen);
+#endif
+   NYD_LEAVE;
+   return rv;
+}
+
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
