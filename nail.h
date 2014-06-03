@@ -921,6 +921,12 @@ struct colour_table {
    struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
 };
 
+struct bidi_info {
+   struct str  bi_start;      /* Start of (possibly) bidirectional text */
+   struct str  bi_end;        /* End of ... */
+   size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
+};
+
 struct url {
    char const     *url_input;       /* Input as given (really) */
    enum cproto    url_cproto;       /* Communication protocol as given */

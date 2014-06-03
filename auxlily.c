@@ -1937,8 +1937,8 @@ FL size_t
 putuc(int u, int c, FILE *fp)
 {
    size_t rv;
-   UNUSED(u);
    NYD_ENTER;
+   UNUSED(u);
 
 #ifdef HAVE_NATCH_CHAR
    if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
@@ -1961,6 +1961,43 @@ putuc(int u, int c, FILE *fp)
       rv = (putc(c, fp) != EOF);
    NYD_LEAVE;
    return rv;
+}
+
+FL void
+bidi_info_create(struct bidi_info *bip)
+{
+   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
+    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
+    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
+    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
+    * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
+   NATCH_CHAR( char const *hb; )
+   NYD_ENTER;
+
+   memset(bip, 0, sizeof *bip);
+   bip->bi_start.s = bip->bi_end.s = UNCONST("");
+
+#ifdef HAVE_NATCH_CHAR
+   if ((options & OPT_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
+      switch (*hb) {
+      case '3':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      case '2':
+         bip->bi_start.s = bip->bi_end.s = UNCONST("\xE2\x80\x8E");
+         break;
+      case '1':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      default:
+         bip->bi_start.s = UNCONST("\xE2\x81\xA8");
+         bip->bi_end.s = UNCONST("\xE2\x81\xA9");
+         break;
+      }
+      bip->bi_start.l = bip->bi_end.l = 3;
+   }
+#endif
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_COLOUR

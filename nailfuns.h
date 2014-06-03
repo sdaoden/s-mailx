@@ -382,6 +382,10 @@ FL int         prout(char const *s, size_t sz, FILE *fp);
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
 
+/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
+ * the strings are always empty */
+FL void        bidi_info_create(struct bidi_info *bip);
+
 /* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
  * we check against *colour-pagers* wether colour is really desirable */
 #ifdef HAVE_COLOUR
