@@ -1655,6 +1655,72 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
    return rv;
 }
 
+FL size_t
+field_put_bidi_clip(char *store, size_t maxlen, char const *buf, size_t blen)
+{
+   NATCH_CHAR( struct bidi_info bi; )
+   size_t rv NATCH_CHAR( COMMA i );
+   NYD_ENTER;
+
+   rv = 0;
+   if (maxlen-- == 0)
+      goto j_leave;
+
+#ifdef HAVE_NATCH_CHAR
+   bidi_info_create(&bi);
+   if (bi.bi_start.l == 0 || !bidi_info_needed(buf, blen)) {
+      bi.bi_end.l = 0;
+      goto jnobidi;
+   }
+
+   if (maxlen >= (i = bi.bi_pad + bi.bi_end.l + bi.bi_start.l))
+      maxlen -= i;
+   else
+      goto jleave;
+
+   if ((i = bi.bi_start.l) > 0) {
+      memcpy(store, bi.bi_start.s, i);
+      store += i;
+      rv += i;
+   }
+
+jnobidi:
+   while (maxlen > 0) {
+      int ml = mblen(buf, blen);
+      if (ml <= 0) {
+         mblen(NULL, 0);
+         break;
+      }
+      if (UICMP(z, maxlen, <, ml))
+         break;
+      if (ml == 1)
+         *store = *buf;
+      else
+         memcpy(store, buf, ml);
+      store += ml;
+      buf += ml;
+      rv += ml;
+      maxlen -= ml;
+   }
+
+   if ((i = bi.bi_end.l) > 0) {
+      memcpy(store, bi.bi_end.s, i);
+      store += i;
+      rv += i;
+   }
+jleave:
+   *store = '\0';
+
+#else
+   rv = MIN(blen, maxlen);
+   memcpy(store, buf, rv);
+   store[rv] = '\0';
+#endif
+j_leave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {

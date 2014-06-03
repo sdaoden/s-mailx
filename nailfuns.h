@@ -368,6 +368,12 @@ FL void        cwrelse(struct cw *cw);
  * safely placed in a buffer (field width) of maxlen bytes */
 FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
 
+/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
+ * taking into account multibyte code point boundaries and possibly
+ * encapsulating in bidi_info toggles as necessary */
+FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
+                  size_t blen);
+
 /* Place cp in a salloc()ed buffer, column-aligned; for header display only */
 FL char *      colalign(char const *cp, int col, int fill,
                   int *cols_decr_used_or_null);
