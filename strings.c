@@ -556,43 +556,57 @@ FL char *
 }
 
 FL char *
-(urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
+(urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS) /* XXX (->URL) */
 {
-#define __hex(n) ((n)>9 ? (n)-10+'A' : (n)+'0')
-   char *n, *np;
+   char *n, *np, c1, c2;
    NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
 
-   while (*cp != '\0') {
-      if (alnumchar(*cp) || *cp == '_' || *cp == '@' ||
-            (PTRCMP(np, >, n) && (*cp == '.' || *cp == '-' || *cp == ':')))
-         *np++ = *cp;
+   for (; (c1 = *cp) != '\0'; ++cp) {
+      /* RFC 3986, 2.3 Unreserved Characters:
+       *    ALPHA / DIGIT / "-" / "." / "_" / "~"
+       * However add a special is[file]path mode for file-system friendliness */
+      if (alnumchar(c1) || c1 == '_')
+         *np++ = c1;
+      else if (!ispath) {
+         if (c1 != '-' && c1 != '.' && c1 != '~')
+            goto jesc;
+         *np++ = c1;
+      } else if (PTRCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
+         *np++ = c1;
       else {
-         *np++ = '%';
-         *np++ = __hex((*cp & 0xF0) >> 4);
-         *np++ = __hex(*cp & 0x0F);
+jesc:
+         np[0] = '%';
+         c2 = c1 & 0x0F;
+         c2 += (c2 > 9) ? 'A' - 10 : '0';
+         np[2] = c2;
+         c1 = (ui8_t)(c1 & 0xF0) >> 4;
+         c1 += (c1 > 9) ? 'A' - 10 : '0';
+         np[1] = c1;
+         np += 3;
       }
-      cp++;
    }
    *np = '\0';
    NYD_LEAVE;
    return n;
-#undef __hex
 }
 
 FL char *
 (urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
 {
-   char *n, *np;
+   char *n, *np, c1, c2;
    NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
 
    while (*cp != '\0') {
-      if (cp[0] == '%' && cp[1] != '\0' && cp[2] != '\0') {
-         *np = (int)(cp[1] > '9' ? cp[1] - 'A' + 10 : cp[1] - '0') << 4;
-         *np++ |= cp[2] > '9' ? cp[2] - 'A' + 10 : cp[2] - '0';
+      if (cp[0] == '%' && (c1 = cp[1]) != '\0' && (c2 = cp[2]) != '\0') {
+         c1 -= (c1 <= '9') ? '0' : 'A' - 10;
+         c1 <<= 4;
+         c2 -= (c2 <= '9') ? '0' : 'A' - 10;
+         *np = c1;
+         *np++ |= c2;
          cp += 3;
       } else
          *np++ = *cp++;

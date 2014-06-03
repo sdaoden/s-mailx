@@ -1680,10 +1680,10 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 #endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp SALLOC_DEBUG_ARGS);
+FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define urlxenc(CP)             urlxenc(CP, __FILE__, __LINE__)
+# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
 

@@ -1687,7 +1687,7 @@ c_urlenc(void *v) /* XXX IDNA?? */
    NYD_ENTER;
 
    for (ap = v; *ap != NULL; ++ap) {
-      char *in = *ap, *out = urlxenc(in);
+      char *in = *ap, *out = urlxenc(in, FAL0);
 
       printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
          in, strlen(in), out, strlen(out));

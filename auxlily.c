@@ -908,7 +908,7 @@ juser:
       urlp->url_user.s = savestrbuf(x, urlp->url_user.l = PTR2SIZE(cp - x));
       urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(++cp));
       urlp->url_pass_enc.l = strlen(
-            urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s));
+            urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s, FAL0));
    }
 
    /* Servername and port -- and possible path suffix */
@@ -985,7 +985,7 @@ jserver:
 
    urlp->url_user.l = strlen(urlp->url_user.s = urlxdec(urlp->url_user.s));
    urlp->url_user_enc.l = strlen(
-         urlp->url_user_enc.s = urlxenc(urlp->url_user.s));
+         urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
 
    /* USER@HOST:PORT */
    if (urlp->url_user_enc.l == 0)
