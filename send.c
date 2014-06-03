@@ -457,19 +457,18 @@ _print_part_info(struct str *out, struct mimepart *mip,
       ct.s[ct.l] = '\0';
    }
 
-   /* Max. 27 */
+   /* Max. 32 */
    if (is_ign("content-disposition", 19, doign) && mip->m_filename != NULL) {
       struct str ti, to;
 
       ti.l = strlen(ti.s = mip->m_filename);
       mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
-      to.l = field_detect_clip(25, to.s, to.l);
-      cd.s = ac_alloc(to.l + 2 +1); /* FIXME ..visual length would be better */
+
+      cd.s = ac_alloc(2 + 32 +1); /* FIXME was 25.. UNI: USE VISUAL WIDTH!!! */
       cd.s[0] = ',';
       cd.s[1] = ' ';
-      memcpy(cd.s + 2, to.s, to.l);
-      to.l += 2;
-      cd.s[to.l] = '\0';
+      cd.l = 2 + field_put_bidi_clip(cd.s + 2, 32 +1, to.s, to.l);
+
       free(to.s);
    }
 
@@ -487,7 +486,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
    /* Assume maximum possible sizes for 64 bit integers here to avoid any
     * buffer overflows just in case we have a bug somewhere and / or the
     * snprintf() is our internal version that doesn't really provide hard
-    * buffer cuts */
+    * buffer cuts TODO ensure upper bound on numbers, use 9999999 else */
 #define __msg   "%s%s[-- #%s : %lu/%lu%s%s --]%s\n"
    out->l = sizeof(__msg) +
 #ifdef HAVE_COLOUR
