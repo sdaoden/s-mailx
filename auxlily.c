@@ -1597,7 +1597,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
     * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
     * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
     *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE */
-#ifdef HAVE_UNICODE
+#ifdef HAVE_NATCH_CHAR
    char const _bire[2][6] = { "\xE2\x81\xA8" "\xE2\x81\xA9",
       "\xE2\x80\x8E" "\xE2\x80\x8E"
       /* worse results: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
@@ -1610,7 +1610,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 
    /* Bidi only on request and when there is 8-bit data */
    isbidi = isuni = FAL0;
-#ifdef HAVE_UNICODE
+#ifdef HAVE_NATCH_CHAR
    if ((isuni = ((options & OPT_UNICODE) != 0))) {
       if ((nb = ok_vlook(headline_bidi)) == NULL)
          goto jnobidi;
@@ -1667,12 +1667,12 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
          col = 0;
    }
 jnobidi:
-#endif /* HAVE_UNICODE */
+#endif /* HAVE_NATCH_CHAR */
 
    np = nb = salloc(mb_cur_max * strlen(cp) +
          ((fill ? col : 0) + (isbidi ? sizeof(_bire[0]) : 0) +1));
 
-#ifdef HAVE_UNICODE
+#ifdef HAVE_NATCH_CHAR
    if (isbidi) {
       np[0] = birep[0];
       np[1] = birep[1];
@@ -1736,7 +1736,7 @@ jnobidi:
       col = 0;
    }
 
-#ifdef HAVE_UNICODE
+#ifdef HAVE_NATCH_CHAR
    if (isbidi) {
       np[0] = birep[3];
       np[1] = birep[4];
@@ -1775,7 +1775,7 @@ makeprint(struct str const *in, struct str *out)
       goto jleave;
    }
 
-#ifdef HAVE_C90AMEND1
+#ifdef HAVE_NATCH_CHAR
    if (mb_cur_max > 1) {
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
@@ -1820,7 +1820,7 @@ makeprint(struct str const *in, struct str *out)
             *outp++ = mbb[i];
       }
    } else
-#endif /* C90AMEND1 */
+#endif /* NATCH_CHAR */
    {
       int c;
       while (inp < maxp) {
@@ -1875,7 +1875,7 @@ putuc(int u, int c, FILE *fp)
    UNUSED(u);
    NYD_ENTER;
 
-#ifdef HAVE_C90AMEND1
+#ifdef HAVE_NATCH_CHAR
    if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
       char mbb[MB_LEN_MAX];
       int i, n;
