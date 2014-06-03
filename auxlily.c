@@ -672,39 +672,79 @@ jleave:
 }
 
 FL char *
-getprompt(void)
+getprompt(void) /* TODO evaluate only as necessary (needs a bit) */
 {
    static char buf[PROMPT_BUFFER_SIZE];
 
-   char *cp = buf;
-   char const *ccp;
+   char *cp;
+   char const *ccp_base, *ccp;
+   size_t NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
+   bool_t run2;
    NYD_ENTER;
 
-   if ((ccp = ok_vlook(prompt)) == NULL || *ccp == '\0')
+   cp = buf;
+   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0')
       goto jleave;
+   NATCH_CHAR( cclen_base = strlen(ccp_base); )
 
-   for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
-      char const *a;
+   dfmaxlen = 0; /* keep CC happy */
+   run2 = FAL0;
+jredo:
+   ccp = ccp_base;
+   NATCH_CHAR( cclen = cclen_base; )
+   maxlen = sizeof(buf) -1;
+
+   for (;;) {
       size_t l;
-      int c = expand_shell_escape(&ccp, TRU1);
+      int c;
 
-      if (c > 0) {
-         *cp = (char)c;
+      if (maxlen == 0)
+         goto jleave;
+#ifdef HAVE_NATCH_CHAR
+      c = mblen(ccp, cclen); /* TODO use mbrtowc() */
+      if (c <= 0) {
+         mblen(NULL, 0);
+         if (c < 0) {
+            *buf = '?';
+            cp = buf + 1;
+            goto jleave;
+         }
+         break;
+      } else if ((l = c) > 1) {
+         if (run2) {
+            memcpy(cp, ccp, l);
+            cp += l;
+         }
+         ccp += l;
+         maxlen -= l;
          continue;
+      } else
+#endif
+      if ((c = expand_shell_escape(&ccp, TRU1)) > 0) {
+            if (run2)
+               *cp++ = (char)c;
+            --maxlen;
+            continue;
       }
       if (c == 0 || c == PROMPT_STOP)
          break;
 
-      a = (c == PROMPT_DOLLAR) ? account_name : displayname;
-      if (a == NULL)
-         a = "";
-      l = strlen(a);
-      if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
-         *cp++ = '?';
-      else {
-         memcpy(cp, a, l);
-         cp += --l;
+      if (run2) {
+         char const *a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+         if (a == NULL)
+            a = "";
+         if ((l = field_put_bidi_clip(cp, dfmaxlen, a, strlen(a))) > 0) {
+            cp += l;
+            maxlen -= l;
+            dfmaxlen -= l;
+         }
       }
+   }
+
+   if (!run2) {
+      run2 = TRU1;
+      dfmaxlen = maxlen;
+      goto jredo;
    }
 jleave:
    *cp = '\0';
