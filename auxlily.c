@@ -1963,6 +1963,64 @@ putuc(int u, int c, FILE *fp)
    return rv;
 }
 
+FL bool_t
+bidi_info_needed(char const *bdat, size_t blen)
+{
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+#ifdef HAVE_NATCH_CHAR
+   if (options & OPT_UNICODE)
+      for (; blen > 0; ++bdat, --blen) {
+         if ((ui8_t)*bdat > 0x7F) {
+            /* TODO Checking for BIDI character: use S-CText fromutf8
+             * TODO plus isrighttoleft (or whatever there will be)! */
+            ui32_t c, x = (ui8_t)*bdat;
+
+            if ((x & 0xE0) == 0xC0) {
+               if (blen < 2)
+                  break;
+               blen -= 1;
+               c = x & ~0xC0;
+            } else if ((x & 0xF0) == 0xE0) {
+               if (blen < 3)
+                  break;
+               blen -= 2;
+               c = x & ~0xE0;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+            } else {
+               if (blen < 4)
+                  break;
+               blen -= 3;
+               c = x & ~0xF0;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+            }
+            c <<= 6;
+            x = (ui8_t)*++bdat;
+            c |= x & 0x7F;
+
+            /* (Very very fuzzy, awaiting S-CText for good) */
+            if ((c >= 0x05BE && c <= 0x08E3) ||
+                  (c >= 0xFB1D && c <= 0xFEFC) ||
+                  (c >= 0x10800 && c <= 0x10C48) ||
+                  (c >= 0x1EE00 && c <= 0x1EEF1)) {
+               rv = TRU1;
+               break;
+            }
+         }
+      }
+#endif /* HAVE_NATCH_CHAR */
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 bidi_info_create(struct bidi_info *bip)
 {

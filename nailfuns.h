@@ -382,6 +382,9 @@ FL int         prout(char const *s, size_t sz, FILE *fp);
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
 
+/* Check wether bidirectional info maybe needed for blen bytes of bdat */
+FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
+
 /* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
