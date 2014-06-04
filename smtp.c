@@ -153,7 +153,7 @@ do {\
 static bool_t
 _smtp_talk(struct sock *sp, struct sendbundle *sbp)
 {
-   char o[LINESIZE], *hostname, *cp;
+   char o[LINESIZE], *hostname;
    struct smtp_line _sl, *slp = &_sl;
    struct str b64;
    struct name *n;
@@ -232,9 +232,10 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    case AUTHTYPE_CRAM_MD5:
       _OUT(LINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
-      cp = cram_md5_string(sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_pass.s,
-            slp->dat);
-      _OUT(cp);
+      {  char *cp = cram_md5_string(sbp->sb_ccred.cc_user.s,
+               sbp->sb_ccred.cc_pass.s, slp->dat);
+         _OUT(cp);
+      }
       _ANSWER(2, FAL0, FAL0);
       break;
 #endif
