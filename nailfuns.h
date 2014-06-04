@@ -953,7 +953,9 @@ FL char const * fakedate(time_t t);
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |
  *               0    5   10   15   20 */
+#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
 FL time_t      unixtime(char const *from);
+#endif
 
 FL time_t      rfctime(char const *date);
 
