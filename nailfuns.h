@@ -1264,10 +1264,12 @@ FL size_t      b64_encode_calc_size(size_t len);
  * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
 FL struct str * b64_encode(struct str *out, struct str const *in,
                   enum b64flags flags);
-FL struct str * b64_encode_cp(struct str *out, char const *cp,
-                  enum b64flags flags);
 FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum b64flags flags);
+#ifdef HAVE_SMTP
+FL struct str * b64_encode_cp(struct str *out, char const *cp,
+                  enum b64flags flags);
+#endif
 
 /* If rest is set then decoding will assume text input.
  * The buffers of out and possibly rest will be managed via srealloc().
