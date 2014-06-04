@@ -342,7 +342,7 @@ FL char *      getrandstring(size_t length);
 FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
 /* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
-FL char *      cram_md5_string(char const *user, char const *pass,
+FL char *      cram_md5_string(struct str const *user, struct str const *pass,
                   char const *b64);
 
 /* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.

@@ -232,8 +232,8 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    case AUTHTYPE_CRAM_MD5:
       _OUT(LINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
-      {  char *cp = cram_md5_string(sbp->sb_ccred.cc_user.s,
-               sbp->sb_ccred.cc_pass.s, slp->dat);
+      {  char *cp = cram_md5_string(&sbp->sb_ccred.cc_user,
+               &sbp->sb_ccred.cc_pass, slp->dat);
          _OUT(cp);
       }
       _ANSWER(2, FAL0, FAL0);

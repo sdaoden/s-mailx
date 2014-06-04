@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ IMAP v4r1 client following RFC 2060.
+ *@ CRAM-MD5 as of RFC 2195.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -916,7 +917,6 @@ jleave:
    return rv;
 }
 
-/* Implementation of RFC 2194 */
 #ifdef HAVE_MD5
 static enum okay
 imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
@@ -932,7 +932,7 @@ imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
    if (response_type != RESPONSE_CONT)
       goto jleave;
 
-   cp = cram_md5_string(ccred->cc_user.s, ccred->cc_pass.s, responded_text);
+   cp = cram_md5_string(&ccred->cc_user, &ccred->cc_pass, responded_text);
    IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    while (mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);

@@ -1438,11 +1438,11 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 }
 
 FL char *
-cram_md5_string(char const *user, char const *pass, char const *b64)
+cram_md5_string(struct str const *user, struct str const *pass,
+   char const *b64)
 {
    struct str in, out;
    char digest[16], *cp;
-   size_t lu;
    NYD_ENTER;
 
    out.s = NULL;
@@ -1451,16 +1451,15 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
    b64_decode(&out, &in, NULL);
    assert(out.s != NULL);
 
-   hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass), digest);
+   hmac_md5((uc_it*)out.s, out.l, (uc_it*)pass->s, pass->l, digest);
    free(out.s);
    cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
 
-   lu = strlen(user);
-   in.l = lu + MD5TOHEX_SIZE +1;
-   in.s = ac_alloc(lu + 1 + MD5TOHEX_SIZE +1);
-   memcpy(in.s, user, lu);
-   in.s[lu++] = ' ';
-   memcpy(in.s + lu, cp, MD5TOHEX_SIZE);
+   in.l = user->l + MD5TOHEX_SIZE +1;
+   in.s = ac_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
+   memcpy(in.s, user->s, user->l);
+   in.s[user->l] = ' ';
+   memcpy(in.s + user->l + 1, cp, MD5TOHEX_SIZE);
    b64_encode(&out, &in, B64_SALLOC | B64_CRLF);
    ac_free(in.s);
    NYD_LEAVE;
