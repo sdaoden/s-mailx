@@ -238,6 +238,9 @@ WANT_DEBUG=0
 # set this to always choose that without even checking for another one
 WANT_NOGETOPT=0
 
+# We use the crypto libraries' MD5 implementation if possible unless this one
+WANT_NOEXTMD5=0
+
 # The codebase makes a lot of use of alloca(3), and this will remain since
 # S-nail will continue to be compliant to ISO C89, which has no variable
 # arrays, etc.  For testing purposes it is however nice to use the much slower

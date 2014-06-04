@@ -41,7 +41,7 @@ if [ -n "${CONFIG}" ]; then
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND'
+      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND, MAXIMAL'
       exit 1
    esac
 fi
@@ -866,7 +866,7 @@ int main(void)
 }
 !
 
-      if wantfeat MD5; then
+      if wantfeat MD5 && nwantfeat NOEXTMD5; then
          run_check openssl_md5 'for MD5 digest in OpenSSL' \
          '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
@@ -894,7 +894,7 @@ int main(void)
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
-      fi # wantfeat MD5
+      fi # wantfeat MD5 && nwantfeat NOEXTMD5
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}
