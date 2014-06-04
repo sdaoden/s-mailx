@@ -628,6 +628,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    return self;
 }
 
+#ifdef HAVE_SPAM
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
    char const *sep_o_null SALLOC_DEBUG_ARGS)
@@ -657,6 +658,7 @@ FL struct str *
    NYD_LEAVE;
    return self;
 }
+#endif
 
 /*
  * Routines that are not related to auto-reclaimed storage follow.

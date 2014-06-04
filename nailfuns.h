@@ -1689,10 +1689,13 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
+
+#ifdef HAVE_SPAM
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+# ifdef HAVE_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
+# endif
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
