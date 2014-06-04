@@ -558,6 +558,7 @@ FL char *
 FL char *
 (urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
 {
+#define __hex(n) ((n)>9 ? (n)-10+'A' : (n)+'0')
    char *n, *np;
    NYD_ENTER;
 
@@ -569,14 +570,15 @@ FL char *
          *np++ = *cp;
       else {
          *np++ = '%';
-         *np++ = Hexchar((*cp & 0xf0) >> 4);
-         *np++ = Hexchar(*cp & 0x0f);
+         *np++ = __hex((*cp & 0xF0) >> 4);
+         *np++ = __hex(*cp & 0x0F);
       }
       cp++;
    }
    *np = '\0';
    NYD_LEAVE;
    return n;
+#undef __hex
 }
 
 FL char *

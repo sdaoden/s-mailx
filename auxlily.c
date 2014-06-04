@@ -1426,10 +1426,12 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
    size_t i, j;
    NYD_ENTER;
 
-   for (i = 0; i < MD5TOHEX_SIZE / 2; i++) {
+   for (i = 0; i < MD5TOHEX_SIZE / 2; ++i) {
       j = i << 1;
-      hex[j] = hexchar((cp[i] & 0xf0) >> 4);
-      hex[++j] = hexchar(cp[i] & 0x0f);
+# define __hex(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
+      hex[j] = __hex((cp[i] & 0xF0) >> 4);
+      hex[++j] = __hex(cp[i] & 0x0F);
+# undef __hex
    }
    NYD_LEAVE;
    return hex;

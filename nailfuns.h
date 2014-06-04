@@ -325,9 +325,6 @@ FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
 
-#define Hexchar(n)               ((n)>9 ? (n)-10+'A' : (n)+'0')
-#define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
-
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
 # ifdef HAVE_OPENSSL_MD5
@@ -339,7 +336,8 @@ FL char *      getrandstring(size_t length);
 #  include "rfc1321.h"
 # endif
 
-/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated */
+/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
+ * using lowercase ASCII letters as defined in RFC 2195 */
 # define MD5TOHEX_SIZE           32
 FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
