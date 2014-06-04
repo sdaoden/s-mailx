@@ -1750,8 +1750,10 @@ FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 /* Locale-independent character class functions */
 FL int         asccasecmp(char const *s1, char const *s2);
 FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
-FL char const * asccasestr(char const *haystack, char const *xneedle);
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
+#ifdef HAVE_IMAP
+FL char const * asccasestr(char const *haystack, char const *xneedle);
+#endif
 
 /* struct str related support funs */
 

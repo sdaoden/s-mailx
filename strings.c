@@ -1008,6 +1008,24 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
    return cmp;
 }
 
+FL bool_t
+is_asccaseprefix(char const *as1, char const *as2)
+{
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+   for (;; ++as1, ++as2) {
+      char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
+      if ((rv = (c1 == '\0')))
+         break;
+      if (c1 != c2 || c2 == '\0')
+         break;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+#ifdef HAVE_IMAP
 FL char const *
 asccasestr(char const *haystack, char const *xneedle)
 {
@@ -1045,23 +1063,7 @@ jleave:
    NYD_LEAVE;
    return haystack;
 }
-
-FL bool_t
-is_asccaseprefix(char const *as1, char const *as2)
-{
-   bool_t rv = FAL0;
-   NYD_ENTER;
-
-   for (;; ++as1, ++as2) {
-      char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
-      if ((rv = (c1 == '\0')))
-         break;
-      if (c1 != c2 || c2 == '\0')
-         break;
-   }
-   NYD_LEAVE;
-   return rv;
-}
+#endif
 
 FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
