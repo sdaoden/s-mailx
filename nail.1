@@ -755,6 +755,64 @@ will disable the mentioned IDNA conversion even if support is available.
 (These options are summarized below.)
 .\" }}}
 .\"
+.\" .Ss "URL syntax" {{{
+.Ss "URL syntax"
+\*(IN For accessing protocol-specific resources, like an IMAP mailbox,
+usage of compact and standardized Uniform Resource Locators (URL) has
+become omnipresent.
+\*(UA expects and understands URLs in the following form;
+parts in brackets `[]' denote optional parts, optional either because
+there also exist other ways to define the information in question or
+because support of the part is protocol-specific \(en
+e.g., `/path' is used by the IMAP protocol but not by POP3.
+.Pp
+.Dl PROTO://[USER[:PASSWORD]@]server[:port][/path]
+.Pp
+In general \*(UA adheres to the following logic scheme when dealing with
+the necessary informations of a resource:
+.Bl -bullet -offset indent
+.It
+If no `USER' is given: a variable of the scheme
+.Va user-HOST
+is looked up (`HOST' relates to the `server' specified in the URL),
+followed by the plain
+.Va user ,
+which in turn defaults to
+.Va USER
+which, again, defaults to `getpwuid(getuid())' a.k.a. the current user.
+.It
+If no `PASSWORD' is given: a variable
+.Va password-USER@HOST
+is looked up (`HOST' again is the one found in the URL, `USER' is the
+result of the user lookup described in the former item),
+followed by the global
+.Va password ;
+if still no password is available afterwards, but the (protocols')
+chosen authentication type requires a password, the user will be
+prompted on the terminal.
+.It
+Authentication: unless otherwise noted this will first look for
+.Va PROTO-auth-USER@HOST ,
+then
+.Va PROTO-auth-HOST
+and finally
+.Va PROTO-auth ,
+which has a protocol-specific default should none of the variables be
+set.
+.El
+.Pp
+Note:
+For SMTP the rules are a bit more complicated, since \*(UA will always
+work relative to
+.Va from
+instead of a given SMTP account in respect to S/MIME
+.Ns ( Va smime-sign
+and
+.Va smime-sign-include-certs )
+\(en this is because S/MIME verification works relative to the values
+found in `From:' (or `Sender:').
+.\" }}}
+.\"
 .\" .Ss "MIME types" {{{
 .Ss "MIME types"
 For any outgoing attachment \*(UA tries to determine the content type.
@@ -1379,7 +1437,9 @@ compressed with
 .Xr bzip2 1
 or
 .Xr xz 1 ,
-respectively.
+respectively, and transparently handled through an intermediate
+(un)compression step (using a temporary file) with the respective
+utility, which thus must be available in the path.
 If `name' refers to a directory with the subdirectories `tmp', `new',
 and `cur', then it is treated as a folder in `maildir' format.
 A name of the form
@@ -1392,17 +1452,8 @@ The \*(OPally supported protocols are `imap' (IMAP v4r1), `imaps'
 (IMAP with SSL/TLS encrypted transport), `pop3' (POP3) and `pop3s' (POP3
 with SSL/TLS encrypted transport).
 The `[/path]' part is valid only for IMAP; there it defaults to `INBOX'.
-.Pp
-\*(IN If `user' or `password' contain special characters, in particular
-whitespace, `/', `:' or `%', they must be specified in URL notation
-(the command
-.Ic urlenc
-may be helpful for preparation).
-If no `user' is specified in the URL, the
-.Va user
-variable chain is inspected; likewise the
-.Va password
-variable chain for the password.
+Also see the section
+.Sx "URL syntax" .
 .Pp
 \*(OU If `user' contains special characters, in particular `/' or `%',
 they must be escaped in URL notation \(en the command
@@ -3254,6 +3305,8 @@ and this feature only works in an Unicode (i.e., UTF-8) locale.
 In general setting this variable will cause \*(UA to encapsulate text
 fields that may occur when printing
 .Va headline
+(and some other fields, like dynamic expansions in
+.Va prompt )
 with special Unicode control sequences;
 it is possible to fine-tune the terminal support level by assigning
 a value:
@@ -3526,7 +3579,7 @@ to encapsulate the expansions of the `\\$' and `\\@' escape sequences as
 necessary to correctly display bidirectional text, this is not true for
 the final string that makes up
 .Va prompt
-as such, i.e., real BIDI handling is not (yet) supported.
+as such, i.e., real BIDI handling is not supported.
 .Pp
 When a newer version of the
 .Xr editline 3
@@ -3784,12 +3837,6 @@ variable to enter a SSL/TLS secured session state.
 Assign a value like \*(IN `submission://[user[:password]@]server[:port]'
 (\*(OU `submission://server[:port]').
 .El
-.Pp
-\*(IN If `user' or `password' contain special characters, in particular
-whitespace, `/', `:' or `%', they must be specified in URL notation
-(the command
-.Ic urlenc
-may be helpful for preparation).
 .Pp
 The SMTP transfer is executed in a child process, which runs
 asynchronously unless either the
