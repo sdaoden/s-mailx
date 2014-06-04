@@ -1587,6 +1587,7 @@ check_from_and_sender(struct name *fromfield, struct name *senderfield)
    return rv;
 }
 
+#ifdef HAVE_OPENSSL
 FL char *
 getsender(struct message *mp)
 {
@@ -1602,6 +1603,7 @@ getsender(struct message *mp)
    NYD_LEAVE;
    return cp;
 }
+#endif
 
 FL int
 grab_headers(struct header *hp, enum gfield gflags, int subjfirst)

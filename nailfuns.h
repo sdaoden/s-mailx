@@ -967,7 +967,9 @@ FL void        substdate(struct message *m);
 FL int         check_from_and_sender(struct name *fromfield,
                   struct name *senderfield);
 
+#ifdef HAVE_OPENSSL
 FL char *      getsender(struct message *m);
+#endif
 
 /*
  * imap.c
