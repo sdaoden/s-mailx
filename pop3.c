@@ -253,7 +253,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
 
    md5_init(&ctx);
    md5_update(&ctx, (uc_it*)UNCONST(ts), strlen(ts));
-   md5_update(&ctx, (uc_it const*)scp->sc_cred.cc_pass.s,
+   md5_update(&ctx, (uc_it*)scp->sc_cred.cc_pass.s,
       scp->sc_cred.cc_pass.l);
    md5_final(digest, &ctx);
    md5tohex(hex, digest);
