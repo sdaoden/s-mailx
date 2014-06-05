@@ -1186,7 +1186,7 @@ _imap_setfile1(struct url *urlp, int nmail, int isedit,
             !strcmp(mb.mb_imap_account, urlp->url_puhp) &&
             urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
 jduppass:
-         urlp->url_pass.s = savestr(mb.mb_imap_pass);
+         urlp->url_pass.l = strlen(urlp->url_pass.s = savestr(mb.mb_imap_pass));
    }
 
    if (!(ok_blook(v15_compat) ? ccred_lookup(&ccred, urlp)
@@ -1214,7 +1214,7 @@ jduppass:
    mb.mb_imap_account = sstrdup(urlp->url_puhp);
    /* TODO This is a hack to allow '@boxname'; in the end everything will be an
     * TODO object, and mailbox will naturally have an URL and credentials */
-   mb.mb_imap_pass = sstrdup(ccred.cc_pass.s);
+   mb.mb_imap_pass = sbufdup(ccred.cc_pass.s, ccred.cc_pass.l);
 
    if (!same_imap_account) {
       if (mb.mb_sock.s_fd >= 0)
