@@ -334,6 +334,7 @@ Low-Level
      Also in respect wether the interrupt is "propagated" or not.
      It's ugly, and documented accordingly.
  30. Mail protocols and mail messages are accessed through a "VFS".
+     URL should then support file:// and maildir:// etc.  Update manual!
  31. Flag updates of individual messages must find their way through to
      the protocol.
  32. Use deque (on partial views).
@@ -518,25 +519,14 @@ TODO S-nail 14.7:
      also trailing whitespace; also, the expanded command should be
      stored, not the abbreviation, so that 'sst' and 'sstats' will no
      longer produce two separate entries.
-  . getprompt() is not multibyte safe in that it should mbrtowc() before
-    calling expand_shell_escape() (i.e., only call that if ASCII,
-    otherwise pass through if fits as such).
+  . getprompt() could reserve for each dynamic entry at least one
+    visible offset, so that at least a `?' could be written if the room
+    is otherwise insufficient; in addition, if there were 3 such
+    dynamics, but all in all two visible offsets would be left, a single
+    entry with as much `?' as possible c/should be written, so as to
+    indicate the user anything visually.
   . Make S/MIME an option separate of SSL/TLS
   . pop3,mime_cte +++: \r,\n -> \015,\012, to avoid ANY problems..
-  . send.c:_print_part_info(): the filename is truncated to a maximum of
-    25 characters, which of course may mess up multibyte encodings!
-    We need a multibyte safe clamp function, even if this means that
-    an already encoded string is again parsed...  We can take advantage
-    of UTF-8 here, however.
-    FURTHERMORE: don't go and separate ISO C90 Amend. 1 and wcwidth(3);
-    only support wide and multibyte stuff if we have them all.
-    Alternatively we could support ONLY UTF-8 locales via ISO C90 and
-    implement our own wcwidth(3) IFF it's only the latter is missing.
-    Though that sounds crappy.
-
-    v14.7 MUST use only mbrtowc() and have solved all these multibyte
-    problems (that i've introduced, mostly, and mostly for new
-    features).  It has to last for well over a year!
   . which_protocol(), *newmail* mechanism, displayname, mailname: all of
     this <rude>SHIT</rude> must be rewritten completely and can be
     overcome by an object-based mailbox implementation that carries all
@@ -640,6 +630,9 @@ TODO S-nail 14.7:
     iterator-thing with setup/finalize init/destroy life cycle, which
     would encapsulate the entire cmd1.c:_print_head() in the single
     iterator setup function!
+  .. Unite
+      defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
+     into HAVE_NATCH_CHAR, solely keep that
   . Using -t should still optionally offer an option to enter editing.
     Also we should support command line arguments on top.
     Add a -T flag for that.  Drop -q, let -T mean the same if no header
@@ -650,5 +643,8 @@ TODO S-nail 14.7:
   . mutt list handling (`~') is very powerful
   . Check what happens if an account switch or a network connection is
     done while we are loading the resource files...
+  . urlxdec() doesn't know about invalid input strings, just deconverts
+  . We have some use of *at() functions, especially anything which
+    temporarily switches cwd.
 
 vim:set fenc=utf-8:s-ts-mode
