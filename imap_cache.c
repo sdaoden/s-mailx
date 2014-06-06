@@ -522,7 +522,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    if (chdir(name) < 0)
       goto jleave;
    contents = builds(&contentelem);
-   if (contents) {
+   if (contents != NULL) {
       i = j = 0;
       while (j < contentelem) {
          if (i < mc && m[i].m_uid == contents[j]) {
@@ -533,13 +533,12 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
          else
             remve(contents[j++]);
       }
+      free(contents);
    }
    if (cwret(cw) == STOP) {
       fputs("Fatal: Cannot change back to current directory.\n", stderr);
       abort();
    }
-   if (contents != NULL)
-      free(contents);
 jleave:
    NYD_LEAVE;
 }
@@ -595,8 +594,10 @@ cache_setptr(int transparent)
       omessage = message;
       omsgCount = msgCount;
    }
-   free(mb.mb_cache_directory);
-   mb.mb_cache_directory = NULL;
+   if (mb.mb_cache_directory != NULL) {
+      free(mb.mb_cache_directory);
+      mb.mb_cache_directory = NULL;
+   }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
       goto jleave;
    mb.mb_cache_directory = sstrdup(name);
@@ -616,12 +617,17 @@ cache_setptr(int transparent)
       message[i].m_uid = contents[i];
       getcache1(&mb, &message[i], NEED_UNSPEC, 3);
    }
+   if (contents != NULL)
+      free(contents);
    mb.mb_type = MB_CACHE;
    mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
    if (transparent)
       transflags(omessage, omsgCount, 1);
-   else
+   else {
+      if (omessage != NULL)
+         free(omessage);
       setdot(message);
+   }
    rv = OKAY;
 jleave:
    NYD_LEAVE;
