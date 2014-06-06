@@ -783,6 +783,8 @@ jcont:
          continue;
       }
 
+      tty_addhist(linebuf, TRU1);
+
       c = linebuf[1];
       switch (c) {
       default:

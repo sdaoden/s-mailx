@@ -399,11 +399,14 @@ jleave:
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
 # ifdef HAVE_HISTORY
+   if (isgabby && !ok_blook(history_gabby))
+      goto jleave;
    _CL_CHECK_ADDHIST(s, goto jleave);
    hold_all_sigs();  /* XXX too heavy */
    add_history(s);   /* XXX yet we jump away! */
@@ -602,7 +605,7 @@ jleave:
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
 # ifdef HAVE_HISTORY
    /* Enlarge meaning of unique .. to something that rocks;
@@ -613,8 +616,11 @@ tty_addhist(char const *s)
 # endif
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
+   if (isgabby && !ok_blook(history_gabby))
+      goto jleave;
    _CL_CHECK_ADDHIST(s, goto jleave);
 
    hold_all_sigs(); /* XXX too heavy, yet we jump away! */
@@ -746,26 +752,27 @@ struct line {
    size_t         cursor;     /* Current cursor position */
    size_t         topins;     /* Outermost cursor col set */
    union {
-      char *         cbuf;    /* *x_buf */
-      struct cell *  cells;
+      char          *cbuf;    /* *x_buf */
+      struct cell   *cells;
    }              line;
    struct str     defc;       /* Current default content */
    struct str     savec;      /* Saved default content */
 # ifdef HAVE_HISTORY
-   struct hist *  hist;       /* History cursor */
+   struct hist   *hist;       /* History cursor */
 # endif
-   char const *   prompt;
-   char const *   nd;         /* Cursor right */
-   char **        x_buf;      /* Caller pointers */
-   size_t *       x_bufsize;
+   char const    *prompt;
+   char const    *nd;         /* Cursor right */
+   char         **x_buf;      /* Caller pointers */
+   size_t        *x_bufsize;
 };
 
 # ifdef HAVE_HISTORY
 struct hist {
-   struct hist *  older;
-   struct hist *  younger;
-   size_t         len;
-   char           dat[VFIELD_SIZE(sizeof(size_t))];
+   struct hist   *older;
+   struct hist   *younger;
+   ui32_t         isgabby : 1;
+   ui32_t         len     : 31;
+   char           dat[VFIELD_SIZE(sizeof(ui32_t))];
 };
 # endif
 
@@ -778,8 +785,8 @@ static union xsighdl _ncl_ottin;
 static union xsighdl _ncl_ottou;
 static struct xtios  _ncl_tios;
 # ifdef HAVE_HISTORY
-static struct hist * _ncl_hist;
-static struct hist * _ncl_hist_tail;
+static struct hist  *_ncl_hist;
+static struct hist  *_ncl_hist_tail;
 static size_t        _ncl_hist_size;
 static size_t        _ncl_hist_size_max;
 static bool_t        _ncl_hist_load;
@@ -1824,7 +1831,7 @@ tty_init(void)
       if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
          continue;
       _ncl_hist_load = TRU1;
-      tty_addhist(lbuf);
+      tty_addhist(lbuf, FAL0);
       _ncl_hist_load = FAL0;
    }
    if (lbuf != NULL)
@@ -1845,6 +1852,7 @@ tty_destroy(void)
    long hs;
    char *v;
    struct hist *hp;
+   bool_t dogabby;
    FILE *f;
 # endif
    NYD_ENTER;
@@ -1853,7 +1861,6 @@ tty_destroy(void)
    _CL_HISTSIZE(hs);
    if (hs == 0)
       goto jleave;
-
    _CL_HISTFILE(v);
    if (v == NULL)
       goto jleave;
@@ -1861,6 +1868,7 @@ tty_destroy(void)
    if ((hp = _ncl_hist) != NULL)
       while (hp->older != NULL && hs-- != 0)
          hp = hp->older;
+   dogabby = ok_blook(history_gabby_persist);
 
    hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "w"); /* TODO temporary + rename?! */
@@ -1871,8 +1879,10 @@ tty_destroy(void)
       goto jclose;
 
    for (; hp != NULL; hp = hp->younger) {
-      fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
-      putc('\n', f);
+      if (!hp->isgabby || dogabby) {
+         fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
+         putc('\n', f);
+      }
    }
 jclose:
    fclose(f);
@@ -1927,22 +1937,25 @@ FL int
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
-   size_t l;
+   ui32_t l;
    struct hist *h, *o, *y;
 # endif
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
-   l = strlen(s);
-
+   if (isgabby && !ok_blook(history_gabby))
+      goto j_leave;
    if (_ncl_hist_size_max == 0)
       goto j_leave;
    _CL_CHECK_ADDHIST(s, goto j_leave);
+
+   l = (ui32_t)strlen(s);
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
@@ -1950,6 +1963,8 @@ tty_addhist(char const *s)
       for (h = _ncl_hist; h != NULL; h = h->older)
          if (h->len == l && !strcmp(h->dat, s)) {
             hold_all_sigs(); /* TODO */
+            if (h->isgabby)
+               h->isgabby = !!isgabby;
             o = h->older;
             y = h->younger;
             if (o != NULL)
@@ -1977,6 +1992,7 @@ tty_addhist(char const *s)
    }
 
    h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l +1);
+   h->isgabby = !!isgabby;
    h->len = l;
    memcpy(h->dat, s, l +1);
 jleave:
@@ -2017,8 +2033,8 @@ jlist: {
    i = _ncl_hist_size;
    b = 0;
    for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n",
-         (ul_it)i, h->dat, (ul_it)b, (ul_it)h->len);
+      fprintf(fp, "%c%4" ZFMT ". %-50.50s (%4" ZFMT "+%2u bytes)\n",
+         (h->isgabby ? '*' : ' '), i, h->dat, b, h->len);
 
    page_or_print(fp, i);
    Fclose(fp);
@@ -2110,10 +2126,11 @@ FL int
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
    NYD_LEAVE;
 }
 #endif /* nothing at all */

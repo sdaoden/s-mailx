@@ -750,8 +750,7 @@ jreadline:
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
-         if (ev.ev_add_history)
-            tty_addhist(ev.ev_line.s);
+         tty_addhist(ev.ev_line.s, !ev.ev_add_history);
       }
    }
 
@@ -785,6 +784,9 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    ev.ev_line.l = linesize;
    ev.ev_is_recursive = (contxt != 0);
    rv = evaluate(&ev);
+
+   if (contxt)
+      tty_addhist(ev.ev_line.s, TRU1);
 
 #ifdef HAVE_COLOUR
    colour_table = ct_save;

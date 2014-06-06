@@ -753,6 +753,8 @@ enum okeys {
    ok_b_forward_as_attachment,
    ok_b_fullnames,
    ok_b_header,                        /* {special=1} */
+   ok_b_history_gabby,
+   ok_b_history_gabby_persist,
    ok_b_hold,
    ok_b_idna_disable,
    ok_b_ignore,

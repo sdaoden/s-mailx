@@ -1855,9 +1855,10 @@ FL int         tty_readline(char const *prompt, char **linebuf,
 # define tty_readline(A,B,C,D)   tty_readline(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Add a line (most likely as returned by tty_readline()) to the history
- * (only added for real if non-empty and doesn't begin with U+0020) */
-FL void        tty_addhist(char const *s);
+/* Add a line (most likely as returned by tty_readline()) to the history.
+ * Wether an entry added for real depends on the isgabby / *history-gabby*
+ * relation, and / or wether s is non-empty and doesn't begin with U+0020 */
+FL void        tty_addhist(char const *s, bool_t isgabby);
 
 #if defined HAVE_HISTORY &&\
    (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
