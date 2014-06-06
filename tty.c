@@ -1732,6 +1732,12 @@ j_p:
                case L'B':  goto j_n;
                case L'C':  goto j_f;
                case L'D':  goto j_b;
+               case L'H':
+                  cursor_store = '0';
+                  goto J_xterm_noapp;
+               case L'F':
+                  cursor_store = '$';
+                  goto J_xterm_noapp;
                case L'1':
                case L'4':
                case L'5':
@@ -1744,7 +1750,8 @@ j_p:
                _ncl_kother(&l, L'[');
             } else {
                cursor_maybe = 0;
-               if (wc == L'~') {
+               if (wc == L'~')
+J_xterm_noapp: {
                   char x[2];
                   x[0] = cursor_store;
                   x[1] = '\0';
