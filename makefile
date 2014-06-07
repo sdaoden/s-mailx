@@ -32,7 +32,7 @@ devel:
 _update-version:
 	@$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version
 _update-release:
-	@$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-release
+	@$(_prego) && LC_XX=${LC_ALL} LC_ALL=C $(MAKE) -f mk.mk _update-release
 
 _prego = $(SHELL) ./mk-conf.sh
 _prestop = [ -f ./mk.mk ] || {\

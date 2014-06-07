@@ -225,7 +225,8 @@ _update-release:
 	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
 	make devel &&\
-	./s-nail -A sn_sf -s "[ANNOUNCE] of S-nail v$${REL}" nail-announce &&\
+	LC_ALL=${LC_XX} ./s-nail -A sn_sf \
+		-s "[ANNOUNCE] of S-nail v$${REL}" nail-announce &&\
 	cd .. &&\
 	echo "Really remove $(UAGENT)-$${REL} build dir?  ENTER continues";\
 	read i;\
