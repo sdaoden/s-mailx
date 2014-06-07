@@ -40,6 +40,9 @@ which take precedence over anything else:
   names will be supported if the necessary libraries are available,
   otherwise identical to MEDIUM.
 
+. CONFIG=MAXIMAL
+  Anything on.
+
 E.g.:
 
   $ make CONFIG=MINIMAL DESTDIR=xtest install
@@ -104,9 +107,9 @@ reflected by the following statements.
   - Dependent on the configuration you may see some warnings about
     unused functions.  This shouldn't happen for a any of the predefined
     CONFIG= urations, including the one that results from the default
-    settings of `conf.rc'.  It may temporarily happen for other
-    individual configurations as long as the codebase is in that heavy
-    fluctuation state.  Reports are welcome to vanish them until v20.
+    settings of `conf.rc', but it may temporarily happen as long as the
+    codebase is in that heavy fluctuation state.  Reports are welcome to
+    vanish them until v20.
 
 . All 32-bit systems:
   - There _may_ be warnings about format strings, like, e.g.,
@@ -126,7 +129,7 @@ reflected by the following statements.
   (Snow Leopard) Darwin 10.8.0 i386
   - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
     + Two warnings on 'signed overflow': the '_match_at()' one is to be
-      inspected
+      inspected (CONFIG=MINIMAL WANT_AMALGAMATION=1).
   - clang version 3.4 (branches/release_34 197314)
     Target: x86_64-apple-darwin10.8.0
     Thread model: posix.
@@ -136,32 +139,36 @@ reflected by the following statements.
     2.9svn).
 
 . ArchLinux <https://www.archlinux.org/>
-  Linux 3.13.8-1-ARCH x86_64
-  - gcc (GCC) 4.8.2 20140206 (prerelease)
+  Linux 3.14.2-1-ARCH x86_64
+  - gcc (GCC) 4.9.0
     + `devel'opment target: warnings on unused results, just ignore (for
       now).
-    + Two warnings on 'signed overflow': the '_match_at()' one is to be
-      inspected
+    + I think faulty message on longjmp() clobbering on a const variable?
 
 . CRUX Linux <http://www.crux.nu/>
-  Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
-  - gcc (CRUX-x86_64-multilib) 4.7.2.
-    + A single warning on 'signed overflow'.
+  CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
+  - gcc (CRUX) 4.8.2.
+    + Two warnings on 'signed overflow': the '_match_at()' one is to be
+      inspected (CONFIG=MINIMAL WANT_AMALGAMATION=1).
     + `devel'opment target: warnings on unused results, just ignore
       (for now).
-    + In a very special test mailbox the character `☕' (U+2615 HOT
+    + (The HOT BEVERAGE error doesn't occur, even today.)
+
+  Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
+  - gcc (CRUX-x86_64-multilib) 4.7.2.
+    + For rememberance:
+      In a very special test mailbox the character `☕' (U+2615 HOT
       BEVERAGE) is displayed as `[3m<98><95>' (`set PAGER='cat -vet''
       prints `M-bM-^XM-^U').  Because this is the only system i have
       seen this, and only in this single mailbox, i suspect a problem
-      in the character conversion environment.  (I hope v14.7 brings
+      in the character conversion environment.  (I hope v14.888888888ngs
       sole usage of mbrtowc(3) instead of mbtowc(3) and per-message
       multibyte states.  Let's see if that fixes this problem.  I'll
       keep the VM around.)
 
 . NetBSD <https://www.netbsd.org/>
-  NetBSD 6.99.28 NetBSD 6.99.28 (GENERIC) #0: Fri Jan  3 05:24:46 UTC
-  2014 i386
-  - gcc (NetBSD nb1 20120916) 4.5.4
+  NetBSD 6.99.40 i386 (201404092030Z)
+  - gcc (NetBSD nb2 20140304) 4.8.3
     + Warnings on format strings -- as above.
     + Faulty message on longjmp() clobbering (on a const variable).
 
@@ -185,6 +192,7 @@ reflected by the following statements.
     + `devel'opment target: warnings on format strings -- as above.
 
 . OpenBSD <http://www.openbsd.org/>
+  OpenBSD 5.6 (current as of 2014-05-25) i386,
   OpenBSD 5.4 i386.
   - gcc (GCC) 4.2.1 20070719.
     + Faulty message on longjmp() clobbering (on a const variable).
@@ -199,9 +207,9 @@ reflected by the following statements.
       treat it specially already).
 
 . UnixWare 7.1.4.
-  + Note: this make(1) requires the -e option to pass values to make(1)
-    subprocesses, so, if you want to overwrite DESTDIR= when doing
-    `packager-install', you better say '$ make -e DESTDIR=xy ...'.
+  + Note: it is no longer possible to use the `install' rule -- mk-mk.in
+    uses shell functions to ease the task of directory creation etc.
+    (especially useful due to VERBOSE=), and that won't work due to bugs.
   + You'll see some harmless and ignorable warnings (the problematic
     looking warning `"openssl.c", line 88: initialization type mismatch'
     refers to a cast from non-const to const, which shouldn't matter).
@@ -219,14 +227,15 @@ and thus this codebase and i are antipodes.
 The following modules have not yet been looked at and/or have known
 design flaws or bugs:
 
-  IMAP, (IMAP-) GSSAPI, (IMAP-) Caching
+  IMAP, (IMAP-) Caching
+  GSS-API (Tarqi Kazan reported with LOG that GSS-API still works)
 
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Mail, as a good one, then.  Also see `TODO'.
 
 In general, S-nail versions before v14.5.2 (old-style codebase, when
 used with the four published patches (on Sourceforge or the [patches]
-branch)) and v14.6.2 (new-style codebase, after the NYD rewrite) should
+branch)) and v14.6.4 (new-style codebase, after the NYD rewrite) should
 not be used. Furthermore, for now (see below) i mostly care about the
 core POSIX mailx(1) functionality, everything else has to wait until
 some later time, mostly because the Berkeley codebase and its nail fork

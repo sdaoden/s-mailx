@@ -644,7 +644,7 @@ c_deltype(void *v)
    int list[2], rv = 0, *msgvec = v, lastdot;
    NYD_ENTER;
 
-   lastdot = dot - message + 1;
+   lastdot = (int)PTR2SIZE(dot - message + 1);
    if (delm(msgvec) >= 0) {
       list[0] = (int)PTR2SIZE(dot - message + 1);
       if (list[0] > lastdot) {

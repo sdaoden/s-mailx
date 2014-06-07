@@ -141,15 +141,19 @@ static enum okay
 parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    int level)
 {
-   char *cp;
+   char *cp_b, *cp;
    enum okay rv = STOP;
    NYD_ENTER;
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL) {
-      ip->m_ct_type_plain = savestr(ip->m_ct_type);
-      if ((cp = strchr(ip->m_ct_type_plain, ';')) != NULL)
+      cp_b = ip->m_ct_type_plain = savestr(ip->m_ct_type);
+      if ((cp = strchr(cp_b, ';')) != NULL)
          *cp = '\0';
+      cp = cp_b + strlen(cp_b);
+      while (cp > cp_b && blankchar(cp[-1]))
+         --cp;
+      *cp = '\0';
    } else if (ip->m_parent != NULL &&
          ip->m_parent->m_mimecontent == MIME_DIGEST)
       ip->m_ct_type_plain = UNCONST("message/rfc822");
@@ -453,19 +457,18 @@ _print_part_info(struct str *out, struct mimepart *mip,
       ct.s[ct.l] = '\0';
    }
 
-   /* Max. 27 */
+   /* Max. 32 */
    if (is_ign("content-disposition", 19, doign) && mip->m_filename != NULL) {
       struct str ti, to;
 
       ti.l = strlen(ti.s = mip->m_filename);
       mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
-      to.l = MIN(to.l, 25); /* FIXME MIME: filename may be multibyte enc!! */
-      cd.s = ac_alloc(to.l + 2 +1); /* FIXME ..visual length would be better */
+
+      cd.s = ac_alloc(2 + 32 +1); /* FIXME was 25.. UNI: USE VISUAL WIDTH!!! */
       cd.s[0] = ',';
       cd.s[1] = ' ';
-      memcpy(cd.s + 2, to.s, to.l);
-      to.l += 2;
-      cd.s[to.l] = '\0';
+      cd.l = 2 + field_put_bidi_clip(cd.s + 2, 32 +1, to.s, to.l);
+
       free(to.s);
    }
 
@@ -483,7 +486,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
    /* Assume maximum possible sizes for 64 bit integers here to avoid any
     * buffer overflows just in case we have a bug somewhere and / or the
     * snprintf() is our internal version that doesn't really provide hard
-    * buffer cuts */
+    * buffer cuts TODO ensure upper bound on numbers, use 9999999 else */
 #define __msg   "%s%s[-- #%s : %lu/%lu%s%s --]%s\n"
    out->l = sizeof(__msg) +
 #ifdef HAVE_COLOUR
@@ -559,7 +562,7 @@ _pipecmd(char **result, char const *content_type)
       char const *x = tr(999, "Should i display a part `%s' (y/n)? ");
       s = ac_alloc(l += strlen(x) +1);
       snprintf(s, l - 1, x, content_type);
-      l = yorn(s);
+      l = getapproval(s), TRU1;
          puts(""); /* .. we've hijacked a pipe 8-] ... */
       ac_free(s);
       if (!l) {
@@ -688,7 +691,7 @@ _send_onpipe(int signo)
 }
 
 static int
-sendpart(struct message *zmp, struct mimepart *ip, FILE *obuf,
+sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct ignoretab *doign, struct quoteflt *qf,
    enum sendaction volatile action, off_t *volatile stats, int level)
 {

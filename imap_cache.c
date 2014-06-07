@@ -81,8 +81,7 @@ Files named QUEUE contain data that will be sent do the IMAP server next\n\
 time a connection is made in online mode.\n";
 static const char README4[] = "\n\
 You can safely delete any file or directory here, unless it contains a QUEUE\n\
-file that is not empty; " UAGENT
-   "mailx(1) will download the data again and will also\n\
+file that is not empty; " UAGENT " will download the data again and will also\n\
 write new cache entries if configured in this way. If you do not wish to use\n\
 the cache anymore, delete the entire directory and unset the 'imap-cache'\n\
 variable in " UAGENT "(1).\n";
@@ -98,7 +97,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
    int resz;
    NYD_ENTER;
 
-   ename = urlxenc(name);
+   ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
       res = salloc(resz = strlen(mp->mb_cache_directory) + strlen(ename) + 2);
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
@@ -109,11 +108,11 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
          res = NULL;
          goto jleave;
       }
-      eaccount = urlxenc(mp->mb_imap_account);
+      eaccount = urlxenc(mp->mb_imap_account, TRU1);
       if (box)
-         emailbox = urlxenc(box);
+         emailbox = urlxenc(box, TRU1);
       else if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-         emailbox = urlxenc(mp->mb_imap_mailbox);
+         emailbox = urlxenc(mp->mb_imap_mailbox, TRU1);
       else
          emailbox = "INBOX";
       res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
@@ -429,9 +428,9 @@ clean(struct mailbox *mp, struct cw *cw)
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = file_expand(cachedir)) == NULL)
       goto jleave;
-   eaccount = urlxenc(mp->mb_imap_account);
+   eaccount = urlxenc(mp->mb_imap_account, TRU1);
    if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-      emailbox = urlxenc(mp->mb_imap_mailbox);
+      emailbox = urlxenc(mp->mb_imap_mailbox, TRU1);
    else
       emailbox = "INBOX";
    buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
@@ -523,7 +522,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    if (chdir(name) < 0)
       goto jleave;
    contents = builds(&contentelem);
-   if (contents) {
+   if (contents != NULL) {
       i = j = 0;
       while (j < contentelem) {
          if (i < mc && m[i].m_uid == contents[j]) {
@@ -534,12 +533,12 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
          else
             remve(contents[j++]);
       }
+      free(contents);
    }
    if (cwret(cw) == STOP) {
       fputs("Fatal: Cannot change back to current directory.\n", stderr);
       abort();
    }
-   free(contents);
 jleave:
    NYD_LEAVE;
 }
@@ -595,8 +594,10 @@ cache_setptr(int transparent)
       omessage = message;
       omsgCount = msgCount;
    }
-   free(mb.mb_cache_directory);
-   mb.mb_cache_directory = NULL;
+   if (mb.mb_cache_directory != NULL) {
+      free(mb.mb_cache_directory);
+      mb.mb_cache_directory = NULL;
+   }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
       goto jleave;
    mb.mb_cache_directory = sstrdup(name);
@@ -616,12 +617,17 @@ cache_setptr(int transparent)
       message[i].m_uid = contents[i];
       getcache1(&mb, &message[i], NEED_UNSPEC, 3);
    }
+   if (contents != NULL)
+      free(contents);
    mb.mb_type = MB_CACHE;
    mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
    if (transparent)
       transflags(omessage, omsgCount, 1);
-   else
+   else {
+      if (omessage != NULL)
+         free(omessage);
       setdot(message);
+   }
    rv = OKAY;
 jleave:
    NYD_LEAVE;
@@ -642,7 +648,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = file_expand(cachedir)) == NULL)
       goto jleave;
-   eaccount = urlxenc(mp->mb_imap_account);
+   eaccount = urlxenc(mp->mb_imap_account, TRU1);
    name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(name, namesz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(name)) == NULL)
@@ -800,7 +806,7 @@ cache_dequeue(struct mailbox *mp)
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = file_expand(cachedir)) == NULL)
       goto jleave;
-   eaccount = urlxenc(mp->mb_imap_account);
+   eaccount = urlxenc(mp->mb_imap_account, TRU1);
    buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(buf)) == NULL)

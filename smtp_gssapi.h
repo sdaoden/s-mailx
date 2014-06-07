@@ -1,11 +1,12 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of IMAP GSS-API authentication according to RFC 1731.
+ *@ Implementation of SMTP GSS-API authentication according to RFC 4954.
  *@ TODO GSS-API should also be joined into "a VFS".  TODO LEAKS (error path)
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
-/*
+
+/* Derived from `imap_gssapi.h', which is:
+ *
  * Copyright (c) 2004 Gunnar Ritter.
  * All rights reserved.
  *
@@ -37,7 +38,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /*
  * Partially derived from sample code in:
  *
@@ -49,7 +49,7 @@
  */
 /*
  * Copyright 1994 by OpenVision Technologies, Inc.
- *
+ * 
  * Permission to use, copy, modify, distribute, and sell this software
  * and its documentation for any purpose is hereby granted without fee,
  * provided that the above copyright notice appears in all copies and
@@ -59,7 +59,7 @@
  * without specific, written prior permission. OpenVision makes no
  * representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied warranty.
- *
+ * 
  * OPENVISION DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
  * EVENT SHALL OPENVISION BE LIABLE FOR ANY SPECIAL, INDIRECT OR
@@ -80,12 +80,12 @@
 # include <gssapi.h>
 #endif
 
-static void _imap_gssapi_error1(const char *s, OM_uint32 code, int typ);
-static void _imap_gssapi_error(const char *s, OM_uint32 maj_stat,
+static void _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ);
+static void _smtp_gssapi_error(char const *s, OM_uint32 maj_stat,
                OM_uint32 min_stat);
 
 static void
-_imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
+_smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
 {
    OM_uint32 maj_stat, min_stat;
    gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
@@ -108,49 +108,38 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
 }
 
 static void
-_imap_gssapi_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
+_smtp_gssapi_error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 {
    NYD_ENTER;
-   _imap_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
-   _imap_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
+   _smtp_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
+   _smtp_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
    NYD_LEAVE;
 }
 
-static enum okay
-_imap_gssapi(struct mailbox *mp, struct ccred *ccred)
+static bool_t
+_smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
 {
-   char o[LINESIZE];
    struct str in, out;
    gss_buffer_desc send_tok, recv_tok, *token_ptr;
    gss_name_t target_name;
    gss_ctx_id_t gss_context;
    OM_uint32 maj_stat, min_stat, ret_flags;
    int conf_state;
-   FILE *queuefp = NULL;
-   char *server, *cp;
-   enum okay ok = STOP;
-   NYD_X;
+   bool_t ok = FAL0;
+   NYD_ENTER;
 
-   {  size_t i = strlen(mp->mb_imap_account) +1;
-      server = salloc(i);
-      memcpy(server, mp->mb_imap_account, i);
-   }
-   if (!strncmp(server, "imap://", 7))
-      server += 7;
-   else if (!strncmp(server, "imaps://", 8))
-      server += 8;
-   if ((cp = UNCONST(last_at_before_slash(server))) != NULL)
-      server = &cp[1];
-   for (cp = server; *cp; cp++)
-      *cp = lowerconv(*cp);
-   send_tok.value = salloc(send_tok.length = strlen(server) + 6);
-   snprintf(send_tok.value, send_tok.length, "imap@%s", server);
+   send_tok.value = salloc(send_tok.length = sbp->sb_url.url_host.l + 5 +1);
+   memcpy(send_tok.value, "smtp@", 5);
+   memcpy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
+      sbp->sb_url.url_host.l +1);
+
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    if (maj_stat != GSS_S_COMPLETE) {
-      _imap_gssapi_error(send_tok.value, maj_stat, min_stat);
-      return STOP;
+      _smtp_gssapi_error(send_tok.value, maj_stat, min_stat);
+      goto jleave;
    }
+
    token_ptr = GSS_C_NO_BUFFER;
    gss_context = GSS_C_NO_CONTEXT;
    maj_stat = gss_init_sec_context(&min_stat,
@@ -158,7 +147,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
          &gss_context,
          target_name,
          GSS_C_NO_OID,
-         GSS_C_MUTUAL_FLAG|GSS_C_SEQUENCE_FLAG,
+         GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG,
          0,
          GSS_C_NO_CHANNEL_BINDINGS,
          token_ptr,
@@ -167,32 +156,24 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
          &ret_flags,
          NULL);
    if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
-      _imap_gssapi_error("initializing GSS context", maj_stat, min_stat);
+      _smtp_gssapi_error("initializing GSS context", maj_stat, min_stat);
       gss_release_name(&min_stat, &target_name);
-      return STOP;
+      goto jleave;
    }
-   snprintf(o, sizeof o, "%s AUTHENTICATE GSSAPI\r\n", tag(1));
-   IMAP_OUT(o, 0, return STOP);
-   /*
-    * No response data expected.
-    */
-   imap_answer(mp, 1);
-   if (response_type != RESPONSE_CONT)
-      return STOP;
+
+   _OUT(LINE("AUTH GSSAPI"));
+   _ANSWER(3, FAL0, FAL0);
    while (maj_stat == GSS_S_CONTINUE_NEEDED) {
-      /*
-       * Pass token obtained from first gss_init_sec_context() call.
-       */
+      /* Pass token obtained from first gss_init_sec_context() call */
       b64_encode_buf(&out, send_tok.value, send_tok.length,
          B64_SALLOC | B64_CRLF);
       gss_release_buffer(&min_stat, &send_tok);
-      IMAP_OUT(out.s, 0, return STOP);
-      imap_answer(mp, 1);
-      if (response_type != RESPONSE_CONT)
-         return STOP;
+      _OUT(out.s);
+      _ANSWER(3, FAL0, TRU1);
+
       out.s = NULL;
-      in.s = responded_text;
-      in.l = strlen(responded_text);
+      in.s = slp->dat;
+      in.l = slp->datlen;
       b64_decode(&out, &in, NULL);
       recv_tok.value = out.s;
       recv_tok.length = out.l;
@@ -202,7 +183,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
             &gss_context,
             target_name,
             GSS_C_NO_OID,
-            GSS_C_MUTUAL_FLAG|GSS_C_SEQUENCE_FLAG,
+            GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG,
             0,
             GSS_C_NO_CHANNEL_BINDINGS,
             token_ptr,
@@ -212,30 +193,22 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
             NULL);
       free(out.s);
       if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
-         _imap_gssapi_error("initializing context", maj_stat, min_stat);
+         _smtp_gssapi_error("initializing context", maj_stat, min_stat);
          gss_release_name(&min_stat, &target_name);
-         return STOP;
+         goto jleave;
       }
    }
-   /*
-    * Pass token obtained from second gss_init_sec_context() call.
-    */
+
+   /* Pass token obtained from second gss_init_sec_context() call */
    gss_release_name(&min_stat, &target_name);
    b64_encode_buf(&out, send_tok.value, send_tok.length, B64_SALLOC | B64_CRLF);
    gss_release_buffer(&min_stat, &send_tok);
-   IMAP_OUT(out.s, 0, return STOP);
-   /*
-    * First octet: bit-mask with protection mechanisms.
-    * Second to fourth octet: maximum message size in network byte order.
-    *
-    * This code currently does not care about the values.
-    */
-   imap_answer(mp, 1);
-   if (response_type != RESPONSE_CONT)
-      return STOP;
+   _OUT(out.s);
+
+   _ANSWER(3, FAL0, TRU1);
    out.s = NULL;
-   in.s = responded_text;
-   in.l = strlen(responded_text);
+   in.s = slp->dat;
+   in.l = slp->datlen;
    b64_decode(&out, &in, NULL);
    recv_tok.value = out.s;
    recv_tok.length = out.l;
@@ -243,33 +216,36 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
          &conf_state, NULL);
    free(out.s);
    if (maj_stat != GSS_S_COMPLETE) {
-      _imap_gssapi_error("unwrapping data", maj_stat, min_stat);
-      return STOP;
+      _smtp_gssapi_error("unwrapping data", maj_stat, min_stat);
+      goto jleave;
    }
-   /*
-    * First octet: bit-mask with protection mechanisms (1 = no protection
+
+   /* First octet: bit-mask with protection mechanisms (1 = no protection
     *    mechanism).
     * Second to fourth octet: maximum message size in network byte order.
-    * Fifth and following octets: user name string.
-    */
-   o[0] = 1;
-   o[1] = 0;
-   o[2] = o[3] = (char)0377;
-   snprintf(&o[4], sizeof o - 4, "%s", ccred->cc_user.s);
-   send_tok.value = o;
-   send_tok.length = strlen(&o[4]) + 5;
+    * Fifth and following octets: user name string */
+   in.s = salloc(send_tok.length = 4 + sbp->sb_ccred.cc_user.l +1);
+   memcpy(in.s + 4, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
+   in.s[0] = 1;
+   in.s[1] = 0;
+   in.s[2] = in.s[3] = (char)0xFF;
+   send_tok.value = in.s;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    if (maj_stat != GSS_S_COMPLETE) {
-      _imap_gssapi_error("wrapping data", maj_stat, min_stat);
-      return STOP;
+      _smtp_gssapi_error("wrapping data", maj_stat, min_stat);
+      goto jleave;
    }
+
    b64_encode_buf(&out, recv_tok.value, recv_tok.length, B64_SALLOC | B64_CRLF);
-   IMAP_OUT(out.s, MB_COMD, return STOP);
-   while (mp->mb_active & MB_COMD)
-      ok = imap_answer(mp, 1);
+   _OUT(out.s);
+   _ANSWER(2, FAL0, FAL0);
    gss_delete_sec_context(&min_stat, &gss_context, &recv_tok);
    gss_release_buffer(&min_stat, &recv_tok);
+
+   ok = TRU1;
+jleave:
+   NYD_LEAVE;
    return ok;
 }
 

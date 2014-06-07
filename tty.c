@@ -140,53 +140,50 @@ __tty_acthdl(int s) /* TODO someday, we won't need it no more */
 }
 
 FL bool_t
-getapproval(char const *prompt, bool_t noninteract_default)
+getapproval(char const * volatile prompt, bool_t noninteract_default)
 {
-   bool_t rv;
+   sighandler_type volatile ohdl;
+   bool_t volatile hadsig = FAL0, rv;
    NYD_ENTER;
 
    if (!(options & OPT_INTERACTIVE)) {
       rv = noninteract_default;
       goto jleave;
    }
+   rv = FAL0;
 
    if (prompt == NULL)
       prompt = tr(264, "Continue (y/n)? ");
 
-   rv = FAL0;
+   ohdl = safe_signal(SIGINT, SIG_IGN);
+   if (sigsetjmp(__tty_actjmp, 1) != 0) {
+      hadsig  = TRU1;
+      goto jrestore;
+   }
+   safe_signal(SIGINT, &__tty_acthdl);
+
    if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       switch (termios_state.ts_linebuf[0]) {
-      case 'y':
-      case 'Y':
-         rv = TRU1;
-         /* FALLTHRU */
-      default:
-         break;
+      case 'N': case 'n':  rv = FAL0; break ;
+      default:             rv = TRU1; break;
       }
+jrestore:
    termios_state_reset();
+   safe_signal(SIGINT, ohdl);
 jleave:
    NYD_LEAVE;
-   return rv;
-}
-
-FL bool_t
-yorn(char const *msg) /* TODO obsolete */
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   rv = getapproval(msg, TRU1);
-   NYD_LEAVE;
+   if (hadsig && ohdl != SIG_IGN)
+      kill(0, SIGINT);
    return rv;
 }
 
 FL char *
-getuser(char const * volatile query)
+getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
    sighandler_type volatile ohdl;
-   char *user = NULL;
-   bool_t hadsig = FAL0;
+   char * volatile user = NULL;
+   bool_t volatile hadsig = FAL0;
    NYD_ENTER;
 
    if (query == NULL)
@@ -212,12 +209,14 @@ jrestore:
 }
 
 FL char *
-getpassword(char const *query) /* FIXME encaps ttystate signal safe */
+getpassword(char const *query)
 {
    sighandler_type volatile ohdl;
    struct termios tios;
-   char *pass = NULL;
-   bool_t hadsig = FAL0;
+   char * volatile pass = NULL;
+#if 0
+   bool_t hadsig = FAL0; /* TODO getpassword() no longer reraises SIGINT */
+#endif
    NYD_ENTER;
 
    if (query == NULL)
@@ -239,7 +238,9 @@ getpassword(char const *query) /* FIXME encaps ttystate signal safe */
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
-      hadsig  = TRU1;
+#if 0
+      hadsig = TRU1;
+#endif
       goto jrestore;
    }
    safe_signal(SIGINT, &__tty_acthdl);
@@ -253,37 +254,11 @@ jrestore:
    if (options & OPT_TTYIN)
       fputc('\n', stdout);
    NYD_LEAVE;
+#if 0
    if (hadsig && ohdl != SIG_IGN)
       kill(0, SIGINT);
+#endif
    return pass;
-}
-
-FL bool_t
-getcredentials(char **user, char **pass)
-{
-   bool_t rv;
-   char *u, *p;
-   NYD_ENTER;
-
-   rv = TRU1;
-   u = *user;
-   p = *pass;
-
-   if (u == NULL) {
-      if ((u = getuser(NULL)) == NULL)
-         rv = FAL0;
-      else if (p == NULL)
-         u = savestr(u);
-      *user = u;
-   }
-
-   if (p == NULL) {
-      if ((p = getpassword(NULL)) == NULL)
-         rv = FAL0;
-      *pass = p;
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 /*
@@ -424,11 +399,14 @@ jleave:
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
 # ifdef HAVE_HISTORY
+   if (isgabby && !ok_blook(history_gabby))
+      goto jleave;
    _CL_CHECK_ADDHIST(s, goto jleave);
    hold_all_sigs();  /* XXX too heavy */
    add_history(s);   /* XXX yet we jump away! */
@@ -627,7 +605,7 @@ jleave:
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
 # ifdef HAVE_HISTORY
    /* Enlarge meaning of unique .. to something that rocks;
@@ -638,8 +616,11 @@ tty_addhist(char const *s)
 # endif
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
+   if (isgabby && !ok_blook(history_gabby))
+      goto jleave;
    _CL_CHECK_ADDHIST(s, goto jleave);
 
    hold_all_sigs(); /* XXX too heavy, yet we jump away! */
@@ -771,26 +752,27 @@ struct line {
    size_t         cursor;     /* Current cursor position */
    size_t         topins;     /* Outermost cursor col set */
    union {
-      char *         cbuf;    /* *x_buf */
-      struct cell *  cells;
+      char          *cbuf;    /* *x_buf */
+      struct cell   *cells;
    }              line;
    struct str     defc;       /* Current default content */
    struct str     savec;      /* Saved default content */
 # ifdef HAVE_HISTORY
-   struct hist *  hist;       /* History cursor */
+   struct hist   *hist;       /* History cursor */
 # endif
-   char const *   prompt;
-   char const *   nd;         /* Cursor right */
-   char **        x_buf;      /* Caller pointers */
-   size_t *       x_bufsize;
+   char const    *prompt;
+   char const    *nd;         /* Cursor right */
+   char         **x_buf;      /* Caller pointers */
+   size_t        *x_bufsize;
 };
 
 # ifdef HAVE_HISTORY
 struct hist {
-   struct hist *  older;
-   struct hist *  younger;
-   size_t         len;
-   char           dat[VFIELD_SIZE(sizeof(size_t))];
+   struct hist   *older;
+   struct hist   *younger;
+   ui32_t         isgabby : 1;
+   ui32_t         len     : 31;
+   char           dat[VFIELD_SIZE(sizeof(ui32_t))];
 };
 # endif
 
@@ -803,8 +785,8 @@ static union xsighdl _ncl_ottin;
 static union xsighdl _ncl_ottou;
 static struct xtios  _ncl_tios;
 # ifdef HAVE_HISTORY
-static struct hist * _ncl_hist;
-static struct hist * _ncl_hist_tail;
+static struct hist  *_ncl_hist;
+static struct hist  *_ncl_hist_tail;
 static size_t        _ncl_hist_size;
 static size_t        _ncl_hist_size_max;
 static bool_t        _ncl_hist_load;
@@ -1532,10 +1514,9 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
     * buffer", and only otherwise read(2) it */
    mbstate_t ps[2];
    struct line l;
-   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
+   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp, cursor_maybe, cursor_store;
    wchar_t wc;
    ssize_t rv;
-   ui32_t maybe_cursor;
    NYD_ENTER;
 
    memset(&l, 0, sizeof l);
@@ -1558,7 +1539,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
 jrestart:
    memset(ps, 0, sizeof ps);
-   maybe_cursor = 0;
+   cursor_maybe = cursor_store = 0;
    /* TODO: NCL: we should output the reset sequence when we jrestart:
     * TODO: NCL: if we are using a stateful encoding? !
     * TODO: NCL: in short: this is not yet well understood */
@@ -1623,8 +1604,8 @@ jrestart:
       case 'A' ^ 0x40: /* cursor home */
          _ncl_khome(&l, TRU1);
          break;
-j_b:
       case 'B' ^ 0x40: /* backward character */
+j_b:
          _ncl_kleft(&l);
          break;
       /* 'C': interrupt (CTRL-C) */
@@ -1635,8 +1616,8 @@ j_b:
       case 'E' ^ 0x40: /* end of line */
          _ncl_kend(&l);
          break;
-j_f:
       case 'F' ^ 0x40: /* forward character */
+j_f:
          _ncl_kright(&l);
          break;
       /* 'G' below */
@@ -1674,11 +1655,12 @@ jreset:
          fflush(stdout);
          goto jrestart;
       case 'L' ^ 0x40: /* repaint line */
+j_l:
          _ncl_krefresh(&l);
          break;
       /* 'M': CR (\r) */
-j_n:
       case 'N' ^ 0x40: /* history next */
+j_n:
 # ifdef HAVE_HISTORY
          if (l.hist == NULL)
             goto jbell;
@@ -1690,8 +1672,16 @@ j_n:
          goto jbell;
 # endif
       /* 'O' */
-j_p:
+      case 'O' ^ 0x40: /* `dp' */
+         putchar('\n');
+         cbuf_base[0] = 'd';
+         cbuf_base[1] = 'p';
+         cbuf_base[2] = '\0';
+         inhook = 0;
+         execute(cbuf_base, TRU1, 2);
+         goto j_l;
       case 'P' ^ 0x40: /* history previous */
+j_p:
 # ifdef HAVE_HISTORY
          if ((len = _ncl_khist(&l, TRU1)) > 0)
             goto jrestart;
@@ -1724,25 +1714,55 @@ j_p:
          break;
       /* 'Z': suspend (CTRL-Z) */
       case 0x1B:
-         if (maybe_cursor++ != 0)
+         if (cursor_maybe++ != 0)
             goto jreset;
          continue;
       default:
-         /* XXX Handle usual ^[[[ABCD] cursor keys -- UGLY, "MAGIC", INFLEX */
-         if (maybe_cursor > 0) {
-            if (++maybe_cursor == 2) {
+         /* XXX Handle usual ^[[[ABCD1456] cursor keys: UGLY,"MAGIC",INFLEX */
+         if (cursor_maybe > 0) {
+            if (++cursor_maybe == 2) {
                if (wc == L'[')
                   continue;
-               maybe_cursor = 0;
-            } else {
-               maybe_cursor = 0;
+               cursor_maybe = 0;
+            } else if (cursor_maybe == 3) {
+               cursor_maybe = 0;
                switch (wc) {
+               default:    break;
                case L'A':  goto j_p;
                case L'B':  goto j_n;
                case L'C':  goto j_f;
                case L'D':  goto j_b;
+               case L'H':
+                  cursor_store = '0';
+                  goto J_xterm_noapp;
+               case L'F':
+                  cursor_store = '$';
+                  goto J_xterm_noapp;
+               case L'1':
+               case L'4':
+               case L'5':
+               case L'6':
+                  cursor_store = ((wc == L'1') ? '0' :
+                        (wc == L'4' ? '$' : (wc == L'5' ? '-' : '+')));
+                  cursor_maybe = 3;
+                  continue;
                }
                _ncl_kother(&l, L'[');
+            } else {
+               cursor_maybe = 0;
+               if (wc == L'~')
+J_xterm_noapp: {
+                  char x[2];
+                  x[0] = cursor_store;
+                  x[1] = '\0';
+                  putchar('\n');
+                  c_scroll(x);
+                  cursor_store = 0;
+                  goto j_l;
+               }
+               _ncl_kother(&l, L'[');
+               _ncl_kother(&l, (wchar_t)cursor_store);
+               cursor_store = 0;
             }
          }
 jprint:
@@ -1818,7 +1838,7 @@ tty_init(void)
       if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
          continue;
       _ncl_hist_load = TRU1;
-      tty_addhist(lbuf);
+      tty_addhist(lbuf, FAL0);
       _ncl_hist_load = FAL0;
    }
    if (lbuf != NULL)
@@ -1839,6 +1859,7 @@ tty_destroy(void)
    long hs;
    char *v;
    struct hist *hp;
+   bool_t dogabby;
    FILE *f;
 # endif
    NYD_ENTER;
@@ -1847,7 +1868,6 @@ tty_destroy(void)
    _CL_HISTSIZE(hs);
    if (hs == 0)
       goto jleave;
-
    _CL_HISTFILE(v);
    if (v == NULL)
       goto jleave;
@@ -1855,6 +1875,7 @@ tty_destroy(void)
    if ((hp = _ncl_hist) != NULL)
       while (hp->older != NULL && hs-- != 0)
          hp = hp->older;
+   dogabby = ok_blook(history_gabby_persist);
 
    hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "w"); /* TODO temporary + rename?! */
@@ -1865,8 +1886,10 @@ tty_destroy(void)
       goto jclose;
 
    for (; hp != NULL; hp = hp->younger) {
-      fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
-      putc('\n', f);
+      if (!hp->isgabby || dogabby) {
+         fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
+         putc('\n', f);
+      }
    }
 jclose:
    fclose(f);
@@ -1921,22 +1944,25 @@ FL int
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
-   size_t l;
+   ui32_t l;
    struct hist *h, *o, *y;
 # endif
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
-   l = strlen(s);
-
+   if (isgabby && !ok_blook(history_gabby))
+      goto j_leave;
    if (_ncl_hist_size_max == 0)
       goto j_leave;
    _CL_CHECK_ADDHIST(s, goto j_leave);
+
+   l = (ui32_t)strlen(s);
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
@@ -1944,6 +1970,8 @@ tty_addhist(char const *s)
       for (h = _ncl_hist; h != NULL; h = h->older)
          if (h->len == l && !strcmp(h->dat, s)) {
             hold_all_sigs(); /* TODO */
+            if (h->isgabby)
+               h->isgabby = !!isgabby;
             o = h->older;
             y = h->younger;
             if (o != NULL)
@@ -1971,6 +1999,7 @@ tty_addhist(char const *s)
    }
 
    h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l +1);
+   h->isgabby = !!isgabby;
    h->len = l;
    memcpy(h->dat, s, l +1);
 jleave:
@@ -2011,8 +2040,8 @@ jlist: {
    i = _ncl_hist_size;
    b = 0;
    for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n",
-         (ul_it)i, h->dat, (ul_it)b, (ul_it)h->len);
+      fprintf(fp, "%c%4" ZFMT ". %-50.50s (%4" ZFMT "+%2u bytes)\n",
+         (h->isgabby ? '*' : ' '), i, h->dat, b, h->len);
 
    page_or_print(fp, i);
    Fclose(fp);
@@ -2104,10 +2133,11 @@ FL int
 }
 
 FL void
-tty_addhist(char const *s)
+tty_addhist(char const *s, bool_t isgabby)
 {
    NYD_ENTER;
    UNUSED(s);
+   UNUSED(isgabby);
    NYD_LEAVE;
 }
 #endif /* nothing at all */

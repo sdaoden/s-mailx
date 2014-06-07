@@ -476,7 +476,7 @@ page_or_print(FILE *fp, size_t lines)
 }
 
 FL enum protocol
-which_protocol(char const *name)
+which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
 {
    struct stat st;
    char const *cp;
@@ -539,9 +539,9 @@ jfile:
    memcpy(np, name, sz + 1);
    if (!stat(name, &st)) {
       if (S_ISDIR(st.st_mode) &&
-            (strcpy(&np[sz], "/tmp"), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (strcpy(&np[sz], "/new"), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (strcpy(&np[sz], "/cur"), !stat(np, &st) && S_ISDIR(st.st_mode)))
+            (memcpy(np+sz, "/tmp", 4), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (memcpy(np+sz, "/new", 4), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (memcpy(np+sz, "/cur", 4), !stat(np, &st) && S_ISDIR(st.st_mode)))
           rv = PROTO_MAILDIR;
    } else if ((cp = ok_vlook(newfolders)) != NULL && !strcmp(cp, "maildir"))
       rv = PROTO_MAILDIR;
@@ -672,39 +672,79 @@ jleave:
 }
 
 FL char *
-getprompt(void)
+getprompt(void) /* TODO evaluate only as necessary (needs a bit) */
 {
    static char buf[PROMPT_BUFFER_SIZE];
 
-   char *cp = buf;
-   char const *ccp;
+   char *cp;
+   char const *ccp_base, *ccp;
+   size_t NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
+   bool_t run2;
    NYD_ENTER;
 
-   if ((ccp = ok_vlook(prompt)) == NULL || *ccp == '\0')
+   cp = buf;
+   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0')
       goto jleave;
+   NATCH_CHAR( cclen_base = strlen(ccp_base); )
 
-   for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
-      char const *a;
+   dfmaxlen = 0; /* keep CC happy */
+   run2 = FAL0;
+jredo:
+   ccp = ccp_base;
+   NATCH_CHAR( cclen = cclen_base; )
+   maxlen = sizeof(buf) -1;
+
+   for (;;) {
       size_t l;
-      int c = expand_shell_escape(&ccp, TRU1);
+      int c;
 
-      if (c > 0) {
-         *cp = (char)c;
+      if (maxlen == 0)
+         goto jleave;
+#ifdef HAVE_NATCH_CHAR
+      c = mblen(ccp, cclen); /* TODO use mbrtowc() */
+      if (c <= 0) {
+         mblen(NULL, 0);
+         if (c < 0) {
+            *buf = '?';
+            cp = buf + 1;
+            goto jleave;
+         }
+         break;
+      } else if ((l = c) > 1) {
+         if (run2) {
+            memcpy(cp, ccp, l);
+            cp += l;
+         }
+         ccp += l;
+         maxlen -= l;
          continue;
+      } else
+#endif
+      if ((c = expand_shell_escape(&ccp, TRU1)) > 0) {
+            if (run2)
+               *cp++ = (char)c;
+            --maxlen;
+            continue;
       }
       if (c == 0 || c == PROMPT_STOP)
          break;
 
-      a = (c == PROMPT_DOLLAR) ? account_name : displayname;
-      if (a == NULL)
-         a = "";
-      l = strlen(a);
-      if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
-         *cp++ = '?';
-      else {
-         memcpy(cp, a, l);
-         cp += --l;
+      if (run2) {
+         char const *a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+         if (a == NULL)
+            a = "";
+         if ((l = field_put_bidi_clip(cp, dfmaxlen, a, strlen(a))) > 0) {
+            cp += l;
+            maxlen -= l;
+            dfmaxlen -= l;
+         }
       }
+   }
+
+   if (!run2) {
+      run2 = TRU1;
+      dfmaxlen = maxlen;
+      goto jredo;
    }
 jleave:
    *cp = '\0';
@@ -715,7 +755,7 @@ jleave:
 FL char *
 nodename(int mayoverride)
 {
-   static char *hostname;
+   static char *sys_hostname, *hostname; /* XXX free-at-exit */
 
    struct utsname ut;
    char *hn;
@@ -729,10 +769,8 @@ nodename(int mayoverride)
    NYD_ENTER;
 
    if (mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0') {
-      if (hostname != NULL)
-         free(hostname);
-      hostname = sstrdup(hn);
-   } else if (hostname == NULL) {
+      ;
+   } else if ((hn = sys_hostname) == NULL) {
       uname(&ut);
       hn = ut.nodename;
 #ifdef HAVE_SOCKETS
@@ -755,35 +793,577 @@ nodename(int mayoverride)
          hn = hent->h_name;
 # endif
 #endif
-      hostname = sstrdup(hn);
+      sys_hostname = sstrdup(hn);
 #if defined HAVE_SOCKETS && defined HAVE_IPV6
       if (hn != ut.nodename)
          ac_free(hn);
 #endif
+      hn = sys_hostname;
    }
+
+   if (hostname != NULL && hostname != sys_hostname)
+      free(hostname);
+   hostname = sstrdup(hn);
    NYD_LEAVE;
    return hostname;
 }
 
-FL char *
-lookup_password_for_token(char const *token)
+FL bool_t
+url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
-   size_t tl;
-   char *var, *cp;
+#if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
+# define __ALLPROTO
+#endif
+#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP
+# define __ANYPROTO
+   char *cp, *x;
+#endif
+   bool_t rv = FAL0;
+   NYD_ENTER;
+   UNUSED(data);
+
+   memset(urlp, 0, sizeof *urlp);
+   urlp->url_input = data;
+   urlp->url_cproto = cproto;
+
+   /* Network protocol */
+#define _protox(X,Y)  \
+   urlp->url_portno = Y;\
+   memcpy(urlp->url_proto, X "://", sizeof(X "://"));\
+   urlp->url_proto[sizeof(X) -1] = '\0';\
+   urlp->url_proto_len = sizeof(X) -1;\
+   urlp->url_proto_xlen = sizeof(X "://") -1
+#define __if(X,Y,Z)  \
+   if (!ascncasecmp(data, X "://", sizeof(X "://") -1)) {\
+      _protox(X, Y);\
+      data += sizeof(X "://") -1;\
+      do { Z; } while (0);\
+      goto juser;\
+   }
+#define _if(X,Y)     __if(X, Y, (void)0)
+#ifdef HAVE_SSL
+# define _ifs(X,Y)   __if(X, Y, urlp->url_needs_tls = TRU1)
+#else
+# define _ifs(X,Y)   goto jeproto;
+#endif
+
+   switch (cproto) {
+   case CPROTO_SMTP:
+#ifdef HAVE_SMTP
+      _if ("smtp", 25)
+      _if ("submission", 587)
+      _ifs ("smtps", 465)
+      _protox("smtp", 25);
+      break;
+#else
+      goto jeproto;
+#endif
+   case CPROTO_POP3:
+#ifdef HAVE_POP3
+      _if ("pop3", 110)
+      _ifs ("pop3s", 995)
+      _protox("pop3", 110);
+      break;
+#else
+      goto jeproto;
+#endif
+   case CPROTO_IMAP:
+#ifdef HAVE_IMAP
+      _if ("imap", 143)
+      _ifs ("imaps", 993)
+      _protox("imap", 143);
+      break;
+#else
+      goto jeproto;
+#endif
+   }
+
+#undef _ifs
+#undef _if
+#undef __if
+#undef _protox
+
+   if (strstr(data, "://") != NULL) {
+#if !defined __ALLPROTO || !defined HAVE_SSL
+jeproto:
+#endif
+      fprintf(stderr, tr(574, "URL `proto://' prefix invalid: `%s'\n"),
+         urlp->url_input);
+      goto jleave;
+   }
+#ifdef __ANYPROTO
+
+   /* User and password, I */
+juser:
+   if ((cp = UNCONST(last_at_before_slash(data))) == NULL)
+      goto jserver;
+
+   urlp->url_had_user = TRU1;
+   urlp->url_user.s = savestrbuf(data, urlp->url_user.l = PTR2SIZE(cp - data));
+   data = ++cp;
+
+   /* And also have a password? */
+   if ((cp = strchr(urlp->url_user.s, ':')) != NULL) {
+      x = urlp->url_user.s;
+      urlp->url_user.s = savestrbuf(x, urlp->url_user.l = PTR2SIZE(cp - x));
+      urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(++cp));
+      urlp->url_pass_enc.l = strlen(
+            urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s, FAL0));
+   }
+
+   /* Servername and port -- and possible path suffix */
+jserver:
+   if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, IPv6 support */
+      char *eptr;
+      long l;
+
+      urlp->url_port = x = savestr(x = cp + 1);
+      if ((x = strchr(x, '/')) != NULL)
+         *x = '\0';
+      l = strtol(urlp->url_port, &eptr, 10);
+      if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
+         fprintf(stderr, tr(573, "URL with invalid port number: `%s'\n"),
+            urlp->url_input);
+         goto jleave;
+      }
+      urlp->url_portno = (ui16_t)l;
+   } else {
+      if ((x = strchr(data, '/')) != NULL)
+         data = savestrbuf(data, PTR2SIZE(x - data));
+      cp = UNCONST(data + strlen(data));
+   }
+
+   /* A (non-empty) path may only occur with IMAP */
+   if (x != NULL && x[1] != '\0') {
+      if (cproto != CPROTO_IMAP) {
+         fprintf(stderr, tr(575, "URL protocol doesn't support paths: `%s'\n"),
+            urlp->url_input);
+         goto jleave;
+      }
+      urlp->url_path.l = strlen(++x);
+      urlp->url_path.s = savestrbuf(x, urlp->url_path.l);
+   }
+
+   urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
+   {  size_t i;
+      for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
+         *cp = lowerconv(*cp);
+   }
+
+   /* HOST:PORT */
+   {  size_t i;
+      struct str *s = &urlp->url_hp;
+
+      s->s = salloc(urlp->url_host.l + 1 + sizeof("65536")-1 +1);
+      memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
+      if (urlp->url_port != NULL) {
+         size_t j = strlen(urlp->url_port);
+         s->s[i++] = ':';
+         memcpy(s->s + i, urlp->url_port, j);
+         i += j;
+      }
+      s->s[i] = '\0';
+      s->l = i;
+   }
+
+   /* User, II
+    * If there was no user in the URL, do we have *user-HOST* or *user*? */
+   if (!urlp->url_had_user) {
+      char const usrstr[] = "user-";
+      size_t const usrlen = sizeof(usrstr) -1;
+
+      cp = ac_alloc(usrlen + urlp->url_hp.l +1);
+      memcpy(cp, usrstr, usrlen);
+      memcpy(cp + usrlen, urlp->url_hp.s, urlp->url_hp.l +1);
+      if ((urlp->url_user.s = vok_vlook(cp)) == NULL) {
+         cp[usrlen - 1] = '\0';
+         if ((urlp->url_user.s = vok_vlook(cp)) == NULL)
+            urlp->url_user.s = UNCONST(myname);
+      }
+      ac_free(cp);
+   }
+
+   urlp->url_user.l = strlen(urlp->url_user.s = urlxdec(urlp->url_user.s));
+   urlp->url_user_enc.l = strlen(
+         urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
+
+   /* USER@HOST:PORT */
+   if (urlp->url_user_enc.l == 0)
+      urlp->url_uhp = urlp->url_hp;
+   else {
+      struct str *s = &urlp->url_uhp;
+      size_t i = urlp->url_user_enc.l;
+
+      s->s = salloc(i + 1 + urlp->url_hp.l +1);
+      if (i > 0) {
+         memcpy(s->s, urlp->url_user_enc.s, i);
+         s->s[i++] = '@';
+      }
+      memcpy(s->s + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      i += urlp->url_hp.l;
+      s->l = i;
+   }
+
+   /* USER@HOST
+    * For SMTP we apply ridiculously complicated *v15-compat* plus
+    * *smtp-hostname* / *hostname* dependent rules */
+   {  struct str h;
+
+      if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
+            (cp = ok_vlook(smtp_hostname)) != NULL) {
+         if (*cp == '\0')
+            cp = nodename(1);
+         h.s = savestrbuf(cp, h.l = strlen(cp));
+      } else
+         h = urlp->url_host;
+
+      if (urlp->url_user_enc.l == 0)
+         urlp->url_uh = h;
+      else {
+         struct str *s = &urlp->url_uh;
+         size_t i = urlp->url_user_enc.l;
+
+         s->s = salloc(i + 1 + h.l +1);
+         if (i > 0) {
+            memcpy(s->s, urlp->url_user_enc.s, i);
+            s->s[i++] = '@';
+         }
+         memcpy(s->s + i, h.s, h.l +1);
+         i += h.l;
+         s->l = i;
+      }
+   }
+
+   /* Finally, for fun: .url_proto://.url_uhp[/.url_path] */
+   {  size_t i;
+      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_uhp.l) +
+            1 + urlp->url_path.l +1);
+
+      urlp->url_proto[urlp->url_proto_len] = ':';
+      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_uhp.s, urlp->url_uhp.l +1);
+      urlp->url_proto[urlp->url_proto_len] = '\0';
+
+      if (urlp->url_path.l == 0)
+         urlp->url_puhp = urlp->url_puhpp = ud;
+      else {
+         urlp->url_puhp = savestrbuf(ud, i);
+         urlp->url_puhpp = ud;
+         ud += i;
+         *ud++ = '/';
+         memcpy(ud, urlp->url_path.s, urlp->url_path.l +1);
+      }
+   }
+
+   rv = TRU1;
+#endif /* __ANYPROTO */
+jleave:
+   NYD_LEAVE;
+   return rv;
+#undef __ANYPROTO
+#undef __ALLPROTO
+}
+
+FL bool_t
+ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
+{
+   char const *pname, *pxstr, *authdef;
+   size_t pxlen, addrlen, i;
+   char *vbuf, *s;
+   ui8_t authmask;
+   enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
+      ware = NONE;
+   bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
    NYD_ENTER;
 
-   tl = strlen(token);
-   var = ac_alloc(tl + 9 +1);
+   memset(ccp, 0, sizeof *ccp);
 
-   memcpy(var, "password-", 9);
-   memcpy(var + 9, token, tl);
-   var[tl + 9] = '\0';
+   switch (cproto) {
+   default:
+   case CPROTO_SMTP:
+      pname = "SMTP";
+      pxstr = "smtp-auth";
+      pxlen = sizeof("smtp-auth") -1;
+      authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
+            AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "none";
+      addr_is_nuser = TRU1;
+      break;
+   case CPROTO_POP3:
+      pname = "POP3";
+      pxstr = "pop3-auth";
+      pxlen = sizeof("pop3-auth") -1;
+      authmask = AUTHTYPE_PLAIN;
+      authdef = "plain";
+      break;
+   case CPROTO_IMAP:
+      pname = "IMAP";
+      pxstr = "imap-auth";
+      pxlen = sizeof("imap-auth") -1;
+      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "login";
+      break;
+   }
 
-   if ((cp = vok_vlook(var)) != NULL)
-      cp = savestr(cp);
-   ac_free(var);
+   ccp->cc_cproto = cproto;
+   addrlen = strlen(addr);
+   vbuf = ac_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
+   memcpy(vbuf, pxstr, pxlen);
+
+   /* Authentication type */
+   vbuf[pxlen] = '-';
+   memcpy(vbuf + pxlen + 1, addr, addrlen +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      vbuf[pxlen] = '\0';
+      if ((s = vok_vlook(vbuf)) == NULL)
+         s = UNCONST(authdef);
+   }
+
+   if (!asccasecmp(s, "none")) {
+      ccp->cc_auth = "NONE";
+      ccp->cc_authtype = AUTHTYPE_NONE;
+      /*ware = NONE;*/
+   } else if (!asccasecmp(s, "plain")) {
+      ccp->cc_auth = "PLAIN";
+      ccp->cc_authtype = AUTHTYPE_PLAIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "login")) {
+      ccp->cc_auth = "LOGIN";
+      ccp->cc_authtype = AUTHTYPE_LOGIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "cram-md5")) {
+      ccp->cc_auth = "CRAM-MD5";
+      ccp->cc_authtype = AUTHTYPE_CRAM_MD5;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "gssapi")) {
+      ccp->cc_auth = "GSS-API";
+      ccp->cc_authtype = AUTHTYPE_GSSAPI;
+      ware = REQ_USER;
+#if 0 /* TODO SASL (homebrew `auto'matic indeed) */
+   } else if (!asccasecmp(cp, "sasl")) {
+      ware = REQ_USER | WANT_PASS;
+#endif
+   }
+
+   /* Verify method */
+   if (!(ccp->cc_authtype & authmask)) {
+      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
+         pname, s);
+      ccp = NULL;
+      goto jleave;
+   }
+#ifndef HAVE_MD5
+   if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
+      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+#ifndef HAVE_GSSAPI
+   if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
+      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+
+   /* User name */
+   if (!(ware & (WANT_USER | REQ_USER)))
+      goto jpass;
+
+   if (!addr_is_nuser) {
+      if ((s = UNCONST(last_at_before_slash(addr))) != NULL) {
+         ccp->cc_user.s = urlxdec(savestrbuf(addr, PTR2SIZE(s - addr)));
+         ccp->cc_user.l = strlen(ccp->cc_user.s);
+      } else if (ware & REQ_USER)
+         goto jgetuser;
+      goto jpass;
+   }
+
+   memcpy(vbuf + pxlen, "-user-", i = sizeof("-user-") -1);
+   i += pxlen;
+   memcpy(vbuf + i, addr, addrlen +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      vbuf[--i] = '\0';
+      if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_USER)) {
+         if ((s = getuser(NULL)) != NULL)
+            s = savestr(s);
+         else {
+jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
+             * TODO even better: introduce `PROTO-user' and `PROTO-pass' and
+             * TODO check that first, then! change control flow, grow `vbuf' */
+            fprintf(stderr, tr(274,
+               "A user is necessary for %s authentication.\n"), pname);
+            ccp = NULL;
+            goto jleave;
+         }
+      }
+   }
+   ccp->cc_user.l = strlen(ccp->cc_user.s = s);
+
+   /* Password */
+jpass:
+   if (!(ware & (WANT_PASS | REQ_PASS)))
+      goto jleave;
+
+   if (!addr_is_nuser) {
+      memcpy(vbuf, "password-", i = sizeof("password-") -1);
+   } else {
+      memcpy(vbuf + pxlen, "-password-", i = sizeof("-password-") -1);
+      i += pxlen;
+   }
+   memcpy(vbuf + i, addr, addrlen +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      vbuf[--i] = '\0';
+      if ((!addr_is_nuser || (s = vok_vlook(vbuf)) == NULL) &&
+            (ware & REQ_PASS)) {
+         if ((s = getpassword(NULL)) == NULL) {
+            fprintf(stderr, tr(275,
+               "A password is necessary for %s authentication.\n"), pname);
+            ccp = NULL;
+            goto jleave;
+         }
+      }
+   }
+   ccp->cc_pass.l = strlen(ccp->cc_pass.s = urlxdec(s));
+
+jleave:
+   ac_free(vbuf);
    NYD_LEAVE;
-   return cp;
+   return (ccp != NULL);
+}
+
+FL bool_t
+ccred_lookup(struct ccred *ccp, struct url *urlp)
+{
+   char const *pstr, *authdef;
+   size_t plen, i;
+   char *vbuf, *s;
+   ui8_t authmask;
+   enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
+      ware = NONE;
+   NYD_ENTER;
+
+   memset(ccp, 0, sizeof *ccp);
+   ccp->cc_user = urlp->url_user;
+
+   switch ((ccp->cc_cproto = urlp->url_cproto)) {
+   default:
+   case CPROTO_SMTP:
+      pstr = "smtp";
+      plen = sizeof("smtp") -1;
+      authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
+            AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "none";
+      break;
+   case CPROTO_POP3:
+      pstr = "pop3";
+      plen = sizeof("pop3") -1;
+      authmask = AUTHTYPE_PLAIN;
+      authdef = "plain";
+      break;
+   case CPROTO_IMAP:
+      pstr = "imap";
+      plen = sizeof("imap") -1;
+      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "login";
+      break;
+   }
+
+   /* Note: "password-" is longer than "-auth-", ditto .url_uhp and .url_hp */
+   vbuf = ac_alloc(plen + sizeof("password-")-1 + urlp->url_uhp.l +1);
+   memcpy(vbuf, pstr, plen);
+
+   /* Authentication type */
+   memcpy(vbuf + plen, "-auth-", i = sizeof("-auth-") -1);
+   i += plen;
+   /* -USER@HOST, -HOST, '' */
+   memcpy(vbuf + i, urlp->url_uhp.s, urlp->url_uhp.l +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      memcpy(vbuf + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      if ((s = vok_vlook(vbuf)) == NULL) {
+         vbuf[plen + sizeof("-auth") -1] = '\0';
+         if ((s = vok_vlook(vbuf)) == NULL)
+            s = UNCONST(authdef);
+      }
+   }
+
+   if (!asccasecmp(s, "none")) {
+      ccp->cc_auth = "NONE";
+      ccp->cc_authtype = AUTHTYPE_NONE;
+      /*ware = NONE;*/
+   } else if (!asccasecmp(s, "plain")) {
+      ccp->cc_auth = "PLAIN";
+      ccp->cc_authtype = AUTHTYPE_PLAIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "login")) {
+      ccp->cc_auth = "LOGIN";
+      ccp->cc_authtype = AUTHTYPE_LOGIN;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "cram-md5")) {
+      ccp->cc_auth = "CRAM-MD5";
+      ccp->cc_authtype = AUTHTYPE_CRAM_MD5;
+      ware = REQ_PASS | REQ_USER;
+   } else if (!asccasecmp(s, "gssapi")) {
+      ccp->cc_auth = "GSS-API";
+      ccp->cc_authtype = AUTHTYPE_GSSAPI;
+      ware = REQ_USER;
+#if 0 /* TODO SASL (homebrew `auto'matic indeed) */
+   } else if (!asccasecmp(cp, "sasl")) {
+      ware = REQ_USER | WANT_PASS;
+#endif
+   }
+
+   /* Verify method */
+   if (!(ccp->cc_authtype & authmask)) {
+      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
+         pstr, s);
+      ccp = NULL;
+      goto jleave;
+   }
+#ifndef HAVE_MD5
+   if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
+      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+#ifndef HAVE_GSSAPI
+   if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
+      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
+      ccp = NULL;
+      goto jleave;
+   }
+#endif
+
+   /* Password */
+   if ((ccp->cc_pass = urlp->url_pass).s != NULL)
+      goto jleave;
+
+   memcpy(vbuf, "password-", i = sizeof("password-") -1);
+   /* -USER@HOST, -HOST, '' */
+   memcpy(vbuf + i, urlp->url_uhp.s, urlp->url_uhp.l +1);
+   if ((s = vok_vlook(vbuf)) == NULL) {
+      memcpy(vbuf + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      if ((s = vok_vlook(vbuf)) == NULL) {
+         vbuf[--i] = '\0';
+         if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS)) {
+            if ((s = getpassword(NULL)) != NULL)
+               s = savestr(s);
+            else {
+               fprintf(stderr, tr(275,
+                  "A password is necessary for %s authentication.\n"), pstr);
+               ccp = NULL;
+               goto jleave;
+            }
+         }
+      }
+   }
+   ccp->cc_pass.l = strlen(ccp->cc_pass.s = urlxdec(s));
+
+jleave:
+   ac_free(vbuf);
+   NYD_LEAVE;
+   return (ccp != NULL);
 }
 
 FL char *
@@ -846,21 +1426,23 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
    size_t i, j;
    NYD_ENTER;
 
-   for (i = 0; i < MD5TOHEX_SIZE / 2; i++) {
+   for (i = 0; i < MD5TOHEX_SIZE / 2; ++i) {
       j = i << 1;
-      hex[j] = hexchar((cp[i] & 0xf0) >> 4);
-      hex[++j] = hexchar(cp[i] & 0x0f);
+# define __hex(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
+      hex[j] = __hex((cp[i] & 0xF0) >> 4);
+      hex[++j] = __hex(cp[i] & 0x0F);
+# undef __hex
    }
    NYD_LEAVE;
    return hex;
 }
 
 FL char *
-cram_md5_string(char const *user, char const *pass, char const *b64)
+cram_md5_string(struct str const *user, struct str const *pass,
+   char const *b64)
 {
    struct str in, out;
    char digest[16], *cp;
-   size_t lu;
    NYD_ENTER;
 
    out.s = NULL;
@@ -869,16 +1451,15 @@ cram_md5_string(char const *user, char const *pass, char const *b64)
    b64_decode(&out, &in, NULL);
    assert(out.s != NULL);
 
-   hmac_md5((unsigned char*)out.s, out.l, UNCONST(pass), strlen(pass), digest);
+   hmac_md5((uc_it*)out.s, out.l, (uc_it*)pass->s, pass->l, digest);
    free(out.s);
    cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
 
-   lu = strlen(user);
-   in.l = lu + MD5TOHEX_SIZE +1;
-   in.s = ac_alloc(lu + 1 + MD5TOHEX_SIZE +1);
-   memcpy(in.s, user, lu);
-   in.s[lu++] = ' ';
-   memcpy(in.s + lu, cp, MD5TOHEX_SIZE);
+   in.l = user->l + MD5TOHEX_SIZE +1;
+   in.s = ac_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
+   memcpy(in.s, user->s, user->l);
+   in.s[user->l] = ' ';
+   memcpy(in.s + user->l + 1, cp, MD5TOHEX_SIZE);
    b64_encode(&out, &in, B64_SALLOC | B64_CRLF);
    ac_free(in.s);
    NYD_LEAVE;
@@ -1050,32 +1631,175 @@ cwrelse(struct cw *cw)
 }
 #endif /* !HAVE_FCHDIR */
 
+FL size_t
+field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
+{
+   size_t rv;
+   NYD_ENTER;
+
+#ifdef HAVE_NATCH_CHAR
+   maxlen = MIN(maxlen, blen);
+   for (rv = 0; maxlen > 0;) {
+      int ml = mblen(buf, maxlen);
+      if (ml <= 0) {
+         mblen(NULL, 0);
+         break;
+      }
+      buf += ml;
+      rv += ml;
+      maxlen -= ml;
+   }
+#else
+   rv = MIN(blen, maxlen);
+#endif
+   NYD_LEAVE;
+   return rv;
+}
+
+FL size_t
+field_put_bidi_clip(char *store, size_t maxlen, char const *buf, size_t blen)
+{
+   NATCH_CHAR( struct bidi_info bi; )
+   size_t rv NATCH_CHAR( COMMA i );
+   NYD_ENTER;
+
+   rv = 0;
+   if (maxlen-- == 0)
+      goto j_leave;
+
+#ifdef HAVE_NATCH_CHAR
+   bidi_info_create(&bi);
+   if (bi.bi_start.l == 0 || !bidi_info_needed(buf, blen)) {
+      bi.bi_end.l = 0;
+      goto jnobidi;
+   }
+
+   if (maxlen >= (i = bi.bi_pad + bi.bi_end.l + bi.bi_start.l))
+      maxlen -= i;
+   else
+      goto jleave;
+
+   if ((i = bi.bi_start.l) > 0) {
+      memcpy(store, bi.bi_start.s, i);
+      store += i;
+      rv += i;
+   }
+
+jnobidi:
+   while (maxlen > 0) {
+      int ml = mblen(buf, blen);
+      if (ml <= 0) {
+         mblen(NULL, 0);
+         break;
+      }
+      if (UICMP(z, maxlen, <, ml))
+         break;
+      if (ml == 1)
+         *store = *buf;
+      else
+         memcpy(store, buf, ml);
+      store += ml;
+      buf += ml;
+      rv += ml;
+      maxlen -= ml;
+   }
+
+   if ((i = bi.bi_end.l) > 0) {
+      memcpy(store, bi.bi_end.s, i);
+      store += i;
+      rv += i;
+   }
+jleave:
+   *store = '\0';
+
+#else
+   rv = MIN(blen, maxlen);
+   memcpy(store, buf, rv);
+   store[rv] = '\0';
+#endif
+j_leave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
+   NATCH_CHAR( struct bidi_info bi; )
    int col_orig = col, n, sz;
+   bool_t isbidi, isuni, isrepl;
    char *nb, *np;
    NYD_ENTER;
 
-   np = nb = salloc(mb_cur_max * strlen(cp) + col +1);
-   while (*cp) {
-#ifdef HAVE_WCWIDTH
+   /* Bidi only on request and when there is 8-bit data */
+   isbidi = isuni = FAL0;
+#ifdef HAVE_NATCH_CHAR
+   isuni = ((options & OPT_UNICODE) != 0);
+   bidi_info_create(&bi);
+   if (bi.bi_start.l == 0)
+      goto jnobidi;
+   if (!(isbidi = bidi_info_needed(cp, strlen(cp))))
+      goto jnobidi;
+
+   if ((size_t)col >= bi.bi_pad)
+      col -= bi.bi_pad;
+   else
+      col = 0;
+jnobidi:
+#endif
+
+   np = nb = salloc(mb_cur_max * strlen(cp) +
+         ((fill ? col : 0)
+         NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
+         +1));
+
+#ifdef HAVE_NATCH_CHAR
+   if (isbidi) {
+      memcpy(np, bi.bi_start.s, bi.bi_start.l);
+      np += bi.bi_start.l;
+   }
+#endif
+
+   while (*cp != '\0') {
+#ifdef HAVE_C90AMEND1
       if (mb_cur_max > 1) {
          wchar_t  wc;
 
+         n = 1;
+         isrepl = TRU1;
          if ((sz = mbtowc(&wc, cp, mb_cur_max)) == -1)
-            n = sz = 1;
-         else if ((n = wcwidth(wc)) == -1)
-            n = 1;
+            sz = 1;
+         else if (iswprint(wc)) {
+# ifndef HAVE_WCWIDTH
+            n = 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
+# else
+            if ((n = wcwidth(wc)) == -1)
+               n = 1;
+            else
+# endif
+               isrepl = FAL0;
+         }
       } else
 #endif
-         n = sz = 1;
+         n = sz = 1,
+         isrepl = !isprint(*cp);
+
       if (n > col)
          break;
       col -= n;
-      if (sz == 1 && spacechar(*cp)) {
+
+      if (isrepl) {
+         if (isuni) {
+            np[0] = (char)0xEFu;
+            np[1] = (char)0xBFu;
+            np[2] = (char)0xBDu;
+            np += 3;
+         } else
+            *np++ = '?';
+         cp += sz;
+      } else if (sz == 1 && spacechar(*cp)) {
          *np++ = ' ';
-         cp++;
+         ++cp;
       } else
          while (sz--)
             *np++ = *cp++;
@@ -1091,6 +1815,13 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
       col = 0;
    }
 
+#ifdef HAVE_NATCH_CHAR
+   if (isbidi) {
+      memcpy(np, bi.bi_end.s, bi.bi_end.l);
+      np += bi.bi_end.l;
+   }
+#endif
+
    *np = '\0';
    if (cols_decr_used_or_null != NULL)
       *cols_decr_used_or_null -= col_orig - col;
@@ -1105,14 +1836,13 @@ makeprint(struct str const *in, struct str *out)
 
    char const *inp, *maxp;
    char *outp;
-   size_t msz;
+   DBG( size_t msz; )
    NYD_ENTER;
 
    if (print_all_chars == -1)
       print_all_chars = ok_blook(print_all_chars);
 
-   msz = in->l +1;
-   out->s = outp = smalloc(msz);
+   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max);
    inp = in->s;
    maxp = inp + in->l;
 
@@ -1122,12 +1852,12 @@ makeprint(struct str const *in, struct str *out)
       goto jleave;
    }
 
-#ifdef HAVE_C90AMEND1
+#ifdef HAVE_NATCH_CHAR
    if (mb_cur_max > 1) {
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
       int i, n;
-      size_t dist;
+      bool_t isuni = ((options & OPT_UNICODE) != 0);
 
       out->l = 0;
       while (inp < maxp) {
@@ -1145,7 +1875,7 @@ makeprint(struct str const *in, struct str *out)
              * FIXME to do so - say, after a newline!!
              * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
             mbtowc(&wc, NULL, mb_cur_max);
-            wc = utf8 ? 0xFFFD : '?';
+            wc = isuni ? 0xFFFD : '?';
             n = 1;
          } else if (n == 0)
             n = 1;
@@ -1153,25 +1883,21 @@ makeprint(struct str const *in, struct str *out)
          if (!iswprint(wc) && wc != '\n' && wc != '\r' && wc != '\b' &&
                wc != '\t') {
             if ((wc & ~(wchar_t)037) == 0)
-               wc = utf8 ? 0x2400 | wc : '?';
+               wc = isuni ? 0x2400 | wc : '?';
             else if (wc == 0177)
-               wc = utf8 ? 0x2421 : '?';
+               wc = isuni ? 0x2421 : '?';
             else
-               wc = utf8 ? 0x2426 : '?';
+               wc = isuni ? 0x2426 : '?';
          }
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
          out->l += n;
-         if (out->l >= msz - 1) {
-            dist = outp - out->s;
-            out->s = srealloc(out->s, msz += 32);
-            outp = &out->s[dist];
-         }
+         assert(out->l < msz);
          for (i = 0; i < n; ++i)
             *outp++ = mbb[i];
       }
    } else
-#endif /* C90AMEND1 */
+#endif /* NATCH_CHAR */
    {
       int c;
       while (inp < maxp) {
@@ -1223,11 +1949,11 @@ FL size_t
 putuc(int u, int c, FILE *fp)
 {
    size_t rv;
-   UNUSED(u);
    NYD_ENTER;
+   UNUSED(u);
 
-#ifdef HAVE_C90AMEND1
-   if (utf8 && (u & ~(wchar_t)0177)) {
+#ifdef HAVE_NATCH_CHAR
+   if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
       char mbb[MB_LEN_MAX];
       int i, n;
 
@@ -1247,6 +1973,101 @@ putuc(int u, int c, FILE *fp)
       rv = (putc(c, fp) != EOF);
    NYD_LEAVE;
    return rv;
+}
+
+FL bool_t
+bidi_info_needed(char const *bdat, size_t blen)
+{
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+#ifdef HAVE_NATCH_CHAR
+   if (options & OPT_UNICODE)
+      for (; blen > 0; ++bdat, --blen) {
+         if ((ui8_t)*bdat > 0x7F) {
+            /* TODO Checking for BIDI character: use S-CText fromutf8
+             * TODO plus isrighttoleft (or whatever there will be)! */
+            ui32_t c, x = (ui8_t)*bdat;
+
+            if ((x & 0xE0) == 0xC0) {
+               if (blen < 2)
+                  break;
+               blen -= 1;
+               c = x & ~0xC0;
+            } else if ((x & 0xF0) == 0xE0) {
+               if (blen < 3)
+                  break;
+               blen -= 2;
+               c = x & ~0xE0;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+            } else {
+               if (blen < 4)
+                  break;
+               blen -= 3;
+               c = x & ~0xF0;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+            }
+            c <<= 6;
+            x = (ui8_t)*++bdat;
+            c |= x & 0x7F;
+
+            /* (Very very fuzzy, awaiting S-CText for good) */
+            if ((c >= 0x05BE && c <= 0x08E3) ||
+                  (c >= 0xFB1D && c <= 0xFEFC) ||
+                  (c >= 0x10800 && c <= 0x10C48) ||
+                  (c >= 0x1EE00 && c <= 0x1EEF1)) {
+               rv = TRU1;
+               break;
+            }
+         }
+      }
+#endif /* HAVE_NATCH_CHAR */
+   NYD_LEAVE;
+   return rv;
+}
+
+FL void
+bidi_info_create(struct bidi_info *bip)
+{
+   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
+    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
+    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
+    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
+    * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
+   NATCH_CHAR( char const *hb; )
+   NYD_ENTER;
+
+   memset(bip, 0, sizeof *bip);
+   bip->bi_start.s = bip->bi_end.s = UNCONST("");
+
+#ifdef HAVE_NATCH_CHAR
+   if ((options & OPT_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
+      switch (*hb) {
+      case '3':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      case '2':
+         bip->bi_start.s = bip->bi_end.s = UNCONST("\xE2\x80\x8E");
+         break;
+      case '1':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      default:
+         bip->bi_start.s = UNCONST("\xE2\x81\xA8");
+         bip->bi_end.s = UNCONST("\xE2\x81\xA9");
+         break;
+      }
+      bip->bi_start.l = bip->bi_end.l = 3;
+   }
+#endif
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_COLOUR

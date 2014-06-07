@@ -35,12 +35,10 @@ WANT_AUTOCC=1
 # compiled.  This allows the compiler to perform much more optimizations, and
 # also reduces the management overhead that is used for / needed by the linker.
 # Of course compiling such a large source requires a lot of memory by itself
-# NOTE: experimental in that the feature is quite new -- it is thus not known
-# wether some compilers may generate buggy code when compiling single-source
 WANT_AMALGAMATION=0
 
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
-# related/dependent stuff (GSSAPI,SSL)
+# related/dependent stuff (GSS-API,SSL)
 WANT_SOCKETS=1
 
 # If WANT_SOCKETS, should the IPv6 family of functions be searched for and
@@ -59,16 +57,18 @@ WANT_SSL=1
 
 # Support for IMAP protocol?  (Reading of mails directly on the server)
 WANT_IMAP=1
-# Support for GSSAPI-based authentication, i.e., Kerberos V5 for IMAP?
-# (This is disabled by default because it brings in a bunch of dependencies,
-# and most people don't need it.)
-WANT_GSSAPI=0
 
 # Support for POP3 protocol?  (Download of mails via POP over the network)
 WANT_POP3=1
 
 # Support for SMTP protocol?  (Directly sending mails over the network)
 WANT_SMTP=1
+
+# Support for GSS-API (Generic Security Services Application Programming
+# Interface) based authentication, e.g., Kerberos v5?
+# This is disabled by default because it brings in a bunch of dependencies,
+# and most people don't need it.
+WANT_GSSAPI=0
 
 # Several facilities use the MD5 message digest, but for some of them it is
 # only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
@@ -97,7 +97,8 @@ WANT_IDNA=1
 # the search is performed locally
 WANT_IMAP_SEARCH=1
 
-# Regular expression (re_format(7)) support for searches.
+# Regular expression (re_format(7)) support for searches, conditional
+# expressions etc.
 WANT_REGEX=1
 
 # Command line editing and -history.
@@ -236,6 +237,9 @@ WANT_DEBUG=0
 # We ship with our own small and efficient getopt(3) implementation;
 # set this to always choose that without even checking for another one
 WANT_NOGETOPT=0
+
+# We use the crypto libraries' MD5 implementation if possible unless this one
+WANT_NOEXTMD5=0
 
 # The codebase makes a lot of use of alloca(3), and this will remain since
 # S-nail will continue to be compliant to ISO C89, which has no variable

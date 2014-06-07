@@ -206,6 +206,10 @@ FL void *
    _all_wast += size - orig_size;
 
    size += _SHOPE_SIZE;
+
+   if (size >= 2048)
+      alert("salloc() of %" ZFMT " bytes from `%s', line %u\n",
+         size, mdbg_file, mdbg_line);
 #endif
 
    /* Search for a buffer with enough free space to serve request */
@@ -525,7 +529,7 @@ FL char *
 }
 
 FL char *
-(protbase)(char const *cp SALLOC_DEBUG_ARGS)
+(protbase)(char const *cp SALLOC_DEBUG_ARGS) /* TODO obsolete */
 {
    char *n, *np;
    NYD_ENTER;
@@ -552,23 +556,36 @@ FL char *
 }
 
 FL char *
-(urlxenc)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
+(urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS) /* XXX (->URL) */
 {
-   char *n, *np;
+   char *n, *np, c1, c2;
    NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
 
-   while (*cp != '\0') {
-      if (alnumchar(*cp) || *cp == '_' || *cp == '@' ||
-            (PTRCMP(np, >, n) && (*cp == '.' || *cp == '-' || *cp == ':')))
-         *np++ = *cp;
+   for (; (c1 = *cp) != '\0'; ++cp) {
+      /* RFC 3986, 2.3 Unreserved Characters:
+       *    ALPHA / DIGIT / "-" / "." / "_" / "~"
+       * However add a special is[file]path mode for file-system friendliness */
+      if (alnumchar(c1) || c1 == '_')
+         *np++ = c1;
+      else if (!ispath) {
+         if (c1 != '-' && c1 != '.' && c1 != '~')
+            goto jesc;
+         *np++ = c1;
+      } else if (PTRCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
+         *np++ = c1;
       else {
-         *np++ = '%';
-         *np++ = Hexchar((*cp & 0xf0) >> 4);
-         *np++ = Hexchar(*cp & 0x0f);
+jesc:
+         np[0] = '%';
+         c2 = c1 & 0x0F;
+         c2 += (c2 > 9) ? 'A' - 10 : '0';
+         np[2] = c2;
+         c1 = (ui8_t)(c1 & 0xF0) >> 4;
+         c1 += (c1 > 9) ? 'A' - 10 : '0';
+         np[1] = c1;
+         np += 3;
       }
-      cp++;
    }
    *np = '\0';
    NYD_LEAVE;
@@ -576,17 +593,20 @@ FL char *
 }
 
 FL char *
-(urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX */
+(urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
 {
-   char *n, *np;
+   char *n, *np, c1, c2;
    NYD_ENTER;
 
    np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
 
    while (*cp != '\0') {
-      if (cp[0] == '%' && cp[1] != '\0' && cp[2] != '\0') {
-         *np = (int)(cp[1] > '9' ? cp[1] - 'A' + 10 : cp[1] - '0') << 4;
-         *np++ |= cp[2] > '9' ? cp[2] - 'A' + 10 : cp[2] - '0';
+      if (cp[0] == '%' && (c1 = cp[1]) != '\0' && (c2 = cp[2]) != '\0') {
+         c1 -= (c1 <= '9') ? '0' : 'A' - 10;
+         c1 <<= 4;
+         c2 -= (c2 <= '9') ? '0' : 'A' - 10;
+         *np = c1;
+         *np++ |= c2;
          cp += 3;
       } else
          *np++ = *cp++;
@@ -624,6 +644,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    return self;
 }
 
+#ifdef HAVE_SPAM
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
    char const *sep_o_null SALLOC_DEBUG_ARGS)
@@ -653,6 +674,7 @@ FL struct str *
    NYD_LEAVE;
    return self;
 }
+#endif
 
 /*
  * Routines that are not related to auto-reclaimed storage follow.
@@ -725,7 +747,7 @@ is_prefix(char const *as1, char const *as2)
 }
 
 FL char const *
-last_at_before_slash(char const *sp)
+last_at_before_slash(char const *sp)/* XXX (->URL (yet auxlily.c) / obsolete) */
 {
    char const *cp;
    char c;
@@ -1002,6 +1024,24 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
    return cmp;
 }
 
+FL bool_t
+is_asccaseprefix(char const *as1, char const *as2)
+{
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+   for (;; ++as1, ++as2) {
+      char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
+      if ((rv = (c1 == '\0')))
+         break;
+      if (c1 != c2 || c2 == '\0')
+         break;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+#ifdef HAVE_IMAP
 FL char const *
 asccasestr(char const *haystack, char const *xneedle)
 {
@@ -1039,23 +1079,7 @@ jleave:
    NYD_LEAVE;
    return haystack;
 }
-
-FL bool_t
-is_asccaseprefix(char const *as1, char const *as2)
-{
-   bool_t rv = FAL0;
-   NYD_ENTER;
-
-   for (;; ++as1, ++as2) {
-      char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
-      if ((rv = (c1 == '\0')))
-         break;
-      if (c1 != c2 || c2 == '\0')
-         break;
-   }
-   NYD_LEAVE;
-   return rv;
-}
+#endif
 
 FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)

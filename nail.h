@@ -93,6 +93,7 @@
 # define NI_MAXHOST     1025
 #endif
 
+/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
 #ifndef PATH_MAX
 # ifdef MAXPATHLEN
 #  define PATH_MAX      MAXPATHLEN
@@ -159,6 +160,9 @@
 #define DATE_MINSHOUR   60L
 #define DATE_HOURSDAY   24L
 #define DATE_SECSDAY    (DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
+
+/* *indentprefix* default as of POSIX */
+#define INDENT_DEFAULT  "\t"
 
 /* Default *encoding* as enum conversion below */
 #define MIME_DEFAULT_ENCODING CONV_TOQP
@@ -229,6 +233,9 @@
 # define __EXTEN
 # define __PREREQ(X,Y)  0
 #endif
+
+/* For injection macros like DBG(), NATCH_CHAR() */
+#define COMMA           ,
 
 #define EMPTY_FILE(F)   typedef int CONCAT(avoid_empty_file__, F);
 
@@ -308,6 +315,15 @@
 # define UNLIKELY(X)    (X)
 #endif
 
+#undef HAVE_NATCH_CHAR
+#undef NATCH_CHAR
+#if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
+# define HAVE_NATCH_CHAR
+# define NATCH_CHAR(X)  X
+#else
+# define NATCH_CHAR(X)
+#endif
+
 /* Compile-Time-Assert */
 #define CTA(TEST)       _CTA_1(TEST, __LINE__)
 #define _CTA_1(TEST,L)  _CTA_2(TEST, L)
@@ -348,7 +364,6 @@
  * Types
  */
 
-/* TODO convert all integer types to the new [su]i(8|16|32|64)_t */
 typedef unsigned long   ul_it;
 typedef unsigned int    ui_it;
 typedef unsigned short  us_it;
@@ -473,7 +488,8 @@ typedef void (          *sighandler_type)(int);
 enum user_options {
    OPT_NONE,
    OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
-   OPT_VERBOSE    = 1u<< 1,   /* -v / *verbose* */
+   OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
+   OPT_VERBVERB   = 1u<<19,   /* .. even more verbosity */
    OPT_EXISTONLY  = 1u<< 2,   /* -e */
    OPT_HEADERSONLY = 1u<< 3,  /* -H */
    OPT_HEADERLIST = 1u<< 4,   /* -L */
@@ -491,7 +507,8 @@ enum user_options {
    OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
    OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<17
+   OPT_TTYOUT     = 1u<<17,
+   OPT_UNICODE    = 1u<<18    /* We're in an UTF-8 environment */
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -594,6 +611,45 @@ enum mimecontent {
    MIME_DISCARD      /* content is discarded */
 };
 
+/* Content-Transfer-Encodings as defined in RFC 2045:
+ * - Quoted-Printable, section 6.7
+ * - Base64, section 6.8 */
+#define QP_LINESIZE     (4 * 19)       /* Max. compliant QP linesize */
+
+#define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
+#define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
+
+/* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
+enum __mimecte_flags {
+   MIMECTE_NONE,
+   MIMECTE_SALLOC = 1<<0,     /* Use salloc(), not srealloc().. */
+   /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
+   MIMECTE_BUF    = 1<<1,
+   MIMECTE_CRLF   = 1<<2,     /* (encode) Append "\r\n" to lines */
+   MIMECTE_LF     = 1<<3,     /* (encode) Append "\n" to lines */
+   /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE+[+[+]] and
+    * inject the desired line-ending whenever a linewrap is desired */
+   MIMECTE_MULTILINE = 1<<4,
+   /* (encode) Quote with header rules, do not generate soft NL breaks? */
+   MIMECTE_ISHEAD = 1<<5
+};
+
+enum qpflags {
+   QP_NONE        = MIMECTE_NONE,
+   QP_SALLOC      = MIMECTE_SALLOC,
+   QP_BUF         = MIMECTE_BUF,
+   QP_ISHEAD      = MIMECTE_ISHEAD
+};
+
+enum b64flags {
+   B64_NONE       = MIMECTE_NONE,
+   B64_SALLOC     = MIMECTE_SALLOC,
+   B64_BUF        = MIMECTE_BUF,
+   B64_CRLF       = MIMECTE_CRLF,
+   B64_LF         = MIMECTE_LF,
+   B64_MULTILINE  = MIMECTE_MULTILINE
+};
+
 enum oflags {
    OF_RDONLY      = 1<<0,
    OF_WRONLY      = 1<<1,
@@ -628,6 +684,20 @@ enum protocol {
    PROTO_IMAP,       /* is an imap server string */
    PROTO_MAILDIR,    /* refers to a maildir folder */
    PROTO_UNKNOWN     /* unknown protocol */
+};
+
+enum cproto {
+   CPROTO_SMTP,
+   CPROTO_POP3,
+   CPROTO_IMAP
+};
+
+enum authtype {
+   AUTHTYPE_NONE     = 1<<0,
+   AUTHTYPE_PLAIN    = 1<<1,  /* POP3: APOP is covered by this */
+   AUTHTYPE_LOGIN    = 1<<2,
+   AUTHTYPE_CRAM_MD5 = 1<<3,
+   AUTHTYPE_GSSAPI   = 1<<4
 };
 
 #ifdef HAVE_SSL
@@ -683,6 +753,8 @@ enum okeys {
    ok_b_forward_as_attachment,
    ok_b_fullnames,
    ok_b_header,                        /* {special=1} */
+   ok_b_history_gabby,
+   ok_b_history_gabby_persist,
    ok_b_hold,
    ok_b_idna_disable,
    ok_b_ignore,
@@ -726,8 +798,9 @@ enum okeys {
    ok_b_smtp_use_starttls,
    ok_b_ssl_no_default_ca,
    ok_b_ssl_v2_allow,
-   ok_b_writebackedited,
+   ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
+   ok_b_writebackedited,
 
    /* Option keys for values options */
    ok_v_attrlist,
@@ -757,6 +830,7 @@ enum okeys {
    ok_v_from,
    ok_v_fwdheading,
    ok_v_headline,
+   ok_v_headline_bidi,
    ok_v_hostname,
    ok_v_imap_auth,
    ok_v_imap_cache,
@@ -802,6 +876,7 @@ enum okeys {
    ok_v_smtp_auth,
    ok_v_smtp_auth_password,
    ok_v_smtp_auth_user,
+   ok_v_smtp_hostname,
    ok_v_spam_command,
    ok_v_spam_host,
    ok_v_spam_maxsize,
@@ -825,6 +900,19 @@ enum okeys {
    ok_v_VISUAL
 };
 
+/* Locale-independent character classes */
+enum {
+   C_CNTRL        = 0000,
+   C_BLANK        = 0001,
+   C_WHITE        = 0002,
+   C_SPACE        = 0004,
+   C_PUNCT        = 0010,
+   C_OCTAL        = 0020,
+   C_DIGIT        = 0040,
+   C_UPPER        = 0100,
+   C_LOWER        = 0200
+};
+
 struct str {
    char     *s;      /* the string's content */
    size_t   l;       /* the stings's length */
@@ -833,6 +921,47 @@ struct str {
 struct colour_table {
    /* Plus a copy of *colour-user-headers* */
    struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
+};
+
+struct bidi_info {
+   struct str  bi_start;      /* Start of (possibly) bidirectional text */
+   struct str  bi_end;        /* End of ... */
+   size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
+};
+
+struct url {
+   char const     *url_input;       /* Input as given (really) */
+   enum cproto    url_cproto;       /* Communication protocol as given */
+   bool_t         url_needs_tls;    /* Wether the protocol uses SSL/TLS */
+   bool_t         url_had_user;     /* Wether .url_user was part of the URL */
+   ui16_t         url_portno;       /* atoi .url_port or default, host endian */
+   char const     *url_port;        /* Port (if given) or NULL */
+   char           url_proto[14];    /* Communication protocol as 'xy\0//' */
+   ui8_t          url_proto_len;    /* Length of .url_proto ('\0' index) */
+   ui8_t          url_proto_xlen;   /* .. if '\0' is replaced with ':' */
+   struct str     url_user;         /* User, urlxdec()oded */
+   struct str     url_user_enc;     /* User, urlxenc()oded */
+   struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
+   struct str     url_pass_enc;     /* Pass (urlxenc()oded) or NULL */
+   struct str     url_host;         /* Service hostname */
+   struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
+   /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
+   struct str     url_hp;           /* .url_host[:.url_port] */
+   struct str     url_uhp;          /* .url_user_enc@.url_host[:.url_port] */
+   /* .url_user_enc@.url_host
+    * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
+    * *hostname*)!  (And may later be overwritten according to *from*!) */
+   struct str     url_uh;
+   char const     *url_puhp;        /* .url_proto://.url_uhp */
+   char const     *url_puhpp;       /* .url_proto://.url_uhp[/.url_path] */
+};
+
+struct ccred {
+   enum cproto    cc_cproto;     /* Communication protocol */
+   enum authtype  cc_authtype;   /* Desired authentication */
+   char const     *cc_auth;      /* Authentication type as string */
+   struct str     cc_user;       /* User (urlxdec()oded) or NULL */
+   struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
 };
 
 struct time_current {
@@ -871,9 +1000,10 @@ struct search_expr {
 };
 
 struct eval_ctx {
-   struct str  ev_line;
+   struct str  ev_line;          /* The terminated data to evaluate */
+   ui32_t      ev_line_size;     /* May be used to store line memory size */
    bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
-   ui8_t       __dummy[6];
+   ui8_t       __dummy[3];
    bool_t      ev_add_history;   /* Enter (final) command in history? */
    char const  *ev_new_content;  /* History: reenter line, start with this */
 };
@@ -908,8 +1038,14 @@ struct sock {                 /* data associated with a socket */
    char        *s_rbufptr;    /* read pointer to s_rbuf */
    int         s_rsz;         /* size of last read in s_rbuf */
    char const  *s_desc;       /* description of error messages */
-   void        (*s_onclose)(void); /* execute on close */
-   char        s_rbuf[LINESIZE + 1]; /* for buffered reads */
+   void        (*s_onclose)(void);     /* execute on close */
+   char        s_rbuf[LINESIZE + 1];   /* for buffered reads */
+};
+
+struct sockconn {
+   struct url     sc_url;
+   struct ccred   sc_cred;
+   struct sock    sc_sock;
 };
 
 struct mailbox {
@@ -944,6 +1080,7 @@ struct mailbox {
    }           mb_flags;
    unsigned long  mb_uidvalidity;   /* IMAP unique identifier validity */
    char        *mb_imap_account;    /* name of current IMAP account */
+   char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
 #endif
@@ -1195,6 +1332,15 @@ struct attachment {
    int         a_msgno;       /* message number */
 };
 
+struct sendbundle {
+   struct header  *sb_hp;
+   struct name    *sb_to;
+   FILE           *sb_input;
+   struct str     sb_signer;  /* USER@HOST for signing+ */
+   struct url     sb_url;
+   struct ccred   sb_ccred;
+};
+
 struct group {
    struct group *ge_link;     /* Next person in this group */
    char        *ge_name;      /* This person's user name */
@@ -1215,182 +1361,12 @@ struct ignoretab {
    }           *i_head[HSHSIZE];
 };
 
-/* Token values returned by the scanner used for argument lists.
- * Also, sizes of scanner-related things */
-enum ltoken {
-   TEOL           = 0,        /* End of the command line */
-   TNUMBER        = 1,        /* A message number */
-   TDASH          = 2,        /* A simple dash */
-   TSTRING        = 3,        /* A string (possibly containing -) */
-   TDOT           = 4,        /* A "." */
-   TUP            = 5,        /* An "^" */
-   TDOLLAR        = 6,        /* A "$" */
-   TSTAR          = 7,        /* A "*" */
-   TOPEN          = 8,        /* An '(' */
-   TCLOSE         = 9,        /* A ')' */
-   TPLUS          = 10,       /* A '+' */
-   TERROR         = 11,       /* A lexical error */
-   TCOMMA         = 12,       /* A ',' */
-   TSEMI          = 13,       /* A ';' */
-   TBACK          = 14        /* A '`' */
-};
-
-#define REGDEP          2     /* Maximum regret depth. */
-
 /* For the 'shortcut' and 'unshortcut' functionality */
 struct shortcut {
    struct shortcut *sh_next;  /* next shortcut in list */
    char        *sh_short;     /* shortcut string */
    char        *sh_long;      /* expanded form */
 };
-
-/* Kludges to handle the change from setexit / reset to setjmp / longjmp */
-#define setexit()       (void)sigsetjmp(srbuf, 1)
-#define reset(x)        siglongjmp(srbuf, x)
-
-/* Content-Transfer-Encodings as defined in RFC 2045:
- * - Quoted-Printable, section 6.7
- * - Base64, section 6.8 */
-
-#define QP_LINESIZE     (4 * 19)       /* Max. compliant QP linesize */
-
-#define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
-#define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
-
-/* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
-enum __mimecte_flags {
-   MIMECTE_NONE,
-   MIMECTE_SALLOC = 1<<0,     /* Use salloc(), not srealloc().. */
-   /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
-   MIMECTE_BUF    = 1<<1,
-   MIMECTE_CRLF   = 1<<2,     /* (encode) Append "\r\n" to lines */
-   MIMECTE_LF     = 1<<3,     /* (encode) Append "\n" to lines */
-   /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE+[+[+]] and
-    * inject the desired line-ending whenever a linewrap is desired */
-   MIMECTE_MULTILINE = 1<<4,
-   /* (encode) Quote with header rules, do not generate soft NL breaks? */
-   MIMECTE_ISHEAD = 1<<5
-};
-
-enum qpflags {
-   QP_NONE        = MIMECTE_NONE,
-   QP_SALLOC      = MIMECTE_SALLOC,
-   QP_BUF         = MIMECTE_BUF,
-   QP_ISHEAD      = MIMECTE_ISHEAD
-};
-
-enum b64flags {
-   B64_NONE       = MIMECTE_NONE,
-   B64_SALLOC     = MIMECTE_SALLOC,
-   B64_BUF        = MIMECTE_BUF,
-   B64_CRLF       = MIMECTE_CRLF,
-   B64_LF         = MIMECTE_LF,
-   B64_MULTILINE  = MIMECTE_MULTILINE
-};
-
-/* Locale-independent character classes */
-enum {
-   C_CNTRL        = 0000,
-   C_BLANK        = 0001,
-   C_WHITE        = 0002,
-   C_SPACE        = 0004,
-   C_PUNCT        = 0010,
-   C_OCTAL        = 0020,
-   C_DIGIT        = 0040,
-   C_UPPER        = 0100,
-   C_LOWER        = 0200
-};
-
-#define __ischarof(C, FLAGS)  \
-   (asciichar(C) && (class_char[(uc_it)(C)] & (FLAGS)) != 0)
-
-#define asciichar(c)    ((uc_it)(c) <= 0177)
-#define alnumchar(c)    __ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
-#define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
-#define blankchar(c)    __ischarof(c, C_BLANK)
-#define blankspacechar(c) __ischarof(c, C_BLANK | C_SPACE)
-#define cntrlchar(c)    __ischarof(c, C_CNTRL)
-#define digitchar(c)    __ischarof(c, C_DIGIT | C_OCTAL)
-#define lowerchar(c)    __ischarof(c, C_LOWER)
-#define punctchar(c)    __ischarof(c, C_PUNCT)
-#define spacechar(c)    __ischarof(c, C_BLANK | C_SPACE | C_WHITE)
-#define upperchar(c)    __ischarof(c, C_UPPER)
-#define whitechar(c)    __ischarof(c, C_BLANK | C_WHITE)
-#define octalchar(c)    __ischarof(c, C_OCTAL)
-
-#define upperconv(c)    (lowerchar(c) ? (char)((uc_it)(c) - 'a' + 'A') : (c))
-#define lowerconv(c)    (upperchar(c) ? (char)((uc_it)(c) - 'A' + 'a') : (c))
-/* RFC 822, 3.2. */
-#define fieldnamechar(c) \
-   (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
-
-/* Try to use alloca() for some function-local buffers and data, fall back to
- * smalloc()/free() if not available */
-#ifdef HAVE_ALLOCA
-# define ac_alloc(n)    HAVE_ALLOCA(n)
-# define ac_free(n)     do {UNUSED(n);} while (0)
-#else
-# define ac_alloc(n)    smalloc(n)
-# define ac_free(n)     free(n)
-#endif
-
-/* Single-threaded, use unlocked I/O */
-#ifdef HAVE_PUTC_UNLOCKED
-# undef getc
-# define getc(c)        getc_unlocked(c)
-# undef putc
-# define putc(c, f)     putc_unlocked(c, f)
-# undef putchar
-# define putchar(c)     putc_unlocked((c), stdout)
-#endif
-
-/* Truncate a file to the last character written.  This is useful just before
- * closing an old file that was opened for read/write */
-#define ftrunc(stream) \
-do {\
-   off_t off;\
-   fflush(stream);\
-   off = ftell(stream);\
-   if (off >= 0)\
-      ftruncate(fileno(stream), off);\
-} while (0)
-
-/* fflush() and rewind() */
-#define fflush_rewind(stream) \
-do {\
-   fflush(stream);\
-   rewind(stream);\
-} while (0)
-
-/* There are problems with dup()ing of file-descriptors for child processes.
- * As long as those are not fixed in equal spirit to (outof(): FIX and
- * recode.., 2012-10-04), and to avoid reviving of bugs like (If *record* is
- * set, avoid writing dead content twice.., 2012-09-14), we have to somehow
- * accomplish that the FILE* fp makes itself comfortable with the *real* offset
- * of the underlaying file descriptor.  Unfortunately Standard I/O and POSIX
- * don't describe a way for that -- fflush();rewind(); won't do it.  This
- * fseek(END),rewind() pair works around the problem on *BSD and Linux.
- * Update as of 2014-03-03: with Issue 7 POSIX has overloaded fflush(3): if
- * used on a readable stream, then
- *
- *    if the file is not already at EOF, and the file is one capable of
- *    seeking, the file offset of the underlying open file description shall
- *    be set to the file position of the stream.
- *
- * We need our own, simplified and reliable I/O */
-#if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
-# define really_rewind(stream) \
-do {\
-   rewind(stream);\
-   fflush(stream);\
-} while (0)
-#else
-# define really_rewind(stream) \
-do {\
-   fseek(stream, 0, SEEK_END);\
-   rewind(stream);\
-} while (0)
-#endif
 
 /* For saving the current directory and later returning */
 struct cw {
@@ -1425,7 +1401,6 @@ VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
-VL int         utf8;                /* Locale uses UTF-8 encoding */
 VL int         enc_has_state;       /* Encoding has shift states */
 
 VL char        **altnames;          /* List of alternate names of user */
@@ -1458,9 +1433,9 @@ VL int         noreset;             /* String resets suspended */
 VL int            msgCount;            /* Count of messages read in */
 VL struct mailbox mb;                  /* Current mailbox */
 VL int            image;               /* File descriptor for msg image */
-VL char           mailname[PATH_MAX];  /* Name of current file */
-VL char           displayname[80 - 40]; /* Prettyfied for display */
-VL char           prevfile[PATH_MAX];  /* Name of previous file */
+VL char           mailname[PATH_MAX];  /* Name of current file TODO URL/object*/
+VL char           displayname[80 - 40]; /* Prettyfied for display TODO URL/obj*/
+VL char           prevfile[PATH_MAX];  /* Name of previous file TODO URL/obj */
 VL char const     *account_name;       /* Current account name or NULL */
 VL off_t          mailsize;            /* Size of system mailbox */
 VL struct message *dot;                /* Pointer to current message */
@@ -1526,6 +1501,6 @@ VL uc_it const class_char[];
  * Finally, let's include the function prototypes XXX embed
  */
 
-#include "extern.h"
+#include "nailfuns.h"
 
 /* vim:set fenc=utf-8:s-it-mode */

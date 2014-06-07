@@ -215,7 +215,7 @@ _idna_apply(struct addrguts *agp)
 
    /* GNU Libidn settles on top of iconv(3) without any fallback, so let's just
     * let it perform the charset conversion, if any should be necessary */
-   if (!utf8) {
+   if (!(options & OPT_UNICODE)) {
       char const *tcs = charset_get_lc();
       idna_ascii = idna_utf8;
       idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", tcs);
@@ -252,7 +252,7 @@ _idna_apply(struct addrguts *agp)
 
    idn_free(idna_ascii);
 jleave1:
-   if (utf8)
+   if (options & OPT_UNICODE)
       ac_free(idna_utf8);
    else
       idn_free(idna_utf8);
@@ -783,7 +783,7 @@ thisfield(char const *linebuf, char const *field)
    if (*linebuf++ != ':')
       goto jleave;
 
-   while (blankchar(*linebuf))
+   while (blankchar(*linebuf)) /* TODO header parser..  strip trailing WS?!? */
       ++linebuf;
    rv = linebuf;
 jleave:
@@ -1346,6 +1346,7 @@ fakedate(time_t t)
    return cp;
 }
 
+#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
 FL time_t
 unixtime(char const *fromline)
 {
@@ -1401,6 +1402,7 @@ jinvalid:
    time(&t);
    goto jleave;
 }
+#endif /* HAVE_IMAP_SEARCH || defined HAVE_IMAP */
 
 FL time_t
 rfctime(char const *date)
@@ -1585,6 +1587,7 @@ check_from_and_sender(struct name *fromfield, struct name *senderfield)
    return rv;
 }
 
+#ifdef HAVE_OPENSSL
 FL char *
 getsender(struct message *mp)
 {
@@ -1600,6 +1603,7 @@ getsender(struct message *mp)
    NYD_LEAVE;
    return cp;
 }
+#endif
 
 FL int
 grab_headers(struct header *hp, enum gfield gflags, int subjfirst)

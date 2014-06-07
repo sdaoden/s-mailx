@@ -102,6 +102,14 @@ cksum_test() {
    fi
 }
 
+have_feat() {
+   (
+   echo 'feat' |
+   MAILRC=/dev/null "${SNAIL}" -n -# |
+   ${grep} ${1}
+   ) >/dev/null 2>&1
+}
+
 # t_behave()
 # Basic (easily testable) behaviour tests
 t_behave() {
@@ -117,18 +125,14 @@ t_behave() {
 
    __behave_ifelse
 
-   FEAT=`printf 'feat\n' | MAILRC=/dev/null "${SNAIL}" -n -#`
-   if { i=${FEAT}; echo "${i}"; } | ${grep} -q DEBUG &&
-         { i=${FEAT}; echo "${i}"; } | ${grep} -q 'SSL/TLS' &&
-         { i=${FEAT}; echo "${i}"; } | ${grep} -q 'S/MIME'; then
+   have_feat DEBUG && have_feat SSL/TLS && have_feat S/MIME &&
       __behave_smime
-   fi
 }
 
 __behave_ifelse() {
    # Nestable conditions test
    ${rm} -f "${MBOX}"
-   cat <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
+   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
 		if 0
 		   echo 1.err
 		else
@@ -215,14 +219,76 @@ __behave_ifelse() {
 		   endif
 		   echo 9.ok3
 		endif
+		# `elif'
+		if $dietcurd == 'yohu'
+		   echo 10.err1
+		elif $dietcurd == 'yoha'
+		   echo 10.err2
+		elif $dietcurd == 'yohe'
+		   echo 10.err3
+		elif $dietcurd == 'yoho'
+		   echo 10.ok1
+		   if $dietcurd == 'yohu'
+		      echo 10.err4
+		   elif $dietcurd == 'yoha'
+		      echo 10.err5
+		   elif $dietcurd == 'yohe'
+		      echo 10.err6
+		   elif $dietcurd == 'yoho'
+		      echo 10.ok2
+		      if $dietcurd == 'yohu'
+		         echo 10.err7
+		      elif $dietcurd == 'yoha'
+		         echo 10.err8
+		      elif $dietcurd == 'yohe'
+		         echo 10.err9
+		      elif $dietcurd == 'yoho'
+		         echo 10.ok3
+		      else
+		         echo 10.err10
+		      endif
+		   else
+		      echo 10.err11
+		   endif
+		else
+		   echo 10.err12
+		endif
 	__EOT
-   cksum_test behave:2 "${MBOX}" '1909382116 98'
+   cksum_test behave:if-normal "${MBOX}" '2760114576 119'
+
+   if have_feat REGEX; then
+      ${rm} -f "${MBOX}"
+      ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
+			set dietcurd=yoho
+			if $dietcurd =~ '^yo.*'
+			   echo 1.ok
+			else
+			   echo 1.err
+			endif
+			if $dietcurd =~ '^yoho.+'
+			   echo 2.err
+			else
+			   echo 2.ok
+			endif
+			if $dietcurd !~ '.*ho$'
+			   echo 3.err
+			else
+			   echo 3.ok
+			endif
+			if $dietcurd !~ '.+yoho$'
+			   echo 4.ok
+			else
+			   echo 4.err
+			endif
+		__EOT
+      cksum_test behave:if-regex "${MBOX}" '3930005258 20'
+   fi
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    echo WARNING: behave_smime is yet debug only and not generalized
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
-   cat <<-_EOT > t.conf
+   ${cat} <<-_EOT > t.conf
 		[ req ]
 		default_bits           = 1024
 		default_keyfile        = keyfile.pem
@@ -245,8 +311,8 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 	_EOT
    openssl req -x509 -nodes -days 3650 -config t.conf \
       -newkey rsa:1024 -keyout tkey.pem -out tcert.pem >/dev/null 2>&1
-   rm -f t.conf
-   cat tkey.pem tcert.pem > tpair.pem
+   ${rm} -f t.conf
+   ${cat} tkey.pem tcert.pem > tpair.pem
 
    printf "behave:s/mime:sign/verify: "
    echo bla |
@@ -266,15 +332,15 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    else
       ESTAT=1
       printf 'error: verification failed\n'
-      rm -f ./VERIFY tkey.pem tcert.pem tpair.pem
+      ${rm} -f ./VERIFY tkey.pem tcert.pem tpair.pem
       return
    fi
-   rm -rf ./VERIFY
+   ${rm} -rf ./VERIFY
 
    printf "behave:s/mime:encrypt/decrypt: "
-   cat <<-_EOT > tsendmail.sh
+   ${cat} <<-_EOT > tsendmail.sh
 		#!/bin/sh -
-		(echo 'From S-Postman Thu May 10 20:40:54 2012' && cat) > ./ENCRYPT
+		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./ENCRYPT
 	_EOT
    chmod 0755 tsendmail.sh
 
@@ -302,7 +368,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       ESTAT=1
       printf 'error: decryption+verification failed\n'
    fi
-   rm -f ./tsendmail.sh ./ENCRYPT ./DECRYPT tkey.pem tcert.pem tpair.pem
+   ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT tkey.pem tcert.pem tpair.pem
 }
 
 # t_content()
@@ -443,4 +509,4 @@ fi
 [ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
 
 exit ${ESTAT}
-# vim:set fenc=utf8:s-it-mode
+# vim:set fenc=utf-8:s-it-mode

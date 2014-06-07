@@ -171,7 +171,7 @@ jlearn:
       if (sa == _SPAM_RATE)
          vc.mp->m_spamscore = 0;
       if (vc.mp->m_size > maxsize) {
-         if (options & OPT_VERBOSE)
+         if (options & OPT_VERB)
             fprintf(stderr, tr(515,
                "`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
                _spam_comms[sa], (ul_it)vc.mno + 1,
@@ -229,7 +229,7 @@ _spam_interact(struct spam_vc *vc)
    int p2c[2], c2p[2];
    sigset_t cset;
    size_t size;
-   pid_t pid;
+   pid_t volatile pid;
    FILE *ibuf;
    enum {
       _NONE    = 0,

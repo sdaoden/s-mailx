@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Exported function prototypes.
+ *@ Function prototypes and function-alike macros.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -51,56 +51,164 @@
 #endif
 
 /*
+ * Macro-based generics
+ */
+
+/* Kludges to handle the change from setexit / reset to setjmp / longjmp */
+#define setexit()             (void)sigsetjmp(srbuf, 1)
+#define reset(x)              siglongjmp(srbuf, x)
+
+/* ASCII char classification */
+#define __ischarof(C, FLAGS)  \
+   (asciichar(C) && (class_char[(uc_it)(C)] & (FLAGS)) != 0)
+
+#define asciichar(c)    ((uc_it)(c) <= 0177)
+#define alnumchar(c)    __ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
+#define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
+#define blankchar(c)    __ischarof(c, C_BLANK)
+#define blankspacechar(c) __ischarof(c, C_BLANK | C_SPACE)
+#define cntrlchar(c)    __ischarof(c, C_CNTRL)
+#define digitchar(c)    __ischarof(c, C_DIGIT | C_OCTAL)
+#define lowerchar(c)    __ischarof(c, C_LOWER)
+#define punctchar(c)    __ischarof(c, C_PUNCT)
+#define spacechar(c)    __ischarof(c, C_BLANK | C_SPACE | C_WHITE)
+#define upperchar(c)    __ischarof(c, C_UPPER)
+#define whitechar(c)    __ischarof(c, C_BLANK | C_WHITE)
+#define octalchar(c)    __ischarof(c, C_OCTAL)
+
+#define upperconv(c)    (lowerchar(c) ? (char)((uc_it)(c) - 'a' + 'A') : (c))
+#define lowerconv(c)    (upperchar(c) ? (char)((uc_it)(c) - 'A' + 'a') : (c))
+/* RFC 822, 3.2. */
+#define fieldnamechar(c) \
+   (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
+
+/* Try to use alloca() for some function-local buffers and data, fall back to
+ * smalloc()/free() if not available */
+#ifdef HAVE_ALLOCA
+# define ac_alloc(n)    HAVE_ALLOCA(n)
+# define ac_free(n)     do {UNUSED(n);} while (0)
+#else
+# define ac_alloc(n)    smalloc(n)
+# define ac_free(n)     free(n)
+#endif
+
+/* Single-threaded, use unlocked I/O */
+#ifdef HAVE_PUTC_UNLOCKED
+# undef getc
+# define getc(c)        getc_unlocked(c)
+# undef putc
+# define putc(c, f)     putc_unlocked(c, f)
+# undef putchar
+# define putchar(c)     putc_unlocked((c), stdout)
+#endif
+
+/* Truncate a file to the last character written.  This is useful just before
+ * closing an old file that was opened for read/write */
+#define ftrunc(stream) \
+do {\
+   off_t off;\
+   fflush(stream);\
+   off = ftell(stream);\
+   if (off >= 0)\
+      ftruncate(fileno(stream), off);\
+} while (0)
+
+/* fflush() and rewind() */
+#define fflush_rewind(stream) \
+do {\
+   fflush(stream);\
+   rewind(stream);\
+} while (0)
+
+/* There are problems with dup()ing of file-descriptors for child processes.
+ * As long as those are not fixed in equal spirit to (outof(): FIX and
+ * recode.., 2012-10-04), and to avoid reviving of bugs like (If *record* is
+ * set, avoid writing dead content twice.., 2012-09-14), we have to somehow
+ * accomplish that the FILE* fp makes itself comfortable with the *real* offset
+ * of the underlaying file descriptor.  Unfortunately Standard I/O and POSIX
+ * don't describe a way for that -- fflush();rewind(); won't do it.  This
+ * fseek(END),rewind() pair works around the problem on *BSD and Linux.
+ * Update as of 2014-03-03: with Issue 7 POSIX has overloaded fflush(3): if
+ * used on a readable stream, then
+ *
+ *    if the file is not already at EOF, and the file is one capable of
+ *    seeking, the file offset of the underlying open file description shall
+ *    be set to the file position of the stream.
+ *
+ * We need our own, simplified and reliable I/O */
+#if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+# define really_rewind(stream) \
+do {\
+   rewind(stream);\
+   fflush(stream);\
+} while (0)
+#else
+# define really_rewind(stream) \
+do {\
+   fseek(stream, 0, SEEK_END);\
+   rewind(stream);\
+} while (0)
+#endif
+
+/*
  * acmava.c
  */
 
 /* Don't use _var_* unless you *really* have to! */
 
 /* Constant option key look/(un)set/clear */
-FL char *   _var_oklook(enum okeys okey);
+FL char *      _var_oklook(enum okeys okey);
 #define ok_blook(C)              (_var_oklook(CONCAT(ok_b_, C)) != NULL)
 #define ok_vlook(C)              _var_oklook(CONCAT(ok_v_, C))
 
-FL bool_t   _var_okset(enum okeys okey, uintptr_t val);
+FL bool_t      _var_okset(enum okeys okey, uintptr_t val);
 #define ok_bset(C,B)             _var_okset(CONCAT(ok_b_, C), (uintptr_t)(B))
 #define ok_vset(C,V)             _var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
 
-FL bool_t   _var_okclear(enum okeys okey);
+FL bool_t      _var_okclear(enum okeys okey);
 #define ok_bclear(C)             _var_okclear(CONCAT(ok_b_, C))
 #define ok_vclear(C)             _var_okclear(CONCAT(ok_v_, C))
 
 /* Variable option key look/(un)set/clear */
-FL char *   _var_voklook(char const *vokey);
+FL char *      _var_voklook(char const *vokey);
 #define vok_blook(S)              (_var_voklook(S) != NULL)
 #define vok_vlook(S)              _var_voklook(S)
 
-FL bool_t   _var_vokset(char const *vokey, uintptr_t val);
+FL bool_t      _var_vokset(char const *vokey, uintptr_t val);
 #define vok_bset(S,B)            _var_vokset(S, (uintptr_t)(B))
 #define vok_vset(S,V)            _var_vokset(S, (uintptr_t)(V))
 
-FL bool_t   _var_vokclear(char const *vokey);
+FL bool_t      _var_vokclear(char const *vokey);
 #define vok_bclear(S)            _var_vokclear(S)
 #define vok_vclear(S)            _var_vokclear(S)
 
 /* List all variables */
-FL void     var_list_all(void);
+FL void        var_list_all(void);
 
-/* `varshow', `define', `undefine', `call' / `~' */
-FL int      c_varshow(void *v);
-FL int      c_define(void *v);
-FL int      c_undefine(void *v);
-FL int      c_call(void *v);
+/* `varshow' */
+FL int         c_varshow(void *v);
 
-FL int      callhook(char const *name, int nmail);
+/* User variable access: `set', `setenv', `unset' and `unsetenv' */
+FL int         c_set(void *v);
+FL int         c_setenv(void *v);
+FL int         c_unset(void *v);
+FL int         c_unsetenv(void *v);
 
-/* `account', `unaccount' */
-FL int      c_account(void *v);
-FL int      c_unaccount(void *v);
+/* Macros: `define', `undefine', `call' / `~' */
+FL int         c_define(void *v);
+FL int         c_undefine(void *v);
+FL int         c_call(void *v);
+
+FL int         callhook(char const *name, int nmail);
+
+/* Accounts: `account', `unaccount' */
+FL int         c_account(void *v);
+FL int         c_unaccount(void *v);
 
 /* `localopts' */
-FL int      c_localopts(void *v);
+FL int         c_localopts(void *v);
 
-FL void     temporary_localopts_free(void); /* XXX intermediate hack */
+FL void        temporary_localopts_free(void); /* XXX intermediate hack */
 
 /*
  * attachments.c
@@ -203,15 +311,19 @@ FL char *      getprompt(void);
 /* Detect and query the hostname to use */
 FL char *      nodename(int mayoverride);
 
-/* Try to lookup a variable named "password-*token*".
- * Return NULL or salloc()ed buffer */
-FL char *      lookup_password_for_token(char const *token);
+/* Parse data, which must meet the criteria of the protocol cproto, and fill
+ * in the URL structure urlp */
+FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
+                  char const *data);
+
+/* Zero ccp and lookup credentials for communicating with urlp.
+ * Return wether credentials are available and valid (for chosen auth) */
+FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
+FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
+                  char const *addr);
 
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
-
-#define Hexchar(n)               ((n)>9 ? (n)-10+'A' : (n)+'0')
-#define hexchar(n)               ((n)>9 ? (n)-10+'a' : (n)+'0')
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
@@ -224,12 +336,13 @@ FL char *      getrandstring(size_t length);
 #  include "rfc1321.h"
 # endif
 
-/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated */
+/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
+ * using lowercase ASCII letters as defined in RFC 2195 */
 # define MD5TOHEX_SIZE           32
 FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
 /* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
-FL char *      cram_md5_string(char const *user, char const *pass,
+FL char *      cram_md5_string(struct str const *user, struct str const *pass,
                   char const *b64);
 
 /* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
@@ -249,7 +362,17 @@ FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
-/* xxx Place cp in a salloc()ed buffer, column-aligned */
+/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
+ * safely placed in a buffer (field width) of maxlen bytes */
+FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
+
+/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
+ * taking into account multibyte code point boundaries and possibly
+ * encapsulating in bidi_info toggles as necessary */
+FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
+                  size_t blen);
+
+/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
 FL char *      colalign(char const *cp, int col, int fill,
                   int *cols_decr_used_or_null);
 
@@ -262,6 +385,13 @@ FL int         prout(char const *s, size_t sz, FILE *fp);
 /* Print out a Unicode character or a substitute for it, return 0 on error or
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
+
+/* Check wether bidirectional info maybe needed for blen bytes of bdat */
+FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
+
+/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
+ * the strings are always empty */
+FL void        bidi_info_create(struct bidi_info *bip);
 
 /* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
  * we check against *colour-pagers* wether colour is really desirable */
@@ -478,12 +608,6 @@ FL int         c_messize(void *v);
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
-/* Set or display a variable value.  Syntax is similar to that of sh */
-FL int         c_set(void *v);
-
-/* Unset a bunch of variable values */
-FL int         c_unset(void *v);
-
 /* Put add users to a group */
 FL int         c_group(void *v);
 
@@ -496,13 +620,14 @@ FL int         c_file(void *v);
 /* Expand file names like echo */
 FL int         c_echo(void *v);
 
-/* if.else.endif conditional execution.
+/* if.elif.else.endif conditional execution.
  * condstack_isskip() returns wether the current condition state doesn't allow
  * execution of commands.
  * condstack_release() and condstack_take() are used when sourcing files, they
  * rotate the current condition stack; condstack_take() returns a false boolean
  * if the current condition stack has unclosed conditionals */
 FL int         c_if(void *v);
+FL int         c_elif(void *v);
 FL int         c_else(void *v);
 FL int         c_endif(void *v);
 FL bool_t      condstack_isskip(void);
@@ -536,6 +661,10 @@ FL int         c_remove(void *v);
 
 /* Rename mailbox */
 FL int         c_rename(void *v);
+
+/* `urlenc' and `urldec' */
+FL int         c_urlenc(void *v);
+FL int         c_urldec(void *v);
 
 /*
  * collect.c
@@ -697,12 +826,11 @@ FL enum okay   get_body(struct message *mp);
 
 /* Socket I/O */
 #ifdef HAVE_SOCKETS
+FL bool_t      sopen(struct sock *sp, struct url *urlp);
 FL int         sclose(struct sock *sp);
 FL enum okay   swrite(struct sock *sp, char const *data);
 FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
                   int use_buffer);
-FL enum okay   sopen(char const *xserver, struct sock *sp, int use_ssl,
-                  char const *uhp, char const *portstr);
 
 /*  */
 FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
@@ -823,7 +951,9 @@ FL char const * fakedate(time_t t);
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |
  *               0    5   10   15   20 */
+#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
 FL time_t      unixtime(char const *from);
+#endif
 
 FL time_t      rfctime(char const *date);
 
@@ -835,7 +965,9 @@ FL void        substdate(struct message *m);
 FL int         check_from_and_sender(struct name *fromfield,
                   struct name *senderfield);
 
+#ifdef HAVE_OPENSSL
 FL char *      getsender(struct message *m);
+#endif
 
 /*
  * imap.c
@@ -1130,10 +1262,12 @@ FL size_t      b64_encode_calc_size(size_t len);
  * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
 FL struct str * b64_encode(struct str *out, struct str const *in,
                   enum b64flags flags);
-FL struct str * b64_encode_cp(struct str *out, char const *cp,
-                  enum b64flags flags);
 FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum b64flags flags);
+#ifdef HAVE_SMTP
+FL struct str * b64_encode_cp(struct str *out, char const *cp,
+                  enum b64flags flags);
+#endif
 
 /* If rest is set then decoding will assume text input.
  * The buffers of out and possibly rest will be managed via srealloc().
@@ -1156,8 +1290,10 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 /* Concatenate the two passed name lists, return the result */
 FL struct name * cat(struct name *n1, struct name *n2);
 
-/* Determine the number of undeleted elements in a name list and return it */
+/* Determine the number of undeleted elements in a name list and return it;
+ * the latter also doesn't count file and pipe addressees in addition */
 FL ui32_t      count(struct name const *np);
+FL ui32_t      count_nonlocal(struct name const *np);
 
 /* Extract a list of names from a line, and make a list of names from it.
  * Return the list or NULL if none found */
@@ -1190,8 +1326,7 @@ FL struct name * delete_alternates(struct name *np);
 FL int         is_myname(char const *name);
 
 /* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
-FL struct name * outof(struct name *names, FILE *fo, struct header *hp,
-                  bool_t *senderror);
+FL struct name * outof(struct name *names, FILE *fo, bool_t *senderror);
 
 /* Handling of alias groups */
 
@@ -1218,7 +1353,7 @@ FL void        ssl_gen_err(char const *fmt, ...);
 FL int         c_verify(void *vp);
 
 /*  */
-FL FILE *      smime_sign(FILE *ip, struct header *);
+FL FILE *      smime_sign(FILE *ip, char const *addr);
 
 /*  */
 FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
@@ -1396,13 +1531,8 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
  */
 
 #ifdef HAVE_SMTP
-/* smtp-authXY, where XY=type=-user|-password etc */
-FL char *      smtp_auth_var(char const *type, char const *addr);
-
-/* Connect to a SMTP server */
-FL int         smtp_mta(char *server, struct name *to, FILE *fi,
-                  struct header *hp, char const *user, char const *password,
-                  char const *skinned);
+/* Send a message via SMTP */
+FL bool_t      smtp_mta(struct sendbundle *sbp);
 #endif
 
 /*
@@ -1550,19 +1680,22 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 #endif
 
 /* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp SALLOC_DEBUG_ARGS);
+FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define urlxenc(CP)             urlxenc(CP, __FILE__, __LINE__)
+# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
 
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
+
+#ifdef HAVE_SPAM
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+# ifdef HAVE_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
+# endif
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
@@ -1615,8 +1748,10 @@ FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 /* Locale-independent character class functions */
 FL int         asccasecmp(char const *s1, char const *s2);
 FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
-FL char const * asccasestr(char const *haystack, char const *xneedle);
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
+#ifdef HAVE_IMAP
+FL char const * asccasestr(char const *haystack, char const *xneedle);
+#endif
 
 /* struct str related support funs */
 
@@ -1689,28 +1824,18 @@ FL void        uncollapse1(struct message *mp, int always);
  */
 
 /* Return wether user says yes.  If prompt is NULL, "Continue (y/n)? " is used
- * instead.  If interactive, asks on STDIN, anything but [0]==[yY] is false.
- * If noninteractive, returns noninteract_default */
+ * instead.  If interactive, asks on STDIN, anything but [0]==[Nn] is true.
+ * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
-
-/* [Yy]es or [Nn]o.  Always `yes' if not interactive, always `no' on error */
-FL bool_t      yorn(char const *msg);
 
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */
 FL char *      getuser(char const *query);
 
 /* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error.
+ * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
-
-/* Get both, user and password in the expected way; simply reuses a value that
- * is set, otherwise calls one of the above.
- * Returns true only if we have a user and a password.
- * *user* will be savestr()ed if neither it nor *pass* have a default value
- * (so that termios_state.ts_linebuf carries only one) */
-FL bool_t      getcredentials(char **user, char **pass);
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
@@ -1730,9 +1855,10 @@ FL int         tty_readline(char const *prompt, char **linebuf,
 # define tty_readline(A,B,C,D)   tty_readline(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Add a line (most likely as returned by tty_readline()) to the history
- * (only added for real if non-empty and doesn't begin with U+0020) */
-FL void        tty_addhist(char const *s);
+/* Add a line (most likely as returned by tty_readline()) to the history.
+ * Wether an entry added for real depends on the isgabby / *history-gabby*
+ * relation, and / or wether s is non-empty and doesn't begin with U+0020 */
+FL void        tty_addhist(char const *s, bool_t isgabby);
 
 #if defined HAVE_HISTORY &&\
    (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)

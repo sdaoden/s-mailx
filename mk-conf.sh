@@ -36,9 +36,12 @@ if [ -n "${CONFIG}" ]; then
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
       ;;
+   MAXIMAL)
+      WANT_GSSAPI=1
+      ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND'
+      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND, MAXIMAL'
       exit 1
    esac
 fi
@@ -52,7 +55,7 @@ option_update() {
    if nwantfeat IMAP && nwantfeat POP3 && nwantfeat SMTP; then
       WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0
    fi
-   if nwantfeat IMAP; then
+   if nwantfeat IMAP && nwantfeat SMTP; then
       WANT_GSSAPI=0
    fi
    # If we don't need MD5 except for producing boundary and message-id strings,
@@ -67,19 +70,15 @@ option_update() {
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
 compiler_flags() {
-   i=`uname -s`
-   _CFLAGS=
-
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
-   optim= dbgoptim=
+   optim= dbgoptim= _CFLAGS=
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
-      _CFLAGS=
       if { CC="`command -v clang`"; }; then
          :
       elif { CC="`command -v gcc`"; }; then
          :
       elif { CC="`command -v c89`"; }; then
-         [ "${i}" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
+         [ "`uname -s`" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
       elif { CC="`command -v c99`"; }; then
          :
       else
@@ -98,12 +97,13 @@ compiler_flags() {
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
-      _CFLAGS="${_CFLAGS} -Wall -Wextra -pedantic"
+      _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
       _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
       _CFLAGS="${_CFLAGS} -fstrict-aliasing"
       _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
+      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
       if { i=${ccver}; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
@@ -118,20 +118,12 @@ compiler_flags() {
       if wantfeat AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
-      if wantfeat DEBUG; then
-         _CFLAGS="${_CFLAGS} -std=c89"
-         _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      fi
 #   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
-#      stackprot=yes
 #      optim=-O3 dbgoptim=-O
-#      _CFLAGS='-std=c89 -g -Weverything -Wno-long-long'
+#      stackprot=yes
+#      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
 #      if wantfeat AMALGAMATION; then
 #         _CFLAGS="${_CFLAGS} -pipe"
-#      fi
-#      if wantfeat DEBUG; then
-#         _CFLAGS="${_CFLAGS} -std=c89"
-#         _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
 #      fi
    elif [ -z "${optim}" ]; then
       optim=-O1 dbgoptim=-O
@@ -140,9 +132,9 @@ compiler_flags() {
    if nwantfeat DEBUG; then
       _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
-      _CFLAGS="${dbgoptim} -g -ftrapv ${_CFLAGS}";
+      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
       if [ "${stackprot}" = yes ]; then
-         _CFLAGS="${_CFLAGS} -fstack-protector-all "
+         _CFLAGS="${_CFLAGS} -ftrapv -fstack-protector-all "
             _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
       fi
    fi
@@ -849,7 +841,7 @@ int main(void)
 
    if [ "${have_openssl}" = 'yes' ]; then
       compile_check stack_of 'for OpenSSL STACK_OF()' \
-         '#define HAVE_STACK_OF' << \!
+         '#define HAVE_OPENSSL_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -864,7 +856,17 @@ int main(void)
 }
 !
 
-      if wantfeat MD5; then
+      link_check rand_egd 'for OpenSSL RAND_egd()' \
+         '#define HAVE_OPENSSL_RAND_EGD' '-lssl -lcrypto' << \!
+#include <openssl/rand.h>
+
+int main(void)
+{
+   return RAND_egd("some.where") > 0;
+}
+!
+
+      if wantfeat MD5 && nwantfeat NOEXTMD5; then
          run_check openssl_md5 'for MD5 digest in OpenSSL' \
          '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
@@ -892,7 +894,7 @@ int main(void)
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
-      fi # wantfeat MD5
+      fi # wantfeat MD5 && nwantfeat NOEXTMD5
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}
@@ -913,35 +915,34 @@ int main(void)
 
    if command -v krb5-config >/dev/null 2>&1; then
       i=`command -v krb5-config`
-      GSSAPI_LIBS="`CFLAGS= ${i} --libs gssapi`"
-      GSSAPI_INCS="`CFLAGS= ${i} --cflags`"
-      i='for GSSAPI via krb5-config(1)'
+      GSS_LIBS="`CFLAGS= ${i} --libs gssapi`"
+      GSS_INCS="`CFLAGS= ${i} --cflags`"
+      i='for GSS-API via krb5-config(1)'
    else
-      GSSAPI_LIBS='-lgssapi'
-      GSSAPI_INCS=
-      i='for GSSAPI in gssapi/gssapi.h, libgssapi'
+      GSS_LIBS='-lgssapi'
+      GSS_INCS=
+      i='for GSS-API in gssapi/gssapi.h, libgssapi'
    fi
-   < ${tmp2}.c link_check gssapi \
-         "${i}" '#define HAVE_GSSAPI' \
-         "${GSSAPI_LIBS}" "${GSSAPI_INCS}" ||\
-      < ${tmp3}.c link_check gssapi \
-         'for GSSAPI in gssapi.h, libgssapi' \
+   < ${tmp2}.c link_check gss \
+         "${i}" '#define HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
+      < ${tmp3}.c link_check gss \
+         'for GSS-API in gssapi.h, libgssapi' \
          '#define HAVE_GSSAPI
-         #define	GSSAPI_REG_INCLUDE' \
+         #define GSSAPI_REG_INCLUDE' \
          '-lgssapi' ||\
-      < ${tmp2}.c link_check gssapi 'for GSSAPI in libgssapi_krb5' \
+      < ${tmp2}.c link_check gss 'for GSS-API in libgssapi_krb5' \
          '#define HAVE_GSSAPI' \
          '-lgssapi_krb5' ||\
-      < ${tmp3}.c link_check gssapi \
-         'for GSSAPI in libgssapi, OpenBSD-style (pre 5.3)' \
+      < ${tmp3}.c link_check gss \
+         'for GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
          '#define HAVE_GSSAPI
-         #define	GSSAPI_REG_INCLUDE' \
+         #define GSS_REG_INCLUDE' \
          '-lgssapi -lkrb5 -lcrypto' \
          '-I/usr/include/kerberosV' ||\
-      < ${tmp2}.c link_check gssapi 'for GSSAPI in libgss' \
+      < ${tmp2}.c link_check gss 'for GSS-API in libgss' \
          '#define HAVE_GSSAPI' \
          '-lgss' ||\
-      link_check gssapi 'for GSSAPI in libgssapi_krb5, old-style' \
+      link_check gss 'for GSS-API in libgssapi_krb5, old-style' \
          '#define HAVE_GSSAPI
          #define GSSAPI_OLD_STYLE' \
          '-lgssapi_krb5' << \!
@@ -1173,7 +1174,7 @@ printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_GSSAPI\n   ",GSSAPI"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
@@ -1256,7 +1257,7 @@ ${cat} > ${tmp2}.c << \!
 : + IMAP protocol
 #endif
 #ifdef HAVE_GSSAPI
-: + IMAP GSSAPI authentication
+: + GSS-API authentication
 #endif
 #ifdef HAVE_POP3
 : + POP3 protocol
@@ -1274,7 +1275,7 @@ ${cat} > ${tmp2}.c << \!
 : + IMAP-style search expressions
 #endif
 #ifdef HAVE_REGEX
-: + Regular expression searches
+: + Regular expression support (searches, conditional expressions etc.)
 #endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
 : + Command line editing
@@ -1318,7 +1319,7 @@ ${cat} > ${tmp2}.c << \!
 : - IMAP protocol
 #endif
 #ifndef HAVE_GSSAPI
-: - IMAP GSSAPI authentication
+: - GSS-API authentication
 #endif
 #ifndef HAVE_POP3
 : - POP3 protocol
@@ -1336,7 +1337,7 @@ ${cat} > ${tmp2}.c << \!
 : - IMAP-style search expressions
 #endif
 #ifndef HAVE_REGEX
-: - Regular expression searches
+: - Regular expression support
 #endif
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history

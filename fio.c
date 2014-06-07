@@ -1247,9 +1247,8 @@ jleave:
    return rv;
 }
 
-FL enum okay
-sopen(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
-   char const *portstr)
+FL bool_t
+sopen(struct sock *sp, struct url *urlp)
 {
 # ifdef HAVE_SO_SNDTIMEO
    struct timeval tv;
@@ -1265,154 +1264,124 @@ sopen(char const *xserver, struct sock *sp, int use_ssl, char const *uhp,
    struct in_addr **pptr;
    struct hostent *hp;
    struct servent *ep;
-   unsigned short port = 0;
 # endif
-   int sockfd;
-   char *cp, *server = UNCONST(xserver);
-   enum okay rv = STOP;
+   char const *serv;
+   int sofd = -1;
    NYD_ENTER;
-   UNUSED(use_ssl);
-   UNUSED(uhp);
 
-   if ((cp = strchr(server, ':')) != NULL) { /* TODO URI parse! IPv6! */
-      portstr = &cp[1];
-# ifndef HAVE_IPV6
-      port = strtol(portstr, NULL, 10);
-# endif
-      server = salloc(cp - xserver +1);
-      memcpy(server, xserver, cp - xserver);
-      server[cp - xserver] = '\0';
-   }
-
-   /* Connect timeouts after 30 seconds */
+   /* Connect timeouts after 30 seconds XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO
    tv.tv_sec = 30;
    tv.tv_usec = 0;
 # endif
+   serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
+
+   if (options & OPT_VERB)
+      fprintf(stderr, tr(187, "Resolving host %s:%s ..."),
+         urlp->url_host.s, serv);
 
 # ifdef HAVE_IPV6
-   if (options & OPT_VERBOSE)
-      fprintf(stderr, "Resolving host %s . . .", server);
    memset(&hints, 0, sizeof hints);
    hints.ai_socktype = SOCK_STREAM;
-   if (getaddrinfo(server, portstr, &hints, &res0) != 0) {
-      fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
+   if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
+      fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), urlp->url_host.s);
       goto jleave;
-   } else if (options & OPT_VERBOSE)
+   } else if (options & OPT_VERB)
       fprintf(stderr, tr(500, " done.\n"));
 
-   sockfd = -1;
-   for (res = res0; res != NULL && sockfd < 0; res = res->ai_next) {
-      if (options & OPT_VERBOSE) {
+   for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
+      if (options & OPT_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
-               NULL, 0, NI_NUMERICHOST) != 0)
+               NULL, 0, NI_NUMERICHOST))
             strcpy(hbuf, "unknown host");
-         fprintf(stderr, tr(192, "%sConnecting to %s:%s . . ."),
-               (res == res0 ? "" : "\n"), hbuf, portstr);
+         fprintf(stderr, tr(192, "%sConnecting to %s:%s ..."),
+               (res == res0 ? "" : "\n"), hbuf, serv);
       }
-      sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (sockfd >= 0) {
+      sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+      if (sofd >= 0) {
 #  ifdef HAVE_SO_SNDTIMEO
-         setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+         setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
-         if (connect(sockfd, res->ai_addr, res->ai_addrlen) != 0) {
-            close(sockfd);
-            sockfd = -1;
+         if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
+            close(sofd);
+            sofd = -1;
          }
       }
    }
-   if (sockfd < 0) {
+   freeaddrinfo(res0);
+   if (sofd < 0) {
       perror(tr(254, " could not connect"));
-      freeaddrinfo(res0);
       goto jleave;
    }
-   freeaddrinfo(res0);
 
 # else /* HAVE_IPV6 */
-   if (port == 0) {
-      if (!strcmp(portstr, "smtp"))
-         port = htons(25);
-      else if (!strcmp(portstr, "smtps"))
-         port = htons(465);
-#  ifdef HAVE_IMAP
-      else if (!strcmp(portstr, "imap"))
-         port = htons(143);
-      else if (!strcmp(portstr, "imaps"))
-         port = htons(993);
-#  endif
-#  ifdef HAVE_POP3
-      else if (!strcmp(portstr, "pop3"))
-         port = htons(110);
-      else if (!strcmp(portstr, "pop3s"))
-         port = htons(995);
-#  endif
-      else if ((ep = getservbyname(UNCONST(portstr), "tcp")) != NULL)
-         port = ep->s_port;
+   if (urlp->url_port == NULL && urlp->url_portno == 0) {
+      if ((ep = getservbyname(UNCONST(urlp->url_proto), "tcp")) != NULL)
+         urlp->url_portno = ep->s_port;
       else {
-         fprintf(stderr, tr(251, "Unknown service: %s\n"), portstr);
-         rv = STOP;
+         fprintf(stderr, tr(251, "Unknown service: %s\n"), urlp->url_proto);
          goto jleave;
       }
-   } else
-      port = htons(port);
+   }
 
-   if (options & OPT_VERBOSE)
-      fprintf(stderr, "Resolving host %s . . .", server);
-   if ((hp = gethostbyname(server)) == NULL) {
-      fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), server);
+   if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
+      fprintf(stderr, tr(252, " lookup of `%s' failed.\n"), urlp->url_host.s);
       goto jleave;
-   } else if (options & OPT_VERBOSE)
+   } else if (options & OPT_VERB)
       fprintf(stderr, tr(500, " done.\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
-   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+   if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
       perror(tr(253, "could not create socket"));
       goto jleave;
    }
+
    memset(&servaddr, 0, sizeof servaddr);
    servaddr.sin_family = AF_INET;
-   servaddr.sin_port = port;
+   servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
-   if (options & OPT_VERBOSE)
-      fprintf(stderr, tr(192, "%sConnecting to %s:%d . . ."),
-         "", inet_ntoa(**pptr), ntohs(port));
-
+   if (options & OPT_VERB)
+      fprintf(stderr, tr(190, "%sConnecting to %s:%d ..."),
+         "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
-   setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
-   if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof servaddr) != 0) {
+   if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
       perror(tr(254, " could not connect"));
+      close(sofd);
+      sofd = -1;
       goto jleave;
    }
 # endif /* !HAVE_IPV6 */
-   if (options & OPT_VERBOSE)
+
+   if (options & OPT_VERB)
       fputs(tr(193, " connected.\n"), stderr);
 
-   /* And the regular timeouts */
+   /* And the regular timeouts XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
-   setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
 # endif
 # ifdef HAVE_SO_LINGER
    li.l_onoff = 1;
    li.l_linger = 42;
-   setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
+   setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
 # endif
 
    memset(sp, 0, sizeof *sp);
-   sp->s_fd = sockfd;
+   sp->s_fd = sofd;
 # ifdef HAVE_SSL
-   if (use_ssl && ssl_open(server, sp, uhp) != OKAY) {
+   if (urlp->url_needs_tls &&
+         ssl_open(urlp->url_host.s, sp, urlp->url_uhp.s) != OKAY) {
       sclose(sp);
-      goto jleave;
+      sofd = -1;
    }
 # endif
-   rv = OKAY;
 jleave:
    NYD_LEAVE;
-   return rv;
+   return (sofd >= 0);
 }
 
 FL int

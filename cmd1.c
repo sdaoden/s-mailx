@@ -722,6 +722,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    struct message *mp;
    char const *cp;
    FILE * volatile obuf;
+   bool_t volatile hadsig = FAL0, isrelax = FAL0;
    NYD_ENTER;
    {
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
@@ -731,8 +732,11 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t const volatile formfeed = (dopipe && ok_blook(page));
    obuf = stdout;
 
-   if (sigsetjmp(_cmd1_pipestop, 1))
+   if (sigsetjmp(_cmd1_pipestop, 1)) {
+      hadsig = TRU1;
       goto jclose_pipe;
+   }
+
    if (dopipe) {
       if ((cp = ok_vlook(SHELL)) == NULL)
          cp = XSHELL;
@@ -762,15 +766,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
          pager = get_pager();
-#ifdef HAVE_SETENV
-         if ((cp = getenv("LESS")) == NULL) /* XXX not here! */
-            setenv("LESS", "FRXi", 0); /* XXX add env. */
-#endif
          obuf = Popen(pager, "w", NULL, 1);
-#ifdef HAVE_SETENV
-         if (cp == NULL)
-            unsetenv("LESS"); /* XXX to Popen() etc.?!! */
-#endif
          if (obuf == NULL) {
             perror(pager);
             obuf = stdout;
@@ -788,10 +784,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       colour_table_create(NULL); /* (salloc()s!) */
 #endif
 
-   /* This may jump, in which case srelax_rele() wouldn't be called, but
-    * it shouldn't matter, because we -- then -- directly reenter the
-    * lex.c:commands() loop, which sreset()s */
+   /*TODO unless we have our signal manager special care must be taken */
    srelax_hold();
+   isrelax = TRU1;
    for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = message + *ip - 1;
       touch(mp);
@@ -813,11 +808,14 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
    }
    srelax_rele();
+   isrelax = FAL0;
 
 jclose_pipe:
    if (obuf != stdout) {
       /* Ignore SIGPIPE so it can't cause a duplicate close */
       safe_signal(SIGPIPE, SIG_IGN);
+      if (hadsig && isrelax)
+         srelax_rele();
       colour_reset(obuf); /* XXX hacky; only here because we still jump */
       Pclose(obuf, TRU1);
       safe_signal(SIGPIPE, dflpipe);

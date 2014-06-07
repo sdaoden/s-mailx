@@ -67,7 +67,7 @@ EMPTY_FILE(openssl)
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-#ifdef HAVE_STACK_OF
+#ifdef HAVE_OPENSSL_STACK_OF
 # define _STACKOF(X)    STACK_OF(X)
 #else
 # define _STACKOF(X)    /*X*/STACK
@@ -114,7 +114,7 @@ static struct smime_cipher const _smime_ciphers[] = {
 #endif
 #ifndef OPENSSL_NO_DES
 # ifndef _SMIME_DEFAULT_CIPHER
-#  define _SMIME_DEFAULT_CIPHER   EVP_des_ede3_cbc
+#  define _SMIME_DEFAULT_CIPHER  EVP_des_ede3_cbc
 # endif
    {"des3", &EVP_des_ede3_cbc},
    {"des", &EVP_des_cbc},
@@ -129,14 +129,16 @@ static struct smime_cipher const _smime_ciphers[] = {
 # error cipher algorithms that are required to support S/MIME
 #endif
 
-static int        initialized;
-static int        rand_init;
-static int        message_number;
-static int        verify_error_found;
+static int        _ssl_isinit;
+static int        _ssl_rand_isinit;
+static int        _ssl_msgno;
+static int        _ssl_verify_error;
 
-static int        ssl_rand_init(void);
-static void       ssl_init(void);
-static int        ssl_verify_cb(int success, X509_STORE_CTX *store);
+static int        _ssl_rand_init(void);
+static void       _ssl_init(void);
+static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
+                     char *bdat, size_t blen);
+static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 static const SSL_METHOD *ssl_select_method(char const *uhp);
 static void       ssl_load_verifications(struct sock *sp);
 static void       ssl_certificate(struct sock *sp, char const *uhp);
@@ -148,8 +150,8 @@ static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
                      bool_t dowarn);
-static char *     smime_sign_include_certs(char const *name);
-static int        smime_sign_include_chain_creat(_STACKOF(X509) **chain,
+static char *     _smime_sign_include_certs(char const *name);
+static bool_t     _smime_sign_include_chain_creat(_STACKOF(X509) **chain,
                      char const *cfiles);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 static enum okay  load_crl1(X509_STORE *store, char const *name);
@@ -157,19 +159,22 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
 static int
-ssl_rand_init(void)
+_ssl_rand_init(void)
 {
    char *cp, *x;
    int state = 0;
    NYD_ENTER;
 
+#ifdef HAVE_OPENSSL_RAND_EGD
    if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
          fprintf(stderr, tr(245, "entropy daemon at \"%s\" not available\n"),
             cp);
       else
          state = 1;
-   } else if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
+   } else
+#endif
+   if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
          fprintf(stderr, tr(246, "entropy file at \"%s\" not available\n"), cp);
       else {
@@ -189,43 +194,107 @@ ssl_rand_init(void)
 }
 
 static void
-ssl_init(void)
+_ssl_init(void)
 {
    NYD_ENTER;
-   if (initialized == 0) {
+   if (_ssl_isinit == 0) {
       SSL_library_init();
-      initialized = 1;
+      _ssl_isinit = 1;
    }
-   if (rand_init == 0)
-      rand_init = ssl_rand_init();
+   if (_ssl_rand_isinit == 0)
+      _ssl_rand_isinit = _ssl_rand_init();
    NYD_LEAVE;
 }
 
-static int
-ssl_verify_cb(int success, X509_STORE_CTX *store)
+static bool_t
+_ssl_parse_asn1_time(ASN1_TIME *atp, char *bdat, size_t blen)
 {
+   /* Shamelessly stolen from CURL */
+   char const *db, *gm;
+   int Y, M, d, h, m, s;
+   bool_t rv;
+   NYD_ENTER;
+
+   db = (char const*)atp->data;
+   if (atp->length < 10)
+      goto jerr;
+
+   for (s = 0; s < 10; ++s)
+      if (!digitchar(db[s]))
+         goto jerr;
+
+   gm = (db[atp->length - 1] == 'Z') ? "GMT" : "";
+
+   Y = (db[0] - '0') * 10 + (db[1] - '0');
+   if (Y < 50)
+      Y += 100;
+   Y += 1900;
+
+   M = (db[2] - '0') * 10 + (db[3] - '0');
+   if (M > 12 || M < 1)
+      goto jerr;
+
+   d = (db[4] - '0') * 10 + (db[5] - '0');
+   h = (db[6] - '0') * 10 + (db[7] - '0');
+   m = (db[8] - '0') * 10 + (db[9] - '0');
+   s = (db[10] >= '0' && db[10] <= '9' && db[11] >= '0' && db[11] <= '9')
+         ? ((db[10] - '0') * 10 + (db[11] - '0')) : 0;
+
+   snprintf(bdat, blen, "%04d-%02d-%02d %02d:%02d:%02d %s",
+      Y, M, d, h, m, s, gm);
+   rv = TRU1;
+jleave:
+   NYD_LEAVE;
+   return rv;
+jerr:
+   snprintf(bdat, blen, tr(576, "Bogus certificate date: %.*s\n"),
+      atp->length, db);
+   rv = FAL0;
+   goto jleave;
+}
+
+static int
+_ssl_verify_cb(int success, X509_STORE_CTX *store)
+{
+   char data[256];
+   X509 *cert;
    int rv = TRU1;
    NYD_ENTER;
 
-   if (success == 0) {
-      char data[256];
-      X509 *cert = X509_STORE_CTX_get_current_cert(store);
-      int depth = X509_STORE_CTX_get_error_depth(store);
-      int err = X509_STORE_CTX_get_error(store);
+   if (success && !(options & OPT_VERB))
+      goto jleave;
 
-      verify_error_found = 1;
-      if (message_number)
-         fprintf(stderr, "Message %d: ", message_number);
-      fprintf(stderr, tr(229, "Error with certificate at depth: %i\n"), depth);
-      X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
-      fprintf(stderr, tr(230, " issuer = %s\n"), data);
-      X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
-      fprintf(stderr, tr(231, " subject = %s\n"), data);
-      fprintf(stderr, tr(232, " err %i: %s\n"),
-         err, X509_verify_cert_error_string(err));
-      if (ssl_verify_decide() != OKAY)
-         rv = FAL0;
+   if (_ssl_msgno != 0) {
+      fprintf(stderr, "Message %d:\n", _ssl_msgno);
+      _ssl_msgno = 0;
    }
+   fprintf(stderr, tr(229, " Certificate depth %d %s\n"),
+      X509_STORE_CTX_get_error_depth(store), (success ? "" : tr(579, "ERROR")));
+
+   cert = X509_STORE_CTX_get_current_cert(store);
+
+   X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
+   fprintf(stderr, tr(231, "  subject = %s\n"), data);
+
+   _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
+   fprintf(stderr, tr(577, "  notBefore = %s\n"), data);
+
+   _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
+   fprintf(stderr, tr(578, "  notAfter = %s\n"), data);
+
+   if (!success) {
+      int err = X509_STORE_CTX_get_error(store);
+      fprintf(stderr, tr(232, "  err %i: %s\n"),
+         err, X509_verify_cert_error_string(err));
+      _ssl_verify_error = 1;
+   }
+
+   X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
+   fprintf(stderr, tr(230, "  issuer = %s\n"), data);
+
+   if (!success && ssl_verify_decide() != OKAY)
+      rv = FAL0;
+jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -287,9 +356,9 @@ ssl_load_verifications(struct sock *sp)
          fprintf(stderr, tr(243, "Error loading default CA locations\n"));
    }
 
-   verify_error_found = 0;
-   message_number = 0;
-   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, ssl_verify_cb);
+   _ssl_verify_error = 0;
+   _ssl_msgno = 0;
+   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(sp->s_ctx);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
 jleave:
@@ -361,9 +430,9 @@ ssl_check_host(char const *server, struct sock *sp)
       for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
          gen = sk_GENERAL_NAME_value(gens, i);
          if (gen->type == GEN_DNS) {
-            if (options & OPT_VERBOSE)
-               fprintf(stderr, "Comparing DNS name: \"%s\"\n",
-                  gen->d.ia5->data);
+            if (options & OPT_VERB)
+               fprintf(stderr, "Comparing DNS: <%s>; should <%s>\n",
+                  server, (char*)gen->d.ia5->data);
             rv = rfc2595_hostname_match(server, (char*)gen->d.ia5->data);
             if (rv == OKAY)
                goto jdone;
@@ -375,8 +444,9 @@ ssl_check_host(char const *server, struct sock *sp)
          X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data)
             > 0) {
       data[sizeof data - 1] = '\0';
-      if (options & OPT_VERBOSE)
-         fprintf(stderr, "Comparing common name: \"%s\"\n", data);
+      if (options & OPT_VERB)
+         fprintf(stderr, "Comparing commonName: <%s>; should <%s>\n",
+            server, data);
       rv = rfc2595_hostname_match(server, data);
    }
 jdone:
@@ -406,8 +476,8 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
    rv = 1;
    fp = NULL;
    fb = NULL;
-   verify_error_found = 0;
-   message_number = n;
+   _ssl_verify_error = 0;
+   _ssl_msgno = n;
 
    for (;;) {
       sender = getsender(m);
@@ -416,7 +486,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       cnttype = hfield1("content-type", m);
       if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
          goto jleave;
-      if (cnttype && !strncmp(cnttype, "application/x-pkcs7-mime", 24)) {
+      if (cnttype && !ascncasecmp(cnttype, "application/x-pkcs7-mime", 24)) {
          if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
             goto jleave;
          if (x != (struct message*)-1) {
@@ -473,8 +543,10 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
          for (j = 0; j < sk_GENERAL_NAME_num(gens); ++j) {
             gen = sk_GENERAL_NAME_value(gens, j);
             if (gen->type == GEN_EMAIL) {
-               if (options & OPT_VERBOSE)
-                  fprintf(stderr, "Comparing alt. address: %s\"\n", data);
+               if (options & OPT_VERB)
+                  fprintf(stderr,
+                     "Comparing subject_alt_name: <%s>; should <%s>\n",
+                     sender, (char*)gen->d.ia5->data);
                if (!asccasecmp((char*)gen->d.ia5->data, sender))
                   goto jfound;
             }
@@ -485,8 +557,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             X509_NAME_get_text_by_NID(subj, NID_pkcs9_emailAddress,
                data, sizeof data) > 0) {
          data[sizeof data -1] = '\0';
-         if (options & OPT_VERBOSE)
-            fprintf(stderr, "Comparing address: \"%s\"\n", data);
+         if (options & OPT_VERB)
+            fprintf(stderr, "Comparing emailAddress: <%s>; should <%s>\n",
+               sender, data);
          if (!asccasecmp(data, sender))
             goto jfound;
       }
@@ -495,9 +568,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       n, sender);
    goto jleave;
 jfound:
-   if (verify_error_found == 0)
+   if (_ssl_verify_error == 0)
       printf(tr(543, "Message %d was verified successfully.\n"), n);
-   rv = verify_error_found;
+   rv = _ssl_verify_error;
 jleave:
    if (fb != NULL)
       BIO_free(fb);
@@ -609,7 +682,7 @@ jerr:
 }
 
 static char *
-smime_sign_include_certs(char const *name)
+_smime_sign_include_certs(char const *name)
 {
    char *rv;
    NYD_ENTER;
@@ -634,40 +707,30 @@ jleave:
    return rv;
 }
 
-static int
-smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
+static bool_t
+_smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
 {
    X509 *tmp;
    FILE *fp;
-   char *rest, *x, *ncf;
+   char *nfield, *cfield, *x;
    NYD_ENTER;
 
    *chain = sk_X509_new_null();
 
-   for (rest = savestr(cfiles);;) {
-      ncf = strchr(rest, ',');/* FIXME use n_strsep(): this FIXES behaviour! */
-      if (ncf != NULL)
-         *ncf++ = '\0';
-      /* This fails for '=,file' constructs, but those are sick */
-      if (*rest == '\0')
-         break;
-
-      if ((x = file_expand(rest)) == NULL ||
-            (fp = Fopen(rest = x, "r")) == NULL) {
+   for (nfield = savestr(cfiles);
+         (cfield = n_strsep(&nfield, ',', TRU1)) != NULL;) {
+      if ((x = file_expand(cfield)) == NULL ||
+            (fp = Fopen(cfield = x, "r")) == NULL) {
          perror(cfiles);
          goto jerr;
       }
       if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-         ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), rest);
+         ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), cfield);
          Fclose(fp);
          goto jerr;
       }
       sk_X509_push(*chain, tmp);
       Fclose(fp);
-
-      if (ncf == NULL)
-         break;
-      rest = ncf;
    }
 
    if (sk_X509_num(*chain) == 0) {
@@ -691,7 +754,7 @@ load_crl1(X509_STORE *store, char const *name)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if (options & OPT_VERBOSE)
+   if (options & OPT_VERB)
       printf("Loading CRL from \"%s\".\n", name);
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
       ssl_gen_err(tr(565, "Error creating X509 lookup object"));
@@ -788,7 +851,7 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   ssl_init();
+   _ssl_init();
    ssl_set_verify_level(uhp);
    if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
       ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
@@ -857,14 +920,14 @@ c_verify(void *vp)
    char *ca_dir, *ca_file;
    NYD_ENTER;
 
-   ssl_init();
+   _ssl_init();
 
    ssl_verify_level = SSL_VERIFY_STRICT;
    if ((store = X509_STORE_new()) == NULL) {
       ssl_gen_err(tr(544, "Error creating X509 store"));
       goto jleave;
    }
-   X509_STORE_set_verify_cb_func(store, ssl_verify_cb);
+   X509_STORE_set_verify_cb_func(store, &_ssl_verify_cb);
 
    if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
       ca_dir = file_expand(ca_dir);
@@ -900,10 +963,9 @@ jleave:
 }
 
 FL FILE *
-smime_sign(FILE *ip, struct header *headp)
+smime_sign(FILE *ip, char const *addr)
 {
    FILE *rv = NULL, *sp = NULL, *fp = NULL, *bp, *hp;
-   char const *addr;
    X509 *cert = NULL;
    _STACKOF(X509) *chain = NULL;
    PKCS7 *pkcs7;
@@ -912,9 +974,9 @@ smime_sign(FILE *ip, struct header *headp)
    bool_t bail = FAL0;
    NYD_ENTER;
 
-   ssl_init();
+   _ssl_init();
 
-   if ((addr = myorigin(headp)) == NULL) {
+   if (addr == NULL) {
       fprintf(stderr, tr(531, "No \"from\" address for signing specified\n"));
       goto jleave;
    }
@@ -934,8 +996,8 @@ smime_sign(FILE *ip, struct header *headp)
    Fclose(fp);
    fp = NULL;
 
-   if ((addr = smime_sign_include_certs(addr)) != NULL &&
-         !smime_sign_include_chain_creat(&chain, addr))
+   if ((addr = _smime_sign_include_certs(addr)) != NULL &&
+         !_smime_sign_include_chain_creat(&chain, addr))
       goto jleave;
 
    if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
@@ -958,8 +1020,7 @@ smime_sign(FILE *ip, struct header *headp)
       goto jerr;
    }
 
-   if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb,
-         PKCS7_DETACHED)) == NULL) {
+   if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb, PKCS7_DETACHED)) == NULL) {
       ssl_gen_err(tr(535, "Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
@@ -1011,7 +1072,8 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((certfile = file_expand(certfile)) == NULL)
       goto jleave;
 
-   ssl_init();
+   _ssl_init();
+
    if ((cipher = _smime_cipher(to)) == NULL)
       goto jleave;
    if ((fp = Fopen(certfile, "r")) == NULL) {
@@ -1099,7 +1161,8 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
    if ((yp = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;
 
-   ssl_init();
+   _ssl_init();
+
    if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
       pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL);
       if (pkey == NULL) {
@@ -1208,7 +1271,7 @@ smime_certsave(struct message *m, int n, FILE *op)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   message_number = n;
+   _ssl_msgno = n;
 jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);
@@ -1252,6 +1315,7 @@ jloop:
    }
    BIO_free(fb);
    Fclose(fp);
+
    certs = PKCS7_get0_signers(pkcs7, chain, 0);
    if (certs == NULL) {
       fprintf(stderr, tr(563, "No certificates found in message %d\n"), n);

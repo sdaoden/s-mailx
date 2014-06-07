@@ -433,13 +433,26 @@ jleave:
 }
 
 FL ui32_t
-count(struct name const*np)
+count(struct name const *np)
 {
    ui32_t c;
    NYD_ENTER;
 
    for (c = 0; np != NULL; np = np->n_flink)
       if (!(np->n_type & GDEL))
+         ++c;
+   NYD_LEAVE;
+   return c;
+}
+
+FL ui32_t
+count_nonlocal(struct name const *np)
+{
+   ui32_t c;
+   NYD_ENTER;
+
+   for (c = 0; np != NULL; np = np->n_flink)
+      if (!(np->n_type & GDEL) && !(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE))
          ++c;
    NYD_LEAVE;
    return c;
@@ -748,7 +761,7 @@ jleave:
 }
 
 FL struct name *
-outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
+outof(struct name *names, FILE *fo, bool_t *senderror)
 {
    ui32_t pipecnt, xcnt, i;
    int *fda;
@@ -756,7 +769,6 @@ outof(struct name *names, FILE *fo, struct header *hp, bool_t *senderror)
    struct name *np;
    FILE *fin = NULL, *fout;
    NYD_ENTER;
-   UNUSED(hp);
 
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */

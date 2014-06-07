@@ -86,7 +86,7 @@ static void       asort(char **list);
 static int        diction(void const *a, void const *b);
 
 /* Do the real work of resending */
-static int        resend1(void *v, int add_resent);
+static int        _resend1(void *v, bool_t add_resent);
 
 /* ..to stdout */
 static void       list_shortcuts(void);
@@ -472,7 +472,7 @@ diction(void const *a, void const *b)
 }
 
 static int
-resend1(void *v, int add_resent)
+_resend1(void *v, bool_t add_resent)
 {
    char *name, *str;
    struct name *to, *sn;
@@ -511,7 +511,7 @@ resend1(void *v, int add_resent)
       goto jleave;
    }
 
-   sn = nalloc(name, GTO);
+   sn = nalloc(name, GTO | GSKIN);
    to = usermap(sn, FAL0);
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip)
@@ -811,7 +811,7 @@ c_resend(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = resend1(v, 1);
+   rv = _resend1(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -822,7 +822,7 @@ c_Resend(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = resend1(v, 0);
+   rv = _resend1(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -919,59 +919,6 @@ c_rexit(void *v)
       exit(0);
    NYD_LEAVE;
    return 1;
-}
-
-FL int
-c_set(void *v)
-{
-   char **ap = v, *cp, *cp2, *varbuf, c;
-   int errs = 0;
-   NYD_ENTER;
-
-   if (*ap == NULL) {
-      var_list_all();
-      goto jleave;
-   }
-
-   for (; *ap != NULL; ++ap) {
-      cp = *ap;
-      cp2 = varbuf = ac_alloc(strlen(cp) +1);
-      for (; (c = *cp) != '=' && c != '\0'; ++cp)
-         *cp2++ = c;
-      *cp2 = '\0';
-      if (c == '\0')
-         cp = UNCONST("");
-      else
-         ++cp;
-      if (varbuf == cp2) {
-         fprintf(stderr, tr(41, "Non-null variable name required\n"));
-         ++errs;
-         goto jnext;
-      }
-      if (varbuf[0] == 'n' && varbuf[1] == 'o')
-         errs += _var_vokclear(&varbuf[2]);
-      else
-         errs += _var_vokset(varbuf, (uintptr_t)cp);
-jnext:
-      ac_free(varbuf);
-   }
-jleave:
-   NYD_LEAVE;
-   return errs;
-}
-
-FL int
-c_unset(void *v)
-{
-   int errs;
-   char **ap;
-   NYD_ENTER;
-
-   errs = 0;
-   for (ap = v; *ap != NULL; ++ap)
-      errs += _var_vokclear(*ap);
-   NYD_LEAVE;
-   return errs;
 }
 
 FL int
@@ -1162,11 +1109,29 @@ jesyn:
       }
 
       /* Three argument comparison form? */
-      if (argv[2] == NULL || op[0] == '\0' || op[1] != '=' || op[2] != '\0')
+      if (argv[2] == NULL || op[0] == '\0' ||
+#ifdef HAVE_REGEX
+            (op[1] != '=' && op[1] != '~') ||
+#else
+            op[1] != '=' ||
+#endif
+            op[2] != '\0')
          goto jesyn;
+
       /* A null value is treated as the empty string */
       if (v == NULL)
          v = UNCONST("");
+#ifdef HAVE_REGEX
+      if (op[1] == '~') {
+         regex_t re;
+
+         if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
+            goto jesyn;
+         if (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH)
+            v = NULL;
+         regfree(&re);
+      } else
+#endif
       if (strcmp(v, argv[2]))
          v = NULL;
       switch (op[0]) {
@@ -1191,6 +1156,26 @@ jleave:
 }
 
 FL int
+c_elif(void *v)
+{
+   struct cond_stack *csp;
+   int rv;
+   NYD_ENTER;
+
+   if ((csp = _cond_stack) == NULL || csp->c_else) {
+      fprintf(stderr, tr(580, "`elif' without matching `if'\n"));
+      rv = 1;
+   } else {
+      csp->c_go = !csp->c_go;
+      rv = c_if(v);
+      _cond_stack->c_outer = csp->c_outer;
+      free(csp);
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_else(void *v)
 {
    int rv;
@@ -1198,7 +1183,7 @@ c_else(void *v)
    UNUSED(v);
 
    if (_cond_stack == NULL || _cond_stack->c_else) {
-      fprintf(stderr, tr(44, "\"else\" without matching \"if\"\n"));
+      fprintf(stderr, tr(44, "`else' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack->c_go = !_cond_stack->c_go;
@@ -1218,7 +1203,7 @@ c_endif(void *v)
    UNUSED(v);
 
    if ((csp = _cond_stack) == NULL) {
-      fprintf(stderr, tr(46, "\"endif\" without matching \"if\"\n"));
+      fprintf(stderr, tr(46, "`endif' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack = csp->c_outer;
@@ -1693,6 +1678,38 @@ jnopop3:
 jleave:
    NYD_LEAVE;
    return ec;
+}
+
+FL int
+c_urlenc(void *v) /* XXX IDNA?? */
+{
+   char **ap;
+   NYD_ENTER;
+
+   for (ap = v; *ap != NULL; ++ap) {
+      char *in = *ap, *out = urlxenc(in, FAL0);
+
+      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+         in, strlen(in), out, strlen(out));
+   }
+   NYD_LEAVE;
+   return 0;
+}
+
+FL int
+c_urldec(void *v) /* XXX IDNA?? */
+{
+   char **ap;
+   NYD_ENTER;
+
+   for (ap = v; *ap != NULL; ++ap) {
+      char *in = *ap, *out = urlxdec(in);
+
+      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+         in, strlen(in), out, strlen(out));
+   }
+   NYD_LEAVE;
+   return 0;
 }
 
 /* vim:set fenc=utf-8:s-it-mode */

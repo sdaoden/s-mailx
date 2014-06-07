@@ -649,19 +649,6 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 }
 
 FL struct str *
-b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
-{
-   struct str in;
-   NYD_ENTER;
-
-   in.s = UNCONST(cp);
-   in.l = strlen(cp);
-   out = b64_encode(out, &in, flags);
-   NYD_LEAVE;
-   return out;
-}
-
-FL struct str *
 b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
    enum b64flags flags)
 {
@@ -674,6 +661,21 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
    NYD_LEAVE;
    return out;
 }
+
+#ifdef HAVE_SMTP
+FL struct str *
+b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
+{
+   struct str in;
+   NYD_ENTER;
+
+   in.s = UNCONST(cp);
+   in.l = strlen(cp);
+   out = b64_encode(out, &in, flags);
+   NYD_LEAVE;
+   return out;
+}
+#endif
 
 FL int
 b64_decode(struct str *out, struct str const *in, struct str *rest)

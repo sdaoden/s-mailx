@@ -74,8 +74,7 @@ static int              _lex_inithdr;     /* am printing startup headers */
 /* Update mailname (if name != NULL) and displayname, return wether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
-#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_{pre,suf}fix() into one fun! */
-SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
+#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
@@ -111,33 +110,6 @@ static struct cmd const _cmd_tab[] = {
 };
 
 #ifdef HAVE_C90AMEND1
-SINLINE size_t
-__narrow_prefix(char const *cp, size_t maxl)
-{
-   int err;
-   size_t i, ok;
-   NYD_ENTER;
-
-   for (err = ok = i = 0; i < maxl;) {
-      int ml = mblen(cp, maxl - i);
-      if (ml < 0) { /* XXX _narrow_prefix(): mblen() error; action? */
-         (void)mblen(NULL, 0);
-         err = 1;
-         ml = 1;
-      } else {
-         if (!err)
-            ok = i;
-         err = 0;
-         if (ml == 0)
-            break;
-      }
-      cp += ml;
-      i += ml;
-   }
-   NYD_LEAVE;
-   return ok;
-}
-
 SINLINE size_t
 __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 {
@@ -216,7 +188,7 @@ jdocopy:
       j = sizeof(displayname) / 3 - 1;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
-      j = __narrow_prefix(mailp, sizeof(displayname) / 3);
+      j = field_detect_clip(sizeof(displayname) / 3, mailp, i);
       i = j + __narrow_suffix(mailp + j, i - j,
          sizeof(displayname) - (1/* + */ + 3 + 1) - j);
 #endif
@@ -741,8 +713,11 @@ commands(void)
 
       /* Read a line of commands and handle end of file specially */
 jreadline:
+      ev.ev_line.l = ev.ev_line_size;
       n = readline_input(NULL, TRU1, &ev.ev_line.s, &ev.ev_line.l,
             ev.ev_new_content);
+      ev.ev_line_size = (ui32_t)ev.ev_line.l;
+      ev.ev_line.l = (ui32_t)n;
       _reset_on_stop = 0;
       if (n < 0) {
          /* EOF */
@@ -775,8 +750,7 @@ jreadline:
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
-         if (ev.ev_add_history)
-            tty_addhist(ev.ev_line.s);
+         tty_addhist(ev.ev_line.s, !ev.ev_add_history);
       }
    }
 
@@ -810,6 +784,9 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    ev.ev_line.l = linesize;
    ev.ev_is_recursive = (contxt != 0);
    rv = evaluate(&ev);
+
+   if (contxt)
+      tty_addhist(ev.ev_line.s, TRU1);
 
 #ifdef HAVE_COLOUR
    colour_table = ct_save;
@@ -1073,7 +1050,7 @@ print_header_summary(char const *Larg)
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
-      if ((options & (OPT_VERBOSE | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
+      if ((options & (OPT_VERB | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
          freopen("/dev/null", "w", stdout);
          freopen("/dev/null", "w", stderr);
       }
