@@ -3,17 +3,131 @@ S - n a i l  N e w s
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.5.2 and v14.6.4:
+and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
 
   # All commits:
-  $ git log --reverse --topo-order OLD..NEW
-  # Only topic branch headers:
-  $ git log --oneline --merges --reverse OLD..NEW
+  $ git log --reverse --topo-order --abbrev-commit OLD..NEW
+  # Only topic branch headers (--no-merges for content commits only):
+  $ git log --oneline --reverse --topo-order --merges OLD..NEW
   # Same, but truly accessible:
-  $ git log --oneline --parents --merges --reverse OLD..NEW |
+  $ git log --oneline --reverse --topo-order --merges --parents OLD..NEW |
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.7, 2014-06-07
+-----------------
+
+Thanks go to Tarqi Kazan (?) and Johannes Löthberg (johannes AT kyriasis
+DOT com), as well as Martin Neitzel.
+(And the winner is... Gavin Troy for his role in "Silence from Ireland".
+Yay!)
+
+Notes
+^^^^^
+
+- Since S-nail now performs more-or-less proper percent-encoding as per
+  RFC 3986 users of *imap-cache* have to (either throw away and recreate
+  or) adjust their local cache, e.g. as follows (adjust CACHEDIR and
+  echo(1) to mv(1) as necessary; won't work with paths with whitespace):
+
+  $ CACHEDIR=${HOME}/traffic/.mail-cache; \
+  find ${CACHEDIR}/ -depth -type d |
+  while read d; do
+    b=`basename ${d}`
+    r=`echo ${b} | sed -e s/:/%3A/g -e s/@/%40/g`
+    if [ ${b} != ${r} ]; then
+      d=`dirname ${d}`
+      echo ${d}/${b} ${d}/${r}
+    fi
+  done
+
+ChangeLog
+^^^^^^^^^
+
+- New variable *history-gabby* can be set to add much, much entries into
+  the history than is done normally.
+  For the NCL only, setting *history-gabby-persist* will cause those
+  entries to be saved into *NAIL_HISTFILE*, too, which they are not by
+  default with it (the other command line editors should always save).
+  [6026507]
+
+- The `online' alias for `connect' has been obsoleted. [d5cfde4]
+
+- New CONFIG=MAXIMAL make option. [c0d4087]
+
+- Support compilation on new OpenBSD with their reduced OpenSSL clone.
+  This topic also includes the real solution for getting rid of
+  a strcat(3) warning that i reintroduced with s-nail-14_5_2-smime.patch.
+  [topic/obsd56]
+
+- Our -r command line option is now mapped to a `-f' MTA option -- the
+  sendmail(1)-compatible `-r' is long obsoleted! (Johannes Löthberg)
+  [d0ead39]
+
+- New `elif' command so that we now have if..elif..else..endif.
+  If the optional regular expression support is available the new
+  conditions `=~' and `!~' can be used to perform (case-insensitive)
+  regex matching with `if' and `elif'. [topic/condsplus]
+
+- New `~R' tilde escape (like `~r', but indent lines). [fae1f29]
+
+- Improved multibyte-safety (e.g. for *prompt*) and a bit of
+  compatibility ("support" would be a wording much too strong) for
+  bidirectional text via the new *headline-bidi* variable.
+  [topic/unibidi, topic/mbbidi]
+
+- Diversified behaviour of -v command line option as well as *verbose*
+  to support multiple levels of verbosity; the latter is now ternary
+  when set and boolean when unset.
+  This was the ground on which SSL certificate validition verbosity was
+  implemented (*verbose* level 1: certificates, level 2: network
+  communication et cetera), though much is left to do.
+  This has been suggested long ago by (Martin Neitzel). [topic/smverb]
+
+- ^C in compose mode with *ignore* set acts now POSIX compatible
+  [0275d09]
+
+- If *encoding* is set to base64 then we don't ignore that user
+  wish and use quoted-printable (when 7bit doesn't suffice) [2ca201f]
+
+- New `urldec' and `urlenc' commands. [63e869e, fbd95e8, 0af5b1b]
+
+- New `setenv' and `unsetenv' commands. [5e2ed79]
+
+- Support for GSS-API authentification has been added (request and
+  testing by Tarqi Kazan).
+
+  Note that the following implicit relation is gone:
+    *smtp-auth*
+      If set to `login', or if unset and smtp-auth-user is set, `AUTH
+      LOGIN' is used
+
+  This topic branch also added support for the SUBMISSION protocol of
+  RFC 6409, so re-reading the *smtp* manual may bring benefits.
+  [topic/smtp]
+
+- A new, backward-incompatible URL syntax and credential lookup scheme
+  has been introduced that is accessible when the new *v15-compat*
+  variable is set.  If used, credential lookup occurs before a network
+  connection is made.
+
+  The new manual section "URL syntax" describes the new credential
+  variable chains, and documentation of *from* should be read again, as
+  i now also refers to the new *smtp-hostname* variable.
+
+  Note that the generated `Message-Id' has also changed.
+  [topic/url, topic/cred]
+
+- `resend' should be truly fixed and (fwiw) can also resend to pipe and
+  file addressees. [topic/resend]
+
+- Support for empty lines in macro and account definition blocks (as
+  required by POSIX for startup files in general) [43cdf92]
+
+- The nail command line editor gained the possibility to use PgUp /
+  PgDown / Home / End instead of z[-+0$] commands on xterm-compatible
+  terminals; and ^O equals a `dp' there, too. [8c57be2, 7c30e61, 95e672f]
 
 v14.6.4, 2014-04-07
 -------------------
