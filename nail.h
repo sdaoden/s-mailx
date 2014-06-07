@@ -205,12 +205,6 @@
 #define SBUFFER_SIZE    0x18000u
 #define SBUFFER_BUILTIN 0x2000u
 
-/* Is it at least theoretically possible that Unicode support is of interest */
-#undef HAVE_UNICODE
-#if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
-# define HAVE_UNICODE
-#endif
-
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
 # define XSHELL         "/bin/sh"
@@ -239,6 +233,9 @@
 # define __EXTEN
 # define __PREREQ(X,Y)  0
 #endif
+
+/* For injection macros like DBG(), NATCH_CHAR() */
+#define COMMA           ,
 
 #define EMPTY_FILE(F)   typedef int CONCAT(avoid_empty_file__, F);
 
@@ -316,6 +313,15 @@
 #else
 # define LIKELY(X)      (X)
 # define UNLIKELY(X)    (X)
+#endif
+
+#undef HAVE_NATCH_CHAR
+#undef NATCH_CHAR
+#if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
+# define HAVE_NATCH_CHAR
+# define NATCH_CHAR(X)  X
+#else
+# define NATCH_CHAR(X)
 #endif
 
 /* Compile-Time-Assert */
@@ -913,6 +919,12 @@ struct str {
 struct colour_table {
    /* Plus a copy of *colour-user-headers* */
    struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
+};
+
+struct bidi_info {
+   struct str  bi_start;      /* Start of (possibly) bidirectional text */
+   struct str  bi_end;        /* End of ... */
+   size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
 };
 
 struct url {

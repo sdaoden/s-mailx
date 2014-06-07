@@ -672,39 +672,79 @@ jleave:
 }
 
 FL char *
-getprompt(void)
+getprompt(void) /* TODO evaluate only as necessary (needs a bit) */
 {
    static char buf[PROMPT_BUFFER_SIZE];
 
-   char *cp = buf;
-   char const *ccp;
+   char *cp;
+   char const *ccp_base, *ccp;
+   size_t NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
+   bool_t run2;
    NYD_ENTER;
 
-   if ((ccp = ok_vlook(prompt)) == NULL || *ccp == '\0')
+   cp = buf;
+   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0')
       goto jleave;
+   NATCH_CHAR( cclen_base = strlen(ccp_base); )
 
-   for (; PTRCMP(cp, <, buf + sizeof(buf) - 1); ++cp) {
-      char const *a;
+   dfmaxlen = 0; /* keep CC happy */
+   run2 = FAL0;
+jredo:
+   ccp = ccp_base;
+   NATCH_CHAR( cclen = cclen_base; )
+   maxlen = sizeof(buf) -1;
+
+   for (;;) {
       size_t l;
-      int c = expand_shell_escape(&ccp, TRU1);
+      int c;
 
-      if (c > 0) {
-         *cp = (char)c;
+      if (maxlen == 0)
+         goto jleave;
+#ifdef HAVE_NATCH_CHAR
+      c = mblen(ccp, cclen); /* TODO use mbrtowc() */
+      if (c <= 0) {
+         mblen(NULL, 0);
+         if (c < 0) {
+            *buf = '?';
+            cp = buf + 1;
+            goto jleave;
+         }
+         break;
+      } else if ((l = c) > 1) {
+         if (run2) {
+            memcpy(cp, ccp, l);
+            cp += l;
+         }
+         ccp += l;
+         maxlen -= l;
          continue;
+      } else
+#endif
+      if ((c = expand_shell_escape(&ccp, TRU1)) > 0) {
+            if (run2)
+               *cp++ = (char)c;
+            --maxlen;
+            continue;
       }
       if (c == 0 || c == PROMPT_STOP)
          break;
 
-      a = (c == PROMPT_DOLLAR) ? account_name : displayname;
-      if (a == NULL)
-         a = "";
-      l = strlen(a);
-      if (PTRCMP(cp + l, >=, buf + sizeof(buf) - 1))
-         *cp++ = '?';
-      else {
-         memcpy(cp, a, l);
-         cp += --l;
+      if (run2) {
+         char const *a = (c == PROMPT_DOLLAR) ? account_name : displayname;
+         if (a == NULL)
+            a = "";
+         if ((l = field_put_bidi_clip(cp, dfmaxlen, a, strlen(a))) > 0) {
+            cp += l;
+            maxlen -= l;
+            dfmaxlen -= l;
+         }
       }
+   }
+
+   if (!run2) {
+      run2 = TRU1;
+      dfmaxlen = maxlen;
+      goto jredo;
    }
 jleave:
    *cp = '\0';
@@ -1590,19 +1630,101 @@ cwrelse(struct cw *cw)
 }
 #endif /* !HAVE_FCHDIR */
 
+FL size_t
+field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
+{
+   size_t rv;
+   NYD_ENTER;
+
+#ifdef HAVE_NATCH_CHAR
+   maxlen = MIN(maxlen, blen);
+   for (rv = 0; maxlen > 0;) {
+      int ml = mblen(buf, maxlen);
+      if (ml <= 0) {
+         mblen(NULL, 0);
+         break;
+      }
+      buf += ml;
+      rv += ml;
+      maxlen -= ml;
+   }
+#else
+   rv = MIN(blen, maxlen);
+#endif
+   NYD_LEAVE;
+   return rv;
+}
+
+FL size_t
+field_put_bidi_clip(char *store, size_t maxlen, char const *buf, size_t blen)
+{
+   NATCH_CHAR( struct bidi_info bi; )
+   size_t rv NATCH_CHAR( COMMA i );
+   NYD_ENTER;
+
+   rv = 0;
+   if (maxlen-- == 0)
+      goto j_leave;
+
+#ifdef HAVE_NATCH_CHAR
+   bidi_info_create(&bi);
+   if (bi.bi_start.l == 0 || !bidi_info_needed(buf, blen)) {
+      bi.bi_end.l = 0;
+      goto jnobidi;
+   }
+
+   if (maxlen >= (i = bi.bi_pad + bi.bi_end.l + bi.bi_start.l))
+      maxlen -= i;
+   else
+      goto jleave;
+
+   if ((i = bi.bi_start.l) > 0) {
+      memcpy(store, bi.bi_start.s, i);
+      store += i;
+      rv += i;
+   }
+
+jnobidi:
+   while (maxlen > 0) {
+      int ml = mblen(buf, blen);
+      if (ml <= 0) {
+         mblen(NULL, 0);
+         break;
+      }
+      if (UICMP(z, maxlen, <, ml))
+         break;
+      if (ml == 1)
+         *store = *buf;
+      else
+         memcpy(store, buf, ml);
+      store += ml;
+      buf += ml;
+      rv += ml;
+      maxlen -= ml;
+   }
+
+   if ((i = bi.bi_end.l) > 0) {
+      memcpy(store, bi.bi_end.s, i);
+      store += i;
+      rv += i;
+   }
+jleave:
+   *store = '\0';
+
+#else
+   rv = MIN(blen, maxlen);
+   memcpy(store, buf, rv);
+   store[rv] = '\0';
+#endif
+j_leave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
-   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
-    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
-    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
-    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE */
-#ifdef HAVE_UNICODE
-   char const _bire[2][6] = { "\xE2\x81\xA8" "\xE2\x81\xA9",
-      "\xE2\x80\x8E" "\xE2\x80\x8E"
-      /* worse results: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
-   }, *birep = NULL /* old gcc warning */;
-#endif
+   NATCH_CHAR( struct bidi_info bi; )
    int col_orig = col, n, sz;
    bool_t isbidi, isuni, isrepl;
    char *nb, *np;
@@ -1610,74 +1732,30 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 
    /* Bidi only on request and when there is 8-bit data */
    isbidi = isuni = FAL0;
-#ifdef HAVE_UNICODE
-   if ((isuni = ((options & OPT_UNICODE) != 0))) {
-      if ((nb = ok_vlook(headline_bidi)) == NULL)
-         goto jnobidi;
-      for (birep = cp;; ++birep) {
-         if (*birep == '\0')
-            goto jnobidi;
-         else if (*birep & (char)0x80) {
-            /* TODO Checking for BIDI character: use S-CText fromutf8
-             * TODO plus isrighttoleft (or whatever there will be)! */
-            ui32_t c, x = (ui8_t)*birep;
-            if ((x & 0xE0) == 0xC0) {
-               c = x & ~0xC0;
-               if ((x = (ui8_t)*++birep) == '\0')
-                  goto jnobidi;
-            } else if ((x & 0xF0) == 0xE0) {
-               c = x & ~0xE0;
-               if ((x = (ui8_t)*++birep) == '\0' || *++birep == '\0')
-                  goto jnobidi;
-               c <<= 6;
-               c |= x & 0x7F;
-               x = (ui8_t)*birep;
-            } else {
-               c = x & ~0xF0;
-               if ((x = (ui8_t)*++birep) == '\0' ||
-                     *++birep == '\0' || birep[1] == '\0')
-                  goto jnobidi;
-               c <<= 6;
-               c |= x & 0x7F;
-               c <<= 6;
-               c |= (x = (ui8_t)*birep) & 0x7F;
-               x = (ui8_t)*++birep;
-            }
-            c <<= 6;
-            c |= x & 0x7F;
-            /* (Very very fuzzy, awaiting S-CText for good) */
-            if ((c >= 0x05BE && c <= 0x08E3) ||
-                  (c >= 0xFB1D && c <= 0xFEFC) ||
-                  (c >= 0x10800 && c <= 0x10C48) ||
-                  (c >= 0x1EE00 && c <= 0x1EEF1))
-               break;
-         }
-      }
+#ifdef HAVE_NATCH_CHAR
+   isuni = ((options & OPT_UNICODE) != 0);
+   bidi_info_create(&bi);
+   if (bi.bi_start.l == 0)
+      goto jnobidi;
+   if (!(isbidi = bidi_info_needed(cp, strlen(cp))))
+      goto jnobidi;
 
-      isbidi = TRU1;
-      birep = _bire[0];
-      switch (*nb) {
-      case '3': col -= 2;
-      case '2': birep = _bire[1];
-                break;
-      case '1': col -= 2;
-      default:  break;
-      }
-      if (col < 0)
-         col = 0;
-   }
+   if ((size_t)col >= bi.bi_pad)
+      col -= bi.bi_pad;
+   else
+      col = 0;
 jnobidi:
-#endif /* HAVE_UNICODE */
+#endif
 
    np = nb = salloc(mb_cur_max * strlen(cp) +
-         ((fill ? col : 0) + (isbidi ? sizeof(_bire[0]) : 0) +1));
+         ((fill ? col : 0)
+         NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
+         +1));
 
-#ifdef HAVE_UNICODE
+#ifdef HAVE_NATCH_CHAR
    if (isbidi) {
-      np[0] = birep[0];
-      np[1] = birep[1];
-      np[2] = birep[2];
-      np += 3;
+      memcpy(np, bi.bi_start.s, bi.bi_start.l);
+      np += bi.bi_start.l;
    }
 #endif
 
@@ -1736,12 +1814,10 @@ jnobidi:
       col = 0;
    }
 
-#ifdef HAVE_UNICODE
+#ifdef HAVE_NATCH_CHAR
    if (isbidi) {
-      np[0] = birep[3];
-      np[1] = birep[4];
-      np[2] = birep[5];
-      np += 3;
+      memcpy(np, bi.bi_end.s, bi.bi_end.l);
+      np += bi.bi_end.l;
    }
 #endif
 
@@ -1775,7 +1851,7 @@ makeprint(struct str const *in, struct str *out)
       goto jleave;
    }
 
-#ifdef HAVE_C90AMEND1
+#ifdef HAVE_NATCH_CHAR
    if (mb_cur_max > 1) {
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
@@ -1820,7 +1896,7 @@ makeprint(struct str const *in, struct str *out)
             *outp++ = mbb[i];
       }
    } else
-#endif /* C90AMEND1 */
+#endif /* NATCH_CHAR */
    {
       int c;
       while (inp < maxp) {
@@ -1872,10 +1948,10 @@ FL size_t
 putuc(int u, int c, FILE *fp)
 {
    size_t rv;
-   UNUSED(u);
    NYD_ENTER;
+   UNUSED(u);
 
-#ifdef HAVE_C90AMEND1
+#ifdef HAVE_NATCH_CHAR
    if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
       char mbb[MB_LEN_MAX];
       int i, n;
@@ -1896,6 +1972,101 @@ putuc(int u, int c, FILE *fp)
       rv = (putc(c, fp) != EOF);
    NYD_LEAVE;
    return rv;
+}
+
+FL bool_t
+bidi_info_needed(char const *bdat, size_t blen)
+{
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+#ifdef HAVE_NATCH_CHAR
+   if (options & OPT_UNICODE)
+      for (; blen > 0; ++bdat, --blen) {
+         if ((ui8_t)*bdat > 0x7F) {
+            /* TODO Checking for BIDI character: use S-CText fromutf8
+             * TODO plus isrighttoleft (or whatever there will be)! */
+            ui32_t c, x = (ui8_t)*bdat;
+
+            if ((x & 0xE0) == 0xC0) {
+               if (blen < 2)
+                  break;
+               blen -= 1;
+               c = x & ~0xC0;
+            } else if ((x & 0xF0) == 0xE0) {
+               if (blen < 3)
+                  break;
+               blen -= 2;
+               c = x & ~0xE0;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+            } else {
+               if (blen < 4)
+                  break;
+               blen -= 3;
+               c = x & ~0xF0;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+               c <<= 6;
+               x = (ui8_t)*++bdat;
+               c |= x & 0x7F;
+            }
+            c <<= 6;
+            x = (ui8_t)*++bdat;
+            c |= x & 0x7F;
+
+            /* (Very very fuzzy, awaiting S-CText for good) */
+            if ((c >= 0x05BE && c <= 0x08E3) ||
+                  (c >= 0xFB1D && c <= 0xFEFC) ||
+                  (c >= 0x10800 && c <= 0x10C48) ||
+                  (c >= 0x1EE00 && c <= 0x1EEF1)) {
+               rv = TRU1;
+               break;
+            }
+         }
+      }
+#endif /* HAVE_NATCH_CHAR */
+   NYD_LEAVE;
+   return rv;
+}
+
+FL void
+bidi_info_create(struct bidi_info *bip)
+{
+   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
+    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
+    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
+    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
+    * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
+   NATCH_CHAR( char const *hb; )
+   NYD_ENTER;
+
+   memset(bip, 0, sizeof *bip);
+   bip->bi_start.s = bip->bi_end.s = UNCONST("");
+
+#ifdef HAVE_NATCH_CHAR
+   if ((options & OPT_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
+      switch (*hb) {
+      case '3':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      case '2':
+         bip->bi_start.s = bip->bi_end.s = UNCONST("\xE2\x80\x8E");
+         break;
+      case '1':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      default:
+         bip->bi_start.s = UNCONST("\xE2\x81\xA8");
+         bip->bi_end.s = UNCONST("\xE2\x81\xA9");
+         break;
+      }
+      bip->bi_start.l = bip->bi_end.l = 3;
+   }
+#endif
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_COLOUR

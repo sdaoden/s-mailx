@@ -364,6 +364,16 @@ FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
+/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
+ * safely placed in a buffer (field width) of maxlen bytes */
+FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
+
+/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
+ * taking into account multibyte code point boundaries and possibly
+ * encapsulating in bidi_info toggles as necessary */
+FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
+                  size_t blen);
+
 /* Place cp in a salloc()ed buffer, column-aligned; for header display only */
 FL char *      colalign(char const *cp, int col, int fill,
                   int *cols_decr_used_or_null);
@@ -377,6 +387,13 @@ FL int         prout(char const *s, size_t sz, FILE *fp);
 /* Print out a Unicode character or a substitute for it, return 0 on error or
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
+
+/* Check wether bidirectional info maybe needed for blen bytes of bdat */
+FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
+
+/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
+ * the strings are always empty */
+FL void        bidi_info_create(struct bidi_info *bip);
 
 /* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
  * we check against *colour-pagers* wether colour is really desirable */

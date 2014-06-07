@@ -74,8 +74,7 @@ static int              _lex_inithdr;     /* am printing startup headers */
 /* Update mailname (if name != NULL) and displayname, return wether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
-#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_{pre,suf}fix() into one fun! */
-SINLINE size_t __narrow_prefix(char const *cp, size_t maxl);
+#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
@@ -111,33 +110,6 @@ static struct cmd const _cmd_tab[] = {
 };
 
 #ifdef HAVE_C90AMEND1
-SINLINE size_t
-__narrow_prefix(char const *cp, size_t maxl)
-{
-   int err;
-   size_t i, ok;
-   NYD_ENTER;
-
-   for (err = ok = i = 0; i < maxl;) {
-      int ml = mblen(cp, maxl - i);
-      if (ml < 0) { /* XXX _narrow_prefix(): mblen() error; action? */
-         (void)mblen(NULL, 0);
-         err = 1;
-         ml = 1;
-      } else {
-         if (!err)
-            ok = i;
-         err = 0;
-         if (ml == 0)
-            break;
-      }
-      cp += ml;
-      i += ml;
-   }
-   NYD_LEAVE;
-   return ok;
-}
-
 SINLINE size_t
 __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 {
@@ -216,7 +188,7 @@ jdocopy:
       j = sizeof(displayname) / 3 - 1;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
-      j = __narrow_prefix(mailp, sizeof(displayname) / 3);
+      j = field_detect_clip(sizeof(displayname) / 3, mailp, i);
       i = j + __narrow_suffix(mailp + j, i - j,
          sizeof(displayname) - (1/* + */ + 3 + 1) - j);
 #endif
