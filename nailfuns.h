@@ -953,7 +953,9 @@ FL char const * fakedate(time_t t);
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |
  *               0    5   10   15   20 */
+#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
 FL time_t      unixtime(char const *from);
+#endif
 
 FL time_t      rfctime(char const *date);
 
@@ -965,7 +967,9 @@ FL void        substdate(struct message *m);
 FL int         check_from_and_sender(struct name *fromfield,
                   struct name *senderfield);
 
+#ifdef HAVE_OPENSSL
 FL char *      getsender(struct message *m);
+#endif
 
 /*
  * imap.c
@@ -1260,10 +1264,12 @@ FL size_t      b64_encode_calc_size(size_t len);
  * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
 FL struct str * b64_encode(struct str *out, struct str const *in,
                   enum b64flags flags);
-FL struct str * b64_encode_cp(struct str *out, char const *cp,
-                  enum b64flags flags);
 FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum b64flags flags);
+#ifdef HAVE_SMTP
+FL struct str * b64_encode_cp(struct str *out, char const *cp,
+                  enum b64flags flags);
+#endif
 
 /* If rest is set then decoding will assume text input.
  * The buffers of out and possibly rest will be managed via srealloc().
@@ -1685,10 +1691,13 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
+
+#ifdef HAVE_SPAM
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+# ifdef HAVE_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
+# endif
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
@@ -1741,8 +1750,10 @@ FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 /* Locale-independent character class functions */
 FL int         asccasecmp(char const *s1, char const *s2);
 FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
-FL char const * asccasestr(char const *haystack, char const *xneedle);
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
+#ifdef HAVE_IMAP
+FL char const * asccasestr(char const *haystack, char const *xneedle);
+#endif
 
 /* struct str related support funs */
 

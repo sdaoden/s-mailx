@@ -1346,6 +1346,7 @@ fakedate(time_t t)
    return cp;
 }
 
+#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
 FL time_t
 unixtime(char const *fromline)
 {
@@ -1401,6 +1402,7 @@ jinvalid:
    time(&t);
    goto jleave;
 }
+#endif /* HAVE_IMAP_SEARCH || defined HAVE_IMAP */
 
 FL time_t
 rfctime(char const *date)
@@ -1585,6 +1587,7 @@ check_from_and_sender(struct name *fromfield, struct name *senderfield)
    return rv;
 }
 
+#ifdef HAVE_OPENSSL
 FL char *
 getsender(struct message *mp)
 {
@@ -1600,6 +1603,7 @@ getsender(struct message *mp)
    NYD_LEAVE;
    return cp;
 }
+#endif
 
 FL int
 grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
