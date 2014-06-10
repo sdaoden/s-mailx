@@ -37,22 +37,16 @@ The S-nail(1) git(1) repository consists of five branches:
   It is updated once a release is made, and will otherwise only see
   cherry-picked bugfixes.
 
+- timeline: an ongoing effort to collect the complete history of Mail.
+
 - next: rooted on top of *master*, this consists of a furious mixture of
   commits that eventually end up in *master*; it is a snapshot of the
   *crawl* branch, taken once that seemed to be quite stable.
 
-- crawl: because of my brain-damaged way of working this is what *next*
-  ought to be, but since people are using *next* i needed to isolate my
-  grazy-grazy-grazy fixup-cross-your-fingers-now-that commits somewhere
-  else.
+- crawl: developer chaos, nothing for normal people.
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
-
-- patches: this branch only contains the official bugfix patches.
-  Official in that they have been sent to the ML and have been uploaded
-  to the download area.
-  This branch was added after the release of S-nail v14.5.2.
 
 To clone only the [master] branch, which is what a normal user most
 likely is interested in, can be accomplished like that:
