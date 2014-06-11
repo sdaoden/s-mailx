@@ -18,8 +18,8 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
 v14.7, 2014-06-07
 -----------------
 
-Thanks go to Tarqi Kazan (?) and Johannes Löthberg (johannes AT kyriasis
-DOT com), as well as Martin Neitzel.
+Thanks go to Tarqi Kazan (tarqi AT cfs DOT or DOT gs) and Johannes
+Löthberg (johannes AT kyriasis DOT com), as well as Martin Neitzel.
 (And the winner is... Gavin Troy for his role in "Silence from Ireland".
 Yay!)
 
@@ -117,6 +117,8 @@ ChangeLog
   i now also refers to the new *smtp-hostname* variable.
 
   Note that the generated `Message-Id' has also changed.
+
+  (Messy old way pointed out by Tarqi Kazan)
   [topic/url, topic/cred]
 
 - `resend' should be truly fixed and (fwiw) can also resend to pipe and
