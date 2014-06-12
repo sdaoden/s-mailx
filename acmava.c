@@ -554,12 +554,17 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       var_clear_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length +1);
-      temporary_localopts_store = _localopts; /* XXX intermediate hack */
-      /* FIXME if the execute() jumps away (via INT) then our internal state
-       * FIXME is messed up, even though temporary_localopts_free() is likely
-       * FIXME to correct some of that */
-      rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
-      temporary_localopts_store = NULL;  /* XXX intermediate hack */
+      {
+         struct _n2 {
+            struct _n2     *up;
+            struct lostack *lo;
+         } *x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
+         x->up = temporary_localopts_store;
+         x->lo = _localopts;
+         temporary_localopts_store = x;
+         rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
+         temporary_localopts_store = x->up;  /* FIXME intermediate hack */
+      }
       var_clear_allow_undefined = FAL0;
    }
    ac_free(buf);
@@ -1271,13 +1276,22 @@ jleave:
 FL void
 temporary_localopts_free(void) /* XXX intermediate hack */
 {
-   struct lostack *losp;
+   struct _n2 {
+      struct _n2     *up;
+      struct lostack *lo;
+   } *x;
    NYD_ENTER;
 
    var_clear_allow_undefined = FAL0;
-   losp = temporary_localopts_store;
+   x = temporary_localopts_store;
    temporary_localopts_store = NULL;
-   _localopts_unroll(&losp->s_localopts);
+   _localopts = NULL;
+
+   while (x != NULL) {
+      struct lostack *losp = x->lo;
+      x = x->up;
+      _localopts_unroll(&losp->s_localopts);
+   }
    NYD_LEAVE;
 }
 
