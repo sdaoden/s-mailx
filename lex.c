@@ -682,6 +682,30 @@ commands(void)
       interrupts = 0;
       handlerstacktop = NULL;
 
+#ifdef HAVE_COLOUR
+      colour_table = NULL; /* XXX intermediate hack */
+#endif
+      if (temporary_localopts_store != NULL) /* XXX intermediate hack */
+         temporary_localopts_free(); /* XXX intermediate hack */
+      sreset(sourcing);
+      if (!sourcing) {
+         char *cp;
+
+         /* TODO Note: this buffer may contain a password.  We should redefine
+          * TODO the code flow which has to do that */
+         if ((cp = termios_state.ts_linebuf) != NULL) {
+            termios_state.ts_linebuf = NULL;
+            termios_state.ts_linesize = 0;
+            free(cp); /* TODO pool give-back */
+         }
+         /* TODO Due to expand-on-tab of NCL the buffer may grow */
+         if (ev.ev_line.l > LINESIZE * 3) {
+            free(ev.ev_line.s); /* TODO pool! but what? */
+            ev.ev_line.s = NULL;
+            ev.ev_line.l = ev.ev_line_size = 0;
+         }
+      }
+
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          char *cp;
 
@@ -710,30 +734,6 @@ commands(void)
 
          _reset_on_stop = 1;
          exit_status = EXIT_OK;
-      }
-
-#ifdef HAVE_COLOUR
-      colour_table = NULL; /* XXX intermediate hack */
-#endif
-      if (temporary_localopts_store != NULL) /* XXX intermediate hack */
-         temporary_localopts_free(); /* XXX intermediate hack */
-      sreset(sourcing);
-      if (!sourcing) {
-         char *cp;
-
-         /* TODO Note: this buffer may contain a password.  We should redefine
-          * TODO the code flow which has to do that */
-         if ((cp = termios_state.ts_linebuf) != NULL) {
-            termios_state.ts_linebuf = NULL;
-            termios_state.ts_linesize = 0;
-            free(cp); /* TODO pool give-back */
-         }
-         /* TODO Due to expand-on-tab of NCL the buffer may grow */
-         if (ev.ev_line.l > LINESIZE * 3) {
-            free(ev.ev_line.s); /* TODO pool! but what? */
-            ev.ev_line.s = NULL;
-            ev.ev_line.l = ev.ev_line_size = 0;
-         }
       }
 
       /* Read a line of commands and handle end of file specially */
