@@ -191,6 +191,9 @@ _update-release:
 	git add version.h && git commit --amend &&\
 	git tag -f "v$${REL}" &&\
 	git update-ref refs/heads/next master &&\
+		git checkout timeline &&\
+		git cherry-pick master &&\
+		git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
 	git branch &&\
 	echo "Push git(1) repo?  ENTER continues";\
@@ -203,7 +206,8 @@ _update-release:
 	$(RM) -f "$(UAGENT)-$${FREL}.tar.gz" &&\
 	tar -c -f "$(UAGENT)-$${FREL}.tar" "$(UAGENT)-$${REL}" &&\
 	< "$(UAGENT)-$${FREL}.tar" gzip > "$(UAGENT)-$${FREL}.tar.gz" &&\
-	< "$(UAGENT)-$${FREL}.tar" xz > "$(UAGENT)-$${FREL}.tar.xz" &&\
+	< "$(UAGENT)-$${FREL}.tar" xz -e -C sha256 > \
+		"$(UAGENT)-$${FREL}.tar.xz" &&\
 	$(RM) -f "$(UAGENT)-$${FREL}.tar" &&\
 	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
