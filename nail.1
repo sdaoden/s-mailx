@@ -2619,8 +2619,14 @@ The specified account is handled as described for the
 variable above,
 but other accounts are not affected.
 .It Va dot
-The binary option dot causes \*(UA to interpret a period alone on a line
-as the terminator of a message the user is sending.
+When dot is set, a dot (`.') on a line by itself during message input
+from a terminal shall be treated as end-of-message (in addition to the
+normal end-of-file condition).
+If
+.Va ignoreeof
+is set
+.Va nodot
+is ignored and using a dot is the only method to terminate input mode.
 .It Va editalong
 If this variable is set then the editor is started automatically when
 composing a message in an interactive mode,
@@ -2697,11 +2703,10 @@ all possible international domain names (before conversion, that is).
 Ignore interrupt signals from the terminal while entering messages;
 instead echo them as `@' characters and discard the current line.
 .It Va ignoreeof
-An option related to
+Ignore end-of-file conditions (`control-D') on message input,
+which instead can be terminated only by entering a
 .Va dot
-is
-.Va ignoreeof ,
-which makes \*(UA refuse to accept a `control-D' as the end of a message.
+(`.') on a line by itself or by using the `~.' tilde escape.
 This option also applies to \*(UA command mode.
 .It Va imap-use-starttls
 \*(OP Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
@@ -4248,7 +4253,7 @@ This command, like
 takes a message number as an argument.
 \*(UA then begins a message addressed to the user who sent you the
 message and let you type in your letter in reply, followed by
-a `<control-D>' at the beginning of a line, as before.
+a `control-D' (`^D')at the beginning of a line, as before.
 .Pp
 Note that \*(UA copies the subject header from the original message.
 This is useful in that correspondence about a particular matter will
