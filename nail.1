@@ -841,15 +841,19 @@ Also see
 .\"
 .\" .Ss "Character sets" {{{
 .Ss "Character sets"
-\*(UA normally detects the character set of the terminal by using
-mechanisms that are controlled by the `LC_CTYPE' locale setting,
-if such are supported; the variable
+\*(OP \*(UA detects the character set of the terminal by using
+mechanisms that are controlled by the
+.Va LC_CTYPE
+locale setting
+(the manual for
+.Xr setlocale 3
+should give an overview); the \*(UA internal variable
 .Va ttycharset
-will be set to the detected terminal character set and will thus
-show up in the output of the command
+will be set to the detected terminal character set accordingly
+and will thus show up in the output of the command
 .Ic set .
 .Pp
-A user supplied
+However, a user supplied
 .Va ttycharset
 value is not overwritten by this detection mechanism;
 this feature must be used if the detection doesn't work properly,

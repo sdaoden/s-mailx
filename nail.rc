@@ -3,14 +3,33 @@
 # Configuration file for S-nail(1).
 #--MKRC-END--
 
-# If threaded mode is activated, automatically collapse thread.
+## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
+# [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
+# [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
+# [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
+# [j-o] nokeep, nokeepsave, nometoo, nooutfolder,
+# [p-r] nopage, prompt="? ", noquiet, norecord,
+# [s]   save, nosendwait, noshowto, nosign, noSign,
+# [t-z] toplines="5"
+# Notes:
+# - *noonehop* doesn't exist in this implementation.
+#   To pass through options to the MTA, use the `-O' command line option
+# - *prompt* is "\\& " by default, which will act POSIX-compliant
+#   unless the user would set *bsdcompat*
+
+## The remaining content adjusts the standard-imposed default settings.
+# Note that some of the following flags are specific to S-nail(1) and may thus
+# not work with other Mail(1) / mailx(1) programs.
+# Entries are marked [OPTION] if their availability is compile-time dependent
+
+# If threaded mode is activated, automatically collapse thread
 set autocollapse
 
 # Enter threaded mode automatically
 #set autothread autosort=thread
 
 # Append rather than prepend when writing to mbox automatically.
-# This has no effect unless 'hold' is unset again.
+# This has no effect unless *hold* is unset again
 set append
 
 # Ask for a message subject.
@@ -18,39 +37,42 @@ set ask
 
 # Slightly more "BSDish" behaviour: traditional flag display in the header
 # summary; *bsdannounce* prints a header summary on folder change and thus
-# complements *header* on a per-folder basis; it is meaningless unless
-# *header* is set (which it is by default)
+# complements *header* on a per-folder basis (it is meaningless unless
+# *header* is set)
 set bsdflags bsdannounce
 
-# Assume a CRT-like terminal and invoke a pager.
+# Assume a CRT-like terminal and invoke a $PAGER
 set crt
 
 # Define date display in header summary
 #set datefield="%R %m-%d" datefield-markout-older="   %g-%m-%d"
 
-# Messages may be terminated by a dot.
+# When composing messages a line consisting of `.' finalizes a message
 set dot
 
-# Immediately start $EDITOR (/ $VISUAL) when composing a message
+# Immediately start $EDITOR (or $VISUAL) when composing a message
 #set editalong
 
-# Do not remove empty private mail folders.
+# Do not remove empty private mail folders
 set emptybox
 
-# Startup into interactive mode even if the (given) mailbox is empty.
+# Startup into interactive mode even if the (given) mailbox is empty
 #set emptystart
 
+# [OPTION] Add more entries to the history as is done by default
+set history-gabby
+
 # Do not forward to mbox by default since this is likely to be
-# irritating for most users today.
+# irritating for most users today
 set hold
 
-# Quote the original message in replies by "> " as usual on the Internet.
+# Quote the original message in replies by "> " as usual on the Internet
 set indentprefix="> "
 
-# Mark messages that have been answered.
+# Mark messages that have been answered
 set markanswered
 
-# Try to circumvent false or missing content-type descriptions
+# Try to circumvent false or missing MIME Content-Type descriptions
 set mime-counter-evidence
 
 # Control loading of mime.types(5) file: the value may be a combination of the
@@ -59,13 +81,9 @@ set mime-counter-evidence
 # only a set of builtin mimetypes; the default behaviour equals "us".
 #set mimetypes-load-control
 
-# Automatically check for new messages at each prompt, but avoid polling
-# of IMAP servers or maildir folders.
-set newmail=nopoll
-
 # Do not remove empty mail folders in the spool directory.
-# This may be relevant for privacy since other users could
-# otherwise create them with different permissions.
+# This may be relevant for privacy since other users could otherwise create
+# them with different permissions
 set keep
 
 # When writing mailbox files we strip Content-Length: and Lines: header fields
@@ -78,7 +96,7 @@ set keep
 # A nice prompt for ISO 6429/ECMA-48 terminals
 #set prompt="\033[31m?\?[\$ \@]\& \033[0m"
 
-# Automatically quote the text of the message that is responded to.
+# Automatically quote the text of the message that is responded to
 set quote
 
 # On group replies, specify only the sender of the original mail in  To: and
@@ -86,33 +104,40 @@ set quote
 # all together in To:
 set recipients-in-cc
 
-# When answering a mail, try to use the same character set
+# When responding to a message, try to answer in the same character set
 #set reply-in-same-charset
 
-# Outgoing messages are sent in ISO-8859-1 if all their characters are
-# representable in it, otherwise in UTF-8.  Also see the documentation of
-# *sendcharsets-else-ttycharset*, and the section "Character sets" in general
+# [OPTION] Outgoing messages are sent in ISO-8859-1 if all their characters
+# are representable in it, otherwise in UTF-8.
+# Note: it is highly advisable to read the section "Character sets" of the
+# manual in order to understand all the possibilities that exist to fine-tune
+# charset usage (variables also of interest: *ttycharset*, *charset-8bit*,
+# *sendcharsets-else-ttycharset*; and of course we inherit the $LC_CTYPE /
+# $LC_ALL / $LANG environment variables and react upon them)
 set sendcharsets=iso-8859-1,utf-8
 
-# Display sender's real names in header summaries.
+# Display sender's real names in header summaries
 set showname
 
-# Display the recipients of messages sent by the user himself in
-# header summaries.
+# Show recipients of messages sent by the user himself in header summaries
 set showto
 
-# Hide some header fields which are uninteresting for most human readers.
+# Hide some header fields which are uninteresting for most human readers
 ignore received in-reply-to message-id references
 ignore mime-version content-transfer-encoding
 
 # Only include selected header fields when forwarding messages.
 fwdretain subject date from to
 
-# The special pipe command @ will force treatment as plain text.
-# Add some rather useful of those.
+# Unfortunately some mime.types(5) that are really text were assigned to
+# `application/xy' rather than to `text/xy'.
+# The special pipe command `@' will force treatment of an attachment as plain
+# text, so add some rather useful of those
 set pipe-application/javascript=@
 set pipe-application/json=@
 set pipe-application/mbox=@
+set pipe-application/pgp-signature=@
+set pipe-application/x-csh=@
 set pipe-application/x-latex=@
 set pipe-application/x-perl=@
 set pipe-application/x-sh=@
@@ -124,6 +149,9 @@ set pipe-application/xhtml+xml=@
 set pipe-application/xml=@
 set pipe-application/xml-dtd=@
 set pipe-application/xslt+xml=@
+set pipe-image/svg+xml=@
 
 # Other pipe-CONTENT/SUBCONTENT entries
 #set pipe-text/html="lynx -stdin -dump -force_html"
+
+# vim:set fenc=utf-8 syntax=conf:s-it-mode

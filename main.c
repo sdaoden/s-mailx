@@ -273,7 +273,8 @@ _startup(void)
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 
-   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
+   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013.
+    * Note: on change please update ./nail.rc accordingly */
    /* noallnet */
    /* noappend */
    ok_bset(asksub, TRU1);
