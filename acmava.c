@@ -552,6 +552,7 @@ _ma_exec(struct macro const *mp, struct var **unroller)
 
    buf = ac_alloc(mp->ma_maxlen +1);
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
+      bool_t tmp = var_clear_allow_undefined;
       var_clear_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length +1);
       {
@@ -565,7 +566,7 @@ _ma_exec(struct macro const *mp, struct var **unroller)
          rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
          temporary_localopts_store = x->up;  /* FIXME intermediate hack */
       }
-      var_clear_allow_undefined = FAL0;
+      var_clear_allow_undefined = tmp;
    }
    ac_free(buf);
 
