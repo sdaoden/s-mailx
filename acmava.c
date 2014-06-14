@@ -379,15 +379,25 @@ _var_set(struct var_carrier *vcp, char const *value)
       oval = UNCONST("");
    } else
       oval = vp->v_value;
-   vp->v_value = _var_vcopy(value);
 
-   /* Check if update allowed XXX wasteful on error! */
-   if (vcp->vc_vmap != NULL && vcp->vc_vmap->vm_special &&
-         (err = !_var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
-      char *cp = vp->v_value;
-      vp->v_value = oval;
-      oval = cp;
+   if (vcp->vc_vmap == NULL)
+      vp->v_value = _var_vcopy(value);
+   else {
+      /* Via `set' etc. the user may give even binary options non-binary
+       * values, ignore that and force binary xxx error log? */
+      if (vcp->vc_vmap->vm_binary)
+         value = UNCONST("");
+      vp->v_value = _var_vcopy(value);
+
+      /* Check if update allowed XXX wasteful on error! */
+      if (vcp->vc_vmap->vm_special &&
+            (err = !_var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
+         char *cp = vp->v_value;
+         vp->v_value = oval;
+         oval = cp;
+      }
    }
+
    if (*oval != '\0')
       _var_vfree(oval);
    err = FAL0;
