@@ -4855,7 +4855,7 @@ reads the user's configuration files by default.
 So unless your script is only intended for your own personal use
 (as, e.g., a cron job), you need to circumvent this:
 .Pp
-.Dl MAILRC=/dev/null \*(ua \-n
+.Dl MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
 .Pp
 You then need to create a script-local configuration for \*(UA.
 This can be done by either pointing the
@@ -4869,7 +4869,7 @@ Since many configuration options are not valid shell variables, the
 .Xr env 1
 command is useful if the approach via environment variables is used:
 .Bd -literal -offset indent
-env MAILRC=/dev/null password=secret \*(ua -n -Sv15-compat \e
+env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file recipient@domain < content_file
