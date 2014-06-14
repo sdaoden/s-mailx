@@ -355,10 +355,10 @@ _var_set(struct var_carrier *vcp, char const *value)
    NYD_ENTER;
 
    if (value == NULL) {
-      bool_t tmp = var_clear_allow_undefined;
+      bool_t vcau_save = var_clear_allow_undefined;
       var_clear_allow_undefined = TRU1;
       err = _var_clear(vcp);
-      var_clear_allow_undefined = tmp;
+      var_clear_allow_undefined = vcau_save;
       goto jleave;
    }
 
@@ -539,9 +539,11 @@ static int
 _ma_exec(struct macro const *mp, struct var **unroller)
 {
    struct lostack los;
-   int rv = 0;
+   bool_t vcau_save;
    char *buf;
+   struct n2 {struct n2 *up; struct lostack *lo;} *x; /* FIXME hack (sigman+) */
    struct mline const *lp;
+   int rv = 0;
    NYD_ENTER;
 
    los.s_up = _localopts;
@@ -550,25 +552,23 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    los.s_unroll = FAL0;
    _localopts = &los;
 
+   vcau_save = var_clear_allow_undefined;
+   var_clear_allow_undefined = TRU1;
+
+   x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
+   x->up = temporary_localopts_store;
+   x->lo = _localopts;
+   temporary_localopts_store = x;
+
    buf = ac_alloc(mp->ma_maxlen +1);
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
-      bool_t tmp = var_clear_allow_undefined;
-      var_clear_allow_undefined = TRU1;
       memcpy(buf, lp->l_line, lp->l_length +1);
-      {
-         struct _n2 {
-            struct _n2     *up;
-            struct lostack *lo;
-         } *x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
-         x->up = temporary_localopts_store;
-         x->lo = _localopts;
-         temporary_localopts_store = x;
-         rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
-         temporary_localopts_store = x->up;  /* FIXME intermediate hack */
-      }
-      var_clear_allow_undefined = tmp;
+      rv |= execute(buf, 0, lp->l_length); /* XXX break if != 0 ? */
    }
    ac_free(buf);
+
+   temporary_localopts_store = x->up;  /* FIXME intermediate hack */
+   var_clear_allow_undefined = vcau_save;
 
    _localopts = los.s_up;
    if (unroller == NULL) {
@@ -1034,8 +1034,9 @@ c_unsetenv(void *v)
 
    if (!(err = starting)) {
       char **ap;
-      bool_t tmp = var_clear_allow_undefined;
+      bool_t vcau_save = var_clear_allow_undefined;
       var_clear_allow_undefined = TRU1;
+
       for (ap = v; *ap != NULL; ++ap) {
          bool_t bad = _var_vokclear(*ap);
          if (
@@ -1046,7 +1047,8 @@ c_unsetenv(void *v)
          )
             err = 1;
       }
-      var_clear_allow_undefined = tmp;
+
+      var_clear_allow_undefined = vcau_save;
    }
    NYD_LEAVE;
    return err;
@@ -1277,10 +1279,7 @@ jleave:
 FL void
 temporary_localopts_free(void) /* XXX intermediate hack */
 {
-   struct _n2 {
-      struct _n2     *up;
-      struct lostack *lo;
-   } *x;
+   struct n2 {struct n2 *up; struct lostack *lo;} *x;
    NYD_ENTER;
 
    var_clear_allow_undefined = FAL0;
