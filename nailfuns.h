@@ -608,7 +608,7 @@ FL int         c_messize(void *v);
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
-/* Put add users to a group */
+/* Without arguments print all groups, otherwise add users to a group */
 FL int         c_group(void *v);
 
 /* Delete the passed groups */
