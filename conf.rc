@@ -234,10 +234,6 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 # of stack memory via our memory canaries
 WANT_DEBUG=0
 
-# We ship with our own small and efficient getopt(3) implementation;
-# set this to always choose that without even checking for another one
-WANT_NOGETOPT=0
-
 # We use the crypto libraries' MD5 implementation if possible unless this one
 WANT_NOEXTMD5=0
 

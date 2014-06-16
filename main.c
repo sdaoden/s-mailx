@@ -112,22 +112,11 @@ VL uc_it const       class_char[] = {
 };
 
 /* getopt(3) fallback implementation */
-#ifdef HAVE_GETOPT
-# define _oarg       optarg
-# define _oind       optind
-/*# define _oerr     opterr*/
-# define _oopt       optopt
-#else
 static char          *_oarg;
 static int           _oind, /*_oerr,*/ _oopt;
-#endif
 
-/* getopt(3) fallback implementation */
-#ifdef HAVE_GETOPT
-# define _getopt     getopt
-#else
+/* Our own little getopt(3) */
 static int     _getopt(int argc, char * const argv[], char const *optstring);
-#endif
 
 /* Perform basic startup initialization */
 static void    _startup(void);
@@ -154,7 +143,6 @@ static int     _rcv_mode(char const *folder, char const *Larg);
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
 
-#ifndef HAVE_GETOPT
 static int
 _getopt(int argc, char * const argv[], char const *optstring)
 {
@@ -170,7 +158,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = lastp;
       lastp = 0;
    } else {
-      if (_oind >= argc || argv[_oind] == 0 || argv[_oind][0] != '-' ||
+      if (_oind >= argc || argv[_oind] == NULL || argv[_oind][0] != '-' ||
             argv[_oind][1] == '\0')
          goto jleave;
       if (argv[_oind][1] == '-' && argv[_oind][2] == '\0') {
@@ -225,7 +213,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-#endif /* !HAVE_GETOPT */
 
 static void
 _startup(void)
@@ -246,9 +233,7 @@ _startup(void)
 
    image = -1;
    dflpipe = SIG_DFL;
-#ifndef HAVE_GETOPT
    _oind = /*_oerr =*/ 1;
-#endif
 
    if ((cp = strrchr(progname, '/')) != NULL)
       progname = ++cp;
