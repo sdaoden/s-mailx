@@ -1157,7 +1157,8 @@ getrawlist(char const *line, size_t linesize, char **argv, int argc,
       if (*cp == '\0')
          break;
       if (argn >= argc - 1) {
-         printf(tr(126, "Too many elements in the list; excess discarded.\n"));
+         fprintf(stderr, tr(126,
+            "Too many elements in the list; excess discarded.\n"));
          break;
       }
       cp2 = linebuf;
