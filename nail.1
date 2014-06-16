@@ -322,7 +322,7 @@ The section
 below explains the interpretation of names in more detail.
 The user is then expected to type in his message, followed by a
 .Li `control-D'
-at the beginning of a line.
+(`^D') at the beginning of a line.
 The section
 .Sx "Replying to or originating mail"
 describes some features of \*(UA available to help when composing
@@ -331,16 +331,38 @@ letters.
 .\"
 .\" .Ss "Reading mail" {{{
 .Ss "Reading mail"
-In normal usage \*(UA is given no arguments and checks the user's mail
-out of the post office,
+When invoked without addressees \*(UA enters interactive mode in which
+mails may be read.
+When used like that \*(UA checks the user's mail out of the post office,
 then prints out a one line header of each message found.
-The current message is initially the first message (numbered 1) and can
-be printed using the
+Unless the
+.Va emptystart
+option is set \*(UA will only print a notification message and exit if
+the mailbox is empty.
+Messages are given numbers (starting at 1) which uniquely identify
+messages; the current message \(en the dot \(en will be the first
+message unless the option
+.Va showlast
+is set, in which case the last message will be initial dot.
+(Note this only applies to boxes with all-unread messages.
+Boxes opened regulary, e.g., via the `-f' command line option, will have
+the initial dot point to the first unread message.)
+.Pp
+Messages can be printed with the
 .Ic print
-command, which can be abbreviated `p'.
-The commands `p+' and `p\-' move forward to the next and backward to the
-previous message, respectively, and messages can be addressed directly
-by specifying their message number, as in `p 1'.
+command, or short: `p'.
+By default the current message (dot) is printed, but just like many
+other commands it is possible to specify lists of messages, as is
+documented in
+.Sx "Specifying messages" ;
+e.g., `p:u' will display all unread messages, `p.' will print the dot,
+`p 1 5' will print the messages 1 and 5 and `p-' and `p+' will print the
+last and the next message, respectively.
+Dependent upon the configuration a
+.Sx "Command line editor"
+aims at making user experience with the many
+.Sx "Commands"
+a bit nicer.
 .\" }}}
 .\"
 .\" .Ss "Disposing of mail" {{{
@@ -1143,8 +1165,12 @@ command is expecting one file, an error results.
 .El
 .\"
 .Pp
-The following commands are provided:
+The following commands are available:
 .Bl -tag -width ".Ic account"
+.It Ic #
+This is the comment-command and causes the entire line to be ignored.
+Note: since it is a normal command you cannot have trailing comments in
+lines from resource files etc.
 .It Ic ~
 Interprets the remainder of the word as a macro name and passes it
 through to the
@@ -1160,7 +1186,9 @@ goes to the n'th previous message and prints it.
 .It Ic \&?
 Prints a brief summary of commands.
 \*(OP Given an argument a synopsis for the command in question is
-printed instead.
+printed instead;
+note it is possible to abbreviate the command and see the expansion
+\(en try, e.g., `?h', `?hel' and `?help' and see how the display changes.
 .It Ic \&!
 Executes the shell (see
 .Xr sh 1
@@ -1561,7 +1589,8 @@ Also see
 If a `+' argument is given the next 18-message group is printed,
 likewise the previous is printed if the argument was `-'.
 .It Ic help
-A synonym for `?'.
+A synonym for
+.Ic \&? .
 .It Ic history
 \*(OP Either
 .Ar show
