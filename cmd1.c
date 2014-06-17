@@ -724,7 +724,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    FILE * volatile obuf;
    bool_t volatile hadsig = FAL0, isrelax = FAL0;
    NYD_ENTER;
-   {
+   {/* C89.. */
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
          ? SEND_MBOX : dodecode
          ? SEND_SHOW : doign
@@ -740,7 +740,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    if (dopipe) {
       if ((cp = ok_vlook(SHELL)) == NULL)
          cp = XSHELL;
-      if ((obuf = Popen(cmd, "w", cp, 1)) == NULL) {
+      if ((obuf = Popen(cmd, "w", cp, NULL, 1)) == NULL) {
          perror(cmd);
          obuf = stdout;
       } else
@@ -766,7 +766,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
          pager = get_pager();
-         obuf = Popen(pager, "w", NULL, 1);
+         obuf = Popen(pager, "w", NULL, NULL, 1);
          if (obuf == NULL) {
             perror(pager);
             obuf = stdout;
@@ -1057,10 +1057,10 @@ c_from(void *v)
          if (sigsetjmp(_cmd1_pipejmp, 1))
             goto jendpipe;
          p = get_pager();
-         if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
+         if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
             perror(p);
             obuf = stdout;
-            cp=NULL;
+            cp = NULL;
          } else
             safe_signal(SIGPIPE, &_cmd1_onpipe);
       }

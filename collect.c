@@ -214,7 +214,7 @@ insertcommand(FILE *fp, char const *cmd)
    if (cp == NULL)
       cp = XSHELL;
 
-   if ((ibuf = Popen(cmd, "r", cp, 0)) != NULL) {
+   if ((ibuf = Popen(cmd, "r", cp, NULL, 0)) != NULL) {
       while ((c = getc(ibuf)) != EOF) /* XXX bytewise, yuck! */
          putc(c, fp);
       Pclose(ibuf, TRU1);
@@ -262,7 +262,7 @@ print_collf(FILE *cf, struct header *hp)
          cp = get_pager();
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
-         obuf = Popen(cp, "w", NULL, 1);
+         obuf = Popen(cp, "w", NULL, NULL, 1);
          if (obuf == NULL) {
             perror(cp);
             obuf = stdout;

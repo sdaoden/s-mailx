@@ -1431,7 +1431,7 @@ FL void        Ftmp_free(char **fn);
 FL bool_t      pipe_cloexec(int fd[2]);
 
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
-                  int newfd1);
+                  char const *env_addon, int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
@@ -1445,7 +1445,8 @@ FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
 
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
-                  int outfd, char const *a0, char const *a1, char const *a2);
+                  int outfd, char const *a0, char const *a1, char const *a2,
+                  char const *env_addon);
 
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 
