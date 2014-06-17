@@ -1215,7 +1215,7 @@ enum argtype {
    ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
    ARG_T          = 1u<<11,   /* Is a transparent command */
    ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<13    /* Illegal when read only bit */
+   ARG_W          = 1u<<13    /* Invalid when read only bit */
 };
 
 enum gfield {

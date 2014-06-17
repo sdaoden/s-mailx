@@ -950,7 +950,7 @@ jexec:
       /* Message list with no defaults, but no error if none exist */
       if (_msgvec == NULL) {
 je96:
-         fprintf(stderr, tr(96, "Illegal use of `message list'\n"));
+         fprintf(stderr, tr(96, "Invalid use of `message list'\n"));
          break;
       }
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)

@@ -476,7 +476,7 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
             if (c >= 0)
                *oc++ = (char)c;
             else {
-               /* Illegal according to RFC 2045, section 6.7. Almost follow */
+               /* Invalid according to RFC 2045, section 6.7. Almost follow */
 jehead:
                /* TODO 0xFFFD
                *oc[0] = '['; oc[1] = '?'; oc[2] = ']';
@@ -519,7 +519,7 @@ jehead:
          if (c >= 0)
             *oc++ = (char)c;
          else {
-            /* Illegal according to RFC 2045, section 6.7.
+            /* Invalid according to RFC 2045, section 6.7.
              * Almost follow it and include the = and the follow char */
 jebody:
             /* TODO 0xFFFD

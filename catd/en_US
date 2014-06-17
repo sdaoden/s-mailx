@@ -78,7 +78,7 @@ $set 1
 75 Unterminated %s definition: "%s".\n
 76 A %s named `%s' already exists.\n
 77 temporary file seek
-78 %s: illegal option -- %c\n
+78 %s: invalid option -- %c\n
 79 %s: option requires an argument -- %c\n
 80 No previous file\n
 81 "%s": Expansion failed.\n
@@ -96,7 +96,7 @@ $set 1
 93 May not execute `%s' while sourcing\n
 94 May not execute `%s' -- message file is read only\n
 95 Cannot recursively invoke `%s'\n
-96 Illegal use of `message list'\n
+96 Invalid use of `message list'\n
 97 No applicable messages\n
 98 Received SIGPIPE during IMAP operation\n
 99 `%s' requires at least %d arg(s)\n

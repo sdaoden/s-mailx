@@ -214,7 +214,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    }
 
    if (!colon /*&& opterr*/)
-      fprintf(stderr, tr(78, "%s: illegal option -- %c\n"), argv[0], _oopt);
+      fprintf(stderr, tr(78, "%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
       lastp = curp + 1;
    else

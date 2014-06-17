@@ -1782,7 +1782,7 @@ FL void        n_iconv_close(iconv_t cd);
 FL void        n_iconv_reset(iconv_t cd);
 #endif
 
-/* iconv(3), but return *errno* or 0; *skipilseq* forces step over illegal byte
+/* iconv(3), but return *errno* or 0; *skipilseq* forces step over invalid byte
  * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*
  * and *in_rest_or_null* may be the same object.
  * Note: EINVAL (incomplete sequence at end of input) is NOT handled, so the
