@@ -134,7 +134,9 @@ are implemented by means of setting the respective option, as via
 arguments that are given at the end of the command line after an `--'
 separator persist for an entire (interactive) session and will be passed
 through unchanged to the mail-transfer-agent (MTA).
-They are effectively ignored when mail is send via SMTP data transfer.
+Additional MTA arguments can be specified via the option
+.Va sendmail-arguments .
+All of these are ignored when mail is send via SMTP data transfer.
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
@@ -3727,6 +3729,13 @@ set this option to the full pathname of the program to use.
 It may be necessary to set
 .Va sendmail-progname
 in addition.
+.It Va sendmail-arguments
+Arguments to pass through to the Mail-Transfer-Agent can be given via
+this option.
+These will be joined onto MTA options that have been given on the
+command line.
+.Pp
+.Dl set sendmail-arguments='-t -X \&"/tmp/my log\&"'
 .It Va sendmail-progname
 Many systems use a so-called
 .Xr mailwrapper 8

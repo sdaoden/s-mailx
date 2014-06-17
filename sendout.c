@@ -385,11 +385,21 @@ jleave:
 static char const **
 _prepare_mta_args(struct name *to, struct header *hp)
 {
-   size_t j, i;
+   size_t vas_count, i, j;
+   char **vas, *cp;
    char const **args;
    NYD_ENTER;
 
-   i = 4 + smopts_count + 2 + count(to) + 1;
+   if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
+      vas_count = 0;
+      vas = NULL;
+   } else {
+      j = strlen(cp);
+      vas = ac_alloc(sizeof(*vas) * (j >> 1));
+      vas_count = (size_t)getrawlist(cp, j, vas, (int)(j >> 1), TRU1);
+   }
+
+   i = 4 + smopts_count + vas_count + 2 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
    args[0] = ok_vlook(sendmail_progname);
@@ -406,21 +416,22 @@ _prepare_mta_args(struct name *to, struct header *hp)
    for (j = 0; j < smopts_count; ++j, ++i)
       args[i] = smopts[j];
 
+   for (j = 0; j < vas_count; ++j, ++i)
+      args[i] = vas[j];
+
    /* -r option?  We may only pass skinned addresses */
    if (options & OPT_r_FLAG) {
-      char const *froma;
-
       if (option_r_arg[0] != '\0')
-         froma = option_r_arg;
+         cp = option_r_arg;
       else if (hp != NULL) {
          /* puthead() did it, then */
          assert(hp->h_from != NULL);
-         froma = hp->h_from->n_name;
+         cp = hp->h_from->n_name;
       } else
-         froma = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
-      if (froma != NULL) { /* XXX ugh! */
+         cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
+      if (cp != NULL) { /* XXX ugh! */
          args[i++] = "-f";
-         args[i++] = froma;
+         args[i++] = cp;
       }
    }
 
@@ -429,6 +440,9 @@ _prepare_mta_args(struct name *to, struct header *hp)
       if (!(to->n_type & GDEL))
          args[i++] = to->n_name;
    args[i] = NULL;
+
+   if (vas != NULL)
+      ac_free(vas);
    NYD_LEAVE;
    return args;
 }
