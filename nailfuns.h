@@ -275,8 +275,9 @@ FL int         argcount(char **argv);
 /* Compute screen size */
 FL int         screensize(void);
 
-/* Get our PAGER */
-FL char const *get_pager(void);
+/* Get our $PAGER; if env_addon is not NULL it is check wether we know about
+ * some environment variable that supports colour+ */
+FL char const *get_pager(char const **env_addon);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */

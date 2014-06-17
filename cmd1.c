@@ -765,8 +765,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* `>=' not `<': we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
-         pager = get_pager();
-         obuf = Popen(pager, "w", NULL, NULL, 1);
+         char const *envadd = NULL;
+         pager = get_pager(&envadd);
+         obuf = Popen(pager, "w", NULL, envadd, 1);
          if (obuf == NULL) {
             perror(pager);
             obuf = stdout;
@@ -1056,7 +1057,7 @@ c_from(void *v)
          char const *p;
          if (sigsetjmp(_cmd1_pipejmp, 1))
             goto jendpipe;
-         p = get_pager();
+         p = get_pager(NULL);
          if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
             perror(p);
             obuf = stdout;

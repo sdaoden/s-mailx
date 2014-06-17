@@ -259,7 +259,7 @@ print_collf(FILE *cf, struct header *hp)
       maxlines -= (ok_vlook(replyto) != NULL || hp->h_replyto != NULL);
       maxlines -= (ok_vlook(sender) != NULL || hp->h_sender != NULL);
       if ((ssize_t)maxlines < 0 || linecnt > maxlines) {
-         cp = get_pager();
+         cp = get_pager(NULL);
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
          obuf = Popen(cp, "w", NULL, NULL, 1);

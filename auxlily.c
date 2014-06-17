@@ -426,7 +426,7 @@ screensize(void)
 }
 
 FL char const *
-get_pager(void)
+get_pager(char const **env_addon)
 {
    char const *cp;
    NYD_ENTER;
@@ -434,6 +434,17 @@ get_pager(void)
    cp = ok_vlook(PAGER);
    if (cp == NULL || *cp == '\0')
       cp = XPAGER;
+
+   if (env_addon != NULL) {
+      if (strstr(cp, "less") != NULL) {
+         if (getenv("LESS") == NULL)
+            *env_addon = "LESS=FRSXi";
+      } else if (strstr(cp, "lv") != NULL) {
+         if (getenv("LV") == NULL)
+            *env_addon = "LV=-c";
+      } else
+         *env_addon = NULL;
+   }
    NYD_LEAVE;
    return cp;
 }
