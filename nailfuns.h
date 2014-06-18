@@ -783,9 +783,9 @@ FL void        message_reset(void);
 FL void        message_append(struct message *mp);
 
 /* Check wether sep->ss_sexpr (or ->ss_reexpr) matches mp.  If with_headers is
- * true then the headers will also be searched (as plain text) */
+* true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
-                  bool_t with_headers);
+               bool_t with_headers);
 
 FL struct message * setdot(struct message *mp);
 
@@ -874,10 +874,6 @@ FL int         is_head(char const *linebuf, size_t linelen);
  * Return wether the From_ line was parsed successfully */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
-
-/* Fill in / reedit the desired header fields */
-FL int         grab_headers(struct header *hp, enum gfield gflags,
-                  int subjfirst);
 
 FL void        extract_header(FILE *fp, struct header *hp);
 
@@ -968,6 +964,13 @@ FL int         check_from_and_sender(struct name *fromfield,
 #ifdef HAVE_OPENSSL
 FL char *      getsender(struct message *m);
 #endif
+
+/* Fill in / reedit the desired header fields */
+FL int         grab_headers(struct header *hp, enum gfield gflags,
+                  int subjfirst);
+
+/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches any header of mp */
+FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
 /*
  * imap.c

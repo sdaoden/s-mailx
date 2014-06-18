@@ -958,14 +958,20 @@ _match_at(struct message *mp, struct search_expr *sep)
    nfield = savestr(sep->ss_where);
 
    while ((cfield = n_strsep(&nfield, ',', TRU1)) != NULL) {
-      if (!asccasecmp(cfield, "body")) {
+      if (!asccasecmp(cfield, "body") ||
+            (cfield[1] == '\0' && cfield[0] == '>')) {
          rv = FAL0;
 jmsg:
          if ((rv = message_match(mp, sep, rv)))
             break;
-      } else if (!asccasecmp(cfield, "text")) {
+      } else if (!asccasecmp(cfield, "text") ||
+            (cfield[1] == '\0' && cfield[0] == '=')) {
          rv = TRU1;
          goto jmsg;
+      } else if (!asccasecmp(cfield, "header") ||
+            (cfield[1] == '\0' && cfield[0] == '<')) {
+         if ((rv = header_match(mp, sep)))
+            break;
       } else if ((in.s = hfieldX(cfield, mp)) == NULL)
          continue;
       else {

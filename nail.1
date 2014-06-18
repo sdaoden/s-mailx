@@ -512,9 +512,10 @@ specifies a comma-separated list of header fields to search, as in
 .Pp
 .Dl '@to,from,cc@Someone i ought to know'
 .Pp
-The special names `body' and `text' can be used to search in message
-bodies \(en whereas the former searches only the body, the latter form
-also performs a fulltext search in the header fields.
+The special name `header' (or `<') can be used to search in the header
+of the message, and the special names `body' (or `>') and `text' (or `=')
+can be used to perform full text searches \(en whereas the former
+searches only the body, the latter also searches the message header.
 In order to search for a string that includes a `@' (commercial at)
 character the
 .Ar name-list

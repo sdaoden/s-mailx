@@ -1650,4 +1650,48 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
    return errs;
 }
 
+FL bool_t
+header_match(struct message *mp, struct search_expr const *sep)
+{
+   struct str in, out;
+   FILE *ibuf;
+   int lc;
+   size_t linesize = 0; /* TODO line pool */
+   char *linebuf = NULL, *colon;
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
+      goto jleave;
+   if ((lc = mp->m_lines - 1) < 0)
+      goto jleave;
+
+   if ((mp->m_flag & MNOFROM) == 0 &&
+         readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+      goto jleave;
+   while (lc > 0) {
+      if (gethfield(ibuf, &linebuf, &linesize, lc, &colon) <= 0)
+         break;
+      if (blankchar(*++colon))
+         ++colon;
+      in.l = strlen(in.s = colon);
+      mime_fromhdr(&in, &out, TD_ICONV);
+#ifdef HAVE_REGEX
+      if (sep->ss_sexpr == NULL)
+         rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+      else
+#endif
+         rv = substr(out.s, sep->ss_sexpr);
+      free(out.s);
+      if (rv)
+         break;
+   }
+
+jleave:
+   if (linebuf != NULL)
+      free(linebuf);
+   NYD_LEAVE;
+   return rv;
+}
+
 /* vim:set fenc=utf-8:s-it-mode */
