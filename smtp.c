@@ -169,7 +169,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    _ANSWER(2, FAL0, FAL0);
 
 #ifdef HAVE_SSL
-   if (!sp->s_use_ssl && ok_blook(smtp_use_starttls)) {
+   if (!sp->s_use_ssl && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, LINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
@@ -183,7 +183,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
          goto jleave;
    }
 #else
-   if (ok_blook(smtp_use_starttls)) {
+   if (xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
       goto jleave;
    }

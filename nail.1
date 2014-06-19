@@ -3057,9 +3057,14 @@ messages.
 .It Va smtp-use-starttls
 \*(OP Causes \*(UA to issue a `STARTTLS' command to make an SMTP session
 SSL/TLS encrypted.
-Not all servers support this command \(en because of common
-implementation defects it can't be automatically determined whether
-a server supports it or not.
+.It Va smtp-use-starttls-HOST
+Overrides
+.Va smtp-use-starttls
+for SMTP accounts on a specific host.
+.It Va smtp-use-starttls-USER@HOST
+Overrides
+.Va smtp-use-starttls
+for a specific account.
 .It Va ssl-no-default-ca
 \*(OP Don't load default CA locations to verify SSL/TLS server
 certificates.
