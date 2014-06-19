@@ -394,10 +394,10 @@ FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
-/* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
- * we check against *colour-pagers* wether colour is really desirable */
+/* We want coloured output (in this salloc() cycle).  pager_used is used to
+ * test wether *colour-pager* is to be inspected */
 #ifdef HAVE_COLOUR
-FL void        colour_table_create(char const *pager_used);
+FL void        colour_table_create(bool_t pager_used);
 FL void        colour_put(FILE *fp, enum colourspec cs);
 FL void        colour_put_header(FILE *fp, char const *name);
 FL void        colour_reset(FILE *fp);

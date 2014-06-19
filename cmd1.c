@@ -777,12 +777,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
 #ifdef HAVE_COLOUR
       if (action != SEND_MBOX)
-         colour_table_create(pager); /* (salloc()s!) */
+         colour_table_create(pager != NULL); /* (salloc()s!) */
 #endif
    }
 #ifdef HAVE_COLOUR
    else if ((options & OPT_TTYOUT) && action != SEND_MBOX)
-      colour_table_create(NULL); /* (salloc()s!) */
+      colour_table_create(FAL0); /* (salloc()s!) */
 #endif
 
    /*TODO unless we have our signal manager special care must be taken */
@@ -1215,7 +1215,7 @@ c_top(void *v)
 
 #ifdef HAVE_COLOUR
    if (options & OPT_TTYOUT)
-      colour_table_create(NULL); /* (salloc()s) */
+      colour_table_create(FAL0); /* (salloc()s) */
 #endif
    empty_last = 1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);

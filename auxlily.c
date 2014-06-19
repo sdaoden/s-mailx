@@ -2083,32 +2083,16 @@ bidi_info_create(struct bidi_info *bip)
 
 #ifdef HAVE_COLOUR
 FL void
-colour_table_create(char const *pager_used)
+colour_table_create(bool_t pager_used)
 {
    union {char *cp; char const *ccp; void *vp; struct colour_table *ctp;} u;
    size_t i;
    struct colour_table *ct;
    NYD_ENTER;
 
-   if (ok_blook(colour_disable))
+   if (ok_blook(colour_disable) || (pager_used && !ok_blook(colour_pager)))
       goto jleave;
-
-   /* If pager, check wether it is allowed to use colour */
-   if (pager_used != NULL) {
-      char *pager;
-
-      if ((u.cp = ok_vlook(colour_pagers)) == NULL)
-         u.ccp = COLOUR_PAGERS;
-      pager = savestr(u.cp);
-
-      while ((u.cp = n_strsep(&pager, ',', TRU1)) != NULL)
-         if (strstr(pager_used, u.cp) != NULL)
-            goto jok;
-      goto jleave;
-   }
-
-   /* $TERM is different in that we default to false unless whitelisted */
-   {
+   else {
       char *term, *okterms;
 
       /* Don't use getenv(), but force copy-in into our own tables.. */
@@ -2121,11 +2105,11 @@ colour_table_create(char const *pager_used)
       i = strlen(term);
       while ((u.cp = n_strsep(&okterms, ',', TRU1)) != NULL)
          if (!strncmp(u.cp, term, i))
-            goto jok;
-      goto jleave;
+            break;
+      if (u.cp == NULL)
+         goto jleave;
    }
 
-jok:
    colour_table = ct = salloc(sizeof *ct); /* XXX lex.c yet resets (FILTER!) */
    {  static struct {
          enum okeys        okey;

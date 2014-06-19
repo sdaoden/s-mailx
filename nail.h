@@ -143,12 +143,17 @@
 #define MAILRC          "~/.mailrc"
 #define TMPDIR_FALLBACK "/tmp"
 
+#undef COLOUR
+#ifdef HAVE_COLOUR
+# define COLOUR(X)      X
+#else
+# define COLOUR(X)
+#endif
 #define COLOUR_MSGINFO  "fg=green"
 #define COLOUR_PARTINFO "fg=brown"
 #define COLOUR_FROM_    "fg=brown"
 #define COLOUR_HEADER   "fg=red"
 #define COLOUR_UHEADER  "ft=bold,fg=red"
-#define COLOUR_PAGERS   "less"
 #define COLOUR_TERMS    \
    "cons25,linux,rxvt,rxvt-unicode,screen,sun,"\
    "vt100,vt220,wsvt25,xterm,xterm-color"
@@ -742,6 +747,7 @@ enum okeys {
    ok_b_bsdorder,
    ok_b_bsdset,
    ok_b_colour_disable,
+   ok_b_colour_pager,
    ok_b_debug,                         /* {special=1} */
    ok_b_disconnected,
    ok_b_dot,
@@ -810,7 +816,6 @@ enum okeys {
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_cmd,
-   ok_v_colour_pagers,
    ok_v_colour_from_,                  /* {name=colour-from_} */
    ok_v_colour_header,
    ok_v_colour_msginfo,

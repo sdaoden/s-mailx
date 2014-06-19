@@ -1072,15 +1072,14 @@ Colours are used only when the
 .Va TERM
 environment variable is set and the terminal type can be found in
 .Va colour-terms .
-Beyond that, if a command requires to output through the
+On top of that the binary option
+.Va colour-pager
+defines wether ANSI colour sequences are generated when the output
+of a command needs to go through the
 .Va PAGER
 (also see
-.Va crt )
-then the used
-.Va PAGER
-must be mentioned in the variable
-.Va colour-pagers ,
-otherwise no colours will be used regardless of the actual terminal type.
+.Va crt Ns
+); this is not enabled by default.
 .Pp
 "Coloured message display" can be configured through font attributes
 (`ft=' \(en `bold', `invers' and `underline'), foreground (`fg=') and
@@ -2632,6 +2631,28 @@ command to traditional BSD style.
 \*(OP Forcefully disable usage of colours.
 Also see the section
 .Sx "Coloured message display" .
+.It Va colour-pager
+\*(OP Wether colour shall be used for output that is paged through
+.Va PAGER .
+Note that pagers may need special flags, e.g.,
+.Xr less 1
+requires the option
+.Fl R
+and
+.Xr lv 1
+the option
+.Fl c
+in order to support colours; therefore \*(UA will inspect the variable
+.Va PAGER
+\(en if that starts with the string `less' a non-existing
+environment variable
+.Va LESS
+will be set to "FRSXi", likewise for `lv'
+.Va LV
+will be optionally set to "-c".
+Also see the section
+.Sx "Coloured message display"
+for more on this.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -3115,16 +3136,6 @@ for the format of the value.
 See the section
 .Sx "Coloured message display"
 for the format of the value.
-.It Va colour-pagers
-\*(OP A comma-separated list of
-.Va PAGER Ns
-s for which coloured message display can be used.
-Note that only a substring comparison is performed, meaning that the
-string `lesser' will match the string `less'.
-See the section
-.Sx "Coloured message display"
-for more on this.
-The default is set to the sole string `less'.
 .It Va colour-partinfo
 \*(OP The colour specification for MIME part info lines.
 See the section
