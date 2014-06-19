@@ -163,7 +163,7 @@
      DS(408, "Like \"z\", but continues to the next flagged message") },
    { "headers", &c_headers, (A | MSGLIST), 0, MMNDEL
      DS(342, "Show the current(/last/next) 18-message group of headers") },
-   { "help", &c_help, (/*H |*/ M | RAWLIST), 0, 1
+   { "help", &c_help, (H | M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
    { "?", &c_help, (H | M | RAWLIST), 0, 1
      DS(343, "Show command help (for the given one)") },
@@ -205,11 +205,11 @@
      DS(336, "Forward <message> to <address>") },
    { "edit", &c_editor, (A | I | MSGLIST), 0, MMNORM
      DS(326, "Edit <message-list>") },
-   { "echo", &c_echo, (M | ECHOLIST), 0, 1000
+   { "echo", &c_echo, (H | M | ECHOLIST), 0, 1000
      DS(325, "Echo given arguments") },
    { "quit", &c_quit, NOLIST, 0, 0
      DS(363, "Terminate session, saving messages as necessary") },
-   { "list", &_pcmdlist, (M | NOLIST), 0, 0
+   { "list", &_pcmdlist, (H | M | NOLIST), 0, 0
      DS(349, "List all available commands") },
    { "xit", &c_rexit, (M | NOLIST), 0, 0
      DS(328, "Immediate return to the shell without saving") },
@@ -365,30 +365,30 @@
      DS(425, "Define a <ghost> of <command>, or list all ghosts") },
    { "unghost", &_unghost, (M | RAWLIST), 1, 1000
      DS(426, "Delete <ghost-list>") },
-   { "localopts", &c_localopts, (M | RAWLIST), 1, 1
+   { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
      DS(427, "Inside `define' / `account': insulate modifications? <0> / <1>")},
    { "cwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(428, "Print current working directory (CWD)") },
-   { "varshow", &c_varshow, (M | RAWLIST), 1, 1000
+   { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
      DS(430, "Show some informations about the given <variables>") },
-   { "urlenc", &c_urlenc, (M | RAWLIST), 1, 1000
+   { "urlenc", &c_urlenc, (H| M | RAWLIST), 1, 1000
      DS(435, "Encode <string-list> for usage in an URL") },
-   { "urldec", &c_urldec, (M | RAWLIST), 1, 1000
+   { "urldec", &c_urldec, (H | M | RAWLIST), 1, 1000
      DS(436, "Decode the URL-encoded <URL-list> into strings") },
-   { "features", &_features, (M | NOLIST), 0, 0
+   { "features", &_features, (H | M | NOLIST), 0, 0
      DS(429, "Show features that are compiled into the MUA") },
-   { "version", &_version, (M | NOLIST), 0, 0
+   { "version", &_version, (H | M | NOLIST), 0, 0
      DS(413, "Print the MUA version") },
 #ifdef HAVE_HISTORY
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(431, "<show> (default), <clear> or select <NO> from editor history") },
 #endif
 #ifdef HAVE_DEBUG
-   { "sstats", &c_sstats, (I | M | NOLIST), 0, 0
+   { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },
-   { "smemtrace", &c_smemtrace, (I | M | NOLIST), 0, 0
+   { "smemtrace", &c_smemtrace, (H | I | M | NOLIST), 0, 0
      DS(417, "Trace current memory usage afap") },
 #endif
    { NULL, NULL, 0, 0, 0 DS(0, "") }
