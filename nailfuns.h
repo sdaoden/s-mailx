@@ -662,9 +662,9 @@ FL int         c_remove(void *v);
 /* Rename mailbox */
 FL int         c_rename(void *v);
 
-/* `urlenc' and `urldec' */
-FL int         c_urlenc(void *v);
-FL int         c_urldec(void *v);
+/* `urlencode' and `urldecode' */
+FL int         c_urlencode(void *v);
+FL int         c_urldecode(void *v);
 
 /*
  * collect.c

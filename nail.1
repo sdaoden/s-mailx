@@ -1490,7 +1490,7 @@ Also see the section
 .Pp
 \*(OU If `user' contains special characters, in particular `/' or `%',
 they must be escaped in URL notation \(en the command
-.Ic urlenc
+.Ic urlencode
 can be used to show the necessary conversion.
 The optional `path' part applies to IMAP only;
 if it is omitted, the default `INBOX' is used.
@@ -2207,9 +2207,9 @@ print a header summary.
 .It Ic unthread
 (unth) Same as
 .Ic unsort .
-.It Ic urldec
+.It Ic urldecode
 Decode the given URL-encoded string arguments and show the results.
-.It Ic urlenc
+.It Ic urlencode
 URL-encode the given arguments and show the results.
 .It Ic varshow
 Show information about all given options.

@@ -1681,7 +1681,7 @@ jleave:
 }
 
 FL int
-c_urlenc(void *v) /* XXX IDNA?? */
+c_urlencode(void *v) /* XXX IDNA?? */
 {
    char **ap;
    NYD_ENTER;
@@ -1697,7 +1697,7 @@ c_urlenc(void *v) /* XXX IDNA?? */
 }
 
 FL int
-c_urldec(void *v) /* XXX IDNA?? */
+c_urldecode(void *v) /* XXX IDNA?? */
 {
    char **ap;
    NYD_ENTER;

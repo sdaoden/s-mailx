@@ -373,9 +373,9 @@
      DS(428, "Print current working directory (CWD)") },
    { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
      DS(430, "Show some informations about the given <variables>") },
-   { "urlenc", &c_urlenc, (H| M | RAWLIST), 1, 1000
+   { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
      DS(435, "Encode <string-list> for usage in an URL") },
-   { "urldec", &c_urldec, (H | M | RAWLIST), 1, 1000
+   { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
      DS(436, "Decode the URL-encoded <URL-list> into strings") },
    { "features", &_features, (H | M | NOLIST), 0, 0
      DS(429, "Show features that are compiled into the MUA") },
