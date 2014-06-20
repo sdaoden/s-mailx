@@ -259,7 +259,7 @@ _ghost(void *v)
    }
 
    /* Check that we can deal with this one */
-   if (argv[0] == _lex_isolate(argv[0])) {
+   if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
       fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
       v = NULL;
       goto jleave;
