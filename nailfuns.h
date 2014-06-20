@@ -151,7 +151,7 @@ do {\
 #endif
 
 /*
- * acmava.c
+ * accmacvar.c
  */
 
 /* Don't use _var_* unless you *really* have to! */
@@ -819,8 +819,8 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 /* Get rid of queued mail */
 FL void        demail(void);
 
-/* acmava.c hook: *folder* variable has been updated; if folder shouldn't be
- * replaced by something else leave store alone, otherwise smalloc() the
+/* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
+ * be replaced by something else leave store alone, otherwise smalloc() the
  * desired value (ownership will be taken) */
 FL bool_t      var_folder_updated(char const *folder, char **store);
 

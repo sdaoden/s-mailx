@@ -1527,7 +1527,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
-   /* TODO *l.nd=='\0' : instead adjust acmava.c to disallow empty vals */
+   /* TODO *l.nd=='\0' : instead adjust accmacvar.c to disallow empty vals */
    if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
       l.nd = "\033[C"; /* XXX no "magic" constant */
    l.x_buf = buf;
