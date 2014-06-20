@@ -162,7 +162,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
             argv[_oind][1] == '\0')
          goto jleave;
       if (argv[_oind][1] == '-' && argv[_oind][2] == '\0') {
-         ++_oind;
+         /* We need this in for MTA arg detection (easier) ++_oind;*/
          goto jleave;
       }
       curp = &argv[_oind][1];
@@ -554,16 +554,16 @@ main(int argc, char *argv[])
 {
    static char const optstr[] = "A:a:Bb:c:DdEeFfHiL:NnO:q:Rr:S:s:tu:Vv~#",
       usagestr[] =
-         "Synopsis:\n"
-         "  %s [-BDdEFintv~] [-A acc] [-a attachment] "
-            "[-b bcc-addr] [-c cc-addr]\n"
-         "\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
-            "[-S var[=value]]\n"
-         "\t  [-s subject] to-addr...\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
-            "-f [file]\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
-            "[-u user]\n";
+         " Synopsis:\n"
+         "  %s [-BDdEFintv~] [-A account]\n"
+         "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
+         "\t [-q file] [-r from-address] [-S var[=value]...]\n"
+         "\t [-s subject] to-address... [-- mta-option...]\n"
+         "  %s [-BDdEeHiNnRv~#] [-A account]\n"
+         "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
+         "  %s [-BDdEeHiNnRv~#] [-A account]\n"
+         "\t [-L spec-list] [-S var[=value]...] [-u user] [-- mta-option...]\n"
+      ;
 
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
@@ -676,10 +676,10 @@ main(int argc, char *argv[])
          options |= OPT_NOSRC;
          break;
       case 'O':
-         /* Additional options to pass-through to MTA */
+         /* Additional options to pass-through to MTA TODO v15-compat legacy */
          if (smopts_count == (size_t)smopts_size)
             smopts_size = _grow_cpp(&smopts, smopts_size + 8, smopts_count);
-         smopts[smopts_count++] = skin(_oarg);
+         smopts[smopts_count++] = _oarg;
          break;
       case 'q':
          /* Quote file TODO drop? -Q with real quote?? what ? */
@@ -781,20 +781,43 @@ jusage:
       }
    }
 
+   /* The normal arguments may be followed by MTA arguments after `--';
+    * however, -f may take off an argument, too, and before that */
+   if ((cp = argv[i = _oind]) == NULL)
+      ;
+   else if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
+      cp = argv[++i];
    /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
-   if (folder != NULL && folder[1] == '\0') {
-      if (_oind < argc) {
-         if (_oind + 1 < argc) {
+   else if (folder != NULL && folder[1] == '\0') {
+      folder = cp;
+      if ((cp = argv[++i]) != NULL) {
+         if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
             fprintf(stderr, tr(205, "More than one file given with -f\n"));
             goto jusage;
          }
-         folder = argv[_oind];
+         cp = argv[++i];
       }
    } else {
-      for (i = _oind; argv[i]; ++i)
-         to = cat(to, checkaddrs(lextract(argv[i], GTO | GFULL)));
+      for (;;) {
+         to = cat(to, checkaddrs(lextract(cp, GTO | GFULL)));
+         if ((cp = argv[++i]) == NULL)
+            break;
+         if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0') {
+            cp = argv[++i];
+            break;
+         }
+      }
       if (to != NULL)
          options |= OPT_SENDMODE;
+   }
+
+   /* Additional options to pass-through to MTA? */
+   while (cp != NULL) {
+      if (smopts_count == (size_t)smopts_size)
+         smopts_size = _grow_cpp(&smopts, smopts_size + 8,
+               smopts_count);
+      smopts[smopts_count++] = cp;
+      cp = argv[++i];
    }
 
    /* Check for inconsistent arguments */

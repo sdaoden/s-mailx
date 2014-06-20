@@ -137,11 +137,14 @@ $set 1
 134 Unknown metachar (%c)\n
 
 135 Synopsis:\n\
-  %s [-BDdEFintv~] [-A acc] [-a attachment] [-b bcc-addr] [-c cc-addr]\n\
-\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] [-S var[=value]]\n\
-\t  [-s subject] to-addr...\n\
-  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] -f [file]\n\
-  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] [-u user]\n
+  %s [-BDdEFintv~] [-A account]\n\
+\t [-a attachment] [-b bcc-address] [-c cc-address]\n\
+\t [-q file] [-r from-address] [-S var[=value]...]\n\
+\t [-s subject] to-address... [-- mta-option...]\n\
+  %s [-BDdEeHiNnRv~#] [-A account]\n\
+\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n\
+  %s [-BDdEeHiNnRv~#] [-A account]\n\
+\t [-L spec-list] [-S var[=value]...] [-u user] [-- mta-option...]\n
 
 136 $ %d moved$
 137 Cannot give -f and people to send to.\n
