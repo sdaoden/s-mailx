@@ -56,8 +56,8 @@ static char const * const _mt_sources[] = {
    NULL
 };
 
-struct mtnode     *_mt_list;
-char              *_cs_iter_base, *_cs_iter;
+static struct mtnode *_mt_list;
+static char          *_cs_iter_base, *_cs_iter;
 
 #ifdef HAVE_ICONV
 # define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
@@ -1179,6 +1179,8 @@ mime_classify_content_type_by_fileext(char const *name)
 
    if (_mt_list == NULL)
       _mt_init();
+   if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1)
+      goto jleave;
 
    nlen = strlen(name);
    for (mtn = _mt_list; mtn != NULL; mtn = mtn->mt_next) {
@@ -1232,6 +1234,11 @@ jlist:   {
 
    if (_mt_list == NULL)
       _mt_init();
+   if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1) {
+      fprintf(stderr, tr(57, "Interpolate what file?\n"));
+      v = NULL;
+      goto jleave;
+   }
 
    if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
@@ -1249,6 +1256,8 @@ jlist:   {
    goto jleave;
 
 jclear:
+   if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1)
+      _mt_list = NULL;
    while ((mtn = _mt_list) != NULL) {
       _mt_list = mtn->mt_next;
       free(mtn);
