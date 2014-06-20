@@ -792,8 +792,8 @@ will disable the mentioned IDNA conversion even if support is available.
 .\" .Ss "URL syntax" {{{
 .Ss "URL syntax"
 \*(IN For accessing protocol-specific resources, like an IMAP mailbox,
-usage of compact and standardized Uniform Resource Locators (URL) has
-become omnipresent.
+usage of compact and standardized Uniform Resource Locators
+(URL, RFC 1738) has become omnipresent.
 \*(UA expects and understands URLs in the following form;
 parts in brackets `[]' denote optional parts, optional either because
 there also exist other ways to define the information in question or
@@ -802,28 +802,46 @@ e.g., `/path' is used by the IMAP protocol but not by POP3.
 .Pp
 .Dl PROTO://[USER[:PASSWORD]@]server[:port][/path]
 .Pp
+If `USER' and `PASSWORD' are specified as part of an URL they must be
+given in URL percent encoded (RFC 3986) form \(en the command
+.Ic urlencode
+can be used to perform the encoding and show the encoded value.
+(This doesn't really conform to any standard, but for one it isn't
+used for any data exchange over the internet, and second it's easier for
+users to simply call
+.Ic urlencode
+on a string and use that instead of having to deal with several
+different standards.)
+On the other hand, values given in variables are expected not to be URL
+percent encoded.
+.Pp
+Many variable options of \*(UA exist in multiple versions: the plain
+`variable' as well as `variable-HOST' and `variable-USER@HOST'.
+Here `HOST' indeed means `server:port' if a `port' had been specified in
+the respective URL, otherwise it refers to the plain `server'.
+Also, `USER' isn't truly the `USER' that had been found when doing the
+user chain lookup as is described below, i.e., this `USER' will never be
+in URL percent encoded form, wether it came from an URL or not.
+.Pp
+E.g., wether an hypothetic URL `smtp://you%20there@our.house' had been
+given that includes a user, or wether the URL was `smtp://our.house' and
+the user had been found differently, in order to lookup the variable
+.Va smtp-use-starttls
+\*(UA first looks for wether `smtp-use-starttls-you\ there@our.house'
+is defined, then wether `smtp-use-starttls-our.house' exists before
+finally ending up looking at the plain variable itself.
+.Pp
 In general \*(UA adheres to the following logic scheme when dealing with
 the necessary informations of a resource:
 .Bl -bullet -offset indent
 .It
-If no `USER' is given: a variable of the scheme
+If no `USER' is given: a variable of the form
 .Va user-HOST
-is looked up (`HOST' relates to the `server' specified in the URL),
-followed by the plain
+is looked up, followed by the plain
 .Va user ,
 which in turn defaults to
 .Va USER
 which, again, defaults to `getpwuid(getuid())' a.k.a. the current user.
-.It
-If no `PASSWORD' is given: a variable
-.Va password-USER@HOST
-is looked up (`HOST' again is the one found in the URL, `USER' is the
-result of the user lookup described in the former item),
-followed by the global
-.Va password ;
-if still no password is available afterwards, but the (protocols')
-chosen authentication type requires a password, the user will be
-prompted on the terminal.
 .It
 Authentication: unless otherwise noted this will first look for
 .Va PROTO-auth-USER@HOST ,
@@ -833,6 +851,17 @@ and finally
 .Va PROTO-auth ,
 which has a protocol-specific default should none of the variables be
 set.
+.It
+If no `PASSWORD' is given: a variable
+.Va password-USER@HOST
+is looked up, followed by the global
+.Va password ;
+if still no password is available afterwards, but the (protocols')
+chosen authentication type requires a password, the user will be
+prompted on the terminal.
+It should be noted that specifying the password in the URL is only
+syntactic sugar for the user, it'll never be part of an URL that \*(UA
+uses itself.
 .El
 .Pp
 Note:
@@ -840,11 +869,19 @@ For SMTP the rules are a bit more complicated, since \*(UA will always
 work relative to
 .Va from
 instead of a given SMTP account in respect to S/MIME
-.Ns ( Va smime-sign
+.Ns ( Va smime-sign ,
+.Va smime-sign-cert
 and
 .Va smime-sign-include-certs )
 \(en this is because S/MIME verification works relative to the values
 found in `From:' (or `Sender:').
+In unusual cases multiple and different `USER' and `HOST' combinations
+may therefore be involved when looking up values that make up an SMTP
+account; on the other hand those unusual cases become possible.
+The usual case can be as short as:
+.Pp
+.Dl set smtp=USER:PASS@HOST smtp-auth=plain smtp-use-starttls \e
+.Dl \ \ \ \ smime-sign smime-sign-cert=+smime.pair
 .\" }}}
 .\"
 .\" .Ss "MIME types" {{{
@@ -3986,6 +4023,9 @@ and the `HOST' from the content of this variable
 (or, if that is the empty string,
 .Va hostname
 or the local hostname as a last resort).
+This often allows using an address that is itself valid but hosted by
+a provider other than which is about to send the message in
+.Va from .
 Setting this variable also influences the generated `Message-Id:'.
 .It Va spam-command
 \*(OP The path to the spam detector.

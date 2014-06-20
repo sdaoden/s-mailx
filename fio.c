@@ -1374,7 +1374,7 @@ sopen(struct sock *sp, struct url *urlp)
    sp->s_fd = sofd;
 # ifdef HAVE_SSL
    if (urlp->url_needs_tls &&
-         ssl_open(urlp->url_host.s, sp, urlp->url_uhp.s) != OKAY) {
+         ssl_open(urlp->url_host.s, sp, urlp->url_u_h_p.s) != OKAY) {
       sclose(sp);
       sofd = -1;
    }

@@ -134,11 +134,11 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
       POP3_OUT(rv, "STLS" NL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
       if ((rv = ssl_open(scp->sc_url.url_host.s, &scp->sc_sock,
-            scp->sc_url.url_uhp.s)) != OKAY)
+            scp->sc_url.url_u_h_p.s)) != OKAY)
          goto jleave;
    }
 #else
-   if (_pop3_use_starttls(scp->sc_url.url_uhp.s)) {
+   if (_pop3_use_starttls(scp->sc_url.url_u_h_p.s)) {
       fprintf(stderr, "No SSL support compiled in.\n");
       rv = STOP;
       goto jleave;
@@ -220,8 +220,8 @@ _pop3_use_starttls(struct sockconn const *scp)
    if (!(rv = ok_blook(pop3_use_starttls)))
       if (!ok_blook(v15_compat) ||
             !(rv = vok_blook(savecat("pop3-use-starttls-",
-                  scp->sc_url.url_hp.s))))
-         rv = vok_blook(savecat("pop3-use-starttls-", scp->sc_url.url_uhp.s));
+                  scp->sc_url.url_h_p.s))))
+         rv = vok_blook(savecat("pop3-use-starttls-", scp->sc_url.url_u_h_p.s));
    NYD_LEAVE;
    return rv;
 }
@@ -234,8 +234,8 @@ _pop3_no_apop(struct sockconn const *scp)
 
    if (!(rv = ok_blook(pop3_no_apop)))
       if (!ok_blook(v15_compat) ||
-            !(rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_hp.s))))
-         rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_uhp.s));
+            !(rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_h_p.s))))
+         rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_u_h_p.s));
    NYD_LEAVE;
    return rv;
 }
@@ -660,6 +660,7 @@ jretry:
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
       if (is_head(lp, linelen)) {
+         DBG( fprintf(stderr, "!! POP3 really needs to quote From?\n"); )
          if (lines == 0)
             continue;
          fputc('>', mp->mb_otf);
@@ -837,7 +838,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    }
 
    if (!(ok_blook(v15_compat) ? ccred_lookup(&sc.sc_cred, &sc.sc_url)
-         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3, sc.sc_url.url_uhp.s)))
+         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3, sc.sc_url.url_u_h_p.s)))
       goto jleave;
 
    if (!sopen(&sc.sc_sock, &sc.sc_url))
@@ -858,14 +859,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
       mb.mb_otf = NULL;
    }
 
-   {  char *nmn = ac_alloc(sc.sc_url.url_proto_xlen + sc.sc_url.url_uhp.l +1);
-      sc.sc_url.url_proto[sc.sc_url.url_proto_len] = ':';
-      memcpy(sstpcpy(nmn, sc.sc_url.url_proto),
-         sc.sc_url.url_uhp.s, sc.sc_url.url_uhp.l +1);
-      sc.sc_url.url_proto[sc.sc_url.url_proto_len] = '\0';
-      initbox(nmn);
-      ac_free(nmn);
-   }
+   initbox(sc.sc_url.url_p_u_h_p);
    mb.mb_type = MB_VOID;
    _pop3_lock = 1;
    mb.mb_sock = sc.sc_sock;

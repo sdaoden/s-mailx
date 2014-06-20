@@ -906,24 +906,49 @@ jeproto:
 
    /* User and password, I */
 juser:
-   if ((cp = UNCONST(last_at_before_slash(data))) == NULL)
-      goto jserver;
+   if ((cp = UNCONST(last_at_before_slash(data))) != NULL) {
+      size_t l = PTR2SIZE(cp - data);
+      char const *d = data;
+      char *ub = ac_alloc(l +1);
 
-   urlp->url_had_user = TRU1;
-   urlp->url_user.s = savestrbuf(data, urlp->url_user.l = PTR2SIZE(cp - data));
-   data = ++cp;
+      urlp->url_had_user = TRU1;
+      data = cp + 1;
 
-   /* And also have a password? */
-   if ((cp = strchr(urlp->url_user.s, ':')) != NULL) {
-      x = urlp->url_user.s;
-      urlp->url_user.s = savestrbuf(x, urlp->url_user.l = PTR2SIZE(cp - x));
-      urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(++cp));
-      urlp->url_pass_enc.l = strlen(
-            urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s, FAL0));
+      /* And also have a password? */
+      if ((cp = memchr(d, ':', l)) != NULL) {
+         size_t i = PTR2SIZE(cp - d);
+
+         l -= i + 1;
+         memcpy(ub, cp + 1, l);
+         ub[l] = '\0';
+         urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(ub));
+         urlp->url_pass_enc.l = strlen(
+               urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s, FAL0));
+
+         if (strcmp(ub, urlp->url_pass_enc.s)) {
+            fprintf(stderr, tr(581,
+               "String is not properly URL percent encoded: `%s'\n"), ub);
+            goto jleave;
+         }
+         l = i;
+      }
+
+      memcpy(ub, d, l);
+      ub[l] = '\0';
+      urlp->url_user.l = strlen(urlp->url_user.s = urlxdec(ub));
+      urlp->url_user_enc.l = strlen(
+            urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
+
+      if (urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)) {
+         fprintf(stderr, tr(581,
+            "String is not properly URL percent encoded: `%s'\n"), ub);
+         goto jleave;
+      }
+
+      ac_free(ub);
    }
 
    /* Servername and port -- and possible path suffix */
-jserver:
    if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, IPv6 support */
       char *eptr;
       long l;
@@ -961,9 +986,9 @@ jserver:
          *cp = lowerconv(*cp);
    }
 
-   /* HOST:PORT */
+   /* .url_h_p: HOST:PORT */
    {  size_t i;
-      struct str *s = &urlp->url_hp;
+      struct str *s = &urlp->url_h_p;
 
       s->s = salloc(urlp->url_host.l + 1 + sizeof("65536")-1 +1);
       memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
@@ -983,42 +1008,30 @@ jserver:
       char const usrstr[] = "user-";
       size_t const usrlen = sizeof(usrstr) -1;
 
-      cp = ac_alloc(usrlen + urlp->url_hp.l +1);
+      cp = ac_alloc(usrlen + urlp->url_h_p.l +1);
       memcpy(cp, usrstr, usrlen);
-      memcpy(cp + usrlen, urlp->url_hp.s, urlp->url_hp.l +1);
+      memcpy(cp + usrlen, urlp->url_h_p.s, urlp->url_h_p.l +1);
       if ((urlp->url_user.s = vok_vlook(cp)) == NULL) {
          cp[usrlen - 1] = '\0';
          if ((urlp->url_user.s = vok_vlook(cp)) == NULL)
             urlp->url_user.s = UNCONST(myname);
       }
       ac_free(cp);
+
+      urlp->url_user.l = strlen(urlp->url_user.s);
+      urlp->url_user.s = savestrbuf(urlp->url_user.s, urlp->url_user.l);
+      urlp->url_user_enc.l = strlen(
+            urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
+
    }
 
-   urlp->url_user.l = strlen(urlp->url_user.s = urlxdec(urlp->url_user.s));
-   urlp->url_user_enc.l = strlen(
-         urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
+   /* And then there are a lot of prebuild string combinations TODO do lazy */
 
-   /* USER@HOST:PORT */
-   if (urlp->url_user_enc.l == 0)
-      urlp->url_uhp = urlp->url_hp;
-   else {
-      struct str *s = &urlp->url_uhp;
-      size_t i = urlp->url_user_enc.l;
-
-      s->s = salloc(i + 1 + urlp->url_hp.l +1);
-      if (i > 0) {
-         memcpy(s->s, urlp->url_user_enc.s, i);
-         s->s[i++] = '@';
-      }
-      memcpy(s->s + i, urlp->url_hp.s, urlp->url_hp.l +1);
-      i += urlp->url_hp.l;
-      s->l = i;
-   }
-
-   /* USER@HOST
+   /* .url_u_h: .url_user@.url_host
     * For SMTP we apply ridiculously complicated *v15-compat* plus
     * *smtp-hostname* / *hostname* dependent rules */
-   {  struct str h;
+   {  struct str h, *s;
+      size_t i;
 
       if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
             (cp = ok_vlook(smtp_hostname)) != NULL) {
@@ -1028,37 +1041,74 @@ jserver:
       } else
          h = urlp->url_host;
 
-      if (urlp->url_user_enc.l == 0)
-         urlp->url_uh = h;
-      else {
-         struct str *s = &urlp->url_uh;
-         size_t i = urlp->url_user_enc.l;
+      s = &urlp->url_u_h;
+      i = urlp->url_user.l;
 
-         s->s = salloc(i + 1 + h.l +1);
-         if (i > 0) {
-            memcpy(s->s, urlp->url_user_enc.s, i);
-            s->s[i++] = '@';
-         }
-         memcpy(s->s + i, h.s, h.l +1);
-         i += h.l;
-         s->l = i;
+      s->s = salloc(i + 1 + h.l +1);
+      if (i > 0) {
+         memcpy(s->s, urlp->url_user.s, i);
+         s->s[i++] = '@';
       }
+      memcpy(s->s + i, h.s, h.l +1);
+      i += h.l;
+      s->l = i;
    }
 
-   /* Finally, for fun: .url_proto://.url_uhp[/.url_path] */
+   /* .url_u_h_p: .url_user@.url_host[:.url_port] */
+   {  struct str *s = &urlp->url_u_h_p;
+      size_t i = urlp->url_user.l;
+
+      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      if (i > 0) {
+         memcpy(s->s, urlp->url_user.s, i);
+         s->s[i++] = '@';
+      }
+      memcpy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
+      i += urlp->url_h_p.l;
+      s->l = i;
+   }
+
+   /* .url_eu_h_p: .url_user_enc@.url_host[:.url_port] */
+   {  struct str *s = &urlp->url_eu_h_p;
+      size_t i = urlp->url_user_enc.l;
+
+      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      if (i > 0) {
+         memcpy(s->s, urlp->url_user_enc.s, i);
+         s->s[i++] = '@';
+      }
+      memcpy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
+      i += urlp->url_h_p.l;
+      s->l = i;
+   }
+
+   /* .url_p_u_h_p: .url_proto://.url_u_h_p */
    {  size_t i;
-      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_uhp.l) +
+      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_u_h_p.l) +1);
+
+      urlp->url_proto[urlp->url_proto_len] = ':';
+      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_u_h_p.s,
+         urlp->url_u_h_p.l +1);
+      urlp->url_proto[urlp->url_proto_len] = '\0';
+
+      urlp->url_p_u_h_p = ud;
+   }
+
+   /* .url_p_eu_h_p, .url_p_eu_h_p_p: .url_proto://.url_eu_h_p[/.url_path] */
+   {  size_t i;
+      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_eu_h_p.l) +
             1 + urlp->url_path.l +1);
 
       urlp->url_proto[urlp->url_proto_len] = ':';
-      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_uhp.s, urlp->url_uhp.l +1);
+      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_eu_h_p.s,
+         urlp->url_eu_h_p.l +1);
       urlp->url_proto[urlp->url_proto_len] = '\0';
 
       if (urlp->url_path.l == 0)
-         urlp->url_puhp = urlp->url_puhpp = ud;
+         urlp->url_p_eu_h_p = urlp->url_p_eu_h_p_p = ud;
       else {
-         urlp->url_puhp = savestrbuf(ud, i);
-         urlp->url_puhpp = ud;
+         urlp->url_p_eu_h_p = savestrbuf(ud, i);
+         urlp->url_p_eu_h_p_p = ud;
          ud += i;
          *ud++ = '/';
          memcpy(ud, urlp->url_path.s, urlp->url_path.l +1);
@@ -1153,7 +1203,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    } else if (!asccasecmp(cp, "sasl")) {
       ware = REQ_USER | WANT_PASS;
 #endif
-   }
+   } /* no else */
 
    /* Verify method */
    if (!(ccp->cc_authtype & authmask)) {
@@ -1196,9 +1246,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    if ((s = vok_vlook(vbuf)) == NULL) {
       vbuf[--i] = '\0';
       if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_USER)) {
-         if ((s = getuser(NULL)) != NULL)
-            s = savestr(s);
-         else {
+         if ((s = getuser(NULL)) == NULL) {
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
              * TODO even better: introduce `PROTO-user' and `PROTO-pass' and
              * TODO check that first, then! change control flow, grow `vbuf' */
@@ -1209,7 +1257,7 @@ jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
          }
       }
    }
-   ccp->cc_user.l = strlen(ccp->cc_user.s = s);
+   ccp->cc_user.l = strlen(ccp->cc_user.s = savestr(s));
 
    /* Password */
 jpass:
@@ -1235,7 +1283,7 @@ jpass:
          }
       }
    }
-   ccp->cc_pass.l = strlen(ccp->cc_pass.s = urlxdec(s));
+   ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
    ac_free(vbuf);
@@ -1280,17 +1328,17 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       break;
    }
 
-   /* Note: "password-" is longer than "-auth-", ditto .url_uhp and .url_hp */
-   vbuf = ac_alloc(plen + sizeof("password-")-1 + urlp->url_uhp.l +1);
+   /* Note: "password-" is longer than "-auth-", .url_u_h_p and .url_h_p */
+   vbuf = ac_alloc(plen + sizeof("password-")-1 + urlp->url_u_h_p.l +1);
    memcpy(vbuf, pstr, plen);
 
    /* Authentication type */
    memcpy(vbuf + plen, "-auth-", i = sizeof("-auth-") -1);
    i += plen;
    /* -USER@HOST, -HOST, '' */
-   memcpy(vbuf + i, urlp->url_uhp.s, urlp->url_uhp.l +1);
+   memcpy(vbuf + i, urlp->url_u_h_p.s, urlp->url_u_h_p.l +1);
    if ((s = vok_vlook(vbuf)) == NULL) {
-      memcpy(vbuf + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      memcpy(vbuf + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
       if ((s = vok_vlook(vbuf)) == NULL) {
          vbuf[plen + sizeof("-auth") -1] = '\0';
          if ((s = vok_vlook(vbuf)) == NULL)
@@ -1322,7 +1370,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    } else if (!asccasecmp(cp, "sasl")) {
       ware = REQ_USER | WANT_PASS;
 #endif
-   }
+   } /* no else */
 
    /* Verify method */
    if (!(ccp->cc_authtype & authmask)) {
@@ -1352,24 +1400,21 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    memcpy(vbuf, "password-", i = sizeof("password-") -1);
    /* -USER@HOST, -HOST, '' */
-   memcpy(vbuf + i, urlp->url_uhp.s, urlp->url_uhp.l +1);
+   memcpy(vbuf + i, urlp->url_u_h_p.s, urlp->url_u_h_p.l +1);
    if ((s = vok_vlook(vbuf)) == NULL) {
-      memcpy(vbuf + i, urlp->url_hp.s, urlp->url_hp.l +1);
+      memcpy(vbuf + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
       if ((s = vok_vlook(vbuf)) == NULL) {
          vbuf[--i] = '\0';
-         if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS)) {
-            if ((s = getpassword(NULL)) != NULL)
-               s = savestr(s);
-            else {
-               fprintf(stderr, tr(275,
-                  "A password is necessary for %s authentication.\n"), pstr);
-               ccp = NULL;
-               goto jleave;
-            }
+         if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
+               (s = getpassword(NULL)) == NULL) {
+            fprintf(stderr, tr(275,
+               "A password is necessary for %s authentication.\n"), pstr);
+            ccp = NULL;
+            goto jleave;
          }
       }
    }
-   ccp->cc_pass.l = strlen(ccp->cc_pass.s = urlxdec(s));
+   ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
    ac_free(vbuf);

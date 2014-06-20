@@ -359,10 +359,10 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    if (v15) {
       if (shost == NULL) {
          assert(from != NULL);
-         sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
+         sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
       }
       else
-         __sendout_ident = sbp->sb_url.url_uh.s;
+         __sendout_ident = sbp->sb_url.url_u_h.s;
       if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
          goto jleave;
    } else {
@@ -370,10 +370,10 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          fprintf(stderr, "New-style URL used without *v15-compat* being set\n");
          goto jleave;
       }
-      if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, smtp))
-         goto jleave;
       assert(from != NULL);
-      sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
+      if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, from))
+         goto jleave;
+      sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
    }
 
    rv = TRU1;

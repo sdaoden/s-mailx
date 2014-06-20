@@ -178,7 +178,8 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
       _ANSWER(2, FAL0, FAL0);
 
       if (!(options & OPT_DEBUG) &&
-            ssl_open(sbp->sb_url.url_host.s, sp, sbp->sb_url.url_uhp.s) != OKAY)
+            ssl_open(sbp->sb_url.url_host.s, sp, sbp->sb_url.url_u_h_p.s
+               ) != OKAY)
          goto jleave;
    }
 #else
@@ -248,7 +249,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    }
 
 jsend:
-   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), sbp->sb_url.url_uh.s);
+   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), sbp->sb_url.url_u_h.s);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 

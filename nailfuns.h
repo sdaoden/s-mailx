@@ -313,7 +313,7 @@ FL char *      getprompt(void);
 FL char *      nodename(int mayoverride);
 
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp */
+ * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
                   char const *data);
 

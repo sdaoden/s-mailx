@@ -944,21 +944,23 @@ struct url {
    char           url_proto[14];    /* Communication protocol as 'xy\0//' */
    ui8_t          url_proto_len;    /* Length of .url_proto ('\0' index) */
    ui8_t          url_proto_xlen;   /* .. if '\0' is replaced with ':' */
-   struct str     url_user;         /* User, urlxdec()oded */
+   struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
    struct str     url_pass_enc;     /* Pass (urlxenc()oded) or NULL */
    struct str     url_host;         /* Service hostname */
    struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
-   struct str     url_hp;           /* .url_host[:.url_port] */
-   struct str     url_uhp;          /* .url_user_enc@.url_host[:.url_port] */
-   /* .url_user_enc@.url_host
+   struct str     url_h_p;          /* .url_host[:.url_port] */
+   /* .url_user@.url_host
     * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
     * *hostname*)!  (And may later be overwritten according to *from*!) */
-   struct str     url_uh;
-   char const     *url_puhp;        /* .url_proto://.url_uhp */
-   char const     *url_puhpp;       /* .url_proto://.url_uhp[/.url_path] */
+   struct str     url_u_h;
+   struct str     url_u_h_p;        /* .url_user@.url_host[:.url_port] */
+   struct str     url_eu_h_p;       /* .url_user_enc@.url_host[:.url_port] */
+   char const     *url_p_u_h_p;     /* .url_proto://.url_u_h_p */
+   char const     *url_p_eu_h_p;    /* .url_proto://.url_eu_h_p */
+   char const     *url_p_eu_h_p_p;  /* .url_proto://.url_eu_h_p[/.url_path] */
 };
 
 struct ccred {
