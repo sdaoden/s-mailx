@@ -1071,7 +1071,8 @@ command with the respective arguments `0', `$', `-' and `+'
 Colours are used only when the
 .Va TERM
 environment variable is set and the terminal type can be found in
-.Va colour-terms .
+.Va colour-terms
+(or includes the string "color").
 On top of that the binary option
 .Va colour-pager
 defines wether ANSI colour sequences are generated when the output
@@ -3145,10 +3146,11 @@ for the format of the value.
 \*(OP A comma-separated list of
 .Va TERM Ns
 inals for which coloured message display can be used.
-The default is
+Entries only need to be added if the string "color" isn't part of the
+terminal name itself; the default value is
 .Pp
 .Dl cons25,linux,rxvt,rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:\
-wsvt25,\:xterm,\:xterm-color
+wsvt25,\:xterm
 .It Va colour-uheader
 \*(OP The colour specification for those header lines that have been
 placed in the

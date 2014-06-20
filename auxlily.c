@@ -2098,6 +2098,9 @@ colour_table_create(bool_t pager_used)
       /* Don't use getenv(), but force copy-in into our own tables.. */
       if ((term = _var_voklook("TERM")) == NULL)
          goto jleave;
+      /* terminfo rocks: if we find "color", assume it's right */
+      if (strstr(term, "color") != NULL)
+         goto jok;
       if ((okterms = ok_vlook(colour_terms)) == NULL)
          okterms = UNCONST(COLOUR_TERMS);
       okterms = savestr(okterms);
@@ -2105,11 +2108,11 @@ colour_table_create(bool_t pager_used)
       i = strlen(term);
       while ((u.cp = n_strsep(&okterms, ',', TRU1)) != NULL)
          if (!strncmp(u.cp, term, i))
-            break;
-      if (u.cp == NULL)
-         goto jleave;
+            goto jok;
+      goto jleave;
    }
 
+jok:
    colour_table = ct = salloc(sizeof *ct); /* XXX lex.c yet resets (FILTER!) */
    {  static struct {
          enum okeys        okey;

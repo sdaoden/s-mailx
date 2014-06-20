@@ -155,8 +155,7 @@
 #define COLOUR_HEADER   "fg=red"
 #define COLOUR_UHEADER  "ft=bold,fg=red"
 #define COLOUR_TERMS    \
-   "cons25,linux,rxvt,rxvt-unicode,screen,sun,"\
-   "vt100,vt220,wsvt25,xterm,xterm-color"
+   "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
 #define COLOUR_USER_HEADERS "from,subject"
 
 #define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
