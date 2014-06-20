@@ -845,11 +845,16 @@ enum okeys {
    ok_v_LISTER,
    ok_v_MAIL,
    ok_v_MBOX,
+   /* TODO v15-compat: mimetypes-load-control -> mimetypes-load / mimetypes */
    ok_v_mimetypes_load_control,
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
+   /* TODO v15-compat: NAIL_HEAD -> message-head? */
    ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
+   /* TODO v15-compat: NAIL_HISTFILE -> history-file */
    ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
+   /* TODO v15-compat: NAIL_HISTSIZE -> history-size{,limit} */
    ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
+   /* TODO v15-compat: NAIL_TAIL -> message-tail? */
    ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
@@ -878,6 +883,7 @@ enum okeys {
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
    ok_v_smtp,
+   /* TODO v15-compat: smtp-auth: drop */
    ok_v_smtp_auth,
    ok_v_smtp_auth_password,
    ok_v_smtp_auth_user,
@@ -902,6 +908,7 @@ enum okeys {
    ok_v_stealthmua,
    ok_v_toplines,
    ok_v_ttycharset,
+   ok_v_user,
    ok_v_VISUAL
 };
 
