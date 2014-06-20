@@ -1837,9 +1837,12 @@ tty_init(void)
          lbuf[--llen] = '\0';
       if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
          continue;
-      _ncl_hist_load = TRU1;
-      tty_addhist(lbuf, FAL0);
-      _ncl_hist_load = FAL0;
+      else {
+         bool_t isgabby = (lbuf[0] == '*');
+         _ncl_hist_load = TRU1;
+         tty_addhist(lbuf + isgabby, isgabby);
+         _ncl_hist_load = FAL0;
+      }
    }
    if (lbuf != NULL)
       free(lbuf);
@@ -1887,6 +1890,8 @@ tty_destroy(void)
 
    for (; hp != NULL; hp = hp->younger) {
       if (!hp->isgabby || dogabby) {
+         if (hp->isgabby)
+            putc('*', f);
          fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
          putc('\n', f);
       }
