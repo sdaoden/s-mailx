@@ -484,7 +484,8 @@ jpass:
          }
       }
    }
-   ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
+   if (s != NULL)
+      ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
    ac_free(vbuf);
@@ -615,7 +616,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
          }
       }
    }
-   ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
+   if (s != NULL)
+      ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
    ac_free(vbuf);
