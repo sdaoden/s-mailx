@@ -319,49 +319,8 @@ FL char *      getprompt(void);
 /* Detect and query the hostname to use */
 FL char *      nodename(int mayoverride);
 
-/* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp (URL rather according to RFC 3986) */
-FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
-                  char const *data);
-
-/* Zero ccp and lookup credentials for communicating with urlp.
- * Return wether credentials are available and valid (for chosen auth) */
-FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
-FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
-                  char const *addr);
-
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
-
-/* MD5 (RFC 1321) related facilities */
-#ifdef HAVE_MD5
-# ifdef HAVE_OPENSSL_MD5
-#  define md5_ctx	               MD5_CTX
-#  define md5_init	            MD5_Init
-#  define md5_update	            MD5_Update
-#  define md5_final	            MD5_Final
-# else
-#  include "rfc1321.h"
-# endif
-
-/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
- * using lowercase ASCII letters as defined in RFC 2195 */
-# define MD5TOHEX_SIZE           32
-FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
-
-/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
-FL char *      cram_md5_string(struct str const *user, struct str const *pass,
-                  char const *b64);
-
-/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
- * unsigned char *text: pointer to data stream
- * int text_len       : length of data stream
- * unsigned char *key : pointer to authentication key
- * int key_len        : length of authentication key
- * caddr_t digest     : caller digest to be filled in */
-FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
-                  int key_len, void *digest);
-#endif
 
 FL enum okay   makedir(char const *name);
 
@@ -1876,6 +1835,52 @@ FL void        tty_addhist(char const *s, bool_t isgabby);
    (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
 FL int         c_history(void *v);
 #endif
+
+/*
+ * urlcrecry.c
+ */
+
+/* Parse data, which must meet the criteria of the protocol cproto, and fill
+ * in the URL structure urlp (URL rather according to RFC 3986) */
+FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
+                  char const *data);
+
+/* Zero ccp and lookup credentials for communicating with urlp.
+ * Return wether credentials are available and valid (for chosen auth) */
+FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
+FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
+                  char const *addr);
+
+/* MD5 (RFC 1321) related facilities */
+#ifdef HAVE_MD5
+# ifdef HAVE_OPENSSL_MD5
+#  define md5_ctx	               MD5_CTX
+#  define md5_init	            MD5_Init
+#  define md5_update	            MD5_Update
+#  define md5_final	            MD5_Final
+# else
+   /* The function definitions are instantiated in main.c */
+#  include "rfc1321.h"
+# endif
+
+/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
+ * using lowercase ASCII letters as defined in RFC 2195 */
+# define MD5TOHEX_SIZE           32
+FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
+
+/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
+FL char *      cram_md5_string(struct str const *user, struct str const *pass,
+                  char const *b64);
+
+/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
+ * unsigned char *text: pointer to data stream
+ * int text_len       : length of data stream
+ * unsigned char *key : pointer to authentication key
+ * int key_len        : length of authentication key
+ * caddr_t digest     : caller digest to be filled in */
+FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
+                  int key_len, void *digest);
+#endif /* HAVE_MD5 */
 
 #ifndef HAVE_AMALGAMATION
 # undef FL

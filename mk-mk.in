@@ -28,7 +28,7 @@ $(UAGENT): $(OBJ)
 
 $(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
 config.o accmacvar.o: okeys.h
-config.o auxlily.o imap.o pop3.o smtp.o: rfc1321.h
+config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
 config.o main.o: version.h
