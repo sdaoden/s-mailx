@@ -907,6 +907,60 @@ _var_vokclear(char const *vokey)
    return err;
 }
 
+FL char *
+_var_xoklook(enum okeys okey, struct url const *urlp, enum okey_xlook_mode oxm)
+{
+   struct var_carrier vc;
+   struct str const *us;
+   size_t nlen;
+   char *nbuf = NULL /* CC happiness */, *rv;
+   NYD_ENTER;
+
+   assert(oxm & (OXM_PLAIN | OXM_H_P | OXM_U_H_P));
+
+   /* For simplicity: allow this case too */
+   if (!(oxm & (OXM_H_P | OXM_U_H_P)))
+      goto jplain;
+
+   vc.vc_vmap = _var_map + okey;
+   vc.vc_name = _var_keydat + _var_map[okey].vm_keyoff;
+   vc.vc_okey = okey;
+
+   us = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
+   nlen = strlen(vc.vc_name);
+   nbuf = ac_alloc(nlen + 1 + us->l +1);
+   memcpy(nbuf, vc.vc_name, nlen);
+   nbuf[nlen++] = '-';
+
+   /* One of .url_u_h_p and .url_h_p we test in here */
+   memcpy(nbuf + nlen, us->s, us->l +1);
+   vc.vc_name = _var_canonify(nbuf);
+   vc.vc_hash = MA_NAME2HASH(vc.vc_name);
+   if (_var_lookup(&vc))
+      goto jvar;
+
+   /* The second */
+   if (oxm & OXM_H_P) {
+      us = &urlp->url_h_p;
+      memcpy(nbuf + nlen, us->s, us->l +1);
+      vc.vc_name = _var_canonify(nbuf);
+      vc.vc_hash = MA_NAME2HASH(vc.vc_name);
+      if (_var_lookup(&vc)) {
+jvar:
+         rv = vc.vc_var->v_value;
+         goto jleave;
+      }
+   }
+
+jplain:
+   rv = (oxm & OXM_PLAIN) ? _var_oklook(okey) : NULL;
+jleave:
+   if (oxm & (OXM_H_P | OXM_U_H_P))
+      ac_free(nbuf);
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 var_list_all(void)
 {

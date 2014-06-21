@@ -182,6 +182,13 @@ FL bool_t      _var_vokclear(char const *vokey);
 #define vok_bclear(S)            _var_vokclear(S)
 #define vok_vclear(S)            _var_vokclear(S)
 
+/* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
+ * variable chains; oxm is a bitmix which tells which combinations to test */
+FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
+                  enum okey_xlook_mode oxm);
+#define xok_blook(C,URL,M)       (_var_xoklook(CONCAT(ok_b_, C),URL,M) != NULL)
+#define xok_vlook(C,URL,M)       _var_xoklook(CONCAT(ok_v_, C), URL, M)
+
 /* List all variables */
 FL void        var_list_all(void);
 

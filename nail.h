@@ -905,6 +905,13 @@ enum okeys {
    ok_v_VISUAL
 };
 
+enum okey_xlook_mode {
+   OXM_PLAIN      = 1<<0,  /* Plain key always tested */
+   OXM_H_P        = 1<<1,  /* Check PLAIN-.url_h_p */
+   OXM_U_H_P      = 1<<2,  /* Check PLAIN-.url_u_h_p */
+   OXM_ALL        = 0x7
+};
+
 /* Locale-independent character classes */
 enum {
    C_CNTRL        = 0000,
