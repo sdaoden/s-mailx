@@ -136,7 +136,7 @@ _mt_init(void)
       if (!(idx & idx_ok) || (ccp = file_expand(*srcs)) == NULL)
          continue;
       if ((fp = Fopen(ccp, "r")) == NULL) {
-         /*fprintf(stderr, tr(176, "Cannot open %s\n"), fn);*/
+         /*fprintf(stderr, tr(176, "Cannot open `%s'\n"), fn);*/
          continue;
       }
       while (fgetline(&line, &linesize, NULL, NULL, fp, 0))

@@ -1331,7 +1331,7 @@ jgetname:
          perror(f);
    } else {
       if ((fp = Fopen(f, "w")) == NULL)
-         fprintf(stderr, tr(176, "Cannot open %s\n"), f);
+         fprintf(stderr, tr(176, "Cannot open `%s'\n"), f);
    }
 jleave:
    NYD_LEAVE;
