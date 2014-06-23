@@ -123,10 +123,8 @@ juser:
          memcpy(ub, cp + 1, l);
          ub[l] = '\0';
          urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(ub));
-         urlp->url_pass_enc.l = strlen(
-               urlp->url_pass_enc.s = urlxenc(urlp->url_pass.s, FAL0));
 
-         if (strcmp(ub, urlp->url_pass_enc.s)) {
+         if (strcmp(ub, urlxenc(urlp->url_pass.s, FAL0))) {
             fprintf(stderr, tr(581,
                "String is not properly URL percent encoded: `%s'\n"), ub);
             goto jleave;

@@ -971,7 +971,6 @@ struct url {
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
-   struct str     url_pass_enc;     /* Pass (urlxenc()oded) or NULL */
    struct str     url_host;         /* Service hostname */
    struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
