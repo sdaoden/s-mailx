@@ -1567,22 +1567,32 @@ substdate(struct message *m)
    NYD_LEAVE;
 }
 
-FL int
-check_from_and_sender(struct name *fromfield, struct name *senderfield)
+FL struct name const *
+check_from_and_sender(struct name const *fromfield,
+   struct name const *senderfield)
 {
-   int rv;
+   struct name const *rv = NULL;
    NYD_ENTER;
 
-   if (fromfield && fromfield->n_flink && senderfield == NULL) {
-      fprintf(stderr, tr(529, "A Sender: field is required with multiple "
-         "addresses in From: field.\n"));
-      rv = 1;
-   } else if (senderfield && senderfield->n_flink) {
-      fprintf(stderr, tr(530,
-         "The Sender: field may contain only one address.\n"));
-      rv = 2;
-   } else
-      rv = 0;
+   if (senderfield != NULL) {
+      if (senderfield->n_flink != NULL) {
+         fprintf(stderr, tr(530,
+            "The Sender: field may contain only one address.\n"));
+         goto jleave;
+      }
+      rv = senderfield;
+   }
+
+   if (fromfield != NULL) {
+      if (fromfield->n_flink != NULL && senderfield == NULL) {
+         fprintf(stderr, tr(529, "A Sender: field is required with multiple "
+            "addresses in From: field.\n"));
+         goto jleave;
+      }
+      if (rv == NULL)
+         rv = fromfield;
+   }
+jleave:
    NYD_LEAVE;
    return rv;
 }

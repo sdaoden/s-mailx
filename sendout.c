@@ -1159,7 +1159,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
          _message_id(fo, NULL);
       }
    }
-   if (check_from_and_sender(fromfield, senderfield))
+
+   if (check_from_and_sender(fromfield, senderfield) == NULL)
       goto jleave;
 
    /* Write the original headers */
@@ -1540,7 +1541,7 @@ do {\
          if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderfield))
             goto jleave;
 
-      if (check_from_and_sender(fromfield, senderfield))
+      if (check_from_and_sender(fromfield, senderfield) == NULL)
          goto jleave;
    }
 

@@ -371,7 +371,7 @@ makeheader(FILE *fp, struct header *hp)
       Fclose(_coll_fp);
    Fclose(fp);
    _coll_fp = nf;
-   if (check_from_and_sender(hp->h_from, hp->h_sender))
+   if (check_from_and_sender(hp->h_from, hp->h_sender) == NULL)
       goto jleave;
    rv = OKAY;
 jleave:
@@ -830,7 +830,7 @@ jcont:
          /* Grab extra headers */
          do
             grab_headers(hp, GEXTRA, 0);
-         while (check_from_and_sender(hp->h_from, hp->h_sender));
+         while (check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          goto jcont;
       case 't':
          /* Add to the To list */
