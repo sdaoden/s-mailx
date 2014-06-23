@@ -64,6 +64,10 @@ WANT_POP3=1
 # Support for SMTP protocol?  (Directly sending mails over the network)
 WANT_SMTP=1
 
+# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
+# can optionally be supported (see *netrc-load*)
+WANT_NETRC=1
+
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
 # This is disabled by default because it brings in a bunch of dependencies,
