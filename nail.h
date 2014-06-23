@@ -512,7 +512,11 @@ enum user_options {
    OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
    OPT_TTYOUT     = 1u<<17,
-   OPT_UNICODE    = 1u<<18    /* We're in an UTF-8 environment */
+   OPT_UNICODE    = 1u<<18,   /* We're in an UTF-8 environment */
+
+   /* Some easy-access shortcuts */
+   OPT_D_V        = OPT_DEBUG | OPT_VERB,
+   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
