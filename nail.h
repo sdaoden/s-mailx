@@ -1494,10 +1494,6 @@ VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 VL iconv_t     iconvd;
 #endif
 
-#ifdef HAVE_CATGETS
-VL nl_catd     catd;
-#endif
-
 VL sigjmp_buf  srbuf;
 VL int         interrupts;
 VL sighandler_type dflpipe;

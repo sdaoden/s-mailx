@@ -318,14 +318,6 @@ _startup(void)
    mb_cur_max = 1;
 #endif
 
-#ifdef HAVE_CATGETS
-# ifdef NL_CAT_LOCALE
-   catd = catopen(CATNAME, NL_CAT_LOCALE);
-# else
-   catd = catopen(CATNAME, 0);
-# endif
-#endif
-
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
