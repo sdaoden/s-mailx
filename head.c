@@ -1592,6 +1592,9 @@ check_from_and_sender(struct name const *fromfield,
       if (rv == NULL)
          rv = fromfield;
    }
+
+   if (rv == NULL)
+      rv = (struct name*)0x1;
 jleave:
    NYD_LEAVE;
    return rv;

@@ -2752,6 +2752,20 @@ The specified account is handled as described for the
 .Va disconnected
 variable above,
 but other accounts are not affected.
+.It Va disposition-notification-send
+\*(OP Emit a `Disposition-Notification-To:' header (RFC 3798) with the
+message.
+This requires the
+.Va from
+variable to be set.
+.\" TODO .It Va disposition-notification-send-HOST
+.\"Overrides
+.\".Va disposition-notification-send
+.\" for SMTP accounts on a specific host.
+.\" TODO .It Va disposition-notification-send-USER@HOST
+.\"Overrides
+.\".Va disposition-notification-send
+.\"for a specific account.
 .It Va dot
 When dot is set, a dot (`.') on a line by itself during message input
 from a terminal shall be treated as end-of-message (in addition to the
