@@ -638,21 +638,6 @@ int main(void)
 !
 fi
 
-if nwantfeat NOGETOPT; then
-   link_check getopt 'for getopt()' '#define HAVE_GETOPT' << \!
-#include <unistd.h>
-int main(int argc, char **argv)
-{
-#if defined __GLIBC__ || defined __linux__
-   Argument and option reordering is not a desired feature.
-#else
-   getopt(argc, argv, "oPt");
-#endif
-   return (((long)optarg + optind) & 0x7F);
-}
-!
-fi
-
 ##
 
 if wantfeat ICONV; then
@@ -1360,9 +1345,6 @@ ${cat} > ${tmp2}.c << \!
 : . The function fchdir() could not be found. mailx will be compiled to use
 : chdir() instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.
-#endif
-#ifndef HAVE_GETOPT
-: . Using a minimal builtin POSIX-like getopt()
 #endif
 #ifdef HAVE_DEBUG
 : . Debug enabled binary: not meant to be used by end-users: THANKS!

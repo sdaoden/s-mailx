@@ -861,6 +861,7 @@ enum okeys {
    ok_v_sendcharsets,
    ok_v_sender,
    ok_v_sendmail,
+   ok_v_sendmail_arguments,
    ok_v_sendmail_progname,
    ok_v_SHELL,
    ok_v_Sign,

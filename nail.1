@@ -62,7 +62,6 @@
 .Op Fl a Ar attachment
 .Op Fl b Ar bcc-addr
 .Op Fl c Ar cc-addr
-.Op Fl O Ar mta-option
 .Op Fl q Ar quote-file
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
@@ -70,13 +69,21 @@
 .Bk
 .Ar to-addr ...
 .Ek
+.Bk
+.Op Fl - Ar mta-option ...
+.Ek
 .Nm \*(ua
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
+.Bk
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Ek
 .Bk
 .Fl f Op Ar file
+.Ek
+.Bk
+.Op Fl - Ar mta-option ...
 .Ek
 .Nm \*(ua
 .Op Fl BDdEeHiNnRv~#
@@ -84,6 +91,9 @@
 .Op Fl L Ar spec-list
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
+.Bk
+.Op Fl - Ar mta-option ...
+.Ek
 .\"
 .\" --  >8  --  8<  --
 .\"
@@ -118,6 +128,15 @@ and
 .Fl v
 are implemented by means of setting the respective option, as via
 .Fl S .
+.Bk
+.Op Ar mta-option ...
+.Ek
+arguments that are given at the end of the command line after an `--'
+separator persist for an entire (interactive) session and will be passed
+through unchanged to the mail-transfer-agent (MTA).
+Additional MTA arguments can be specified via the option
+.Va sendmail-arguments .
+All of these are ignored when mail is send via SMTP data transfer.
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
@@ -216,14 +235,6 @@ between them.
 (The same behaviour can be achieved by setting the
 .Ev NAIL_NO_SYSTEM_RC
 environment variable.)
-.It Fl O Ar mta-option
-Pass the given option through to the mail-transfer-agent (MTA).
-This option has no effect when mail is send via SMTP.
-E.g., use
-.Ns ` Ns Li "-O-h -Onumber" Ns '
-to specify the hop count for an old
-.Xr sendmail 1 .
-Options set like that persist for an entire (interactive) session.
 .It Fl q Ar file
 Start the message with the contents of the specified file.
 May be given in send mode only.
@@ -3718,6 +3729,13 @@ set this option to the full pathname of the program to use.
 It may be necessary to set
 .Va sendmail-progname
 in addition.
+.It Va sendmail-arguments
+Arguments to pass through to the Mail-Transfer-Agent can be given via
+this option.
+These will be joined onto MTA options that have been given on the
+command line.
+.Pp
+.Dl set sendmail-arguments='-t -X \&"/tmp/my log\&"'
 .It Va sendmail-progname
 Many systems use a so-called
 .Xr mailwrapper 8
