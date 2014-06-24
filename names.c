@@ -884,7 +884,7 @@ jcantfout:
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
          pid = start_command(sh, &nset, fda[xcnt++], -1, "-c",
-               np->n_name + 1, NULL);
+               np->n_name + 1, NULL, NULL);
          if (pid < 0) {
             fprintf(stderr, tr(281, "Message piping to <%s> failed\n"),
                np->n_name);

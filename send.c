@@ -602,7 +602,8 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
 
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
-   if ((rbuf = Popen(pipecomm, "W", sh, async ? -1 : fileno(*qbuf))) == NULL)
+   if ((rbuf = Popen(pipecomm, "W", sh, NULL, (async ? -1 : fileno(*qbuf)))
+         ) == NULL)
       perror(pipecomm);
    else {
       fflush(*qbuf);
@@ -1325,7 +1326,7 @@ jgetname:
       cp = ok_vlook(SHELL);
       if (cp == NULL)
          cp = XSHELL;
-      fp = Popen(f + 1, "w", cp, 1);
+      fp = Popen(f + 1, "w", cp, NULL, 1);
       if (!(*ispipe = (fp != NULL)))
          perror(f);
    } else {

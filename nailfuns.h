@@ -275,8 +275,9 @@ FL int         argcount(char **argv);
 /* Compute screen size */
 FL int         screensize(void);
 
-/* Get our PAGER */
-FL char const *get_pager(void);
+/* Get our $PAGER; if env_addon is not NULL it is check wether we know about
+ * some environment variable that supports colour+ */
+FL char const *get_pager(char const **env_addon);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
@@ -393,10 +394,10 @@ FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
-/* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
- * we check against *colour-pagers* wether colour is really desirable */
+/* We want coloured output (in this salloc() cycle).  pager_used is used to
+ * test wether *colour-pager* is to be inspected */
 #ifdef HAVE_COLOUR
-FL void        colour_table_create(char const *pager_used);
+FL void        colour_table_create(bool_t pager_used);
 FL void        colour_put(FILE *fp, enum colourspec cs);
 FL void        colour_put_header(FILE *fp, char const *name);
 FL void        colour_reset(FILE *fp);
@@ -1431,7 +1432,7 @@ FL void        Ftmp_free(char **fn);
 FL bool_t      pipe_cloexec(int fd[2]);
 
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
-                  int newfd1);
+                  char const *env_addon, int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
@@ -1445,7 +1446,8 @@ FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
 
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
-                  int outfd, char const *a0, char const *a1, char const *a2);
+                  int outfd, char const *a0, char const *a1, char const *a2,
+                  char const *env_addon);
 
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 

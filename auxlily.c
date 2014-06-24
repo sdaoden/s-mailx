@@ -426,7 +426,7 @@ screensize(void)
 }
 
 FL char const *
-get_pager(void)
+get_pager(char const **env_addon)
 {
    char const *cp;
    NYD_ENTER;
@@ -434,6 +434,17 @@ get_pager(void)
    cp = ok_vlook(PAGER);
    if (cp == NULL || *cp == '\0')
       cp = XPAGER;
+
+   if (env_addon != NULL) {
+      if (strstr(cp, "less") != NULL) {
+         if (getenv("LESS") == NULL)
+            *env_addon = "LESS=FRSXi";
+      } else if (strstr(cp, "lv") != NULL) {
+         if (getenv("LV") == NULL)
+            *env_addon = "LV=-c";
+      } else
+         *env_addon = NULL;
+   }
    NYD_LEAVE;
    return cp;
 }
@@ -468,7 +479,7 @@ page_or_print(FILE *fp, size_t lines)
    }
 
    if (rows != 0 && lines >= rows)
-      run_command(get_pager(), 0, fileno(fp), -1, NULL, NULL, NULL);
+      run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
    else
       while ((c = getc(fp)) != EOF)
          putchar(c);
@@ -2072,37 +2083,24 @@ bidi_info_create(struct bidi_info *bip)
 
 #ifdef HAVE_COLOUR
 FL void
-colour_table_create(char const *pager_used)
+colour_table_create(bool_t pager_used)
 {
    union {char *cp; char const *ccp; void *vp; struct colour_table *ctp;} u;
    size_t i;
    struct colour_table *ct;
    NYD_ENTER;
 
-   if (ok_blook(colour_disable))
+   if (ok_blook(colour_disable) || (pager_used && !ok_blook(colour_pager)))
       goto jleave;
-
-   /* If pager, check wether it is allowed to use colour */
-   if (pager_used != NULL) {
-      char *pager;
-
-      if ((u.cp = ok_vlook(colour_pagers)) == NULL)
-         u.ccp = COLOUR_PAGERS;
-      pager = savestr(u.cp);
-
-      while ((u.cp = n_strsep(&pager, ',', TRU1)) != NULL)
-         if (strstr(pager_used, u.cp) != NULL)
-            goto jok;
-      goto jleave;
-   }
-
-   /* $TERM is different in that we default to false unless whitelisted */
-   {
+   else {
       char *term, *okterms;
 
       /* Don't use getenv(), but force copy-in into our own tables.. */
       if ((term = _var_voklook("TERM")) == NULL)
          goto jleave;
+      /* terminfo rocks: if we find "color", assume it's right */
+      if (strstr(term, "color") != NULL)
+         goto jok;
       if ((okterms = ok_vlook(colour_terms)) == NULL)
          okterms = UNCONST(COLOUR_TERMS);
       okterms = savestr(okterms);

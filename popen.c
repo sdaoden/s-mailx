@@ -655,7 +655,8 @@ jleave:
 }
 
 FL FILE *
-Popen(char const *cmd, char const *mode, char const *sh, int newfd1)
+Popen(char const *cmd, char const *mode, char const *sh, char const *env_addon,
+   int newfd1)
 {
    int p[2], myside, hisside, fd0, fd1, pid;
    char mod[2] = {'0', '\0'};
@@ -684,9 +685,9 @@ Popen(char const *cmd, char const *mode, char const *sh, int newfd1)
    }
    sigemptyset(&nset);
    if (sh == NULL) {
-      pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL);
+      pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
-      pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL);
+      pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
    }
    if (pid < 0) {
       close(p[READ]);
@@ -749,7 +750,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    int rv;
    NYD_ENTER;
 
-   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2)) < 0)
+   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, NULL)) < 0)
       rv = -1;
    else
       rv = wait_command(rv);
@@ -759,21 +760,64 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 
 FL int
 start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
-   char const *a0, char const *a1, char const *a2)
+   char const *a0, char const *a1, char const *a2,
+   char const *env_addon)
 {
    int rv;
    NYD_ENTER;
+   UNUSED(env_addon);
 
    if ((rv = fork()) == -1) {
       perror("fork");
       rv = -1;
    } else if (rv == 0) {
-      char *argv[100];
-      int i = getrawlist(cmd, strlen(cmd), argv, NELEM(argv), 0);
+      char *argv[128];
+      int i;
+
+      if (env_addon != NULL) { /* TODO env_addon; should have struct child */
+         extern char **environ;
+         size_t e, vl;
+         char **env;
+         char const *nv;
+
+         /* TODO note we don't check the POSIX limit:
+          * the total space used to store the environment and the arguments to
+          * the process is limited to {ARG_MAX} bytes */
+         for (e = 0; environ[e] != NULL; ++e)
+            ;
+
+         env = ac_alloc(sizeof(*env) * (e + 1 +1));
+         nv = strchr(env_addon, '=');
+         vl = PTR2SIZE(nv - env_addon);
+
+         for (e = 0; environ[e] != NULL; ++e) {
+            if (env_addon == NULL)
+               env[e] = environ[e];
+            else {
+               char const *ov = strchr(environ[e], '=');
+               if (ov != NULL) {
+                  if (vl == PTR2SIZE(ov - environ[e]) &&
+                        !memcmp(env_addon, environ[e], vl)) {
+                     env[e] = UNCONST(env_addon);
+                     env_addon = NULL;
+                     continue;
+                  }
+               }
+               env[e] = environ[e];
+            }
+         }
+         if (env_addon != NULL)
+            env[e++] = UNCONST(env_addon);
+         env[e] = NULL;
+
+         environ = env;
+      }
+
+      i = getrawlist(cmd, strlen(cmd), argv, NELEM(argv), 0);
 
       if ((argv[i++] = UNCONST(a0)) != NULL &&
-          (argv[i++] = UNCONST(a1)) != NULL &&
-          (argv[i++] = UNCONST(a2)) != NULL)
+            (argv[i++] = UNCONST(a1)) != NULL &&
+            (argv[i++] = UNCONST(a2)) != NULL)
          argv[i] = NULL;
       prepare_child(mask, infd, outfd);
       execvp(argv[0], argv);

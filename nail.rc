@@ -41,6 +41,10 @@ set ask
 # *header* is set)
 set bsdflags bsdannounce
 
+# In order to get coloured output in $PAGER, this must be set.
+# (Coloured output is only used if $TERM is found in *colour-terms*)
+#set colour-pager
+
 # Assume a CRT-like terminal and invoke a $PAGER
 set crt
 

@@ -285,7 +285,8 @@ _spam_interact(struct spam_vc *vc)
    state &= ~_SIGHOLD;
 
    sigemptyset(&cset);
-   pid = start_command(vc->comm_s, &cset, p2c[0], c2p[1], NULL, NULL, NULL);
+   pid = start_command(vc->comm_s, &cset, p2c[0], c2p[1], NULL, NULL, NULL,
+         NULL);
    state |= _RUNNING;
    close(p2c[0]);
    state &= ~_P2C_0;
