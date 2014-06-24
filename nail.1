@@ -837,7 +837,14 @@ the necessary informations of a resource:
 .It
 If no `USER' is given: a variable of the form
 .Va user-HOST
-is looked up, followed by the plain
+is looked up; if no such variable can be found then \*(UA will,
+when enforced by the \*(OPal variable
+.Va netrc-lookup ,
+search the users
+.Pa .netrc
+file for a `HOST' specific entry which provides a `USER' login name
+(this source may also provide a `PASSWORD').
+Finally \*(UA tries to gain the `USER' from the variable
 .Va user ,
 which in turn defaults to
 .Va USER
@@ -852,13 +859,23 @@ and finally
 which has a protocol-specific default should none of the variables be
 set.
 .It
-If no `PASSWORD' is given: a variable
+If no `PASSWORD' has been given: if the `USER' has been found through
+.Pa .netrc
+then that may have provided the password, too.
+Otherwise a variable
 .Va password-USER@HOST
-is looked up, followed by the global
-.Va password ;
-if still no password is available afterwards, but the (protocols')
-chosen authentication type requires a password, the user will be
-prompted on the terminal.
+is looked up, followed by
+.Va password-HOST .
+The chain is \*(OPionally continued via the described
+.Pa .netrc
+lookup, this time looking only for the password (multiple user accounts
+for a single machine may exist as well as a fallback entry without user
+but with a password).
+Finally the variable
+.Va password
+is examined \(en if still no password is available afterwards, but the
+(protocols') chosen authentication type requires a password, then in
+interactive mode the user will be prompted on the terminal.
 It should be noted that specifying the password in the URL is only
 syntactic sugar for the user, it'll never be part of an URL that \*(UA
 uses itself.
@@ -1819,6 +1836,19 @@ but also prints ignored header fields and all MIME parts.
 .Ic move ,
 but moves the messages to a file named after the local part of the
 sender address of the first message.
+.It Ic netrc
+\*(OP Either
+.Ns ( Ar show
+or)
+.Ar clear
+the
+.Pa .netrc
+cache.
+In the former case the file is loaded first as necessary.
+See
+.Va netrc-lookup
+and the section
+.Sx "URL syntax" .
 .It Ic newmail
 Checks for new mail in the current folder without committing any changes
 before.
@@ -2882,6 +2912,30 @@ but simply specify `application/octet-stream',
 even for plain text attachments like `text/diff'.
 If this variable is set then \*(UA will use the file extension of
 attachments to classify such MIME message parts, if possible.
+.It Va netrc-lookup
+\*(IN \*(OP Used to control usage of the users
+.Pa ~/.netrc
+file for lookup of account credentials (see the section
+.Sx "URL syntax"
+and the command
+.Ic netrc Ns
+).
+The default path can be overridden by the environment variable
+.Va NETRC .
+Note that \*(UA requires that the file is only accessible by the user,
+regardless of the file content; also, whereas a conforming parser is
+used, only `machine', `login' and `password' entries are saved and used.
+A given `HOST' must match exactly the `machine NAME', but as an
+extension \*(UA allows a single wildcard prefix, as in
+.Pp
+.Dl *.example.com login USER password PASSWORD
+.Dl imap.example.com login USER password PASSWORD
+.Pp
+which would match `smtp.example.com' as well as `pop3.example.com', but
+neither `example.com' nor `local.smtp.example.com'.
+Note that in the example `imap.example.com' will not be matched by the
+wildcard, since the exact match takes precedence (it is however faster
+to specify it the other way around).
 .It Va outfolder
 Causes the filename given in the
 .Va record
@@ -4224,6 +4278,10 @@ If this variable is set then reading of \*(UR at startup is inhibited,
 i.e., the same effect is achieved as if \*(UA had been started up with
 the option
 .Fl n .
+.It Va NETRC
+\*(IN \*(OP This variable overrides the default location of the user's
+.Pa .netrc
+file.
 .It Va SYSV3
 Changes the letters printed in the first column of a header summary.
 .It Va TERM
@@ -4252,6 +4310,10 @@ System wide initialization file.
 Personal MIME types.
 .It Pa /etc/mime.types
 System wide MIME types.
+.It Pa ~/.netrc
+\*(IN \*(OP The default location of the users
+.Pa .netrc
+file.
 .El
 .\" }}}
 .\"

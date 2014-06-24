@@ -141,6 +141,7 @@
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
+#define NETRC           "~/.netrc"
 #define TMPDIR_FALLBACK "/tmp"
 
 #undef COLOUR
@@ -726,7 +727,7 @@ enum ssl_verify_level {
 /* A large enum with all the binary and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
- * Note: see the comments in acmava.c before changing *anything* in here! */
+ * Note: see the comments in accmacvar.c before changing *anything* in here! */
 enum okeys {
    /* Option keys for binary options */
    ok_b_add_file_recipients,
@@ -784,6 +785,7 @@ enum okeys {
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_counter_evidence,
+   ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,
    ok_b_piperaw,
@@ -971,7 +973,6 @@ struct url {
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
-   struct str     url_pass_enc;     /* Pass (urlxenc()oded) or NULL */
    struct str     url_host;         /* Service hostname */
    struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */

@@ -50,10 +50,10 @@ fi
 option_update() {
    if nwantfeat SOCKETS; then
       WANT_IPV6=0 WANT_SSL=0
-      WANT_IMAP=0 WANT_GSSAPI=0 WANT_POP3=0 WANT_SMTP=0
+      WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_NETRC=0 WANT_GSSAPI=0
    fi
    if nwantfeat IMAP && nwantfeat POP3 && nwantfeat SMTP; then
-      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0
+      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0
    fi
    if nwantfeat IMAP && nwantfeat SMTP; then
       WANT_GSSAPI=0
@@ -884,6 +884,12 @@ int main(void)
 else
    echo '/* WANT_SSL=0 */' >> ${h}
 fi # wantfeat SSL
+
+if wantfeat NETRC; then
+   echo '#define HAVE_NETRC' >> ${h}
+else
+   echo '/* WANT_NETRC=0 */' >> ${h}
+fi
 
 if wantfeat GSSAPI; then
    ${cat} > ${tmp2}.c << \!
