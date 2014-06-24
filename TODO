@@ -84,9 +84,6 @@ With a clean, conforming and efficient codebase, then.
    input, instead of saying "Interrupted, one more to die hard" or
    something (talking about ~@ charset selection prompts in particular).
 
-- For those who use S-nail(1) only with a MTA it may be desirable to have
-  some "smopts" expansion mechanism in equal spirit to NetBSD mailx(1).
-
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
@@ -263,6 +260,10 @@ Low-Level
     Service Identity within Internet Public Key Infrastructure Using
     X.509 (PKIX) Certificates in the Context of Transport Layer Security
     (TLS)
+ RFC 3461, 3464 -
+    Simple Mail Transfer Protocol (SMTP) Service Extension for Delivery
+      Status Notifications (DSNs),
+    An Extensible Message Format for Delivery Status Notifications
 
 - This is how the codebase has to be reworked in respect to signals and
   jumping:
@@ -373,6 +374,7 @@ Low-Level
      a readonly version, again, it gets lengthy).
      The absolute sensation would be joinable operations over multiple
      open mailboxes, e.g., views over multiple such!
+100. If i say `p 3 2 1' then i mean `3 2 1' not `1 2 3'.
 
 TODO S-nail 14.7:
 -----------------
@@ -622,7 +624,6 @@ TODO S-nail 14.7:
     message was sent To: Cc: or Bcc: else..
   . In my ~xother with *nohold* if at the begin i have many large
     messages i ended up with a truncated *mbox*? what was that?
-  . We should support ~/.netrc for account / password storage!
   . Things like colalign(), makeprint(), colour*, as well as
     possibly even cmd1.c:(__hprf|putindent)(), etc. belong into a cui.c,
     display.c or the like, but not into auxlily.c etc. for sure.
@@ -638,13 +639,41 @@ TODO S-nail 14.7:
     Add a -T flag for that.  Drop -q, let -T mean the same if no header
     fields are given (i.e., header fields are not mandatory as with -t).
     ANYWAY: -t and -q are mutual, enforce that (yet done?)
-  . Add manual section for URL and the (*v15-compat*) proto, user and
-    password chains, just as done in the s-nail-users mail.
   . mutt list handling (`~') is very powerful
   . Check what happens if an account switch or a network connection is
     done while we are loading the resource files...
   . urlxdec() doesn't know about invalid input strings, just deconverts
   . We have some use of *at() functions, especially anything which
     temporarily switches cwd.
+  . *newmail* is terrible.  At some later time we need to do somethings
+    with timeouts etc. (for MBOX and Maildir it's not that bad, but for
+    anything over the network, yet the mentioned may come in over NFS).
+    Remove it until we have something better?
+  . The :d modifier is extremely useless even though POSIX compliant (No
+    deleted message or deleted message header shall be displayed by any
+    mailx command other than undelete.)
+    If i say p:d or f:d it should work.
+  . The manual should clearly state which options are enabled by
+    default.
+  . The RFC 3798 *disposition-notification-send* mechanism is yet not
+    truly conforming (and works with *from*).  Also, this is only the
+    sender side, there should be support for creating the MDN response.
+    (Maybe ternary option: off (default),
+    create-when-unread-flag-goes-away, ditto-but-also-strip-header)
+  .. Also, there is DSN as a SMTP extension, see the RFCs 3461, 346 (as
+     above) and 6522 (Wikipedia).
+  . Add a env_blook()/env_vlook() series like that: add a FROM-ENV bit
+    to variables; use the normal var lookup, but even if found, when
+    FROM-ENV not set, use getenv(3); question yet open is wether that
+    value should then override what we have;  in fact i think we should
+    possibly during loading phase act like this automatically for *all*
+    variable settings, i.e., settings from the environment MUST override
+    settings from ressource files UNLESS command line arguments
+    explicitly override anything else.  That is pretty shitty, which
+    makes me think that we should possibly iterate over environ(3) and
+    explicitly overtake all values therein, or at least those which have
+    a meaning for S-nail; this needn't be as expensive as it sounds.
+  . The *sendmail** variables should have been replaced by *mta** in
+    v15.0!?!
 
 vim:set fenc=utf-8:s-ts-mode

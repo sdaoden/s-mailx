@@ -136,9 +136,9 @@ jerror:
 
    _alter(mailname);
    if (p == 1)
-      printf(tr(155, "Held 1 message in %s\n"), displayname);
+      printf(_("Held 1 message in %s\n"), displayname);
    else
-      printf(tr(156, "Held %d messages in %s\n"), p, displayname);
+      printf(_("Held %d messages in %s\n"), p, displayname);
    rv = 0;
 jleave:
    if (res != NULL)
@@ -180,7 +180,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    if (!stat(mailname, &statb) && statb.st_size > mailsize) {
       if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
-         perror(tr(167, "tmpfile"));
+         perror(_("tmpfile"));
          goto jleave;
       }
       if ((ibuf = Zopen(mailname, "r", &mb.mb_compressed)) == NULL) {
@@ -196,7 +196,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
       fflush_rewind(obuf);
    }
 
-   printf(tr(168, "\"%s\" "), displayname);
+   printf(_("\"%s\" "), displayname);
    fflush(stdout);
    if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
       perror(mailname);
@@ -236,10 +236,10 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    if (gotcha && !ok_blook(emptybox)) {
       rm(mailname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? tr(169, "removed\n") : tr(211, "removed.\n"));
+         ? _("removed\n") : _("removed.\n"));
    } else
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? tr(170, "complete\n") : tr(212, "updated.\n"));
+         ? _("complete\n") : _("updated.\n"));
    fflush(stdout);
 jleave:
    if (ibuf != NULL)
@@ -329,13 +329,13 @@ quit(void)
       if (errno == ENOENT)
          goto jleave;
 jnewmail:
-      printf(tr(166, "Thou hast new mail.\n"));
+      printf(_("Thou hast new mail.\n"));
       goto jleave;
    }
 
    if (fcntl_lock(fileno(fbuf), FLOCK_WRITE) == -1 ||
          dot_lock(mailname, fileno(fbuf), 1, stdout, ".") == -1) {
-      perror(tr(157, "Unable to lock mailbox"));
+      perror(_("Unable to lock mailbox"));
       Fclose(fbuf);
       fbuf = NULL;
       goto jleave;
@@ -343,7 +343,7 @@ jnewmail:
 
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
-      printf(tr(158, "New mail has arrived.\n"));
+      printf(_("New mail has arrived.\n"));
       rbuf = Ftmp(&tempResid, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
       if (rbuf == NULL || fbuf == NULL)
          goto jnewmail;
@@ -375,9 +375,9 @@ jnewmail:
    }
    if (p == msgCount && !modify && !anystat) {
       if (p == 1)
-         printf(tr(155, "Held 1 message in %s\n"), displayname);
+         printf(_("Held 1 message in %s\n"), displayname);
       else if (p > 1)
-         printf(tr(156, "Held %d messages in %s\n"), p, displayname);
+         printf(_("Held %d messages in %s\n"), p, displayname);
       goto jleave;
    }
    if (c == 0) {
@@ -465,7 +465,7 @@ makembox(void) /* TODO oh my god */
    if (!ok_blook(append)) {
       if ((obuf = Ftmp(&tempQuit, "makembox",
             OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
-         perror(tr(163, "temporary mail quit file"));
+         perror(_("temporary mail quit file"));
          goto jleave;
       }
       if ((ibuf = Fopen(tempQuit, "r")) == NULL)
@@ -482,7 +482,7 @@ makembox(void) /* TODO oh my god */
          Fclose(abuf);
       }
       if (ferror(obuf)) {
-         perror(tr(163, "temporary mail quit file"));
+         perror(_("temporary mail quit file"));
          Fclose(ibuf);
          Fclose(obuf);
          goto jleave;
@@ -560,9 +560,9 @@ jerr:
       goto jleave;
    }
    if (mcount == 1)
-      printf(tr(164, "Saved 1 message in mbox\n"));
+      printf(_("Saved 1 message in mbox\n"));
    else
-      printf(tr(165, "Saved %d messages in mbox\n"), mcount);
+      printf(_("Saved %d messages in mbox\n"), mcount);
    rv = OKAY;
 jleave:
    NYD_LEAVE;

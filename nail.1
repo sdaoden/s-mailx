@@ -62,7 +62,6 @@
 .Op Fl a Ar attachment
 .Op Fl b Ar bcc-addr
 .Op Fl c Ar cc-addr
-.Op Fl O Ar mta-option
 .Op Fl q Ar quote-file
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
@@ -70,13 +69,21 @@
 .Bk
 .Ar to-addr ...
 .Ek
+.Bk
+.Op Fl - Ar mta-option ...
+.Ek
 .Nm \*(ua
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
+.Bk
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Ek
 .Bk
 .Fl f Op Ar file
+.Ek
+.Bk
+.Op Fl - Ar mta-option ...
 .Ek
 .Nm \*(ua
 .Op Fl BDdEeHiNnRv~#
@@ -84,6 +91,9 @@
 .Op Fl L Ar spec-list
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
+.Bk
+.Op Fl - Ar mta-option ...
+.Ek
 .\"
 .\" --  >8  --  8<  --
 .\"
@@ -118,6 +128,15 @@ and
 .Fl v
 are implemented by means of setting the respective option, as via
 .Fl S .
+.Bk
+.Op Ar mta-option ...
+.Ek
+arguments that are given at the end of the command line after an `--'
+separator persist for an entire (interactive) session and will be passed
+through unchanged to the mail-transfer-agent (MTA).
+Additional MTA arguments can be specified via the option
+.Va sendmail-arguments .
+All of these are ignored when mail is send via SMTP data transfer.
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
 .It Fl A Ar account
@@ -216,14 +235,6 @@ between them.
 (The same behaviour can be achieved by setting the
 .Ev NAIL_NO_SYSTEM_RC
 environment variable.)
-.It Fl O Ar mta-option
-Pass the given option through to the mail-transfer-agent (MTA).
-This option has no effect when mail is send via SMTP.
-E.g., use
-.Ns ` Ns Li "-O-h -Onumber" Ns '
-to specify the hop count for an old
-.Xr sendmail 1 .
-Options set like that persist for an entire (interactive) session.
 .It Fl q Ar file
 Start the message with the contents of the specified file.
 May be given in send mode only.
@@ -322,7 +333,7 @@ The section
 below explains the interpretation of names in more detail.
 The user is then expected to type in his message, followed by a
 .Li `control-D'
-at the beginning of a line.
+(`^D') at the beginning of a line.
 The section
 .Sx "Replying to or originating mail"
 describes some features of \*(UA available to help when composing
@@ -331,16 +342,38 @@ letters.
 .\"
 .\" .Ss "Reading mail" {{{
 .Ss "Reading mail"
-In normal usage \*(UA is given no arguments and checks the user's mail
-out of the post office,
+When invoked without addressees \*(UA enters interactive mode in which
+mails may be read.
+When used like that \*(UA checks the user's mail out of the post office,
 then prints out a one line header of each message found.
-The current message is initially the first message (numbered 1) and can
-be printed using the
+Unless the
+.Va emptystart
+option is set \*(UA will only print a notification message and exit if
+the mailbox is empty.
+Messages are given numbers (starting at 1) which uniquely identify
+messages; the current message \(en the dot \(en will be the first
+message unless the option
+.Va showlast
+is set, in which case the last message will be initial dot.
+(Note this only applies to boxes with all-unread messages.
+Boxes opened regulary, e.g., via the `-f' command line option, will have
+the initial dot point to the first unread message.)
+.Pp
+Messages can be printed with the
 .Ic print
-command, which can be abbreviated `p'.
-The commands `p+' and `p\-' move forward to the next and backward to the
-previous message, respectively, and messages can be addressed directly
-by specifying their message number, as in `p 1'.
+command, or short: `p'.
+By default the current message (dot) is printed, but just like many
+other commands it is possible to specify lists of messages, as is
+documented in
+.Sx "Specifying messages" ;
+e.g., `p:u' will display all unread messages, `p.' will print the dot,
+`p 1 5' will print the messages 1 and 5 and `p-' and `p+' will print the
+last and the next message, respectively.
+Dependent upon the configuration a
+.Sx "Command line editor"
+aims at making user experience with the many
+.Sx "Commands"
+a bit nicer.
 .\" }}}
 .\"
 .\" .Ss "Disposing of mail" {{{
@@ -490,9 +523,10 @@ specifies a comma-separated list of header fields to search, as in
 .Pp
 .Dl '@to,from,cc@Someone i ought to know'
 .Pp
-The special names `body' and `text' can be used to search in message
-bodies \(en whereas the former searches only the body, the latter form
-also performs a fulltext search in the header fields.
+The special name `header' (or `<') can be used to search in the header
+of the message, and the special names `body' (or `>') and `text' (or `=')
+can be used to perform full text searches \(en whereas the former
+searches only the body, the latter also searches the message header.
 In order to search for a string that includes a `@' (commercial at)
 character the
 .Ar name-list
@@ -758,8 +792,8 @@ will disable the mentioned IDNA conversion even if support is available.
 .\" .Ss "URL syntax" {{{
 .Ss "URL syntax"
 \*(IN For accessing protocol-specific resources, like an IMAP mailbox,
-usage of compact and standardized Uniform Resource Locators (URL) has
-become omnipresent.
+usage of compact and standardized Uniform Resource Locators
+(URL, RFC 1738) has become omnipresent.
 \*(UA expects and understands URLs in the following form;
 parts in brackets `[]' denote optional parts, optional either because
 there also exist other ways to define the information in question or
@@ -768,28 +802,53 @@ e.g., `/path' is used by the IMAP protocol but not by POP3.
 .Pp
 .Dl PROTO://[USER[:PASSWORD]@]server[:port][/path]
 .Pp
+If `USER' and `PASSWORD' are specified as part of an URL they must be
+given in URL percent encoded (RFC 3986) form \(en the command
+.Ic urlencode
+can be used to perform the encoding and show the encoded value.
+(This doesn't really conform to any standard, but for one it isn't
+used for any data exchange over the internet, and second it's easier for
+users to simply call
+.Ic urlencode
+on a string and use that instead of having to deal with several
+different standards.)
+On the other hand, values given in variables are expected not to be URL
+percent encoded.
+.Pp
+Many variable options of \*(UA exist in multiple versions: the plain
+`variable' as well as `variable-HOST' and `variable-USER@HOST'.
+Here `HOST' indeed means `server:port' if a `port' had been specified in
+the respective URL, otherwise it refers to the plain `server'.
+Also, `USER' isn't truly the `USER' that had been found when doing the
+user chain lookup as is described below, i.e., this `USER' will never be
+in URL percent encoded form, wether it came from an URL or not.
+.Pp
+E.g., wether an hypothetic URL `smtp://you%20there@our.house' had been
+given that includes a user, or wether the URL was `smtp://our.house' and
+the user had been found differently, in order to lookup the variable
+.Va smtp-use-starttls
+\*(UA first looks for wether `smtp-use-starttls-you\ there@our.house'
+is defined, then wether `smtp-use-starttls-our.house' exists before
+finally ending up looking at the plain variable itself.
+.Pp
 In general \*(UA adheres to the following logic scheme when dealing with
 the necessary informations of a resource:
 .Bl -bullet -offset indent
 .It
-If no `USER' is given: a variable of the scheme
+If no `USER' is given: a variable of the form
 .Va user-HOST
-is looked up (`HOST' relates to the `server' specified in the URL),
-followed by the plain
+is looked up; if no such variable can be found then \*(UA will,
+when enforced by the \*(OPal variable
+.Va netrc-lookup ,
+search the users
+.Pa .netrc
+file for a `HOST' specific entry which provides a `USER' login name
+(this source may also provide a `PASSWORD').
+Finally \*(UA tries to gain the `USER' from the variable
 .Va user ,
 which in turn defaults to
 .Va USER
 which, again, defaults to `getpwuid(getuid())' a.k.a. the current user.
-.It
-If no `PASSWORD' is given: a variable
-.Va password-USER@HOST
-is looked up (`HOST' again is the one found in the URL, `USER' is the
-result of the user lookup described in the former item),
-followed by the global
-.Va password ;
-if still no password is available afterwards, but the (protocols')
-chosen authentication type requires a password, the user will be
-prompted on the terminal.
 .It
 Authentication: unless otherwise noted this will first look for
 .Va PROTO-auth-USER@HOST ,
@@ -799,6 +858,27 @@ and finally
 .Va PROTO-auth ,
 which has a protocol-specific default should none of the variables be
 set.
+.It
+If no `PASSWORD' has been given: if the `USER' has been found through
+.Pa .netrc
+then that may have provided the password, too.
+Otherwise a variable
+.Va password-USER@HOST
+is looked up, followed by
+.Va password-HOST .
+The chain is \*(OPionally continued via the described
+.Pa .netrc
+lookup, this time looking only for the password (multiple user accounts
+for a single machine may exist as well as a fallback entry without user
+but with a password).
+Finally the variable
+.Va password
+is examined \(en if still no password is available afterwards, but the
+(protocols') chosen authentication type requires a password, then in
+interactive mode the user will be prompted on the terminal.
+It should be noted that specifying the password in the URL is only
+syntactic sugar for the user, it'll never be part of an URL that \*(UA
+uses itself.
 .El
 .Pp
 Note:
@@ -806,11 +886,19 @@ For SMTP the rules are a bit more complicated, since \*(UA will always
 work relative to
 .Va from
 instead of a given SMTP account in respect to S/MIME
-.Ns ( Va smime-sign
+.Ns ( Va smime-sign ,
+.Va smime-sign-cert
 and
 .Va smime-sign-include-certs )
 \(en this is because S/MIME verification works relative to the values
 found in `From:' (or `Sender:').
+In unusual cases multiple and different `USER' and `HOST' combinations
+may therefore be involved when looking up values that make up an SMTP
+account; on the other hand those unusual cases become possible.
+The usual case can be as short as:
+.Pp
+.Dl set smtp=USER:PASS@HOST smtp-auth=plain smtp-use-starttls \e
+.Dl \ \ \ \ smime-sign smime-sign-cert=+smime.pair
 .\" }}}
 .\"
 .\" .Ss "MIME types" {{{
@@ -841,15 +929,19 @@ Also see
 .\"
 .\" .Ss "Character sets" {{{
 .Ss "Character sets"
-\*(UA normally detects the character set of the terminal by using
-mechanisms that are controlled by the `LC_CTYPE' locale setting,
-if such are supported; the variable
+\*(OP \*(UA detects the character set of the terminal by using
+mechanisms that are controlled by the
+.Va LC_CTYPE
+locale setting
+(the manual for
+.Xr setlocale 3
+should give an overview); the \*(UA internal variable
 .Va ttycharset
-will be set to the detected terminal character set and will thus
-show up in the output of the command
+will be set to the detected terminal character set accordingly
+and will thus show up in the output of the command
 .Ic set .
 .Pp
-A user supplied
+However, a user supplied
 .Va ttycharset
 value is not overwritten by this detection mechanism;
 this feature must be used if the detection doesn't work properly,
@@ -884,7 +976,7 @@ detection fails, since in that case it defaults to `ISO-8859-1'.
 When reading messages, their text is converted into
 .Va ttycharset
 as necessary in order to display them on the users terminal.
-Unprintable characters and illegal byte sequences are detected
+Unprintable characters and invalid byte sequences are detected
 and replaced by proper substitution characters
 (unless the variable
 .Va print-all-chars
@@ -1033,16 +1125,16 @@ command with the respective arguments `0', `$', `-' and `+'
 Colours are used only when the
 .Va TERM
 environment variable is set and the terminal type can be found in
-.Va colour-terms .
-Beyond that, if a command requires to output through the
+.Va colour-terms
+(or includes the string "color").
+On top of that the binary option
+.Va colour-pager
+defines wether ANSI colour sequences are generated when the output
+of a command needs to go through the
 .Va PAGER
 (also see
-.Va crt )
-then the used
-.Va PAGER
-must be mentioned in the variable
-.Va colour-pagers ,
-otherwise no colours will be used regardless of the actual terminal type.
+.Va crt Ns
+); this is not enabled by default.
 .Pp
 "Coloured message display" can be configured through font attributes
 (`ft=' \(en `bold', `invers' and `underline'), foreground (`fg=') and
@@ -1139,8 +1231,12 @@ command is expecting one file, an error results.
 .El
 .\"
 .Pp
-The following commands are provided:
+The following commands are available:
 .Bl -tag -width ".Ic account"
+.It Ic #
+This is the comment-command and causes the entire line to be ignored.
+Note: since it is a normal command you cannot have trailing comments in
+lines from resource files etc.
 .It Ic ~
 Interprets the remainder of the word as a macro name and passes it
 through to the
@@ -1156,7 +1252,9 @@ goes to the n'th previous message and prints it.
 .It Ic \&?
 Prints a brief summary of commands.
 \*(OP Given an argument a synopsis for the command in question is
-printed instead.
+printed instead;
+note it is possible to abbreviate the command and see the expansion
+\(en try, e.g., `?h', `?hel' and `?help' and see how the display changes.
 .It Ic \&!
 Executes the shell (see
 .Xr sh 1
@@ -1457,7 +1555,7 @@ Also see the section
 .Pp
 \*(OU If `user' contains special characters, in particular `/' or `%',
 they must be escaped in URL notation \(en the command
-.Ic urlenc
+.Ic urlencode
 can be used to show the necessary conversion.
 The optional `path' part applies to IMAP only;
 if it is omitted, the default `INBOX' is used.
@@ -1557,7 +1655,8 @@ Also see
 If a `+' argument is given the next 18-message group is printed,
 likewise the previous is printed if the argument was `-'.
 .It Ic help
-A synonym for `?'.
+A synonym for
+.Ic \&? .
 .It Ic history
 \*(OP Either
 .Ar show
@@ -1737,6 +1836,19 @@ but also prints ignored header fields and all MIME parts.
 .Ic move ,
 but moves the messages to a file named after the local part of the
 sender address of the first message.
+.It Ic netrc
+\*(OP Either
+.Ns ( Ar show
+or)
+.Ar clear
+the
+.Pa .netrc
+cache.
+In the former case the file is loaded first as necessary.
+See
+.Va netrc-lookup
+and the section
+.Sx "URL syntax" .
 .It Ic newmail
 Checks for new mail in the current folder without committing any changes
 before.
@@ -2173,9 +2285,9 @@ print a header summary.
 .It Ic unthread
 (unth) Same as
 .Ic unsort .
-.It Ic urldec
+.It Ic urldecode
 Decode the given URL-encoded string arguments and show the results.
-.It Ic urlenc
+.It Ic urlencode
 URL-encode the given arguments and show the results.
 .It Ic varshow
 Show information about all given options.
@@ -2587,6 +2699,28 @@ command to traditional BSD style.
 \*(OP Forcefully disable usage of colours.
 Also see the section
 .Sx "Coloured message display" .
+.It Va colour-pager
+\*(OP Wether colour shall be used for output that is paged through
+.Va PAGER .
+Note that pagers may need special flags, e.g.,
+.Xr less 1
+requires the option
+.Fl R
+and
+.Xr lv 1
+the option
+.Fl c
+in order to support colours; therefore \*(UA will inspect the variable
+.Va PAGER
+\(en if that starts with the string `less' a non-existing
+environment variable
+.Va LESS
+will be set to "FRSXi", likewise for `lv'
+.Va LV
+will be optionally set to "-c".
+Also see the section
+.Sx "Coloured message display"
+for more on this.
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
 Unlike
@@ -2618,9 +2752,29 @@ The specified account is handled as described for the
 .Va disconnected
 variable above,
 but other accounts are not affected.
+.It Va disposition-notification-send
+\*(OP Emit a `Disposition-Notification-To:' header (RFC 3798) with the
+message.
+This requires the
+.Va from
+variable to be set.
+.\" TODO .It Va disposition-notification-send-HOST
+.\"Overrides
+.\".Va disposition-notification-send
+.\" for SMTP accounts on a specific host.
+.\" TODO .It Va disposition-notification-send-USER@HOST
+.\"Overrides
+.\".Va disposition-notification-send
+.\"for a specific account.
 .It Va dot
-The binary option dot causes \*(UA to interpret a period alone on a line
-as the terminator of a message the user is sending.
+When dot is set, a dot (`.') on a line by itself during message input
+from a terminal shall be treated as end-of-message (in addition to the
+normal end-of-file condition).
+If
+.Va ignoreeof
+is set
+.Va nodot
+is ignored and using a dot is the only method to terminate input mode.
 .It Va editalong
 If this variable is set then the editor is started automatically when
 composing a message in an interactive mode,
@@ -2697,11 +2851,10 @@ all possible international domain names (before conversion, that is).
 Ignore interrupt signals from the terminal while entering messages;
 instead echo them as `@' characters and discard the current line.
 .It Va ignoreeof
-An option related to
+Ignore end-of-file conditions (`control-D') on message input,
+which instead can be terminated only by entering a
 .Va dot
-is
-.Va ignoreeof ,
-which makes \*(UA refuse to accept a `control-D' as the end of a message.
+(`.') on a line by itself or by using the `~.' tilde escape.
 This option also applies to \*(UA command mode.
 .It Va imap-use-starttls
 \*(OP Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
@@ -2773,6 +2926,30 @@ but simply specify `application/octet-stream',
 even for plain text attachments like `text/diff'.
 If this variable is set then \*(UA will use the file extension of
 attachments to classify such MIME message parts, if possible.
+.It Va netrc-lookup
+\*(IN \*(OP Used to control usage of the users
+.Pa ~/.netrc
+file for lookup of account credentials (see the section
+.Sx "URL syntax"
+and the command
+.Ic netrc Ns
+).
+The default path can be overridden by the environment variable
+.Va NETRC .
+Note that \*(UA requires that the file is only accessible by the user,
+regardless of the file content; also, whereas a conforming parser is
+used, only `machine', `login' and `password' entries are saved and used.
+A given `HOST' must match exactly the `machine NAME', but as an
+extension \*(UA allows a single wildcard prefix, as in
+.Pp
+.Dl *.example.com login USER password PASSWORD
+.Dl imap.example.com login USER password PASSWORD
+.Pp
+which would match `smtp.example.com' as well as `pop3.example.com', but
+neither `example.com' nor `local.smtp.example.com'.
+Note that in the example `imap.example.com' will not be matched by the
+wildcard, since the exact match takes precedence (it is however faster
+to specify it the other way around).
 .It Va outfolder
 Causes the filename given in the
 .Va record
@@ -2948,9 +3125,14 @@ messages.
 .It Va smtp-use-starttls
 \*(OP Causes \*(UA to issue a `STARTTLS' command to make an SMTP session
 SSL/TLS encrypted.
-Not all servers support this command \(en because of common
-implementation defects it can't be automatically determined whether
-a server supports it or not.
+.It Va smtp-use-starttls-HOST
+Overrides
+.Va smtp-use-starttls
+for SMTP accounts on a specific host.
+.It Va smtp-use-starttls-USER@HOST
+Overrides
+.Va smtp-use-starttls
+for a specific account.
 .It Va ssl-no-default-ca
 \*(OP Don't load default CA locations to verify SSL/TLS server
 certificates.
@@ -3065,16 +3247,6 @@ for the format of the value.
 See the section
 .Sx "Coloured message display"
 for the format of the value.
-.It Va colour-pagers
-\*(OP A comma-separated list of
-.Va PAGER Ns
-s for which coloured message display can be used.
-Note that only a substring comparison is performed, meaning that the
-string `lesser' will match the string `less'.
-See the section
-.Sx "Coloured message display"
-for more on this.
-The default is set to the sole string `less'.
 .It Va colour-partinfo
 \*(OP The colour specification for MIME part info lines.
 See the section
@@ -3084,10 +3256,11 @@ for the format of the value.
 \*(OP A comma-separated list of
 .Va TERM Ns
 inals for which coloured message display can be used.
-The default is
+Entries only need to be added if the string "color" isn't part of the
+terminal name itself; the default value is
 .Pp
 .Dl cons25,linux,rxvt,rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:\
-wsvt25,\:xterm,\:xterm-color
+wsvt25,\:xterm
 .It Va colour-uheader
 \*(OP The colour specification for those header lines that have been
 placed in the
@@ -3679,6 +3852,13 @@ set this option to the full pathname of the program to use.
 It may be necessary to set
 .Va sendmail-progname
 in addition.
+.It Va sendmail-arguments
+Arguments to pass through to the Mail-Transfer-Agent can be given via
+this option.
+These will be joined onto MTA options that have been given on the
+command line.
+.Pp
+.Dl set sendmail-arguments='-t -X \&"/tmp/my log\&"'
 .It Va sendmail-progname
 Many systems use a so-called
 .Xr mailwrapper 8
@@ -3916,6 +4096,9 @@ and the `HOST' from the content of this variable
 (or, if that is the empty string,
 .Va hostname
 or the local hostname as a last resort).
+This often allows using an address that is itself valid but hosted by
+a provider other than which is about to send the message in
+.Va from .
 Setting this variable also influences the generated `Message-Id:'.
 .It Va spam-command
 \*(OP The path to the spam detector.
@@ -4109,6 +4292,10 @@ If this variable is set then reading of \*(UR at startup is inhibited,
 i.e., the same effect is achieved as if \*(UA had been started up with
 the option
 .Fl n .
+.It Va NETRC
+\*(IN \*(OP This variable overrides the default location of the user's
+.Pa .netrc
+file.
 .It Va SYSV3
 Changes the letters printed in the first column of a header summary.
 .It Va TERM
@@ -4137,6 +4324,10 @@ System wide initialization file.
 Personal MIME types.
 .It Pa /etc/mime.types
 System wide MIME types.
+.It Pa ~/.netrc
+\*(IN \*(OP The default location of the users
+.Pa .netrc
+file.
 .El
 .\" }}}
 .\"
@@ -4248,7 +4439,7 @@ This command, like
 takes a message number as an argument.
 \*(UA then begins a message addressed to the user who sent you the
 message and let you type in your letter in reply, followed by
-a `<control-D>' at the beginning of a line, as before.
+a `control-D' (`^D')at the beginning of a line, as before.
 .Pp
 Note that \*(UA copies the subject header from the original message.
 This is useful in that correspondence about a particular matter will
@@ -4846,7 +5037,7 @@ reads the user's configuration files by default.
 So unless your script is only intended for your own personal use
 (as, e.g., a cron job), you need to circumvent this:
 .Pp
-.Dl MAILRC=/dev/null \*(ua \-n
+.Dl MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
 .Pp
 You then need to create a script-local configuration for \*(UA.
 This can be done by either pointing the
@@ -4860,7 +5051,7 @@ Since many configuration options are not valid shell variables, the
 .Xr env 1
 command is useful if the approach via environment variables is used:
 .Bd -literal -offset indent
-env MAILRC=/dev/null password=secret \*(ua -n -Sv15-compat \e
+env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file recipient@domain < content_file

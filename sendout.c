@@ -86,6 +86,10 @@ static int           make_multipart(struct header *hp, int convert, FILE *fi,
 /* Prepend a header in front of the collected stuff and return the new file */
 static FILE *        infix(struct header *hp, FILE *fi);
 
+/* Check wether Disposition-Notification-To: is desired */
+static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
+                        FILE *fo);
+
 /* Save the outgoing mail on the passed file */
 static int           savemail(char const *name, FILE *fi);
 
@@ -282,8 +286,7 @@ jerr_header:
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = errno) != 0) {
          if (err == EINVAL)
-            fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
-               tcs, charset);
+            fprintf(stderr, _("Cannot convert from %s to %s\n"), tcs, charset);
          else
             perror("iconv_open");
          goto jerr_fclose;
@@ -341,7 +344,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    if (signing_caps) {
       if (from == NULL) {
 #ifdef HAVE_SSL
-         fprintf(stderr, tr(531, "No *from* address for signing specified\n"));
+         fprintf(stderr, _("No *from* address for signing specified\n"));
          goto jleave;
 #endif
       } else
@@ -359,10 +362,10 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    if (v15) {
       if (shost == NULL) {
          assert(from != NULL);
-         sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
+         sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
       }
       else
-         __sendout_ident = sbp->sb_url.url_uh.s;
+         __sendout_ident = sbp->sb_url.url_u_h.s;
       if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
          goto jleave;
    } else {
@@ -370,10 +373,10 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          fprintf(stderr, "New-style URL used without *v15-compat* being set\n");
          goto jleave;
       }
-      if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, smtp))
-         goto jleave;
       assert(from != NULL);
-      sbp->sb_url.url_uh.l = strlen(sbp->sb_url.url_uh.s = from);
+      if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, from))
+         goto jleave;
+      sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
    }
 
    rv = TRU1;
@@ -385,11 +388,21 @@ jleave:
 static char const **
 _prepare_mta_args(struct name *to, struct header *hp)
 {
-   size_t j, i;
+   size_t vas_count, i, j;
+   char **vas, *cp;
    char const **args;
    NYD_ENTER;
 
-   i = 4 + smopts_count + 2 + count(to) + 1;
+   if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
+      vas_count = 0;
+      vas = NULL;
+   } else {
+      j = strlen(cp);
+      vas = ac_alloc(sizeof(*vas) * (j >> 1));
+      vas_count = (size_t)getrawlist(cp, j, vas, (int)(j >> 1), TRU1);
+   }
+
+   i = 4 + smopts_count + vas_count + 2 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
    args[0] = ok_vlook(sendmail_progname);
@@ -406,21 +419,22 @@ _prepare_mta_args(struct name *to, struct header *hp)
    for (j = 0; j < smopts_count; ++j, ++i)
       args[i] = smopts[j];
 
+   for (j = 0; j < vas_count; ++j, ++i)
+      args[i] = vas[j];
+
    /* -r option?  We may only pass skinned addresses */
    if (options & OPT_r_FLAG) {
-      char const *froma;
-
       if (option_r_arg[0] != '\0')
-         froma = option_r_arg;
+         cp = option_r_arg;
       else if (hp != NULL) {
          /* puthead() did it, then */
          assert(hp->h_from != NULL);
-         froma = hp->h_from->n_name;
+         cp = hp->h_from->n_name;
       } else
-         froma = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
-      if (froma != NULL) { /* XXX ugh! */
+         cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
+      if (cp != NULL) { /* XXX ugh! */
          args[i++] = "-f";
-         args[i++] = froma;
+         args[i++] = cp;
       }
    }
 
@@ -429,6 +443,9 @@ _prepare_mta_args(struct name *to, struct header *hp)
       if (!(to->n_type & GDEL))
          args[i++] = to->n_name;
    args[i] = NULL;
+
+   if (vas != NULL)
+      ac_free(vas);
    NYD_LEAVE;
    return args;
 }
@@ -603,7 +620,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
          0600)) == NULL) {
-      perror(tr(178, "temporary mail file"));
+      perror(_("temporary mail file"));
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL) {
@@ -644,8 +661,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
             (err = errno) != 0) {
 jiconv_err:
          if (err == EINVAL)
-            fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
-               tcs, charset);
+            fprintf(stderr, _("Cannot convert from %s to %s\n"), tcs, charset);
          else
             perror("iconv_open");
          goto jerr;
@@ -708,7 +724,7 @@ jerr:
 
    fflush(nfo);
    if ((err = ferror(nfo)))
-      perror(tr(180, "temporary mail file"));
+      perror(_("temporary mail file"));
    Fclose(nfo);
    if (!err) {
       fflush_rewind(nfi);
@@ -720,6 +736,34 @@ jerr:
 jleave:
    NYD_LEAVE;
    return nfi;
+}
+
+static bool_t
+_check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
+{
+   char const *from;
+   bool_t rv = TRU1;
+   NYD_ENTER;
+
+   /* TODO smtp_disposition_notification (RFC 3798): relation to return-path
+    * TODO not yet checked */
+   if (!ok_blook(disposition_notification_send))
+      goto jleave;
+
+   if (mdn != NULL && mdn != (struct name*)0x1)
+      from = mdn->n_name;
+   else if ((from = myorigin(hp)) == NULL) {
+      if (options & OPT_D_V)
+         fprintf(stderr, _("*disposition-notification-send*: no *from* set\n"));
+      goto jleave;
+   }
+
+   if (fmt("Disposition-Notification-To:", nalloc(UNCONST(from), 0), fo,
+         GFILES, TRU1, 0))
+      rv = FAL0;
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
@@ -844,10 +888,10 @@ _transfer(struct sendbundle *sbp)
             Fclose(ef);
          } else {
 #else
-            fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+            fprintf(stderr, _("No SSL support compiled in.\n"));
             rv = FAL0;
 #endif
-            fprintf(stderr, tr(38, "Message not sent to <%s>\n"), np->n_name);
+            fprintf(stderr, _("Message not sent to <%s>\n"), np->n_name);
             _sendout_error = TRU1;
 #ifdef HAVE_SSL
          }
@@ -893,7 +937,7 @@ start_mta(struct sendbundle *sbp)
 
       args = _prepare_mta_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
-         printf(tr(181, "Sendmail arguments:"));
+         printf(_("Sendmail arguments:"));
          for (t = args; *t != NULL; ++t)
             printf(" \"%s\"", *t);
          printf("\n");
@@ -903,7 +947,7 @@ start_mta(struct sendbundle *sbp)
    } else {
       mta = NULL; /* Silence cc */
 #ifndef HAVE_SMTP
-      fputs(tr(194, "No SMTP support compiled in.\n"), stderr);
+      fputs(_("No SMTP support compiled in.\n"), stderr);
       goto jstop;
 #else
       /* XXX assert that sendbundle is setup? */
@@ -947,7 +991,7 @@ jstop:
       }
 #endif
       savedeadletter(sbp->sb_input, 1);
-      fputs(tr(182, "... message not sent.\n"), stderr);
+      fputs(_("... message not sent.\n"), stderr);
       _exit(1);
    }
    if ((options & (OPT_DEBUG | OPT_VERB | OPT_BATCH_FLAG)) ||
@@ -1002,8 +1046,8 @@ mightrecord(FILE *fp, struct name *to)
 
       if (savemail(ep, fp) != 0) {
 jbail:
-         fprintf(stderr, tr(285, "Failed to save message in %s - "
-            "message not sent\n"), ep);
+         fprintf(stderr, _("Failed to save message in %s - message not sent\n"),
+            ep);
          exit_status |= EXIT_ERR;
          savedeadletter(fp, 1);
          rv = FAL0;
@@ -1118,7 +1162,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    size_t cnt, c, bufsize = 0;
    char *buf = NULL;
    char const *cp;
-   struct name *fromfield = NULL, *senderfield = NULL;
+   struct name *fromfield = NULL, *senderfield = NULL, *mdn;
    int rv = 1;
    NYD_ENTER;
 
@@ -1145,7 +1189,10 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
          _message_id(fo, NULL);
       }
    }
-   if (check_from_and_sender(fromfield, senderfield))
+
+   if ((mdn = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+      goto jleave;
+   if (!_check_dispo_notif(mdn, NULL, fo))
       goto jleave;
 
    /* Write the original headers */
@@ -1155,7 +1202,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       /* XXX more checks: The From_ line may be seen when resending */
       /* During headers is_head() is actually overkill, so ^From_ is sufficient
        * && !is_head(buf, c) */
-      if (ascncasecmp("status: ", buf, 8) && strncmp("From ", buf, 5))
+      if (ascncasecmp("status:", buf, 7) && strncmp("From ", buf, 5) &&
+            ascncasecmp("disposition-notification-to:", buf, 28))
          fwrite(buf, sizeof *buf, c, fo);
       if (cnt > 0 && *buf == '\n')
          break;
@@ -1172,7 +1220,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    if (buf != NULL)
       free(buf);
    if (ferror(fo)) {
-      perror(tr(188, "temporary mail file"));
+      perror(_("temporary mail file"));
       goto jleave;
    }
    rv = 0;
@@ -1274,10 +1322,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       if (ok_blook(askattach))
          ++err, edit_attachments(&hp->h_attach);
       if (ok_blook(asksign))
-         ++err, dosign = getapproval(tr(35, "Sign this message (y/n)? "), TRU1);
+         ++err, dosign = getapproval(_("Sign this message (y/n)? "), TRU1);
       if (err == 1) {
 jaskeot:
-         printf(tr(183, "EOT\n"));
+         printf(_("EOT\n"));
          fflush(stdout);
       }
    }
@@ -1286,16 +1334,16 @@ jaskeot:
       if (options & OPT_E_FLAG)
          goto jleave;
       if (hp->h_subject == NULL)
-         printf(tr(184, "No message, no subject; hope that's ok\n"));
+         printf(_("No message, no subject; hope that's ok\n"));
       else if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         printf(tr(185, "Null message body; hope that's ok\n"));
+         printf(_("Null message body; hope that's ok\n"));
    }
 
    if (dosign < 0)
       dosign = ok_blook(smime_sign);
 #ifndef HAVE_SSL
    if (dosign) {
-      fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+      fprintf(stderr, _("No SSL support compiled in.\n"));
       goto jleave;
    }
 #endif
@@ -1345,7 +1393,7 @@ jaskeot:
     * multiple times */
    to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), FAL0);
    if (to == NULL) {
-      fprintf(stderr, tr(186, "No recipients specified\n"));
+      fprintf(stderr, _("No recipients specified\n"));
       _sendout_error = TRU1;
    }
    to = fixhead(hp, to);
@@ -1375,7 +1423,7 @@ jaskeot:
 jfail_dead:
       _sendout_error = TRU1;
       savedeadletter(mtf, TRU1);
-      fputs(tr(182, "... message not sent.\n"), stderr);
+      fputs(_("... message not sent.\n"), stderr);
       goto jleave;
    }
    mtf = nmtf;
@@ -1526,7 +1574,9 @@ do {\
          if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderfield))
             goto jleave;
 
-      if (check_from_and_sender(fromfield, senderfield))
+      if ((np = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+         goto jleave;
+      if (!_check_dispo_notif(np, hp, fo))
          goto jleave;
    }
 
@@ -1625,7 +1675,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
          0600)) == NULL) {
       _sendout_error = TRU1;
-      perror(tr(189, "temporary mail file"));
+      perror(_("temporary mail file"));
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL) {
@@ -1648,7 +1698,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 
    if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
       savedeadletter(nfi, TRU1);
-      fputs(tr(182, "... message not sent.\n"), stderr);
+      fputs(_("... message not sent.\n"), stderr);
 jerr_all:
       Fclose(nfi);
 jerr_o:

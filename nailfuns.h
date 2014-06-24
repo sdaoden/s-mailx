@@ -151,7 +151,7 @@ do {\
 #endif
 
 /*
- * acmava.c
+ * accmacvar.c
  */
 
 /* Don't use _var_* unless you *really* have to! */
@@ -181,6 +181,13 @@ FL bool_t      _var_vokset(char const *vokey, uintptr_t val);
 FL bool_t      _var_vokclear(char const *vokey);
 #define vok_bclear(S)            _var_vokclear(S)
 #define vok_vclear(S)            _var_vokclear(S)
+
+/* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
+ * variable chains; oxm is a bitmix which tells which combinations to test */
+FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
+                  enum okey_xlook_mode oxm);
+#define xok_blook(C,URL,M)       (_var_xoklook(CONCAT(ok_b_, C),URL,M) != NULL)
+#define xok_vlook(C,URL,M)       _var_xoklook(CONCAT(ok_v_, C), URL, M)
 
 /* List all variables */
 FL void        var_list_all(void);
@@ -275,8 +282,9 @@ FL int         argcount(char **argv);
 /* Compute screen size */
 FL int         screensize(void);
 
-/* Get our PAGER */
-FL char const *get_pager(void);
+/* Get our $PAGER; if env_addon is not NULL it is check wether we know about
+ * some environment variable that supports colour+ */
+FL char const *get_pager(char const **env_addon);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
  * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
@@ -311,49 +319,8 @@ FL char *      getprompt(void);
 /* Detect and query the hostname to use */
 FL char *      nodename(int mayoverride);
 
-/* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp */
-FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
-                  char const *data);
-
-/* Zero ccp and lookup credentials for communicating with urlp.
- * Return wether credentials are available and valid (for chosen auth) */
-FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
-FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
-                  char const *addr);
-
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
-
-/* MD5 (RFC 1321) related facilities */
-#ifdef HAVE_MD5
-# ifdef HAVE_OPENSSL_MD5
-#  define md5_ctx	               MD5_CTX
-#  define md5_init	            MD5_Init
-#  define md5_update	            MD5_Update
-#  define md5_final	            MD5_Final
-# else
-#  include "rfc1321.h"
-# endif
-
-/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
- * using lowercase ASCII letters as defined in RFC 2195 */
-# define MD5TOHEX_SIZE           32
-FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
-
-/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
-FL char *      cram_md5_string(struct str const *user, struct str const *pass,
-                  char const *b64);
-
-/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
- * unsigned char *text: pointer to data stream
- * int text_len       : length of data stream
- * unsigned char *key : pointer to authentication key
- * int key_len        : length of authentication key
- * caddr_t digest     : caller digest to be filled in */
-FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
-                  int key_len, void *digest);
-#endif
 
 FL enum okay   makedir(char const *name);
 
@@ -393,10 +360,10 @@ FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
-/* We want coloured output (in this salloc() cycle).  If pager_used is not NULL
- * we check against *colour-pagers* wether colour is really desirable */
+/* We want coloured output (in this salloc() cycle).  pager_used is used to
+ * test wether *colour-pager* is to be inspected */
 #ifdef HAVE_COLOUR
-FL void        colour_table_create(char const *pager_used);
+FL void        colour_table_create(bool_t pager_used);
 FL void        colour_put(FILE *fp, enum colourspec cs);
 FL void        colour_put_header(FILE *fp, char const *name);
 FL void        colour_reset(FILE *fp);
@@ -608,7 +575,7 @@ FL int         c_messize(void *v);
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
-/* Put add users to a group */
+/* Without arguments print all groups, otherwise add users to a group */
 FL int         c_group(void *v);
 
 /* Delete the passed groups */
@@ -662,9 +629,9 @@ FL int         c_remove(void *v);
 /* Rename mailbox */
 FL int         c_rename(void *v);
 
-/* `urlenc' and `urldec' */
-FL int         c_urlenc(void *v);
-FL int         c_urldec(void *v);
+/* `urlencode' and `urldecode' */
+FL int         c_urlencode(void *v);
+FL int         c_urldecode(void *v);
 
 /*
  * collect.c
@@ -783,9 +750,9 @@ FL void        message_reset(void);
 FL void        message_append(struct message *mp);
 
 /* Check wether sep->ss_sexpr (or ->ss_reexpr) matches mp.  If with_headers is
- * true then the headers will also be searched (as plain text) */
+* true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
-                  bool_t with_headers);
+               bool_t with_headers);
 
 FL struct message * setdot(struct message *mp);
 
@@ -811,8 +778,8 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 /* Get rid of queued mail */
 FL void        demail(void);
 
-/* acmava.c hook: *folder* variable has been updated; if folder shouldn't be
- * replaced by something else leave store alone, otherwise smalloc() the
+/* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
+ * be replaced by something else leave store alone, otherwise smalloc() the
  * desired value (ownership will be taken) */
 FL bool_t      var_folder_updated(char const *folder, char **store);
 
@@ -874,10 +841,6 @@ FL int         is_head(char const *linebuf, size_t linelen);
  * Return wether the From_ line was parsed successfully */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
-
-/* Fill in / reedit the desired header fields */
-FL int         grab_headers(struct header *hp, enum gfield gflags,
-                  int subjfirst);
 
 FL void        extract_header(FILE *fp, struct header *hp);
 
@@ -962,12 +925,20 @@ FL time_t      combinetime(int year, int month, int day,
 
 FL void        substdate(struct message *m);
 
-FL int         check_from_and_sender(struct name *fromfield,
-                  struct name *senderfield);
+/* Note: returns 0x1 if both args were NULL */
+FL struct name const * check_from_and_sender(struct name const *fromfield,
+                        struct name const *senderfield);
 
 #ifdef HAVE_OPENSSL
 FL char *      getsender(struct message *m);
 #endif
+
+/* Fill in / reedit the desired header fields */
+FL int         grab_headers(struct header *hp, enum gfield gflags,
+                  int subjfirst);
+
+/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches any header of mp */
+FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
 /*
  * imap.c
@@ -1428,7 +1399,7 @@ FL void        Ftmp_free(char **fn);
 FL bool_t      pipe_cloexec(int fd[2]);
 
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
-                  int newfd1);
+                  char const *env_addon, int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
@@ -1442,7 +1413,8 @@ FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
 
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
-                  int outfd, char const *a0, char const *a1, char const *a2);
+                  int outfd, char const *a0, char const *a1, char const *a2,
+                  char const *env_addon);
 
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 
@@ -1782,7 +1754,7 @@ FL void        n_iconv_close(iconv_t cd);
 FL void        n_iconv_reset(iconv_t cd);
 #endif
 
-/* iconv(3), but return *errno* or 0; *skipilseq* forces step over illegal byte
+/* iconv(3), but return *errno* or 0; *skipilseq* forces step over invalid byte
  * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*
  * and *in_rest_or_null* may be the same object.
  * Note: EINVAL (incomplete sequence at end of input) is NOT handled, so the
@@ -1864,6 +1836,55 @@ FL void        tty_addhist(char const *s, bool_t isgabby);
    (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
 FL int         c_history(void *v);
 #endif
+
+/*
+ * urlcrecry.c
+ */
+
+/* Parse data, which must meet the criteria of the protocol cproto, and fill
+ * in the URL structure urlp (URL rather according to RFC 3986) */
+FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
+                  char const *data);
+
+/* Zero ccp and lookup credentials for communicating with urlp.
+ * Return wether credentials are available and valid (for chosen auth) */
+FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
+FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
+                  char const *addr);
+
+/* `netrc' */
+FL int         c_netrc(void *v);
+
+/* MD5 (RFC 1321) related facilities */
+#ifdef HAVE_MD5
+# ifdef HAVE_OPENSSL_MD5
+#  define md5_ctx	               MD5_CTX
+#  define md5_init	            MD5_Init
+#  define md5_update	            MD5_Update
+#  define md5_final	            MD5_Final
+# else
+   /* The function definitions are instantiated in main.c */
+#  include "rfc1321.h"
+# endif
+
+/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
+ * using lowercase ASCII letters as defined in RFC 2195 */
+# define MD5TOHEX_SIZE           32
+FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
+
+/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
+FL char *      cram_md5_string(struct str const *user, struct str const *pass,
+                  char const *b64);
+
+/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
+ * unsigned char *text: pointer to data stream
+ * int text_len       : length of data stream
+ * unsigned char *key : pointer to authentication key
+ * int key_len        : length of authentication key
+ * caddr_t digest     : caller digest to be filled in */
+FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
+                  int key_len, void *digest);
+#endif /* HAVE_MD5 */
 
 #ifndef HAVE_AMALGAMATION
 # undef FL

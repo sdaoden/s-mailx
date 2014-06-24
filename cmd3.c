@@ -256,7 +256,7 @@ respond_internal(int *msgvec, int recipient_record)
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
    if (msgvec[1] != 0) {
-      fprintf(stderr, tr(37,
+      fprintf(stderr, _(
          "Sorry, can't reply to multiple messages at once\n"));
       goto jleave;
    }
@@ -295,7 +295,7 @@ respond_internal(int *msgvec, int recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = tr(512,
+      head.h_attach->a_content_description = _(
             "Original message content");
    }
 
@@ -341,7 +341,7 @@ Respond_internal(int *msgvec, int recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = tr(512,
+      head.h_attach->a_content_description = _(
          "Original message content");
    }
 
@@ -364,7 +364,7 @@ forward1(char *str, int recipient_record)
    NYD_ENTER;
 
    if ((recipient = laststring(str, &f, 0)) == NULL) {
-      puts(tr(47, "No recipient specified."));
+      puts(_("No recipient specified."));
       goto jleave;
    }
 
@@ -484,7 +484,7 @@ _resend1(void *v, bool_t add_resent)
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    name = laststring(str, &f, 1);
    if (name == NULL) {
-      puts(tr(47, "No recipient specified."));
+      puts(_("No recipient specified."));
       goto jleave;
    }
 
@@ -495,7 +495,7 @@ _resend1(void *v, bool_t add_resent)
             f = FAL0;
             goto jleave;
          }
-         puts(tr(48, "No applicable messages."));
+         puts(_("No applicable messages."));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -617,7 +617,7 @@ c_help(void *v)
 #ifdef HAVE_DOCSTRINGS
       ret = !print_comm_docstr(arg);
       if (ret)
-         fprintf(stderr, tr(91, "Unknown command: `%s'\n"), arg);
+         fprintf(stderr, _("Unknown command: `%s'\n"), arg);
 #else
       ret = c_cmdnotsupp(NULL);
 #endif
@@ -625,22 +625,22 @@ c_help(void *v)
    }
 
    /* Very ugly, but take care for compiler supported string lengths :( */
-   printf(tr(295, "%s commands:\n"), progname);
-   puts(tr(296,
+   printf(_("%s commands:\n"), progname);
+   puts(_(
 "type <message list>         type messages\n"
 "next                        goto and type next message\n"
 "from <message list>         give head lines of messages\n"
 "headers                     print out active message headers\n"
 "delete <message list>       delete messages\n"
 "undelete <message list>     undelete messages\n"));
-   puts(tr(297,
+   puts(_(
 "save <message list> folder  append messages to folder and mark as saved\n"
 "copy <message list> folder  append messages to folder without marking them\n"
 "write <message list> file   append message texts to file, save attachments\n"
 "preserve <message list>     keep incoming messages in mailbox even if saved\n"
 "Reply <message list>        reply to message senders\n"
 "reply <message list>        reply to message senders and all recipients\n"));
-   puts(tr(298,
+   puts(_(
 "mail addresses              mail to specific recipients\n"
 "file folder                 change to another folder\n"
 "quit                        quit and apply changes to folder\n"
@@ -648,7 +648,7 @@ c_help(void *v)
 "!                           shell escape\n"
 "cd <directory>              chdir to directory or home if none given\n"
 "list                        list names of all available commands\n"));
-   printf(tr(299,
+   printf(_(
 "\nA <message list> consists of integers, ranges of same, or other criteria\n"
 "separated by spaces.  If omitted, %s uses the last message typed.\n"),
       progname);
@@ -835,7 +835,7 @@ c_preserve(void *v)
    NYD_ENTER;
 
    if (edit) {
-      printf(tr(39, "Cannot \"preserve\" in edit mode\n"));
+      printf(_("Cannot \"preserve\" in edit mode\n"));
       goto jleave;
    }
 
@@ -984,7 +984,7 @@ c_ungroup(void *v)
    NYD_ENTER;
 
    if (*argv == NULL) {
-      fprintf(stderr, tr(209, "Must specify alias to remove\n"));
+      fprintf(stderr, _("Must specify alias to remove\n"));
       goto jleave;
    }
 
@@ -1011,7 +1011,7 @@ c_file(void *v)
    }
 
    if (inhook) {
-      fprintf(stderr, tr(516, "Cannot change folder from within a hook.\n"));
+      fprintf(stderr, _("Cannot change folder from within a hook.\n"));
       i = 1;
       goto jleave;
    }
@@ -1079,7 +1079,7 @@ c_if(void *v)
    cp = argv[0];
    if (*cp != '$' && argv[1] != NULL) {
 jesyn:
-      fprintf(stderr, tr(528, "Invalid conditional expression \"%s %s %s\"\n"),
+      fprintf(stderr, _("Invalid conditional expression \"%s %s %s\"\n"),
          argv[0], (argv[1] != NULL ? argv[1] : ""),
          (argv[2] != NULL ? argv[2] : ""));
       goto jleave;
@@ -1144,7 +1144,7 @@ jesyn:
       }
       break;
    default:
-      fprintf(stderr, tr(43, "Unrecognized if-keyword: \"%s\"\n"), cp);
+      fprintf(stderr, _("Unrecognized if-keyword: \"%s\"\n"), cp);
    case '1':
       csp->c_go = TRU1;
       goto jleave;
@@ -1163,7 +1163,7 @@ c_elif(void *v)
    NYD_ENTER;
 
    if ((csp = _cond_stack) == NULL || csp->c_else) {
-      fprintf(stderr, tr(580, "`elif' without matching `if'\n"));
+      fprintf(stderr, _("`elif' without matching `if'\n"));
       rv = 1;
    } else {
       csp->c_go = !csp->c_go;
@@ -1183,7 +1183,7 @@ c_else(void *v)
    UNUSED(v);
 
    if (_cond_stack == NULL || _cond_stack->c_else) {
-      fprintf(stderr, tr(44, "`else' without matching `if'\n"));
+      fprintf(stderr, _("`else' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack->c_go = !_cond_stack->c_go;
@@ -1203,7 +1203,7 @@ c_endif(void *v)
    UNUSED(v);
 
    if ((csp = _cond_stack) == NULL) {
-      fprintf(stderr, tr(46, "`endif' without matching `if'\n"));
+      fprintf(stderr, _("`endif' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack = csp->c_outer;
@@ -1325,11 +1325,11 @@ c_shortcut(void *v)
 
    rv = 1;
    if (args[1] == NULL) {
-      fprintf(stderr, tr(220, "expansion name for shortcut missing\n"));
+      fprintf(stderr, _("expansion name for shortcut missing\n"));
       goto jleave;
    }
    if (args[2] != NULL) {
-      fprintf(stderr, tr(221, "too many arguments\n"));
+      fprintf(stderr, _("too many arguments\n"));
       goto jleave;
    }
 
@@ -1370,7 +1370,7 @@ c_unshortcut(void *v)
    NYD_ENTER;
 
    if (args[0] == NULL) {
-      fprintf(stderr, tr(222, "need shortcut names to remove\n"));
+      fprintf(stderr, _("need shortcut names to remove\n"));
       errs = TRU1;
       goto jleave;
    }
@@ -1378,7 +1378,7 @@ c_unshortcut(void *v)
    while (*args != NULL) {
       if (delete_shortcut(*args) != OKAY) {
          errs = TRU1;
-         fprintf(stderr, tr(223, "%s: no such shortcut\n"), *args);
+         fprintf(stderr, _("%s: no such shortcut\n"), *args);
       }
       ++args;
    }
@@ -1534,19 +1534,19 @@ c_remove(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, tr(290, "Syntax is: remove mailbox ...\n"));
+      fprintf(stderr, _("Syntax is: remove mailbox ...\n"));
       ec = 1;
       goto jleave;
    }
 
-   fmt = tr(287, "Remove \"%s\" (y/n) ? ");
+   fmt = _("Remove \"%s\" (y/n) ? ");
    fmt_len = strlen(fmt);
    do {
       if ((name = expand(*args)) == NULL)
          continue;
 
       if (!strcmp(name, mailname)) {
-         fprintf(stderr, tr(286, "Cannot remove current mailbox \"%s\".\n"),
+         fprintf(stderr, _("Cannot remove current mailbox \"%s\".\n"),
             name);
          ec |= 1;
          continue;
@@ -1570,7 +1570,7 @@ c_remove(void *v)
          }
          break;
       case PROTO_POP3:
-         fprintf(stderr, tr(288, "Cannot remove POP3 mailbox \"%s\".\n"),name);
+         fprintf(stderr, _("Cannot remove POP3 mailbox \"%s\".\n"),name);
          ec |= 1;
          break;
       case PROTO_IMAP:
@@ -1584,7 +1584,7 @@ c_remove(void *v)
             ec |= 1;
          break;
       case PROTO_UNKNOWN:
-         fprintf(stderr, tr(289, "Unknown protocol in \"%s\". Not removed.\n"),
+         fprintf(stderr, _("Unknown protocol in \"%s\". Not removed.\n"),
             name);
          ec |= 1;
          break;
@@ -1618,11 +1618,11 @@ c_rename(void *v)
    newp = which_protocol(new);
 
    if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
-      fprintf(stderr, tr(291, "Cannot rename current mailbox \"%s\".\n"), old);
+      fprintf(stderr, _("Cannot rename current mailbox \"%s\".\n"), old);
       goto jleave;
    }
    if ((oldp == PROTO_IMAP || newp == PROTO_IMAP) && oldp != newp) {
-      fprintf(stderr, tr(292, "Can only rename folders of same type.\n"));
+      fprintf(stderr, _("Can only rename folders of same type.\n"));
       goto jleave;
    }
 
@@ -1659,7 +1659,7 @@ c_rename(void *v)
       break;
    case PROTO_POP3:
 jnopop3:
-      fprintf(stderr, tr(293, "Cannot rename POP3 mailboxes.\n"));
+      fprintf(stderr, _("Cannot rename POP3 mailboxes.\n"));
       ec |= 1;
       break;
 #ifdef HAVE_IMAP
@@ -1670,7 +1670,7 @@ jnopop3:
 #endif
    case PROTO_UNKNOWN:
    default:
-      fprintf(stderr, tr(294,
+      fprintf(stderr, _(
          "Unknown protocol in \"%s\" and \"%s\".  Not renamed.\n"), old, new);
       ec |= 1;
       break;
@@ -1681,7 +1681,7 @@ jleave:
 }
 
 FL int
-c_urlenc(void *v) /* XXX IDNA?? */
+c_urlencode(void *v) /* XXX IDNA?? */
 {
    char **ap;
    NYD_ENTER;
@@ -1697,7 +1697,7 @@ c_urlenc(void *v) /* XXX IDNA?? */
 }
 
 FL int
-c_urldec(void *v) /* XXX IDNA?? */
+c_urldecode(void *v) /* XXX IDNA?? */
 {
    char **ap;
    NYD_ENTER;

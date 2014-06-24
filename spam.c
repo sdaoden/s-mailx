@@ -100,8 +100,7 @@ _spam_action(enum spam_action sa, int *ip)
 #ifdef SPAMC_PATH
       cp = SPAMC_PATH;
 #else
-      fprintf(stderr, tr(514, "`%s': *spam-command* is not set\n"),
-         _spam_comms[sa]);
+      fprintf(stderr, _("`%s': *spam-command* is not set\n"), _spam_comms[sa]);
       goto jleave;
 #endif
    }
@@ -172,8 +171,8 @@ jlearn:
          vc.mp->m_spamscore = 0;
       if (vc.mp->m_size > maxsize) {
          if (options & OPT_VERB)
-            fprintf(stderr, tr(515,
-               "`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
+            fprintf(stderr,
+               _("`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
                _spam_comms[sa], (ul_it)vc.mno + 1,
                (ul_it)vc.mp->m_size, (ul_it)maxsize);
          continue;
@@ -285,7 +284,8 @@ _spam_interact(struct spam_vc *vc)
    state &= ~_SIGHOLD;
 
    sigemptyset(&cset);
-   pid = start_command(vc->comm_s, &cset, p2c[0], c2p[1], NULL, NULL, NULL);
+   pid = start_command(vc->comm_s, &cset, p2c[0], c2p[1], NULL, NULL, NULL,
+         NULL);
    state |= _RUNNING;
    close(p2c[0]);
    state &= ~_P2C_0;

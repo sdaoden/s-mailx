@@ -224,7 +224,7 @@ _idna_apply(struct addrguts *agp)
 
       if (idna_utf8 == NULL) {
          if (i)
-            fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
+            fprintf(stderr, _("Cannot convert from %s to %s\n"),
                tcs, "UTF-8");
          agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
          goto jleave;
@@ -638,7 +638,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 jerr:
-   cp = tr(213, "<Unknown date>");
+   cp = _("<Unknown date>");
    linelen = strlen(cp);
    if (linelen >= FROM_DATEBUF)
       linelen = FROM_DATEBUF;
@@ -697,7 +697,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
          hq->h_subject = (hq->h_subject != NULL)
                ? save2str(hq->h_subject, cp) : savestr(cp);
       } else
-         fprintf(stderr, tr(266, "Ignoring header field \"%s\"\n"), linebuf);
+         fprintf(stderr, _("Ignoring header field \"%s\"\n"), linebuf);
    }
 
    /* In case the blank line after the header has been edited out.  Otherwise,
@@ -723,7 +723,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       hp->h_organization = hq->h_organization;
       hp->h_subject = hq->h_subject;
    } else
-      fprintf(stderr, tr(267, "Restoring deleted header lines\n"));
+      fprintf(stderr, _("Restoring deleted header lines\n"));
 
    if (linebuf != NULL)
       free(linebuf);
@@ -885,13 +885,13 @@ is_addr_invalid(struct name *np, int putmsg)
       goto jleave;
 
    if (f & NAME_ADDRSPEC_ERR_IDNA)
-      cs = tr(284, "Invalid domain name: \"%s\", character %s\n"),
+      cs = _("Invalid domain name: \"%s\", character %s\n"),
       fmt = "'\\U%04X'",
       ok8bit = 0;
    else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
-      cs = tr(142, "\"%s\" contains invalid %s sequence\n");
+      cs = _("\"%s\" contains invalid %s sequence\n");
    else
-      cs = tr(143, "\"%s\" contains invalid character %s\n");
+      cs = _("\"%s\" contains invalid character %s\n");
 
    c = NAME_ADDRSPEC_ERR_GETWC(f);
    if (ok8bit && c >= 040 && c <= 0177)
@@ -1567,22 +1567,35 @@ substdate(struct message *m)
    NYD_LEAVE;
 }
 
-FL int
-check_from_and_sender(struct name *fromfield, struct name *senderfield)
+FL struct name const *
+check_from_and_sender(struct name const *fromfield,
+   struct name const *senderfield)
 {
-   int rv;
+   struct name const *rv = NULL;
    NYD_ENTER;
 
-   if (fromfield && fromfield->n_flink && senderfield == NULL) {
-      fprintf(stderr, tr(529, "A Sender: field is required with multiple "
-         "addresses in From: field.\n"));
-      rv = 1;
-   } else if (senderfield && senderfield->n_flink) {
-      fprintf(stderr, tr(530,
-         "The Sender: field may contain only one address.\n"));
-      rv = 2;
-   } else
-      rv = 0;
+   if (senderfield != NULL) {
+      if (senderfield->n_flink != NULL) {
+         fprintf(stderr, _(
+            "The Sender: field may contain only one address.\n"));
+         goto jleave;
+      }
+      rv = senderfield;
+   }
+
+   if (fromfield != NULL) {
+      if (fromfield->n_flink != NULL && senderfield == NULL) {
+         fprintf(stderr, _("A Sender: field is required with multiple "
+            "addresses in From: field.\n"));
+         goto jleave;
+      }
+      if (rv == NULL)
+         rv = fromfield;
+   }
+
+   if (rv == NULL)
+      rv = (struct name*)0x1;
+jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -1648,6 +1661,50 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 
    NYD_LEAVE;
    return errs;
+}
+
+FL bool_t
+header_match(struct message *mp, struct search_expr const *sep)
+{
+   struct str in, out;
+   FILE *ibuf;
+   int lc;
+   size_t linesize = 0; /* TODO line pool */
+   char *linebuf = NULL, *colon;
+   bool_t rv = FAL0;
+   NYD_ENTER;
+
+   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
+      goto jleave;
+   if ((lc = mp->m_lines - 1) < 0)
+      goto jleave;
+
+   if ((mp->m_flag & MNOFROM) == 0 &&
+         readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+      goto jleave;
+   while (lc > 0) {
+      if (gethfield(ibuf, &linebuf, &linesize, lc, &colon) <= 0)
+         break;
+      if (blankchar(*++colon))
+         ++colon;
+      in.l = strlen(in.s = colon);
+      mime_fromhdr(&in, &out, TD_ICONV);
+#ifdef HAVE_REGEX
+      if (sep->ss_sexpr == NULL)
+         rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+      else
+#endif
+         rv = substr(out.s, sep->ss_sexpr);
+      free(out.s);
+      if (rv)
+         break;
+   }
+
+jleave:
+   if (linebuf != NULL)
+      free(linebuf);
+   NYD_LEAVE;
+   return rv;
 }
 
 /* vim:set fenc=utf-8:s-it-mode */

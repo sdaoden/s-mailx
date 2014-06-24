@@ -27,8 +27,8 @@ $(UAGENT): $(OBJ)
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 
 $(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
-config.o acmava.o: okeys.h
-config.o auxlily.o imap.o pop3.o smtp.o: rfc1321.h
+config.o accmacvar.o: okeys.h
+config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
 config.o main.o: version.h
@@ -73,7 +73,7 @@ mkrc.rc: nail.rc mk.mk
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.rc > $(@) $(AWK) 'BEGIN {written = 0}\
-	/#--MKRC-START--/, /#--MKRC-END--/ {\
+	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
 		written = 1;\
@@ -85,6 +85,7 @@ mkrc.rc: nail.rc mk.mk
 		OFS = " ";\
 		next\
 	}\
+	/^# vim:/ {next}\
 	{print}\
 	'
 
@@ -203,7 +204,8 @@ _update-release:
 	$(RM) -f "$(UAGENT)-$${FREL}.tar.gz" &&\
 	tar -c -f "$(UAGENT)-$${FREL}.tar" "$(UAGENT)-$${REL}" &&\
 	< "$(UAGENT)-$${FREL}.tar" gzip > "$(UAGENT)-$${FREL}.tar.gz" &&\
-	< "$(UAGENT)-$${FREL}.tar" xz > "$(UAGENT)-$${FREL}.tar.xz" &&\
+	< "$(UAGENT)-$${FREL}.tar" xz -e -C sha256 > \
+		"$(UAGENT)-$${FREL}.tar.xz" &&\
 	$(RM) -f "$(UAGENT)-$${FREL}.tar" &&\
 	openssl md5 "$(UAGENT)-$${FREL}.tar.gz" > \
 		"$(UAGENT)-$${FREL}.cksum" 2>&1 &&\
@@ -225,11 +227,20 @@ _update-release:
 	read i;\
 	cd "$(UAGENT)-$${REL}" &&\
 	make devel &&\
-	./s-nail -A sn_sf -s "[ANNOUNCE] of S-nail v$${REL}" nail-announce &&\
+	LC_ALL=${LC_XX} ./s-nail -A sn_sf \
+		-s "[ANNOUNCE] of S-nail v$${REL}" nail-announce &&\
 	cd .. &&\
 	echo "Really remove $(UAGENT)-$${REL} build dir?  ENTER continues";\
 	read i;\
 	$(RM) -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
+
+_update-timeline:
+	git checkout timeline &&\
+	git rm -rf '*' &&\
+	git archive --format=tar.gz "v$(REL)" | tar -x -z -f - &&\
+	git add --all &&\
+	git commit -m "S-nail v$(REL), `date -u +%Y-%m-%d`" &&\
+	git checkout master
 
 # vim:set fenc=utf-8 ft=make:

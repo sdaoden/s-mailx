@@ -145,7 +145,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    }
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
-   snprintf(prefix, sizeof prefix, tr(50, "#%u\tfilename: "), number);
+   snprintf(prefix, sizeof prefix, _("#%u\tfilename: "), number);
    for (;;) {
       if ((ap->a_name = readstr_input(prefix, ap->a_name)) == NULL) {
          ap = NULL;
@@ -160,9 +160,9 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
             ap->a_msgno = msgno;
             ap->a_content_type = ap->a_content_disposition =
                   ap->a_content_id = NULL;
-            ap->a_content_description = tr(513, "Attached message content");
+            ap->a_content_description = _("Attached message content");
             if (options & OPT_INTERACTIVE)
-               printf(tr(2, "~@: added message #%u\n"), msgno);
+               printf(_("~@: added message #%u\n"), msgno);
             goto jleave;
          }
       }
@@ -184,7 +184,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    if (!(options & OPT_INTERACTIVE))
       goto jcs;
    if ((cp = ap->a_content_type) != NULL && ascncasecmp(cp, "text/", 5) != 0 &&
-         !getapproval(tr(162, "Filename doesn't indicate text content - "
+         !getapproval(_("Filename doesn't indicate text content - "
             "edit charsets nonetheless? "), TRU1)) {
       ap->a_conv = AC_DEFAULT;
       goto jleave;
@@ -194,7 +194,7 @@ jcs_restart:
    charset_iter_reset(NULL);
 jcs:
 #endif
-   snprintf(prefix, sizeof prefix, tr(160, "#%u\tinput charset: "), number);
+   snprintf(prefix, sizeof prefix, _("#%u\tinput charset: "), number);
    if ((defcs = ap->a_input_charset) == NULL)
       defcs = cslc;
    cp = ap->a_input_charset = readstr_input(prefix, defcs);
@@ -206,7 +206,7 @@ jcs:
       goto jleave;
    }
 
-   snprintf(prefix, sizeof prefix, tr(161, "#%u\toutput (send) charset: "),
+   snprintf(prefix, sizeof prefix, _("#%u\toutput (send) charset: "),
       number);
    if ((defcs = ap->a_charset) == NULL)
       defcs = charset_iter();
@@ -233,7 +233,7 @@ jcs:
    }
    /* Input, output -> try conversion from input=as given to output=as given */
 
-   printf(tr(197, "Trying conversion from %s to %s\n"), ap->a_input_charset,
+   printf(_("Trying conversion from %s to %s\n"), ap->a_input_charset,
       ap->a_charset);
    if (_attach_iconv(ap))
       ap->a_conv = AC_TMPFILE;
@@ -242,7 +242,7 @@ jcs:
       ap->a_input_charset = cp;
       ap->a_charset = defcs;
       if (!charset_iter_is_valid()) {
-         printf(tr(572, "*sendcharsets* and *charset-8bit* iteration "
+         printf(_("*sendcharsets* and *charset-8bit* iteration "
             "exhausted, restarting\n"));
          goto jcs_restart;
       }
@@ -251,7 +251,7 @@ jcs:
 jdone:
 #endif
    if (options & OPT_INTERACTIVE)
-      printf(tr(19, "~@: added attachment \"%s\"\n"), ap->a_name);
+      printf(_("~@: added attachment \"%s\"\n"), ap->a_name);
 jleave:
    safe_signal(SIGINT, ohdl);/* TODO until we have signal manager (see TODO) */
    if (__atticonv_sig != 0) {
@@ -294,7 +294,7 @@ _attach_iconv(struct attachment *ap)
 
    if ((fo = Ftmp(NULL, "atic", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror(tr(51, "temporary mail file"));
+      perror(_("temporary mail file"));
       goto jerr;
    }
 
@@ -302,14 +302,14 @@ _attach_iconv(struct attachment *ap)
       if (fgetline(&inl.s, &lbsize, &cnt, &inl.l, fi, 0) == NULL) {
          if (!cnt)
             break;
-         perror(tr(195, "I/O read error occurred"));
+         perror(_("I/O read error occurred"));
          goto jerr;
       }
 
       if (n_iconv_str(icp, &oul, &inl, NULL, FAL0) != 0)
          goto jeconv;
       if ((inl.l = fwrite(oul.s, sizeof *oul.s, oul.l, fo)) != oul.l) {
-         perror(tr(196, "I/O write error occurred"));
+         perror(_("I/O write error occurred"));
          goto jerr;
       }
    }
@@ -331,7 +331,7 @@ jleave:
    return (fo != NULL);
 
 jeconv:
-   fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
+   fprintf(stderr, _("Cannot convert from %s to %s\n"),
       ap->a_input_charset, ap->a_charset);
 jerr:
    if (fo != NULL)
@@ -382,7 +382,7 @@ append_attachments(struct attachment **aphead, char *names)
       if ((xaph = add_attachment(*aphead, cp, &nap)) != NULL) {
          *aphead = xaph;
          if (options & OPT_INTERACTIVE)
-            printf(tr(19, "~@: added attachment \"%s\"\n"), nap->a_name);
+            printf(_("~@: added attachment \"%s\"\n"), nap->a_name);
       } else
          perror(cp);
    }

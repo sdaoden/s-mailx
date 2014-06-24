@@ -15,11 +15,137 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.1, 2014-06-24
+-------------------
+
+Thanks to Georg Schlisio (g DOT schlisio AT dukun DOT de),
+Wiesław Magusiak (wiemag AT poczta DOT onet DOT pl), Tarqi Kazan and
+Karol Blazewicz.
+
+Very special thanks: Gavin ".. .. Speeding kills. .." Troy from Ireland
+and Ypnose "Gloria?? C'est une mouton!" from France.
+
+Changelog in reverse order, oldest first.
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- WANT_NOGETOPT is gone. [73f0605]
+
+- WANT_NETRC: new option (on by default; see below). [topic/netrc]
+
+ChangeLog
+^^^^^^^^^
+
+- Manual slightly improved in respect to LC_ALL etc. settings.
+  The knowledge treshold value is much too high for a normal user;
+  i hope that at some later time we can offer much more (at least
+  optional) automation on the protocol level (e.g., timeout values,
+  protocol features supported by servers etc.), at which time we will be
+  able to make the manual more user friendly. (Georg Schlisio)
+  [56fab16,bd1e11f; ArchLinux Wiki]
+
+- The `@' search command has new "header" keyword, which searches in all
+  headers.  Shortcuts: "<" = "header", ">" = "body", "=" = "text".
+  ("body" and "text" still perform full text searches _including_ MIME
+  part header content.)
+  [b0138a7]
+
+- The -O command line option is legacy and will vanish in v15.0.
+  Arguments to the MTA can henceforth be passed after a `--' separator
+  on the command line, as in
+    echo bla|s-nail -vvd -s sub some@where -- MTA ARGS MADE EASIER
+  [topic/mtaarg]
+
+- New *sendmail-arguments* option; content will be (converted to list
+  and) joined onto other MTA command line arguments (Wiesław Magusiak)
+  [topic/mtaarg]
+
+- *colour-pagers* is gone -- instead we have *colour-pager*, which is
+  a boolean and off by default.  We again set LESS (and LV) environment
+  variable(s) to automatic turn on colour support in $PAGERs, but only
+  if the variable in question is not yet set.  (That is -- in order to
+  get coloured $PAGER you at least have to set *colour-pager* now.)
+  (Tarqi Kazan) [b794f5e]
+
+- Karol Blazewicz opened a discussion in the ArchLinux Forum (s-nail
+  14.7-1 doesn't work [1]) but i didn't realize his actual problem --
+  luckily Gavin Troy wrapped his head around the real problem, and that
+  finally opened my eyes against a whole can of worms in the new URL
+  and credential handling!
+
+  Then Ypnose also came along and reported an issue with IMAP handling
+  that was related to the compatibility credential handling of the new
+  URL and credential layer.
+
+  (Gavin Troy, Ypnose, Karol Blazewicz) [a5c40ba]
+  [1] <https://bbs.archlinux.org/viewtopic.php?id=182653>
+
+- We now also have -HOST and -USER@HOST *smtp-use-starttls*. [bfb186a]
+
+- Gabby history entries will now be saved and restored as such, in case
+  *history-gabby-persists* is set.  (For this to work properly
+  a possibly existing history file needs to be reset.) [b5502cc]
+
+- We now have optional .netrc support (*v15-compat* set).
+  Set *netrc-lookup* and we'll look in $NETRC / ~/.netrc for user
+  credentials.  The `netrc' command will show or clear the entry cache.
+  E.g., this is my new account macro:
+
+   set v15-compat ssl-method=auto
+   set netrc-lookup
+   set smtp=smtps://smtp.yandex.ru:466 smtp-auth=plain smtp-hostname= \
+         hostname=yandex.com
+   ghost xp 'fi %:pop3s://pop.yandex.ru'
+   ghost xi 'fi %:imaps://imap.yandex.ru'
+
+  As an extension to the .netrc syntax we support a single
+  introductional subdomain wildcard, e.g., my relevant ~/.netrc entry:
+
+    machine *.yandex.ru login NAME password PASS
+
+  Following a suggestion of Gavin Troy we have multi account support,
+  i'm not quite sure wether this is portable across .netrc using
+  applications, e.g., i could have written the above like
+
+    machine *.yandex.ru login NAME
+    machine *.yandex.ru password PASS
+    machine *.yandex.ru login NAME2
+
+  (I hope i don't lie and this really works.)
+  (Suggested by Gavin Troy and Ypnose, testing and feedback Gavin Troy)
+  [topic/netrc]
+
+- Add primitive support for RFC 3798 via the new
+  *disposition-notification-send* variable.  This is not yet
+  a truly conforming implementation (it simply injects the necessary
+  header) and it requires the *from* variable to be set.
+  More in the far future, sorry. (Wiesław Magusiak) [ca31d32]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Interrupt protection during (recursive) macro calls with `localopts'
+  on should now no longer be crashable at all.  Quote [a4e85c0]
+    It is of course all pretty intermediate until we have a signal
+    manager and we can actually poll signal states at those places where
+    we are capable of and desire to handle them.  But it should work
+    today and look nicer than it did.
+  [25caeb9,592499f,a4e85c0]
+
+- `ghost' handling performs more strict name checking on ghost names in
+  order not to allow names which would later not be parsed as a whole.
+  [1523a6d]
+
+- Dropped catopen(3) support (we never really had it)!  We will have
+  a new S-nail-specific gettext(3)-alike thing in v14.8.
+  [topic/i-wanna-have-a-dog]
+
 v14.7, 2014-06-07
 -----------------
 
-Thanks go to Tarqi Kazan (?) and Johannes Löthberg (johannes AT kyriasis
-DOT com), as well as Martin Neitzel.
+Thanks go to Tarqi Kazan (tarqi AT cfs DOT or DOT gs) and Johannes
+Löthberg (johannes AT kyriasis DOT com), as well as Martin Neitzel.
 (And the winner is... Gavin Troy for his role in "Silence from Ireland".
 Yay!)
 
@@ -117,6 +243,8 @@ ChangeLog
   i now also refers to the new *smtp-hostname* variable.
 
   Note that the generated `Message-Id' has also changed.
+
+  (Messy old way pointed out by Tarqi Kazan)
   [topic/url, topic/cred]
 
 - `resend' should be truly fixed and (fwiw) can also resend to pipe and

@@ -476,7 +476,7 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
             if (c >= 0)
                *oc++ = (char)c;
             else {
-               /* Illegal according to RFC 2045, section 6.7. Almost follow */
+               /* Invalid according to RFC 2045, section 6.7. Almost follow */
 jehead:
                /* TODO 0xFFFD
                *oc[0] = '['; oc[1] = '?'; oc[2] = ']';
@@ -519,7 +519,7 @@ jehead:
          if (c >= 0)
             *oc++ = (char)c;
          else {
-            /* Illegal according to RFC 2045, section 6.7.
+            /* Invalid according to RFC 2045, section 6.7.
              * Almost follow it and include the = and the follow char */
 jebody:
             /* TODO 0xFFFD
@@ -716,7 +716,7 @@ jleave:
    return ret;
 
 jerr: {
-   char const *err = tr(15, "[Invalid Base64 encoding ignored]\n");
+   char const *err = _("[Invalid Base64 encoding ignored]\n");
    len = strlen(err);
    x = out->s = srealloc(out->s, len + 1 +1);
    if (rest != NULL && rest->l)

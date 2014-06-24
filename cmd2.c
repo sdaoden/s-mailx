@@ -102,7 +102,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
             success = TRU1;
             goto jleave;
          }
-         printf(tr(23, "No messages to %s.\n"), cmd);
+         printf(_("No messages to %s.\n"), cmd);
          goto jleave;
       }
       msgvec[1] = 0;
@@ -119,7 +119,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 
    if (sender_record) {
       if ((cp = nameof(message + *msgvec - 1, 0)) == NULL) {
-         printf(tr(24, "Cannot determine message sender to %s.\n"), cmd);
+         printf(_("Cannot determine message sender to %s.\n"), cmd);
          goto jleave;
       }
 
@@ -141,10 +141,10 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    if (prot != PROTO_IMAP) {
       if (access(file, 0) >= 0) {
          newfile = 0;
-         disp = tr(25, "[Appended]");
+         disp = _("[Appended]");
       } else {
          newfile = 1;
-         disp = tr(26, "[New file]");
+         disp = _("[New file]");
       }
    }
 
@@ -160,7 +160,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    } else {
       if (compressed) {
          newfile = 0;
-         disp = tr(25, "[Appended]");
+         disp = _("[Appended]");
       }
       if (!newfile && fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
             fseek(obuf, -2L, SEEK_END) == 0) {
@@ -251,7 +251,7 @@ jferr:
       if (tstats[0] >= 0)
          printf("%lu", (ul_it)tstats[0]);
       else
-         printf(tr(27, "binary"));
+         printf(_("binary"));
       printf("/%lu\n", (ul_it)tstats[1]);
    } else if (domark) {
       newfile = ~MSAVED;
@@ -287,7 +287,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
          *flag = FAL0;
          cp = expand("&");
       } else
-         fprintf(stderr, tr(28, "No file specified.\n"));
+         fprintf(stderr, _("No file specified.\n"));
    }
    NYD_LEAVE;
    return cp;
@@ -371,7 +371,7 @@ igshow(struct ignoretab *tab, char const *which)
    NYD_ENTER;
 
    if (tab->i_count == 0) {
-      printf(tr(34, "No fields currently being %s.\n"), which);
+      printf(_("No fields currently being %s.\n"), which);
       goto jleave;
    }
 
@@ -432,7 +432,7 @@ unignore1(char **list, struct ignoretab *tab, char const *which)
    NYD_ENTER;
 
    if (tab->i_count == 0) {
-      printf(tr(34, "No fields currently being %s.\n"), which);
+      printf(_("No fields currently being %s.\n"), which);
       goto jleave;
    }
 
@@ -475,7 +475,7 @@ c_next(void *v)
          if (*ip2 == 0)
             ip2 = msgvec;
       } while (ip2 != ip);
-      printf(tr(21, "No messages applicable\n"));
+      printf(_("No messages applicable\n"));
       goto jleave;
    }
 
@@ -501,7 +501,7 @@ c_next(void *v)
    }
    if (mp == NULL || PTRCMP(mp, >=, message + msgCount)) {
 jateof:
-      printf(tr(22, "At EOF\n"));
+      printf(_("At EOF\n"));
       rv = 0;
       goto jleave;
    }
@@ -653,9 +653,9 @@ c_deltype(void *v)
          rv = c_type(list);
          goto jleave;
       }
-      printf(tr(29, "At EOF\n"));
+      printf(_("At EOF\n"));
    } else
-      printf(tr(30, "No more messages\n"));
+      printf(_("No more messages\n"));
 jleave:
    NYD_LEAVE;
    return rv;

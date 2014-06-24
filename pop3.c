@@ -134,11 +134,11 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
       POP3_OUT(rv, "STLS" NL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
       if ((rv = ssl_open(scp->sc_url.url_host.s, &scp->sc_sock,
-            scp->sc_url.url_uhp.s)) != OKAY)
+            scp->sc_url.url_u_h_p.s)) != OKAY)
          goto jleave;
    }
 #else
-   if (_pop3_use_starttls(scp->sc_url.url_uhp.s)) {
+   if (_pop3_use_starttls(scp->sc_url.url_u_h_p.s)) {
       fprintf(stderr, "No SSL support compiled in.\n");
       rv = STOP;
       goto jleave;
@@ -150,13 +150,13 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_MD5
       if (ts != NULL) {
          if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY)
-            fprintf(stderr, tr(276, "POP3 `APOP' authentication failed, "
+            fprintf(stderr, _("POP3 `APOP' authentication failed, "
                "maybe try setting *pop3-no-apop*\n"));
          goto jleave;
       } else
 #endif
       if (options & OPT_VERB)
-         fprintf(stderr, tr(204, "No POP3 `APOP' support "
+         fprintf(stderr, _("No POP3 `APOP' support "
             "available, sending password in clear text\n"));
    }
 
@@ -220,8 +220,8 @@ _pop3_use_starttls(struct sockconn const *scp)
    if (!(rv = ok_blook(pop3_use_starttls)))
       if (!ok_blook(v15_compat) ||
             !(rv = vok_blook(savecat("pop3-use-starttls-",
-                  scp->sc_url.url_hp.s))))
-         rv = vok_blook(savecat("pop3-use-starttls-", scp->sc_url.url_uhp.s));
+                  scp->sc_url.url_h_p.s))))
+         rv = vok_blook(savecat("pop3-use-starttls-", scp->sc_url.url_u_h_p.s));
    NYD_LEAVE;
    return rv;
 }
@@ -234,8 +234,8 @@ _pop3_no_apop(struct sockconn const *scp)
 
    if (!(rv = ok_blook(pop3_no_apop)))
       if (!ok_blook(v15_compat) ||
-            !(rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_hp.s))))
-         rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_uhp.s));
+            !(rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_h_p.s))))
+         rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_u_h_p.s));
    NYD_LEAVE;
    return rv;
 }
@@ -341,7 +341,7 @@ jretry:
       case '-':
          rv = STOP;
          mp->mb_active = MB_NONE;
-         fprintf(stderr, tr(218, "POP3 error: %s"), _pop3_buf);
+         fprintf(stderr, _("POP3 error: %s"), _pop3_buf);
          break;
       default:
          /* If the answer starts neither with '+' nor with '-', it must be part
@@ -382,7 +382,7 @@ pop3catch(int s)
    NYD_X; /* Signal handler */
    switch (s) {
    case SIGINT:
-      fprintf(stderr, tr(102, "Interrupt\n"));
+      fprintf(stderr, _("Interrupt\n"));
       siglongjmp(_pop3_jmp, 1);
       break;
    case SIGPIPE:
@@ -398,7 +398,7 @@ _pop3_maincatch(int s)
    UNUSED(s);
 
    if (interrupts++ == 0)
-      fprintf(stderr, tr(102, "Interrupt\n"));
+      fprintf(stderr, _("Interrupt\n"));
    else
       onintr(0);
 }
@@ -477,7 +477,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
       rv = STOP;
 
    if (rv == STOP)
-      fprintf(stderr, tr(260, "invalid POP3 STAT response: %s\n"), _pop3_buf);
+      fprintf(stderr, _("invalid POP3 STAT response: %s\n"), _pop3_buf);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -585,7 +585,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    rv = STOP;
 
    if (mp->mb_sock.s_fd < 0) {
-      fprintf(stderr, tr(219, "POP3 connection already closed.\n"));
+      fprintf(stderr, _("POP3 connection already closed.\n"));
       ++_pop3_lock;
       goto jleave;
    }
@@ -660,6 +660,7 @@ jretry:
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
       if (is_head(lp, linelen)) {
+         DBG( fprintf(stderr, "!! POP3 really needs to quote From?\n"); )
          if (lines == 0)
             continue;
          fputc('>', mp->mb_otf);
@@ -777,14 +778,14 @@ pop3_update(struct mailbox *mp)
          ++held;
    }
    if (gotcha && edit) {
-      printf(tr(168, "\"%s\" "), displayname);
+      printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? tr(170, "complete\n") : tr(212, "updated.\n"));
+         ? _("complete\n") : _("updated.\n"));
    } else if (held && !edit) {
       if (held == 1)
-         printf(tr(155, "Held 1 message in %s\n"), displayname);
+         printf(_("Held 1 message in %s\n"), displayname);
       else
-         printf(tr(156, "Held %d messages in %s\n"), held, displayname);
+         printf(_("Held %d messages in %s\n"), held, displayname);
    }
    fflush(stdout);
    NYD_LEAVE;
@@ -837,7 +838,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    }
 
    if (!(ok_blook(v15_compat) ? ccred_lookup(&sc.sc_cred, &sc.sc_url)
-         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3, sc.sc_url.url_uhp.s)))
+         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3, sc.sc_url.url_u_h_p.s)))
       goto jleave;
 
    if (!sopen(&sc.sc_sock, &sc.sc_url))
@@ -858,14 +859,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
       mb.mb_otf = NULL;
    }
 
-   {  char *nmn = ac_alloc(sc.sc_url.url_proto_xlen + sc.sc_url.url_uhp.l +1);
-      sc.sc_url.url_proto[sc.sc_url.url_proto_len] = ':';
-      memcpy(sstpcpy(nmn, sc.sc_url.url_proto),
-         sc.sc_url.url_uhp.s, sc.sc_url.url_uhp.l +1);
-      sc.sc_url.url_proto[sc.sc_url.url_proto_len] = '\0';
-      initbox(nmn);
-      ac_free(nmn);
-   }
+   initbox(sc.sc_url.url_p_u_h_p);
    mb.mb_type = MB_VOID;
    _pop3_lock = 1;
    mb.mb_sock = sc.sc_sock;
@@ -913,7 +907,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    _pop3_lock = 0;
    if (!edit && msgCount == 0) {
       if (mb.mb_type == MB_POP3 && !ok_blook(emptystart))
-         fprintf(stderr, tr(258, "No mail at %s\n"), server);
+         fprintf(stderr, _("No mail at %s\n"), server);
       goto jleave;
    }
 
@@ -952,7 +946,7 @@ pop3_quit(void)
    NYD_ENTER;
 
    if (mb.mb_sock.s_fd < 0) {
-      fprintf(stderr, tr(219, "POP3 connection already closed.\n"));
+      fprintf(stderr, _("POP3 connection already closed.\n"));
       goto jleave;
    }
 

@@ -361,14 +361,14 @@ maildir_update(void)
    }
 jbypass:
    if ((gotcha || modflags) && edit) {
-      printf(tr(168, "\"%s\" "), displayname);
+      printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? tr(170, "complete\n") : tr(212, "updated.\n"));
+         ? _("complete\n") : _("updated.\n"));
    } else if (held && !edit && mb.mb_perm != 0) {
       if (held == 1)
-         printf(tr(155, "Held 1 message in %s\n"), displayname);
+         printf(_("Held 1 message in %s\n"), displayname);
       else
-         printf(tr(156, "Held %d messages in %s\n"), held, displayname);
+         printf(_("Held %d messages in %s\n"), held, displayname);
    }
    fflush(stdout);
 jfree:
@@ -487,7 +487,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
    /* Create a unique temporary file */
    for (i = 0;; sleep(1), ++i) {
       if (i >= attempts) {
-         fprintf(stderr, tr(198,
+         fprintf(stderr, _(
             "Can't create an unique file name in \"%s/tmp\".\n"), name);
          goto jleave;
       }
@@ -755,7 +755,7 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
       sawcom = FAL0;
    if (!nmail && !edit && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
-         fprintf(stderr, tr(258, "No mail at %s\n"), name);
+         fprintf(stderr, _("No mail at %s\n"), name);
       i = 1;
       goto jleave;
    }

@@ -66,7 +66,7 @@ edit1(int *msgvec, int viored)
       if (i > 0) { /* TODO getapproval(): return APPROV_{YES,NO,QUIT}: USE! */
          char *p;
 
-         printf(tr(72, "Edit message %d [ynq]? "), msgvec[i]);
+         printf(_("Edit message %d [ynq]? "), msgvec[i]);
          fflush(stdout);
          if (readline_restart(stdin, &line, &linesize, 0) < 0)
             break;
@@ -163,7 +163,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER,
          (readonly ? 0400 : 0600))) == NULL) {
-      perror(tr(73, "temporary mail edit file"));
+      perror(_("temporary mail edit file"));
       goto jleave;
    }
 

@@ -64,6 +64,10 @@ WANT_POP3=1
 # Support for SMTP protocol?  (Directly sending mails over the network)
 WANT_SMTP=1
 
+# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
+# can optionally be supported (see *netrc-load*)
+WANT_NETRC=1
+
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
 # This is disabled by default because it brings in a bunch of dependencies,
@@ -233,10 +237,6 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 # stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
 # of stack memory via our memory canaries
 WANT_DEBUG=0
-
-# We ship with our own small and efficient getopt(3) implementation;
-# set this to always choose that without even checking for another one
-WANT_NOGETOPT=0
 
 # We use the crypto libraries' MD5 implementation if possible unless this one
 WANT_NOEXTMD5=0

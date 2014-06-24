@@ -50,7 +50,6 @@ struct cmd {
    short          msgflag;       /* Required flags of msgs */
    short          msgmask;       /* Relevant flags of msgs */
 #ifdef HAVE_DOCSTRINGS
-   int            docid;         /* Translation id of .doc */
    char const     *doc;          /* One line doc for command */
 #endif
 };
@@ -153,7 +152,7 @@ _update_mailname(char const *name)
       enum protocol p = which_protocol(name);
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL) {
-            fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), name);
+            fprintf(stderr, _("Can't canonicalize `%s'\n"), name);
             rv = FAL0;
             goto jdocopy;
          }
@@ -235,7 +234,7 @@ _ghost(void *v)
 
    /* Show the list? */
    if (*argv == NULL) {
-      printf(tr(144, "Command ghosts are:\n"));
+      printf(_("Command ghosts are:\n"));
       for (nl = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
          cl = strlen(cg->name) + 5 + cg->cmd.l + 3;
          nl += cl;
@@ -252,15 +251,15 @@ _ghost(void *v)
 
    /* Request to add new ghost */
    if (argv[1] == NULL || argv[1][0] == '\0' || argv[2] != NULL) {
-      fprintf(stderr, tr(159, "Usage: %s\n"),
-         tr(425, "Define a <ghost> of <command>, or list all ghosts"));
+      fprintf(stderr, _("Usage: %s\n"),
+         _("Define a <ghost> of <command>, or list all ghosts"));
       v = NULL;
       goto jleave;
    }
 
    /* Check that we can deal with this one */
-   if (argv[0] == _lex_isolate(argv[0])) {
-      fprintf(stderr, tr(151, "Can't canonicalize `%s'\n"), argv[0]);
+   if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
+      fprintf(stderr, _("Can't canonicalize `%s'\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -310,7 +309,7 @@ _unghost(void *v)
             free(cg);
             goto jouter;
          }
-      fprintf(stderr, tr(91, "Unknown command: `%s'\n"), cp);
+      fprintf(stderr, _("Unknown command: `%s'\n"), cp);
       rv = 1;
 jouter:
       ;
@@ -350,7 +349,7 @@ _pcmdlist(void *v)
 
    qsort(cpa, i, sizeof(cp), &__pcmd_cmp);
 
-   printf(tr(14, "Commands are:\n"));
+   printf(_("Commands are:\n"));
    for (i = 0, cursor = cpa; (cp = *cursor++) != NULL;) {
       size_t j;
       if (cp->func == &c_cmdnotsupp)
@@ -373,7 +372,7 @@ _features(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(tr(523, "Features: %s\n"), features);
+   printf(_("Features: %s\n"), features);
    NYD_LEAVE;
    return 0;
 }
@@ -383,7 +382,7 @@ _version(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(tr(111, "Version %s\n"), version);
+   printf(_("Version %s\n"), version);
    NYD_LEAVE;
    return 0;
 }
@@ -464,7 +463,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
       goto jleave;
 #endif
    default:
-      fprintf(stderr, tr(217, "Cannot handle protocol: %s\n"), name);
+      fprintf(stderr, _("Cannot handle protocol: %s\n"), name);
       goto jem1;
    }
 
@@ -585,7 +584,7 @@ jnonmail:
       if (!nmail) {
          if (!ok_blook(emptystart))
 jnomail:
-            fprintf(stderr, tr(88, "No mail for %s\n"), who);
+            fprintf(stderr, _("No mail for %s\n"), who);
       }
       rv = 1;
       goto jleave;
@@ -615,13 +614,13 @@ newmailinfo(int omsgCount)
    if (msgCount > omsgCount) {
       for (i = omsgCount; i < msgCount; ++i)
          message[i].m_flag |= MNEWEST;
-      printf(tr(158, "New mail has arrived.\n"));
+      printf(_("New mail has arrived.\n"));
       if ((i = msgCount - omsgCount) == 1)
-         printf(tr(214, "Loaded 1 new message.\n"));
+         printf(_("Loaded 1 new message.\n"));
       else
-         printf(tr(215, "Loaded %d new messages.\n"), i);
+         printf(_("Loaded %d new messages.\n"), i);
    } else
-      printf(tr(224, "Loaded %d messages.\n"), msgCount);
+      printf(_("Loaded %d messages.\n"), msgCount);
    callhook(mailname, 1);
    mdot = getmdot(1);
    if (ok_blook(header))
@@ -728,7 +727,7 @@ jreadline:
             continue;
          }
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(tr(89, "Use `quit' to quit.\n"));
+            printf(_("Use `quit' to quit.\n"));
             continue;
          }
          break;
@@ -824,7 +823,7 @@ jrestart:
    /* Handle ! differently to get the correct lexical conventions */
    if (*cp == '!') {
       if (sourcing) {
-         fprintf(stderr, tr(90, "Can't `!' while sourcing\n"));
+         fprintf(stderr, _("Can't `!' while sourcing\n"));
          goto jleave;
       }
       c_shell(++cp);
@@ -882,7 +881,7 @@ jrestart:
    }
 
    if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
-      fprintf(stderr, tr(91, "Unknown command: `%s'\n"), word);
+      fprintf(stderr, _("Unknown command: `%s'\n"), word);
       if (com != NULL) {
          c_cmdnotsupp(NULL);
          com = NULL;
@@ -899,26 +898,26 @@ jexec:
    /* Process the arguments to the command, depending on the type it expects,
     * default to error.  If we're sourcing an interactive command: error */
    if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
-      fprintf(stderr, tr(92, "May not execute `%s' while sending\n"),
+      fprintf(stderr, _("May not execute `%s' while sending\n"),
          com->name);
       goto jleave;
    }
    if (sourcing && (com->argtype & ARG_I)) {
-      fprintf(stderr, tr(93, "May not execute `%s' while sourcing\n"),
+      fprintf(stderr, _("May not execute `%s' while sourcing\n"),
          com->name);
       goto jleave;
    }
    if (!(mb.mb_perm & MB_DELE) && (com->argtype & ARG_W)) {
-      fprintf(stderr, tr(94, "May not execute `%s' -- "
+      fprintf(stderr, _("May not execute `%s' -- "
          "message file is read only\n"), com->name);
       goto jleave;
    }
    if (evp->ev_is_recursive && (com->argtype & ARG_R)) {
-      fprintf(stderr, tr(95, "Cannot recursively invoke `%s'\n"), com->name);
+      fprintf(stderr, _("Cannot recursively invoke `%s'\n"), com->name);
       goto jleave;
    }
    if (mb.mb_type == MB_VOID && (com->argtype & ARG_A)) {
-      fprintf(stderr, tr(257, "Cannot execute `%s' without active mailbox\n"),
+      fprintf(stderr, _("Cannot execute `%s' without active mailbox\n"),
          com->name);
       goto jleave;
    }
@@ -940,7 +939,7 @@ jexec:
       }
       if (*_msgvec == 0) {
          if (!inhook)
-            printf(tr(97, "No applicable messages\n"));
+            printf(_("No applicable messages\n"));
          break;
       }
       e = (*com->func)(_msgvec);
@@ -950,7 +949,7 @@ jexec:
       /* Message list with no defaults, but no error if none exist */
       if (_msgvec == NULL) {
 je96:
-         fprintf(stderr, tr(96, "Illegal use of `message list'\n"));
+         fprintf(stderr, _("Invalid use of `message list'\n"));
          break;
       }
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
@@ -972,12 +971,12 @@ je96:
             ((com->argtype & ARG_ARGMASK) == ARG_ECHOLIST))) < 0)
          break;
       if (c < com->minargs) {
-         fprintf(stderr, tr(99, "`%s' requires at least %d arg(s)\n"),
+         fprintf(stderr, _("`%s' requires at least %d arg(s)\n"),
             com->name, com->minargs);
          break;
       }
       if (c > com->maxargs) {
-         fprintf(stderr, tr(100, "`%s' takes no more than %d arg(s)\n"),
+         fprintf(stderr, _("`%s' takes no more than %d arg(s)\n"),
             com->name, com->maxargs);
          break;
       }
@@ -990,7 +989,7 @@ je96:
       break;
 
    default:
-      panic(tr(101, "Unknown argument type"));
+      panic(_("Unknown argument type"));
    }
 
    if (e == 0 && (com->argtype & ARG_V) &&
@@ -1100,7 +1099,7 @@ onintr(int s)
       image = -1;
    }
    if (interrupts != 1)
-      fprintf(stderr, tr(102, "Interrupt\n"));
+      fprintf(stderr, _("Interrupt\n"));
    safe_signal(SIGPIPE, _oldpipe);
    reset(0);
 }
@@ -1154,28 +1153,28 @@ newfileinfo(void)
 
    /* If displayname gets truncated the user effectively has no option to see
     * the full pathname of the mailbox, so print it at least for '? fi' */
-   printf(tr(103, "\"%s\": "),
+   printf(_("\"%s\": "),
       (_update_mailname(NULL) ? displayname : mailname));
    if (msgCount == 1)
-      printf(tr(104, "1 message"));
+      printf(_("1 message"));
    else
-      printf(tr(105, "%d messages"), msgCount);
+      printf(_("%d messages"), msgCount);
    if (n > 0)
-      printf(tr(106, " %d new"), n);
+      printf(_(" %d new"), n);
    if (u-n > 0)
-      printf(tr(107, " %d unread"), u);
+      printf(_(" %d unread"), u);
    if (d > 0)
-      printf(tr(108, " %d deleted"), d);
+      printf(_(" %d deleted"), d);
    if (s > 0)
-      printf(tr(109, " %d saved"), s);
+      printf(_(" %d saved"), s);
    if (moved > 0)
-      printf(tr(136, " %d moved"), moved);
+      printf(_(" %d moved"), moved);
    if (hidden > 0)
-      printf(tr(139, " %d hidden"), hidden);
+      printf(_(" %d hidden"), hidden);
    if (mb.mb_type == MB_CACHE)
       printf(" [Disconnected]");
    else if (mb.mb_perm == 0)
-      printf(tr(110, " [Read only]"));
+      printf(_(" [Read only]"));
    printf("\n");
 jleave:
    NYD_LEAVE;
@@ -1291,11 +1290,11 @@ initbox(char const *name)
 
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
          NULL) {
-      perror(tr(87, "temporary mail message file"));
+      perror(_("temporary mail message file"));
       exit(1);
    }
    if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
-      perror(tr(87, "temporary mail message file"));
+      perror(_("temporary mail message file"));
       exit(1);
    }
    Ftmp_release(&tempMesg);
@@ -1336,9 +1335,9 @@ print_comm_docstr(char const *comm)
       if (cp->func == &c_cmdnotsupp)
          continue;
       if (!strcmp(comm, cp->name))
-         printf("%s: %s\n", comm, tr(cp->docid, cp->doc));
+         printf("%s: %s\n", comm, V_(cp->doc));
       else if (is_prefix(comm, cp->name))
-         printf("%s (%s): %s\n", comm, cp->name, tr(cp->docid, cp->doc));
+         printf("%s (%s): %s\n", comm, cp->name, V_(cp->doc));
       else
          continue;
       rv = TRU1;

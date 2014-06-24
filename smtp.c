@@ -102,7 +102,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
    do {
       if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
          if (len >= 0 && !ign_eof)
-            fprintf(stderr, tr(241, "Unexpected EOF on SMTP connection\n"));
+            fprintf(stderr, _("Unexpected EOF on SMTP connection\n"));
             rv = -1;
             goto jleave;
       }
@@ -116,7 +116,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
       default:    rv = 5; break;
       }
       if (val != rv)
-         fprintf(stderr, tr(191, "smtp-server: %s"), slp->buf);
+         fprintf(stderr, _("smtp-server: %s"), slp->buf);
    } while (slp->buf[3] == '-');
 
    if (want_dat) {
@@ -169,7 +169,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    _ANSWER(2, FAL0, FAL0);
 
 #ifdef HAVE_SSL
-   if (!sp->s_use_ssl && ok_blook(smtp_use_starttls)) {
+   if (!sp->s_use_ssl && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, LINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
@@ -178,12 +178,13 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
       _ANSWER(2, FAL0, FAL0);
 
       if (!(options & OPT_DEBUG) &&
-            ssl_open(sbp->sb_url.url_host.s, sp, sbp->sb_url.url_uhp.s) != OKAY)
+            ssl_open(sbp->sb_url.url_host.s, sp, sbp->sb_url.url_u_h_p.s
+               ) != OKAY)
          goto jleave;
    }
 #else
-   if (ok_blook(smtp_use_starttls)) {
-      fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+   if (xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
+      fprintf(stderr, _("No SSL support compiled in.\n"));
       goto jleave;
    }
 #endif
@@ -248,7 +249,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    }
 
 jsend:
-   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), sbp->sb_url.url_uh.s);
+   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), sbp->sb_url.url_u_h.s);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 

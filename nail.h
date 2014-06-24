@@ -141,17 +141,22 @@
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
+#define NETRC           "~/.netrc"
 #define TMPDIR_FALLBACK "/tmp"
 
+#undef COLOUR
+#ifdef HAVE_COLOUR
+# define COLOUR(X)      X
+#else
+# define COLOUR(X)
+#endif
 #define COLOUR_MSGINFO  "fg=green"
 #define COLOUR_PARTINFO "fg=brown"
 #define COLOUR_FROM_    "fg=brown"
 #define COLOUR_HEADER   "fg=red"
 #define COLOUR_UHEADER  "ft=bold,fg=red"
-#define COLOUR_PAGERS   "less"
 #define COLOUR_TERMS    \
-   "cons25,linux,rxvt,rxvt-unicode,screen,sun,"\
-   "vt100,vt220,wsvt25,xterm,xterm-color"
+   "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
 #define COLOUR_USER_HEADERS "from,subject"
 
 #define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
@@ -352,13 +357,12 @@
 #endif
 
 /* Translation (init in main.c) */
-#undef tr
-#ifdef HAVE_CATGETS
-# define CATSET         1
-# define tr(c,d)        catgets(catd, CATSET, c, d)
-#else
-# define tr(c,d)        (d)
-#endif
+#undef _
+#undef N_
+#undef V_
+#define _(S)            (S)
+#define N_(S)           (S)
+#define V_(S)           (S)
 
 /*
  * Types
@@ -508,7 +512,11 @@ enum user_options {
    OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
    OPT_TTYOUT     = 1u<<17,
-   OPT_UNICODE    = 1u<<18    /* We're in an UTF-8 environment */
+   OPT_UNICODE    = 1u<<18,   /* We're in an UTF-8 environment */
+
+   /* Some easy-access shortcuts */
+   OPT_D_V        = OPT_DEBUG | OPT_VERB,
+   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
 };
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
@@ -712,7 +720,7 @@ enum ssl_verify_level {
 /* A large enum with all the binary and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
- * Note: see the comments in acmava.c before changing *anything* in here! */
+ * Note: see the comments in accmacvar.c before changing *anything* in here! */
 enum okeys {
    /* Option keys for binary options */
    ok_b_add_file_recipients,
@@ -742,8 +750,10 @@ enum okeys {
    ok_b_bsdorder,
    ok_b_bsdset,
    ok_b_colour_disable,
+   ok_b_colour_pager,
    ok_b_debug,                         /* {special=1} */
    ok_b_disconnected,
+   ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_editalong,
    ok_b_editheaders,
@@ -769,6 +779,7 @@ enum okeys {
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_counter_evidence,
+   ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,
    ok_b_piperaw,
@@ -810,7 +821,6 @@ enum okeys {
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_cmd,
-   ok_v_colour_pagers,
    ok_v_colour_from_,                  /* {name=colour-from_} */
    ok_v_colour_header,
    ok_v_colour_msginfo,
@@ -841,11 +851,16 @@ enum okeys {
    ok_v_LISTER,
    ok_v_MAIL,
    ok_v_MBOX,
+   /* TODO v15-compat: mimetypes-load-control -> mimetypes-load / mimetypes */
    ok_v_mimetypes_load_control,
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
+   /* TODO v15-compat: NAIL_HEAD -> message-head? */
    ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
+   /* TODO v15-compat: NAIL_HISTFILE -> history-file */
    ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
+   /* TODO v15-compat: NAIL_HISTSIZE -> history-size{,limit} */
    ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
+   /* TODO v15-compat: NAIL_TAIL -> message-tail? */
    ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
@@ -861,6 +876,7 @@ enum okeys {
    ok_v_sendcharsets,
    ok_v_sender,
    ok_v_sendmail,
+   ok_v_sendmail_arguments,
    ok_v_sendmail_progname,
    ok_v_SHELL,
    ok_v_Sign,
@@ -873,6 +889,7 @@ enum okeys {
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
    ok_v_smtp,
+   /* TODO v15-compat: smtp-auth: drop */
    ok_v_smtp_auth,
    ok_v_smtp_auth_password,
    ok_v_smtp_auth_user,
@@ -897,7 +914,15 @@ enum okeys {
    ok_v_stealthmua,
    ok_v_toplines,
    ok_v_ttycharset,
+   ok_v_user,
    ok_v_VISUAL
+};
+
+enum okey_xlook_mode {
+   OXM_PLAIN      = 1<<0,  /* Plain key always tested */
+   OXM_H_P        = 1<<1,  /* Check PLAIN-.url_h_p */
+   OXM_U_H_P      = 1<<2,  /* Check PLAIN-.url_u_h_p */
+   OXM_ALL        = 0x7
 };
 
 /* Locale-independent character classes */
@@ -939,21 +964,22 @@ struct url {
    char           url_proto[14];    /* Communication protocol as 'xy\0//' */
    ui8_t          url_proto_len;    /* Length of .url_proto ('\0' index) */
    ui8_t          url_proto_xlen;   /* .. if '\0' is replaced with ':' */
-   struct str     url_user;         /* User, urlxdec()oded */
+   struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
-   struct str     url_pass_enc;     /* Pass (urlxenc()oded) or NULL */
    struct str     url_host;         /* Service hostname */
    struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
-   struct str     url_hp;           /* .url_host[:.url_port] */
-   struct str     url_uhp;          /* .url_user_enc@.url_host[:.url_port] */
-   /* .url_user_enc@.url_host
+   struct str     url_h_p;          /* .url_host[:.url_port] */
+   /* .url_user@.url_host
     * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
     * *hostname*)!  (And may later be overwritten according to *from*!) */
-   struct str     url_uh;
-   char const     *url_puhp;        /* .url_proto://.url_uhp */
-   char const     *url_puhpp;       /* .url_proto://.url_uhp[/.url_path] */
+   struct str     url_u_h;
+   struct str     url_u_h_p;        /* .url_user@.url_host[:.url_port] */
+   struct str     url_eu_h_p;       /* .url_user_enc@.url_host[:.url_port] */
+   char const     *url_p_u_h_p;     /* .url_proto://.url_u_h_p */
+   char const     *url_p_eu_h_p;    /* .url_proto://.url_eu_h_p */
+   char const     *url_p_eu_h_p_p;  /* .url_proto://.url_eu_h_p[/.url_path] */
 };
 
 struct ccred {
@@ -1215,7 +1241,7 @@ enum argtype {
    ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
    ARG_T          = 1u<<11,   /* Is a transparent command */
    ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<13    /* Illegal when read only bit */
+   ARG_W          = 1u<<13    /* Invalid when read only bit */
 };
 
 enum gfield {
@@ -1466,10 +1492,6 @@ VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 
 #ifdef HAVE_ICONV
 VL iconv_t     iconvd;
-#endif
-
-#ifdef HAVE_CATGETS
-VL nl_catd     catd;
 #endif
 
 VL sigjmp_buf  srbuf;

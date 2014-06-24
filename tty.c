@@ -114,8 +114,8 @@ do {\
    if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
 jerr:\
-   fprintf(stderr, "Synopsis: history: %s\n", tr(431,\
-      "<show> (default), <clear> or select <NO> from editor history"));\
+   fprintf(stderr, "Synopsis: history: %s\n",\
+      _("<show> (default), <clear> or select <NO> from editor history"));\
    v = NULL;\
 jleave:\
    NYD_LEAVE;\
@@ -153,7 +153,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    rv = FAL0;
 
    if (prompt == NULL)
-      prompt = tr(264, "Continue (y/n)? ");
+      prompt = _("Continue (y/n)? ");
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
@@ -187,7 +187,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    NYD_ENTER;
 
    if (query == NULL)
-      query = tr(509, "User: ");
+      query = _("User: ");
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
@@ -220,7 +220,7 @@ getpassword(char const *query)
    NYD_ENTER;
 
    if (query == NULL)
-      query = tr(510, "Password: ");
+      query = _("Password: ");
    fputs(query, stdout);
    fflush(stdout);
 
@@ -1527,7 +1527,7 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    }
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
-   /* TODO *l.nd=='\0' : instead adjust acmava.c to disallow empty vals */
+   /* TODO *l.nd=='\0' : instead adjust accmacvar.c to disallow empty vals */
    if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
       l.nd = "\033[C"; /* XXX no "magic" constant */
    l.x_buf = buf;
@@ -1837,9 +1837,12 @@ tty_init(void)
          lbuf[--llen] = '\0';
       if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
          continue;
-      _ncl_hist_load = TRU1;
-      tty_addhist(lbuf, FAL0);
-      _ncl_hist_load = FAL0;
+      else {
+         bool_t isgabby = (lbuf[0] == '*');
+         _ncl_hist_load = TRU1;
+         tty_addhist(lbuf + isgabby, isgabby);
+         _ncl_hist_load = FAL0;
+      }
    }
    if (lbuf != NULL)
       free(lbuf);
@@ -1887,6 +1890,8 @@ tty_destroy(void)
 
    for (; hp != NULL; hp = hp->younger) {
       if (!hp->isgabby || dogabby) {
+         if (hp->isgabby)
+            putc('*', f);
          fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
          putc('\n', f);
       }
@@ -2121,7 +2126,7 @@ FL int
       doffl = TRU1;
    }
    if (n > 0) {
-      fprintf(stdout, tr(511, "{former content: %.*s} "), (int)n, *linebuf);
+      fprintf(stdout, _("{former content: %.*s} "), (int)n, *linebuf);
       n = 0;
       doffl = TRU1;
    }

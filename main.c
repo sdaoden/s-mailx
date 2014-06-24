@@ -112,22 +112,11 @@ VL uc_it const       class_char[] = {
 };
 
 /* getopt(3) fallback implementation */
-#ifdef HAVE_GETOPT
-# define _oarg       optarg
-# define _oind       optind
-/*# define _oerr     opterr*/
-# define _oopt       optopt
-#else
 static char          *_oarg;
 static int           _oind, /*_oerr,*/ _oopt;
-#endif
 
-/* getopt(3) fallback implementation */
-#ifdef HAVE_GETOPT
-# define _getopt     getopt
-#else
+/* Our own little getopt(3) */
 static int     _getopt(int argc, char * const argv[], char const *optstring);
-#endif
 
 /* Perform basic startup initialization */
 static void    _startup(void);
@@ -154,7 +143,6 @@ static int     _rcv_mode(char const *folder, char const *Larg);
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
 
-#ifndef HAVE_GETOPT
 static int
 _getopt(int argc, char * const argv[], char const *optstring)
 {
@@ -170,11 +158,11 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = lastp;
       lastp = 0;
    } else {
-      if (_oind >= argc || argv[_oind] == 0 || argv[_oind][0] != '-' ||
+      if (_oind >= argc || argv[_oind] == NULL || argv[_oind][0] != '-' ||
             argv[_oind][1] == '\0')
          goto jleave;
       if (argv[_oind][1] == '-' && argv[_oind][2] == '\0') {
-         ++_oind;
+         /* We need this in for MTA arg detection (easier) ++_oind;*/
          goto jleave;
       }
       curp = &argv[_oind][1];
@@ -194,7 +182,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
             if ((_oind += 2) > argc) {
                if (!colon /*&& _oerr*/) {
                   fprintf(stderr,
-                     tr(79, "%s: option requires an argument -- %c\n"),
+                     _("%s: option requires an argument -- %c\n"),
                      argv[0], (char)_oopt);
                }
                rv = (colon ? ':' : '?');
@@ -214,7 +202,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    }
 
    if (!colon /*&& opterr*/)
-      fprintf(stderr, tr(78, "%s: illegal option -- %c\n"), argv[0], _oopt);
+      fprintf(stderr, _("%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
       lastp = curp + 1;
    else
@@ -225,7 +213,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-#endif /* !HAVE_GETOPT */
 
 static void
 _startup(void)
@@ -246,9 +233,7 @@ _startup(void)
 
    image = -1;
    dflpipe = SIG_DFL;
-#ifndef HAVE_GETOPT
    _oind = /*_oerr =*/ 1;
-#endif
 
    if ((cp = strrchr(progname, '/')) != NULL)
       progname = ++cp;
@@ -273,7 +258,8 @@ _startup(void)
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 
-   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
+   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013.
+    * Note: on change please update ./nail.rc accordingly */
    /* noallnet */
    /* noappend */
    ok_bset(asksub, TRU1);
@@ -332,14 +318,6 @@ _startup(void)
    mb_cur_max = 1;
 #endif
 
-#ifdef HAVE_CATGETS
-# ifdef NL_CAT_LOCALE
-   catd = catopen(CATNAME, NL_CAT_LOCALE);
-# else
-   catd = catopen(CATNAME, 0);
-# endif
-#endif
-
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
@@ -377,11 +355,11 @@ _setup_vars(void)
    cp = (myname == NULL) ? getenv("USER") : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
-      panic(tr(201, "Cannot associate a name with uid %lu"), (ul_it)uid);
+      panic(_("Cannot associate a name with uid %lu"), (ul_it)uid);
    if (cp == NULL)
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL)
-      panic(tr(236, "`%s' is not a user of this system"), cp);
+      panic(_("`%s' is not a user of this system"), cp);
    else {
       myname = pw->pw_name;
       if (pw->pw_uid != uid)
@@ -525,7 +503,7 @@ _rcv_mode(char const *folder, char const *Larg)
          safe_signal(SIGINT, _hdrstop);
       if (!(options & OPT_N_FLAG)) {
          if (!ok_blook(quiet))
-            printf(tr(140, "%s version %s.  Type ? for help.\n"),
+            printf(_("%s version %s.  Type ? for help.\n"),
                (ok_blook(bsdcompat) ? "Mail" : uagent), version);
          announce(1);
          fflush(stdout);
@@ -559,7 +537,7 @@ _hdrstop(int signo)
    UNUSED(signo);
 
    fflush(stdout);
-   fprintf(stderr, tr(141, "\nInterrupt\n"));
+   fprintf(stderr, _("\nInterrupt\n"));
    siglongjmp(__hdrjmp, 1);
 }
 
@@ -568,16 +546,16 @@ main(int argc, char *argv[])
 {
    static char const optstr[] = "A:a:Bb:c:DdEeFfHiL:NnO:q:Rr:S:s:tu:Vv~#",
       usagestr[] =
-         "Synopsis:\n"
-         "  %s [-BDdEFintv~] [-A acc] [-a attachment] "
-            "[-b bcc-addr] [-c cc-addr]\n"
-         "\t  [-O mtaopt [-O mtaopt-arg]] [-q file] [-r from-addr] "
-            "[-S var[=value]]\n"
-         "\t  [-s subject] to-addr...\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
-            "-f [file]\n"
-         "  %s [-BDdEeHiNnRv~#] [-A acc] [-L spec-list] [-S var[=value]] "
-            "[-u user]\n";
+         " Synopsis:\n"
+         "  %s [-BDdEFintv~] [-A account]\n"
+         "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
+         "\t [-q file] [-r from-address] [-S var[=value]...]\n"
+         "\t [-s subject] to-address... [-- mta-option...]\n"
+         "  %s [-BDdEeHiNnRv~#] [-A account]\n"
+         "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
+         "  %s [-BDdEeHiNnRv~#] [-A account]\n"
+         "\t [-L spec-list] [-S var[=value]...] [-u user] [-- mta-option...]\n"
+      ;
 
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
@@ -690,10 +668,10 @@ main(int argc, char *argv[])
          options |= OPT_NOSRC;
          break;
       case 'O':
-         /* Additional options to pass-through to MTA */
+         /* Additional options to pass-through to MTA TODO v15-compat legacy */
          if (smopts_count == (size_t)smopts_size)
             smopts_size = _grow_cpp(&smopts, smopts_size + 8, smopts_count);
-         smopts[smopts_count++] = skin(_oarg);
+         smopts[smopts_count++] = _oarg;
          break;
       case 'q':
          /* Quote file TODO drop? -Q with real quote?? what ? */
@@ -712,7 +690,7 @@ main(int argc, char *argv[])
             struct name *fa = nalloc(_oarg, GFULL);
 
             if (is_addr_invalid(fa, 1) || is_fileorpipe_addr(fa)) {
-               fprintf(stderr, tr(271, "Invalid address argument with -r\n"));
+               fprintf(stderr, _("Invalid address argument with -r\n"));
                goto jusage;
             }
             option_r_arg = fa->n_name;
@@ -789,57 +767,80 @@ joarg:
          break;
       case '?':
 jusage:
-         fprintf(stderr, tr(135, usagestr), progname, progname, progname);
+         fprintf(stderr, _(usagestr), progname, progname, progname);
          exit_status = EXIT_USE;
          goto jleave;
       }
    }
 
+   /* The normal arguments may be followed by MTA arguments after `--';
+    * however, -f may take off an argument, too, and before that */
+   if ((cp = argv[i = _oind]) == NULL)
+      ;
+   else if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
+      cp = argv[++i];
    /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
-   if (folder != NULL && folder[1] == '\0') {
-      if (_oind < argc) {
-         if (_oind + 1 < argc) {
-            fprintf(stderr, tr(205, "More than one file given with -f\n"));
+   else if (folder != NULL && folder[1] == '\0') {
+      folder = cp;
+      if ((cp = argv[++i]) != NULL) {
+         if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
+            fprintf(stderr, _("More than one file given with -f\n"));
             goto jusage;
          }
-         folder = argv[_oind];
+         cp = argv[++i];
       }
    } else {
-      for (i = _oind; argv[i]; ++i)
-         to = cat(to, checkaddrs(lextract(argv[i], GTO | GFULL)));
+      for (;;) {
+         to = cat(to, checkaddrs(lextract(cp, GTO | GFULL)));
+         if ((cp = argv[++i]) == NULL)
+            break;
+         if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0') {
+            cp = argv[++i];
+            break;
+         }
+      }
       if (to != NULL)
          options |= OPT_SENDMODE;
+   }
+
+   /* Additional options to pass-through to MTA? */
+   while (cp != NULL) {
+      if (smopts_count == (size_t)smopts_size)
+         smopts_size = _grow_cpp(&smopts, smopts_size + 8,
+               smopts_count);
+      smopts[smopts_count++] = cp;
+      cp = argv[++i];
    }
 
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
       if (folder != NULL && !(options & OPT_BATCH_FLAG)) {
-         fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
+         fprintf(stderr, _("Cannot give -f and people to send to.\n"));
          goto jusage;
       }
       if (myname != NULL) {
-         fprintf(stderr, tr(568,
+         fprintf(stderr, _(
             "The -u option cannot be used in send mode\n"));
          goto jusage;
       }
       if (!(options & OPT_t_FLAG) && to == NULL) {
-         fprintf(stderr, tr(138,
+         fprintf(stderr, _(
             "Send options without primary recipient specified.\n"));
          goto jusage;
       }
       if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-         fprintf(stderr, tr(45,
+         fprintf(stderr, _(
             "The -H and -L options cannot be used in send mode.\n"));
          goto jusage;
       }
       if (options & OPT_R_FLAG) {
          fprintf(stderr,
-            tr(235, "The -R option is meaningless in send mode.\n"));
+            _("The -R option is meaningless in send mode.\n"));
          goto jusage;
       }
    } else {
       if (folder != NULL && myname != NULL) {
-         fprintf(stderr, tr(569,
+         fprintf(stderr, _(
             "The options -f and -u are mutually exclusive\n"));
          goto jusage;
       }
@@ -904,7 +905,7 @@ jusage:
    var_clear_allow_undefined = FAL0;
 
    if (options & OPT_DEBUG)
-      fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);
+      fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
       exit_status = _rcv_mode(folder, Larg);

@@ -108,7 +108,7 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
       csuf = colour_get(COLOURSPEC_RESET)->s;
    }
 #endif
-   fprintf(obuf, tr(17, "%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
+   fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
       cpre, msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size, csuf);
    NYD_LEAVE;
 }
@@ -143,7 +143,7 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
          memcpy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
-      fprintf(stderr, tr(570,
+      fprintf(stderr, _(
          "The value of *attrlist* is not of the correct length\n"));
    }
    if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
@@ -341,7 +341,7 @@ jputc:
                if (i != 0)
                   date = datebuf;
                else
-                  fprintf(stderr, tr(174,
+                  fprintf(stderr, _(
                      "Ignored date format, it excesses the target buffer "
                      "(%lu bytes)\n"), (ul_it)sizeof datebuf);
                datefmt = NULL;
@@ -685,7 +685,7 @@ _scroll1(char *arg, int onlynew)
 jscroll_forward:
       if (_screen * size > msgCount) {
          _screen = msgCount / size;
-         printf(tr(7, "On last screenful of messages\n"));
+         printf(_("On last screenful of messages\n"));
       }
       break;
 
@@ -696,14 +696,14 @@ jscroll_forward:
          _screen -= atoi(arg + 1);
       if (_screen < 0) {
          _screen = 0;
-         printf(tr(8, "On first screenful of messages\n"));
+         printf(_("On first screenful of messages\n"));
       }
       if (cur[0] == -1)
          cur[0] = -2;
       break;
 
    default:
-      fprintf(stderr, tr(9, "Unrecognized scrolling command \"%s\"\n"), arg);
+      fprintf(stderr, _("Unrecognized scrolling command \"%s\"\n"), arg);
       size = 1;
       goto jleave;
    }
@@ -724,7 +724,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    FILE * volatile obuf;
    bool_t volatile hadsig = FAL0, isrelax = FAL0;
    NYD_ENTER;
-   {
+   {/* C89.. */
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
          ? SEND_MBOX : dodecode
          ? SEND_SHOW : doign
@@ -740,7 +740,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    if (dopipe) {
       if ((cp = ok_vlook(SHELL)) == NULL)
          cp = XSHELL;
-      if ((obuf = Popen(cmd, "w", cp, 1)) == NULL) {
+      if ((obuf = Popen(cmd, "w", cp, NULL, 1)) == NULL) {
          perror(cmd);
          obuf = stdout;
       } else
@@ -765,8 +765,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* `>=' not `<': we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
-         pager = get_pager();
-         obuf = Popen(pager, "w", NULL, 1);
+         char const *envadd = NULL;
+         pager = get_pager(&envadd);
+         obuf = Popen(pager, "w", NULL, envadd, 1);
          if (obuf == NULL) {
             perror(pager);
             obuf = stdout;
@@ -776,12 +777,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
 #ifdef HAVE_COLOUR
       if (action != SEND_MBOX)
-         colour_table_create(pager); /* (salloc()s!) */
+         colour_table_create(pager != NULL); /* (salloc()s!) */
 #endif
    }
 #ifdef HAVE_COLOUR
    else if ((options & OPT_TTYOUT) && action != SEND_MBOX)
-      colour_table_create(NULL); /* (salloc()s!) */
+      colour_table_create(FAL0); /* (salloc()s!) */
 #endif
 
    /*TODO unless we have our signal manager special care must be taken */
@@ -839,7 +840,7 @@ _pipe1(char *str, int doign)
    if ((cmd = laststring(str, &needs_list, 1)) == NULL) {
       cmd = ok_vlook(cmd);
       if (cmd == NULL || *cmd == '\0') {
-         fputs(tr(16, "variable cmd not set\n"), stderr);
+         fputs(_("variable cmd not set\n"), stderr);
          goto jleave;
       }
    }
@@ -853,7 +854,7 @@ _pipe1(char *str, int doign)
             rv = 0;
             goto jleave;
          }
-         puts(tr(18, "No messages to pipe."));
+         puts(_("No messages to pipe."));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -868,14 +869,14 @@ _pipe1(char *str, int doign)
       goto jleave;
    }
 
-   printf(tr(268, "Pipe to: \"%s\"\n"), cmd);
+   printf(_("Pipe to: \"%s\"\n"), cmd);
    stats[0] = stats[1] = 0;
    if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, cmd, stats)) == 0) {
       printf("\"%s\" ", cmd);
       if (stats[0] >= 0)
          printf("%lu", (long)stats[0]);
       else
-         printf(tr(27, "binary"));
+         printf(_("binary"));
       printf("/%lu\n", (long)stats[1]);
    }
 jleave:
@@ -888,7 +889,7 @@ c_cmdnotsupp(void *v) /* TODO -> lex.c */
 {
    NYD_ENTER;
    UNUSED(v);
-   fprintf(stderr, tr(10, "The requested feature is not compiled in\n"));
+   fprintf(stderr, _("The requested feature is not compiled in\n"));
    NYD_LEAVE;
    return 1;
 }
@@ -1010,7 +1011,7 @@ c_headers(void *v)
    }
 
    if (!flag)
-      printf(tr(6, "No more mail.\n"));
+      printf(_("No more mail.\n"));
    NYD_LEAVE;
    return !flag;
 }
@@ -1056,11 +1057,11 @@ c_from(void *v)
          char const *p;
          if (sigsetjmp(_cmd1_pipejmp, 1))
             goto jendpipe;
-         p = get_pager();
-         if ((obuf = Popen(p, "w", NULL, 1)) == NULL) {
+         p = get_pager(NULL);
+         if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
             perror(p);
             obuf = stdout;
-            cp=NULL;
+            cp = NULL;
          } else
             safe_signal(SIGPIPE, &_cmd1_onpipe);
       }
@@ -1214,7 +1215,7 @@ c_top(void *v)
 
 #ifdef HAVE_COLOUR
    if (options & OPT_TTYOUT)
-      colour_table_create(NULL); /* (salloc()s) */
+      colour_table_create(FAL0); /* (salloc()s) */
 #endif
    empty_last = 1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
@@ -1296,7 +1297,7 @@ c_folders(void *v)
       if (name == NULL)
          goto jleave;
    } else if (!getfold(dirname, sizeof dirname)) {
-      fprintf(stderr, tr(20, "No value set for \"folder\"\n"));
+      fprintf(stderr, _("No value set for \"folder\"\n"));
       goto jleave;
    } else
       name = dirname;
