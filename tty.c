@@ -114,8 +114,8 @@ do {\
    if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
 jerr:\
-   fprintf(stderr, "Synopsis: history: %s\n", tr(431,\
-      "<show> (default), <clear> or select <NO> from editor history"));\
+   fprintf(stderr, "Synopsis: history: %s\n",\
+      _("<show> (default), <clear> or select <NO> from editor history"));\
    v = NULL;\
 jleave:\
    NYD_LEAVE;\
@@ -153,7 +153,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    rv = FAL0;
 
    if (prompt == NULL)
-      prompt = tr(264, "Continue (y/n)? ");
+      prompt = _("Continue (y/n)? ");
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
@@ -187,7 +187,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    NYD_ENTER;
 
    if (query == NULL)
-      query = tr(509, "User: ");
+      query = _("User: ");
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
@@ -220,7 +220,7 @@ getpassword(char const *query)
    NYD_ENTER;
 
    if (query == NULL)
-      query = tr(510, "Password: ");
+      query = _("Password: ");
    fputs(query, stdout);
    fflush(stdout);
 
@@ -2126,7 +2126,7 @@ FL int
       doffl = TRU1;
    }
    if (n > 0) {
-      fprintf(stdout, tr(511, "{former content: %.*s} "), (int)n, *linebuf);
+      fprintf(stdout, _("{former content: %.*s} "), (int)n, *linebuf);
       n = 0;
       doffl = TRU1;
    }

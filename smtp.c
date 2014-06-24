@@ -102,7 +102,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
    do {
       if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
          if (len >= 0 && !ign_eof)
-            fprintf(stderr, tr(241, "Unexpected EOF on SMTP connection\n"));
+            fprintf(stderr, _("Unexpected EOF on SMTP connection\n"));
             rv = -1;
             goto jleave;
       }
@@ -116,7 +116,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
       default:    rv = 5; break;
       }
       if (val != rv)
-         fprintf(stderr, tr(191, "smtp-server: %s"), slp->buf);
+         fprintf(stderr, _("smtp-server: %s"), slp->buf);
    } while (slp->buf[3] == '-');
 
    if (want_dat) {
@@ -184,7 +184,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    }
 #else
    if (xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
-      fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+      fprintf(stderr, _("No SSL support compiled in.\n"));
       goto jleave;
    }
 #endif

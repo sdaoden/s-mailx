@@ -83,7 +83,7 @@ ssl_set_verify_level(char const *uhp)
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
          }
-      fprintf(stderr, tr(265, "Invalid value of %s: %s\n"), vrvar, cp);
+      fprintf(stderr, _("Invalid value of %s: %s\n"), vrvar, cp);
    }
 jleave:
    ac_free(vrvar);

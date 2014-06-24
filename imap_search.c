@@ -785,7 +785,7 @@ imap_search(char const *spec, int f)
       i = strlen(spec);
       lastspec = sbufdup(spec, i);
    } else if (lastspec == NULL) {
-      fprintf(stderr, tr(524, "No last SEARCH criteria available.\n"));
+      fprintf(stderr, _("No last SEARCH criteria available.\n"));
       goto jleave;
    }
    spec =

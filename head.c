@@ -224,7 +224,7 @@ _idna_apply(struct addrguts *agp)
 
       if (idna_utf8 == NULL) {
          if (i)
-            fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
+            fprintf(stderr, _("Cannot convert from %s to %s\n"),
                tcs, "UTF-8");
          agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
          goto jleave;
@@ -638,7 +638,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 jerr:
-   cp = tr(213, "<Unknown date>");
+   cp = _("<Unknown date>");
    linelen = strlen(cp);
    if (linelen >= FROM_DATEBUF)
       linelen = FROM_DATEBUF;
@@ -697,7 +697,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
          hq->h_subject = (hq->h_subject != NULL)
                ? save2str(hq->h_subject, cp) : savestr(cp);
       } else
-         fprintf(stderr, tr(266, "Ignoring header field \"%s\"\n"), linebuf);
+         fprintf(stderr, _("Ignoring header field \"%s\"\n"), linebuf);
    }
 
    /* In case the blank line after the header has been edited out.  Otherwise,
@@ -723,7 +723,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       hp->h_organization = hq->h_organization;
       hp->h_subject = hq->h_subject;
    } else
-      fprintf(stderr, tr(267, "Restoring deleted header lines\n"));
+      fprintf(stderr, _("Restoring deleted header lines\n"));
 
    if (linebuf != NULL)
       free(linebuf);
@@ -885,13 +885,13 @@ is_addr_invalid(struct name *np, int putmsg)
       goto jleave;
 
    if (f & NAME_ADDRSPEC_ERR_IDNA)
-      cs = tr(284, "Invalid domain name: \"%s\", character %s\n"),
+      cs = _("Invalid domain name: \"%s\", character %s\n"),
       fmt = "'\\U%04X'",
       ok8bit = 0;
    else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
-      cs = tr(142, "\"%s\" contains invalid %s sequence\n");
+      cs = _("\"%s\" contains invalid %s sequence\n");
    else
-      cs = tr(143, "\"%s\" contains invalid character %s\n");
+      cs = _("\"%s\" contains invalid character %s\n");
 
    c = NAME_ADDRSPEC_ERR_GETWC(f);
    if (ok8bit && c >= 040 && c <= 0177)
@@ -1576,7 +1576,7 @@ check_from_and_sender(struct name const *fromfield,
 
    if (senderfield != NULL) {
       if (senderfield->n_flink != NULL) {
-         fprintf(stderr, tr(530,
+         fprintf(stderr, _(
             "The Sender: field may contain only one address.\n"));
          goto jleave;
       }
@@ -1585,7 +1585,7 @@ check_from_and_sender(struct name const *fromfield,
 
    if (fromfield != NULL) {
       if (fromfield->n_flink != NULL && senderfield == NULL) {
-         fprintf(stderr, tr(529, "A Sender: field is required with multiple "
+         fprintf(stderr, _("A Sender: field is required with multiple "
             "addresses in From: field.\n"));
          goto jleave;
       }

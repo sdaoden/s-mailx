@@ -273,7 +273,7 @@ dot_lock(char const *fname, int fd, int pollival, FILE *fp, char const *msg)
       }
       fcntl_lock(fd, FLOCK_WRITE);
    }
-   fprintf(stderr, tr(71,
+   fprintf(stderr, _(
       "%s seems a stale lock? Need to be removed by hand?\n"), path);
 jleave:
    NYD_LEAVE;

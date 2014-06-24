@@ -456,7 +456,7 @@ jstop:
          rv = STOP;
          complete |= 2;
          if (errprnt)
-            fprintf(stderr, tr(270, "IMAP error: %s"), responded_text);
+            fprintf(stderr, _("IMAP error: %s"), responded_text);
          break;
       case RESPONSE_UNKNOWN:  /* does not happen */
       case RESPONSE_BYE:
@@ -571,11 +571,11 @@ imapcatch(int s)
    NYD_X; /*  Signal handler */
    switch (s) {
    case SIGINT:
-      fprintf(stderr, tr(102, "Interrupt\n"));
+      fprintf(stderr, _("Interrupt\n"));
       siglongjmp(imapjmp, 1);
       /*NOTREACHED*/
    case SIGPIPE:
-      fprintf(stderr, tr(98, "Received SIGPIPE during IMAP operation\n"));
+      fprintf(stderr, _("Received SIGPIPE during IMAP operation\n"));
       break;
    }
 }
@@ -586,7 +586,7 @@ _imap_maincatch(int s)
    NYD_X; /*  Signal handler */
    UNUSED(s);
    if (interrupts++ == 0) {
-      fprintf(stderr, tr(102, "Interrupt\n"));
+      fprintf(stderr, _("Interrupt\n"));
       return;
    }
    onintr(0);
@@ -1355,7 +1355,7 @@ jdone:
    if (!nmail && !edit && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
-         fprintf(stderr, tr(258, "No mail at %s\n"), urlp->url_p_eu_h_p_p);
+         fprintf(stderr, _("No mail at %s\n"), urlp->url_p_eu_h_p_p);
       rv = 1;
       goto jleave;
    }
@@ -1985,14 +1985,14 @@ jbypass:
          modflags++;
       }
    if ((gotcha || modflags) && edit) {
-      printf(tr(168, "\"%s\" "), displayname);
+      printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? tr(170, "complete\n") : tr(212, "updated.\n"));
+         ? _("complete\n") : _("updated.\n"));
    } else if (held && !edit && mp->mb_perm != 0) {
       if (held == 1)
-         printf(tr(155, "Held 1 message in %s\n"), displayname);
+         printf(_("Held 1 message in %s\n"), displayname);
       else
-         printf(tr(156, "Held %d messages in %s\n"), held, displayname);
+         printf(_("Held %d messages in %s\n"), held, displayname);
    }
    fflush(stdout);
    NYD_LEAVE;
@@ -2346,7 +2346,7 @@ jtrycreate:
          imap_created_mailbox++;
          goto jagain;
       } else if (rv != OKAY)
-         fprintf(stderr, tr(270, "IMAP error: %s"), responded_text);
+         fprintf(stderr, _("IMAP error: %s"), responded_text);
       else if (response_status == RESPONSE_OK && (mp->mb_flags & MB_UIDPLUS))
          imap_appenduid(mp, fp, t, off1, xsize, ysize, lines, flag, name);
    }
@@ -2617,11 +2617,11 @@ imap_folders(const char * volatile name, int strip)
    cp = protbase(name);
    sp = mb.mb_imap_account;
    if (sp == NULL || strcmp(cp, sp)) {
-      fprintf(stderr, tr(502,
+      fprintf(stderr, _(
          "Cannot perform `folders' but when on the very IMAP "
          "account; the current one is\n  `%s' -- "
          "try `folders @'.\n"),
-         (sp != NULL ? sp : tr(503, "[NONE]")));
+         (sp != NULL ? sp : _("[NONE]")));
       goto jleave;
    }
 

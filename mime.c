@@ -136,7 +136,7 @@ _mt_init(void)
       if (!(idx & idx_ok) || (ccp = file_expand(*srcs)) == NULL)
          continue;
       if ((fp = Fopen(ccp, "r")) == NULL) {
-         /*fprintf(stderr, tr(176, "Cannot open `%s'\n"), fn);*/
+         /*fprintf(stderr, _("Cannot open `%s'\n"), fn);*/
          continue;
       }
       while (fgetline(&line, &linesize, NULL, NULL, fp, 0))
@@ -254,7 +254,7 @@ _conversion_by_encoding(void)
    else if (!strcmp(cp, "base64"))
       ret = CONV_TOB64;
    else {
-      fprintf(stderr, tr(177, "Warning: invalid encoding %s, using base64\n"),
+      fprintf(stderr, _("Warning: invalid encoding %s, using base64\n"),
          cp);
       ret = CONV_TOB64;
    }
@@ -1222,7 +1222,7 @@ c_mimetypes(void *v)
       goto jclear;
 jerr:
    fprintf(stderr, "Synopsis: mimetypes: %s\n",
-      tr(418, "Either <show> (default) or <clear> the mime.types cache"));
+      _("Either <show> (default) or <clear> the mime.types cache"));
    v = NULL;
 jleave:
    NYD_LEAVE;
@@ -1235,7 +1235,7 @@ jlist:   {
    if (_mt_list == NULL)
       _mt_init();
    if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1) {
-      fprintf(stderr, tr(57, "Interpolate what file?\n"));
+      fprintf(stderr, _("Interpolate what file?\n"));
       v = NULL;
       goto jleave;
    }

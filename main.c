@@ -182,7 +182,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
             if ((_oind += 2) > argc) {
                if (!colon /*&& _oerr*/) {
                   fprintf(stderr,
-                     tr(79, "%s: option requires an argument -- %c\n"),
+                     _("%s: option requires an argument -- %c\n"),
                      argv[0], (char)_oopt);
                }
                rv = (colon ? ':' : '?');
@@ -202,7 +202,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    }
 
    if (!colon /*&& opterr*/)
-      fprintf(stderr, tr(78, "%s: invalid option -- %c\n"), argv[0], _oopt);
+      fprintf(stderr, _("%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
       lastp = curp + 1;
    else
@@ -363,11 +363,11 @@ _setup_vars(void)
    cp = (myname == NULL) ? getenv("USER") : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
-      panic(tr(201, "Cannot associate a name with uid %lu"), (ul_it)uid);
+      panic(_("Cannot associate a name with uid %lu"), (ul_it)uid);
    if (cp == NULL)
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL)
-      panic(tr(236, "`%s' is not a user of this system"), cp);
+      panic(_("`%s' is not a user of this system"), cp);
    else {
       myname = pw->pw_name;
       if (pw->pw_uid != uid)
@@ -511,7 +511,7 @@ _rcv_mode(char const *folder, char const *Larg)
          safe_signal(SIGINT, _hdrstop);
       if (!(options & OPT_N_FLAG)) {
          if (!ok_blook(quiet))
-            printf(tr(140, "%s version %s.  Type ? for help.\n"),
+            printf(_("%s version %s.  Type ? for help.\n"),
                (ok_blook(bsdcompat) ? "Mail" : uagent), version);
          announce(1);
          fflush(stdout);
@@ -545,7 +545,7 @@ _hdrstop(int signo)
    UNUSED(signo);
 
    fflush(stdout);
-   fprintf(stderr, tr(141, "\nInterrupt\n"));
+   fprintf(stderr, _("\nInterrupt\n"));
    siglongjmp(__hdrjmp, 1);
 }
 
@@ -698,7 +698,7 @@ main(int argc, char *argv[])
             struct name *fa = nalloc(_oarg, GFULL);
 
             if (is_addr_invalid(fa, 1) || is_fileorpipe_addr(fa)) {
-               fprintf(stderr, tr(271, "Invalid address argument with -r\n"));
+               fprintf(stderr, _("Invalid address argument with -r\n"));
                goto jusage;
             }
             option_r_arg = fa->n_name;
@@ -775,7 +775,7 @@ joarg:
          break;
       case '?':
 jusage:
-         fprintf(stderr, tr(135, usagestr), progname, progname, progname);
+         fprintf(stderr, _(usagestr), progname, progname, progname);
          exit_status = EXIT_USE;
          goto jleave;
       }
@@ -792,7 +792,7 @@ jusage:
       folder = cp;
       if ((cp = argv[++i]) != NULL) {
          if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
-            fprintf(stderr, tr(205, "More than one file given with -f\n"));
+            fprintf(stderr, _("More than one file given with -f\n"));
             goto jusage;
          }
          cp = argv[++i];
@@ -823,32 +823,32 @@ jusage:
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
       if (folder != NULL && !(options & OPT_BATCH_FLAG)) {
-         fprintf(stderr, tr(137, "Cannot give -f and people to send to.\n"));
+         fprintf(stderr, _("Cannot give -f and people to send to.\n"));
          goto jusage;
       }
       if (myname != NULL) {
-         fprintf(stderr, tr(568,
+         fprintf(stderr, _(
             "The -u option cannot be used in send mode\n"));
          goto jusage;
       }
       if (!(options & OPT_t_FLAG) && to == NULL) {
-         fprintf(stderr, tr(138,
+         fprintf(stderr, _(
             "Send options without primary recipient specified.\n"));
          goto jusage;
       }
       if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-         fprintf(stderr, tr(45,
+         fprintf(stderr, _(
             "The -H and -L options cannot be used in send mode.\n"));
          goto jusage;
       }
       if (options & OPT_R_FLAG) {
          fprintf(stderr,
-            tr(235, "The -R option is meaningless in send mode.\n"));
+            _("The -R option is meaningless in send mode.\n"));
          goto jusage;
       }
    } else {
       if (folder != NULL && myname != NULL) {
-         fprintf(stderr, tr(569,
+         fprintf(stderr, _(
             "The options -f and -u are mutually exclusive\n"));
          goto jusage;
       }
@@ -913,7 +913,7 @@ jusage:
    var_clear_allow_undefined = FAL0;
 
    if (options & OPT_DEBUG)
-      fprintf(stderr, tr(199, "user = %s, homedir = %s\n"), myname, homedir);
+      fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
       exit_status = _rcv_mode(folder, Larg);

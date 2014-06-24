@@ -95,15 +95,16 @@ _nrc_init(void)
       goto jleave;
 
    if ((fi = Fopen(netrc_load, "r")) == NULL) {
-      fprintf(stderr, tr(176, "Cannot open `%s'\n"), netrc_load);
+      fprintf(stderr, _("Cannot open `%s'\n"), netrc_load);
       goto jleave;
    }
 
    /* Be simple and apply rigid (permission) check(s) */
    if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
          (sb.st_mode & (S_IRWXG | S_IRWXO))) {
-      fprintf(stderr, tr(583,
-         "Not a regular file, or accessible by non-user: `%s'\n"), netrc_load);
+      fprintf(stderr,
+         _("Not a regular file, or accessible by non-user: `%s'\n"),
+         netrc_load);
       goto jleave;
    }
 
@@ -192,8 +193,7 @@ jm_h:
    else
 jerr:
       if (options & OPT_D_V)
-         fprintf(stderr, tr(585, "Errors occurred while parsing `%s'\n"),
-            netrc_load);
+         fprintf(stderr, _("Errors occurred while parsing `%s'\n"), netrc_load);
    Fclose(fi);
 jleave:
    if (nrc == NRC_NODE_ERR)
@@ -484,7 +484,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #if !defined __ALLPROTO || !defined HAVE_SSL
 jeproto:
 #endif
-      fprintf(stderr, tr(574, "URL `proto://' prefix invalid: `%s'\n"),
+      fprintf(stderr, _("URL `proto://' prefix invalid: `%s'\n"),
          urlp->url_input);
       goto jleave;
    }
@@ -510,8 +510,8 @@ juser:
          urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(ub));
 
          if (strcmp(ub, urlxenc(urlp->url_pass.s, FAL0))) {
-            fprintf(stderr, tr(581,
-               "String is not properly URL percent encoded: `%s'\n"), ub);
+            fprintf(stderr,
+               _("String is not properly URL percent encoded: `%s'\n"), ub);
             goto jleave;
          }
          l = i;
@@ -524,8 +524,8 @@ juser:
             urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
 
       if (urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)) {
-         fprintf(stderr, tr(581,
-            "String is not properly URL percent encoded: `%s'\n"), ub);
+         fprintf(stderr,
+            _("String is not properly URL percent encoded: `%s'\n"), ub);
          goto jleave;
       }
 
@@ -542,7 +542,7 @@ juser:
          *x = '\0';
       l = strtol(urlp->url_port, &eptr, 10);
       if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
-         fprintf(stderr, tr(573, "URL with invalid port number: `%s'\n"),
+         fprintf(stderr, _("URL with invalid port number: `%s'\n"),
             urlp->url_input);
          goto jleave;
       }
@@ -556,7 +556,7 @@ juser:
    /* A (non-empty) path may only occur with IMAP */
    if (x != NULL && x[1] != '\0') {
       if (cproto != CPROTO_IMAP) {
-         fprintf(stderr, tr(575, "URL protocol doesn't support paths: `%s'\n"),
+         fprintf(stderr, _("URL protocol doesn't support paths: `%s'\n"),
             urlp->url_input);
          goto jleave;
       }
@@ -783,21 +783,21 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 
    /* Verify method */
    if (!(ccp->cc_authtype & authmask)) {
-      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
+      fprintf(stderr, _("Unsupported %s authentication method: %s\n"),
          pname, s);
       ccp = NULL;
       goto jleave;
    }
 #ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
-      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+      fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
 #endif
 #ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
-      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
+      fprintf(stderr, _("No GSS-API support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
@@ -826,8 +826,8 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
              * TODO even better: introduce `PROTO-user' and `PROTO-pass' and
              * TODO check that first, then! change control flow, grow `vbuf' */
-            fprintf(stderr, tr(274,
-               "A user is necessary for %s authentication.\n"), pname);
+            fprintf(stderr, _("A user is necessary for %s authentication.\n"),
+               pname);
             ccp = NULL;
             goto jleave;
          }
@@ -852,8 +852,8 @@ jpass:
       if ((!addr_is_nuser || (s = vok_vlook(vbuf)) == NULL) &&
             (ware & REQ_PASS)) {
          if ((s = getpassword(NULL)) == NULL) {
-            fprintf(stderr, tr(275,
-               "A password is necessary for %s authentication.\n"), pname);
+            fprintf(stderr,
+               _("A password is necessary for %s authentication.\n"), pname);
             ccp = NULL;
             goto jleave;
          }
@@ -951,21 +951,20 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    /* Verify method */
    if (!(ccp->cc_authtype & authmask)) {
-      fprintf(stderr, tr(273, "Unsupported %s authentication method: %s\n"),
-         pstr, s);
+      fprintf(stderr, _("Unsupported %s authentication method: %s\n"), pstr, s);
       ccp = NULL;
       goto jleave;
    }
 #ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
-      fprintf(stderr, tr(277, "No CRAM-MD5 support compiled in.\n"));
+      fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
 #endif
 #ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
-      fprintf(stderr, tr(272, "No GSS-API support compiled in.\n"));
+      fprintf(stderr, _("No GSS-API support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
@@ -992,9 +991,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
                ccp->cc_pass = urlp->url_pass;
                goto jleave;
             case NRC_RESERROR:
-               fprintf(stderr, tr(584,
-                  ".netrc authentification failed (missing password or "
-                     "user mismatch)\n"));
+               fprintf(stderr, _(".netrc authentification failed "
+                  "(missing password or user mismatch)\n"));
                ccp = NULL;
                goto jleave;
             }
@@ -1002,8 +1000,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
          vbuf[--i] = '\0';
          if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
                (s = getpassword(NULL)) == NULL) {
-            fprintf(stderr, tr(275,
-               "A password is necessary for %s authentication.\n"), pstr);
+            fprintf(stderr,
+               _("A password is necessary for %s authentication.\n"), pstr);
             ccp = NULL;
             goto jleave;
          }
@@ -1040,7 +1038,7 @@ c_netrc(void *v)
       goto jclear;
 jerr:
    fprintf(stderr, "Synopsis: netrc: %s\n",
-      tr(437, "Either <show> (default) or <clear> the .netrc cache"));
+      _("Either <show> (default) or <clear> the .netrc cache"));
    v = NULL;
 jleave:
    NYD_LEAVE;
@@ -1053,7 +1051,7 @@ jlist:   {
    if (_nrc_list == NULL)
       _nrc_init();
    if (_nrc_list == NRC_NODE_ERR) {
-      fprintf(stderr, tr(57, "Interpolate what file?\n"));
+      fprintf(stderr, _("Interpolate what file?\n"));
       v = NULL;
       goto jleave;
    }

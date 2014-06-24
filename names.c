@@ -253,7 +253,7 @@ _gexpand(size_t level, struct name *nlist, struct grouphead *gh, bool_t metoo,
    NYD_ENTER;
 
    if (UICMP(z, level++, >, MAXEXP)) {
-      printf(tr(150, "Expanding alias to depth larger than %d\n"), MAXEXP);
+      printf(_("Expanding alias to depth larger than %d\n"), MAXEXP);
       goto jleave;
    }
 
@@ -497,7 +497,7 @@ detract(struct name *np, enum gfield ntype)
    ntype &= ~GCOMMA;
    s = 0;
    if ((options & OPT_DEBUG) && comma)
-      fprintf(stderr, tr(145, "detract asked to insert commas\n"));
+      fprintf(stderr, _("detract asked to insert commas\n"));
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
@@ -815,7 +815,7 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
 
          if ((fout = Ftmp(&tempEdit, "outof",
                OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
-            perror(tr(146, "Creation of temporary image"));
+            perror(_("Creation of temporary image"));
             *senderror = TRU1;
             goto jcant;
          }
@@ -836,7 +836,7 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
          Ftmp_release(&tempEdit);
 
          if (image < 0) {
-            perror(tr(147, "Creating descriptor duplicate of temporary image"));
+            perror(_("Creating descriptor duplicate of temporary image"));
             *senderror = TRU1;
             Fclose(fout);
             goto jcant;
@@ -852,7 +852,7 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
          putc('\n', fout);
          fflush(fout);
          if (ferror(fout)) {
-            perror(tr(148, "Finalizing write of temporary image"));
+            perror(_("Finalizing write of temporary image"));
             Fclose(fout);
             goto jcantfout;
          }
@@ -860,7 +860,7 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
 
          /* If we have to serve file addressees, open reader */
          if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
-            perror(tr(149,
+            perror(_(
                "Failed to open a duplicate of the temporary image"));
 jcantfout:
             *senderror = TRU1;
@@ -886,7 +886,7 @@ jcantfout:
          pid = start_command(sh, &nset, fda[xcnt++], -1, "-c",
                np->n_name + 1, NULL, NULL);
          if (pid < 0) {
-            fprintf(stderr, tr(281, "Message piping to <%s> failed\n"),
+            fprintf(stderr, _("Message piping to <%s> failed\n"),
                np->n_name);
             *senderror = TRU1;
             goto jcant;
@@ -900,7 +900,7 @@ jcantfout:
          }
 
          if ((fout = Zopen(fname, "a", NULL)) == NULL) {
-            fprintf(stderr, tr(282, "Message writing to <%s> failed: %s\n"),
+            fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
                fname, strerror(errno));
             *senderror = TRU1;
             goto jcant;
@@ -909,8 +909,8 @@ jcantfout:
          while ((c = getc(fin)) != EOF)
             putc(c, fout);
          if (ferror(fout)) {
-            fprintf(stderr, tr(282, "Message writing to <%s> failed: %s\n"),
-               fname, tr(283, "write error"));
+            fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
+               fname, _("write error"));
             *senderror = TRU1;
          }
          Fclose(fout);
@@ -965,7 +965,7 @@ printgroup(char *name)
    NYD_ENTER;
 
    if ((gh = findgroup(name)) == NULL) {
-      fprintf(stderr, tr(202, "\"%s\": no such alias\n"), name);
+      fprintf(stderr, _("\"%s\": no such alias\n"), name);
       goto jleave;
    }
 

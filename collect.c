@@ -135,7 +135,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 
    if (mnbuf != NULL) {
       if (strncmp(mnbuf, mailname, mnlen))
-         fputs(tr(237, "Mailbox changed: it seems existing rfc822 attachments "
+         fputs(_("Mailbox changed: it seems existing rfc822 attachments "
             "became invalid!\n"), stderr);
       ac_free(mnbuf);
    }
@@ -271,7 +271,7 @@ print_collf(FILE *cf, struct header *hp)
       }
    }
 
-   fprintf(obuf, tr(62, "-------\nMessage contains:\n"));
+   fprintf(obuf, _("-------\nMessage contains:\n"));
    gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES;
    if (ok_blook(fullnames))
       gf |= GCOMMA;
@@ -279,7 +279,7 @@ print_collf(FILE *cf, struct header *hp)
    while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
    if (hp->h_attach != NULL) {
-      fputs(tr(63, "-------\nAttachments:\n"), obuf);
+      fputs(_("-------\nAttachments:\n"), obuf);
       for (ap = hp->h_attach; ap != NULL; ap = ap->a_flink) {
          if (ap->a_msgno)
             fprintf(obuf, " - message %u\n", ap->a_msgno);
@@ -342,7 +342,7 @@ exwrite(char const *name, FILE *fp, int f)
       }
    }
    Fclose(of);
-   printf(tr(65, "%d/%ld\n"), lc, cc);
+   printf(_("%d/%ld\n"), lc, cc);
    fflush(stdout);
    rv = 0;
 jleave:
@@ -360,7 +360,7 @@ makeheader(FILE *fp, struct header *hp)
 
    if ((nf = Ftmp(NULL, "colhead", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror(tr(66, "temporary mail edit file"));
+      perror(_("temporary mail edit file"));
       goto jleave;
    }
 
@@ -420,7 +420,7 @@ mespipe(char *cmd)
 
    if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror(tr(66, "temporary mail edit file"));
+      perror(_("temporary mail edit file"));
       goto jout;
    }
 
@@ -434,7 +434,7 @@ mespipe(char *cmd)
    }
 
    if (fsize(nf) == 0) {
-      fprintf(stderr, tr(67, "No bytes from \"%s\" !?\n"), cmd);
+      fprintf(stderr, _("No bytes from \"%s\" !?\n"), cmd);
       Fclose(nf);
       goto jout;
    }
@@ -463,7 +463,7 @@ forward(char *ms, FILE *fp, int f)
    if (*msgvec == 0) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         fputs(tr(68, "No appropriate messages\n"), stderr);
+         fputs(_("No appropriate messages\n"), stderr);
          goto jleave;
       }
       msgvec[1] = 0;
@@ -479,14 +479,14 @@ forward(char *ms, FILE *fp, int f)
       ig = upperchar(f) ? NULL : ignore;
    action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
-   printf(tr(69, "Interpolating:"));
+   printf(_("Interpolating:"));
    for (; *msgvec != 0; ++msgvec) {
       struct message *mp = message + *msgvec - 1;
 
       touch(mp);
       printf(" %d", *msgvec);
       if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
-         perror(tr(70, "temporary mail file"));
+         perror(_("temporary mail file"));
          rv = -1;
          break;
       }
@@ -632,7 +632,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    ++noreset;
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER,
          0600)) == NULL) {
-      perror(tr(51, "temporary mail file"));
+      perror(_("temporary mail file"));
       goto jerr;
    }
 
@@ -686,7 +686,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
             if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE,NULL) < 0)
                goto jerr;
-            if (fprintf(_coll_fp, tr(52, " wrote:\n\n")) < 0)
+            if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
                goto jerr;
          }
       }
@@ -727,9 +727,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
        * won't be printed because the write is aborted if we get a SIGTTOU */
 jcont:
       if (_coll_hadintr) {
-         fprintf(stderr, tr(53, "\n(Interrupt -- one more to kill letter)\n"));
+         fprintf(stderr, _("\n(Interrupt -- one more to kill letter)\n"));
       } else {
-         printf(tr(54, "(continue)\n"));
+         printf(_("(continue)\n"));
          fflush(stdout);
       }
    }
@@ -754,7 +754,7 @@ jcont:
 
       if (cnt < 0) {
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(tr(55, "Use \".\" to terminate letter\n"));
+            printf(_("Use \".\" to terminate letter\n"));
             continue;
          }
          break;
@@ -795,7 +795,7 @@ jcont:
             else
                break;
          }
-         fputs(tr(56, "Unknown tilde escape.\n"), stderr);
+         fputs(_("Unknown tilde escape.\n"), stderr);
          break;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
@@ -880,7 +880,7 @@ jcont:
          while (whitechar(*cp))
             ++cp;
          if (*cp == '\0') {
-            fputs(tr(57, "Interpolate what file?\n"), stderr);
+            fputs(_("Interpolate what file?\n"), stderr);
             break;
          }
          if (*cp == '!') {
@@ -890,14 +890,14 @@ jcont:
          if ((cp = file_expand(cp)) == NULL)
             break;
          if (is_dir(cp)) {
-            fprintf(stderr, tr(58, "%s: Directory\n"), cp);
+            fprintf(stderr, _("%s: Directory\n"), cp);
             break;
          }
-         printf(tr(59, "\"%s\" "), cp);
+         printf(_("\"%s\" "), cp);
          fflush(stdout);
          if (_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0)
             goto jerr;
-         printf(tr(60, "%d/%d\n"), lc, cc);
+         printf(_("%d/%d\n"), lc, cc);
          break;
       case 'i':
          /* Insert a variable into the file */
@@ -928,7 +928,7 @@ jcont:
          while (blankchar(*cp))
             ++cp;
          if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
-            fputs(tr(61, "Write what file!?\n"), stderr);
+            fputs(_("Write what file!?\n"), stderr);
             break;
          }
          rewind(_coll_fp);
@@ -965,7 +965,7 @@ jcont:
       case '?':
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
-         puts(tr(300,
+         puts(_(
 "-------------------- ~ ESCAPES ----------------------------\n"
 "~~             Quote a single tilde\n"
 "~@ [file ...]  Edit attachment list\n"
@@ -976,7 +976,7 @@ jcont:
 "~F messages    Read in messages, keep all header lines, don't indent lines\n"
 "~f messages    Like ~F, but keep only selected header lines\n"
 "~h             Prompt for to list, subject, cc, and \"blind\" cc list\n"));
-         puts(tr(301,
+         puts(_(
 "~R file        Read in a file, indent lines\n"
 "~r file        Read in a file, don't indent lines\n"
 "~p             Print the message buffer\n"
@@ -985,7 +985,7 @@ jcont:
 "~m messages    Like ~F, but keep only selected header lines\n"
 "~s subject     Set subject\n"
 "~t users       Add users to to list\n"));
-         puts(tr(302,
+         puts(_(
 "~U messages    Same as ~m, but without any headers\n"
 "~u messages    Same as ~f, but without any headers\n"
 "~v             Invoke display editor on message\n"

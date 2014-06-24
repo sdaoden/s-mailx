@@ -168,7 +168,7 @@ _ssl_rand_init(void)
 #ifdef HAVE_OPENSSL_RAND_EGD
    if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
-         fprintf(stderr, tr(245, "entropy daemon at \"%s\" not available\n"),
+         fprintf(stderr, _("entropy daemon at \"%s\" not available\n"),
             cp);
       else
          state = 1;
@@ -176,13 +176,13 @@ _ssl_rand_init(void)
 #endif
    if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
-         fprintf(stderr, tr(246, "entropy file at \"%s\" not available\n"), cp);
+         fprintf(stderr, _("entropy file at \"%s\" not available\n"), cp);
       else {
          struct stat st;
 
          if (!stat(cp, &st) && S_ISREG(st.st_mode) && !access(cp, W_OK)) {
             if (RAND_write_file(cp) == -1) {
-               fprintf(stderr, tr(247,
+               fprintf(stderr, _(
                   "writing entropy data to \"%s\" failed\n"), cp);
             }
          }
@@ -247,7 +247,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 jerr:
-   snprintf(bdat, blen, tr(576, "Bogus certificate date: %.*s\n"),
+   snprintf(bdat, blen, _("Bogus certificate date: %.*s\n"),
       atp->length, db);
    rv = FAL0;
    goto jleave;
@@ -268,29 +268,29 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       fprintf(stderr, "Message %d:\n", _ssl_msgno);
       _ssl_msgno = 0;
    }
-   fprintf(stderr, tr(229, " Certificate depth %d %s\n"),
-      X509_STORE_CTX_get_error_depth(store), (success ? "" : tr(579, "ERROR")));
+   fprintf(stderr, _(" Certificate depth %d %s\n"),
+      X509_STORE_CTX_get_error_depth(store), (success ? "" : _("ERROR")));
 
    cert = X509_STORE_CTX_get_current_cert(store);
 
    X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
-   fprintf(stderr, tr(231, "  subject = %s\n"), data);
+   fprintf(stderr, _("  subject = %s\n"), data);
 
    _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
-   fprintf(stderr, tr(577, "  notBefore = %s\n"), data);
+   fprintf(stderr, _("  notBefore = %s\n"), data);
 
    _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
-   fprintf(stderr, tr(578, "  notAfter = %s\n"), data);
+   fprintf(stderr, _("  notAfter = %s\n"), data);
 
    if (!success) {
       int err = X509_STORE_CTX_get_error(store);
-      fprintf(stderr, tr(232, "  err %i: %s\n"),
+      fprintf(stderr, _("  err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
       _ssl_verify_error = 1;
    }
 
    X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
-   fprintf(stderr, tr(230, "  issuer = %s\n"), data);
+   fprintf(stderr, _("  issuer = %s\n"), data);
 
    if (!success && ssl_verify_decide() != OKAY)
       rv = FAL0;
@@ -314,7 +314,7 @@ ssl_select_method(char const *uhp)
             method = (*_ssl_methods[i].sm_fun)();
             goto jleave;
          }
-      fprintf(stderr, tr(244, "Invalid SSL method \"%s\"\n"), cp);
+      fprintf(stderr, _("Invalid SSL method \"%s\"\n"), cp);
    }
    method = _SSL_DEFAULT_METHOD();
 jleave:
@@ -339,11 +339,11 @@ ssl_load_verifications(struct sock *sp)
 
    if (ca_dir != NULL || ca_file != NULL) {
       if (SSL_CTX_load_verify_locations(sp->s_ctx, ca_file, ca_dir) != 1) {
-         fprintf(stderr, tr(233, "Error loading "));
+         fprintf(stderr, _("Error loading "));
          if (ca_dir) {
             fputs(ca_dir, stderr);
             if (ca_file)
-               fputs(tr(234, " or "), stderr);
+               fputs(_(" or "), stderr);
          }
          if (ca_file)
             fputs(ca_file, stderr);
@@ -353,7 +353,7 @@ ssl_load_verifications(struct sock *sp)
 
    if (!ok_blook(ssl_no_default_ca)) {
       if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
-         fprintf(stderr, tr(243, "Error loading default CA locations\n"));
+         fprintf(stderr, _("Error loading default CA locations\n"));
    }
 
    _ssl_verify_error = 0;
@@ -396,12 +396,12 @@ ssl_certificate(struct sock *sp, char const *uhp)
          }
          if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1)
 jbkey:
-            fprintf(stderr, tr(238, "cannot load private key from file %s\n"),
+            fprintf(stderr, _("cannot load private key from file %s\n"),
                key);
          ac_free(keyvar);
       } else
 jbcert:
-         fprintf(stderr, tr(239, "cannot load certificate from file %s\n"),
+         fprintf(stderr, _("cannot load certificate from file %s\n"),
             cert);
    }
    ac_free(certvar);
@@ -421,7 +421,7 @@ ssl_check_host(char const *server, struct sock *sp)
    NYD_ENTER;
 
    if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-      fprintf(stderr, tr(248, "no certificate from \"%s\"\n"), server);
+      fprintf(stderr, _("no certificate from \"%s\"\n"), server);
       goto jleave;
    }
 
@@ -510,29 +510,29 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
    fflush_rewind(fp);
 
    if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
-      ssl_gen_err(tr(537,
+      ssl_gen_err(_(
          "Error creating BIO verification object for message %d"), n);
       goto jleave;
    }
 
    if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
-      ssl_gen_err(tr(538, "Error reading PKCS#7 object for message %d"), n);
+      ssl_gen_err(_("Error reading PKCS#7 object for message %d"), n);
       goto jleave;
    }
    if (PKCS7_verify(pkcs7, chain, store, pb, NULL, 0) != 1) {
-      ssl_gen_err(tr(539, "Error verifying message %d"), n);
+      ssl_gen_err(_("Error verifying message %d"), n);
       goto jleave;
    }
 
    if (sender == NULL) {
-      fprintf(stderr, tr(540, "Warning: Message %d has no sender.\n"), n);
+      fprintf(stderr, _("Warning: Message %d has no sender.\n"), n);
       rv = 0;
       goto jleave;
    }
 
    certs = PKCS7_get0_signers(pkcs7, chain, 0);
    if (certs == NULL) {
-      fprintf(stderr, tr(541, "No certificates found in message %d.\n"), n);
+      fprintf(stderr, _("No certificates found in message %d.\n"), n);
       goto jleave;
    }
 
@@ -564,12 +564,12 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             goto jfound;
       }
    }
-   fprintf(stderr, tr(542, "Message %d: certificate does not match <%s>\n"),
+   fprintf(stderr, _("Message %d: certificate does not match <%s>\n"),
       n, sender);
    goto jleave;
 jfound:
    if (_ssl_verify_error == 0)
-      printf(tr(543, "Message %d was verified successfully.\n"), n);
+      printf(_("Message %d was verified successfully.\n"), n);
    rv = _ssl_verify_error;
 jleave:
    if (fb != NULL)
@@ -600,7 +600,7 @@ _smime_cipher(char const *name)
             cipher = (*_smime_ciphers[i].sc_fun)();
             goto jleave;
          }
-      fprintf(stderr, tr(240, "Invalid cipher(s): %s\n"), cp);
+      fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
    } else
       cipher = _SMIME_DEFAULT_CIPHER();
 jleave:
@@ -673,9 +673,9 @@ jleave:
    return fp;
 jerr:
    if (dowarn) {
-      fprintf(stderr, tr(558, "Could not find a certificate for %s"), xname);
+      fprintf(stderr, _("Could not find a certificate for %s"), xname);
       if (xname2)
-         fprintf(stderr, tr(559, "or %s"), xname2);
+         fprintf(stderr, _("or %s"), xname2);
       fputc('\n', stderr);
    }
    goto jleave;
@@ -725,7 +725,7 @@ _smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
          goto jerr;
       }
       if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-         ssl_gen_err(tr(560, "Error reading certificate from \"%s\""), cfield);
+         ssl_gen_err(_("Error reading certificate from \"%s\""), cfield);
          Fclose(fp);
          goto jerr;
       }
@@ -734,7 +734,7 @@ _smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
    }
 
    if (sk_X509_num(*chain) == 0) {
-      fprintf(stderr, tr(561, "smime-sign-include-certs defined but empty\n"));
+      fprintf(stderr, _("smime-sign-include-certs defined but empty\n"));
       goto jerr;
    }
 jleave:
@@ -757,11 +757,11 @@ load_crl1(X509_STORE *store, char const *name)
    if (options & OPT_VERB)
       printf("Loading CRL from \"%s\".\n", name);
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
-      ssl_gen_err(tr(565, "Error creating X509 lookup object"));
+      ssl_gen_err(_("Error creating X509 lookup object"));
       goto jleave;
    }
    if (X509_load_crl_file(lookup, name, X509_FILETYPE_PEM) != 1) {
-      ssl_gen_err(tr(566, "Error loading CRL from \"%s\""), name);
+      ssl_gen_err(_("Error loading CRL from \"%s\""), name);
       goto jleave;
    }
    rv = OKAY;
@@ -790,7 +790,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
             load_crl1(store, crl_file) != OKAY)
          goto jleave;
 #else
-      fprintf(stderr, tr(567,
+      fprintf(stderr, _(
          "This OpenSSL version is too old to use CRLs.\n"));
       goto jleave;
 #endif
@@ -827,7 +827,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
       closedir(dirp);
       free(fn);
 #else /* old OpenSSL */
-      fprintf(stderr, tr(567,
+      fprintf(stderr, _(
          "This OpenSSL version is too old to use CRLs.\n"));
       goto jleave;
 #endif
@@ -854,7 +854,7 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
    _ssl_init();
    ssl_set_verify_level(uhp);
    if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
-      ssl_gen_err(tr(261, "SSL_CTX_new() failed"));
+      ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
 
@@ -870,21 +870,21 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
    ssl_certificate(sp, uhp);
    if ((cp = ok_vlook(ssl_cipher_list)) != NULL) {
       if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
-         fprintf(stderr, tr(240, "Invalid cipher(s): %s\n"), cp);
+         fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
    }
 
    if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
-      ssl_gen_err(tr(262, "SSL_new() failed"));
+      ssl_gen_err(_("SSL_new() failed"));
       goto jleave;
    }
    SSL_set_fd(sp->s_ssl, sp->s_fd);
    if (SSL_connect(sp->s_ssl) < 0) {
-      ssl_gen_err(tr(263, "could not initiate SSL/TLS connection"));
+      ssl_gen_err(_("could not initiate SSL/TLS connection"));
       goto jleave;
    }
    if (ssl_verify_level != SSL_VERIFY_IGNORE) {
       if (ssl_check_host(server, sp) != OKAY) {
-         fprintf(stderr, tr(249, "host certificate does not match \"%s\"\n"),
+         fprintf(stderr, _("host certificate does not match \"%s\"\n"),
             server);
          if (ssl_verify_decide() != OKAY)
             goto jleave;
@@ -924,7 +924,7 @@ c_verify(void *vp)
 
    ssl_verify_level = SSL_VERIFY_STRICT;
    if ((store = X509_STORE_new()) == NULL) {
-      ssl_gen_err(tr(544, "Error creating X509 store"));
+      ssl_gen_err(_("Error creating X509 store"));
       goto jleave;
    }
    X509_STORE_set_verify_cb_func(store, &_ssl_verify_cb);
@@ -936,14 +936,14 @@ c_verify(void *vp)
 
    if (ca_dir != NULL || ca_file != NULL) {
       if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
-         ssl_gen_err(tr(545, "Error loading %s"),
+         ssl_gen_err(_("Error loading %s"),
             (ca_file != NULL) ? ca_file : ca_dir);
          goto jleave;
       }
    }
    if (!ok_blook(smime_no_default_ca)) {
       if (X509_STORE_set_default_paths(store) != 1) {
-         ssl_gen_err(tr(546, "Error loading default CA locations"));
+         ssl_gen_err(_("Error loading default CA locations"));
          goto jleave;
       }
    }
@@ -977,20 +977,20 @@ smime_sign(FILE *ip, char const *addr)
    _ssl_init();
 
    if (addr == NULL) {
-      fprintf(stderr, tr(531, "No \"from\" address for signing specified\n"));
+      fprintf(stderr, _("No \"from\" address for signing specified\n"));
       goto jleave;
    }
    if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)
       goto jleave;
 
    if ((pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-      ssl_gen_err(tr(532, "Error reading private key from"));
+      ssl_gen_err(_("Error reading private key from"));
       goto jleave;
    }
 
    rewind(fp);
    if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-      ssl_gen_err(tr(533, "Error reading signer certificate from"));
+      ssl_gen_err(_("Error reading signer certificate from"));
       goto jleave;
    }
    Fclose(fp);
@@ -1015,18 +1015,18 @@ smime_sign(FILE *ip, char const *addr)
    sb = NULL;
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
          (sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
-      ssl_gen_err(tr(534, "Error creating BIO signing objects"));
+      ssl_gen_err(_("Error creating BIO signing objects"));
       bail = TRU1;
       goto jerr;
    }
 
    if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb, PKCS7_DETACHED)) == NULL) {
-      ssl_gen_err(tr(535, "Error creating the PKCS#7 signing object"));
+      ssl_gen_err(_("Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
    if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
-      ssl_gen_err(tr(536, "Error writing signed S/MIME data"));
+      ssl_gen_err(_("Error writing signed S/MIME data"));
       bail = TRU1;
       /*goto jerr*/
    }
@@ -1082,7 +1082,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
 
    if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-      ssl_gen_err(tr(547, "Error reading encryption certificate from \"%s\""),
+      ssl_gen_err(_("Error reading encryption certificate from \"%s\""),
          certfile);
       bail = TRU1;
    }
@@ -1109,17 +1109,17 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    yb = NULL;
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
          (yb = BIO_new_fp(yp, BIO_NOCLOSE)) == NULL) {
-      ssl_gen_err(tr(548, "Error creating BIO encryption objects"));
+      ssl_gen_err(_("Error creating BIO encryption objects"));
       bail = TRU1;
       goto jerr;
    }
    if ((pkcs7 = PKCS7_encrypt(certs, bb, cipher, 0)) == NULL) {
-      ssl_gen_err(tr(549, "Error creating the PKCS#7 encryption object"));
+      ssl_gen_err(_("Error creating the PKCS#7 encryption object"));
       bail = TRU1;
       goto jerr;
    }
    if (PEM_write_bio_PKCS7(yb, pkcs7) == 0) {
-      ssl_gen_err(tr(550, "Error writing encrypted S/MIME data"));
+      ssl_gen_err(_("Error writing encrypted S/MIME data"));
       bail = TRU1;
       /* goto jerr */
    }
@@ -1166,14 +1166,14 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
    if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
       pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL);
       if (pkey == NULL) {
-         ssl_gen_err(tr(551, "Error reading private key"));
+         ssl_gen_err(_("Error reading private key"));
          Fclose(fp);
          goto jleave;
       }
       rewind(fp);
 
       if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-         ssl_gen_err(tr(552, "Error reading decryption certificate"));
+         ssl_gen_err(_("Error reading decryption certificate"));
          Fclose(fp);
          EVP_PKEY_free(pkey);
          goto jleave;
@@ -1192,11 +1192,11 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
 
    if ((ob = BIO_new_fp(op, BIO_NOCLOSE)) == NULL ||
          (bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL) {
-      ssl_gen_err(tr(553, "Error creating BIO decryption objects"));
+      ssl_gen_err(_("Error creating BIO decryption objects"));
       goto jferr;
    }
    if ((pkcs7 = SMIME_read_PKCS7(bb, &pb)) == NULL) {
-      ssl_gen_err(tr(554, "Error reading PKCS#7 object"));
+      ssl_gen_err(_("Error reading PKCS#7 object"));
 jferr:
       Fclose(op);
 j_ferr:
@@ -1221,14 +1221,14 @@ j_ferr:
       fflush(hp);
       rewind(hp);
    } else if (pkey == NULL) {
-      fprintf(stderr, tr(555, "No appropriate private key found.\n"));
+      fprintf(stderr, _("No appropriate private key found.\n"));
       goto jerr2;
    } else if (cert == NULL) {
-      fprintf(stderr, tr(556, "No appropriate certificate found.\n"));
+      fprintf(stderr, _("No appropriate certificate found.\n"));
       goto jerr2;
    } else if (PKCS7_decrypt(pkcs7, pkey, cert, ob, 0) != 1) {
 jerr:
-      ssl_gen_err(tr(557, "Error decrypting PKCS#7 object"));
+      ssl_gen_err(_("Error decrypting PKCS#7 object"));
 jerr2:
       BIO_free(bb);
       BIO_free(ob);
@@ -1308,7 +1308,7 @@ jloop:
    }
 
    if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
-      ssl_gen_err(tr(562, "Error reading PKCS#7 object for message %d"), n);
+      ssl_gen_err(_("Error reading PKCS#7 object for message %d"), n);
       BIO_free(fb);
       Fclose(fp);
       goto jleave;
@@ -1318,14 +1318,14 @@ jloop:
 
    certs = PKCS7_get0_signers(pkcs7, chain, 0);
    if (certs == NULL) {
-      fprintf(stderr, tr(563, "No certificates found in message %d\n"), n);
+      fprintf(stderr, _("No certificates found in message %d\n"), n);
       goto jleave;
    }
 
    for (i = 0; i < sk_X509_num(certs); ++i) {
       cert = sk_X509_value(certs, i);
       if (X509_print_fp(op, cert) == 0 || PEM_write_X509(op, cert) == 0) {
-         ssl_gen_err(tr(564, "Error writing certificate %d from message %d"),
+         ssl_gen_err(_("Error writing certificate %d from message %d"),
             i, n);
          goto jleave;
       }

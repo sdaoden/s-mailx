@@ -131,7 +131,7 @@ _colour_iso6429(char const *wish)
       char *y, *x = strchr(cp, '=');
       if (x == NULL) {
 jbail:
-         fprintf(stderr, tr(527,
+         fprintf(stderr, _(
             "Invalid colour specification \"%s\": >>> %s <<<\n"),
             wish_orig, cp);
          continue;
@@ -231,7 +231,7 @@ panic(char const *format, ...)
    va_list ap;
    NYD_ENTER;
 
-   fprintf(stderr, tr(1, "Panic: "));
+   fprintf(stderr, _("Panic: "));
 
    va_start(ap, format);
    vfprintf(stderr, format, ap);
@@ -249,7 +249,7 @@ alert(char const *format, ...)
    va_list ap;
    NYD_ENTER;
 
-   fprintf(stderr, tr(1, "Panic: "));
+   fprintf(stderr, _("Panic: "));
 
    va_start(ap, format);
    vfprintf(stderr, format, ap);
@@ -507,34 +507,34 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
-         fprintf(stderr, tr(216, "No POP3 support compiled in.\n"));
+         fprintf(stderr, _("No POP3 support compiled in.\n"));
 #endif
       } else if (!strncmp(name, "pop3s://", 8)) {
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
 # ifndef HAVE_POP3
-         fprintf(stderr, tr(216, "No POP3 support compiled in.\n"));
+         fprintf(stderr, _("No POP3 support compiled in.\n"));
 # endif
 # ifndef HAVE_SSL
-         fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+         fprintf(stderr, _("No SSL support compiled in.\n"));
 # endif
 #endif
       } else if (!strncmp(name, "imap://", 7)) {
 #ifdef HAVE_IMAP
          rv = PROTO_IMAP;
 #else
-         fprintf(stderr, tr(269, "No IMAP support compiled in.\n"));
+         fprintf(stderr, _("No IMAP support compiled in.\n"));
 #endif
       } else if (!strncmp(name, "imaps://", 8)) {
 #if defined HAVE_IMAP && defined HAVE_SSL
          rv = PROTO_IMAP;
 #else
 # ifndef HAVE_IMAP
-         fprintf(stderr, tr(269, "No IMAP support compiled in.\n"));
+         fprintf(stderr, _("No IMAP support compiled in.\n"));
 # endif
 # ifndef HAVE_SSL
-         fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+         fprintf(stderr, _("No SSL support compiled in.\n"));
 # endif
 #endif
       }

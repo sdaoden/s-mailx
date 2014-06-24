@@ -179,7 +179,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 
    if (pf & PARSE_PARTS) {
       if (level > 9999) { /* TODO MAGIC */
-         fprintf(stderr, tr(36, "MIME content too deeply nested\n"));
+         fprintf(stderr, _("MIME content too deeply nested\n"));
          goto jleave;
       }
       switch (ip->m_mimecontent) {
@@ -189,7 +189,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
             parsepkcs7(zmp, ip, pf, level);
             break;
 #else
-            fprintf(stderr, tr(225, "No SSL support compiled in.\n"));
+            fprintf(stderr, _("No SSL support compiled in.\n"));
             goto jleave;
 #endif
          }
@@ -549,8 +549,7 @@ _pipecmd(char **result, char const *content_type)
    } else if (!msglist_is_single) {
       /* Viewing multiple messages in one go, don't block system */
       ret = PIPE_MSG;
-      *result = UNCONST(tr(86,
-         "[Directly address message only to display this]\n"));
+      *result = UNCONST(_("[Directly address message only to display this]\n"));
    } else {
       /* Viewing a single message only */
 #if 0 /* TODO send/MIME layer rewrite: when we have a single-pass parser
@@ -559,14 +558,14 @@ _pipecmd(char **result, char const *content_type)
     * TODO *before* a pager pipe is setup (which is the problem with
     * TODO the '#if 0' code here) */
       size_t l = strlen(content_type);
-      char const *x = tr(999, "Should i display a part `%s' (y/n)? ");
+      char const *x = _("Should i display a part `%s' (y/n)? ");
       s = ac_alloc(l += strlen(x) +1);
       snprintf(s, l - 1, x, content_type);
       l = getapproval(s), TRU1;
          puts(""); /* .. we've hijacked a pipe 8-] ... */
       ac_free(s);
       if (!l) {
-         x = tr(210, "[User skipped diplay]\n");
+         x = _("[User skipped diplay]\n");
          ret = PIPE_MSG;
          *result = UNCONST(x);
       } else
@@ -594,7 +593,7 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
    if (quote) {
       if ((*qbuf = Ftmp(NULL, "sendp", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
-         perror(tr(173, "tmpfile"));
+         perror(_("tmpfile"));
          *qbuf = rbuf;
       }
       async = FAL0;
@@ -994,7 +993,7 @@ jskip:
          if (pipecomm != NULL)
             break;
          if (level == 0 && cnt) {
-            char const *x = tr(210, "[Binary content]\n");
+            char const *x = _("[Binary content]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
          }
          /* FALLTHRU */
@@ -1055,9 +1054,8 @@ jmulti:
              ip->m_multipart != NULL &&
              ip->m_multipart->m_mimecontent == MIME_DISCARD &&
              ip->m_multipart->m_nextpart == NULL) {
-            char const *x = tr(85,
-                  "[Missing multipart boundary - use \"show\" to display "
-                  "the raw message]\n");
+            char const *x = _("[Missing multipart boundary - use \"show\" "
+                  "to display the raw message]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
          }
 
@@ -1197,7 +1195,7 @@ jcopyout:
           * TODO so that the user can look at the error buffer?
           */
          if (iconvd == (iconv_t)-1 && errno == EINVAL) {
-            fprintf(stderr, tr(179, "Cannot convert from %s to %s\n"),
+            fprintf(stderr, _("Cannot convert from %s to %s\n"),
                ip->m_charset, tcs);
             /*rv = 1; goto jleave;*/
          }
@@ -1299,12 +1297,12 @@ newfile(struct mimepart *ip, int *ispipe)
    if (options & OPT_INTERACTIVE) {
       char *f2, *f3;
 jgetname:
-      printf(tr(278, "Enter filename for part %s (%s)"),
+      printf(_("Enter filename for part %s (%s)"),
          (ip->m_partstring != NULL) ? ip->m_partstring : "?",
          ip->m_ct_type_plain);
       f2 = readstr_input(": ", (f != (char*)-1) ? f : NULL);
       if (f2 == NULL || *f2 == '\0') {
-         fprintf(stderr, tr(279, "... skipping this\n"));
+         fprintf(stderr, _("... skipping this\n"));
          fp = NULL;
          goto jleave;
       } else if (*f2 == '|')
@@ -1331,7 +1329,7 @@ jgetname:
          perror(f);
    } else {
       if ((fp = Fopen(f, "w")) == NULL)
-         fprintf(stderr, tr(176, "Cannot open `%s'\n"), f);
+         fprintf(stderr, _("Cannot open `%s'\n"), f);
    }
 jleave:
    NYD_LEAVE;

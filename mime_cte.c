@@ -716,7 +716,7 @@ jleave:
    return ret;
 
 jerr: {
-   char const *err = tr(15, "[Invalid Base64 encoding ignored]\n");
+   char const *err = _("[Invalid Base64 encoding ignored]\n");
    len = strlen(err);
    x = out->s = srealloc(out->s, len + 1 +1);
    if (rest != NULL && rest->l)

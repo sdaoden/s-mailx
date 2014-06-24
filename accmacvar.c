@@ -414,7 +414,7 @@ _var_clear(struct var_carrier *vcp)
 
    if (!_var_lookup(vcp)) {
       if (!sourcing && !var_clear_allow_undefined) {
-         fprintf(stderr, tr(203, "`%s': undefined variable\n"), vcp->vc_name);
+         fprintf(stderr, _("`%s': undefined variable\n"), vcp->vc_name);
          goto jleave;
       }
    } else {
@@ -467,7 +467,7 @@ _var_set_env(char **ap, bool_t issetenv)
       else
          ++cp;
       if (varbuf == cp2) {
-         fprintf(stderr, tr(41, "Non-null variable name required\n"));
+         fprintf(stderr, _("Non-null variable name required\n"));
          ++errs;
          goto jnext;
       }
@@ -650,7 +650,7 @@ _ma_define1(char const *name, enum ma_flags mafl)
       if (n == 0)
          continue;
       if (n < 0) {
-         fprintf(stderr, tr(75, "Unterminated %s definition: \"%s\".\n"),
+         fprintf(stderr, _("Unterminated %s definition: \"%s\".\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
          if (sourcing && !loading)
             unstack();
@@ -688,7 +688,7 @@ _ma_define1(char const *name, enum ma_flags mafl)
    mp->ma_maxlen = maxlen;
 
    if (_ma_look(mp->ma_name, mp, mafl) != NULL) {
-      fprintf(stderr, tr(76, "A %s named `%s' already exists.\n"),
+      fprintf(stderr, _("A %s named `%s' already exists.\n"),
          (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
       lst = mp->ma_contents;
       goto jerr;
@@ -720,7 +720,7 @@ _ma_undef1(char const *name, enum ma_flags mafl)
       free(mp->ma_name);
       free(mp);
    } else
-      fprintf(stderr, tr(571, "%s `%s' is not defined\n"),
+      fprintf(stderr, _("%s `%s' is not defined\n"),
          (mafl & MA_ACC ? "Account" : "Macro"), name);
    NYD_LEAVE;
 }
@@ -1132,7 +1132,7 @@ c_define(void *v)
 
    if (args[1] == NULL || args[1][0] != '{' || args[1][1] != '\0' ||
          args[2] != NULL) {
-      fprintf(stderr, tr(505, "Syntax is: define <name> {"));
+      fprintf(stderr, _("Syntax is: define <name> {"));
       goto jleave;
    }
 
@@ -1150,7 +1150,7 @@ c_undefine(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, tr(504, "`%s': required arguments are missing\n"),
+      fprintf(stderr, _("`%s': required arguments are missing\n"),
          "undefine");
       goto jleave;
    }
@@ -1173,13 +1173,13 @@ c_call(void *v)
    NYD_ENTER;
 
    if (args[0] == NULL || (args[1] != NULL && args[2] != NULL)) {
-      errs = tr(507, "Syntax is: call <%s>\n");
+      errs = _("Syntax is: call <%s>\n");
       name = "name";
       goto jerr;
    }
 
    if ((mp = _ma_look(*args, NULL, MA_NONE)) == NULL) {
-      errs = tr(508, "Undefined macro called: `%s'\n");
+      errs = _("Undefined macro called: `%s'\n");
       name = *args;
       goto jerr;
    }
@@ -1208,7 +1208,7 @@ callhook(char const *name, int nmail)
       goto jleave;
    }
    if ((mp = _ma_look(cp, NULL, MA_NONE)) == NULL) {
-      fprintf(stderr, tr(49, "Cannot call hook for folder \"%s\": "
+      fprintf(stderr, _("Cannot call hook for folder \"%s\": "
          "Macro \"%s\" does not exist.\n"), name, cp);
       rv = 1;
       goto jleave;
@@ -1238,11 +1238,11 @@ c_account(void *v)
 
    if (args[1] && args[1][0] == '{' && args[1][1] == '\0') {
       if (args[2] != NULL) {
-         fprintf(stderr, tr(517, "Syntax is: account <name> {\n"));
+         fprintf(stderr, _("Syntax is: account <name> {\n"));
          goto jleave;
       }
       if (!asccasecmp(args[0], ACCOUNT_NULL)) {
-         fprintf(stderr, tr(521, "Error: `%s' is a reserved name.\n"),
+         fprintf(stderr, _("Error: `%s' is a reserved name.\n"),
             ACCOUNT_NULL);
          goto jleave;
       }
@@ -1251,7 +1251,7 @@ c_account(void *v)
    }
 
    if (inhook) {
-      fprintf(stderr, tr(518, "Cannot change account from within a hook.\n"));
+      fprintf(stderr, _("Cannot change account from within a hook.\n"));
       goto jleave;
    }
 
@@ -1260,7 +1260,7 @@ c_account(void *v)
    mp = NULL;
    if (asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
          (mp = _ma_look(args[0], NULL, MA_ACC)) == NULL) {
-      fprintf(stderr, tr(519, "Account `%s' does not exist.\n"), args[0]);
+      fprintf(stderr, _("Account `%s' does not exist.\n"), args[0]);
       goto jleave;
    }
 
@@ -1272,7 +1272,7 @@ c_account(void *v)
 
    if (mp != NULL && _ma_exec(mp, &mp->ma_localopts) == CBAD) {
       /* XXX account switch incomplete, unroll? */
-      fprintf(stderr, tr(520, "Switching to account `%s' failed.\n"), args[0]);
+      fprintf(stderr, _("Switching to account `%s' failed.\n"), args[0]);
       goto jleave;
    }
 
@@ -1301,7 +1301,7 @@ c_unaccount(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, tr(504, "`%s': required arguments are missing\n"),
+      fprintf(stderr, _("`%s': required arguments are missing\n"),
          "unaccount");
       goto jleave;
    }
@@ -1309,8 +1309,8 @@ c_unaccount(void *v)
    rv = 0;
    do {
       if (account_name != NULL && !strcmp(account_name, *args)) {
-         fprintf(stderr, tr(506,
-            "Rejecting deletion of currently active account `%s'\n"), *args);
+         fprintf(stderr,
+            _("Rejecting deletion of currently active account `%s'\n"), *args);
          continue;
       }
       _ma_undef1(*args, MA_ACC);
@@ -1328,8 +1328,8 @@ c_localopts(void *v)
    NYD_ENTER;
 
    if (_localopts == NULL) {
-      fprintf(stderr, tr(522,
-         "Cannot use `localopts' but from within a `define' or `account'\n"));
+      fprintf(stderr,
+         _("Cannot use `localopts' but from within a `define' or `account'\n"));
       goto jleave;
    }
 

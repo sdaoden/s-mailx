@@ -128,7 +128,7 @@ scan_mode(char const *mode, int *omode)
          goto jleave;
       }
 
-   alert(tr(152, "Internal error: bad stdio open mode %s\n"), mode);
+   alert(_("Internal error: bad stdio open mode %s\n"), mode);
    errno = EINVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
@@ -258,7 +258,7 @@ unregister_file(FILE *fp)
 #else
    alert
 #endif
-      (tr(153, "Invalid file pointer"));
+      (_("Invalid file pointer"));
    rv = STOP;
 jleave:
    NYD_LEAVE;
@@ -315,7 +315,7 @@ wait_command(int pid)
 
    if (!wait_child(pid, NULL)) {
       if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         fprintf(stderr, tr(154, "Fatal error in process.\n"));
+         fprintf(stderr, _("Fatal error in process.\n"));
       rv = -1;
    }
    NYD_LEAVE;
@@ -497,7 +497,7 @@ jraw:
    }
 
    if ((rv = Ftmp(NULL, "zopen", rof, 0600)) == NULL) {
-      perror(tr(167, "tmpfile"));
+      perror(_("tmpfile"));
       goto jerr;
    }
    if (infd >= 0 || (*compression & FP_MASK) == FP_IMAP ||

@@ -357,16 +357,9 @@
 #endif
 
 /* Translation (init in main.c) */
-#undef tr
 #undef _
 #undef N_
 #undef V_
-#ifdef HAVE_CATGETS
-# define CATSET         1
-# define tr(c,d)        catgets(catd, CATSET, c, d)
-#else
-# define tr(c,d)        (d)
-#endif
 #define _(S)            (S)
 #define N_(S)           (S)
 #define V_(S)           (S)
