@@ -311,6 +311,9 @@ _nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! *
 
    if (__nrc_find_pass(urlp, TRU1, nrc_exact) ||
          __nrc_find_pass(urlp, TRU1, nrc_wild) ||
+         /* Do not try to find a password without exact user match unless we've
+          * been called during credential lookup, a.k.a. the second time */
+         !only_pass ||
          __nrc_find_pass(urlp, FAL0, nrc_exact) ||
          __nrc_find_pass(urlp, FAL0, nrc_wild))
       rv = NRC_RESOK;
