@@ -1,5 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ URL parsing, credential handling and crypto hooks.
+ *@ .netrc parser quite loosely based upon NetBSD usr.bin/ftp/
+ *@   $NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $
  *
  * Copyright (c) 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -19,6 +21,389 @@
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
+
+#ifdef HAVE_NETRC
+  /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
+   * concurrently (dummy, host, user, pass), so make it a KB */
+# define NRC_TOKEN_MAXLEN   (1024 / 4)
+
+enum nrc_token {
+   NRC_ERROR      = -1,
+   NRC_NONE       = 0,
+   NRC_DEFAULT,
+   NRC_LOGIN,
+   NRC_PASSWORD,
+   NRC_ACCOUNT,
+   NRC_MACDEF,
+   NRC_MACHINE,
+   NRC_INPUT
+};
+
+enum nrc_result {
+   NRC_RESERROR   = -1,
+   NRC_RESOK,
+   NRC_RESNONE
+};
+
+struct nrc_node {
+   struct nrc_node   *nrc_next;
+   struct nrc_node   *nrc_result;   /* In match phase, former possible one */
+   ui32_t            nrc_mlen;      /* Length of machine name */
+   ui32_t            nrc_ulen;      /* Length of user name */
+   ui32_t            nrc_plen;      /* Length of password */
+   char              nrc_dat[VFIELD_SIZE(4)];
+};
+# define NRC_NODE_ERR   ((struct nrc_node*)-1)
+
+static struct nrc_node  *_nrc_list;
+
+/* Initialize .netrc cache */
+static void             _nrc_init(void);
+static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN]);
+
+/* We shall lookup a machine in .netrc says ok_blook(netrc_lookup).
+ * only_pass is true then the lookup is for the password only, otherwise we
+ * look for a user (and add password only if we have an exact machine match) */
+static enum nrc_result  _nrc_lookup(struct url *urlp, bool_t only_pass);
+
+/* 0=no match; 1=exact match; -1=wildcard match */
+static int              __nrc_host_match(struct nrc_node const *nrc,
+                           struct url const *urlp);
+static bool_t           __nrc_find_user(struct url *urlp,
+                           struct nrc_node const *nrc);
+static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
+                           struct nrc_node const *nrc);
+#endif /* HAVE_NETRC */
+
+#ifdef HAVE_NETRC
+static void
+_nrc_init(void)
+{
+   char buffer[NRC_TOKEN_MAXLEN], host[NRC_TOKEN_MAXLEN],
+      user[NRC_TOKEN_MAXLEN], pass[NRC_TOKEN_MAXLEN], *netrc_load;
+   struct stat sb;
+   FILE *fi;
+   enum nrc_token t;
+   bool_t seen_default;
+   struct nrc_node *ntail = NULL /* CC happy */, *nhead = NULL,
+      *nrc = NRC_NODE_ERR;
+   NYD_ENTER;
+
+   if ((netrc_load = getenv("NETRC")/* TODO */) == NULL)
+      netrc_load = UNCONST(NETRC);
+   if ((netrc_load = file_expand(netrc_load)) == NULL)
+      goto jleave;
+
+   if ((fi = Fopen(netrc_load, "r")) == NULL) {
+      fprintf(stderr, tr(176, "Cannot open `%s'\n"), netrc_load);
+      goto jleave;
+   }
+
+   /* Be simple and apply rigid (permission) check(s) */
+   if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
+         (sb.st_mode & (S_IRWXG | S_IRWXO))) {
+      fprintf(stderr, tr(583,
+         "Not a regular file, or accessible by non-user: `%s'\n"), netrc_load);
+      goto jleave;
+   }
+
+   seen_default = FAL0;
+jnext:
+   switch((t = __nrc_token(fi, buffer))) {
+   case NRC_ERROR:
+      goto jerr;
+   case NRC_NONE:
+      break;
+   default: /* Doesn't happen (but on error?), keep CC happy */
+   case NRC_DEFAULT:
+jdef:
+      seen_default = TRU1;
+      /* FALLTHRU */
+   case NRC_MACHINE:
+jm_h:
+      *host = '\0';
+      if (!seen_default && (t = __nrc_token(fi, host)) != NRC_INPUT)
+         goto jerr;
+      *user = *pass = '\0';
+      while ((t = __nrc_token(fi, buffer)) != NRC_NONE && t != NRC_MACHINE &&
+            t != NRC_DEFAULT) {
+         switch(t) {
+         case NRC_LOGIN:
+            if ((t = __nrc_token(fi, user)) != NRC_INPUT)
+               goto jerr;
+            break;
+         case NRC_PASSWORD:
+            if ((t = __nrc_token(fi, pass)) != NRC_INPUT)
+               goto jerr;
+            break;
+         case NRC_ACCOUNT:
+            if ((t = __nrc_token(fi, buffer)) != NRC_INPUT)
+               goto jerr;
+            break;
+         case NRC_MACDEF:
+            if ((t = __nrc_token(fi, buffer)) != NRC_INPUT)
+               goto jerr;
+            else {
+               int i = 0, c;
+               while ((c = getc(fi)) != EOF)
+                  if (c == '\n') { /* xxx */
+                     if (i)
+                        break;
+                     i = 1;
+                  } else
+                     i = 0;
+            }
+            break;
+         default:
+         case NRC_ERROR:
+            goto jerr;
+         }
+      }
+
+      if (!seen_default && (*user != '\0' || *pass != '\0')) {
+         size_t hl = strlen(host), ul = strlen(user), pl = strlen(pass);
+         struct nrc_node *nx = smalloc(sizeof(*nx) -
+               VFIELD_SIZEOF(struct nrc_node, nrc_dat) + hl +1 + ul +1 + pl +1);
+
+         if (nhead != NULL)
+            ntail->nrc_next = nx;
+         else
+            nhead = nx;
+         ntail = nx;
+         nx->nrc_next = NULL;
+         nx->nrc_mlen = hl;
+         nx->nrc_ulen = ul;
+         nx->nrc_plen = pl;
+         memcpy(nx->nrc_dat, host, ++hl);
+         memcpy(nx->nrc_dat + hl, user, ++ul);
+         memcpy(nx->nrc_dat + hl + ul, pass, ++pl);
+      }
+      if (t == NRC_MACHINE)
+         goto jm_h;
+      if (t == NRC_DEFAULT)
+         goto jdef;
+      if (t != NRC_NONE)
+         goto jnext;
+      break;
+   }
+
+   if (nhead != NULL)
+      nrc = nhead;
+   else
+jerr:
+      if (options & OPT_D_V)
+         fprintf(stderr, tr(585, "Errors occurred while parsing `%s'\n"),
+            netrc_load);
+   Fclose(fi);
+jleave:
+   if (nrc == NRC_NODE_ERR)
+      while (nhead != NULL) {
+         ntail = nhead;
+         nhead = nhead->nrc_next;
+         free(ntail);
+      }
+   _nrc_list = nrc;
+   NYD_LEAVE;
+}
+
+static enum nrc_token
+__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
+{
+   int c;
+   char *cp;
+   enum nrc_token rv = NRC_NONE;
+   NYD_ENTER;
+
+   c = EOF;
+   if (feof(fi) || ferror(fi))
+      goto jleave;
+
+   while ((c = getc(fi)) != EOF && whitechar(c))
+      ;
+   if (c == EOF)
+      goto jleave;
+
+   cp = buffer;
+   if (c == '"') {
+      /* Not requiring the closing QM is the portable way */
+      while ((c = getc(fi)) != EOF && c != '"') {
+         if (c == '\\')
+            if ((c = getc(fi)) == EOF)
+               break;
+         *cp++ = c;
+         if (PTRCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
+            rv = NRC_ERROR;
+            goto jleave;
+         }
+      }
+   } else {
+      *cp++ = c;
+      while ((c = getc(fi)) != EOF && !whitechar(c)) {
+         if (c == '\\' && (c = getc(fi)) == EOF)
+               break;
+         *cp++ = c;
+         if (PTRCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
+            rv = NRC_ERROR;
+            goto jleave;
+         }
+      }
+   }
+   *cp = '\0';
+
+   if (*buffer == '\0')
+      do {/*rv = NRC_NONE*/} while (0);
+   else if (!strcmp(buffer, "default"))
+      rv = NRC_DEFAULT;
+   else if (!strcmp(buffer, "login"))
+      rv = NRC_LOGIN;
+   else if (!strcmp(buffer, "password") || !strcmp(buffer, "passwd"))
+      rv = NRC_PASSWORD;
+   else if (!strcmp(buffer, "account"))
+      rv = NRC_ACCOUNT;
+   else if (!strcmp(buffer, "macdef"))
+      rv = NRC_MACDEF;
+   else if (!strcmp(buffer, "machine"))
+      rv = NRC_MACHINE;
+   else
+      rv = NRC_INPUT;
+jleave:
+   if (c == EOF && !feof(fi))
+      rv = NRC_ERROR;
+   NYD_LEAVE;
+   return rv;
+}
+
+static enum nrc_result
+_nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! */
+{
+   struct nrc_node *nrc, *nrc_wild, *nrc_exact;
+   enum nrc_result rv = NRC_RESNONE;
+   NYD_ENTER;
+
+   assert(!only_pass || urlp->url_user.s != NULL);
+   assert(!only_pass && urlp->url_user.s == NULL);
+
+   if (_nrc_list == NULL)
+      _nrc_init();
+   if (_nrc_list == NRC_NODE_ERR)
+      goto jleave;
+
+   nrc_wild = nrc_exact = NULL;
+   for (nrc = _nrc_list; nrc != NULL; nrc = nrc->nrc_next)
+      switch (__nrc_host_match(nrc, urlp)) {
+      case 1:
+         nrc->nrc_result = nrc_exact;
+         nrc_exact = nrc;
+         continue;
+      case -1:
+         nrc->nrc_result = nrc_wild;
+         nrc_wild = nrc;
+         /* FALLTHRU */
+      case 0:
+         continue;
+      }
+
+   /* TODO _nrc_lookup(): PAIN! init: build sorted tree, single walk that!!
+    * TODO then: verify .netrc (unique fallback entries etc.) */
+   if (!only_pass && !__nrc_find_user(urlp, nrc_exact) &&
+         !__nrc_find_user(urlp, nrc_wild))
+      goto jleave;
+
+   if (__nrc_find_pass(urlp, TRU1, nrc_exact) ||
+         __nrc_find_pass(urlp, TRU1, nrc_wild) ||
+         __nrc_find_pass(urlp, FAL0, nrc_exact) ||
+         __nrc_find_pass(urlp, FAL0, nrc_wild))
+      rv = NRC_RESOK;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+__nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
+{
+   char const *d2, *d1;
+   size_t l2, l1;
+   int rv = 0;
+   NYD_ENTER;
+
+   /* Find a matching machine entry -- entries are lowercase normalized */
+   if (nrc->nrc_mlen == urlp->url_host.l) {
+      if (LIKELY(!memcmp(nrc->nrc_dat, urlp->url_host.s, urlp->url_host.l)))
+         rv = 1;
+      goto jleave;
+   }
+
+   /* Cannot be an exact match, but maybe the .netrc machine starts with
+    * a `*.' glob, which we recognize as an extension, meaning "skip
+    * a single subdomain, then match the rest" */
+   d1 = nrc->nrc_dat + 2;
+   l1 = nrc->nrc_mlen;
+   if (l1 <= 2 || d1[-1] != '.' || d1[-2] != '*')
+      goto jleave;
+   l1 -= 2;
+
+   /* Brute skipping over one subdomain, no RFC 1035 or RFC 1122 checks;
+    * in fact this even succeeds for `.host.com', but - why care, here? */
+   d2 = urlp->url_host.s;
+   l2 = urlp->url_host.l;
+   while (l2 > 0) {
+      --l2;
+      if (*d2++ == '.')
+         break;
+   }
+
+   if (l2 == l1 && !memcmp(d1, d2, l1))
+      /* This matches, but we won't use it directly but watch out for an
+       * exact match first! */
+      rv = -1;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+static bool_t
+__nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
+{
+   NYD_ENTER;
+
+   for (; nrc != NULL; nrc = nrc->nrc_result)
+      if (nrc->nrc_ulen > 0 && urlp->url_user.s == NULL) {
+         /* Fake it was part of URL otherwise XXX */
+         urlp->url_had_user = TRU1;
+         /* That buffer will be duplicated by url_parse() in this case! */
+         urlp->url_user.s = UNCONST(nrc->nrc_dat + nrc->nrc_mlen +1);
+         urlp->url_user.l = nrc->nrc_ulen;
+         break;
+      }
+
+   NYD_LEAVE;
+   return (nrc != NULL);
+}
+
+static bool_t
+__nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
+{
+   NYD_ENTER;
+
+   for (; nrc != NULL; nrc = nrc->nrc_result) {
+      if (user_match && (nrc->nrc_ulen != urlp->url_user.l ||
+            memcmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
+               urlp->url_user.l)))
+         continue;
+      if (nrc->nrc_plen == 0)
+         continue;
+
+      /* We are responsible for duplicating this buffer! */
+      urlp->url_pass.s = savestrbuf(nrc->nrc_dat + nrc->nrc_mlen +1 +
+            nrc->nrc_ulen + 1, (urlp->url_pass.l = nrc->nrc_plen));
+      break;
+   }
+
+   NYD_LEAVE;
+   return (nrc != NULL);
+}
+#endif /* HAVE_NETRC */
 
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
@@ -204,24 +589,20 @@ juser:
    /* User, II
     * If there was no user in the URL, do we have *user-HOST* or *user*? */
    if (!urlp->url_had_user) {
-      char const usrstr[] = "user-";
-      size_t const usrlen = sizeof(usrstr) -1;
-
-      cp = ac_alloc(usrlen + urlp->url_h_p.l +1);
-      memcpy(cp, usrstr, usrlen);
-      memcpy(cp + usrlen, urlp->url_h_p.s, urlp->url_h_p.l +1);
-      if ((urlp->url_user.s = vok_vlook(cp)) == NULL) {
-         cp[usrlen - 1] = '\0';
-         if ((urlp->url_user.s = vok_vlook(cp)) == NULL)
-            urlp->url_user.s = UNCONST(myname);
+      if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_H_P)) == NULL) {
+         /* No *user-HOST*, check wether .netrc lookup is desired */
+#ifdef HAVE_NETRC
+         if (!ok_blook(v15_compat) || !ok_blook(netrc_lookup) ||
+               _nrc_lookup(urlp, FAL0) != NRC_RESOK)
+#endif
+            if ((urlp->url_user.s = ok_vlook(user)) == NULL)
+               urlp->url_user.s = UNCONST(myname);
       }
-      ac_free(cp);
 
       urlp->url_user.l = strlen(urlp->url_user.s);
       urlp->url_user.s = savestrbuf(urlp->url_user.s, urlp->url_user.l);
       urlp->url_user_enc.l = strlen(
             urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
-
    }
 
    /* And then there are a lot of prebuild string combinations TODO do lazy */
@@ -398,10 +779,6 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       ccp->cc_auth = "GSS-API";
       ccp->cc_authtype = AUTHTYPE_GSSAPI;
       ware = REQ_USER;
-#if 0 /* TODO SASL (homebrew `auto'matic indeed) */
-   } else if (!asccasecmp(cp, "sasl")) {
-      ware = REQ_USER | WANT_PASS;
-#endif
    } /* no else */
 
    /* Verify method */
@@ -487,6 +864,10 @@ jpass:
 
 jleave:
    ac_free(vbuf);
+   if (ccp != NULL && (options & OPT_D_VV))
+      fprintf(stderr, _("Credentials: host `%s', user `%s', pass `%s'\n"),
+         addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
+         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
    return (ccp != NULL);
 }
@@ -566,10 +947,6 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       ccp->cc_auth = "GSS-API";
       ccp->cc_authtype = AUTHTYPE_GSSAPI;
       ware = REQ_USER;
-#if 0 /* TODO SASL (homebrew `auto'matic indeed) */
-   } else if (!asccasecmp(cp, "sasl")) {
-      ware = REQ_USER | WANT_PASS;
-#endif
    } /* no else */
 
    /* Verify method */
@@ -604,6 +981,24 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    if ((s = vok_vlook(vbuf)) == NULL) {
       memcpy(vbuf + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
       if ((s = vok_vlook(vbuf)) == NULL) {
+         /* But before we go and deal with the absolute fallbacks, check wether
+          * we may look into .netrc */
+#ifdef HAVE_NETRC
+         if (ok_blook(netrc_lookup))
+            switch (_nrc_lookup(urlp, TRU1)) {
+            default:
+               break;
+            case NRC_RESOK:
+               ccp->cc_pass = urlp->url_pass;
+               goto jleave;
+            case NRC_RESERROR:
+               fprintf(stderr, tr(584,
+                  ".netrc authentification failed (missing password or "
+                     "user mismatch)\n"));
+               ccp = NULL;
+               goto jleave;
+            }
+#endif
          vbuf[--i] = '\0';
          if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
                (s = getpassword(NULL)) == NULL) {
@@ -619,9 +1014,85 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
 jleave:
    ac_free(vbuf);
+   if (ccp != NULL && (options & OPT_D_VV))
+      fprintf(stderr, _("Credentials: host `%s', user `%s', pass `%s'\n"),
+         urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
+         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
    return (ccp != NULL);
 }
+
+#ifdef HAVE_NETRC
+FL int
+c_netrc(void *v)
+{
+   char **argv = v;
+   struct nrc_node *nrc;
+   NYD_ENTER;
+
+   if (*argv == NULL)
+      goto jlist;
+   if (argv[1] != NULL)
+      goto jerr;
+   if (!asccasecmp(*argv, "show"))
+      goto jlist;
+   if (!asccasecmp(*argv, "clear"))
+      goto jclear;
+jerr:
+   fprintf(stderr, "Synopsis: netrc: %s\n",
+      tr(437, "Either <show> (default) or <clear> the .netrc cache"));
+   v = NULL;
+jleave:
+   NYD_LEAVE;
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+
+jlist:   {
+   FILE *fp;
+   size_t l;
+
+   if (_nrc_list == NULL)
+      _nrc_init();
+   if (_nrc_list == NRC_NODE_ERR) {
+      fprintf(stderr, tr(57, "Interpolate what file?\n"));
+      v = NULL;
+      goto jleave;
+   }
+
+   if ((fp = Ftmp(NULL, "netrc", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)
+         ) == NULL) {
+      perror("tmpfile");
+      v = NULL;
+      goto jleave;
+   }
+
+   for (l = 0, nrc = _nrc_list; nrc != NULL; ++l, nrc = nrc->nrc_next) {
+      fprintf(fp, _("Host %s: "), nrc->nrc_dat);
+      if (nrc->nrc_ulen > 0)
+         fprintf(fp, _("user %s, "), nrc->nrc_dat + nrc->nrc_mlen +1);
+      else
+         fputs(_("no user, "), fp);
+      if (nrc->nrc_plen > 0)
+         fprintf(fp, _("password %s.\n"),
+            nrc->nrc_dat + nrc->nrc_mlen +1 + nrc->nrc_ulen +1);
+      else
+         fputs(_("no password.\n"), fp);
+   }
+
+   page_or_print(fp, l);
+   Fclose(fp);
+   }
+   goto jleave;
+
+jclear:
+   if (_nrc_list == NRC_NODE_ERR)
+      _nrc_list = NULL;
+   while ((nrc = _nrc_list) != NULL) {
+      _nrc_list = nrc->nrc_next;
+      free(nrc);
+   }
+   goto jleave;
+}
+#endif /* HAVE_NETRC */
 
 #ifdef HAVE_MD5
 FL char *

@@ -141,6 +141,7 @@
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
+#define NETRC           "~/.netrc"
 #define TMPDIR_FALLBACK "/tmp"
 
 #undef COLOUR
@@ -784,6 +785,7 @@ enum okeys {
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_counter_evidence,
+   ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,
    ok_b_piperaw,

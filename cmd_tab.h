@@ -385,6 +385,10 @@
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(431, "<show> (default), <clear> or select <NO> from editor history") },
 #endif
+#ifdef HAVE_NETRC
+   { "netrc", &c_netrc, (M | RAWLIST), 0, 1
+     DS(437, "Either <show> (default) or <clear> the .netrc cache") },
+#endif
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
      DS(416, "Print statistics about the auto-reclaimed string store") },

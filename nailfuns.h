@@ -1851,6 +1851,9 @@ FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
 
+/* `netrc' */
+FL int         c_netrc(void *v);
+
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
 # ifdef HAVE_OPENSSL_MD5
