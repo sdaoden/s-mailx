@@ -192,9 +192,6 @@ _update-release:
 	git add version.h && git commit --amend &&\
 	git tag -f "v$${REL}" &&\
 	git update-ref refs/heads/next master &&\
-		git checkout timeline &&\
-		git cherry-pick master &&\
-		git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
 	git branch &&\
 	echo "Push git(1) repo?  ENTER continues";\
@@ -237,5 +234,13 @@ _update-release:
 	read i;\
 	$(RM) -rf "$(UAGENT)-$${REL}" &&\
 	echo 'Uff.'
+
+_update-timeline:
+	git checkout timeline &&\
+	git rm -rf '*' &&\
+	git archive --format=tar.gz "v$(REL)" | tar -x -z -f - &&\
+	git add --all &&\
+	git commit -m "S-nail v$(REL), `date -u +%Y-%m-%d`" &&\
+	git checkout master
 
 # vim:set fenc=utf-8 ft=make:
