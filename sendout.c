@@ -86,6 +86,10 @@ static int           make_multipart(struct header *hp, int convert, FILE *fi,
 /* Prepend a header in front of the collected stuff and return the new file */
 static FILE *        infix(struct header *hp, FILE *fi);
 
+/* Check wether Disposition-Notification-To: is desired */
+static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
+                        FILE *fo);
+
 /* Save the outgoing mail on the passed file */
 static int           savemail(char const *name, FILE *fi);
 
@@ -736,6 +740,34 @@ jleave:
    return nfi;
 }
 
+static bool_t
+_check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
+{
+   char const *from;
+   bool_t rv = TRU1;
+   NYD_ENTER;
+
+   /* TODO smtp_disposition_notification (RFC 3798): relation to return-path
+    * TODO not yet checked */
+   if (!ok_blook(disposition_notification_send))
+      goto jleave;
+
+   if (mdn != NULL && mdn != (struct name*)0x1)
+      from = mdn->n_name;
+   else if ((from = myorigin(hp)) == NULL) {
+      if (options & OPT_D_V)
+         fprintf(stderr, _("*disposition-notification-send*: no *from* set\n"));
+      goto jleave;
+   }
+
+   if (fmt("Disposition-Notification-To:", nalloc(UNCONST(from), 0), fo,
+         GFILES, TRU1, 0))
+      rv = FAL0;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 static int
 savemail(char const *name, FILE *fi)
 {
@@ -1132,7 +1164,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    size_t cnt, c, bufsize = 0;
    char *buf = NULL;
    char const *cp;
-   struct name *fromfield = NULL, *senderfield = NULL;
+   struct name *fromfield = NULL, *senderfield = NULL, *mdn;
    int rv = 1;
    NYD_ENTER;
 
@@ -1159,7 +1191,10 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
          _message_id(fo, NULL);
       }
    }
-   if (check_from_and_sender(fromfield, senderfield))
+
+   if ((mdn = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+      goto jleave;
+   if (!_check_dispo_notif(mdn, NULL, fo))
       goto jleave;
 
    /* Write the original headers */
@@ -1169,7 +1204,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       /* XXX more checks: The From_ line may be seen when resending */
       /* During headers is_head() is actually overkill, so ^From_ is sufficient
        * && !is_head(buf, c) */
-      if (ascncasecmp("status: ", buf, 8) && strncmp("From ", buf, 5))
+      if (ascncasecmp("status:", buf, 7) && strncmp("From ", buf, 5) &&
+            ascncasecmp("disposition-notification-to:", buf, 28))
          fwrite(buf, sizeof *buf, c, fo);
       if (cnt > 0 && *buf == '\n')
          break;
@@ -1540,7 +1576,9 @@ do {\
          if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderfield))
             goto jleave;
 
-      if (check_from_and_sender(fromfield, senderfield))
+      if ((np = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+         goto jleave;
+      if (!_check_dispo_notif(np, hp, fo))
          goto jleave;
    }
 

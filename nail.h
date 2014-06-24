@@ -760,6 +760,7 @@ enum okeys {
    ok_b_colour_pager,
    ok_b_debug,                         /* {special=1} */
    ok_b_disconnected,
+   ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_editalong,
    ok_b_editheaders,

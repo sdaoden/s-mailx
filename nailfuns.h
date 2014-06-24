@@ -925,8 +925,9 @@ FL time_t      combinetime(int year, int month, int day,
 
 FL void        substdate(struct message *m);
 
-FL int         check_from_and_sender(struct name *fromfield,
-                  struct name *senderfield);
+/* Note: returns 0x1 if both args were NULL */
+FL struct name const * check_from_and_sender(struct name const *fromfield,
+                        struct name const *senderfield);
 
 #ifdef HAVE_OPENSSL
 FL char *      getsender(struct message *m);
