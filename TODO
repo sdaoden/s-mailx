@@ -675,5 +675,8 @@ TODO S-nail 14.7:
     a meaning for S-nail; this needn't be as expensive as it sounds.
   . The *sendmail** variables should have been replaced by *mta** in
     v15.0!?!
+  . We should support more named colours, enabled via a, e.g.,
+    *colour-plus*, but provide downgrade colours for given colour names
+    if that isn't set. (Gavin Troy)
 
 vim:set fenc=utf-8:s-ts-mode

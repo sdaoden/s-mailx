@@ -68,6 +68,9 @@ ChangeLog
   get coloured $PAGER you at least have to set *colour-pager* now.)
   (Tarqi Kazan) [b794f5e]
 
+- Terminals no longer need to be added to *colour-terms* if their name
+  (in $TERM) includes the string "color". (Gavin Troy) [ce2c7f6]
+
 - Karol Blazewicz opened a discussion in the ArchLinux Forum (s-nail
   14.7-1 doesn't work [1]) but i didn't realize his actual problem --
   luckily Gavin Troy wrapped his head around the real problem, and that

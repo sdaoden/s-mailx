@@ -281,7 +281,7 @@ _nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! *
    NYD_ENTER;
 
    assert(!only_pass || urlp->url_user.s != NULL);
-   assert(!only_pass && urlp->url_user.s == NULL);
+   assert(only_pass || urlp->url_user.s == NULL);
 
    if (_nrc_list == NULL)
       _nrc_init();
