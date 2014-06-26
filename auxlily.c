@@ -55,14 +55,16 @@
 # include <netdb.h>
 #endif
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
 struct nyd_info {
    char const  *ni_file;
    char const  *ni_fun;
    ui32_t      ni_chirp_line;
    ui32_t      ni_level;
 };
+#endif
 
+#ifdef HAVE_DEBUG
 struct mem_chunk {
    struct mem_chunk  *mc_prev;
    struct mem_chunk  *mc_next;
@@ -79,13 +81,15 @@ union mem_ptr {
    char              *p_cp;
    ui8_t             *p_ui8p;
 };
-#endif /* HAVE_DEBUG */
+#endif
 
 /* NYD, memory pool debug */
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
 static ui32_t           _nyd_curr, _nyd_level;
 static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
+#endif
 
+#ifdef HAVE_DEBUG
 static size_t           _mem_aall, _mem_acur, _mem_amax,
                         _mem_mall, _mem_mcur, _mem_mmax;
 
@@ -105,7 +109,7 @@ static sigset_t         _hold_nset, _hold_oset;
 static char *  _colour_iso6429(char const *wish);
 #endif
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
 static void    _nyd_print(struct nyd_info *nip);
 #endif
 
@@ -206,7 +210,7 @@ jiter_colour:
 }
 #endif /* HAVE_COLOUR */
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
 static void
 _nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
 {
@@ -331,7 +335,7 @@ rele_sigs(void)
    NYD_LEAVE;
 }
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
 FL void
 _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 {
@@ -375,7 +379,7 @@ _nyd_oncrash(int signo)
    for (;;)
       _exit(EXIT_ERR);
 }
-#endif
+#endif /* HAVE_NYD */
 
 FL void
 touch(struct message *mp)

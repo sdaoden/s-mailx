@@ -253,16 +253,18 @@ FL void        hold_sigs(void);
 FL void        rele_sigs(void);
 
 /* Not-Yet-Dead debug information (handler installation in main.c) */
-#ifdef HAVE_DEBUG
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
 FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
                   char const *fun);
 FL void        _nyd_oncrash(int signo);
 
+# define HAVE_NYD
 # define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
 # define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 # define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 #else
+# undef HAVE_NYD
 # define NYD_ENTER               do {} while (0)
 # define NYD_LEAVE               do {} while (0)
 # define NYD                     do {} while (0)
