@@ -1174,6 +1174,8 @@ mime_classify_content_type_by_fileext(char const *name)
    size_t nlen;
    NYD_ENTER;
 
+   /* TODO mime_classify(): mime.types(5) has *-gz but we search dot!
+    * TODO i.e., we cannot handle files like dubidu.tar-gz; need globs! */
    if ((name = strrchr(name, '.')) == NULL || *++name == '\0')
       goto jleave;
 

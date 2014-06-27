@@ -15,8 +15,10 @@
 # XXX Anyway, it would be nice to an additional "is-text" flag, so that S-nail
 # XXX could itself choose wether something is text / displayable or not; yet
 # XXX text/ is used to decide, but sh,json,js,tex etc. are all application/..
+# XXX And: do we need alias support?
 
 application/cbor	cbor
+application/gzip	tgz gz emz
 application/javascript	js
 application/json	json
 application/mbox	mbox
@@ -36,7 +38,6 @@ application/x-compress	z
 application/x-cpio	cpio
 application/x-csh	csh tcsh
 application/x-dvi	dvi
-application/x-gzip	gz tgz emz
 application/x-latex	latex
 application/x-perl	pl pm perl
 application/x-sh	sh bash
@@ -50,13 +51,15 @@ application/x-xz	xz
 application/xhtml+xml	xhtml xht
 application/xml	xml xsl xsd
 application/xml-dtd	dtd
+application/xquery	xq xquery
 application/xslt+xml	xslt
 application/zip		zip
 audio/basic	au snd
 audio/midi	mid midi kar rmi
 audio/mp4	mp4a m4a m4b
 audio/mpeg	mpga mp2 mp2a mp3 m2a m3a
-audio/ogg	oga ogg spx
+audio/ogg	oga ogg
+audio/speex	spx
 audio/x-flac	flac
 audio/x-mpegurl	m3u
 audio/x-ms-wma	wma
@@ -82,7 +85,7 @@ text/plain	txt text conf cfg def list log in  m4 pod MF properties
 text/sgml	sgml sgm
 text/troff	t tr roff man me ms
 text/x-assembly	s S asm
-text/x-asciidoc	asciidoc adoc ad
+text/x-asciidoc	asciidoc adoc ad ad.txt adoc.txt
 text/x-awk	awk
 text/x-c++hdr	hpp hxx hh h++ hp
 text/x-c++src	cpp cxx cc c++
@@ -90,12 +93,15 @@ text/x-chdr	h
 text/x-csrc	c
 text/x-csharp	cs
 text/x-cgi	cgi
+text/x-d	d
 text/x-diff	diff patch
 text/x-go	go
 text/x-ini	ini
 text/x-java	java
 text/x-jsp	jsp
 text/x-lex	l
+# Extension of mine
+text/x-nimrod	nim
 text/x-objcsrc	m
 text/x-perl	pl pm al perl
 text/x-php	php php3 php4
