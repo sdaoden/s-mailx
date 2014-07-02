@@ -13,7 +13,8 @@
 # [t-z] toplines="5"
 # Notes:
 # - *noonehop* doesn't exist in this implementation.
-#   To pass through options to the MTA, use the `-O' command line option
+#   (To pass options through to an MTA, either add them after a '--' separator
+#   on the command line or by setting the *sendmail-arguments* variable.)
 # - *prompt* is "\\& " by default, which will act POSIX-compliant
 #   unless the user would set *bsdcompat*
 
