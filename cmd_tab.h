@@ -135,7 +135,7 @@
      DS(N_("Read commands from <file>")) },
    { "set", &c_set, (M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) variable(s)")) },
-   { "setenv", &c_setenv, (M | RAWLIST), 2, 2
+   { "setenv", &c_setenv, (M | RAWLIST), 1, 1000
      DS(N_("Set (a) variable(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
