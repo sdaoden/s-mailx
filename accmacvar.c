@@ -1119,6 +1119,82 @@ c_unsetenv(void *v)
 }
 
 FL int
+c_varedit(void *v)
+{
+   struct var_carrier vc;
+   sighandler_type sigint;
+   FILE *of, *nf;
+   char *val, **argv = v;
+   int rv = 0;
+   NYD_ENTER;
+
+   sigint = safe_signal(SIGINT, SIG_IGN);
+
+   while (*argv != NULL) {
+      memset(&vc, 0, sizeof vc);
+      _var_revlookup(&vc, *argv++);
+
+      if (!_var_lookup(&vc)) {
+         fprintf(stderr, _("`varedit': variable `%s' is not set\n"),
+            vc.vc_name);
+         rv = 1;
+         continue;
+      } else if (vc.vc_vmap != NULL && vc.vc_vmap->vm_binary) {
+         fprintf(stderr, _("`varedit' cannot edit binary value `%s'\n"),
+            vc.vc_name);
+         continue;
+      }
+
+      if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+            NULL) {
+         perror(_("`varedit': cannot create temporary file"));
+         rv = 1;
+         break;
+      } else if (*(val = vc.vc_var->v_value) != '\0' &&
+            sizeof *val != fwrite(val, strlen(val), sizeof *val, of)) {
+         perror(_("`varedit' failed to write an old value to temporary file"));
+         Fclose(of);
+         rv = 1;
+         continue;
+      }
+
+      fflush_rewind(of);
+      nf = run_editor(of, (off_t)-1, 'e', FAL0, NULL, NULL, SEND_MBOX, sigint);
+      Fclose(of);
+
+      if (nf != NULL) {
+         int c;
+         char *base;
+         off_t l = fsize(nf);
+
+         assert(l >= 0);
+         base = smalloc((size_t)l + 1);
+
+         for (l = 0, val = base; (c = getc(nf)) != EOF; ++val)
+            if (c == '\n' || c == '\r') {
+               *val = ' ';
+               ++l;
+            } else {
+               *val = (char)(uc_it)c;
+               l = 0;
+            }
+         val -= l;
+         *val = '\0';
+
+         if (!vok_vset(vc.vc_name, base))
+            rv = 1;
+
+         free(base);
+      }
+      Fclose(nf);
+   }
+
+   safe_signal(SIGINT, sigint);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_define(void *v)
 {
    int rv = 1;
