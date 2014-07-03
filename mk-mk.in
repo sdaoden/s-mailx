@@ -48,8 +48,17 @@ mkman.1: nail.1 mk.mk
 	_VERSION=`< version.h \
 		$(SED) -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.1 > $(@) $(AWK) 'BEGIN {written = 0}\
-	/.\"--MKMAN-START--/, /.\"--MKMAN-END--/ {\
+	< ./nail.1 > $(@) $(AWK) '\
+	BEGIN {\
+		written = 0;\
+		i = ENVIRON["_VERSION"];\
+		j = index(i, "-");\
+		if (j != 0)\
+			XX = ".ds XX \\\\%[\\\\*(VV-" substr(i, j + 1) "]";\
+		else\
+			XX = ".ds XX \\\\%[\\\\*(VV]";\
+	}\
+	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
 		if (written == 1)\
 			next;\
 		written = 1;\
@@ -57,14 +66,15 @@ mkman.1: nail.1 mk.mk
 		un = toupper(ENVIRON["_UAGENT"]);\
 		ln = tolower(un);\
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
+		print XX;\
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
-		printf ".ds UV \\\\%%%s [%s]\n", cn, ENVIRON["_VERSION"];\
 		print ".ds ua \\\\%", ln;\
 		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
 		OFS = " ";\
 		next\
 	}\
+	/^\.\\" vim:/ {next}\
 	{print}\
 	'
 
@@ -80,8 +90,8 @@ mkrc.rc: nail.rc mk.mk
 		OFS = "";\
 		ln = tolower(ENVIRON["_UAGENT"]);\
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-		print "# ", ENVIRON["_SYSCONFRC"];\
-		print "# Configuration file for ", cn, "(1)";\
+		print "# ", ENVIRON["_SYSCONFRC"], \
+			" - configuration file for ", cn, "(1)";\
 		OFS = " ";\
 		next\
 	}\

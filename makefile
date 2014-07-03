@@ -48,6 +48,8 @@ _update-release:
 	: $${UUAGENT:=S-nail};\
 	: $${UPLOAD:=sdaoden@frs.sourceforge.net:/home/frs/project/s-nail};\
 	: $${ACCOUNT:=sn_sf};\
+	DATE_MAN="`LC_ALL=C date -u +'%b %d, %Y'`";\
+	DATE_ISO="`date -u +%Y-%m-%d`";\
 	if [ "`git rev-parse --verify HEAD`" != \
 			"`git rev-parse --verify master`" ]; then \
 		echo >&2 'Not on the [master] branch';\
@@ -64,7 +66,27 @@ _update-release:
 	read i;\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	printf > ./version.h "#define VERSION \"v$${REL}\"\n" &&\
-	git add version.h &&\
+	< nail.1 sed -E \
+		-e "/^\.\\\\\" $${UUAGENT}\(1\):/ {" \
+	-e "s/^.*$$/.\\\\\" $${UUAGENT}(1): v$${REL} \/ $${DATE_ISO}/" \
+			-e b \
+		-e '}' \
+		-e '/^\.Dd / {' \
+			-e "s/^.*$$/.Dd $${DATE_MAN}/" \
+			-e b \
+		-e '}' \
+		-e '/^\.ds VV / {' \
+			-e "s/^.*$$/.ds VV \\\\\\\\%v$${REL}/" \
+			-e b \
+		-e '}' -e n > nail.1x &&\
+	mv -f nail.1x nail.1 &&\
+	< nail.rc sed -E \
+		-e "/^# $${UUAGENT}\(1\):/ {" \
+	-e "s/^.*$$/# $${UUAGENT}(1): v$${REL} \/ $${DATE_ISO}/" \
+			-e b \
+		-e '}' -e n > nail.rcx &&\
+	mv -f nail.rcx nail.rc &&\
+	git add version.h nail.1 nail.rc &&\
 	git commit -m "Bump $${UUAGENT} v$${REL}" &&\
 	git tag -f "v$${REL}" &&\
 	git update-ref refs/heads/next master &&\
@@ -72,7 +94,7 @@ _update-release:
 	git rm -rf '*' &&\
 	git archive --format=tar.gz "v$${REL}" | tar -x -z -f - &&\
 	git add --all &&\
-	git commit -m "$${UAGENT} v$${REL}, `date -u +%Y-%m-%d`" &&\
+	git commit -m "$${UAGENT} v$${REL}, $${DATE_ISO}" &&\
 	git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
 	git branch &&\
