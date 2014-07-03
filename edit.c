@@ -157,6 +157,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    FILE *nf = NULL;
    int t;
    time_t modtime;
+   off_t modsize;
    char const *ed;
    char *tempEdit;
    NYD_ENTER;
@@ -188,9 +189,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    fflush(nf);
    if (fstat(fileno(nf), &statb) == -1)
-      modtime = 0;
+      modtime = 0, modsize = 0;
    else
-      modtime = statb.st_mtime;
+      modtime = statb.st_mtime, modsize = statb.st_size;
    t = ferror(nf);
    if (Fclose(nf) < 0 || t != 0) {
       perror(tempEdit);
@@ -217,7 +218,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
       perror(tempEdit);
       goto jleave;
    }
-   if (modtime != statb.st_mtime && (nf = Fopen(tempEdit, "a+")) == NULL)
+
+   if ((modtime != statb.st_mtime || modsize != statb.st_size) &&
+         (nf = Fopen(tempEdit, "a+")) == NULL)
       perror(tempEdit);
 jleave:
    if (tempEdit != NULL) {
