@@ -67,8 +67,10 @@ static int     igshow(struct ignoretab *tab, char const *which);
 /* Compare two names for sorting ignored field list */
 static int     igcomp(void const *l, void const *r);
 
-static void    unignore_one(char const *name, struct ignoretab *tab);
-static int     unignore1(char **list, struct ignoretab *tab, char const *which);
+/*  */
+static int     _unignore(char **list, struct ignoretab *tab, char const *which);
+static void    __unign_all(struct ignoretab *tab);
+static void    __unign_one(struct ignoretab *tab, char const *name);
 
 static int
 save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
@@ -402,8 +404,44 @@ igcomp(void const *l, void const *r)
    return rv;
 }
 
+static int
+_unignore(char **list, struct ignoretab *tab, char const *which)
+{
+   char *field;
+   NYD_ENTER;
+
+   if (tab->i_count == 0)
+      printf(_("No fields currently being %s.\n"), which);
+   else
+      while ((field = *list++) != NULL)
+         if (field[0] == '*' && field[1] == '\0') {
+            __unign_all(tab);
+            break;
+         } else
+            __unign_one(tab, field);
+   NYD_LEAVE;
+   return 0;
+}
+
 static void
-unignore_one(char const *name, struct ignoretab *tab)
+__unign_all(struct ignoretab *tab)
+{
+   size_t i;
+   struct ignore *n, *x;
+   NYD_ENTER;
+
+   for (i = 0; i < NELEM(tab->i_head); ++i)
+      for (n = tab->i_head[i]; n != NULL; n = x) {
+         x = n->i_link;
+         free(n->i_field);
+         free(n);
+      }
+   memset(tab, 0, sizeof *tab);
+   NYD_LEAVE;
+}
+
+static void
+__unign_one(struct ignoretab *tab, char const *name)
 {
    struct ignore *ip, *iq;
    int h;
@@ -424,23 +462,6 @@ unignore_one(char const *name, struct ignoretab *tab)
       iq = ip;
    }
    NYD_LEAVE;
-}
-
-static int
-unignore1(char **list, struct ignoretab *tab, char const *which)
-{
-   NYD_ENTER;
-
-   if (tab->i_count == 0) {
-      printf(_("No fields currently being %s.\n"), which);
-      goto jleave;
-   }
-
-   while (*list != NULL)
-      unignore_one(*list++, tab);
-jleave:
-   NYD_LEAVE;
-   return 0;
 }
 
 FL int
@@ -764,7 +785,7 @@ c_unignore(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = unignore1((char**)v, ignore, "ignored");
+   rv = _unignore((char**)v, ignore, "ignored");
    NYD_LEAVE;
    return rv;
 }
@@ -775,7 +796,7 @@ c_unretain(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = unignore1((char**)v, ignore + 1, "retained");
+   rv = _unignore((char**)v, ignore + 1, "retained");
    NYD_LEAVE;
    return rv;
 }
@@ -786,7 +807,7 @@ c_unsaveignore(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = unignore1((char**)v, saveignore, "ignored");
+   rv = _unignore((char**)v, saveignore, "ignored");
    NYD_LEAVE;
    return rv;
 }
@@ -797,7 +818,7 @@ c_unsaveretain(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = unignore1((char**)v, saveignore + 1, "retained");
+   rv = _unignore((char**)v, saveignore + 1, "retained");
    NYD_LEAVE;
    return rv;
 }
@@ -808,7 +829,7 @@ c_unfwdignore(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = unignore1((char**)v, fwdignore, "ignored");
+   rv = _unignore((char**)v, fwdignore, "ignored");
    NYD_LEAVE;
    return rv;
 }
@@ -819,7 +840,7 @@ c_unfwdretain(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = unignore1((char**)v, fwdignore + 1, "retained");
+   rv = _unignore((char**)v, fwdignore + 1, "retained");
    NYD_LEAVE;
    return rv;
 }

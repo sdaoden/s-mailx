@@ -236,11 +236,11 @@
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate list for the invoking user")) },
    { "ignore", &c_igfield, (M | RAWLIST), 0, 1000
-     DS(N_("Add header fields to ignored LIST), or show that list")) },
+     DS(N_("Add <header-fields> to the ignored LIST, or show that list")) },
    { "discard", &c_igfield, (M | RAWLIST), 0, 1000
-     DS(N_("Add header fields to ignored LIST), or show that list")) },
+     DS(N_("Add <header-fields> to the ignored LIST, or show that list")) },
    { "retain", &c_retfield, (M | RAWLIST), 0, 1000
-     DS(N_("Add header fields to retained LIST), or show that list")) },
+     DS(N_("Add <header-fields> to retained list, or show that list")) },
    { "saveignore", &c_saveigfield, (M | RAWLIST), 0, 1000
      DS("Is to \"save\" what \"ignore\" is to \"type\"/\"print\"") },
    { "savediscard", &c_saveigfield, (M | RAWLIST), 0, 1000

@@ -2274,15 +2274,18 @@ Takes a message list and marks each message as not being
 Removes the header field names from the list of ignored fields for the
 .Ic forward
 command.
+The special name `*' will remove all fields.
 .It Ic unfwdretain
 Removes the header field names from the list of retained fields for the
 .Ic forward
 command.
+The special name `*' will remove all fields.
 .It Ic unghost
 Remove an existing command
 .Ic ghost .
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
+The special name `*' will remove all fields.
 .It Ic Unread
 Same as
 .Ic unread .
@@ -2290,12 +2293,15 @@ Same as
 (U) Takes a message list and marks each message as not having been read.
 .It Ic unretain
 Removes the header field names from the list of retained fields.
+The special name `*' will remove all fields.
 .It Ic unsaveignore
 Removes the header field names from the list of ignored fields for
 saving.
+The special name `*' will remove all fields.
 .It Ic unsaveretain
 Removes the header field names from the list of retained fields for
 saving.
+The special name `*' will remove all fields.
 .It Ic unset
 Takes a list of option names and discards their remembered values;
 the inverse of
