@@ -596,7 +596,6 @@ enum sendaction {
    SEND_TODISP_ALL,  /* same, include all MIME parts */
    SEND_SHOW,        /* convert to 'show' command form */
    SEND_TOSRCH,      /* convert for IMAP SEARCH */
-   SEND_TOFLTR,      /* convert for spam mail filtering */
    SEND_TOFILE,      /* convert for saving body to a file */
    SEND_TOPIPE,      /* convert for pipe-content/subc. */
    SEND_QUOTE,       /* convert for quoting */

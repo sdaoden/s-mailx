@@ -664,8 +664,7 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
             action == SEND_QUOTE || action == SEND_QUOTE_ALL)
          ?  TD_ISPR | TD_ICONV
          : (action == SEND_TOSRCH || action == SEND_TOPIPE)
-            ? TD_ICONV : (action == SEND_TOFLTR)
-            ?  TD_DELCTRL : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
+            ? TD_ICONV : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
          qf, rest);
    if (n < 0)
       sz = n;
@@ -740,7 +739,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    isenc = 0;
    convert = (action == SEND_TODISP || action == SEND_TODISP_ALL ||
          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-         action == SEND_TOSRCH || action == SEND_TOFLTR)
+         action == SEND_TOSRCH)
          ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
@@ -850,7 +849,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          start = line;
          if (action == SEND_TODISP || action == SEND_TODISP_ALL ||
                action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-               action == SEND_TOSRCH || action == SEND_TOFLTR) {
+               action == SEND_TOSRCH) {
             /* Strip blank characters if two MIME-encoded words follow on
              * continuing lines */
             if (isenc & 1)
@@ -899,9 +898,6 @@ jskip:
    switch (ip->m_mimecontent) {
    case MIME_822:
       switch (action) {
-      case SEND_TOFLTR:
-         putc('\0', obuf);
-         /* FALLTHRU */
       case SEND_TODISP:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
@@ -931,9 +927,6 @@ jskip:
       }
       break;
    case MIME_TEXT_HTML:
-      if (action == SEND_TOFLTR)
-         putc('\b', obuf);
-      /* FALLTHRU */
    case MIME_TEXT:
    case MIME_TEXT_PLAIN:
       switch (action) {
@@ -996,8 +989,6 @@ jskip:
             char const *x = _("[Binary content]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
          }
-         /* FALLTHRU */
-      case SEND_TOFLTR:
          goto jleave;
       case SEND_TOFILE:
       case SEND_TOPIPE:
@@ -1047,7 +1038,6 @@ jskip:
       case SEND_TOFILE:
       case SEND_TOPIPE:
       case SEND_TOSRCH:
-      case SEND_TOFLTR:
       case SEND_DECRYPT:
 jmulti:
          if ((action == SEND_TODISP || action == SEND_TODISP_ALL) &&
@@ -1089,9 +1079,6 @@ jmulti:
                _out(rest.s, rest.l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
                   NULL);
                break;
-            case SEND_TOFLTR:
-               putc('\0', obuf);
-               /* FALLTHRU */
             case SEND_MBOX:
             case SEND_RFC822:
             case SEND_SHOW:
@@ -1449,7 +1436,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    int rv = -1, c;
    NYD_ENTER;
 
-   if (mp == dot && action != SEND_TOSRCH && action != SEND_TOFLTR)
+   if (mp == dot && action != SEND_TOSRCH)
       did_print_dot = 1;
    if (stats != NULL)
       stats[0] = stats[1] = 0;
