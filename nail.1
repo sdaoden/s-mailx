@@ -339,7 +339,7 @@ This sets multiple options to prepare \*(UA for working in batch mode
 .Va quiet ,
 .Va sendwait ,
 as well as
-.Va MBOX
+.Ev MBOX
 and
 .Va folder
 to
@@ -549,7 +549,7 @@ messages 1 through 5 in the sorted/threaded order, as shown in the
 header summary.
 The following special message names exist:
 .\" ---
-.Bl -tag -width ".It .Ar :n:u"
+.Bl -tag -width ".It Ar :n:u"
 .It Ar :n
 All new messages.
 .It Ar :o
@@ -706,7 +706,7 @@ for each address,
 and the addresses without real names from the respective header field.
 These search expressions can be nested using parentheses, see below for
 examples.
-.Bl -tag -width ".It .Ar :n:u"
+.Bl -tag -width ".It Ar :n:u"
 .It Ar ( criterion )
 All messages that satisfy the given
 .Ar criterion .
@@ -889,7 +889,7 @@ file for a `HOST' specific entry which provides a `USER' login name
 Finally \*(UA tries to gain the `USER' from the variable
 .Va user ,
 which in turn defaults to
-.Va USER
+.Ev USER
 which, again, defaults to `getpwuid(getuid())' a.k.a. the current user.
 .It
 Authentication: unless otherwise noted this will first look for
@@ -973,7 +973,7 @@ Also see
 .Ss "Character sets"
 \*(OP \*(UA detects the character set of the terminal by using
 mechanisms that are controlled by the
-.Va LC_CTYPE
+.Ev LC_CTYPE
 locale setting
 (the manual for
 .Xr setlocale 3
@@ -1043,7 +1043,7 @@ conversion of the part or attachment succeeds.
 If none of the tried (8 bit) character sets is capable to represent the
 content of the part or attachment,
 then the message will not be sent and its text will be saved to
-.Va DEAD .
+.Ev DEAD .
 In general, if the message `Cannot convert from a to b' appears, either
 some characters are not appropriate for the currently selected
 (terminal) character set,
@@ -1165,7 +1165,7 @@ command with the respective arguments `0', `$', `-' and `+'
 .Ss "Coloured message display"
 \*(OP \*(UA can be configured to support coloured message display.
 Colours are used only when the
-.Va TERM
+.Ev TERM
 environment variable is set and the terminal type can be found in
 .Va colour-terms
 (or includes the string "color").
@@ -1173,7 +1173,7 @@ On top of that the binary option
 .Va colour-pager
 defines wether ANSI colour sequences are generated when the output
 of a command needs to go through the
-.Va PAGER
+.Ev PAGER
 (also see
 .Va crt Ns
 ); this is not enabled by default.
@@ -1553,7 +1553,7 @@ means the system mailbox of `user'
 regardless of its actual setting),
 .It Ar &
 (ampersand) means the invoking user's `mbox' file (see
-.Va MBOX Ns
+.Ev MBOX Ns
 ) and
 .It Ar +file
 means a `file' in the
@@ -1761,7 +1761,8 @@ The first form simply checks wether an option is set, the other two also
 perform value content comparison (equality and non-equality,
 respectively); an unset value is treated as the empty string, then.
 The \*(OPal regular expression support adds `=~' and `!~' tests, which
-treat the right hand side as a regular expression, e.g., `^UTF.*' (see
+treat the right hand side as a regular expression that is matched
+case-insensitively, e.g., `^UTF.*' (see
 .Xr re_format 7 Ns
 ).
 .It Ic ignore
@@ -1867,7 +1868,7 @@ but marks the messages for deletion if they were transferred
 successfully.
 .It Ic more
 Takes a message list and invokes the
-.Va PAGER
+.Ev PAGER
 on that list, printing a form-feed (`\\f') in between messages.
 .It Ic More
 Like
@@ -2521,7 +2522,7 @@ Add the given names to the list of blind carbon copy recipients.
 Add the given names to the list of carbon copy recipients.
 .It Ic ~d
 Read the file specified by the
-.Va DEAD
+.Ev DEAD
 variable into the message.
 .It Ic ~e
 Invoke the text editor on the message collected so far.
@@ -2584,7 +2585,7 @@ and followed by the attachment list, if any.
 .It Ic ~q
 Abort the message being sent,
 copying it to the file specified by the
-.Va DEAD
+.Ev DEAD
 variable if
 .Va save
 is set.
@@ -2603,7 +2604,7 @@ Like `~m', but exclude all message headers.
 Like `~f', but exclude all message headers.
 .It Ic ~v
 Invoke an alternate editor (defined by the
-.Va VISUAL
+.Ev VISUAL
 option) on the message collected so far.
 Usually, the alternate editor will be a screen editor.
 After the editor is quit,
@@ -2807,7 +2808,7 @@ Also see the section
 .Sx "Coloured message display" .
 .It Va colour-pager
 \*(OP Wether colour shall be used for output that is paged through
-.Va PAGER .
+.Ev PAGER .
 Note that pagers may need special flags, e.g.,
 .Xr less 1
 requires the option
@@ -2817,7 +2818,7 @@ and
 the option
 .Fl c
 in order to support colours; therefore \*(UA will inspect the variable
-.Va PAGER
+.Ev PAGER
 \(en if that starts with the string `less' a non-existing
 environment variable
 .Va LESS
@@ -2851,7 +2852,7 @@ This procedure is not completely reliable since it cannot be guaranteed
 that the IMAP unique identifiers (UIDs) on the server still match the
 ones in the cache at that time.
 Data is saved to
-.Va DEAD
+.Ev DEAD
 when this problem occurs.
 .It Va disconnected-USER@HOST
 The specified account is handled as described for the
@@ -3041,7 +3042,7 @@ and the command
 .Ic netrc Ns
 ).
 The default path can be overridden by the environment variable
-.Va NETRC .
+.Ev NETRC .
 Note that \*(UA requires that the file is only accessible by the user,
 regardless of the file content; also, whereas a conforming parser is
 used, only `machine', `login' and `password' entries are saved and used.
@@ -3165,7 +3166,7 @@ line for messages that are embedded into an envelope mail via the
 When the user aborts a message with two `RUBOUT' (interrupt,
 `control-C') characters,
 \*(UA will copy the partial letter to the file
-.Va DEAD .
+.Ev DEAD .
 This option is set by default.
 .It Va searchheaders
 Expand message-list specifiers in the form `/x:y' to all messages
@@ -3246,9 +3247,10 @@ certificates.
 \*(OP Accept SSLv2 connections.
 These are normally not allowed because this protocol version is insecure.
 .It Va keep-content-length
-When (editing messages and) writing MBOX mailbox files \*(UA can be told
-to keep the `Content-Length:' and `Lines:' header fields that some MUAs
-generate by setting this variable.
+When (editing messages and) writing
+.Ev MBOX
+mailbox files \*(UA can be told to keep the `Content-Length:' and
+`Lines:' header fields that some MUAs generate by setting this variable.
 Since \*(UA does neither use nor update these non-standardized header
 fields (which in itself shows one of their conceptual problems),
 stripping them should increase interoperability in between MUAs that
@@ -3359,7 +3361,7 @@ See the section
 for the format of the value.
 .It Va colour-terms
 \*(OP A comma-separated list of
-.Va TERM Ns
+.Ev TERM Ns
 inals for which coloured message display can be used.
 Entries only need to be added if the string "color" isn't part of the
 terminal name itself; the default value is
@@ -3383,7 +3385,7 @@ The default value is `from,subject'.
 .It Va crt
 The valued option crt is used as a threshold to determine how long
 a message must be before
-.Va PAGER
+.Ev PAGER
 is used to read it.
 If
 .Va crt
@@ -3393,9 +3395,6 @@ the system is used to compute the threshold (see
 and
 .Xr stty 1 Ns
 ).
-.It Va DEAD
-The name of the file to use for saving aborted messages.
-This defaults to `dead.letter' in the user's home directory.
 .It Va datefield
 The date in a header summary is normally the date of the mailbox `From\ '
 line of the message.
@@ -3421,13 +3420,6 @@ command.
 The interpretation of the value is identical to what has been described
 for
 .Va datefield .
-.It Va EDITOR
-Pathname of the text editor to use in the
-.Ic edit
-command and
-.Ic ~e
-tilde escape.
-A default editor is used if this value is not defined.
 .It Va encoding
 Suggestion for the MIME encoding to use in outgoing text messages
 and message parts.
@@ -3659,12 +3651,6 @@ String used by the `~m', `~M' and `~R' tilde escapes and by the
 option for indenting messages,
 in place of the normal tabulator character (`^I'), which is the default.
 Be sure to quote the value if it contains spaces or tabs.
-.It Va LISTER
-Pathname of the directory lister to use in the
-.Ic folders
-command when operating on local mailboxes.
-Default is
-.Pa /bin/ls .
 .It Va line-editor-cursor-right
 \*(OP If the builtin command line editor is used, actions which are
 based on rightwise movement may not work on some terminals.
@@ -3684,15 +3670,6 @@ for the
 command and the
 .Va folder
 option.
-.It Va MBOX
-The name of the mbox file.
-Supports a logical subset of the special conventions that are documented
-for the
-.Ic folder
-command and the
-.Va folder
-option.
-The fallback default is `mbox' in the user's home directory.
 .It Va mimetypes-load-control
 This option can be used to control which of the
 .Xr mime.types 5
@@ -3760,12 +3737,6 @@ variable,
 and message numbers may have changed.
 .It Va ORGANIZATION
 The value to put into the `Organization:' field of the message header.
-.It Va PAGER
-Pathname of the program to use in the more command or when the
-.Va crt
-variable is set.
-The default paginator is
-.Xr more 1 .
 .It Va password
 \*(IN Sets a global fallback password, which is used in case none has
 been given in the protocol and account-specific URL and neither is there
@@ -3975,11 +3946,6 @@ If this variable is set then the mailwrapper (the program that is
 actually executed when calling `sendmail') will treat its contents as
 that name.
 The default is `sendmail'.
-.It Va SHELL
-Pathname of the shell to use in the
-.Ic \!
-command and the `~!' tilde escape.
-A default shell is used if this option is not defined.
 .It Va Sign
 A string for use with the `~A' tilde escape.
 .It Va sign
@@ -4354,15 +4320,11 @@ been given in the protocol and account-specific URL and there is also
 no matching
 .Va user-HOST .
 This variable defaults to the value of
-.Va USER .
+.Ev USER .
 .It Va user-HOST
 \*(IN Overrides
 .Va user
 for a specific host.
-.It Va VISUAL
-Pathname of the text editor to use in the
-.Ic visual
-command and `~v' tilde escape.
 .El
 .\" }}}
 .\" }}} (Variable options)
@@ -4371,51 +4333,91 @@ command and `~v' tilde escape.
 .Sh ENVIRONMENT
 Besides the variables described above,
 \*(UA uses the following environment variables:
-.Bl -tag -width ".It Va MAILRC"
-.It Va COLUMNS
+.Bl -tag -width ".It Ev MAILRC"
+.It Ev COLUMNS
 The user's preferred width in column positions for the terminal screen
 or window (only used during startup).
-.It Va HOME
+.It Ev DEAD
+The name of the file to use for saving aborted messages.
+This defaults to `dead.letter' in the user's home directory.
+.It Ev EDITOR
+Pathname of the text editor to use in the
+.Ic edit
+command and
+.Ic ~e
+tilde escape.
+A default editor is used if this value is not defined.
+.It Ev HOME
 The user's home directory.
-.It Va LANG , Va LC_ALL , Va LC_COLLATE , Va LC_CTYPE , Va LC_MESSAGES
+.It Ev LANG , Ev LC_ALL , Ev LC_COLLATE , Ev LC_CTYPE , Ev LC_MESSAGES
 See
 .Xr locale 7 .
-.It Va LINES
+.It Ev LINES
 The user's preferred number of lines on a page or the vertical screen or
 window size in lines (only used during startup).
-.It Va MAILRC
+.It Ev LISTER
+Pathname of the directory lister to use in the
+.Ic folders
+command when operating on local mailboxes.
+Default is
+.Pa /bin/ls .
+.It Ev MBOX
+The name of the mbox file.
+Supports a logical subset of the special conventions that are documented
+for the
+.Ic folder
+command and the
+.Va folder
+option.
+The fallback default is `mbox' in the user's home directory.
+.It Ev MAILRC
 Is used as a startup file instead of \*(ur if set.
 When \*(UA scripts are invoked on behalf of other users,
 this variable should be set to
 .Pa /dev/null
 to avoid side-effects from reading their configuration files.
-.It Va NAILRC
+.It Ev NAILRC
 If this variable is set and
-.Va MAILRC
+.Ev MAILRC
 is not, it is treated as a startup configuration file and read.
-.It Va NAIL_NO_SYSTEM_RC
+.It Ev NAIL_NO_SYSTEM_RC
 If this variable is set then reading of \*(UR at startup is inhibited,
 i.e., the same effect is achieved as if \*(UA had been started up with
 the option
 .Fl n .
-.It Va NETRC
+.It Ev NETRC
 \*(IN \*(OP This variable overrides the default location of the user's
 .Pa .netrc
 file.
-.It Va SYSV3
+.It Ev PAGER
+Pathname of the program to use in the more command or when the
+.Va crt
+variable is set.
+The default paginator is
+.Xr more 1 .
+.It Ev SHELL
+Pathname of the shell to use in the
+.Ic \!
+command and the `~!' tilde escape.
+A default shell is used if this option is not defined.
+.It Ev SYSV3
 Changes the letters printed in the first column of a header summary.
-.It Va TERM
+.It Ev TERM
 \*(OP The terminal type for which output is to be prepared.
-.It Va TMPDIR
+.It Ev TMPDIR
 Used as directory for temporary files instead of
 .Pa /tmp ,
 if set.
-.It Va USER
+.It Ev USER
 Can be used to force identification as
-.Va USER ,
+.Ev USER ,
 i.e., identical to the
 .Fl u
 command line option.
+.It Ev VISUAL
+Pathname of the text editor to use in the
+.Ic visual
+command and `~v' tilde escape.
 .El
 .\" }}}
 .\"
@@ -4463,7 +4465,7 @@ Typing a single `RUBOUT' causes \*(UA to print
 .Ns ` Ns Li (Interrupt -- one more to kill letter) Ns '.
 Typing a second `RUBOUT' causes \*(UA to save your partial letter on the
 file
-.Va DEAD
+.Ev DEAD
 and abort the letter.
 Once you have sent mail to someone, there is no way to undo the act, so
 be careful.
@@ -5147,7 +5149,7 @@ So unless your script is only intended for your own personal use
 .Pp
 You then need to create a script-local configuration for \*(UA.
 This can be done by either pointing the
-.Va MAILRC
+.Ev MAILRC
 variable to a custom configuration file,
 by passing the configuration in environment variables,
 or by using the
@@ -5260,7 +5262,7 @@ If it fails to contact its upstream SMTP server, it will not make
 further attempts to transfer the message at a later time,
 and it does not leave other information about this condition than an
 error message on the terminal and an entry in
-.Va DEAD .
+.Ev DEAD .
 This is usually not a problem if the SMTP server is located in the same
 local network as the computer on which \*(UA is run.
 However, care should be taken when using a remote server of an ISP;
