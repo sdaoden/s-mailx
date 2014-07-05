@@ -1707,9 +1707,6 @@ FL void        i_strcpy(char *dest, char const *src, size_t size);
 /* Is *as1* a valid prefix of *as2*? */
 FL int         is_prefix(char const *as1, char const *as2);
 
-/* Find the last AT @ before the first slash */
-FL char const * last_at_before_slash(char const *sp);
-
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
  * to indicate wether getmsglist() et al need to be called to collect
  * additional args that remain in linebuf.  Return NULL on "error" */

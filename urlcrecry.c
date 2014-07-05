@@ -56,7 +56,15 @@ struct nrc_node {
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
 static struct nrc_node  *_nrc_list;
+#endif /* HAVE_NETRC */
 
+/* Find the last @ before a slash
+ * TODO Casts off the const but this is ok here; obsolete function! */
+#ifdef HAVE_SOCKETS /* temporary (we'll have file://..) */
+static char *           _url_last_at_before_slash(char const *sp);
+#endif
+
+#ifdef HAVE_NETRC
 /* Initialize .netrc cache */
 static void             _nrc_init(void);
 static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN]);
@@ -74,6 +82,26 @@ static bool_t           __nrc_find_user(struct url *urlp,
 static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
                            struct nrc_node const *nrc);
 #endif /* HAVE_NETRC */
+
+#ifdef HAVE_SOCKETS
+static char *
+_url_last_at_before_slash(char const *sp)
+{
+   char const *cp;
+   char c;
+   NYD2_ENTER;
+
+   for (cp = sp; (c = *cp) != '\0'; ++cp)
+      if (c == '/')
+         break;
+   while (cp > sp && *--cp != '@')
+      ;
+   if (*cp != '@')
+      cp = NULL;
+   NYD2_LEAVE;
+   return UNCONST(cp);
+}
+#endif
 
 #ifdef HAVE_NETRC
 static void
@@ -495,7 +523,7 @@ jeproto:
 
    /* User and password, I */
 juser:
-   if ((cp = UNCONST(last_at_before_slash(data))) != NULL) {
+   if ((cp = _url_last_at_before_slash(data)) != NULL) {
       size_t l = PTR2SIZE(cp - data);
       char const *d = data;
       char *ub = ac_alloc(l +1);
@@ -811,7 +839,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       goto jpass;
 
    if (!addr_is_nuser) {
-      if ((s = UNCONST(last_at_before_slash(addr))) != NULL) {
+      if ((s = _url_last_at_before_slash(addr)) != NULL) {
          ccp->cc_user.s = urlxdec(savestrbuf(addr, PTR2SIZE(s - addr)));
          ccp->cc_user.l = strlen(ccp->cc_user.s);
       } else if (ware & REQ_USER)

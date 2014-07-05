@@ -746,24 +746,6 @@ is_prefix(char const *as1, char const *as2)
    return (c == '\0');
 }
 
-FL char const *
-last_at_before_slash(char const *sp)/* XXX (->URL (yet auxlily.c) / obsolete) */
-{
-   char const *cp;
-   char c;
-   NYD_ENTER;
-
-   for (cp = sp; (c = *cp) != '\0'; ++cp)
-      if (c == '/')
-         break;
-   while (cp > sp && *--cp != '@')
-      ;
-   if (*cp != '@')
-      cp = NULL;
-   NYD_LEAVE;
-   return cp;
-}
-
 FL char *
 laststring(char *linebuf, bool_t *needs_list, bool_t strip)
 {
