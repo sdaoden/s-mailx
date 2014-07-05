@@ -1677,14 +1677,6 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 # define protbase(CP)            protbase(CP, __FILE__, __LINE__)
 #endif
 
-/* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
-FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
-# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
-#endif
-
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
@@ -1863,6 +1855,15 @@ FL int         c_history(void *v);
 /*
  * urlcrecry.c
  */
+
+/* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
+ * These return a newly salloc()ated result */
+FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
+FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
+# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
+#endif
 
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
