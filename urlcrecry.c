@@ -212,7 +212,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
    int c;
    char *cp;
    enum nrc_token rv = NRC_NONE;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    c = EOF;
    if (feof(fi) || ferror(fi))
@@ -269,7 +269,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
 jleave:
    if (c == EOF && !feof(fi))
       rv = NRC_ERROR;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -328,7 +328,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
    char const *d2, *d1;
    size_t l2, l1;
    int rv = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* Find a matching machine entry -- entries are lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
@@ -361,14 +361,14 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
        * exact match first! */
       rv = -1;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 static bool_t
 __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (; nrc != NULL; nrc = nrc->nrc_result)
       if (nrc->nrc_ulen > 0 && urlp->url_user.s == NULL) {
@@ -380,14 +380,14 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
          break;
       }
 
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (nrc != NULL);
 }
 
 static bool_t
 __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (; nrc != NULL; nrc = nrc->nrc_result) {
       if (user_match && (nrc->nrc_ulen != urlp->url_user.l ||
@@ -403,7 +403,7 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
       break;
    }
 
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (nrc != NULL);
 }
 #endif /* HAVE_NETRC */
