@@ -184,8 +184,10 @@ FL bool_t      _var_vokclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
+#ifdef HAVE_SMTP
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
+#endif
 #define xok_blook(C,URL,M)       (_var_xoklook(CONCAT(ok_b_, C),URL,M) != NULL)
 #define xok_vlook(C,URL,M)       _var_xoklook(CONCAT(ok_v_, C), URL, M)
 
@@ -1815,6 +1817,7 @@ FL void        uncollapse1(struct message *mp, int always);
  * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
+#ifdef HAVE_SOCKETS
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */
 FL char *      getuser(char const *query);
@@ -1823,6 +1826,7 @@ FL char *      getuser(char const *query);
  * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
+#endif
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
@@ -1865,6 +1869,7 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
 
+#ifdef HAVE_SOCKETS
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
@@ -1875,9 +1880,12 @@ FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
 FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
+#endif /* HAVE_SOCKETS */
 
 /* `netrc' */
+#ifdef HAVE_NETRC
 FL int         c_netrc(void *v);
+#endif
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5

@@ -178,6 +178,7 @@ jleave:
    return rv;
 }
 
+#ifdef HAVE_SOCKETS
 FL char *
 getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
@@ -214,9 +215,9 @@ getpassword(char const *query)
    sighandler_type volatile ohdl;
    struct termios tios;
    char * volatile pass = NULL;
-#if 0
+# if 0
    bool_t hadsig = FAL0; /* TODO getpassword() no longer reraises SIGINT */
-#endif
+# endif
    NYD_ENTER;
 
    if (query == NULL)
@@ -238,9 +239,9 @@ getpassword(char const *query)
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
-#if 0
+# if 0
       hadsig = TRU1;
-#endif
+# endif
       goto jrestore;
    }
    safe_signal(SIGINT, &__tty_acthdl);
@@ -254,12 +255,13 @@ jrestore:
    if (options & OPT_TTYIN)
       fputc('\n', stdout);
    NYD_LEAVE;
-#if 0
+# if 0
    if (hadsig && ohdl != SIG_IGN)
       kill(0, SIGINT);
-#endif
+# endif
    return pass;
 }
+#endif /* HAVE_SOCKETS */
 
 /*
  * readline(3)

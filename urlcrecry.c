@@ -492,6 +492,7 @@ FL char *
    return n;
 }
 
+#ifdef HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
@@ -875,20 +876,20 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       ccp = NULL;
       goto jleave;
    }
-#ifndef HAVE_MD5
+# ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
       fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
-#ifndef HAVE_GSSAPI
+# endif
+# ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
       fprintf(stderr, _("No GSS-API support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
+# endif
 
    /* User name */
    if (!(ware & (WANT_USER | REQ_USER)))
@@ -1042,20 +1043,20 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       ccp = NULL;
       goto jleave;
    }
-#ifndef HAVE_MD5
+# ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
       fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
-#ifndef HAVE_GSSAPI
+# endif
+# ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
       fprintf(stderr, _("No GSS-API support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
+# endif
 
    /* Password */
    if ((ccp->cc_pass = urlp->url_pass).s != NULL)
@@ -1069,7 +1070,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       if ((s = vok_vlook(vbuf)) == NULL) {
          /* But before we go and deal with the absolute fallbacks, check wether
           * we may look into .netrc */
-#ifdef HAVE_NETRC
+# ifdef HAVE_NETRC
          if (ok_blook(netrc_lookup))
             switch (_nrc_lookup(urlp, TRU1)) {
             default:
@@ -1083,7 +1084,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
                ccp = NULL;
                goto jleave;
             }
-#endif
+# endif
          vbuf[--i] = '\0';
          if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
                (s = getpassword(NULL)) == NULL) {
@@ -1106,6 +1107,7 @@ jleave:
    NYD_LEAVE;
    return (ccp != NULL);
 }
+#endif /* HAVE_SOCKETS */
 
 #ifdef HAVE_NETRC
 FL int
