@@ -105,7 +105,7 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
 {
    ui8_t const *qtab;
    enum _qact a, r;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    qtab = ishead ? _qtab_head : _qtab_body;
    a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s];
@@ -154,7 +154,7 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
 jnquote:
    r = N;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return r;
 }
 
@@ -162,13 +162,13 @@ SINLINE char *
 _qp_ctohex(char *store, char c)
 {
    static char const hexmap[] = "0123456789ABCDEF";
-   NYD_ENTER;
+   NYD2_ENTER;
 
    store[2] = '\0';
    store[1] = hexmap[(ui8_t)c & 0x0F];
    c = ((ui8_t)c >> 4) & 0x0F;
    store[0] = hexmap[(ui8_t)c];
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return store;
 }
 
@@ -188,7 +188,7 @@ _qp_cfromhex(char const *hex)
 
    ui8_t i1, i2;
    si32_t r;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(atoi16) ||
          (i2 = (ui8_t)hex[1] - '0') >= NELEM(atoi16))
@@ -201,7 +201,7 @@ _qp_cfromhex(char const *hex)
    r <<= 4;
    r += i2;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return r;
 jerr:
    r = -1;
@@ -213,7 +213,7 @@ _b64_decode_prepare(struct str *work, struct str const *in)
 {
    char *cp;
    size_t cp_len;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    cp = in->s;
    cp_len = in->l;
@@ -231,7 +231,7 @@ _b64_decode_prepare(struct str *work, struct str const *in)
 
    if (cp_len > 16)
       cp_len = ((cp_len * 3) >> 2) + (cp_len >> 3);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return cp_len;
 }
 
@@ -255,7 +255,7 @@ _b64_decode(struct str *out, struct str *in)
    ssize_t ret = -1;
    ui8_t *p;
    ui8_t const *q, *end;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    p = (ui8_t*)out->s;
    q = (ui8_t const*)in->s;
@@ -288,7 +288,7 @@ _b64_decode(struct str *out, struct str *in)
 jleave:
    in->l -= PTR2SIZE((char*)UNCONST(q) - in->s);
    in->s = UNCONST(q);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ret;
 }
 
