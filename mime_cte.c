@@ -292,6 +292,28 @@ jleave:
    return ret;
 }
 
+FL char *
+mime_char_to_hexseq(char store[3], char c)
+{
+   char *rv;
+   NYD2_ENTER;
+
+   rv = _qp_ctohex(store, c);
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL si32_t
+mime_hexseq_to_char(char const *hex)
+{
+   si32_t rv;
+   NYD2_ENTER;
+
+   rv = _qp_cfromhex(hex);
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL size_t
 mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
 {

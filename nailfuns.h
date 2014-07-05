@@ -1211,6 +1211,13 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * - Base64, section 6.8
  */
 
+/* Utilities: the former converts the byte c into a (NUL terminated)
+ * hexadecimal string as is used in URL percent- and quoted-printable encoding,
+ * the latter performs the backward conversion and returns the character or -1
+ * on error */
+FL char *      mime_char_to_hexseq(char store[3], char c);
+FL si32_t      mime_hexseq_to_char(char const *hex);
+
 /* How many characters of (the complete body) ln need to be quoted */
 FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead);
 
