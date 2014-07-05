@@ -1063,7 +1063,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
    NATCH_CHAR( struct bidi_info bi; )
    int col_orig = col, n, sz;
-   bool_t isbidi, isuni, isrepl;
+   bool_t isbidi, isuni, istab, isrepl;
    char *nb, *np;
    NYD_ENTER;
 
@@ -1097,6 +1097,7 @@ jnobidi:
 #endif
 
    while (*cp != '\0') {
+      istab = FAL0;
 #ifdef HAVE_C90AMEND1
       if (mb_cur_max > 1) {
          wchar_t  wc;
@@ -1105,7 +1106,11 @@ jnobidi:
          isrepl = TRU1;
          if ((sz = mbtowc(&wc, cp, mb_cur_max)) == -1)
             sz = 1;
-         else if (iswprint(wc)) {
+         else if (wc == L'\t') {
+            cp += sz - 1; /* Silly, no such charset known (.. until S-Ctext) */
+            isrepl = FAL0;
+            istab = TRU1;
+         } else if (iswprint(wc)) {
 # ifndef HAVE_WCWIDTH
             n = 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
 # else
@@ -1117,8 +1122,11 @@ jnobidi:
          }
       } else
 #endif
-         n = sz = 1,
-         isrepl = !isprint(*cp);
+      {
+         n = sz = 1;
+         istab = (*cp == '\t');
+         isrepl = !(istab || isprint(*cp));
+      }
 
       if (n > col)
          break;
@@ -1133,7 +1141,7 @@ jnobidi:
          } else
             *np++ = '?';
          cp += sz;
-      } else if (sz == 1 && spacechar(*cp)) {
+      } else if (istab || (sz == 1 && spacechar(*cp))) {
          *np++ = ' ';
          ++cp;
       } else
