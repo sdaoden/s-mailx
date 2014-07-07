@@ -233,7 +233,7 @@ FL void
 panic(char const *format, ...)
 {
    va_list ap;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    fprintf(stderr, _("Panic: "));
 
@@ -243,7 +243,7 @@ panic(char const *format, ...)
 
    fputs("\n", stderr);
    fflush(stderr);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    abort(); /* Was exit(EXIT_ERR); for a while, but no */
 }
 
@@ -251,7 +251,7 @@ FL void
 alert(char const *format, ...)
 {
    va_list ap;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    fprintf(stderr, _("Panic: "));
 
@@ -261,7 +261,7 @@ alert(char const *format, ...)
 
    fputs("\n", stderr);
    fflush(stderr);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL sighandler_type
@@ -269,7 +269,7 @@ safe_signal(int signum, sighandler_type handler)
 {
    struct sigaction nact, oact;
    sighandler_type rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    nact.sa_handler = handler;
    sigemptyset(&nact.sa_mask);
@@ -278,14 +278,14 @@ safe_signal(int signum, sighandler_type handler)
    nact.sa_flags |= SA_RESTART;
 #endif
    rv = (sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 FL void
 hold_all_sigs(void)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (_alls_depth++ == 0) {
       sigfillset(&_alls_nset);
       sigdelset(&_alls_nset, SIGABRT);
@@ -300,22 +300,22 @@ hold_all_sigs(void)
       sigdelset(&_alls_nset, SIGSTOP);
       sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL void
 rele_all_sigs(void)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (--_alls_depth == 0)
       sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL void
 hold_sigs(void)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (_hold_sigdepth++ == 0) {
       sigemptyset(&_hold_nset);
       sigaddset(&_hold_nset, SIGHUP);
@@ -323,16 +323,16 @@ hold_sigs(void)
       sigaddset(&_hold_nset, SIGQUIT);
       sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL void
 rele_sigs(void)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (--_hold_sigdepth == 0)
       sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 #ifdef HAVE_NYD
@@ -631,7 +631,7 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
 {
    char const *xs;
    int c, n;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    xs = *s;
 
@@ -682,7 +682,7 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
    ++xs;
 jleave:
    *s = xs;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return c;
 }
 
@@ -1564,13 +1564,13 @@ FL void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
 {
    void *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (s == 0)
       s = 1;
    if ((rv = malloc(s)) == NULL)
       _out_of_memory();
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1578,7 +1578,7 @@ FL void *
 srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
 {
    void *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (s == 0)
       s = 1;
@@ -1586,7 +1586,7 @@ srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
       rv = smalloc(s);
    else if ((rv = realloc(v, s)) == NULL)
       _out_of_memory();
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1594,13 +1594,13 @@ FL void *
 scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
    void *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (size == 0)
       size = 1;
    if ((rv = calloc(nmemb, size)) == NULL)
       _out_of_memory();
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1681,7 +1681,7 @@ FL void *
 (smalloc)(size_t s SMALLOC_DEBUG_ARGS)
 {
    union mem_ptr p;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (s == 0)
       s = 1;
@@ -1705,7 +1705,7 @@ FL void *
    _mem_mall += s;
    _mem_mcur += s;
    _mem_mmax = MAX(_mem_mmax, _mem_mcur);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return p.p_p;
 }
 
@@ -1714,7 +1714,7 @@ FL void *
 {
    union mem_ptr p;
    bool_t isbad;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((p.p_p = v) == NULL) {
       p.p_p = (smalloc)(s, mdbg_file, mdbg_line);
@@ -1763,7 +1763,7 @@ jforce:
    _mem_mcur += s;
    _mem_mmax = MAX(_mem_mmax, _mem_mcur);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return p.p_p;
 }
 
@@ -1771,7 +1771,7 @@ FL void *
 (scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
 {
    union mem_ptr p;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (size == 0)
       size = 1;
@@ -1799,7 +1799,7 @@ FL void *
    _mem_mall += size;
    _mem_mcur += size;
    _mem_mmax = MAX(_mem_mmax, _mem_mcur);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return p.p_p;
 }
 
@@ -1808,7 +1808,7 @@ FL void
 {
    union mem_ptr p;
    bool_t isbad;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((p.p_p = v) == NULL) {
       fprintf(stderr, "sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
@@ -1841,7 +1841,7 @@ FL void
    } else
       (free)(p.p_c);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL void
