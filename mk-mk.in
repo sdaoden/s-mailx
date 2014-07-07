@@ -39,7 +39,7 @@ mime_types.h: mime.types
 	@echo '  GEN $(@)';\
 	< ./mime.types > $(@) $(SED) -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
 
-test:
+test: all
 	@echo 'Running test, please wait';\
 	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
