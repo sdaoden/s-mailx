@@ -970,7 +970,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx);
-FL int         imap_setfile(const char *xserver, int nmail, int isedit);
+FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -1047,8 +1047,9 @@ FL enum okay   imap_search(char const *spec, int f);
 /* Set up editing on the given file name.
  * If the first character of name is %, we are considered to be editing the
  * file, otherwise we are reading our mail which has signficance for mbox and
- * so forth.  nmail: Check for new mail in the current folder only */
-FL int         setfile(char const *name, int nmail);
+ * so forth.
+ nmail: Check for new mail in the current folder only */
+FL int         setfile(char const *name, enum fedit_mode fm);
 
 FL int         newmailinfo(int omsgCount);
 
@@ -1125,7 +1126,7 @@ FL void *      zalloc(FILE *fp);
  * maildir.c
  */
 
-FL int         maildir_setfile(char const *name, int nmail, int isedit);
+FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
 FL void        maildir_quit(void);
 
@@ -1376,7 +1377,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 FL enum okay   pop3_noop(void);
 
 /*  */
-FL int         pop3_setfile(char const *server, int nmail, int isedit);
+FL int         pop3_setfile(char const *server, enum fedit_mode fm);
 
 /*  */
 FL enum okay   pop3_header(struct message *m);

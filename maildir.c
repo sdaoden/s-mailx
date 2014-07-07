@@ -58,7 +58,7 @@ static void             __maildircatch(int s);
 /* Do some cleanup in the tmp/ subdir */
 static void             _cleantmp(void);
 
-static int              maildir_setfile1(char const *name, int nmail,
+static int              _maildir_setfile1(char const *name, enum fedit_mode fm,
                            int omsgCount);
 
 /* In combination with the names from mkname(), this comparison function
@@ -67,7 +67,8 @@ static int              maildir_setfile1(char const *name, int nmail,
  * a maildir folder by 'copy *', the message order wont' change */
 static int              mdcmp(void const *a, void const *b);
 
-static int              subdir(char const *name, char const *sub, int nmail);
+static int              _maildir_subdir(char const *name, char const *sub,
+                           enum fedit_mode fm);
 
 static void             _maildir_append(char const *name, char const *sub,
                            char const *fn);
@@ -129,23 +130,23 @@ jleave:
 }
 
 static int
-maildir_setfile1(char const *name, int nmail, int omsgCount)
+_maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
 {
    int i;
    NYD_ENTER;
 
-   if (!nmail)
+   if (!(fm & FEDIT_NEWMAIL))
       _cleantmp();
 
-   mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
-   if ((i = subdir(name, "cur", nmail)) != 0)
+   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
+   if ((i = _maildir_subdir(name, "cur", fm)) != 0)
       goto jleave;
-   if ((i = subdir(name, "new", nmail)) != 0)
+   if ((i = _maildir_subdir(name, "new", fm)) != 0)
       goto jleave;
    _maildir_append(name, NULL, NULL);
-   for (i = (nmail ? omsgCount : 0); i < msgCount; ++i)
+   for (i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i)
       readin(name, message + i);
-   if (nmail) {
+   if (fm & FEDIT_NEWMAIL) {
       if (msgCount > omsgCount)
          qsort(&message[omsgCount], msgCount - omsgCount, sizeof *message,
             &mdcmp);
@@ -171,7 +172,7 @@ mdcmp(void const *a, void const *b)
 }
 
 static int
-subdir(char const *name, char const *sub, int nmail)
+_maildir_subdir(char const *name, char const *sub, enum fedit_mode fm)
 {
    DIR *dirp;
    struct dirent *dp;
@@ -191,7 +192,7 @@ subdir(char const *name, char const *sub, int nmail)
          continue;
       if (dp->d_name[0] == '.')
          continue;
-      if (!nmail || mdlook(dp->d_name, NULL) == NULL)
+      if (!(fm & FEDIT_NEWMAIL) || mdlook(dp->d_name, NULL) == NULL)
          _maildir_append(name, sub, dp->d_name);
    }
    closedir(dirp);
@@ -681,7 +682,7 @@ jleave:
 }
 
 FL int
-maildir_setfile(char const * volatile name, int nmail, int isedit)
+maildir_setfile(char const * volatile name, enum fedit_mode fm)
 {
    sighandler_type volatile saveint;
    struct cw cw;
@@ -694,13 +695,13 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
       goto jleave;
    }
 
-   if (!nmail)
+   if (!(fm & FEDIT_NEWMAIL))
       quit();
 
    saveint = safe_signal(SIGINT, SIG_IGN);
 
-   if (!nmail) {
-      edit = (isedit != 0);
+   if (!(fm & FEDIT_NEWMAIL)) {
+      edit = !(fm & FEDIT_SYSBOX);
       if (mb.mb_itf) {
          fclose(mb.mb_itf);
          mb.mb_itf = NULL;
@@ -725,13 +726,13 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
 
    _maildir_table = NULL;
    if (sigsetjmp(_maildir_jmp, 1) == 0) {
-      if (nmail)
+      if (fm & FEDIT_NEWMAIL)
          mktable();
       if (saveint != SIG_IGN)
          safe_signal(SIGINT, &__maildircatch);
-      i = maildir_setfile1(name, nmail, omsgCount);
+      i = _maildir_setfile1(name, fm, omsgCount);
    }
-   if (nmail && _maildir_table != NULL)
+   if ((fm & FEDIT_NEWMAIL) && _maildir_table != NULL)
       free(_maildir_table);
 
    safe_signal(SIGINT, saveint);
@@ -747,19 +748,19 @@ maildir_setfile(char const * volatile name, int nmail, int isedit)
    cwrelse(&cw);
 
    setmsize(msgCount);
-   if (nmail && mb.mb_sorted && msgCount > omsgCount) {
+   if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted && msgCount > omsgCount) {
       mb.mb_threaded = 0;
       c_sort((void*)-1);
    }
-   if (!nmail)
+   if (!(fm & FEDIT_NEWMAIL))
       sawcom = FAL0;
-   if (!nmail && !edit && msgCount == 0) {
+   if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), name);
       i = 1;
       goto jleave;
    }
-   if (nmail && msgCount > omsgCount)
+   if ((fm & FEDIT_NEWMAIL) && msgCount > omsgCount)
       newmailinfo(omsgCount);
    i = 0;
 jleave:

@@ -1130,7 +1130,7 @@ imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
 }
 
 FL int
-imap_setfile(const char *xserver, int nmail, int isedit)
+imap_setfile(const char *xserver, enum fedit_mode fm)
 {
    struct url url;
    int rv;
@@ -1144,7 +1144,8 @@ imap_setfile(const char *xserver, int nmail, int isedit)
          (!url.url_had_user || url.url_pass.s != NULL))
       fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
 
-   rv = _imap_setfile1(&url, nmail, isedit, 0);
+   rv = _imap_setfile1(&url, ((fm & FEDIT_NEWMAIL) != 0),
+      !(fm & FEDIT_SYSBOX), 0);
 jleave:
    NYD_LEAVE;
    return rv;

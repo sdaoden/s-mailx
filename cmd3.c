@@ -1018,7 +1018,7 @@ c_file(void *v)
 
    save_mbox_for_possible_quitstuff();
 
-   i = setfile(*argv, 0);
+   i = setfile(*argv, FEDIT_NONE);
    if (i < 0) {
       i = 1;
       goto jleave;
@@ -1301,7 +1301,7 @@ c_newmail(void *v)
 #ifdef HAVE_IMAP
          (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 #endif
-         (val = setfile(mailname, 1)) == 0) {
+         (val = setfile(mailname, FEDIT_NEWMAIL)) == 0) {
       mdot = getmdot(1);
       setdot(message + mdot - 1);
    }

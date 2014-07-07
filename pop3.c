@@ -816,7 +816,7 @@ pop3_noop(void)
 }
 
 FL int
-pop3_setfile(char const *server, int nmail, int isedit)
+pop3_setfile(char const *server, enum fedit_mode fm)
 {
    struct sockconn sc;
    sighandler_type saveint, savepipe;
@@ -825,7 +825,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    NYD_ENTER;
 
    rv = 1;
-   if (nmail)
+   if (fm & FEDIT_NEWMAIL)
       goto jleave;
    rv = -1;
 
@@ -847,7 +847,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
    rv = 1;
    quit();
 
-   edit = (isedit != 0);
+   edit = !(fm & FEDIT_SYSBOX);
    if (mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock);
    if (mb.mb_itf) {
@@ -897,7 +897,7 @@ pop3_setfile(char const *server, int nmail, int isedit)
       goto jleave;
    }
    mb.mb_type = MB_POP3;
-   mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
+   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    pop3_setptr(&mb);
    setmsize(msgCount);
    sawcom = FAL0;

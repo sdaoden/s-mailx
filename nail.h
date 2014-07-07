@@ -539,6 +539,13 @@ enum exit_status {
    EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
 };
 
+enum fedit_mode {
+   FEDIT_NONE     = 0,
+   FEDIT_SYSBOX   = 1<<0,     /* %: prefix */
+   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, OPT_R_FLAG is global) */
+   FEDIT_NEWMAIL  = 1<<2      /* `newmail' operation TODO OBSOLETE THIS! */
+};
+
 enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
    FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
