@@ -440,14 +440,14 @@ get_pager(char const **env_addon)
       cp = XPAGER;
 
    if (env_addon != NULL) {
+      *env_addon = NULL;
       if (strstr(cp, "less") != NULL) {
          if (getenv("LESS") == NULL)
             *env_addon = "LESS=FRSXi";
       } else if (strstr(cp, "lv") != NULL) {
          if (getenv("LV") == NULL)
             *env_addon = "LV=-c";
-      } else
-         *env_addon = NULL;
+      }
    }
    NYD_LEAVE;
    return cp;
