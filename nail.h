@@ -201,6 +201,12 @@
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 
+/* Some environment variables for pipe hooks */
+#define PIPEHOOK_FILENAME           "NAIL_FILENAME"
+#define PIPEHOOK_FILENAME_GENERATED "NAIL_FILENAME_GENERATED"
+#define PIPEHOOK_CONTENT            "NAIL_CONTENT"
+#define PIPEHOOK_CONTENT_EVIDENCE   "NAIL_CONTENT_EVIDENCE"
+
 /* Is *W* a quoting (ASCII only) character? */
 #define ISQUOTE(W)      \
    ((W) == L'>' || (W) == L'|' || (W) == L'}' || (W) == L':')

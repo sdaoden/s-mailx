@@ -80,9 +80,10 @@ static void          _print_part_info(struct str *out, struct mimepart *mip,
 /* Query possible pipe command for MIME part */
 static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
 
-/* Create a pipe */
-static FILE *        _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote,
-                        bool_t async);
+/* Create a pipe; if mpp is not NULL, place some PIPEHOOK_* environment
+ * variables accordingly */
+static FILE *        _pipefile(char const *pipecomm, struct mimepart const *mpp,
+                        FILE **qbuf, bool_t quote, bool_t async);
 
 /* Adjust output statistics */
 SINLINE void         _addstats(off_t *stats, off_t lines, off_t bytes);
@@ -566,10 +567,13 @@ _pipecmd(char **result, struct mimepart const *mpp)
 }
 
 static FILE *
-_pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
+_pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
+   bool_t quote, bool_t async)
 {
-   char const *sh;
+   struct str s;
+   char const *env_addon[8], *sh;
    FILE *rbuf;
+   char *cp;
    NYD_ENTER;
 
    rbuf = *qbuf;
@@ -583,9 +587,43 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
       async = FAL0;
    }
 
+   /* NAIL_FILENAME */
+   if (mpp == NULL || (cp = mpp->m_filename) == NULL)
+      cp = UNCONST("");
+   env_addon[0] = str_concat_csvl(&s, PIPEHOOK_FILENAME, "=", cp, NULL)->s;
+
+   /* NAIL_FILENAME_GENERATED */
+   s.s = getrandstring(8);
+   if (mpp == NULL)
+      cp = s.s;
+   else if (*cp == '\0') {
+      if (  (((cp = mpp->m_ct_type_usr_ovwr) == NULL || *cp == '\0') &&
+             ((cp = mpp->m_ct_type_plain) == NULL || *cp == '\0')) ||
+            ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0'))
+         cp = s.s;
+      else {
+         (cp = s.s)[7] = '.';
+         cp = savecat(cp, sh);
+      }
+   }
+   env_addon[1] = str_concat_csvl(&s, PIPEHOOK_FILENAME_GENERATED, "=", cp,
+         NULL)->s;
+
+   /* NAIL_CONTENT{,_EVIDENCE} */
+   if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
+      cp = UNCONST("");
+   env_addon[2] = str_concat_csvl(&s, PIPEHOOK_CONTENT, "=", cp, NULL)->s;
+
+   if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
+      cp = mpp->m_ct_type_usr_ovwr;
+   env_addon[3] = str_concat_csvl(&s, PIPEHOOK_CONTENT_EVIDENCE, "=", cp,
+         NULL)->s;
+
+   env_addon[4] = NULL;
+
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
-   if ((rbuf = Popen(pipecomm, "W", sh, NULL, (async ? -1 : fileno(*qbuf)))
+   if ((rbuf = Popen(pipecomm, "W", sh, env_addon, (async ? -1 : fileno(*qbuf)))
          ) == NULL)
       perror(pipecomm);
    else {
@@ -1180,7 +1218,7 @@ jcopyout:
          action == SEND_TODISP_ALL || action == SEND_QUOTE ||
          action == SEND_QUOTE_ALL)) {
       qbuf = obuf;
-      pbuf = _pipefile(pipecomm, UNVOLATILE(&qbuf),
+      pbuf = _pipefile(pipecomm, ip, UNVOLATILE(&qbuf),
             (action == SEND_QUOTE || action == SEND_QUOTE_ALL), !ispipe);
       action = SEND_TOPIPE;
       if (pbuf != qbuf) {

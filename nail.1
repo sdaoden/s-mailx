@@ -469,8 +469,9 @@ and to open PDF attachments in an external PDF viewer, asynchronously:
 .Bd -literal -offset indent
   #set pipe-text/html="elinks -force-html -dump 1"
   set pipe-text/html="lynx -stdin -dump -force_html"
-  set pipe-application/pdf="@&cat >/tmp/\*(ua$$.pdf; \e
-      acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
+  set pipe-application/pdf="@&cat > \e"/tmp/${NAIL_FILENAME}\e";\e
+      acroread \e"/tmp/${NAIL_FILENAME}\e";\e
+      rm \e"/tmp/${NAIL_FILENAME}\e""
 .Ed
 .Pp
 Note: special care must be taken when using such commands as mail
@@ -3842,10 +3843,30 @@ the user will be asked for a password on standard input.
 Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
 .It Va pipe-CONTENT/SUBCONTENT
-When a MIME message part of `CONTENT/SUBCONTENT' (normalized to
-lowercase) type is displayed or is replied to,
+When a MIME message part of type `CONTENT/SUBCONTENT' (normalized to
+lowercase) type is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
+Some information about the MIME part to be displayed is embedded into
+the environment of the shell command:
+.Bl -tag -width ".It Ev NAIL_FILENAME_GENERATED"
+.It Ev NAIL_FILENAME
+The filename, if any is set, the empty string otherwise.
+.It Ev NAIL_FILENAME_GENERATED
+Set to
+.Ev NAIL_FILENAME
+if that isn't empty, but otherwise a combination of a random string
+(always) and the `SUBCONTENT' of the MIME part, if the latter is known.
+.It Ev NAIL_CONTENT
+The MIME content-type of the part, if known, the empty string otherwise.
+.It Ev NAIL_CONTENT_EVIDENCE
+If
+.Va mime-counter-evidence
+includes the carry-around-bit (2), then this will be set to the detected
+MIME content-type; not only then identical to
+.Ev NAIL_CONTENT
+otherwise.
+.El
 .Pp
 The special value `@' can be used to force interpretation of the message
 part as plain text, e.g., `set pipe-application/pgp-signature=@' will
