@@ -642,11 +642,12 @@ newmailinfo(int omsgCount)
    return mdot;
 }
 
-FL void
+FL bool_t
 commands(void)
 {
    struct eval_ctx ev;
    int n;
+   bool_t volatile rv = TRU1;
    NYD_ENTER;
 
    if (!sourcing) {
@@ -747,8 +748,11 @@ jreadline:
       }
 
       inhook = 0;
-      if (evaluate(&ev))
+      if (evaluate(&ev)) {
+         if (loading) /* TODO mess; join with exec_last_comm_error etc.. */
+            rv = FAL0;
          break;
+      }
       if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
          if (exit_status != EXIT_OK)
             break;
@@ -771,6 +775,7 @@ jreadline:
    if (sourcing)
       sreset(FAL0);
    NYD_LEAVE;
+   return rv;
 }
 
 FL int
@@ -1015,7 +1020,7 @@ je96:
       evp->ev_add_history = TRU1;
 
 jleave:
-   /* Exit the current source file on error */
+   /* Exit the current source file on error TODO what a mess! */
    if ((exec_last_comm_error = (e != 0))) {
       if (e < 0 || loading) {
          e = 1;

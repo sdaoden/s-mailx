@@ -1466,16 +1466,26 @@ jleave:
 FL void
 load(char const *name)
 {
+   struct str n;
    FILE *in, *oldin;
    NYD_ENTER;
 
-   if (name == NULL || (in = Fopen(name, "r")) == NULL)
+   if (name == NULL || *name == '\0' || (in = Fopen(name, "r")) == NULL)
       goto jleave;
+
    oldin = _fio_input;
    _fio_input = in;
    loading = TRU1;
    sourcing = TRU1;
-   commands();
+   /* commands() may sreset(), copy over file name */
+   n.l = strlen(name);
+   n.s = ac_alloc(n.l +1);
+   memcpy(n.s, name, n.l +1);
+
+   if (!commands())
+      fprintf(stderr, _("Stopped loading `%s' due to errors\n"), n.s);
+
+   ac_free(n.s);
    loading = FAL0;
    sourcing = FAL0;
    _fio_input = oldin;

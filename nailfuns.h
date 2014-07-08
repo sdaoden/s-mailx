@@ -833,7 +833,7 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
 
-/* Load a file of user definitions */
+/* Load a file of user definitions -- this is *only* for main()! */
 FL void        load(char const *name);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
@@ -1055,8 +1055,9 @@ FL int         setfile(char const *name, enum fedit_mode fm);
 
 FL int         newmailinfo(int omsgCount);
 
-/* Interpret user commands.  If standard input is not a tty, print no prompt */
-FL void        commands(void);
+/* Interpret user commands.  If standard input is not a tty, print no prompt;
+ * return wether the last processed command returned error */
+FL bool_t      commands(void);
 
 /* Evaluate a single command.
  * .ev_add_history and .ev_new_content will be updated upon success.
