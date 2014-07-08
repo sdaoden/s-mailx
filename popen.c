@@ -119,7 +119,7 @@ scan_mode(char const *mode, int *omode)
    };
 
    int i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (i = 0; UICMP(z, i, <, NELEM(maps)); ++i)
       if (!strcmp(maps[i].mode, mode)) {
@@ -133,7 +133,7 @@ scan_mode(char const *mode, int *omode)
    *omode = 0; /* (silence CC) */
    i = -1;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 
@@ -270,7 +270,7 @@ file_pid(FILE *fp)
 {
    int rv;
    struct fp *p;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = -1;
    for (p = fp_head; p; p = p->link)
@@ -278,7 +278,7 @@ file_pid(FILE *fp)
          rv = p->pid;
          break;
       }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -380,7 +380,7 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
 {
    int osflags, fd;
    FILE *fp = NULL;
-   NYD_ENTER;
+   NYD2_ENTER; /* (only for Fopen() and once in lex.c) */
 
    if (scan_mode(oflags, &osflags) < 0)
       goto jleave;
@@ -394,7 +394,7 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
 
    fp = fdopen(fd, oflags);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return fp;
 }
 
