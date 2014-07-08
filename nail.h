@@ -121,22 +121,32 @@
 
 /*  */
 
-#if BUFSIZ > 2560                   /* TODO simply use BUFSIZ? */
+#if BUFSIZ + 0 > 2560               /* TODO simply use BUFSIZ? */
 # define LINESIZE       BUFSIZ      /* max readable line width */
 #else
 # define LINESIZE       2560
 #endif
 #define BUFFER_SIZE     (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
-#define CBAD            (-15555)
+/* Number of Not-Yet-Dead calls that are remembered */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
+# ifdef HAVE_NYD2
+#  define NYD_CALLS_MAX (25 * 99)
+# elif defined HAVE_DEVEL
+#  define NYD_CALLS_MAX (25 * 66)
+# else
+#  define NYD_CALLS_MAX (25 * 33)
+# endif
+#endif
+
 #define APPEND                   /* New mail goes to end of mailbox */
+#define CBAD            (-15555)
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
-#define NYD_CALLS_MAX   1000     /* Number of NYD calls that are remembered */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
