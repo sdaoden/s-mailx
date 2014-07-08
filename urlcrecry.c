@@ -439,8 +439,8 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 FL char *
 (urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS)
 {
-   char *n, *np, c1, c2;
-   NYD_ENTER;
+   char *n, *np, c1;
+   NYD2_ENTER;
 
    np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
 
@@ -459,41 +459,36 @@ FL char *
       else {
 jesc:
          np[0] = '%';
-         c2 = c1 & 0x0F;
-         c2 += (c2 > 9) ? 'A' - 10 : '0';
-         np[2] = c2;
-         c1 = (ui8_t)(c1 & 0xF0) >> 4;
-         c1 += (c1 > 9) ? 'A' - 10 : '0';
-         np[1] = c1;
+         mime_char_to_hexseq(np + 1, c1);
          np += 3;
       }
    }
    *np = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 
 FL char *
 (urlxdec)(char const *cp SALLOC_DEBUG_ARGS)
 {
-   char *n, *np, c1, c2;
-   NYD_ENTER;
+   char *n, *np;
+   si32_t c;
+   NYD2_ENTER;
 
    np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
 
-   while (*cp != '\0') {
-      if (cp[0] == '%' && (c1 = cp[1]) != '\0' && (c2 = cp[2]) != '\0') {
-         c1 -= (c1 <= '9') ? '0' : 'A' - 10;
-         c1 <<= 4;
-         c2 -= (c2 <= '9') ? '0' : 'A' - 10;
-         *np = c1;
-         *np++ |= c2;
-         cp += 3;
-      } else
-         *np++ = *cp++;
+   while ((c = (uc_it)*cp++) != '\0') {
+      if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
+         si32_t o = c;
+         if (LIKELY((c = mime_hexseq_to_char(cp)) >= '\0'))
+            cp += 2;
+         else
+            c = o;
+      }
+      *np++ = (char)c;
    }
    *np = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 
