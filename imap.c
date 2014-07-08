@@ -263,7 +263,7 @@ static void
 imap_other_get(char *pp)
 {
    char *xp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (ascncasecmp(pp, "FLAGS ", 6) == 0) {
       pp += 6;
@@ -303,13 +303,13 @@ imap_other_get(char *pp)
          response_other = RESPONSE_OTHER_UNKNOWN;
    }
    responded_other_text = pp;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 imap_response_get(const char **cp)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (ascncasecmp(*cp, "OK ", 3) == 0) {
       *cp += 3;
       response_status = RESPONSE_OK;
@@ -327,7 +327,7 @@ imap_response_get(const char **cp)
       response_status = RESPONSE_BYE;
    } else
       response_status = RESPONSE_OTHER;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -338,7 +338,7 @@ imap_response_parse(void)
 
    const char *ip = imapbuf;
    char *pp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (parsebufsize < imapbufsize)
       parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
@@ -395,7 +395,7 @@ imap_response_parse(void)
    if (response_type != RESPONSE_CONT && response_type != RESPONSE_ILLEGAL &&
          response_status == RESPONSE_OTHER)
       imap_other_get(pp);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static enum okay
@@ -403,7 +403,7 @@ imap_answer(struct mailbox *mp, int errprnt)
 {
    int i, complete;
    enum okay rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = OKAY;
    if (mp->mb_type == MB_CACHE)
@@ -479,7 +479,7 @@ jstop:
       mp->mb_active = MB_NONE;
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -488,7 +488,7 @@ imap_parse_list(void)
 {
    char *cp;
    enum okay rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = STOP;
 
@@ -540,7 +540,7 @@ imap_parse_list(void)
    *cp = '\0';
    rv = OKAY;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -2122,12 +2122,12 @@ tag(int new)
 {
    static char ts[20];
    static long n;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (new)
       ++n;
    snprintf(ts, sizeof ts, "T%lu", n);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ts;
 }
 
@@ -2196,7 +2196,7 @@ imap_putflags(int f)
 {
    const char *cp;
    char *buf, *bp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    bp = buf = salloc(100);
    if (f & (MREAD | MFLAGGED | MANSWERED | MDRAFTED)) {
@@ -2229,14 +2229,14 @@ imap_putflags(int f)
       *bp++ = ' ';
    }
    *bp = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return buf;
 }
 
 static void
 imap_getflags(const char *cp, char const **xp, enum mflag *f)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    while (*cp != ')') {
       if (*cp == '\\') {
          if (ascncasecmp(cp, "\\Seen", 5) == 0)
@@ -2257,7 +2257,7 @@ imap_getflags(const char *cp, char const **xp, enum mflag *f)
 
    if (xp != NULL)
       *xp = cp;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static enum okay
@@ -3577,7 +3577,7 @@ imap_read_date_time(const char *cp)
    char buf[3];
    time_t t;
    int i, year, month, day, hour, minute, second, sign = -1;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* "25-Jul-2004 15:33:44 +0200"
     * |    |    |    |    |    |
@@ -3615,7 +3615,7 @@ imap_read_date_time(const char *cp)
    buf[1] = cp[26];
    t += strtol(buf, NULL, 10) * sign * 60;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return t;
 jinvalid:
    time(&t);
@@ -3628,7 +3628,7 @@ imap_make_date_time(time_t t)
    static char s[30];
    struct tm *tmptr;
    int tzdiff, tzdiff_hour, tzdiff_min;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    tzdiff = t - mktime(gmtime(&t));
    tzdiff_hour = (int)(tzdiff / 60);
@@ -3640,7 +3640,7 @@ imap_make_date_time(time_t t)
    snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
          tmptr->tm_mday, month_names[tmptr->tm_mon], tmptr->tm_year + 1900,
          tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, tzdiff_hour, tzdiff_min);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return s;
 }
 #endif /* HAVE_IMAP */
@@ -3650,7 +3650,7 @@ FL char *
 imap_quotestr(char const *s)
 {
    char *n, *np;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    np = n = salloc(2 * strlen(s) + 3);
    *np++ = '"';
@@ -3661,7 +3661,7 @@ imap_quotestr(char const *s)
    }
    *np++ = '"';
    *np = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 
@@ -3669,7 +3669,7 @@ FL char *
 imap_unquotestr(char const *s)
 {
    char *n, *np;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (*s != '"') {
       n = savestr(s);
@@ -3686,7 +3686,7 @@ imap_unquotestr(char const *s)
    }
    *np = '\0';
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 #endif /* defined HAVE_IMAP || defined HAVE_IMAP_SEARCH */
