@@ -25,8 +25,8 @@ packager-install:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk install
 
 devel:
-	@WANT_DEBUG=1 WANT_GSSAPI=1;\
-	export WANT_DEBUG WANT_GSSAPI;\
+	@WANT_GSSAPI=1 WANT_DEBUG=1 WANT_DEVEL=1;\
+	export WANT_GSSAPI WANT_DEBUG WANT_DEVEL;\
 	$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version &&\
 	LC_ALL=C $(MAKE) -f mk.mk all
 _update-version:

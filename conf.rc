@@ -65,7 +65,7 @@ WANT_POP3=1
 WANT_SMTP=1
 
 # Support for parsing of user and password credentials from ~/.netrc ($NETRC)
-# can optionally be supported (see *netrc-load*)
+# can optionally be supported (see *netrc-lookup*)
 WANT_NETRC=1
 
 # Support for GSS-API (Generic Security Services Application Programming
@@ -247,5 +247,8 @@ WANT_NOEXTMD5=0
 # normal S-nail heap memory allocator instead.
 # Note: this will be forcefully set (again) if WANT_DEBUG=1
 WANT_NOALLOCA="${WANT_DEBUG}"
+
+# Note: this will be forcefully set (again) if WANT_DEBUG=1
+WANT_DEVEL=0
 
 # vim:set fenc=utf-8 syntax=conf:s-it-mode

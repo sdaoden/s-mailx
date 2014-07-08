@@ -64,7 +64,7 @@ option_update() {
       WANT_MD5=0
    fi
    if wantfeat DEBUG; then
-      WANT_NOALLOCA=1
+      WANT_NOALLOCA=1 WANT_DEVEL=1
    fi
 }
 
@@ -199,8 +199,8 @@ ${rm} -f ${tmp}
 
 < ${conf} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
 while read line; do
-   i=`echo ${line} | ${sed} -e 's/=.*$//'`
-   eval j=\$${i} jx=\${${i}+x}
+   i="`echo ${line} | ${sed} -e 's/=.*$//'`"
+   eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
       line="${i}=\"${j}\""
    fi
@@ -636,6 +636,10 @@ int main(void)
    return (!! vp);
 }
 !
+fi
+
+if wantfeat DEVEL; then
+   echo '#define HAVE_DEVEL' >> ${h}
 fi
 
 ##
