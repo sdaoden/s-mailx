@@ -217,7 +217,7 @@ _nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
    char buf[80];
    union {int i; size_t z;} u;
 
-   u.i = snprintf(buf, sizeof buf, "%c [%2u] %-25.25s %.16s:%-5u\n",
+   u.i = snprintf(buf, sizeof buf, "%c [%2u] %.25s (%.16s:%u)\n",
          "=><"[(nip->ni_chirp_line >> 29) & 0x3], nip->ni_level, nip->ni_fun,
          nip->ni_file, (nip->ni_chirp_line & 0x1FFFFFFFu));
    if (u.i > 0) {
