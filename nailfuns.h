@@ -600,8 +600,9 @@ FL int         c_group(void *v);
 /* Delete the passed groups */
 FL int         c_ungroup(void *v);
 
-/* Change to another file.  With no argument, print info about current file */
+/* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
+FL int         c_File(void *v);
 
 /* Expand file names like echo */
 FL int         c_echo(void *v);
@@ -1022,7 +1023,7 @@ FL void        putcache(struct mailbox *mp, struct message *m);
 FL void        initcache(struct mailbox *mp);
 FL void        purgecache(struct mailbox *mp, struct message *m, long mc);
 FL void        delcache(struct mailbox *mp, struct message *m);
-FL enum okay   cache_setptr(int transparent);
+FL enum okay   cache_setptr(enum fedit_mode fm, int transparent);
 FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
                   FILE *fp);
 FL enum okay   cache_remove(char const *name);

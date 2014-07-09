@@ -169,6 +169,7 @@ static long             had_expunge = -1;
 static long             expunged_messages;
 static int volatile     imaplock;
 static int              same_imap_account;
+static bool_t           _imap_rdonly;
 
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
@@ -202,7 +203,7 @@ static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
 static bool_t     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
                      struct url *urlp);
-static int        _imap_setfile1(struct url *urlp, int nmail, int isedit,
+static int        _imap_setfile1(struct url *urlp, enum fedit_mode fm,
                      int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
                      size_t expected, int need, const char *head,
@@ -1144,8 +1145,8 @@ imap_setfile(const char *xserver, enum fedit_mode fm)
          (!url.url_had_user || url.url_pass.s != NULL))
       fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
 
-   rv = _imap_setfile1(&url, ((fm & FEDIT_NEWMAIL) != 0),
-      !(fm & FEDIT_SYSBOX), 0);
+   _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
+   rv = _imap_setfile1(&url, fm, 0);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1181,8 +1182,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 }
 
 static int
-_imap_setfile1(struct url *urlp, int nmail, int isedit,
-   int volatile transparent)
+_imap_setfile1(struct url *urlp, enum fedit_mode fm, int volatile transparent)
 {
    struct sock so;
    struct ccred ccred;
@@ -1193,7 +1193,7 @@ _imap_setfile1(struct url *urlp, int nmail, int isedit,
    enum mbflags same_flags;
    NYD_ENTER;
 
-   if (nmail) {
+   if (fm & FEDIT_NEWMAIL) {
       saveint = safe_signal(SIGINT, SIG_IGN);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
       if (saveint != SIG_IGN)
@@ -1237,7 +1237,7 @@ jduppass:
    if (!transparent)
       quit();
 
-   edit = (isedit != 0);
+   edit = !(fm & FEDIT_SYSBOX);
    if (mb.mb_imap_account != NULL)
       free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
@@ -1293,7 +1293,7 @@ jduppass:
 
    if (mb.mb_sock.s_fd < 0) {
       if (disconnected(mb.mb_imap_account)) {
-         if (cache_setptr(transparent) == STOP)
+         if (cache_setptr(fm, transparent) == STOP)
             fprintf(stderr, "Mailbox \"%s\" is not cached.\n",
                urlp->url_p_eu_h_p_p);
          goto jdone;
@@ -1321,7 +1321,7 @@ jduppass:
    } else   /* same account */
       mb.mb_flags |= same_flags;
 
-   mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
+   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
    if (imap_select(&mb, &mailsize, &msgCount,
@@ -1337,30 +1337,31 @@ jduppass:
    }
 
 jnmail:
-   imap_setptr(&mb, nmail, transparent, UNVOLATILE(&prevcount));
+   imap_setptr(&mb, ((fm & FEDIT_NEWMAIL) != 0), transparent,
+      UNVOLATILE(&prevcount));
 jdone:
    setmsize(msgCount);
-   if (!nmail && !transparent)
+   if (!(fm & FEDIT_NEWMAIL) && !transparent)
       sawcom = FAL0;
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
 
-   if (!nmail && mb.mb_type == MB_IMAP)
+   if (!(fm & FEDIT_NEWMAIL) && mb.mb_type == MB_IMAP)
       purgecache(&mb, message, msgCount);
-   if ((nmail || transparent) && mb.mb_sorted) {
+   if (((fm & FEDIT_NEWMAIL) || transparent) && mb.mb_sorted) {
       mb.mb_threaded = 0;
       c_sort((void*)-1);
    }
 
-   if (!nmail && !edit && msgCount == 0) {
+   if (!(fm & FEDIT_NEWMAIL) && !edit && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), urlp->url_p_eu_h_p_p);
       rv = 1;
       goto jleave;
    }
-   if (nmail)
+   if (fm & FEDIT_NEWMAIL)
       newmailinfo(prevcount);
    rv = 0;
 jleave:
@@ -3444,7 +3445,12 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
    var_clear_allow_undefined = FAL0;
 
    if (mb.mb_type == MB_CACHE) {
-      _imap_setfile1(&url, 0, edit, 1);
+      enum fedit_mode fm = FEDIT_NONE;
+      if (_imap_rdonly)
+         fm |= FEDIT_RDONLY;
+      if (!edit)
+         fm |= FEDIT_SYSBOX;
+      _imap_setfile1(&url, fm, 1);
       if (msgCount > omsgCount)
          newmailinfo(omsgCount);
    }
@@ -3477,8 +3483,13 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       c_cache(vp);
    ok_bset(disconnected, TRU1);
    if (mb.mb_type == MB_IMAP) {
+      enum fedit_mode fm = FEDIT_NONE;
+      if (_imap_rdonly)
+         fm |= FEDIT_RDONLY;
+      if (!edit)
+         fm |= FEDIT_SYSBOX;
       sclose(&mb.mb_sock);
-      _imap_setfile1(&url, 0, edit, 1);
+      _imap_setfile1(&url, fm, 1);
    }
    rv = 0;
 jleave:

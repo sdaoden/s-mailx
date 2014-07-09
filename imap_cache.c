@@ -579,7 +579,7 @@ delcache(struct mailbox *mp, struct message *m)
 }
 
 FL enum okay
-cache_setptr(int transparent)
+cache_setptr(enum fedit_mode fm, int transparent)
 {
    struct cw cw;
    int i, omsgCount = 0;
@@ -620,7 +620,7 @@ cache_setptr(int transparent)
    if (contents != NULL)
       free(contents);
    mb.mb_type = MB_CACHE;
-   mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
+   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    if (transparent)
       transflags(omessage, omsgCount, 1);
    else {

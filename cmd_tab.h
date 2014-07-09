@@ -146,7 +146,7 @@
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("Show message headers of <message-list>")) },
    { "file", &c_file, (T | M | RAWLIST), 0, 1
-     DS(N_("Switch to new or show the current mail file or folder")) },
+     DS(N_("Open a new mailbox or show the current one")) },
    { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL
      DS("Like \"respond\", but derive filename from first sender") },
    { "followupall", &c_followupall, (A | R | I | MSGLIST), 0, MMNDEL
@@ -154,9 +154,9 @@
    { "followupsender", &c_followupsender, (A | R | I | MSGLIST), 0, MMNDEL
      DS("Like \"Followup\", but always respond to the sender only") },
    { "folder", &c_file, (T | M | RAWLIST), 0, 1
-     DS(N_("Switch to new or show the current mail file or folder")) },
+     DS(N_("Open a new mailbox or show the current one")) },
    { "folders", &c_folders, (T | M | RAWLIST), 0, 1
-     DS(N_("List folders (below given folder)")) },
+     DS(N_("List mailboxes below the given or the global folder")) },
    { "z", &c_scroll, (A | M | STRLIST), 0, 0
      DS(N_("Scroll to next/previous window of headers")) },
    { "Z", &c_Scroll, (A | M | STRLIST), 0, 0
@@ -379,6 +379,10 @@
      DS(N_("Encode <string-list> for usage in an URL")) },
    { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
      DS(N_("Decode the URL-encoded <URL-list> into strings")) },
+   { "File", &c_File, (T | M | RAWLIST), 0, 1
+     DS(N_("Open a new mailbox readonly or show the current mailbox")) },
+   { "Folder", &c_File, (T | M | RAWLIST), 0, 1
+     DS(N_("Open a new mailbox readonly or show the current mailbox")) },
    { "features", &_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
    { "version", &_version, (H | M | NOLIST), 0, 0
