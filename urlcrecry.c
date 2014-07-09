@@ -677,14 +677,14 @@ juser:
    /* User, II
     * If there was no user in the URL, do we have *user-HOST* or *user*? */
    if (!urlp->url_had_user) {
-      if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_H_P)) == NULL) {
-         /* No *user-HOST*, check wether .netrc lookup is desired */
+      if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
+            == NULL) {
+         /* No, check wether .netrc lookup is desired */
 #ifdef HAVE_NETRC
          if (!ok_blook(v15_compat) || !ok_blook(netrc_lookup) ||
                _nrc_lookup(urlp, FAL0) != NRC_RESOK)
 #endif
-            if ((urlp->url_user.s = ok_vlook(user)) == NULL)
-               urlp->url_user.s = UNCONST(myname);
+            urlp->url_user.s = UNCONST(myname);
       }
 
       urlp->url_user.l = strlen(urlp->url_user.s);

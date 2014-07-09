@@ -929,20 +929,28 @@ In general \*(UA adheres to the following logic scheme when dealing with
 the necessary informations of a resource:
 .Bl -bullet -offset indent
 .It
-If no `USER' is given: a variable of the form
+If no `USER' is given the variables
 .Va user-HOST
-is looked up; if no such variable can be found then \*(UA will,
+and
+.Va user
+are looked up; if no such variable(s) can be found then \*(UA will,
 when enforced by the \*(OPal variable
 .Va netrc-lookup ,
 search the users
 .Pa .netrc
-file for a `HOST' specific entry which provides a `USER' login name
-(this source may also provide a `PASSWORD').
-Finally \*(UA tries to gain the `USER' from the variable
-.Va user ,
-which in turn defaults to
-.Ev USER
-which, again, defaults to `getpwuid(getuid())' a.k.a. the current user.
+file for a `HOST' specific entry which provides a `login' name
+(this source may also provide a `password').
+.Pp
+If after all these steps there is still no `USER' then \*(UA will
+fall back to the user who is supposed to run \*(UA:
+either the name that has been given with the
+.Fl u
+command line option (or, equivalent, but with less precedence, the
+environment variable
+.Ev USER ) Ns ,
+or `getpwuid(getuid())' a.k.a. the current user.
+The identity of this user has been fixated during \*(UA startup and is
+known to be a valid user on the current host.
 .It
 Authentication: unless otherwise noted this will first look for
 .Va PROTOCOL-auth-USER@HOST ,
