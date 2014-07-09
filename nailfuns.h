@@ -188,8 +188,10 @@ FL bool_t      _var_vokclear(char const *vokey);
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
 #endif
-#define xok_blook(C,URL,M)       (_var_xoklook(CONCAT(ok_b_, C),URL,M) != NULL)
-#define xok_vlook(C,URL,M)       _var_xoklook(CONCAT(ok_v_, C), URL, M)
+#define xok_BLOOK(C,URL,M)       (_var_xoklook(C, URL, M) != NULL)
+#define xok_VLOOK(C,URL,M)       _var_xoklook(C, URL, M)
+#define xok_blook(C,URL,M)       xok_BLOOK(CONCAT(ok_b_, C), URL, M)
+#define xok_vlook(C,URL,M)       xok_VLOOK(CONCAT(ok_v_, C), URL, M)
 
 /* List all variables */
 FL void        var_list_all(void);
