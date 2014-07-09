@@ -1063,37 +1063,29 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    if ((ccp->cc_pass = urlp->url_pass).s != NULL)
       goto jleave;
 
-   memcpy(vbuf, "password-", i = sizeof("password-") -1);
-   /* -USER@HOST, -HOST, '' */
-   memcpy(vbuf + i, urlp->url_u_h_p.s, urlp->url_u_h_p.l +1);
-   if ((s = vok_vlook(vbuf)) == NULL) {
-      memcpy(vbuf + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
-      if ((s = vok_vlook(vbuf)) == NULL) {
-         /* But before we go and deal with the absolute fallbacks, check wether
-          * we may look into .netrc */
+   if ((s = xok_vlook(password, urlp, OXM_ALL)) == NULL) {
+      /* But before we go and deal with the absolute fallbacks, check wether
+       * we may look into .netrc */
 # ifdef HAVE_NETRC
-         if (xok_blook(netrc_lookup, urlp, OXM_ALL))
-            switch (_nrc_lookup(urlp, TRU1)) {
-            default:
-               break;
-            case NRC_RESOK:
-               ccp->cc_pass = urlp->url_pass;
-               goto jleave;
-            case NRC_RESERROR:
-               fprintf(stderr, _(".netrc authentification failed "
-                  "(missing password or user mismatch)\n"));
-               ccp = NULL;
-               goto jleave;
-            }
-# endif
-         vbuf[--i] = '\0';
-         if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
-               (s = getpassword(NULL)) == NULL) {
-            fprintf(stderr,
-               _("A password is necessary for %s authentication.\n"), pstr);
+      if (xok_blook(netrc_lookup, urlp, OXM_ALL))
+         switch (_nrc_lookup(urlp, TRU1)) {
+         default:
+            break;
+         case NRC_RESOK:
+            ccp->cc_pass = urlp->url_pass;
+            goto jleave;
+         case NRC_RESERROR:
+            fprintf(stderr, _(".netrc authentification failed "
+               "(missing password or user mismatch)\n"));
             ccp = NULL;
             goto jleave;
          }
+# endif
+      if ((ware & REQ_PASS) && (s = getpassword(NULL)) == NULL) {
+         fprintf(stderr, _("A password is necessary for %s authentication.\n"),
+            pstr);
+         ccp = NULL;
+         goto jleave;
       }
    }
    if (s != NULL)

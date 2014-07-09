@@ -963,13 +963,19 @@ and finally
 which has a protocol-specific default should none of the variables be
 set.
 .It
-If no `PASSWORD' has been given: if the `USER' has been found through
+If no `PASSWORD' has been given in the URL \(en it should be noted once
+that specifying the password in the URL is only syntactic sugar for the
+user, it'll never be part of an URL that \*(UA uses itself \(en,
+then if the `USER' has been found through
 .Pa .netrc
 then that may have provided the password, too.
-Otherwise a variable
-.Va password-USER@HOST
-is looked up, followed by
-.Va password-HOST .
+Otherwise the variables
+.Va password-USER@HOST ,
+.Va password-HOST
+and
+.Va password
+are looked up.
+.Pp
 The chain is \*(OPionally continued via the described
 .Pa .netrc
 lookup when enabled via
@@ -981,14 +987,9 @@ this time looking only for the password (multiple user accounts
 for a single machine may exist as well as a fallback entry without user
 but with a password).
 .Pp
-Finally the variable
-.Va password
-is examined \(en if still no password is available afterwards, but the
+If at that point there is still no password available, but the
 (protocols') chosen authentication type requires a password, then in
 interactive mode the user will be prompted on the terminal.
-It should be noted that specifying the password in the URL is only
-syntactic sugar for the user, it'll never be part of an URL that \*(UA
-uses itself.
 .El
 .Pp
 Note:
