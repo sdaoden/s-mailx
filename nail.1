@@ -934,7 +934,9 @@ If no `USER' is given the variables
 and
 .Va user
 are looked up; if no such variable(s) can be found then \*(UA will,
-when enforced by the \*(OPal variable
+when enforced by the \*(OPal variables
+.Va netrc-lookup-HOST
+and
 .Va netrc-lookup ,
 search the users
 .Pa .netrc
@@ -970,9 +972,15 @@ is looked up, followed by
 .Va password-HOST .
 The chain is \*(OPionally continued via the described
 .Pa .netrc
-lookup, this time looking only for the password (multiple user accounts
+lookup when enabled via
+.Va netrc-lookup-USER@HOST ,
+.Va netrc-lookup-HOST
+and
+.Va netrc-lookup ,
+this time looking only for the password (multiple user accounts
 for a single machine may exist as well as a fallback entry without user
 but with a password).
+.Pp
 Finally the variable
 .Va password
 is examined \(en if still no password is available afterwards, but the
@@ -3103,7 +3111,9 @@ automatically interpret the contents of the part.
 If this option is set, and the data was unambiguously identified as text
 data at first glance (by a `.txt' or `.html' file extension), then the
 original `Content-Type:' will not be overwritten.
-.It Va netrc-lookup
+.It Va netrc-lookup-USER@HOST , \
+  Va netrc-lookup-HOST , \
+  Va netrc-lookup
 \*(IN \*(OP Used to control usage of the users
 .Pa ~/.netrc
 file for lookup of account credentials (see the section

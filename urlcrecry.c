@@ -681,7 +681,8 @@ juser:
             == NULL) {
          /* No, check wether .netrc lookup is desired */
 #ifdef HAVE_NETRC
-         if (!ok_blook(v15_compat) || !ok_blook(netrc_lookup) ||
+         if (!ok_blook(v15_compat) ||
+               !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                _nrc_lookup(urlp, FAL0) != NRC_RESOK)
 #endif
             urlp->url_user.s = UNCONST(myname);
@@ -1071,7 +1072,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
          /* But before we go and deal with the absolute fallbacks, check wether
           * we may look into .netrc */
 # ifdef HAVE_NETRC
-         if (ok_blook(netrc_lookup))
+         if (xok_blook(netrc_lookup, urlp, OXM_ALL))
             switch (_nrc_lookup(urlp, TRU1)) {
             default:
                break;
