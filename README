@@ -6,44 +6,44 @@ ed(1) with lines replaced by messages.  It is intended to provide the
 functionality of the POSIX mailx(1) command and offers (mostly optional)
 extensions for line editing, IDNA, MIME, S/MIME, SMTP and POP3 (and IMAP).
 It is usable as a mail batch language.
-S-nail is a derivative of Heirloom mailx, formerly known as nail.
+S-nail is a derivative of Heirloom mailx, formerly known as nail, which
+itself is based upon Berkeley that has a history back to the year 1978.
 
 Please refer to the file INSTALL for build, install and codebase state
 remarks, and to NEWS for release update information.
+The file THANKS mentions people who have helped improving S-nail -
+thank you!
 
 S-nail has a git(1) repository [1] (browsable [2]) and regulary produces
 release tarballs [3], which can be addressed directly (e.g., via `curl
--v -L') [4].  There is a project overview page [5], but more information,
-inclusive an online version of the manual, is available through the
-S-nail entry on my private webpage [6].  S-nail now has its own mailing
-list [7; listinfo: 8], which doesn't require subscription, but moderator
-approval may hold your message back: please be patient, thank you.
-And GMANE.org added s-nail-users@ to their archive [9] -- thank you!
+-v -L') [4].  There is also something visual on the web that includes
+the online version of the manual [5].  A mailing list exists [6;
+listinfo: 7] which doesn't require subscription (moderator approves),
+and GMANE.org added s-nail-users@ to their archive [8] -- thank you!
 
   [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
   [2] <http://sourceforge.net/p/s-nail/code/>
   [3] <https://sourceforge.net/projects/s-nail/files/?source=navbar>
   [4] <https://downloads.sourceforge.net/project/s-nail/s-nail-MAJ_MIN_SUB.tar.?z>
-  [5] <https://sourceforge.net/projects/s-nail/>
-  [6] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
-  [7] <s-nail-users@lists.sourceforge.net>
-  [8] <https://lists.sourceforge.net/lists/listinfo/s-nail-users/>
-  [9] <news://news.gmane.org/gmane.mail.s-nail.user>
+  [5] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
+  [6] <mailto:s-nail-users@lists.sourceforge.net>
+  [7] <https://lists.sourceforge.net/lists/listinfo/s-nail-users/>
+  [8] <news://news.gmane.org/gmane.mail.s-nail.user>
 
 The S-nail(1) git(1) repository consists of five branches:
 
 - master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
   It is updated once a release is made, and will otherwise only see
-  cherry-picked bugfixes.
-
-- timeline: an ongoing effort to collect the complete history of Mail.
+  cherry-picked bugfixes or very stable improvements.
 
 - next: rooted on top of *master*, this consists of a furious mixture of
   commits that eventually end up in *master*; it is a snapshot of the
-  *crawl* branch, taken once that seemed to be quite stable.
+  *crawl* branch, taken once that seems to be quite stable.
 
 - crawl: developer chaos, nothing for normal people.
+
+- timeline: an ongoing effort to collect the complete history of Mail.
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
@@ -84,4 +84,4 @@ program has been integrated into the Heirloom project.
 In 2012 the stale Heirloom mailx(1) was adapted as S-nail(1) by
 Steffen (Daode) Nurpmeso.
 
-vim:set fenc=utf-8:s-ts-mode
+# s-ts-mode
