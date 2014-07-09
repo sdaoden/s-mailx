@@ -74,7 +74,6 @@ mkman.1: nail.1 mk.mk
 		OFS = " ";\
 		next\
 	}\
-	/^\.\\" vim:/ {next}\
 	{print}\
 	'
 
@@ -95,7 +94,6 @@ mkrc.rc: nail.rc mk.mk
 		OFS = " ";\
 		next\
 	}\
-	/^# vim:/ {next}\
 	{print}\
 	'
 
@@ -183,4 +181,4 @@ _update-version:
 	mv ./version.tmp ./version.h;\
 	trap - 0 1 2 15
 
-# vim:set fenc=utf-8 ft=make:
+# vim:set ft=make:s-mk-mode

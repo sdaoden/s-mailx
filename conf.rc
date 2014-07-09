@@ -258,4 +258,4 @@ WANT_DEVEL=0
 # TODO Separation in between NYD and NYD2 not yet fully done
 WANT_NYD2=0
 
-# vim:set fenc=utf-8 syntax=conf:s-it-mode
+# s-it-mode

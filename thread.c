@@ -847,4 +847,4 @@ uncollapse1(struct message *mp, int always)
    NYD_LEAVE;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

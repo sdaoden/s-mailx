@@ -1986,4 +1986,4 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
 # undef _HOPE_GET
 #endif /* HAVE_DEBUG */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

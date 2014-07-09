@@ -252,4 +252,4 @@ jleave:
 # undef GSS_C_NT_HOSTBASED_SERVICE
 #endif /* HAVE_GSSAPI */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

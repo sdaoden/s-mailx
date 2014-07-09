@@ -1937,4 +1937,4 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 # define FL
 #endif
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

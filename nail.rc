@@ -159,4 +159,4 @@ set pipe-image/svg+xml=@
 # Other pipe-CONTENT/SUBCONTENT entries
 #set pipe-text/html="lynx -stdin -dump -force_html"
 
-# vim:set fenc=utf-8 syntax=conf:s-it-mode
+# s-it-mode

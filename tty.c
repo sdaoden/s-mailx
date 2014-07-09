@@ -2149,4 +2149,4 @@ tty_addhist(char const *s, bool_t isgabby)
 }
 #endif /* nothing at all */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

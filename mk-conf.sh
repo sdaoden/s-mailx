@@ -1369,4 +1369,4 @@ ${cat} > ${tmp2}.c << \!
 ${make} -f ${makefile} ${tmp2}.x
 < ${tmp2}.x >&5 ${sed} -e '/^[^:]/d; /^$/d; s/^://'
 
-# vim:set fenc=utf-8:s-it-mode
+# s-it-mode

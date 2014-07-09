@@ -139,4 +139,4 @@ _update-release:
 	rm -rf "$${UAGENT}-$${REL}" &&\
 	echo 'Uff.'
 
-# vim:set fenc=utf-8 filetype=make:
+# s-mk-mode

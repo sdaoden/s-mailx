@@ -1437,4 +1437,4 @@ temporary_localopts_free(void) /* XXX intermediate hack */
    NYD_LEAVE;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

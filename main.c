@@ -940,4 +940,4 @@ jleave:
    return exit_status;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

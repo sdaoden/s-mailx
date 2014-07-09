@@ -1367,4 +1367,4 @@ jleave:
 }
 #endif
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

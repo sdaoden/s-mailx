@@ -916,4 +916,4 @@ wait_child(int pid, int *wait_status)
 #endif
 #undef _SET_CLOEXEC
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

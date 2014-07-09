@@ -1737,4 +1737,4 @@ c_urldecode(void *v) /* XXX IDNA?? */
    return 0;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */
