@@ -893,6 +893,9 @@ enum okeys {
    ok_v_newmail,
    ok_v_ORGANIZATION,
    ok_v_PAGER,
+   ok_v_password,
+   /* TODO pop3_auth is yet a dummy to enable easier impl. of ccred_lookup()! */
+   ok_v_pop3_auth,
    ok_v_pop3_keepalive,
    ok_v_prompt,
    ok_v_quote,
